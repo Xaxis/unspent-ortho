@@ -269,6 +269,23 @@ const DEFS := {
 		"where": {"countries": GREEN_COUNTRIES, "grounds": ["sand", "shingle", "gravel", "strand"], "hours": [6, 20]},
 	},
 
+	# --- The Crags' one worker of its own (docs/LANDSCAPES.md §1) -------------
+	# A chainman walks the survey lines dragging a measuring chain, stops at each
+	# stone to set a tiny tripod, and goes on. Its bite is a SHOVE: a worker turns
+	# on `blocked` (Roles.TURNS), and this one pushes whatever stands on its line
+	# off it, hard enough to move a body and not enough to hurt one. `where` keeps
+	# it to the crags' own grounds by day. The roster there stays the thinnest in
+	# the game on purpose, and this is the one machine still working it.
+	&"chainman": {
+		"model": &"chainman", "role": &"worker", "machine": true, "approach": &"errand", "stretch": 9, "part": &"back",
+		"pace": 3.5, "dash": 6.0, "quick": 260, "radius": 0.45, "height": 1.0, "life": 56,
+		"sees": 8, "hears": 6, "racket": 14, "reach": 2, "ready": 4, "forget": 18, "tether": 30, "safe": 14,
+		"nerve": 100, "invuln": 450, "disposition": &"indifferent",
+		"bite": {"swing": [420, 120, 400, 600], "reach": 1.2, "width": 1.3, "dmg": 1, "knock": 9.0, "knock_ms": 260},
+		"takes": 40.0, "drops": 1, "linger": 40.0, "chance": 3,
+		"where": {"countries": ["the_crags"], "grounds": ["moss", "limestone", "rock"], "hours": [8, 18]},
+	},
+
 	# --- Sentinels: the keeper a landscape has (docs/VISION.md §3) ------------
 	# A sentinel's body is a roster row like any other machine's, so everything
 	# that already reads a machine takes it as one: the senses, the plan's

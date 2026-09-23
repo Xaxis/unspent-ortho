@@ -126,6 +126,9 @@ const DEFS := {
 	# The lens unscrewed off a survey mast: machine glass, read in the module's
 	# violet like everything else taken whole off the plan.
 	&"lens_glass": {"name": "lens glass", "bulk": 0.5, "group": &"found", "icon": [&"lens", &"rime", &"lens"]},
+	# Links off a chainman's measuring chain (EliteStock.SPOILS): machine chain,
+	# read in the module's violet like everything else off a body.
+	&"chain_link": {"name": "chain link", "bulk": 0.5, "group": &"found", "icon": [&"coil", &"plate", &"plate"]},
 	# Cut out of a keeper, and out of nothing else in the world (src/core/sentinel).
 	&"reaper_core": {"name": "reaper core", "bulk": 3.0, "group": &"material"},
 	&"rake_core": {"name": "rake core", "bulk": 3.0, "group": &"material"},

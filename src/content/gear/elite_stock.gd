@@ -98,6 +98,9 @@ const SPOILS := {
 	&"hauler": [{"item": &"pulse_hammer", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
 	&"sweeper": [{"item": &"arc_cut", "chance": 0.12, "rarity": Rarity.UNCOMMON}],
 	&"lineman": [{"item": &"beam_lance", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
+	# The crags' chainman: links off the chain it drags (docs/LANDSCAPES.md §1).
+	# No weapon, because it carries none -- it measures.
+	&"chainman": [{"item": &"chain_link", "chance": 0.6, "count": Vector2i(1, 3)}],
 }
 
 

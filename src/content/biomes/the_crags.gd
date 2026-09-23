@@ -110,6 +110,9 @@ static func make() -> BiomeDef:
 	d.roster = {
 		&"watcher": {"weight": 0.5, "hours": Vector2(8, 18)},
 		&"dog.feral": {"weight": 0.8},
+		# The survey's chainman, by day, on the survey's own grounds (Roster
+		# `where`): the one machine here still working, and what it does is measure.
+		&"chainman": {"weight": 1.2, "hours": Vector2(8, 18)},
 	}
 	d.landmarks = [&"cast_stones", &"firewatch", &"leaning_mast", &"clerks_office"]
 	# Its keeper: the plumb, a survey instrument that never finished surveying
