@@ -288,6 +288,7 @@ func _bind(w: WorldData) -> void:
 	far = Far.new()
 	far.name = "far"
 	add_child(far)
+	far.set_eye(_lod_on)
 	var n := ceili(float(w.size) / CHUNK)
 	_near_mask = Image.create(n, n, false, Image.FORMAT_R8)
 	_near_tex = ImageTexture.create_from_image(_near_mask)
@@ -547,6 +548,8 @@ func _look_out() -> void:
 	if up == _lod_on:
 		return
 	_lod_on = up
+	if far != null:
+		far.set_eye(up)
 	for node: Node3D in _chunks.values():
 		_lod_apply(node)
 	for node: Node3D in _parked.values():
@@ -753,8 +756,22 @@ func _attach_mid(node: Node3D, baked: Array) -> void:
 func _far_step(near_busy: bool) -> void:
 	if far == null:
 		return
+	# ONE finished block a frame is put in, not every one that is ready: four far
+	# models landing together were four sets of uploads in one frame (19.9 ms worst
+	# where the plain solids had been 9.7), and a block loses nothing by waiting a
+	# frame in its slot.
+	var collected := false
+	var t_pump := Time.get_ticks_usec()
+	if far.pump():
+		collected = true
+		var pump_cost := (Time.get_ticks_usec() - t_pump) / 1000.0
+		far_main_ms += pump_cost
+		far_main_ms_max = maxf(far_main_ms_max, pump_cost)
 	for i in _far_tasks.size():
+		if collected:
+			break
 		if _far_tasks[i] >= 0 and WorkerThreadPool.is_task_completed(_far_tasks[i]):
+			collected = true
 			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
 			_far_tasks[i] = -1
 			var t_main := Time.get_ticks_usec()
@@ -775,6 +792,10 @@ func _far_step(near_busy: bool) -> void:
 			# in the builder that was never there.
 			far_ms += _far_at[i] / 1000.0
 			far_count += 1
+	# From above the far models are only drawn once the camera takes in more than
+	# the near square: at play zoom every one of them lies under a near chunk and
+	# was discarded pixel by pixel, which is cost and no picture.
+	far.set_shown(_lod_on or view_half_extent() > near_limit)
 	if not _stands_wanted and (stands_early or is_inside_tree() and SkyLight.sees_horizon(get_viewport().get_camera_3d())):
 		_stands_wanted = true
 	var land_left := not far.done(world.size)
@@ -843,8 +864,10 @@ func ensure_far() -> void:
 	while not far.stands_done(world.size):
 		var key := far.next_stand(world.size, focus, {})
 		if key.x < 0:
-			return
+			break
 		far.add_stands(key, Far.stand_arrays(world, _far_props.get(key, [])), _stand_mats())
+	while far.pump():
+		pass
 
 
 ## The far world's own copies of the three materials a model is drawn with.

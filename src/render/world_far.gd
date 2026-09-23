@@ -547,30 +547,83 @@ func next_stand(size: int, focus: Vector2, busy: Dictionary) -> Vector2i:
 ## Put a block's far models in: each level's made, found and leaf surfaces under
 ## the far world's own copies of the three materials (`mats`, in that order), the
 ## close level drawn until `FAR_AT` and the coarse one after it.
+##
+## QUEUED, AND PUT IN ONE SURFACE A FRAME BY `pump`. A forest block's far models
+## are six uploads of up to seventy thousand triangles, and made all at once they
+## were a 17.7 ms frame on the main thread where the plain solids had cost 9.7. The
+## coarse level goes first, so a block that is only partly in is still whole.
+var _pending: Array = []
+
+
 func add_stands(key: Vector2i, levels: Array, mats: Array) -> void:
 	if _stood.has(key) or not _blocks.has(key):
 		return
 	_stood[key] = true
 	if levels.is_empty():
 		return
-	var names := ["stands", "stands_found", "stands_leaf"]
-	for i in levels.size():
+	for i in range(levels.size() - 1, -1, -1):
 		var surf: Array = levels[i]
 		for j in 3:
-			var arrays: Array = surf[j]
-			if arrays.is_empty():
-				continue
-			var mesh := ArrayMesh.new()
-			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-			var mi := MeshInstance3D.new()
-			mi.name = names[j] + ("" if i == 0 else "_far")
-			mi.mesh = mesh
-			mi.material_override = mats[j]
-			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			if i == 0:
-				mi.visibility_range_end = FAR_AT
-				mi.visibility_range_end_margin = FAR_MARGIN
-			else:
-				mi.visibility_range_begin = FAR_AT
-				mi.visibility_range_begin_margin = FAR_MARGIN
-			(_blocks[key] as Node3D).add_child(mi)
+			if not (surf[j] as Array).is_empty():
+				_pending.append([key, i, j, surf[j], mats[j]])
+
+
+## Put the next queued far surface in; false when none is left.
+func pump() -> bool:
+	if _pending.is_empty():
+		return false
+	var e: Array = _pending.pop_front()
+	var names := ["stands", "stands_found", "stands_leaf"]
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, e[3])
+	var mi := MeshInstance3D.new()
+	mi.name = names[e[2]] + ("" if e[1] == 0 else "_far")
+	mi.mesh = mesh
+	mi.material_override = e[4]
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.set_meta(&"far_level", e[1])
+	_range(mi)
+	(_blocks[e[0]] as Node3D).add_child(mi)
+	return true
+
+
+## Whether an eye-level camera is drawing. From eye level the close level draws
+## to FAR_AT and the coarse one past it; from above, where a far block is only
+## ever seen with the whole island under the camera, the coarse level draws at
+## every range and the close one not at all, so the top-down game pays for the
+## far models no more than it paid for the plain solids they replaced.
+var _eye := false
+
+
+func set_eye(on: bool) -> void:
+	if on == _eye:
+		return
+	_eye = on
+	for node: Node in get_children():
+		for mi: Node in node.get_children():
+			if mi.has_meta(&"far_level"):
+				_range(mi as GeometryInstance3D)
+
+
+## Whether the far models are drawn at all (WorldView: always at eye level, and
+## from above only once the camera takes in more than the near square).
+var _shown := true
+
+
+func set_shown(on: bool) -> void:
+	if on == _shown:
+		return
+	_shown = on
+	for node: Node in get_children():
+		for mi: Node in node.get_children():
+			if mi.has_meta(&"far_level"):
+				_range(mi as GeometryInstance3D)
+
+
+func _range(mi: GeometryInstance3D) -> void:
+	var close := int(mi.get_meta(&"far_level")) == 0
+	mi.visible = _shown and (_eye or not close)
+	mi.visibility_range_end = FAR_AT if _eye and close else 0.0
+	mi.visibility_range_end_margin = FAR_MARGIN if _eye and close else 0.0
+	mi.visibility_range_begin = FAR_AT if _eye and not close else 0.0
+	mi.visibility_range_begin_margin = FAR_MARGIN if _eye and not close else 0.0
