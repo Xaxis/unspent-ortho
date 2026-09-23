@@ -80,6 +80,10 @@ var _back := 30.0
 			# the lens; coming back, it must rebuild rather than trust the last
 			# size it saw, which was measured before the lens took over.
 			_dof_size = -1.0
+			# Once, at the switch: `_apply_lens` only calls this where there is a
+			# real blur, and the web's stand-in has to be switched off as well.
+			if lens == &"persp":
+				_near_focus()
 ## The lens, when it is asked for. Pitched far shallower than the play camera
 ## because the whole point is to SEE height: at 30 degrees a 16-unit spire is a
 ## spire, where at 57 it is a lid.
@@ -322,6 +326,11 @@ func _near_focus() -> void:
 	if lens == &"persp":
 		attributes = null
 		_dof_size = -1.0
+		# The web's stand-in too: the plane it was handed is the orthographic
+		# frame's, and left in force under the lens it smeared everything nearer
+		# than ~25 units at eye level. -1 is the shader's own "off".
+		if _outline != null:
+			(_outline.material_override as ShaderMaterial).set_shader_parameter("near_begin", -1.0)
 		return
 	if not bool(Quality.current().get("near_focus", false)):
 		attributes = null
