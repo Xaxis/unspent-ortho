@@ -348,8 +348,10 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 				&"lean_to": return [{"at": Vector3(0.92, 0.7, 0.375), "size": Vector2.ZERO, "color": n[2], "neon": true}]
 				&"dugout": return [{"at": Vector3(0.82, 0.5, 0.475), "size": Vector2.ZERO, "color": n[1], "neon": true}]
 				# The crags' round never wired anything in (props/crags.gd): the
-				# one landscape with no stolen light, in its shelters too.
-				&"roundhouse": return []
+				# one landscape with no stolen light, in its shelters too. What
+				# its lit one has is a HEARTH inside the door, and its light is a
+				# fire's -- no `neon`, so nothing reads it as stolen tech.
+				&"roundhouse": return [{"at": Crags.HEARTH_AT, "size": Vector2.ZERO, "color": Palette.EMBER[4], "rays": [3.0, 7.0, 1.0, 8.0]}]
 			return [{"at": Vector3(0.81, 0.85, -0.5), "size": Vector2.ZERO, "color": n[0], "neon": true}]
 		PropKind.INTAKE:
 			# The cold strip along both eaves (props/works.gd intake).

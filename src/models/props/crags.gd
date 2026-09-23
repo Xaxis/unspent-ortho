@@ -485,13 +485,27 @@ static func byre(k: Kit, c: int) -> void:
 		H._snow_on(k, r, d.snow)
 
 
+## Where the shelter's hearth burns, in its own frame: just inside the doorway,
+## which faces +X. The light (`glow_points`) and the embers are one place.
+const HEARTH_AT := Vector3(0.5, 0.06, 0.0)
+
 ## The crags' patched shelter (`BiomeDressing.shelter`): a small dry-stone
 ## round under sods, a sheet of machine plate weighted onto the roof where the
-## turf failed, a plank door, peat stacked by it. Nothing wired in.
-static func roundhouse_shelter(k: Kit, s: int, d: BiomeDressing) -> void:
+## turf failed, a plank door, peat stacked by it. Nothing WIRED in -- the one
+## landscape with no stolen light keeps that in its shelters too -- but the
+## lit one (`lit`, variant 1 as every shelter counts it) has a HEARTH going
+## inside the door: a ring of stones and embers, and the warm light of it is
+## what a night village here is seen by.
+static func roundhouse_shelter(k: Kit, s: int, lit: bool, d: BiomeDressing) -> void:
 	var wall := _walling(d)
 	const R := 1.0
 	var top := _drystone_round(k, wall, s, R, 0.85, 0.6)
+	if lit:
+		var h := HEARTH_AT
+		for i in 5:
+			var a := float(i) / 5.0 * TAU + 0.3
+			k.stone(h.x + cos(a) * 0.2, 0.0, h.z + sin(a) * 0.2, 0.07, 0.06, s + 800 + i, d.stone[1], 5)
+		k.made.prism(h.x, 0.01, h.z, 0.13, 0.06, 0.09, 6, GroundColors.glow(P.EMBER[3], 0.9), GroundColors.glow(P.EMBER[4], 1.1))
 	_cone_roof(k, d, s, Vector3(0.03, 1.9, -0.02), R + 0.35, top - 0.08, 12, _turf(d))
 	# The plate: laid on the slope over the back, its corners held with stones.
 	# A flat sheet on a cone is a CHORD, inside the roof by r(1 - cos(half its
