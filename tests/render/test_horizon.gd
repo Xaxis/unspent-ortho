@@ -66,20 +66,20 @@ func test_a_far_tree_stands_up_off_the_land() -> void:
 	var w := _ridge()
 	var p := WorldProp.new(0, PropKind.PINE, Vector2(20.5, 20.5), 0.0, 1.0)
 	w.props.append(p)
-	var bare: Array = Far.build_arrays(w, 0, 0, Far.tables())
-	var stood: Array = Far.build_arrays(w, 0, 0, Far.tables(), [p])
-	var n0 := (bare[0][Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
-	var n1 := (stood[0][Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
-	gt(float(n1), float(n0), "the pine adds a solid to the far land")
+	eq(Far.stand_arrays(w, []).size(), 0, "nothing standing, nothing drawn")
+	var stood: Array = Far.stand_arrays(w, [p])
+	var n0 := 0
+	var n1 := (stood[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+	gt(float(n1), 0.0, "the pine adds a solid to the far land")
 	var top := 0.0
-	for v: Vector3 in stood[0][Mesh.ARRAY_VERTEX] as PackedVector3Array:
+	for v: Vector3 in stood[Mesh.ARRAY_VERTEX] as PackedVector3Array:
 		if Vector2(v.x, v.z).distance_to(p.pos) < 3.0:
 			top = maxf(top, v.y)
 	var tall: float = Far.summary(PropKind.PINE, PropModels.variant_of(p, w.seed_value, Country.COAST), Country.COAST)[0]
 	near(top, TerrainMesher.level_height(2) + tall, 0.05, "as tall as the model it stands for")
 	# Every added face must be one that draws: front faces turned outward.
-	var v3: PackedVector3Array = stood[0][Mesh.ARRAY_VERTEX]
-	var nn: PackedVector3Array = stood[0][Mesh.ARRAY_NORMAL]
+	var v3: PackedVector3Array = stood[Mesh.ARRAY_VERTEX]
+	var nn: PackedVector3Array = stood[Mesh.ARRAY_NORMAL]
 	var wrong := 0
 	for i in range(n0, n1, 3):
 		var f := (v3[i + 1] - v3[i]).cross(v3[i + 2] - v3[i])
@@ -117,6 +117,28 @@ func test_the_far_world_stands_down_only_under_near_chunks() -> void:
 					drawn += 1
 					check(view.get_node_or_null("chunk_%d_%d" % [x, y]) != null, "a masked cell is a chunk in the scene")
 		eq(drawn, view.chunk_count(), "every chunk in the scene is masked, and nothing else")
+	view.queue_free()
+
+
+## THE ORTHOGRAPHIC GAME NEVER PAYS FOR THE SILHOUETTES. They cost most of the
+## world's models built once, and nothing but a camera that sees the horizon
+## shows them; a view that has never had one builds its far land and stops.
+func test_silhouettes_wait_for_the_horizon() -> void:
+	var w := _ridge()
+	w.props.append(WorldProp.new(0, PropKind.PINE, Vector2(20.5, 20.5), 0.0, 1.0))
+	var view := WorldView.new()
+	view.setup(w)
+	tree.root.add_child(view)
+	view.focus = Vector2(20, 20)
+	var deadline := Time.get_ticks_msec() + 10000
+	while not view.far.done(w.size) and Time.get_ticks_msec() < deadline:
+		await tree.process_frame
+	await process_frames(8)
+	check(view.far.done(w.size), "the far land is built")
+	check(not view.far.stands_done(w.size), "and no silhouettes are, with no horizon in sight")
+	view.ensure_far()
+	check(view.far.stands_done(w.size), "a view that looks out builds them")
+	check(view.far.get_child(0).get_node_or_null("stands") != null, "and the pine stands on the far land")
 	view.queue_free()
 
 

@@ -75,6 +75,12 @@ var _far_tasks: Array[int] = []
 var _far_keys: Array[Vector2i] = []
 var _far_out: Array = []
 var _far_at: Array[int] = []
+## What each far slot is building: a block's LAND, or its STANDS (world_far's
+## silhouettes), which are only built once the horizon has been seen.
+const LAND := 0
+const STANDS := 1
+var _far_kind: Array[int] = []
+var _stands_wanted := false
 ## The far world's own copies of the two materials: the same shaders, told to
 ## stand down wherever a near chunk is in the scene (`near_mask`, one texel per
 ## chunk). Only these read the mask, so the near land draws exactly as it did.
@@ -231,11 +237,14 @@ func _bind(w: WorldData) -> void:
 	_far_keys.clear()
 	_far_out.clear()
 	_far_at.clear()
+	_far_kind.clear()
+	_stands_wanted = false
 	for i in FAR_WORKERS:
 		_far_tasks.append(-1)
 		_far_keys.append(Vector2i.ZERO)
 		_far_out.append([])
 		_far_at.append(0)
+		_far_kind.append(LAND)
 	far = Far.new()
 	far.name = "far"
 	add_child(far)
@@ -455,7 +464,10 @@ func _far_step(near_busy: bool) -> void:
 			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
 			_far_tasks[i] = -1
 			var t_main := Time.get_ticks_usec()
-			far.add_block(_far_keys[i], _far_out[i], _far_land_mat, _far_water_mat)
+			if _far_kind[i] == STANDS:
+				far.add_stands(_far_keys[i], _far_out[i], _far_land_mat)
+			else:
+				far.add_block(_far_keys[i], _far_out[i], _far_land_mat, _far_water_mat)
 			var main_cost := (Time.get_ticks_usec() - t_main) / 1000.0
 			far_main_ms += main_cost
 			far_main_ms_max = maxf(far_main_ms_max, main_cost)
@@ -469,7 +481,10 @@ func _far_step(near_busy: bool) -> void:
 			# in the builder that was never there.
 			far_ms += _far_at[i] / 1000.0
 			far_count += 1
-	if far.done(world.size):
+	if not _stands_wanted and is_inside_tree() and SkyLight.sees_horizon(get_viewport().get_camera_3d()):
+		_stands_wanted = true
+	var land_left := not far.done(world.size)
+	if not land_left and (not _stands_wanted or far.stands_done(world.size)):
 		return
 	# Collecting a finished block above is CHEAP ON AVERAGE and always worth doing;
 	# STARTING one is what yields. So this sits here rather than at the top, or a
@@ -493,11 +508,16 @@ func _far_step(near_busy: bool) -> void:
 	for i in _far_tasks.size():
 		if _far_tasks[i] >= 0:
 			continue
+		var kind := LAND
 		var key := far.next_block(world.size, focus, busy)
+		if key.x < 0 and _stands_wanted:
+			kind = STANDS
+			key = far.next_stand(world.size, focus, busy)
 		if key.x < 0:
 			return
 		busy[key] = true
 		_far_keys[i] = key
+		_far_kind[i] = kind
 		_far_at[i] = 0
 		_far_tasks[i] = WorkerThreadPool.add_task(_far_worker.bind(i, key), false, "far")
 
@@ -511,7 +531,10 @@ func ensure_far() -> void:
 	for i in _far_tasks.size():
 		if _far_tasks[i] >= 0:
 			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
-			far.add_block(_far_keys[i], _far_out[i], _far_land_mat, _far_water_mat)
+			if _far_kind[i] == STANDS:
+				far.add_stands(_far_keys[i], _far_out[i], _far_land_mat)
+			else:
+				far.add_block(_far_keys[i], _far_out[i], _far_land_mat, _far_water_mat)
 			_far_tasks[i] = -1
 			_far_out[i] = []
 	while not far.done(world.size):
@@ -519,14 +542,23 @@ func ensure_far() -> void:
 		if key.x < 0:
 			return
 		var t0 := Time.get_ticks_usec()
-		far.add_block(key, Far.build_arrays(world, key.x, key.y, _far_tables, _far_props.get(key, [])), _far_land_mat, _far_water_mat)
+		far.add_block(key, Far.build_arrays(world, key.x, key.y, _far_tables), _far_land_mat, _far_water_mat)
 		far_ms += (Time.get_ticks_usec() - t0) / 1000.0
 		far_count += 1
+	_stands_wanted = true
+	while not far.stands_done(world.size):
+		var key := far.next_stand(world.size, focus, {})
+		if key.x < 0:
+			return
+		far.add_stands(key, Far.stand_arrays(world, _far_props.get(key, [])), _far_land_mat)
 
 
 func _far_worker(slot: int, key: Vector2i) -> void:
 	var began := Time.get_ticks_usec()
-	_far_out[slot] = Far.build_arrays(world, key.x, key.y, _far_tables, _far_props.get(key, []))
+	if _far_kind[slot] == STANDS:
+		_far_out[slot] = Far.stand_arrays(world, _far_props.get(key, []))
+	else:
+		_far_out[slot] = Far.build_arrays(world, key.x, key.y, _far_tables)
 	_far_at[slot] = Time.get_ticks_usec() - began
 
 
@@ -619,7 +651,10 @@ static func half_extent_for(vh: float, aspect: float, pitch: float) -> float:
 ## building, for a frame in which a tile is a pixel and a half. Past the cap the
 ## coarse `world_far.gd` is already standing there.
 func _wanted(extra: float) -> Array[Vector2i]:
-	var r := minf(view_half_extent(), near_limit) + margin + extra
+	var cap := near_limit
+	if is_inside_tree() and SkyLight.sees_horizon(get_viewport().get_camera_3d()):
+		cap = minf(cap, float(Quality.current().get("horizon_near", near_limit)))
+	var r := minf(view_half_extent(), cap) + margin + extra
 	var n := ceili(float(world.size) / CHUNK)
 	var x0 := clampi(floori((focus.x - r) / CHUNK), 0, n - 1)
 	var x1 := clampi(floori((focus.x + r) / CHUNK), 0, n - 1)

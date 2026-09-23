@@ -106,11 +106,17 @@ extends RefCounted
 ## overrides it for their device, and the owner's master configuration can pin one
 ## into a stamped build.
 
+## `horizon_near` is how far the NEAR chunks reach, in tiles, while the camera
+## sees the horizon (SkyLight.sees_horizon). A frame out to the horizon asks for
+## every chunk to `WorldView.near_limit`, 36 of them and 3.1 million primitives on
+## seed 7, where the orthographic frame holds six; past this the far world's
+## silhouettes carry the land. The orthographic game never reads it.
+##
 ## The tiers, dearest first. `web` is last on purpose: it is not "low", it is the
 ## Compatibility path, and it may differ from `low` in kind and not only in degree.
 const ROWS: Array[Dictionary] = [
 	{
-		"id": &"ultra", "label": "ultra",
+		"id": &"ultra", "label": "ultra", "horizon_near": 110,
 		"note": "Native 1920x1080, every light casts, real volumetric air.",
 		"render_scale": 1.0, "upscale": 0, "msaa": 3,
 		"shadow_size": 8192, "shadow_filter": 4, "shadow_lights": 16, "lamps": 32,
@@ -118,7 +124,7 @@ const ROWS: Array[Dictionary] = [
 		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": true, "forward_only": true,
 	},
 	{
-		"id": &"high", "label": "high",
+		"id": &"high", "label": "high", "horizon_near": 110,
 		"note": "Native, the lights that matter cast, volumetric air.",
 		"render_scale": 1.0, "upscale": 0, "msaa": 2,
 		"shadow_size": 4096, "shadow_filter": 2, "shadow_lights": 8, "lamps": 24,
@@ -126,7 +132,7 @@ const ROWS: Array[Dictionary] = [
 		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": false, "forward_only": true,
 	},
 	{
-		"id": &"medium", "label": "medium",
+		"id": &"medium", "label": "medium", "horizon_near": 80,
 		"note": "A little under native, fewer lights cast, no indirect light.",
 		"render_scale": 0.85, "upscale": 0, "msaa": 1,
 		"shadow_size": 4096, "shadow_filter": 1, "shadow_lights": 4, "lamps": 16,
@@ -144,7 +150,7 @@ const ROWS: Array[Dictionary] = [
 		"volumetric": false, "air_stand_in": 1.3, "ssao": false, "ssil": false, "forward_only": false,
 	},
 	{
-		"id": &"low", "label": "low",
+		"id": &"low", "label": "low", "horizon_near": 64,
 		"note": "Two thirds of the pixels, upscaled; the sun casts and little else.",
 		"render_scale": 0.67, "upscale": 0, "msaa": 0,
 		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 2, "lamps": 12,
@@ -156,7 +162,7 @@ const ROWS: Array[Dictionary] = [
 		"volumetric": false, "air_stand_in": 1.3, "ssao": false, "ssil": false, "forward_only": false,
 	},
 	{
-		"id": &"web", "label": "web",
+		"id": &"web", "label": "web", "horizon_near": 64,
 		"note": "The Compatibility path: the same place, on a worse night.",
 		"render_scale": 0.75, "upscale": 0, "msaa": 0,
 		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 0, "lamps": 8,

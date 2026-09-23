@@ -49,6 +49,15 @@ func started() -> void:
 		return
 	_yaw = game.player.facing
 	_cam.make_current()
+	# The web tier's near blur is the RIG's (its screen-space shaft pass, set from
+	# the orthographic frame's depth), and it draws over whatever camera is
+	# current: under the eye it smeared everything nearer than 25 units. Off
+	# (-1) for the staged eye, which is not the rig; the rig under its own lens
+	# has to do the same (CameraRig._near_focus returns under persp and leaves
+	# the last plane standing).
+	var shafts := game.camera.get_node_or_null("shaft_pass") as MeshInstance3D if game.camera != null else null
+	if shafts != null and shafts.material_override is ShaderMaterial:
+		(shafts.material_override as ShaderMaterial).set_shader_parameter("near_begin", -1.0)
 	_place()
 	# A still picture has to hold the whole view the eye can see, and the far
 	# world is built by workers over the first seconds of a game.
@@ -57,7 +66,12 @@ func started() -> void:
 		game.view.ensure_far()
 
 
+## Asked of `_cam`, not left to `set_process(false)`: under `--stats`,
+## 12_landscape drives every system's `_process` by hand whatever its own flag
+## says, and a run with no eye crashed here every frame.
 func _process(_delta: float) -> void:
+	if _cam == null:
+		return
 	_place()
 
 

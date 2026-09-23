@@ -182,8 +182,7 @@ static func tables() -> Array:
 
 
 ## One block as mesh arrays: [land, water]. Pure, so a worker may run it.
-## `props` is what stands in this block, snapshotted on the main thread.
-static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array, props: Array = []) -> Array:
+static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array) -> Array:
 	var col: PackedColorArray = tabs[0]
 	var hand: PackedFloat32Array = tabs[1]
 	var types := BiomeRegistry.SLOTS
@@ -210,19 +209,31 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array, props: Arr
 		var ty := y0 + cj * STEP - half
 		for ci in side:
 			var tx := x0 + ci * STEP - half
-			var sum := 0.0
-			var most := 0.0
+			# Whole levels, inline: a GDScript call is about ten times an index, and
+			# through clampi/maxf/level_height this loop tripled a block's build.
+			var sum := 0
+			var most := 0
 			for dy in STEP:
-				var y := clampi(ty + dy, 0, size - 1)
+				var y := ty + dy
+				if y < 0:
+					y = 0
+				elif y >= size:
+					y = size - 1
 				var row := y * size
 				for dx in STEP:
-					var x := clampi(tx + dx, 0, size - 1)
-					var th := maxf(0.0, TerrainMesher.level_height(lvl[row + x]))
-					sum += th
-					most = maxf(most, th)
+					var x := tx + dx
+					if x < 0:
+						x = 0
+					elif x >= size:
+						x = size - 1
+					var l := lvl[row + x]
+					if l > 0:
+						sum += l
+						if l > most:
+							most = l
 			# Half way from the mean to the highest: a ridge narrower than a cell
 			# still stands on the skyline, and a valley keeps most of its depth.
-			h[cj * side + ci] = lerpf(sum * per, most, PEAK) - DROP
+			h[cj * side + ci] = lerpf(sum * per, float(most), PEAK) * WorldData.STEP - DROP
 
 	# Sized for a full block up front and cut back at the end: an append that
 	# grows a PackedArray copies it, and there are 30,000 of them here.
@@ -332,7 +343,6 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array, props: Arr
 	lc.resize(ln_at)
 	luv.resize(ln_at)
 	luv2.resize(ln_at)
-	_stand_props(w, props, lv, ln, lc, luv, luv2)
 	wv.resize(wn_at)
 	wn.resize(wn_at)
 	wc.resize(wn_at)
@@ -353,9 +363,16 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array, props: Arr
 	return [land, water]
 
 
-## Every prop standing at least `STANDS` tall, as one plain solid on the far land.
-static func _stand_props(w: WorldData, props: Array, lv: PackedVector3Array, ln: PackedVector3Array,
-		lc: PackedColorArray, luv: PackedVector2Array, luv2: PackedVector2Array) -> void:
+## Every prop standing at least `STANDS` tall, as one plain solid on the far land:
+## mesh arrays for the block's `stands`, or [] when nothing there stands that tall.
+## Pure, so a worker may run it; `props` is snapshotted on the main thread.
+##
+## A PASS OF ITS OWN, AND ONLY ONCE THE HORIZON HAS BEEN SEEN (WorldView). It
+## asks every model the far land holds for its template, which is most of the
+## world's models built once: measured on seed 7 that took a far block from 9 ms
+## to 172, contending with the near chunks' own worker for the template lock, for
+## silhouettes the orthographic camera never shows.
+static func stand_arrays(w: WorldData, props: Array) -> Array:
 	var sv := PackedVector3Array()
 	var sn := PackedVector3Array()
 	var sc := PackedColorArray()
@@ -381,12 +398,18 @@ static func _stand_props(w: WorldData, props: Array, lv: PackedVector3Array, ln:
 			_block(sv, sn, sc, at, top, r * 0.72, p.rot, col)
 			if sm[6] > 0.0 and top >= WINDOWS_FROM:
 				_windows(sv, sn, sc, at, top, r * 0.72, p.rot, Color(sm[7], sm[8], sm[9], WINDOW / 255.0), w.seed_value, p.id)
-	lv.append_array(sv)
-	ln.append_array(sn)
-	for c in sc:
-		lc.append(c)
-		luv.append(Vector2.ZERO)
-		luv2.append(Vector2.ZERO)
+	if sv.is_empty():
+		return []
+	var uv := PackedVector2Array()
+	uv.resize(sv.size())
+	var out: Array = []
+	out.resize(Mesh.ARRAY_MAX)
+	out[Mesh.ARRAY_VERTEX] = sv
+	out[Mesh.ARRAY_NORMAL] = sn
+	out[Mesh.ARRAY_COLOR] = sc
+	out[Mesh.ARRAY_TEX_UV] = uv
+	out[Mesh.ARRAY_TEX_UV2] = uv
+	return out
 
 
 ## A triangle whose FRONT is `out`: wound the way this file's land is (see the
@@ -508,3 +531,44 @@ func add_block(key: Vector2i, arrays: Array, land_mat: Material, water_mat: Mate
 
 func block_count() -> int:
 	return _blocks.size()
+
+
+## Blocks whose silhouettes are in, whether or not anything stood there.
+var _stood: Dictionary = {}
+
+
+func stands_done(size: int) -> bool:
+	var n := across(size)
+	return _stood.size() >= n * n
+
+
+## The nearest block with its land in and its silhouettes not yet, or (-1, -1).
+func next_stand(size: int, focus: Vector2, busy: Dictionary) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_d := INF
+	for key: Vector2i in _blocks.keys():
+		if _stood.has(key) or busy.has(key):
+			continue
+		var mid := Vector2((key.x + 0.5) * BLOCK, (key.y + 0.5) * BLOCK)
+		var d := mid.distance_squared_to(focus)
+		if d < best_d:
+			best_d = d
+			best = key
+	return best
+
+
+## Put a block's silhouettes in, under the same far material as its land.
+func add_stands(key: Vector2i, arrays: Array, mat: Material) -> void:
+	if _stood.has(key) or not _blocks.has(key):
+		return
+	_stood[key] = true
+	if arrays.is_empty():
+		return
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var mi := MeshInstance3D.new()
+	mi.name = "stands"
+	mi.mesh = mesh
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	(_blocks[key] as Node3D).add_child(mi)
