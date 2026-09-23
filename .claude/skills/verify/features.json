@@ -1,0 +1,591 @@
+{
+  "version": 1,
+  "generated_by": "featuremap (claude-core) - regenerate with `featuremap generate --write`; do not edit by hand",
+  "checks": [
+    {
+      "id": "check:build:godot",
+      "kind": "build",
+      "run": "godot --headless --path . --import --quit",
+      "script": "(parses every script and scene; errors print as SCRIPT ERROR / Parse Error)"
+    }
+  ],
+  "launch": [],
+  "features": [
+    {
+      "id": "autoload:Events",
+      "kind": "autoload",
+      "entry": "src/events.gd",
+      "reach": "autoload singleton Events",
+      "area": "game",
+      "tests": []
+    },
+    {
+      "id": "cli:audio",
+      "kind": "cli",
+      "entry": "tools/audio.sh",
+      "reach": "tools/audio.sh",
+      "area": "tools",
+      "tests": []
+    },
+    {
+      "id": "cli:canon",
+      "kind": "cli",
+      "entry": "tools/canon.sh",
+      "reach": "tools/canon.sh",
+      "area": "tools",
+      "tests": []
+    },
+    {
+      "id": "cli:check",
+      "kind": "cli",
+      "entry": "tools/check.sh",
+      "reach": "tools/check.sh",
+      "area": "tools",
+      "tests": []
+    },
+    {
+      "id": "cli:deploy",
+      "kind": "cli",
+      "entry": "tools/deploy.sh",
+      "reach": "tools/deploy.sh",
+      "area": "tools",
+      "tests": []
+    },
+    {
+      "id": "cli:export",
+      "kind": "cli",
+      "entry": "tools/export.sh",
+      "reach": "tools/export.sh",
+      "area": "tools",
+      "tests": []
+    },
+    {
+      "id": "cli:map",
+      "kind": "cli",
+      "entry": "tools/map.sh",
+      "reach": "tools/map.sh",
+      "area": "tools",
+      "tests": []
+    },
+    {
+      "id": "cli:shot",
+      "kind": "cli",
+      "entry": "tools/shot.sh",
+      "reach": "tools/shot.sh",
+      "area": "tools",
+      "tests": []
+    },
+    {
+      "id": "cli:test",
+      "kind": "cli",
+      "entry": "tools/test.sh",
+      "reach": "tools/test.sh",
+      "area": "tools",
+      "tests": []
+    },
+    {
+      "id": "cli:tour",
+      "kind": "cli",
+      "entry": "tools/tour.sh",
+      "reach": "tools/tour.sh",
+      "area": "tools",
+      "tests": []
+    },
+    {
+      "id": "cli:web",
+      "kind": "cli",
+      "entry": "tools/web.sh",
+      "reach": "tools/web.sh",
+      "area": "tools",
+      "tests": []
+    },
+    {
+      "id": "job:worldgen",
+      "kind": "job",
+      "entry": "src/core/world_gen.gd",
+      "reach": "tools/map.sh --seed=7",
+      "area": "worldgen",
+      "tests": []
+    },
+    {
+      "id": "scene:gallery",
+      "kind": "scene",
+      "entry": "src/main.gd",
+      "reach": "tools/shot.sh shots/gallery.png --scene=gallery",
+      "area": "scenes",
+      "tests": []
+    },
+    {
+      "id": "scene:game",
+      "kind": "scene",
+      "entry": "src/main.gd",
+      "reach": "tools/shot.sh shots/game.png --scene=game",
+      "area": "scenes",
+      "tests": []
+    },
+    {
+      "id": "scene:main",
+      "kind": "scene",
+      "entry": "src/main.tscn",
+      "reach": "godot --path .",
+      "area": "game",
+      "tests": []
+    },
+    {
+      "id": "scene:title",
+      "kind": "scene",
+      "entry": "src/main.gd",
+      "reach": "tools/shot.sh shots/title.png --scene=title",
+      "area": "scenes",
+      "tests": []
+    },
+    {
+      "id": "screen:character",
+      "kind": "screen",
+      "entry": "src/ui/ui_character_screen.gd",
+      "reach": "tools/tour.sh tours/character.tour",
+      "area": "slate-ui",
+      "tests": []
+    },
+    {
+      "id": "screen:crafting",
+      "kind": "screen",
+      "entry": "src/ui/ui_crafting_screen.gd",
+      "reach": "tools/shot.sh shots/crafting.png --screen=crafting",
+      "area": "slate-ui",
+      "tests": []
+    },
+    {
+      "id": "screen:inventory",
+      "kind": "screen",
+      "entry": "src/ui/ui_inventory_screen.gd",
+      "reach": "tools/shot.sh shots/inventory.png --screen=inventory",
+      "area": "slate-ui",
+      "tests": []
+    },
+    {
+      "id": "screen:journal",
+      "kind": "screen",
+      "entry": "src/ui/ui_journal_screen.gd",
+      "reach": "tools/shot.sh shots/journal.png --screen=journal",
+      "area": "slate-ui",
+      "tests": []
+    },
+    {
+      "id": "screen:loadout",
+      "kind": "screen",
+      "entry": "src/ui/ui_loadout_screen.gd",
+      "reach": "tools/shot.sh shots/loadout.png --screen=loadout",
+      "area": "slate-ui",
+      "tests": []
+    },
+    {
+      "id": "screen:map",
+      "kind": "screen",
+      "entry": "src/ui/ui_map_screen.gd",
+      "reach": "tools/shot.sh shots/map.png --screen=map",
+      "area": "slate-ui",
+      "tests": []
+    },
+    {
+      "id": "screen:pause",
+      "kind": "screen",
+      "entry": "src/ui/ui_pause_screen.gd",
+      "reach": "tools/shot.sh shots/pause.png --screen=pause",
+      "area": "slate-ui",
+      "tests": []
+    },
+    {
+      "id": "screen:reads",
+      "kind": "screen",
+      "entry": "src/ui/ui_reads_screen.gd",
+      "reach": "tools/shot.sh shots/reads.png --screen=reads",
+      "area": "slate-ui",
+      "tests": []
+    },
+    {
+      "id": "screen:saves",
+      "kind": "screen",
+      "entry": "src/ui/ui_saves_screen.gd",
+      "reach": "tools/shot.sh shots/saves.png --screen=saves",
+      "area": "slate-ui",
+      "tests": []
+    },
+    {
+      "id": "screen:settings",
+      "kind": "screen",
+      "entry": "src/ui/ui_settings_screen.gd",
+      "reach": "tools/shot.sh shots/settings.png --screen=settings",
+      "area": "slate-ui",
+      "tests": []
+    },
+    {
+      "id": "screen:settlement",
+      "kind": "screen",
+      "entry": "src/ui/ui_settlement_screen.gd",
+      "reach": "tools/shot.sh shots/settlement.png --screen=holding",
+      "area": "slate-ui",
+      "tests": []
+    },
+    {
+      "id": "screen:sheet",
+      "kind": "screen",
+      "entry": "src/ui/ui_sheet_screen.gd",
+      "reach": "tools/shot.sh shots/sheet.png --screen=sheet",
+      "area": "slate-ui",
+      "tests": []
+    },
+    {
+      "id": "system:05_save",
+      "kind": "system",
+      "entry": "src/systems/05_save.gd",
+      "reach": "tools/tour.sh tours/saves.tour",
+      "area": "platform",
+      "tests": []
+    },
+    {
+      "id": "system:09_view",
+      "kind": "system",
+      "entry": "src/systems/09_view.gd",
+      "reach": "tools/tour.sh tours/zoom.tour",
+      "area": "world-look",
+      "tests": []
+    },
+    {
+      "id": "system:10_sky",
+      "kind": "system",
+      "entry": "src/systems/10_sky.gd",
+      "reach": "tools/tour.sh tours/sky.tour",
+      "area": "world-look",
+      "tests": []
+    },
+    {
+      "id": "system:11_dome",
+      "kind": "system",
+      "entry": "src/systems/11_dome.gd",
+      "reach": "tools/tour.sh tours/slums-dome.tour",
+      "area": "world-look",
+      "tests": []
+    },
+    {
+      "id": "system:12_landscape",
+      "kind": "system",
+      "entry": "src/systems/12_landscape.gd",
+      "reach": "tools/tour.sh tours/landscape.tour",
+      "area": "world-look",
+      "tests": []
+    },
+    {
+      "id": "system:13_fore",
+      "kind": "system",
+      "entry": "src/systems/13_fore.gd",
+      "reach": "tools/tour.sh tours/depth.tour",
+      "area": "world-look",
+      "tests": []
+    },
+    {
+      "id": "system:14_fliers",
+      "kind": "system",
+      "entry": "src/systems/14_fliers.gd",
+      "reach": "tools/tour.sh tours/slums_street.tour",
+      "area": "world-look",
+      "tests": []
+    },
+    {
+      "id": "system:15_lights",
+      "kind": "system",
+      "entry": "src/systems/15_lights.gd",
+      "reach": "tools/tour.sh tours/nights.tour",
+      "area": "world-look",
+      "tests": []
+    },
+    {
+      "id": "system:16_vents",
+      "kind": "system",
+      "entry": "src/systems/16_vents.gd",
+      "reach": "tools/tour.sh tours/hazards.tour",
+      "area": "world-look",
+      "tests": []
+    },
+    {
+      "id": "system:17_holo",
+      "kind": "system",
+      "entry": "src/systems/17_holo.gd",
+      "reach": "tools/tour.sh tours/slums_street.tour",
+      "area": "world-look",
+      "tests": []
+    },
+    {
+      "id": "system:18_crowns",
+      "kind": "system",
+      "entry": "src/systems/18_crowns.gd",
+      "reach": "tools/tour.sh tours/foliage.tour",
+      "area": "world-look",
+      "tests": []
+    },
+    {
+      "id": "system:20_realms",
+      "kind": "system",
+      "entry": "src/systems/20_realms.gd",
+      "reach": "tools/tour.sh tours/realms.tour",
+      "area": "world-places",
+      "tests": []
+    },
+    {
+      "id": "system:22_landmarks",
+      "kind": "system",
+      "entry": "src/systems/22_landmarks.gd",
+      "reach": "tools/tour.sh tours/landmarks.tour",
+      "area": "world-places",
+      "tests": []
+    },
+    {
+      "id": "system:24_holds",
+      "kind": "system",
+      "entry": "src/systems/24_holds.gd",
+      "reach": "tools/tour.sh tours/region.tour",
+      "area": "world-places",
+      "tests": []
+    },
+    {
+      "id": "system:30_mobs",
+      "kind": "system",
+      "entry": "src/systems/30_mobs.gd",
+      "reach": "tools/tour.sh tours/machines.tour",
+      "area": "machines-fight",
+      "tests": []
+    },
+    {
+      "id": "system:32_disposition",
+      "kind": "system",
+      "entry": "src/systems/32_disposition.gd",
+      "reach": "tools/tour.sh tours/disposition.tour",
+      "area": "machines-fight",
+      "tests": []
+    },
+    {
+      "id": "system:33_avatar",
+      "kind": "system",
+      "entry": "src/systems/33_avatar.gd",
+      "reach": "tools/tour.sh tours/character.tour",
+      "area": "people-story",
+      "tests": []
+    },
+    {
+      "id": "system:34_works",
+      "kind": "system",
+      "entry": "src/systems/34_works.gd",
+      "reach": "tools/tour.sh tours/works.tour",
+      "area": "machines-fight",
+      "tests": []
+    },
+    {
+      "id": "system:35_folk",
+      "kind": "system",
+      "entry": "src/systems/35_folk.gd",
+      "reach": "tools/tour.sh tours/locals.tour",
+      "area": "people-story",
+      "tests": []
+    },
+    {
+      "id": "system:36_machine_parade",
+      "kind": "system",
+      "entry": "src/systems/36_machine_parade.gd",
+      "reach": "tools/tour.sh tours/machines-day.tour",
+      "area": "machines-fight",
+      "tests": []
+    },
+    {
+      "id": "system:37_fauna",
+      "kind": "system",
+      "entry": "src/systems/37_fauna.gd",
+      "reach": "tools/tour.sh tours/wild.tour",
+      "area": "people-story",
+      "tests": []
+    },
+    {
+      "id": "system:40_fight",
+      "kind": "system",
+      "entry": "src/systems/40_fight.gd",
+      "reach": "tools/tour.sh tours/fight.tour",
+      "area": "machines-fight",
+      "tests": []
+    },
+    {
+      "id": "system:42_target",
+      "kind": "system",
+      "entry": "src/systems/42_target.gd",
+      "reach": "tools/tour.sh tours/targeting.tour",
+      "area": "machines-fight",
+      "tests": []
+    },
+    {
+      "id": "system:44_crafts",
+      "kind": "system",
+      "entry": "src/systems/44_crafts.gd",
+      "reach": "tools/tour.sh tours/crafts.tour",
+      "area": "survival-gear",
+      "tests": []
+    },
+    {
+      "id": "system:44_sentinels",
+      "kind": "system",
+      "entry": "src/systems/44_sentinels.gd",
+      "reach": "tools/tour.sh tours/sentinels.tour",
+      "area": "machines-fight",
+      "tests": []
+    },
+    {
+      "id": "system:45_taken",
+      "kind": "system",
+      "entry": "src/systems/45_taken.gd",
+      "reach": "tools/tour.sh tours/harvest.tour",
+      "area": "machines-fight",
+      "tests": []
+    },
+    {
+      "id": "system:46_settlements",
+      "kind": "system",
+      "entry": "src/systems/46_settlements.gd",
+      "reach": "tools/tour.sh tours/settlements.tour",
+      "area": "survival-gear",
+      "tests": []
+    },
+    {
+      "id": "system:47_defences",
+      "kind": "system",
+      "entry": "src/systems/47_defences.gd",
+      "reach": "tools/tour.sh tours/defences.tour",
+      "area": "machines-fight",
+      "tests": []
+    },
+    {
+      "id": "system:48_raids",
+      "kind": "system",
+      "entry": "src/systems/48_raids.gd",
+      "reach": "tools/tour.sh tours/raids.tour",
+      "area": "machines-fight",
+      "tests": []
+    },
+    {
+      "id": "system:49_cast",
+      "kind": "system",
+      "entry": "src/systems/49_cast.gd",
+      "reach": "tools/tour.sh tours/cast.tour",
+      "area": "people-story",
+      "tests": []
+    },
+    {
+      "id": "system:49_story",
+      "kind": "system",
+      "entry": "src/systems/49_story.gd",
+      "reach": "tools/tour.sh tours/story.tour",
+      "area": "people-story",
+      "tests": []
+    },
+    {
+      "id": "system:50_survival",
+      "kind": "system",
+      "entry": "src/systems/50_survival.gd",
+      "reach": "tools/tour.sh tours/survival.tour",
+      "area": "survival-gear",
+      "tests": []
+    },
+    {
+      "id": "system:51_harvest",
+      "kind": "system",
+      "entry": "src/systems/51_harvest.gd",
+      "reach": "tools/tour.sh tours/harvest.tour",
+      "area": "survival-gear",
+      "tests": []
+    },
+    {
+      "id": "system:52_hazards",
+      "kind": "system",
+      "entry": "src/systems/52_hazards.gd",
+      "reach": "tools/tour.sh tours/hazards.tour",
+      "area": "survival-gear",
+      "tests": []
+    },
+    {
+      "id": "system:52_survival_fx",
+      "kind": "system",
+      "entry": "src/systems/52_survival_fx.gd",
+      "reach": "tools/tour.sh tours/survival.tour",
+      "area": "survival-gear",
+      "tests": []
+    },
+    {
+      "id": "system:53_tracks",
+      "kind": "system",
+      "entry": "src/systems/53_tracks.gd",
+      "reach": "tools/tour.sh tours/tracks.tour",
+      "area": "survival-gear",
+      "tests": []
+    },
+    {
+      "id": "system:54_gear",
+      "kind": "system",
+      "entry": "src/systems/54_gear.gd",
+      "reach": "tools/tour.sh tours/gear-economy.tour",
+      "area": "survival-gear",
+      "tests": []
+    },
+    {
+      "id": "system:56_economy",
+      "kind": "system",
+      "entry": "src/systems/56_economy.gd",
+      "reach": "tools/tour.sh tours/gear-economy.tour",
+      "area": "survival-gear",
+      "tests": []
+    },
+    {
+      "id": "system:70_audio",
+      "kind": "system",
+      "entry": "src/systems/70_audio.gd",
+      "reach": "tools/tour.sh tours/score.tour",
+      "area": "audio",
+      "tests": []
+    },
+    {
+      "id": "system:75_music",
+      "kind": "system",
+      "entry": "src/systems/75_music.gd",
+      "reach": "tools/tour.sh tours/score-blend.tour",
+      "area": "audio",
+      "tests": []
+    },
+    {
+      "id": "system:90_ui",
+      "kind": "system",
+      "entry": "src/systems/90_ui.gd",
+      "reach": "tools/tour.sh tours/slate.tour",
+      "area": "slate-ui",
+      "tests": []
+    },
+    {
+      "id": "system:94_dev",
+      "kind": "system",
+      "entry": "src/systems/94_dev.gd",
+      "reach": "tools/tour.sh tours/dev.tour",
+      "area": "platform",
+      "tests": []
+    },
+    {
+      "id": "system:95_flyover",
+      "kind": "system",
+      "entry": "src/systems/95_flyover.gd",
+      "reach": "tools/tour.sh tours/flyover.tour",
+      "area": "world-look",
+      "tests": []
+    },
+    {
+      "id": "system:98_tour",
+      "kind": "system",
+      "entry": "src/systems/98_tour.gd",
+      "reach": "tools/tour.sh tours/smoke.tour",
+      "area": "platform",
+      "tests": []
+    }
+  ]
+}

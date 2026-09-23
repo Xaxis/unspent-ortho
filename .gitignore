@@ -1,7 +1,10 @@
 .godot/
 build/
 shots/
-.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/verify/
 .DS_Store
 *.log
 .idea/
