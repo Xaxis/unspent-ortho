@@ -172,6 +172,7 @@ static func _build() -> Dictionary:
 		_o(&"gather", &"deadwood", 1, 5.0, 48.0, {"keep": true})]
 	_signature(t)
 	_glass(t)
+	_mesas(t)
 	# The machines' own works are made of the best parts on the coast, and they
 	# are not abandoned: taking from one is theft, and the plan's network files
 	# it (Interference). The thing is left standing, opened and short a part.
@@ -343,6 +344,18 @@ static func _glass(t: Dictionary) -> void:
 	t[PropKind.STRIKE_ROD] = [_o(&"turn", &"copper", 1, 18.0, NEVER, {"keep": true})]
 
 
+## The Mesas (docs/LANDSCAPES.md §6). A fallen span of the ropeway lies on the
+## scree with its buckets still on it: a bucket's plate comes away by hand, and
+## it stays where it fell. The ropeway's pylon is a plan work (below): what a
+## hand takes off it is the clamp that holds its span, cut with an iron edge,
+## and without it the pylon comes down -- which is what stops it feeding the
+## mesas' keeper (Sentinels.feeds counts what is not depleted), the theodolite
+## mast's rule.
+static func _mesas(t: Dictionary) -> void:
+	t[PropKind.FALLEN_SPAN] = [_o(&"turn", &"scrap", 1, 16.0, NEVER, {"keep": true, "uses": 2})]
+	t[PropKind.SPAN_PYLON] = [_o(&"cut", &"scrap", 2, 24.0, NEVER, {"stuff": &"iron"})]
+
+
 ## The kinds that give NOTHING, on purpose, and why. `tests/survival/
 ## test_signature_takes.gd` holds every PropKind to either a row above or a line
 ## here, so a kind added later cannot quietly be a thing `use` walks past.
@@ -367,6 +380,9 @@ const GIVES_NOTHING := {
 	PropKind.FIRE_TOWER: "A roof (52_hazards ROOFS): a body shelters in the cabin.",
 	PropKind.LINTEL: "A roof (52_hazards ROOFS): the cap stone takes the wet and the dark off a body under it. Its uprights are the boulders beside it, which give the same stone; nobody quarries a doorway that was standing before the machines.",
 	PropKind.HOLLOW_WAY: "A lane between two dry-stone banks: cover (Cover.PROPS) for a body walking it, and the walling is the ruin's, which gives the same stone. A take that broke a bank would take the lane's one use with it.",
+	PropKind.HOODOO: "The land's own (PropKind.WILD): cover (Cover.PROPS) and a solid foot to put your back to. The rock is the boulders' beside it, and quarrying a spire that stood through the machines would take the one piece of cover on a bench.",
+	PropKind.ARCH_RIB: "The land's own (PropKind.WILD): shade under it (52_hazards ROOFS) on a landscape with none, and a crossing. Nothing in it comes away that the boulders at its feet do not already give.",
+	PropKind.CISTERN: "Water, and nothing to carry it in: the game has no drink a creel holds, so a cistern answers thirst where it stands (Hazards.Place.spring, 52_hazards SPRINGS) -- the mesas' own spring -- rather than handing over an item nothing consumes.",
 	PropKind.GLASS_BLISTER: "A burst dome a body steps into: shade is what it gives (52_hazards ROOFS), and its edge cuts (PropHazards collapse). There is nothing in it to carry — the glass is the ground's own — and a boulder beside it gives the same stone.",
 }
 
@@ -390,7 +406,10 @@ const PLAN_WORKS: Array[int] = [PropKind.RELAY, PropKind.SURVEY, PropKind.CONVEY
 	PropKind.STRIKE_ROD,
 	# The metropolis's demolition face: the bales the plan sorted the city into
 	# and the frame over the cut (docs/LANDSCAPES.md §4: theft).
-	PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY]
+	PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY,
+	# The mesas' ropeway pylon: the plan's, and what feeds its keeper
+	# (sentinel/designs/anchor.gd). Robbing it is theft.
+	PropKind.SPAN_PYLON]
 
 
 static func is_plan_work(kind: int) -> bool:

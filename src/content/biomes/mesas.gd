@@ -107,7 +107,15 @@ static func make() -> BiomeDef:
 	# Dry air and no cloud: a hard bright night with black shadows under the walls.
 	d.night_sky = 1.1
 	d.props = [PropKind.BOULDER, PropKind.DEAD_TREE, PropKind.STONE_ORE, PropKind.IRON_ORE,
-		PropKind.COPPER_ORE, PropKind.BUSH, PropKind.STUMP]
+		PropKind.COPPER_ORE, PropKind.BUSH, PropKind.STUMP,
+		# Its own (docs/LANDSCAPES.md §6, src/models/props/mesas.gd), declared here
+		# so the mesas are the ONE landscape whose things these are: that is what
+		# makes the span wire's gate the mesas' (Sources.lands_yielding). The
+		# bands that lay them and the works row that stands the ropeway are the
+		# placement wave's; declaring a kind places nothing until a recipe
+		# returns it.
+		PropKind.HOODOO, PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN,
+		PropKind.SPAN_PYLON]
 	d.ore = [[PropKind.STONE_ORE, 0.03], [PropKind.IRON_ORE, 0.026], [PropKind.COPPER_ORE, 0.02]]
 	d.sites = {"tips": 2, "summit": 2, "stone_circles": 1}
 	d.beached_wrecks = false

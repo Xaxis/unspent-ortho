@@ -27,7 +27,8 @@ const NOT_YET_LAID: Array[int] = [PropKind.LINTEL, PropKind.CARVED_FACE, PropKin
 	PropKind.CORE_RACK, PropKind.HOLLOW_WAY,
 	PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE,
 	PropKind.FULGURITE, PropKind.GLASS_BLISTER, PropKind.FUSED_CAR, PropKind.STRIKE_ROD,
-	PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT, PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY]
+	PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT, PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY,
+	PropKind.HOODOO, PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN, PropKind.SPAN_PYLON]
 
 ## Works each landscape must hold on every seed: kind -> its country.
 const HOME := {
