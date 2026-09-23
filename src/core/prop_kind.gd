@@ -122,9 +122,18 @@ enum {
 	SHOPFRONT,
 	SORTED_BALE,
 	DEMOLITION_GANTRY,
+	# THE DROWNED CITY (docs/LANDSCAPES.md §5, src/models/props/drowned_city.gd):
+	# how people meet the water where the street is a canal -- a stone stair
+	# down off a quay, a crowd of piles a boat is tied to now the jetty has gone
+	# -- what the water took and left standing, a tram half sunk in the silt,
+	# and the plan's own: a gate leaf in a lock.
+	STAIR_TO_WATER,
+	DROWNED_TRAM,
+	MOORING_POST,
+	LOCK_GATE,
 }
 
-const COUNT := 86
+const COUNT := 90
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -142,6 +151,7 @@ const NAMES: PackedStringArray = [
 	"pressure block", "frozen hull", "sounding rig", "seal hole",
 	"fulgurite", "glass blister", "fused car", "strike rod",
 	"deck span", "lift shaft", "shopfront", "sorted bale", "demolition gantry",
+	"stair to water", "drowned tram", "mooring post", "lock gate",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
@@ -201,4 +211,12 @@ const SOLID: PackedFloat32Array = [
 	# body walks THROUGH, and its two legs are the same case as a mural wall —
 	# whoever places one should hand its legs to `WorldQuery.set_blocks`.
 	1.3, 1.0, 1.2, 0.75, 0.0,
+	# The drowned city. A stair is 0: it is WALKED DOWN, and what it does to a
+	# body is let it into the water and out again (docs/LANDSCAPES.md §5). A
+	# tram is five long and answered by the circle at its middle, the frozen
+	# hull's case; its ends are waded round. A crowd of piles is a post. A lock
+	# gate is three across the canal in one circle, which cannot say so: whoever
+	# lays the lock should hand the leaf to `WorldQuery.set_blocks` as circles
+	# along it, the way a mural wall is meant to be.
+	0.0, 1.2, 0.3, 0.9,
 ]

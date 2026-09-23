@@ -162,6 +162,10 @@ const DEFS := {
 	# its elite material is drawn from (EliteStock: tower_cable). Machine-made,
 	# so it is drawn in the module's violet like plate is.
 	&"lift_cable": {"name": "lift cable", "bulk": 2.0, "group": &"material", "icon": [&"cable", &"plate", &"ink"]},
+	# Copper conductor cut out of a drowned tram's trolley gear in the Drowned
+	# City, green with the salt: the raw its elite material is drawn from
+	# (EliteStock: brine copper).
+	&"sea_copper": {"name": "sea copper", "bulk": 1.0, "group": &"material", "icon": [&"conductor", &"copper", &"moss"]},
 	# Cloth out of what people left: the one soft material a made garment needs.
 	&"rag": {"name": "rags", "bulk": 1.0, "group": &"material"},
 

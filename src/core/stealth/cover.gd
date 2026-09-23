@@ -47,6 +47,11 @@ const PROPS := {
 	# wall with a hold behind it.
 	PropKind.PRESSURE_BLOCK: 0.55,
 	PropKind.FROZEN_HULL: 0.6,
+	# The drowned city (docs/LANDSCAPES.md §5): a length of cast sea wall is a
+	# wall to put your back to, and a tram sunk in the shallows is a car's worth
+	# of steel standing out of the water.
+	PropKind.SEA_WALL: 0.55,
+	PropKind.DROWNED_TRAM: 0.6,
 }
 
 ## What the ground itself hides a body in: heather to the knee, reeds, deep moss.

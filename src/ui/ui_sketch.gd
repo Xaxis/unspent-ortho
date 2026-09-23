@@ -482,6 +482,17 @@ const SHAPES := {
 		["poly", "a2", [23.0, 7.5, 30.0, 8.5, 30.0, 13.0, 23.0, 12.0]],
 		["dot", 26.5, 10.2], ["line", 9.0, 19.5, 22.0, 18.5],
 	],
+	&"conductor": [
+		# Heavy conductor bent double, the clamp still on one end, and the
+		# salt's green crust in lumps where it lay under the water.
+		["bar", "a3", 9.0, 5.0, 9.0, 21.0, 4.4, 4.4],
+		["bar", "a3", 23.0, 7.0, 23.0, 21.0, 4.4, 4.4],
+		["bar", "a2", 9.0, 21.0, 16.0, 27.0, 4.4, 4.4],
+		["bar", "a2", 16.0, 27.0, 23.0, 21.0, 4.4, 4.4],
+		["poly", "a4", [5.5, 3.0, 12.5, 3.0, 12.5, 8.0, 5.5, 8.0]],
+		["ell", "b3", 9.5, 14.0, 2.6, 1.8], ["ell", "b4", 22.5, 17.0, 2.2, 1.6], ["ell", "b3", 16.5, 25.5, 2.4, 1.5],
+		["line", 7.5, 9.0, 7.5, 19.0], ["dot", 24.5, 10.0],
+	],
 	&"bar": [
 		# A bar hammered out on the diagonal: a lit edge along its top, the face
 		# under it, and the hammer's scale on the face.

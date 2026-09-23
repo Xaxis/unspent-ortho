@@ -52,8 +52,8 @@ static func make() -> SentinelDef:
 	# stands at its region's heart, which `Sentinels.lair` already does for a
 	# station nobody laid.
 	d.stations = [&"lock"]
-	# What the lock puts in its reach: the pump house that dries the basin. The
-	# gate leaves join this list when the kind lands (docs/LANDSCAPES.md §5).
+	# What the lock puts in its reach: its gate leaves and the pump house that
+	# dries the basin (docs/LANDSCAPES.md §5).
 	# The spec lists the TIDE GAUGES and the PIPE run as well, and they are left
 	# out on purpose, the plumb's reason: gauges and pipes near a region's heart
 	# are the coast's scatter and the island's works, not the lock's, and
@@ -62,7 +62,7 @@ static func make() -> SentinelDef:
 	# accident, which tests/sentinel/test_world.gd refuses (STARVE_LEAST). With
 	# the lock's own furniture alone the larder is empty until the works row lays
 	# a lock, which closes the way honestly, and full once it does.
-	d.feeds = [PropKind.PUMP_HOUSE]
+	d.feeds = [PropKind.LOCK_GATE, PropKind.PUMP_HOUSE]
 	d.drops = &"sentinel_lockkeeper"
 	d.core = &"lockkeeper_core"
 	d.hulk = PropKind.WRECKAGE

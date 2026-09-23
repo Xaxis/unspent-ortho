@@ -92,7 +92,14 @@ static func make() -> BiomeDef:
 	d.grade = Vector4(-0.06, 0.02, 0.06, -0.03)
 	d.night_sky = 0.95
 	d.props = [PropKind.RUIN, PropKind.DEBRIS, PropKind.WRECKAGE,
-		PropKind.SEA_WALL, PropKind.TIDE_GAUGE, PropKind.HULL, PropKind.REEDS, PropKind.POLE]
+		PropKind.SEA_WALL, PropKind.TIDE_GAUGE, PropKind.HULL, PropKind.REEDS, PropKind.POLE,
+		# Its own (docs/LANDSCAPES.md §5, src/models/props/drowned_city.gd),
+		# declared here so the drowned city is the ONE landscape whose things
+		# these are: that is what makes the tram's copper the city's gate
+		# (Sources.lands_yielding). The bands that lay the stairs, trams and
+		# piles, and the works row that stands the lock, are the placement
+		# wave's; declaring a kind places nothing until a recipe returns it.
+		PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE]
 	d.ore = [[PropKind.IRON_ORE, 0.02], [PropKind.COPPER_ORE, 0.018]]
 	d.sites = {"tips": 2, "ruins": true}
 	d.beached_wrecks = true
