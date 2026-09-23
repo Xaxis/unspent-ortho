@@ -128,7 +128,6 @@ salt_flats land.site
 salt_flats people.built
 salt_flats plan.machine
 salt_flats player.only_in
-salt_flats player.signature
 scrapwood land.frames
 scrapwood land.landmark
 scrapwood land.own_props
