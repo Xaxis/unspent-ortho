@@ -1,5 +1,5 @@
 class_name Sculpt
-## Solids for figures, drawn the way docs/ART.md asks: lofted rings instead of
+## Solids for figures, drawn the way docs/LOOK.md asks: lofted rings instead of
 ## boxes, so a limb tapers, a chest swells and a hat brim droops. MADE parts pass
 ## a `wob` (a few percent of hand irregularity, seeded, so it is the same every
 ## frame and every build); FOUND parts pass wob 0 and stay exact.

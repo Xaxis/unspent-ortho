@@ -1,4 +1,4 @@
-## Esk sets the bonelands' standing stones back up. A local: colour, never load (docs/STORY.md §8).
+## Esk sets the bonelands' standing stones back up. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"esk", "name": "Esk", "title": "a stone-setter",

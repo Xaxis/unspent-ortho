@@ -1,6 +1,6 @@
 extends TestCase
 ## The places worth the walk, in worlds that were really generated
-## (docs/VISION.md §3, §8): enough of them, in the right landscapes, standing
+## (docs/VISION.md, §8): enough of them, in the right landscapes, standing
 ## somewhere a player can walk to, and in the same place on every run of a seed.
 
 const SEEDS: Array[int] = [1, 7]

@@ -241,7 +241,7 @@ vec3 ground_wear(int m, vec3 c, vec2 wp, vec2 px) {
 	vec3 tramp = burnt ? INK2 : (pale ? LINEN1 : (page ? RIME2 : EARTH1));
 	vec3 bare = burnt ? ASH1 : (pale ? SAND2 : (page ? RIME3 : EARTH2));
 	// 1. Trodden and worked: the whole ground is laid in four flat bands of wear
-	//    on torn edges (never a gradient, docs/ART.md law 2), from the lift where
+	//    on torn edges (never a gradient, docs/LOOK.md law 2), from the lift where
 	//    nothing goes to the bare ground showing through where everything does.
 	//    Three octaves, so a screen holds features of about 3, 9 and 3 units.
 	float worn = ink_vnoise(wp * 0.11 + 61.0) * 0.55 + ink_vnoise(wp * 0.31 + 13.0) * 0.3
@@ -285,7 +285,7 @@ vec3 ground_wear(int m, vec3 c, vec2 wp, vec2 px) {
 }
 
 // The ground's own marks. wp: world xz. Marks are sparse: a wash stays a wash,
-// and interest lives at edges and in rare features (docs/ART.md). Nothing
+// and interest lives at edges and in rare features (docs/LOOK.md). Nothing
 // tessellates. Returns the colour; may add emission and lift the hatching.
 vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float unh) {
 	if (m == 40) {
@@ -412,7 +412,7 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 	} else if (m == 45) {
 		// PAVEMENT: clints of pale limestone cut by grikes (ink cuts with a worn
 		// pale lip and moss down in them). THE ONE LAW: it must never read as a
-		// tiled floor (docs/ART.md section 8.1), so nothing about the grain is a
+		// tiled floor (docs/LOOK.md section 8.1), so nothing about the grain is a
 		// global constant.
 		//  - the bearing turns and the rows bend, from a low-frequency domain
 		//    warp: over tens of units the pavement runs a different way, and the
@@ -1457,7 +1457,7 @@ void fragment() {
 	// drawing technique instead of a surface.
 	vec2 px = matter_px(world_pos);
 	// A fight is never hidden: leaves over the player, or over a body they can
-	// see, thin to stipple and then go. Stipple, never a fade (docs/ART.md law 5).
+	// see, thin to stipple and then go. Stipple, never a fade (docs/LOOK.md law 5).
 	int m1 = int(COLOR.a * 255.0 + 0.5);
 	// Where the camera is, for the tall cut: the horizontal part of the camera's
 	// own Z over its vertical part is exactly 1/tan(pitch), with no trigonometry
@@ -1479,7 +1479,7 @@ void fragment() {
 	// crisp, ragged edge: never a muddy average, never a dither, never a tile
 	// square. The weight is bent by a world field so the edge wanders freely
 	// inside its band, and the lighter wash is inked along it, broken like a
-	// pen lifting (docs/ART.md: one edge language for every patch).
+	// pen lifting (docs/LOOK.md: one edge language for every patch).
 	bool second = false;
 	bool edge_ink = false;
 	if (wash_blend > 0.0) {
@@ -1615,7 +1615,7 @@ void fragment() {
 		+ matter_light(neon_reflect(world_pos, px) + neon_skyglow(c));
 	// A blow's paper-white, as a sphere in world space: only the part that was
 	// struck goes to paper, so the body it landed on is still showing while the
-	// mark proves the hit (docs/ART.md §7; and see found.gdshader, which carries
+	// mark proves the hit (docs/LOOK.md; and see found.gdshader, which carries
 	// the same three uniforms for the machines). MADE, so its edge is a pixel of
 	// stipple and not a rule. `flash_r` 0 is every draw but a struck body's.
 	if (flash_r > 0.0) {

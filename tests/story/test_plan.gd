@@ -1,5 +1,5 @@
 extends TestCase
-## The guided path, held to being a path (docs/STORY_SYSTEM.md §6).
+## The guided path, held to being a path (docs/DESIGN.md).
 ##
 ## The owner's ruling is that a procedurally generated world still offers a
 ## general guided path to success. That is a promise about every seed, and this is
@@ -14,7 +14,7 @@ const SIZE := 256
 func test_the_spine_asks_for_nothing_a_world_may_not_carry() -> void:
 	# No world needed: this half is about what the story DECLARES, and it is the
 	# rule that keeps a player from being stranded by a landscape that a given
-	# world was never dealt (docs/WORLD.md §spread).
+	# world was never dealt (docs/DESIGN.md §spread).
 	var bad := StoryPlan.problems(null)
 	check(bad.is_empty(), "\n  ".join(bad))
 

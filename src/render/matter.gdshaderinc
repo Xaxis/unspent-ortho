@@ -50,7 +50,7 @@ vec3 matter_linear(vec3 c) {
 //
 // So Forward+ reads ALBEDO as LINEAR light and encodes the frame for the
 // display; Compatibility passes it through. The palette is sRGB display values
-// (docs/ART.md, generated from a running game's screenshots). Writing them raw
+// (docs/LOOK.md, generated from a running game's screenshots). Writing them raw
 // on Forward+ therefore lifts the WHOLE game about 1.5 stops and flattens every
 // ramp into its top — which is a large part of why the picture went pale when
 // the floor moved to Forward+, and it is not a grading choice anybody made.

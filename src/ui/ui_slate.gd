@@ -1,5 +1,5 @@
 class_name UiSlate
-## The slate: the one device every screen is an app of (docs/ART.md §9).
+## The slate: the one device every screen is an app of (docs/LOOK.md).
 ##
 ## A display module stolen from a machine (FOUND: exact pixels, violet chrome,
 ## rivets in a row, a cold sensor slit, one clean shade step) in a bezel the

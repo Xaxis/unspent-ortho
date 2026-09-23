@@ -58,7 +58,7 @@ static func make() -> BiomeDef:
 	var dress := BiomeDressing.new()
 	dress.stone = [P.SLATE[2].lerp(P.SPRUCE[2], 0.3), P.SLATE[3], P.LINEN[4]]
 	dress.walling = [P.SLATE[2], P.SAND[3], P.LINEN[3], P.SPRUCE[2]]
-	# Bone and wood read sand-scoured here (docs/LANDSCAPES.md §3 PEOPLE).
+	# Bone and wood read sand-scoured here (docs/LANDSCAPES.md PEOPLE).
 	dress.bleach = P.LINEN[5]
 	dress.sink = 0.02
 	dress.lie = Vector2(0.0, 0.03)
@@ -67,7 +67,7 @@ static func make() -> BiomeDef:
 	# Nothing grows to shade it and the glass throws the moon back: bright, and
 	# with no cover anywhere on it.
 	d.night_sky = 1.3
-	# Its own things (docs/LANDSCAPES.md §3): what the glassing cast, burst and
+	# Its own things (docs/LANDSCAPES.md): what the glassing cast, burst and
 	# caught. Declared here so the economy can read that fulgurite is this
 	# landscape's and nobody else's; the scatter that lays them is phase B, so
 	# until then they are declared and not yet dealt.
@@ -78,7 +78,7 @@ static func make() -> BiomeDef:
 	d.sites = {"tips": 1, "stone_circles": 1}
 	d.beached_wrecks = false
 	d.pools = {"order": 4, "cell": 52, "chance": 0.16, "r_min": 1.4, "r_max": 2.6, "ground": Ground.SALT}
-	# Nobody drinks here (docs/LANDSCAPES.md §3 PEOPLE): no villages, and no
+	# Nobody drinks here (docs/LANDSCAPES.md PEOPLE): no villages, and no
 	# built forms — `built` is left unset ON PURPOSE rather than set empty,
 	# because `BiomeForms.resolve` reads an empty stock as the plain eight, so
 	# "empty" would say the opposite of what it means. With villages at zero
@@ -113,12 +113,12 @@ static func make() -> BiomeDef:
 		&"harvester": {"weight": 0.7, "grounds": ["sand", "salt", "gravel"]},
 		&"runner": {"weight": 0.6, "hours": Vector2(9, 18), "grounds": ["road", "sand", "rock"]},
 		# Its own hunter: a blade-skater that keeps to the plates, so the sand
-		# is where a body is safe from it (docs/LANDSCAPES.md §3).
+		# is where a body is safe from it (docs/LANDSCAPES.md).
 		&"skater": {"weight": 0.8, "hours": Vector2(9, 19), "grounds": ["rock", "salt"]},
 	}
 	d.landmarks = [&"cast_stones", &"evaporator", &"blinking_stack", &"poured_pillar"]
 	# Its keeper: the anvil, the mast the strike fields are called through
-	# (src/core/sentinel/designs/anvil.gd, docs/LANDSCAPES.md §3).
+	# (src/core/sentinel/designs/anvil.gd, docs/LANDSCAPES.md).
 	d.sentinel = &"anvil"
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface

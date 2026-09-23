@@ -1,6 +1,6 @@
 class_name Signature
 extends RefCounted
-## What a settlement gives off that a machine can sense (docs/VISION.md §9.4):
+## What a settlement gives off that a machine can sense (docs/VISION.md):
 ## light at night, noise, smoke, radio, power draw, the FOUND technology running
 ## inside the walls, and traffic in and out. Each channel is 0..1.
 ##

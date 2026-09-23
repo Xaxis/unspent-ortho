@@ -1,6 +1,6 @@
 extends GameSystem
 ## The places the player built, and the register two packages meet on
-## (docs/VISION.md §9). Reachable as the system named "46_settlements".
+## (docs/VISION.md). Reachable as the system named "46_settlements".
 ##
 ## This is the seam AND the game on top of it. It holds the settlements, saves
 ## them, says who is where — and it builds, staffs, produces, wears and repairs.
@@ -529,7 +529,7 @@ func _mend(s: Settlement, p: Structure) -> String:
 
 
 ## A wreck cleared gives back half of what the piece cost: nothing a holding
-## built is ever dead loot (docs/VISION.md §6.1).
+## built is ever dead loot (docs/VISION.md).
 func _clear_wreck(s: Settlement, p: Structure) -> String:
 	var back := PackedStringArray()
 	for id: StringName in StructureKind.cost(p.kind):
@@ -965,7 +965,7 @@ func _sync_nodes() -> void:
 
 ## Whether a machine's own light is still burning on this piece. It is the
 ## holding saying out loud that it has power, which is the thing a player should
-## be able to read from a hillside (docs/ART.md §10).
+## be able to read from a hillside (docs/LOOK.md).
 func _lit(s: Settlement, p: Structure, weather: Dictionary, hour: float) -> bool:
 	if p.ruined:
 		return false

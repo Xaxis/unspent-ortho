@@ -1,5 +1,5 @@
 extends GameSystem
-## The keeper a landscape has, in the running game (docs/VISION.md §3).
+## The keeper a landscape has, in the running game (docs/VISION.md).
 ##
 ## Every region of a type whose file names a sentinel (`BiomeDef.sentinel`) has
 ## one, standing at that region's own works. This system does five things:
@@ -175,7 +175,7 @@ func _step() -> void:
 ## Its phase is its body: the working side, the bite, the speeds and how fast it
 ## comes round. Entering one is announced BY THE BODY — the simulation's own
 ## `second_act`, which the fight system draws as a flare on the part, a ring and a
-## shake — and never by a line of text (docs/VISION.md §3, "readable and fair").
+## shake — and never by a line of text (docs/VISION.md, "readable and fair").
 func _phases(s: SentinelState, def: SentinelDef, m: MobState) -> void:
 	var want := def.phase_at(m.health_fraction())
 	if want == s.phase:
@@ -320,7 +320,7 @@ func _judge() -> void:
 				break
 
 
-## The region is taken (docs/VISION.md §3, consequences). What changes here and
+## The region is taken (docs/VISION.md, consequences). What changes here and
 ## now: its reach stops being held, the score's motif stops with its beacon, its
 ## table is rolled into the player's hands, and a keeper that was killed leaves a
 ## hulk where it fell that is saved with the world. What the rest of the plan

@@ -1,4 +1,4 @@
-## Brannoc walks the pylons over the snow and listens to the wires. A local: colour, never load (docs/STORY.md §8).
+## Brannoc walks the pylons over the snow and listens to the wires. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"brannoc", "name": "Brannoc", "title": "a line-walker",

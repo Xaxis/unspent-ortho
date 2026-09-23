@@ -106,7 +106,7 @@ func test_the_pool_goes_out_with_the_machine() -> void:
 ## A lamp lit at noon lays nothing — that rule is right and it stays. But the
 ## Burning's vents are open fire in the ground, and the art review measured them
 ## at noon as white-hot cores on flat ground with nothing under them: the
-## landscape's own fire touching none of its own land (docs/ART.md section 3,
+## landscape's own fire touching none of its own land (docs/LOOK.md section 3,
 ## "glow from below"). The hard part is that a pool ADDS to ground the sun
 ## already lights, so a vent's old daylight level moved the ground by two values
 ## out of 255, which is why the floor is what it is.

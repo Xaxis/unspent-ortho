@@ -1,5 +1,5 @@
 extends GameSystem
-## Dev mode in a running game (docs/DEV.md).
+## Dev mode in a running game (docs/DESIGN.md).
 ##   - the active configuration's live rules, applied as the game starts and again
 ##     whenever one is edited: the clock's rate, the harm a blow does, whether the
 ##     land puts bodies round the player, the first hour's guide. These hold in

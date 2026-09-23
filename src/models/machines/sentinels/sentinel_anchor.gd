@@ -1,5 +1,5 @@
 extends MachineModel
-## THE ANCHOR: the Mesas' keeper (docs/VISION.md §3, docs/LANDSCAPES.md §6,
+## THE ANCHOR: the Mesas' keeper (docs/VISION.md, docs/LANDSCAPES.md,
 ## src/core/sentinel/designs/anchor.gd). A four-limbed climber that drives the
 ## ropeway's bolts into the scarps and keeps them driven: a long low carapace
 ## slung between four high-kneed legs, each ending in a grapnel of three hooked
@@ -69,7 +69,7 @@ func build() -> void:
 	stride = 2.2
 	gallery_turn = 30.0
 	# A big working part at the default burns to white and the amber goes out of
-	# it (docs/ART.md §5), the same reason every keeper turns this down.
+	# it (docs/LOOK.md), the same reason every keeper turns this down.
 	emission = 0.28
 	begin_rig()
 	ramp = Palette.MACHINE["warden"]

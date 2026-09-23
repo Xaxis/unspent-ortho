@@ -1,5 +1,5 @@
 extends MachineModel
-## THE RAKE: the Salt Flats' keeper (docs/VISION.md §3, src/core/sentinel/designs/
+## THE RAKE: the Salt Flats' keeper (docs/VISION.md, src/core/sentinel/designs/
 ## pan_rake.gd). A flat triangular deck carried on four long splayed legs, a rake
 ## beam dragging behind it, and one mast above it holding a tilting mirror.
 ##
@@ -49,7 +49,7 @@ func build() -> void:
 	stride = 1.9
 	gallery_turn = 38.0
 	# Same reason as the reaper's drum: a big working part at the default burns to
-	# white and the amber goes out of it (docs/ART.md §5).
+	# white and the amber goes out of it (docs/LOOK.md).
 	emission = 0.28
 	begin_rig()
 	ramp = Palette.MACHINE["warden"]

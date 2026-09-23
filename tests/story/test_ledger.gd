@@ -1,5 +1,5 @@
 extends TestCase
-## The world writing him down (docs/STORY_SYSTEM.md §7): what he did that could be
+## The world writing him down (docs/DESIGN.md): what he did that could be
 ## seen is noted, the people's record hears it late, the machines' files it at once,
 ## and every page fits the glass it is read on.
 

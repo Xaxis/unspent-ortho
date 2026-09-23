@@ -5,7 +5,7 @@ extends CanvasLayer
 ## behind it).
 ##
 ## The pillar it does not break: **nothing is written over a fight the player did
-## not ask for** (docs/ART.md §9). Talking is asked for — the player pressed the
+## not ask for** (docs/LOOK.md). Talking is asked for — the player pressed the
 ## key, standing in front of somebody — and it never opens by itself.
 ##
 ## ## Reading it against a world that is lit

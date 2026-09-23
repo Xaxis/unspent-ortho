@@ -1,7 +1,7 @@
 class_name SentinelDef
 extends RefCounted
 ## One sentinel DESIGN: the keeper a landscape type has, and never another type's
-## (docs/VISION.md §3). One design per landscape; every region of that type grows
+## (docs/VISION.md). One design per landscape; every region of that type grows
 ## its own instance from it, varied by the terrain it stands in, what it guards
 ## and which of its phases the player gets to see.
 ##
@@ -31,7 +31,7 @@ var stations: Array[StringName] = []
 var feeds: Array[int] = []
 ## Phases, in order, strongest first (`at` descending; the first is 1.0).
 var phases: Array[SentinelPhase] = []
-## The three ways it can be taken (docs/VISION.md §3; tests hold the count at three).
+## The three ways it can be taken (docs/VISION.md; tests hold the count at three).
 var ways: Array[SentinelWay] = []
 ## Its drop table's source id (src/core/loot/drops.gd) and the elite material only
 ## this keeper gives (src/core/loot/materials.gd).

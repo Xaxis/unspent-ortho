@@ -1,4 +1,4 @@
-## Tamsin reads the filings the dead iron combs into arcs. A local: colour, never load (docs/STORY.md §8).
+## Tamsin reads the filings the dead iron combs into arcs. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"tamsin", "name": "Tamsin", "title": "a filings-reader",

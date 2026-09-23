@@ -1,5 +1,5 @@
 extends MachineModel
-## A ferry: the Drowned City's own machine (docs/LANDSCAPES.md §5). A flat
+## A ferry: the Drowned City's own machine (docs/LANDSCAPES.md). A flat
 ## barge that runs the canals to a timetable nobody set, carrying salvage
 ## stripped from the drowned substations out to sea: a low deck stacked with
 ## what it took, a crane stub amidships to load it, a cabin at the stern, and a

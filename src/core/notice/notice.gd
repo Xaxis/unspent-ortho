@@ -1,6 +1,6 @@
 class_name Notice
 extends RefCounted
-## One reading of a holding, in a machine's hands (docs/VISION.md §9.2).
+## One reading of a holding, in a machine's hands (docs/VISION.md).
 ##
 ## A notice is the whole reason a raid can be seen coming. Nothing files a
 ## settlement by dice: a body stood somewhere, read one channel of the place off

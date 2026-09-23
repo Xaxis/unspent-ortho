@@ -9,7 +9,7 @@ extends RefCounted
 ## SETTLE is for a walked border only. A player who did not walk there — a
 ## teleport, a load, a portal — is somewhere else at once, and the name is said
 ## at once with them: a caption that still reads COAST over the snowfield is a
-## lie, and the slate's type must be exact (docs/ART.md §9).
+## lie, and the slate's type must be exact (docs/LOOK.md).
 
 const SETTLE := 1.5
 const SEA := &"sea"

@@ -1,5 +1,5 @@
 // MADE, for people. Cloth, leather, patched wool and skin, lit by the renderer
-// like everything else under LANTERN, plus the one thing docs/ART.md section 5
+// like everything else under LANTERN, plus the one thing docs/LOOK.md section 5
 // asks of people only: a readability rim (person_rim.gdshader, the next pass),
 // so a figure is never lost against the ground it is standing on.
 //

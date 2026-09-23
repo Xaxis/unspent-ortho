@@ -1,6 +1,6 @@
 class_name GearTree
 ## Every implement and module the player can end up holding, and what GRADE it
-## is (docs/VISION.md §6.1). One table, because the ladder only means anything
+## is (docs/VISION.md). One table, because the ladder only means anything
 ## read all at once.
 ##
 ## The pinned promise, and the reason this is a table of grades and FAMILIES
@@ -24,7 +24,7 @@ class_name GearTree
 ## Adding a rung is a row here, a row in `Items.DEFS`, a recipe in
 ## `Recipes.LIST`, and nothing else.
 
-## The MENDED rungs: FOUND parts cut down and bound to a MADE haft (docs/ART.md
+## The MENDED rungs: FOUND parts cut down and bound to a MADE haft (docs/LOOK.md
 ## §12), each named for the elite material that is in it, so a player reads the
 ## landscape in the tool.
 const PIECES := {
@@ -111,11 +111,11 @@ const PIECES := {
 	# is a family like a knife's: every rung grants the same ability and the
 	# same resists, and what a rung buys is sockets. The Ruined Metropolis is a
 	# vertical city, so it is where the climbing brace is raised: its top rung
-	# is made of the ram out of the city's own demolisher (docs/LANDSCAPES.md §4).
+	# is made of the ram out of the city's own demolisher (docs/LANDSCAPES.md).
 	&"boots_magnet": {"grade": &"uncommon", "family": &"brace"},
 	&"brace_cable": {"grade": &"rare", "family": &"brace", "from": &"tower_cable"},
 	&"brace_ram": {"grade": &"prime", "family": &"brace", "from": &"boom_ram"},
-	# The glide wing is a family the same way (docs/LANDSCAPES.md §6): every rung
+	# The glide wing is a family the same way (docs/LANDSCAPES.md): every rung
 	# glides and resists alike, and what the mesas' span wire buys is a second
 	# socket. A land of drops is where the wing is raised.
 	&"glide_wing": {"grade": &"uncommon", "family": &"wing"},
@@ -142,7 +142,7 @@ const PIECES := {
 	&"mod_seal": {"grade": &"rare", "family": &"", "from": &"brine_copper"},
 	&"mod_leech": {"grade": &"prime", "family": &"", "from": &"clerk_die"},
 	&"mod_phase": {"grade": &"prime", "family": &"", "from": &"keeper_lens"},
-	# The shock lattice had no `from` (docs/VISION.md §6.1 names the gap): it is
+	# The shock lattice had no `from` (docs/VISION.md names the gap): it is
 	# wound round a fulgurite core now, so the glass desert is its gate.
 	&"mod_lattice": {"grade": &"prime", "family": &"", "from": &"fulgurite_core"},
 }

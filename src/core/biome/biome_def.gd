@@ -1,6 +1,6 @@
 class_name BiomeDef
 extends RefCounted
-## A landscape TYPE as data (docs/VISION.md §3, §7.2). Every seed composes its
+## A landscape TYPE as data (docs/VISION.md, §7.2). Every seed composes its
 ## world from the registered types: which appear, where, how large, how many
 ## times and how they meet. Nothing about a landscape may be hard-coded in a
 ## generator, renderer or system: it is a field here, and adding a landscape is
@@ -18,7 +18,7 @@ extends RefCounted
 ## rest is worked out from what it has already said about itself.
 ##
 ## Units: relief is in WorldData levels, distances in tiles, colours are sRGB
-## palette values (docs/ART.md: straight into ALBEDO, never converted).
+## palette values (docs/LOOK.md: straight into ALBEDO, never converted).
 
 ## Placement kinds for `anchors`: a site is placed at (u, v) across the island's
 ## extent, or found by the climate envelope.
@@ -55,7 +55,7 @@ var moist_range := Vector2(0.0, 1.0)
 ## Sites wanted when placed by envelope: (min, max), scaled by world size.
 var site_count := Vector2i(1, 2)
 ## How many BODIES of a realm this type must and may lie on, as (least, most)
-## (`docs/WORLD.md` §4). `most` 0 is "as many as the balance wants".
+## (`docs/DESIGN.md` §4). `most` 0 is "as many as the balance wants".
 ##
 ##   (0, 0)  the default, and what every type did before continents: anywhere,
 ##           any number — AND A WORLD MAY NOT HAVE IT AT ALL.
@@ -127,7 +127,7 @@ var reach_out_high := Vector4.ZERO
 ## along this type's LOW ground.
 var reach_in_low := Vector3.ZERO
 
-# --- the look (docs/ART.md §3) --------------------------------------------
+# --- the look (docs/LOOK.md) --------------------------------------------
 
 ## The ground hatch hand (Ink).
 var hatch := Ink.WIND
@@ -274,7 +274,7 @@ var wet := 0.0
 ## brightest object in its frame (playtest 6).
 var water_wash := Color(0, 0, 0, 0)
 ## A ragged overhang of snow hangs on this landscape's terrace lips, whatever
-## the ground on top (docs/ART.md §4).
+## the ground on top (docs/LOOK.md).
 var lip_snow := false
 
 # --- what grows, what is buried -------------------------------------------

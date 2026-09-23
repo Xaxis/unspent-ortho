@@ -1,5 +1,5 @@
 extends MachineModel
-## THE UNBUILDER: the Ruined Metropolis's keeper (docs/VISION.md §3,
+## THE UNBUILDER: the Ruined Metropolis's keeper (docs/VISION.md,
 ## src/core/sentinel/designs/unbuilder.gd). A gantry crane that straddles a
 ## street on four lattice legs, a box girder across their tops, a cab riding
 ## the girder and a grab hung from a trolley on two cables. Ten units tall.
@@ -62,7 +62,7 @@ func build() -> void:
 	stride = 2.4
 	gallery_turn = 30.0
 	# A working part the size of a winch drum burns to white at the default and
-	# the amber goes out of it (docs/ART.md §5), as the reaper's drum did.
+	# the amber goes out of it (docs/LOOK.md), as the reaper's drum did.
 	emission = 0.28
 	begin_rig()
 	ramp = Palette.MACHINE["warden"]

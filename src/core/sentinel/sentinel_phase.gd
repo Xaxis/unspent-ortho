@@ -1,6 +1,6 @@
 class_name SentinelPhase
 extends RefCounted
-## One phase of a sentinel: what its body IS while it lasts (docs/VISION.md §3).
+## One phase of a sentinel: what its body IS while it lasts (docs/VISION.md).
 ##
 ## A phase is a ROSTER ROW, not a script of special moves. Entering it rewrites
 ## the live body's own copy of its row — its working part, whether that part

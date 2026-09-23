@@ -140,7 +140,7 @@ func test_snow_squall_and_whiteout_are_told_apart_at_a_glance() -> void:
 	v.setup(null)
 	var snow_mat: ShaderMaterial = v.snow.material_override
 	# A flake is paper first, held by one pixel of the snowfield's own blue
-	# shade: pale against pale (docs/ART.md section 3). The dark speck belongs to
+	# shade: pale against pale (docs/LOOK.md section 3). The dark speck belongs to
 	# the Burning's ash, and a whiteout drawn in it reads as dirt on the lens.
 	#
 	# So the mark is weighed against the PAGE IT FALLS ON, not against itself: a

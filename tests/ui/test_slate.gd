@@ -1,5 +1,5 @@
 extends TestCase
-## The slate as a device (docs/ART.md §9): one phosphor and one warning on dark
+## The slate as a device (docs/LOOK.md): one phosphor and one warning on dark
 ## glass with the stolen module's violet, no paper left anywhere, a bezel that
 ## is pixel-exact and patched, and flaws that never sit under what it says.
 

@@ -15,7 +15,7 @@ extends TestCase
 const Towers := preload("res://src/models/props/towers.gd")
 const Lights := preload("res://src/systems/15_lights.gd")
 
-## The machines' own band (docs/ART.md section 4 and the Palette contract), as
+## The machines' own band (docs/LOOK.md section 4 and the Palette contract), as
 ## Color.h turns it: hue in degrees over 360.
 const MACHINE_FROM := 240.0 / 360.0
 const MACHINE_TO := 336.0 / 360.0

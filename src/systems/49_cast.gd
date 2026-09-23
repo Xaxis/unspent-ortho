@@ -1,5 +1,5 @@
 extends GameSystem
-## The named people, standing where the story put them (docs/STORY_SYSTEM.md §8).
+## The named people, standing where the story put them (docs/DESIGN.md).
 ##
 ## Each character in StoryCast is anchored to a spine slot (StoryPlan), cast into
 ## THIS world by StoryCasting, and stood a few paces off it on ground a body can

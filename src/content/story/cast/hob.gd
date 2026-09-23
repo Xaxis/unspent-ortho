@@ -1,4 +1,4 @@
-## Hob sorts what the tide brings in, at the coast village along from Maren's. A local: colour, never load (docs/STORY.md §8).
+## Hob sorts what the tide brings in, at the coast village along from Maren's. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"hob", "name": "Hob", "title": "a wrack-picker",

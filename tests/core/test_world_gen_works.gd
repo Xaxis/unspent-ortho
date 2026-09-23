@@ -16,7 +16,7 @@ static func is_evidence(kind: int) -> bool:
 
 ## Kinds declared, modelled and taken from, that no stage of world gen lays YET:
 ## the crags' five, the frost sea's four and the glass desert's four arrive in
-## two halves each (docs/LANDSCAPES.md §1, §2, §3), the kinds first and the
+## two halves each (docs/LANDSCAPES.md, §2, §3), the kinds first and the
 ## scatter bands, the survey bench, the barrow site, the soundings works row,
 ## the floe camp, the strike field and the crater site after, so for one wave
 ## they exist and stand nowhere. A kind here is a debt, and the commit that

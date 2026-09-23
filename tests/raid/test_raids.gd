@@ -1,5 +1,5 @@
 extends TestCase
-## The plan against a holding, in a running game (docs/VISION.md §9.2 to §9.7):
+## The plan against a holding, in a running game (docs/VISION.md to §9.7):
 ## read, warned, come for, and everything that is really lost when it is.
 ##
 ## The rule every one of these is written to protect is the owner's own: **a raid

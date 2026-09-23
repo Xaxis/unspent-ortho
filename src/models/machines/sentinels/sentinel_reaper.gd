@@ -1,5 +1,5 @@
 extends MachineModel
-## THE REAPER: the Coast's keeper (docs/VISION.md §3, src/core/sentinel/designs/
+## THE REAPER: the Coast's keeper (docs/VISION.md, src/core/sentinel/designs/
 ## tide_reaper.gd). A reaping gantry — a portal frame on two track units, a ruled
 ## beam across the top of it, and a drum of amber teeth slung under the front.
 ##
@@ -59,7 +59,7 @@ func build() -> void:
 	# A working part this big cannot burn as hard as a comb a hand's width across:
 	# at the default it came out of the camera as a bar of white with no amber left
 	# in it, and the palette gives the LENS to the machines as their one saturated
-	# colour, not as a hole in the page (docs/ART.md §5).
+	# colour, not as a hole in the page (docs/LOOK.md).
 	emission = 0.26
 	begin_rig()
 	# A keeper's ramp: this is the biggest thing on the coast that HOLDS a place,

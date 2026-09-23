@@ -73,7 +73,7 @@ func test_a_conversation_goes_where_the_replies_go() -> void:
 	check(t.says().size() > 0, "and it said something")
 	var rs := t.replies()
 	gt(float(rs.size()), 2.0, "with more than one thing to say back")
-	# Saying nothing is always on the list (docs/STORY.md §13).
+	# Saying nothing is always on the list (docs/STORY.md).
 	var quiet := false
 	for r: Dictionary in rs:
 		if String(r.text).begins_with("["):
@@ -172,7 +172,7 @@ func test_every_tour_asks_after_words_that_exist() -> void:
 				check(StoryContent.FRAGMENTS.has(id), "%s waits on reading %s, which is not written" % [f, id])
 
 
-## The first thing the game says is the game's own voice (docs/STORY.md §12),
+## The first thing the game says is the game's own voice (docs/STORY.md),
 ## said on the first morning and never again.
 func test_the_first_morning_is_said_once() -> void:
 	Sx.use_root("first-morning")

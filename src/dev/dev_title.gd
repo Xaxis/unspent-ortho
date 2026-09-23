@@ -1,6 +1,6 @@
 class_name DevTitle
 extends Control
-## Dev mode on the title (docs/DEV.md): the chord and ` read from the keys, the
+## Dev mode on the title (docs/DESIGN.md): the chord and ` read from the keys, the
 ## dev app opened as a full page slate over the title's own, a violet "` dev"
 ## label on the title slate's bezel where dev mode can be reached, and what a
 ## non-release build is (channel, version, commit) in the corner below it.

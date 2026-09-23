@@ -1,5 +1,5 @@
 class_name StoryCast
-## Every named person, found the way landscapes are found (docs/STORY_SYSTEM.md §3):
+## Every named person, found the way landscapes are found (docs/DESIGN.md):
 ## one file under src/content/story/cast/, each with `static func make() ->
 ## StoryCharacter`. Adding a character is adding a file, and two writers only ever
 ## collide if they wrote the same person.

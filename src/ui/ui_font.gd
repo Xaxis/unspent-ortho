@@ -21,7 +21,7 @@ class_name UiFont
 ## have four times the pixels and two-thirds the size.
 ##
 ## Why not a vector face: the slate is a display module stolen from a machine
-## (docs/ART.md §9) and a module draws glyphs on its own pixel grid. An outline
+## (docs/LOOK.md) and a module draws glyphs on its own pixel grid. An outline
 ## face with hinting would read as an application running on a laptop, which is
 ## the one thing the interface may never look like. Why not cut a new face by
 ## hand: the shapes here are the game's, every width is load-bearing in a dozen

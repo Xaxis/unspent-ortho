@@ -1,5 +1,5 @@
 extends MachineModel
-## THE KITE: the Mesas' watcher (docs/LANDSCAPES.md §6). A wide slow frame of
+## THE KITE: the Mesas' watcher (docs/LANDSCAPES.md). A wide slow frame of
 ## rods and taut plate flown on a line off a winch the plan bolts beside a span
 ## pylon, circling over the canyon and filing what it sees. It is the plan's eye
 ## on a ropeway that crosses country no road can: nothing walks those spans, so

@@ -1,7 +1,7 @@
 class_name RaidMark
 extends Node3D
-## The tag the plan hangs on a thing it has decided to take (docs/ART.md §10,
-## docs/VISION.md §9.5).
+## The tag the plan hangs on a thing it has decided to take (docs/LOOK.md,
+## docs/VISION.md).
 ##
 ## When a step is warned, every piece the party is coming for wears one of these
 ## — a machine's own plate, spiked into the player's timber, numbered in notches
@@ -84,7 +84,7 @@ static func _meshes(v: int) -> ArrayMesh:
 	# A cold strip along the head of the plate — the machines' steady light,
 	# saying the place is live on their books — and one beacon at the corner,
 	# blinking on the same beat as every other thing they left standing. Neither
-	# is amber: the one warm read on a machine is its working part (docs/ART.md
+	# is amber: the one warm read on a machine is its working part (docs/LOOK.md
 	# §4), and a tag on somebody's yard is not a working part.
 	Parts.strip(k, Vector3(cx - WIDE * 0.42, y + TALL + 0.012, 0.02),
 		Vector3(cx + WIDE * 0.42, y + TALL + 0.012, 0.02), 0.018)
@@ -95,7 +95,7 @@ static func _meshes(v: int) -> ArrayMesh:
 
 
 ## Every number the plan stamps, side by side: what a holding wears when it has
-## been decided about (docs/ART.md §10).
+## been decided about (docs/LOOK.md).
 static func gallery() -> Array:
 	var out: Array = []
 	for v in VARIANTS:

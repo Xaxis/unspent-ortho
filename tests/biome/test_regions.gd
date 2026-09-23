@@ -1,7 +1,7 @@
 extends TestCase
 ## Regions: the places a world is made of. A landscape type may hold several in
 ## one world, and a sentinel, a works network, a subarc and a save will all key
-## on a region id (docs/VISION.md §3, §7.2).
+## on a region id (docs/VISION.md, §7.2).
 
 const SEEDS: Array[int] = [1, 7, 42]
 const SIZE := 256

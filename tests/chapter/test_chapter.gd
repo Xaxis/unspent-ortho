@@ -1,6 +1,6 @@
 extends TestCase
 ## A region is a chapter: explored, mined and defended before the way on opens
-## (docs/VISION.md §10).
+## (docs/VISION.md).
 ##
 ## What these hold is the claim the whole shape rests on — **a chapter invents
 ## nothing**. Every demand is read off state the game already keeps, so a player

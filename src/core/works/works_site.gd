@@ -1,6 +1,6 @@
 class_name WorksSite
 extends RefCounted
-## One depot of the plan, in one region (docs/VISION.md §2). Pure record: where
+## One depot of the plan, in one region (docs/VISION.md). Pure record: where
 ## it stands, what trade it is in, which way it is squared to, and the three
 ## working parts a player has to get through to put it out.
 ##

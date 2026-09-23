@@ -5,7 +5,7 @@ extends FigureModel
 ## rest rig; this class blends them, runs the gait, and owns every light on the
 ## body. Everything a mob needs is still the FigureModel contract.
 ##
-## Behaviour rules (art-audio-extract §3, §8; docs/VISION.md §2):
+## Behaviour rules (art-audio-extract §3, §8; docs/VISION.md):
 ##   walk     perfectly regular: gait phase advances with distance, no noise
 ##   stand    the idle routine: mechanisms keep their exact cycle, and the plan
 ##            strip counts the machine's disposition (DISPOSITION_CODE); a
@@ -409,7 +409,7 @@ func add_lamp(parent: Node3D, c: Vector3, n: Vector3, up: Vector3, w: float, h: 
 ## machine thinks of the player, read off a still frame; the bed stays dark
 ## behind the ones that are out, so lit and unlit are a value step, not a
 ## presence and an absence. Cold, always: the amber LENS stays the working
-## part's alone (docs/ART.md §5, Palette).
+## part's alone (docs/LOOK.md, Palette).
 func _plan_strip(parent: Node3D, c: Vector3, n: Vector3, up: Vector3, w: float, h: float) -> void:
 	var nn := n.normalized()
 	var uu := up.normalized()

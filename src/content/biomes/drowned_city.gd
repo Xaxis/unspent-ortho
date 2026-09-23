@@ -74,7 +74,7 @@ static func make() -> BiomeDef:
 	dress.sink = 0.16
 	dress.lie = Vector2(-0.06, 0.1)
 	# Timber that has stood in salt water for a lifetime goes grey, not brown:
-	# the piles, the boards of a stilt house, a punt (docs/LANDSCAPES.md §5).
+	# the piles, the boards of a stilt house, a punt (docs/LANDSCAPES.md).
 	dress.timber = [P.ASH[3].lerp(P.STONE[3], 0.35), P.ASH[2].lerp(P.SLATE[2], 0.3)]
 	# What the tide leaves on anything it reaches: a line of weed hung on it and
 	# rust where the salt gets in. The spec says "weed below the tide line";
@@ -89,7 +89,7 @@ static func make() -> BiomeDef:
 	# Blocks, because it was a city before the water came in — the streets between
 	# them are what the sea is standing in now, and a `row` would make it one
 	# waterfront rather than a grid with canals through it.
-	# ITS OWN STOCK, and not a trimmed RAISED (docs/LANDSCAPES.md §5): what people
+	# ITS OWN STOCK, and not a trimmed RAISED (docs/LANDSCAPES.md): what people
 	# live in here is what the water left them. The first floor of a flooded
 	# block with the ground floor given to the sea, a timber house on piles over
 	# the mud, and a barge moored for good with a shed on its deck. Low, as the
@@ -108,7 +108,7 @@ static func make() -> BiomeDef:
 	d.night_sky = 0.95
 	d.props = [PropKind.RUIN, PropKind.DEBRIS, PropKind.WRECKAGE,
 		PropKind.SEA_WALL, PropKind.TIDE_GAUGE, PropKind.HULL, PropKind.REEDS, PropKind.POLE,
-		# Its own (docs/LANDSCAPES.md §5, src/models/props/drowned_city.gd),
+		# Its own (docs/LANDSCAPES.md, src/models/props/drowned_city.gd),
 		# declared here so the drowned city is the ONE landscape whose things
 		# these are: that is what makes the tram's copper the city's gate
 		# (Sources.lands_yielding). The bands that lay the stairs, trams and

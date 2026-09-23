@@ -10,7 +10,7 @@
 //
 // There is no light() here either. The renderer lights the metal.
 //
-// The one warm read on a machine is still the amber LENS (docs/ART.md section
+// The one warm read on a machine is still the amber LENS (docs/LOOK.md section
 // 4), and the machine's own light -- strips, beacons, a working part -- still
 // runs on sky_power(), so a lightning strike stutters it.
 shader_type spatial;
@@ -42,7 +42,7 @@ uniform float relief = 1.0;
 global uniform mat4 found_clear;
 global uniform float found_floor;
 
-// A blow's paper-white, as a sphere in world space (docs/ART.md section 7).
+// A blow's paper-white, as a sphere in world space (docs/LOOK.md section 7).
 // Only the part that was struck goes white: a machine that whites out whole
 // proves nothing about where the blow landed, hides its own amber working part
 // at the exact moment the player is aiming at it, and is the biggest thing in
@@ -61,7 +61,7 @@ const float FOUND_METAL = 0.52;
 // These machines have stood out in the weather for years. A smooth metal under
 // a high sun throws the sun's own reflection straight up at this camera, which
 // is exactly how a harvester came to measure BRIGHTER than the turf it stands
-// on -- the one thing docs/ART.md section 4 and the Palette contract say a
+// on -- the one thing docs/LOOK.md section 4 and the Palette contract say a
 // machine must never be. It is rough because it is filthy, and what is left
 // smooth is the one rubbed edge.
 const float FOUND_ROUGH = 0.64;
@@ -70,7 +70,7 @@ const float FOUND_ROUGH = 0.64;
 const float FOUND_RUBBED = 0.20;
 // THE MACHINE-AGAINST-THE-TURF LAW, and this is where it is enforced.
 //
-// docs/ART.md section 4 and the Palette contract: "the body fill sits BELOW the
+// docs/LOOK.md section 4 and the Palette contract: "the body fill sits BELOW the
 // turf in value, so the amber LENS stays the only saturated thing on a machine
 // and a machine is a dark mass by day". The palette keeps that -- the harvester's
 // fill is luma 0.322 against the coast turf's 0.373 -- but a palette value was
@@ -113,7 +113,7 @@ void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 
-// A FIGHT IS NEVER HIDDEN (docs/ART.md law 5), and until now that was only true
+// A FIGHT IS NEVER HIDDEN (docs/LOOK.md law 5), and until now that was only true
 // of MADE geometry. `world.gdshader` has cut timber and thatch out of the way
 // for as long as the law has existed; a pylon, a mast, a machine's plate or a
 // lamppost has stood straight through the player the whole time. Nobody fixed

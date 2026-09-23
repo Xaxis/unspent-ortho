@@ -1,6 +1,6 @@
 class_name LandmarkDef
 extends RefCounted
-## One KIND of place worth the walk (docs/VISION.md §3, §8). A landmark kind is
+## One KIND of place worth the walk (docs/VISION.md, §8). A landmark kind is
 ## data: a silhouette readable from a long way off, a reason to go to it, a small
 ## risk, and a table of what it gives — declared once here and claimed by the
 ## landscapes that hold it (`BiomeDef.landmarks`, or this row's own `lands`).

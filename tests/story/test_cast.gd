@@ -1,5 +1,5 @@
 extends TestCase
-## The named people (docs/STORY_SYSTEM.md §8): declared soundly, cast into worlds
+## The named people (docs/DESIGN.md): declared soundly, cast into worlds
 ## that were really grown, stood where a body can stand, and reached through the
 ## one `use` key in a running game.
 

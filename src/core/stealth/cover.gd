@@ -24,7 +24,7 @@ const PROPS := {
 	PropKind.WRECKAGE: 0.55,
 	PropKind.DEBRIS: 0.4,
 	PropKind.VEHICLE: 0.6,
-	# A car sunk in glass is still a car's worth of wall (docs/LANDSCAPES.md §3).
+	# A car sunk in glass is still a car's worth of wall (docs/LANDSCAPES.md).
 	PropKind.FUSED_CAR: 0.6,
 	PropKind.BARRICADE: 0.55,
 	PropKind.FENCE: 0.3,
@@ -37,22 +37,22 @@ const PROPS := {
 	PropKind.MEMORIAL: 0.3,
 	PropKind.GRAVE: 0.25,
 	# A sunken lane between two dry-stone banks: a body walking it is below the
-	# banks' tops (docs/LANDSCAPES.md §1). Its `solid` is 0 -- a lane is walked
+	# banks' tops (docs/LANDSCAPES.md). Its `solid` is 0 -- a lane is walked
 	# through -- so the skirt this counts inside is the 0.35 x scale floor below
 	# plus IN_PROP, about the middle of its four units; the ends of the lane are
 	# open, which is true of a lane.
 	PropKind.HOLLOW_WAY: 0.45,
-	# The frost sea's only cover (docs/LANDSCAPES.md §2): a slab of ice on end
+	# The frost sea's only cover (docs/LANDSCAPES.md): a slab of ice on end
 	# is the one thing out there to put your back to, and a hull frozen in is a
 	# wall with a hold behind it.
 	PropKind.PRESSURE_BLOCK: 0.55,
 	PropKind.FROZEN_HULL: 0.6,
-	# The drowned city (docs/LANDSCAPES.md §5): a length of cast sea wall is a
+	# The drowned city (docs/LANDSCAPES.md): a length of cast sea wall is a
 	# wall to put your back to, and a tram sunk in the shallows is a car's worth
 	# of steel standing out of the water.
 	PropKind.SEA_WALL: 0.55,
 	PropKind.DROWNED_TRAM: 0.6,
-	# The mesas' hoodoo (docs/LANDSCAPES.md §6: "cover; solid 0.4"): a spire a
+	# The mesas' hoodoo (docs/LANDSCAPES.md: "cover; solid 0.4"): a spire a
 	# body can put its back to on a bench with nothing else standing on it.
 	PropKind.HOODOO: 0.55,
 }

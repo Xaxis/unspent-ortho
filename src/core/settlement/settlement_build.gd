@@ -1,6 +1,6 @@
 class_name SettlementBuild
 ## What it takes to put a piece up, and what to say when it cannot go up here
-## (docs/VISION.md §9). Pure: it reads a creel and a kind and nothing else, so
+## (docs/VISION.md). Pure: it reads a creel and a kind and nothing else, so
 ## the slate, a test and a tour all get the same answer, and the system above it
 ## is the only thing that touches the world.
 

@@ -1,6 +1,6 @@
 class_name RealmWorlds
 ## The worlds a game is made of, one per realm, grown from the one seed
-## (docs/VISION.md §7.1). A realm's world is raised ONCE per game and kept, so
+## (docs/VISION.md). A realm's world is raised ONCE per game and kept, so
 ## walking back up a shaft is instant and the land is the land you left.
 ##
 ##   RealmWorlds.begin(seed, size, kind)   start raising it, on a worker

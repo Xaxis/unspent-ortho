@@ -1,5 +1,5 @@
-## The Drowned City's keeper: a barge that walks (docs/LANDSCAPES.md §5, "the
-## lockkeeper"; docs/VISION.md §3). The machines still run the port: ferries
+## The Drowned City's keeper: a barge that walks (docs/LANDSCAPES.md, "the
+## lockkeeper"; docs/VISION.md). The machines still run the port: ferries
 ## keep a timetable along the canals and one basin at a time is pumped dry and
 ## stripped behind a lock. This is the machine that keeps the locks: a long
 ## barge hull on four tall stilt legs, wading the canals with the water round
@@ -53,7 +53,7 @@ static func make() -> SentinelDef:
 	# station nobody laid.
 	d.stations = [&"lock"]
 	# What the lock puts in its reach: its gate leaves and the pump house that
-	# dries the basin (docs/LANDSCAPES.md §5).
+	# dries the basin (docs/LANDSCAPES.md).
 	# The spec lists the TIDE GAUGES and the PIPE run as well, and they are left
 	# out on purpose, the plumb's reason: gauges and pipes near a region's heart
 	# are the coast's scatter and the island's works, not the lock's, and

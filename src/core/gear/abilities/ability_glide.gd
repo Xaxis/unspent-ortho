@@ -1,7 +1,7 @@
 class_name AbilityGlide
 extends Ability
 ## A wing of mended plate: FOUND panels bound to a MADE frame with cord
-## (docs/ART.md §12). It opens only where there is something to step off, and it
+## (docs/LOOK.md). It opens only where there is something to step off, and it
 ## carries the body out over ground a walk could never get down, which is what
 ## makes a mesa or a sea cliff a door instead of a wall.
 

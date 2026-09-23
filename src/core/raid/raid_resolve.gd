@@ -1,5 +1,5 @@
 class_name RaidResolve
-## What a party does to a holding, as pure arithmetic (docs/VISION.md §9.5-9.6).
+## What a party does to a holding, as pure arithmetic (docs/VISION.md-9.6).
 ##
 ## Two things call it and they must agree. When the player is standing in their
 ## own yard, 48_raids gives the party bodies and this file only says what each

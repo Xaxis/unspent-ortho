@@ -1,5 +1,5 @@
 class_name Palette
-## Every colour the game draws with. Generated from docs/research/art-audio-extract.md §2
+## Every colour the game draws with. Generated from the old Unity game (../unspent) §2
 ## (the running build of the original game). Index 0 is the darkest step of a ramp.
 ##
 ## MADE things (anything a person built) use only the coast ramps. FOUND things
@@ -27,7 +27,7 @@ const LENS: Array[Color] = [Color(0.2275, 0.1647, 0.0314), Color(0.5608, 0.4157,
 const COLD: Array[Color] = [Color(0.1145, 0.1474, 0.1804), Color(0.2126, 0.3022, 0.3564), Color(0.4133, 0.5337, 0.5850), Color(0.6961, 0.7720, 0.8044)]
 const PLATE: Array[Color] = [Color(0.0892, 0.1064, 0.1412), Color(0.1687, 0.1962, 0.2518), Color(0.2536, 0.2892, 0.3655), Color(0.3511, 0.3906, 0.4811), Color(0.4691, 0.5105, 0.5862), Color(0.6077, 0.6477, 0.6985)]
 
-## Per-machine body ramps. Five things at once (docs/ART.md §4, the Palette
+## Per-machine body ramps. Five things at once (docs/LOOK.md, the Palette
 ## contract):
 ##
 ## 1. The arc runs by ROLE, cold to warm, so what a machine WANTS reads before

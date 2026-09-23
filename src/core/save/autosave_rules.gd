@@ -19,7 +19,7 @@ extends RefCounted
 ##   r.entered                          the landscapes come into so far (saved with the game)
 
 const EVERY_MINUTES := 180.0
-## What a configuration may change (rules.autosave, docs/DEV.md): the hours between
+## What a configuration may change (rules.autosave, docs/DESIGN.md): the hours between
 ## saves, and whether the rules ask for one at all. A playtest that wants its own
 ## slots and nothing else turns this off; nothing else in the game writes them.
 var every_minutes := EVERY_MINUTES

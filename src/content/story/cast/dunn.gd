@@ -1,4 +1,4 @@
-## Dunn sleeps against the server fields' vents in winter, camped by its nearest landmark: trespassing, unnoticed. A local: colour, never load (docs/STORY.md §8).
+## Dunn sleeps against the server fields' vents in winter, camped by its nearest landmark: trespassing, unnoticed. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"dunn", "name": "Dunn", "title": "a warm-sleeper",

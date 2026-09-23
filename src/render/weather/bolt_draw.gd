@@ -1,6 +1,6 @@
 class_name BoltDraw
 extends Node2D
-## A lightning strike drawn with a pen on the 640x360 page (docs/ART.md section
+## A lightning strike drawn with a pen on the 640x360 page (docs/LOOK.md section
 ## 6): a jagged pale core two pixels wide down the main stroke and one pixel
 ## down each fork, with one pixel of ink either side, every pixel snapped to the
 ## screen grid. It lives in a CanvasLayer under the HUD and is re-anchored to

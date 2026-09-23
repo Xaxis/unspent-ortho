@@ -1,5 +1,5 @@
 extends TestCase
-## The designs, and the door a landscape claims one through (docs/VISION.md §3).
+## The designs, and the door a landscape claims one through (docs/VISION.md).
 ## Nothing here runs a fight: this is the shape of the content, which is what a
 ## new landscape's author will copy.
 

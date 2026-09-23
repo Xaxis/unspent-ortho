@@ -41,16 +41,16 @@ func test_the_audited_kinds_are_each_decided() -> void:
 func test_no_new_row_gives_an_elite_raw() -> void:
 	var gates := {&"brimstone": [PropKind.VENT], &"limestone": [PropKind.CLINTS],
 		&"peat": [PropKind.PEAT_BANK], &"crottle": [PropKind.BOULDER, PropKind.STONE_ORE],
-		# The crags' raw comes off a carved face and nothing else (docs/LANDSCAPES.md §1).
+		# The crags' raw comes off a carved face and nothing else (docs/LANDSCAPES.md).
 		&"hushstone": [PropKind.CARVED_FACE],
-		# The frost sea's raw comes off a pressure block and nothing else (docs/LANDSCAPES.md §2).
+		# The frost sea's raw comes off a pressure block and nothing else (docs/LANDSCAPES.md).
 		&"lens_ice": [PropKind.PRESSURE_BLOCK],
-		# The glass desert's raw comes off a fulgurite and nothing else (docs/LANDSCAPES.md §3).
+		# The glass desert's raw comes off a fulgurite and nothing else (docs/LANDSCAPES.md).
 		&"fulgurite": [PropKind.FULGURITE],
 		&"lift_cable": [PropKind.LIFT_SHAFT],
-		# The drowned city's raw comes off a drowned tram and nothing else (docs/LANDSCAPES.md §5).
+		# The drowned city's raw comes off a drowned tram and nothing else (docs/LANDSCAPES.md).
 		&"sea_copper": [PropKind.DROWNED_TRAM],
-		# The mesas' raw comes off a fallen span and nothing else (docs/LANDSCAPES.md §6).
+		# The mesas' raw comes off a fallen span and nothing else (docs/LANDSCAPES.md).
 		&"rope_steel": [PropKind.FALLEN_SPAN]}
 	for id: StringName in EliteStock.MATERIALS:
 		var raw := StringName(str((EliteStock.MATERIALS[id] as Dictionary).get("raw", &"")))

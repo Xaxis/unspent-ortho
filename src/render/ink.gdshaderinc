@@ -1,5 +1,5 @@
 // The ink: hatching, stipple and paper, shared by every lit shader.
-// See docs/ART.md. Patterns are in SCREEN PIXELS of the 640x360 image but
+// See docs/LOOK.md. Patterns are in SCREEN PIXELS of the 640x360 image but
 // anchored to the WORLD through `world_px` (set every frame by CameraRig), so a
 // hatch line belongs to the ground it is drawn on and never swims.
 //

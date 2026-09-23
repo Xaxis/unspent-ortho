@@ -1,4 +1,4 @@
-## Ansel watches the moss drain, roof by roof. A local: colour, never load (docs/STORY.md §8).
+## Ansel watches the moss drain, roof by roof. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"ansel", "name": "Ansel", "title": "a pump-watcher",

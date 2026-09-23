@@ -1,5 +1,5 @@
 extends TestCase
-## The way into 2029 (docs/STORY.md §6). `StoryGates` says where a gate is and
+## The way into 2029 (docs/STORY.md). `StoryGates` says where a gate is and
 ## when it opens; this is the crossing's half of that seam.
 ##
 ## A GATE PAIRS BY COORDINATE, NOT BY INDEX, and that is the whole reason the

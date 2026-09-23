@@ -1,6 +1,6 @@
 class_name CraftModel
 extends Node3D
-## A craft, drawn (docs/VISION.md §5, docs/ART.md §12). Two meshes and no more:
+## A craft, drawn (docs/VISION.md, docs/LOOK.md). Two meshes and no more:
 ## one MADE (world.gdshader — hatched, crooked, earth and sand) and one FOUND
 ## (found.gdshader — ruled, riveted, unhatched violet plate with amber where the
 ## machine still works). Both idioms stand in one silhouette, which is the whole

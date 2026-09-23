@@ -1,5 +1,5 @@
 class_name Works
-## The machines' depots, and the rules about them (docs/VISION.md §2: "the plan
+## The machines' depots, and the rules about them (docs/VISION.md: "the plan
 ## is visible and progresses"). Pure and deterministic: the same island always
 ## holds the same depots in the same places, so a works cased at dusk is the
 ## works broken at midnight.
@@ -191,7 +191,7 @@ static func _knot(world: WorldData, rows: Array, centre: Vector2,
 
 ## Where this region's keeper dens and how far it feeds, or an infinite point
 ## where the landscape has no keeper -- nineteen of twenty-one do not, which is
-## its own gap (docs/VISION.md §3 asks for one per landscape) and is why this
+## its own gap (docs/VISION.md asks for one per landscape) and is why this
 ## must degrade to "no preference" rather than to "no depot".
 static func _keeper_feed(world: WorldData, region: Dictionary) -> Array:
 	var def := Sentinels.for_land(StringName(str(region.get("type", &""))))

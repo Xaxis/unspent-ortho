@@ -1,6 +1,6 @@
 class_name Portal
 extends RefCounted
-## One way between realms: a place in the world, not a menu (docs/VISION.md §4).
+## One way between realms: a place in the world, not a menu (docs/VISION.md).
 ##
 ## A shaft the machines sank and stopped maintaining. It stands at the foot of a
 ## broken face, framed in FOUND plate, with a MADE ladder somebody hung in it

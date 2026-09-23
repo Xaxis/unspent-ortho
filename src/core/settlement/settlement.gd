@@ -1,6 +1,6 @@
 class_name Settlement
 extends RefCounted
-## A place the player built and has to keep (docs/VISION.md §9).
+## A place the player built and has to keep (docs/VISION.md).
 ##
 ## It holds its pieces, its people, its stores and the attention the machines
 ## pay it. Two packages meet on this object and neither owns both sides: the
@@ -62,7 +62,7 @@ func _init(settlement_id: int = 0, in_realm: StringName = Realm.SURFACE, at: Vec
 func add(kind: int, at: Vector2, strength: float = -1.0) -> Structure:
 	var s := Structure.new(_next_piece, kind, at, strength)
 	# Dealt once, here, so the drawing of this piece is the same every time the
-	# holding is loaded (docs/ART.md §10: the same kind built twice is not the
+	# holding is loaded (docs/LOOK.md: the same kind built twice is not the
 	# same drawing, and it is not a different one tomorrow either).
 	s.variant = int(Rng.hash01(id * 7919 + _next_piece, kind, 41) * 1024.0)
 	_next_piece += 1

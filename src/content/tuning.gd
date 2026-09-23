@@ -1,7 +1,7 @@
 class_name Tuning
 ## Game tunables. Content is code: the parser checks it, there is one copy, and
 ## a change is live on the next run. Numbers marked (source) come from the
-## original game's content and engine (docs/research/design-extract.md).
+## original game's content and engine (the old Unity game (../unspent)).
 
 # --- World ---
 ## The square a new game is grown in. 1300 is what five continents need to be

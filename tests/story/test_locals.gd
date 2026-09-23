@@ -1,5 +1,5 @@
 extends TestCase
-## One local per landscape (docs/STORY.md §8): colour, never load. Each stands at
+## One local per landscape (docs/STORY.md): colour, never load. Each stands at
 ## the village of their own land nearest to where he woke, whatever body that is
 ## on, and each carries a small story of their land that lands as a beat.
 

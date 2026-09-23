@@ -96,7 +96,7 @@ func test_each_realm_is_its_own_island_from_one_seed() -> void:
 
 
 func test_a_landscape_under_a_roof_is_dark_and_one_above_it_is_not() -> void:
-	# The rule the whole scratchboard hangs on (docs/VISION.md §8): a roofed
+	# The rule the whole scratchboard hangs on (docs/VISION.md): a roofed
 	# realm dims its page and an open one lifts it. Read off the same field the
 	# shader reads (sky.gdshaderinc scales by 1 - grade.x).
 	for d: BiomeDef in BiomeRegistry.land():

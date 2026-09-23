@@ -1,6 +1,6 @@
 class_name StorySlot
 extends RefCounted
-## A description of a place, not a place (docs/STORY_SYSTEM.md §4).
+## A description of a place, not a place (docs/DESIGN.md).
 ##
 ## The story is the only package here with something to say BEFORE the world is
 ## made, and it must still be true afterwards — on seed 1, on seed 40,000, on a
@@ -17,7 +17,7 @@ extends RefCounted
 ## What kind of place a slot may ask for. These are per-REGION features on
 ## purpose: every continent has them whatever landscapes it drew, so a spine built
 ## out of them cannot be dealt out of a world. Building one out of LANDSCAPES
-## cannot promise that — `docs/WORLD.md` makes a landscape exclusive to one
+## cannot promise that — `docs/DESIGN.md` makes a landscape exclusive to one
 ## continent, and `GenCountries.fit_types` could already leave one out of a small
 ## world before continents existed (unspent-ortho-df, 2026-09-18).
 const VILLAGE := &"village"

@@ -1,6 +1,6 @@
 extends TestCase
 ## The ruling the whole package stands on: **a settlement is engaged because of
-## what it did, never because of a clock** (docs/VISION.md §9.4, owner).
+## what it did, never because of a clock** (docs/VISION.md, owner).
 ##
 ## These tests name that rule rather than testing round it. Every rise has a
 ## cause a player could have seen; time on its own only ever makes a place
@@ -129,7 +129,7 @@ func test_a_raid_spends_what_brought_it() -> void:
 
 func test_pressure_is_words_and_never_a_number_to_optimise() -> void:
 	# The holding app already draws what a machine HEARS; this is the only other
-	# reading and it is deliberately coarse (owner, docs/VISION.md §9).
+	# reading and it is deliberately coarse (owner, docs/VISION.md).
 	var said: Array[StringName] = []
 	for v: float in [0.0, 0.15, 0.3, 0.5, 0.8, 1.0]:
 		var p := Attention.pressure(v)

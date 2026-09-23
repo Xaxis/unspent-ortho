@@ -1,5 +1,5 @@
 class_name StoryPacing
-## Revelations one at a time (docs/STORY.md §9): "the next waits until the last
+## Revelations one at a time (docs/STORY.md): "the next waits until the last
 ## has been felt."
 ##
 ## A beat marked `reveal` in StoryContent.BEATS is a revelation: something about

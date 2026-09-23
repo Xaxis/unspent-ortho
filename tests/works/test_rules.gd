@@ -1,5 +1,5 @@
 extends TestCase
-## What breaking a depot changes (docs/VISION.md §2). Pure rules, so the whole of
+## What breaking a depot changes (docs/VISION.md). Pure rules, so the whole of
 ## "the region quiets and slowly recovers" can be proved without running a world
 ## for four days.
 

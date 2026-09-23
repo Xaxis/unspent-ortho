@@ -85,7 +85,7 @@ enum {
 	PLATFORM,
 	GROWTH_TANK,
 	CONSOLE,
-	# THE CRAGS (docs/LANDSCAPES.md §1): what people cut out of the stone before
+	# THE CRAGS (docs/LANDSCAPES.md): what people cut out of the stone before
 	# the machines -- a trilithon, a face in a boulder, a sunken lane between
 	# dry-stone banks -- and the two pieces of survey furniture the plan left when
 	# its instruments returned nothing it could file: a sighting mast and a rack
@@ -95,7 +95,7 @@ enum {
 	THEODOLITE_MAST,
 	CORE_RACK,
 	HOLLOW_WAY,
-	# THE FROST SEA (docs/LANDSCAPES.md §2, src/models/props/frost_sea.gd): what
+	# THE FROST SEA (docs/LANDSCAPES.md, src/models/props/frost_sea.gd): what
 	# the sea threw up, what it locked in, what the plan stood on it, and what
 	# still lives under it. A pressure block is sea ice on end, a hull is a
 	# trawler frozen in to the gunwale, a sounding rig is the plan's tripod over
@@ -104,7 +104,7 @@ enum {
 	FROZEN_HULL,
 	SOUNDING_RIG,
 	SEAL_HOLE,
-	# THE GLASS DESERT (docs/LANDSCAPES.md §3): what a place that was fused in a
+	# THE GLASS DESERT (docs/LANDSCAPES.md): what a place that was fused in a
 	# second holds. Fulgurite tubes standing out of the drift, a burst dome of
 	# glass, a car caught in the glassing, and the plan's own strike rod — the
 	# one made thing here, and the only one that is THEIRS.
@@ -112,7 +112,7 @@ enum {
 	GLASS_BLISTER,
 	FUSED_CAR,
 	STRIKE_ROD,
-	# THE RUINED METROPOLIS (docs/LANDSCAPES.md §4, src/models/props/metropolis.gd):
+	# THE RUINED METROPOLIS (docs/LANDSCAPES.md, src/models/props/metropolis.gd):
 	# what a dead megacity left standing, and what the plan sorts it into. A
 	# fallen span of elevated road, a lift core with its tower gone, a gutted
 	# shop front; then the plan's own: a ruled bale of what it stripped, and the
@@ -122,7 +122,7 @@ enum {
 	SHOPFRONT,
 	SORTED_BALE,
 	DEMOLITION_GANTRY,
-	# THE DROWNED CITY (docs/LANDSCAPES.md §5, src/models/props/drowned_city.gd):
+	# THE DROWNED CITY (docs/LANDSCAPES.md, src/models/props/drowned_city.gd):
 	# how people meet the water where the street is a canal -- a stone stair
 	# down off a quay, a crowd of piles a boat is tied to now the jetty has gone
 	# -- what the water took and left standing, a tram half sunk in the silt,
@@ -131,7 +131,7 @@ enum {
 	DROWNED_TRAM,
 	MOORING_POST,
 	LOCK_GATE,
-	# THE MESAS (docs/LANDSCAPES.md §6, src/models/props/mesas.gd): what the wind
+	# THE MESAS (docs/LANDSCAPES.md, src/models/props/mesas.gd): what the wind
 	# carved out of banded rock -- a hoodoo under its cap stone, a thin natural
 	# arch -- what people cut into it for water, and the plan's ropeway: a pylon
 	# at a station, and one of its spans come down on the scree. The span strung
@@ -201,7 +201,7 @@ const SOLID: PackedFloat32Array = [
 	# themselves, as anything you walk up to and read should.
 	0.0, 1.1, 0.35,
 	# A trilithon is a wall with a window in it, and one circle cannot say so:
-	# 1.2 is the spec's (docs/LANDSCAPES.md §1) and it stops a body at the
+	# 1.2 is the spec's (docs/LANDSCAPES.md) and it stops a body at the
 	# uprights. A carved face is a boulder. A mast and a rack stop a body as
 	# furniture does. A hollow way is 0: it is a lane, and a lane is walked
 	# through -- its banks are drawn, not stood against.
@@ -226,7 +226,7 @@ const SOLID: PackedFloat32Array = [
 	# whoever places one should hand its legs to `WorldQuery.set_blocks`.
 	1.3, 1.0, 1.2, 0.75, 0.0,
 	# The drowned city. A stair is 0: it is WALKED DOWN, and what it does to a
-	# body is let it into the water and out again (docs/LANDSCAPES.md §5). A
+	# body is let it into the water and out again (docs/LANDSCAPES.md). A
 	# tram is five long and answered by the circle at its middle, the frozen
 	# hull's case; its ends are waded round. A crowd of piles is a post. A lock
 	# gate is three across the canal in one circle, which cannot say so: whoever

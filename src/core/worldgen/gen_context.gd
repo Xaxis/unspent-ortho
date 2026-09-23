@@ -21,14 +21,14 @@ var k: float
 ## `REGION_TILES * k * k` — so on a 1024 world `k` is 2 and the smallest thing
 ## that counts as a place becomes four times what it was. Right for one island
 ## filling the square; wrong for four continents in it, and it would have left the
-## small orbital bodies of docs/WORLD.md §2 holding no region at all: no place, no
+## small orbital bodies of docs/DESIGN.md holding no region at all: no place, no
 ## depot, no keeper, no landmark, on a world that generated perfectly and passed
 ## every test. Every distance, count and noise wavelength in worldgen is about a
 ## PLACE, so they all ask this. With one body it equals `k` exactly.
 var body_k: float = 1.0
 ## The bodies this world is made of, as `GenBodies.plan` dealt them: each
 ## {id, at, share, band, home}. Every stage that used to speak about "the island"
-## speaks about one of these (docs/WORLD.md §1). One body, centred, at full share
+## speaks about one of these (docs/DESIGN.md). One body, centred, at full share
 ## is the island this game has always had.
 var bodies: Array[Dictionary] = []
 
@@ -152,7 +152,7 @@ func _init(p_world: WorldData) -> void:
 	for d in defs:
 		if not d.sea:
 			# A world is one REALM's world: only the types registered in it are
-			# laid (docs/VISION.md §7.1). `types` is still the whole registry,
+			# laid (docs/VISION.md). `types` is still the whole registry,
 			# because every per-type array here is indexed by a type's own index.
 			if not d.realms.has(lays):
 				continue

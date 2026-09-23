@@ -13,7 +13,7 @@ static func make() -> BiomeDef:
 	d.style_note = "Soft broken edges, stippled dots, mist lying in the hollows."
 	d.share = Vector2(0.11, 0.15)
 	# ON HOME, ALWAYS: the first step north of the coast, so the journey can be
-	# READ from where he wakes (docs/WORLD.md §4: `least` is so a beat never
+	# READ from where he wakes (docs/DESIGN.md: `least` is so a beat never
 	# strands "a player who never crosses the ocean") and the coast-moss border is
 	# a promise rather than a leak. Home is "not dealt the harshest or rarest
 	# types" (§8.4), and harshest is read as the top of the landscapes' own table
@@ -107,7 +107,7 @@ static func make() -> BiomeDef:
 		&"dog.yard": {"weight": 1.0}, &"dog.feral": {"weight": 1.0},
 		&"gulls": {"weight": 1.0, "hours": Vector2(6, 20)},
 	}
-	# The places worth the walk it holds (docs/VISION.md §3, src/core/landmarks):
+	# The places worth the walk it holds (docs/VISION.md, src/core/landmarks):
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"leaning_mast", &"cast_stones", &"grown_hulk", &"clerks_office"]

@@ -1,6 +1,6 @@
 class_name EliteStock
 ## The elite materials, and the one place each of them comes from
-## (docs/VISION.md §6.1). This is the spine of the long game: the best of a kind
+## (docs/VISION.md). This is the spine of the long game: the best of a kind
 ## is behind a LANDSCAPE or behind one kind of machine, so a player who wants it
 ## has to travel or fight for it.
 ##
@@ -29,7 +29,7 @@ class_name EliteStock
 ##   land, raw, at    a landscape's own: refine `raw` at station `at`
 ##   kind             one machine's own: the roster id it is cut out of
 ##   chance           a kill's odds of giving it up
-##   what             the line a player is shown (docs/ART.md §11: a material
+##   what             the line a player is shown (docs/LOOK.md: a material
 ##                    keeps its landscape's colour and hand)
 ##   grade            the grade of thing it tends to make
 const MATERIALS := {
@@ -46,31 +46,31 @@ const MATERIALS := {
 	# it on ROCK), and nothing else in the world gives it.
 	&"hush_slate": {"land": &"the_crags", "raw": &"hushstone", "at": &"kiln", "grade": &"rare",
 		"what": "stone a scanner reads as nothing at all"},
-	# The frost sea's (docs/VISION.md §6.1 names it): lens ice is cut out of a
+	# The frost sea's (docs/VISION.md names it): lens ice is cut out of a
 	# pressure block with a steel edge, and pressure blocks stand nowhere else.
 	&"deep_ice_lens": {"land": &"frost_sea", "raw": &"lens_ice", "at": &"bench", "grade": &"rare",
 		"what": "the clear heart of a slab of sea ice, ground until the far side comes through it"},
-	# The glass desert's (docs/LANDSCAPES.md §3): fulgurite comes off a fulgurite
+	# The glass desert's (docs/LANDSCAPES.md): fulgurite comes off a fulgurite
 	# and a fulgurite stands only in the strike fields' sand, on the one
 	# landscape that scatters it. Refined at the kiln, it is what the shock
 	# lattice is wound round — the prime module that had no `from` — and what
 	# a glass lance is bound round.
 	&"fulgurite_core": {"land": &"glass_desert", "raw": &"fulgurite", "at": &"kiln", "grade": &"prime",
 		"what": "a strike's own cast, fired again: green-black, and it rings when it is struck"},
-	# The Ruined Metropolis's own (docs/LANDSCAPES.md §4): steel wire rope cut
+	# The Ruined Metropolis's own (docs/LANDSCAPES.md): steel wire rope cut
 	# out of a lift core, which stands only on the city's own floor and grass
 	# (Takes gates the cut on the ground), re-laid at the fire. The spec says
 	# "the forge"; the fire is the one hot station a person builds and where
 	# iron is already made, so it is the forge this game has.
 	&"tower_cable": {"land": &"ruined_metropolis", "raw": &"lift_cable", "at": &"fire", "grade": &"rare",
 		"what": "lift rope annealed and laid up again: it takes a body's weight and does not stretch"},
-	# The Drowned City's own (docs/LANDSCAPES.md §5): copper conductor cut out
+	# The Drowned City's own (docs/LANDSCAPES.md): copper conductor cut out
 	# of a drowned tram's trolley gear, which stands only in the city's own
 	# shallows (Takes gates the cut on MUD), poured again at the fire with the
 	# salt still in it. Copper is poured at the fire everywhere else, so this is.
 	&"brine_copper": {"land": &"drowned_city", "raw": &"sea_copper", "at": &"fire", "grade": &"rare",
 		"what": "copper the sea kept for a century, poured again: green at the grain, and water runs off it"},
-	# The Mesas' own (docs/LANDSCAPES.md §6): rope steel cut with a steel edge out
+	# The Mesas' own (docs/LANDSCAPES.md): rope steel cut with a steel edge out
 	# of a fallen span of the ropeway, which lies only on the mesas' scree (Takes
 	# gates the cut on SCREE), re-laid at the fire as the city's cable is.
 	&"span_wire": {"land": &"mesas", "raw": &"rope_steel", "at": &"fire", "grade": &"rare",
@@ -97,7 +97,7 @@ const MATERIALS := {
 	# AT rather than OF (CraftTiers.JIG). A hunter carries one to mend its legs.
 	&"fab_jig": {"kind": &"longlegs", "chance": 0.25, "grade": &"prime",
 		"what": "a jig a hunter mends its own legs on: clamps, a rule, a heat gun"},
-	# The Ruined Metropolis's own worker (docs/LANDSCAPES.md §4): the hydraulic
+	# The Ruined Metropolis's own worker (docs/LANDSCAPES.md): the hydraulic
 	# ram out of its boom, which is what drives a jaw through poured concrete.
 	&"boom_ram": {"kind": &"demolisher", "chance": 0.3, "grade": &"prime",
 		"what": "the ram out of a demolisher's boom, still weeping oil at the seal"},
@@ -141,16 +141,16 @@ const SPOILS := {
 	&"hauler": [{"item": &"pulse_hammer", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
 	&"sweeper": [{"item": &"arc_cut", "chance": 0.12, "rarity": Rarity.UNCOMMON}],
 	&"lineman": [{"item": &"beam_lance", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
-	# The crags' chainman: links off the chain it drags (docs/LANDSCAPES.md §1).
+	# The crags' chainman: links off the chain it drags (docs/LANDSCAPES.md).
 	# No weapon, because it carries none -- it measures.
 	&"chainman": [{"item": &"chain_link", "chance": 0.6, "count": Vector2i(1, 3)}],
 	# The frost sea's saw sled: what comes off the blade that cuts the ice. A
-	# tooth and not a material, because docs/LANDSCAPES.md §2 gives the frost sea
+	# tooth and not a material, because docs/LANDSCAPES.md gives the frost sea
 	# its elite through a PROP (lens ice off a pressure block) and a landscape
 	# holds one gate, not two.
 	&"icesaw": [{"item": &"saw_tooth", "chance": 0.45, "count": Vector2i(1, 2)}],
 	# The drowned city's ferry: the bilge pump out of its hull
-	# (docs/LANDSCAPES.md §5). A spoil and not a material, for the frost sea's
+	# (docs/LANDSCAPES.md). A spoil and not a material, for the frost sea's
 	# reason: the drowned city's one gate is brine copper, stripped off a
 	# drowned tram, and a landscape holds one gate, not two.
 	&"ferry": [{"item": &"bilge_pump", "chance": 0.35}],

@@ -1,5 +1,5 @@
 class_name RaidSpoils
-## What is left lying about after the machines have been (docs/VISION.md §9.6),
+## What is left lying about after the machines have been (docs/VISION.md),
 ## declared into the one loot economy (src/core/loot/drops.gd).
 ##
 ## Two tables, and both of them keep an id of their own with `of` left EMPTY,

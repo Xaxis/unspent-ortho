@@ -1,5 +1,5 @@
 class_name Drops
-## What a thing yields when it is broken, beaten or opened (docs/VISION.md §6.1).
+## What a thing yields when it is broken, beaten or opened (docs/VISION.md).
 ##
 ## One economy, not four. Sentinels, works, landmarks, machines and a settlement's
 ## spoils all declare here rather than each inventing a way to hand things over,

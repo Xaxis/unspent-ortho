@@ -1,4 +1,4 @@
-## Hollis works the slag runs under the Burning's refineries. A local: colour, never load (docs/STORY.md §8).
+## Hollis works the slag runs under the Burning's refineries. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"hollis", "name": "Hollis", "title": "a slag-runner",

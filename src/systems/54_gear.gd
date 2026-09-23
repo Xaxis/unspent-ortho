@@ -1,5 +1,5 @@
 extends GameSystem
-## The gear on the body and the abilities it grants (docs/VISION.md §6, §7.4).
+## The gear on the body and the abilities it grants (docs/VISION.md, §7.4).
 ##
 ## It owns three things and nothing else:
 ##   the loadout   what is fitted in each of the six slots and their sockets,
@@ -369,14 +369,14 @@ func _land_jump(m: AbilityMotion) -> void:
 # --- what an ability looks like ------------------------------------------------
 
 ## Every ability effect is drawn here, in ink and stipple for what a person
-## made and clean and exact for what was taken from the machines (docs/ART.md §3).
+## made and clean and exact for what was taken from the machines (docs/LOOK.md).
 func _fx(what: StringName, args: Dictionary) -> void:
 	var at := game.player.position
 	var seed_value := int(Time.get_ticks_msec())
 	match what:
 		&"dash":
 			# Speed lines off the heels and a little stipple down the way it came:
-			# the burst is drawn, never blurred (docs/ART.md §7).
+			# the burst is drawn, never blurred (docs/LOOK.md).
 			#
 			# Laid a body's width BEHIND the heels, the way the dodge's lines are,
 			# and two puffs rather than four. On the body, with four of them
@@ -442,7 +442,7 @@ func _fx(what: StringName, args: Dictionary) -> void:
 ## noticed you (the interference the disposition package keeps; until it lands,
 ## aware is the read). The bracket is FOUND: clean, ruled, exact, and HELD -- it
 ## is laid again just before the last one dies so it tracks a walking machine
-## while reading as one steady frame. Stippling it would say fire (docs/ART.md §3).
+## while reading as one steady frame. Stippling it would say fire (docs/LOOK.md).
 ## The reading of their behaviour is the player's own, and that is drawn by hand.
 ## A mark is held a quarter longer than the beat that lays it, so the next one is
 ## on screen before the last one goes and the read never blinks.
@@ -504,7 +504,7 @@ func _feed(_g: Game) -> Dictionary:
 ## What a module gives, in the few characters the page has room for. A modifier
 ## says the DECISION it changes and the price it is paying in this kit, because a
 ## row of resistance percentages never told anybody what a part was for
-## (`ModifierTable`, docs/VISION.md §6.1).
+## (`ModifierTable`, docs/VISION.md).
 func _grants(id: StringName) -> String:
 	if ModifierTable.has(id):
 		return Modifiers.note(id, loadout.all_ids())
@@ -574,7 +574,7 @@ func _act_hand(here: StringName) -> String:
 
 
 ## Taking a slot off pulls its modules out, and where you are standing decides
-## whether they survive it (`Reforge`, docs/VISION.md §6.1: re-socketed at a
+## whether they survive it (`Reforge`, docs/VISION.md: re-socketed at a
 ## bench, at the risk of losing the part). Cord unties anywhere; a panel drilled
 ## into a frame is being prised with the wrong tool out in the field. So a player
 ## either plans the build at a bench or gambles on the road.

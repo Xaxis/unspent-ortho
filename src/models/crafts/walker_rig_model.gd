@@ -1,6 +1,6 @@
 extends RefCounted
 ## A walker rig: a machine's legs, cut off at the hip and bound to a timber cradle
-## a person stands in (docs/ART.md §12). The legs, the knee plates, the hip yoke
+## a person stands in (docs/LOOK.md). The legs, the knee plates, the hip yoke
 ## and the power pack's amber eye are FOUND — straight members, exact joints,
 ## violet plate. The cradle, the shoulder bar, the handles and every strap are
 ## MADE, and the straps go through the holes somebody drilled in the yoke.
@@ -62,7 +62,7 @@ static func made(k: MeshKit, broken: bool) -> void:
 		var top := Vector3(-0.04 - list, TOP_Y - (0.2 if broken else 0.0), z + side * list * 0.5)
 		# Stood a little in FRONT of the plate, in a wood pale enough to be seen
 		# against it: hidden behind the yoke the hand's half of a mended thing is
-		# not in the silhouette at all, and then it is not mended (docs/ART.md §12).
+		# not in the silhouette at all, and then it is not mended (docs/LOOK.md).
 		k.strut(Vector3(0.02, HIP_Y + 0.04, z), top, 0.068, 5, P.EARTH[4])
 		# Strap through the yoke's drilled hole, over the plate, off true.
 		k.strut(Vector3(-0.04, HIP_Y + 0.1, z), Vector3(0.06, HIP_Y - 0.04, z - side * 0.05), 0.028, 4, P.SAND[3])

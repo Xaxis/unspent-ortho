@@ -68,7 +68,7 @@ extends TestCase
 ## reads as infrastructure that was always meant to be there, which is the test
 ## this file actually cares about.
 ##
-## RE-ACCEPTED A FOURTH TIME, for the scale work of docs/WORLD.md §7b: a region is
+## RE-ACCEPTED A FOURTH TIME, for the scale work of docs/DESIGN.md: a region is
 ## floored against the world instead of against a body, and a landscape's sites
 ## are counted per REGION instead of per type across the whole island. `ground`
 ## and `props` moved on all five seeds; `country`, `country2`, `level` and `blend`

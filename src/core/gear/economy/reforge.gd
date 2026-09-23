@@ -1,5 +1,5 @@
 class_name Reforge
-## Taking gear apart again (docs/VISION.md §6.1: "Gear can be broken down for its
+## Taking gear apart again (docs/VISION.md: "Gear can be broken down for its
 ## materials and its modifiers re-socketed at a bench, at the risk of losing the
 ## part. Nothing is dead loot.").
 ##
@@ -20,7 +20,7 @@ const SPOIL_ITEM: StringName = &"spoil"
 
 
 ## Whether taking `module` out is free wherever you stand: cord and rag are, a
-## drilled panel is not (docs/ART.md §12 — the join is the difference).
+## drilled panel is not (docs/LOOK.md — the join is the difference).
 static func unties(module: StringName) -> bool:
 	return Gear.tier(module) == &"made"
 

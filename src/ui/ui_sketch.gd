@@ -434,7 +434,7 @@ const SHAPES := {
 		["line", 5.5, 17.0, 26.5, 17.0], ["line", 16.0, 8.0, 16.0, 27.0],
 	],
 	# Gear against a place's pressures (the hazards package). The mended ones show
-	# their join: a plate panel and the cord that binds it (docs/ART.md §12).
+	# their join: a plate panel and the cord that binds it (docs/LOOK.md).
 	&"mask": [
 		["poly", "a3", [5.0, 9.0, 27.0, 9.0, 28.0, 17.0, 22.0, 25.0, 10.0, 25.0, 4.0, 17.0]],
 		["poly", "a4", [7.0, 10.5, 25.0, 10.5, 25.5, 15.0, 6.5, 15.0]],

@@ -1,4 +1,4 @@
-## Sorrel counts what goes into the machine city and what comes out. A local: colour, never load (docs/STORY.md §8).
+## Sorrel counts what goes into the machine city and what comes out. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"sorrel", "name": "Sorrel", "title": "a gate-counter",

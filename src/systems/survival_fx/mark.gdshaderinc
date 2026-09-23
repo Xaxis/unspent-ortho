@@ -1,5 +1,5 @@
 // Drawn marks laid over the world by survival: ink ticks, stipple dust and smoke,
-// sparks (docs/ART.md §7). Flat colour, no light, no depth written, drawn in the
+// sparks (docs/LOOK.md). Flat colour, no light, no depth written, drawn in the
 // transparent pass after the outline (SurvivalMarks sets render_priority) so the
 // outline never rings them: a dot of dust stays a dot. mark.gdshader is hidden by
 // what stands in front of it; mark_over.gdshader is drawn over it, the way a pen

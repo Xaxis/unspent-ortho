@@ -1,5 +1,5 @@
 class_name DevNotes
-## Notes: feedback that can be acted on (docs/DEV.md). A note is a picture of the
+## Notes: feedback that can be acted on (docs/DESIGN.md). A note is a picture of the
 ## world as it was, a kind, a few words, what build and configuration it was, the
 ## state of the game, and the command that stages that moment again:
 ##

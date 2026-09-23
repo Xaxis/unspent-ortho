@@ -1,5 +1,5 @@
 extends RefCounted
-## Somewhere to sleep and somewhere to keep things (docs/VISION.md §9, docs/ART.md
+## Somewhere to sleep and somewhere to keep things (docs/VISION.md, docs/LOOK.md
 ## §10). A first shelter is all MADE: driftwood, lashings, a skin of rag and
 ## thatch, hand-cut edges that do not meet. A hut is what the same people build
 ## once they have salvaged well: the same crooked frame with machine plate over
@@ -72,7 +72,7 @@ static func lean_to(k: MeshKit, v: int, ruined: bool) -> void:
 
 # --- hut --------------------------------------------------------------------
 
-## A holding that has salvaged well (docs/ART.md §10): a crooked frame of posts
+## A holding that has salvaged well (docs/LOOK.md): a crooked frame of posts
 ## and boards with machine plate lashed over the gaps, a sagging ridge, turf
 ## banked at the foot, and a door cut out of a hull.
 static func hut_made(k: MeshKit, v: int, ruined: bool) -> void:
@@ -310,7 +310,7 @@ static func store(k: MeshKit, v: int, ruined: bool) -> void:
 
 # --- bunk -------------------------------------------------------------------
 
-## Beds for people who are not the player (docs/VISION.md §9). A lean-to is one
+## Beds for people who are not the player (docs/VISION.md). A lean-to is one
 ## night's roof and a hut is a household; a bunk is what a holding puts up when
 ## what it needs is HANDS, and it has to read as that from a hillside — not as
 ## another hut, and not as a store up on legs.

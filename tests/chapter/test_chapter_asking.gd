@@ -1,5 +1,5 @@
 extends TestCase
-## What the slate says a place is still asking (docs/VISION.md §10.4, task #112
+## What the slate says a place is still asking (docs/VISION.md, task #112
 ## step 4). `Chapter.read` has always known; until now nothing could say it, and
 ## no UI read the file at all.
 ##

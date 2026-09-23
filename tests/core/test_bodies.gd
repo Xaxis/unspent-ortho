@@ -1,5 +1,5 @@
 extends TestCase
-## The bodies a world is made of, and the void between them (docs/WORLD.md).
+## The bodies a world is made of, and the void between them (docs/DESIGN.md).
 ## Today one island gives one body; this holds the recording honest so that the
 ## day the planning half inverts the stage, what broke is obvious.
 
@@ -46,7 +46,7 @@ func test_the_bodies_describe_themselves() -> void:
 
 
 ## ONE WRITER, and a test that fails when a second appears — the discipline
-## docs/WORLD.md §3 asks for, because a rule that is only in a header is a rule
+## docs/DESIGN.md asks for, because a rule that is only in a header is a rule
 ## until the first hurry. `tests/render/test_one_writer.gd` does this for the sky
 ## globals and caught a real bypass by somebody who knew the rule.
 func test_gen_bodies_is_the_only_thing_that_writes_a_body_id() -> void:
@@ -128,7 +128,7 @@ func test_a_small_world_is_one_body_as_it_always_was() -> void:
 
 ## A shaft has to come up where it went down, so the underground is the surface's
 ## map. The rule lives in `plan`, not in the caller: asking for the underground
-## returns the surface's footprints (docs/WORLD.md §5).
+## returns the surface's footprints (docs/DESIGN.md).
 func test_the_underground_is_the_surface_seen_from_below() -> void:
 	for s: int in SEEDS:
 		var up := GenBodies.plan(s, Realm.SURFACE)
@@ -140,7 +140,7 @@ func test_the_underground_is_the_surface_seen_from_below() -> void:
 
 
 ## Two bodies at one latitude are the same place unless they are dealt different
-## weather, which is the whole of why the band exists (docs/WORLD.md §4a).
+## weather, which is the whole of why the band exists (docs/DESIGN.md).
 func test_every_body_is_dealt_a_climate_band() -> void:
 	var seen := {}
 	for s: int in SEEDS:

@@ -45,7 +45,7 @@ var answered := false
 
 
 ## The plan has lost this place: the only thing that ends the danger that working
-## a region raises (docs/VISION.md §10).
+## a region raises (docs/VISION.md).
 func lost() -> bool:
 	return works_dark or keeper_down
 

@@ -275,7 +275,7 @@ const DEFS := {
 		"where": {"countries": GREEN_COUNTRIES, "grounds": ["sand", "shingle", "gravel", "strand"], "hours": [6, 20]},
 	},
 
-	# --- The Crags' one worker of its own (docs/LANDSCAPES.md §1) -------------
+	# --- The Crags' one worker of its own (docs/LANDSCAPES.md) -------------
 	# A chainman walks the survey lines dragging a measuring chain, stops at each
 	# stone to set a tiny tripod, and goes on. Its bite is a SHOVE: a worker turns
 	# on `blocked` (Roles.TURNS), and this one pushes whatever stands on its line
@@ -291,7 +291,7 @@ const DEFS := {
 		"takes": 40.0, "drops": 1, "linger": 40.0, "chance": 3,
 		"where": {"countries": ["the_crags"], "grounds": ["moss", "limestone", "rock"], "hours": [8, 18]},
 	},
-	# --- The Frost Sea's own worker (docs/LANDSCAPES.md §2) -------------------
+	# --- The Frost Sea's own worker (docs/LANDSCAPES.md) -------------------
 	# A low sled with a circular saw and one amber lens, working the ice for the
 	# soundings line. It keeps to the frost sea and to the ice: the one machine
 	# kind that works only there, which is what gives a landscape a machine of
@@ -319,7 +319,7 @@ const DEFS := {
 		# then has closed behind the sled by morning, so the plan saws by night
 		# and the sheet stays walkable for its rigs by day: a player crossing at
 		# noon meets the refrozen leads, and at night the sled making them. That
-		# is the collapse hazard the spec builds on (docs/LANDSCAPES.md §2),
+		# is the collapse hazard the spec builds on (docs/LANDSCAPES.md),
 		# stated as an hour. MEASURED, too: a sled that fits every ice tile by
 		# day ends a roll early wherever the snowfield lineman's spawn ring
 		# crosses the seam -- `Spawner.roll` returns at the FIRST tile anything
@@ -330,7 +330,7 @@ const DEFS := {
 		"where": {"countries": ["frost_sea"], "grounds": ["ice"], "hours": [18, 6]},
 	},
 
-	# --- Sentinels: the keeper a landscape has (docs/VISION.md §3) ------------
+	# --- Sentinels: the keeper a landscape has (docs/VISION.md) ------------
 	# A sentinel's body is a roster row like any other machine's, so everything
 	# that already reads a machine takes it as one: the senses, the plan's
 	# disposition, the fight, the enemy read under `z`. What makes it a sentinel
@@ -437,7 +437,7 @@ const DEFS := {
 		"where": {"hours": [0, 0]},
 	},
 
-	# --- The Glass Desert's own hunter (docs/LANDSCAPES.md §3) -----------------
+	# --- The Glass Desert's own hunter (docs/LANDSCAPES.md) -----------------
 	# A long low body on four blade-skates. It charges, and its re-aim is the
 	# longest in the roster (`turns` 6, two and a half seconds), so the whole
 	# fight is choosing where to stand when it comes round: on SAND. `keeps_to`
@@ -460,7 +460,7 @@ const DEFS := {
 		"keeps_to": ["rock", "salt", "gravel"],
 		"where": {"countries": ["glass_desert"], "grounds": ["rock", "salt"], "hours": [9, 19], "green_min": 14},
 	},
-	# --- The Ruined Metropolis's own (docs/LANDSCAPES.md §4) -----------------
+	# --- The Ruined Metropolis's own (docs/LANDSCAPES.md) -----------------
 	# The machine that takes the city apart: a squat tracked body with a long
 	# hydraulic boom and a crushing jaw on the end of it. A WORKER, and the
 	# heaviest bite of any: it charges in a line, its tell is the boom going up
@@ -473,7 +473,7 @@ const DEFS := {
 	# on that prop over world minutes, written to `WorldProp.shown` through
 	# `Harvest.apply_shown` and refreshed through `WorldView.refresh_props`, the
 	# same door a player's own take goes through, so a district it has been
-	# working reads as one (docs/LANDSCAPES.md §4: "It chews RUIN props in front
+	# working reads as one (docs/LANDSCAPES.md: "It chews RUIN props in front
 	# of it"). That belongs to the brain that runs its errand (Brains), which
 	# knows what is in front of it, and not to this table.
 	&"demolisher": {
@@ -486,7 +486,7 @@ const DEFS := {
 		"where": {"countries": ["ruined_metropolis"], "grounds": ["floor", "gravel", "scree"], "green_min": 12,
 			"near_props": ["ruin", "demolition gantry"]},
 	},
-	# --- The Drowned City's own (docs/LANDSCAPES.md §5) ----------------------
+	# --- The Drowned City's own (docs/LANDSCAPES.md) ----------------------
 	# The plan's ferry: a flat barge with a crane stub amidships running fixed
 	# routes along the canals at fixed hours, carrying salvage out to sea. A
 	# KEEPER, because what it keeps is a ROUTE: it goes about its errand until a
@@ -533,7 +533,7 @@ const DEFS := {
 		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
 		"where": {"hours": [0, 0]},
 	},
-	# --- The Mesas' own watcher (docs/LANDSCAPES.md §6) ------------------------
+	# --- The Mesas' own watcher (docs/LANDSCAPES.md) ------------------------
 	# A wide slow frame flown on a line off a winch beside a span pylon,
 	# circling over the canyon and filing. The body the fight knows is the WINCH
 	# (src/models/machines/kite.gd): that is where it is struck, where its line

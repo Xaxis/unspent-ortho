@@ -7,7 +7,7 @@ hacked slate made of machine parts.
 
 Read before working in an area:
 - `docs/VISION.md`: the destination. `docs/ROADMAP.md`: what's next, in order.
-- `docs/LOOK.md`: the look of record (lit, not drawn). It outranks `docs/ART.md`.
+- `docs/LOOK.md`: the look of record (lit, not drawn).
 - `docs/DESIGN.md` (the game), `docs/STORY.md` (binding on every story line),
   `docs/LANDSCAPES.md` (per-landscape specs).
 - A package's own file header states its contract. Headers can be wrong: check the

@@ -1,5 +1,5 @@
 extends TestCase
-## Roles and dispositions, against the table in docs/VISION.md §2. Every
+## Roles and dispositions, against the table in docs/VISION.md Every
 ## machine on the coast has a place in the plan, and its place decides what it
 ## makes of the player before anything has happened.
 

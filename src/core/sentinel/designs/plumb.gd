@@ -1,4 +1,4 @@
-## The Crags' keeper: a plumb on a tripod (docs/LANDSCAPES.md §1, docs/VISION.md
+## The Crags' keeper: a plumb on a tripod (docs/LANDSCAPES.md, docs/VISION.md
 ## §3). The plan surveyed this land and its instruments returned nothing it could
 ## file, so it keeps re-surveying: exact, patient and failing. That is the one
 ## machine behaviour in the crags, and it is not hostility.

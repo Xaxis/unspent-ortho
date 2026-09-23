@@ -1,6 +1,6 @@
 extends TestCase
 ## Water a body can DRINK is the answer to a dry land and nothing else
-## (docs/LANDSCAPES.md §6: the mesas' cistern is "the land's own spring"). It is
+## (docs/LANDSCAPES.md: the mesas' cistern is "the land's own spring"). It is
 ## held apart from standing in water, which soaks you and takes the warmth off.
 
 

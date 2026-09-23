@@ -1,7 +1,7 @@
 class_name GlideWingModel
 extends Node3D
 ## The glide wing on the player's back, and the one place in the game where
-## MENDED is drawn as a thing rather than an icon (docs/ART.md §12): the panels
+## MENDED is drawn as a thing rather than an icon (docs/LOOK.md): the panels
 ## are FOUND plate on found.gdshader, exact and unhatched, and the frame and the
 ## cord that bind them to a person are MADE on world.gdshader, hatched and
 ## crooked. Both idioms are in one silhouette at once.

@@ -1,5 +1,5 @@
 class_name Gear
-## Gear is modular (docs/VISION.md §6): six slots on the body take one piece
+## Gear is modular (docs/VISION.md): six slots on the body take one piece
 ## each, a piece has sockets, and modules go in the sockets. A piece and a module
 ## both declare resistances and may grant an ability. The tables are in
 ## `src/content/items.gd` with everything else the player can carry, so a new
@@ -11,7 +11,7 @@ class_name Gear
 ##   module: true         it is a module; `fits` lists the slots it may sit in
 ##   resist: {hazard: 0..1}
 ##   ability: StringName  the ability it grants while it is fitted
-##   tier: StringName     made | mended | found (docs/ART.md §12)
+##   tier: StringName     made | mended | found (docs/LOOK.md)
 ##
 ## Slots, and what each means:
 ##   head   what is over your face and eyes: masks, hats, lenses
@@ -49,7 +49,7 @@ static func tier(id: StringName) -> StringName:
 
 
 ## Mended things are FOUND parts bound with MADE cord and must be drawn as both
-## (docs/ART.md §12). The slate's icons and the world models ask this.
+## (docs/LOOK.md). The slate's icons and the world models ask this.
 static func is_mended(id: StringName) -> bool:
 	return tier(id) == &"mended"
 
@@ -104,7 +104,7 @@ static func combine(into: Dictionary, add: Dictionary) -> void:
 ## The whole loadout's resistances: hazard id -> 0..1, for Body.resist.
 ##
 ## The last step is the modules arguing: a part that pays for another's heat, a
-## part that shouts through another's hush (`Modifiers`, docs/VISION.md §6.1).
+## part that shouts through another's hush (`Modifiers`, docs/VISION.md).
 ## It is here because this is the ONE place the kit is added up, so the body, the
 ## hazards system, the slate and every test see the same answer.
 static func resist_total(loadout: Loadout) -> Dictionary:
@@ -117,7 +117,7 @@ static func resist_total(loadout: Loadout) -> Dictionary:
 
 ## The ability ids the loadout grants, in slot order, without repeats. A conflict
 ## can smother one — a signature spoofed by a part that shouts is no signature —
-## so the last word is `Modifiers` (docs/VISION.md §6.1).
+## so the last word is `Modifiers` (docs/VISION.md).
 static func abilities_of(loadout: Loadout) -> Array[StringName]:
 	var out: Array[StringName] = []
 	for slot in SLOTS:

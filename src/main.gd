@@ -30,7 +30,7 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().is_empty():
 		options.scene = "title"
 	# The master configuration this run is made from, and whether dev mode can be
-	# reached (docs/DEV.md). A game booted straight from the command line is a new
+	# reached (docs/DESIGN.md). A game booted straight from the command line is a new
 	# game, and takes a configuration's start as the title's New game does.
 	DevMode.boot(options, OS.get_cmdline_user_args())
 	if options.scene == "game":

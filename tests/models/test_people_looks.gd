@@ -1,6 +1,6 @@
 extends TestCase
 ## The last people: dressed by their land and their trade, worn, hungry, and
-## carrying scavenged tech mended in both idioms (docs/VISION.md §6, §8).
+## carrying scavenged tech mended in both idioms (docs/VISION.md, §8).
 
 
 func _hazards(id: StringName) -> Dictionary:

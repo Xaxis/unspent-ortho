@@ -1,5 +1,5 @@
 extends TestCase
-## The places a landscape is made of (docs/VISION.md §10).
+## The places a landscape is made of (docs/VISION.md).
 ##
 ## What is held here is that every kind is a PLACE and not scenery: a reason to
 ## walk there, something standing in it, and — for the ones that are meant to be

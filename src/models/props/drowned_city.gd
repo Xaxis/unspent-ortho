@@ -1,5 +1,5 @@
 extends RefCounted
-## What stands in the Drowned City (docs/LANDSCAPES.md §5). The water is the
+## What stands in the Drowned City (docs/LANDSCAPES.md). The water is the
 ## street here, so everything is either how people meet the water — a stair cut
 ## down off a quay into it, a crowd of piles a boat was tied to before the jetty
 ## went — or what the water took and left standing in it: a tram half sunk in

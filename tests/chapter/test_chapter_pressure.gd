@@ -1,6 +1,6 @@
 extends TestCase
 ## THE LOOP, and this file exists because a chapter with three demands and no
-## pressure is a checklist (docs/VISION.md §10).
+## pressure is a checklist (docs/VISION.md).
 ##
 ## What is held here is the arithmetic of the game the demands are supposed to
 ## make: a region turns against you AS you work it, and the only thing that ends

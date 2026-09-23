@@ -1,4 +1,4 @@
-## Maren, the fire-keeper who pulls him out of the surf (docs/STORY.md §8).
+## Maren, the fire-keeper who pulls him out of the surf (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"maren", "name": "Maren", "title": "the fire-keeper",

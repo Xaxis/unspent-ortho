@@ -1,11 +1,11 @@
 extends TestCase
-## The judge on `--stats`, held to judging (docs/PERF.md, task #126).
+## The judge on `--stats`, held to judging (docs/DESIGN.md, task #126).
 ##
 ## THIS EXISTS BECAUSE THE JUDGE WAS WRONG IN THE DIRECTION THAT HIDES WORK.
 ## `frame_line` took its percentiles over every frame of a run including the
 ## warm-up, so a run measuring p95 9.3 and p99 12.9 in steady play -- both well
 ## inside budget -- printed `PERF FAIL` on the strength of frame 0 being 150 ms.
-## docs/PERF.md has always bounded warm-up separately, and the instrument did not
+## docs/DESIGN.md has always bounded warm-up separately, and the instrument did not
 ## make the split the document promised.
 ##
 ## An instrument that cannot report a pass is worse than one that prints nothing,
@@ -54,7 +54,7 @@ func test_a_run_cannot_call_itself_warm_up_all_the_way_through() -> void:
 
 
 func test_warm_up_is_bounded_rather_than_exempt() -> void:
-	# docs/PERF.md: no more than WARM_MOST frames over, and none over the ceiling.
+	# docs/DESIGN.md: no more than WARM_MOST frames over, and none over the ceiling.
 	# A loading screen that is not over is still a loading screen.
 	var run := _steady(400, 8.0)
 	run[0] = Landscape.WARM_CEILING_MS + 50.0
@@ -106,7 +106,7 @@ func test_a_run_pinned_at_120_hz_passes_every_budget() -> void:
 
 
 ## A VERDICT ON FIVE FRAMES IS NOT A VERDICT, and for most of this project's life
-## every one of them was. docs/PERF.md asks for a run of at least 300 frames
+## every one of them was. docs/DESIGN.md asks for a run of at least 300 frames
 ## because these numbers are about VARIANCE -- p99 is a claim about one frame in
 ## a hundred, which five frames cannot contain -- while `BootOptions.frames`
 ## defaults to 8. So a plain `tools/shot.sh --stats` judged the game on five

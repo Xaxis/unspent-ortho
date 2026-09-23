@@ -1,7 +1,7 @@
 class_name AbilityDash
 extends Ability
 ## A spring coil in the gear throws the body a short way, fast, and leaves a
-## trail of stipple behind it (docs/ART.md §7). It is breath, not magic: it
+## trail of stipple behind it (docs/LOOK.md). It is breath, not magic: it
 ## costs wind, so it is a way out of one blow, never a way of travelling.
 
 const SPEED := 12.0

@@ -1,6 +1,6 @@
 class_name DevPageStoryWords
 extends DevPage
-## What is written, and on what (docs/STORY_SYSTEM.md §10): every readable thing
+## What is written, and on what (docs/DESIGN.md): every readable thing
 ## within reach of where he stands and which words it holds in THIS world
 ## (`StoryFragments.held_by`), then every fragment the story has, read or not. E
 ## puts a page on the glass without marking it found, so a writer can look at

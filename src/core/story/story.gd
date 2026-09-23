@@ -144,7 +144,7 @@ static func heard_about(id: StringName) -> String:
 
 
 ## Something the world saw him do. Only what could have been OBSERVED belongs
-## here (docs/STORY_SYSTEM.md §7), and the same act in the same land inside an hour
+## here (docs/DESIGN.md), and the same act in the same land inside an hour
 ## is one thing seen, not two.
 static func note(act: StringName, land: StringName, minutes: float) -> void:
 	if act == &"":

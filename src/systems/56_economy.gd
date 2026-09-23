@@ -1,5 +1,5 @@
 extends GameSystem
-## The gear economy inside a running game (docs/VISION.md §6.1). It owns three
+## The gear economy inside a running game (docs/VISION.md). It owns three
 ## things and nothing else:
 ##
 ##   the declaration  `GearEconomy.declare()` pours the content tables into

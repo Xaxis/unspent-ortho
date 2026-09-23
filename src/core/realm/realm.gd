@@ -1,5 +1,5 @@
 class_name Realm
-## Which WORLD a place belongs to (docs/VISION.md §3, §7.1). A realm is a world
+## Which WORLD a place belongs to (docs/VISION.md, §7.1). A realm is a world
 ## of its own — its own WorldData, its own view, its own saved edits — grown from
 ## the same seed with the realm's own salt, and joined to the others by portals
 ## (§4). The game holds one active realm at a time (src/systems/20_realms.gd).
@@ -27,7 +27,7 @@ const ERA := &"era"
 ## Every realm a landscape may declare (BiomeDef.realms).
 const KINDS: Array[StringName] = [SURFACE, UNDERGROUND, ORBITAL, ERA]
 
-## The notebook changes medium with the realm (docs/VISION.md §8). Only the first
+## The notebook changes medium with the realm (docs/VISION.md). Only the first
 ## two are drawn: the others are named so a landscape written for them cannot be
 ## registered into a realm whose page nobody has drawn yet.
 const PAGE_WASH := &"ink_and_wash"

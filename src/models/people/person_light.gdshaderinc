@@ -1,5 +1,5 @@
 // The light a person stands in, for person.gdshader and person_rim.gdshader.
-// People are the warm moving thing (docs/ART.md sections 5 and 6): a figure in a
+// People are the warm moving thing (docs/LOOK.md sections 5 and 6): a figure in a
 // fire's pool takes the fire's colour on its washes and on its rim, instead of
 // the cold grade and the moon winning. Include after sky.gdshaderinc.
 #ifndef PERSON_LIGHT_GDSHADERINC

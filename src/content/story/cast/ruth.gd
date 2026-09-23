@@ -1,5 +1,5 @@
 ## Ruth Calloway, his CIA handler, in 2029. Stands in the Before (Realm.ERA), relived through a gate
-## (docs/STORY.md §6).
+## (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"ruth", "name": "Ruth", "title": "a woman who faces the door",

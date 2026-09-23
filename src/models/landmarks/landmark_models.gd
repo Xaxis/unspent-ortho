@@ -1,5 +1,5 @@
 class_name LandmarkModels
-## The eight places worth the walk, drawn (docs/VISION.md §3, §8; docs/ART.md).
+## The eight places worth the walk, drawn (docs/VISION.md, §8; docs/LOOK.md).
 ##
 ##   LandmarkModels.node(kind, seed_value, made_material) -> Node3D
 ##   LandmarkModels.set_opened(node, done)   the cache, emptied
@@ -564,7 +564,7 @@ static func _slab(k: MeshKit, h: float, wide: float, thick: float, col: Color, t
 static func _evaporator(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: int) -> void:
 	# THE TANK IS NOT ONE BOX. Four bays with a rib between each pair, a lid
 	# tapered off the sides, and a walkway down the near flank: a plain prism four
-	# tiles long is the slab docs/ART.md §2 forbids, and at this camera the tank
+	# tiles long is the slab docs/LOOK.md forbids, and at this camera the tank
 	# is most of what a player sees of the whole machine.
 	for i in 4:
 		var x0 := -2.7 + i * 1.02

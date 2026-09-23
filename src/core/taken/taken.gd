@@ -1,6 +1,6 @@
 class_name Taken
 extends RefCounted
-## THE CARRIED-OFF (docs/VISION.md §9.5, and the thread §2's rescue and escort
+## THE CARRIED-OFF (docs/VISION.md, and the thread §2's rescue and escort
 ## goals have been waiting on).
 ##
 ## **The game already takes people and then forgets them.** A raid's snatcher

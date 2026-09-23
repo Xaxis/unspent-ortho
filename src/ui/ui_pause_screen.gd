@@ -60,7 +60,7 @@ func refresh() -> void:
 		{"id": &"quit", "text": "quit"},
 	]
 	if DevMode.reachable() and game != null:
-		# Dev mode's app (docs/DEV.md), marked as not the player's: the module's violet.
+		# Dev mode's app (docs/DESIGN.md), marked as not the player's: the module's violet.
 		rows.insert(rows.size() - 2, {"id": &"dev", "text": "dev", "app": true, "dev": true})
 	menu.set_rows(rows)
 	queue_redraw()

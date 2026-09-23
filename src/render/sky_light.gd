@@ -91,7 +91,7 @@ const MAX_GLINTS := 12
 const COMPOSE_LAST := 1000
 ## Render layers the sky's lights sort by (bit masks, set on nodes as they enter
 ## the tree, so no model or view has to know). People take a fill light of their
-## own in low light (docs/ART.md section 5: the player reads at any hour, with
+## own in low light (docs/LOOK.md section 5: the player reads at any hour, with
 ## or without a lantern; the source's player light floor is 0.45). Water takes
 ## no lamplight, so a lamp by the sea never lays a glow disc on it (section 6).
 const LAYER_FIGURES := 1 << 17
@@ -740,7 +740,7 @@ func compose() -> void:
 	RenderingServer.global_shader_parameter_set("sky_emission", float(trim.emission))
 	if figure_light != null:
 		# A person still takes a fill of their own in low light, because the
-		# player has to read at any hour (docs/ART.md section 5). It is much
+		# player has to read at any hour (docs/LOOK.md section 5). It is much
 		# smaller than it was: the sky is doing the work now, and a fill that
 		# beat the sky would put the one warm moving thing on screen in a light
 		# nothing in the world is casting.
@@ -1282,7 +1282,7 @@ static func night_dark(hour: float) -> float:
 
 
 ## And the other half of what `sky_night` carries: a sky darker than its hour.
-## docs/ART.md section 6 asks the skyglow to keep shapes readable "in dusk, storms
+## docs/LOOK.md section 6 asks the skyglow to keep shapes readable "in dusk, storms
 ## and night", and a storm at ten in the morning is not the night coming, so it
 ## cannot be read off the hour. It is read off the WEATHER'S OWN multiply, which
 ## is the only thing that can darken a sky out of its turn — never off how dark
@@ -1401,7 +1401,7 @@ static func cast_tint(warmth: float, wetness: float) -> Vector3:
 
 
 ## What a landscape type does to the light's level, on top of its cast: the
-## Burning lies under warm, low light even at noon (docs/ART.md section 3).
+## Burning lies under warm, low light even at noon (docs/LOOK.md section 3).
 const LEVEL := {&"burning": Vector3(0.94, 0.8, 0.68)}
 
 
@@ -1424,7 +1424,7 @@ static func type_light(def: BiomeDef, hour: float) -> Vector3:
 ## blue evening, hard white noon on the bonelands, furnace dusk in the burning.
 ## A landscape type not listed keeps the plain hour. New types add a row.
 ##
-## The EVENING is where these rows earn their keep, and where docs/ART.md section 3
+## The EVENING is where these rows earn their keep, and where docs/LOOK.md section 3
 ## makes its promises by name: the pines and the moss go dark early, the snowfield
 ## holds its light late and turns blue, the bonelands drop hard off the end of the
 ## day, the burning's dusk is a furnace and keeps its warmth through the night.
@@ -1490,7 +1490,7 @@ static func type_tint(type_id: StringName) -> Vector3:
 	return c / maxf(c.x, maxf(c.y, c.z))
 
 
-## The dystopian grade (docs/ART.md section 6): a light, bleak desaturation that
+## The dystopian grade (docs/LOOK.md section 6): a light, bleak desaturation that
 ## sets the mood without hiding the land, and how wet each landscape lies without
 ## rain. Returns [grade Vector4(dark, desat, cool, contrast), wet Vector4(base
 ## wet, sheen, reflection, 0)]. Day stays day; each landscape leans its own way.

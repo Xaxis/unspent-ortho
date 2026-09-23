@@ -1,5 +1,5 @@
 extends TestCase
-## The glint list (docs/ART.md section 6): the lights that exist near the camera
+## The glint list (docs/LOOK.md section 6): the lights that exist near the camera
 ## are mirrored in wet ground and throw shafts in fog, with no extra OmniLight.
 
 const Lights := preload("res://src/systems/15_lights.gd")

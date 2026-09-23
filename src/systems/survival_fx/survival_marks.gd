@@ -1,5 +1,5 @@
 class_name SurvivalMarks
-## The drawn vocabulary of taking and making (docs/ART.md §7): ink ticks, stipple
+## The drawn vocabulary of taking and making (docs/LOOK.md): ink ticks, stipple
 ## dots, flecks of stuff, and the small tokens of what you took that hop into
 ## your hands. Shared meshes built once; a Pool is a MultiMesh of one mark.
 ##

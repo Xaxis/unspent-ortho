@@ -86,7 +86,7 @@ const SHAPES := {
 	&"boot": ["..kkkk...", "..k33wk..", "..k332k..", "..k332k..", "..k3321kk", "..k32221k", ".kk5555kk", ".k44444k.", ".kkkkkk.."],
 	&"wing": ["kk.......", "k4kk.....", "k34wkk...", "k3344wkk.", "k333444wk", ".kkk333k.", "...kkkk..", ".........", "........."],
 	# Mended shapes carry their cord in 4/5, which the mended ramp draws in
-	# phosphor: both idioms in one 9x9 (docs/ART.md §12).
+	# phosphor: both idioms in one 9x9 (docs/LOOK.md).
 	&"coil": [".........", "..kkkkk..", ".k44444k.", ".k2kkk2k.", ".k23332k.", ".k2kkk2k.", ".k23332k.", ".k55555k.", "..kkkkk.."],
 	&"scan_lens": [".........", "..kkkkk..", ".k32223k.", "k42klk24k", "k4klllk4k", "k42klk24k", ".k32223k.", "..k555k..", "........."],
 	&"foil": [".........", ".kkkkkkk.", "k33w3332k", "k3222223k", "k2222221k", "k2222211k", "k5555555k", ".kkkkkkk.", "........."],
@@ -254,7 +254,7 @@ static func style_of(id: StringName) -> Array:
 	# An item row may name its own mark (`icon: [shape, ramp, ramp]`). SHAPES above
 	# still owns which marks exist; this only lets content pick one. It is here
 	# because a MENDED row HAS to be able to name a mark with cord pixels in it
-	# (docs/ART.md §12, both idioms in one 9x9) and every fallback below reaches
+	# (docs/LOOK.md, both idioms in one 9x9) and every fallback below reaches
 	# for a shape with none, so a whole tech tree of mended gear would have read
 	# as machine parts nobody made.
 	if d.has("icon"):
@@ -323,7 +323,7 @@ static func tones_for(id: StringName) -> Array[Color]:
 ## part (a haft, a filling) a step under it, and a working part the hottest.
 static func colours_for(id: StringName) -> Dictionary:
 	# A mended thing is FOUND parts bound with MADE cord, and the slate draws both
-	# idioms at once (docs/ART.md §12): the body in the stolen module's violet,
+	# idioms at once (docs/LOOK.md): the body in the stolen module's violet,
 	# the binding, haft and cord in phosphor.
 	if Gear.is_mended(id):
 		var m := UiTheme.MACHINE

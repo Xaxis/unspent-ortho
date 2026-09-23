@@ -1,4 +1,4 @@
-## Cass reads the drowned city's ferry timetable, which nobody set. A local: colour, never load (docs/STORY.md §8).
+## Cass reads the drowned city's ferry timetable, which nobody set. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"cass", "name": "Cass", "title": "a ferry-reader",

@@ -169,7 +169,7 @@ func test_the_wing_is_on_the_body_while_it_glides_and_folds_away_after() -> void
 	gt(float(frame.mesh.get_surface_count()), 0.0, "and so does the made frame")
 	var plate_shader := (plate.material_override as ShaderMaterial).shader
 	var frame_shader := (frame.material_override as ShaderMaterial).shader
-	check(plate_shader != frame_shader, "and they are not the same material (docs/ART.md §12)")
+	check(plate_shader != frame_shader, "and they are not the same material (docs/LOOK.md)")
 	check(String(plate_shader.resource_path).contains("found"), "the plate is FOUND")
 	# It faces the camera's way up: a flat panel wound face-down would vanish.
 	var aabb := plate.mesh.get_aabb()

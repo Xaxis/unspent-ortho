@@ -1,5 +1,5 @@
 extends TestCase
-## What a holding does with its own time (docs/VISION.md §9). Every one of these
+## What a holding does with its own time (docs/VISION.md). Every one of these
 ## is about the same promise: a place the player walked away from six hours ago
 ## has done six hours of work when they come back, and exactly six — no more for
 ## having been watched, no less for having been forgotten.

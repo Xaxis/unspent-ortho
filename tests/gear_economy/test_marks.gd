@@ -1,5 +1,5 @@
 extends TestCase
-## Every MENDED thing is drawn as both idioms at once (docs/ART.md §12): FOUND
+## Every MENDED thing is drawn as both idioms at once (docs/LOOK.md): FOUND
 ## parts in the machines' violet, bound with MADE cord in phosphor. A 9x9 with no
 ## cord pixel in it reads as a machine part nobody made, however the ramp is
 ## written.

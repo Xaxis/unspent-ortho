@@ -1,5 +1,5 @@
 extends GameSystem
-## The yard answering back (owner, 2026-09-17, docs/VISION.md §9.5). Reachable as
+## The yard answering back (owner, 2026-09-17, docs/VISION.md). Reachable as
 ## the system named "47_defences".
 ##
 ## Every armed turret of a holding in the realm under the player's feet looks for

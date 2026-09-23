@@ -1,6 +1,6 @@
 extends GameSystem
 ## Who the plan has carried off, and where they are being held (`src/core/taken/`,
-## docs/VISION.md §9.5).
+## docs/VISION.md).
 ##
 ## It holds the record and nothing else. The raids package puts somebody on it
 ## when a snatcher walks out of a yard; the works package's own signal takes them

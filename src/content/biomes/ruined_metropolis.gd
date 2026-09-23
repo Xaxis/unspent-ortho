@@ -87,7 +87,7 @@ static func make() -> BiomeDef:
 	# towers are dead, so what people build here is built INSIDE what fell — a
 	# ground floor walled in with salvaged doors under a tower's frame, a shack
 	# on a fallen deck, rooms hung inside a lift core, shop fronts re-shuttered
-	# as homes (BiomeForms.FORMS; docs/LANDSCAPES.md §4). Four forms, so a
+	# as homes (BiomeForms.FORMS; docs/LANDSCAPES.md). Four forms, so a
 	# settlement here is four buildings: a ward, not a city.
 	d.built = BiomeForms.new()
 	d.built.stock = [&"infill", &"deck_house", &"shaft_loft", &"stall_row"] as Array[StringName]
@@ -101,7 +101,7 @@ static func make() -> BiomeDef:
 	d.props = [PropKind.RUIN, PropKind.DEBRIS, PropKind.WRECKAGE, PropKind.VEHICLE,
 		PropKind.BARRICADE, PropKind.MURAL, PropKind.ARCHIVE, PropKind.LAMP,
 		PropKind.PYLON, PropKind.STACK, PropKind.CHECKPOINT,
-		# Its own (docs/LANDSCAPES.md §4, src/models/props/metropolis.gd), declared
+		# Its own (docs/LANDSCAPES.md, src/models/props/metropolis.gd), declared
 		# here so the city is the ONE landscape whose things these are: that is
 		# what makes the lift cable's gate the city's (Sources.lands_yielding).
 		# The bands that lay them, the works row that stands the gantry and the
@@ -125,7 +125,7 @@ static func make() -> BiomeDef:
 	# is not there any more, and the dust off crushed concrete on the skin — a
 	# plain 0.25, felt and never biting on its own, because `_weather_shift`
 	# scales toxins under ASH and not under the DUST the city mostly gets; a
-	# respirator or a scarf answers it (docs/LANDSCAPES.md §4).
+	# respirator or a scarf answers it (docs/LANDSCAPES.md).
 	d.hazards = {&"dark": 0.35, &"collapse": 0.5, &"toxins": 0.25}
 	d.roster = {
 		&"warden": {"weight": 1.0},

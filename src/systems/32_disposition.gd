@@ -1,6 +1,6 @@
 extends GameSystem
 ## Roles, indifference, interference and stealth, wired into the running game
-## (docs/VISION.md §2 and the pillar "live in the gaps").
+## (docs/VISION.md and the pillar "live in the gaps").
 ##
 ## It does four things, and nothing else may:
 ##   1. tells the simulation what the player is doing about being noticed:
@@ -542,7 +542,7 @@ func _spot_for(kind: StringName) -> Vector2:
 ## The reads app: what the network makes of the player, and what every machine
 ## in range makes of them (SlateFeeds).
 ## The plan's own note on the region the player is standing in, for the reads
-## app (docs/VISION.md §10.4). KEPT rather than asked every frame: `Chapters.of`
+## app (docs/VISION.md). KEPT rather than asked every frame: `Chapters.of`
 ## sweeps `game.systems` three times, and an open page is a page drawn every
 ## frame — which is the exact shape that took play to 5-12 fps when `24_holds`
 ## asked it once per hold (#122). Only four things can change a chapter and this

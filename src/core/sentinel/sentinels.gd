@@ -1,6 +1,6 @@
 class_name Sentinels
 ## Every sentinel design the game knows, and the pure rules about where a keeper
-## stands and what it holds (docs/VISION.md §3).
+## stands and what it holds (docs/VISION.md).
 ##
 ## A design is one file under `src/core/sentinel/designs/` declaring
 ## `static func make() -> SentinelDef`, discovered here the way a landscape is
@@ -121,7 +121,7 @@ static func problems() -> PackedStringArray:
 	return out
 
 
-## Its drop table and the one elite material only it gives (docs/VISION.md §6.1,
+## Its drop table and the one elite material only it gives (docs/VISION.md,
 ## src/core/loot). Called by the system on setup and by tests: the loot tables are
 ## static and a test may have cleared them, so it is safe to call again.
 static func declare_loot() -> void:

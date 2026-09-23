@@ -1,4 +1,4 @@
-## Wren keeps a light below ground and listens to the river. A local: colour, never load (docs/STORY.md §8).
+## Wren keeps a light below ground and listens to the river. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"wren", "name": "Wren", "title": "a lampwright",

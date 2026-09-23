@@ -3,7 +3,7 @@ extends UiScreen
 ## The holding app (h): what a player can put up where they stand, what they have
 ## already built, and — in the stolen module's own violet, because it is the
 ## machines' reading and not the player's — what the place gives off
-## (docs/VISION.md §9.4, docs/ART.md §9).
+## (docs/VISION.md, docs/LOOK.md).
 ##
 ## One list and one key. A build row puts the piece up in front of the player; a
 ## piece row mends it if it is coming apart, and otherwise puts somebody on it or
@@ -333,7 +333,7 @@ func _draw_stores(R: Rect2i, x0: int, y: int) -> int:
 
 ## What a machine hears, in the module's violet. This is the one readout on the
 ## slate that is not the player's own knowledge: it is the stolen display saying
-## what the machines' own senses make of the place (docs/ART.md §9).
+## what the machines' own senses make of the place (docs/LOOK.md).
 func _draw_signature(R: Rect2i, x0: int, y: int) -> void:
 	var place := _place()
 	UiDraw.hline(self, x0, R.end.x - UiSlate.MARGIN_R, y, UiTheme.FAINT)

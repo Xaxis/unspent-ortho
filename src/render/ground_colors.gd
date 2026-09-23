@@ -1,5 +1,5 @@
 class_name GroundColors
-## The washes of the land (docs/ART.md §3): what colour a ground is in each
+## The washes of the land (docs/LOOK.md): what colour a ground is in each
 ## landscape type, which ink MARK world.gdshader draws into it, and what its
 ## cliffs are made of.
 ##

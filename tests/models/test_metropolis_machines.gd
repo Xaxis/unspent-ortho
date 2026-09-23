@@ -1,6 +1,6 @@
 extends TestCase
 ## The Ruined Metropolis's own bodies against the FigureModel contract
-## (docs/LANDSCAPES.md §4): the demolisher, a worker found nowhere else, and
+## (docs/LANDSCAPES.md): the demolisher, a worker found nowhere else, and
 ## the unbuilder, its keeper. Neither is one of the twelve `test_machines.gd`
 ## walks, so without this a fault in either's `build()` would surface only in a
 ## gallery frame somebody happened to shoot.

@@ -151,7 +151,7 @@ static func _lay(w: WorldData) -> Array[Portal]:
 	# continents it meant the first landmass to yield a shaft could take every
 	# slot, and measured on seed 1 at 1024 it did — ONE portal, on the fourth
 	# continent, while people lived on all four. Three continents a player could
-	# sail to and never leave (docs/WORLD.md §5).
+	# sail to and never leave (docs/DESIGN.md).
 	var by_body := {}
 	var order: Array[int] = []
 	for region: Dictionary in w.regions:

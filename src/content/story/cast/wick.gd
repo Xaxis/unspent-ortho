@@ -1,4 +1,4 @@
-## Wick lives on the kerb between the kept metropolis and the dead one. A local: colour, never load (docs/STORY.md §8).
+## Wick lives on the kerb between the kept metropolis and the dead one. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"wick", "name": "Wick", "title": "a kerbsman",

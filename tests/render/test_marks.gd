@@ -1,5 +1,5 @@
 extends TestCase
-## The rules a mark lives by (docs/ART.md §7, and mob_fx.gd's own header): a
+## The rules a mark lives by (docs/LOOK.md, and mob_fx.gd's own header): a
 ## mark proves something, and it must never be the biggest thing in the frame
 ## nor the thing standing in front of what it proves. Wave A2's two reviews
 ## found four marks breaking it at once, so each one is held here.
@@ -91,7 +91,7 @@ func test_the_speed_lines_are_ink_over_the_world_and_never_a_field_of_paper() ->
 		"and its heads start clear of the open heart, where the body is")
 	# And that flank is a step DOWN the page's own ramp. Every other mark takes
 	# the full linen, which the midday sky grades all the way to 255 -- pure
-	# white, which docs/ART.md §5 keeps for fire and lamps.
+	# white, which docs/LOOK.md keeps for fire and lamps.
 	var src2 := FileAccess.get_file_as_string("res://src/actors/mob_fx.gd")
 	var at2 := src2.find("static func streak(")
 	gt(at2, 0, "the streak lays its own mark")
@@ -111,7 +111,7 @@ func test_a_speed_line_is_no_wider_than_a_hit_mark() -> void:
 func test_the_parts_halo_is_stippled_and_stops_short_of_its_own_quad() -> void:
 	var src := FileAccess.get_file_as_string("res://src/models/machines/part_glow.gdshader")
 	check(not src.contains("bayer"),
-		"an ordered dither draws a square lattice, which docs/ART.md §1 forbids")
+		"an ordered dither draws a square lattice, which docs/LOOK.md forbids")
 	check(src.contains("ink_hash(px)"), "the halo is stippled on the world's own pixels")
 	var reach := src.get_slice("const float REACH = ", 1).get_slice(";", 0).to_float()
 	var open := src.get_slice("const float OPEN = ", 1).get_slice(";", 0).to_float()

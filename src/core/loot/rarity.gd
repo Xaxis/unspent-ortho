@@ -1,5 +1,5 @@
 class_name Rarity
-## What a piece of gear's grade means (docs/VISION.md §6.1).
+## What a piece of gear's grade means (docs/VISION.md).
 ##
 ## A grade decides HOW MANY MODIFIERS a piece carries and how strange they are,
 ## never a flat damage ladder. A common knife stays a useful knife for the whole

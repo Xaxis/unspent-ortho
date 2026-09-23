@@ -1,5 +1,5 @@
 extends TestCase
-## How it can end (StoryEnding, docs/STORY.md §11): the last choice at the
+## How it can end (StoryEnding, docs/STORY.md): the last choice at the
 ## channel, read against the version of the secret he holds, then everyone the
 ## story touched as he left them.
 

@@ -7,7 +7,7 @@ extends Node3D
 ## as a bright pixel, and a light whose pool grows as the day goes.
 ##
 ## The hearth is MADE (world material, strata strokes); flames and embers are
-## EMBER, the one emitter in the palette, never hatched (docs/ART.md §5-6); smoke
+## EMBER, the one emitter in the palette, never hatched (docs/LOOK.md-6); smoke
 ## and sparks are marks (SurvivalMarks). The light is an OmniLight3D, which
 ## world.gdshader steps into pools. Pass hearth = false where the FIRE prop's own
 ## model already draws the stones.

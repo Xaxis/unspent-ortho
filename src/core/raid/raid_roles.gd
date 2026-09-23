@@ -1,6 +1,6 @@
 class_name RaidRoles
 ## What each machine in a party came for, and which piece of the holding it goes
-## at (docs/VISION.md §9.5). Pure rules over a `Settlement`.
+## at (docs/VISION.md). Pure rules over a `Settlement`.
 ##
 ## The pillar this file keeps: **a party targets what MAKES the signature**, so
 ## the player's own build decides the fight. A holding given away by its mast is

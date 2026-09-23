@@ -1,5 +1,5 @@
 extends TestCase
-## The holding as a running game has it (docs/VISION.md §9): put up from what is
+## The holding as a running game has it (docs/VISION.md): put up from what is
 ## carried, felt by a body that walks into it, broken by a hand this package
 ## knows nothing about, mended, and still standing after a save and a load.
 

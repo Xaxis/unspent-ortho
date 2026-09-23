@@ -1,4 +1,4 @@
-## Pell files arrivals in the city where the plan worked. A local: colour, never load (docs/STORY.md §8).
+## Pell files arrivals in the city where the plan worked. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"pell", "name": "Pell", "title": "a clerk",

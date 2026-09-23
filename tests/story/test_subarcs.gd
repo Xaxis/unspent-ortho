@@ -1,5 +1,5 @@
 extends TestCase
-## What a region asks of him (StorySubarc, docs/VISION.md §10.4): raised from the
+## What a region asks of him (StorySubarc, docs/VISION.md): raised from the
 ## region's own state, said by somebody who lives there, answered by the world
 ## rather than counted, and outranked by what the region itself is doing.
 

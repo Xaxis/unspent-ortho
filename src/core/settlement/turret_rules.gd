@@ -1,6 +1,6 @@
 class_name TurretRules
 ## When a holding's turret shoots, at what, and how hard (owner, 2026-09-17,
-## docs/VISION.md §9.5). Pure rules over the fight's own bodies; the system that
+## docs/VISION.md). Pure rules over the fight's own bodies; the system that
 ## runs them is 47_defences, and the blow itself is `FightSim.strike`, so a turret
 ## meets exactly the rules a swing does — the plate, the hit window, the stall.
 ##

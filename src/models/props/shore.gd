@@ -54,7 +54,7 @@ static func driftwood(k: Kit, v: int, _c: int) -> void:
 		# A coil of cable, not a black puck: two loose turns in the sheath's own
 		# grey with the ground showing between them, and an end lying out of it.
 		# At the play camera the old pair filled a sixteen-pixel disc, which read
-		# as a hole in the beach (docs/ART.md section 6).
+		# as a hole in the beach (docs/LOOK.md section 6).
 		k.hoop(Vector3(-0.36, 0.05, 0.3), 0.19, 12, 0.014, P.PLATE[1])
 		k.hoop(Vector3(-0.33, 0.08, 0.31), 0.12, 12, 0.014, P.INK[3])
 		k.sag(Vector3(-0.2, 0.06, 0.42), Vector3(0.06, 0.04, 0.56), -0.02, 3, 0.013, P.PLATE[1])
@@ -362,7 +362,7 @@ static func _vent_pipe(k: Kit, v: int) -> void:
 	k.found.prism(0, 0.0, 0, 0.22, y1, 0.22, 12, P.PLATE[2])
 	# The top flange is a RING, not a lid. A solid cap put a pale disc over the
 	# whole mouth, and what the camera then read was a grey drum with a grey lid —
-	# a can, which is the one shape docs/ART.md forbids outright.
+	# a can, which is the one shape docs/LOOK.md forbids outright.
 	k.found.prism(0, y1, 0, 0.3, y1 + 0.05, 0.3, 12, P.PLATE[3], P.PLATE[3])
 	k.found.prism(0, y1, 0, 0.215, y1 + 0.06, 0.215, 12, P.PLATE[1], P.PLATE[1])
 	k.hoop(Vector3(0, y1 + 0.06, 0), 0.265, 12, 0.03, P.PLATE[4])

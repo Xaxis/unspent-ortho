@@ -1,6 +1,6 @@
 class_name RaidStage
 ## The four steps the plan takes against a holding, and what each one is
-## (docs/VISION.md §9.4). Pure data and the arithmetic over it.
+## (docs/VISION.md). Pure data and the arithmetic over it.
 ##
 ##   survey   one machine comes, looks, and leaves a stake in the ground
 ##   probe    two come, take something, and test the wall
@@ -100,7 +100,7 @@ static func needs_signature(stage: StringName) -> float:
 	return NEEDS_SIGNATURE[clampi(index(stage), 0, NEEDS_SIGNATURE.size() - 1)]
 
 
-## The region's keeper leads this one (docs/VISION.md §9.7).
+## The region's keeper leads this one (docs/VISION.md).
 static func led_by_keeper(stage: StringName) -> bool:
 	return stage == SIEGE
 

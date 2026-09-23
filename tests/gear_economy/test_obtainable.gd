@@ -1,7 +1,7 @@
 extends TestCase
 ## The other pinned promise: **every piece is obtainable by a path a player can
 ## actually walk**, and **an elite material comes only from the landscape or the
-## enemy it was declared for** (docs/VISION.md §6.1).
+## enemy it was declared for** (docs/VISION.md).
 ##
 ## This is the test the brief asked for by name: it does not read a flag saying a
 ## thing is reachable, it walks the sources — a prop that stands in that

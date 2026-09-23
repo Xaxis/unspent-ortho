@@ -1,6 +1,6 @@
 class_name DevMode
 ## Whether dev mode can be reached in this run, and what this machine can do
-## with it (docs/DEV.md).
+## with it (docs/DESIGN.md).
 ##
 ##   DevMode.boot(options, args)   main.gd, once: which configuration, armed or not
 ##   DevMode.reachable()           the dev row shows and ` opens the dev app

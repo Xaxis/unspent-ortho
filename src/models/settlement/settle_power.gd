@@ -1,5 +1,5 @@
 extends RefCounted
-## Power and the one piece that shouts (docs/VISION.md §9): a spinner bodged out
+## Power and the one piece that shouts (docs/VISION.md): a spinner bodged out
 ## of plate blades on a lashed mast, cells stolen off a machine and strapped to a
 ## rack, and a mast that puts a person's voice on the machines' own air.
 ##
@@ -65,7 +65,7 @@ static func spinner_found(k: MeshKit, v: int, ruined: bool) -> void:
 
 ## The blades, drawn round the origin in the plane the wind turns them in, so the
 ## model can hang this on its own node and spin it. Mismatched on purpose: every
-## one was cut off something different (docs/ART.md §10, nothing prefabricated).
+## one was cut off something different (docs/LOOK.md, nothing prefabricated).
 static func spinner_rotor(k: MeshKit, v: int, ruined: bool) -> void:
 	Parts.ruled(k)
 	var blades := 4 if Parts.wob(v, 110) < 0.5 else 5

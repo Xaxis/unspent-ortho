@@ -1,6 +1,6 @@
 extends RefCounted
-## What a holding puts between itself and the machines (docs/VISION.md §9,
-## docs/ART.md §10): sharpened stakes, plate lashed to posts, and netting on
+## What a holding puts between itself and the machines (docs/VISION.md,
+## docs/LOOK.md): sharpened stakes, plate lashed to posts, and netting on
 ## leaning poles. **Obviously hand-made and obviously desperate.** Nothing here
 ## looks issued, nothing is the same length as its neighbour, and a run of wall
 ## is a run of what was to hand rather than a repeated tile.

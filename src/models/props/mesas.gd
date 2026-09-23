@@ -1,5 +1,5 @@
 extends RefCounted
-## What stands in the Mesas that nothing else has (docs/LANDSCAPES.md §6): what
+## What stands in the Mesas that nothing else has (docs/LANDSCAPES.md): what
 ## the wind carved out of banded rock, what people cut into it for water, and
 ## what the plan strung across the canyons. The land's is MADE and banded — a
 ## hoodoo with a harder cap stone balanced on it, a thin natural arch — laid in
@@ -192,7 +192,7 @@ static func arch_rib(k: Kit, v: int, c: int) -> void:
 ## A cistern cut at the foot of a wall: a tank of cut stone, its back the rock
 ## face itself, green water standing in it out of the sun, and a tin cup on a
 ## chain on the rim, which is how anyone here knows it is somebody's. 1.6
-## across. The water is the land's own spring (docs/LANDSCAPES.md §6), and the
+## across. The water is the land's own spring (docs/LANDSCAPES.md), and the
 ## one standing water on a mesa a person will stop at.
 ##
 ## Variants: open; half covered with planks against the sun, which is what a

@@ -12,7 +12,7 @@ static func make() -> BiomeDef:
 	d.order = 0
 	d.style_note = "Calm long contours, fast cloud shadows, everything leaning off the sea."
 	d.share = Vector2(0.32, 0.38)
-	# ON HOME, ALWAYS (docs/WORLD.md §8.4: home "holds the coast, the spawn village
+	# ON HOME, ALWAYS (docs/DESIGN.md: home "holds the coast, the spawn village
 	# and a full starting economy"). The player wakes on a coast village, so a home
 	# continent without a coast wakes him on another body -- measured on seeds 1
 	# and 42 at 1300, where home grew no coast at all. `(1, 0)` is DEPENDENCY: the
@@ -100,9 +100,9 @@ static func make() -> BiomeDef:
 		&"gulls": {"weight": 1.0, "hours": Vector2(6, 20)},
 	}
 	# Its keeper: the reaper on the gantry at the machines' intake
-	# (src/core/sentinel/designs/tide_reaper.gd, docs/VISION.md §3).
+	# (src/core/sentinel/designs/tide_reaper.gd, docs/VISION.md).
 	d.sentinel = &"tide_reaper"
-	# The places worth the walk it holds (docs/VISION.md §3, src/core/landmarks):
+	# The places worth the walk it holds (docs/VISION.md, src/core/landmarks):
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"lighthouse", &"firewatch", &"cast_stones", &"grown_hulk"]

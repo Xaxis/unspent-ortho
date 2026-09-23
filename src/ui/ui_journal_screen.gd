@@ -1,7 +1,7 @@
 class_name UiJournalScreen
 extends UiScreen
 ## The journal (n): what the player has found out, kept where they can read it
-## again (docs/STORY.md §13, §15).
+## again (docs/STORY.md, §15).
 ##
 ## Three kinds of row, each section only once it holds something:
 ##   an arc's title, and under it every beat of that arc that has LANDED, in the
@@ -334,7 +334,7 @@ func _page(x: int, y: int, width: int, bottom: int, lines: PackedStringArray, co
 			return y
 		if i < shown.size() - 1 and y + 2 * UiTheme.LINE > bottom:
 			# Nothing written for the glass should be longer than it
-			# (docs/STORY.md §13); if something is, it is cut where it is seen to be.
+			# (docs/STORY.md); if something is, it is cut where it is seen to be.
 			UiDraw.text(self, Vector2i(x, y), "…", UiTheme.TEXT_DIM)
 			return y + UiTheme.LINE
 		if shown[i] != "":

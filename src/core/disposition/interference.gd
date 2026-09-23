@@ -1,6 +1,6 @@
 class_name Interference
 extends RefCounted
-## What the plan's network in one region makes of the player (docs/VISION.md §2).
+## What the plan's network in one region makes of the player (docs/VISION.md).
 ## One number per network, 0 calm .. 1 hunted. Sabotage, theft, killing workers,
 ## being filed and breaking curfew raise it; time, distance, hiding and a
 ## misread signature lower it. Its level is read region-wide: at wary the
@@ -26,7 +26,7 @@ const CAUSES := {
 	# resource it had surveyed, and what files it is the ACCUMULATION.
 	#
 	# This is the load-bearing half of what makes a chapter a game rather than a
-	# checklist (docs/VISION.md §10). The three demands are not three chores: a
+	# checklist (docs/VISION.md). The three demands are not three chores: a
 	# region gets more dangerous the more of it you take, so by the time you have
 	# mined what the place asks for it is wary or worse, and the only thing that
 	# ends that is taking the keeper or putting the yard dark — which is the very

@@ -1,5 +1,5 @@
 extends GameSystem
-## The places worth the walk, in the running game (docs/VISION.md §3, §8).
+## The places worth the walk, in the running game (docs/VISION.md, §8).
 ## Reachable as the system named `22_landmarks`.
 ##
 ## The machines' depots are why a landscape is dangerous (34_works); these are

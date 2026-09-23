@@ -1,6 +1,6 @@
 class_name Structure
 extends RefCounted
-## One piece the player built, standing in the world (docs/VISION.md §9).
+## One piece the player built, standing in the world (docs/VISION.md).
 ##
 ## A piece is a thing, not a number on a screen: it takes up ground, it shelters
 ## or stops a body, it wears, it can be broken by a machine that came for it,
@@ -24,7 +24,7 @@ var ruined := false
 ## and gives off only what a cold piece of stolen technology does.
 var off := false
 ## Which drawing of this kind. The same kind built twice is not the same piece
-## (docs/ART.md §10, nothing is prefabricated): the model leans, patches and
+## (docs/LOOK.md, nothing is prefabricated): the model leans, patches and
 ## weathers by this number, and it is dealt when the piece is founded so that a
 ## loaded holding stands exactly as the player left it.
 var variant := 0

@@ -1,5 +1,5 @@
 extends RefCounted
-## What stands in the Crags that nothing else has (docs/LANDSCAPES.md §1): what
+## What stands in the Crags that nothing else has (docs/LANDSCAPES.md): what
 ## people cut out of the stone before the machines came, and the two pieces of
 ## survey furniture the plan left when its instruments returned nothing it could
 ## file. The stone is the hand's -- a trilithon, a face worn into a boulder, a

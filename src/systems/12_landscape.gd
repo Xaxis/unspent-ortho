@@ -26,7 +26,7 @@ var _pdriven_worst := PackedFloat32Array()
 ## The worst-per-node lines below were built for the hitch work, where the
 ## question was "which system put 224 ms into one frame", and for that the mean
 ## is exactly the wrong statistic (that file's own comment says why). But
-## docs/PERF.md now fails on p50 — the TYPICAL frame — and a one-off 15 ms build
+## docs/DESIGN.md now fails on p50 — the TYPICAL frame — and a one-off 15 ms build
 ## cannot move a median however ugly it looks in a worst column. A spike and a
 ## floor are different questions and they need different numbers, so these keep
 ## the running total as well and `_mean_line` reports the floor.
@@ -49,7 +49,7 @@ func setup(g: Game) -> void:
 ## is the whole pass, so a 224 ms tick names no culprit and the search becomes
 ## reading twenty-five files. So the pass is driven from here instead and each
 ## system timed on its own -- which found `24_holds` at **224.6 ms against
-## 30_mobs' 0.7**, a 320x gap between first and second place (#126, docs/PERF.md).
+## 30_mobs' 0.7**, a 320x gap between first and second place (#126, docs/DESIGN.md).
 ##
 ## **ASK THE SCRIPT, NOT THE NODE.** `has_method("_physics_process")` answers true
 ## for a virtual every Node declares, so it would hand back all twenty-five and
@@ -118,7 +118,7 @@ func _physics_process(delta: float) -> void:
 
 
 ## The WORST tick each system took, dearest first. The worst and not the mean,
-## for the reason the whole of docs/PERF.md exists: a 224 ms tick once a second
+## for the reason the whole of docs/DESIGN.md exists: a 224 ms tick once a second
 ## averages to about 4 ms and reads as nothing at all.
 ##
 ## **THIS TIMES EACH CALL ITSELF RATHER THAN ASKING THE ENGINE, AND THAT IS THE
@@ -383,7 +383,7 @@ static func _render_cpu(view: WorldView) -> String:
 	return "%.2f ms" % ms if ms > 0.0 else "unmeasured"
 
 
-## The frame budgets, and docs/PERF.md is why each one is the number it is. The
+## The frame budgets, and docs/DESIGN.md is why each one is the number it is. The
 ## headline: BotW targets a 33.3 ms frame, so OUR WORST MAY NOT EXCEED THEIR
 ## TARGET -- our worst frame no worse than their best.
 ##
@@ -403,7 +403,7 @@ const P99_MS := 1000.0 / 60.0
 const WORST_MS := 1000.0 / 30.0
 ## A frame four times its neighbours reads as a jolt however fast they were.
 const WORST_OVER_P50 := 4.0
-## The fewest steady frames this line will pass JUDGEMENT on. docs/PERF.md's own
+## The fewest steady frames this line will pass JUDGEMENT on. docs/DESIGN.md's own
 ## standard is "a run of at least 300 frames", and the numbers below are about
 ## VARIANCE -- p99 is a claim about one frame in a hundred, so five frames cannot
 ## contain one and `over 16.7 ms: 0 (0%)` off that sample is not a measurement,
@@ -424,7 +424,7 @@ const WORST_OVER_P50 := 4.0
 const JUDGE_LEAST := 300
 
 ## How many frames a run is allowed to spend warming up, and the ceiling on any
-## one of them (docs/PERF.md: warm-up is a separate promise, not an exemption).
+## one of them (docs/DESIGN.md: warm-up is a separate promise, not an exemption).
 const WARM_MOST := 12
 const WARM_CEILING_MS := 250.0
 
@@ -434,7 +434,7 @@ const WARM_CEILING_MS := 250.0
 ## pathological run cannot classify its whole self as warm-up and pass.
 ##
 ## **THIS EXISTS BECAUSE THE JUDGEMENT WAS WRONG WITHOUT IT, IN THE DIRECTION
-## THAT MATTERS.** docs/PERF.md has always bounded warm-up separately, and this
+## THAT MATTERS.** docs/DESIGN.md has always bounded warm-up separately, and this
 ## line took its percentiles over every frame including it -- so a run measuring
 ## p95 9.3 and p99 12.9 in steady play, both inside budget, printed PERF FAIL on
 ## the strength of frame 0. An instrument that cannot report a pass cannot be
@@ -479,7 +479,7 @@ static func frame_line(ms: PackedFloat32Array) -> String:
 	for i in range(warm, ms.size()):
 		if ms[i] > P99_MS:
 			where.append("%d:%.0f" % [i, ms[i]])
-	# JUDGED, not just reported. docs/PERF.md sets the budgets and the reason the
+	# JUDGED, not just reported. docs/DESIGN.md sets the budgets and the reason the
 	# headline is the WORST frame: BotW's target frame is 33.3 ms, so ours may
 	# never exceed it -- our worst no worse than their best. A line that prints a
 	# number and leaves the reader to know whether it is good is half an

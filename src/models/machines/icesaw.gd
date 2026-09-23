@@ -1,5 +1,5 @@
 extends MachineModel
-## An icesaw: the Frost Sea's own worker (docs/LANDSCAPES.md §2, roster.gd
+## An icesaw: the Frost Sea's own worker (docs/LANDSCAPES.md, roster.gd
 ## `icesaw`). A low sled on two runners with a circular saw slung off its stern
 ## and one amber lens in its bow. It works the ice for the soundings line: the
 ## blade drops through the sheet behind it and the cut opens where it has been.

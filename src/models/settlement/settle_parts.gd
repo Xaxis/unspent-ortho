@@ -1,5 +1,5 @@
 extends RefCounted
-## The vocabulary every built piece is drawn out of (docs/ART.md §10, §12): posts
+## The vocabulary every built piece is drawn out of (docs/LOOK.md, §12): posts
 ## that lean, cord that sits off true, thatch with a fringe the wind takes, and
 ## plate cut off a machine with the rivet row it was cut through still in it.
 ##

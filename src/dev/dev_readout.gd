@@ -63,7 +63,7 @@ static func config_line() -> String:
 
 
 ## The last few seconds of frames, as a DISTRIBUTION and judged against
-## docs/PERF.md -- because the row this replaces could not see the thing it was
+## docs/DESIGN.md -- because the row this replaces could not see the thing it was
 ## being read for.
 ##
 ## **IT SHOWED `fps` AND A MEAN, WHICH ARE THE TWO NUMBERS THAT CANNOT SEE A

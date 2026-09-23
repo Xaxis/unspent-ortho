@@ -1,5 +1,5 @@
 extends MachineModel
-## THE ANVIL: the Glass Desert's keeper (docs/LANDSCAPES.md §3, src/core/sentinel/
+## THE ANVIL: the Glass Desert's keeper (docs/LANDSCAPES.md, src/core/sentinel/
 ## designs/anvil.gd). A tall three-legged mast on wide skates, a copper crown of
 ## rods at the top, and a heavy shielded core slung low between the legs.
 ##
@@ -69,7 +69,7 @@ func build() -> void:
 	nominal_speed = 2.0
 	gallery_turn = 40.0
 	# Same reason as the reaper's drum: a big working part at the default burns
-	# to white and the amber goes out of it (docs/ART.md §5).
+	# to white and the amber goes out of it (docs/LOOK.md).
 	emission = 0.28
 	begin_rig()
 	ramp = Palette.MACHINE["warden"]

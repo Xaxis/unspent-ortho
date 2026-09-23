@@ -1,4 +1,4 @@
-## Salt Flats (docs/VISION.md §3, surface 7): a drained inland sea, floored in
+## Salt Flats (docs/VISION.md, surface 7): a drained inland sea, floored in
 ## white crust that cracks into polygons and lifts at every join. The machines
 ## took the water: their evaporation pans are ruled rectangles bunded across the
 ## flat, their sluice gates still stand, and the rakes still go round on pans
@@ -186,9 +186,9 @@ static func make() -> BiomeDef:
 		&"gulls": {"weight": 0.4, "hours": Vector2(6, 20), "grounds": ["salt", "pan", "sand", "shingle", "gravel"]},
 	}
 	# Its keeper: the rake that made the pans and still goes round them
-	# (src/core/sentinel/designs/pan_rake.gd, docs/VISION.md §3).
+	# (src/core/sentinel/designs/pan_rake.gd, docs/VISION.md).
 	d.sentinel = &"pan_rake"
-	# The places worth the walk it holds (docs/VISION.md §3, src/core/landmarks):
+	# The places worth the walk it holds (docs/VISION.md, src/core/landmarks):
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"cast_stones", &"evaporator", &"clerks_office"]
@@ -196,7 +196,7 @@ static func make() -> BiomeDef:
 	d.music_motif = &"bonelands"
 	d.surface = _surface
 	d.scatter = _scatter
-	# What this landscape holds of what happened to it (docs/VISION.md §8).
+	# What this landscape holds of what happened to it (docs/VISION.md).
 	GenWorks.register(&"salt_flats", {
 		"host": load("res://src/content/biomes/salt_flats.gd"),
 		"works": &"_works",

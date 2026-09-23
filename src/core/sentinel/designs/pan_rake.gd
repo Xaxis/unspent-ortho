@@ -1,4 +1,4 @@
-## The Salt Flats' keeper: a rake on stilts (docs/VISION.md §3; §3's table gives
+## The Salt Flats' keeper: a rake on stilts (docs/VISION.md; §3's table gives
 ## the flats their pan rakers and their mirage decoys). It stands at the brine
 ## house among the evaporation pans and goes round and round pans that yield
 ## nothing, and it keeps every pan in the basin.

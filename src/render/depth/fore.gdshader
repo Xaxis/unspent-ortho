@@ -109,7 +109,7 @@ void fragment() {
 	float cut = max(fore_cut(world_pos), fore_thin);
 	// Gone outright over the body, stipple at the edge of the hole. Stipple,
 	// never a fade: a half-transparent branch over a machine is worse evidence
-	// than either a branch or no branch (docs/ART.md law 5, kept by LANTERN).
+	// than either a branch or no branch (docs/LOOK.md law 5, kept by LANTERN).
 	if (cut > 0.86 || (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut)) {
 		discard;
 	}

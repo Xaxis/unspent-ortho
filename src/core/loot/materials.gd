@@ -1,5 +1,5 @@
 class_name Materials
-## Where an elite material can be got, and nowhere else (docs/VISION.md §6.1).
+## Where an elite material can be got, and nowhere else (docs/VISION.md).
 ##
 ## This is the spine of the long game: the best of a kind is gated behind a
 ## LANDSCAPE or behind one enemy or sentinel, so a player who wants it has to

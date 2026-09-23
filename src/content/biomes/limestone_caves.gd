@@ -1,8 +1,8 @@
-## Limestone Caves: the first landscape under the world (docs/VISION.md §3, #16).
+## Limestone Caves: the first landscape under the world (docs/VISION.md, #16).
 ## Karst halls, an underground river, flowstone, and black sumps at the bottom of
 ## everything.
 ##
-## Drawn as SCRATCHBOARD (docs/VISION.md §8): the page is dark and the lines are
+## Drawn as SCRATCHBOARD (docs/VISION.md): the page is dark and the lines are
 ## scraped pale. Nothing in the renderer had to change for that, because a
 ## scratchboard IS the notebook with its values turned over, and the notebook
 ## already puts a landscape's darkness in three places — the light it stands in
@@ -143,7 +143,7 @@ static func make() -> BiomeDef:
 	# Its air, out of the realm's own table (no rain, no snow, nothing that falls
 	# out of a sky): still and clear for days, then saturated and hanging.
 	d.weather = Realm.airs(Realm.UNDERGROUND)
-	# The places worth the walk it holds (docs/VISION.md §3, src/core/landmarks):
+	# The places worth the walk it holds (docs/VISION.md, src/core/landmarks):
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"clerks_office", &"poured_pillar", &"sump_pump"]
@@ -221,7 +221,7 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 		return Ground.BONE
 	# Flowstone comes down the rises and lies in sheets across the high side of a
 	# hall: the mass field decides where a curtain hangs, so it draws as long
-	# shapes and never as specks (docs/ART.md: grounds are washes).
+	# shapes and never as specks (docs/LOOK.md: grounds are washes).
 	if gb > 0.40 and rs > -0.25:
 		return Ground.BONE
 	if rs > 0.55:

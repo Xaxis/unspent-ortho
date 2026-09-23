@@ -1,6 +1,6 @@
 extends MachineModel
-## THE LOCKKEEPER: the Drowned City's keeper (docs/VISION.md §3,
-## docs/LANDSCAPES.md §5, src/core/sentinel/designs/lockkeeper.gd). A long
+## THE LOCKKEEPER: the Drowned City's keeper (docs/VISION.md,
+## docs/LANDSCAPES.md, src/core/sentinel/designs/lockkeeper.gd). A long
 ## barge hull carried on four tall stilt legs, a wheelhouse on its after deck,
 ## and a lock-gate blade hung under its belly that it drops across a canal.
 ## About six units to the head of its mast.
@@ -73,7 +73,7 @@ func build() -> void:
 	stride = 2.8
 	gallery_turn = 30.0
 	# A working part the size of a pump's drum burns to white at the default and
-	# the amber goes out of it (docs/ART.md §5), as the reaper's drum did.
+	# the amber goes out of it (docs/LOOK.md), as the reaper's drum did.
 	emission = 0.28
 	begin_rig()
 	ramp = Palette.MACHINE["warden"]

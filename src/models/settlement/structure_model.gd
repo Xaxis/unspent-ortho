@@ -1,6 +1,6 @@
 class_name StructureModel
 extends Node3D
-## One piece of a holding, drawn (docs/VISION.md §9, docs/ART.md §10 and §12).
+## One piece of a holding, drawn (docs/VISION.md, docs/LOOK.md and §12).
 ##
 ## Two meshes and no more: one MADE (world.gdshader — hatched, crooked, earth and
 ## sand) and one FOUND (found.gdshader — ruled, riveted, unhatched violet plate
@@ -278,7 +278,7 @@ static func _meshes(piece_kind: int, v: int, broken: bool, on: bool) -> Array:
 
 ## Every piece a player can build, and each of them wrecked beside itself: what a
 ## raid leaves is half of what a settlement is, so it is reviewed next to the
-## thing it was (docs/ART.md §10, damage is drawn and not tinted).
+## thing it was (docs/LOOK.md, damage is drawn and not tinted).
 ##
 ##   tools/shot.sh shots/settlement/gallery.png --scene=gallery --filter=holding
 static func gallery() -> Array:

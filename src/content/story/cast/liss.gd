@@ -1,4 +1,4 @@
-## Liss climbs the green towers, where the machines' roads stop. A local: colour, never load (docs/STORY.md §8).
+## Liss climbs the green towers, where the machines' roads stop. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"liss", "name": "Liss", "title": "a canopy-climber",

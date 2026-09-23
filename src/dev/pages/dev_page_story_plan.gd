@@ -1,6 +1,6 @@
 class_name DevPageStoryPlan
 extends DevPage
-## The guided path (docs/STORY_SYSTEM.md §6, §10): every stop of the spine, which
+## The guided path (docs/DESIGN.md, §10): every stop of the spine, which
 ## leg of the journey it belongs to, and where it was cast in THIS world, with the
 ## revelation still settling, if any, above it. E goes there, so a writer can
 ## stand at any stop without walking the legs before it.

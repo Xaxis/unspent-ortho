@@ -1,5 +1,5 @@
 class_name StoryPlan
-## The guided path, and the test that makes it real (docs/STORY_SYSTEM.md §6).
+## The guided path, and the test that makes it real (docs/DESIGN.md).
 ##
 ## The owner's ruling: a procedurally generated world must still offer a general
 ## guided path toward success. That is a promise about EVERY seed, so it is worth
@@ -11,7 +11,7 @@ class_name StoryPlan
 ## story is a content error somebody sees in `tools/check.sh`, rather than a player
 ## stuck at three in the morning on seed 12.
 
-## The load-bearing slots, leg by leg (docs/STORY.md §5). The story crosses every
+## The load-bearing slots, leg by leg (docs/STORY.md). The story crosses every
 ## continent in order, from the coast Elias wakes on to the farthest shore, where
 ## the Tether stands: `leg` says which, and `StoryJourney` says where that is in
 ## THIS world. Per-REGION features only (StorySlot.NEEDS says why), and only
@@ -40,7 +40,7 @@ const SPINE: Array[Dictionary] = [
 ]
 
 
-## Colour, one local per landscape (docs/STORY.md §8): each stands at the village
+## Colour, one local per landscape (docs/STORY.md): each stands at the village
 ## of their own land nearest to where he woke, on whatever body that is. Never
 ## required and never ordered: a world not dealt that land has no such local,
 ## and meeting one moves the journey nowhere. Maren keeps the fire at `home`; the
@@ -76,7 +76,7 @@ const LOCALS: Array[Dictionary] = [
 ]
 
 
-## 2029, relived (docs/STORY.md §6). The Before is this same coast tile for tile
+## 2029, relived (docs/STORY.md). The Before is this same coast tile for tile
 ## (Realm.ERA, unspent-ortho-df), so each place of his old life is cast exactly
 ## where a 2098 place of the story stands (`mirror`): his house is the village he
 ## wakes beside, Cairn's lab is where the first works yard rose, his handler met
@@ -105,7 +105,7 @@ static func slots() -> Array[StorySlot]:
 ## it is pure and derived and the systems ask it on a beat: `20_realms` asks
 ## twice every 0.2 s through `StoryGates.all` and `.open`, and rebuilding it cost
 ## **15-44 ms a call** on a 1300-tile world -- the whole of the proc-side hitch
-## left after the chapters one (#126, docs/PERF.md). Casting re-searches the
+## left after the chapters one (#126, docs/DESIGN.md). Casting re-searches the
 ## world for a village, a works, a landmark and the black site per slot, and
 ## nothing it reads can move while a world stands.
 ##
@@ -151,7 +151,7 @@ static func problems(world: WorldData) -> Array[String]:
 		seen[s.id] = true
 		if not StorySlot.NEEDS.has(s.needs):
 			out.append("%s needs %s, which is not a kind of place" % [s.id, s.needs])
-		# Contract 3 (docs/STORY_SYSTEM.md §11). A required slot may only name a
+		# Contract 3 (docs/DESIGN.md). A required slot may only name a
 		# landscape every world is guaranteed to carry. An exclusive one carries
 		# colour, never load — a beat gating an arc on a landscape a world may not
 		# contain strands any player who never crosses the ocean.

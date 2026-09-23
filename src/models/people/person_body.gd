@@ -8,7 +8,7 @@ class_name PersonBody
 ## Proportions (art-audio-extract §4): chunky, ~4.6 heads tall, legs carry the
 ## height, arms hang outside the torso. The base man is 1.34 units tall.
 ##
-## Drawn per docs/ART.md: every part is a lofted solid (Sculpt), 6-8 sided and
+## Drawn per docs/LOOK.md: every part is a lofted solid (Sculpt), 6-8 sided and
 ## tapered, a little uneven because a hand made it; nothing is a box. Clothing
 ## replaces the layer under it instead of stacking shells, which is what keeps
 ## the heaviest look inside 800 triangles. Machine salvage goes on the FOUND

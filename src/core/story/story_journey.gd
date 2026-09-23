@@ -1,5 +1,5 @@
 class_name StoryJourney
-## The order the story crosses the world in (docs/STORY.md §5, docs/STORY_SYSTEM.md §4).
+## The order the story crosses the world in (docs/STORY.md, docs/DESIGN.md).
 ##
 ## The story spans every continent, and in an order (owner, 2026-09-18): it begins
 ## where Elias wakes and walks outward, and the Tether stands on the farthest. A

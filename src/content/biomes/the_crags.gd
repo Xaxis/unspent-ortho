@@ -7,7 +7,7 @@
 ## rather than with the terrain. Everything else in this world is explained: the
 ## machines did it, the plan wants it, a person built it and left. This place is
 ## the one the explanation does not reach — and the two powers that between them
-## can kill stars (docs/STORY.md §1) do not know what is in it either. That is
+## can kill stars (docs/STORY.md) do not know what is in it either. That is
 ## worth more than another palette, because it is the only ground where a player
 ## can be told nothing and be right to be afraid.
 ##
@@ -83,7 +83,7 @@ static func make() -> BiomeDef:
 	# boards, because there is no timber that was ever dry.
 	dress.shelter = &"roundhouse"
 	d.dressing = dress
-	# What its people BUILT (docs/LANDSCAPES.md §1 PEOPLE): three forms, none of
+	# What its people BUILT (docs/LANDSCAPES.md PEOPLE): three forms, none of
 	# them lit, so this is the one village with no stolen neon, and the stock's
 	# own size is the village -- three buildings, few people and old ones,
 	# living in what was already standing. Declaring `built` is TERRAIN
@@ -118,7 +118,7 @@ static func make() -> BiomeDef:
 	# What is dangerous here is not a pressure, which is exactly the point.
 	#
 	# NOT `resonance`, though it is in `Hazards.IDS` and the spec asks for it
-	# (docs/LANDSCAPES.md §1: "resonance 0.3 near stones only"). Declared here it
+	# (docs/LANDSCAPES.md: "resonance 0.3 near stones only"). Declared here it
 	# would press the whole landscape, every tile of moss and every bottom of
 	# peat, and the stones' hum is the one mechanical trace of the unknown force:
 	# it belongs to the standing stones and the carved faces and to nothing

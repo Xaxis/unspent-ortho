@@ -109,7 +109,7 @@ global uniform float sky_emission;
 // dark", which used to be the same sentence.
 global uniform float sky_lid;
 
-// --- Ink & Neon (docs/ART.md, docs/VISION.md section 8) ---------------------
+// --- Ink & Neon (docs/LOOK.md, docs/VISION.md section 8) ---------------------
 // The grade every lit wash passes through last: x darkness 0..1, y desaturation
 // 0..1, z cool shift 0..1, w contrast (crushes the mids). Written by SkyLight
 // from the hour and the landscapes in view. Emission never passes through it,
@@ -247,7 +247,7 @@ float sky_power() {
 // sky at eight in the morning. 0 in full day, 1 in the dead of night. Everything
 // that only belongs to the dark is multiplied by this one term: lamp pools, the
 // neon halo, the lights mirrored in wet ground, the skyglow. Nothing artificial
-// may show on a landscape the sun is still lighting (docs/ART.md section 6).
+// may show on a landscape the sun is still lighting (docs/LOOK.md section 6).
 float sky_gloom() {
 	float lum = dot(sky_tint, vec3(0.3, 0.59, 0.11)) * clamp(sky_sun.z, 0.0, 1.0);
 	return clamp(max(sky_view.y, max(sky_shade.w, 1.0 - clamp(lum * 1.25, 0.0, 1.0))), 0.0, 1.0);
@@ -425,7 +425,7 @@ float sky_pool(float a, vec3 world_pos) {
 }
 
 // The wash inside a pool: the LIGHT's own colour laid over the ground, warm for
-// a lamp or a fire and cold for a machine's strip (docs/ART.md section 6).
+// a lamp or a fire and cold for a machine's strip (docs/LOOK.md section 6).
 //
 // It is a GAIN and nothing else: `c` is multiplied, never lifted toward a level
 // the light chooses. That is the whole rule. Light falling on things multiplies

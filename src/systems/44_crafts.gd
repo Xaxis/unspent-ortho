@@ -1,5 +1,5 @@
 extends GameSystem
-## Crafts: what a person builds to get where a body cannot go (docs/VISION.md §5).
+## Crafts: what a person builds to get where a body cannot go (docs/VISION.md).
 ## The raft crosses open water, the hover sled runs the bog and the shallows at
 ## speed, and the walker rig strides up a cliff a body would have to walk round.
 ##

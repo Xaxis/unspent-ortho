@@ -2,7 +2,7 @@ extends TestCase
 ## Preloaded rather than named: a `class_name` resolves out of Godot's global
 ## class cache, which the tools refresh and a player's own run does not.
 const Hold := preload("res://src/core/chapter/road_hold.gd")
-## Where the plan stands on the road out of a chapter (docs/VISION.md §10.3).
+## Where the plan stands on the road out of a chapter (docs/VISION.md).
 
 const SEEDS: Array[int] = [1, 7]
 

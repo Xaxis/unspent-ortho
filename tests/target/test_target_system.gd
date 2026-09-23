@@ -240,7 +240,7 @@ func test_words_only_when_the_player_asks_for_them() -> void:
 	_done()
 
 
-## The tag is the QUIETEST layer (docs/ART.md §9; A2 art finding 2). What was
+## The tag is the QUIETEST layer (docs/LOOK.md; A2 art finding 2). What was
 ## here was an opaque UiTheme.RIM lozenge over every body, whose darkest pixels
 ## sat at luminance 7.3 when nothing else in frame went below 12 — a small black
 ## HUD sprite standing in the world, which is the charge the scan ring was

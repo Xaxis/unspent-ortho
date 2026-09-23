@@ -135,7 +135,7 @@ func test_a_street_of_forty_keeps_its_silhouettes_apart() -> void:
 # ---------------------------------------------------------------- the tag
 
 func test_a_passer_never_joins_the_fight_however_hard_it_is_provoked() -> void:
-	# THE CONDITION ON THE TAG EXCEPTION (docs/ART.md §9, ui_target_view.gd). A
+	# THE CONDITION ON THE TAG EXCEPTION (docs/LOOK.md, ui_target_view.gd). A
 	# body may carry no wordless tag only if it can never become a threat: losing
 	# the read at the moment something turns on you would be the pillar failing in
 	# the one moment it exists for. So this does not argue it, it provokes one.

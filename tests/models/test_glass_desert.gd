@@ -1,5 +1,5 @@
 extends TestCase
-## The Glass Desert's models (docs/LANDSCAPES.md §3), held to the contracts the
+## The Glass Desert's models (docs/LANDSCAPES.md), held to the contracts the
 ## other model tests cannot see: the machine tests walk twelve named kinds and
 ## the sentinel tests build a keeper only for its ramp, so a fault in the
 ## skater's or the anvil's `build()` would surface in a gallery frame and

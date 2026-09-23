@@ -1,4 +1,4 @@
-## Mica rakes the salt behind the machines' own rakes. A local: colour, never load (docs/STORY.md §8).
+## Mica rakes the salt behind the machines' own rakes. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"mica", "name": "Mica", "title": "a brine-raker",

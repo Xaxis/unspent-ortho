@@ -1,12 +1,12 @@
 extends RefCounted
 ## A hover sled: a machine's two lift pods and the plate pan they were cut into,
-## with a bed of boards strapped over the top by hand (docs/ART.md §12). The pan,
+## with a bed of boards strapped over the top by hand (docs/LOOK.md). The pan,
 ## the pods with the amber burning round their lips and the raked nose shield are
 ## FOUND. The bed, the bent yoke a person steers it by and every strap are MADE.
 ##
 ## Faces +X. The pods stand out either side of the pan, past the boards, so both
 ## idioms are in the silhouette from directly above — which is the only angle this
-## game has (docs/ART.md, the fixed camera at 640x360).
+## game has (docs/LOOK.md, the fixed camera at 640x360).
 
 const P := preload("res://src/render/palette.gd")
 const Works := preload("res://src/models/props/works.gd")
@@ -51,7 +51,7 @@ static func found(k: MeshKit, broken: bool) -> void:
 		# the one warm thing on the craft. Dim, and a finger's width of it — two
 		# full rings at a working part's strength were the brightest thing in the
 		# frame, which a salvaged duct idling under a sledge has no business being
-		# (docs/ART.md §4: the machines get ONE warm read, and this is not it).
+		# (docs/LOOK.md: the machines get ONE warm read, and this is not it).
 		# On a wreck it is out, the way a machine's light goes out when it dies.
 		k.prism(0.0, POD_TOP - 0.055, z, POD_R + 0.01, POD_TOP - 0.03, POD_R + 0.01, 8, lift() if not broken else P.PLATE[1])
 		# The arm the pod was hung off the pan by.

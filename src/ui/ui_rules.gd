@@ -52,7 +52,7 @@ const PRESSURE_WARN := Hazards.BITE
 ## Share of Survival.LAMP_LOW_MINUTES left at which the lamp is the last rung.
 const LAMP_LAST := 0.34
 ## The slate runs off the lamp's reserve (a flask lights it this long) or the
-## found charges carried, whichever holds more (docs/ART.md §9: brightness dips
+## found charges carried, whichever holds more (docs/LOOK.md: brightness dips
 ## when the lamp oil or charge is low).
 const POWER_LAMP_MINUTES := 360.0
 const POWER_CHARGES := 3

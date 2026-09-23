@@ -24,17 +24,17 @@ const ROOF_REACH := 2.2
 const CANOPY_REACH := 1.6
 const ROOFS: Array[int] = [PropKind.HOUSE, PropKind.SHACK, PropKind.RUIN, PropKind.PUMP_HOUSE,
 	PropKind.ARCHIVE, PropKind.CHECKPOINT, PropKind.FIRE_TOWER,
-	# A trilithon's cap is a roof with daylight through it (docs/LANDSCAPES.md §1:
+	# A trilithon's cap is a roof with daylight through it (docs/LANDSCAPES.md:
 	# "the roof answer takes wet and dark under the cap").
 	PropKind.LINTEL,
 	# A trawler frozen in to the gunwale: its hold is the one place out of the
-	# wind on the frost sea (docs/LANDSCAPES.md §2).
+	# wind on the frost sea (docs/LANDSCAPES.md).
 	PropKind.FROZEN_HULL,
-	# A glass blister is shade on a landscape with none (docs/LANDSCAPES.md §3):
+	# A glass blister is shade on a landscape with none (docs/LANDSCAPES.md):
 	# a body steps in through the burst side. Its solid is 0, so ROOF_REACH is
 	# the whole of how far its shade is felt.
 	PropKind.GLASS_BLISTER,
-	# The mesas' natural arch: the one shade on a bench (docs/LANDSCAPES.md §6:
+	# The mesas' natural arch: the one shade on a bench (docs/LANDSCAPES.md:
 	# "shelter from heat in its shade"). Its solid is 0 -- it is walked under --
 	# so ROOF_REACH from its crown is the shade.
 	PropKind.ARCH_RIB]

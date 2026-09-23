@@ -1,5 +1,5 @@
 extends TestCase
-## Who can reach dev mode (docs/DEV.md): tool runs reach nothing unless asked;
+## Who can reach dev mode (docs/DESIGN.md): tool runs reach nothing unless asked;
 ## a build reaches what its configuration says; the owner's source run is never
 ## locked out; the chord arms in three strikes and not in three slow ones.
 

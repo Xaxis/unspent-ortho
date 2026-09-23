@@ -2,7 +2,7 @@ class_name AbilitySpoof
 extends Ability
 ## A signet taken whole out of a machine: for a few minutes it answers their
 ## challenge in their own language, and they read the body walking past as one
-## of theirs (docs/VISION.md §2, the machines' records are corrupt and their
+## of theirs (docs/VISION.md, the machines' records are corrupt and their
 ## signatures are misread; that failure is the player's tool).
 ##
 ## It writes `Body.spoof_until`, the contract the disposition package reads; the

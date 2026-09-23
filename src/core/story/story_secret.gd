@@ -1,5 +1,5 @@
 class_name StorySecret
-## Where he hid it (docs/STORY.md §4): in the ORDER of three ordinary memories,
+## Where he hid it (docs/STORY.md): in the ORDER of three ordinary memories,
 ## the kitchen at night, a song in the car, June's play. A living brain reliving
 ## them in order turns the key. His own hand scratched the order on a wall
 ## (`three_words`): kitchen. car. the hall. in that order.

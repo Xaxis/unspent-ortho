@@ -1,4 +1,4 @@
-## The Glass Desert's keeper: the anvil (docs/LANDSCAPES.md §3, docs/VISION.md
+## The Glass Desert's keeper: the anvil (docs/LANDSCAPES.md, docs/VISION.md
 ## §3: "fulgurite cores from the glass desert's strike fields"). The plan draws
 ## lightning down on purpose here — ruled fields of rods call the dry storms'
 ## strikes into the sand and the fused tubes are harvested — and the anvil is
@@ -44,12 +44,12 @@ static func make() -> SentinelDef:
 	d.note = "A candelabrum on skates: a mast, a copper crown, and its weight carried low."
 	d.kind = &"sentinel.glass"
 	d.reach = 30.0
-	# The strike field is what it keeps (docs/LANDSCAPES.md §3 PLAN records it as
+	# The strike field is what it keeps (docs/LANDSCAPES.md PLAN records it as
 	# `strike_field`). Until the works row lays one, no region holds it and the
 	# keeper stands at its region's heart, which `Sentinels.lair` already does for
 	# a station nobody laid.
 	d.stations = [&"strike_field"]
-	# THE RODS ONLY. docs/LANDSCAPES.md §3 names the belt and the corner posts
+	# THE RODS ONLY. docs/LANDSCAPES.md names the belt and the corner posts
 	# too, and that was measured against the world before it was believed: with
 	# CONVEYOR and SURVEY on this list the seed-1 keeper at 512 fed on TWO stray
 	# works at its region's heart, which `tests/sentinel/test_world.gd` refuses

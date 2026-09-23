@@ -1,5 +1,5 @@
 extends TestCase
-## The carried-off (docs/VISION.md §9.5).
+## The carried-off (docs/VISION.md).
 ##
 ## The gap this closes is one sentence long: **the game took people and forgot
 ## them the same frame.** A snatcher walked out of a yard, `lose_person` took

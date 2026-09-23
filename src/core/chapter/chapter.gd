@@ -1,7 +1,7 @@
 class_name Chapter
 extends RefCounted
 ## A REGION is a chapter, and a chapter is explored, mined and defended before the
-## way on opens (owner, 2026-09-18, docs/VISION.md §10).
+## way on opens (owner, 2026-09-18, docs/VISION.md).
 ##
 ## This file is the RULES only: pure, headless, no nodes, and it INVENTS NOTHING.
 ## Every one of the three demands is read off state the game already keeps for its
@@ -238,7 +238,7 @@ static func _def_of(world: WorldData, region_id: int) -> BiomeDef:
 ## somebody has to be able to say out loud" — and until now nobody did. No UI
 ## read this file at all, so a player could walk into a held road, be told
 ## "Plate and pins, and nothing in your hands will cut it", and have no way to
-## learn what the plan is holding the place FOR (docs/VISION.md §10.4, task #112
+## learn what the plan is holding the place FOR (docs/VISION.md, task #112
 ## step 4).
 ##
 ## IT IS THE MACHINES' FILE, NOT A CHECKLIST. The slate is a hacked machine

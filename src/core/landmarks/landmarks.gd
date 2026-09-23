@@ -1,5 +1,5 @@
 class_name Landmarks
-## The places worth the walk (docs/VISION.md §3, §8), and the pure rules about
+## The places worth the walk (docs/VISION.md, §8), and the pure rules about
 ## where they stand and what they hold.
 ##
 ##   Landmarks.for_land(id)       the kinds that landscape holds

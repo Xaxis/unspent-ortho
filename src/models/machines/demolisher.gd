@@ -1,5 +1,5 @@
 extends MachineModel
-## A demolisher: the Ruined Metropolis's own worker (docs/LANDSCAPES.md §4).
+## A demolisher: the Ruined Metropolis's own worker (docs/LANDSCAPES.md).
 ## A squat tracked body, a slew ring on its deck, and a long two-piece
 ## hydraulic boom ending in a crushing jaw. It is taking the city apart for
 ## what it is made of, one poured wall at a time, and it does not turn for

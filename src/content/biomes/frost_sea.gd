@@ -89,7 +89,7 @@ static func make() -> BiomeDef:
 	dress.sink = 0.2
 	dress.lie = Vector2(-0.08, 0.14)
 	# A boarded fishing shack, banked in the sea's own drift: the ice-fisher's
-	# hut (docs/LANDSCAPES.md §2). Said here because the cold would otherwise
+	# hut (docs/LANDSCAPES.md). Said here because the cold would otherwise
 	# dress this sea's people in the snowfield's emergency pod, and a fisher on
 	# the ice is not a survivor under it; `Remains._fish_shack` banks `drift`
 	# against the walls, and this landscape's drift is rime.
@@ -106,7 +106,7 @@ static func make() -> BiomeDef:
 	d.lip_snow = false
 	d.props = [PropKind.BOULDER, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.STONE_ORE,
 		PropKind.SURVEY, PropKind.RELAY, PropKind.DEBRIS,
-		# Its own (docs/LANDSCAPES.md §2, src/models/props/frost_sea.gd): ice
+		# Its own (docs/LANDSCAPES.md, src/models/props/frost_sea.gd): ice
 		# thrown up on end, a trawler frozen in, the plan's sounding tripod, a
 		# seal's hole. Declared here so the economy can walk lens ice back to
 		# this sea; where each stands per frame is `_scatter`'s, and the bands
@@ -135,7 +135,7 @@ static func make() -> BiomeDef:
 	# Cold that does not let up, and ice that does not hold everywhere. `collapse`
 	# is the lead nobody saw: the one pressure here that is about the GROUND.
 	#
-	# The 0.4 is the sea's floor, and docs/LANDSCAPES.md §2 asks for collapse to
+	# The 0.4 is the sea's floor, and docs/LANDSCAPES.md asks for collapse to
 	# be CAUSED on top of it: rising within two tiles of BLACKWATER and of an
 	# icesaw's fresh cut. Half of that is here already -- a seal hole thins the
 	# ice round it through `PropHazards.TABLE`, the per-prop half of shared

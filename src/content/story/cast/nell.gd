@@ -1,4 +1,4 @@
-## Nell sifts fused glass out of the glass desert's drift and sells it at the border, camped by its nearest landmark. A local: colour, never load (docs/STORY.md §8).
+## Nell sifts fused glass out of the glass desert's drift and sells it at the border, camped by its nearest landmark. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"nell", "name": "Nell", "title": "a glass-picker",

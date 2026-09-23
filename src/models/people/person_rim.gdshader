@@ -1,4 +1,4 @@
-// The readability rim for people (docs/ART.md section 5): a hairline
+// The readability rim for people (docs/LOOK.md section 5): a hairline
 // round the silhouette in the person's own colours, one ramp step lighter on the
 // side toward the key light (screen upper left) and one step darker opposite.
 // Never ink-black. Drawn as a next pass of person.gdshader: the back faces,

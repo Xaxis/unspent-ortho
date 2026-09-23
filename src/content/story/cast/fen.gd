@@ -1,4 +1,4 @@
-## Fen walks the crags, where the machines' survey does not go. A local: colour, never load (docs/STORY.md §8).
+## Fen walks the crags, where the machines' survey does not go. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"fen", "name": "Fen", "title": "a wayfinder",

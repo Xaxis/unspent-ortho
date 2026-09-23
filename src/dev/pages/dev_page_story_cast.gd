@@ -1,6 +1,6 @@
 class_name DevPageStoryCast
 extends DevPage
-## The named people (docs/STORY_SYSTEM.md §8, §10), by the place each stands at:
+## The named people (docs/DESIGN.md, §10), by the place each stands at:
 ## where the story cast them in THIS world, whether they are there now and, if not,
 ## what they wait on, and whether he has spoken to them. E stands beside one, as a
 ## tour's `at cast:ID` does, so a writer can walk up and hear them.

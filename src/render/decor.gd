@@ -51,7 +51,7 @@ var world: WorldData
 var works: WorksMap
 var _bloom: FastNoiseLite
 ## Where small life gathers: specks come in drifts and the ground between is
-## left bare (docs/ART.md: masses stay flat, interest lives in rare places).
+## left bare (docs/LOOK.md: masses stay flat, interest lives in rare places).
 var _clump: FastNoiseLite
 static var _SPECK := PackedByteArray()
 ## ground -> [kinds: PackedInt32Array, cumulative: PackedFloat32Array, items per tile]

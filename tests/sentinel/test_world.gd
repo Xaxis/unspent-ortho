@@ -1,6 +1,6 @@
 extends TestCase
 ## Where a keeper stands in a world that was really generated, and what its fall
-## changes. One instance per REGION (docs/VISION.md §3, CLAUDE.md's Regions row),
+## changes. One instance per REGION (docs/VISION.md, CLAUDE.md's Regions row),
 ## so every run of a landscape has its own keeper and the second one is the same
 ## species and a different fight.
 

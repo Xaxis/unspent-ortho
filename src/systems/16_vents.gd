@@ -1,6 +1,6 @@
 extends GameSystem
 ## The Burning breathes: every vent near the player lets out a slow puff of pale
-## steam and ash every few seconds, each on its own beat (docs/ART.md section 3,
+## steam and ash every few seconds, each on its own beat (docs/LOOK.md section 3,
 ## "vents breathing"). Their light breathes too, in 15_lights.
 
 ## Tiles round the player whose vents are drawn breathing.

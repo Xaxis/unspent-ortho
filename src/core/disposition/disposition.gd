@@ -1,5 +1,5 @@
 class_name Disposition
-## How one machine takes the player, now (docs/VISION.md §2). Pure rules; the
+## How one machine takes the player, now (docs/VISION.md). Pure rules; the
 ## disposition system writes the answer onto a live body and its model's status
 ## lamps blink it.
 ##

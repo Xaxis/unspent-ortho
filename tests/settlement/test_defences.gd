@@ -1,6 +1,6 @@
 extends TestCase
 ## The two answers to being read that a player can BUILD (owner, 2026-09-17,
-## docs/VISION.md §9.3): a spoofer that hides the whole place while it has power,
+## docs/VISION.md): a spoofer that hides the whole place while it has power,
 ## and a decoy that hides nothing but is read in the place's stead from out past
 ## the yard. One piece buys one thing each, and these hold them to it.
 ##

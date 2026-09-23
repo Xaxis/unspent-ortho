@@ -1,5 +1,5 @@
 ## The Ruined Metropolis's keeper: a gantry crane that takes the city apart
-## (docs/LANDSCAPES.md §4, "the unbuilder"; docs/VISION.md §3). The plan is
+## (docs/LANDSCAPES.md, "the unbuilder"; docs/VISION.md). The plan is
 ## stripping the city district by district for what it is made of — copper,
 ## steel, glass — and this is the machine that does the stripping: it straddles a
 ## street on four legs, and a grab on cables from its bridge comes down on

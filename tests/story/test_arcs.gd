@@ -399,7 +399,7 @@ func test_the_echo_is_found_in_his_own_hand_and_his_daughter_s_luck() -> void:
 	Story.forget()
 
 
-## The chain of leads (docs/STORY_SYSTEM.md §6): every stop of the journey has
+## The chain of leads (docs/DESIGN.md): every stop of the journey has
 ## somebody who says, in their own words, where the next one is.
 func test_every_stop_of_the_journey_says_where_the_next_one_is() -> void:
 	Story.forget()
@@ -440,7 +440,7 @@ func test_telling_rook_about_teague_is_the_end_of_teague() -> void:
 
 
 ## A revelation a page may deal anywhere also has somebody who says it, so the
-## path does not hang on which sign a world happened to deal (docs/STORY.md §9).
+## path does not hang on which sign a world happened to deal (docs/STORY.md).
 func test_the_war_s_phrasing_and_the_forecast_each_have_a_person() -> void:
 	Story.forget()
 	@warning_ignore("return_value_discarded")

@@ -1,5 +1,5 @@
 class_name Notices
-## How a machine comes to know a holding is there (docs/VISION.md §9.2), as pure
+## How a machine comes to know a holding is there (docs/VISION.md), as pure
 ## rules over a `Signature` and one roster row.
 ##
 ## The whole of the raid system hangs off this file, so it is worth saying what

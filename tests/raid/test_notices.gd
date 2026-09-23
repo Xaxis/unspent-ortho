@@ -1,5 +1,5 @@
 extends TestCase
-## A notice is a reading a body took and is carrying home (docs/VISION.md §9.2).
+## A notice is a reading a body took and is carrying home (docs/VISION.md).
 ## These hold the reading itself to the channels the slate already draws: what
 ## carries how far, who reads it well, and what a place that gives off nothing
 ## is worth to anybody.

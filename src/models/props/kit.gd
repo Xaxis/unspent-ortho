@@ -1,5 +1,5 @@
 extends RefCounted
-## The two pens a prop is drawn with (docs/ART.md law 3): `made` for
+## The two pens a prop is drawn with (docs/LOOK.md law 3): `made` for
 ## world.gdshader (hatched, by hand, uneven) and `found` for found.gdshader
 ## (ruled, clean, exact). Builders put each part in the kit it belongs to, and
 ## draw with the shapes below: nothing here makes a plain box or a smooth cone.

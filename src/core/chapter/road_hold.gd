@@ -1,6 +1,6 @@
 class_name RoadHold
 extends RefCounted
-## Where the plan stands on the road out of a chapter (docs/VISION.md §10.3).
+## Where the plan stands on the road out of a chapter (docs/VISION.md).
 ##
 ## `Chapter` says whether a place is answered and its own header says what it
 ## does NOT do: "whether the way on is actually held, and by what, is the

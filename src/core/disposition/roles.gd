@@ -1,5 +1,5 @@
 class_name Roles
-## What a machine is FOR, in the machines' plan (docs/VISION.md §2). A role is
+## What a machine is FOR, in the machines' plan (docs/VISION.md). A role is
 ## the one thing that decides how a machine takes the player before anything
 ## happens: its default disposition, what turns it, and whether it fights at
 ## all. Roster rows carry `role`; a row without one is read from its

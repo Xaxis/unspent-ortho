@@ -1,57 +1,36 @@
 # UNSPENT
 
-A real-time action-survival game on a generated coast, where half-broken machines
-work the land and the few people left in it try to live in the gaps. Orthographic
-3D rendered at 640×360 and upscaled with nearest filtering, drawn like a field
-notebook — washes, inked contours, hatched shade — with a ruler kept for anything
-the machines built.
-
-Godot 4.7, GDScript. Everything is generated in code: meshes, sounds, music, the
-UI, the world. No imported art, no imported audio.
-
-![The snowfield at morning](docs/img/snowfield.png)
-
-![A coast village in the rain, after dark](docs/img/village-night.png)
+A real-time action-survival game on a generated world where half-broken machines
+work the land and hunt the people still living in the gaps. Godot 4.7, typed
+GDScript, lit 3D (Forward+ on desktop, Compatibility on the web). Everything is
+generated in code: meshes, sounds, music, the UI and the world.
 
 ## Play it
 
 ```sh
-godot --path .
+tools/_import.sh && godot --path .
 ```
 
-WASD move, Shift run and dodge, Space swing, E use, C make, I carry, M map,
-F lamp, Esc pause, ` dev mode (docs/DEV.md).
+WASD move, Shift run, Space jump, J swing, K dodge, E use, C make, I carry, M map,
+F lamp, Ctrl/Q crouch, hold Z to target, Esc pause, ` dev mode.
 
 ## Build it
 
 ```sh
-tools/check.sh          # the gate: tests and real rendered frames, ~35 s
-tools/test.sh [filter]  # headless tests
-tools/shot.sh out.png   # one real frame of any moment, ~2 s
-tools/tour.sh x.tour    # play a scripted sequence through REAL input, a frame per step
-tools/canon.sh          # every canon frame beside its accepted twin, on one sheet
-tools/export.sh web     # a web build
-tools/deploy.sh         # put it on Vercel and prove it runs there in a browser
-tools/export.sh web --config=playtest   # a build of a master configuration, stamped
+tools/test.sh [filter]   # headless tests
+tools/check.sh           # the gate: tests and real frames
+tools/shot.sh out.png    # one rendered frame
+tools/tour.sh x.tour     # a scripted run through real input
+tools/web.sh             # the web build, booted in a headless browser
+tools/deploy.sh          # deploy to Vercel and prove it runs there
 ```
 
-A feature is not done because a test passes. It is done when a tour walks to it,
-presses the real key, and the frame it saves is worth looking at.
+## Docs
 
-## Where everything is
-
-| | |
-|---|---|
-| `docs/VISION.md` | where this is going: the machines' plan, 20+ landscape types, sentinels, portals, crafts |
-| `docs/ART.md` | the style bible, and it is binding |
-| `docs/DESIGN.md` | what the game is now |
-| `docs/DEV.md` | dev mode: feedback and testing in any build, master configurations, and making, keeping and shipping builds |
-| `docs/ROADMAP.md` | what is next |
-| `CLAUDE.md` | the loop, the layout, the conventions, and the contracts parallel work is built against |
-
-## Status
-
-M2. The core loop, six landscapes with two more added as pure data, hazards and
-the gear that answers them, machines that mostly ignore you until you interfere,
-a UI that is one salvaged tablet, and a score that crosses a border without a
-seam. Not a finished game yet — `docs/ROADMAP.md` is honest about what is missing.
+- `docs/VISION.md`: where the game is going.
+- `docs/ROADMAP.md`: where it stands and what's next.
+- `docs/DESIGN.md`: how it plays and the rules of each system.
+- `docs/LOOK.md`: the look, binding.
+- `docs/STORY.md`: the story, binding.
+- `docs/LANDSCAPES.md`: what each landscape must have.
+- `CLAUDE.md`: how to work in this repo.

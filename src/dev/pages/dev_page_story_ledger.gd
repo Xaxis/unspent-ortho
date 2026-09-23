@@ -1,6 +1,6 @@
 class_name DevPageStoryLedger
 extends DevPage
-## The world writing him down (docs/STORY_SYSTEM.md §7, §10): what it has seen him
+## The world writing him down (docs/DESIGN.md, §10): what it has seen him
 ## do, both records as they read at this minute, and a row per act to note one
 ## here and now, so a writer can see the notebook and the error log fill without
 ## breaking a works to do it.

@@ -1,4 +1,4 @@
-## The Slums (docs/VISION.md §3, docs/STORY.md): the one landscape where the
+## The Slums (docs/VISION.md, docs/STORY.md): the one landscape where the
 ## plan WORKED.
 ##
 ## Everywhere else in this game half-broken machines hunt the people living in
@@ -434,7 +434,7 @@ static func make() -> BiomeDef:
 		&"gulls": {"weight": 0.6, "hours": Vector2(6, 20), "grounds": lanes},
 	}
 	d.sentinel = &""
-	# The places worth the walk (docs/VISION.md §3). Each of these names the slums
+	# The places worth the walk (docs/VISION.md). Each of these names the slums
 	# back in `Landmarks._build`, and `Landmarks.problems` fails if the two ever
 	# stop agreeing.
 	d.landmarks = [&"blinking_stack", &"clerks_office", &"leaning_mast"]

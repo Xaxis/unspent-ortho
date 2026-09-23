@@ -1,5 +1,5 @@
 extends TestCase
-## A border between two landscapes is a BAND, not a line (docs/ART.md law 6:
+## A border between two landscapes is a BAND, not a line (docs/LOOK.md law 6:
 ## twelve to twenty-four tiles where the two hands interleave). The mesher
 ## already drew ragged patches of the neighbour's COUNTRY across that band —
 ## but a country is only a tint on the ground already there, and where two

@@ -1,6 +1,6 @@
 extends GameSystem
 ## Survival drawn, so taking reads without a word on screen. Everything here is
-## drawn feedback in the notebook's hand (docs/ART.md §7): short ink bursts,
+## drawn feedback in the notebook's hand (docs/LOOK.md): short ink bursts,
 ## stipple dust, flecks of stuff, sparks as a bright pixel or two, and nothing
 ## that bounces like a physics engine. Motion steps at FPS, like drawn frames.
 ## - each blow of the work: an ink burst where it lands, flecks of what the thing

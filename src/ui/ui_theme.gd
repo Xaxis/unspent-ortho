@@ -1,5 +1,5 @@
 class_name UiTheme
-## The slate's colours (docs/ART.md §9) and the Godot Theme built from them.
+## The slate's colours (docs/LOOK.md) and the Godot Theme built from them.
 ##
 ## The slate is a display module stolen from a machine in a patched bezel. Its
 ## glass is near-black, never black. Everything the player's own slate says is

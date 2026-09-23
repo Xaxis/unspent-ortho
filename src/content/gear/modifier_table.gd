@@ -1,6 +1,6 @@
 class_name ModifierTable
 ## What each module DECIDES, and which modules pay for or fight each other
-## (docs/VISION.md §6.1, "Modifiers are the elegance").
+## (docs/VISION.md, "Modifiers are the elegance").
 ##
 ## Every row says what the part changes about the way you play, in the words the
 ## slate will show. A module that only adds a number belongs in `Items.DEFS` and
@@ -74,7 +74,7 @@ const MODS := {
 	&"mod_damp": {"decision": "you go quieter, and so do your blows",
 		"short": "you go quieter",
 		"gives": [&"quiet"]},
-	# The frost sea's lens (docs/LANDSCAPES.md §2). Its tag is `sight`, and the
+	# The frost sea's lens (docs/LANDSCAPES.md). Its tag is `sight`, and the
 	# scan head's is `read`: the pair below is what "it pairs with the scan
 	# head" means in data. The spec also asks that `sight` extend the scan's
 	# reach; nothing in `Ability` reads a kit's tags yet (ability_scan.gd's
@@ -93,12 +93,12 @@ const MODS := {
 		"short": "every blow shocks",
 		"gives": [&"hot", &"loud"], "wants": [&"cool"]},
 	# The crags' hush slate, worn: stone a scanner reads as nothing at all
-	# (docs/LANDSCAPES.md §1). It gives `quiet`, so a lattice rings through it
+	# (docs/LANDSCAPES.md). It gives `quiet`, so a lattice rings through it
 	# the way it rings through a damper (PAIRS): one hides you, the other shouts.
 	&"mod_hush": {"decision": "stood still, their optics read the stone and not you",
 		"short": "stood still, unread",
 		"gives": [&"quiet"]},
-	# The drowned city's brine copper in the seams (docs/LANDSCAPES.md §5): you
+	# The drowned city's brine copper in the seams (docs/LANDSCAPES.md): you
 	# can go into a canal and stay in it. `sealed` meets nothing yet; the
 	# submersible's hull is what will want it paid.
 	&"mod_seal": {"decision": "the water stays out, so a canal is a road and not a wall",

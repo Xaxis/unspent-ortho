@@ -1,7 +1,7 @@
 class_name UiDevScreen
 extends UiScreen
 ## Dev mode's app: the stolen display module's service mode, hacked open
-## (docs/DEV.md). Pages stack like home and its keys page do: e steps into a
+## (docs/DESIGN.md). Pages stack like home and its keys page do: e steps into a
 ## page, esc backs out one level, ` shuts the whole app from anywhere in it.
 ##
 ## It wears the module's violet, never the player's phosphor, so nothing of it

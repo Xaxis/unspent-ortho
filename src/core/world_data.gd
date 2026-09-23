@@ -33,7 +33,7 @@ var region: PackedInt32Array
 ## The places this world is made of, biggest first. One landscape type may hold
 ## several: {id: int, type: StringName, index: int (type index), tiles: int,
 ## centre: Vector2, bounds: Rect2}. Sentinels, works, subarcs and saves key on
-## `id` (docs/VISION.md §3).
+## `id` (docs/VISION.md).
 var regions: Array[Dictionary] = []
 var moisture: PackedFloat32Array
 var temperature: PackedFloat32Array
@@ -54,7 +54,7 @@ var villages: Array[Dictionary] = []
 ## The test then counted two of six buildings and called the city broken, and the
 ## live game told a player standing among the towers that they were in open
 ## country and could not sleep. The placer had done nothing wrong; nothing had
-## asked it how far it went (docs/WORLD.md §9).
+## asked it how far it went (docs/DESIGN.md).
 const VILLAGE_LEAST_REACH := 11.0
 
 
@@ -106,7 +106,7 @@ var road: PackedByteArray
 var recipe: PackedByteArray
 ## Which BODY each tile belongs to: 0 is the void between them (the ocean on the
 ## surface, solid rock underground, vacuum in orbit), and bodies are numbered from
-## 1 (`docs/WORLD.md`).
+## 1 (`docs/DESIGN.md`).
 ##
 ## The third of a set with `road` and `recipe`, and the same argument: a stage
 ## decided it, so a stage records it, and nobody downstream infers it. Continent
@@ -116,7 +116,7 @@ var recipe: PackedByteArray
 ## (`tests/core/test_bodies.gd`).
 var continent: PackedByteArray
 ## What each body was dealt, biggest first: {id: int, tiles: int, centre: Vector2,
-## bounds: Rect2}. `docs/WORLD.md` §4 adds the budget, the climate band and the
+## bounds: Rect2}. `docs/DESIGN.md` §4 adds the budget, the climate band and the
 ## type set when the planning half lands.
 var continents: Array[Dictionary] = []
 ## The machines' grid: {kind: PropKind.PYLON or POLE, props: PackedInt32Array

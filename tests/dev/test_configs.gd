@@ -1,5 +1,5 @@
 extends TestCase
-## Master configurations (docs/DEV.md): every file in configs/ holds only settings
+## Master configurations (docs/DESIGN.md): every file in configs/ holds only settings
 ## the schema declares, with values the game's content allows; bases merge under
 ## a configuration; edits are live and kept only when kept; a start takes what a
 ## configuration says and never what the command line already named.

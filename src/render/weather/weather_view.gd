@@ -1,7 +1,7 @@
 class_name WeatherView
 extends Node3D
 ## What falls through the air around the camera, drawn as marks in the notebook
-## (docs/ART.md section 6): rain as short slanted ink strokes gathered into
+## (docs/LOOK.md section 6): rain as short slanted ink strokes gathered into
 ## squall curtains, drizzle as a fine pale grain, splashes as tiny ticks and
 ## rings spreading where water stands, drips from eaves, arms and crowns, hail
 ## as pale pellets, snow as paper flecks in squalls, ash as dark specks drifting
@@ -126,7 +126,7 @@ func setup(cam: CameraRig) -> void:
 	_mat(hail, Mode.STROKE, {"color_a": Palette.RIME[5], "color_b": Palette.ASH[4], "mix_b": 0.3, "length_px": Vector2(2, 3), "columns": 0.4, "ground_mask": 3})
 	# Snow: paper flecks, each held by one pixel of cold shade under it, so snow
 	# reads pale against the snow already lying on the page and never as the
-	# Burning's dark ash (docs/ART.md section 3).
+	# Burning's dark ash (docs/LOOK.md section 3).
 	snow = _emitter("snow", 8000, 8.0, air, mid, true)
 	# The rim is the snowfield's own blue shade, not ink: a flake is pale first
 	# and held second, and only some of them (mix_b) are held at all.
@@ -142,7 +142,7 @@ func setup(cam: CameraRig) -> void:
 	# pale over pale ground and a whiteout is streaks and not specks. A streak is
 	# ten times the length of a fleck, so its rim is the palest shade in the ramp
 	# and lies under only some of them: a rim as dark as a fleck's, drawn that
-	# long and under every one, is a field of dark dashes (docs/ART.md section 3).
+	# long and under every one, is a field of dark dashes (docs/LOOK.md section 3).
 	spindrift = _emitter("spindrift", 2400, 2.5, Vector3(19.0, 1.0, 15.0), Vector3(0, 0.9, 0), true)
 	_mat(spindrift, Mode.FLICK, {"color_a": Palette.RIME[4], "color_b": Palette.RIME[5], "mix_b": 1.0, "underline": 0.6, "length_px": Vector2(6, 14), "ground_mask": 1})
 	# Ash: dark specks, a few scraps of burnt paper among them.

@@ -1,5 +1,5 @@
 extends GameSystem
-## Why and when the machines come for what the player built (docs/VISION.md §9.2
+## Why and when the machines come for what the player built (docs/VISION.md
 ## to §9.7). Reachable as the system named "48_raids".
 ##
 ## **There is no raid timer and there never will be.** Every step this system
@@ -91,7 +91,7 @@ const RECORD_REACH := 8.0
 ## and how near a piece a machine has to be to put a blow into it. A party is
 ## seen crossing the ground for the best part of a quarter of a minute before it
 ## arrives, which is the last of the warnings and the one that says from which
-## side (docs/VISION.md §9.4).
+## side (docs/VISION.md).
 const PARTY_RING := 12.0
 const MARCH := 1.9
 const STRIKE_REACH := 1.4
@@ -138,7 +138,7 @@ var plans: Array[RaidPlan] = []
 ## Settlement id -> {settled_at, last_read, stake, surveyed, felt}.
 var _books: Dictionary = {}
 ## "REALM:region id" -> {razed, lost, taken}. A region remembers
-## (docs/VISION.md §9.6), and it remembers it in ONE realm: region ids restart at
+## (docs/VISION.md), and it remembers it in ONE realm: region ids restart at
 ## 0 in every realm's world (GenCountries.regions), so a bare id had the keeper
 ## of the caves' region 3 quieting a surface holding in region 3 for good.
 var _regions: Dictionary = {}
@@ -226,7 +226,7 @@ func book(id: int) -> Dictionary:
 
 
 ## The plan's network a holding stands in: the REGION, which is the same file the
-## disposition package keeps (docs/VISION.md §2). A holding a realm away stands in
+## disposition package keeps (docs/VISION.md). A holding a realm away stands in
 ## a network of a world that is not under the player's feet and cannot be asked.
 func network_of(s: Settlement) -> int:
 	if s.realm != realm_here():
@@ -255,7 +255,7 @@ func _memory(s: Settlement) -> Dictionary:
 
 
 ## A region whose keeper has been taken: its network is quiet for good
-## (docs/VISION.md §9.7). Nothing is ever filed against a holding in one again.
+## (docs/VISION.md). Nothing is ever filed against a holding in one again.
 func quieted(s: Settlement) -> bool:
 	return bool(_memory(s).get("taken", false))
 
@@ -525,7 +525,7 @@ func _said_kind(kind: StringName) -> String:
 ##
 ## A rise is scaled by the configuration's `rules.raid_pace`; a FALL never is,
 ## because a playtest that wanted raids sooner must not also make quiet weeks
-## worth less (docs/DEV.md, the master configurations).
+## worth less (docs/DESIGN.md, the master configurations).
 func _raise(s: Settlement, cause: StringName, scale: float = 1.0) -> void:
 	var was := s.attention
 	if Attention.of(cause) > 0.0:
@@ -712,7 +712,7 @@ func _warn_from(s: Settlement) -> Vector2:
 
 ## Who comes and what each one is for. The targets are read off the holding's
 ## OWN signature, so the thing the slate names on its page is the thing that is
-## walked to first (docs/VISION.md §9.5).
+## walked to first (docs/VISION.md).
 func _party_for(s: Settlement, stage: StringName) -> Array:
 	var out: Array = []
 	var moment: Moment = game.player.sim.moment if game.player.sim != null else null
@@ -890,7 +890,7 @@ func _put_out(p: RaidPlan, s: Settlement) -> void:
 		_call_the_keeper(s, bearing)
 
 
-## A siege is led by the region's own keeper (docs/VISION.md §9.4). Its body is
+## A siege is led by the region's own keeper (docs/VISION.md). Its body is
 ## put down at the party's ring and 44_sentinels ADOPTS it — a keeper is a keeper
 ## however it arrived — so it comes with its real health, its real phases, and
 ## the three ways it can be taken. Which is the point: a siege is where killing
@@ -1321,7 +1321,7 @@ func _blow_of(m: MobState, s: Settlement) -> float:
 	return maxf(RaidResolve.LEAST, dmg * BLOW_SCALE * (1.0 - RaidResolve.turned(s.defence_total())))
 
 
-## Somebody is carried off (docs/VISION.md §9.5). The snatcher has to stand in
+## Somebody is carried off (docs/VISION.md). The snatcher has to stand in
 ## the yard unanswered to do it, so being there is a real answer to it.
 func _drive_snatcher(p: RaidPlan, s: Settlement, m: MobState, r: Dictionary, sim: FightSim) -> void:
 	var d := m.pos.distance_to(s.centre)
@@ -1405,7 +1405,7 @@ func _settle_raid(p: RaidPlan, s: Settlement, share: float) -> void:
 
 ## What a broken piece leaves in the yard: a machine's blow does not tidy up
 ## after itself, and a raided holding has to read like one tomorrow
-## (docs/ART.md §10). 46_settlements keeps the wreck of the piece itself.
+## (docs/LOOK.md). 46_settlements keeps the wreck of the piece itself.
 func _wreck_left(s: Settlement, piece: Structure) -> void:
 	if s.realm != realm_here():
 		return
@@ -1493,7 +1493,7 @@ func _on_killed(kind: StringName, at: Vector3) -> void:
 	@warning_ignore("return_value_discarded")
 	_raiders.erase(body.id)
 	# A machine broken in the yard stays in the yard: salvage, and the reason a
-	# holding that has stood three raids looks like it (docs/ART.md §10).
+	# holding that has stood three raids looks like it (docs/LOOK.md).
 	@warning_ignore("return_value_discarded")
 	Survival.add_prop(game, PropKind.WRECKAGE, p2, Rng.hash01(game.world.seed_value, body.id, 0x77) * TAU, 0.8)
 	var plan := _plan(int(r.get("plan", -1)))
@@ -1530,7 +1530,7 @@ func _plan(id: int) -> RaidPlan:
 
 
 ## The region's keeper is gone, so its network is gone with it: every holding in
-## it is forgotten, whatever it is running, for good (docs/VISION.md §9.7). This
+## it is forgotten, whatever it is running, for good (docs/VISION.md). This
 ## is the surest answer in the game, and it is a boss fight.
 func _on_sentinel_fell(region: int, _land: StringName, _how: StringName) -> void:
 	# A keeper is a keeper of a region OF A REALM. The one that fell is the one in
@@ -1557,7 +1557,7 @@ func _on_sentinel_fell(region: int, _land: StringName, _how: StringName) -> void
 
 
 ## A holding founded in a region that has already lost one starts on the plan's
-## books: the region remembers what stood there (docs/VISION.md §9.6).
+## books: the region remembers what stood there (docs/VISION.md).
 func _on_founded(id: int) -> void:
 	var s := get_place(id)
 	if s == null:
@@ -1620,7 +1620,7 @@ func _sync_marks() -> void:
 ## turned there EVERY FRAME. The camera leans when the player holds a target
 ## (CameraRig.yaw_now), so a tag whose yaw was fixed when it was hung goes
 ## edge-on at the very moment the player is reading the yard — and a warning
-## nobody can read is a warning nobody was given (docs/ART.md §10).
+## nobody can read is a warning nobody was given (docs/LOOK.md).
 func _face_marks() -> void:
 	if _marks.is_empty() or game == null or game.world == null:
 		return

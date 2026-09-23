@@ -1,6 +1,6 @@
 class_name SentinelWay
 extends RefCounted
-## One way of taking a landscape from its keeper (docs/VISION.md §3: "tactics,
+## One way of taking a landscape from its keeper (docs/VISION.md: "tactics,
 ## not stats. Each can be beaten several ways and none by trading hits").
 ##
 ## A way is a pure rule over a `SentinelLook`, so every one of them is provable

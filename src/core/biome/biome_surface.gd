@@ -20,7 +20,7 @@ extends RefCounted
 ## do it, so three writes a tile cost the surface pass a third of a second on a
 ## 512-tile world (measured, main vs this branch). Add a band field, pass an
 ## argument, never a per-tile write.
-## Everything here is smooth at the scale of a walk (docs/ART.md: grounds are
+## Everything here is smooth at the scale of a walk (docs/LOOK.md: grounds are
 ## washes, not salad). There is deliberately no per-tile noise and no integer
 ## level on this sample: a recipe that wants variety asks `big`, `rise`,
 ## `forest` or a distance, so its grounds mass into shapes the mesher can draw

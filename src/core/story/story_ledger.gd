@@ -1,5 +1,5 @@
 class_name StoryLedger
-## The world writing him down (docs/STORY_SYSTEM.md §7): the owner's chosen
+## The world writing him down (docs/DESIGN.md): the owner's chosen
 ## narrator. There is no narrator's voice; there are two records of what he has
 ## done, and they disagree.
 ##

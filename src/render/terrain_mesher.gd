@@ -1,7 +1,7 @@
 class_name TerrainMesher
 extends RefCounted
 ## Builds one CHUNK x CHUNK tile area into meshes. The tile grid is the rules'
-## business, never the eye's (docs/ART.md): the land is drawn as CONTOUR TERRACES.
+## business, never the eye's (docs/LOOK.md): the land is drawn as CONTOUR TERRACES.
 ##
 ## A continuous elevation field f(x, y) is the bilinear interpolation of tile
 ## levels (sampled at tile centres) warped by noise. A point is on terrace L when
@@ -1833,7 +1833,7 @@ func _build_water(ch: Chunk, depth: PackedFloat32Array) -> void:
 				# A pool or a river mouth that happens to lie at sea level keeps
 				# its own kind, or the moss ends up with a white beach round its
 				# black water; and even the sea itself only breaks white where the
-				# bank it meets is not a bog (docs/ART.md section 3).
+				# bank it meets is not a bog (docs/LOOK.md section 3).
 				var g0 := ch.key[li] & 0xFF
 				if g0 == Ground.DEEP_WATER or g0 == Ground.WATER:
 					# Every sea point carries the weight, not only the shallow ones:
@@ -2003,7 +2003,7 @@ static func inland_alpha(d: float) -> float:
 
 ## Which water an inland sheet is: blackwater (2) where the land it lies in is
 ## wet enough to be a bog, so a river or a pool in the moss is the moss's own
-## black water with green edges and never a pale blue lagoon (docs/ART.md
+## black water with green edges and never a pale blue lagoon (docs/LOOK.md
 ## section 3); a plain sheet (1) everywhere else.
 func _inland_kind(key: int, lx: float, ly: float) -> int:
 	if (key & 0xFF) == Ground.BLACKWATER:
@@ -2018,7 +2018,7 @@ const SURF_WET := 0.5
 ## How the sea breaks on the bank under a point: 1 on an open coast, 0 where the
 ## land it meets is soft and wet. Read from the nearest land's `wet` hazard
 ## (BiomeRegistry), never from a country: the moss's black water is scummed reed
-## at its edge, not a white beach (docs/ART.md section 3, art review wave N).
+## at its edge, not a white beach (docs/LOOK.md section 3, art review wave N).
 var _surf: Dictionary = {}
 func _surf_at(lx: float, ly: float) -> float:
 	var size := world.size

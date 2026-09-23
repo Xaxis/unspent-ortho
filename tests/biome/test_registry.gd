@@ -124,7 +124,7 @@ func test_the_grounds_a_landscape_names_are_grounds_it_can_have() -> void:
 
 
 ## IS THIS LANDSCAPE IN EVERY WORLD? The question a story beat, an economy gate or
-## a guided path asks before it rests on a landscape (docs/WORLD.md §4). It reads
+## a guided path asks before it rests on a landscape (docs/DESIGN.md). It reads
 ## `spread.x` and nothing else, so it cannot drift from what the dealer honours.
 func test_guaranteed_answers_only_for_a_landscape_with_a_floor() -> void:
 	for d: BiomeDef in BiomeRegistry.land():

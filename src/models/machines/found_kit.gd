@@ -1,7 +1,7 @@
 class_name FoundKit
 ## Mesh vocabulary for FOUND things (machines and what comes off them), on top of
 ## MeshKit. Everything here is exact: symmetric, straight, chamfered, riveted.
-## MADE things never use it. docs/ART.md §4: a FOUND shape is never a plain box
+## MADE things never use it. docs/LOOK.md: a FOUND shape is never a plain box
 ## at a glance, so the kit's first words are lathes, tapered lofts and extruded
 ## plates; cbox is for small fittings.
 ##

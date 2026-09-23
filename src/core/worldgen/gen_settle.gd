@@ -161,7 +161,7 @@ static func villages(c: GenContext) -> void:
 	# village deep inland wakes the player in a field). Ground that needs a
 	# little levelling counts too (its score is lower); wider only if none fits.
 	#
-	# ON THE PLAN'S HOME BODY, when there is more than one (docs/WORLD.md §8.4:
+	# ON THE PLAN'S HOME BODY, when there is more than one (docs/DESIGN.md:
 	# home "holds the coast, the spawn village"), and south on THAT body. Asked of
 	# the whole land this woke the player on whichever continent's coast reached
 	# furthest south: seed 1 woke on a western continent while the home the plan

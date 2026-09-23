@@ -1,4 +1,4 @@
-## Gil ties rags to the Middens' walls so people can find their way out, camped by its nearest landmark. A local: colour, never load (docs/STORY.md §8).
+## Gil ties rags to the Middens' walls so people can find their way out, camped by its nearest landmark. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"gil", "name": "Gil", "title": "a rag-marker",

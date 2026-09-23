@@ -1,5 +1,5 @@
 extends MachineModel
-## THE PLUMB: the Crags' keeper (docs/VISION.md §3, docs/LANDSCAPES.md §1,
+## THE PLUMB: the Crags' keeper (docs/VISION.md, docs/LANDSCAPES.md,
 ## src/core/sentinel/designs/plumb.gd). A tripod seven units tall: three thin
 ## legs under a head with no lamp in it, and a plumb-weight on a chain hanging
 ## from the head down to a person's height. It is a survey instrument that never
@@ -65,7 +65,7 @@ func build() -> void:
 	stride = 2.6
 	gallery_turn = 30.0
 	# Same reason as the reaper's drum and the rake's gear: a big working part at
-	# the default burns to white and the amber goes out of it (docs/ART.md §5).
+	# the default burns to white and the amber goes out of it (docs/LOOK.md).
 	emission = 0.28
 	begin_rig()
 	ramp = Palette.MACHINE["warden"]

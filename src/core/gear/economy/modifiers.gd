@@ -1,5 +1,5 @@
 class_name Modifiers
-## How the modules in a loadout talk to each other (docs/VISION.md §6.1). The
+## How the modules in a loadout talk to each other (docs/VISION.md). The
 ## table is `ModifierTable`; this is the rule that reads it.
 ##
 ## Two things happen when a kit is settled, and they are the only two:

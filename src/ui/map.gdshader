@@ -1,5 +1,5 @@
 // The survey: explored land as the slate's scanner draws it, in phosphor on
-// the glass (docs/ART.md §9). Every value is computed per MAP pixel from integer
+// the glass (docs/LOOK.md). Every value is computed per MAP pixel from integer
 // coordinates, so the survey is crisp at any whole scale and its texture belongs
 // to the land, moving with it when the map is panned.
 //   sea      the glass itself; depth bands as dotted soundings, two ripple lines

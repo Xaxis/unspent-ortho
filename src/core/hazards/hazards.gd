@@ -1,5 +1,5 @@
 class_name Hazards
-## One model for every pressure the world puts on a body (docs/VISION.md §6, §7.3).
+## One model for every pressure the world puts on a body (docs/VISION.md, §7.3).
 ##
 ## A landscape type declares its hazards (`BiomeDef.hazards`, the biomes package;
 ## until it is filled the registry derives them from the six M1 countries). The

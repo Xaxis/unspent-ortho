@@ -1,6 +1,6 @@
 // The working part's light as a world object (art-audio-extract §3): a
 // camera-facing ring of loose amber pixels round the part. Not a soft veil and
-// never bloom (docs/ART.md §6): whole palette pixels, ordered-dithered in rings
+// never bloom (docs/LOOK.md): whole palette pixels, ordered-dithered in rings
 // and pinned to the world through world_px so the pattern never swims. Pulled a
 // little toward the camera and depth-tested, so when the part is on the far side
 // the body hides the ring and only the spill round the silhouette shows ("over
@@ -49,7 +49,7 @@ void fragment() {
 	// A HALO round the working part, not a disc over it. It came in as a filled
 	// donut of saturated LENS as wide as the whole machine, ordered-dithered, so
 	// its edge was a visible square lattice: a UI sprite dropped into the world,
-	// and the brightest thing in the frame, which docs/ART.md §5 keeps for fire
+	// and the brightest thing in the frame, which docs/LOOK.md keeps for fire
 	// and lamps. §1 forbids the lattice and §6 asks for exactly this -- a
 	// stippled halo, thinning outward, never a smooth bloom. Hashed on the
 	// world's own pixel grid (world_px), so nothing swims and nothing repeats.

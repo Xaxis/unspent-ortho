@@ -2,7 +2,7 @@ class_name Hud
 extends CanvasLayer
 ## The slate's edge overlay, drawn in the base's own pixels (`UiBase.SIZE`) so
 ## every pixel is a screen pixel. Small readouts clipped to the corners, as if strapped to the
-## wrist or thrown onto a salvaged lens (docs/ART.md §9). Nothing sits over the
+## wrist or thrown onto a salvaged lens (docs/LOOK.md). Nothing sits over the
 ## middle of the screen, where the fight is, and nothing in a fight is text
 ## beyond the readouts:
 ##
@@ -271,7 +271,7 @@ func settle_pending(delta: float = 0.0) -> void:
 ## said across the bottom of the screen: the gauge answers for it, brackets
 ## closing on the tile. Three hazards plus hunger used to put three lines of
 ## body text over the middle of the world at once, which is the opposite of
-## "small quiet readouts clipped to the corners" (docs/ART.md §9).
+## "small quiet readouts clipped to the corners" (docs/LOOK.md).
 ##
 ## The last rung is the exception: at level 3 the words still come, because
 ## starving and a dry lamp are what end the run and a badge should not be the
@@ -618,7 +618,7 @@ func _draw_bottom(ci: Control) -> void:
 ## chevron before it. It stands (it is not a message that fades) so a player who
 ## looks up an hour later still knows what they were doing — and it hangs off a
 ## corner readout rather than banding the top middle, where the fight is and
-## where nothing but the location ping belongs (docs/ART.md §9).
+## where nothing but the location ping belongs (docs/LOOK.md).
 func _draw_goal(ci: Control) -> void:
 	if not goal_shown():
 		return
@@ -641,7 +641,7 @@ static func goal_clip(text: String) -> Rect2i:
 ## How far from the middle each bracket of the place name stands, `grow` 0..1
 ## through the ping's rise. They close IN from outside the word to their place
 ## and never sweep across the letters: a bright mark travelling over a name
-## reads as a name struck out (docs/ART.md §9 — the slate's type is exact).
+## reads as a name struck out (docs/LOOK.md — the slate's type is exact).
 static func place_half(w: int, grow: float) -> int:
 	return roundi(w / 2.0 + PLACE_CLEAR + (1.0 - clampf(grow, 0.0, 1.0)) * PLACE_SWEEP)
 

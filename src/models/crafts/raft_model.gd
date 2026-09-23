@@ -1,6 +1,6 @@
 extends RefCounted
 ## A raft: driftwood spars lashed over two float drums cut out of a machine's
-## tanks (docs/ART.md §12). The drums, the transom plate and the tell-tale that
+## tanks (docs/LOOK.md). The drums, the transom plate and the tell-tale that
 ## still burns on it are FOUND — ruled, riveted, unhatched. The deck, the pole and
 ## every cord are MADE — hatched, crooked, earth and sand. The drawing is the
 ## join: each lashing crosses a drum's rivet row and sits a little off true.
@@ -13,7 +13,7 @@ const Works := preload("res://src/models/props/works.gd")
 
 const LENGTH := 1.05
 ## The deck is NARROWER than the drums under it on purpose: the machine half has
-## to be in the silhouette, not hidden under the hand's half (docs/ART.md §12).
+## to be in the silhouette, not hidden under the hand's half (docs/LOOK.md).
 const HALF_W := 0.42
 const DRUM_R := 0.2
 const DRUM_Z := 0.52

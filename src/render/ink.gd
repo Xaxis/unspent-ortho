@@ -1,5 +1,5 @@
 class_name Ink
-## Hatch style ids, mirrored from src/render/ink.gdshaderinc. docs/ART.md says
+## Hatch style ids, mirrored from src/render/ink.gdshaderinc. docs/LOOK.md says
 ## which thing is drawn in which hand; a landscape names its own in
 ## `BiomeDef.hatch`.
 

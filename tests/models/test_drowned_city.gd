@@ -1,5 +1,5 @@
 extends TestCase
-## The Drowned City's things (docs/LANDSCAPES.md §5), held to the claims their
+## The Drowned City's things (docs/LANDSCAPES.md), held to the claims their
 ## own file makes: stone somebody cut is CUTSTONE and piles are TIMBER under
 ## ROPE, no made mark reaches the FOUND pen (where an alpha is a blinking lamp),
 ## and each does what the spec says it does to a body.

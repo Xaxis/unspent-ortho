@@ -1,5 +1,5 @@
 class_name StoryGates
-## The gates into 2029 (docs/STORY.md §6): the Seeker walks him back through his
+## The gates into 2029 (docs/STORY.md): the Seeker walks him back through his
 ## life in order, and each gate is a place of the 2098 story that opens onto the
 ## same coordinates in the Before (Realm.ERA is this coast tile for tile).
 ##

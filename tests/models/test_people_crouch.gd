@@ -1,5 +1,5 @@
 extends TestCase
-## Crouched, the player must still be a person (docs/ART.md §5: the body reads
+## Crouched, the player must still be a person (docs/LOOK.md: the body reads
 ## against any ground at any hour at 640x360). Wave A2's art review found the one
 ## pose that does not: at zoom 6, CLOSER than play, the crouched figure was "a
 ## formless pale lump with one dark line through it".

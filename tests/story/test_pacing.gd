@@ -1,5 +1,5 @@
 extends TestCase
-## Revelations one at a time (docs/STORY.md §9, StoryPacing): the next waits until
+## Revelations one at a time (docs/STORY.md, StoryPacing): the next waits until
 ## the last has been felt. What is held back is what the story OFFERS — a reply, a
 ## person walking in — and never what the player has already done.
 

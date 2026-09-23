@@ -1,5 +1,5 @@
 extends TestCase
-## 2029, the Before (docs/STORY.md §6). The era is this same coast tile for tile
+## 2029, the Before (docs/STORY.md). The era is this same coast tile for tile
 ## (Realm.ERA, unspent-ortho-df), so each place of his old life is cast exactly
 ## where its 2098 twin stands, and the people of 2029 stand only in the era.
 

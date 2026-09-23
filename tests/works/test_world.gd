@@ -1,6 +1,6 @@
 extends TestCase
 ## Where the plan's depots stand in a world that was really generated
-## (docs/VISION.md §2). One per REGION the machines are working, found from what
+## (docs/VISION.md). One per REGION the machines are working, found from what
 ## they already built there, and in the same place on every run of a seed.
 
 const SEEDS: Array[int] = [1, 7]

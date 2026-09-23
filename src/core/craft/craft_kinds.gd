@@ -1,5 +1,5 @@
 class_name CraftKinds
-## Every craft, as data (docs/VISION.md §5). A craft is a thing a person makes
+## Every craft, as data (docs/VISION.md). A craft is a thing a person makes
 ## out of machine parts and then stands on: it opens ground a body cannot cross
 ## and it can be lost or wrecked.
 ##

@@ -36,18 +36,18 @@ signal screen_changed(name: StringName, open: bool)
 ## A save was written to `slot` (0 autosave, 1-3 the player's); reason: manual sleep land hours.
 signal saved(slot: int, reason: StringName)
 
-## Sentinels (docs/VISION.md §3): the keeper of a region. `woke` when its body
+## Sentinels (docs/VISION.md): the keeper of a region. `woke` when its body
 ## first comes out to a player who is near it, `phase` when its body enters
 ## another phase (the phase itself is announced by the BODY, never by text — this
 ## is for whoever wants to hear about it), and `fell` when the region is taken,
 ## naming which of the design's ways did it (SentinelWay.id(): force founder
 ## starve spoof). A region whose keeper has fallen is a region the plan no longer
-## holds; what each package makes of that is its own (docs/VISION.md §9.7).
+## holds; what each package makes of that is its own (docs/VISION.md).
 signal sentinel_woke(region: int, land: StringName)
 signal sentinel_phase(region: int, phase: StringName)
 signal sentinel_fell(region: int, land: StringName, how: StringName)
 
-## Works and landmarks (docs/VISION.md §2, §3). `works_broken` when a region's
+## Works and landmarks (docs/VISION.md, §3). `works_broken` when a region's
 ## depot has been put out for good — its lights out, its yard's works spent, and
 ## nothing more coming out of it (what the plan makes of a region it has lost is
 ## every other package's own business). `landmark_found` the first time a player
@@ -55,7 +55,7 @@ signal sentinel_fell(region: int, land: StringName, how: StringName)
 signal works_broken(region: int, land: StringName)
 signal landmark_found(id: StringName, land: StringName, at: Vector2)
 
-## Settlements (docs/VISION.md §9). The settlement package emits the first four;
+## Settlements (docs/VISION.md). The settlement package emits the first four;
 ## the raids package emits the rest, so neither has to import the other.
 signal settlement_founded(id: int)
 signal structure_built(settlement_id: int, structure_id: int)

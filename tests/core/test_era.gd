@@ -1,5 +1,5 @@
 extends TestCase
-## The Before is THIS land, earlier (docs/STORY.md, docs/WORLD.md §5).
+## The Before is THIS land, earlier (docs/STORY.md, docs/DESIGN.md).
 ##
 ## A realm is normally its own island: `Realm.seed_for` mixes a salt in so two
 ## realms can never land on one another's world. The era is the exception the

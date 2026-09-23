@@ -1,5 +1,5 @@
 class_name SettlementRules
-## What a holding does with its own time (docs/VISION.md §9): power made, stored
+## What a holding does with its own time (docs/VISION.md): power made, stored
 ## and spent; food grown, stored and eaten; parts worn and mended; people fed or
 ## going hungry. Pure, deterministic, headless: it takes a Settlement, a world
 ## minute to settle up to, and the seed and landscape the weather comes from, and

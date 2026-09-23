@@ -1,6 +1,6 @@
 class_name HazardCues
 ## What a pressure looks and sounds like on a body, so it is answered before it
-## hurts (docs/ART.md §7: every mark is drawn, nothing bounces like a physics
+## hurts (docs/LOOK.md: every mark is drawn, nothing bounces like a physics
 ## engine). Pure: the cue says what to draw and how often; 52_hazards draws it.
 ##
 ##   mark   &"breath" a pale puff at the head that rises and thins

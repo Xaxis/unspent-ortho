@@ -1,5 +1,5 @@
 extends TestCase
-## The sky's rules for reading a frame at any hour (docs/ART.md sections 5, 6,
+## The sky's rules for reading a frame at any hour (docs/LOOK.md sections 5, 6,
 ## as LANTERN left them): people take a fill light of their own in low light,
 ## water DOES take lamplight now and gives back a reflection rather than a glow
 ## disc, the lantern's light sits outside the body, dusk's warmth lands on lit
@@ -354,7 +354,7 @@ func test_every_landscapes_evening_spends_a_third_of_the_afternoon() -> void:
 		lt(night, nine * 0.96, "%s: nine o'clock is not yet the night, it is the last of the dusk" % id)
 
 
-## The landscapes do not all fall together: docs/ART.md section 3 gives each one
+## The landscapes do not all fall together: docs/LOOK.md section 3 gives each one
 ## its own dusk, and the rows have to make that measurable rather than pretty.
 func test_each_landscape_keeps_the_dusk_its_own_row_promises() -> void:
 	var share := {}
@@ -440,7 +440,7 @@ func test_the_night_term_is_nothing_by_day_all_of_it_at_night_and_never_turns_ba
 	gt(SkyLight.night_dark(5.0), 0.65, "still dark at five")
 	lt(SkyLight.night_dark(7.5), 0.02, "gone by half past seven in the morning")
 	# A sky darker than its hour is the other half of it, so a storm at ten in
-	# the morning still keeps its shapes readable (docs/ART.md section 6).
+	# the morning still keeps its shapes readable (docs/LOOK.md section 6).
 	near(SkyLight.weather_dark(Vector3.ONE), 0.0, 1e-6, "clear weather is no dark at all")
 	gt(SkyLight.weather_dark(Vector3(0.5, 0.52, 0.6)), 0.3, "a heavy storm is")
 

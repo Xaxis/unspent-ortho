@@ -1,5 +1,5 @@
 class_name StorySubarc
-## What a region asks of him (docs/VISION.md §2, §10.4). A chapter with three
+## What a region asks of him (docs/VISION.md, §10.4). A chapter with three
 ## demands and no stories in it is a checklist, so each region raises its own
 ## story out of its own state: the plan's yard still running, a cache nobody
 ## went back for, a place nobody has walked to since.
@@ -168,7 +168,7 @@ static func talk(look: StorySubarcLook, said: Dictionary) -> Dictionary:
 		return by_mood
 	if done or heard:
 		return {}
-	# Saying nothing is always one of the answers (docs/STORY.md §13), and saying
+	# Saying nothing is always one of the answers (docs/STORY.md), and saying
 	# he will is remembered, so what they say after is about what he said.
 	return _page(said, words.ask, said.id, str(words.get("answer", "[say nothing]")), true)
 

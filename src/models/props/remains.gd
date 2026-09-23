@@ -1240,7 +1240,7 @@ static func _hull_part(k: Kit, from: int, to: int, s: int, stern: bool) -> void:
 static func _torn(k: Kit, ring: Array[Vector3], s: int, inward: float = 1.0) -> void:
 	# What the tear shows: the hull's inside, closed off a little way in and
 	# drawn on the ink floor, so a torn end is a dark interior with ribs across
-	# it and never a hole in the page (docs/ART.md section 6).
+	# it and never a hole in the page (docs/LOOK.md section 6).
 	var step := Vector3(0.34 * inward, 0.0, 0.0)
 	var hub := ring[0] + step + Vector3(0.0, 0.2, 0.0)
 	var sheer := ring[ring.size() - 1] + step

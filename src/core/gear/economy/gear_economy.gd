@@ -1,5 +1,5 @@
 class_name GearEconomy
-## The one door into the gear economy (docs/VISION.md §6.1). It pours the
+## The one door into the gear economy (docs/VISION.md). It pours the
 ## content tables into the contracts the rest of the game reads —
 ## `Materials` (where an elite material can be got) and `Drops` (what a thing
 ## yields when it is beaten) — and answers the few questions other packages ask.

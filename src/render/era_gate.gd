@@ -1,5 +1,5 @@
 class_name EraGate
-## The drawn gate into 2029 (docs/STORY.md §6, `StoryGates`): a way through TIME
+## The drawn gate into 2029 (docs/STORY.md, `StoryGates`): a way through TIME
 ## rather than through rock, standing in the open where the Seeker put it.
 ##
 ##   EraGate.node(open) -> Node3D

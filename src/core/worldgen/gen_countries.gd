@@ -34,7 +34,7 @@ const ENCLAVE_TILES := 400
 const REGION_TILES := 220
 ## AND NO RUN IS A PLACE UNDER THIS, WHATEVER THE WORLD'S SIZE.
 ##
-## A REGION IS A CHAPTER NOW (docs/VISION.md §10: explored, mined and defended
+## A REGION IS A CHAPTER NOW (docs/VISION.md: explored, mined and defended
 ## before the next opens), and it was already the unit a keeper, a depot, a
 ## landmark round and an interference file key on. Measured, it could be a puddle:
 ## the floor is `REGION_TILES * body_k * body_k`, and `body_k` is a BODY's scale,
@@ -65,7 +65,7 @@ const REGION_TILES := 220
 ##
 ## The cost, stated because it is a real one: a body too small to hold a place of
 ## this size holds no region, no keeper and no chapter. For the orbital pebbles of
-## docs/WORLD.md §2 that is a design question and not a bug — a rock you cross in
+## docs/DESIGN.md that is a design question and not a bug — a rock you cross in
 ## four seconds was never going to be asked to be explored, mined and defended.
 ## **AND AT THE SIZE THE GAME SHIPS AT, THIS IS CURRENTLY WRONG. MEASURED
 ## 2026-09-19, seed 7 at `Tuning.WORLD_SIZE` (1300), which is what every player
@@ -323,7 +323,7 @@ static func coarse(c: GenContext) -> void:
 					dist[cc * cn + k] = OUT_OF_REACH
 	target = allowed_targets(c, landc, cell_body)
 	c.share_target = target
-	# ONE WEIGHT PER TYPE PER BODY (docs/WORLD.md §4: "`share` normalises across
+	# ONE WEIGHT PER TYPE PER BODY (docs/DESIGN.md: "`share` normalises across
 	# the types dealt to this body"). A single weight per type was set by every
 	# body the type holds at once, so where its neighbours differed from body to
 	# body it could not hold its share on all of them: measured, the coast's one
@@ -1107,7 +1107,7 @@ static func _land_mask(country: PackedByteArray, n: int) -> PackedByteArray:
 
 ## Every connected run of one landscape type is a REGION of that type: one type
 ## can hold several in a world, and a sentinel, a works network, a subarc and a
-## save all key on a region's id (docs/VISION.md §3, §7.2). Runs too small to
+## save all key on a region's id (docs/VISION.md, §7.2). Runs too small to
 ## be a place are left out; their tiles keep their type and belong to no region.
 static func regions(c: GenContext) -> void:
 	var w := c.w

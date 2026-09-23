@@ -22,7 +22,7 @@ static func run(c: GenContext) -> void:
 	var hw := GenFields.coarse_width(size, hs)
 	var hn := hw * hw
 	var rng := Rng.make(s, 100)
-	# ONE SUPERELLIPSE PER BODY (docs/WORLD.md §1). The draws are made in the same
+	# ONE SUPERELLIPSE PER BODY (docs/DESIGN.md). The draws are made in the same
 	# order they always were, so a world of ONE body — which is every world this
 	# project generates today — takes the identical stream and comes out identical.
 	# A body's radii scale by the square root of its share of the land, because a

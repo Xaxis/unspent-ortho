@@ -1,5 +1,5 @@
 extends RefCounted
-## What stands on the Frost Sea (docs/LANDSCAPES.md §2). The sea itself is the
+## What stands on the Frost Sea (docs/LANDSCAPES.md). The sea itself is the
 ## ground, so everything here is either what the sea did — ice thrown up on end
 ## where two floes met, a hole a seal keeps open, a trawler it closed round to
 ## the gunwale — or what the plan stood on it to listen through: a tripod over a

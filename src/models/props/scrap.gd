@@ -1,6 +1,6 @@
 extends RefCounted
 ## What stands in the Scrapwood: a wood that grew back through the machines that
-## died in it. Every tree here is two drawings at once (docs/ART.md law 3) — a
+## died in it. Every tree here is two drawings at once (docs/LOOK.md law 3) — a
 ## crown and a trunk by hand, and inside them the ruled ribs of something that
 ## stopped. The hand won, slowly, and the ruler is still there under the bark.
 ##

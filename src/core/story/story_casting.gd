@@ -1,5 +1,5 @@
 class_name StoryCasting
-## Binding a slot to somewhere real (docs/STORY_SYSTEM.md §5).
+## Binding a slot to somewhere real (docs/DESIGN.md).
 ##
 ##   StoryCasting.cast(world, slots) -> {slot id: {pos, region, land, site, body}}
 ##

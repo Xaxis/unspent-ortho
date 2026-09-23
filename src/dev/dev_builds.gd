@@ -1,6 +1,6 @@
 class_name DevBuilds
 ## The shelf: the builds on the machine the game is built on, and the commands
-## that make, keep, prove, play and deploy them (docs/DEV.md). The commands are
+## that make, keep, prove, play and deploy them (docs/DESIGN.md). The commands are
 ## the tools' own; this only says which to run on what.
 ##
 ##   build/web, build/web-nothreads, build/mac   the working builds tools/web.sh and deploy use

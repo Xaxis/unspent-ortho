@@ -343,7 +343,7 @@ func _read_ahead() -> void:
 ## no way to say. `danger` is a machine that has noticed you and is close, which
 ## rises and falls in seconds; a network tightening as you strip a landscape takes
 ## an hour and never comes near you at all. Without this the whole chapter loop
-## (docs/VISION.md §10) was inaudible — you could carry a region from calm to
+## (docs/VISION.md) was inaudible — you could carry a region from calm to
 ## hostile and the only thing that changed was how the machines behaved when you
 ## happened to meet one.
 ##

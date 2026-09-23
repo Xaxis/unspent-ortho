@@ -1,4 +1,4 @@
-## The Coast's keeper: a reaper on a gantry (docs/VISION.md §3, "the Coast's
+## The Coast's keeper: a reaper on a gantry (docs/VISION.md, "the Coast's
 ## sentinel reaps"). It stands at the machines' intake on the shore and works the
 ## turf in rows, and the whole shore answers to it.
 ##

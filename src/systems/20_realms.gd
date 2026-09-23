@@ -1,5 +1,5 @@
 extends GameSystem
-## The realms of one game, and the crossing between them (docs/VISION.md §4, §7.1).
+## The realms of one game, and the crossing between them (docs/VISION.md, §7.1).
 ##
 ## A game holds ONE active realm. Its world, its view and the body in it are the
 ## game's own fields, so a crossing does not make a new game: it points the game
@@ -232,7 +232,7 @@ func _stand_gates() -> void:
 		_placed[id] = true
 
 
-## Go through a gate into 2029, or back out of it (docs/STORY.md §6).
+## Go through a gate into 2029, or back out of it (docs/STORY.md).
 ##
 ## AT THE SAME COORDINATES, BOTH WAYS. A shaft pairs by index because two realms
 ## are two islands that share no ground; the era shares every tile, so a gate

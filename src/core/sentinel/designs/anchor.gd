@@ -1,4 +1,4 @@
-## The Mesas' keeper: the anchor (docs/LANDSCAPES.md §6, docs/VISION.md §3).
+## The Mesas' keeper: the anchor (docs/LANDSCAPES.md, docs/VISION.md).
 ## The plan carries its haul across canyons no road can cross, on cables strung
 ## mesa top to mesa top, and the cables hang off bolts driven into the scarps.
 ## This is the machine that drives them and keeps them driven: a four-limbed

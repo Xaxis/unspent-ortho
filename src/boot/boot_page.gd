@@ -532,7 +532,7 @@ func _draw_glass() -> void:
 
 ## The device the page is a screen of: violet chrome stolen off a machine, a
 ## grey casing patched onto its lower right, duct tape over the cracked corner,
-## KEEP DRY scratched into it (docs/ART.md §9). The loading page was the one
+## KEEP DRY scratched into it (docs/LOOK.md). The loading page was the one
 ## screen in the game that was not the slate, and it is the first one anybody
 ## sees. Drawn from rects at whole pixels, not baked: it must be on the very
 ## first frame, and a bake takes a third of a second the start-up cannot spend.
@@ -722,7 +722,7 @@ func _draw_stages(ci: CanvasItem, a: float) -> void:
 
 
 ## The glass is salvaged and says so: a column of stuck pixels down the left
-## margin, and the crack in the top right corner under the tape (docs/ART.md §9).
+## margin, and the crack in the top right corner under the tape (docs/LOOK.md).
 ## Both live in the margins, clear of everything the page writes.
 func _draw_marks(ci: CanvasItem, a: float) -> void:
 	if a <= 0.0:

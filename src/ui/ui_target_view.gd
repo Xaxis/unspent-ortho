@@ -14,7 +14,7 @@ extends CanvasLayer
 ## glyph. Nothing in the fight knows a villager, so a tag over one would be a
 ## number nobody took — they carry none, and words only while the key is held.
 ##
-## Machine-sourced data is the stolen module's violet (docs/ART.md §9); what the
+## Machine-sourced data is the stolen module's violet (docs/LOOK.md); what the
 ## player reads off a living creature with their own eyes is the slate's
 ## phosphor, since the module reads no creature's signature (SlateFeeds).
 
@@ -27,7 +27,7 @@ const TAG_LIFT := 10
 ## Air between the strip of glass the pips sit on and the notice chip: they are
 ## TWO salvaged parts taped near each other, not one sprite.
 const TAG_GAP := 6
-## What the tag is made of (docs/ART.md §9; A2 art finding 2).
+## What the tag is made of (docs/LOOK.md; A2 art finding 2).
 ##
 ## What was here was an opaque UiTheme.RIM lozenge behind every body on screen.
 ## Measured: its darkest pixels sat at luminance 7.3 when nothing else in the
@@ -55,7 +55,7 @@ const TAG_GAP := 6
 ## legibility as a lamp sweeps past, which is worse than being always faint.
 ##
 ## The bar is **3:1, not 4.5:1**, because the tag is WORDLESS by the pillar in
-## docs/ART.md §9 — pips and one glyph, never a word — and 3:1 is the bar a
+## docs/LOOK.md — pips and one glyph, never a word — and 3:1 is the bar a
 ## non-text indicator is held to. At the value below the three inks land at
 ## 3.8:1 (a machine), 6.7:1 (the one being read) and 8.7:1 (a creature) against
 ## white, and measured in a real noon frame at seed 3 the machine's pips came out
@@ -136,7 +136,7 @@ func _on_glass(p: Vector2) -> bool:
 
 ## The stolen module's violet for a machine's signature, the slate's phosphor for
 ## a creature read by eye. Never the palest step: a tag over the world has to sit
-## under the words the slate says, not over them (docs/ART.md §5).
+## under the words the slate says, not over them (docs/LOOK.md).
 func _ink(machine: bool, lit: bool = true) -> Color:
 	if machine:
 		return UiTheme.MACHINE[3] if lit else UiTheme.MACHINE[2]

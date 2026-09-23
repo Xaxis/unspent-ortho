@@ -14,7 +14,7 @@ extends RefCounted
 ## Rest transforms are translations only, so a bone's pose rotation is the whole
 ## joint angle and animation code never has to know about bind matrices.
 ##
-## Parts go on one of three surfaces (docs/ART.md law 3):
+## Parts go on one of three surfaces (docs/LOOK.md law 3):
 ##   MADE   the hand: the material given to attach() (world or person shader)
 ##   FOUND  the ruler: found.gdshader, clean, unhatched (plate salvage, glim bodies)
 ##   GLOW   a light built into the FOUND: a glim's light, a live aerial tip, a

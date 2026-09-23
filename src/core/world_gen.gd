@@ -33,7 +33,7 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	var w := WorldData.new(seed_value, size)
 	w.realm = realm
 	var c := GenContext.new(w)
-	# What the world is MADE of, before a tile of it exists (docs/WORLD.md). The
+	# What the world is MADE of, before a tile of it exists (docs/DESIGN.md). The
 	# size asked for is a ceiling: at every size this project currently uses it
 	# comes back one body, which is the island that has always been here.
 	c.bodies = GenBodies.plan(seed_value, realm, size).bodies
@@ -63,7 +63,7 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	# WHICH BODY EACH TILE IS ON, BEFORE ANYTHING IS LAID ON IT. It ran at the end
 	# when all it had to do was record; the dealer needs it here, because "may this
 	# landscape stand on THIS continent" cannot be asked of a world that does not
-	# yet know where its continents are (docs/WORLD.md §4).
+	# yet know where its continents are (docs/DESIGN.md).
 	GenBodies.run(c)
 	t = _mark(c, marks, &"shape", t)
 	GenCountries.coarse(c)

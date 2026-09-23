@@ -1,6 +1,6 @@
 class_name Attention
 ## What the plan thinks a holding is worth doing something about
-## (docs/VISION.md §9.3), as pure rules. `Settlement.attention` is the number;
+## (docs/VISION.md), as pure rules. `Settlement.attention` is the number;
 ## this file is the only thing that decides what moves it.
 ##
 ## **The unit.** Attention is 0..1 on ONE scale, and the scale is the escalation:
@@ -132,7 +132,7 @@ static func from_found_tech(attention: float, found: float, hours: float) -> flo
 ## A one-line reading of where a holding stands, for a message and for a test.
 ## Never a bar and never a percentage: the holding app already draws what a
 ## machine HEARS, and a second readout of what it THINKS would turn a system
-## about reading the world into a number to optimise (owner, docs/VISION.md §9).
+## about reading the world into a number to optimise (owner, docs/VISION.md).
 static func pressure(attention: float) -> StringName:
 	if attention < RaidStage.AT[0] * 0.5:
 		return &"unknown"

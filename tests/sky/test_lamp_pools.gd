@@ -1,5 +1,5 @@
 extends TestCase
-## Lamplight lifts the ink (docs/ART.md section 6): the lights system hands the
+## Lamplight lifts the ink (docs/LOOK.md section 6): the lights system hands the
 ## same positions and ranges it gives its OmniLight3Ds to the sky, so the pool
 ## the light paints is the pool the hatching leaves.
 
@@ -83,7 +83,7 @@ func test_lamps_hand_their_pools_to_the_ink_at_night_only() -> void:
 
 func test_a_lamp_lit_in_daylight_lays_nothing_and_at_night_lays_its_own_colour() -> void:
 	# The rule the snowfield caught us on: at noon a lit lamp must add no light
-	# at all, so no disc can appear on bright ground (docs/ART.md section 6).
+	# at all, so no disc can appear on bright ground (docs/LOOK.md section 6).
 	var day := Vector3(1.0, 1.0, 0.99)
 	near(Lights.gloom(12.0, day, 1.0), 0.0, 0.02, "noon is not gloom")
 	near(Lights.gloom(13.0, day, 1.0), 0.0, 0.02, "nor the afternoon")
@@ -159,7 +159,7 @@ func test_a_night_pool_tints_the_ground_and_never_flattens_it() -> void:
 	# its ratio to its neighbours. An operator that lifts every surface toward a
 	# level the light picks turns a campfire, a bench and a person's clothes into
 	# one flat orange disc — brighter and more saturated than the noon disc this
-	# package was built to remove (docs/ART.md section 6).
+	# package was built to remove (docs/LOOK.md section 6).
 	var code := SkySource.text(SkySource.SKY_INC)
 	check(code.contains("mix(c, c * gain,"), "the wash multiplies the ground; nothing may lift it toward a common level")
 	var k := Vector3(SkySource.number(code, "const float SKY_POOL_WASH"), SkySource.number(code, "const float SKY_POOL_TILT"), SkySource.number(code, "const float SKY_POOL_LIFT"))

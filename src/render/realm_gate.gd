@@ -1,7 +1,7 @@
 class_name RealmGate
-## The drawn gate of a portal (docs/VISION.md §4: "a portal is a place, drawn and
+## The drawn gate of a portal (docs/VISION.md: "a portal is a place, drawn and
 ## sounded, never a menu"). Two draws, both idioms visible at once, which is what
-## a MENDED thing is (docs/ART.md, VISION §6): the machines' ruled plate collar
+## a MENDED thing is (docs/LOOK.md, VISION §6): the machines' ruled plate collar
 ## and headframe sunk into the rock, and the ladder somebody hung down it after
 ## they stopped coming.
 ##
@@ -32,7 +32,7 @@ const DEEP := 0.5
 const LIE := 0.035
 const LIP := 0.42
 
-## The dark at the bottom of it. Never pure black (docs/ART.md: nothing in the
+## The dark at the bottom of it. Never pure black (docs/LOOK.md: nothing in the
 ## world is, the outline pen included) — one step up off the ink, so the shaft is
 ## a depth and not a hole cut in the page.
 const MOUTH := Color(0.0706, 0.0667, 0.1137)

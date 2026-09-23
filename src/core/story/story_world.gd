@@ -1,5 +1,5 @@
 class_name StoryWorld
-## The ONE door the story asks the world a question through (docs/STORY_SYSTEM.md §4).
+## The ONE door the story asks the world a question through (docs/DESIGN.md).
 ##
 ## Kept to one file for two reasons. The story package then has exactly one place
 ## to change when the world's own contracts move — and they are moving, hard, this

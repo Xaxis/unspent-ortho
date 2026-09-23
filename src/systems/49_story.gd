@@ -10,7 +10,7 @@ extends GameSystem
 ##
 ## Nothing here opens by itself. A line is said because the player pressed a key
 ## standing in front of somebody, and never because they walked onto a tile
-## (docs/STORY.md §13).
+## (docs/STORY.md).
 
 ## How far a person or a thing can be and still be talked to or read. Generous
 ## on purpose: a villager walks their own round, and a key pressed at somebody
@@ -473,7 +473,7 @@ func _close() -> void:
 	view.refresh()
 
 
-# --- what was done to the player (docs/STORY.md §13) -------------
+# --- what was done to the player (docs/STORY.md) -------------
 
 ## The player's own state as evidence. Each of these is a thing that happened to
 ## them or that they did — never where they walked — and each lands its beat on
@@ -815,7 +815,7 @@ func subarc_look() -> StorySubarcLook:
 				look.lost_on_road.append(who)
 				look.lost_to[who] = t.lost_to
 	# What the plan has lost here, which is the only thing that ends a region's
-	# danger (docs/VISION.md §10, unspent-ortho-cb): the yard dark or the keeper down.
+	# danger (docs/VISION.md, unspent-ortho-cb): the yard dark or the keeper down.
 	var keepers := _system("44_sentinels")
 	if keepers != null:
 		for st: SentinelState in keepers.get("_states"):
@@ -905,7 +905,7 @@ func tour_seen(what: StringName) -> bool:
 
 
 ## Hold the HUD's message line while somebody is talking: two sets of words at
-## the bottom of the glass at once is the thing docs/ART.md §9 is most against.
+## the bottom of the glass at once is the thing docs/LOOK.md is most against.
 ## Nothing is lost — UiMessages.quiet keeps them waiting and says them after,
 ## which is what it already does for a fight.
 func _hush(on: bool) -> void:

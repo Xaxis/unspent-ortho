@@ -1,5 +1,5 @@
 class_name GenBodies
-## The bodies a world is made of, and the void between them (`docs/WORLD.md`).
+## The bodies a world is made of, and the void between them (`docs/DESIGN.md`).
 ##
 ## THE RECORDING HALF LANDS FIRST, ON PURPOSE. The finished stage runs BEFORE
 ## `GenShape` and hands each body a footprint, a land budget, a climate band and a
@@ -78,7 +78,7 @@ static func run(c: GenContext) -> void:
 	w.continents = out
 
 
-## **THE OCEAN IS A WALL AND THE SHELF IS NOT** (docs/WORLD.md, task #50).
+## **THE OCEAN IS A WALL AND THE SHELF IS NOT** (docs/DESIGN.md, task #50).
 ## Deep water is the only thing that stops a body on foot (`WorldQuery.standable`)
 ## and deep water is `level < 0`. Every coast carries a shelf of level-0 water out
 ## to about twenty tiles, which is exactly right for a shore — you wade off a
@@ -217,7 +217,7 @@ static func mark_home(c: GenContext) -> void:
 		row["home"] = int(row.get("id", -1)) == id
 
 
-# --- The planning half (docs/WORLD.md) -----------------------------------------
+# --- The planning half (docs/DESIGN.md) -----------------------------------------
 # Pure, cheap, and deliberately not wired into generation yet: `plan` decides how
 # many bodies a world has, how big the square must be to hold them, where each
 # one sits and what climate band it was dealt, WITHOUT making a world. Anyone may
@@ -298,7 +298,7 @@ static func plan(seed_value: int, realm: StringName = &"surface", want_size: int
 	# A realm may lie UNDER another one, or BE it at another time: either way it is
 	# the same map and it says so with `Realm.DEFS[...].footprints_of`. Ask for that
 	# realm's plan rather than making a second, unrelated one. The rule lives HERE
-	# so no caller has to know which realms share a map (docs/WORLD.md §5).
+	# so no caller has to know which realms share a map (docs/DESIGN.md).
 	var shares: StringName = Realm.def(realm).get("footprints_of", &"")
 	if shares != &"" and shares != realm:
 		var other := plan(seed_value, shares, want_size)
@@ -386,7 +386,7 @@ static func plan(seed_value: int, realm: StringName = &"surface", want_size: int
 			"home": false,
 		})
 	# The player wakes on one of them, and it is the one nearest the south — the
-	# journey has run south to north since M1 (docs/WORLD.md §8).
+	# journey has run south to north since M1 (docs/DESIGN.md).
 	var home := 0
 	for i in bodies.size():
 		if float((bodies[i].at as Vector2).y) > float((bodies[home].at as Vector2).y):
@@ -395,7 +395,7 @@ static func plan(seed_value: int, realm: StringName = &"surface", want_size: int
 	return {"size": size, "bodies": bodies}
 
 
-# --- The deal (docs/WORLD.md §4) ------------------------------------------------
+# --- The deal (docs/DESIGN.md) ------------------------------------------------
 
 ## Which landscapes may lie on which body, recorded on `WorldData.continents` so
 ## nobody downstream has to work it out. Honours `BiomeDef.spread`:
@@ -443,7 +443,7 @@ static func deal(c: GenContext) -> void:
 		var most := maxi(1, roundi(float(planned) * MOST_BODIES)) if sp.y <= 0 else mini(sp.y, planned)
 		var want := maxi(1, mini(most, planned))
 		# A guaranteed type goes on the HOME body first: the spine of the game
-		# lives there (docs/WORLD.md §8.4) and a player who never crosses water
+		# lives there (docs/DESIGN.md) and a player who never crosses water
 		# must still meet everything something depends on.
 		#
 		# **TWO MEANINGS SHARE `spread.x >= 1` AND THEY MUST NOT BE MERGED.** `(1, 0)`

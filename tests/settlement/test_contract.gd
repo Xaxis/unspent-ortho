@@ -1,5 +1,5 @@
 extends TestCase
-## The seam the settlement and raids packages both write to (docs/VISION.md §9).
+## The seam the settlement and raids packages both write to (docs/VISION.md).
 ## These tests pin the shape and the two decisions inside it: what a machine
 ## makes of a place, and what hides it. Change them only with both packages.
 

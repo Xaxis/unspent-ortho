@@ -1,5 +1,5 @@
 extends TestCase
-## The depot in a REAL GAME (docs/VISION.md §2). Everything here used to be
+## The depot in a REAL GAME (docs/VISION.md). Everything here used to be
 ## claimed by a comment and proved by arithmetic over two constants: the first
 ## version of this package counted "162 bodies a day" out of `OWN_EVERY` and
 ## `PATROL_EVERY` and called it the measurement that the quieting is judged by,
@@ -265,7 +265,7 @@ func test_a_body_cannot_walk_through_the_deck() -> void:
 ##
 ## The other half of the picture is why the sample is only ever two landscapes:
 ## **the game has TWO sentinel designs** (`tide_reaper`, `pan_rake`) for
-## twenty-one landscapes, against docs/VISION.md §3's one keeper per landscape.
+## twenty-one landscapes, against docs/VISION.md's one keeper per landscape.
 ## So nineteen landscapes have no keeper for a yard to starve in the first place,
 ## and on the two that do, no depot falls inside the keeper's feeding reach.
 ## **The STARVE way of taking a sentinel is currently open on no island at all.**

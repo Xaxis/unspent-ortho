@@ -1,7 +1,7 @@
 class_name RaidPlan
 extends RefCounted
 ## One thing the plan has decided to do to one holding, from the moment the world
-## first says so to the moment it is over (docs/VISION.md §9.4).
+## first says so to the moment it is over (docs/VISION.md).
 ##
 ## A plan is made at the WARNING and not at the arrival, and that order is the
 ## whole contract: `warned_at` is when the horizon lit up, `begins_at` is when

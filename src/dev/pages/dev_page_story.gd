@@ -1,6 +1,6 @@
 class_name DevPageStory
 extends DevPage
-## The story, from the inside (docs/STORY.md, docs/DEV.md): what this playthrough
+## The story, from the inside (docs/STORY.md, docs/DESIGN.md): what this playthrough
 ## has found, what it has been told, and every beat that exists whether it has
 ## landed or not.
 ##

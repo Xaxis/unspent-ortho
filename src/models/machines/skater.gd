@@ -1,5 +1,5 @@
 extends MachineModel
-## A skater: the Glass Desert's hunter (docs/LANDSCAPES.md §3, src/content/
+## A skater: the Glass Desert's hunter (docs/LANDSCAPES.md, src/content/
 ## roster.gd `skater`). A long low lozenge of plate on four blade-skates, a slit
 ## across its nose reading the glass ahead, a dorsal rib along its back and the
 ## drive that pushes it standing proud of its tail. Nothing about it is upright:

@@ -1,5 +1,5 @@
 class_name Recipes
-## Every recipe, as data (docs/research/design-extract.md §9.6, with the trade
+## Every recipe, as data (the old Unity game (../unspent) §9.6, with the trade
 ## rungs replaced by making, since there is no money). Crafting reads this;
 ## nothing else should.
 ##
@@ -82,7 +82,7 @@ const LIST: Array[Dictionary] = [
 	{"id": &"kit_lens", "at": &"bench", "minutes": 70.0, "needs": {&"scrap": 1, &"tin": 1, &"resin": 1}, "makes": {&"kit_lens": 1}},
 	{"id": &"kit_aerial", "at": &"bench", "minutes": 55.0, "needs": {&"scrap": 2, &"tin": 2}, "makes": {&"kit_aerial": 1}},
 
-	# --- Gear against a place's pressures (docs/VISION.md §6) ---
+	# --- Gear against a place's pressures (docs/VISION.md) ---
 	# Made: rags off what people left, packed with dried wrack and sealed with pitch.
 	{"id": &"scarf_mask", "at": &"hand", "minutes": 20.0, "needs": {&"rag": 2, &"charcoal": 1}, "makes": {&"scarf_mask": 1}, "tool": &"cut"},
 	{"id": &"mod_wadding", "at": &"hand", "minutes": 20.0, "needs": {&"rag": 2, &"wrack": 2}, "makes": {&"mod_wadding": 1}, "tool": &"cut"},
@@ -208,7 +208,7 @@ const LIST: Array[Dictionary] = [
 	{"id": &"mod_leech", "at": &"bench", "minutes": 140.0, "needs": {&"clerk_die": 1, &"copper": 2, &"wick": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_leech": 1}},
 	{"id": &"mod_phase", "at": &"bench", "minutes": 145.0, "needs": {&"keeper_lens": 1, &"copper": 2, &"resin": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_phase": 1}},
 	{"id": &"mod_lattice", "at": &"bench", "minutes": 150.0, "needs": {&"scrap": 3, &"copper": 2, &"wick": 2, &"fulgurite_core": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_lattice": 1}},
-	# --- Crafts (docs/VISION.md §5) ---
+	# --- Crafts (docs/VISION.md) ---
 	# A raft is lashed at the shore out of what the tide brings and one drum off a
 	# wreck: the first craft, reachable on day one. The mended two need a bench,
 	# iron and a machine's own ducts and legs.
@@ -229,7 +229,7 @@ const LIST: Array[Dictionary] = [
 	{"id": &"mattock_cemented", "at": &"kiln", "minutes": 600.0, "needs": {&"mattock": 1, &"charcoal": 8}, "makes": {&"mattock_steel": 1}},
 	{"id": &"pick_cemented", "at": &"kiln", "minutes": 600.0, "needs": {&"pick": 1, &"charcoal": 8}, "makes": {&"pick_steel": 1}},
 
-	# --- Raids: what a machine was carrying about you (docs/VISION.md §9.2) ---
+	# --- Raids: what a machine was carrying about you (docs/VISION.md) ---
 	# A filed record is their own account of a place, taken off the body that was
 	# walking home with it. Stripped with a blade it is what it is made of: a spool
 	# of copper and a foil card, which is the stuff a signet is wound from. Nobody

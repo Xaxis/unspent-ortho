@@ -229,7 +229,7 @@ func test_night_fall_and_light_level_follow_the_source_clock() -> void:
 
 ## The finding this whole package answers: the source crushed dusk into 20:00-21:00,
 ## so every hour before 20:00 was full day and the half hour after it took a third
-## of the frame's light at once (docs/ART.md section 6, art review finding 2).
+## of the frame's light at once (docs/LOOK.md section 6, art review finding 2).
 func test_the_dusk_is_two_and_a_half_hours_and_no_half_hour_of_it_is_a_cliff() -> void:
 	near(Weather.night_fall(Weather.DUSK_START), 0.0, 1e-6, "full day where the turn begins")
 	near(Weather.night_fall(Weather.DUSK_END), 1.0, 1e-6, "night where it lands")

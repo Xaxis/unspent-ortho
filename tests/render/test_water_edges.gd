@@ -1,6 +1,6 @@
 extends TestCase
 ## Foam belongs to the sea on a shore that shelves. The moss is "black water
-## with green edges" (docs/ART.md section 3): the art review found a near-white
+## with green edges" (docs/LOOK.md section 3): the art review found a near-white
 ## lapping band round a water body sitting on peat, a 180-luma jump and the
 ## brightest thing in the landscape. The mesher decides this, from the nearest
 ## land's `wet` hazard (BiomeRegistry), never from a country.

@@ -606,7 +606,7 @@ const PLACED := {
 #
 # A conversation belongs to a TRADE, so whoever of that trade the player stops says
 # it: villagers are streamed, and nothing may hang on one body being one person.
-# Named people are the cast system's (docs/STORY_SYSTEM.md §8). Every node's LAST
+# Named people are the cast system's (docs/DESIGN.md). Every node's LAST
 # reply leads out, and saying nothing is always one of the answers.
 
 const TALKS := {
@@ -1466,7 +1466,7 @@ const TALKS := {
 			},
 		},
 	},
-	# --- 2029, the Before (docs/STORY.md §6, §12): close and sharp, the old
+	# --- 2029, the Before (docs/STORY.md, §12): close and sharp, the old
 	# world's texture. They speak to the man he was, and what he says back is
 	# remembered, because the past cannot change but the machine made of it can.
 	&"hannah": {
@@ -1739,7 +1739,7 @@ const TALKS := {
 			},
 		},
 	},
-	# --- the channel, at the end (docs/STORY.md §11). One voice, and it is his:
+	# --- the channel, at the end (docs/STORY.md). One voice, and it is his:
 	# the Seeker and the Echo are both made of him and speak alike. What he says
 	# here, read against the version of the secret he holds, is how it ends.
 	&"the_channel": {
@@ -1765,7 +1765,7 @@ const TALKS := {
 			},
 		},
 	},
-	# --- locals: one per landscape, colour and never load (docs/STORY.md §8) ---
+	# --- locals: one per landscape, colour and never load (docs/STORY.md) ---
 	&"esk": {
 		"cast": &"esk", "title": "a stone-setter", "start": &"open",
 		"nodes": {
@@ -2313,7 +2313,7 @@ const TALKS := {
 	},
 }
 
-# --- the first thing said (docs/STORY.md §12) ---------------------------------
+# --- the first thing said (docs/STORY.md) ---------------------------------
 #
 # The game's own register: flat, second person, present tense, no adjective it
 # can live without. Said once, on the first morning, and never again — a save
@@ -2325,11 +2325,11 @@ const OPENING: Array[String] = [
 	"You do not remember the water.",
 ]
 
-# --- what a region asks of him (StorySubarc, docs/VISION.md §10.4) ------------
+# --- what a region asks of him (StorySubarc, docs/VISION.md) ------------
 #
 # A chapter with three demands and no stories in it is a checklist, so each
 # region raises one of these out of its own state and somebody who lives there
-# says it. One resolved token at most per line (docs/STORY_SYSTEM.md §6): the
+# says it. One resolved token at most per line (docs/DESIGN.md): the
 # place's own name, and never a coordinate, a count or a task.
 
 ## What somebody who lives here says when the region itself has changed under
@@ -2503,7 +2503,7 @@ const TAKEN := {
 
 # --- what a machine is for (channel 3: machines, by being watched) -------------
 #
-# The slate's read of a machine is already testimony (docs/STORY.md §13): what it
+# The slate's read of a machine is already testimony (docs/STORY.md): what it
 # is, what it can do, what it has noticed. This is the one line more — what it is
 # FOR — shown under its name while the target key is held. By role, because a
 # landscape that brings its own roster is read in the same words with no edit
@@ -2521,7 +2521,7 @@ const TESTIMONY := {
 	&"hunter": {"says": "removing what is in the way", "beats": [&"noticed"], "roused": true},
 	&"recycler": {"says": "taking back what is spent"},
 }
-## A landscape's keeper holds one of Elias's memories (docs/STORY.md §10).
+## A landscape's keeper holds one of Elias's memories (docs/STORY.md).
 const TESTIMONY_SENTINEL := {"says": "keeps a memory not its own", "beats": [&"gap"]}
 ## A keeper that holds one of the three memories the secret is hidden in says
 ## which, and taking it gives the memory back (49_story, on `sentinel_fell`).
@@ -2545,7 +2545,7 @@ const TESTIMONY_PASSES := {"says": "shows what being kept is like", "beats": [&"
 # --- what was done to the player (channel 4: the player's own state) -----------
 #
 # Beats that land because of something that HAPPENED to the player or that they
-# did, never because of where they walked (docs/STORY.md §13). WITNESS_ON is what
+# did, never because of where they walked (docs/STORY.md). WITNESS_ON is what
 # 49_story watches for, by event; WITNESSED says each in words, so a writer can see
 # every door a beat has and a test can hold every beat to having one.
 

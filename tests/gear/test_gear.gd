@@ -151,7 +151,7 @@ func test_every_piece_of_gear_can_be_reached_from_a_normal_start() -> void:
 	var have := {&"knife": true, &"lamp": true}
 	# Taking and making were the only two ways to hold a thing when this was
 	# written. The economy added a third — what a machine gives up when it goes
-	# down (docs/VISION.md §6.1) — so what counts as reachable is widened here and
+	# down (docs/VISION.md) — so what counts as reachable is widened here and
 	# nothing is let off: every wearable and every module still has to be gettable.
 	# `without_making` is computed from roster kinds that really exist, so it can
 	# never claim a path through a body nobody has built.
@@ -207,7 +207,7 @@ func test_the_three_idioms_are_told_apart_by_the_data_and_by_the_slate() -> void
 	eq(Gear.tier(&"shield_plate"), &"found")
 	eq(Gear.tier(&"knife"), &"made", "anything with no tier of its own is made")
 	eq(Gear.tier(&"las_hand"), &"found", "unless it is machine tech")
-	# EVERY mended thing is drawn in both palettes at once (docs/ART.md §12), and
+	# EVERY mended thing is drawn in both palettes at once (docs/LOOK.md), and
 	# a shape with no cord pixel in it would read as FOUND however the ramp is
 	# written -- so the icon itself is checked, not just the colour table.
 	for id: StringName in Items.DEFS:

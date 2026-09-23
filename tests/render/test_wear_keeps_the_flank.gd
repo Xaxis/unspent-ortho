@@ -1,5 +1,5 @@
 extends TestCase
-## What keeps a machine readable once the land has worn it (docs/ART.md §4).
+## What keeps a machine readable once the land has worn it (docs/LOOK.md).
 ##
 ## THE LAW HAD NO TEST THAT COULD SEE IT BREAK. "A machine is a DARK mass by
 ## day" is held by `tests/models/test_machines_ramps.gd`, which compares the
@@ -75,7 +75,7 @@ func test_the_light_channels_are_gated_on_what_faces_the_sky() -> void:
 		var body := term(src, name)
 		check(body != "", "%s is still a term in matter_worn" % name)
 		check(body.contains("top"), ("%s must stay gated on `top`, or it lands on the flanks and a machine "
-			+ "on snow or salt stops being a mass at all (docs/ART.md §4)") % name)
+			+ "on snow or salt stops being a mass at all (docs/LOOK.md)") % name)
 	# And the dark ones must NOT be, or a machine in the bog loses the rust down
 	# its sides that is the whole of what the bog does to it.
 	for name: String in ["rust", "soot"]:
@@ -87,7 +87,7 @@ func test_the_light_channels_are_gated_on_what_faces_the_sky() -> void:
 
 func test_the_light_wear_is_lighter_than_the_turf_and_the_dark_is_darker() -> void:
 	# The arithmetic the paragraph above is built on, pinned so the numbers in
-	# docs/ART.md cannot quietly stop being true. These four are the colours
+	# docs/LOOK.md cannot quietly stop being true. These four are the colours
 	# `matter_worn` mixes toward; the turf is what the ramps test holds fills under.
 	var turf := luma(Palette.MOSS[3])
 	near(turf, 0.350, 0.01, "coast turf")
@@ -112,4 +112,4 @@ func test_the_two_landscapes_that_break_the_letter_are_the_two_that_declare_it()
 	light.sort()
 	eq(light, ["salt_flats", "snowfield"],
 		"a landscape pressing salt or frost at full strength puts a machine's ROOF above the turf; "
-		+ "its flanks still carry it (docs/ART.md §4), but the frame is worth looking at: %s" % [light])
+		+ "its flanks still carry it (docs/LOOK.md), but the frame is worth looking at: %s" % [light])

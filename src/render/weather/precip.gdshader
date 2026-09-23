@@ -1,4 +1,4 @@
-// Weather drawn into the notebook (docs/ART.md section 6): rain as short slanted
+// Weather drawn into the notebook (docs/LOOK.md section 6): rain as short slanted
 // ink strokes in columns, snow as paper flecks, ash as dark specks, heat as a
 // wavering line, wind as the odd flick, splashes as tiny ticks. Every mark is
 // built in whole SCREEN pixels around its particle (CPUParticles3D, so the
@@ -50,7 +50,7 @@ uniform float flicker_rate = 12.0;
 // not a switch, because a long mark rimmed every time reads as a dark dash.
 uniform float underline = 0.0;
 // Flecks drawn as a paper body in color_b held by one pixel of shade in color_a
-// under it (docs/ART.md section 3: the snowfield's "snow as paper flecks"). Pale
+// under it (docs/LOOK.md section 3: the snowfield's "snow as paper flecks"). Pale
 // against pale lying snow, and still legible over dark ground; the dark speck is
 // the Burning's ash and must not be snow. A fleck three pixels across is a small
 // cross with the same shade pixel under it.

@@ -8,7 +8,7 @@
 # big files so a server can send them precompressed (tools/web.sh does).
 #
 # --config=NAME makes the build from a master configuration (configs/NAME.json,
-# docs/DEV.md). Every build is stamped, with a configuration or without one: the
+# docs/DESIGN.md). Every build is stamped, with a configuration or without one: the
 # stamp (src/dev/stamp_build.gd) is written to stamp/build.json for the export to
 # pack, taken away again after, and kept beside the build as build.json with the
 # sizes, so the shelf, a note and the running build all say what it is.

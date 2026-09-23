@@ -1,5 +1,5 @@
 extends TestCase
-## The machines against docs/ART.md: FOUND geometry on found.gdshader and never
+## The machines against docs/LOOK.md: FOUND geometry on found.gdshader and never
 ## hatched, natural matter they carry on the MADE material, amber only where the
 ## soft side is, a cold slit on the plate, mirror-exact silhouettes, and a light
 ## that knows the dark without reading a global shader parameter back.

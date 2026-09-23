@@ -1,7 +1,7 @@
 class_name BiomeRegistry
 ## Every landscape type the game knows, discovered from src/content/biomes/.
 ## There is no central list: a file that declares `static func make() -> BiomeDef`
-## in that directory IS a landscape type (docs/VISION.md §7.2).
+## in that directory IS a landscape type (docs/VISION.md).
 ##
 ##   BiomeRegistry.at(world, tile_pos) -> BiomeDef     the type at a place
 ##   BiomeRegistry.get_def(id)         -> BiomeDef     by id, null if unknown

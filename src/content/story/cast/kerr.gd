@@ -1,5 +1,5 @@
 ## Tobias Kerr, who founded Cairn, in 2029. Stands in the Before (Realm.ERA), relived through a gate
-## (docs/STORY.md §6).
+## (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"kerr", "name": "Kerr", "title": "Cairn's founder",

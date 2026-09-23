@@ -1,6 +1,6 @@
 extends TestCase
 ## The Drowned City's own bodies against the FigureModel contract
-## (docs/LANDSCAPES.md §5): the ferry, a keeper of routes found nowhere else,
+## (docs/LANDSCAPES.md): the ferry, a keeper of routes found nowhere else,
 ## and the lockkeeper, its keeper. Neither is one of the twelve
 ## `test_machines.gd` walks, so without this a fault in either's `build()`
 ## would surface only in a gallery frame somebody happened to shoot.

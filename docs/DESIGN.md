@@ -1,618 +1,139 @@
 # UNSPENT — design
 
-What the game is, in the order decisions get made. Mechanics numbers live in
-`docs/research/design-extract.md` (from the old game's content and engine);
-the look in `docs/research/art-audio-extract.md`. Those are a **floor**, not a
-ceiling: the job is a better game, not a port.
-
-## Pillars
-
-1. **The world is the game.** One generated coast per seed, big enough to be a
-   journey, every country different enough that crossing into it is an event.
-2. **Real-time, readable, Zelda-grade action.** Two verbs in a fight: swing, and get
-   out of the way. You read a machine's body and find the side that is still
-   working. No menus and no numbers of its own accord: the fight says nothing in
-   words unless the player asks it to, by holding the target key (§Targeting).
-3. **Survival and making are a pillar, not a layer.** You mine, fell, gather, make
-   tools out of beaten machines, and reach further. Every hand tool is the best
-   thing a person can still make and mend.
-4. **The machines are predators, barely functioning.** They kill, take hold, carry
-   people off to work, and file what they see. Their failures are the only reason
-   anyone is alive; the gaps in their coverage are where you live.
-5. **Beautiful, and changing as you travel.** The landscape evolves: grass thins into
-   heath, heath into limestone, pines into snow, moss into black water, ash drifts
-   over the southern rim. Light, weather, sound and machines change with it.
-
-## Targeting (owner, 2026-09-16)
-
-The slate can be put on a body. It is asked for and never imposed, it is never
-required to fight, and it changes nothing in the simulation: no aim, no slow, no
-hold. What it gives is perspective and knowledge.
-
-- **Hold `z`.** The nearest threat is locked: the camera leans in behind the
-  player (a little yaw toward the body, a lower pitch, closer in, the frame
-  biased between the two), the body is bracketed with a ring on the ground it
-  stands on, and the slate reads it.
-- **`a` / `d` cycle** the lock along the list — what is on you first, then what
-  is near (`Targeting.threat`), and the last people after everything in the fight.
-- **`r` sweeps the field**: the camera stands back instead, nothing is locked,
-  and the field is read in short, eight at a time; `a` / `d` page a field bigger
-  than that, and the panel says which page of how many it is showing.
-- **Let go** and the camera comes back square and the reads go with it.
-
-**Anything the player can look at can be read**, not only what is in the fight.
-A villager is a subject like a machine (`TargetSubject`), and reads as a person:
-no health, no signature, no working part — their trade, their village, and what
-they are doing. Nothing invents a life bar for somebody the simulation never
-gave one. A works, a station, a sentinel become readable by getting a `from_*`
-on that subject, and the order, the camera and the drawing follow unchanged.
-
-**A lock waits.** A body that steps behind a house or a stride past the reach is
-held for `Targeting.LOST_GRACE` before the lock takes anything else: a machine
-that was there half a second ago is the same machine, and a lock that flicks to
-its neighbour is a lock nobody trusts.
-
-**Every body in the fight carries a wordless tag at all times** — health in pips
-and one glyph for how far it has got with the player (nothing, stirring, sure,
-coming). People carry none: nothing has noticed them and no number measures their
-life, so pips over a villager would be a reading nobody took.
-That is the part that is always true of every enemy on screen; the words are
-the part the player asks for. This is what turned the old ruling round: a fight
-may now be read in words, but only while the key is held.
-
-What the read says is the simulation's own: health and the roster's numbers, its
-powers (only what its row declares), what it has noticed (`StealthQuery`, the one
-door) and what it is thinking (its mood, its blow's phase, its place in the plan).
-Nothing is invented for the panel.
-
-## Crafts (docs/VISION.md §5)
-
-A craft is a thing a person builds out of machine parts and then stands on. It
-opens ground a body cannot cross, it is a thing in the world when it is parked,
-and it can be worn out, broken under you, and lost.
-
-- **`b` is the whole verb.** Standing at a craft it boards it; carrying one it
-  puts it down and steps on; standing on one it steps off; at a wreck it strips
-  it for its parts. Nothing about a craft is a menu.
-- **The three.** A **raft** (made by hand at the shore: driftwood, a rag and one
-  drum off a wreck) crosses open water nobody can wade. A **hover sled** (mended,
-  at a bench) runs bog, salt, ice, black water and everything else at half again
-  a walking pace. A **walker rig** (mended, at a bench) strides a two-level step
-  — a cliff to a body — and takes scree and deep snow under a load.
-- **It is not a second movement system.** The fight simulation still moves the
-  player: a craft only changes what the ground under the body means (`Hero.ride`
-  -> `WorldQuery.move_body`) and what pace it allows (`Hero.ground_speed`). So a
-  dodge, a grip, a blow and a machine shouldering you aside all land on a deck
-  exactly as they land on turf, and being hauled off your raft leaves it adrift.
-- **Getting on and off is never a teleport.** A craft is set down, and stepped
-  off onto, only within a shove of the body and only along a line the craft
-  itself could travel — so a raft is pushed out past the shallows and nosed back
-  in, and a body only ever steps off onto ground it could have waded to. Getting
-  off is never how a channel is crossed; the craft is.
-- **Wear and wreck.** The shallows grind a raft's drums, scree tears at a
-  skirt, every cliff costs the rig something, and a blow that lands on the rider
-  takes it out of the hull as well. At nothing the craft breaks: whoever was on
-  it is put ashore, and what is left of it lies where it broke and can be
-  stripped for its materials — except a float wrecked in open water, which sinks,
-  because some things are simply lost.
-- **Drawn MENDED** (docs/ART.md §12): FOUND drums, pans, pods and legs in violet
-  plate with the machines' own amber still lit on them, bound to MADE spars,
-  boards and cord, both idioms in one silhouette, and the lashing crossing the
-  rivet row is the drawing.
-
-## Settlements (docs/VISION.md §9)
-
-Making does not stop at what a person carries. A **holding** is crafting at world
-scale: a roof, a fire, a plot, a wall, and the people who keep them. Everything in
-it is something that can be taken away, which is the whole of why building it
-matters.
-
-- **`h` is the whole verb.** It opens the holding app on the slate: what can go up
-  where the player stands, what each piece wants out of the creel, what the
-  holding has already built, and — in the stolen module's violet, because it is
-  the machines' reading and not the player's — what the place gives off. A piece
-  goes up in front of the player, out of what they are carrying and against the
-  world clock. Nothing about a holding is reached any other way.
-- **The first piece founds the place.** After that a piece within a walk of the
-  centre joins it, and further off starts another. A holding is named plainly and
-  its centre creeps as it grows.
-- **Fifteen pieces, in the six families**: lean-to, hearth, hut, store
-  (shelter); plot, catchment (food and water); palisade, plate wall, netting,
-  decoy mast, spoofer, turret (defence); wind spinner, battery stack (power);
-  radio mast (work). What each costs, wears, makes and gives away is one row in
-  `StructureKind.ROWS`.
-- **A hearth is the game's own campfire.** Laid, it puts a `PropKind.FIRE` in the
-  world, so it lights the yard, warms a body, can be slept beside and worked at.
-  The holding only records that it has one, what it costs to keep, and that its
-  smoke is what gives the place away.
-- **A sustainability loop, not a counter.** Power is made by the wind, banked and
-  spent; a plot is worked by hands and watered by a catchment or it makes half; a
-  store is what stops a surplus going to waste; people eat out of the stores, and
-  with nothing to eat they work badly and in the end walk away. Everything
-  standing comes apart in the weather, faster where it is the hand's work than
-  where it is the machines' plate, and the holding's own people mend the worst of
-  it out of the stores. Nothing in it is free to keep.
-- **A holding works while the player is away.** It is settled by **catching up**
-  from its own timestamp in whole half-hour slices, never by ticking: six hours
-  away is twelve steps, a month away is settled forward without being owed. The
-  slices are aligned to the clock, so a place looked at every minute and a place
-  left alone for a day come out exactly the same.
-- **The machines will come for it** (VISION §9.4-7). What a place gives off is
-  `Settlement.signature()`: light, noise, smoke, radio, power draw, the FOUND tech
-  running inside the walls, and traffic in and out. Each channel takes the loudest
-  piece rather than the sum, the hour is inside the answer (a window is nothing at
-  noon), and netting takes a little off every channel. A settlement is engaged
-  because of what it made, never because of a clock — and the raids package is
-  what comes. The two meet on `Settlement` and neither imports the other.
-- **Two pieces answer being read, and each buys ONE thing** (owner, 2026-09-17).
-  A **spoofer** is a relay's voice box on a stake: while it has power it takes
-  half off every channel, and dark it is a box on a stake. It is built round a
-  record taken off a carrier, because nobody out here knows what the machines say
-  to each other until they have read some — so a spoofer is earned by having
-  been read once and having done something about it. A **decoy mast** hides
-  nothing. It is walked out past the yard (the slate refuses one in it: a decoy
-  in the yard is the yard) and there it shouts what the holding shouts, louder,
-  from where nobody lives, so a machine that would have read the place reads the
-  mast instead. It is torn at by the weather and by what it fooled, and when it
-  falls the glass says so, because nothing else would: from then on the place is
-  read at full strength again. A decoy that also masked and cooled the yard was
-  considered and refused — three benefits on one row of timber is a discount,
-  not a decision.
-- **A turret answers back, and it is a decision to switch on.** A repeater taken
-  off a machine, mounted on a crib of logs. It shoots only what comes FOR the
-  place — a raider first, then anything pressing a fight — never a worker on its
-  round, because a yard that shot everything walking past would be the loudest
-  thing on the coast and a list of filed kills. Its head comes round onto a body
-  and its lens catches before the first bolt, which is the tell. Its blow is the
-  fight's own (the plate, the hit window, the stall), and a kill it makes is
-  nobody's to be paid scrap for. It wants more power than anything else in the
-  yard and it is stolen technology humming in the walls the whole time it is
-  armed, so the `E` key on its row stands it down and arms it again: armed for
-  the raid you were warned of, dark for the week after.
-- **And what it shoots turns on IT.** A raider hurt by the yard walks back out to
-  the turret and starts cutting it down, rather than carrying on with what it was
-  sent for or coming for whoever is standing there. So the piece buys the rest of
-  the yard exactly the time a raider spends answering it, and it pays for that
-  time itself. **The player's own swing takes the body back**, and there is no
-  rule anywhere that says so: the fight writes where the last blow came from
-  (`MobState.struck_from`, INF for a player's swing), the last blow overwrites
-  the one before it, and a body belongs to whoever hit it most recently.
-- **Drawn by hands** (docs/ART.md §10): crooked frames, walls of what was to hand,
-  thatch with a fringe the wind takes, and machine plate lashed over the gaps with
-  the cord crossing the rivet row. A piece leans, patches and weathers by its own
-  number, so the same kind built twice is not the same drawing. A spinner turns
-  when there is wind in it and a battery burns amber while there is charge, so a
-  player reads their own holding from a hillside before opening the slate.
-
-## Jumping (owner, 2026-09-17)
-
-A body can jump: **up two levels, across a two-tile gap, down three, and no
-further.** Walking still steps one level either way and two is still a cliff, so
-the jump is what opens a ledge, a trench or a narrow channel — and anything taller
-is still a wall and anything deeper is still the glide's to get down, so the wing
-and the rope keep their reasons to exist.
-
-- **Space jumps.** Swing keeps J, its second key since the start, and both are
-  rebindable on the settings page. The jump is everybody's: nothing sold as gear
-  grants it and nothing takes it away.
-- **It is an arc, not a lookup.** `Jump.plan` works the whole arc out at the press
-  — rising to its apex, carried at the pace the body was moving (a hop forward
-  from standing), stopped by any ground higher than the body is at that instant,
-  coming down on whatever is under it — and the gear system replays it. So a
-  two-level ledge is reachable because the apex clears it and a three-level one is
-  not because it does not; nobody wrote a table of jumpable tiles.
-- **It never goes off an edge deeper than a jump.** A planned landing more than
-  three levels down is planned again with that drop as a wall, and the body comes
-  down at the lip: a key pressed at a sea cliff is never the end of a run. Deep
-  water is the exception — a drop into it is a dive, and the water takes it.
-- **It is a decision in a fight, not a free move.** It costs a little breath,
-  nothing swings or rolls from the air, a solid thing stops a body in the air as it
-  stops one on the ground, and the landing is heard further the further the feet
-  fell.
-- **The height is honest.** While a jump runs `Player.lift` is the body's height
-  over the ground actually under it, because a lit world places the shadow from
-  that number.
-
-## Tracks (owner, 2026-09-17)
-
-**What walks leaves a trail the ground keeps as long as that ground would.** Boots
-press prints into sand, mud, peat, snow, ash, salt and moss; they scuff shingle,
-bone dust and swarf; they only bend grass, heath and needles down for a while; and
-rock, road, gravel, scree, limestone, clinker, ice and water keep nothing. A print
-comes down every step of the path actually walked, left and right, and none while
-swimming or in the air — landing leaves both feet, a dodge drags a scuff. The
-walker rig leaves its own machine feet a long stride apart; the hover sled brushes
-a band across the ground; a raft leaves nothing.
-
-- **Time and weather take them.** Each ground holds a mark its own number of world
-  hours (grass springs back in half an hour, peat holds a print eight), and the
-  weather that fills that ground fills it several times faster: a blizzard takes a
-  line of prints in snow in minutes, rain softens sand and mud, dust drifts over
-  ash and salt. A night slept is a night's wear. Nothing is saved.
-- **A print is a hollow, not a sticker**: drawn with its own relief so the light
-  catches its rim, never with a colour of its own — it darkens the ground it is in.
-  That drawing is interim: prints belong in the ground's own material in the lit
-  world, and the rule and the placement are what stay.
-
-## Who wakes, and what they wear (owner, 2026-09-17)
-
-**A new game begins by making the one who wakes**, and that body is the one the
-gear goes on: the character page, the figure walking the coast and the gear page
-are three views of one body.
-
-- **The character page** comes between "new game" on the title and the world, on
-  the full slate: build, skin and its tone, hair and its colour, beard, the hat,
-  coat and shirt they start in and the colours of those and of trousers and boots,
-  what they carry on them (neckerchief, satchel, sleeves rolled, apron) and how
-  patched their clothes are. Left and right change a row; "someone else" deals a
-  whole new person; "begin" wakes them on the island behind the slate. The body is
-  drawn beside the list in its own colours, because colour is half of what is
-  being chosen. Continuing a save never shows the page: the save keeps the body.
-- **The body is appearance, never terrain.** It is saved under its own key and is
-  deliberately not part of what makes a save refused (WorldStamp), as the story
-  is: a changed face is never a reason a game will not load.
-- **Gear goes on over it.** Every wearable says what a body is seen wearing, in
-  the people model's own words, and one composed look dresses the walking figure
-  and the gear page alike, so the slate can never show something the world does
-  not. A player's chosen kit wears one piece a slot; crowds are dealt as before.
-- **The gear page draws the body, not a wire figure**: the player's own model,
-  scanned onto the glass in the slate's steps, with what was taken from the
-  machines in the module's violet — read off which parts ARE machine parts, not
-  guessed from a colour. It turns to show the chosen slot (the back slot turns it
-  round), turns by hand, and scans again as a piece goes on. The one piece the
-  walking figure does not show is the folded glide wing: the wing model hides
-  itself until it opens, and the gear page draws it folded on the back.
-
-## Taking, as it is seen (owner, 2026-09-17)
-
-What the use key would take is **marked where it stands** the moment the player is
-in position; what is taken **goes away in proportion** to what was had off it; and
-what came into the creel is **said on the HUD with a picture of that material**.
-
-- **The mark is the key's own answer.** `Harvest.target` reads the choice the key
-  makes (`Survival.use_target`, then `Takes.choose` for what is in hand), so a mark
-  never promises what the key will not do. It says one of: works it now (bright
-  brackets), works it with something else you carry (dimmer: the key takes that
-  tool out), too hard or no tool at all (the warning's dull red), or picked over
-  (no brackets, a ring on the ground round it, so a key that does nothing is not a
-  mystery). No words: the line under the HUD already names the verb.
-- **Taken in goes, a thing is worked DOWN.** A take that CONSUMES the thing (a seam
-  broken, a wreck stripped, a peat bank cut) leaves the SAME thing with a piece off
-  it, never a smaller copy of itself: `Broken` cuts the built mesh at the height
-  what is left reaches (`Harvest.shown`), and what the work opened is capped with a
-  face of the thing's own stone that **the land has not weathered** — a mark code
-  (`GroundColors.FRESH`) the lit shader reads to keep its wear off that face alone,
-  so a rock broken open in a bog is not rusted in the same minute it is broken. The
-  face is a shallow hollow with a lip of the old crust round it and its middle off
-  centre, because a flat one reads as a machined table top and a centred one as a
-  pinwheel. Five steps, not a continuum: every step is a model the chunk bakes and
-  caches (`PropModels.template(..., worked)`). What stops a body still follows the
-  share, since the camera reads a footprint, and the last go takes it away as
-  before. A take that leaves the thing (berries, dead wood under a tree, a tip
-  picked over) does not touch it. A save brings it back worked exactly as far as it
-  was left; grown back, it is whole again. Shown in `tours/broken.tour`.
-- **What was taken** stands a moment over the held-item window: the thing as the
-  slate scans it (the carrying page's own sketch), `+N`, its name. The same thing
-  again while the row stands adds to it.
-
-**Interim, and said so.** The BRACKETS are the drawing that exists now. Under the
-lit world (docs/LOOK.md) "this can be taken" is meant to be light on the thing, and
-when that lands they are replaced; the rule (`Harvest.target`) is what stays. The
-other half of that note is done: a worked thing no longer shrinks.
-
-**Every material the land gives has a picture of its own**, not a tint of another's:
-the slate's scan keeps brightness and throws hue away, so copper ore drawn as iron
-ore in another colour was the same picture. Each is told by its form — copper's
-vein, tin's crystals, limestone's beds, brimstone's crust, a whelk's whorls beside
-a pair of mussels, reeds tied, wrack forked, gorse in flower, crottle's tuft on its
-chip, a cut turf of peat — in the 9x9 mark and the sketch alike, and
-`tests/ui/test_pickup_feed.gd` fails if two ever share one again.
-
-## Swimming (owner, 2026-09-17)
-
-Deep water was a wall to everything without a raft under it. A body that can take
-it swims now.
-
-- **What it costs is time and a soaking.** Two fifths of a walk, no running, and
-  the wet that any water gives (`Hazards` already answers water with `wet` 1.0
-  and a little more cold). Nothing is dropped, no load is refused, nothing
-  drowns. That is the owner's ruling, and it is why the rules here are short.
-- **What a raft is still for**: speed, a dry creel, and carrying what a swimmer
-  cannot be bothered to carry. A crossing the sea can be swum; whether it is
-  worth swimming is the player's to judge.
-- **Who crosses** is one key on a roster row, `crosses`: `&"swim"` goes in after
-  you, `&"fly"` goes over, and absent — which is most of the roster — the
-  waterline is where it stops. The dogs swim, the flock and the gulls fly, and
-  the dredger swims because it was built to work in water. So swimming away from
-  a fight works, and never on everything.
-- **Nothing swings from the water.** Not a toll: a blow wants something to push
-  against. A dodge still works, because a kick away is the one thing a body in
-  water can do.
-- **It is the loudest way to travel.** Open water gives no cover and a stroke
-  carries further than a footfall, so crossing in the open is a decision.
-
-A swimmer is drawn lying through the surface with the stroke of somebody who was
-never taught, and the rings it leaves are what say it is in the water rather than
-on it — a figure is drawn over the water whatever its depth (people draw after
-the outline pass), so the water cannot cut it yet. That is the one thing about
-this that is not finished, and it is in ROADMAP.
-
-## Raids: why and when the machines come (docs/VISION.md §9.2-9.7)
-
-> "Certain machines and certain enemies can destroy your work, and when and how a
-> machine engages a city or shelter must be determined by encounters and other fun
-> playable systems." — owner, 2026-09-15
-
-That sentence is the whole specification, and it has one consequence the package
-is built to keep: **a raid the player could not have seen coming is a bug, however
-well it is drawn.** Everything below exists to make every step traceable back to
-something the player did, built, or watched happen.
-
-- **A notice is an encounter, not a roll.** A machine that comes near enough reads
-  ONE channel off the holding's signature — the loudest one it can hear from where
-  it stands — and walks off with it along the bearing the plan surveyed this world
-  on. Until it is clear of the yard that record is a thing in the world: kill it,
-  spoof it into nonsense, take it off the body, follow it home, or let it go.
-  Nothing is filed until one gets home, and **nothing is ever sent for a place
-  nothing has read**. A record getting home is the only step in the chain that
-  happens over the horizon, so it is heard and said: a player who watched a clerk
-  walk off is told the moment it cost them. Taken off a body instead — and
-  somebody has to be standing over the body to take it — the record is a thing in
-  the creel: proof, and, stripped with a blade, the copper a signet is wound from.
-  (It is a found thing, so nothing can ever make one. It is the gate to the
-  spoofer the player can BUILD: one record goes into every one.)
-- **Attention is 0..1 per holding, and 1.0 is a siege led by the region's keeper.**
-  The unit it is counted in is one filed record at full strength
-  (`Attention.NOTICE_FULL`, 0.09): twelve of those unanswered bring the keeper. It
-  rises from records that got home, from the plan's network in that region going
-  up a level, from stolen FOUND technology humming inside the walls (a stolen cell
-  is the loudest thing in the game and it costs by the hour), and from machines the
-  plan sent there that never came home. It falls with quiet hours, dark nights,
-  a spoofed signature, a mask standing in the yard, a record destroyed before it
-  travelled, and a step that has been paid. **Hours on their own only ever make a
-  holding safer.**
-- **A decoy is read instead of the place, and that is all it does.** A machine
-  standing at a mast out in a field takes its account of the holding off the
-  mast: the record is of the pole, it was taken where the pole stands, and the
-  pole is the ground it has to be caught on — a player guarding their own fence
-  is guarding the wrong ground, which is the trade the piece makes. When it gets
-  home it is filed as a quarter of a real record (`Attention.LURED`), so the
-  place still heats up, four times slower. It is never nothing: a piece that made
-  a holding unfileable would end the decision the whole system is. And only the
-  ONE loudest decoy is ever read, however many are standing, or the answer to
-  being read would be a ring of the cheapest thing a player can build.
-- **It is read as pressure, never as a bar.** The holding app draws what a machine
-  HEARS — seven channels with the loudest named and its percentage — so a player
-  can read the same number the machines read before anything arrives. Under it is
-  ONE WORD for what the plan THINKS: read, surveyed, wanted, marked, condemned. A
-  word and never a number, because the moment that line is a percentage the system
-  stops being about reading the world and becomes a thing to optimise. Everything
-  else the plan thinks is said by the world — the warnings, the tag bolted to the
-  piece that gave you away, and the machines themselves.
-- **Four steps, each warned by the world first**: survey (one machine looks and
-  drives a stake in at the edge), probe (two come and test the wall), raid (a
-  party with a purpose), siege (the region's own keeper leads it). The warning
-  comes 25 to 110 world minutes before the machines do, and that window is the
-  answer: fortify, take the people off the pieces, kill the mast, fire the signet,
-  pay them off with a full store, or walk away and come back to whatever is left.
-  **What turns them round on the road is the SIGNATURE falling**, not the books:
-  attention moves in units of 0.09 and no hour of play shifts enough of it, but a
-  mast pulled down halves what the place gives off in a minute. A holding that was
-  always quiet is not called off — it is walked to, found to be nothing, and left
-  at the gate. One made worse in the window is re-warned for a bigger step.
-- **A party goes for what MAKES the signature.** A breacher takes the strongest
-  thing standing between the yard and the outside, a harvester walks past the
-  walls to whatever the slate named as loudest, a snatcher comes for whoever is at
-  work. So the player's own build decides the fight, and the seven bars are a
-  decision rather than a readout. A standing decoy is walked to before any of
-  that: it is the loudest thing the plan has ever heard of the place, so a party
-  that ignored it would know better than its own file — and the piece a player
-  built to be read is the piece that gets taken apart.
-- **A raider is here for the holding, not for the player.** It will walk past
-  somebody standing in their own yard and start cutting their mast down, and only
-  a blow turns it. Fighting one is a choice, and its price is that nothing is
-  stopping the other two.
-- **Not being there is a legitimate answer. Walking out of one is not an answer at
-  all.** A raid the player is not present for is settled on exactly the same
-  arithmetic, so coming home to a burnt plot is the same event reached the same
-  way and never a cheaper one — and a raid they walk out of halfway through is
-  settled the same way too, with whatever the party had not spent yet. The party
-  is exempt from the coast's culling for exactly that reason: machines that
-  evaporate when the player is twenty-five tiles away would make walking the
-  cheapest answer in the game, and it would print "the holding held" while doing
-  it. A wall is worth the same share of a blow in both paths, so building one is
-  never only worth doing before leaving.
-- **Aftermath.** Broken pieces stay where they fell as wreckage 46_settlements
-  gives half of back for clearing; machines killed in the yard leave salvage in
-  it; a razed holding is left standing as ruins with what the party could not
-  carry lying in it; and the region remembers — a holding founded where one was
-  razed starts on the plan's books. **Killing the region's keeper quiets its
-  network for good**, which makes a boss fight the surest answer in the game.
-
-**A portal is not a raid path, and will not be one until portals are something a
-player knows, owns and can close.** A machine arriving through a gate the player
-has never opened, from a realm they may not have visited, is unreadable by
-construction: there is no warning it could have given and nothing they could have
-done about it, which is the one thing this system may not be. So attention is kept
-per realm — a machine in the caves never senses a village on the surface — and a
-step is only ever warned for a holding in the realm the player is standing in. When
-a portal is a thing the player has opened and can shut, a raid through one becomes
-the best set piece the system has, and it gets built then, deliberately, with a
-warning grammar of its own. Argue with that sentence, do not quietly widen it.
-
-## Settings (owner, 2026-09-17)
-
-The slate's own page, reached from the pause menu and from the title: **sound**
-(everything, the world, the score — levels against the mix as it was tuned, not
-absolutes), **picture** (the window and fullscreen where there is a window, how
-far the camera shakes, and whether a struck body flashes), **playing** (crouch
-and the slate-on-a-machine as a hold or a press), and **keys** — every action the
-game answers to, read off the live input map, each one movable, and `put the keys
-back` to undo the lot.
-
-What it is not: a master configuration. Those are the owner's, packed into a
-build (docs/DEV.md); these are the player's, kept on their own device. Nothing
-here changes what a world is or how hard it presses — a settings page that can
-change the game is a settings page that has to be balanced.
-
-Two of them exist because holding a key for minutes is the commonest thing an
-accessibility setting is asked to undo, and two because the camera moving and the
-screen flashing are the only things in the game that happen to the player rather
-than to their body.
-
-## Safe havens and the guided opening (owner, 2026-09-19)
-
-**The owner's words:** the game needs guided narrative to start it — "safe
-havens" like towns — to systematically teach the player the game and its
-mechanics, and to guide them along intelligently. Everything below is the design
-proposal for that; the sentence above is the ruling.
-
-**The measurement first, because it is worse than it feels.** A player can press
-27 things in this game. `Guide.HINTS` teaches 11 of them. Never taught at all:
-the jump, crouch, the map, the journal, targeting, riding a craft, dropping,
-the holding app, and every one of the five gear abilities. The hints that exist
-are good and they are a first hour, not a curriculum — and a first hour is what
-we have instead of a game that teaches itself.
-
-**A haven is a MEASURED property, not a label.** It already half exists: a roster
-row declares `where.green_min`, how far from a village green a kind may stand,
-and 16 of 19 kinds keep between 10 and 55 tiles off one. So "nothing hunts you
-here" is already expressible and already partly true. What is missing is that it
-is not stated, not held to a floor, and not something a player is ever told. A
-haven should be a village whose safety is **declared and tested** — no hostile
-kind may stand within its green's own reach — so the guarantee is a number a
-test can fail on rather than a hope about spawn tables.
-
-- **The teaching lives in the place, not on the glass.** A lesson is somebody who
-  lives there, a thing standing in the open to be taken, a station that wants
-  using — not a modal panel and never a key prompt hung in the middle of the
-  frame. `Events.hint` stays what it is: said in its moment or dropped.
-- **It is derived, like a chapter.** What a player has not yet done is read off
-  the state the game already keeps — what is in the creel, what has been made,
-  what stations are known, what beats have landed — and never off a lesson
-  counter. `Chapter`'s own header is the rule: **if it needs its own bookkeeping
-  it is a quest log wearing a landscape's clothes.** A player who worked a
-  mechanic out for themselves before anybody taught it has been taught it.
-- **Systematic means ORDERED, not exhaustive.** The 16 untaught actions are not
-  16 lessons; jumping and crouching belong to moving, the five abilities belong
-  to the first piece of gear that grants one, and the map and journal belong to
-  the first time there is something in them worth opening. The order is the one
-  the world already imposes: wake, walk, take, warm, make, carry, look, fight,
-  cross, build, and the plan's attention last, because it is the only one that
-  costs you something to learn by doing.
-- **Guided along means the NEXT haven, not a quest arrow.** Each haven teaches
-  what the road out of it will ask for, and the way on is the road the plan is
-  standing on (§10.3, `RoadHold`). So a chapter answered is also a curriculum
-  finished, and the two progressions are one progression seen twice — which is
-  the test of whether this is a teaching system or a tutorial bolted to a game.
-- **A REFUSAL THAT DOES NOT NAME THE ALTERNATIVE READS AS A WALL.** The road
-  holds already said the true thing — "Plate and pins, and nothing in your hands
-  will cut it" — and taught the false one, that there is no way through. VISION
-  §10.3 forbids a gate with no third option, and a player who is told only what
-  they cannot do has been given one whatever the code allows. Three ways exist
-  (cut it, answer the place, leave the road) and the lesson now names all three.
-  The general rule, because it is not only about barricades: **when the game says
-  no, it says no TO something and yes to something else, or the no is a lock.**
-- **Nothing here may gate.** A haven is safe, not compulsory. A player who walks
-  out on the first minute and learns everything the hard way is playing the game
-  correctly and must never be stopped, told off or rewound. The opening is a
-  place that is kind, not a corridor.
-
-**Landed so far**: the safety floor (`Haven`). The guarantee was already true by
-accumulation -- sixteen of nineteen roster rows declare a `where.green_min`, so a
-village was quietly the safest ground in the game -- and nobody had written it
-down, which means the next row added without one repeals it in silence. Measured
-and then stated: the plan's hunters keep 14 tiles off a green (the runner's own
-number, and the runner is the first hunter a player meets), beasts keep 10, and a
-kind that BELONGS near a village is exempt by declaring `green_max` in its own row
-rather than by being named in a list somewhere else.
-
-**Also landed (2026-09-19)**: the curriculum, and the haven as a place the game
-knows it is in.
-
-`Guide` is no longer a first hour. Of the sixteen actions it never taught, it
-now teaches targeting, the jump, the map, crouching, the holding app, the
-journal, the SWING -- the core verb of an action game, which nothing had ever
-named, because `side` assumes you have been striking all along -- and one lesson
-per fitted gear ability, each naming its own key and what that key is for.
-Riding a craft is NOT here on purpose: `44_crafts` already teaches boarding
-itself, and a second teacher on one channel was nearly shipped before anybody
-looked. Every key a lesson says is asked of the live `InputMap`
-(`PlayerSettings.label_of/cap_of/spell`) and never spelled, held by
-`tests/settings/test_taught_keys.gd`, which reads the shipped source.
-
-`Haven.at` / `Haven.holds` are the one door for "am I in a town", off the
-village's own recorded extent rather than a constant, and the guide says so when
-you are standing in one. The safety was real and unsaid, which buys a player
-nothing.
-
-And the spawn already chooses a haven: measured at the shipped size, the player
-wakes inside village 0's own reach on every seed, which is now written down and
-held (`tests/survival/test_haven.gd`) instead of being true by accident.
-
-**What this still needs**: a lesson type that names its PLACE and its TEACHER --
-somebody who lives there, a thing standing in the open -- rather than a line on
-the glass, which is the half of the ruling still unbuilt; and each haven teaching
-what the road out of it will ask for, so that a chapter answered is also a
-curriculum finished. The sub-arc generator (VISION §10.4) is the machinery for
-the words; this is the machinery for the order.
-
-## Owner rulings carried over (mechanics only)
-
-- Combat is SNES-action: fists and feet first; find, then craft, then find rare weapons.
-- There is one combat system. No turn-based rows, no verb menus.
-- Enemies are regional and varied; each machine has a working part on one side of its
-  body, set by its trade; hitting the plate does nothing.
-- Nothing speaks because you walked onto a tile; story is unlocked by interacting.
-- One clock, the world's, driven by real time (1 world minute per real second by
-  default). Walking buys no time. Sleeping, working, being carried off skip time.
-- Nothing to do with Bitcoin or money-as-subject.
-
-## The core loop (M1 target)
-
-Wake on the coast → walk, look, gather what the shore gives → find stone and ore in the
-rock → a fire and a bench make better tools out of what you took and what you beat →
-machines on their rounds: avoid, or fight by finding the working side → night comes
-blue and cold, hunger bites, the lamp needs oil → reach the next country with a tool
-that can take what grows there.
-
-## Systems (target shape)
-
-| System | Shape |
-|---|---|
-| Body | health (small gauge, no numbers), wind (dodges), hunger, wet, load; a worn body is slower |
-| Fight | continuous, fixed-step; blow boxes with windup/active/recovery; dodge with i-frames; plate side rule; knockback + stun; grip (ensnare) broken by pulling; outcomes: won, away, downed (time lost, no death), carried (a shift of forced work, wake elsewhere) |
-| Machines | 12 kinds by country and hour; errand / charge / rush / dart approaches; sight dimmed by dark (a lamp undoes it), hearing not; seen often, met rarely |
-| Tools | one hand one tool; the held tool is the work verb and the weapon; edge wears, never breaks; hardness ladder wood < iron < steel < crucible |
-| Taking | verbs break/dig/fell/cut/gather/scrape/tap/turn on world props; time costs; some regrow, some are permanent world edits |
-| Making | stations fire/bench/kiln (+ wheel/loom); recipes turn scrap from machines into tools; wearable salvage kit (plate, brace, rig, lens, aerial) |
-| World | landscape TYPES from the registry (`src/content/biomes/`), composed per seed: Coast, Moss, Pinewood, Snowfield, Bonelands, Burning, Salt Flats, Scrapwood; each seed's world is a set of REGIONS of those types; villages; landmarks; interiors later |
-| Pressures | what a place puts on a body: cold, heat, fumes, toxins, radiation, wet, dark, vacuum, pressure, EM, resonance, time-shear. A landscape type declares its worst (`BiomeDef.hazards`); the hour, the weather, the height, a roof and a fire decide how much of it is on you now. Felt first (a gauge, breath, a cough), then in the legs, then a slow drain that stops before the last point of health: the weather never kills outright |
-| Gear | six slots (head, body, hands, back, tool, craft), each piece with sockets, each module with resistances and sometimes an ability. Three idioms and three tiers: MADE (hand), MENDED (found parts on a made frame), FOUND (taken whole, spends charges, unmendable). Configured on the slate's gear page before a journey |
-| Abilities | one interface (id, input action, cooldown, cost in charges or wind, press/hold/passive): dash, glide, scan, grapple, signature spoof. An ability asks for a move and for a mark; the gear system does both, so it never touches a node |
-
-## Story
-
-**The arc and every rule for writing it are in `docs/STORY.md`** (owner,
-2026-09-18): Elias Marr, a 2029 AI researcher and CIA spy whose mind became the
-machines, wakes in 2098 and must learn what he hid. He is the only main
-character. The words are
-uncovered by reading a thing, talking to somebody, or watching a machine work,
-never by walking onto a tile; a conversation is drawn over the world with the
-world still running; and what the player says is remembered against the question,
-not the person. The words in the game are still the previous story's and are
-being rewritten against it (STORY.md §15).
-
-The premise shape is the owner's (2026-09-15) and lives in **`docs/VISION.md`**: the
-few dwindling humans after the machine apocalypse; machines that still mean to end
-them, many of them indifferent unless you interfere with their **ultimate plan**; the
-plan as the core arc with generative subarcs finished many ways. The words (what the
-plan is, who is left, dialogue) are written from nothing in the story milestone.
-Never port the old game's fiction, arcs, names or text.
-
-## Look
-
-See **`docs/ART.md`** (binding): the coast as a living field notebook. Flat washes,
-inked contours, hatched shade pinned to the world, the hand (MADE) against the
-ruler (FOUND), countries with their own wash, hatch, decor, light and weather, and
-ecotones between them. Nothing like Minecraft or any voxel game.
+How the game plays today. Destination `docs/VISION.md`, fiction `docs/STORY.md`,
+look `docs/LOOK.md`, next steps `docs/ROADMAP.md`. Code wins over this file.
+
+## World generation
+
+- Deterministic per seed (`Rng.hash01`, `Rng.make`; never `randf`).
+- `GenBodies.plan` lays bodies first: the surface at `Tuning.WORLD_SIZE` (1300)
+  has 5 continents; `--size` is a ceiling, and 512 or less gives one body.
+- 22 landscapes, one file each in `src/content/biomes/` (21 surface, 1
+  underground). A landscape with `spread.x >= 1` is guaranteed and dealt to the
+  home continent first (coast, moss, frost sea).
+- A big enough run of one landscape is a REGION (`WorldData.regions`, global
+  ids); keepers, depots, chapters and interference key on its id.
+- Borders are ecotones: `country2`/`blend` fade from 0.5 over 12-24 tiles.
+- A save keeps only the seed. `WorldStamp` refuses a save from a world that grows
+  differently (`&"elsewhere"`); a recipe body change bumps `WorldStamp.GEN` by hand.
+
+## World content
+
+- `BiomeDef` is the authority for what a landscape holds: ground recipes
+  (`surface`, `scatter`), props and ore, sites, pools, villages, landmarks,
+  keeper, roster, hazards, weather, night and sound bed.
+- `BiomeDressing` is what its objects are made of; `BiomeForms` what its people
+  build.
+- Sites scale with region area (`GenScatter.TILES_PER_SITE`).
+- Each landscape has three or more landmark kinds; a cache opens once.
+- A village green is a haven: hunters keep 14 tiles off it, beasts 10
+  (`Haven`, roster `where.green_min`), and the player wakes beside village 0.
+
+## Core play
+
+- **Clock**: 1.4 world minutes a real second; sleep, work, downed and carried
+  skip time.
+- **Moving**: walk 3.4, run 5.4 tiles/s. A body steps one level; two is a cliff.
+- **Jumping**: up 2 levels, across 2 tiles, down 3 (`Jump`). The arc is planned
+  at the press; a deeper drop is replanned as a wall, except into deep water (a
+  dive). Costs wind; no swing or dodge in the air.
+- **Swimming**: deep water at 0.4 of a walk, no running, no swing (dodge
+  allowed), soaks you, nothing drowns. Roster `crosses` says which bodies follow
+  (`&"swim"`) or fly over (`&"fly"`).
+- **Stealth**: `StealthQuery` is the one door for every sense: crouch, cover,
+  dark (a lit lamp undoes it), spoofing, role cones, loudness by ground.
+- **Targeting**: hold Z to lock the nearest threat, A/D cycle, R sweeps the
+  field eight at a time. Read-only on the fight. People and places read too.
+- **Fighting**: `FightSim`, fixed 8 ms slices. Blows have windup, active and
+  recovery; a dodge has i-frames. A machine has a working part on one side;
+  plate takes nothing. A grip is broken by pulling. Outcomes: won, away, downed
+  (hours lost) or carried (a shift of forced work).
+- **Taking**: `use` works the nearest prop with the held tool. `Harvest.target`
+  is the key's own answer and drives the mark. A consuming take works the thing
+  DOWN in five steps, never shrinks it. Tools: wood < iron < steel < crucible <
+  found; an edge wears, never breaks.
+- **Survival**: health, wind, hunger, wet, load, lamp oil. A landscape's hazards
+  (16 ids) are felt at 0.25, bite the legs at 0.55, harm at 0.75 and drain only
+  to 1 health. Stations: fire, bench, kiln (built); wheel and loom (in houses).
+- **Gear**: slots head, body, hands, back, tool, craft; tiers made, mended, found.
+  Abilities dash, glide, grapple, scan, spoof, plus the innate jump. A grade buys
+  sockets, not numbers.
+- **Crafts**: B boards, launches, leaves, strips. Raft (by hand, crosses deep
+  water), hover sled, walker rig (bench). A craft changes what ground means and
+  the pace, not how the body moves. Worn out it wrecks into salvage (a float
+  sinks in deep water).
+- **Tracks**: soft grounds keep prints a while; weather fills them. Not saved.
+
+## Progression and world systems
+
+- **Keepers**: one per region with room, eight designs. Each design can be taken
+  three of four ways (`SentinelWay`): force (always), founder, starve, spoof.
+  Only force and founder kill; a spoofed keeper stands down.
+- **Depots**: one per region with a plan work and 900+ tiles. It sends its own
+  machines and patrols until broken: three parts, each a held `use` with a steel
+  edge. Broken, the yard goes dark and the plan's machines stop coming there.
+- **Interference**: 0..1 per region, calm/wary/hostile/hunted at 0.26/0.56/0.84,
+  raised by theft, sabotage, kills, filing, trespass. Hunted sends hunters, two at
+  most. A lost region (depot broken or keeper down) is capped under hostile.
+- **Chapters**: a region is answered when explored, mined and defended; road
+  holds on the way out lift when it is, or can be broken or walked round.
+- **Settlements**: H opens the holding app. 17 buildable pieces; the first founds
+  a holding. It settles by catching up in 30-minute slices, never by ticking.
+  Beds cap residents. `Settlement.signature()` is seven channels (light, noise,
+  smoke, radio, power, found tech, traffic), loudest piece each.
+- **Raids**: no raid timer. A machine reads one channel and must carry the
+  record home; kill it first and nothing is filed. Attention climbs in units of
+  one record (0.09); 1.0 is a siege led by the keeper. Steps survey, probe, raid,
+  siege, each warned 25-110 minutes ahead; dropping the signature turns them
+  round. The app shows what machines hear and one word, never a bar. Per realm.
+- **Realms**: surface, underground, orbital, era. Shafts (up to four a body) are
+  entered with `use`; a crossing rebinds the world, not a new game. The era is
+  the surface's own land in 2029.
+- **Loot**: all non-recipe spoils go through `Drops` (a body or a place); every
+  item has a path back to the world (`Sources.path_to`).
+
+## Story delivery
+
+- Nothing speaks because you walked onto a tile. Story comes through `use` on a
+  person or a readable thing (`49_story`, before survival), a machine read
+  (testimony), or what was done to the player (witnessed beats, once each).
+- The story names kinds of place; `StoryPlan.cast(world)` binds them to this
+  world, pure and never saved. A required slot may name only a guaranteed
+  landscape.
+- A readable thing's words are `StoryFragments.held_by(world, prop)`, pure.
+- Talks draw over the running world.
+- Each region raises a sub-arc from its own state, said by a local; the world
+  answers it, only the telling is saved.
+- The ledger writes the player down: people half a day late, machines at once.
+- One revelation at a time: after a `reveal` beat, replies and people that would
+  land another wait 240 world minutes. A page read is never held.
+- Named people stand near their slot; four gates into 2029 open on beats.
+- The journal (N) only reads. Story state saves under `story`, outside
+  `WorldStamp`.
+
+## Menus and controls
+
+- Every screen is the slate: carry, make, map, home, gear, reads, saves,
+  journal, holding, settings, character.
+- Keys: WASD, Shift run and dodge, Space jump, J swing, K dodge, E use, C make,
+  I carry, M map, F lamp, Ctrl/Q crouch, Z target, B ride, H holding, N journal,
+  X drop, Esc pause. Every key shown is asked of the live `InputMap`.
+- Settings (sound, picture, playing, keys) are the player's. Dev mode (`` ` ``,
+  `src/dev/`) is open, chord (three strikes in 1.5 s) or off per build config.
+
+## Audio
+
+- All sound is synthesised in code. Every emitted name maps through
+  `sound_names.gd`; a test fails on an unmapped one.
+- Each landscape has a score (`ScoreLandscapes.SPECS`, else composed from its
+  id) and a sound bed; borders crossfade at equal power on `blend`.
+- The score tenses when an aware hostile machine is near.
+
+## Performance budgets held by tests
+
+- A machine: at most 6 draw calls and 3600 triangles. A person: 1300 triangles.
+  A landmark: 10 draws. A depot yard: 4, each part: 5.
+- Forty villagers on a street: under 1 ms a frame; one builds in under 12 ms.
+- Siting every landmark in a 512 world: under 90 ms; every depot: under 5 ms.
+- The `--stats` judge: p50 120 Hz, p95 72, p99 60, worst 30, over 300+ frames,
+  warm-up at most 12 frames, none over 250 ms. Only the judge is tested.

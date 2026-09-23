@@ -1,5 +1,5 @@
 extends TestCase
-## The story's dev pages (docs/STORY_SYSTEM.md §10) in a real game: the people,
+## The story's dev pages (docs/DESIGN.md) in a real game: the people,
 ## the path and the ledger open off the story page, and each does what it says
 ## through the game's own doors.
 

@@ -1,4 +1,4 @@
-## Orin walks the mesas' trestles and knows the haulers by their note. A local: colour, never load (docs/STORY.md §8).
+## Orin walks the mesas' trestles and knows the haulers by their note. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"orin", "name": "Orin", "title": "a trestle-walker",

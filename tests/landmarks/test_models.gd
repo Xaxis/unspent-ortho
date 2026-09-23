@@ -1,6 +1,6 @@
 extends TestCase
-## The drawn landmarks, held to what their own header claims (docs/VISION.md §3,
-## docs/ART.md). A thousand lines of geometry went in with no test of any kind
+## The drawn landmarks, held to what their own header claims (docs/VISION.md,
+## docs/LOOK.md). A thousand lines of geometry went in with no test of any kind
 ## against them, under a header that said "the tests hold them to the first two"
 ## when nothing under tests/ so much as named the file.
 ##
@@ -44,7 +44,7 @@ func test_no_kind_claims_to_be_read_from_further_than_the_camera_shows() -> void
 
 
 func test_every_kind_stands_above_what_is_round_it() -> void:
-	# The tallest ordinary prop in the game is a fire tower at 4.2 (docs/ART.md);
+	# The tallest ordinary prop in the game is a fire tower at 4.2 (docs/LOOK.md);
 	# a landmark that is not clear of that is not a silhouette, it is scenery.
 	for d: LandmarkDef in Landmarks.all():
 		var m := LandmarkModels.measure(d.id)

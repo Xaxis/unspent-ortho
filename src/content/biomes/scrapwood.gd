@@ -1,4 +1,4 @@
-## Scrapwood (docs/VISION.md §3, surface 9): a wood that grew back through the
+## Scrapwood (docs/VISION.md, surface 9): a wood that grew back through the
 ## machines that died in it. Something was fought here, or dumped here, and the
 ## trees took it: trunks closed over frames, plate still hanging in the forks,
 ## the floor a mulch of leaves over rust grit and cut swarf.
@@ -161,7 +161,7 @@ static func make() -> BiomeDef:
 		&"dog.feral": {"weight": 1.0, "grounds": floor_g},
 	}
 	d.sentinel = &""
-	# The places worth the walk it holds (docs/VISION.md §3, src/core/landmarks):
+	# The places worth the walk it holds (docs/VISION.md, src/core/landmarks):
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"firewatch", &"grown_hulk", &"clerks_office", &"blinking_stack"]
@@ -169,7 +169,7 @@ static func make() -> BiomeDef:
 	d.music_motif = &"pinewood"
 	d.surface = _surface
 	d.scatter = _scatter
-	# What this landscape holds of what happened to it (docs/VISION.md §8).
+	# What this landscape holds of what happened to it (docs/VISION.md).
 	GenWorks.register(&"scrapwood", {
 		"host": load("res://src/content/biomes/scrapwood.gd"),
 		"works": &"_works",

@@ -17,7 +17,7 @@ const OPEN_FLARE_MS := 200.0
 ## A machine making up its mind (MobState.suspicion) says so on its own body:
 ## the working part catches, slowly at the first stir and fast when it is
 ## nearly sure, and the body stands and looks where the noise came from. Never
-## a word on screen (docs/VISION.md §2).
+## a word on screen (docs/VISION.md).
 const SUSPECT_SLOW_MS := 560.0
 const SUSPECT_FAST_MS := 130.0
 const SUSPECT_FLOOR := 0.05

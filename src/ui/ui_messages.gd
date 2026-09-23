@@ -8,7 +8,7 @@ extends RefCounted
 ## MAX is two, not three. In a landscape that presses with two or three
 ## hazards at once, plus hunger, plus the guide, three centred lines of body
 ## text sat across the bottom middle of the world nearly continuously, against
-## docs/ART.md §9 ("small, quiet readouts clipped to the corners"). What took
+## docs/LOOK.md ("small, quiet readouts clipped to the corners"). What took
 ## the pressure lines off the glass is `gauge_for` below; two is the cap on
 ## what is left.
 

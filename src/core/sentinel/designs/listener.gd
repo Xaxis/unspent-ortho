@@ -1,5 +1,5 @@
-## The Frost Sea's keeper: the listener (docs/VISION.md §3, "its keeper listens
-## through the ice"; docs/LANDSCAPES.md §2). The plan is mapping the sea floor
+## The Frost Sea's keeper: the listener (docs/VISION.md, "its keeper listens
+## through the ice"; docs/LANDSCAPES.md). The plan is mapping the sea floor
 ## by sound through the ice sheet, and this is the thing doing the listening: it
 ## stands out on the soundings line among the rigs and drives its spears into the
 ## ice to hear what is under it.

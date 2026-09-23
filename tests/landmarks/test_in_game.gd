@@ -1,5 +1,5 @@
 extends TestCase
-## The places worth the walk in a REAL GAME (docs/VISION.md §3, §8): what a body
+## The places worth the walk in a REAL GAME (docs/VISION.md, §8): what a body
 ## meets when it walks into one, and the order the place is experienced in.
 ##
 ## Nothing in this package stopped a body until the masses were written. A player

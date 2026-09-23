@@ -1,5 +1,5 @@
 extends GameSystem
-## The machines' depots, in the running game (docs/VISION.md §2). Reachable as
+## The machines' depots, in the running game (docs/VISION.md). Reachable as
 ## the system named `34_works`.
 ##
 ## A region the plan is working has a depot: a lit yard on the survey bearing
@@ -472,7 +472,7 @@ func _file(cause: StringName, at: Vector2) -> void:
 ## stop for good when it goes dark, which is the region quieting.
 func _put_out() -> void:
 	var minutes := game.clock.minutes
-	# How busy a depot is, live from the master configuration (docs/DEV.md): a
+	# How busy a depot is, live from the master configuration (docs/DESIGN.md): a
 	# playtest that wants to walk into a yard and look at it turns this to none,
 	# and one that wants the yard defended turns it up. Nothing else about the
 	# depot changes with it — it is lit, it can be broken, and it still quiets.

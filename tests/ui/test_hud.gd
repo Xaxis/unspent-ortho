@@ -186,7 +186,7 @@ func test_the_goal_line_is_read_off_a_window_like_every_other_readout() -> void:
 	check(r.size.x > UiFont.width(hud.goal), "the window holds the whole line")
 	check(r.size.y >= UiTheme.LINE, "and a line box")
 	check(UiBase.screen().encloses(r), "and stands on the screen")
-	# Clipped to a corner, not banded across the middle (docs/ART.md §9).
+	# Clipped to a corner, not banded across the middle (docs/LOOK.md).
 	lt(r.end.x, UiBase.SIZE.x * 0.7, "it keeps to the left")
 	lt(r.end.y, UiBase.SIZE.y * 0.15, "and the top")
 	await tree.process_frame

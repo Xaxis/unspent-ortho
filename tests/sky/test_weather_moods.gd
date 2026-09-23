@@ -1,5 +1,5 @@
 extends TestCase
-## Mood per landscape and hour (docs/VISION.md section 8, docs/ART.md section
+## Mood per landscape and hour (docs/VISION.md section 8, docs/LOOK.md section
 ## 6): squalls that come and go, dawn mist lying in the moss, lightning with its
 ## afterglow and the machines' stutter, drips after rain, dust devils on hot
 ## ground. Every rule pure, so shots and play agree.
@@ -362,7 +362,7 @@ static func _mood_lum(v: Vector3) -> float:
 	return v.x * 0.3 + v.y * 0.59 + v.z * 0.11
 
 
-## docs/ART.md section 3 promises each landscape its own evening by name, and a
+## docs/LOOK.md section 3 promises each landscape its own evening by name, and a
 ## SkyLight.MOOD row is where that promise is kept. Now that there is a dusk to
 ## keep it in (Weather.DUSK_START), each row has to say what its dusk is.
 func test_every_landscape_keeps_its_own_promise_about_the_evening() -> void:

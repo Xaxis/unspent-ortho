@@ -72,7 +72,7 @@ func test_no_pits_in_the_land() -> void:
 					pits += 1
 		# PER AREA, NOT A COUNT. Four was a roomy bar on a 512 island's 262,000
 		# tiles and a tight one the day the world became 1,690,000 — the same
-		# sentence as docs/WORLD.md §9, "an absolute count in a growing world is a
+		# sentence as docs/DESIGN.md, "an absolute count in a growing world is a
 		# countdown", walked into by the person who wrote it. A pit is a defect in
 		# the coastline, so the honest unit is per tile of world.
 		var allow := maxf(3.0, 4.0 * float(size) * float(size) / (512.0 * 512.0))

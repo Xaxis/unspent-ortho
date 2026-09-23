@@ -1,6 +1,6 @@
 class_name PersonGear
 ## Scavenged tech and scavenging kit on a person (PersonLook.GEAR), drawn in the
-## MENDED idiom (docs/VISION.md §6, §8): the part taken off a machine is FOUND
+## MENDED idiom (docs/VISION.md, §8): the part taken off a machine is FOUND
 ## (exact, unhatched, found.gdshader) and whatever holds it on is MADE (cord,
 ## tape, straps, in the hand). Both idioms show at once on every piece: that is
 ## how anyone can tell it was not made here, and that somebody here keeps it going.

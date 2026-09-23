@@ -62,7 +62,7 @@ const FORMS := {
 	&"arcade": {REACH: 2.3, HIGH: 4.8, LIT: true},
 	&"spire": {REACH: 1.7, HIGH: 16.3, LIT: true},
 	# --- the crags: what was standing before the machines, lived in -----------
-	# Few people and old ones (docs/LANDSCAPES.md §1 PEOPLE): a dry-stone round
+	# Few people and old ones (docs/LANDSCAPES.md PEOPLE): a dry-stone round
 	# under a conical turf-and-thatch roof, a timber lean-to built into a broken
 	# tower's wall, and a byre sunk into the slope. None of them wired a
 	# machine's light in: it is the one village with no stolen neon.
@@ -78,7 +78,7 @@ const FORMS := {
 	&"deck_house": {REACH: 2.0, HIGH: 3.4, LIT: false},
 	&"shaft_loft": {REACH: 1.6, HIGH: 6.5, LIT: true},
 	&"stall_row": {REACH: 2.4, HIGH: 3.0, LIT: false},
-	# --- the drowned city: people living over the water (docs/LANDSCAPES.md §5;
+	# --- the drowned city: people living over the water (docs/LANDSCAPES.md;
 	# src/models/props/drowned_city.gd). The first floor of a flooded block with
 	# the ground floor given to the sea, a timber house on piles over the mud,
 	# and a barge moored for good with a shed on its deck. The block and the
@@ -87,7 +87,7 @@ const FORMS := {
 	&"stilt_house": {REACH: 2.0, HIGH: 3.0, LIT: false},
 	&"hulk_home": {REACH: 2.2, HIGH: 2.6, LIT: true},
 	# --- the mesas: rooms cut into the rock, mud brick, a hut over the drop ---
-	# (docs/LANDSCAPES.md §6 PEOPLE; src/models/props/mesas.gd). A room dug into
+	# (docs/LANDSCAPES.md PEOPLE; src/models/props/mesas.gd). A room dug into
 	# the scarp with only its front wall built, a mud-brick house under vigas,
 	# and a watch hut on stilts at the rim with a ropeway bucket hung off its
 	# eave for a lamp -- the one light in the village, and it is stolen.

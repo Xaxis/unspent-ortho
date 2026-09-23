@@ -1,6 +1,6 @@
 extends GameSystem
 ## Night lights: village lamps, the windows of houses, fires, vents and kilns,
-## and the player's lantern (the `lamp` action). docs/ART.md section 6: lamp and
+## and the player's lantern (the `lamp` action). docs/LOOK.md section 6: lamp and
 ## fire light ERASE THE HATCHING in their pool; light means safety, and the page
 ## shows it.
 ##
@@ -88,7 +88,7 @@ const LANTERN_RANGE := 3.2
 ## The colour each kind of light throws (pools and wet reflections). People's
 ## lamps, windows and fires are warm, and so is the flame in the player's
 ## salvaged lantern: the pool it lays is the colour of its own light and never a
-## cold disc over a warm one (docs/ART.md section 6). Stolen neon belongs to the
+## cold disc over a warm one (docs/LOOK.md section 6). Stolen neon belongs to the
 ## houses that wired it in (a few, not all).
 const LANTERN_WARM := Vector3(1.0, 0.74, 0.46)
 const NEON_SODIUM := Vector3(1.0, 0.52, 0.16)
@@ -208,7 +208,7 @@ const SHAFT_MACHINE := 0.8
 const MACHINE_POOL := Vector2(2.6, 1.0)
 ## How much of its pool a VENT keeps in full daylight. A lamp keeps none — that
 ## rule is right and stays — but the Burning's vents are open fire in the ground
-## and must reach the ground they are in at every hour (docs/ART.md §3).
+## and must reach the ground they are in at every hour (docs/LOOK.md).
 const VENT_DAY := 1.5
 ## How far inside the frame a machine must stand for `await machine` to say the
 ## shot holds it: an eighth of the screen in from every edge. (The comment here
@@ -437,7 +437,7 @@ static func pool_dark(hour: float) -> float:
 ## too, but their light only tells after dusk.
 ##
 ## A VENT does not. It is not a lamp and not a campfire: it is a hole into fire,
-## and the ground round it is lit from underneath at every hour (docs/ART.md §3,
+## and the ground round it is lit from underneath at every hour (docs/LOOK.md,
 ## "glow from below"). At noon the Burning was white-hot cores sitting on flat
 ## ground with nothing under them — the landscape's own fire touching none of its
 ## own land (art review, wave A finding 6).
@@ -487,7 +487,7 @@ static func lays_pool(kind: int, dark: float) -> bool:
 ## for the hour (a storm). 0 in full day, 1 in the dead of night. This is the
 ## shader's sky_gloom() on the CPU side, and nothing artificial — no pool, no
 ## lantern light — shows above it: a lamp lit at noon is a flame in the hand and
-## lays nothing on the ground (docs/ART.md section 6).
+## lays nothing on the ground (docs/LOOK.md section 6).
 static func gloom(hour: float, tint: Vector3, sun: float) -> float:
 	var lum := (tint.x * 0.3 + tint.y * 0.59 + tint.z * 0.11) * clampf(sun, 0.0, 1.0)
 	return clampf(maxf(SkyLight.low_light(hour), 1.0 - clampf(lum * 1.25, 0.0, 1.0)), 0.0, 1.0)

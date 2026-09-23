@@ -1,4 +1,4 @@
-## Perrin grafts trees in an orchard the machines still feed. A local: colour, never load (docs/STORY.md §8).
+## Perrin grafts trees in an orchard the machines still feed. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"perrin", "name": "Perrin", "title": "a grafter",

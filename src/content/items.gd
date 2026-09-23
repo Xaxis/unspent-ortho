@@ -1,6 +1,6 @@
 class_name Items
 ## Every item, as data. Mechanics numbers are the source's
-## (docs/research/design-extract.md §9.2-9.4); display names are plain
+## (the old Unity game (../unspent) §9.2-9.4); display names are plain
 ## placeholders until the story rewrite renames them. Money is gone: no item
 ## carries a price.
 ##
@@ -27,7 +27,7 @@ class_name Items
 ##   module: true          it is a module; `fits` lists the slots it may sit in
 ##   resist: {hazard: 0..1}  pressures it keeps off (src/core/hazards/hazards.gd)
 ##   ability: StringName   the ability it grants while fitted (src/core/gear/abilities.gd)
-##   tier: StringName      made | mended | found, the three idioms (docs/ART.md §12)
+##   tier: StringName      made | mended | found, the three idioms (docs/LOOK.md)
 ##   wears: Dictionary     what a body is seen wearing while it is fitted, in the people
 ##                         model's words (PersonLook): `hat`/`coat` name one, `extras`,
 ##                         `salvage`, `gear` add to those lists, and `wing: true` puts
@@ -124,7 +124,7 @@ const DEFS := {
 	&"brimstone": {"name": "brimstone", "bulk": 4.0, "group": &"material"},
 	&"limestone": {"name": "limestone", "bulk": 5.0, "group": &"material"},
 	# The crags' own raw: broken out of a carved face with a steel edge, refined
-	# at the kiln into hush slate (docs/LANDSCAPES.md §1 PLAYER).
+	# at the kiln into hush slate (docs/LANDSCAPES.md PLAYER).
 	&"hushstone": {"name": "hushstone", "bulk": 4.0, "group": &"material", "icon": [&"hushstone", &"ink", &"slate"]},
 	# The lens unscrewed off a survey mast: machine glass, read in the module's
 	# violet like everything else taken whole off the plan.
@@ -198,7 +198,7 @@ const DEFS := {
 	&"oilcloth": {"name": "oilcloth", "bulk": 2.0, "group": &"good"},
 	&"hone": {"name": "hone", "bulk": 1.0, "group": &"good"},
 
-	# --- Crafts, carried as a bundle until they are set down (docs/VISION.md §5) ---
+	# --- Crafts, carried as a bundle until they are set down (docs/VISION.md) ---
 	# What goes in the creel is the bundle: spars, cord, and the drums, ducts and legs
 	# cut off the machines. What comes out of it is a craft standing in the world
 	# (src/core/craft/, src/systems/44_crafts.gd). Heavy on purpose — a person carries
@@ -214,7 +214,7 @@ const DEFS := {
 	&"kit_lens": {"name": "lens", "bulk": 1.0, "group": &"kit", "kit": &"lens", "sight": 3.0},
 	&"kit_aerial": {"name": "aerial", "bulk": 1.0, "group": &"kit", "kit": &"aerial", "hearing": 4.0},
 
-	# --- Gear against the pressures of a place (docs/VISION.md §6) -----------------
+	# --- Gear against the pressures of a place (docs/VISION.md) -----------------
 	# MADE: cloth, reed and pitch, mended by the hand that made it. Cheap, and it
 	# takes the edge off one thing each.
 	&"wrap_warm": {"name": "warm wrap", "bulk": 2.0, "group": &"kit", "tier": &"made",
@@ -257,7 +257,7 @@ const DEFS := {
 	# one to two was a number typed into the row.
 	&"glide_wing": {"name": "glide wing", "bulk": 4.0, "group": &"kit", "tier": &"mended",
 		"slot": &"back", "sockets": 1, "resist": {}, "ability": &"glide", "wears": {"wing": true}},
-	# The wing's rare rung (docs/LANDSCAPES.md §6): the same wing and the same
+	# The wing's rare rung (docs/LANDSCAPES.md): the same wing and the same
 	# glide, its frame re-strung with span wire off the mesas' ropeway, and two
 	# sockets. Glide is the mesas' own answer to a land of drops.
 	&"wing_span": {"name": "span wing", "bulk": 4.5, "group": &"kit", "tier": &"mended",
@@ -327,7 +327,7 @@ const DEFS := {
 	&"mod_signet": {"name": "signet", "bulk": 0.5, "group": &"found", "tier": &"found", "stuff": &"found", "module": true,
 		"fits": [&"head", &"body", &"back"], "resist": {&"em": 0.15}, "ability": &"spoof"},
 
-	# --- MENDED implements (docs/ART.md 12, docs/VISION.md 6.1) -----------------
+	# --- MENDED implements (docs/LOOK.md 12, docs/VISION.md 6.1) -----------------
 	# Every rung of a family does exactly what the common rung does: the same
 	# damage, reach, timing and work rate, copied verbatim. What the elite
 	# material buys is a MOUNT -- a spar bound along a back, a collar, a lacquered
@@ -375,7 +375,7 @@ const DEFS := {
 	&"lance_die": {"name": "stamped lance", "bulk": 3.0, "group": &"tool", "tier": &"mended", "sockets": 3,
 		"icon": [&"boathook", &"ink", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [120, 90, 150, 180], "reach": 2.4, "width": 0.7, "dmg": 8, "knock": 3.5, "knock_ms": 160},
 	# The glass desert's lance: a skater's blade bound to a lance round a
-	# fulgurite core (docs/LANDSCAPES.md §3). Every number is the lance's.
+	# fulgurite core (docs/LANDSCAPES.md). Every number is the lance's.
 	&"lance_glass": {"name": "glass lance", "bulk": 2.5, "group": &"tool", "tier": &"mended", "sockets": 2,
 		"icon": [&"boathook", &"spruce", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [120, 90, 150, 180], "reach": 2.4, "width": 0.7, "dmg": 8, "knock": 3.5, "knock_ms": 160},
 	# The flawed twin of the relic below: the same blade with no name set into it.
@@ -404,7 +404,7 @@ const DEFS := {
 		"icon": [&"knife", &"slate", &"earth"], "fits": [&"tool"], "resist": {&"resonance": 0.2}},
 	&"mod_damp": {"name": "hush damper", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"timber", &"linen", &"earth"], "fits": [&"tool", &"hands", &"body"], "resist": {&"resonance": 0.45}},
-	# A deep ice lens bound over one eye (docs/LANDSCAPES.md §2): it takes the
+	# A deep ice lens bound over one eye (docs/LANDSCAPES.md): it takes the
 	# glare off a white plain and lets a little of the dark through, and it is
 	# the frost sea's answer to the sea's own light. Head only: it is worn where
 	# the eye is. `sight` is its tag (ModifierTable).
@@ -422,7 +422,7 @@ const DEFS := {
 	&"mod_hush": {"name": "hush lining", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"foil", &"slate", &"earth"], "fits": [&"head", &"body", &"back"], "resist": {&"em": 0.2, &"resonance": 0.25}},
 	# The drowned city's brine copper, beaten thin and pitched into the seams of
-	# a coat or a pack (docs/LANDSCAPES.md §5): the water stays out. Its tag is
+	# a coat or a pack (docs/LANDSCAPES.md): the water stays out. Its tag is
 	# `sealed` (ModifierTable), which is what the submersible's hull will ask
 	# for. WET ONLY, on purpose. The spec gives it pressure 0.3 as well, on the
 	# condition that pressure already has a hand-made answer; it has none --
@@ -434,7 +434,7 @@ const DEFS := {
 
 	# --- elite materials (EliteStock says where each one, and only one, is got) -
 	# Each keeps its landscape's or its machine's own colour and hand, so a
-	# player reads where a tool came from off the tool (docs/ART.md 11).
+	# player reads where a tool came from off the tool (docs/LOOK.md 11).
 	&"cinder_glass": {"name": "cinder glass", "bulk": 2.0, "group": &"material", "icon": [&"lump", &"ink", &"ink"]},
 	&"clint_spar": {"name": "clint spar", "bulk": 2.0, "group": &"material", "icon": [&"stone", &"rime", &"rime"]},
 	&"hush_slate": {"name": "hush slate", "bulk": 2.0, "group": &"material", "icon": [&"hushstone", &"slate", &"ink"]},
@@ -464,12 +464,12 @@ const DEFS := {
 	&"boom_ram": {"name": "boom ram", "bulk": 3.0, "group": &"found", "stuff": &"found", "icon": [&"hammer", &"plate", &"lens"]},
 	# The bilge pump out of a ferry (EliteStock.SPOILS): what keeps a barge that
 	# size afloat. Carried for the submersible's hull that is to come
-	# (docs/LANDSCAPES.md §5); FOUND tech taken whole.
+	# (docs/LANDSCAPES.md); FOUND tech taken whole.
 	&"bilge_pump": {"name": "bilge pump", "bulk": 2.0, "group": &"found", "stuff": &"found", "icon": [&"coil", &"plate", &"lens"]},
 	&"spoil": {"name": "ruined stock", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"ash", &"ash"]},
 	# raids: a machine's own account of a place, taken off the body that was
 	# carrying it home. It is proof, and it is the only thing in the game worth
-	# more in a person's hands than where it was (docs/VISION.md §9.2).
+	# more in a person's hands than where it was (docs/VISION.md).
 	&"record": {"name": "filed record", "bulk": 0.5, "group": &"found", "icon": [&"paper", &"slate", &"lens"]},
 }
 

@@ -269,7 +269,7 @@ func change_seed(d: int) -> void:
 	_begin(maxi(1, seed_value + d))
 
 
-## The master configuration fixes the island (docs/DEV.md): no other is offered.
+## The master configuration fixes the island (docs/DESIGN.md): no other is offered.
 static func island_fixed() -> bool:
 	return bool(GameConfig.value("world.seed_locked"))
 
@@ -331,7 +331,7 @@ func _start_game() -> void:
 			menu.refuse_save(slot, why)
 			return
 	else:
-		# A new game starts as the master configuration says (docs/DEV.md), with the
+		# A new game starts as the master configuration says (docs/DESIGN.md), with the
 		# body made on the character page.
 		GameConfig.fill_new_game(o)
 		o.avatar = _avatar.duplicate(true)

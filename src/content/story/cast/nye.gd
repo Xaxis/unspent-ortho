@@ -1,4 +1,4 @@
-## Nye cuts the sulphur crust and has learnt the vents keep time. A local: colour, never load (docs/STORY.md §8).
+## Nye cuts the sulphur crust and has learnt the vents keep time. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"nye", "name": "Nye", "title": "a crust-cutter",

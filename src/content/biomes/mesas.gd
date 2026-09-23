@@ -101,7 +101,7 @@ static func make() -> BiomeDef:
 	dress.walling = [P.RUST[2], P.STONE[2], P.SAND[3], P.EARTH[2]]
 	dress.bleach = P.SAND[5]
 	# Silver, and already bleached: nothing rots up here, it only dries out and
-	# splits (docs/LANDSCAPES.md §6).
+	# splits (docs/LANDSCAPES.md).
 	dress.timber = [P.LINEN[3].lerp(P.ASH[3], 0.5), P.ASH[1].lerp(P.SAND[2], 0.3)]
 	dress.sink = 0.05
 	dress.lie = Vector2(-0.02, 0.04)
@@ -109,7 +109,7 @@ static func make() -> BiomeDef:
 	# hide across its mouth (props/mesas.gd): people here dig, they do not board.
 	dress.shelter = &"cut_room"
 	d.dressing = dress
-	# What its people BUILT (docs/LANDSCAPES.md §6 PEOPLE): rooms cut into the
+	# What its people BUILT (docs/LANDSCAPES.md PEOPLE): rooms cut into the
 	# scarp with only their fronts built, mud-brick houses under vigas, and a
 	# watch hut on stilts at the rim whose stolen bucket lamp is the one light
 	# in the village. Declaring `built` is TERRAIN (WorldStamp): it moves this
@@ -126,7 +126,7 @@ static func make() -> BiomeDef:
 	d.night_sky = 1.1
 	d.props = [PropKind.BOULDER, PropKind.DEAD_TREE, PropKind.STONE_ORE, PropKind.IRON_ORE,
 		PropKind.COPPER_ORE, PropKind.BUSH, PropKind.STUMP,
-		# Its own (docs/LANDSCAPES.md §6, src/models/props/mesas.gd), declared here
+		# Its own (docs/LANDSCAPES.md, src/models/props/mesas.gd), declared here
 		# so the mesas are the ONE landscape whose things these are: that is what
 		# makes the span wire's gate the mesas' (Sources.lands_yielding). The
 		# bands that lay them and the works row that stands the ropeway are the

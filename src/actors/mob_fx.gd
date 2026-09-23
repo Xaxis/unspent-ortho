@@ -1,5 +1,5 @@
 class_name MobFx
-## Hit feel drawn into the notebook (docs/ART.md §7): a short ink burst where a
+## Hit feel drawn into the notebook (docs/LOOK.md): a short ink burst where a
 ## blow lands, dust as stipple puffs, a plate's ring as a pen's sound marks and
 ## two or three bright pixels, a dashed ink ring on the ground, the swing's
 ## stroke, and a paper-white flash on a struck body. No particles that look like
@@ -81,7 +81,7 @@ float stroke(vec2 q, vec2 a, vec2 b, float hw) {
 // all at its heart. What a burst is for is to prove where the blow landed, so it
 // must not be the thing standing in front of it: the amber working part shows
 // through the middle of its own hit mark. Hence OPEN — the fraction of the
-// radius that never takes ink — and hence no filled star. (docs/ART.md §7: a
+// radius that never takes ink — and hence no filled star. (docs/LOOK.md: a
 // short ink burst, sparks off plate as two or three bright pixels.)
 vec4 burst(vec2 p, float pw, float pr) {
 	vec2 q = p / pw;
@@ -334,7 +334,7 @@ vec3 vapour_lit(vec3 c) {
 
 // Breath in the cold, steam off hot ground: the one mark that is neither ink nor
 // paper. It has to read on snow AND on wet rock, so it is held by its own rim
-// the way a person is (docs/ART.md §5): a pale core of loose pixels inside a
+// the way a person is (docs/LOOK.md): a pale core of loose pixels inside a
 // one-pixel contour in the cue's own mid tone. Drawn in ink on the shaded side,
 // as dust is, three specks of breath on a white snowfield read as soot.
 vec4 vapour(vec2 p, vec2 px, float pw, float pr) {
@@ -363,7 +363,7 @@ vec4 vapour(vec2 p, vec2 px, float pw, float pr) {
 
 // A reading held on something: four ruled corner ticks framing it, drawn in
 // light, no ink and no paper. This is a machine's own mark seen through a stolen
-// lens (docs/ART.md §3: FOUND is clean and exact), so nothing here is hatched,
+// lens (docs/LOOK.md: FOUND is clean and exact), so nothing here is hatched,
 // stippled or crooked. It snaps in at the start, holds its whole life, and the
 // corners close the last of the way as the read settles.
 vec4 bracket(vec2 p, float pw, float pr) {
@@ -478,7 +478,7 @@ void fragment() {
 """
 
 ## A ruled line of borrowed light between two points, on a ribbon that faces the
-## camera. FOUND, so it is exact (docs/ART.md §3): a one-pixel core of the
+## camera. FOUND, so it is exact (docs/LOOK.md): a one-pixel core of the
 ## machines' cold with a one-pixel dark edge each side, which is what lets it
 ## read over pale gravel and over night both. It carries its own two values for
 ## the same reason a person carries a rim.
@@ -543,7 +543,7 @@ const PEN := 3.0
 ## sizes having already cleared the floor. Tripling restores every one exactly.
 ## A hit mark has to be read at a glance and then be gone; it must never be the
 ## biggest thing in the frame, and it must never be the thing standing in front
-## of what it proves (docs/ART.md §7: a SHORT ink burst, sparks as two or three
+## of what it proves (docs/LOOK.md: a SHORT ink burst, sparks as two or three
 ## bright pixels). The burst and the plate ring came in at 30 px with a filled
 ## paper star at the heart, which put an opaque disc over the amber working part
 ## at the exact moment the player needed to see it.
@@ -603,7 +603,7 @@ const VAPOUR_SUN := 2.2
 ## And what is left of that lift once night has fallen. Not nothing: a mark's
 ## paint is as pale as snow, so under one light they land on the same value and
 ## the cloud vanishes into the field it is breathed over. Small enough that a
-## breath at midnight is a pale cloud and not a lamp (docs/ART.md §5).
+## breath at midnight is a pale cloud and not a lamp (docs/LOOK.md).
 const VAPOUR_DARK := 0.6
 ## Which way a tell's fan flicks, in quad space: up the screen over a body, down
 ## the screen when it is aimed at a working part below it.
@@ -813,7 +813,7 @@ static func puff(parent: Node, at: Vector3, dir: Vector2, dust: Color, size: flo
 ## puff that rises and thins over `seconds`, drifting with the wind.
 ##
 ## It is drawn in TWO values of `col`'s own hue and in no ink at all: a pale core
-## held by a rim in the cue's own mid tone (docs/ART.md §5). Breath drawn the way
+## held by a rim in the cue's own mid tone (docs/LOOK.md). Breath drawn the way
 ## dust is -- an ink contour on the shaded side -- is three near-black specks,
 ## and on a snowfield near-black is soot, not breath (wave A2, art finding 9).
 ##
@@ -917,7 +917,7 @@ static func streak(parent: Node, at: Vector3, dir: Vector2, yaw_deg: float, pitc
 	var mat := mi.material_override as ShaderMaterial
 	mat.set_shader_parameter(&"dir", screen.normalized())
 	# A step down the page's own ramp. Every other mark is edged in the full linen,
-	# which the midday sky grades all the way to 255 -- pure white, and docs/ART.md
+	# which the midday sky grades all the way to 255 -- pure white, and docs/LOOK.md
 	# §5 keeps the brightest thing in a frame for fire and lamps. A speed line's
 	# edge is only there to keep three hairlines readable on dark rock, and one
 	# step down does that at 236 (measured on the coast at eleven).

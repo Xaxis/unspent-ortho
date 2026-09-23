@@ -126,7 +126,7 @@ func setup(w: WorldData) -> void:
 	_bind(w)
 
 
-## Point this view at ANOTHER world: a realm crossing (docs/VISION.md §4,
+## Point this view at ANOTHER world: a realm crossing (docs/VISION.md,
 ## src/systems/20_realms.gd). Every chunk, every prop index and the works are
 ## dropped and grown again from `w`; the two MATERIALS are kept, because the
 ## player's figure, the crowns and the swing arc were handed them when the game
@@ -429,7 +429,7 @@ func _far_step(near_busy: bool) -> void:
 	# is most of a 120 Hz frame on its own. The loop above also takes EVERY ready
 	# slot in one frame, so several finishing together are several uploads together.
 	# Cheap on average is not free, and an average is the wrong statistic for a
-	# stutter (docs/PERF.md).
+	# stutter (docs/DESIGN.md).
 	if near_busy:
 		return
 	# What is already in flight is not free to ask for again.
@@ -867,7 +867,7 @@ func _string_cables(k: MeshKit, a: WorldProp, b: WorldProp, ch: TerrainMesher.Ch
 			var p := from.lerp(to, t) + Vector3.DOWN * span * 0.035 * 4.0 * t * (1.0 - t)
 			# A cable is dark, not black: it sits on the ink floor, so a span over a
 			# pale pavement or a bright sky reads as a drawn line and never as a hole
-			# in the page (docs/ART.md section 6).
+			# in the page (docs/LOOK.md section 6).
 			k.strut(prev, p, 0.014, 3, Palette.INK[2])
 			if icy:
 				_ice_on(ice, prev, p, h0 + s)

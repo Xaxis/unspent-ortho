@@ -1,5 +1,5 @@
 extends TestCase
-## Jobs and the shelf (docs/DEV.md): a job's log is tailed a whole line at a time
+## Jobs and the shelf (docs/DESIGN.md): a job's log is tailed a whole line at a time
 ## and its end is noticed; one job at a time; the commands are the tools' own; a
 ## tour runs with the command its own header gives.
 

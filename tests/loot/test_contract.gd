@@ -1,6 +1,6 @@
 extends TestCase
 ## The seam every package that puts something in the player's hands writes to
-## (docs/VISION.md §6.1). These tests pin the two promises the economy rests on:
+## (docs/VISION.md). These tests pin the two promises the economy rests on:
 ## a grade buys options rather than raw power, and an elite material exists where
 ## it was declared to and nowhere else.
 

@@ -1,5 +1,5 @@
 ## June Marr at six, the night before her school play. Stands in the Before (Realm.ERA), relived through a gate
-## (docs/STORY.md §6).
+## (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"june_young", "name": "June", "title": "his daughter, six",

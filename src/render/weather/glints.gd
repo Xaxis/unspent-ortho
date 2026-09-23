@@ -2,7 +2,7 @@ class_name Glints
 ## The glint list: the lights that exist near the camera (lamps, fires, house
 ## hearths, stolen neon, pylon beacons, machine lenses and strips, the player's
 ## lantern), handed to the sky so wet ground mirrors them and fog throws their
-## shafts, without an OmniLight each (docs/ART.md section 6). Pure: candidates
+## shafts, without an OmniLight each (docs/LOOK.md section 6). Pure: candidates
 ## in, the few that matter out, packed for SkyLight.glints.
 ##
 ## A candidate is {at: Vector3 world position of the light, rgb: Vector3 its

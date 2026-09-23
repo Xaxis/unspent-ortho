@@ -1,9 +1,9 @@
 extends RefCounted
 ## Food and water: the plot people turn over by hand, and the sheet of machine
-## plate that catches the rain for it (docs/VISION.md §9).
+## plate that catches the rain for it (docs/VISION.md).
 ##
 ## The plot is the one piece of a holding that shows the season and whether
-## anybody is tending it (docs/ART.md §10), so its ridges curve, its crop sways,
+## anybody is tending it (docs/LOOK.md), so its ridges curve, its crop sways,
 ## and a plot left alone is stalks.
 
 const Parts := preload("res://src/models/settlement/settle_parts.gd")
@@ -12,7 +12,7 @@ const P := preload("res://src/render/palette.gd")
 
 ## Ridges turned by hand: they curve, they are not the same length, and the row
 ## of stones lifted out of them is piled along one edge. Nothing in here is
-## straight, because a ruled field belongs to the machines (docs/ART.md §3).
+## straight, because a ruled field belongs to the machines (docs/LOOK.md).
 static func plot(k: MeshKit, v: int, ruined: bool) -> void:
 	Parts.hand(k)
 	var rows := 4
@@ -38,7 +38,7 @@ static func plot(k: MeshKit, v: int, ruined: bool) -> void:
 			var on: Vector3 = a0.lerp(mid, t * 2.0) if t < 0.5 else mid.lerp(a1, (t - 0.5) * 2.0)
 			on.y = 0.0
 			if ruined:
-				# Burnt: black stalks and nothing on them (docs/ART.md §10).
+				# Burnt: black stalks and nothing on them (docs/LOOK.md).
 				k.sway = 0.35
 				k.sway_phase = Parts.wob(v, 60 + r * 5 + i) * TAU
 				k.strut(Vector3(on.x, 0.08, on.z), Vector3(on.x + Parts.lean(v, 70 + r * 5 + i, 0.07), 0.26, on.z), 0.02, 3, P.INK[2])

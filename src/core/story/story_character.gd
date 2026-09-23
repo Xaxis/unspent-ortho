@@ -1,6 +1,6 @@
 class_name StoryCharacter
 extends RefCounted
-## One named person (docs/STORY_SYSTEM.md §8): who they are, where they stand, and
+## One named person (docs/DESIGN.md): who they are, where they stand, and
 ## when they are there. A file under src/content/story/cast/ makes one; StoryCast
 ## finds them all.
 ##
@@ -30,7 +30,7 @@ var look: Dictionary = {}
 var appears_when: StringName = &""
 ## A beat after which they are gone, or &"" for never.
 var gone_when: StringName = &""
-## Whether they can walk with him (docs/STORY.md §8). Following and control are
+## Whether they can walk with him (docs/STORY.md). Following and control are
 ## the actors' business; the story says only who may.
 var may_join := false
 ## For the writer and dev mode: what the story is built on.

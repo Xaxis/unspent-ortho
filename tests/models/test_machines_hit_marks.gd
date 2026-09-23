@@ -2,7 +2,7 @@ extends TestCase
 ## Hit marks against the thing they are proving (art review wave N, finding 11):
 ## a filled paper star 28 px across sat on the machine's head and a solid wedge
 ## below it, and between them they hid most of the amber working part at the one
-## moment the player most needed to see it. docs/ART.md §7 asks for a SHORT ink
+## moment the player most needed to see it. docs/LOOK.md asks for a SHORT ink
 ## burst and sparks off plate as two or three bright pixels.
 ##
 ## The burst is now an open figure: no filled core, strokes thrown outward from

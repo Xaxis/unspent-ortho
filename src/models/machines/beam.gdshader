@@ -1,4 +1,4 @@
-// A scanning beam as a drawn thing (docs/ART.md §6): a wedge of loose cold
+// A scanning beam as a drawn thing (docs/LOOK.md): a wedge of loose cold
 // pixels thrown from a watcher's, warden's or clerk's eye onto what it reads.
 // Never a smooth cone and never bloom: whole palette pixels, ordered-dithered,
 // pinned to the world through world_px so the stipple never swims. Densest at
@@ -54,7 +54,7 @@ void vertex() {
 // The stipple threshold. An ORDERED 4x4 matrix was a mistake the night hid: at
 // full density it fills and reads as a wash, but thinned — which is exactly
 // what a beam under the sun is — it leaves a regular lattice, a chequerboard
-// lying on the ground (docs/ART.md §1 forbids a visible square lattice, §6 asks
+// lying on the ground (docs/LOOK.md forbids a visible square lattice, §6 asks
 // for "a stippled halo ... never a smooth bloom" and never a chequer). A hash
 // on the world-anchored pixel is irregular at every density and still perfectly
 // stable, because world_px pins it to the ground and not to the screen.

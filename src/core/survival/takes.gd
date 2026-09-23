@@ -269,7 +269,7 @@ static func _signature(t: Dictionary) -> void:
 	# The rack of cores (docs/LANDSCAPES.md: "turn stone x2, keep; theft"). Two
 	# cores turned out of it and it goes on standing, empty.
 	t[PropKind.CORE_RACK] = [_o(&"turn", &"stone", 2, 10.0, NEVER, {"keep": true, "uses": 2})]
-	# The frost sea (docs/LANDSCAPES.md §2). A pressure block is the one gate on
+	# The frost sea (docs/LANDSCAPES.md). A pressure block is the one gate on
 	# lens ice: cut with a steel edge, twice, on the ROCK ridge it was thrown up
 	# on, and the block stays standing because it is the only cover on the sea.
 	# Nothing comes off it by hand, and the key says so.
@@ -292,7 +292,7 @@ static func _signature(t: Dictionary) -> void:
 	# scrap off the drum's bracket, and sometimes the charge that ran it, the
 	# way a relay is robbed. The hole it keeps open goes on being kept.
 	t[PropKind.SOUNDING_RIG] = [_o(&"turn", &"scrap", 1, 20.0, 96.0, {"keep": true, "uses": 2, "bonus": [&"wick", 0.5]})]
-	# The Ruined Metropolis (docs/LANDSCAPES.md §4). A fallen span is quarried
+	# The Ruined Metropolis (docs/LANDSCAPES.md). A fallen span is quarried
 	# for its stone with an edge and stands; the one bar of reinforcement
 	# hanging loose off its torn end comes away by hand, once, which is the only
 	# iron a city with no ore reachable gives a bare hand. (The spec says "pry";
@@ -321,7 +321,7 @@ static func _signature(t: Dictionary) -> void:
 	# The frame over the demolition face: a plan work, stripped of a plate by
 	# hand and filed as theft, and it stands.
 	t[PropKind.DEMOLITION_GANTRY] = [_o(&"turn", &"scrap", 1, 14.0, 96.0, {"keep": true, "uses": 2})]
-	# The Drowned City (docs/LANDSCAPES.md §5). A tram half sunk in the silt:
+	# The Drowned City (docs/LANDSCAPES.md). A tram half sunk in the silt:
 	# the copper off its trolley gear is the landscape's own raw (EliteStock:
 	# brine copper), stripped with a steel edge, twice, and only where the tram
 	# stands IN the tide -- the mud of the shallows it was laid in -- which is
@@ -335,7 +335,7 @@ static func _signature(t: Dictionary) -> void:
 	# and unlaid it is the one soft stuff a made thing wants. The spec's "cut
 	# rope" gives RAGS because nothing in the game is rope yet -- a cord item
 	# nothing is made of would be dead loot -- and rope teased out is rag. The
-	# piles stand: a raft is tied to them (docs/LANDSCAPES.md §5).
+	# piles stand: a raft is tied to them (docs/LANDSCAPES.md).
 	t[PropKind.MOORING_POST] = [_o(&"cut", &"rag", 1, 8.0, NEVER, {"keep": true})]
 	# The plan's gate leaf: a plan work, robbed of a plate by hand and filed as
 	# theft, and it goes on standing in its recess. What feeds the lockkeeper.
@@ -343,7 +343,7 @@ static func _signature(t: Dictionary) -> void:
 
 
 
-## The glass desert's own things (docs/LANDSCAPES.md §3), kept apart from
+## The glass desert's own things (docs/LANDSCAPES.md), kept apart from
 ## `_signature` because one of them is CONSUMED: a fulgurite cluster is broken
 ## up for the tubes and carried off, worked down by `Broken` on the way and
 ## leaving rubble (RemnantModels) when the last of it goes. The raw it gives is
@@ -363,7 +363,7 @@ static func _glass(t: Dictionary) -> void:
 	t[PropKind.STRIKE_ROD] = [_o(&"turn", &"copper", 1, 18.0, NEVER, {"keep": true})]
 
 
-## The Mesas (docs/LANDSCAPES.md §6). A fallen span of the ropeway lies on the
+## The Mesas (docs/LANDSCAPES.md). A fallen span of the ropeway lies on the
 ## scree with its buckets still on it: its rope is cut out with a steel edge,
 ## a bucket's plate comes away by hand, and it stays where it fell. The ropeway's pylon is a plan work (below): what a
 ## hand takes off it is the clamp that holds its span, cut with an iron edge,
@@ -406,7 +406,7 @@ const GIVES_NOTHING := {
 	PropKind.FIRE_TOWER: "A roof (52_hazards ROOFS): a body shelters in the cabin.",
 	PropKind.LINTEL: "A roof (52_hazards ROOFS): the cap stone takes the wet and the dark off a body under it. Its uprights are the boulders beside it, which give the same stone; nobody quarries a doorway that was standing before the machines.",
 	PropKind.HOLLOW_WAY: "A lane between two dry-stone banks: cover (Cover.PROPS) for a body walking it, and the walling is the ruin's, which gives the same stone. A take that broke a bank would take the lane's one use with it.",
-	PropKind.STAIR_TO_WATER: "A crossing: where a body walks down into the canal and climbs out of it again, and where a raft is launched and landed (docs/LANDSCAPES.md §5). Its treads are the quay's own cut stone, and a sea wall beside it gives the same stone.",
+	PropKind.STAIR_TO_WATER: "A crossing: where a body walks down into the canal and climbs out of it again, and where a raft is launched and landed (docs/LANDSCAPES.md). Its treads are the quay's own cut stone, and a sea wall beside it gives the same stone.",
 	PropKind.HOODOO: "The land's own (PropKind.WILD): cover (Cover.PROPS) and a solid foot to put your back to. The rock is the boulders' beside it, and quarrying a spire that stood through the machines would take the one piece of cover on a bench.",
 	PropKind.ARCH_RIB: "The land's own (PropKind.WILD): shade under it (52_hazards ROOFS) on a landscape with none, and a crossing. Nothing in it comes away that the boulders at its feet do not already give.",
 	PropKind.CISTERN: "Water, and nothing to carry it in: the game has no drink a creel holds, so a cistern answers thirst where it stands (Hazards.Place.spring, 52_hazards SPRINGS) -- the mesas' own spring -- rather than handing over an item nothing consumes.",
@@ -424,18 +424,18 @@ const PLAN_WORKS: Array[int] = [PropKind.RELAY, PropKind.SURVEY, PropKind.CONVEY
 	PropKind.PIPE, PropKind.INTAKE, PropKind.CHECKPOINT, PropKind.DRILL_RIG,
 	PropKind.TIDE_GAUGE, PropKind.VENT_CAP, PropKind.ARCHIVE,
 	# The crags' survey furniture: a lens off a mast and cores out of a rack are
-	# both filed as theft (docs/LANDSCAPES.md §1), and both feed its keeper.
+	# both filed as theft (docs/LANDSCAPES.md), and both feed its keeper.
 	PropKind.THEODOLITE_MAST, PropKind.CORE_RACK,
-	# The frost sea's sounding tripod is the plan's too (docs/LANDSCAPES.md §2).
+	# The frost sea's sounding tripod is the plan's too (docs/LANDSCAPES.md).
 	PropKind.SOUNDING_RIG,
-	# The glass desert's strike rod (docs/LANDSCAPES.md §3: "strip copper;
+	# The glass desert's strike rod (docs/LANDSCAPES.md: "strip copper;
 	# theft"): the plan's, and what feeds its keeper (sentinel/designs/anvil.gd).
 	PropKind.STRIKE_ROD,
 	# The metropolis's demolition face: the bales the plan sorted the city into
-	# and the frame over the cut (docs/LANDSCAPES.md §4: theft).
+	# and the frame over the cut (docs/LANDSCAPES.md: theft).
 	PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY,
 	# The drowned city's lock: the gate leaf is the plan's, and robbing it is
-	# theft (docs/LANDSCAPES.md §5); it is what feeds the lockkeeper.
+	# theft (docs/LANDSCAPES.md); it is what feeds the lockkeeper.
 	PropKind.LOCK_GATE,
 	# The mesas' ropeway pylon: the plan's, and what feeds its keeper
 	# (sentinel/designs/anchor.gd). Robbing it is theft.

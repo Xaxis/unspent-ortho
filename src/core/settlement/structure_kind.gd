@@ -1,5 +1,5 @@
 class_name StructureKind
-## Every piece a player can build, and what building it means (docs/VISION.md §9).
+## Every piece a player can build, and what building it means (docs/VISION.md).
 ##
 ## A kind is data: what it costs, how much it takes, how loud it is to a machine,
 ## and which of the six families it belongs to. The settlement package fills the
@@ -98,7 +98,7 @@ enum Family {
 	LIVING,
 }
 
-## The three idioms a piece can be built in (docs/ART.md, docs/VISION.md §6):
+## The three idioms a piece can be built in (docs/LOOK.md, docs/VISION.md):
 ## MADE is hand work, MENDED is machine parts bound with hand work, FOUND is
 ## machine technology taken whole and still humming.
 enum Idiom {
@@ -143,7 +143,7 @@ const SIGNS := {
 ## yet, and every helper answers for it rather than breaking.
 ##
 ##   name      what the slate calls it
-##   idiom     how it is drawn (docs/ART.md §12): MADE, MENDED or FOUND
+##   idiom     how it is drawn (docs/LOOK.md): MADE, MENDED or FOUND
 ##   health    what it stands up to before it is wreckage
 ##   solid     collision radius in tiles (0 = walked through; at or over 0.42 a
 ##             machine cannot see through it either, src/core/mobs/senses.gd)

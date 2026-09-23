@@ -1,5 +1,5 @@
 class_name ConfigSchema
-## Every setting a master configuration may hold (docs/DEV.md), with its default.
+## Every setting a master configuration may hold (docs/DESIGN.md), with its default.
 ## A configuration file only lists what it changes; everything it does not name
 ## is the default here, so a default changed in code reaches every configuration.
 ##

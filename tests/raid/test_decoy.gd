@@ -1,5 +1,5 @@
 extends TestCase
-## The raids half of the decoy mast (docs/VISION.md §9.3): what a machine does
+## The raids half of the decoy mast (docs/VISION.md): what a machine does
 ## when a pole in a field shouts louder than the yard behind it.
 ##
 ## The decoy has no mask row. It does not hide the holding — it is read INSTEAD

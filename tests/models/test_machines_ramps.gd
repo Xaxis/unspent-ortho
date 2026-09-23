@@ -1,6 +1,6 @@
 extends TestCase
 ## The twelve per-kind ramps against the Palette contract (CLAUDE.md) and
-## docs/ART.md §4, §5. They had drifted into one mid-value lavender: at the body
+## docs/LOOK.md, §5. They had drifted into one mid-value lavender: at the body
 ## fill the largest per-channel gap between ANY two of the twelve was 19/255, and
 ## every machine stood lighter than the turf it was standing on, so by day a
 ## machine was a pale slab and no player could tell a harvester from a warden.

@@ -1,5 +1,5 @@
 extends MachineModel
-## THE LISTENER: the Frost Sea's keeper (docs/VISION.md §3, src/core/sentinel/
+## THE LISTENER: the Frost Sea's keeper (docs/VISION.md, src/core/sentinel/
 ## designs/listener.gd). A wide, low disc on six splayed legs that end in skis,
 ## carrying a crown of long hydrophone spears it drives into the ice to hear what
 ## is under it. A spider holding its needles up.
@@ -76,7 +76,7 @@ func build() -> void:
 	stride = 2.2
 	gallery_turn = 34.0
 	# A big working part at the default burns to white and the amber goes out of
-	# it (docs/ART.md §5): the two keepers before it found the same number.
+	# it (docs/LOOK.md): the two keepers before it found the same number.
 	emission = 0.28
 	begin_rig()
 	ramp = Palette.MACHINE["warden"]

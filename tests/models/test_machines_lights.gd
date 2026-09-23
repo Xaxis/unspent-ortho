@@ -1,5 +1,5 @@
 extends TestCase
-## The machines' built-in lights tell their state (docs/VISION.md §2, the
+## The machines' built-in lights tell their state (docs/VISION.md, the
 ## machines brief): status lamps blink the disposition, alert locks the eyes,
 ## a windup brightens the working side, hurt stutters, and the dead go dark in
 ## sequence with the working part last. Every pattern is exact, so every one is

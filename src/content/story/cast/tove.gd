@@ -1,4 +1,4 @@
-## Tove fishes a seal hole on the frost sea, where nobody lives, from a camp by its nearest landmark. A local: colour, never load (docs/STORY.md §8).
+## Tove fishes a seal hole on the frost sea, where nobody lives, from a camp by its nearest landmark. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"tove", "name": "Tove", "title": "an ice-fisher",

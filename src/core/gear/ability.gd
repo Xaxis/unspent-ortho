@@ -1,6 +1,6 @@
 class_name Ability
 extends RefCounted
-## The one interface every ability is read through (docs/VISION.md §7.4), so the
+## The one interface every ability is read through (docs/VISION.md), so the
 ## player controller, the fight and the slate all speak to abilities the same
 ## way and a new one is a file, never a new branch in a system.
 ##

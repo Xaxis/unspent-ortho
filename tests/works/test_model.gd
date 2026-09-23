@@ -1,5 +1,5 @@
 extends TestCase
-## The drawn depot, held to the job it exists to do (docs/VISION.md §2). Four
+## The drawn depot, held to the job it exists to do (docs/VISION.md). Four
 ## hundred lines of geometry went in with nothing under tests/ so much as naming
 ## the file, under a header that says it is "drawn to be READ FROM FAR OFF AT
 ## NIGHT" — which is a claim about a number nobody was checking.

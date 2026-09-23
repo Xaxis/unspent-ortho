@@ -90,7 +90,7 @@ static func make() -> BiomeDef:
 		&"dog.yard": {"weight": 1.0}, &"dog.feral": {"weight": 1.0},
 		&"gulls": {"weight": 1.0, "hours": Vector2(6, 20)},
 	}
-	# The places worth the walk it holds (docs/VISION.md §3, src/core/landmarks):
+	# The places worth the walk it holds (docs/VISION.md, src/core/landmarks):
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"leaning_mast", &"blinking_stack", &"clerks_office", &"cast_stones"]

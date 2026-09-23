@@ -1,5 +1,5 @@
 extends TestCase
-## What a party is for, and what it goes at (docs/VISION.md §9.5). The pillar
+## What a party is for, and what it goes at (docs/VISION.md). The pillar
 ## these hold: **a raid targets what MAKES the signature**, so the player's own
 ## build decides the fight — which is the only thing that makes the seven bars on
 ## the holding page a decision and not a readout.

@@ -1,6 +1,6 @@
 extends RefCounted
 ## What the Ruined Metropolis left standing, and what the plan sorts it into
-## (docs/LANDSCAPES.md §4). A dead megacity is poured concrete: a span of
+## (docs/LANDSCAPES.md). A dead megacity is poured concrete: a span of
 ## elevated road come down across a street, a lift core standing where its
 ## tower was, a shop with its shutter half down. Those are MADE, tagged
 ## CONCRETE (matter row 85), because cast concrete is a thing people poured and

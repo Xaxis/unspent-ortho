@@ -1,7 +1,7 @@
 class_name Escort
 extends RefCounted
 ## WALKING SOMEBODY HOME after the yard that held them has gone dark
-## (docs/VISION.md §9.5; owner's sub-arc goals; agreed with the story seat
+## (docs/VISION.md; owner's sub-arc goals; agreed with the story seat
 ## 2026-09-18).
 ##
 ## THE FIRST THING IN THIS GAME THAT CAN FAIL SLOWLY, and that is the whole

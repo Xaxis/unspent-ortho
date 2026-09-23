@@ -1,5 +1,5 @@
 class_name WorksDepot
-## The drawn depot of the plan (docs/VISION.md §2), and the three working parts
+## The drawn depot of the plan (docs/VISION.md), and the three working parts
 ## a player has to get through to put one out.
 ##
 ##   WorksDepot.yard(site, stage, made_material) -> Node3D
@@ -8,7 +8,7 @@ class_name WorksDepot
 ##   WorksDepot.set_broken(part_node, done)  that part, opened and spilling
 ##
 ## Everything structural is FOUND: ruled plate, square ends, no jitter, straight
-## through whatever chaotic ground it was dropped on (docs/ART.md §2, VISION §8
+## through whatever chaotic ground it was dropped on (docs/LOOK.md, VISION §8
 ## "ordered chaos"). The only MADE thing here is what people did to it
 ## afterwards — a ladder lashed to a leg, sacking over a rail — because a depot
 ## the machines still run is a depot people only get near at night.
@@ -493,7 +493,7 @@ static func _spoil(k: MeshKit, seed_value: int) -> void:
 
 
 ## A row of small blocks along a line: the rivets that keep a ruled plate from
-## reading as a painted rectangle at 640x360 (docs/ART.md §2).
+## reading as a painted rectangle at 640x360 (docs/LOOK.md).
 static func _rivets(k: MeshKit, a: Vector3, b: Vector3, n: int) -> void:
 	for i in n:
 		var p := a.lerp(b, (i + 0.5) / float(n))

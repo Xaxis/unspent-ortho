@@ -7,7 +7,7 @@ class_name RemnantModels
 ## part so it shows on sand and on ash alike.
 ##
 ## MADE leavings (stump, rubble, stubble, cut, tapped, picked) are drawn on the
-## world material; FOUND leavings (plate) on the ruler's (docs/ART.md law 3).
+## world material; FOUND leavings (plate) on the ruler's (docs/LOOK.md law 3).
 ##
 ##   RemnantModels.mesh(&"stump")                  # shared, built once
 ##   RemnantModels.for_kind(PropKind.PINE) -> &"stump" (or &"" for nothing)

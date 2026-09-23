@@ -1,5 +1,5 @@
 extends MachineModel
-## A CHAINMAN: the crags' one worker of its own (docs/LANDSCAPES.md §1). It walks
+## A CHAINMAN: the crags' one worker of its own (docs/LANDSCAPES.md). It walks
 ## the survey lines dragging a measuring chain, stops at each stone to set a tiny
 ## tripod, and goes on. It is not hostile: it shoves whatever is standing on its
 ## line out of the way (Roles.TURNS: a worker turns on `blocked`), and it drops

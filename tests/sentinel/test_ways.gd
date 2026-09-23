@@ -1,5 +1,5 @@
 extends TestCase
-## The three ways a landscape is taken from its keeper (docs/VISION.md §3). They
+## The three ways a landscape is taken from its keeper (docs/VISION.md). They
 ## are pure rules over a `SentinelLook`, which is the whole reason they can be
 ## proved here: the fight is full of nodes and none of them is needed to say
 ## whether the land has taken a machine or the plan has stopped feeding it.

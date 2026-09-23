@@ -1,5 +1,5 @@
 ## Priya Nand in 2029, before she reported him. Stands in the Before (Realm.ERA), relived through a gate
-## (docs/STORY.md §6).
+## (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"priya_then", "name": "Priya", "title": "the alignment lead",

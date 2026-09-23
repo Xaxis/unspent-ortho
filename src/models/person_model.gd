@@ -4,7 +4,7 @@ extends Node3D
 ## one thing, animated procedurally. Faces +X at rotation 0 (the same convention
 ## as Player.facing: set rotation.y = -facing).
 ##
-## Drawn per docs/ART.md: MADE in the hand (person.gdshader, Ink.HAND hatching,
+## Drawn per docs/LOOK.md: MADE in the hand (person.gdshader, Ink.HAND hatching,
 ## never on skin), no ink outline but a one-pixel rim in the person's own colours
 ## (person_rim.gdshader), FOUND salvage and glims on found.gdshader.
 ##
@@ -240,7 +240,7 @@ func animate(speed: float, delta: float) -> void:
 ## the head brought up to look out of it. It is an offset, not a pose of its
 ## own, so a crouching body still walks, swings and works.
 ##
-## It has to READ at 640x360 from a camera 45 degrees up (docs/ART.md §5), and
+## It has to READ at 640x360 from a camera 45 degrees up (docs/LOOK.md), and
 ## that is the whole difficulty: dropping a body and pitching its back forward
 ## lays the coat flat across the screen and the figure becomes one pale
 ## horizontal lump with a line through it (wave A2, art finding 8). What reads

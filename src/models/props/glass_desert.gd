@@ -1,5 +1,5 @@
 extends RefCounted
-## What stands on the Glass Desert (docs/LANDSCAPES.md §3). Everything here is
+## What stands on the Glass Desert (docs/LANDSCAPES.md). Everything here is
 ## either older than the glassing or was caught in it, and three of the four
 ## are the same material: the sand, fused. A fulgurite is a strike's own cast in
 ## the drift; a blister is where a gas pocket rose through the sheet as it

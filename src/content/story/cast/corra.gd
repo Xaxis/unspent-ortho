@@ -1,4 +1,4 @@
-## Corra burns charcoal in the pinewood and is out of the trees by dusk. A local: colour, never load (docs/STORY.md §8).
+## Corra burns charcoal in the pinewood and is out of the trees by dusk. A local: colour, never load (docs/STORY.md).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"corra", "name": "Corra", "title": "a charcoal-burner",

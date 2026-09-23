@@ -1,5 +1,5 @@
 extends RefCounted
-## The machines' works across the land, drawn by the ruler (docs/ART.md law 3):
+## The machines' works across the land, drawn by the ruler (docs/LOOK.md law 3):
 ## FOUND, exact, symmetric, chamfered, riveted, rust only in straight downward
 ## runs, never hatched. Most still work. Their order lights itself in a few
 ## accents that mean something: a cold strip along a live installation, a slow
@@ -20,7 +20,7 @@ const Remains := preload("res://src/models/props/remains.gd")
 ## that draws a strip or a beacon, the pool it casts, its wet-ground glint and its
 ## shaft in fog all read these, so they cannot disagree about what colour a mast is.
 ##
-## It sits on the machines' own arc (docs/ART.md §4 and the Palette contract): a
+## It sits on the machines' own arc (docs/LOOK.md and the Palette contract): a
 ## cold violet-white strip along a live installation, and a beacon at the burnt
 ## end of the violet arc (hue 331, blue above green) with only an amber cast to
 ## it. ART §4 gives the machines ONE warm read, the amber working part, so the

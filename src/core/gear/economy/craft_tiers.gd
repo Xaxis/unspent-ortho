@@ -1,5 +1,5 @@
 class_name CraftTiers
-## How hard a thing is to make, and where (docs/VISION.md §6.1: "Craft difficulty
+## How hard a thing is to make, and where (docs/VISION.md: "Craft difficulty
 ## matches the ladder"). A recipe names a station; the station is the difficulty.
 ##
 ##   0 hand    your two hands, anywhere

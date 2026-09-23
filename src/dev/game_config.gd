@@ -1,5 +1,5 @@
 class_name GameConfig
-## The master configuration this run of the game is made from (docs/DEV.md).
+## The master configuration this run of the game is made from (docs/DESIGN.md).
 ##
 ##   GameConfig.value("rules.clock")        what a reader asks; the default when nothing says otherwise
 ##   GameConfig.use("playtest")             make a configuration file the active one ("" or why not)
