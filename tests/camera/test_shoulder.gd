@@ -364,3 +364,121 @@ func test_the_rig_stands_where_the_room_allows() -> void:
 	cam._process(DT)
 	lt(cam.global_position.distance_to(head), full * 0.5, "and let back out gently, not snapped")
 	_done()
+
+
+# --- the web's near blur -------------------------------------------------------
+
+## THE WEB'S NEAR BLUR IS THE ORTHOGRAPHIC FRAME'S AND NOBODY ELSE'S. It is a
+## plane in the rig's shaft pass worked out from the flat frame's depth (about
+## 25 units), and the pass draws over whatever camera is current: under the lens
+## and over the shoulder it blurred everything within 25 units of the eye, and
+## under 96_eye's stand the same. Asked of the pass's own uniform.
+func test_the_web_near_blur_stands_down_under_the_lens() -> void:
+	Quality._now = &"web"
+	var g := await _make()
+	var cam := g.camera
+	cam.sight_room = Callable()
+	var pass_ := cam.get_node_or_null("shaft_pass") as MeshInstance3D
+	check(pass_ != null, "the web tier runs the shaft pass")
+	if pass_ == null:
+		Quality._now = &""
+		_done()
+		return
+	var m := pass_.material_override as ShaderMaterial
+	_step(cam, 10)
+	gt(float(m.get_shader_parameter("near_begin")), 0.0, "from above, the near blur is on")
+	cam.shoulder = true
+	_step(cam, 40)
+	lt(float(m.get_shader_parameter("near_begin")), 0.0, "over the shoulder it is off")
+	cam.shoulder = false
+	_step(cam, 40)
+	gt(float(m.get_shader_parameter("near_begin")), 0.0, "and back on from above")
+	var other := Camera3D.new()
+	g.add_child(other)
+	other.make_current()
+	_step(cam, 2)
+	lt(float(m.get_shader_parameter("near_begin")), 0.0, "and off while another camera draws")
+	other.queue_free()
+	Quality._now = &""
+	_done()
+
+
+# --- breath in the cold ----------------------------------------------------------
+
+func _breaths(g: Game) -> int:
+	var n := 0
+	for c: Node in g.get_children():
+		var mi := c as MeshInstance3D
+		if mi == null or not (mi.material_override is ShaderMaterial):
+			continue
+		var mode: Variant = (mi.material_override as ShaderMaterial).get_shader_parameter(&"mode")
+		if mode != null and int(mode) == MobFx.VAPOUR and not mi.is_queued_for_deletion():
+			n += 1
+			mi.queue_free()
+	return n
+
+
+## FROM BEHIND AT EYE LEVEL BREATH IS NOT DRAWN. A mark draws over everything,
+## so the puff put out in front of the mouth landed on the back of the head as a
+## white stipple ball. Seen from in front it is drawn, and from above as ever.
+func test_breath_is_not_drawn_over_the_back_of_the_head() -> void:
+	var g := await _make()
+	var cam := g.camera
+	cam.sight_room = Callable()
+	var hz: Node = null
+	for s in g.systems:
+		if s.name == "52_hazards":
+			hz = s
+	check(hz != null, "the hazards system runs")
+	var cue := HazardCues.cue(&"cold")
+	_breaths(g)
+	hz.call("_draw_cue", &"cold", cue, 0.7)
+	eq(_breaths(g), 2, "from above, two puffs")
+	cam.shoulder = true
+	cam.snap_view()
+	cam.shoulder_yaw = Shoulder.yaw_behind(g.player.facing)
+	_step(cam, 2)
+	hz.call("_draw_cue", &"cold", cue, 0.7)
+	eq(_breaths(g), 0, "from behind the head, none")
+	cam.shoulder_yaw = Shoulder.yaw_behind(g.player.facing + PI)
+	_step(cam, 2)
+	hz.call("_draw_cue", &"cold", cue, 0.7)
+	eq(_breaths(g), 2, "looking at the face, the breath is there")
+	_done()
+
+
+# --- the right button ------------------------------------------------------------
+
+func _right(down: bool) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_RIGHT
+	ev.pressed = down
+	Input.parse_input_event(ev)
+	Input.flush_buffered_events()
+
+
+## THE RIGHT BUTTON IS THE VIEW, AND ONE CLICK IS ENOUGH IN TOGGLE MODE. macOS
+## hands Godot a trackpad's two-finger click as a secondary click, which the engine
+## reads as MOUSE_BUTTON_RIGHT, so this is the event a laptop sends. Pressed and
+## let go once, the toggled view comes down and stays; a second click takes it up.
+func test_one_right_click_toggles_the_view() -> void:
+	PlayerSettings.forget_for_test()
+	PlayerSettings.set_value(&"playing.shoulder", &"toggle")
+	var g := await _make()
+	var sys := _system(g)
+	_right(true)
+	check(Input.is_action_pressed(&"shoulder"), "the right button says `shoulder`")
+	sys.call("_process", DT)
+	_right(false)
+	await tree.process_frame
+	sys.call("_process", DT)
+	check(g.camera.shoulder, "one click, and the view stays down")
+	_right(true)
+	await tree.process_frame
+	sys.call("_process", DT)
+	_right(false)
+	await tree.process_frame
+	sys.call("_process", DT)
+	check(not g.camera.shoulder, "a second click takes it back up")
+	PlayerSettings.forget_for_test()
+	_done()

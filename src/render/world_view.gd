@@ -109,6 +109,12 @@ const LAND := 0
 const STANDS := 1
 var _far_kind: Array[int] = []
 var _stands_wanted := false
+## Build the silhouettes as soon as the far land is in, without waiting for a
+## camera to see the horizon: set by whoever knows the player CAN look out (the
+## view over the shoulder, 41_shoulder), so the first look up is complete rather
+## than bare far land filling in for seconds. Kept across a rebind, because a
+## realm crossing does not take the key away.
+var stands_early := false
 ## The far world's own copies of the two materials: the same shaders, told to
 ## stand down wherever a near chunk is in the scene (`near_mask`, one texel per
 ## chunk). Only these read the mask, so the near land draws exactly as it did.
@@ -767,7 +773,7 @@ func _far_step(near_busy: bool) -> void:
 			# in the builder that was never there.
 			far_ms += _far_at[i] / 1000.0
 			far_count += 1
-	if not _stands_wanted and is_inside_tree() and SkyLight.sees_horizon(get_viewport().get_camera_3d()):
+	if not _stands_wanted and (stands_early or is_inside_tree() and SkyLight.sees_horizon(get_viewport().get_camera_3d())):
 		_stands_wanted = true
 	var land_left := not far.done(world.size)
 	if not land_left and (not _stands_wanted or far.stands_done(world.size)):

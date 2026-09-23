@@ -5,7 +5,7 @@ extends GameSystem
 ## along with a perfectly integrated setting. Should be able to see parts of the
 ## sky and the horizon.")
 ##
-##   hold L, or the right mouse button   the camera glides down off its perch to
+##   hold Left Alt/Option, or right mouse  the camera glides down off its perch to
 ##                                       behind the player's right shoulder
 ##   the mouse                           turns it, and tips it up to the sky
 ##   walk away from it                   it eases in behind you when the mouse
@@ -55,6 +55,10 @@ func setup(g: Game) -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_ensure_action()
 	MouseControls.install()
+	# A new game opens with the key let go. The latch is static (HoldToggle), so
+	# a view toggled on in the last game came back on in this one, and the first
+	# click of the new game took it OFF.
+	HoldToggle.put(ACTION, false)
 	_tool = g.options.shot != "" or g.options.tour != ""
 	var v := g.options.view
 	if v == &"":
@@ -63,6 +67,11 @@ func setup(g: Game) -> void:
 		# ran before it cannot be compared with anything).
 		v = &"top" if _tool else StringName(str(PlayerSettings.value(&"playing.view")))
 	opens_over = v == &"shoulder"
+	# The player can look out to the horizon from the first frame, so the far
+	# land's silhouettes are built from the start on the far workers, behind the
+	# near chunks, instead of after the first look (world_view `stands_early`).
+	if g.view != null:
+		g.view.stands_early = true
 	var cam := g.camera
 	cam.sight_room = room
 	cam.shoulder = opens_over
@@ -77,7 +86,8 @@ func _ensure_action() -> void:
 		return
 	InputMap.add_action(ACTION)
 	var key := InputEventKey.new()
-	key.physical_keycode = KEY_L
+	key.physical_keycode = KEY_ALT
+	key.location = KEY_LOCATION_LEFT
 	InputMap.action_add_event(ACTION, key)
 
 
@@ -254,6 +264,13 @@ func tour_seen(what: StringName) -> bool:
 				return false
 			var to := Vector2(cam.subject.x - game.player.position.x, cam.subject.z - game.player.position.z)
 			return absf(Shoulder.turn(cam.yaw_now(), Shoulder.yaw_along(to))) < 20.0
+		# Looking toward the sun the light comes from (within 25 degrees of its
+		# bearing), so a frame can show shadows falling back toward the eye.
+		&"shoulder_sun":
+			if not cam.over_shoulder() or game.sky == null or game.sky.sun == null:
+				return false
+			var to_sun := game.sky.sun.global_transform.basis.z
+			return absf(Shoulder.turn(cam.yaw_now(), Shoulder.yaw_along(Vector2(to_sun.x, to_sun.z)))) < 25.0
 		&"sky_in_frame":
 			# The top edge of the picture looks above the horizon.
 			return cam.over_shoulder() and cam.shoulder_pitch < cam.fov * 0.5

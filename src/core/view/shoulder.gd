@@ -16,8 +16,12 @@ extends RefCounted
 ## frame is 20 degrees ABOVE the horizon: sky and the far land are in every frame,
 ## which is the whole of what the owner asked the view for.
 
-## World units back from the focus along the view axis.
-const BACK := 3.6
+## World units back from the focus along the view axis. 4.2 rather than the 3.6
+## it opened with, judged on frames at noon, dusk and night on the coast and in
+## the pinewood: at 3.6 the player took the lower middle of the frame and the
+## ground they walk toward began behind them; at 4.2 they still read at night and
+## the land they are walking into has the room.
+const BACK := 4.2
 ## The focus: over the feet by this much (a chest, not a head, so the player's
 ## own head sits in the upper-middle of the frame instead of under its top edge).
 const FOCUS_UP := 1.25

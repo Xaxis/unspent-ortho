@@ -1,0 +1,58 @@
+# TIPPING THE VIEW OVER THE SHOULDER NEVER SNAPS (src/render/sky_light.gd,
+# `horizon_share`). The air, the sky, the shadow and the light cross from the
+# play camera's rules to the eye-level ones over a band of pitch; this walks the
+# view down past that band with the real mouse and back up through it a degree a
+# frame, at dusk, when the sun is low and every one of those rules differs most.
+#
+#   tools/tour.sh tours/shoulder-tilt.tour --seed=4 --hour=18.6 --weather=clear:0
+#
+# Read the frames in order: 03..14 are consecutive degrees of tilt from about 41
+# down to 27 (the band is 36..28 at the shoulder's 60-degree field). Nothing
+# may change between two of them except what a degree of tilt moves.
+coast calm
+wait 0.9
+hold shoulder
+await shoulder 3
+wait 0.6
+shot 01-level-at-dusk with shoulder,sky_in_frame
+mouse 0,230 0.5
+wait 0.6
+shot 02-tipped-down-to-the-feet with shoulder
+mouse 0,-7 0.05
+wait 0.15
+shot 03-tilt with shoulder
+mouse 0,-7 0.05
+wait 0.15
+shot 04-tilt with shoulder
+mouse 0,-7 0.05
+wait 0.15
+shot 05-tilt with shoulder
+mouse 0,-7 0.05
+wait 0.15
+shot 06-tilt with shoulder
+mouse 0,-7 0.05
+wait 0.15
+shot 07-tilt with shoulder
+mouse 0,-7 0.05
+wait 0.15
+shot 08-tilt with shoulder
+mouse 0,-7 0.05
+wait 0.15
+shot 09-tilt with shoulder
+mouse 0,-7 0.05
+wait 0.15
+shot 10-tilt with shoulder
+mouse 0,-7 0.05
+wait 0.15
+shot 11-tilt with shoulder
+mouse 0,-7 0.05
+wait 0.15
+shot 12-tilt with shoulder
+mouse 0,-7 0.05
+wait 0.15
+shot 13-tilt with shoulder
+mouse 0,-7 0.05
+wait 0.15
+shot 14-tilt with shoulder
+release shoulder
+await top_view 3
