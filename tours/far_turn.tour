@@ -1,0 +1,25 @@
+# Turning at eye level must never show the land late (world_view `_in_view`).
+# At eye level only the chunks inside the view's wedge are in the scene, and the
+# rest are built and PARKED; a turn brings them back on the frame they come into
+# view. This stands the staged eye on a city's edge, lets the world finish, and
+# shoots consecutive frames while it turns ninety degrees a second: a hole, a
+# patch of coarse far land or a model popping in shows as a frame that disagrees
+# with its neighbours about the ground near the player.
+#   tools/tour.sh tours/far_turn.tour --seed=7 --place=ruined_metropolis --eye=9,6,50 --eye-turn=90 --hour=12 --weather=clear:0
+#   (and with --quality=web under --rendering-method gl_compatibility for the web path)
+wait 25
+shot turn-00
+wait 0.2
+shot turn-01
+wait 0.2
+shot turn-02
+wait 0.2
+shot turn-03
+wait 0.2
+shot turn-04
+wait 0.2
+shot turn-05
+wait 0.2
+shot turn-06
+wait 0.2
+shot turn-07

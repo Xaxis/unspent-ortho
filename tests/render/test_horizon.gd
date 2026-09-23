@@ -60,33 +60,43 @@ func test_a_far_ridge_keeps_its_height() -> void:
 	lt(top, ridge + 0.01, "and never above the land it stands for")
 
 
-## What stands on the far land is carried there as a silhouette of its own
-## height, or a forest beyond the near chunks is a bare plain from eye level.
+## What stands on the far land is carried there as its own model seen from far
+## off, or a forest beyond the near chunks is a bare plain from eye level.
 func test_a_far_tree_stands_up_off_the_land() -> void:
 	var w := _ridge()
 	var p := WorldProp.new(0, PropKind.PINE, Vector2(20.5, 20.5), 0.0, 1.0)
 	w.props.append(p)
 	eq(Far.stand_arrays(w, []).size(), 0, "nothing standing, nothing drawn")
-	var stood: Array = Far.stand_arrays(w, [p])
-	var n0 := 0
-	var n1 := (stood[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
-	gt(float(n1), 0.0, "the pine adds a solid to the far land")
-	var top := 0.0
-	for v: Vector3 in stood[Mesh.ARRAY_VERTEX] as PackedVector3Array:
-		if Vector2(v.x, v.z).distance_to(p.pos) < 3.0:
-			top = maxf(top, v.y)
+	var levels: Array = Far.stand_arrays(w, [p])
+	eq(levels.size(), Far.LEVELS.size(), "one set of far models per far level")
 	var tall: float = Far.summary(PropKind.PINE, PropModels.variant_of(p, w.seed_value, Country.COAST), Country.COAST)[0]
-	near(top, TerrainMesher.level_height(2) + tall, 0.05, "as tall as the model it stands for")
-	# Every added face must be one that draws: front faces turned outward.
-	var v3: PackedVector3Array = stood[Mesh.ARRAY_VERTEX]
-	var nn: PackedVector3Array = stood[Mesh.ARRAY_NORMAL]
-	var wrong := 0
-	for i in range(n0, n1, 3):
-		var f := (v3[i + 1] - v3[i]).cross(v3[i + 2] - v3[i])
-		# Wound as the land is: the cross product is opposite the normal.
-		if f.dot(nn[i]) > 0.0:
-			wrong += 1
-	eq(wrong, 0, "every silhouette face is wound to be drawn")
+	for li in levels.size():
+		var top := 0.0
+		var n := 0
+		var wrong := 0
+		for arrays: Array in levels[li]:
+			if arrays.is_empty():
+				continue
+			var v3: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			n += v3.size()
+			for v: Vector3 in v3:
+				if Vector2(v.x, v.z).distance_to(p.pos) < 3.0:
+					top = maxf(top, v.y)
+		gt(float(n), 0.0, "the pine is on the far land at level %d" % li)
+		# Its own model, cast as the near chunk casts it (height within the
+		# near bake's own +/-15% cast), standing on the far land.
+		near(top, TerrainMesher.level_height(2) + tall, tall * 0.2, "as tall as the model it stands for at level %d" % li)
+		# Every kept face keeps the near model's winding and normal: made faces
+		# are wound as the land is, the cross product opposite the normal.
+		var made: Array = levels[li][0]
+		if not made.is_empty():
+			var v3: PackedVector3Array = made[Mesh.ARRAY_VERTEX]
+			var nn: PackedVector3Array = made[Mesh.ARRAY_NORMAL]
+			for i in range(0, v3.size(), 3):
+				var f := (v3[i + 1] - v3[i]).cross(v3[i + 2] - v3[i])
+				if f.length() > 1e-6 and f.dot(nn[i]) > 0.0:
+					wrong += 1
+		eq(wrong, 0, "every far face is wound to be drawn at level %d" % li)
 
 
 ## Where a near chunk is in the scene the far world discards itself; only the far
@@ -147,7 +157,7 @@ func test_silhouettes_wait_for_the_horizon() -> void:
 	check(not view.far.stands_done(w.size), "and no silhouettes are, with no horizon in sight")
 	view.ensure_far()
 	check(view.far.stands_done(w.size), "a view that looks out builds them")
-	check(view.far.get_child(0).get_node_or_null("stands") != null, "and the pine stands on the far land")
+	check(view.far.get_child(0).get_node_or_null("stands_leaf") != null, "and the pine stands on the far land")
 	view.queue_free()
 	cam.queue_free()
 

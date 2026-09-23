@@ -21,6 +21,7 @@ const CHUNK := TerrainMesher.CHUNK
 ## The coarse world, by PATH not by global class name: see its header for what a
 ## `class_name` here cost the owner.
 const Far := preload("res://src/render/world_far.gd")
+const FarModels := preload("res://src/models/far_models.gd")
 ## Rotation that turns a model's +X downwind (east-north-east).
 const WIND_BEARING := 0.42
 
@@ -40,6 +41,40 @@ const WIND_BEARING := 0.42
 @export var park_most := 192
 ## Build streamed chunks on a worker thread (off: build in _process).
 @export var threaded := true
+
+## THE MIDDLE DISTANCE IS CHEAPER THAN THE GROUND UNDER YOUR FEET, AT EYE LEVEL.
+## From the eye the near square is thirty-odd chunks and nearly all of it is far
+## off: measured on seed 7, 36 chunks and 3.2 million primitives a frame, two
+## thirds of them in the sun's four shadow splits, with a chunk's props (38,000
+## triangles of its 55,000) mostly smaller than a pixel. So past `MID_FROM` (from
+## the camera to a chunk's middle) its props are drawn as their MID far models
+## (`far_models.gd`: the same models, what is smaller than two pixels there left
+## out) and past `DECOR_TO` its tufts are not drawn at all. Handed over by the
+## renderer's own visibility ranges, per chunk, so turning or walking costs nothing
+## and nothing is rebuilt.
+##
+## NO HYSTERESIS ON A HAND-OVER, and `LOD_MARGIN` is 0 on purpose. With the fade
+## off, a range margin is hysteresis on EACH side of the pair -- the full models
+## come back only well inside the line and the mid ones only well outside it -- so
+## a chunk standing in the band stays drawn by whichever it was last, and one whose
+## history was "far" on both counts is drawn by neither. That took the tanks and
+## masts off every roof sixty tiles out on the first frame of every shot.
+##
+## Only while the camera sees the horizon (`_lod_on`). The play camera looks down
+## from a long way back, so from there every chunk is "far" by this measure and
+## the whole island would drop to its middle-distance models; and the mid models
+## are only BAKED once an eye has been up (`_mid_wanted`), so the top-down game
+## neither pays for them nor draws them.
+const MID_FROM := 56.0
+const DECOR_TO := 72.0
+const LOD_MARGIN := 0.0
+var _mid_wanted := false
+var _lod_on := false
+## A chunk's mid models, baked on a worker of their own once the eye is up: the
+## chunk, its [made, found, leaf] arrays and the task.
+var _mid_task := -1
+var _mid_key := Vector2i.ZERO
+var _mid_out: Array = []
 
 var world: WorldData
 var focus := Vector2.ZERO
@@ -92,6 +127,8 @@ var stands_early := false
 ## chunk). Only these read the mask, so the near land draws exactly as it did.
 var _far_land_mat: ShaderMaterial
 var _far_water_mat: ShaderMaterial
+var _far_found_mat: ShaderMaterial
+var _far_leaf_mat: ShaderMaterial
 var _near_mask: Image
 var _near_tex: ImageTexture
 var _mask_dirty := true
@@ -166,6 +203,10 @@ func rebind(w: WorldData) -> void:
 			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
 			_far_tasks[i] = -1
 			_far_out[i] = []
+	if _mid_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_mid_task)
+		_mid_task = -1
+		_mid_out = []
 	for key: Vector2i in _chunks.keys():
 		(_chunks[key] as Node3D).queue_free()
 	_chunks.clear()
@@ -254,6 +295,7 @@ func _bind(w: WorldData) -> void:
 	far = Far.new()
 	far.name = "far"
 	add_child(far)
+	far.set_eye(_lod_on)
 	var n := ceili(float(w.size) / CHUNK)
 	# THE IMAGE HERE; THE TEXTURE AND THE FAR MATERIALS ON THE MAIN THREAD.
 	# `setup` runs on a worker for the title (UiTitle._begin), and both creating a
@@ -265,6 +307,8 @@ func _bind(w: WorldData) -> void:
 	_near_tex = null
 	_far_land_mat = null
 	_far_water_mat = null
+	_far_found_mat = null
+	_far_leaf_mat = null
 	_mask_dirty = true
 
 
@@ -278,6 +322,8 @@ func _far_mats() -> void:
 	if _far_land_mat == null:
 		_far_land_mat = _far_copy(_world_mat)
 		_far_water_mat = _far_copy(_water_mat)
+		_far_found_mat = _far_copy(PropModels.found_material())
+		_far_leaf_mat = _far_copy(_leaf_mat)
 
 
 ## A far copy of one of the view's materials, told to stand down under the near
@@ -392,11 +438,14 @@ func _park(key: Vector2i) -> void:
 ## Build every chunk near the focus synchronously.
 func ensure_near(p: Vector2) -> void:
 	focus = p
+	_look_out()
 	for key in _wanted(0.0):
 		if _parked.has(key):
 			_revive(key)
 		elif not _chunks.has(key):
 			_build(key)
+		if _mid_wanted:
+			_mid_now(key)
 	_write_mask()
 
 
@@ -435,21 +484,22 @@ func _process(_delta: float) -> void:
 		_task_chunk = null
 		_task_decor = []
 		_task_props = []
+	_look_out()
 	var wanted := _wanted(0.0)
 	# Reviving is free, so every parked chunk the view has come back to goes in
 	# at once; only building is one at a time.
 	for key in wanted:
-		if _parked.has(key):
+		if _parked.has(key) and _in_view(key, VIEW_SLACK):
 			_revive(key)
 	# Whether the near square still owes the player ground. `_far_step` reads it
 	# and stands down: see the note there for what it cost not to.
 	var near_busy := _task >= 0
 	for key in wanted:
-		if _chunks.has(key) or (_task >= 0 and key == _task_key):
+		if _have(key) or (_task >= 0 and key == _task_key):
 			continue
 		near_busy = true
 		if threaded:
-			if _task < 0:
+			if _task < 0 and _mid_task < 0:
 				_task_key = key
 				_task_dirty = false
 				var snap := _snapshot(key)
@@ -461,10 +511,260 @@ func _process(_delta: float) -> void:
 	for key in _wanted(keep):
 		keep_set[key] = true
 	for key: Vector2i in _chunks.keys():
-		if not keep_set.has(key):
+		if not keep_set.has(key) or not _in_view(key, VIEW_KEEP):
 			_park(key)
+	_mid_step(near_busy or _task >= 0)
 	_far_step(near_busy)
 	_write_mask()
+
+
+## AT EYE LEVEL HALF THE SQUARE IS BEHIND YOU. The wanted square is centred on the
+## player because the play camera looks straight down on them; from the eye it
+## reaches the same distance behind as ahead, and every chunk back there is built,
+## culled from the frame and drawn again into the sun's shadow splits. So at eye
+## level a chunk is only IN THE SCENE while it is inside the view's wedge on the
+## ground, widened by `VIEW_SLACK` to put it back and by `VIEW_KEEP` before it is
+## taken out again, plus everything within `VIEW_ROUND` of the camera.
+##
+## It is still BUILT with the whole square and parked, and that is what makes
+## turning free: putting a parked chunk back is `add_child`, so a turn through
+## ninety degrees brings the land in on the frame it comes into view, where
+## building it then would show the far land for a second and pop. The slack is a
+## turn of about a quarter of the lens a frame before anything shows late.
+const VIEW_SLACK := 30.0
+const VIEW_KEEP := 45.0
+const VIEW_ROUND := 24.0
+
+
+## Whether a chunk is inside the eye's wedge, `slack_deg` wider than the lens, or
+## close enough to the camera that it is always in. Always true unless the camera
+## sees the horizon.
+func _in_view(key: Vector2i, slack_deg: float) -> bool:
+	if not _lod_on:
+		return true
+	var cam := get_viewport().get_camera_3d()
+	if cam == null or cam.projection != Camera3D.PROJECTION_PERSPECTIVE:
+		return true
+	var fwd3 := -cam.global_transform.basis.z
+	var fwd := Vector2(fwd3.x, fwd3.z)
+	if fwd.length() < 0.2:
+		return true
+	fwd = fwd.normalized()
+	var at := Vector2(cam.global_position.x, cam.global_position.z)
+	var d := (Vector2(key) + Vector2(0.5, 0.5)) * CHUNK - at
+	var dist := d.length()
+	var half_diag := CHUNK * 0.7072
+	if dist < half_diag + VIEW_ROUND:
+		return true
+	var rect := get_viewport().get_visible_rect().size
+	var aspect := rect.x / maxf(1.0, rect.y)
+	var half := atan(tan(deg_to_rad(cam.fov) * 0.5) * aspect) if cam.keep_aspect == Camera3D.KEEP_HEIGHT \
+		else deg_to_rad(cam.fov) * 0.5
+	var off := absf(fwd.angle_to(d / dist)) - asin(minf(1.0, half_diag / dist))
+	return off <= half + deg_to_rad(slack_deg)
+
+
+## Whether the camera drawing this view sees the horizon, and what follows from
+## it: the mid models are wanted from the first time it does, and the chunks hand
+## over to them only while it does.
+func _look_out() -> void:
+	var up := is_inside_tree() and SkyLight.sees_horizon(get_viewport().get_camera_3d())
+	# A player who CAN look out (`stands_early`) has the mid models baked on the
+	# idle worker before the first look, as the silhouettes are.
+	if up or stands_early:
+		_mid_wanted = true
+	if up == _lod_on:
+		return
+	_lod_on = up
+	if far != null:
+		far.set_eye(up)
+	for node: Node3D in _chunks.values():
+		_lod_apply(node)
+	for node: Node3D in _parked.values():
+		_lod_apply(node)
+
+
+## Set a chunk's visibility ranges for the current camera: the whole chunk at any
+## range under a camera that looks down, and at eye level its full props and tufts
+## handed over to its mid models (when it has them) at `MID_FROM` / `DECOR_TO`.
+##
+## AND WHAT CASTS IS DECIDED APART FROM WHAT DRAWS. At eye level the sun's shadow
+## is four splits out to 140 units, and a chunk is drawn again into every split it
+## touches: measured on seed 7 through the web tier, 1.3 million of a frame's 2.3
+## million primitives were shadow, nearly all of it the chunks within fifty tiles,
+## which lie in three of the four. A shadow map cannot resolve what the mid models
+## leave out -- a split's texel past the first is a tenth of a unit and more -- so
+## past `SHADOW_FULL` a chunk's props cast from their SHADE models, whether or not it
+## is those that draw (the tier may bring that in: `eye_shadow_full`). And past
+## the tier's `eye_shadow_reach` (Quality, 0 = to the
+## last split) the land casts nothing at all. The renderer is told by SHADOW-ONLY
+## twins that share each surface's mesh (nothing is copied), each over the range it
+## casts, while the drawn surface itself stops casting.
+const SHADOW_FULL := 30.0
+
+
+func _lod_apply(node: Node3D) -> void:
+	var lod := _lod_on and node.get_node_or_null("mid_done") != null
+	var reach := float(Quality.current().get("eye_shadow_reach", 0)) if _lod_on else 0.0
+	var dm := node.get_node_or_null("decor") as GeometryInstance3D
+	if dm != null:
+		dm.visibility_range_end = DECOR_TO if _lod_on else 0.0
+		dm.visibility_range_end_margin = LOD_MARGIN if _lod_on else 0.0
+	# The land: all of it casts, out to the reach.
+	_casts(node, "terrain", 0.0, reach, _lod_on and reach > 0.0)
+	for i in 3:
+		var full := (["props", "props_found", "props_leaf"] as Array[String])[i]
+		var mid := (["mid", "mid_found", "mid_leaf"] as Array[String])[i]
+		var shade := (["shade", "shade_found", "shade_leaf"] as Array[String])[i]
+		var fm := node.get_node_or_null(full) as GeometryInstance3D
+		if fm != null:
+			fm.visibility_range_end = MID_FROM if lod else 0.0
+			fm.visibility_range_end_margin = LOD_MARGIN if lod else 0.0
+		var mm := node.get_node_or_null(mid) as GeometryInstance3D
+		if mm != null:
+			mm.visible = lod
+			mm.visibility_range_begin = MID_FROM
+			mm.visibility_range_begin_margin = LOD_MARGIN
+		if lod:
+			# Full shadows close in (the tier's `eye_shadow_full`), the shade
+			# models' past that, none past the reach, and never the mid ones.
+			var near_full := float(Quality.current().get("eye_shadow_full", SHADOW_FULL))
+			if near_full > 0.0:
+				_casts(node, full, 0.0, _cut(near_full, reach), true)
+			else:
+				_no_cast(node, full)
+			_no_cast(node, mid)
+			_casts(node, shade, near_full, reach, true)
+		else:
+			_casts(node, full, 0.0, reach, _lod_on and reach > 0.0)
+			_casts(node, mid, 0.0, 0.0, false)
+			_casts(node, shade, 0.0, 0.0, false)
+
+
+## `part` draws but casts nothing (its shadow comes from another level's twin).
+func _no_cast(node: Node3D, part: String) -> void:
+	_casts(node, part, 0.0, 0.0, false)
+	var mi := node.get_node_or_null(part) as GeometryInstance3D
+	if mi != null:
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+## `end` held to the reach (0 = no reach).
+static func _cut(end: float, reach: float) -> float:
+	return minf(end, reach) if reach > 0.0 else end
+
+
+## Cast `part`'s shadow over [begin, end) from the camera (end 0 = no end) by a
+## shadow-only twin, or, with `split` false, let the part cast for itself as it
+## always did and drop any twin.
+func _casts(node: Node3D, part: String, begin: float, end: float, split: bool) -> void:
+	var mi := node.get_node_or_null(part) as MeshInstance3D
+	var twin := node.get_node_or_null(part + "_casts") as MeshInstance3D
+	if mi == null:
+		return
+	if not split:
+		if mi.visible:
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		if twin != null:
+			node.remove_child(twin)
+			twin.queue_free()
+		return
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if twin == null:
+		twin = MeshInstance3D.new()
+		twin.name = part + "_casts"
+		twin.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+		node.add_child(twin)
+	twin.mesh = mi.mesh
+	twin.material_override = mi.material_override
+	twin.visibility_range_begin = begin
+	twin.visibility_range_end = end
+	twin.visibility_range_begin_margin = LOD_MARGIN if begin > 0.0 else 0.0
+	twin.visibility_range_end_margin = LOD_MARGIN if end > 0.0 else 0.0
+	twin.visible = end <= 0.0 or end > begin
+
+
+## Bake the mid models of chunks already in the scene, one at a time on a worker,
+## once the eye has been up. Stands down while the near square owes the player
+## ground, as the far world does, and for the same reason.
+func _mid_step(busy: bool) -> void:
+	if _mid_task >= 0 and WorkerThreadPool.is_task_completed(_mid_task):
+		WorkerThreadPool.wait_for_task_completion(_mid_task)
+		_mid_task = -1
+		var node: Node3D = _chunks.get(_mid_key, _parked.get(_mid_key))
+		if node != null and node.get_node_or_null("mid_done") == null:
+			_attach_mid(node, _mid_out)
+		_mid_out = []
+	if not _mid_wanted or _mid_task >= 0 or busy or not threaded:
+		return
+	var best := Vector2i(-1, -1)
+	var best_d := INF
+	for key: Vector2i in _chunks.keys():
+		if (_chunks[key] as Node3D).get_node_or_null("mid_done") != null:
+			continue
+		var d := (Vector2(key) * CHUNK + Vector2.ONE * CHUNK * 0.5).distance_squared_to(focus)
+		if d < best_d:
+			best_d = d
+			best = key
+	if best.x < 0:
+		return
+	_mid_key = best
+	var snap := _snapshot(best)
+	_mid_task = WorkerThreadPool.add_task(_mid_worker.bind(_data.get(best), snap[0], snap[1]), false, "chunk mid")
+
+
+## On the chunk worker's own mesher, which is free: a chunk is never dispatched
+## while this runs, nor this while a chunk is building.
+func _mid_worker(ch: TerrainMesher.Chunk, props: Array, spans: Array) -> void:
+	_mid_out = bake_props(ch, _bg_mesher, props, spans, FarModels.MID) \
+		+ bake_props(ch, _bg_mesher, props, [], FarModels.SHADE)
+
+
+## A chunk's mid models, baked here on the main thread (a shot, a test, an edit).
+func _mid_now(key: Vector2i) -> void:
+	var node: Node3D = _chunks.get(key, _parked.get(key))
+	if node == null or node.get_node_or_null("mid_done") != null:
+		return
+	var snap := _snapshot(key)
+	_attach_mid(node, bake_props(_data.get(key), mesher, snap[0], snap[1], FarModels.MID)
+		+ bake_props(_data.get(key), mesher, snap[0], [], FarModels.SHADE))
+
+
+## Put a chunk's mid models in beside its full ones, and the coarser ones it
+## casts its shadow with further out (`baked`: the MID level's three surfaces,
+## then the SHADE level's). `mid_done` marks a chunk as baked even when
+## nothing in it survives at that range.
+const MID_PARTS := ["mid", "mid_found", "mid_leaf", "shade", "shade_found", "shade_leaf"]
+
+
+func _attach_mid(node: Node3D, baked: Array) -> void:
+	for part: String in MID_PARTS + ["mid_done"]:
+		for name: String in [part, part + "_casts"]:
+			var old := node.get_node_or_null(name)
+			if old != null:
+				node.remove_child(old)
+				old.queue_free()
+	var mats := [_world_mat, PropModels.found_material(), _leaf_mat, _world_mat, PropModels.found_material(), _leaf_mat]
+	var names := MID_PARTS
+	for i in mini(names.size(), baked.size()):
+		var arrays: Array = baked[i]
+		if arrays.is_empty():
+			continue
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var mi := MeshInstance3D.new()
+		mi.name = names[i]
+		mi.mesh = mesh
+		mi.material_override = mats[i]
+		if i >= 3:
+			# Only ever drawn into the sun's shadow, through its `_casts` twin.
+			mi.visible = false
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		node.add_child(mi)
+	var done := Node3D.new()
+	done.name = "mid_done"
+	node.add_child(done)
+	_lod_apply(node)
 
 
 ## Fill the coarse world in, a block at a time, on its own workers. It is built
@@ -485,13 +785,27 @@ func _far_step(near_busy: bool) -> void:
 	if far == null:
 		return
 	_far_mats()
+	# ONE finished block a frame is put in, not every one that is ready: four far
+	# models landing together were four sets of uploads in one frame (19.9 ms worst
+	# where the plain solids had been 9.7), and a block loses nothing by waiting a
+	# frame in its slot.
+	var collected := false
+	var t_pump := Time.get_ticks_usec()
+	if far.pump():
+		collected = true
+		var pump_cost := (Time.get_ticks_usec() - t_pump) / 1000.0
+		far_main_ms += pump_cost
+		far_main_ms_max = maxf(far_main_ms_max, pump_cost)
 	for i in _far_tasks.size():
+		if collected:
+			break
 		if _far_tasks[i] >= 0 and WorkerThreadPool.is_task_completed(_far_tasks[i]):
+			collected = true
 			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
 			_far_tasks[i] = -1
 			var t_main := Time.get_ticks_usec()
 			if _far_kind[i] == STANDS:
-				far.add_stands(_far_keys[i], _far_out[i], _far_land_mat)
+				far.add_stands(_far_keys[i], _far_out[i], _stand_mats())
 			else:
 				far.add_block(_far_keys[i], _far_out[i], _far_land_mat, _far_water_mat)
 			var main_cost := (Time.get_ticks_usec() - t_main) / 1000.0
@@ -507,6 +821,10 @@ func _far_step(near_busy: bool) -> void:
 			# in the builder that was never there.
 			far_ms += _far_at[i] / 1000.0
 			far_count += 1
+	# From above the far models are only drawn once the camera takes in more than
+	# the near square: at play zoom every one of them lies under a near chunk and
+	# was discarded pixel by pixel, which is cost and no picture.
+	far.set_shown(_lod_on or view_half_extent() > near_limit)
 	if not _stands_wanted and (stands_early or is_inside_tree() and SkyLight.sees_horizon(get_viewport().get_camera_3d())):
 		_stands_wanted = true
 	var land_left := not far.done(world.size)
@@ -559,7 +877,7 @@ func ensure_far() -> void:
 		if _far_tasks[i] >= 0:
 			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
 			if _far_kind[i] == STANDS:
-				far.add_stands(_far_keys[i], _far_out[i], _far_land_mat)
+				far.add_stands(_far_keys[i], _far_out[i], _stand_mats())
 			else:
 				far.add_block(_far_keys[i], _far_out[i], _far_land_mat, _far_water_mat)
 			_far_tasks[i] = -1
@@ -576,8 +894,15 @@ func ensure_far() -> void:
 	while not far.stands_done(world.size):
 		var key := far.next_stand(world.size, focus, {})
 		if key.x < 0:
-			return
-		far.add_stands(key, Far.stand_arrays(world, _far_props.get(key, [])), _far_land_mat)
+			break
+		far.add_stands(key, Far.stand_arrays(world, _far_props.get(key, [])), _stand_mats())
+	while far.pump():
+		pass
+
+
+## The far world's own copies of the three materials a model is drawn with.
+func _stand_mats() -> Array:
+	return [_far_land_mat, _far_found_mat, _far_leaf_mat]
 
 
 func _far_worker(slot: int, key: Vector2i) -> void:
@@ -593,6 +918,9 @@ func _exit_tree() -> void:
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
+	if _mid_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_mid_task)
+		_mid_task = -1
 	for i in _far_tasks.size():
 		if _far_tasks[i] >= 0:
 			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
@@ -743,6 +1071,7 @@ func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, wor
 		var snap := _snapshot(key)
 		baked = bake_props(ch, mesher, snap[0], snap[1])
 	_attach_props(node, baked)
+	_lod_apply(node)
 	add_child(node)
 	_chunks[key] = node
 	_mask_dirty = true
@@ -794,6 +1123,12 @@ func refresh_props(prop: WorldProp) -> void:
 			old.queue_free()
 	var snap := _snapshot(key)
 	_attach_props(node, bake_props(_data.get(key), mesher, snap[0], snap[1]))
+	if node.get_node_or_null("mid_done") != null:
+		var stale := node.get_node("mid_done")
+		node.remove_child(stale)
+		stale.queue_free()
+		_mid_now(key)
+	_lod_apply(node)
 
 
 ## The country a prop is dressed for: its tile's, or across an ecotone the one
@@ -825,7 +1160,7 @@ func _snapshot(key: Vector2i) -> Array:
 ## A chunk's props baked into three surfaces' arrays: [MADE arrays or [], FOUND
 ## arrays or [], LEAF arrays or []]. Pure given its inputs, so safe on a worker thread with that
 ## worker's own mesher (`m` answers heights outside the chunk).
-func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: Array) -> Array:
+func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: Array, level: int = -1) -> Array:
 	var mv := PackedVector3Array()
 	var mn := PackedVector3Array()
 	var mc := PackedColorArray()
@@ -846,30 +1181,15 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 		# piece off it and a fresh face where the tool went (`Broken`), quantised
 		# to the five steps a template is cached in. `shown` is 1.0 on anything
 		# nobody has touched, so an untouched world bakes exactly as it always did.
-		var tpl := PropModels.template(p.kind, variant, country, Broken.bucket(p.shown))
-		var h := _height(ch, m, p.pos)
-		var facing := p.rot
-		if PropModels.Trees.wind_bent(p.kind, country):
-			# Bent by the one wind off the sea, not each its own way.
-			facing = WIND_BEARING + (Rng.hash01(world.seed_value, p.id, 92) - 0.5) * 0.5
-		# A model faces +X at rotation 0; turning to `facing` is rotation -facing.
-		var rot := Basis(Vector3.UP, -facing)
-		# A field of one model read as a tiled asset field: a dozen identical
-		# drill tripods, thirty identical stumps, an arc of identical debris
-		# (playtest, wave N). So every instance is cast a little differently as
-		# well as turned, in the MODEL's own frame, so a fence still runs along
-		# its line and a sign still faces its way. Masts keep the uniform scale:
-		# their cables hang from points computed at it.
-		var grow := Vector3.ONE
-		if cable_points(p.kind).is_empty():
-			grow = Vector3(1.0 + (Rng.hash01(world.seed_value, p.id, 93) - 0.5) * 0.22,
-				1.0 + (Rng.hash01(world.seed_value, p.id, 94) - 0.5) * 0.30,
-				1.0 + (Rng.hash01(world.seed_value, p.id, 95) - 0.5) * 0.22)
-		# Scale first, then turn, so the cast is in the model's own frame.
-		var xf := Transform3D(rot * Basis.from_scale(grow * p.scale), Vector3(p.pos.x, h, p.pos.y))
+		var worked := Broken.bucket(p.shown)
+		# A thing somebody is working down keeps its full model at any range: the
+		# far models are of whole things, and there are only ever a handful.
+		var tpl := PropModels.template(p.kind, variant, country, worked) if level < 0 or worked != PropModels.WHOLE \
+			else FarModels.template(p.kind, variant, country, level)
+		var xf := prop_xform(p, country, world.seed_value, _height(ch, m, p.pos))
 		# Normals take the turn only: a face keeps the light band the model was
 		# drawn with, however the instance was cast.
-		var nx := Transform3D(rot, Vector3.ZERO)
+		var nx := Transform3D(xf.basis.orthonormalized(), Vector3.ZERO)
 		if not tpl.made_v.is_empty():
 			mv.append_array(xf * tpl.made_v)
 			mn.append_array(nx * tpl.made_n)
@@ -923,6 +1243,31 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 		leaves[Mesh.ARRAY_TEX_UV] = luv
 		leaves[Mesh.ARRAY_TEX_UV2] = luv2
 	return [made, found, leaves]
+
+
+## Where a prop stands and how it is turned and cast, with its foot at height `h`.
+## One door for the near chunks and the far world, so a model handed from one to
+## the other at the edge of the near square does not turn or change size.
+static func prop_xform(p: WorldProp, country: int, seed_value: int, h: float) -> Transform3D:
+	var facing := p.rot
+	if PropModels.Trees.wind_bent(p.kind, country):
+		# Bent by the one wind off the sea, not each its own way.
+		facing = WIND_BEARING + (Rng.hash01(seed_value, p.id, 92) - 0.5) * 0.5
+	# A model faces +X at rotation 0; turning to `facing` is rotation -facing.
+	var rot := Basis(Vector3.UP, -facing)
+	# A field of one model read as a tiled asset field: a dozen identical
+	# drill tripods, thirty identical stumps, an arc of identical debris
+	# (playtest, wave N). So every instance is cast a little differently as
+	# well as turned, in the MODEL's own frame, so a fence still runs along
+	# its line and a sign still faces its way. Masts keep the uniform scale:
+	# their cables hang from points computed at it.
+	var grow := Vector3.ONE
+	if cable_points(p.kind).is_empty():
+		grow = Vector3(1.0 + (Rng.hash01(seed_value, p.id, 93) - 0.5) * 0.22,
+			1.0 + (Rng.hash01(seed_value, p.id, 94) - 0.5) * 0.30,
+			1.0 + (Rng.hash01(seed_value, p.id, 95) - 0.5) * 0.22)
+	# Scale first, then turn, so the cast is in the model's own frame.
+	return Transform3D(rot * Basis.from_scale(grow * p.scale), Vector3(p.pos.x, h, p.pos.y))
 
 
 ## Height of the drawn land under p: the chunk's own surface inside it, the

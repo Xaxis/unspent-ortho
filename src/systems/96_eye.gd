@@ -62,9 +62,10 @@ func started() -> void:
 ## Asked of `_cam`, not left to `set_process(false)`: under `--stats`,
 ## 12_landscape drives every system's `_process` by hand whatever its own flag
 ## says, and a run with no eye crashed here every frame.
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _cam == null:
 		return
+	_yaw += deg_to_rad(game.options.eye_turn) * delta
 	_place()
 
 
