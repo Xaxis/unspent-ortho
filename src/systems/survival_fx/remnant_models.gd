@@ -14,7 +14,7 @@ class_name RemnantModels
 ##   RemnantModels.worked_for(kind, verb)          the mark on a picked-over thing still standing
 ##   RemnantModels.is_found(&"plate") -> true      draw it with found.gdshader
 
-const NAMES: Array[StringName] = [&"stump", &"rubble", &"stubble", &"cut", &"tapped", &"picked", &"plate"]
+const NAMES: Array[StringName] = [&"stump", &"rubble", &"stubble", &"cut", &"tapped", &"picked", &"plate", &"tripod"]
 const FOUND_KINDS: Array[int] = [PropKind.TIP, PropKind.WRECK, PropKind.POLE, PropKind.PYLON, PropKind.VEHICLE, PropKind.BARRICADE]
 
 
@@ -30,7 +30,7 @@ static func worked_for(kind: int, verb: StringName = &"") -> StringName:
 
 
 static func is_found(name: StringName) -> bool:
-	return name == &"plate"
+	return name == &"plate" or name == &"tripod"
 
 static var _cache: Dictionary = {}
 
@@ -41,10 +41,17 @@ static func for_kind(kind: int) -> StringName:
 			return &"stump"
 		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, \
 				PropKind.TIN_ORE, PropKind.CLINTS, PropKind.RUIN, \
+				# A carved face broken up for its hushstone is a boulder broken up:
+				# what is left is its own rock (props/crags.gd).
+				PropKind.CARVED_FACE, \
 				# A fulgurite broken up for its tubes leaves the fused root and
 				# the chips: glass rubble on sand.
 				PropKind.FULGURITE:
 			return &"rubble"
+		PropKind.THEODOLITE_MAST:
+			# Stripped of its lens the mast comes down (Takes): its foot plate and
+			# three bent legs are what stay on the moss.
+			return &"tripod"
 		PropKind.WRECK, PropKind.POLE, PropKind.PYLON, PropKind.VEHICLE, PropKind.BARRICADE, PropKind.HULL, \
 				PropKind.DEBRIS, PropKind.WRECKAGE:
 			return &"plate"
@@ -67,7 +74,7 @@ static func mesh(name: StringName) -> ArrayMesh:
 		if name == &"rubble":
 			k.style = Ink.CONTOUR
 			k.style2 = Ink.CONTOUR
-		elif name == &"plate":
+		elif is_found(name):
 			k.style = Ink.NONE
 			k.style2 = Ink.NONE
 		match name:
@@ -85,6 +92,8 @@ static func mesh(name: StringName) -> ArrayMesh:
 				_picked(k)
 			&"plate":
 				_plate(k)
+			&"tripod":
+				_tripod(k)
 		_cache[name] = k.build()
 	return _cache[name]
 
@@ -210,6 +219,30 @@ static func _plate(k: MeshKit) -> void:
 		k.strut(p1 + Vector3(0, 0.014, 0), p2 + Vector3(0, 0.014, 0), 0.016, 3, Palette.PLATE[5])
 		k.pop()
 	k.strut(Vector3(-0.46, 0.025, 0.1), Vector3(0.12, 0.035, 0.5), 0.026, 4, Palette.RUST[4])
+
+
+## FOUND: what a sighting mast leaves once its lens is gone and it has come
+## down -- the head plate lying on the ground and three legs splayed out from
+## it, each bent once at the knee, one snapped short. Machine-made: never
+## hatched. Low, so it never blocks, and the plate is what reads from above.
+static func _tripod(k: MeshKit) -> void:
+	k.prism(0.0, 0.0, 0.0, 0.16, 0.04, 0.15, 8, Palette.PLATE[3], Palette.PLATE[4], PI / 8.0)
+	k.prism(0.0, 0.04, 0.0, 0.05, 0.1, 0.04, 6, Palette.PLATE[2], Palette.PLATE[4])
+	for i in 3:
+		var a := float(i) / 3.0 * TAU + 0.4 + Rng.hash01(131, i) * 0.5
+		var out := Vector3(cos(a), 0.0, sin(a))
+		var side := Vector3(-out.z, 0.0, out.x)
+		var knee := out * 0.28 + Vector3(0.0, 0.1 + Rng.hash01(132, i) * 0.06, 0.0) + side * (Rng.hash01(133, i) - 0.5) * 0.1
+		# The third leg snapped at the knee: what is past it lies apart.
+		var reach := 0.32 if i == 2 else 0.62 + Rng.hash01(134, i) * 0.12
+		var foot := out * reach + Vector3(0.0, 0.02, 0.0) + side * (Rng.hash01(135, i) - 0.5) * 0.2
+		k.strut(out * 0.12 + Vector3(0.0, 0.03, 0.0), knee, 0.022, 5, Palette.PLATE[3])
+		k.strut(knee, foot, 0.02, 5, Palette.PLATE[2] if i != 2 else Palette.RUST[3])
+		if i == 2:
+			var lie := foot + side * 0.14 + out * 0.08
+			k.strut(lie, lie + out * 0.3 + side * 0.06, 0.02, 5, Palette.PLATE[2])
+	# The telescope's barrel, empty, dropped beside the plate.
+	k.strut(Vector3(0.12, 0.03, -0.3), Vector3(0.52, 0.035, -0.22), 0.036, 6, Palette.PLATE[2])
 
 
 ## A thin sheet with its top face (a, b, c, d counter-clockwise seen from above) and its underside.
