@@ -86,12 +86,24 @@ func test_a_key_may_only_do_one_thing() -> void:
 	# And put back whole: several actions ship with two keys, and taking one of
 	# them off must not lose the other for good.
 	var two := &"dodge" if InputMap.has_action(&"dodge") else &""
+	# KEYS, not events. The game also answers `dodge` to the right mouse button
+	# (`MouseControls`, installed at boot), and binding a key rightly leaves that
+	# alone -- so counting every event read 2 whenever the mouse test had run
+	# first in the same process, and 1 alone. What this checks is the keyboard.
 	if two != &"":
 		var had := InputMap.action_get_events(two).size()
 		PlayerSettings.bind_key(two, KEY_F9)
-		eq(InputMap.action_get_events(two).size(), 1, "bound to one key it is on one key")
+		eq(_keys_on(two), 1, "bound to one key it is on one key")
 		PlayerSettings.reset_keys()
 		eq(InputMap.action_get_events(two).size(), had, "and every key it came with comes back")
+
+
+func _keys_on(action: StringName) -> int:
+	var n := 0
+	for e: InputEvent in InputMap.action_get_events(action):
+		if e is InputEventKey:
+			n += 1
+	return n
 
 
 func test_what_is_kept_comes_back_and_is_not_a_save() -> void:

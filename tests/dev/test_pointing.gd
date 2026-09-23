@@ -24,9 +24,16 @@ func _rig(world: WorldData, at: Vector2, high: float) -> CameraRig:
 	return cam
 
 
-func teardown() -> void:
+## Free every camera this test stood in the tree. CALLED BY EACH TEST, because
+## the runner has no per-test hook (`tests/run.gd` never calls a `teardown`):
+## this was a `teardown()` nobody called, so every rig stayed in the root as the
+## CURRENT camera for the rest of the process, and the crowd test that runs
+## after it read a figure at the origin as off camera and never posed it
+## ("back out, posing again": 1, wanted more). Freed now, not queued: the next
+## test in this process may ask the viewport for its camera before a frame ends.
+func _let_go() -> void:
 	for n: Node in _made:
-		n.queue_free()
+		n.free()
 	_made.clear()
 
 
@@ -41,6 +48,7 @@ func test_the_middle_of_the_screen_is_what_the_camera_is_on() -> void:
 	# is walked rather than solved, so a fraction of a tile is the honest bar.
 	near(hit.x, here.x, 1.5, "x under the middle")
 	near(hit.y, here.y, 1.5, "y under the middle")
+	_let_go()
 
 
 func test_two_points_across_the_screen_are_a_frame_apart() -> void:
@@ -57,6 +65,7 @@ func test_two_points_across_the_screen_are_a_frame_apart() -> void:
 	# tall and the frame is 16:9, so half its width is view_height * 16/9 / 2.
 	var want := 20.0 * (16.0 / 9.0) * 0.5
 	near(left.distance_to(right), want, want * 0.25, "half a frame across")
+	_let_go()
 
 
 func test_zooming_out_puts_more_world_under_the_same_two_points() -> void:
@@ -70,6 +79,7 @@ func test_zooming_out_puts_more_world_under_the_same_two_points() -> void:
 	var close := dr.ground_under(near_cam, a, w).distance_to(dr.ground_under(near_cam, b, w))
 	var wide := dr.ground_under(far_cam, a, w).distance_to(dr.ground_under(far_cam, b, w))
 	gt(wide, close * 3.0, "four times the height is about four times the ground")
+	_let_go()
 
 
 func test_off_the_world_is_nowhere_and_never_a_guess() -> void:
@@ -88,3 +98,4 @@ func test_off_the_world_is_nowhere_and_never_a_guess() -> void:
 	var dr := DevRegions.new()
 	var off := dr.ground_under(cam, Vector2(screen.x * 0.02, screen.y * 0.98), w)
 	check(not off.is_finite(), "past the corner of the world is nowhere, got %s" % off)
+	_let_go()
