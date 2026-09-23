@@ -36,8 +36,6 @@ frost_sea land.landmark
 frost_sea land.own_props
 frost_sea land.site
 frost_sea plan.depot
-frost_sea plan.keeper
-frost_sea plan.machine
 frost_sea plan.work_props
 frost_sea player.only_in
 frost_sea player.signature
