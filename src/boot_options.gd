@@ -21,6 +21,8 @@ extends RefCounted
 ##                     60): a picture of the world at eye level to the horizon,
 ##                     for the horizon work before the play camera can stand
 ##                     there (src/systems/96_eye.gd; render)
+## --eye-turn=DEG      turn that eye DEG degrees a second about the player, for
+##                     proving a view turning never shows the land late
 ## --walk=DX,DY,SECS   scripted walk in SCREEN directions before the shot
 ## --run               the scripted walk runs
 ## --shot=PATH         capture one frame to PATH (png) and quit
@@ -132,6 +134,8 @@ var lens: StringName = &"ortho"
 var view: StringName = &""
 ## The staged eye (height, pitch down, vertical fov), or zero for none (96_eye).
 var eye := Vector3.ZERO
+## How fast the staged eye turns, degrees a second (96_eye).
+var eye_turn := 0.0
 var walk := Vector2.ZERO
 var walk_seconds := 0.0
 var run := false
@@ -234,6 +238,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 				o.eye = Vector3(p[0].to_float() if p[0] != "" else 1.7,
 					p[1].to_float() if p.size() > 1 else 10.0,
 					p[2].to_float() if p.size() > 2 else 60.0)
+			"eye-turn": o.eye_turn = v.to_float()
 			"walk":
 				var p := v.split(",")
 				o.walk = Vector2(p[0].to_float(), p[1].to_float())

@@ -20,6 +20,7 @@ render_mode cull_back;
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
 #include "res://src/render/matter.gdshaderinc"
+#include "res://src/render/near_mask.gdshaderinc"
 
 uniform float emission_strength = 0.0;
 // Machines keep their light at night: they are powered and the land is not.
@@ -169,6 +170,9 @@ float found_cut(vec3 wp, vec3 camz, vec3 eye, bool persp) {
 }
 
 void fragment() {
+	if (near_cut > 0.5 && near_drawn(world_pos)) {
+		discard;
+	}
 	// The subjects that must not be hidden. Read INSIDE the stage function
 	// because INV_VIEW_MATRIX and PROJECTION_MATRIX do not exist outside one.
 	vec3 camz = INV_VIEW_MATRIX[2].xyz;

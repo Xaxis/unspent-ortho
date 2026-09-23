@@ -63,6 +63,7 @@ render_mode cull_disabled;
 #include "res://src/render/ink.gdshaderinc"
 #include "res://src/render/matter.gdshaderinc"
 #include "res://src/render/sight.gdshaderinc"
+#include "res://src/render/near_mask.gdshaderinc"
 
 global uniform float wind_strength;
 
@@ -279,6 +280,9 @@ void fragment() {
 	// only defined while the whole pixel quad is still running.
 	vec3 face = normalize(cross(dFdx(VERTEX), dFdy(VERTEX)));
 	face *= dot(face, VIEW) < 0.0 ? -1.0 : 1.0;
+	if (near_cut > 0.5 && near_drawn(world_pos)) {
+		discard;
+	}
 	vec2 px = matter_px(world_pos);
 	// A fight is never hidden: stipple, never a fade.
 	float cut = crown_cut(world_pos, sway_w);

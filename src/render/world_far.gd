@@ -44,6 +44,7 @@ extends Node3D
 ## whole island is ~121 of them rather than thousands, small enough that walking
 ## at play zoom keeps all but a couple out of the frustum entirely.
 const BLOCK := 128
+const FarModels := preload("res://src/models/far_models.gd")
 ## Tiles per sampled cell. A cell is 6 pixels at a full zoom out.
 const STEP := 4
 ## How far under the land the far world is pushed, so where it meets a near
@@ -57,35 +58,45 @@ const PEAK := 0.5
 ## Land and water of each built block, keyed Vector2i(bx, by).
 var _blocks: Dictionary = {}
 
-## WHAT STANDS ON THE FAR LAND, AS A SILHOUETTE. From eye level the near chunks
-## end about a hundred tiles out, and past them a forest was bare ground and a
-## city was a plain: the line where every tree stopped was the edge of the near
-## square drawn across the horizon. So anything standing at least `STANDS` tall
-## is carried out here as one plain solid of its own height, width and colour --
-## a crown for what has leaves, a tapered block for what was built -- which is
-## all that a thing a hundred tiles off is to the eye.
+## WHAT STANDS ON THE FAR LAND IS THE MODEL ITSELF, SEEN FROM FAR OFF. From eye
+## level the near chunks end about a hundred tiles out, and past them a forest was
+## bare ground and a city was a plain: the line where every tree stopped was the
+## edge of the near square drawn across the horizon. So anything standing at least
+## `STANDS` tall is carried out here as its own near model with what is too small
+## to see at that range left out (`far_models.gd`): a tower keeps its setbacks, its
+## balconies, its roof clutter and the lit windows that make a far city a field of
+## lights at night, and a pylon keeps its lattice. It used to be one plain solid of
+## the model's height, width and colour, and from eye level that read as exactly
+## what it was -- a city of grey prisms.
 const STANDS := 1.1
-## A crown's widest point, as a share of the thing's height, and how far down it
-## hangs from the top.
-const CROWN_AT := 0.62
-const CROWN_HANG := 0.42
-## Under this many times its own radius tall, a thing is a MOUND and not a block.
-const MOUND := 1.6
-## A lit building only carries windows once it stands this tall; one every
-## WINDOW_ROW up its faces, WINDOW_TALL high, and this share of them lit.
+## Two far levels on every block (FarModels.NEAR_FAR, FarModels.FAR), handed over
+## at this distance from the camera to the block's middle. A block is 128 tiles
+## across, so its near edge can be ninety tiles closer than that: the coarse level
+## is two pixels coarse at 170 tiles, which is where it can first be seen.
+const FAR_AT := 260.0
+const FAR_MARGIN := 12.0
+
+## A FAR CITY AT NIGHT IS ITS LIGHTS, and a window is far smaller than anything a
+## far model keeps. So a lit building (`summary` lit > 0) standing `WINDOWS_FROM`
+## tall carries windows laid on its far model's own walls: every wall face of it
+## at least `WALL_LEAST` in area gets a grid of them, `WINDOW_ROW` apart up and
+## `WINDOW_COL` along, `WINDOW_LIT` of them lit, dealt by the prop's own id so a
+## skyline is the same skyline every night and no two towers of one model agree.
+## Mark `WINDOW` is dark glass by day and burns when the light goes.
 const WINDOWS_FROM := 2.0
+const WALL_LEAST := 0.8
 const WINDOW_ROW := 1.3
+const WINDOW_COL := 0.8
 const WINDOW_TALL := 0.42
+const WINDOW_WIDE := 0.3
 const WINDOW_LIT := 0.4
-## The mark a far window is drawn with: a lamp or a window (GroundColors 17..32),
-## dim, so a far city is a field of small lights and not a wall of them.
 const WINDOW := 19
 
-## One summary per model (kind, variant, country): [top, radius, r, g, b, leafy,
-## lit, lit r, lit g, lit b] -- `lit` the share of its made faces that are a lamp,
-## a window or stolen neon (GroundColors marks 17..34), and their colour,
-## read off the model's own template so it can never disagree with the near
-## drawing. Shared by the far workers, hence the lock.
+## The height, reach and lit share of one model (kind, variant, country): [top,
+## radius, lit, lit r, lit g, lit b], read off its own template -- `lit` the share of its made faces
+## that are a lamp, a window or stolen neon (GroundColors 17..34), and their colour,
+## so a far window is lit the colour the near ones are. Shared by the
+## far workers, hence the lock.
 static var _sums: Dictionary = {}
 static var _sum_lock := Mutex.new()
 
@@ -104,28 +115,17 @@ static func summary(kind: int, variant: int, country: int) -> PackedFloat32Array
 		for v in arr:
 			top = maxf(top, v.y)
 			rad = maxf(rad, Vector2(v.x, v.z).length())
-	# The colour it reads as from far off: its leaves if it has any, else what
-	# most of it is made of.
-	var leafy := not t.leaf_v.is_empty()
-	var cols: PackedColorArray = t.leaf_c if leafy else (t.made_c if t.made_c.size() >= t.found_c.size() else t.found_c)
-	var sum := Color(0, 0, 0)
-	for c in cols:
-		sum.r += c.r
-		sum.g += c.g
-		sum.b += c.b
-	var n := maxf(1.0, float(cols.size()))
-	var lit := Color(0, 0, 0)
-	var lit_n := 0
-	for c in t.made_c:
+	var lit := 0
+	var glow := Color(0, 0, 0)
+	for i in range(0, t.made_c.size(), 3):
+		var c := t.made_c[i]
 		var m := int(c.a * 255.0 + 0.5)
 		if m >= 17 and m <= 34:
-			lit.r += c.r
-			lit.g += c.g
-			lit.b += c.b
-			lit_n += 1
-	var ln := maxf(1.0, float(lit_n))
-	var out := PackedFloat32Array([top, rad, sum.r / n, sum.g / n, sum.b / n, 1.0 if leafy else 0.0,
-		float(lit_n) / maxf(1.0, float(t.made_c.size())), lit.r / ln, lit.g / ln, lit.b / ln])
+			lit += 1
+			glow += Color(c.r, c.g, c.b, 0.0)
+	var ln := maxf(1.0, float(lit))
+	var out := PackedFloat32Array([top, rad, float(lit) * 3.0 / maxf(1.0, float(t.made_c.size())),
+		glow.r / ln, glow.g / ln, glow.b / ln])
 	_sum_lock.lock()
 	_sums[key] = out
 	_sum_lock.unlock()
@@ -363,146 +363,133 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array) -> Array:
 	return [land, water]
 
 
-## Every prop standing at least `STANDS` tall, as one plain solid on the far land:
-## mesh arrays for the block's `stands`, or [] when nothing there stands that tall.
-## Pure, so a worker may run it; `props` is snapshotted on the main thread.
+## Every prop standing at least `STANDS` tall, as its far models on the far land:
+## [] when nothing there stands that tall, else one entry per far level
+## (`LEVELS`), each [made arrays, found arrays, leaf arrays] with [] for a surface
+## the level has nothing in. Pure, so a worker may run it; `props` is snapshotted
+## on the main thread.
 ##
 ## A PASS OF ITS OWN, AND ONLY ONCE THE HORIZON HAS BEEN SEEN (WorldView). It
 ## asks every model the far land holds for its template, which is most of the
 ## world's models built once: measured on seed 7 that took a far block from 9 ms
 ## to 172, contending with the near chunks' own worker for the template lock, for
 ## silhouettes the orthographic camera never shows.
+const LEVELS: Array[int] = [FarModels.NEAR_FAR, FarModels.FAR]
+
+
 static func stand_arrays(w: WorldData, props: Array) -> Array:
-	var sv := PackedVector3Array()
-	var sn := PackedVector3Array()
-	var sc := PackedColorArray()
+	var outs: Array = []
+	for level: int in LEVELS:
+		outs.append([MeshKit.new(), MeshKit.new(), MeshKit.new()])
+	var any := false
 	for p: WorldProp in props:
 		var country := maxi(Country.COAST, w.country[mini(floori(p.pos.y), w.size - 1) * w.size + mini(floori(p.pos.x), w.size - 1)])
-		var sm := summary(p.kind, PropModels.variant_of(p, w.seed_value, country), country)
-		var top := sm[0] * p.scale
-		if top < STANDS:
+		var variant := PropModels.variant_of(p, w.seed_value, country)
+		if summary(p.kind, variant, country)[0] * p.scale < STANDS:
 			continue
+		any = true
 		var tx := clampi(floori(p.pos.x), 0, w.size - 1)
 		var ty := clampi(floori(p.pos.y), 0, w.size - 1)
 		var base := maxf(0.0, TerrainMesher.level_height(w.level[ty * w.size + tx]))
-		var col := Color(sm[2], sm[3], sm[4], 1.0)
-		var r := maxf(0.25, sm[1] * p.scale)
-		var at := Vector3(p.pos.x, base, p.pos.y)
-		if sm[5] > 0.5:
-			_crown(sv, sn, sc, at + Vector3(0, top * CROWN_AT, 0), top * CROWN_HANG, top * (1.0 - CROWN_AT), r * 0.8, p.rot, col)
-		elif top < r * MOUND:
-			# Lower than it is wide -- a boulder, a wreck, a heap: a faceted mound,
-			# never a block, because a squat block is a cube on the skyline.
-			_crown(sv, sn, sc, at + Vector3(0, top * 0.38, 0), top * 0.45, top * 0.62, r * 0.85, p.rot, col)
-		else:
-			_block(sv, sn, sc, at, top, r * 0.72, p.rot, col)
-			if sm[6] > 0.0 and top >= WINDOWS_FROM:
-				_windows(sv, sn, sc, at, top, r * 0.72, p.rot, Color(sm[7], sm[8], sm[9], WINDOW / 255.0), w.seed_value, p.id)
-	if sv.is_empty():
+		# Turned and cast exactly as the near chunk bakes it, so the hand-over at
+		# the edge of the near square moves nothing but what is too small to see.
+		var xf := WorldView.prop_xform(p, country, w.seed_value, base)
+		var nx := Transform3D(xf.basis.orthonormalized(), Vector3.ZERO)
+		var sm := summary(p.kind, variant, country)
+		for i in LEVELS.size():
+			var t := FarModels.template(p.kind, variant, country, LEVELS[i])
+			var kits: Array = outs[i]
+			_put(kits[0], xf * t.made_v, nx * t.made_n, t.made_c, t.made_uv, t.made_uv2)
+			if sm[2] > 0.0 and sm[0] * p.scale >= WINDOWS_FROM:
+				_windows(kits[0], t, xf, nx, w.seed_value, p.id, Color(sm[3], sm[4], sm[5], WINDOW / 255.0))
+			_put(kits[1], xf * t.found_v, nx * t.found_n, t.found_c, PackedVector2Array(), PackedVector2Array())
+			_put(kits[2], xf * t.leaf_v, nx * t.leaf_n, t.leaf_c, t.leaf_uv, t.leaf_uv2)
+	if not any:
 		return []
-	var uv := PackedVector2Array()
-	uv.resize(sv.size())
 	var out: Array = []
-	out.resize(Mesh.ARRAY_MAX)
-	out[Mesh.ARRAY_VERTEX] = sv
-	out[Mesh.ARRAY_NORMAL] = sn
-	out[Mesh.ARRAY_COLOR] = sc
-	out[Mesh.ARRAY_TEX_UV] = uv
-	out[Mesh.ARRAY_TEX_UV2] = uv
+	for kits: Array in outs:
+		out.append([_arrays(kits[0], true), _arrays(kits[1], false), _arrays(kits[2], true)])
 	return out
 
 
-## A triangle whose FRONT is `out`: wound the way this file's land is (see the
-## note in build_arrays), whichever order the corners came in.
-static func _tri(v: PackedVector3Array, n: PackedVector3Array, c: PackedColorArray,
-		a: Vector3, b: Vector3, d: Vector3, out: Vector3, col: Color) -> void:
-	var f := (b - a).cross(d - a)
-	if f.dot(out) > 0.0:
-		var t := b
-		b = d
-		d = t
-		f = -f
-	var nn := -f.normalized()
-	v.append_array([a, b, d])
-	n.append_array([nn, nn, nn])
-	c.append_array([col, col, col])
-
-
-## A crown: a four-sided double cone round `mid`, `down` to its foot and `up` to
-## its tip, `r` wide, turned by `rot` so no two stand square to each other.
-static func _crown(v: PackedVector3Array, n: PackedVector3Array, c: PackedColorArray,
-		mid: Vector3, down: float, up: float, r: float, rot: float, col: Color) -> void:
-	var tip := mid + Vector3(0, up, 0)
-	var foot := mid - Vector3(0, down, 0)
-	var ring: Array[Vector3] = []
-	for i in 5:
-		var a := rot + i * TAU / 5.0
-		ring.append(mid + Vector3(cos(a) * r, 0.0, sin(a) * r))
-	for i in 5:
-		var p0 := ring[i]
-		var p1 := ring[(i + 1) % 5]
-		var side := ((p0 + p1) * 0.5 - mid)
-		_tri(v, n, c, p0, p1, tip, (side + Vector3(0, up * 0.5, 0)).normalized(), col)
-		_tri(v, n, c, p0, p1, foot, (side - Vector3(0, down * 0.5, 0)).normalized(), col.darkened(0.18))
-
-
-## A built thing: a block from the ground to `top`, `r` across its half, a
-## little narrower at the top than the foot, turned by `rot`.
-static func _block(v: PackedVector3Array, n: PackedVector3Array, c: PackedColorArray,
-		at: Vector3, top: float, r: float, rot: float, col: Color) -> void:
-	var lo: Array[Vector3] = []
-	var hi: Array[Vector3] = []
-	for i in 4:
-		var a := rot + PI * 0.25 + i * PI * 0.5
-		var d := Vector3(cos(a), 0.0, sin(a))
-		lo.append(at + d * r - Vector3(0, 0.3, 0))
-		hi.append(at + d * r * 0.86 + Vector3(0, top, 0))
-	for i in 4:
-		var j := (i + 1) % 4
-		var out := ((lo[i] + lo[j]) * 0.5 - at)
-		out.y = 0.0
-		out = out.normalized()
-		_tri(v, n, c, lo[i], lo[j], hi[j], out, col)
-		_tri(v, n, c, lo[i], hi[j], hi[i], out, col)
-	_tri(v, n, c, hi[0], hi[1], hi[2], Vector3.UP, col.lightened(0.06))
-	_tri(v, n, c, hi[0], hi[2], hi[3], Vector3.UP, col.lightened(0.06))
-
-
-## Lit windows on a far building: rows up its four faces, some lit and most
-## dark, dealt by the prop's own id so a skyline is the same skyline every night.
-## A window mark (GroundColors 17..32) is dark glass by day and burns when the
-## light goes, so the far city is a wall of dead glass at noon and a field of
-## lights at night, which is the one thing a city is from twenty streets away.
-static func _windows(v: PackedVector3Array, n: PackedVector3Array, c: PackedColorArray,
-		at: Vector3, top: float, r: float, rot: float, col: Color, seed_value: int, id: int) -> void:
-	var rows := clampi(floori((top - 0.6) / WINDOW_ROW), 1, 24)
-	for i in 4:
-		var a0 := rot + PI * 0.25 + i * PI * 0.5
-		var a1 := a0 + PI * 0.5
-		var d0 := Vector3(cos(a0), 0.0, sin(a0))
-		var d1 := Vector3(cos(a1), 0.0, sin(a1))
-		var out := (d0 + d1).normalized()
-		var lo0 := at + d0 * r - Vector3(0, 0.3, 0)
-		var lo1 := at + d1 * r - Vector3(0, 0.3, 0)
-		var hi0 := at + d0 * r * 0.86 + Vector3(0, top, 0)
-		var hi1 := at + d1 * r * 0.86 + Vector3(0, top, 0)
-		var span := top + 0.3
-		for row in rows:
-			var t0 := (0.3 + 0.6 + row * WINDOW_ROW) / span
-			var t1 := t0 + WINDOW_TALL / span
-			for k in 3:
-				if Rng.hash01(seed_value, id, i * 97 + row * 7 + k) > WINDOW_LIT:
+## Windows on the walls of far model `t` into `k`, placed through `xf`. A cell's
+## middle lies in exactly one of the two triangles of a quad wall, so a wall is
+## windowed once however it was cut into faces.
+static func _windows(k: MeshKit, t: PropModels.Template, xf: Transform3D, nx: Transform3D, seed_value: int, id: int, col_c: Color) -> void:
+	var v := t.made_v
+	for i in range(0, v.size(), 3):
+		var a := v[i]
+		var b := v[i + 1]
+		var d := v[i + 2]
+		var f := (b - a).cross(d - a)
+		var area := f.length() * 0.5
+		if area < WALL_LEAST * 0.5:
+			continue
+		# The model's own normal says which way is out, whatever the winding.
+		var n := t.made_n[i]
+		if absf(n.y) > 0.2 or n.length() < 0.5:
+			continue
+		n = Vector3(n.x, 0.0, n.z).normalized()
+		var along := Vector3.UP.cross(n).normalized()
+		var lo := minf(a.y, minf(b.y, d.y))
+		var hi := maxf(a.y, maxf(b.y, d.y))
+		var u0 := minf(a.dot(along), minf(b.dot(along), d.dot(along)))
+		var u1 := maxf(a.dot(along), maxf(b.dot(along), d.dot(along)))
+		var plane := a.dot(n)
+		for row in range(floori(lo / WINDOW_ROW), ceili(hi / WINDOW_ROW)):
+			var y := (row + 0.5) * WINDOW_ROW
+			if y < 0.6:
+				continue
+			for col in range(floori(u0 / WINDOW_COL), ceili(u1 / WINDOW_COL)):
+				var u := (col + 0.5) * WINDOW_COL
+				var c := along * u + Vector3.UP * y + n * plane
+				if not _inside(c, a, b, d, f):
 					continue
-				var u0 := 0.16 + k * 0.26
-				var u1 := u0 + 0.14
-				var q := func(u: float, tt: float) -> Vector3:
-					return lo0.lerp(lo1, u).lerp(hi0.lerp(hi1, u), tt) + out * 0.04
-				var pa: Vector3 = q.call(u0, t0)
-				var pb: Vector3 = q.call(u1, t0)
-				var pc: Vector3 = q.call(u1, t1)
-				var pd: Vector3 = q.call(u0, t1)
-				_tri(v, n, c, pa, pb, pc, out, col)
-				_tri(v, n, c, pa, pc, pd, out, col)
+				if Rng.hash01(seed_value, id, row * 131 + col, roundi(plane * 7.0)) > WINDOW_LIT:
+					continue
+				var lift := n * 0.04
+				var sx := along * WINDOW_WIDE * 0.5
+				var sy := Vector3.UP * WINDOW_TALL * 0.5
+				var q := [c - sx - sy + lift, c + sx - sy + lift, c + sx + sy + lift, c - sx + sy + lift]
+				# Wound the way the wall it lies on is.
+				var order: Array = [0, 2, 1, 0, 3, 2] if (q[2] - q[0]).cross(q[1] - q[0]).dot(f) > 0.0 else [0, 1, 2, 0, 2, 3]
+				for j: int in order:
+					k.verts.append(xf * (q[j] as Vector3))
+					k.normals.append(nx * n)
+					k.colors.append(col_c)
+					k.uvs.append(Vector2.ZERO)
+					k.uv2s.append(Vector2.ZERO)
+
+
+## Whether `p`, on the triangle's plane, lies inside it (`f` its cross product).
+static func _inside(p: Vector3, a: Vector3, b: Vector3, d: Vector3, f: Vector3) -> bool:
+	return (b - a).cross(p - a).dot(f) >= 0.0 and (d - b).cross(p - b).dot(f) >= 0.0 \
+		and (a - d).cross(p - d).dot(f) >= 0.0
+
+
+static func _put(k: MeshKit, v: PackedVector3Array, n: PackedVector3Array, c: PackedColorArray,
+		uv: PackedVector2Array, uv2: PackedVector2Array) -> void:
+	if v.is_empty():
+		return
+	k.verts.append_array(v)
+	k.normals.append_array(n)
+	k.colors.append_array(c)
+	k.uvs.append_array(uv)
+	k.uv2s.append_array(uv2)
+
+
+static func _arrays(k: MeshKit, uvs: bool) -> Array:
+	if k.verts.is_empty():
+		return []
+	var a: Array = []
+	a.resize(Mesh.ARRAY_MAX)
+	a[Mesh.ARRAY_VERTEX] = k.verts
+	a[Mesh.ARRAY_NORMAL] = k.normals
+	a[Mesh.ARRAY_COLOR] = k.colors
+	if uvs and k.uvs.size() == k.verts.size():
+		a[Mesh.ARRAY_TEX_UV] = k.uvs
+		a[Mesh.ARRAY_TEX_UV2] = k.uv2s
+	return a
 
 
 ## Put a built block into the scene. Nothing here casts a shadow: the sun's one
@@ -557,18 +544,33 @@ func next_stand(size: int, focus: Vector2, busy: Dictionary) -> Vector2i:
 	return best
 
 
-## Put a block's silhouettes in, under the same far material as its land.
-func add_stands(key: Vector2i, arrays: Array, mat: Material) -> void:
+## Put a block's far models in: each level's made, found and leaf surfaces under
+## the far world's own copies of the three materials (`mats`, in that order), the
+## close level drawn until `FAR_AT` and the coarse one after it.
+func add_stands(key: Vector2i, levels: Array, mats: Array) -> void:
 	if _stood.has(key) or not _blocks.has(key):
 		return
 	_stood[key] = true
-	if arrays.is_empty():
+	if levels.is_empty():
 		return
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	var mi := MeshInstance3D.new()
-	mi.name = "stands"
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	(_blocks[key] as Node3D).add_child(mi)
+	var names := ["stands", "stands_found", "stands_leaf"]
+	for i in levels.size():
+		var surf: Array = levels[i]
+		for j in 3:
+			var arrays: Array = surf[j]
+			if arrays.is_empty():
+				continue
+			var mesh := ArrayMesh.new()
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+			var mi := MeshInstance3D.new()
+			mi.name = names[j] + ("" if i == 0 else "_far")
+			mi.mesh = mesh
+			mi.material_override = mats[j]
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			if i == 0:
+				mi.visibility_range_end = FAR_AT
+				mi.visibility_range_end_margin = FAR_MARGIN
+			else:
+				mi.visibility_range_begin = FAR_AT
+				mi.visibility_range_begin_margin = FAR_MARGIN
+			(_blocks[key] as Node3D).add_child(mi)
