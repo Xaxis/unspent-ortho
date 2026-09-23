@@ -580,6 +580,14 @@
       "tests": []
     },
     {
+      "id": "system:96_eye",
+      "kind": "system",
+      "entry": "src/systems/96_eye.gd",
+      "reach": "tools/shot.sh shots/eye.png --seed=7 --place=coast --hour=20 --eye=1.7,10,60 --face=110",
+      "area": "world-look",
+      "tests": []
+    },
+    {
       "id": "system:98_tour",
       "kind": "system",
       "entry": "src/systems/98_tour.gd",
