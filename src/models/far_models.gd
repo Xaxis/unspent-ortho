@@ -44,6 +44,11 @@ const TOL: Array[float] = [0.08, 0.2, 0.45, 0.14]
 ## A lit face (a window, a lamp, stolen neon: GroundColors 17..34) is kept down to
 ## this share of the level's tolerance, because a city at night is the lights.
 const LIT_KEEP := 0.45
+## FOUND parts are kept down to this share of the tolerance. Stolen machine parts
+## are built of small faces -- a roof tank's staves, a mast's bands -- and at the
+## mid range the first cut took the tank off every roof in the slums while the
+## wall under it kept every stripe. A far level's budget still caps them.
+const FOUND_KEEP := 0.33
 ## The share of leaf cards each level keeps.
 const LEAF_KEEP: Array[float] = [0.5, 0.2, 0.1, 0.4]
 ## The most faces a level keeps of one model, longest first, so one ornate model
@@ -94,7 +99,7 @@ static func reduce(t: PropModels.Template, level: int) -> PropModels.Template:
 	out.made_c = _pickc(t.made_c, made)
 	out.made_uv = _pick2(t.made_uv, made)
 	out.made_uv2 = _pick2(t.made_uv2, made)
-	var found := _keep(t.found_v, t.found_c, tol, maxi(most / 4, most - made.size()), false, crown)
+	var found := _keep(t.found_v, t.found_c, tol * FOUND_KEEP, maxi(most / 4, most - made.size()), false, crown)
 	out.found_v = _pick3(t.found_v, found)
 	out.found_n = _pick3(t.found_n, found)
 	out.found_c = _pickc(t.found_c, found)

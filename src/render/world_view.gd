@@ -51,7 +51,14 @@ const WIND_BEARING := 0.42
 ## (`far_models.gd`: the same models, what is smaller than two pixels there left
 ## out) and past `DECOR_TO` its tufts are not drawn at all. Handed over by the
 ## renderer's own visibility ranges, per chunk, so turning or walking costs nothing
-## and nothing is rebuilt; hysteresis in `LOD_MARGIN`.
+## and nothing is rebuilt.
+##
+## NO HYSTERESIS ON A HAND-OVER, and `LOD_MARGIN` is 0 on purpose. With the fade
+## off, a range margin is hysteresis on EACH side of the pair -- the full models
+## come back only well inside the line and the mid ones only well outside it -- so
+## a chunk standing in the band stays drawn by whichever it was last, and one whose
+## history was "far" on both counts is drawn by neither. That took the tanks and
+## masts off every roof sixty tiles out on the first frame of every shot.
 ##
 ## Only while the camera sees the horizon (`_lod_on`). The play camera looks down
 ## from a long way back, so from there every chunk is "far" by this measure and
@@ -60,7 +67,7 @@ const WIND_BEARING := 0.42
 ## neither pays for them nor draws them.
 const MID_FROM := 56.0
 const DECOR_TO := 72.0
-const LOD_MARGIN := 4.0
+const LOD_MARGIN := 0.0
 var _mid_wanted := false
 var _lod_on := false
 ## A chunk's mid models, baked on a worker of their own once the eye is up: the

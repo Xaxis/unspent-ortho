@@ -74,7 +74,9 @@ const STANDS := 1.1
 ## across, so its near edge can be ninety tiles closer than that: the coarse level
 ## is two pixels coarse at 170 tiles, which is where it can first be seen.
 const FAR_AT := 260.0
-const FAR_MARGIN := 12.0
+## 0 for the reason world_view's LOD_MARGIN is: a margin on both halves of a
+## hand-over leaves a band where neither is drawn.
+const FAR_MARGIN := 0.0
 
 ## A FAR CITY AT NIGHT IS ITS LIGHTS, and a window is far smaller than anything a
 ## far model keeps. So a lit building (`summary` lit > 0) standing `WINDOWS_FROM`

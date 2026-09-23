@@ -127,6 +127,13 @@ func test_the_hand_over_is_the_eyes_and_never_the_top_down_games() -> void:
 	var props := node.get_node("props_leaf") as GeometryInstance3D
 	eq(props.visibility_range_end, WorldView.MID_FROM, "and its full props hand over to them at MID_FROM")
 	check((node.get_node("mid_leaf") as GeometryInstance3D).visible, "which are drawn past it")
+	# With the fade off a range margin is hysteresis on each half of the pair, so
+	# the mid models must be shown by the time the full ones may still be hidden:
+	# otherwise a chunk in the band is drawn by neither (the roofs sixty tiles out
+	# lost every tank and mast that way).
+	var mid := node.get_node("mid_leaf") as GeometryInstance3D
+	check(mid.visibility_range_begin + mid.visibility_range_begin_margin
+		<= props.visibility_range_end - props.visibility_range_end_margin, "no band where neither half draws")
 	var top := Camera3D.new()
 	top.projection = Camera3D.PROJECTION_ORTHOGONAL
 	top.rotation = Vector3(deg_to_rad(-CameraRig.PITCH_DEG), 0.0, 0.0)
