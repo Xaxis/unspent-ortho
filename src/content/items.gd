@@ -403,6 +403,16 @@ const DEFS := {
 	# as nothing keeps off a body, and they are small on purpose.
 	&"mod_hush": {"name": "hush lining", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"foil", &"slate", &"earth"], "fits": [&"head", &"body", &"back"], "resist": {&"em": 0.2, &"resonance": 0.25}},
+	# The drowned city's brine copper, beaten thin and pitched into the seams of
+	# a coat or a pack (docs/LANDSCAPES.md §5): the water stays out. Its tag is
+	# `sealed` (ModifierTable), which is what the submersible's hull will ask
+	# for. WET ONLY, on purpose. The spec gives it pressure 0.3 as well, on the
+	# condition that pressure already has a hand-made answer; it has none --
+	# nothing any person makes resists `pressure`, which only the deep water the
+	# submersible is for will press -- and a first answer to a pressure no
+	# landscape declares is a number nothing can test, so it waits for the deep.
+	&"mod_seal": {"name": "copper seal", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"foil", &"copper", &"earth"], "fits": [&"body", &"back"], "resist": {&"wet": 0.4}},
 
 	# --- elite materials (EliteStock says where each one, and only one, is got) -
 	# Each keeps its landscape's or its machine's own colour and hand, so a
@@ -417,6 +427,7 @@ const DEFS := {
 	# The glass desert's: a strike's own cast, fired again until it rings.
 	&"fulgurite_core": {"name": "fulgurite core", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"spruce", &"rime"]},
 	&"tower_cable": {"name": "tower cable", "bulk": 2.0, "group": &"material", "icon": [&"coil", &"slate", &"copper"]},
+	&"brine_copper": {"name": "brine copper", "bulk": 1.0, "group": &"material", "icon": [&"ingot", &"copper", &"moss"]},
 	&"tide_iron": {"name": "tide iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"ash"]},
 	&"mono_edge": {"name": "filament edge", "bulk": 0.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"found", &"lens"]},
 	&"keeper_lens": {"name": "keeper lens", "bulk": 1.0, "group": &"found", "stuff": &"found", "icon": [&"lens", &"plate", &"lens"]},

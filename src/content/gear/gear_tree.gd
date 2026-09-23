@@ -134,6 +134,7 @@ const PIECES := {
 	&"mod_damp": {"grade": &"rare", "family": &"", "from": &"frost_varnish"},
 	&"mod_hush": {"grade": &"rare", "family": &"", "from": &"hush_slate"},
 	&"mod_icelens": {"grade": &"rare", "family": &"", "from": &"deep_ice_lens"},
+	&"mod_seal": {"grade": &"rare", "family": &"", "from": &"brine_copper"},
 	&"mod_leech": {"grade": &"prime", "family": &"", "from": &"clerk_die"},
 	&"mod_phase": {"grade": &"prime", "family": &"", "from": &"keeper_lens"},
 	# The shock lattice had no `from` (docs/VISION.md §6.1 names the gap): it is
