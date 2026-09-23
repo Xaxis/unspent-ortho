@@ -88,6 +88,12 @@ static func make() -> BiomeDef:
 	dress.walling = [P.SLATE[2], P.SLATE[3], P.RIME[2], P.LINEN[3]]
 	dress.sink = 0.2
 	dress.lie = Vector2(-0.08, 0.14)
+	# A boarded fishing shack, banked in the sea's own drift: the ice-fisher's
+	# hut (docs/LANDSCAPES.md §2). Said here because the cold would otherwise
+	# dress this sea's people in the snowfield's emergency pod, and a fisher on
+	# the ice is not a survivor under it; `Remains._fish_shack` banks `drift`
+	# against the walls, and this landscape's drift is rime.
+	dress.shelter = &"shack"
 	d.dressing = dress
 	d.grade = Vector4(-0.06, 0.04, 0.12, -0.04)
 	# White under a clear sky throws back nearly everything: the brightest night
@@ -110,7 +116,15 @@ static func make() -> BiomeDef:
 	d.sites = {"tips": 1}
 	d.beached_wrecks = true
 	d.pools = {"order": 2, "cell": 26, "chance": 0.55, "r_min": 2.2, "r_max": 5.0, "ground": Ground.BLACKWATER}
+	# NOBODY LIVES ON MOVING ICE, and that is a decision, not a gap (docs/
+	# LANDSCAPES.md §2). People are here as a dead expedition's camp and one
+	# living ice-fisher at a seal hole (the floe camp site, phase B), never as a
+	# village, so `villages` stays 0 and the built forms are declared EMPTY on
+	# purpose: no stock, no plan. `BiomeForms.resolve` would hand the plain eight
+	# to anyone who asked, and nobody asks, because nothing here raises a
+	# settlement. What a person does put up on the ice is the shelter below.
 	d.villages = 0
+	d.built = BiomeForms.new()
 	d.village_order = 13
 	d.village_names = []
 	d.weather = [
@@ -120,6 +134,18 @@ static func make() -> BiomeDef:
 	d.mist = 0.2
 	# Cold that does not let up, and ice that does not hold everywhere. `collapse`
 	# is the lead nobody saw: the one pressure here that is about the GROUND.
+	#
+	# The 0.4 is the sea's floor, and docs/LANDSCAPES.md §2 asks for collapse to
+	# be CAUSED on top of it: rising within two tiles of BLACKWATER and of an
+	# icesaw's fresh cut. Half of that is here already -- a seal hole thins the
+	# ice round it through `PropHazards.TABLE`, the per-prop half of shared
+	# system 3, which landed on main this morning. The other half is a GROUND's
+	# neighbourhood, and `Hazards.felt` reads the land, the hour, the weather,
+	# shelter, fire and props, never the tiles round the body; a lead's edge and
+	# a cut's edge want "within R of ground G adds H", declared once for
+	# BLACKWATER, and a cut wants the time-varying ground edit of shared system 5
+	# to exist before there is a cut to stand near. Both are left to those
+	# systems: nothing here fakes them with a higher floor.
 	d.hazards = {&"cold": 0.85, &"collapse": 0.4}
 	d.roster = {
 		&"longlegs": {"weight": 1.0},
