@@ -143,6 +143,63 @@ static func _want_here(declared: int, region: Dictionary) -> int:
 	return maxi(1, roundi(float(declared) * float(region.get("tiles", 0)) / TILES_PER_SITE))
 
 
+## The `SiteKinds` rows that have placers of their own above, under their own
+## (plural) keys: a landscape claims these the way it always has, and the reader
+## below leaves them alone so no place is laid twice.
+const SITES_LAID_ELSEWHERE: Array[StringName] = [&"tip", &"stone_circle", &"ruin", &"fumarole"]
+
+
+## THE PLACES `SiteKinds` DESCRIBES, laid where a landscape claims one by the
+## row's own name in `BiomeDef.sites`, as a RATE: how many per 1,000 tiles of
+## each of its regions, at least one in every region it lies in. A rate and not a
+## count because a count per landscape is what left a bigger region emptier
+## (SiteKinds' header), and the rate lives here and not in the row because how
+## many is worldgen's question, where the tiles are known.
+##
+## Each is laid like a tip: inside its own region, off the border, clear of
+## villages by the row's `clear` and of other places, on the row's own ground
+## patch (or none, `KEEP`), and marked in `WorldData.landmarks` under the row's
+## id with its region, so a sub-arc, the depth test and `_landmarks` below all
+## find it by name. `_landmarks` furnishes it from the row's `props`.
+static func _site_kinds(c: GenContext, rng: RandomNumberGenerator) -> void:
+	var w := c.w
+	for cc: int in c.land_types:
+		var claims: Dictionary = c.defs[cc].sites
+		for kind: StringName in SiteKinds.ids():
+			if SITES_LAID_ELSEWHERE.has(kind):
+				continue
+			var rate := float(claims.get(String(kind), 0.0))
+			if rate <= 0.0:
+				continue
+			var row := SiteKinds.row(kind)
+			var patch := int(row.get("ground", SiteKinds.KEEP))
+			var radius := float(row.get("radius", 4.0))
+			var clear := float(row.get("clear", 24.0))
+			var wants: Variant = row.get("wants", SiteKinds.ANY)
+			for region: Dictionary in _regions_of(w, cc):
+				var want := maxi(1, roundi(rate * float(region.get("tiles", 0)) / 1000.0))
+				var here := int(region.get("id", -1))
+				var placed := 0
+				for attempt in 2500:
+					if placed >= want:
+						break
+					var p := _random_tile_in(c, rng, region.get("bounds", c.land_rect) as Rect2)
+					var i := p.y * c.size + p.x
+					if w.country[i] != cc or w.blend[i] > 0.35 or w.region_at(p.x, p.y) != here:
+						continue
+					if wants is int and w.ground[i] != int(wants):
+						continue
+					if not _clear_site(c, p, ceili(radius * 0.6), 2) or _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), clear):
+						continue
+					if patch != SiteKinds.KEEP:
+						_lay_patch(c, p, radius, patch)
+					# `site` on the row, because a kind's NAME is not enough to know a
+					# claimed place by: GenWorks records the plan's own quarry cut as
+					# `&"quarry"` too, and that is a work, not a place anybody claimed.
+					_mark(w, kind, Vector2(p) + Vector2(0.5, 0.5), cc, {"site": true})
+					placed += 1
+
+
 static func sites(c: GenContext) -> void:
 	var w := c.w
 	var rng := Rng.make(c.s, 81)
@@ -183,6 +240,7 @@ static func sites(c: GenContext) -> void:
 					continue
 				_mark(w, &"stone_circle", Vector2(p) + Vector2(0.5, 0.5), cc)
 				placed += 1
+	_site_kinds(c, rng)
 	# Ruins where people had steadings to lose.
 	var ruins := 0
 	for attempt in 1200:
@@ -572,6 +630,26 @@ static func _wrecks(c: GenContext) -> void:
 			continue
 		_mark(w, &"wreck", Vector2(p) + Vector2(0.5, 0.5), country[i])
 		wrecks += 1
+
+
+## A `SiteKinds` place's own props (`props`: [[kind, count, spread], ...]), each
+## kept inside the place's own landscape as a stone circle's stones are: a thing
+## laid a few tiles out from a place can be over a border, and there it is some
+## other landscape holding this one's furniture.
+static func _furnish_site(c: GenContext, occ: PackedByteArray, rng: RandomNumberGenerator, m: Dictionary) -> void:
+	var p: Vector2 = m.pos
+	var mine := int(m.get("country", -1))
+	for item: Array in SiteKinds.row(m.kind).get("props", []):
+		var kind := int(item[0])
+		var spread := float(item[2])
+		for k in int(item[1]):
+			var q := p if spread <= 0.0 else p + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.0, spread)
+			if mine >= 0 and c.w.country_at(floori(q.x), floori(q.y)) != mine:
+				continue
+			var solid := PropKind.SOLID[kind]
+			if _free(c, occ, q, solid):
+				_add(c, kind, q)
+				_occupy(c, occ, q, maxf(solid, 0.5))
 
 
 static func _add(c: GenContext, kind: int, p: Vector2, rot: float = -1.0) -> WorldProp:
@@ -982,6 +1060,9 @@ static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:
 	var rng := Rng.make(c.s, 83)
 	for m in w.landmarks:
 		var p: Vector2 = m.pos
+		if bool(m.get("site", false)):
+			_furnish_site(c, occ, rng, m)
+			continue
 		match m.kind:
 			&"tip":
 				var heaps := rng.randi_range(3, 6)

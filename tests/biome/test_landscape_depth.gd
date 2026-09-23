@@ -283,7 +283,9 @@ static func _own_site(w: WorldData, d: BiomeDef) -> bool:
 		if claimed > OWN_AT_MOST:
 			continue
 		for m: Dictionary in w.landmarks:
-			if StringName(str(m.kind)) == kind and int(m.get("country", -1)) == d.index:
+			# `site`: a place laid for a claim, not a works record of the same name
+			# (GenWorks marks the plan's quarry cut `&"quarry"` too).
+			if bool(m.get("site", false)) and StringName(str(m.kind)) == kind and int(m.get("country", -1)) == d.index:
 				return true
 	return false
 
