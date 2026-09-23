@@ -97,16 +97,22 @@ printf '{"projectId":"%s","orgId":"%s"}\n' "$PROJECT_ID" "$ORG_ID" > .vercel/pro
 
 echo "deploy $sha -> vercel ($([ "$prod" = 1 ] && echo production || echo preview))"
 log="$(mktemp "${TMPDIR:-/tmp}/unspent-deploy.XXXXXX")"
-# The token rides in the environment (the CLI reads VERCEL_TOKEN), never on the
-# command line: an argument is readable by every `ps` on the machine for as long
-# as the deploy runs, which is how another session came to see it.
-export VERCEL_TOKEN
+# The token never goes on the command line: an argument is readable by every
+# `ps` on the machine for as long as the deploy runs. Nor can it ride in the
+# environment: vercel@48 does not read VERCEL_TOKEN, and every deploy failed
+# "No existing credentials found" while it was tried that way. So it goes in a
+# private config directory of the CLI's own, readable only by us and removed
+# when the deploy ends.
+cfg="$(mktemp -d "${TMPDIR:-/tmp}/unspent-vercel.XXXXXX")"
+chmod 700 "$cfg"
+( umask 077; printf '{"token":"%s"}\n' "$VERCEL_TOKEN" > "$cfg/auth.json" )
 if [ "$prod" = 1 ]; then
-  npx --yes vercel@48 deploy --prebuilt --prod --yes >"$log" 2>&1
+  npx --yes vercel@48 deploy --prebuilt --prod --yes --global-config "$cfg" >"$log" 2>&1
 else
-  npx --yes vercel@48 deploy --prebuilt --yes >"$log" 2>&1
+  npx --yes vercel@48 deploy --prebuilt --yes --global-config "$cfg" >"$log" 2>&1
 fi
 code=$?
+rm -rf "$cfg"
 url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.vercel\.app' "$log" | tail -1)"
 if [ $code -ne 0 ] || [ -z "$url" ]; then
   tail -20 "$log"; echo "deploy FAILED"; rm -f "$log"; exit 1
