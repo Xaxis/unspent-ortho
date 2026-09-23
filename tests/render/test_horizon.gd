@@ -126,6 +126,14 @@ func test_the_far_world_stands_down_only_under_near_chunks() -> void:
 func test_silhouettes_wait_for_the_horizon() -> void:
 	var w := _ridge()
 	w.props.append(WorldProp.new(0, PropKind.PINE, Vector2(20.5, 20.5), 0.0, 1.0))
+	# The view asks the viewport's CURRENT camera whether the horizon shows, so
+	# this stands its own top-down one: a perspective camera another test left
+	# current would answer yes and build the silhouettes before the claim.
+	var cam := Camera3D.new()
+	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+	cam.rotation = Vector3(deg_to_rad(-CameraRig.PITCH_DEG), 0.0, 0.0)
+	tree.root.add_child(cam)
+	cam.make_current()
 	var view := WorldView.new()
 	view.setup(w)
 	tree.root.add_child(view)
@@ -140,6 +148,7 @@ func test_silhouettes_wait_for_the_horizon() -> void:
 	check(view.far.stands_done(w.size), "a view that looks out builds them")
 	check(view.far.get_child(0).get_node_or_null("stands") != null, "and the pine stands on the far land")
 	view.queue_free()
+	cam.queue_free()
 
 
 ## At eye level the sea runs to the horizon: the open sea reaches past the
