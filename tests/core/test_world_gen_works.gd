@@ -14,6 +14,15 @@ const FIRST := PropKind.FENCE
 static func is_evidence(kind: int) -> bool:
 	return kind >= FIRST and not PropKind.WILD.has(kind)
 
+## Kinds declared, modelled and taken from, that no stage of world gen lays YET:
+## the frost sea's four arrive in two halves (docs/LANDSCAPES.md §2), the kinds
+## first and the scatter bands, the soundings works row and the floe camp site
+## after, so for one wave they exist and stand nowhere. A kind here is a debt,
+## and the commit that lays one takes it off this list, or the test below goes
+## on passing over a kind nobody placed.
+const NOT_YET_LAID: Array[int] = [PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG,
+	PropKind.SEAL_HOLE]
+
 ## Works each landscape must hold on every seed: kind -> its country.
 const HOME := {
 	PropKind.HULL: Country.COAST, PropKind.INTAKE: Country.COAST, PropKind.SEA_WALL: Country.COAST, PropKind.TIDE_GAUGE: Country.COAST,
@@ -69,6 +78,8 @@ func test_every_landscape_holds_its_own_works() -> void:
 				got.append(s)
 				seen_home[kind] = got
 		for kind in range(FIRST, PropKind.COUNT):
+			if NOT_YET_LAID.has(kind):
+				continue
 			gt(counts[kind], 0, "seed %d %s placed" % [s, PropKind.NAMES[kind]])
 		# Evidence at walking scale in every landscape, not only at the works.
 		var land := PackedFloat32Array()
@@ -433,7 +444,11 @@ func test_evidence_models_are_drawn_in_the_right_pen() -> void:
 					# strip across the tank's head and the line still running on
 					# a console are the point of the place, not decoration on it
 					# (`src/models/props/black_site.gd`, docs/STORY.md).
-					PropKind.GROWTH_TANK, PropKind.CONSOLE],
+					PropKind.GROWTH_TANK, PropKind.CONSOLE,
+					# The plan's sounding tripod carries the beacon a relay does,
+					# on the machines' beat: the one light out on the frost sea
+					# at night, and it is the plan's (`src/models/props/frost_sea.gd`).
+					PropKind.SOUNDING_RIG],
 					"%s %d carries machine light it has no reason for" % [PropKind.NAMES[kind], v])
 	var stolen := PropModels.template(PropKind.SHACK, 1, Country.COAST)
 	var dark := PropModels.template(PropKind.SHACK, 0, Country.COAST)
