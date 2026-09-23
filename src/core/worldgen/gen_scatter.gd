@@ -145,7 +145,10 @@ static func _want_here(declared: int, region: Dictionary) -> int:
 
 ## The `SiteKinds` rows that have placers of their own above, under their own
 ## (plural) keys: a landscape claims these the way it always has, and the reader
-## below leaves them alone so no place is laid twice.
+## below leaves them alone so no place is laid twice. They still carry `site`
+## where they are marked, because they ARE the landscape's places: without it the
+## depth test stopped counting the burning's and the sulphur jungle's fumaroles
+## as their own sites the moment the flag became the way a place is known.
 const SITES_LAID_ELSEWHERE: Array[StringName] = [&"tip", &"stone_circle", &"ruin", &"fumarole"]
 
 
@@ -220,7 +223,7 @@ static func sites(c: GenContext) -> void:
 				if not _clear_site(c, p, 6, 2) or _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
 					continue
 				_lay_tip(c, p, rng.randf_range(4.0, 7.5))
-				_mark(w, &"tip", Vector2(p) + Vector2(0.5, 0.5), cc)
+				_mark(w, &"tip", Vector2(p) + Vector2(0.5, 0.5), cc, {"site": true})
 				placed += 1
 	# Stone circles on open flat ground where a landscape keeps them, per region
 	# for the same reason.
@@ -238,7 +241,7 @@ static func sites(c: GenContext) -> void:
 					continue
 				if not _clear_site(c, p, 5, 1) or _near_landmark(w, Vector2(p), PLACES_APART) or _near_village(w, Vector2(p), 26.0):
 					continue
-				_mark(w, &"stone_circle", Vector2(p) + Vector2(0.5, 0.5), cc)
+				_mark(w, &"stone_circle", Vector2(p) + Vector2(0.5, 0.5), cc, {"site": true})
 				placed += 1
 	_site_kinds(c, rng)
 	# Ruins where people had steadings to lose.
@@ -253,7 +256,7 @@ static func sites(c: GenContext) -> void:
 			continue
 		if not _clear_site(c, p, 3, 1) or _near_landmark(w, Vector2(p), 36.0) or _near_village(w, Vector2(p), 24.0):
 			continue
-		_mark(w, &"ruin", Vector2(p) + Vector2(0.5, 0.5), cc)
+		_mark(w, &"ruin", Vector2(p) + Vector2(0.5, 0.5), cc, {"site": true})
 		ruins += 1
 	# Fumaroles: fields of vents on their own clinker, out on the slopes of a
 	# landscape that breathes, so a walk through the ash has somewhere to go.
@@ -283,7 +286,7 @@ static func sites(c: GenContext) -> void:
 			if not _clear_site(c, p, 4, rough) or _near_landmark(w, Vector2(p), (30.0 if attempt < 3000 else 20.0) * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
 				continue
 			_lay_patch(c, p, rng.randf_range(4.0, 6.0), vent_ground)
-			_mark(w, &"fumarole", Vector2(p) + Vector2(0.5, 0.5), vented)
+			_mark(w, &"fumarole", Vector2(p) + Vector2(0.5, 0.5), vented, {"site": true})
 			fumaroles += 1
 	# Summits: the highest walkable ground in each upland landscape gets a cairn,
 	# raised in the order its type declares (BiomeDef.sites.summit).
@@ -1060,7 +1063,9 @@ static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:
 	var rng := Rng.make(c.s, 83)
 	for m in w.landmarks:
 		var p: Vector2 = m.pos
-		if bool(m.get("site", false)):
+		# Every place a landscape claims carries `site`, and the four with placers
+		# of their own are furnished by their own branches below, not from the row.
+		if bool(m.get("site", false)) and not SITES_LAID_ELSEWHERE.has(m.kind):
 			_furnish_site(c, occ, rng, m)
 			continue
 		match m.kind:

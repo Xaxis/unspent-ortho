@@ -49,6 +49,8 @@ func test_no_claim_no_place() -> void:
 	var w := WorldGen.generate(4, 512)
 	var own := 0
 	for m: Dictionary in w.landmarks:
-		if bool(m.get("site", false)):
+		# The four with placers of their own are claimed under their own keys and
+		# carry the flag too; what must not appear is one the READER laid.
+		if bool(m.get("site", false)) and not GenScatter.SITES_LAID_ELSEWHERE.has(m.kind):
 			own += 1
 	eq(own, 0, "no SiteKinds place stands where no landscape claims one")
