@@ -108,15 +108,14 @@ static func make() -> BiomeDef:
 	d.night_sky = 0.95
 	d.props = [PropKind.RUIN, PropKind.DEBRIS, PropKind.WRECKAGE,
 		PropKind.SEA_WALL, PropKind.TIDE_GAUGE, PropKind.HULL, PropKind.REEDS, PropKind.POLE,
-		# Its own (docs/LANDSCAPES.md §5, src/models/props/drowned_city.gd),
-		# declared here so the drowned city is the ONE landscape whose things
-		# these are: that is what makes the tram's copper the city's gate
-		# (Sources.lands_yielding). The bands that lay the stairs, trams and
-		# piles, and the works row that stands the lock, are the placement
-		# wave's; declaring a kind places nothing until a recipe returns it.
+		# Its own (docs/LANDSCAPES.md §5, src/models/props/drowned_city.gd): the
+		# trams are `_scatter`'s; the stairs and piles stand along the banks and
+		# the gate leaves at the locks, both laid by `_works`.
 		PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE]
 	d.ore = [[PropKind.IRON_ORE, 0.02], [PropKind.COPPER_ORE, 0.018]]
-	d.sites = {"tips": 2, "ruins": true}
+	# The flooded hall (SiteKinds): a roofless hall standing in the water, what
+	# it held under the water, claimed as a rate per 1,000 tiles of each region.
+	d.sites = {"tips": 2, "ruins": true, "flooded_hall": 0.1}
 	d.beached_wrecks = true
 	d.pools = {"order": 2, "cell": 22, "chance": 0.7, "r_min": 2.4, "r_max": 5.5, "ground": Ground.BLACKWATER}
 	d.villages = 1
@@ -147,6 +146,15 @@ static func make() -> BiomeDef:
 	d.sound_bed = &"bed_shore"
 	d.surface = _surface
 	d.scatter = _scatter
+	# The port kept running (docs/LANDSCAPES.md §5 PLAN): a lock across a canal
+	# in every region, laid by `_works`.
+	GenWorks.register(&"drowned_city", {
+		"host": load("res://src/content/biomes/drowned_city.gd"),
+		"works": &"_works",
+		"vignettes": [[5, &"debris_field"], [4, &"sunk_wreck"], [3, &"wreck_parts"], [3, &"tipped_signs"],
+			[3, &"nets"], [2, &"grave_cluster"], [2, &"fence_corner"], [1, &"shelter"]],
+		"survey": [[0.3, &"sign_beside"]],
+	})
 	return d
 
 
@@ -178,6 +186,12 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.RUIN
 		return PropKind.SEA_WALL if r > 0.60 and r < 0.6065 else BiomeScatter.NONE
 	if g == Ground.MUD:
+		# A tram half sunk in the silt about one frame in five. The stairs and
+		# the piles belong at the water's EDGE, which this recipe never sees:
+		# a tile beside water is the shared rules' (`BiomeScatter.first`), so
+		# `_works` lays them along the banks instead.
+		if r > 0.70 and r < 0.7006:
+			return PropKind.DROWNED_TRAM
 		if r < 0.055:
 			return PropKind.REEDS
 		if r < 0.070:
@@ -194,3 +208,136 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.ROAD:
 		return PropKind.DEBRIS if r < 0.020 else BiomeScatter.NONE
 	return BiomeScatter.NONE
+
+
+## THE LOCK (docs/LANDSCAPES.md §5 PLAN): the machines still run the port, and a
+## lock is where they keep the timetable. A gate leaf in a stone recess on each
+## bank at each end of the chamber, the pump house that dries the basin behind
+## the near bank, its pipe, two gauges logging a sea that keeps rising, a sign,
+## and the drainage cuts (the cut mark) off the pumped basin.
+##
+## ONE IN EVERY REGION, because the lockkeeper dens at its region's lock and
+## starves on its leaves and its pump house (designs/lockkeeper.gd feeds) -- the
+## crags' bench has the reasoning. The spec's PAIR of leaves is four here, a pair
+## at each end of the chamber, which is what a lock is and what puts a larder
+## over `tests/sentinel/test_world.gd`'s four; a lock that cannot stand FED of
+## its feeds is taken back whole.
+const FED := 4
+
+
+static func _works(L: Object) -> void:
+	var c: GenContext = L.c
+	for k in (L.rects as Array).size():
+		var lock := _canal(L, k, 24.0)
+		if lock.is_empty():
+			continue
+		var near: Vector2 = lock.near
+		var far: Vector2 = lock.far
+		var across: Vector2 = (far - near).normalized()
+		var along := Vector2(-across.y, across.x)
+		var first := c.w.props.size()
+		var fed := 0
+		for end: float in [-2.5, 2.5]:
+			for bank: Vector2 in [near, far]:
+				if GenWorks.put_on_step(L, PropKind.LOCK_GATE, bank + along * end, along.angle(), 0.0, 0.8) != null:
+					fed += 1
+		if GenWorks.put_on_step(L, PropKind.PUMP_HOUSE, near - across * 3.5, across.angle(), 0.6, 1.6) != null:
+			fed += 1
+		if fed < FED:
+			c.w.props.resize(first)
+			continue
+		var mid := (near + far) * 0.5
+		GenWorks._record(c, &"lock", mid, along, Vector2(6.0, 4.0), GenWorks.CUT)
+		GenWorks._run(L, PropKind.PIPE, near - across * 5.5 + along * 1.5, along, 3, 2.0, -99, 0.2)
+		for side: float in [-1.0, 1.0]:
+			GenWorks.put_on_step(L, PropKind.TIDE_GAUGE, near + along * side * 4.5, across.angle(), 0.0, 0.8)
+		GenWorks._put(L, PropKind.SIGN, near - across * 1.5 + along * 3.5, (-across).angle(), -99, 0.2)
+		GenWorks._about(L, PropKind.DEBRIS, near - across * 4.0, 2, 1.5, 4.0)
+	for k in (L.rects as Array).size():
+		_banks(L, k)
+
+
+## HOW PEOPLE MEET THE WATER WHERE THE STREET IS A CANAL (docs/LANDSCAPES.md §5
+## LAND): a stone stair down off a quay into the water about once a frame, and
+## piles a boat is tied to now the jetty has gone, a few a frame along the mud.
+## Laid here and not by `_scatter` because the scatter never deals a tile beside
+## water to a landscape's recipe (`BiomeScatter.first` owns the water's edge),
+## so the edge is walked once, tile by tile, and thinned on each tile's hash.
+const STAIR_SHARE := 0.12
+const PILE_SHARE := 0.3
+
+
+static func _banks(L: Object, k: int) -> void:
+	var c: GenContext = L.c
+	var w := c.w
+	var rect: Rect2 = L.rects[k]
+	var id: int = L.ids[k]
+	for y in range(maxi(int(rect.position.y), 3), mini(int(rect.end.y), c.size - 3)):
+		for x in range(maxi(int(rect.position.x), 3), mini(int(rect.end.x), c.size - 3)):
+			var i := y * c.size + x
+			if w.region[i] - 1 != id or w.blend[i] > 0.35 or not _bank(c, i):
+				continue
+			var g := int(w.ground[i])
+			if g != Ground.FLOOR and g != Ground.MUD:
+				continue
+			var wet := Vector2.ZERO
+			for step: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				if _water(c, i + step.y * c.size + step.x):
+					wet += Vector2(step)
+			if wet == Vector2.ZERO:
+				continue
+			var roll := Rng.hash01(c.s, x, y, 0xD50C)
+			var at := Vector2(x + 0.5, y + 0.5)
+			# Clear of nothing but their own tile, and a pile stands on the lip
+			# (berthed): the water beside them is the point, and `_put`'s usual
+			# room and one-level rule refuse every tile that touches it.
+			if g == Ground.FLOOR and roll < STAIR_SHARE:
+				GenWorks._put(L, PropKind.STAIR_TO_WATER, at, wet.angle(), -99, 0.0)
+			elif g == Ground.MUD and roll < PILE_SHARE:
+				GenWorks._put(L, PropKind.MOORING_POST, at + wet.normalized() * 0.2, roll * 70.0, -99, 0.0, false, true)
+
+
+## A canal in region `k` a lock can be built across: a bank tile of this city,
+## a run of 2..7 water tiles off it along one of the four tile axes, and the
+## other bank beyond, both dry, both in the region, off villages and other
+## places. {near, far} at the two banks' tile centres, or {} when there is none.
+## Scanned like `GenWorks.flattest_in`, and the narrowest crossing wins, since a
+## lock is built where the canal is tightest.
+static func _canal(L: Object, k: int, apart: float) -> Dictionary:
+	var c: GenContext = L.c
+	var w := c.w
+	var rect: Rect2 = L.rects[k]
+	var id: int = L.ids[k]
+	var best := {}
+	var best_w := 99
+	var y := int(rect.position.y) + 8
+	while y < int(rect.end.y) - 8:
+		var x := int(rect.position.x) + 8
+		while x < int(rect.end.x) - 8:
+			var i := y * c.size + x
+			x += 2
+			if w.region[i] - 1 != id or not _bank(c, i):
+				continue
+			for step: int in [1, -1, c.size, -c.size]:
+				var j := i + step
+				var wet := 0
+				while wet < 8 and _water(c, j):
+					wet += 1
+					j += step
+				if wet < 2 or wet > 7 or wet >= best_w or w.region[j] - 1 != id or not _bank(c, j):
+					continue
+				var near := Vector2(i % c.size, i / c.size) + Vector2(0.5, 0.5)
+				if near.distance_to(w.spawn) < Sentinels.CLEAR_OF_HOME + 2.0 or GenScatter._near_village(w, near, 18.0) or GenWorks._crowded(w, near, apart):
+					continue
+				best_w = wet
+				best = {"near": near, "far": Vector2(j % c.size, j / c.size) + Vector2(0.5, 0.5)}
+		y += 2
+	return best
+
+
+static func _water(c: GenContext, i: int) -> bool:
+	return c.w.level[i] > 0 and (c.water[i] != 0 or Ground.is_water(c.w.ground[i]))
+
+
+static func _bank(c: GenContext, i: int) -> bool:
+	return c.land[i] != 0 and c.w.level[i] > 0 and c.water[i] == 0 and not Ground.is_water(c.w.ground[i]) and c.road[i] == 0 and c.village[i] == 0
