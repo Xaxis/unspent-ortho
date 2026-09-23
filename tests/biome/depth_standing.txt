@@ -169,10 +169,7 @@ sulphur_jungle player.only_in
 the_crags land.frames
 the_crags land.landmark
 the_crags land.site
-the_crags people.built
 the_crags plan.depot
-the_crags plan.keeper
-the_crags plan.machine
 the_crags plan.work_props
 the_crags player.only_in
 the_crags player.signature

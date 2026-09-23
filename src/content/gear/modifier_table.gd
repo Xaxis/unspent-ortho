@@ -88,6 +88,12 @@ const MODS := {
 	&"mod_lattice": {"decision": "every blow throws a shock, and the whole kit runs hot",
 		"short": "every blow shocks",
 		"gives": [&"hot", &"loud"], "wants": [&"cool"]},
+	# The crags' hush slate, worn: stone a scanner reads as nothing at all
+	# (docs/LANDSCAPES.md §1). It gives `quiet`, so a lattice rings through it
+	# the way it rings through a damper (PAIRS): one hides you, the other shouts.
+	&"mod_hush": {"decision": "stood still, their optics read the stone and not you",
+		"short": "stood still, unread",
+		"gives": [&"quiet"]},
 }
 
 ## What happens when two tags are in one kit. `kind` is &"conflict" or &"combo";

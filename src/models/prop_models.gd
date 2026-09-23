@@ -34,6 +34,7 @@ const Site := preload("res://src/models/props/black_site.gd")
 const Salt := preload("res://src/models/props/salt.gd")
 const Scrap := preload("res://src/models/props/scrap.gd")
 const Signage := preload("res://src/models/props/signage.gd")
+const Crags := preload("res://src/models/props/crags.gd")
 const FrostSea := preload("res://src/models/props/frost_sea.gd")
 
 
@@ -199,6 +200,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Signage.build(k, kind, variant, country)
 		PropKind.PLATFORM, PropKind.GROWTH_TANK, PropKind.CONSOLE:
 			Site.build(k, kind, variant, country)
+		PropKind.LINTEL, PropKind.CARVED_FACE, PropKind.THEODOLITE_MAST, PropKind.CORE_RACK, PropKind.HOLLOW_WAY:
+			Crags.build(k, kind, variant, country)
 		PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE:
 			FrostSea.build(k, kind, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
@@ -352,6 +355,11 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 				&"pod": return [{"at": Vector3(1.14, 0.45, 0.585), "size": Vector2.ZERO, "color": n[1], "neon": true}]
 				&"lean_to": return [{"at": Vector3(0.92, 0.7, 0.375), "size": Vector2.ZERO, "color": n[2], "neon": true}]
 				&"dugout": return [{"at": Vector3(0.82, 0.5, 0.475), "size": Vector2.ZERO, "color": n[1], "neon": true}]
+				# The crags' round never wired anything in (props/crags.gd): the
+				# one landscape with no stolen light, in its shelters too. What
+				# its lit one has is a HEARTH inside the door, and its light is a
+				# fire's -- no `neon`, so nothing reads it as stolen tech.
+				&"roundhouse": return [{"at": Crags.HEARTH_AT, "size": Vector2.ZERO, "color": Palette.EMBER[4], "rays": [3.0, 7.0, 1.0, 8.0]}]
 			return [{"at": Vector3(0.81, 0.85, -0.5), "size": Vector2.ZERO, "color": n[0], "neon": true}]
 		PropKind.INTAKE:
 			# The cold strip along both eaves (props/works.gd intake).
@@ -396,6 +404,9 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 			# projection lights the street, said once, by the models themselves.
 			var sign := neon_point(kind, variant, country)
 			return [] if sign.is_empty() else [sign]
+		PropKind.THEODOLITE_MAST:
+			# The cold lens at the end of the survey's telescope (props/crags.gd).
+			return Crags.glow_points(kind, variant)
 		PropKind.SOUNDING_RIG:
 			# The beacon on the tripod's head, on the machines' beat, cold: the
 			# one light out on the ice at night (props/frost_sea.gd).

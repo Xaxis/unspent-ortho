@@ -15,13 +15,15 @@ static func is_evidence(kind: int) -> bool:
 	return kind >= FIRST and not PropKind.WILD.has(kind)
 
 ## Kinds declared, modelled and taken from, that no stage of world gen lays YET:
-## the frost sea's four arrive in two halves (docs/LANDSCAPES.md §2), the kinds
-## first and the scatter bands, the soundings works row and the floe camp site
-## after, so for one wave they exist and stand nowhere. A kind here is a debt,
-## and the commit that lays one takes it off this list, or the test below goes
-## on passing over a kind nobody placed.
-const NOT_YET_LAID: Array[int] = [PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG,
-	PropKind.SEAL_HOLE]
+## the crags' five and the frost sea's four arrive in two halves each (docs/
+## LANDSCAPES.md §1, §2), the kinds first and the scatter bands, the survey
+## bench, the barrow site, the soundings works row and the floe camp after, so
+## for one wave they exist and stand nowhere. A kind here is a debt, and the
+## commit that lays one takes it off this list, or the test below goes on
+## passing over a kind nobody placed.
+const NOT_YET_LAID: Array[int] = [PropKind.LINTEL, PropKind.CARVED_FACE, PropKind.THEODOLITE_MAST,
+	PropKind.CORE_RACK, PropKind.HOLLOW_WAY,
+	PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE]
 
 ## Works each landscape must hold on every seed: kind -> its country.
 const HOME := {
@@ -445,6 +447,10 @@ func test_evidence_models_are_drawn_in_the_right_pen() -> void:
 					# a console are the point of the place, not decoration on it
 					# (`src/models/props/black_site.gd`, docs/STORY.md).
 					PropKind.GROWTH_TANK, PropKind.CONSOLE,
+					# The survey's sighting mast carries one small cold lens that
+					# never finds its target: the one machine light on the crags,
+					# and it is the plan's (`src/models/props/crags.gd`).
+					PropKind.THEODOLITE_MAST,
 					# The plan's sounding tripod carries the beacon a relay does,
 					# on the machines' beat: the one light out on the frost sea
 					# at night, and it is the plan's (`src/models/props/frost_sea.gd`).

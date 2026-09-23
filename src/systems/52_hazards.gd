@@ -24,6 +24,9 @@ const ROOF_REACH := 2.2
 const CANOPY_REACH := 1.6
 const ROOFS: Array[int] = [PropKind.HOUSE, PropKind.SHACK, PropKind.RUIN, PropKind.PUMP_HOUSE,
 	PropKind.ARCHIVE, PropKind.CHECKPOINT, PropKind.FIRE_TOWER,
+	# A trilithon's cap is a roof with daylight through it (docs/LANDSCAPES.md §1:
+	# "the roof answer takes wet and dark under the cap").
+	PropKind.LINTEL,
 	# A trawler frozen in to the gunwale: its hold is the one place out of the
 	# wind on the frost sea (docs/LANDSCAPES.md §2).
 	PropKind.FROZEN_HULL]

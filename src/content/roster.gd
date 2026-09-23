@@ -269,6 +269,22 @@ const DEFS := {
 		"where": {"countries": GREEN_COUNTRIES, "grounds": ["sand", "shingle", "gravel", "strand"], "hours": [6, 20]},
 	},
 
+	# --- The Crags' one worker of its own (docs/LANDSCAPES.md §1) -------------
+	# A chainman walks the survey lines dragging a measuring chain, stops at each
+	# stone to set a tiny tripod, and goes on. Its bite is a SHOVE: a worker turns
+	# on `blocked` (Roles.TURNS), and this one pushes whatever stands on its line
+	# off it, hard enough to move a body and not enough to hurt one. `where` keeps
+	# it to the crags' own grounds by day. The roster there stays the thinnest in
+	# the game on purpose, and this is the one machine still working it.
+	&"chainman": {
+		"model": &"chainman", "role": &"worker", "machine": true, "approach": &"errand", "stretch": 9, "part": &"back",
+		"pace": 3.5, "dash": 6.0, "quick": 260, "radius": 0.45, "height": 1.0, "life": 56,
+		"sees": 8, "hears": 6, "racket": 14, "reach": 2, "ready": 4, "forget": 18, "tether": 30, "safe": 14,
+		"nerve": 100, "invuln": 450, "disposition": &"indifferent",
+		"bite": {"swing": [420, 120, 400, 600], "reach": 1.2, "width": 1.3, "dmg": 1, "knock": 9.0, "knock_ms": 260},
+		"takes": 40.0, "drops": 1, "linger": 40.0, "chance": 3,
+		"where": {"countries": ["the_crags"], "grounds": ["moss", "limestone", "rock"], "hours": [8, 18]},
+	},
 	# --- The Frost Sea's own worker (docs/LANDSCAPES.md §2) -------------------
 	# A low sled with a circular saw and one amber lens, working the ice for the
 	# soundings line. It keeps to the frost sea and to the ice: the one machine
@@ -337,6 +353,20 @@ const DEFS := {
 		"sees": 17, "hears": 8, "racket": 24, "reach": 3, "ready": 3, "forget": 24, "tether": 26, "safe": 14,
 		"nerve": 100, "invuln": 500, "through": true, "disposition": &"wary", "overrun": 0.8,
 		"bite": {"swing": [620, 150, 700, 820], "reach": 1.8, "width": 1.6, "dmg": 3, "knock": 8.0, "knock_ms": 300},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
+	},
+	# The Crags' plumb (designs/plumb.gd): the slowest keeper and the tallest
+	# body in the game, seven units of tripod over a swinging weight. It sees
+	# further than the reaper because it is a sighting instrument, and hears less
+	# because there is nothing on it that listens.
+	&"sentinel.crags": {
+		"model": &"sentinel_plumb", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
+		"part": &"back", "sentinel": &"plumb",
+		"pace": 3.6, "dash": 7.5, "quick": 260, "radius": 1.35, "height": 7.0, "life": 120,
+		"sees": 16, "hears": 9, "racket": 20, "reach": 3, "ready": 4, "forget": 28, "tether": 28, "safe": 14,
+		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.6,
+		"bite": {"swing": [900, 180, 820, 900], "reach": 2.2, "width": 3.0, "dmg": 3, "knock": 9.0, "knock_ms": 320},
 		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
 		"where": {"hours": [0, 0]},
 	},

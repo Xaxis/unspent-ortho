@@ -268,6 +268,14 @@ const SHAPES := {
 		["poly", "a5", [10.0, 14.5, 11.0, 8.0, 26.0, 7.0, 27.0, 13.0]],
 		["line", 5.0, 24.5, 24.5, 23.0], ["line", 12.5, 11.0, 17.0, 10.5],
 	],
+	# Hushstone: a dark close-grained stone, flat-faced where it was broken off a
+	# carved face, one pale seam of the second ramp running through it.
+	&"hushstone": [
+		["poly", "a2", [4.0, 22.0, 6.0, 13.0, 14.0, 8.0, 24.0, 9.5, 29.0, 17.0, 27.0, 25.0, 15.0, 28.5, 6.0, 27.0]],
+		["poly", "a3", [6.0, 13.0, 14.0, 8.0, 24.0, 9.5, 27.0, 15.0, 17.0, 16.5, 8.0, 17.0]],
+		["bar", "b4", 8.0, 19.5, 26.5, 18.0, 1.6, 1.0],
+		["line", 9.0, 22.0, 20.0, 23.5], ["line", 17.0, 16.5, 21.0, 20.0],
+	],
 	# Brimstone: the crust off a vent, pitted where the gas came through, crystals
 	# grown up out of it.
 	&"brimstone": [

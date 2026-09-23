@@ -85,6 +85,16 @@ enum {
 	PLATFORM,
 	GROWTH_TANK,
 	CONSOLE,
+	# THE CRAGS (docs/LANDSCAPES.md §1): what people cut out of the stone before
+	# the machines -- a trilithon, a face in a boulder, a sunken lane between
+	# dry-stone banks -- and the two pieces of survey furniture the plan left when
+	# its instruments returned nothing it could file: a sighting mast and a rack
+	# of cores. The masts and racks feed the crags' keeper (designs/plumb.gd).
+	LINTEL,
+	CARVED_FACE,
+	THEODOLITE_MAST,
+	CORE_RACK,
+	HOLLOW_WAY,
 	# THE FROST SEA (docs/LANDSCAPES.md §2, src/models/props/frost_sea.gd): what
 	# the sea threw up, what it locked in, what the plan stood on it, and what
 	# still lives under it. A pressure block is sea ice on end, a hull is a
@@ -96,7 +106,7 @@ enum {
 	SEAL_HOLE,
 }
 
-const COUNT := 72
+const COUNT := 77
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -110,6 +120,7 @@ const NAMES: PackedStringArray = [
 	"salt ridge", "salt heap", "pan gate", "scrap tree", "magnet heap",
 	"mural",
 	"platform", "growth tank", "console",
+	"lintel", "carved face", "theodolite mast", "core rack", "hollow way",
 	"pressure block", "frozen hull", "sounding rig", "seal hole",
 ]
 
@@ -142,6 +153,12 @@ const SOLID: PackedFloat32Array = [
 	# circle on a prop cannot say that. The tank and the console stop a body
 	# themselves, as anything you walk up to and read should.
 	0.0, 1.1, 0.35,
+	# A trilithon is a wall with a window in it, and one circle cannot say so:
+	# 1.2 is the spec's (docs/LANDSCAPES.md §1) and it stops a body at the
+	# uprights. A carved face is a boulder. A mast and a rack stop a body as
+	# furniture does. A hollow way is 0: it is a lane, and a lane is walked
+	# through -- its banks are drawn, not stood against.
+	1.2, 0.5, 0.25, 0.6, 0.0,
 	# The frost sea: a block is cover you can put your back to; a hull frozen in
 	# is six tiles of steel answered by one circle at its middle (the bulwark's
 	# ends are walked through, the way a mural's are); a rig's legs stop a body
