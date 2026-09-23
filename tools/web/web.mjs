@@ -286,6 +286,22 @@ async function silence() {
 // The probe's test tone: 440 Hz, alone.
 const isTone = (h) => h.peak >= 0.001 && Math.abs(h.hz - 440) < 30 && h.share > 0.8;
 const dbfs = (h) => (h.peak > 0 ? (20 * Math.log10(h.peak)).toFixed(1) : '-inf');
+// Keep the wasm memory where the harness can read it: the shell's `engine` lives
+// inside a function, out of reach, so the instance is caught as it is made and
+// whichever Memory it exports is kept on the window.
+await context.addInitScript(() => {
+  const keep = (r) => {
+    const inst = r && (r.instance || r);
+    for (const v of Object.values((inst && inst.exports) || {})) {
+      if (v instanceof WebAssembly.Memory) window.__wasmMemory = v;
+    }
+    return r;
+  };
+  for (const name of ['instantiate', 'instantiateStreaming']) {
+    const real = WebAssembly[name];
+    if (real) WebAssembly[name] = (...a) => real.apply(WebAssembly, a).then(keep);
+  }
+});
 const page = await context.newPage();
 let tourEnded = false;
 const failures = [];
@@ -305,6 +321,16 @@ page.on('console', (m) => {
   if (touring && /^tour .* done ->/.test(text)) tourEnded = true;
   if (/^web FAIL/.test(text)) failures.push(text);
 });
+// The wasm heap only grows, so the largest size seen is the most the run held,
+// and a browser's heap has a ceiling a desktop build never meets: a world that
+// cannot be grown here is not a world the game can ship. Sampled while the page
+// lives, because a tour quits the engine before the run ends. Read off the
+// Memory the init script above keeps.
+let heapMost = 0;
+const sampleHeap = () => page.evaluate(() => {
+  try { return window.__wasmMemory ? window.__wasmMemory.buffer.byteLength : -1; } catch (e) { return -1; }
+}).then((n) => { heapMost = Math.max(heapMost, n); }).catch(() => {});
+const heapTimer = setInterval(sampleHeap, 2000);
 page.on('pageerror', (e) => { failures.push(`page error: ${e.message}`); console.log(`  [${since()}s pageerror] ${e.message}`); });
 // The engine's loader cancels its first fetch of the wasm once it has the bytes
 // streaming: a cancelled request only fails the run if that URL never answered.
@@ -628,6 +654,13 @@ const big = [...served.entries()].filter(([p]) => /\.(wasm|pck)$/.test(p)).map((
 if (live && wire === 0) console.log('web served: the host did not say how much (compressed, no content-length)');
 else
 console.log(`web served ${(wire / 1048576).toFixed(1)} MB over the wire (${big.join(', ')})`);
+// The wasm heap only grows, so its size at the end is the most this run ever
+// held, and a browser's heap has a ceiling a desktop build never meets: a world
+// that cannot be grown here is not a world the game can ship. Read off the
+// shell's own `engine`, which a classic script's top-level const leaves in reach.
+clearInterval(heapTimer);
+await sampleHeap();
+console.log(heapMost > 0 ? `web heap ${(heapMost / 1048576).toFixed(0)} MB, the most it held (sampled every 2 s)` : 'web heap: not readable from this page');
 await browser.close();
 if (!live) server.close();
 if (failures.length) {
