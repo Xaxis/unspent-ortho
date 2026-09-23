@@ -34,6 +34,11 @@ const PROPS := {
 	PropKind.DEAD_TREE: 0.2,
 	PropKind.MEMORIAL: 0.3,
 	PropKind.GRAVE: 0.25,
+	# The frost sea's only cover (docs/LANDSCAPES.md §2): a slab of ice on end
+	# is the one thing out there to put your back to, and a hull frozen in is a
+	# wall with a hold behind it.
+	PropKind.PRESSURE_BLOCK: 0.55,
+	PropKind.FROZEN_HULL: 0.6,
 }
 
 ## What the ground itself hides a body in: heather to the knee, reeds, deep moss.

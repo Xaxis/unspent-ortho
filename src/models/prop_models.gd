@@ -34,6 +34,7 @@ const Site := preload("res://src/models/props/black_site.gd")
 const Salt := preload("res://src/models/props/salt.gd")
 const Scrap := preload("res://src/models/props/scrap.gd")
 const Signage := preload("res://src/models/props/signage.gd")
+const FrostSea := preload("res://src/models/props/frost_sea.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -111,6 +112,11 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 		PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.FIRE_TOWER, PropKind.CHECKPOINT, PropKind.DRILL_RIG, \
 		PropKind.CONVEYOR, PropKind.SURVEY, PropKind.WATER_TANK, PropKind.SLAG_HEAP, PropKind.VENT_CAP, PropKind.ARCHIVE, \
 		PropKind.MEMORIAL:
+			return 2
+		# Three: a ridge is a clump of blocks, and two shapes in a clump is a stamp.
+		PropKind.PRESSURE_BLOCK:
+			return 3
+		PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE:
 			return 2
 	return 1
 
@@ -193,6 +199,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Signage.build(k, kind, variant, country)
 		PropKind.PLATFORM, PropKind.GROWTH_TANK, PropKind.CONSOLE:
 			Site.build(k, kind, variant, country)
+		PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE:
+			FrostSea.build(k, kind, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)
@@ -388,6 +396,10 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 			# projection lights the street, said once, by the models themselves.
 			var sign := neon_point(kind, variant, country)
 			return [] if sign.is_empty() else [sign]
+		PropKind.SOUNDING_RIG:
+			# The beacon on the tripod's head, on the machines' beat, cold: the
+			# one light out on the ice at night (props/frost_sea.gd).
+			return [{"at": FrostSea.beacon_at(), "size": Vector2.ZERO, "color": beacon, "blink": true}]
 	return []
 
 

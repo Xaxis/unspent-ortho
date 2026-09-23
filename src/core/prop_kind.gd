@@ -85,9 +85,18 @@ enum {
 	PLATFORM,
 	GROWTH_TANK,
 	CONSOLE,
+	# THE FROST SEA (docs/LANDSCAPES.md §2, src/models/props/frost_sea.gd): what
+	# the sea threw up, what it locked in, what the plan stood on it, and what
+	# still lives under it. A pressure block is sea ice on end, a hull is a
+	# trawler frozen in to the gunwale, a sounding rig is the plan's tripod over
+	# a hole it keeps open, and a seal hole is a breathing hole with blood on it.
+	PRESSURE_BLOCK,
+	FROZEN_HULL,
+	SOUNDING_RIG,
+	SEAL_HOLE,
 }
 
-const COUNT := 68
+const COUNT := 72
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -101,12 +110,15 @@ const NAMES: PackedStringArray = [
 	"salt ridge", "salt heap", "pan gate", "scrap tree", "magnet heap",
 	"mural",
 	"platform", "growth tank", "console",
+	"pressure block", "frozen hull", "sounding rig", "seal hole",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
 ## left: they are scattered like a boulder, by the per-tile scatter, and a
-## reader counting what happened to a landscape should pass over them.
-const WILD: Array[int] = [SALT_RIDGE, SCRAP_TREE, MAGNET_HEAP]
+## reader counting what happened to a landscape should pass over them. The
+## frost sea's block is ice the sea stood on end and its seal hole is a seal's:
+## the hull and the rig are somebody's.
+const WILD: Array[int] = [SALT_RIDGE, SCRAP_TREE, MAGNET_HEAP, PRESSURE_BLOCK, SEAL_HOLE]
 
 ## Collision radius in tiles at scale 1. 0 means you walk through it.
 const SOLID: PackedFloat32Array = [
@@ -130,4 +142,9 @@ const SOLID: PackedFloat32Array = [
 	# circle on a prop cannot say that. The tank and the console stop a body
 	# themselves, as anything you walk up to and read should.
 	0.0, 1.1, 0.35,
+	# The frost sea: a block is cover you can put your back to; a hull frozen in
+	# is six tiles of steel answered by one circle at its middle (the bulwark's
+	# ends are walked through, the way a mural's are); a rig's legs stop a body
+	# short of the hole; a seal hole is a hole, and a body stops at its rim.
+	0.5, 1.4, 0.5, 0.3,
 ]

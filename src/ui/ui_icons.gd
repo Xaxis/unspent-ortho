@@ -47,6 +47,8 @@ const SHAPES := {
 	&"wrack": [".k.....k.", "k3k...k3k", "kwk...kwk", ".k2k.k2k.", ".kw2k2wk.", "..k222k..", "...k2k...", "...k1k...", "...kkk..."],
 	&"reeds": [".k.k.k.k.", "kwkwkwkwk", "k3k3k3k3k", "k2k2k2k2k", "k5555555k", "k2k2k2k2k", "k1k1k1k1k", "k1k1k1k1k", "kkkkkkkkk"],
 	&"gorse": ["......kk.", ".....kwk.", ".kk.k2kk.", "kwkk2k...", ".kk2k.kk.", "..k2kkwk.", ".k2k..kk.", "k2k......", "kk......."],
+	&"fish": [".........", "..kkkk...", ".k3322k..", "k3w2222kk", "k322221k.", ".k1122k.k", "..kkkk.k.", ".........", "........."],
+	&"lens_ice": [".........", "...kkk...", "..k333k..", ".k32w23k.", ".k32223k.", ".k33333k.", "..k222k..", "...kkk...", "........."],
 	&"crottle": [".kk...kk.", "kwk.k.kwk", ".k2kwk2k.", "..k222k..", "...k2k...", ".kkk1kkk.", "k2222221k", ".kkkkkkk.", "........."],
 	&"peat": [".........", "...kkkkkk", "..k32323k", ".k232321k", "k232321k.", "k12121k..", "k1111k...", "kkkkk....", "........."],
 	&"limestone": [".........", "...kkkkk.", "..k33w3k.", ".kkkkkkkk", ".k222221k", "kkkkkkkk.", "k222211k.", "kkkkkkkk.", "........."],

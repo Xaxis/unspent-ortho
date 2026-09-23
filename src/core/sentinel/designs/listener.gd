@@ -49,10 +49,9 @@ static func make() -> SentinelDef:
 	# holds more ground than a keeper among works and walls.
 	d.reach = 34.0
 	d.stations = [&"soundings"]
-	# The soundings line's own parts feed it. SOUNDING_RIG joins this list with
-	# the kind (docs/LANDSCAPES.md §2, the prop kinds); nothing here starves it, so
-	# the list only says what it stands among.
-	d.feeds = [PropKind.PIPE, PropKind.WATER_TANK]
+	# The soundings line's own parts feed it. Nothing here starves it, so the
+	# list only says what it stands among.
+	d.feeds = [PropKind.SOUNDING_RIG, PropKind.PIPE, PropKind.WATER_TANK]
 	d.drops = &"sentinel_listener"
 	d.core = &"listener_core"
 	d.hulk = PropKind.WRECKAGE

@@ -138,6 +138,9 @@ const DEFS := {
 	&"iron": {"name": "iron", "bulk": 1.0, "group": &"material"},
 	&"copper_ore": {"name": "copper ore", "bulk": 4.0, "group": &"material"},
 	&"copper": {"name": "copper", "bulk": 1.0, "group": &"material"},
+	# Cut out of a pressure block on the frost sea with a steel edge (Takes): the
+	# clear heart of a slab of sea ice, the raw the deep ice lens is ground from.
+	&"lens_ice": {"name": "lens ice", "bulk": 1.0, "group": &"material", "icon": [&"lens_ice", &"rime", &"slate"]},
 	&"scrap": {"name": "piece of plate", "bulk": 2.0, "group": &"material"},
 	# Cloth out of what people left: the one soft material a made garment needs.
 	&"rag": {"name": "rags", "bulk": 1.0, "group": &"material"},
@@ -146,6 +149,9 @@ const DEFS := {
 	&"mussels": {"name": "mussels", "bulk": 0.5, "group": &"food", "feeds": 4.0},
 	&"whelks": {"name": "whelks", "bulk": 0.5, "group": &"food", "feeds": 3.0},
 	&"samphire": {"name": "samphire", "bulk": 0.5, "group": &"food", "feeds": 2.0},
+	# Out of a seal's hole on the frost sea (Takes SEAL_HOLE): the one food the
+	# ice gives, and a whole meal.
+	&"fish": {"name": "fish", "bulk": 0.5, "group": &"food", "feeds": 5.0, "icon": [&"fish", &"slate", &"rime"]},
 	&"berries": {"name": "berries", "bulk": 1.0, "group": &"food", "feeds": 1.5},
 	&"bread": {"name": "bread", "bulk": 1.0, "group": &"food", "feeds": 10.0},
 	&"soup": {"name": "soup", "bulk": 1.0, "group": &"food", "feeds": 8.0},

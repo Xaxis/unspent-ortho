@@ -99,7 +99,13 @@ static func make() -> BiomeDef:
 	# those was me reaching for the white I wanted without asking who owned it.
 	d.lip_snow = false
 	d.props = [PropKind.BOULDER, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.STONE_ORE,
-		PropKind.SURVEY, PropKind.RELAY, PropKind.DEBRIS]
+		PropKind.SURVEY, PropKind.RELAY, PropKind.DEBRIS,
+		# Its own (docs/LANDSCAPES.md §2, src/models/props/frost_sea.gd): ice
+		# thrown up on end, a trawler frozen in, the plan's sounding tripod, a
+		# seal's hole. Declared here so the economy can walk lens ice back to
+		# this sea; where each stands per frame is `_scatter`'s, and the bands
+		# land with the works row and the ridge relief (phase B).
+		PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE]
 	d.ore = [[PropKind.STONE_ORE, 0.012]]
 	d.sites = {"tips": 1}
 	d.beached_wrecks = true
