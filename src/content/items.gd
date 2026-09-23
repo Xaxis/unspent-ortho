@@ -426,6 +426,10 @@ const DEFS := {
 	# to ride glass, and the edge a glass lance is bound round.
 	&"skate_blade": {"name": "skate blade", "bulk": 1.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"plate", &"lens"]},
 	&"boom_ram": {"name": "boom ram", "bulk": 3.0, "group": &"found", "stuff": &"found", "icon": [&"hammer", &"plate", &"lens"]},
+	# The bilge pump out of a ferry (EliteStock.SPOILS): what keeps a barge that
+	# size afloat. Carried for the submersible's hull that is to come
+	# (docs/LANDSCAPES.md §5); FOUND tech taken whole.
+	&"bilge_pump": {"name": "bilge pump", "bulk": 2.0, "group": &"found", "stuff": &"found", "icon": [&"coil", &"plate", &"lens"]},
 	&"spoil": {"name": "ruined stock", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"ash", &"ash"]},
 	# raids: a machine's own account of a place, taken off the body that was
 	# carrying it home. It is proof, and it is the only thing in the game worth

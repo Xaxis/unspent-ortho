@@ -480,6 +480,37 @@ const DEFS := {
 		"where": {"countries": ["ruined_metropolis"], "grounds": ["floor", "gravel", "scree"], "green_min": 12,
 			"near_props": ["ruin", "demolition gantry"]},
 	},
+	# --- The Drowned City's own (docs/LANDSCAPES.md §5) ----------------------
+	# The plan's ferry: a flat barge with a crane stub amidships running fixed
+	# routes along the canals at fixed hours, carrying salvage out to sea. A
+	# KEEPER, because what it keeps is a ROUTE: it goes about its errand until a
+	# body stands on it, and a keeper turns on trespass (Roles.TURNS) -- inside
+	# `32_disposition.SITE_RADIUS` of its post once it has seen you, which is its
+	# lane. It swims because the canals are its road, and `keeps_to` the water
+	# and the mud at its edge, the deep included: a canal over your head is
+	# still its route.
+	#
+	# TWO HOOKS, NOT BUILT HERE. The spec narrows the trespass to "a raft in its
+	# lane within 3 tiles"; `_trespass` reads a keeper's post and SITE_RADIUS and
+	# knows nothing of rafts, so the narrower rule belongs to 32_disposition
+	# asking `Hero.ride`. And its ram is meant to be the first thing in the game
+	# that WEARS A CRAFT: `Craft.damage(amount)` exists and 44_crafts holds the
+	# ridden craft, but nothing outside the crafts package may reach it
+	# (CraftKinds exposes per-ground wear only), so a blow landing on a body that
+	# is riding has to be handed to 44_crafts by the fight -- shared system 8,
+	# "machines that damage crafts" (docs/LANDSCAPES.md). Until then its bite
+	# lands on the body, as every bite does.
+	&"ferry": {
+		"model": &"ferry", "role": &"keeper", "machine": true, "approach": &"errand", "stretch": 16, "part": &"back",
+		"crosses": &"swim",
+		"pace": 4.0, "dash": 7.5, "quick": 280, "radius": 0.8, "height": 1.9, "life": 70,
+		"sees": 11, "hears": 9, "racket": 18, "reach": 2, "ready": 3, "forget": 16, "tether": 28, "safe": 14,
+		"nerve": 100, "invuln": 460, "through": true, "disposition": &"wary", "overrun": 0.8,
+		"bite": {"swing": [560, 160, 620, 780], "reach": 1.6, "width": 1.5, "dmg": 3, "knock": 11.0, "knock_ms": 360},
+		"takes": 60.0, "drops": 2, "linger": 45.0, "chance": 3,
+		"keeps_to": ["water", "blackwater", "mud", "deep water"],
+		"where": {"countries": ["drowned_city"], "grounds": ["water", "blackwater", "mud"], "hours": [6, 20]},
+	},
 }
 
 

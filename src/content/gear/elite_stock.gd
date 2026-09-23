@@ -138,6 +138,11 @@ const SPOILS := {
 	# its elite through a PROP (lens ice off a pressure block) and a landscape
 	# holds one gate, not two.
 	&"icesaw": [{"item": &"saw_tooth", "chance": 0.45, "count": Vector2i(1, 2)}],
+	# The drowned city's ferry: the bilge pump out of its hull
+	# (docs/LANDSCAPES.md §5). A spoil and not a material, for the frost sea's
+	# reason: the drowned city's one gate is brine copper, stripped off a
+	# drowned tram, and a landscape holds one gate, not two.
+	&"ferry": [{"item": &"bilge_pump", "chance": 0.35}],
 }
 
 

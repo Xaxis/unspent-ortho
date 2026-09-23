@@ -113,6 +113,10 @@ static func make() -> BiomeDef:
 		&"harvester": {"weight": 0.8, "grounds": ["moss", "mud", "gravel"]},
 		&"watcher": {"weight": 0.9},
 		&"gulls": {"weight": 1.0, "hours": Vector2(5, 21), "grounds": ["shingle", "gravel"]},
+		# Its own machine, found nowhere else: the plan's ferry keeping its
+		# timetable on the canals (Roster, `ferry`). Its own row keeps it to the
+		# water and to its hours.
+		&"ferry": {"weight": 1.2},
 	}
 	d.landmarks = [&"sump_pump", &"poured_pillar", &"leaning_mast", &"clerks_office"]
 	# Its keeper: the barge on stilts that keeps the locks (src/core/sentinel/

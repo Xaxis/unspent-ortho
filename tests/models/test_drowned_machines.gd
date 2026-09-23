@@ -1,11 +1,12 @@
 extends TestCase
 ## The Drowned City's own bodies against the FigureModel contract
-## (docs/LANDSCAPES.md §5): the lockkeeper, its keeper. It is not one of the
-## twelve `test_machines.gd` walks, so without this a fault in its `build()`
+## (docs/LANDSCAPES.md §5): the ferry, a keeper of routes found nowhere else,
+## and the lockkeeper, its keeper. Neither is one of the twelve
+## `test_machines.gd` walks, so without this a fault in either's `build()`
 ## would surface only in a gallery frame somebody happened to shoot.
 
-const KINDS: Array[StringName] = [&"sentinel_lockkeeper"]
-const PART_SIDE := {&"sentinel_lockkeeper": &"back"}
+const KINDS: Array[StringName] = [&"ferry", &"sentinel_lockkeeper"]
+const PART_SIDE := {&"ferry": &"back", &"sentinel_lockkeeper": &"back"}
 
 
 func test_each_creates_as_a_machine_on_a_ramp_of_its_role() -> void:
@@ -20,6 +21,12 @@ func test_each_creates_as_a_machine_on_a_ramp_of_its_role() -> void:
 		gt(mm.height, 1.0, "%s stands up" % kid)
 		check(mm.get_child_count() > 0, "%s has geometry" % kid)
 		mm.free()
+	# Both keep something, so both wear the keeper's ramp (Palette: a
+	# machine's colour is its role).
+	var ferry := FigureModel.create(&"ferry") as MachineModel
+	eq(ferry.ramp, Palette.MACHINE["warden"], "the ferry wears the keeper's indigo")
+	eq(Roster.row(&"ferry").get("role", &""), &"keeper", "because it keeps a route")
+	ferry.free()
 	var keeper := FigureModel.create(&"sentinel_lockkeeper") as MachineModel
 	eq(keeper.ramp, Palette.MACHINE["warden"], "the lockkeeper wears the keeper's indigo")
 	keeper.free()
@@ -78,3 +85,17 @@ func test_its_body_row_walks_the_deep() -> void:
 	# The canals are the streets here: a keeper the waterline stopped would
 	# leave the one place worth keeping to anybody with a raft (src/core/swim.gd).
 	check(Swim.crosses(Roster.row(&"sentinel.drowned")) == &"swim", "the lockkeeper goes in after you")
+	check(Swim.crosses(Roster.row(&"ferry")) == &"swim", "and the ferry runs the canals")
+
+
+func test_the_ferry_keeps_to_the_canals_by_day_and_gives_up_its_pump() -> void:
+	var row := Roster.row(&"ferry")
+	var where: Dictionary = row.get("where", {})
+	eq(where.get("countries", []), ["drowned_city"], "found in the drowned city and nowhere else")
+	var keeps: Array = row.get("keeps_to", [])
+	for g: String in ["water", "blackwater", "mud"]:
+		check(keeps.has(g), "it keeps to %s" % g)
+	check(not keeps.has("floor"), "and never climbs out onto the quay")
+	check(Roles.turns(Roles.of(&"ferry"), &"trespass"), "a body in its lane is trespass on its route")
+	eq(EliteStock.carried_by(&"bilge_pump"), &"ferry", "the bilge pump comes off a ferry")
+	check(BiomeRegistry.get_def(&"drowned_city").roster.has(&"ferry"), "and the landscape puts one out")
