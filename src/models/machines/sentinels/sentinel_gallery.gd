@@ -15,7 +15,7 @@ extends RefCounted
 ## base class must not carry one): it is reached by path.
 const MG := preload("res://src/models/machines/machine_gallery.gd")
 
-const KINDS: Array[StringName] = [&"sentinel_reaper", &"sentinel_rake"]
+const KINDS: Array[StringName] = [&"sentinel_reaper", &"sentinel_rake", &"sentinel_listener"]
 const SHOWN: Array[StringName] = [&"stand", &"walk", &"alert", &"windup", &"strike", &"dead"]
 
 

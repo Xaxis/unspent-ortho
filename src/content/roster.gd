@@ -301,6 +301,20 @@ const DEFS := {
 		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
 		"where": {"hours": [0, 0]},
 	},
+	# The Frost Sea's keeper (src/core/sentinel/designs/listener.gd). Its senses
+	# are the one thing a phase cannot rewrite, so they are set here for the whole
+	# fight: it hears further than anything else in the roster and sees less than
+	# a worker, which is what makes crouching the answer to it out on open ice.
+	&"sentinel.frost": {
+		"model": &"sentinel_listener", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
+		"part": &"back", "guarded": true, "sentinel": &"listener",
+		"pace": 2.4, "dash": 6.0, "quick": 260, "radius": 1.4, "height": 2.4, "life": 124,
+		"sees": 9, "hears": 20, "racket": 26, "reach": 3, "ready": 3, "forget": 26, "tether": 34, "safe": 14,
+		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
+		"bite": {"swing": [800, 160, 760, 880], "reach": 1.8, "width": 1.8, "dmg": 3, "knock": 8.0, "knock_ms": 300},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
+	},
 }
 
 

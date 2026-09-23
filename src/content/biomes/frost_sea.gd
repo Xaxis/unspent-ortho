@@ -121,6 +121,8 @@ static func make() -> BiomeDef:
 		&"watcher": {"weight": 0.7},
 	}
 	d.landmarks = [&"leaning_mast", &"blinking_stack", &"sump_pump", &"cast_stones"]
+	# Its keeper listens through the ice (src/core/sentinel/designs/listener.gd).
+	d.sentinel = &"listener"
 	d.sound_bed = &"bed_snowfield"
 	d.surface = _surface
 	d.scatter = _scatter
