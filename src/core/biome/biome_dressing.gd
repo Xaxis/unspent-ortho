@@ -117,7 +117,10 @@ var spread := 0.0
 ## Every form each field may name, so a typo is a failing test and not a
 ## landscape quietly dressed as somewhere else (BiomeRegistry.problems).
 const COVERS: Array[StringName] = [&"drift", &"snow", &"ash", &"needles", &"weed", &"wrack"]
-const SHELTERS: Array[StringName] = [&"shack", &"stilt", &"blind", &"pod", &"lean_to", &"dugout"]
+const SHELTERS: Array[StringName] = [&"shack", &"stilt", &"blind", &"pod", &"lean_to", &"dugout",
+	# The crags': a small dry-stone round under turf, patched with plate
+	# (props/crags.gd). It never wires a light in.
+	&"roundhouse"]
 const CROWNS: Array[StringName] = [&"full", &"bare", &"low"]
 ## Every ramp `BiomeDef.tree_tints` may name, and how many colours each wants.
 const RAMPS := {&"leaf": 4, &"trunk": 1, &"needle": 3, &"under": 1, &"scrub": 3,

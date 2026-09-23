@@ -61,6 +61,14 @@ const FORMS := {
 	&"shell": {REACH: 2.0, HIGH: 4.6, LIT: false},
 	&"arcade": {REACH: 2.3, HIGH: 4.8, LIT: true},
 	&"spire": {REACH: 1.7, HIGH: 16.3, LIT: true},
+	# --- the crags: what was standing before the machines, lived in -----------
+	# Few people and old ones (docs/LANDSCAPES.md §1 PEOPLE): a dry-stone round
+	# under a conical turf-and-thatch roof, a timber lean-to built into a broken
+	# tower's wall, and a byre sunk into the slope. None of them wired a
+	# machine's light in: it is the one village with no stolen neon.
+	&"roundhouse": {REACH: 1.9, HIGH: 3.0, LIT: false},
+	&"lean_to_broch": {REACH: 2.1, HIGH: 2.8, LIT: false},
+	&"byre": {REACH: 1.9, HIGH: 2.2, LIT: false},
 }
 
 ## The stock a landscape that argues with nothing builds: the fishing village,

@@ -493,6 +493,9 @@ static func shack(k: Kit, v: int, c: int) -> void:
 		&"pod": _pod(k, s, lit, d)
 		&"lean_to": _lean_to(k, s, lit, d)
 		&"dugout": _dugout(k, s, lit, d)
+		# The crags' round under turf (props/crags.gd) never wires a light in:
+		# `lit` is not passed, and `PropModels.glow_points` gives it none.
+		&"roundhouse": PropModels.Crags.roundhouse_shelter(k, s, d)
 		_: _fish_shack(k, s, lit, d)
 
 

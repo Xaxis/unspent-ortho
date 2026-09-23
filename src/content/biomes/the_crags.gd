@@ -78,7 +78,19 @@ static func make() -> BiomeDef:
 	dress.timber = [P.SPRUCE[1], P.SLATE[2]]
 	dress.sink = 0.18
 	dress.lie = Vector2(-0.08, 0.12)
+	# The patched shelter here is turf over stone: a small dry-stone round with
+	# a plate sheet weighted onto its roof (props/crags.gd), never a shack of
+	# boards, because there is no timber that was ever dry.
+	dress.shelter = &"roundhouse"
 	d.dressing = dress
+	# What its people BUILT (docs/LANDSCAPES.md §1 PEOPLE): three forms, none of
+	# them lit, so this is the one village with no stolen neon, and the stock's
+	# own size is the village -- three buildings, few people and old ones,
+	# living in what was already standing. Declaring `built` is TERRAIN
+	# (WorldStamp): it moves this landscape's island, and that is intended.
+	d.built = BiomeForms.new()
+	d.built.stock = [&"roundhouse", &"lean_to_broch", &"byre"] as Array[StringName]
+	d.built.plan = &"ring"
 	d.grade = Vector4(-0.04, 0.02, 0.04, 0.0)
 	# THE DARKEST NIGHT IN THE GAME, and nothing of the machines' lights it. This
 	# is the one place where a lantern is the only light there is.

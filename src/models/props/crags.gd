@@ -274,6 +274,249 @@ static func core_rack(k: Kit, v: int, c: int) -> void:
 		Remains.banks(k, [[0.0, 0.0, 0.4, 0.14]], d.snow[0], s)
 
 
+# --- what the crags' people live in (BiomeForms: roundhouse, lean_to_broch, byre) ---
+
+## The dressing's walling, cut: what every wall here is laid in.
+static func _walling(d: BiomeDressing) -> Array[Color]:
+	return [_cut(d.walling[0]), _cut(d.walling[1]), _cut(d.walling[2]), _cut(d.walling[3])]
+
+
+## Sods: the dressing's own turf, UNTAGGED on purpose. A ground mark on made
+## geometry pulls the land's treatment over it (CLAUDE.md, tagging); turf as a
+## colour is not a mark, and a roof of it takes the default made row.
+static func _turf(d: BiomeDressing) -> Array[Color]:
+	return [d.turf[0], d.turf[1], d.turf[2], d.turf[3], GroundColors.down(d.turf[0], 0.3), P.EARTH[2]]
+
+
+## A dry-stone round: courses of hand-laid stones on a circle of radius `r`, `h`
+## high, a doorway `door` wide facing +X with a lintel over it and the courses
+## carried across above. Joints alternate course to course and the ring steps
+## in a hair as it rises, the way a wall that has to carry a roof is battered.
+## Returns the top of the wall.
+static func _drystone_round(k: Kit, wall: Array[Color], s: int, r: float, h: float, door: float) -> float:
+	const CH := 0.24
+	var courses := ceili(h / CH)
+	var y := -0.06
+	var half := door * 0.5 / r
+	var lintel_y := h - CH * 1.4
+	for course in courses:
+		var rr := r - course * 0.015
+		var n := maxi(8, roundi(TAU * rr / 0.56))
+		var step := TAU / n
+		var off := step * 0.5 if course % 2 == 1 else 0.0
+		var ch := CH + Kit.j(s, course, 0.02)
+		for i in n:
+			var a := off + i * step
+			if absf(wrapf(a, -PI, PI)) < half + step * 0.5 and y < lintel_y:
+				continue
+			var col := wall[(i + course) % 4]
+			k.made.push(Transform3D(Basis(Vector3.UP, -a - PI * 0.5),
+				Vector3(cos(a) * rr + Kit.j(s, course * 40 + i, 0.02), y, sin(a) * rr + Kit.j(s, course * 40 + i + 1, 0.02))))
+			k.slab(0.0, 0.0, 0.0, step * rr * 0.95, ch, 0.42, s + course * 50 + i, GroundColors.down(col, 0.15), col, 0.02, 0.05, 0.0)
+			k.made.pop()
+		y += ch * 0.96
+	# The lintel: one long stone across the doorway's head.
+	k.slab(r - 0.02, lintel_y - 0.04, 0.0, 0.44, 0.16, door + 0.5, s + 77, wall[1], GroundColors.up(wall[1], 0.2), 0.02, 0.0, 0.0)
+	# A floor, dark, so the doorway opens onto a room and not onto the ground
+	# behind the house.
+	k.made.prism(0.0, -0.02, 0.0, r - 0.12, 0.01, r - 0.12, 12, P.INK[2], GroundColors.down(P.EARTH[1], 0.3))
+	return y
+
+
+## A conical roof over a round: `n` segments in four courses, each course laid
+## proud of the one below (the overlap is the whole drawing of a roof, as
+## `Houses.patch_slope` says) and its exposed edge dark. Drawn here rather than
+## through `patch_slope`, which sizes its courses to the slope's length and
+## would spend nine courses of forty cells on a cone this tall. The lowest
+## course is sods laid over the thatch's foot; the rest is thatch.
+static func _cone_roof(k: Kit, d: BiomeDressing, s: int, apex: Vector3, eave_r: float, eave_y: float, n: int, thatch: Array[Color]) -> void:
+	var turf := _turf(d)
+	var stations: Array[float] = [0.0, 0.3, 0.56, 0.8, 1.0]
+	var rings: Array[PackedVector3Array] = []
+	for ri in stations.size():
+		var v: float = stations[ri]
+		var ring := PackedVector3Array()
+		for i in n + 1:
+			var a := float(i % n) / n * TAU
+			var rr := lerpf(eave_r, 0.07, v) + (Kit.j(s, 200 + (i % n), 0.08) if ri == 0 else Kit.j(s, 210 + ri * 20 + (i % n), 0.03))
+			var yy := lerpf(eave_y, apex.y, v) + (Kit.j(s, 230 + (i % n), 0.05) if ri == 0 else 0.0)
+			ring.append(Vector3(apex.x * v + cos(a) * rr, yy, apex.z * v + sin(a) * rr))
+		rings.append(ring)
+	const LAP := 0.035
+	for ri in rings.size() - 1:
+		var mats := turf if ri == 0 else thatch
+		var pick := int(Rng.hash01(s, ri, 71) * mats.size()) % mats.size()
+		for i in n:
+			var a := rings[ri][i]
+			var b := rings[ri][i + 1]
+			var c := rings[ri + 1][i + 1]
+			var dd := rings[ri + 1][i]
+			var p := pick if Rng.hash01(s, ri * 47 + i, 62) > 0.2 else int(Rng.hash01(s, ri * 47 + i, 72) * mats.size()) % mats.size()
+			var col := Kit.tone(mats[p], 0.93 + 0.14 * Rng.hash01(s, ri * 29 + i, 73))
+			var face_n := (b - a).cross(dd - a)
+			var lay := face_n.normalized() * LAP if face_n.length_squared() > 1e-12 else Vector3(0, LAP, 0)
+			k.made.quad(b + lay, a + lay, dd + lay, c + lay, col)
+			k.made.quad(a, b, b + lay, a + lay, Kit.tone(col, 0.8))
+	# The smoke hole at the apex, and the peg through it.
+	k.made.prism(apex.x, apex.y - 0.03, apex.z, 0.14, apex.y + 0.02, 0.11, 6, P.INK[1], P.INK[1])
+	k.limb(apex + Vector3(0.0, -0.1, 0.0), apex + Vector3(0.03, 0.22, 0.02), 0.03, 0.02, 4, GroundColors.made(d.timber[1], GroundColors.TIMBER), Vector3.ZERO, Kit.SAWN)
+
+
+## A door of planks hung in a doorway `w` wide in a wall whose face is at `x`,
+## standing a little ajar. TIMBER: what the crags' timber weathers to.
+static func _plank_door(k: Kit, d: BiomeDressing, x: float, w: float, h: float, s: int) -> void:
+	var timber := GroundColors.made(d.timber[0], GroundColors.TIMBER)
+	var dark := GroundColors.made(d.timber[1], GroundColors.TIMBER)
+	k.made.push(Transform3D(Basis(Vector3.UP, 0.3), Vector3(x, 0.0, -w * 0.5)))
+	for i in 3:
+		var pw := w / 3.0
+		k.slab(0.0, 0.02, pw * (i + 0.5), 0.05, h - 0.04 * (i % 2), pw - 0.02, s + 300 + i, dark if i == 1 else timber, timber, 0.008, 0.0, 0.0)
+	k.made.pop()
+
+
+## Sods banked round the foot of a round wall.
+static func _sods_round(k: Kit, d: BiomeDressing, s: int, r: float, n: int) -> void:
+	for i in n:
+		var a := float(i) / n * TAU + 0.4
+		if absf(wrapf(a, -PI, PI)) < 0.45:
+			continue
+		k.clump(cos(a) * r, -0.05, sin(a) * r, 0.26 + Kit.j(s, 400 + i, 0.06), 0.13, s + 410 + i, d.turf[i % 2 * 2], 6)
+
+
+## A dry-stone round under a conical turf-and-thatch roof. 3.0 high. The
+## oldest shape people build and the one they went back to.
+static func roundhouse(k: Kit, c: int) -> void:
+	var d := BiomeDressing.of(c)
+	var s := 9600 + c
+	var wall := _walling(d)
+	const R := 1.45
+	var top := _drystone_round(k, wall, s, R, 1.3, 0.72)
+	_cone_roof(k, d, s, Vector3(0.04, 3.0, -0.03), R + 0.4, top - 0.1, 16, PropModels.Houses.THATCH_ROOF)
+	_plank_door(k, d, R - 0.16, 0.72, 0.95, s)
+	_sods_round(k, d, s, R + 0.15, 8)
+	# A peat stack against the wall and the stone the door is propped with.
+	for i in 3:
+		k.slab(-R * 0.55 + i * 0.04, i * 0.15, R * 0.78, 0.5, 0.16, 0.34, s + 100 + i, P.EARTH[1], P.EARTH[2], 0.02, 0.0, 0.0)
+	k.stone(R + 0.32, -0.04, -0.62, 0.15, 0.12, s + 91, d.stone[1], 5)
+	if d.cold():
+		for i in 4:
+			var a := i * TAU / 4.0 + 0.5
+			k.clump(cos(a) * 1.1, 1.9 - i * 0.05, sin(a) * 1.1, 0.42, 0.12, s + 500 + i, d.snow[i % 2], 7)
+
+
+## A timber lean-to built into a broken tower's wall. 2.8 high. The tower is
+## an arc of thick dry stone, tallest at the back and broken down toward the
+## gap at the front; the lean-to sits against its +Z flank under sods.
+static func lean_to_broch(k: Kit, c: int) -> void:
+	var d := BiomeDressing.of(c)
+	var s := 9700 + c
+	var wall := _walling(d)
+	const CX := -0.5
+	const R := 1.3
+	const CH := 0.26
+	const A0 := 0.55
+	const N := 10
+	var step := (TAU - 2.0 * A0) / N
+	for course in 12:
+		var y := -0.06 + course * CH * 0.96
+		var off := step * (0.5 if course % 2 == 1 else 0.0)
+		var rr := R - course * 0.012
+		for i in N:
+			var a := A0 + off + (i + 0.5) * step
+			if a > TAU - A0:
+				continue
+			# Tallest at the back, falling to the gap, and jagged.
+			var back := 1.0 - absf(wrapf(a - PI, -PI, PI)) / PI
+			var top := 0.9 + back * 1.8 + Kit.j(s, 300 + i, 0.25)
+			if y + CH > top:
+				continue
+			var col := wall[(i + course) % 4]
+			k.made.push(Transform3D(Basis(Vector3.UP, -a - PI * 0.5), Vector3(CX + cos(a) * rr, y, sin(a) * rr)))
+			k.slab(0.0, 0.0, 0.0, step * rr * 0.95, CH + Kit.j(s, course * 40 + i, 0.03), 0.5, s + course * 40 + i, GroundColors.down(col, 0.15), col, 0.025, 0.05, 0.0)
+			k.made.pop()
+	# What fell: rubble at the gap and inside the ring.
+	PropModels.Houses._spill(k, Vector2(CX + 1.15, 0.1), Vector2(0.8, 0.5), 7, s + 2, wall)
+	PropModels.Houses._spill(k, Vector2(CX - 0.3, -0.3), Vector2(0.6, 0.4), 4, s + 3, wall)
+	# The lean-to: two posts and a beam, planks from the wall down to it, sods
+	# over the planks, a hide hung across the open end.
+	var timber := GroundColors.made(d.timber[0], GroundColors.TIMBER)
+	var tdark := GroundColors.made(d.timber[1], GroundColors.TIMBER)
+	k.limb(Vector3(0.3, -0.05, 2.5), Vector3(0.28, 1.05, 2.48), 0.07, 0.06, 5, tdark, Vector3.ZERO, Kit.SAWN)
+	k.limb(Vector3(-1.3, -0.05, 2.5), Vector3(-1.32, 1.02, 2.5), 0.07, 0.06, 5, tdark, Vector3.ZERO, Kit.SAWN)
+	k.limb(Vector3(0.36, 1.05, 2.5), Vector3(-1.38, 1.02, 2.5), 0.06, 0.06, 5, timber, Vector3.ZERO, Kit.SAWN)
+	var slope := -atan2(1.72 - 1.08, 2.62 - 1.45)
+	for i in 6:
+		var x := 0.2 - i * 0.31
+		k.made.push(Transform3D(Basis(Vector3.RIGHT, slope), Vector3(x, 1.4 + Kit.j(s, 600 + i, 0.03), 2.03)))
+		k.slab(0.0, 0.0, 0.0, 0.29, 0.05, 1.34, s + 610 + i, tdark if i % 3 == 1 else timber, timber, 0.01, 0.0, 0.0)
+		if i % 2 == 0:
+			k.slab(0.02, 0.05, 0.1 - (i % 4) * 0.15, 0.32, 0.1, 0.5, s + 620 + i, d.turf[i % 4], d.turf[(i + 1) % 4], 0.03, 0.0, 0.0)
+		k.made.pop()
+	# A hide across the open end, facing +X: HIDE (89), what a door is made of
+	# where nobody has planks to spare.
+	var hide := GroundColors.made(P.EARTH[3].lerp(P.SAND[3], 0.35), GroundColors.HIDE)
+	k.face(Vector3(0.34, 0.0, 2.42), Vector3(0.34, 0.0, 1.55), Vector3(0.33, 1.0, 1.5), Vector3(0.35, 1.06, 2.44), hide)
+	_sods_round(k, d, s, R + 0.35, 6)
+
+
+## A byre: long, low, sunk into the slope. 2.2 high. Dry-stone walls under a
+## hipped roof of sods, the earth banked to the eaves along the back and both
+## ends, a wide door on the front for what it was built to keep.
+static func byre(k: Kit, c: int) -> void:
+	var d := BiomeDressing.of(c)
+	var s := 9800 + c
+	var wall := _walling(d)
+	var H := PropModels.Houses
+	var t: Array[Vector3] = H.walls(k, 3.6, 2.0, 0.78, s, wall[0], wall[1], Vector3(0.02, 0.0, 0.02))
+	for fi in H.faces(t).size():
+		var wf: Array = H.faces(t)[fi]
+		H.weathered(k, wf[0], wf[1], wf[2], wf[3], s + fi * 13, wall[2], d.growth)
+	var fb: Array = H.faces(t)[0]
+	H.door(k, fb[0], fb[1], fb[2], fb[3], 0.5, 0.17, 0.72)
+	var turf := _turf(d)
+	var r: Array[Vector3] = H.hipped(k, t, 0.32, 1.0, 0.64, 0.14, s + 60, turf, 0.0, turf[0], 2, 0.1)
+	# Sunk into the slope: earth to the eaves along the back and round both ends.
+	for i in 4:
+		k.clump(-2.05 + Kit.j(s, 400 + i, 0.15), -0.05, -1.2 + i * 0.8, 0.9, 0.82 + Kit.j(s, 410 + i, 0.1), s + 420 + i, d.turf[(i % 2) * 2], 7)
+	k.clump(-0.7, -0.05, -1.85, 0.85, 0.6, s + 430, d.turf[1], 7)
+	k.clump(-0.7, -0.05, 1.85, 0.85, 0.6, s + 431, d.turf[3], 7)
+	H.turf_bank(k, t, s + 20, c)
+	if d.cold():
+		H._snow_on(k, r, d.snow)
+
+
+## The crags' patched shelter (`BiomeDressing.shelter`): a small dry-stone
+## round under sods, a sheet of machine plate weighted onto the roof where the
+## turf failed, a plank door, peat stacked by it. Nothing wired in.
+static func roundhouse_shelter(k: Kit, s: int, d: BiomeDressing) -> void:
+	var wall := _walling(d)
+	const R := 1.0
+	var top := _drystone_round(k, wall, s, R, 0.85, 0.6)
+	_cone_roof(k, d, s, Vector3(0.03, 1.9, -0.02), R + 0.35, top - 0.08, 12, _turf(d))
+	# The plate: laid on the slope over the back, its corners held with stones.
+	# A flat sheet on a cone is a CHORD, inside the roof by r(1 - cos(half its
+	# span)): at 52 degrees that was a tenth of the radius and the play camera
+	# never saw it (tests/render/test_found_drawn.gd). 26 degrees and a lift of
+	# 0.09 clear the roof's own jitter on the outer edge and the chord in the middle.
+	var a0 := 2.15
+	var a1 := 2.6
+	var rl := 0.5
+	var rh := 1.2
+	var yl := lerpf(top - 0.08, 1.9, (R + 0.35 - rl) / (R + 0.35 - 0.07)) + 0.09
+	var yh := lerpf(top - 0.08, 1.9, (R + 0.35 - rh) / (R + 0.35 - 0.07)) + 0.09
+	# Wound so its front is (c - b) x (a - b) = outward-up. `rl` is the ring
+	# nearer the APEX, so c - b runs inward and up: worked out with numbers,
+	# because the first two guesses at this order were both wrong.
+	k.plate(Vector3(cos(a1) * rh, yh, sin(a1) * rh), Vector3(cos(a0) * rh, yh, sin(a0) * rh),
+		Vector3(cos(a0) * rl, yl, sin(a0) * rl), Vector3(cos(a1) * rl, yl, sin(a1) * rl), P.PLATE[2], P.PLATE[1], P.PLATE[4])
+	k.stone(cos(a0) * rh * 0.95, yh + 0.02, sin(a0) * rh * 0.95, 0.1, 0.08, s + 700, d.stone[1], 5)
+	k.stone(cos(a1) * rh * 0.95, yh + 0.02, sin(a1) * rh * 0.95, 0.09, 0.08, s + 701, d.stone[1], 5)
+	_plank_door(k, d, R - 0.15, 0.6, 0.78, s)
+	_sods_round(k, d, s, R + 0.12, 6)
+	for i in 3:
+		k.slab(0.55, i * 0.14, 0.85 + i * 0.02, 0.4, 0.14, 0.3, s + 500 + i, P.EARTH[1], P.EARTH[2], 0.02, 0.0, 0.0)
+
+
 static func glow_points(kind: int, _v: int) -> Array:
 	if kind == PropKind.THEODOLITE_MAST:
 		return [{"at": LENS_AT, "size": Vector2.ZERO, "color": Color(P.COLD[3], 1.0), "blink": false}]
