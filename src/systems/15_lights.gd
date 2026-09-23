@@ -801,6 +801,7 @@ func _update(delta: float, snap: bool) -> void:
 				_assigned[i] = null
 				continue
 			var mlevel: float = float(s.power) * dark * clampf(game.sky.bolt.w, 0.0, 1.0)
+			l.light_volumetric_fog_energy = FOG_NEON
 			if _set_light(l, s.at, float(s.range), compensate(MACHINE_COLD, tint, sun) * mlevel) and dark > 0.25:
 				pools.append(Vector4(s.at.x, s.at.y, s.at.z, float(s.range)))
 				pool_rgb.append(Vector4(MACHINE_COLD.x, MACHINE_COLD.y, MACHINE_COLD.z, 0.0) * clampf(mlevel, 0.0, 1.2))
@@ -829,6 +830,7 @@ func _update(delta: float, snap: bool) -> void:
 		var flame := is_flame(kind)
 		var lit_reach := reach * (FLAME_REACH if flame else 1.0)
 		var atten := FLAME_ATTEN if flame else ATTENUATION
+		l.light_volumetric_fog_energy = fog_scatter(s)
 		if _set_light(l, s.at, lit_reach, compensate(warm, tint, sun) * level, atten) and lays:
 			pools.append(Vector4(s.at.x, s.at.y, s.at.z, reach))
 			var nc: Vector3 = neon_colour(s)
@@ -879,6 +881,7 @@ func _update(delta: float, snap: bool) -> void:
 		night *= 1.0 - 0.9 * under
 		var reach := LANTERN_RANGE * (1.0 - 0.6 * under)
 		var rgb := compensate(WARM, tint, sun) * LANTERN_POWER * night * (0.94 + 0.06 * _flicker({"kind": PropKind.LAMP, "h": 0.5}))
+		lantern_light.light_volumetric_fog_energy = FOG_WARM
 		if _set_light(lantern_light, at, reach, rgb):
 			# The player's own pool comes first: it is the one that matters.
 			pools.push_front(Vector4(at.x, at.y, at.z, reach))
@@ -1107,6 +1110,21 @@ static func neon_colour(s: Dictionary) -> Vector3:
 
 ## Returns whether the light is on. `atten` is how steeply it falls off; a
 ## flame's is steeper over a much longer reach, so its pool has no edge.
+## HOW MUCH OF A LIGHT THE AIR CARRIES, BY KIND (fc, 2026-09-22, on frames). Stolen neon, a works strip and a machine's lens bleed their
+## colour into the mist -- that glow hanging in the bog is the stolen light made
+## visible. A street lamp, a window and a fire throw their light DOWN: at Godot's
+## default every one of them scattered fully, and a street of them turned the
+## slums' dark into one milky haze.
+const FOG_NEON := 1.0
+const FOG_WARM := 0.2
+
+
+static func fog_scatter(s: Dictionary) -> float:
+	if s.has("mob") or s.has("neon") or POWERED_SOURCES.has(int(s.get("kind", -1))):
+		return FOG_NEON
+	return FOG_WARM
+
+
 func _set_light(l: OmniLight3D, at: Vector3, reach: float, rgb: Vector3,
 		atten: float = ATTENUATION) -> bool:
 	var e := maxf(rgb.x, maxf(rgb.y, rgb.z))

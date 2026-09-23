@@ -264,6 +264,30 @@ const FOG_AERIAL := 0.22
 ## CONE and a machine's lens a shaft.
 const VOLUME_DENSITY := 0.021
 const VOLUME_ANISOTROPY := 0.25
+## THE AIR IS A LAYER ON THE GROUND, NOT A COLUMN FROM THE EYE (owner's fc,
+## 2026-09-22, on frames of six places under both cameras). Godot integrates an Environment's volumetric density
+## along the whole ray from the camera, so the light a lamp sends up crossed
+## `CameraRig.distance` of air -- 30 units above the world under ortho, 14.4 under
+## the lens -- and a number that changes nothing in the orthographic projection
+## decided how much light the air took: the moss at night took 30% off a lit tube
+## at arm's length, and pressing Z thinned every fog. A FogVolume standing on the
+## ground round the focus makes the path the air a thing actually stands in.
+## The gain keeps the ground's optical depth where the column put it under the
+## play camera (distance / (AIR_HIGH / sin(pitch))), so a day frame should
+## not move; what changes is that a light standing IN the layer crosses only the
+## air above it.
+## Two units: a lamp or a tube on a post stands at the top of it or above, so
+## its CORE reaches the eye at its own colour with the haze round it; at four,
+## a stolen tube in the moss arrived at 0.77 of itself (sweep, 2026-09-22).
+const AIR_HIGH := 2.0
+## At night the layer keeps half the column's thickness, and takes in NO
+## ambient light: the column's darkness between lamps was partly the air eating
+## them, and a night air lit by the sky is a milky one.
+const AIR_NIGHT := 0.5
+const AIR_INJECT := 0.0
+const AIR_BELOW := 3.0
+const AIR_WIDE := 120.0
+var _layer: FogVolume
 
 ## Per landscape type id: (warmth, wetness) in -1..1, read by the source's
 ## light cast. A type not listed casts neutral light (its BiomeDef.light_tint
@@ -879,6 +903,7 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	# can see the edges of.
 	e.volumetric_fog_density = VOLUME_DENSITY * float(a.bank) * lerpf(0.12, 2.4,
 		clampf(maxf(fog.z, maxf(air.x, maxf(nightly * 0.5, shut * 0.35))), 0.0, 1.0))
+	_lay_air(e, nightly)
 	# The grade, on the finished image. Same inputs the shader's own multiply
 	# had; one place that can see the whole frame.
 	var g: Vector4 = neon_grade_at(hour, neon_shares)[0]
@@ -892,6 +917,26 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	e.adjustment_brightness = clampf(1.0 - g.x * 0.35, 0.55, 1.0)
 	e.adjustment_saturation = clampf(1.0 - g.y * 0.30, 0.55, 1.3) * float(trim.saturation)
 	e.adjustment_contrast = clampf(1.0 + g.w * 0.20, 0.8, 1.35) * float(trim.contrast)
+
+
+## The column's density moved into the layer (see AIR_HIGH).
+func _lay_air(e: Environment, nightly: float) -> void:
+	if _layer == null:
+		_layer = FogVolume.new()
+		_layer.name = "air_layer"
+		_layer.shape = RenderingServer.FOG_VOLUME_SHAPE_BOX
+		var fm := FogMaterial.new()
+		fm.edge_fade = 0.35
+		_layer.material = fm
+		add_child(_layer)
+	var fm := _layer.material as FogMaterial
+	var gain := 30.0 / (AIR_HIGH / 0.8387)
+	fm.density = e.volumetric_fog_density * gain * lerpf(1.0, AIR_NIGHT, clampf(nightly, 0.0, 1.0))
+	e.volumetric_fog_ambient_inject = lerpf(e.volumetric_fog_ambient_inject, AIR_INJECT, clampf(nightly, 0.0, 1.0))
+	fm.albedo = e.volumetric_fog_albedo
+	e.volumetric_fog_density = 0.0
+	_layer.size = Vector3(AIR_WIDE, AIR_HIGH + AIR_BELOW, AIR_WIDE)
+	_layer.global_position = Vector3(focus.x, focus.y + (AIR_HIGH - AIR_BELOW) * 0.5, focus.z)
 
 
 ## What the land can hold (SkyGround), for snow, ash, wet and fog.
