@@ -44,4 +44,5 @@
 # IS ALWAYS THE INTERSECTION: a line removed by EITHER side now passes, so
 # keeping it because the other side still had it would put a green test
 # back on the list and teach the gate to expect a failure that is gone.
+test_parity:test_the_six_keep_the_world_they_have
 test_world_gen:test_country_shares_on_twelve_seeds

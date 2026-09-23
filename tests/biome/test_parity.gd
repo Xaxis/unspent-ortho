@@ -384,7 +384,10 @@ func test_the_six_keep_the_world_they_have() -> void:
 	eq(BiomeRegistry.count(), 7, "the sea and the six")
 	for s: int in M1:
 		var w := WorldGen.generate(s, SIZE)
-		eq(digest(w), M1[s], "seed %d" % s)
+		var got := digest(w)
+		eq(got, M1[s], "seed %d" % s)
+		if got != M1[s]:
+			print(breakdown(w))
 	guard = null
 	gt(float(BiomeRegistry.count()), 7.0, "the whole registry is back")
 
@@ -406,6 +409,38 @@ static func digest(w: WorldData) -> String:
 		props.append(p.pos.y)
 	parts.append(_md5(props.to_byte_array()))
 	return " ".join(parts)
+
+
+## WHICH KIND MOVED, AND WHETHER ANYTHING WAS DECIDED DIFFERENTLY. Printed beside
+## every failure. The props digest hashes raw float positions, so one ulp of
+## difference in one jittered prop changes it and nothing a player could see --
+## and a placement that flips (a prop that stands on one platform and not on
+## another) changes it too, which a player on the web WOULD see. Per kind: how
+## many were placed (the decisions), the exact digest, and a digest of positions
+## rounded to 1e-3 (the places, not their last bits). Counts and rounded digests
+## that match across two runs mean the difference is below anything that
+## matters; a count that does not is a decision to go and find.
+static func breakdown(w: WorldData) -> String:
+	# Packed arrays are values: each is read out, grown and written back.
+	var exact := {}
+	var rounded := {}
+	for p in w.props:
+		var e: PackedFloat32Array = exact.get(p.kind, PackedFloat32Array())
+		e.append(p.pos.x)
+		e.append(p.pos.y)
+		exact[p.kind] = e
+		var r: PackedInt32Array = rounded.get(p.kind, PackedInt32Array())
+		r.append(roundi(p.pos.x * 1000.0))
+		r.append(roundi(p.pos.y * 1000.0))
+		rounded[p.kind] = r
+	var kinds := exact.keys()
+	kinds.sort()
+	var lines: PackedStringArray = ["  props by kind (seed %d): kind count exact rounded" % w.seed_value]
+	for k: int in kinds:
+		var e: PackedFloat32Array = exact[k]
+		lines.append("    %-14s %5d %s %s" % [PropKind.NAMES[k], e.size() / 2, _md5(e.to_byte_array()),
+			_md5((rounded[k] as PackedInt32Array).to_byte_array())])
+	return "\n".join(lines)
 
 
 static func _md5(bytes: PackedByteArray) -> String:
