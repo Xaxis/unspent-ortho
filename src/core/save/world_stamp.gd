@@ -110,7 +110,10 @@ const UNKNOWN := "unknown"
 ##     a prop's model dealt by its kind and position, not its id; the spawn
 ##     village preferring a beach the black site can stand off; and a works site
 ##     thrown at its own landscape's regions instead of the whole land.
-const GEN := 21
+## 13. The spawn asks the south half of home before flat ground. Flat-before-rough
+##     woke 6 of 150 worlds (seeds 1-50 at 1300, 1477, 1666) in home's far north;
+##     those six move south, the other 144 are unchanged.
+const GEN := 22
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

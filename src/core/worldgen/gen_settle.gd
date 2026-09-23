@@ -173,9 +173,17 @@ static func villages(c: GenContext) -> void:
 	# Three asks, in order: flat coast on home, then home's rough coast levelled
 	# (seed 90210's home coast is terraced upland: 101 rough spots and no flat
 	# one, while other bodies had flat coast to spare), and only then any body.
-	var asks: Array = [[false, [cands, relaxed]]]
+	# [on home, pools, which half of home: 1 south, -1 north, 0 either]
+	var asks: Array = [[false, [cands, relaxed], 0]]
 	if home >= 0:
-		asks = [[true, [cands, relaxed]], [true, [rough]], [false, [cands, relaxed]]]
+		# SOUTH OF HOME BEFORE FLAT GROUND. The journey reads south to north from
+		# where he wakes, and flat-before-rough was asked first: on 7@1477 and
+		# 42@1666 home's only near-flat coast was in its far north, so a spot
+		# scoring 0.41 at v 0.10 won before the rough southern ones were looked
+		# at -- 76 of them, the best 3.72 at v 0.92 -- and he woke on the wrong
+		# end of his own continent. Flat still beats rough within a half, and a
+		# rough spot is levelled as every rough village is.
+		asks = [[true, [cands, relaxed], 1], [true, [rough], 1], [true, [cands, relaxed], -1], [true, [rough], -1], [false, [cands, relaxed], 0]]
 	# FIRST, A BEACH THE BLACK SITE CAN STAND OFF. The site stands where the spawn
 	# beach can see it (`BlackSite`): deep water, moated, `NEAREST` to `FURTHEST`
 	# out -- and the spine cannot be finished without it. The spawn used to be
@@ -188,6 +196,7 @@ static func villages(c: GenContext) -> void:
 	for want_site: bool in [true, false]:
 		for ask: Array in asks:
 			var on_home: bool = ask[0]
+			var half: int = ask[2]
 			if want_site and home >= 0 and not on_home:
 				continue
 			r = GenBodies.bounds_of(w, home) if on_home else c.land_rect
@@ -199,6 +208,9 @@ static func villages(c: GenContext) -> void:
 						if not c.defs[w.country[i]].spawn_home:
 							continue
 						if on_home and w.continent_at(int(p.x), int(p.y)) != home:
+							continue
+						# Home's own latitude, never the square's.
+						if half != 0 and ((p.y - r.position.y) / r.size.y > 0.5) != (half > 0):
 							continue
 						var d_in := c.inland[i]
 						if d_in < 8.0 or d_in > far:
