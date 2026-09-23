@@ -1,833 +1,99 @@
 # CLAUDE.md — unspent-ortho
 
-*UNSPENT*, rebuilt: a real-time action-survival game on a generated coast where
-half-broken machines hunt the people still living in the gaps. Godot 4.7,
-GDScript, orthographic 3D; every screen the player reads is one hacked slate made
-of machine parts. **`docs/VISION.md` is the destination** (the
-machines' plan, 20+ procedurally composed landscape types across surface,
-underground and orbital realms, a mecha sentinel per landscape, portals and time,
-crafts, mended high tech). **Nothing may look like Minecraft or any voxel game;
-every landscape must be hauntingly beautiful and detailed.**
+UNSPENT: a real-time action-survival game on a generated coast where half-broken
+machines hunt the people living in the gaps. Godot 4.7, typed GDScript,
+orthographic 3D, everything built in code. Every screen the player reads is one
+hacked slate made of machine parts.
 
-## The look is mid-rebuild — read this before you touch `src/render/` or `src/models/`
+Read before working in an area:
+- `docs/VISION.md`: the destination. `docs/ROADMAP.md`: what's next, in order.
+- `docs/LOOK.md`: the look of record (lit, not drawn). It outranks `docs/ART.md`.
+- `docs/DESIGN.md` (the game), `docs/STORY.md` (binding on every story line),
+  `docs/LANDSCAPES.md` (per-landscape specs).
+- A package's own file header states its contract. Headers can be wrong: check the
+  code under them before relying on one.
 
-The owner was shown twelve art directions and rejected all twelve: they all
-looked "papery" because they all inherited the same floor. **`docs/LOOK.md` is
-the direction of record and it outranks `docs/ART.md` wherever the two conflict.**
-The new direction is LANTERN — *the world is lit, not drawn*: no ink, no wash, no
-hatch, no paper; Forward+ on desktop with `gl_compatibility` as the web
-degradation path; the internal resolution off 640x360; real dynamic light and
-honest materials doing the work ink used to do.
+Never make anything look like Minecraft or a voxel game. Every landscape must be
+hauntingly beautiful and specific.
 
-**`floor` and `lit` have landed.** The base is **1920x1080**,
-`stretch/mode="viewport"` with `scale_mode="fractional"`, `forward_plus` on the
-desktop and `gl_compatibility` on the web through a `.web` override proved in a
-real exported build. And the world is now LIT rather than drawn: there is no
-hatch, no paper grain, no ink line, no screen-space outline pass and no `light()`
-in any lit shader. A shader says what the surface IS and the renderer lights it,
-against a real sun with real penumbra, a sky that colours the shade, many local
-lights that can cast, volumetric air and a tonemapper. Wear accumulates by world
-position (`SkyWear`, `matter_worn`), so the same machine rusts in the bog and
-blooms on the salt. The wave ran `floor`, `lit`, `slate`, `depth` and `degrade`,
-all landed; `form` is the only one still open, and it is narrower than it used to
-be.
-
-**What `form` still means, measured rather than remembered.** At play zoom the
-frame is 26.67 world units across 1920 pixels — **72 pixels per world unit**, so
-a 0.02 chamfer that was half a pixel at 640x360 is 1.4 pixels now and a 4-sided
-`strut` of radius 0.04 is a 5.8-pixel square bar. Three things follow, and none
-of them is "raise the budgets".
-**The material rows exist and are now REACHED across most of what a player looks
-at** — this paragraph has been rewritten twice for being behind the code, which
-is itself the warning. It first said `matter_of()` returns its default for every
-made surface (fixed, paragraph not); then that the rows were almost entirely
-untagged, one model file of sixty-four. `matter.gdshaderinc` carries THIRTEEN
-made rows — TIMBER 80, THATCH 81, CLOTH 82, ROPE 83, CLAY 84, CONCRETE 85,
-GLASS 86, TAR 87, ENAMEL 88, HIDE 89, BONE 90, CUTSTONE 91, SLATE 92 — several
-measured against real frames before they were believed. Counted 2026-09-20 after
-the tagging wave: six model files tag directly, but two of those are PALETTES, so
-the reach is about thirteen files and every building, roof, wall, station, fence,
-wreck, bone, landmark and holding in the game; nine of the thirteen marks have
-call sites. GLASS, TAR, ENAMEL and HIDE are the four still waiting, and ENAMEL is
-the instructive one: `landmark_models.gd` has constants literally called ENAMEL,
-and all eight of their uses are on the FOUND pen, so the row stays unreached
-because the name matched and the PEN decided. `GroundColors.made(colour, kind)` is the four-line
-plumbing; `settle_parts.gd` is the worked example, because tagging a PALETTE
-fixes every call site at once and cannot drift.
-
-**Three things about tagging that cost a frame each to learn.** (1) The mark
-rides in ALPHA, and `found.gdshader` reads that same alpha as a lamp — under 0.5
-a BEACON THAT BLINKS. Every made mark is 0.314..0.361 and `works.gd`'s BEACON is
-0.36, so the same number means "slate" on one pen and "blinking lamp" on the
-other. **Read the PEN, never the function name**: `Kit.rod`, `chamfer`, `plate`,
-`cable` and `hoop` are the five that build into FOUND (named in `kit.gd`'s
-header), `_rope_over` draws what a player reads as rope entirely in found stock,
-and the landmark builders take a first parameter called `k` that is the FOUND
-kit, unlike every other file in the package. (2) **A GROUND mark (40..70) on made
-geometry pulls the landscape's own ground treatment over it** — `towers.gd`
-carries the frame where that drew a landscape's stipple across every roof in a
-settlement. So turf, ash, sand and snow stay untagged on made surfaces however
-right the material name looks. (3) **A relief profile whose edge is narrower than
-a pixel cannot be seen however deep it is.** SLATE's first cut used CUTSTONE's
-plateau idiom, but at fourteen courses per world unit a `smoothstep(0.0, 0.09)`
-edge is 0.46 of ONE pixel and `dFdx` cannot resolve it, so TIGHTENING the edge
-made it worse; a bare `fract` ramp spreads the gradient over the whole five
-pixels. CUTSTONE keeps its plateau because 3.2 courses per unit is 22 pixels.
-Task #61.
-**Welding** reaches five call sites in THREE files (`props/kit.gd` 3,
-`props/rocks.gd` 1, `people/sculpt.gd` 1) of sixty-four, and
-`MeshKit.smooth_begin`/`smooth_end` — the pair this file used to present as the
-API — have **no callers anywhere**, so every machine and every sentinel is
-flat-shaded. Two independent audits found that gap separately, which is why it
-is written down here.
-**And 96 of 167 `strut` calls pass n=4** — re-counted with a paren-aware parse,
-because `strut(a, b, r, n, col)` takes two `Vector3(x, y, z)` arguments and a
-comma-split of the call text answers 8.
-
-**AND THE MODEL PACKAGE IS FULL OF PIXEL BUDGETS THAT WERE NEVER RE-DERIVED.**
-The floor moving from 640x360 to 1920x1080 tripled the pixels a world unit gets
-(24 to 72), and a shape authored to a SCREEN-PIXEL budget is now three times what
-its own comment says it is. Found 2026-09-20, all three self-consistent at the
-old floor: `kit.gd`'s stone LOD tiers rest on "one screen pixel at the play
-camera is 14/360 of a tile", so the 0.08-radius chip its worked example calls
-four pixels is 11.5 today; `houses.gd`'s wall lean is budgeted at "24 px a world
-unit: 3-5 px of lean" and the unchanged geometry now leans about 17; and
-`works_depot.gd` sizes its light strip to "survive the downsample to 640x360",
-which the engine no longer does. Each is now marked in place. **None of them has
-been re-tuned, deliberately** — whether the geometry is wrong is a frame and a
-triangle budget, not a sum, and the numbers are the commonest props in the world.
-What is certain is that nothing may be re-derived FROM the old budget. Search for
-a pixel count in a comment before trusting it, the way you would check a wave
-status against its directory.
-
-**This paragraph was wrong for weeks and nobody caught it**, because a stale
-contract reads exactly like a true one: it claimed `depth` was undone while
-`src/render/depth/` and `src/systems/13_fore.gd` were shipped, passing twenty
-tests. Check the directory before you believe a wave status.
-
-**So `src/render/`, every `*.gdshader*`, `palette.gd` and `src/models/` are frozen
-to that wave.** `src/core/` and `src/systems/` are untouched by it and safe to
-work in. **If you are adding a model, use `Kit`** (`src/models/props/kit.gd`):
-it holds the three MeshKits a model needs — `made`, `found` and `leaf` — and it
-is the only one of the three idioms in this package that can carry leaves at all.
-`Parts.hand/ruled` (which this line used to send you to) flips one MeshKit's
-style and is used by five files under `src/models/settlement/`; `FoundKit`'s
-statics are the third. **And weld what you build**: `smooth_range` reaches four
-call sites out of sixty-four model files, so the default is still a flat normal
-per face under a real sun. See `mesh_kit.gd`'s smoothing block for why that is a
-wave rather than a sweep — welding is per shape, so eight `cbox` calls are
-eight hard seams whatever you bracket.
-
-**The slate is drawn in the base's own pixels** (`src/ui/ui_base.gd`, docs/ART.md
-§9): every number in `src/ui/` and `src/dev/` is in 1920x1080 pixels, no UI layer
-carries a transform, and a world position needs no conversion because
-`unproject_position` already answers in them. **Two factors did the move and they
-differ on purpose**: the device, its bezel and its panes came across ×3, so the
-slate is the same share of the frame it always was, while the TYPE came across ×2
-(`UiFont`: a capital is 14 pixels, not 21) — so half again as much fits on the
-glass and the interface stopped shouting over a world that is now lit and sharp.
-`UiBase.PITCH` (2) is one pixel of the stolen module's own grid: a rule is one
-base pixel, a `UiDraw.px` is PITCH square, and a 9x9 `UiIcons` mark is a glyph on
-that grid while a `UiSketch` is a picture drawn at the base's full resolution.
-**Never spell a screen size** — ask `UiBase`. `UiBase.DESIGN`, `SCALE`, `fit()`
-and `to_design()` are the LEGACY 640x360 space and belong to exactly three
-drawers: the loading page (which `src/boot/shell.html` letters a second time by
-hand, held equal by `tests/export/test_export.gd`), the gallery, and the bolt
-layer inside the frozen `src/render/`.
-
-`../unspent` is the old Unity attempt. Read it for mechanics numbers and art
-direction (already distilled in `docs/research/`). **Never port its story, arcs,
-dialogue or lore**: all fiction is being rewritten (see `docs/DESIGN.md` §Story).
-
-## The loop (memorise this)
+## The loop
 
 ```sh
-tools/check.sh                              # THE gate: 3 test shards + 4 real frames side by side. ~35 s. Run before every commit.
-tools/test.sh [filter]                      # headless tests only (one process, ~45 s for all; filter by "file:method" substring)
-tools/shot.sh shots/x.png [options]         # one real rendered frame, ~2 s
-tools/shot.sh shots/g.png --scene=gallery [--filter=pine]   # every model, lit, on a plinth
-tools/map.sh --seed=N                       # top-down map + villages + a tile inside each country and ecotone
-tools/tour.sh tours/x.tour [boot options]   # play a scripted sequence through REAL input, frames per step
-tools/canon.sh [--accept]                   # the canon frames beside the accepted set on ONE contact sheet: shots/canon/sheet.png
-tools/audio.sh                              # bake every sound and draw its spectrogram (audio package)
-tools/audio.sh --score [--land=ID|--cross=A,B]  # minutes of the evolving score per landscape -> shots/score/
-tools/export.sh web|web-nothreads|mac|all   # export a build into build/<target>/ in seconds, print wasm/pck sizes (brotli, gzip)
-tools/web.sh [--nothreads] [--no-export] [--quick]  # export, boot in headless Chromium, frames in shots/export/; fails on errors, blank or non-integer canvas, silence, lost saves
-tools/check.sh --web                        # the gate plus both web builds in the browser (~2 min more)
-tools/deploy.sh [--prod] [--dir=DIR]        # export, put it on Vercel, and prove it runs THERE in a real browser
-tools/export.sh web --config=playtest       # a build of a master configuration (configs/), stamped with it and the commit
-godot --path .                              # play it (WASD, Shift run/dodge, Space jump, J swing, K dodge, E use, C make, I carry, M map, F lamp, Ctrl/Q crouch, Z hold to target, Esc pause, ` dev mode)
+tools/test.sh [filter]          # headless tests; filter is a "file:method" substring
+tools/check.sh                  # the gate: test shards + real frames (needs memory, see below)
+tools/shot.sh shots/x.png [...] # one rendered frame; options in src/boot_options.gd header
+tools/shot.sh shots/g.png --scene=gallery [--filter=NAME]
+tools/tour.sh tours/x.tour      # scripted real-input proof; each tour's header has its options
+tools/canon.sh [--accept]       # canon frames vs the accepted set
+tools/web.sh                    # export and boot the web build in headless Chromium
+tools/deploy.sh [--prod]        # deploy to Vercel and prove it loads there
 ```
 
-**Dev mode** (`docs/DEV.md`, `src/dev/`) is the slate's service mode, in the
-module's violet: `` ` `` (or home's dev row) opens it in any build whose
-configuration allows it, the web included — warp, time, weather, body, things,
-bodies, view, a readout (F3), clean pictures (F4) and notes (F2) that keep a frame,
-the state and the `tools/shot.sh` line that stages the moment again (from source
-they land in `shots/notes/`: Read them). On this machine it also edits the master
-configurations in `configs/`, makes stamped builds, keeps a shelf of them, plays,
-proves and deploys them, and runs the gate and any tour with the command its own
-header gives, showing the frames. A shot or tour sees none of it unless given
-`--dev[=PAGE[:ROW]]` or `--config=NAME`; `tours/dev.tour` is its proof.
+- **Look at the pictures.** After any visible change, shoot it and Read the PNG. A
+  green test says nothing about how it looks.
+- **Check memory before a full run:** `vm_stat | head -2`. Free pages × 16 KB under
+  ~500 MB means a full suite gets killed; use `tools/test.sh FILTER` instead.
+- **A test written to show a bug must fail first.** Put the bug back and watch it
+  go red before you believe the fix.
+- **Stage by name, never by coordinate** in tours and shots (`near KIND`,
+  `place NAME`, `at prop:KIND`).
+- After pulling, run `tools/_import.sh` before `godot --path .`, or a new
+  `class_name` fails to parse.
 
-**A run is never seen and never takes the keyboard.** A hundred shots and tours an
-hour must not interrupt the person at the machine, so a tool run opens its window
-**off the screen entirely** (`tools/_focus.sh` `focus_position`, far outside any
-display — it renders identically there), unfocusable (`project.godot`,
-`display/window/size/no_focus`), and `tools/_focus.sh` hands the keyboard back
-within about a twentieth of a second, because macOS brings the app forward
-whatever the window's flags say. Only a session a person means to play takes the
-focus (`src/main.gd`: no `--shot`, no `--tour`). `UNSPENT_KEEP_FOCUS=1` puts a
-tool run on screen and in front, to watch it play. The header of `tools/_focus.sh`
-records the two tidier-looking approaches that do not work, so nobody spends the
-afternoon on them again.
+## Code rules
 
-**Shipping it.** `github.com/Xaxis/unspent-ortho` (public) is the remote; commits
-are the owner's, as everywhere else. `tools/deploy.sh` exports the threaded web
-build, puts it on Vercel (project `unspent`, team `xaxis-projects`) and then loads
-the deployed URL in a real browser to prove the host is serving it correctly —
-the threaded build only starts on a cross-origin-isolated page, so the headers in
-that script are load-bearing, not decoration. Each build is served from
-`/b/<sha>/` with `/` redirecting to it, so every file can be cached forever and a
-returning player can never run a new pack against an old engine.
-`VERCEL_TOKEN` lives in `.env` (never committed) and in the repository's secrets,
-with `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`. A push to main deploys a preview;
-production — what `unspent.world` will serve — is a deliberate act: run the
-deploy workflow by hand with `production`, or `tools/deploy.sh --prod`.
+- Typed GDScript (`untyped_declaration` is an error). No `.tscn` beyond
+  `src/main.tscn`, no imported art or audio.
+- Determinism: no `randf()`. Use `Rng.hash01(seed, x, y, salt)` or
+  `Rng.make(seed, salt)`.
+- Game logic lives in `src/core/` (pure, headless-testable). Systems are
+  `src/systems/NN_name.gd`, auto-loaded in name order; never edit `game.gd` to add
+  one.
+- A landscape is one file in `src/content/biomes/`. Nothing outside it branches on
+  a landscape by name; shared code reads `BiomeDef` declarations.
+- Colour goes through `matter_albedo()`; nothing writes `ALBEDO` directly.
+  Transparent world geometry needs an explicit `render_priority`, or it silently
+  doesn't draw.
+- A `class_name` must not shadow a native class or method name.
+- **Worldgen changes move every seed.** Anything that changes what a seed makes,
+  including the body of a `surface`/`scatter` recipe, bumps `WorldStamp.GEN` by
+  hand and re-accepts `tests/biome/test_parity.gd`. Coordinate that with whoever
+  owns the current GEN.
+- Comments say why and give the contract. No narration, no history.
 
-Shot and boot options live in `src/boot_options.gd` (its header lists every one).
-The everyday ones: `--seed=N --size=N --at=X,Y --village=N --place=NAME --hour=H
---zoom=F --walk=DX,DY,SECS [--run] --frames=N --scale=N --scene=game|gallery|title
---stats --load=N --saves=DIR`; staging a moment: `--weather=KIND:S --lamp --spawn=K[@DEG],K --act=NAME[:MS]
---give=ID:N --held=ID --build=STATION --put=KIND --use[=KIND] --hold=SECS
---screen=NAME --explore=N --parade=K --folk=N --fauna=KIND:N --look= --pose= --face=`.
-A body put out at a bearing (`--spawn=runner@-112`, the tour's `spawn runner@-112`)
-is in **degrees, 0 east, 90 south**, like `--face`. A yaw read off
-`tests/models/test_machines_silhouette.gd` (radians, already taken down the play
-camera) is asked for as its **negation**, because a model is drawn at
-`rotation.y = -facing`: the runner's worst yaw 1.96 is `@-112`. Get the sign wrong
-and the frame shows the machine from its best side while its name claims the worst.
-Boot, the tour and the claims test all read the token through `Spawner.staged`.
+## Working alongside other sessions
 
-**Tours** (`tours/*.tour`, commands in the header of `src/systems/98_tour.gd`) are
-how a feature is proven reachable: walk there, press the real action, `await`
-what a player would see, shoot it. A tour fails if an awaited thing never comes,
-and saves a `FAILED-lineN` frame. `until WHAT SECS` is the honest opposite: let the
-world run and stop the moment WHAT is true, for watching something change
-instead of promising the world will stand still in front of a hunter. The runner outlives the game it began in: when
-that game gives way (to the title, or to a loaded game) it follows the next one, so
-a tour can leave, `await title`, press a real key on the title (`key ACTION`),
-`await game`, and hold two frames to each other (`same A B TOL [X,Y,W,H]`, a crop for
-anything small). Other awaits: `saved`, `station:NAME` (in reach). Each tour saves under
-`user://tool-saves/<tour name>`, clear of the player's saves and of other tours.
+- Several sessions and builders share this repo. Run `git worktree list` and
+  `git status` before touching anything shared.
+- One builder, one worktree, one branch. Never write in another session's
+  worktree, commit on its branch, or delete it. Don't kill godot processes you
+  didn't start.
+- Builders branch from `origin/main`: `git fetch origin && git checkout -B <branch>
+  origin/main`.
+- Stage explicit paths. Commit with a pathspec (`git commit -F msg -- <paths>`),
+  never `-a` or `add -A`. Use `tools/git-here.sh <root> <branch> <git args>` when
+  your shell might be in another worktree.
+- Never rebase, reset or force-push `main`.
+- Scratch files and commit messages go in your session's scratchpad, not
+  `/tmp/claude-501`.
+- Send a peer measurements, not conclusions, and re-derive a peer's claim before
+  building on it.
 
-**An `await` means SINCE I LAST ASKED.** A question that is answered is spent, in
-the runner and in every system that keeps a latch of its own: `_await` erases its
-`_seen` and calls `GameSystem.tour_forget(what)` on every system, and the five
-that latch (22, 32, 34, 44_sentinels, 48) erase there. **A latch IS the
-declaration that a key is an EVENT** — so compute from the live world wherever
-you can, latch only what the world cannot be asked about afterwards, and never
-put a latch in front of a live computation of the same word, because the live
-half is consulted second and never gets to say no.
-`tests/tours/test_tour_claims.gd` fails on both mistakes, which is the only
-warning you get: the bug they make is a GREEN step that proved nothing.
-machine-read.tour's night theft pressed `use` once where a survey post needs
-three, robbed nothing and turned no machine, and `await theft` passed for two
-waves off a theft earlier in the run.
+## Commits and shipping
 
-**A frame that claims a subject has to hold it.** `shot NAME with SUBJECT[,SUBJECT]`
-says what the picture is OF — `mob:KIND`, `down:KIND`, `body:KIND`, `prop:KIND`,
-`land:ID` (or `land:a|b`), `border:A-B`, `station:fire`, `app:map`, `lamp`,
-`unlit`, `folk`, a hazard, or `pixels:RRGGBB[:N]` when only the picture can
-answer (name the colour as the PALETTE holds it: a lit thing is matched washed up
-to `PIXEL_WASH` of the way to white, because emission carries a neon tube toward
-the page as it burns and the flat value never reaches the screen) — and the
-runner asks again at the instant the shutter falls, throwing the
-frame away and failing the tour if it is not there. A refused claim says what the
-world holds instead, so the diagnosis costs no second run. `spawn` fails when the
-roster has no such kind, when nothing was placed, or when what was placed landed
-outside the frame. `tests/tours/test_tour_claims.gd` holds every tour to it in the
-gate: the first frame after a `spawn` must say it holds that body, and **a frame
-whose NAME says a landscape, a machine, a fire, a lamp, a crowd, a pylon, the
-neon or an event must declare it**. Nothing is worse evidence than a frame that
-proves the opposite of its own name, because the next person believes it.
-
-**Stage by name, never by a coordinate.** `near KIND`, `at prop:KIND`,
-`ground KIND` and `place NAME` ask the world where the thing is; `at X,Y` is a
-number copied off a map run that the next worldgen change quietly invalidates.
-Five frames in this repo were pictures of the wrong place for months because of
-one — a player in a pond called "driftwood taken", a coast village called
-"snowfield", a coordinate called "the coast-moss border" that is coast heartland.
-
-**Every tour carries its own options in its header**, so `ls tours/` is the list
-and the file itself says how to run it. Each wave adds its own. Run them all before
-integrating a wave, and never delete or weaken a tour to make one pass.
-
-**Look at the pictures.** A green test says nothing about how the game looks. After
-any visible change, shoot the affected place and Read the PNG. After any model
-change, shoot the gallery. Judge beauty, not just correctness.
-**But a SHOT cannot show the guide**: `58_guide` sets `_off = options.shot != ""`,
-so the goal line and the key row are switched off in every `tools/shot.sh` run,
-not only the single-frame ones its comment mentions. Four shots of an empty glass
-before reading that. A guide line needs a TOUR, where `options.shot` is empty —
-and `feel.tour`'s `01-wake-the-goal` is the frame for it.
-
-Never pipe a gate through `tail`/`head` in a way that hides its exit code. The
-tools print their own summaries.
-
-## Layout
-
-| Path | What |
-|---|---|
-| `src/core/` | Pure rules and data: world data, queries, clock, RNG, body, inventory, crafting, weather. No nodes, no rendering. Headless-testable. |
-| `src/core/worldgen/` | World generation stages (`WorldGen.generate` runs them): shape, landscape layout, relief, water, settlements, access, surface, scatter, places. Every stage reads the registry; nothing here knows a landscape by name. |
-| `src/content/biomes/` | One file per landscape type (docs/VISION.md §3). Adding a landscape is adding a file here. |
-| `src/core/story/`, `src/content/story/` | The story (docs/STORY.md): what has been found and said (`Story`), what is written on a readable thing (`StoryFragments`), a conversation in progress (`StoryTalk`), and the words themselves (`StoryContent`). |
-| `src/core/settlement/`, `src/systems/46_settlements.gd` | Holdings: the pieces a player puts up, what they make and what they cost to keep, what a machine can sense of them, and the app on the slate (`h`). Models under `src/models/settlement/`. |
-| `src/core/raid/`, `src/core/notice/`, `src/systems/48_raids.gd` | Why and when the machines come for a holding: a reading taken off it and carried home, the attention that buys, the four warned steps, the party and what it goes for, and what the yard looks like after. Models under `src/models/raid/`. |
-| `src/core/realm/`, `src/systems/20_realms.gd` | Realms (surface, underground, orbital, the eras) and the shafts between them: which landscapes a realm holds, its light and airs, where a portal lies, and what a crossing keeps. |
-| `src/core/fight/`, `src/core/mobs/` | The fight simulation (`FightSim`, fixed 8 ms slices), blows, plate, grip, outcomes; mob state, senses, brains, spawner. |
-| `src/core/target/`, `src/systems/42_target.gd`, `src/ui/ui_target_view.gd` | Targeting (docs/DESIGN.md §Targeting): who may be locked and in what order (`Targeting`), what a body reads as (`TargetRead`), the system that holds the lock, leans the camera and sweeps a field, and the tags, brackets and read it draws. |
-| `src/core/craft/`, `src/systems/44_crafts.gd` | Crafts (docs/DESIGN.md §Crafts): what each one crosses, boarding and launching, wear and wreck, and the models under `src/models/crafts/`. |
-| `src/core/works/`, `src/systems/34_works.gd` | The depot a region the plan is working keeps: where it stands (derived), what has been done to it, the bodies it puts on the land, its three working parts and the ground closing over a broken one. Model in `src/models/works/`. |
-| `src/core/landmarks/`, `src/systems/22_landmarks.gd` | The places worth the walk: the kinds, where each stands on an island, how far off it can be read, what its cache holds and what has been found and opened. Models in `src/models/landmarks/`. |
-| `src/core/loot/`, `src/core/gear/economy/` | One economy: what a thing yields when it is broken, beaten or OPENED (`Drops`), materials and rarity, and the walker that says whether a player can really get to a piece (`Sources`). |
-| `src/core/sentinel/`, `src/systems/44_sentinels.gd` | The keeper a landscape has: its design (`designs/`), its phases, the three ways it can be taken, and one live instance per region. Models under `src/models/machines/sentinels/`. |
-| `src/core/disposition/`, `src/core/stealth/` | Roles in the machines' plan, what each body makes of the player, interference per plan network; noise, cover and `StealthQuery`, the one door every sense goes through. |
-| `src/core/survival/` | Taking from the world (`Takes`), stations, eating, sleeping, lamp oil, the strand laid by the spawn. |
-| `src/content/` | Tunables and data tables as GDScript consts: `tuning`, `items`, `recipes`, `roster`. |
-| `src/render/` | Terrain mesher, transitions, decor, world view (chunk streaming on a worker), camera, sky light, weather visuals, shaders, palette. |
-| `src/models/` | Procedural meshes: `props/`, `machines/`, `people/`, `animals/`. Any script here with `static func gallery() -> Array` shows up in the gallery. |
-| `src/actors/` | Nodes in the world: player, mobs, hit marks (`MobFx`). |
-| `src/core/save/` | Saving: the registry (`SaveGame`), the core state (`SaveCore`), the file (`SaveFile`), slots and autosave rules. |
-| `src/dev/` | Dev mode (docs/DEV.md): who can reach it (`DevMode`), master configurations (`ConfigSchema`, `GameConfig`, `ConfigChoices`, `configs/*.json`), build stamps (`DevStamp`, `stamp_build.gd`), cheats, notes, the readout, background jobs and the shelf (`DevJobs`, `DevBuilds`), and its app on the slate (`UiDevScreen`, `pages/`). |
-| `src/boot/` | The loading page (`BootPage`, `BootStages`), the hand-over of a made world (`BootWorld`), the one script that names the scenes (`BootScenes`), the web shell and the browser probe. |
-| `src/systems/` | `NN_name.gd` game systems, loaded in order: 05 save, 10 sky, 12 landscape, 15 lights, 16 vents, 20 realms, 30 mobs, 33 avatar, 35 folk, 36 parade, 37 fauna, 40 fight, 42 target, 44 crafts, 44 sentinels, 46 settlements, 47 defences, 49 story, 50/52 survival, 51 harvest, 53 tracks, 56 economy, 70 audio, 75 music, 90 ui, 94 dev, 98 tour. |
-| `src/ui/` | The slate (docs/ART.md §9): one hacked tablet drawn in code (`UiSlate`), its apps (carrying, making, map, home, gear, machine reads, saves, title), the HUD as its edge overlay, the pixel font, scans; `SlateFeeds` lets other packages fill gear, reads and saves. |
-| `src/audio/` | Procedural synthesis, the sound sheet, beds, machines, music, the mix. |
-| `src/game.gd` | Wires one running game together from BootOptions. |
-| `src/main.gd` | Entry point; boot scene selection through `BootPage`; `--shot` capture. |
-| `tests/` | `tests/**/test_*.gd`, extend `TestCase`, methods `test_*`. Runner loads every `src` script too. |
-| `tools/` | The loop above. Keep it small: a new tool must replace work you do every day. |
-| `tours/` | Scripted real-input proofs (see Tours above). |
-| `docs/` | `ART.md` (binding look), `DESIGN.md` (what the game is), `ROADMAP.md` (what's next), `research/`. |
-
-## Conventions
-
-- **Typed GDScript.** `untyped_declaration` is an error. Use `:=` or explicit types;
-  type `for` loop variables over untyped arrays (`for r: int in [...]`).
-- **Everything built in code.** No `.tscn` beyond `src/main.tscn`, no imported art
-  or audio. Meshes via `MeshKit`, colours via `Palette`, sounds generated.
-- **Every colour goes through `matter_albedo()` and nothing writes `ALBEDO`
-  directly.** The two renderers disagree about what a value in `ALBEDO` MEANS,
-  and the difference is a stop and a half. Measured, a flat unshaded quad,
-  in = (0.500, 0.250, 0.125): **Forward+** returns (0.737, 0.537, 0.388), which
-  is `linear_to_srgb(in)` — it reads `ALBEDO` as LINEAR light and encodes the
-  frame itself; **Compatibility** returns (0.502, 0.247, 0.114), the value
-  unchanged. The palette is sRGB display values, so on Forward+ they must be
-  decoded first or the whole game is lifted and flattened — which it was, from
-  the moment the floor moved. `matter_albedo()` (`src/render/matter.gdshaderinc`)
-  is the one door and it decides from the `sky_linear` global, which SkyLight
-  writes once at boot from `Quality.forward_plus()`. The old rule said the
-  opposite ("straight into ALBEDO; converting made everything black") and was
-  true of Compatibility only. `tests/render/test_colour_space.gd` holds it,
-  because the failure is silent and looks like a grading choice.
-- **Two lit materials, and the difference is MATERIAL now, not technique.**
-  MADE geometry (`src/render/world.gdshader`) is timber, mud, thatch, cloth and
-  turf: rough, matte, irregular, nothing about it straight. FOUND geometry
-  (`src/render/found.gdshader`: machines, pylons, plate, glims) is METAL:
-  panelled, ruled, with a real specular response and seams that catch the light.
-  **Neither has a `light()` any more** — the renderer does the lighting, and a
-  shader's whole job is to say what the surface is (ALBEDO, ROUGHNESS, SPECULAR,
-  METALLIC, and a NORMAL bent by the material's own relief, `matter_bump`).
-  `src/render/matter.gdshaderinc` holds the material rows, the colour-space door
-  and the wear. Vertex channels are still MeshKit's (`style`, `style2`,
-  `style_blend`, `wash2`, `wash_blend`, `sway`, `sway_phase`); `style` no longer
-  picks a hatch, it tells one landscape's ground from another's.
-- **Transparent world geometry needs a `render_priority`, or it silently does not
-  draw.** At the default 0 it is drawn and then painted over — not dimmed, not
-  z-fighting: **absent**, even lifted a whole world unit clear of the ground. In
-  use: track marks 9, people 10 (they drew after the old outline pass), `MobFx` 12.
-  Pick one deliberately and say in the file why it sits where it does, because the
-  ordering decides what can hide what.
-- **No grid on screen.** Terrain is contour terraces; never add per-tile colour or
-  square geometry. Boxes only as parts that are chamfered, tapered or broken up.
-- **Coordinates.** Tile space `Vector2(x, y)`, x east, y south; 3D is `Vector3(x, h, y)`.
-  Level `l` is `l * WorldData.STEP` high. A body steps ±1 level; 2+ is a cliff.
-  Rotation: a model faces +X at `rotation.y = 0`; set `rotation.y = -facing`.
-- **Determinism.** No `randf()`. Positional: `Rng.hash01(seed, x, y, salt)`.
-  Sequences: `Rng.make(seed, salt)`.
-- **`class_name` must not shadow a native class** (`Sky` failed). New class names
-  need the import cache refreshed; the tools do it automatically — **and that is
-  exactly why a new one can break the game for the owner while every test passes.**
-  A `class_name` resolves out of Godot's global class cache. `tools/_import.sh`
-  refreshes it whenever a script is newer, so every test, shot, tour and gate sees
-  the new class; a person running `godot --path .` by hand after a pull does not,
-  and the file fails to PARSE — which takes down whatever loads it. Two new classes
-  did this in one evening (`RoadHold`, `WorldFar`) and the suite could not see
-  either, because the suite is the thing that fixes it on the way in. So: after
-  pulling, `tools/_import.sh` before playing from source; and a NEW class used by a
-  system is safer reached through a `const X := preload(...)`, which is resolved by
-  path and cannot go stale — which is why `src/models/` has always done it that way.
-- **Game logic in `src/core` or in an actor's `drive/step` methods that take
-  explicit inputs and delta**, so tests and bots can run them without devices.
-- **The act that answers a question is the act that stops the question being
-  asked.** So anything that proves a thing happened has to be written down AT the
-  moment it happens, never looked for afterwards — by then the world has moved on
-  and the only honest answer is "nothing is being asked", which reads exactly like
-  "it never happened". Found four times in one day wearing four costumes: a tour
-  `await` that passed off a latch set long before (98_tour's spend rule); a
-  sub-arc's thanks, unreachable because breaking the yard is what stops the region
-  asking for the yard to be broken; a works part that could not be opened because
-  the survey post beside it answered the same key first; and `Broken`'s
-  `worked_down`, which had to be recorded because a prop that has been taken from
-  looks like a smaller prop. When you catch yourself asking the live world whether
-  something was done, ask instead who wrote it down.
-- **A landscape's own declaration outranks the shared list, and the shared list
-  is usually older than the landscape.** Four bugs in one evening were this, and
-  every one read as a world that had broken: the Ruined Metropolis's own iron ore
-  called an intruder in its ground (declared in `BiomeDef.ore`, checked against
-  `props`); Steam Row read as a village with a bog in it for all hundred and
-  thirty tiles of its core (the Sulphur Jungle declares `village_ground = MUD`
-  and the shared forbidden list bans mud); the Middens' pools called unrimmed
-  (it declares `pool_rim_ground = SWARF`, the check read "peat or mud"); and a
-  village cap of 28 that no world could reach, because `12 + (lands - 6)` assumed
-  every landscape brings people and five declare `villages = 0` on purpose. The
-  shared list was right when there were six landscapes and every village was
-  somebody's field. **So before adding a landscape to a rule's exception list,
-  check whether the landscape already declared the answer** — `BiomeDef` is the
-  authority for what a landscape holds, the way `BiomeDef.hazards` is for what it
-  presses a body with, and a shared rule that cannot see a declaration will keep
-  reporting content as breakage.
-  **AND UNREACHABLE FROM ITS OWN RECIPE IS NOT THE SAME AS UNUSED.** A landscape
-  declares a wash for a ground its `_surface` can never return, and it looks like
-  dead content that costs nothing to delete. It is not: a COUNTRY's tiles carry
-  its neighbours' grounds wherever a border reaches in, and `GroundColors` keys
-  the wash on the country, so that declaration is what decides how a neighbour's
-  ground looks INSIDE this landscape — which is the whole reason the wash takes a
-  country at all. Measured on the green towers, five seeds at 512: between 145
-  and 546 of its four thousand tiles carry a ground its own recipe cannot lay,
-  up to 11% of the landscape. Deleting the entries would hand those borders back
-  to the shared default silently, in the exact case the per-country rule exists
-  for, and it would have read as a tidy-up forever. The check is one grep away
-  and it is the wrong grep: **ask the world which grounds a country's tiles
-  really carry, not which ones its recipe returns.**
-  **AND THE SAME ROT REACHES THE TESTS AND THE BASELINES, WHERE IT IS QUIETER.**
-  Three were found in one afternoon, all still describing the world as it was at
-  six landscapes and one island. `test_journey_runs_north_from_a_southern_coast`
-  names six `Country` slots by hand — the thing this file forbids — so it is a
-  claim about a sixth of the content, and it asserts NOTHING AT ALL on a seed
-  whose home continent was dealt none of the three it asks for. `test_parity` is
-  known to be muted to six landscapes and is ALSO pinned at a size where every
-  seed grows one continent, so the body stage, the sea between continents and the
-  journey across them lie outside it entirely. And ten landscapes had the local
-  `docs/STORY.md` promises every inhabited land, while eight — every one added
-  since the six — had villages and nobody in them. A rule written against the
-  content goes on passing forever once the content outgrows it, so **when you add
-  to the registry the question is not only "does the suite still pass" but "which
-  claims now cover less than they say".**
-- **A speedup that moves a tile is not a speedup, it is a re-acceptance wearing
-  one.** Worldgen output is pinned by `tests/biome/test_parity.gd` and by every
-  frame in the repository, so a faster stage that lands things half a tile
-  elsewhere costs a parity re-acceptance and a re-shoot, and buys load time the
-  owner has said in writing he does not wait on ("loading time doesnt matter",
-  asking for the bigger world). So the measurement has TWO halves and the second
-  is the one that counts: `BlackSite._sea` went 3,265 ms to 334 (a Dictionary and
-  `ground_at` per neighbour became a `PackedByteArray` and a direct read of
-  `w.ground`) **and seed 7 still lands on (143.5, 1030.5)**. Profile with
-  `WorldGen.last_timings` / `last_detail` before reaching for anything: the two
-  biggest stages are roads and the country score fields, and both were looked at
-  and DECLINED on exactly this rule. **The lever that DOES pass it is general and
-  large**: a GDScript method call is about ten times an array index and `append`
-  on a Packed array copies it, so reading `w.level`/`w.ground`/`w.country`
-  directly and sizing arrays once took a coarse-world block from 480 ms to 34.
-- **A count of things built is not evidence that anything was drawn.** Far blocks
-  wound backwards built cleanly, dispatched their draw calls and had their
-  primitives counted -- the stats line read 121 of 121 while the world was not on
-  the screen. The same shape as a test runner printing "0 load errors" over a
-  parse error that dropped five files, and a green suite over a comment that was
-  never inserted. **An instrument that reports on the step before the one you
-  care about will report success for a failure every time.** Check the thing
-  itself: read the pixels, read the file back, ask the live camera.
-  **ASK THE OBJECT, NOT YOUR MODEL OF THE OBJECT.** One off-theme prop took
-  three clean, principled, wrong fixes -- a site's ground bleeding over a
-  border, the seam's own tile being over one, a scoring bonus -- because each
-  was reasoning about PLACERS and so could only produce a hypothesis about
-  placers. Printing the prop itself (position, ground, neighbours, distance from
-  the spawn) named the culprit in one run: iron twice and stone once on scree,
-  23.5 tiles from the spawn, which is the way-in seam's signature. The
-  measurement was available before the first guess. When something is wrong with
-  a thing the world contains, print THAT THING and read what it is standing in.
-  **AND THE COMMENT MAY BE DESCRIBING AN INTENTION RATHER THAN THE CODE — EVEN
-  WHEN IT NAMES THE EXACT RULE BEING BROKEN ONE LINE ABOVE THE BREAKING OF IT.**
-  Three of these in one day, and none was drift: all three were wrong when they
-  were written. `StoryWorld.guaranteed`'s header says "Do NOT duplicate that
-  reading here — the dealer's answer is the authority, or the two drift and the
-  gate stops meaning anything", and the next line is
-  `return land == COAST or BiomeRegistry.guaranteed(land)`, which duplicates it;
-  the dealer put the coast on about half the continents, so the player's own town
-  was cast across an ocean and the whole spine followed it. A turf test's header
-  said the colours were frozen in `src/render/` and unfixable there, while four
-  of the five were `d.grounds` in content, which is why nobody had touched them
-  for weeks. `test_era`'s header claimed a work stamps the ground it stands on,
-  in two opposite versions across its life, for a stamp that has never existed.
-  A stale contract at least used to be true; this kind never was, and it is
-  worse, because a comment that names the rule reads as proof the rule was
-  considered. **A header is evidence about what somebody meant, never about what
-  the code does — and the more precisely it states the rule, the more it is worth
-  checking that the line underneath obeys it.**
-  **AND THE OPPOSITE COSTS THE SAME AFTERNOON: A COMMENT THAT IS RIGHT, READ
-  AFTER THE WORK INSTEAD OF BEFORE IT.** The slums' house count was chased
-  through five levers — more boroughs, a tighter repeat, a wider platform — and
-  four were rejected after measuring, one of them taking three tests red on the
-  way. `slums.gd` line 78 had said where the cap actually was the whole time:
-  "The rest of the cap is in GenScatter's row placement, not in this file." The
-  same day, a test's header said a strait was wadeable because the ocean was
-  shallow, which was false, and another said a landscape's turf colours were
-  frozen in `src/render/`, which was also false. So the files in this repository
-  are neither trustworthy nor worthless: they are EVIDENCE, and the cheapest
-  possible move is to read the ones nearest the thing you are about to change
-  BEFORE forming a hypothesis, then check what they claim against the code. Both
-  failures — believing a wrong comment and not reading a right one — cost an
-  afternoon each, and reading first is what would have prevented either.
-  **AND "READ IT FIRST" IS NOT ENOUGH, BECAUSE THE SECOND ONE WAS READ TWICE.**
-  `slums.gd` was opened twice that afternoon and the eye went to the tunable
-  declarations both times — the naming comment sat FOUR LINES above the values
-  being edited. It was not skipped; it was read past, because the answer had
-  already been decided to be a knob, and a comment naming a different CLASS of
-  answer is invisible to someone who has committed to one. That is the same
-  failure as inferring what a teammate is doing instead of asking: both are a
-  conclusion reached before the evidence and then defended by not seeing it. So
-  the guard is not "read the file", it is **notice when you have already chosen
-  the KIND of answer** — a threshold, a constant, a knob, somebody else's bug —
-  and go looking specifically for the sentence that says it is a different kind.
-  **AND THE COMMONEST WRONG MOVE OF ALL IS READING THE SHAPE OF THE CODE INSTEAD
-  OF THE THING IT STANDS FOR.** Ten wrong hypotheses across two sessions in one
-  day and every one had this form: an operator, a threshold, a variable name, a
-  grep pattern or a piece of git syntax was read as if the symbol were the
-  meaning. `HEAD~3` was read as "three changes back" when it counts COMMITS and
-  merges let it walk sideways. `d.grounds\[` was grepped against a file that
-  writes `d.grounds = {` and answered "declares nothing" for seven declarations.
-  `FLOOR if gb < 0.22` was read as a minority case when `gb` is massed at zero
-  and it is 80% of the band. **And the sharpest of them: consistency is not
-  evidence.** Four landscapes write `gb >` for the "more" state, so the one
-  writing `gb <` looked like a typo and was one step from being flipped with a
-  `GEN` bump behind it — until the field's own definition said `big` is "where a
-  ground GATHERS", which for a ruined city makes "slab where nothing gathered
-  over it" exactly right. The majority idiom is not the authority; the thing's
-  own declaration is. Before changing a line because it looks wrong, read what
-  the values in it actually ARE, and print them.
-  **AND A REVERT THAT DOES NOT REVERT READS EXACTLY LIKE A SECOND CAUSE.**
-  `test_parity`'s re-acceptance asks you to put the change back and watch the old
-  hashes return. I reverted one file to `HEAD~3` and parity still failed, which
-  looks precisely like "something else is riding along" — and `HEAD~3` already
-  CONTAINED the change, because `HEAD~n` counts COMMITS, not changes to a file,
-  and merges let it walk sideways into a branch that already has your work. The
-  version that answers the question is the commit's own parent: `git show
-  <sha>^:path`. The same shape caught the other session the same day, running a
-  single shot by hand to reproduce a gate failure while the gate was still
-  running — control and experiment were the same condition, and it "reproduced"
-  beautifully. **And the constructive form of that rule is the instrument to
-  reach for first**: a claim about ONE thing's effect is asked by taking that ONE
-  thing away and asking again. `test_a_body_cannot_walk_into_a_tower` claimed the
-  land round a landmark is still ground, and asked it by setting aside the
-  bearings where the tile the body STARTS on is not standable and where a solid
-  prop lies across the line — the start, and the furniture, and never the STEP
-  the body was about to take. The lighthouse stands on a level-5 knoll, so two of
-  the eight steps are cliffs (lv5 → lv3 east, lv1 → lv5 west) and both were
-  reported as its stonework walling the neighbourhood. Walking each line twice,
-  once with `set_blocks(&"landmarks", ...)` and once with it emptied, needs no
-  theory about what else might be standing there and cannot be fooled by any of
-  it.
-  **And the worst version of this is a test that goes GREEN AGAINST THE BUG.**
-  `Events.hint(text, key)` looked like it fed the key cap, so a test was written
-  to prove five systems were lettering the wrong key onto the glass -- and it
-  passed, because `Hud.teach(text, _key)` DISCARDS that argument and no cap was
-  ever drawn from it. The lie certified itself. The only thing that catches this
-  is expecting red and getting green: **when a test you wrote to demonstrate a
-  bug passes first time, the test is wrong until proven otherwise.** Put the bug
-  back and watch it fail, every time, before you believe the fix. **The commonest
-  way a test excuses itself is an escape hatch for a moment that did not
-  arrive**: a guide test staged a runner, and when the runner had not roused
-  itself that frame it skipped its own assertions and passed — with the entire
-  feature deleted. STAGE the moment (`mood`, `disposition`, `pos` set by hand)
-  rather than waiting for the world to produce it, or the test reports on the
-  weather.
-  **AND THE SAME THING HAPPENS ONE LEVEL UP: A CONTROL THAT CANNOT FAIL IS NOT
-  EVIDENCE.** An A/B was built to ask whether one commit's leftover state broke
-  three tests, and both arms came back identical with zero failures, which reads
-  like a clean acquittal. It was not an acquittal, it was a null instrument:
-  **the runner walks its own traversal order and a filter only SELECTS, it never
-  sequences**, so two of the three victims ran *before* the suspect in both arms
-  and the exposure being tested never happened. The arms agreed; nobody had
-  checked they could have disagreed. And the execution order was printed four
-  lines above the results, in the same log the conclusion was read out of. So
-  before a run, **say what a NEGATIVE would look like** — name the failure the
-  run is capable of producing. If you cannot name it, it is not an experiment,
-  and a green from it certifies nothing. (The order itself is one command:
-  `grep -E '^ *(ok|FAIL) ' <log> | awk '{print $2}' | sed 's|:.*||' | awk
-  '!seen[$0]++'`. And beware that 12 of the 256 test files share a basename, so
-  those positions are among NAMES, not files.)
-  **And a DEFAULT can do the asserting.** `here.get("answered", true)` read off
-  an empty dictionary returns the caller's own `true` — so a player standing in
-  no region at all reported as a finished chapter, and the test that caught it
-  blamed a bug in the chapter rules that does not exist. A default on a
-  "is this done / did it work" question is the caller supplying the evidence and
-  then believing it: assert the key is THERE, then read it.
-- **A LAZY CACHE IS A HITCH WITH A DELAY ON IT.** `TrackMarks` built each
-  footprint's height field, two images pixel by pixel, mipmaps and two textures
-  on first use and remembered them: 18.5 ms, paid once per shape-and-ground. It
-  reads as free because the SECOND step costs nothing — and it is not a warm-up
-  cost either, because the combinations are not all used at the start. **The
-  player pays it again at every border they cross onto a ground that wears
-  differently**, which is exactly the moment the frame is already busiest.
-  "Remembered after first use" hides a stall wherever the first use happens to
-  fall; build it when the world is made, or accept it deliberately and write down
-  why (that file's header does both).
-- **"PURE AND DERIVED" IN A HEADER IS A PROMISE THAT SOMETHING IS CACHEABLE, AND
-  THREE TIMES IN ONE DAY IT MEANT NOBODY HAD.** It says the answer is a function
-  of the world and cannot drift — which is exactly the licence to compute it once
-  and keep it. `Works.sites` and `Landmarks.sites` do. `Chapter.ore_standing`
-  (224.6 ms a tick) and `StoryPlan.cast` (51 ms, twice every 0.2 s) did not, and
-  both carried the phrase. When you read it, check whether the promise was
-  collected. **And key such a cache on the WORLD OBJECT, not on
-  `seed:size:realm`**: those three name a world the game grows once, so a seed
-  key is correct in play and silently makes a TEST unable to fail — a suite that
-  grows one seed twice to prove a layout is deterministic gets handed the first
-  answer back and compares a thing against itself (`Portals.in_world`,
-  `StoryPlan.cast`).
-- **RESCHEDULING A COST IS NOT FIXING IT, AND IT MAKES THE SYMPTOM WORSE.**
-  `24_holds` read every chapter every frame, and `Chapter.read` walks
-  `world.props` to count a region's standing ore: 86.74 ms a frame. Moving it to
-  once a second looked like a 300x win and was measured as one. It was not a
-  fix — it was the same work on a different clock, and it converted a LOW FRAME
-  RATE, which reads as "slow", into a 224.6 ms STALL once a second, which reads
-  as "broken". The median frame was a healthy 8.3 ms the whole time and the
-  owner's word for the result was "jumpy". **Work too expensive to do every
-  frame is usually too expensive to do at all**: the question is never how often
-  to pay it, it is why it is recomputed when its inputs cannot have moved. A
-  prop never moves and worldgen never adds one, so the sweep had one answer for
-  the life of a world. Ask what announces a change (`Events.landmark_found`,
-  `took`, `sentinel_fell`, `works_broken`) and recompute then — an idle frame
-  then costs nothing, which no timer can manage.
-- Comments say *why* and give the contract. No narration of what the next line does.
-
-## Working in parallel
-
-- One builder, one worktree, one branch, one **owned directory set** (named in its
-  brief). Touch shared files (`game.gd`, `tuning.gd`, `project.godot`, `world_view.gd`)
-  with the smallest possible additive edit, so merges stay mechanical.
-- A branch is done when: `tools/check.sh` is green in its worktree, its own new
-  shots were looked at, and the feature is **reachable from a normal game start**
-  (or from `--scene=gallery` for models). Unreachable code is not a feature.
-- **Stage explicit paths. Never `git add -A` or `git commit -a`** in the main
-  checkout. Another session's work in progress lives in the same tree and a sweep
-  takes whatever it finds, including files that are not yours and were not ready
-  (`03e25bb` swept up CLAUDE.md, docs/ROADMAP.md and an unfinished
-  `src/core/raid/attention.gd` along with the one test it meant to add). Run
-  `git status` before and after every commit; if a path you did not touch is
-  staged, unstage it rather than explain it in the message.
-- **One run of a tour at a time per checkout.** `shots/tour/<name>/` is a single
-  directory, so two concurrent runs overwrite each other's frames and both come
-  out worthless with a green exit. `tools/tour.sh` now refuses the second run.
-- Integration is sequential: merge, run `tools/check.sh`, look at the shots, next.
-- **Never edit under `src/` while a gate is running, and do not believe a gate
-  that ran over an edit.** Each shard loads its scripts when its own process
-  starts, so "the frames are already shot, it must be safe" is wrong. A
-  half-written `src/systems/NN_*.gd` takes down every system after it in name
-  order and the failures name the VICTIMS, not the file: twenty-six reds saying
-  "90_ui is loaded from src/systems", "lights system", "the guide system loads",
-  and nothing anywhere pointing at the file being typed (measured 2026-09-18; the
-  same tests were green in forty seconds on the finished tree). If a gate comes
-  back with a pile of "X is loaded from src/systems", run `git status` before
-  you believe a word of it.
-
-## Another session may be running right now
-
-Assume you are not alone: waves run for hours, and the owner opens other sessions.
-**Look before you touch anything shared:**
+Every commit is the owner's:
 
 ```sh
-git worktree list                       # a worktree is someone's live desk
-git branch --list 'a2/*' 'm2/*'         # branches a wave is writing to
-pgrep -ix godot | wc -l                 # runs in flight (-i: the binary is "Godot"; -x godot alone counts zero)
-sysctl -n vm.loadavg                    # 14 cores here: over ~20 means saturated
-vm_stat | head -3                       # FREE PAGES x 16KB. Under ~500 MB, a full suite dies.
+git -c user.name=Xaxis -c user.email=william.neeley@gmail.com commit -F msgfile -- <paths>
 ```
 
-- **Never write in another session's worktree**, commit on its branch, or delete it.
-  What is under `.claude/worktrees/` belongs to a builder that is probably mid-edit.
-- **A shell can be moved into another worktree between one command and the next,
-  and sometimes between a check and the write it was guarding.** In one day it put
-  stray commits on four branches, ran a `git add` of one builder's paths inside
-  another's tree, and left an integrator unable to reach the main checkout at all.
-  Three guards that look sufficient are not: a `pwd` checked in an EARLIER call
-  proves nothing, because the move happens after it; `git -C <path>` is refused
-  outright when the sandbox believes the session is elsewhere, so it cannot aim at
-  your own tree either; and an inline `cd X && git ...` or `if [ ... ]; then git
-  ...; fi` is refused as too complex to verify. What works is
-  **`tools/git-here.sh <worktree-root> <branch> <git args...>`**: one process that
-  cds, asks git itself where it is and what branch it is on, and only then `exec`s
-  — there is no gap to be relocated through.
-- **A bare `git commit` is unsafe by construction in a session whose shell can
-  move, and this is worse than it sounds: it does not FAIL in the wrong tree, it
-  SUCCEEDS.** It sweeps whatever index it finds, so a commit landed on another
-  builder's branch carrying their sixteen staged files under someone else's
-  message. Nothing was lost and nothing warned. Guarding the path is not enough
-  — the path was pinned and the INDEX was not. So **always limit a commit by
-  pathspec**: `git commit -F msg -- <your files>`, which in the wrong tree finds
-  those paths unmodified and does nothing. It is the only form that cannot do
-  damage quietly, and it pairs with `git-here.sh`, which refuses loudly. Note a
-  pathspec cannot carry a NEW file, so `git add` it explicitly first — that is
-  still safe, because in the wrong tree the file does not exist either.
-- **Repairing one of these is more dangerous than causing it.** The obvious fix
-  (`git reset --soft HEAD~1` to shed a wrong commit) is safe only while that
-  commit is still the tip, and the owning session has usually already amended it
-  by the time anyone else notices — at which point the reset destroys their real
-  work instead. Check the tip, say what you found, and let the owner repair
-  their own branch.
-- **Before writing a line on a task, run `git status` across the worktrees and say
-  so.** Four times in one day two builders wrote the same fix; the two that were
-  caught were caught by that one command, and both times the other builder was
-  further along. It is also the integrator's job to say who holds a task — the two
-  that were NOT caught were handed out twice without saying.
-- **A GUESS CROSSES A SESSION BOUNDARY AS A FINDING, AND LABELLING IT DOES NOT
-  STOP IT.** Four of these in one day between two sessions: a failing tour handed
-  over as "probably your ground move" that predated both of us; `Works.sites`
-  handed over as "probably more marked landmarks" when 9.52 ms of the 9.72 was
-  `stand_near`; two ground declarations handed over as "dead content, costs
-  nothing to delete" that decide how a neighbour's ground looks across 3.5-11% of
-  a landscape; and one landscape's measurement offered as evidence about another
-  landscape. **The one that matters is the second, because it WAS labelled a
-  guess and still had to be caught** — the receiver cannot see how you arrived at
-  it, so the label is a word in a message and the content is a conclusion. What
-  actually worked, all four times, is that the receiver MEASURED rather than
-  accepted. So: send the measurement, not the conclusion drawn from it, and when
-  you receive one, re-derive it before you build on it or pass it on. A peer's
-  number is worth more than a peer's answer, and a peer's answer is worth about
-  as much as your own first hypothesis — which today ran ten wrong in a day.
-- **Never rebase, reset or force-push `main`**, and never rewrite pushed history.
-  Merge, and only the branches of the wave you are integrating.
-- **Do not kill stray `godot` processes.** One of them is likely another session's
-  tour, and killing it fails a proof someone is waiting on.
-- **Keep total builders across all sessions to about six.** Past saturation nobody
-  goes faster and the clock-watching tests start lying. If the load is already high,
-  wait rather than launch.
-- **AND THE THING THAT KILLS A RUN IS MEMORY, NOT LOAD — WE READ THE WRONG NUMBER
-  ALL DAY.** Four full `tools/test.sh` runs were killed by the OS on 2026-09-20,
-  across two sessions, and every time the load average looked survivable. The one
-  that died at 215 tests of 2,038 did so at load **17.75** with the box reporting
-  45% free system-wide but only **3,593 pages actually free — about 56 MB** — and
-  20.1 million pageouts. Later, load read a comfortable **9.63** with 60 MB free:
-  the load average says go and the machine cannot hold the suite. A run that dies
-  a tenth of the way in is not a flaky run, it is a box out of memory. So **check
-  `vm_stat`'s free pages before a full suite, not `vm.loadavg`** — loadavg is the
-  right question for "will my timings lie" and the wrong one for "will this
-  finish". And when the box is thin, the cheaper decisive form of an
-  order-dependence question is a TARGETED run: the suspect file plus its victim
-  files in one process, in runner order, which costs a fraction of the memory and
-  answers the same question — at the price of not proving the rest of the set
-  unchanged.
-- **Wall-clock results lie under load, and SLACK IS FOR WAITING, NOT FOR COSTING.**
-  `TestCase.machine_slack()` (and `tools/_slack.sh` for tool timeouts) is right for
-  "how long may I wait for something to happen" — a job, a page, a body arriving —
-  because that genuinely takes longer on a busy machine. It is wrong for "how much
-  does this cost": it clamps at 8, so it can hand a cost bar eight times its real
-  value and the test can no longer fail for a real reason. **A cost is measured with
-  `TestCase.best_of(n, fn)`** (the cheapest of n runs — load only ever ADDS time, so
-  the minimum is the honest number and the bar stays tight), or `TestCase.middle()`
-  where the work cannot be repeated whole, or best of all stated as a SHARE of
-  something measured in the same run. It was cached once per process until
-  `machine_slack`'s own header explains what that cost: two shards of one gate
-  disagreeing 3.2x about the same machine at the same moment. A timing failure while
-  a wave runs must still be re-run alone before it is believed.
-- **A builder starts from `origin/main`, not from whatever its worktree was cut at**:
-  `git fetch origin && git checkout -B <branch> origin/main` is the first line of a
-  brief, and a builder that runs for hours takes main again when it moves under it.
-  A wave now runs longer than the gaps between other people's merges, so one cut
-  before another wave landed writes against a contract that no longer exists —
-  declaring yields against a loot table with no economy behind it, or holding a
-  world to every landscape after realms made a world one realm's.
-- **A change under `tools/` does not reach a running wave**: every worktree holds
-  its own copy, frozen when it branched. Patch the live worktrees too, or the fix
-  only applies to the next wave.
-- Untracked scratch a session drops into another worktree (an `override.cfg`, say)
-  belongs in `.git/info/exclude` so it cannot end up in someone's commit.
+No `Co-Authored-By`, no generated-by line, no attribution of any kind. Messages lead
+with why, in short sentences.
 
-## Commits
+Remote: `github.com/Xaxis/unspent-ortho`. A push to main runs the CI gate and
+deploys a preview. Production (`tools/deploy.sh --prod`) is deliberate.
+`VERCEL_TOKEN` lives in `.env` and is never committed. With `gh`, use
+`env -u GITHUB_TOKEN gh`.
 
-Author is always the owner, set on the command itself:
-
-```sh
-git -c user.name=Xaxis -c user.email=william.neeley@gmail.com commit -F msgfile
-```
-
-No `Co-Authored-By`, no generated-by lines, no attribution of any kind. Messages
-lead with why, in short sentences.
-
-## Contracts between parallel work (change only with every user updated)
-
-| Seam | File | Rule |
-|---|---|---|
-| Signal bus | `src/events.gd` (autoload `Events`) | sfx, message, hint, hit, fight_ended, killed, took, made, time_skipped, screen_changed, saved. `hint(text, key)` is the teaching channel: said in its moment or dropped, never queued behind a fight's quiet the way `message` is, so no lesson arrives out of context. Because it is dropped, a lesson whose moment is "the fight is over" (a machine breaks off still near, still hushing the glass) must be held by whoever owns it until `Hud.can_teach()`, never emitted into the quiet, or it is lost for good. **`hint`'s second argument reaches nothing today**: `Hud.teach` discards it, and the key cap on the glass is fed by `90_ui` (`set_hint`), which asks `PlayerSettings.cap_of(action)`. Every key a player is shown or told is ASKED of the live `InputMap` and never spelled -- `PlayerSettings.label_of` / `cap_of` / `spell` are the one door, held by `tests/settings/test_taught_keys.gd`, which reads the shipped source. `sfx` takes any name: `src/audio/sound_names.gd` maps it (ALIAS table, `work_`/`build_`/`alert_`/`snatch_`/`step_` patterns); a new emit adds a line there, and a test fails on an unmapped literal. A built station emits `made(station, 1)`. The bus declares signals a package does not own: the raids five (`settlement_noticed`, `attention_changed`, `raid_warned`, `raid_began`, `raid_ended`) are declared here but emitted ONLY by `48_raids`, and the settlement four (`settlement_founded`, `structure_built/damaged/destroyed`) ONLY by `46_settlements`. |
-| Blows that are not the player's | `src/core/fight/fight_sim.gd` | `FightSim.strike(m, blow, from)` is the ONE door for anything other than the player's swing to hurt a body (a turret). It meets the swing's own rules — the plate from where it came, the hit window, flare, stall, second act, nerve — and emits `struck` instead of `hit`, so `Events.hit` still only ever means the player struck something (the guide, sabotage, the score and the hitstop all read it that way). The body turns on where the blow came from, and remembers it: `MobState.struck_from` is that point, INF when the last blow was the player's. A kill it makes still goes through `killed` (every counter of kills sees it) with `by_player` false: no hitstop, no shake, and no scrap in the creel. |
-| Systems | `src/systems/NN_name.gd` extends `GameSystem` | auto-loaded in name order (scripts compile on loader threads during world gen); never edit `game.gd` to add one |
-| Player condition | `src/core/body.gd` | fight owns health/wind/grip; survival owns hunger/wet/load/lamp oil; the lamp action (15_lights) owns `lamp_lit`; UI only reads |
-| The player's body | `Player.hero` / `Player.sim` | in a running game the fight body owns position and facing: anything that moves or turns the player sets `hero.pos`/`hero.facing` too (`Survival.face`, the tour's `at`) |
-| Carrying | `src/core/inventory.gd`, `src/content/items.gd` | `held` is the tool and the weapon; `wear(id, uses)` wears an edge; `worn`/`wear_kit` for salvage kit |
-| Making | `src/core/crafting.gd` | UI calls `Crafting.missing / why_not / make_in` and `Survival.stations_near / describe_target / eat / hold` directly (`UiLink`) |
-| Figures | `src/models/figure_model.gd` | `FigureModel.create(kind)` loads `models/machines/<kind>.gd` (always FOUND, whatever material is passed) or `models/animals/<kind>.gd`; animal mobs use `AnimalModel.spawn(kind, mat, seed)` so none look alike. Poses stand walk alert windup strike hurt dead; `part_position()`, `set_part_lit`, `flare_part`, `set_hunting(on)` (the mob says when it is running you down; the eyes lock), `top_toward(up)` (the posed body's highest point, for a tell), `draw_calls()` (budget: a machine 6). A machine's built-in lamps blink `MachineModel.disposition` (&"indifferent" \| &"wary" \| &"observant" \| &"hostile"), which starts at its role and which the disposition system sets on a live mob's model. |
-| People | `src/models/person_model.gd` | `play_action` (swing dodge hurt work downed carried), `set_held`, `set_look`; people draw after the outline pass (render priority 10) and are held by their rim, never inked. Looks dress by land and trade with `PersonLook.dress(spec, BiomeDef.hazards, trade, seed)` (gear, patches, gaunt), then `PersonLook.set_apart(look, taken, hazards, seed)` so no two in a village share a silhouette; a crowd sets `pose_hz = PersonModel.CROWD_HZ`, the player keeps 0; whoever places a figure sets `model.sun = game.sky.sun` (its shadow twin follows it) |
-| Props | `src/models/prop_models.gd` | `PropModels.node(kind, variant, country)` (surface 1 is FOUND on found.gdshader: never set material_override); `glow_points(kind, variant, country)` says where a model's lights and flames are, in its own frame and colour (15_lights reads it: a pool for the kinds in its `SOURCES`, a glint and a wet-ground reflection for every other kind that declares one; `"blink": true` puts it on the machines' beat). A variant with no light returns none. Props turn by `-rot`. **A model may have LEAVES**, a third part beside MADE and FOUND: `Template.leaf_*`, cards built by `Kit.canopy`/`Kit.sprays` and drawn by `src/render/foliage/leaf.gdshader` (double-sided, cut with discard, lit through), baked into a chunk's `props_leaf` surface with `WorldView.leaf_material()`, which 18_crowns writes the clearings into. Anything that measures a model's extent reads `leaf_v` as well, and anything that shows one prop outside the chunk bake under a `material_override` adds `PropModels.leaf_node(kind)` beside it, or the override draws every sprig as the square it is cut from. `Broken.work_down` cuts MADE and FOUND only, so nothing with leaves may be worked down (`tests/render/test_foliage.gd`). **A card's `COLOR.a` is a byte, not an enum**: the sprig to cut in the low `Kit.LEAF_SHAPE_BITS` and, above them, how much SNOW lies on that card (`Kit.leaf_code/leaf_shape/leaf_snow`). A builder says how laden a plant is; the shader lays it on the side of each leaf that faces the sky, in lumps, so snow keeps the crown's silhouette and its dapple and never becomes a white lid over it. **A FOUND part that no bearing of the play camera draws fails `tests/render/test_found_drawn.gd`**: the scrap tree's plate faced the ground and was culled for the model's whole life, and a missing thing raises no error. **World gen may DEAL a prop its model**: `WorldProp.variant` (default -1 = take the one the id hashes to), and every reader asks `PropModels.variant_of(p, seed_value)` rather than hashing the id itself — a dealt variant that reaches the mesh but not the lights is a house lit where its tube is not. `neon_point(kind, variant, country)` says where a model runs stolen neon and in what colour, read off the model's own NEON-marked geometry, so the light and the thing casting it come from one place -- **for the kinds that carry that mark, which today are houses and murals.** A SHACK declares its tube as a `glow_points` entry with `neon: true` instead, and `neon_point` returns `{}` for it, so anything asking whether a prop runs stolen neon asks `glow_points` for `neon: true`, not `neon_point` (found 2026-09-22 when the canon's stolen-light check asked `neon_point` and got nothing for the one prop whose purpose is stolen neon). A kind is capped at `PropModels.MAX_VARIANTS` (16) by the template cache's key packing (`(kind * MAX_VARIANTS + variant) * SLOTS + country`): a seventeenth silently collides with the next kind's variant 0. **Variants are PER LANDSCAPE**, because the country is already a factor of that key: `variants(kind, country)`, `pick_variant(kind, h, country)` and `variant_of(p, seed, country)` all take one, and a caller inside a running world passes the real country or it deals a model this landscape does not build. What a BUILDING's variants are is `BiomeForms` (see the Built forms row) — `GenScatter.HOUSE_MODELS`/`HOUSE_NEON` and `15_lights.NEON_HOUSE_VARIANTS` were three copies of one coastal answer and are gone. |
-| Built forms | `src/core/biome/biome_forms.gd`, `src/models/props/towers.gd` | What a landscape's people BUILT: which shapes their buildings take and how those stand. Declared as `BiomeDef.built`, a `BiomeForms`, in the shape `BiomeDressing` set — a landscape writes down only what it ARGUES WITH and `BiomeForms.of(index)` is the one door. Three fields: `stock` (form ids, one dealt to each building so no two in a settlement share a silhouette — which is why HOW MANY buildings there are is the stock's own size and is never written down beside it), `plan` (`&"ring"`, detached round a square, or `&"row"`, a frontage either side of a street) and `apart`. Unset it builds `BiomeForms.PLAIN`, the eight one-storey forms every landscape raised before the field existed, dressed by `BiomeDressing` in whatever this landscape is made of; `RAISED` is the city's six. **The FORM TABLE (`FORMS`: `reach`, `high`, `lit`) lives in CORE on purpose**: it holds no geometry, so world gen reads it directly and there is no second copy to drift, and the geometry stays under `src/models/props/` keyed by the same form id. A building's `reach` becomes that prop's own `WorldProp.solid`, so a tower stops a body at a tower's width. Classified **TERRAIN** in `WorldStamp`, not LOOK: the stock's size, each form's footprint and the plan decide where every building goes, so moving it moves the id of every prop placed after the first village. A `row` plan wants FLAT relief — world gen refuses a spot whose nine neighbouring tiles are not level, and on terraced ground that leaves a street with one building on it. `tests/biome/test_forms.gd` fails on a form with no builder, two forms that are one model, a table that lies about which forms are lit, and a stock past the cache's ceiling. |
-| Sky and the real lights | `src/render/sky.gdshaderinc`, `src/render/sky_light.gd` | **The hour's colour is the LIGHT's colour, not a multiply over every surface.** SkyLight splits its composed tint into a hue (the sun's `light_color`, and the ambient's) and a level (`light_energy`), builds the one `Environment` (`build_environment`), and drives it every frame: a `ProceduralSkyMaterial` that is what metal and water REFLECT and where the shade takes its hue, an ambient LEVEL stated as a plain number (`DAY_AMBIENT`, `NIGHT_AMBIENT`), a sun with real penumbra (`SUN_ANGLE`, widened when it is low) whose shadow is ONE orthogonal split because the camera shows fifteen world units, a moon that casts faintly (`MOON_SHADOW`), depth fog with a begin and an end (exponential fog under an orthographic camera is a flat grey wash over the whole frame, measured 18%), volumetric air, bloom, and the grade as one knob on the finished image. `sky_apply()` is now only what the AIR and the WEATHER do to a surface -- what has settled on it, the bank of fog it is seen through, a cloud's shade, glare, a strike. Four functions are kept as no-ops while their callers are converted and each says what took its job: `sky_ink` (there is no hatch), `sky_pool` (a real light makes its own pool), `neon_graded` (the grade is on the image) and `neon_skyglow` (the sky's light is AMBIENT light, not emission added to every surface -- that one was most of why night was not dark). FOUND shaders `#define SKY_FOUND` before the include (nothing settles on a machine). `sky_power()` is still the machines' power, stuttering after lightning. **THE EVENING IS ONE CURVE**: `SkyLight.day_gone(hour)` is how much of the day's light has gone, anchored on the tint keys' own shoulders (16:48 and 21:36), and the sun's handover to the moon, the ambient's fall, the sky's colours, the cast shadow, the sun's penumbra, the grade and the night terms are ALL spent against it — the cliff was two schedules (the keys and `Weather.night_fall`) that overlapped for forty minutes, and neither could be reshaped alone because each is flat where the other is steep. `Weather.night_fall` is untouched and still means "it is night" for the rest of the game; only the LIGHT reads `day_gone`. **A NIGHT belongs to the landscape it falls on**: `BiomeDef.night_sky` is how much of the night sky stands over a place (the coast is 1.0 and is the fixed point every other is stated against), it scales `NIGHT_AMBIENT` and `MOON_NIGHT` TOGETHER so the ratio that puts shape in a night is the same everywhere, it is spent only as far as night has fallen so it cannot reach a noon frame, and it is blended over `SkyLight.night_sky_at` on the same shares as the grade, the air, the water and the score — a night that snapped at a border would draw the ecotone as a line. `NIGHT_SKY_LEAST/MOST` clamp what content may ask for, because readability at night is a floor. **A roofed realm reads as night at EVERY hour to everything this file writes, `last_tint` and `last_energy` included** (`closed`, `NIGHT_HOUR`): those two used to be read off the clock, and because `15_lights.compensate` divides its warm lamp by `last_tint` and subtracts `last_energy` as a black point, a cave at noon took the blue out of the lantern and the pool came out deep red. **SkyLight is the ONLY writer of `sky_*`, `neon_*`, `glint_*` and `wind_strength`, once a frame**, and `sky_linear` and `sky_wear` are two of them. **The ceiling is the TONEMAPPER** (`SkyLight.TONEMAP`, `tonemap_white`), not a per-fragment shoulder: one curve over the whole image, which a second landscape in view cannot defeat, and which gives a neon tube four times over white back as a bright tube instead of a hole. `tests/render/test_ceiling.gd` holds it and holds every expensive thing to its `Quality` row. |
-| World edits | `WorldData.depleted`, `WorldView.refresh_props(prop)` | taken props disappear from view and collision; `Survival.add_prop` puts a new one in the world |
-| What stops a body | `WorldQuery`: `solid` on a prop, `set_blocks(owner, circles)` for everything else | A prop stops a body with its own `solid` radius. A package that draws its own geometry — a landmark's tower, a depot's deck — declares its mass as circles `(x, y, radius)` in TILE space and hands them over under an owner name, replacing that owner's set whole (so a realm crossing does not pile two islands' walls on each other). They are kept apart from props on purpose: nothing may TAKE a wall, hear it, shelter under it or read it as cover, because it is only a wall. Stamped into the tile grid once, so a move looks at one cell. `move_body` takes `swims` and **every fallback it makes must pass it on**: a move that is refused falls back on one axis at a time, and a step asked whether a WALKER could stand there stops a swimmer dead in open water. |
-| Mobs | any mob node | joins group `&"mobs"`, exposes `kind: StringName`, `pos: Vector2` (tile space), `alive: bool`, `hostile: bool` (false for pests like gulls; the slate hides its hints only near hostiles) and `aware: bool` (it has noticed the player: alerted, chasing or attacking; the score tenses for it) |
-| Weather | `src/core/weather.gd` | `Weather.at(seed, minutes)`, `Weather.at_place(seed, minutes, country)`, `Weather.at_type(seed, minutes, type_id)` -> `{kind, strength, wind, mist}`, `Weather.settled(...)`; pure. A landscape's climate lives in its own file, not here: `BiomeDef.weather` (rows `[kind, weight, squall]` summing to 100) and `BiomeDef.mist`, read through `Weather.climate(type_id)`. The sky reads `at_type`/`settled_type` for `BiomeRegistry.at(world, pos).id`, and `at_place` is the legacy Country door. A reader that does not know a kind reads `Weather.family(kind)` (drizzle is rain, whiteout blizzard, glare heat, dry_storm dust, haze fog). Survival (wetness), mobs, landscape sway and audio call it directly. |
-| Master configurations and dev mode | `src/dev/config_schema.gd`, `src/dev/game_config.gd`, `src/dev/dev_mode.gd` | A setting is ONE row in `ConfigSchema.ROWS` (id `group.name`, kind, default, when it applies: boot, new, live, build) and every reader asks `GameConfig.value(id)`; the defaults are the game as it is, so a run with no configuration is unchanged. A configuration file holds only what it changes over its `base`; `tests/dev/test_configs.gd` fails on a setting nobody declared or a value the content does not allow. A new game takes `GameConfig.fill_new_game(options)` (the title, main.gd, dev mode's play), never a loaded one, and never over an option named on the command line. Live rules are applied by 94_dev on `GameConfig.revision`. An exported build carries its configuration in `res://stamp/build.json` (`tools/export.sh`), trusted only in a template. `DevMode.reachable()` is the only question of whether dev mode shows: a tool run is `off` unless asked, a source run for a person never below `chord`, a build what its configuration says. Dev mode's app is added to the slate by 94_dev (`90_ui.add_app`) and opens beside a hostile; everything it keeps on a device lives under `DevMode.user_root()` (the test runner and the tools have their own). A game dev mode starts saves under `user://dev-saves/`. |
-| Boot options | `src/boot_options.gd` | packages may ADD options; never rename existing ones; keep the header list complete |
-| Saving | `src/core/save/save_game.gd` | every system `SaveGame.register(key, save, load)` in its setup. `save` returns JSON-safe values (`SaveCodec` for INF, vectors, bytes); `load` gets them back through JSON (numbers as floats, keys as Strings: convert with `SaveCodec.to_int/to_vec2/to_counts`). A loaded game is applied in `GameSystem.started()` (after every setup, before the first frame) in registration order; 05_save registers the core state first (`SaveCore`: world edits, clock, player, body, inventory, survival, explored, weather). Keys nobody registers are carried forward. Slots: `SaveSlots` (0 autosave: sleep, a landscape first entered, 3 world hours, leaving; never mid-fight or under a page; 1-3 manual; `--load=N`, `--saves=DIR`); file: `SaveFile` (header and data each md5-checked; bump `VERSION`, add a `migrate` / `migrate_header` step). **A save keeps only the seed and grows the world again, so every save carries `WorldStamp.current()`** — a digest of the registry's ordered type ids and the `BiomeDef` fields worldgen reads (`WorldStamp.TERRAIN`; the look, weather, hazards and roster are deliberately outside it, in `WorldStamp.LOOK`). A save whose stamp is not this build's is refused by name (code `&"elsewhere"`), because **adding a landscape moves every seed's island**. So: a landscape added, reordered, or retuned where worldgen reads it invalidates every save on disk, and that is intended — a field added to `BiomeDef` goes in one of the two lists or `tests/save/test_world_stamp.gd` fails. A worldgen stage that changes what a seed makes bumps `WorldStamp.GEN` by hand; `SaveCore.disagrees` is the second line that catches one that did not, once the world is grown. **AND THE STAMP IS BLIND TO THE BODY OF A RECIPE, WHICH IS THE ONE CASE THAT FAILS QUIETLY.** `surface` and `scatter` are Callables, and a script's source is not hashable, so `WorldStamp` digests their NAMES. Rewrite what `_scatter` returns and the digest does not move by a byte while every seed's landscape changes completely — nine of them did in one evening, and a save taken beforehand opens onto a different Crags, Middens, Moss, metropolis, orchards, mesas, snowfield, drowned city and green towers with the stamp saying everything is fine. A refused save is a good day; **a save that quietly opens onto a moved world is the bad one**, because nothing anywhere says so and the player is the instrument that finds out. So: touching a recipe BODY is a worldgen change that only you can see, and it turns `GEN` by hand. `WorldStamp`'s own header carries the worked example. **A refused save is never half-opened**: that game applies nothing, takes no save of any kind (the autosave would write over the very slot just refused), remembers the slot in `SaveSlots.turned_away` so nothing offers it again, and hands back to the title, which says the whole reason on its glass. |
-| Realms and portals | `src/core/realm/`, `src/systems/20_realms.gd` | A world is ONE realm's world: `GenContext` lays only the types whose `BiomeDef.realms` names `WorldData.realm`, so anything holding a world to "every landscape" asks `BiomeRegistry.land_in(w.realm)` and never `land()`. Each realm's world is grown from the GAME's seed with the realm's own salt (`Realm.seed_for`), raised once per game and kept (`RealmWorlds`) — **except a realm that IS another one at a different time**, which declares `same_land_as` and `footprints_of` in `Realm.DEFS` and grows that realm's island, tile for tile, from the same seed and its landscapes (`Realm.land_realm`, the one door both `BiomeRegistry.land_in` and `GenContext` ask). That is the Before: the ruin he wakes in was his own town, so 2029 has to be THIS coast and a time gate has to open on the coordinates it left (`tests/core/test_era.gd`); `BootWorld.world(seed, size, realm)` is still the only door. `Realm` is the authority over a realm's light, sky, weather, night and sound, and a landscape declares them all THROUGH it (`Realm.light/lift/night_sky/airs/bed`); the one thing no landscape file can say is that the HOUR has stopped mattering, so `SkyLight.closed` (0 open, 1 roofed) reads a roofed realm as night at any hour — blue floor, hatch, night ink, lamp pool, no cast shadows — and 20_realms is its only writer. A portal is a place: `Portals` lays one per REGION deterministically, paired by index across the two worlds, recorded in `WorldData.landmarks` as `&"shaft"`, entered with `use` when it is nearer than whatever is under the hand. **A crossing does not make a new game**: 20_realms points `game.world`, `game.query`, the player, its `FightSim` and the view (`WorldView.rebind`, materials kept) at the other world, so the score, the sound, the clock and the creel survive it — and calls `realm_changed(from, to)` on every system that has it, which any system caching something keyed on the world (map, explored, light index) must implement. Saved under key `realms`; `SaveCore`'s header carries `realm` and the GAME's seed, and its world edits apply only in the realm they were made in. Answer a tour with `portal`, `portal:N`, `realm:KIND`, `crossed`. |
-| Landscape types | `src/content/biomes/*.gd`, `src/core/biome/` | A landscape is ONE file: `static func make() -> BiomeDef` under `src/content/biomes/`, auto-discovered, sorted by `order`, given the index every tile carries. It declares where it lies (`anchors` for the journey, `temp_range`/`moist_range`/`adjacency` for a landscape placed by its climate), `share`, `relief`, border and ecotone reach, hatch, ground washes and marks, decor and tree tints, props and ore, `surface`/`scatter` recipes, sites, pools, villages, weather, hazards, roster, bed, motif and **its own night** (`night_sky`, see the sky row: one global night could not serve landscapes whose albedos differ by a factor of three). Readers ask `BiomeRegistry.at(world, pos)`, `.by_index(i)`, `.land_indices()`, `.count()`; never branch on `Country` (it is only names for the first seven slots) and never size an array by it. At most `BiomeRegistry.SLOTS` (16) types: border pairs pack two indices into a byte. `BiomeRegistry.mute_to(ids)` narrows the registry for a test. What its OBJECTS are made of is `BiomeDef.dressing`, a `BiomeDressing` (`src/core/biome/biome_dressing.gd`): the stone its boulders are cut from, its bleached bone, the timber a post weathers to, what banks against a wreck, its sods, its building stone, its cast concrete, its sign enamel, what it bleaches, what it berries, whether snow lies on it, what it throws over a thing left out (`covers`), how hard its wind crops what grows, how deep a heavy thing settles and how it lies, which patched shelter people build (`shelter`) and what a broadleaf is here (`crown`). A landscape writes down only what it ARGUES WITH — everything unset is worked out from `rock_color`, `grass_colors`, `plain_ground`, `wet` and `scorched` — so a four-line landscape is dressed as itself and not as the coast. `BiomeDressing.of(index)` is the one door and **nothing under `src/models/props/` may branch on a landscape by name**; what GROWS is coloured through `BiomeDef.tree_tints`, whose keys are `BiomeDressing.RAMPS`. `BiomeRegistry.problems()` fails on a form nobody has and a ramp of the wrong length. `BiomeDef.water_wash` is the door for a landscape to say what its INLAND water is drawn in (default `Color(0,0,0,0)` = the shared chart; the sea is never included). The rule it keeps: a landscape's water is a **wash, not a hole** — the first version of the scrapwood's river was a black ribbon cut out of the land, which breaks Law 2 the other way round from the pale pond it replaced, so `tests/render/test_water_wash.gd` pins that the chart's own value range (soundings, bank line, the broken white of a fall) survives the tint. A field added to `BiomeDef` must also be classified in `WorldStamp.TERRAIN` or `WorldStamp.LOOK` — see the Saving row. |
-| Regions | `WorldData.regions`, `WorldData.region_at(x, y)` | Every connected run of one landscape type is a place: `{id, type, index, tiles, centre, bounds}`, biggest first. One type may hold several. Sentinels, works networks, subarcs and saves key on `id`. A run is a place only if it clears a share of the BODY it lies on and of how many landscapes share that body (`GenCountries.BODY_SHARE`, floored at `Landmarks.REGION_TILES`): the floor used to be a share of the SQUARE and outgrew the continents once a world became five of them, leaving a quarter of the land in no region. **A REGION CHANGE MOVES `ground`, NOT ONLY `props`** -- works are sited per region and works stamp the ground they stand on, so a parity re-acceptance that shows only `props` moving after a region change is the suspicious one. Measured: exactly the seeds whose region count moved were the seeds whose works digest moved. |
-| Stealth and gear on the body | `src/core/body.gd` | `crouched`, `spoof_until`, `resist`, `pressure` |
-| Pressures | `src/core/hazards/hazards.gd`, `src/systems/52_hazards.gd` | `Hazards.felt(Place)` turns a landscape type's `BiomeDef.hazards` through the hour, weather, height, shelter and fire into raw strengths; `after_resist(raw, Body.resist)` is what the body carries, written to `Body.pressure` every half second. **`BiomeDef.hazards` is the authority**: the hour, the weather and the height only scale what a landscape declares, and what the hour adds on its own is capped under `BITE` (`NIGHT_MOST`), so night never presses a place that calls itself mild. Thresholds in order: `FELT` (a gauge and a cue), `BITE` (`Hazards.move_factor` slows the legs; Survival multiplies it in), `HARM` (a slow drain that stops at `HARM_FLOOR`). A cue's mark, sound and colour are `HazardCues`. A landscape may only declare a hazard in `Hazards.IDS` (sixteen: the twelve of VISION §6 plus glare, thirst, magnetism and collapse), and something wearable must answer every id any landscape declares — `tests/hazards` and `tests/gear` fail on either, so a new pressure is added to the model, the glyphs and the gear in one go. Answer a tour with `pressure`, `pressure_bites`, `answered`, `answered:ID` (that one pressure bit earlier and no longer does: a place that presses three ways at once, where the answers share a slot, can never be wholly answered), `bites:ID` (that ONE pressure is at BITE now), `sheltered` or a hazard id. **A tour crossing from one landscape into another must wait on `bites:ID`, never `pressure_bites`**: the latter is ANY pressure, so the cold just left goes on answering it while the heat the tour came for has not started. And a bare hazard id answers at FELT, below the BITE a line or a badge is said at. Two traps found the hard way in the Burning: heat is the SUN's, so `Hazards._hour_shift` takes it under BITE after dark; and fumes are declared at 0.5, just under BITE 0.55, **on purpose** — `_weather_shift` adds `0.35 × strength` under ash, so they bite from ash 0.14 up, and ash is the Burning's commonest weather. The air there is always noticed and only unbreathable when the ash falls, which is exactly when a respirator earns its slot. **So stage the weather a claim is about**: a tour that forces `--weather=clear:0` for a clean frame cannot tell you what a landscape presses a body with. |
-| Jumping | `src/core/jump.gd`, `src/core/gear/abilities/ability_jump.gd` | A jump reaches up `Jump.UP_LEVELS` (2), across `Jump.GAP_TILES` (2) and down `Jump.DOWN_LEVELS` (3) and no further (owner, 2026-09-17). `Jump.plan` works out the whole arc at the press and never goes off a drop deeper than a jump — it plans again with that drop as a wall, so the body comes down at the lip — except into deep water, which is a `Jump.DIVE` and the water takes it. It is an INNATE ability (`Abilities.INNATE`, always fitted, never on the gear page) run through `AbilityMotion` by 54_gear, **so `Player.lift` gains no third writer**: the jump writes it every frame of the arc as the body's height over the ground actually under it (measured from the ledge it is over, not the field it left) and 0 on landing. Anything that draws a shadow, a reflection or a contact mark reads `lift` and must let it separate from the feet, or a body at the top of a jump reads as pasted to the ground. `Hero.airborne` refuses a swing and a dodge. The pose is `PersonAnim.jump` with `JUMP_ABSORB` (0.16 s of knees on the ground at the end) that 54_gear reads, so the landing and the drawing agree. Tours: `ledge up\|across\|down` stands the player at one by name, `leap SECS` takes it on the real keys; answer with `jumping`, `jumped`, `jumped:hop\|up\|across\|down\|dive`. |
-| Gear and abilities | `src/core/gear/`, `src/systems/54_gear.gd` | A wearable piece declares `slot`, `sockets`, `resist`, `ability` and `tier` in `Items.DEFS`; a module declares `module: true` and `fits`. `Loadout` records what is in each slot, `Gear.resist_total` writes `Body.resist`, `Gear.abilities_of` fits the `AbilityBook`. An `Ability` (id, action, cooldown, charges, wind, press/hold/passive) never touches a node: it sets `ctx.motion` (an `AbilityMotion`, the ONE thing that may put the body where walking could not) and calls `ctx.draw`, and 54_gear runs both. `--fit=ID,ID` wears gear at boot. A wearable also declares **`wears`** (what a body is seen wearing, in `PersonLook`'s words: `hat`/`coat` replace, `extras`/`salvage`/`gear` add, `wing: true`), and **`GearLook.compose(bare, loadout)` is the ONE look** for the figure walking the coast and for the gear page's figure (the loadout feed's `figure`), so the two cannot disagree; 54_gear redresses the model only when the composed look changes. The page draws the real `PersonModel` through `UiGearFigure` (its own World3D, a FOUND mask on render layer 2, scanned by `src/ui/ui_gear_scan.gdshader`) — **the mask, not a hue guess, is what says which parts are machine**, so it survives the materials being rewritten under it. A player's worn look carries `kit: true`, which is the ONLY thing that lifts the caps (`SALVAGE_KIT` 4, `GEAR_KIT` 5) and admits `PersonLook.KIT_EXTRAS`: putting a kit-only piece in plain `EXTRAS` makes `PersonLook.random` deal it to strangers, which reshuffles every crowd, tips the rarities and can blow the triangle budget. `tests/gear/test_gear_look.gd` wears all 240 kits and fails if a composed look drops a piece; `test_a_crowd_keeps_its_caps` holds the other half. Answer a tour with `worn:ID`. **`Player.lift` has two writers**: 54_gear every frame a motion runs (and 0 on landing), 44_crafts every frame a craft carries the body; 54 runs after 44, so an ability that throws the body off a deck wins while it runs and puts it down itself. Answer a tour with `ability:ID`, `gliding`, `resisting`, `spoofed` (the signet fired) or `unnoticed` (a machine within reach has not read you: the spoof proved, not asserted) |
-| The story | `src/core/story/`, `src/content/story/`, `src/systems/49_story.gd` | The arc and the words (**docs/STORY.md is binding on every line**): Elias Marr, a 2029 AI researcher and CIA spy whose mind became the machines, wakes in 2098 to learn what he hid, and is the only main character. `Story` is the state only — what has been read, what beats landed, what the player said — saved under key `story` and outside `WorldStamp`, so a story flag never refuses a save. The words are data in `StoryContent` (arcs, beats, fragments, talks) so dev mode can move any of them (`DevPageStory`: land a beat, take one back, read every choice). **The seam with whoever places things**: `StoryFragments.held_by(world, prop)` is pure and deterministic — same thing, same world, same words, or a save opens onto a sign that changed its mind — and a placer owns where a readable thing stands, what it is made of and how it is drawn, while the story owns what it says and whether it has been found (`Story.read`). A readable thing standing at a story place (`StoryWorld.place_of`: the black site today) holds that place's own words (`StoryContent.PLACED`, in id order by kind), which are never dealt anywhere else; everything else is dealt by kind (`pick`). Nothing speaks because the player walked onto a tile: `use` answers whatever is NEAREST and in front, a person or a thing with something written on it, and `49_story` is numbered before survival so the most specific answer wins. A conversation is drawn over the world (`UiTalkView`, owner's ruling), never on the slate, and while one is up `game.talking` stands every other reader down through `Game.input_blocked()` and hushes the HUD's message line. Two more channels (docs/STORY.md §13): **testimony** — `TargetRead` carries what a machine is FOR (`StoryContent.testimony(role, row)`), drawn under its name on the read panel, and a machine read for `TESTIFY_SECONDS` lands what that tells; and **what was done to the player** — `StoryContent.WITNESSED` names every beat the player's own state lands (filed, a record in hand, the signet once a key is known of, another realm, being hunted, a yard put dark), each on the CHANGE and once, with its line said on the glass. The words panel grows upward to hold what it says (`UiTalkView.panel_for`) and `tests/story/test_arcs.gd` holds every line to its glass and every beat to having a door. **Named people** are one file each under `src/content/story/cast/` (`StoryCast`), anchored to a spine slot and stood in the world by `49_cast`; they appear and leave by beats, and a tour stands beside one with `at cast:ID` and answers `cast:ID`, `met:ID`, and at a gate into 2029 with `at gate:ID` (`StoryGates`, `tours/before.tour`). **A region asks him for something** (`StorySubarc`, docs/VISION.md §10.4): each REGION raises one sub-arc out of its own state (the yard still running, a cache nobody went back for, a place nobody has walked to), somebody who lives there says it through the one `use` key as a made talk, and the world answers it rather than a counter — only the telling is saved. Three moods, not three chores: quiet, hunted, or lost by the plan. Answer a tour with `asked`, `asked:GOAL`, `heard_ask`, `thanked`. **Revelations land one at a time** (`StoryPacing`): a beat marked `reveal` holds back any reply that would land another, and anyone who waits on it, for `SETTLE` world minutes. A page read and a thing done to the player are never held. `--read=ID` / `--talk=ID[:NODE]` stage a page for a writer, and `--beats=ID,ID` stages what he already knows, as long ago. Answer a tour with `talking`, `reading`, `knows:ID`, `beat:ID`, `testimony`. What has been found is kept in the journal (`UiJournalScreen`, its own key `n` and a row on home, `--screen=journal`, `app:journal`), which only ever reads: each landed beat under its arc, each fragment read with its lines as written, each answer given with its words, and never a count of what is still to come; a tour asks which of those is chosen with `journal:beat`, `journal:read`, `journal:said`. |
-| A player's settings | `src/settings/` | What the person at the keyboard set: sound, picture, the two holds they may want as presses, and which key does what (owner, 2026-09-17). **Not a master configuration**: `src/dev/config_schema.gd` is the OWNER's, packed into a build and never seen by a player; this is the player's, kept on their own device, and neither reads the other. A setting is ONE row in `PlayerSettings.ROWS` (id `group.name`, kind, default, and what it `applies` to) and every reader asks `PlayerSettings.value(id)`; the defaults are the game as it ships. `SettingsApply` is the only place that touches the engine — bus levels as an OFFSET from the mix `SoundMix.BUSES` was tuned to (never an absolute, or the mix is gone), and the window, which it moves **only for a person playing**, because a tool run's window is off the screen on purpose and dragging it back makes every shot capture nothing. Keys come off the LIVE `InputMap` (`PlayerSettings.key_of`), so a page can never drift from the keys again, and `reset_keys` puts back every event an action shipped with, not just the one the page showed. A key may only do one thing: binding takes it off whatever had it, and the page says which. Three files, as dev mode keeps three roots: `user://settings.json` for the player, `tool-settings.json` for a shot or a tour, `test-settings.json` for the runner — a test that wrote the player's file once turned the world's sound off in every shot taken after it. `HoldToggle.on(action, setting)` is how a held key becomes a pressed one. The app is `UiSettingsScreen` (`--screen=settings`), on the pause page and on the title, where it reads its own keys (`standalone`) as dev mode's app does. |
-| Swimming | `src/core/swim.gd` | Deep water is a slow crossing for a body that can take it and the wall it always was for one that cannot (owner, 2026-09-17, docs/DESIGN.md §Swimming). `Swim` is the one door: `crosses(row)` reads a roster row's `crosses` key (`&"swim"` goes in after you, `&"fly"` goes over, absent stops at the waterline), `deep(world, p)` is the one test for out of your depth, and `WATER_Y` duplicates `TerrainMesher.WATER_Y` on purpose because core holds no rendering (`tests/swim` fails if they drift). `WorldQuery.standable/passable/move_body` take a `swims` flag, `Hero.swims` carries it for the player and `Swim.may_cross(m.row)` for everything else; a craft under the body answers first, because a raft is not a swimmer. **Anything that swims crosses at `Tuning.SWIM_FACTOR`**, the player and the bodies alike, or the water is a trap instead of an escape. `Hero.swimming` is written by FightSim once a step and refuses a swing (a blow wants something to push against; a dodge is still allowed). A figure is FLOATED to `Swim.WATER_Y`, never sunk to the bed — under deep water the ground plane IS the bed, clamped to zero — and leaves `MobFx.ring` wakes, which are what say a body is in the water, since a figure draws over the water whatever its depth. Answer a tour with `swimming`, `swimming:KIND`, `wading`. |
-| Crafts | `src/core/craft/`, `src/systems/44_crafts.gd` | A craft (docs/VISION.md §5) carries the player where a body cannot go and is **not a second movement system**: the simulation still moves the body. `CraftKinds.LIST` is the data (grounds, levels, speeds, hull, wear, launch reach, salvage, how it sits and how high you stand on it). `Hero.ride` / `Player.ride` — a `CraftRide` — is the ONE field the fight reads: it goes to `WorldQuery.standable/passable/move_body` (what counts as standable, how many levels it may step) and to `Hero.ground_speed` (the pace), and the crafts package is its only writer. A craft is set down, and stepped off onto, only within `launch` tiles and only along a line the craft itself could travel, and a body steps off only onto ground it could have waded to: getting off is never how a channel is crossed. Boarding, launching, leaving and stripping a wreck are all the `ride` action (b). Saved under key `crafts` (parked ones and the one being ridden). Answer a tour with `riding`, `riding:KIND`, `afloat`, `ride_crossed`, `ride_climbed`, `craft:KIND`, `parked:KIND`, `ride_ready`, `step_off_ready`, `craft_wrecked`, `craft_salvaged`. |
-| Sentinels | `src/core/sentinel/`, `src/systems/44_sentinels.gd` | A landscape's keeper (docs/VISION.md §3) is ONE file under `src/core/sentinel/designs/` (`static func make() -> SentinelDef`), claimed by that landscape's own file through `BiomeDef.sentinel` — the only door. Its body is a roster row like any other machine's (`Roster.sentinel_of`), fought by the one `FightSim`; a PHASE (`SentinelPhase`) rewrites the LIVE body's own copy of that row, so `TargetRead`, the senses and the poses need know nothing about sentinels — call `Sentinels.own_row` first or the roster table itself is rewritten for every body in the game. One instance per REGION (`SentinelState`, saved under `sentinels`), put out within `Sentinels.PUT_OUT` of its lair, culled by the coast beyond it, and never within `CLEAR_OF_HOME` of the spawn; its health and phase outlive its body. The three ways it can be taken (`SentinelWay`: force founder starve spoof) are pure rules over a `SentinelLook` the system fills in. A live keeper carries a beacon in group `&"sentinels"` with `pos`, `reach`, `alive` (whether it still KEEPS, so one that stood down quiets the score) and `land`. `Events.sentinel_woke/phase/fell` is the seam for what else a taken region means. Answer a tour with `sentinel`, `sentinel:LAND`, `sentinel_reach`, `sentinel_open`, `sentinel_hurt`, `sentinel_phase:ID`, `sentinel_fallen`, `sentinel_way:ID`, `sentinel_dead`. |
-| The gear economy | `src/core/gear/economy/`, `src/content/gear/`, `src/core/loot/` | `GearEconomy.declare()` pours the content into `Materials` and `Drops`; `56_economy` calls it and is the only thing that hands a kill's spoils over. **A grade buys SOCKETS and never a number**: the rungs of a `GearTree` family share every mechanical number (`SAME_ACROSS_A_FAMILY`), and what an elite material buys is a mount that carries `Rarity.slots(grade)`. An elite material has ONE gate — a raw only one landscape gives, or one roster kind. `Sources.path_to` walks any item back to a prop, a body or a recipe, and `GearEconomy.problems()` is what a test fails with. A modifier is a row in `ModifierTable`: what it decides, the tags it `gives`, what it `wants` paid, and `PAIRS` for what happens when two tags meet. What a thing yields goes through `Drops` and nowhere else (see *One economy* below for the body/place rule). |
-| Item marks | `src/ui/ui_icons.gd` | `UiIcons.SHAPES` owns which 9x9 marks exist; **any** item row may name one with `icon: [shape, ramp, ramp]` — nothing is keyed to gear ids — and a MENDED row must name a shape with cord pixels (4/5/6) or it reads as a machine part nobody made. A row with no `icon` falls back by what it does. `tests/gear_economy/test_marks.gd` holds both halves. |
-| Noticing the player | `src/core/stealth/stealth_query.gd` | `StealthQuery` is the ONLY door: `Senses.notices/sees/hears` delegate to it, and it adds crouch, cover (`Cover.at`), the lamp, a spoofed signature and the body's own cone (`facing`, omitted = no cone). How loud the player is rides on `Moment.loudness` (`StealthNoise.loudness`), which is the whole of what shortens hearing; the stealth fields on a Moment (`crouched`, `cover`, `spoofed`, `loudness`, `interference`) are written once a frame by 32_disposition. A noise event is `FightSim.make_noise(at, radius)`. |
-| Targeting and the enemy read | `src/core/target/`, `src/systems/42_target.gd` | The slate put on a subject while `z` is held (owner, 2026-09-16, docs/DESIGN.md §Targeting). A `TargetSubject` is one thing the slate can be put on — a fight body (`from_body`) or a villager (`from_folk`, 35_folk's rows) — and anything else the player can look at becomes readable by getting its own `from_*` there; the order, the camera and the drawing follow without changing. A person reads as a person (no health, no signature, no working part) and carries no tag, because nothing in the fight measured their life. It is **read-only on the fight**: nothing in this package writes to `FightSim`, a `MobState` or the hero, so a blow lands exactly as it would with the key untouched, and `tests/target/test_target_system.gd` fails if anything about a body or the player moves while it is held. What a body reads as is `TargetRead` and nothing else invents a number: the health and roster numbers are its own, the powers only what its row declares, the awareness `StealthQuery`'s answer, and the thinking its mood, blow phase and disposition. **Every body carries a wordless tag at all times** and words are drawn only while the key is held — the pillar a fight is still read by (docs/ART.md §9). The camera lean is asked for through `CameraRig.lean_yaw/lean_pitch/lean_zoom/lean_bias` and eased there; anything screen-relative (the keys in `game.gd`, the rain, a streak) reads `CameraRig.yaw_now()`, never `yaw_deg`, or it stops matching the picture while the camera leans. A sweep reads `Targeting.SWEEP_MOST` at a time and the cycle keys page it, so nothing within reach is unreachable; a lock waits `Targeting.LOST_GRACE` for a subject that steps out of the list. Answer a tour with `target`, `target_sweep`, `target_paged`, `target_person`, `target_lean`, `target_none`. |
-| Roles and disposition | `src/core/disposition/` | A roster row's `role` (`Roles`: worker keeper watcher hunter recycler) decides its default disposition, its sight cone and what turns it (`Roles.TURNS`). A live body's `disposition` is `Disposition.of(role, interference level, disturbed)`, written onto `MobState` and its `MachineModel` by 32_disposition. `FightSim.disturb(mob, cause)` is how another package turns one (causes: blocked damaged theft trespass curfew downed); a role that does not take that cause amiss works on, though a blow still makes anything stop and deal with it. All three rungs are real: `MobState.at_work()` is a body still on its round, `indifferent()` one that is calm, `watchful()` (`wary`) one that keeps its round but looks up four times as often, never lets its suspicion settle, lets nobody inside 0.45 of what it can see, and forgets a lost player twice as fast. `MobState.suspicion` 0..1 is how sure it is, drawn on the body (Mob: the working part catches, the alert snaps at 1), never as text. |
-| Interference | `src/core/disposition/interference.gd` | One 0..1 per plan network (`Interference.network(world, pos)`: the REGION a tile stands in, so two runs of one landscape keep separate files), raised by `32_disposition.raise(cause, at)` and lowered by time, distance, hiding, nothing being aware of the player, and `Body.spoof_until`. Every cause has a producer in play: theft and sabotage (hands on the plan's works, a blow struck on a machine at its work), killed_worker/killed_machine (`Events.killed`, except a body the network itself sent), filed (`Body.filed`), curfew and trespass (a keeper's hours and site), blocked (held up on its round) — a body that turns reports what it took amiss through `_turned`, so a new `Roles.TURNS` cause reaches the network without new wiring. Levels calm/wary/hostile/hunted change every machine in the region; at hunted the network sends hunters, at most two out at once, and what it sent and lost it does not file. Saved under key `disposition`. |
-| Transitions | `WorldData.country2`, `WorldData.blend` | worldgen writes (0.5 on the border, 0 by 12-24 tiles); `Transitions.fill` pulls the band in for renderers; there is no fallback for worlds without them |
-| Score and soundscape | `src/audio/score_*.gd`, `src/systems/75_music.gd`, `src/audio/sound_mix.gd` | A landscape type's music is `ScoreLandscapes.SPECS[id]` (key, mode, rhythm, chords, timbres); a type without one gets a score composed from its id, whose key is chosen to stand in the same tonal web (`ScoreLandscapes.affinity`, which also sets how wide an ecotone's crossfade is), and `BiomeDef.music_motif` may name another's. Landscapes crossfade with equal power on `WorldData.country2`/`blend`, read through `SoundMix.land_share` (what the ear is in) and `SoundMix.land_soon` (what it is walking toward, so the next landscape's core is baked before its border), both keyed by the registry's type index; a landscape is only crossfaded into as far as its core stems are baked (`ScoreConductor.core_keys`), so nothing that moves a player faster than the bake — a portal, fast travel — can make the score fall silent. Installations (hum, grid pulse), wreckage (wind in metal), roofs (gutters) and canopy (rain on leaves) are prop kinds whose NAME has a whole word in `SoundMix.INSTALLATION_WORDS` (heard only within its `INSTALLATION_REACH`) / `WRECK_WORDS` / `SHELTER_WORDS` / `LEAF_WORDS`; strung wire (`WIRE_WORDS`: poles) only sings faintly in the wind. A sentinel joins group `&"sentinels"` exposing `pos`, `reach`, `alive`, `land`. Any system can answer a tour's `await WHAT` with `tour_seen(what) -> bool`. |
-| Works and evidence | `src/core/worldgen/gen_works.gd`, `src/render/works_map.gd` | GenWorks records landmarks `{kind, pos, country, dir: Vector2, half: Vector2, mark: &cut\|&scorch\|&quarry\|&bores}`; `GenWorks.bearing(seed)` is the machines' survey bearing and `GenWorks.survey_sections(seed, size)` is pure. `WorksMap.bake(world)` hangs on `WorldView.works`, and any renderer or system (the map, audio, a spawner) may read it. What the ruin left is salvage: `Takes` gives plate from debris, cars and barricades and wood from fences and stumps. |
-| The plan's depots | `src/core/works/`, `src/systems/34_works.gd` | A region the plan is working keeps a DEPOT (docs/VISION.md §2): `Works.sites(world)` finds one per REGION with a work of the plan already in it and room enough (`MIN_TILES`), at the busiest of that region's marked landmarks, clear of villages and of where the player wakes. Pure and derived, so it is never saved and never moves; what has been DONE to one is (`WorksState`, key `works`). It is where the region's machines come from, in two halves: one of its own out of the yard every `OWN_EVERY` world minutes and a round along `GenWorks.bearing` every `PATROL_EVERY` (both within `REACH` of the player, both stopped FOR GOOD when it is broken), and — past that — a broken depot shuts every machine of the plan out of the coast's own rolls over its whole REGION through `Coast.also_shut`, leaving what lives there alone. That is the whole of "the region quiets", and it is counted in a running game (`tests/works/test_in_game.gd`), never worked out from the two constants. Three working parts (`WorksSite.part(i)`, far enough apart that no two are reachable from one spot) open under a held `use` with a steel edge, each filed as sabotage; the third puts the yard dark, marks every plan work in the yard spent and starts the land closing over it. That spending is a BITE out of what feeds the region's keeper and not a kill: a yard is `YARD` (8 tiles) and a keeper feeds over `def.reach * Sentinels.FEED_SHARE` (about 21), measured at a third of the way to starving on seed 4 (`tests/works/test_in_game.gd`). `Events.works_broken(region, land)` is the seam for whatever else a lost region means. The yard's mass is `WorksDepot.yard_blocks`/`part_blocks`, handed to `WorldQuery.set_blocks` by 34_works: the deck is a wall to go round and each housing is cover to break a line of sight behind. Reachable by name: `place works`, `works_breaker`, `works_coolant`. Answer a tour with `works`, `works:LAND`, `works_yard`, `works_lit`, `works_dark`, `works_open:N`, `works_part`, `works_broken`, `works_body`, `works_patrol`, `works_pressed`, `works_greening`. |
-| Landmarks | `src/core/landmarks/`, `src/systems/22_landmarks.gd` | The places worth the walk (docs/VISION.md §3, §8). A KIND is a `LandmarkDef` in `Landmarks` — the landscapes it stands in, what ground it wants, how far off it can be READ, its drop table, the mark the survey draws it with (`mark`, a 7x7 shape in `UiMapScreen.MARKS`) and whether something of the plan is still on watch there. **`sees` is the CAMERA's business, not the model's**: `Landmarks.read_reach(view_height, pitch_deg, aspect, high)` turns the rig's own numbers into the furthest a thing of that height is still in frame (11-13 tiles at the play camera, which shows 26.7 x 17.9 tiles of ground), and `tests/landmarks/test_models.gd` pins every kind against the real `CameraRig` so it cannot drift back to the twenty VISION §3 asks for. Every landscape file declares its own table in `BiomeDef.landmarks` and every kind names its landscapes back; `Landmarks.problems` fails on three or fewer, on a landscape that declares none, and on the two disagreeing. `Landmarks.REGION_TILES` is the smallest run that is a place, and the rounds go region by region least-room-first so a small landscape is not crowded out by a big one. `Landmarks.sites(world)` is pure and derived (one sweep per region, coarse first, remembered per world); only what a player has FOUND and OPENED is saved (key `landmarks`). Its cache stands `CACHE_OUT` in front of its face on ground with nothing solid on it, and a cache that has never been opened takes the `use` key whenever it is in reach. What it gives goes through `src/core/loot` and nothing else, declared with `Drops.declare_place` so the economy knows it is OPENED and not killed (see *One economy*). Each model's mass is `LandmarkModels.blocks(kind)`, handed to `WorldQuery.set_blocks` by 22_landmarks for the WHOLE island (not only what is drawn), and no kind's mass may cover its own cache. Answer a tour with `landmark`, `landmark:KIND` (both ask the LIVE camera whether it is in the frame), `landmark_near`, `landmark_cache`, `landmark_wall`, `landmark_found`, `landmark_opened`, `landmark_guard`, `found:ID`. |
-| One economy | `src/core/loot/drops.gd`, `src/core/gear/economy/sources.gd` | Everything a player is handed without a recipe declares here. A table is either a BODY or a PLACE. A body's is `Drops.declare(source, entries, of)`, where `of` names the roster kind when the table id is not that kind (a keeper's, so a kill cannot pay it twice). A place's is `Drops.declare_place(source, entries, lands)` — a landmark's cache, a works' yard, a settlement's stores: things OPENED rather than killed, whose `lands` are the landscapes that place stands in. `Sources.path_to(id)` walks either back to the world as steps `take` / `kill` / `make` / `open`, and **a place is the LAST step tried**, because taking, killing and making can be done again and a cache is opened once. `tests/gear_economy/test_obtainable.gd` fails on a piece with no path and allows NO `no_source` rows at all. The lands a place declares are computed the way the placer asks (`Landmarks.lands_of`, `for_land` read backwards), never off a kind's own row. |
-| A lost region | `Events.works_broken`, `Events.sentinel_fell` -> `src/core/disposition/interference.gd` | A region whose depot has been put out or whose keeper is down has nothing running its plan network. 32_disposition listens for both and calls `Interference.lose(region)`: the file is capped at `LOST_CEILING` (0.55, under the 0.56 `hostile` threshold, so `_dispatch` can never pick a hunter there) and cools at `LOST_DECAY`. Saved, so it holds for the game. A lost region is not a safe one — what stands in it still stands — it is one the plan can no longer come after you from. |
-| What can be looked at | `src/core/target/target_subject.gd` | A fight body (`from_body`), a person (`from_folk`) or a PLACE (`from_place`). A place is a thing that stands still: a depot, a landmark. Whoever owns one answers `target_rows(from, reach) -> Array` on its system and 42_target gathers every system that has the method, so targeting knows nothing about depots and a new kind of place adds no line to it. A row carries `{id, kind, name, pos, height, radius, role, stats, thinking, notices, machine}`. Places sort below every person, which is below every body (`Targeting.THREAT_PLACE`), so one can never take the lock off what is coming at you. |
-| One `use` key | `src/systems/49_story.gd` before `50_survival` | Three things answer `use`: somebody in front of you, a thing with words on it, or the ground under your hands. Most specific first — but **"in front of" is not "nearer than"**. Story's reach is generous (3 tiles) so a key pressed at a villager who has just stepped still lands; it stands down when `Survival.use_target(game)` is NEARER than both the person and the readable thing, or a notice across the square outranks the driftwood the player is standing on. While a conversation is up, `game.talking` stands every other reader down through `Game.input_blocked()`. **A crossing is a fourth thing the key can mean, and it MOVES the player, so the press that took it is spent**: without that, the press that took a player down a shaft was answered a SECOND time where they landed, opening a page over the cave that held every key. `20_realms.use_spent()` is true for its `SETTLE` after a crossing, and `49_story` asks every system for `use_spent()` rather than knowing about shafts. `_shaft_wins()` still weighs a shaft against `Survival.use_target` only, so a shaft and a readable can both be in reach — the settle is what stops one press answering twice. `22_landmarks` and `34_works` read `use` too and do not ask yet; both take a HELD key, so the 0.6 s settle barely reaches them, and nobody has a frame showing them broken. |
-| Taking, as it is seen | `src/core/survival/harvest.gd`, `src/systems/51_harvest.gd`, `src/ui/ui_harvest_mark.gd`, `src/ui/ui_pickup_feed.gd` | What `use` would take is marked where it stands, what is taken in goes stands worked down, and what came into the creel is shown with the slate's sketch of it (owner, 2026-09-17, docs/DESIGN.md §Taking, as it is seen). Three things kept apart on purpose. The RULE is `Harvest.target(game)` -> `{prop, state, verb, item, tool}`, read off the key's own choice (`Survival.use_target`, `Survival.choice_for`, `Survival.tool_for`), so **a mark can never promise what the key will not do**. States: workable, other_tool, too_hard, picked_over, under_water, no_tool, yours. The PLACEMENT is `51_harvest.place(game, prop)` -> `{base, height, radius}`, pure numbers. The DRAWING is the two UI layers, which read only those. **The brackets are interim**: under the lit world, light falling on the thing replaces them, and the rule stays. Only a take that CONSUMES the thing (`keep` false, `uses` > 1) changes it, and it is **worked down, never shrunk** — see *A thing worked down*. `Harvest.apply_shown` writes `WorldProp.shown` (0..1 of the thing left) and leaves `WorldProp.scale` alone; `solid` follows what is left at half strength (`b.y * lerpf(Harvest.size_for(share), 1.0, 0.5)`), because a boulder half quarried still stands as wide. The size before any taking is `SurvivalState.base_size`, and neither it nor `shown` is saved: `SaveCore.load_world` recomputes both from the saved takes, and a regrow puts them back. The feed listens to `Events.took` and merges repeats of one item while its row stands. **Every material the land gives is drawn in a shape of its own**, its 9x9 mark and its sketch alike, and `tests/ui/test_pickup_feed.gd` fails if two ever share one again: **the scan keeps brightness and drops hue, so a tint of another material's shape is the same picture.** The sketches are part lists on the 32 grid, so they are rendered at any size rather than redrawn. Answer a tour with `harvest_target`, `harvest_target:STATE`, `picked_up`, `picked_up:ITEM`, `worked_down` (it was `shrunk`, which stated the opposite of what happens). |
-| A thing worked down | `src/models/props/broken.gd`, `Harvest.shown`, `PropModels.template` | A take that CONSUMES a thing does not shrink it: `Broken.work_down(kit, share, seed)` opens the built mesh at the height what is left reaches and caps what it opened, so a seam with a third left is the same seam with a piece off it and not a third-size seam. The opened surface is a shallow off-centre BOWL with a lip of old crust, never a plane, because **a planar cut reads as a machined table top however it is coloured** (the file's header says why, from real frames). Five steps, not a continuum (`Broken.BUCKETS`), because every step is a template the chunk bakes and caches: `PropModels.template(kind, variant, country, worked)` keys on `Broken.bucket(shown)`, and `worked` defaults to `WHOLE`, so nothing anybody has not touched is drawn differently. It runs after every builder, so a model's `smooth_begin`/`smooth_end` welding never reaches the cap's own facet normals. **The opened face carries `GroundColors.FRESH` (58) in its alpha** and the lit shaders keep the land's wear off it alone (`matter.gdshaderinc` gives it dead-matte dust, `world.gdshader` lets it take 0.06 of the land's wear): wear is laid on by WORLD POSITION, so without that a cut made in a bog rusts in the same minute it is made. 58 sits inside the ground band `40..70`, so a new mark code there must be decided explicitly or it silently takes the land's 0.14. `tests/models/test_broken.gd` holds each step to being its own model by **height, not vertex count** — opening a face adds triangles. Proof: `tools/tour.sh tours/broken.tour --seed=4 --hour=11 --weather=clear:0 --give=pick:1 --held=pick`. |
-| Who wakes | `src/core/avatar/avatar_state.gd`, `src/systems/33_avatar.gd`, `src/ui/ui_character_screen.gd` | The player's own body, made on the character page before the game begins (owner, 2026-09-17, docs/DESIGN.md §Who wakes). "New game" on the title opens `UiCharacterScreen` (full slate, standalone keys): build, skin and tone, hair and colour, beard, starting hat, coat, shirt and their colours, trousers, boots, neckerchief, satchel, rolled sleeves, apron, patches, "someone else" and "begin". Begin fills `BootOptions.avatar` — **a field, not a CLI option**; `--look` still works for shots. `AvatarState.of(game).look` is **the body before gear**: `AvatarState.bare` strips salvage, `kit`, trade and gaunt and keeps only the wrist slate, and `GearLook.compose` dresses THIS for the walking figure and for both pages. 33_avatar puts it on (before 35_folk and 54_gear) and saves it under key `avatar`, **deliberately outside `WorldStamp`: a face is never a reason a save is refused.** Loads apply in registration order, so the body goes back on before 54_gear's load dresses it. Continuing a save never shows the page. The page previews with `UiGearFigure.in_colour` (no mask render — colour is half of what is being chosen). Answer a tour with `avatar:KEY=VALUE` (the walking figure has it), and on the title `await character`. |
-| Tracks | `src/core/tracks/track_ground.gd`, `src/core/tracks/track_path.gd`, `src/actors/track_marks.gd`, `src/systems/53_tracks.gd` | What the player leaves on the ground (owner, 2026-09-17, docs/DESIGN.md §Tracks). The RULE is `TrackGround`: one row per Ground id with `mark` (print, scuff, flatten), `depth`, `lasts` (world minutes), `fills` (weather families that fill it `FILL`x faster at full strength), `white` and `rough`. A ground with no row keeps nothing (rock, road, floor, gravel, scree, limestone, clinker, ice, water). The PLACEMENT is `TrackPath`, pure: a foot every step of the path actually walked (a leg-length step), alternating, none swimming or airborne, both feet on landing, a scuff on a dodge, and a jump of 3+ tiles leaves no trail. `kind` is foot, rig (walker rig), sweep (hover sled) or `""` (raft). The DRAWING is `TrackMarks` and is **interim** — a print belongs in the ground's own material under `lit`: pooled MultiMesh quads per shape+ground, a generated height field turned into a normal map and an alpha mask, **black albedo only** (a print darkens the ground's OWN colour, so it can never disagree with the renderer about colour space), `render_priority` 9. 53_tracks lays a mark only on the terrace underfoot and never on a prop lying there, wears marks by world minutes under `Weather.at_type` (a slept night is a night's wear), saves nothing, and clears on `realm_changed`. **What was tried and does not work: a raised bright rim on snow.** The land is not lit the way a `StandardMaterial3D` is, so white on white matched and the lift never showed; what reads is a black hollow at alpha, and on snow and salt the hollow only, because darkening the rim drew a ring round every print. A sun-dependent rim needs the ground's own material. Answer a tour with `tracks`, `tracks:GROUND` or `tracks:SHAPE` (`\|` for either), `no_tracks`. |
-| The slate's apps | `src/ui/slate_feeds.gd` | `SlateFeeds.provide(&"loadout"\|&"reads", func(game) -> Dictionary)` fills gear and machine reads; `SlateFeeds.on_act(app, func(game, row_id) -> String)` says what confirming a row does (a leading `!` is a refusal). Shapes are in the file's header. Without a feed each app shows what the game already knows and never a dead screen: gear says what would fit each empty slot and what this landscape presses a body with, and machine reads reads the ground (the works the machines left, and the bearing they surveyed along). The saves app is not a feed: it drives `05_save` (`save_to`, `load_from`) itself. |
-| Starting a world | `src/boot/boot_page.gd`, `src/boot/boot_world.gd` | Anything that starts a world calls `BootWorld.world(seed, size)` and `BootWorld.view(world)`, never `WorldGen.generate` or a bare `WorldView`. A game or title for play opens through `BootPage.open_game(parent, options)` / `BootPage.open_title(parent, options)` so the loading page draws while it is made; shots and headless runs get `make_game` / `make_title`. `BootWorld.offer(world, view)` hands a world already on screen to the next scene. |
-| Settlements | `src/core/settlement/`, `src/systems/46_settlements.gd`, `src/models/settlement/`, `src/ui/ui_settlement_screen.gd` | Building at world scale (docs/VISION.md §9, docs/DESIGN.md §Settlements) and the seam the raids package meets it on. `h` opens the holding app: a piece goes up in front of the player out of the creel and against the clock, the first one founds the place, and one within `SettlementBuild.JOIN` joins it. A kind is ONE row in `StructureKind.ROWS` (cost, minutes, health, footprint, wear, staff, power drawn/made, makes, store, banks, sleeps, defence, water) plus its row in `SIGNS`; `StructureKind.buildable()` says whether anybody has learnt to build it, so the enum may name pieces nobody can put up. **Nothing ticks**: `SettlementRules.catch_up` settles a holding from `Settlement.worked_at` in whole `SLICE` (30 min) steps aligned to the clock, so six hours away is twelve steps and a place watched every minute is identical to one left for a week. `signature()` is the ONE door the raids package knocks on, with the hour inside the answer (`Settlement.night`); each channel takes the loudest piece, less whatever masks it. `damage_structure` may be called straight on a `Settlement` at any time: 46 reconciles health every physics step and emits `structure_damaged`/`structure_destroyed` itself (weather wear is absorbed by `_note_health`, so only a blow is announced). The settlement package emits `settlement_founded`, `structure_built/damaged/destroyed` and NEVER the raids four. **A holding belongs to the realm it was built in** (`Settlement.realm`, a `Realm.KINDS` StringName): only that realm's are drawn and walked into, `realm_changed` stands them up in the new world and query, and the rest go on working. A piece's collision is a **footprint-only `WorldProp`** with a negative id, handed to `game.query` alone and never to `world.props`, so a wall stops a body and a machine's sight while the drawing stays this package's. **A hearth is `PropKind.FIRE`**: the world's own fire lights, warms, is slept beside and worked at. Residents are 35_folk's own rows moved onto the holding's books (`village = 46_settlements.RESIDENT`), never a second people system, and **`Settlement.beds()` is the cap on how many there may be** — `_staff` refuses to recruit into a holding with no bed spare, which is why the LIVING family has a BUNK in it and why the refusal names which wall it hit. That function was written, documented and called by nobody for the package's whole life, so a holding took in one resident per job and housed them in the open while the slate printed "sleeps 2" on the hut's card; a number the player is shown has to decide something. Staging is exempt on purpose (`_staff(s, p, true)`), because `--holding=` is documented as free and staffed and every tour that uses it wants a working plot, not a lesson about roofs. **There are two generators**: a WIND SPINNER is free and unreliable and a SOLAR ARRAY is dear and dependable until the sun goes down, they are worth about the same over a day, and `SettlementRules.source(kind, weather, hour)` is where a generator says when it works — the array's own curve sat there unreachable for months because the kind had no row. **Two answers to being read are buildable, and each buys one thing**: a SPOOFER masks every channel while it has power (`Structure.signs()` is empty for a masking piece that draws power and has none) and is built round a `record` taken off a carrier; a DECOY MAST masks nothing and is read in the holding's place — `Settlement.lures()` are the standing decoys at least `Settlement.LURE_APART` from the centre (a decoy in the yard is the yard), `lure_signature(p)` shouts on the holding's own loudest channel from where the decoy stands, and decoys are left out of the centre. What a machine does with a decoy's reading, and the cap on how many count, is the raids package's. Power is a rate and charge an amount: the bank fills and drains by the slice. A TURRET (`src/core/settlement/turret_rules.gd`, run by `src/systems/47_defences.gd`) shoots only what comes FOR the place — a raider first, then a body pressing a fight — within `TurretRules.REACH` and a clear line, after `AIM_MS` of its head coming round, through `FightSim.strike`; it is built round a repeater, draws the most power of anything, and hums as stolen tech while armed. A piece that draws power and needs nobody (`StructureKind.switched`: turret, spoofer) is switched by hand (`Structure.off`, saved), and `SettlementRules.wire_now` says who has power THIS minute without spending any, so a turret armed in front of a raid is armed now and not at the next half hour. `lose_person(s, who)` is the one door an outside hand takes a resident off the books by. Saved under key `settlements`. `--holding=KIND,...` stages one (cells full). Answer a tour with `holding`, `built`, `staffed`, `produced`, `stores`, `worn`, `holding_people`, `powered`, `piece:KIND`, `app:holding`, `lure`, `spoofing`, `turret_armed`, `turret_target`, `turret_fired`, `turret_hit`, `turret_kill`. |
-| Raids | `src/core/raid/`, `src/core/notice/`, `src/systems/48_raids.gd` | Why and when the machines come for what the player built (docs/VISION.md §9.2-9.7, docs/DESIGN.md §Raids). **No raid timer, ever** — meaning nothing is ever SET IN MOTION by the clock: every step is caused by something the player did, built or watched happen, `_escalate` refuses to warn until something has filed a reading and attention has crossed a player-caused threshold, and `tests/raid/test_attention.gd` names that rule. **There is one clock in the chain and it is deliberate**: once a step is warned, `begins_at = warned_at + RaidStage.warn_minutes(stage)` counts down on the world clock. That is the answerable window, not a trigger — the player turns them round inside it by dropping the signature, and nothing starts counting until they caused the warning. A machine near a holding reads ONE channel off `Settlement.signature()` (`Notices.read`, weighed by `Signature.CARRY` over `Notices.CARRY_TILES`) and carries the record home; killing, spoofing or outrunning it before it is clear stops it, and **nothing is ever sent for a place nothing has read**. What it reads may be a DECOY standing out past the yard instead of the yard itself (`Settlement.lures`): the reading is then taken AT the pole, `Notice.lure` names the piece, `Notice.at` is its ground (so that is where it must get clear of and where it can still be caught), it files the `&"lured"` cause — `Attention.LURED` (0.25) of a real record — and a party's harvester walks to it first. Only the ONE loudest decoy is ever read, whatever `lures()` hands over: a ring of cheap masts is one reading, or the answer to being read is to build five of the cheapest thing. `Settlement.attention` is 0..1 on ONE scale where **1.0 is a siege led by the region's keeper**, counted in units of one filed record at full strength (`Attention.NOTICE_FULL` = 0.09, so twelve unanswered bring the keeper); `Attention.CAUSES` is the closed list of what moves it and this system is its only writer — a share of `NOTICE_FULL` each, so every cause is stated in the same unit (a machine lost in the yard 0.14, the network going up a level 0.07, stolen FOUND tech 0.030 per world hour at `found_tech` 1.0, a quiet world hour -0.012, a record destroyed -0.05, and the keeper falling -1.0. **A step PAID is not in that list**: what a payment spends is `RaidStage.SPENDS`, four numbers indexed by stage, because paying off a siege is not worth the same as paying off a survey — a single `-0.30` row here was dead code and nothing ever read it. And **hours alone do NOT only make a holding safer**, which this row used to claim: `Attention.from_found_tech` adds `0.030 x found x hours` every world hour a stolen piece is standing. The rise is still CAUSED — you chose to build the thing — but the clock is what pays it, and switching the piece off stops it. `tests/raid/test_causes_are_live.gd` reads the shipped source and fails on any cause nothing applies, so this list cannot rot again). `Events.attention_changed(id, from, to)` is the ONE door out, and 48_raids is the only emitter of the raids five (`settlement_noticed`, `attention_changed`, `raid_warned`, `raid_began`, `raid_ended`): anything that wants the number reads it off `Settlement.attention` or listens, and never writes. It is read as PRESSURE, never as a bar: the holding app draws what a machine HEARS (the seven channels, the loudest named) and under it ONE WORD for what the plan thinks (`Attention.pressure`: read surveyed wanted marked condemned) — a number there would make it a thing to optimise, and there is no third readout. Steps are `RaidStage` (survey probe raid siege), each `raid_warned` 25-110 world minutes before `raid_began`, each answerable **inside that window**: fortify, evacuate, spoof, pay a full store, or take down what gave you away — a holding whose signature falls under `RaidStage.CALLED_OFF_SIGNATURE` of what it was at the warning turns them round on the road, because attention itself is too slow to move in an hour. `RaidRoles` picks each trade's target off the holding's own signature and the party calls `damage_structure` on the pieces, each blow scaled by the same `RaidResolve.turned(defence_total)` the paper settle uses. A raider the yard's own turret shot turns on the turret (`_shot_by`, off `MobState.struck_from`), and the player's swing takes it back with no rule of its own, because the fight writes INF for a player's blow and the LAST blow decides. A party body carries `MobState.raider`, which **exempts it from the coast's cull**: only 48_raids takes one off the land, and a raid the player walks out of is settled on paper with whatever the party had not spent, never called off. **Per realm**: a machine only ever reads a holding of its own realm, a step is only ever warned in the realm the player is in, and the plan's memory of a region is keyed `"REALM:region id"` (region AND prop ids restart at 0 in every realm's world) — a portal is NOT a raid path (docs/DESIGN.md §Raids says why, in a sentence to argue with). Spoils declare through `Drops` with ids of their own and `of` empty (`RaidSpoils.RAZED`, `RaidSpoils.RECORD`). Saved under key `raids`. `--attention=F` stages a holding. Answer a tour with `noticed`, `carrier`, `filed`, `lured`, `stopped`, `record`, `warned`, `warned:STAGE`, `raid_coming`, `raid`, `raid:STAGE`, `raid_on`, `party`, `party_close`, `paid`, `siege_keeper`, `marked`, `stake`, `stake_pulled`, `raid_damage`, `snatched`, `looted`, `razed`, `raid_ended`, `raid_ended:OUTCOME`, `raider_turned`, `raider_down`, `quieted`, `attention`, `unfiled`, `nothing_coming`. |
-| The floor: screen size and quality tiers | `src/ui/ui_base.gd`, `src/render/quality.gd` | LANTERN's floor (docs/LOOK.md). **One size now**: `UiBase.SIZE` (1920x1080) is the engine's base — the frame a shot captures, the space the world is drawn in, and the units every number in `src/ui/` and `src/dev/` is written in. `UiBase.screen()` and `.mid_x()` are the doors and nothing spells a screen size. `UiBase.PITCH` (2) is one pixel of the module's glass; a RULE is one base pixel, `UiDraw.px` is PITCH square, and `UiDraw.sprite`'s scale defaults to PITCH. The device came across ×3 and the type ×2 (`UiSlate.UNIT`, `UiFont.PITCH`), which is the whole of why more fits on the glass. **`DESIGN`/`SCALE`/`fit()`/`to_design()` are the legacy 640x360 space** and only three things still draw in it — `src/boot/boot_page.gd` (because `src/boot/shell.html` draws the same device by hand and `tests/export/test_export.gd` holds them equal), `src/gallery.gd`, and the bolt layer in the frozen `src/render/`. Finding one of them anywhere else is a bug. A converted layer sets NO transform and `unproject_position` needs no conversion, which retires the old trap. `stretch/mode` is **`viewport`** and may not become `canvas_items`: under `canvas_items` the root viewport IS the window, and a tool run's window is one pixel across on purpose, so every shot would capture the window instead of the game (measured: 64x36 against 1920x1080). **A tier spends render scale, never window size** — `Quality.ROWS` is the data (render scale, upscale mode, MSAA, shadow size and filter, how many local lights may cast, volumetrics, SSAO, SSIL) and `Quality.apply()` writes only what this package owns (the root viewport and the sun's shadow); `volumetric`/`ssao`/`ssil` belong to the Environment the lighting package builds and `shadow_lights` to the lights system, which READ the row rather than re-deriving it. The rows are copied into neither settings table: `--quality=NAME` beats the player's `picture.quality`, which beats the owner's `build.quality`, which falls back to `Quality.detect()` (web → `web`, Compatibility → `medium`, Forward+ → `high`), and `SettingsApply.quality()` is where the two doors meet since by design neither reads the other. Unlike the window, a tier IS applied in a tool run, or every picture in the repository is evidence about a build nobody runs. `--stats` and the web probe both print which renderer actually drew the frame. |
-| The camera's two projections | `src/render/camera_rig.gd`, `tests/render/test_read_reach.gd` | Orthographic is the shipped game; the LENS is perspective, chosen at boot (`--lens=persp`) or by a held Z when `rules.lock_lens` is on (OFF by default: play under it settles look questions that are the owner's). **`CameraRig.lens` is the only writer of the RIG's `projection`**: a setter keeps the two in step. (A camera in a world of its own sets its own -- `ui_gear_figure.gd` does -- and that is not this rule.) Before it, `projection` was set once in `_ready`, so a lens changed mid-game built a perspective transform under an orthographic projection, while 18_crowns asked `lens` and 30_mobs, WorldView, SkyLight and the fire asked `projection`. Read either; write only `lens`. **Nothing may read `cam.size` as world units per screen height**: Godot keeps `size` under a perspective projection and ignores it, and it goes on answering the ORTHOGRAPHIC value to the bit -- a confident wrong answer, not a null. `CameraRig.units_per_pixel_of(cam, rows)` is the one door (stated at the focal plane under the lens), and its call sites are load-bearing -- grep them before treating it as spare. This row does not give a count on purpose: the number was written as one, then five, and was eight by the same evening, and an undercount is the direction that gets a live door deleted. **"Is it in frame" is `unproject_position`, never a half-extent**, skipping points behind `near`, because a perspective projection mirrors them onto the rect and an unguarded count inflates in the direction you hope; `CameraRig.sees_ground` is the spawner's version, and `Spawner.sees` is how core asks it without holding a camera (the orthographic box stays for the shipped game). The switch cannot pop: `lens_back` DERIVES the distance so `2*tan(fov/2)*back == view_height` (the shipped 9.0 gave a 1.60x jump), and the 17-degree pitch difference is carried in `_pitch` so the frame after a switch is at the frame before's pitch. `fov/2 < pitch` keeps the horizon out of the frame, and that is the owner's fork, not a tuning: it is asserted in `test_read_reach`, clamped as an angle in `Air.frame_depth_lens`, and it is what keeps the lens inside `WorldView.near_limit`. Measured, not derived: the orthographic frame holds 8.9 tiles ahead and 8.9 behind, the lens 30.7 ahead and 7.2 behind. Answer a tour with `target_lens`, `target_flat` (both ask `lens` AND `projection`). |
-| The web path | `src/render/degrade/`, `src/render/quality.gd`, `tools/web/web.mjs` | The web is Compatibility and must be the same place on a worse night (docs/LOOK.md). **Ask the renderer by rendering, never from memory**: `RenderProbe` answers `perf colour` (what ALBEDO comes out as), `perf features NAME` (every expensive thing switched off and on with the world held still: does the frame move), `perf scale LIST SECS`, `perf slate`, and the fit (`perf match REF`). **A tour plays inside the exported build**: `tools/web.sh --tour=tours/x.tour --args=--seed=7` serves the build's own shell with the tour preloaded and the arguments set (the shell a player gets still drops tool options), and the tour hands each frame to the page as a download (98_tour `_save_frame`); `same` needs frames on disk and is not available there. `tools/canon.sh --web` is the side-by-side (shots/degrade/). Desktop `godot --rendering-method gl_compatibility -- ... --quality=web` measured identical to the web build on every probe, so it is the quick proxy and the web build is the proof. **Compatibility's light is counted back, not replaced**: a sun that casts is drawn in a pass that lights ambient and emission again and the land far harder (turning its shadow on BRIGHTENED the frame), and the lamps, bloom, fog and curve all land on display values; `CompatTrim` holds multipliers per casting/overcast by day/night, FITTED against the desktop's canon frames (`tours/degrade_fit.tour`), which SkyLight and 15_lights apply and which are all ones on Forward+. Emission reaches it through `matter_light` and the `sky_emission` global. A change to the light, the sky or a lit shader moves the fit: re-run `tools/canon.sh --web` and look. **Stand-ins are columns on the tier row**, never a renderer check in a draw path: `air_stand_in` (the depth fog takes each landscape's volumetric bank) and `near_stand_in` (the shaft pass blurs what is nearer than `CameraRig.near_plane`). The shaft pass `discard`s every pixel it does not change: writing the frame back unchanged lifted a clear web noon 4.3 luma. A build with no threads has no worker, so `WorkerThreadPool.add_task` runs inline (measured 1305 ms held): nothing heavy may be pre-warmed on the title there (`BootPage.has_threads()`). |
-| Palette | `src/render/palette.gd` | The MACHINE ramps run one arc by ROLE, cold to warm, all inside the violet band (hue 240-336): cold indigo filers and observers, deep indigo keepers, violet workers, burnt magenta hunters. Low chroma, compressed top, and the body fill (step 3) sits BELOW the turf in value, so the amber `LENS` stays the only saturated thing on a machine and a machine is a dark mass by day. No kind meets another kind or any `PLATE` step, so a patched roof never reads as a live machine. It is a solved packing: retune a kind's hue, chroma and fill together and re-run `tests/models/test_machines_ramps.gd`. The machines' own light — a strip, a beacon, a working part — is written once in `src/models/props/works.gd` (`STRIP`, `BEACON`, `WORKING`) and read by the geometry, the pool, the glint and the fog shaft alike. |
-
-Native-name trap: a static func on a `class_name` script must not share a name
-with a `GDScript`/`Script` method (`is_tool`, `new`, `get_class`...): the call
-resolves to the native one.
+`../unspent` is the old Unity attempt: mine it for mechanics numbers only. Never
+port its story, dialogue or lore.
