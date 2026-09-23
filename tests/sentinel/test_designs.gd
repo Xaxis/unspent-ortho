@@ -117,5 +117,17 @@ func test_what_it_gives_is_on_one_table_and_its_core_comes_from_nowhere_else() -
 		for row: Dictionary in a:
 			got[row.item] = true
 		check(got.has(def.core), "%s always gives its core" % def.id)
-	var problems := Materials.problems([&"coast", &"salt_flats", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning", &"scrapwood", &"sea"])
+	# `Materials` is one static table shared by every test in the process, so
+	# what is in it here is not only the keepers' cores: an earlier test that
+	# ran `GearEconomy.declare()` leaves every elite material in it, gated on
+	# whatever landscape it names. This handed `problems` a list of nine
+	# landscapes written down by hand, which was every landscape there was when
+	# it was written, so it passed alone (cores only) and failed in a shard the
+	# moment a material named a landscape added since (`hush_slate`, the crags).
+	# The registry is the authority on which landscapes exist; ask it. `all()`,
+	# not `land()`: the sea is a landscape a table may name.
+	var known: Array = []
+	for d: BiomeDef in BiomeRegistry.all():
+		known.append(d.id)
+	var problems := Materials.problems(known)
 	eq(problems.size(), 0, "every material declared names somewhere real: %s" % ", ".join(problems))
