@@ -90,10 +90,6 @@ pinewood plan.machine
 pinewood player.signature
 ruined_metropolis land.frames
 ruined_metropolis land.landmark
-ruined_metropolis land.own_props
-ruined_metropolis land.site
-ruined_metropolis plan.depot
-ruined_metropolis plan.work_props
 ruined_metropolis player.only_in
 salt_flats land.frames
 salt_flats land.landmark

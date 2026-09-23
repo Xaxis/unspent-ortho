@@ -101,16 +101,15 @@ static func make() -> BiomeDef:
 	d.props = [PropKind.RUIN, PropKind.DEBRIS, PropKind.WRECKAGE, PropKind.VEHICLE,
 		PropKind.BARRICADE, PropKind.MURAL, PropKind.ARCHIVE, PropKind.LAMP,
 		PropKind.PYLON, PropKind.STACK, PropKind.CHECKPOINT,
-		# Its own (docs/LANDSCAPES.md §4, src/models/props/metropolis.gd), declared
-		# here so the city is the ONE landscape whose things these are: that is
-		# what makes the lift cable's gate the city's (Sources.lands_yielding).
-		# The bands that lay them, the works row that stands the gantry and the
-		# bales at the demolition face, are the placement wave's; declaring a
-		# kind places nothing until a recipe returns it.
+		# Its own (docs/LANDSCAPES.md §4, src/models/props/metropolis.gd): the
+		# fallen span, the lift core and the shop front are `_scatter`'s; the
+		# gantry and the bales stand at the demolition face (`_works`).
 		PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT,
 		PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY]
 	d.ore = [[PropKind.IRON_ORE, 0.03], [PropKind.COPPER_ORE, 0.026], [PropKind.STONE_ORE, 0.02]]
-	d.sites = {"tips": 3, "ruins": true}
+	# The plaza (SiteKinds): a square with its mural wall still up and its
+	# lamps dead, claimed as a rate per 1,000 tiles of each region.
+	d.sites = {"tips": 3, "ruins": true, "plaza": 0.08}
 	d.beached_wrecks = false
 	d.pools = {"order": 3, "cell": 36, "chance": 0.3, "r_min": 1.8, "r_max": 3.6, "ground": Ground.WATER}
 	d.villages = 1
@@ -144,6 +143,15 @@ static func make() -> BiomeDef:
 	d.sound_bed = &"bed_wreck"
 	d.surface = _surface
 	d.scatter = _scatter
+	# Unbuilding the city (docs/LANDSCAPES.md §4 PLAN): the demolition faces
+	# `_works` cuts, two to a region.
+	GenWorks.register(&"ruined_metropolis", {
+		"host": load("res://src/content/biomes/ruined_metropolis.gd"),
+		"works": &"_works",
+		"vignettes": [[5, &"debris_field"], [4, &"wreck"], [3, &"barricade"], [3, &"wreck_parts"],
+			[3, &"tipped_signs"], [2, &"grave_cluster"], [2, &"fence_corner"], [1, &"shelter"]],
+		"survey": [[0.3, &"sign_beside"]],
+	})
 	return d
 
 
@@ -183,6 +191,15 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.LAMP
 		if r > 0.55 and r < 0.5565:
 			return PropKind.MURAL
+		# What the city left standing and lying: a gutted shop front about once
+		# a frame, a lift core with its tower gone and a fallen span of elevated
+		# road each about one frame in three or four.
+		if r > 0.30 and r < 0.3026:
+			return PropKind.SHOPFRONT
+		if r > 0.40 and r < 0.4008:
+			return PropKind.LIFT_SHAFT
+		if r > 0.45 and r < 0.4506:
+			return PropKind.DECK_SPAN
 		return PropKind.ARCHIVE if r > 0.88 and r < 0.8835 else BiomeScatter.NONE
 	if g == Ground.ROAD:
 		if r < 0.030:
@@ -195,6 +212,8 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.DEBRIS
 		return PropKind.WRECKAGE if r < 0.046 else BiomeScatter.NONE
 	if g == Ground.GRASS:
+		if r > 0.40 and r < 0.4012:
+			return PropKind.LIFT_SHAFT
 		if r > 0.30 and r < 0.3075:
 			return PropKind.PYLON
 		return PropKind.STACK if r > 0.80 and r < 0.8055 else BiomeScatter.NONE
@@ -203,3 +222,45 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.DEBRIS
 		return PropKind.RUIN if r < 0.034 else BiomeScatter.NONE
 	return BiomeScatter.NONE
+
+
+## THE DEMOLITION FACE (docs/LANDSCAPES.md §4 PLAN): the plan is taking the city
+## apart for what it is made of, a district at a time. The slab is peeled back in
+## ruled benches (the quarry mark), a gantry straddles the cut, what it pulled
+## out stands sorted and strapped in rows beside it, a conveyor carries it off
+## and the kept half's lamps burn at the corners.
+##
+## Two to a region. The unbuilder does not starve (designs/unbuilder.gd leaves it
+## out: the city is too big to strip its feeds), so these are laid for the land.
+## No checkpoint: the spec puts one at the road, and a checkpoint stands at a
+## road by `CHECKPOINT_AT_ROAD` or the snowfield's test fails it, which a face
+## sited on the flattest floor cannot promise.
+static func _works(L: Object) -> void:
+	var c: GenContext = L.c
+	var rng: RandomNumberGenerator = L.rng
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	for k in (L.rects as Array).size():
+		for n in 2:
+			var p := GenWorks.flattest_in(L, k, 6, [Ground.FLOOR], 34.0)
+			if p.x < 0:
+				break
+			var at := Vector2(p) + Vector2(0.5, 0.5)
+			var half := Vector2(rng.randf_range(8.0, 9.5), rng.randf_range(5.0, 6.0))
+			GenWorks._record(c, &"unbuilding", at, d, half, GenWorks.QUARRY)
+			GenWorks.put_on_step(L, PropKind.DEMOLITION_GANTRY, at, nrm.angle(), 0.3)
+			# The bales, in rows along the long side: rebar, copper, cullet.
+			for row: float in [-1.0, 1.0]:
+				for j in range(-2, 3):
+					if rng.randf() < 0.25:
+						continue
+					GenWorks.put_on_step(L, PropKind.SORTED_BALE, at + d * j * 1.8 + nrm * row * (half.y - 1.4), d.angle(), 0.0, 0.8)
+			GenWorks._run(L, PropKind.CONVEYOR, at + d * (half.x + 0.5), d, rng.randi_range(4, 6), 2.5, -99, 0.1)
+			for sx: float in [-1.0, 1.0]:
+				for sy: float in [-1.0, 1.0]:
+					if rng.randf() < 0.75:
+						GenWorks._put(L, PropKind.LAMP, at + d * (half.x + 0.8) * sx + nrm * (half.y + 0.8) * sy, d.angle(), -99, 0.2, true)
+			GenWorks._about(L, PropKind.DEBRIS, at, 3, half.y, half.x)
+			# The cut is kept clear: a mural wall dealt into the middle of a
+			# face the plan is peeling back stood through its gantry.
+			GenWorks._clear_rect(c, L.occ, at, d, half)
