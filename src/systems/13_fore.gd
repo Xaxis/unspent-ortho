@@ -53,6 +53,7 @@ func _process(_delta: float) -> void:
 	var f3: Vector3 = game.camera.target if game.camera != null else game.player.position
 	var focus := Vector2(f3.x, f3.z)
 	view.follow(focus)
+	view.thin(game.camera.shoulder_share() if game.camera != null else 0.0)
 	var here: Vector2 = game.player.pos
 	_pos.clear()
 	_hostile.clear()

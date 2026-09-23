@@ -86,7 +86,7 @@ func test_a_key_may_only_do_one_thing() -> void:
 	# And put back whole: several actions ship with two keys, and taking one of
 	# them off must not lose the other for good.
 	var two := &"dodge" if InputMap.has_action(&"dodge") else &""
-	# KEYS, not events. The game also answers `dodge` to the right mouse button
+	# KEYS, not events. The game also answers `dodge` to a mouse button (the thumb)
 	# (`MouseControls`, installed at boot), and binding a key rightly leaves that
 	# alone -- so counting every event read 2 whenever the mouse test had run
 	# first in the same process, and 1 alone. What this checks is the keyboard.

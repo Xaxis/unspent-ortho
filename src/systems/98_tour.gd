@@ -128,6 +128,9 @@ extends GameSystem
 ##                          staging command that touches a file, because no boot
 ##                          flag can fake a save an older build wrote
 ##   echo TEXT              print a line to the log
+##   mouse DX,DY [SECS]     move the mouse DX,DY screen pixels (right, down) over SECS
+##                          (default 0.3) as real motion events, the way a hand turns
+##                          the view over the shoulder (41_shoulder)
 ##   key ACTION             a real key event for ACTION's first key, down then up: what
 ##                          pages that read input events need (the title)
 ##   same A B TOL [X,Y,W,H] shots A and B (already taken) differ by at most TOL, the mean
@@ -458,6 +461,10 @@ func _run() -> void:
 				print("tour: ", line.substr(5))
 			"key":
 				ok = await _key(parts[1])
+			"mouse":
+				var md := parts[1].split(",")
+				await _mouse(Vector2(md[0].to_float(), md[1].to_float()),
+					parts[2].to_float() if parts.size() > 2 else 0.3)
 			"same":
 				if parts.size() > 5 and parts[3] == "no_more_than":
 					# SLACK and the crop are both optional and either may come
@@ -1171,6 +1178,27 @@ func _teleport(p: Vector2) -> void:
 
 
 ## A real key event for the first key bound to `action`, held across whole frames.
+## Motion events, spread over whole frames, through the engine's own input queue:
+## whatever reads the mouse reads these exactly as it reads a hand.
+func _mouse(by: Vector2, secs: float) -> void:
+	var left := secs
+	var sent := Vector2.ZERO
+	while true:
+		await get_tree().process_frame
+		var dt := get_process_delta_time()
+		left -= dt
+		var share := clampf(1.0 - left / maxf(secs, 1e-3), 0.0, 1.0)
+		var step := by * share - sent
+		sent += step
+		var ev := InputEventMouseMotion.new()
+		ev.relative = step
+		ev.screen_relative = step
+		Input.parse_input_event(ev)
+		if left <= 0.0:
+			break
+	await get_tree().process_frame
+
+
 func _key(action: String) -> bool:
 	if not InputMap.has_action(action):
 		return false

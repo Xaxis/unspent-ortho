@@ -38,6 +38,7 @@ render_mode cull_back;
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
 #include "res://src/render/matter.gdshaderinc"
+#include "res://src/render/sight.gdshaderinc"
 
 global uniform float wind_strength;
 // Where a crown must not hide a fight (18_crowns writes it every frame): up to
@@ -1469,6 +1470,16 @@ void fragment() {
 	vec3 eye = INV_VIEW_MATRIX[3].xyz;
 	bool persp = PROJECTION_MATRIX[3][3] < 0.5;
 	float cut = max(crown_cut(world_pos, sway_w), tall_cut(world_pos, m1, camz, eye, persp));
+	// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line of
+	// sight to a body, at any height (sight.gdshaderinc). Never the land.
+	if (persp && !(m1 >= 40 && m1 <= 70)) {
+		float close = sight_close(eye, crown_clear[0]);
+		if (close > 0.0) {
+			for (int i = 0; i < CROWN_CLEAR; i++) {
+				cut = max(cut, sight_cone(world_pos, eye, crown_clear[i]) * close);
+			}
+		}
+	}
 	if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
 		discard;
 	}

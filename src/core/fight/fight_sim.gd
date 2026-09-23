@@ -93,6 +93,11 @@ var _best_d := INF
 var _best_at := 0.0
 var _carry := 0.0
 var _swing_until := -1.0
+## Where a buffered swing is aimed, radians in tile space, or NAN for the swing's
+## own rule (the way the body walks, else the way it faces). Set by a view that
+## has a direction of its own to look in: over the shoulder a swing goes where the
+## camera looks, because that is where the player is looking (CameraRig.aim).
+var _swing_aim := NAN
 var _dodge_until := -1.0
 var _whiff_checked := true
 ## The current swing has already worn the edge (once, on the first body it meets).
@@ -124,11 +129,12 @@ func living() -> int:
 # --- input -------------------------------------------------------------------
 
 ## The swing key. Held, it wrenches against the grip instead (never buffered).
-func press_swing() -> void:
+func press_swing(aim := NAN) -> void:
 	if hero.held():
 		_try_pull()
 		return
 	_swing_until = now + FightRules.BUFFER_MS
+	_swing_aim = aim
 
 
 func press_dodge() -> void:
@@ -193,7 +199,10 @@ func _swing() -> void:
 	var inv := hero.inventory
 	var held: StringName = inv.held if inv != null else &""
 	var b := Blow.for_item(held, inv.edge(held) if inv != null and held != &"" else 10000)
-	if hero.move.length() > 0.1:
+	if not is_nan(_swing_aim):
+		hero.facing = _swing_aim
+		_swing_aim = NAN
+	elif hero.move.length() > 0.1:
 		hero.facing = hero.move.angle()
 	# Turn toward a body just off the facing, so a swing that was meant lands where it was meant.
 	var best: MobState = null

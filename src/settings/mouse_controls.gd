@@ -29,12 +29,17 @@ class_name MouseControls
 
 ## Action id -> mouse buttons that also mean it.
 ##
-## Left is the swing because it is the verb the hand expects, and right is the
-## dodge because the two are pressed together and a player should never have to
-## cross hands to answer a blow.
+## Left is the swing because it is the verb the hand expects. Right is the view
+## over the shoulder, held (owner, 2026-09-23): a held right button is how a
+## third-person camera is asked for in nearly every game that has one, and the
+## mouse is what turns that view, so the hand that steers it is already there.
+## The dodge had the right button until then and moved to the thumb (the back
+## side button), which is still pressed with the swing without crossing hands;
+## it keeps Shift and K.
 const ALSO := {
 	&"swing": [MOUSE_BUTTON_LEFT],
-	&"dodge": [MOUSE_BUTTON_RIGHT],
+	&"dodge": [MOUSE_BUTTON_XBUTTON1],
+	&"shoulder": [MOUSE_BUTTON_RIGHT],
 }
 
 

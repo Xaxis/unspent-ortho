@@ -16,7 +16,7 @@ const TOUR := preload("res://src/systems/98_tour.gd")
 ## works if the list is kept beside the runner.
 const COMMANDS := ["at", "near", "ground", "place", "ledge", "leap", "village", "hour", "zoom", "weather",
 	"walk", "press", "hold", "release", "tap", "wait", "shot", "await", "until", "spawn",
-	"choose", "coast", "walkto", "perf", "echo", "key", "same", "try", "end", "stale"]
+	"choose", "coast", "walkto", "perf", "echo", "key", "mouse", "same", "try", "end", "stale"]
 ## Subject prefixes with something to check behind them.
 const BODY_PREFIXES := ["mob:", "down:", "body:"]
 

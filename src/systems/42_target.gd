@@ -36,10 +36,6 @@ const READ_EVERY := 0.1
 
 ## What is locked — a fight body or a person — or null; the field a sweep reads.
 var locked: TargetSubject = null
-## The lens the camera had before a lock took it, or &"" when a lock has not
-## (`_hold_lens`). Remembered rather than assumed ortho, so a game booted with
-## `--lens=persp` is handed back what it had.
-var _lens_was: StringName = &""
 var sweeping := false
 var field: Array[TargetSubject] = []
 var read: Dictionary = {}
@@ -269,12 +265,17 @@ func _lean() -> void:
 		cam.lean_pitch = SWEEP_PITCH
 		cam.lean_zoom = SWEEP_ZOOM
 		cam.lean_bias = game.world.to_3d(at) - game.world.to_3d(here)
+		cam.subject = Vector3.INF
 		# A sweep reads a FIELD and stands back, which is the flat camera's job.
 		_hold_lens(false)
 		return
 	if locked == null:
 		_square()
 		return
+	# Over the shoulder a lock does not lean: the view turns onto what it holds
+	# (CameraRig `subject`). The lean is still asked for, because it is the pose
+	# the view glides back to if the shoulder is let go while the lock is held.
+	cam.subject = game.world.to_3d(locked.here())
 	var to := locked.here() - here
 	cam.lean_yaw = LOCK_YAW * _yaw_share(to)
 	cam.lean_pitch = LOCK_PITCH
@@ -293,17 +294,16 @@ func _lean() -> void:
 ## Read live, so the row can be flipped from dev mode mid-lock and the camera
 ## follows. Everything else is `CameraRig.lens`'s job: the projection, and the
 ## pitch carried across so the switch does not tip the picture.
+##
+## The camera counts who holds the lens (`CameraRig.hold_lens`), so a lock and the
+## view over the shoulder can each take it and let it go in any order: leaving
+## the shoulder while a lock still wants the lens lands on the lens, and a game
+## booted with `--lens=persp` is handed back what it had.
 func _hold_lens(on: bool) -> void:
 	var cam := game.camera
 	if cam == null or not is_instance_valid(cam):
 		return
-	if on and bool(GameConfig.value("rules.lock_lens")):
-		if _lens_was == &"":
-			_lens_was = cam.lens
-			cam.lens = &"persp"
-	elif _lens_was != &"":
-		cam.lens = _lens_was
-		_lens_was = &""
+	cam.hold_lens(&"target", on and bool(GameConfig.value("rules.lock_lens")))
 
 
 ## How far round to lean, -1..1: the body's bearing against the screen's own
@@ -320,6 +320,7 @@ func _yaw_share(to: Vector2) -> float:
 func _square() -> void:
 	_hold_lens(false)
 	var cam := game.camera
+	cam.subject = Vector3.INF
 	cam.lean_yaw = 0.0
 	cam.lean_pitch = 0.0
 	cam.lean_zoom = 1.0

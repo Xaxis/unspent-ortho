@@ -156,6 +156,13 @@
   },
   {
    "kind": "system",
+   "label": "41_shoulder",
+   "entry": "src/systems/41_shoulder.gd",
+   "reach": "tools/tour.sh tours/shoulder.tour --seed=4 --hour=12 --weather=clear:0",
+   "area": "world-look"
+  },
+  {
+   "kind": "system",
    "label": "42_target",
    "entry": "src/systems/42_target.gd",
    "reach": "tools/tour.sh tours/targeting.tour",

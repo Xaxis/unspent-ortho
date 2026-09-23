@@ -62,6 +62,7 @@ render_mode cull_disabled;
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
 #include "res://src/render/matter.gdshaderinc"
+#include "res://src/render/sight.gdshaderinc"
 
 global uniform float wind_strength;
 
@@ -281,6 +282,16 @@ void fragment() {
 	vec2 px = matter_px(world_pos);
 	// A fight is never hidden: stipple, never a fade.
 	float cut = crown_cut(world_pos, sway_w);
+	// And, for a close eye, every card in the line of sight to a body.
+	if (PROJECTION_MATRIX[3][3] < 0.5) {
+		vec3 eye = INV_VIEW_MATRIX[3].xyz;
+		float close = sight_close(eye, crown_clear[0]);
+		if (close > 0.0) {
+			for (int i = 0; i < CROWN_CLEAR; i++) {
+				cut = max(cut, sight_cone(world_pos, eye, crown_clear[i]) * close);
+			}
+		}
+	}
 	if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
 		discard;
 	}

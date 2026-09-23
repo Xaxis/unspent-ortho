@@ -66,7 +66,9 @@ func _read_input() -> void:
 	if blocked:
 		return
 	if Input.is_action_just_pressed(&"swing"):
-		sim.press_swing()
+		# Over the shoulder the swing goes where the camera looks (NAN elsewhere,
+		# which keeps the swing's own rule).
+		sim.press_swing(game.camera.aim())
 	if Input.is_action_just_pressed(&"dodge") and not shift:
 		sim.press_dodge()
 

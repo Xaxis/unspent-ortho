@@ -22,15 +22,16 @@ func test_a_click_says_the_same_word_as_the_key() -> void:
 
 
 func test_the_two_buttons_are_not_the_same_button() -> void:
-	# Left swings and right dodges: pressed together in a fight, so a player must
-	# never have to cross hands, and never both at once by accident.
+	# Left swings, the thumb dodges and right holds the view over the shoulder:
+	# pressed together in a fight, so a player must never have to cross hands,
+	# and never two verbs on one button by accident.
 	MouseControls.install()
 	var seen: Dictionary = {}
 	for action: StringName in MouseControls.ALSO:
 		for button: int in MouseControls.ALSO[action]:
 			check(not seen.has(button), "button %d means one thing only" % button)
 			seen[button] = action
-	eq(seen.size(), 2, "two buttons, two verbs")
+	eq(seen.size(), MouseControls.ALSO.size(), "one button per verb")
 
 
 func test_installing_twice_adds_nothing_twice() -> void:

@@ -11,6 +11,10 @@ extends RefCounted
 ## --zoom=F            camera view height in world units
 ## --lens=ortho|persp   which projection the play camera uses; persp is a
 ##                     third-person perspective lens, off by default
+## --view=top|shoulder where the camera opens: looking down (the play camera) or
+##                     over the player's shoulder (41_shoulder), beating the
+##                     player's `playing.view` for this run; a shot opens there
+##                     with no glide
 ## --walk=DX,DY,SECS   scripted walk in SCREEN directions before the shot
 ## --run               the scripted walk runs
 ## --shot=PATH         capture one frame to PATH (png) and quit
@@ -118,6 +122,8 @@ var zoom := 0.0
 ## &"persp", a third-person perspective lens. Opt-in and off by default, so
 ## every frame, tour and canon picture in the repository is unchanged.
 var lens: StringName = &"ortho"
+## Where the camera opens (41_shoulder), or &"" for the player's own setting.
+var view: StringName = &""
 var walk := Vector2.ZERO
 var walk_seconds := 0.0
 var run := false
@@ -214,6 +220,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"hour": o.hour = v.to_float()
 			"zoom": o.zoom = v.to_float()
 			"lens": o.lens = StringName(v)
+			"view": o.view = StringName(v)
 			"walk":
 				var p := v.split(",")
 				o.walk = Vector2(p[0].to_float(), p[1].to_float())

@@ -58,6 +58,16 @@ static func forget() -> void:
 		_was[action] = InputMap.has_action(action) and Input.is_action_pressed(action)
 
 
+## Put one latch back where its owner last saw it, after a `forget` it did not
+## ask for. A page opening lets go of a crouch and a lock, which is right for
+## both; a VIEW is not a stance, and one pressed on should still be on when the
+## page closes (41_shoulder). The key held down right now is absorbed, as
+## `forget` absorbs it, so putting a latch back is never read as a press.
+static func put(action: StringName, on: bool) -> void:
+	_on[action] = on
+	_was[action] = InputMap.has_action(action) and Input.is_action_pressed(action)
+
+
 ## Whether anything is latched on, for a system that wants to know.
 static func any_on() -> bool:
 	for k: StringName in _on:

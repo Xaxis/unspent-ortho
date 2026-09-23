@@ -97,6 +97,15 @@ const ROWS: Array[Dictionary] = [
 	{"id": &"playing.target", "group": &"playing", "label": "reading a machine", "kind": CHOICE,
 		"default": &"hold", "options": [&"hold", &"toggle"], "applies": &"",
 		"help": "hold the key down, or press it once"},
+	# The view over the shoulder (41_shoulder): where a game opens, and whether its
+	# key is held or pressed. Opening over the shoulder turns the key round -- held,
+	# it looks down on the land -- so one key answers both ways.
+	{"id": &"playing.view", "group": &"playing", "label": "where the camera starts", "kind": CHOICE,
+		"default": &"top", "options": [&"top", &"shoulder"], "applies": &"",
+		"help": "looking down on the land, or over your shoulder"},
+	{"id": &"playing.shoulder", "group": &"playing", "label": "the view over your shoulder", "kind": CHOICE,
+		"default": &"hold", "options": [&"hold", &"toggle"], "applies": &"",
+		"help": "hold the key down, or press it once"},
 ]
 
 ## The actions a player may put on another key, in the order they meet them.
@@ -114,6 +123,7 @@ const BINDABLE: Array[Dictionary] = [
 	{"action": &"swing", "label": "swing, or pull free"},
 	{"action": &"use", "label": "use what is in reach"},
 	{"action": &"target", "label": "read a machine"},
+	{"action": &"shoulder", "label": "look over your shoulder"},
 	{"action": &"ride", "label": "board a craft"},
 	{"action": &"lamp", "label": "lamp"},
 	{"action": &"inventory", "label": "carrying"},

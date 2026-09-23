@@ -164,6 +164,16 @@ static func rank(pos: Array[Vector2], hostile: PackedByteArray, aware: PackedByt
 
 
 ## Every frame: aim the hole, and gather again when the focus has moved enough.
+## Take the whole layer away in stipple, 0 whole to 1 gone. The layer buys the
+## depth an ORTHOGRAPHIC camera gives away; a camera behind the player's shoulder
+## has real perspective and real things passing in front of it, and there these
+## pieces are boughs hung in the air at the top of the frame. 13_fore hands this
+## the shoulder's share of the picture, so they stipple out as the view comes down.
+func thin(amount: float) -> void:
+	if _mat != null:
+		_mat.set_shader_parameter("fore_thin", clampf(amount, 0.0, 1.0))
+
+
 func follow(focus: Vector2) -> void:
 	if budget <= 0 or world == null or query == null:
 		return

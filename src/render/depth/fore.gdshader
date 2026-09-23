@@ -42,6 +42,7 @@ render_mode cull_disabled;
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
 #include "res://src/render/matter.gdshaderinc"
+#include "res://src/render/sight.gdshaderinc"
 
 // The wind, as SkyLight writes it. Declared here as world.gdshader declares it
 // (not in sky.gdshaderinc), because a global uniform may be declared by every
@@ -107,6 +108,17 @@ float fore_cut(vec3 wp) {
 void fragment() {
 	vec2 px = matter_px(world_pos);
 	float cut = max(fore_cut(world_pos), fore_thin);
+	// For a close eye, the line of sight to each body (sight.gdshaderinc): the
+	// lean `fore_cut` works by is an orthographic one.
+	if (PROJECTION_MATRIX[3][3] < 0.5) {
+		vec3 eye = INV_VIEW_MATRIX[3].xyz;
+		float close = sight_close(eye, fore_clear[0]);
+		if (close > 0.0) {
+			for (int i = 0; i < FORE_CLEAR; i++) {
+				cut = max(cut, sight_cone(world_pos, eye, fore_clear[i]) * close);
+			}
+		}
+	}
 	// Gone outright over the body, stipple at the edge of the hole. Stipple,
 	// never a fade: a half-transparent branch over a machine is worse evidence
 	// than either a branch or no branch (docs/LOOK.md law 5, kept by LANTERN).

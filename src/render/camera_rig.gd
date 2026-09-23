@@ -128,6 +128,49 @@ static func lens_back(height := VIEW_HEIGHT, degrees := LENS_FOV) -> float:
 
 var target := Vector3.ZERO
 
+## THE VIEW OVER THE SHOULDER (owner, 2026-09-23), a third pose for this rig:
+## perspective, low behind the player's right shoulder, sky and horizon in frame.
+## `41_shoulder` says whether it is wanted (`shoulder`), which way it looks
+## (`shoulder_yaw`, `shoulder_pitch`, turned by the mouse and eased in behind a
+## walking player) and how far back it may stand (`sight_room`, which walks the
+## land and the solids between the head and the eye). The numbers are
+## `Shoulder`'s (src/core/view/shoulder.gd).
+##
+## SEAMLESS BY CONSTRUCTION, both ways. The view is reached THROUGH the lens: the
+## first frame asks for the lens (`hold_lens`), which is the matched switch at the
+## focal plane that a held Z has always made (`lens_back`), and from there every
+## number the picture is made of -- the focus, the yaw, the pitch, the distance,
+## the field of view and the near plane -- is carried from the lens's pose to the
+## shoulder's on one eased clock (`Shoulder.smooth`). Leaving runs the same clock
+## backwards and gives the lens up only once the pose IS the lens's again, so the
+## projection changes only at the one pose where the two agree.
+##
+## It enters at the yaw the screen is already at (`yaw_now`), so a key held down
+## through the glide goes on walking the same way; the mouse turns it from there.
+const Shoulder := preload("res://src/core/view/shoulder.gd")
+var shoulder := false
+var shoulder_yaw := 45.0
+var shoulder_pitch := Shoulder.PITCH
+var shoulder_back := Shoulder.BACK
+## What a lock holds, in world space, or INF: over the shoulder the view turns
+## onto it instead of leaning (42_target).
+var subject := Vector3.INF
+## (head: Vector3, eye: Vector3) -> float, the share of that line the eye may
+## stand at (Shoulder.room). Unset, nothing is walked and the eye stands where
+## the pose puts it (a gallery, a test with no world).
+var sight_room := Callable()
+## The blend's own linear clock, 0 (top) to 1 (over the shoulder).
+var _sh_t := 0.0
+var _room := 1.0
+var _dt := 0.0
+var _yaw_drawn := 45.0
+## Who is holding the lens on (a lock, the shoulder), and what the camera had
+## before the first of them took it. Counted rather than remembered by each
+## holder, so a lock let go while the shoulder still has the lens -- or the
+## shoulder left while a lock still wants it -- hands back the right one.
+var _lens_holds: Dictionary = {}
+var _lens_before: StringName = &"ortho"
+
 ## What a target lock does to the camera (42_target, docs/DESIGN.md §Targeting):
 ## degrees of yaw and pitch added to the fixed angles, a factor on the view's
 ## height, and a bias of the frame from the player toward what they are reading.
@@ -403,8 +446,58 @@ func units_per_pixel() -> float:
 	return units_per_pixel_of(self, rows)
 
 
+## THE YAW THE SCREEN IS ACTUALLY AT, as the last frame drew it: a lean, the
+## glide down to the shoulder and the mouse turning it all included. Screen-
+## relative input and anything else drawn in screen space asks for this, never
+## `yaw_deg`, or the keys stop matching the picture.
 func yaw_now() -> float:
-	return yaw_deg + _yaw
+	return _yaw_drawn
+
+
+## Ask for the lens, or give up asking. The lens is drawn while anybody holds it
+## and the camera goes back to what it had before the first holder once the last
+## lets go. `lens` is still the only writer of `projection`; this only decides
+## what `lens` is.
+func hold_lens(who: StringName, on: bool) -> void:
+	if on:
+		if _lens_holds.has(who):
+			return
+		if _lens_holds.is_empty():
+			_lens_before = lens
+		_lens_holds[who] = true
+		lens = &"persp"
+	elif _lens_holds.has(who):
+		@warning_ignore("return_value_discarded")
+		_lens_holds.erase(who)
+		if _lens_holds.is_empty():
+			lens = _lens_before
+
+
+## How far over the shoulder the picture is, 0 (top) to 1 (there), eased.
+func shoulder_share() -> float:
+	return Shoulder.smooth(_sh_t)
+
+
+## Wholly over the shoulder, and not on the way there or back.
+func over_shoulder() -> bool:
+	return _sh_t >= 1.0
+
+
+## The facing a swing takes: where the camera looks, once the view is more over
+## the shoulder than not; NAN otherwise, which leaves the swing's own rule alone.
+func aim() -> float:
+	return Shoulder.aim_of(_yaw_drawn) if _sh_t > 0.5 else NAN
+
+
+## Put the view where it is asked for with no glide: a game that opens over the
+## shoulder, a shot. The lens is taken or given up to match.
+func snap_view() -> void:
+	_sh_t = 1.0 if shoulder else 0.0
+	_room = 1.0
+	hold_lens(&"shoulder", shoulder)
+	if shoulder:
+		_pitch = lean_pitch
+	_apply()
 
 
 ## The camera is leaning (a lock, a sweep) rather than square on.
@@ -450,7 +543,30 @@ func _process(delta: float) -> void:
 	_smoothed = _smoothed.lerp(target, 1.0 - exp(-follow_rate * delta))
 	_clear_now = lerpf(_clear_now, maxf(DOF_CLEAR_LIFT, clear_lift), 1.0 - exp(-CLEAR_EASE * delta))
 	_ease_lean(delta)
+	_ease_shoulder(delta)
+	_dt = delta
 	_apply()
+
+
+## One frame of the glide. Entering from the top takes the yaw the screen is at,
+## so nothing turns; the lens is held for as long as any of the view is showing.
+func _ease_shoulder(delta: float) -> void:
+	if not shoulder and _sh_t <= 0.0:
+		hold_lens(&"shoulder", false)
+		return
+	if _sh_t <= 0.0:
+		shoulder_yaw = yaw_now()
+		shoulder_pitch = Shoulder.PITCH
+		_room = 1.0
+	hold_lens(&"shoulder", true)
+	_sh_t = Shoulder.blend_step(_sh_t, shoulder, delta)
+	if subject.is_finite() and shoulder:
+		var to := Vector2(subject.x - _smoothed.x, subject.z - _smoothed.z)
+		if to.length() > 0.3:
+			var k := 1.0 - exp(-Shoulder.LOCK_RATE * delta)
+			shoulder_yaw += Shoulder.turn(shoulder_yaw, Shoulder.yaw_along(to)) * k
+	if _sh_t <= 0.0:
+		hold_lens(&"shoulder", false)
 
 
 ## Each part of the lean eased toward what the system asked for: in at LEAN_IN,
@@ -461,16 +577,50 @@ func _process(delta: float) -> void:
 ## a perspective frame has no single one, so snapping to it would pin the picture
 ## to a number that no longer means anything.
 func _apply_lens() -> void:
-	rotation = Vector3(deg_to_rad(-(LENS_PITCH + _pitch)), deg_to_rad(yaw_deg + _yaw), 0.0)
-	var b := Basis.from_euler(rotation)
+	var yaw_a := yaw_deg + _yaw
+	var pitch_a := LENS_PITCH + _pitch
+	var focus_a := _smoothed + _bias
 	# Derived from the fov and the height the orthographic frame would show, so
-	# the switch cannot pop (`lens_back`). Reads the LIVE `view_height` and `fov`
-	# rather than the constants, because 09_view and dev mode both move the first.
-	_back = lens_back(view_height, fov) * _zoom
-	far = 500.0
+	# the switch cannot pop (`lens_back`). Reads the LIVE `view_height` rather
+	# than the constant, because 09_view and dev mode both move it.
+	var back_a := lens_back(view_height, LENS_FOV) * _zoom
+	var w := Shoulder.smooth(_sh_t)
 	if attributes != null:
 		_near_focus()
-	global_position = (_smoothed + _bias) + b.z * _back
+	if w <= 0.0:
+		fov = LENS_FOV
+		near = 1.0
+		far = 500.0
+		rotation = Vector3(deg_to_rad(-pitch_a), deg_to_rad(yaw_a), 0.0)
+		_back = back_a
+		_yaw_drawn = yaw_a
+		global_position = focus_a + Basis.from_euler(rotation).z * _back
+		return
+	# Every number the picture is made of, carried from the lens's pose to the
+	# shoulder's on the one eased clock. The yaw goes the short way round.
+	var yb := deg_to_rad(shoulder_yaw)
+	var right := Vector3(cos(yb), 0.0, -sin(yb))
+	var focus_b := _smoothed + Vector3(0.0, Shoulder.FOCUS_UP, 0.0) + right * Shoulder.RIGHT
+	var yaw := yaw_a + Shoulder.turn(yaw_a, shoulder_yaw) * w
+	var pitch := lerpf(pitch_a, shoulder_pitch, w)
+	var focus := focus_a.lerp(focus_b, w)
+	var back := lerpf(back_a, shoulder_back, w)
+	fov = lerpf(LENS_FOV, Shoulder.FOV, w)
+	near = lerpf(1.0, Shoulder.NEAR, w)
+	far = Shoulder.FAR
+	rotation = Vector3(deg_to_rad(-pitch), deg_to_rad(yaw), 0.0)
+	var eye := focus + Basis.from_euler(rotation).z * back
+	# Never inside the land or a house: the line from the head to the eye is
+	# walked, and the eye stands where it is first clear. Pulled in at once, let
+	# back out gently, so a wall behind the player is never drawn from inside.
+	if sight_room.is_valid():
+		var head := _smoothed + Vector3(0.0, Shoulder.HEAD_UP, 0.0)
+		var room := clampf(float(sight_room.call(head, eye)), 0.0, 1.0)
+		_room = room if room < _room else lerpf(_room, room, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
+		eye = head.lerp(eye, _room)
+	global_position = eye
+	_back = maxf(0.001, eye.distance_to(focus))
+	_yaw_drawn = yaw
 
 
 func _ease_lean(delta: float) -> void:
@@ -506,6 +656,7 @@ func _apply() -> void:
 	_back = maxf(distance, half + DEPTH_ROOM)
 	far = maxf(250.0, _back + half + DEPTH_ROOM)
 	global_position = focus + b.z * _back
+	_yaw_drawn = yaw_deg + _yaw
 	# The focal plane follows the picture: a lean zooms and tilts, and a plane
 	# left where the square-on frame put it would blur the near half of a
 	# zoomed-out one. Does nothing until `size` really moves.

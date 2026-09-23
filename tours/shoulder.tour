@@ -1,0 +1,85 @@
+# THE VIEW OVER THE SHOULDER (owner, 2026-09-23: "switch to true third person
+# perspective (see from behind the players shoulder) ... seamless just like
+# targeting ... a key that player has to hold down ... see parts of the sky and
+# the horizon"). src/systems/41_shoulder.gd, CameraRig, src/core/view/shoulder.gd.
+#
+#   tools/tour.sh tours/shoulder.tour --seed=4 --hour=12 --weather=clear:0
+#
+# What it proves, from a normal game start, through the real key and a staged
+# mouse: the land from above; the key held and the camera gliding down off its
+# perch (frames taken WHILE it glides, so a pop would be in them); over the
+# shoulder with the sky in the frame; walking where the camera looks; the mouse
+# turning it and tipping it up; a machine locked with Z framed over the
+# shoulder; the shoulder let go while Z is still held landing on the lock's lens;
+# both let go, the land again. Then noon, dusk and night over the shoulder on
+# the coast and in a second landscape. tests/camera/test_shoulder.gd measures the
+# glide frame by frame; these are what it looks like.
+coast calm
+wait 0.9
+await top_view 2
+shot 01-the-land-from-above
+
+hold shoulder
+shot 02-the-key-down-gliding with shoulder_gliding
+await shoulder 3
+wait 0.4
+shot 03-over-the-shoulder-noon with shoulder,sky_in_frame
+
+walk 0,-1 1.6
+shot 04-walked-where-the-camera-looks with shoulder
+
+mouse 520,0 0.6
+await shoulder_turned 2
+wait 0.3
+shot 05-turned-by-the-mouse with shoulder_turned
+mouse 0,-190 0.4
+wait 0.2
+shot 06-tipped-up-to-the-sky with shoulder,sky_in_frame
+mouse 0,190 0.4
+
+spawn runner
+wait 0.6
+hold target
+await target 5
+await shoulder_locked 3
+wait 0.4
+shot 07-a-runner-locked-over-the-shoulder with mob:runner,shoulder_locked
+
+release shoulder
+await top_view 3
+await target_lens 3
+wait 0.6
+shot 08-shoulder-let-go-the-lock-lens with mob:runner,target_lens
+
+release target
+await target_flat 3
+wait 1.0
+shot 09-both-let-go-the-land-again with top_view
+coast calm
+
+hold shoulder
+await shoulder 3
+hour 18.6
+wait 1.2
+shot 10-dusk-over-the-shoulder with shoulder
+hour 23
+wait 1.2
+shot 11-night-over-the-shoulder with shoulder
+release shoulder
+await top_view 3
+
+place pinewood
+hour 12
+wait 1.5
+hold shoulder
+await shoulder 3
+wait 0.8
+shot 12-pinewood-noon-over-the-shoulder with shoulder,land:pinewood
+hour 18.6
+wait 1.2
+shot 13-pinewood-dusk-over-the-shoulder with shoulder,land:pinewood
+hour 23
+wait 1.2
+shot 14-pinewood-night-over-the-shoulder with shoulder,land:pinewood
+release shoulder
+await top_view 3

@@ -412,6 +412,14 @@
       "tests": []
     },
     {
+      "id": "system:41_shoulder",
+      "kind": "system",
+      "entry": "src/systems/41_shoulder.gd",
+      "reach": "tools/tour.sh tours/shoulder.tour --seed=4 --hour=12 --weather=clear:0",
+      "area": "world-look",
+      "tests": []
+    },
+    {
       "id": "system:42_target",
       "kind": "system",
       "entry": "src/systems/42_target.gd",
