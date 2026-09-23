@@ -15,7 +15,7 @@ extends RefCounted
 ## base class must not carry one): it is reached by path.
 const MG := preload("res://src/models/machines/machine_gallery.gd")
 
-const KINDS: Array[StringName] = [&"sentinel_reaper", &"sentinel_rake", &"sentinel_plumb", &"sentinel_listener", &"sentinel_anvil", &"sentinel_unbuilder"]
+const KINDS: Array[StringName] = [&"sentinel_reaper", &"sentinel_rake", &"sentinel_plumb", &"sentinel_listener", &"sentinel_anvil", &"sentinel_unbuilder", &"sentinel_anchor"]
 const SHOWN: Array[StringName] = [&"stand", &"walk", &"alert", &"windup", &"strike", &"dead"]
 
 
@@ -52,7 +52,7 @@ static func beside(silhouette: bool) -> Node3D:
 	var across := Vector3(1, 0, -1).normalized()
 	root.position = Vector3(1.6, 0, 0)
 	holder.add_child(root)
-	var ground: MeshInstance3D = MG.review_ground(Vector2(30, 12), silhouette, false)
+	var ground: MeshInstance3D = MG.review_ground(Vector2(38, 12), silhouette, false)
 	root.add_child(ground)
 	var person := PersonModel.new()
 	var pmat := ShaderMaterial.new()
@@ -61,13 +61,14 @@ static func beside(silhouette: bool) -> Node3D:
 	person.rotation.y = -PI * 0.25
 	person.position = across * -5.6
 	root.add_child(person)
-	var x := -13.6
-	for kid: StringName in [&"harvester", &"sentinel_reaper", &"sentinel_rake", &"sentinel_plumb", &"sentinel_listener", &"sentinel_anvil", &"sentinel_unbuilder"]:
+	var x := -17.0
+	for kid: StringName in [&"harvester", &"sentinel_reaper", &"sentinel_rake", &"sentinel_plumb", &"sentinel_listener", &"sentinel_anvil", &"sentinel_unbuilder", &"sentinel_anchor"]:
 		var m: FigureModel = MG.make(kid, &"alert")
 		m.position = across * x
 		root.add_child(m)
-		# The gantry straddles a street: it wants the width of one to stand in.
-		x += 4.4 if kid != &"sentinel_anvil" else 6.2
+		# The gantry straddles a street: it wants the width of one to stand in,
+		# and the anchor's hooks splay four units across.
+		x += 4.4 if kid != &"sentinel_anvil" and kid != &"sentinel_unbuilder" else 6.2
 	if silhouette:
 		for c in root.get_children():
 			if c != ground:

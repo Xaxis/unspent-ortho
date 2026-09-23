@@ -53,6 +53,12 @@ class_name Roster
 ##   sight_only: bool        notices by eye alone
 ##   sentinel: StringName    this body is a landscape's keeper: the design id in
 ##                           src/core/sentinel/designs/ whose phases drive it
+##   climbs: int             levels it may step in one move (default 1: a cliff of
+##                           two stops it). FightSim.climber turns it into a walker's
+##                           ride with a longer stride. It is MOVEMENT only: the chase
+##                           field (NavField) still routes like a walker, so a climber
+##                           goes up a wall when the wall is in its way and not
+##                           because it planned the climb.
 
 ## Standing water and the mud at its edge: where a dredger may go (a bank of turf is the answer to one).
 const WET := ["water", "blackwater", "river", "mud", "marsh", "shallow", "tarn"]
@@ -463,6 +469,22 @@ const DEFS := {
 		"takes": 70.0, "drops": 3, "linger": 45.0, "chance": 4,
 		"where": {"countries": ["ruined_metropolis"], "grounds": ["floor", "gravel", "scree"], "green_min": 12,
 			"near_props": ["ruin", "demolition gantry"]},
+	},
+	# The Mesas' anchor (src/core/sentinel/designs/anchor.gd): a four-limbed
+	# climber, the one body in the roster that `climbs` -- four levels a move,
+	# so a scarp is a floor to it -- until its grounded phase writes 1 back onto
+	# its row. `height` is its body clinging at full stretch with the tail up;
+	# `radius` is the splay of four grapnel feet. It hears as far as it sees:
+	# a thing on a wall feels a body coming along the rock.
+	&"sentinel.mesas": {
+		"model": &"sentinel_anchor", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
+		"part": &"back", "sentinel": &"anchor", "climbs": 4,
+		"pace": 3.4, "dash": 7.0, "quick": 260, "radius": 1.4, "height": 4.6, "life": 124,
+		"sees": 14, "hears": 14, "racket": 22, "reach": 3, "ready": 3, "forget": 26, "tether": 30, "safe": 14,
+		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
+		"bite": {"swing": [860, 170, 820, 920], "reach": 2.0, "width": 2.2, "dmg": 4, "knock": 10.0, "knock_ms": 340},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
 	},
 }
 

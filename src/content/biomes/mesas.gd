@@ -144,6 +144,9 @@ static func make() -> BiomeDef:
 		&"dog.feral": {"weight": 0.8},
 	}
 	d.landmarks = [&"cast_stones", &"blinking_stack", &"poured_pillar", &"clerks_office"]
+	# Its keeper: the anchor, a climber that drives the ropeway's bolts into the
+	# scarps and keeps them driven (src/core/sentinel/designs/anchor.gd).
+	d.sentinel = &"anchor"
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter
