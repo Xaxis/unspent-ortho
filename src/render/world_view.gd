@@ -75,6 +75,17 @@ var _far_tasks: Array[int] = []
 var _far_keys: Array[Vector2i] = []
 var _far_out: Array = []
 var _far_at: Array[int] = []
+## The far world's own copies of the two materials: the same shaders, told to
+## stand down wherever a near chunk is in the scene (`near_mask`, one texel per
+## chunk). Only these read the mask, so the near land draws exactly as it did.
+var _far_land_mat: ShaderMaterial
+var _far_water_mat: ShaderMaterial
+var _near_mask: Image
+var _near_tex: ImageTexture
+var _mask_dirty := true
+## What stands in each far block, snapshotted on the main thread at bind so a far
+## worker never reads the live prop list (`world_far._stand_props`).
+var _far_props: Dictionary = {} # Vector2i -> Array[WorldProp]
 var _data: Dictionary = {} # Vector2i -> TerrainMesher.Chunk
 var _props_by_chunk: Dictionary = {} # Vector2i -> Array[WorldProp]
 var _cables_by_chunk: Dictionary = {} # Vector2i -> Array[Vector2i] of prop id pairs
@@ -208,6 +219,14 @@ func _bind(w: WorldData) -> void:
 	# Read off the registry HERE, on the main thread, so a far block's worker
 	# never touches it (the chunk workers learnt the same lesson above).
 	_far_tables = Far.tables()
+	_far_props.clear()
+	for p in w.props:
+		if w.depleted.has(p.id):
+			continue
+		var bk := Vector2i(floori(p.pos.x) / Far.BLOCK, floori(p.pos.y) / Far.BLOCK)
+		if not _far_props.has(bk):
+			_far_props[bk] = []
+		_far_props[bk].append(p)
 	_far_tasks.clear()
 	_far_keys.clear()
 	_far_out.clear()
@@ -220,6 +239,36 @@ func _bind(w: WorldData) -> void:
 	far = Far.new()
 	far.name = "far"
 	add_child(far)
+	var n := ceili(float(w.size) / CHUNK)
+	_near_mask = Image.create(n, n, false, Image.FORMAT_R8)
+	_near_tex = ImageTexture.create_from_image(_near_mask)
+	_far_land_mat = _far_copy(_world_mat)
+	_far_water_mat = _far_copy(_water_mat)
+	_mask_dirty = true
+
+
+## A far copy of one of the view's materials, told to stand down under the near
+## chunks. Taken after the works are bound, so it carries them.
+func _far_copy(m: ShaderMaterial) -> ShaderMaterial:
+	var c := m.duplicate() as ShaderMaterial
+	c.set_shader_parameter("near_mask", _near_tex)
+	c.set_shader_parameter("near_cut", 1.0)
+	c.set_shader_parameter("near_cell", float(CHUNK))
+	return c
+
+
+## Write which chunks are in the scene into the far world's mask. Once a frame at
+## most, and only when a chunk came or went.
+func _write_mask() -> void:
+	if not _mask_dirty or _near_mask == null:
+		return
+	_mask_dirty = false
+	_near_mask.fill(Color(0, 0, 0))
+	var n := _near_mask.get_width()
+	for key: Vector2i in _chunks.keys():
+		if key.x >= 0 and key.y >= 0 and key.x < n and key.y < n:
+			_near_mask.set_pixel(key.x, key.y, Color(1, 0, 0))
+	_near_tex.update(_near_mask)
 
 
 func world_material() -> ShaderMaterial:
@@ -279,6 +328,7 @@ func _revive(key: Vector2i) -> void:
 	_park_seen.erase(key)
 	add_child(node)
 	_chunks[key] = node
+	_mask_dirty = true
 
 
 ## Take a chunk out of the scene but keep it built. The least recently wanted
@@ -287,6 +337,7 @@ func _park(key: Vector2i) -> void:
 	var node: Node3D = _chunks[key]
 	remove_child(node)
 	_chunks.erase(key)
+	_mask_dirty = true
 	_parked[key] = node
 	_park_clock += 1
 	_park_seen[key] = _park_clock
@@ -312,6 +363,7 @@ func ensure_near(p: Vector2) -> void:
 			_revive(key)
 		elif not _chunks.has(key):
 			_build(key)
+	_write_mask()
 
 
 ## Build the nearest missing chunk round `p` on this thread (the view need not be
@@ -378,6 +430,7 @@ func _process(_delta: float) -> void:
 		if not keep_set.has(key):
 			_park(key)
 	_far_step(near_busy)
+	_write_mask()
 
 
 ## Fill the coarse world in, a block at a time, on its own workers. It is built
@@ -402,7 +455,7 @@ func _far_step(near_busy: bool) -> void:
 			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
 			_far_tasks[i] = -1
 			var t_main := Time.get_ticks_usec()
-			far.add_block(_far_keys[i], _far_out[i], _world_mat, _water_mat)
+			far.add_block(_far_keys[i], _far_out[i], _far_land_mat, _far_water_mat)
 			var main_cost := (Time.get_ticks_usec() - t_main) / 1000.0
 			far_main_ms += main_cost
 			far_main_ms_max = maxf(far_main_ms_max, main_cost)
@@ -449,9 +502,31 @@ func _far_step(near_busy: bool) -> void:
 		_far_tasks[i] = WorkerThreadPool.add_task(_far_worker.bind(i, key), false, "far")
 
 
+## Build every far block that is not built yet, on this thread: a still picture
+## that looks out to the horizon (96_eye under a shot) has to hold the whole view
+## on its first frame, and the workers take a few seconds to get there.
+func ensure_far() -> void:
+	if far == null:
+		return
+	for i in _far_tasks.size():
+		if _far_tasks[i] >= 0:
+			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
+			far.add_block(_far_keys[i], _far_out[i], _far_land_mat, _far_water_mat)
+			_far_tasks[i] = -1
+			_far_out[i] = []
+	while not far.done(world.size):
+		var key := far.next_block(world.size, focus, {})
+		if key.x < 0:
+			return
+		var t0 := Time.get_ticks_usec()
+		far.add_block(key, Far.build_arrays(world, key.x, key.y, _far_tables, _far_props.get(key, [])), _far_land_mat, _far_water_mat)
+		far_ms += (Time.get_ticks_usec() - t0) / 1000.0
+		far_count += 1
+
+
 func _far_worker(slot: int, key: Vector2i) -> void:
 	var began := Time.get_ticks_usec()
-	_far_out[slot] = Far.build_arrays(world, key.x, key.y, _far_tables)
+	_far_out[slot] = Far.build_arrays(world, key.x, key.y, _far_tables, _far_props.get(key, []))
 	_far_at[slot] = Time.get_ticks_usec() - began
 
 
@@ -608,6 +683,7 @@ func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, wor
 	_attach_props(node, baked)
 	add_child(node)
 	_chunks[key] = node
+	_mask_dirty = true
 	var main := (Time.get_ticks_usec() - t0) / 1000.0
 	var ms := worker_usec / 1000.0 + main
 	decor_ms += _last_decor_usec / 1000.0
@@ -910,7 +986,10 @@ static func _ranked(points: PackedVector3Array, axis: Vector3, rank: int) -> Vec
 ## sea and not the void. Four strips, so it never lies under the map's own water.
 func _add_open_sea() -> void:
 	var s := float(world.size)
-	var m := 200.0
+	# Past everything the eye can see from anywhere on the island (SkyLight.SEE):
+	# at eye level the sea runs to the horizon, and where it stopped the sky's
+	# ground half showed through as a band of nothing under the air.
+	var m := SkyLight.SEE + 200.0
 	var y := TerrainMesher.WATER_Y - 0.02
 	var v := PackedVector3Array()
 	var c := PackedColorArray()

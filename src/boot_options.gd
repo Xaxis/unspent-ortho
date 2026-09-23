@@ -11,6 +11,12 @@ extends RefCounted
 ## --zoom=F            camera view height in world units
 ## --lens=ortho|persp   which projection the play camera uses; persp is a
 ##                     third-person perspective lens, off by default
+## --eye=H[,P[,F]]     stage a low perspective camera H units over the ground,
+##                     a little behind the player and facing --face, pitched P
+##                     degrees down (default 10) with a vertical fov of F (default
+##                     60): a picture of the world at eye level to the horizon,
+##                     for the horizon work before the play camera can stand
+##                     there (src/systems/96_eye.gd; render)
 ## --walk=DX,DY,SECS   scripted walk in SCREEN directions before the shot
 ## --run               the scripted walk runs
 ## --shot=PATH         capture one frame to PATH (png) and quit
@@ -118,6 +124,8 @@ var zoom := 0.0
 ## &"persp", a third-person perspective lens. Opt-in and off by default, so
 ## every frame, tour and canon picture in the repository is unchanged.
 var lens: StringName = &"ortho"
+## The staged eye (height, pitch down, vertical fov), or zero for none (96_eye).
+var eye := Vector3.ZERO
 var walk := Vector2.ZERO
 var walk_seconds := 0.0
 var run := false
@@ -214,6 +222,11 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"hour": o.hour = v.to_float()
 			"zoom": o.zoom = v.to_float()
 			"lens": o.lens = StringName(v)
+			"eye":
+				var p := v.split(",")
+				o.eye = Vector3(p[0].to_float() if p[0] != "" else 1.7,
+					p[1].to_float() if p.size() > 1 else 10.0,
+					p[2].to_float() if p.size() > 2 else 60.0)
 			"walk":
 				var p := v.split(",")
 				o.walk = Vector2(p[0].to_float(), p[1].to_float())

@@ -1,0 +1,154 @@
+extends TestCase
+## The world at eye level, out to the horizon: which cameras see it, that the
+## far world keeps the land's real height, that it stands down under the near
+## chunks, that the sea runs past what the eye can see, and that looking out to
+## the horizon leaves nothing behind for the next top-down frame.
+
+const Far := preload("res://src/render/world_far.gd")
+
+
+func _camera(persp: bool, pitch_deg: float, fov_deg: float) -> Camera3D:
+	var c := Camera3D.new()
+	c.projection = Camera3D.PROJECTION_PERSPECTIVE if persp else Camera3D.PROJECTION_ORTHOGONAL
+	c.keep_aspect = Camera3D.KEEP_HEIGHT
+	c.fov = fov_deg
+	tree.root.add_child(c)
+	c.rotation = Vector3(deg_to_rad(-pitch_deg), deg_to_rad(45.0), 0.0)
+	return c
+
+
+## The eye the owner asked for sees the horizon; the shipped orthographic camera
+## and the pitched lens do not, so neither of them changes by a pixel.
+func test_only_an_eye_level_camera_sees_the_horizon() -> void:
+	var eye := _camera(true, 10.0, 60.0)
+	var ortho := _camera(false, CameraRig.PITCH_DEG, CameraRig.LENS_FOV)
+	var lens := _camera(true, CameraRig.LENS_PITCH, CameraRig.LENS_FOV)
+	check(SkyLight.sees_horizon(eye), "a lens 10 degrees down with a 60 degree fov holds the horizon")
+	check(not SkyLight.sees_horizon(ortho), "the orthographic play camera has no horizon")
+	check(not SkyLight.sees_horizon(lens), "the pitched lens keeps the horizon out")
+	check(not SkyLight.sees_horizon(null), "no camera, no horizon")
+	for c: Camera3D in [eye, ortho, lens]:
+		c.queue_free()
+
+
+## A flat plain at level 2 with a ridge three tiles wide at level 12 running
+## north-south through it.
+static func _ridge() -> WorldData:
+	var w := WorldData.new(3, 128)
+	for y in 128:
+		for x in 128:
+			var i := y * 128 + x
+			w.level[i] = 12 if x >= 60 and x < 63 else 2
+			w.ground[i] = Ground.GRASS
+			w.country[i] = Country.COAST
+	return w
+
+
+## FROM EYE LEVEL A RIDGE IS A SILHOUETTE, and the far world used to be a floor
+## (every corner the lowest land within a cell of it), which put every ridge on
+## the horizon down at the bottom of its valley.
+func test_a_far_ridge_keeps_its_height() -> void:
+	var w := _ridge()
+	var arrays: Array = Far.build_arrays(w, 0, 0, Far.tables())
+	var land: Array = arrays[0]
+	var top := -INF
+	for v: Vector3 in land[Mesh.ARRAY_VERTEX] as PackedVector3Array:
+		top = maxf(top, v.y)
+	var ridge := TerrainMesher.level_height(12)
+	print("ridge %.2f, far land reaches %.2f" % [ridge, top])
+	gt(top, ridge * 0.6, "the far land stands up where the ridge does")
+	lt(top, ridge + 0.01, "and never above the land it stands for")
+
+
+## What stands on the far land is carried there as a silhouette of its own
+## height, or a forest beyond the near chunks is a bare plain from eye level.
+func test_a_far_tree_stands_up_off_the_land() -> void:
+	var w := _ridge()
+	var p := WorldProp.new(0, PropKind.PINE, Vector2(20.5, 20.5), 0.0, 1.0)
+	w.props.append(p)
+	var bare: Array = Far.build_arrays(w, 0, 0, Far.tables())
+	var stood: Array = Far.build_arrays(w, 0, 0, Far.tables(), [p])
+	var n0 := (bare[0][Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+	var n1 := (stood[0][Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+	gt(float(n1), float(n0), "the pine adds a solid to the far land")
+	var top := 0.0
+	for v: Vector3 in stood[0][Mesh.ARRAY_VERTEX] as PackedVector3Array:
+		if Vector2(v.x, v.z).distance_to(p.pos) < 3.0:
+			top = maxf(top, v.y)
+	var tall: float = Far.summary(PropKind.PINE, PropModels.variant_of(p, w.seed_value, Country.COAST), Country.COAST)[0]
+	near(top, TerrainMesher.level_height(2) + tall, 0.05, "as tall as the model it stands for")
+	# Every added face must be one that draws: front faces turned outward.
+	var v3: PackedVector3Array = stood[0][Mesh.ARRAY_VERTEX]
+	var nn: PackedVector3Array = stood[0][Mesh.ARRAY_NORMAL]
+	var wrong := 0
+	for i in range(n0, n1, 3):
+		var f := (v3[i + 1] - v3[i]).cross(v3[i + 2] - v3[i])
+		# Wound as the land is: the cross product is opposite the normal.
+		if f.dot(nn[i]) > 0.0:
+			wrong += 1
+	eq(wrong, 0, "every silhouette face is wound to be drawn")
+
+
+## Where a near chunk is in the scene the far world discards itself; only the far
+## world's own materials read the mask, so the near land draws as it always did.
+func test_the_far_world_stands_down_only_under_near_chunks() -> void:
+	var w := _ridge()
+	var view := WorldView.new()
+	view.setup(w)
+	tree.root.add_child(view)
+	view.ensure_near(Vector2(20, 20))
+	view.ensure_far()
+	var block := view.far.get_child(0)
+	var mi := block.get_node("land") as MeshInstance3D
+	var fm := mi.material_override as ShaderMaterial
+	var far_cut := float(fm.get_shader_parameter("near_cut"))
+	var tex := fm.get_shader_parameter("near_mask") as Texture2D
+	eq(far_cut, 1.0, "the far land stands down under the near chunks")
+	check(fm != view.world_material(), "with a material of its own")
+	var near_cut: Variant = view.world_material().get_shader_parameter("near_cut")
+	check(near_cut == null or float(near_cut) == 0.0, "the near land never reads the mask")
+	check(tex != null, "the mask is bound")
+	var img: Image = view._near_mask
+	if img != null:
+		var drawn := 0
+		for y in img.get_height():
+			for x in img.get_width():
+				if img.get_pixel(x, y).r > 0.5:
+					drawn += 1
+					check(view.get_node_or_null("chunk_%d_%d" % [x, y]) != null, "a masked cell is a chunk in the scene")
+		eq(drawn, view.chunk_count(), "every chunk in the scene is masked, and nothing else")
+	view.queue_free()
+
+
+## At eye level the sea runs to the horizon: the open sea reaches past the
+## furthest the eye sees from the world's own edge.
+func test_the_open_sea_reaches_past_what_the_eye_sees() -> void:
+	var w := _ridge()
+	var view := WorldView.new()
+	view.setup(w)
+	var sea := view.get_node("open_sea") as MeshInstance3D
+	var box := sea.mesh.get_aabb()
+	lt(box.position.x, -SkyLight.SEE, "west past the eye's reach")
+	gt(box.end.z, float(w.size) + SkyLight.SEE, "south past the eye's reach")
+	view.free()
+
+
+## LOOKING OUT TO THE HORIZON LEAVES NOTHING BEHIND. The air, the sky, the
+## shadow and the figure light are all changed while the horizon is in frame;
+## the next top-down frame must find every one of them as the play camera has it.
+func test_a_horizon_frame_leaves_the_top_down_one_untouched() -> void:
+	var sky := SkyLight.new()
+	var e := SkyLight.build_environment()
+	var sm := e.sky.sky_material as ProceduralSkyMaterial
+	var before := [e.background_mode, e.fog_depth_curve, e.fog_aerial_perspective, e.sky.sky_material]
+	var a := Air.at({})
+	sky._look_out(e, sm, a, true, 0.4)
+	check(e.background_mode == Environment.BG_SKY, "at the horizon the sky is drawn")
+	check(e.sky.sky_material != sm, "and it is the seen sky, not the reflected one")
+	eq(e.fog_density, 1.0, "the air closes the far edge completely")
+	eq(e.fog_depth_end, SkyLight.SEE, "at the eye's reach")
+	sky._look_out(e, sm, a, false, 0.4)
+	var after := [e.background_mode, e.fog_depth_curve, e.fog_aerial_perspective, e.sky.sky_material]
+	for i in before.size():
+		check(before[i] == after[i], "field %d is back as the play camera has it: %s -> %s" % [i, before[i], after[i]])
+	sky.free()
