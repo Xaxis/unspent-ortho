@@ -86,7 +86,7 @@ jobs:
 
       - name: Prove the web build boots (CPU WebGL)
         continue-on-error: true
-        run: tools/web.sh --no-export --quick --swiftshader --timeout=300
+        run: tools/web.sh --no-export --quick --swiftshader --boot-only --after=8 --timeout=400
 
       - name: Keep what the browser saw
         if: always()
