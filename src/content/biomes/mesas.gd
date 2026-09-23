@@ -142,6 +142,10 @@ static func make() -> BiomeDef:
 		&"hauler": {"weight": 0.8},
 		&"watcher": {"weight": 1.0, "hours": Vector2(5, 21)},
 		&"dog.feral": {"weight": 0.8},
+		# Its own watcher, the kite (Roster `kite`), is NOT here yet: it flies,
+		# and nothing in the game flies (docs/LANDSCAPES.md, shared system 6).
+		# Its row and model are built; it joins this roster, by day and near the
+		# span pylons, when system 6 lands.
 	}
 	d.landmarks = [&"cast_stones", &"blinking_stack", &"poured_pillar", &"clerks_office"]
 	# Its keeper: the anchor, a climber that drives the ropeway's bolts into the

@@ -33,8 +33,10 @@ func test_the_roster_crosses_where_the_ruling_says_and_nowhere_else() -> void:
 		if Swim.may_cross(Roster.row(kind)):
 			crossing.append(String(kind))
 	crossing.sort()
-	eq(crossing, PackedStringArray(["dog.feral", "dog.yard", "dredger", "flock", "gulls"]),
-		"the beasts, the two that fly, and the one machine built for water: %s" % str(crossing))
+	# The mesas' kite flies over as the flock and the gulls do: a frame on a
+	# line has no business with the water under it (docs/LANDSCAPES.md §6).
+	eq(crossing, PackedStringArray(["dog.feral", "dog.yard", "dredger", "flock", "gulls", "kite"]),
+		"the beasts, the three that fly, and the one machine built for water: %s" % str(crossing))
 	for kind: String in crossing:
 		check(Roster.has(StringName(kind)), "%s is not a body that exists" % kind)
 

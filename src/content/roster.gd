@@ -486,6 +486,33 @@ const DEFS := {
 		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
 		"where": {"hours": [0, 0]},
 	},
+	# --- The Mesas' own watcher (docs/LANDSCAPES.md §6) ------------------------
+	# A wide slow frame flown on a line off a winch beside a span pylon,
+	# circling over the canyon and filing. The body the fight knows is the WINCH
+	# (src/models/machines/kite.gd): that is where it is struck, where its line
+	# is cut, and where it sees from, so `crosses: &"fly"` is only what deep water
+	# is to it (Swim) and nothing here pretends it moves at altitude.
+	#
+	# STOOD DOWN UNTIL FLYING BODIES LAND (docs/LANDSCAPES.md, shared system 6).
+	# Nothing in the game flies yet: `fly` is a key for deep water, a body is
+	# drawn where its feet are, there is no tethered orbit brain and a cliff
+	# stops a flier as it stops a walker. So it is in NO landscape's roster and
+	# its hours fit no hour of any day, the keepers' idiom (Spawner.moment_fits):
+	# the global roll reads every row, and a `where.countries` alone would put
+	# it out on the mesas the moment a span pylon stood there. What system 6
+	# lands is the orbit round `tether` tiles of its post and the frame's
+	# altitude as a thing the sim knows; then this row takes the mesas'
+	# `hours` 6-20 and `near_props` span pylon, and joins `mesas.gd`'s roster.
+	# No `kite_vane` drop: an item nothing can make into anything is a promise.
+	&"kite": {
+		"model": &"kite", "role": &"watcher", "machine": true, "approach": &"errand", "stretch": 0, "part": &"front",
+		"crosses": &"fly",
+		"pace": 0.1, "dash": 0.1, "radius": 0.4, "height": 5.6, "life": 50,
+		"sees": 18, "hears": 0, "racket": 16, "reach": 12, "ready": 4, "forget": 30, "tether": 14, "safe": 12,
+		"nerve": 100, "invuln": 500, "touch": 1, "sight_only": true, "calls": 18, "disposition": &"observant",
+		"takes": 60.0, "drops": 1, "linger": 30.0, "chance": 0,
+		"where": {"countries": ["mesas"], "hours": [0, 0], "near_props": ["span pylon"]},
+	},
 }
 
 

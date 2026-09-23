@@ -1,11 +1,12 @@
 extends TestCase
 ## The Mesas' own bodies against the FigureModel contract (docs/LANDSCAPES.md
-## §6): the anchor, its keeper. It is not one of the twelve `test_machines.gd`
-## walks and the sentinel tests build it only for its ramp, so without this a
-## fault in its `build()` would surface only in a gallery frame.
+## §6): the anchor, its keeper, and the kite, its watcher. Neither is one of the
+## twelve `test_machines.gd` walks and the sentinel tests build the keeper only
+## for its ramp, so without this a fault in either's `build()` would surface
+## only in a gallery frame.
 
-const KINDS: Array[StringName] = [&"sentinel_anchor"]
-const PART_SIDE := {&"sentinel_anchor": &"back"}
+const KINDS: Array[StringName] = [&"sentinel_anchor", &"kite"]
+const PART_SIDE := {&"sentinel_anchor": &"back", &"kite": &"front"}
 
 
 func test_each_creates_as_a_machine_on_a_ramp_of_its_role() -> void:
@@ -23,6 +24,10 @@ func test_each_creates_as_a_machine_on_a_ramp_of_its_role() -> void:
 	var keeper := FigureModel.create(&"sentinel_anchor") as MachineModel
 	eq(keeper.ramp, Palette.MACHINE["warden"], "the anchor wears the keeper's indigo")
 	keeper.free()
+	var watcher := FigureModel.create(&"kite") as MachineModel
+	eq(watcher.ramp, Palette.MACHINE["watcher"], "the kite wears a watcher's cold indigo")
+	eq(watcher.disposition, &"observant", "and starts watching")
+	watcher.free()
 
 
 func test_the_part_sits_on_its_side_of_the_body() -> void:
@@ -85,3 +90,29 @@ func test_it_climbs_until_it_is_grounded() -> void:
 	row.merge(last.row_patch(), true)
 	check(FightSim.climber(row) == null, "grounded, it cannot climb")
 
+
+## The frame flies; the body does not. What the fight strikes is the winch on
+## the ground, so the part is at a hand's height and the frame is up its line.
+func test_the_kite_is_up_its_line_and_its_part_is_on_the_ground() -> void:
+	var m := FigureModel.create(&"kite") as MachineModel
+	m.set_pose(&"stand")
+	m.settle()
+	gt(m.model_space(m.joints[&"frame"]).origin.y, 4.0, "the frame flies over the winch")
+	lt(m.part_position().y, 1.0, "the line is cut at the winch, on the ground")
+	m.set_pose(&"dead")
+	m.settle()
+	lt(m.model_space(m.joints[&"frame"]).origin.y, 1.0, "cut, the frame is down on the rock")
+	m.free()
+
+
+## Stood down until something in the game flies: no landscape rolls it and no
+## hour of any day fits it (docs/LANDSCAPES.md, shared system 6).
+func test_the_kite_is_stood_down_until_flying_lands() -> void:
+	var row := Roster.row(&"kite")
+	eq(Swim.crosses(row), Swim.FLY, "it goes over water")
+	for d: BiomeDef in BiomeRegistry.all():
+		check(not d.roster.has(&"kite"), "%s does not put a kite out yet" % d.id)
+	var m := Moment.new()
+	for h in 24:
+		m.minutes = h * 60.0
+		check(not Spawner.moment_fits(row, m), "the kite is never rolled at %d:00" % h)
