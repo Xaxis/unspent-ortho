@@ -921,6 +921,16 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 
 ## The column's density moved into the layer (see AIR_HIGH).
 func _lay_air(e: Environment, nightly: float) -> void:
+	# ONLY WHERE THE TIER HAS VOLUMETRIC AIR (its own `volumetric` column, which
+	# built `e`). Compatibility cannot compile a fog shader at all: a FogVolume
+	# built on the web tier logged "shader type fog not supported in OpenGL
+	# renderer" on every boot and failed the browser proof. There the depth fog
+	# stands in (`air_stand_in`), and no layer may exist.
+	if not e.volumetric_fog_enabled:
+		if _layer != null:
+			_layer.free()
+			_layer = null
+		return
 	if _layer == null:
 		_layer = FogVolume.new()
 		_layer.name = "air_layer"
