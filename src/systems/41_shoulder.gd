@@ -5,7 +5,7 @@ extends GameSystem
 ## along with a perfectly integrated setting. Should be able to see parts of the
 ## sky and the horizon.")
 ##
-##   hold L, or the right mouse button   the camera glides down off its perch to
+##   hold Left Alt/Option, or right mouse  the camera glides down off its perch to
 ##                                       behind the player's right shoulder
 ##   the mouse                           turns it, and tips it up to the sky
 ##   walk away from it                   it eases in behind you when the mouse
@@ -86,7 +86,8 @@ func _ensure_action() -> void:
 		return
 	InputMap.add_action(ACTION)
 	var key := InputEventKey.new()
-	key.physical_keycode = KEY_L
+	key.physical_keycode = KEY_ALT
+	key.location = KEY_LOCATION_LEFT
 	InputMap.action_add_event(ACTION, key)
 
 
