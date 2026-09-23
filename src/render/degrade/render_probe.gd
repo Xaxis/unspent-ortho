@@ -121,6 +121,65 @@ static func differ(a: Image, b: Image) -> float:
 	return float(total) / maxf(1.0, float(n))
 
 
+## WHAT A FIT MINIMISES. `pixels` is `differ`: a mean absolute channel distance.
+## `tone` (PROBE_METRIC=tone) is `tone_differ`: how far apart the two frames'
+## black point, middle and top are, and their saturation. Four fits on `pixels`
+## failed their paired bar and flipped direction between worlds, because the
+## live complaint ("pale": the bright landscapes' range squeezed 10-16% and
+## their blacks lifted 5-10) is a difference of TONE that an average of pixel
+## distances barely weighs -- a frame can move closer on average and still read
+## washed out (2026-09-23).
+static var metric: StringName = StringName(OS.get_environment("PROBE_METRIC")) if OS.has_environment("PROBE_METRIC") else &"pixels"
+
+
+## The distance a fit minimises, by `metric`.
+static func measure(a: Image, b: Image) -> float:
+	return tone_differ(a, b) if metric == &"tone" else differ(a, b)
+
+
+## Tone distance, 0..255: the mean absolute gap between the two frames' 5th,
+## 50th and 95th luma percentiles, plus the gap in mean saturation in percentage
+## points. Every fourth pixel each way, like `differ`.
+static func tone_differ(a: Image, b: Image) -> float:
+	if a == null or b == null or a.get_size() != b.get_size():
+		return 255.0
+	var ta := _tone(a)
+	var tb := _tone(b)
+	return (absf(ta.x - tb.x) + absf(ta.y - tb.y) + absf(ta.z - tb.z)) / 3.0 + absf(ta.w - tb.w)
+
+
+## (p5, p50, p95, mean saturation %) of one frame.
+static func _tone(img: Image) -> Vector4:
+	var d := img.get_data()
+	var w := img.get_width()
+	var hist := PackedInt32Array()
+	hist.resize(256)
+	var sat := 0.0
+	var n := 0
+	for y in range(0, img.get_height(), 4):
+		var row := y * w * 3
+		for x in range(0, w, 4):
+			var i := row + x * 3
+			var r := d[i]
+			var g := d[i + 1]
+			var bl := d[i + 2]
+			hist[clampi(int(0.2126 * r + 0.7152 * g + 0.0722 * bl), 0, 255)] += 1
+			var hi := maxi(r, maxi(g, bl))
+			if hi > 0:
+				sat += float(hi - mini(r, mini(g, bl))) / float(hi)
+			n += 1
+	var cuts := [0.05 * n, 0.5 * n, 0.95 * n]
+	var got := [0.0, 0.0, 0.0]
+	var run := 0
+	var c := 0
+	for v in 256:
+		run += hist[v]
+		while c < 3 and run >= float(cuts[c]):
+			got[c] = float(v)
+			c += 1
+	return Vector4(got[0], got[1], got[2], 100.0 * sat / maxf(1.0, float(n)))
+
+
 ## Mean luma, 0..255, every fourth pixel each way.
 static func luma(img: Image) -> float:
 	var d := img.get_data()
@@ -726,7 +785,7 @@ static func match_frame(tour: Node, game: Node, parts: PackedStringArray) -> boo
 		# the row that is in force here (CompatTrim.row, as SkyLight composed it).
 		# Summed over the places by whoever reads the log, the best value per key
 		# is the step.
-		var centre: Dictionary = CompatTrim.row(sky.sun.shadow_enabled, maxf(Weather.night_fall(sky.clock_hour), sky.closed)).duplicate()
+		var centre: Dictionary = CompatTrim.row(sky.sun.shadow_enabled, maxf(Weather.night_fall(sky.clock_hour), sky.closed), SkyLight.web_contrast_at(sky.neon_shares)).duplicate()
 		var here := await _distance(tour, game, centre, ref)
 		print("tour perf match %s (%s): sweep centre %s -> distance %.2f" % [label, _renderer(), _row_text(centre), here])
 		# `sweep=KEY,KEY` sweeps only those.
@@ -778,7 +837,7 @@ static func match_frame(tour: Node, game: Node, parts: PackedStringArray) -> boo
 static func _distance(tour: Node, game: Node, row: Dictionary, ref: Image) -> float:
 	_hold_trim(game, row)
 	var img: Image = await _grab(tour, 3)
-	return differ(img, ref)
+	return measure(img, ref)
 
 
 static func _row_text(row: Dictionary) -> String:

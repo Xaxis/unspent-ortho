@@ -700,7 +700,7 @@ func compose() -> void:
 	# Forward+). Chosen before the sun is lit, because whether the sun casts is
 	# what decides which row: a casting sun is a second pass there.
 	var casts := cast_allowed and closed < 0.5
-	trim = CompatTrim.row(casts and lerpf(MOON_NIGHT, SUN_NOON * level * glow, lit) > 0.0, maxf(night, closed))
+	trim = CompatTrim.row(casts and lerpf(MOON_NIGHT, SUN_NOON * level * glow, lit) > 0.0, maxf(night, closed), web_contrast_at(neon_shares))
 	CompatTrim.remember(trim)
 	# A lid takes the SUN down to a residue and leaves everything else about it
 	# alone: the same bearing, the same penumbra, the same shadows, faintly. It is
@@ -1567,6 +1567,25 @@ static func night_sky_at(shares: Dictionary) -> float:
 	if total <= 0.0:
 		return 1.0
 	return clampf(sum / total, NIGHT_SKY_LEAST, NIGHT_SKY_MOST)
+
+
+## The web's day contrast for the landscapes in view (`BiomeDef.web_contrast`),
+## blended on the SAME squared shares as the night, the grade and the air, so a
+## border never steps.
+static func web_contrast_at(shares: Dictionary) -> float:
+	var sum := 0.0
+	var total := 0.0
+	for k: Variant in shares:
+		var w := float(shares[k])
+		if w <= 0.0:
+			continue
+		w *= w
+		var d := BiomeRegistry.get_def(k) if k is StringName else BiomeRegistry.by_index(int(k))
+		sum += (d.web_contrast if d != null else 1.0) * w
+		total += w
+	if total <= 0.0:
+		return 1.0
+	return sum / total
 
 
 ## How far the landscapes in view are shut off from the sky (`BiomeDef.sky_shut`),

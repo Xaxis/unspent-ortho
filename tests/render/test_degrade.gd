@@ -107,3 +107,19 @@ func _commands(path: String) -> PackedStringArray:
 			continue
 		out.append(line)
 	return out
+
+
+## A LANDSCAPE'S WEB CONTRAST (`BiomeDef.web_contrast`) acts on the web's day
+## contrast only, fades out as night falls, and does NOTHING on Forward+ -- asked
+## of the pure `_row` both ways, because this runner has no rendering device and
+## `row()` alone could only ever show the Compatibility half.
+func test_a_landscapes_web_contrast_is_web_only_and_day_only() -> void:
+	eq(CompatTrim._row(true, true, 0.0, 1.3), CompatTrim.IDENTITY, "Forward+ ignores it: all ones")
+	var plain := CompatTrim._row(false, true, 0.0, 1.0)
+	var firm := CompatTrim._row(false, true, 0.0, 1.1)
+	near(float(firm.contrast), float(plain.contrast) * 1.1, 1e-5, "by day it multiplies the row's contrast")
+	for k: String in CompatTrim.KEYS:
+		if k != "contrast":
+			eq(float(firm[k]), float(plain[k]), "and nothing else (%s)" % k)
+	eq(float(CompatTrim._row(false, true, 1.0, 1.1).contrast), float(CompatTrim._row(false, true, 1.0, 1.0).contrast), "at night it is spent")
+	eq(float(CompatTrim._row(false, false, 0.0, 0.9).contrast), float(CompatTrim.OPEN_DAY.contrast) * 0.9, "an overcast day takes it too")

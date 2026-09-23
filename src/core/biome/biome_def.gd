@@ -215,6 +215,16 @@ var light_tint := Color(1, 1, 1)
 ## exists not to do. `SkyLight.NIGHT_SKY_LEAST/MOST` clamp it: readability at
 ## night is a floor the content layer may not argue with.
 var night_sky := 1.0
+## How much contrast THE WEB'S day picture takes here, as a multiplier on its
+## count-back (`CompatTrim`): 1 as the row says, under 1 flatter, over 1 firmer.
+## Compatibility squeezes a bright landscape's tonal range 10-16% and lifts its
+## blacks (the live site's "pale"), and does the opposite to a dark one -- the
+## moss comes out MORE contrasty -- so no single contrast serves both (the
+## 2026-09-23 tone sweep: every global value made four places worse). Declared,
+## never measured live, blended on the grade's squared shares
+## (`SkyLight.web_contrast_at`), spent only by day (the night rows are their own
+## fit), and it does nothing on Forward+, where the count-back is all ones.
+var web_contrast := 1.0
 ## How far this landscape is SHUT OFF from the sky: 0 under the open one, 1 with
 ## something between it and the sun at every hour of the day.
 ##

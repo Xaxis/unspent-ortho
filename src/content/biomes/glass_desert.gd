@@ -95,6 +95,8 @@ static func make() -> BiomeDef:
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter
+	# The web's day contrast here (BiomeDef.web_contrast): inferred from the bonelands: a bright floor.
+	d.web_contrast = 1.1
 	return d
 
 

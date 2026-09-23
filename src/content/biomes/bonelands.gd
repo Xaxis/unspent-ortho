@@ -107,6 +107,8 @@ static func make() -> BiomeDef:
 	d.sound_bed = &"bed_bones"
 	d.surface = _surface
 	d.scatter = _scatter
+	# The web's day contrast here (BiomeDef.web_contrast): measured: wanted 1.05 of 0.95, as did the bonelands-burning border.
+	d.web_contrast = 1.1
 	return d
 
 

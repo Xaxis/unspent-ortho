@@ -209,6 +209,8 @@ static func make() -> BiomeDef:
 		# leaves its posts and a sign, and goes on.
 		"survey": [[0.45, &"sign_beside"]],
 	})
+	# The web's day contrast here (BiomeDef.web_contrast): inferred from the snowfield: a bright floor.
+	d.web_contrast = 1.05
 	return d
 
 

@@ -114,6 +114,8 @@ static func make() -> BiomeDef:
 	d.sound_bed = &"bed_moss"
 	d.surface = _surface
 	d.scatter = _scatter
+	# The web's day contrast here (BiomeDef.web_contrast): measured: the sunny moss wanted 0.85 of 0.95 and the grey moss 0.95 of 1.05, both 0.9.
+	d.web_contrast = 0.9
 	return d
 
 

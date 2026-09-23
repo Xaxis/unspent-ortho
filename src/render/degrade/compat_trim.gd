@@ -77,8 +77,16 @@ static var _last: Dictionary = IDENTITY
 
 ## The row in force for a frame whose sun does or does not cast, `night` 0 (day)
 ## to 1 (night fallen, or a roof overhead).
-static func row(sun_casts: bool, night: float = 0.0) -> Dictionary:
-	if Quality.forward_plus():
+## `contrast` is the landscapes' own web contrast (`SkyLight.web_contrast_at`),
+## spent by day only.
+static func row(sun_casts: bool, night: float = 0.0, contrast: float = 1.0) -> Dictionary:
+	return _row(Quality.forward_plus(), sun_casts, night, contrast)
+
+
+## The row, with the renderer passed in rather than asked, so a test can hold
+## the Forward+ half on a runner that has no rendering device.
+static func _row(forward: bool, sun_casts: bool, night: float, contrast: float) -> Dictionary:
+	if forward:
 		return IDENTITY
 	if not override.is_empty():
 		return override
@@ -88,6 +96,7 @@ static func row(sun_casts: bool, night: float = 0.0) -> Dictionary:
 	var out := {}
 	for k: String in KEYS:
 		out[k] = lerpf(float(day[k]), float(dark[k]), t)
+	out.contrast = float(out.contrast) * lerpf(contrast, 1.0, t)
 	return out
 
 
