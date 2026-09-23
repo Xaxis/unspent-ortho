@@ -255,6 +255,11 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 ## cores it pulled racked down the middle, posts at the ends and one sign. The
 ## only ruled thing in the landscape, and it reads from across a valley.
 ##
+## THERE IS NO FLAT GROUND IN THE CRAGS to rule a bench on, so the lattice is
+## the ground's mark (the bores, drawn whatever the relief does) and each mast
+## and rack takes the nearest foothold a step off level (`GenWorks.put_on_step`),
+## turned on the bearing still.
+##
 ## ONE IN EVERY REGION, because the plumb dens at its region's bench and starves
 ## on what stands there (designs/plumb.gd feeds: masts and racks). A region with
 ## no bench dens its keeper at the heart, where a neighbour's two masts can fall
@@ -280,7 +285,7 @@ static func _works(L: Object) -> void:
 		var fed := 0
 		for sx: float in [-1.0, 1.0]:
 			for sy: float in [-1.0, 1.0]:
-				if _stand(L, PropKind.THEODOLITE_MAST, at + d * half.x * sx + nrm * half.y * sy):
+				if GenWorks.put_on_step(L, PropKind.THEODOLITE_MAST, at + d * half.x * sx + nrm * half.y * sy, d.angle()) != null:
 					fed += 1
 		# The racks down the long axis, two rows of cores, and more of them
 		# where a corner mast could not stand, so the bench feeds its keeper.
@@ -288,7 +293,7 @@ static func _works(L: Object) -> void:
 			if fed >= FED + 3 or (absf(j) != 2.2 and fed >= FED):
 				break
 			for sy: float in [-1.1, 1.1]:
-				if _stand(L, PropKind.CORE_RACK, at + d * j + nrm * sy):
+				if GenWorks.put_on_step(L, PropKind.CORE_RACK, at + d * j + nrm * sy, d.angle()) != null:
 					fed += 1
 		if fed < FED:
 			# Too broken to hold a survey: take the bench back, whole, rather
@@ -301,35 +306,3 @@ static func _works(L: Object) -> void:
 		GenWorks._put(L, PropKind.SIGN, at - nrm * (half.y + 1.4), (-nrm).angle(), -99, 0.2)
 		# Nothing grows back on a bench the survey keeps returning to.
 		GenWorks._clear_rect(c, L.occ, at, d, half)
-
-
-## One piece of the bench at `q`, or as near it as it can stand. THERE IS NO
-## FLAT GROUND IN THE CRAGS to rule a bench on: the flattest eleven-tile square
-## in a region still falls three or four terraces, and nearly every tile is on a
-## one-level step, so `_put`'s rule that a solid stands on ONE level refused
-## every mast of every bench. So the lattice is the ground's mark (the bores,
-## drawn whatever the relief does), and each mast and rack takes the nearest
-## foothold that is at most a STEP off level with its four neighbours -- a
-## tripod's legs take half a unit; a cliff's two levels they do not -- turned
-## on the bearing still. True when one stood.
-static func _stand(L: Object, kind: int, q: Vector2) -> bool:
-	var c: GenContext = L.c
-	var w := c.w
-	var d: Vector2 = L.d
-	var nrm: Vector2 = L.nrm
-	for off: Vector2 in [Vector2.ZERO, nrm * 0.8, -nrm * 0.8, d * 0.8, -d * 0.8, nrm * 1.6, -nrm * 1.6, d * 1.6, -d * 1.6]:
-		var at := q + off
-		var x := floori(at.x)
-		var y := floori(at.y)
-		if x < 3 or y < 3 or x >= c.size - 3 or y >= c.size - 3:
-			continue
-		var i := y * c.size + x
-		var steep := false
-		for k: int in [1, -1, c.size, -c.size]:
-			if absi(w.level[i + k] - w.level[i]) > 1:
-				steep = true
-		if steep:
-			continue
-		if GenWorks._put(L, kind, at, d.angle(), -99, 0.0, true, true) != null:
-			return true
-	return false

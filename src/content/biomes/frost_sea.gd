@@ -107,13 +107,14 @@ static func make() -> BiomeDef:
 	d.props = [PropKind.BOULDER, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.STONE_ORE,
 		PropKind.SURVEY, PropKind.RELAY, PropKind.DEBRIS,
 		# Its own (docs/LANDSCAPES.md §2, src/models/props/frost_sea.gd): ice
-		# thrown up on end, a trawler frozen in, the plan's sounding tripod, a
-		# seal's hole. Declared here so the economy can walk lens ice back to
-		# this sea; where each stands per frame is `_scatter`'s, and the bands
-		# land with the works row and the ridge relief (phase B).
+		# thrown up on end, a trawler frozen in and a seal's hole are
+		# `_scatter`'s; the plan's sounding tripod is the soundings line's
+		# (`_works`).
 		PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE]
 	d.ore = [[PropKind.STONE_ORE, 0.012]]
-	d.sites = {"tips": 1}
+	# The floe camp (SiteKinds): a dead expedition's tents, sledges and graves
+	# on the open ice, as a rate per 1,000 tiles of each region.
+	d.sites = {"tips": 1, "floe_camp": 0.1}
 	d.beached_wrecks = true
 	d.pools = {"order": 2, "cell": 26, "chance": 0.55, "r_min": 2.2, "r_max": 5.0, "ground": Ground.BLACKWATER}
 	# NOBODY LIVES ON MOVING ICE, and that is a decision, not a gap (docs/
@@ -162,6 +163,15 @@ static func make() -> BiomeDef:
 	d.sound_bed = &"bed_snowfield"
 	d.surface = _surface
 	d.scatter = _scatter
+	# Sounding what is under the ice (docs/LANDSCAPES.md §2 PLAN): the soundings
+	# lines `_works` lays, two to a region.
+	GenWorks.register(&"frost_sea", {
+		"host": load("res://src/content/biomes/frost_sea.gd"),
+		"works": &"_works",
+		"vignettes": [[4, &"debris_field"], [4, &"wreck"], [3, &"survey_posts"], [3, &"grave_cluster"],
+			[2, &"wreck_parts"], [2, &"tipped_signs"], [1, &"shelter"]],
+		"survey": [[0.35, &"sign_beside"]],
+	})
 	# The web's day contrast here (BiomeDef.web_contrast): inferred from the snowfield: bright and cold.
 	d.web_contrast = 1.05
 	return d
@@ -202,19 +212,106 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.BOULDER
 		return BiomeScatter.NONE
 	if g == Ground.ICE:
+		# A seal's breathing hole about once a frame: the one sign out here
+		# that anything is alive under the sheet.
+		if r > 0.40 and r < 0.4038:
+			return PropKind.SEAL_HOLE
+		# A trawler locked in to its gunwale, one in six or seven frames.
+		if r > 0.30 and r < 0.3004:
+			return PropKind.FROZEN_HULL
 		if r > 0.80 and r < 0.812:
 			return PropKind.BOULDER
 		return PropKind.DEBRIS if r > 0.20 and r < 0.206 else BiomeScatter.NONE
 	if g == Ground.SNOW:
-		if r > 0.60 and r < 0.609:
-			return PropKind.BOULDER
-		return PropKind.SURVEY if r > 0.10 and r < 0.1035 else BiomeScatter.NONE
+		# The survey posts that were here are the soundings line's now (`_works`):
+		# the plan's own things are not dealt by the scatter.
+		return PropKind.BOULDER if r > 0.60 and r < 0.609 else BiomeScatter.NONE
 	if g == Ground.ROCK:
 		if r < 0.030:
 			return PropKind.BOULDER
 		if r < 0.040:
 			return PropKind.STONE_ORE
-		return PropKind.RELAY if r > 0.50 and r < 0.505 else BiomeScatter.NONE
+		# Slabs of sea ice thrown up on end where two floes met, in knots along
+		# the ridge rather than evenly down it: the only cover on the sea.
+		if r > 0.10 and r < 0.12 + maxf(0.0, t.clump[i]) * 0.3:
+			return PropKind.PRESSURE_BLOCK
+		return BiomeScatter.NONE
 	if g == Ground.GRAVEL:
 		return PropKind.DRIFTWOOD if r < 0.012 else BiomeScatter.NONE
 	return BiomeScatter.NONE
+
+
+## THE SOUNDINGS (docs/LANDSCAPES.md §2 PLAN): the plan is mapping the sea floor
+## by sound through the sheet. A ruled line of holes kept open along the bearing
+## (the bores mark: a black disc with a pale refrozen rim every two tiles), a
+## tripod over every third hole (the spec's fourth left a line of nine with two), the heated pipe that keeps them open laid
+## beside it, a post at each end and a tank for the heater.
+##
+## Two to a region. The listener does not starve (designs/listener.gd leaves
+## STARVE out: the rigs are too scattered to starve it), so this is laid for
+## the land and not for a larder; the ice is flat, so the flattest square in a
+## region is any square, and the second call is kept off the first by `apart`.
+static func _works(L: Object) -> void:
+	var c: GenContext = L.c
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	for k in (L.rects as Array).size():
+		for n in 2:
+			var line := _line_site(L, k, 36.0)
+			if line.z < 2:
+				break
+			var at := Vector2(line.x, line.y) + Vector2(0.5, 0.5)
+			var reach := line.z
+			var half := Vector2(reach * 2.0 + 1.0, 1.6)
+			GenWorks._record(c, &"soundings", at, d, half, GenWorks.BORES)
+			for h in range(-reach, reach + 1):
+				if posmod(h, 3) == 0:
+					GenWorks.put_on_step(L, PropKind.SOUNDING_RIG, at + d * h * 2.0, d.angle(), 0.3, 0.8)
+			GenWorks._run(L, PropKind.PIPE, at - d * reach * 2.0 + nrm * 1.3, d, reach * 2, 2.0, -99, 0.15)
+			for sx: float in [-1.0, 1.0]:
+				GenWorks._put(L, PropKind.SURVEY, at + d * (half.x + 0.8) * sx, d.angle(), -99, 0.0, true)
+			GenWorks.put_on_step(L, PropKind.WATER_TANK, at + d * (half.x + 1.2) - nrm * 2.2, d.angle(), 0.6)
+
+
+## The longest unbroken run of sheet ice along the bearing in region `k`:
+## (x, y, holes each way, up to six), z 0 when there is none. Scanned rather than
+## thrown for, like `GenWorks.flattest_in`, and for the same reason turned on the
+## thing that matters here: a line that ran on over the shore or a ridge stood
+## its rigs in the sea or on the rock.
+static func _line_site(L: Object, k: int, apart: float) -> Vector3i:
+	var c: GenContext = L.c
+	var w := c.w
+	var d: Vector2 = L.d
+	var rect: Rect2 = L.rects[k]
+	var id: int = L.ids[k]
+	var best := Vector3i(0, 0, 0)
+	var y := int(rect.position.y) + 2
+	while y < int(rect.end.y) - 2:
+		var x := int(rect.position.x) + 2
+		while x < int(rect.end.x) - 2:
+			var i := y * c.size + x
+			x += 4
+			if w.region[i] - 1 != id or w.blend[i] > 0.35 or not _sheet(L, Vector2(x - 3.5, y + 0.5)):
+				continue
+			var at := Vector2(x - 3.5, y + 0.5)
+			var reach := 0
+			while reach < 6 and _sheet(L, at + d * (reach + 1) * 2.0) and _sheet(L, at - d * (reach + 1) * 2.0):
+				reach += 1
+			if reach <= best.z:
+				continue
+			if at.distance_to(w.spawn) < 20.0 or GenScatter._near_village(w, at, 18.0) or GenWorks._crowded(w, at, apart):
+				continue
+			best = Vector3i(x - 4, y, reach)
+		y += 4
+	return best
+
+
+## Open sheet ice of this sea at `q`: somewhere a hole can be kept open.
+static func _sheet(L: Object, q: Vector2) -> bool:
+	var c: GenContext = L.c
+	var x := floori(q.x)
+	var y := floori(q.y)
+	if x < 3 or y < 3 or x >= c.size - 3 or y >= c.size - 3:
+		return false
+	var i := y * c.size + x
+	return c.w.ground[i] == Ground.ICE and c.water[i] == 0 and c.w.level[i] > 0 and L.home(x, y)

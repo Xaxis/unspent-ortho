@@ -465,6 +465,44 @@ static func _put(L: Lay, kind: int, p: Vector2, rot: float, level: int = -99, cl
 	return prop
 
 
+## `_put` on broken ground: `kind` at `q` or at the nearest of a few footholds
+## round it (along the bearing and across it, up to `reach` tiles), each at most
+## a STEP off level with its four neighbours, turned `rot` and stood exact.
+##
+## **THE CRAGS AND THE FROST SEA HAVE NO GROUND `_put` WILL STAND A SOLID ON.**
+## Its rule is that a solid stands on ONE level, which on terraced land is every
+## tile of it: the flattest eleven-tile square in a crags region still falls three
+## or four terraces, the sea's ice lies in steps of one, and every mast of a
+## survey bench and every rig of a soundings line was refused on a lip. A tripod
+## takes half a unit under one leg; a cliff's two levels it does not, and those
+## are still refused. The null when nothing round `q` would take it.
+static func put_on_step(L: Lay, kind: int, q: Vector2, rot: float, clear: float = 0.0, reach: float = 1.6) -> WorldProp:
+	var c := L.c
+	var w := L.w
+	var offs: Array[Vector2] = [Vector2.ZERO]
+	var r := reach * 0.5
+	while r <= reach + 0.01:
+		offs.append_array([L.nrm * r, -L.nrm * r, L.d * r, -L.d * r])
+		r += reach * 0.5
+	for off: Vector2 in offs:
+		var at := q + off
+		var x := floori(at.x)
+		var y := floori(at.y)
+		if x < 3 or y < 3 or x >= c.size - 3 or y >= c.size - 3:
+			continue
+		var i := y * c.size + x
+		var steep := false
+		for k: int in [1, -1, c.size, -c.size]:
+			if absi(w.level[i + k] - w.level[i]) > 1:
+				steep = true
+		if steep:
+			continue
+		var prop := _put(L, kind, at, rot, -99, clear, true, true)
+		if prop != null:
+			return prop
+	return null
+
+
 ## A straight run of pieces from `a` along `dir`, `step` apart, each turned
 ## along the run; a piece that cannot stand leaves a gap, and `gaps` of them
 ## are left out anyway. Returns the ids placed.

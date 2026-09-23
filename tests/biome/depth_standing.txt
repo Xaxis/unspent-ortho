@@ -31,12 +31,7 @@ drowned_city plan.work_props
 drowned_city player.only_in
 frost_sea land.frames
 frost_sea land.landmark
-frost_sea land.own_props
-frost_sea land.site
-frost_sea plan.depot
-frost_sea plan.work_props
 frost_sea player.only_in
-frost_sea player.signature
 glass_desert land.frames
 glass_desert land.landmark
 glass_desert land.own_props
