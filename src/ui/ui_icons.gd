@@ -185,6 +185,7 @@ const ITEMS := {
 	&"mod_wadding": [&"sack", &"linen", &"linen"],
 	&"mod_filter": [&"flask", &"ink", &"ash"],
 	&"mod_grip": [&"bundle", &"linen", &"earth"],
+	&"mod_wick": [&"lamp", &"copper", &"ember"],
 	&"mod_foil": [&"foil", &"plate", &"plate"],
 	&"mod_spring": [&"coil", &"plate", &"earth"],
 	&"condenser": [&"coil", &"plate", &"brine"],

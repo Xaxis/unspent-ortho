@@ -77,6 +77,10 @@ static func make() -> BiomeDef:
 	dress.walling = [P.ASH[2], P.STONE[3], P.SLATE[2], P.STONE[2]]
 	dress.sink = 0.06
 	dress.lie = Vector2(-0.02, 0.05)
+	# What people put up here is a dead tower's ground floor walled in with
+	# salvaged doors (props/remains.gd `_infill`): nobody in a city builds a
+	# hut when there is a frame standing on every block.
+	dress.shelter = &"infill"
 	d.dressing = dress
 	# The same stock and the same plan the Slums raises, because it IS the same
 	# city a century on: what these two argue about is what happened to it, not
@@ -113,9 +117,12 @@ static func make() -> BiomeDef:
 		[Weather.DUST, 16, 0.5], [Weather.FOG, 10, 0.0],
 	]
 	d.mist = 0.22
-	# What a dead city does to a body: the dust off it, and the drop off a deck
-	# that is not there any more.
-	d.hazards = {&"dark": 0.35, &"collapse": 0.5}
+	# What a dead city does to a body: the dark of it, the drop off a deck that
+	# is not there any more, and the dust off crushed concrete on the skin — a
+	# plain 0.25, felt and never biting on its own, because `_weather_shift`
+	# scales toxins under ASH and not under the DUST the city mostly gets; a
+	# respirator or a scarf answers it (docs/LANDSCAPES.md §4).
+	d.hazards = {&"dark": 0.35, &"collapse": 0.5, &"toxins": 0.25}
 	d.roster = {
 		&"warden": {"weight": 1.0},
 		&"sweeper": {"weight": 1.0, "grounds": ["floor", "road", "mud", "grass"]},

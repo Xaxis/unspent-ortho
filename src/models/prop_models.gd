@@ -355,6 +355,7 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 				&"pod": return [{"at": Vector3(1.14, 0.45, 0.585), "size": Vector2.ZERO, "color": n[1], "neon": true}]
 				&"lean_to": return [{"at": Vector3(0.92, 0.7, 0.375), "size": Vector2.ZERO, "color": n[2], "neon": true}]
 				&"dugout": return [{"at": Vector3(0.82, 0.5, 0.475), "size": Vector2.ZERO, "color": n[1], "neon": true}]
+				&"infill": return [{"at": Vector3(0.64, 0.75, 0.725), "size": Vector2.ZERO, "color": n[0], "neon": true}]
 			return [{"at": Vector3(0.81, 0.85, -0.5), "size": Vector2.ZERO, "color": n[0], "neon": true}]
 		PropKind.INTAKE:
 			# The cold strip along both eaves (props/works.gd intake).

@@ -262,6 +262,17 @@ const DEFS := {
 	&"mod_grip": {"name": "bound grip", "bulk": 0.5, "group": &"kit", "tier": &"made", "module": true,
 		"fits": [&"tool", &"hands"],
 		"resist": {&"resonance": 0.35, &"em": 0.1, &"magnetism": 0.2}},
+	# A tin cup of oil with a rag wick, hung off the pack frame or the belt: it
+	# lights the ground in front of your feet and nothing further. A MODULE for
+	# the same structural reason the rag shade is. The dark was answered from the
+	# HEAD alone (the scanner lens), and the Ruined Metropolis is the first
+	# landscape to declare both dark and toxins, whose strongest answer, the
+	# rebreather, is worn on the head too — so the best kit for a city at night
+	# in fog left dark at 0.76 on a body that had done everything right
+	# (tests/hazards/test_whole_kit.gd). The capacity comes from sockets on the
+	# body and the back, which is what they are for.
+	&"mod_wick": {"name": "wick lamp", "bulk": 1.0, "group": &"kit", "tier": &"made", "module": true,
+		"fits": [&"body", &"back"], "resist": {&"dark": 0.3}},
 	&"mod_foil": {"name": "foil lining", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"fits": [&"body", &"back"],
 		"resist": {&"radiation": 0.3, &"em": 0.2, &"magnetism": 0.35}},

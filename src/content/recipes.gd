@@ -93,6 +93,9 @@ const LIST: Array[Dictionary] = [
 	# bench (playtest 3 and 7).
 	{"id": &"mod_shade", "at": &"hand", "minutes": 25.0, "needs": {&"rag": 2, &"driftwood": 2}, "makes": {&"mod_shade": 1}, "tool": &"cut"},
 	{"id": &"mitts_corded", "at": &"hand", "minutes": 20.0, "needs": {&"rag": 2, &"pitch": 1}, "makes": {&"mitts_corded": 1}, "tool": &"cut"},
+	# A wick lamp is a cup, a rag and the oil the lamp already burns: by hand,
+	# so the dark of a city can be answered from a belt on the day it is reached.
+	{"id": &"mod_wick", "at": &"hand", "minutes": 20.0, "needs": {&"tin": 1, &"rag": 1, &"oil": 1}, "makes": {&"mod_wick": 1}, "tool": &"cut"},
 	# The whole MADE tier is hand work, and these three were the exception for no
 	# reason but the order they were written in. A made piece is cloth, reed and
 	# pitch, cut and bound: a bench is for MENDED work, where machine parts are

@@ -493,6 +493,7 @@ static func shack(k: Kit, v: int, c: int) -> void:
 		&"pod": _pod(k, s, lit, d)
 		&"lean_to": _lean_to(k, s, lit, d)
 		&"dugout": _dugout(k, s, lit, d)
+		&"infill": _infill(k, s, lit, d)
 		_: _fish_shack(k, s, lit, d)
 
 
@@ -762,6 +763,61 @@ static func _dugout(k: Kit, s: int, lit: bool, d: BiomeDressing) -> void:
 	k.made.prism(0.15, 1.4, 0.32, 0.055, 1.42, 0.055, 6, P.INK[0], GroundColors.glow(P.EMBER[3], 0.8))
 	if lit:
 		_wired(k, Vector3(0.8, 0.1, 0.35), Vector3(0.8, 0.1, 0.6), Vector3(1, 0, 0), Vector3(-0.3, 0.9, 0.0), NEON[1])
+
+
+static func _infill(k: Kit, s: int, lit: bool, d: BiomeDressing) -> void:
+	# The Ruined Metropolis's shelter: a bay of a dead tower's ground floor —
+	# two cast columns and the lintel between them, CONCRETE — walled in with
+	# salvaged doors, each its own colour and its own lean, one of them ajar,
+	# and a sheet of machine plate laid from the lintel back to a rubble wall.
+	# A shape a city gives away for nothing: nobody here builds a hut when a
+	# frame is standing on every block.
+	var con := GroundColors.made(d.concrete, GroundColors.CONCRETE)
+	for sz: float in [-1.0, 1.0]:
+		k.slab(-0.2, 0.0, sz * 0.95, 0.32, 2.2 + Kit.j(s, int(sz) + 1, 0.1), 0.32, s + int(sz), GroundColors.down(con, 0.1), GroundColors.up(con, 0.12), 0.03, 0.0, Kit.j(s, int(sz) + 4, 0.02))
+	k.slab(-0.2, 2.15, 0.0, 0.4, 0.3, 2.3, s + 3, con, GroundColors.up(con, 0.15), 0.03)
+	# The reinforcement out of the columns' tops: the tower went on up from here.
+	PropModels.Rocks._rebar(k, [Vector3(-0.2, 2.45, -0.9), Vector3(-0.15, 2.45, 0.95), Vector3(-0.25, 2.45, 0.2)],
+		[Vector3(-0.35, 2.75, -1.1), Vector3(0.0, 2.7, 1.05), Vector3(-0.5, 2.65, 0.3)])
+	# The doors across the bay, TIMBER: three of them, the middle one ajar on
+	# its hinge, the dark of the room showing in the gap.
+	var doors: Array[Color] = [GroundColors.made(P.EARTH[2], GroundColors.TIMBER), GroundColors.made(d.timber[0], GroundColors.TIMBER),
+		GroundColors.made(P.SLATE[2].lerp(P.EARTH[1], 0.4), GroundColors.TIMBER)]
+	_facing_quad(k.made, Vector3(-0.02, 0.0, 0.8), Vector3(-0.02, 0.0, -0.8), Vector3(0, 2.0, 0), Vector3(1, 0, 0), P.INK[0])
+	for i in 3:
+		var z0 := 0.78 - i * 0.54
+		var col: Color = doors[i]
+		if i == 1:
+			# Ajar: swung out on the hinge at its edge, so the wall has a gap in it.
+			var hinge := Vector3(0.0, 0.0, z0)
+			var swing := Vector3(0.36, 0.0, -0.38)
+			_facing_quad(k.made, hinge, hinge + swing, Vector3(0, 1.95, 0), Vector3(0.7, 0, 0.7), col)
+			_facing_quad(k.made, hinge + swing, hinge, Vector3(0, 1.95, 0), Vector3(-0.7, 0, -0.7), GroundColors.down(col, 0.2))
+			k.made.strut(hinge + Vector3(0, 0.9, 0) + swing * 0.9, hinge + Vector3(0.02, 0.98, 0) + swing * 0.9, 0.02, 4, P.COPPER[3])
+			continue
+		var tilt := Kit.j(s, i + 10, 0.03)
+		_facing_quad(k.made, Vector3(0.02 + tilt, 0.0, z0), Vector3(0.02 - tilt, 0.0, z0 - 0.52), Vector3(0.03, 1.98 + Kit.j(s, i + 14, 0.06), 0), Vector3(1, 0, 0), col)
+		# A panel line and a handle, so a door reads as a door and not a board.
+		_facing_quad(k.made, Vector3(0.04 + tilt, 0.5, z0 - 0.06), Vector3(0.04 - tilt, 0.5, z0 - 0.46), Vector3(0, 0.9, 0), Vector3(1, 0, 0), GroundColors.down(col, 0.25))
+		k.made.strut(Vector3(0.05, 0.95, z0 - 0.44), Vector3(0.05, 1.03, z0 - 0.44), 0.018, 4, P.COPPER[3])
+	# The roof: a sheet of machine plate from the lintel back to the wall,
+	# weighted with rubble, and the rubble wall it rests on at the back.
+	patch(k, Vector3(-0.1, 2.32, 1.12), Vector3(-0.1, 2.32, -1.12), Vector3(-1.6, 1.6, -1.05), Vector3(-1.6, 1.6, 1.05), 2)
+	PropModels.Houses.rubble_wall(k, Vector2(-1.6, -1.0), Vector2(-1.6, 1.0), PackedFloat32Array([1.5, 1.55, 1.5, 1.45, 1.5]), 0.3, s + 20, d.walling)
+	for i in 3:
+		k.stone(-0.6 - i * 0.4, 2.3 - i * 0.2, -0.5 + (i % 2) * 0.9, 0.11, 0.09, s + 30 + i, GroundColors.down(d.concrete, 0.12), 5)
+	# The side walls: plate on one side, boards on the other, under the roof.
+	patch(k, Vector3(-0.2, 0.0, -1.14), Vector3(-1.5, 0.0, -1.1), Vector3(-1.5, 1.5, -1.1), Vector3(-0.2, 2.1, -1.14), 3)
+	for i in 4:
+		var y := 0.2 + i * 0.5
+		k.made.quad(Vector3(-0.2, y, 1.14), Vector3(-1.5, y - 0.1, 1.11), Vector3(-1.5, y + 0.32, 1.11), Vector3(-0.2, y + 0.4, 1.14), doors[(i + 1) % 3] if i != 2 else GroundColors.down(doors[0], 0.3))
+	# A stovepipe out through the plate, a drum for water by the door.
+	k.limb(Vector3(-0.9, 1.9, 0.5), Vector3(-0.88, 2.7, 0.52), 0.05, 0.05, 6, P.RUST[1])
+	k.made.prism(-0.88, 2.7, 0.52, 0.055, 2.72, 0.055, 6, P.INK[0], GroundColors.glow(P.EMBER[3], 0.6))
+	k.made.prism(0.5, 0.0, -1.1, 0.22, 0.6, 0.2, 9, P.RUST[2], P.INK[1])
+	if lit:
+		_wired(k, Vector3(0.62, 0.35, 0.55), Vector3(0.62, 0.35, 0.9), Vector3(1, 0, 0), Vector3(-0.1, 2.35, 0.0), NEON[0])
+	banks(k, [[0.3, 1.0, 0.5, 0.16], [-1.0, -1.2, 0.5, 0.14]], d.drift[0], s + 40)
 
 
 # --- vehicles ------------------------------------------------------------------

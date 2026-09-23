@@ -359,8 +359,13 @@ static func demolition_gantry(k: Kit, _v: int, _c: int) -> void:
 ##   tools/shot.sh shots/x.png --scene=gallery --filter=metropolis
 static func gallery() -> Array:
 	var out: Array = []
-	var d := BiomeRegistry.get_def(&"ruined_metropolis")
-	var c := d.index if d != null else Country.COAST
+	# The city is found by what its people BUILD and never by name: nothing under
+	# src/models/props/ may name a landscape (tests/biome/test_dressing.gd), and
+	# the one whose shelter is an infilled tower frame is the one these dress for.
+	var c := 0
+	for d: BiomeDef in BiomeRegistry.land():
+		if BiomeDressing.of(d.index).shelter == &"infill":
+			c = d.index
 	for kind: int in [PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT, PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY]:
 		for v in PropModels.variants(kind, c):
 			out.append({"name": "metropolis %s %d" % [PropKind.NAMES[kind], v], "node": PropModels.node(kind, v, c)})

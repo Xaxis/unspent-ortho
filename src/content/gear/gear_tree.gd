@@ -118,6 +118,7 @@ const PIECES := {
 	&"mod_filter": {"grade": &"common", "family": &""},
 	&"mod_shade": {"grade": &"common", "family": &""},
 	&"mod_grip": {"grade": &"common", "family": &""},
+	&"mod_wick": {"grade": &"common", "family": &""},
 	&"mod_foil": {"grade": &"uncommon", "family": &""},
 	&"mod_spring": {"grade": &"uncommon", "family": &""},
 	&"mod_signet": {"grade": &"rare", "family": &""},
