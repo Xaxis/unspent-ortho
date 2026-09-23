@@ -23,6 +23,11 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var t0 := Time.get_ticks_msec()
+	# The runner's own settings file, before anything reads one. Left on the
+	# default, every test read the PLAYER's file: a test that made a game opened
+	# at whatever zoom the owner last played at, and a night zoomed fully in
+	# turned test_lock_lens red at 38 degrees on a tree nobody had touched.
+	PlayerSettings.use_file(&"test")
 	var filter := ""
 	var shard := 0
 	var shards := 1

@@ -286,10 +286,9 @@ func _lean() -> void:
 
 ## A HELD LOCK ANSWERED WITH THE LENS, when the owner's row says so (#120: close
 ## combat behind the player, open battle on the flat camera). `rules.lock_lens` is
-## OFF by default, and off this does nothing at all, so a held Z is exactly the
-## orthographic lean it has always been. It is his call because play under the
-## lens settles questions that are still open: whether a cottage opens when it
-## hides you, and whether FOUND cuts.
+## ON by default: the owner kept the lens and it became the default once its cost
+## cleared the slums and the works depot (docs/ROADMAP.md, DECIDED 1). Off, this
+## does nothing at all, so a held Z is exactly the orthographic lean it always was.
 ##
 ## Read live, so the row can be flipped from dev mode mid-lock and the camera
 ## follows. Everything else is `CameraRig.lens`'s job: the projection, and the

@@ -1,7 +1,8 @@
 extends TestCase
-## A held Z answered with the lens (#120), behind `rules.lock_lens`, which is OFF
-## by default because play under the lens settles look questions that are still
-## the owner's. Off, a lock leaves the camera exactly as it was; on, a lock takes
+## A held Z answered with the lens (#120), behind `rules.lock_lens`, which is ON by
+## default: the owner kept the lens and made it the default once a quiet re-run of
+## its cost cleared the slums and the works depot (docs/ROADMAP.md, DECIDED 1).
+## Off, a lock leaves the camera exactly as it was; on, a lock takes
 ## the lens and letting go gives back what the camera had -- without the switch
 ## tipping the picture, and with every reader of the lens agreeing.
 
@@ -35,11 +36,14 @@ func _pitch_of(cam: CameraRig) -> float:
 	return -rad_to_deg(cam.rotation.x)
 
 
-func test_the_row_is_off_unless_somebody_turns_it_on() -> void:
-	eq(ConfigSchema.default_of("rules.lock_lens"), false, "held Z keeps the flat camera by default")
+func test_the_row_is_on_unless_somebody_turns_it_off() -> void:
+	eq(ConfigSchema.default_of("rules.lock_lens"), true, "held Z takes the lens by default")
 
 
 func test_with_the_row_off_a_lock_leaves_the_camera_as_it_was() -> void:
+	# Off by hand now that it is on by default, before the game exists: this is
+	# the row's other half.
+	GameConfig.set_value("rules.lock_lens", false)
 	var sys := await _make()
 	var cam := _game.camera
 	sys.call("_process", 0.1)
@@ -73,6 +77,9 @@ func test_with_the_row_on_a_lock_takes_the_lens_and_letting_go_gives_it_back() -
 ## at once would tip the whole picture in one frame; the difference is carried in
 ## the lean's own eased offset instead, and glides home.
 func test_the_switch_does_not_tip_the_picture() -> void:
+	# The switch is measured from OFF to on, so the row starts off by hand now that
+	# it is on by default -- before the game exists, so nothing can meet it on.
+	GameConfig.set_value("rules.lock_lens", false)
 	var sys := await _make()
 	var cam := _game.camera
 	for i in 40:
