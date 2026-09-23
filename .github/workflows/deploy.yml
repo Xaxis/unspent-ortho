@@ -77,15 +77,15 @@ jobs:
       # That let f1ab4dd ship green while every web boot logged "shader type fog
       # not supported": nothing on this side had ever started the build. Chromium
       # can draw WebGL2 on the CPU (SwiftShader), slowly, which is enough to boot
-      # the title and fail on a console error. On trial first: it reports and does
-      # not yet block a deploy, until a few runs show it cannot fail for no reason.
+      # the title and fail on a console error. Proven both ways on 2026-09-23: main
+      # booted clean (run 35829566324), and a branch with that fog bug put back
+      # failed on it by name (run 35829603793). So it blocks the deploy.
       - name: Browser harness
         run: |
           npm install --prefix tools/web --no-audit --no-fund
           npx --prefix tools/web playwright install --with-deps chromium-headless-shell
 
       - name: Prove the web build boots (CPU WebGL)
-        continue-on-error: true
         run: tools/web.sh --no-export --quick --swiftshader --boot-only --after=8 --timeout=400
 
       - name: Keep what the browser saw
