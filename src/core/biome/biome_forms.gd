@@ -78,6 +78,14 @@ const FORMS := {
 	&"deck_house": {REACH: 2.0, HIGH: 3.4, LIT: false},
 	&"shaft_loft": {REACH: 1.6, HIGH: 6.5, LIT: true},
 	&"stall_row": {REACH: 2.4, HIGH: 3.0, LIT: false},
+	# --- the drowned city: people living over the water (docs/LANDSCAPES.md §5;
+	# src/models/props/drowned_city.gd). The first floor of a flooded block with
+	# the ground floor given to the sea, a timber house on piles over the mud,
+	# and a barge moored for good with a shed on its deck. The block and the
+	# barge carry a stolen tube; the stilt house is too poor for one.
+	&"upper_floor": {REACH: 2.4, HIGH: 5.0, LIT: true},
+	&"stilt_house": {REACH: 2.0, HIGH: 3.0, LIT: false},
+	&"hulk_home": {REACH: 2.2, HIGH: 2.6, LIT: true},
 }
 
 ## The stock a landscape that argues with nothing builds: the fishing village,
