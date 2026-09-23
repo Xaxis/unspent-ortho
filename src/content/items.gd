@@ -129,6 +129,7 @@ const DEFS := {
 	# Cut out of a keeper, and out of nothing else in the world (src/core/sentinel).
 	&"reaper_core": {"name": "reaper core", "bulk": 3.0, "group": &"material"},
 	&"rake_core": {"name": "rake core", "bulk": 3.0, "group": &"material"},
+	&"plumb_core": {"name": "plumb core", "bulk": 3.0, "group": &"material"},
 	&"lime": {"name": "lime", "bulk": 1.0, "group": &"material"},
 	&"salt": {"name": "salt", "bulk": 1.0, "group": &"material"},
 	&"kelp_ash": {"name": "kelp ash", "bulk": 1.0, "group": &"material"},

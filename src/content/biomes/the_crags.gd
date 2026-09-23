@@ -112,6 +112,10 @@ static func make() -> BiomeDef:
 		&"dog.feral": {"weight": 0.8},
 	}
 	d.landmarks = [&"cast_stones", &"firewatch", &"leaning_mast", &"clerks_office"]
+	# Its keeper: the plumb, a survey instrument that never finished surveying
+	# (src/core/sentinel/designs/plumb.gd). The one machine that stays, because
+	# it cannot file what it found and will not leave until it has.
+	d.sentinel = &"plumb"
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter

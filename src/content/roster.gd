@@ -301,6 +301,20 @@ const DEFS := {
 		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
 		"where": {"hours": [0, 0]},
 	},
+	# The Crags' plumb (designs/plumb.gd): the slowest keeper and the tallest
+	# body in the game, seven units of tripod over a swinging weight. It sees
+	# further than the reaper because it is a sighting instrument, and hears less
+	# because there is nothing on it that listens.
+	&"sentinel.crags": {
+		"model": &"sentinel_plumb", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
+		"part": &"back", "sentinel": &"plumb",
+		"pace": 3.6, "dash": 7.5, "quick": 260, "radius": 1.35, "height": 7.0, "life": 120,
+		"sees": 16, "hears": 9, "racket": 20, "reach": 3, "ready": 4, "forget": 28, "tether": 28, "safe": 14,
+		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.6,
+		"bite": {"swing": [900, 180, 820, 900], "reach": 2.2, "width": 3.0, "dmg": 3, "knock": 9.0, "knock_ms": 320},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
+	},
 }
 
 
