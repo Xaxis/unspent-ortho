@@ -15,7 +15,7 @@ extends RefCounted
 ## base class must not carry one): it is reached by path.
 const MG := preload("res://src/models/machines/machine_gallery.gd")
 
-const KINDS: Array[StringName] = [&"sentinel_reaper", &"sentinel_rake", &"sentinel_unbuilder"]
+const KINDS: Array[StringName] = [&"sentinel_reaper", &"sentinel_rake", &"sentinel_plumb", &"sentinel_listener", &"sentinel_anvil", &"sentinel_unbuilder"]
 const SHOWN: Array[StringName] = [&"stand", &"walk", &"alert", &"windup", &"strike", &"dead"]
 
 
@@ -61,13 +61,13 @@ static func beside(silhouette: bool) -> Node3D:
 	person.rotation.y = -PI * 0.25
 	person.position = across * -5.6
 	root.add_child(person)
-	var x := -4.2
-	for kid: StringName in [&"harvester", &"sentinel_reaper", &"sentinel_rake", &"sentinel_unbuilder"]:
+	var x := -13.6
+	for kid: StringName in [&"harvester", &"sentinel_reaper", &"sentinel_rake", &"sentinel_plumb", &"sentinel_listener", &"sentinel_anvil", &"sentinel_unbuilder"]:
 		var m: FigureModel = MG.make(kid, &"alert")
 		m.position = across * x
 		root.add_child(m)
 		# The gantry straddles a street: it wants the width of one to stand in.
-		x += 4.4 if kid != &"sentinel_rake" else 6.2
+		x += 4.4 if kid != &"sentinel_anvil" else 6.2
 	if silhouette:
 		for c in root.get_children():
 			if c != ground:

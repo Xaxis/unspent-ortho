@@ -34,6 +34,9 @@ const Site := preload("res://src/models/props/black_site.gd")
 const Salt := preload("res://src/models/props/salt.gd")
 const Scrap := preload("res://src/models/props/scrap.gd")
 const Signage := preload("res://src/models/props/signage.gd")
+const Crags := preload("res://src/models/props/crags.gd")
+const FrostSea := preload("res://src/models/props/frost_sea.gd")
+const Glass := preload("res://src/models/props/glass_desert.gd")
 const Metropolis := preload("res://src/models/props/metropolis.gd")
 
 
@@ -108,6 +111,14 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 			return 4
 		PropKind.FENCE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.STUMP, PropKind.WRECKAGE:
 			return 3
+		# Fulgurite is clustered five to eight at a rod's foot (docs/LANDSCAPES.md
+		# §3), so three shapes, or a field reads as a stamp; a crater holds
+		# three cars and two blisters, so two of each, melted and burst on
+		# opposite sides.
+		PropKind.FULGURITE:
+			return 3
+		PropKind.GLASS_BLISTER, PropKind.FUSED_CAR:
+			return 2
 		# The metropolis: a span with its lamp standing or snapped, a lift core
 		# with its cable in or out, a shop with its shutter a third, two thirds or
 		# all the way down, and a bale of each of the three things the plan sorts
@@ -120,6 +131,11 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 		PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.FIRE_TOWER, PropKind.CHECKPOINT, PropKind.DRILL_RIG, \
 		PropKind.CONVEYOR, PropKind.SURVEY, PropKind.WATER_TANK, PropKind.SLAG_HEAP, PropKind.VENT_CAP, PropKind.ARCHIVE, \
 		PropKind.MEMORIAL:
+			return 2
+		# Three: a ridge is a clump of blocks, and two shapes in a clump is a stamp.
+		PropKind.PRESSURE_BLOCK:
+			return 3
+		PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE:
 			return 2
 	return 1
 
@@ -202,6 +218,12 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Signage.build(k, kind, variant, country)
 		PropKind.PLATFORM, PropKind.GROWTH_TANK, PropKind.CONSOLE:
 			Site.build(k, kind, variant, country)
+		PropKind.LINTEL, PropKind.CARVED_FACE, PropKind.THEODOLITE_MAST, PropKind.CORE_RACK, PropKind.HOLLOW_WAY:
+			Crags.build(k, kind, variant, country)
+		PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE:
+			FrostSea.build(k, kind, variant, country)
+		PropKind.FULGURITE, PropKind.GLASS_BLISTER, PropKind.FUSED_CAR, PropKind.STRIKE_ROD:
+			Glass.build(k, kind, variant, country)
 		PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT, PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY:
 			Metropolis.build(k, kind, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
@@ -355,6 +377,11 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 				&"pod": return [{"at": Vector3(1.14, 0.45, 0.585), "size": Vector2.ZERO, "color": n[1], "neon": true}]
 				&"lean_to": return [{"at": Vector3(0.92, 0.7, 0.375), "size": Vector2.ZERO, "color": n[2], "neon": true}]
 				&"dugout": return [{"at": Vector3(0.82, 0.5, 0.475), "size": Vector2.ZERO, "color": n[1], "neon": true}]
+				# The crags' round never wired anything in (props/crags.gd): the
+				# one landscape with no stolen light, in its shelters too. What
+				# its lit one has is a HEARTH inside the door, and its light is a
+				# fire's -- no `neon`, so nothing reads it as stolen tech.
+				&"roundhouse": return [{"at": Crags.HEARTH_AT, "size": Vector2.ZERO, "color": Palette.EMBER[4], "rays": [3.0, 7.0, 1.0, 8.0]}]
 				&"infill": return [{"at": Vector3(0.64, 0.75, 0.725), "size": Vector2.ZERO, "color": n[0], "neon": true}]
 			return [{"at": Vector3(0.81, 0.85, -0.5), "size": Vector2.ZERO, "color": n[0], "neon": true}]
 		PropKind.INTAKE:
@@ -375,6 +402,10 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 		PropKind.RELAY:
 			# The beacon on the mast's top, on the machines' beat.
 			return [{"at": Vector3(0.0, 3.76, 0.0), "size": Vector2.ZERO, "color": beacon, "blink": true}]
+		PropKind.STRIKE_ROD:
+			# The cold tip a strike rod blinks on the machines' beat: the same
+			# constant the geometry is drawn with (props/glass_desert.gd TIP).
+			return [{"at": Glass.TIP_AT, "size": Vector2.ZERO, "color": Color(Glass.TIP.r, Glass.TIP.g, Glass.TIP.b, 1.0), "blink": true}]
 		PropKind.HOUSE:
 			# The door side is +X on every house variant (props/houses.gd).
 			var house: Array = [{"at": Vector3(1.15, 0.7, 0.0), "size": Vector2.ZERO, "color": Palette.COPPER[4]}]
@@ -400,6 +431,13 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 			# projection lights the street, said once, by the models themselves.
 			var sign := neon_point(kind, variant, country)
 			return [] if sign.is_empty() else [sign]
+		PropKind.THEODOLITE_MAST:
+			# The cold lens at the end of the survey's telescope (props/crags.gd).
+			return Crags.glow_points(kind, variant)
+		PropKind.SOUNDING_RIG:
+			# The beacon on the tripod's head, on the machines' beat, cold: the
+			# one light out on the ice at night (props/frost_sea.gd).
+			return [{"at": FrostSea.beacon_at(), "size": Vector2.ZERO, "color": beacon, "blink": true}]
 	return []
 
 

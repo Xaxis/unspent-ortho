@@ -68,7 +68,11 @@ func test_the_landscapes_that_argue_with_the_plain_stock_are_named() -> void:
 	# never meant for people at all, and the green towers one something else won
 	# back. A sixth name appearing here without that argument is the bug this
 	# guards against.
-	eq(arguing, ["drowned_city", "green_towers", "machine_city", "ruined_metropolis", "slums"],
+	# AND THE CRAGS, which is not a city and argues the other way: its people
+	# live in what was standing before the machines, a dry-stone round, a
+	# lean-to in a broken tower and a byre, three buildings and nothing wired
+	# in. It is here on purpose (docs/LANDSCAPES.md §1 PEOPLE).
+	eq(arguing, ["drowned_city", "green_towers", "machine_city", "ruined_metropolis", "slums", "the_crags"],
 		"a landscape declaring its own `built` moves its island; say so on purpose: %s" % [arguing])
 
 
@@ -112,16 +116,11 @@ func test_every_form_a_landscape_may_name_is_actually_built() -> void:
 	for form: StringName in BiomeForms.FORMS:
 		var k := Kit.new()
 		k.hand(Ink.HAND)
-		if BiomeForms.PLAIN.has(form):
-			# The plain ones are reached the way world gen reaches them: by index
-			# into the stock that names them.
-			Houses.build(k, PropKind.HOUSE, BiomeForms.PLAIN.find(form), Country.COAST)
-		else:
-			# Everything built upward or inside a ruin goes through the one door
-			# `Houses.build` sends it to. This used to send only RAISED there and
-			# hand every other form to the plain stock at index -1, which built
-			# the last croft twice and called it a repeat.
-			Towers.build(k, form, Country.COAST)
+		# By its own name, through the one door world gen's index reaches too
+		# (`Houses.build` -> `Houses.form`): a form in a stock this test does not
+		# know about is still raised, and a form nobody builds falls through to
+		# the tower dispatch and draws nothing, which the count below catches.
+		Houses.form(k, form, Country.COAST)
 		var n := k.made.vertex_count() + k.found.vertex_count()
 		gt(n, 300, "%s is built" % form)
 		check(not seen.has(n), "%s is its own model and not %s" % [form, seen.get(n, &"")])
@@ -142,26 +141,21 @@ func test_the_table_and_the_geometry_agree_about_which_forms_are_lit() -> void:
 	# six it could not see. Same shape as `GroundColors.PLAIN`, as the wear law's
 	# "underside", as `_clean` keeping one landmass: a guard that was complete
 	# when it was written and silently stopped being so.
-	var city := BiomeRegistry.get_def(&"slums")
-	check(city != null, "the city is registered")
-	if city != null:
-		for v in BiomeForms.RAISED.size():
-			var drew := not PropModels.neon_point(PropKind.HOUSE, v, city.index).is_empty()
-			var says: bool = bool(BiomeForms.FORMS[BiomeForms.RAISED[v]][BiomeForms.LIT])
-			eq(drew, says, "%s: the table says lit=%s and the model drew a tube=%s"
-				% [BiomeForms.RAISED[v], says, drew])
-	# AND EVERY OTHER STOCK A LANDSCAPE DECLARES, asked of the registry rather
-	# than named, so the next landscape to build its own forms is held to the
-	# same agreement without a line being added here.
+	# Every landscape that argues, not only the one city this was first
+	# written against: the crags' three forms claim no light, and a tube drawn
+	# on one of them would be a house lit where the table says none is.
+	var argued := 0
 	for d: BiomeDef in BiomeRegistry.land():
 		var stock := BiomeForms.of(d.index).stock
-		if stock == BiomeForms.PLAIN or stock == BiomeForms.RAISED:
+		if stock == BiomeForms.PLAIN:
 			continue
+		argued += 1
 		for v in stock.size():
 			var drew := not PropModels.neon_point(PropKind.HOUSE, v, d.index).is_empty()
 			var says: bool = bool(BiomeForms.FORMS[stock[v]][BiomeForms.LIT])
-			eq(drew, says, "%s in the %s: the table says lit=%s and the model drew a tube=%s"
+			eq(drew, says, "%s in %s: the table says lit=%s and the model drew a tube=%s"
 				% [stock[v], d.id, says, drew])
+	gt(float(argued), 0.0, "some landscape argues with the plain stock")
 
 
 func test_no_stock_is_longer_than_the_model_cache_can_tell_apart() -> void:

@@ -23,7 +23,17 @@ const FIRE_REACH := 4.0
 const ROOF_REACH := 2.2
 const CANOPY_REACH := 1.6
 const ROOFS: Array[int] = [PropKind.HOUSE, PropKind.SHACK, PropKind.RUIN, PropKind.PUMP_HOUSE,
-	PropKind.ARCHIVE, PropKind.CHECKPOINT, PropKind.FIRE_TOWER]
+	PropKind.ARCHIVE, PropKind.CHECKPOINT, PropKind.FIRE_TOWER,
+	# A trilithon's cap is a roof with daylight through it (docs/LANDSCAPES.md §1:
+	# "the roof answer takes wet and dark under the cap").
+	PropKind.LINTEL,
+	# A trawler frozen in to the gunwale: its hold is the one place out of the
+	# wind on the frost sea (docs/LANDSCAPES.md §2).
+	PropKind.FROZEN_HULL,
+	# A glass blister is shade on a landscape with none (docs/LANDSCAPES.md §3):
+	# a body steps in through the burst side. Its solid is 0, so ROOF_REACH is
+	# the whole of how far its shade is felt.
+	PropKind.GLASS_BLISTER]
 const CANOPY: Array[int] = [PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF]
 ## A line is not said again until the pressure has let go this far.
 const SAID_CLEAR := Hazards.FELT * 0.8

@@ -71,6 +71,32 @@ const TABLE := {
 	PropKind.SLAG_HEAP: [
 		{"id": &"collapse", "reach": 2.0, "add": 0.15, "weather": &""},
 	],
+	# A seal's breathing hole on the frost sea (docs/LANDSCAPES.md §2): the ice
+	# round it is thin because the seal keeps it thin, and 0.2 on the land's own
+	# 0.4 is a step under BITE at the rim, so a body that walks up to it for the
+	# fish reads the gauge before the ice reads the body.
+	PropKind.SEAL_HOLE: [
+		{"id": &"collapse", "reach": 1.0, "add": 0.2, "weather": &""},
+	],
+	# The glass desert's strike rod is where the plan calls the lightning down
+	# (docs/LANDSCAPES.md §3: "it draws a strike in DRY_STORM if you stand
+	# within 2 tiles"). A strike is not a pressure the model has, so it is the
+	# field going live in the air round the rod: `em`, gated on the DUST family,
+	# which is what `Weather.family` folds a dry storm into (the dust storms
+	# that are the landscape's commonest weather sit in the same family, and
+	# the rod hums under both). Held under FELT on its own by the table's rule;
+	# what makes it bite is the storm's own strength scaling it, so a storm
+	# just starting does not put the whole of it on.
+	PropKind.STRIKE_ROD: [
+		{"id": &"em", "reach": 2.0, "add": 0.24, "weather": &"dust"},
+	],
+	# A glass blister's edge cuts (docs/LANDSCAPES.md §3: "collapse 0.3 on
+	# stepping in"). The spec's 0.3 would light a gauge on its own, which the
+	# table's second rule forbids, so it is the most a thing may add and it
+	# reaches a tile: the burst rim, and not the sand round it.
+	PropKind.GLASS_BLISTER: [
+		{"id": &"collapse", "reach": 1.0, "add": 0.2, "weather": &""},
+	],
 }
 
 

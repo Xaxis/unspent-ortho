@@ -11,6 +11,7 @@ extends RefCounted
 
 const Kit := preload("res://src/models/props/kit.gd")
 const Towers := preload("res://src/models/props/towers.gd")
+const Crags := preload("res://src/models/props/crags.gd")
 const P := preload("res://src/render/palette.gd")
 
 
@@ -28,7 +29,14 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 	if kind == PropKind.RUIN:
 		ruin(k, v, c)
 		return
-	match BiomeForms.of(c).form(v):
+	form(k, BiomeForms.of(c).form(v), c)
+
+
+## The named form, whichever stock names it: the one door from a form id to
+## its geometry, so a test can raise any row of `BiomeForms.FORMS` without
+## knowing which landscape's stock it sits in.
+static func form(k: Kit, form_id: StringName, c: int) -> void:
+	match form_id:
 		&"washed": washed(k, c, 0)
 		&"slated": slated(k, c, 0)
 		&"long": long_house(k, c)
@@ -37,10 +45,15 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 		&"narrow": slated(k, c, 1)
 		&"steading": washed(k, c, 2)
 		&"half": half_house(k, c)
+		# The crags' (props/crags.gd): what was standing before the machines,
+		# lived in. Dry stone and turf, and nothing wired in.
+		&"roundhouse": Crags.roundhouse(k, c)
+		&"lean_to_broch": Crags.lean_to_broch(k, c)
+		&"byre": Crags.byre(k, c)
 		# Everything else a landscape may name is built upward, and lives in its
 		# own file: this one is the open country's and has no business knowing
 		# how a tower is made.
-		var form: Towers.build(k, form, c)
+		var other: Towers.build(k, other, c)
 
 
 ## Four leaning walls on an irregular footprint. Returns the corners as

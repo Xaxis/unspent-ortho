@@ -30,6 +30,7 @@ class_name ModifierTable
 ##   shed    it gives up part of itself instead of you
 ##   read    it reads what you could not see
 ##   quick   it moves you further than legs do
+##   sight   it lets you see what the light was hiding: glare, or the dark
 const MODS := {
 	&"mod_wadding": {"decision": "the cold takes longer to find you", "short": "the cold comes slower",
 		"gives": []},
@@ -72,6 +73,15 @@ const MODS := {
 	&"mod_damp": {"decision": "you go quieter, and so do your blows",
 		"short": "you go quieter",
 		"gives": [&"quiet"]},
+	# The frost sea's lens (docs/LANDSCAPES.md §2). Its tag is `sight`, and the
+	# scan head's is `read`: the pair below is what "it pairs with the scan
+	# head" means in data. The spec also asks that `sight` extend the scan's
+	# reach; nothing in `Ability` reads a kit's tags yet (ability_scan.gd's
+	# REACH is a constant), so that half waits on the abilities package and
+	# the pair carries what can be carried today.
+	&"mod_icelens": {"decision": "you can see across the ice at noon, and a little way into the dark",
+		"short": "you see through glare",
+		"gives": [&"sight"]},
 	&"mod_leech": {"decision": "it takes a charge back out of whatever it puts down",
 		"short": "a kill gives a charge",
 		"gives": [&"charge"]},
@@ -81,6 +91,12 @@ const MODS := {
 	&"mod_lattice": {"decision": "every blow throws a shock, and the whole kit runs hot",
 		"short": "every blow shocks",
 		"gives": [&"hot", &"loud"], "wants": [&"cool"]},
+	# The crags' hush slate, worn: stone a scanner reads as nothing at all
+	# (docs/LANDSCAPES.md §1). It gives `quiet`, so a lattice rings through it
+	# the way it rings through a damper (PAIRS): one hides you, the other shouts.
+	&"mod_hush": {"decision": "stood still, their optics read the stone and not you",
+		"short": "stood still, unread",
+		"gives": [&"quiet"]},
 }
 
 ## What happens when two tags are in one kit. `kind` is &"conflict" or &"combo";
@@ -112,6 +128,10 @@ const PAIRS: Array[Dictionary] = [
 	# Braced and clamped: the ground can go out from under you and you stay put.
 	{"a": &"steady", "b": &"held", "kind": &"combo", "effect": {"add": {&"collapse": 0.2}},
 		"line": "braced and clamped, the floor can go", "mark": "braced"},
+	# A lens that sees through the light and a head that reads through plate:
+	# together the read is the one thing on a white plain the glare cannot take.
+	{"a": &"sight", "b": &"read", "kind": &"combo", "effect": {"add": {&"glare": 0.15, &"dark": 0.1}},
+		"line": "the lens carries the read through the glare", "mark": "clear read"},
 ]
 
 
