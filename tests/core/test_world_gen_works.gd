@@ -23,8 +23,7 @@ static func is_evidence(kind: int) -> bool:
 ## lays one takes it off this list, or the test below goes on passing over a
 ## kind nobody placed. `test_world_gen.gd`'s placed-anywhere claim and
 ## `tests/gear_economy/test_in_a_real_world.gd`'s raw check read this same list.
-const NOT_YET_LAID: Array[int] = [PropKind.LINTEL, PropKind.CARVED_FACE, PropKind.THEODOLITE_MAST,
-	PropKind.CORE_RACK, PropKind.HOLLOW_WAY,
+const NOT_YET_LAID: Array[int] = [
 	PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE,
 	PropKind.FULGURITE, PropKind.GLASS_BLISTER, PropKind.FUSED_CAR, PropKind.STRIKE_ROD,
 	PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT, PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY,

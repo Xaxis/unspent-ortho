@@ -44,11 +44,16 @@ func test_a_claimed_place_is_laid_in_every_region_and_furnished() -> void:
 
 
 ## A landscape that claims nothing is given nothing: the reader adds no place
-## the shipped content did not ask for, which is why it moves no world today.
+## the shipped content did not ask for. Asked of each place's OWN landscape,
+## since the L2 landscapes now claim theirs: a place standing in a landscape
+## that did not claim its kind is the reader inventing one.
 func test_no_claim_no_place() -> void:
 	var w := WorldGen.generate(4, 512)
-	var own := 0
+	var stray: PackedStringArray = []
 	for m: Dictionary in w.landmarks:
-		if bool(m.get("site", false)):
-			own += 1
-	eq(own, 0, "no SiteKinds place stands where no landscape claims one")
+		if not bool(m.get("site", false)):
+			continue
+		var d := BiomeRegistry.by_index(int(m.get("country", -1)))
+		if d == null or float(d.sites.get(String(m.kind), 0.0)) <= 0.0:
+			stray.append("%s in %s" % [m.kind, d.id if d != null else &"?"])
+	eq(stray.size(), 0, "no SiteKinds place stands where no landscape claims one: %s" % ", ".join(stray))

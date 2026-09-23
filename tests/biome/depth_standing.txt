@@ -156,9 +156,6 @@ sulphur_jungle plan.work_props
 sulphur_jungle player.only_in
 the_crags land.frames
 the_crags land.landmark
-the_crags land.site
-the_crags plan.depot
-the_crags plan.work_props
 the_crags player.only_in
 the_crags player.signature
 the_middens land.frames

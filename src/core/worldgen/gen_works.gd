@@ -157,6 +157,8 @@ class Lay:
 	## square round every landscape at once. Empty while laying the shared things.
 	var rects: Array[Rect2] = []
 	var sizes: PackedFloat32Array = PackedFloat32Array()
+	## The id of the region each of `rects` bounds, in the same order.
+	var ids: PackedInt32Array = PackedInt32Array()
 
 	func _init(ctx: GenContext, o: PackedByteArray, bearing_dir: Vector2) -> void:
 		c = ctx
@@ -224,10 +226,12 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 		lay.own = def.index
 		lay.rects.clear()
 		lay.sizes = PackedFloat32Array()
+		lay.ids = PackedInt32Array()
 		for r: Dictionary in c.w.regions:
 			if int(r.get("index", -1)) == def.index:
 				lay.rects.append(r.bounds as Rect2)
 				lay.sizes.append(float(r.tiles))
+				lay.ids.append(int(r.get("id", -1)))
 		lay.rng = Rng.make(c.s, 0x3057 + String(def.id).hash() % 65521)
 		var host: Object = row.get("host", GenWorks)
 		Callable(host, fn).call(lay)
@@ -236,6 +240,7 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 	lay.own = -1
 	lay.rects.clear()
 	lay.sizes = PackedFloat32Array()
+	lay.ids = PackedInt32Array()
 	lay.rng = Rng.make(c.s, 0x3058)
 	_villages(lay)
 	_roads(lay)
@@ -293,6 +298,72 @@ static func _site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attem
 			continue
 		return p
 	return Vector2i(-1, -1)
+
+
+## THE FLATTEST ROOM IN ONE REGION of the type being laid (the `k`th of
+## `L.rects`), found by walking the region's own tiles rather than throwing darts:
+## Vector2i(-1, -1) when nothing in it qualifies.
+##
+## **A KEEPER DENS AT ITS REGION'S OWN STATION OR AT ITS HEART** (`Sentinels.lair`),
+## and a larder is counted in a radius that does not stop at a region's edge. So a
+## landscape whose keeper STARVES has to put a station in every region, or the
+## region left without one dens its keeper at the heart -- where one or two of a
+## neighbouring region's feeds can fall inside the radius and open the starve way
+## on a larder one theft wins (`tests/sentinel/test_world.gd`, STARVE_LEAST).
+## Darts thrown by size across all the regions at once gave the biggest region
+## every station and the small ones none.
+##
+## **AND DARTS DO NOT FIND FLAT GROUND WHERE THERE IS ALMOST NONE.** `_site` asks
+## for a whole square within one level, and on the crags' terraces it ran through
+## its strict half without a hit and settled in the loose half for a square that
+## fell six levels corner to corner: every mast of a bench was refused on a lip.
+## Scoring every `FLAT_STEP`th tile by how much of the square round it shares
+## its level takes the best there IS, and costs a fixed walk instead of a search
+## that runs longest exactly where it fails. Candidates keep off villages, other
+## places (`apart`), ground already taken (`occ`), the border band, water and
+## roads, and the ground where the player wakes by `Sentinels.CLEAR_OF_HOME`,
+## since a keeper will not den there.
+const FLAT_STEP := 3
+
+
+static func flattest_in(L: Lay, k: int, r: int, grounds: Array, apart: float, blend_max: float = 0.35) -> Vector2i:
+	var c := L.c
+	var w := L.w
+	var rect: Rect2 = L.rects[k]
+	var id: int = L.ids[k]
+	var home_clear := Sentinels.CLEAR_OF_HOME + 2.0
+	var best := Vector2i(-1, -1)
+	var best_score := -1
+	var y := int(rect.position.y) + r
+	while y < int(rect.end.y) - r:
+		var x := int(rect.position.x) + r - FLAT_STEP
+		while x + FLAT_STEP < int(rect.end.x) - r:
+			x += FLAT_STEP
+			var i := y * c.size + x
+			if w.region[i] - 1 != id or L.occ[i] != 0 or w.blend[i] > blend_max or c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0:
+				continue
+			if not grounds.is_empty() and not grounds.has(int(w.ground[i])):
+				continue
+			var at := Vector2(x, y)
+			if at.distance_to(w.spawn) < home_clear:
+				continue
+			var l0 := w.level[i]
+			var score := 0
+			for dy in range(-r, r + 1):
+				var row := i + dy * c.size
+				for dx in range(-r, r + 1):
+					var j := row + dx
+					if w.level[j] == l0 and L.occ[j] == 0 and c.water[j] == 0 and c.road[j] == 0 and c.village[j] == 0 and c.ramp[j] == 0:
+						score += 1
+			if score <= best_score:
+				continue
+			# The dearer refusals only for a tile that would win.
+			if GenScatter._near_village(w, at, 18.0) or _crowded(w, at, apart):
+				continue
+			best_score = score
+			best = Vector2i(x, y)
+		y += FLAT_STEP
+	return best
 
 
 ## A tile to try: inside one of the laid type's own regions, chosen by size, or

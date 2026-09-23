@@ -156,6 +156,56 @@ const ROWS := {
 		"props": [[PropKind.BONES, 4, 3.5], [PropKind.BOULDER, 3, 4.0], [PropKind.STUMP, 2, 4.0]],
 		"holds": &"", "behind": OPEN, "guard": 0.0, "clear": 26.0,
 	},
+	# --- one landscape's own (docs/LANDSCAPES.md §1-6, each a LAND "Site kind") --
+	# Each is claimed by the one landscape whose props it is furnished from, so
+	# nothing here stands where its furniture is somebody else's scatter.
+	&"barrow": {
+		# The crags: a mound with a cairn on it and a trilithon at its mouth, the
+		# dead round it. The challenge is the dark, not a machine. Holds `iron`:
+		# the spec's `old_iron` is not an item.
+		"ground": KEEP, "radius": 5.0, "wants": ANY,
+		"props": [[PropKind.CAIRN, 1, 0.0], [PropKind.LINTEL, 1, 3.0],
+			[PropKind.GRAVE, 3, 4.0], [PropKind.STANDING_STONE, 1, 4.5]],
+		"holds": &"iron", "behind": OPEN, "guard": 0.0, "clear": 26.0,
+	},
+	&"floe_camp": {
+		# The frost sea: a dead expedition's tents and sledges and its graves. No
+		# FIRE: a fire prop burns, and this one went out a lifetime ago.
+		"ground": KEEP, "radius": 6.0, "wants": ANY,
+		"props": [[PropKind.SHACK, 2, 3.0], [PropKind.DEBRIS, 2, 4.0], [PropKind.GRAVE, 2, 5.0]],
+		"holds": &"salvage_kit", "behind": PRESSURE, "guard": 0.0, "clear": 30.0,
+	},
+	&"crater": {
+		# The glass desert: a bowl the glassing left, rimmed with what it threw
+		# out, the cars it caught sunk in it. Behind the radiation in the bowl.
+		"ground": KEEP, "radius": 7.0, "wants": ANY,
+		"props": [[PropKind.BOULDER, 6, 6.5], [PropKind.FUSED_CAR, 3, 4.0],
+			[PropKind.GLASS_BLISTER, 2, 3.5], [PropKind.DEBRIS, 2, 5.0]],
+		"holds": &"plate", "behind": PRESSURE, "guard": 0.0, "clear": 26.0,
+	},
+	&"plaza": {
+		# The ruined metropolis: a square with its mural wall still up, its lamps
+		# dead, a dry fountain and two benches. A sweeper walks it.
+		"ground": Ground.FLOOR, "radius": 7.0, "wants": ANY,
+		"props": [[PropKind.MURAL, 1, 4.5], [PropKind.RUIN, 1, 0.0], [PropKind.LAMP, 2, 5.0],
+			[PropKind.BENCH, 2, 3.0], [PropKind.DEBRIS, 3, 6.0]],
+		"holds": &"copper", "behind": OPEN, "guard": 0.4, "clear": 24.0,
+	},
+	&"flooded_hall": {
+		# The drowned city: a roofless hall standing in the water, what it held
+		# under the water, and the reeds that took the floor.
+		"ground": KEEP, "radius": 6.0, "wants": ANY,
+		"props": [[PropKind.RUIN, 2, 2.5], [PropKind.DEBRIS, 3, 5.0], [PropKind.REEDS, 4, 5.0]],
+		"holds": &"copper", "behind": WATER, "guard": 0.1, "clear": 24.0,
+	},
+	&"cliff_dwelling": {
+		# The mesas: rooms cut into a scarp, the poles that were ladders to them,
+		# and the cistern that was why anybody lived there.
+		"ground": KEEP, "radius": 5.0, "wants": ANY,
+		"props": [[PropKind.RUIN, 3, 3.0], [PropKind.POLE, 2, 3.0], [PropKind.CISTERN, 1, 2.0],
+			[PropKind.BOULDER, 2, 4.5]],
+		"holds": &"salvage_kit", "behind": HEIGHT, "guard": 0.0, "clear": 26.0,
+	},
 }
 
 

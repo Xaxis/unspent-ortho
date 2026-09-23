@@ -97,9 +97,17 @@ static func make() -> BiomeDef:
 	d.night_sky = 0.55
 	d.props = [PropKind.STANDING_STONE, PropKind.CAIRN, PropKind.RUIN, PropKind.BOULDER,
 		PropKind.CLINTS, PropKind.GRAVE, PropKind.MEMORIAL, PropKind.BUSH,
-		PropKind.DEAD_TREE, PropKind.STONE_ORE]
+		PropKind.DEAD_TREE, PropKind.STONE_ORE,
+		# Its own (docs/LANDSCAPES.md §1): the trilithon, the face in the boulder
+		# and the sunken lane are `_scatter`'s; the sighting mast and the core
+		# rack are the survey bench's (`_works`), and are named here because a
+		# prop standing in a landscape that does not declare it is off-theme.
+		PropKind.LINTEL, PropKind.CARVED_FACE, PropKind.HOLLOW_WAY,
+		PropKind.THEODOLITE_MAST, PropKind.CORE_RACK]
 	d.ore = [[PropKind.STONE_ORE, 0.028], [PropKind.IRON_ORE, 0.012]]
-	d.sites = {"stone_circles": 3, "ruins": true, "summit": 1}
+	# The barrow (SiteKinds): a mound with a cairn, a trilithon at its mouth and
+	# the dead round it, claimed as a rate per 1,000 tiles of each region.
+	d.sites = {"stone_circles": 3, "ruins": true, "summit": 1, "barrow": 0.12}
 	d.beached_wrecks = false
 	d.pools = {"order": 2, "cell": 28, "chance": 0.5, "r_min": 2.0, "r_max": 4.4, "ground": Ground.BLACKWATER}
 	d.villages = 1
@@ -144,6 +152,15 @@ static func make() -> BiomeDef:
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter
+	# The survey that never closes (docs/LANDSCAPES.md §1 PLAN): a bench in every
+	# region, laid by `_works` below.
+	GenWorks.register(&"the_crags", {
+		"host": load("res://src/content/biomes/the_crags.gd"),
+		"works": &"_works",
+		"vignettes": [[4, &"grave_cluster"], [3, &"survey_posts"], [3, &"debris_field"], [2, &"fence_corner"],
+			[2, &"tipped_signs"], [1, &"wreck_parts"], [1, &"shelter"]],
+		"survey": [[0.3, &"sign_beside"]],
+	})
 	# The web's day contrast here (BiomeDef.web_contrast): inferred from the bonelands: bright rock.
 	d.web_contrast = 1.1
 	return d
@@ -160,6 +177,11 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 		return Ground.PEAT
 	if rs > 1.4:
 		return Ground.ROCK
+	# The pavement showing through on the shoulders below the bare faces: the
+	# ground the clints were always keyed to and `_surface` never laid
+	# (docs/LANDSCAPES.md §1, "Lay LIMESTONE where rs is between 0.9 and 1.4").
+	if rs > 0.9:
+		return Ground.LIMESTONE
 	if e <= 6.0:
 		return Ground.PEAT
 	return Ground.MOSS
@@ -188,12 +210,20 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.BUSH
 		if r > 0.30 and r < 0.3075:
 			return PropKind.CAIRN
+		# A trilithon fallen in the lichen, and a lane sunk between two banks:
+		# each about one in three frames, windowed so a monument stays rare.
+		if r > 0.40 and r < 0.4036:
+			return PropKind.LINTEL
 		if r > 0.50 and r < 0.5055:
 			return PropKind.STANDING_STONE
+		if r > 0.60 and r < 0.6040:
+			return PropKind.HOLLOW_WAY
 		return PropKind.GRAVE if r > 0.70 and r < 0.7035 else BiomeScatter.NONE
 	if g == Ground.LIMESTONE:
 		if r < 0.085:
 			return PropKind.CLINTS
+		if r > 0.40 and r < 0.4060:
+			return PropKind.LINTEL
 		return PropKind.STANDING_STONE if r > 0.60 and r < 0.609 else BiomeScatter.NONE
 	if g == Ground.ROCK:
 		if r < 0.042:
@@ -202,6 +232,10 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.CLINTS
 		if r < 0.066:
 			return PropKind.STONE_ORE
+		# A face cut into a boulder before anybody here kept records, and the
+		# hushstone it is cut from (Takes).
+		if r > 0.30 and r < 0.307:
+			return PropKind.CARVED_FACE
 		return PropKind.RUIN if r > 0.80 and r < 0.8055 else BiomeScatter.NONE
 	if g == Ground.HEATH or g == Ground.GRASS:
 		if r < 0.028:
@@ -214,3 +248,88 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.SCREE:
 		return PropKind.BOULDER if r < 0.030 else BiomeScatter.NONE
 	return BiomeScatter.NONE
+
+
+## THE SURVEY BENCH (docs/LANDSCAPES.md §1 PLAN): a ruled lattice of core holes
+## cut into the lichen along the bearing, a sighting mast at each corner, the
+## cores it pulled racked down the middle, posts at the ends and one sign. The
+## only ruled thing in the landscape, and it reads from across a valley.
+##
+## ONE IN EVERY REGION, because the plumb dens at its region's bench and starves
+## on what stands there (designs/plumb.gd feeds: masts and racks). A region with
+## no bench dens its keeper at the heart, where a neighbour's two masts can fall
+## inside its reach and open the starve way on a larder one theft wins
+## (`GenWorks.site_in`). So every bench is built to hold at least FED of them,
+## the fewest `tests/sentinel/test_world.gd` calls a task.
+const FED := 5
+
+
+static func _works(L: Object) -> void:
+	var c: GenContext = L.c
+	var rng: RandomNumberGenerator = L.rng
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	var floors: Array = [Ground.MOSS, Ground.LIMESTONE]
+	for k in (L.rects as Array).size():
+		var p := GenWorks.flattest_in(L, k, 5, floors, 30.0)
+		if p.x < 0:
+			continue
+		var at := Vector2(p) + Vector2(0.5, 0.5)
+		var half := Vector2(rng.randf_range(4.5, 5.5), rng.randf_range(2.6, 3.2))
+		var first := c.w.props.size()
+		var fed := 0
+		for sx: float in [-1.0, 1.0]:
+			for sy: float in [-1.0, 1.0]:
+				if _stand(L, PropKind.THEODOLITE_MAST, at + d * half.x * sx + nrm * half.y * sy):
+					fed += 1
+		# The racks down the long axis, two rows of cores, and more of them
+		# where a corner mast could not stand, so the bench feeds its keeper.
+		for j: float in [-2.2, 2.2, 0.0, -4.0, 4.0]:
+			if fed >= FED + 3 or (absf(j) != 2.2 and fed >= FED):
+				break
+			for sy: float in [-1.1, 1.1]:
+				if _stand(L, PropKind.CORE_RACK, at + d * j + nrm * sy):
+					fed += 1
+		if fed < FED:
+			# Too broken to hold a survey: take the bench back, whole, rather
+			# than leave a larder a keeper could be starved of in one theft.
+			c.w.props.resize(first)
+			continue
+		GenWorks._record(c, &"bench", at, d, half, GenWorks.BORES)
+		for sx: float in [-1.0, 1.0]:
+			GenWorks._put(L, PropKind.SURVEY, at + d * (half.x + 1.6) * sx, d.angle(), -99, 0.0, true)
+		GenWorks._put(L, PropKind.SIGN, at - nrm * (half.y + 1.4), (-nrm).angle(), -99, 0.2)
+		# Nothing grows back on a bench the survey keeps returning to.
+		GenWorks._clear_rect(c, L.occ, at, d, half)
+
+
+## One piece of the bench at `q`, or as near it as it can stand. THERE IS NO
+## FLAT GROUND IN THE CRAGS to rule a bench on: the flattest eleven-tile square
+## in a region still falls three or four terraces, and nearly every tile is on a
+## one-level step, so `_put`'s rule that a solid stands on ONE level refused
+## every mast of every bench. So the lattice is the ground's mark (the bores,
+## drawn whatever the relief does), and each mast and rack takes the nearest
+## foothold that is at most a STEP off level with its four neighbours -- a
+## tripod's legs take half a unit; a cliff's two levels they do not -- turned
+## on the bearing still. True when one stood.
+static func _stand(L: Object, kind: int, q: Vector2) -> bool:
+	var c: GenContext = L.c
+	var w := c.w
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	for off: Vector2 in [Vector2.ZERO, nrm * 0.8, -nrm * 0.8, d * 0.8, -d * 0.8, nrm * 1.6, -nrm * 1.6, d * 1.6, -d * 1.6]:
+		var at := q + off
+		var x := floori(at.x)
+		var y := floori(at.y)
+		if x < 3 or y < 3 or x >= c.size - 3 or y >= c.size - 3:
+			continue
+		var i := y * c.size + x
+		var steep := false
+		for k: int in [1, -1, c.size, -c.size]:
+			if absi(w.level[i + k] - w.level[i]) > 1:
+				steep = true
+		if steep:
+			continue
+		if GenWorks._put(L, kind, at, d.angle(), -99, 0.0, true, true) != null:
+			return true
+	return false
