@@ -438,6 +438,24 @@ const SHAPES := {
 		["line", 8.0, 9.5, 7.0, 16.0], ["line", 16.0, 11.5, 15.0, 18.0], ["line", 25.0, 15.0, 23.5, 21.0],
 		["dot", 6.0, 12.0], ["dot", 15.0, 15.0], ["dot", 24.0, 18.5],
 	],
+	&"cable": [
+		# A coil of wire rope lying flat, four lays round and a clamp on the end.
+		["bar", "a3", 5.0, 14.0, 27.0, 11.0, 3.2, 3.2],
+		["bar", "a3", 27.0, 11.0, 26.0, 20.0, 3.0, 3.0],
+		["bar", "a3", 26.0, 20.0, 6.0, 22.0, 3.2, 3.2],
+		["bar", "a3", 6.0, 22.0, 5.0, 14.0, 3.0, 3.0],
+		["bar", "a4", 8.0, 17.0, 24.0, 15.0, 2.6, 2.6],
+		["poly", "a2", [23.0, 7.5, 30.0, 8.5, 30.0, 13.0, 23.0, 12.0]],
+		["dot", 26.5, 10.2], ["line", 9.0, 19.5, 22.0, 18.5],
+	],
+	&"bar": [
+		# A bar hammered out on the diagonal: a lit edge along its top, the face
+		# under it, and the hammer's scale on the face.
+		["poly", "a3", [4.0, 28.0, 8.5, 30.5, 30.5, 8.5, 26.0, 6.0]],
+		["poly", "a5", [4.0, 28.0, 26.0, 6.0, 28.0, 3.5, 2.0, 25.5]],
+		["poly", "a2", [8.5, 30.5, 30.5, 8.5, 30.5, 11.0, 10.0, 31.5]],
+		["line", 9.0, 26.0, 13.0, 22.0], ["line", 16.0, 19.0, 20.0, 15.0], ["dot", 23.0, 12.0],
+	],
 	&"coil": [
 		["poly", "a2", [9.0, 4.0, 23.0, 4.0, 23.0, 7.0, 9.0, 7.0]],
 		["poly", "a2", [9.0, 25.0, 23.0, 25.0, 23.0, 28.0, 9.0, 28.0]],
@@ -481,7 +499,7 @@ const SHAPES := {
 }
 
 ## Shapes drawn with a ruler.
-const FOUND_SHAPES: Array[StringName] = [&"glim", &"scrap", &"kit", &"dram", &"beam", &"broad", &"blade", &"hammer", &"torch", &"brace", &"rig", &"lens", &"aerial", &"signet", &"shield"]
+const FOUND_SHAPES: Array[StringName] = [&"glim", &"scrap", &"kit", &"dram", &"beam", &"broad", &"blade", &"hammer", &"torch", &"brace", &"rig", &"lens", &"aerial", &"signet", &"shield", &"cable"]
 
 ## Stations, on a 48x32 grid: [parts, ramp a, ramp b, found].
 const STATIONS := {

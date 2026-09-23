@@ -247,6 +247,35 @@ static func _signature(t: Dictionary) -> void:
 	# player's own heap is also a CAIRN, and `Survival.use` answers a heap with
 	# `take_back` before it ever asks this table (state.left comes first).
 	t[PropKind.CAIRN] = [_o(&"turn", &"stone", 1, 6.0, NEVER, {"keep": true})]
+	# The Ruined Metropolis (docs/LANDSCAPES.md §4). A fallen span is quarried
+	# for its stone with an edge and stands; the one bar of reinforcement
+	# hanging loose off its torn end comes away by hand, once, which is the only
+	# iron a city with no ore reachable gives a bare hand. (The spec says "pry";
+	# `turn` is the bare-handed verb this table has, and prying a loose bar off
+	# a break is turning it.)
+	t[PropKind.DECK_SPAN] = [_o(&"break", &"stone", 2, 24.0, NEVER, {"stuff": &"iron", "keep": true, "uses": 2}),
+		_o(&"turn", &"iron", 1, 16.0, NEVER, {"keep": true})]
+	# **ON THE CITY'S OWN GROUND.** The cable out of a lift core is the raw the
+	# metropolis's elite material is refined from (EliteStock: tower_cable), and
+	# an elite material has ONE gate; a core standing on any ground but the
+	# city's floor or the grass its left districts went to is a core somewhere
+	# else. Cut with an iron edge, twice, and the core stands: it is cover.
+	t[PropKind.LIFT_SHAFT] = [_o(&"cut", &"lift_cable", 1, 18.0, NEVER,
+		{"stuff": &"iron", "keep": true, "uses": 2, "ground": [Ground.FLOOR, Ground.GRASS]})]
+	# A shop front is shelter; its shutter box gives a piece of plate to a hand
+	# now and then, and the front stands.
+	t[PropKind.SHOPFRONT] = [_o(&"turn", &"scrap", 1, 20.0, 96.0, {"keep": true})]
+	# A sorted bale is the plan's own stock and robbing it is theft (PLAN_WORKS
+	# below; the demolisher turns on it). Copper wants a steel edge, the same
+	# rung copper ore wants, so a bale opens nothing early — the tide gauge's
+	# rule, for the same reason (the spec's "pry" would have handed refined
+	# copper to a bare hand two rungs before the fire can make it). The rebar
+	# wants an iron edge. Neither comes back: nobody is sorting it again.
+	t[PropKind.SORTED_BALE] = [_o(&"break", &"copper", 2, 24.0, NEVER, {"stuff": &"steel", "keep": true}),
+		_o(&"break", &"iron", 2, 24.0, NEVER, {"stuff": &"iron", "keep": true})]
+	# The frame over the demolition face: a plan work, stripped of a plate by
+	# hand and filed as theft, and it stands.
+	t[PropKind.DEMOLITION_GANTRY] = [_o(&"turn", &"scrap", 1, 14.0, 96.0, {"keep": true, "uses": 2})]
 
 
 ## The kinds that give NOTHING, on purpose, and why. `tests/survival/
@@ -282,7 +311,10 @@ const GIVES_NOTHING := {
 ## broken, which is why a stack is not.
 const PLAN_WORKS: Array[int] = [PropKind.RELAY, PropKind.SURVEY, PropKind.CONVEYOR,
 	PropKind.PIPE, PropKind.INTAKE, PropKind.CHECKPOINT, PropKind.DRILL_RIG,
-	PropKind.TIDE_GAUGE, PropKind.VENT_CAP, PropKind.ARCHIVE]
+	PropKind.TIDE_GAUGE, PropKind.VENT_CAP, PropKind.ARCHIVE,
+	# The metropolis's demolition face: the bales the plan sorted the city into
+	# and the frame over the cut (docs/LANDSCAPES.md §4: theft).
+	PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY]
 
 
 static func is_plan_work(kind: int) -> bool:

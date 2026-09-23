@@ -340,7 +340,7 @@ const DEFS := {
 		"bite": {"swing": [720, 180, 760, 900], "reach": 1.7, "width": 1.6, "dmg": 5, "knock": 13.0, "knock_ms": 400},
 		"takes": 70.0, "drops": 3, "linger": 45.0, "chance": 4,
 		"where": {"countries": ["ruined_metropolis"], "grounds": ["floor", "gravel", "scree"], "green_min": 12,
-			"near_props": ["ruin"]},
+			"near_props": ["ruin", "demolition gantry"]},
 	},
 }
 

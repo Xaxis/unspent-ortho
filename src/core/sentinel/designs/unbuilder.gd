@@ -42,10 +42,9 @@ static func make() -> SentinelDef:
 	# is one district's streets rather than a basin.
 	d.reach = 26.0
 	d.stations = [&"unbuilding"]
-	# The works of the demolition face (the gantry over the cut and the bales it
-	# sorts into) are the plan's own kinds and join this list when they land;
-	# the conveyor run and the kept half's lamps are here already.
-	d.feeds = [PropKind.CONVEYOR, PropKind.LAMP]
+	# What the demolition face puts in its reach: the frame over the cut, the
+	# bales it sorts into, the conveyor run and the kept half's lamps.
+	d.feeds = [PropKind.DEMOLITION_GANTRY, PropKind.SORTED_BALE, PropKind.CONVEYOR, PropKind.LAMP]
 	d.drops = &"sentinel_unbuilder"
 	d.core = &"unbuilder_core"
 	d.hulk = PropKind.WRECKAGE

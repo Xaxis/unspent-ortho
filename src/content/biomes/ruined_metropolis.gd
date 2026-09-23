@@ -92,7 +92,15 @@ static func make() -> BiomeDef:
 	d.night_sky = 0.9
 	d.props = [PropKind.RUIN, PropKind.DEBRIS, PropKind.WRECKAGE, PropKind.VEHICLE,
 		PropKind.BARRICADE, PropKind.MURAL, PropKind.ARCHIVE, PropKind.LAMP,
-		PropKind.PYLON, PropKind.STACK, PropKind.CHECKPOINT]
+		PropKind.PYLON, PropKind.STACK, PropKind.CHECKPOINT,
+		# Its own (docs/LANDSCAPES.md §4, src/models/props/metropolis.gd), declared
+		# here so the city is the ONE landscape whose things these are: that is
+		# what makes the lift cable's gate the city's (Sources.lands_yielding).
+		# The bands that lay them, the works row that stands the gantry and the
+		# bales at the demolition face, are the placement wave's; declaring a
+		# kind places nothing until a recipe returns it.
+		PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT,
+		PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY]
 	d.ore = [[PropKind.IRON_ORE, 0.03], [PropKind.COPPER_ORE, 0.026], [PropKind.STONE_ORE, 0.02]]
 	d.sites = {"tips": 3, "ruins": true}
 	d.beached_wrecks = false

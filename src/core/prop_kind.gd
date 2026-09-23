@@ -85,9 +85,19 @@ enum {
 	PLATFORM,
 	GROWTH_TANK,
 	CONSOLE,
+	# THE RUINED METROPOLIS (docs/LANDSCAPES.md §4, src/models/props/metropolis.gd):
+	# what a dead megacity left standing, and what the plan sorts it into. A
+	# fallen span of elevated road, a lift core with its tower gone, a gutted
+	# shop front; then the plan's own: a ruled bale of what it stripped, and the
+	# straddle frame over its demolition face.
+	DECK_SPAN,
+	LIFT_SHAFT,
+	SHOPFRONT,
+	SORTED_BALE,
+	DEMOLITION_GANTRY,
 }
 
-const COUNT := 68
+const COUNT := 73
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -101,6 +111,7 @@ const NAMES: PackedStringArray = [
 	"salt ridge", "salt heap", "pan gate", "scrap tree", "magnet heap",
 	"mural",
 	"platform", "growth tank", "console",
+	"deck span", "lift shaft", "shopfront", "sorted bale", "demolition gantry",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
@@ -130,4 +141,12 @@ const SOLID: PackedFloat32Array = [
 	# circle on a prop cannot say that. The tank and the console stop a body
 	# themselves, as anything you walk up to and read should.
 	0.0, 1.1, 0.35,
+	# A deck span's ORIGIN IS ITS HIGH END (metropolis.gd), so the one circle a
+	# prop gets stops a body at the pier the high end stands on, and the low end
+	# lying on the ground seven tiles off is walked over. A lift core is two by
+	# two and a shop front three wide, each answered by the circle that fits
+	# inside it. A bale is a cube. The gantry is 0: it is a frame six wide that a
+	# body walks THROUGH, and its two legs are the same case as a mural wall —
+	# whoever places one should hand its legs to `WorldQuery.set_blocks`.
+	1.3, 1.0, 1.2, 0.75, 0.0,
 ]

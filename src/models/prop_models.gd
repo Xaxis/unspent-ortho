@@ -34,6 +34,7 @@ const Site := preload("res://src/models/props/black_site.gd")
 const Salt := preload("res://src/models/props/salt.gd")
 const Scrap := preload("res://src/models/props/scrap.gd")
 const Signage := preload("res://src/models/props/signage.gd")
+const Metropolis := preload("res://src/models/props/metropolis.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -106,6 +107,14 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 		PropKind.MURAL:
 			return 4
 		PropKind.FENCE, PropKind.GRAVE, PropKind.DEBRIS, PropKind.STUMP, PropKind.WRECKAGE:
+			return 3
+		# The metropolis: a span with its lamp standing or snapped, a lift core
+		# with its cable in or out, a shop with its shutter a third, two thirds or
+		# all the way down, and a bale of each of the three things the plan sorts
+		# the city into (rebar, copper, cullet).
+		PropKind.DECK_SPAN, PropKind.LIFT_SHAFT:
+			return 2
+		PropKind.SHOPFRONT, PropKind.SORTED_BALE:
 			return 3
 		PropKind.BARRICADE, PropKind.SHACK, PropKind.VEHICLE, PropKind.HULL, PropKind.SEA_WALL, PropKind.TIDE_GAUGE, \
 		PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.FIRE_TOWER, PropKind.CHECKPOINT, PropKind.DRILL_RIG, \
@@ -193,6 +202,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Signage.build(k, kind, variant, country)
 		PropKind.PLATFORM, PropKind.GROWTH_TANK, PropKind.CONSOLE:
 			Site.build(k, kind, variant, country)
+		PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT, PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY:
+			Metropolis.build(k, kind, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)

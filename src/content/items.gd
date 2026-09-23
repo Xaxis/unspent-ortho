@@ -137,6 +137,10 @@ const DEFS := {
 	&"copper_ore": {"name": "copper ore", "bulk": 4.0, "group": &"material"},
 	&"copper": {"name": "copper", "bulk": 1.0, "group": &"material"},
 	&"scrap": {"name": "piece of plate", "bulk": 2.0, "group": &"material"},
+	# Steel wire rope cut out of a lift core in the Ruined Metropolis: the raw
+	# its elite material is drawn from (EliteStock: tower_cable). Machine-made,
+	# so it is drawn in the module's violet like plate is.
+	&"lift_cable": {"name": "lift cable", "bulk": 2.0, "group": &"material", "icon": [&"cable", &"plate", &"ink"]},
 	# Cloth out of what people left: the one soft material a made garment needs.
 	&"rag": {"name": "rags", "bulk": 1.0, "group": &"material"},
 
