@@ -238,7 +238,15 @@ static func beacon_at() -> Vector3:
 
 
 ## Every kind here in the frost sea's own dressing, and beside them the sea's
-## keeper and its saw sled, so one frame holds the whole landscape's things.
+## keeper and its saw sled, so one frame holds the whole landscape's things:
+##
+##   tools/shot.sh shots/x.png --scene=gallery "--filter=the frost sea"
+##
+## Named "the frost sea ..." and not "frost sea ..." on purpose: PropModels'
+## own rows end in the landscape's name ("pine frost_sea", "fence 0
+## frost_sea") and `--filter=frost` takes all forty-eight of them at thirty
+## pixels a cell, which is a sheet nothing can be judged on. The article is
+## the one substring those rows do not carry.
 static func gallery() -> Array:
 	var out: Array = []
 	var d := BiomeRegistry.get_def(&"frost_sea")
@@ -247,10 +255,10 @@ static func gallery() -> Array:
 	for kind: int in [PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE]:
 		var n: int = pm.call(&"variants", kind, c)
 		for v in n:
-			out.append({"name": "frost sea %s %d" % [PropKind.NAMES[kind], v], "node": pm.call(&"node", kind, v, c)})
+			out.append({"name": "the frost sea %s %d" % [PropKind.NAMES[kind], v], "node": pm.call(&"node", kind, v, c)})
 	for spec: Array in [[&"sentinel_listener", &"stand"], [&"sentinel_listener", &"alert"], [&"icesaw", &"stand"], [&"icesaw", &"walk"]]:
 		var item: FigureModel = MG.make(spec[0], spec[1], 0.3)
 		var holder := Node3D.new()
 		holder.add_child(item)
-		out.append({"name": "frost sea %s %s" % [String(spec[0]).trim_prefix("sentinel_"), spec[1]], "node": holder})
+		out.append({"name": "the frost sea %s %s" % [String(spec[0]).trim_prefix("sentinel_"), spec[1]], "node": holder})
 	return out
