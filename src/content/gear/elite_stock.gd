@@ -42,6 +42,14 @@ const MATERIALS := {
 		"what": "iron the bog grew: soft, stubborn, and it takes a patch"},
 	&"frost_varnish": {"land": &"snowfield", "raw": &"crottle", "at": &"fire", "grade": &"rare",
 		"what": "lichen boiled hard; it does not craze when the cold comes"},
+	# The crags': broken out of a carved face on the crags' own rock (Takes gates
+	# it on ROCK), and nothing else in the world gives it.
+	&"hush_slate": {"land": &"the_crags", "raw": &"hushstone", "at": &"kiln", "grade": &"rare",
+		"what": "stone a scanner reads as nothing at all"},
+	# The frost sea's (docs/VISION.md §6.1 names it): lens ice is cut out of a
+	# pressure block with a steel edge, and pressure blocks stand nowhere else.
+	&"deep_ice_lens": {"land": &"frost_sea", "raw": &"lens_ice", "at": &"bench", "grade": &"rare",
+		"what": "the clear heart of a slab of sea ice, ground until the far side comes through it"},
 	# The glass desert's (docs/LANDSCAPES.md §3): fulgurite comes off a fulgurite
 	# and a fulgurite stands only in the strike fields' sand, on the one
 	# landscape that scatters it. Refined at the kiln, it is what the shock
@@ -111,6 +119,14 @@ const SPOILS := {
 	&"hauler": [{"item": &"pulse_hammer", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
 	&"sweeper": [{"item": &"arc_cut", "chance": 0.12, "rarity": Rarity.UNCOMMON}],
 	&"lineman": [{"item": &"beam_lance", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
+	# The crags' chainman: links off the chain it drags (docs/LANDSCAPES.md §1).
+	# No weapon, because it carries none -- it measures.
+	&"chainman": [{"item": &"chain_link", "chance": 0.6, "count": Vector2i(1, 3)}],
+	# The frost sea's saw sled: what comes off the blade that cuts the ice. A
+	# tooth and not a material, because docs/LANDSCAPES.md §2 gives the frost sea
+	# its elite through a PROP (lens ice off a pressure block) and a landscape
+	# holds one gate, not two.
+	&"icesaw": [{"item": &"saw_tooth", "chance": 0.45, "count": Vector2i(1, 2)}],
 }
 
 

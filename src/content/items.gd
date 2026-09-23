@@ -100,6 +100,9 @@ const DEFS := {
 	&"plasma_torch": {"name": "torch", "bulk": 2.0, "group": &"found", "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0,
 		"wick": 3, "dmg": 12, "swing": [150, 110, 180, 220], "reach": 1.1, "width": 1.3, "knock": 7.0, "knock_ms": 220},
 	&"wick": {"name": "charge", "bulk": 0.5, "group": &"found"},
+	# A tooth off the frost sea's saw sled (EliteStock.SPOILS icesaw): machine
+	# steel, still bright where the ice ran over it.
+	&"saw_tooth": {"name": "saw tooth", "bulk": 0.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"plate", &"lens"]},
 
 	# --- Materials (§9.4) ---
 	# Shore goods are lighter than the source's (3, 2, 2, 5; food 1): the creel
@@ -120,12 +123,22 @@ const DEFS := {
 	&"dye": {"name": "dye", "bulk": 1.0, "group": &"material"},
 	&"brimstone": {"name": "brimstone", "bulk": 4.0, "group": &"material"},
 	&"limestone": {"name": "limestone", "bulk": 5.0, "group": &"material"},
+	# The crags' own raw: broken out of a carved face with a steel edge, refined
+	# at the kiln into hush slate (docs/LANDSCAPES.md §1 PLAYER).
+	&"hushstone": {"name": "hushstone", "bulk": 4.0, "group": &"material", "icon": [&"hushstone", &"ink", &"slate"]},
+	# The lens unscrewed off a survey mast: machine glass, read in the module's
+	# violet like everything else taken whole off the plan.
+	&"lens_glass": {"name": "lens glass", "bulk": 0.5, "group": &"found", "icon": [&"lens", &"rime", &"lens"]},
+	# Links off a chainman's measuring chain (EliteStock.SPOILS): machine chain,
+	# read in the module's violet like everything else off a body.
+	&"chain_link": {"name": "chain link", "bulk": 0.5, "group": &"found", "icon": [&"coil", &"plate", &"plate"]},
 	# Fused-sand tubes broken off a fulgurite on the glass desert: the raw of
 	# its own elite material (EliteStock: fulgurite_core), refined at the kiln.
 	&"fulgurite": {"name": "fulgurite", "bulk": 2.0, "group": &"material", "icon": [&"fulgurite", &"sand", &"linen"]},
 	# Cut out of a keeper, and out of nothing else in the world (src/core/sentinel).
 	&"reaper_core": {"name": "reaper core", "bulk": 3.0, "group": &"material"},
 	&"rake_core": {"name": "rake core", "bulk": 3.0, "group": &"material"},
+	&"plumb_core": {"name": "plumb core", "bulk": 3.0, "group": &"material"},
 	&"anvil_core": {"name": "anvil core", "bulk": 3.0, "group": &"material"},
 	&"lime": {"name": "lime", "bulk": 1.0, "group": &"material"},
 	&"salt": {"name": "salt", "bulk": 1.0, "group": &"material"},
@@ -139,6 +152,9 @@ const DEFS := {
 	&"iron": {"name": "iron", "bulk": 1.0, "group": &"material"},
 	&"copper_ore": {"name": "copper ore", "bulk": 4.0, "group": &"material"},
 	&"copper": {"name": "copper", "bulk": 1.0, "group": &"material"},
+	# Cut out of a pressure block on the frost sea with a steel edge (Takes): the
+	# clear heart of a slab of sea ice, the raw the deep ice lens is ground from.
+	&"lens_ice": {"name": "lens ice", "bulk": 1.0, "group": &"material", "icon": [&"lens_ice", &"rime", &"slate"]},
 	&"scrap": {"name": "piece of plate", "bulk": 2.0, "group": &"material"},
 	# Cloth out of what people left: the one soft material a made garment needs.
 	&"rag": {"name": "rags", "bulk": 1.0, "group": &"material"},
@@ -147,6 +163,9 @@ const DEFS := {
 	&"mussels": {"name": "mussels", "bulk": 0.5, "group": &"food", "feeds": 4.0},
 	&"whelks": {"name": "whelks", "bulk": 0.5, "group": &"food", "feeds": 3.0},
 	&"samphire": {"name": "samphire", "bulk": 0.5, "group": &"food", "feeds": 2.0},
+	# Out of a seal's hole on the frost sea (Takes SEAL_HOLE): the one food the
+	# ice gives, and a whole meal.
+	&"fish": {"name": "fish", "bulk": 0.5, "group": &"food", "feeds": 5.0, "icon": [&"fish", &"slate", &"rime"]},
 	&"berries": {"name": "berries", "bulk": 1.0, "group": &"food", "feeds": 1.5},
 	&"bread": {"name": "bread", "bulk": 1.0, "group": &"food", "feeds": 10.0},
 	&"soup": {"name": "soup", "bulk": 1.0, "group": &"food", "feeds": 8.0},
@@ -336,20 +355,34 @@ const DEFS := {
 		"icon": [&"knife", &"slate", &"earth"], "fits": [&"tool"], "resist": {&"resonance": 0.2}},
 	&"mod_damp": {"name": "hush damper", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"timber", &"linen", &"earth"], "fits": [&"tool", &"hands", &"body"], "resist": {&"resonance": 0.45}},
+	# A deep ice lens bound over one eye (docs/LANDSCAPES.md §2): it takes the
+	# glare off a white plain and lets a little of the dark through, and it is
+	# the frost sea's answer to the sea's own light. Head only: it is worn where
+	# the eye is. `sight` is its tag (ModifierTable).
+	&"mod_icelens": {"name": "ice lens", "bulk": 0.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"scan_lens", &"rime", &"earth"], "fits": [&"head"], "resist": {&"glare": 0.3, &"dark": 0.2}},
 	&"mod_leech": {"name": "leech coil", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"ink", &"earth"], "fits": [&"tool", &"back"], "resist": {&"em": 0.15}},
 	&"mod_phase": {"name": "phase coil", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"scan_lens", &"lens", &"earth"], "fits": [&"head", &"body"], "resist": {&"em": 0.3, &"time_shear": 0.2}, "ability": &"scan"},
 	&"mod_lattice": {"name": "shock lattice", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"vest", &"plate", &"earth"], "fits": [&"tool"], "resist": {&"em": 0.25}},
+	# The crags' hush slate, lined into a hat, a coat or a pack: what it decides
+	# is the `quiet` tag (ModifierTable); the numbers are what stone that reads
+	# as nothing keeps off a body, and they are small on purpose.
+	&"mod_hush": {"name": "hush lining", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"foil", &"slate", &"earth"], "fits": [&"head", &"body", &"back"], "resist": {&"em": 0.2, &"resonance": 0.25}},
 
 	# --- elite materials (EliteStock says where each one, and only one, is got) -
 	# Each keeps its landscape's or its machine's own colour and hand, so a
 	# player reads where a tool came from off the tool (docs/ART.md 11).
 	&"cinder_glass": {"name": "cinder glass", "bulk": 2.0, "group": &"material", "icon": [&"lump", &"ink", &"ink"]},
 	&"clint_spar": {"name": "clint spar", "bulk": 2.0, "group": &"material", "icon": [&"stone", &"rime", &"rime"]},
+	&"hush_slate": {"name": "hush slate", "bulk": 2.0, "group": &"material", "icon": [&"hushstone", &"slate", &"ink"]},
 	&"bog_iron": {"name": "bog iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"rust"]},
 	&"frost_varnish": {"name": "frost varnish", "bulk": 1.0, "group": &"material", "icon": [&"flask", &"linen", &"rime"]},
+	# Its raw's own mark a step brighter: the same ice, ground clear.
+	&"deep_ice_lens": {"name": "deep ice lens", "bulk": 1.0, "group": &"material", "icon": [&"lens_ice", &"rime", &"lens"]},
 	# The glass desert's: a strike's own cast, fired again until it rings.
 	&"fulgurite_core": {"name": "fulgurite core", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"spruce", &"rime"]},
 	&"tide_iron": {"name": "tide iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"ash"]},

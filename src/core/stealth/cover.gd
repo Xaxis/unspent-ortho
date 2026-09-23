@@ -36,6 +36,17 @@ const PROPS := {
 	PropKind.DEAD_TREE: 0.2,
 	PropKind.MEMORIAL: 0.3,
 	PropKind.GRAVE: 0.25,
+	# A sunken lane between two dry-stone banks: a body walking it is below the
+	# banks' tops (docs/LANDSCAPES.md §1). Its `solid` is 0 -- a lane is walked
+	# through -- so the skirt this counts inside is the 0.35 x scale floor below
+	# plus IN_PROP, about the middle of its four units; the ends of the lane are
+	# open, which is true of a lane.
+	PropKind.HOLLOW_WAY: 0.45,
+	# The frost sea's only cover (docs/LANDSCAPES.md §2): a slab of ice on end
+	# is the one thing out there to put your back to, and a hull frozen in is a
+	# wall with a hold behind it.
+	PropKind.PRESSURE_BLOCK: 0.55,
+	PropKind.FROZEN_HULL: 0.6,
 }
 
 ## What the ground itself hides a body in: heather to the knee, reeds, deep moss.

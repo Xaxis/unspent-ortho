@@ -78,7 +78,19 @@ static func make() -> BiomeDef:
 	dress.timber = [P.SPRUCE[1], P.SLATE[2]]
 	dress.sink = 0.18
 	dress.lie = Vector2(-0.08, 0.12)
+	# The patched shelter here is turf over stone: a small dry-stone round with
+	# a plate sheet weighted onto its roof (props/crags.gd), never a shack of
+	# boards, because there is no timber that was ever dry.
+	dress.shelter = &"roundhouse"
 	d.dressing = dress
+	# What its people BUILT (docs/LANDSCAPES.md §1 PEOPLE): three forms, none of
+	# them lit, so this is the one village with no stolen neon, and the stock's
+	# own size is the village -- three buildings, few people and old ones,
+	# living in what was already standing. Declaring `built` is TERRAIN
+	# (WorldStamp): it moves this landscape's island, and that is intended.
+	d.built = BiomeForms.new()
+	d.built.stock = [&"roundhouse", &"lean_to_broch", &"byre"] as Array[StringName]
+	d.built.plan = &"ring"
 	d.grade = Vector4(-0.04, 0.02, 0.04, 0.0)
 	# THE DARKEST NIGHT IN THE GAME, and nothing of the machines' lights it. This
 	# is the one place where a lantern is the only light there is.
@@ -104,14 +116,31 @@ static func make() -> BiomeDef:
 	d.mist = 0.55
 	# Wet and dark and nothing else — no machine exhaust, no spores, no glare.
 	# What is dangerous here is not a pressure, which is exactly the point.
+	#
+	# NOT `resonance`, though it is in `Hazards.IDS` and the spec asks for it
+	# (docs/LANDSCAPES.md §1: "resonance 0.3 near stones only"). Declared here it
+	# would press the whole landscape, every tile of moss and every bottom of
+	# peat, and the stones' hum is the one mechanical trace of the unknown force:
+	# it belongs to the standing stones and the carved faces and to nothing
+	# else. That wants a per-prop hazard source ("within R adds H", the shared
+	# systems list in docs/LANDSCAPES.md), which another builder is making, and
+	# the fork that answers it (`mod_fork`) does not exist yet either. When both
+	# land, the stones declare it and this line stays as it is.
 	d.hazards = {&"wet": 0.5, &"dark": 0.45}
 	# THE THINNEST ROSTER OF ANY SURFACE LANDSCAPE. The plan surveyed this place,
 	# found nothing it wanted, and left. What a player meets here is the land.
 	d.roster = {
 		&"watcher": {"weight": 0.5, "hours": Vector2(8, 18)},
 		&"dog.feral": {"weight": 0.8},
+		# The survey's chainman, by day, on the survey's own grounds (Roster
+		# `where`): the one machine here still working, and what it does is measure.
+		&"chainman": {"weight": 1.2, "hours": Vector2(8, 18)},
 	}
 	d.landmarks = [&"cast_stones", &"firewatch", &"leaning_mast", &"clerks_office"]
+	# Its keeper: the plumb, a survey instrument that never finished surveying
+	# (src/core/sentinel/designs/plumb.gd). The one machine that stays, because
+	# it cannot file what it found and will not leave until it has.
+	d.sentinel = &"plumb"
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter

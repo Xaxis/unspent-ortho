@@ -36,8 +36,6 @@ frost_sea land.landmark
 frost_sea land.own_props
 frost_sea land.site
 frost_sea plan.depot
-frost_sea plan.keeper
-frost_sea plan.machine
 frost_sea plan.work_props
 frost_sea player.only_in
 frost_sea player.signature
@@ -169,10 +167,7 @@ sulphur_jungle player.only_in
 the_crags land.frames
 the_crags land.landmark
 the_crags land.site
-the_crags people.built
 the_crags plan.depot
-the_crags plan.keeper
-the_crags plan.machine
 the_crags plan.work_props
 the_crags player.only_in
 the_crags player.signature

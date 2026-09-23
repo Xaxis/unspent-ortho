@@ -25,6 +25,29 @@ extends RefCounted
 ## key (urgent only among score keys), a score job never takes the last free
 ## worker, and without threads a frame serves the queue's one-shot before it
 ## gives the score its slice.
+##
+## Cold code and the pool. A GDScript operator on operands the compiler could
+## not type (a Dictionary value, an element of a plain Array, a Variant) has no
+## evaluator until it first runs: the engine looks one up then and writes it
+## into the bytecode behind a mutex, signature word first and the eight-byte
+## pointer last, and every later run reads it back with no barrier at all
+## (gdscript_vm.cpp, OPCODE_OPERATOR, 4.7.2). Two workers reaching one such
+## operator together read a null or half-written pointer and jump through it.
+## Three crash reports on this machine (2026-09-18, -19, -23) fault on the pool
+## at that one instruction, the last under test_bank's held stems, released in
+## lockstep; the "propagate_notification on /root" they print first is the
+## crash handler broadcasting NOTIFICATION_CRASH from the faulting worker and
+## meeting the node thread guard, not anything in this package touching the
+## tree. The bank cannot mend the engine. What it can do is never hand two
+## workers identical cold work in lockstep, which is the one shape the fault
+## has been seen in: a lane bakes ONE thing at a time until something has
+## actually rendered through it on this bank (a cache file read runs none of
+## the code and warms nothing), and the score lane waits for an empty world
+## lane while it is cold; only then do the caps above apply. What a first
+## render leaves cold, a voice or an effect it did not use, two later jobs
+## could still meet at the same instant, so this narrows the race rather than
+## closing it; the closure is typed operands in everything a worker runs, and
+## nothing can hold that from GDScript.
 
 const PEAK := 0.89
 ## Workers the world's sounds may hold at once.
@@ -331,12 +354,16 @@ class Job:
 	## Bars to cut a score loop to: 0 for every bar of it, the short form without
 	## threads (ScoreStems.SHORT_BARS).
 	var bars := 0
+	## Whether the recipe or the stem actually ran (a cache hit ran neither): what
+	## the bank's cold-start rule counts (the header).
+	var rendered := false
 
 	func run() -> void:
 		if cache_path != "":
 			result = SoundBank.load_cached(key, cache_path)
 			if result != null:
 				return
+		rendered = true
 		if score.is_valid():
 			var stem: ScoreRender = score.call(key, bars)
 			stem.run()
@@ -367,6 +394,10 @@ var _queue: Array[StringName] = []
 var _score_queue: Array[StringName] = []
 var _pumped_frame := -1
 var _on_disk: Dictionary = {}
+## Whether a world sound, and a score stem, has rendered through this bank yet.
+## Until one has, its lane puts one job on the pool at a time (the header).
+var _warm_world := false
+var _warm_score := false
 ## Makes the job for a score key: (key, bars) -> ScoreRender, where bars is 0
 ## for the whole loop and the short form without threads (score_bars). A test
 ## hands in a small one.
@@ -839,11 +870,20 @@ func pump() -> void:
 	var score_jobs := 0
 	for job: Job in _jobs.values():
 		score_jobs += 1 if job.score.is_valid() else 0
-	while _jobs.size() - score_jobs < MAX_TASKS and not _queue.is_empty():
+	# A lane nothing has rendered through yet is one job wide (the header): its
+	# code is cold, and two workers through cold code in lockstep is where the
+	# engine's operator race faults.
+	var world_cap := MAX_TASKS if _warm_world else 1
+	while _jobs.size() - score_jobs < world_cap and not _queue.is_empty():
 		_start(_queue.pop_front())
 	# A score job leaves a worker free: a machine's call asked for mid-build finds one.
 	var world_jobs := _jobs.size() - score_jobs
 	var score_cap := SCORE_TASKS + (1 if world_jobs == 0 else 0)
+	if not _warm_score:
+		# A cold stem also shares the job's own entry and the synth with whatever
+		# world sound is baking, so it waits for that lane to empty: the score
+		# waits, the world never does.
+		score_cap = 1 if world_jobs == 0 else 0
 	while _queue.is_empty() and not _score_queue.is_empty() and score_jobs < score_cap and _jobs.size() + 1 < MAX_TASKS + SCORE_TASKS:
 		_start(_score_queue.pop_front())
 		score_jobs += 1
@@ -970,3 +1010,8 @@ func _finish(job: Job) -> void:
 		b.samples = PackedFloat32Array()
 	b.pcm = PackedByteArray()
 	_done[job.key] = b
+	if job.rendered:
+		if job.score.is_valid():
+			_warm_score = true
+		else:
+			_warm_world = true

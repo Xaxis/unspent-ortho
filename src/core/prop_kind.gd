@@ -85,6 +85,25 @@ enum {
 	PLATFORM,
 	GROWTH_TANK,
 	CONSOLE,
+	# THE CRAGS (docs/LANDSCAPES.md §1): what people cut out of the stone before
+	# the machines -- a trilithon, a face in a boulder, a sunken lane between
+	# dry-stone banks -- and the two pieces of survey furniture the plan left when
+	# its instruments returned nothing it could file: a sighting mast and a rack
+	# of cores. The masts and racks feed the crags' keeper (designs/plumb.gd).
+	LINTEL,
+	CARVED_FACE,
+	THEODOLITE_MAST,
+	CORE_RACK,
+	HOLLOW_WAY,
+	# THE FROST SEA (docs/LANDSCAPES.md §2, src/models/props/frost_sea.gd): what
+	# the sea threw up, what it locked in, what the plan stood on it, and what
+	# still lives under it. A pressure block is sea ice on end, a hull is a
+	# trawler frozen in to the gunwale, a sounding rig is the plan's tripod over
+	# a hole it keeps open, and a seal hole is a breathing hole with blood on it.
+	PRESSURE_BLOCK,
+	FROZEN_HULL,
+	SOUNDING_RIG,
+	SEAL_HOLE,
 	# THE GLASS DESERT (docs/LANDSCAPES.md §3): what a place that was fused in a
 	# second holds. Fulgurite tubes standing out of the drift, a burst dome of
 	# glass, a car caught in the glassing, and the plan's own strike rod — the
@@ -95,7 +114,7 @@ enum {
 	STRIKE_ROD,
 }
 
-const COUNT := 72
+const COUNT := 81
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -109,13 +128,20 @@ const NAMES: PackedStringArray = [
 	"salt ridge", "salt heap", "pan gate", "scrap tree", "magnet heap",
 	"mural",
 	"platform", "growth tank", "console",
+	"lintel", "carved face", "theodolite mast", "core rack", "hollow way",
+	"pressure block", "frozen hull", "sounding rig", "seal hole",
 	"fulgurite", "glass blister", "fused car", "strike rod",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
 ## left: they are scattered like a boulder, by the per-tile scatter, and a
-## reader counting what happened to a landscape should pass over them.
-const WILD: Array[int] = [SALT_RIDGE, SCRAP_TREE, MAGNET_HEAP]
+## reader counting what happened to a landscape should pass over them. The
+## frost sea's block is ice the sea stood on end and its seal hole is a seal's:
+## the hull and the rig are somebody's.
+const WILD: Array[int] = [SALT_RIDGE, SCRAP_TREE, MAGNET_HEAP, PRESSURE_BLOCK, SEAL_HOLE,
+	# The glass desert's fused sand: a strike's cast and a burst in the sheet are
+	# what the land did, scattered like a boulder; the car and the rod are not.
+	FULGURITE, GLASS_BLISTER]
 
 ## Collision radius in tiles at scale 1. 0 means you walk through it.
 const SOLID: PackedFloat32Array = [
@@ -139,6 +165,17 @@ const SOLID: PackedFloat32Array = [
 	# circle on a prop cannot say that. The tank and the console stop a body
 	# themselves, as anything you walk up to and read should.
 	0.0, 1.1, 0.35,
+	# A trilithon is a wall with a window in it, and one circle cannot say so:
+	# 1.2 is the spec's (docs/LANDSCAPES.md §1) and it stops a body at the
+	# uprights. A carved face is a boulder. A mast and a rack stop a body as
+	# furniture does. A hollow way is 0: it is a lane, and a lane is walked
+	# through -- its banks are drawn, not stood against.
+	1.2, 0.5, 0.25, 0.6, 0.0,
+	# The frost sea: a block is cover you can put your back to; a hull frozen in
+	# is six tiles of steel answered by one circle at its middle (the bulwark's
+	# ends are walked through, the way a mural's are); a rig's legs stop a body
+	# short of the hole; a seal hole is a hole, and a body stops at its rim.
+	0.5, 1.4, 0.5, 0.3,
 	# A fulgurite cluster is half a tile wide and stops a body; a blister is 0
 	# because it is SHELTER — a body steps into it, and what the step costs is a
 	# hazard row, not a wall; a car sunk to its sills is still a car's length

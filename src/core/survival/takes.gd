@@ -248,6 +248,49 @@ static func _signature(t: Dictionary) -> void:
 	# player's own heap is also a CAIRN, and `Survival.use` answers a heap with
 	# `take_back` before it ever asks this table (state.left comes first).
 	t[PropKind.CAIRN] = [_o(&"turn", &"stone", 1, 6.0, NEVER, {"keep": true})]
+	# The crags' carved face (docs/LANDSCAPES.md: "break hushstone x1, steel,
+	# uses 2"). Hushstone is the crags' own raw -- stone a scanner reads as
+	# nothing at all -- and it comes out of a face somebody cut, with a steel
+	# edge, twice, and then the face is gone: quarrying the land's memory for the
+	# one stone the machines cannot see is a choice, and it is meant to cost one.
+	# Gated to ROCK, the ground the crags stand these on, so the same kind dealt
+	# onto another land's ground gives the land's stone and not the crags' (which
+	# is how the snowfield keeps its crottle; tests/gear_economy/test_obtainable).
+	t[PropKind.CARVED_FACE] = [_o(&"break", &"hushstone", 1, 24.0, NEVER, {"stuff": &"steel", "uses": 2, "ground": [Ground.ROCK]}),
+		_o(&"break", &"stone", 2, 20.0, NEVER, {"stuff": &"iron", "uses": 2})]
+	# The survey's mast (docs/LANDSCAPES.md: "strip lens_glass x1; theft"). The
+	# lens is unscrewed by hand, so the verb is `turn` -- the verb set is closed,
+	# each has a sound (src/audio/sound_names.gd), and "strip" is what a person
+	# would call it rather than a verb the key knows. It is NOT kept: with its
+	# lens gone the mast is nothing and comes down, which is what stops it
+	# feeding the crags' keeper (Sentinels.feeds counts what is not depleted).
+	t[PropKind.THEODOLITE_MAST] = [_o(&"turn", &"lens_glass", 1, 12.0, NEVER)]
+	# The rack of cores (docs/LANDSCAPES.md: "turn stone x2, keep; theft"). Two
+	# cores turned out of it and it goes on standing, empty.
+	t[PropKind.CORE_RACK] = [_o(&"turn", &"stone", 2, 10.0, NEVER, {"keep": true, "uses": 2})]
+	# The frost sea (docs/LANDSCAPES.md §2). A pressure block is the one gate on
+	# lens ice: cut with a steel edge, twice, on the ROCK ridge it was thrown up
+	# on, and the block stays standing because it is the only cover on the sea.
+	# Nothing comes off it by hand, and the key says so.
+	t[PropKind.PRESSURE_BLOCK] = [_o(&"cut", &"lens_ice", 1, 20.0, NEVER, {"stuff": &"steel", "keep": true, "uses": 2, "ground": [Ground.ROCK]})]
+	# A trawler frozen in to the gunwale: its plate is stripped with an iron
+	# edge, twice, and the hull goes on standing in the ice, which is what it is
+	# for (a hold out of the wind: 52_hazards ROOFS). The spec's "strip iron x1"
+	# is not here on purpose: `iron` is the INGOT a kiln pours, the land gives
+	# it nowhere, and the slate draws it in copper's own mark, which the pickup
+	# feed refuses for two things the land gives (tests/ui/test_pickup_feed.gd).
+	# Plate comes off everything else in this file as scrap, and so it does here.
+	t[PropKind.FROZEN_HULL] = [_o(&"break", &"scrap", 2, 24.0, NEVER, {"stuff": &"iron", "keep": true, "uses": 2})]
+	# A seal hole gives fish, and the hole is kept: the seal keeps it open. The
+	# spec asks that it NEED A LINE, and nothing in the game is a line yet -- a
+	# take's tool is a verb and a hardness, and `gather` is bare hands -- so the
+	# fish come to a hand at a seal's own pace, slowly and rarely, until a line is
+	# a thing somebody can make, when this row takes its verb.
+	t[PropKind.SEAL_HOLE] = [_o(&"gather", &"fish", 1, 12.0, 36.0, {"keep": true})]
+	# A sounding rig is the plan's, and robbing it is theft (PLAN_WORKS below):
+	# scrap off the drum's bracket, and sometimes the charge that ran it, the
+	# way a relay is robbed. The hole it keeps open goes on being kept.
+	t[PropKind.SOUNDING_RIG] = [_o(&"turn", &"scrap", 1, 20.0, 96.0, {"keep": true, "uses": 2, "bonus": [&"wick", 0.5]})]
 
 
 ## The glass desert's own things (docs/LANDSCAPES.md §3), kept apart from
@@ -292,6 +335,8 @@ const GIVES_NOTHING := {
 	PropKind.STACK: "An exhaust read from everywhere. As a plan work, a broken yard (34_works._strip) would take it off the skyline; as anything else it would be the one machine work robbed unnoticed.",
 	PropKind.PUMP_HOUSE: "A roof (52_hazards ROOFS): it shelters a body. It is also a keeper's feed (sentinel/designs/tide_reaper.gd), and a take that spent it would be a starving nobody designed.",
 	PropKind.FIRE_TOWER: "A roof (52_hazards ROOFS): a body shelters in the cabin.",
+	PropKind.LINTEL: "A roof (52_hazards ROOFS): the cap stone takes the wet and the dark off a body under it. Its uprights are the boulders beside it, which give the same stone; nobody quarries a doorway that was standing before the machines.",
+	PropKind.HOLLOW_WAY: "A lane between two dry-stone banks: cover (Cover.PROPS) for a body walking it, and the walling is the ruin's, which gives the same stone. A take that broke a bank would take the lane's one use with it.",
 	PropKind.GLASS_BLISTER: "A burst dome a body steps into: shade is what it gives (52_hazards ROOFS), and its edge cuts (PropHazards collapse). There is nothing in it to carry — the glass is the ground's own — and a boulder beside it gives the same stone.",
 }
 
@@ -305,6 +350,11 @@ const GIVES_NOTHING := {
 const PLAN_WORKS: Array[int] = [PropKind.RELAY, PropKind.SURVEY, PropKind.CONVEYOR,
 	PropKind.PIPE, PropKind.INTAKE, PropKind.CHECKPOINT, PropKind.DRILL_RIG,
 	PropKind.TIDE_GAUGE, PropKind.VENT_CAP, PropKind.ARCHIVE,
+	# The crags' survey furniture: a lens off a mast and cores out of a rack are
+	# both filed as theft (docs/LANDSCAPES.md §1), and both feed its keeper.
+	PropKind.THEODOLITE_MAST, PropKind.CORE_RACK,
+	# The frost sea's sounding tripod is the plan's too (docs/LANDSCAPES.md §2).
+	PropKind.SOUNDING_RIG,
 	# The glass desert's strike rod (docs/LANDSCAPES.md §3: "strip copper;
 	# theft"): the plan's, and what feeds its keeper (sentinel/designs/anvil.gd).
 	PropKind.STRIKE_ROD]

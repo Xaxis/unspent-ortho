@@ -26,6 +26,18 @@ func _run_page(page: BootPage) -> Array[float]:
 	return seen
 
 
+## Wait for the title to show a coast. Its world and view are made on a WORKER
+## (`UiTitle._begin`), so this is a wall-clock wait, not a frame count: CI's runner
+## let 200 headless frames go by before the worker was done, twice in a row, on
+## commits that touched nothing near it. Slack is for waiting, and this is waiting.
+func _until_shown(title: UiTitle) -> void:
+	var deadline := Time.get_ticks_msec() + int(15000.0 * machine_slack())
+	while (title.world == null or title.view == null) and Time.get_ticks_msec() < deadline:
+		title._process(0.05)
+		await tree.process_frame
+		OS.delay_msec(5)
+
+
 func _check_game_page(threads: bool) -> void:
 	BootWorld.clear()
 	var holder := _holder()
@@ -73,11 +85,7 @@ func test_title_page_prepares_the_coast_it_opens_on() -> void:
 	var title := holder.get_node_or_null("title") as UiTitle
 	check(title != null, "the page built the title")
 	if title != null:
-		for i in 200:
-			if title.world != null:
-				break
-			title._process(0.05)
-			await tree.process_frame
+		await _until_shown(title)
 		check(title.world != null and title.world.seed_value == 6, "the title shows the page's coast")
 		check(title.view != null and title.view.chunk_count() > 0, "with its first view already drawn")
 	holder.free()
@@ -87,12 +95,7 @@ func test_new_game_from_the_title_keeps_the_coast_it_was_showing() -> void:
 	BootWorld.clear()
 	var holder := _holder()
 	var title := BootPage.open_title(holder, BootOptions.parse(["--seed=7", "--size=%d" % SIZE])) as UiTitle
-	for i in 300:
-		if title.world != null and title.view != null:
-			break
-		title._process(0.05)
-		await tree.process_frame
-		OS.delay_msec(2)
+	await _until_shown(title)
 	var shown := title.world
 	check(shown != null, "the title shows a coast")
 	title._start_game()

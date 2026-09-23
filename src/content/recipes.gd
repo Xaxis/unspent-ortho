@@ -119,8 +119,15 @@ const LIST: Array[Dictionary] = [
 	# INPUT is what has to be walked to. A kiln pour can go wrong (CraftTiers).
 	{"id": &"cinder_glass", "at": &"kiln", "minutes": 160.0, "needs": {&"brimstone": 2, &"coal": 2}, "makes": {&"cinder_glass": 1}},
 	{"id": &"clint_spar", "at": &"kiln", "minutes": 150.0, "needs": {&"limestone": 3, &"charcoal": 2}, "makes": {&"clint_spar": 1}},
+	# The crags' own: two hushstone is one carved face broken up entirely
+	# (Takes: uses 2), so a slate costs a face, and the kiln is where it is fired
+	# to the stone a scanner reads as nothing.
+	{"id": &"hush_slate", "at": &"kiln", "minutes": 150.0, "needs": {&"hushstone": 2, &"charcoal": 2}, "makes": {&"hush_slate": 1}},
 	{"id": &"bog_iron", "at": &"fire", "minutes": 120.0, "needs": {&"peat": 4, &"charcoal": 2}, "makes": {&"bog_iron": 1}},
 	{"id": &"frost_varnish", "at": &"fire", "minutes": 100.0, "needs": {&"crottle": 3, &"oil": 1}, "makes": {&"frost_varnish": 1}},
+	# Ground at the bench with oil for the polish: two cuts of lens ice for one
+	# lens, because the first is always cloudy.
+	{"id": &"deep_ice_lens", "at": &"bench", "minutes": 90.0, "needs": {&"lens_ice": 2, &"oil": 1}, "makes": {&"deep_ice_lens": 1}},
 	{"id": &"fulgurite_core", "at": &"kiln", "minutes": 150.0, "needs": {&"fulgurite": 3, &"charcoal": 2}, "makes": {&"fulgurite_core": 1}},
 	# Nothing is dead loot: what a ruined pour leaves is still plate.
 	{"id": &"spoil_scrap", "at": &"fire", "minutes": 30.0, "needs": {&"spoil": 2, &"charcoal": 1}, "makes": {&"scrap": 1}},
@@ -176,6 +183,8 @@ const LIST: Array[Dictionary] = [
 	{"id": &"mod_capacitor", "at": &"bench", "minutes": 30.0, "needs": {&"scrap": 1, &"line_coil": 1, &"copper": 1, &"wick": 2}, "makes": {&"mod_capacitor": 1}},
 	{"id": &"mod_harmonic", "at": &"bench", "minutes": 30.0, "needs": {&"mono_edge": 1, &"haft": 1, &"pitch": 1}, "makes": {&"mod_harmonic": 1}},
 	{"id": &"mod_damp", "at": &"bench", "minutes": 30.0, "needs": {&"frost_varnish": 1, &"rag": 2, &"pitch": 1}, "makes": {&"mod_damp": 1}},
+	{"id": &"mod_hush", "at": &"bench", "minutes": 40.0, "needs": {&"hush_slate": 1, &"rag": 2, &"scrap": 1}, "makes": {&"mod_hush": 1}},
+	{"id": &"mod_icelens", "at": &"bench", "minutes": 40.0, "needs": {&"deep_ice_lens": 1, &"scrap": 1, &"rag": 1}, "makes": {&"mod_icelens": 1}},
 	{"id": &"mod_leech", "at": &"bench", "minutes": 140.0, "needs": {&"clerk_die": 1, &"copper": 2, &"wick": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_leech": 1}},
 	{"id": &"mod_phase", "at": &"bench", "minutes": 145.0, "needs": {&"keeper_lens": 1, &"copper": 2, &"resin": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_phase": 1}},
 	{"id": &"mod_lattice", "at": &"bench", "minutes": 150.0, "needs": {&"scrap": 3, &"copper": 2, &"wick": 2, &"fulgurite_core": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_lattice": 1}},

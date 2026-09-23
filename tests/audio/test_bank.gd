@@ -180,6 +180,12 @@ static func _held(key: StringName, _bars: int, gate: Semaphore) -> ScoreRender:
 func test_with_threads_a_score_job_never_takes_the_last_free_worker() -> void:
 	var bank := SoundBank.new()
 	bank.threaded = true
+	# One render through each lane first: a bank nothing has rendered through
+	# bakes one thing at a time (held below), and this test is about the lanes
+	# once they are open.
+	bank.score_job = func(k: StringName, _bars: int) -> ScoreRender: return _held_free(k)
+	bank.bake_now(ScoreStems.key_for(&"coast", &"grid", 0))
+	bank.bake_now(&"ui_move")
 	var gate := Semaphore.new()
 	# Not a lambda: the job is made on a worker thread.
 	bank.score_job = _held.bind(gate)
@@ -244,3 +250,75 @@ static func _held_free(key: StringName) -> ScoreRender:
 	j.highpass = 150.0
 	j.hold(ScoreVoices.Sine, {"freqs": [660.0], "amps": [0.2]})
 	return j
+
+
+## Pump until `key` has been reaped off the pool, or give up. The pump that
+## reaps a job is the one that starts the next, so what the lane does after a
+## render is read off the same call.
+func _pump_until_reaped(bank: SoundBank, key: StringName) -> void:
+	var left := int(5000 * TestCase.machine_slack())
+	while bank._jobs.has(key) and left > 0:
+		OS.delay_msec(1)
+		left -= 1
+		bank._pumped_frame = -1
+		bank.pump()
+	check(not bank._jobs.has(key), "%s rendered on the pool" % key)
+
+
+## The engine fills a cold operator's evaluator into its bytecode with no
+## barrier on the readers (SoundBank's header): two workers through the same
+## cold code in lockstep jump through a torn pointer, and that is where every
+## crash on this machine's pool has been. So a bank that has rendered nothing
+## puts ONE stem on the pool, and opens the lane only once it is back.
+func test_a_cold_bank_puts_one_stem_on_the_pool_until_one_has_rendered() -> void:
+	var bank := SoundBank.new()
+	bank.threaded = true
+	var gate := Semaphore.new()
+	bank.score_job = _held.bind(gate)
+	var keys: Array[StringName] = []
+	for land: StringName in [&"coast", &"moss", &"pinewood", &"snowfield"]:
+		keys.append(ScoreStems.key_for(land, &"pad", 0))
+		bank.request(keys.back(), true)
+	bank._pumped_frame = -1
+	bank.pump()
+	eq(bank._jobs.size(), 1, "nothing has rendered on this bank: one stem goes to the pool, alone")
+	var first: StringName = bank._jobs.keys()[0] if not bank._jobs.is_empty() else &""
+	gate.post()
+	_pump_until_reaped(bank, first)
+	eq(bank._jobs.size(), SoundBank.SCORE_TASKS + 1, "once a stem has rendered, the score lane opens to two")
+	# Let everything go before judging, so a failure never leaves a worker waiting.
+	for i in 8:
+		gate.post()
+	bank.flush()
+	for k in keys:
+		check(bank.is_ready(k), "%s baked in the end" % k)
+
+
+## The world's lane keeps the same rule, and a cache file read is not a render:
+## it runs none of the recipe, so it warms nothing.
+func test_a_cold_world_lane_bakes_one_at_a_time_and_a_disk_hit_does_not_warm_it() -> void:
+	var root := _root()
+	var made := SoundBank.new()
+	made.threaded = false
+	made.use_disk_cache(root)
+	made.bake_now(&"ui_move")
+	var bank := SoundBank.new()
+	bank.threaded = true
+	bank.use_disk_cache(root)
+	bank.request(&"ui_move")
+	bank.flush()
+	check(bank.get_baked(&"ui_move").from_disk, "the first thing through the lane was a file")
+	bank.request(&"ui_back")
+	bank.request(&"ui_accept")
+	bank._pumped_frame = -1
+	bank.pump()
+	eq(bank._jobs.size(), 1, "a file read warmed nothing: the cold lane still bakes one at a time")
+	bank.flush()
+	check(not bank.get_baked(&"ui_back").from_disk and not bank.get_baked(&"ui_accept").from_disk, "both were rendered")
+	for n: StringName in [&"swing", &"whiff"]:
+		bank.request(SoundBank.key_for(n, 0))
+	bank._pumped_frame = -1
+	bank.pump()
+	eq(bank._jobs.size(), SoundBank.MAX_TASKS, "a rendered one-shot opens the world's lane to its cap")
+	bank.flush()
+	_wipe(root)

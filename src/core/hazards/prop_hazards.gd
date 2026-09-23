@@ -71,6 +71,13 @@ const TABLE := {
 	PropKind.SLAG_HEAP: [
 		{"id": &"collapse", "reach": 2.0, "add": 0.15, "weather": &""},
 	],
+	# A seal's breathing hole on the frost sea (docs/LANDSCAPES.md §2): the ice
+	# round it is thin because the seal keeps it thin, and 0.2 on the land's own
+	# 0.4 is a step under BITE at the rim, so a body that walks up to it for the
+	# fish reads the gauge before the ice reads the body.
+	PropKind.SEAL_HOLE: [
+		{"id": &"collapse", "reach": 1.0, "add": 0.2, "weather": &""},
+	],
 	# The glass desert's strike rod is where the plan calls the lightning down
 	# (docs/LANDSCAPES.md §3: "it draws a strike in DRY_STORM if you stand
 	# within 2 tiles"). A strike is not a pressure the model has, so it is the
