@@ -94,9 +94,12 @@ static func make() -> BiomeDef:
 	# block with the ground floor given to the sea, a timber house on piles over
 	# the mud, and a barge moored for good with a shed on its deck. Low, as the
 	# port always was, so the silhouette against the sea stays a long flat one
-	# and the standing water reads as the thing out of place.
+	# and the standing water reads as the thing out of place. The fourth is the
+	# city's gutted SHELL, nobody's home, because a block of 14-22 cannot keep
+	# `repeat_apart` with three shapes: two of one stood 8 tiles apart in Upper
+	# Quay (test_houses). Four is what held it before.
 	d.built = BiomeForms.new()
-	d.built.stock = [&"upper_floor", &"stilt_house", &"hulk_home"] as Array[StringName]
+	d.built.stock = [&"upper_floor", &"stilt_house", &"hulk_home", &"shell"] as Array[StringName]
 	d.built.plan = &"block"
 	d.built.apart = BiomeForms.ROW_APART
 	d.built.buildings = Vector2i(14, 22)
