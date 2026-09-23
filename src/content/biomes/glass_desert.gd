@@ -90,6 +90,9 @@ static func make() -> BiomeDef:
 		&"watcher": {"weight": 1.0},
 		&"harvester": {"weight": 0.7, "grounds": ["sand", "salt", "gravel"]},
 		&"runner": {"weight": 0.6, "hours": Vector2(9, 18), "grounds": ["road", "sand", "rock"]},
+		# Its own hunter: a blade-skater that keeps to the plates, so the sand
+		# is where a body is safe from it (docs/LANDSCAPES.md §3).
+		&"skater": {"weight": 0.8, "hours": Vector2(9, 19), "grounds": ["rock", "salt"]},
 	}
 	d.landmarks = [&"cast_stones", &"evaporator", &"blinking_stack", &"poured_pillar"]
 	# Its keeper: the anvil, the mast the strike fields are called through

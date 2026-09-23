@@ -317,6 +317,30 @@ const DEFS := {
 		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
 		"where": {"hours": [0, 0]},
 	},
+
+	# --- The Glass Desert's own hunter (docs/LANDSCAPES.md §3) -----------------
+	# A long low body on four blade-skates. It charges, and its re-aim is the
+	# longest in the roster (`turns` 6, two and a half seconds), so the whole
+	# fight is choosing where to stand when it comes round: on SAND. `keeps_to`
+	# rock, salt and gravel holds it to the glass the skates were made for, and
+	# its bite is the pass of a blade.
+	#
+	# THE SAND CRAWL WAITS ON A PER-GROUND PACE FIELD. The spec has it FOLLOW
+	# onto sand at forty percent of its pace; the roster has no field for a
+	# ground that slows a body rather than stopping it (FightSim reads
+	# `keeps_to` as a wall), so here the sand stops it dead at the edge of the
+	# plates. That is the same tactic with a harder line under it, and it is
+	# stated rather than faked with a second row.
+	&"skater": {
+		"model": &"skater", "role": &"hunter", "machine": true, "approach": &"charge", "turns": 6, "part": &"back",
+		"pace": 9.0, "dash": 14.0, "quick": 340, "radius": 0.5, "height": 0.7, "life": 55,
+		"sees": 12, "hears": 8, "racket": 18, "reach": 2, "ready": 3, "forget": 16, "tether": 32, "safe": 14,
+		"nerve": 100, "invuln": 480, "through": true, "overrun": 0.9,
+		"bite": {"swing": [460, 130, 520, 700], "reach": 1.4, "width": 1.2, "dmg": 3, "knock": 7.0, "knock_ms": 280},
+		"takes": 60.0, "drops": 2, "linger": 35.0, "chance": 4,
+		"keeps_to": ["rock", "salt", "gravel"],
+		"where": {"countries": ["glass_desert"], "grounds": ["rock", "salt"], "hours": [9, 19]},
+	},
 }
 
 

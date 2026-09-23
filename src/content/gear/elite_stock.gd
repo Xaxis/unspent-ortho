@@ -87,6 +87,12 @@ const SPOILS := {
 	&"flock": [{"item": &"wick", "chance": 0.3},
 		{"item": &"flash_burst", "chance": 0.12, "rarity": Rarity.UNCOMMON}],
 	&"dredger": [{"item": &"sonic_wave", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
+	# The glass desert's skater: the blade it runs the plates on, which is what
+	# a glass lance is ground from (Recipes: lance_glass). A spoil and not an
+	# elite material on purpose: the landscape's one-gate material is the
+	# fulgurite core, and a second gate on the same land would be two.
+	&"skater": [{"item": &"wick", "chance": 0.4, "count": Vector2i(1, 2)},
+		{"item": &"skate_blade", "chance": 0.35, "rarity": Rarity.UNCOMMON}],
 	# Watchers and keepers: what is carried to stop somebody.
 	&"watcher": [{"item": &"wick", "chance": 0.4},
 		{"item": &"stun_hand", "chance": 0.12, "rarity": Rarity.UNCOMMON}],

@@ -352,6 +352,9 @@ const DEFS := {
 	&"vane_true": {"name": "trued vane", "bulk": 1.5, "group": &"found", "stuff": &"found", "icon": [&"broad", &"plate", &"lens"]},
 	&"dredge_screw": {"name": "dredge screw", "bulk": 2.5, "group": &"found", "stuff": &"found", "icon": [&"hammer", &"plate", &"lens"]},
 	&"fab_jig": {"name": "fabricator jig", "bulk": 3.0, "group": &"found", "stuff": &"found", "icon": [&"brace", &"plate", &"lens"]},
+	# Off the glass desert's skater (EliteStock.SPOILS): a runner blade ground
+	# to ride glass, and the edge a glass lance is bound round.
+	&"skate_blade": {"name": "skate blade", "bulk": 1.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"plate", &"lens"]},
 	&"spoil": {"name": "ruined stock", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"ash", &"ash"]},
 	# raids: a machine's own account of a place, taken off the body that was
 	# carrying it home. It is proof, and it is the only thing in the game worth
