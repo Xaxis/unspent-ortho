@@ -50,4 +50,6 @@ jobs:
         run: tools/_import.sh
 
       - name: Tests
-        run: tools/test.sh
+        # The gate's own test half: sharded and diffed against tests/standing.txt,
+        # so CI goes red only on a NEW failure, exactly as tools/check.sh does.
+        run: tools/check.sh --no-shots

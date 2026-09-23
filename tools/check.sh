@@ -18,6 +18,15 @@ for a in "$@"; do [ "$a" = "--web" ] && web=1; done
 #   sysctl -n vm.swapusage    # free under ~2 GB: use --serial
 serial=0
 for a in "$@"; do [ "$a" = "--serial" ] && serial=1; done
+# --no-shots: the TEST half only, for a machine with no GPU (the CI gate). It is
+# the same shards and the same standing-list diff as the full gate, which is the
+# point: CI used to run plain `tools/test.sh`, one process and NO standing diff,
+# so it was red on every push from the known failures alone -- a gate nobody could
+# read -- and ran the tests in a different order from this one, so the two gates
+# were not even testing the same thing. The frames are judged where the game is
+# built, on a real GPU; skipping them is said out loud below, never silent.
+noshots=0
+for a in "$@"; do [ "$a" = "--no-shots" ] && noshots=1; done
 cd "$(dirname "$0")/.."
 
 # A MACHINE-WIDE limit on how many gates run at once, because the gate measures
@@ -124,6 +133,9 @@ fi
 # The shots go FIRST because they are the cheap half (about a minute against the
 # shards' nine) and because a broken frame is worth knowing about before you wait
 # out the suite. Total cost of the change is roughly that minute.
+if [ "$noshots" = "1" ]; then
+  echo "== shots SKIPPED (--no-shots): no frames were judged by this run"
+else
 echo "== shots"
 mkdir -p shots/check
 if [ "$serial" = "1" ]; then
@@ -148,6 +160,7 @@ fi
 for f in spawn dusk night gallery; do
   [ -f "shots/check/$f.png" ] || { echo "MISSING FRAME: shots/check/$f.png was never written"; fail=1; }
 done
+fi
 
 if [ "$serial" = "1" ]; then echo "== tests (3 shards, one at a time)"; else echo "== tests (3 shards)"; fi
 logs=()
