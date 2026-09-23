@@ -18,9 +18,9 @@ class_name EliteStock
 ## a keeper's lens means walking into the pinewood and beating a warden.
 ##
 ## Nothing is declared here that cannot be got in the game as it stands today.
-## The salt flats and the scrapwood have neither a raw of their own (their props
-## have no `Takes` rows at all) nor a machine kind of their own, so they hold no
-## elite material yet and none is invented for them.
+## The salt flats and the scrapwood have neither a raw only they give (their props
+## yield salt, scrap and iron ore, which other lands give too) nor a machine kind
+## of their own, so they hold no elite material yet and none is invented for them.
 ##
 ## `GearEconomy.declare()` pours all of this into `Materials` and `Drops`, which
 ## is where every other package reads it.
