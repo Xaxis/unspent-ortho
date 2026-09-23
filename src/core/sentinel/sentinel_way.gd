@@ -35,6 +35,13 @@ var grounds: Array[int] = []
 ## held up under one of them and nowhere else, which is a tactic about the
 ## LAND (find a lamp inside its guard) and not a longer hold.
 var beside: Array[int] = []
+## The craft the player has to be riding for the signature to be READ (SPOOF),
+## a `CraftKinds` id; empty is on foot or aboard anything. A keeper that keeps a
+## canal's timetable reads a signature as one of its boats' calls, and a person
+## wading its lane with a machine's signature is not a boat: the tactic is to
+## come to it on the water, which is a tactic about the CRAFT and not a longer
+## hold.
+var aboard: StringName = &""
 ## How long the condition must hold (sim ms). 0 for FORCE.
 var hold_ms := 0.0
 ## One line a player could be told, and one for whoever reads the design.
@@ -72,7 +79,7 @@ func progress(look: SentinelLook) -> float:
 				return clampf(1.0 - float(look.feeds) / float(look.feeds_at_first), 0.0, 0.99)
 			return clampf(look.dark_ms / maxf(1.0, hold_ms), 0.0, 1.0)
 		SPOOF:
-			if not (look.spoofed and look.inside and beside_met(look)):
+			if not (look.spoofed and look.inside and reads_here(look)):
 				return 0.0
 			return clampf(look.spoof_ms / maxf(1.0, hold_ms), 0.0, 1.0)
 	return 0.0
@@ -89,6 +96,19 @@ func beside_met(look: SentinelLook) -> bool:
 		if beside.has(k):
 			return true
 	return false
+
+
+## Whether the player is on the craft this way reads a signature from, or the
+## way names none. Asked by the system beside `beside_met`, for the same reason:
+## stepping off the raft loses the count rather than banking it.
+func aboard_met(look: SentinelLook) -> bool:
+	return aboard == &"" or look.riding == aboard
+
+
+## Every gate on WHERE the signature is read, together: what the player stands
+## beside and what they are riding. The spoof clock runs only while this holds.
+func reads_here(look: SentinelLook) -> bool:
+	return beside_met(look) and aboard_met(look)
 
 
 func met(look: SentinelLook) -> bool:

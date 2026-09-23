@@ -64,6 +64,12 @@ const MATERIALS := {
 	# iron is already made, so it is the forge this game has.
 	&"tower_cable": {"land": &"ruined_metropolis", "raw": &"lift_cable", "at": &"fire", "grade": &"rare",
 		"what": "lift rope annealed and laid up again: it takes a body's weight and does not stretch"},
+	# The Drowned City's own (docs/LANDSCAPES.md §5): copper conductor cut out
+	# of a drowned tram's trolley gear, which stands only in the city's own
+	# shallows (Takes gates the cut on MUD), poured again at the fire with the
+	# salt still in it. Copper is poured at the fire everywhere else, so this is.
+	&"brine_copper": {"land": &"drowned_city", "raw": &"sea_copper", "at": &"fire", "grade": &"rare",
+		"what": "copper the sea kept for a century, poured again: green at the grain, and water runs off it"},
 
 	# --- one machine's own ----------------------------------------------------
 	&"tide_iron": {"kind": &"harvester", "chance": 0.35, "grade": &"prime",
@@ -138,6 +144,11 @@ const SPOILS := {
 	# its elite through a PROP (lens ice off a pressure block) and a landscape
 	# holds one gate, not two.
 	&"icesaw": [{"item": &"saw_tooth", "chance": 0.45, "count": Vector2i(1, 2)}],
+	# The drowned city's ferry: the bilge pump out of its hull
+	# (docs/LANDSCAPES.md §5). A spoil and not a material, for the frost sea's
+	# reason: the drowned city's one gate is brine copper, stripped off a
+	# drowned tram, and a landscape holds one gate, not two.
+	&"ferry": [{"item": &"bilge_pump", "chance": 0.35}],
 }
 
 

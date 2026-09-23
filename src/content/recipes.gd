@@ -134,6 +134,8 @@ const LIST: Array[Dictionary] = [
 	{"id": &"fulgurite_core", "at": &"kiln", "minutes": 150.0, "needs": {&"fulgurite": 3, &"charcoal": 2}, "makes": {&"fulgurite_core": 1}},
 	# Lift rope annealed in the fire and laid up again: the city's own.
 	{"id": &"tower_cable", "at": &"fire", "minutes": 110.0, "needs": {&"lift_cable": 2, &"charcoal": 1}, "makes": {&"tower_cable": 1}},
+	# Sea copper poured again with the salt still in it: the drowned city's own.
+	{"id": &"brine_copper", "at": &"fire", "minutes": 100.0, "needs": {&"sea_copper": 2, &"charcoal": 2}, "makes": {&"brine_copper": 1}},
 	# Nothing is dead loot: what a ruined pour leaves is still plate.
 	{"id": &"spoil_scrap", "at": &"fire", "minutes": 30.0, "needs": {&"spoil": 2, &"charcoal": 1}, "makes": {&"scrap": 1}},
 
@@ -196,6 +198,7 @@ const LIST: Array[Dictionary] = [
 	{"id": &"mod_damp", "at": &"bench", "minutes": 30.0, "needs": {&"frost_varnish": 1, &"rag": 2, &"pitch": 1}, "makes": {&"mod_damp": 1}},
 	{"id": &"mod_hush", "at": &"bench", "minutes": 40.0, "needs": {&"hush_slate": 1, &"rag": 2, &"scrap": 1}, "makes": {&"mod_hush": 1}},
 	{"id": &"mod_icelens", "at": &"bench", "minutes": 40.0, "needs": {&"deep_ice_lens": 1, &"scrap": 1, &"rag": 1}, "makes": {&"mod_icelens": 1}},
+	{"id": &"mod_seal", "at": &"bench", "minutes": 35.0, "needs": {&"brine_copper": 1, &"rag": 2, &"pitch": 1}, "makes": {&"mod_seal": 1}},
 	{"id": &"mod_leech", "at": &"bench", "minutes": 140.0, "needs": {&"clerk_die": 1, &"copper": 2, &"wick": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_leech": 1}},
 	{"id": &"mod_phase", "at": &"bench", "minutes": 145.0, "needs": {&"keeper_lens": 1, &"copper": 2, &"resin": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_phase": 1}},
 	{"id": &"mod_lattice", "at": &"bench", "minutes": 150.0, "needs": {&"scrap": 3, &"copper": 2, &"wick": 2, &"fulgurite_core": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_lattice": 1}},

@@ -73,18 +73,30 @@ static func make() -> BiomeDef:
 	dress.walling = [P.ASH[2], P.STONE[3], P.SPRUCE[2], P.SLATE[2]]
 	dress.sink = 0.16
 	dress.lie = Vector2(-0.06, 0.1)
+	# Timber that has stood in salt water for a lifetime goes grey, not brown:
+	# the piles, the boards of a stilt house, a punt (docs/LANDSCAPES.md §5).
+	dress.timber = [P.ASH[3].lerp(P.STONE[3], 0.35), P.ASH[2].lerp(P.SLATE[2], 0.3)]
+	# What the tide leaves on anything it reaches: a line of weed hung on it and
+	# rust where the salt gets in. The spec says "weed below the tide line";
+	# that is `wrack` in BiomeDressing's words -- its `weed` is reeds up through
+	# bog water, which is the moss's and not a tide's.
+	dress.covers = &"wrack"
+	# People here put up a hut on stilts over the water when they put up
+	# anything (props/remains.gd `stilt`): the spec's stilt house, and the one
+	# patched shelter already made of piles.
+	dress.shelter = &"stilt"
 	d.dressing = dress
-	# The city stands up, because it is a city: the same forms the Slums raises.
 	# Blocks, because it was a city before the water came in — the streets between
 	# them are what the sea is standing in now, and a `row` would make it one
 	# waterfront rather than a grid with canals through it.
-	# THIS WAS A PORT AND NEVER THE TALLEST CITY, which is most of why the water
-	# took it: it was built low and near the water on purpose. No tower and no
-	# spire, so the silhouette against the sea is a long flat one broken by
-	# stacks, and the standing water reads as the thing that is out of place
-	# rather than the buildings.
+	# ITS OWN STOCK, and not a trimmed RAISED (docs/LANDSCAPES.md §5): what people
+	# live in here is what the water left them. The first floor of a flooded
+	# block with the ground floor given to the sea, a timber house on piles over
+	# the mud, and a barge moored for good with a shed on its deck. Low, as the
+	# port always was, so the silhouette against the sea stays a long flat one
+	# and the standing water reads as the thing out of place.
 	d.built = BiomeForms.new()
-	d.built.stock = [&"stack", &"block", &"shell", &"arcade"] as Array[StringName]
+	d.built.stock = [&"upper_floor", &"stilt_house", &"hulk_home"] as Array[StringName]
 	d.built.plan = &"block"
 	d.built.apart = BiomeForms.ROW_APART
 	d.built.buildings = Vector2i(14, 22)
@@ -92,7 +104,14 @@ static func make() -> BiomeDef:
 	d.grade = Vector4(-0.06, 0.02, 0.06, -0.03)
 	d.night_sky = 0.95
 	d.props = [PropKind.RUIN, PropKind.DEBRIS, PropKind.WRECKAGE,
-		PropKind.SEA_WALL, PropKind.TIDE_GAUGE, PropKind.HULL, PropKind.REEDS, PropKind.POLE]
+		PropKind.SEA_WALL, PropKind.TIDE_GAUGE, PropKind.HULL, PropKind.REEDS, PropKind.POLE,
+		# Its own (docs/LANDSCAPES.md §5, src/models/props/drowned_city.gd),
+		# declared here so the drowned city is the ONE landscape whose things
+		# these are: that is what makes the tram's copper the city's gate
+		# (Sources.lands_yielding). The bands that lay the stairs, trams and
+		# piles, and the works row that stands the lock, are the placement
+		# wave's; declaring a kind places nothing until a recipe returns it.
+		PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE]
 	d.ore = [[PropKind.IRON_ORE, 0.02], [PropKind.COPPER_ORE, 0.018]]
 	d.sites = {"tips": 2, "ruins": true}
 	d.beached_wrecks = true
@@ -113,8 +132,15 @@ static func make() -> BiomeDef:
 		&"harvester": {"weight": 0.8, "grounds": ["moss", "mud", "gravel"]},
 		&"watcher": {"weight": 0.9},
 		&"gulls": {"weight": 1.0, "hours": Vector2(5, 21), "grounds": ["shingle", "gravel"]},
+		# Its own machine, found nowhere else: the plan's ferry keeping its
+		# timetable on the canals (Roster, `ferry`). Its own row keeps it to the
+		# water and to its hours.
+		&"ferry": {"weight": 1.2},
 	}
 	d.landmarks = [&"sump_pump", &"poured_pillar", &"leaning_mast", &"clerks_office"]
+	# Its keeper: the barge on stilts that keeps the locks (src/core/sentinel/
+	# designs/lockkeeper.gd). The one door by which a landscape claims one.
+	d.sentinel = &"lockkeeper"
 	d.sound_bed = &"bed_shore"
 	d.surface = _surface
 	d.scatter = _scatter

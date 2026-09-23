@@ -110,6 +110,37 @@ func test_a_spoof_that_reads_under_a_lamp_reads_nowhere_else() -> void:
 		and unbuilder.way_of(SentinelWay.SPOOF).beside.has(PropKind.LAMP), "the unbuilder's own spoof is the lamp's")
 
 
+func test_a_spoof_read_off_a_boat_is_read_off_nothing_else() -> void:
+	# The lockkeeper keeps a canal's timetable and reads a signature as one of
+	# its boats' calls, so the signet is only read from a raft in its lane:
+	# inside its guard and spoofed, on foot, is a person in a canal.
+	var w := SentinelWay.make(SentinelWay.SPOOF, 2000.0)
+	w.aboard = &"raft"
+	var l := _look()
+	l.inside = true
+	l.spoofed = true
+	l.spoof_ms = 9000.0
+	near(w.progress(l), 0.0, 1e-4, "spoofed inside its guard, wading, nothing is read")
+	check(not w.reads_here(l), "and the system is told the clock should not run")
+	l.riding = &"hover_sled"
+	near(w.progress(l), 0.0, 1e-4, "a sled is not a boat")
+	l.riding = &"raft"
+	check(w.reads_here(l), "on a raft, the way is open")
+	l.spoof_ms = 1000.0
+	near(w.progress(l), 0.5, 1e-4, "and the hold counts from there")
+	l.spoofed = false
+	near(w.progress(l), 0.0, 1e-4, "a raft without the signet is only a raft")
+	# A way that names no craft reads a body on foot, as every other keeper does.
+	var plain := SentinelWay.make(SentinelWay.SPOOF, 2000.0)
+	l.riding = &""
+	check(plain.reads_here(l), "no craft named, none needed")
+	var keeper := Sentinels.by_id(&"lockkeeper")
+	check(keeper != null and keeper.way_of(SentinelWay.SPOOF) != null
+		and keeper.way_of(SentinelWay.SPOOF).aboard == &"raft", "the lockkeeper's own spoof is read off a raft")
+	check(keeper != null and not keeper.has_way(SentinelWay.FOUNDER), "and nothing in a drowned city founders it")
+	check(CraftKinds.known(&"raft"), "the craft it names is one a player can ride")
+
+
 func test_each_design_offers_its_three_and_they_are_reachable_in_its_own_land() -> void:
 	for def: SentinelDef in Sentinels.all():
 		var land := BiomeRegistry.get_def(def.land)

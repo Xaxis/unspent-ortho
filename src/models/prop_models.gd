@@ -38,6 +38,7 @@ const Crags := preload("res://src/models/props/crags.gd")
 const FrostSea := preload("res://src/models/props/frost_sea.gd")
 const Glass := preload("res://src/models/props/glass_desert.gd")
 const Metropolis := preload("res://src/models/props/metropolis.gd")
+const DrownedCity := preload("res://src/models/props/drowned_city.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -126,6 +127,13 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 		PropKind.DECK_SPAN, PropKind.LIFT_SHAFT:
 			return 2
 		PropKind.SHOPFRONT, PropKind.SORTED_BALE:
+			return 3
+		# The drowned city: a stair whole or with a cheek gone, a tram with its
+		# pole up or snapped, a gate shut or swung, and three crowds of piles,
+		# because a quay has a row of them and two shapes in a row is a stamp.
+		PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.LOCK_GATE:
+			return 2
+		PropKind.MOORING_POST:
 			return 3
 		PropKind.BARRICADE, PropKind.SHACK, PropKind.VEHICLE, PropKind.HULL, PropKind.SEA_WALL, PropKind.TIDE_GAUGE, \
 		PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.FIRE_TOWER, PropKind.CHECKPOINT, PropKind.DRILL_RIG, \
@@ -226,6 +234,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Glass.build(k, kind, variant, country)
 		PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT, PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY:
 			Metropolis.build(k, kind, variant, country)
+		PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE:
+			DrownedCity.build(k, kind, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)

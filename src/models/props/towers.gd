@@ -25,6 +25,7 @@ extends RefCounted
 const Kit := preload("res://src/models/props/kit.gd")
 const Houses := preload("res://src/models/props/houses.gd")
 const Metropolis := preload("res://src/models/props/metropolis.gd")
+const DrownedCity := preload("res://src/models/props/drowned_city.gd")
 const P := preload("res://src/render/palette.gd")
 
 ## The one door: build the named form of `BiomeForms.RAISED`. `Houses.build`
@@ -40,6 +41,8 @@ static func build(k: Kit, form: StringName, c: int) -> void:
 		&"shell": shell(k, c)
 		&"arcade": arcade(k, c)
 		&"spire": spire(k, c)
+		# The drowned city's: people living over the water (props/drowned_city.gd).
+		&"upper_floor", &"stilt_house", &"hulk_home": DrownedCity.form(k, form, c)
 		_: Metropolis.form(k, form, c)
 
 

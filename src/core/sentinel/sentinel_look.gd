@@ -29,6 +29,9 @@ var spoof_ms := 0.0
 ## The prop kinds standing within BESIDE tiles of the player, none of them
 ## depleted: what a way gated on "under a lamp" reads (SentinelWay.beside).
 var beside: Array[int] = []
+## The craft the player is riding (`CraftRide.kind`), &"" on foot: what a way
+## gated on "come to it on the water" reads (SentinelWay.aboard).
+var riding: StringName = &""
 
 ## How near a standing thing has to be to count as beside the player, in
 ## tiles. A lamp standard's pool is about this wide, and it is under the light

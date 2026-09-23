@@ -287,9 +287,14 @@ func look_at(s: SentinelState, def: SentinelDef) -> SentinelLook:
 				continue
 			if not look.beside.has(q.kind):
 				look.beside.append(q.kind)
+	# What the player is riding, for a way that only reads a signature off a
+	# boat in its lane (SentinelWay.aboard). The ride is the crafts package's
+	# to write and this only reads it.
+	if sim.hero.ride != null:
+		look.riding = sim.hero.ride.kind
 	# The clock runs only while the way could be met, so stepping out from
-	# under the lamp loses the count instead of banking it.
-	if look.spoofed and look.inside and (spoof == null or spoof.beside_met(look)):
+	# under the lamp, or off the raft, loses the count instead of banking it.
+	if look.spoofed and look.inside and (spoof == null or spoof.reads_here(look)):
 		if s.spoof_since == INF:
 			s.spoof_since = sim.now
 		look.spoof_ms = sim.now - s.spoof_since
