@@ -254,6 +254,13 @@ func tour_seen(what: StringName) -> bool:
 				return false
 			var to := Vector2(cam.subject.x - game.player.position.x, cam.subject.z - game.player.position.z)
 			return absf(Shoulder.turn(cam.yaw_now(), Shoulder.yaw_along(to))) < 20.0
+		# Looking toward the sun the light comes from (within 25 degrees of its
+		# bearing), so a frame can show shadows falling back toward the eye.
+		&"shoulder_sun":
+			if not cam.over_shoulder() or game.sky == null or game.sky.sun == null:
+				return false
+			var to_sun := game.sky.sun.global_transform.basis.z
+			return absf(Shoulder.turn(cam.yaw_now(), Shoulder.yaw_along(Vector2(to_sun.x, to_sun.z)))) < 25.0
 		&"sky_in_frame":
 			# The top edge of the picture looks above the horizon.
 			return cam.over_shoulder() and cam.shoulder_pitch < cam.fov * 0.5

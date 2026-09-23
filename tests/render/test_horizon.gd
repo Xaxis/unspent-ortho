@@ -173,13 +173,81 @@ func test_a_horizon_frame_leaves_the_top_down_one_untouched() -> void:
 	var sm := e.sky.sky_material as ProceduralSkyMaterial
 	var before := [e.background_mode, e.fog_depth_curve, e.fog_aerial_perspective, e.sky.sky_material]
 	var a := Air.at({})
-	sky._look_out(e, sm, a, true, 0.4)
+	sky._look_out(e, sm, a, 1.0, 0.4)
 	check(e.background_mode == Environment.BG_SKY, "at the horizon the sky is drawn")
 	check(e.sky.sky_material != sm, "and it is the seen sky, not the reflected one")
 	eq(e.fog_density, 1.0, "the air closes the far edge completely")
 	eq(e.fog_depth_end, SkyLight.SEE, "at the eye's reach")
-	sky._look_out(e, sm, a, false, 0.4)
+	sky._look_out(e, sm, a, 0.0, 0.4)
 	var after := [e.background_mode, e.fog_depth_curve, e.fog_aerial_perspective, e.sky.sky_material]
 	for i in before.size():
 		check(before[i] == after[i], "field %d is back as the play camera has it: %s -> %s" % [i, before[i], after[i]])
 	sky.free()
+
+
+## Tip a lens from 45 degrees down to level, half a degree a frame, and record
+## what the air, the shadow and the light are at each step.
+func _tilt(hour: float) -> Array[Dictionary]:
+	var sky := SkyLight.new()
+	tree.root.add_child(sky)
+	sky.clock_hour = hour
+	var cam := _camera(true, 45.0, 60.0)
+	cam.make_current()
+	var out: Array[Dictionary] = []
+	var e := sky.env.environment
+	var p := 45.0
+	while p >= 0.0:
+		cam.rotation = Vector3(deg_to_rad(-p), deg_to_rad(45.0), 0.0)
+		sky.compose()
+		out.append({"pitch": p, "fog_end": e.fog_depth_end, "fog_begin": e.fog_depth_begin,
+			"fog_density": e.fog_density, "fog_curve": e.fog_depth_curve, "aerial": e.fog_aerial_perspective,
+			"shadow": sky.sun.directional_shadow_max_distance, "sun_el": -sky.sun.rotation_degrees.x})
+		p -= 0.5
+	cam.queue_free()
+	sky.queue_free()
+	return out
+
+
+## TIPPING THE VIEW NEVER SNAPS. A boolean put every eye-level rule in force in
+## one frame at about 33 degrees down; each one is now carried over a band, so
+## no half-degree of tilt moves any of them by more than a small share of the
+## whole way it goes.
+func test_tipping_up_to_the_horizon_never_snaps() -> void:
+	var rows := _tilt(18.6)
+	for key: String in ["fog_end", "fog_begin", "fog_density", "fog_curve", "aerial", "shadow", "sun_el"]:
+		var lo := INF
+		var hi := -INF
+		var worst := 0.0
+		for i in rows.size():
+			var v := float(rows[i][key])
+			lo = minf(lo, v)
+			hi = maxf(hi, v)
+			if i > 0:
+				worst = maxf(worst, absf(v - float(rows[i - 1][key])))
+		var span := hi - lo
+		print("  %s: %.3f .. %.3f, worst half-degree step %.3f (%.0f%%)" % [key, lo, hi, worst, 100.0 * worst / maxf(span, 1e-6)])
+		if span > 1e-4:
+			lt(worst / span, 0.2, "%s moves over the band, not in one step" % key)
+
+
+## AT EYE LEVEL THE LIGHT COMES FROM THE SUN THAT IS DRAWN, so dusk shadows fall
+## away from it; looking down, the light is where the play camera always had it.
+func test_the_light_at_eye_level_is_the_drawn_sun() -> void:
+	var rows := _tilt(18.6)
+	var level: Dictionary = rows[rows.size() - 1]
+	var down: Dictionary = rows[0]
+	near(float(level.sun_el), SkyLight.eye_light(18.6).y, 0.05, "level, the light stands at the drawn sun's height")
+	near(float(down.sun_el), float(SkyLight.sun_at(18.6).elevation), 0.05, "45 degrees down, the play camera's light")
+	lt(float(level.sun_el), float(down.sun_el) - 15.0, "and at dusk the eye's sun is much lower")
+	for at: float in [SkyLight.SUNSET, SkyLight.SUNRISE]:
+		lt(SkyLight.eye_light(at - 0.001).distance_to(SkyLight.eye_light(at + 0.001)), 0.1, "the sun and the moon hand over at one place")
+	var ortho := _camera(false, CameraRig.PITCH_DEG, CameraRig.LENS_FOV)
+	ortho.make_current()
+	var sky := SkyLight.new()
+	tree.root.add_child(sky)
+	sky.clock_hour = 18.6
+	sky.compose()
+	near(-sky.sun.rotation_degrees.x, float(SkyLight.sun_at(18.6).elevation), 1e-4, "the orthographic game's light has not moved")
+	sky.queue_free()
+	ortho.queue_free()
+

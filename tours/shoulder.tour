@@ -12,7 +12,9 @@
 # turning it and tipping it up; a machine locked with Z framed over the
 # shoulder; the shoulder let go while Z is still held landing on the lock's lens;
 # both let go, the land again. Then noon, dusk and night over the shoulder on
-# the coast and in a second landscape. tests/camera/test_shoulder.gd measures the
+# the coast and in a second landscape, and at dusk turned to face the sun, whose
+# shadows at eye level fall back toward the eye (the light stands where the sky
+# draws the sun). tests/camera/test_shoulder.gd measures the
 # glide frame by frame; these are what it looks like.
 coast calm
 wait 0.9
@@ -62,6 +64,12 @@ await shoulder 3
 hour 18.6
 wait 1.2
 shot 10-dusk-over-the-shoulder with shoulder
+try 40
+mouse 60,0 0.05
+await shoulder_sun 0.1
+end
+wait 0.4
+shot 10b-dusk-facing-the-sun with shoulder_sun
 hour 23
 wait 1.2
 shot 11-night-over-the-shoulder with shoulder
