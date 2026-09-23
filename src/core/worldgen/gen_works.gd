@@ -279,10 +279,17 @@ static func _site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attem
 			continue
 		if attempt < attempts and not grounds.is_empty() and not grounds.has(int(w.ground[i])):
 			continue
-		var room := apart if not loose else apart * 0.45
-		if _crowded(w, Vector2(p), room) or GenScatter._near_village(w, Vector2(p), maxf(room, 14.0)):
-			continue
+		# CHEAPEST REFUSAL FIRST. Each check is pure and only `_dart` draws from
+		# the rng, so their order decides nothing about WHICH tile is returned --
+		# only what a refused dart costs. Once the darts landed inside the type's
+		# own regions (8c3f2e2) nearly every one reached `_crowded`, which walks
+		# every landmark, and the snowfield's stack search spent 80-150 ms of a
+		# 230 ms works stage there. The flatness test reads at most 49 tiles and
+		# stops at the first one that fails, and on terraced ground most do.
 		if not GenScatter._clear_site(c, p, r if not loose else maxi(2, r - 3), rise if not loose else rise + 1):
+			continue
+		var room := apart if not loose else apart * 0.45
+		if GenScatter._near_village(w, Vector2(p), maxf(room, 14.0)) or _crowded(w, Vector2(p), room):
 			continue
 		return p
 	return Vector2i(-1, -1)
@@ -315,12 +322,15 @@ static func _dart(L: Lay) -> Vector2i:
 ## summits, graves) are passed over: a work may stand near them.
 static func _crowded(w: WorldData, p: Vector2, d: float) -> bool:
 	var d2 := d * d
+	# Distance before kind: most landmarks are far, and the far test is one
+	# subtraction where the kind test is six StringName compares.
 	for m in w.landmarks:
+		if (m.pos as Vector2).distance_squared_to(p) >= d2:
+			continue
 		var k: StringName = m.kind
 		if k == &"falls" or k == &"bridge" or k == &"summit" or k == &"graves" or k == &"stolen_light" or k == &"iced_line":
 			continue
-		if (m.pos as Vector2).distance_squared_to(p) < d2:
-			return true
+		return true
 	return false
 
 
