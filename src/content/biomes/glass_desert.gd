@@ -66,8 +66,13 @@ static func make() -> BiomeDef:
 	# Nothing grows to shade it and the glass throws the moon back: bright, and
 	# with no cover anywhere on it.
 	d.night_sky = 1.3
+	# Its own things (docs/LANDSCAPES.md §3): what the glassing cast, burst and
+	# caught. Declared here so the economy can read that fulgurite is this
+	# landscape's and nobody else's; the scatter that lays them is phase B, so
+	# until then they are declared and not yet dealt.
 	d.props = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.DEBRIS, PropKind.WRECKAGE,
-		PropKind.SURVEY, PropKind.STANDING_STONE]
+		PropKind.SURVEY, PropKind.STANDING_STONE,
+		PropKind.FULGURITE, PropKind.GLASS_BLISTER, PropKind.FUSED_CAR]
 	d.ore = [[PropKind.STONE_ORE, 0.022]]
 	d.sites = {"tips": 1, "stone_circles": 1}
 	d.beached_wrecks = false

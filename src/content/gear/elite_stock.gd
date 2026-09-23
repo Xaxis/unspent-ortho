@@ -42,6 +42,13 @@ const MATERIALS := {
 		"what": "iron the bog grew: soft, stubborn, and it takes a patch"},
 	&"frost_varnish": {"land": &"snowfield", "raw": &"crottle", "at": &"fire", "grade": &"rare",
 		"what": "lichen boiled hard; it does not craze when the cold comes"},
+	# The glass desert's (docs/LANDSCAPES.md §3): fulgurite comes off a fulgurite
+	# and a fulgurite stands only in the strike fields' sand, on the one
+	# landscape that scatters it. Refined at the kiln, it is what the shock
+	# lattice is wound round — the prime module that had no `from` — and what
+	# a glass lance is bound round.
+	&"fulgurite_core": {"land": &"glass_desert", "raw": &"fulgurite", "at": &"kiln", "grade": &"prime",
+		"what": "a strike's own cast, fired again: green-black, and it rings when it is struck"},
 
 	# --- one machine's own ----------------------------------------------------
 	&"tide_iron": {"kind": &"harvester", "chance": 0.35, "grade": &"prime",

@@ -121,6 +121,7 @@ const LIST: Array[Dictionary] = [
 	{"id": &"clint_spar", "at": &"kiln", "minutes": 150.0, "needs": {&"limestone": 3, &"charcoal": 2}, "makes": {&"clint_spar": 1}},
 	{"id": &"bog_iron", "at": &"fire", "minutes": 120.0, "needs": {&"peat": 4, &"charcoal": 2}, "makes": {&"bog_iron": 1}},
 	{"id": &"frost_varnish", "at": &"fire", "minutes": 100.0, "needs": {&"crottle": 3, &"oil": 1}, "makes": {&"frost_varnish": 1}},
+	{"id": &"fulgurite_core", "at": &"kiln", "minutes": 150.0, "needs": {&"fulgurite": 3, &"charcoal": 2}, "makes": {&"fulgurite_core": 1}},
 	# Nothing is dead loot: what a ruined pour leaves is still plate.
 	{"id": &"spoil_scrap", "at": &"fire", "minutes": 30.0, "needs": {&"spoil": 2, &"charcoal": 1}, "makes": {&"scrap": 1}},
 
@@ -140,6 +141,9 @@ const LIST: Array[Dictionary] = [
 	{"id": &"arc_hafted", "at": &"bench", "minutes": 115.0, "needs": {&"scrap": 2, &"mono_edge": 1, &"wick": 2, &"haft": 1}, "makes": {&"arc_hafted": 1}},
 	{"id": &"hammer_hafted", "at": &"bench", "minutes": 130.0, "needs": {&"scrap": 3, &"haul_gyro": 1, &"wick": 2, &"haft": 1}, "makes": {&"hammer_hafted": 1}},
 	{"id": &"lance_hafted", "at": &"bench", "minutes": 125.0, "needs": {&"scrap": 2, &"dredge_screw": 1, &"wick": 2, &"haft": 2}, "makes": {&"lance_hafted": 1}},
+	# The glass desert's road to the same rung: a skater's blade bound round a
+	# fulgurite core, both got on the glass.
+	{"id": &"lance_glass", "at": &"bench", "minutes": 125.0, "needs": {&"scrap": 2, &"fulgurite_core": 1, &"skate_blade": 1, &"wick": 2, &"haft": 2}, "makes": {&"lance_glass": 1}},
 
 	# --- MENDED implements, prime: the rare rung again, on their own jig ---------
 	# The top rung is a bench with a FOUND jig kept in hand (CraftTiers.JIG), cut
@@ -174,7 +178,7 @@ const LIST: Array[Dictionary] = [
 	{"id": &"mod_damp", "at": &"bench", "minutes": 30.0, "needs": {&"frost_varnish": 1, &"rag": 2, &"pitch": 1}, "makes": {&"mod_damp": 1}},
 	{"id": &"mod_leech", "at": &"bench", "minutes": 140.0, "needs": {&"clerk_die": 1, &"copper": 2, &"wick": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_leech": 1}},
 	{"id": &"mod_phase", "at": &"bench", "minutes": 145.0, "needs": {&"keeper_lens": 1, &"copper": 2, &"resin": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_phase": 1}},
-	{"id": &"mod_lattice", "at": &"bench", "minutes": 150.0, "needs": {&"scrap": 3, &"copper": 2, &"wick": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_lattice": 1}},
+	{"id": &"mod_lattice", "at": &"bench", "minutes": 150.0, "needs": {&"scrap": 3, &"copper": 2, &"wick": 2, &"fulgurite_core": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_lattice": 1}},
 	# --- Crafts (docs/VISION.md §5) ---
 	# A raft is lashed at the shore out of what the tide brings and one drum off a
 	# wreck: the first craft, reachable on day one. The mended two need a bench,

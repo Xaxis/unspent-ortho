@@ -122,7 +122,7 @@ const DEFS := {
 	&"limestone": {"name": "limestone", "bulk": 5.0, "group": &"material"},
 	# Fused-sand tubes broken off a fulgurite on the glass desert: the raw of
 	# its own elite material (EliteStock: fulgurite_core), refined at the kiln.
-	&"fulgurite": {"name": "fulgurite", "bulk": 2.0, "group": &"material", "icon": [&"ore_crystal", &"sand", &"linen"]},
+	&"fulgurite": {"name": "fulgurite", "bulk": 2.0, "group": &"material", "icon": [&"fulgurite", &"sand", &"linen"]},
 	# Cut out of a keeper, and out of nothing else in the world (src/core/sentinel).
 	&"reaper_core": {"name": "reaper core", "bulk": 3.0, "group": &"material"},
 	&"rake_core": {"name": "rake core", "bulk": 3.0, "group": &"material"},
@@ -306,6 +306,10 @@ const DEFS := {
 		"icon": [&"boathook", &"slate", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [120, 90, 150, 180], "reach": 2.4, "width": 0.7, "dmg": 8, "knock": 3.5, "knock_ms": 160},
 	&"lance_die": {"name": "stamped lance", "bulk": 3.0, "group": &"tool", "tier": &"mended", "sockets": 3,
 		"icon": [&"boathook", &"ink", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [120, 90, 150, 180], "reach": 2.4, "width": 0.7, "dmg": 8, "knock": 3.5, "knock_ms": 160},
+	# The glass desert's lance: a skater's blade bound to a lance round a
+	# fulgurite core (docs/LANDSCAPES.md §3). Every number is the lance's.
+	&"lance_glass": {"name": "glass lance", "bulk": 2.5, "group": &"tool", "tier": &"mended", "sockets": 2,
+		"icon": [&"boathook", &"spruce", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [120, 90, 150, 180], "reach": 2.4, "width": 0.7, "dmg": 8, "knock": 3.5, "knock_ms": 160},
 	# The flawed twin of the relic below: the same blade with no name set into it.
 	# A relic pour that goes wrong comes out as this, and it is also worth making
 	# on purpose (CraftTiers: "flawed but usable" is a real rung, not a punishment).
@@ -346,6 +350,8 @@ const DEFS := {
 	&"clint_spar": {"name": "clint spar", "bulk": 2.0, "group": &"material", "icon": [&"stone", &"rime", &"rime"]},
 	&"bog_iron": {"name": "bog iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"rust"]},
 	&"frost_varnish": {"name": "frost varnish", "bulk": 1.0, "group": &"material", "icon": [&"flask", &"linen", &"rime"]},
+	# The glass desert's: a strike's own cast, fired again until it rings.
+	&"fulgurite_core": {"name": "fulgurite core", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"spruce", &"rime"]},
 	&"tide_iron": {"name": "tide iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"ash"]},
 	&"mono_edge": {"name": "filament edge", "bulk": 0.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"found", &"lens"]},
 	&"keeper_lens": {"name": "keeper lens", "bulk": 1.0, "group": &"found", "stuff": &"found", "icon": [&"lens", &"plate", &"lens"]},

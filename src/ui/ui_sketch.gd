@@ -185,6 +185,18 @@ const SHAPES := {
 		["poly", "b4", [17.5, 14.0, 21.5, 11.5, 26.0, 14.0, 22.0, 16.5]],
 		["line", 12.0, 12.5, 11.5, 20.5], ["line", 22.0, 16.5, 21.5, 22.5],
 	],
+	# Fulgurite: fused-sand tubes branching up out of one root, like dead coral,
+	# each tube tapering to a broken tip.
+	&"fulgurite": [
+		["poly", "a3", [6.0, 29.5, 8.0, 24.0, 15.0, 22.0, 23.0, 23.0, 27.0, 27.0, 25.0, 30.5, 9.0, 30.5]],
+		["bar", "a4", 12.5, 25.0, 10.0, 12.0, 3.4, 2.2],
+		["bar", "a5", 10.0, 12.0, 6.5, 4.0, 2.2, 1.2],
+		["bar", "a4", 11.5, 17.0, 17.5, 9.5, 2.2, 1.2],
+		["bar", "a4", 19.0, 25.0, 22.0, 13.0, 3.2, 2.0],
+		["bar", "a5", 22.0, 13.0, 26.5, 5.0, 2.0, 1.0],
+		["bar", "a4", 21.0, 18.0, 27.5, 15.5, 1.8, 1.0],
+		["line", 12.0, 24.0, 10.5, 14.0], ["line", 19.5, 24.0, 22.0, 15.0],
+	],
 	# A whelk: one spiral shell, its whorls stepping down to a point, the mouth
 	# dark at the wide end.
 	&"whelk": [
