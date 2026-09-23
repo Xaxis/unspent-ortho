@@ -115,6 +115,9 @@ static func make() -> BiomeDef:
 		&"gulls": {"weight": 1.0, "hours": Vector2(5, 21), "grounds": ["shingle", "gravel"]},
 	}
 	d.landmarks = [&"sump_pump", &"poured_pillar", &"leaning_mast", &"clerks_office"]
+	# Its keeper: the barge on stilts that keeps the locks (src/core/sentinel/
+	# designs/lockkeeper.gd). The one door by which a landscape claims one.
+	d.sentinel = &"lockkeeper"
 	d.sound_bed = &"bed_shore"
 	d.surface = _surface
 	d.scatter = _scatter

@@ -414,6 +414,22 @@ const DEFS := {
 		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
 		"where": {"hours": [0, 0]},
 	},
+	# The Drowned City's lockkeeper (src/core/sentinel/designs/lockkeeper.gd): a
+	# barge hull on four stilts. `crosses` swim because it WALKS the deep: the
+	# canals are the streets here and a keeper the waterline stopped would leave
+	# the one place worth keeping to anyone with a raft (src/core/swim.gd). The
+	# radius is the hull's beam, not its length: a body steps between its
+	# stilts at either end. `height` is the wheelhouse on its deck.
+	&"sentinel.drowned": {
+		"model": &"sentinel_lockkeeper", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 4,
+		"part": &"back", "sentinel": &"lockkeeper", "crosses": &"swim",
+		"pace": 3.2, "dash": 7.0, "quick": 260, "radius": 1.35, "height": 6.4, "life": 140,
+		"sees": 15, "hears": 12, "racket": 26, "reach": 3, "ready": 3, "forget": 26, "tether": 30, "safe": 14,
+		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
+		"bite": {"swing": [840, 170, 800, 900], "reach": 2.0, "width": 2.0, "dmg": 3, "knock": 8.0, "knock_ms": 300},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
+	},
 
 	# --- The Glass Desert's own hunter (docs/LANDSCAPES.md §3) -----------------
 	# A long low body on four blade-skates. It charges, and its re-aim is the
