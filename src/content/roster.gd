@@ -301,6 +301,20 @@ const DEFS := {
 		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
 		"where": {"hours": [0, 0]},
 	},
+	# The metropolis's gantry crane (src/core/sentinel/designs/unbuilder.gd). The
+	# radius is its carriage, not its legs: a body walks between the legs of a
+	# thing that straddles a street, and what stops it is the sill it stands on.
+	# `height` is the bridge, which is what a tell over it has to clear.
+	&"sentinel.metropolis": {
+		"model": &"sentinel_unbuilder", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
+		"part": &"back", "sentinel": &"unbuilder",
+		"pace": 3.8, "dash": 8.0, "quick": 280, "radius": 1.4, "height": 9.6, "life": 150,
+		"sees": 16, "hears": 10, "racket": 28, "reach": 3, "ready": 3, "forget": 26, "tether": 26, "safe": 14,
+		"nerve": 100, "invuln": 540, "through": true, "disposition": &"wary", "overrun": 0.7,
+		"bite": {"swing": [880, 180, 820, 900], "reach": 2.0, "width": 1.8, "dmg": 3, "knock": 9.0, "knock_ms": 320},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
+	},
 }
 
 

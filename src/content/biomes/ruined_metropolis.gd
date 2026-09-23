@@ -116,6 +116,9 @@ static func make() -> BiomeDef:
 		&"dog.feral": {"weight": 0.7},
 	}
 	d.landmarks = [&"clerks_office", &"poured_pillar", &"blinking_stack", &"cast_stones"]
+	# Its keeper: the gantry crane taking the city apart (src/core/sentinel/
+	# designs/unbuilder.gd). The one door by which a landscape claims one.
+	d.sentinel = &"unbuilder"
 	d.sound_bed = &"bed_wreck"
 	d.surface = _surface
 	d.scatter = _scatter

@@ -29,6 +29,12 @@ const KIND_NAMES: Array[StringName] = [&"force", &"founder", &"starve", &"spoof"
 var kind := FORCE
 ## Grounds that will not carry it (FOUNDER), as Ground ids.
 var grounds: Array[int] = []
+## Prop kinds the player has to be standing beside for the signature to be
+## READ (SPOOF), as PropKind ids; empty is anywhere inside its guard. A keeper
+## that takes its orders off the district's own signal lamps files a signet
+## held up under one of them and nowhere else, which is a tactic about the
+## LAND (find a lamp inside its guard) and not a longer hold.
+var beside: Array[int] = []
 ## How long the condition must hold (sim ms). 0 for FORCE.
 var hold_ms := 0.0
 ## One line a player could be told, and one for whoever reads the design.
@@ -66,10 +72,23 @@ func progress(look: SentinelLook) -> float:
 				return clampf(1.0 - float(look.feeds) / float(look.feeds_at_first), 0.0, 0.99)
 			return clampf(look.dark_ms / maxf(1.0, hold_ms), 0.0, 1.0)
 		SPOOF:
-			if not (look.spoofed and look.inside):
+			if not (look.spoofed and look.inside and beside_met(look)):
 				return 0.0
 			return clampf(look.spoof_ms / maxf(1.0, hold_ms), 0.0, 1.0)
 	return 0.0
+
+
+## Whether the player stands where this way reads a signature: beside one of
+## `beside`, or anywhere when the way names nothing. The system asks this to
+## decide whether the spoof clock RUNS, so a player who steps out from under the
+## lamp loses the count rather than banking it.
+func beside_met(look: SentinelLook) -> bool:
+	if beside.is_empty():
+		return true
+	for k: int in look.beside:
+		if beside.has(k):
+			return true
+	return false
 
 
 func met(look: SentinelLook) -> bool:

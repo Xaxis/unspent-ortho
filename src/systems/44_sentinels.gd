@@ -254,7 +254,19 @@ func look_at(s: SentinelState, def: SentinelDef) -> SentinelLook:
 	# number, so the read and the behaviour can never disagree).
 	var guard := float(Roster.row(def.kind).get("sees", 12)) * FightSim.WARY_INSIDE
 	look.inside = at.distance_to(sim.hero.pos) <= guard
-	if look.spoofed and look.inside:
+	# What stands beside the player, for a way that only reads a signature
+	# under something (SentinelWay.beside). Asked only while it could matter:
+	# the tile index is cheap, and the answer is meaningless otherwise.
+	var spoof := def.way_of(SentinelWay.SPOOF)
+	if look.spoofed and look.inside and spoof != null and not spoof.beside.is_empty():
+		for q: WorldProp in game.query.props_near(sim.hero.pos, SentinelLook.BESIDE):
+			if game.world.depleted.has(q.id) or q.pos.distance_to(sim.hero.pos) > SentinelLook.BESIDE:
+				continue
+			if not look.beside.has(q.kind):
+				look.beside.append(q.kind)
+	# The clock runs only while the way could be met, so stepping out from
+	# under the lamp loses the count instead of banking it.
+	if look.spoofed and look.inside and (spoof == null or spoof.beside_met(look)):
 		if s.spoof_since == INF:
 			s.spoof_since = sim.now
 		look.spoof_ms = sim.now - s.spoof_since
