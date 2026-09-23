@@ -114,6 +114,9 @@ static func make() -> BiomeDef:
 		&"watcher": {"weight": 0.9},
 		&"clerk": {"weight": 0.6, "grounds": ["floor", "road", "gravel", "rock"]},
 		&"dog.feral": {"weight": 0.7},
+		# The city's own worker, found nowhere else: the machine taking it apart
+		# (Roster, `demolisher`). Its own row keeps it to the floor and the rubble.
+		&"demolisher": {"weight": 1.2},
 	}
 	d.landmarks = [&"clerks_office", &"poured_pillar", &"blinking_stack", &"cast_stones"]
 	# Its keeper: the gantry crane taking the city apart (src/core/sentinel/

@@ -103,6 +103,15 @@ const PIECES := {
 		"flawed": &"blade_die",
 		"unique": "the only thing you can hold that wears their name"},
 
+	# --- WORN rungs: a family of gear, graded the same way -----------------
+	# The grapple brace (`boots_magnet`, the hands piece that grants `grapple`)
+	# is a family like a knife's: every rung grants the same ability and the
+	# same resists, and what a rung buys is sockets. The Ruined Metropolis is a
+	# vertical city, so it is where the climbing brace is raised: its top rung
+	# is made of the ram out of the city's own demolisher (docs/LANDSCAPES.md §4).
+	&"boots_magnet": {"grade": &"uncommon", "family": &"brace"},
+	&"brace_ram": {"grade": &"prime", "family": &"brace", "from": &"boom_ram"},
+
 	# --- modules: the modifiers themselves (ModifierTable says what each does) --
 	&"mod_wadding": {"grade": &"common", "family": &""},
 	&"mod_filter": {"grade": &"common", "family": &""},

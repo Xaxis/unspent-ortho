@@ -157,6 +157,9 @@ const LIST: Array[Dictionary] = [
 	# The relic: a filer's die set into a blade, so the thing in your hand wears
 	# their name. A pour that fails leaves the flawed twin, which still works.
 	{"id": &"blade_seal", "at": &"bench", "minutes": 240.0, "needs": {&"blade_die": 1, &"clerk_die": 1, &"keeper_lens": 1, &"copper": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"blade_seal": 1}},
+	# The grapple brace's top rung, on the jig like every prime: the brace with
+	# a demolisher's ram bolted to it (GearTree family `brace`).
+	{"id": &"brace_ram", "at": &"bench", "minutes": 160.0, "needs": {&"boots_magnet": 1, &"boom_ram": 1, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"brace_ram": 1}},
 
 	# --- the modifiers (ModifierTable says what each one decides) ----------------
 	# Half an hour at a bench for everything below the jig, because the work is

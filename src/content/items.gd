@@ -201,6 +201,12 @@ const DEFS := {
 	&"boots_magnet": {"name": "magnet boots", "bulk": 3.0, "group": &"kit", "tier": &"mended",
 		"slot": &"hands", "sockets": 1,
 		"resist": {&"em": 0.4, &"resonance": 0.25, &"collapse": 0.3}, "ability": &"grapple", "wears": {"salvage": [&"brace"]}},
+	# The grapple brace's top rung (GearTree family `brace`): the same brace, the
+	# same grapple and the same resists, with a demolisher's ram bolted to it.
+	# What the rung buys is SOCKETS, as every rung does, and it is heavier.
+	&"brace_ram": {"name": "ram brace", "bulk": 4.0, "group": &"kit", "tier": &"mended",
+		"slot": &"hands", "sockets": 3, "icon": [&"boot", &"plate", &"lens"],
+		"resist": {&"em": 0.4, &"resonance": 0.25, &"collapse": 0.3}, "ability": &"grapple", "wears": {"salvage": [&"brace"]}},
 	&"glide_wing": {"name": "glide wing", "bulk": 4.0, "group": &"kit", "tier": &"mended",
 		"slot": &"back", "sockets": 2, "resist": {}, "ability": &"glide", "wears": {"wing": true}},
 	&"scanner_lens": {"name": "scanner lens", "bulk": 1.0, "group": &"kit", "tier": &"mended",
@@ -352,6 +358,7 @@ const DEFS := {
 	&"vane_true": {"name": "trued vane", "bulk": 1.5, "group": &"found", "stuff": &"found", "icon": [&"broad", &"plate", &"lens"]},
 	&"dredge_screw": {"name": "dredge screw", "bulk": 2.5, "group": &"found", "stuff": &"found", "icon": [&"hammer", &"plate", &"lens"]},
 	&"fab_jig": {"name": "fabricator jig", "bulk": 3.0, "group": &"found", "stuff": &"found", "icon": [&"brace", &"plate", &"lens"]},
+	&"boom_ram": {"name": "boom ram", "bulk": 3.0, "group": &"found", "stuff": &"found", "icon": [&"hammer", &"plate", &"lens"]},
 	&"spoil": {"name": "ruined stock", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"ash", &"ash"]},
 	# raids: a machine's own account of a place, taken off the body that was
 	# carrying it home. It is proof, and it is the only thing in the game worth

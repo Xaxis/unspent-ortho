@@ -64,6 +64,10 @@ const MATERIALS := {
 	# AT rather than OF (CraftTiers.JIG). A hunter carries one to mend its legs.
 	&"fab_jig": {"kind": &"longlegs", "chance": 0.25, "grade": &"prime",
 		"what": "a jig a hunter mends its own legs on: clamps, a rule, a heat gun"},
+	# The Ruined Metropolis's own worker (docs/LANDSCAPES.md §4): the hydraulic
+	# ram out of its boom, which is what drives a jaw through poured concrete.
+	&"boom_ram": {"kind": &"demolisher", "chance": 0.3, "grade": &"prime",
+		"what": "the ram out of a demolisher's boom, still weeping oil at the seal"},
 }
 
 ## What else a kill gives up, beyond the plate the roster already counts

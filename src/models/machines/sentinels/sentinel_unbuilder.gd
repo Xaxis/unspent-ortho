@@ -378,8 +378,8 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			# its cable: the doorway that named it is gone.
 			d[&"leg_fr"] = r(Vector3(-1.25, 0, 0.1))
 			d[&"leg_br"] = r(Vector3(-1.2, 0, -0.08))
-			d[&"leg_fl"] = r(Vector3(0.42, 0, 0.06))
-			d[&"leg_bl"] = r(Vector3(0.38, 0, -0.05))
+			d[&"leg_fl"] = r(Vector3(-0.62, 0, 0.06))
+			d[&"leg_bl"] = r(Vector3(-0.56, 0, -0.05))
 			d[&"bridge"] = pr(Vector3(0.2, -6.6, 0.9), Vector3(0.28, 0, 0.1))
 			d[&"cab"] = pr(Vector3(0.4, -0.5, 0.3), Vector3(0.3, 0.2, 0.5))
 			d[&"hang"] = r(Vector3(1.45, 0, 0))
