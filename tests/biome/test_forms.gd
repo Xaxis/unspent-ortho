@@ -112,12 +112,16 @@ func test_every_form_a_landscape_may_name_is_actually_built() -> void:
 	for form: StringName in BiomeForms.FORMS:
 		var k := Kit.new()
 		k.hand(Ink.HAND)
-		if BiomeForms.RAISED.has(form):
-			Towers.build(k, form, Country.COAST)
-		else:
+		if BiomeForms.PLAIN.has(form):
 			# The plain ones are reached the way world gen reaches them: by index
 			# into the stock that names them.
 			Houses.build(k, PropKind.HOUSE, BiomeForms.PLAIN.find(form), Country.COAST)
+		else:
+			# Everything built upward or inside a ruin goes through the one door
+			# `Houses.build` sends it to. This used to send only RAISED there and
+			# hand every other form to the plain stock at index -1, which built
+			# the last croft twice and called it a repeat.
+			Towers.build(k, form, Country.COAST)
 		var n := k.made.vertex_count() + k.found.vertex_count()
 		gt(n, 300, "%s is built" % form)
 		check(not seen.has(n), "%s is its own model and not %s" % [form, seen.get(n, &"")])
@@ -146,6 +150,18 @@ func test_the_table_and_the_geometry_agree_about_which_forms_are_lit() -> void:
 			var says: bool = bool(BiomeForms.FORMS[BiomeForms.RAISED[v]][BiomeForms.LIT])
 			eq(drew, says, "%s: the table says lit=%s and the model drew a tube=%s"
 				% [BiomeForms.RAISED[v], says, drew])
+	# AND EVERY OTHER STOCK A LANDSCAPE DECLARES, asked of the registry rather
+	# than named, so the next landscape to build its own forms is held to the
+	# same agreement without a line being added here.
+	for d: BiomeDef in BiomeRegistry.land():
+		var stock := BiomeForms.of(d.index).stock
+		if stock == BiomeForms.PLAIN or stock == BiomeForms.RAISED:
+			continue
+		for v in stock.size():
+			var drew := not PropModels.neon_point(PropKind.HOUSE, v, d.index).is_empty()
+			var says: bool = bool(BiomeForms.FORMS[stock[v]][BiomeForms.LIT])
+			eq(drew, says, "%s in the %s: the table says lit=%s and the model drew a tube=%s"
+				% [stock[v], d.id, says, drew])
 
 
 func test_no_stock_is_longer_than_the_model_cache_can_tell_apart() -> void:

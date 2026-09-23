@@ -352,6 +352,323 @@ static func demolition_gantry(k: Kit, _v: int, _c: int) -> void:
 	_xrect(k.found, -0.34, 1.2, 1.32, -2.78, -2.62, Works.STRIP)
 
 
+# --- what people build inside what fell (BiomeForms.FORMS) -------------------------
+
+## The one door for the city's four built forms, reached from `Towers.build`
+## by form id, never by landscape. A form this file does not know draws
+## nothing, and `tests/biome/test_forms.gd` fails on it.
+static func form(k: Kit, which: StringName, c: int) -> void:
+	match which:
+		&"infill": infill(k, c)
+		&"deck_house": deck_house(k, c)
+		&"shaft_loft": shaft_loft(k, c)
+		&"stall_row": stall_row(k, c)
+
+
+## A rectangle on the plane z = `z` from (y0, x0) to (y1, x1): it faces +Z when
+## x1 > x0 and -Z when x1 < x0, the same rule `_xrect` keeps for X.
+static func _zrect(pen: MeshKit, z: float, y0: float, y1: float, x0: float, x1: float, col: Color) -> void:
+	pen.quad(Vector3(x0, y0, z), Vector3(x1, y0, z), Vector3(x1, y1, z), Vector3(x0, y1, z), col)
+
+
+## A tube of stolen neon on a wall from a to b standing out along `out`: the
+## dark mount and the tube, NEON-marked so `PropModels.neon_point` finds it and
+## the light it throws stands where the tube is (Houses.neon_tube's rule).
+static func _tube(k: Kit, a: Vector3, b: Vector3, out: Vector3, col: Color) -> void:
+	var o := out.normalized()
+	Remains._facing_quad(k.made, a + o * 0.01 + Vector3(0, -0.04, 0), b + o * 0.01 + Vector3(0, -0.04, 0), Vector3(0, 0.08, 0), o, P.INK[1])
+	Remains._facing_quad(k.made, a + o * 0.02 + Vector3(0, -0.024, 0), b + o * 0.02 + Vector3(0, -0.024, 0), Vector3(0, 0.048, 0), o, GroundColors.neon(col))
+
+
+## A salvaged door stood on its edge as a wall, from a to b, `h` tall, facing
+## `out`, leaning its own way: a panel line and a handle, so it reads as a door
+## somebody carried here and not as a board.
+static func _door(k: Kit, a: Vector3, b: Vector3, h: float, out: Vector3, col: Color, s: int, i: int) -> void:
+	var o := out.normalized()
+	var lean := o * Kit.j(s, i + 60, 0.05)
+	var top := Vector3(0, h + Kit.j(s, i + 70, 0.08), 0) + lean
+	Remains._facing_quad(k.made, a, b, top, o, col)
+	var inset := (b - a) * 0.14
+	Remains._facing_quad(k.made, a + inset + o * 0.012 + Vector3(0, h * 0.24, 0), b - inset + o * 0.012 + Vector3(0, h * 0.24, 0), Vector3(0, h * 0.5, 0) + lean * 0.5, o, GroundColors.down(col, 0.22))
+	var knob := a.lerp(b, 0.82) + o * 0.02 + Vector3(0, h * 0.48, 0) + lean * 0.48
+	k.made.strut(knob, knob + Vector3(0, 0.07, 0), 0.016, 4, P.COPPER[3])
+
+
+## "infill": a dead tower's ground floor walled in with salvaged doors inside
+## its frame. Four cast columns and the first-floor slab they still hold up,
+## the column stubs and reinforcement going on up from it, and under the slab
+## a bay closed with doors of every colour, one gap hung with a curtain, plate
+## across the back and a tube along the lintel. Lit: it faces the square.
+static func infill(k: Kit, c: int) -> void:
+	var dress := BiomeDressing.of(c)
+	var s := 30500 + c * 7
+	var con := concrete(c)
+	var col_h := 3.3
+	# The frame: columns, the slab, the stubs, the bars.
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			k.slab(sx * 1.75, 0.0, sz * 1.75, 0.42, col_h + Kit.j(s, int(sx * 2.0 + sz), 0.06), 0.42, s + int(sx * 3.0 + sz), GroundColors.down(con, 0.14), con, 0.03, 0.0, Kit.j(s, int(sx + sz * 2.0) + 9, 0.015))
+			k.slab(sx * 1.75, col_h + 0.3, sz * 1.75, 0.4, 0.25 + Rng.hash01(s, int(sx * 2.0 + sz), 11) * 0.3, 0.4, s + 20 + int(sx * 3.0 + sz), GroundColors.down(con, 0.1), dress.pale[1], 0.05, 0.12)
+	k.slab(0.0, col_h, 0.0, 4.3, 0.3, 4.3, s + 5, GroundColors.down(con, 0.06), con, 0.06)
+	var roots: Array = []
+	var ends: Array = []
+	for i in 4:
+		var sx := 1.0 if i % 2 == 0 else -1.0
+		var sz := 1.0 if i < 2 else -1.0
+		roots.append(Vector3(sx * 1.75, col_h + 0.8, sz * 1.75))
+		ends.append(Vector3(sx * (1.75 + Rng.hash01(s, i, 31) * 0.3), col_h + 0.85 + Rng.hash01(s, i, 32) * 0.15, sz * 1.75 + Kit.j(s, i + 40, 0.3)))
+	Rocks._rebar(k, roots, ends)
+	# The bay walled in: the doors along the front, the gap and its curtain.
+	var doors: Array[Color] = [GroundColors.made(P.EARTH[2], GroundColors.TIMBER), GroundColors.made(dress.timber[0], GroundColors.TIMBER),
+		GroundColors.made(P.SLATE[2].lerp(P.EARTH[1], 0.4), GroundColors.TIMBER), GroundColors.made(P.LINEN[2].lerp(P.EARTH[2], 0.5), GroundColors.TIMBER),
+		GroundColors.made(dress.timber[1], GroundColors.TIMBER)]
+	_xrect(k.made, 1.62, 0.0, col_h, -1.56, 1.56, P.INK[0])
+	var z := 1.54
+	var n := 0
+	while z > -1.5:
+		var w := 0.66 if n != 2 else 0.52
+		if n == 2:
+			# The way in: a curtain of what cloth there was, drawn half across.
+			var cloth := GroundColors.made(dress.pale[0].lerp(P.EARTH[2], 0.3), GroundColors.CLOTH)
+			Remains._facing_quad(k.made, Vector3(1.66, 0.05, z - 0.06), Vector3(1.66, 0.05, z - w + 0.14), Vector3(0.02, 1.85, 0), Vector3(1, 0, 0), cloth)
+			k.rod(Vector3(1.7, 1.95, z + 0.02), Vector3(1.7, 1.95, z - w - 0.02), 0.014, 4, P.PLATE[2])
+		else:
+			_door(k, Vector3(1.7, 0.0, z), Vector3(1.7, 0.0, z - w), 2.0, Vector3(1, 0, 0), doors[n % doors.size()], s, n)
+		z -= w + 0.04
+		n += 1
+	# The boards over the doors up to the slab, and the tube along the lintel.
+	_xrect(k.made, 1.68, 2.1, col_h - 0.02, -1.56, 1.56, GroundColors.made(GroundColors.down(dress.timber[0], 0.2), GroundColors.TIMBER))
+	for i in 3:
+		_xrect(k.made, 1.69, 2.14 + i * 0.36, 2.44 + i * 0.36, -1.5, 1.5, GroundColors.made(doors[(i + 1) % doors.size()], GroundColors.TIMBER) if i != 1 else P.INK[1])
+	_tube(k, Vector3(1.7, 2.76, 1.2), Vector3(1.7, 2.76, -1.2), Vector3(1, 0, 0), Towers.SIGN_COLOURS[1])
+	# The flanks: doors again on one side, plate on the other, and the back is
+	# corrugated sheet nailed across the columns.
+	var xi := 1.5
+	var m := 0
+	while xi > -1.5:
+		_zrect(k.made, 1.72, 0.0, 2.0 + Kit.j(s, m + 80, 0.1), xi - 0.62, xi, doors[(m + 3) % doors.size()])
+		xi -= 0.66
+		m += 1
+	_zrect(k.made, 1.72, 2.0, col_h, -1.5, 1.5, GroundColors.made(GroundColors.down(dress.timber[1], 0.25), GroundColors.TIMBER))
+	Remains.patch(k, Vector3(1.5, 0.0, -1.74), Vector3(-1.5, 0.0, -1.74), Vector3(-1.5, 2.2, -1.74), Vector3(1.5, 2.2, -1.74), 2)
+	Remains.patch(k, Vector3(1.4, 2.2, -1.75), Vector3(-1.4, 2.2, -1.75), Vector3(-1.4, col_h - 0.05, -1.75), Vector3(1.4, col_h - 0.05, -1.75), 3)
+	Remains.corrugated(k.found, Vector3(-1.72, 0.0, -1.5), Vector3(0.0, 0.0, 3.0), Vector3(0.0, col_h - 0.1, 0.0), 14, P.PLATE[2])
+	# A stovepipe out through the slab, a drum, and what is kept against a column.
+	k.limb(Vector3(-1.0, 2.6, 0.8), Vector3(-0.98, col_h + 0.9, 0.82), 0.05, 0.05, 6, P.RUST[1])
+	k.made.prism(-0.98, col_h + 0.9, 0.82, 0.055, col_h + 0.92, 0.055, 6, P.INK[0], GroundColors.glow(P.EMBER[3], 0.6))
+	k.made.prism(2.05, 0.0, 1.9, 0.2, 0.56, 0.18, 9, P.RUST[2], P.INK[1])
+	Houses.salvage(k, Vector3(-1.75, 0.0, 1.96), Vector3(1.75, 0.0, 1.96), Vector3(1.75, 2.0, 1.96), Vector3(-1.75, 2.0, 1.96), 0.25, s + 9)
+	# What the years did to the concrete, and what the street leaves at the foot.
+	Houses.weathered(k, Vector3(1.96, 0.0, 1.96), Vector3(1.96, 0.0, 1.54), Vector3(1.96, col_h, 1.54), Vector3(1.96, col_h, 1.96), s + 90, GroundColors.down(con, 0.35), dress.growth)
+	for i in 3:
+		var p := Vector3(2.0 + Kit.j(s, i + 40, 0.12), -0.06, -1.6 + i * 1.4 + Kit.j(s, i + 44, 0.2))
+		k.clump(p.x, p.y, p.z, 0.2 + Kit.j(s, i, 0.05), 0.11, s + 100 + i, Towers.solid(dress.drift[i % 2]), 6)
+	if dress.cold() and not dress.snow.is_empty():
+		k.clump(0.0, col_h + 0.3, 0.3, 1.6, 0.14, s + 110, dress.snow[0], 7)
+
+
+## "deck_house": a shack built on a piece of fallen deck, at the high end of
+## it where the slab stands on its own rubble, its front wall on posts down to
+## the slope, a plate roof, a door looking down the deck at the street.
+static func deck_house(k: Kit, c: int) -> void:
+	var dress := BiomeDressing.of(c)
+	var s := 30600 + c * 11
+	var con := concrete(c)
+	var deck := GroundColors.down(con, 0.12)
+	var rise := 1.3
+	var tilt := -atan2(rise - 0.2, 4.0)
+	var frame := Transform3D(Basis(Vector3.BACK, tilt), Vector3(-2.0, rise, 0.0))
+	k.made.push(frame)
+	k.found.push(frame)
+	var length := sqrt(16.0 + (rise - 0.2) * (rise - 0.2))
+	k.slab(length * 0.5, -0.36, 0.0, length, 0.36, 2.4, s, deck, con, 0.04)
+	for sz: float in [-1.0, 1.0]:
+		k.slab(length * 0.62, 0.0, sz * 1.08, length * 0.7, 0.2, 0.22, s + 3 + int(sz), GroundColors.down(con, 0.06), GroundColors.up(con, 0.15), 0.03)
+	# A rail of poles along the edge the door looks out over, roped.
+	for i in 4:
+		var x := 1.9 + i * 0.5
+		k.limb(Vector3(x, 0.0, -1.1), Vector3(x + 0.02, 0.9, -1.12), 0.035, 0.028, 4, GroundColors.made(dress.timber[0], GroundColors.TIMBER))
+	k.sag(Vector3(1.9, 0.85, -1.1), Vector3(3.4, 0.85, -1.1), 0.05, 4, 0.012, GroundColors.made(P.EARTH[3], GroundColors.ROPE))
+	Remains.streak(k, Vector3(2.2, -0.02, 1.202), 0.1, 0.24, Vector3.BACK, P.RUST[2])
+	k.made.pop()
+	k.found.pop()
+	# The shack, level: its back wall on the deck, its front on posts.
+	var plank := GroundColors.made(dress.timber[0], GroundColors.TIMBER)
+	var plank2 := GroundColors.made(dress.timber[1], GroundColors.TIMBER)
+	var floor_y := rise + 0.02
+	k.slab(-1.05, floor_y - 0.1, 0.0, 1.7, 0.1, 2.0, s + 10, plank2, plank, 0.02)
+	for sz: float in [-1.0, 1.0]:
+		k.limb(Vector3(-0.3, floor_y - 0.6, sz * 0.9), Vector3(-0.3, floor_y - 0.08, sz * 0.9), 0.05, 0.04, 4, plank2)
+	# `Houses.walls` draws as it goes and answers corners in its own frame, so
+	# the shack is built under one transform: the walls and everything hung on
+	# them land on the deck together.
+	var stand := Transform3D(Basis.IDENTITY, Vector3(-1.05, floor_y, 0.0))
+	k.made.push(stand)
+	k.found.push(stand)
+	var t := Houses.walls(k, 1.5, 1.9, 1.75, s + 11, plank, plank2, Vector3(0.02, 0.0, 0.02))
+	var faces := Houses.faces(t)
+	var fb: Array = faces[0]
+	Houses.door(k, fb[0], fb[1], fb[2], fb[3], 0.4, 0.14, 0.8)
+	Houses.boarded(k, faces[1][0], faces[1][1], faces[1][2], faces[1][3], 0.5, 0.55, 0.16, 0.14, s + 12)
+	for fi in 4:
+		var wf: Array = faces[fi]
+		Houses.weathered(k, wf[0], wf[1], wf[2], wf[3], s + 20 + fi * 7, GroundColors.down(plank, 0.3), dress.growth)
+	k.made.pop()
+	k.found.pop()
+	# The roof: one sheet of machine plate, a fall to the back, weighted.
+	Remains.patch(k, Vector3(-0.1, floor_y + 1.95, 1.1), Vector3(-0.1, floor_y + 1.95, -1.1), Vector3(-2.05, floor_y + 1.7, -1.1), Vector3(-2.05, floor_y + 1.7, 1.1), 2)
+	for i in 3:
+		k.stone(-0.6 - i * 0.5, floor_y + 1.93 - i * 0.07, -0.5 + (i % 2) * 0.9, 0.11, 0.09, s + 30 + i, GroundColors.down(dress.concrete, 0.12), 5)
+	k.limb(Vector3(-1.6, floor_y + 1.6, 0.6), Vector3(-1.58, floor_y + 2.25, 0.62), 0.05, 0.05, 6, P.RUST[1])
+	k.made.prism(-1.58, floor_y + 2.25, 0.62, 0.055, floor_y + 2.27, 0.055, 6, P.INK[0], GroundColors.glow(P.EMBER[3], 0.6))
+	# What the high end stands on: the rubble of whatever the deck came down
+	# on, and the bars out of the deck's own broken end.
+	for i in 7:
+		var x := -2.3 + Rng.hash01(s, i, 45) * 1.6
+		var z := Kit.j(s, i + 20, 1.6)
+		k.stone(x, -0.04, z, 0.16 + Rng.hash01(s, i, 46) * 0.18, 0.2 + Rng.hash01(s, i, 47) * 0.4, s + 50 + i,
+			GroundColors.down(dress.concrete, 0.1) if i % 2 == 0 else P.STONE[3], 5)
+	Rocks._rebar(k, [Vector3(-2.05, rise - 0.2, -0.6), Vector3(-2.05, rise - 0.15, 0.3), Vector3(-2.05, rise - 0.25, 0.9)],
+		[Vector3(-2.5, rise - 0.6, -0.7), Vector3(-2.45, rise - 0.55, 0.25), Vector3(-2.4, rise - 0.7, 1.0)])
+	if not dress.cold():
+		k.clump(1.2, -0.05, 0.9, 0.2, 0.12, s + 60, dress.growth, 6)
+	elif not dress.snow.is_empty():
+		k.clump(-1.0, floor_y + 1.9, 0.0, 0.8, 0.12, s + 61, dress.snow[0], 7)
+
+
+## "shaft_loft": rooms hung inside a lift core with its tower gone, one to a
+## landing, reached by a rope ladder up the face; a plank floor pokes out of
+## each doorway as a landing, a tarp over the head, a tube at the middle door.
+static func shaft_loft(k: Kit, c: int) -> void:
+	var dress := BiomeDressing.of(c)
+	var s := 30700 + c * 13
+	var con := concrete(c)
+	var wall := GroundColors.down(con, 0.2)
+	var high := 6.3
+	var plank := GroundColors.made(dress.timber[0], GroundColors.TIMBER)
+	var plank2 := GroundColors.made(dress.timber[1], GroundColors.TIMBER)
+	# The core: three walls whole, the front in two piers with the doorways
+	# between them and the strips of wall between the doorways.
+	k.slab(0.0, 0.0, -1.0, 2.0, high - 0.3 + Kit.j(s, 1, 0.2), 0.22, s + 1, wall, GroundColors.up(con, 0.1), 0.05, 0.0, Kit.j(s, 2, 0.02))
+	k.slab(0.0, 0.0, 1.0, 2.0, high + Kit.j(s, 3, 0.2), 0.22, s + 2, wall, GroundColors.up(con, 0.1), 0.05, 0.0, Kit.j(s, 4, 0.02))
+	k.slab(-1.0, 0.0, 0.0, 0.22, high - 0.15 + Kit.j(s, 5, 0.2), 2.0, s + 3, GroundColors.down(wall, 0.12), GroundColors.up(con, 0.1), 0.05, 0.0, Kit.j(s, 6, 0.02))
+	for sz: float in [-1.0, 1.0]:
+		k.slab(1.0, 0.0, sz * 0.7, 0.22, high - 0.5 + Kit.j(s, 7 + int(sz), 0.2), 0.6, s + 4 + int(sz), con, GroundColors.up(con, 0.1), 0.04)
+	var landings: Array[float] = [0.0, 2.3, 4.5]
+	for i in landings.size():
+		var y0: float = landings[i]
+		k.slab(1.0, y0 + 1.9, 0.0, 0.24, 0.4, 0.9, s + 8 + i, con, GroundColors.up(con, 0.14), 0.03)
+		_xrect(k.made, 0.86, y0, y0 + 1.9, -0.4, 0.4, P.INK[0])
+		# The landing: a plank floor out of the doorway, and its rail.
+		k.slab(1.2, y0 + 0.02, 0.0, 0.6, 0.08, 0.9, s + 20 + i, plank2, plank, 0.02)
+		k.rod(Vector3(1.48, y0 + 0.06, -0.42), Vector3(1.48, y0 + 0.7, -0.42), 0.014, 4, P.PLATE[2])
+		k.rod(Vector3(1.48, y0 + 0.06, 0.42), Vector3(1.48, y0 + 0.7, 0.42), 0.014, 4, P.PLATE[2])
+		k.rod(Vector3(1.48, y0 + 0.7, -0.42), Vector3(1.48, y0 + 0.7, 0.42), 0.014, 4, P.PLATE[3])
+		# What is hung in the doorway: a curtain on the middle one, boards on
+		# the top, and the ground one is the way in.
+		if i == 1:
+			var cloth := GroundColors.made(dress.pale[0].lerp(P.EARTH[2], 0.3), GroundColors.CLOTH)
+			Remains._facing_quad(k.made, Vector3(1.05, y0 + 0.1, 0.36), Vector3(1.05, y0 + 0.1, -0.12), Vector3(0.01, 1.7, 0), Vector3(1, 0, 0), cloth)
+		elif i == 2:
+			for j in 3:
+				_xrect(k.made, 1.06, y0 + 0.2 + j * 0.55, y0 + 0.62 + j * 0.55, -0.38, 0.38, plank if j % 2 == 0 else plank2)
+	# The rope ladder up the face, from the ground to the top landing.
+	var rope := GroundColors.made(P.EARTH[3], GroundColors.ROPE)
+	for sz: float in [-1.0, 1.0]:
+		k.made.strut(Vector3(1.15, 0.1, sz * 0.24 - 0.55), Vector3(1.15, landings[2] + 0.4, sz * 0.24 - 0.55), 0.014, 3, rope)
+	var rungs := int((landings[2] + 0.2) / 0.38)
+	for i in rungs:
+		var y := 0.3 + i * 0.38
+		k.limb(Vector3(1.15, y, -0.82), Vector3(1.15, y + Kit.j(s, i + 30, 0.03), -0.28), 0.02, 0.018, 4, plank if i % 3 else plank2)
+	k.rod(Vector3(1.0, landings[2] + 0.5, -0.55), Vector3(1.28, landings[2] + 0.42, -0.55), 0.02, 4, P.PLATE[2])
+	# The tube beside the middle door, where the ladder arrives.
+	_tube(k, Vector3(1.12, landings[1] + 1.6, 0.9), Vector3(1.12, landings[1] + 1.6, 0.5), Vector3(1, 0, 0), Towers.SIGN_COLOURS[2])
+	# The head: the sheave beam still across it, a tarp over the top room on
+	# poles, washing on the beam, and a pipe breathing out of it.
+	k.rod(Vector3(-0.8, high - 0.1, 0.0), Vector3(0.8, high - 0.1, 0.0), 0.06, 6, P.PLATE[2])
+	var tarp := GroundColors.made(dress.pale[1].lerp(P.EARTH[1], 0.35), GroundColors.CLOTH)
+	for sz: float in [-1.0, 1.0]:
+		k.limb(Vector3(0.6, high - 0.4, sz * 0.8), Vector3(0.62, high + 0.15, sz * 0.82), 0.03, 0.025, 4, plank2)
+	k.made.quad(Vector3(0.7, high + 0.16, 0.9), Vector3(0.7, high + 0.16, -0.9), Vector3(-0.9, high - 0.25, -0.9), Vector3(-0.9, high - 0.25, 0.9), tarp)
+	k.made.quad(Vector3(-0.9, high - 0.25, 0.9), Vector3(-0.9, high - 0.25, -0.9), Vector3(0.7, high + 0.16, -0.9), Vector3(0.7, high + 0.16, 0.9), GroundColors.down(tarp, 0.2))
+	k.sag(Vector3(0.6, high - 0.5, 1.0), Vector3(-0.6, high - 0.5, 1.0), 0.05, 4, 0.01, rope)
+	for i in 3:
+		var x := 0.35 - i * 0.4
+		var cloth := GroundColors.made([dress.pale[0], P.LINEN[2], dress.pale[2]][i], GroundColors.CLOTH)
+		Remains._facing_quad(k.made, Vector3(x + 0.12, high - 0.9, 1.02), Vector3(x - 0.12, high - 0.9, 1.02), Vector3(0.0, 0.4, 0.0), Vector3(0, 0, 1), cloth)
+	k.limb(Vector3(-0.5, high - 0.6, 0.4), Vector3(-0.48, high + 0.3, 0.42), 0.05, 0.05, 6, P.RUST[1])
+	k.made.prism(-0.48, high + 0.3, 0.42, 0.055, high + 0.32, 0.055, 6, P.INK[0], GroundColors.glow(P.EMBER[3], 0.6))
+	# The stubs of the tower's floors off the flanks, and the rain down the core.
+	for level in 2:
+		var y := 2.4 + level * 2.5
+		var sz := 1.0 if level == 0 else -1.0
+		k.slab(0.0, y, sz * 1.31, 1.6, 0.24, 0.4, s + 40 + level, GroundColors.down(con, 0.08), con, 0.05)
+		Rocks._rebar(k, [Vector3(-0.3, y + 0.12, sz * 1.5), Vector3(0.4, y + 0.12, sz * 1.5)],
+			[Vector3(-0.4, y - 0.3, sz * 1.55), Vector3(0.5, y - 0.2, sz * 1.58)])
+	Remains.streak(k, Vector3(-0.3, high - 0.5, 1.113), 0.14, 2.0, Vector3.BACK, GroundColors.down(wall, 0.3))
+	Remains.streak(k, Vector3(0.5, high - 0.7, -1.113), 0.1, 1.5, Vector3.FORWARD, GroundColors.down(wall, 0.4))
+	for i in 4:
+		var a := 0.6 + Rng.hash01(s, i, 61) * 4.0
+		var r := 1.25 + Rng.hash01(s, i, 62) * 0.3
+		k.stone(cos(a) * r, -0.04, sin(a) * r, 0.12 + Rng.hash01(s, i, 63) * 0.12, 0.1 + Rng.hash01(s, i, 64) * 0.1, s + 70 + i,
+			GroundColors.down(dress.concrete, 0.1) if i % 2 else P.STONE[2], 5)
+
+
+## "stall_row": three shop fronts under one fascia, re-shuttered as homes: a
+## shutter down with a door cut through it, one with a window and a curtain,
+## and one rolled up under an awning of cloth with the household's things out
+## on the pavement. Wide and low, the frontage a street is made of.
+static func stall_row(k: Kit, c: int) -> void:
+	var dress := BiomeDressing.of(c)
+	var s := 30800 + c * 17
+	var con := concrete(c)
+	var wall := GroundColors.down(con, 0.18)
+	var plank := GroundColors.made(dress.timber[0], GroundColors.TIMBER)
+	var plank2 := GroundColors.made(dress.timber[1], GroundColors.TIMBER)
+	var cloth := GroundColors.made(dress.pale[0].lerp(P.EARTH[2], 0.3), GroundColors.CLOTH)
+	# The party walls, the fascia and the back.
+	for z: float in [-2.3, -0.75, 0.75, 2.3]:
+		k.slab(0.0, 0.0, z, 1.2, 2.7 + Kit.j(s, int(z * 2.0) + 5, 0.1), 0.22, s + int(z * 3.0) + 9, wall, GroundColors.up(con, 0.1), 0.04, 0.0, Kit.j(s, int(z) + 20, 0.015))
+	k.slab(0.1, 2.4, 0.0, 1.0, 0.55, 4.9, s + 5, con, GroundColors.up(con, 0.14), 0.04)
+	k.slab(-0.5, 0.0, 0.0, 0.2, 2.5, 4.7, s + 6, GroundColors.down(wall, 0.15), con, 0.05)
+	_xrect(k.made, -0.38, 0.0, 2.4, -2.2, 2.2, P.INK[0])
+	# The shutter box under the fascia, the whole width.
+	k.chamfer(0.5, 2.05, 0.0, 0.3, 0.34, 4.5, 0.05, P.PLATE[2], P.PLATE[3])
+	# Bay one: the shutter down and a door cut through it.
+	Remains.corrugated(k.found, Vector3(0.6, 2.05, -2.2), Vector3(0.0, 0.0, 1.4), Vector3(0.0, -2.05, 0.0), 12, P.PLATE[2])
+	_door(k, Vector3(0.64, 0.0, -1.1), Vector3(0.64, 0.0, -1.7), 1.85, Vector3(1, 0, 0), plank, s, 1)
+	k.slab(0.8, 0.0, -1.4, 0.34, 0.03, 0.5, s + 30, GroundColors.made(P.EARTH[2], GroundColors.CLOTH), Color(0, 0, 0, 0), 0.01)
+	# Bay two: the shutter down with a window cut, the curtain drawn.
+	Remains.corrugated(k.found, Vector3(0.6, 2.05, -0.65), Vector3(0.0, 0.0, 1.3), Vector3(0.0, -2.05, 0.0), 11, P.PLATE[3])
+	_xrect(k.made, 0.63, 1.0, 1.7, -0.45, 0.45, P.INK[0])
+	Remains._facing_quad(k.made, Vector3(0.65, 1.02, 0.44), Vector3(0.65, 1.02, 0.02), Vector3(0.0, 0.66, 0.0), Vector3(1, 0, 0), cloth)
+	k.rod(Vector3(0.66, 1.72, -0.48), Vector3(0.66, 1.72, 0.48), 0.012, 4, P.PLATE[1])
+	k.rod(Vector3(0.62, 0.98, -0.5), Vector3(0.62, 0.98, 0.5), 0.02, 4, P.PLATE[1])
+	# Bay three: rolled up, an awning on two poles, the household outside.
+	# The shutter is up in its box: no stub of it shows under the awning, which
+	# covers that foot of frontage from every bearing the camera can take.
+	_xrect(k.made, 0.6, 0.0, 2.0, 0.85, 2.2, P.INK[0])
+	for z: float in [0.95, 2.1]:
+		k.limb(Vector3(1.9, 0.0, z), Vector3(1.88, 1.95, z + 0.02), 0.035, 0.028, 4, plank2)
+	k.made.quad(Vector3(0.7, 2.3, 0.85), Vector3(0.7, 2.3, 2.2), Vector3(1.95, 1.95, 2.15), Vector3(1.95, 1.95, 0.9), cloth)
+	k.made.quad(Vector3(1.95, 1.95, 0.9), Vector3(1.95, 1.95, 2.15), Vector3(0.7, 2.3, 2.2), Vector3(0.7, 2.3, 0.85), GroundColors.down(cloth, 0.2))
+	k.sag(Vector3(1.88, 1.9, 0.95), Vector3(1.88, 1.9, 2.1), 0.04, 3, 0.01, GroundColors.made(P.EARTH[3], GroundColors.ROPE))
+	Remains._facing_quad(k.made, Vector3(1.86, 1.55, 1.7), Vector3(1.86, 1.55, 1.4), Vector3(0.0, 0.34, 0.0), Vector3(0, 0, 1), GroundColors.made(P.LINEN[2], GroundColors.CLOTH))
+	k.slab(1.2, 0.0, 1.5, 0.7, 0.28, 0.34, s + 40, plank, plank2, 0.02, 0.06, Kit.j(s, 41, 0.05))
+	k.made.prism(1.5, 0.0, 0.95, 0.2, 0.56, 0.18, 9, P.RUST[2], P.INK[1])
+	for i in 3:
+		k.stone(1.0 + i * 0.22, 0.0, 2.0 + Kit.j(s, i + 50, 0.1), 0.09, 0.08, s + 50 + i, P.STONE[3] if i % 2 else P.SAND[3], 5)
+	# The stovepipe out through the fascia, the years on it, the street's drift.
+	k.limb(Vector3(0.2, 2.9, -1.5), Vector3(0.22, 3.55, -1.48), 0.05, 0.05, 6, P.RUST[1])
+	k.made.prism(0.22, 3.55, -1.48, 0.055, 3.57, 0.055, 6, P.INK[0], GroundColors.glow(P.EMBER[3], 0.6))
+	Houses.weathered(k, Vector3(0.61, 2.4, 2.45), Vector3(0.61, 2.4, -2.45), Vector3(0.61, 2.95, -2.45), Vector3(0.61, 2.95, 2.45), s + 90, GroundColors.down(con, 0.35), dress.growth)
+	for i in 3:
+		var p := Vector3(0.75 + Kit.j(s, i + 60, 0.15), -0.06, -2.0 + i * 1.4 + Kit.j(s, i + 64, 0.2))
+		k.clump(p.x, p.y, p.z, 0.2 + Kit.j(s, i, 0.06), 0.11, s + 100 + i, Towers.solid(dress.drift[i % 2]), 6)
+	if dress.cold() and not dress.snow.is_empty():
+		k.clump(0.1, 2.95, 0.4, 1.6, 0.12, s + 110, dress.snow[0], 7)
+
+
 # --- the review surface -------------------------------------------------------------
 
 ## Everything this landscape brought, on one plinth each: the five props in the

@@ -82,11 +82,15 @@ static func make() -> BiomeDef:
 	# hut when there is a frame standing on every block.
 	dress.shelter = &"infill"
 	d.dressing = dress
-	# The same stock and the same plan the Slums raises, because it IS the same
-	# city a century on: what these two argue about is what happened to it, not
-	# how it was laid out.
+	# The same PLAN the Slums raises, because it IS the same city a century on,
+	# and its own STOCK, because what happened to it is the whole argument: the
+	# towers are dead, so what people build here is built INSIDE what fell — a
+	# ground floor walled in with salvaged doors under a tower's frame, a shack
+	# on a fallen deck, rooms hung inside a lift core, shop fronts re-shuttered
+	# as homes (BiomeForms.FORMS; docs/LANDSCAPES.md §4). Four forms, so a
+	# settlement here is four buildings: a ward, not a city.
 	d.built = BiomeForms.new()
-	d.built.stock = BiomeForms.RAISED
+	d.built.stock = [&"infill", &"deck_house", &"shaft_loft", &"stall_row"] as Array[StringName]
 	d.built.plan = &"block"
 	d.built.apart = BiomeForms.ROW_APART
 	d.grade = Vector4(-0.05, -0.01, 0.03, -0.02)
