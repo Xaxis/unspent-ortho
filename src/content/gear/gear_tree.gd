@@ -94,6 +94,9 @@ const PIECES := {
 	&"arc_hafted": {"grade": &"rare", "family": &"arc", "from": &"mono_edge"},
 	&"hammer_hafted": {"grade": &"rare", "family": &"hammer", "from": &"haul_gyro"},
 	&"lance_hafted": {"grade": &"rare", "family": &"lance", "from": &"dredge_screw"},
+	# A second rare lance, from the glass desert's own material: two roads to
+	# the same rung, one across the moss and one across the glass.
+	&"lance_glass": {"grade": &"rare", "family": &"lance", "from": &"fulgurite_core"},
 	&"lance_die": {"grade": &"prime", "family": &"lance", "from": &"clerk_die"},
 	&"blade_die": {"grade": &"prime", "family": &"thin", "from": &"clerk_die"},
 	# The relic. Three sockets like a prime, and one thing nothing else does. A
@@ -122,7 +125,9 @@ const PIECES := {
 	&"mod_icelens": {"grade": &"rare", "family": &"", "from": &"deep_ice_lens"},
 	&"mod_leech": {"grade": &"prime", "family": &"", "from": &"clerk_die"},
 	&"mod_phase": {"grade": &"prime", "family": &"", "from": &"keeper_lens"},
-	&"mod_lattice": {"grade": &"prime", "family": &""},
+	# The shock lattice had no `from` (docs/VISION.md §6.1 names the gap): it is
+	# wound round a fulgurite core now, so the glass desert is its gate.
+	&"mod_lattice": {"grade": &"prime", "family": &"", "from": &"fulgurite_core"},
 }
 
 ## Mechanical numbers a family holds equal across its rungs: the fight, the

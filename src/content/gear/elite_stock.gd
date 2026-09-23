@@ -50,6 +50,13 @@ const MATERIALS := {
 	# pressure block with a steel edge, and pressure blocks stand nowhere else.
 	&"deep_ice_lens": {"land": &"frost_sea", "raw": &"lens_ice", "at": &"bench", "grade": &"rare",
 		"what": "the clear heart of a slab of sea ice, ground until the far side comes through it"},
+	# The glass desert's (docs/LANDSCAPES.md §3): fulgurite comes off a fulgurite
+	# and a fulgurite stands only in the strike fields' sand, on the one
+	# landscape that scatters it. Refined at the kiln, it is what the shock
+	# lattice is wound round — the prime module that had no `from` — and what
+	# a glass lance is bound round.
+	&"fulgurite_core": {"land": &"glass_desert", "raw": &"fulgurite", "at": &"kiln", "grade": &"prime",
+		"what": "a strike's own cast, fired again: green-black, and it rings when it is struck"},
 
 	# --- one machine's own ----------------------------------------------------
 	&"tide_iron": {"kind": &"harvester", "chance": 0.35, "grade": &"prime",
@@ -95,6 +102,12 @@ const SPOILS := {
 	&"flock": [{"item": &"wick", "chance": 0.3},
 		{"item": &"flash_burst", "chance": 0.12, "rarity": Rarity.UNCOMMON}],
 	&"dredger": [{"item": &"sonic_wave", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
+	# The glass desert's skater: the blade it runs the plates on, which is what
+	# a glass lance is ground from (Recipes: lance_glass). A spoil and not an
+	# elite material on purpose: the landscape's one-gate material is the
+	# fulgurite core, and a second gate on the same land would be two.
+	&"skater": [{"item": &"wick", "chance": 0.4, "count": Vector2i(1, 2)},
+		{"item": &"skate_blade", "chance": 0.35, "rarity": Rarity.UNCOMMON}],
 	# Watchers and keepers: what is carried to stop somebody.
 	&"watcher": [{"item": &"wick", "chance": 0.4},
 		{"item": &"stun_hand", "chance": 0.12, "rarity": Rarity.UNCOMMON}],

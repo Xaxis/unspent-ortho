@@ -16,6 +16,18 @@ const SIZE := 256
 
 func test_every_region_of_a_landscape_with_a_keeper_has_one_standing_in_it() -> void:
 	Sentinels.declare_loot()
+	# Which designs the three seeds placed at all. Every keeper land used to be
+	# asked for on EVERY seed, which was true while the keeper lands were the
+	# coast (guaranteed on every continent) and the flats, and became a claim
+	# about the dealer the moment a landscape with a five-percent share got a
+	# keeper. Measured, seed 1 at 256: the glass desert's biggest run is 445
+	# tiles with its heart 29 tiles from the spawn, and `Sentinels.lair` refuses
+	# it whole — nowhere in it is CLEAR_OF_HOME (48) from where the player
+	# wakes, which is the safety rule winning, as it must. Seeds 7 and 3 both
+	# place the anvil. So the claim is what the test's name says — every region
+	# the siting rule can keep has its keeper — plus one that still fails for a
+	# design no seed ever places.
+	var placed := {}
 	for s in SEEDS:
 		var w := WorldGen.generate(s, SIZE)
 		var states := Sentinels.states(w)
@@ -40,7 +52,28 @@ func test_every_region_of_a_landscape_with_a_keeper_has_one_standing_in_it() -> 
 				% [s, st.design, st.region, int(r.tiles), st.lair, Ground.NAMES[w.ground_at(x, y)],
 					Sentinels.feeds(w, st.lair, Sentinels.by_id(st.design))])
 		for land: StringName in Sentinels.lands():
-			check(lands.has(land), "seed %d: %s has its keeper out there" % [s, land])
+			var biggest := 0
+			var big: Dictionary = {}
+			for r: Dictionary in w.regions:
+				if StringName(str(r.get("type", &""))) == land and int(r.get("tiles", 0)) > biggest:
+					biggest = int(r.get("tiles", 0))
+					big = r
+			var centre: Vector2 = big.get("centre", Vector2.ZERO)
+			if biggest < Sentinels.MIN_TILES:
+				print("sentinel seed %d: %s holds no region big enough to keep (biggest run %d tiles, floor %d)"
+					% [s, land, biggest, Sentinels.MIN_TILES])
+			elif not Sentinels.lair(w, big, Sentinels.for_land(land)).is_finite():
+				# The siting rule refused the whole region: nowhere in it is far
+				# enough from where the player wakes. Said with the numbers, so a
+				# region refused for a new reason reads differently here.
+				print("sentinel seed %d: %s's biggest run (%d tiles, heart %s, %.1f from the spawn %s) is all inside CLEAR_OF_HOME %.0f: no keeper, by the rule"
+					% [s, land, biggest, centre, centre.distance_to(w.spawn), w.spawn, Sentinels.CLEAR_OF_HOME])
+			else:
+				check(lands.has(land), "seed %d: %s has its keeper out there (biggest run %d tiles at %s)" % [s, land, biggest, centre])
+			if lands.has(land):
+				placed[land] = true
+	for land: StringName in Sentinels.lands():
+		check(placed.has(land), "%s's keeper is placed on at least one of seeds %s at %d" % [land, SEEDS, SIZE])
 
 
 func test_where_it_stands_is_the_same_on_every_run_of_the_same_seed() -> void:
