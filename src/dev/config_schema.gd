@@ -48,11 +48,13 @@ const ROWS: Array[Dictionary] = [
 	# 512 spelled a second time, so the day the world became five continents this
 	# page still offered a one-island world as "the game as it is" and
 	# `tests/dev/test_configs.gd` was the only thing that noticed. The options are
-	# the sizes worth choosing between: one island, and the squares that hold three,
-	# five, six and seven continents at full size (`GenBodies._square_for`).
+	# the sizes worth choosing between: one island, the squares that first hold
+	# three and four continents (`GenBodies._square_for`), and then five continents
+	# growing: 1300 makes each an island's worth, and past it the surface stays at
+	# five (`GenBodies.COUNT`) and the room makes each one bigger.
 	{"id": "world.size", "group": "world", "label": "size", "kind": "choice", "default": Tuning.WORLD_SIZE,
-		"options": [256, 512, 996, 1138, Tuning.WORLD_SIZE, 1477, 1666], "applies": "boot",
-		"note": "Tiles along a side of the world. 512 is one island; 1300 is five continents."},
+		"options": [256, 512, 996, 1138, 1300, 1600, Tuning.WORLD_SIZE], "applies": "boot",
+		"note": "Tiles along a side of the world. 512 is one island; 1300 is five continents of an island each; 1840 is five of twice that."},
 	{"id": "world.hour", "group": "world", "label": "starts at", "kind": "choice", "default": 8.0,
 		"options": [5.0, 6.5, 8.0, 10.0, 12.0, 15.0, 17.5, 19.5, 21.0, 23.0, 1.0], "applies": "new",
 		"note": "The hour a new game wakes at."},

@@ -22,7 +22,7 @@ static func make() -> BiomeDef:
 	d.display_name = "the frost sea"
 	d.order = 13
 	d.style_note = "White going blue in the hollows, black leads, ridges thrown up like slate."
-	d.share = Vector2(0.06, 0.1)
+	d.share = Vector2(0.115, 0.19)
 	d.anchors = [{"seq": 14, "u": 0.18, "v": 0.08}]
 	d.temp_range = Vector2(0.0, 0.14)
 	d.moist_range = Vector2(0.45, 1.0)

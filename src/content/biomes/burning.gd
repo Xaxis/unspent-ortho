@@ -11,7 +11,7 @@ static func make() -> BiomeDef:
 	d.display_name = "burning"
 	d.order = 5
 	d.style_note = "Jagged burnt edges, restless broken strokes, ember glints unhatched."
-	d.share = Vector2(0.11, 0.15)
+	d.share = Vector2(0.09, 0.13)
 	d.anchors = [
 		{"seq": 7, "u": 0.73, "v": 0.2},
 		{"seq": 10, "u": 0.9, "v": 0.36, "chance": 0.5},

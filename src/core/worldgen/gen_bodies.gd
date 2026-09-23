@@ -239,7 +239,16 @@ const COUNT := {
 	# continent, two in the middle of the journey, one late and one remote, which
 	# is the structure `StoryPlan.SPINE` has assumed for weeks with its `leg` per
 	# slot while this stage laid at most four.
-	&"surface": Vector2i(5, 7),
+	#
+	# AND FIVE AT MOST, since L1 (2026-09-22). A bigger square was meant to give
+	# each landscape a bigger place, and it did not: `plan` keeps every dealt
+	# continent that fits, so at 1600-2048 the room went to a sixth and seventh
+	# continent and the main regions grew 1.5-1.8x for 2.5x the area (seed 90210,
+	# dealt five, grew them 2.49x). A landscape's size is what the 40-frame rule
+	# asks for, so the continents stay five and the square pays for them to be
+	# bigger. The roll is still drawn (`% 1`), so the stream after it is unchanged
+	# and a world that already had five is byte-identical.
+	&"surface": Vector2i(5, 5),
 	&"underground": Vector2i(5, 7),
 	&"orbital": Vector2i(3, 8),
 	&"era": Vector2i(1, 2),
@@ -248,10 +257,20 @@ const COUNT := {
 ## the land a continent would.
 const ORBITAL_SHARE := 0.32
 ## The share of a world's continents a landscape lies on when it declares no
-## `BiomeDef.spread`. Half is what makes two continents different places rather
-## than two draws of one deck; a landscape that wants to be everywhere (a coast)
-## or nowhere but one (a rarity) says so in its own file.
-const MOST_BODIES := 0.5
+## `BiomeDef.spread`. Under half is what makes two continents different places
+## rather than two draws of one deck; a landscape that wants to be everywhere (a
+## coast) or nowhere but one (a rarity) says so in its own file.
+##
+## **0.4, WHICH IS TWO OF FIVE, AND THE SIZE OF A PLACE IS WHY** (L1, 2026-09-23).
+## It was 0.5, and `roundi(2.5)` is three: every landscape lay on three of the five
+## continents, broke into three to six regions, and its main region -- the place
+## the 40-frame rule is about -- was about a third of its tiles. Measured at 1840,
+## seeds 1/42/90210: 6 of 21 landscapes had a main region of 40 frames on every
+## seed at 0.5, 13 at 0.4 with nothing else changed, and 21 once the eight still
+## short had their shares raised out of the coast's. A continent now carries about
+## eight landscapes instead of thirteen: fewer, and each one a place you can walk
+## for a while.
+const MOST_BODIES := 0.4
 ## The radius of the ONE island this game has always had, as a share of the
 ## square: `GenShape` draws it at 0.34-0.38 by 0.38-0.41, so about this.
 const ONE_RADIUS := 0.375
@@ -311,8 +330,8 @@ static func plan(seed_value: int, realm: StringName = &"surface", want_size: int
 	# a size, drop the count until they fit AT FULL SIZE rather than shrinking them
 	# to suit.
 	#
-	# DOWN TO ONE, and "at least five" is not a floor here. It is what
-	# `Tuning.WORLD_SIZE` (1300) buys, which is the world a game is played in; a
+	# DOWN TO ONE, and "at least five" is not a floor here. It is what a square of
+	# 1300 or more buys (`Tuning.WORLD_SIZE` is 1840), which is the world a game is played in; a
 	# 64-tile test fixture is not a small world with five continents in it, it is
 	# one island, as it always was. Flooring the count at the realm's least instead
 	# put five continents on a 64-tile square and took thirty tests down with it —
@@ -440,7 +459,11 @@ static func deal(c: GenContext) -> void:
 		# So a landscape that argues with nothing lands on about half of them, and
 		# one that wants to be everywhere or nowhere says so. `spread.x >= 1` still
 		# guarantees the home continent first, because the spine lives there.
-		var most := maxi(1, roundi(float(planned) * MOST_BODIES)) if sp.y <= 0 else mini(sp.y, planned)
+		# At least two where there are two, because MOST_BODIES was tuned for five:
+		# a 1024 square holds three continents, `roundi(3 * 0.4)` is one, and every
+		# landscape on a single continent left the journey's far legs with nothing
+		# of the plan's to cast (`the_far_works`, test_plan at 1024).
+		var most := maxi(mini(2, planned), roundi(float(planned) * MOST_BODIES)) if sp.y <= 0 else mini(sp.y, planned)
 		var want := maxi(1, mini(most, planned))
 		# A guaranteed type goes on the HOME body first: the spine of the game
 		# lives there (docs/WORLD.md §8.4) and a player who never crosses water

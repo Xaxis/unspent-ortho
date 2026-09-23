@@ -38,6 +38,29 @@ const MIN_VILLAGES := 10
 const REGION_TILES_PER_VILLAGE := 2600.0
 
 
+## How many boroughs a region of `tiles` holds for a landscape counting per
+## region. THE ONE FORMULA: the cap (`max_villages`) and the placer both ask
+## here, because the two used to write it out twice and a cap derived a second
+## way is a cap that disagrees.
+static func borough_want(d: BiomeDef, tiles: int) -> int:
+	return maxi(d.villages, roundi(float(tiles) / REGION_TILES_PER_VILLAGE))
+
+
+## How close two boroughs may stand, read off the same density as the count: a
+## borough per REGION_TILES_PER_VILLAGE tiles is one per square that many tiles
+## wide. It was the villages' `gap` (56 x body_k, ~79 tiles at 1840), which
+## scales with the continent while the count did not, so at 1840 the slums asked
+## for 16-20 boroughs where the spacing let 7-9 stand. Never under the gap a
+## village's own houses need (`MIN_GAP`).
+static func borough_gap() -> float:
+	return maxf(MIN_GAP, sqrt(REGION_TILES_PER_VILLAGE))
+
+
+## The least any two villages may stand apart: a village's houses reach
+## HOUSE_REACH off its square.
+const MIN_GAP := 26.0
+
+
 ## Given a world, the cap knows how many PLACES each landscape actually laid.
 ##
 ## **A CAP THAT TRUNCATES WHAT IT IS CAPPING IS NOT A CAP.** Counting a
@@ -59,8 +82,7 @@ static func max_villages(w: WorldData = null) -> int:
 				continue
 			# THE SAME FORMULA THE PLACER USES, or this silently truncates what it
 			# just allowed -- a cap derived a second way is a cap that disagrees.
-			var want := maxi(d.villages,
-				roundi(float(int(r.get("tiles", 0))) / REGION_TILES_PER_VILLAGE))
+			var want := borough_want(d, int(r.get("tiles", 0)))
 			# The landscape's first region is already counted once in the sum above.
 			if not first.has(idx):
 				first[idx] = true
@@ -154,7 +176,7 @@ static func villages(c: GenContext) -> void:
 	cands.sort_custom(by_score)
 	relaxed.sort_custom(by_score)
 	rough.sort_custom(by_score)
-	var gap := maxf(26.0, 56.0 * c.body_k)
+	var gap := maxf(MIN_GAP, 56.0 * c.body_k)
 	var chosen: Array[Vector3] = []
 	# The spawn village: as far south as flat coast allows, and close enough to
 	# the sea that the first frame holds the square and the water together (a
@@ -192,8 +214,17 @@ static func villages(c: GenContext) -> void:
 	# water was 38 tiles out with no moat anywhere inside 40. So the home asks are
 	# walked once PREFERRING such a beach, and then again as they always were, so
 	# a world with no such coast still wakes the player. Never off home for it.
+	#
+	# AND A HOME VILLAGE THAT STANDS IN A PLACE. A coast run too small to be a
+	# region is still coast, and a spawn chosen there woke the player in no region
+	# at all: no chapter to stand in, no sub-arc to be asked, on seed 1 at 256 once
+	# eight landscapes took more of a one-island world (GEN 24). So each pass is
+	# walked first asking for a region (`region_at`, known since GenCountries.fine)
+	# and then without, and a world whose coast holds no region still wakes him.
 	var sea := PackedByteArray()
-	for want_site: bool in [true, false]:
+	for want: Array in [[true, true], [true, false], [false, true], [false, false]]:
+		var want_site: bool = want[0]
+		var want_place: bool = want[1]
 		for ask: Array in asks:
 			var on_home: bool = ask[0]
 			var half: int = ask[2]
@@ -208,6 +239,8 @@ static func villages(c: GenContext) -> void:
 						if not c.defs[w.country[i]].spawn_home:
 							continue
 						if on_home and w.continent_at(int(p.x), int(p.y)) != home:
+							continue
+						if want_place and w.region_at(int(p.x), int(p.y)) < 0:
 							continue
 						# Home's own latitude, never the square's.
 						if half != 0 and ((p.y - r.position.y) / r.size.y > 0.5) != (half > 0):
@@ -263,7 +296,7 @@ static func villages(c: GenContext) -> void:
 				if not d.villages_each_region and counts[cc] >= d.villages:
 					break
 				var i := int(p.y) * size + int(p.x)
-				if w.country[i] != cc or _crowded(chosen, p, gap):
+				if w.country[i] != cc or _crowded(chosen, p, borough_gap() if d.villages_each_region else gap):
 					continue
 				if d.villages_each_region:
 					var rid := w.region_at(int(p.x), int(p.y))
@@ -272,7 +305,7 @@ static func villages(c: GenContext) -> void:
 					if rid < 0:
 						continue
 					var tiles := int(w.region_of(rid).get("tiles", 0))
-					var want := maxi(d.villages, roundi(float(tiles) / REGION_TILES_PER_VILLAGE))
+					var want := borough_want(d, tiles)
 					if int(per_region.get(rid, 0)) >= want:
 						continue
 					per_region[rid] = int(per_region.get(rid, 0)) + 1

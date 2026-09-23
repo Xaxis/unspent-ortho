@@ -30,7 +30,7 @@ static func make() -> BiomeDef:
 	d.display_name = "salt flats"
 	d.order = 6
 	d.style_note = "Hard white glare on a cracked mosaic; the pans ruled straight across it."
-	d.share = Vector2(0.055, 0.085)
+	d.share = Vector2(0.065, 0.10)
 	# No anchor: it goes where the island is hot, dry and far from the sea.
 	d.temp_range = Vector2(0.45, 0.85)
 	d.moist_range = Vector2(0.0, 0.35)

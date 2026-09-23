@@ -24,7 +24,7 @@ static func make() -> BiomeDef:
 	d.display_name = "the crags"
 	d.order = 20
 	d.style_note = "Wet grey rock in fog, stone that was cut by hand, and no machine light anywhere."
-	d.share = Vector2(0.06, 0.1)
+	d.share = Vector2(0.085, 0.14)
 	d.anchors = [{"seq": 20, "u": 0.14, "v": 0.6}]
 	d.temp_range = Vector2(0.15, 0.5)
 	d.moist_range = Vector2(0.55, 1.0)

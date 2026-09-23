@@ -11,7 +11,7 @@ static func make() -> BiomeDef:
 	d.display_name = "moss"
 	d.order = 1
 	d.style_note = "Soft broken edges, stippled dots, mist lying in the hollows."
-	d.share = Vector2(0.11, 0.15)
+	d.share = Vector2(0.09, 0.13)
 	# ON HOME, ALWAYS: the first step north of the coast, so the journey can be
 	# READ from where he wakes (docs/WORLD.md §4: `least` is so a beat never
 	# strands "a player who never crosses the ocean") and the coast-moss border is

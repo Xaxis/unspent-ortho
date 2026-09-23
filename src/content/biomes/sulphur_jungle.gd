@@ -22,7 +22,7 @@ static func make() -> BiomeDef:
 	d.display_name = "the sulphur jungle"
 	d.order = 21
 	d.style_note = "Green over yellow crust, steam standing in the trees, nothing dry and nothing cool."
-	d.share = Vector2(0.06, 0.1)
+	d.share = Vector2(0.07, 0.115)
 	d.anchors = [{"seq": 21, "u": 0.82, "v": 0.72}]
 	d.temp_range = Vector2(0.7, 1.0)
 	d.moist_range = Vector2(0.7, 1.0)

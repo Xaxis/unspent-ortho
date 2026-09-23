@@ -172,22 +172,25 @@ func test_a_small_square_is_still_one_island() -> void:
 			near(float((p.bodies as Array)[0].share), 1.0, 1e-6, "seed %d at %d: the whole share" % [s, want])
 
 
-## AND THE SIZE A GAME IS PLAYED AT IS FIVE CONTINENTS, each a whole island.
-## `Tuning.WORLD_SIZE` is 1300 because that is what five bodies of a full island's
-## share need (`GenBodies._square_for`), and "at least five" is the shape of the
-## journey: `StoryPlan.SPINE` crosses them in order and has carried a `leg` per
-## slot since before this stage could lay them.
+## AND THE SIZE A GAME IS PLAYED AT IS FIVE CONTINENTS, each at least a whole
+## island. "At least five" is the shape of the journey: `StoryPlan.SPINE` crosses
+## them in order and has carried a `leg` per slot since before this stage could
+## lay them. And FIVE AT MOST since L1: a wider square kept the sixth and seventh
+## dealt continents and gave each landscape almost none of the room, so the count
+## is held (`GenBodies.COUNT`) and the square makes each continent bigger instead
+## -- at 1840, twice a 512 island.
 func test_the_size_a_game_is_played_at_is_five_continents() -> void:
 	for s: int in SEEDS:
 		var p := GenBodies.plan(s, Realm.SURFACE, Tuning.WORLD_SIZE)
 		var bodies: Array = p.bodies
-		gt(float(bodies.size()), 4.0, "seed %d: at least five continents" % s)
+		eq(bodies.size(), 5, "seed %d: five continents, no more" % s)
 		for b: Dictionary in bodies:
-			# Each is a whole island's worth, not a share of one: a body's share of
-			# this square times this square is about a 512 island's tiles.
+			# Each is at least a whole island's worth, not a share of one, and the
+			# square's extra room is in the bodies, not between them.
 			var tiles := float(b.share) * float(Tuning.WORLD_SIZE) * float(Tuning.WORLD_SIZE)
-			near(tiles / (512.0 * 512.0), 1.0, 0.25,
-				"seed %d: a continent is an island's worth of land" % s)
+			gt(tiles / (512.0 * 512.0), 0.95, "seed %d: a continent is at least an island's worth" % s)
+			near(tiles, float((bodies[0] as Dictionary).share) * float(Tuning.WORLD_SIZE) * float(Tuning.WORLD_SIZE), 1.0,
+				"seed %d: every continent the same size" % s)
 
 
 ## And when the square IS big enough, the bodies are really separate land, not one

@@ -26,7 +26,7 @@ static func make() -> BiomeDef:
 	d.display_name = "the machine city"
 	d.order = 18
 	d.style_note = "Exact, level, clean. No warmth anywhere and not one thing out of line."
-	d.share = Vector2(0.05, 0.09)
+	d.share = Vector2(0.075, 0.135)
 	d.anchors = [{"seq": 18, "u": 0.3, "v": 0.24}]
 	d.temp_range = Vector2(0.25, 0.7)
 	d.moist_range = Vector2(0.15, 0.55)

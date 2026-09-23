@@ -11,6 +11,13 @@ static func make() -> BiomeDef:
 	d.display_name = "coast"
 	d.order = 0
 	d.style_note = "Calm long contours, fast cloud shadows, everything leaning off the sea."
+	# NOT THE ONE THAT PAYS for the others' room, though it looks like it should
+	# (L1, 2026-09-23: it held 185,000 tiles at 1840 while eight landscapes could not
+	# make a 40-frame place). Cut to 0.14-0.20, and even to 0.24-0.30, the coast
+	# stops holding the villages the spine needs on small worlds: `home` could not
+	# be cast on seed 7 at 256, and a hold, a lit house and the cast went with it.
+	# The coast is where he wakes, so the room came out of the four big inland
+	# landscapes instead.
 	d.share = Vector2(0.32, 0.38)
 	# ON HOME, ALWAYS (docs/WORLD.md §8.4: home "holds the coast, the spawn village
 	# and a full starting economy"). The player wakes on a coast village, so a home

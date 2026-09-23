@@ -627,10 +627,30 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 				# bigger than the six shapes it owns. The purpose survives either
 				# way -- what was ever wrong was two the same side by side.
 				if forms.repeats():
+					# THE DEAL'S OWN CONTRACT, NOT ITS TARGET. `repeat_apart` is what
+					# the deal aims for; where no form in the pack clears it at a
+					# house, it takes the furthest instead (gen_scatter, "WHEN NOTHING
+					# CLEARS THE BAR"). This asserted the target, so the fallback
+					# doing exactly what it says read as a failure -- Cinderrow at
+					# 14.76 of 15 once GEN 24 grew the slums. What must never
+					# happen is a repeat under the bar while some OTHER form was
+					# free there: that is the deal ignoring where the building
+					# stands, which is the bug the bar exists to stop.
 					for j in seen.size():
-						if seen[j] == variant:
-							gt(at[j].distance_to(p.pos), forms.repeat_apart - 0.01,
-								"%s: two of model %d stand closer than %.0f tiles" % [v.get("name", "?"), variant, forms.repeat_apart])
+						if seen[j] != variant or at[j].distance_to(p.pos) >= forms.repeat_apart - 0.01:
+							continue
+						var free := -1
+						for t in forms.stock.size():
+							var blocked := false
+							for k in seen.size():
+								if seen[k] == t and at[k].distance_to(p.pos) < forms.repeat_apart:
+									blocked = true
+									break
+							if not blocked:
+								free = t
+								break
+						eq(free, -1, "%s: two of model %d stand %.2f apart (bar %.0f) while model %d was free there" %
+							[v.get("name", "?"), variant, at[j].distance_to(p.pos), forms.repeat_apart, free])
 				else:
 					check(not seen.has(variant), "%s: two houses drawn the same (model %d)" % [v.get("name", "?"), variant])
 				seen.append(variant)
