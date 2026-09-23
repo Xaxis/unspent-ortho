@@ -401,3 +401,47 @@ func test_the_web_near_blur_stands_down_under_the_lens() -> void:
 	other.queue_free()
 	Quality._now = &""
 	_done()
+
+
+# --- breath in the cold ----------------------------------------------------------
+
+func _breaths(g: Game) -> int:
+	var n := 0
+	for c: Node in g.get_children():
+		var mi := c as MeshInstance3D
+		if mi == null or not (mi.material_override is ShaderMaterial):
+			continue
+		var mode: Variant = (mi.material_override as ShaderMaterial).get_shader_parameter(&"mode")
+		if mode != null and int(mode) == MobFx.VAPOUR and not mi.is_queued_for_deletion():
+			n += 1
+			mi.queue_free()
+	return n
+
+
+## FROM BEHIND AT EYE LEVEL BREATH IS NOT DRAWN. A mark draws over everything,
+## so the puff put out in front of the mouth landed on the back of the head as a
+## white stipple ball. Seen from in front it is drawn, and from above as ever.
+func test_breath_is_not_drawn_over_the_back_of_the_head() -> void:
+	var g := await _make()
+	var cam := g.camera
+	cam.sight_room = Callable()
+	var hz: Node = null
+	for s in g.systems:
+		if s.name == "52_hazards":
+			hz = s
+	check(hz != null, "the hazards system runs")
+	var cue := HazardCues.cue(&"cold")
+	_breaths(g)
+	hz.call("_draw_cue", &"cold", cue, 0.7)
+	eq(_breaths(g), 2, "from above, two puffs")
+	cam.shoulder = true
+	cam.snap_view()
+	cam.shoulder_yaw = Shoulder.yaw_behind(g.player.facing)
+	_step(cam, 2)
+	hz.call("_draw_cue", &"cold", cue, 0.7)
+	eq(_breaths(g), 0, "from behind the head, none")
+	cam.shoulder_yaw = Shoulder.yaw_behind(g.player.facing + PI)
+	_step(cam, 2)
+	hz.call("_draw_cue", &"cold", cue, 0.7)
+	eq(_breaths(g), 2, "looking at the face, the breath is there")
+	_done()
