@@ -27,8 +27,6 @@ drowned_city land.landmark
 drowned_city land.own_props
 drowned_city land.site
 drowned_city plan.depot
-drowned_city plan.keeper
-drowned_city plan.machine
 drowned_city plan.work_props
 drowned_city player.only_in
 frost_sea land.frames

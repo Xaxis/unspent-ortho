@@ -420,6 +420,22 @@ const DEFS := {
 		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
 		"where": {"hours": [0, 0]},
 	},
+	# The Drowned City's lockkeeper (src/core/sentinel/designs/lockkeeper.gd): a
+	# barge hull on four stilts. `crosses` swim because it WALKS the deep: the
+	# canals are the streets here and a keeper the waterline stopped would leave
+	# the one place worth keeping to anyone with a raft (src/core/swim.gd). The
+	# radius is the hull's beam, not its length: a body steps between its
+	# stilts at either end. `height` is the wheelhouse on its deck.
+	&"sentinel.drowned": {
+		"model": &"sentinel_lockkeeper", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 4,
+		"part": &"back", "sentinel": &"lockkeeper", "crosses": &"swim",
+		"pace": 3.2, "dash": 7.0, "quick": 260, "radius": 1.35, "height": 6.4, "life": 140,
+		"sees": 15, "hears": 12, "racket": 26, "reach": 3, "ready": 3, "forget": 26, "tether": 30, "safe": 14,
+		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
+		"bite": {"swing": [840, 170, 800, 900], "reach": 2.0, "width": 2.0, "dmg": 3, "knock": 8.0, "knock_ms": 300},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
+	},
 
 	# --- The Glass Desert's own hunter (docs/LANDSCAPES.md §3) -----------------
 	# A long low body on four blade-skates. It charges, and its re-aim is the
@@ -442,7 +458,7 @@ const DEFS := {
 		"bite": {"swing": [460, 130, 520, 700], "reach": 1.4, "width": 1.2, "dmg": 3, "knock": 7.0, "knock_ms": 280},
 		"takes": 60.0, "drops": 2, "linger": 35.0, "chance": 4,
 		"keeps_to": ["rock", "salt", "gravel"],
-		"where": {"countries": ["glass_desert"], "grounds": ["rock", "salt"], "hours": [9, 19]},
+		"where": {"countries": ["glass_desert"], "grounds": ["rock", "salt"], "hours": [9, 19], "green_min": 14},
 	},
 	# --- The Ruined Metropolis's own (docs/LANDSCAPES.md §4) -----------------
 	# The machine that takes the city apart: a squat tracked body with a long
@@ -469,6 +485,37 @@ const DEFS := {
 		"takes": 70.0, "drops": 3, "linger": 45.0, "chance": 4,
 		"where": {"countries": ["ruined_metropolis"], "grounds": ["floor", "gravel", "scree"], "green_min": 12,
 			"near_props": ["ruin", "demolition gantry"]},
+	},
+	# --- The Drowned City's own (docs/LANDSCAPES.md §5) ----------------------
+	# The plan's ferry: a flat barge with a crane stub amidships running fixed
+	# routes along the canals at fixed hours, carrying salvage out to sea. A
+	# KEEPER, because what it keeps is a ROUTE: it goes about its errand until a
+	# body stands on it, and a keeper turns on trespass (Roles.TURNS) -- inside
+	# `32_disposition.SITE_RADIUS` of its post once it has seen you, which is its
+	# lane. It swims because the canals are its road, and `keeps_to` the water
+	# and the mud at its edge, the deep included: a canal over your head is
+	# still its route.
+	#
+	# TWO HOOKS, NOT BUILT HERE. The spec narrows the trespass to "a raft in its
+	# lane within 3 tiles"; `_trespass` reads a keeper's post and SITE_RADIUS and
+	# knows nothing of rafts, so the narrower rule belongs to 32_disposition
+	# asking `Hero.ride`. And its ram is meant to be the first thing in the game
+	# that WEARS A CRAFT: `Craft.damage(amount)` exists and 44_crafts holds the
+	# ridden craft, but nothing outside the crafts package may reach it
+	# (CraftKinds exposes per-ground wear only), so a blow landing on a body that
+	# is riding has to be handed to 44_crafts by the fight -- shared system 8,
+	# "machines that damage crafts" (docs/LANDSCAPES.md). Until then its bite
+	# lands on the body, as every bite does.
+	&"ferry": {
+		"model": &"ferry", "role": &"keeper", "machine": true, "approach": &"errand", "stretch": 16, "part": &"back",
+		"crosses": &"swim",
+		"pace": 4.0, "dash": 7.5, "quick": 280, "radius": 0.8, "height": 1.9, "life": 70,
+		"sees": 11, "hears": 9, "racket": 18, "reach": 2, "ready": 3, "forget": 16, "tether": 28, "safe": 14,
+		"nerve": 100, "invuln": 460, "through": true, "disposition": &"wary", "overrun": 0.8,
+		"bite": {"swing": [560, 160, 620, 780], "reach": 1.6, "width": 1.5, "dmg": 3, "knock": 11.0, "knock_ms": 360},
+		"takes": 60.0, "drops": 2, "linger": 45.0, "chance": 3,
+		"keeps_to": ["water", "blackwater", "mud", "deep water"],
+		"where": {"countries": ["drowned_city"], "grounds": ["water", "blackwater", "mud"], "hours": [6, 20]},
 	},
 	# The Mesas' anchor (src/core/sentinel/designs/anchor.gd): a four-limbed
 	# climber, the one body in the roster that `climbs` -- four levels a move,

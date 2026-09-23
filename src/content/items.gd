@@ -141,6 +141,7 @@ const DEFS := {
 	&"plumb_core": {"name": "plumb core", "bulk": 3.0, "group": &"material"},
 	&"anvil_core": {"name": "anvil core", "bulk": 3.0, "group": &"material"},
 	&"unbuilder_core": {"name": "unbuilder core", "bulk": 3.0, "group": &"material"},
+	&"lockkeeper_core": {"name": "lockkeeper core", "bulk": 3.0, "group": &"material"},
 	&"anchor_core": {"name": "anchor core", "bulk": 3.0, "group": &"material"},
 	&"lime": {"name": "lime", "bulk": 1.0, "group": &"material"},
 	&"salt": {"name": "salt", "bulk": 1.0, "group": &"material"},
@@ -162,6 +163,10 @@ const DEFS := {
 	# its elite material is drawn from (EliteStock: tower_cable). Machine-made,
 	# so it is drawn in the module's violet like plate is.
 	&"lift_cable": {"name": "lift cable", "bulk": 2.0, "group": &"material", "icon": [&"cable", &"plate", &"ink"]},
+	# Copper conductor cut out of a drowned tram's trolley gear in the Drowned
+	# City, green with the salt: the raw its elite material is drawn from
+	# (EliteStock: brine copper).
+	&"sea_copper": {"name": "sea copper", "bulk": 1.0, "group": &"material", "icon": [&"conductor", &"copper", &"moss"]},
 	# Wire rope cut out of a fallen span of the mesas' ropeway: the raw its
 	# elite material is drawn from (EliteStock: span_wire). A length, snapped at
 	# one end, and drawn in its own shape because the pickup feed keeps one
@@ -416,6 +421,16 @@ const DEFS := {
 	# as nothing keeps off a body, and they are small on purpose.
 	&"mod_hush": {"name": "hush lining", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"foil", &"slate", &"earth"], "fits": [&"head", &"body", &"back"], "resist": {&"em": 0.2, &"resonance": 0.25}},
+	# The drowned city's brine copper, beaten thin and pitched into the seams of
+	# a coat or a pack (docs/LANDSCAPES.md §5): the water stays out. Its tag is
+	# `sealed` (ModifierTable), which is what the submersible's hull will ask
+	# for. WET ONLY, on purpose. The spec gives it pressure 0.3 as well, on the
+	# condition that pressure already has a hand-made answer; it has none --
+	# nothing any person makes resists `pressure`, which only the deep water the
+	# submersible is for will press -- and a first answer to a pressure no
+	# landscape declares is a number nothing can test, so it waits for the deep.
+	&"mod_seal": {"name": "copper seal", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"foil", &"copper", &"earth"], "fits": [&"body", &"back"], "resist": {&"wet": 0.4}},
 
 	# --- elite materials (EliteStock says where each one, and only one, is got) -
 	# Each keeps its landscape's or its machine's own colour and hand, so a
@@ -430,6 +445,7 @@ const DEFS := {
 	# The glass desert's: a strike's own cast, fired again until it rings.
 	&"fulgurite_core": {"name": "fulgurite core", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"spruce", &"rime"]},
 	&"tower_cable": {"name": "tower cable", "bulk": 2.0, "group": &"material", "icon": [&"coil", &"slate", &"copper"]},
+	&"brine_copper": {"name": "brine copper", "bulk": 1.0, "group": &"material", "icon": [&"ingot", &"copper", &"moss"]},
 	# The mesas': rope steel annealed and laid up again for a span, light and
 	# stiff, in the rock's own red.
 	&"span_wire": {"name": "span wire", "bulk": 1.5, "group": &"material", "icon": [&"coil", &"rust", &"sand"]},
@@ -446,6 +462,10 @@ const DEFS := {
 	# to ride glass, and the edge a glass lance is bound round.
 	&"skate_blade": {"name": "skate blade", "bulk": 1.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"plate", &"lens"]},
 	&"boom_ram": {"name": "boom ram", "bulk": 3.0, "group": &"found", "stuff": &"found", "icon": [&"hammer", &"plate", &"lens"]},
+	# The bilge pump out of a ferry (EliteStock.SPOILS): what keeps a barge that
+	# size afloat. Carried for the submersible's hull that is to come
+	# (docs/LANDSCAPES.md §5); FOUND tech taken whole.
+	&"bilge_pump": {"name": "bilge pump", "bulk": 2.0, "group": &"found", "stuff": &"found", "icon": [&"coil", &"plate", &"lens"]},
 	&"spoil": {"name": "ruined stock", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"ash", &"ash"]},
 	# raids: a machine's own account of a place, taken off the body that was
 	# carrying it home. It is proof, and it is the only thing in the game worth

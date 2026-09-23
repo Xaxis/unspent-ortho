@@ -100,6 +100,10 @@ const SHAPES := {
 	# iron here (a fire, not a kiln), and it is given by the land as well as made,
 	# so it may not share the cast ingot's shape with copper (test_pickup_feed).
 	&"bar": [".........", "......kkk", ".....kw3k", "....k332k", "...k332k.", "..k332k..", ".k3221k..", "k3221k...", "kkkkk...."],
+	# A hank of heavy copper conductor bent double, green crust on it: what is
+	# cut out of a drowned tram's trolley gear. Given by the land, so it may not
+	# share a shape with the ingot, the cable or the bar (test_pickup_feed).
+	&"conductor": [".........", ".kkk.kkk.", "k3wk.k32k", "k32k.k21k", "k35k.k51k", "k325k521k", "k3255521k", ".k22111k.", "..kkkkk.."],
 	&"shield": [".kkkkkkk.", "k3333333k", "k33lll33k", "k3322233k", ".k22222k.", ".k22221k.", "..k111k..", "...kkk...", "........."],
 }
 

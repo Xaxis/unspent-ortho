@@ -31,6 +31,7 @@ class_name ModifierTable
 ##   read    it reads what you could not see
 ##   quick   it moves you further than legs do
 ##   sight   it lets you see what the light was hiding: glare, or the dark
+##   sealed  it keeps the water out: what a hull that goes under will ask for
 const MODS := {
 	&"mod_wadding": {"decision": "the cold takes longer to find you", "short": "the cold comes slower",
 		"gives": []},
@@ -97,6 +98,12 @@ const MODS := {
 	&"mod_hush": {"decision": "stood still, their optics read the stone and not you",
 		"short": "stood still, unread",
 		"gives": [&"quiet"]},
+	# The drowned city's brine copper in the seams (docs/LANDSCAPES.md §5): you
+	# can go into a canal and stay in it. `sealed` meets nothing yet; the
+	# submersible's hull is what will want it paid.
+	&"mod_seal": {"decision": "the water stays out, so a canal is a road and not a wall",
+		"short": "the water stays out",
+		"gives": [&"sealed"]},
 }
 
 ## What happens when two tags are in one kit. `kind` is &"conflict" or &"combo";
