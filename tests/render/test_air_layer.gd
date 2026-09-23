@@ -18,7 +18,11 @@ const Lights := preload("res://src/systems/15_lights.gd")
 const NIGHT := 23.0
 
 
-func _sky_with_camera(back: float) -> Array:
+## The two air tests stand on a tier WITH volumetric air: the headless runner
+## has no rendering device and would otherwise land on one without it, where no
+## layer may exist at all (the last test holds that half).
+func _sky_with_camera(back: float, tier: StringName = &"high") -> Array:
+	Quality._now = tier
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	tree.root.add_child(cam)
@@ -54,6 +58,7 @@ func test_no_density_is_left_for_the_eyes_ray_to_integrate() -> void:
 		check(layer.global_position.y - layer.size.y * 0.5 < sky.focus.y, "and it reaches below the ground there")
 	sky.free()
 	(sc[1] as Node).free()
+	Quality._now = &""
 
 
 func test_the_same_night_from_two_camera_distances_has_the_same_air() -> void:
@@ -71,6 +76,7 @@ func test_the_same_night_from_two_camera_distances_has_the_same_air() -> void:
 	var far_env := far_sky.env.environment.volumetric_fog_density
 	far_sky.free()
 	(far_sc[1] as Node).free()
+	Quality._now = &""
 	near(near_d, far_d, 1e-6, "the layer's density does not move with the camera (%f, %f)" % [near_d, far_d])
 	near(near_env, far_env, 1e-6, "nor does anything left on the Environment")
 	eq(near_env, 0.0, "and there is nothing left there to integrate")
@@ -87,3 +93,19 @@ func test_stolen_neon_scatters_into_the_mist_and_a_street_lamp_barely() -> void:
 	gt(machine, lamp, "and a machine's own light")
 	eq(lamp, fire, "a lamp and a fire throw their light down alike")
 	lt(lamp, 0.5, "and a warm light barely scatters, or a street of them turns the dark to haze")
+
+
+## ON A TIER WITHOUT VOLUMETRIC AIR, NOTHING OF SHADER TYPE FOG MAY EXIST ANYWHERE.
+## Compatibility cannot compile one: the layer landed without this guard and the
+## exported web build logged "shader type fog not supported in OpenGL renderer"
+## on every boot. Asked of the whole tree, not of `_lay_air`, so a fog volume
+## anybody else adds is caught too.
+func test_the_web_tier_builds_no_fog_volume_anywhere() -> void:
+	var sc := _sky_with_camera(30.0, &"web")
+	var sky: SkyLight = sc[0]
+	check(not sky.env.environment.volumetric_fog_enabled, "the web tier has no volumetric air")
+	var fog := tree.root.find_children("*", "FogVolume", true, false)
+	eq(fog.size(), 0, "and no FogVolume exists anywhere in the tree (%d found)" % fog.size())
+	sky.free()
+	(sc[1] as Node).free()
+	Quality._now = &""
