@@ -69,6 +69,15 @@ const FORMS := {
 	&"roundhouse": {REACH: 1.9, HIGH: 3.0, LIT: false},
 	&"lean_to_broch": {REACH: 2.1, HIGH: 2.8, LIT: false},
 	&"byre": {REACH: 1.9, HIGH: 2.2, LIT: false},
+	# --- the dead city: what people build INSIDE what fell (docs/LANDSCAPES.md
+	# §4; src/models/props/metropolis.gd). A ground floor walled in with salvaged
+	# doors inside a dead tower's frame, a shack on a fallen deck, rooms hung
+	# inside a lift core with a rope ladder up it, shop fronts re-shuttered as
+	# homes. Two carry a stolen tube: the infill and the loft.
+	&"infill": {REACH: 2.2, HIGH: 4.0, LIT: true},
+	&"deck_house": {REACH: 2.0, HIGH: 3.4, LIT: false},
+	&"shaft_loft": {REACH: 1.6, HIGH: 6.5, LIT: true},
+	&"stall_row": {REACH: 2.4, HIGH: 3.0, LIT: false},
 }
 
 ## The stock a landscape that argues with nothing builds: the fishing village,

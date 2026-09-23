@@ -140,6 +140,7 @@ const DEFS := {
 	&"rake_core": {"name": "rake core", "bulk": 3.0, "group": &"material"},
 	&"plumb_core": {"name": "plumb core", "bulk": 3.0, "group": &"material"},
 	&"anvil_core": {"name": "anvil core", "bulk": 3.0, "group": &"material"},
+	&"unbuilder_core": {"name": "unbuilder core", "bulk": 3.0, "group": &"material"},
 	&"lime": {"name": "lime", "bulk": 1.0, "group": &"material"},
 	&"salt": {"name": "salt", "bulk": 1.0, "group": &"material"},
 	&"kelp_ash": {"name": "kelp ash", "bulk": 1.0, "group": &"material"},
@@ -156,6 +157,10 @@ const DEFS := {
 	# clear heart of a slab of sea ice, the raw the deep ice lens is ground from.
 	&"lens_ice": {"name": "lens ice", "bulk": 1.0, "group": &"material", "icon": [&"lens_ice", &"rime", &"slate"]},
 	&"scrap": {"name": "piece of plate", "bulk": 2.0, "group": &"material"},
+	# Steel wire rope cut out of a lift core in the Ruined Metropolis: the raw
+	# its elite material is drawn from (EliteStock: tower_cable). Machine-made,
+	# so it is drawn in the module's violet like plate is.
+	&"lift_cable": {"name": "lift cable", "bulk": 2.0, "group": &"material", "icon": [&"cable", &"plate", &"ink"]},
 	# Cloth out of what people left: the one soft material a made garment needs.
 	&"rag": {"name": "rags", "bulk": 1.0, "group": &"material"},
 
@@ -223,6 +228,16 @@ const DEFS := {
 	&"boots_magnet": {"name": "magnet boots", "bulk": 3.0, "group": &"kit", "tier": &"mended",
 		"slot": &"hands", "sockets": 1,
 		"resist": {&"em": 0.4, &"resonance": 0.25, &"collapse": 0.3}, "ability": &"grapple", "wears": {"salvage": [&"brace"]}},
+	# The grapple brace's two upper rungs (GearTree family `brace`): the same
+	# brace, the same grapple and the same resists, first re-cabled with the
+	# city's tower cable, then with a demolisher's ram bolted to it. What a rung
+	# buys is SOCKETS, as every rung does, and each is heavier than the last.
+	&"brace_cable": {"name": "cable brace", "bulk": 3.5, "group": &"kit", "tier": &"mended",
+		"slot": &"hands", "sockets": 2, "icon": [&"boot", &"slate", &"copper"],
+		"resist": {&"em": 0.4, &"resonance": 0.25, &"collapse": 0.3}, "ability": &"grapple", "wears": {"salvage": [&"brace"]}},
+	&"brace_ram": {"name": "ram brace", "bulk": 4.0, "group": &"kit", "tier": &"mended",
+		"slot": &"hands", "sockets": 3, "icon": [&"boot", &"plate", &"lens"],
+		"resist": {&"em": 0.4, &"resonance": 0.25, &"collapse": 0.3}, "ability": &"grapple", "wears": {"salvage": [&"brace"]}},
 	&"glide_wing": {"name": "glide wing", "bulk": 4.0, "group": &"kit", "tier": &"mended",
 		"slot": &"back", "sockets": 2, "resist": {}, "ability": &"glide", "wears": {"wing": true}},
 	&"scanner_lens": {"name": "scanner lens", "bulk": 1.0, "group": &"kit", "tier": &"mended",
@@ -270,6 +285,17 @@ const DEFS := {
 	&"mod_grip": {"name": "bound grip", "bulk": 0.5, "group": &"kit", "tier": &"made", "module": true,
 		"fits": [&"tool", &"hands"],
 		"resist": {&"resonance": 0.35, &"em": 0.1, &"magnetism": 0.2}},
+	# A tin cup of oil with a rag wick, hung off the pack frame or the belt: it
+	# lights the ground in front of your feet and nothing further. A MODULE for
+	# the same structural reason the rag shade is. The dark was answered from the
+	# HEAD alone (the scanner lens), and the Ruined Metropolis is the first
+	# landscape to declare both dark and toxins, whose strongest answer, the
+	# rebreather, is worn on the head too — so the best kit for a city at night
+	# in fog left dark at 0.76 on a body that had done everything right
+	# (tests/hazards/test_whole_kit.gd). The capacity comes from sockets on the
+	# body and the back, which is what they are for.
+	&"mod_wick": {"name": "wick lamp", "bulk": 1.0, "group": &"kit", "tier": &"made", "module": true,
+		"fits": [&"body", &"back"], "resist": {&"dark": 0.3}},
 	&"mod_foil": {"name": "foil lining", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"fits": [&"body", &"back"],
 		"resist": {&"radiation": 0.3, &"em": 0.2, &"magnetism": 0.35}},
@@ -385,6 +411,7 @@ const DEFS := {
 	&"deep_ice_lens": {"name": "deep ice lens", "bulk": 1.0, "group": &"material", "icon": [&"lens_ice", &"rime", &"lens"]},
 	# The glass desert's: a strike's own cast, fired again until it rings.
 	&"fulgurite_core": {"name": "fulgurite core", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"spruce", &"rime"]},
+	&"tower_cable": {"name": "tower cable", "bulk": 2.0, "group": &"material", "icon": [&"coil", &"slate", &"copper"]},
 	&"tide_iron": {"name": "tide iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"ash"]},
 	&"mono_edge": {"name": "filament edge", "bulk": 0.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"found", &"lens"]},
 	&"keeper_lens": {"name": "keeper lens", "bulk": 1.0, "group": &"found", "stuff": &"found", "icon": [&"lens", &"plate", &"lens"]},
@@ -397,6 +424,7 @@ const DEFS := {
 	# Off the glass desert's skater (EliteStock.SPOILS): a runner blade ground
 	# to ride glass, and the edge a glass lance is bound round.
 	&"skate_blade": {"name": "skate blade", "bulk": 1.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"plate", &"lens"]},
+	&"boom_ram": {"name": "boom ram", "bulk": 3.0, "group": &"found", "stuff": &"found", "icon": [&"hammer", &"plate", &"lens"]},
 	&"spoil": {"name": "ruined stock", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"ash", &"ash"]},
 	# raids: a machine's own account of a place, taken off the body that was
 	# carrying it home. It is proof, and it is the only thing in the game worth

@@ -106,7 +106,8 @@ var lie := UNSET2
 ## The patched shelter people put up in this landscape (props/remains.gd):
 ## &"shack" a boarded fishing shack, &"stilt" a hut on stilts over the water,
 ## &"blind" a platform up among the trunks, &"pod" an emergency shell half under
-## the snow, &"lean_to" a dry-stone lean-to under tin, &"dugout" dug into the ash.
+## the snow, &"lean_to" a dry-stone lean-to under tin, &"dugout" dug into the ash,
+## &"infill" a dead tower's ground floor walled in with salvaged doors.
 var shelter: StringName = &""
 ## What a broadleaf is here: &"full" a crown of leaves, &"bare" branches only,
 ## &"low" a wind-cropped thorn, wide and bent right over.
@@ -120,7 +121,10 @@ const COVERS: Array[StringName] = [&"drift", &"snow", &"ash", &"needles", &"weed
 const SHELTERS: Array[StringName] = [&"shack", &"stilt", &"blind", &"pod", &"lean_to", &"dugout",
 	# The crags': a small dry-stone round under turf, patched with plate
 	# (props/crags.gd). It never wires a light in.
-	&"roundhouse"]
+	&"roundhouse",
+	# The metropolis': a dead tower's ground floor walled in with salvaged
+	# doors (props/remains.gd `_infill`).
+	&"infill"]
 const CROWNS: Array[StringName] = [&"full", &"bare", &"low"]
 ## Every ramp `BiomeDef.tree_tints` may name, and how many colours each wants.
 const RAMPS := {&"leaf": 4, &"trunk": 1, &"needle": 3, &"under": 1, &"scrub": 3,

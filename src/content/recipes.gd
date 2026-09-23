@@ -93,6 +93,9 @@ const LIST: Array[Dictionary] = [
 	# bench (playtest 3 and 7).
 	{"id": &"mod_shade", "at": &"hand", "minutes": 25.0, "needs": {&"rag": 2, &"driftwood": 2}, "makes": {&"mod_shade": 1}, "tool": &"cut"},
 	{"id": &"mitts_corded", "at": &"hand", "minutes": 20.0, "needs": {&"rag": 2, &"pitch": 1}, "makes": {&"mitts_corded": 1}, "tool": &"cut"},
+	# A wick lamp is a cup, a rag and the oil the lamp already burns: by hand,
+	# so the dark of a city can be answered from a belt on the day it is reached.
+	{"id": &"mod_wick", "at": &"hand", "minutes": 20.0, "needs": {&"tin": 1, &"rag": 1, &"oil": 1}, "makes": {&"mod_wick": 1}, "tool": &"cut"},
 	# The whole MADE tier is hand work, and these three were the exception for no
 	# reason but the order they were written in. A made piece is cloth, reed and
 	# pitch, cut and bound: a bench is for MENDED work, where machine parts are
@@ -129,6 +132,8 @@ const LIST: Array[Dictionary] = [
 	# lens, because the first is always cloudy.
 	{"id": &"deep_ice_lens", "at": &"bench", "minutes": 90.0, "needs": {&"lens_ice": 2, &"oil": 1}, "makes": {&"deep_ice_lens": 1}},
 	{"id": &"fulgurite_core", "at": &"kiln", "minutes": 150.0, "needs": {&"fulgurite": 3, &"charcoal": 2}, "makes": {&"fulgurite_core": 1}},
+	# Lift rope annealed in the fire and laid up again: the city's own.
+	{"id": &"tower_cable", "at": &"fire", "minutes": 110.0, "needs": {&"lift_cable": 2, &"charcoal": 1}, "makes": {&"tower_cable": 1}},
 	# Nothing is dead loot: what a ruined pour leaves is still plate.
 	{"id": &"spoil_scrap", "at": &"fire", "minutes": 30.0, "needs": {&"spoil": 2, &"charcoal": 1}, "makes": {&"scrap": 1}},
 
@@ -141,6 +146,9 @@ const LIST: Array[Dictionary] = [
 	{"id": &"pick_spar", "at": &"bench", "minutes": 110.0, "needs": {&"pick": 1, &"clint_spar": 1, &"rag": 1}, "makes": {&"pick_spar": 1}},
 	{"id": &"stave_varnish", "at": &"bench", "minutes": 80.0, "needs": {&"stave": 1, &"frost_varnish": 1, &"rag": 1}, "makes": {&"stave_varnish": 1}},
 	{"id": &"hook_varnish", "at": &"bench", "minutes": 90.0, "needs": {&"boathook": 1, &"frost_varnish": 1, &"pitch": 1}, "makes": {&"hook_varnish": 1}},
+	# The grapple brace re-cabled with the city's own rope: a vertical city is
+	# where you climb (GearTree family `brace`).
+	{"id": &"brace_cable", "at": &"bench", "minutes": 100.0, "needs": {&"boots_magnet": 1, &"tower_cable": 1, &"rag": 1}, "makes": {&"brace_cable": 1}},
 	# A beam or a lance a person BUILT, out of plate, a charge and one machine part:
 	# found tech taken whole can never be mended, so the mended rung is not a
 	# stolen weapon rehafted — it is one made from the same refuse.
@@ -168,6 +176,9 @@ const LIST: Array[Dictionary] = [
 	# The relic: a filer's die set into a blade, so the thing in your hand wears
 	# their name. A pour that fails leaves the flawed twin, which still works.
 	{"id": &"blade_seal", "at": &"bench", "minutes": 240.0, "needs": {&"blade_die": 1, &"clerk_die": 1, &"keeper_lens": 1, &"copper": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"blade_seal": 1}},
+	# The grapple brace's top rung, on the jig like every prime: the cabled
+	# brace with a demolisher's ram bolted to it (GearTree family `brace`).
+	{"id": &"brace_ram", "at": &"bench", "minutes": 160.0, "needs": {&"brace_cable": 1, &"boom_ram": 1, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"brace_ram": 1}},
 
 	# --- the modifiers (ModifierTable says what each one decides) ----------------
 	# Half an hour at a bench for everything below the jig, because the work is

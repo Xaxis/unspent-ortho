@@ -26,3 +26,11 @@ var dark_ms := 0.0
 var spoofed := false
 var inside := false
 var spoof_ms := 0.0
+## The prop kinds standing within BESIDE tiles of the player, none of them
+## depleted: what a way gated on "under a lamp" reads (SentinelWay.beside).
+var beside: Array[int] = []
+
+## How near a standing thing has to be to count as beside the player, in
+## tiles. A lamp standard's pool is about this wide, and it is under the light
+## that a keeper reads a signet as a crew's.
+const BESIDE := 2.0

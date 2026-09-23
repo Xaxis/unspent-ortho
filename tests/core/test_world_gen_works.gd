@@ -26,7 +26,8 @@ static func is_evidence(kind: int) -> bool:
 const NOT_YET_LAID: Array[int] = [PropKind.LINTEL, PropKind.CARVED_FACE, PropKind.THEODOLITE_MAST,
 	PropKind.CORE_RACK, PropKind.HOLLOW_WAY,
 	PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE,
-	PropKind.FULGURITE, PropKind.GLASS_BLISTER, PropKind.FUSED_CAR, PropKind.STRIKE_ROD]
+	PropKind.FULGURITE, PropKind.GLASS_BLISTER, PropKind.FUSED_CAR, PropKind.STRIKE_ROD,
+	PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT, PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY]
 
 ## Works each landscape must hold on every seed: kind -> its country.
 const HOME := {
@@ -445,6 +446,10 @@ func test_evidence_models_are_drawn_in_the_right_pen() -> void:
 					# tip blinks on the machines' beat like a relay's beacon
 					# (`src/models/props/glass_desert.gd` TIP).
 					PropKind.STRIKE_ROD,
+					# The metropolis's demolition gantry is the plan's frame over
+					# its own cut, and it carries the plan's steady strip along its
+					# beam like an intake does (`src/models/props/metropolis.gd`).
+					PropKind.DEMOLITION_GANTRY,
 					# A mural carries light only on the variants that had a
 					# hoarding bolted over the painting, and that light is the
 					# city's own: maintained, not stolen and not salvaged.

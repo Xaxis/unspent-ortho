@@ -77,12 +77,20 @@ static func make() -> BiomeDef:
 	dress.walling = [P.ASH[2], P.STONE[3], P.SLATE[2], P.STONE[2]]
 	dress.sink = 0.06
 	dress.lie = Vector2(-0.02, 0.05)
+	# What people put up here is a dead tower's ground floor walled in with
+	# salvaged doors (props/remains.gd `_infill`): nobody in a city builds a
+	# hut when there is a frame standing on every block.
+	dress.shelter = &"infill"
 	d.dressing = dress
-	# The same stock and the same plan the Slums raises, because it IS the same
-	# city a century on: what these two argue about is what happened to it, not
-	# how it was laid out.
+	# The same PLAN the Slums raises, because it IS the same city a century on,
+	# and its own STOCK, because what happened to it is the whole argument: the
+	# towers are dead, so what people build here is built INSIDE what fell — a
+	# ground floor walled in with salvaged doors under a tower's frame, a shack
+	# on a fallen deck, rooms hung inside a lift core, shop fronts re-shuttered
+	# as homes (BiomeForms.FORMS; docs/LANDSCAPES.md §4). Four forms, so a
+	# settlement here is four buildings: a ward, not a city.
 	d.built = BiomeForms.new()
-	d.built.stock = BiomeForms.RAISED
+	d.built.stock = [&"infill", &"deck_house", &"shaft_loft", &"stall_row"] as Array[StringName]
 	d.built.plan = &"block"
 	d.built.apart = BiomeForms.ROW_APART
 	d.grade = Vector4(-0.05, -0.01, 0.03, -0.02)
@@ -92,7 +100,15 @@ static func make() -> BiomeDef:
 	d.night_sky = 0.9
 	d.props = [PropKind.RUIN, PropKind.DEBRIS, PropKind.WRECKAGE, PropKind.VEHICLE,
 		PropKind.BARRICADE, PropKind.MURAL, PropKind.ARCHIVE, PropKind.LAMP,
-		PropKind.PYLON, PropKind.STACK, PropKind.CHECKPOINT]
+		PropKind.PYLON, PropKind.STACK, PropKind.CHECKPOINT,
+		# Its own (docs/LANDSCAPES.md §4, src/models/props/metropolis.gd), declared
+		# here so the city is the ONE landscape whose things these are: that is
+		# what makes the lift cable's gate the city's (Sources.lands_yielding).
+		# The bands that lay them, the works row that stands the gantry and the
+		# bales at the demolition face, are the placement wave's; declaring a
+		# kind places nothing until a recipe returns it.
+		PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT,
+		PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY]
 	d.ore = [[PropKind.IRON_ORE, 0.03], [PropKind.COPPER_ORE, 0.026], [PropKind.STONE_ORE, 0.02]]
 	d.sites = {"tips": 3, "ruins": true}
 	d.beached_wrecks = false
@@ -105,17 +121,26 @@ static func make() -> BiomeDef:
 		[Weather.DUST, 16, 0.5], [Weather.FOG, 10, 0.0],
 	]
 	d.mist = 0.22
-	# What a dead city does to a body: the dust off it, and the drop off a deck
-	# that is not there any more.
-	d.hazards = {&"dark": 0.35, &"collapse": 0.5}
+	# What a dead city does to a body: the dark of it, the drop off a deck that
+	# is not there any more, and the dust off crushed concrete on the skin — a
+	# plain 0.25, felt and never biting on its own, because `_weather_shift`
+	# scales toxins under ASH and not under the DUST the city mostly gets; a
+	# respirator or a scarf answers it (docs/LANDSCAPES.md §4).
+	d.hazards = {&"dark": 0.35, &"collapse": 0.5, &"toxins": 0.25}
 	d.roster = {
 		&"warden": {"weight": 1.0},
 		&"sweeper": {"weight": 1.0, "grounds": ["floor", "road", "mud", "grass"]},
 		&"watcher": {"weight": 0.9},
 		&"clerk": {"weight": 0.6, "grounds": ["floor", "road", "gravel", "rock"]},
 		&"dog.feral": {"weight": 0.7},
+		# The city's own worker, found nowhere else: the machine taking it apart
+		# (Roster, `demolisher`). Its own row keeps it to the floor and the rubble.
+		&"demolisher": {"weight": 1.2},
 	}
 	d.landmarks = [&"clerks_office", &"poured_pillar", &"blinking_stack", &"cast_stones"]
+	# Its keeper: the gantry crane taking the city apart (src/core/sentinel/
+	# designs/unbuilder.gd). The one door by which a landscape claims one.
+	d.sentinel = &"unbuilder"
 	d.sound_bed = &"bed_wreck"
 	d.surface = _surface
 	d.scatter = _scatter

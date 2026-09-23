@@ -24,11 +24,14 @@ extends RefCounted
 
 const Kit := preload("res://src/models/props/kit.gd")
 const Houses := preload("res://src/models/props/houses.gd")
+const Metropolis := preload("res://src/models/props/metropolis.gd")
 const P := preload("res://src/render/palette.gd")
 
 ## The one door: build the named form of `BiomeForms.RAISED`. `Houses.build`
 ## sends anything it does not itself draw here, so a landscape's stock may mix
-## a croft and a tower without either file knowing about the other.
+## a croft and a tower without either file knowing about the other; what is
+## built INSIDE a fallen city (`BiomeForms.FORMS`, the metropolis's four) goes
+## on to its own file the same way.
 static func build(k: Kit, form: StringName, c: int) -> void:
 	match form:
 		&"tower": tower(k, c)
@@ -37,6 +40,7 @@ static func build(k: Kit, form: StringName, c: int) -> void:
 		&"shell": shell(k, c)
 		&"arcade": arcade(k, c)
 		&"spire": spire(k, c)
+		_: Metropolis.form(k, form, c)
 
 
 ## How tall one storey stands. Everything here is a multiple of it, so a city's

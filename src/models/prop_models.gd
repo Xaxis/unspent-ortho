@@ -37,6 +37,7 @@ const Signage := preload("res://src/models/props/signage.gd")
 const Crags := preload("res://src/models/props/crags.gd")
 const FrostSea := preload("res://src/models/props/frost_sea.gd")
 const Glass := preload("res://src/models/props/glass_desert.gd")
+const Metropolis := preload("res://src/models/props/metropolis.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -118,6 +119,14 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 			return 3
 		PropKind.GLASS_BLISTER, PropKind.FUSED_CAR:
 			return 2
+		# The metropolis: a span with its lamp standing or snapped, a lift core
+		# with its cable in or out, a shop with its shutter a third, two thirds or
+		# all the way down, and a bale of each of the three things the plan sorts
+		# the city into (rebar, copper, cullet).
+		PropKind.DECK_SPAN, PropKind.LIFT_SHAFT:
+			return 2
+		PropKind.SHOPFRONT, PropKind.SORTED_BALE:
+			return 3
 		PropKind.BARRICADE, PropKind.SHACK, PropKind.VEHICLE, PropKind.HULL, PropKind.SEA_WALL, PropKind.TIDE_GAUGE, \
 		PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.FIRE_TOWER, PropKind.CHECKPOINT, PropKind.DRILL_RIG, \
 		PropKind.CONVEYOR, PropKind.SURVEY, PropKind.WATER_TANK, PropKind.SLAG_HEAP, PropKind.VENT_CAP, PropKind.ARCHIVE, \
@@ -215,6 +224,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			FrostSea.build(k, kind, variant, country)
 		PropKind.FULGURITE, PropKind.GLASS_BLISTER, PropKind.FUSED_CAR, PropKind.STRIKE_ROD:
 			Glass.build(k, kind, variant, country)
+		PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT, PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY:
+			Metropolis.build(k, kind, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)
@@ -371,6 +382,7 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 				# its lit one has is a HEARTH inside the door, and its light is a
 				# fire's -- no `neon`, so nothing reads it as stolen tech.
 				&"roundhouse": return [{"at": Crags.HEARTH_AT, "size": Vector2.ZERO, "color": Palette.EMBER[4], "rays": [3.0, 7.0, 1.0, 8.0]}]
+				&"infill": return [{"at": Vector3(0.64, 0.75, 0.725), "size": Vector2.ZERO, "color": n[0], "neon": true}]
 			return [{"at": Vector3(0.81, 0.85, -0.5), "size": Vector2.ZERO, "color": n[0], "neon": true}]
 		PropKind.INTAKE:
 			# The cold strip along both eaves (props/works.gd intake).

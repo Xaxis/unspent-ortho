@@ -84,6 +84,32 @@ func test_spoofing_it_wants_the_player_inside_its_guard_and_read_as_one_of_its_o
 	check(not w.kills(), "beaten, never killed")
 
 
+func test_a_spoof_that_reads_under_a_lamp_reads_nowhere_else() -> void:
+	# The unbuilder takes its orders off the district's lamps, so the signature
+	# is only read under one: inside its guard and spoofed is not enough.
+	var w := SentinelWay.make(SentinelWay.SPOOF, 2000.0)
+	w.beside = [PropKind.LAMP]
+	var l := _look()
+	l.inside = true
+	l.spoofed = true
+	l.spoof_ms = 9000.0
+	near(w.progress(l), 0.0, 1e-4, "spoofed inside its guard in the open, nothing is read")
+	check(not w.beside_met(l), "and the system is told the clock should not run")
+	l.beside = [PropKind.DEBRIS]
+	near(w.progress(l), 0.0, 1e-4, "a heap of rubble is not a lamp")
+	l.beside = [PropKind.DEBRIS, PropKind.LAMP]
+	check(w.beside_met(l), "under a lamp, the way is open")
+	l.spoof_ms = 1000.0
+	near(w.progress(l), 0.5, 1e-4, "and the hold counts from there")
+	# A way that names nothing reads anywhere inside the guard, as the rake's does.
+	var plain := SentinelWay.make(SentinelWay.SPOOF, 2000.0)
+	l.beside = []
+	check(plain.beside_met(l), "no gate, no lamp needed")
+	var unbuilder := Sentinels.by_id(&"unbuilder")
+	check(unbuilder != null and unbuilder.way_of(SentinelWay.SPOOF) != null
+		and unbuilder.way_of(SentinelWay.SPOOF).beside.has(PropKind.LAMP), "the unbuilder's own spoof is the lamp's")
+
+
 func test_each_design_offers_its_three_and_they_are_reachable_in_its_own_land() -> void:
 	for def: SentinelDef in Sentinels.all():
 		var land := BiomeRegistry.get_def(def.land)

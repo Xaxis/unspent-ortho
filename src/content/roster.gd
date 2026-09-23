@@ -400,6 +400,20 @@ const DEFS := {
 		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
 		"where": {"hours": [0, 0]},
 	},
+	# The metropolis's gantry crane (src/core/sentinel/designs/unbuilder.gd). The
+	# radius is its carriage, not its legs: a body walks between the legs of a
+	# thing that straddles a street, and what stops it is the sill it stands on.
+	# `height` is the bridge, which is what a tell over it has to clear.
+	&"sentinel.metropolis": {
+		"model": &"sentinel_unbuilder", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
+		"part": &"back", "sentinel": &"unbuilder",
+		"pace": 3.8, "dash": 8.0, "quick": 280, "radius": 1.4, "height": 9.6, "life": 150,
+		"sees": 16, "hears": 10, "racket": 28, "reach": 3, "ready": 3, "forget": 26, "tether": 26, "safe": 14,
+		"nerve": 100, "invuln": 540, "through": true, "disposition": &"wary", "overrun": 0.7,
+		"bite": {"swing": [880, 180, 820, 900], "reach": 2.0, "width": 1.8, "dmg": 3, "knock": 9.0, "knock_ms": 320},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
+	},
 
 	# --- The Glass Desert's own hunter (docs/LANDSCAPES.md §3) -----------------
 	# A long low body on four blade-skates. It charges, and its re-aim is the
@@ -423,6 +437,32 @@ const DEFS := {
 		"takes": 60.0, "drops": 2, "linger": 35.0, "chance": 4,
 		"keeps_to": ["rock", "salt", "gravel"],
 		"where": {"countries": ["glass_desert"], "grounds": ["rock", "salt"], "hours": [9, 19]},
+	},
+	# --- The Ruined Metropolis's own (docs/LANDSCAPES.md §4) -----------------
+	# The machine that takes the city apart: a squat tracked body with a long
+	# hydraulic boom and a crushing jaw on the end of it. A WORKER, and the
+	# heaviest bite of any: it charges in a line, its tell is the boom going up
+	# and back for most of a second, and the bite throws a body further than
+	# anything but a pulse hammer. It keeps to the swept floor and the rubble,
+	# beside the ruins it is working and the gantry it works under.
+	#
+	# WHAT IT DOES TO THE CITY IS NOT BUILT YET, AND THIS IS THE HOOK. On its
+	# round it should chew the RUIN in front of it: a live `Broken.work_down`
+	# on that prop over world minutes, written to `WorldProp.shown` through
+	# `Harvest.apply_shown` and refreshed through `WorldView.refresh_props`, the
+	# same door a player's own take goes through, so a district it has been
+	# working reads as one (docs/LANDSCAPES.md §4: "It chews RUIN props in front
+	# of it"). That belongs to the brain that runs its errand (Brains), which
+	# knows what is in front of it, and not to this table.
+	&"demolisher": {
+		"model": &"demolisher", "role": &"worker", "machine": true, "approach": &"charge", "turns": 5, "part": &"back",
+		"pace": 3.5, "dash": 8.0, "quick": 260, "radius": 0.85, "height": 1.6, "life": 96,
+		"sees": 9, "hears": 7, "racket": 24, "reach": 2, "ready": 3, "forget": 18, "tether": 30, "safe": 16,
+		"nerve": 100, "invuln": 560, "through": true, "disposition": &"indifferent",
+		"bite": {"swing": [720, 180, 760, 900], "reach": 1.7, "width": 1.6, "dmg": 5, "knock": 13.0, "knock_ms": 400},
+		"takes": 70.0, "drops": 3, "linger": 45.0, "chance": 4,
+		"where": {"countries": ["ruined_metropolis"], "grounds": ["floor", "gravel", "scree"], "green_min": 12,
+			"near_props": ["ruin", "demolition gantry"]},
 	},
 }
 

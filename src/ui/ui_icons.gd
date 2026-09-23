@@ -91,6 +91,12 @@ const SHAPES := {
 	&"scan_lens": [".........", "..kkkkk..", ".k32223k.", "k42klk24k", "k4klllk4k", "k42klk24k", ".k32223k.", "..k555k..", "........."],
 	&"foil": [".........", ".kkkkkkk.", "k33w3332k", "k3222223k", "k2222221k", "k2222211k", "k5555555k", ".kkkkkkk.", "........."],
 	&"signet": [".........", ".kkkkkkk.", ".k33333k.", ".k3lll3k.", ".k33333k.", ".k2kkk2k.", ".k2k.k2k.", ".kkk.kkk.", "........."],
+	# A coil of steel wire rope, its end clamped: the cable out of a lift core.
+	&"cable": [".........", "..kkkkk..", ".k3w332k.", "k3kkkkk2k", "k2k...k2k", "k2k..kk2k", "k2kkkk21k", ".k2211kk.", "..kkkkkk."],
+	# A bar of iron, hammered out of the bloom and not poured: iron is bloomery
+	# iron here (a fire, not a kiln), and it is given by the land as well as made,
+	# so it may not share the cast ingot's shape with copper (test_pickup_feed).
+	&"bar": [".........", "......kkk", ".....kw3k", "....k332k", "...k332k.", "..k332k..", ".k3221k..", "k3221k...", "kkkkk...."],
 	&"shield": [".kkkkkkk.", "k3333333k", "k33lll33k", "k3322233k", ".k22222k.", ".k22221k.", "..k111k..", "...kkk...", "........."],
 }
 
@@ -152,7 +158,7 @@ const ITEMS := {
 	&"tin_ore": [&"ore_crystal", &"slate", &"stone"],
 	&"coal": [&"lump", &"ink", &"ink"],
 	&"charcoal": [&"lump", &"ink", &"ink"],
-	&"iron": [&"ingot", &"slate", &"slate"],
+	&"iron": [&"bar", &"slate", &"slate"],
 	&"tin": [&"ingot", &"stone", &"stone"],
 	&"wool": [&"sack", &"linen", &"linen"],
 	&"yarn": [&"sack", &"linen", &"linen"],
@@ -186,6 +192,7 @@ const ITEMS := {
 	&"mod_wadding": [&"sack", &"linen", &"linen"],
 	&"mod_filter": [&"flask", &"ink", &"ash"],
 	&"mod_grip": [&"bundle", &"linen", &"earth"],
+	&"mod_wick": [&"lamp", &"copper", &"ember"],
 	&"mod_foil": [&"foil", &"plate", &"plate"],
 	&"mod_spring": [&"coil", &"plate", &"earth"],
 	&"condenser": [&"coil", &"plate", &"brine"],
