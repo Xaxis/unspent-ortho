@@ -23,7 +23,11 @@ const FIRE_REACH := 4.0
 const ROOF_REACH := 2.2
 const CANOPY_REACH := 1.6
 const ROOFS: Array[int] = [PropKind.HOUSE, PropKind.SHACK, PropKind.RUIN, PropKind.PUMP_HOUSE,
-	PropKind.ARCHIVE, PropKind.CHECKPOINT, PropKind.FIRE_TOWER]
+	PropKind.ARCHIVE, PropKind.CHECKPOINT, PropKind.FIRE_TOWER,
+	# A glass blister is shade on a landscape with none (docs/LANDSCAPES.md §3):
+	# a body steps in through the burst side. Its solid is 0, so ROOF_REACH is
+	# the whole of how far its shade is felt.
+	PropKind.GLASS_BLISTER]
 const CANOPY: Array[int] = [PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF]
 ## A line is not said again until the pressure has let go this far.
 const SAID_CLEAR := Hazards.FELT * 0.8

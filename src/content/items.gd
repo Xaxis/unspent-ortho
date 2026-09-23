@@ -120,6 +120,9 @@ const DEFS := {
 	&"dye": {"name": "dye", "bulk": 1.0, "group": &"material"},
 	&"brimstone": {"name": "brimstone", "bulk": 4.0, "group": &"material"},
 	&"limestone": {"name": "limestone", "bulk": 5.0, "group": &"material"},
+	# Fused-sand tubes broken off a fulgurite on the glass desert: the raw of
+	# its own elite material (EliteStock: fulgurite_core), refined at the kiln.
+	&"fulgurite": {"name": "fulgurite", "bulk": 2.0, "group": &"material", "icon": [&"ore_crystal", &"sand", &"linen"]},
 	# Cut out of a keeper, and out of nothing else in the world (src/core/sentinel).
 	&"reaper_core": {"name": "reaper core", "bulk": 3.0, "group": &"material"},
 	&"rake_core": {"name": "rake core", "bulk": 3.0, "group": &"material"},

@@ -24,6 +24,8 @@ const PROPS := {
 	PropKind.WRECKAGE: 0.55,
 	PropKind.DEBRIS: 0.4,
 	PropKind.VEHICLE: 0.6,
+	# A car sunk in glass is still a car's worth of wall (docs/LANDSCAPES.md §3).
+	PropKind.FUSED_CAR: 0.6,
 	PropKind.BARRICADE: 0.55,
 	PropKind.FENCE: 0.3,
 	PropKind.SLAG_HEAP: 0.55,

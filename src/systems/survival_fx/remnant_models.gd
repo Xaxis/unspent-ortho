@@ -40,7 +40,10 @@ static func for_kind(kind: int) -> StringName:
 		PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE:
 			return &"stump"
 		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, \
-				PropKind.TIN_ORE, PropKind.CLINTS, PropKind.RUIN:
+				PropKind.TIN_ORE, PropKind.CLINTS, PropKind.RUIN, \
+				# A fulgurite broken up for its tubes leaves the fused root and
+				# the chips: glass rubble on sand.
+				PropKind.FULGURITE:
 			return &"rubble"
 		PropKind.WRECK, PropKind.POLE, PropKind.PYLON, PropKind.VEHICLE, PropKind.BARRICADE, PropKind.HULL, \
 				PropKind.DEBRIS, PropKind.WRECKAGE:
