@@ -117,6 +117,24 @@ static func lights_report(tour: Node, game: Node) -> bool:
 		print("tour perf lights   %2d %-18s at (%6.1f, %5.1f, %6.1f) %5.1f from focus  energy %5.2f  %s  %s"
 			% [i, what, p.x, p.y, p.z, p.distance_to(focus), l.light_energy, "LIT" if l.visible else "off", "in frame" if inside else "OUT of frame"])
 	print("tour perf lights: %d of %d pool lights lit, %d of them inside the frame" % [lit, pool.size(), framed])
+	# Every lit candidate in reach, with the tier the pool ranks it by and whether
+	# it got a light: a source that is not in the pool says WHY here, which the
+	# list above cannot (the neon that stayed dark at burning dusk).
+	if sys.has_method(&"frame_tier") and sys.has_method(&"_near"):
+		var hour: float = game.get("clock").hour()
+		var f2 := Vector2(focus.x, focus.z)
+		for s: Dictionary in sys.call(&"_near", f2, float(sys.get("REACH"))):
+			if float(s.get("range", 0.0)) <= 0.0 or not bool(sys.call(&"source_lit", s, hour)):
+				continue
+			var at3: Variant = s.get("at")
+			if not at3 is Vector3:
+				continue
+			var d := (s.prop as WorldProp).pos.distance_to(f2)
+			if d > float(sys.get("REACH")):
+				continue
+			print("tour perf lights   candidate kind %d%s %5.1f from focus  tier %d  %s" % [int(s.get("kind", -1)),
+				" neon" if s.has("neon") else "", d, int(sys.call(&"frame_tier", cam, at3, float(s.get("range", 0.0)))),
+				"POOLED" if assigned.has(s) else "dark"])
 	return true
 
 
