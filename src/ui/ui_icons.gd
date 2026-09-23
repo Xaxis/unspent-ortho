@@ -93,6 +93,9 @@ const SHAPES := {
 	&"signet": [".........", ".kkkkkkk.", ".k33333k.", ".k3lll3k.", ".k33333k.", ".k2kkk2k.", ".k2k.k2k.", ".kkk.kkk.", "........."],
 	# A coil of steel wire rope, its end clamped: the cable out of a lift core.
 	&"cable": [".........", "..kkkkk..", ".k3w332k.", "k3kkkkk2k", "k2k...k2k", "k2k..kk2k", "k2kkkk21k", ".k2211kk.", "..kkkkkk."],
+	# Rope steel: a length of wire rope across the mark, snapped and splayed at
+	# its head, a ferrule on its foot. Straight where lift cable is coiled.
+	&"rope": ["......k.k", ".....kwkk", "....k32k.", "...k32k..", "..k32k...", ".k32k....", "k55k.....", "k5k......", "kk......."],
 	# A bar of iron, hammered out of the bloom and not poured: iron is bloomery
 	# iron here (a fire, not a kiln), and it is given by the land as well as made,
 	# so it may not share the cast ingot's shape with copper (test_pickup_feed).

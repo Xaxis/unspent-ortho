@@ -64,6 +64,11 @@ const MATERIALS := {
 	# iron is already made, so it is the forge this game has.
 	&"tower_cable": {"land": &"ruined_metropolis", "raw": &"lift_cable", "at": &"fire", "grade": &"rare",
 		"what": "lift rope annealed and laid up again: it takes a body's weight and does not stretch"},
+	# The Mesas' own (docs/LANDSCAPES.md §6): rope steel cut with a steel edge out
+	# of a fallen span of the ropeway, which lies only on the mesas' scree (Takes
+	# gates the cut on SCREE), re-laid at the fire as the city's cable is.
+	&"span_wire": {"land": &"mesas", "raw": &"rope_steel", "at": &"fire", "grade": &"rare",
+		"what": "ropeway wire drawn out fine and stiff: a frame strung with it holds its shape in a gale"},
 
 	# --- one machine's own ----------------------------------------------------
 	&"tide_iron": {"kind": &"harvester", "chance": 0.35, "grade": &"prime",

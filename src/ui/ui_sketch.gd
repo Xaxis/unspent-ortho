@@ -482,6 +482,15 @@ const SHAPES := {
 		["poly", "a2", [23.0, 7.5, 30.0, 8.5, 30.0, 13.0, 23.0, 12.0]],
 		["dot", 26.5, 10.2], ["line", 9.0, 19.5, 22.0, 18.5],
 	],
+	&"rope": [
+		# A length of wire rope on the diagonal, its lay drawn across it, a
+		# ferrule swaged on its foot and its head snapped and splayed.
+		["bar", "a3", 6.0, 26.0, 24.5, 7.5, 3.6, 3.0],
+		["bar", "b3", 3.5, 29.0, 8.5, 24.0, 5.0, 5.0],
+		["line", 10.0, 20.0, 13.0, 23.0], ["line", 13.5, 16.5, 16.5, 19.5], ["line", 17.0, 13.0, 20.0, 16.0],
+		["line", 24.5, 7.5, 29.5, 2.5], ["line", 24.5, 7.5, 30.0, 6.5], ["line", 24.0, 8.0, 26.5, 2.0],
+		["dot", 5.5, 27.0],
+	],
 	&"bar": [
 		# A bar hammered out on the diagonal: a lit edge along its top, the face
 		# under it, and the hammer's scale on the face.
@@ -533,7 +542,7 @@ const SHAPES := {
 }
 
 ## Shapes drawn with a ruler.
-const FOUND_SHAPES: Array[StringName] = [&"glim", &"scrap", &"kit", &"dram", &"beam", &"broad", &"blade", &"hammer", &"torch", &"brace", &"rig", &"lens", &"aerial", &"signet", &"shield", &"cable"]
+const FOUND_SHAPES: Array[StringName] = [&"glim", &"scrap", &"kit", &"dram", &"beam", &"broad", &"blade", &"hammer", &"torch", &"brace", &"rig", &"lens", &"aerial", &"signet", &"shield", &"cable", &"rope"]
 
 ## Stations, on a 48x32 grid: [parts, ramp a, ramp b, found].
 const STATIONS := {

@@ -47,7 +47,9 @@ func test_no_new_row_gives_an_elite_raw() -> void:
 		&"lens_ice": [PropKind.PRESSURE_BLOCK],
 		# The glass desert's raw comes off a fulgurite and nothing else (docs/LANDSCAPES.md §3).
 		&"fulgurite": [PropKind.FULGURITE],
-		&"lift_cable": [PropKind.LIFT_SHAFT]}
+		&"lift_cable": [PropKind.LIFT_SHAFT],
+		# The mesas' raw comes off a fallen span and nothing else (docs/LANDSCAPES.md §6).
+		&"rope_steel": [PropKind.FALLEN_SPAN]}
 	for id: StringName in EliteStock.MATERIALS:
 		var raw := StringName(str((EliteStock.MATERIALS[id] as Dictionary).get("raw", &"")))
 		if raw != &"":

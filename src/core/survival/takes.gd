@@ -345,14 +345,21 @@ static func _glass(t: Dictionary) -> void:
 
 
 ## The Mesas (docs/LANDSCAPES.md §6). A fallen span of the ropeway lies on the
-## scree with its buckets still on it: a bucket's plate comes away by hand, and
-## it stays where it fell. The ropeway's pylon is a plan work (below): what a
+## scree with its buckets still on it: its rope is cut out with a steel edge,
+## a bucket's plate comes away by hand, and it stays where it fell. The ropeway's pylon is a plan work (below): what a
 ## hand takes off it is the clamp that holds its span, cut with an iron edge,
 ## and without it the pylon comes down -- which is what stops it feeding the
 ## mesas' keeper (Sentinels.feeds counts what is not depleted), the theodolite
 ## mast's rule.
 static func _mesas(t: Dictionary) -> void:
-	t[PropKind.FALLEN_SPAN] = [_o(&"turn", &"scrap", 1, 16.0, NEVER, {"keep": true, "uses": 2})]
+	# **ON THE MESAS' OWN SCREE.** Rope steel is the raw the mesas' elite
+	# material is refined from (EliteStock: span_wire), and an elite material
+	# has ONE gate; a span lying on any ground but the scree the ropeway comes
+	# down on is a span somewhere else. A steel edge, twice, and the wreck
+	# stays where it fell: what is cut out is the rope, not the span.
+	t[PropKind.FALLEN_SPAN] = [_o(&"cut", &"rope_steel", 1, 20.0, NEVER,
+		{"stuff": &"steel", "keep": true, "uses": 2, "ground": [Ground.SCREE]}),
+		_o(&"turn", &"scrap", 1, 16.0, NEVER, {"keep": true, "uses": 2})]
 	t[PropKind.SPAN_PYLON] = [_o(&"cut", &"scrap", 2, 24.0, NEVER, {"stuff": &"iron"})]
 
 

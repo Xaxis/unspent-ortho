@@ -134,6 +134,9 @@ const LIST: Array[Dictionary] = [
 	{"id": &"fulgurite_core", "at": &"kiln", "minutes": 150.0, "needs": {&"fulgurite": 3, &"charcoal": 2}, "makes": {&"fulgurite_core": 1}},
 	# Lift rope annealed in the fire and laid up again: the city's own.
 	{"id": &"tower_cable", "at": &"fire", "minutes": 110.0, "needs": {&"lift_cable": 2, &"charcoal": 1}, "makes": {&"tower_cable": 1}},
+	# The mesas' span wire: the ropeway's rope annealed at the fire, the one hot
+	# station a person builds (the spec's "forge", as the city's cable reads it).
+	{"id": &"span_wire", "at": &"fire", "minutes": 110.0, "needs": {&"rope_steel": 2, &"charcoal": 1}, "makes": {&"span_wire": 1}},
 	# Nothing is dead loot: what a ruined pour leaves is still plate.
 	{"id": &"spoil_scrap", "at": &"fire", "minutes": 30.0, "needs": {&"spoil": 2, &"charcoal": 1}, "makes": {&"scrap": 1}},
 
@@ -149,6 +152,9 @@ const LIST: Array[Dictionary] = [
 	# The grapple brace re-cabled with the city's own rope: a vertical city is
 	# where you climb (GearTree family `brace`).
 	{"id": &"brace_cable", "at": &"bench", "minutes": 100.0, "needs": {&"boots_magnet": 1, &"tower_cable": 1, &"rag": 1}, "makes": {&"brace_cable": 1}},
+	# The glide wing re-strung with the mesas' span wire (GearTree family
+	# `wing`): the wing that goes into it is the wing that comes out, stiffer.
+	{"id": &"wing_span", "at": &"bench", "minutes": 100.0, "needs": {&"glide_wing": 1, &"span_wire": 1, &"rag": 2}, "makes": {&"wing_span": 1}},
 	# A beam or a lance a person BUILT, out of plate, a charge and one machine part:
 	# found tech taken whole can never be mended, so the mended rung is not a
 	# stolen weapon rehafted — it is one made from the same refuse.

@@ -162,6 +162,11 @@ const DEFS := {
 	# its elite material is drawn from (EliteStock: tower_cable). Machine-made,
 	# so it is drawn in the module's violet like plate is.
 	&"lift_cable": {"name": "lift cable", "bulk": 2.0, "group": &"material", "icon": [&"cable", &"plate", &"ink"]},
+	# Wire rope cut out of a fallen span of the mesas' ropeway: the raw its
+	# elite material is drawn from (EliteStock: span_wire). A length, snapped at
+	# one end, and drawn in its own shape because the pickup feed keeps one
+	# shape to one material the land gives (tests/ui/test_pickup_feed.gd).
+	&"rope_steel": {"name": "rope steel", "bulk": 2.0, "group": &"material", "icon": [&"rope", &"plate", &"ink"]},
 	# Cloth out of what people left: the one soft material a made garment needs.
 	&"rag": {"name": "rags", "bulk": 1.0, "group": &"material"},
 
@@ -239,8 +244,20 @@ const DEFS := {
 	&"brace_ram": {"name": "ram brace", "bulk": 4.0, "group": &"kit", "tier": &"mended",
 		"slot": &"hands", "sockets": 3, "icon": [&"boot", &"plate", &"lens"],
 		"resist": {&"em": 0.4, &"resonance": 0.25, &"collapse": 0.3}, "ability": &"grapple", "wears": {"salvage": [&"brace"]}},
+	# The glide wing is a family now (GearTree `wing`), and its first rung is
+	# UNCOMMON, which is worth one socket: it is made at a bench out of plate,
+	# timber and rag, which is the brace's bottom rung's grade and not a rare's.
+	# Its second socket moved up a rung, onto the wing re-strung with the mesas'
+	# span wire, because a grade buys sockets and the only thing that set this
+	# one to two was a number typed into the row.
 	&"glide_wing": {"name": "glide wing", "bulk": 4.0, "group": &"kit", "tier": &"mended",
-		"slot": &"back", "sockets": 2, "resist": {}, "ability": &"glide", "wears": {"wing": true}},
+		"slot": &"back", "sockets": 1, "resist": {}, "ability": &"glide", "wears": {"wing": true}},
+	# The wing's rare rung (docs/LANDSCAPES.md §6): the same wing and the same
+	# glide, its frame re-strung with span wire off the mesas' ropeway, and two
+	# sockets. Glide is the mesas' own answer to a land of drops.
+	&"wing_span": {"name": "span wing", "bulk": 4.5, "group": &"kit", "tier": &"mended",
+		"slot": &"back", "sockets": 2, "icon": [&"wing", &"slate", &"copper"],
+		"resist": {}, "ability": &"glide", "wears": {"wing": true}},
 	&"scanner_lens": {"name": "scanner lens", "bulk": 1.0, "group": &"kit", "tier": &"mended",
 		"slot": &"head", "sockets": 2, "resist": {&"dark": 0.5, &"glare": 0.35}, "ability": &"scan", "wears": {"salvage": [&"lens"]}},
 	# A machine's own coolant loop, cut short and wound: it gives back what a
@@ -413,6 +430,9 @@ const DEFS := {
 	# The glass desert's: a strike's own cast, fired again until it rings.
 	&"fulgurite_core": {"name": "fulgurite core", "bulk": 1.5, "group": &"material", "icon": [&"lump", &"spruce", &"rime"]},
 	&"tower_cable": {"name": "tower cable", "bulk": 2.0, "group": &"material", "icon": [&"coil", &"slate", &"copper"]},
+	# The mesas': rope steel annealed and laid up again for a span, light and
+	# stiff, in the rock's own red.
+	&"span_wire": {"name": "span wire", "bulk": 1.5, "group": &"material", "icon": [&"coil", &"rust", &"sand"]},
 	&"tide_iron": {"name": "tide iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"ash"]},
 	&"mono_edge": {"name": "filament edge", "bulk": 0.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"found", &"lens"]},
 	&"keeper_lens": {"name": "keeper lens", "bulk": 1.0, "group": &"found", "stuff": &"found", "icon": [&"lens", &"plate", &"lens"]},
