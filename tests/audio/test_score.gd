@@ -207,7 +207,10 @@ func test_night_drones_are_deep_without_mud() -> void:
 		mutex.lock()
 		done[keys[i]] = f
 		mutex.unlock()
-	var group := WorkerThreadPool.add_group_task(task, keys.size(), -1, true, "score test drones")
+	# The first one alone, on this thread, before the rest go to every core:
+	# SoundBank's header, on cold code and the pool.
+	task.call(0)
+	var group := WorkerThreadPool.add_group_task(func(i: int) -> void: task.call(i + 1), keys.size() - 1, -1, true, "score test drones")
 	WorkerThreadPool.wait_for_group_task_completion(group)
 	for key in keys:
 		var f: Dictionary = done[key]

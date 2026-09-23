@@ -169,8 +169,13 @@ static func bake(keys: Array[StringName]) -> Dictionary:
 		mutex.lock()
 		done[todo[i]] = b
 		mutex.unlock()
-	var group := WorkerThreadPool.add_group_task(task, todo.size(), -1, true, "sound scene")
-	WorkerThreadPool.wait_for_group_task_completion(group)
+	# The first one alone, on this thread, before the rest go to every core:
+	# SoundBank's header, on cold code and the pool.
+	if not todo.is_empty():
+		task.call(0)
+	if todo.size() > 1:
+		var group := WorkerThreadPool.add_group_task(func(i: int) -> void: task.call(i + 1), todo.size() - 1, -1, true, "sound scene")
+		WorkerThreadPool.wait_for_group_task_completion(group)
 	for k: StringName in keys:
 		if not done.has(k):
 			done[k] = done.get(SoundBank.key_for(k, 0))
