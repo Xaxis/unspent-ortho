@@ -436,7 +436,7 @@ const DEFS := {
 		"bite": {"swing": [460, 130, 520, 700], "reach": 1.4, "width": 1.2, "dmg": 3, "knock": 7.0, "knock_ms": 280},
 		"takes": 60.0, "drops": 2, "linger": 35.0, "chance": 4,
 		"keeps_to": ["rock", "salt", "gravel"],
-		"where": {"countries": ["glass_desert"], "grounds": ["rock", "salt"], "hours": [9, 19]},
+		"where": {"countries": ["glass_desert"], "grounds": ["rock", "salt"], "hours": [9, 19], "green_min": 14},
 	},
 	# --- The Ruined Metropolis's own (docs/LANDSCAPES.md §4) -----------------
 	# The machine that takes the city apart: a squat tracked body with a long
