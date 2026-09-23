@@ -44,8 +44,6 @@ glass_desert land.landmark
 glass_desert land.own_props
 glass_desert land.site
 glass_desert plan.depot
-glass_desert plan.keeper
-glass_desert plan.machine
 glass_desert plan.work_props
 glass_desert player.only_in
 green_towers land.frames

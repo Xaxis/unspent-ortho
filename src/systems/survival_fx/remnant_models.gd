@@ -43,7 +43,10 @@ static func for_kind(kind: int) -> StringName:
 				PropKind.TIN_ORE, PropKind.CLINTS, PropKind.RUIN, \
 				# A carved face broken up for its hushstone is a boulder broken up:
 				# what is left is its own rock (props/crags.gd).
-				PropKind.CARVED_FACE:
+				PropKind.CARVED_FACE, \
+				# A fulgurite broken up for its tubes leaves the fused root and
+				# the chips: glass rubble on sand.
+				PropKind.FULGURITE:
 			return &"rubble"
 		PropKind.THEODOLITE_MAST:
 			# Stripped of its lens the mast comes down (Takes): its foot plate and

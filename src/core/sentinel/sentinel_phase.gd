@@ -34,6 +34,13 @@ var quick := 300
 ## Radians/s it comes round in. Every phase must leave the working side reachable
 ## by a player walking round it (tests/sentinel/test_phases.gd holds this).
 var turn := 1.5
+## A tell on the GROUND for this phase's bite: &"" (none — the body's own pose
+## is the whole tell, as it is for every other machine) or &"ring", a pale ring
+## drawn where the bite will land when its windup begins, for a blow that comes
+## down from above rather than out of a limb. It is a picture and not a rule:
+## 44_sentinels draws it over the box `FightRules.box_hits` will test, and
+## FightSim lands the bite off `bite` exactly as it would with no tell at all.
+var tell: StringName = &""
 ## Why this phase exists and what the player is meant to read off the body:
 ## review notes, never shown to anyone.
 var note := ""

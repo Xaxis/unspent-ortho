@@ -44,7 +44,9 @@ func test_no_new_row_gives_an_elite_raw() -> void:
 		# The crags' raw comes off a carved face and nothing else (docs/LANDSCAPES.md §1).
 		&"hushstone": [PropKind.CARVED_FACE],
 		# The frost sea's raw comes off a pressure block and nothing else (docs/LANDSCAPES.md §2).
-		&"lens_ice": [PropKind.PRESSURE_BLOCK]}
+		&"lens_ice": [PropKind.PRESSURE_BLOCK],
+		# The glass desert's raw comes off a fulgurite and nothing else (docs/LANDSCAPES.md §3).
+		&"fulgurite": [PropKind.FULGURITE]}
 	for id: StringName in EliteStock.MATERIALS:
 		var raw := StringName(str((EliteStock.MATERIALS[id] as Dictionary).get("raw", &"")))
 		if raw != &"":

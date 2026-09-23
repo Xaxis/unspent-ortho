@@ -50,6 +50,8 @@ const SHAPES := {
 	&"fish": [".........", "..kkkk...", ".k3322k..", "k3w2222kk", "k322221k.", ".k1122k.k", "..kkkk.k.", ".........", "........."],
 	&"lens_ice": [".........", "...kkk...", "..k333k..", ".k32w23k.", ".k32223k.", ".k33333k.", "..k222k..", "...kkk...", "........."],
 	&"crottle": [".kk...kk.", "kwk.k.kwk", ".k2kwk2k.", "..k222k..", "...k2k...", ".kkk1kkk.", "k2222221k", ".kkkkkkk.", "........."],
+	# Fulgurite: two fused tubes branching up out of one root, like dead coral.
+	&"fulgurite": ["....k....", "...k3k.k.", "..k3k.k3k", "..k2kkk2k", ".kk2k32k.", ".k32kk2k.", "k3222w21k", "k222111k.", ".kkkkkk.."],
 	&"peat": [".........", "...kkkkkk", "..k32323k", ".k232321k", "k232321k.", "k12121k..", "k1111k...", "kkkkk....", "........."],
 	&"limestone": [".........", "...kkkkk.", "..k33w3k.", ".kkkkkkkk", ".k222221k", "kkkkkkkk.", "k222211k.", "kkkkkkkk.", "........."],
 	&"brimstone": [".........", "..k.k.k..", ".kwkwkwk.", "k3w3w3w3k", "k2323232k", "k2k22k21k", ".k21k11k.", "..kkkkk..", "........."],

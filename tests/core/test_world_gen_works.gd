@@ -15,15 +15,18 @@ static func is_evidence(kind: int) -> bool:
 	return kind >= FIRST and not PropKind.WILD.has(kind)
 
 ## Kinds declared, modelled and taken from, that no stage of world gen lays YET:
-## the crags' five and the frost sea's four arrive in two halves each (docs/
-## LANDSCAPES.md §1, §2), the kinds first and the scatter bands, the survey
-## bench, the barrow site, the soundings works row and the floe camp after, so
-## for one wave they exist and stand nowhere. A kind here is a debt, and the
-## commit that lays one takes it off this list, or the test below goes on
-## passing over a kind nobody placed.
+## the crags' five, the frost sea's four and the glass desert's four arrive in
+## two halves each (docs/LANDSCAPES.md §1, §2, §3), the kinds first and the
+## scatter bands, the survey bench, the barrow site, the soundings works row,
+## the floe camp, the strike field and the crater site after, so for one wave
+## they exist and stand nowhere. A kind here is a debt, and the commit that
+## lays one takes it off this list, or the test below goes on passing over a
+## kind nobody placed. `test_world_gen.gd`'s placed-anywhere claim and
+## `tests/gear_economy/test_in_a_real_world.gd`'s raw check read this same list.
 const NOT_YET_LAID: Array[int] = [PropKind.LINTEL, PropKind.CARVED_FACE, PropKind.THEODOLITE_MAST,
 	PropKind.CORE_RACK, PropKind.HOLLOW_WAY,
-	PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE]
+	PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE,
+	PropKind.FULGURITE, PropKind.GLASS_BLISTER, PropKind.FUSED_CAR, PropKind.STRIKE_ROD]
 
 ## Works each landscape must hold on every seed: kind -> its country.
 const HOME := {
@@ -438,6 +441,10 @@ func test_evidence_models_are_drawn_in_the_right_pen() -> void:
 					break
 			if lit:
 				check(kind in [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.RELAY, PropKind.STACK, PropKind.CHECKPOINT, PropKind.DRILL_RIG, PropKind.TIDE_GAUGE, PropKind.SIGN, PropKind.SURVEY, PropKind.VENT_CAP, PropKind.SHACK, PropKind.PAN_GATE,
+					# The glass desert's strike rod is a machine installation: its
+					# tip blinks on the machines' beat like a relay's beacon
+					# (`src/models/props/glass_desert.gd` TIP).
+					PropKind.STRIKE_ROD,
 					# A mural carries light only on the variants that had a
 					# hoarding bolted over the painting, and that light is the
 					# city's own: maintained, not stolen and not salvaged.

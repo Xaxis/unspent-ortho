@@ -104,9 +104,17 @@ enum {
 	FROZEN_HULL,
 	SOUNDING_RIG,
 	SEAL_HOLE,
+	# THE GLASS DESERT (docs/LANDSCAPES.md §3): what a place that was fused in a
+	# second holds. Fulgurite tubes standing out of the drift, a burst dome of
+	# glass, a car caught in the glassing, and the plan's own strike rod — the
+	# one made thing here, and the only one that is THEIRS.
+	FULGURITE,
+	GLASS_BLISTER,
+	FUSED_CAR,
+	STRIKE_ROD,
 }
 
-const COUNT := 77
+const COUNT := 81
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -122,6 +130,7 @@ const NAMES: PackedStringArray = [
 	"platform", "growth tank", "console",
 	"lintel", "carved face", "theodolite mast", "core rack", "hollow way",
 	"pressure block", "frozen hull", "sounding rig", "seal hole",
+	"fulgurite", "glass blister", "fused car", "strike rod",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
@@ -129,7 +138,10 @@ const NAMES: PackedStringArray = [
 ## reader counting what happened to a landscape should pass over them. The
 ## frost sea's block is ice the sea stood on end and its seal hole is a seal's:
 ## the hull and the rig are somebody's.
-const WILD: Array[int] = [SALT_RIDGE, SCRAP_TREE, MAGNET_HEAP, PRESSURE_BLOCK, SEAL_HOLE]
+const WILD: Array[int] = [SALT_RIDGE, SCRAP_TREE, MAGNET_HEAP, PRESSURE_BLOCK, SEAL_HOLE,
+	# The glass desert's fused sand: a strike's cast and a burst in the sheet are
+	# what the land did, scattered like a boulder; the car and the rod are not.
+	FULGURITE, GLASS_BLISTER]
 
 ## Collision radius in tiles at scale 1. 0 means you walk through it.
 const SOLID: PackedFloat32Array = [
@@ -164,4 +176,10 @@ const SOLID: PackedFloat32Array = [
 	# ends are walked through, the way a mural's are); a rig's legs stop a body
 	# short of the hole; a seal hole is a hole, and a body stops at its rim.
 	0.5, 1.4, 0.5, 0.3,
+	# A fulgurite cluster is half a tile wide and stops a body; a blister is 0
+	# because it is SHELTER — a body steps into it, and what the step costs is a
+	# hazard row, not a wall; a car sunk to its sills is still a car's length
+	# (VEHICLE is 0.8 and this one lies longer in its pool); a strike rod is a
+	# mast on a guyed foot, no wider than a pole's head.
+	0.25, 0.0, 1.0, 0.2,
 ]
