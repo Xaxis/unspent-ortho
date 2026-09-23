@@ -32,9 +32,21 @@ extends GameSystem
 ## Answers a tour: `portal`, `portal:N` (that shaft is in reach), `realm:KIND`,
 ## `crossed` (the player has come through a shaft at least once).
 
-## Tiles from a shaft at which the realm behind it starts being raised. A run at
-## Tuning.RUN_SPEED covers it in about nine seconds; a world takes about one.
+## Tiles from a shaft at which the realm behind it starts being raised, if the
+## game's own warm-up (WARM_AFTER) has not already started it. The premise it was
+## written on -- "a run covers it in about nine seconds; a world takes about one"
+## -- died with the continents: a world is 26.8 s on the threaded web at 1300 and
+## 43.4 s at 1840, so on its own it bought a player standing at a shaft for most
+## of that. Kept because `begin` is idempotent: once the warm-up has run it costs
+## nothing, and it still asks for any realm the warm-up did not.
 const WARM := 44.0
+## Frames into a game after which, with threads, the realms behind this world's
+## shafts start being raised on the pool: after the first frames, so the opening
+## view has the pool to itself, and long before anyone reaches a shaft. Both worlds
+## fit (1,555 MB of the 2 GiB wasm heap on the threaded web at 1840, with a real
+## crossing made); a player who walks straight to a shaft usually finds it ready,
+## and the crossing page covers the rest.
+const WARM_AFTER := 3
 ## How often the shafts near the player are looked at (seconds).
 const LOOK_EVERY := 0.2
 ## Seconds after arriving in which `use` does nothing, so the key that brought a
@@ -80,6 +92,10 @@ var _stood: Dictionary = {}
 var _edits: Dictionary = {}
 ## Told once per shaft, the first time the player is in reach of it.
 var _taught: Dictionary = {}
+## Frames this game has run, until the warm-up has been asked for.
+var _frames := 0
+## The crossing page while one stands, or null: no second crossing while it does.
+var _crossing: Node = null
 
 
 func setup(g: Game) -> void:
@@ -131,6 +147,13 @@ func _process(delta: float) -> void:
 	# the hatch, the ink and the lamp's pool all come on down there.
 	if game.sky != null:
 		game.sky.closed = 1.0 if Realm.roofed(_realm) else 0.0
+	if _frames < WARM_AFTER:
+		_frames += 1
+		if _frames == WARM_AFTER and BootPage.has_threads():
+			for p: Portal in here:
+				RealmWorlds.begin(game.options.seed_value, game.world.size, p.to_realm)
+	if _crossing != null and is_instance_valid(_crossing):
+		return
 	_stand_gates()
 	_look -= delta
 	if _look <= 0.0:
@@ -220,12 +243,32 @@ func cross_era() -> void:
 	var here_pos: Vector2 = game.player.pos
 	var to := Realm.SURFACE if _realm == Realm.ERA else Realm.ERA
 	Events.sfx.emit(&"door", game.player.position)
-	_go(to, here_pos, -1, true)
-	crossings += 1
-	if to == Realm.ERA:
-		Events.message.emit("The light changes, and the year with it. 2029.")
-	else:
-		Events.message.emit("Back, and the years come with you.")
+	_arrive(to, here_pos, -1, func() -> void:
+		crossings += 1
+		if to == Realm.ERA:
+			Events.message.emit("The light changes, and the year with it. 2029.")
+		else:
+			Events.message.emit("Back, and the years come with you."))
+
+
+## Go to realm `to` now if its world is standing, else behind the crossing page
+## (`BootPage.open_crossing`) with the game paused, and run `then` once there.
+## A headless run has no frames to show a page in, so it goes at once, as it
+## always did.
+func _arrive(to: StringName, at: Vector2, shaft: int, then: Callable) -> void:
+	var seed_value := game.options.seed_value
+	var size: int = game.world.size
+	if RealmWorlds.ready(seed_value, size, to) or BootPage.headless():
+		_go(to, at, shaft, true)
+		then.call()
+		return
+	var tree := get_tree()
+	var was := tree.paused
+	tree.paused = true
+	_crossing = BootPage.open_crossing(tree.root, seed_value, size, to, func() -> void:
+		_go(to, at, shaft, true)
+		tree.paused = was
+		then.call())
 
 
 ## A drawn gate for every gate this world holds, open or shut, rebuilt when its
@@ -279,13 +322,13 @@ func cross(p: Portal) -> void:
 		return
 	var to := p.to_realm
 	Events.sfx.emit(&"door", game.player.position)
-	_go(to, Vector2.ZERO, p.id, true)
-	crossings += 1
-	var land := BiomeRegistry.at(game.world, game.player.pos).display_name
-	if Realm.roofed(to):
-		Events.message.emit("Down the shaft, and the daylight goes: %s." % land)
-	else:
-		Events.message.emit("Up the shaft, and the sky comes back: %s." % land)
+	_arrive(to, Vector2.ZERO, p.id, func() -> void:
+		crossings += 1
+		var land := BiomeRegistry.at(game.world, game.player.pos).display_name
+		if Realm.roofed(to):
+			Events.message.emit("Down the shaft, and the daylight goes: %s." % land)
+		else:
+			Events.message.emit("Up the shaft, and the sky comes back: %s." % land))
 
 
 ## Point the game at realm `to`. `at` is where to put the body; Vector2.ZERO means

@@ -241,3 +241,31 @@ func test_the_page_is_a_screen_of_the_slate() -> void:
 	check(BootPage.LINE_Y < g.end.y - BootPage.KEYS_H - 2, "and stands above the foot strip")
 	check(BootPage.SKETCH_AT.y > g.position.y + BootPage.STATUS_H, "the island hangs below the status bar")
 	check(BootPage.SKETCH_AT.y + BootPage.SKETCH < BootPage.LINE_Y - 16, "and above the words over the line")
+
+
+## A SHAFT'S PAGE IS UP BEFORE THE WORLD BEHIND IT IS RAISED, on a build with no
+## pool to raise it on (the no-threads web build, faked by `threads` false). Before
+## it, the raise ran inside the frame `use` was pressed and the canvas held the
+## game's last frame for up to a minute -- a hung tab -- so the order is the whole
+## point: the page first, THEN the long frame, and only then the arrival.
+func test_a_crossing_shows_its_page_before_the_raise() -> void:
+	RealmWorlds.forget()
+	var holder := _holder()
+	var arrived := [false]
+	var page := BootPage.open_crossing(holder, 4, SIZE, Realm.UNDERGROUND, func() -> void:
+		arrived[0] = true, false)
+	await tree.process_frame
+	check(page.is_inside_tree() and page.is_in_group(&"boot_page"), "the page is up")
+	check(not RealmWorlds.ready(4, SIZE, Realm.UNDERGROUND), "and the world behind the shaft is not raised yet")
+	check(not arrived[0], "nor has the game gone anywhere")
+	for i in 600:
+		if arrived[0] and page.stages.done():
+			break
+		await tree.process_frame
+	check(RealmWorlds.ready(4, SIZE, Realm.UNDERGROUND), "the page raised it")
+	check(arrived[0], "and then the game arrived")
+	for id: StringName in [&"world", &"start", &"draw"]:
+		check(page.stages.timings().has(id), "stage %s ran" % id)
+	check(page._sketch_image != null, "the world below was sketched on the page")
+	holder.free()
+	RealmWorlds.forget()

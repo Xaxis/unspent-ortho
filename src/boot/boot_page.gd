@@ -104,6 +104,11 @@ const LIFT_SECONDS := 0.35
 ## happens, where no frame arrives at all, `draw` gives up at DRAW_SILENT_MS and
 ## the whole line is under eight seconds.
 const DRAW_DEADLINE_MS := 10000.0
+## How long a shaft's page waits for a raise on the pool before `arrive` takes the
+## world itself (which waits out the rest with the page still drawn). Generous: a
+## 1840 world is ~40 s on the threaded web, and giving up early only moves the
+## same wait under a page that has stopped moving.
+const CROSSING_DEADLINE_MS := 120000.0
 const WAIT_DEADLINE_MS := 5000.0
 ## ...and how long `draw` waits for its FIRST frame before it concludes that no
 ## frames are coming at all. The page is drawing itself while that stage waits,
@@ -202,6 +207,53 @@ static func preview(parent: Node, o: BootOptions) -> Node:
 	return page
 
 
+## A SHAFT'S PAGE: the same device, over a running game, while the world on the
+## other side is raised, then `arrive` (20_realms puts the game in it) and the
+## lift. Before it, a crossing to a realm not yet standing grew that world inside
+## the frame `use` was pressed: the canvas held its last frame and the browser
+## could not so much as composite the tab -- 17 s on the threaded web at 1300,
+## 34 s at 1840, a minute on the no-threads build -- which reads as a crash.
+##
+## With threads the raise is the pool's (`RealmWorlds.begin`) and the page only
+## asks whether it is up. Without, it is raised on this thread, and the page is
+## drawn FIRST: `_process` shows two frames before any stage runs, so what holds
+## the long frame is this page saying "raising the land", not a frozen game. The
+## wait carries a deadline like every stage that waits: past it, `arrive` takes the
+## world anyway (`RealmWorlds.take` finishes the raise), with the page still up.
+##
+## The caller pauses the game while it stands (nothing strikes a body on a ladder);
+## the page processes through that pause.
+static func open_crossing(parent: Node, seed_value: int, size: int, realm: StringName,
+		arrive: Callable, threads: bool = BootPage.has_threads()) -> BootPage:
+	var page := BootPage.new()
+	page.kind = "crossing"
+	page.threaded = threads
+	# The game's island, which is what the status line names: left null, the page
+	# said "island 0" over every crossing.
+	page.options = BootOptions.new()
+	page.options.seed_value = seed_value
+	page.options.size = size
+	page.process_mode = Node.PROCESS_MODE_ALWAYS
+	var sketch := func() -> void:
+		var bw := load(WORLD_SCRIPT) as GDScript
+		page._sketch_image = BootPage._sketch_of(bw, RealmWorlds.take(seed_value, size, realm))
+	if threads:
+		RealmWorlds.begin(seed_value, size, realm)
+		page.stages.add(&"world", "raising the land", 1600.0, func() -> bool:
+			if not RealmWorlds.ready(seed_value, size, realm):
+				return false
+			sketch.call()
+			return true, false, CROSSING_DEADLINE_MS)
+	else:
+		page.stages.add(&"world", "raising the land", 1600.0, func() -> void:
+			RealmWorlds.take(seed_value, size, realm)
+			sketch.call(), false)
+	page.stages.add(&"start", "setting out", 300.0, func() -> void: arrive.call(), false)
+	page._add_draw_stage()
+	parent.add_child(page)
+	return page
+
+
 static func _sketch_of(bw: GDScript, w: Variant) -> Image:
 	return bw.call("sketch", w, SKETCH, {"coast": COAST, "contour": CONTOUR, "river": RIVER, "grid": GRID, "village": VILLAGE})
 
@@ -290,8 +342,12 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 		_world = null
 		_view = null
 		scene = BootPage.make_game(_parent, o) if what == "game" else BootPage.make_title(_parent, o), false)
-	# A world's first frame compiles its shaders and stalls (seconds on the web):
-	# the line ends when that frame is drawn, not before — but it ends.
+	_add_draw_stage()
+
+
+## A world's first frame compiles its shaders and stalls (seconds on the web):
+## the line ends when that frame is drawn, not before — but it ends.
+func _add_draw_stage() -> void:
 	stages.add(&"draw", "looking up", 1200.0, func() -> bool:
 		if _drawn < 0:
 			_drawn = 0
