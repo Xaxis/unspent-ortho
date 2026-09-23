@@ -222,8 +222,9 @@ func stage_of(s: WorksSite) -> int:
 
 func _draw() -> void:
 	var at := sim.hero.pos
+	var reach := _draw_reach()
 	for s in sites:
-		var near := s.pos.distance_to(at) <= DRAW
+		var near := s.pos.distance_to(at) <= reach
 		if near and not _yards.has(s.region):
 			_make(s)
 		elif not near and _yards.has(s.region):
@@ -758,3 +759,12 @@ func target_rows(from: Vector2, reach: float) -> Array:
 			"thinking": thinking,
 		})
 	return out
+
+
+## How far off one is drawn: DRAW, or as far as the eye sees while the camera can
+## see the horizon (SkyLight.sees_horizon). From above nothing past DRAW is in the
+## frame; at eye level a thing that appears sixty tiles out is the one thing on
+## the skyline that moved, and the whole point of it is being seen from afar.
+func _draw_reach() -> float:
+	var cam := get_viewport().get_camera_3d() if is_inside_tree() else null
+	return SkyLight.SEE if SkyLight.sees_horizon(cam) else DRAW

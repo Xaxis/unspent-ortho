@@ -310,6 +310,13 @@
   },
   {
    "kind": "system",
+   "label": "96_eye",
+   "entry": "src/systems/96_eye.gd",
+   "reach": "tools/shot.sh shots/eye.png --seed=7 --place=coast --hour=20 --eye=1.7,10,60 --face=110",
+   "area": "world-look"
+  },
+  {
+   "kind": "system",
    "label": "98_tour",
    "entry": "src/systems/98_tour.gd",
    "reach": "tools/tour.sh tours/smoke.tour",

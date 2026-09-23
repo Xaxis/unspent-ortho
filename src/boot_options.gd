@@ -15,6 +15,12 @@ extends RefCounted
 ##                     over the player's shoulder (41_shoulder), beating the
 ##                     player's `playing.view` for this run; a shot opens there
 ##                     with no glide
+## --eye=H[,P[,F]]     stage a low perspective camera H units over the ground,
+##                     a little behind the player and facing --face, pitched P
+##                     degrees down (default 10) with a vertical fov of F (default
+##                     60): a picture of the world at eye level to the horizon,
+##                     for the horizon work before the play camera can stand
+##                     there (src/systems/96_eye.gd; render)
 ## --walk=DX,DY,SECS   scripted walk in SCREEN directions before the shot
 ## --run               the scripted walk runs
 ## --shot=PATH         capture one frame to PATH (png) and quit
@@ -124,6 +130,8 @@ var zoom := 0.0
 var lens: StringName = &"ortho"
 ## Where the camera opens (41_shoulder), or &"" for the player's own setting.
 var view: StringName = &""
+## The staged eye (height, pitch down, vertical fov), or zero for none (96_eye).
+var eye := Vector3.ZERO
 var walk := Vector2.ZERO
 var walk_seconds := 0.0
 var run := false
@@ -221,6 +229,11 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"zoom": o.zoom = v.to_float()
 			"lens": o.lens = StringName(v)
 			"view": o.view = StringName(v)
+			"eye":
+				var p := v.split(",")
+				o.eye = Vector3(p[0].to_float() if p[0] != "" else 1.7,
+					p[1].to_float() if p.size() > 1 else 10.0,
+					p[2].to_float() if p.size() > 2 else 60.0)
 			"walk":
 				var p := v.split(",")
 				o.walk = Vector2(p[0].to_float(), p[1].to_float())

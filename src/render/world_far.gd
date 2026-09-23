@@ -30,12 +30,15 @@ extends Node3D
 ## a `const` preload, which is resolved by PATH and cannot go stale, the way
 ## `src/models/` has always done it.
 ##
-## HEIGHT IS TAKEN AS A FLOOR, NEVER AS A SAMPLE. Every corner is the LOWEST
-## land within a cell of it, less `DROP`. The two surfaces overlap wherever the
-## near square reaches, and one of them has to lose: a sampled height wins
-## sometimes and loses sometimes, which draws a ring of coarse land punching
-## through the detailed land at the seam. A floor cannot win, so there is no
-## seam to see -- only detail, ending.
+## HEIGHT IS THE LAND'S OWN, AND THE NEAR CHUNKS WIN BY THE MASK, NOT BY DEPTH.
+## It used to be a FLOOR -- every corner the lowest land within a cell of it --
+## so the far world could never poke through the near land where the two
+## overlapped. That was right while nobody could see the far world except from
+## above. At eye level it flattened every ridge on the horizon to the bottom of
+## its valleys. So a corner is now the land it stands in (`PEAK`), and where a
+## near chunk is in the scene the far world's own material discards itself
+## (`near_mask`, world.gdshader and water.gdshader), which cannot lose a fight it
+## never has.
 
 ## Tiles per block. One mesh, one draw, one frustum test. Big enough that the
 ## whole island is ~121 of them rather than thousands, small enough that walking
@@ -43,12 +46,90 @@ extends Node3D
 const BLOCK := 128
 ## Tiles per sampled cell. A cell is 6 pixels at a full zoom out.
 const STEP := 4
-## How far under the land the floor is pushed. The lattice the mesher draws dips
-## a little below its own terrace at a ground edge; this clears that too.
+## How far under the land the far world is pushed, so where it meets a near
+## chunk's edge it tucks under it rather than standing proud of it.
 const DROP := 0.06
+## How far a corner leans from the mean of its tiles toward the highest of them.
+## From eye level the far land IS its skyline, and a ridge three tiles wide fell
+## to half its height under the mean alone.
+const PEAK := 0.5
 
 ## Land and water of each built block, keyed Vector2i(bx, by).
 var _blocks: Dictionary = {}
+
+## WHAT STANDS ON THE FAR LAND, AS A SILHOUETTE. From eye level the near chunks
+## end about a hundred tiles out, and past them a forest was bare ground and a
+## city was a plain: the line where every tree stopped was the edge of the near
+## square drawn across the horizon. So anything standing at least `STANDS` tall
+## is carried out here as one plain solid of its own height, width and colour --
+## a crown for what has leaves, a tapered block for what was built -- which is
+## all that a thing a hundred tiles off is to the eye.
+const STANDS := 1.1
+## A crown's widest point, as a share of the thing's height, and how far down it
+## hangs from the top.
+const CROWN_AT := 0.62
+const CROWN_HANG := 0.42
+## Under this many times its own radius tall, a thing is a MOUND and not a block.
+const MOUND := 1.6
+## A lit building only carries windows once it stands this tall; one every
+## WINDOW_ROW up its faces, WINDOW_TALL high, and this share of them lit.
+const WINDOWS_FROM := 2.0
+const WINDOW_ROW := 1.3
+const WINDOW_TALL := 0.42
+const WINDOW_LIT := 0.4
+## The mark a far window is drawn with: a lamp or a window (GroundColors 17..32),
+## dim, so a far city is a field of small lights and not a wall of them.
+const WINDOW := 19
+
+## One summary per model (kind, variant, country): [top, radius, r, g, b, leafy,
+## lit, lit r, lit g, lit b] -- `lit` the share of its made faces that are a lamp,
+## a window or stolen neon (GroundColors marks 17..34), and their colour,
+## read off the model's own template so it can never disagree with the near
+## drawing. Shared by the far workers, hence the lock.
+static var _sums: Dictionary = {}
+static var _sum_lock := Mutex.new()
+
+
+static func summary(kind: int, variant: int, country: int) -> PackedFloat32Array:
+	var key := (kind * PropModels.MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country
+	_sum_lock.lock()
+	var got: Variant = _sums.get(key)
+	_sum_lock.unlock()
+	if got != null:
+		return got
+	var t := PropModels.template(kind, variant, country)
+	var top := 0.0
+	var rad := 0.0
+	for arr: PackedVector3Array in [t.made_v, t.found_v, t.leaf_v]:
+		for v in arr:
+			top = maxf(top, v.y)
+			rad = maxf(rad, Vector2(v.x, v.z).length())
+	# The colour it reads as from far off: its leaves if it has any, else what
+	# most of it is made of.
+	var leafy := not t.leaf_v.is_empty()
+	var cols: PackedColorArray = t.leaf_c if leafy else (t.made_c if t.made_c.size() >= t.found_c.size() else t.found_c)
+	var sum := Color(0, 0, 0)
+	for c in cols:
+		sum.r += c.r
+		sum.g += c.g
+		sum.b += c.b
+	var n := maxf(1.0, float(cols.size()))
+	var lit := Color(0, 0, 0)
+	var lit_n := 0
+	for c in t.made_c:
+		var m := int(c.a * 255.0 + 0.5)
+		if m >= 17 and m <= 34:
+			lit.r += c.r
+			lit.g += c.g
+			lit.b += c.b
+			lit_n += 1
+	var ln := maxf(1.0, float(lit_n))
+	var out := PackedFloat32Array([top, rad, sum.r / n, sum.g / n, sum.b / n, 1.0 if leafy else 0.0,
+		float(lit_n) / maxf(1.0, float(t.made_c.size())), lit.r / ln, lit.g / ln, lit.b / ln])
+	_sum_lock.lock()
+	_sums[key] = out
+	_sum_lock.unlock()
+	return out
 
 
 static func across(size: int) -> int:
@@ -116,16 +197,22 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array) -> Array:
 	var cells := BLOCK / STEP
 	var x0 := bx * BLOCK
 	var y0 := by * BLOCK
-	# The lowest land in each cell, over a ring of one cell beyond the block, so
-	# a corner on the block's edge is the same number in both of its blocks.
-	var wide := cells + 2
-	var lo := PackedInt32Array()
-	lo.resize(wide * wide)
-	for j in wide:
-		var ty := y0 + (j - 1) * STEP
-		for i in wide:
-			var tx := x0 + (i - 1) * STEP
-			var m := 0x7FFFFFFF
+	# A corner's height is the land AROUND it: the STEP x STEP tiles it stands in
+	# the middle of, read the same way from both blocks that share an edge, so the
+	# blocks meet without a crack.
+	var side := cells + 1
+	var h := PackedFloat32Array()
+	h.resize(side * side)
+	var half := STEP / 2
+	var per := 1.0 / float(STEP * STEP)
+	for cj in side:
+		var ty := y0 + cj * STEP - half
+		for ci in side:
+			var tx := x0 + ci * STEP - half
+			# Whole levels, inline: a GDScript call is about ten times an index, and
+			# through clampi/maxf/level_height this loop tripled a block's build.
+			var sum := 0
+			var most := 0
 			for dy in STEP:
 				var y := ty + dy
 				if y < 0:
@@ -140,18 +227,13 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array) -> Array:
 					elif x >= size:
 						x = size - 1
 					var l := lvl[row + x]
-					if l < m:
-						m = l
-			lo[j * wide + i] = m
-	# A corner is the floor of every cell that touches it.
-	var side := cells + 1
-	var h := PackedFloat32Array()
-	h.resize(side * side)
-	for cj in side:
-		for ci in side:
-			var m := mini(mini(lo[cj * wide + ci], lo[cj * wide + ci + 1]),
-				mini(lo[(cj + 1) * wide + ci], lo[(cj + 1) * wide + ci + 1]))
-			h[cj * side + ci] = maxf(0.0, TerrainMesher.level_height(m)) - DROP
+					if l > 0:
+						sum += l
+						if l > most:
+							most = l
+			# Half way from the mean to the highest: a ridge narrower than a cell
+			# still stands on the skyline, and a valley keeps most of its depth.
+			h[cj * side + ci] = lerpf(sum * per, float(most), PEAK) * WorldData.STEP - DROP
 
 	# Sized for a full block up front and cut back at the end: an append that
 	# grows a PackedArray copies it, and there are 30,000 of them here.
@@ -281,6 +363,148 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array) -> Array:
 	return [land, water]
 
 
+## Every prop standing at least `STANDS` tall, as one plain solid on the far land:
+## mesh arrays for the block's `stands`, or [] when nothing there stands that tall.
+## Pure, so a worker may run it; `props` is snapshotted on the main thread.
+##
+## A PASS OF ITS OWN, AND ONLY ONCE THE HORIZON HAS BEEN SEEN (WorldView). It
+## asks every model the far land holds for its template, which is most of the
+## world's models built once: measured on seed 7 that took a far block from 9 ms
+## to 172, contending with the near chunks' own worker for the template lock, for
+## silhouettes the orthographic camera never shows.
+static func stand_arrays(w: WorldData, props: Array) -> Array:
+	var sv := PackedVector3Array()
+	var sn := PackedVector3Array()
+	var sc := PackedColorArray()
+	for p: WorldProp in props:
+		var country := maxi(Country.COAST, w.country[mini(floori(p.pos.y), w.size - 1) * w.size + mini(floori(p.pos.x), w.size - 1)])
+		var sm := summary(p.kind, PropModels.variant_of(p, w.seed_value, country), country)
+		var top := sm[0] * p.scale
+		if top < STANDS:
+			continue
+		var tx := clampi(floori(p.pos.x), 0, w.size - 1)
+		var ty := clampi(floori(p.pos.y), 0, w.size - 1)
+		var base := maxf(0.0, TerrainMesher.level_height(w.level[ty * w.size + tx]))
+		var col := Color(sm[2], sm[3], sm[4], 1.0)
+		var r := maxf(0.25, sm[1] * p.scale)
+		var at := Vector3(p.pos.x, base, p.pos.y)
+		if sm[5] > 0.5:
+			_crown(sv, sn, sc, at + Vector3(0, top * CROWN_AT, 0), top * CROWN_HANG, top * (1.0 - CROWN_AT), r * 0.8, p.rot, col)
+		elif top < r * MOUND:
+			# Lower than it is wide -- a boulder, a wreck, a heap: a faceted mound,
+			# never a block, because a squat block is a cube on the skyline.
+			_crown(sv, sn, sc, at + Vector3(0, top * 0.38, 0), top * 0.45, top * 0.62, r * 0.85, p.rot, col)
+		else:
+			_block(sv, sn, sc, at, top, r * 0.72, p.rot, col)
+			if sm[6] > 0.0 and top >= WINDOWS_FROM:
+				_windows(sv, sn, sc, at, top, r * 0.72, p.rot, Color(sm[7], sm[8], sm[9], WINDOW / 255.0), w.seed_value, p.id)
+	if sv.is_empty():
+		return []
+	var uv := PackedVector2Array()
+	uv.resize(sv.size())
+	var out: Array = []
+	out.resize(Mesh.ARRAY_MAX)
+	out[Mesh.ARRAY_VERTEX] = sv
+	out[Mesh.ARRAY_NORMAL] = sn
+	out[Mesh.ARRAY_COLOR] = sc
+	out[Mesh.ARRAY_TEX_UV] = uv
+	out[Mesh.ARRAY_TEX_UV2] = uv
+	return out
+
+
+## A triangle whose FRONT is `out`: wound the way this file's land is (see the
+## note in build_arrays), whichever order the corners came in.
+static func _tri(v: PackedVector3Array, n: PackedVector3Array, c: PackedColorArray,
+		a: Vector3, b: Vector3, d: Vector3, out: Vector3, col: Color) -> void:
+	var f := (b - a).cross(d - a)
+	if f.dot(out) > 0.0:
+		var t := b
+		b = d
+		d = t
+		f = -f
+	var nn := -f.normalized()
+	v.append_array([a, b, d])
+	n.append_array([nn, nn, nn])
+	c.append_array([col, col, col])
+
+
+## A crown: a four-sided double cone round `mid`, `down` to its foot and `up` to
+## its tip, `r` wide, turned by `rot` so no two stand square to each other.
+static func _crown(v: PackedVector3Array, n: PackedVector3Array, c: PackedColorArray,
+		mid: Vector3, down: float, up: float, r: float, rot: float, col: Color) -> void:
+	var tip := mid + Vector3(0, up, 0)
+	var foot := mid - Vector3(0, down, 0)
+	var ring: Array[Vector3] = []
+	for i in 5:
+		var a := rot + i * TAU / 5.0
+		ring.append(mid + Vector3(cos(a) * r, 0.0, sin(a) * r))
+	for i in 5:
+		var p0 := ring[i]
+		var p1 := ring[(i + 1) % 5]
+		var side := ((p0 + p1) * 0.5 - mid)
+		_tri(v, n, c, p0, p1, tip, (side + Vector3(0, up * 0.5, 0)).normalized(), col)
+		_tri(v, n, c, p0, p1, foot, (side - Vector3(0, down * 0.5, 0)).normalized(), col.darkened(0.18))
+
+
+## A built thing: a block from the ground to `top`, `r` across its half, a
+## little narrower at the top than the foot, turned by `rot`.
+static func _block(v: PackedVector3Array, n: PackedVector3Array, c: PackedColorArray,
+		at: Vector3, top: float, r: float, rot: float, col: Color) -> void:
+	var lo: Array[Vector3] = []
+	var hi: Array[Vector3] = []
+	for i in 4:
+		var a := rot + PI * 0.25 + i * PI * 0.5
+		var d := Vector3(cos(a), 0.0, sin(a))
+		lo.append(at + d * r - Vector3(0, 0.3, 0))
+		hi.append(at + d * r * 0.86 + Vector3(0, top, 0))
+	for i in 4:
+		var j := (i + 1) % 4
+		var out := ((lo[i] + lo[j]) * 0.5 - at)
+		out.y = 0.0
+		out = out.normalized()
+		_tri(v, n, c, lo[i], lo[j], hi[j], out, col)
+		_tri(v, n, c, lo[i], hi[j], hi[i], out, col)
+	_tri(v, n, c, hi[0], hi[1], hi[2], Vector3.UP, col.lightened(0.06))
+	_tri(v, n, c, hi[0], hi[2], hi[3], Vector3.UP, col.lightened(0.06))
+
+
+## Lit windows on a far building: rows up its four faces, some lit and most
+## dark, dealt by the prop's own id so a skyline is the same skyline every night.
+## A window mark (GroundColors 17..32) is dark glass by day and burns when the
+## light goes, so the far city is a wall of dead glass at noon and a field of
+## lights at night, which is the one thing a city is from twenty streets away.
+static func _windows(v: PackedVector3Array, n: PackedVector3Array, c: PackedColorArray,
+		at: Vector3, top: float, r: float, rot: float, col: Color, seed_value: int, id: int) -> void:
+	var rows := clampi(floori((top - 0.6) / WINDOW_ROW), 1, 24)
+	for i in 4:
+		var a0 := rot + PI * 0.25 + i * PI * 0.5
+		var a1 := a0 + PI * 0.5
+		var d0 := Vector3(cos(a0), 0.0, sin(a0))
+		var d1 := Vector3(cos(a1), 0.0, sin(a1))
+		var out := (d0 + d1).normalized()
+		var lo0 := at + d0 * r - Vector3(0, 0.3, 0)
+		var lo1 := at + d1 * r - Vector3(0, 0.3, 0)
+		var hi0 := at + d0 * r * 0.86 + Vector3(0, top, 0)
+		var hi1 := at + d1 * r * 0.86 + Vector3(0, top, 0)
+		var span := top + 0.3
+		for row in rows:
+			var t0 := (0.3 + 0.6 + row * WINDOW_ROW) / span
+			var t1 := t0 + WINDOW_TALL / span
+			for k in 3:
+				if Rng.hash01(seed_value, id, i * 97 + row * 7 + k) > WINDOW_LIT:
+					continue
+				var u0 := 0.16 + k * 0.26
+				var u1 := u0 + 0.14
+				var q := func(u: float, tt: float) -> Vector3:
+					return lo0.lerp(lo1, u).lerp(hi0.lerp(hi1, u), tt) + out * 0.04
+				var pa: Vector3 = q.call(u0, t0)
+				var pb: Vector3 = q.call(u1, t0)
+				var pc: Vector3 = q.call(u1, t1)
+				var pd: Vector3 = q.call(u0, t1)
+				_tri(v, n, c, pa, pb, pc, out, col)
+				_tri(v, n, c, pa, pc, pd, out, col)
+
+
 ## Put a built block into the scene. Nothing here casts a shadow: the sun's one
 ## split is fitted to what the camera shows, and a coarse floor under the real
 ## land has no business in it.
@@ -307,3 +531,44 @@ func add_block(key: Vector2i, arrays: Array, land_mat: Material, water_mat: Mate
 
 func block_count() -> int:
 	return _blocks.size()
+
+
+## Blocks whose silhouettes are in, whether or not anything stood there.
+var _stood: Dictionary = {}
+
+
+func stands_done(size: int) -> bool:
+	var n := across(size)
+	return _stood.size() >= n * n
+
+
+## The nearest block with its land in and its silhouettes not yet, or (-1, -1).
+func next_stand(size: int, focus: Vector2, busy: Dictionary) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_d := INF
+	for key: Vector2i in _blocks.keys():
+		if _stood.has(key) or busy.has(key):
+			continue
+		var mid := Vector2((key.x + 0.5) * BLOCK, (key.y + 0.5) * BLOCK)
+		var d := mid.distance_squared_to(focus)
+		if d < best_d:
+			best_d = d
+			best = key
+	return best
+
+
+## Put a block's silhouettes in, under the same far material as its land.
+func add_stands(key: Vector2i, arrays: Array, mat: Material) -> void:
+	if _stood.has(key) or not _blocks.has(key):
+		return
+	_stood[key] = true
+	if arrays.is_empty():
+		return
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var mi := MeshInstance3D.new()
+	mi.name = "stands"
+	mi.mesh = mesh
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	(_blocks[key] as Node3D).add_child(mi)
