@@ -25,6 +25,10 @@ decided and none of these reopens it.** Detail for each stays in its section bel
    the code agree about what it divides by.
 6. **A prop's model is dealt by its position**, so a world change stops
    reshuffling the island and the canon's neon frame stops moving.
+7. **Every landscape becomes larger, denser, its own, and part of the game**
+   (owner, 2026-09-22: "all the different landscapes require far more detail, need
+   to be larger, need stuff specific to that landscape, needs to be built
+   intelligently as part of the games mechanics"). The plan is **M3** below.
 
 Milestones end in something a person can play. Work inside a milestone runs as
 parallel packages, each in its own worktree with its own directories, merged
@@ -1636,28 +1640,81 @@ a second projection. Expect more; this is the shape of the work.
 
 ## M3 — The landscapes
 
-Grow to at least 20 landscape types, each with its own props, decor, life, weather,
-light, hazards, enemies, landmarks and **sentinel**, and fill every realm.
+There are 22 landscapes to walk (plus the sea). **The count is no longer the problem.
+Depth is**, and the owner has said so in his own words (decision 7). This is the plan,
+measured against the code on 2026-09-22 (a read-only audit of every
+`src/content/biomes/*.gd`), not against memory.
 
-**Blocked on one thing first:** what a landscape's OBJECTS are made of is still
-hard-coded — `src/models/props/{houses,remains,rocks,shore,works,trees,built}.gd`
-still `match` on `Country`, so a new landscape's houses, boulders, wrecks, signs
-and shore dressing fall back to the coast's. A new landscape added today is
-dressed as the coast. Make those files read the registry before the landscape
-wave, or every new type looks borrowed.
+### Where the landscapes stand (measured 2026-09-22)
 
-- **Surface families**, built in parallel:
-  - wet: Drowned City, Frost Sea
-  - dry: Glass Desert, Mesas
-  - machine-made: Server Fields, Grey Orchards
-  - urban: **Ruined Metropolis** (towers, tiered highways, living machine districts
-    beside dead ones), with the Undercroft beneath it
-- **Underground:** Crystal Hollows, the Adits, Magma Vaults, Rootways, Undercroft.
-- **Orbital realm:** Tether Station, the Foundry, the Ring (graphite on black paper),
-  reached by the climber craft.
-- **The After:** the cyanotype era.
-- **Crafts:** glider wings, drill crawler, submersible, climber.
-- **Sentinels** for every new type.
+| What a landscape could have of its own | How many of 22 have it |
+|---|---|
+| a keeper (sentinel design) | **2** (coast, salt flats) |
+| a machine kind found nowhere else | **0** (17 roster kinds, all shared) |
+| a depot (a works row carrying a `mark`) | **7** (coast, moss, pinewood, bonelands, burning, salt flats, scrapwood); 11 fall to `GENERIC` |
+| a landmark kind found nowhere else | **1** (the lighthouse); 9 kinds, `clerks_office` in 18 |
+| something only it gives (`only_in`, a ground-gated take) | **5** |
+| its own built forms | 5, and all five share the same six `RAISED` forms; 17 build the same eight `PLAIN` |
+| an authored score | 6 |
+
+And a large share of what the landscapes DO declare never reaches the world:
+- **About 33 signature scatter branches in 16 landscapes are dead.** `GenScatter._scatter` throws a tile away when its roll is over a per-ground `reach` (0.25-0.5), and recipes write their one-offs in bands above it: the crags' cairns, graves, memorials and standing stones, the drowned city's sea wall and tide gauge (its only two props of its own), and the slums' vehicles and stacks.
+- **Declared ore is not scattered unless it is ALSO in `props`**, in 8 landscapes, while `Sources` and `Chapter` count it as present.
+- **The kind mask is 64 bits and `PropKind.COUNT` is 68.** MURAL, PLATFORM, GROWTH_TANK and CONSOLE alias the first four kinds, so declaring CONSOLE silently admits BUSH.
+- **Only the first landscape that declares `fumaroles` gets them.**
+- **`SiteKinds.ROWS`** (quarry, sump, picket, camp, cache, memorial, den) is read by nothing.
+- **23 signature prop kinds have no `Takes` row** (salt ridges, sea walls, tide gauges, consoles, cairns...), so using them gives nothing.
+
+Size: a landscape's area is its `share` over the sum of every surface type's share (2.15), so **each landscape added shrinks all the others**. The newer fifteen each get 2.8-4.4% of the land, and the coast 16.3%. **Content does not scale with area**: `Landmarks.PER_REGION` is 3 whatever the size, villages are counted per landscape, and ruins are a total for the island. Only tips and stone circles scale. So a larger region today is an emptier one, and "larger" cannot be done by turning `share` up.
+
+### The rule every landscape is built to (DECIDED)
+
+A landscape is **four layers, each caused by the one before**. So its detail is never decoration; it is evidence of something the game runs on:
+
+1. **THE PLAN: what the machines are doing HERE.**
+   - One works row with a `mark`, so it has a depot.
+   - One keeper (`SentinelDef`) whose three ways of being taken use this land.
+   - At least one roster kind that works only here.
+   - Its **work props**: what the plan leaves on the ground (cuts, pans, intakes, sea walls), so the evidence reads from any frame.
+2. **THE LAND: what the plan did to what was here, and what survived it.**
+   - Relief, water and grounds.
+   - At least **three prop kinds of its own, placed in a grown world** (reached, not just declared).
+   - A site kind of its own (the unread `SiteKinds` rows are the start).
+   - A landmark kind of its own.
+3. **THE PEOPLE: how anyone lives with that.**
+   - Built forms of its own (not the shared `PLAIN`/`RAISED`).
+   - A shelter, a trade, and a local in the story (`StoryPlan.LOCALS`).
+   - What they build from: its `dressing`.
+4. **THE PLAYER: what the land asks of a body and gives back.**
+   - Hazards whose answers are gear.
+   - A material only it gives (`only_in`), which feeds something worth making.
+   - Every signature prop does something to a body: gives (`Takes`), shelters, hides, or can be crossed only by a craft.
+
+**Larger means more frames of the landscape before it repeats, and it is stated in frames.** One play frame is 26.7 × 17.9 tiles, about 478. The target is that **a landscape's main region holds at least 40 frames**. Content scales with area: landmarks, sites, villages and ruins become rates per 1,000 tiles, not counts, so a bigger region is a fuller one. If the shares cannot give that at `WORLD_SIZE` 1300, the world grows (the owner has said load time does not matter). Setting the shares to hit the target is itself a worldgen change, and turns `GEN`.
+
+**Denser means measured per frame.** For each landscape, over 20 random frames of its core: the distinct prop kinds, the props, and the share of the frame that is bare plain ground. Each landscape gets a floor on all three, set from what its richest neighbour already reaches.
+
+**Held by a test, not by a review.** `tests/biome/test_landscape_depth.gd` grows worlds and fails any landscape that lacks one of the rows above, **asked of the grown world** (a prop kind counted only if one was placed, a depot only if `Works.sites` finds one, a keeper only if one is put out). Then a declaration that never reaches the world is a red, not a quiet gap. Each landscape also carries a tour that walks its core and shoots its signature, its depot and its keeper, with claims.
+
+### The waves
+
+- **L0: make declared content reach the world** (in flight, unspent-ortho-a5). The roll cap, the 64-bit mask, declared ore, fumaroles and vents gated by the landscape's declaration, the snowfield's depot mark. One `GEN` bump. It lands before anything below, because every later wave's frames would otherwise be judged on content that silently never appears.
+- **L1: the depth test and the size rule.** `test_landscape_depth` lands with today's failures listed as its baseline (a standing list that only shrinks). Density becomes rates per area, and the shares are set to the 40-frame target. One `GEN` bump.
+- **L2: the thinnest first**, one builder per landscape, each owning its biome file, its models under `src/models/props/` (built with `Kit`, welded), its sentinel design and its tour:
+  1. the crags
+  2. the frost sea
+  3. the glass desert
+  4. the ruined metropolis
+  5. the drowned city
+  6. the mesas
+  7. then the middens, the sulphur jungle, the grey orchards, the server fields and the machine city
+
+  At most three builders at a time, since the box holds about one full suite. Each is finished when `test_landscape_depth` passes for it and its tour frames have been looked at.
+- **L3: the first seven, raised to the same rule.** The coast, moss, pinewood, snowfield, bonelands, burning and slums are MEDIUM, not done. The slums need the plan and the player layers; the snowfield needs its depot.
+- **Then the realms VISION §3 still asks for**, built to the same rule from the first line:
+  - Underground: Crystal Hollows, the Adits, Magma Vaults, Rootways, and the Undercroft under the metropolis.
+  - Orbital: Tether Station, the Foundry and the Ring, by the climber craft.
+  - The After.
 
 ### The city wave, in flight (2026-09-18)
 
