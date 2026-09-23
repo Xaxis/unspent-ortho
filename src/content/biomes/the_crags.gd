@@ -104,6 +104,16 @@ static func make() -> BiomeDef:
 	d.mist = 0.55
 	# Wet and dark and nothing else — no machine exhaust, no spores, no glare.
 	# What is dangerous here is not a pressure, which is exactly the point.
+	#
+	# NOT `resonance`, though it is in `Hazards.IDS` and the spec asks for it
+	# (docs/LANDSCAPES.md §1: "resonance 0.3 near stones only"). Declared here it
+	# would press the whole landscape, every tile of moss and every bottom of
+	# peat, and the stones' hum is the one mechanical trace of the unknown force:
+	# it belongs to the standing stones and the carved faces and to nothing
+	# else. That wants a per-prop hazard source ("within R adds H", the shared
+	# systems list in docs/LANDSCAPES.md), which another builder is making, and
+	# the fork that answers it (`mod_fork`) does not exist yet either. When both
+	# land, the stones declare it and this line stays as it is.
 	d.hazards = {&"wet": 0.5, &"dark": 0.45}
 	# THE THINNEST ROSTER OF ANY SURFACE LANDSCAPE. The plan surveyed this place,
 	# found nothing it wanted, and left. What a player meets here is the land.
