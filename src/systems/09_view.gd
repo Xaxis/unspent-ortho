@@ -99,14 +99,28 @@ static func pitch_of(level: float) -> float:
 	return lerpf(CameraRig.PITCH_DEG, THIRD_PITCH, t * t * (3.0 - 2.0 * t))
 
 
+## A shot or a tour: never reads the player's zoom and never writes it (setup).
+var _tool := false
+
+
 func setup(g: Game) -> void:
 	super.setup(g)
 	# A shot or a tour that was given `--zoom=` is staging a picture and this
 	# must not take it back; anything else opens where the player left it.
+	#
+	# **EXCEPT A TOOL RUN, WHICH OPENS AT THE SHIPPED ZOOM AND WRITES NOTHING
+	# BACK.** A tour's `zoom 9` went through `set_height`, `_process` saved the
+	# level to tool-settings.json like a player's own keys, and the NEXT tool run
+	# opened there: the canon's frames 1-17 were shot at whatever zoom the tour
+	# before them had left (measured: the file held 0.2, height 14, left by the
+	# canon's own closing `zoom 14`; after a probe ending on `zoom 9`, height 9).
+	# A picture that depends on what ran before it cannot be compared with
+	# anything.
+	_tool = g.options.shot != "" or g.options.tour != ""
 	if g.options.zoom > 0.0:
 		_level = level_of(g.camera.view_height)
 	else:
-		_level = float(PlayerSettings.value(&"picture.zoom"))
+		_level = float(PlayerSettings.default_of(&"picture.zoom")) if _tool else float(PlayerSettings.value(&"picture.zoom"))
 		g.camera.view_height = height_of(_level)
 	# A game opening at the bottom of the zoom opens in third person, rather than
 	# snapping down to it on the first frame the keys are read.
@@ -142,7 +156,7 @@ func _process(delta: float) -> void:
 	game.camera.pitch_deg = pitch_of(_level)
 	# Written once the hand comes off the key, not on every frame of the sweep:
 	# a setting file is not a place to put sixty writes a second.
-	if absf(_level - _saved) > SETTLE:
+	if not _tool and absf(_level - _saved) > SETTLE:
 		_save_in = 0.6 if way != 0.0 else maxf(0.0, _save_in - delta)
 		if way == 0.0 and _save_in <= 0.0:
 			_saved = _level

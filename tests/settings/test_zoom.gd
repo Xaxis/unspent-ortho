@@ -77,3 +77,54 @@ func test_the_suns_shadow_range_follows_the_camera() -> void:
 	# And it really does grow, or the derivation is decoration.
 	var far_out: float = 30.0 + Air.frame_depth(VIEW.FAR, CameraRig.PITCH_DEG) + SkyLight.SHADOW_ROOM
 	gt(far_out, at_play + 5.0, "zoomed out, the split reaches further")
+
+
+## A TOOL RUN OPENS AT THE SHIPPED ZOOM AND WRITES NOTHING BACK, and a player's
+## zoom still persists. A tour's `zoom 9` used to be saved to the tool settings
+## file like a player's own keys, so the next shot or tour opened there -- and
+## `user://` is per PROJECT, so every session's tours leaked into every other's
+## pictures, the canon's frames 1-17 included.
+func _view_game(tool: bool) -> Array:
+	var g := Game.new()
+	g.options = BootOptions.new()
+	if tool:
+		g.options.tour = "tours/canon.tour"
+	g.camera = CameraRig.new()
+	var v: GameSystem = VIEW.new()
+	v.setup(g)
+	return [g, v]
+
+
+func _zoom_in_and_let_go(v: GameSystem) -> void:
+	v.call(&"set_height", VIEW.CLOSE)
+	for i in 30:
+		v.call(&"_process", 0.1)
+
+
+func test_a_tool_run_opens_at_the_shipped_zoom_and_writes_nothing() -> void:
+	var was: Variant = PlayerSettings.value(&"picture.zoom")
+	PlayerSettings.set_value(&"picture.zoom", 0.6)
+	var gv := _view_game(true)
+	var g: Game = gv[0]
+	near(g.camera.view_height, VIEW.height_of(float(PlayerSettings.default_of(&"picture.zoom"))), 0.001,
+		"a tour opens at the shipped zoom, not at what the settings file holds")
+	_zoom_in_and_let_go(gv[1])
+	near(float(PlayerSettings.value(&"picture.zoom")), 0.6, 0.001, "and a tour's own zoom is never written back")
+	(gv[1] as Node).free()
+	g.camera.free()
+	g.free()
+	PlayerSettings.set_value(&"picture.zoom", was)
+
+
+func test_a_players_zoom_still_persists() -> void:
+	var was: Variant = PlayerSettings.value(&"picture.zoom")
+	PlayerSettings.set_value(&"picture.zoom", 0.6)
+	var gv := _view_game(false)
+	var g: Game = gv[0]
+	near(g.camera.view_height, VIEW.height_of(0.6), 0.001, "a player's game opens where they left it")
+	_zoom_in_and_let_go(gv[1])
+	near(float(PlayerSettings.value(&"picture.zoom")), 0.0, 0.001, "and where they zoom to is kept")
+	(gv[1] as Node).free()
+	g.camera.free()
+	g.free()
+	PlayerSettings.set_value(&"picture.zoom", was)
