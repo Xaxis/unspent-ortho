@@ -5,11 +5,17 @@
 # part is tours/canon.tour line for line with each `shot` replaced by a fit, so
 # the desktop frames it reads are that tour's own; the second is
 # tours/degrade_grey.tour, the same for an overcast that takes the sun's shadow
-# away. Average the rows it prints by day and by night, casting and not, and those
-# are CompatTrim's four rows:
+# away. The rows it prints are each place's OWN optimum, and a median of them is
+# not a row that serves the places together: the 2026-09-22 day refit took the
+# per-key median, measured it whole against the shipped row, and it lost at seven
+# places (snow by +3.15). Measure any proposed row WHOLE, paired against the
+# shipped one in the same run, before it is believed:
 #   tools/canon.sh --web                       (desktop frames -> shots/degrade/desktop/)
-#   tools/tour.sh tours/degrade_grey.tour --seed=7 && cp -R shots/tour/degrade_grey shots/degrade/desktop-grey
-#   godot --path . --rendering-method gl_compatibility -- --tour=tours/degrade_fit.tour --seed=7 --quality=web
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/degrade_grey.tour --seed=7 && cp -R shots/tour/degrade_grey shots/degrade/desktop-grey
+#   godot --path . --fixed-fps 60 --rendering-method gl_compatibility -- --tour=tours/degrade_fit.tour --seed=7 --quality=web
+# FIXED FPS, ALWAYS: without it the world runs on the wall clock and a place
+# measures 0.1-0.4 apart between two runs of one row, which is a hundred times
+# the 0.007 two measurements agree to WITHIN a run.
 # Desktop gl_compatibility and the exported web build measured identical on every
 # probe (`perf sunpath`, `perf shadowpass`), and a fit wants thousands of frames,
 # so it runs on the desktop's Compatibility; tools/canon.sh --web is the proof in
