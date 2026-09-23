@@ -105,7 +105,12 @@ const UNKNOWN := "unknown"
 ##     A city's repeats are dealt a size band AFTER they are placed, so a tower
 ##     checked at its form's reach grew past the ring and stood with a pool at its
 ##     door. The placer asks the largest band now; cities move at 1300.
-const GEN := 20
+## 12. One batch, landed together so the world moves once (owner's delegation,
+##     `docs/ROADMAP.md` DECIDED 5 and 6): a region's floor share 0.35 -> 0.25;
+##     a prop's model dealt by its kind and position, not its id; the spawn
+##     village preferring a beach the black site can stand off; and a works site
+##     thrown at its own landscape's regions instead of the whole land.
+const GEN := 21
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

@@ -122,12 +122,13 @@ static func pick_variant(kind: int, h: int, country: int = Country.COAST) -> int
 
 ## The model one placed prop is drawn as: what world gen dealt it (`WorldProp.variant`,
 ## which a village uses so no two of its houses repeat a silhouette), or, where
-## nothing was dealt, the one its id hashes to. Every reader — the chunk bake,
-## the lights — asks here, so a dealt variant reaches all of them.
+## nothing was dealt, the one its kind and position hash to (`WorldProp.deal_hash`,
+## never its id: see there). Every reader — the chunk bake, the lights — asks
+## here, so a dealt variant reaches all of them.
 static func variant_of(p: WorldProp, seed_value: int, country: int = Country.COAST) -> int:
 	if p.variant >= 0:
 		return clampi(p.variant, 0, variants(p.kind, country) - 1)
-	return pick_variant(p.kind, Rng.hash_ints(seed_value, p.id, 90), country)
+	return pick_variant(p.kind, WorldProp.deal_hash(seed_value, p.kind, p.pos), country)
 
 
 ## Chunk workers bake props while the main thread may too.

@@ -116,10 +116,15 @@ const REGION_TILES := 220
 ## **WHAT SHARE OF A TYPICAL LANDSCAPE'S HOLDING A RUN MUST BE TO BE A PLACE**
 ## (owner, 2026-09-19, chosen from measurement rather than taste).
 ##
-## Stated against the BODY a run lies on and against HOW MANY LANDSCAPES SHARE
-## THAT BODY, because those are the two things that actually decide how big a
-## run can be. `body tiles / landscape count` is what a typical landscape holds
-## on that continent; this is the share of it that makes a place.
+## Stated against the BODY a run lies on and against how many landscapes the
+## REALM lays, `c.land_types.size()`. When this was written every landscape could
+## reach every body, so that count WAS "how many landscapes share that body", and
+## these words said so. Since each body holds only what it was dealt (abd628f) the
+## two are different numbers, and the code has always divided by the realm's
+## count. Dividing by the DEALT count instead was measured and loses the most:
+## coverage 0.86-0.91 on seeds 1, 42, 90210 and 7, because a body dealt fewer
+## landscapes raises its floor. So the divisor stays the realm's, and what the
+## body split cost is paid back through the share below.
 ##
 ## Both halves are needed and a floor with either one missing was measured and
 ## rejected:
@@ -150,7 +155,16 @@ const REGION_TILES := 220
 ## not standing in a region at all -- the default, not a computation. I had the
 ## right symptom, the wrong cause, and I asserted it to a teammate before
 ## measuring it. The floor tie stands on the plain reason above and nothing more.
-const BODY_SHARE := 0.35
+##
+## **0.35 -> 0.25 on 2026-09-22 (owner's delegation, `docs/ROADMAP.md` DECIDED 5).**
+## Holding each body to its own deal split a landscape's land into more runs, each
+## smaller, and seed 7's coverage fell from 0.9105 to 0.8993 with the same land. At
+## 0.25 the runs that fell under the floor become places of their own: coverage
+## 0.9470 / 0.9361 / 0.9456 / 0.9329 (seeds 1, 42, 90210, 7), every region still
+## holds a landmark, and none is under a keeper's 240 tiles. Folding the runs into
+## their neighbour's landscape reached 0.98 and repainted a tenth of the land;
+## this keeps the variety and gives it a keeper.
+const BODY_SHARE := 0.25
 const PLACE_LEAST := Landmarks.REGION_TILES
 const PLACE_TILES := 1250.0
 ## The island's climate before any relief exists, for placing a type by its

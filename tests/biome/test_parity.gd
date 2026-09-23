@@ -323,6 +323,20 @@ extends TestCase
 ## The picture was looked at before the numbers were written: seed 90210 at
 ## 982,281, 1300, 11:00 clear, where river 4 folded. Before, the frozen river
 ## there broke into chips stepping over a terrace edge; after, it is one channel.
+##
+## RE-ACCEPTED A TWELFTH TIME (2026-09-22), for one batch landed together so the
+## world moves once: works sites thrown at their own landscape's regions, the
+## spawn village preferring a beach the black site can stand off, a region floor
+## share of 0.25, and a prop's model dealt by position. **`props` moved on all five
+## seeds and `ground` on seeds 1 and 42; `country`, `country2`, `level` and
+## `blend` are byte-identical everywhere.** That is the works shape this file
+## already names: a works site stamps the ground it stands on, so moving where
+## works stand moves `ground` where they moved and `props` everywhere they lay.
+## Position dealing moves nothing here, because this digest reads a prop's kind
+## and position and never its model. At 256 every seed is one body, so the region
+## floor's share decides fewer places than at 1300, and the spawn's preference
+## changes a village only where the first-ranked one had no site water. Causation:
+## the previous hashes passed in this same session with none of the four applied.
 
 
 ## **WHAT THIS BASELINE DOES NOT PIN, AND THE SECOND HALF IS THE ONE NOBODY
@@ -343,11 +357,11 @@ const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "06fa726c d5b85d6c 14f90f4f de6e52ab fe4b52d9 e528ad00",
-	3: "2202ae28 60362f9d 5b976a87 15e918c3 585d921b a6e1a6cf",
-	7: "4b153668 3424d5c9 64fee617 d3b86b56 72103915 08fed106",
-	42: "e5a96b5f bef1bc39 17aa074a b4709b8b 824c752b 47b683b9",
-	90210: "c3fe6c1a a851aff1 fd9d48e4 01e6dd9b b6884aed 40affb5e",
+	1: "06fa726c d5b85d6c cc7477d6 de6e52ab fe4b52d9 3516a965",
+	3: "2202ae28 60362f9d 5b976a87 15e918c3 585d921b 4f840bf5",
+	7: "4b153668 3424d5c9 64fee617 d3b86b56 72103915 7d29321d",
+	42: "e5a96b5f bef1bc39 fa3a07d8 b4709b8b 824c752b 00fd7e59",
+	90210: "c3fe6c1a a851aff1 fd9d48e4 01e6dd9b b6884aed 2c30931d",
 }
 
 

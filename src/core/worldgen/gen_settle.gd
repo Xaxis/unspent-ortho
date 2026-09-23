@@ -176,24 +176,52 @@ static func villages(c: GenContext) -> void:
 	var asks: Array = [[false, [cands, relaxed]]]
 	if home >= 0:
 		asks = [[true, [cands, relaxed]], [true, [rough]], [false, [cands, relaxed]]]
-	for ask: Array in asks:
-		var on_home: bool = ask[0]
-		r = GenBodies.bounds_of(w, home) if on_home else c.land_rect
-		for far: float in [14.0, 20.0, 40.0]:
-			for pool: Array[Vector3] in ask[1]:
-				for p in pool:
-					var i := int(p.y) * size + int(p.x)
-					if not c.defs[w.country[i]].spawn_home:
-						continue
-					if on_home and w.continent_at(int(p.x), int(p.y)) != home:
-						continue
-					var d_in := c.inland[i]
-					if d_in < 8.0 or d_in > far:
-						continue
-					var south := (p.y - r.position.y) / r.size.y
-					var sc := south * 3.0 + p.z * 0.5 - absf(d_in - 10.0) * 0.08 + _sea_below(c, p.x, p.y) * 4.0
-					if sc > best.z:
-						best = Vector3(p.x, p.y, sc)
+	# FIRST, A BEACH THE BLACK SITE CAN STAND OFF. The site stands where the spawn
+	# beach can see it (`BlackSite`): deep water, moated, `NEAREST` to `FURTHEST`
+	# out -- and the spine cannot be finished without it. The spawn used to be
+	# chosen for any sea at all, so a coast behind a wide shallow shelf could win
+	# and leave the site nowhere to stand: seed 7 at 1024, where the nearest deep
+	# water was 38 tiles out with no moat anywhere inside 40. So the home asks are
+	# walked once PREFERRING such a beach, and then again as they always were, so
+	# a world with no such coast still wakes the player. Never off home for it.
+	var sea := PackedByteArray()
+	for want_site: bool in [true, false]:
+		for ask: Array in asks:
+			var on_home: bool = ask[0]
+			if want_site and home >= 0 and not on_home:
+				continue
+			r = GenBodies.bounds_of(w, home) if on_home else c.land_rect
+			for far: float in [14.0, 20.0, 40.0]:
+				var ranked: Array[Vector3] = []
+				for pool: Array[Vector3] in ask[1]:
+					for p in pool:
+						var i := int(p.y) * size + int(p.x)
+						if not c.defs[w.country[i]].spawn_home:
+							continue
+						if on_home and w.continent_at(int(p.x), int(p.y)) != home:
+							continue
+						var d_in := c.inland[i]
+						if d_in < 8.0 or d_in > far:
+							continue
+						var south := (p.y - r.position.y) / r.size.y
+						var sc := south * 3.0 + p.z * 0.5 - absf(d_in - 10.0) * 0.08 + _sea_below(c, p.x, p.y) * 4.0
+						ranked.append(Vector3(p.x, p.y, sc))
+				if ranked.is_empty():
+					continue
+				if not want_site:
+					for q in ranked:
+						if q.z > best.z:
+							best = q
+					break
+				ranked.sort_custom(func(a: Vector3, b: Vector3) -> bool: return a.z > b.z)
+				if sea.is_empty():
+					sea = _open_sea(c)
+				for q in ranked:
+					if _site_water_near(c, sea, Vector2(q.x, q.y)):
+						best = q
+						break
+				if best.x >= 0.0:
+					break
 			if best.x >= 0.0:
 				break
 		if best.x >= 0.0:
@@ -726,6 +754,73 @@ static func _sea_below(c: GenContext, tx: float, ty: float) -> float:
 			if x < 0 or y < 0 or x >= c.size or y >= c.size or c.land[y * c.size + x] == 0:
 				sea += 1
 	return float(sea) / maxf(1.0, n)
+
+
+## Level-0-or-below water joined to the map's edge: the sea, read off `level`
+## because the ground is not painted yet (`GenSurface` makes `level < 0` deep).
+static func _open_sea(c: GenContext) -> PackedByteArray:
+	var size := c.size
+	var level := c.w.level
+	var sea := PackedByteArray()
+	sea.resize(size * size)
+	var q := PackedInt32Array()
+	for i in size:
+		for j: int in [i, (size - 1) * size + i, i * size, i * size + size - 1]:
+			if level[j] <= 0 and sea[j] == 0:
+				sea[j] = 1
+				q.append(j)
+	var head := 0
+	while head < q.size():
+		var i := q[head]
+		head += 1
+		var x := i % size
+		var y := i / size
+		for d: Vector2i in GenBodies.NEIGHBOURS:
+			var nx := x + d.x
+			var ny := y + d.y
+			if nx < 0 or ny < 0 or nx >= size or ny >= size:
+				continue
+			var j := ny * size + nx
+			if sea[j] == 0 and level[j] <= 0:
+				sea[j] = 1
+				q.append(j)
+	return sea
+
+
+## Is there sea the black site could stand in near a spawn village at `p`: a
+## deep tile of the open sea, moated as `BlackSite` asks, near enough that it is
+## inside `BlackSite.FURTHEST` of any spawn the village can give (the spawn stands
+## up to 12.5 from its square, `spawn` below).
+static func _site_water_near(c: GenContext, sea: PackedByteArray, p: Vector2) -> bool:
+	var size := c.size
+	var level := c.w.level
+	var reach := BlackSite.FURTHEST - 12.5
+	var n := ceili(reach)
+	var m := ceili(BlackSite.MOAT)
+	for dy in range(-n, n + 1):
+		for dx in range(-n, n + 1):
+			if float(dx * dx + dy * dy) > reach * reach:
+				continue
+			var x := floori(p.x) + dx
+			var y := floori(p.y) + dy
+			if x < m or y < m or x >= size - m or y >= size - m:
+				continue
+			var i := y * size + x
+			if sea[i] == 0 or level[i] >= 0:
+				continue
+			var moated := true
+			for ey in range(-m, m + 1):
+				for ex in range(-m, m + 1):
+					if float(ex * ex + ey * ey) > BlackSite.MOAT * BlackSite.MOAT:
+						continue
+					if level[(y + ey) * size + x + ex] >= 0:
+						moated = false
+						break
+				if not moated:
+					break
+			if moated:
+				return true
+	return false
 
 
 ## Wake beside the spawn village, on dry coast, facing the most open land.

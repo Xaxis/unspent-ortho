@@ -152,6 +152,11 @@ class Lay:
 	var tight := false
 	## The registry index of `id`, or -1 while laying what every type shares.
 	var own := -1
+	## The bounds of each REGION of the type being laid, and its size in tiles:
+	## where `_site` throws, so a dart lands in this landscape and not in the
+	## square round every landscape at once. Empty while laying the shared things.
+	var rects: Array[Rect2] = []
+	var sizes: PackedFloat32Array = PackedFloat32Array()
 
 	func _init(ctx: GenContext, o: PackedByteArray, bearing_dir: Vector2) -> void:
 		c = ctx
@@ -217,12 +222,20 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 			continue
 		lay.id = def.id
 		lay.own = def.index
+		lay.rects.clear()
+		lay.sizes = PackedFloat32Array()
+		for r: Dictionary in c.w.regions:
+			if int(r.get("index", -1)) == def.index:
+				lay.rects.append(r.bounds as Rect2)
+				lay.sizes.append(float(r.tiles))
 		lay.rng = Rng.make(c.s, 0x3057 + String(def.id).hash() % 65521)
 		var host: Object = row.get("host", GenWorks)
 		Callable(host, fn).call(lay)
 		c.mark(StringName("works." + String(def.id)))
 	lay.id = &""
 	lay.own = -1
+	lay.rects.clear()
+	lay.sizes = PackedFloat32Array()
 	lay.rng = Rng.make(c.s, 0x3058)
 	_villages(lay)
 	_roads(lay)
@@ -259,7 +272,7 @@ static func _site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attem
 	attempts = roundi(attempts * effort(c))
 	var strict := int(attempts * 0.55)
 	for attempt in attempts * 2:
-		var p := GenScatter._random_tile(c, L.rng)
+		var p := _dart(L)
 		var i := p.y * c.size + p.x
 		var loose := attempt >= strict
 		if c.land[i] == 0 or w.blend[i] > (blend_max if not loose else blend_max + 0.1) or not L.home(p.x, p.y):
@@ -273,6 +286,29 @@ static func _site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attem
 			continue
 		return p
 	return Vector2i(-1, -1)
+
+
+## A tile to try: inside one of the laid type's own regions, chosen by size, or
+## anywhere on the land while laying what every type shares.
+##
+## **THE DARTS WERE THROWN AT THE WHOLE LAND AND KEPT WHERE THEY LANDED HOME.**
+## `GenScatter._random_tile_in`'s header found this for tips and circles: at 1300
+## a landscape is a few per cent of `land_rect`, so most of `_site`'s attempts
+## never reached it. The bonelands cistern, which asks for flat ground a pale
+## landscape rarely has, drew 1, 0 and 0 across seeds 1, 42 and 90210, and its
+## own comment below already called it "nought to two" per landscape.
+static func _dart(L: Lay) -> Vector2i:
+	if L.rects.is_empty():
+		return GenScatter._random_tile(L.c, L.rng)
+	var total := 0.0
+	for t in L.sizes:
+		total += t
+	var pick := L.rng.randf() * total
+	var k := 0
+	while k < L.sizes.size() - 1 and pick > L.sizes[k]:
+		pick -= L.sizes[k]
+		k += 1
+	return GenScatter._random_tile_in(L.c, L.rng, L.rects[k])
 
 
 ## Another place worth walking to within d of p. Small marks (falls, bridges,
@@ -423,7 +459,7 @@ static func _shore(L: Lay, grounds: Array, apart: float, attempts: int = 900) ->
 	var c := L.c
 	var w := L.w
 	for attempt in attempts:
-		var p := GenScatter._random_tile(c, L.rng)
+		var p := _dart(L)
 		var i := p.y * c.size + p.x
 		if w.level[i] < 1 or w.level[i] > (1 if attempt < attempts * 0.6 else 2) or c.sea_steps[i] > 4 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0:
 			continue
@@ -1252,7 +1288,11 @@ static func _villages(L: Lay) -> void:
 ## PropModels' variant 1 of 2, by the hash the view bakes with) as the landmark
 ## "stolen_light", so it can be walked to and seen after dusk.
 static func _note_lit_shack(L: Lay, shack: WorldProp) -> void:
-	if absi(Rng.hash_ints(L.c.s, shack.id, 90)) % 2 != 1:
+	# The shack is lit when the model it is DEALT is its lit one: two models, the
+	# second wired (`tests/core/test_world_gen_works.gd` holds the recorded shack to
+	# variant 1). Asked of the same position hash `PropModels.variant_of` deals
+	# from, so renumbering ids no longer moves the stolen light.
+	if absi(WorldProp.deal_hash(L.c.s, shack.kind, shack.pos)) % 2 != 1:
 		return
 	for m in L.w.landmarks:
 		if m.kind == &"stolen_light":

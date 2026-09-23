@@ -11,7 +11,7 @@ var rot: float
 var scale: float
 ## Collision radius in tiles (already scaled). 0 = passable.
 var solid: float
-## Which model of this kind, or -1 to take the one its id hashes to. World gen
+## Which model of this kind, or -1 to take the one `deal_hash` gives it. World gen
 ## sets it where the ARRANGEMENT matters and chance is not good enough: a village
 ## deals its houses one variant each so no two silhouettes in it repeat.
 var variant := -1
@@ -20,6 +20,20 @@ var variant := -1
 ## does what stops a body. Not saved — `SaveCore` puts the takes back and the rule
 ## works it out again.
 var shown := 1.0
+
+
+## WHICH MODEL A PROP IS DRAWN AS COMES FROM WHAT IT IS AND WHERE IT STANDS, NOT
+## FROM ITS ID. An id is its place in the order world gen laid things, so any
+## change upstream -- one prop more in one landscape -- renumbered everything after
+## it and re-dealt most of the island's models: the canon's neon frame moved to
+## another shack every time the world did (owner, 2026-09-22: a prop's model is
+## dealt by its position; `docs/ROADMAP.md`). A prop never moves, so this is as
+## fixed as the id was and survives every change that does not touch the prop.
+## Quarter-tile resolution: props are jittered off tile centres, and two can
+## share a tile. `PropModels.variant_of` and `GenWorks._note_lit_shack` both ask
+## this and nothing else, so what is drawn and what is lit cannot disagree.
+static func deal_hash(seed_value: int, kind: int, pos: Vector2) -> int:
+	return Rng.hash_ints(seed_value, kind, floori(pos.x * 4.0), floori(pos.y * 4.0), 90)
 
 
 func _init(p_id: int, p_kind: int, p_pos: Vector2, p_rot: float, p_scale: float) -> void:

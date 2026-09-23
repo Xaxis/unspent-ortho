@@ -125,16 +125,14 @@ func test_the_lands_works_and_wired_shacks_give_light_where_their_models_do() ->
 	var base := g.player.pos
 	var add := func(kind: int, at: Vector2, lit_variant: bool) -> WorldProp:
 		var id := g.world.props.size()
-		# An id whose variant is (or is not) the one with a light. Asked through
-		# `variant_of`, never by hashing the id here: world gen may DEAL a prop
-		# its model (WorldProp.variant), and a copy of the hash would go on
-		# answering for the model the id happens to point at rather than for the
-		# one the prop was given.
-		while (PropModels.variant_of(WorldProp.new(id, kind, Vector2.ZERO, 0.0, 1.0), g.world.seed_value) % 2 == 1) != lit_variant:
-			id += 1
-		while g.world.props.size() < id:
-			g.world.props.append(WorldProp.new(g.world.props.size(), PropKind.BOULDER, Vector2(-50, -50), 0.0, 1.0))
-		var p := WorldProp.new(id, kind, base + at, 0.0, 1.0)
+		# A spot whose model is (or is not) the one with a light. Asked through
+		# `variant_of`, never by hashing here: a model is dealt by kind and
+		# POSITION (`WorldProp.deal_hash`), so the spot is nudged a quarter tile
+		# at a time until the prop standing there is the model wanted.
+		var spot: Vector2 = base + at
+		while (PropModels.variant_of(WorldProp.new(id, kind, spot, 0.0, 1.0), g.world.seed_value) % 2 == 1) != lit_variant:
+			spot.x += 0.25
+		var p := WorldProp.new(id, kind, spot, 0.0, 1.0)
 		g.world.props.append(p)
 		return p
 	var shack: WorldProp = add.call(PropKind.SHACK, Vector2(3, 0), true)
