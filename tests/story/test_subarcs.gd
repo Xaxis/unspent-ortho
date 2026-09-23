@@ -214,9 +214,38 @@ func test_what_the_asking_was_about_outlives_the_thing_being_done() -> void:
 ## and the one act that answers it says so on the glass in the story's own words.
 func test_a_staged_world_holds_somebody_and_the_region_asks_about_them() -> void:
 	Story.forget()
-	var g := Sx.game(tree, ["--seed=1", "--size=256", "--hour=11", "--place=works", "--carried=1"])
+	# AN ISLAND THAT CAN HOLD SOMEBODY, found rather than pinned. `--carried` needs
+	# a depot with a village in its region, and which seeds have one moves with
+	# every works change: at 256 the old siting left seed 4 with none and the
+	# siting by region leaves seed 1 with none, six such depots across five seeds
+	# either way. Pinning seed 1 was pinning its luck.
+	var seed_value := -1
+	for s: int in [1, 7, 42, 90210, 4]:
+		var w := BootWorld.world(s, 256)
+		for d: WorksSite in Works.sites(w):
+			for v: Dictionary in w.villages:
+				var at: Vector2 = v.get("pos", Vector2.INF)
+				if w.region_at(floori(at.x), floori(at.y)) == d.region:
+					seed_value = s
+			if seed_value >= 0:
+				break
+		if seed_value >= 0:
+			break
+	check(seed_value >= 0, "some island in the sample can hold somebody")
+	var g := Sx.game(tree, ["--seed=%d" % seed_value, "--size=256", "--hour=11", "--carried=1"])
 	await frames(6)
 	var story: Node = Sx.system(g, "49_story")
+	# STAND AT THE YARD THEY ARE HELD IN, ASKED BY NAME. This used to boot with
+	# `--place=works`, the FIRST depot, while `--carried` holds them at the first
+	# depot with a VILLAGE in its region (`45_taken`): two rules that happened to
+	# pick the same yard until works were sited in their own landscape's regions,
+	# and then the player stood in an empty yard and the story saw nobody held.
+	# `rescue:yard` is the name the taken package's header says to use.
+	var yard: Vector2 = story.call("tour_place", "rescue:yard")
+	check(yard.is_finite(), "the story can say where they are held")
+	g.player.pos = yard
+	g.player.hero.pos = yard
+	await frames(6)
 	var look: StorySubarcLook = story.call("subarc_look")
 	check(not look.held.is_empty(), "the story sees who the yard is holding: %s" % [look.held])
 	var said: Dictionary = StorySubarc.raised(look)

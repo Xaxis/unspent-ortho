@@ -292,6 +292,15 @@ func test_a_landscape_that_builds_upward_hangs_its_own_pieces() -> void:
 	# The same prop, asked in two landscapes: the kind cannot tell them apart and
 	# the FORM has to.
 	var p := WorldProp.new(211, PropKind.HOUSE, Vector2(40.0, 40.0), 0.0, 1.0)
+	# DEALT, not hashed: the claim is about a building of the city's own height,
+	# and this used to lean on id 211 happening to hash to a tall form. A model
+	# is dealt by position now (`WorldProp.deal_hash`), and (40, 40) deals a low
+	# one -- 1.84, a real reading of a real building, and no evidence either way
+	# about how a TOWER hangs its piece. So the prop is given the tallest form.
+	var tall := BiomeForms.of(city)
+	for v in tall.stock.size():
+		if p.variant < 0 or tall.fact(v, BiomeForms.HIGH, 2.6) > tall.fact(p.variant, BiomeForms.HIGH, 2.6):
+			p.variant = v
 	var in_city := ForeKinds.row_of(p, 7, city)
 	var in_village := ForeKinds.row_of(p, 7, plain)
 	check(in_city != in_village, "a building's piece is its landscape's, not its kind's")

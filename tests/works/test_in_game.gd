@@ -174,13 +174,37 @@ func test_a_body_cannot_walk_through_the_deck() -> void:
 		g.queue_free()
 		await frames(1)
 		return
-	var from := site.pos + Vector2.from_angle(site.facing + PI * 0.5) * 6.0
-	var into := g.query.move_body(from, (site.pos - from).normalized() * 5.0, 0.34)
-	gt(into.distance_to(site.pos), 1.4, "a body walks straight through the deck")
-	# And the ground it came from is still open, so the wall is the deck and not
-	# a world that stops bodies everywhere.
-	var away := g.query.move_body(from, (from - site.pos).normalized() * 3.0, 0.34)
-	gt(away.distance_to(from), 2.0, "the yard is walled all round instead of walled at the deck")
+	# ASKED BY TAKING THE DECK AWAY, ON A WALK THE DECK IS REALLY IN THE WAY OF.
+	# This walked in from six tiles to one side and out again, and read "stopped"
+	# as the deck and "open" as the yard. Sited by region, seed 1's depot stands on
+	# a hillside there: the walk in stopped at 6.21 with the deck and 5.86 WITHOUT
+	# it -- the terraces stopped it, so "a body cannot walk through the deck"
+	# passed on a walk that never reached the deck. So every walk is taken twice,
+	# with the yard's mass and without it (`set_blocks(&"works", [])`), from
+	# bearings all round; one that reaches the deck with nothing there is a real
+	# approach, and on it the deck has to stop the body and walking away has to
+	# be the same either way.
+	var bearings: Array[Vector2] = []
+	for k in 16:
+		bearings.append(Vector2.from_angle(site.facing + TAU * k / 16.0))
+	var walled: Array[Vector2] = []
+	var outward: Array[Vector2] = []
+	for dir: Vector2 in bearings:
+		var from := site.pos + dir * 6.0
+		walled.append(g.query.move_body(from, -dir * 5.0, 0.34))
+		outward.append(g.query.move_body(from, dir * 3.0, 0.34))
+	g.query.set_blocks(&"works", [] as Array[Vector3])
+	var tried := 0
+	for k in bearings.size():
+		var from := site.pos + bearings[k] * 6.0
+		var open := g.query.move_body(from, -bearings[k] * 5.0, 0.34)
+		if open.distance_to(site.pos) > 1.4:
+			continue
+		tried += 1
+		gt(walled[k].distance_to(site.pos), 1.4, "a body walks straight through the deck (bearing %d)" % k)
+		near(outward[k].distance_to(g.query.move_body(from, bearings[k] * 3.0, 0.34)), 0.0, 0.01,
+			"and walking away is the same with or without it: walled at the deck, not all round (bearing %d)" % k)
+	gt(float(tried), 0.0, "some bearing reaches the deck when the deck is not there")
 	g.queue_free()
 	await frames(1)
 

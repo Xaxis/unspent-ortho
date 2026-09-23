@@ -42,7 +42,9 @@ func test_streamed_props_are_baked_on_the_worker_and_match_a_direct_bake() -> vo
 	w.depleted[0] = INF
 	view.refresh_props(w.props[0])
 	var after := view.get_node_or_null("chunk_1_1/props") as MeshInstance3D
-	var pine := PropModels.template(PropKind.PINE, PropModels.pick_variant(PropKind.PINE, Rng.hash_ints(w.seed_value, 0, 90)), Country.COAST)
+	# Asked of the door the bake uses, never hashed here: a copy of the id hash
+	# went on naming the pine's old model once models were dealt by position.
+	var pine := PropModels.template(PropKind.PINE, PropModels.variant_of(w.props[0], w.seed_value), Country.COAST)
 	if node != null and after != null:
 		var before_len := (view.bake_props(view.chunk_at(Vector2(40, 40)), TerrainMesher.new(w), [w.props[0], w.props[1], w.props[2]], [])[0][Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 		eq(after.mesh.surface_get_array_len(0), before_len - pine.made_v.size(), "the taken pine is gone from the bake")
