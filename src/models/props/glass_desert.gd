@@ -302,7 +302,15 @@ static func fused_car(k: Kit, v: int, c: int) -> void:
 		var x := lerpf(-1.0, 1.2, float(j) / 2.0) + (Rng.hash01(s, j, 9) - 0.5) * 0.3
 		k.limb(Vector3(x, belt * 0.75, melt * (W + 0.2)), Vector3(x + 0.05, 0.03, melt * (W + 0.6)), 0.04, 0.015, 5, drape_low, Vector3(0.0, -0.06, melt * 0.05))
 	# 6. The pool it stands in: the sheet, spread toward the side that melted.
-	k.stone(melt * 0.3, -0.05, melt * 0.35, 2.4, 0.07, s, _glass(_dark()), 9)
+	# SCOURED, NOT GLAZED: this was tagged GLASS like the drape, and in the
+	# gallery frame the pool came back as a five-unit white hole with the car
+	# sitting in it — a flat welded plate at the GLASS row's specular returns
+	# the noon sun straight into the lens, which is what that row's own comment
+	# warns a pane will do. The domes and the tubes are curved, so their
+	# highlights stay small; a pool is not. And a pool the wind has sand-blasted
+	# for seventy years IS matte: the landscape's file says a shine survives
+	# only on what has not been scoured. So the sheet takes the plain made row.
+	k.stone(melt * 0.3, -0.05, melt * 0.35, 2.4, 0.07, s, _dark(), 9)
 	# 7. Sand banked against the intact side and the nose.
 	Remains.banks(k, [[L * 0.75, -melt * (W + 0.35), 0.5, 0.14], [-L * 0.6, -melt * (W + 0.3), 0.42, 0.1]], Remains.drift_of(c)[0], s)
 
