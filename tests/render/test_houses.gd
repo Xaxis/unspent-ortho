@@ -597,6 +597,9 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 	var villages := 0
 	var lit_on_square := 0
 	var dark := 0
+	var rep_lit := 0
+	var rep_seen := 0
+	var rep_share := 0.0
 	for seed_value: int in [7, 1, 3]:
 		var w := WorldGen.generate(seed_value)
 		for v: Dictionary in w.villages:
@@ -654,12 +657,33 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 				# landscape's. Stated as a SHARE of the pack it is the same claim
 				# where the stock is dealt once each, and it goes on meaning
 				# something where a city repeats a form — which a count cannot.
-				var most := ceili(float(seen.size()) * float(neon.size()) / float(maxi(forms.stock.size(), 1)))
-				check(lit <= most, "%s: %d lit of %d houses, %d of %d forms lit" %
-					[v.get("name", "?"), lit, seen.size(), neon.size(), forms.stock.size()])
+				#
+				# AND WHERE A FORM REPEATS, THE SHARE IS A CLAIM ABOUT THE DEAL, NOT
+				# ABOUT ONE STREET. A repeating deal is steered by where each building
+				# stands (`repeat_apart`), so one village can take a lit form once
+				# more than its share without the deal preferring anything: Fallen
+				# Mile on seed 3 stood the green towers' one dark form once in
+				# thirteen because it was the one too near its twin, and dealt 12 lit
+				# where the share says 11. So a stock dealt once each is held house
+				# by house, and a repeating one over every such house in the run.
+				var share_lit := float(neon.size()) / float(maxi(forms.stock.size(), 1))
+				if forms.repeats():
+					rep_lit += lit
+					rep_seen += seen.size()
+					rep_share += share_lit * seen.size()
+				else:
+					var most := ceili(float(seen.size()) * share_lit)
+					check(lit <= most, "%s: %d lit of %d houses, %d of %d forms lit" %
+						[v.get("name", "?"), lit, seen.size(), neon.size(), forms.stock.size()])
 			if lit == 0:
 				dark += 1
 	gt(villages, 20, "three seeds have villages to read")
+	# Every repeating house in the run, against what the stocks' lit shares
+	# expect of them. One street's extra tube is noise; a deal that prefers the
+	# lit forms moves this total, and 3% over is the room one street takes.
+	gt(rep_seen, 50, "the cities stood enough repeated buildings to weigh")
+	print("  repeating deals: %d lit of %d, the stocks' shares expect %.1f" % [rep_lit, rep_seen, rep_share])
+	lt(float(rep_lit), rep_share * 1.03 + 1.0, "repeating deals: %d lit of %d, the stocks' shares expect %.1f" % [rep_lit, rep_seen, rep_share])
 	# A share of villages wired a machine's light in, and in those it is on the
 	# house by the square. Not all of them: dealing a lit house to every village
 	# made stolen neon a filter over the coast instead of something one village

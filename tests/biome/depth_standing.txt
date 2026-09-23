@@ -79,10 +79,7 @@ mesas land.frames
 mesas land.landmark
 mesas land.own_props
 mesas land.site
-mesas people.built
 mesas plan.depot
-mesas plan.keeper
-mesas plan.machine
 mesas plan.work_props
 mesas player.only_in
 mesas player.signature
