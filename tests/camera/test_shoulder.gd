@@ -445,3 +445,40 @@ func test_breath_is_not_drawn_over_the_back_of_the_head() -> void:
 	hz.call("_draw_cue", &"cold", cue, 0.7)
 	eq(_breaths(g), 2, "looking at the face, the breath is there")
 	_done()
+
+
+# --- the right button ------------------------------------------------------------
+
+func _right(down: bool) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_RIGHT
+	ev.pressed = down
+	Input.parse_input_event(ev)
+	Input.flush_buffered_events()
+
+
+## THE RIGHT BUTTON IS THE VIEW, AND ONE CLICK IS ENOUGH IN TOGGLE MODE. macOS
+## hands Godot a trackpad's two-finger click as a secondary click, which the engine
+## reads as MOUSE_BUTTON_RIGHT, so this is the event a laptop sends. Pressed and
+## let go once, the toggled view comes down and stays; a second click takes it up.
+func test_one_right_click_toggles_the_view() -> void:
+	PlayerSettings.forget_for_test()
+	PlayerSettings.set_value(&"playing.shoulder", &"toggle")
+	var g := await _make()
+	var sys := _system(g)
+	_right(true)
+	check(Input.is_action_pressed(&"shoulder"), "the right button says `shoulder`")
+	sys.call("_process", DT)
+	_right(false)
+	await tree.process_frame
+	sys.call("_process", DT)
+	check(g.camera.shoulder, "one click, and the view stays down")
+	_right(true)
+	await tree.process_frame
+	sys.call("_process", DT)
+	_right(false)
+	await tree.process_frame
+	sys.call("_process", DT)
+	check(not g.camera.shoulder, "a second click takes it back up")
+	PlayerSettings.forget_for_test()
+	_done()

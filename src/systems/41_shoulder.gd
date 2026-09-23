@@ -55,6 +55,10 @@ func setup(g: Game) -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_ensure_action()
 	MouseControls.install()
+	# A new game opens with the key let go. The latch is static (HoldToggle), so
+	# a view toggled on in the last game came back on in this one, and the first
+	# click of the new game took it OFF.
+	HoldToggle.put(ACTION, false)
 	_tool = g.options.shot != "" or g.options.tour != ""
 	var v := g.options.view
 	if v == &"":
