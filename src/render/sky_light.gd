@@ -616,6 +616,10 @@ func compose() -> void:
 	RenderingServer.global_shader_parameter_set("sky_tint", total)
 	var az: float = s.azimuth
 	var el: float = s.elevation
+	# At eye level the light stands where the sky draws the sun (`eye_light`).
+	var eye := horizon_share(_cam())
+	if eye > 0.0:
+		el = lerpf(el, eye_light(hour).y, eye)
 	# Offset per unit of height toward the light, so a cloud's shadow on a wall
 	# lines up with its shadow on the ground.
 	var tan_el := tan(deg_to_rad(el))
@@ -883,8 +887,7 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	var reach := Air.reach(_cam_distance(), _cam_size(), _cam_pitch(), float(a.near), _cam_fov())
 	e.fog_depth_begin = reach.x
 	e.fog_depth_end = reach.y
-	var horizon := sees_horizon(_cam())
-	_look_out(e, sm, a, horizon, nightly)
+	var horizon := horizon_share(_cam())
 	# AND SO IS THE SHADOW RANGE, for exactly the same reason. It was 50.0, set
 	# once at `_ready` and never asked again, while `--zoom` and now the player's
 	# own `+`/`-` write `view_height` directly — so past about 62 the far edge of
@@ -892,9 +895,10 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	# line across the picture. Every other number in this file asks the live
 	# camera; this one did not. At the play camera it comes out 49.9 where the
 	# constant said 50, which is a quarter of one per cent of the texel density.
-	if sun != null and not horizon:
+	if sun != null:
 		sun.directional_shadow_max_distance = _cam_distance() \
 			+ Air.frame_depth(_cam_size(), _cam_pitch()) + SHADOW_ROOM
+	_look_out(e, sm, a, horizon, nightly)
 	e.volumetric_fog_albedo = Air.colour(hor, a).lerp(Color(1, 1, 1), 0.35)
 	e.volumetric_fog_ambient_inject = lerpf(0.35, 0.10, nightly)
 	# Volumetric air thickens in rain, in mist and at night, which is when a
@@ -937,18 +941,34 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 ## camera and the pitched lens (`CameraRig.LENS_PITCH` 40 against half of a 55
 ## fov) both answer false, so neither changes by a pixel.
 static func sees_horizon(cam: Camera3D) -> bool:
+	return horizon_share(cam) > 0.0
+
+
+## HOW MUCH OF THE EYE-LEVEL RULES ARE IN FORCE, 0 (the play camera's) to 1 (the
+## horizon's), off how far the top edge of the frame stands below the horizon.
+## It is a SHARE and not a switch because a player tips the view with the mouse:
+## a boolean put the air, the sky, the shadow and the light over in one frame at
+## about 33 degrees down, and every one of them visibly snapped. Every rule that
+## differs between the two is spent against this, so no frame of a tilt or of
+## the glide down to the shoulder can jump.
+##
+## The band ends short of the pitched lens and of a lock's lean on it (12.5 and 8
+## degrees of margin), so neither ever takes any of it.
+static func horizon_share(cam: Camera3D) -> float:
 	if cam == null or cam.projection != Camera3D.PROJECTION_PERSPECTIVE:
-		return false
+		return 0.0
 	# `basis.z` points back out of the lens, so its `y` is the sine of the pitch
 	# DOWN; the top edge stands `fov/2` above the view axis (KEEP_HEIGHT).
 	var down := rad_to_deg(asin(clampf(cam.global_transform.basis.z.y, -1.0, 1.0)))
-	return down < cam.fov * 0.5 + HORIZON_SLACK
+	return smoothstep(HORIZON_FADE_FROM, HORIZON_FADE_TO, down - cam.fov * 0.5)
 
 
-## Degrees of margin under the horizon that already count as seeing it: a top edge
-## one degree below the horizon shows the air thinning into nothing just as a top
-## edge above it does, and the two must not be drawn by different rules.
-const HORIZON_SLACK := 3.0
+## Degrees the top edge stands below the horizon where the eye-level rules begin,
+## and where they are wholly in force (a little past level, so a top edge a
+## degree under the horizon, which already shows the air thinning into nothing,
+## is drawn by the same rules as one above it).
+const HORIZON_FADE_FROM := 6.0
+const HORIZON_FADE_TO := -2.0
 ## Where the air begins in front of an eye-level camera, in world units, before a
 ## landscape's own `near`. Past the player and the ground they are working, so a
 ## fight is never in it; short enough that the middle distance is already air.
@@ -1000,8 +1020,38 @@ static func sky_sun(hour: float, azimuth: float) -> Vector3:
 	return Basis.from_euler(Vector3(deg_to_rad(-el), deg_to_rad(azimuth), 0.0)).z
 
 
+## WHERE THE LIGHT COMES FROM AT EYE LEVEL: (azimuth, elevation) in degrees.
+##
+## The play camera's light is placed for the length of a shadow ON SCREEN
+## (`_elevation_for_shadow`) and never drops much below sixty degrees, which is
+## right looking down and wrong looking out: at dusk the sun is drawn low on the
+## horizon while every shadow says it is overhead. So at eye level the light
+## stands where the drawn body is -- the sun by day (`sky_sun`), the moon by
+## night -- on the same azimuth the play camera's light has, and is blended to it
+## by `horizon_share`, so the orthographic game is untouched.
+##
+## Never lower than `EYE_LIGHT_LEAST`: a light at the horizon lights nothing and
+## throws a shadow the length of the world. The night is the moon rising from
+## where the sun set to `MOON_EYE` and down again to where it will rise, so the
+## handover at SUNSET and SUNRISE is at one bearing and one height.
+static func eye_light(hour: float) -> Vector2:
+	var h := fposmod(hour, 24.0)
+	var az: float = sun_at(h).azimuth
+	var el: float
+	if h >= SUNRISE and h <= SUNSET:
+		el = SKY_SUN_NOON * sin(PI * (h - SUNRISE) / (SUNSET - SUNRISE))
+	else:
+		var night_len := 24.0 - (SUNSET - SUNRISE)
+		el = MOON_EYE * sin(PI * fposmod(h - SUNSET, 24.0) / night_len)
+	return Vector2(az, maxf(el, EYE_LIGHT_LEAST))
+
+
+const EYE_LIGHT_LEAST := 7.0
+const MOON_EYE := 46.0
+
+
 ## The sky that is seen, filled from the same colours the reflected one was.
-func _see_sky(e: Environment, sm: ProceduralSkyMaterial, hour: float, nightly: float) -> void:
+func _see_sky(e: Environment, sm: ProceduralSkyMaterial, hour: float, nightly: float, seen := 1.0) -> void:
 	if e.sky == null:
 		return
 	if _seen_sky == null:
@@ -1012,12 +1062,26 @@ func _see_sky(e: Environment, sm: ProceduralSkyMaterial, hour: float, nightly: f
 		e.sky.sky_material = _seen_sky
 	var s := sun_at(hour)
 	var dir := sky_sun(hour, float(s.azimuth))
+	_seen_sky.set_shader_parameter("seen", clampf(seen, 0.0, 1.0))
+	# The procedural sky's own numbers, so at `seen` 0 this IS that sky.
+	_seen_sky.set_shader_parameter("p_top", sm.sky_top_color)
+	_seen_sky.set_shader_parameter("p_horizon", sm.sky_horizon_color)
+	_seen_sky.set_shader_parameter("p_ground_horizon", sm.ground_horizon_color)
+	_seen_sky.set_shader_parameter("p_ground_bottom", sm.ground_bottom_color)
+	_seen_sky.set_shader_parameter("p_sky_curve", sm.sky_curve)
+	_seen_sky.set_shader_parameter("p_ground_curve", sm.ground_curve)
+	_seen_sky.set_shader_parameter("p_sun_angle_max", deg_to_rad(sm.sun_angle_max))
+	_seen_sky.set_shader_parameter("p_sun_curve", sm.sun_curve)
+	_seen_sky.set_shader_parameter("p_sky_energy", sm.sky_energy_multiplier)
+	_seen_sky.set_shader_parameter("p_ground_energy", sm.ground_energy_multiplier)
 	_seen_sky.set_shader_parameter("top_color", sm.sky_top_color)
 	_seen_sky.set_shader_parameter("horizon_color", sm.sky_horizon_color)
 	_seen_sky.set_shader_parameter("ground_color", sm.ground_bottom_color)
 	_seen_sky.set_shader_parameter("sun_dir", dir)
-	# The moon stands opposite the sun's bearing, riding high at midnight.
-	var moon := Basis.from_euler(Vector3(deg_to_rad(-lerpf(18.0, 46.0, nightly)), deg_to_rad(float(s.azimuth) + 180.0), 0.0)).z
+	# The moon stands where the night's light comes from (`eye_light`), so a
+	# shadow at eye level falls away from the moon that is drawn.
+	var ml := eye_light(hour)
+	var moon := Basis.from_euler(Vector3(deg_to_rad(-ml.y), deg_to_rad(ml.x), 0.0)).z
 	_seen_sky.set_shader_parameter("moon_dir", moon)
 	# The glow belongs to a sun near the horizon: from a little above it until
 	# well after it has gone, and not at all in the dead of night.
@@ -1041,55 +1105,60 @@ func _see_sky(e: Environment, sm: ProceduralSkyMaterial, hour: float, nightly: f
 const HORIZON_SHADOW := 140.0
 
 
-## The air and the sky as an eye-level camera needs them, or put back as the
-## play camera has them. Called every frame, so each field is written in BOTH
-## branches: nothing a horizon frame changes may be left behind for the next
-## top-down one.
-func _look_out(e: Environment, sm: ProceduralSkyMaterial, a: Dictionary, horizon: bool, nightly: float) -> void:
-	if horizon:
-		var thick := clampf(fog.z, 0.0, 1.0)
-		var see := SEE / lerpf(1.0, 3.5, thick)
-		e.background_mode = Environment.BG_SKY
-		e.fog_depth_begin = HORIZON_BEGIN * float(a.near) / lerpf(1.0, 2.0, thick)
-		e.fog_depth_end = see
-		e.fog_depth_curve = HORIZON_CURVE / clampf(float(a.depth), 0.4, 2.5)
-		e.fog_density = 1.0
-		e.fog_aerial_perspective = HORIZON_AERIAL
-		if sm != null:
-			# The distance is the sky's colour, and the sky's horizon is the
-			# landscape's air: the same `Air.colour` the depth fog was drawn in,
-			# so a bog still closes into peat and the snow into glare. The ground
-			# half of the dome is the same colour at the horizon, so the far edge
-			# of the land and the sky meet on no line at all.
-			sm.sky_horizon_color = Air.colour(sm.sky_horizon_color, a)
-			sm.ground_horizon_color = sm.sky_horizon_color
-		if figure_light != null:
-			figure_light.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
-		if sm != null:
-			# Under a lid (`BiomeDef.sky_shut`) there are no stars and no moon to
-			# see: the slums at midnight showed a starfield through their smog.
-			_see_sky(e, sm, clock_hour, nightly * (1.0 - last_lid()))
+## The air, the sky and the shadow, carried from the play camera's rules to the
+## eye-level ones by `share` (`horizon_share`). The play camera's values are
+## already written when this is called, so each field is a blend from them; at 0
+## every field is exactly what the play camera has, so nothing a horizon frame
+## changes is left behind for the next top-down one.
+##
+## Two things cannot be blended, and each changes where it cannot be seen: the
+## background (no sky pixel is in frame until the top edge reaches the horizon,
+## deep inside the band) and the seen sky, which at `seen` 0 draws exactly the
+## procedural sky it replaces (sky_eye.gdshader), so what metal reflects does not
+## jump either. The shadow's split mode is the third, and changes at the band's
+## top edge, where its range is still the play camera's.
+func _look_out(e: Environment, sm: ProceduralSkyMaterial, a: Dictionary, share: float, nightly: float) -> void:
+	var w := clampf(share, 0.0, 1.0)
+	if w <= 0.0:
+		e.background_mode = Environment.BG_COLOR
+		if _plain_sky != null and e.sky != null and e.sky.sky_material != _plain_sky:
+			e.sky.sky_material = _plain_sky
+		e.fog_depth_curve = Air.CURVE
+		e.fog_aerial_perspective = FOG_AERIAL
 		if sun != null:
-			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-			sun.directional_shadow_max_distance = HORIZON_SHADOW
-			sun.directional_shadow_blend_splits = true
-			sun.directional_shadow_fade_start = 0.75
+			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+			sun.directional_shadow_blend_splits = false
+			sun.directional_shadow_fade_start = 0.8
 		return
-	e.background_mode = Environment.BG_COLOR
-	if _plain_sky != null and e.sky != null and e.sky.sky_material != _plain_sky:
-		e.sky.sky_material = _plain_sky
-	e.fog_depth_curve = Air.CURVE
-	e.fog_aerial_perspective = FOG_AERIAL
-	if figure_light != null:
-		figure_light.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_AND_SKY
+	var thick := clampf(fog.z, 0.0, 1.0)
+	var see := SEE / lerpf(1.0, 3.5, thick)
+	e.background_mode = Environment.BG_SKY
+	e.fog_depth_begin = lerpf(e.fog_depth_begin, HORIZON_BEGIN * float(a.near) / lerpf(1.0, 2.0, thick), w)
+	e.fog_depth_end = lerpf(e.fog_depth_end, see, w)
+	e.fog_depth_curve = lerpf(Air.CURVE, HORIZON_CURVE / clampf(float(a.depth), 0.4, 2.5), w)
+	e.fog_density = lerpf(e.fog_density, 1.0, w)
+	e.fog_aerial_perspective = lerpf(FOG_AERIAL, HORIZON_AERIAL, w)
+	if sm != null:
+		# The distance is the sky's colour, and the sky's horizon is the
+		# landscape's air: the same `Air.colour` the depth fog was drawn in,
+		# so a bog still closes into peat and the snow into glare. The ground
+		# half of the dome is the same colour at the horizon, so the far edge
+		# of the land and the sky meet on no line at all.
+		var bent := Air.colour(sm.sky_horizon_color, a)
+		sm.ground_horizon_color = sm.ground_horizon_color.lerp(bent, w)
+		sm.sky_horizon_color = sm.sky_horizon_color.lerp(bent, w)
+		# Under a lid (`BiomeDef.sky_shut`) there are no stars and no moon to
+		# see: the slums at midnight showed a starfield through their smog.
+		_see_sky(e, sm, clock_hour, nightly * (1.0 - last_lid()), w)
 	if sun != null:
-		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-		sun.directional_shadow_blend_splits = false
-		sun.directional_shadow_fade_start = 0.8
+		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+		sun.directional_shadow_max_distance = lerpf(sun.directional_shadow_max_distance, HORIZON_SHADOW, w)
+		sun.directional_shadow_blend_splits = true
+		sun.directional_shadow_fade_start = lerpf(0.8, 0.75, w)
 
 
 ## The column's density moved into the layer (see AIR_HIGH).
-func _lay_air(e: Environment, nightly: float, horizon := false) -> void:
+func _lay_air(e: Environment, nightly: float, horizon := 0.0) -> void:
 	# ONLY WHERE THE TIER HAS VOLUMETRIC AIR (its own `volumetric` column, which
 	# built `e`). Compatibility cannot compile a fog shader at all: a FogVolume
 	# built on the web tier logged "shader type fog not supported in OpenGL
@@ -1111,7 +1180,7 @@ func _lay_air(e: Environment, nightly: float, horizon := false) -> void:
 	var fm := _layer.material as FogMaterial
 	var gain := 30.0 / (AIR_HIGH / 0.8387)
 	fm.density = e.volumetric_fog_density * gain * lerpf(1.0, AIR_NIGHT, clampf(nightly, 0.0, 1.0)) \
-		* (HORIZON_LAYER if horizon else 1.0)
+		* lerpf(1.0, HORIZON_LAYER, clampf(horizon, 0.0, 1.0))
 	e.volumetric_fog_ambient_inject = lerpf(e.volumetric_fog_ambient_inject, AIR_INJECT, clampf(nightly, 0.0, 1.0))
 	fm.albedo = e.volumetric_fog_albedo
 	e.volumetric_fog_density = 0.0

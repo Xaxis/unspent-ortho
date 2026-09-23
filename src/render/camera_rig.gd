@@ -304,6 +304,12 @@ func near_plane(shown: float) -> float:
 	return maxf(near + 1.0, begin)
 
 
+## Whether this rig is the camera the frame is drawn through. Out of the tree
+## (a test building a rig on its own) it is, since there is nothing else.
+func _drawing() -> bool:
+	return not is_inside_tree() or get_viewport().get_camera_3d() == self
+
+
 ## Put the near blur on, or take it off, by the tier's own row. Never re-derived:
 ## `Quality.ROWS` is the one place that says what a tier may spend.
 ##
@@ -319,9 +325,20 @@ func _near_focus() -> void:
 	# of the picture. It is also not wanted: the near blur exists to stop a bough
 	# at the edge of a FLAT frame dominating it, which is not a problem a camera
 	# standing behind the player has.
-	if lens == &"persp":
+	#
+	# AND THE WEB'S STAND-IN IS THE SAME BLUR, so it goes off with it. It lives in
+	# the shaft pass, a quad parented to this rig that draws over whatever camera
+	# is current, and this branch used to clear only `attributes` -- so on the web
+	# tier the last orthographic plane (about 25 units) stayed in the pass and
+	# blurred everything within 25 units of the eye under the lens and over the
+	# shoulder. A camera that is not this rig (96_eye's stand) is the same case:
+	# the plane is arithmetic about THIS rig's frame and means nothing in anyone
+	# else's.
+	if lens == &"persp" or not _drawing():
 		attributes = null
 		_dof_size = -1.0
+		if _outline != null:
+			(_outline.material_override as ShaderMaterial).set_shader_parameter("near_begin", -1.0)
 		return
 	if not bool(Quality.current().get("near_focus", false)):
 		attributes = null
@@ -585,8 +602,9 @@ func _apply_lens() -> void:
 	# than the constant, because 09_view and dev mode both move it.
 	var back_a := lens_back(view_height, LENS_FOV) * _zoom
 	var w := Shoulder.smooth(_sh_t)
-	if attributes != null:
-		_near_focus()
+	# Every frame, not only while `attributes` is set: the web's stand-in has no
+	# attributes to notice, and was left blurring (see `_near_focus`).
+	_near_focus()
 	if w <= 0.0:
 		fov = LENS_FOV
 		near = 1.0
