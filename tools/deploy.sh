@@ -97,10 +97,14 @@ printf '{"projectId":"%s","orgId":"%s"}\n' "$PROJECT_ID" "$ORG_ID" > .vercel/pro
 
 echo "deploy $sha -> vercel ($([ "$prod" = 1 ] && echo production || echo preview))"
 log="$(mktemp "${TMPDIR:-/tmp}/unspent-deploy.XXXXXX")"
+# The token rides in the environment (the CLI reads VERCEL_TOKEN), never on the
+# command line: an argument is readable by every `ps` on the machine for as long
+# as the deploy runs, which is how another session came to see it.
+export VERCEL_TOKEN
 if [ "$prod" = 1 ]; then
-  npx --yes vercel@48 deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN" >"$log" 2>&1
+  npx --yes vercel@48 deploy --prebuilt --prod --yes >"$log" 2>&1
 else
-  npx --yes vercel@48 deploy --prebuilt --yes --token "$VERCEL_TOKEN" >"$log" 2>&1
+  npx --yes vercel@48 deploy --prebuilt --yes >"$log" 2>&1
 fi
 code=$?
 url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.vercel\.app' "$log" | tail -1)"
