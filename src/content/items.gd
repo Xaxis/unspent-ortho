@@ -337,6 +337,12 @@ const DEFS := {
 		"icon": [&"knife", &"slate", &"earth"], "fits": [&"tool"], "resist": {&"resonance": 0.2}},
 	&"mod_damp": {"name": "hush damper", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"timber", &"linen", &"earth"], "fits": [&"tool", &"hands", &"body"], "resist": {&"resonance": 0.45}},
+	# A deep ice lens bound over one eye (docs/LANDSCAPES.md §2): it takes the
+	# glare off a white plain and lets a little of the dark through, and it is
+	# the frost sea's answer to the sea's own light. Head only: it is worn where
+	# the eye is. `sight` is its tag (ModifierTable).
+	&"mod_icelens": {"name": "ice lens", "bulk": 0.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"scan_lens", &"rime", &"earth"], "fits": [&"head"], "resist": {&"glare": 0.3, &"dark": 0.2}},
 	&"mod_leech": {"name": "leech coil", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"ink", &"earth"], "fits": [&"tool", &"back"], "resist": {&"em": 0.15}},
 	&"mod_phase": {"name": "phase coil", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
@@ -351,6 +357,8 @@ const DEFS := {
 	&"clint_spar": {"name": "clint spar", "bulk": 2.0, "group": &"material", "icon": [&"stone", &"rime", &"rime"]},
 	&"bog_iron": {"name": "bog iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"rust"]},
 	&"frost_varnish": {"name": "frost varnish", "bulk": 1.0, "group": &"material", "icon": [&"flask", &"linen", &"rime"]},
+	# Its raw's own mark a step brighter: the same ice, ground clear.
+	&"deep_ice_lens": {"name": "deep ice lens", "bulk": 1.0, "group": &"material", "icon": [&"lens_ice", &"rime", &"lens"]},
 	&"tide_iron": {"name": "tide iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"ash"]},
 	&"mono_edge": {"name": "filament edge", "bulk": 0.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"found", &"lens"]},
 	&"keeper_lens": {"name": "keeper lens", "bulk": 1.0, "group": &"found", "stuff": &"found", "icon": [&"lens", &"plate", &"lens"]},

@@ -42,6 +42,10 @@ const MATERIALS := {
 		"what": "iron the bog grew: soft, stubborn, and it takes a patch"},
 	&"frost_varnish": {"land": &"snowfield", "raw": &"crottle", "at": &"fire", "grade": &"rare",
 		"what": "lichen boiled hard; it does not craze when the cold comes"},
+	# The frost sea's (docs/VISION.md §6.1 names it): lens ice is cut out of a
+	# pressure block with a steel edge, and pressure blocks stand nowhere else.
+	&"deep_ice_lens": {"land": &"frost_sea", "raw": &"lens_ice", "at": &"bench", "grade": &"rare",
+		"what": "the clear heart of a slab of sea ice, ground until the far side comes through it"},
 
 	# --- one machine's own ----------------------------------------------------
 	&"tide_iron": {"kind": &"harvester", "chance": 0.35, "grade": &"prime",
