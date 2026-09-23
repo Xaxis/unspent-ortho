@@ -566,6 +566,18 @@ if (first && touring) {
   // The wasm was held while the shell was shot: that wait is not the build's.
   result.first_frame_s = first.t - wasmHeldMs / 1000;
   console.log(`web first frame ${result.first_frame_s.toFixed(2)} s after navigation, not counting ${(wasmHeldMs / 1000).toFixed(2)} s the harness held the wasm (${first.text})`);
+}
+// --boot-only: judge the boot and nothing past it. On a runner drawing WebGL on
+// the CPU a frame takes longer than a screenshot waits and there are no speakers,
+// so shots and sound can only fail for the host's reasons there. What such a host
+// CAN answer is the thing that shipped broken once (f1ab4dd): does the build come
+// up on its renderer without a console error. So it waits for the probe to say
+// which renderer drew, gives the page a few seconds to complain, and stops.
+if (first && !touring && opt['boot-only']) {
+  const drew = await waitLine(/^web ok renderer/, Number(opt.timeout), 0);
+  if (!drew) failures.push('the probe never said which renderer drew');
+  await page.waitForTimeout(Number(opt.after) * 1000);
+} else if (first && !touring) {
   await shoot('ready');
   const focused = await page.evaluate(() => document.activeElement && document.activeElement.id);
   if (focused !== 'canvas') failures.push(`keyboard focus is on '${focused || 'nothing'}', not the canvas`);
