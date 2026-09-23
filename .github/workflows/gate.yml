@@ -11,9 +11,17 @@ on:
   pull_request:
   workflow_dispatch:
 
+# DON'T CANCEL THE RUN IN PROGRESS. With cancel-in-progress true, every push to
+# main killed the running gate, and several sessions push to main every few
+# minutes while a run takes about half an hour -- so on 2026-09-22 no gate on main
+# ever FINISHED: eight in a row were cancelled and the only verdict of the day was
+# one that happened to outlive the next push. A gate that never finishes reports
+# nothing and looks like it is working. Without cancelling, GitHub keeps the run
+# going and holds only the LATEST pending push behind it (a newer push replaces
+# an older pending one), so main always gets a verdict on a recent commit.
 concurrency:
   group: gate-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   GODOT_VERSION: 4.7.2
