@@ -120,6 +120,12 @@ const DEFS := {
 	&"dye": {"name": "dye", "bulk": 1.0, "group": &"material"},
 	&"brimstone": {"name": "brimstone", "bulk": 4.0, "group": &"material"},
 	&"limestone": {"name": "limestone", "bulk": 5.0, "group": &"material"},
+	# The crags' own raw: broken out of a carved face with a steel edge, refined
+	# at the kiln into hush slate (docs/LANDSCAPES.md §1 PLAYER).
+	&"hushstone": {"name": "hushstone", "bulk": 4.0, "group": &"material", "icon": [&"hushstone", &"ink", &"slate"]},
+	# The lens unscrewed off a survey mast: machine glass, read in the module's
+	# violet like everything else taken whole off the plan.
+	&"lens_glass": {"name": "lens glass", "bulk": 0.5, "group": &"found", "icon": [&"lens", &"rime", &"lens"]},
 	# Cut out of a keeper, and out of nothing else in the world (src/core/sentinel).
 	&"reaper_core": {"name": "reaper core", "bulk": 3.0, "group": &"material"},
 	&"rake_core": {"name": "rake core", "bulk": 3.0, "group": &"material"},
