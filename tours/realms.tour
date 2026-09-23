@@ -17,8 +17,11 @@ walk 1,1 0.9
 wait 0.4
 shot 01-above-ground with realm:surface
 
-# Back to it on foot, until it is in reach and the slate says so.
-walk -1,-1 1.4
+# Back to it on foot, until it is in reach and the slate says so. Steered to
+# the shaft by name, on the real move keys: a timed walk back ended wherever the
+# props on the way let it, and once the scatter laid new ones (GEN 23) that was
+# outside the reach on every build.
+walkto shaft 6
 await portal 15
 shot 02-a-shaft-in-the-rock with realm:surface,portal
 
@@ -50,7 +53,7 @@ await portal 15
 shot 06-the-shaft-head-below with land:limestone_caves,portal
 press use
 await realm:surface 40
-await land:coast|moss|pinewood|snowfield|bonelands|burning|salt_flats|scrapwood 10
+await land:surface 10
 wait 1.2
 shot 07-back-above-ground with realm:surface
 

@@ -69,7 +69,8 @@ extends GameSystem
 ##                          frame is named after); lamp / unlit (the player's lamp
 ##                          is lit, or is not); land:ID (the landscape type under
 ##                          the player; `land:a|b` when either answer is honest,
-##                          as a step out of an ecotone is);
+##                          as a step out of an ecotone is; `land:surface` for any
+##                          landscape that realm lays);
 ##                          border:A-B (the player is in the band between two
 ##                          landscape types, which is what an ecotone frame is of);
 ##                          swimming:KIND (a body of that kind is in frame and out
@@ -99,6 +100,10 @@ extends GameSystem
 ##                          or to the plated side opposite (plate), re-aimed every
 ##                          step the way a player steers, ending turned to face it
 ##                          (nothing happens when no body is left)
+##   walkto shaft SECS      the same steering toward the nearest shaft, stopping
+##                          inside its reach: a return BY NAME, where a timed walk
+##                          back ends wherever the props on the way let it
+##                          (realms.tour's did, once the scatter laid new props)
 ##   choose ID              on an open page, tap move_down (the real key) until the
 ##                          row ID is chosen; fails if it never comes round
 ##   coast calm|wild        calm: clear the bodies about and stop new ones coming
@@ -685,9 +690,17 @@ func _now_true(what: String) -> bool:
 		# `land:a|b` for a frame taken where either answer is honest: a walk out
 		# of an ecotone lands in one of the two, and which one is a fact about
 		# one seed's border, not about what the frame is showing.
-		var here := BiomeRegistry.at(game.world, game.player.pos).id
+		#
+		# A REALM's name stands for every landscape that realm lays (`land:surface`):
+		# the ground itself says which world the player is in, where `realm:` only
+		# reads 20_realms' flag. A hand-written list of the landscapes a shaft might
+		# come up in named eight of twenty-one and went red on the first shaft that
+		# rose anywhere newer.
+		var def := BiomeRegistry.at(game.world, game.player.pos)
 		for id: String in what.substr(5).split("|", false):
-			if here == StringName(id):
+			if def.id == StringName(id):
+				return true
+			if Realm.KINDS.has(StringName(id)) and def.realms.has(Realm.land_realm(StringName(id))):
 				return true
 		return false
 	if what.begins_with("border:"):
@@ -834,11 +847,34 @@ func _stand_at(found: WorldProp, said: String) -> bool:
 	return false
 
 
+## Every `walkto` target, the one list: `tests/tours/test_tour_claims.gd` reads it,
+## so a new target cannot be written into a tour and refused by a stale copy.
+const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft"]
+
+
 func _walk_to(what: String, secs: float) -> bool:
 	var sim := game.player.sim
-	if sim == null or not what in ["mob", "part", "plate"]:
+	if sim == null or not what in ["mob", "part", "plate", "shaft"]:
 		return false
 	var until := Time.get_ticks_msec() + int(secs * 1000.0)
+	if what == "shaft":
+		while Time.get_ticks_msec() < until:
+			var shaft := Portals.nearest(game.world, sim.hero.pos)
+			if shaft == null:
+				return false
+			var d := shaft.pos - sim.hero.pos
+			# Well inside the reach, so a step's overshoot cannot carry it back out.
+			if d.length() <= Portal.REACH * 0.6:
+				game.scripted_seconds = 0.0
+				return true
+			var dir := d.normalized()
+			game.scripted_move = Vector2(dir.x - dir.y, dir.x + dir.y) * 0.7071
+			game.scripted_run = false
+			game.scripted_seconds = 0.05
+			await get_tree().physics_frame
+		game.scripted_seconds = 0.0
+		printerr("tour %s: walked toward the nearest shaft for %.1f s and it never came into reach" % [_name, secs])
+		return false
 	var facing_mob: MobState = null
 	while Time.get_ticks_msec() < until:
 		var hero := sim.hero

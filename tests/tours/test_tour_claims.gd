@@ -137,7 +137,7 @@ func test_every_name_a_tour_asks_for_exists() -> void:
 					check(InputMap.has_action(parts[1]) or DevMode.ACTIONS.has(StringName(parts[1])),
 						"%s line %d: nothing is bound to '%s'" % [f, n, parts[1]])
 				"walkto":
-					check(parts[1] in ["folk", "dog", "refuse", "mob", "part", "plate"],
+					check(parts[1] in (load("res://src/systems/98_tour.gd") as GDScript).get("WALK_TARGETS"),
 						"%s line %d: cannot walk to '%s'" % [f, n, parts[1]])
 
 
