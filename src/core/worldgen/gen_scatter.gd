@@ -26,17 +26,27 @@ class_name GenScatter
 ## kinds and no year is asked between the recipe and the world. Clearing them out
 ## of the mask is the one door every landscape and every recipe goes through, so
 ## a landscape added later cannot reopen it by declaring a relay.
-static func allow(c: GenContext) -> PackedInt64Array:
-	var out := PackedInt64Array()
-	out.resize(c.types)
+##
+## **A TABLE OF BYTES, NOT A WORD OF BITS.** This was a 64-bit mask per type with
+## `1 << kind`, and `PropKind.COUNT` passed 64: MURAL, PLATFORM, GROWTH_TANK and
+## CONSOLE shifted round to bits 0-3, so a landscape declaring a console silently
+## allowed a pine. `holds(mask, cc, kind)` is the one way to read it.
+static func allow(c: GenContext) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(c.types * PropKind.COUNT)
 	for cc: int in c.land_types:
 		for kind: int in c.defs[cc].props:
-			out[cc] |= 1 << kind
+			out[cc * PropKind.COUNT + kind] = 1
 	if Realm.before_the_plan(c.w.realm):
 		for cc: int in c.land_types:
 			for kind: int in GenWorks.THEIRS:
-				out[cc] &= ~(1 << kind)
+				out[cc * PropKind.COUNT + kind] = 0
 	return out
+
+
+## Does landscape `cc` hold `kind` in a table from `allow` or `declared`.
+static func holds(mask: PackedByteArray, cc: int, kind: int) -> bool:
+	return kind >= 0 and kind < PropKind.COUNT and mask[cc * PropKind.COUNT + kind] != 0
 
 
 ## Every kind a landscape declares as ITS OWN, in either list, as bit masks by
@@ -51,11 +61,11 @@ static func allow(c: GenContext) -> PackedInt64Array:
 ##
 ## So anything asking "is this thing on theme where it stands" must read BOTH, or
 ## it calls a landscape's own ore an intruder. That is what it did.
-static func declared(c: GenContext) -> PackedInt64Array:
+static func declared(c: GenContext) -> PackedByteArray:
 	var out := allow(c)
 	for cc: int in c.land_types:
 		for row: Array in c.defs[cc].ore:
-			out[cc] |= 1 << int(row[0])
+			out[cc * PropKind.COUNT + int(row[0])] = 1
 	return out
 
 
@@ -189,31 +199,34 @@ static func sites(c: GenContext) -> void:
 		ruins += 1
 	# Fumaroles: fields of vents on their own clinker, out on the slopes of a
 	# landscape that breathes, so a walk through the ash has somewhere to go.
-	var vented := -1
-	var vent_count := 0
-	for cc: int in c.land_types:
-		if int(c.defs[cc].sites.get("fumaroles", 0)) > 0:
-			vented = cc
-			vent_count = int(c.defs[cc].sites.get("fumaroles", 0))
-			break
-	var fumaroles := 0
+	#
+	# EVERY LANDSCAPE THAT DECLARES THEM, NOT THE FIRST. This took the first type
+	# with `sites.fumaroles` and stopped, so the Burning had fields and the Sulphur
+	# Jungle's four were never laid. Each lays its patch in the ground its own vents
+	# stand in (`sites.fumarole_ground`, clinker unless it says otherwise).
 	var heart := c.hearts[c.caldera_type] if c.caldera_type >= 0 else Vector2(-1, -1)
-	for attempt in (6000 if vented >= 0 else 0):
-		if fumaroles >= maxi(2, roundi(vent_count * c.body_k)):
-			break
-		var p := _random_tile(c, rng)
-		var i := p.y * c.size + p.x
-		if w.country[i] != vented or w.blend[i] > 0.3:
+	for vented: int in c.land_types:
+		var vent_count := int(c.defs[vented].sites.get("fumaroles", 0))
+		if vent_count <= 0:
 			continue
-		if heart.x >= 0.0 and Vector2(p).distance_to(heart) < GenRelief.crater_radius(c) * 1.1:
-			continue
-		# Later attempts settle for rougher ground and closer company.
-		var rough := 1 if attempt < 3000 else 2
-		if not _clear_site(c, p, 4, rough) or _near_landmark(w, Vector2(p), (30.0 if attempt < 3000 else 20.0) * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
-			continue
-		_lay_patch(c, p, rng.randf_range(4.0, 6.0), Ground.CLINKER)
-		_mark(w, &"fumarole", Vector2(p) + Vector2(0.5, 0.5), vented)
-		fumaroles += 1
+		var vent_ground := int(c.defs[vented].sites.get("fumarole_ground", Ground.CLINKER))
+		var fumaroles := 0
+		for attempt in 6000:
+			if fumaroles >= maxi(2, roundi(vent_count * c.body_k)):
+				break
+			var p := _random_tile(c, rng)
+			var i := p.y * c.size + p.x
+			if w.country[i] != vented or w.blend[i] > 0.3:
+				continue
+			if heart.x >= 0.0 and Vector2(p).distance_to(heart) < GenRelief.crater_radius(c) * 1.1:
+				continue
+			# Later attempts settle for rougher ground and closer company.
+			var rough := 1 if attempt < 3000 else 2
+			if not _clear_site(c, p, 4, rough) or _near_landmark(w, Vector2(p), (30.0 if attempt < 3000 else 20.0) * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
+				continue
+			_lay_patch(c, p, rng.randf_range(4.0, 6.0), vent_ground)
+			_mark(w, &"fumarole", Vector2(p) + Vector2(0.5, 0.5), vented)
+			fumaroles += 1
 	# Summits: the highest walkable ground in each upland landscape gets a cairn,
 	# raised in the order its type declares (BiomeDef.sites.summit).
 	var best_at: Array[Vector2i] = []
@@ -1183,13 +1196,27 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 	var country2 := w.country2
 	var blend := w.blend
 	var sea_steps := c.sea_steps
-	var allow_mask := allow(c)
+	# DECLARED, not allowed: a landscape's `ore` is the authority on what is under
+	# it, and recipes roll it through `BiomeScatter.ore`. Checked against `props`
+	# alone, a declared ore not ALSO listed there was refused on every tile, and
+	# eight landscapes had ore the economy counted and the land never held.
+	var allow_mask := declared(c)
 	var defs := c.defs
 	var recipes: Array[Callable] = []
 	for d: BiomeDef in defs:
 		recipes.append(d.scatter)
-	# The highest roll any branch below can use on each ground: most rolls
-	# are thrown away before any other work.
+	# The highest roll the SHARED rules use on each ground (`first` and `shared`):
+	# a roll above it is thrown away for them before any other work.
+	#
+	# **IT WAS ALSO THROWN AWAY FOR THE LANDSCAPE'S OWN RECIPE, which is not this
+	# table's to cap.** Recipes code their signature one-offs in bands above it --
+	# the Crags' cairns, graves, memorials and standing stones at .30-.80, the
+	# drowned city's sea wall at .60 and tide gauge at .50, the slums' vehicles
+	# at .88-.90 -- and about 33 such branches in 16 landscapes could never be
+	# reached. So a roll over the cap still asks the recipe (with the same roll,
+	# 0..1), and only the shared rules keep the cap, which leaves every tile they
+	# decided exactly as it was. A cliff or a wet tile over the cap is still
+	# skipped: `first` owns those, and it never saw such a roll.
 	var reach := PackedFloat32Array()
 	reach.resize(Ground.COUNT)
 	reach.fill(0.3)
@@ -1233,8 +1260,9 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 				var r := (h & 0xFFFF) / 65536.0
 				var i := row + x
 				var g := ground[i]
-				if r > reach[g] or land[i] == 0 or water[i] != 0 or road[i] != 0 or village[i] != 0 or occ[i] != 0:
+				if land[i] == 0 or water[i] != 0 or road[i] != 0 or village[i] != 0 or occ[i] != 0:
 					continue
+				var over := r > reach[g]
 				var own := country[i]
 				# The same island its ground came from.
 				var cc := recipe[i]
@@ -1242,6 +1270,8 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 				# Nothing per-tile is written to the sample: see its header.
 				var up := maxi(maxi(level[i - 1], level[i + 1]), maxi(level[i - size], level[i + size])) - l
 				var wet := water[i - 1] != 0 or water[i + 1] != 0 or water[i - size] != 0 or water[i + size] != 0
+				if over and (up >= 2 or wet):
+					continue
 				if cc != last_recipe:
 					last_recipe = cc
 					t.def = defs[cc]
@@ -1256,7 +1286,7 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 				# What the land decides, then the landscape's own recipe, then
 				# the grounds every landscape reads the same way.
 				var kind := BiomeScatter.PASS
-				if up >= 2 or wet:
+				if not over and (up >= 2 or wet):
 					kind = BiomeScatter.first(t, g, r, up, wet)
 				if kind == BiomeScatter.PASS and recipe_fn.is_valid():
 					# A TYPE MAY DECLARE NO RECIPE, and one of the shipped types does
@@ -1271,8 +1301,10 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 					# shared table, which is what having no recipe means.
 					kind = recipe_fn.call(t, i, g, r)
 				if kind == BiomeScatter.PASS:
+					if over:
+						continue
 					kind = BiomeScatter.shared(t, i, g, r)
-				if kind < 0 or (allow_mask[own] >> kind) & 1 == 0:
+				if not holds(allow_mask, own, kind):
 					continue
 				if (road[i - 1] != 0 or road[i + 1] != 0 or road[i - size] != 0 or road[i + size] != 0) and solid[kind] > 0.0:
 					continue

@@ -93,7 +93,8 @@ static func make() -> BiomeDef:
 		PropKind.REEDS, PropKind.BOULDER, PropKind.STUMP, PropKind.STONE_ORE,
 		PropKind.COPPER_ORE, PropKind.SLAG_HEAP]
 	d.ore = [[PropKind.COPPER_ORE, 0.034], [PropKind.STONE_ORE, 0.026], [PropKind.TIN_ORE, 0.02]]
-	d.sites = {"fumaroles": 4, "tips": 1}
+	# Its fields lie in its own crust, the ground its vents stand in (`_scatter`).
+	d.sites = {"fumaroles": 4, "fumarole_ground": Ground.SALT, "tips": 1}
 	d.beached_wrecks = false
 	d.pools = {"order": 2, "cell": 26, "chance": 0.6, "r_min": 2.2, "r_max": 4.6, "ground": Ground.WATER}
 	d.villages = 1

@@ -113,7 +113,14 @@ const UNKNOWN := "unknown"
 ## 13. The spawn asks the south half of home before flat ground. Flat-before-rough
 ##     woke 6 of 150 worlds (seeds 1-50 at 1300, 1477, 1666) in home's far north;
 ##     those six move south, the other 144 are unchanged.
-const GEN := 22
+## 14. The scatter reaches what its recipes wrote. The shared roll cap threw away
+##     every roll over it before a landscape's own recipe was asked, so about 33
+##     signature bands in 16 landscapes (cairns, sea walls, stacks) could never be
+##     laid; the prop mask was a 64-bit word that wrapped the kinds past 64 onto
+##     pines and bushes; declared ore was refused wherever `props` did not repeat
+##     it; only the first landscape declaring fumaroles got its fields. Props move
+##     on every seed, and ground moves wherever the jungle's new fields lay salt.
+const GEN := 23
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

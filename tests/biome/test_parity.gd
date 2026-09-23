@@ -345,6 +345,16 @@ extends TestCase
 ## and the same places to 1e-3 as macOS; only the last bits of the 65 wreckage's
 ## positions differed (`breakdown` printed both tables side by side), so the test
 ## was red on a platform's trig and nothing a player could see.
+##
+## RE-ACCEPTED A THIRTEENTH TIME (2026-09-22): the scatter reaches what its
+## recipes wrote (`WorldStamp.GEN` 23). A recipe's own bands above the shared roll
+## cap were thrown away before it was asked, and the prop mask wrapped at 64.
+## **Only `props` moved, on all five seeds, and only by ADDITION**: per
+## `breakdown`, pines +15..20 (the moss's 0.55 band), boulders +13..18 (the
+## coast's 0.37 and the snowfield's 0.50), broadleaf +7..10 on three seeds, dead
+## trees +2 on one; every other kind's exact digest is byte-identical, so nothing
+## the shared rules laid moved. Causation: the previous hashes passed in this same
+## session with the three batch files put back at HEAD.
 
 
 ## **WHAT THIS BASELINE DOES NOT PIN, AND THE SECOND HALF IS THE ONE NOBODY
@@ -365,11 +375,11 @@ const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "06fa726c d5b85d6c cc7477d6 de6e52ab fe4b52d9 4a40033f",
-	3: "2202ae28 60362f9d 5b976a87 15e918c3 585d921b 9e7ac92d",
-	7: "4b153668 3424d5c9 64fee617 d3b86b56 72103915 03cc7b23",
-	42: "e5a96b5f bef1bc39 fa3a07d8 b4709b8b 824c752b d19777ff",
-	90210: "c3fe6c1a a851aff1 fd9d48e4 01e6dd9b b6884aed 4f951bd8",
+	1: "06fa726c d5b85d6c cc7477d6 de6e52ab fe4b52d9 6c0d8cda",
+	3: "2202ae28 60362f9d 5b976a87 15e918c3 585d921b ac416360",
+	7: "4b153668 3424d5c9 64fee617 d3b86b56 72103915 c08dd1e2",
+	42: "e5a96b5f bef1bc39 fa3a07d8 b4709b8b 824c752b 377fdfef",
+	90210: "c3fe6c1a a851aff1 fd9d48e4 01e6dd9b b6884aed 4da8dda8",
 }
 
 

@@ -1013,7 +1013,10 @@ static func _snowfield(L: Lay) -> void:
 		if _put(L, PropKind.STACK, at, d.angle(), -99, 1.2 if attempt < 4 else 0.8, true) == null:
 			continue
 		stacks += 1
-		_record(c, &"stack", at, d, Vector2(4.5, 4.5))
+		# SCORCH: the soot a stack throws on the snow round it. Unmarked, the
+		# snowfield's works were never a place `Works.sites` counts, so it never
+		# had a depot at all.
+		_record(c, &"stack", at, d, Vector2(4.5, 4.5), SCORCH)
 		for side in 4:
 			var e := d.rotated(side * PI * 0.5)
 			var en := Vector2(-e.y, e.x)

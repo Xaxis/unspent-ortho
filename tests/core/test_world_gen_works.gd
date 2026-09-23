@@ -167,13 +167,22 @@ static func _road_within(w: WorldData, p: Vector2, r: int) -> bool:
 	return false
 
 
+## The WORKS' trawlers, each recorded as a `&"hulk"` at its own position. A
+## landscape's recipe may lay a hull too (the Middens' 0.60 band, the drowned
+## city's 0.40), and those are wrecks where that land left them, not boats run
+## up a beach, so counting every hull called them beaching failures once the
+## recipes could reach their own bands.
 func test_trawlers_lie_on_the_beach() -> void:
 	var hulls := 0
 	var beached := 0
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
+		var hulks := {}
+		for m in w.landmarks:
+			if m.kind == &"hulk":
+				hulks[m.pos] = true
 		for p in w.props:
-			if p.kind != PropKind.HULL:
+			if p.kind != PropKind.HULL or not hulks.has(p.pos):
 				continue
 			hulls += 1
 			var g := w.ground_at(floori(p.pos.x), floori(p.pos.y))

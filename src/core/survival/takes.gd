@@ -126,7 +126,15 @@ static func _build() -> Dictionary:
 	# and a vent standing on a slum floor or on salt is a vent in something else.
 	# Measured over three seeds: 97 vents on clinker or ash (96 of them in the
 	# burning) against 10 on floor or salt elsewhere. The ground is what makes
-	# `cinder_glass`'s "land: burning" true.
+	# `cinder_glass`'s "land: burning" true, and that one gate is the rule (an
+	# elite material has ONE gate: `docs/ROADMAP.md` M3).
+	#
+	# **SO THE SULPHUR JUNGLE'S VENTS GIVE NOTHING, ON PURPOSE, FOR NOW.** Its vents
+	# stand in its own crust, SALT, and now have fields of their own to stand in;
+	# opening this row to them would hand cinder_glass a second land. What they
+	# should yield is a raw of the jungle's own that feeds its answer to fumes
+	# (M3: every landscape a material only it gives) -- the jungle's L2 builder's
+	# job, not this row's.
 	t[PropKind.VENT] = [_o(&"dig", &"brimstone", 1, 16.0, 72.0,
 		{"stuff": &"iron", "keep": true, "uses": 2, "ground": [Ground.CLINKER, Ground.ASH]})]
 	# What was lost (landscape: props/remains.gd) is salvage. Loose debris is

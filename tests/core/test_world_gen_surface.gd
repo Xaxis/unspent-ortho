@@ -478,7 +478,7 @@ func test_props_keep_to_their_country() -> void:
 			var cc := w.country_at(px, py)
 			var ok := false
 			for c: int in [cc, w.recipe_at(px, py), w.country2[i]]:
-				if (allow[c] >> p.kind) & 1 != 0:
+				if GenScatter.holds(allow, c, p.kind):
 					ok = true
 			if not ok:
 				var key := "%s in %s" % [PropKind.NAMES[p.kind], BiomeRegistry.name_of(cc)]
@@ -533,12 +533,21 @@ func test_the_burning_has_things_to_find() -> void:
 		gt(props[Country.BURNING] * 1000.0 / land[Country.BURNING], 60.0, "seed %d burning props per 1000 tiles" % s)
 		gt(vents, 100, "seed %d vents in the burning" % s)
 		gt(dead, 200, "seed %d dead trees in the burning" % s)
+		# Every landscape that declares fumaroles lays its own fields, not only the
+		# first one found (the Sulphur Jungle's four were never laid while this
+		# asked that every field be the Burning's). So a field stands in the
+		# landscape it was laid for, that landscape declares them, and the Burning
+		# still has its own.
 		var fumaroles := 0
 		for m in w.landmarks:
 			if m.kind == &"fumarole":
-				fumaroles += 1
-				eq(w.country_at(floori(m.pos.x), floori(m.pos.y)), Country.BURNING, "seed %d fumarole country" % s)
-		gt(fumaroles, 1, "seed %d fumaroles" % s)
+				var at := w.country_at(floori(m.pos.x), floori(m.pos.y))
+				eq(at, int(m.country), "seed %d fumarole stands in the landscape it was laid for" % s)
+				gt(int(BiomeRegistry.by_index(at).sites.get("fumaroles", 0)), 0,
+					"seed %d fumarole in %s, which declares them" % [s, BiomeRegistry.name_of(at)])
+				if at == Country.BURNING:
+					fumaroles += 1
+		gt(fumaroles, 1, "seed %d fumaroles in the burning" % s)
 
 
 func test_wrecks_on_sand_and_kilns_by_villages() -> void:
@@ -579,3 +588,65 @@ func test_wrecks_on_sand_and_kilns_by_villages() -> void:
 						if w.level_at(floori(p.pos.x) + d.x, floori(p.pos.y) + d.y) <= 0:
 							beach = true
 					check(not beach, "seed %d kiln on a beach at %s" % [s, p.pos])
+
+
+## THE PROP MASK READS EVERY KIND ON ITS OWN. It was one 64-bit word per
+## landscape with `1 << kind`, and once `PropKind.COUNT` passed 64 the kinds past
+## it shifted round onto kinds 0-3: MAGNET_HEAP read as PINE, so a landscape
+## declaring a magnet heap silently allowed pines, and one that did not declare
+## pines had its magnet heaps refused on every tile. Nothing failed; the world was
+## just wrong. Here every kind is asked of every landscape and must answer
+## exactly what the landscape declares, props and ore.
+func test_the_prop_mask_reads_every_kind_on_its_own() -> void:
+	var c := GenContext.new(Worlds.world(Worlds.WORLD_SEEDS[0]))
+	var mask := GenScatter.declared(c)
+	var wrong: PackedStringArray = []
+	# What a NEGATIVE needs: a landscape declaring some kind past 64 without the
+	# kind 64 below it, which is the exact pair the old word could not tell apart.
+	# Without one on the registry this test could not have caught the bug.
+	var aliasable := 0
+	for cc: int in c.land_types:
+		var want := {}
+		for k: int in c.defs[cc].props:
+			want[k] = true
+		for row: Array in c.defs[cc].ore:
+			want[int(row[0])] = true
+		for k: int in want:
+			if k >= 64 and not want.has(k - 64):
+				aliasable += 1
+		for k in PropKind.COUNT:
+			if GenScatter.holds(mask, cc, k) != want.has(k):
+				wrong.append("%s %s" % [c.defs[cc].id, PropKind.NAMES[k]])
+		check(not GenScatter.holds(mask, cc, BiomeScatter.NONE), "NONE is never a kind a landscape holds")
+	check(PropKind.COUNT > 64, "there are more than 64 kinds, so the wrap this test guards is live")
+	gt(aliasable, 0, "some landscape declares a kind past 64 without the one it would wrap onto")
+	eq(wrong.size(), 0, "every landscape holds exactly what it declares: %s" % ", ".join(wrong.slice(0, 12)))
+
+
+## A LANDSCAPE'S OWN RECIPE SEES EVERY ROLL. The shared rules keep a cap per
+## ground (most rolls are thrown away before any work), and it used to be applied
+## before the recipe was asked, so about 33 signature bands in 16 landscapes that
+## a recipe codes ABOVE the cap could never be laid. The server fields' stacks are
+## the instrument: its recipe lays one only at 0.55-0.557 on its ground, well over
+## the 0.3 cap; the only other placer of a stack is the snowfield's works; and a
+## stack is kind 49, clear of the old mask's wrap. So in the server fields' core
+## (blend 0, out of any neighbour's recipe) every stack is that band's, and with
+## the cap in front of the recipe there are none. Measured at the fix: 40, 16 and
+## 14 on the three seeds.
+func test_a_recipe_band_above_the_shared_cap_is_laid() -> void:
+	var land := BiomeRegistry.index_of(&"server_fields")
+	check(land > 0, "the server fields are registered")
+	var stacks := 0
+	var core := 0
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		for i in w.country.size():
+			if w.country[i] == land and w.blend[i] == 0.0:
+				core += 1
+		for p in w.props:
+			var i := floori(p.pos.y) * w.size + floori(p.pos.x)
+			if p.kind == PropKind.STACK and w.country[i] == land and w.blend[i] == 0.0:
+				stacks += 1
+	# Without core tiles the count below proves nothing either way.
+	gt(core, 1000, "the server fields have a core on these seeds")
+	gt(stacks, 0, "its 0.55 stacks stand in it (%d core tiles)" % core)
