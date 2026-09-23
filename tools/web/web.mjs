@@ -288,8 +288,18 @@ const isTone = (h) => h.peak >= 0.001 && Math.abs(h.hz - 440) < 30 && h.share > 
 const dbfs = (h) => (h.peak > 0 ? (20 * Math.log10(h.peak)).toFixed(1) : '-inf');
 // Keep the wasm memory where the harness can read it: the shell's `engine` lives
 // inside a function, out of reach, so the instance is caught as it is made and
-// whichever Memory it exports is kept on the window.
+// whichever Memory it exports is kept on the window. A THREADED build exports
+// none: its memory is shared, made in JS and imported, so the constructor is
+// caught as well.
 await context.addInitScript(() => {
+  const RealMemory = WebAssembly.Memory;
+  const Memory = function (desc) {
+    const m = new RealMemory(desc);
+    window.__wasmMemory = m;
+    return m;
+  };
+  Memory.prototype = RealMemory.prototype;
+  WebAssembly.Memory = Memory;
   const keep = (r) => {
     const inst = r && (r.instance || r);
     for (const v of Object.values((inst && inst.exports) || {})) {
