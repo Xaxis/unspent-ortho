@@ -92,6 +92,9 @@ static func make() -> BiomeDef:
 		&"runner": {"weight": 0.6, "hours": Vector2(9, 18), "grounds": ["road", "sand", "rock"]},
 	}
 	d.landmarks = [&"cast_stones", &"evaporator", &"blinking_stack", &"poured_pillar"]
+	# Its keeper: the anvil, the mast the strike fields are called through
+	# (src/core/sentinel/designs/anvil.gd, docs/LANDSCAPES.md §3).
+	d.sentinel = &"anvil"
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter

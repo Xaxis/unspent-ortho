@@ -301,6 +301,22 @@ const DEFS := {
 		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
 		"where": {"hours": [0, 0]},
 	},
+	# The Glass Desert's keeper (src/core/sentinel/designs/anvil.gd): a candelabrum
+	# on skates. `height` is the crown, because the tell drawn over this body has
+	# to clear an eight-unit mast; `radius` is three skates splayed a tile and a
+	# half out, which is what keeps it upright on glass. `turns` 5 is the poor
+	# turn the design asks for: a charge that commits to its line and re-aims
+	# slowly, so the sand it founders in is where its own run takes it.
+	&"sentinel.glass": {
+		"model": &"sentinel_anvil", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 5,
+		"part": &"back", "sentinel": &"anvil",
+		"pace": 6.0, "dash": 12.0, "quick": 300, "radius": 1.4, "height": 7.6, "life": 120,
+		"sees": 18, "hears": 6, "racket": 24, "reach": 3, "ready": 3, "forget": 24, "tether": 30, "safe": 14,
+		"nerve": 100, "invuln": 500, "through": true, "disposition": &"wary", "overrun": 0.9,
+		"bite": {"swing": [560, 150, 640, 760], "reach": 1.8, "width": 1.8, "dmg": 3, "knock": 9.0, "knock_ms": 320},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
+	},
 }
 
 

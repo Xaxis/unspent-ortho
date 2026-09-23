@@ -85,9 +85,17 @@ enum {
 	PLATFORM,
 	GROWTH_TANK,
 	CONSOLE,
+	# THE GLASS DESERT (docs/LANDSCAPES.md §3): what a place that was fused in a
+	# second holds. Fulgurite tubes standing out of the drift, a burst dome of
+	# glass, a car caught in the glassing, and the plan's own strike rod — the
+	# one made thing here, and the only one that is THEIRS.
+	FULGURITE,
+	GLASS_BLISTER,
+	FUSED_CAR,
+	STRIKE_ROD,
 }
 
-const COUNT := 68
+const COUNT := 72
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -101,6 +109,7 @@ const NAMES: PackedStringArray = [
 	"salt ridge", "salt heap", "pan gate", "scrap tree", "magnet heap",
 	"mural",
 	"platform", "growth tank", "console",
+	"fulgurite", "glass blister", "fused car", "strike rod",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
@@ -130,4 +139,10 @@ const SOLID: PackedFloat32Array = [
 	# circle on a prop cannot say that. The tank and the console stop a body
 	# themselves, as anything you walk up to and read should.
 	0.0, 1.1, 0.35,
+	# A fulgurite cluster is half a tile wide and stops a body; a blister is 0
+	# because it is SHELTER — a body steps into it, and what the step costs is a
+	# hazard row, not a wall; a car sunk to its sills is still a car's length
+	# (VEHICLE is 0.8 and this one lies longer in its pool); a strike rod is a
+	# mast on a guyed foot, no wider than a pole's head.
+	0.25, 0.0, 1.0, 0.2,
 ]

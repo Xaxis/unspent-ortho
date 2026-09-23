@@ -15,7 +15,7 @@ extends RefCounted
 ## base class must not carry one): it is reached by path.
 const MG := preload("res://src/models/machines/machine_gallery.gd")
 
-const KINDS: Array[StringName] = [&"sentinel_reaper", &"sentinel_rake"]
+const KINDS: Array[StringName] = [&"sentinel_reaper", &"sentinel_rake", &"sentinel_anvil"]
 const SHOWN: Array[StringName] = [&"stand", &"walk", &"alert", &"windup", &"strike", &"dead"]
 
 
@@ -62,7 +62,7 @@ static func beside(silhouette: bool) -> Node3D:
 	person.position = across * -5.6
 	root.add_child(person)
 	var x := -4.2
-	for kid: StringName in [&"harvester", &"sentinel_reaper", &"sentinel_rake"]:
+	for kid: StringName in [&"harvester", &"sentinel_reaper", &"sentinel_rake", &"sentinel_anvil"]:
 		var m: FigureModel = MG.make(kid, &"alert")
 		m.position = across * x
 		root.add_child(m)
