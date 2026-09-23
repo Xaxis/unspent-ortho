@@ -12,6 +12,7 @@ extends RefCounted
 const Kit := preload("res://src/models/props/kit.gd")
 const Towers := preload("res://src/models/props/towers.gd")
 const Crags := preload("res://src/models/props/crags.gd")
+const Mesas := preload("res://src/models/props/mesas.gd")
 const P := preload("res://src/render/palette.gd")
 
 
@@ -50,6 +51,11 @@ static func form(k: Kit, form_id: StringName, c: int) -> void:
 		&"roundhouse": Crags.roundhouse(k, c)
 		&"lean_to_broch": Crags.lean_to_broch(k, c)
 		&"byre": Crags.byre(k, c)
+		# The mesas' (props/mesas.gd): cut into the rock, raised in its mud,
+		# and one hut over the drop with a stolen lamp.
+		&"cut_room": Mesas.cut_room(k, c)
+		&"adobe": Mesas.adobe(k, c)
+		&"watch_hut": Mesas.watch_hut(k, c)
 		# Everything else a landscape may name is built upward, and lives in its
 		# own file: this one is the open country's and has no business knowing
 		# how a tower is made.

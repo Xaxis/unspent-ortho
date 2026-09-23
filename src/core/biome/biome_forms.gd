@@ -78,6 +78,14 @@ const FORMS := {
 	&"deck_house": {REACH: 2.0, HIGH: 3.4, LIT: false},
 	&"shaft_loft": {REACH: 1.6, HIGH: 6.5, LIT: true},
 	&"stall_row": {REACH: 2.4, HIGH: 3.0, LIT: false},
+	# --- the mesas: rooms cut into the rock, mud brick, a hut over the drop ---
+	# (docs/LANDSCAPES.md §6 PEOPLE; src/models/props/mesas.gd). A room dug into
+	# the scarp with only its front wall built, a mud-brick house under vigas,
+	# and a watch hut on stilts at the rim with a ropeway bucket hung off its
+	# eave for a lamp -- the one light in the village, and it is stolen.
+	&"cut_room": {REACH: 1.8, HIGH: 2.4, LIT: false},
+	&"adobe": {REACH: 1.8, HIGH: 2.6, LIT: false},
+	&"watch_hut": {REACH: 1.6, HIGH: 3.4, LIT: true},
 }
 
 ## The stock a landscape that argues with nothing builds: the fishing village,

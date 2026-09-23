@@ -393,6 +393,9 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 				# fire's -- no `neon`, so nothing reads it as stolen tech.
 				&"roundhouse": return [{"at": Crags.HEARTH_AT, "size": Vector2.ZERO, "color": Palette.EMBER[4], "rays": [3.0, 7.0, 1.0, 8.0]}]
 				&"infill": return [{"at": Vector3(0.64, 0.75, 0.725), "size": Vector2.ZERO, "color": n[0], "neon": true}]
+				# The mesas' hollow under the rock (props/mesas.gd): a hearth in
+				# the mouth of the cut, a fire's light and not a stolen one.
+				&"cut_room": return [{"at": Mesas.HEARTH_AT, "size": Vector2.ZERO, "color": Palette.EMBER[4], "rays": [3.0, 7.0, 1.0, 8.0]}]
 			return [{"at": Vector3(0.81, 0.85, -0.5), "size": Vector2.ZERO, "color": n[0], "neon": true}]
 		PropKind.INTAKE:
 			# The cold strip along both eaves (props/works.gd intake).

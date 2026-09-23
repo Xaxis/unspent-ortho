@@ -100,9 +100,27 @@ static func make() -> BiomeDef:
 	dress.stone = [P.RUST[3], P.RUST[2], P.STONE[3]]
 	dress.walling = [P.RUST[2], P.STONE[2], P.SAND[3], P.EARTH[2]]
 	dress.bleach = P.SAND[5]
+	# Silver, and already bleached: nothing rots up here, it only dries out and
+	# splits (docs/LANDSCAPES.md §6).
+	dress.timber = [P.LINEN[3].lerp(P.ASH[3], 0.5), P.ASH[1].lerp(P.SAND[2], 0.3)]
 	dress.sink = 0.05
 	dress.lie = Vector2(-0.02, 0.04)
+	# The patched shelter here is a hollow cut under a lip of the rock with a
+	# hide across its mouth (props/mesas.gd): people here dig, they do not board.
+	dress.shelter = &"cut_room"
 	d.dressing = dress
+	# What its people BUILT (docs/LANDSCAPES.md §6 PEOPLE): rooms cut into the
+	# scarp with only their fronts built, mud-brick houses under vigas, and a
+	# watch hut on stilts at the rim whose stolen bucket lamp is the one light
+	# in the village. Declaring `built` is TERRAIN (WorldStamp): it moves this
+	# landscape's island, and that is intended.
+	d.built = BiomeForms.new()
+	d.built.stock = [&"cut_room", &"adobe", &"watch_hut"] as Array[StringName]
+	# A frontage along a bench (the spec's), and MEASURED flat enough to hold
+	# one: `row` refuses a spot whose nine neighbours are not level, and on
+	# seeds 1, 7 and 90210 all three buildings stood, every one on one level,
+	# under `row` exactly as under `ring`.
+	d.built.plan = &"row"
 	d.grade = Vector4(0.0, -0.02, -0.05, 0.02)
 	# Dry air and no cloud: a hard bright night with black shadows under the walls.
 	d.night_sky = 1.1
@@ -136,6 +154,16 @@ static func make() -> BiomeDef:
 	d.mist = 0.04
 	# The wind is not in `Hazards.IDS` and is not invented here: what a mesa
 	# actually presses a body with is the sun on bare rock and no water in reach.
+	# The water in reach is the cistern (52_hazards SPRINGS).
+	#
+	# COLLAPSE AT THE RIMS IS NOT DECLARED, ON PURPOSE. The spec asks for it
+	# within a tile of a drop of two levels or more, and nothing can say that
+	# yet: a landscape's hazards press everywhere in it, `PropHazards` is keyed
+	# on a prop kind and a rim is not a prop, and `Hazards.Place` carries the
+	# level a body stands on and not its neighbours'. Declared here it would
+	# press on every canyon floor and every bench alike, which is a pressure
+	# the land does not have. It wants `Place` to learn how far the nearest
+	# drop is, which is 52_hazards reading `WorldData.level` round the body.
 	d.hazards = {&"heat": 0.5, &"thirst": 0.55}
 	d.roster = {
 		&"cutter": {"weight": 1.0, "grounds": ["rock", "scree", "gravel"]},

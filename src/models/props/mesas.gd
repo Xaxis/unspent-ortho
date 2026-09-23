@@ -375,6 +375,215 @@ static func _bucket(k: Kit, at: Vector3, yaw: float, s: int) -> void:
 	k.found.pop()
 
 
+# --- what the mesas' people live in (BiomeForms: cut_room, adobe, watch_hut) ---
+
+## Mud brick, lit as clay (row 84): the red of the ground it was dug from,
+## tagged at the source so every face `Houses.walls` darkens keeps the mark.
+static func _clay(c: int, lift: float = 0.0) -> Color:
+	var d := BiomeDressing.of(c)
+	return GroundColors.made(GroundColors.up(d.walling[0].lerp(d.stone[0], 0.6), lift), GroundColors.CLAY)
+
+
+## Timber that went silver in the sun and never rotted, as TIMBER (row 80).
+static func _timber(c: int, i: int = 0) -> Color:
+	return GroundColors.made(BiomeDressing.of(c).timber[i], GroundColors.TIMBER)
+
+
+## A cloth hung over a doorway, from its rod down `h`, facing `out`: the one
+## soft colour in a village of red rock, and what a door is here.
+static func _curtain(k: Kit, at: Vector3, out: Vector3, w: float, h: float, col: Color, s: int) -> void:
+	var o := out.normalized()
+	var side := o.cross(Vector3.UP).normalized()
+	for i in 3:
+		var u0 := -w * 0.5 + i * w / 3.0
+		var u1 := u0 + w / 3.0 - 0.01
+		var hang := h - 0.06 * float(i % 2) + Kit.j(s, i, 0.04)
+		_facing(k.made, at + side * u0 + o * 0.01, at + side * u1 + o * 0.01, at + side * u1 + Vector3(0, -hang, 0) + o * (0.02 + 0.02 * i),
+			at + side * u0 + Vector3(0, -hang, 0) + o * (0.02 + 0.02 * i), o, Kit.tone(col, 0.92 + 0.06 * i))
+	k.limb(at + side * (-w * 0.6), at + side * (w * 0.6), 0.02, 0.02, 4, _timber_plain(), Vector3.ZERO, Kit.SAWN)
+
+
+static func _timber_plain() -> Color:
+	return P.LINEN[3].lerp(P.ASH[3], 0.5)
+
+
+## "cut_room": a room dug into the scarp, where only the front wall and the
+## door are built. The rock stands over it and behind it in its own strata; the
+## wall is mud brick set into the cut, a curtained door, one small window, a
+## water jar by the door and a line of stones where the step was cut. 2.4 high.
+static func cut_room(k: Kit, c: int) -> void:
+	var s := 10100 + c
+	var strata := _strata(c)
+	var d := BiomeDressing.of(c)
+	# The scarp: banded rock behind and over the room, rounded, a lip of the
+	# harder band standing out over the front wall as its only roof.
+	k.stone(-0.9, -0.1, 0.0, 1.35, 1.1, s, strata[0], 7, 0.0, strata[1])
+	k.stone(-0.95, 0.9, 0.1, 1.25, 0.9, s + 1, strata[2], 7, 0.04, strata[3])
+	k.stone(-0.85, 1.7, -0.05, 1.05, 0.7, s + 2, strata[1], 7, -0.04, strata[4])
+	# The lip: a lump of the harder band standing out over the wall. A slab here
+	# read as a table top laid on the rock.
+	k.made.push(Transform3D(Basis(Vector3.RIGHT, 0.04), Vector3(0.1, 2.02, 0.0)))
+	k.made.push(Transform3D(Basis.from_scale(Vector3(1.0, 1.0, 1.9)), Vector3.ZERO))
+	k.stone(0.0, 0.0, 0.0, 0.7, 0.3, s + 3, GroundColors.down(d.stone[1], 0.2), 7, 0.0, strata[1])
+	k.made.pop()
+	k.made.pop()
+	# The front wall: two piers of brick either side of the door and a lintel
+	# over it, set into the cut.
+	var clay := _clay(c)
+	var clay_dark := GroundColors.down(clay, 0.25)
+	for sz: float in [-1.0, 1.0]:
+		k.slab(0.46, -0.04, sz * 0.72, 0.28, 2.16, 0.9, s + 10 + int(sz), clay, GroundColors.up(clay, 0.12), 0.02, 0.02, 0.0)
+	k.slab(0.46, 1.5, 0.0, 0.3, 0.66, 0.62, s + 12, clay_dark, clay, 0.015)
+	# The dark of the room behind the door.
+	_facing(k.made, Vector3(0.4, 0.0, -0.27), Vector3(0.4, 0.0, 0.27), Vector3(0.4, 1.5, 0.27), Vector3(0.4, 1.5, -0.27), Vector3.RIGHT, P.INK[1])
+	_curtain(k, Vector3(0.63, 1.48, 0.0), Vector3.RIGHT, 0.56, 1.1, P.RUST[3].lerp(P.LINEN[3], 0.3), s + 20)
+	# A small window in the right pier, and the brick courses ruled on both.
+	_facing(k.made, Vector3(0.611, 1.0, 0.62), Vector3(0.611, 1.0, 0.82), Vector3(0.611, 1.24, 0.82), Vector3(0.611, 1.24, 0.62), Vector3.RIGHT, P.INK[2])
+	for sz: float in [-1.0, 1.0]:
+		for ci in 6:
+			var y := 0.3 + ci * 0.3
+			_facing(k.made, Vector3(0.612, y, sz * 0.3), Vector3(0.612, y, sz * 1.15), Vector3(0.612, y + 0.02, sz * 1.15), Vector3(0.612, y + 0.02, sz * 0.3), Vector3.RIGHT, clay_dark)
+	# Vigas: roof poles let into the rock, their ends out over the wall.
+	for i in 4:
+		var z := -0.9 + i * 0.6
+		k.limb(Vector3(-0.3, 1.98, z), Vector3(0.84, 1.98 + Kit.j(s, 30 + i, 0.03), z + Kit.j(s, 40 + i, 0.05)), 0.055, 0.045, 5, _timber(c, i % 2), Vector3.ZERO, Kit.SAWN)
+	# The step cut into the ground, a jar by the door.
+	k.slab(0.95, -0.06, 0.0, 0.5, 0.1, 0.8, s + 50, d.stone[1], strata[2], 0.02)
+	k.made.prism(0.8, 0.0, 0.55, 0.12, 0.34, 0.08, 8, _clay(c, 0.3), GroundColors.down(_clay(c), 0.4))
+
+
+## "adobe": red mud brick in soft-cornered walls, a flat roof on vigas whose
+## ends stand out of the wall tops, a parapet, a ladder to the roof where the
+## living is done in the evening, and pots along the foot. 2.6 high.
+static func adobe(k: Kit, c: int) -> void:
+	var s := 10200 + c
+	var clay := _clay(c)
+	var t := PropModels.Houses.walls(k, 2.4, 2.2, 2.0, s, clay, GroundColors.down(clay, 0.3), Vector3(0.0, 0.0, 0.0))
+	var fb := [t[2], t[1], t[5], t[6]]
+	PropModels.Houses.door(k, fb[0], fb[1], fb[2], fb[3], 0.62, 0.12, 0.92)
+	PropModels.Houses.wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], 0.2, 0.55, 0.34, 0.72, 0.012, P.INK[2])
+	var sb := [t[3], t[2], t[6], t[7]]
+	PropModels.Houses.wall_rect(k.made, sb[0], sb[1], sb[2], sb[3], 0.45, 0.55, 0.58, 0.72, 0.012, P.INK[2])
+	# Mud plaster worn off in the rain it hardly ever gets: the brick shows.
+	for fi in 2:
+		var wf: Array = PropModels.Houses.faces(t)[fi]
+		for i in 3:
+			var u0 := fmod(0.15 + i * 0.31 + fi * 0.2, 0.75)
+			var v0 := fmod(0.1 + i * 0.27, 0.7)
+			PropModels.Houses.wall_rect(k.made, wf[0], wf[1], wf[2], wf[3], u0, v0, u0 + 0.12, v0 + 0.08, 0.008, GroundColors.down(clay, 0.4))
+	# The roof: a flat slab a hand inside the wall tops, a parapet round it.
+	var top := minf(minf(t[4].y, t[5].y), minf(t[6].y, t[7].y))
+	k.slab(0.0, top - 0.12, 0.0, 2.3, 0.12, 2.1, s + 1, GroundColors.down(clay, 0.2), GroundColors.up(clay, 0.08), 0.02)
+	# The parapet, square to the walls' own footprint: front and back across Z,
+	# the two sides across X.
+	for sx: float in [-1.0, 1.0]:
+		k.slab(sx * 1.14, top - 0.04, 0.0, 0.16, 0.26, 2.2, s + 5 + int(sx), clay, GroundColors.up(clay, 0.15), 0.02)
+	for sz: float in [-1.0, 1.0]:
+		k.slab(0.0, top - 0.04, sz * 1.04, 2.1, 0.26, 0.16, s + 8 + int(sz), clay, GroundColors.up(clay, 0.15), 0.02)
+	# Vigas out through the wall under the parapet, front and back.
+	for i in 5:
+		var z := -0.8 + i * 0.4
+		k.limb(Vector3(-1.45, top - 0.2, z), Vector3(1.45, top - 0.2 + Kit.j(s, 60 + i, 0.02), z), 0.05, 0.045, 5, _timber(c, i % 2), Vector3.ZERO, Kit.SAWN)
+	# A ladder up the +Z side to the roof.
+	var lz := 1.22
+	for sx: float in [-1.0, 1.0]:
+		k.limb(Vector3(-0.35 + sx * 0.2, 0.0, lz + 0.18), Vector3(-0.35 + sx * 0.2, top + 0.5, lz - 0.02), 0.03, 0.025, 4, _timber(c, 0), Vector3.ZERO, Kit.SAWN)
+	for i in 6:
+		var y := 0.3 + i * (top / 6.0)
+		var zz := lz + 0.18 - 0.2 * (y / (top + 0.5))
+		k.limb(Vector3(-0.58, y, zz), Vector3(-0.12, y, zz), 0.02, 0.02, 4, _timber(c, 1), Vector3.ZERO, Kit.SAWN)
+	# Pots along the front foot and a bench of brick.
+	for i in 3:
+		k.made.prism(1.3, 0.0, -0.8 + i * 0.28, 0.1 + 0.02 * i, 0.26 + 0.05 * i, 0.07, 8, _clay(c, 0.25), GroundColors.down(_clay(c), 0.35), float(i))
+	k.slab(1.35, -0.04, 0.7, 0.3, 0.36, 0.7, s + 70, GroundColors.down(clay, 0.15), clay, 0.02)
+
+
+## Where the watch hut's stolen lamp hangs, in its own frame: a bucket off the
+## ropeway strung from the hut's eave on the side that faces the square, with a
+## tube wired inside it. The light and the tube are one place.
+const WATCH_LAMP := Vector3(0.95, 2.35, 0.0)
+
+
+## "watch_hut": a plank hut on four poles at the rim edge, reached by a ladder,
+## a lean-to roof of plate and silvered boards, and a ropeway bucket hung off its
+## eave with a stolen tube in it: the one light in a mesas village, and it is
+## the plan's own bucket. 3.4 high. Lit.
+static func watch_hut(k: Kit, c: int) -> void:
+	var s := 10300 + c
+	const DECK := 1.6
+	# The stilts, braced, and the deck on them.
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			k.limb(Vector3(sx * 0.62, -0.05, sz * 0.62), Vector3(sx * 0.55, DECK, sz * 0.55), 0.06, 0.05, 5, _timber(c, 1), Vector3.ZERO, Kit.SAWN)
+	for sz: float in [-1.0, 1.0]:
+		k.limb(Vector3(-0.62, 0.2, sz * 0.62), Vector3(0.55, DECK - 0.2, sz * 0.55), 0.03, 0.03, 4, _timber(c, 0), Vector3.ZERO, Kit.SAWN)
+	for i in 5:
+		k.slab(-0.72 + i * 0.36, DECK, 0.0, 0.34, 0.06, 1.5, s + i, _timber(c, i % 2), _timber(c, 0), 0.01)
+	# The hut: plank walls, a door on +X, a slit to look out of over the drop,
+	# all built up on the deck (the made pen is lifted there while they are).
+	var boards := _timber(c, 0)
+	k.made.push(Transform3D(Basis(), Vector3(0.0, DECK + 0.06, 0.0)))
+	var t := PropModels.Houses.walls(k, 1.2, 1.2, 1.05, s + 20, boards, GroundColors.down(boards, 0.3), Vector3(0.0, 0.0, 0.0))
+	var fb := [t[2], t[1], t[5], t[6]]
+	PropModels.Houses.door(k, fb[0], fb[1], fb[2], fb[3], 0.3, 0.11, 0.85)
+	var bk := [t[0], t[3], t[7], t[4]]
+	PropModels.Houses.wall_rect(k.made, bk[0], bk[1], bk[2], bk[3], 0.2, 0.62, 0.8, 0.72, 0.012, P.INK[1])
+	k.made.pop()
+	# The roof: a lean-to of plate and board, pitched to the back.
+	var eave_hi := DECK + 1.28
+	k.plate(Vector3(0.78, eave_hi, 0.78), Vector3(0.78, eave_hi, -0.78), Vector3(-0.78, eave_hi - 0.32, -0.78), Vector3(-0.78, eave_hi - 0.32, 0.78),
+		P.PLATE[2], P.PLATE[1], P.PLATE[4])
+	# The ladder up from the ground on the +Z side.
+	for sx: float in [-1.0, 1.0]:
+		k.limb(Vector3(0.25 + sx * 0.18, 0.0, 1.15), Vector3(0.25 + sx * 0.18, DECK + 0.4, 0.66), 0.028, 0.024, 4, _timber(c, 1), Vector3.ZERO, Kit.SAWN)
+	for i in 5:
+		var f := (i + 1) / 6.0
+		k.limb(Vector3(0.05, f * (DECK + 0.4), lerpf(1.15, 0.66, f)), Vector3(0.45, f * (DECK + 0.4), lerpf(1.15, 0.66, f)), 0.018, 0.018, 4, _timber(c, 0), Vector3.ZERO, Kit.SAWN)
+	# The stolen lamp: a ropeway bucket hung off the eave on its bar, open to
+	# the square, the tube wired inside it. The bucket is the plan's, and FOUND.
+	var lamp := WATCH_LAMP
+	k.rod(Vector3(0.78, eave_hi - 0.02, 0.0), lamp + Vector3(0.0, 0.2, 0.0), 0.012, 4, P.PLATE[3])
+	k.chamfer(lamp.x, lamp.y - 0.16, lamp.z, 0.3, 0.26, 0.26, 0.03, P.RUST[2].lerp(P.PLATE[2], 0.5), P.INK[1])
+	_tube(k, lamp + Vector3(0.16, 0.0, 0.1), lamp + Vector3(0.16, 0.0, -0.1), Vector3.RIGHT, PropModels.Houses.NEON_TUBES[0])
+
+
+## A tube of stolen neon from a to b standing out along `out`: its dark mount
+## and the tube, NEON-marked so `PropModels.neon_point` finds it and the light
+## it throws stands where the tube is (the metropolis's `_tube`, the same rule).
+static func _tube(k: Kit, a: Vector3, b: Vector3, out: Vector3, col: Color) -> void:
+	var o := out.normalized()
+	PropModels.Remains._facing_quad(k.made, a + o * 0.01 + Vector3(0, -0.04, 0), b + o * 0.01 + Vector3(0, -0.04, 0), Vector3(0, 0.08, 0), o, P.INK[1])
+	PropModels.Remains._facing_quad(k.made, a + o * 0.02 + Vector3(0, -0.024, 0), b + o * 0.02 + Vector3(0, -0.024, 0), Vector3(0, 0.048, 0), o, GroundColors.neon(col))
+
+
+## Where the shelter's hearth burns, in its own frame: just inside the mouth of
+## the cut, which faces +X. The light (`glow_points`) and the embers are one place.
+const HEARTH_AT := Vector3(0.35, 0.06, 0.3)
+
+
+## The mesas' patched shelter (`BiomeDressing.shelter`): a small cut room, a
+## hollow under a lip of banded rock with a hide hung across its mouth and a
+## sheet of plate propped against the weather side. Nothing wired in; the lit
+## one (variant 1, as every shelter counts it) has a hearth going in the mouth
+## of the cut, and a fire's light is what a night bench is seen by.
+static func cut_room_shelter(k: Kit, s: int, lit: bool, d: BiomeDressing, c: int) -> void:
+	var strata := _strata(c)
+	k.stone(-0.55, -0.1, 0.0, 0.95, 0.8, s, strata[0], 7, 0.0, strata[1])
+	k.stone(-0.5, 0.62, 0.05, 0.85, 0.6, s + 1, strata[2], 7, 0.05, strata[3])
+	k.made.push(Transform3D(Basis.from_scale(Vector3(1.0, 1.0, 1.7)), Vector3(0.1, 0.98, 0.0)))
+	k.stone(0.0, 0.0, 0.0, 0.5, 0.24, s + 2, GroundColors.down(d.stone[1], 0.2), 7, 0.0, strata[1])
+	k.made.pop()
+	_facing(k.made, Vector3(0.05, 0.0, -0.4), Vector3(0.05, 0.0, 0.4), Vector3(0.05, 1.0, 0.4), Vector3(0.05, 1.0, -0.4), Vector3.RIGHT, P.INK[1])
+	_curtain(k, Vector3(0.5, 1.02, -0.18), Vector3.RIGHT, 0.46, 0.8, P.EARTH[3].lerp(P.SAND[3], 0.4), s + 10)
+	k.plate(Vector3(0.62, 0.0, 0.62), Vector3(0.28, 0.0, 0.92), Vector3(0.18, 0.86, 0.8), Vector3(0.52, 0.86, 0.5), P.PLATE[2], P.PLATE[1], P.PLATE[4])
+	if lit:
+		var h := HEARTH_AT
+		for i in 5:
+			var a := float(i) / 5.0 * TAU + 0.3
+			k.stone(h.x + cos(a) * 0.18, 0.0, h.z + sin(a) * 0.18, 0.06, 0.05, s + 800 + i, d.stone[1], 5)
+		k.made.prism(h.x, 0.01, h.z, 0.11, 0.06, 0.08, 6, GroundColors.glow(P.EMBER[3], 0.9), GroundColors.glow(P.EMBER[4], 1.1))
+
+
 ## Every mesas kind in the mesas' own dressing, named so `--filter=mesas` finds
 ## them all at once (src/gallery.gd folds case and underscores).
 static func gallery() -> Array:
@@ -383,4 +592,10 @@ static func gallery() -> Array:
 	for kind: int in KINDS:
 		for v in PropModels.variants(kind, mesas):
 			out.append({"name": "mesas %s %d" % [PropKind.NAMES[kind], v], "node": PropModels.node(kind, v, mesas)})
+	# What its people build and the shelter they patch, in the same dressing:
+	# `--filter=mesas_house` and `--filter=mesas_shack`.
+	for v in PropModels.variants(PropKind.HOUSE, mesas):
+		out.append({"name": "mesas house %d" % v, "node": PropModels.node(PropKind.HOUSE, v, mesas)})
+	for v in 2:
+		out.append({"name": "mesas shack %d" % v, "node": PropModels.node(PropKind.SHACK, v, mesas)})
 	return out

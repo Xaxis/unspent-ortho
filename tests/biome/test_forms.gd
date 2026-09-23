@@ -72,7 +72,10 @@ func test_the_landscapes_that_argue_with_the_plain_stock_are_named() -> void:
 	# live in what was standing before the machines, a dry-stone round, a
 	# lean-to in a broken tower and a byre, three buildings and nothing wired
 	# in. It is here on purpose (docs/LANDSCAPES.md §1 PEOPLE).
-	eq(arguing, ["drowned_city", "green_towers", "machine_city", "ruined_metropolis", "slums", "the_crags"],
+	# AND THE MESAS, for the same reason the crags are: its people dig. A room
+	# cut into the scarp, a mud-brick house under vigas, and a watch hut over
+	# the drop with a stolen bucket lamp (docs/LANDSCAPES.md §6 PEOPLE).
+	eq(arguing, ["drowned_city", "green_towers", "machine_city", "mesas", "ruined_metropolis", "slums", "the_crags"],
 		"a landscape declaring its own `built` moves its island; say so on purpose: %s" % [arguing])
 
 
