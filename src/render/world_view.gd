@@ -255,11 +255,29 @@ func _bind(w: WorldData) -> void:
 	far.name = "far"
 	add_child(far)
 	var n := ceili(float(w.size) / CHUNK)
+	# THE IMAGE HERE; THE TEXTURE AND THE FAR MATERIALS ON THE MAIN THREAD.
+	# `setup` runs on a worker for the title (UiTitle._begin), and both creating a
+	# texture and duplicating a material from a worker wait on the main thread --
+	# which was waiting on that worker, so every test that built a title hung for
+	# ever and the CI gate ran out its clock. `_far_mats` makes them the first time
+	# the main thread needs them.
 	_near_mask = Image.create(n, n, false, Image.FORMAT_R8)
-	_near_tex = ImageTexture.create_from_image(_near_mask)
-	_far_land_mat = _far_copy(_world_mat)
-	_far_water_mat = _far_copy(_water_mat)
+	_near_tex = null
+	_far_land_mat = null
+	_far_water_mat = null
 	_mask_dirty = true
+
+
+## The far world's two materials and its mask texture, made on first use from the
+## main thread (see `_bind`). Taken after the works are bound, so they carry them.
+func _far_mats() -> void:
+	if _near_mask == null:
+		return
+	if _near_tex == null:
+		_near_tex = ImageTexture.create_from_image(_near_mask)
+	if _far_land_mat == null:
+		_far_land_mat = _far_copy(_world_mat)
+		_far_water_mat = _far_copy(_water_mat)
 
 
 ## A far copy of one of the view's materials, told to stand down under the near
@@ -283,6 +301,7 @@ func _write_mask() -> void:
 	for key: Vector2i in _chunks.keys():
 		if key.x >= 0 and key.y >= 0 and key.x < n and key.y < n:
 			_near_mask.set_pixel(key.x, key.y, Color(1, 0, 0))
+	_far_mats()
 	_near_tex.update(_near_mask)
 
 
@@ -465,6 +484,7 @@ func _process(_delta: float) -> void:
 func _far_step(near_busy: bool) -> void:
 	if far == null:
 		return
+	_far_mats()
 	for i in _far_tasks.size():
 		if _far_tasks[i] >= 0 and WorkerThreadPool.is_task_completed(_far_tasks[i]):
 			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
@@ -534,6 +554,7 @@ func _far_step(near_busy: bool) -> void:
 func ensure_far() -> void:
 	if far == null:
 		return
+	_far_mats()
 	for i in _far_tasks.size():
 		if _far_tasks[i] >= 0:
 			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
