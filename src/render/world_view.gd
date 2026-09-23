@@ -540,7 +540,9 @@ func _in_view(key: Vector2i, slack_deg: float) -> bool:
 ## over to them only while it does.
 func _look_out() -> void:
 	var up := is_inside_tree() and SkyLight.sees_horizon(get_viewport().get_camera_3d())
-	if up:
+	# A player who CAN look out (`stands_early`) has the mid models baked on the
+	# idle worker before the first look, as the silhouettes are.
+	if up or stands_early:
 		_mid_wanted = true
 	if up == _lod_on:
 		return
