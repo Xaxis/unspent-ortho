@@ -94,6 +94,14 @@ class Place:
 	## The one thing no landscape file may say is that the HOUR has stopped
 	## mattering, so this comes from the realm and never from `BiomeDef`.
 	var roofed := false
+	## Where the body stands, in tiles, and the standing things near enough to
+	## press it (`WorldProp`s within `PropHazards.reach_most()`, none of them
+	## depleted: 52_hazards fills both). A thing presses by its own kind's rows
+	## (`PropHazards.TABLE`) on top of what the land declares; empty, nothing
+	## near the body adds anything, which is every Place a test builds by hand
+	## and every place in the game with nothing standing in it.
+	var pos := Vector2.ZERO
+	var near_props: Array = []
 
 
 ## Raw strengths where the body stands, before any gear: hazard id -> 0..1.
@@ -107,6 +115,7 @@ static func felt(place: Place) -> Dictionary:
 	_hour_shift(out, place)
 	_weather_shift(out, place)
 	_height_shift(out, place)
+	_prop_shift(out, place)
 	_answer_shift(out, place)
 	for id: StringName in out.keys():
 		var v: float = clampf(out[id], 0.0, 1.0)
@@ -240,6 +249,50 @@ static func _weather_shift(out: Dictionary, place: Place) -> void:
 		# A stack of plate goes over in a gale; nothing else in the list cares.
 		if out.has(&"collapse"):
 			_add(out, &"collapse", 0.20 * gale)
+
+
+## What the standing things round the body add (`PropHazards`): each row in
+## reach puts its `add` on, falling straight to nothing at its `reach`, and a
+## row gated on a weather family puts on only as much of it as that weather has
+## strength. Runs AFTER the hour, the weather and the height, because those are
+## the LAND's terms and only scale what the land declared — a fire is as warm at
+## three in the morning as at noon, and a vent's breath owes the sun nothing —
+## and BEFORE what the body can do about it, so a roof over a vent still takes
+## its share of the fumes the way it takes the land's.
+##
+## The props' share of an id is capped at the largest single `add` in reach:
+## a cluster is one source (see the table's header for why), and so on a clear
+## still noon nothing here can carry a pressure past declared + add. Distance
+## is from the prop's centre; the widest kind in the table stands 0.4 of a tile
+## wide, which is not worth a second rule.
+static func _prop_shift(out: Dictionary, place: Place) -> void:
+	if place.near_props.is_empty():
+		return
+	var family := Weather.family(place.weather)
+	var strength := clampf(place.weather_strength, 0.0, 1.0)
+	var sum: Dictionary = {}
+	var most: Dictionary = {}
+	for p: WorldProp in place.near_props:
+		var rows := PropHazards.near(p.kind)
+		if rows.is_empty():
+			continue
+		var d := place.pos.distance_to(p.pos)
+		for row: Dictionary in rows:
+			var reach := float(row.reach)
+			if d >= reach:
+				continue
+			var gate: StringName = row.weather
+			var share := 1.0
+			if gate != &"":
+				if gate != family:
+					continue
+				share = strength
+			var id: StringName = row.id
+			var add := float(row.add)
+			sum[id] = float(sum.get(id, 0.0)) + add * share * (1.0 - d / reach)
+			most[id] = maxf(float(most.get(id, 0.0)), add)
+	for id: StringName in sum:
+		_add(out, id, minf(float(sum[id]), float(most[id])))
 
 
 ## High ground is colder, and past the tree line the air thins.

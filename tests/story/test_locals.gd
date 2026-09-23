@@ -4,8 +4,9 @@ extends TestCase
 ## on, and each carries a small story of their land that lands as a beat.
 
 
-## The one landscape without a local of its own: the coast's person is Maren.
-const COVERED := [&"coast"]
+## Landscapes excused a local of their own. None now: the coast's is Hob, at the
+## next coast village from Maren's, and a land nobody lives in has one at a camp.
+const COVERED := []
 
 
 func _locals() -> Array[StorySlot]:
@@ -67,6 +68,11 @@ const WALKS := {
 	&"tamsin": [["What happened here?"], &"scrap_war"],
 	&"pell": [["Out of the water."], &"others_before"],
 	&"brannoc": [["What's on the wires?", "What numbers?"], &"the_count"],
+	&"hob": [["What does it bring?"], &"wrack_new"],
+	&"tove": [["Fished here long?"], &"sea_froze"],
+	&"nell": [["What made the glass?"], &"glassed_nothing"],
+	&"dunn": [["Don't they mind?", "What's the hum?"], &"fields_tune"],
+	&"gil": [["What do they tip here?"], &"words_tipped"],
 }
 
 

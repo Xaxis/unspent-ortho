@@ -208,11 +208,18 @@ and the game walks toward it.
 
 Every landscape also carries a local with a substory of their own. A local is
 colour, never load (`docs/STORY_SYSTEM.md` §4): they stand at the village of
-their own land nearest where he wakes, and what they have noticed is theirs.
+their own land nearest where he wakes, and what they have noticed is theirs. A
+land nobody lives in still has one, camped by its landmark nearest home; so does
+the mesas, whose one village is not on every world (2026-09-23). Maren is the
+home fire, so the coast's local is at the next coast village along.
 
 | Land | Local | What they have noticed |
 |---|---|---|
-| coast | Maren | (she is the home fire) |
+| coast | **Hob**, wrack-picker | The tide brings tubing and tank glass in from past the point. Everything else in the sea is seventy years old; that is new. |
+| frost sea | **Tove**, ice-fisher, at a seal hole | It was open water in her gran's day and froze the winter their posts went out. They are listening to the bottom. |
+| glass desert | **Nell**, glass-picker | Nothing ever stood there. Whatever fused it was aimed at empty sand. |
+| server fields | **Dunn**, warm-sleeper | Some nights the hum drops into a few bars of a tune, the same few, and stops |
+| the middens | **Gil**, rag-marker | They tip ours, never theirs: anything that ever had words in it |
 | bonelands | **Esk**, stone-setter | The stones stand because they were counted, not because they are graves. He sets them up anyway. |
 | burning | **Hollis**, slag-runner | Everything the refineries make goes up the Tether |
 | drowned city | **Cass**, ferry-reader | The ferries keep the city's own timetable, from before the water |
@@ -375,8 +382,8 @@ nine arcs, the fragments, five trades' conversations and eleven named people.
 - **Written, waiting on the orbital realm:** Oksana. Her voice is found on the
   ground from the start (`ring_calling`).
 - **Not yet written:** Hannah, Ruth, Priya, Tobias and Hale, who belong to the
-  gates, and the Echo, the Seeker and the Emissary, who are not bodies. A local
-  per landscape is also still to come.
+  gates, and the Echo, the Seeker and the Emissary, who are not bodies. Every
+  landscape now has its local (§8).
 
 The old black site off the home coast is cast (`BlackSite`) and keeps its own
 words: the tank he came out of, the list of the three who died on the table before
