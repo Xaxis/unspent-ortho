@@ -4,10 +4,10 @@ extends TestCase
 
 ## Full worlds at the default size.
 const WORLD_SEEDS: Array[int] = [1, 42, 90210]
-## Layout-only seeds for country shares.
+## Layout-only seeds for country shares: the whole sweep (the slow test) and the
+## few the gate can afford at the shipped size.
 const SHARE_SEEDS: Array[int] = [1, 2, 3, 4, 5, 7, 11, 42, 99, 1337, 4242, 90210]
-## World size the gate checks layouts at (see test_country_shares_on_twelve_seeds).
-const GATE_SHARE_SIZE := 256
+const GATE_SHARE_SEEDS: Array[int] = [1, 7, 42]
 
 static var _worlds: Dictionary = {}
 
@@ -133,37 +133,44 @@ func test_small_worlds_still_generate() -> void:
 		check(present.size() >= 4, "size %d has only %d countries" % [size, present.size()])
 
 
-func test_country_shares_on_twelve_seeds() -> void:
-	# The gate checks the layout at half size, where it costs a quarter as much
-	# and the same balancing holds the same proportions. Run the full-size sweep
-	# with: tools/test.sh world_gen_slow
-	_check_shares(GATE_SHARE_SIZE)
+## AT THE SIZE A PLAYER IS GIVEN, AGAINST THE LAND EACH TYPE MAY HOLD. This
+## checked twelve seeds at 256 "at half size, where ... the same balancing holds
+## the same proportions" -- half of the 512 world it was written for, with six
+## landscapes. The world is 1300 and has twenty-one now, and the claim was
+## measured false where it was checked and true where it matters: rows outside
+## the bar, twelve seeds of twenty-one landscapes each, 29 of 252 at 256 (a 3%
+## landscape is 928 tiles there and a border's wander swamps it), 1 of 252 at
+## 512, and 0 of 252 at 1300, worst 0.15. So the gate asks the shipped size on a
+## few seeds, and the whole sweep is the slow test. The bar's value is untouched.
+func test_country_shares_at_the_shipped_size() -> void:
+	_check_shares(Tuning.WORLD_SIZE, GATE_SHARE_SEEDS)
 
 
 func test_country_shares_on_twelve_seeds_full_size_world_gen_slow() -> void:
 	if not OS.get_cmdline_user_args().has("world_gen_slow"):
 		return
-	_check_shares(Tuning.WORLD_SIZE)
+	_check_shares(Tuning.WORLD_SIZE, SHARE_SEEDS)
 
 
-func _check_shares(size: int) -> void:
+func _check_shares(size: int, seeds: Array[int]) -> void:
 	var t := Time.get_ticks_msec()
-	for s in SHARE_SEEDS:
+	for s in seeds:
 		var w := WorldGen.generate(s, size, &"tiles")
 		var shares := _shares(w)
 		# Every landscape holds the share it asked for (BiomeDef.share,
-		# normalised over the registry), within a third: the layout is balanced
+		# normalised over the land it may hold, `allowed_targets`), within a
+		# third: the layout is balanced
 		# on the coarse grid and again after the borders wander, and then the
 		# borders are allowed to wander. A landscape placed by its climate
 		# rather than by an anchor swings furthest, because where the island
 		# lets it lie decides how much of it there is. No number here is written
 		# down twice: adding a landscape changes what every other one gets.
-		var target := _targets(w)
+		var target := allowed_targets(w)
 		for c: int in BiomeRegistry.land_indices():
 			var want := target[c]
 			check(shares[c] >= want * 0.7 and shares[c] <= want * 1.4,
 				"seed %d %s share %.3f, wanted %.3f at size %d" % [s, BiomeRegistry.name_of(c), shares[c], want, size])
-	print("       layouts for %d seeds at %d: %d ms" % [SHARE_SEEDS.size(), size, Time.get_ticks_msec() - t])
+	print("       layouts for %d seeds at %d: %d ms" % [seeds.size(), size, Time.get_ticks_msec() - t])
 
 
 ## A SHARE IS A SHARE OF THE LAND A TYPE MAY HOLD. Every continent is dealt its
@@ -180,11 +187,6 @@ func test_full_worlds_keep_their_shares() -> void:
 		for c: int in BiomeRegistry.land_indices():
 			check(shares[c] >= target[c] * 0.7 and shares[c] <= target[c] * 1.4,
 				"seed %d %s share %.3f, wanted %.3f" % [s, BiomeRegistry.name_of(c), shares[c], target[c]])
-
-
-## Each land type's share of the land as the registry asks for it.
-static func _targets(w: WorldData) -> PackedFloat32Array:
-	return GenCountries.targets(GenContext.new(w))
 
 
 ## Each land type's share of the land it was dealt, from the deal `w` recorded.

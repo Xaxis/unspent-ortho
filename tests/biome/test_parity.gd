@@ -337,6 +337,14 @@ extends TestCase
 ## floor's share decides fewer places than at 1300, and the spawn's preference
 ## changes a village only where the first-ranked one had no site water. Causation:
 ## the previous hashes passed in this same session with none of the four applied.
+##
+## RE-DIGESTED, NOT RE-ACCEPTED (2026-09-23): the `props` digest reads positions
+## to a thousandth of a tile instead of their raw float bytes, so its five hashes
+## changed and the WORLD did not -- the other five digests on every seed are
+## byte-identical. CI on Linux built seed 1 with every prop kind at the same count
+## and the same places to 1e-3 as macOS; only the last bits of the 65 wreckage's
+## positions differed (`breakdown` printed both tables side by side), so the test
+## was red on a platform's trig and nothing a player could see.
 
 
 ## **WHAT THIS BASELINE DOES NOT PIN, AND THE SECOND HALF IS THE ONE NOBODY
@@ -357,11 +365,11 @@ const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "06fa726c d5b85d6c cc7477d6 de6e52ab fe4b52d9 3516a965",
-	3: "2202ae28 60362f9d 5b976a87 15e918c3 585d921b 4f840bf5",
-	7: "4b153668 3424d5c9 64fee617 d3b86b56 72103915 7d29321d",
-	42: "e5a96b5f bef1bc39 fa3a07d8 b4709b8b 824c752b 00fd7e59",
-	90210: "c3fe6c1a a851aff1 fd9d48e4 01e6dd9b b6884aed 2c30931d",
+	1: "06fa726c d5b85d6c cc7477d6 de6e52ab fe4b52d9 4a40033f",
+	3: "2202ae28 60362f9d 5b976a87 15e918c3 585d921b 9e7ac92d",
+	7: "4b153668 3424d5c9 64fee617 d3b86b56 72103915 03cc7b23",
+	42: "e5a96b5f bef1bc39 fa3a07d8 b4709b8b 824c752b d19777ff",
+	90210: "c3fe6c1a a851aff1 fd9d48e4 01e6dd9b b6884aed 4f951bd8",
 }
 
 
@@ -402,11 +410,18 @@ static func digest(w: WorldData) -> String:
 	var parts: PackedStringArray = []
 	for part: PackedByteArray in [w.country, w.country2, w.ground, w.level.to_byte_array(), w.blend.to_byte_array()]:
 		parts.append(_md5(part))
-	var props := PackedFloat32Array()
+	# POSITIONS TO A THOUSANDTH OF A TILE, NOT THEIR LAST BITS. The raw floats
+	# were hashed, and macOS and Linux build seed 1's 65 wreckage with the same
+	# count at the same places to 1e-3 and differ only in the last bits of their
+	# floats -- a platform's trig, not a placement -- so this test was red on CI
+	# for a difference nothing in the world shows. A thousandth of a tile is far
+	# below anything a player can see and far above any float's last bit; a
+	# placement that really moves or flips still moves this digest.
+	var props := PackedInt32Array()
 	for p in w.props:
 		props.append(p.kind)
-		props.append(p.pos.x)
-		props.append(p.pos.y)
+		props.append(roundi(p.pos.x * 1000.0))
+		props.append(roundi(p.pos.y * 1000.0))
 	parts.append(_md5(props.to_byte_array()))
 	return " ".join(parts)
 

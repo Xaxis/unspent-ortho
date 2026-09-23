@@ -94,6 +94,17 @@ func _run() -> void:
 			inst.current = id
 			var t := Time.get_ticks_msec()
 			await inst.call(name)
+			# **A TEST MAY CLEAN UP AFTER ITSELF, AND NOW IT IS ASKED TO.** A file
+			# that defines `teardown()` has it awaited after every test in it, and
+			# after one that died of a script error too, because the runner goes on
+			# past a failed call. There was no such hook, and `test_pointing`
+			# wrote a `teardown()` that nothing called: its camera rigs stayed in
+			# the root as the CURRENT camera for the rest of the process and the
+			# crowd test behind it read a figure at the origin as off camera. A
+			# teardown should `free()` rather than queue: the next test starts in
+			# this same frame, before anything queued is gone.
+			if inst.has_method(&"teardown"):
+				await inst.call(&"teardown")
 			# NO TEST INHERITS ANOTHER'S SAVES. `SaveSlots.root` is a static, so a
 			# test that points it at its own folder (`Sx.use_root`) and does not
 			# call `Sx.finish` leaves every later test in the shard reading THAT
