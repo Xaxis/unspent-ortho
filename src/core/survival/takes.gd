@@ -170,6 +170,7 @@ static func _build() -> Dictionary:
 		_o(&"turn", &"scrap", 1, 25.0, 120.0, {"keep": true, "uses": 2, "bonus": [&"wick", 0.5]})]
 	t[PropKind.STUMP] = [_o(&"fell", &"timber", 1, 14.0, NEVER, {"stuff": &"iron"}),
 		_o(&"gather", &"deadwood", 1, 5.0, 48.0, {"keep": true})]
+	_signature(t)
 	# The machines' own works are made of the best parts on the coast, and they
 	# are not abandoned: taking from one is theft, and the plan's network files
 	# it (Interference). The thing is left standing, opened and short a part.
@@ -183,12 +184,105 @@ static func _build() -> Dictionary:
 	return t
 
 
+## What a landscape's own things give (docs/ROADMAP.md M3: "every signature prop
+## does something to a body"). Every row here is KEPT: the thing stays standing
+## when it is spent, because a take that carries a thing away needs a remnant of
+## its own (RemnantModels.for_kind) and one that works it down needs a `Broken`
+## cut that suits its model, and neither is this file's to add. Nothing here
+## gives an elite material's raw: brimstone, limestone, peat and crottle each have
+## one gate (EliteStock) and a second prop giving them would open a second.
+static func _signature(t: Dictionary) -> void:
+	# The salt flats. The crust IS salt: a pressure ridge is broken for a lump of
+	# it and gives a little to a hand, and the crust grows back as the brine dries
+	# (so it regrows, where a quarried stone does not).
+	t[PropKind.SALT_RIDGE] = [_o(&"break", &"salt", 2, 12.0, 96.0, {"stuff": &"iron", "keep": true, "uses": 2}),
+		_o(&"gather", &"salt", 1, 4.0, 24.0, {"keep": true})]
+	# A heap the rakers left: salt by the armful until it is down to the part
+	# fused under the sheet, and then the sheet itself, torn for rags. Neither
+	# comes back: nobody is raking it any more.
+	t[PropKind.SALT_HEAP] = [_o(&"gather", &"salt", 2, 5.0, NEVER, {"keep": true, "uses": 3}),
+		_o(&"gather", &"rag", 1, 6.0, NEVER, {"keep": true})]
+	# The gate is the ruler's, but the sandbags stacked against it are people's
+	# (props/salt.gd), so what comes away is their sacking and taking it robs
+	# nobody's network. The sluice itself is NOT a plan work here on purpose:
+	# 34_works._strip spends every plan work in a broken yard, and the pan rake
+	# feeds on pan gates, so making one a plan work would move the salt flats'
+	# STARVE way -- tests/works/test_in_game.gd measures that seam and it is not
+	# this file's to move.
+	t[PropKind.PAN_GATE] = [_o(&"gather", &"rag", 1, 6.0, NEVER, {"keep": true, "uses": 2})]
+	# The scrapwood. Plate grown into a crown is pulled out of the bark, and the
+	# tree drops its dead wood like any tree. Nothing fells it: it grows leaves,
+	# and a take that works a leafy thing down cuts the trunk under a whole crown
+	# (tests/render/test_foliage.gd).
+	t[PropKind.SCRAP_TREE] = [_o(&"turn", &"scrap", 1, 20.0, 96.0, {"keep": true, "uses": 2}),
+		_o(&"gather", &"deadwood", 1, 3.0, 36.0, {"keep": true})]
+	# Filings drawn up into a cone by a dead frame's field: shovelled out, they are
+	# iron to smelt, once; a shard pulled off by hand comes back, because the field
+	# stands another one up (props/scrap.gd).
+	t[PropKind.MAGNET_HEAP] = [_o(&"dig", &"iron_ore", 1, 18.0, NEVER, {"stuff": &"iron", "keep": true, "uses": 2}),
+		_o(&"turn", &"scrap", 1, 15.0, 72.0, {"keep": true})]
+	# The drowned city (docs/LANDSCAPES.md: "break stone x2"). A length of cast
+	# wall is broken for its blocks and still stands; it is cover more than quarry.
+	t[PropKind.SEA_WALL] = [_o(&"break", &"stone", 2, 22.0, NEVER, {"stuff": &"iron", "keep": true, "uses": 2})]
+	# The plan's gauge (docs/LANDSCAPES.md: "strip brass; theft"). Its brass
+	# fittings are copper enough to pour, and only a steel edge gets them off,
+	# the same rung copper ore wants, so it opens nothing early. It is a plan work
+	# below: robbing it is filed.
+	t[PropKind.TIDE_GAUGE] = [_o(&"break", &"copper", 1, 30.0, NEVER, {"stuff": &"steel", "keep": true}),
+		_o(&"turn", &"scrap", 1, 20.0, 96.0, {"keep": true, "uses": 2})]
+	# Slag the works tipped still holds the iron nobody recovered: dug out with a
+	# tool, a few goes, like a tip. It is a heap of glass and cinder to a hand.
+	t[PropKind.SLAG_HEAP] = [_o(&"dig", &"scrap", 1, 18.0, NEVER, {"stuff": &"iron", "keep": true, "uses": 3})]
+	# A tank on a stand: the riveted plate comes off to an iron edge, and the
+	# tank goes on standing, empty. Not theft: the same kind is people's water on
+	# the orchards (props/remains.gd) and the plan's on the server fields, and one
+	# row cannot tell which it is standing at.
+	t[PropKind.WATER_TANK] = [_o(&"break", &"scrap", 1, 25.0, NEVER, {"stuff": &"iron", "keep": true})]
+	# A lamp standard is a pole with a head on it, and gives what a pole gives. It
+	# is KEPT, unlike a pole, because a live lamp is what the metropolis's keeper
+	# is spoofed under (docs/LANDSCAPES.md) and a village's is somebody's light.
+	t[PropKind.LAMP] = [_o(&"break", &"scrap", 1, 25.0, NEVER, {"stuff": &"iron", "keep": true})]
+	# The crags (docs/LANDSCAPES.md: "turn stone x1"). One stone turned off a
+	# waymark, once: taking the cairn down would take the way with it. The
+	# player's own heap is also a CAIRN, and `Survival.use` answers a heap with
+	# `take_back` before it ever asks this table (state.left comes first).
+	t[PropKind.CAIRN] = [_o(&"turn", &"stone", 1, 6.0, NEVER, {"keep": true})]
+
+
+## The kinds that give NOTHING, on purpose, and why. `tests/survival/
+## test_signature_takes.gd` holds every PropKind to either a row above or a line
+## here, so a kind added later cannot quietly be a thing `use` walks past.
+## A thing that gives nothing still does something to a body (docs/ROADMAP.md
+## M3): it shelters (52_hazards ROOFS), hides (Cover), is read, or is worked at.
+const GIVES_NOTHING := {
+	PropKind.GRAVE: "People leave a grave alone, and somebody still lights the jar on one (props/remains.gd). It is read, and it is cover.",
+	PropKind.MEMORIAL: "The dead of one day, with what they carried set on it. Nobody who lives here takes from it; it is read, and it is cover.",
+	PropKind.STANDING_STONE: "One stone set up by people who meant it to stay, and read as a mark (StoryProps). It is cover; a boulder beside it gives the same stone.",
+	PropKind.BONES: "No recipe uses bone and none is invented for it. The bones are cover, and they say what this land did.",
+	PropKind.MURAL: "The landscape's one image, on a wall somebody kept standing. Its wall hides a body; nobody quarries the painting.",
+	PropKind.BENCH: "A workbench is a station: `c` makes at it (Survival.STATION_KINDS). A `use` that broke it up would take the station out from under the player.",
+	PropKind.FIRE: "A station: it lights, warms and is slept by.",
+	PropKind.KILN: "A station, worked at with `c`.",
+	PropKind.HOUSE: "Somebody lives in it, and its bench, wheel and loom are stations (Survival.STATION_KINDS).",
+	PropKind.SIGN: "What a sign gives is its words (StoryProps.READABLE).",
+	PropKind.CONSOLE: "The screens on the tank a man was grown in are read, never stripped (prop_kind.gd), and one kind cannot tell the threshold site's console from a server field's.",
+	PropKind.GROWTH_TANK: "The tank he was grown in stands at the threshold site; the same kind on the orchards is the same tank, and nothing in it is a material.",
+	PropKind.PLATFORM: "A deck is walked on: its mass is BlackSite.blocks, and there is nothing at hand height to take.",
+	PropKind.STACK: "An exhaust read from everywhere. As a plan work, a broken yard (34_works._strip) would take it off the skyline; as anything else it would be the one machine work robbed unnoticed.",
+	PropKind.PUMP_HOUSE: "A roof (52_hazards ROOFS): it shelters a body. It is also a keeper's feed (sentinel/designs/tide_reaper.gd), and a take that spent it would be a starving nobody designed.",
+	PropKind.FIRE_TOWER: "A roof (52_hazards ROOFS): a body shelters in the cabin.",
+}
+
+
 ## The works of the plan: what a machine takes it amiss to be robbed of
 ## (VISION §2, "take its parts"). Every one of them is robbable by hand above,
 ## so the disposition package can file the theft of any of them; a work with no
 ## take option is not on this list, because nothing could ever steal from it.
+## Being on it also means 34_works._strip spends it for good when its yard is
+## broken, which is why a stack is not.
 const PLAN_WORKS: Array[int] = [PropKind.RELAY, PropKind.SURVEY, PropKind.CONVEYOR,
-	PropKind.PIPE, PropKind.INTAKE, PropKind.CHECKPOINT]
+	PropKind.PIPE, PropKind.INTAKE, PropKind.CHECKPOINT, PropKind.DRILL_RIG,
+	PropKind.TIDE_GAUGE, PropKind.VENT_CAP, PropKind.ARCHIVE]
 
 
 static func is_plan_work(kind: int) -> bool:
