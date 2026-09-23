@@ -497,6 +497,8 @@ static func shack(k: Kit, v: int, c: int) -> void:
 		# its lit one has a hearth going inside the door instead.
 		&"roundhouse": PropModels.Crags.roundhouse_shelter(k, s, lit, d)
 		&"infill": _infill(k, s, lit, d)
+		# The mesas' hollow under the rock (props/mesas.gd): a hearth, never a tube.
+		&"cut_room": PropModels.Mesas.cut_room_shelter(k, s, lit, d, c)
 		_: _fish_shack(k, s, lit, d)
 
 

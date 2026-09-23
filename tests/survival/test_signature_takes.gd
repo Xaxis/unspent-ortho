@@ -49,7 +49,9 @@ func test_no_new_row_gives_an_elite_raw() -> void:
 		&"fulgurite": [PropKind.FULGURITE],
 		&"lift_cable": [PropKind.LIFT_SHAFT],
 		# The drowned city's raw comes off a drowned tram and nothing else (docs/LANDSCAPES.md §5).
-		&"sea_copper": [PropKind.DROWNED_TRAM]}
+		&"sea_copper": [PropKind.DROWNED_TRAM],
+		# The mesas' raw comes off a fallen span and nothing else (docs/LANDSCAPES.md §6).
+		&"rope_steel": [PropKind.FALLEN_SPAN]}
 	for id: StringName in EliteStock.MATERIALS:
 		var raw := StringName(str((EliteStock.MATERIALS[id] as Dictionary).get("raw", &"")))
 		if raw != &"":

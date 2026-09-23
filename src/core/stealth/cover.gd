@@ -52,6 +52,9 @@ const PROPS := {
 	# of steel standing out of the water.
 	PropKind.SEA_WALL: 0.55,
 	PropKind.DROWNED_TRAM: 0.6,
+	# The mesas' hoodoo (docs/LANDSCAPES.md §6: "cover; solid 0.4"): a spire a
+	# body can put its back to on a bench with nothing else standing on it.
+	PropKind.HOODOO: 0.55,
 }
 
 ## What the ground itself hides a body in: heather to the knee, reeds, deep moss.

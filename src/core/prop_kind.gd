@@ -131,9 +131,20 @@ enum {
 	DROWNED_TRAM,
 	MOORING_POST,
 	LOCK_GATE,
+	# THE MESAS (docs/LANDSCAPES.md §6, src/models/props/mesas.gd): what the wind
+	# carved out of banded rock -- a hoodoo under its cap stone, a thin natural
+	# arch -- what people cut into it for water, and the plan's ropeway: a pylon
+	# at a station, and one of its spans come down on the scree. The span strung
+	# between two stations is a prop of two points (shared system 7) and is not
+	# a kind yet.
+	HOODOO,
+	ARCH_RIB,
+	FALLEN_SPAN,
+	CISTERN,
+	SPAN_PYLON,
 }
 
-const COUNT := 90
+const COUNT := 95
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -152,6 +163,7 @@ const NAMES: PackedStringArray = [
 	"fulgurite", "glass blister", "fused car", "strike rod",
 	"deck span", "lift shaft", "shopfront", "sorted bale", "demolition gantry",
 	"stair to water", "drowned tram", "mooring post", "lock gate",
+	"hoodoo", "arch rib", "fallen span", "cistern", "span pylon",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
@@ -162,7 +174,9 @@ const NAMES: PackedStringArray = [
 const WILD: Array[int] = [SALT_RIDGE, SCRAP_TREE, MAGNET_HEAP, PRESSURE_BLOCK, SEAL_HOLE,
 	# The glass desert's fused sand: a strike's cast and a burst in the sheet are
 	# what the land did, scattered like a boulder; the car and the rod are not.
-	FULGURITE, GLASS_BLISTER]
+	FULGURITE, GLASS_BLISTER,
+	# The mesas' rock: a hoodoo and an arch are what the wind left of a wall.
+	HOODOO, ARCH_RIB]
 
 ## Collision radius in tiles at scale 1. 0 means you walk through it.
 const SOLID: PackedFloat32Array = [
@@ -219,4 +233,11 @@ const SOLID: PackedFloat32Array = [
 	# lays the lock should hand the leaf to `WorldQuery.set_blocks` as circles
 	# along it, the way a mural wall is meant to be.
 	0.0, 1.2, 0.3, 0.9,
+	# The mesas: a hoodoo is 0.4 at its foot (the spec's). An arch is 0: it is
+	# walked UNDER, and its two feet are the mural's case -- whoever places one
+	# hands them to `WorldQuery.set_blocks`. A fallen span's origin is the bent
+	# pylon leg, so the circle stops a body there and the cable lying six units
+	# down the scree is walked over. A cistern is a tank a body stops at the rim
+	# of; a pylon's four legs splay about a tile and a half across.
+	0.4, 0.0, 0.35, 0.75, 0.7,
 ]

@@ -41,6 +41,11 @@ var turn := 1.5
 ## 44_sentinels draws it over the box `FightRules.box_hits` will test, and
 ## FightSim lands the bite off `bite` exactly as it would with no tell at all.
 var tell: StringName = &""
+## Levels its body may step in one move while this phase lasts (the roster's
+## `climbs`), or -1 to leave the row's own. A keeper that walks up scarps and is
+## brought down off them says so here, so the phase that lames it also puts it
+## back on a walker's one level (FightSim.climber).
+var climbs := -1
 ## Why this phase exists and what the player is meant to read off the body:
 ## review notes, never shown to anyone.
 var note := ""
@@ -57,4 +62,7 @@ static func make(phase_id: StringName, at_health: float, part_side: StringName, 
 
 ## The roster keys this phase writes onto a live body's own row copy.
 func row_patch() -> Dictionary:
-	return {"part": part, "guarded": guarded, "bite": bite, "pace": pace, "dash": dash, "quick": quick}
+	var patch := {"part": part, "guarded": guarded, "bite": bite, "pace": pace, "dash": dash, "quick": quick}
+	if climbs >= 0:
+		patch["climbs"] = climbs
+	return patch

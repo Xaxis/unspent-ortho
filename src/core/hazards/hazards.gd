@@ -87,6 +87,11 @@ class Place:
 	var fire := 0.0
 	var lamp := false
 	var in_water := false
+	## 0..1: how close standing water a body can DRINK is -- a cistern, the
+	## mesas' own spring. Kept apart from `in_water` on purpose: standing in a
+	## pool soaks you and takes the warmth off you, and drinking at a tank's
+	## rim does neither; all a spring answers is thirst.
+	var spring := 0.0
 	## There is no sky over this place at all: a roofed realm (`Realm.roofed`,
 	## which is what 20_realms reads to set `SkyLight.closed`). It is kept apart
 	## from `shelter` on purpose — a roof you walked under is shelter and can be
@@ -327,6 +332,11 @@ static func _answer_shift(out: Dictionary, place: Place) -> void:
 		_take(out, &"glare", 0.85 * roof)
 		_take(out, &"thirst", 0.25 * roof)
 		_take(out, &"collapse", 0.40 * roof)
+	# Water you can drink answers a dry land the way standing in it does, and
+	# nothing else: no soaking, no cold.
+	var drink := clampf(place.spring, 0.0, 1.0)
+	if drink > 0.0:
+		_take(out, &"thirst", 0.70 * drink)
 	var hearth := clampf(place.fire, 0.0, 1.0)
 	if hearth > 0.0:
 		_take(out, &"cold", 0.70 * hearth)

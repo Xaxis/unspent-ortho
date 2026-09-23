@@ -53,6 +53,12 @@ class_name Roster
 ##   sight_only: bool        notices by eye alone
 ##   sentinel: StringName    this body is a landscape's keeper: the design id in
 ##                           src/core/sentinel/designs/ whose phases drive it
+##   climbs: int             levels it may step in one move (default 1: a cliff of
+##                           two stops it). FightSim.climber turns it into a walker's
+##                           ride with a longer stride. It is MOVEMENT only: the chase
+##                           field (NavField) still routes like a walker, so a climber
+##                           goes up a wall when the wall is in its way and not
+##                           because it planned the climb.
 
 ## Standing water and the mud at its edge: where a dredger may go (a bank of turf is the answer to one).
 const WET := ["water", "blackwater", "river", "mud", "marsh", "shallow", "tarn"]
@@ -510,6 +516,49 @@ const DEFS := {
 		"takes": 60.0, "drops": 2, "linger": 45.0, "chance": 3,
 		"keeps_to": ["water", "blackwater", "mud", "deep water"],
 		"where": {"countries": ["drowned_city"], "grounds": ["water", "blackwater", "mud"], "hours": [6, 20]},
+	},
+	# The Mesas' anchor (src/core/sentinel/designs/anchor.gd): a four-limbed
+	# climber, the one body in the roster that `climbs` -- four levels a move,
+	# so a scarp is a floor to it -- until its grounded phase writes 1 back onto
+	# its row. `height` is its body clinging at full stretch with the tail up;
+	# `radius` is the splay of four grapnel feet. It hears as far as it sees:
+	# a thing on a wall feels a body coming along the rock.
+	&"sentinel.mesas": {
+		"model": &"sentinel_anchor", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
+		"part": &"back", "sentinel": &"anchor", "climbs": 4,
+		"pace": 3.4, "dash": 7.0, "quick": 260, "radius": 1.4, "height": 4.6, "life": 124,
+		"sees": 14, "hears": 14, "racket": 22, "reach": 3, "ready": 3, "forget": 26, "tether": 30, "safe": 14,
+		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
+		"bite": {"swing": [860, 170, 820, 920], "reach": 2.0, "width": 2.2, "dmg": 4, "knock": 10.0, "knock_ms": 340},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
+	},
+	# --- The Mesas' own watcher (docs/LANDSCAPES.md §6) ------------------------
+	# A wide slow frame flown on a line off a winch beside a span pylon,
+	# circling over the canyon and filing. The body the fight knows is the WINCH
+	# (src/models/machines/kite.gd): that is where it is struck, where its line
+	# is cut, and where it sees from, so `crosses: &"fly"` is only what deep water
+	# is to it (Swim) and nothing here pretends it moves at altitude.
+	#
+	# STOOD DOWN UNTIL FLYING BODIES LAND (docs/LANDSCAPES.md, shared system 6).
+	# Nothing in the game flies yet: `fly` is a key for deep water, a body is
+	# drawn where its feet are, there is no tethered orbit brain and a cliff
+	# stops a flier as it stops a walker. So it is in NO landscape's roster and
+	# its hours fit no hour of any day, the keepers' idiom (Spawner.moment_fits):
+	# the global roll reads every row, and a `where.countries` alone would put
+	# it out on the mesas the moment a span pylon stood there. What system 6
+	# lands is the orbit round `tether` tiles of its post and the frame's
+	# altitude as a thing the sim knows; then this row takes the mesas'
+	# `hours` 6-20 and `near_props` span pylon, and joins `mesas.gd`'s roster.
+	# No `kite_vane` drop: an item nothing can make into anything is a promise.
+	&"kite": {
+		"model": &"kite", "role": &"watcher", "machine": true, "approach": &"errand", "stretch": 0, "part": &"front",
+		"crosses": &"fly",
+		"pace": 0.1, "dash": 0.1, "radius": 0.4, "height": 5.6, "life": 50,
+		"sees": 18, "hears": 0, "racket": 16, "reach": 12, "ready": 4, "forget": 30, "tether": 14, "safe": 12,
+		"nerve": 100, "invuln": 500, "touch": 1, "sight_only": true, "calls": 18, "disposition": &"observant",
+		"takes": 60.0, "drops": 1, "linger": 30.0, "chance": 0,
+		"where": {"countries": ["mesas"], "hours": [0, 0], "near_props": ["span pylon"]},
 	},
 }
 

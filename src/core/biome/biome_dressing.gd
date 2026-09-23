@@ -124,7 +124,11 @@ const SHELTERS: Array[StringName] = [&"shack", &"stilt", &"blind", &"pod", &"lea
 	&"roundhouse",
 	# The metropolis': a dead tower's ground floor walled in with salvaged
 	# doors (props/remains.gd `_infill`).
-	&"infill"]
+	&"infill",
+	# The mesas': a hollow under a lip of banded rock with a hide across its
+	# mouth (props/mesas.gd). It never wires a light in; its lit one has a
+	# hearth in the mouth of the cut.
+	&"cut_room"]
 const CROWNS: Array[StringName] = [&"full", &"bare", &"low"]
 ## Every ramp `BiomeDef.tree_tints` may name, and how many colours each wants.
 const RAMPS := {&"leaf": 4, &"trunk": 1, &"needle": 3, &"under": 1, &"scrub": 3,

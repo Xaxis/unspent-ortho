@@ -609,7 +609,11 @@ func _move_mob(m: MobState, dt: float) -> void:
 	var before := m.pos
 	# Deep water stops a body that cannot take it, which is most of the roster
 	# (Swim): the few that cross carry it on their own row, not here.
-	var next := query.move_body(m.pos, v * dt, minf(m.radius, 0.45), null, Swim.may_cross(m.row)) if query != null else m.pos + v * dt
+	# A body whose row says it CLIMBS steps that many levels in one move, which is
+	# a walker's ride with a longer stride (`CraftRide.levels`, the one field
+	# `WorldQuery.passable` already reads for a walker rig). A climber does not
+	# swim: the ride answers deep water as a walker would.
+	var next := query.move_body(m.pos, v * dt, minf(m.radius, 0.45), climber(m.row), Swim.may_cross(m.row)) if query != null else m.pos + v * dt
 	var keeps: Array = m.row.get("keeps_to", [])
 	if not keeps.is_empty() and world != null:
 		if not _ground_in(next, keeps):
@@ -618,6 +622,26 @@ func _move_mob(m: MobState, dt: float) -> void:
 			next = nx if _ground_in(nx, keeps) else (ny if _ground_in(ny, keeps) else m.pos)
 	m.pos = next
 	m.speed = before.distance_to(m.pos) / dt
+
+
+## Levels a body of this row may step in one move, as a ride, or null for the
+## one level everything else takes. `climbs` is a roster key (Roster's schema),
+## and a sentinel phase may rewrite it on the live row copy, so a keeper that is
+## off the wall stops climbing the moment its phase says so. One ride per stride,
+## kept, because this is asked every step of every body.
+static var _climbers: Dictionary = {}
+
+
+static func climber(row: Dictionary) -> CraftRide:
+	var n := int(row.get("climbs", 1))
+	if n <= 1:
+		return null
+	if not _climbers.has(n):
+		var ride := CraftRide.walker()
+		ride.kind = &"climb"
+		ride.levels = n
+		_climbers[n] = ride
+	return _climbers[n]
 
 
 func _ground_in(p: Vector2, names: Array) -> bool:

@@ -53,7 +53,10 @@ static func for_kind(kind: int) -> StringName:
 			# three bent legs are what stay on the moss.
 			return &"tripod"
 		PropKind.WRECK, PropKind.POLE, PropKind.PYLON, PropKind.VEHICLE, PropKind.BARRICADE, PropKind.HULL, \
-				PropKind.DEBRIS, PropKind.WRECKAGE:
+				PropKind.DEBRIS, PropKind.WRECKAGE, \
+				# A span pylon cut loose from its span comes down (Takes): its
+				# lattice lies bent where it fell, which is plate on the rock.
+				PropKind.SPAN_PYLON:
 			return &"plate"
 		PropKind.FENCE:
 			# The post's stub where it was cut off at the ground.

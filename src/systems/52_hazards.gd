@@ -33,8 +33,17 @@ const ROOFS: Array[int] = [PropKind.HOUSE, PropKind.SHACK, PropKind.RUIN, PropKi
 	# A glass blister is shade on a landscape with none (docs/LANDSCAPES.md §3):
 	# a body steps in through the burst side. Its solid is 0, so ROOF_REACH is
 	# the whole of how far its shade is felt.
-	PropKind.GLASS_BLISTER]
+	PropKind.GLASS_BLISTER,
+	# The mesas' natural arch: the one shade on a bench (docs/LANDSCAPES.md §6:
+	# "shelter from heat in its shade"). Its solid is 0 -- it is walked under --
+	# so ROOF_REACH from its crown is the shade.
+	PropKind.ARCH_RIB]
 const CANOPY: Array[int] = [PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF]
+## Standing water a body can drink at: the mesas' cistern (docs/LANDSCAPES.md
+## §6, "it answers thirst: the land's own spring"). Felt within SPRING_REACH of
+## the tank's middle, which is its rim and a step off it.
+const SPRINGS: Array[int] = [PropKind.CISTERN]
+const SPRING_REACH := 1.6
 ## A line is not said again until the pressure has let go this far.
 const SAID_CLEAR := Hazards.FELT * 0.8
 ## How long a breath hangs in the air: long enough that a player walking sees it.
@@ -115,6 +124,7 @@ func place() -> Hazards.Place:
 	p.in_water = Ground.is_water(game.world.ground_at(floori(pos.x), floori(pos.y)))
 	p.fire = _fire()
 	p.shelter = _shelter()
+	p.spring = _spring()
 	p.pos = pos
 	p.near_props = _near_props(pos)
 	# The realm decides whether there is a sky, and it is the SAME question
@@ -148,6 +158,19 @@ func _near_props(pos: Vector2) -> Array:
 			continue
 		out.append(p)
 	return out
+
+
+## How close the body is to water it can drink: 1 at a cistern's rim, falling
+## to 0 at SPRING_REACH. A tank that has been taken away gives nothing.
+func _spring() -> float:
+	var pos := game.player.pos
+	var best := 0.0
+	for p: WorldProp in game.query.props_near(pos, SPRING_REACH + 1.0):
+		if not SPRINGS.has(p.kind) or game.world.depleted.has(p.id):
+			continue
+		var d := maxf(0.0, pos.distance_to(p.pos) - p.solid)
+		best = maxf(best, clampf(1.0 - d / SPRING_REACH, 0.0, 1.0))
+	return best
 
 
 ## A roof over you, a village around you, or a crown above you.

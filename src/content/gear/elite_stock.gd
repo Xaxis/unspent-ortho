@@ -70,6 +70,11 @@ const MATERIALS := {
 	# salt still in it. Copper is poured at the fire everywhere else, so this is.
 	&"brine_copper": {"land": &"drowned_city", "raw": &"sea_copper", "at": &"fire", "grade": &"rare",
 		"what": "copper the sea kept for a century, poured again: green at the grain, and water runs off it"},
+	# The Mesas' own (docs/LANDSCAPES.md §6): rope steel cut with a steel edge out
+	# of a fallen span of the ropeway, which lies only on the mesas' scree (Takes
+	# gates the cut on SCREE), re-laid at the fire as the city's cable is.
+	&"span_wire": {"land": &"mesas", "raw": &"rope_steel", "at": &"fire", "grade": &"rare",
+		"what": "ropeway wire drawn out fine and stiff: a frame strung with it holds its shape in a gale"},
 
 	# --- one machine's own ----------------------------------------------------
 	&"tide_iron": {"kind": &"harvester", "chance": 0.35, "grade": &"prime",

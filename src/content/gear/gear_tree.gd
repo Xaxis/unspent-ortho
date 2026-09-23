@@ -115,6 +115,11 @@ const PIECES := {
 	&"boots_magnet": {"grade": &"uncommon", "family": &"brace"},
 	&"brace_cable": {"grade": &"rare", "family": &"brace", "from": &"tower_cable"},
 	&"brace_ram": {"grade": &"prime", "family": &"brace", "from": &"boom_ram"},
+	# The glide wing is a family the same way (docs/LANDSCAPES.md §6): every rung
+	# glides and resists alike, and what the mesas' span wire buys is a second
+	# socket. A land of drops is where the wing is raised.
+	&"glide_wing": {"grade": &"uncommon", "family": &"wing"},
+	&"wing_span": {"grade": &"rare", "family": &"wing", "from": &"span_wire"},
 
 	# --- modules: the modifiers themselves (ModifierTable says what each does) --
 	&"mod_wadding": {"grade": &"common", "family": &""},
