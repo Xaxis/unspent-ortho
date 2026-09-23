@@ -110,6 +110,7 @@ const PIECES := {
 	# vertical city, so it is where the climbing brace is raised: its top rung
 	# is made of the ram out of the city's own demolisher (docs/LANDSCAPES.md §4).
 	&"boots_magnet": {"grade": &"uncommon", "family": &"brace"},
+	&"brace_cable": {"grade": &"rare", "family": &"brace", "from": &"tower_cable"},
 	&"brace_ram": {"grade": &"prime", "family": &"brace", "from": &"boom_ram"},
 
 	# --- modules: the modifiers themselves (ModifierTable says what each does) --

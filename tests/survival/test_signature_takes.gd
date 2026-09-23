@@ -40,7 +40,8 @@ func test_the_audited_kinds_are_each_decided() -> void:
 ## the one prop kind it always did, on that kind's own ground (EliteStock).
 func test_no_new_row_gives_an_elite_raw() -> void:
 	var gates := {&"brimstone": [PropKind.VENT], &"limestone": [PropKind.CLINTS],
-		&"peat": [PropKind.PEAT_BANK], &"crottle": [PropKind.BOULDER, PropKind.STONE_ORE]}
+		&"peat": [PropKind.PEAT_BANK], &"crottle": [PropKind.BOULDER, PropKind.STONE_ORE],
+		&"lift_cable": [PropKind.LIFT_SHAFT]}
 	for id: StringName in EliteStock.MATERIALS:
 		var raw := StringName(str((EliteStock.MATERIALS[id] as Dictionary).get("raw", &"")))
 		if raw != &"":

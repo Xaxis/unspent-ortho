@@ -42,6 +42,13 @@ const MATERIALS := {
 		"what": "iron the bog grew: soft, stubborn, and it takes a patch"},
 	&"frost_varnish": {"land": &"snowfield", "raw": &"crottle", "at": &"fire", "grade": &"rare",
 		"what": "lichen boiled hard; it does not craze when the cold comes"},
+	# The Ruined Metropolis's own (docs/LANDSCAPES.md §4): steel wire rope cut
+	# out of a lift core, which stands only on the city's own floor and grass
+	# (Takes gates the cut on the ground), re-laid at the fire. The spec says
+	# "the forge"; the fire is the one hot station a person builds and where
+	# iron is already made, so it is the forge this game has.
+	&"tower_cable": {"land": &"ruined_metropolis", "raw": &"lift_cable", "at": &"fire", "grade": &"rare",
+		"what": "lift rope annealed and laid up again: it takes a body's weight and does not stretch"},
 
 	# --- one machine's own ----------------------------------------------------
 	&"tide_iron": {"kind": &"harvester", "chance": 0.35, "grade": &"prime",

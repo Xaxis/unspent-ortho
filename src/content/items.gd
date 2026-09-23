@@ -205,9 +205,13 @@ const DEFS := {
 	&"boots_magnet": {"name": "magnet boots", "bulk": 3.0, "group": &"kit", "tier": &"mended",
 		"slot": &"hands", "sockets": 1,
 		"resist": {&"em": 0.4, &"resonance": 0.25, &"collapse": 0.3}, "ability": &"grapple", "wears": {"salvage": [&"brace"]}},
-	# The grapple brace's top rung (GearTree family `brace`): the same brace, the
-	# same grapple and the same resists, with a demolisher's ram bolted to it.
-	# What the rung buys is SOCKETS, as every rung does, and it is heavier.
+	# The grapple brace's two upper rungs (GearTree family `brace`): the same
+	# brace, the same grapple and the same resists, first re-cabled with the
+	# city's tower cable, then with a demolisher's ram bolted to it. What a rung
+	# buys is SOCKETS, as every rung does, and each is heavier than the last.
+	&"brace_cable": {"name": "cable brace", "bulk": 3.5, "group": &"kit", "tier": &"mended",
+		"slot": &"hands", "sockets": 2, "icon": [&"boot", &"slate", &"copper"],
+		"resist": {&"em": 0.4, &"resonance": 0.25, &"collapse": 0.3}, "ability": &"grapple", "wears": {"salvage": [&"brace"]}},
 	&"brace_ram": {"name": "ram brace", "bulk": 4.0, "group": &"kit", "tier": &"mended",
 		"slot": &"hands", "sockets": 3, "icon": [&"boot", &"plate", &"lens"],
 		"resist": {&"em": 0.4, &"resonance": 0.25, &"collapse": 0.3}, "ability": &"grapple", "wears": {"salvage": [&"brace"]}},
@@ -353,6 +357,7 @@ const DEFS := {
 	&"clint_spar": {"name": "clint spar", "bulk": 2.0, "group": &"material", "icon": [&"stone", &"rime", &"rime"]},
 	&"bog_iron": {"name": "bog iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"rust"]},
 	&"frost_varnish": {"name": "frost varnish", "bulk": 1.0, "group": &"material", "icon": [&"flask", &"linen", &"rime"]},
+	&"tower_cable": {"name": "tower cable", "bulk": 2.0, "group": &"material", "icon": [&"coil", &"slate", &"copper"]},
 	&"tide_iron": {"name": "tide iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"ash"]},
 	&"mono_edge": {"name": "filament edge", "bulk": 0.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"found", &"lens"]},
 	&"keeper_lens": {"name": "keeper lens", "bulk": 1.0, "group": &"found", "stuff": &"found", "icon": [&"lens", &"plate", &"lens"]},

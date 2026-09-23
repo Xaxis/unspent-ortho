@@ -121,6 +121,8 @@ const LIST: Array[Dictionary] = [
 	{"id": &"clint_spar", "at": &"kiln", "minutes": 150.0, "needs": {&"limestone": 3, &"charcoal": 2}, "makes": {&"clint_spar": 1}},
 	{"id": &"bog_iron", "at": &"fire", "minutes": 120.0, "needs": {&"peat": 4, &"charcoal": 2}, "makes": {&"bog_iron": 1}},
 	{"id": &"frost_varnish", "at": &"fire", "minutes": 100.0, "needs": {&"crottle": 3, &"oil": 1}, "makes": {&"frost_varnish": 1}},
+	# Lift rope annealed in the fire and laid up again: the city's own.
+	{"id": &"tower_cable", "at": &"fire", "minutes": 110.0, "needs": {&"lift_cable": 2, &"charcoal": 1}, "makes": {&"tower_cable": 1}},
 	# Nothing is dead loot: what a ruined pour leaves is still plate.
 	{"id": &"spoil_scrap", "at": &"fire", "minutes": 30.0, "needs": {&"spoil": 2, &"charcoal": 1}, "makes": {&"scrap": 1}},
 
@@ -133,6 +135,9 @@ const LIST: Array[Dictionary] = [
 	{"id": &"pick_spar", "at": &"bench", "minutes": 110.0, "needs": {&"pick": 1, &"clint_spar": 1, &"rag": 1}, "makes": {&"pick_spar": 1}},
 	{"id": &"stave_varnish", "at": &"bench", "minutes": 80.0, "needs": {&"stave": 1, &"frost_varnish": 1, &"rag": 1}, "makes": {&"stave_varnish": 1}},
 	{"id": &"hook_varnish", "at": &"bench", "minutes": 90.0, "needs": {&"boathook": 1, &"frost_varnish": 1, &"pitch": 1}, "makes": {&"hook_varnish": 1}},
+	# The grapple brace re-cabled with the city's own rope: a vertical city is
+	# where you climb (GearTree family `brace`).
+	{"id": &"brace_cable", "at": &"bench", "minutes": 100.0, "needs": {&"boots_magnet": 1, &"tower_cable": 1, &"rag": 1}, "makes": {&"brace_cable": 1}},
 	# A beam or a lance a person BUILT, out of plate, a charge and one machine part:
 	# found tech taken whole can never be mended, so the mended rung is not a
 	# stolen weapon rehafted — it is one made from the same refuse.
@@ -157,9 +162,9 @@ const LIST: Array[Dictionary] = [
 	# The relic: a filer's die set into a blade, so the thing in your hand wears
 	# their name. A pour that fails leaves the flawed twin, which still works.
 	{"id": &"blade_seal", "at": &"bench", "minutes": 240.0, "needs": {&"blade_die": 1, &"clerk_die": 1, &"keeper_lens": 1, &"copper": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"blade_seal": 1}},
-	# The grapple brace's top rung, on the jig like every prime: the brace with
-	# a demolisher's ram bolted to it (GearTree family `brace`).
-	{"id": &"brace_ram", "at": &"bench", "minutes": 160.0, "needs": {&"boots_magnet": 1, &"boom_ram": 1, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"brace_ram": 1}},
+	# The grapple brace's top rung, on the jig like every prime: the cabled
+	# brace with a demolisher's ram bolted to it (GearTree family `brace`).
+	{"id": &"brace_ram", "at": &"bench", "minutes": 160.0, "needs": {&"brace_cable": 1, &"boom_ram": 1, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"brace_ram": 1}},
 
 	# --- the modifiers (ModifierTable says what each one decides) ----------------
 	# Half an hour at a bench for everything below the jig, because the work is
