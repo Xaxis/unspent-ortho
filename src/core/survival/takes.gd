@@ -267,6 +267,29 @@ static func _signature(t: Dictionary) -> void:
 	# The rack of cores (docs/LANDSCAPES.md: "turn stone x2, keep; theft"). Two
 	# cores turned out of it and it goes on standing, empty.
 	t[PropKind.CORE_RACK] = [_o(&"turn", &"stone", 2, 10.0, NEVER, {"keep": true, "uses": 2})]
+	# The frost sea (docs/LANDSCAPES.md §2). A pressure block is the one gate on
+	# lens ice: cut with a steel edge, twice, on the ROCK ridge it was thrown up
+	# on, and the block stays standing because it is the only cover on the sea.
+	# Nothing comes off it by hand, and the key says so.
+	t[PropKind.PRESSURE_BLOCK] = [_o(&"cut", &"lens_ice", 1, 20.0, NEVER, {"stuff": &"steel", "keep": true, "uses": 2, "ground": [Ground.ROCK]})]
+	# A trawler frozen in to the gunwale: its plate is stripped with an iron
+	# edge, twice, and the hull goes on standing in the ice, which is what it is
+	# for (a hold out of the wind: 52_hazards ROOFS). The spec's "strip iron x1"
+	# is not here on purpose: `iron` is the INGOT a kiln pours, the land gives
+	# it nowhere, and the slate draws it in copper's own mark, which the pickup
+	# feed refuses for two things the land gives (tests/ui/test_pickup_feed.gd).
+	# Plate comes off everything else in this file as scrap, and so it does here.
+	t[PropKind.FROZEN_HULL] = [_o(&"break", &"scrap", 2, 24.0, NEVER, {"stuff": &"iron", "keep": true, "uses": 2})]
+	# A seal hole gives fish, and the hole is kept: the seal keeps it open. The
+	# spec asks that it NEED A LINE, and nothing in the game is a line yet -- a
+	# take's tool is a verb and a hardness, and `gather` is bare hands -- so the
+	# fish come to a hand at a seal's own pace, slowly and rarely, until a line is
+	# a thing somebody can make, when this row takes its verb.
+	t[PropKind.SEAL_HOLE] = [_o(&"gather", &"fish", 1, 12.0, 36.0, {"keep": true})]
+	# A sounding rig is the plan's, and robbing it is theft (PLAN_WORKS below):
+	# scrap off the drum's bracket, and sometimes the charge that ran it, the
+	# way a relay is robbed. The hole it keeps open goes on being kept.
+	t[PropKind.SOUNDING_RIG] = [_o(&"turn", &"scrap", 1, 20.0, 96.0, {"keep": true, "uses": 2, "bonus": [&"wick", 0.5]})]
 
 
 ## The kinds that give NOTHING, on purpose, and why. `tests/survival/
@@ -307,7 +330,9 @@ const PLAN_WORKS: Array[int] = [PropKind.RELAY, PropKind.SURVEY, PropKind.CONVEY
 	PropKind.TIDE_GAUGE, PropKind.VENT_CAP, PropKind.ARCHIVE,
 	# The crags' survey furniture: a lens off a mast and cores out of a rack are
 	# both filed as theft (docs/LANDSCAPES.md §1), and both feed its keeper.
-	PropKind.THEODOLITE_MAST, PropKind.CORE_RACK]
+	PropKind.THEODOLITE_MAST, PropKind.CORE_RACK,
+	# The frost sea's sounding tripod is the plan's too (docs/LANDSCAPES.md §2).
+	PropKind.SOUNDING_RIG]
 
 
 static func is_plan_work(kind: int) -> bool:

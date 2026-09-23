@@ -42,7 +42,9 @@ func test_no_new_row_gives_an_elite_raw() -> void:
 	var gates := {&"brimstone": [PropKind.VENT], &"limestone": [PropKind.CLINTS],
 		&"peat": [PropKind.PEAT_BANK], &"crottle": [PropKind.BOULDER, PropKind.STONE_ORE],
 		# The crags' raw comes off a carved face and nothing else (docs/LANDSCAPES.md §1).
-		&"hushstone": [PropKind.CARVED_FACE]}
+		&"hushstone": [PropKind.CARVED_FACE],
+		# The frost sea's raw comes off a pressure block and nothing else (docs/LANDSCAPES.md §2).
+		&"lens_ice": [PropKind.PRESSURE_BLOCK]}
 	for id: StringName in EliteStock.MATERIALS:
 		var raw := StringName(str((EliteStock.MATERIALS[id] as Dictionary).get("raw", &"")))
 		if raw != &"":

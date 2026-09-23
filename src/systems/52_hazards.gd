@@ -26,7 +26,10 @@ const ROOFS: Array[int] = [PropKind.HOUSE, PropKind.SHACK, PropKind.RUIN, PropKi
 	PropKind.ARCHIVE, PropKind.CHECKPOINT, PropKind.FIRE_TOWER,
 	# A trilithon's cap is a roof with daylight through it (docs/LANDSCAPES.md §1:
 	# "the roof answer takes wet and dark under the cap").
-	PropKind.LINTEL]
+	PropKind.LINTEL,
+	# A trawler frozen in to the gunwale: its hold is the one place out of the
+	# wind on the frost sea (docs/LANDSCAPES.md §2).
+	PropKind.FROZEN_HULL]
 const CANOPY: Array[int] = [PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF]
 ## A line is not said again until the pressure has let go this far.
 const SAID_CLEAR := Hazards.FELT * 0.8

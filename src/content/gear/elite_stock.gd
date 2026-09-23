@@ -46,6 +46,10 @@ const MATERIALS := {
 	# it on ROCK), and nothing else in the world gives it.
 	&"hush_slate": {"land": &"the_crags", "raw": &"hushstone", "at": &"kiln", "grade": &"rare",
 		"what": "stone a scanner reads as nothing at all"},
+	# The frost sea's (docs/VISION.md §6.1 names it): lens ice is cut out of a
+	# pressure block with a steel edge, and pressure blocks stand nowhere else.
+	&"deep_ice_lens": {"land": &"frost_sea", "raw": &"lens_ice", "at": &"bench", "grade": &"rare",
+		"what": "the clear heart of a slab of sea ice, ground until the far side comes through it"},
 
 	# --- one machine's own ----------------------------------------------------
 	&"tide_iron": {"kind": &"harvester", "chance": 0.35, "grade": &"prime",
@@ -105,6 +109,11 @@ const SPOILS := {
 	# The crags' chainman: links off the chain it drags (docs/LANDSCAPES.md §1).
 	# No weapon, because it carries none -- it measures.
 	&"chainman": [{"item": &"chain_link", "chance": 0.6, "count": Vector2i(1, 3)}],
+	# The frost sea's saw sled: what comes off the blade that cuts the ice. A
+	# tooth and not a material, because docs/LANDSCAPES.md §2 gives the frost sea
+	# its elite through a PROP (lens ice off a pressure block) and a landscape
+	# holds one gate, not two.
+	&"icesaw": [{"item": &"saw_tooth", "chance": 0.45, "count": Vector2i(1, 2)}],
 }
 
 

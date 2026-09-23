@@ -40,6 +40,11 @@ const PROPS := {
 	# plus IN_PROP, about the middle of its four units; the ends of the lane are
 	# open, which is true of a lane.
 	PropKind.HOLLOW_WAY: 0.45,
+	# The frost sea's only cover (docs/LANDSCAPES.md §2): a slab of ice on end
+	# is the one thing out there to put your back to, and a hull frozen in is a
+	# wall with a hold behind it.
+	PropKind.PRESSURE_BLOCK: 0.55,
+	PropKind.FROZEN_HULL: 0.6,
 }
 
 ## What the ground itself hides a body in: heather to the knee, reeds, deep moss.

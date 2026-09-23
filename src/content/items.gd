@@ -100,6 +100,9 @@ const DEFS := {
 	&"plasma_torch": {"name": "torch", "bulk": 2.0, "group": &"found", "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0,
 		"wick": 3, "dmg": 12, "swing": [150, 110, 180, 220], "reach": 1.1, "width": 1.3, "knock": 7.0, "knock_ms": 220},
 	&"wick": {"name": "charge", "bulk": 0.5, "group": &"found"},
+	# A tooth off the frost sea's saw sled (EliteStock.SPOILS icesaw): machine
+	# steel, still bright where the ice ran over it.
+	&"saw_tooth": {"name": "saw tooth", "bulk": 0.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"plate", &"lens"]},
 
 	# --- Materials (§9.4) ---
 	# Shore goods are lighter than the source's (3, 2, 2, 5; food 1): the creel
@@ -145,6 +148,9 @@ const DEFS := {
 	&"iron": {"name": "iron", "bulk": 1.0, "group": &"material"},
 	&"copper_ore": {"name": "copper ore", "bulk": 4.0, "group": &"material"},
 	&"copper": {"name": "copper", "bulk": 1.0, "group": &"material"},
+	# Cut out of a pressure block on the frost sea with a steel edge (Takes): the
+	# clear heart of a slab of sea ice, the raw the deep ice lens is ground from.
+	&"lens_ice": {"name": "lens ice", "bulk": 1.0, "group": &"material", "icon": [&"lens_ice", &"rime", &"slate"]},
 	&"scrap": {"name": "piece of plate", "bulk": 2.0, "group": &"material"},
 	# Cloth out of what people left: the one soft material a made garment needs.
 	&"rag": {"name": "rags", "bulk": 1.0, "group": &"material"},
@@ -153,6 +159,9 @@ const DEFS := {
 	&"mussels": {"name": "mussels", "bulk": 0.5, "group": &"food", "feeds": 4.0},
 	&"whelks": {"name": "whelks", "bulk": 0.5, "group": &"food", "feeds": 3.0},
 	&"samphire": {"name": "samphire", "bulk": 0.5, "group": &"food", "feeds": 2.0},
+	# Out of a seal's hole on the frost sea (Takes SEAL_HOLE): the one food the
+	# ice gives, and a whole meal.
+	&"fish": {"name": "fish", "bulk": 0.5, "group": &"food", "feeds": 5.0, "icon": [&"fish", &"slate", &"rime"]},
 	&"berries": {"name": "berries", "bulk": 1.0, "group": &"food", "feeds": 1.5},
 	&"bread": {"name": "bread", "bulk": 1.0, "group": &"food", "feeds": 10.0},
 	&"soup": {"name": "soup", "bulk": 1.0, "group": &"food", "feeds": 8.0},
@@ -338,6 +347,12 @@ const DEFS := {
 		"icon": [&"knife", &"slate", &"earth"], "fits": [&"tool"], "resist": {&"resonance": 0.2}},
 	&"mod_damp": {"name": "hush damper", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"timber", &"linen", &"earth"], "fits": [&"tool", &"hands", &"body"], "resist": {&"resonance": 0.45}},
+	# A deep ice lens bound over one eye (docs/LANDSCAPES.md §2): it takes the
+	# glare off a white plain and lets a little of the dark through, and it is
+	# the frost sea's answer to the sea's own light. Head only: it is worn where
+	# the eye is. `sight` is its tag (ModifierTable).
+	&"mod_icelens": {"name": "ice lens", "bulk": 0.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"scan_lens", &"rime", &"earth"], "fits": [&"head"], "resist": {&"glare": 0.3, &"dark": 0.2}},
 	&"mod_leech": {"name": "leech coil", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"ink", &"earth"], "fits": [&"tool", &"back"], "resist": {&"em": 0.15}},
 	&"mod_phase": {"name": "phase coil", "bulk": 1.0, "group": &"kit", "tier": &"mended", "module": true,
@@ -358,6 +373,8 @@ const DEFS := {
 	&"hush_slate": {"name": "hush slate", "bulk": 2.0, "group": &"material", "icon": [&"hushstone", &"slate", &"ink"]},
 	&"bog_iron": {"name": "bog iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"rust"]},
 	&"frost_varnish": {"name": "frost varnish", "bulk": 1.0, "group": &"material", "icon": [&"flask", &"linen", &"rime"]},
+	# Its raw's own mark a step brighter: the same ice, ground clear.
+	&"deep_ice_lens": {"name": "deep ice lens", "bulk": 1.0, "group": &"material", "icon": [&"lens_ice", &"rime", &"lens"]},
 	&"tide_iron": {"name": "tide iron", "bulk": 1.5, "group": &"material", "icon": [&"ingot", &"rust", &"ash"]},
 	&"mono_edge": {"name": "filament edge", "bulk": 0.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"found", &"lens"]},
 	&"keeper_lens": {"name": "keeper lens", "bulk": 1.0, "group": &"found", "stuff": &"found", "icon": [&"lens", &"plate", &"lens"]},
