@@ -47,7 +47,7 @@ const ROUNDS := 3
 ## there. Mean absolute channel difference, 0..255.
 const THERE := 0.08
 ## What `perf KIND` this file answers (98_tour dispatches on it).
-const KINDS: Array[String] = ["colour", "features", "scale", "shadowpass", "sunpath", "match", "slate"]
+const KINDS: Array[String] = ["colour", "features", "scale", "shadowpass", "sunpath", "match", "slate", "lights"]
 ## The value the colour probe writes: the one the lit package measured with.
 const PROBE := Vector3(0.5, 0.25, 0.125)
 
@@ -68,8 +68,56 @@ static func run(tour: Node, game: Node, parts: PackedStringArray) -> bool:
 			return await match_frame(tour, game, parts)
 		"slate":
 			return await slate_cost(tour)
+		"lights":
+			return await lights_report(tour, game)
 	printerr("tour perf %s: no such measurement (%s)" % [parts[1], ", ".join(KINDS)])
 	return false
+
+
+## `perf lights`: which sources the lamp pool has lit HERE, and what the
+## renderer is allowed to shade. A web night was found missing whole pools (the
+## kiln's, a pole lamp's) against the desktop, and the web tier lights only
+## `Quality.lamp_count() - 1` sources while the desktop's `high` lights 23 -- so
+## what is asked is the list itself, per pool light: the source's kind, where it
+## is, how far from the camera's focus, its energy, whether it is visible and
+## whether it stands inside the frame. Diffed between builds, it says whether a
+## missing pool was never ASSIGNED or was assigned and not SHADED.
+static func lights_report(tour: Node, game: Node) -> bool:
+	await RenderingServer.frame_post_draw
+	var sys: Node = null
+	for s: Node in game.get("systems"):
+		if s.get("lantern_light") is OmniLight3D:
+			sys = s
+	if sys == null:
+		printerr("tour perf lights: no lights system")
+		return false
+	var cam := tour.get_viewport().get_camera_3d()
+	var rect := Rect2(Vector2.ZERO, tour.get_viewport().get_visible_rect().size)
+	var rig: Node = game.get("camera")
+	var focus: Vector3 = rig.get("target") if rig != null else Vector3.ZERO
+	print("tour perf lights (%s, quality %s): lamps budget %d, pool %d, max_lights_per_object %s, max_renderable_lights %s"
+		% [_renderer(), Quality.current_id(), Quality.lamp_count(), (sys.get("lights") as Array).size(),
+		str(ProjectSettings.get_setting("rendering/limits/opengl/max_lights_per_object", "default")),
+		str(ProjectSettings.get_setting("rendering/limits/opengl/max_renderable_lights", "default"))])
+	var pool: Array = sys.get("lights")
+	var assigned: Array = sys.get("_assigned")
+	var lit := 0
+	var framed := 0
+	for i in pool.size():
+		var l: OmniLight3D = pool[i]
+		var src: Variant = assigned[i] if i < assigned.size() else null
+		var what := "unassigned"
+		if src is Dictionary:
+			var d: Dictionary = src
+			what = "machine" if d.has("mob") else ("kind %d%s" % [int(d.get("kind", -1)), " neon" if d.has("neon") else ""])
+		var p := l.global_position
+		var inside := cam != null and not cam.is_position_behind(p) and rect.has_point(cam.unproject_position(p))
+		lit += 1 if l.visible else 0
+		framed += 1 if l.visible and inside else 0
+		print("tour perf lights   %2d %-18s at (%6.1f, %5.1f, %6.1f) %5.1f from focus  energy %5.2f  %s  %s"
+			% [i, what, p.x, p.y, p.z, p.distance_to(focus), l.light_energy, "LIT" if l.visible else "off", "in frame" if inside else "OUT of frame"])
+	print("tour perf lights: %d of %d pool lights lit, %d of them inside the frame" % [lit, pool.size(), framed])
+	return true
 
 
 static func _renderer() -> String:
