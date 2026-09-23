@@ -67,6 +67,11 @@ func setup(g: Game) -> void:
 		# ran before it cannot be compared with anything).
 		v = &"top" if _tool else StringName(str(PlayerSettings.value(&"playing.view")))
 	opens_over = v == &"shoulder"
+	# The player can look out to the horizon from the first frame, so the far
+	# land's silhouettes are built from the start on the far workers, behind the
+	# near chunks, instead of after the first look (world_view `stands_early`).
+	if g.view != null:
+		g.view.stands_early = true
 	var cam := g.camera
 	cam.sight_room = room
 	cam.shoulder = opens_over

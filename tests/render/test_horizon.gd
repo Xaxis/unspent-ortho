@@ -120,9 +120,10 @@ func test_the_far_world_stands_down_only_under_near_chunks() -> void:
 	view.queue_free()
 
 
-## THE ORTHOGRAPHIC GAME NEVER PAYS FOR THE SILHOUETTES. They cost most of the
-## world's models built once, and nothing but a camera that sees the horizon
-## shows them; a view that has never had one builds its far land and stops.
+## A VIEW NOBODY CAN LOOK OUT FROM NEVER PAYS FOR THE SILHOUETTES. They cost most
+## of the world's models built once, and nothing but a camera that sees the
+## horizon shows them; a view that has never had one, and was not told the
+## player can look out (`stands_early`), builds its far land and stops.
 func test_silhouettes_wait_for_the_horizon() -> void:
 	var w := _ridge()
 	w.props.append(WorldProp.new(0, PropKind.PINE, Vector2(20.5, 20.5), 0.0, 1.0))
@@ -251,3 +252,33 @@ func test_the_light_at_eye_level_is_the_drawn_sun() -> void:
 	sky.queue_free()
 	ortho.queue_free()
 
+
+## A GAME THE PLAYER CAN LOOK OUT FROM BUILDS THEM FROM THE START. The first
+## look over the shoulder showed bare far land for seconds while the silhouettes
+## were started only then; the view over the shoulder now asks for them at
+## setup, and they come in on the far workers behind the near land with no
+## horizon ever in sight.
+func test_silhouettes_come_in_before_the_first_look() -> void:
+	var w := _ridge()
+	w.props.append(WorldProp.new(0, PropKind.PINE, Vector2(20.5, 20.5), 0.0, 1.0))
+	var cam := Camera3D.new()
+	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+	cam.rotation = Vector3(deg_to_rad(-CameraRig.PITCH_DEG), 0.0, 0.0)
+	tree.root.add_child(cam)
+	cam.make_current()
+	var view := WorldView.new()
+	view.setup(w)
+	view.stands_early = true
+	tree.root.add_child(view)
+	view.focus = Vector2(20, 20)
+	var deadline := Time.get_ticks_msec() + 10000
+	while not view.far.stands_done(w.size) and Time.get_ticks_msec() < deadline:
+		await tree.process_frame
+	check(view.far.stands_done(w.size), "the silhouettes are in with the horizon never seen")
+	view.queue_free()
+	cam.queue_free()
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--size=64", "--seed=4"])))
+	check(g.view.stands_early, "and a running game asks for them")
+	g.free()
