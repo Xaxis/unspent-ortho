@@ -364,3 +364,40 @@ func test_the_rig_stands_where_the_room_allows() -> void:
 	cam._process(DT)
 	lt(cam.global_position.distance_to(head), full * 0.5, "and let back out gently, not snapped")
 	_done()
+
+
+# --- the web's near blur -------------------------------------------------------
+
+## THE WEB'S NEAR BLUR IS THE ORTHOGRAPHIC FRAME'S AND NOBODY ELSE'S. It is a
+## plane in the rig's shaft pass worked out from the flat frame's depth (about
+## 25 units), and the pass draws over whatever camera is current: under the lens
+## and over the shoulder it blurred everything within 25 units of the eye, and
+## under 96_eye's stand the same. Asked of the pass's own uniform.
+func test_the_web_near_blur_stands_down_under_the_lens() -> void:
+	Quality._now = &"web"
+	var g := await _make()
+	var cam := g.camera
+	cam.sight_room = Callable()
+	var pass_ := cam.get_node_or_null("shaft_pass") as MeshInstance3D
+	check(pass_ != null, "the web tier runs the shaft pass")
+	if pass_ == null:
+		Quality._now = &""
+		_done()
+		return
+	var m := pass_.material_override as ShaderMaterial
+	_step(cam, 10)
+	gt(float(m.get_shader_parameter("near_begin")), 0.0, "from above, the near blur is on")
+	cam.shoulder = true
+	_step(cam, 40)
+	lt(float(m.get_shader_parameter("near_begin")), 0.0, "over the shoulder it is off")
+	cam.shoulder = false
+	_step(cam, 40)
+	gt(float(m.get_shader_parameter("near_begin")), 0.0, "and back on from above")
+	var other := Camera3D.new()
+	g.add_child(other)
+	other.make_current()
+	_step(cam, 2)
+	lt(float(m.get_shader_parameter("near_begin")), 0.0, "and off while another camera draws")
+	other.queue_free()
+	Quality._now = &""
+	_done()
