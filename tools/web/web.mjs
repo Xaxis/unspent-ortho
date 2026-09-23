@@ -43,6 +43,8 @@
 //                    on disk and is not available to a tour played here.
 //   --frames=DIR     where a tour's frames are kept
 //   --window=WxH     the page's size in CSS pixels (default 1440x789; a tour defaults to 1920x1080)
+//   --snap=RE:SECS   screenshot the page SECS after the first console line matching RE, from
+//                    outside the engine (what a player sees while the engine is blocked)
 //   --uncapped       let the page draw as fast as it can (no vsync, no frame-rate limit), so a
 //                    frame's cost can be read off its interval (perf scale in a tour)
 import http from 'node:http';
@@ -316,6 +318,9 @@ const page = await context.newPage();
 let tourEnded = false;
 const failures = [];
 const lines = [];
+const snapAt = typeof opt.snap === 'string' && opt.snap.includes(':')
+  ? { re: new RegExp(opt.snap.slice(0, opt.snap.lastIndexOf(':'))), secs: Number(opt.snap.slice(opt.snap.lastIndexOf(':') + 1)) } : null;
+let snapped = false;
 let t0 = Date.now();
 const since = () => ((Date.now() - t0) / 1000).toFixed(2);
 page.on('console', (m) => {
@@ -330,6 +335,21 @@ page.on('console', (m) => {
   if (m.type() === 'error' && !tourEnded) failures.push(`console error: ${text}`);
   if (touring && /^tour .* done ->/.test(text)) tourEnded = true;
   if (/^web FAIL/.test(text)) failures.push(text);
+  // --snap=REGEX:SECS: photograph the page from OUTSIDE the engine that long
+  // after a console line matches, once. A tour cannot shoot while its own engine
+  // is blocked (a world grown in the frame a key was pressed), and what the player
+  // sees then is exactly the question; how long the screenshot itself took says
+  // whether the page could answer at all.
+  if (snapAt && !snapped && snapAt.re.test(text)) {
+    snapped = true;
+    setTimeout(async () => {
+      const asked = Date.now();
+      const file = `${opt.out}_snap.png`;
+      await page.screenshot({ path: file, timeout: 120000 }).then(
+        () => console.log(`web snap ${file} ${snapAt.secs} s after /${snapAt.re.source}/, taken in ${((Date.now() - asked) / 1000).toFixed(1)} s`),
+        (e) => console.log(`web snap: the page did not answer for ${((Date.now() - asked) / 1000).toFixed(1)} s (${e.message.split('\n')[0]})`));
+    }, snapAt.secs * 1000);
+  }
 });
 // The wasm heap only grows, so the largest size seen is the most the run held,
 // and a browser's heap has a ceiling a desktop build never meets: a world that
