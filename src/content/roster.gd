@@ -269,6 +269,45 @@ const DEFS := {
 		"where": {"countries": GREEN_COUNTRIES, "grounds": ["sand", "shingle", "gravel", "strand"], "hours": [6, 20]},
 	},
 
+	# --- The Frost Sea's own worker (docs/LANDSCAPES.md §2) -------------------
+	# A low sled with a circular saw and one amber lens, working the ice for the
+	# soundings line. It keeps to the frost sea and to the ice: the one machine
+	# kind that works only there, which is what gives a landscape a machine of
+	# its own (docs/ROADMAP.md M3, the plan layer). A worker: it turns on being
+	# blocked or struck (Roles.TURNS) and on nothing else.
+	#
+	# Its errand is meant to run along the machines' survey bearing, and its cut
+	# is meant to open a line of BLACKWATER behind it that refreezes over thirty
+	# world minutes. Neither is here: an errand's line is snapped to the compass
+	# by MobState, and the cut is shared system 5 (docs/LANDSCAPES.md, the
+	# time-varying ground edit), which lands once for this, the listener's ring
+	# and the tide together. Until then it is a sled that saws the ice and turns
+	# on whoever gets in its way.
+	&"icesaw": {
+		"model": &"icesaw", "role": &"worker", "machine": true, "approach": &"errand", "stretch": 12, "part": &"front",
+		"pace": 5.0, "dash": 6.0, "quick": 300, "radius": 0.55, "height": 0.95, "life": 58,
+		"sees": 8, "hears": 5, "racket": 16, "reach": 2, "ready": 2, "forget": 12, "tether": 30, "safe": 14,
+		"nerve": 100, "invuln": 420, "through": true, "disposition": &"indifferent", "overrun": 0.8,
+		"bite": {"swing": [460, 130, 420, 640], "reach": 1.2, "width": 1.3, "dmg": 3, "knock": 7.0, "knock_ms": 260},
+		# Chance 3, not a coast worker's 5: the plan's own things are the rarest
+		# thing on this sea (frost_sea.gd's scatter says so of its works), and a
+		# sled on every frame of ice would say the opposite.
+		#
+		# IT WORKS THE COLD HOURS. Sea ice is hardest before dawn and a cut made
+		# then has closed behind the sled by morning, so the plan saws by night
+		# and the sheet stays walkable for its rigs by day: a player crossing at
+		# noon meets the refrozen leads, and at night the sled making them. That
+		# is the collapse hazard the spec builds on (docs/LANDSCAPES.md §2),
+		# stated as an hour. MEASURED, too: a sled that fits every ice tile by
+		# day ends a roll early wherever the snowfield lineman's spawn ring
+		# crosses the seam -- `Spawner.roll` returns at the FIRST tile anything
+		# fits -- and tests/gear_economy/test_line_coil_door.gd went 14 to 12 of
+		# 36,000 against a bar of more than 12, at chance 5 and at 3 alike. The
+		# lineman is rolled at noon; the sled is never out then.
+		"takes": 60.0, "drops": 2, "linger": 40.0, "chance": 3,
+		"where": {"countries": ["frost_sea"], "grounds": ["ice"], "hours": [18, 6]},
+	},
+
 	# --- Sentinels: the keeper a landscape has (docs/VISION.md §3) ------------
 	# A sentinel's body is a roster row like any other machine's, so everything
 	# that already reads a machine takes it as one: the senses, the plan's

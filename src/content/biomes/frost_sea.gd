@@ -119,6 +119,10 @@ static func make() -> BiomeDef:
 		&"longlegs": {"weight": 1.0},
 		&"lineman": {"weight": 0.8, "grounds": ["ice", "snow", "rock", "gravel"]},
 		&"watcher": {"weight": 0.7},
+		# Its own: the saw sled that works the ice for the soundings line
+		# (roster.gd `icesaw`). Only on the ice, because a sled has nowhere else
+		# to go.
+		&"icesaw": {"weight": 0.9, "grounds": ["ice"]},
 	}
 	d.landmarks = [&"leaning_mast", &"blinking_stack", &"sump_pump", &"cast_stones"]
 	# Its keeper listens through the ice (src/core/sentinel/designs/listener.gd).

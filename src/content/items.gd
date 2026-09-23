@@ -100,6 +100,9 @@ const DEFS := {
 	&"plasma_torch": {"name": "torch", "bulk": 2.0, "group": &"found", "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0,
 		"wick": 3, "dmg": 12, "swing": [150, 110, 180, 220], "reach": 1.1, "width": 1.3, "knock": 7.0, "knock_ms": 220},
 	&"wick": {"name": "charge", "bulk": 0.5, "group": &"found"},
+	# A tooth off the frost sea's saw sled (EliteStock.SPOILS icesaw): machine
+	# steel, still bright where the ice ran over it.
+	&"saw_tooth": {"name": "saw tooth", "bulk": 0.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"plate", &"lens"]},
 
 	# --- Materials (§9.4) ---
 	# Shore goods are lighter than the source's (3, 2, 2, 5; food 1): the creel

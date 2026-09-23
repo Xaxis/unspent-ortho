@@ -98,6 +98,11 @@ const SPOILS := {
 	&"hauler": [{"item": &"pulse_hammer", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
 	&"sweeper": [{"item": &"arc_cut", "chance": 0.12, "rarity": Rarity.UNCOMMON}],
 	&"lineman": [{"item": &"beam_lance", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
+	# The frost sea's saw sled: what comes off the blade that cuts the ice. A
+	# tooth and not a material, because docs/LANDSCAPES.md §2 gives the frost sea
+	# its elite through a PROP (lens ice off a pressure block) and a landscape
+	# holds one gate, not two.
+	&"icesaw": [{"item": &"saw_tooth", "chance": 0.45, "count": Vector2i(1, 2)}],
 }
 
 
