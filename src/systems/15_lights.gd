@@ -1186,7 +1186,7 @@ func _assign(focus: Vector2, hour: float) -> void:
 		var d := p.pos.distance_squared_to(focus)
 		if d > REACH * REACH or not source_lit(s, hour):
 			continue
-		wanted.append([d, s])
+		wanted.append([d, s, _frame_tier(s)])
 	# A live machine competes for the same pool on distance alone: the thing two
 	# tiles away lighting the ground beats a window twelve tiles off, which is
 	# what a player standing next to it would expect and what keeps the budget.
@@ -1196,8 +1196,8 @@ func _assign(focus: Vector2, hour: float) -> void:
 		var mob: Node = s.mob
 		if not bool(mob.get("alive")):
 			continue
-		wanted.append([(mob.get("pos") as Vector2).distance_squared_to(focus), s])
-	wanted.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+		wanted.append([(mob.get("pos") as Vector2).distance_squared_to(focus), s, _frame_tier(s)])
+	wanted.sort_custom(pool_before)
 	var chosen: Array = []
 	for i in mini(wanted.size(), lights.size()):
 		chosen.append(wanted[i][1])
@@ -1210,6 +1210,54 @@ func _assign(focus: Vector2, hour: float) -> void:
 		var free := _assigned.find(null)
 		if free >= 0:
 			_assigned[free] = s
+
+
+## THE POOL GOES TO WHAT THE PLAYER SEES FIRST. It went by distance from the
+## focus alone, so a small budget lit lights behind the camera while a lamp in
+## the frame went dark: at burning dusk the web tier's seven lit two sources out
+## of the frame and never the stolen neon burning in the middle of it (`perf
+## lights`, 2026-09-23). A village at night reads by its pools, so a pool missing
+## from the frame costs more than one missing off it.
+##
+## THREE TIERS, NOT TWO. Asking only whether a light's REACH touches the frame was
+## tried and fooled: widened by its whole range, almost every nearby lamp's reach
+## touches the frame, every candidate tied and the order fell back to distance --
+## the same seven, the neon still dark. So: 0, the light itself is on screen (the
+## heart of its pool is in the picture); 1, only its reach spills in; 2, the rest.
+## Nearest first within a tier. Asked of the live camera through
+## `CameraRig.sees_point`, so it holds under the lens; never through
+## `sees_ground`, whose raise for a body's head counted a lamp just below the
+## frame as on screen and kept the neon dark a second time. On every tier: it is
+## a rule about which lights matter, not a stand-in for the web.
+static func pool_before(a: Array, b: Array) -> bool:
+	if int(a[2]) != int(b[2]):
+		return int(a[2]) < int(b[2])
+	return float(a[0]) < float(b[0])
+
+
+## A machine's source carries `at` as a placeholder (zero until its light is
+## placed), so it is asked where the BODY stands, not where its dictionary says.
+func _frame_tier(s: Dictionary) -> int:
+	var foot: Vector3
+	if s.has("mob"):
+		foot = game.world.to_3d((s.mob as Node).get("pos") as Vector2)
+	else:
+		var at: Variant = s.get("at")
+		foot = at if at is Vector3 else game.world.to_3d(s.prop.pos)
+	return frame_tier(game.camera, foot, float(s.get("range", 0.0)))
+
+
+## A light's tier for the pool, asked through the POINT door (`sees_point`), never
+## the body's: 0 its own position is on screen, 1 only its reach spills in, 2 the
+## rest. With no camera every light counts as on screen, as it always did.
+static func frame_tier(cam: Camera3D, at: Vector3, reach: float) -> int:
+	if cam == null:
+		return 0
+	if CameraRig.sees_point(cam, at, 0.0):
+		return 0
+	if CameraRig.sees_point(cam, at, reach):
+		return 1
+	return 2
 
 
 func _update_glows(focus: Vector2, hour: float) -> void:

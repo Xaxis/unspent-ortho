@@ -397,6 +397,23 @@ static func sees_ground(cam: Camera3D, foot: Vector3, margin: float, head := SEE
 	return false
 
 
+## Whether a POINT lands inside the frame, widened by `margin` world units -- a
+## light's own door. `sees_ground` also asks a point `SEEN_HEAD` above the foot,
+## because a BODY standing just below the frame's edge still shows its head; a
+## lamp is not a body, and handed through that door it counted as on screen by a
+## point two units above it (the lamp pool, 2026-09-23). Same guards: nothing
+## behind the near plane counts, and the margin is taken at the frame's own scale.
+static func sees_point(cam: Camera3D, at: Vector3, margin: float) -> bool:
+	if cam == null or not cam.is_inside_tree():
+		return false
+	var rect: Vector2 = cam.get_viewport().get_visible_rect().size
+	var out := margin / maxf(units_per_pixel_of(cam, rect.y), 1e-6)
+	if (cam.global_transform.affine_inverse() * at).z > -cam.near:
+		return false
+	var s := cam.unproject_position(at)
+	return s.x >= -out and s.x <= rect.x + out and s.y >= -out and s.y <= rect.y + out
+
+
 ## The rig's own, for the viewport it is drawing into.
 func units_per_pixel() -> float:
 	var rows := float(get_viewport().get_visible_rect().size.y) if is_inside_tree() else float(UiBase.SIZE.y)
