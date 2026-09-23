@@ -68,14 +68,16 @@ static func make() -> BiomeDef:
 	# with no cover anywhere on it.
 	d.night_sky = 1.3
 	# Its own things (docs/LANDSCAPES.md §3): what the glassing cast, burst and
-	# caught. Declared here so the economy can read that fulgurite is this
-	# landscape's and nobody else's; the scatter that lays them is phase B, so
-	# until then they are declared and not yet dealt.
+	# caught, dealt by `_scatter`, and the plan's strike rod, stood by the
+	# strike fields (`_works`) and named here because a prop standing in a
+	# landscape that does not declare it is off-theme.
 	d.props = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.DEBRIS, PropKind.WRECKAGE,
 		PropKind.SURVEY, PropKind.STANDING_STONE,
-		PropKind.FULGURITE, PropKind.GLASS_BLISTER, PropKind.FUSED_CAR]
+		PropKind.FULGURITE, PropKind.GLASS_BLISTER, PropKind.FUSED_CAR, PropKind.STRIKE_ROD]
 	d.ore = [[PropKind.STONE_ORE, 0.022]]
-	d.sites = {"tips": 1, "stone_circles": 1}
+	# The crater (SiteKinds): a bowl the glassing left, cars caught in it,
+	# claimed as a rate per 1,000 tiles of each region.
+	d.sites = {"tips": 1, "stone_circles": 1, "crater": 0.1}
 	d.beached_wrecks = false
 	d.pools = {"order": 4, "cell": 52, "chance": 0.16, "r_min": 1.4, "r_max": 2.6, "ground": Ground.SALT}
 	# Nobody drinks here (docs/LANDSCAPES.md §3 PEOPLE): no villages, and no
@@ -123,6 +125,14 @@ static func make() -> BiomeDef:
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter
+	# The strike fields (docs/LANDSCAPES.md §3 PLAN), one to a region.
+	GenWorks.register(&"glass_desert", {
+		"host": load("res://src/content/biomes/glass_desert.gd"),
+		"works": &"_works",
+		"vignettes": [[5, &"wreck"], [4, &"debris_field"], [3, &"wreck_parts"], [3, &"survey_posts"],
+			[2, &"tipped_signs"], [2, &"grave_cluster"], [1, &"shelter"]],
+		"survey": [[0.3, &"sign_beside"]],
+	})
 	# The web's day contrast here (BiomeDef.web_contrast): inferred from the bonelands: a bright floor.
 	d.web_contrast = 1.1
 	return d
@@ -152,12 +162,23 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.DEBRIS
 		if r < 0.024:
 			return PropKind.WRECKAGE
+		# Fused tubes standing up out of the drift where old strikes came down,
+		# in knots rather than evenly: two or three a frame.
+		if r > 0.30 and r < 0.310 + maxf(0.0, t.clump[i]) * 0.05:
+			return PropKind.FULGURITE
 		return PropKind.STANDING_STONE if r > 0.70 and r < 0.705 else BiomeScatter.NONE
 	if g == Ground.ROCK or g == Ground.SCREE:
 		if r < 0.038:
 			return PropKind.BOULDER
 		if r < 0.050:
 			return PropKind.STONE_ORE
+		# The glass itself (ROCK here until `Ground.GLASS` exists, shared system
+		# 3): a gas pocket burst as it cooled about once a frame, and a car
+		# caught in the sheet about one frame in three.
+		if g == Ground.ROCK and r > 0.30 and r < 0.3036:
+			return PropKind.GLASS_BLISTER
+		if g == Ground.ROCK and r > 0.40 and r < 0.4014:
+			return PropKind.FUSED_CAR
 		return BiomeScatter.NONE
 	if g == Ground.GRAVEL:
 		if r < 0.020:
@@ -166,3 +187,49 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.SALT:
 		return PropKind.DEBRIS if r < 0.010 else BiomeScatter.NONE
 	return BiomeScatter.NONE
+
+
+## THE STRIKE FIELD (docs/LANDSCAPES.md §3 PLAN): the plan draws the lightning
+## down on purpose. A ruled grid of rods, three by four every four tiles, calls
+## dry-storm strikes into the sand, and the fused tubes are harvested at their
+## feet; a conveyor carries them off one edge and a post stands at each corner.
+## The scorch mark is the burns round each rod.
+##
+## ONE IN EVERY REGION, because the anvil dens at its region's field and starves
+## on its rods (designs/anvil.gd feeds: STRIKE_ROD) -- the crags' bench has the
+## reasoning (`GenWorks.flattest_in`). A field that cannot stand FED rods is
+## taken back whole, so no keeper is left a larder one theft empties.
+const FED := 5
+
+
+static func _works(L: Object) -> void:
+	var c: GenContext = L.c
+	var rng: RandomNumberGenerator = L.rng
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	for k in (L.rects as Array).size():
+		var p := GenWorks.flattest_in(L, k, 6, [Ground.SAND, Ground.ROCK], 30.0)
+		if p.x < 0:
+			continue
+		var at := Vector2(p) + Vector2(0.5, 0.5)
+		var first := c.w.props.size()
+		var rods := 0
+		for gy in range(-1, 2):
+			for gx: float in [-1.5, -0.5, 0.5, 1.5]:
+				var q := at + d * gx * 4.0 + nrm * gy * 4.0
+				if GenWorks.put_on_step(L, PropKind.STRIKE_ROD, q, d.angle(), 0.3, 1.0) == null:
+					continue
+				rods += 1
+				# What the rod called down, fused at its foot.
+				if rng.randf() < 0.6:
+					GenWorks._about(L, PropKind.FULGURITE, q, rng.randi_range(1, 2), 0.8, 1.8)
+		if rods < FED:
+			c.w.props.resize(first)
+			continue
+		var half := Vector2(8.0, 6.0)
+		GenWorks._record(c, &"strike_field", at, d, half, GenWorks.SCORCH)
+		for sx: float in [-1.0, 1.0]:
+			for sy: float in [-1.0, 1.0]:
+				GenWorks._put(L, PropKind.SURVEY, at + d * half.x * sx + nrm * half.y * sy, d.angle(), -99, 0.0, true)
+		GenWorks._run(L, PropKind.CONVEYOR, at + d * (half.x + 0.5), d, rng.randi_range(4, 6), 2.5, -99, 0.1)
+		GenWorks._clear_rect(c, L.occ, at, d, half)

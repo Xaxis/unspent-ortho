@@ -34,10 +34,6 @@ frost_sea land.landmark
 frost_sea player.only_in
 glass_desert land.frames
 glass_desert land.landmark
-glass_desert land.own_props
-glass_desert land.site
-glass_desert plan.depot
-glass_desert plan.work_props
 glass_desert player.only_in
 green_towers land.frames
 green_towers land.landmark
@@ -69,7 +65,6 @@ machine_city plan.keeper
 machine_city plan.machine
 machine_city plan.work_props
 machine_city player.only_in
-machine_city player.signature
 mesas land.frames
 mesas land.landmark
 mesas land.own_props
@@ -132,7 +127,6 @@ slums plan.depot
 slums plan.keeper
 slums plan.work_props
 slums player.only_in
-slums player.signature
 snowfield land.frames
 snowfield land.landmark
 snowfield land.own_props
@@ -152,7 +146,6 @@ sulphur_jungle player.only_in
 the_crags land.frames
 the_crags land.landmark
 the_crags player.only_in
-the_crags player.signature
 the_middens land.frames
 the_middens land.landmark
 the_middens land.site

@@ -173,8 +173,12 @@ func _judge(d: BiomeDef, worlds: Array[WorldData]) -> Dictionary:
 		var placed := _placed_own(w, d, own)
 		if placed.is_empty():
 			return false
+		# Taken from, stood against, or answered in `Takes.GIVES_NOTHING`, which
+		# says what a thing does to a body instead (a roof, cover, a crossing):
+		# the glass blister is shelter a body steps INTO, so it is neither solid
+		# nor a source, and it is the landscape's shade.
 		for k: int in placed:
-			if not Takes.table().has(k) and PropKind.SOLID[k] <= 0.0:
+			if not Takes.table().has(k) and PropKind.SOLID[k] <= 0.0 and not Takes.GIVES_NOTHING.has(k):
 				return false
 		return true)
 	return out
