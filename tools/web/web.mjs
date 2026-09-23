@@ -176,6 +176,19 @@ const launchArgs = [...(opt.swiftshader
   // and one that costs 15 both read as 16.7. Measuring cost wants them let go.
   ...(opt.uncapped ? ['--disable-gpu-vsync', '--disable-frame-rate-limit'] : [])];
 const browser = await chromium.launch({ headless: !opt.headed, args: launchArgs });
+// A HARNESS MUST NEVER BE ABLE TO WAIT FOREVER. Every wait below has its own
+// limit, and still a passing run once sat 4.5 hours after printing "web OK":
+// nothing called exit, Chromium outlived browser.close(), and the server kept
+// its keep-alive sockets, so node's loop never emptied. This is the backstop:
+// past --timeout x 12 seconds the run is killed, and it says where it was.
+// Unref'd, so the timer itself can never be what keeps a finished run alive.
+let phase = 'launching the browser';
+const hardCap = Number(opt.timeout) * 12;
+setTimeout(() => {
+  console.log(`web FAILED: the harness ran past its ${hardCap} s deadline, stuck ${phase}`);
+  try { browser.process()?.kill('SIGKILL'); } catch {}
+  process.exit(2);
+}, hardCap * 1000).unref();
 // Not the base's 16:9: the game (and the shell before it) sit in black bars.
 const [winW, winH] = (opt.window || (touring ? '1920x1080' : '1440x789')).split('x').map(Number);
 const context = await browser.newContext({ viewport: { width: winW, height: winH }, deviceScaleFactor: Number(opt.dpr || 1), acceptDownloads: true });
@@ -361,6 +374,12 @@ const sampleHeap = () => page.evaluate(() => {
   try { return window.__wasmMemory ? window.__wasmMemory.buffer.byteLength : -1; } catch (e) { return -1; }
 }).then((n) => { heapMost = Math.max(heapMost, n); }).catch(() => {});
 const heapTimer = setInterval(sampleHeap, 2000);
+// A wait on a page that may have stopped answering, bounded: resolves with
+// `null` after `ms` instead of never. A tour quits its engine before the run
+// closes down, and `page.evaluate` into such a page has no limit of its own --
+// the last heap sample after a tour waited on one for 17 minutes, until the
+// deadline killed it.
+const bounded = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), ms))]);
 page.on('pageerror', (e) => { failures.push(`page error: ${e.message}`); console.log(`  [${since()}s pageerror] ${e.message}`); });
 // The engine's loader cancels its first fetch of the wasm once it has the bytes
 // streaming: a cancelled request only fails the run if that URL never answered.
@@ -541,6 +560,7 @@ t0 = Date.now();
 await page.goto(url);
 // The shell, while the engine's wasm is held back, then the engine's first page
 // frame once the shell has gone: the same rectangle, the same line, never shorter.
+phase = 'waiting for the shell to draw';
 if (await page.waitForFunction(() => window.unspentShell && window.unspentShell().shown, null, { timeout: 20000 }).catch(() => null)) {
   await page.waitForTimeout(400);
   const shellFile = `${opt.out}_shell.png`;
@@ -564,7 +584,9 @@ if (await page.waitForFunction(() => window.unspentShell && window.unspentShell(
   releaseWasm();
   failures.push('the shell never drew its page');
 }
+phase = 'booting the build';
 const first = await boot('', 0);
+phase = touring ? `playing the tour ${tourName}` : 'playing the player flow';
 if (first && touring) {
   result.first_frame_s = first.t - wasmHeldMs / 1000;
   console.log(`web first frame ${result.first_frame_s.toFixed(2)} s after navigation (${first.text}); playing ${opt.tour}`);
@@ -687,6 +709,7 @@ if (first && !touring && opt['boot-only']) {
   }
 }
 
+phase = 'closing down';
 for (const [u, why] of aborted) if (!answered.has(u)) failures.push(`request never answered: ${u} (${why})`);
 let wire = 0;
 for (const r of served.values()) wire += r.bytes;
@@ -701,10 +724,12 @@ console.log(`web served ${(wire / 1048576).toFixed(1)} MB over the wire (${big.j
 // that cannot be grown here is not a world the game can ship. Read off the
 // shell's own `engine`, which a classic script's top-level const leaves in reach.
 clearInterval(heapTimer);
-await sampleHeap();
+await bounded(sampleHeap(), 10000);
 console.log(heapMost > 0 ? `web heap ${(heapMost / 1048576).toFixed(0)} MB, the most it held (sampled every 2 s)` : 'web heap: not readable from this page');
-await browser.close();
-if (!live) server.close();
+await bounded(browser.close(), 15000);
+// close() has returned with Chromium still running; make sure it is gone.
+try { browser.process()?.kill('SIGKILL'); } catch {}
+if (!live) { server.closeAllConnections?.(); server.close(); }
 if (failures.length) {
   for (const f of [...new Set(failures)]) console.log(`web FAILED: ${f}`);
   process.exit(1);
@@ -714,3 +739,5 @@ if (touring) parts.push(`tour ${tourName} played`);
 if (result.new_game_s !== undefined) parts.push(`new game ${result.new_game_s.toFixed(2)} s after Enter`);
 if (result.reload_s !== undefined) parts.push(`reload ${result.reload_s.toFixed(2)} s`);
 console.log(`web OK: ${parts.join(', ')}`);
+// Said, not hoped: a passing run ends here whatever is still holding the loop.
+process.exit(0);

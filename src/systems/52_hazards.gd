@@ -108,6 +108,8 @@ func place() -> Hazards.Place:
 	p.in_water = Ground.is_water(game.world.ground_at(floori(pos.x), floori(pos.y)))
 	p.fire = _fire()
 	p.shelter = _shelter()
+	p.pos = pos
+	p.near_props = _near_props(pos)
 	# The realm decides whether there is a sky, and it is the SAME question
 	# 20_realms asks to set `SkyLight.closed`. Asked here rather than derived
 	# from the landscape, because no landscape file may say the hour has stopped
@@ -121,6 +123,24 @@ func _fire() -> float:
 	if f == null:
 		return 0.0
 	return clampf(1.0 - f.pos.distance_to(game.player.pos) / FIRE_REACH, 0.0, 1.0)
+
+
+## The standing things near enough to press the body by their own kind's rows
+## (`PropHazards.TABLE`), for `Hazards._prop_shift`. Read off the tile index the
+## same way `_shelter` and 16_vents read it, never off `world.props`: with the
+## table's furthest reach at 4 tiles that is a 9x9 block of cell lookups, about
+## 81 dictionary reads and a handful of appends, once every SWEEP — measured
+## under `tests/hazards/test_prop_hazards.gd` at well under a tenth of a
+## millisecond, against a `world.props` walk that would be tens of thousands
+## of reads on a real island. Only kinds with a row are handed over, so `felt`
+## never has to look a boulder up, and a thing already taken presses nothing.
+func _near_props(pos: Vector2) -> Array:
+	var out: Array = []
+	for p: WorldProp in game.query.props_near(pos, PropHazards.reach_most()):
+		if PropHazards.near(p.kind).is_empty() or game.world.depleted.has(p.id):
+			continue
+		out.append(p)
+	return out
 
 
 ## A roof over you, a village around you, or a crown above you.

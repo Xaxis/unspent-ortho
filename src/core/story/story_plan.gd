@@ -43,15 +43,22 @@ const SPINE: Array[Dictionary] = [
 ## Colour, one local per landscape (docs/STORY.md §8): each stands at the village
 ## of their own land nearest to where he woke, on whatever body that is. Never
 ## required and never ordered: a world not dealt that land has no such local,
-## and meeting one moves the journey nowhere. The coast's is Maren, at `home`.
+## and meeting one moves the journey nowhere. Maren keeps the fire at `home`; the
+## coast's local is at the next coast village along, `apart` so it is never hers.
+##
+## A land nobody lives in (`villages = 0`) still has a face: they camp by its
+## landmark nearest home, because a landmark is the one per-region place every
+## land holds. So does the mesas, whose single village is not grown on every
+## world (seed 42 has none) while its landmarks are.
 const LOCALS: Array[Dictionary] = [
+	{"id": &"local_coast", "needs": &"village", "land": &"coast", "nearest": true, "ordered": false, "apart": 24.0},
 	{"id": &"local_bonelands", "needs": &"village", "land": &"bonelands", "nearest": true, "ordered": false},
 	{"id": &"local_burning", "needs": &"village", "land": &"burning", "nearest": true, "ordered": false},
 	{"id": &"local_drowned_city", "needs": &"village", "land": &"drowned_city", "nearest": true, "ordered": false},
 	{"id": &"local_green_towers", "needs": &"village", "land": &"green_towers", "nearest": true, "ordered": false},
 	{"id": &"local_grey_orchards", "needs": &"village", "land": &"grey_orchards", "nearest": true, "ordered": false},
 	{"id": &"local_machine_city", "needs": &"village", "land": &"machine_city", "nearest": true, "ordered": false},
-	{"id": &"local_mesas", "needs": &"village", "land": &"mesas", "nearest": true, "ordered": false},
+	{"id": &"local_mesas", "needs": &"landmark", "land": &"mesas", "nearest": true, "ordered": false},
 	{"id": &"local_moss", "needs": &"village", "land": &"moss", "nearest": true, "ordered": false},
 	{"id": &"local_pinewood", "needs": &"village", "land": &"pinewood", "nearest": true, "ordered": false},
 	{"id": &"local_ruined_metropolis", "needs": &"village", "land": &"ruined_metropolis", "nearest": true, "ordered": false},
@@ -61,6 +68,10 @@ const LOCALS: Array[Dictionary] = [
 	{"id": &"local_snowfield", "needs": &"village", "land": &"snowfield", "nearest": true, "ordered": false},
 	{"id": &"local_sulphur_jungle", "needs": &"village", "land": &"sulphur_jungle", "nearest": true, "ordered": false},
 	{"id": &"local_the_crags", "needs": &"village", "land": &"the_crags", "nearest": true, "ordered": false},
+	{"id": &"local_frost_sea", "needs": &"landmark", "land": &"frost_sea", "nearest": true, "ordered": false},
+	{"id": &"local_glass_desert", "needs": &"landmark", "land": &"glass_desert", "nearest": true, "ordered": false},
+	{"id": &"local_server_fields", "needs": &"landmark", "land": &"server_fields", "nearest": true, "ordered": false},
+	{"id": &"local_the_middens", "needs": &"landmark", "land": &"the_middens", "nearest": true, "ordered": false},
 	{"id": &"local_limestone_caves", "needs": &"village", "land": &"limestone_caves", "realm": &"underground", "nearest": true, "ordered": false},
 ]
 

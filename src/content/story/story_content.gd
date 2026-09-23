@@ -67,7 +67,7 @@ const ARCS := {
 	&"the_lands": {
 		"title": "the lands",
 		"note": "What the people of each land have noticed, and nobody wrote down.",
-		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count", &"same_weight", &"old_timetable", &"harvest_day", &"kerb_moves", &"more_goes_in", &"survey_bends", &"vents_keep_time", &"under_the_leaves"],
+		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count", &"same_weight", &"old_timetable", &"harvest_day", &"kerb_moves", &"more_goes_in", &"survey_bends", &"vents_keep_time", &"under_the_leaves", &"wrack_new", &"sea_froze", &"glassed_nothing", &"fields_tune", &"words_tipped"],
 	},
 	&"priya": {
 		"title": "Priya",
@@ -155,6 +155,11 @@ const BEATS := {
 	&"scrap_war": {"short": "both ours", "arc": &"the_lands", "says": "The scrapwood was a battle between two armies of the same side, each ordered to fire because the other had."},
 	&"others_before": {"reveal": true, "short": "two before you", "arc": &"the_lands", "says": "Two men came out of the water before you. The city filed them both. They had your face."},
 	&"the_count": {"short": "the number", "arc": &"the_lands", "says": "A number on the wires over the snow gets smaller every winter. It may be how many people are left."},
+	&"wrack_new": {"short": "clean tubing", "arc": &"the_lands", "says": "The tide brings in tubing and tank glass from past the point. Everything else in the sea is seventy years old, and that is new."},
+	&"sea_froze": {"short": "the sea froze", "arc": &"the_lands", "says": "The frost sea was open water in living memory. It froze the winter the machines' posts went out on it, and has not thawed since."},
+	&"glassed_nothing": {"short": "aimed at nothing", "arc": &"the_lands", "says": "Nothing ever stood where the glass desert is. Whatever fused it was aimed at empty sand."},
+	&"fields_tune": {"short": "a few bars", "arc": &"the_lands", "says": "Some nights the server fields' hum drops into a few bars of a tune, the same few, and stops, like somebody who has lost the rest."},
+	&"words_tipped": {"short": "anything with words", "arc": &"the_lands", "says": "What the machines tip in the Middens is ours, never theirs: phones, drives, paper. Anything that ever had words in it."},
 	&"priya_warned": {"short": "do not merge", "arc": &"priya", "says": "Priya Nand told you not to merge the self-model. You merged it anyway."},
 	&"priya_suspected": {"short": "the wrong thing", "arc": &"priya", "says": "Priya thought you were selling HALCYON to a rival. She was right that you were lying."},
 	&"priya_reported": {"reveal": true, "short": "a liaison", "arc": &"priya", "says": "Priya took what she suspected of you to a government liaison called Calloway."},
@@ -2176,6 +2181,132 @@ const TALKS := {
 			&"count": {
 				"says": ["One of them gets smaller every winter. Only that one.", "I think it's us."],
 				"beats": [&"the_count"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	# --- the lands nobody lives in, and the coast past Maren's ------------------
+	&"hob": {
+		"cast": &"hob", "title": "a wrack-picker", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Mind the weed. It's slick as oil at low water.", "Whatever the sea brings, I sort."],
+				"replies": [
+					{"text": "What does it bring?", "pick": &"asked_brings", "to": &"sort"},
+					{"text": "[help him sort]", "pick": &"sorted", "to": &"sort"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"sort": {
+				"says": ["Wood. Rope. Plastic, always plastic.", "And from out past the point: tubing, tank glass. Clean.", "Everything else in the sea is seventy years old. That isn't."],
+				"beats": [&"wrack_new"],
+				"replies": [
+					{"text": "Who's using it?", "pick": &"asked_using", "to": &"using"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"using": {
+				"says": ["Nobody I know. Nobody rows out that far.", "But something out there still gets through a lot of tubing."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"tove": {
+		"cast": &"tove", "title": "an ice-fisher", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Quiet. Seals hear you a mile off through the ice.", "Sit if you're sitting. Don't stand over the hole."],
+				"replies": [
+					{"text": "Fished here long?", "pick": &"asked_long", "to": &"long"},
+					{"text": "[sit by the hole]", "pick": &"sat", "to": &"long"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"long": {
+				"says": ["All my life. My gran fished it from a boat. Open water, then.", "It froze the winter their posts went out on it.", "It hasn't thawed since. They didn't freeze it for us."],
+				"beats": [&"sea_froze"],
+				"replies": [
+					{"text": "What for, then?", "pick": &"asked_for", "to": &"for"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"for": {
+				"says": ["Something to stand on, out where it's deepest.", "Ear to the ice, some still night. They're listening to the bottom."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"nell": {
+		"cast": &"nell", "title": "a glass-picker", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Don't walk the plates at noon. They'll have your soles.", "I sift the tubes out of the drift. They fetch water at the border."],
+				"replies": [
+					{"text": "What made the glass?", "pick": &"asked_glass", "to": &"made"},
+					{"text": "[sift with her]", "pick": &"sifted", "to": &"made"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"made": {
+				"says": ["Something that came down in one go. Before my time.", "There was nothing here. No town, no road, no base. I've walked it all.", "Whatever did this was aimed at empty sand."],
+				"beats": [&"glassed_nothing"],
+				"replies": [
+					{"text": "Why aim at nothing?", "pick": &"asked_why", "to": &"why"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"why": {
+				"says": ["You try a thing where it can't matter.", "Before you use it where it does."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"dunn": {
+		"cast": &"dunn", "title": "a warm-sleeper", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Keep to the wet side. The floor cooks by noon.", "Winters I sleep against the vents. Warmest bed left in the world."],
+				"replies": [
+					{"text": "Don't they mind?", "pick": &"asked_mind", "to": &"mind"},
+					{"text": "What's the hum?", "pick": &"asked_hum", "to": &"hum"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"mind": {
+				"says": ["Eleven winters. They step over me.", "You don't mind a moth on a lamp."],
+				"replies": [
+					{"text": "What's the hum?", "pick": &"asked_hum", "to": &"hum"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"hum": {
+				"says": ["Them, thinking. You stop hearing it in a week.", "Except some nights the pitch drops into a tune. A few bars.", "Same bars every time. Then it stops, like somebody who's lost the rest."],
+				"beats": [&"fields_tune"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
+	&"gil": {
+		"cast": &"gil", "title": "a rag-marker", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Follow the rags. Blue goes out. Red goes further in.", "Lose them and you walk till a wall comes down on you."],
+				"replies": [
+					{"text": "What do they tip here?", "pick": &"asked_tip", "to": &"tip"},
+					{"text": "[tie a rag]", "pick": &"tied", "to": &"tip"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"tip": {
+				"says": ["Ours. Never theirs. Phones, drives, paper, by the carrier-load.", "Anything that ever had words in it.", "They're clearing out everything that could remember."],
+				"beats": [&"words_tipped"],
+				"replies": [
+					{"text": "Remember what?", "pick": &"asked_remember", "to": &"remember"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"remember": {
+				"says": ["Whatever it was. Seventy years, and they're still finding more.", "I keep the paper. Somebody should."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
