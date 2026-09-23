@@ -51,6 +51,9 @@ const SHAPES := {
 	&"peat": [".........", "...kkkkkk", "..k32323k", ".k232321k", "k232321k.", "k12121k..", "k1111k...", "kkkkk....", "........."],
 	&"limestone": [".........", "...kkkkk.", "..k33w3k.", ".kkkkkkkk", ".k222221k", "kkkkkkkk.", "k222211k.", "kkkkkkkk.", "........."],
 	&"brimstone": [".........", "..k.k.k..", ".kwkwkwk.", "k3w3w3w3k", "k2323232k", "k2k22k21k", ".k21k11k.", "..kkkkk..", "........."],
+	# Hushstone: a dark close-grained stone with one pale seam through it, the
+	# seam being the only thing on it a scanner can see.
+	&"hushstone": [".........", "..kkkkk..", ".k22222k.", "k2233322k", "k2w55552k", "k2222211k", ".k21111k.", "..kkkkk..", "........."],
 	&"sack": ["...kkk...", "....k....", "..kk3kk..", ".k33322k.", "k3332221k", "k3222211k", "k2222111k", ".kkkkkkk.", "........."],
 	&"cloth": [".........", ".........", ".kkkkkkk.", "k33w3332k", "kkkkkkkkk", "k2222221k", "k2222211k", ".kkkkkkk.", "........."],
 	&"basket": [".........", "..kkkkk..", ".k.....k.", "kkkkkkkkk", "k3232323k", "k2323232k", ".k21212k.", "..kkkkk..", "........."],

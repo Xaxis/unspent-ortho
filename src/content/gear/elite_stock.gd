@@ -42,6 +42,10 @@ const MATERIALS := {
 		"what": "iron the bog grew: soft, stubborn, and it takes a patch"},
 	&"frost_varnish": {"land": &"snowfield", "raw": &"crottle", "at": &"fire", "grade": &"rare",
 		"what": "lichen boiled hard; it does not craze when the cold comes"},
+	# The crags': broken out of a carved face on the crags' own rock (Takes gates
+	# it on ROCK), and nothing else in the world gives it.
+	&"hush_slate": {"land": &"the_crags", "raw": &"hushstone", "at": &"kiln", "grade": &"rare",
+		"what": "stone a scanner reads as nothing at all"},
 
 	# --- one machine's own ----------------------------------------------------
 	&"tide_iron": {"kind": &"harvester", "chance": 0.35, "grade": &"prime",
@@ -98,6 +102,9 @@ const SPOILS := {
 	&"hauler": [{"item": &"pulse_hammer", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
 	&"sweeper": [{"item": &"arc_cut", "chance": 0.12, "rarity": Rarity.UNCOMMON}],
 	&"lineman": [{"item": &"beam_lance", "chance": 0.1, "rarity": Rarity.UNCOMMON}],
+	# The crags' chainman: links off the chain it drags (docs/LANDSCAPES.md §1).
+	# No weapon, because it carries none -- it measures.
+	&"chainman": [{"item": &"chain_link", "chance": 0.6, "count": Vector2i(1, 3)}],
 }
 
 

@@ -23,7 +23,10 @@ const FIRE_REACH := 4.0
 const ROOF_REACH := 2.2
 const CANOPY_REACH := 1.6
 const ROOFS: Array[int] = [PropKind.HOUSE, PropKind.SHACK, PropKind.RUIN, PropKind.PUMP_HOUSE,
-	PropKind.ARCHIVE, PropKind.CHECKPOINT, PropKind.FIRE_TOWER]
+	PropKind.ARCHIVE, PropKind.CHECKPOINT, PropKind.FIRE_TOWER,
+	# A trilithon's cap is a roof with daylight through it (docs/LANDSCAPES.md §1:
+	# "the roof answer takes wet and dark under the cap").
+	PropKind.LINTEL]
 const CANOPY: Array[int] = [PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF]
 ## A line is not said again until the pressure has let go this far.
 const SAID_CLEAR := Hazards.FELT * 0.8

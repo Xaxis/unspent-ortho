@@ -34,6 +34,12 @@ const PROPS := {
 	PropKind.DEAD_TREE: 0.2,
 	PropKind.MEMORIAL: 0.3,
 	PropKind.GRAVE: 0.25,
+	# A sunken lane between two dry-stone banks: a body walking it is below the
+	# banks' tops (docs/LANDSCAPES.md §1). Its `solid` is 0 -- a lane is walked
+	# through -- so the skirt this counts inside is the 0.35 x scale floor below
+	# plus IN_PROP, about the middle of its four units; the ends of the lane are
+	# open, which is true of a lane.
+	PropKind.HOLLOW_WAY: 0.45,
 }
 
 ## What the ground itself hides a body in: heather to the knee, reeds, deep moss.

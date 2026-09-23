@@ -118,6 +118,7 @@ const PIECES := {
 	&"mod_capacitor": {"grade": &"rare", "family": &"", "from": &"line_coil"},
 	&"mod_harmonic": {"grade": &"rare", "family": &"", "from": &"mono_edge"},
 	&"mod_damp": {"grade": &"rare", "family": &"", "from": &"frost_varnish"},
+	&"mod_hush": {"grade": &"rare", "family": &"", "from": &"hush_slate"},
 	&"mod_leech": {"grade": &"prime", "family": &"", "from": &"clerk_die"},
 	&"mod_phase": {"grade": &"prime", "family": &"", "from": &"keeper_lens"},
 	&"mod_lattice": {"grade": &"prime", "family": &""},
