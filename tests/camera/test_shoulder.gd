@@ -956,3 +956,19 @@ func test_a_tall_face_fills_every_slice_it_crosses() -> void:
 	for j in s.size() / 4:
 		near(s[j * 4], -1.0, 1e-5, "slice %d reaches the wall's left end" % j)
 		near(s[j * 4 + 2], 1.0, 1e-5, "and its right end")
+
+
+## Sight past what is drawn (a fresh lock): through a house or under a hill it is
+## not seen; with nothing between, or a line that only passes NEAR a wall, it is.
+func test_sight_is_stopped_by_what_is_drawn_and_by_the_ground() -> void:
+	var flat := func(_p: Vector2) -> float: return 0.0
+	var a := Vector3(0.0, 1.45, 0.0)
+	var b := Vector3(8.0, 0.6, 0.0)
+	var none: Array[PackedFloat32Array] = []
+	check(Shoulder.sees(a, b, flat, none), "nothing between: seen")
+	var house := Shoulder.box_of(Vector2(4.0, 0.0), 0.3, 1.0, Vector2(-1.0, -1.0), Vector2(1.0, 1.0), 3.0)
+	check(not Shoulder.sees(a, b, flat, [house] as Array[PackedFloat32Array]), "a house between: not seen")
+	var aside := Shoulder.box_of(Vector2(4.0, 1.25), 0.0, 1.0, Vector2(-1.0, -1.0), Vector2(1.0, 1.0), 3.0)
+	check(Shoulder.sees(a, b, flat, [aside] as Array[PackedFloat32Array]), "a wall a quarter tile off the line: seen")
+	var hill := func(p: Vector2) -> float: return 2.0 if p.x > 3.0 and p.x < 5.0 else 0.0
+	check(not Shoulder.sees(a, b, hill, none), "a rise between: not seen")

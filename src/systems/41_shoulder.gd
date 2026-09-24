@@ -511,6 +511,29 @@ func tour_seen(what: StringName) -> bool:
 	return false
 
 
+## Whether `a` sees `b` past what is drawn (Shoulder.sees): the same drawn boxes
+## the eye is kept out of, so a wall that stops the camera stops sight. Asked by
+## 42_target for a lock taken fresh; answered here because the boxes are here.
+func sight_clear(a: Vector3, b: Vector3) -> bool:
+	if game == null or game.world == null or game.query == null:
+		return true
+	var boxes: Array[PackedFloat32Array] = []
+	var mid := Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5)
+	var reach := Vector2(a.x - b.x, a.z - b.z).length() * 0.5 + 3.0
+	for p: WorldProp in game.query.props_near(mid, reach):
+		if p.solid <= 0.0 or game.world.depleted.has(p.id):
+			continue
+		var probe: Variant = _probe_of.get(p)
+		if probe == null:
+			probe = _probe(p)
+			_probe_of[p] = probe
+		if probe is PackedFloat32Array:
+			boxes.append(probe)
+	var ground := func(p: Vector2) -> float:
+		return game.view.surface_height(p) if game.view != null else game.world.height_at(p)
+	return Shoulder.sees(a, b, ground, boxes, _ground_top(a, b))
+
+
 ## Another world's props are other objects; the old island's probes go with it.
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	_probe_of.clear()

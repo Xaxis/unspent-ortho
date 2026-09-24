@@ -485,3 +485,23 @@ static func in_line(eye: Vector2, target: Vector2, people: Array[Vector2], width
 static func clear_step(now: float, want: float, delta: float) -> float:
 	var rate := CLEAR_IN if want > now else CLEAR_OUT
 	return lerpf(now, want, 1.0 - exp(-rate * delta))
+
+
+## WHETHER `a` SEES `b` past what is drawn (docs/CONTROLS.md, lock-on): the line
+## between them passes through no drawn solid and under no ground. Asked strictly
+## -- through, not near -- because this is sight, not a camera with a near plane.
+## Thin things (a pole, a trunk) and leaves are seen past, as the view sees past
+## them. A lock taken fresh must be seen, or holding the key through a wall is a
+## free scan of what stands behind it, in a game about not being seen.
+static func sees(a: Vector3, b: Vector3, ground: Callable, boxes: Array[PackedFloat32Array],
+		ground_top := INF) -> bool:
+	var span := a.distance_to(b)
+	var steps := clampi(ceili(span / STEP_LEN), 1, 400)
+	for i in range(1, steps):
+		var q := a.lerp(b, float(i) / float(steps))
+		for box: PackedFloat32Array in boxes:
+			if _in_box(q, box, 0.0):
+				return false
+		if q.y < ground_top and float(ground.call(Vector2(q.x, q.z))) > q.y:
+			return false
+	return true
