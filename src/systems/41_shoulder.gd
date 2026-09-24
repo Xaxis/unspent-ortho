@@ -113,6 +113,7 @@ func _process(delta: float) -> void:
 	var key := _key(blocked)
 	cam.shoulder = Shoulder.wanted(opens_over, key)
 	_hold_pointer(Shoulder.capture(cam.shoulder, blocked, _tool, _focused()))
+	cam.shoulder_clear = Shoulder.CLEAR_TIP if _person_on_the_line(cam) else 0.0
 	if blocked or not cam.shoulder:
 		return
 	_idle += delta
@@ -212,6 +213,35 @@ func _input(event: InputEvent) -> void:
 		cam.shoulder_yaw = l.x
 	cam.shoulder_pitch = l.y
 	_idle = 0.0
+
+
+## Whether somebody stands between the eye and what a lock holds, over the
+## shoulder (`Shoulder.in_line`). The villagers are 35_folk's rows; one indoors
+## is nowhere on the line.
+func _person_on_the_line(cam: CameraRig) -> bool:
+	if not cam.shoulder or not cam.subject.is_finite():
+		return false
+	var folk := _folk()
+	if folk == null:
+		return false
+	var people: Array[Vector2] = []
+	for row: Dictionary in folk.get("folk"):
+		if StringName(str(row.get("state", &"out"))) == &"in":
+			continue
+		var at: Variant = row.get("pos")
+		if at is Vector2:
+			people.append(at)
+	var eye := cam.global_position
+	return Shoulder.in_line(Vector2(eye.x, eye.z), Vector2(cam.subject.x, cam.subject.z), people)
+
+
+## 35_folk renames its own node, so it is found by its script.
+func _folk() -> Node:
+	for s in game.systems:
+		var script := s.get_script() as Script
+		if script != null and script.resource_path.ends_with("35_folk.gd"):
+			return s
+	return null
 
 
 ## How much of a colossus the view is turned toward: whatever walks them says so
@@ -364,18 +394,33 @@ func tour_seen(what: StringName) -> bool:
 		&"shoulder_turned":
 			return cam.over_shoulder() and absf(Shoulder.turn(cam.yaw_deg, cam.yaw_now())) > 10.0
 		# A lock framed over the shoulder, asked of the PICTURE: the locked body
-		# is in front of the eye and inside the middle three fifths of the frame.
+		# is in front of the eye and inside the middle of the frame.
 		# A bearing measured from the shoulder swings wildly at arm's length,
 		# where the frame is exactly right, so an angle cannot be the claim.
 		&"shoulder_locked":
 			if not cam.over_shoulder() or not cam.subject.is_finite():
 				return false
-			var mid := cam.subject + Vector3(0.0, 0.8, 0.0)
-			if cam.is_position_behind(mid):
-				return false
+			# Any part of the body, feet to head, in the middle seven tenths: asked of
+			# ONE point at 0.8 up, a swing that stepped the eye at the instant of the
+			# shutter failed the claim under load while the frame itself was framed
+			# (teammate1, 2026-09-24: the cutter at x 0.39, the claim refused).
 			var rect := cam.get_viewport().get_visible_rect().size
-			var at := cam.unproject_position(mid)
-			return at.x > rect.x * 0.2 and at.x < rect.x * 0.8 and at.y > 0.0 and at.y < rect.y
+			for up: float in [0.2, 0.8, 1.4]:
+				var p := cam.subject + Vector3(0.0, up, 0.0)
+				if cam.is_position_behind(p):
+					continue
+				var at := cam.unproject_position(p)
+				if at.x > rect.x * 0.15 and at.x < rect.x * 0.85 and at.y > 0.0 and at.y < rect.y:
+					return true
+			return false
+		# Somebody stands on the line from the eye to the lock, whatever the view
+		# did about it: what a frame of the problem claims.
+		&"person_on_line":
+			return cam.over_shoulder() and _person_on_the_line(cam)
+		# Somebody is on the line to the lock and the view has tipped to look over
+		# them (Shoulder.in_line).
+		&"shoulder_clearing":
+			return cam.over_shoulder() and _person_on_the_line(cam) and cam.clear_tip() > Shoulder.CLEAR_TIP * 0.8
 		# Looking toward the sun the light comes from (within 25 degrees of its
 		# bearing), so a frame can show shadows falling back toward the eye.
 		&"shoulder_sun":

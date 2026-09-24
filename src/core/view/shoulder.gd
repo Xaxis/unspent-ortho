@@ -270,3 +270,45 @@ const KEY_TURN_DEG := 110.0
 ## way is up or where the gaze stops.
 static func key_look(yaw_deg: float, pitch_deg: float, keys: Vector2, delta: float, least := PITCH_LEAST) -> Vector2:
 	return look(yaw_deg, pitch_deg, keys * (KEY_TURN_DEG / MOUSE_DEG) * delta, least)
+
+
+## PEOPLE ON THE LINE TO A LOCK (teammate1, 2026-09-24: two villagers covering
+## the right third of a locked view). The room check keeps the eye out of land
+## and walls, and a person is neither, so one who walks between the eye and the
+## locked body stands square in front of it. The answer is to look over them:
+## the view tips down by `CLEAR_TIP`, which lifts the eye (it stands on the
+## focus's own line, `back` out along it) while the focus -- and so the lock --
+## stays exactly where it was in the frame.
+##
+## How near the line a person counts, in tiles: a body's own width and a little.
+const CLEAR_WIDTH := 0.6
+## Degrees the view tips down while a person is on the line. At the shoulder's
+## own distance this puts the eye about a metre higher, over a grown head.
+const CLEAR_TIP := 16.0
+## Eased at these rates (a second): in quickly enough to look over someone as
+## they step in, out gently so a crowd walking past does not bob the camera.
+const CLEAR_IN := 4.0
+const CLEAR_OUT := 1.5
+
+
+## Whether any of `people` stands on the line from `eye` to `target` (tile space,
+## on the ground), within `width` of it and between the two -- not behind the
+## eye, and not at or past the target, who is what is being looked at.
+static func in_line(eye: Vector2, target: Vector2, people: Array[Vector2], width := CLEAR_WIDTH) -> bool:
+	var d := target - eye
+	var len2 := d.length_squared()
+	if len2 < 0.01:
+		return false
+	for p: Vector2 in people:
+		var t := (p - eye).dot(d) / len2
+		if t <= 0.05 or t >= 0.92:
+			continue
+		if p.distance_to(eye + d * t) < width:
+			return true
+	return false
+
+
+## One frame of the tip toward `want` degrees.
+static func clear_step(now: float, want: float, delta: float) -> float:
+	var rate := CLEAR_IN if want > now else CLEAR_OUT
+	return lerpf(now, want, 1.0 - exp(-rate * delta))

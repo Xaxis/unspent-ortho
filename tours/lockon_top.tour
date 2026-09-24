@@ -29,9 +29,14 @@ tap dodge
 wait 0.25
 shot 04-dodged-still-facing with mob:runner,lock_facing
 
-walkto part 6
+# A blow may ring off plate or meet a machine that turned: a player who misses
+# goes round and tries again (lockon_shoulder does the same).
+try 8
+await target:runner 0.3
+walkto part 3
 press swing
-await hit 6
+await hit 1.2
+end
 wait 0.2
 shot 05-swung-at-the-lock with mob:runner,lock_facing
 
