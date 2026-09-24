@@ -879,7 +879,7 @@ func _walk_to(what: String, secs: float) -> bool:
 				game.scripted_seconds = 0.0
 				return true
 			var dir := d.normalized()
-			game.scripted_move = Vector2(dir.x - dir.y, dir.x + dir.y) * 0.7071
+			game.scripted_move = _keys_toward(dir)
 			game.scripted_run = false
 			game.scripted_seconds = 0.05
 			await get_tree().physics_frame
@@ -912,9 +912,8 @@ func _walk_to(what: String, secs: float) -> bool:
 		var d := target - hero.pos
 		if d.length() <= close:
 			break
-		# Screen right is world (1,-1)/sqrt2 and screen down (1,1)/sqrt2.
 		var dir := d.normalized()
-		game.scripted_move = Vector2(dir.x - dir.y, dir.x + dir.y) * 0.7071
+		game.scripted_move = _keys_toward(dir)
 		game.scripted_run = false
 		game.scripted_seconds = 0.05
 		await get_tree().physics_frame
@@ -922,7 +921,7 @@ func _walk_to(what: String, secs: float) -> bool:
 	if facing_mob != null:
 		# Turned to it the way a player does: a touch of the key toward it.
 		var dir := (facing_mob.pos - sim.hero.pos).normalized()
-		game.scripted_move = Vector2(dir.x - dir.y, dir.x + dir.y) * 0.7071 * 0.2
+		game.scripted_move = _keys_toward(dir) * 0.2
 		game.scripted_seconds = 0.02
 		while game.scripted_seconds > 0.0:
 			await get_tree().physics_frame
@@ -1201,6 +1200,15 @@ func _mouse(by: Vector2, secs: float) -> void:
 		if left <= 0.0:
 			break
 	await get_tree().process_frame
+
+
+## The keys a player would hold to walk `dir` in the world, read the way the game
+## reads them now (LockOn.keys_for): the screen's own yaw, or the line to a held
+## lock over the shoulder. The walk used to assume the top view's fixed yaw, so
+## over the shoulder it steered by a camera that was not there.
+func _keys_toward(dir: Vector2) -> Vector2:
+	var lock: Vector2 = game.player.hero.lock if game.player.hero != null else Vector2.INF
+	return LockOn.keys_for(dir, game.camera.yaw_now(), game.player.pos, lock, game.camera.shoulder)
 
 
 func _key(action: String) -> bool:

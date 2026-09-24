@@ -49,6 +49,14 @@ var harm := 1.0
 ## moves the body, so a blow, a dodge and a grip are the same on a deck as on
 ## land. The crafts package (src/systems/44_crafts.gd) is the only writer.
 var ride: CraftRide = null
+## What a lock holds, in tile space, or INF (LockOn, docs/CONTROLS.md §Lock-on):
+## the body faces it, a strafe circles it, a swing goes at it and a dodge with no
+## key held goes straight back from it. Written through `set_lock` by 42_target,
+## the only writer, from where the locked body stands this frame.
+var lock := Vector2.INF
+## When the last lock was let go, on the fight's clock, so the body turns back
+## onto the way it is walking instead of snapping there (LockOn.RELEASE_MS).
+var unlocked_at := -INF
 
 
 func _init() -> void:
@@ -167,6 +175,14 @@ func start_dodge(dir: Vector2, now: float) -> void:
 	dodge_at = now
 	dodge_dir = dir.normalized() if dir.length() > 0.01 else Vector2.from_angle(facing)
 	wind -= FightRules.DODGE_COST
+
+
+## Take a lock on `at`, move it, or let it go (INF). Letting go starts the turn
+## back, so the facing is handed back and not dropped.
+func set_lock(at: Vector2, now: float) -> void:
+	if lock.is_finite() and not at.is_finite():
+		unlocked_at = now
+	lock = at
 
 
 ## One wrench against a grip. Returns true if it counted. A cutting tool takes two.

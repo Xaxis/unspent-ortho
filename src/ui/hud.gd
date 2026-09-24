@@ -597,7 +597,12 @@ func _draw_held(ci: Control) -> void:
 
 func _draw_bottom(ci: Control) -> void:
 	# Newest message lowest; older ones stand above it, dimmer, until they fade.
+	# A lesson standing on the key row below is not said again above it: the
+	# guide says it as a message AND the row shows it with its cap, and the row
+	# is the one that teaches the key (lockon_shoulder frame 03).
 	var lines := messages.visible()
+	if _hint_alpha > 0.0 and hint != "":
+		lines = lines.filter(func(l: Dictionary) -> bool: return String(l.text) != hint)
 	for i in lines.size():
 		var line: Dictionary = lines[lines.size() - 1 - i]
 		var a: float = line.alpha * (1.0 if i == 0 else 0.72)

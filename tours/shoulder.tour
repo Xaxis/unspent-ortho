@@ -5,6 +5,10 @@
 #
 #   tools/tour.sh tours/shoulder.tour --seed=4 --hour=12 --weather=clear:0
 #
+# The view's own key is a press by default now (owner, 2026-09-24), so this
+# holds the PEEK (the right button's action), which is up exactly while held
+# under every setting: "held" is what each step below means.
+#
 # What it proves, from a normal game start, through the real key and a staged
 # mouse: the land from above; the key held and the camera gliding down off its
 # perch (frames taken WHILE it glides, so a pop would be in them); over the
@@ -21,7 +25,7 @@ wait 0.9
 await top_view 2
 shot 01-the-land-from-above
 
-hold shoulder
+hold shoulder_peek
 shot 02-the-key-down-gliding with shoulder_gliding
 await shoulder 3
 wait 0.4
@@ -47,7 +51,7 @@ await shoulder_locked 3
 wait 0.4
 shot 07-a-runner-locked-over-the-shoulder with mob:runner,shoulder_locked
 
-release shoulder
+release shoulder_peek
 await top_view 3
 await target_lens 3
 wait 0.6
@@ -59,7 +63,7 @@ wait 1.0
 shot 09-both-let-go-the-land-again with top_view
 coast calm
 
-hold shoulder
+hold shoulder_peek
 await shoulder 3
 hour 18.6
 wait 1.2
@@ -73,13 +77,13 @@ shot 10b-dusk-facing-the-sun with shoulder_sun
 hour 23
 wait 1.2
 shot 11-night-over-the-shoulder with shoulder
-release shoulder
+release shoulder_peek
 await top_view 3
 
 place pinewood
 hour 12
 wait 1.5
-hold shoulder
+hold shoulder_peek
 await shoulder 3
 wait 0.8
 shot 12-pinewood-noon-over-the-shoulder with shoulder,land:pinewood
@@ -89,5 +93,5 @@ shot 13-pinewood-dusk-over-the-shoulder with shoulder,land:pinewood
 hour 23
 wait 1.2
 shot 14-pinewood-night-over-the-shoulder with shoulder,land:pinewood
-release shoulder
+release shoulder_peek
 await top_view 3

@@ -329,3 +329,34 @@ func test_every_hazard_the_land_names_has_a_gauge_glyph() -> void:
 			eq(r.length(), 9, "%s is 9 wide" % k)
 	eq(UiIcons.pressure_rows(&"no_such_hazard"), UiIcons.PRESSURE_ANY, "an unknown pressure still has a gauge")
 
+
+
+## A LESSON IS ON THE GLASS ONCE. The guide says a lesson on the teaching channel
+## (a message) and the key row shows the same unretired lesson with its cap, so
+## the line stood on the glass twice, one above the other (lockon_shoulder frame
+## 03, seen by teammate1). The key row carries the cap, so it is the one kept.
+func _ink_lines(hud: Hud, text: String) -> int:
+	UiDraw.tape.clear()
+	UiDraw.taping = true
+	hud._draw_hud()
+	UiDraw.taping = false
+	# A rimmed line is its ink once and its rim eight times round it.
+	var n := 0
+	for d: Dictionary in UiDraw.tape:
+		if d.kind == &"text" and String(d.text) == text and not Color(d.col).is_equal_approx(UiTheme.RIM):
+			n += 1
+	UiDraw.tape.clear()
+	return n
+
+
+func test_a_lesson_on_the_key_row_is_not_also_said_above_it() -> void:
+	var hud := _hud()
+	var line := "C keeps you low and quiet. It has not seen you yet."
+	hud.teach(line)
+	hud.set_hint(line, "c")
+	_run(hud, 0.6)
+	eq(_ink_lines(hud, line), 1, "the lesson is one line on the glass, the key row's")
+	hud.set_hint("")
+	_run(hud, 1.0)
+	eq(_ink_lines(hud, line), 1, "with the row gone, the message is still said")
+	hud.free()

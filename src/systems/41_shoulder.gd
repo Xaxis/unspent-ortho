@@ -5,9 +5,11 @@ extends GameSystem
 ## along with a perfectly integrated setting. Should be able to see parts of the
 ## sky and the horizon.")
 ##
-##   hold Left Alt/Option, or right mouse  the camera glides down off its perch to
-##                                       behind the player's right shoulder
-##   the mouse                           turns it, and tips it up to the sky
+##   Left Alt/Option (a press, by        the camera glides down off its perch to
+##   default), or hold the right mouse   behind the player's right shoulder; the
+##   button to peek                      peek lasts as long as the button, and
+##                                       lands back wherever the key left it
+##   the mouse, or the arrow keys        turns it, and tips it up to the sky
 ##   walk away from it                   it eases in behind you when the mouse
 ##                                       has been left alone
 ##   hold Z as well                      the lock turns the view onto the body
@@ -26,6 +28,10 @@ extends GameSystem
 
 const Shoulder := preload("res://src/core/view/shoulder.gd")
 const ACTION := &"shoulder"
+## Held, the view is up for as long as it is held and no longer, whatever the
+## key's own latch says (owner, 2026-09-24: the right button is "a temporary
+## peek"). ControlScheme puts it on the right button where there is a mouse.
+const PEEK := &"shoulder_peek"
 const SETTING := &"playing.shoulder"
 ## The zoom keys move the eye in and out along the view while it is up, between
 ## these distances; the land's own zoom is left where it was.
@@ -54,7 +60,9 @@ func setup(g: Game) -> void:
 	super.setup(g)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_ensure_action()
-	MouseControls.install()
+	# The scheme's events (the peek on the right button, the arrows' look) are on
+	# the map before the first frame reads them, in a test as in a game.
+	PlayerSettings.load_once()
 	# A new game opens with the key let go. The latch is static (HoldToggle), so
 	# a view toggled on in the last game came back on in this one, and the first
 	# click of the new game took it OFF.
@@ -100,6 +108,7 @@ func _process(delta: float) -> void:
 		cam.shoulder = false
 		_hold_pointer(false)
 		return
+	_given_back_by_the_browser()
 	var blocked := game.input_blocked()
 	var key := _key(blocked)
 	cam.shoulder = Shoulder.wanted(opens_over, key)
@@ -111,13 +120,52 @@ func _process(delta: float) -> void:
 	if not cam.subject.is_finite():
 		cam.shoulder_yaw = Shoulder.follow_yaw(cam.shoulder_yaw, game.player.facing,
 			game.player.intent_move, _idle, delta)
+	if InputMap.has_action(&"look_left"):
+		var keys := Input.get_vector(&"look_left", &"look_right", &"look_up", &"look_down")
+		if keys != Vector2.ZERO:
+			var l := Shoulder.key_look(cam.shoulder_yaw, cam.shoulder_pitch, keys, delta, Shoulder.least_for(_gaze()))
+			# A lock owns the turn, as it does for the mouse; the tip is still yours.
+			if not cam.subject.is_finite():
+				cam.shoulder_yaw = l.x
+			cam.shoulder_pitch = l.y
+			_idle = 0.0
+	# A held target key has the zoom (owner's ruling): nothing moves the eye then.
+	if _zoom_taken():
+		return
 	var way := 0.0
 	if Input.is_action_pressed(&"zoom_in"):
 		way -= 1.0
 	if Input.is_action_pressed(&"zoom_out"):
 		way += 1.0
 	if way != 0.0:
-		cam.shoulder_back = clampf(cam.shoulder_back * pow(BACK_RATE, way * delta), BACK_LEAST, BACK_MOST)
+		_move_back(way * delta)
+
+
+## The eye in or out along the view by `by` (seconds' worth of a held zoom key).
+func _move_back(by: float) -> void:
+	var cam := game.camera
+	cam.shoulder_back = clampf(cam.shoulder_back * pow(BACK_RATE, by), BACK_LEAST, BACK_MOST)
+
+
+## Whether something else holds the zoom keys right now (a held lock).
+func _zoom_taken() -> bool:
+	for s in game.systems:
+		if s != self and s.has_method(&"owns_zoom") and bool(s.call(&"owns_zoom")):
+			return true
+	return false
+
+
+## A scroll or a pinch while the view is up moves the eye, not the land's zoom
+## (08_pointer offers it; a held lock was offered it first).
+func take_scroll(steps: Vector2) -> bool:
+	if game == null or game.camera == null or not game.camera.shoulder:
+		return false
+	_move_back(steps.y * SCROLL_SECONDS)
+	return true
+
+
+## How much of a held zoom key one notch of scroll is worth.
+const SCROLL_SECONDS := 0.12
 
 
 ## The key, under the player's own rule for it. A page opening lets go of every
@@ -135,7 +183,11 @@ func _key(blocked: bool) -> bool:
 			HoldToggle.put(ACTION, _latched)
 	var on := HoldToggle.on(ACTION, SETTING)
 	_latched = on
-	return on
+	# A peek is added to the latch, never written into it, so every order of the
+	# two comes out right: toggled on and peeked stays on when the button comes
+	# up; toggled off and peeked goes back down; toggled while peeking keeps the
+	# toggle's answer once the peek ends.
+	return on or (InputMap.has_action(PEEK) and Input.is_action_pressed(PEEK))
 
 
 ## The zoom keys belong to the shoulder's distance while it is up, so a press is
@@ -182,6 +234,49 @@ func _focused() -> bool:
 		return bool(focus_check.call())
 	var w := get_window()
 	return w != null and w.has_focus()
+
+
+## Whether the pointer really is held right now, or what a test says: a
+## headless run answers VISIBLE whatever was asked.
+var mode_check := Callable()
+## Whether this is a browser, or what a test says.
+var web_check := Callable()
+## The browser has been seen holding the pointer since this system asked for it.
+var _lock_seen := false
+
+
+func _pointer_held() -> bool:
+	if mode_check.is_valid():
+		return bool(mode_check.call())
+	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+
+
+## A BROWSER TAKES THE POINTER BACK ON ESC (docs/CONTROLS.md, web checks). Every
+## browser releases a pointer lock on Escape, and the engine has no listener for
+## that, so the Esc a player pressed to pause was spent on the lock and the game
+## never heard it: over the shoulder the first Esc did nothing. Once the lock has
+## been seen held, a pointer handed back while this system still holds it is the
+## browser answering Esc (or the page losing the player), and the answer is the
+## pause page -- which also gives the view's keys back. Only on the web: a desktop
+## window keeps its capture through Esc.
+func _given_back_by_the_browser() -> void:
+	var web: bool = bool(web_check.call()) if web_check.is_valid() else OS.has_feature("web")
+	if not web or not captured:
+		_lock_seen = false
+		return
+	if _pointer_held():
+		_lock_seen = true
+		return
+	if not _lock_seen:
+		return  # asked for, not yet granted: a lock arrives a frame or more later
+	_lock_seen = false
+	_hold_pointer(false)
+	if game.open_screens.has(&"pause") or Input.is_action_pressed(&"pause"):
+		return
+	for s in game.systems:
+		if s.has_method(&"open_screen") and s.name == "90_ui":
+			s.call(&"open_screen", &"pause")
+			return
 
 
 func _hold_pointer(on: bool) -> void:
@@ -268,12 +363,19 @@ func tour_seen(what: StringName) -> bool:
 		# Turned off the land's own bearing by the mouse or the follow.
 		&"shoulder_turned":
 			return cam.over_shoulder() and absf(Shoulder.turn(cam.yaw_deg, cam.yaw_now())) > 10.0
-		# A lock framed over the shoulder: the view looks within 20 degrees of it.
+		# A lock framed over the shoulder, asked of the PICTURE: the locked body
+		# is in front of the eye and inside the middle three fifths of the frame.
+		# A bearing measured from the shoulder swings wildly at arm's length,
+		# where the frame is exactly right, so an angle cannot be the claim.
 		&"shoulder_locked":
 			if not cam.over_shoulder() or not cam.subject.is_finite():
 				return false
-			var to := Vector2(cam.subject.x - game.player.position.x, cam.subject.z - game.player.position.z)
-			return absf(Shoulder.turn(cam.yaw_now(), Shoulder.yaw_along(to))) < 20.0
+			var mid := cam.subject + Vector3(0.0, 0.8, 0.0)
+			if cam.is_position_behind(mid):
+				return false
+			var rect := cam.get_viewport().get_visible_rect().size
+			var at := cam.unproject_position(mid)
+			return at.x > rect.x * 0.2 and at.x < rect.x * 0.8 and at.y > 0.0 and at.y < rect.y
 		# Looking toward the sun the light comes from (within 25 degrees of its
 		# bearing), so a frame can show shadows falling back toward the eye.
 		&"shoulder_sun":

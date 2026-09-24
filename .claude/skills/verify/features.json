@@ -244,6 +244,14 @@
       "tests": []
     },
     {
+      "id": "system:08_pointer",
+      "kind": "system",
+      "entry": "src/systems/08_pointer.gd",
+      "reach": "tools/tour.sh tours/targeting.tour --seed=1 --hour=11 --weather=clear:0 --folk=8",
+      "area": "world-look",
+      "tests": []
+    },
+    {
       "id": "system:09_view",
       "kind": "system",
       "entry": "src/systems/09_view.gd",
@@ -431,7 +439,7 @@
       "id": "system:42_target",
       "kind": "system",
       "entry": "src/systems/42_target.gd",
-      "reach": "tools/tour.sh tours/targeting.tour",
+      "reach": "tools/tour.sh tours/lockon_top.tour --seed=4 --hour=11 --weather=clear:0 --give=axe_felling:1 --held=axe_felling",
       "area": "machines-fight",
       "tests": []
     },
