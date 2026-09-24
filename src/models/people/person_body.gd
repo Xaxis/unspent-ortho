@@ -200,6 +200,7 @@ static func torso_ring(w: Wear, y: float) -> Vector3:
 	var belly: float = d.belly
 	var rows: Array = [
 		[0.0, hd * 0.5, d.waist * 0.5, 0.0],
+		[top * 0.16, hd * 0.47, d.waist * 0.45, 0.004],
 		[top * 0.42, hd * 0.52 + belly * 0.6, lerpf(d.waist, d.chest, 0.65) * 0.5, belly * 0.7],
 		[top * 0.8, hd * 0.56, d.chest * 0.5, 0.008],
 		[top - 0.02, hd * 0.5, d.chest * 0.47, -0.006],
@@ -324,7 +325,9 @@ static func _hips(r: SkinRig, w: Wear) -> void:
 		[-0.17, hd * 0.36, hz * 0.4, -0.01, 0.0],
 		[-0.07, hd * 0.5 * lerpf(1.0, seat, 0.5), hz * 0.52 * seat, -0.014 * seat, 0.0],
 		[0.03, hd * 0.5, lerpf(hz * 0.52 * seat, cz * 0.5, 0.7), -0.004, 0.0],
-		[0.11, hd * 0.49, cz * 0.49, 0.0, 0.0],
+		# The belt line tucks in under the shirt, which is pulled in at the
+		# waist just above it; wider here it pokes through.
+		[0.11, hd * 0.44, cz * 0.43, 0.0, 0.0],
 	], HIPS_N, [w.trouser, w.trouser, top], false, false, PI / HIPS_N, 0.03, w.seed_value + 1)
 	if cut == &"tucked" and not w.long_coat and w.extras.has(&"buckle"):
 		var bx := hd * 0.5 * 0.93 + 0.004
@@ -339,7 +342,7 @@ static func _hips(r: SkinRig, w: Wear) -> void:
 	match w.look.coat:
 		&"long":
 			length = d.thigh + d.shin * 0.42
-			flare = 0.09
+			flare = 0.14
 		&"oilskin":
 			length = d.thigh + d.shin * 0.2
 			flare = 0.15
@@ -348,7 +351,7 @@ static func _hips(r: SkinRig, w: Wear) -> void:
 			flare = 0.03
 		&"fur":
 			length = d.thigh + d.shin * 0.3
-			flare = 0.13
+			flare = 0.17
 	if length == 0.0 and cut == &"smock":
 		length = d.thigh * 0.6
 		flare = 0.06
@@ -431,13 +434,14 @@ static func _torso(r: SkinRig, w: Wear) -> void:
 	# makes a shoulder a slope that rolls into the arm, not a shelf.
 	Sculpt.loft(k, [
 		[0.0, hd * 0.5 + pad, waist * 0.5 + pad, 0.0, 0.0, 0.03],
+		[top * 0.16, hd * 0.47 + pad, waist * 0.45 + pad, 0.004, 0.0, 0.02],
 		[top * 0.42, hd * 0.52 + belly * 0.6 + pad, lerpf(waist, d.chest, 0.65) * 0.5 + pad, belly * 0.7, 0.0, 0.018],
 		[top * 0.8, hd * 0.56 + pad, d.chest * 0.5 + pad, 0.008, 0.0],
 		[top - 0.02, hd * 0.5 + pad, d.chest * 0.47 + pad, -0.006, 0.0],
 		[top + 0.004, hd * 0.42 + pad, d.chest * 0.4 + pad, -0.01, 0.0],
 		[top + 0.028, hd * 0.32 + pad * 0.6, d.chest * 0.3 + pad * 0.6, -0.012, 0.0],
 		[top + 0.045, 0.075, 0.085, -0.012, 0.0],
-	], TORSO_N, [body, body, body, body_hi, body_hi, body_hi], false, true, PI / TORSO_N, 0.03, w.seed_value + 4)
+	], TORSO_N, [body, body, body, body, body_hi, body_hi, body_hi], false, true, PI / TORSO_N, 0.03, w.seed_value + 4)
 	# Neck: in shade, so the head reads as sitting on the shoulders, not floating.
 	if coat != &"oilskin" and coat != &"fur" and not w.extras.has(&"neckerchief"):
 		_skin(k, true)
@@ -515,7 +519,8 @@ static func _arms(r: SkinRig, w: Wear) -> void:
 			[t * 0.46, t * 0.14, t * 0.16, -0.004, -side * t * 0.12],
 			[t * 0.34, t * 0.4, t * 0.42, 0.0, -side * t * 0.06],
 			[0.0, t * 0.56, t * 0.56, 0.0, 0.0],
-			[-float(d.upper) - 0.01, t * 0.44, t * 0.46, 0.006, 0.0, 0.04],
+			[-float(d.upper) * 0.55, t * 0.5, t * 0.5, 0.003, 0.0],
+			[-float(d.upper) - 0.01, t * 0.42, t * 0.44, 0.006, 0.0, 0.04],
 		], ARM_N, [shoulder, sleeve], true, false, PI / ARM_N, 0.04, s)
 		if coat == &"fur":
 			# Pelt sleeves: bulkier, the cuff turned back in the trim.
@@ -538,9 +543,10 @@ static func _arms(r: SkinRig, w: Wear) -> void:
 			_skin(fk, false)
 		else:
 			Sculpt.loft(fk, [
-				[0.01, t * 0.46, t * 0.46, 0.0, 0.0],
-				[-fl * 0.85, t * 0.43, t * 0.45, 0.007, 0.0, 0.05],
-				[-fl, t * 0.4, t * 0.42, 0.008, 0.0],
+				[0.01, t * 0.44, t * 0.44, 0.0, 0.0],
+				[-fl * 0.3, t * 0.47, t * 0.48, 0.004, 0.0],
+				[-fl * 0.85, t * 0.38, t * 0.4, 0.007, 0.0, 0.06],
+				[-fl, t * 0.35, t * 0.37, 0.008, 0.0],
 			], ARM_N, [sleeve], true, false, PI / ARM_N, 0.04, s + 1)
 		_hand(r.kit(r.find(StringName("hand" + sfx))), d, w, side, s + 2)
 
