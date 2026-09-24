@@ -32,6 +32,7 @@ shot 04-dodged-still-facing with mob:runner,lock_facing
 # A blow may ring off plate or meet a machine that turned: a player who misses
 # goes round and tries again (lockon_shoulder does the same).
 try 8
+await target:runner 0.3
 walkto part 3
 press swing
 await hit 1.2

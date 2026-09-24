@@ -236,6 +236,7 @@ func _run() -> void:
 	var lift := Time.get_ticks_msec() + 30000
 	while Time.get_ticks_msec() < lift and not get_tree().get_nodes_in_group(&"boot_page").is_empty():
 		await get_tree().process_frame
+	_say_state("start")
 	# Open try blocks: [line index of `try`, attempts left].
 	var tries: Array[Array] = []
 	var li := -1
@@ -490,11 +491,13 @@ func _run() -> void:
 			# A player who misses tries again: back to the top of the block.
 			tries.back()[1] = int(tries.back()[1]) - 1
 			print("tour %s line %d: '%s' did not come; trying the block again" % [_name, n, line])
+			_say_state("retry")
 			li = int(tries.back()[0])
 			await get_tree().create_timer(0.6).timeout
 			continue
 		if not ok:
 			printerr("tour %s line %d: cannot do '%s'" % [_name, n, line])
+			_say_state("failed")
 			# What the page showed when it failed, to see why.
 			@warning_ignore("return_value_discarded")
 			await _shot("FAILED-line%d" % n)
@@ -1200,6 +1203,31 @@ func _mouse(by: Vector2, secs: float) -> void:
 		if left <= 0.0:
 			break
 	await get_tree().process_frame
+
+
+## THE STATE A TOUR IS IN, printed as it starts and whenever a line fails or a
+## block tries again: which game is running (its instance, so a second game is
+## visible as a new number), what that game was booted with, and what the world
+## says now. A tour that failed under load with the wrong thing in hand, the
+## wrong sky and the wrong hour could not say which of them had been lost or
+## when, and the frame alone could not either (integ-cam, 2026-09-24).
+func _say_state(when: String) -> void:
+	if not is_instance_valid(game):
+		print("tour %s state %s: no game" % [_name, when])
+		return
+	var o: BootOptions = game.options
+	var held: StringName = game.inventory.held if game.inventory != null else &""
+	var alive := 0
+	var sim: FightSim = game.player.sim if game.player != null else null
+	if sim != null:
+		alive = sim.living()
+	var lock := "none"
+	for s in game.systems:
+		if s.name == "42_target" and s.get("locked") != null:
+			lock = String((s.get("locked") as TargetSubject).kind)
+	print("tour %s state %s: game #%d booted seed %d hour %.2f weather '%s' held '%s' give %s | now %s held '%s' sky '%s' lock %s bodies %d" % [
+		_name, when, game.get_instance_id(), o.seed_value, o.hour, o.weather, o.held, str(o.give),
+		game.clock.label() if game.clock != null else "?", held, String(Weather.forced_kind), lock, alive])
 
 
 ## The keys a player would hold to walk `dir` in the world, read the way the game

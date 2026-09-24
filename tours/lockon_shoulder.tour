@@ -41,7 +41,12 @@ shot 05-dodged-still-facing with shoulder_locked,lock_facing
 
 # Its working part is at its back and plate takes nothing, so a blow may ring
 # off it: a player who misses goes round and tries again.
+# Each try first asks that the lock is still on the cutter: a worker walks off to
+# its work, and once it has left the fight the lock re-picks whoever is near (a
+# villager behind a house, on integ-cam) and eight swings at nothing say only
+# "no hit". This way the failure names what went.
 try 8
+await target:cutter 0.3
 walkto part 3
 press swing
 await hit 1.2
