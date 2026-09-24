@@ -10,6 +10,7 @@ const Route := preload("res://src/core/colossus/colossus_route.gd")
 const Walk := preload("res://src/core/colossus/colossus_walk.gd")
 const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 const FootModel := preload("res://src/models/colossus_foot_model.gd")
+const GenTreads := preload("res://src/core/worldgen/gen_treads.gd")
 const Model := preload("res://src/models/colossus_model.gd")
 
 const BIG := 1840
@@ -76,9 +77,9 @@ func test_the_foot_stands_in_its_own_tread() -> void:
 		var pose: Dictionary = Walk.pose(d, r, t)
 		var bone: Transform3D = pose.bones[3 + 3 * k]
 		near(float(pose.yaws[k]), yaw, 1e-5, "facing the way it was set down")
-		for toe in 3:
-			var a := TAU * float(toe) / 3.0
-			var sole := bone * (Vector3(cos(a), 0.0, sin(a)) * float(d.toe_reach) + Vector3(0.0, -float(d.ankle_up), 0.0))
+		for toe: int in int(d.toes.size()):
+			var tt: Vector3 = d.toe(toe)
+			var sole := bone * (Vector3(cos(tt.x), 0.0, sin(tt.x)) * tt.y + Vector3(0.0, -float(d.ankle_up), 0.0))
 			var pad: Vector3 = want_pads[toe]
 			worst = maxf(worst, Vector2(sole.x, sole.z).distance_to(Vector2(pad.x, pad.y)) + absf(sole.y - 2.5))
 		t += 17.0
@@ -122,6 +123,22 @@ func test_the_near_foot_meets_the_far_leg_at_the_seam() -> void:
 	lt(float(FootModel.PARTS.size()), 7.0, "in six draws or fewer")
 
 
+## THE SOLE HAS A FRONT: set down facing the walk, its three toes are ahead of
+## the ankle and its heel is behind it, so the print says which way it went.
+func test_a_sole_points_the_way_it_walks() -> void:
+	var d: RefCounted = Def.walkers(BIG)[2]
+	var r: RefCounted = Route.make(d, 7, BIG)
+	for k in 3:
+		var yaw := Walk.natural_yaw(d, r, k, 3)
+		var ahead := Vector2.from_angle(yaw)
+		var pads := Treads.pads(d, Vector2.ZERO, yaw)
+		eq(pads.size(), 4, "three toes and a heel")
+		for i in 3:
+			gt(Vector2(pads[i].x, pads[i].y).dot(ahead), 60.0, "toe %d ahead of the ankle" % i)
+		lt(Vector2(pads[3].x, pads[3].y).dot(ahead), -60.0, "the heel behind it")
+		gt(pads[3].z, pads[0].z, "and the heel is the widest print")
+
+
 ## THE CRATERS IN THE SHIPPED WORLD: the foot's pads stand on bared floor at one
 ## height, a body standing on that floor can climb out of it one level at a time
 ## (the land round it may have cliffs of its own; there must be SOME way out),
@@ -138,11 +155,31 @@ func test_the_world_is_cut_where_the_feet_come_down() -> void:
 			var i := c.y * w.size + c.x
 			eq(w.level[i], floor_l, "a pad's floor is the tread's floor")
 			eq(w.ground[i], Ground.CLINKER, "pressed ground under the pad")
-			check(_climbs_out(w, c, Treads.RIM_R + 4.0), "a body on the floor of the crater at %s can climb out of it" % c)
+			check(_climbs_out(w, c, Treads.rim_r(p) + 4.0), "a body on the floor of the crater at %s can climb out of it" % c)
 			for q: WorldProp in w.props:
 				if q.pos.distance_to(Vector2(p.x, p.y)) < p.z and q.kind in GenScatter.PLACED and q.solid >= 1.2 and q.id < _dressed_from(w):
 					check(false, "a %s stands under a pad at %s" % [PropKind.NAMES[q.kind], q.pos])
 					break
+
+
+## THE PRESSURE RING LIES ON LAND: no tile it was laid on is sea, water, or
+## within GenTreads.SHORE of either (a band of scree along the water is a beach
+## the land never had). Asked of the tiles the ring itself recorded.
+func test_the_pressure_ring_keeps_off_the_water() -> void:
+	GenTreads.last_ring = PackedInt32Array()
+	_world = null
+	var w := _grown()
+	var laid: PackedInt32Array = GenTreads.last_ring
+	gt(float(laid.size()), 500.0, "the ring was laid (%d tiles)" % laid.size())
+	var wet := 0
+	var shore := 0
+	for i in laid:
+		if w.level[i] <= 0 or Ground.is_water(w.ground[i]):
+			wet += 1
+		elif GenTreads._shore(w, i % w.size, i / w.size):
+			shore += 1
+	eq(wet, 0, "no ring tile is water")
+	eq(shore, 0, "and none is on the shore")
 
 
 ## The walk and the world agree: handed the world's treads, the only feet that

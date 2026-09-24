@@ -5,7 +5,13 @@
 # pressed into it and the scars its six claws dragged out through the strata,
 # plate and wreck crushed flat round its edge, the strata stepped up out of it
 # and the spoil thrown over the old ground -- then down into the bowl, then from
-# above, standing on its floor, and drawn out wide enough to hold the whole of it.
+# above, standing on its floor, and drawn out to hold the whole of one print.
+# The whole SOLE -- the heel's round print behind, three toe prints splayed
+# ahead along the way it walked, each toe's two claw gouges raked out ahead of
+# it, the pressure ring round all four -- is 500 m across, wider than the play
+# camera's widest view; it reads on the survey (tools/map.sh --seed=7) and in a
+# staged still:
+#   tools/shot.sh shots/sole.png --seed=7 --place=tread0 --zoom=420 --frames=90 --colossus=2@tread0-240 --hour=12 --weather=clear:0
 #   tools/tour.sh tours/colossi_crater.tour --seed=7 --place=tread0 --colossus=2@tread0-240 --hour=12 --view=shoulder --weather=clear:0
 near colossus_rim
 wait 3

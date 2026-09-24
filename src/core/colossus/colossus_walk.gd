@@ -52,7 +52,7 @@ static func plant(def: RefCounted, route: RefCounted, k: int, j: int) -> Vector3
 static func natural_plant(def: RefCounted, route: RefCounted, k: int, j: int) -> Vector3:
 	var u := _plant_u(def, k, j)
 	var at: Vector2 = route.at(u)
-	var h := natural_yaw(def, route, k, j)
+	var h: float = route.heading(u) + deg_to_rad(float(def.slots[k]))
 	var p := at + Vector2(cos(h), sin(h)) * float(def.feet_circle)
 	return Vector3(p.x, 0.0, p.y)
 
@@ -62,12 +62,13 @@ static func _plant_u(def: RefCounted, k: int, j: int) -> float:
 	return float(j) + float(k) / 3.0 + (1.0 + f) * 0.5
 
 
-## WHICH WAY A PLANTED FOOT FACES: out from the body along the leg's own bearing
-## at the plant, fixed from the moment it lands until it lifts. A foot turned by
+## WHICH WAY A PLANTED FOOT FACES: the way the machine is walking at the plant,
+## toes ahead and heel behind (ColossusDef.toes), fixed from the moment it lands
+## until it lifts. A foot turned by
 ## the hub instead swivelled its pads across the ground while it stood, as the
 ## other legs stepped; a foot that stands in a crater cannot.
 static func natural_yaw(def: RefCounted, route: RefCounted, k: int, j: int) -> float:
-	return route.heading(_plant_u(def, k, j)) + deg_to_rad(float(def.slots[k]))
+	return route.heading(_plant_u(def, k, j))
 
 
 static func plant_yaw(def: RefCounted, route: RefCounted, k: int, j: int) -> float:
@@ -260,11 +261,11 @@ static func shadow_capsules(def: RefCounted, p: Dictionary, sun: Vector3, around
 		var ankle: Vector3 = p.ankles[k]
 		var yaw: float = (p.yaws as Array)[k] if p.has("yaws") else 0.0
 		parts.append([ankle + Vector3(0.0, -60.0, 0.0), ankle + Vector3(0.0, 4.0, 0.0), 150.0, 150.0])
-		for toe in 3:
-			var a := yaw + TAU * float(toe) / 3.0
-			var dir := Vector3(cos(a), 0.0, sin(a))
-			parts.append([ankle + dir * 66.0 + Vector3(0.0, -64.0, 0.0),
-				ankle + dir * float(def.toe_reach) + Vector3(0.0, 12.0 - float(def.ankle_up), 0.0), 21.0, 18.0])
+		for ti: int in int(def.toes.size()):
+			var t: Vector3 = def.toe(ti)
+			var dir := Vector3(cos(yaw + t.x), 0.0, sin(yaw + t.x))
+			parts.append([ankle + dir * (t.y * 0.34) + Vector3(0.0, -64.0, 0.0),
+				ankle + dir * t.y + Vector3(0.0, 12.0 - float(def.ankle_up), 0.0), t.z + 1.0, t.z * 0.9])
 	var lo := hub.origin + Vector3(0.0, float(def.hub_low) - float(def.hip_height), 0.0)
 	var hi := hub.origin + Vector3(0.0, float(def.hub_high) - float(def.hip_height), 0.0)
 	parts.append([lo, hi, float(def.hub_radius) * 0.8, float(def.hub_radius) * 0.5])
