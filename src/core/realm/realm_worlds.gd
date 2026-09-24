@@ -67,8 +67,13 @@ static func begin(seed_value: int, size: int, kind: StringName) -> bool:
 		# No pool to raise it on (the no-threads web build): it is raised where it
 		# is asked for, which is the one frame the shaft costs there.
 		return false
-	# A GROUP OF ONE, AT LOW PRIORITY, so the raise takes one worker and leaves
-	# the rest to the game. As a plain task every stage of it fanned out over
+	# A GROUP OF ONE, so the raise takes one worker and leaves the rest to the
+	# game. NOT at low priority: Godot gives low-priority work a share of the pool
+	# (one thread of four on the CI runner), and a raise holding it for the whole
+	# world left everything else queued at low priority -- chunks among them --
+	# waiting behind it, so a game on a four-thread machine never finished its
+	# frames (reproduced with worker_pool/max_threads=4: a 20-frame run hung past
+	# 90 s; high priority, 7 s). As a plain task every stage of it fanned out over
 	# every worker at high priority (`GenFields.parallel`), and it runs for
 	# twenty seconds of play: a job the renderer waits on inside the draw queued
 	# behind it for up to 5.3 s, which on seed 7 was one frame of 4.6-5.2 s the
@@ -81,7 +86,7 @@ static func begin(seed_value: int, size: int, kind: StringName) -> bool:
 	_grow[key] = [Realm.seed_for(seed_value, kind), size, kind]
 	_mutex.unlock()
 	var task := WorkerThreadPool.add_group_task(func(_i: int) -> void: _raise(key, seed_value, size, kind, gen),
-		1, 1, false, "realm %s" % kind)
+		1, 1, true, "realm %s" % kind)
 	_mutex.lock()
 	_tasks[key] = task
 	_mutex.unlock()
