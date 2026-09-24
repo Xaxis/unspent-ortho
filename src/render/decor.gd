@@ -15,8 +15,13 @@ extends RefCounted
 ## country's, so the first snow tufts and ash flakes are seen well before the
 ## ground itself turns.
 ##
-## Plants sway by height (UV2.x) in world.gdshader; flowers follow a bloom field
-## so a hillside flowers together and the next is still in bud.
+## Plants sway by height (UV2.x); flowers follow a bloom field so a hillside
+## flowers together and the next is still in bud.
+##
+## TWO SURFACES. Whatever sways (a template with any UV2.x above 0: tufts,
+## reeds, flowers, fronds) is laid into the chunk's `grass` arrays and drawn on
+## grass.gdshader, which bends it in the wind and parts it round bodies; stones,
+## shells and litter are laid into the `decor` arrays on the world material.
 
 enum {
 	TUFT, TUFT_TALL, HEATHER, FLOWER, THISTLE, STONE, PEBBLES, SHELL, BONE,
@@ -31,10 +36,13 @@ enum {
 	# What the drilling left behind it: a core pulled out of the rock and laid
 	# where it was pulled, and a lump of cast stone with its rebar showing.
 	DRILL_CORE, REBAR,
+	# Long grass: a sward left to stand knee-high, for a landscape whose own
+	# d.decor lays it (the coast's cliff meadows).
+	MEADOW,
 }
 ## The enum above, counted. Adding a kind and forgetting this reads off the end
 ## of `_SPECK` on the first chunk built, so a test asserts the two agree.
-const KINDS := 40
+const KINDS := 41
 ## Litter by kind of work (WorksMap channel): cut, scorch, quarry, bores.
 const WORKS_LITTER: Array = [[SCRAP, BOLT, WIRE], [SCRAP, CINDER, CAN], [SPOIL, BOLT, STONE], [SPOIL, BOLT, SCRAP]]
 ## Share of a tile's items that are litter outside any work, and inside one.
@@ -68,6 +76,36 @@ class Tpl:
 	var c := PackedColorArray()
 	var uv := PackedVector2Array()
 	var uv2 := PackedVector2Array()
+	## Anything of it sways: it belongs on the grass surface.
+	var sways := false
+
+
+## One surface being laid.
+class Out:
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	var c := PackedColorArray()
+	var uv := PackedVector2Array()
+	var uv2 := PackedVector2Array()
+
+	func put(tpl: Tpl, xf: Transform3D, turn: Basis) -> void:
+		v.append_array(xf * tpl.v)
+		n.append_array(Transform3D(turn, Vector3.ZERO) * tpl.n)
+		c.append_array(tpl.c)
+		uv.append_array(tpl.uv)
+		uv2.append_array(tpl.uv2)
+
+	func arrays() -> Array:
+		if v.is_empty():
+			return []
+		var a := []
+		a.resize(Mesh.ARRAY_MAX)
+		a[Mesh.ARRAY_VERTEX] = v
+		a[Mesh.ARRAY_NORMAL] = n
+		a[Mesh.ARRAY_COLOR] = c
+		a[Mesh.ARRAY_TEX_UV] = uv
+		a[Mesh.ARRAY_TEX_UV2] = uv2
+		return a
 
 
 func _init(w: WorldData) -> void:
@@ -155,14 +193,27 @@ static func make_mesh(arrays: Array) -> ArrayMesh:
 	return mesh
 
 
-## Surface arrays of a chunk's decor ([] for none). Safe on a worker thread.
+## Surface arrays of ALL a chunk's decor, both surfaces as one ([] for none).
 func build_arrays(ch: TerrainMesher.Chunk) -> Array:
+	var parts := build_parts(ch)
+	var all := Out.new()
+	for a: Array in parts:
+		if a.is_empty():
+			continue
+		all.v.append_array(a[Mesh.ARRAY_VERTEX])
+		all.n.append_array(a[Mesh.ARRAY_NORMAL])
+		all.c.append_array(a[Mesh.ARRAY_COLOR])
+		all.uv.append_array(a[Mesh.ARRAY_TEX_UV])
+		all.uv2.append_array(a[Mesh.ARRAY_TEX_UV2])
+	return all.arrays()
+
+
+## A chunk's decor as [solid arrays, grass arrays], each [] when empty. Safe on
+## a worker thread.
+func build_parts(ch: TerrainMesher.Chunk) -> Array:
 	var rng := Rng.make(world.seed_value, Rng.hash_ints(ch.cx, ch.cy, 0xDEC0))
-	var v := PackedVector3Array()
-	var n := PackedVector3Array()
-	var c := PackedColorArray()
-	var uv := PackedVector2Array()
-	var uv2 := PackedVector2Array()
+	var solid := Out.new()
+	var grass := Out.new()
 	var np := ch.n + 1
 	for ty in ch.h:
 		for tx in ch.w:
@@ -250,11 +301,7 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 				var basis := Basis(Vector3.UP, rng.randf() * TAU)
 				var hy := ch.surface(wx + fx, wy + fy) - 0.004 if soft else h
 				var xf := Transform3D(basis.scaled(Vector3(s, s, s)), Vector3(wx + fx, hy, wy + fy))
-				v.append_array(xf * tpl.v)
-				n.append_array(Transform3D(basis, Vector3.ZERO) * tpl.n)
-				c.append_array(tpl.c)
-				uv.append_array(tpl.uv)
-				uv2.append_array(tpl.uv2)
+				(grass if tpl.sways else solid).put(tpl, xf, basis)
 	# Rubble fallen from cliff faces, more of it where the rock is hard.
 	for fi in ch.feet.size():
 		var foot := ch.feet[fi]
@@ -273,21 +320,8 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 		var tpl := template(RUBBLE, country, rng.randi() % STAGES)
 		var s := 0.7 + rng.randf() * 0.6
 		var basis := Basis(Vector3.UP, rng.randf() * TAU)
-		v.append_array(Transform3D(basis.scaled(Vector3(s, s, s)), p + along * (rng.randf() - 0.5) * 0.4) * tpl.v)
-		n.append_array(Transform3D(basis, Vector3.ZERO) * tpl.n)
-		c.append_array(tpl.c)
-		uv.append_array(tpl.uv)
-		uv2.append_array(tpl.uv2)
-	if v.is_empty():
-		return []
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = v
-	arrays[Mesh.ARRAY_NORMAL] = n
-	arrays[Mesh.ARRAY_COLOR] = c
-	arrays[Mesh.ARRAY_TEX_UV] = uv
-	arrays[Mesh.ARRAY_TEX_UV2] = uv2
-	return arrays
+		solid.put(tpl, Transform3D(basis.scaled(Vector3(s, s, s)), p + along * (rng.randf() - 0.5) * 0.4), basis)
+	return [solid.arrays(), grass.arrays()]
 
 
 ## True when the lattice cell under (x, y) is one dry terrace.
@@ -318,6 +352,10 @@ static func template(kind: int, country: int, stage: int = 0) -> Tpl:
 		t.c = k.made.colors
 		t.uv = k.made.uvs
 		t.uv2 = k.made.uv2s
+		for w: Vector2 in t.uv2:
+			if w.x > 0.0:
+				t.sways = true
+				break
 		_templates[key] = t
 	_lock.unlock()
 	return t
@@ -507,6 +545,26 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 			k.made.prism(0, -0.11, 0, 0.035, 0.11, 0.035, 7, P.LINEN[4], P.LINEN[5])
 			k.made.prism(0, -0.02, 0, 0.037, 0.01, 0.037, 7, P.LINEN[2])
 			k.made.pop()
+		MEADOW:
+			# A patch of sward, not a clump: blades rooted all over a disc about
+			# two thirds of a tile across, all laid roughly one way (each patch
+			# its own way, by stage) and bent over at one joint, the tip bleached
+			# paler than the sheath. A rosette from one root reads as a lone
+			# plant; patches like this close into one sward that a wind can comb.
+			var blades := 16
+			var lay := float(stage) * 2.1 + 0.6
+			for i in blades:
+				var r := sqrt(Rng.hash01(s, i, 11)) * 0.34
+				var at := Rng.hash01(s, i, 13) * TAU
+				var base := Vector3(cos(at) * r, 0.0, sin(at) * r)
+				var a := lay + Kit.j(s, i, 0.8)
+				var out := Vector3(cos(a), 0.0, sin(a))
+				var hh := 0.26 + Rng.hash01(s, i, 3) * 0.3
+				var mid := base + out * hh * (0.08 + Rng.hash01(s, i, 5) * 0.12) + Vector3(0.0, hh * 0.6, 0.0)
+				var tip := base + out * hh * (0.3 + Rng.hash01(s, i, 7) * 0.3) + Vector3(0.0, hh * 0.93, 0.0)
+				var col: Color = gr[i % 2]
+				k.blade2(base, mid, tip, 0.06, a + 1.57, col, col.lerp(P.SAND[4], 0.12 + Rng.hash01(s, i, 17) * 0.24))
+			k.sway_by_height(0, 0.0, 0.5, 1.0)
 		REBAR:
 			# A lump of cast stone broken off something, its bars standing out of
 			# the break, rusted to the colour of what is left of the old world.

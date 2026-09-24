@@ -332,6 +332,14 @@
       "tests": []
     },
     {
+      "id": "system:18_trample",
+      "kind": "system",
+      "entry": "src/systems/18_trample.gd",
+      "reach": "tools/tour.sh tours/foliage_meadow.tour --seed=7",
+      "area": "world-look",
+      "tests": ["tests/render/test_trample.gd", "tests/render/test_wind.gd"]
+    },
+    {
       "id": "system:19_colossi",
       "kind": "system",
       "entry": "src/systems/19_colossi.gd",

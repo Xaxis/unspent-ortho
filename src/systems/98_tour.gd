@@ -97,6 +97,7 @@ extends GameSystem
 ##   perf foliage SECS [MS]  rendered cost of every leaf card in the loaded chunks,
 ##                          shown and hidden in turn (foliage_perf.gd)
 ##   perf decor SECS [MS]    the same for every chunk's baked decor: grass, stones, litter
+##   perf grass SECS [MS]    the same for only what sways in it (grass.gdshader)
 ##   perf colour            what this renderer does to a value in ALBEDO (render_probe.gd)
 ##   perf features NAME     every expensive thing the frame has, off and on, world held
 ##                          still: which ones this renderer really draws (render_probe.gd)

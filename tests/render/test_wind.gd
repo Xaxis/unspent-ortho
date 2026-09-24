@@ -9,6 +9,7 @@ const SWAYERS: Array[String] = [
 	"res://src/render/world.gdshader",
 	"res://src/render/foliage/leaf.gdshader",
 	"res://src/render/depth/fore.gdshader",
+	"res://src/render/foliage/grass.gdshader",
 ]
 const INCLUDE := "res://src/render/wind.gdshaderinc"
 
