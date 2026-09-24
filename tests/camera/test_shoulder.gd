@@ -745,3 +745,73 @@ func test_the_eye_rises_over_a_person_on_the_line_and_the_lock_holds() -> void:
 	check(bool(sys.call("tour_seen", &"shoulder_locked")), "and the lock is still framed")
 	cam.subject = Vector3.INF
 	_done()
+
+
+## LOOKING UP AT A COLOSSUS, THE PLAYER GETS OUT OF THE WAY. Tipped past the
+## ordinary limit the orbit would carry the eye under the body and fill the
+## frame with the back of the head; instead the eye comes to the face and the
+## figure is stippled away by the same share. Measured on the picture: at the
+## gaze's full tip no part of the body projects inside the frame, and the share
+## handed to the shaders is whole; at the ordinary pitch it is nothing.
+func test_looking_up_the_body_leaves_the_frame() -> void:
+	var g := await _make()
+	var cam := g.camera
+	cam.sight_room = Callable()
+	cam.shoulder = true
+	_step(cam, 40)
+	near(cam.yield_share, 0.0, 1e-6, "at the ordinary pitch the body is whole")
+	cam.shoulder_pitch = Shoulder.GAZE_LEAST
+	_step(cam, 3)
+	near(cam.yield_share, 1.0, 1e-4, "tipped all the way up it is gone")
+	var rect := cam.get_viewport().get_visible_rect()
+	var feet := g.player.position
+	var seen := 0
+	for y: float in [0.1, 0.5, 0.9, 1.2, 1.45]:
+		for side: float in [-0.25, 0.0, 0.25]:
+			var p := feet + Vector3(side, y, side)
+			if cam.is_position_behind(p):
+				continue
+			if rect.has_point(cam.unproject_position(p)):
+				seen += 1
+	eq(seen, 0, "no point of the body below the head is on the glass")
+	for pitch: float in [Shoulder.PITCH_LEAST - 2.0, -22.0, Shoulder.YIELD_FULL]:
+		cam.shoulder_pitch = pitch
+		_step(cam, 2)
+		var w := cam.yield_share
+		near(w, Shoulder.rise(pitch), 1e-4, "the stipple follows the eye at %.0f" % pitch)
+	_done()
+
+
+## A COLOSSUS LANDING IS FELT BY WHICHEVER CAMERA IS DRAWING: the quake sways
+## the staged eye (`--eye`, 96_eye) as it does the rig. Measured on the eye
+## itself: its position with a quake running is not its position without one,
+## by about the quake's own size, and it comes back when the quake is spent.
+func test_a_quake_reaches_the_staged_eye() -> void:
+	var g := await _make(["--eye=1.7,5"])
+	var eye_sys: Node = null
+	for s in g.systems:
+		if s.name == "96_eye":
+			eye_sys = s
+	check(eye_sys != null, "the stand is loaded")
+	g.systems.map(func(s: Node) -> void: if s.has_method(&"started"): s.started())
+	var cam := _drawing_camera(g)
+	check(cam != null and cam != g.camera, "the stand is the camera drawing")
+	eye_sys._process(DT)
+	var still := cam.global_position
+	g.camera.quake(0.35, 2.5, 1.0)
+	var most := 0.0
+	for i in 60:
+		g.camera._process(DT)
+		eye_sys._process(DT)
+		most = maxf(most, cam.global_position.distance_to(still))
+	gt(most, 0.1, "the eye sways (%.3f)" % most)
+	lt(most, 1.0, "by about the quake's size")
+	for i in 200:
+		g.camera._process(DT)
+	eye_sys._process(DT)
+	lt(cam.global_position.distance_to(still), 1e-3, "and stands still again")
+	_done()
+
+
+func _drawing_camera(g: Game) -> Camera3D:
+	return g.get_viewport().get_camera_3d()

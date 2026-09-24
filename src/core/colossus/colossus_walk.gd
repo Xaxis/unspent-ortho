@@ -36,18 +36,50 @@ const LOWER_FROM := 0.74
 const CARRY := Vector2(0.10, 0.90)
 
 
-## Plant `j` of leg `k`: where that foot stands after its j-th swing.
+## Plant `j` of leg `k`: where that foot stands after its j-th swing -- on the
+## tread world generation cut for it, if it has one (`route.treads`), and
+## otherwise where the gait alone would set it.
 static func plant(def: RefCounted, route: RefCounted, k: int, j: int) -> Vector3:
-	var f: float = def.swing_share()
-	var u := float(j) + float(k) / 3.0 + (1.0 + f) * 0.5
+	var t: Vector4 = route.tread_of(k, j)
+	if not is_nan(t.x):
+		return Vector3(t.x, t.y, t.z)
+	return natural_plant(def, route, k, j)
+
+
+## Where the gait alone sets plant `j` of leg `k`: a point on the route at the
+## middle of the rest it will stand through, set out to the side at the leg's own
+## bearing from the heading there.
+static func natural_plant(def: RefCounted, route: RefCounted, k: int, j: int) -> Vector3:
+	var u := _plant_u(def, k, j)
 	var at: Vector2 = route.at(u)
-	var h: float = route.heading(u) + deg_to_rad(float(def.slots[k]))
+	var h := natural_yaw(def, route, k, j)
 	var p := at + Vector2(cos(h), sin(h)) * float(def.feet_circle)
 	return Vector3(p.x, 0.0, p.y)
 
 
-## Where foot `k` is at `minutes` (its pad, on the ground or in the air), and how
-## far through a swing it is (-1 when it is planted).
+static func _plant_u(def: RefCounted, k: int, j: int) -> float:
+	var f: float = def.swing_share()
+	return float(j) + float(k) / 3.0 + (1.0 + f) * 0.5
+
+
+## WHICH WAY A PLANTED FOOT FACES: out from the body along the leg's own bearing
+## at the plant, fixed from the moment it lands until it lifts. A foot turned by
+## the hub instead swivelled its pads across the ground while it stood, as the
+## other legs stepped; a foot that stands in a crater cannot.
+static func natural_yaw(def: RefCounted, route: RefCounted, k: int, j: int) -> float:
+	return route.heading(_plant_u(def, k, j)) + deg_to_rad(float(def.slots[k]))
+
+
+static func plant_yaw(def: RefCounted, route: RefCounted, k: int, j: int) -> float:
+	var t: Vector4 = route.tread_of(k, j)
+	if not is_nan(t.w):
+		return t.w
+	return natural_yaw(def, route, k, j)
+
+
+## Where foot `k` is at `minutes` (its pad, on the ground or in the air), how far
+## through a swing it is (-1 when it is planted), which way it faces, and the
+## plant it stands on or is on its way to.
 static func foot(def: RefCounted, route: RefCounted, k: int, minutes: float) -> Array:
 	var f: float = def.swing_share()
 	var u := minutes / float(def.cycle_minutes)
@@ -55,7 +87,7 @@ static func foot(def: RefCounted, route: RefCounted, k: int, minutes: float) -> 
 	var j := floori(v)
 	var s := (v - float(j)) / f
 	if s >= 1.0:
-		return [plant(def, route, k, j), -1.0]
+		return [plant(def, route, k, j), -1.0, plant_yaw(def, route, k, j), j]
 	var from := plant(def, route, k, j - 1)
 	var to := plant(def, route, k, j)
 	var carry := smoothstep(CARRY.x, CARRY.y, s)
@@ -65,8 +97,11 @@ static func foot(def: RefCounted, route: RefCounted, k: int, minutes: float) -> 
 	# slowest part of the whole step.
 	var high := float(def.lift) * up * (1.0 - down) * (1.0 - down)
 	var p := from.lerp(to, carry)
-	p.y = high
-	return [p, s]
+	# Lifted from the ground it stood on and lowered onto the ground it will
+	# stand on: a crater floor is a few metres over the sea the gait assumes.
+	p.y = high + lerpf(from.y, to.y, down)
+	var yaw := lerp_angle(plant_yaw(def, route, k, j - 1), plant_yaw(def, route, k, j), carry)
+	return [p, s, yaw, j]
 
 
 ## The whole body at `minutes`.
@@ -79,10 +114,12 @@ static func foot(def: RefCounted, route: RefCounted, k: int, minutes: float) -> 
 static func pose(def: RefCounted, route: RefCounted, minutes: float) -> Dictionary:
 	var t := fposmod(minutes + float(route.offset), float(route.lap_minutes()))
 	var feet: Array[Vector3] = []
+	var yaws: Array[float] = []
 	var swinging := -1
 	for k in 3:
 		var fs: Array = foot(def, route, k, t)
 		feet.append(fs[0])
+		yaws.append(fs[2])
 		if float(fs[1]) >= 0.0:
 			swinging = k
 	var mid := (feet[0] + feet[1] + feet[2]) / 3.0
@@ -109,11 +146,10 @@ static func pose(def: RefCounted, route: RefCounted, minutes: float) -> Dictiona
 		var outward := out.normalized()
 		bones.append(segment(hip, knee, outward))
 		bones.append(segment(knee, ankle, outward))
-		# The foot stands upright and faces out from the body.
-		var yaw := atan2(outward.z, outward.x)
-		bones.append(Transform3D(Basis(Vector3.UP, -yaw), ankle))
+		# The foot stands upright, facing the way it was set down (`plant_yaw`).
+		bones.append(Transform3D(Basis(Vector3.UP, -yaws[k]), ankle))
 	return {"hub": hub, "hips": hips, "knees": knees, "ankles": ankles, "feet": feet,
-		"swinging": swinging, "bones": bones}
+		"yaws": yaws, "swinging": swinging, "bones": bones}
 
 
 ## Two-bone IK: the knee between `a` and `c` on bones of length `l1` and `l2`,
@@ -195,8 +231,8 @@ static func air_delay(d: float) -> float:
 	return d / 343.0
 
 
-## THE LEGS WHOSE SHADOW FALLS ON THE PLAYER'S GROUND, as capsules [a, b,
-## radius] for sky.gdshaderinc `sky_colossus`: a shadow far too big for any
+## THE LEGS WHOSE SHADOW FALLS ON THE PLAYER'S GROUND, as tapered capsules
+## [a, b, radius at a, radius at b] for sky.gdshaderinc `sky_colossus`: a shadow far too big for any
 ## shadow map, cast the way a cloud's is, by asking per fragment. `sun` is the
 ## way to the real sun; `around` the ground being drawn and `reach` how far
 ## round it. A capsule is kept only if its shadow on the ground (the leg carried
@@ -212,17 +248,31 @@ static func shadow_capsules(def: RefCounted, p: Dictionary, sun: Vector3, around
 	var hub: Transform3D = p.hub
 	var tr: Vector2 = def.thigh_r
 	var sr: Vector2 = def.shin_r
+	# TAPERED, as the legs are: a shin is 800 m at the knee and 110 at the ankle,
+	# and one mean radius drew the shadow of its foot end four times too wide --
+	# a soft blot where a leg standing on the land throws a narrow, hard band.
 	for k in 3:
-		parts.append([p.hips[k], p.knees[k], (tr.x + tr.y) * 0.5])
-		parts.append([p.knees[k], p.ankles[k], (sr.x + sr.y) * 0.5])
+		parts.append([p.hips[k], p.knees[k], tr.x, tr.y])
+		parts.append([p.knees[k], p.ankles[k], sr.x, sr.y])
+		# The foot: its drum, three hundred metres across and standing its own
+		# height over the ground, and a toe down to each pad -- the shade a person
+		# standing in a tread stands in (colossus_foot_model.gd has the shape).
+		var ankle: Vector3 = p.ankles[k]
+		var yaw: float = (p.yaws as Array)[k] if p.has("yaws") else 0.0
+		parts.append([ankle + Vector3(0.0, -60.0, 0.0), ankle + Vector3(0.0, 4.0, 0.0), 150.0, 150.0])
+		for toe in 3:
+			var a := yaw + TAU * float(toe) / 3.0
+			var dir := Vector3(cos(a), 0.0, sin(a))
+			parts.append([ankle + dir * 66.0 + Vector3(0.0, -64.0, 0.0),
+				ankle + dir * float(def.toe_reach) + Vector3(0.0, 12.0 - float(def.ankle_up), 0.0), 21.0, 18.0])
 	var lo := hub.origin + Vector3(0.0, float(def.hub_low) - float(def.hip_height), 0.0)
 	var hi := hub.origin + Vector3(0.0, float(def.hub_high) - float(def.hip_height), 0.0)
-	parts.append([lo, hi, float(def.hub_radius) * 0.8])
+	parts.append([lo, hi, float(def.hub_radius) * 0.8, float(def.hub_radius) * 0.5])
 	var scored: Array = []
 	for c: Array in parts:
 		var a: Vector3 = c[0]
 		var b: Vector3 = c[1]
-		var r: float = c[2]
+		var r: float = maxf(float(c[2]), float(c[3]))
 		var ga := a - sun * (a.y / sun.y)
 		var gb := b - sun * (b.y / sun.y)
 		var g := Geometry2D.get_closest_point_to_segment(Vector2(around.x, around.z), Vector2(ga.x, ga.z), Vector2(gb.x, gb.z))

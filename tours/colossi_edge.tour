@@ -1,0 +1,54 @@
+# THE EDGE OF A LEG'S SHADOW crossing the land in front of the eye, so the
+# shadow reads as a BAND sweeping over and not as the whole frame dimming
+# (sky.gdshaderinc `sky_colossus`, tapered capsules, 19_colossi `_cast`). The
+# straddling walker is staged as its swinging shin passes between the player
+# and a four o'clock sun, fifty degrees up: the shin's shadow comes in from
+# bearing 75 across the terraces, takes the player about four seconds later,
+# holds about ten, and goes back the way it came. The shin is a few kilometres up
+# here, so its penumbra is about a hundred metres -- the edge is a line across
+# the middle ground, not a dimmer. A burst of frames under half a second apart as it comes in, one under it,
+# and a burst as it goes.
+#   tools/tour.sh tours/colossi_edge.tour --seed=7 --place=coast --hour=16 --colossus=2@4126 --eye=1.7,5 --face=75 --weather=clear:0
+wait 1.5
+shot edge-00-lit with land:coast
+wait 0.35
+shot edge-01 with land:coast
+wait 0.35
+shot edge-02 with land:coast
+wait 0.35
+shot edge-03 with land:coast
+wait 0.35
+shot edge-04 with land:coast
+wait 0.35
+shot edge-05 with land:coast
+wait 0.35
+shot edge-06 with land:coast
+wait 0.35
+shot edge-07 with land:coast
+wait 0.35
+shot edge-08 with land:coast
+wait 0.35
+shot edge-09 with land:coast
+wait 0.35
+shot edge-10 with land:coast
+wait 6
+shot edge-11-under-it with land:coast
+wait 5
+shot edge-12 with land:coast
+wait 0.4
+shot edge-13 with land:coast
+wait 0.4
+shot edge-14 with land:coast
+wait 0.4
+shot edge-15 with land:coast
+wait 0.4
+shot edge-16 with land:coast
+wait 0.4
+shot edge-17 with land:coast
+wait 0.4
+shot edge-18 with land:coast
+wait 0.4
+shot edge-19 with land:coast
+wait 0.4
+wait 3
+shot edge-20-gone with land:coast

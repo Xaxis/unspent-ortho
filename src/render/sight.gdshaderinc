@@ -21,6 +21,9 @@
 // under that lens -- is untouched; the glide down to the shoulder passes through
 // the band, which is where the cut comes in, stippling up as the eye comes down.
 
+#ifndef SIGHT_GDSHADERINC
+#define SIGHT_GDSHADERINC
+
 // World units over a subject's ground where its body's middle is.
 const float SIGHT_MID = 0.95;
 // The body's own half-size seen from the eye, grown a little so the rim of the
@@ -63,3 +66,30 @@ float sight_cone(vec3 wp, vec3 eye, vec4 p) {
 	float rim = SIGHT_RADIUS * t / len;
 	return 1.0 - smoothstep(rim * 0.72, rim * 1.2, d);
 }
+
+// THE PLAYER'S OWN BODY GETS OUT OF THE WAY OF THE EYE. Over the shoulder and
+// tipped up past Shoulder.PITCH_LEAST (the gaze, looking up at a colossus), the
+// eye comes forward to the head (Shoulder.rise) and the figure it passes through
+// is stippled away by the same share. xyz: the player's feet; w: how much of the
+// body is gone, 0..1. Written by CameraRig every frame the lens is up, 0
+// otherwise, so every other frame pays one comparison.
+global uniform vec4 eye_yield;
+// How far round the feet's column the body reaches (its held tool included).
+const float YIELD_REACH = 1.25;
+
+// True where this fragment of a body is to be dropped: inside the player's own
+// column, on a screen-pinned stipple whose share is w. A stipple, never an alpha,
+// so the figure keeps its depth and its rim on the pixels it still owns.
+bool sight_yield(vec3 wp, vec2 frag) {
+	if (eye_yield.w <= 0.0) {
+		return false;
+	}
+	vec2 d = wp.xz - eye_yield.xz;
+	float h = wp.y - eye_yield.y;
+	if (dot(d, d) > YIELD_REACH * YIELD_REACH || h < -0.2 || h > 2.3) {
+		return false;
+	}
+	return ink_hash(floor(frag) + vec2(17.0, 3.0)) < eye_yield.w;
+}
+
+#endif

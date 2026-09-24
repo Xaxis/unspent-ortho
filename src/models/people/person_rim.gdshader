@@ -16,6 +16,7 @@ render_mode unshaded, cull_front, depth_draw_always, skip_vertex_transform, fog_
 #include "res://src/render/ink.gdshaderinc"
 #include "res://src/render/matter.gdshaderinc"
 #include "res://src/models/people/person_light.gdshaderinc"
+#include "res://src/render/sight.gdshaderinc"
 
 uniform vec3 step_down = vec3(0.700, 0.704, 0.749);
 // Rim width in WORLD units, not in pixels. It used to be one texel of the
@@ -47,6 +48,9 @@ void vertex() {
 }
 
 void fragment() {
+	if (sight_yield(world_pos, FRAGCOORD.xy)) {
+		discard;
+	}
 	vec3 c = COLOR.rgb;
 	vec3 lit = toward > -0.2 ? min(c / step_down, vec3(1.0)) : c * step_down;
 	vec3 at;

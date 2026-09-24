@@ -124,6 +124,8 @@ void vertex() {
 		float t = TIME * (1.1 + wind_strength) + UV2.y * 6.283 + wp.x * 0.35 + wp.z * 0.21;
 		float gust = 0.6 + 0.4 * sin(TIME * 0.37 + wp.x * 0.05 - wp.z * 0.03);
 		vec3 push = vec3(sin(t) * 0.7 + 0.45, 0.0, cos(t * 0.8) * 0.5 + 0.3) * sway_w * 0.07 * (0.25 + wind_strength) * gust;
+		// A colossus's landing: the crowns bent over by the shock as it passes.
+		push += sky_shock(wp) * sway_w * SHOCK_BEND;
 		// ...and on top of it the tip of each card flutters on a faster beat of
 		// its own, which is the one motion a solid crown could never make.
 		float f = TIME * (4.7 + UV2.y * 3.1) + UV2.y * 40.0;

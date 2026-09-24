@@ -1,0 +1,23 @@
+# THE LAST SUN ON A COLOSSUS, graded by height (colossus.gdshader, EMBER_RISE):
+# after the land has lost the sun a walker's top still has it, and how much
+# depends on how high each part stands -- dark feet, red knees, the hub and the
+# spire lit longest. The skyline walker and the looming one's legs in one frame,
+# a frame every eight real seconds (eleven world minutes) from just after
+# sunset until the spire goes out: the terminator climbs the legs.
+#   tools/tour.sh tours/colossi_ember.tour --seed=7 --place=coast --hour=20.9 --eye=1.7,-9 --face=10 --weather=clear:0
+wait 2
+shot ember-00 with land:coast
+wait 8
+shot ember-01 with land:coast
+wait 8
+shot ember-02 with land:coast
+wait 8
+shot ember-03 with land:coast
+wait 8
+shot ember-04 with land:coast
+wait 8
+shot ember-05 with land:coast
+wait 8
+shot ember-06 with land:coast
+wait 8
+shot ember-07 with land:coast
