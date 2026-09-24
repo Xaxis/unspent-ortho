@@ -21,7 +21,7 @@ const SLEEP_MS := 40
 func test_the_pool_answers_while_a_realm_is_raised() -> void:
 	RealmWorlds.forget()
 	var seed_value := 90417
-	var size := Tuning.WORLD_SIZE
+	var size := 1024
 	eq(RealmWorlds.begin(seed_value, size, &"underground"), false, "the raise is started, not done")
 	# Let it get into its stages.
 	OS.delay_msec(1500)
