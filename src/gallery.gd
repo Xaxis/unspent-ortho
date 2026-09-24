@@ -33,7 +33,14 @@ extends Node3D
 ##   --pitch=DEG       look down DEG degrees instead of the play camera's own:
 ##                     5 is an elevation, the model as it stands over the
 ##                     shoulder -- a face, a wall, a back -- which the play
-##                     camera's steep pitch never shows.
+##                     camera's steep pitch never shows. The camera then stands
+##                     `ELEVATION_BACK` off the models instead of the play
+##                     camera's thirty units, because a level look thirty units
+##                     long runs through the low air all the way and hazed the
+##                     models grey, where the eye over the shoulder is four
+##                     units off the player.
+##   --lift=U          raise the middle of the frame U units: with --zoom, a
+##                     face at --pitch=4 --zoom=0.6 --lift=0.5.
 ##   --piece=N|list    one model: `list` prints its FOUND pieces numbered, each
 ##                     with its size, where it is, the bearing that shows it and
 ##                     the colour the palette gave it; N then aims the camera at
@@ -67,6 +74,8 @@ const AIM_STEPS := 24
 ## whether it reads as rust ON something, so the thing it is on has to be in the
 ## picture with it. --zoom overrides this when a tighter look is wanted.
 const PIECE_AIR := 2.5
+## How far off the models the camera stands under --pitch (see the header).
+const ELEVATION_BACK := 9.0
 ## Air round a frame fitted to whole models.
 const FIT_AIR := 1.08
 ## Pieces printed by `--piece=list` before the list is cut off. A coast house is
@@ -117,6 +126,7 @@ func setup(o: BootOptions) -> void:
 	var piece := ""
 	var wear: PackedStringArray = []
 	var look_pitch := NAN
+	var lift := 0.0
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--filter="):
 			filter = a.trim_prefix("--filter=")
@@ -129,6 +139,8 @@ func setup(o: BootOptions) -> void:
 			wear = a.trim_prefix("--wear=").split(",", false)
 		elif a.begins_with("--pitch="):
 			look_pitch = float(a.trim_prefix("--pitch="))
+		elif a.begins_with("--lift="):
+			lift = float(a.trim_prefix("--lift="))
 	var all_names := items
 	if filter != "":
 		# **THE FILTER AND THE NAMES HAVE TO AGREE ABOUT WHAT A NAME IS.** An item
@@ -187,6 +199,7 @@ func setup(o: BootOptions) -> void:
 	cam.yaw_deg += bearing
 	if not is_nan(look_pitch):
 		cam.pitch_deg = look_pitch
+		cam.distance = ELEVATION_BACK
 	add_child(cam)
 	_cam = cam
 	# THE FRAME IS THE MODELS' OWN, not a box worked out from the grid. The old
@@ -200,7 +213,7 @@ func setup(o: BootOptions) -> void:
 			print("gallery --piece took \"%s\"; %d more matched --filter" % [items[0].name, items.size() - 1])
 	if aimed == "":
 		var box := _extent(shown)
-		_frame(cam, box, FIT_AIR, o.zoom, Vector3(box.get_center().x, 0.0, box.get_center().z))
+		_frame(cam, box, FIT_AIR, o.zoom, Vector3(box.get_center().x, 0.0, box.get_center().z), lift)
 	# A name is only worth drawing where it does not cover the model beside it.
 	# The whole gallery is a contact sheet of two hundred silhouettes at forty
 	# pixels a cell; a review that needs the names uses --filter and gets them.
@@ -342,7 +355,7 @@ func _tag_at(l: Dictionary) -> Vector3:
 ## one at which a review frame is fogged the way the game fogs it, and the PIECE
 ## itself for an aim, where a ground six units below would put the subject inside
 ## the near blur (`CameraRig.near_plane`) and soften the one thing in the picture.
-func _frame(cam: CameraRig, box: AABB, air: float, zoom: float, stand: Vector3) -> void:
+func _frame(cam: CameraRig, box: AABB, air: float, zoom: float, stand: Vector3, lift: float = 0.0) -> void:
 	var b := Basis.from_euler(Vector3(deg_to_rad(-cam.pitch_deg), deg_to_rad(cam.yaw_deg), 0.0))
 	var lo := Vector2(INF, INF)
 	var hi := Vector2(-INF, -INF)
@@ -355,7 +368,7 @@ func _frame(cam: CameraRig, box: AABB, air: float, zoom: float, stand: Vector3) 
 	# is UiBase.SIZE whatever window a tool run opens off the side of the desk.
 	var aspect := float(UiBase.SIZE.x) / float(UiBase.SIZE.y)
 	cam.view_height = zoom if zoom > 0.0 else maxf(hi.y - lo.y, (hi.x - lo.x) / aspect) * air
-	var mid := (lo + hi) * 0.5
+	var mid := (lo + hi) * 0.5 + Vector2(0.0, lift)
 	cam.snap_to(b * Vector3(mid.x, mid.y, stand.dot(b.z)))
 
 

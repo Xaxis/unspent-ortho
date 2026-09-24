@@ -23,6 +23,8 @@ extends RefCounted
 ##                     there (src/systems/96_eye.gd; render)
 ## --eye-turn=DEG      turn that eye DEG degrees a second about the player, for
 ##                     proving a view turning never shows the land late
+## --eye-round=DEG     stand that eye DEG degrees round the player from behind:
+##                     180 looks the player in the face, 90 at their side
 ## --walk=DX,DY,SECS   scripted walk in SCREEN directions before the shot
 ## --run               the scripted walk runs
 ## --shot=PATH         capture one frame to PATH (png) and quit
@@ -136,6 +138,7 @@ var view: StringName = &""
 var eye := Vector3.ZERO
 ## How fast the staged eye turns, degrees a second (96_eye).
 var eye_turn := 0.0
+var eye_round := 0.0
 var walk := Vector2.ZERO
 var walk_seconds := 0.0
 var run := false
@@ -239,6 +242,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 					p[1].to_float() if p.size() > 1 else 10.0,
 					p[2].to_float() if p.size() > 2 else 60.0)
 			"eye-turn": o.eye_turn = v.to_float()
+			"eye-round": o.eye_round = v.to_float()
 			"walk":
 				var p := v.split(",")
 				o.walk = Vector2(p[0].to_float(), p[1].to_float())
