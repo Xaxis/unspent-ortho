@@ -143,6 +143,10 @@ static func raised() -> Array[StringName]:
 ## a dozen megabytes, and the next game's realms are not these ones.
 static func forget() -> void:
 	_mutex.lock()
+	# The generation moves BEFORE the stops are set, and both under the lock that
+	# `_raise` reads it under: a raise starting in between would otherwise still
+	# see its own game as current and lift the stop just set on it.
+	_gen += 1
 	for t: int in _tasks.values():
 		_orphans.append(t)
 	for g: Array in _grow.values():
@@ -150,7 +154,6 @@ static func forget() -> void:
 	_grow.clear()
 	_tasks.clear()
 	_worlds.clear()
-	_gen += 1
 	_mutex.unlock()
 	Portals.forget()
 
@@ -158,8 +161,10 @@ static func forget() -> void:
 static func _raise(key: String, seed_value: int, size: int, kind: StringName, gen: int) -> void:
 	# A raise for THIS game grows the whole world, even where an ended game's raise
 	# of the same world was asked to stop (that one then runs to the end too).
+	_mutex.lock()
 	if gen == _gen:
 		WorldGen.unhalt(Realm.seed_for(seed_value, kind), size, kind)
+	_mutex.unlock()
 	var w := BootWorld.world(Realm.seed_for(seed_value, kind), size, kind)
 	if gen != _gen:
 		# Stopped (or finished) for a game that ended: its stop must not outlive it,
