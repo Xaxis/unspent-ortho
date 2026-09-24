@@ -56,17 +56,30 @@ const FOLLOW_RATE := 1.7
 const LOCK_RATE := 6.0
 
 ## THE CAMERA MAY NOT GO INTO THE LAND OR A HOUSE (docs/LOOK.md law 3: "The land
-## itself never opens"). The line from the player's head to where the eye wants
-## to stand is walked in `STEPS` steps; the first one that is under the ground,
-## or inside something that stops a body and stands higher than the step, is
-## where the eye stops, less a step. `CLEAR` is the room kept round the eye so
-## the near plane never slices the thing it stopped at.
+## itself never opens"). The line from the point it looks at (over the right
+## shoulder) back to where the eye wants to stand is walked in `STEPS` steps; the
+## first one that is under the ground, or inside something that stops a body and
+## stands higher than the step, is where the eye stops, less a step. `CLEAR` is
+## the room kept round the eye so the near plane never slices the thing it
+## stopped at.
+##
+## The line runs from the SHOULDER POINT, not the head, so a pulled-in eye comes
+## in along the very line it looks down: the frame keeps its aim and the head
+## stays off to the left of it. Walked from the head, the eye came in beside the
+## skull and looked across it, and the whole picture was the side of a face
+## (`--place=pinewood --view=shoulder --put=pipe,barricade,pole`).
 const HEAD_UP := 1.45
 const STEPS := 28
 const CLEAR := 0.3
-## Never nearer the head than this: a camera inside the skull draws the inside of
-## the face, which is worse than a camera in a wall.
-const LEAST_BACK := 0.55
+## Never nearer the shoulder point than this. At 0.8 the head, 0.62 to the left,
+## is a quarter of the frame's height; nearer, it is the frame.
+const LEAST_BACK := 0.8
+## A solid narrower than this is SEEN PAST, not stood in front of: a pole, a
+## lamp, a pine's trunk. It moves the eye only when the eye itself would stand
+## inside it. Pulled in by every trunk, a walk through a wood was a camera that
+## jumped at the back of the player's head at every tree. A boulder (0.45) and
+## anything built still stop it.
+const THIN := 0.38
 ## Eased back out at this rate per second when the way is clear again; pulled in
 ## at once, because a frame drawn from inside a hill is the failure and a camera
 ## that pulls in quickly is not.
@@ -166,34 +179,44 @@ static func capture(shoulder: bool, blocked: bool, tool_run: bool, focused: bool
 	return shoulder and not blocked and not tool_run and focused
 
 
-## HOW FAR THE EYE MAY STAND from the head along the line to where it wants to be,
-## as a share 0..1 of that line.
+## HOW FAR THE EYE MAY STAND from `from` (the shoulder point) along the line to
+## where it wants to be, as a share 0..1 of that line.
 ##
 ## `ground` answers the drawn height of the land under a tile point. `solids` are
 ## what stops a body, as (x, z, radius, top) in tile space and world height:
 ## a house is its footprint up to its roof, a tower its mass up to the sky. A
 ## point is blocked when it is under the land, or inside a solid's circle (grown
-## by CLEAR) below its top.
-static func room(head: Vector3, eye: Vector3, ground: Callable, solids: Array[Vector4]) -> float:
-	var span := head.distance_to(eye)
+## by CLEAR) below its top; a THIN solid blocks only the eye's own place.
+static func room(from: Vector3, eye: Vector3, ground: Callable, solids: Array[Vector4]) -> float:
+	var span := from.distance_to(eye)
 	if span < 0.001:
 		return 1.0
 	var least := minf(1.0, LEAST_BACK / span)
 	var clear := 0.0
 	for i in range(1, STEPS + 1):
 		var t := float(i) / float(STEPS)
-		var q := head.lerp(eye, t)
-		if _blocked(q, ground, solids):
+		var q := from.lerp(eye, t)
+		if _blocked(q, ground, solids, false):
 			# One step short of the first blocked point, and CLEAR short of that.
 			return maxf(least, clear - CLEAR / span)
 		clear = t
-	return 1.0
+	# The eye's own place, against the thin things too: walked back toward the
+	# shoulder until it is out of them, which is their near side.
+	if not _blocked(eye, ground, solids, true):
+		return 1.0
+	for i in range(STEPS - 1, 0, -1):
+		var t := float(i) / float(STEPS)
+		if not _blocked(from.lerp(eye, t), ground, solids, true):
+			return maxf(least, t)
+	return least
 
 
-static func _blocked(q: Vector3, ground: Callable, solids: Array[Vector4]) -> bool:
+static func _blocked(q: Vector3, ground: Callable, solids: Array[Vector4], thin: bool) -> bool:
 	if float(ground.call(Vector2(q.x, q.z))) + CLEAR > q.y:
 		return true
 	for s: Vector4 in solids:
+		if s.z < THIN and not thin:
+			continue
 		var dx := q.x - s.x
 		var dz := q.z - s.y
 		var r := s.z + CLEAR
