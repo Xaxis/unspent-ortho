@@ -8,7 +8,7 @@ extends RefCounted
 static func make() -> InteriorKind:
 	var k := InteriorKind.new()
 	k.id = &"cottage"
-	k.closed = 0.5
+	k.closed = 0.4
 	k.zoom = 9.0
 	k.wall_h = 2.4
 	k.cut = 0.8

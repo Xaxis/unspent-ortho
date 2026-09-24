@@ -44,7 +44,8 @@ static func image(w: WorldData) -> Image:
 			var c := int(w.country[y * n + x])
 			if seen[c] == 0:
 				seen[c] = 1
-				caps[c] = capable(BiomeRegistry.at(w, Vector2(x, y)).id)
+				# Nothing the sky lets fall reaches a floor under a roof.
+				caps[c] = Vector3.ZERO if w.realm == Realm.INTERIOR else capable(BiomeRegistry.at(w, Vector2(x, y)).id)
 	var heights := PackedByteArray()
 	heights.resize(n * n)
 	var rgba := PackedByteArray()
@@ -74,5 +75,22 @@ static func image(w: WorldData) -> Image:
 	return Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, rgba)
 
 
+## PURE AND DERIVED, SO KEPT: one texture per world OBJECT (never per seed: a
+## test grows one seed twice), so walking back out of a house onto the coast
+## hands the coast's own back instead of sweeping the island again (4.6 s for
+## the ground measured on seed 4, docs/interiors). Held by a weak reference to
+## the world, so a world nobody holds any more takes its texture with it.
+static var _kept: Dictionary = {}
+
+
 static func texture(w: WorldData) -> ImageTexture:
-	return ImageTexture.create_from_image(image(w))
+	var id := w.get_instance_id()
+	var got: Array = _kept.get(id, [])
+	if not got.is_empty() and (got[0] as WeakRef).get_ref() == w:
+		return got[1]
+	for k: int in _kept.keys():
+		if (_kept[k][0] as WeakRef).get_ref() == null:
+			_kept.erase(k)
+	var t := ImageTexture.create_from_image(image(w))
+	_kept[id] = [weakref(w), t]
+	return t

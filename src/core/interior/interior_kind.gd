@@ -8,8 +8,12 @@ extends RefCounted
 
 var id: StringName = &""
 ## How far this place is from the sky, 0..1 (SkyLight.closed): a cottage's
-## windows let the hour in; a bunker is night at noon.
-var closed := 0.5
+## windows let the hour in; a bunker is night at noon. UNDER 0.5 THE SUN STILL
+## CASTS (SkyLight stops the sun's shadow at a lid of 0.5), and a room with
+## windows needs it to: its own ceiling and walls are what shade it, and the
+## patches of sun on its floor are the sun through its windows. At 0.5 the room
+## was lit evenly from nowhere, measured.
+var closed := 0.4
 ## The land's view height inside, orthographic: a room fills the frame.
 var zoom := 9.0
 ## Walls' height, and the height the ones facing the camera are CUT at from

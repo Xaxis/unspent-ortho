@@ -348,6 +348,14 @@
       "tests": []
     },
     {
+      "id": "system:21_doors",
+      "kind": "system",
+      "entry": "src/systems/21_doors.gd",
+      "reach": "tools/tour.sh tours/house.tour --seed=4 --hour=11 --weather=clear:0",
+      "area": "world-places",
+      "tests": []
+    },
+    {
       "id": "system:22_landmarks",
       "kind": "system",
       "entry": "src/systems/22_landmarks.gd",

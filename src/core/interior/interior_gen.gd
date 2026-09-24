@@ -33,7 +33,6 @@ static func grow(seed_value: int, t: Threshold) -> Pocket:
 			w.level[i] = FLOOR_LEVEL if on_floor else 0
 			w.ground[i] = Ground.FLOOR
 			w.country[i] = t.land
-			w.continent[i] = 1
 	w.spawn = l.inside()
 	w.props.append(WorldProp.new(0, PropKind.FIRE, l.hearth, (l.hearth_wall).angle(), 1.0))
 	w.props.append(WorldProp.new(1, PropKind.BENCH, l.table, (l.door_out).angle() + PI * 0.5, 1.0))

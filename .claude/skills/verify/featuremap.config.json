@@ -100,6 +100,13 @@
   },
   {
    "kind": "system",
+   "label": "21_doors",
+   "entry": "src/systems/21_doors.gd",
+   "reach": "tools/tour.sh tours/house.tour --seed=4 --hour=11 --weather=clear:0",
+   "area": "world-places"
+  },
+  {
+   "kind": "system",
    "label": "22_landmarks",
    "entry": "src/systems/22_landmarks.gd",
    "reach": "tools/tour.sh tours/landmarks.tour",

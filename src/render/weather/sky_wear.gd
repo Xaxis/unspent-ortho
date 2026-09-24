@@ -19,6 +19,10 @@ class_name SkyWear
 
 ## A landscape with no row wears like the coast: damp, a little salt, no soot.
 const DEFAULT := Color(0.45, 0.22, 0.05, 0.05)
+## UNDER A ROOF NOTHING SETTLES but the hearth's own smoke. A pocket's tiles
+## carry the land they stand in (docs/interiors), and without this the coast's
+## salt bloomed white across a cottage's floorboards, measured in a frame.
+const INDOORS := Color(0.06, 0.0, 0.14, 0.0)
 
 ## rust, salt, soot, frost — each 0..1, how hard this land presses that way.
 ## The three the brief names are the three that carry: the bog rusts, the flat
@@ -58,6 +62,7 @@ static func image(w: WorldData) -> Image:
 	var rows: Array[Color] = []
 	rows.resize(256)
 	rows.fill(DEFAULT)
+	var indoors := w.realm == Realm.INTERIOR
 	var seen := PackedByteArray()
 	seen.resize(256)
 	for y in range(0, n, 4):
@@ -65,7 +70,7 @@ static func image(w: WorldData) -> Image:
 			var c := int(w.country[y * n + x])
 			if seen[c] == 0:
 				seen[c] = 1
-				rows[c] = of(BiomeRegistry.at(w, Vector2(x, y)).id)
+				rows[c] = INDOORS if indoors else of(BiomeRegistry.at(w, Vector2(x, y)).id)
 	var rgba := PackedByteArray()
 	rgba.resize(n * n * 4)
 	var has_blend := w.blend.size() == n * n and w.country2.size() == n * n
@@ -81,5 +86,22 @@ static func image(w: WorldData) -> Image:
 	return Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, rgba)
 
 
+## PURE AND DERIVED, SO KEPT: one texture per world OBJECT (never per seed: a
+## test grows one seed twice), so walking back out of a house onto the coast
+## hands the coast's own back instead of sweeping the island again (4.6 s for
+## the ground measured on seed 4, docs/interiors). Held by a weak reference to
+## the world, so a world nobody holds any more takes its texture with it.
+static var _kept: Dictionary = {}
+
+
 static func texture(w: WorldData) -> ImageTexture:
-	return ImageTexture.create_from_image(image(w))
+	var id := w.get_instance_id()
+	var got: Array = _kept.get(id, [])
+	if not got.is_empty() and (got[0] as WeakRef).get_ref() == w:
+		return got[1]
+	for k: int in _kept.keys():
+		if (_kept[k][0] as WeakRef).get_ref() == null:
+			_kept.erase(k)
+	var t := ImageTexture.create_from_image(image(w))
+	_kept[id] = [weakref(w), t]
+	return t

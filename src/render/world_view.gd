@@ -186,6 +186,27 @@ func setup(w: WorldData) -> void:
 	_bind(w)
 
 
+## A view of a POCKET world (docs/interiors) that draws with `from`'s materials:
+## the player's figure, the crowns and the swing arc hold those, and a pocket
+## must look like the same page. Grown while the player walks up to the door, out
+## of the tree or hidden in it, so the door itself only swaps one view for the
+## other -- and the outside view, set aside WHOLE, keeps its chunks, its far land
+## and its in-flight worker tasks, which finish into its own fields while it is
+## away. Coming back out rebuilds nothing (measured in tests/interior).
+func setup_sharing(w: WorldData, from: WorldView) -> void:
+	_world_mat = from._world_mat
+	_water_mat = from._water_mat
+	_leaf_mat = from._leaf_mat
+	_bind(w)
+
+
+## The one per-world thing this view writes onto the materials it shares (the
+## works map): put back when this view draws again after another drew with them.
+func reclaim() -> void:
+	if works != null:
+		works.bind(_world_mat)
+
+
 ## Point this view at ANOTHER world: a realm crossing (docs/VISION.md,
 ## src/systems/20_realms.gd). Every chunk, every prop index and the works are
 ## dropped and grown again from `w`; the two MATERIALS are kept, because the
@@ -268,7 +289,10 @@ func _bind(w: WorldData) -> void:
 				if not _cables_by_chunk.has(key):
 					_cables_by_chunk[key] = []
 				_cables_by_chunk[key].append(Vector2i(ids[j], ids[j + 1]))
-	_add_open_sea()
+	if w.realm == Realm.INTERIOR:
+		_add_void()
+	else:
+		_add_open_sea()
 	# Read off the registry HERE, on the main thread, so a far block's worker
 	# never touches it (the chunk workers learnt the same lesson above).
 	_far_tables = Far.tables()
@@ -914,7 +938,14 @@ func _far_worker(slot: int, key: Vector2i) -> void:
 	_far_at[slot] = Time.get_ticks_usec() - began
 
 
-func _exit_tree() -> void:
+## THE WORKERS ARE WAITED FOR WHEN THE VIEW IS DESTROYED, NOT WHEN IT LEAVES THE
+## TREE. A door sets the outside view aside whole (docs/interiors, 21_doors), and
+## its tasks in flight finish into its own fields while it is out and are taken
+## up by `_process` when it is put back. Waited for at the exit instead, a door
+## stood for 4.6 s behind the far rings under load, measured.
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_PREDELETE:
+		return
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
@@ -1391,6 +1422,29 @@ static func _ranked(points: PackedVector3Array, axis: Vector3, rank: int) -> Vec
 
 ## A flat deep-sea sheet around the whole map, so the edge of the world is the
 ## sea and not the void. Four strips, so it never lies under the map's own water.
+## UNDER A POCKET, NOTHING: the rooms stand in the dark the way a drawn section
+## stands on the page, instead of on an ocean that is not there. Just under the
+## floor's own height (InteriorGen.FLOOR_LEVEL), over the tile of lower ground a
+## pocket keeps round its rooms, so what shows past a cut wall is the dark and not
+## a floor that belongs to no room. Named `open_sea` so rebind lets it go the same.
+func _add_void() -> void:
+	var s := float(world.size)
+	var m := 400.0
+	var y := TerrainMesher.level_height(InteriorGen.FLOOR_LEVEL) - 0.03
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(s + 2.0 * m, s + 2.0 * m)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.028, 0.026, 0.03)
+	var dark := MeshInstance3D.new()
+	dark.name = "open_sea"
+	dark.mesh = plane
+	dark.material_override = mat
+	dark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	dark.position = Vector3(s * 0.5, y, s * 0.5)
+	add_child(dark)
+
+
 func _add_open_sea() -> void:
 	var s := float(world.size)
 	# Past everything the eye can see from anywhere on the island (SkyLight.SEE):

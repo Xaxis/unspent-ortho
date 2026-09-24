@@ -177,6 +177,9 @@ var _cells: Dictionary = {}
 var _assigned: Array = [] # per pool light: source Dictionary or null
 var _refresh := 0.0
 var _glows: Dictionary = {} # prop id -> Node3D
+## The world `sources` indexes, and every other world's index, kept by world.
+var _indexed_world: WorldData = null
+var _index_of: Dictionary = {}
 var _glow_mat: StandardMaterial3D
 var _time := 0.0
 var _lamp_down := false
@@ -259,6 +262,7 @@ func setup(g: Game) -> void:
 	lr.position = Vector3(0, 0.08, 0)
 	lantern.add_child(lr)
 	add_child(lantern)
+	_indexed_world = g.world
 	_index_sources()
 	_update(0.0, true)
 
@@ -627,9 +631,25 @@ func _near(focus: Vector2, reach: float) -> Array[Dictionary]:
 ## standing on. CLAUDE.md's realms row names "light index" as the example of a
 ## cache keyed on the world; this system never had the method.
 func realm_changed(_from: StringName, _to: StringName) -> void:
-	sources.clear()
-	_cells.clear()
-	_indexed = 0
+	# EACH WORLD'S INDEX IS KEPT and handed back when that world comes back: a
+	# door into a house and out again is the same coast, and indexing its every
+	# light again cost 818 ms coming out (docs/interiors). Held weakly, so a world
+	# nobody holds any more takes its index with it.
+	if _indexed_world != null:
+		_index_of[_indexed_world.get_instance_id()] = [weakref(_indexed_world), sources, _cells, _indexed]
+	for k: int in _index_of.keys():
+		if (_index_of[k][0] as WeakRef).get_ref() == null:
+			_index_of.erase(k)
+	var kept: Array = _index_of.get(game.world.get_instance_id(), [])
+	if not kept.is_empty() and (kept[0] as WeakRef).get_ref() == game.world:
+		sources = kept[1]
+		_cells = kept[2]
+		_indexed = kept[3]
+	else:
+		sources = [] as Array[Dictionary]
+		_cells = {}
+		_indexed = 0
+	_indexed_world = game.world
 	for i in _assigned.size():
 		_assigned[i] = null
 	for id: int in _glows.keys():

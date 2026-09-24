@@ -1,0 +1,51 @@
+# IN THROUGH A COTTAGE DOOR AND OUT AGAIN (docs/interiors, 21_doors): the coast's
+# houses are rooms. The pocket is grown while the player walks up, so the door
+# itself only swaps under the cover; inside is lit by the hearth and by the sky
+# through the windows, and the window light moves with the hour.
+#
+#   tools/tour.sh tours/house.tour --seed=4 --hour=11 --weather=clear:0
+#
+# Read the frames as a player: 02 and 04 are the same room at noon and in the
+# late afternoon, and the patches of sun on the floor must have moved between
+# them; 05 is the same room after dark, where the hearth is the light. 07 is the
+# room over the shoulder, roofed. 08 is the same coast the player left.
+coast calm
+village 0
+near door:house
+await door 5
+wait 0.6
+shot 01-at-a-cottage-door with door
+
+press use 0.1
+await inside:cottage 5
+wait 1.0
+shot 02-inside-at-noon with inside:cottage
+
+walk 0,-1 1.2
+wait 0.4
+shot 03-walked-to-the-back-wall with inside:cottage
+
+hour 16.5
+wait 1.0
+shot 04-the-sun-come-round-in-the-afternoon with inside:cottage
+
+hour 21.5
+wait 1.5
+shot 05-after-dark-the-hearth with inside:cottage
+
+hold shoulder_peek
+await shoulder 3
+wait 0.6
+shot 06-over-the-shoulder-at-night with inside:cottage,shoulder
+hour 12
+wait 1.0
+shot 07-over-the-shoulder-at-noon with inside:cottage,shoulder
+release shoulder_peek
+await top_view 3
+
+near door:house
+wait 0.3
+press use 0.1
+await outside 5
+wait 0.8
+shot 08-back-out-on-the-same-coast with outside,land:coast
