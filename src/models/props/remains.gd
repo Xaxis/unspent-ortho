@@ -524,14 +524,16 @@ static func _wired(k: Kit, wall_a: Vector3, wall_b: Vector3, out: Vector3, roof:
 static func _fish_shack(k: Kit, s: int, lit: bool, d: BiomeDressing) -> void:
 	var tar := P.INK[3].lerp(P.EARTH[1], 0.4)
 	var t := PropModels.Houses.walls(k, 1.5, 2.1, 1.05, s, tar, GroundColors.down(tar, 0.2), Vector3(0.04, 0.0, -0.02))
-	# Weatherboards: dark lines along the walls.
-	for side in 2:
-		var a: Vector3 = t[2] if side == 0 else t[3]
-		var b: Vector3 = t[1] if side == 0 else t[2]
-		var out := Vector3(1, 0, 0) if side == 0 else Vector3(0, 0, 1)
-		for i in 5:
-			var y := 0.16 + i * 0.19
-			k.made.quad(a + Vector3(0, y, 0) + out * 0.012, b + Vector3(0, y, 0) + out * 0.012, b + Vector3(0, y + 0.02, 0) + out * 0.012, a + Vector3(0, y + 0.02, 0) + out * 0.012, P.INK[1])
+	# Weatherboards lapped on every wall, not lines painted on two: from the side
+	# over the shoulder a painted line is nothing and the wall was one dark sheet.
+	# The door and the wired panel's corner of the front are left bare.
+	var fs := PropModels.Houses.faces(t)
+	for fi in fs.size():
+		var wf: Array = fs[fi]
+		var gaps: Array = []
+		if fi == 0:
+			gaps = [Vector4(0.34, 0.64, 0.0, 0.84), Vector4(-0.1, 0.2, 0.3, 0.8)]
+		PropModels.Houses.boards(k, wf[0], wf[1], wf[2], wf[3], s + 90 + fi, d.timber[0].lerp(tar, 0.4), 7, gaps)
 	# Pent roof of tin, rust in bands, a sheet of machine plate over the hole.
 	var ry := 1.08
 	corrugated(k.made, Vector3(-0.95, ry + 0.3, -1.25), Vector3(0.0, 0.0, 2.5), Vector3(1.95, -0.34, 0.0), 12, P.RUST[2])
