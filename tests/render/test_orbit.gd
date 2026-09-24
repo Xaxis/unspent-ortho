@@ -127,36 +127,55 @@ func test_the_eclipse_boundary_is_where_geometry_puts_it() -> void:
 
 ## A KNOWN DIRECTION LANDS ON THE SAME PIXEL in the layer and on the screen: the
 ## sky's `orbit_uv` (mirrored by OrbitLayer.uv_of) against the engine's own
-## camera, asked through `unproject_position`, at the layer's size.
+## cameras, asked through `unproject_position` -- the eye's, over the whole
+## frame, and the layer's, cut down to the ring's rectangle at one and two layer
+## pixels a frame pixel.
 func test_a_direction_lands_on_the_same_pixel_in_the_layer_and_the_frame() -> void:
+	var basis := Basis.from_euler(Vector3(deg_to_rad(38.0), deg_to_rad(-71.0), 0.0))
 	for sz: Vector2i in [Vector2i(1920, 1080), Vector2i(1440, 810)]:
-		var vp := SubViewport.new()
-		vp.size = sz
-		vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
-		tree.root.add_child(vp)
-		var cam := Camera3D.new()
-		cam.keep_aspect = Camera3D.KEEP_HEIGHT
-		cam.fov = 62.0
-		cam.near = 50.0
-		cam.far = 6000.0
-		vp.add_child(cam)
-		cam.global_transform = Transform3D(Basis.from_euler(Vector3(deg_to_rad(38.0), deg_to_rad(-71.0), deg_to_rad(0.0))), Vector3.ZERO)
-		var worst := 0.0
-		for i in 40:
-			var d := (-cam.global_transform.basis.z
-				+ cam.global_transform.basis.x * (Rng.hash01(3, i) - 0.5) * 1.6
-				+ cam.global_transform.basis.y * (Rng.hash01(4, i) - 0.5) * 0.9).normalized()
-			var uv := Layer.uv_of(cam.global_transform.basis, cam.fov, float(sz.x) / float(sz.y), d)
-			if uv.x < 0.0:
-				continue
-			var mine := uv * Vector2(sz)
-			var engine := cam.unproject_position(d * 900.0)
-			worst = maxf(worst, mine.distance_to(engine))
-		lt(worst, 0.05, "%dx%d: a direction lands %.3f px apart" % [sz.x, sz.y, worst])
-		vp.queue_free()
+		var eye := _cam(sz, basis, 62.0)
+		var centre := (-basis.z * 0.9 + basis.x * 0.2 + basis.y * 0.1).normalized() * 520.0
+		var r := Layer.rect_of(basis, 62.0, sz, centre, 80.0)
+		gt(float(r.size.x), 50.0, "the ring's rectangle is on the glass")
+		lt(float(r.size.x * r.size.y), float(sz.x * sz.y) * 0.5, "and is a small part of it")
+		var ndc := Layer.ndc_rect(r, sz)
+		for ss: int in [1, 2]:
+			var lay := _cam(r.size * ss, basis, 62.0)
+			Layer.cut(lay, basis, 62.0, sz, ndc)
+			var worst := 0.0
+			var asked := 0
+			for i in 60:
+				var d := (centre.normalized() + basis.x * (Rng.hash01(3, i) - 0.5) * 0.25
+					+ basis.y * (Rng.hash01(4, i) - 0.5) * 0.25).normalized()
+				var uv := Layer.uv_of(basis, 62.0, float(sz.x) / float(sz.y), d, ndc)
+				if uv.x < 0.0:
+					continue
+				asked += 1
+				# The layer's own camera puts it here...
+				worst = maxf(worst, (uv * Vector2(r.size * ss)).distance_to(lay.unproject_position(d * 900.0)))
+				# ...and the eye puts it on the same frame pixel.
+				var frame := Vector2(r.position) + uv * Vector2(r.size)
+				worst = maxf(worst, frame.distance_to(eye.unproject_position(d * 900.0)))
+			gt(float(asked), 20.0, "enough directions landed inside the rectangle")
+			lt(worst, 0.05, "%dx%d, %d layer px a frame px: a direction lands %.3f px apart" % [sz.x, sz.y, ss, worst])
 	var src := FileAccess.get_file_as_string("res://src/render/orbit/orbit_sky.gdshaderinc")
 	check(src.contains("vec2 ndc = v.xy / (-v.z) / orbit_tan;"), "the sky projects as uv_of does")
-	check(src.contains("return vec2(0.5 + 0.5 * ndc.x, 0.5 - 0.5 * ndc.y);"), "with y down, as uv_of does")
+	check(src.contains("return vec2((ndc.x - orbit_rect.x) / (orbit_rect.z - orbit_rect.x), (orbit_rect.w - ndc.y) / (orbit_rect.w - orbit_rect.y));"), "into the rectangle, y down, as uv_of does")
+
+
+func _cam(sz: Vector2i, basis: Basis, fov: float) -> Camera3D:
+	var vp := SubViewport.new()
+	vp.size = sz
+	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	tree.root.add_child(vp)
+	var cam := Camera3D.new()
+	cam.keep_aspect = Camera3D.KEEP_HEIGHT
+	cam.fov = fov
+	cam.near = 50.0
+	cam.far = 6000.0
+	vp.add_child(cam)
+	cam.global_transform = Transform3D(basis, Vector3.ZERO)
+	return cam
 
 
 ## THE ORDER in the dome: the ring over the air and the sun's glow, the clouds

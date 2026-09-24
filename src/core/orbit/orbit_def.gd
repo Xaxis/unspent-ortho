@@ -30,20 +30,24 @@ var altitude_km := 420.0
 ## habitat ring, open to the axis side); six spokes to a hub spindle carrying
 ## two radiator sails.
 var rim_km := 60.0
-var trough_wide := 3.2
-var trough_deep := 1.1
+## Seven kilometres wide and three deep, not the design's first 3.2 by 1.1: at
+## 420 km that section was seven pixels, and at 7 to 16 degrees across the wheel
+## read as wire (the owner wants it massive). A drum this size is still a
+## thirtieth of the wheel across -- a ring, not a doughnut.
+var trough_wide := 7.0
+var trough_deep := 3.0
 ## THE DECK: a collar of plate laid in the wheel's own plane inside the trough,
 ## `deck_km` wide, hung on radial girders -- where the torn ends' "peeled deck
 ## plate" comes from, and what gives the wheel a face: at 420 km a 3.2 km
 ## trough is seven pixels, and a wheel of nothing but trough read as a drawn
 ## circle (measured, the first frames). Panels are missing by hash, more of
 ## them toward the wound, so the girders show through.
-var deck_km := 9.0
+var deck_km := 12.0
 var spokes := 6
-var spoke_thick := 0.9
-var hub_long := 9.0
-var hub_r := 1.4
-var sail := Vector2(20.0, 6.0)
+var spoke_thick := 2.2
+var hub_long := 16.0
+var hub_r := 3.4
+var sail := Vector2(26.0, 8.0)
 
 ## THE WOUND. A sector of the rim gone, centred at `gap_at` degrees round the
 ## wheel's own frame (where a spoke met the rim, so that spoke is the one

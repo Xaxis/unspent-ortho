@@ -53,6 +53,7 @@ const HABITAT := 5.0
 ## Plate classes (COLOR.a of a PLATE or TUBE).
 const HULL := 1.0
 const INNER := 0.9
+const WALL := 0.95
 const SAIL := 0.8
 const TORN := 0.6
 const CABLE := 0.4
@@ -87,6 +88,11 @@ const SECTION_FAR: Array[Vector2] = [
 	Vector2(0.55, -1.6), Vector2(0.55, 1.6), Vector2(-0.55, 1.6), Vector2(-0.55, 1.35),
 	Vector2(0.42, 1.35), Vector2(0.42, -1.35), Vector2(-0.55, -1.35), Vector2(-0.55, -1.6),
 ]
+## Which edges of the section are its outer SIDE WALLS (drawn WALL: the faces
+## a person on the ground sees when the wheel is turned toward them, where the
+## habitat's windows are).
+const WALL_EDGES := [2, 12]
+const WALL_EDGES_FAR := [1, 7]
 ## Which edges of SECTION face into the trough (drawn INNER, the floor and the
 ## walls a person would stand between).
 const INNER_EDGES := [5, 6, 7, 8, 9]
@@ -103,6 +109,12 @@ var _bone := 0
 var _detail := false
 var _def: RefCounted
 var _seed := 0
+## The two sections scaled to the def's own trough (SECTION is drawn at 3.2 by
+## 1.1 km, the first numbers; the trough is `trough_wide` by `trough_deep`).
+var _near_sec: Array[Vector2] = []
+var _far_sec: Array[Vector2] = []
+var _hd := 0.55
+var _hw := 1.6
 
 
 static func build(def: RefCounted, detail := false, seed_value := 7) -> ArrayMesh:
@@ -110,8 +122,23 @@ static func build(def: RefCounted, detail := false, seed_value := 7) -> ArrayMes
 	m._def = def
 	m._detail = detail
 	m._seed = seed_value
+	m._scale_sections()
 	m._wheel()
 	return m._mesh()
+
+
+func _scale_sections() -> void:
+	var k := Vector2(float(_def.trough_deep) / 1.1, float(_def.trough_wide) / 3.2)
+	_hd = 0.55 * k.x
+	_hw = 1.6 * k.y
+	for q: Vector2 in SECTION:
+		_near_sec.append(q * k)
+	for q: Vector2 in SECTION_FAR:
+		_far_sec.append(q * k)
+
+
+func _sec() -> Array[Vector2]:
+	return _near_sec if _detail else _far_sec
 
 
 func _mesh() -> ArrayMesh:
@@ -163,7 +190,7 @@ func _radial(alpha: float) -> Vector3:
 ## and `jag1` are per-section-point extra angles at each end (a ragged break),
 ## or empty for a clean one; `burn0`/`burn1` how scorched each end is.
 func _sweep(a0: float, a1: float, segs: int, jag0: PackedFloat32Array, jag1: PackedFloat32Array, burn0: float, burn1: float) -> void:
-	var sec: Array[Vector2] = SECTION if _detail else SECTION_FAR
+	var sec: Array[Vector2] = _sec()
 	var inner: Array = INNER_EDGES if _detail else INNER_EDGES_FAR
 	var np := sec.size()
 	var rim: float = _def.rim_km
@@ -176,8 +203,9 @@ func _sweep(a0: float, a1: float, segs: int, jag0: PackedFloat32Array, jag1: Pac
 		# (along.y, -along.x) points out of the section.
 		var en := Vector2(along.y, -along.x).normalized()
 		var in_trough := inner.has(e)
+		var wall := (WALL_EDGES if _detail else WALL_EDGES_FAR).has(e)
 		var col := C_INNER if in_trough else C_HULL
-		var cls := INNER if in_trough else HULL
+		var cls := INNER if in_trough else (WALL if wall else HULL)
 		var v0 := _profile_len(sec, e)
 		var v1 := v0 + along.length()
 		var row_prev := PackedInt32Array()
@@ -214,7 +242,7 @@ static func _profile_len(sec: Array[Vector2], upto: int) -> float:
 ## A heavier FRAME round the section at `alpha`: the section grown by `grow`,
 ## `wide` km long, capped both faces.
 func _frame(alpha: float, grow: float, wide: float) -> void:
-	var sec: Array[Vector2] = SECTION
+	var sec: Array[Vector2] = _near_sec
 	var np := sec.size()
 	var half := wide * 0.5 / float(_def.rim_km)
 	var rim: float = _def.rim_km
@@ -315,22 +343,24 @@ func _wheel() -> void:
 	# The rim runs from the far torn end round to the near one.
 	var a0 := gap_c + gap * 0.5
 	var a1 := gap_c - gap * 0.5 + TAU
-	var sec_n := (SECTION if _detail else SECTION_FAR).size()
+	var sec_n := _sec().size()
 	var jag0 := PackedFloat32Array()
 	var jag1 := PackedFloat32Array()
 	for k in sec_n:
 		jag0.append(deg_to_rad(rng.randf_range(-1.6, 1.4)))
 		jag1.append(deg_to_rad(rng.randf_range(-1.6, 1.4)))
-	var seg_deg := 1.0 if _detail else 3.0
+	var seg_deg := 1.25 if _detail else 3.0
 	var segs := int(ceil(rad_to_deg(a1 - a0) / seg_deg))
 	_bone = 0
 	_sweep(a0, a1, segs, jag0, jag1, 1.0, 1.0)
 	if _detail:
-		var fa := ceilf(rad_to_deg(a0) / 10.0) * 10.0
+		var fa := ceilf(rad_to_deg(a0) / 5.0) * 5.0
 		while deg_to_rad(fa) < a1 - deg_to_rad(3.0):
 			if deg_to_rad(fa) > a0 + deg_to_rad(3.0):
-				_frame(deg_to_rad(fa), 0.08, 0.35)
-			fa += 10.0
+				var major := int(fa) % 15 == 0
+				_frame(deg_to_rad(fa), _hd * (0.28 if major else 0.14), 0.9 if major else 0.5)
+			fa += 5.0
+		_tanks(a0, a1)
 		_fray(a0, -1.0, jag0, rng)
 		_fray(a1, 1.0, jag1, rng)
 	_deck(a0, a1, gap_c, gap)
@@ -345,7 +375,7 @@ func _wheel() -> void:
 ## the gap, embers along the break and the odd arc.
 func _fray(a: float, dir: float, jag: PackedFloat32Array, rng: RandomNumberGenerator) -> void:
 	var rim: float = _def.rim_km
-	var sec: Array[Vector2] = SECTION
+	var sec: Array[Vector2] = _near_sec
 	# Ribs: the frames the plate was hung on, bare past the break.
 	for i in 7:
 		var k := rng.randi_range(0, sec.size() - 1)
@@ -360,12 +390,12 @@ func _fray(a: float, dir: float, jag: PackedFloat32Array, rng: RandomNumberGener
 			pts.append(_at(al, bend.x, bend.y))
 		var c := C_TORN
 		c.a = TORN
-		_line(pts, 0.07, 4, c, 1.0)
+		_line(pts, 0.16, 4, c, 1.0)
 	# Sheets of plate peeled back off the hull, curling out and away.
 	for i in 5:
-		var y0 := rng.randf_range(-1.3, 0.8)
-		var wide := rng.randf_range(0.5, 1.2)
-		var out0 := 0.55 if rng.randf() < 0.6 else -0.55
+		var y0 := rng.randf_range(-0.8, 0.5) * _hw
+		var wide := rng.randf_range(0.3, 0.75) * _hw
+		var out0 := _hd if rng.randf() < 0.6 else -_hd
 		var curl := rng.randf_range(1.2, 2.6) * signf(out0)
 		var ids := PackedInt32Array()
 		var rows := 5
@@ -422,7 +452,7 @@ func _fray(a: float, dir: float, jag: PackedFloat32Array, rng: RandomNumberGener
 ## last of them stand out ragged -- and the radial girders they hang on.
 func _deck(a0: float, a1: float, gap_c: float, gap: float) -> void:
 	var rim: float = _def.rim_km
-	var inner_r := rim - 0.55
+	var inner_r := rim - _hd
 	var deck: float = _def.deck_km
 	var bands := 3 if _detail else 1
 	var seg_deg := 2.0 if _detail else 6.0
@@ -469,43 +499,48 @@ func _deck(a0: float, a1: float, gap_c: float, gap: float) -> void:
 func _hub() -> void:
 	var c := C_HULL
 	c.a = HULL
-	var sides := 12 if _detail else 8
-	var hl: float = float(_def.hub_long) * 0.5
-	var hr: float = _def.hub_r
-	var prof: Array[Vector2] = [
-		Vector2(0.0, -hl), Vector2(hr * 0.55, -hl), Vector2(hr * 0.75, -hl * 0.9), Vector2(hr, -hl * 0.7),
-		Vector2(hr, -hl * 0.27), Vector2(hr * 1.6, -hl * 0.18), Vector2(hr * 1.6, hl * 0.18), Vector2(hr, hl * 0.27),
-		Vector2(hr, hl * 0.7), Vector2(hr * 0.75, hl * 0.9), Vector2(hr * 0.55, hl), Vector2(0.0, hl),
-	]
-	_lathe(Vector3.ZERO, prof, sides, c)
-	# Docking arms at both ends, four each.
 	var fc := C_FRAME
 	fc.a = HULL
+	var sides := 14 if _detail else 8
+	var hl: float = float(_def.hub_long) * 0.5
+	var hr: float = _def.hub_r
+	# A spindle with a waist: the drum the spokes meet, collars stepping down to
+	# the docking ends, so the middle of the wheel is a mass and not a point.
+	var prof: Array[Vector2] = [
+		Vector2(0.0, -hl), Vector2(hr * 0.45, -hl), Vector2(hr * 0.6, -hl * 0.92), Vector2(hr * 0.72, -hl * 0.78),
+		Vector2(hr * 0.72, -hl * 0.62), Vector2(hr * 0.9, -hl * 0.56), Vector2(hr * 0.9, -hl * 0.36),
+		Vector2(hr * 1.35, -hl * 0.3), Vector2(hr * 1.5, -hl * 0.14), Vector2(hr * 1.5, hl * 0.14), Vector2(hr * 1.35, hl * 0.3),
+		Vector2(hr * 0.9, hl * 0.36), Vector2(hr * 0.9, hl * 0.56), Vector2(hr * 0.72, hl * 0.62),
+		Vector2(hr * 0.72, hl * 0.78), Vector2(hr * 0.6, hl * 0.92), Vector2(hr * 0.45, hl), Vector2(0.0, hl),
+	]
+	_lathe(Vector3.ZERO, prof, sides, c)
+	# Docking arms at both ends, four each, with a berth on each.
 	for end: float in [-1.0, 1.0]:
 		for k in 4:
 			var t := TAU * float(k) / 4.0 + 0.4
 			var o := Vector3(cos(t), 0.0, sin(t))
-			var base := Vector3(0.0, end * hl * 0.8, 0.0) + o * hr * 0.9
-			_tube(base, base + o * 2.6 + Vector3(0.0, end * 0.6, 0.0), 0.16, 0.12, 4, fc)
+			var base := Vector3(0.0, end * hl * 0.84, 0.0) + o * hr * 0.6
+			var tip := base + o * hr * 1.5 + Vector3(0.0, end * hr * 0.3, 0.0)
+			_tube(base, tip, hr * 0.12, hr * 0.09, 6 if _detail else 4, fc)
 			if _detail:
-				_tube(base + o * 2.6 + Vector3(0.0, end * 0.6, 0.0), base + o * 2.6 + Vector3(0.0, end * 1.5, 0.0), 0.22, 0.22, 6, fc)
-		_lamp(Vector3(0.0, end * (hl + 0.2), 0.0), L_BEACON, BEACON)
-	# The radiator sails, along the axis past each end: panels in two columns,
-	# each a hair off its neighbours so they catch the sun one at a time.
+				_tube(tip - Vector3(0.0, end * hr * 0.2, 0.0), tip + Vector3(0.0, end * hr * 0.6, 0.0), hr * 0.18, hr * 0.18, 6, fc)
+		_lamp(Vector3(0.0, end * (hl + 0.3), 0.0), L_BEACON, BEACON)
+	# The radiator sails, along the axis past each end: panels in two columns on
+	# a spine, each a hair off its neighbours so they catch the sun one at a time.
 	var sail: Vector2 = _def.sail
 	var rng := Rng.make(_seed, SALT + 7)
 	var sc := C_SAIL
 	sc.a = SAIL
-	var along_n := 10 if _detail else 4
+	var along_n := 12 if _detail else 4
 	for end: float in [-1.0, 1.0]:
 		var y0 := end * (hl + 0.6)
-		_tube(Vector3(0.0, end * hl, 0.0), Vector3(0.0, y0 + end * sail.x, 0.0), 0.18, 0.1, 4, fc)
+		_tube(Vector3(0.0, end * hl, 0.0), Vector3(0.0, y0 + end * sail.x, 0.0), hr * 0.14, hr * 0.08, 6 if _detail else 4, fc)
 		for col in 2:
-			var x0 := (0.25 if col == 0 else -0.25 - sail.y * 0.5)
+			var x0 := (0.35 if col == 0 else -0.35 - sail.y * 0.5)
 			for j in along_n:
 				var ya := y0 + end * sail.x * float(j) / float(along_n)
-				var yb := y0 + end * sail.x * float(j + 1) / float(along_n) - end * 0.25
-				var tilt := deg_to_rad(rng.randf_range(-6.0, 6.0))
+				var yb := y0 + end * sail.x * float(j + 1) / float(along_n) - end * 0.3
+				var tilt := deg_to_rad(rng.randf_range(-7.0, 7.0))
 				var nrm := Vector3(sin(tilt), 0.0, cos(tilt))
 				var xc := x0 + sail.y * 0.25
 				var ids: Array[int] = []
@@ -513,15 +548,17 @@ func _hub() -> void:
 					var p := Vector3(q.x, q.y, -(q.x - xc) * sin(tilt))
 					ids.append(_vert(p, nrm, sc, Vector2(q.x, q.y), PLATE, p, 0.0))
 				_quad_i(ids[0], ids[1], ids[2], ids[3])
-		_lamp(Vector3(0.0, y0 + end * (sail.x + 0.2), 0.0), L_BEACON, BEACON)
+		_lamp(Vector3(0.0, y0 + end * (sail.x + 0.3), 0.0), L_BEACON, BEACON)
 
 
+## THE SPOKES AS TRUSSES: four longerons round a lift shaft, laced with
+## diagonals bay by bay, with pods at a third and two thirds -- a structure
+## tens of kilometres long and two across, not a line. The snapped one keeps
+## its root on the hub, its longerons splayed where they parted.
 func _spokes(gap_c: float, rng: RandomNumberGenerator) -> void:
 	var n: int = _def.spokes
 	var rim: float = _def.rim_km
-	var hr: float = float(_def.hub_r) * 1.6
-	var r: float = float(_def.spoke_thick) * 0.5
-	var sides := 6 if _detail else 4
+	var hr: float = float(_def.hub_r) * 1.4
 	var fc := C_FRAME
 	fc.a = HULL
 	var cc := C_CABLE
@@ -530,28 +567,75 @@ func _spokes(gap_c: float, rng: RandomNumberGenerator) -> void:
 		var al := gap_c + TAU * float(k) / float(n)
 		var o := _radial(al)
 		var inner := o * hr
-		var outer := o * (rim - 0.55)
+		var outer := o * (rim - _hd)
 		if k == 0:
-			# The snapped one: the root still on the hub, frayed at the break;
-			# the outer half is a bone of its own (`_chunks`).
 			var brk := o * (rim * 0.43)
-			_tube(inner, brk, r, r * 0.9, sides, fc)
+			_truss(inner, brk, o, 1.0, rng)
 			var tc := C_TORN
 			tc.a = TORN
-			for i in 5:
-				var off := Vector3(rng.randf_range(-0.4, 0.4), rng.randf_range(-0.4, 0.4), rng.randf_range(-0.4, 0.4))
-				_tube(brk + off * 0.5, brk + o * rng.randf_range(0.6, 2.2) + off, 0.06, 0.04, 3, tc, 1.0)
+			for i in 7:
+				var off := Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)) * float(_def.spoke_thick) * 0.5
+				_tube(brk + off * 0.5, brk + o * rng.randf_range(0.8, 3.0) + off, 0.08, 0.05, 3, tc, 1.0)
 			_lamp(brk + o * 0.3, L_EMBER, EMBER)
+			_lamp(brk + o * 0.6 + Vector3(0.0, 0.5, 0.0), L_EMBER, EMBER)
 			continue
-		_tube(inner, outer, r, r * 0.85, sides, fc)
-		if _detail:
-			for f: float in [0.33, 0.66]:
-				var p := inner.lerp(outer, f)
-				_tube(p - o * 0.4, p + o * 0.4, r * 1.7, r * 1.7, sides, fc)
-				_lamp(p + Vector3(0.0, r * 1.9, 0.0), L_RIM, RIM)
-			# Tethers either side, from the hub's flange to the rim's walls.
-			for side: float in [-1.0, 1.0]:
-				_tube(inner + Vector3(0.0, side * 1.1, 0.0), outer + Vector3(0.0, side * 1.45, 0.0), 0.05, 0.05, 3, cc)
+		_truss(inner, outer, o, 1.0, rng)
+
+
+## One truss from `a` to `b` along `o`: `w` scales its width.
+func _truss(a: Vector3, b: Vector3, o: Vector3, w: float, rng: RandomNumberGenerator) -> void:
+	var fc := C_FRAME
+	fc.a = HULL
+	var half: float = float(_def.spoke_thick) * 0.5 * w
+	var up := Vector3.UP
+	var side := o.cross(up).normalized()
+	if not _detail:
+		_tube(a, b, half * 0.8, half * 0.7, 4, fc)
+		return
+	var corners: Array[Vector3] = [up * half + side * half, up * half - side * half, -up * half - side * half, -up * half + side * half]
+	for c: Vector3 in corners:
+		_tube(a + c, b + c * 0.85, half * 0.13, half * 0.11, 4, fc)
+	_tube(a, b, half * 0.3, half * 0.26, 6, fc)
+	var length := a.distance_to(b)
+	var bays := maxi(2, int(length / (half * 3.2)))
+	for i in bays:
+		var f0 := float(i) / float(bays)
+		var f1 := float(i + 1) / float(bays)
+		var sh0 := lerpf(1.0, 0.85, f0)
+		var sh1 := lerpf(1.0, 0.85, f1)
+		for f in 4:
+			var c0 := corners[f]
+			var c1 := corners[(f + 1) % 4]
+			var from := a.lerp(b, f0) + (c0 if i % 2 == 0 else c1) * sh0
+			var to := a.lerp(b, f1) + (c1 if i % 2 == 0 else c0) * sh1
+			_tube(from, to, half * 0.06, half * 0.06, 3, fc)
+	# Pods on the shaft, a third and two thirds out, lit where they still are.
+	for f: float in [0.33, 0.66]:
+		var p := a.lerp(b, f)
+		_tube(p - o * half * 1.6, p + o * half * 1.6, half * 1.5, half * 1.5, 8, fc)
+		if Rng.hash01(_seed, SALT + 31, int(f * 10.0), int(p.x)) > 0.3:
+			_lamp(p + up * half * 1.6, L_RIM, RIM)
+
+
+## TANKS along the outer hull: clusters of cylinders laid along the rim every few
+## degrees, so the hull's line is broken by mass the way a real hull is.
+func _tanks(a0: float, a1: float) -> void:
+	var fc := C_FRAME
+	fc.a = HULL
+	var step := deg_to_rad(6.0)
+	var al := a0 + step * 0.7
+	var i := 0
+	while al < a1 - step * 0.7:
+		var n := 2 + int(Rng.hash01(_seed, SALT + 41, i) * 2.0)
+		var span := deg_to_rad(1.4 + Rng.hash01(_seed, SALT + 42, i) * 1.8)
+		for t in n:
+			var y := (float(t) - float(n - 1) * 0.5) * _hw * 0.55
+			var r := _hw * 0.22
+			var s0 := al - span * 0.5
+			var s1 := al + span * 0.5
+			_tube(_at(s0, _hd + r * 0.9, y), _at(s1, _hd + r * 0.9, y), r, r, 6, fc)
+		al += step
+		i += 1
 
 
 func _lamps(a0: float, a1: float, rng: RandomNumberGenerator) -> void:
@@ -565,18 +649,18 @@ func _lamps(a0: float, a1: float, rng: RandomNumberGenerator) -> void:
 		if not run_dead:
 			for side: float in [-1.0, 1.0]:
 				if Rng.hash01(_seed, SALT + 2, i, int(side)) > 0.22:
-					_lamp(_at(al, 0.60, side * 1.52), L_RIM, RIM)
+					_lamp(_at(al, _hd + 0.05, side * (_hw - 0.1)), L_RIM, RIM)
 			if _detail and i % 2 == 0:
 				for side: float in [-1.0, 1.0]:
 					if Rng.hash01(_seed, SALT + 3, i, int(side)) > 0.4:
-						_lamp(_at(al, -0.60, side * 1.55), L_RIM, RIM)
+						_lamp(_at(al, -_hd - 0.05, side * (_hw - 0.05)), L_RIM, RIM)
 		if _detail and i % 3 == 0 and Rng.hash01(_seed, SALT + 4, i) > 0.8:
-			_lamp(_at(al, 0.38, rng.randf_range(-0.8, 0.8)), L_HABITAT, HABITAT)
+			_lamp(_at(al, _hd * 0.7, rng.randf_range(-0.5, 0.5) * _hw), L_HABITAT, HABITAT)
 		al += step
 		i += 1
 	# ONE WARM POINT on the whole wheel, a little way round from the wound: the
 	# only light up there anybody could have lit by hand.
-	_lamp(_at(a0 + deg_to_rad(23.0), -0.58, 0.9), L_AMBER, AMBER)
+	_lamp(_at(a0 + deg_to_rad(23.0), -_hd - 0.03, 0.55 * _hw), L_AMBER, AMBER)
 
 
 ## The loose pieces: `Chunk` rows from `chunk_list`, each a short piece of rim on
@@ -592,15 +676,15 @@ func _chunks(gap_c: float) -> void:
 			var fc := C_FRAME
 			fc.a = HULL
 			var a: Vector3 = o * (rim * 0.48)
-			var b: Vector3 = o * (rim - 0.55)
-			_tube(a, b, float(_def.spoke_thick) * 0.45, float(_def.spoke_thick) * 0.42, 6 if _detail else 4, fc)
+			var b: Vector3 = o * (rim - _hd)
+			_truss(a, b, o, 1.0, Rng.make(_seed, SALT + 51))
 			var jag := PackedFloat32Array()
 			_sweep(gap_c - deg_to_rad(1.8), gap_c + deg_to_rad(1.2), 3 if _detail else 1, jag, jag, 1.0, 1.0)
 			_lamp(a, L_EMBER, EMBER)
 			continue
 		var c0: float = ch.a0
 		var c1: float = ch.a1
-		var n := (SECTION if _detail else SECTION_FAR).size()
+		var n := _sec().size()
 		var j0 := PackedFloat32Array()
 		var j1 := PackedFloat32Array()
 		var r := Rng.make(_seed, SALT + 11 + ci)
@@ -609,7 +693,7 @@ func _chunks(gap_c: float) -> void:
 			j1.append(deg_to_rad(r.randf_range(-0.5, 0.5)))
 		_sweep(c0, c1, 3 if _detail else 1, j0, j1, 1.0, 1.0)
 		if _detail and r.randf() < 0.5:
-			_lamp(_at(c1, 0.55, r.randf_range(-1.2, 1.2)), L_EMBER, EMBER)
+			_lamp(_at(c1, _hd, r.randf_range(-0.75, 0.75) * _hw), L_EMBER, EMBER)
 	_bone = 0
 
 

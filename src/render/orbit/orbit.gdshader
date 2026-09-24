@@ -40,6 +40,11 @@ uniform float planet_day = 1.0;
 // 0 by day .. 1 at night: the lamps are as bright as they are, but a lamp
 // against a daylit sky shows its colour, not a star.
 uniform float night = 1.0;
+// HOW MUCH A LAMP SHOWS against the sky it is seen on, 0..1, off the sky's own
+// brightness (orbit_layer.gd `lamp_seen`): a lamp the size of a street is a
+// point four hundred kilometres up, and a white point in a noon sky is a bug on
+// the glass, not a light. Every lamp is multiplied by it.
+uniform float lamp_seen = 1.0;
 
 // DUPLICATES of colossus.gdshader's least sizes.
 const float MIN_PX = 0.75;
@@ -160,6 +165,7 @@ void fragment() {
 			// The habitat's last lamps, dim.
 			glow = 1.1 * mix(0.3, 1.0, night);
 		}
+		glow *= lamp_seen;
 		if (shape * glow <= 0.001) {
 			discard;
 		}

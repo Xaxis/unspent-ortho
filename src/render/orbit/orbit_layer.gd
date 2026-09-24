@@ -50,6 +50,14 @@ var drawn := false
 var lod := 2
 ## The ring's size on the glass this frame, pixels across (for --stats, a tour).
 var px_across := 0.0
+## This frame's frame size, the rectangle of it the layer covers (frame pixels,
+## and NDC for the sky), and the eye's fov the frustum was cut from.
+var screen := Vector2i(16, 16)
+var frame_rect := Rect2i()
+var rect := Vector4(-1.0, -1.0, 1.0, 1.0)
+var fov := 60.0
+## How much the ring's lamps show against this frame's sky (`lamp_seen`).
+var lamps_shown := 1.0
 ## A proof mode: a flat emissive quad in place of the ring (the risk this layer
 ## was proved on first: an HDR ViewportTexture sampled in a sky shader).
 var proof := false
@@ -130,16 +138,22 @@ static func frame_size(vp: Viewport) -> Vector2i:
 
 
 ## THE ONE PROJECTION, mirrored by orbit_sky.gdshaderinc `orbit_uv`: a world
-## direction `d` onto the layer's glass (0..1, y down), or (-1, -1) off it.
-static func uv_of(basis: Basis, fov_deg: float, aspect: float, d: Vector3) -> Vector2:
+## direction `d` onto the layer's glass (0..1, y down), or (-1, -1) off it. The
+## layer covers only `rect` of the frame, in NDC (x0, y0 bottom, x1, y1 top).
+static func uv_of(basis: Basis, fov_deg: float, aspect: float, d: Vector3, rect := Vector4(-1.0, -1.0, 1.0, 1.0)) -> Vector2:
+	var ndc := ndc_of(basis, fov_deg, aspect, d)
+	if ndc.x < rect.x or ndc.x > rect.z or ndc.y < rect.y or ndc.y > rect.w:
+		return Vector2(-1.0, -1.0)
+	return Vector2((ndc.x - rect.x) / (rect.z - rect.x), (rect.w - ndc.y) / (rect.w - rect.y))
+
+
+## A direction onto the whole frame's NDC, or far off it (behind the lens).
+static func ndc_of(basis: Basis, fov_deg: float, aspect: float, d: Vector3) -> Vector2:
 	var v := basis.transposed() * d
 	if v.z > -1e-4:
-		return Vector2(-1.0, -1.0)
+		return Vector2(1e9, 1e9)
 	var t := tan_of(fov_deg, aspect)
-	var ndc := Vector2(v.x, v.y) / (-v.z) / t
-	if absf(ndc.x) > 1.0 or absf(ndc.y) > 1.0:
-		return Vector2(-1.0, -1.0)
-	return Vector2(0.5 + 0.5 * ndc.x, 0.5 - 0.5 * ndc.y)
+	return Vector2(v.x, v.y) / (-v.z) / t
 
 
 ## tan of half the lens across and up, for a KEEP_HEIGHT camera of vertical
@@ -149,39 +163,102 @@ static func tan_of(fov_deg: float, aspect: float) -> Vector2:
 	return Vector2(ty * aspect, ty)
 
 
+## THE RECTANGLE OF THE FRAME THE RING CAN COVER, in whole frame pixels
+## (x0, y0 top, x1, y1 bottom), or an empty one when it is off the glass: the
+## bounding sphere's rim, sixteen directions round it, projected and boxed, a
+## margin over, and its size rounded up to `BUCKET` so the target is not
+## reallocated every frame as the ring moves.
+static func rect_of(basis: Basis, fov_deg: float, screen: Vector2i, centre: Vector3, radius: float) -> Rect2i:
+	var aspect := float(screen.x) / float(screen.y)
+	var dist := centre.length()
+	var c := centre / dist
+	var half := asin(clampf(radius / dist, 0.0, 0.999))
+	var u := c.cross(Vector3.UP if absf(c.y) < 0.95 else Vector3.RIGHT).normalized()
+	var w := c.cross(u)
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for i in 16:
+		var t := TAU * float(i) / 16.0
+		var d := (c * cos(half) + (u * cos(t) + w * sin(t)) * sin(half)).normalized()
+		var ndc := ndc_of(basis, fov_deg, aspect, d)
+		if ndc.x > 1e8:
+			# Part of the sphere is behind the lens: it may cover anything.
+			return Rect2i(Vector2i.ZERO, screen)
+		var px := Vector2((ndc.x * 0.5 + 0.5) * float(screen.x), (0.5 - ndc.y * 0.5) * float(screen.y))
+		lo = lo.min(px)
+		hi = hi.max(px)
+	var a := Vector2i(floori(lo.x) - MARGIN, floori(lo.y) - MARGIN)
+	var b := Vector2i(ceili(hi.x) + MARGIN, ceili(hi.y) + MARGIN)
+	var size := b - a
+	size = Vector2i(ceili(float(size.x) / BUCKET) * BUCKET, ceili(float(size.y) / BUCKET) * BUCKET)
+	var mid := (a + b) / 2
+	a = mid - size / 2
+	var r := Rect2i(a, size).intersection(Rect2i(Vector2i.ZERO, screen))
+	return r
+
+
+## The frame rectangle in NDC for the sky (x0, y0 bottom, x1, y1 top).
+static func ndc_rect(r: Rect2i, screen: Vector2i) -> Vector4:
+	var x0 := 2.0 * float(r.position.x) / float(screen.x) - 1.0
+	var x1 := 2.0 * float(r.end.x) / float(screen.x) - 1.0
+	var y1 := 1.0 - 2.0 * float(r.position.y) / float(screen.y)
+	var y0 := 1.0 - 2.0 * float(r.end.y) / float(screen.y)
+	return Vector4(x0, y0, x1, y1)
+
+
+## THE LENS CUT DOWN TO THE RECTANGLE: an off-axis frustum at the near plane
+## with the eye's own basis, so a layer pixel is exactly a frame pixel (or a
+## quarter of one). tests/render/test_orbit.gd asks the engine's own
+## `unproject_position` of a camera cut here.
+static func cut(c: Camera3D, basis: Basis, fov_deg: float, screen: Vector2i, r: Vector4) -> void:
+	var t := tan_of(fov_deg, float(screen.x) / float(screen.y))
+	var n := NEAR_KM
+	c.projection = Camera3D.PROJECTION_FRUSTUM
+	c.keep_aspect = Camera3D.KEEP_HEIGHT
+	c.size = (r.w - r.y) * n * t.y
+	c.frustum_offset = Vector2((r.x + r.z) * 0.5 * n * t.x, (r.y + r.w) * 0.5 * n * t.y)
+	c.near = n
+	c.far = FAR_KM
+	c.global_transform = Transform3D(basis, Vector3.ZERO)
+
+
+const MARGIN := 3
+const BUCKET := 32.0
+
+
 ## Pose the layer for this frame. `pose` from OrbitPass.pose, `sun_dir` the real
 ## sun (SkyLight.sky_sun), `air` SkyLight.seen_air. `wanted` false stands it
 ## down. Returns whether it renders this frame.
 func update(cam: Camera3D, pose: Dictionary, sun_dir: Vector3, air: Dictionary, wanted: bool) -> bool:
 	drawn = false
-	if cam == null or not wanted or not bool(pose.get("up", false)):
+	var ss := int(Quality.current().get("orbit", 1)) if not Quality.current().is_empty() else 1
+	if cam == null or not wanted or not bool(pose.get("up", false)) or ss <= 0:
 		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 		return false
 	var root := cam.get_viewport()
-	var size := frame_size(root)
-	var aspect := float(size.x) / float(size.y)
+	screen = frame_size(root)
 	var basis := cam.global_transform.basis.orthonormalized()
 	var rel: Vector3 = pose.rel
 	var dist: float = pose.dist
-	var half := asin(clampf((float(def.rim_km) + 12.0) / maxf(dist, 1.0), 0.0, 1.0))
-	var fwd := -basis.z
-	var t := tan_of(cam.fov, aspect)
-	var cone := atan(Vector2(t.x, t.y).length())
-	if fwd.angle_to(rel / dist) > cone + half:
+	var r := rect_of(basis, cam.fov, screen, rel, float(def.rim_km) + float(def.sail.x) * 0.3 + 14.0)
+	if r.size.x <= 0 or r.size.y <= 0:
 		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 		return false
-	if viewport.size != size:
-		viewport.size = size
-	viewport.msaa_3d = Viewport.MSAA_2X if Quality.forward_plus() else Viewport.MSAA_DISABLED
-	camera.global_transform = Transform3D(basis, Vector3.ZERO)
-	camera.fov = cam.fov
-	camera.keep_aspect = Camera3D.KEEP_HEIGHT
+	frame_rect = r
+	rect = ndc_rect(r, screen)
+	var want := r.size * ss
+	if viewport.size != want:
+		viewport.size = want
+	viewport.msaa_3d = Viewport.MSAA_DISABLED
+	var t := tan_of(cam.fov, float(screen.x) / float(screen.y))
+	cut(camera, basis, cam.fov, screen, rect)
+	fov = cam.fov
 	sun.global_transform = Transform3D(Basis.looking_at(-sun_dir, Vector3.UP if absf(sun_dir.y) < 0.99 else Vector3.RIGHT), Vector3.ZERO)
 	# The sun a thing four hundred kilometres up sees at the land's dusk is the
 	# land's own low sun, warmed toward gold as it goes down (and reddened further
 	# per fragment where its light grazes the limb, orbit.gdshader `sunlit`).
 	sun.light_color = SUN_DAY.lerp(SUN_DUSK, smoothstep(0.30, -0.12, sun_dir.y))
-	px_across = 2.0 * float(def.rim_km) / dist / (2.0 * t.y) * float(size.y)
+	px_across = 2.0 * float(def.rim_km) / dist / (2.0 * t.y) * float(screen.y)
 	if proof:
 		# Square to the view, straight along the ring's direction.
 		ring.global_transform = Transform3D(Basis.looking_at(rel / dist, Vector3.UP if absf(rel.y / dist) < 0.99 else Vector3.RIGHT), rel)
@@ -192,7 +269,7 @@ func update(cam: Camera3D, pose: Dictionary, sun_dir: Vector3, air: Dictionary, 
 		if ring.mesh != body:
 			ring.mesh = body
 		ring.global_transform = Transform3D(pose.basis, rel)
-		_feed(pose, sun_dir, air, size)
+		_feed(pose, sun_dir, air, screen)
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	drawn = true
 	return true
@@ -203,17 +280,30 @@ func _feed(pose: Dictionary, sun_dir: Vector3, air: Dictionary, size: Vector2i) 
 	mat.set_shader_parameter(&"sun_dir", sun_dir)
 	mat.set_shader_parameter(&"earth", pose.earth)
 	mat.set_shader_parameter(&"planet_km", float(def.planet_km))
-	mat.set_shader_parameter(&"px_angle", 2.0 * tan(deg_to_rad(camera.fov) * 0.5) / float(size.y))
+	mat.set_shader_parameter(&"px_angle", 2.0 * tan(deg_to_rad(fov) * 0.5) / float(size.y))
 	mat.set_shader_parameter(&"glow_color", dome.get(&"dome_glow_color", Color(1.0, 0.55, 0.3)))
 	# How much daylit ground lies under the ring, for the light it throws back up
 	# onto the hull: the sun's height where the observer stands is a fair guess
 	# at the ground four hundred kilometres round.
 	mat.set_shader_parameter(&"night", float(dome.get(&"dome_night", 0.0)))
+	lamps_shown = lamp_seen(dome.get(&"dome_top_color", Color(0.02, 0.02, 0.04)))
+	mat.set_shader_parameter(&"lamp_seen", lamps_shown)
 	mat.set_shader_parameter(&"planet_day", smoothstep(-0.08, 0.35, sun_dir.y))
 	mat.set_shader_parameter(&"bones", Model.bone_rows(def, seed_value, float(pose.get("minutes", 0.0))))
 
 
+## How much a lamp on the ring shows against a sky whose zenith is `top` (the
+## seen sky's own `dome_top_color`): whole under a night sky, gone under a day
+## one, and part-way through dusk, when the first lamps come out with the stars.
+static func lamp_seen(top: Color) -> float:
+	return clampf(1.0 - (top.get_luminance() - LAMP_SKY_DARK) / (LAMP_SKY_DAY - LAMP_SKY_DARK), 0.0, 1.0)
+
+
+## Zenith luminance under which every lamp shows, and over which none does.
+const LAMP_SKY_DARK := 0.15
+const LAMP_SKY_DAY := 0.32
+
+
 ## Where a direction lands on the layer's glass, for the proof and a tour.
 func uv_for(d: Vector3) -> Vector2:
-	var sz := Vector2(viewport.size)
-	return uv_of(camera.global_transform.basis, camera.fov, sz.x / sz.y, d)
+	return uv_of(camera.global_transform.basis, fov, float(screen.x) / float(screen.y), d, rect)

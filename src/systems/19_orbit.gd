@@ -169,8 +169,9 @@ func _tell_sky(cam: Camera3D, on: bool, air: Dictionary) -> void:
 	m.set_shader_parameter(&"orbit_on", 1.0 if on else 0.0)
 	if not on:
 		return
-	var sz := Vector2(layer.viewport.size)
+	var sz := Vector2(layer.screen)
 	var t := LayerScript.tan_of(cam.fov, sz.x / sz.y)
+	m.set_shader_parameter(&"orbit_rect", layer.rect)
 	m.set_shader_parameter(&"orbit_layer", layer.viewport.get_texture())
 	m.set_shader_parameter(&"orbit_view", layer.camera.global_transform.basis.transposed())
 	m.set_shader_parameter(&"orbit_tan", t)
@@ -212,10 +213,10 @@ func stats_line() -> String:
 	if not fp.is_empty():
 		probe = ", on the glass: unlit hull %.4f from the sky beside it over %d px" % [float(fp.ghost), int(fp.ghost_n)]
 	var rid := layer.viewport.get_viewport_rid()
-	probe += ", layer %d draws %d primitives %dx%d" % [
+	probe += ", layer %d draws %d tris, target %dx%d over frame rect %s, lamps shown %.2f" % [
 		RenderingServer.viewport_get_render_info(rid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME),
 		RenderingServer.viewport_get_render_info(rid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME),
-		layer.viewport.size.x, layer.viewport.size.y]
+		layer.viewport.size.x, layer.viewport.size.y, str(layer.frame_rect), layer.lamps_shown]
 	var nxt: Dictionary = Pass.next_pass(def, game.world.seed_value, float(p.minutes)) if _staged.is_empty() else _staged
 	return "\nworld orbit: %s, lod %d, %.0f px across, pose %d us, %s at %.0f deg up bearing %.0f, %.0f km, sunlit %.2f, gaze %.2f, pass %d peaks %.0f deg, rises at minute %.0f (hour %.1f)" % [
 		"drawn" if layer.drawn else "not drawn", layer.lod, layer.px_across, last_pose_usec,
@@ -239,34 +240,41 @@ func frame_probe() -> Dictionary:
 	if li == null or fi == null:
 		return {}
 	var lsz := li.get_size()
-	var fsz := fi.get_size()
-	var k := Vector2(fsz) / Vector2(lsz)
-	var uv := layer.uv_for(pose.dir)
-	var c := Vector2i(uv * Vector2(lsz))
-	var r := int(layer.px_across * 0.5 * float(lsz.y) / float(layer.viewport.size.y)) + 12
-	var lo := (c - Vector2i(r, r)).clamp(Vector2i(2, 2), lsz - Vector2i(3, 3))
-	var hi := (c + Vector2i(r, r)).clamp(Vector2i(2, 2), lsz - Vector2i(3, 3))
+	var map := _mapping(lsz, fi.get_size(), layer.frame_rect)
 	var ghost := 0.0
 	var ghost_n := 0
-	for y in range(lo.y, hi.y):
-		for x in range(lo.x, hi.x):
+	for y in range(0, lsz.y):
+		for x in range(0, lsz.x):
 			var l := li.get_pixel(x, y)
 			if l.a < 0.95 or l.r + l.g + l.b > 0.03:
 				continue
-			var lum := fi.get_pixelv(Vector2i(Vector2(x + 0.5, y + 0.5) * k)).get_luminance()
+			var lum := fi.get_pixelv(_frame_px(map, x, y)).get_luminance()
 			# The open sky nearest along the row, either side.
-			for step in range(3, 14):
+			for step in range(3, 20):
 				var hit := false
 				for sx: int in [x - step, x + step]:
 					if sx < 0 or sx >= lsz.x or li.get_pixel(sx, y).a > 0.02:
 						continue
-					ghost += absf(lum - fi.get_pixelv(Vector2i(Vector2(sx + 0.5, y + 0.5) * k)).get_luminance())
+					ghost += absf(lum - fi.get_pixelv(_frame_px(map, sx, y)).get_luminance())
 					ghost_n += 1
 					hit = true
 					break
 				if hit:
 					break
 	return {"ghost": ghost / float(maxi(ghost_n, 1)), "ghost_n": ghost_n}
+
+
+## A layer pixel to the frame pixel it lands on: the layer covers `rect` of the
+## 3D frame (layer.screen), which the readback holds at its own size.
+func _mapping(lsz: Vector2i, fsz: Vector2i, rect: Rect2i) -> Array:
+	var to_frame := Vector2(fsz) / Vector2(layer.screen)
+	return [Vector2(rect.position) * to_frame, Vector2(rect.size) / Vector2(lsz) * to_frame, fsz]
+
+
+func _frame_px(map: Array, x: int, y: int) -> Vector2i:
+	var fsz: Vector2i = map[2]
+	var p := Vector2i((map[0] as Vector2) + Vector2(x + 0.5, y + 0.5) * (map[1] as Vector2))
+	return p.clamp(Vector2i(3, 3), fsz - Vector2i(4, 4))
 
 
 ## THE STARS GO OUT BEHIND THE HULL, asked of the SAME PIXELS twice: the dark
@@ -278,7 +286,8 @@ func frame_probe() -> Dictionary:
 ## of sky could not say that -- a field this sparse leaves a band of hull empty
 ## by chance about as often as not, and it certified a sky with the stars drawn
 ## straight through the hull (measured). Asked by a tour; the camera must hold
-## still between the two looks.
+## still between the two looks. The layer covers only the ring's rectangle, so
+## "is it sky now" is asked of the frame pixel's place in the NEW layer.
 const STAR_WAIT_MS := 4000
 var _star_then: Dictionary = {}
 ## Stars seen on the same pixels (hull then, sky now) by the last ask.
@@ -296,25 +305,35 @@ func _stars_come_out() -> bool:
 	if li == null or fi == null:
 		return false
 	if _star_then.is_empty():
-		_star_then = {"ms": now_ms, "layer": li, "frame": fi}
+		_star_then = {"ms": now_ms, "layer": li, "frame": fi, "rect": layer.frame_rect}
 		return false
 	var old_l: Image = _star_then.layer
 	var old_f: Image = _star_then.frame
+	var old_rect: Rect2i = _star_then.rect
 	_star_then = {}
-	var lsz := li.get_size()
 	var fsz := fi.get_size()
-	var k := Vector2(fsz) / Vector2(lsz)
+	var old_map := _mapping(old_l.get_size(), fsz, old_rect)
+	var lsz := li.get_size()
+	var new_rect := layer.frame_rect
+	var to_frame := Vector2(fsz) / Vector2(layer.screen)
 	var then := 0
 	var now := 0
-	for y in range(3, lsz.y - 3):
-		for x in range(3, lsz.x - 3):
+	for y in range(0, old_l.get_height()):
+		for x in range(0, old_l.get_width()):
 			var was := old_l.get_pixel(x, y)
 			if was.a < 0.95 or was.r + was.g + was.b > 0.03:
 				continue
-			if li.get_pixel(x, y).a > 0.0 or li.get_pixel(x - 2, y).a > 0.0 or li.get_pixel(x + 2, y).a > 0.0 or li.get_pixel(x, y - 2).a > 0.0 or li.get_pixel(x, y + 2).a > 0.0:
-				continue
-			var fp := Vector2i(Vector2(x + 0.5, y + 0.5) * k)
-			if fp.x < 3 or fp.y < 3 or fp.x >= fsz.x - 3 or fp.y >= fsz.y - 3:
+			var fp := _frame_px(old_map, x, y)
+			# Where that frame pixel lies in the layer now, and is it open sky
+			# there, with room round it.
+			var lp := Vector2i(((Vector2(fp) + Vector2(0.5, 0.5)) / to_frame - Vector2(new_rect.position)) / Vector2(new_rect.size) * Vector2(lsz))
+			var open := true
+			for o: Vector2i in [Vector2i.ZERO, Vector2i(-2, 0), Vector2i(2, 0), Vector2i(0, -2), Vector2i(0, 2)]:
+				var q := lp + o
+				if q.x >= 0 and q.y >= 0 and q.x < lsz.x and q.y < lsz.y and li.get_pixelv(q).a > 0.0:
+					open = false
+					break
+			if not open:
 				continue
 			then += 1 if _spike(old_f, fp) else 0
 			now += 1 if _spike(fi, fp) else 0

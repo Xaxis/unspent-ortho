@@ -28,6 +28,9 @@ uniform float orbit_on = 0.0;
 uniform mat3 orbit_view = mat3(1.0);
 // tan of half the lens across (x) and up (y), so view space -> NDC.
 uniform vec2 orbit_tan = vec2(0.577, 0.577);
+// The rectangle of the frame the layer covers, in NDC (x0, y0 bottom, x1, y1
+// top): the layer is cut down to the ring's own box on the glass.
+uniform vec4 orbit_rect = vec4(-1.0, -1.0, 1.0, 1.0);
 // What the texture holds is radiance / gain (8 on the RGBA8 fallback, 1 on HDR).
 uniform float orbit_gain = 1.0;
 // HOW MUCH OF THE SKY'S OWN GLOW THE HULL STANDS IN FRONT OF, 0..1. The air
@@ -63,10 +66,10 @@ vec2 orbit_uv(vec3 d) {
 		return vec2(-1.0);
 	}
 	vec2 ndc = v.xy / (-v.z) / orbit_tan;
-	if (abs(ndc.x) > 1.0 || abs(ndc.y) > 1.0) {
+	if (ndc.x < orbit_rect.x || ndc.x > orbit_rect.z || ndc.y < orbit_rect.y || ndc.y > orbit_rect.w) {
 		return vec2(-1.0);
 	}
-	return vec2(0.5 + 0.5 * ndc.x, 0.5 - 0.5 * ndc.y);
+	return vec2((ndc.x - orbit_rect.x) / (orbit_rect.z - orbit_rect.x), (orbit_rect.w - ndc.y) / (orbit_rect.w - orbit_rect.y));
 }
 
 // How much of the ring's light gets through the air to the eye, per channel:
