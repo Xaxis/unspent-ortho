@@ -148,8 +148,137 @@ static func struck_plate(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vect
 	k.made.quad(on_wall(bl, br, tr, tl, u - hu * 1.25, v + lo, 0.05), on_wall(bl, br, tr, tl, u + hu * 1.25, v + lo + tilt, 0.05), on_wall(bl, br, tr, tl, u + hu * 1.25, v + hi + tilt, 0.05), on_wall(bl, br, tr, tl, u - hu * 1.25, v + hi, 0.05), P.INK[0])
 
 
-## A window: a copper frame over glass that is lit at night.
+## A block standing proud of a wall face from (u0, v0) to (u1, v1): its face
+## `depth` out, its four sides running back to the wall and its front edges
+## drawn in a little, so it catches the sun on top and throws a line of shadow
+## under itself. What turns a painted rectangle into a stone, a sill or a lintel
+## seen from the side over the shoulder, where a flat rect is nothing at all.
+static func proud(pen: MeshKit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u0: float, v0: float, u1: float, v1: float, depth: float, col: Color) -> void:
+	# Never past the wall's own head or foot: a block turned inside out there
+	# covered the eave plate from every bearing (tests/render/test_found_drawn.gd).
+	v0 = maxf(v0, 0.0)
+	v1 = minf(v1, 0.995)
+	if v1 - v0 < 0.01 or u1 - u0 < 0.005:
+		return
+	var iu := minf((u1 - u0) * 0.12, 0.012)
+	var iv := minf((v1 - v0) * 0.12, 0.02)
+	var b := [on_wall(bl, br, tr, tl, u0, v0, 0.002), on_wall(bl, br, tr, tl, u1, v0, 0.002), on_wall(bl, br, tr, tl, u1, v1, 0.002), on_wall(bl, br, tr, tl, u0, v1, 0.002)]
+	var f := [on_wall(bl, br, tr, tl, u0 + iu, v0 + iv, depth), on_wall(bl, br, tr, tl, u1 - iu, v0 + iv, depth), on_wall(bl, br, tr, tl, u1 - iu, v1 - iv, depth), on_wall(bl, br, tr, tl, u0 + iu, v1 - iv, depth)]
+	pen.quad(f[0], f[1], f[2], f[3], col)
+	# Top catches the sky, underside and the ends fall into shade.
+	pen.quad(f[3], f[2], b[2], b[3], GroundColors.up(col, 0.12))
+	pen.quad(b[0], b[1], f[1], f[0], GroundColors.down(col, 0.35))
+	pen.quad(f[1], b[1], b[2], f[2], GroundColors.down(col, 0.15))
+	pen.quad(b[0], f[0], f[3], b[3], GroundColors.down(col, 0.15))
+
+
+## Rubble laid in courses: stones of their own lengths standing proud of the
+## mortar, the wall showing between them. `fill` is the share of the courses
+## laid (the rest is pointing, or render still on). Courses stay off the band
+## `skip_v0..skip_v1` of each gap in `gaps` (u0, u1 pairs), where a door or a
+## window is.
+static func courses(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, s: int, col: Color, rows: int, fill: float, gaps: Array = []) -> void:
+	var width := bl.distance_to(br)
+	for r in rows:
+		var v0 := (float(r) + 0.08) / rows
+		var v1 := (float(r) + 0.92) / rows
+		var u := Rng.hash01(s, r, 1) * 0.08
+		var i := 0
+		while u < 0.97:
+			var len_u := (0.18 + Rng.hash01(s, r * 31 + i, 2) * 0.22) / maxf(width, 0.5)
+			var u1 := minf(u + len_u, 0.99)
+			var clear := true
+			for g: Vector4 in gaps:
+				if u1 > g.x and u < g.y and v1 > g.z and v0 < g.w:
+					clear = false
+			if clear and Rng.hash01(s, r * 31 + i, 3) < fill:
+				# No two stones the same height in the course: a rubble wall is
+				# laid from what came out of the ground, not cut to a gauge.
+				var dv := Kit.j(s, r * 31 + i, 0.2 / rows)
+				var tall := (0.55 + Rng.hash01(s, r * 31 + i, 6) * 0.45) * (v1 - v0)
+				proud(k.made, bl, br, tr, tl, u + 0.006, v0 + dv, u1 - 0.006, v0 + dv + tall, 0.014 + Rng.hash01(s, r * 31 + i, 4) * 0.026,
+					Kit.tone(col, 0.9 + Rng.hash01(s, r * 31 + i, 5) * 0.16))
+			u = u1 + 0.012
+			i += 1
+
+
+## The same courses laid on a gable triangle (bl, br at the eaves, `apex` at the
+## ridge), each stone kept inside the rakes, and the rakes themselves capped in
+## squared coping that stands out of the face: the gable end was a flat
+## triangle of paint from every side.
+static func gable_courses(k: Kit, bl: Vector3, br: Vector3, apex: Vector3, s: int, col: Color, rows: int, fill: float) -> void:
+	for r in rows:
+		var v0 := (float(r) + 0.08) / (rows + 1)
+		var v1 := (float(r) + 0.92) / (rows + 1)
+		# Along a row the face runs from u = v (the left rake) to 1 (the right).
+		var u := v1 + 0.03 + Rng.hash01(s, r, 1) * 0.05
+		var i := 0
+		while u < 0.96:
+			var u1 := minf(u + 0.1 + Rng.hash01(s, r * 17 + i, 2) * 0.12, 0.97 - v1 * 0.02)
+			if u1 - u > 0.04 and Rng.hash01(s, r * 17 + i, 3) < fill:
+				proud(k.made, bl, br, apex, apex, u, v0, u1, v1, 0.018 + Rng.hash01(s, r * 17 + i, 4) * 0.018,
+					Kit.tone(col, 0.9 + Rng.hash01(s, r * 17 + i, 5) * 0.16))
+			u = u1 + 0.014
+			i += 1
+	var out := wall_out(bl, br, apex, apex) * 0.035
+	for rake: Array in [[bl, apex], [apex, br]]:
+		var a: Vector3 = rake[0]
+		var b: Vector3 = rake[1]
+		for c2 in 4:
+			var f0 := float(c2) / 4.0 + 0.01
+			var f1 := float(c2 + 1) / 4.0 - 0.01
+			k.made.strut(a.lerp(b, f0) + out + Vector3(0, 0.03 + Kit.j(s, c2 + 40, 0.012), 0), a.lerp(b, f1) + out + Vector3(0, 0.03, 0), 0.05, 4,
+				GroundColors.up(col, 0.15 + Rng.hash01(s, c2, 41) * 0.1))
+
+
+## Weatherboard: boards lapped down a wall, each one's foot standing out of the
+## one under it so every board throws its own line of shadow, one or two
+## missing where they rotted and never came back. `gaps` (u0, u1, v0, v1) are
+## left bare, for a door or a panel.
+static func boards(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, s: int, col: Color, rows: int, gaps: Array = []) -> void:
+	var lost := int(Rng.hash01(s, 0, 9) * rows)
+	var start := k.made.vertex_count()
+	for r in rows:
+		if r == lost and rows > 3:
+			continue
+		var v0 := float(r) / rows + 0.004
+		var v1 := float(r + 1) / rows + 0.012
+		# Every board its own weathering, and timber in the made row so it takes
+		# the grain.
+		var tone := GroundColors.made(Kit.tone(col, 0.82 + Rng.hash01(s, r, 11) * 0.36), GroundColors.TIMBER)
+		var spans: Array[Vector2] = [Vector2(0.0, 1.0)]
+		for g: Vector4 in gaps:
+			if v1 <= g.z or v0 >= g.w:
+				continue
+			var next: Array[Vector2] = []
+			for sp: Vector2 in spans:
+				if g.x > sp.x:
+					next.append(Vector2(sp.x, minf(sp.y, g.x)))
+				if g.y < sp.y:
+					next.append(Vector2(maxf(sp.x, g.y), sp.y))
+			spans = next
+		for sp: Vector2 in spans:
+			if sp.y - sp.x < 0.03:
+				continue
+			var foot := 0.04 + Rng.hash01(s, r, 12) * 0.016
+			# The board's face, leaning out at its foot, and the dark under-edge.
+			k.made.quad(on_wall(bl, br, tr, tl, sp.x, v0, foot), on_wall(bl, br, tr, tl, sp.y, v0, foot),
+				on_wall(bl, br, tr, tl, sp.y, v1, 0.004), on_wall(bl, br, tr, tl, sp.x, v1, 0.004), tone)
+			k.made.quad(on_wall(bl, br, tr, tl, sp.x, v0, 0.002), on_wall(bl, br, tr, tl, sp.y, v0, 0.002),
+				on_wall(bl, br, tr, tl, sp.y, v0, foot), on_wall(bl, br, tr, tl, sp.x, v0, foot), GroundColors.down(tone, 0.45))
+	# A wall is never planar (every corner of `walls()` leans its own way), so a
+	# board's two triangles meet at an angle and a flat normal apiece drew every
+	# board as a chevron under the sun. One board is one surface; its foot turns
+	# ninety degrees and keeps its edge.
+	k.made.smooth_range(start, k.made.vertex_count(), 30.0)
+
+
+## A window: a copper frame over glass that is lit at night, set under a lintel
+## and over a sill that stand out of the wall.
 static func window(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u: float, v: float, hw: float, hh: float) -> void:
+	var stone := P.STONE[3]
+	proud(k.made, bl, br, tr, tl, u - hw * 1.5, v + hh * 1.05, u + hw * 1.5, v + hh * 1.45, 0.05, stone)
+	proud(k.made, bl, br, tr, tl, u - hw * 1.35, v - hh * 1.4, u + hw * 1.35, v - hh * 1.08, 0.06, GroundColors.down(stone, 0.1))
 	wall_rect(k.made, bl, br, tr, tl, u - hw, v - hh, u + hw, v + hh, 0.012, P.COPPER[1])
 	wall_rect(k.made, bl, br, tr, tl, u - hw * 0.72, v - hh * 0.75, u + hw * 0.72, v + hh * 0.75, 0.016, GroundColors.lamp(P.COPPER[4], 0.9))
 	wall_rect(k.made, bl, br, tr, tl, u - hw * 0.08, v - hh * 0.75, u + hw * 0.08, v + hh * 0.75, 0.02, P.COPPER[2])
@@ -351,6 +480,11 @@ static func outshot(k: Kit, t: Array[Vector3], side: int, s: int, c: int) -> voi
 
 ## A plank door, its latch.
 static func door(k: Kit, bl: Vector3, br: Vector3, tr: Vector3, tl: Vector3, u: float, hw: float, hv: float) -> void:
+	# A timber lintel over it, and the dark of the frame round the boards.
+	# Most doors here run to within a hand of the eaves, so the lintel sits over
+	# the head of the frame, never above the wall.
+	var lv := minf(hv + 0.01, 0.92)
+	proud(k.made, bl, br, tr, tl, u - hw * 1.45, lv, u + hw * 1.45, minf(lv + 0.07, 0.99), 0.05, P.EARTH[2])
 	wall_rect(k.made, bl, br, tr, tl, u - hw * 1.2, 0.0, u + hw * 1.2, hv + 0.05, 0.012, P.EARTH[1])
 	for p in 3:
 		var pu := u - hw + (p + 0.5) * (2.0 * hw / 3.0)
@@ -805,6 +939,20 @@ static func slated(k: Kit, c: int, form: int) -> void:
 		var wf: Array = faces(t)[fi]
 		weathered(k, wf[0], wf[1], wf[2], wf[3], s + fi * 17, GroundColors.down(rubble, 0.4), moss)
 	var fb := [t[2], t[1], t[5], t[6]]
+	# The rubble itself, proud of its pointing on every face, clear of where the
+	# door and the windows go.
+	var door_at := 0.64 if form == 0 else 0.3
+	var win_at := 0.24 if form == 0 else 0.74
+	var gb_at := 0.7 if form == 0 else 0.26
+	var rows := int(round(h / 0.2))
+	for fi in faces(t).size():
+		var wf: Array = faces(t)[fi]
+		var gaps: Array = []
+		if fi == 0:
+			gaps = [Vector4(door_at - 0.16, door_at + 0.16, 0.0, 1.0), Vector4(win_at - 0.14, win_at + 0.14, 0.38, 0.84)]
+		elif fi == 1:
+			gaps = [Vector4(gb_at - 0.12, gb_at + 0.12, 0.36, 0.8)]
+		courses(k, wf[0], wf[1], wf[2], wf[3], s + 300 + fi * 7, GroundColors.down(rubble, 0.1 if fi % 2 == 0 else 0.3), rows, 0.55, gaps)
 	# Quoins lighter at the corners, a few dark stones in the courses.
 	for i in 5:
 		wall_rect(k.made, fb[0], fb[1], fb[2], fb[3], 0.0, i * 0.2, 0.08 + (i % 2) * 0.04, i * 0.2 + 0.16, 0.008, GroundColors.up(rubble, 0.35))
@@ -866,6 +1014,8 @@ static func slated(k: Kit, c: int, form: int) -> void:
 	# Gable ends in stone, up to the ridge where it actually lands.
 	k.made.tri(t[7] + Vector3(0, 0, 0.004), t[6] + Vector3(0, 0, 0.004), ridge[N] - Vector3(0, 0.06, 0.1), GroundColors.down(rubble, 0.3))
 	k.made.tri(t[5] + Vector3(0, 0, -0.004), t[4] + Vector3(0, 0, -0.004), ridge[0] - Vector3(0, 0.06, -0.1), GroundColors.down(rubble, 0.5))
+	gable_courses(k, t[7] + Vector3(0, 0, 0.004), t[6] + Vector3(0, 0, 0.004), ridge[N] - Vector3(0, 0.06, 0.1), s + 340, GroundColors.down(rubble, 0.3), 4, 0.6)
+	gable_courses(k, t[5] + Vector3(0, 0, -0.004), t[4] + Vector3(0, 0, -0.004), ridge[0] - Vector3(0, 0.06, -0.1), s + 350, GroundColors.down(rubble, 0.5), 4, 0.6)
 	# The ridge, lighter than the eaves, and gone for a length in the middle
 	# where the capping blew off: the roofline is never one straight run.
 	for i in N:

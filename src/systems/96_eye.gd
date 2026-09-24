@@ -47,7 +47,7 @@ func setup(g: Game) -> void:
 func started() -> void:
 	if _cam == null:
 		return
-	_yaw = game.player.facing
+	_yaw = game.player.facing + deg_to_rad(game.options.eye_round)
 	# The rig's near blur stands down by itself once it is not the camera drawing
 	# (CameraRig._near_focus), so nothing of its orthographic plane smears the eye.
 	_cam.make_current()

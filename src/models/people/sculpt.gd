@@ -10,6 +10,11 @@ class_name Sculpt
 ## instead of an edge. `fold` (a share of the radius, 0.03 or so) runs soft
 ## ridges round that ring, so cloth hangs in folds where it is loose and stays
 ## taut where the ring leaves it out; the walls weld, so a fold is a curve.
+## A seventh entry is the ring's SWELLS: an Array of Vector3(angle, width,
+## amount), each a smooth rise (or, negative, a hollow) of the radius by
+## `amount` of itself round `angle`, falling off over `width` radians -- a
+## shoulder blade, the channel of a spine, a brow, a cheekbone. Not mirrored:
+## a swell on both sides is written twice. (Pass fold 0.0 to reach it.)
 ##
 ##   Sculpt.loft(k, [[0, .1, .1, 0, 0], [.3, .07, .08, 0, 0]], 6, col)
 ##   Sculpt.limb(k, 0.3, 0.075, 0.06, 6, col, seed)        # hangs along -Y
@@ -58,6 +63,7 @@ static func loft(k: MeshKit, rings: Array, n: int, cols: Variant, cap_lo: bool =
 				# Ridges drift round the body ring by ring, so a fold slants
 				# down the cloth instead of standing as a fluted column.
 				j += fold * cos(a * ridges + fold_at + ri * 0.9)
+			j += swell(r, a)
 			ring[i] = Vector3(float(r[3]) + cos(a) * float(r[1]) * j, float(r[0]), float(r[4]) + sin(a) * float(r[2]) * j)
 		pts.append(ring)
 	var segs := n
@@ -162,6 +168,24 @@ static func _weld_walls(k: MeshKit, from: int, ring_count: int, n: int, closed: 
 					else:
 						slot = 0
 				k.normals[b + slot] = nv
+
+
+## How much a ring's swells lift its radius at angle `a` (0 = none).
+static func swell(r: Array, a: float) -> float:
+	if r.size() <= 6:
+		return 0.0
+	var out := 0.0
+	for b: Vector3 in r[6]:
+		var da := wrapf(a - b.x, -PI, PI) / b.y
+		out += b.z * exp(-da * da)
+	return out
+
+
+## Where a ring's surface is at angle `a`, swells included, without the hand's
+## wobble or the folds: what a thing laid ON a lofted surface reads.
+static func ring_point(r: Array, a: float) -> Vector3:
+	var j := 1.0 + swell(r, a)
+	return Vector3(float(r[3]) + cos(a) * float(r[1]) * j, float(r[0]), float(r[4]) + sin(a) * float(r[2]) * j)
 
 
 static func _centre(r: Array) -> Vector3:
