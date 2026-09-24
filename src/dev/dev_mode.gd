@@ -28,35 +28,37 @@ const CHORD_COUNT := 3
 const ACCESS: Array[StringName] = [&"off", &"chord", &"open"]
 
 ## Actions dev mode adds to the input map while it can be reached, and their keys.
-## Every dev action takes a LIST of keys, and every one of them has a letter in
-## it, because the function row is not a function row on a laptop (owner,
-## 2026-09-18: "the function keys literally dont work or do anything on macbooks
-## and many laptops"). On a MacBook F2 is screen brightness unless Fn is held, so
-## a dev mode keyed to the function row is a dev mode nobody can open.
+## Every dev action takes a LIST of keys, and every one of them has a key a
+## laptop can press without Fn, because the function row is not a function row
+## on a laptop (owner, 2026-09-18: "the function keys literally dont work or do
+## anything on macbooks and many laptops"). On a MacBook F2 is screen brightness
+## unless Fn is held, so a dev mode keyed to the function row is a dev mode
+## nobody can open.
 ##
-## The letters are picked from what the GAME does not already own — the player
-## has WASD, shift, space, j, k, e, c, i, m, f, q, z, b, h, n, esc and the
-## backtick — so none of these can steal a key out from under a press the player
-## already means. Keeping the function keys as the second event costs nothing and
-## leaves anyone with a real keyboard the binding they already learnt.
+## THE SECOND KEY IS THE DIGIT OF THE FUNCTION KEY: F2 is also 2, F6 also 6. The
+## letters it used to be (O, R, P, V, G) were chosen as ones "the game does not
+## already own", and then the abilities took R, V and G -- so with dev mode in
+## reach a scan also toggled the readout, a spoof started a flyover and a glide
+## drew the regions (docs/CONTROLS.md, C4). No scheme puts anything on the
+## number row, so a digit cannot collide with a verb the player means.
 const ACTIONS := {
 	&"dev_toggle": [KEY_QUOTELEFT],
-	&"dev_note": [KEY_O, KEY_F2],
-	&"dev_readout": [KEY_R, KEY_F3],
-	&"dev_picture": [KEY_P, KEY_F4],
+	&"dev_note": [KEY_2, KEY_F2],
+	&"dev_readout": [KEY_3, KEY_F3],
+	&"dev_picture": [KEY_4, KEY_F4],
 	# Off the player and out over the island (95_flyover). It belongs with the
 	# readout and the picture: the three things that change what you are LOOKING
 	# at rather than what the world is doing.
-	&"dev_fly": [KEY_V, KEY_F5],
+	&"dev_fly": [KEY_5, KEY_F5],
 	# The zoom gets keys of its OWN rather than borrowing the game's. The first
 	# version used `craft` and `crouch`, which are c and ctrl — so the first frame
 	# of the proof was the MAKING page, opened four times by the zoom. A dev mode
 	# that steals a key the player already owns is a dev mode that lies about what
-	# the game does.
+	# the game does. Read only while flying, when the flyover owns the zoom.
 	&"dev_fly_in": [KEY_EQUAL],
 	&"dev_fly_out": [KEY_MINUS],
 	# Every region picked out and named, over the flyover (`DevRegions`).
-	&"dev_regions": [KEY_G, KEY_F6],
+	&"dev_regions": [KEY_6, KEY_F6],
 }
 
 ## Armed by the chord (or --dev), and remembered on this device.

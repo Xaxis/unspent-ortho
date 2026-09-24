@@ -161,6 +161,17 @@ var subject := Vector3.INF
 var sight_room := Callable()
 ## The blend's own linear clock, 0 (top) to 1 (over the shoulder).
 var _sh_t := 0.0
+## How far the eye has moved out to `Shoulder.LOCK_RIGHT` for a lock, 0..1, eased
+## at the lock's own rate so taking or letting go of one never jumps the frame.
+var _lock_w := 0.0
+## The bearing to what is locked as the last frame saw it, NAN for none: the view
+## is turned by however far that bearing moved before the ease takes the rest.
+var _lock_bearing := NAN
+## Where the locked subject stood last frame: a subject that JUMPED (the lock
+## cycled to another body) is a new lock, eased onto rather than carried to.
+var _lock_was := Vector3.INF
+## Further than this in one frame is a different body, not the same one moving.
+const LOCK_JUMP := 1.5
 var _room := 1.0
 var _dt := 0.0
 var _yaw_drawn := 45.0
@@ -623,11 +634,31 @@ func _ease_shoulder(delta: float) -> void:
 		_room = 1.0
 	hold_lens(&"shoulder", true)
 	_sh_t = Shoulder.blend_step(_sh_t, shoulder, delta)
-	if subject.is_finite() and shoulder:
-		var to := Vector2(subject.x - _smoothed.x, subject.z - _smoothed.z)
+	var k := 1.0 - exp(-Shoulder.LOCK_RATE * delta)
+	var locking := subject.is_finite() and shoulder
+	_lock_w = lerpf(_lock_w, 1.0 if locking else 0.0, k)
+	if locking:
+		# Aimed from the shoulder the eye stands behind, never from the head: the
+		# head is in front of the eye, and a line from it runs through the body.
+		var from := shoulder_aim_from()
+		var to := Vector2(subject.x - from.x, subject.z - from.z)
 		if to.length() > 0.3:
-			var k := 1.0 - exp(-Shoulder.LOCK_RATE * delta)
-			shoulder_yaw += Shoulder.turn(shoulder_yaw, Shoulder.yaw_along(to)) * k
+			var bearing := Shoulder.yaw_along(to)
+			# Carried round with the target first, so a circle walked close in
+			# keeps it where it was in the frame: eased alone, the view trailed a
+			# body circled at a tile and a half by more than twenty degrees.
+			if _lock_was.is_finite() and _lock_was.distance_to(subject) > LOCK_JUMP:
+				_lock_bearing = NAN
+			if not is_nan(_lock_bearing):
+				shoulder_yaw += Shoulder.turn(_lock_bearing, bearing)
+			_lock_bearing = bearing
+			shoulder_yaw += Shoulder.turn(shoulder_yaw, bearing) * k
+		else:
+			_lock_bearing = NAN
+		_lock_was = subject
+	else:
+		_lock_bearing = NAN
+		_lock_was = Vector3.INF
 	if _sh_t <= 0.0:
 		hold_lens(&"shoulder", false)
 
@@ -665,7 +696,7 @@ func _apply_lens() -> void:
 	# shoulder's on the one eased clock. The yaw goes the short way round.
 	var yb := deg_to_rad(shoulder_yaw)
 	var right := Vector3(cos(yb), 0.0, -sin(yb))
-	var focus_b := _smoothed + Vector3(0.0, Shoulder.FOCUS_UP, 0.0) + right * Shoulder.RIGHT
+	var focus_b := _smoothed + Vector3(0.0, Shoulder.FOCUS_UP, 0.0) + right * _right_now()
 	var yaw := yaw_a + Shoulder.turn(yaw_a, shoulder_yaw) * w
 	var pitch := lerpf(pitch_a, shoulder_pitch, w)
 	var focus := focus_a.lerp(focus_b, w)
@@ -694,6 +725,19 @@ func _apply_lens() -> void:
 	rotation += Vector3(_quake_at.y * QUAKE_TIP, 0.0, _quake_at.x * QUAKE_TIP)
 	_back = maxf(0.001, eye.distance_to(focus))
 	_yaw_drawn = yaw
+
+
+## How far right of the player the eye stands now: a lock moves it out.
+func _right_now() -> float:
+	return lerpf(Shoulder.RIGHT, Shoulder.LOCK_RIGHT, _lock_w)
+
+
+## The point over the shoulder the view looks out from, on the ground plane's
+## height of the player: what a lock is aimed from, and what a tour asks the
+## lock's bearing of (41_shoulder `shoulder_locked`).
+func shoulder_aim_from() -> Vector3:
+	var yb := deg_to_rad(shoulder_yaw)
+	return _smoothed + Vector3(cos(yb), 0.0, -sin(yb)) * _right_now()
 
 
 func _ease_lean(delta: float) -> void:

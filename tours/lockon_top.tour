@@ -1,0 +1,61 @@
+# LOCK-ON FROM ABOVE (owner, 2026-09-24: "it needs to lock the player's movement
+# so they are facing the target they are locked onto"; docs/CONTROLS.md
+# §Lock-on). Through the real keys: Z locks a machine and the body turns onto it;
+# a strafe bends round it and the body keeps facing it; a dodge goes where the
+# keys point and still faces it; a swing goes at it; the lock cycled to another
+# machine turns the body onto that one; the view over the shoulder is taken and
+# left again with the lock still held; the machine is broken and the lock is
+# handed on; letting go turns the body back onto its walk.
+# From above the keys stay the screen's; a held key sideways arcs round the lock
+# at the distance it started instead of leaving on a tangent.
+#   tools/tour.sh tours/lockon_top.tour --seed=4 --hour=11 --weather=clear:0 --give=axe_felling:1 --held=axe_felling
+coast calm
+wait 0.8
+spawn runner
+wait 0.8
+shot 01-a-machine-before-the-lock with mob:runner
+
+hold target
+await target 5
+await lock_facing 3
+wait 0.4
+shot 02-locked-and-facing-it with target:runner,lock_facing
+
+walk 1,0 1.4
+await lock_circled 2
+shot 03-strafed-round-it-still-facing with mob:runner,lock_facing
+
+tap dodge
+wait 0.25
+shot 04-dodged-still-facing with mob:runner,lock_facing
+
+walkto part 6
+press swing
+await hit 6
+wait 0.2
+shot 05-swung-at-the-lock with mob:runner,lock_facing
+
+spawn cutter
+wait 0.6
+tap target_next
+await target 3
+wait 0.5
+await lock_facing 3
+shot 06-cycled-and-turned-onto-the-next with mob:cutter,target:cutter,lock_facing
+
+tap shoulder
+await shoulder 3
+await shoulder_locked 3
+wait 0.4
+shot 07-over-the-shoulder-the-lock-kept with target:cutter,shoulder_locked,lock_facing
+
+tap shoulder
+await top_view 3
+await target 1
+wait 0.4
+shot 08-back-above-the-lock-kept with target:cutter,lock_facing
+
+release target
+await target_none 5
+walk 0,1 0.8
+shot 09-let-go-and-walking-on

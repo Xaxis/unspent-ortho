@@ -64,6 +64,12 @@ const FOLLOW_RATE := 1.7
 
 ## A lock (42_target) turns the view onto what it holds at this rate.
 const LOCK_RATE := 6.0
+## Under a lock the eye stands this far right instead of `RIGHT`, and it aims
+## from there: looking from the head, the player's own back stood square in
+## front of what was locked and hid it (lockon_top.tour frame 07, 2026-09-24).
+## From a shoulder this wide what is held sits clear of the body at any range a
+## lock is taken at, and the pair are framed together, the player left of centre.
+const LOCK_RIGHT := 1.15
 
 ## THE CAMERA MAY NOT GO INTO THE LAND OR A HOUSE (docs/LOOK.md law 3: "The land
 ## itself never opens"). The line from the point it looks at (over the right
@@ -250,3 +256,17 @@ static func _blocked(q: Vector3, ground: Callable, solids: Array[Vector4], thin:
 		if dx * dx + dz * dz < r * r and q.y < s.w + CLEAR:
 			return true
 	return false
+
+
+## Degrees a second the arrow keys turn the view (docs/CONTROLS.md, C6): the one
+## look a keyboard alone has. About a third of a turn a second, which crosses a
+## screen's width of sky in the time a key is comfortably held.
+const KEY_TURN_DEG := 110.0
+
+
+## The arrow keys as a look: `keys` is -1..1 on each axis, right and down
+## positive as `Input.get_vector` gives them, spent at `KEY_TURN_DEG` a second
+## through the mouse's own rule (`look`), so the two cannot disagree about which
+## way is up or where the gaze stops.
+static func key_look(yaw_deg: float, pitch_deg: float, keys: Vector2, delta: float, least := PITCH_LEAST) -> Vector2:
+	return look(yaw_deg, pitch_deg, keys * (KEY_TURN_DEG / MOUSE_DEG) * delta, least)

@@ -99,6 +99,7 @@ static func _group_name(group: StringName) -> String:
 		&"sound": return "sound"
 		&"picture": return "picture"
 		&"playing": return "playing"
+		&"controls": return "controls"
 	return String(group)
 
 

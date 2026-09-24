@@ -3,14 +3,18 @@ extends GameSystem
 ##
 ##   hold Z        lock the nearest threat: the camera leans in behind the
 ##                 player, the body is bracketed, and the slate reads it
-##   a / d         cycle the lock along the list (what is on you first, then near,
-##                 the last people after everything in the fight); pages a sweep
+##   u / o, scroll cycle the lock along the list (what is on you first, then
+##                 near, the last people after everything in the fight); pages a
+##                 sweep. NEVER the move keys: a strafe round a locked body must
+##                 not change which body it is (docs/CONTROLS.md, C3)
 ##   r while held  sweep: the camera eases back and every body in the field is
 ##                 read at once, none of them locked
 ##   release       the camera comes back square and the reads go
 ##
-## It changes no fight: no aim, no slow, no hold. A player who never presses it
-## fights exactly as before, and nothing here writes to the simulation. What it
+## A LOCK HOLDS THE BODY (owner, 2026-09-24): it faces what is locked, a strafe
+## circles it, a swing goes at it and a dodge with no key held goes straight back
+## from it. That is `LockOn`'s, applied by the simulation; this file's only write
+## to the fight is `Hero.set_lock`, the point it holds, once a frame. What it
 ## draws is UiTargetView's; what it decides is Targeting's and TargetRead's.
 
 const ACTION := &"target"
@@ -18,6 +22,10 @@ const ACTION := &"target"
 ## because that is the same thing asked of the slate. A player without the lens
 ## has it free, and the sweep needs no key of its own.
 const SWEEP_ACTION := &"ability_scan"
+## The lock's own cycle keys (ControlScheme puts them on U and O in every
+## scheme, and the scroll and a trackpad's swipe reach them through `take_scroll`).
+const NEXT_ACTION := &"target_next"
+const PREV_ACTION := &"target_prev"
 ## The lean of a lock: yaw toward the body, pitch a little lower for the
 ## perspective behind the player, and closer in. Slight on purpose (owner).
 const LOCK_YAW := 11.0
@@ -56,11 +64,19 @@ var _list: Array[TargetSubject] = []
 ## starts at 0 and a sentinel a real time can equal is a bug waiting for a frame.
 var _lost_at := -INF
 var _page := 0
+## Steps of scroll or swipe taken this frame while the key was held.
+var _scrolled := 0
+var _scroll_left := 0.0
+## Radians walked round the held lock since it was taken (or since a tour last
+## asked): what `lock_circled` answers. The angle last seen, NAN for none.
+var _circled := 0.0
+var _circle_was := NAN
 
 
 func setup(g: Game) -> void:
 	super.setup(g)
 	_ensure_action()
+	ensure_cycle_actions()
 	# --target[=sweep] holds the key for a shot, so a still can show a lock.
 	_forced = g.options.target
 	sweeping = g.options.target_sweep
@@ -81,6 +97,17 @@ func _ensure_action() -> void:
 	InputMap.action_add_event(ACTION, key)
 
 
+## The cycle keys, for a build or a test that never installed a scheme.
+static func ensure_cycle_actions() -> void:
+	for pair: Array in [[NEXT_ACTION, KEY_O], [PREV_ACTION, KEY_U]]:
+		if InputMap.has_action(pair[0]):
+			continue
+		InputMap.add_action(pair[0])
+		var k := InputEventKey.new()
+		k.physical_keycode = pair[1]
+		InputMap.action_add_event(pair[0], k)
+
+
 func _went_down(action: StringName) -> bool:
 	var now := InputMap.has_action(action) and Input.is_action_pressed(action)
 	var was: bool = _was.get(action, false)
@@ -98,7 +125,8 @@ func _process(delta: float) -> void:
 	if not game.open_screens.is_empty():
 		down = false
 		HoldToggle.forget()
-	var cycle := signi(int(_went_down(&"move_right")) - int(_went_down(&"move_left")))
+	var cycle := signi(int(_went_down(NEXT_ACTION)) - int(_went_down(PREV_ACTION)) + _scrolled)
+	_scrolled = 0
 	var sweep_pressed := _went_down(SWEEP_ACTION)
 	if down and not _held and not _forced:
 		sweeping = false
@@ -106,6 +134,7 @@ func _process(delta: float) -> void:
 	_held = down
 	if not down:
 		_let_go(delta)
+		_publish()
 		return
 	_list = Targeting.candidates(_bodies(), game.player.pos, _reach(), _people(), _places())
 	if sweep_pressed:
@@ -124,6 +153,7 @@ func _process(delta: float) -> void:
 	else:
 		field = []
 		_lock(cycle)
+	_publish()
 	_lean()
 	_read_in -= delta
 	if _read_in <= 0.0:
@@ -157,6 +187,46 @@ func _lock(cycle: int) -> void:
 			Events.sfx.emit(&"ui_slate_ping", Vector3.ZERO)
 	elif locked.id != was.id:
 		Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
+
+
+## THE ONE WRITE TO THE FIGHT: where the lock is, or INF. Asked of the subject
+## every frame, so a body that moves is followed and one that dies or goes out of
+## reach -- which clears `locked` -- lets the body go the frame it happens.
+func _publish() -> void:
+	var hero: Hero = game.player.hero if game.player != null else null
+	if hero == null:
+		return
+	var at := Vector2.INF
+	if locked != null and not sweeping and locked.alive():
+		at = locked.here()
+	hero.set_lock(at, _now())
+	if at.is_finite() and (hero.pos - at).length() > LockOn.NEAR:
+		var a := (hero.pos - at).angle()
+		if not is_nan(_circle_was):
+			_circled += wrapf(a - _circle_was, -PI, PI)
+		_circle_was = a
+	else:
+		_circle_was = NAN
+		_circled = 0.0
+
+
+## While the key is held the scroll and a trackpad's swipe cycle the lock, and
+## the zoom is off (owner's ruling): 08_pointer offers each step here first.
+func take_scroll(steps: Vector2) -> bool:
+	if not _held:
+		return false
+	# A wheel's notch is one step; a trackpad's glide arrives in fractions and
+	# is gathered until it makes one, so a swipe moves the lock once, not ten times.
+	_scroll_left += steps.y if absf(steps.y) >= absf(steps.x) else steps.x
+	while absf(_scroll_left) >= 1.0:
+		_scrolled += signi(roundi(signf(_scroll_left)))
+		_scroll_left -= signf(_scroll_left)
+	return true
+
+
+## A held key has the zoom keys too, so + and - cannot move the camera under a lock.
+func owns_zoom() -> bool:
+	return _held
 
 
 ## How long the lock has been waiting for a subject that left the list.
@@ -347,9 +417,32 @@ func _exit_tree() -> void:
 		_square()
 
 
-## What a tour may await of targeting.
+## `lock_circled` is a distance walked, so a tour asking twice is asking about
+## the walk since it last asked.
+func tour_forget(what: StringName) -> void:
+	if what == &"lock_circled":
+		_circled = 0.0
+
+
+## What a tour may await of targeting. `target:KIND` is the lock on that kind (the
+## roster id or its prefix), so a frame can say WHAT is locked and not only that
+## something is -- a cycle that landed on a villager passed as a cycle before.
 func tour_seen(what: StringName) -> bool:
+	if String(what).begins_with("target:"):
+		var kind := String(what).substr(7)
+		return locked != null and not sweeping and String(locked.kind).begins_with(kind)
 	match what:
+		# The body is turned onto what it holds (LockOn), asked of the fight's own
+		# body and not of this file's intent.
+		&"lock_facing":
+			var hero: Hero = game.player.hero
+			if hero == null or not hero.lock.is_finite():
+				return false
+			var to := hero.lock - hero.pos
+			return to.length() >= LockOn.NEAR and absf(wrapf(hero.facing - to.angle(), -PI, PI)) < 0.25
+		# A quarter of a circle walked round the lock without letting it go.
+		&"lock_circled":
+			return absf(_circled) >= PI * 0.5
 		&"target":
 			return locked != null
 		&"target_sweep":

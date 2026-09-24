@@ -1,0 +1,82 @@
+# LOCK-ON OVER THE SHOULDER (owner, 2026-09-24; docs/CONTROLS.md §Lock-on). The
+# view turns onto what is locked and frames the player and the machine together;
+# the keys there take the line to the machine as forward, so left and right
+# circle it and the camera comes round with them; the mouse may tip the view but
+# never takes the turn from the lock; a dodge, a swing, a cycle onto a watcher,
+# the land from
+# above and back, and the lock let go.
+# The circling is staged on a cutter, a worker that stays at its job, because
+# a hunter closes to arm's length and a frame of the view still coming round
+# onto it says nothing about the lock. The runner comes in to be cycled onto.
+#   tools/tour.sh tours/lockon_shoulder.tour --seed=4 --hour=11 --weather=clear:0 --give=axe_felling:1 --held=axe_felling
+coast calm
+wait 0.8
+tap shoulder
+await shoulder 3
+spawn cutter
+wait 0.8
+shot 01-over-the-shoulder-a-machine with shoulder,mob:cutter
+
+hold target
+await target 5
+await shoulder_locked 3
+await lock_facing 3
+wait 0.4
+shot 02-locked-framed-together with shoulder_locked,lock_facing,mob:cutter
+
+# Closed in first, so the circle is small and quick: walked at six tiles it met
+# a fence and then a post in the village square, which says nothing about the lock.
+walkto mob 4
+walk -1,0 1.4
+await lock_circled 2
+shot 03-circled-it-the-view-came-round with shoulder_locked,lock_facing,mob:cutter
+
+mouse 400,0 0.4
+wait 0.4
+shot 04-the-mouse-cannot-take-the-turn with shoulder_locked,lock_facing
+
+tap dodge
+wait 0.25
+shot 05-dodged-still-facing with shoulder_locked,lock_facing
+
+# Its working part is at its back and plate takes nothing, so a blow may ring
+# off it: a player who misses goes round and tries again.
+try 8
+walkto part 3
+press swing
+await hit 1.2
+end
+wait 0.2
+shot 06-swung-at-the-lock with shoulder_locked,mob:cutter
+
+# A watcher, which keeps its round and looks: a hunter here closed in and put
+# the player down while the lock was on something else, and the last frame was
+# of him waking hours later. Cycled until it holds the watcher, as a player
+# presses the key until the one they want is bracketed.
+spawn watcher
+wait 0.6
+try 6
+tap target_next
+wait 0.3
+await target:watcher 0.5
+end
+wait 0.6
+await shoulder_locked 3
+await lock_facing 3
+shot 07-cycled-the-view-turned-with-it with mob:watcher,target:watcher,shoulder_locked,lock_facing
+
+tap shoulder
+await top_view 3
+await target 1
+wait 0.4
+shot 08-above-the-lock-kept with target:watcher,lock_facing
+tap shoulder
+await shoulder 3
+await shoulder_locked 3
+wait 0.4
+shot 09-back-over-the-shoulder-the-lock-kept with target:watcher,shoulder_locked,lock_facing
+
+release target
+await target_none 5
+walk 0,-1 1.0
+shot 10-let-go-and-walking-on with shoulder

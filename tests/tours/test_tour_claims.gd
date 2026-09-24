@@ -111,6 +111,10 @@ func test_every_claimed_subject_is_one_the_runner_can_answer() -> void:
 ## bound is pressed into the void with an engine error the tour runner does not
 ## read as a failure.
 func test_every_name_a_tour_asks_for_exists() -> void:
+	# The control scheme is on the map before a tour's first line, as boot puts
+	# it there (main.gd): its actions (the lock's cycle keys, the peek, the look)
+	# are not in project.godot's list either.
+	PlayerSettings.load_once()
 	for f: String in tours():
 		var n := 0
 		for raw: String in lines_of(f):

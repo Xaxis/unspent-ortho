@@ -199,15 +199,22 @@ func _swing() -> void:
 	var inv := hero.inventory
 	var held: StringName = inv.held if inv != null else &""
 	var b := Blow.for_item(held, inv.edge(held) if inv != null and held != &"" else 10000)
+	var at_lock := is_nan(_swing_aim) and LockOn.locked(hero.lock) \
+		and (hero.lock - hero.pos).length() >= LockOn.NEAR
 	if not is_nan(_swing_aim):
 		hero.facing = _swing_aim
 		_swing_aim = NAN
+	elif at_lock:
+		# A lock says where the blow goes: at what is held, whatever else is near.
+		hero.facing = (hero.lock - hero.pos).angle()
 	elif hero.move.length() > 0.1:
 		hero.facing = hero.move.angle()
 	# Turn toward a body just off the facing, so a swing that was meant lands where it was meant.
 	var best: MobState = null
 	var best_off := FightRules.AIM_ASSIST_ANGLE
 	for m in mobs:
+		if at_lock:
+			break
 		if not m.alive or m.removed:
 			continue
 		var to := m.pos - hero.pos
@@ -230,12 +237,11 @@ func _swing() -> void:
 
 
 func _dodge() -> void:
-	var dir := hero.move
-	if dir.length() > 0.1:
+	# The keys' way, else a step back still facing the trouble -- under a lock,
+	# straight back from what is held. A locked body goes on facing it.
+	var dir := LockOn.dodge_way(hero.move, hero.pos, hero.lock, hero.facing)
+	if hero.move.length() > 0.1 and not LockOn.locked(hero.lock):
 		hero.facing = dir.angle()
-	else:
-		# No direction held: a step back, still facing the trouble.
-		dir = -Vector2.from_angle(hero.facing)
 	hero.start_dodge(dir, now)
 	emit(&"dodge", {})
 
@@ -497,6 +503,7 @@ func _move_hero(dt: float) -> void:
 		v = Vector2.ZERO
 	elif since_dodge < FightRules.DODGE_MS:
 		v = hero.dodge_dir * FightRules.dodge_speed(since_dodge)
+		hero.facing = LockOn.face(hero.facing, hero.pos, hero.lock, dt)
 	else:
 		var can_run := (not fight_on or hero.wind > FightRules.RUN_WIND_FLOOR) and not hero.crouched
 		running = hero.run and can_run and hero.move.length() > 0.1
@@ -505,9 +512,17 @@ func _move_hero(dt: float) -> void:
 			s *= Hero.CROUCH_SPEED
 		if hero.committed(now):
 			s *= hero.blow.creep
-		v = hero.move.limit_length(1.0) * s
-		if not hero.committed(now) and hero.move.length() > 0.1:
-			hero.facing = hero.move.angle()
+		v = LockOn.step(hero.move.limit_length(1.0) * s, hero.pos, hero.lock, dt)
+		if hero.committed(now):
+			pass
+		elif LockOn.locked(hero.lock):
+			hero.facing = LockOn.face(hero.facing, hero.pos, hero.lock, dt)
+		elif hero.move.length() > 0.1:
+			# Just let go of a lock: turned back onto the walk, not snapped to it.
+			if now - hero.unlocked_at < LockOn.RELEASE_MS:
+				hero.facing = rotate_toward(hero.facing, hero.move.angle(), LockOn.TURN * dt)
+			else:
+				hero.facing = hero.move.angle()
 	v += hero.throw_velocity(now)
 	v += _shouldered(dt)
 	var before := hero.pos

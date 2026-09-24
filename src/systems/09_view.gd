@@ -164,6 +164,21 @@ func _process(delta: float) -> void:
 			PlayerSettings.save()
 
 
+## A scroll or a pinch, offered by 08_pointer after anything that holds the zoom
+## (a lock, the view over the shoulder) has had it: `steps.y` notches, out positive.
+func take_scroll(steps: Vector2) -> bool:
+	if game == null or game.camera == null or steps.y == 0.0:
+		return false
+	_level = level_of(height_of(_level) * pow(RATE, steps.y * SCROLL_SECONDS))
+	game.camera.view_height = height_of(_level)
+	_save_in = 0.6
+	return true
+
+
+## How much of a held zoom key one notch of scroll is worth.
+const SCROLL_SECONDS := 0.12
+
+
 ## Put the camera at a view height and KEEP it there.
 ##
 ## **A TOUR'S `zoom` WAS WRITING A FIELD THIS FILE OVERWRITES.** 98_tour set
