@@ -33,6 +33,33 @@ extends SceneTree
 ##            between, and no farther than its height holds READ_DEG of the
 ##            frame (a shape, not a speck)
 ##
+## THE REGION-SCALE FORM: what a world is laid out as at the scale of a
+## continent and of a region, not of a walk.
+##
+##   ring     over the continents (`GenBodies.CONTINENT_SHARE` of the biggest):
+##            rad_cv the spread of centre distance from the square's middle over
+##            its mean, share_cv the same of their tiles. 0 and 0 is a ring of
+##            equal bodies
+##   lochs    per continent, inlets whose head lies LOCH_DEPTH or more tiles up
+##            narrow water from open sea (sea LOCH_OPEN from land): how many,
+##            the deepest in tiles, and that depth over the body's equivalent
+##            radius sqrt(tiles / pi) (`reach`)
+##   rivers   per continent: how many, and per 10k of its tiles (a river is on
+##            the body its mouth is on)
+##   macro    per main region: the spread (m) of height smoothed over a box of
+##            2 MACRO_R + 1 blocks of MACRO_BLOCK tiles (about 200 tiles);
+##            `fine` the spread of what that smoothing removes. Relief with a
+##            backbone has macro; a repeated swell has only fine
+##   trunk    per main region: the share of its tiles within TRUNK_REACH of a
+##            laid road (any road: no trunk is laid yet)
+##   seams    per world: road crossings of a landscape border (joined within
+##            SEAM_REACH), and how many have a place within SEAM_REACH
+##   mottle   per main region: `run` the mean run, in tiles along a row of
+##            MOTTLE_BLOCK blocks, of one dominant ground; `ent` the mean and
+##            `ent_sd` the spread of ground entropy (bits) over MOTTLE_WINDOW
+##            windows. A short run with a flat entropy is camouflage; long runs
+##            and a spread entropy are structure
+##
 ## Headless, deterministic, no rendering: a world grown by BootWorld and read.
 
 const FRAME_TILES := 26.7 * 17.9
@@ -50,6 +77,14 @@ const EYE_STAND := 1.7
 ## 1080 a 60-degree frame is drawn in.
 const READ_DEG := 0.67
 const MID_BAND := 30.0
+const LOCH_OPEN := 12.0
+const LOCH_DEPTH := 40.0
+const MACRO_BLOCK := 8
+const MACRO_R := 12
+const TRUNK_REACH := 12
+const SEAM_REACH := 10.0
+const MOTTLE_BLOCK := 16
+const MOTTLE_WINDOW := 64
 
 var _road := 0
 ## A directory to write one landscape map per seed into (`regions_<seed>.png`).
@@ -133,6 +168,7 @@ func _seed(w: WorldData) -> void:
 			missing.append(str(d.id))
 	print("regions world %d: %d regions (chapters, asks), %d keepers, %d depots, %d landmarks, %d sites, %d villages, missing [%s]" % [
 		w.seed_value, w.regions.size(), ks.size(), ws.size(), lm.size(), sites, w.villages.size(), ", ".join(missing)])
+	var mains: Array[Dictionary] = []
 	for d: BiomeDef in BiomeRegistry.land_in(w.realm):
 		var main := {}
 		var runs := 0
@@ -146,6 +182,7 @@ func _seed(w: WorldData) -> void:
 			print("regions %-18s %6d %4d  NO REGION" % [d.id, w.seed_value, 0])
 			continue
 		var id := int(main.id)
+		mains.append({"land": d.id, "id": id})
 		var bounds: Rect2 = main.bounds
 		var core := _core(w, id, bounds)
 		var eco := _ecotone(w, d.index)
@@ -177,6 +214,18 @@ func _seed(w: WorldData) -> void:
 		print("regions %-18s %6d %4d %6d %6.1f %5.0f %5.1f %5.2f %4.2f %4.2f %5d %6d %5.2f %6.0f %5.3f %5.0f" % [
 			d.id, w.seed_value, runs, int(main.tiles), float(main.tiles) / FRAME_TILES,
 			2.0 * core.z / RUN, eco, view.x, view.y, view.z, int(view.w), poi.size(), walk.x, walk.y / RUN, float(_road) / maxf(1.0, float(main.tiles)), read])
+	_bodies(w)
+	var places: Array[Vector2] = []
+	for s: LandmarkSite in lm:
+		places.append(s.pos)
+	for m: Dictionary in w.landmarks:
+		places.append(m.get("pos", Vector2.ZERO) as Vector2)
+	for v: Dictionary in w.villages:
+		places.append(v.pos as Vector2)
+	for s: WorksSite in ws:
+		places.append(s.pos)
+	_seams(w, places)
+	_form(w, mains)
 
 
 ## The widest disc of the main region: x, y its centre, z its radius in tiles.
@@ -392,3 +441,314 @@ func _walk(w: WorldData, id: int, b: Rect2, poi: Array[Vector2]) -> Vector2:
 			dist[j] = dk + 1
 			q.append(j)
 	return Vector2(float(near) / maxf(1.0, float(total)), float(worst))
+
+
+
+static func _cv(v: Array[float]) -> float:
+	if v.is_empty():
+		return 0.0
+	return _sd(v) / maxf(1e-6, _mean(v))
+
+
+static func _mean(v: Array[float]) -> float:
+	var m := 0.0
+	for x in v:
+		m += x
+	return m / maxf(1.0, float(v.size()))
+
+
+static func _sd(v: Array[float]) -> float:
+	if v.is_empty():
+		return 0.0
+	var m := _mean(v)
+	var q := 0.0
+	for x in v:
+		q += (x - m) * (x - m)
+	return sqrt(q / v.size())
+
+
+## ring, lochs and rivers, per continent: see the header.
+func _bodies(w: WorldData) -> void:
+	var n := w.size
+	var most := 0
+	for row: Dictionary in w.continents:
+		most = maxi(most, int(row.tiles))
+	var big: Array[Dictionary] = []
+	for row: Dictionary in w.continents:
+		if float(row.tiles) >= GenBodies.CONTINENT_SHARE * float(most):
+			big.append(row)
+	var rad: Array[float] = []
+	var tiles: Array[float] = []
+	var mid := Vector2(n, n) * 0.5
+	var rad_s: PackedStringArray = []
+	var til_s: PackedStringArray = []
+	for row: Dictionary in big:
+		rad.append((row.centre as Vector2).distance_to(mid) / n)
+		tiles.append(float(row.tiles))
+		rad_s.append("%.3f" % rad[-1])
+		til_s.append("%dk" % roundi(float(row.tiles) / 1000.0))
+	print("regions ring %d: %d continents  rad_cv %.3f  share_cv %.3f  rad [%s]  tiles [%s]" % [
+		w.seed_value, big.size(), _cv(rad), _cv(tiles), " ".join(rad_s), " ".join(til_s)])
+	# Lochs, on a grid of every second tile: a loch is at least six tiles wide.
+	const ST := 2
+	var cw := n / ST
+	var sea := PackedByteArray()
+	sea.resize(cw * cw)
+	var land := PackedByteArray()
+	land.resize(cw * cw)
+	for cy in cw:
+		for cx in cw:
+			var i := cy * ST * n + cx * ST
+			var g := int(w.ground[i])
+			if w.level[i] <= 0 and g != Ground.RIVER and g != Ground.BLACKWATER:
+				sea[cy * cw + cx] = 1
+			elif w.level[i] > 0:
+				land[cy * cw + cx] = 1
+	var dl := GenFields.distance8(land, cw, 1e6)
+	var dist := PackedInt32Array()
+	dist.resize(cw * cw)
+	dist.fill(-1)
+	var q := PackedInt32Array()
+	for i in cw * cw:
+		if sea[i] != 0 and dl[i] * ST > LOCH_OPEN:
+			dist[i] = 0
+			q.append(i)
+	var head := 0
+	while head < q.size():
+		var i := q[head]
+		head += 1
+		var x := i % cw
+		var y := i / cw
+		for d: Vector2i in GenBodies.NEIGHBOURS:
+			var nx := x + d.x
+			var ny := y + d.y
+			if nx < 0 or ny < 0 or nx >= cw or ny >= cw:
+				continue
+			var j := ny * cw + nx
+			if sea[j] == 0 or dist[j] >= 0:
+				continue
+			dist[j] = dist[i] + 1
+			q.append(j)
+	var inlet := PackedByteArray()
+	inlet.resize(cw * cw)
+	for i in cw * cw:
+		if dist[i] >= 0 and float(dist[i] * ST) >= LOCH_DEPTH:
+			inlet[i] = 1
+	var sizes := PackedInt32Array()
+	var label := GenFields.components(inlet, cw, sizes)
+	var deepest := {}
+	for i in cw * cw:
+		var lab := label[i]
+		if lab < 0:
+			continue
+		if not deepest.has(lab) or dist[i] > dist[int(deepest[lab])]:
+			deepest[lab] = i
+	var lochs := {}
+	for lab: int in deepest:
+		var i: int = deepest[lab]
+		var body := _body_near(w, land, cw, ST, i % cw, i / cw)
+		if body == 0:
+			continue
+		var got: Array = lochs.get(body, [])
+		got.append(float(dist[i] * ST))
+		lochs[body] = got
+	var rivers := {}
+	for r: PackedVector2Array in w.rivers:
+		if r.is_empty():
+			continue
+		var m := r[r.size() - 1]
+		var b := w.continent_at(floori(m.x), floori(m.y))
+		if b == 0:
+			m = r[0]
+			b = w.continent_at(floori(m.x), floori(m.y))
+		rivers[b] = int(rivers.get(b, 0)) + 1
+	print("regions %-6s %6s %4s %7s %5s %6s %5s %6s %6s" % ["body", "seed", "id", "tiles", "lochs", "deep", "reach", "rivers", "per10k"])
+	for row: Dictionary in big:
+		var id := int(row.id)
+		var ds: Array = lochs.get(id, [])
+		var deep := 0.0
+		for v: float in ds:
+			deep = maxf(deep, v)
+		var eq_r := sqrt(float(row.tiles) / PI)
+		var rv := int(rivers.get(id, 0))
+		print("regions %-6s %6d %4d %7d %5d %6.0f %5.2f %6d %6.2f" % ["body", w.seed_value, id, int(row.tiles), ds.size(), deep, deep / eq_r, rv, float(rv) * 10000.0 / float(row.tiles)])
+
+
+## The body whose land stands nearest a coarse cell, within 12 cells, or 0.
+static func _body_near(w: WorldData, land: PackedByteArray, cw: int, st: int, x: int, y: int) -> int:
+	for r in range(1, 12):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				var nx := x + dx
+				var ny := y + dy
+				if nx >= 0 and ny >= 0 and nx < cw and ny < cw and land[ny * cw + nx] != 0:
+					return w.continent_at(nx * st, ny * st)
+	return 0
+
+
+## seams: see the header.
+func _seams(w: WorldData, places: Array[Vector2]) -> void:
+	var n := w.size
+	if w.road.is_empty():
+		return
+	var at: Array[Vector2] = []
+	for y in range(1, n - 1):
+		for x in range(1, n - 1):
+			var i := y * n + x
+			if w.road[i] == 0 or w.level[i] <= 0:
+				continue
+			for j: int in [i + 1, i + n]:
+				if w.road[j] != 0 and w.level[j] > 0 and w.country[j] != w.country[i]:
+					var p := Vector2(x + 0.5, y + 0.5)
+					var dup := false
+					for a in at:
+						if a.distance_to(p) <= SEAM_REACH:
+							dup = true
+							break
+					if not dup:
+						at.append(p)
+					break
+	var placed := 0
+	for p in at:
+		for s in places:
+			if s.distance_to(p) <= SEAM_REACH:
+				placed += 1
+				break
+	print("regions seams %d: %d road crossings of a border, %d with a place within %d tiles (%.2f)" % [
+		w.seed_value, at.size(), placed, int(SEAM_REACH), float(placed) / maxf(1.0, float(at.size()))])
+
+
+## macro, trunk and mottle per main region: see the header.
+func _form(w: WorldData, mains: Array[Dictionary]) -> void:
+	var n := w.size
+	# Height in blocks, sea at 0.
+	var bw := ceili(float(n) / MACRO_BLOCK)
+	var hsum := PackedFloat32Array()
+	hsum.resize(bw * bw)
+	var hcnt := PackedInt32Array()
+	hcnt.resize(bw * bw)
+	for y in n:
+		var brow := (y / MACRO_BLOCK) * bw
+		for x in n:
+			var b := brow + x / MACRO_BLOCK
+			hsum[b] += maxf(0.0, float(w.level[y * n + x])) * WorldData.STEP
+			hcnt[b] += 1
+	var raw := PackedFloat32Array()
+	raw.resize(bw * bw)
+	for b in bw * bw:
+		raw[b] = hsum[b] / maxf(1.0, float(hcnt[b]))
+	var smooth := _box(_box(raw, bw, MACRO_R, true), bw, MACRO_R, false)
+	var near := GenFields.near_steps(w.road, n, TRUNK_REACH) if not w.road.is_empty() else PackedByteArray()
+	# Mottle blocks and windows: the owner is the region at the centre, kept
+	# where it holds half the block.
+	var mb := ceili(float(n) / MOTTLE_BLOCK)
+	var mw := ceili(float(n) / MOTTLE_WINDOW)
+	var own_b := PackedInt32Array()
+	own_b.resize(mb * mb)
+	var own_w := PackedInt32Array()
+	own_w.resize(mw * mw)
+	for by in mb:
+		for bx in mb:
+			own_b[by * mb + bx] = w.region[mini(n - 1, by * MOTTLE_BLOCK + MOTTLE_BLOCK / 2) * n + mini(n - 1, bx * MOTTLE_BLOCK + MOTTLE_BLOCK / 2)]
+	for by in mw:
+		for bx in mw:
+			own_w[by * mw + bx] = w.region[mini(n - 1, by * MOTTLE_WINDOW + MOTTLE_WINDOW / 2) * n + mini(n - 1, bx * MOTTLE_WINDOW + MOTTLE_WINDOW / 2)]
+	const G := 64
+	var hist_b := PackedInt32Array()
+	hist_b.resize(mb * mb * G)
+	var cnt_b := PackedInt32Array()
+	cnt_b.resize(mb * mb)
+	var hist_w := PackedInt32Array()
+	hist_w.resize(mw * mw * G)
+	var cnt_w := PackedInt32Array()
+	cnt_w.resize(mw * mw)
+	var tiles := {}
+	var trunk := {}
+	for y in n:
+		for x in n:
+			var i := y * n + x
+			var r := w.region[i]
+			if r <= 0:
+				continue
+			tiles[r] = int(tiles.get(r, 0)) + 1
+			if not near.is_empty() and near[i] <= TRUNK_REACH:
+				trunk[r] = int(trunk.get(r, 0)) + 1
+			var g := int(w.ground[i]) & (G - 1)
+			var b := (y / MOTTLE_BLOCK) * mb + x / MOTTLE_BLOCK
+			if own_b[b] == r:
+				hist_b[b * G + g] += 1
+				cnt_b[b] += 1
+			var k := (y / MOTTLE_WINDOW) * mw + x / MOTTLE_WINDOW
+			if own_w[k] == r:
+				hist_w[k * G + g] += 1
+				cnt_w[k] += 1
+	var dom := PackedInt32Array()
+	dom.resize(mb * mb)
+	for b in mb * mb:
+		dom[b] = -1
+		if cnt_b[b] * 2 < MOTTLE_BLOCK * MOTTLE_BLOCK:
+			continue
+		var best := 0
+		for g in G:
+			if hist_b[b * G + g] > hist_b[b * G + best]:
+				best = g
+		dom[b] = best
+	print("regions %-24s %6s %6s %6s %5s %5s %5s %6s" % ["form", "seed", "macro", "fine", "trunk", "run", "ent", "ent_sd"])
+	for m: Dictionary in mains:
+		var r := int(m.id) + 1
+		var sm: Array[float] = []
+		var fi: Array[float] = []
+		for by in bw:
+			for bx in bw:
+				var cy := mini(n - 1, by * MACRO_BLOCK + MACRO_BLOCK / 2)
+				var cx := mini(n - 1, bx * MACRO_BLOCK + MACRO_BLOCK / 2)
+				if w.region[cy * n + cx] != r:
+					continue
+				sm.append(smooth[by * bw + bx])
+				fi.append(raw[by * bw + bx] - smooth[by * bw + bx])
+		var runs := 0
+		var run_blocks := 0
+		for by in mb:
+			var cur := -2
+			for bx in mb:
+				var b := by * mb + bx
+				var d := dom[b] if own_b[b] == r else -1
+				if d < 0:
+					cur = -2
+					continue
+				run_blocks += 1
+				if d != cur:
+					runs += 1
+					cur = d
+		var ents: Array[float] = []
+		for k in mw * mw:
+			if own_w[k] != r or cnt_w[k] * 2 < MOTTLE_WINDOW * MOTTLE_WINDOW:
+				continue
+			var e := 0.0
+			for g in G:
+				var c := hist_w[k * G + g]
+				if c > 0:
+					var p := float(c) / float(cnt_w[k])
+					e -= p * log(p) / log(2.0)
+			ents.append(e)
+		print("regions %-24s %6d %6.2f %6.2f %5.2f %5.0f %5.2f %6.2f" % [
+			"form " + str(m.land), w.seed_value, _sd(sm), _sd(fi),
+			float(trunk.get(r, 0)) / maxf(1.0, float(tiles.get(r, 0))),
+			float(run_blocks) / maxf(1.0, float(runs)) * MOTTLE_BLOCK, _mean(ents), _sd(ents)])
+
+
+## A box mean of radius `r` along rows (`along_x`) or columns, edges clamped.
+static func _box(v: PackedFloat32Array, bw: int, r: int, along_x: bool) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(v.size())
+	for a in bw:
+		for b in bw:
+			var s := 0.0
+			for k in range(-r, r + 1):
+				var c := clampi(b + k, 0, bw - 1)
+				s += v[a * bw + c] if along_x else v[c * bw + a]
+			if along_x:
+				out[a * bw + b] = s / float(2 * r + 1)
+			else:
+				out[b * bw + a] = s / float(2 * r + 1)
+	return out
