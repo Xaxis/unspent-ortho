@@ -37,5 +37,9 @@ Proves it when: the command exits 0 and, for a shot or tour, the frames show the
 ## Gotchas
 
 - `tools/check.sh` runs three shards at once and dies on a box with under ~500 MB free.
+- Frame cost in play: `tools/tour.sh tours/stutters.tour --stats --seed=7 --hour=12 --weather=clear:0`
+  prints p50/p95/p99/worst per window (first shoulder press, over the shoulder, top-down)
+  and names what each slow frame spent. Write the load (`sysctl -n vm.loadavg`) beside
+  every number; this box swings from 10 to 100.
 - Never pipe a gate through `tail` in a way that hides its exit code.
 - `tools/deploy.sh --prod` is deliberate; a push to main deploys a preview.
