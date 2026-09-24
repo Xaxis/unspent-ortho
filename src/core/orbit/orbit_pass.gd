@@ -200,3 +200,36 @@ static func sunlit(def: RefCounted, at: Vector3, sun: Vector3) -> float:
 ## overhead to fall into the Earth's shadow: acos(R / (R + h)).
 static func eclipse_depth(def: RefCounted) -> float:
 	return -rad_to_deg(acos(float(def.planet_km) / float(def.orbit_km())))
+
+
+## HOW MUCH OF THE SUN THE WHEEL COVERS as seen from the observer, 0..1: the
+## line to the sun is taken into the wheel's own frame, where it crosses the
+## wheel's plane is asked against the rim (the drum and the deck inside it) and
+## the wound, and the answer is softened over the sun's own half-degree at that
+## distance -- so a transit comes on and goes off over the sun's width rather
+## than in a frame. The spokes and the hub are too thin to matter to the land.
+static func sun_cover(def: RefCounted, p: Dictionary, sun: Vector3) -> float:
+	if not bool(p.get("up", false)) or sun.y <= 0.0:
+		return 0.0
+	var b: Basis = p.basis
+	var rel: Vector3 = p.rel
+	var inv := b.inverse()
+	var o := inv * (-rel)
+	var dir := inv * sun.normalized()
+	if absf(dir.y) < 1e-4:
+		return 0.0
+	var t := -o.y / dir.y
+	if t <= 0.0:
+		return 0.0
+	var hit := o + dir * t
+	var r := Vector2(hit.x, hit.z).length()
+	var soft := t * deg_to_rad(0.27) + 0.05
+	var outer: float = float(def.rim_km) + float(def.trough_deep) * 0.5
+	var inner: float = float(def.rim_km) - float(def.trough_deep) * 0.5 - float(def.deck_km)
+	var across := smoothstep(inner - soft, inner + soft, r) * (1.0 - smoothstep(outer - soft, outer + soft, r))
+	# The wound: the sector of the wheel's own frame that is gone.
+	var ang := rad_to_deg(atan2(hit.z, hit.x))
+	var off := absf(wrapf(ang - float(def.gap_at), -180.0, 180.0))
+	var gap_soft := rad_to_deg(soft / maxf(r, 1.0))
+	var whole := smoothstep(float(def.gap_deg) * 0.5 - gap_soft, float(def.gap_deg) * 0.5 + gap_soft, off)
+	return clampf(across * whole, 0.0, 1.0)

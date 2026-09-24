@@ -23,7 +23,8 @@ extends GameSystem
 ##                          path and press the real jump key at the end of it, so a
 ##                          jump is taken on the move the way a player takes one
 ##   hour H                 set the world clock hour (same day)
-##   weather KIND:S[:bolt]  force the sky as --weather does (`weather rules` hands it back)
+##   weather KIND:S[:bolt][:wind=W]  force the sky as --weather does (`weather rules`
+##                          hands it back); wind=W holds the wind at W, -1..1
 ##   zoom F                 camera view height
 ##   walk DX,DY SECS [run]  hold a SCREEN direction for SECS (real input path)
 ##   press ACTION [SECS]    hold an input action (use, swing, dodge, inventory, craft, lamp, pause, map...)
@@ -95,6 +96,9 @@ extends GameSystem
 ##                          this frame, shown and hidden in turn (fore_perf.gd)
 ##   perf foliage SECS [MS]  rendered cost of every leaf card in the loaded chunks,
 ##                          shown and hidden in turn (foliage_perf.gd)
+##   perf decor SECS [MS]    the same for every chunk's baked decor: grass, stones, litter
+##   perf grass SECS [MS]    the same for only what sways in it (grass.gdshader)
+##   perf noise SECS         the same pairs toggling nothing: the floor the others must clear
 ##   perf colour            what this renderer does to a value in ALBEDO (render_probe.gd)
 ##   perf features NAME     every expensive thing the frame has, off and on, world held
 ##                          still: which ones this renderer really draws (render_probe.gd)
@@ -457,7 +461,7 @@ func _run() -> void:
 					ok = (preload("res://src/systems/tour/stats_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "lens":
 					ok = await (preload("res://src/systems/tour/lens_perf.gd")).perf(self, game, parts)
-				elif parts.size() > 1 and parts[1] == "foliage":
+				elif parts.size() > 1 and parts[1] in FoliagePerf.LAYERS:
 					ok = await FoliagePerf.perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] in RenderProbe.KINDS:
 					ok = await RenderProbe.run(self, game, parts)

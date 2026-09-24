@@ -381,3 +381,14 @@ func test_the_tall_cut_can_never_reach_a_village_or_the_land() -> void:
 			lowest = high
 			least = id
 	gt(lowest, floor_v, "the shortest city form (%s at %.1f) still reaches the floor %.1f" % [least, lowest, floor_v])
+
+
+## The pieces hung over the top-down frame stand down for ANY camera that sees
+## the horizon, not only the rig's shoulder view: a staged eye (96_eye) is its
+## own Camera3D, and under it the rig's share was 0 and a piece was drawn full
+## across the top-right of every eye frame (seed 7 coast at 21:30: that corner's
+## mean luma 30 with it, 50 with `--fore=0`, 50 after this).
+func test_the_foreground_stands_down_for_whatever_camera_sees_the_horizon() -> void:
+	var src := FileAccess.get_file_as_string("res://src/systems/13_fore.gd")
+	check(src.contains("view.thin(maxf(sh, SkyLight.horizon_share(get_viewport().get_camera_3d())))"),
+		"13_fore thins by the drawing camera's horizon share as well as the rig's shoulder share")

@@ -10,6 +10,7 @@ const Route := preload("res://src/core/colossus/colossus_route.gd")
 const Walk := preload("res://src/core/colossus/colossus_walk.gd")
 const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 const FootModel := preload("res://src/models/colossus_foot_model.gd")
+const GenTreads := preload("res://src/core/worldgen/gen_treads.gd")
 const Model := preload("res://src/models/colossus_model.gd")
 
 const BIG := 1840
@@ -76,9 +77,9 @@ func test_the_foot_stands_in_its_own_tread() -> void:
 		var pose: Dictionary = Walk.pose(d, r, t)
 		var bone: Transform3D = pose.bones[3 + 3 * k]
 		near(float(pose.yaws[k]), yaw, 1e-5, "facing the way it was set down")
-		for toe in 3:
-			var a := TAU * float(toe) / 3.0
-			var sole := bone * (Vector3(cos(a), 0.0, sin(a)) * float(d.toe_reach) + Vector3(0.0, -float(d.ankle_up), 0.0))
+		for toe: int in int(d.toes.size()):
+			var tt: Vector3 = d.toe(toe)
+			var sole := bone * (Vector3(cos(tt.x), 0.0, sin(tt.x)) * tt.y + Vector3(0.0, -float(d.ankle_up), 0.0))
 			var pad: Vector3 = want_pads[toe]
 			worst = maxf(worst, Vector2(sole.x, sole.z).distance_to(Vector2(pad.x, pad.y)) + absf(sole.y - 2.5))
 		t += 17.0
@@ -122,6 +123,22 @@ func test_the_near_foot_meets_the_far_leg_at_the_seam() -> void:
 	lt(float(FootModel.PARTS.size()), 7.0, "in six draws or fewer")
 
 
+## THE SOLE HAS A FRONT: set down facing the walk, its three toes are ahead of
+## the ankle and its heel is behind it, so the print says which way it went.
+func test_a_sole_points_the_way_it_walks() -> void:
+	var d: RefCounted = Def.walkers(BIG)[2]
+	var r: RefCounted = Route.make(d, 7, BIG)
+	for k in 3:
+		var yaw := Walk.natural_yaw(d, r, k, 3)
+		var ahead := Vector2.from_angle(yaw)
+		var pads := Treads.pads(d, Vector2.ZERO, yaw)
+		eq(pads.size(), 4, "three toes and a heel")
+		for i in 3:
+			gt(Vector2(pads[i].x, pads[i].y).dot(ahead), 60.0, "toe %d ahead of the ankle" % i)
+		lt(Vector2(pads[3].x, pads[3].y).dot(ahead), -60.0, "the heel behind it")
+		gt(pads[3].z, pads[0].z, "and the heel is the widest print")
+
+
 ## THE CRATERS IN THE SHIPPED WORLD: the foot's pads stand on bared floor at one
 ## height, a body standing on that floor can climb out of it one level at a time
 ## (the land round it may have cliffs of its own; there must be SOME way out),
@@ -138,11 +155,31 @@ func test_the_world_is_cut_where_the_feet_come_down() -> void:
 			var i := c.y * w.size + c.x
 			eq(w.level[i], floor_l, "a pad's floor is the tread's floor")
 			eq(w.ground[i], Ground.CLINKER, "pressed ground under the pad")
-			check(_climbs_out(w, c, Treads.RIM_R + 4.0), "a body on the floor of the crater at %s can climb out of it" % c)
+			check(_climbs_out(w, c, Treads.rim_r(p) + 4.0), "a body on the floor of the crater at %s can climb out of it" % c)
 			for q: WorldProp in w.props:
 				if q.pos.distance_to(Vector2(p.x, p.y)) < p.z and q.kind in GenScatter.PLACED and q.solid >= 1.2 and q.id < _dressed_from(w):
 					check(false, "a %s stands under a pad at %s" % [PropKind.NAMES[q.kind], q.pos])
 					break
+
+
+## THE PRESSURE RING LIES ON LAND: no tile it was laid on is sea, water, or
+## within GenTreads.SHORE of either (a band of scree along the water is a beach
+## the land never had). Asked of the tiles the ring itself recorded.
+func test_the_pressure_ring_keeps_off_the_water() -> void:
+	GenTreads.last_ring = PackedInt32Array()
+	_world = null
+	var w := _grown()
+	var laid: PackedInt32Array = GenTreads.last_ring
+	gt(float(laid.size()), 500.0, "the ring was laid (%d tiles)" % laid.size())
+	var wet := 0
+	var shore := 0
+	for i in laid:
+		if w.level[i] <= 0 or Ground.is_water(w.ground[i]):
+			wet += 1
+		elif GenTreads._shore(w, i % w.size, i / w.size):
+			shore += 1
+	eq(wet, 0, "no ring tile is water")
+	eq(shore, 0, "and none is on the shore")
 
 
 ## The walk and the world agree: handed the world's treads, the only feet that
@@ -259,3 +296,40 @@ func test_a_planted_foot_stops_puts_out_and_crushes() -> void:
 				standing += 1
 	eq(standing, 0, "nothing stands where a pad comes down")
 	g2.free()
+
+
+## THE NEAR FOOT'S BUILD IS ALWAYS CLAIMED. A pool task nobody waits for keeps
+## its Callable -- a lambda on the foot node -- alive in the pool past the node,
+## and the pool frees it at exit: the process dies with signal 11 after every
+## test has passed. So a foot leaving the tree waits its build out, and a build
+## that finishes is claimed the next frame whether or not a foot came near.
+func test_the_near_foot_never_leaves_its_build_unclaimed() -> void:
+	const FootScript := preload("res://src/render/colossus/colossus_foot.gd")
+	var d: RefCounted = Def.walkers(BIG)[2]
+	var foot: Node3D = FootScript.new()
+	tree.root.add_child(foot)
+	foot.call(&"_want_built", d)
+	check(int(foot.get(&"_task")) >= 0, "the build went to a worker")
+	tree.root.remove_child(foot)
+	eq(int(foot.get(&"_task")), -1, "leaving the tree, it waited the build out")
+	check((foot.get(&"_kits") as Dictionary).has(d.id), "and kept what was built")
+	foot.free()
+	var again: Node3D = FootScript.new()
+	tree.root.add_child(again)
+	again.call(&"_want_built", d)
+	var cam := Camera3D.new()
+	tree.root.add_child(cam)
+	cam.global_position = Vector3(1.0e7, 0.0, 1.0e7)
+	# SINCE THE BUILD FINISHED, not at a moment: how long a worker takes is the
+	# machine's business, so wait (bounded) for this task to be done, then give
+	# the foot one frame and ask whether it claimed it.
+	var id := int(again.get(&"_task"))
+	check(id >= 0, "the second build went to a worker")
+	var until := Time.get_ticks_msec() + int(20000.0 * machine_slack())
+	while id >= 0 and not WorkerThreadPool.is_task_completed(id) and Time.get_ticks_msec() < until:
+		await tree.process_frame
+	check(id >= 0 and WorkerThreadPool.is_task_completed(id), "the build finished inside the wait")
+	again.call(&"update", cam, [], [], 0.0)
+	eq(int(again.get(&"_task")), -1, "a build nobody came near is claimed when it is done")
+	cam.free()
+	again.free()

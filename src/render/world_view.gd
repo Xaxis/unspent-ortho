@@ -144,6 +144,9 @@ var _water_mat: ShaderMaterial
 ## PropModels' shared one, for the reason the world material is one per view:
 ## 18_crowns writes the clearings into it every frame.
 var _leaf_mat: ShaderMaterial
+## What sways in a chunk's decor (src/render/foliage/grass.gdshader): one per
+## view, like the leaves.
+var _grass_mat: ShaderMaterial
 ## Where the machines cut the ground (read-only once baked; both threads read it).
 var works: WorksMap
 
@@ -183,6 +186,8 @@ func setup(w: WorldData) -> void:
 	_water_mat.shader = preload("res://src/render/water.gdshader")
 	_leaf_mat = ShaderMaterial.new()
 	_leaf_mat.shader = preload("res://src/render/foliage/leaf.gdshader")
+	_grass_mat = ShaderMaterial.new()
+	_grass_mat.shader = preload("res://src/render/foliage/grass.gdshader")
 	_bind(w)
 
 
@@ -385,6 +390,10 @@ func water_material() -> ShaderMaterial:
 
 func leaf_material() -> ShaderMaterial:
 	return _leaf_mat
+
+
+func grass_material() -> ShaderMaterial:
+	return _grass_mat
 
 
 func chunk_count() -> int:
@@ -630,10 +639,11 @@ const SHADOW_FULL := 30.0
 func _lod_apply(node: Node3D) -> void:
 	var lod := _lod_on and node.get_node_or_null("mid_done") != null
 	var reach := float(Quality.current().get("eye_shadow_reach", 0)) if _lod_on else 0.0
-	var dm := node.get_node_or_null("decor") as GeometryInstance3D
-	if dm != null:
-		dm.visibility_range_end = DECOR_TO if _lod_on else 0.0
-		dm.visibility_range_end_margin = LOD_MARGIN if _lod_on else 0.0
+	for part: String in ["decor", "grass"]:
+		var dm := node.get_node_or_null(part) as GeometryInstance3D
+		if dm != null:
+			dm.visibility_range_end = DECOR_TO if _lod_on else 0.0
+			dm.visibility_range_end_margin = LOD_MARGIN if _lod_on else 0.0
 	# The land: all of it casts, out to the reach.
 	_casts(node, "terrain", 0.0, reach, _lod_on and reach > 0.0)
 	for i in 3:
@@ -962,7 +972,7 @@ func _build_worker(key: Vector2i, props: Array, spans: Array) -> void:
 	var t0 := Time.get_ticks_usec()
 	_task_chunk = _bg_mesher.build_arrays(key.x, key.y)
 	var t1 := Time.get_ticks_usec()
-	_task_decor = _bg_decor.build_arrays(_task_chunk)
+	_task_decor = _bg_decor.build_parts(_task_chunk)
 	var t2 := Time.get_ticks_usec()
 	_task_props = bake_props(_task_chunk, _bg_mesher, props, spans)
 	var t3 := Time.get_ticks_usec()
@@ -1059,7 +1069,7 @@ func _build(key: Vector2i) -> void:
 	var t0 := Time.get_ticks_usec()
 	var ch := mesher.build_arrays(key.x, key.y)
 	var t1 := Time.get_ticks_usec()
-	var dec := decor.build_arrays(ch)
+	var dec := decor.build_parts(ch)
 	var t2 := Time.get_ticks_usec()
 	var snap := _snapshot(key)
 	var baked := bake_props(ch, mesher, snap[0], snap[1])
@@ -1090,14 +1100,16 @@ func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, wor
 		sea.material_override = _water_mat
 		sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		node.add_child(sea)
-	var dm := Decor.make_mesh(decor_arrays)
-	if dm != null:
-		var mi := MeshInstance3D.new()
-		mi.name = "decor"
-		mi.mesh = dm
-		mi.material_override = _world_mat
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		node.add_child(mi)
+	# decor_arrays: Decor.build_parts, [solid, grass].
+	for i in decor_arrays.size():
+		var dm := Decor.make_mesh(decor_arrays[i])
+		if dm != null:
+			var mi := MeshInstance3D.new()
+			mi.name = "decor" if i == 0 else "grass"
+			mi.mesh = dm
+			mi.material_override = _world_mat if i == 0 else _grass_mat
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			node.add_child(mi)
 	if baked.is_empty():
 		var snap := _snapshot(key)
 		baked = bake_props(ch, mesher, snap[0], snap[1])

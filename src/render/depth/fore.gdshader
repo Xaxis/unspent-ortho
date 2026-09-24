@@ -43,11 +43,7 @@ render_mode cull_disabled;
 #include "res://src/render/ink.gdshaderinc"
 #include "res://src/render/matter.gdshaderinc"
 #include "res://src/render/sight.gdshaderinc"
-
-// The wind, as SkyLight writes it. Declared here as world.gdshader declares it
-// (not in sky.gdshaderinc), because a global uniform may be declared by every
-// shader that reads it and the sky include is shared with shaders that do not.
-global uniform float wind_strength;
+#include "res://src/render/wind.gdshaderinc"
 
 // Bodies a foreground piece may never hide: (x, the ground's own height there,
 // z, reach in tiles). Reach 0 is an unused slot. The player is always slot 0.
@@ -73,14 +69,8 @@ void vertex() {
 	sway_w = UV2.x;
 	if (sway_w > 0.0) {
 		vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-		float t = TIME * (1.1 + wind_strength) + UV2.y * 6.283 + wp.x * 0.35 + wp.z * 0.21;
-		float gust = 0.6 + 0.4 * sin(TIME * 0.37 + wp.x * 0.05 - wp.z * 0.03);
-		vec3 push = vec3(sin(t) * 0.7 + 0.45, 0.0, cos(t * 0.8) * 0.5 + 0.3)
-			* sway_w * 0.07 * (0.25 + wind_strength) * gust;
-		vec3 vp = mat3(VIEW_MATRIX) * push;
-		float texel = 2.0 / max(abs(PROJECTION_MATRIX[1][1]) * VIEWPORT_SIZE.y, 1.0);
-		vp.xy = round(vp.xy / texel) * texel;
-		VERTEX += inverse(mat3(MODEL_MATRIX)) * (mat3(INV_VIEW_MATRIX) * vp);
+		vec3 push = wind_push(wp, sway_w, UV2.y, 1.0);
+		VERTEX += inverse(mat3(MODEL_MATRIX)) * (mat3(INV_VIEW_MATRIX) * wind_view(push, VIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE));
 	}
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }

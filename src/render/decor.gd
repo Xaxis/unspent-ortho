@@ -15,8 +15,13 @@ extends RefCounted
 ## country's, so the first snow tufts and ash flakes are seen well before the
 ## ground itself turns.
 ##
-## Plants sway by height (UV2.x) in world.gdshader; flowers follow a bloom field
-## so a hillside flowers together and the next is still in bud.
+## Plants sway by height (UV2.x); flowers follow a bloom field so a hillside
+## flowers together and the next is still in bud.
+##
+## TWO SURFACES. Whatever sways (a template with any UV2.x above 0: tufts,
+## reeds, flowers, fronds) is laid into the chunk's `grass` arrays and drawn on
+## grass.gdshader, which bends it in the wind and parts it round bodies; stones,
+## shells and litter are laid into the `decor` arrays on the world material.
 
 enum {
 	TUFT, TUFT_TALL, HEATHER, FLOWER, THISTLE, STONE, PEBBLES, SHELL, BONE,
@@ -31,10 +36,13 @@ enum {
 	# What the drilling left behind it: a core pulled out of the rock and laid
 	# where it was pulled, and a lump of cast stone with its rebar showing.
 	DRILL_CORE, REBAR,
+	# Long grass: a sward left to stand knee-high, for a landscape whose own
+	# d.decor lays it (the coast's cliff meadows).
+	MEADOW,
 }
 ## The enum above, counted. Adding a kind and forgetting this reads off the end
 ## of `_SPECK` on the first chunk built, so a test asserts the two agree.
-const KINDS := 40
+const KINDS := 41
 ## Litter by kind of work (WorksMap channel): cut, scorch, quarry, bores.
 const WORKS_LITTER: Array = [[SCRAP, BOLT, WIRE], [SCRAP, CINDER, CAN], [SPOIL, BOLT, STONE], [SPOIL, BOLT, SCRAP]]
 ## Share of a tile's items that are litter outside any work, and inside one.
@@ -68,6 +76,45 @@ class Tpl:
 	var c := PackedColorArray()
 	var uv := PackedVector2Array()
 	var uv2 := PackedVector2Array()
+	## Anything of it sways: it belongs on the grass surface.
+	var sways := false
+
+
+## One surface being laid.
+class Out:
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	var c := PackedColorArray()
+	var uv := PackedVector2Array()
+	var uv2 := PackedVector2Array()
+
+	## `seed` >= 0 lays a PLANT for grass.gdshader: every vertex's UV2.y becomes
+	## the plant's seed and its UV the plant's root in world xz, so all its
+	## corners decide together how far off it stands.
+	func put(tpl: Tpl, xf: Transform3D, turn: Basis, seed: float = -1.0) -> void:
+		v.append_array(xf * tpl.v)
+		n.append_array(Transform3D(turn, Vector3.ZERO) * tpl.n)
+		c.append_array(tpl.c)
+		if seed < 0.0:
+			uv.append_array(tpl.uv)
+			uv2.append_array(tpl.uv2)
+		else:
+			var root := Vector2(xf.origin.x, xf.origin.z)
+			for w: Vector2 in tpl.uv2:
+				uv.append(root)
+				uv2.append(Vector2(w.x, seed))
+
+	func arrays() -> Array:
+		if v.is_empty():
+			return []
+		var a := []
+		a.resize(Mesh.ARRAY_MAX)
+		a[Mesh.ARRAY_VERTEX] = v
+		a[Mesh.ARRAY_NORMAL] = n
+		a[Mesh.ARRAY_COLOR] = c
+		a[Mesh.ARRAY_TEX_UV] = uv
+		a[Mesh.ARRAY_TEX_UV2] = uv2
+		return a
 
 
 func _init(w: WorldData) -> void:
@@ -112,10 +159,18 @@ func _init(w: WorldData) -> void:
 	for d: BiomeDef in BiomeRegistry.all():
 		for g: int in d.decor:
 			var row: Array = d.decor[g]
-			_table(g * BiomeRegistry.SLOTS + d.index + 1000, float(row[0]), row.slice(1))
+			# row[0] is the density, or Vector2(density, evenness): see `_table`.
+			var head: Variant = row[0]
+			var dens := (head as Vector2).x if head is Vector2 else float(head)
+			var even := (head as Vector2).y if head is Vector2 else 0.0
+			_table(g * BiomeRegistry.SLOTS + d.index + 1000, dens, row.slice(1), even)
 
 
-func _table(g: int, density: float, pairs: Array) -> void:
+## `even` 0..1: how far the drifts give way to an even cover. At 0 a tile carries
+## density x (0.45 + clump), so the ground between drifts lies nearly bare, which
+## is right for specks and stones; a sward wants the clumping as variation in
+## how thick it stands, not as holes (1: density x (0.8 + 0.4 x clump)).
+func _table(g: int, density: float, pairs: Array, even: float = 0.0) -> void:
 	var kinds := PackedInt32Array()
 	var cum := PackedFloat32Array()
 	var total := 0.0
@@ -126,7 +181,7 @@ func _table(g: int, density: float, pairs: Array) -> void:
 		acc += float(pairs[i + 1]) / total
 		kinds.append(pairs[i])
 		cum.append(acc)
-	_tables[g] = [kinds, cum, density]
+	_tables[g] = [kinds, cum, density, even]
 
 
 ## Share of a tile's decor that is the neighbour's at blend b (0..0.5): ahead
@@ -155,14 +210,27 @@ static func make_mesh(arrays: Array) -> ArrayMesh:
 	return mesh
 
 
-## Surface arrays of a chunk's decor ([] for none). Safe on a worker thread.
+## Surface arrays of ALL a chunk's decor, both surfaces as one ([] for none).
 func build_arrays(ch: TerrainMesher.Chunk) -> Array:
+	var parts := build_parts(ch)
+	var all := Out.new()
+	for a: Array in parts:
+		if a.is_empty():
+			continue
+		all.v.append_array(a[Mesh.ARRAY_VERTEX])
+		all.n.append_array(a[Mesh.ARRAY_NORMAL])
+		all.c.append_array(a[Mesh.ARRAY_COLOR])
+		all.uv.append_array(a[Mesh.ARRAY_TEX_UV])
+		all.uv2.append_array(a[Mesh.ARRAY_TEX_UV2])
+	return all.arrays()
+
+
+## A chunk's decor as [solid arrays, grass arrays], each [] when empty. Safe on
+## a worker thread.
+func build_parts(ch: TerrainMesher.Chunk) -> Array:
 	var rng := Rng.make(world.seed_value, Rng.hash_ints(ch.cx, ch.cy, 0xDEC0))
-	var v := PackedVector3Array()
-	var n := PackedVector3Array()
-	var c := PackedColorArray()
-	var uv := PackedVector2Array()
-	var uv2 := PackedVector2Array()
+	var solid := Out.new()
+	var grass := Out.new()
 	var np := ch.n + 1
 	for ty in ch.h:
 		for tx in ch.w:
@@ -172,9 +240,13 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 			var t := ch.t[li + np + 1]
 			if t <= 0 or (k & 0x10000) != 0:
 				continue
+			# One terrace and one GROUND over the lattice: a key that differs only
+			# in its country (an ecotone's blend) is the same turf, and refusing it
+			# left bare strips through the grass along every border.
 			var ok := true
 			for o: int in [0, 1, 2, np, np + 2, np * 2, np * 2 + 1, np * 2 + 2]:
-				if ch.key[li + o] != k or ch.t[li + o] != t:
+				var ko := ch.key[li + o]
+				if (ko & 0x100FF) != (k & 0x100FF) or ch.t[li + o] != t:
 					ok = false
 					break
 			if not ok:
@@ -184,7 +256,8 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 			if table.is_empty():
 				continue
 			var gather := _clump.get_noise_2d(ch.x0 + tx, ch.y0 + ty) * 0.5 + 0.5
-			var count := int(float(table[2]) * (0.45 + gather) + rng.randf())
+			var even: float = table[3]
+			var count := int(float(table[2]) * lerpf(0.45 + gather, 0.8 + 0.4 * gather, even) + rng.randf())
 			if count <= 0:
 				continue
 			var country := (k >> 8) & 0xFF
@@ -250,11 +323,12 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 				var basis := Basis(Vector3.UP, rng.randf() * TAU)
 				var hy := ch.surface(wx + fx, wy + fy) - 0.004 if soft else h
 				var xf := Transform3D(basis.scaled(Vector3(s, s, s)), Vector3(wx + fx, hy, wy + fy))
-				v.append_array(xf * tpl.v)
-				n.append_array(Transform3D(basis, Vector3.ZERO) * tpl.n)
-				c.append_array(tpl.c)
-				uv.append_array(tpl.uv)
-				uv2.append_array(tpl.uv2)
+				if tpl.sways:
+					# Each plant its own seed: its beat in the wind, and whether it
+					# is one of those a far chunk leaves out (grass.gdshader).
+					grass.put(tpl, xf, basis, Rng.hash01(wx, wy, i, 0x5eed))
+				else:
+					solid.put(tpl, xf, basis)
 	# Rubble fallen from cliff faces, more of it where the rock is hard.
 	for fi in ch.feet.size():
 		var foot := ch.feet[fi]
@@ -273,21 +347,8 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 		var tpl := template(RUBBLE, country, rng.randi() % STAGES)
 		var s := 0.7 + rng.randf() * 0.6
 		var basis := Basis(Vector3.UP, rng.randf() * TAU)
-		v.append_array(Transform3D(basis.scaled(Vector3(s, s, s)), p + along * (rng.randf() - 0.5) * 0.4) * tpl.v)
-		n.append_array(Transform3D(basis, Vector3.ZERO) * tpl.n)
-		c.append_array(tpl.c)
-		uv.append_array(tpl.uv)
-		uv2.append_array(tpl.uv2)
-	if v.is_empty():
-		return []
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = v
-	arrays[Mesh.ARRAY_NORMAL] = n
-	arrays[Mesh.ARRAY_COLOR] = c
-	arrays[Mesh.ARRAY_TEX_UV] = uv
-	arrays[Mesh.ARRAY_TEX_UV2] = uv2
-	return arrays
+		solid.put(tpl, Transform3D(basis.scaled(Vector3(s, s, s)), p + along * (rng.randf() - 0.5) * 0.4), basis)
+	return [solid.arrays(), grass.arrays()]
 
 
 ## True when the lattice cell under (x, y) is one dry terrace.
@@ -318,6 +379,10 @@ static func template(kind: int, country: int, stage: int = 0) -> Tpl:
 		t.c = k.made.colors
 		t.uv = k.made.uvs
 		t.uv2 = k.made.uv2s
+		for w: Vector2 in t.uv2:
+			if w.x > 0.0:
+				t.sways = true
+				break
 		_templates[key] = t
 	_lock.unlock()
 	return t
@@ -507,6 +572,27 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 			k.made.prism(0, -0.11, 0, 0.035, 0.11, 0.035, 7, P.LINEN[4], P.LINEN[5])
 			k.made.prism(0, -0.02, 0, 0.037, 0.01, 0.037, 7, P.LINEN[2])
 			k.made.pop()
+		MEADOW:
+			# A patch of sward: many thin blades rooted all over a disc about two
+			# thirds of a tile across, laid roughly one way (each patch its own way,
+			# by stage), each a narrow sickle that curves over under its own weight.
+			# Thin is the point: a meadow is a haze of fine blades, and a few wide
+			# ones read as paper spikes. One-sided (grass.gdshader draws both
+			# faces), two triangles a blade.
+			var blades := 28
+			var lay := float(stage) * 2.1 + 0.6
+			for i in blades:
+				var r := sqrt(Rng.hash01(s, i, 11)) * 0.4
+				var at := Rng.hash01(s, i, 13) * TAU
+				var base := Vector3(cos(at) * r, 0.0, sin(at) * r)
+				var a := lay + Kit.j(s, i, 0.9)
+				var out := Vector3(cos(a), 0.0, sin(a))
+				var hh := 0.22 + Rng.hash01(s, i, 3) * 0.3
+				var reach := hh * (0.2 + Rng.hash01(s, i, 7) * 0.3)
+				var tip := base + out * reach + Vector3(0.0, hh * 0.94, 0.0)
+				var col: Color = gr[i % 2]
+				k.sickle(base, tip, out * reach * 0.15 + Vector3(0.0, hh * 0.08, 0.0), 0.026, a + 1.57, col)
+			k.sway_by_height(0, 0.0, 0.5, 1.0)
 		REBAR:
 			# A lump of cast stone broken off something, its bars standing out of
 			# the break, rusted to the colour of what is left of the old world.

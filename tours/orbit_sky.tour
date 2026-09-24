@@ -1,12 +1,13 @@
 # THE RING BY DAY (19_orbit, src/render/orbit/): a pass staged overhead at noon,
-# looked straight up at. The unlit hull is the sky's own colour -- a ghost of a
-# wheel, the way the moon is by day -- asked of the live frame (`ring_ghost`:
-# the unlit hull within a few levels of the open sky beside it), and the pass
-# moves across the sky while it is watched.
+# looked straight up at. The hull is a PALE mass -- lit from below by the sunlit
+# planet and from above by the sun, the way the daytime moon is pale and never a
+# hole -- asked of the live frame (`ring_pale`: lighter than the open sky beside
+# it on the whole, and almost nowhere darker), and the pass moves across the sky
+# while it is watched.
 #   tools/tour.sh tours/orbit_sky.tour --seed=7 --place=coast --hour=12 --orbit=zenith@12 --eye=1.7,-80,70 --face=146 --weather=clear:0
 wait 2
 await ring 5
-await ring_ghost 5
+await ring_pale 5
 shot 00-noon-ghost
 wait 3
 shot 01-noon-moving
