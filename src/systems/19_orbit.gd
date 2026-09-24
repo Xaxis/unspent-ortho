@@ -56,6 +56,7 @@ func setup(g: Game) -> void:
 	var spec: String = g.options.orbit
 	if spec == "off":
 		set_process(false)
+		SkyLight.orbit_shade = 0.0
 		return
 	def = Def.ring()
 	var proof := spec.begins_with("proof")
@@ -95,6 +96,8 @@ func _process(_delta: float) -> void:
 	lit = Pass.sunlit(def, (pose.rel as Vector3) - (pose.earth as Vector3), sun)
 	var on := layer.update(cam, pose, sun, air, open and float(air.share) > 0.0 and not _held_off)
 	_tell_sky(cam, on, air)
+	_wake(cam, sun, air, open and float(air.share) > 0.0 and not _held_off)
+	_shine(sun, air, open)
 	_look(cam, open)
 
 
@@ -156,6 +159,108 @@ func _ab() -> void:
 		str(OS.get_environment("UNSPENT_LOAD")), on_ms[on_ms.size() / 2], off_ms[off_ms.size() / 2], AB_ROUNDS,
 		cpu[cpu.size() / 2] if not cpu.is_empty() else 0.0, ("%.3f ms" % g) if g > 0.0 else "UNMEASURED", mem_on, mem_off])
 	print("world orbit ab: %s" % stats_line().strip_edges())
+
+
+## THE WAKE (orbit_sky.gdshaderinc `orbit_wake_at`): the shards strung along
+## the orbit, drawn as the arc of THIS pass across the sky -- the one up, or the
+## next to rise -- with how sunlit the orbit is at each point. Shown only against
+## a sky dark enough for a point to show (the same rule as the ring's lamps).
+var wake_shown := 0.0
+
+
+func _wake(cam: Camera3D, sun: Vector3, air: Dictionary, seen: bool) -> void:
+	var e: Environment = game.sky.env.environment if game.sky.env != null else null
+	if e == null or e.sky == null or not (e.sky.sky_material is ShaderMaterial):
+		return
+	var m := e.sky.sky_material as ShaderMaterial
+	var dome: Dictionary = air.get("dome", {})
+	wake_shown = LayerScript.lamp_seen(dome.get(&"dome_top_color", Color(0.3, 0.4, 0.6))) if seen and cam != null else 0.0
+	m.set_shader_parameter(&"orbit_wake_on", wake_shown * WAKE_BRIGHT)
+	if wake_shown <= 0.0:
+		return
+	var p: Dictionary = pose.pass
+	var tr: float = p.theta_r
+	var pts: Array[Vector4] = []
+	var n := Vector3.ZERO
+	var first := Vector3.ZERO
+	for i in WAKE_POINTS:
+		var th := lerpf(-tr, tr, float(i) / float(WAKE_POINTS - 1))
+		var rel := Pass.rel_at(def, p, th)
+		var d := rel.normalized()
+		if i == 0:
+			first = d
+		pts.append(Vector4(d.x, d.y, d.z, Pass.sunlit(def, rel - (pose.earth as Vector3), sun)))
+	var last := Vector3(pts[WAKE_POINTS - 1].x, pts[WAKE_POINTS - 1].y, pts[WAKE_POINTS - 1].z)
+	var mid := Vector3(pts[WAKE_POINTS / 2].x, pts[WAKE_POINTS / 2].y, pts[WAKE_POINTS / 2].z)
+	n = (first - mid).cross(last - mid).normalized()
+	var stray := 0.0
+	for q: Vector4 in pts:
+		stray = maxf(stray, absf(Vector3(q.x, q.y, q.z).dot(n)))
+	m.set_shader_parameter(&"orbit_wake", pts)
+	m.set_shader_parameter(&"orbit_wake_plane", Vector4(n.x, n.y, n.z, stray + 0.03))
+	m.set_shader_parameter(&"orbit_wake_arc", float(p.arc))
+	var rows := float(layer.screen.y)
+	m.set_shader_parameter(&"orbit_px", 2.0 * tan(deg_to_rad(cam.fov) * 0.5) / rows)
+
+
+const WAKE_POINTS := 17
+const WAKE_BRIGHT := 1.0
+
+
+## RINGSHINE: a cold second fill on the land from the ring's bearing, the way
+## a moon lights a night, CAPPED at RINGSHINE_MOST of the moon's own light so a
+## night stays really dark (docs/LOOK.md law 2), and it goes out at eclipse --
+## the land darkens a step as the Earth's shadow reaches the wheel. It is sunlit
+## plate four hundred kilometres up: brightest overhead, less near the horizon,
+## nothing by day. A DirectionalLight3D of its own, casting nothing.
+##
+## And the transit: when the hull crosses the sun as seen from here, the sun's
+## light on the land is taken down by as much of its disc as is covered
+## (`SkyLight.orbit_shade`, which SkyLight spends on the sun alone).
+const RINGSHINE_MOST := 1.5
+const RINGSHINE_COLOR := Color(0.70, 0.80, 1.0)
+var ringshine: DirectionalLight3D
+var shine := 0.0
+var shade := 0.0
+
+
+## How much of the capped ringshine falls, 0..1: as sunlit as the wheel is, as
+## far as night has fallen, as near as it is (the square of overhead distance
+## over its distance: a smaller wheel is less sky), faded at the horizon, and
+## mostly taken by cloud.
+static func shine_of(sunlit: float, night: float, near_share: float, up: float, cover: float) -> float:
+	var n := clampf(near_share, 0.0, 1.0)
+	return clampf(sunlit, 0.0, 1.0) * clampf(night, 0.0, 1.0) * n * n * smoothstep(0.0, 0.12, up) \
+		* (1.0 - clampf(cover, 0.0, 1.0) * 0.8)
+
+
+## The ringshine light's energy for a share: never more than RINGSHINE_MOST moons.
+static func ringshine_energy(share: float) -> float:
+	return SkyLight.MOON_NIGHT * RINGSHINE_MOST * clampf(share, 0.0, 1.0)
+
+
+func _shine(sun: Vector3, air: Dictionary, open: bool) -> void:
+	if ringshine == null:
+		ringshine = DirectionalLight3D.new()
+		ringshine.name = "ringshine"
+		ringshine.shadow_enabled = false
+		ringshine.light_color = RINGSHINE_COLOR
+		ringshine.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
+		add_child(ringshine)
+	var dome: Dictionary = air.get("dome", {})
+	var night: float = float(dome.get(&"dome_night", SkyLight.night_dark(game.sky.clock_hour)))
+	shine = 0.0
+	shade = 0.0
+	if open and bool(pose.get("up", false)):
+		shine = shine_of(lit, night, float(def.altitude_km) / float(pose.dist), (pose.dir as Vector3).y, float(dome.get(&"dome_cover", 0.0)))
+		shade = Pass.sun_cover(def, pose, sun)
+	var trim: float = float(game.sky.trim.get("sun", 1.0))
+	ringshine.light_energy = ringshine_energy(shine) * trim
+	ringshine.visible = ringshine.light_energy > 0.001
+	if ringshine.visible:
+		var d: Vector3 = pose.dir
+		ringshine.global_transform = Transform3D(Basis.looking_at(-d, Vector3.UP if absf(d.y) < 0.99 else Vector3.RIGHT), Vector3.ZERO)
+	SkyLight.orbit_shade = shade
 
 
 ## The seen sky's half of the bargain: where the layer lands and whether to read
@@ -361,6 +466,12 @@ func tour_seen(what: StringName) -> bool:
 			return bool(pose.get("up", false))
 		&"ring_lit":
 			return layer.drawn and lit > 0.5
+		&"ringshine":
+			return shine > 0.2
+		&"ring_transit":
+			return shade > 0.05
+		&"wake":
+			return wake_shown > 0.5
 		&"ring_eclipsed":
 			return layer.drawn and lit < 0.05
 		&"ring_ghost":

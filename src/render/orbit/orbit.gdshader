@@ -87,7 +87,7 @@ void vertex() {
 	if (kind == 2) {
 		// A lamp: opened on the glass round its point, a hair nearer than the
 		// plate it sits on.
-		vec3 v = c_view + vec3(CUSTOM0.zw, 0.0) * (LAMP_PX * 0.5 * px);
+		vec3 v = c_view + vec3(CUSTOM0.zw, 0.0) * max(LAMP_PX * 0.5 * px, UV.x);
 		v *= 1.0 - 2.0 * px / max(length(v), 1.0);
 		world_km = c_world;
 		VERTEX = v;
@@ -131,6 +131,7 @@ float hash1(float x) {
 
 void fragment() {
 	vec2 sl = sunlit(world_km);
+	bool return_plume = false;
 	if (kind_v > 1.5) {
 		// A lamp: a soft square, brightest at its point.
 		float r = length(corner_v);
@@ -161,11 +162,27 @@ void fragment() {
 			float t = fract(TIME / 6.0) * 6.0;
 			float on = step(t, 0.3) + step(0.6, t) * step(t, 0.9) + step(1.2, t) * step(t, 1.5);
 			glow = 0.4 + 3.2 * on;
-		} else {
+		} else if (cls < 5.5) {
 			// The habitat's last lamps, dim.
 			glow = 1.1 * mix(0.3, 1.0, night);
+		} else {
+			// A vent plume: crystal in sunlight, nothing in the shadow. Thin by
+			// STIPPLE (the layer is supersampled, so four samples a pixel average
+			// it into a veil), thinner toward its edge and its far end.
+			float veil = shape * 0.55;
+			if (sl.x < 0.02 || hash1(dot(floor(FRAGCOORD.xy), vec2(0.713, 1.37))) > veil) {
+				discard;
+			}
+			// Ice scatters forward: brightest looking toward the sun through it.
+			float fwd = pow(max(dot(normalize(world_km), normalize(sun_dir)), 0.0), 4.0);
+			ALBEDO = vec3(0.0);
+			ROUGHNESS = 1.0;
+			SPECULAR = 0.0;
+			EMISSION = matter_light(c) * sl.x * (0.45 + 2.5 * fwd) * mix(vec3(1.0), glow_color * 1.6, sl.y);
+			return_plume = true;
 		}
 		glow *= lamp_seen;
+		if (!return_plume) {
 		if (shape * glow <= 0.001) {
 			discard;
 		}
@@ -173,6 +190,7 @@ void fragment() {
 		ROUGHNESS = 1.0;
 		SPECULAR = 0.0;
 		EMISSION = matter_light(c) * glow * shape * (cls < 1.5 ? sky_power() : 1.0);
+		}
 	} else {
 		vec3 c = COLOR.rgb;
 		float cls = COLOR.a;
@@ -216,6 +234,24 @@ void fragment() {
 		if (burn > 0.6 && !cable) {
 			float flick = 0.6 + 0.4 * sin(TIME * 2.3 + dot(world_km, vec3(3.1, 1.7, 2.3)));
 			EMISSION += matter_light(vec3(1.0, 0.35, 0.08)) * (burn - 0.6) * 1.8 * flick;
+		}
+		// THE HABITAT'S WINDOWS on the side walls: three decks of them, a cold one
+		// lit here and there by whatever still runs, most dark. Seen whole where a
+		// window is a pixel or more; further off each deck is its average, a faint
+		// ruled line of light along the wheel, never a crawl of single pixels.
+		if (cls > 0.93 && cls < 0.97) {
+			float wall_v = UV.y;
+			vec2 wg = vec2(UV.x / 0.45, wall_v / 0.55);
+			float deck_row = floor(wg.y);
+			float in_row = smoothstep(0.25, 0.4, fract(wg.y)) * (1.0 - smoothstep(0.6, 0.75, fract(wg.y)));
+			float cell = floor(wg.x);
+			float run_lit = step(0.55, ink_hash(vec2(floor(cell / 23.0), deck_row + 41.0)));
+			float lit = step(0.86, ink_hash(vec2(cell, deck_row + 17.0))) * run_lit;
+			float fine = 1.0 - smoothstep(0.35, 0.8, max(fwidth(wg).x, fwidth(wg).y));
+			float average = 0.14 * 0.45 * 0.35;
+			float light = mix(average, lit * in_row, fine);
+			ALBEDO *= 1.0 - in_row * fine * 0.35;
+			EMISSION += matter_light(vec3(0.62, 0.78, 1.0)) * light * 3.0 * lamp_seen;
 		}
 		// A part drawn wider than it is gives the rest back to the sky.
 		EMISSION *= thin;

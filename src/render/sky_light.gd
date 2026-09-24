@@ -728,7 +728,7 @@ func compose() -> void:
 	# midnight" -- and it was not true because the hour still swung the one term
 	# that is directional. Taking LID_SUN off the moon is what lets that residue
 	# be cut from the noon side without touching the midnight frame at all.
-	sun.light_energy = lerpf(MOON_NIGHT * ns, SUN_NOON * level * glow * lerpf(1.0, LID_SUN, shut), lit) \
+	sun.light_energy = lerpf(MOON_NIGHT * ns, SUN_NOON * level * glow * lerpf(1.0, LID_SUN, shut) * (1.0 - orbit_shade), lit) \
 		* float(trim.sun)
 	# A low sun is seen through more air, so its edge is softer. Real penumbra,
 	# and it is spent against the evening rather than against `el`: the elevation
@@ -1899,6 +1899,11 @@ static func sky_shut_at(shares: Dictionary) -> float:
 ## fails toward green (docs/LOOK.md). This is a door for one kind of caller, it
 ## says so, and the live value is `SkyLight.lid` on the node.
 static var _last_lid := 0.0
+## HOW MUCH OF THE SUN'S DISC THE RING IN ORBIT COVERS, seen from here, 0..1
+## (19_orbit, OrbitPass.sun_cover): a transit takes the sun's light off the land
+## by that share for the minute it lasts. Its one writer is 19_orbit; spent on
+## the SUN'S term only, never the moon's.
+static var orbit_shade := 0.0
 
 
 static func remember_lid(v: float) -> void:

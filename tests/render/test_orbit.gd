@@ -192,7 +192,8 @@ func test_the_dome_lays_the_ring_in_the_right_order() -> void:
 	check(src.contains("smoothstep(-0.02, -0.18, dome_sun_dir.y) * (1.0 - orbit_hide);"), "and the moon and stars (both ride on `dark`)")
 	var inc := FileAccess.get_file_as_string("res://src/render/orbit/orbit_sky.gdshaderinc")
 	check(src.contains("col = col * (1.0 - orbit_seen.a * orbit_mass) + orbit_seen.rgb;"), "its light is ADDED over the air, which by day it does not dim")
-	check(inc.contains("* open * orbit_on"), "the clouds, which the dome laid first, are laid back over the ring's light")
+	check(inc.contains("return vec4((ring.rgb + wake) * orbit_through(d) * open, ring.a * open);"), "the clouds, which the dome laid first, are laid back over the ring's light and the wake's")
+	check(inc.contains("wake *= 1.0 - ring.a;"), "and a shard behind the hull is hidden by it")
 	check(FileAccess.get_file_as_string("res://src/render/sky_eye.gdshader").contains("#define DOME_ORBIT"), "the seen sky asks for it")
 	check(not FileAccess.get_file_as_string("res://src/render/colossus/colossus.gdshader").contains("DOME_ORBIT"), "and the colossi do not")
 
@@ -224,3 +225,56 @@ func test_the_layer_stands_down_when_nothing_can_be_seen() -> void:
 	var sys := FileAccess.get_file_as_string("res://src/systems/19_orbit.gd")
 	check(sys.contains("open and float(air.share) > 0.0"), "only while the horizon is in frame and the sky is open")
 	check(sys.contains("m.set_shader_parameter(&\"orbit_on\", 1.0 if on else 0.0)"), "and the sky is told not to read a stale frame")
+
+
+## A LAMP IS NOT A WHITE DOT AT NOON: every lamp on the ring is multiplied by how
+## dark the sky it stands on is, off the seen sky's own zenith colour.
+func test_the_lamps_go_out_against_a_daylit_sky() -> void:
+	var noon := Color(0.29, 0.42, 0.66)
+	var dusk := Color(0.16, 0.18, 0.32)
+	var night := Color(0.03, 0.04, 0.09)
+	near(Layer.lamp_seen(noon), 0.0, 1e-6, "noon: no lamp shows (zenith luminance %.2f)" % noon.get_luminance())
+	near(Layer.lamp_seen(night), 1.0, 1e-6, "night: every lamp")
+	var d := Layer.lamp_seen(dusk)
+	check(d > 0.0 and d < 1.0, "dusk: some (%.2f)" % d)
+	var src := FileAccess.get_file_as_string("res://src/render/orbit/orbit.gdshader")
+	check(src.contains("glow *= lamp_seen;"), "and the shader spends it on every lamp")
+
+
+## RINGSHINE IS CAPPED at one and a half moons, is nothing by day or in the
+## Earth's shadow, and falls away as the wheel goes down the sky.
+func test_ringshine_is_capped_and_goes_out_at_eclipse() -> void:
+	var Sys: GDScript = load("res://src/systems/19_orbit.gd")
+	var most: float = Sys.call(&"ringshine_energy", 1.0)
+	near(most, SkyLight.MOON_NIGHT * 1.5, 1e-6, "the cap is 1.5 moons")
+	near(Sys.call(&"ringshine_energy", 7.0), most, 1e-6, "and nothing can ask for more")
+	var over: float = Sys.call(&"shine_of", 1.0, 1.0, 1.0, 1.0, 0.0)
+	near(over, 1.0, 1e-6, "sunlit overhead at night: the whole cap")
+	near(Sys.call(&"shine_of", 0.0, 1.0, 1.0, 1.0, 0.0), 0.0, 1e-6, "eclipsed: none")
+	near(Sys.call(&"shine_of", 1.0, 0.0, 1.0, 1.0, 0.0), 0.0, 1e-6, "by day: none")
+	lt(Sys.call(&"shine_of", 1.0, 1.0, 0.3, 0.2, 0.0), 0.15, "low and far: a little")
+	lt(Sys.call(&"shine_of", 1.0, 1.0, 1.0, 1.0, 1.0), 0.25, "under a covered sky: most of it gone")
+
+
+## THE TRANSIT: the wheel crossing the sun takes the sun off the land, the hole
+## in its middle and the wound do not.
+func test_the_wheel_shades_the_land_only_where_it_crosses_the_sun() -> void:
+	var d := _def()
+	var p := Pass.make_pass(d, 0, 0.0, 88.0, 30.0, 1.0)
+	var pose := Pass.pose(d, 7, Pass.window_min(d) * 0.5, p)
+	var b: Basis = pose.basis
+	var rel: Vector3 = pose.rel
+	var rim: float = d.rim_km
+	var at_rim := rel + b * Vector3(cos(deg_to_rad(250.0)) * rim, 0.0, sin(deg_to_rad(250.0)) * rim)
+	var at_hole := rel + b * Vector3(cos(deg_to_rad(250.0)) * 20.0, 0.0, sin(deg_to_rad(250.0)) * 20.0)
+	var at_wound := rel + b * Vector3(cos(deg_to_rad(float(d.gap_at))) * rim, 0.0, sin(deg_to_rad(float(d.gap_at))) * rim)
+	for pair: Array in [[at_rim, true], [at_hole, false], [at_wound, false]]:
+		var sun: Vector3 = (pair[0] as Vector3).normalized()
+		if sun.y <= 0.0:
+			continue
+		var c := Pass.sun_cover(d, pose, sun)
+		if bool(pair[1]):
+			gt(c, 0.9, "the sun behind the rim is covered (%.2f)" % c)
+		else:
+			lt(c, 0.05, "the sun seen through the wheel's middle or its wound is not (%.2f)" % c)
+	check(FileAccess.get_file_as_string("res://src/render/sky_light.gd").contains("* (1.0 - orbit_shade), lit)"), "and SkyLight takes it off the sun's term alone")

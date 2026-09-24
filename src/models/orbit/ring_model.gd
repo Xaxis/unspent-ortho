@@ -49,6 +49,7 @@ const EMBER := 2.0
 const ARC := 3.0
 const AMBER := 4.0
 const HABITAT := 5.0
+const PLUME := 6.0
 
 ## Plate classes (COLOR.a of a PLATE or TUBE).
 const HULL := 1.0
@@ -73,6 +74,7 @@ const L_BEACON := Color(0.82, 0.74, 1.0)
 const L_EMBER := Color(1.0, 0.42, 0.10)
 const L_ARC := Color(0.70, 0.86, 1.0)
 const L_AMBER := Color(1.0, 0.60, 0.18)
+const L_PLUME := Color(0.86, 0.92, 1.0)
 
 const SALT := 72101
 
@@ -305,11 +307,12 @@ func _line(pts: Array[Vector3], r: float, sides: int, col: Color, burn := 0.0) -
 
 
 ## A LAMP: four vertices at one point, opened on the glass by the shader.
-func _lamp(at: Vector3, col: Color, cls: float) -> void:
+## `size` is a least half-width in km (0: a point, opened to LAMP_PX only).
+func _lamp(at: Vector3, col: Color, cls: float, size := 0.0) -> void:
 	var nrm := Vector3.UP
 	var ids: Array[int] = []
 	for corner: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
-		ids.append(_vert(at, nrm, col, Vector2.ZERO, LAMP, at, cls, corner))
+		ids.append(_vert(at, nrm, col, Vector2(size, 0.0), LAMP, at, cls, corner))
 	_quad_i(ids[0], ids[1], ids[2], ids[3])
 
 
@@ -435,6 +438,19 @@ func _fray(a: float, dir: float, jag: PackedFloat32Array, rng: RandomNumberGener
 		var c := C_CABLE
 		c.a = CABLE
 		_line(pts, 0.03, 3, c, 0.3)
+	# VENT PLUMES: air and water still bleeding out of the torn habitat, frozen
+	# into crystal as it goes, a fan of puffs growing and thinning away from the
+	# break. They have no light of their own: they are seen only where the sun
+	# is on them (orbit.gdshader PLUME), white against the dark and gone in the
+	# Earth's shadow.
+	for i in 2:
+		var p: Vector2 = sec[rng.randi_range(0, sec.size() - 1)]
+		var outv := Vector2(rng.randf_range(0.3, 1.0), rng.randf_range(-0.6, 0.6))
+		for k in 8:
+			var f := float(k + 1) / 8.0
+			var reach := f * rng.randf_range(10.0, 18.0)
+			var at := _at(a + dir * (jag[0] + reach * 0.35 / rim), p.x + outv.x * reach, p.y + outv.y * reach)
+			_lamp(at, L_PLUME, PLUME, lerpf(0.5, 3.4, f))
 	# Embers along the break itself, and the arcs.
 	for k in sec.size():
 		var p: Vector2 = sec[k]
