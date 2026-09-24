@@ -88,7 +88,8 @@ func _process(_delta: float) -> void:
 	var open: bool = game.sky.closed < 0.5 and SkyLight.last_lid() < 0.5
 	var m: float = game.clock.minutes if game.clock != null else 0.0
 	var t0 := Time.get_ticks_usec()
-	pose = Pass.pose(def, game.world.seed_value, m, _staged)
+	var t_all := t0
+	pose = Pass.pose(def, game.world.seed_value, m, _staged if not _staged.is_empty() else _pass_for(m))
 	pose["minutes"] = m
 	last_pose_usec = Time.get_ticks_usec() - t0
 	var h: float = game.sky.clock_hour
@@ -99,6 +100,20 @@ func _process(_delta: float) -> void:
 	_wake(cam, sun, air, open and float(air.share) > 0.0 and not _held_off)
 	_shine(sun, air, open)
 	_look(cam, open)
+	last_process_usec = Time.get_ticks_usec() - t_all
+
+
+## What this system's own frame cost on the main thread, all of it (--stats, A/B).
+var last_process_usec := 0
+## The pass in hand, kept: a pass is built with its whole sky-arc table, and the
+## same pass holds for thirty-three world hours.
+var _pass: Dictionary = {}
+
+
+func _pass_for(m: float) -> Dictionary:
+	if _pass.is_empty() or m < float(_pass.rise) - Pass.period_min(def) or m > float(_pass.set):
+		_pass = Pass.next_pass(def, game.world.seed_value, m)
+	return _pass
 
 
 ## WHAT THE RING COSTS, measured in the running game (`--orbit=zenith@H:ab`):
@@ -108,8 +123,8 @@ func _process(_delta: float) -> void:
 ## answers zero, and says so). A number measured on one side only is a guess
 ## about the other, so both sides are the same process, the same frame and the
 ## same load, a second apart.
-const AB_ROUNDS := 4
-const AB_SECS := 1.5
+const AB_ROUNDS := 10
+const AB_SECS := 1.0
 var _held_off := false
 
 
@@ -149,11 +164,19 @@ func _ab() -> void:
 			else:
 				mem_on = mem
 	_held_off = false
+	# Each round's ON beside the OFF that followed it a second later: the paired
+	# differences' median is the cost, which a load that drifts over the run
+	# cannot move the way it moves either side alone.
+	var diffs: Array[float] = []
+	for i in mini(on_ms.size(), off_ms.size()):
+		diffs.append(on_ms[i] - off_ms[i])
+	diffs.sort()
 	on_ms.sort()
 	off_ms.sort()
 	cpu.sort()
 	gpu.sort()
 	var g := gpu[gpu.size() / 2] if not gpu.is_empty() else 0.0
+	print("world orbit ab: the ring costs %.2f ms a frame (median of %d paired rounds, %.2f .. %.2f); 19_orbit's own main-thread work %d us" % [diffs[diffs.size() / 2], diffs.size(), diffs[0], diffs[diffs.size() - 1], last_process_usec])
 	print("world orbit ab (%s, quality %s, load %s): frame %.2f ms with the ring, %.2f ms held off (median of %d rounds), layer render cpu %.3f ms, gpu %s, video memory %.1f MB with / %.1f MB held off (the target stays allocated)" % [
 		"Forward+" if Quality.forward_plus() else "Compatibility", Quality.current_id(),
 		str(OS.get_environment("UNSPENT_LOAD")), on_ms[on_ms.size() / 2], off_ms[off_ms.size() / 2], AB_ROUNDS,
@@ -179,12 +202,13 @@ func _wake(cam: Camera3D, sun: Vector3, air: Dictionary, seen: bool) -> void:
 	if wake_shown <= 0.0:
 		return
 	var p: Dictionary = pose.pass
-	var tr: float = p.theta_r
 	var pts: Array[Vector4] = []
 	var n := Vector3.ZERO
 	var first := Vector3.ZERO
 	for i in WAKE_POINTS:
-		var th := lerpf(-tr, tr, float(i) / float(WAKE_POINTS - 1))
+		# Even in SKY ANGLE (OrbitPass.theta_of), not round the planet: the sky
+		# finds its segment by angle, and the shards are dealt along it evenly.
+		var th := Pass.theta_of(p, float(i) / float(WAKE_POINTS - 1))
 		var rel := Pass.rel_at(def, p, th)
 		var d := rel.normalized()
 		if i == 0:
@@ -199,6 +223,19 @@ func _wake(cam: Camera3D, sun: Vector3, air: Dictionary, seen: bool) -> void:
 	m.set_shader_parameter(&"orbit_wake", pts)
 	m.set_shader_parameter(&"orbit_wake_plane", Vector4(n.x, n.y, n.z, stray + 0.03))
 	m.set_shader_parameter(&"orbit_wake_arc", float(p.arc))
+	# The angles round the arc's own axis are measured from its MIDDLE point, so
+	# neither end can wrap past a half turn whatever the arc's shape.
+	var e1 := (mid - n * mid.dot(n)).normalized()
+	var e2 := n.cross(e1)
+	var a0 := atan2(first.dot(e2), first.dot(e1))
+	var a1 := atan2(last.dot(e2), last.dot(e1))
+	if a1 < a0:
+		e2 = -e2
+		a0 = -a0
+		a1 = -a1
+	m.set_shader_parameter(&"orbit_wake_e1", e1)
+	m.set_shader_parameter(&"orbit_wake_e2", e2)
+	m.set_shader_parameter(&"orbit_wake_span", Vector2(a0, a1))
 	var rows := float(layer.screen.y)
 	m.set_shader_parameter(&"orbit_px", 2.0 * tan(deg_to_rad(cam.fov) * 0.5) / rows)
 

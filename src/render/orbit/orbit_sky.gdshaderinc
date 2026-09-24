@@ -95,6 +95,11 @@ uniform float orbit_wake_on = 0.0;
 // The arc's own plane, and how far off it any of the arc strays (a cheap test
 // that lets nearly every pixel of the sky skip the rest).
 uniform vec4 orbit_wake_plane = vec4(0.0, 1.0, 0.0, 0.0);
+// The arc's plane's own axes (e1 along its first point), and the angles its
+// first and last points stand at round them.
+uniform vec3 orbit_wake_e1 = vec3(1.0, 0.0, 0.0);
+uniform vec3 orbit_wake_e2 = vec3(0.0, 0.0, 1.0);
+uniform vec2 orbit_wake_span = vec2(0.0, 3.0);
 // The whole visible arc's length, radians.
 uniform float orbit_wake_arc = 3.0;
 // One pixel, in radians, at the middle of the frame.
@@ -117,7 +122,17 @@ vec3 orbit_wake_at(vec3 d) {
 	float s = -1.0;
 	float x = 0.0;
 	float lit = 0.0;
-	for (int i = 0; i < WAKE_POINTS - 1; i++) {
+	// Which segment, roughly, from the direction's angle round the arc's own
+	// plane: the arc's points go round it in order, so only the segment there
+	// and two either side need asking, not all sixteen (the points are even in
+// angle round the planet, not round this axis, so the guess can be one out).
+	float phi = atan(dot(d, orbit_wake_e2), dot(d, orbit_wake_e1));
+	int near_i = int(clamp(floor((phi - orbit_wake_span.x) / (orbit_wake_span.y - orbit_wake_span.x) * float(WAKE_POINTS - 1)), 0.0, float(WAKE_POINTS - 2)));
+	for (int j = -2; j <= 2; j++) {
+		int i = near_i + j;
+		if (i < 0 || i > WAKE_POINTS - 2) {
+			continue;
+		}
 		vec3 p0 = orbit_wake[i].xyz;
 		vec3 p1 = orbit_wake[i + 1].xyz;
 		vec3 n = normalize(cross(p0, p1));

@@ -746,12 +746,15 @@ static func chunk_list(def: RefCounted, seed_value: int) -> Array[Dictionary]:
 
 
 ## The bones at `minutes`: three rows each (basis row, origin), BONES of them.
-static func bone_rows(def: RefCounted, seed_value: int, minutes: float) -> PackedVector4Array:
+## `list` is `chunk_list(def, seed_value)` if the caller keeps it, which a
+## caller asking every frame should.
+static func bone_rows(def: RefCounted, seed_value: int, minutes: float, list: Array[Dictionary] = []) -> PackedVector4Array:
 	var rows := PackedVector4Array()
 	rows.resize(BONES * 3)
 	var id := Transform3D.IDENTITY
 	_put(rows, 0, id)
-	var list := chunk_list(def, seed_value)
+	if list.is_empty():
+		list = chunk_list(def, seed_value)
 	for i in list.size():
 		var ch: Dictionary = list[i]
 		var b := Basis((ch.axis as Vector3), float(ch.start) + TAU * minutes / float(ch.turn_min))

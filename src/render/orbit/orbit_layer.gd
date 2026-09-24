@@ -61,6 +61,8 @@ var lamps_shown := 1.0
 ## A proof mode: a flat emissive quad in place of the ring (the risk this layer
 ## was proved on first: an HDR ViewportTexture sampled in a sky shader).
 var proof := false
+## The loose pieces, dealt once (ring_model.gd `chunk_list`).
+var _chunks: Array[Dictionary] = []
 
 
 func setup(orbit_def: RefCounted, seed_v: int, prove := false) -> void:
@@ -289,7 +291,9 @@ func _feed(pose: Dictionary, sun_dir: Vector3, air: Dictionary, size: Vector2i) 
 	lamps_shown = lamp_seen(dome.get(&"dome_top_color", Color(0.02, 0.02, 0.04)))
 	mat.set_shader_parameter(&"lamp_seen", lamps_shown)
 	mat.set_shader_parameter(&"planet_day", smoothstep(-0.08, 0.35, sun_dir.y))
-	mat.set_shader_parameter(&"bones", Model.bone_rows(def, seed_value, float(pose.get("minutes", 0.0))))
+	if _chunks.is_empty():
+		_chunks = Model.chunk_list(def, seed_value)
+	mat.set_shader_parameter(&"bones", Model.bone_rows(def, seed_value, float(pose.get("minutes", 0.0)), _chunks))
 
 
 ## How much a lamp on the ring shows against a sky whose zenith is `top` (the
