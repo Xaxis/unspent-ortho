@@ -80,7 +80,9 @@ func setup(g: Game) -> void:
 	add_child(layer)
 	layer.setup(def, g.world.seed_value, proof)
 	add_to_group(&"colossi")
-	if spec.contains(":ab"):
+	if spec.contains(":bench"):
+		_bench.call_deferred()
+	elif spec.contains(":ab"):
 		# ":ab" holds the whole ring off; ":ab-layer" the layer alone, ":ab-wake"
 		# the wake alone, so a cost can be put where it is paid.
 		_ab_what = spec.get_slice(":ab", 1).trim_prefix("-")
@@ -105,6 +107,10 @@ func _process(_delta: float) -> void:
 	var layer_off := _held_off and _ab_what != "wake"
 	var wake_off := _held_off and _ab_what != "layer"
 	var on := layer.update(cam, pose, sun, air, open and float(air.share) > 0.0 and not layer_off)
+	if _bench_arm == 0 and on:
+		layer.viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	elif _bench_arm == 1:
+		layer.viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_tell_sky(cam, on, air)
 	_wake(cam, sun, air, open and float(air.share) > 0.0 and not wake_off)
 	_shine(sun, air, open)
@@ -136,6 +142,9 @@ const AB_ROUNDS := 10
 const AB_SECS := 1.0
 var _held_off := false
 var _ab_what := ""
+## The bench's arm (`:bench`): -1 not benching, 0 the layer drawn EVERY frame and
+## read, 1 read but never redrawn, 2 held off altogether.
+var _bench_arm := -1
 
 
 func _ab() -> void:
@@ -192,6 +201,51 @@ func _ab() -> void:
 		str(OS.get_environment("UNSPENT_LOAD")), on_ms[on_ms.size() / 2], off_ms[off_ms.size() / 2], AB_ROUNDS,
 		cpu[cpu.size() / 2] if not cpu.is_empty() else 0.0, ("%.3f ms" % g) if g > 0.0 else "UNMEASURED", mem_on, mem_off])
 	print("world orbit ab: %s" % stats_line().strip_edges())
+
+
+## THE RING'S COST, TAKEN APART (`--orbit=zenith@H:bench`): whole frames drawn
+## back to back with `force_draw`, BENCH_FRAMES at a time, in three arms --
+## the layer redrawn every frame and read, read but never redrawn, and held off
+## -- alternated BENCH_ROUNDS times, the median of each arm's mean frame taken.
+## A drawn frame against a read one is what ONE redraw of the layer costs; a
+## read one against none is the sky's own share. The ring's cost a frame is
+## the sky's share plus a redraw over RENDER_EVERY. A tight loop of drawn frames
+## is what a loaded machine blurs least, and the paired A/B could not resolve
+## half a millisecond under a load of fifty (measured, rounds -1.4 .. 3.3 ms).
+const BENCH_ROUNDS := 7
+const BENCH_FRAMES := 120
+
+
+func _bench() -> void:
+	for i in 90:
+		await get_tree().process_frame
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	var ms: Array = [[], [], []]
+	for r in BENCH_ROUNDS:
+		for arm in 3:
+			_bench_arm = arm
+			_held_off = arm == 2
+			for i in 4:
+				await get_tree().process_frame
+			RenderingServer.force_sync()
+			var t0 := Time.get_ticks_usec()
+			for i in BENCH_FRAMES:
+				RenderingServer.force_draw(true, 0.0)
+			RenderingServer.force_sync()
+			(ms[arm] as Array).append((Time.get_ticks_usec() - t0) / 1000.0 / float(BENCH_FRAMES))
+	_bench_arm = -1
+	_held_off = false
+	var med: Array[float] = []
+	for arm in 3:
+		var a: Array = ms[arm]
+		a.sort()
+		med.append(float(a[a.size() / 2]))
+	var redraw := med[0] - med[1]
+	var sky := med[1] - med[2]
+	print("world orbit bench (%s, quality %s, load %s): frame %.2f ms redrawn, %.2f read, %.2f without; one redraw of the layer %.2f ms, the sky's share %.2f ms, the ring %.2f ms a frame at one redraw in %d" % [
+		"Forward+" if Quality.forward_plus() else "Compatibility", Quality.current_id(), str(OS.get_environment("UNSPENT_LOAD")),
+		med[0], med[1], med[2], redraw, sky, sky + redraw / float(LayerScript.RENDER_EVERY), LayerScript.RENDER_EVERY])
+	print("world orbit bench: %s" % stats_line().strip_edges())
 
 
 ## THE WAKE (orbit_sky.gdshaderinc `orbit_wake_at`): the shards strung along

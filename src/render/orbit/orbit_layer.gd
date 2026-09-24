@@ -247,10 +247,13 @@ const BUCKET := 32.0
 ##
 ## Its texels are the eye's pixels at the ring, `ss` to a side (the Quality
 ## column `orbit`), and one to a side once the wheel is under SINGLE_PX across:
-## four samples a pixel buy nothing a sixty-pixel ring can show.
-const RENDER_EVERY := 3
+## four samples a pixel buy nothing a sixty-pixel ring can show. And never past
+## MOST_TEXELS to a side: a wheel overhead is five hundred pixels, and at two to a
+## side that was a full frame's worth of fill for a thing whose detail is lamps
+## and plate seams (measured, the most of what the layer cost).
+const RENDER_EVERY := 4
 const SINGLE_PX := 150.0
-const MOST_TEXELS := 2048
+const MOST_TEXELS := 1024
 
 
 ## The aim for a ring at `centre` (km from the eye) bounded by `radius`: the
