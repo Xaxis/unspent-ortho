@@ -1,0 +1,34 @@
+# WHERE PLAY STUTTERS, measured on the real keys (perf/stutters). Three windows,
+# each judged by the --stats block on exactly its own frames
+# (src/systems/tour/stats_perf.gd), with every slow frame named by what it spent:
+#   first-shoulder  a fresh game's FIRST press of the shoulder key, every frame
+#                   printed raw: a first-use stall shows as a run of long frames
+#   shoulder        walking and turning over the shoulder
+#   top             walking a square looking down
+#   tools/tour.sh tours/stutters.tour --stats --seed=7 --hour=12 --weather=clear:0
+#   tools/tour.sh tours/stutters.tour --stats --seed=4 --hour=12 --weather=clear:0
+# It proves nothing on its own: read the numbers, and the load beside them.
+wait 5
+perf stats begin
+wait 1.5
+hold shoulder
+wait 3
+perf stats end first-shoulder raw
+perf stats begin
+walk 0,-1 2
+mouse 600,0 1.5
+walk 0,-1 2
+mouse -900,0 2
+walk 0,-1 2 run
+mouse 600,0 1.5
+walk 0,-1 2
+perf stats end shoulder
+release shoulder
+await top_view 3
+wait 1.5
+perf stats begin
+walk 1,0 3
+walk 0,1 3
+walk -1,0 3
+walk 0,-1 3
+perf stats end top

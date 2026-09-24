@@ -266,6 +266,11 @@ const TICK_PARTS: Array[String] = ["refresh_chapters", "set_walls", "stand", "wo
 var tick_worst := PackedFloat32Array()
 
 
+## A `perf stats` window starts the worst again (12_landscape.stats_begin).
+func stats_reset() -> void:
+	tick_worst.fill(0.0)
+
+
 func _process(delta: float) -> void:
 	if game == null or game.world == null:
 		return

@@ -40,6 +40,27 @@ var _driven_total := PackedFloat32Array()
 var _driven_ticks := 0
 var _pdriven_ticks := 0
 
+## WHICH SYSTEM WAS IN THE SLOW FRAME, not which system was ever slow. A worst
+## per system says 22_landmarks once took 39 ms; it cannot say whether that was
+## the frame the player felt. Every driven call adds its time here, and the
+## dictionary is taken at the head of each `_process`: by then it holds the last
+## frame's process pass and this frame's physics ticks, which is the interval the
+## `_delta` about to be kept measured. Only slow frames keep their answer.
+var _frame_cost: Dictionary = {}
+var _slow_why := PackedStringArray()
+## A tour's `perf stats` window (src/systems/tour/stats_perf.gd): true once a
+## window has been opened, so every frame in it counts and none is warm-up.
+var _windowed := false
+## Wall clock at the head of the last `_process`, for a window's frame times.
+## A window is timed by the wall and not by `_delta`, because the engine hands
+## `_process` a delta that is not the wall: measured, a frame that spent 709 ms
+## in the driven systems alone arrived as a 130 ms delta. A player waited 709.
+var _wall_at := 0
+## Pipelines the renderer has compiled so far (mesh, surface, draw,
+## specialization), read at each frame's head: a slow frame that compiled some
+## says so, because nothing a script does can be the cause of that kind.
+var _pipes_at := 0
+
 
 func setup(g: Game) -> void:
 	super.setup(g)
@@ -110,10 +131,11 @@ func _physics_process(delta: float) -> void:
 		_driven[i].call(&"_physics_process", delta)
 		var took := float(Time.get_ticks_usec() - began) / 1000.0
 		_driven_total[i] += took
+		_cost(_driven[i], took)
 		# Steady play only, for the reason spelled out over the `_process` twin:
 		# a worst that includes the world's first ticks answers "what did loading
 		# cost" under a heading that says "what does a bad frame cost".
-		if _driven_ticks > WARM_MOST and took > _driven_worst[i]:
+		if (_windowed or _driven_ticks > WARM_MOST) and took > _driven_worst[i]:
 			_driven_worst[i] = took
 
 
@@ -221,6 +243,11 @@ func _mean_line() -> String:
 
 func _process(_delta: float) -> void:
 	_pdriven_ticks += 1
+	var was_cost := _frame_cost
+	_frame_cost = {}
+	var now := Time.get_ticks_usec()
+	if _wall_at == 0:
+		_wall_at = now
 	# Driven FIRST, and before the early return, because a frame this file bails
 	# out of is still a frame every other node has to run in.
 	for i in _pdriven.size():
@@ -230,6 +257,7 @@ func _process(_delta: float) -> void:
 		_pdriven[i].call(&"_process", _delta)
 		var took := float(Time.get_ticks_usec() - began) / 1000.0
 		_pdriven_total[i] += took
+		_cost(_pdriven[i], took)
 		# STEADY PLAY ONLY, and the two halves of this stats block disagreed about
 		# that for as long as both have existed. `frame_line` takes `warm_frames`
 		# off the front before it reports a percentile; this worst took every frame
@@ -247,7 +275,7 @@ func _process(_delta: float) -> void:
 		# run and this is a live tick; it is the same allowance the warm-up is
 		# capped at, so the two lines now disagree by at most the frames the run
 		# was ALLOWED to spend landing.
-		if _pdriven_ticks > WARM_MOST and took > _pdriven_worst[i]:
+		if (_windowed or _pdriven_ticks > WARM_MOST) and took > _pdriven_worst[i]:
 			_pdriven_worst[i] = took
 	if game == null or game.view == null:
 		return
@@ -258,7 +286,19 @@ func _process(_delta: float) -> void:
 		# TIME_PROCESS / TIME_PHYSICS_PROCESS monitors were collected here too and
 		# are not per-frame values -- see `_driven_line`'s header for the
 		# measurement that retired them.
-		_ms.append(_delta * 1000.0)
+		var ms := _delta * 1000.0
+		if _windowed:
+			ms = float(now - _wall_at) / 1000.0
+		_ms.append(ms)
+		var pipes := _pipelines()
+		if ms > P99_MS:
+			var vp := get_viewport()
+			var gpu := RenderingServer.viewport_get_measured_render_time_gpu(vp.get_viewport_rid()) if vp != null else 0.0
+			var cpu := RenderingServer.viewport_get_measured_render_time_cpu(vp.get_viewport_rid()) if vp != null else 0.0
+			_slow_why.append("%d:%.0f(%s; render cpu %.0f gpu %.0f; pipes +%d)" % [_ms.size() - 1, ms,
+				_top_costs(was_cost), cpu, gpu, pipes - _pipes_at])
+		_pipes_at = pipes
+	_wall_at = now
 	# The renderer does not time itself unless asked, and it must be asked BEFORE
 	# the frame that is read: `stats_line` runs at frames-1, so switching this on
 	# here gives it several frames of measurement to report.
@@ -279,6 +319,72 @@ func _process(_delta: float) -> void:
 			UiBase.PITCH, UiFont.CAP])
 		print(stats_line(game.view))
 		print(frame_line(_ms) + _driven_line() + _proc_line() + _mean_line() + _own_lines())
+
+
+## Every driven call's time, into the frame it was spent in. Only under --stats.
+func _cost(n: Node, took: float) -> void:
+	if took < 0.5 or not game.options.stats:
+		return
+	var key := (n.get_script() as Script).resource_path.get_file().get_basename()
+	_frame_cost[key] = float(_frame_cost.get(key, 0.0)) + took
+
+
+static func _top_costs(cost: Dictionary) -> String:
+	var rows: Array = []
+	for k: String in cost:
+		rows.append([float(cost[k]), k])
+	rows.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) > float(y[0]))
+	var out := PackedStringArray()
+	var seen := 0.0
+	for r: Array in rows:
+		seen += float(r[0])
+	for r: Array in rows.slice(0, 3):
+		out.append("%s %.0f" % [String(r[1]), float(r[0])])
+	return "driven %.0f: %s" % [seen, " ".join(out)] if not rows.is_empty() else "driven 0"
+
+
+static func _pipelines() -> int:
+	return (RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_MESH)
+		+ RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SURFACE)
+		+ RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_DRAW)
+		+ RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SPECIALIZATION)
+		+ RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_CANVAS))
+
+
+## Open a measuring window: everything the stats block reports starts again from
+## here, and nothing in it is forgiven as warm-up. A tour's `perf stats begin`.
+func stats_begin() -> void:
+	_windowed = true
+	_pipes_at = _pipelines()
+	_wall_at = Time.get_ticks_usec()
+	_ms = PackedFloat32Array()
+	_slow_why = PackedStringArray()
+	_driven_worst.fill(0.0)
+	_driven_total.fill(0.0)
+	_pdriven_worst.fill(0.0)
+	_pdriven_total.fill(0.0)
+	_driven_ticks = 0
+	_pdriven_ticks = 0
+	for s: GameSystem in _driven:
+		if is_instance_valid(s) and s.has_method(&"stats_reset"):
+			s.call(&"stats_reset")
+	for n: Node in _pdriven:
+		if is_instance_valid(n) and n.has_method(&"stats_reset"):
+			n.call(&"stats_reset")
+
+
+## The whole stats block for the window, under LABEL; `raw` adds every frame.
+## Every line starts `tour ` because tools/tour.sh forwards only those.
+func stats_end(label: String, raw: bool) -> void:
+	var block := frame_line(_ms, false) + "\nworld slow frames by cost: " + " ".join(_slow_why) \
+		+ _driven_line() + _proc_line() + _mean_line() + _own_lines()
+	if raw:
+		var out := PackedStringArray()
+		for v: float in _ms:
+			out.append("%.0f" % v)
+		block += "\nworld raw ms: " + " ".join(out)
+	for l: String in block.split("\n", false):
+		print("tour %s | %s" % [label, l])
 
 
 ## The camera's near focus clears the tallest thing a landscape BUILDS, and only
@@ -456,10 +562,10 @@ static func warm_frames(ms: PackedFloat32Array) -> int:
 ## STEADY PLAY IS JUDGED AGAINST THE BUDGETS AND WARM-UP AGAINST ITS OWN BOUND,
 ## because they are different promises and a player meets them differently: the
 ## warm-up frames are seen once, the rest are lived with.
-static func frame_line(ms: PackedFloat32Array) -> String:
+static func frame_line(ms: PackedFloat32Array, forgive_warm := true) -> String:
 	if ms.size() < 4:
 		return "world frames: too few to say (%d)" % ms.size()
-	var warm := warm_frames(ms)
+	var warm := warm_frames(ms) if forgive_warm else 0
 	var warm_worst := 0.0
 	for i in warm:
 		warm_worst = maxf(warm_worst, ms[i])

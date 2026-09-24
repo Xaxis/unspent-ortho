@@ -86,6 +86,8 @@ extends GameSystem
 ##                          score_in:LAND, score_full, score_unbroken)
 ##   walkto folk|dog|refuse SECS  walk to a villager the camera can see, a village dog,
 ##                          or within sight of a tip's gulls (tour_people.gd)
+##   perf stats begin|end LABEL [raw]  the --stats block over just the lines between
+##                          (tour/stats_perf.gd); needs --stats
 ##   perf folk N SECS DRAWS MS  rendered cost of N villagers in view (tour_people.gd)
 ##   perf fore SECS DRAWS MS    rendered cost of the foreground layer hanging over
 ##                          this frame, shown and hidden in turn (fore_perf.gd)
@@ -443,6 +445,8 @@ func _run() -> void:
 			"perf":
 				if parts.size() > 1 and parts[1] == "fore":
 					ok = await ForePerf.perf(self, game, parts)
+				elif parts.size() > 1 and parts[1] == "stats":
+					ok = (preload("res://src/systems/tour/stats_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "lens":
 					ok = await (preload("res://src/systems/tour/lens_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "foliage":

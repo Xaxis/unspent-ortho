@@ -88,6 +88,11 @@ const TICK_PARTS: Array[String] = ["read_moment", "coast.tick", "listen", "ensur
 var tick_worst := PackedFloat32Array()
 
 
+## A `perf stats` window starts the worst again (12_landscape.stats_begin).
+func stats_reset() -> void:
+	tick_worst.fill(0.0)
+
+
 func _physics_process(_delta: float) -> void:
 	if sim == null:
 		return
