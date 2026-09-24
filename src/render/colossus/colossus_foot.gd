@@ -55,8 +55,10 @@ func update(cam: Camera3D, defs: Array, poses: Array, night: float) -> void:
 	shares.clear()
 	drawn = 0
 	if cam == null:
+		_claim(false)
 		_hide_all()
 		return
+	_claim(false)
 	_upload_one()
 	var eye := cam.global_position
 	var seen := {}
@@ -120,12 +122,26 @@ func _want_built(d: RefCounted) -> void:
 
 
 func _ready_for(d: RefCounted) -> bool:
-	if _task >= 0 and _task_for == d.id and WorkerThreadPool.is_task_completed(_task):
-		WorkerThreadPool.wait_for_task_completion(_task)
-		_task = -1
-		_kits[d.id] = _task_out
-		_meshes[d.id] = [ArrayMesh.new(), ArrayMesh.new(), FootModel.PARTS.duplicate()]
 	return _meshes.has(d.id) and (_meshes[d.id][2] as Array).is_empty()
+
+
+## A POOL TASK IS CLAIMED, ALWAYS: waited for the frame it is done, whether or
+## not a foot came near enough to want it, and waited out if this node goes
+## first. An unclaimed task holds its Callable -- a lambda on this instance --
+## in the pool past the instance's life, and the pool frees it at exit: the
+## process dies with signal 11 AFTER every test has passed (CI shard 1, exit
+## 134, from the first game in a run that came within BUILD of a tread).
+func _claim(wait: bool) -> void:
+	if _task < 0 or (not wait and not WorkerThreadPool.is_task_completed(_task)):
+		return
+	WorkerThreadPool.wait_for_task_completion(_task)
+	_task = -1
+	_kits[_task_for] = _task_out
+	_meshes[_task_for] = [ArrayMesh.new(), ArrayMesh.new(), FootModel.PARTS.duplicate()]
+
+
+func _exit_tree() -> void:
+	_claim(true)
 
 
 ## One part a frame from the worker's arrays to the renderer.

@@ -296,3 +296,35 @@ func test_a_planted_foot_stops_puts_out_and_crushes() -> void:
 				standing += 1
 	eq(standing, 0, "nothing stands where a pad comes down")
 	g2.free()
+
+
+## THE NEAR FOOT'S BUILD IS ALWAYS CLAIMED. A pool task nobody waits for keeps
+## its Callable -- a lambda on the foot node -- alive in the pool past the node,
+## and the pool frees it at exit: the process dies with signal 11 after every
+## test has passed. So a foot leaving the tree waits its build out, and a build
+## that finishes is claimed the next frame whether or not a foot came near.
+func test_the_near_foot_never_leaves_its_build_unclaimed() -> void:
+	const FootScript := preload("res://src/render/colossus/colossus_foot.gd")
+	var d: RefCounted = Def.walkers(BIG)[2]
+	var foot: Node3D = FootScript.new()
+	tree.root.add_child(foot)
+	foot.call(&"_want_built", d)
+	check(int(foot.get(&"_task")) >= 0, "the build went to a worker")
+	tree.root.remove_child(foot)
+	eq(int(foot.get(&"_task")), -1, "leaving the tree, it waited the build out")
+	check((foot.get(&"_kits") as Dictionary).has(d.id), "and kept what was built")
+	foot.free()
+	var again: Node3D = FootScript.new()
+	tree.root.add_child(again)
+	again.call(&"_want_built", d)
+	var cam := Camera3D.new()
+	tree.root.add_child(cam)
+	cam.global_position = Vector3(1.0e7, 0.0, 1.0e7)
+	var tries := 0
+	while int(again.get(&"_task")) >= 0 and tries < 600:
+		again.call(&"update", cam, [], [], 0.0)
+		await tree.process_frame
+		tries += 1
+	eq(int(again.get(&"_task")), -1, "a build nobody came near is claimed when it is done")
+	cam.free()
+	again.free()
