@@ -100,6 +100,12 @@ const THIN := 0.38
 ## at once, because a frame drawn from inside a hill is the failure and a camera
 ## that pulls in quickly is not.
 const ROOM_OUT := 3.0
+## THE PROBE IS AS WIDE AS THE NEAR PLANE, not a line. The near plane's corner
+## stands this far from the eye's own line: NEAR 0.12 at a 60 degree field and
+## 16:9 is 0.12 * tan(30) * sqrt(1 + (16/9)^2) = 0.14. A terrace riser that far
+## beside the line, higher than the eye, is a wall the near plane slices through
+## while the line itself passes clean, so the ground is asked across that width.
+const NEAR_REACH := 0.15
 
 ## The near and far clip planes under the view. Near is small because a pulled-in
 ## camera is half a unit from the head; far is where the horizon's land ends,
@@ -220,7 +226,12 @@ static func capture(shoulder: bool, blocked: bool, tool_run: bool, focused: bool
 ## a house is its footprint up to its roof, a tower its mass up to the sky. A
 ## point is blocked when it is under the land, or inside a solid's circle (grown
 ## by CLEAR) below its top; a THIN solid blocks only the eye's own place.
-static func room(from: Vector3, eye: Vector3, ground: Callable, solids: Array[Vector4]) -> float:
+## `boxes` are solids probed by what is DRAWN, not by the circle a body walks
+## round (`box_of`): a house is drawn up to 1.3 tiles past its solid circle at
+## its corners and eaves, far past `CLEAR`, and a circle let the eye stand inside
+## the corner (seed 4: every house form, 203 of 390 solid models).
+static func room(from: Vector3, eye: Vector3, ground: Callable, solids: Array[Vector4],
+		boxes: Array[PackedFloat32Array] = []) -> float:
 	var span := from.distance_to(eye)
 	if span < 0.001:
 		return 1.0
@@ -229,24 +240,35 @@ static func room(from: Vector3, eye: Vector3, ground: Callable, solids: Array[Ve
 	for i in range(1, STEPS + 1):
 		var t := float(i) / float(STEPS)
 		var q := from.lerp(eye, t)
-		if _blocked(q, ground, solids, false):
+		if _blocked(q, ground, solids, false, boxes):
 			# One step short of the first blocked point, and CLEAR short of that.
 			return maxf(least, clear - CLEAR / span)
 		clear = t
 	# The eye's own place, against the thin things too: walked back toward the
 	# shoulder until it is out of them, which is their near side.
-	if not _blocked(eye, ground, solids, true):
+	if not _blocked(eye, ground, solids, true, boxes):
 		return 1.0
 	for i in range(STEPS - 1, 0, -1):
 		var t := float(i) / float(STEPS)
-		if not _blocked(from.lerp(eye, t), ground, solids, true):
+		if not _blocked(from.lerp(eye, t), ground, solids, true, boxes):
 			return maxf(least, t)
 	return least
 
 
-static func _blocked(q: Vector3, ground: Callable, solids: Array[Vector4], thin: bool) -> bool:
-	if float(ground.call(Vector2(q.x, q.z))) + CLEAR > q.y:
-		return true
+static func _blocked(q: Vector3, ground: Callable, solids: Array[Vector4], thin: bool,
+		boxes: Array[PackedFloat32Array] = []) -> bool:
+	for off: Vector2 in GROUND_PROBE:
+		if float(ground.call(Vector2(q.x, q.z) + off)) + CLEAR > q.y:
+			return true
+	for b: PackedFloat32Array in boxes:
+		if q.y >= b[8] + CLEAR:
+			continue
+		var dx := q.x - b[0]
+		var dz := q.z - b[1]
+		var lx := dx * b[2] + dz * b[3]
+		var lz := -dx * b[3] + dz * b[2]
+		if lx > b[4] - CLEAR and lx < b[6] + CLEAR and lz > b[5] - CLEAR and lz < b[7] + CLEAR:
+			return true
 	for s: Vector4 in solids:
 		if s.z < THIN and not thin:
 			continue
@@ -256,6 +278,22 @@ static func _blocked(q: Vector3, ground: Callable, solids: Array[Vector4], thin:
 		if dx * dx + dz * dz < r * r and q.y < s.w + CLEAR:
 			return true
 	return false
+
+
+## Where the ground is asked round a point on the probe: the point itself and
+## the near plane's width either way across it (`NEAR_REACH`).
+const GROUND_PROBE: Array[Vector2] = [Vector2.ZERO, Vector2(NEAR_REACH, 0.0), Vector2(-NEAR_REACH, 0.0),
+	Vector2(0.0, NEAR_REACH), Vector2(0.0, -NEAR_REACH)]
+
+
+## A solid as the camera must see it: the box its model is DRAWN in, turned and
+## scaled as the chunk bakes it (`Basis(UP, -rot).scaled(scale)`, world_view).
+## `lo` and `hi` are the template's own extents (x, z), `top` its height, all
+## before scaling. Packed as [x, z, cos, sin, lo.x, lo.z, hi.x, hi.z, top] for
+## `_blocked`, which runs it a few hundred times a frame.
+static func box_of(pos: Vector2, rot: float, scale: float, lo: Vector2, hi: Vector2, top: float) -> PackedFloat32Array:
+	return PackedFloat32Array([pos.x, pos.y, cos(rot), sin(rot),
+		lo.x * scale, lo.y * scale, hi.x * scale, hi.y * scale, top])
 
 
 ## Degrees a second the arrow keys turn the view (docs/CONTROLS.md, C6): the one
