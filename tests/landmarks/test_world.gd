@@ -125,8 +125,10 @@ func test_a_landmark_is_seen_before_it_is_named() -> void:
 ##   main (GEN 24)           764.6 / 9,012 ms = 0.0849   load 166
 ##   before                  384.0 / 10,424 ms = 0.0368  load 227
 ##   main                    522.5 / 18,220 ms = 0.0287  load 252
-## The bar is the lowest-load pair's share with 2x headroom: 0.05.
-const SITING_SHARE := 0.05
+## The bar is the lowest-load pair's share with 1.5x headroom, 0.038: at 2x a
+## 30 ms regression planted in `sites` still read 0.0274 and passed.
+## No CI_SPEED on it, unlike `cost_lt`: a share has no machine class to allow for.
+const SITING_SHARE := 0.038
 
 
 func test_siting_them_costs_nothing_a_player_would_notice() -> void:
@@ -149,7 +151,13 @@ func test_siting_them_costs_nothing_a_player_would_notice() -> void:
 	var site_us := best_of(5, cold)
 	var share := site_us / maxf(gen_us, 1.0)
 	print("landmarks: %.2f ms to site every landmark in a 512 world, %.0f ms to grow it: %.4f of it (best of 5 and 3)" % [site_us / 1000.0, gen_us / 1000.0, share])
-	cost_lt(share, SITING_SHARE, "siting them is a small share of growing the world (%.4f)" % share)
+	var what := "siting them is a small share of growing the world (%.4f)" % share
+	# As `cost_lt` does: a share under the bar is a pass on any machine, and only
+	# one over it on a box too busy to measure goes unjudged.
+	if share < SITING_SHARE or can_measure_cost():
+		lt(share, SITING_SHARE, what)
+	else:
+		unmeasured(what, share, SITING_SHARE)
 	# And a second ask costs nothing, which is what lets the system, the map and a
 	# shot's --place all want the list without paying for it three times.
 	var t2 := Time.get_ticks_usec()
