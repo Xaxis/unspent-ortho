@@ -60,16 +60,23 @@ func setup(g: Game) -> void:
 	def = Def.ring()
 	var proof := spec.begins_with("proof")
 	if spec.contains("@"):
-		var at := spec.split("@")[1].to_float()
+		var tail := spec.split("@")[1]
+		var at := tail.to_float()
 		var now: float = g.clock.minutes if g.clock != null else 0.0
 		var peak := at if at >= 24.0 else floorf(now / 1440.0) * 1440.0 + at * 60.0
-		_staged = Pass.make_pass(def, 0, peak - Pass.window_min(def) * 0.5, float(def.peak_most) + 1.5,
-			Pass.heading(g.world.seed_value), 1.0)
+		# "/B": the bearing it rises at, so a frame can be staged in front of a
+		# camera whose bearing is fixed (the shoulder view's).
+		var head := Pass.heading(g.world.seed_value)
+		if tail.contains("/"):
+			head = tail.split("/")[1].to_float() + 180.0
+		_staged = Pass.make_pass(def, 0, peak - Pass.window_min(def) * 0.5, float(def.peak_most) + 1.5, head, 1.0)
 	layer = LayerScript.new()
 	layer.name = "orbit"
 	add_child(layer)
 	layer.setup(def, g.world.seed_value, proof)
 	add_to_group(&"colossi")
+	if spec.ends_with(":ab"):
+		_ab.call_deferred()
 
 
 func _process(_delta: float) -> void:
@@ -86,9 +93,69 @@ func _process(_delta: float) -> void:
 	var h: float = game.sky.clock_hour
 	var sun := SkyLight.sky_sun(h, float(SkyLight.sun_at(h).azimuth))
 	lit = Pass.sunlit(def, (pose.rel as Vector3) - (pose.earth as Vector3), sun)
-	var on := layer.update(cam, pose, sun, air, open and float(air.share) > 0.0)
+	var on := layer.update(cam, pose, sun, air, open and float(air.share) > 0.0 and not _held_off)
 	_tell_sky(cam, on, air)
 	_look(cam, open)
+
+
+## WHAT THE RING COSTS, measured in the running game (`--orbit=zenith@H:ab`):
+## the same view with the layer rendering and held off, alternated AB_ROUNDS
+## times with vsync off, the median frame interval of each, and the layer's own
+## render CPU and GPU where the renderer answers (on this machine the GPU half
+## answers zero, and says so). A number measured on one side only is a guess
+## about the other, so both sides are the same process, the same frame and the
+## same load, a second apart.
+const AB_ROUNDS := 4
+const AB_SECS := 1.5
+var _held_off := false
+
+
+func _ab() -> void:
+	for i in 90:
+		await get_tree().process_frame
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	var rid := layer.viewport.get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(rid, true)
+	var on_ms: Array[float] = []
+	var off_ms: Array[float] = []
+	var cpu: Array[float] = []
+	var gpu: Array[float] = []
+	var mem_on := 0.0
+	var mem_off := 0.0
+	for r in AB_ROUNDS:
+		for off: bool in [false, true]:
+			_held_off = off
+			for i in 10:
+				await RenderingServer.frame_post_draw
+			var frames: Array[float] = []
+			var until := Time.get_ticks_msec() + int(AB_SECS * 1000.0)
+			var last := Time.get_ticks_usec()
+			while Time.get_ticks_msec() < until:
+				await RenderingServer.frame_post_draw
+				var now := Time.get_ticks_usec()
+				frames.append((now - last) / 1000.0)
+				last = now
+				if not off:
+					cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(rid))
+					gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(rid))
+			frames.sort()
+			(off_ms if off else on_ms).append(frames[frames.size() / 2])
+			var mem := Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0
+			if off:
+				mem_off = mem
+			else:
+				mem_on = mem
+	_held_off = false
+	on_ms.sort()
+	off_ms.sort()
+	cpu.sort()
+	gpu.sort()
+	var g := gpu[gpu.size() / 2] if not gpu.is_empty() else 0.0
+	print("world orbit ab (%s, quality %s, load %s): frame %.2f ms with the ring, %.2f ms held off (median of %d rounds), layer render cpu %.3f ms, gpu %s, video memory %.1f MB with / %.1f MB held off (the target stays allocated)" % [
+		"Forward+" if Quality.forward_plus() else "Compatibility", Quality.current_id(),
+		str(OS.get_environment("UNSPENT_LOAD")), on_ms[on_ms.size() / 2], off_ms[off_ms.size() / 2], AB_ROUNDS,
+		cpu[cpu.size() / 2] if not cpu.is_empty() else 0.0, ("%.3f ms" % g) if g > 0.0 else "UNMEASURED", mem_on, mem_off])
+	print("world orbit ab: %s" % stats_line().strip_edges())
 
 
 ## The seen sky's half of the bargain: where the layer lands and whether to read
@@ -144,6 +211,11 @@ func stats_line() -> String:
 	var fp := frame_probe()
 	if not fp.is_empty():
 		probe = ", on the glass: unlit hull %.4f from the sky beside it over %d px" % [float(fp.ghost), int(fp.ghost_n)]
+	var rid := layer.viewport.get_viewport_rid()
+	probe += ", layer %d draws %d primitives %dx%d" % [
+		RenderingServer.viewport_get_render_info(rid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME),
+		RenderingServer.viewport_get_render_info(rid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME),
+		layer.viewport.size.x, layer.viewport.size.y]
 	var nxt: Dictionary = Pass.next_pass(def, game.world.seed_value, float(p.minutes)) if _staged.is_empty() else _staged
 	return "\nworld orbit: %s, lod %d, %.0f px across, pose %d us, %s at %.0f deg up bearing %.0f, %.0f km, sunlit %.2f, gaze %.2f, pass %d peaks %.0f deg, rises at minute %.0f (hour %.1f)" % [
 		"drawn" if layer.drawn else "not drawn", layer.lod, layer.px_across, last_pose_usec,

@@ -78,7 +78,7 @@ func setup(orbit_def: RefCounted, seed_v: int, prove := false) -> void:
 	viewport.add_child(camera)
 	sun = DirectionalLight3D.new()
 	sun.shadow_enabled = false
-	sun.light_energy = 5.0
+	sun.light_energy = 7.0
 	sun.light_color = Color(1.0, 0.97, 0.92)
 	sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
 	viewport.add_child(sun)

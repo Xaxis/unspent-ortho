@@ -448,10 +448,10 @@ func _deck(a0: float, a1: float, gap_c: float, gap: float) -> void:
 			var c := C_HULL.lerp(C_FRAME, Rng.hash01(_seed, SALT + 23, j, b) * 0.07)
 			c.a = HULL
 			var ids: Array[int] = []
-			var gap_s := 0.08 / rim
-			for q: Vector2 in [Vector2(s0 + gap_s, r0 - 0.06), Vector2(s1 - gap_s, r0 - 0.06), Vector2(s1 - gap_s, r1 + 0.06), Vector2(s0 + gap_s, r1 + 0.06)]:
+			var gap_s := 0.0
+			for q: Vector2 in [Vector2(s0 + gap_s, r0), Vector2(s1 - gap_s, r0), Vector2(s1 - gap_s, r1), Vector2(s0 + gap_s, r1)]:
 				var p := Vector3(cos(q.x) * q.y, lift, sin(q.x) * q.y)
-				ids.append(_vert(p, Vector3.UP, c, Vector2(q.x * rim, q.y), TUBE, Vector3(cos(q.x) * q.y, 0.0, sin(q.x) * q.y), near_wound * 0.7))
+				ids.append(_vert(p, Vector3.UP, c, Vector2(q.x * rim, q.y), PLATE, p, near_wound * 0.7))
 			_quad_i(ids[0], ids[1], ids[2], ids[3])
 		# A girder every few segments, under the panels, bare where they are gone.
 		if _detail and j % 3 == 0:

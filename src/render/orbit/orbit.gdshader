@@ -136,7 +136,7 @@ void fragment() {
 		float seed = dot(floor(world_km * 3.0), vec3(0.37, 0.61, 0.83));
 		if (cls < 0.5) {
 			// The rim's rows: steady, the machines' ruled light.
-			glow = 2.4 * mix(0.35, 1.0, night);
+			glow = 2.4 * mix(0.12, 1.0, night);
 		} else if (cls < 1.5) {
 			// The hub's beacon: a slow cold beat.
 			float beat = fract(TIME * 0.21 + hash1(seed) * 0.1);
@@ -181,11 +181,13 @@ void fragment() {
 		float seen = 1.0 - smoothstep(0.2, 0.45, max(w.x, w.y));
 		float seam = (1.0 - smoothstep(0.0, max(0.06, w.x * 1.5), f.x)) * seen;
 		seam = max(seam, (1.0 - smoothstep(0.0, max(0.06, w.y * 1.5), f.y)) * seen);
-		float plate = ink_hash(floor(g)) * seen;
+		// Plates vary ALONG the part only (a run of plate, then the next), never in
+		// a grid: a hash on both axes at a few pixels a cell is a mosaic.
+		float plate = ink_hash(vec2(floor(g.x), 3.0)) * seen;
 		vec2 g2 = UV / vec2(8.0, 3.2);
 		// A course is let in by its own footprint too: at four pixels a course a
 		// hash apart is a checkerboard, which is the one thing this may never be.
-		float course = ink_hash(floor(g2) + vec2(7.0, 3.0)) * (1.0 - smoothstep(0.06, 0.16, max(fwidth(g2).x, fwidth(g2).y)));
+		float course = ink_hash(vec2(floor(g2.x), 7.0)) * (1.0 - smoothstep(0.06, 0.16, max(fwidth(g2).x, fwidth(g2).y)));
 		c *= 1.0 - plate * 0.08 - seam * 0.22 - course * 0.08;
 		// Scorch toward the torn ends.
 		float burn = torn ? max(burn_v, 0.4) : burn_v * 0.8;

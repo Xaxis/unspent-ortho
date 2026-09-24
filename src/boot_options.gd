@@ -34,7 +34,8 @@ extends RefCounted
 ##                     take one moment with and without it and measure its cost
 ## --orbit=zenith@H     stage a pass of the ring whose peak stands overhead at hour
 ##                     H of the first day (H under 24) or at world minute H (24 and
-##                     over), alone, crossing on from there (render)
+##                     over), alone, crossing on from there; `zenith@H/B` has it
+##                     rise at bearing B (degrees, 0 east, 90 south) (render)
 ## --eye-round=DEG     stand that eye DEG degrees round the player from behind:
 ##                     180 looks the player in the face, 90 at their side
 ## --walk=DX,DY,SECS   scripted walk in SCREEN directions before the shot
