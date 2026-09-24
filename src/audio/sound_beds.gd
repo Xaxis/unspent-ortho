@@ -16,7 +16,7 @@ const LENGTH := {
 	&"weather_rain": 12.0, &"weather_storm": 16.0, &"weather_gust": 12.0,
 	&"weather_hail": 10.0, &"weather_snow": 12.0, &"weather_sand": 14.0,
 	&"weather_blizzard": 16.0, &"weather_ash": 14.0, &"bed_far_works": 12.0,
-	&"bed_wreck": 16.0, &"bed_hum": 8.0, &"bed_far_drone": 20.0, &"bed_gutter": 12.0,
+	&"bed_wreck": 16.0, &"bed_hum": 8.0, &"bed_far_drone": 20.0, &"bed_colossus": 24.0, &"bed_gutter": 12.0,
 	&"weather_rain_metal": 12.0, &"weather_rain_leaves": 12.0, &"weather_rain_water": 12.0,
 }
 const SHORE_CYCLE := 5.4
@@ -98,6 +98,7 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 		&"bed_wreck": return _wreck(rate)
 		&"bed_hum": return _hum(rate)
 		&"bed_far_drone": return _far_drone(rate)
+		&"bed_colossus": return _colossus(rate)
 		&"bed_gutter": return _gutter(rate)
 		&"weather_rain_metal": return _rain_metal(rate)
 		&"weather_rain_leaves": return _rain_leaves(rate)
@@ -853,6 +854,32 @@ static func _far_drone(rate: int) -> PackedFloat32Array:
 	var out := Synth.buffer(n)
 	_mix_into(out, chord, 1.0, _curve(n, 3, 9302, 0.45, 1.0, 1.4))
 	_mix_into(out, _band(n, rate, 9303, 130.0, 320.0, true), 0.012, _curve(n, 4, 9304, 0.3, 1.0))
+	return out
+
+
+## THE COLOSSI, ALWAYS: a walking mountain range heard as weather is. A chord of
+## harmonics of 27.5 Hz from the sixth up (the fundamental implied, never
+## played), its members drifting against each other so it beats and grinds like
+## something turning under load, and the wind tearing through a truss the size of
+## a valley, in bands, the way a gale sounds in a bridge.
+static func _colossus(rate: int) -> PackedFloat32Array:
+	var n := _n(&"bed_colossus", rate)
+	var out := Synth.buffer(n)
+	var chord := Synth.buffer(n)
+	var harm: Array[int] = [6, 7, 8, 9, 11, 12, 14]
+	var amps: Array[float] = [0.05, 0.035, 0.04, 0.02, 0.018, 0.025, 0.01]
+	var bend := TAU / n
+	for k in harm.size():
+		var f := Synth.snap_freq(27.5 * float(harm[k]), rate, n)
+		var phk := Rng.hash01(9311, k) * TAU
+		var ph := 0.0
+		for i in n:
+			ph += TAU * f * (1.0 + 0.003 * sin(bend * float(1 + k % 3) * i + phk)) / rate
+			chord[i] += amps[k] * sin(ph)
+	Synth.lowpass4(chord, rate, 700.0, true)
+	_mix_into(out, chord, 1.0, _curve(n, 5, 9312, 0.5, 1.0, 1.3))
+	_mix_into(out, _band(n, rate, 9313, 140.0, 420.0, true), 0.016, _curve(n, 6, 9314, 0.2, 1.0, 2.0))
+	_mix_into(out, _band(n, rate, 9315, 600.0, 1400.0, false), 0.004, _curve(n, 7, 9316, 0.0, 1.0, 3.0))
 	return out
 
 

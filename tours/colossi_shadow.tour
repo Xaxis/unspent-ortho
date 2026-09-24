@@ -1,0 +1,19 @@
+# A COLOSSUS'S LEG SHADOW crosses the land (sky.gdshaderinc `sky_colossus`,
+# 19_colossi `_cast`). The skyline walker is staged at the evening moment its
+# thigh stands between the player and a sun twenty degrees up; the walk carries
+# the leg on, and the shadow -- a band of real shade kilometres wide, soft at
+# its edge -- sweeps over the ground in front of the eye and on across the
+# player within a minute. Frames five seconds apart.
+#   tools/tour.sh tours/colossi_shadow.tour --seed=7 --place=coast --hour=19.25 --colossus=0@4428 --eye=1.7,5 --face=110 --weather=clear:0
+await colossus_shadow 20
+shot 00-its-shadow-on-the-land with land:coast
+wait 5
+shot 01-sweeping with land:coast
+wait 5
+shot 02-sweeping with land:coast
+wait 5
+shot 03-sweeping with land:coast
+wait 5
+shot 04-sweeping with land:coast
+wait 5
+shot 05-sweeping with land:coast

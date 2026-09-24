@@ -36,6 +36,16 @@ const FOV := 60.0
 ## angle; past `PITCH_LEAST` the player is under the bottom edge.
 const PITCH_LEAST := -14.0
 const PITCH_MOST := 42.0
+## THE GAZE: how far up the view may tip while a colossus stands in front of it
+## (19_colossi `gaze`, 0..1). A walker fifty kilometres off has its hub 45
+## degrees up, and at -14 the player sees two legs going up out of the frame and
+## never the machine; at -45 the top of the frame is 75 degrees up and the whole
+## of it stands there. The player goes under the bottom edge to see it, which is
+## exactly what looking up at something that size is.
+const GAZE_LEAST := -45.0
+## Degrees a second the view comes back down to `PITCH_LEAST` once nothing
+## holds the gaze any more, eased by how far it has to come: never a snap.
+const GAZE_RETURN := 25.0
 ## Degrees of turn per SCREEN pixel of mouse travel (the hand's, not the
 ## viewport's: the same hand turns the view the same way at any window size).
 const MOUSE_DEG := 0.14
@@ -166,9 +176,26 @@ static func follow_yaw(yaw_deg: float, facing: float, move: Vector2, idle_s: flo
 ## The mouse, turned into a yaw and a pitch. `rel` is in screen pixels, right and
 ## down positive; right turns right (yaw DOWN, Godot's yaw is anticlockwise), down
 ## looks down.
-static func look(yaw_deg: float, pitch_deg: float, rel: Vector2) -> Vector2:
+## `least` is how far up it may go now (`least_for`): the gaze lets it further.
+## A pitch already past `least` (the gaze has just let go) is never pulled back
+## by the mouse, only held there -- `settle` brings it down.
+static func look(yaw_deg: float, pitch_deg: float, rel: Vector2, least := PITCH_LEAST) -> Vector2:
 	return Vector2(yaw_deg - rel.x * MOUSE_DEG,
-		clampf(pitch_deg + rel.y * MOUSE_DEG, PITCH_LEAST, PITCH_MOST))
+		clampf(pitch_deg + rel.y * MOUSE_DEG, minf(least, pitch_deg), PITCH_MOST))
+
+
+## How far up the view may tip with `gaze` (0..1) of a colossus in front of it.
+static func least_for(gaze: float) -> float:
+	return lerpf(PITCH_LEAST, GAZE_LEAST, smoothstep(0.0, 1.0, clampf(gaze, 0.0, 1.0)))
+
+
+## A pitch tipped further up than `least` allows comes back down to it over
+## time, fastest when furthest out, so losing the gaze eases the view home.
+static func settle(pitch_deg: float, least: float, delta: float) -> float:
+	if pitch_deg >= least:
+		return pitch_deg
+	var step := GAZE_RETURN * delta * clampf((least - pitch_deg) / 10.0, 0.2, 1.0)
+	return minf(least, pitch_deg + step)
 
 
 ## Whether the pointer should be held by the game: only while the view is over

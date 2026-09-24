@@ -22,10 +22,28 @@ extends GameSystem
 const ViewScript := preload("res://src/render/colossus/colossus_view.gd")
 const Def := preload("res://src/core/colossus/colossus_def.gd")
 
+const Walk := preload("res://src/core/colossus/colossus_walk.gd")
+
 var view: ViewScript
 var _only := -1
 var _stage := NAN
 var _start := 0.0
+## The walk's minute last frame: the steps between it and this frame's are the
+## ones that land now (colossus_walk.gd `steps_between`, which fires nothing
+## across a skip).
+var _last := NAN
+## What a landing sends the player, still on its way: [real seconds left, what
+## (&"quake" | &"thump" | &"boom"), where it landed, how far that is].
+var _coming: Array = []
+## How loud the colossi are where the player stands, 0..1, for the far drone
+## (70_audio reads it off the group `&"colossi"`, SoundMix `bed_colossus`).
+var hum := 0.0
+## How much of a colossus the view is turned toward, 0..1: while it is, the
+## shoulder view may tip up far enough to take it in whole (41_shoulder,
+## Shoulder.GAZE_LEAST).
+var gaze := 0.0
+## Landings felt this run, for --stats and the proof: none is ever latched.
+var felt_count := 0
 
 
 func setup(g: Game) -> void:
@@ -46,6 +64,7 @@ func setup(g: Game) -> void:
 	add_child(view)
 	view.setup(defs, g.world.seed_value, g.world.size)
 	_start = g.clock.minutes if g.clock != null else 0.0
+	add_to_group(&"colossi")
 
 
 ## The walk's own minute: the world clock, or the staged minute and however long
@@ -57,13 +76,135 @@ func minutes() -> float:
 	return _stage + (now - _start)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if view == null or game == null or game.sky == null:
 		return
 	var cam := get_viewport().get_camera_3d()
 	var air: Dictionary = game.sky.seen_air()
 	var open := game.sky.closed < 0.5 and SkyLight.last_lid() < 0.5
-	view.update(cam, minutes(), air, open and float(air.share) > 0.0)
+	var m := minutes()
+	view.update(cam, m, air, open and float(air.share) > 0.0)
+	# Steps are FELT wherever the sky is open, looking down or out: the ground
+	# does not care which way the camera points.
+	_land(m if open else NAN)
+	_arrive(delta)
+	_listen(cam, open)
+	_cast(open)
+
+
+## How far round the player a leg's shadow is looked for: the land the eye can
+## see at the horizon (Shoulder.FAR) and a little more.
+const SHADOW_REACH := 1600.0
+## How many leg shadows were handed to the land this frame (--stats, a tour).
+var shadows := 0
+
+
+## The legs' shadows on the land, as capsules in globals (sky.gdshaderinc
+## `sky_colossus`), from the REAL sun -- the one the sky draws -- which is low
+## at dusk and gone at night, so a leg's shadow runs long across the land at
+## evening and there is none after dark.
+func _cast(open: bool) -> void:
+	var caps: Array = []
+	var sun := Vector3.ZERO
+	if open:
+		var h: float = game.sky.clock_hour
+		sun = SkyLight.sky_sun(h, float(SkyLight.sun_at(h).azimuth))
+		var here := _player_at()
+		for i in view.defs.size():
+			caps.append_array(Walk.shadow_capsules(view.defs[i], view.poses[i], sun, here, SHADOW_REACH))
+	caps.resize(mini(caps.size(), Walk.SHADOW_MOST))
+	shadows = caps.size()
+	RenderingServer.global_shader_parameter_set(&"colossus_sun", Vector4(sun.x, sun.y, sun.z, float(shadows)))
+	for m in 4:
+		var cols: Array[Vector4] = [Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO]
+		for j in 2:
+			var i := m * 2 + j
+			if i < caps.size():
+				var c: Array = caps[i]
+				var a: Vector3 = c[0]
+				var b: Vector3 = c[1]
+				cols[j * 2] = Vector4(a.x, a.y, a.z, float(c[2]))
+				cols[j * 2 + 1] = Vector4(b.x, b.y, b.z, 0.0)
+		RenderingServer.global_shader_parameter_set(StringName("colossus_legs%d" % m), Projection(cols[0], cols[1], cols[2], cols[3]))
+
+
+## Every foot that came down since last frame sends the player three things,
+## each at its own real speed: the ground's shake and thump at 3 km/s, the
+## boom through the air at 343 m/s.
+func _land(m: float) -> void:
+	if not is_nan(_last) and not is_nan(m):
+		var here := _player_at()
+		for i in view.defs.size():
+			for e: Dictionary in Walk.steps_between(view.defs[i], view.routes[i], _last, m):
+				var at: Vector3 = e.at
+				var d := at.distance_to(here)
+				if Walk.felt(d).x <= 0.0 and d > Walk.FELT_FAR * 1.5:
+					continue
+				_coming.append([Walk.ground_delay(d), &"quake", at, d])
+				_coming.append([Walk.ground_delay(d), &"thump", at, d])
+				_coming.append([Walk.air_delay(d), &"boom", at, d])
+	_last = m
+
+
+func _arrive(delta: float) -> void:
+	var i := 0
+	while i < _coming.size():
+		var c: Array = _coming[i]
+		c[0] = float(c[0]) - delta
+		if float(c[0]) > 0.0:
+			i += 1
+			continue
+		_coming.remove_at(i)
+		var d: float = c[3]
+		match c[1]:
+			&"quake":
+				var f := Walk.felt(d)
+				felt_count += 1
+				if game.camera != null and f.x > 0.0:
+					# Slower the further it has come.
+					game.camera.quake(f.x, f.y, lerpf(2.2, 1.0, clampf(d / Walk.FELT_FAR, 0.0, 1.0)))
+			&"thump":
+				Events.sfx.emit(&"colossus_step", c[2])
+			&"boom":
+				Events.sfx.emit(&"colossus_boom", c[2])
+
+
+## The drone's level, and which way the view is turned: both from the walkers'
+## live poses, never latched.
+func _listen(cam: Camera3D, open: bool) -> void:
+	hum = 0.0
+	gaze = 0.0
+	if not open:
+		return
+	var here := _player_at()
+	var fwd := Vector2.ZERO
+	if cam != null:
+		var f := -cam.global_transform.basis.z
+		fwd = Vector2(f.x, f.z).normalized()
+	for p: Dictionary in view.poses:
+		if p.is_empty():
+			continue
+		var o: Vector3 = (p.hub as Transform3D).origin
+		var flat := Vector2(o.x - here.x, o.z - here.z)
+		var d := flat.length()
+		# Loud under it, still there on the skyline.
+		var h := clampf(1.0 - log(maxf(d, 25000.0) / 25000.0) / log(12.0), 0.12, 1.0)
+		if int(p.swinging) >= 0:
+			h = minf(1.0, h * 1.25)
+		hum = maxf(hum, h)
+		if fwd != Vector2.ZERO and d > 1.0:
+			var off := rad_to_deg(absf(fwd.angle_to(flat / d)))
+			gaze = maxf(gaze, smoothstep(GAZE_WIDE, GAZE_WIDE * 0.5, off))
+
+
+## Degrees either side of the view's bearing a walker may stand and still draw
+## the gaze up to it.
+const GAZE_WIDE := 50.0
+
+
+func _player_at() -> Vector3:
+	var p: Vector2 = game.player.pos if game.player != null else Vector2.ZERO
+	return Vector3(p.x, 0.0, p.y)
 
 
 ## For `--stats`: where each walker is from the camera, whether it was drawn,
@@ -73,7 +214,7 @@ func stats_line() -> String:
 	if view == null:
 		return "\nworld colossi: off"
 	var cam := get_viewport().get_camera_3d()
-	var out := "\nworld colossi: pose %d us" % view.last_pose_usec
+	var out := "\nworld colossi: pose %d us, %d landings felt, %d on their way, hum %.2f, gaze %.2f, %d leg shadows on the land, the player at %.0f,%.0f" % [view.last_pose_usec, felt_count, _coming.size(), hum, gaze, shadows, _player_at().x, _player_at().z]
 	if cam != null:
 		var f := -cam.global_transform.basis.z
 		out += ", the camera looks at bearing %.0f" % fposmod(rad_to_deg(atan2(f.z, f.x)), 360.0)
@@ -100,6 +241,10 @@ func tour_seen(what: StringName) -> bool:
 	match what:
 		&"colossus":
 			return view.drawn.has(true)
+		&"colossus_shadow":
+			return shadows > 0
+		&"colossus_quake":
+			return game.camera != null and game.camera.quaking()
 		&"colossus_step":
 			for p: Dictionary in view.poses:
 				if not p.is_empty() and int(p.swinging) >= 0:

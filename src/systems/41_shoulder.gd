@@ -107,6 +107,7 @@ func _process(delta: float) -> void:
 	if blocked or not cam.shoulder:
 		return
 	_idle += delta
+	cam.shoulder_pitch = Shoulder.settle(cam.shoulder_pitch, Shoulder.least_for(_gaze()), delta)
 	if not cam.subject.is_finite():
 		cam.shoulder_yaw = Shoulder.follow_yaw(cam.shoulder_yaw, game.player.facing,
 			game.player.intent_move, _idle, delta)
@@ -153,12 +154,21 @@ func _input(event: InputEvent) -> void:
 	# SCREEN pixels, never the viewport's: `relative` is scaled by the stretch, so
 	# the same hand would turn the view twice as far in a window half the size
 	# (and a tool run's window, one pixel across, turned it by the whole clamp).
-	var l := Shoulder.look(cam.shoulder_yaw, cam.shoulder_pitch, mm.screen_relative)
+	var l := Shoulder.look(cam.shoulder_yaw, cam.shoulder_pitch, mm.screen_relative, Shoulder.least_for(_gaze()))
 	# A lock owns the turn; the mouse may still tip the view up or down.
 	if not cam.subject.is_finite():
 		cam.shoulder_yaw = l.x
 	cam.shoulder_pitch = l.y
 	_idle = 0.0
+
+
+## How much of a colossus the view is turned toward: whatever walks them says so
+## on the group `&"colossi"` (19_colossi `gaze`), so this knows nothing of them.
+func _gaze() -> float:
+	var g := 0.0
+	for n: Node in get_tree().get_nodes_in_group(&"colossi"):
+		g = maxf(g, float(n.get(&"gaze")))
+	return g
 
 
 ## Whether the window has the player, or what a test says it has: a headless
