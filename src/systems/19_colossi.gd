@@ -539,8 +539,11 @@ func tour_place(what: String) -> Vector2:
 	for m: Dictionary in game.world.landmarks:
 		if StringName(m.get("kind", &"")) != &"tread":
 			continue
-		var spots: Array[Vector2] = [m.pos as Vector2]
-		var faces: Array[float] = [float(m.yaw)]
+		# Under the ankle: out in the gap between two toes, looking back in under
+		# the drum, so the arch and a toe on each side are in the frame.
+		var gap := float(m.yaw) + TAU / 6.0
+		var spots: Array[Vector2] = [(m.pos as Vector2) + Vector2.from_angle(gap) * FOOT_STAND]
+		var faces: Array[float] = [gap + PI]
 		if pad or rim or crater:
 			spots.clear()
 			faces.clear()
@@ -579,6 +582,8 @@ var _facing := NAN
 const PAD_STAND := 72.0
 ## How far from a pad's middle `near colossus_rim` stands: on the spoil's lip.
 const RIM_STAND := 34.0
+## How far out from under the ankle's middle `near colossus_foot` stands.
+const FOOT_STAND := 60.0
 
 
 ## Which way `tour_place` stood the player to face: at a pad, toward it; under
