@@ -242,6 +242,12 @@ func test_the_far_model_is_one_draw_inside_its_budget() -> void:
 	for i in range(0, custom.size(), 4):
 		bones[int(custom[i])] = true
 	eq(bones.size(), Model.BONES, "every bone carries geometry")
+	# L1, the near body, carries the machinery and stays well inside its budget.
+	var near_body: ArrayMesh = Model.build(d, true)
+	eq(near_body.get_surface_count(), 1, "L1 is one draw too")
+	var near_tris := (near_body.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() / 3
+	gt(float(near_tris), float(tris) * 1.3, "L1 carries more than L2 (%d over %d)" % [near_tris, tris])
+	lt(float(near_tris), 20000.0, "and stays under 20k triangles (%d)" % near_tris)
 	var lens := 0
 	for c: Color in arrays[Mesh.ARRAY_COLOR] as PackedColorArray:
 		if c.a < 0.98:
@@ -368,3 +374,33 @@ func test_the_gaze_lets_the_view_tip_up_and_eases_it_home() -> void:
 	near(p, Shoulder.PITCH_LEAST, 1e-3, "it comes home")
 	lt(worst, 0.5, "never more than half a degree a frame (%.2f)" % worst)
 	gt(float(frames) / 60.0, 1.0, "over more than a second (%.1f s)" % (float(frames) / 60.0))
+
+
+## A LEG'S SHADOW ON THE LAND: the capsules handed to the shaders are the ones
+## whose shadow really crosses the ground round the player, and none else --
+## the common frame hands over nothing and the land pays nothing for it.
+func test_only_a_leg_between_the_player_and_the_sun_is_handed_over() -> void:
+	var d: RefCounted = _walkers()[1]
+	var p: Dictionary = Walk.pose(d, _route(d), 900.0)
+	var sun := Vector3(0.3, 0.35, -0.5).normalized()
+	# The ground under the middle of leg 0's shin, looking back up the sun.
+	var mid: Vector3 = (p.knees[0] + p.ankles[0]) * 0.5
+	var under := mid - sun * (mid.y / sun.y)
+	under.y = 0.0
+	var kept: Array = Walk.shadow_capsules(d, p, sun, under, 1500.0)
+	gt(float(kept.size()), 0.0, "the shin's shadow falls where the player stands")
+	lt(float(kept.size()), 9.0, "and never more than eight capsules")
+	var far_off := under + Vector3(-sun.z, 0.0, sun.x).normalized() * 60000.0
+	eq(Walk.shadow_capsules(d, p, sun, far_off, 1500.0).size(), 0, "sixty kilometres to the side, nothing")
+	eq(Walk.shadow_capsules(d, p, Vector3(0.3, -0.2, 0.9).normalized(), under, 1500.0).size(), 0, "a sun under the horizon casts nothing")
+	# And the capsule really stands on the line from there to the sun.
+	var c: Array = kept[0]
+	var a: Vector3 = c[0]
+	var b: Vector3 = c[1]
+	var ab := b - a
+	var best := INF
+	for i in 201:
+		var q := a + ab * (float(i) / 200.0)
+		var t := maxf(0.0, (q - under).dot(sun))
+		best = minf(best, (under + sun * t).distance_to(q))
+	lt(best, float(c[2]) + 1500.0, "the ray to the sun passes through it (%.0f m off, radius %.0f)" % [best, c[2]])

@@ -89,6 +89,43 @@ func _process(delta: float) -> void:
 	_land(m if open else NAN)
 	_arrive(delta)
 	_listen(cam, open)
+	_cast(open)
+
+
+## How far round the player a leg's shadow is looked for: the land the eye can
+## see at the horizon (Shoulder.FAR) and a little more.
+const SHADOW_REACH := 1600.0
+## How many leg shadows were handed to the land this frame (--stats, a tour).
+var shadows := 0
+
+
+## The legs' shadows on the land, as capsules in globals (sky.gdshaderinc
+## `sky_colossus`), from the REAL sun -- the one the sky draws -- which is low
+## at dusk and gone at night, so a leg's shadow runs long across the land at
+## evening and there is none after dark.
+func _cast(open: bool) -> void:
+	var caps: Array = []
+	var sun := Vector3.ZERO
+	if open:
+		var h: float = game.sky.clock_hour
+		sun = SkyLight.sky_sun(h, float(SkyLight.sun_at(h).azimuth))
+		var here := _player_at()
+		for i in view.defs.size():
+			caps.append_array(Walk.shadow_capsules(view.defs[i], view.poses[i], sun, here, SHADOW_REACH))
+	caps.resize(mini(caps.size(), Walk.SHADOW_MOST))
+	shadows = caps.size()
+	RenderingServer.global_shader_parameter_set(&"colossus_sun", Vector4(sun.x, sun.y, sun.z, float(shadows)))
+	for m in 4:
+		var cols: Array[Vector4] = [Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO]
+		for j in 2:
+			var i := m * 2 + j
+			if i < caps.size():
+				var c: Array = caps[i]
+				var a: Vector3 = c[0]
+				var b: Vector3 = c[1]
+				cols[j * 2] = Vector4(a.x, a.y, a.z, float(c[2]))
+				cols[j * 2 + 1] = Vector4(b.x, b.y, b.z, 0.0)
+		RenderingServer.global_shader_parameter_set(StringName("colossus_legs%d" % m), Projection(cols[0], cols[1], cols[2], cols[3]))
 
 
 ## Every foot that came down since last frame sends the player three things,
@@ -177,7 +214,7 @@ func stats_line() -> String:
 	if view == null:
 		return "\nworld colossi: off"
 	var cam := get_viewport().get_camera_3d()
-	var out := "\nworld colossi: pose %d us, %d landings felt, %d on their way, hum %.2f, gaze %.2f" % [view.last_pose_usec, felt_count, _coming.size(), hum, gaze]
+	var out := "\nworld colossi: pose %d us, %d landings felt, %d on their way, hum %.2f, gaze %.2f, %d leg shadows on the land, the player at %.0f,%.0f" % [view.last_pose_usec, felt_count, _coming.size(), hum, gaze, shadows, _player_at().x, _player_at().z]
 	if cam != null:
 		var f := -cam.global_transform.basis.z
 		out += ", the camera looks at bearing %.0f" % fposmod(rad_to_deg(atan2(f.z, f.x)), 360.0)
@@ -204,6 +241,8 @@ func tour_seen(what: StringName) -> bool:
 	match what:
 		&"colossus":
 			return view.drawn.has(true)
+		&"colossus_shadow":
+			return shadows > 0
 		&"colossus_quake":
 			return game.camera != null and game.camera.quaking()
 		&"colossus_step":

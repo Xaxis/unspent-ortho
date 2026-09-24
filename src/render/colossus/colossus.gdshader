@@ -246,22 +246,31 @@ void fragment() {
 	bool lamp = mark < 0.98;
 	bool lens = mark > 0.75 && mark < 0.85;
 	bool strip = mark > 0.6 && mark <= 0.75;
-	// Panels on the BODY's own frame, so they ride with it and do not swim: a
-	// course of plate every 600 m up, ruled across by seams on the facets. At
-	// this distance a seam is a pixel or less, so it fades by its own footprint
-	// rather than shimmering.
+	// Panels on the BODY's own frame, so they ride with it and do not swim, at
+	// TWO scales: courses of plate every 600 m up with seams on the facets, and
+	// inside each course the plates it is laid in, a quarter that size. Each
+	// scale is let in by its own footprint on the glass (`fwidth`): a seam
+	// thinner than a pixel is faded rather than drawn, so the walker on the
+	// skyline shows its courses and the one looming shows its plates too, and
+	// neither shimmers as it walks.
 	vec3 g = body_local / vec3(900.0, 600.0, 900.0);
 	vec3 f = abs(fract(g) - 0.5);
 	vec3 w = fwidth(g);
 	float seam_y = 1.0 - smoothstep(0.0, max(0.06, w.y * 1.5), f.y);
 	seam_y *= 1.0 - smoothstep(0.25, 0.5, w.y);
+	vec3 g2 = body_local / vec3(230.0, 150.0, 230.0);
+	vec3 f2 = abs(fract(g2) - 0.5);
+	vec3 w2 = fwidth(g2);
+	float fine_seen = 1.0 - smoothstep(0.2, 0.45, max(w2.x, max(w2.y, w2.z)));
+	float seam2 = (1.0 - smoothstep(0.0, max(0.05, w2.y * 1.5), f2.y)) * fine_seen;
 	float panel = ink_hash(floor(g.xz) + floor(g.y) * 7.0);
+	float plate = ink_hash(floor(g2.xz) * 1.7 + floor(g2.y) * 3.1 + vec2(11.0, 5.0)) * fine_seen;
 	if (!lamp) {
-		c *= 1.0 - panel * 0.10 - seam_y * 0.28;
+		c *= 1.0 - panel * 0.10 - seam_y * 0.28 - plate * 0.07 - seam2 * 0.16;
 	}
 	ALBEDO = matter_albedo(lamp ? c * 0.3 : c * FOUND_MASS);
 	METALLIC = lamp ? 0.0 : FOUND_METAL;
-	ROUGHNESS = lamp ? 0.3 : FOUND_ROUGH + seam_y * 0.3;
+	ROUGHNESS = lamp ? 0.3 : clamp(FOUND_ROUGH + seam_y * 0.3 + seam2 * 0.15 - plate * 0.12, 0.05, 1.0);
 	SPECULAR = 0.48;
 	// The machine's own light, on the machines' own power: the lens always (a
 	// lamp in daylight shows its colour, not white), the cold strips and the

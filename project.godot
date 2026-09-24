@@ -136,6 +136,27 @@ textures/vram_compression/import_etc2_astc=true
 
 [shader_globals]
 
+colossus_sun={
+"type": "vec4",
+"value": Vector4(0, 1, 0, 0)
+}
+colossus_legs0={
+"type": "mat4",
+"value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+colossus_legs1={
+"type": "mat4",
+"value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+colossus_legs2={
+"type": "mat4",
+"value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+colossus_legs3={
+"type": "mat4",
+"value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+
 sky_tint={
 "type": "vec3",
 "value": Vector3(1, 1, 1)

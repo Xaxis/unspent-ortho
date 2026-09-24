@@ -57,11 +57,18 @@ var _bone := 0
 ## wide fifty kilometres off is a pixel; the shader keeps each at least a few
 ## pixels, by kind, so the machine's own light reads however far off it walks.
 var _kind := 0
+var _detail := false
 var _lc := Vector3.ZERO
 
 
-static func build(def: RefCounted) -> ArrayMesh:
+## `detail` builds L1, the body for a walker near enough that its legs are
+## tens of pixels wide (under `ColossusView.NEAR_LOD`): the same silhouette,
+## with more flats to the plate and the machinery a leg that size is made of
+## -- cable runs, pistons across the knee, the hip's drive ring. L2 leaves them
+## out because past it they are under a pixel and only cost.
+static func build(def: RefCounted, detail := false) -> ArrayMesh:
 	var m: RefCounted = (load("res://src/models/colossus_model.gd") as GDScript).new()
+	m._detail = detail
 	m._hub(def)
 	for k in LEGS:
 		m._leg(def, k)
@@ -249,8 +256,62 @@ func _lamp(kind: int, centre := Vector3.ZERO) -> void:
 func _beacon(at: Vector3, radius: float) -> void:
 	_lamp(2, at)
 	# A beacon is a point of light: a few facets are all a pixel or two can hold.
-	_ball(at, radius, 5, BEACON, BEACON, 3)
+	_ball(at, radius, 4, BEACON, BEACON, 2)
 	_lamp(0)
+
+
+## THE THIGH'S MACHINERY (L1), on the thigh's own bone. Where it meets the hip,
+## a drive ring: a flange wider than the leg with ribs across it, the thing the
+## whole leg turns in. Down its length, cable runs in pairs on the flanks, held
+## in clamps every few kilometres. At the knee, the cylinders of the pistons
+## that bend it -- their rods are on the shin (`_shin_works`), so the two halves
+## slide into each other as the knee opens and closes.
+func _thigh_works(d: RefCounted) -> void:
+	var l1: float = d.thigh
+	var t_r: Vector2 = d.thigh_r
+	_lathe(Vector3.ZERO, [Vector2(t_r.x * 1.05, 250.0), Vector2(t_r.x * 1.55, 450.0), Vector2(t_r.x * 1.55, 900.0), Vector2(t_r.x * 1.08, 1100.0)], 16, [RIM, PLATE, BODY], PI / 16.0)
+	for i in 8:
+		var a := TAU * float(i) / 8.0
+		var dir := Vector3(cos(a), 0.0, sin(a))
+		_strut(dir * t_r.x * 1.5 + Vector3(0.0, 500.0, 0.0), dir * t_r.x * 1.05 + Vector3(0.0, 2600.0, 0.0), 150.0, 90.0, 4, PLATE)
+	for side: float in [1.0, -1.0]:
+		for off: float in [-0.18, 0.18]:
+			var a := side * PI * 0.5 + off
+			var dir := Vector3(cos(a), 0.0, sin(a))
+			_strut(dir * t_r.x * 1.07 + Vector3(0.0, 1200.0, 0.0), dir * t_r.y * 1.08 + Vector3(0.0, l1 * 0.93, 0.0), 70.0, 60.0, 4, DARK)
+		for c in 5:
+			var y := lerpf(2500.0, l1 * 0.9, float(c) / 4.0)
+			var w := lerpf(t_r.x, t_r.y, y / l1)
+			var dir := Vector3(0.0, 0.0, side)
+			_strut(dir * w * 0.98 + Vector3(0.0, y - 120.0, 0.0), dir * w * 1.14 + Vector3(0.0, y + 120.0, 0.0), 160.0, 160.0, 4, RIM)
+	# Piston cylinders across the knee, on the outer face.
+	for off: float in [-0.35, 0.35]:
+		var dir := Vector3(cos(off), 0.0, sin(off))
+		_strut(dir * t_r.y * 1.25 + Vector3(0.0, l1 * 0.70, 0.0), dir * t_r.y * 1.3 + Vector3(0.0, l1 * 0.985, 0.0), 260.0, 240.0, 6, BODY)
+	# The knee's own collar, standing off the ball.
+	_lathe(Vector3.ZERO, [Vector2(float(d.knee_r) * 0.9, l1 - 520.0), Vector2(float(d.knee_r) * 1.14, l1 - 380.0), Vector2(float(d.knee_r) * 1.14, l1 - 220.0), Vector2(float(d.knee_r) * 0.9, l1 - 80.0)], 12, [RIM, PLATE, RIM], PI / 12.0)
+
+
+## THE SHIN'S MACHINERY (L1): the piston rods that meet the thigh's cylinders,
+## a flange where it leaves the knee, cable runs down to the ankle, and a cage of
+## struts round the ankle block the whole weight comes down through.
+func _shin_works(d: RefCounted, shin: Array) -> void:
+	var l2: float = d.shin
+	var s_r: Vector2 = d.shin_r
+	var t_r: Vector2 = d.thigh_r
+	for off: float in [-0.35, 0.35]:
+		var dir := Vector3(cos(off), 0.0, sin(off))
+		_strut(dir * t_r.y * 1.28 + Vector3(0.0, -600.0, 0.0), dir * s_r.x * 1.3 + Vector3(0.0, l2 * 0.22, 0.0), 110.0, 110.0, 4, PLATE)
+	_lathe(Vector3.ZERO, [Vector2(s_r.x * 1.02, 300.0), Vector2(s_r.x * 1.4, 480.0), Vector2(s_r.x * 1.4, 800.0), Vector2(s_r.x * 1.03, 980.0)], 12, [RIM, BODY, RIM], PI / 12.0)
+	for side: float in [1.0, -1.0]:
+		var dir := Vector3(0.0, 0.0, side)
+		var top := _radius_near(shin, 1500.0, 300.0)
+		var low := _radius_near(shin, l2 * 0.9, 300.0)
+		_strut(dir * top * 1.06 + Vector3(0.0, 1500.0, 0.0), dir * low * 1.12 + Vector3(0.0, l2 * 0.9, 0.0), 55.0, 30.0, 4, DARK)
+	for i in 6:
+		var a := TAU * float(i) / 6.0
+		var dir := Vector3(cos(a), 0.0, sin(a))
+		_strut(dir * s_r.y * 1.1 + Vector3(0.0, l2 * 0.93, 0.0), dir * s_r.y * 2.2 + Vector3(0.0, l2 - 20.0, 0.0), 24.0, 30.0, 4, PLATE)
 
 
 ## Four beacons round a part at `at` (on its axis), `out` from it: whichever
@@ -328,7 +389,10 @@ func _leg(d: RefCounted, k: int) -> void:
 		thigh.append(Vector2(w, t * l1))
 		cols.append(RIM if i == 1 or i == 7 else (PLATE if i % 3 == 0 else BODY))
 	thigh[0] = Vector2(t_r.x * 0.8, 0.0)
-	_lathe(Vector3.ZERO, thigh, 8, cols, PI / 8.0)
+	var sides := 12 if _detail else 8
+	_lathe(Vector3.ZERO, thigh, sides, cols, PI / float(sides))
+	if _detail:
+		_thigh_works(d)
 	_strut(Vector3(-t_r.x * 1.05, l1 * 0.12, 0.0), Vector3(-t_r.y * 1.1, l1 * 0.86, 0.0), 180.0, 120.0, 4, PLATE)
 	# The knee rides the thigh's end.
 	_ball(Vector3(0.0, l1, 0.0), float(d.knee_r), 10, BODY, RIM)
@@ -349,7 +413,9 @@ func _leg(d: RefCounted, k: int) -> void:
 			w *= 1.18
 		shin.append(Vector2(w, t * l2))
 		sc.append(RIM if i == 2 or i == 8 else (PLATE if i % 4 == 0 else BODY))
-	_lathe(Vector3.ZERO, shin, 8, sc, PI / 8.0)
+	_lathe(Vector3.ZERO, shin, sides, sc, PI / float(sides))
+	if _detail:
+		_shin_works(d, shin)
 	# Cold strips round the shin: thin rings standing proud of the plate, the
 	# plan's own light running down the leg at night. A strip is a LINE; laid as
 	# a whole band of plate it read as a white bandage round the leg.
@@ -359,7 +425,7 @@ func _leg(d: RefCounted, k: int) -> void:
 		# sleeve's chord bulged past them and not one was ever drawn.
 		var w := _radius_near(shin, t * l2, 400.0) * 1.08
 		_lamp(1, Vector3(0.0, t * l2 + 80.0, 0.0))
-		_lathe(Vector3.ZERO, [Vector2(w, t * l2), Vector2(w, t * l2 + 160.0)], 8, [STRIP], PI / 8.0)
+		_lathe(Vector3.ZERO, [Vector2(w, t * l2), Vector2(w, t * l2 + 160.0)], sides, [STRIP], PI / float(sides))
 		_lamp(0)
 	_beacons(Vector3(0.0, l2 * 0.965, 0.0), s_r.y * 1.4, 110.0)
 	# FOOT (bone 3 + 3k): the ankle block, its arch, and three toes on pads.

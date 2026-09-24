@@ -195,5 +195,50 @@ static func air_delay(d: float) -> float:
 	return d / 343.0
 
 
+## THE LEGS WHOSE SHADOW FALLS ON THE PLAYER'S GROUND, as capsules [a, b,
+## radius] for sky.gdshaderinc `sky_colossus`: a shadow far too big for any
+## shadow map, cast the way a cloud's is, by asking per fragment. `sun` is the
+## way to the real sun; `around` the ground being drawn and `reach` how far
+## round it. A capsule is kept only if its shadow on the ground (the leg carried
+## down the sun's ray to sea level) passes within `reach` -- so the frame where
+## nothing of theirs falls near hands over nothing, and that is nearly all of
+## them. Nearest first, at most `SHADOW_MOST`.
+const SHADOW_MOST := 8
+static func shadow_capsules(def: RefCounted, p: Dictionary, sun: Vector3, around: Vector3, reach: float) -> Array:
+	var out: Array = []
+	if p.is_empty() or sun.y < 0.02:
+		return out
+	var parts: Array = []
+	var hub: Transform3D = p.hub
+	var tr: Vector2 = def.thigh_r
+	var sr: Vector2 = def.shin_r
+	for k in 3:
+		parts.append([p.hips[k], p.knees[k], (tr.x + tr.y) * 0.5])
+		parts.append([p.knees[k], p.ankles[k], (sr.x + sr.y) * 0.5])
+	var lo := hub.origin + Vector3(0.0, float(def.hub_low) - float(def.hip_height), 0.0)
+	var hi := hub.origin + Vector3(0.0, float(def.hub_high) - float(def.hip_height), 0.0)
+	parts.append([lo, hi, float(def.hub_radius) * 0.8])
+	var scored: Array = []
+	for c: Array in parts:
+		var a: Vector3 = c[0]
+		var b: Vector3 = c[1]
+		var r: float = c[2]
+		var ga := a - sun * (a.y / sun.y)
+		var gb := b - sun * (b.y / sun.y)
+		var g := Geometry2D.get_closest_point_to_segment(Vector2(around.x, around.z), Vector2(ga.x, ga.z), Vector2(gb.x, gb.z))
+		var off := g.distance_to(Vector2(around.x, around.z))
+		# A round leg's shadow on flat ground is stretched by the sun's slant.
+		if off < reach + r / sun.y:
+			scored.append([off, c])
+	scored.sort_custom(_nearer)
+	for i in mini(scored.size(), SHADOW_MOST):
+		out.append(scored[i][1])
+	return out
+
+
+static func _nearer(a: Array, b: Array) -> bool:
+	return float(a[0]) < float(b[0])
+
+
 static func _earlier(a: Dictionary, b: Dictionary) -> bool:
 	return float(a.minute) < float(b.minute)
