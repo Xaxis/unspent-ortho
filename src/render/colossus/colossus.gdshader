@@ -140,6 +140,10 @@ const float RING_PX = 1.4;
 const float RING_TALL_PX = 2.6;
 const float STRIP_PROUD = 1.24;
 
+// Which body this material draws (L1 near, L2 far), and how much of the walker
+// is the near one's this frame (ColossusView.near_share).
+uniform bool lod_near = false;
+uniform float lod_cut = 0.0;
 // The legs' two bones, for the pulse's run up them: (thigh, shin), metres.
 uniform vec2 leg_len = vec2(34000.0, 36000.0);
 // How often a pulse leaves each ankle (per second), and how far behind its front
@@ -246,6 +250,16 @@ float layer_len(vec3 eye, vec3 p, float scale) {
 }
 
 void fragment() {
+	// The near and far bodies handed over on one screen-pinned stipple
+	// (ColossusView.LOD_BAND): the near one keeps the pixels under `lod_cut`,
+	// the far one the rest, so the two never both draw a pixel and never leave
+	// one empty.
+	if (lod_cut > 0.0 && lod_cut < 1.0) {
+		float h = ink_hash(floor(FRAGCOORD.xy) + vec2(5.0, 29.0));
+		if (lod_near ? h >= lod_cut : h < lod_cut) {
+			discard;
+		}
+	}
 	vec3 eye = CAMERA_POSITION_WORLD;
 	vec3 dir = normalize(true_world - eye);
 	float thicken = 1.0 + thick * 2.0;

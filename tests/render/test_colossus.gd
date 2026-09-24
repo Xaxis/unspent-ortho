@@ -424,3 +424,50 @@ func test_a_shadow_capsule_tapers_like_its_leg() -> void:
 	if shin.size() == 4:
 		near(float(shin[2]), float((d.shin_r as Vector2).x), 1e-3, "the knee end is the shin's own root")
 		near(float(shin[3]), float((d.shin_r as Vector2).y), 1e-3, "and the ankle end its tip")
+
+
+## THE NEAR BODY COMES IN ON A STIPPLE, NEVER A POP: across the band round
+## NEAR_LOD both bodies are drawn, each told its share of the pixels, and the
+## share runs continuously from all-far to all-near.
+func test_the_near_body_is_handed_over_on_a_stipple() -> void:
+	near(View.near_share(View.NEAR_LOD + View.LOD_BAND + 1.0), 0.0, 1e-6, "past the band, the far body only")
+	near(View.near_share(View.NEAR_LOD - View.LOD_BAND - 1.0), 1.0, 1e-6, "inside it, the near body only")
+	var worst := 0.0
+	var last := View.near_share(View.NEAR_LOD + View.LOD_BAND * 1.2)
+	var d := View.NEAR_LOD + View.LOD_BAND * 1.2
+	while d > View.NEAR_LOD - View.LOD_BAND * 1.2:
+		d -= 100.0
+		var s := View.near_share(d)
+		worst = maxf(worst, absf(s - last))
+		last = s
+	lt(worst, 0.02, "no hundred metres of approach moves it more than 2%% (%.3f)" % worst)
+	var view: Node3D = View.new()
+	tree.root.add_child(view)
+	var d0: RefCounted = _walkers()[0]
+	view.setup([d0], 7, SIZE)
+	eq(view.get_child_count(), 2, "one instance for each body")
+	var hub: Vector3 = (Walk.pose(d0, view.routes[0], 0.0).hub as Transform3D).origin
+	var cam := Camera3D.new()
+	tree.root.add_child(cam)
+	cam.far = 1400.0
+	# The switch is on the straight-line distance to the hub, fifty-five km up.
+	cam.position = Vector3(hub.x - sqrt(View.NEAR_LOD * View.NEAR_LOD - hub.y * hub.y), 2.0, hub.z)
+	cam.look_at(Vector3(hub.x, 40000.0, hub.z))
+	view.update(cam, 0.0, {}, true)
+	var shown := 0
+	for c: Node in view.get_children():
+		if (c as MeshInstance3D).visible:
+			shown += 1
+		var mat := (c as MeshInstance3D).material_override as ShaderMaterial
+		var cut: float = mat.get_shader_parameter("lod_cut") if mat.get_shader_parameter("lod_cut") != null else -1.0
+		gt(cut, 0.3, "%s is told its share (%.2f)" % [c.name, cut])
+		lt(cut, 0.7, "%s: the middle of the band is half and half" % c.name)
+	eq(shown, 2, "in the middle of the band both bodies are drawn")
+	cam.position = Vector3(hub.x - View.NEAR_LOD * 1.5, 2.0, hub.z)
+	view.update(cam, 0.0, {}, true)
+	shown = 0
+	for c: Node in view.get_children():
+		shown += 1 if (c as MeshInstance3D).visible else 0
+	eq(shown, 1, "far off, one")
+	cam.free()
+	view.free()
