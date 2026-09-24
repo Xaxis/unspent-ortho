@@ -1214,15 +1214,26 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			}
 		}
 	} else if (id == 3) {
-		// PINEWOOD: dark rock in joints, roots hanging from the soil.
-		float jh = ink_hash(vec2(floor(px.x / 7.0), 4.0));
-		c = jh < 0.4 ? dn(c, 0.25) : c;
-		if (mod(px.x, 7.0) < 1.0) {
-			c = dn(c, 0.8);
+		// PINEWOOD: dark rock in beds of uneven depth that dip along the face,
+		// each bed broken into blocks by its own joints, offset from the bed
+		// above and leaning a little, so the face is jointed stone and never a
+		// row of boards. Roots hang from the soil in a few places, not a fringe.
+		float b = (y + (vn - 0.5) * 0.1 + px.x * 0.0025) / 0.13;
+		float bi = floor(b);
+		float span = 10.0 + floor(ink_hash(vec2(bi, 21.0)) * 16.0);
+		float jx = px.x + ink_hash(vec2(bi, 22.0)) * span + (fract(b) - 0.5) * 3.0;
+		float cx = floor(jx / span);
+		float jh = ink_hash(vec2(cx, bi + 4.0));
+		c = jh < 0.35 ? dn(c, 0.25) : (jh > 0.82 ? up(c, 0.12) : c);
+		if (mod(jx, span) < 1.0 && ink_hash(vec2(cx, bi + 9.0)) > 0.3) {
+			c = dn(c, 0.7);
+		}
+		if (fract(b) < 0.07 && ink_vnoise(vec2(px.x * 0.04, bi)) > 0.35) {
+			c = dn(c, 0.55);
 		}
 		if (dt < 0.08 + vn * 0.05) {
 			c = EARTH1;
-		} else if (ink_hash(vec2(px.x, 5.0)) > 0.86 && dt < 0.12 + ink_hash(vec2(px.x, 6.0)) * 0.22) {
+		} else if (ink_hash(vec2(px.x, 5.0)) > 0.95 && dt < 0.12 + ink_hash(vec2(px.x, 6.0)) * 0.22) {
 			c = EARTH2;
 		}
 	} else if (id == 4) {
@@ -1543,7 +1554,15 @@ void fragment() {
 			c *= min(1.0, SALT_TOP.r / max(max(c.r, max(c.g, c.b)), 1e-4));
 		}
 	} else if (m > 60 && m <= 70) {
-		c = strata(m - 60, c, world_pos, px, emit, unh);
+		// A wall's pattern runs ALONG the wall. `px` is the play camera's screen
+		// grid laid on the world, whose x does not change with height: from
+		// above that is invisible, but at eye level every feature keyed on it
+		// stood as a full-height vertical stripe, and a bank of rock read as a
+		// palisade of planks. So the horizontal coordinate is the world axis the
+		// facet runs along, in the same grain.
+		vec3 fn = cross(dFdx(world_pos), dFdy(world_pos));
+		float along = abs(fn.x) > abs(fn.z) ? world_pos.z : world_pos.x;
+		c = strata(m - 60, c, world_pos, vec2(floor(along / SKY_GRAIN), px.y), emit, unh);
 	} else if (m >= 1 && m <= 16) {
 		// Embers and flames: they give light, so they are never shaded or hatched.
 		float fl = 0.8 + 0.2 * flicker(world_pos, 6.0);
