@@ -122,12 +122,6 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	t = _mark(c, marks, &"access", t)
 	if _halted(w):
 		return w
-	# Where a colossus's feet come down: cut before anything is sited or laid,
-	# so every placer after it keeps out of the craters (gen_treads.gd).
-	GenTreads.site(c)
-	t = _mark(c, marks, &"treads", t)
-	if _halted(w):
-		return w
 	GenScatter.sites(c)
 	c.mark(&"surface.sites")
 	GenSurface.run(c)
@@ -135,8 +129,14 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	if _halted(w):
 		return w
 	GenScatter.props(c)
-	GenTreads.dress(c)
 	t = _mark(c, marks, &"props", t)
+	if _halted(w):
+		return w
+	# Where a colossus's feet come down: cut LAST, into a world already laid, so
+	# nothing any other stage placed moves by a tile or an id (gen_treads.gd).
+	GenTreads.site(c)
+	GenTreads.dress(c)
+	t = _mark(c, marks, &"treads", t)
 	if _halted(w):
 		return w
 	w.rivers = c.rivers

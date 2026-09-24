@@ -125,12 +125,13 @@ const UNKNOWN := "unknown"
 ##     heart, a wander and ecotones sized to the place, villages, landmarks and
 ##     vents counted per area. Every seed's world moves.
 ## 16. A colossus's feet come down in the island (gen_treads.gd): the straddling
-##     walker's nearest plants are sited on land and their craters cut -- three
-##     stepped pits of bared rock a tread, a lip of spoil, torn plate and survey
-##     posts appended after every other prop. Level, ground and props
-##     move where a tread lands on every shipped seed; NOTHING moves at 256, where
-##     a world gets one walker far out on the skyline and no treads, so
-##     `test_parity` stays green over it and cannot be the evidence.
+##     walker's nearest plants are sited on land and their craters cut LAST --
+##     three stepped pits of bared rock a tread, a lip of spoil, torn plate and
+##     survey posts appended after every other prop. Level and ground move
+##     inside the craters only; every prop laid before keeps its id and place
+##     (what grew in a crater is crushed at load, 19_colossi). NOTHING moves at
+##     256, where a world gets one walker far out on the skyline and no treads,
+##     so `test_parity` stays green over it and cannot be the evidence.
 const GEN := 25
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a

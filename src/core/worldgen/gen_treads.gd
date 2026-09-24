@@ -2,17 +2,18 @@ extends RefCounted
 ## THE CRATERS A COLOSSUS'S FEET HAVE MADE IN THE ISLAND (src/core/colossus/
 ## colossus_treads.gd says which plants come down here and why).
 ##
-## Two halves, because what is cut into the land has to exist before anything is
-## laid on it, and what is left lying round a crater is laid after everything
-## else so no other placer's ids move:
-##   `site`  after the land is settled and the roads cut, before sites, surface
-##           and scatter: finds each wanted plant a place three pads can stand
-##           in, lowers the land into three stepped craters with a rim of what
-##           they threw out, lays their ground (bared rock, strata, spoil), keeps
-##           every later placer out of them, and writes the tread down.
-##   `dress` at the very end: spoil and torn plate on the rims, the survey posts
-##           the plan keeps round its own treads, and one under the ankle --
-##           appended, so every prop that already stood keeps its id.
+## RUN LAST, INTO A WORLD ALREADY LAID, so nothing any other stage placed moves
+## by a tile or an id: a crater sited first reshuffled every later placer's
+## draws and moved places across the whole island (the canon's burning, slums
+## and moss frames were other places). Two halves:
+##   `site`  finds each wanted plant a place three pads can stand in, clear of
+##           anything built, lowers the land into three stepped craters with a
+##           rim of what they threw out, lays their ground (bared rock, strata,
+##           spoil) and writes the tread down. What GREW where a pad comes down
+##           is not taken out here -- that would renumber every prop after it --
+##           it is crushed at load by 19_colossi, from the tread, every time.
+##   `dress` spoil and torn plate on the rims, the survey posts the plan keeps
+##           round its own treads, and one under the ankle -- appended.
 ##
 ## Reached by path (world_gen.gd preloads it), never by class_name.
 
@@ -36,10 +37,11 @@ static func site(c: GenContext) -> void:
 	for d: RefCounted in Def.walkers(w.size):
 		defs[d.id] = d
 	var taken: Array[Vector3] = []
+	var built := _built(c)
 	for row: Dictionary in want:
 		var d: RefCounted = defs[row.walker]
 		var yaw: float = row.yaw
-		var at := _find(c, d, yaw, row.natural, taken)
+		var at := _find(c, d, yaw, row.natural, taken, built)
 		if at.x < 0.0:
 			continue
 		var pads := Treads.pads(d, at, yaw)
@@ -57,7 +59,7 @@ static func site(c: GenContext) -> void:
 ## away from the spawn and from any other tread; of those, the flattest and
 ## highest (a crater needs ground to go down into), nearest the side the foot
 ## comes in from.
-static func _find(c: GenContext, d: RefCounted, yaw: float, natural: Vector2, taken: Array[Vector3]) -> Vector2:
+static func _find(c: GenContext, d: RefCounted, yaw: float, natural: Vector2, taken: Array[Vector3], built: PackedByteArray) -> Vector2:
 	var w := c.w
 	var size := c.size
 	var margin := int(float(d.toe_reach) + Treads.RIM_R + 4.0)
@@ -93,7 +95,7 @@ static func _find(c: GenContext, d: RefCounted, yaw: float, natural: Vector2, ta
 						var a := TAU * float(s) / float(RING)
 						pt += Vector2(cos(a), sin(a)) * Treads.RIM_R
 					var i := floori(pt.y) * size + floori(pt.x)
-					if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or w.continent[i] != body:
+					if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or built[i] != 0 or w.continent[i] != body:
 						ok = false
 						break
 					var l := w.level[i]
@@ -113,7 +115,7 @@ static func _find(c: GenContext, d: RefCounted, yaw: float, natural: Vector2, ta
 	# The sieve samples each crater's outline; the whole of it is checked only
 	# for the best few, in order, so one failing does not lose the rest.
 	for i in mini(scored.size(), 60):
-		if _clear(c, d, scored[i][1], yaw):
+		if _clear(c, d, scored[i][1], yaw, built):
 			return scored[i][1]
 	return Vector2(-1, -1)
 
@@ -136,7 +138,7 @@ const CLEAR_OF_SPAWN_PADS := 120.0
 ## The whole of every crater, tile by tile, is dry land of one body, off roads
 ## and out of villages, and no higher than the strata can climb to inside the
 ## rim: the rim samples of `_find` are a sieve, this is the check.
-static func _clear(c: GenContext, d: RefCounted, centre: Vector2, yaw: float) -> bool:
+static func _clear(c: GenContext, d: RefCounted, centre: Vector2, yaw: float, built: PackedByteArray) -> bool:
 	var size := c.size
 	var w := c.w
 	var body := w.continent[floori(centre.y) * size + floori(centre.x)]
@@ -154,13 +156,47 @@ static func _clear(c: GenContext, d: RefCounted, centre: Vector2, yaw: float) ->
 				if x < 1 or y < 1 or x >= size - 1 or y >= size - 1:
 					return false
 				var i := y * size + x
-				if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or w.continent[i] != body:
+				if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or built[i] != 0 or w.continent[i] != body:
 					return false
 				highest = maxi(highest, w.level[i])
 				if float(dd) <= Treads.FLOOR_R * Treads.FLOOR_R:
 					lowest = mini(lowest, w.level[i])
 	var floor_l := maxi(1, lowest - Treads.DEPTH)
 	return highest - floor_l <= int((Treads.RIM_R - Treads.FLOOR_R) / Treads.STEP_W) - LIP - 1
+
+
+## Every tile something BUILT stands on or reaches over -- a placed prop as wide
+## as a building (`BUILT_SOLID`) and the plan's depots -- so no crater is cut
+## through a house or a yard. What grew or was dropped is not here.
+const BUILT_SOLID := 2.0
+## How far past a depot's yard its parts and walls reach, and a margin.
+const YARD_ROOM := 18.0
+static func _built(c: GenContext) -> PackedByteArray:
+	var w := c.w
+	var out := PackedByteArray()
+	out.resize(c.n)
+	var mark := func(p: Vector2, r: float) -> void:
+		var ri := ceili(r)
+		for dy in range(-ri, ri + 1):
+			for dx in range(-ri, ri + 1):
+				var x := floori(p.x) + dx
+				var y := floori(p.y) + dy
+				if x >= 0 and y >= 0 and x < c.size and y < c.size:
+					out[y * c.size + x] = 1
+	for p: WorldProp in w.props:
+		# A building, a tank, a rig: something a pad could not come down on
+		# without it being a story. Debris, stumps and posts are crushed.
+		if p.kind in GenScatter.PLACED and p.solid >= BUILT_SOLID:
+			mark.call(p.pos, p.solid + 1.0)
+	# The plan's depots keep their ground and the room round it their parts and
+	# walls stand in (Works.sites, derived from the marks this world was laid
+	# with). A works mark with no yard on it, a tip, a bridge or a summit is not
+	# in a pad's way: what was dug, dumped or grew where a pad comes down is
+	# crushed, and the machines' own treads through their own fields is the
+	# plan working.
+	for site: WorksSite in Works.sites(w):
+		mark.call(site.pos, Works.YARD + YARD_ROOM)
+	return out
 
 
 ## Cut the three craters and return the floor's level, the SAME for all three:
@@ -203,15 +239,12 @@ static func _cut(c: GenContext, pads: Array[Vector3]) -> int:
 				var wall := floor_l + (0 if dist < Treads.FLOOR_R else 1 + int((dist - Treads.FLOOR_R) / Treads.STEP_W))
 				if wall < was:
 					w.level[i] = wall
-					c.site_ground[i] = Ground.ROCK + 1 if dist < Treads.FLOOR_R else Ground.SCREE + 1
+					w.ground[i] = Ground.ROCK if dist < Treads.FLOOR_R else Ground.SCREE
 				elif wall - was < LIP:
 					# The spoil it threw out: a lip one level over the ground just
 					# past where the strata come up to it.
 					w.level[i] = was + 1
-					c.site_ground[i] = Ground.GRAVEL + 1
-				else:
-					continue
-				c.village[i] = 1
+					w.ground[i] = Ground.GRAVEL
 	return floor_l
 
 

@@ -125,7 +125,8 @@ func test_the_near_foot_meets_the_far_leg_at_the_seam() -> void:
 ## THE CRATERS IN THE SHIPPED WORLD: the foot's pads stand on bared floor at one
 ## height, a body standing on that floor can climb out of it one level at a time
 ## (the land round it may have cliffs of its own; there must be SOME way out),
-## and nothing grew in it.
+## and nothing anybody BUILT stands in one. What grew there is crushed at load
+## (the game test below), because taking it out here would renumber every prop.
 func test_the_world_is_cut_where_the_feet_come_down() -> void:
 	var w := _grown()
 	var rows := _treads(w)
@@ -139,8 +140,8 @@ func test_the_world_is_cut_where_the_feet_come_down() -> void:
 			eq(w.ground[i], Ground.ROCK, "bared rock under the pad")
 			check(_climbs_out(w, c, Treads.RIM_R + 4.0), "a body on the floor of the crater at %s can climb out of it" % c)
 			for q: WorldProp in w.props:
-				if q.pos.distance_to(Vector2(p.x, p.y)) < p.z:
-					check(false, "%s stands under a pad at %s" % [PropKind.NAMES[q.kind], q.pos])
+				if q.pos.distance_to(Vector2(p.x, p.y)) < p.z and q.kind in GenScatter.PLACED and q.solid >= 1.2 and q.id < _dressed_from(w):
+					check(false, "a %s stands under a pad at %s" % [PropKind.NAMES[q.kind], q.pos])
 					break
 
 
@@ -166,6 +167,20 @@ func test_the_only_feet_on_the_island_are_in_its_treads() -> void:
 				check(not is_nan(r.tread_of(k, j).x), "%s leg %d plant %d on the island is a tread" % [d.id, k, j])
 				seen += 1
 	eq(seen, _treads(w).size(), "and every tread is stood in")
+
+
+## The first id the tread stage appended (its own spoil and posts): everything
+## before it was laid by the stages before, and must be where it was.
+func _dressed_from(w: WorldData) -> int:
+	for i in range(w.props.size() - 1, -1, -1):
+		var q := w.props[i]
+		var near_one := false
+		for m: Dictionary in _treads(w):
+			if q.pos.distance_to(m.pos as Vector2) < 260.0:
+				near_one = true
+		if not near_one or not (q.kind in [PropKind.DEBRIS, PropKind.WRECKAGE, PropKind.SURVEY]):
+			return i + 1
+	return 0
 
 
 ## Whether a body can walk from `from` to anywhere `reach` tiles off, stepping a
@@ -228,10 +243,19 @@ func test_a_planted_foot_stops_puts_out_and_crushes() -> void:
 	gt(g.player.pos.distance_to(c), pad.z, "put out from under the pad (%.1f from its middle)" % g.player.pos.distance_to(c))
 	near(g.player.hero.pos.distance_to(g.player.pos), 0.0, 1e-4, "the fight body with it")
 	g.free()
-	# The same place a world hour before the foot comes down: open ground.
+	# The same place a world hour before the foot comes down: open ground -- and
+	# still bare, because what grew in the craters is crushed at load whether the
+	# foot is in them or not.
 	var g2 := _game(PackedStringArray(["--seed=7", "--place=tread0", "--colossus=2@tread0-60", "--hour=12", "--weather=clear:0"]))
 	var sys2: Node = g2.get_node("19_colossi")
+	sys2.started()
 	sys2._process(1.0 / 60.0)
 	check(not bool(sys2.tour_seen(&"colossus_tread")), "an hour before, no foot stands in it")
 	check(not bool(sys2.tour_seen(&"colossus_blocks")), "and nothing stops a body there")
+	var standing := 0
+	for q: WorldProp in g2.world.props:
+		for pp: Vector3 in (row.pads as Array):
+			if q.pos.distance_to(Vector2(pp.x, pp.y)) < pp.z and not g2.world.depleted.has(q.id):
+				standing += 1
+	eq(standing, 0, "nothing stands where a pad comes down")
 	g2.free()

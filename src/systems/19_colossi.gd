@@ -408,6 +408,29 @@ func _run_shock(delta: float) -> void:
 	RenderingServer.global_shader_parameter_set(&"colossus_shock", Vector4(c.x, c.y, s * SHOCK_SPEED, 1.0 - s / SHOCK_SECS))
 
 
+## WHAT A PAD HAS PRESSED DOWN, crushed at load and never saved: whatever grew in
+## a tread's craters since world generation laid its scatter (gen_treads.gd
+## cuts them last so no prop is renumbered, and leaves this to the clock). The
+## same answer every load, so a crater is bare in every game of this world.
+const CRUSH_R := 28.0
+
+
+func started() -> void:
+	_crush_treads()
+
+
+func _crush_treads() -> void:
+	if view == null:
+		return
+	for m: Dictionary in game.world.landmarks:
+		if StringName(m.get("kind", &"")) != &"tread":
+			continue
+		var pressed: Array[Vector3] = []
+		for p: Vector3 in (m.pads as Array):
+			pressed.append(Vector3(p.x, p.y, CRUSH_R))
+		_crush(pressed)
+
+
 ## The world under the player changed (a shaft, a gate): its treads are the new
 ## world's, and nothing of the old one's pads may stop a body here.
 func realm_changed(_from: StringName, _to: StringName) -> void:
@@ -416,6 +439,7 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 	for r: RefCounted in view.routes:
 		r.treads.clear()
 	Treads.hand_over(view.defs, view.routes, game.world.landmarks)
+	_crush_treads()
 	blocks = []
 	_down = {}
 	if game.query != null:
