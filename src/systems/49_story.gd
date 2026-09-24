@@ -686,6 +686,11 @@ func tour_place(what: String) -> Vector2:
 		for w: WorksSite in Works.sites(game.world):
 			if w.region != region:
 				continue
+			# `yard` is the yard itself, `yard_breaker` one of its parts. A part can
+			# stand over the region's border where the yard does not, and the story
+			# answers from the region under the player.
+			if which == "yard":
+				return _beside(w.pos, [0.0, 0.8, 1.2])
 			var part := Works.PART_NAMES.find(StringName(which.trim_prefix("yard_")))
 			return _beside(w.part(maxi(0, part)), [0.0, 0.8, 1.2])
 		return Vector2.INF

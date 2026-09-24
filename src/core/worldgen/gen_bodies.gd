@@ -257,20 +257,14 @@ const COUNT := {
 ## the land a continent would.
 const ORBITAL_SHARE := 0.32
 ## The share of a world's continents a landscape lies on when it declares no
-## `BiomeDef.spread`. Under half is what makes two continents different places
-## rather than two draws of one deck; a landscape that wants to be everywhere (a
-## coast) or nowhere but one (a rarity) says so in its own file.
+## `BiomeDef.spread`: ONE, on a world of five. A landscape that wants to be
+## everywhere (a coast) or on a named few says so in its own file.
 ##
-## **0.4, WHICH IS TWO OF FIVE, AND THE SIZE OF A PLACE IS WHY** (L1, 2026-09-23).
-## It was 0.5, and `roundi(2.5)` is three: every landscape lay on three of the five
-## continents, broke into three to six regions, and its main region -- the place
-## the 40-frame rule is about -- was about a third of its tiles. Measured at 1840,
-## seeds 1/42/90210: 6 of 21 landscapes had a main region of 40 frames on every
-## seed at 0.5, 13 at 0.4 with nothing else changed, and 21 once the eight still
-## short had their shares raised out of the coast's. A continent now carries about
-## eight landscapes instead of thirteen: fewer, and each one a place you can walk
-## for a while.
-const MOST_BODIES := 0.4
+## One, because a landscape is a place and a place is big (owner, 2026-09-23:
+## "the immensity each region should present"): all of its share stands on one
+## continent, and a continent carries four or five. `tools/gd/probe_regions.gd`
+## measures what that buys.
+const MOST_BODIES := 0.2
 ## The radius of the ONE island this game has always had, as a share of the
 ## square: `GenShape` draws it at 0.34-0.38 by 0.38-0.41, so about this.
 const ONE_RADIUS := 0.375
@@ -443,39 +437,33 @@ static func deal(c: GenContext) -> void:
 	var got: Array[PackedInt32Array] = []
 	for i in planned:
 		got.append(PackedInt32Array())
-	for cc: int in c.land_types:
+	# The biggest first, each to the continents holding the fewest so far, so every
+	# continent carries about as many and each landscape gets about the same room;
+	# the seed breaks ties (breaking them on share dealt every seed one hand). The
+	# ones that must stand on home go first, so home's count includes them.
+	var order_types: Array[int] = []
+	order_types.assign(c.land_types)
+	order_types.sort_custom(func(a: int, b: int) -> bool:
+		var ha := 1 if c.defs[a].spread.x >= 1 and c.defs[a].spread.y != 1 else 0
+		var hb := 1 if c.defs[b].spread.x >= 1 and c.defs[b].spread.y != 1 else 0
+		if ha != hb:
+			return ha > hb
+		var sa := c.defs[a].share_target()
+		var sb := c.defs[b].share_target()
+		if sa != sb:
+			return sa > sb
+		return a < b)
+	for cc: int in order_types:
 		var sp: Vector2i = c.defs[cc].spread
-		# A LANDSCAPE THAT SAYS NOTHING LIES ON SOME CONTINENTS, NOT ALL OF THEM.
-		#
-		# The default was `planned` — every landscape on every continent — which
-		# made five continents five copies of one island, each carrying the same
-		# nine landscapes in the same climate order. That is the owner's brief
-		# defeated by its own default: "continents can have different landscapes on
-		# them and a well distributed mixture, but some of the rarer types
-		# exclusive only to some continents". `BiomeDef.spread` was built to say
-		# exactly that and could never be heard over a default that gave everything
-		# to everybody.
-		#
-		# So a landscape that argues with nothing lands on about half of them, and
-		# one that wants to be everywhere or nowhere says so. `spread.x >= 1` still
-		# guarantees the home continent first, because the spine lives there.
-		# At least two where there are two, because MOST_BODIES was tuned for five:
-		# a 1024 square holds three continents, `roundi(3 * 0.4)` is one, and every
-		# landscape on a single continent left the journey's far legs with nothing
-		# of the plan's to cast (`the_far_works`, test_plan at 1024).
-		var most := maxi(mini(2, planned), roundi(float(planned) * MOST_BODIES)) if sp.y <= 0 else mini(sp.y, planned)
+		var most := maxi(1, roundi(float(planned) * MOST_BODIES)) if sp.y <= 0 else mini(sp.y, planned)
 		var want := maxi(1, mini(most, planned))
-		# A guaranteed type goes on the HOME body first: the spine of the game
-		# lives there (docs/DESIGN.md) and a player who never crosses water
-		# must still meet everything something depends on.
-		#
 		# **TWO MEANINGS SHARE `spread.x >= 1` AND THEY MUST NOT BE MERGED.** `(1, 0)`
 		# is DEPENDENCY: something the spine needs lies here, so it goes on the
 		# home body where a player who never crosses water will meet it. `(1, 1)`
 		# is EXISTENCE: the guaranteed twin of `(0, 1)`, "the rare thing you cross
 		# an ocean for" -- exactly one body, and never home while there is another,
 		# or the ocean it is the reward for crossing is not crossed. `frost_sea`
-		# says the second in its own words. Home-first read both as the first.
+		# says the second in its own words.
 		var rare := sp.x >= 1 and sp.y == 1 and planned > 1
 		var order: Array[int] = []
 		if sp.x >= 1 and not rare:
@@ -484,8 +472,15 @@ static func deal(c: GenContext) -> void:
 		for i in planned:
 			if i != home or (sp.x < 1 and not rare):
 				rest.append(i)
-		while not rest.is_empty():
-			order.append(rest.pop_at(rng.randi() % rest.size()))
+		# Drawn once per candidate, so the order holds however the sort compares.
+		var jitter := {}
+		for i: int in rest:
+			jitter[i] = rng.randf()
+		rest.sort_custom(func(a: int, b: int) -> bool:
+			if got[a].size() != got[b].size():
+				return got[a].size() < got[b].size()
+			return float(jitter[a]) < float(jitter[b]))
+		order.append_array(rest)
 		for r in mini(want, order.size()):
 			got[order[r]].append(cc)
 	# Nothing may be left barren.
@@ -493,6 +488,8 @@ static func deal(c: GenContext) -> void:
 		if got[i].is_empty() and not c.land_types.is_empty():
 			got[i].append(c.land_types[rng.randi() % c.land_types.size()])
 	for i in planned:
+		# In registry order, as a body's list has always been read.
+		got[i].sort()
 		bodies[i]["types"] = got[i]
 	# THE DEAL IS A RULE ABOUT LAND, NOT ABOUT WHERE A SITE GOES. It was asked only
 	# when a site was placed, and a territory then grew by distance across the
@@ -561,6 +558,17 @@ static func _home_row(c: GenContext, planned: int) -> int:
 			best_d = d
 			best = i
 	return best
+
+
+## `table[id]` for every tile of body `id`: how a whole-map loop reads a per-body
+## value without indexing the body grid outside this file.
+static func by_tile(w: WorldData, table: PackedFloat32Array) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(w.continent.size())
+	var body := w.continent
+	for i in out.size():
+		out[i] = table[body[i]]
+	return out
 
 
 ## The tile rect a body occupies, for placing anything within it.

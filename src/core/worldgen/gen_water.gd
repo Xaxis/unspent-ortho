@@ -496,12 +496,39 @@ static func _lay_pool(c: GenContext, p: Vector3, salt: int, g: int) -> bool:
 			total += 1
 			if level[i] == l0 and level[i - 1] >= l0 and level[i + 1] >= l0 and level[i - size] >= l0 and level[i + size] >= l0:
 				inside.append(i)
+	# One piece of water: the level test lets a fifth of the disc fall out, and
+	# over a terrace step that split a pool into scraps of one to four tiles.
+	inside = _largest_piece(inside, size)
 	if inside.size() < 12 or inside.size() < total * 0.8:
 		return false
 	for i in inside:
 		c.water[i] = 2
 		c.pool_ground[i] = g
 	return true
+
+
+## The biggest 4-connected run of `tiles` (indices into a `size`-wide grid).
+static func _largest_piece(tiles: PackedInt32Array, size: int) -> PackedInt32Array:
+	var left := {}
+	for i in tiles:
+		left[i] = true
+	var best := PackedInt32Array()
+	for start in tiles:
+		if not left.has(start):
+			continue
+		var piece := PackedInt32Array([start])
+		left.erase(start)
+		var head := 0
+		while head < piece.size():
+			var i := piece[head]
+			head += 1
+			for j: int in [i - 1, i + 1, i - size, i + size]:
+				if left.has(j):
+					left.erase(j)
+					piece.append(j)
+		if piece.size() > best.size():
+			best = piece
+	return best
 
 
 ## Drain every pool with a tile inside the circle (whole pools only, so none

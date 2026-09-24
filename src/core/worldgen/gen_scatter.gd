@@ -220,7 +220,10 @@ static func sites(c: GenContext) -> void:
 				var i := p.y * c.size + p.x
 				if w.country[i] != cc or w.blend[i] > 0.42 or w.region_at(p.x, p.y) != here:
 					continue
-				if not _clear_site(c, p, 6, 2) or _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
+				# The last of the search settles for a smaller, rougher yard, as
+				# the works' does, or a canyon landscape never takes its own tips.
+				var loose := attempt >= 1500
+				if not _clear_site(c, p, 4 if loose else 6, 3 if loose else 2) or _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
 					continue
 				_lay_tip(c, p, rng.randf_range(4.0, 7.5))
 				_mark(w, &"tip", Vector2(p) + Vector2(0.5, 0.5), cc, {"site": true})
@@ -271,23 +274,29 @@ static func sites(c: GenContext) -> void:
 		if vent_count <= 0:
 			continue
 		var vent_ground := int(c.defs[vented].sites.get("fumarole_ground", Ground.CLINKER))
-		var fumaroles := 0
-		for attempt in 6000:
-			if fumaroles >= maxi(2, roundi(vent_count * c.body_k)):
-				break
-			var p := _random_tile(c, rng)
-			var i := p.y * c.size + p.x
-			if w.country[i] != vented or w.blend[i] > 0.3:
-				continue
-			if heart.x >= 0.0 and Vector2(p).distance_to(heart) < GenRelief.crater_radius(c) * 1.1:
-				continue
-			# Later attempts settle for rougher ground and closer company.
-			var rough := 1 if attempt < 3000 else 2
-			if not _clear_site(c, p, 4, rough) or _near_landmark(w, Vector2(p), (30.0 if attempt < 3000 else 20.0) * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
-				continue
-			_lay_patch(c, p, rng.randf_range(4.0, 6.0), vent_ground)
-			_mark(w, &"fumarole", Vector2(p) + Vector2(0.5, 0.5), vented, {"site": true})
-			fumaroles += 1
+		# Per region and thrown inside it, as the tips are, so a small landscape is
+		# found at all and a bigger field holds more vents.
+		for region: Dictionary in _regions_of(w, vented):
+			var here := int(region.get("id", -1))
+			var bounds: Rect2 = region.get("bounds", c.land_rect)
+			var want := maxi(2, _want_here(vent_count, region))
+			var fumaroles := 0
+			for attempt in 6000:
+				if fumaroles >= want:
+					break
+				var p := _random_tile_in(c, rng, bounds)
+				var i := p.y * c.size + p.x
+				if w.country[i] != vented or w.blend[i] > 0.3 or w.region_at(p.x, p.y) != here:
+					continue
+				if heart.x >= 0.0 and Vector2(p).distance_to(heart) < GenRelief.crater_radius(c) * 1.1:
+					continue
+				# Later attempts settle for rougher ground and closer company.
+				var rough := 1 if attempt < 3000 else 2
+				if not _clear_site(c, p, 4, rough) or _near_landmark(w, Vector2(p), (30.0 if attempt < 3000 else 20.0) * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
+					continue
+				_lay_patch(c, p, rng.randf_range(4.0, 6.0), vent_ground)
+				_mark(w, &"fumarole", Vector2(p) + Vector2(0.5, 0.5), vented, {"site": true})
+				fumaroles += 1
 	# Summits: the highest walkable ground in each upland landscape gets a cairn,
 	# raised in the order its type declares (BiomeDef.sites.summit).
 	var best_at: Array[Vector2i] = []
@@ -490,6 +499,22 @@ static func _way_in(c: GenContext) -> void:
 		if prop.kind == PropKind.IRON_ORE and prop.pos.distance_to(sp) < WAY_IN_FAR:
 			return
 		taken[Vector2i(floori(prop.pos.x), floori(prop.pos.y))] = true
+	# Five tiles square of one level, else three: a spawn on rough coast can have
+	# no five-square flat in the ring, and then the first iron was hundreds of
+	# tiles off.
+	var best := Vector2i(-1, -1)
+	for flat: int in [2, 1]:
+		best = _way_in_spot(c, taken, flat)
+		if best.x >= 0:
+			break
+	if best.x < 0:
+		return
+	_way_in_lay(c, best)
+
+
+static func _way_in_spot(c: GenContext, taken: Dictionary, flat: int) -> Vector2i:
+	var w := c.w
+	var sp := w.spawn
 	var best := Vector2i(-1, -1)
 	var best_score := -1e9
 	var r := int(WAY_IN_FAR)
@@ -508,8 +533,8 @@ static func _way_in(c: GenContext) -> void:
 			if g == Ground.SAND or g == Ground.SHINGLE or g == Ground.MUD or Ground.is_water(g):
 				continue
 			var ok := true
-			for dy in range(-2, 3):
-				for dx in range(-2, 3):
+			for dy in range(-flat, flat + 1):
+				for dx in range(-flat, flat + 1):
 					var j := (y + dy) * c.size + x + dx
 					if w.level[j] != l or c.water[j] != 0 or c.road[j] != 0 or taken.has(Vector2i(x + dx, y + dy)):
 						ok = false
@@ -524,8 +549,11 @@ static func _way_in(c: GenContext) -> void:
 			if sc > best_score:
 				best_score = sc
 				best = Vector2i(x, y)
-	if best.x < 0:
-		return
+	return best
+
+
+static func _way_in_lay(c: GenContext, best: Vector2i) -> void:
+	var w := c.w
 	var centre := Vector2(best.x + 0.5, best.y + 0.5)
 	# A lobed scree patch under the seams, never a square.
 	for dy in range(-3, 4):

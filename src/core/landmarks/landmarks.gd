@@ -23,6 +23,16 @@ class_name Landmarks
 ## Landmarks wanted per region, before the ground has its say. A region usually
 ## yields fewer: a kind whose ground is not in it is simply not placed.
 const PER_REGION := 3
+## And one per this many tiles of a region, up to PER_REGION_MOST, so a bigger
+## place is fuller rather than the same three spread thinner. A kind is placed
+## again once each of the region's kinds has stood, keeping its own `apart`.
+const TILES_PER_LANDMARK := 7000.0
+const PER_REGION_MOST := 16
+
+
+## How many landmarks a region of `tiles` asks for.
+static func wanted_in(tiles: int) -> int:
+	return clampi(roundi(float(tiles) / TILES_PER_LANDMARK), PER_REGION, PER_REGION_MOST)
 ## The smallest run of a landscape that is a PLACE and not a corner. Below this a
 ## region is a scrap of one landscape caught in the side of another, and a tower
 ## put in it is a tower standing in somebody else's frame — and, because the
@@ -550,11 +560,16 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 		var ta := int(a.get("tiles", 0))
 		var tb := int(b.get("tiles", 0))
 		return ta < tb if ta != tb else int(a.get("id", -1)) < int(b.get("id", -1)))
-	for round_index in PER_REGION:
+	var rounds := PER_REGION
+	for region: Dictionary in order:
+		rounds = maxi(rounds, wanted_in(int(region.get("tiles", 0))))
+	for round_index in rounds:
 		for region: Dictionary in order:
 			var id := int(region.get("id", -1))
-			if (by_region[id] as Array).size() > round_index:
+			if (by_region[id] as Array).size() > round_index or round_index >= wanted_in(int(region.get("tiles", 0))):
 				continue
+			if (left[id] as Array).is_empty() and round_index >= PER_REGION:
+				left[id] = for_land(StringName(str(region.get("type", &""))))
 			var row := _pick_one(pools[id], placed_at, left[id], apart_scale)
 			if row.is_empty():
 				continue
