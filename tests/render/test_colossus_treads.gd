@@ -320,11 +320,16 @@ func test_the_near_foot_never_leaves_its_build_unclaimed() -> void:
 	var cam := Camera3D.new()
 	tree.root.add_child(cam)
 	cam.global_position = Vector3(1.0e7, 0.0, 1.0e7)
-	var tries := 0
-	while int(again.get(&"_task")) >= 0 and tries < 600:
-		again.call(&"update", cam, [], [], 0.0)
+	# SINCE THE BUILD FINISHED, not at a moment: how long a worker takes is the
+	# machine's business, so wait (bounded) for this task to be done, then give
+	# the foot one frame and ask whether it claimed it.
+	var id := int(again.get(&"_task"))
+	check(id >= 0, "the second build went to a worker")
+	var until := Time.get_ticks_msec() + int(20000.0 * machine_slack())
+	while id >= 0 and not WorkerThreadPool.is_task_completed(id) and Time.get_ticks_msec() < until:
 		await tree.process_frame
-		tries += 1
+	check(id >= 0 and WorkerThreadPool.is_task_completed(id), "the build finished inside the wait")
+	again.call(&"update", cam, [], [], 0.0)
 	eq(int(again.get(&"_task")), -1, "a build nobody came near is claimed when it is done")
 	cam.free()
 	again.free()
