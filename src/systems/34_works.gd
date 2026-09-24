@@ -50,6 +50,9 @@ var _states: Dictionary = {}
 ## Region id -> the drawn yard, and "region:part" -> a drawn working part.
 var _yards: Dictionary = {}
 var _parts: Dictionary = {}
+## Region id -> the stage its yard was built at, so a yard is rebuilt when the
+## plan moves it on a stage (a day's business) and at no other time.
+var _built_stage: Dictionary = {}
 var _stood: Dictionary = {}
 var _layer: Node3D
 var _look := 0.0
@@ -114,6 +117,7 @@ func _read_sites() -> void:
 		(c as Node3D).queue_free()
 	_yards.clear()
 	_parts.clear()
+	_built_stage.clear()
 	_stood.clear()
 	_taught.clear()
 	_own_at.clear()
@@ -126,6 +130,7 @@ func _read_sites() -> void:
 			st.region = s.region
 			_states[s.region] = st
 		_as_landmark(s)
+		_make(s)
 	_set_walls()
 
 
@@ -220,30 +225,54 @@ func stage_of(s: WorksSite) -> int:
 
 # --- drawing ------------------------------------------------------------------
 
+## SHOWN by distance, never built by it: every depot is made with the world
+## (`_read_sites`), for the reason 22_landmarks' `_draw` gives -- the reach is the
+## whole island once the camera sees the horizon, and the first look over the
+## shoulder built every yard in one frame (97 ms on seed 7). A yard is rebuilt
+## only when its STAGE moves, which is the one input of its model that can.
 func _draw() -> void:
 	var at := sim.hero.pos
 	var reach := _draw_reach()
 	for s in sites:
-		var near := s.pos.distance_to(at) <= reach
-		if near and not _yards.has(s.region):
-			_make(s)
-		elif not near and _yards.has(s.region):
+		if not _yards.has(s.region):
+			continue
+		if int(_built_stage.get(s.region, -1)) != stage_of(s):
 			_drop(s)
+			_make(s)
+		var near := s.pos.distance_to(at) <= reach
+		_show(s, near)
 	_stand()
 
 
+func _show(s: WorksSite, on: bool) -> void:
+	var yard := _yards[s.region] as Node3D
+	if yard.visible == on:
+		return
+	yard.visible = on
+	for i in Works.PART_NAMES.size():
+		var part: Node3D = _parts.get("%d:%d" % [s.region, i], null)
+		if part != null:
+			part.visible = on
+
+
+## Made once per depot with the world, hidden until `_draw` shows it: about
+## 5 ms a depot at load (17 on seed 7 at 1024: 85 ms at load 36-55).
 func _make(s: WorksSite) -> void:
 	var mat := game.view.world_material() if game.view != null else null
 	var st: WorksState = _states.get(s.region, null)
-	var yard := WorksDepot.yard(s, stage_of(s), mat)
+	var stage := stage_of(s)
+	var yard := WorksDepot.yard(s, stage, mat)
 	yard.rotation.y = -s.facing
+	yard.visible = false
 	_layer.add_child(yard)
 	_yards[s.region] = yard
+	_built_stage[s.region] = stage
 	if st != null and st.broken():
 		WorksDepot.set_dark(yard, true)
 	for i in Works.PART_NAMES.size():
 		var node := WorksDepot.part(i, s.region * 17 + i, mat)
 		node.rotation.y = -s.facing
+		node.visible = false
 		_layer.add_child(node)
 		_parts["%d:%d" % [s.region, i]] = node
 		if st != null and st.parts[i]:
@@ -253,6 +282,7 @@ func _make(s: WorksSite) -> void:
 func _drop(s: WorksSite) -> void:
 	(_yards[s.region] as Node3D).queue_free()
 	_yards.erase(s.region)
+	_built_stage.erase(s.region)
 	_stood.erase(s.region)
 	for i in Works.PART_NAMES.size():
 		var key := "%d:%d" % [s.region, i]
@@ -666,9 +696,11 @@ func _load(v: Variant) -> void:
 		if not _states.has(was.region):
 			continue
 		_states[was.region] = was
+	# What was done to a yard is part of its model: build it again as loaded.
 	for s in sites:
 		if _yards.has(s.region):
 			_drop(s)
+			_make(s)
 
 
 # --- what a tour may await ----------------------------------------------------

@@ -75,6 +75,7 @@ func _read_sites() -> void:
 	reachable = null
 	for s in sites:
 		_as_landmark(s)
+		_make(s)
 	_set_walls()
 
 
@@ -142,24 +143,33 @@ func _process(delta: float) -> void:
 
 # --- drawing -------------------------------------------------------------------
 
+## SHOWN by distance, never built by it: every model is made with the world
+## (`_read_sites`). It used to be made on coming into reach and freed on leaving,
+## and the reach is the whole island the moment the camera sees the horizon, so
+## the first look over the shoulder built all two hundred in one frame (569 ms
+## on seed 7, tests/landmarks/test_built_at_load.gd) and every walk past one
+## built it twice. A site never moves and its model is a function of the site.
 func _draw() -> void:
 	var at := sim.hero.pos
 	var reach := _draw_reach()
 	for s in sites:
+		var node: Node3D = _nodes.get(s.id, null)
+		if node == null:
+			continue
 		var near := s.pos.distance_to(at) <= reach
-		if near and not _nodes.has(s.id):
-			_make(s)
-		elif not near and _nodes.has(s.id):
-			(_nodes[s.id] as Node3D).queue_free()
-			_nodes.erase(s.id)
-			_stood.erase(s.id)
+		if node.visible != near:
+			node.visible = near
 	_stand()
 
 
+## Made once per site when the world is made, hidden until `_draw` shows it.
+## Costs the load about 2 ms a landmark (200 on seed 7 at 1024: 380 ms at load
+## 36-55), which the first look up at the horizon used to pay in one frame.
 func _make(s: LandmarkSite) -> void:
 	var mat := game.view.world_material() if game.view != null else null
 	var node := LandmarkModels.node(s.kind, maxi(0, s.region) * 29 + s.nth * 5, mat)
 	node.rotation.y = -s.facing
+	node.visible = false
 	_layer.add_child(node)
 	_nodes[s.id] = node
 	if state.is_opened(s.id):
@@ -408,7 +418,7 @@ func _in_frame(s: LandmarkSite) -> bool:
 	# it, so both are asked for and either one being on the glass is enough.
 	var cam := game.camera
 	var node := _nodes[s.id] as Node3D
-	if node == null or not cam.is_inside_tree():
+	if node == null or not node.visible or not cam.is_inside_tree():
 		return false
 	var foot := node.global_position
 	var head := foot + Vector3(0.0, LandmarkModels.high_of(s.kind), 0.0)
