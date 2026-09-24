@@ -129,12 +129,18 @@ func prism(cx: float, y0: float, cz: float, r0: float, y1: float, r1: float, n: 
 		var a := phase + float(i) / n * TAU
 		lo.append(Vector3(cx + cos(a) * r0, y0, cz + sin(a) * r0))
 		hi.append(Vector3(cx + cos(a) * r1, y1, cz + sin(a) * r1))
+	var wall_from := verts.size()
 	for i in n:
 		var j := (i + 1) % n
 		if r1 > 0.0:
 			quad(lo[j], lo[i], hi[i], hi[j], col)
 		else:
 			tri(lo[j], lo[i], hi[i], col)
+	if n >= ROUND_SIDES:
+		# Seven sides and up is a drum, a pot, a trunk or a tank, never a nut:
+		# it is round, and from the side at eye level a flat normal per side
+		# makes it a faceted column. Walls only, so the ends stay flat ends.
+		smooth_range(wall_from, verts.size(), 360.0 / n + 8.0)
 	if r1 > 0.0:
 		var c1 := Vector3(cx, y1, cz)
 		for i in n:
@@ -144,6 +150,10 @@ func prism(cx: float, y0: float, cz: float, r0: float, y1: float, r1: float, n: 
 		for i in n:
 			tri(c0, lo[i], lo[(i + 1) % n], col)
 	return self
+
+
+## Sides from which a prism is taken to be round and welded (see prism).
+const ROUND_SIDES := 7
 
 
 ## A cylinder or bar between two arbitrary points (limbs, cables, struts).
@@ -157,7 +167,13 @@ func strut(a: Vector3, b: Vector3, r: float, n: int, col: Color) -> MeshKit:
 	var fwd := side.cross(up)
 	var basis := Basis(side, up, fwd)
 	push(Transform3D(basis, a))
+	var wall_from := verts.size()
 	prism(0, 0, 0, r, length, r, n, col, Color(0, 0, 0, 0), PI / n, true)
+	if n >= 5 and n < ROUND_SIDES:
+		# A bar of five or six sides is a pole, a log, a pipe: round. Four is a
+		# board or a beam and keeps its edges; three is a cable, too thin to
+		# light as anything but a line. The prism's own weld covers seven up.
+		smooth_range(wall_from, wall_from + n * 6, 360.0 / n + 8.0)
 	pop()
 	return self
 

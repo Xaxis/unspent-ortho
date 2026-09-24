@@ -37,6 +37,8 @@ static func wind_bent(kind: int, c: int) -> bool:
 
 ## How much of a tier's reach its solid keeps once its needles are cards.
 const PINE_CORE := 0.74
+## How much of the gap to the next tier a tier's solid rises (see `pine`).
+const PINE_CORE_RISE := 0.7
 ## How laden a snow pine's needles are, and a pine that merely stands in the
 ## snowfield (kit.gd `sprays`, leaf.gdshader). The old lids covered 0.78 and 0.62
 ## of a tier's reach; these are the same two falls, said as snow.
@@ -145,7 +147,13 @@ static func pine(k: Kit, v: int, c: int, laden: bool) -> void:
 			# The tier is the bough's shade now, not its needles: drawn a size in
 			# and a step darker, so the sprays reaching past it are what the light
 			# finds, and a gap between two sprays shows the inside of the tree.
-			k.tier(cx, y, cz, r * PINE_CORE, rise, points, droop * 0.8, s + t * 11, Kit.tone(col, 0.72), under if t == 0 else Color(0, 0, 0, 0))
+			# And it is a SKIRT, not a cone: its rise is a share of the gap to
+			# the next tier, so from the side there is dark air and trunk
+			# between one bough and the next, and a pine reads as stacked
+			# drooping tiers. At the full rise the cores overlapped into one
+			# tall dark cone, which LOOK.md forbids in so many words.
+			var core_rise := minf(rise, (y1 - y0) / maxf(1.0, tiers - 1) * PINE_CORE_RISE) + (0.2 if t == tiers - 1 else 0.0)
+			k.tier(cx, y, cz, r * PINE_CORE, core_rise, points, droop * 1.1, s + t * 11, Kit.tone(col, 0.72), under if t == 0 else Color(0, 0, 0, 0))
 			var mass: Array[Color] = [Kit.tone(col, NEEDLE_TONE), Kit.tone(col, NEEDLE_TONE), Kit.tone(greens[mini(2, int(f * 2.99) + 1)], NEEDLE_TONE)]
 			k.sprays(cx, y, cz, r, rise, droop, points, s + t * 13, mass, Kit.LEAF_NEEDLE, snowed)
 		else:
