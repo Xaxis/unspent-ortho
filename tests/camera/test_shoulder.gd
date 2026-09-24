@@ -815,3 +815,160 @@ func test_the_eye_rises_over_a_person_on_the_line_and_the_lock_holds() -> void:
 	check(bool(sys.call("tour_seen", &"shoulder_locked")), "and the lock is still framed")
 	cam.subject = Vector3.INF
 	_done()
+
+
+# --- the spring arm's margin -------------------------------------------------------
+
+## A solid is probed by the box its model is DRAWN in, turned as the chunk bakes
+## it (`Basis(UP, -rot).scaled(scale)`). Asked at many points and turns against
+## that transform itself, so a wrong sign on the turn cannot pass.
+func test_a_drawn_box_is_turned_as_the_chunk_turns_the_model() -> void:
+	var lo := Vector2(-0.3, -1.2)
+	var hi := Vector2(0.4, 0.9)
+	var centre := Vector2(5.0, 7.0)
+	var scale := 1.3
+	var wrong := 0
+	var inside := 0
+	for rot: float in [0.0, 0.6, -1.1, 2.4, PI]:
+		var box := Shoulder.box_of(centre, rot, scale, lo, hi, 4.0)
+		var b := Basis(Vector3.UP, -rot).scaled(Vector3.ONE * scale)
+		for i in 400:
+			var p := centre + Vector2(fmod(i * 0.37, 4.0) - 2.0, fmod(i * 0.61, 4.0) - 2.0)
+			var local := b.inverse() * Vector3(p.x - centre.x, 0.0, p.y - centre.y)
+			var m := Shoulder.CLEAR / scale
+			var want := local.x > lo.x - m and local.x < hi.x + m and local.z > lo.y - m and local.z < hi.y + m
+			var got := Shoulder._in_box(Vector3(p.x, 1.0, p.y), box, Shoulder.CLEAR)
+			# The margin is CLEAR in the world, so it is CLEAR / scale in the model:
+			# compare away from the rim, where the two may round differently.
+			var rim := absf(local.x - lo.x) < 0.05 or absf(local.x - hi.x) < 0.05 \
+				or absf(local.z - lo.y) < 0.05 or absf(local.z - hi.y) < 0.05
+			if rim:
+				continue
+			if want != got:
+				wrong += 1
+			if got:
+				inside += 1
+	eq(wrong, 0, "every point agrees with the model's own transform")
+	gt(float(inside), 50.0, "and the test asked plenty of points inside (%d)" % inside)
+
+
+## A house drawn wider than the circle a body walks round: the eye would stand in
+## its drawn corner, clear of the circle and its margin, and only what is drawn
+## pulls it in.
+func test_the_eye_is_kept_out_of_a_drawn_corner_the_walking_circle_misses() -> void:
+	var low := func(_p: Vector2) -> float: return 0.0
+	var head := Vector3(0.0, 1.8, 0.0)
+	var eye := Vector3(2.6, 1.8, -0.3)
+	# Drawn from x 1.1 to 2.9 and z -2.1 to -0.1: the eye stands just inside it.
+	var house := Shoulder.box_of(Vector2(2.0, -1.1), 0.0, 1.0, Vector2(-0.9, -1.0), Vector2(0.9, 1.0), 3.0)
+	var circle: Array[Vector4] = [Vector4(2.0, -1.1, 0.5, 3.0)]
+	eq(Shoulder.room(head, eye, low, circle), 1.0, "its walking circle alone lets the eye stand in the corner")
+	lt(Shoulder.room(head, eye, low, [] as Array[Vector4], [house] as Array[PackedFloat32Array]), 0.9,
+		"what is drawn keeps it out")
+
+
+## A line that starts beside a wall and heads away from it passes through
+## nothing: a player standing under a house's eave keeps the whole view, where
+## a margin asked all along the line pulled the eye into his head.
+func test_a_line_leaving_a_wall_is_not_pulled_in() -> void:
+	var low := func(_p: Vector2) -> float: return 0.0
+	var house := Shoulder.box_of(Vector2(0.0, -1.05), 0.0, 1.0, Vector2(-2.0, -1.0), Vector2(2.0, 1.0), 3.0)
+	# Drawn to z -0.05, just behind the shoulder, as an eave overhangs a player
+	# standing under it: the walk's first steps are inside the margin. The eye is
+	# 4 tiles out and away.
+	var head := Vector3(0.0, 1.8, 0.0)
+	var eye := Vector3(0.0, 2.2, 4.0)
+	eq(Shoulder.room(head, eye, low, [] as Array[Vector4], [house] as Array[PackedFloat32Array]), 1.0,
+		"the whole distance, the wall at its back")
+
+
+## The probe is as wide as the near plane: a terrace riser a tenth of a tile
+## beside the line, higher than the eye, stops it, where the line alone passed.
+func test_a_riser_beside_the_line_stops_the_eye() -> void:
+	var riser := func(p: Vector2) -> float: return 4.0 if p.y < -0.1 else 0.0
+	var head := Vector3(0.0, 1.8, 0.0)
+	var eye := Vector3(4.0, 1.8, 0.0)
+	lt(Shoulder.room(head, eye, riser, [] as Array[Vector4]), 0.9, "the riser the near plane would slice stops it")
+	var away := func(p: Vector2) -> float: return 4.0 if p.y < -0.5 else 0.0
+	eq(Shoulder.room(head, eye, away, [] as Array[Vector4]), 1.0, "one half a tile off is left alone")
+
+
+## THE PROBE RUNS EVERY FRAME. Among a village's houses, the two walks the rig
+## makes a frame (head to shoulder, shoulder to eye) cost well under 0.2 ms at the
+## worst of eight bearings, measured as the cheapest of repeated runs.
+func test_the_probe_is_cheap_among_houses() -> void:
+	var g := await _make(["--village=0", "--view=shoulder"])
+	var sys := _system(g)
+	var head := g.player.position + Vector3(0.0, Shoulder.HEAD_UP, 0.0)
+	var worst := 0.0
+	var boxes := 0
+	for k in 8:
+		var yaw := k * 45.0
+		var back := Shoulder.forward(yaw) * -Shoulder.BACK
+		var right := Vector2(cos(deg_to_rad(yaw)), -sin(deg_to_rad(yaw))) * Shoulder.RIGHT
+		var focus := head + Vector3(right.x, 0.0, right.y)
+		var eye := focus + Vector3(back.x, 0.6, back.y)
+		var us := TestCase.best_of(30, func() -> void:
+			sys.call("room", head, focus)
+			sys.call("room", focus, eye))
+		worst = maxf(worst, us)
+		boxes = maxi(boxes, (sys.get("_boxes") as Array).size())
+	print("probe: worst of 8 bearings %.1f us a frame, %d drawn boxes in reach" % [worst, boxes])
+	gt(float(boxes), 0.0, "the village's buildings were in the probe (%d)" % boxes)
+	cost_lt(worst, 100.0, "two probe walks a frame among houses (us)")
+	_done()
+
+
+## The probe asks the drawn ground nothing above a ceiling worked out from the
+## tile levels. If the drawn surface ever rose past that ceiling, the eye would
+## stand in a hill with nothing noticing, so it is held across a whole island:
+## every tile, at points across it, against the ceiling for that very point.
+func test_the_ground_ceiling_is_never_under_the_drawn_ground() -> void:
+	var g := await _make(["--seed=4", "--size=64"])
+	var sys := _system(g)
+	var over := 0
+	var worst := -INF
+	var n := 0
+	for ty in range(0, 64):
+		for tx in range(0, 64):
+			for k in 3:
+				var p := Vector2(tx + 0.17 + 0.31 * k, ty + 0.83 - 0.29 * k)
+				var h := g.view.surface_height(p)
+				var q := Vector3(p.x, h, p.y)
+				var top := float(sys.call("_ground_top", q, q))
+				worst = maxf(worst, h - top)
+				n += 1
+				if h > top:
+					over += 1
+	eq(over, 0, "no drawn ground stands over its ceiling (%d points, closest %.3f under)" % [n, -worst])
+	_done()
+
+
+## A plain wall, corners only at its foot and its top, stands in EVERY slice
+## between: sliced by vertex the middle ones were empty and the eye could stand
+## inside it. Two triangles, 2.5 high, in slices of 0.5.
+func test_a_tall_face_fills_every_slice_it_crosses() -> void:
+	var wall := PackedVector3Array([
+		Vector3(-1.0, 0.0, 0.0), Vector3(1.0, 0.0, 0.0), Vector3(1.0, 2.5, 0.0),
+		Vector3(-1.0, 0.0, 0.0), Vector3(1.0, 2.5, 0.0), Vector3(-1.0, 2.5, 0.0)])
+	var s := Shoulder.slices_of(wall, 2.5, 0.5)
+	eq(s.size() / 4, 5, "five slices up a wall 2.5 high")
+	for j in s.size() / 4:
+		near(s[j * 4], -1.0, 1e-5, "slice %d reaches the wall's left end" % j)
+		near(s[j * 4 + 2], 1.0, 1e-5, "and its right end")
+
+
+## Sight past what is drawn (a fresh lock): through a house or under a hill it is
+## not seen; with nothing between, or a line that only passes NEAR a wall, it is.
+func test_sight_is_stopped_by_what_is_drawn_and_by_the_ground() -> void:
+	var flat := func(_p: Vector2) -> float: return 0.0
+	var a := Vector3(0.0, 1.45, 0.0)
+	var b := Vector3(8.0, 0.6, 0.0)
+	var none: Array[PackedFloat32Array] = []
+	check(Shoulder.sees(a, b, flat, none), "nothing between: seen")
+	var house := Shoulder.box_of(Vector2(4.0, 0.0), 0.3, 1.0, Vector2(-1.0, -1.0), Vector2(1.0, 1.0), 3.0)
+	check(not Shoulder.sees(a, b, flat, [house] as Array[PackedFloat32Array]), "a house between: not seen")
+	var aside := Shoulder.box_of(Vector2(4.0, 1.25), 0.0, 1.0, Vector2(-1.0, -1.0), Vector2(1.0, 1.0), 3.0)
+	check(Shoulder.sees(a, b, flat, [aside] as Array[PackedFloat32Array]), "a wall a quarter tile off the line: seen")
+	var hill := func(p: Vector2) -> float: return 2.0 if p.x > 3.0 and p.x < 5.0 else 0.0
+	check(not Shoulder.sees(a, b, hill, none), "a rise between: not seen")

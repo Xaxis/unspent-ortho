@@ -91,7 +91,7 @@ const LOCK_RIGHT := 1.15
 
 ## THE CAMERA MAY NOT GO INTO THE LAND OR A HOUSE (docs/LOOK.md law 3: "The land
 ## itself never opens"). The line from the point it looks at (over the right
-## shoulder) back to where the eye wants to stand is walked in `STEPS` steps; the
+## shoulder) back to where the eye wants to stand is walked in steps (`steps_for`); the
 ## first one that is under the ground, or inside something that stops a body and
 ## stands higher than the step, is where the eye stops, less a step. `CLEAR` is
 ## the room kept round the eye so the near plane never slices the thing it
@@ -104,6 +104,18 @@ const LOCK_RIGHT := 1.15
 ## (`--place=pinewood --view=shoulder --put=pipe,barricade,pole`).
 const HEAD_UP := 1.45
 const STEPS := 28
+## A line is walked at least this finely, and in no more than `STEPS`: half of
+## `CLEAR`, so the margin round one point overlaps the next and nothing thinner
+## than a margin falls between two. Counted by LENGTH, because the short walk
+## from the head to the shoulder (0.6 tiles) was walked in the same 28 steps as
+## the long one to the eye, and each step is a ground lookup (most of the probe's
+## cost, measured: 160 of 298 us a frame).
+const STEP_LEN := 0.15
+
+
+## How many steps a line of `span` tiles is walked in.
+static func steps_for(span: float) -> int:
+	return clampi(ceili(span / STEP_LEN), 4, STEPS)
 const CLEAR := 0.3
 ## Never nearer the shoulder point than this. At 0.8 the head, 0.62 to the left,
 ## is a quarter of the frame's height; nearer, it is the frame.
@@ -118,6 +130,12 @@ const THIN := 0.38
 ## at once, because a frame drawn from inside a hill is the failure and a camera
 ## that pulls in quickly is not.
 const ROOM_OUT := 3.0
+## THE PROBE IS AS WIDE AS THE NEAR PLANE, not a line. The near plane's corner
+## stands this far from the eye's own line: NEAR 0.12 at a 60 degree field and
+## 16:9 is 0.12 * tan(30) * sqrt(1 + (16/9)^2) = 0.14. A terrace riser that far
+## beside the line, higher than the eye, is a wall the near plane slices through
+## while the line itself passes clean, so the ground is asked across that width.
+const NEAR_REACH := 0.15
 
 ## The near and far clip planes under the view. Near is small because a pulled-in
 ## camera is half a unit from the head; far is where the horizon's land ends,
@@ -238,33 +256,108 @@ static func capture(shoulder: bool, blocked: bool, tool_run: bool, focused: bool
 ## a house is its footprint up to its roof, a tower its mass up to the sky. A
 ## point is blocked when it is under the land, or inside a solid's circle (grown
 ## by CLEAR) below its top; a THIN solid blocks only the eye's own place.
-static func room(from: Vector3, eye: Vector3, ground: Callable, solids: Array[Vector4]) -> float:
+## `boxes` are solids probed by what is DRAWN, not by the circle a body walks
+## round (`box_of`): a house is drawn up to 1.3 tiles past its solid circle at
+## its corners and eaves, far past `CLEAR`, and a circle let the eye stand inside
+## the corner (seed 4: every house form, 203 of 390 solid models).
+##
+## `ground_top` is a height no ground along the line rises above (41_shoulder
+## works it out from the tile levels): a point above it and `CLEAR` asks the
+## ground nothing, which on open land is every point, and the lookups were most
+## of what the probe cost.
+static func room(from: Vector3, eye: Vector3, ground: Callable, solids: Array[Vector4],
+		boxes: Array[PackedFloat32Array] = [], ground_top := INF) -> float:
 	var span := from.distance_to(eye)
 	if span < 0.001:
 		return 1.0
 	var least := minf(1.0, LEAST_BACK / span)
 	var clear := 0.0
-	for i in range(1, STEPS + 1):
-		var t := float(i) / float(STEPS)
+	var steps := steps_for(span)
+	for i in range(1, steps + 1):
+		var t := float(i) / float(steps)
 		var q := from.lerp(eye, t)
-		if _blocked(q, ground, solids, false):
+		if _blocked(q, ground, solids, false, boxes, ground_top):
 			# One step short of the first blocked point, and CLEAR short of that.
-			return maxf(least, clear - CLEAR / span)
+			return _settle(from, eye, maxf(least, clear - CLEAR / span), least, ground, steps, boxes, ground_top)
 		clear = t
 	# The eye's own place, against the thin things too: walked back toward the
 	# shoulder until it is out of them, which is their near side.
-	if not _blocked(eye, ground, solids, true):
-		return 1.0
-	for i in range(STEPS - 1, 0, -1):
-		var t := float(i) / float(STEPS)
-		if not _blocked(from.lerp(eye, t), ground, solids, true):
-			return maxf(least, t)
+	if not _blocked(eye, ground, solids, true, boxes, ground_top):
+		return _settle(from, eye, 1.0, least, ground, steps, boxes, ground_top)
+	for i in range(steps - 1, 0, -1):
+		var t := float(i) / float(steps)
+		if not _blocked(from.lerp(eye, t), ground, solids, true, boxes, ground_top):
+			return _settle(from, eye, maxf(least, t), least, ground, steps, boxes, ground_top)
 	return least
 
 
-static func _blocked(q: Vector3, ground: Callable, solids: Array[Vector4], thin: bool) -> bool:
-	if float(ground.call(Vector2(q.x, q.z))) + CLEAR > q.y:
+## WHERE THE EYE MAY STAND, once the near plane itself is asked about: from `t`,
+## a step in at a time until nothing stands within the near plane's reach of the
+## eye -- no ground within `NEAR_REACH` across it, nothing drawn within `CLEAR`.
+## The margin belongs HERE and not along the line, because the near plane is at
+## the eye: a line that starts beside a wall and heads away from it passes
+## through nothing, and asked with the margin all the way along, a player
+## standing under a house's eave had the eye pulled into his head
+## (tours/spring_arm.tour, frame 01). Asked of the ground all the way along, it
+## was also five lookups a step and 0.7 ms a frame among houses.
+static func _settle(from: Vector3, eye: Vector3, t: float, least: float, ground: Callable, steps: int,
+		boxes: Array[PackedFloat32Array] = [], ground_top := INF) -> float:
+	var step := 1.0 / float(steps)
+	while t > least:
+		var q := from.lerp(eye, t)
+		var hit := false
+		for b: PackedFloat32Array in boxes:
+			if _in_box(q, b, CLEAR):
+				hit = true
+				break
+		if not hit and q.y < ground_top + CLEAR:
+			for off: Vector2 in GROUND_PROBE:
+				if off != Vector2.ZERO and float(ground.call(Vector2(q.x, q.z) + off)) + CLEAR > q.y:
+					hit = true
+					break
+		if not hit:
+			return t
+		t -= step
+	return least
+
+
+## Whether `q` is within `margin` of what the packed box `b` has DRAWN at its
+## height (`sliced_box_of`): the slice there, and a neighbour only when `q` is
+## within the margin of it -- a house's eave overhangs at its top, not at eye
+## height.
+static func _in_box(q: Vector3, b: PackedFloat32Array, margin: float) -> bool:
+	if q.y >= b[7] + margin:
+		return false
+	var up := q.y - b[4]
+	var k := floori(up / b[5])
+	var j0 := k - 1 if up - k * b[5] < margin else k
+	var j1 := k + 1 if (k + 1) * b[5] - up < margin else k
+	j0 = maxi(j0, 0)
+	j1 = mini(j1, int(b[6]) - 1)
+	if j0 > j1:
+		return false
+	var dx := q.x - b[0]
+	var dz := q.z - b[1]
+	var lx := dx * b[2] + dz * b[3]
+	var lz := -dx * b[3] + dz * b[2]
+	for j in range(j0, j1 + 1):
+		var o := 8 + j * 4
+		if b[o] > b[o + 2]:
+			continue  # nothing is drawn in this slice
+		if lx > b[o] - margin and lx < b[o + 2] + margin and lz > b[o + 1] - margin and lz < b[o + 3] + margin:
+			return true
+	return false
+
+
+static func _blocked(q: Vector3, ground: Callable, solids: Array[Vector4], thin: bool,
+		boxes: Array[PackedFloat32Array] = [], ground_top := INF) -> bool:
+	if q.y < ground_top + CLEAR and float(ground.call(Vector2(q.x, q.z))) + CLEAR > q.y:
 		return true
+	# What is DRAWN is asked strictly along the line: does it pass THROUGH it.
+	# Its margin is the eye's, asked where the eye stands (`_settle`).
+	for b: PackedFloat32Array in boxes:
+		if _in_box(q, b, 0.0):
+			return true
 	for s: Vector4 in solids:
 		if s.z < THIN and not thin:
 			continue
@@ -274,6 +367,68 @@ static func _blocked(q: Vector3, ground: Callable, solids: Array[Vector4], thin:
 		if dx * dx + dz * dz < r * r and q.y < s.w + CLEAR:
 			return true
 	return false
+
+
+## Where the ground is asked round a point on the probe: the point itself and
+## the near plane's width either way across it (`NEAR_REACH`).
+const GROUND_PROBE: Array[Vector2] = [Vector2.ZERO, Vector2(NEAR_REACH, 0.0), Vector2(-NEAR_REACH, 0.0),
+	Vector2(0.0, NEAR_REACH), Vector2(0.0, -NEAR_REACH)]
+
+
+## A solid as the camera must see it: what its model is DRAWN in, turned and
+## scaled as the chunk bakes it (`Basis(UP, -rot).scaled(scale)`, world_view),
+## in slices of height. ONE box for the whole model was too big at eye height:
+## these houses lean and their eaves and chimneys overhang at the top, and the
+## top's extent pulled the eye in beside a wall it stood well clear of (seen on
+## tours/spring_arm.tour's first frame). Packed for `_blocked`, which runs it a
+## few hundred times a frame, as
+##   [x, z, cos, sin, base, slice height, slices, top,
+##    then per slice lo.x, lo.z, hi.x, hi.z]  (lo > hi: nothing drawn there)
+## `slices` are the template's own extents, `slice_h` its slice height, both
+## before scaling; `base` and `top` are world heights.
+static func sliced_box_of(pos: Vector2, rot: float, scale: float, base: float, slice_h: float,
+		slices: PackedFloat32Array, top: float) -> PackedFloat32Array:
+	var out := PackedFloat32Array([pos.x, pos.y, cos(rot), sin(rot), base, slice_h * scale,
+		float(slices.size() / 4), top])
+	for v: float in slices:
+		out.append(v * scale)
+	return out
+
+
+## A model's drawn extent in slices of `slice_h` up to `top`, from its vertices
+## as a plain triangle list (every three a face, as the prop templates are): per
+## slice lo.x, lo.z, hi.x, hi.z, and lo > hi where nothing is drawn. Each face's
+## footprint goes into EVERY slice its height crosses: sliced by vertex, a plain
+## wall with corners only at its foot and its top left the slices between them
+## empty, and the eye could have stood inside it.
+static func slices_of(verts: PackedVector3Array, top: float, slice_h: float) -> PackedFloat32Array:
+	var n := maxi(1, ceili(top / slice_h))
+	var s := PackedFloat32Array()
+	for j in n:
+		s.append_array([INF, INF, -INF, -INF])
+	for f in range(0, verts.size() - 2, 3):
+		var a := verts[f]
+		var b := verts[f + 1]
+		var c := verts[f + 2]
+		var j0 := clampi(floori(minf(a.y, minf(b.y, c.y)) / slice_h), 0, n - 1)
+		var j1 := clampi(floori(maxf(a.y, maxf(b.y, c.y)) / slice_h), 0, n - 1)
+		var x0 := minf(a.x, minf(b.x, c.x))
+		var z0 := minf(a.z, minf(b.z, c.z))
+		var x1 := maxf(a.x, maxf(b.x, c.x))
+		var z1 := maxf(a.z, maxf(b.z, c.z))
+		for j in range(j0, j1 + 1):
+			var o := j * 4
+			s[o] = minf(s[o], x0)
+			s[o + 1] = minf(s[o + 1], z0)
+			s[o + 2] = maxf(s[o + 2], x1)
+			s[o + 3] = maxf(s[o + 3], z1)
+	return s
+
+
+## One box for the whole height, from `lo` to `hi` (x, z) in the model's units.
+static func box_of(pos: Vector2, rot: float, scale: float, lo: Vector2, hi: Vector2, top: float) -> PackedFloat32Array:
+	return sliced_box_of(pos, rot, scale, -1.0e6, 2.0e6 / maxf(scale, 1e-6),
+		PackedFloat32Array([lo.x, lo.y, hi.x, hi.y]), top)
 
 
 ## Degrees a second the arrow keys turn the view (docs/CONTROLS.md, C6): the one
@@ -330,3 +485,23 @@ static func in_line(eye: Vector2, target: Vector2, people: Array[Vector2], width
 static func clear_step(now: float, want: float, delta: float) -> float:
 	var rate := CLEAR_IN if want > now else CLEAR_OUT
 	return lerpf(now, want, 1.0 - exp(-rate * delta))
+
+
+## WHETHER `a` SEES `b` past what is drawn (docs/CONTROLS.md, lock-on): the line
+## between them passes through no drawn solid and under no ground. Asked strictly
+## -- through, not near -- because this is sight, not a camera with a near plane.
+## Thin things (a pole, a trunk) and leaves are seen past, as the view sees past
+## them. A lock taken fresh must be seen, or holding the key through a wall is a
+## free scan of what stands behind it, in a game about not being seen.
+static func sees(a: Vector3, b: Vector3, ground: Callable, boxes: Array[PackedFloat32Array],
+		ground_top := INF) -> bool:
+	var span := a.distance_to(b)
+	var steps := clampi(ceili(span / STEP_LEN), 1, 400)
+	for i in range(1, steps):
+		var q := a.lerp(b, float(i) / float(steps))
+		for box: PackedFloat32Array in boxes:
+			if _in_box(q, box, 0.0):
+				return false
+		if q.y < ground_top and float(ground.call(Vector2(q.x, q.z))) > q.y:
+			return false
+	return true
