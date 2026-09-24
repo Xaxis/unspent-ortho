@@ -6,12 +6,13 @@
 // sky_eye.gdshader defines: the colossi include the dome too and must not grow a
 // sampler they never read.
 //
-// THE LAYER IS A SECOND CAMERA WITH THE EYE'S OWN BASIS AND LENS, standing at
-// the centre of a world measured in kilometres, rendered into a texture the size
-// of the 3D frame. A direction `d` out of the eye lands on the SAME pixel of the
-// layer as of the screen, so the sample is the ring as the renderer lit it, on
-// the pixel it belongs to (orbit_layer.gd `uv_of` is this function's mirror, and
-// tests/render/test_orbit.gd holds the two to one rule).
+// THE LAYER IS A SECOND CAMERA AIMED AT THE RING, standing at the centre of a
+// world measured in kilometres, with a square lens just wide enough for the
+// wheel. The sky finds a direction `d` on it by that camera's basis and lens
+// (`orbit_view`, `orbit_tan`), so what it holds does not depend on where the eye
+// is looking and it need not be redrawn every frame (orbit_layer.gd `uv_of` is
+// this function's mirror, and tests/render/test_orbit.gd holds it to the
+// engine's own camera).
 //
 // What comes back is (radiance already through the air, coverage). The dome adds
 // the radiance where it stands -- before the clouds, which pass IN FRONT of it --
@@ -28,8 +29,8 @@ uniform float orbit_on = 0.0;
 uniform mat3 orbit_view = mat3(1.0);
 // tan of half the lens across (x) and up (y), so view space -> NDC.
 uniform vec2 orbit_tan = vec2(0.577, 0.577);
-// The rectangle of the frame the layer covers, in NDC (x0, y0 bottom, x1, y1
-// top): the layer is cut down to the ring's own box on the glass.
+// The part of the layer's own lens it covers, in NDC (x0, y0 bottom, x1, y1
+// top): the whole of it, since the lens is aimed at the ring.
 uniform vec4 orbit_rect = vec4(-1.0, -1.0, 1.0, 1.0);
 // What the texture holds is radiance / gain (8 on the RGBA8 fallback, 1 on HDR).
 uniform float orbit_gain = 1.0;
@@ -182,7 +183,6 @@ vec3 orbit_wake_at(vec3 d) {
 // (radiance to ADD, coverage) for direction `d`: the ring's layer and the wake.
 vec4 orbit_at(vec3 d) {
 	vec3 wake = orbit_wake_at(d);
-	float open = 1.0 - orbit_cloud_amount(d);
 	vec4 ring = vec4(0.0);
 	if (orbit_on > 0.0) {
 		vec2 uv = orbit_uv(d);
@@ -194,6 +194,9 @@ vec4 orbit_at(vec3 d) {
 	if (ring.a <= 0.0 && dot(ring.rgb + wake, vec3(1.0)) <= 0.0) {
 		return vec4(0.0);
 	}
+	// The clouds are asked only here, where there is a ring or a shard to lay
+	// them over: asked first, five octaves of noise ran on every pixel of sky.
+	float open = 1.0 - orbit_cloud_amount(d);
 	// A shard behind the hull is behind the hull.
 	wake *= 1.0 - ring.a;
 	return vec4((ring.rgb + wake) * orbit_through(d) * open, ring.a * open);

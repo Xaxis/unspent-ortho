@@ -106,13 +106,13 @@ func test_a_pass_crosses_the_sky_at_a_steady_pace() -> void:
 
 
 ## THE EARTH'S SHADOW is geometry: a point straight overhead goes dark exactly
-## when the sun is acos(R / (R + h)) under the horizon (23.9 degrees here), with
+## when the sun is acos(R / (R + h)) under the horizon (20.4 degrees here), with
 ## the half-degree sun's penumbra either side, and not a degree sooner.
 func test_the_eclipse_boundary_is_where_geometry_puts_it() -> void:
 	var d := _def()
 	var edge := Pass.eclipse_depth(d)
-	near(edge, -rad_to_deg(acos(4500.0 / 4920.0)), 1e-4, "the boundary is the geometry's")
-	near(edge, -23.86, 0.05, "which is about 23.9 degrees down")
+	near(edge, -rad_to_deg(acos(4500.0 / 4800.0)), 1e-4, "the boundary is the geometry's")
+	near(edge, -20.36, 0.05, "which is about 20.4 degrees down, 300 km up")
 	var over := Vector3(0.0, float(d.orbit_km()), 0.0)
 	near(Pass.sunlit(d, over, _sun(10.0)), 1.0, 1e-6, "day: lit")
 	near(Pass.sunlit(d, over, _sun(-10.0)), 1.0, 1e-6, "an hour after dusk: still lit, over a dark land")
@@ -125,42 +125,55 @@ func test_the_eclipse_boundary_is_where_geometry_puts_it() -> void:
 	check(src.contains("const float PENUMBRA_KM = %.1f;" % Pass.PENUMBRA_KM), "with the same penumbra")
 
 
-## A KNOWN DIRECTION LANDS ON THE SAME PIXEL in the layer and on the screen: the
-## sky's `orbit_uv` (mirrored by OrbitLayer.uv_of) against the engine's own
-## cameras, asked through `unproject_position` -- the eye's, over the whole
-## frame, and the layer's, cut down to the ring's rectangle at one and two layer
-## pixels a frame pixel.
-func test_a_direction_lands_on_the_same_pixel_in_the_layer_and_the_frame() -> void:
-	var basis := Basis.from_euler(Vector3(deg_to_rad(38.0), deg_to_rad(-71.0), 0.0))
-	for sz: Vector2i in [Vector2i(1920, 1080), Vector2i(1440, 810)]:
-		var eye := _cam(sz, basis, 62.0)
-		var centre := (-basis.z * 0.9 + basis.x * 0.2 + basis.y * 0.1).normalized() * 520.0
-		var r := Layer.rect_of(basis, 62.0, sz, centre, 80.0)
-		gt(float(r.size.x), 50.0, "the ring's rectangle is on the glass")
-		lt(float(r.size.x * r.size.y), float(sz.x * sz.y) * 0.5, "and is a small part of it")
-		var ndc := Layer.ndc_rect(r, sz)
-		for ss: int in [1, 2]:
-			var lay := _cam(r.size * ss, basis, 62.0)
-			Layer.cut(lay, basis, 62.0, sz, ndc)
+## A KNOWN DIRECTION LANDS WHERE THE LAYER DREW IT: the layer is aimed at the
+## ring with a square lens (OrbitLayer.aim_of / aim), and the sky finds a
+## direction on it by that basis and that lens (orbit_sky's `orbit_uv`, the
+## mirror of OrbitLayer.uv_of). Asked of the engine's own camera, aimed the
+## same way, through `unproject_position`: the ring's centre is the middle of
+## the layer, every direction the wheel can cover is on it, and each lands on
+## the texel the engine drew it on.
+func test_a_direction_lands_where_the_layer_drew_it() -> void:
+	for centre: Vector3 in [Vector3(0.0, 300.0, 5.0), Vector3(1200.0, 260.0, -400.0), Vector3(-500.0, 900.0, 300.0)]:
+		var bound := 120.0
+		var a := Layer.aim_of(centre, bound)
+		var b: Basis = a[0]
+		var th: float = a[1]
+		var fov := rad_to_deg(2.0 * atan(th))
+		for n: int in [288, 768]:
+			var cam := _cam(Vector2i(n, n), b, fov)
+			Layer.aim(cam, b, th)
+			var mid := Layer.uv_of(b, fov, 1.0, centre.normalized())
+			lt(mid.distance_to(Vector2(0.5, 0.5)), 1e-4, "the ring's centre is the middle of the layer")
 			var worst := 0.0
 			var asked := 0
 			for i in 60:
-				var d := (centre.normalized() + basis.x * (Rng.hash01(3, i) - 0.5) * 0.25
-					+ basis.y * (Rng.hash01(4, i) - 0.5) * 0.25).normalized()
-				var uv := Layer.uv_of(basis, 62.0, float(sz.x) / float(sz.y), d, ndc)
+				# Directions over the whole bounding sphere, out to its edge.
+				var u := centre.normalized().cross(Vector3.UP).normalized()
+				var w := centre.normalized().cross(u)
+				var r := sqrt(Rng.hash01(3, i)) * asin(bound / centre.length())
+				var t := Rng.hash01(4, i) * TAU
+				var d := (centre.normalized() * cos(r) + (u * cos(t) + w * sin(t)) * sin(r)).normalized()
+				var uv := Layer.uv_of(b, fov, 1.0, d)
+				check(uv.x >= 0.0, "every direction the wheel can cover is on the layer")
 				if uv.x < 0.0:
-					continue
+					return
 				asked += 1
-				# The layer's own camera puts it here...
-				worst = maxf(worst, (uv * Vector2(r.size * ss)).distance_to(lay.unproject_position(d * 900.0)))
-				# ...and the eye puts it on the same frame pixel.
-				var frame := Vector2(r.position) + uv * Vector2(r.size)
-				worst = maxf(worst, frame.distance_to(eye.unproject_position(d * 900.0)))
-			gt(float(asked), 20.0, "enough directions landed inside the rectangle")
-			lt(worst, 0.05, "%dx%d, %d layer px a frame px: a direction lands %.3f px apart" % [sz.x, sz.y, ss, worst])
+				worst = maxf(worst, (uv * float(n)).distance_to(cam.unproject_position(d * 900.0)))
+			lt(worst, 0.05, "%d texels: a direction lands %.3f texels from where the engine drew it" % [n, worst])
 	var src := FileAccess.get_file_as_string("res://src/render/orbit/orbit_sky.gdshaderinc")
 	check(src.contains("vec2 ndc = v.xy / (-v.z) / orbit_tan;"), "the sky projects as uv_of does")
-	check(src.contains("return vec2((ndc.x - orbit_rect.x) / (orbit_rect.z - orbit_rect.x), (orbit_rect.w - ndc.y) / (orbit_rect.w - orbit_rect.y));"), "into the rectangle, y down, as uv_of does")
+	check(src.contains("return vec2((ndc.x - orbit_rect.x) / (orbit_rect.z - orbit_rect.x), (orbit_rect.w - ndc.y) / (orbit_rect.w - orbit_rect.y));"), "y down, as uv_of does")
+	var sys := FileAccess.get_file_as_string("res://src/systems/19_orbit.gd")
+	check(sys.contains("m.set_shader_parameter(&\"orbit_view\", layer.aim_basis.transposed())"), "and it is handed the layer's own aim, not the eye's")
+
+
+## THE LAYER IS DRAWN ONE FRAME IN RENDER_EVERY, and read in between: aimed at
+## the ring, what it holds does not change as the eye turns.
+func test_the_layer_is_redrawn_only_now_and_then() -> void:
+	var src := FileAccess.get_file_as_string("res://src/render/orbit/orbit_layer.gd")
+	gt(float(Layer.RENDER_EVERY), 1.0, "not every frame")
+	check(src.contains("viewport.render_target_update_mode = SubViewport.UPDATE_ONCE"), "drawn once when it is due")
+	check(src.contains("if px_across < SINGLE_PX:\n\t\tss = 1"), "and one sample a pixel for a small ring")
 
 
 func _cam(sz: Vector2i, basis: Basis, fov: float) -> Camera3D:
@@ -241,12 +254,12 @@ func test_the_lamps_go_out_against_a_daylit_sky() -> void:
 	check(src.contains("glow *= lamp_seen;"), "and the shader spends it on every lamp")
 
 
-## RINGSHINE IS CAPPED at one and a half moons, is nothing by day or in the
+## RINGSHINE IS CAPPED at three quarters of the moon, is nothing by day or in the
 ## Earth's shadow, and falls away as the wheel goes down the sky.
 func test_ringshine_is_capped_and_goes_out_at_eclipse() -> void:
 	var Sys: GDScript = load("res://src/systems/19_orbit.gd")
 	var most: float = Sys.call(&"ringshine_energy", 1.0)
-	near(most, SkyLight.MOON_NIGHT * 1.5, 1e-6, "the cap is 1.5 moons")
+	near(most, SkyLight.MOON_NIGHT * 0.75, 1e-6, "the cap is three quarters of the moon (owner, 2026-09-24: nights stay dark)")
 	near(Sys.call(&"ringshine_energy", 7.0), most, 1e-6, "and nothing can ask for more")
 	var over: float = Sys.call(&"shine_of", 1.0, 1.0, 1.0, 1.0, 0.0)
 	near(over, 1.0, 1e-6, "sunlit overhead at night: the whole cap")

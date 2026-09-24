@@ -24,12 +24,17 @@ var id: StringName = &"ring"
 ## thing 420 km up an hour or two after the land has lost the sun rather than
 ## minutes. DUPLICATE of that constant, to be promoted to one shared number.
 var planet_km := 4500.0
-var altitude_km := 420.0
+## 300 km up and 90 km in radius, not the design's 420 and 60 (owner,
+## 2026-09-24): a low pass was 98 px across at 12 degrees up and read as a
+## ring drawn on the sky. This one is 189 px there and 600 overhead, and the
+## Earth's shadow still takes it only after dusk (at the zenith from 22:57 to
+## 02:33 on the game's night).
+var altitude_km := 300.0
 
-## THE WHEEL. Rim radius to the middle of the trough; the trough itself (the
+## THE WHEEL (180 km across). Rim radius to the middle of the trough; the trough itself (the
 ## habitat ring, open to the axis side); six spokes to a hub spindle carrying
 ## two radiator sails.
-var rim_km := 60.0
+var rim_km := 90.0
 ## Seven kilometres wide and three deep, not the design's first 3.2 by 1.1: at
 ## 420 km that section was seven pixels, and at 7 to 16 degrees across the wheel
 ## read as wire (the owner wants it massive). A drum this size is still a
@@ -42,7 +47,7 @@ var trough_deep := 3.0
 ## trough is seven pixels, and a wheel of nothing but trough read as a drawn
 ## circle (measured, the first frames). Panels are missing by hash, more of
 ## them toward the wound, so the girders show through.
-var deck_km := 12.0
+var deck_km := 16.0
 var spokes := 6
 var spoke_thick := 2.2
 var hub_long := 16.0

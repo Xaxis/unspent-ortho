@@ -80,7 +80,10 @@ func setup(g: Game) -> void:
 	add_child(layer)
 	layer.setup(def, g.world.seed_value, proof)
 	add_to_group(&"colossi")
-	if spec.ends_with(":ab"):
+	if spec.contains(":ab"):
+		# ":ab" holds the whole ring off; ":ab-layer" the layer alone, ":ab-wake"
+		# the wake alone, so a cost can be put where it is paid.
+		_ab_what = spec.get_slice(":ab", 1).trim_prefix("-")
 		_ab.call_deferred()
 
 
@@ -99,9 +102,11 @@ func _process(_delta: float) -> void:
 	var h: float = game.sky.clock_hour
 	var sun := SkyLight.sky_sun(h, float(SkyLight.sun_at(h).azimuth))
 	lit = Pass.sunlit(def, (pose.rel as Vector3) - (pose.earth as Vector3), sun)
-	var on := layer.update(cam, pose, sun, air, open and float(air.share) > 0.0 and not _held_off)
+	var layer_off := _held_off and _ab_what != "wake"
+	var wake_off := _held_off and _ab_what != "layer"
+	var on := layer.update(cam, pose, sun, air, open and float(air.share) > 0.0 and not layer_off)
 	_tell_sky(cam, on, air)
-	_wake(cam, sun, air, open and float(air.share) > 0.0 and not _held_off)
+	_wake(cam, sun, air, open and float(air.share) > 0.0 and not wake_off)
 	_shine(sun, air, open)
 	_look(cam, open)
 	last_process_usec = Time.get_ticks_usec() - t_all
@@ -130,6 +135,7 @@ func _pass_for(m: float) -> Dictionary:
 const AB_ROUNDS := 10
 const AB_SECS := 1.0
 var _held_off := false
+var _ab_what := ""
 
 
 func _ab() -> void:
@@ -180,7 +186,7 @@ func _ab() -> void:
 	cpu.sort()
 	gpu.sort()
 	var g := gpu[gpu.size() / 2] if not gpu.is_empty() else 0.0
-	print("world orbit ab: the ring costs %.2f ms a frame (median of %d paired rounds, %.2f .. %.2f); 19_orbit's own main-thread work %d us" % [diffs[diffs.size() / 2], diffs.size(), diffs[0], diffs[diffs.size() - 1], last_process_usec])
+	print("world orbit ab [%s]: the ring costs %.2f ms a frame (median of %d paired rounds, %.2f .. %.2f); 19_orbit's own main-thread work %d us" % [_ab_what if _ab_what != "" else "all", diffs[diffs.size() / 2], diffs.size(), diffs[0], diffs[diffs.size() - 1], last_process_usec])
 	print("world orbit ab (%s, quality %s, load %s): frame %.2f ms with the ring, %.2f ms held off (median of %d rounds), layer render cpu %.3f ms, gpu %s, video memory %.1f MB with / %.1f MB held off (the target stays allocated)" % [
 		"Forward+" if Quality.forward_plus() else "Compatibility", Quality.current_id(),
 		str(OS.get_environment("UNSPENT_LOAD")), on_ms[on_ms.size() / 2], off_ms[off_ms.size() / 2], AB_ROUNDS,
@@ -248,9 +254,10 @@ const WAKE_POINTS := 17
 const WAKE_BRIGHT := 1.0
 
 
-## RINGSHINE: a cold second fill on the land from the ring's bearing, the way
-## a moon lights a night, CAPPED at RINGSHINE_MOST of the moon's own light so a
-## night stays really dark (docs/LOOK.md law 2), and it goes out at eclipse --
+## RINGSHINE: a cold second fill on the land from the ring's bearing, CAPPED at
+## RINGSHINE_MOST of the moon's own light -- a lift a player notices under the
+## ring, never a second moon: the owner wants nights dark (2026-09-24, halved
+## from the design's 1.5; docs/LOOK.md law 2) -- and it goes out at eclipse --
 ## the land darkens a step as the Earth's shadow reaches the wheel. It is sunlit
 ## plate four hundred kilometres up: brightest overhead, less near the horizon,
 ## nothing by day. A DirectionalLight3D of its own, casting nothing.
@@ -258,7 +265,7 @@ const WAKE_BRIGHT := 1.0
 ## And the transit: when the hull crosses the sun as seen from here, the sun's
 ## light on the land is taken down by as much of its disc as is covered
 ## (`SkyLight.orbit_shade`, which SkyLight spends on the sun alone).
-const RINGSHINE_MOST := 1.5
+const RINGSHINE_MOST := 0.75
 const RINGSHINE_COLOR := Color(0.70, 0.80, 1.0)
 var ringshine: DirectionalLight3D
 var shine := 0.0
@@ -315,12 +322,13 @@ func _tell_sky(cam: Camera3D, on: bool, air: Dictionary) -> void:
 	m.set_shader_parameter(&"orbit_on", 1.0 if on else 0.0)
 	if not on:
 		return
-	var sz := Vector2(layer.screen)
-	var t := LayerScript.tan_of(cam.fov, sz.x / sz.y)
-	m.set_shader_parameter(&"orbit_rect", layer.rect)
+	# The layer is aimed at the ring (orbit_layer.gd `update`): the sky finds a
+	# direction on it by ITS basis and ITS square lens, whichever way the eye is
+	# turned.
+	m.set_shader_parameter(&"orbit_rect", Vector4(-1.0, -1.0, 1.0, 1.0))
 	m.set_shader_parameter(&"orbit_layer", layer.viewport.get_texture())
-	m.set_shader_parameter(&"orbit_view", layer.camera.global_transform.basis.transposed())
-	m.set_shader_parameter(&"orbit_tan", t)
+	m.set_shader_parameter(&"orbit_view", layer.aim_basis.transposed())
+	m.set_shader_parameter(&"orbit_tan", Vector2(layer.aim_tan, layer.aim_tan))
 	m.set_shader_parameter(&"orbit_gain", layer.gain)
 	var night: float = float((air.get("dome", {}) as Dictionary).get(&"dome_night", 0.0))
 	m.set_shader_parameter(&"orbit_mass", MASS_AT_NIGHT * night)
@@ -384,7 +392,7 @@ func stats_line() -> String:
 func frame_probe() -> Dictionary:
 	if layer == null or not layer.drawn:
 		return {}
-	var li := layer.viewport.get_texture().get_image()
+	var li := _screen_layer()
 	var fi := get_viewport().get_texture().get_image()
 	if li == null or fi == null:
 		return {}
@@ -414,6 +422,33 @@ func frame_probe() -> Dictionary:
 				if hit:
 					break
 	return {"lift": lift / float(maxi(n, 1)), "dark": float(darker) / float(maxi(n, 1)), "n": n}
+
+
+## THE LAYER AS THE EYE SEES IT: the layer is aimed at the ring, not at the
+## eye's frame, so for the probes it is looked up again, pixel by pixel of the
+## ring's box on the glass (layer.frame_rect, 3D-frame pixels), by the direction
+## each pixel looks in -- the sky's own lookup, `uv_for` -- into an image laid
+## out as that box. Nearest texel; only a probe pays for it.
+func _screen_layer() -> Image:
+	var src := layer.viewport.get_texture().get_image()
+	if src == null:
+		return null
+	var r := layer.frame_rect
+	if r.size.x <= 0 or r.size.y <= 0:
+		return null
+	var out := Image.create(r.size.x, r.size.y, false, Image.FORMAT_RGBAF)
+	var sz := Vector2(src.get_size())
+	var t := LayerScript.tan_of(layer.fov, float(layer.screen.x) / float(layer.screen.y))
+	for y in r.size.y:
+		for x in r.size.x:
+			var ndc := Vector2(2.0 * (float(r.position.x + x) + 0.5) / float(layer.screen.x) - 1.0,
+				1.0 - 2.0 * (float(r.position.y + y) + 0.5) / float(layer.screen.y))
+			var d := (layer.eye_basis * Vector3(ndc.x * t.x, ndc.y * t.y, -1.0)).normalized()
+			var uv := layer.uv_for(d)
+			if uv.x < 0.0:
+				continue
+			out.set_pixel(x, y, src.get_pixelv(Vector2i(uv * sz).clamp(Vector2i.ZERO, Vector2i(sz) - Vector2i.ONE)))
+	return out
 
 
 ## A layer pixel to the frame pixel it lands on: the layer covers `rect` of the
@@ -471,7 +506,7 @@ func _stars_come_out() -> bool:
 		if not layer.drawn:
 			return false
 		RenderingServer.force_draw()
-		var li := layer.viewport.get_texture().get_image()
+		var li := _screen_layer()
 		var fi := get_viewport().get_texture().get_image()
 		if li == null or fi == null:
 			return false

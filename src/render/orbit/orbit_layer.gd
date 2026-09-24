@@ -1,21 +1,21 @@
 extends Node
 ## THE RING'S OWN SKY LAYER: a second, private world in which the ring is drawn
-## in kilometres, from the eye's own direction with the eye's own lens, and lit
+## in kilometres, from the eye's own place, by a camera AIMED AT THE RING, and lit
 ## by its own sun -- the REAL one, which sets -- into a texture the seen sky
-## (sky_eye.gdshader, src/render/orbit/orbit_sky.gdshaderinc) samples on the
-## same pixel.
+## (sky_eye.gdshader, src/render/orbit/orbit_sky.gdshaderinc) samples by
+## direction.
 ##
 ## WHY A LAYER AND NOT A MESH IN THE WORLD. The colossi are drawn in the main
-## pass in compressed space, which clamps past 400 km: this body is 420 to
-## 2000 km off and cannot be drawn there. And a mesh in the main pass draws OVER
+## pass in compressed space, which clamps past 400 km: this body is 300 to
+## 1700 km off and cannot be drawn there. And a mesh in the main pass draws OVER
 ## the dome's clouds, where the ring must stand BEHIND them. In the sky it is
 ## composited in the right order -- over the air, under the clouds, in front of
 ## the stars and the sun -- by construction.
 ##
-## WHAT THE LAYER COSTS NOTHING FOR. It renders only while the horizon is in
-## frame (`SkyLight.horizon_share` > 0) AND the ring is in the lens's cone; the
-## rest of the time it is UPDATE_DISABLED and the sky is told (`orbit_on` 0) not
-## to read its stale frame. The orthographic game never pays for it.
+## WHAT THE LAYER COSTS NOTHING FOR. It is read only while the horizon is in
+## frame (`SkyLight.horizon_share` > 0) AND the ring is in the lens's cone, and
+## drawn one frame in RENDER_EVERY of those; the rest of the time the sky is
+## told (`orbit_on` 0) not to read it. The orthographic game never pays for it.
 ##
 ## Reached by path (19_orbit preloads it), no class_name.
 
@@ -23,8 +23,8 @@ const Pass := preload("res://src/core/orbit/orbit_pass.gd")
 const Model := preload("res://src/models/orbit/ring_model.gd")
 const SHADER := preload("res://src/render/orbit/orbit.gdshader")
 
-## The layer camera's planes, km: nearer than the lowest a pass can be (420)
-## by a margin for the wheel's own radius, and past the horizon's 2000.
+## The layer camera's planes, km: nearer than the lowest a pass can be (300)
+## by a margin for the wheel's own radius, and past the horizon's 1700.
 const NEAR_KM := 50.0
 const FAR_KM := 6000.0
 ## Nearer than this many pixels across, the far body is drawn (the rim alone,
@@ -56,6 +56,14 @@ var screen := Vector2i(16, 16)
 var frame_rect := Rect2i()
 var rect := Vector4(-1.0, -1.0, 1.0, 1.0)
 var fov := 60.0
+## The eye's basis this frame, and the layer's own aim (its basis and tan of
+## half its square lens), which the sky is handed.
+var eye_basis := Basis.IDENTITY
+var aim_basis := Basis.IDENTITY
+var aim_tan := 0.1
+## Whether the layer was drawn this frame, and frames since it last was.
+var fresh := false
+var _age := 0
 ## How much the ring's lamps show against this frame's sky (`lamp_seen`).
 var lamps_shown := 1.0
 ## A proof mode: a flat emissive quad in place of the ring (the risk this layer
@@ -228,14 +236,57 @@ const MARGIN := 3
 const BUCKET := 32.0
 
 
+## THE LAYER IS AIMED AT THE RING, not cut out of the eye's own frustum: its
+## camera looks straight at the wheel with a square lens just wide enough for
+## it, so what it holds does not depend on where the eye is looking and the sky
+## samples it by direction (orbit_sky's `orbit_uv`, with this basis and this
+## lens). That is what lets it be drawn only one frame in RENDER_EVERY -- the
+## wheel crosses the sky at a few pixels a real second -- while the eye turns
+## freely between; cut from the eye's frustum, every turn of the head was a
+## re-render (measured 1.1 ms a frame of the 1.2 the ring cost).
+##
+## Its texels are the eye's pixels at the ring, `ss` to a side (the Quality
+## column `orbit`), and one to a side once the wheel is under SINGLE_PX across:
+## four samples a pixel buy nothing a sixty-pixel ring can show.
+const RENDER_EVERY := 3
+const SINGLE_PX := 150.0
+const MOST_TEXELS := 2048
+
+
+## The aim for a ring at `centre` (km from the eye) bounded by `radius`: the
+## basis looking at it and tan of half the square lens that holds it.
+static func aim_of(centre: Vector3, radius: float) -> Array:
+	var dist := centre.length()
+	var d := centre / dist
+	var b := Basis.looking_at(d, Vector3.UP if absf(d.y) < 0.99 else Vector3.RIGHT)
+	var half := asin(clampf(radius / dist, 0.0, 0.999))
+	return [b, tan(half) * AIM_MARGIN]
+
+
+const AIM_MARGIN := 1.06
+
+
+## Point camera `c` along an aim, square lens, KEEP_HEIGHT.
+static func aim(c: Camera3D, basis: Basis, tan_half: float) -> void:
+	c.projection = Camera3D.PROJECTION_PERSPECTIVE
+	c.keep_aspect = Camera3D.KEEP_HEIGHT
+	c.fov = rad_to_deg(2.0 * atan(tan_half))
+	c.near = NEAR_KM
+	c.far = FAR_KM
+	c.global_transform = Transform3D(basis, Vector3.ZERO)
+
+
 ## Pose the layer for this frame. `pose` from OrbitPass.pose, `sun_dir` the real
 ## sun (SkyLight.sky_sun), `air` SkyLight.seen_air. `wanted` false stands it
-## down. Returns whether it renders this frame.
+## down. Returns whether the sky may read the layer this frame (it may hold a
+## frame drawn up to RENDER_EVERY - 1 frames ago; `fresh` says it was drawn now).
 func update(cam: Camera3D, pose: Dictionary, sun_dir: Vector3, air: Dictionary, wanted: bool) -> bool:
 	drawn = false
+	fresh = false
 	var ss := int(Quality.current().get("orbit", 1)) if not Quality.current().is_empty() else 1
 	if cam == null or not wanted or not bool(pose.get("up", false)) or ss <= 0:
 		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		_age = RENDER_EVERY
 		return false
 	var root := cam.get_viewport()
 	screen = frame_size(root)
@@ -243,48 +294,58 @@ func update(cam: Camera3D, pose: Dictionary, sun_dir: Vector3, air: Dictionary, 
 	var rel: Vector3 = pose.rel
 	var dist: float = pose.dist
 	var bound := float(def.rim_km) + float(def.sail.x) * 0.3 + 14.0
-	# Off the lens's cone altogether: nothing to draw. Asked BEFORE the
-	# rectangle, whose answer for a sphere half behind the lens is the whole
-	# frame -- a ring low beside a view tipped up rendered 8 Mpx of nothing
-	# (the night tour, measured) until this was put back.
-	var t0 := tan_of(cam.fov, float(screen.x) / float(screen.y))
-	var cone := atan(Vector2(t0.x, t0.y).length())
+	# Off the lens's cone altogether: nothing to draw, nothing to read.
+	var t := tan_of(cam.fov, float(screen.x) / float(screen.y))
+	var cone := atan(Vector2(t.x, t.y).length())
 	var half := asin(clampf(bound / maxf(dist, 1.0), 0.0, 1.0))
 	if (-basis.z).angle_to(rel / dist) > cone + half:
 		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		_age = RENDER_EVERY
 		return false
-	var r := rect_of(basis, cam.fov, screen, rel, bound)
-	if r.size.x <= 0 or r.size.y <= 0:
+	# The ring's box on the glass, for the probes that read the frame.
+	frame_rect = rect_of(basis, cam.fov, screen, rel, bound)
+	eye_basis = basis
+	fov = cam.fov
+	px_across = 2.0 * float(def.rim_km) / dist / (2.0 * t.y) * float(screen.y)
+	if px_across < SINGLE_PX:
+		ss = 1
+	var a := aim_of(rel, bound)
+	var tan_half: float = a[1]
+	var px_per := float(screen.y) / (2.0 * t.y)
+	var n := mini(MOST_TEXELS, ceili(2.0 * tan_half * px_per * float(ss) / BUCKET) * int(BUCKET))
+	var want := Vector2i(n, n)
+	var near_one := px_across > NEAR_LOD_PX
+	var body_changed := (lod == 1) != near_one
+	_age += 1
+	drawn = true
+	if _age < RENDER_EVERY and viewport.size == want and not body_changed:
+		# Last frame's picture still holds: the wheel has moved a fraction of a
+		# pixel, and the eye turning does not change it.
 		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
-		return false
-	frame_rect = r
-	rect = ndc_rect(r, screen)
-	var want := r.size * ss
+		return true
+	_age = 0
+	fresh = true
 	if viewport.size != want:
 		viewport.size = want
 	viewport.msaa_3d = Viewport.MSAA_DISABLED
-	var t := tan_of(cam.fov, float(screen.x) / float(screen.y))
-	cut(camera, basis, cam.fov, screen, rect)
-	fov = cam.fov
+	aim_basis = a[0]
+	aim_tan = tan_half
+	aim(camera, aim_basis, aim_tan)
 	sun.global_transform = Transform3D(Basis.looking_at(-sun_dir, Vector3.UP if absf(sun_dir.y) < 0.99 else Vector3.RIGHT), Vector3.ZERO)
-	# The sun a thing four hundred kilometres up sees at the land's dusk is the
+	# The sun a thing hundreds of kilometres up sees at the land's dusk is the
 	# land's own low sun, warmed toward gold as it goes down (and reddened further
 	# per fragment where its light grazes the limb, orbit.gdshader `sunlit`).
 	sun.light_color = SUN_DAY.lerp(SUN_DUSK, smoothstep(0.30, -0.12, sun_dir.y))
-	px_across = 2.0 * float(def.rim_km) / dist / (2.0 * t.y) * float(screen.y)
 	if proof:
-		# Square to the view, straight along the ring's direction.
 		ring.global_transform = Transform3D(Basis.looking_at(rel / dist, Vector3.UP if absf(rel.y / dist) < 0.99 else Vector3.RIGHT), rel)
 	else:
-		var near_one := px_across > NEAR_LOD_PX
 		lod = 1 if near_one else 2
 		var body: ArrayMesh = _bodies[1 if near_one else 0]
 		if ring.mesh != body:
 			ring.mesh = body
 		ring.global_transform = Transform3D(pose.basis, rel)
 		_feed(pose, sun_dir, air, screen)
-	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	drawn = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	return true
 
 
@@ -321,4 +382,4 @@ const LAMP_SKY_DAY := 0.32
 
 ## Where a direction lands on the layer's glass, for the proof and a tour.
 func uv_for(d: Vector3) -> Vector2:
-	return uv_of(camera.global_transform.basis, fov, float(screen.x) / float(screen.y), d, rect)
+	return uv_of(aim_basis, rad_to_deg(2.0 * atan(aim_tan)), 1.0, d)
