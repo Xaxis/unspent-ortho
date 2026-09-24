@@ -67,7 +67,7 @@ static func _find(c: GenContext, d: RefCounted, natural_yaw: float, natural: Vec
 	var size := c.size
 	var margin := int(float(d.toe_reach) + Treads.RIM_R + 4.0)
 	var aim := Vector2(clampf(natural.x, margin, size - margin), clampf(natural.y, margin, size - margin))
-	var home := w.continent[floori(w.spawn.y) * size + floori(w.spawn.x)]
+	var home := w.continent_at(floori(w.spawn.x), floori(w.spawn.y))
 	var scored: Array = []
 	# The foot may come down facing any way: the walk swings it round to the
 	# tread's own yaw as it carries it (colossus_walk.gd `plant_yaw`). Three
@@ -83,7 +83,7 @@ static func _find(c: GenContext, d: RefCounted, natural_yaw: float, natural: Vec
 				var ci := y * size + x
 				if c.land[ci] == 0 or c.water[ci] != 0:
 					continue
-				var body := w.continent[ci]
+				var body := w.continent_at(x, y)
 				var pads := Treads.pads(d, centre, yaw)
 				var lo := 1 << 20
 				var hi := -1
@@ -104,7 +104,7 @@ static func _find(c: GenContext, d: RefCounted, natural_yaw: float, natural: Vec
 							var a := TAU * float(s) / float(RING)
 							pt += Vector2(cos(a), sin(a)) * Treads.RIM_R
 						var i := floori(pt.y) * size + floori(pt.x)
-						if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or built[i] != 0 or w.continent[i] != body:
+						if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or built[i] != 0 or w.continent_at(floori(pt.x), floori(pt.y)) != body:
 							ok = false
 							break
 						var l := w.level[i]
@@ -152,7 +152,7 @@ const CLEAR_OF_SPAWN_PADS := 120.0
 static func _clear(c: GenContext, d: RefCounted, centre: Vector2, yaw: float, built: PackedByteArray) -> bool:
 	var size := c.size
 	var w := c.w
-	var body := w.continent[floori(centre.y) * size + floori(centre.x)]
+	var body := w.continent_at(floori(centre.x), floori(centre.y))
 	var lowest := 1 << 20
 	var highest := -1
 	for p: Vector3 in Treads.pads(d, centre, yaw):
@@ -167,7 +167,7 @@ static func _clear(c: GenContext, d: RefCounted, centre: Vector2, yaw: float, bu
 				if x < 1 or y < 1 or x >= size - 1 or y >= size - 1:
 					return false
 				var i := y * size + x
-				if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or built[i] != 0 or w.continent[i] != body:
+				if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or built[i] != 0 or w.continent_at(x, y) != body:
 					return false
 				highest = maxi(highest, w.level[i])
 				if float(dd) <= Treads.FLOOR_R * Treads.FLOOR_R:
