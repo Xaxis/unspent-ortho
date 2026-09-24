@@ -116,6 +116,13 @@ func _physics_process(_delta: float) -> void:
 	_mark(3, t)
 
 
+## Nothing is rolled for a room, and what stood outside waits there: a crossing
+## already cleared the bodies (20_realms.enter), and this keeps the coast's
+## spawner from dealing the room a machine (docs/interiors).
+func indoors(inside: bool) -> void:
+	sleep_indoors(inside, [_layer] as Array[Node3D])
+
+
 func _mark(i: int, since: int) -> int:
 	var now := Time.get_ticks_usec()
 	var took := float(now - since) / 1000.0

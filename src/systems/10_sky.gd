@@ -232,17 +232,28 @@ func _update(delta: float, snap: bool) -> void:
 		target_region += SkyLight.type_light(BiomeRegistry.get_def(id), hour) * float(shares[id])
 		target_wind += float(wx.wind) * float(shares[id])
 		target_mist += float(wx.mist) * float(shares[id])
+	# UNDER A ROOF THE AIR IS THE ROOM'S (Realm.INTERIOR's own `airs`): a pocket's
+	# tiles carry the land the house stands in, so its light is the land's, but
+	# the coast's mist drifting across a cottage's floorboards in pale patches was
+	# measured in a frame, and nothing falls or blows or settles in there.
+	var room := game.world.realm == Realm.INTERIOR
+	if room:
+		entries = [{"kind": Weather.CLEAR, "strength": 0.0, "weight": 1.0}]
+		target_wind = 0.0
+		target_mist = 0.0
 	var target := WeatherLook.compose(entries)
 	# The light and the clouds blend across a border, but what falls through the
 	# air is one landscape's: the one under the focus. A frame at a triple border
 	# must not snow, rain ash and lie in fog all at once.
 	here = fall_type(game.world, focus)
 	var wh := Weather.at_type(seed_value, minutes, here)
+	if room:
+		wh = {"kind": Weather.CLEAR, "strength": 0.0}
 	var falls := WeatherLook.compose([{"kind": wh.kind, "strength": wh.strength, "weight": 1.0}])
 	for k: String in FALL_KEYS:
 		target[k] = falls[k]
 	target.mist = target_mist
-	target.wisp = wisp_amount(float(WISPS.get(here, 0.0)), Weather.night_fall(hour), float(target.rain) + float(target.drizzle), target_wind)
+	target.wisp = 0.0 if room else wisp_amount(float(WISPS.get(here, 0.0)), Weather.night_fall(hour), float(target.rain) + float(target.drizzle), target_wind)
 	# What lies on the ground changes over hours: recompute once a world minute.
 	# Each thing is the most any landscape in view has left; the sky_ground mask
 	# lays it only on the land that makes it.
@@ -250,7 +261,7 @@ func _update(delta: float, snap: bool) -> void:
 		_settle_minute = minutes
 		for k: String in _settle_target:
 			_settle_target[k] = 0.0
-		for id: StringName in shares:
+		for id: StringName in ({} if room else shares):
 			var st := Weather.settled_type(seed_value, minutes, id)
 			for k: String in _settle_target:
 				_settle_target[k] = maxf(float(_settle_target[k]), float(st[k]))
