@@ -281,9 +281,11 @@ func _swap_out() -> void:
 	game.camera.frame_bias = Vector3.ZERO
 	var t := pocket.threshold
 	for l: SpotLight3D in _lights:
+		_take_back(l)
 		l.queue_free()
 	_lights.clear()
 	for pair: Array in _lamps:
+		_take_back(pair[0] as Light3D)
 		(pair[0] as Node).queue_free()
 	_lamps.clear()
 	for b: Node in _beams:
@@ -365,6 +367,35 @@ static func _corner(p: Vector2) -> Vector2i:
 
 # --- light through the windows -------------------------------------------------
 
+## A ROOM'S LIGHTS ARE ON THE TIER'S BUDGET. Each is lent to the lights system
+## (15_lights `lend`), which decides which show and which cast out of the same
+## `Quality` row as every lamp outside -- this system only aims them and says
+## how bright. When the row runs short, the sky fills go first and the window
+## suns last, because the sun through a window is what the room is lit by.
+const RANK_FILL := 1
+const RANK_LAMP := 2
+const RANK_SUN := 3
+
+
+func _lighting() -> Node:
+	for sys in game.systems:
+		if sys.has_method(&"lend"):
+			return sys
+	return null
+
+
+func _lend(l: Light3D, casts: bool, rank: int) -> void:
+	var lights := _lighting()
+	if lights != null:
+		lights.call(&"lend", l, casts, rank)
+
+
+func _take_back(l: Light3D) -> void:
+	var lights := _lighting()
+	if lights != null:
+		lights.call(&"take_back", l)
+
+
 func _make_lights() -> void:
 	for w: Array in _windows:
 		var sky := SpotLight3D.new()
@@ -374,14 +405,15 @@ func _make_lights() -> void:
 		sky.light_energy = 0.0
 		game.view.add_child(sky)
 		_lights.append(sky)
+		_lend(sky, false, RANK_FILL)
 		var sun := SpotLight3D.new()
 		sun.spot_range = 6.0
 		sun.spot_angle = 16.0
 		sun.spot_attenuation = 0.4
-		sun.shadow_enabled = true
 		sun.light_energy = 0.0
 		game.view.add_child(sun)
 		_lights.append(sun)
+		_lend(sun, true, RANK_SUN)
 		var beam := MeshInstance3D.new()
 		beam.mesh = _beam_mesh()
 		beam.material_override = _beam_material()
@@ -403,6 +435,7 @@ func _make_lights() -> void:
 		game.view.add_child(lamp)
 		lamp.global_position = at[0]
 		_lamps.append([lamp, at[1]])
+		_lend(lamp, false, RANK_LAMP)
 
 
 ## THE HOUR COMES IN THROUGH THE WINDOWS. A cottage's lid is under the line where
@@ -453,7 +486,6 @@ func _light_windows() -> void:
 		_aim(sp, beam)
 		sp.light_color = sun.light_color
 		sp.light_energy = SUN_IN * sun.light_energy * smoothstep(0.0, 0.35, facing)
-		sp.visible = sp.light_energy > 0.01
 		_air_in(i, at, inward2, beam, sp.light_energy / SUN_IN, sun.light_color)
 		var fill := _lights[i * 2] as SpotLight3D
 		var down := (inward + Vector3.DOWN * 0.45).normalized()

@@ -53,7 +53,12 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	# nothing announces itself and this did not: it passed every test that asks
 	# whether a world generates.
 	if c.land_types.is_empty():
-		push_error("no landscape declares BiomeDef.realms = [&\"%s\"], so that realm has no world to grow" % realm)
+		if Realm.pocket_kind(realm) == Realm.INTERIOR:
+			# Not a missing landscape: a room is grown from its door by InteriorGen
+			# (src/core/interior/), and asking WorldGen for one is the mistake.
+			push_error("realm %s is a pocket: rooms are grown from their door by InteriorGen, never by WorldGen" % realm)
+		else:
+			push_error("no landscape declares BiomeDef.realms = [&\"%s\"], so that realm has no world to grow" % realm)
 		for i in w.level.size():
 			w.level[i] = -1
 		return w

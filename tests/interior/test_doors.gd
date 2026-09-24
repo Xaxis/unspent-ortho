@@ -174,3 +174,57 @@ func test_a_save_made_inside_opens_inside() -> void:
 	check(kept, "and the fire built outside before going in is still there")
 	Sx.end(b)
 	Sx.finish()
+
+
+## Visible local lights (not the sun or moon) under these nodes, and how many
+## cast. The lights system's reach light is its own exception, older than the row.
+static func _lights_on(roots: Array) -> Vector2i:
+	var on := Vector2i.ZERO
+	var todo: Array[Node] = []
+	for r: Variant in roots:
+		todo.append(r as Node)
+	while not todo.is_empty():
+		var n: Node = todo.pop_back()
+		todo.append_array(n.get_children())
+		var l := n as Light3D
+		if l == null or l is DirectionalLight3D or not l.is_visible_in_tree() or n.name == &"reach_light":
+			continue
+		on.x += 1
+		if l.shadow_enabled:
+			on.y += 1
+	return on
+
+
+## A ROOM NEVER LIGHTS PAST THE TIER'S ROW. Its window suns, sky fills and lamps
+## are lent to 15_lights, which holds them with its own pool to `Quality`'s
+## `lamps` and `shadow_lights`. Asked on the tightest rows, at noon when the
+## window suns ask to cast and at night when the lamps are up.
+func test_a_room_never_lights_past_the_tiers_row() -> void:
+	for tier: String in ["web", "low"]:
+		Sx.use_root("doors-lights-" + tier)
+		# `--quality` reaches the engine through main.gd, which a test does not
+		# run: the tier is put in force here, before the lights size their pool.
+		SettingsApply.quality_asked = StringName(tier)
+		SettingsApply.quality()
+		eq(Quality.current_id(), StringName(tier), "the %s row is in force" % tier)
+		var g := Sx.game(tree, ["--seed=4", "--village=0", "--hour=11", "--weather=clear:0"])
+		var d := _doors(g)
+		var lights: Node = Sx.system(g, "15_lights")
+		var t := _at_door(g, d)
+		await _frames(20)
+		await d.call(&"go_in", t)
+		check(bool(d.call(&"tour_seen", &"inside:cottage")), "%s: inside" % tier)
+		var row := Quality.row(StringName(tier))
+		for hour: float in [11.0, 22.0]:
+			g.clock.minutes = floorf(g.clock.minutes / 1440.0) * 1440.0 + hour * 60.0
+			await _frames(20)
+			# Counted off the scene, not off the lights system's own books: a light
+			# nobody lent is exactly the one those books cannot see.
+			var on := _lights_on([g.view, lights])
+			check(on.x <= int(row.lamps), "%s at %d: %d lights on, the row allows %d" % [tier, int(hour), on.x, int(row.lamps)])
+			check(on.y <= int(row.shadow_lights), "%s at %d: %d casting, the row allows %d" % [tier, int(hour), on.y, int(row.shadow_lights)])
+			gt(float(on.x), 0.0, "%s at %d: and the room is lit at all" % [tier, int(hour)])
+		Sx.end(g)
+	SettingsApply.quality_asked = &""
+	SettingsApply.quality()
+	Sx.finish()
