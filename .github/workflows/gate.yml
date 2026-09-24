@@ -62,4 +62,13 @@ jobs:
       - name: Tests
         # The gate's own test half: sharded and diffed against tests/standing.txt,
         # so CI goes red only on a NEW failure, exactly as tools/check.sh does.
-        run: tools/check.sh --no-shots
+        # Each shard prints only when it ends, so a run cancelled at the limit
+        # said nothing about where it was. Every three minutes this prints the
+        # last test each shard reached, which names a hang or a slow test.
+        run: |
+          ( while sleep 180; do
+              for f in "${TMPDIR:-/tmp}"/unspent-test.*; do
+                [ -f "$f" ] && echo "== progress $(basename "$f"): $(grep -cE '^\s+(ok|FAIL) ' "$f") done, last: $(grep -E '^\s+(ok|FAIL) ' "$f" | tail -1)"
+              done
+            done ) &
+          tools/check.sh --no-shots
