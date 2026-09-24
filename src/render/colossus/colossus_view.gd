@@ -1,5 +1,5 @@
 extends Node3D
-## THE COLOSSI AS THEY ARE DRAWN: one far body (L2) per walker, posed from the
+## THE COLOSSI AS THEY ARE DRAWN: one body per walker (L1 near, L2 far), posed from the
 ## world clock and drawn in compressed space (colossus.gdshader's header says
 ## what that is and why it keeps every angle).
 ##
@@ -31,10 +31,18 @@ const REACH := 400000.0
 ## wide (the planted feet and the spire both inside it).
 const BOUND_UP := 48000.0
 const BOUND_R := 62000.0
+## Nearer than this (hub to eye, metres) a walker is drawn with its L1 body,
+## the machinery on its legs; further, L2. At 90 km a shin's cable run is under
+## half a pixel, so the switch is where nothing that changes can be seen.
+const NEAR_LOD := 90000.0
 
 var defs: Array = []
 var routes: Array = []
 var _meshes: Array[MeshInstance3D] = []
+## Each walker's two bodies: [L2, L1].
+var _bodies: Array = []
+## Which body each walker was drawn with this frame: 1 near, 2 far.
+var lod: Array[int] = []
 var _mats: Array[ShaderMaterial] = []
 ## Per walker: whether it was drawn this frame, its last pose, its distance and
 ## bearing from the camera (for --stats and a tour).
@@ -51,7 +59,10 @@ func setup(walker_defs: Array, seed_value: int, world_size: int) -> void:
 		routes.append(Route.make(d, seed_value, world_size))
 		var mi := MeshInstance3D.new()
 		mi.name = String(d.id)
-		mi.mesh = Model.build(d)
+		var bodies: Array[ArrayMesh] = [Model.build(d), Model.build(d, true)]
+		_bodies.append(bodies)
+		lod.append(2)
+		mi.mesh = bodies[0]
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 		var mat := ShaderMaterial.new()
@@ -66,12 +77,18 @@ func setup(walker_defs: Array, seed_value: int, world_size: int) -> void:
 
 
 ## Pose every walker at `minutes` and put it where `cam` can see it, in the air
-## `air` describes (SkyLight.seen_air). `wanted` false hides them all.
+## `air` describes (SkyLight.seen_air). `wanted` false hides them all -- and
+## still POSES them, because a walker nobody can see still hums, still casts its
+## shadow across the land under the top-down camera, and is still where its
+## gait says it is.
 func update(cam: Camera3D, minutes: float, air: Dictionary, wanted: bool) -> void:
 	if cam == null or not wanted:
+		var t_hidden := Time.get_ticks_usec()
 		for i in _meshes.size():
+			poses[i] = Walk.pose(defs[i], routes[i], minutes)
 			_meshes[i].visible = false
 			drawn[i] = false
+		last_pose_usec = Time.get_ticks_usec() - t_hidden
 		return
 	var ortho := cam.projection == Camera3D.PROJECTION_ORTHOGONAL
 	_solve(cam.near, cam.far)
@@ -81,6 +98,10 @@ func update(cam: Camera3D, minutes: float, air: Dictionary, wanted: bool) -> voi
 	if cam.is_inside_tree():
 		var sz := cam.get_viewport().get_visible_rect().size
 		aspect = sz.x / maxf(1.0, sz.y)
+	var rows := 1080.0
+	if cam.is_inside_tree():
+		rows = maxf(1.0, cam.get_viewport().get_visible_rect().size.y)
+	var px_angle := 2.0 * tan(deg_to_rad(cam.fov) * 0.5) / rows
 	var box := AABB(eye - Vector3.ONE * cam.far, Vector3.ONE * cam.far * 2.0)
 	var dome: Dictionary = air.get("dome", {})
 	var fog: Vector4 = air.get("fog", Vector4(18.0, 900.0, 1.0, 1.0))
@@ -95,6 +116,11 @@ func update(cam: Camera3D, minutes: float, air: Dictionary, wanted: bool) -> voi
 		drawn[i] = see
 		if not see:
 			continue
+		var near_one := eye.distance_to((p.hub as Transform3D).origin) < NEAR_LOD
+		var body: ArrayMesh = _bodies[i][1 if near_one else 0]
+		if _meshes[i].mesh != body:
+			_meshes[i].mesh = body
+		lod[i] = 1 if near_one else 2
 		var mat := _mats[i]
 		mat.set_shader_parameter("bone_rows", rows_of(p.bones))
 		mat.set_shader_parameter("comp_d0", cam.far * KNEE)
@@ -104,6 +130,13 @@ func update(cam: Camera3D, minutes: float, air: Dictionary, wanted: bool) -> voi
 		mat.set_shader_parameter("land_fog", fog)
 		mat.set_shader_parameter("thick", thick)
 		mat.set_shader_parameter("lens_glow", night)
+		mat.set_shader_parameter("px_angle", px_angle)
+		mat.set_shader_parameter("l0_on", air.has("l0_dir"))
+		if air.has("l0_dir"):
+			mat.set_shader_parameter("l0_dir", air["l0_dir"])
+			mat.set_shader_parameter("l0_size", air["l0_size"])
+			mat.set_shader_parameter("l0_color", air["l0_color"])
+			mat.set_shader_parameter("l0_energy", air["l0_energy"])
 		for k: StringName in dome:
 			mat.set_shader_parameter(k, dome[k])
 		_meshes[i].custom_aabb = box

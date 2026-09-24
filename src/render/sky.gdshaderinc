@@ -32,6 +32,16 @@
 
 // Time of day x season x region x weather: the colour of the light.
 global uniform vec3 sky_tint;
+// THE COLOSSI'S SHADOWS (19_colossi writes these, once a frame). xyz: the way
+// to the REAL sun (the one the sky draws, not the light, which never sets);
+// w: how many capsules are live, 0..8 -- 0 on every frame nothing of theirs
+// falls near the player, which is nearly all of them, and then nothing below is
+// asked. Each mat4 holds two capsules as columns (a.xyz, radius), (b.xyz, 0).
+global uniform vec4 colossus_sun;
+global uniform mat4 colossus_legs0;
+global uniform mat4 colossus_legs1;
+global uniform mat4 colossus_legs2;
+global uniform mat4 colossus_legs3;
 // xy: horizontal offset per unit height toward the light (clouds on walls line
 // up with clouds on the ground); z: light level 0..1; w: lightning flash 0..1.
 global uniform vec4 sky_sun;
@@ -126,7 +136,9 @@ global uniform mat4 neon_lamp_rgb2;
 const vec3 NEON_COOL = vec3(0.80, 0.90, 1.10);
 
 const vec3 SKY_PAGE = vec3(0.910, 0.863, 0.753);      // LINEN[5]: the page itself
-const vec3 SKY_CLOUD_SHADE = vec3(0.88, 0.90, 0.97);  // a cloud's shade: half a step toward blue-violet
+const vec3 SKY_CLOUD_SHADE = vec3(0.88, 0.90, 0.97);
+// A leg's shade: the direct sun gone, the sky's blue left.
+const vec3 COLOSSUS_SHADE = vec3(0.46, 0.49, 0.60);  // a cloud's shade: half a step toward blue-violet
 const vec3 SKY_SNOW = vec3(0.90, 0.93, 0.95);         // lying snow: page, a little cold
 const vec3 SKY_ASH = vec3(0.231, 0.251, 0.290);       // ASH[1]: specks of fallen ash
 const vec3 SKY_PUDDLE = vec3(0.365, 0.545, 0.627);    // RIME[3]: sky in standing water
@@ -273,6 +285,54 @@ float sky_cloud_field(vec3 world_pos) {
 	float c = sky_clouds.z;
 	float t = 0.5 - 0.32 * (c - 0.5) - smoothstep(0.85, 1.0, c) * 0.3 + (1.0 - smoothstep(0.0, 0.1, c)) * 0.3;
 	return smoothstep(t - 0.008, t + 0.008, n);
+}
+
+// A shadow far too big for the shadow map, the way a cloud's is: the ray from
+// here to the sun, against one leg as a capsule. The penumbra widens with how
+// far along the ray the leg is (the sun is a disc, a third of a degree wide
+// here as in the sky), so a shin's shadow is sharp at its foot and soft a
+// hundred kilometres out. 1 in the umbra.
+const float COLOSSUS_PENUMBRA = 0.006;
+float colossus_capsule(vec3 p, vec3 l, vec3 a, vec3 b, float r) {
+	vec3 ab = b - a;
+	vec3 ap = p - a;
+	float d1 = dot(l, ab);
+	float d2 = dot(ab, ab);
+	float d3 = dot(l, ap);
+	float d4 = dot(ab, ap);
+	float den = d2 - d1 * d1;
+	// Closest points between the ray p + t l and the segment a + s ab.
+	float sp = den > 1e-6 ? clamp((d4 - d1 * d3) / den, 0.0, 1.0) : 0.0;
+	vec3 q = a + ab * sp;
+	float t = max(dot(q - p, l), 0.0);
+	float dist = length(p + l * t - q);
+	float pen = max(t * COLOSSUS_PENUMBRA, 1.0);
+	return 1.0 - smoothstep(r - pen, r + pen, dist);
+}
+
+float colossus_in(mat4 m, int first, int n, vec3 p, vec3 l) {
+	float s = 0.0;
+	if (first < n) {
+		s = max(s, colossus_capsule(p, l, m[0].xyz, m[1].xyz, m[0].w));
+	}
+	if (first + 1 < n) {
+		s = max(s, colossus_capsule(p, l, m[2].xyz, m[3].xyz, m[2].w));
+	}
+	return s;
+}
+
+// 0..1: how much of the sun a colossus's leg takes off this place.
+float sky_colossus(vec3 world_pos) {
+	int n = int(colossus_sun.w + 0.5);
+	if (n <= 0) {
+		return 0.0;
+	}
+	vec3 l = colossus_sun.xyz;
+	float s = colossus_in(colossus_legs0, 0, n, world_pos, l);
+	s = max(s, colossus_in(colossus_legs1, 2, n, world_pos, l));
+	s = max(s, colossus_in(colossus_legs2, 4, n, world_pos, l));
+	s = max(s, colossus_in(colossus_legs3, 6, n, world_pos, l));
+	return s;
 }
 
 float sky_cloud(vec3 world_pos) {
@@ -690,6 +750,13 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 		// shade on the surface: soft-edged now rather than stippled, because
 		// under a real sun a hard-edged cloud shadow reads as paint.
 		c *= mix(vec3(1.0), SKY_CLOUD_SHADE, clamp(cloud, 0.0, 1.0) * sky_clouds.w * 0.75);
+	}
+	// A colossus's leg between this place and the sun: a band of real shade,
+	// deeper than a cloud's, because a leg is solid, and only as deep as the
+	// sun is strong (nothing to take at night).
+	float legs = sky_colossus(world_pos);
+	if (legs > 0.0) {
+		c *= mix(vec3(1.0), COLOSSUS_SHADE, legs * clamp(sky_sun.z, 0.0, 1.0));
 	}
 	// Banks of fog and haze lying ON the land, which the Environment's own
 	// depth fog cannot do: they sit in the hollows, drift on the wind and leave

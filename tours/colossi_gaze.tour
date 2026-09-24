@@ -1,0 +1,25 @@
+# THE GAZE (Shoulder.GAZE_LEAST, 19_colossi `gaze`): over the shoulder, turned
+# toward the looming colossus, the mouse tips the view far enough up to take the
+# whole machine in -- its hub stands 45 degrees up -- where the ordinary limit
+# shows two legs leaving the top of the frame. Turned away from it, the view
+# eases back down on its own; frames a third of a second apart show it coming
+# home without a jump.
+#   tools/tour.sh tours/colossi_gaze.tour --seed=7 --place=coast --hour=12 --view=shoulder --weather=clear:0
+wait 3
+shot 00-level with land:coast
+mouse 830,0 1
+wait 1
+shot 01-turned-toward-it with land:coast
+mouse 0,-2400 1.5
+wait 0.5
+shot 02-looking-up-at-it with land:coast
+mouse -830,0 1
+shot 03-turned-away with land:coast
+wait 0.33
+shot 04-coming-home with land:coast
+wait 0.33
+shot 05-coming-home with land:coast
+wait 0.33
+shot 06-coming-home with land:coast
+wait 2
+shot 07-home with land:coast

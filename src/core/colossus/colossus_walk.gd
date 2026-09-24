@@ -139,3 +139,106 @@ static func segment(a: Vector3, b: Vector3, outward: Vector3) -> Transform3D:
 	x = x.normalized()
 	var z := x.cross(y)
 	return Transform3D(Basis(x, y, z), a)
+
+
+## Longest stretch of world time a frame may span and still fire its steps. A
+## longer one is a skip (a night slept, a load), and a skip fires NOTHING: the
+## player did not live through those footfalls, and forty of them arriving at
+## once would be the world lying about what just happened.
+const STEP_SKIP := 30.0
+
+
+## Every foot that came down in (m0, m1], in order: {leg, minute, at}. Found by
+## asking the clock, never latched, so a shot, a tour and a loaded game agree on
+## when a foot lands and a frame can never fire one twice.
+static func steps_between(def: RefCounted, route: RefCounted, m0: float, m1: float) -> Array:
+	var out: Array = []
+	if m1 <= m0 or m1 - m0 > STEP_SKIP:
+		return out
+	var cyc := float(def.cycle_minutes)
+	var f: float = def.swing_share()
+	var off := float(route.offset)
+	for k in 3:
+		# Swing j of leg k ends at cycle j + k/3 + f of the walk's own clock.
+		var base := float(k) / 3.0 + f
+		var j0 := ceili((m0 + off) / cyc - base)
+		var j1 := floori((m1 + off) / cyc - base)
+		for j in range(j0, j1 + 1):
+			var minute := (float(j) + base) * cyc - off
+			if minute > m0 and minute <= m1:
+				out.append({"leg": k, "minute": minute, "at": plant(def, route, k, j)})
+	out.sort_custom(_earlier)
+	return out
+
+
+## WHAT A LANDING DOES TO THE PERSON IT IS FELT BY, `d` metres off: (how far the
+## picture moves, in world units, and for how many real seconds). A third of a
+## unit at a kilometre, and it falls off with the LOG of distance so the looming
+## walker fifty kilometres out is still felt in the chest; nothing past 150 km.
+## The further off, the longer and slower the roll, as the ground spreads it.
+const FELT_NEAR := 1000.0
+const FELT_FAR := 150000.0
+const FELT_MOST := 0.35
+static func felt(d: float) -> Vector2:
+	var x := clampf(log(maxf(d, FELT_NEAR) / FELT_NEAR) / log(FELT_FAR / FELT_NEAR), 0.0, 1.0)
+	var strength := FELT_MOST * pow(1.0 - x, 0.7) if x < 1.0 else 0.0
+	return Vector2(strength, lerpf(2.5, 5.0, x))
+
+
+## Real seconds for a landing to reach the player through the ground (3 km/s) and
+## through the air (343 m/s). Real, not world: they are what a body perceives.
+static func ground_delay(d: float) -> float:
+	return d / 3000.0
+
+
+static func air_delay(d: float) -> float:
+	return d / 343.0
+
+
+## THE LEGS WHOSE SHADOW FALLS ON THE PLAYER'S GROUND, as capsules [a, b,
+## radius] for sky.gdshaderinc `sky_colossus`: a shadow far too big for any
+## shadow map, cast the way a cloud's is, by asking per fragment. `sun` is the
+## way to the real sun; `around` the ground being drawn and `reach` how far
+## round it. A capsule is kept only if its shadow on the ground (the leg carried
+## down the sun's ray to sea level) passes within `reach` -- so the frame where
+## nothing of theirs falls near hands over nothing, and that is nearly all of
+## them. Nearest first, at most `SHADOW_MOST`.
+const SHADOW_MOST := 8
+static func shadow_capsules(def: RefCounted, p: Dictionary, sun: Vector3, around: Vector3, reach: float) -> Array:
+	var out: Array = []
+	if p.is_empty() or sun.y < 0.02:
+		return out
+	var parts: Array = []
+	var hub: Transform3D = p.hub
+	var tr: Vector2 = def.thigh_r
+	var sr: Vector2 = def.shin_r
+	for k in 3:
+		parts.append([p.hips[k], p.knees[k], (tr.x + tr.y) * 0.5])
+		parts.append([p.knees[k], p.ankles[k], (sr.x + sr.y) * 0.5])
+	var lo := hub.origin + Vector3(0.0, float(def.hub_low) - float(def.hip_height), 0.0)
+	var hi := hub.origin + Vector3(0.0, float(def.hub_high) - float(def.hip_height), 0.0)
+	parts.append([lo, hi, float(def.hub_radius) * 0.8])
+	var scored: Array = []
+	for c: Array in parts:
+		var a: Vector3 = c[0]
+		var b: Vector3 = c[1]
+		var r: float = c[2]
+		var ga := a - sun * (a.y / sun.y)
+		var gb := b - sun * (b.y / sun.y)
+		var g := Geometry2D.get_closest_point_to_segment(Vector2(around.x, around.z), Vector2(ga.x, ga.z), Vector2(gb.x, gb.z))
+		var off := g.distance_to(Vector2(around.x, around.z))
+		# A round leg's shadow on flat ground is stretched by the sun's slant.
+		if off < reach + r / sun.y:
+			scored.append([off, c])
+	scored.sort_custom(_nearer)
+	for i in mini(scored.size(), SHADOW_MOST):
+		out.append(scored[i][1])
+	return out
+
+
+static func _nearer(a: Array, b: Array) -> bool:
+	return float(a[0]) < float(b[0])
+
+
+static func _earlier(a: Dictionary, b: Dictionary) -> bool:
+	return float(a.minute) < float(b.minute)

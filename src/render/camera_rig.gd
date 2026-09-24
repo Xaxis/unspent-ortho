@@ -188,6 +188,14 @@ const LEAN_OUT := 4.5
 const LEAN_STILL := 0.01
 
 var _smoothed := Vector3.ZERO
+## Radians the lens nods and rolls per world unit of quake: a third of a unit
+## (a foot a kilometre off) tips the horizon over a degree, and the looming
+## walker fifty kilometres out about a third of one: measured on frames, a
+## fifth of that moved nothing a player could see.
+const QUAKE_TIP := 0.06
+## Quakes running (strength, seconds, hz, age) and where they put the eye now.
+var _quakes: Array[Vector4] = []
+var _quake_at := Vector2.ZERO
 var _outline: MeshInstance3D
 var _yaw := 0.0
 var _pitch := 0.0
@@ -556,7 +564,45 @@ func shake(strength: float, seconds: float = 0.12) -> void:
 		v_offset = 0.0)
 
 
+## A LONG, LOW SHAKE: the ground moving under the camera, not a blow. Where
+## `shake` is a rattle over a tenth of a second, a quake is `hz` cycles a second
+## (one or two: something enormous landing a long way off) rising in a quarter of
+## a second and dying over `seconds`, the picture swaying rather than jumping.
+## Several may run at once and they add. The player's `picture.shake` scales it
+## like every other movement they did not ask for, down to nothing.
+func quake(strength: float, seconds: float, hz: float = 1.6) -> void:
+	strength *= float(PlayerSettings.value(&"picture.shake"))
+	if strength <= 0.001 or seconds <= 0.0:
+		return
+	_quakes.append(Vector4(strength, seconds, hz, 0.0))
+
+
+## Whether the ground is moving under the camera now (a tour's `colossus_quake`).
+func quaking() -> bool:
+	return not _quakes.is_empty()
+
+
+## Where the quakes running now put the eye, across and up the picture, in world
+## units, and each one's clock advanced by `delta`.
+func _quake_step(delta: float) -> Vector2:
+	var out := Vector2.ZERO
+	var i := 0
+	while i < _quakes.size():
+		var q := _quakes[i]
+		q.w += delta
+		if q.w >= q.y:
+			_quakes.remove_at(i)
+			continue
+		_quakes[i] = q
+		var env := smoothstep(0.0, 0.25, q.w) * pow(1.0 - q.w / q.y, 1.5)
+		var ph := TAU * q.z * q.w
+		out += Vector2(sin(ph + q.x * 17.0) * 0.6, sin(ph * 1.31 + 0.7)) * q.x * env
+		i += 1
+	return out
+
+
 func _process(delta: float) -> void:
+	_quake_at = _quake_step(delta)
 	_smoothed = _smoothed.lerp(target, 1.0 - exp(-follow_rate * delta))
 	_clear_now = lerpf(_clear_now, maxf(DOF_CLEAR_LIFT, clear_lift), 1.0 - exp(-CLEAR_EASE * delta))
 	_ease_lean(delta)
@@ -612,7 +658,8 @@ func _apply_lens() -> void:
 		rotation = Vector3(deg_to_rad(-pitch_a), deg_to_rad(yaw_a), 0.0)
 		_back = back_a
 		_yaw_drawn = yaw_a
-		global_position = focus_a + Basis.from_euler(rotation).z * _back
+		global_position = focus_a + Basis.from_euler(rotation).z * _back + (basis.x * _quake_at.x + basis.y * _quake_at.y)
+		rotation += Vector3(_quake_at.y * QUAKE_TIP, 0.0, _quake_at.x * QUAKE_TIP)
 		return
 	# Every number the picture is made of, carried from the lens's pose to the
 	# shoulder's on the one eased clock. The yaw goes the short way round.
@@ -641,7 +688,10 @@ func _apply_lens() -> void:
 		var room := clampf(float(sight_room.call(pivot, eye)), minf(1.0, Shoulder.LEAST_BACK / span), 1.0)
 		_room = room if room < _room else lerpf(_room, room, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
 		eye = pivot.lerp(eye, _room)
-	global_position = eye
+	global_position = eye + (basis.x * _quake_at.x + basis.y * _quake_at.y)
+	# Under a lens a sway of the eye barely moves anything far off, and a quake
+	# is felt in the horizon: so the head nods and rolls with it too.
+	rotation += Vector3(_quake_at.y * QUAKE_TIP, 0.0, _quake_at.x * QUAKE_TIP)
 	_back = maxf(0.001, eye.distance_to(focus))
 	_yaw_drawn = yaw
 
@@ -678,7 +728,11 @@ func _apply() -> void:
 	var half := Air.frame_depth(size, pitch_deg + _pitch)
 	_back = maxf(distance, half + DEPTH_ROOM)
 	far = maxf(250.0, _back + half + DEPTH_ROOM)
-	global_position = focus + b.z * _back
+	# A quake moves the eye by whole texels, like everything else here, so the
+	# pixel grid holds while the ground sways.
+	var qx := roundf(_quake_at.x / texel) * texel
+	var qy := roundf(_quake_at.y / texel) * texel
+	global_position = focus + b.z * _back + b.x * qx + b.y * qy
 	_yaw_drawn = yaw_deg + _yaw
 	# The focal plane follows the picture: a lean zooms and tilts, and a plane
 	# left where the square-on frame put it would blur the near half of a

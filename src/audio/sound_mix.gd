@@ -571,6 +571,9 @@ static func _dystopia_levels(out: Dictionary, weights: Dictionary, kind: StringN
 	# still air, gone under loud weather and against the surf.
 	var still := 1.0 - smoothstep(0.35, 0.8, wind)
 	out[&"bed_far_drone"] = lerpf(0.25, 0.7, remote) * lerpf(0.55, 1.0, dark_share) * still * (1.0 - 0.7 * s) * (1.0 - 0.6 * shore)
+	# The colossi: as loud as the nearest one is near (19_colossi `hum`), and
+	# only thinned by weather, never by people or the sea -- nothing covers it.
+	out[&"bed_colossus"] = clampf(float(extra.get("colossi", 0.0)), 0.0, 1.0) * lerpf(1.0, 0.6, s)
 	var wet := clampf(float(extra.get("wet", 0.0)), 0.0, 1.0)
 	out[&"bed_gutter"] = wet * smoothstep(GUTTER_FAR, GUTTER_NEAR, float(extra.get("shelter", INF)))
 	# Rain keeps its loudness and changes its surface: each surface at the square
@@ -776,6 +779,13 @@ static func sfx_gain(d: float) -> float:
 	if d >= SFX_RANGE:
 		return 0.0
 	return 1.0 / (1.0 + maxf(0.0, d - 3.0) / 7.0)
+
+
+## A colossus's landing, `d` metres off: full within a few kilometres, a fifth
+## of itself on the skyline, and it never quite goes -- the one sound in the
+## game that carries past the edge of the world.
+static func colossus_gain(d: float) -> float:
+	return clampf(1.0 - 0.8 * log(maxf(d, 3000.0) / 3000.0) / log(80.0), 0.2, 1.0)
 
 
 ## Thunder carries across the whole coast: which recording, and its level.

@@ -1,0 +1,24 @@
+# A colossus's foot comes down fifty kilometres off and the player FEELS it
+# (src/systems/19_colossi.gd). The looming walker is staged seven world minutes
+# before its leg lands; the ground brings the landing at 3 km/s, so about
+# seventeen real seconds later the view sways (a quake, CameraRig.quake) and the
+# footfall sounds, and the boom comes through the air two and a half minutes
+# after that. Frames a quarter of a second apart while the ground moves show the
+# picture swaying and settling; the awaits prove each arrives, in order, at its
+# own speed.
+#   tools/tour.sh tours/colossi_step.tour --seed=7 --place=coast --hour=12 --colossus=1@728 --view=shoulder --face=314 --weather=clear:0
+wait 3
+shot 00-before-it-lands with land:coast
+await colossus_quake 40
+shot 01-the-ground-moves with land:coast
+wait 0.25
+shot 02-sway with land:coast
+wait 0.25
+shot 03-sway with land:coast
+wait 0.25
+shot 04-sway with land:coast
+await sound:colossus_step 5
+wait 4
+shot 05-settled with land:coast
+await sound:colossus_boom 180
+shot 06-the-boom-arrives with land:coast
