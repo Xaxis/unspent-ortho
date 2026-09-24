@@ -23,6 +23,13 @@ extends RefCounted
 ##                     there (src/systems/96_eye.gd; render)
 ## --eye-turn=DEG      turn that eye DEG degrees a second about the player, for
 ##                     proving a view turning never shows the land late
+## --colossi=off      no walking megastructures this run (19_colossi): the only
+##                     way to take one moment with and without them and measure
+##                     what they cost (render)
+## --colossus=W@MINUTE show walker W alone (0 on the skyline, 1 looming, 2 the one
+##                     the island passes under), posed MINUTE world minutes into
+##                     its walk and walking on from there; `--stats` prints where
+##                     each one stands, for --face (render)
 ## --walk=DX,DY,SECS   scripted walk in SCREEN directions before the shot
 ## --run               the scripted walk runs
 ## --shot=PATH         capture one frame to PATH (png) and quit
@@ -136,6 +143,10 @@ var view: StringName = &""
 var eye := Vector3.ZERO
 ## How fast the staged eye turns, degrees a second (96_eye).
 var eye_turn := 0.0
+## &"off" takes the colossi away for this run (19_colossi).
+var colossi: StringName = &""
+## "W@MINUTE": one walker alone at a staged minute of its walk, or "" (19_colossi).
+var colossus := ""
 var walk := Vector2.ZERO
 var walk_seconds := 0.0
 var run := false
@@ -239,6 +250,8 @@ static func parse(args: PackedStringArray) -> BootOptions:
 					p[1].to_float() if p.size() > 1 else 10.0,
 					p[2].to_float() if p.size() > 2 else 60.0)
 			"eye-turn": o.eye_turn = v.to_float()
+			"colossi": o.colossi = StringName(v)
+			"colossus": o.colossus = v
 			"walk":
 				var p := v.split(",")
 				o.walk = Vector2(p[0].to_float(), p[1].to_float())

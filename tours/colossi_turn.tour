@@ -1,0 +1,41 @@
+# Turning and looking out at the colossi must never make one pop, clip or
+# vanish (src/render/colossus/colossus_view.gd does its own culling on angles,
+# because the engine cannot see where a compressed vertex really is). The staged
+# eye turns thirty degrees a second past the skyline walker and the looming one,
+# and consecutive frames are shot: a walker that is cut by the culling, or
+# clipped by the far plane, shows as a frame that disagrees with its neighbours.
+#   tools/tour.sh tours/colossi_turn.tour --seed=7 --place=coast --hour=12 --face=300 --eye=1.7,-5 --eye-turn=30 --weather=clear:0
+wait 6
+shot turn-00
+wait 0.2
+shot turn-01
+wait 0.2
+shot turn-02
+wait 0.2
+shot turn-03
+wait 0.2
+shot turn-04
+wait 0.2
+shot turn-05
+wait 0.2
+shot turn-06
+wait 0.2
+shot turn-07
+wait 0.2
+shot turn-08
+wait 0.2
+shot turn-09
+wait 0.2
+shot turn-10
+wait 0.2
+shot turn-11
+wait 0.2
+shot turn-12
+wait 0.2
+shot turn-13
+wait 0.2
+shot turn-14
+wait 0.2
+shot turn-15
+wait 0.2
+shot turn-16
