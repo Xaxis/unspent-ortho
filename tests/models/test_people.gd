@@ -67,7 +67,12 @@ func _tris(spec: Dictionary) -> int:
 ## each), which is nothing to the GPU.
 ## What it does cost is the build, on the main thread, and that was measured
 ## too (see Sculpt._weld_walls).
-const BUDGET := 2200
+## Raised from 2200 when the face was modelled (brow, sockets, cheekbones, jaw,
+## a nose with sides and an underside: three more skull rows) and the arm given
+## a deltoid ring, for the face and the back seen up close over the shoulder:
+## forty random villagers (seed 4) went from 56,645 triangles to 60,685 (1,416
+## to 1,517 each). The worst case below, which nobody wears, is 2,233.
+const BUDGET := 2300
 
 
 func test_no_look_of_any_build_passes_the_triangle_budget() -> void:
