@@ -14,6 +14,24 @@
 
 global uniform float wind_strength;
 
+// Where bodies pushed through the grass (18_trample, TrampleField): rg the lean
+// as 128 + 127 x lean, b how far it is pressed down. `foliage_trample_at`: xz the
+// window's low corner, z 1 / its span; outside the window nothing is pressed,
+// and z 0 (the default, where no 18_trample runs: the title, the gallery) is no
+// window at all, so an unbound texture is never read as a lean.
+global uniform sampler2D foliage_trample : filter_linear, repeat_enable;
+global uniform vec4 foliage_trample_at;
+
+// (lean x, lean z, pressed 0..1) at world xz.
+vec3 trample_at(vec2 xz) {
+	vec2 tuv = (xz - foliage_trample_at.xy) * foliage_trample_at.z;
+	if (foliage_trample_at.z <= 0.0 || tuv.x < 0.0 || tuv.y < 0.0 || tuv.x >= 1.0 || tuv.y >= 1.0) {
+		return vec3(0.0);
+	}
+	vec4 tr = texture(foliage_trample, xz * foliage_trample_at.z);
+	return vec3((tr.rg * 255.0 - 128.0) / 127.0, tr.b);
+}
+
 // Held equal to WindField by tests/render/test_wind.gd.
 const float GUST_CELL = 11.0;
 const float GUST_PERIOD = 64.0;
@@ -41,6 +59,20 @@ float gust_at(vec2 xz) {
 	vec2 q = xz / GUST_CELL - sky_gust.xy;
 	float n = wind_vnoise(q) * 0.65 + wind_vnoise(q * 2.0 + 17.0) * 0.35;
 	return smoothstep(0.42, 0.78, n);
+}
+
+// How much darker a sward's ground reads where it is pressed flat and where it
+// is parted: seen from above, the ring round a body and the path behind it.
+const float GROUND_PRESSED = 0.24;
+
+// How much lighter a sward's ground reads under a full gust front.
+const float GROUND_SHEEN = 0.2;
+
+// -0.25..0.75: the gust over a sward's ground, less in a calm, so a front shows
+// as a travelling paler band and the lull between as a little darker.
+float wind_sheen(vec2 xz) {
+	float blowing = clamp(length(sky_wind.xy) * 1.6, 0.0, 1.0);
+	return (gust_at(xz) * mix(0.45, 1.0, sky_wind.z) - 0.25) * blowing;
 }
 
 // The unit bearing the wind blows toward: sky_wind.xy's, or through a calm the

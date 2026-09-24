@@ -1532,6 +1532,13 @@ void fragment() {
 		if (unh < 0.5) {
 			c = ground_wear(m, c, world_pos.xz, px);
 		}
+		// Turf, heath and fen are a sward, and a gust crossing one lays it over:
+		// the front reads from above as a paler band travelling over the land, to
+		// the horizon, with no geometry (wind_sheen).
+		if (m == 40 || m == 41 || m == 48) {
+			vec3 tr = trample_at(world_pos.xz);
+			c *= (1.0 + GROUND_SHEEN * wind_sheen(world_pos.xz)) * (1.0 - GROUND_PRESSED * max(tr.z, length(tr.xy) * 0.6));
+		}
 		if (works_inv_size > 0.0) {
 			vec4 wk = texture(works_map, world_pos.xz * works_inv_size);
 			vec3 wl = texture(works_lines, world_pos.xz * works_inv_size).rgb;

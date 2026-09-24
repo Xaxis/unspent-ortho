@@ -23,9 +23,12 @@ extends RefCounted
 ##   draws, primitives  what the renderer was actually handed.
 
 const ROUNDS := 5
-## The chunk child each layer toggles: `foliage` the leaf cards, `decor` the
-## baked grass, stones and litter (Decor, one mesh a chunk).
-const LAYERS := {"foliage": "props_leaf", "decor": "decor"}
+## The chunk children each layer toggles: `foliage` the leaf cards, `decor` all
+## of Decor (its stones and litter, and its grass), `grass` only what sways.
+## `noise` toggles nothing: the same pairs of halves with no change between
+## them, which is the floor any other layer's difference has to clear on this
+## machine at this load.
+const LAYERS := {"foliage": ["props_leaf"], "decor": ["decor", "grass"], "grass": ["grass"], "noise": []}
 
 
 ## `perf foliage|decor SECS [MS]`: the cost of that layer in every loaded chunk
@@ -43,10 +46,11 @@ static func perf(tour: Node, game: Node, parts: PackedStringArray) -> bool:
 		return false
 	var leaves: Array[MeshInstance3D] = []
 	for chunk: Node in view.get_children():
-		var m := chunk.get_node_or_null(String(LAYERS[layer])) as MeshInstance3D
-		if m != null and m.visible:
-			leaves.append(m)
-	if leaves.is_empty():
+		for part: String in LAYERS[layer]:
+			var m := chunk.get_node_or_null(part) as MeshInstance3D
+			if m != null and m.visible:
+				leaves.append(m)
+	if leaves.is_empty() and layer != "noise":
 		printerr("tour perf %s: nothing of it is loaded to measure" % layer)
 		return false
 	var vsync := DisplayServer.window_get_vsync_mode()
@@ -73,7 +77,7 @@ static func perf(tour: Node, game: Node, parts: PackedStringArray) -> bool:
 	DisplayServer.window_set_vsync_mode(vsync)
 	var ms := _median(cpu)
 	var gpu_line := "gpu %.2f ms" % _median(gpu) if float(with.gpu) > 0.0 else "gpu UNMEASURED (no gpu timer here)"
-	print(("tour perf %s: %s tier, %s, %d chunks of it: render cpu %.2f -> %.2f ms (%+.2f), %s, "
+	print(("tour perf %s: %s tier, %s, %d meshes of it: render cpu %.2f -> %.2f ms (%+.2f), %s, "
 		+ "frame %.2f -> %.2f ms (%+.2f, vsync off, GPU finished each frame), "
 		+ "draw calls %.0f -> %.0f (%+.0f), primitives %.0f -> %.0f (%+.0f)")
 		% [layer, Quality.current_id(), RenderingServer.get_current_rendering_method(), leaves.size(),

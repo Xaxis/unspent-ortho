@@ -48,6 +48,11 @@ static func make() -> BiomeDef:
 	d.village_ground = Ground.GRASS
 	d.grass_colors = [P.MOSS[3], P.MOSS[4].lerp(P.SLATE[3], 0.2)]
 	d.rock_color = P.SLATE[2]
+	# Cliff meadow: knee-high sward the sea wind combs flat in the gusts, with
+	# shorter turf between and thrift and thistle through it. Thick enough that a
+	# body walking through it parts it (grass.gdshader).
+	d.decor = {Ground.GRASS: [Vector2(1.9, 0.9), Decor.MEADOW, 62, Decor.TUFT_TALL, 8, Decor.TUFT, 8, Decor.FLOWER, 10,
+		Decor.STONE, 2, Decor.THISTLE, 3, Decor.MOLEHILL, 1]}
 	# Thrift in bloom on the cliff turf.
 	d.decor_tints = {&"bloom": [P.BLOOM[2], P.BLOOM[3], P.BLOOM[4]]}
 	# What a thing built or left here is made of. Slate under turf, sand banked

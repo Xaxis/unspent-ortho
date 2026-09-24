@@ -7,8 +7,8 @@ extends TestCase
 ## M2 wave A and each bumped the count by two, which is how this test exists.
 
 func test_the_kind_count_matches_the_enum() -> void:
-	# REBAR is the last name in the enum; the count is one past it.
-	eq(Decor.KINDS, Decor.REBAR + 1, "Decor.KINDS counts the enum")
+	# MEADOW is the last name in the enum; the count is one past it.
+	eq(Decor.KINDS, Decor.MEADOW + 1, "Decor.KINDS counts the enum")
 
 
 func test_every_kind_is_drawn_in_every_landscape() -> void:
