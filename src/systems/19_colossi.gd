@@ -139,16 +139,26 @@ func _process(delta: float) -> void:
 	# The near feet: drawn whichever way the camera looks, down or out, because a
 	# foot standing in the region is on the land and not in the sky.
 	var dome: Dictionary = air.get("dome", {})
+	var t0 := Time.get_ticks_usec()
 	foot.update(cam, view.defs, view.poses, float(dome.get(&"dome_night", 0.0)))
 	for i in view.defs.size():
 		view.set_l0(i, foot.shares.get(i, Vector3.ZERO))
+	var t1 := Time.get_ticks_usec()
 	_treads(m, delta)
+	var t2 := Time.get_ticks_usec()
 	# Steps are FELT wherever the sky is open, looking down or out: the ground
 	# does not care which way the camera points.
 	_land(m if open else NAN)
 	_arrive(delta)
+	var t3 := Time.get_ticks_usec()
 	_listen(cam, open)
 	_cast(open)
+	_cost = Vector4(t1 - t0, t2 - t1, t3 - t2, Time.get_ticks_usec() - t3)
+
+
+## What this frame's parts cost, microseconds: the near feet, the treads, the
+## landings on their way, the drone and the shadows (--stats).
+var _cost := Vector4.ZERO
 
 
 ## How far round the player a leg's shadow is looked for: the land the eye can
@@ -420,6 +430,7 @@ func stats_line() -> String:
 		return "\nworld colossi: off"
 	var cam := get_viewport().get_camera_3d()
 	var out := "\nworld colossi: pose %d us, %d landings felt, %d on their way, hum %.2f, gaze %.2f, %d leg shadows on the land, the player at %.0f,%.0f" % [view.last_pose_usec, felt_count, _coming.size(), hum, gaze, shadows, _player_at().x, _player_at().z]
+	out += "\nworld colossi cost (us): feet %d, treads %d, landings %d, drone and shadows %d" % [_cost.x, _cost.y, _cost.z, _cost.w]
 	out += "\nworld colossi feet: %d drawn near, %d surfaces uploaded, %d feet down in treads, %d pads stopping bodies, %d landings in the treads" % [foot.drawn, foot.uploaded, _down.size(), blocks.size(), tread_landings]
 	for key: int in _down:
 		var a: Vector3 = (view.poses[key / 3].ankles as Array)[key % 3]

@@ -146,8 +146,14 @@ func update(cam: Camera3D, minutes: float, air: Dictionary, wanted: bool) -> voi
 ## How much of each leg of walker `i` the near foot (colossus_foot.gd) has taken
 ## this frame; the far body gives those pixels up below the seam.
 func set_l0(i: int, share: Vector3) -> void:
+	if _l0_said.get(i, Vector3(-1, -1, -1)) == share:
+		return
+	_l0_said[i] = share
 	for mat: ShaderMaterial in _mats[i]:
 		mat.set_shader_parameter("l0_share", share)
+
+
+var _l0_said: Dictionary = {}
 
 
 ## How much of a walker `d` metres off is drawn with its near body: 0 past the

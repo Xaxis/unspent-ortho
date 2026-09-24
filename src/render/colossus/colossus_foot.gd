@@ -81,12 +81,17 @@ func update(cam: Camera3D, defs: Array, poses: Array, night: float) -> void:
 			(n.stub as MeshInstance3D).global_transform = _stub_frame(p.bones[2 + 3 * k], ankle)
 			(n.foot as MeshInstance3D).visible = true
 			(n.stub as MeshInstance3D).visible = true
+			# Only what changed goes to the renderer: a material write is a
+			# round trip, and a foot standing still in daylight changes nothing.
 			var mat: ShaderMaterial = n.mat
-			mat.set_shader_parameter("lod_keep", share)
-			mat.set_shader_parameter("glow_scale", lerpf(0.2, 1.0, night))
-			for l: OmniLight3D in n.lights:
-				l.visible = night > 0.05
-				l.light_energy = night * LIGHT_ENERGY
+			var said := Vector2(share, snappedf(night, 0.01))
+			if said != (n.said as Vector2):
+				n.said = said
+				mat.set_shader_parameter("lod_keep", share)
+				mat.set_shader_parameter("glow_scale", lerpf(0.2, 1.0, said.y))
+				for l: OmniLight3D in n.lights:
+					l.visible = said.y > 0.05
+					l.light_energy = said.y * LIGHT_ENERGY
 			legs[k] = share
 			drawn += 1
 		if legs != Vector3.ZERO:
@@ -177,7 +182,7 @@ func _node(key: int, d: RefCounted) -> Dictionary:
 		l.visible = false
 		foot.add_child(l)
 		lights.append(l)
-	var n := {"foot": foot, "stub": stub, "mat": mat, "lights": lights}
+	var n := {"foot": foot, "stub": stub, "mat": mat, "lights": lights, "said": Vector2(-1.0, -1.0)}
 	_nodes[key] = n
 	return n
 
@@ -187,6 +192,8 @@ func _show(n: Dictionary, on: bool) -> void:
 	(n.stub as MeshInstance3D).visible = on
 	for l: OmniLight3D in n.lights:
 		l.visible = on and l.visible
+	if not on:
+		n.said = Vector2(-1.0, -1.0)
 
 
 func _hide_all() -> void:
