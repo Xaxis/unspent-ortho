@@ -66,12 +66,20 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	# yet know where its continents are (docs/DESIGN.md).
 	GenBodies.run(c)
 	t = _mark(c, marks, &"shape", t)
+	if _halted(w):
+		return w
 	GenCountries.coarse(c)
 	t = _mark(c, marks, &"layout", t)
+	if _halted(w):
+		return w
 	GenRelief.run(c)
 	t = _mark(c, marks, &"relief", t)
+	if _halted(w):
+		return w
 	GenCountries.fine(c, until != &"tiles")
 	t = _mark(c, marks, &"tiles", t)
+	if _halted(w):
+		return w
 	if until == &"tiles":
 		var level := w.level
 		var land := c.land
@@ -83,14 +91,22 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 		return w
 	GenWater.rivers(c)
 	t = _mark(c, marks, &"rivers", t)
+	if _halted(w):
+		return w
 	GenRelief.terrace(c)
 	t = _mark(c, marks, &"terrace", t)
+	if _halted(w):
+		return w
 	# Before anything is sited: a strait that goes deep here can never drown a
 	# village, a road or a site that was put on it.
 	GenBodies.deepen_straits(c)
 	t = _mark(c, marks, &"straits", t)
+	if _halted(w):
+		return w
 	GenWater.still(c)
 	t = _mark(c, marks, &"still", t)
+	if _halted(w):
+		return w
 	GenSettle.villages(c)
 	c.mark(&"settle.villages")
 	GenSettle.roads(c)
@@ -99,14 +115,22 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	# Which continent he wakes on, once there is a spawn to read it from.
 	GenBodies.mark_home(c)
 	t = _mark(c, marks, &"settle", t)
+	if _halted(w):
+		return w
 	GenAccess.run(c)
 	t = _mark(c, marks, &"access", t)
+	if _halted(w):
+		return w
 	GenScatter.sites(c)
 	c.mark(&"surface.sites")
 	GenSurface.run(c)
 	t = _mark(c, marks, &"surface", t)
+	if _halted(w):
+		return w
 	GenScatter.props(c)
 	t = _mark(c, marks, &"props", t)
+	if _halted(w):
+		return w
 	w.rivers = c.rivers
 	# The mask every placing stage sited against, and the recipe every tile's
 	# ground and scatter came out of: kept so anything outside worldgen can ask
@@ -125,6 +149,35 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 
 ## Finer marks inside stages (GenContext.mark) from the most recent generate().
 static var last_detail: Dictionary = {}
+
+
+## WORLDS NOBODY WANTS ANY MORE. A background raise (RealmWorlds) cannot be
+## killed, and a game that ended used to wait out a whole world on one worker --
+## minutes on a slow machine, and a quit that hangs. `halt` asks a generation of
+## this seed, size and realm to stop at its next stage; what it hands back then is
+## unfinished and its caller throws it away. `unhalt` lets the same world be grown
+## again for real.
+static var _halt_lock := Mutex.new()
+static var _halts: Dictionary = {}
+
+
+static func halt(seed_value: int, size: int, realm: StringName) -> void:
+	_halt_lock.lock()
+	_halts["%d:%d:%s" % [seed_value, size, realm]] = true
+	_halt_lock.unlock()
+
+
+static func unhalt(seed_value: int, size: int, realm: StringName) -> void:
+	_halt_lock.lock()
+	_halts.erase("%d:%d:%s" % [seed_value, size, realm])
+	_halt_lock.unlock()
+
+
+static func _halted(w: WorldData) -> bool:
+	_halt_lock.lock()
+	var h: bool = not _halts.is_empty() and _halts.has("%d:%d:%s" % [w.seed_value, w.size, w.realm])
+	_halt_lock.unlock()
+	return h
 
 
 static func _mark(c: GenContext, marks: Dictionary, name: StringName, t0: int) -> int:

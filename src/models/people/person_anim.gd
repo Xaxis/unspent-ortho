@@ -268,6 +268,12 @@ static func cycle_length(speed: float, leg: float) -> float:
 
 ## Standing, walking and running, blended by speed. `phase` is the gait cycle
 ## (0 = left heel strike), `t` the figure's clock in seconds (breath, glances).
+## How far the idle stance hunches forward, and how far its hips drop to the
+## leg that carries the weight (radians).
+const IDLE_HUNCH := 0.07
+const IDLE_TILT := 0.04
+
+
 static func locomotion(phase: float, speed: float, t: float, d: Dictionary, klass: StringName) -> Pose:
 	var move := smoothstep(0.15, 1.2, speed)
 	var run := smoothstep(GAIT_WALK + 0.4, GAIT_RUN - 0.2, speed)
@@ -280,20 +286,25 @@ static func locomotion(phase: float, speed: float, t: float, d: Dictionary, klas
 	var glance := sin(t * TAU / 5.1) * 0.5 + sin(t * TAU / 11.7) * 0.5
 	var arms: float = d.get("arms", 0.08)
 	var knees: float = d.get("knees", 0.0)
+	# Tired and cold, never at attention: shoulders drawn forward and in over a
+	# hunched back, elbows soft, the weight settled on one leg with the other
+	# knee let go, and the feet under the body rather than posted apart. Seen
+	# from behind at eye level a figure standing square with its arms dead
+	# straight was a toy, whatever it was made of.
 	var idle := {
-		&"spine": Vector3(0, 0, -stoop - 0.02 + breath * 0.02),
-		&"head": Vector3(0, glance * 0.28, stoop * 0.8 + breath * -0.015),
-		&"arm_l": Vector3(arms + breath * 0.015, 0, 0.04 + stoop * 0.3),
-		&"arm_r": Vector3(-arms - breath * 0.015, 0, 0.04 + stoop * 0.3),
-		&"fore_l": Vector3(0, 0, 0.14 + knees * 0.5),
-		&"fore_r": Vector3(0, 0, 0.14 + knees * 0.5),
-		&"thigh_l": Vector3(0.05, 0, 0.03 + knees - shift * 0.02),
-		&"thigh_r": Vector3(-0.05, 0, -0.03 + knees - shift * 0.02),
-		&"shin_l": Vector3(0, 0, -0.04 - knees * 2.0 + maxf(0.0, shift) * -0.1),
-		&"shin_r": Vector3(0, 0, -0.04 - knees * 2.0 + maxf(0.0, -shift) * -0.1),
+		&"spine": Vector3(0, 0, -stoop - IDLE_HUNCH + breath * 0.02),
+		&"head": Vector3(0, glance * 0.28, stoop * 0.8 + IDLE_HUNCH * 0.6 + breath * -0.015),
+		&"arm_l": Vector3(arms * 0.6 + breath * 0.015, 0, 0.1 + stoop * 0.3),
+		&"arm_r": Vector3(-arms * 0.6 - breath * 0.015, 0, 0.07 + stoop * 0.3),
+		&"fore_l": Vector3(0, 0, 0.44 + knees * 0.5),
+		&"fore_r": Vector3(0, 0, 0.38 + knees * 0.5),
+		&"thigh_l": Vector3(0.02, 0, 0.02 + knees - shift * 0.02),
+		&"thigh_r": Vector3(-0.035, 0, 0.1 + knees - shift * 0.02),
+		&"shin_l": Vector3(0, 0, -0.05 - knees * 2.0 + maxf(0.0, shift) * -0.1),
+		&"shin_r": Vector3(0, 0, -0.2 - knees * 2.0 + maxf(0.0, -shift) * -0.1),
 		&"foot_l": Vector3(0, 0, knees),
-		&"foot_r": Vector3(0, 0, knees),
-		&"hips": Vector3(shift * 0.03, 0, 0),
+		&"foot_r": Vector3(0, 0, knees + 0.1),
+		&"hips": Vector3(IDLE_TILT + shift * 0.03, 0, 0),
 		&"hem": Vector3(0, 0, 0),
 		&"aerial": Vector3(breath * 0.02, 0, -0.12 + shift * 0.03),
 		&"aerial_tip": Vector3(0, 0, -0.1 + breath * 0.03),

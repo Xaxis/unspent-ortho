@@ -21,6 +21,16 @@ static var _mutex := Mutex.new()
 ## key -> WorldData, and key -> GROUP task id while one is in flight.
 static var _worlds: Dictionary = {}
 static var _tasks: Dictionary = {}
+## Raises a game that ended left running. A task cannot be stopped, so `forget`
+## lets go of it instead of waiting: it finishes on its one worker and what it
+## makes is thrown away (`_gen`). While one is still running no new raise is
+## begun, so at most one ever runs -- a game shut down three frames in used to
+## wait out a whole single-worker world (34 s here, over 45 min of CI in all).
+static var _orphans: Array[int] = []
+static var _gen := 0
+## key -> [grown seed, size, kind] of each raise in flight, so `forget` can ask
+## the generation itself to stop (WorldGen.halt) instead of running on for minutes.
+static var _grow: Dictionary = {}
 
 
 static func key_of(seed_value: int, size: int, kind: StringName) -> String:
@@ -49,12 +59,21 @@ static func begin(seed_value: int, size: int, kind: StringName) -> bool:
 		return true
 	if going:
 		return false
+	if _orphan_running():
+		# An ended game's raise still holds its worker; `take` will raise this one
+		# where it is wanted if nothing else does first.
+		return false
 	if not BootPage.has_threads():
 		# No pool to raise it on (the no-threads web build): it is raised where it
 		# is asked for, which is the one frame the shaft costs there.
 		return false
-	# A GROUP OF ONE, AT LOW PRIORITY, so the raise takes one worker and leaves
-	# the rest to the game. As a plain task every stage of it fanned out over
+	# A GROUP OF ONE, so the raise takes one worker and leaves the rest to the
+	# game. NOT at low priority: Godot gives low-priority work a share of the pool
+	# (one thread of four on the CI runner), and a raise holding it for the whole
+	# world left everything else queued at low priority -- chunks among them --
+	# waiting behind it, so a game on a four-thread machine never finished its
+	# frames (reproduced with worker_pool/max_threads=4: a 20-frame run hung past
+	# 90 s; high priority, 7 s). As a plain task every stage of it fanned out over
 	# every worker at high priority (`GenFields.parallel`), and it runs for
 	# twenty seconds of play: a job the renderer waits on inside the draw queued
 	# behind it for up to 5.3 s, which on seed 7 was one frame of 4.6-5.2 s the
@@ -62,8 +81,12 @@ static func begin(seed_value: int, size: int, kind: StringName) -> bool:
 	# `parallel` runs inline -- the path a four-thread machine already takes --
 	# so the world is the same world; measured, it takes 33-35 s instead of 21
 	# (tests/realm/test_raise_in_background.gd).
-	var task := WorkerThreadPool.add_group_task(func(_i: int) -> void: _raise(key, seed_value, size, kind),
-		1, 1, false, "realm %s" % kind)
+	var gen := _gen
+	_mutex.lock()
+	_grow[key] = [Realm.seed_for(seed_value, kind), size, kind]
+	_mutex.unlock()
+	var task := WorkerThreadPool.add_group_task(func(_i: int) -> void: _raise(key, seed_value, size, kind, gen),
+		1, 1, true, "realm %s" % kind)
 	_mutex.lock()
 	_tasks[key] = task
 	_mutex.unlock()
@@ -96,7 +119,7 @@ static func take(seed_value: int, size: int, kind: StringName) -> WorldData:
 		_mutex.unlock()
 		if w != null:
 			return w
-	_raise(key, seed_value, size, kind)
+	_raise(key, seed_value, size, kind, _gen)
 	_mutex.lock()
 	w = _worlds.get(key)
 	_mutex.unlock()
@@ -120,21 +143,57 @@ static func raised() -> Array[StringName]:
 ## a dozen megabytes, and the next game's realms are not these ones.
 static func forget() -> void:
 	_mutex.lock()
-	var tasks: Array = _tasks.values()
+	for t: int in _tasks.values():
+		_orphans.append(t)
+	for g: Array in _grow.values():
+		WorldGen.halt(int(g[0]), int(g[1]), StringName(g[2]))
+	_grow.clear()
 	_tasks.clear()
-	_mutex.unlock()
-	for t: int in tasks:
-		WorkerThreadPool.wait_for_group_task_completion(t)
-	_mutex.lock()
 	_worlds.clear()
+	_gen += 1
 	_mutex.unlock()
 	Portals.forget()
 
 
-static func _raise(key: String, seed_value: int, size: int, kind: StringName) -> void:
+static func _raise(key: String, seed_value: int, size: int, kind: StringName, gen: int) -> void:
+	# A raise for THIS game grows the whole world, even where an ended game's raise
+	# of the same world was asked to stop (that one then runs to the end too).
+	if gen == _gen:
+		WorldGen.unhalt(Realm.seed_for(seed_value, kind), size, kind)
 	var w := BootWorld.world(Realm.seed_for(seed_value, kind), size, kind)
+	if gen != _gen:
+		# Stopped (or finished) for a game that ended: its stop must not outlive it,
+		# or the next real growing of this world would stop too.
+		WorldGen.unhalt(Realm.seed_for(seed_value, kind), size, kind)
 	_mutex.lock()
+	# A raise begun for a game that has since ended is not this game's world.
 	# Whoever got here first wins: `take` may have raised it while a task ran.
-	if not _worlds.has(key):
+	if gen == _gen and not _worlds.has(key):
 		_worlds[key] = w
 	_mutex.unlock()
+
+
+## Wait out any raise an ended game left running, for a test that must begin its
+## own. A game never calls this: that wait is what `forget` exists to avoid.
+static func settle() -> void:
+	_mutex.lock()
+	var all: Array[int] = _orphans.duplicate()
+	_orphans.clear()
+	_mutex.unlock()
+	for t: int in all:
+		WorkerThreadPool.wait_for_group_task_completion(t)
+
+
+## Whether an ended game's raise is still running. Collects the ones that ended.
+static func _orphan_running() -> bool:
+	_mutex.lock()
+	var left: Array[int] = []
+	for t: int in _orphans:
+		if WorkerThreadPool.is_group_task_completed(t):
+			WorkerThreadPool.wait_for_group_task_completion(t)
+		else:
+			left.append(t)
+	_orphans = left
+	var running := not _orphans.is_empty()
+	_mutex.unlock()
+	return running

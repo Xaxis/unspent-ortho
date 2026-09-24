@@ -678,11 +678,16 @@ func _apply_lens() -> void:
 	# Never inside the land or a house: the line from the head to the eye is
 	# walked, and the eye stands where it is first clear. Pulled in at once, let
 	# back out gently, so a wall behind the player is never drawn from inside.
+	# Walked from the point it looks at, so a pulled-in eye keeps its aim and
+	# never comes round beside the head (Shoulder.LEAST_BACK) -- unless that point
+	# is itself in a wall at the player's right, when it comes in toward the head.
 	if sight_room.is_valid():
 		var head := _smoothed + Vector3(0.0, Shoulder.HEAD_UP, 0.0)
-		var room := clampf(float(sight_room.call(head, eye)), 0.0, 1.0)
+		var pivot := head.lerp(focus, clampf(float(sight_room.call(head, focus)), 0.0, 1.0))
+		var span := maxf(0.001, pivot.distance_to(eye))
+		var room := clampf(float(sight_room.call(pivot, eye)), minf(1.0, Shoulder.LEAST_BACK / span), 1.0)
 		_room = room if room < _room else lerpf(_room, room, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
-		eye = head.lerp(eye, _room)
+		eye = pivot.lerp(eye, _room)
 	global_position = eye + (basis.x * _quake_at.x + basis.y * _quake_at.y)
 	# Under a lens a sway of the eye barely moves anything far off, and a quake
 	# is felt in the horizon: so the head nods and rolls with it too.

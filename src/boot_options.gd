@@ -30,6 +30,8 @@ extends RefCounted
 ##                     the island passes under), posed MINUTE world minutes into
 ##                     its walk and walking on from there; `--stats` prints where
 ##                     each one stands, for --face (render)
+## --eye-round=DEG     stand that eye DEG degrees round the player from behind:
+##                     180 looks the player in the face, 90 at their side
 ## --walk=DX,DY,SECS   scripted walk in SCREEN directions before the shot
 ## --run               the scripted walk runs
 ## --shot=PATH         capture one frame to PATH (png) and quit
@@ -147,6 +149,7 @@ var eye_turn := 0.0
 var colossi: StringName = &""
 ## "W@MINUTE": one walker alone at a staged minute of its walk, or "" (19_colossi).
 var colossus := ""
+var eye_round := 0.0
 var walk := Vector2.ZERO
 var walk_seconds := 0.0
 var run := false
@@ -252,6 +255,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"eye-turn": o.eye_turn = v.to_float()
 			"colossi": o.colossi = StringName(v)
 			"colossus": o.colossus = v
+			"eye-round": o.eye_round = v.to_float()
 			"walk":
 				var p := v.split(",")
 				o.walk = Vector2(p[0].to_float(), p[1].to_float())

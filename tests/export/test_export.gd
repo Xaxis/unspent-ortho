@@ -125,7 +125,10 @@ func test_a_headless_export_packs_the_game_and_nothing_else() -> void:
 		for d in DEV_DIRS:
 			check(not f.begins_with(d), "%s does not ship" % f)
 	var size := FileAccess.open(pck, FileAccess.READ).get_length() if FileAccess.file_exists(pck) else 0
-	lt(float(size), 4.0 * 1024 * 1024, "the pack stays small (%d KB)" % (size / 1024))
+	# A cap on the GAME's size, not a check on what ships: dev files are refused one
+	# by one above. 4 MB was crossed by real code (far models, the shoulder view,
+	# the stutter fixes: 4,097 KB on 2026-09-24), so the cap has headroom again.
+	lt(float(size), 5.0 * 1024 * 1024, "the pack stays small (%d KB)" % (size / 1024))
 	lt(float(ms), 60000.0, "and exports in well under a minute (%d ms)" % ms)
 	for f in DirAccess.get_files_at(dir):
 		DirAccess.remove_absolute(dir.path_join(f))

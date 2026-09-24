@@ -1490,6 +1490,8 @@ func _cell(ch: Chunk, i: int, j: int) -> void:
 		var cross_a := -1
 		var cross_b := -1
 		var near_e := -1
+		var out_a := Vector2.ZERO
+		var out_b := Vector2.ZERO
 		for e in 4:
 			var e2 := (e + 1) & 3
 			var a := _cv[e]
@@ -1500,10 +1502,13 @@ func _cell(ch: Chunk, i: int, j: int) -> void:
 					near_e = e
 			if ina != (_cv[e2] >= thr):
 				var tt := clampf((thr - a) / (_cv[e2] - a), 0.05, 0.95)
+				var out := _out_axis(e, e2) if ina else _out_axis(e2, e)
 				if cross_a < 0:
 					cross_a = _poly.size()
+					out_a = out
 				else:
 					cross_b = _poly.size()
+					out_b = out
 				_poly.append(Vector3(_cx[e] + (_cx[e2] - _cx[e]) * tt, h, _cz[e] + (_cz[e2] - _cz[e]) * tt))
 		var pn := _poly.size()
 		if pn < 3:
@@ -1529,7 +1534,7 @@ func _cell(ch: Chunk, i: int, j: int) -> void:
 					if dd < best:
 						best = dd
 						near_e = e
-			_wall(ch, ca.x, ca.z, cb.x, cb.z, _cx[near_e], _cz[near_e], hb, h, L, _ck[near_e])
+			_wall(ch, ca.x, ca.z, cb.x, cb.z, _cx[near_e], _cz[near_e], hb, h, L, _ck[near_e], out_a, out_b)
 
 
 ## A cell whose diagonal corners are on the same side of a threshold.
@@ -1558,7 +1563,7 @@ func _saddle(ch: Chunk, px: float, py: float, L: int) -> void:
 			_vtop(_cx[e], hc, _cz[e])
 			_vtop(ax, h, az)
 			_vtop(bx, h, bz)
-			_wall(ch, ax, az, bx, bz, _cx[e], _cz[e], hb, h, L, _ck[e])
+			_wall(ch, ax, az, bx, bz, _cx[e], _cz[e], hb, h, L, _ck[e], _out_axis(e, e2), _out_axis(e, e0))
 		elif centre:
 			if ina:
 				_poly.append(Vector3(_cx[e], hc, _cz[e]))
@@ -1566,7 +1571,7 @@ func _saddle(ch: Chunk, px: float, py: float, L: int) -> void:
 				# The centre is high: walls cut off the outside corners.
 				_poly.append(Vector3(bx, h, bz))
 				_poly.append(Vector3(ax, h, az))
-				_wall(ch, bx, bz, ax, az, mx, mz, hb, h, L, _ck[e2])
+				_wall(ch, bx, bz, ax, az, mx, mz, hb, h, L, _ck[e2], _out_axis(e0, e), _out_axis(e2, e))
 	if centre:
 		var pn := _poly.size()
 		for e in pn:
@@ -1618,9 +1623,50 @@ static func _corner_w(k: int, k1: int, k2: int, m: float) -> float:
 	return 0.0
 
 
+## Which way is out at a crossing on the lattice edge from corner `from` (on
+## the high side) to corner `to`: along that edge. Both cells that share the
+## edge, in this chunk or the next, read the same two corners, so a wall's
+## foot pushed out along it meets its neighbour's exactly -- a segment's own
+## normal would open a crack at every joint.
+func _out_axis(from: int, to: int) -> Vector2:
+	return Vector2(_cx[to] - _cx[from], _cz[to] - _cz[from]).normalized()
+
+
+## A wall is LAND seen from the side, not a board stood on edge. Contour
+## terraces stay (docs/LOOK.md), but at eye level a vertical quad per segment
+## read as a stack of slabs. So each wall is cut in three bands: the foot runs
+## out as a talus slope and tucks under the terrace below, the face leans and
+## bulges and undercuts by world position, and only the top edge stays on the
+## contour, where the flat and the lip meet it. Everything is a function of
+## where a point IS (and its level), so neighbouring segments and chunks meet.
+const WALL_TALUS := 0.24
+const WALL_TALUS_VARY := 0.2
+const WALL_LEAN := 0.06
+const WALL_BULGE := 0.055
+## How far the foot sinks under the terrace below, so it never shows a seam.
+const WALL_TUCK := 0.05
+## A segment longer than this (tiles) is broken at its middle as well. Most
+## run half a tile, and splitting every one nearly doubled the land's
+## triangles for detail a lattice step already gives.
+const WALL_SPLIT := 0.62
+
+## One column of a wall at (x, z): how far out its foot, lower band and upper
+## band stand (tiles), then the two band heights as shares of the wall.
+func _wall_column(x: float, z: float, L: int, span: float) -> PackedFloat32Array:
+	var lz := z + L * 17.3
+	var lean := WALL_LEAN * (0.4 + _warp.get_noise_2d(x * 3.1 + 40.0, lz * 3.1))
+	var talus := span * (WALL_TALUS + WALL_TALUS_VARY * _lip.get_noise_2d(x * 0.9 + 11.0, lz * 0.9))
+	var b1 := WALL_BULGE * _lip.get_noise_2d(x * 2.3 + 77.0, lz * 2.3)
+	var b2 := WALL_BULGE * _lip.get_noise_2d(x * 2.3 - 51.0, lz * 2.3 + 9.0)
+	var h1 := 0.3 + 0.1 * _lip.get_noise_2d(x * 1.7 + 3.0, lz * 1.7 - 20.0)
+	var h2 := 0.68 + 0.09 * _lip.get_noise_2d(x * 1.7 - 13.0, lz * 1.7 + 31.0)
+	return PackedFloat32Array([maxf(0.03, lean + talus), lean * 0.65 + b1, lean * 0.3 + b2, h1, h2])
+
+
 ## A wall along a terrace edge from p to q, from hb up to h, facing away from
-## the point (ix, iz) on the high side, under ground key k.
-func _wall(ch: Chunk, px: float, pz: float, qx: float, qz: float, ix: float, iz: float, hb: float, h: float, L: int, k: int) -> void:
+## the point (ix, iz) on the high side, under ground key k. `op` and `oq` are
+## the outward axes at p and q (see _out_axis).
+func _wall(ch: Chunk, px: float, pz: float, qx: float, qz: float, ix: float, iz: float, hb: float, h: float, L: int, k: int, op: Vector2 = Vector2.ZERO, oq: Vector2 = Vector2.ZERO) -> void:
 	if (k & _KEY_WET) != 0 or L <= 0:
 		# Water on the high side, or under the sea: a sheet covers the step.
 		return
@@ -1639,23 +1685,76 @@ func _wall(ch: Chunk, px: float, pz: float, qx: float, qz: float, ix: float, iz:
 		qz = tz
 		dx = -dx
 		dz = -dz
+		var to := op
+		op = oq
+		oq = to
 	var inv := 1.0 / sqrt(len2)
 	var nrm := Vector3(dz * inv, 0.0, -dx * inv)
+	var n2 := Vector2(nrm.x, nrm.z)
+	if op == Vector2.ZERO:
+		op = n2
+	if oq == Vector2.ZERO:
+		oq = n2
 	ch.edges.append(Vector3(px, h, pz))
 	ch.edges.append(Vector3(qx, h, qz))
 	var gi := ((k & 0xFF) * BiomeRegistry.SLOTS + ((k >> 8) & 0xFF)) * 2 + (L & 1)
 	var col := _tab_cliff[gi]
+	var span := h - hb
+	# Columns: p, the middle of a long segment (its own normal, so no
+	# neighbour has to agree with it), q.
+	var mx := (px + qx) * 0.5
+	var mz := (pz + qz) * 0.5
+	var cols_x := PackedFloat32Array([px, mx, qx])
+	var cols_z := PackedFloat32Array([pz, mz, qz])
+	var outs: Array[Vector2] = [op, n2, oq]
+	var ncol := 3 if len2 > WALL_SPLIT * WALL_SPLIT else 2
+	if ncol == 2:
+		cols_x = PackedFloat32Array([px, qx])
+		cols_z = PackedFloat32Array([pz, qz])
+		outs = [op, oq]
+	# Four rows per column, foot to top.
+	var grid := PackedVector3Array()
+	grid.resize(ncol * 4)
+	var foot_out := 0.0
+	for c in ncol:
+		var x := cols_x[c]
+		var z := cols_z[c]
+		var o := outs[c]
+		var w := _wall_column(x, z, L, span)
+		if c == ncol / 2:
+			foot_out = w[0]
+		grid[c * 4] = Vector3(x + o.x * w[0], hb - WALL_TUCK, z + o.y * w[0])
+		grid[c * 4 + 1] = Vector3(x + o.x * w[1], hb + span * w[3], z + o.y * w[1])
+		grid[c * 4 + 2] = Vector3(x + o.x * w[2], hb + span * w[4], z + o.y * w[2])
+		grid[c * 4 + 3] = Vector3(x, h, z)
 	var c0 := Color(col.r, col.g, col.b, 0.0)
-	var a0 := Vector3(qx, hb, qz)
-	var a1 := Vector3(px, h, pz)
-	_tv.append(a0)
-	_tv.append(a1)
-	_tv.append(Vector3(px, hb, pz))
-	_tv.append(a0)
-	_tv.append(Vector3(qx, h, qz))
-	_tv.append(a1)
-	for v in 6:
-		_tn.append(nrm)
+	var n := 0
+	for c in ncol - 1:
+		for r in 3:
+			var p_lo := grid[c * 4 + r]
+			var p_hi := grid[c * 4 + r + 1]
+			var q_lo := grid[(c + 1) * 4 + r]
+			var q_hi := grid[(c + 1) * 4 + r + 1]
+			# The same winding as the flat wall this replaced: (q_lo, p_hi, p_lo)
+			# and (q_lo, q_hi, p_hi), each lit by its own facet.
+			var na := (p_lo - q_lo).cross(p_hi - q_lo).normalized()
+			var nb := (p_hi - q_lo).cross(q_hi - q_lo).normalized()
+			if na.dot(nrm) < 0.0:
+				na = -na
+			if nb.dot(nrm) < 0.0:
+				nb = -nb
+			_tv.append(q_lo)
+			_tv.append(p_hi)
+			_tv.append(p_lo)
+			_tv.append(q_lo)
+			_tv.append(q_hi)
+			_tv.append(p_hi)
+			for v in 3:
+				_tn.append(na)
+			for v in 3:
+				_tn.append(nb)
+			n += 6
+	for v in n:
 		_tc.append(col)
 		_tuv.append(_UV_CONTOUR)
 		_tuv2.append(Vector2.ZERO)
@@ -1663,8 +1762,9 @@ func _wall(ch: Chunk, px: float, pz: float, qx: float, qz: float, ix: float, iz:
 	var lip := _tab_lip[gi]
 	if lip > 0:
 		_lip_strip(px, pz, qx, qz, nrm, h, gi, lip == 2)
-	if h - hb > 0.3:
-		ch.feet.append(Vector3((px + qx) * 0.5, hb, (pz + qz) * 0.5) + nrm * 0.18)
+	if span > 0.3:
+		# Rubble lies past the talus, not buried in it.
+		ch.feet.append(Vector3(mx, hb, mz) + nrm * (0.18 + foot_out))
 		ch.feet_out.append(nrm)
 		ch.feet_country.append((k >> 8) & 0xFF)
 

@@ -347,6 +347,57 @@ func test_the_eye_never_comes_into_the_head() -> void:
 	gt(head.distance_to(head.lerp(eye, share)), Shoulder.LEAST_BACK - 1e-3, "at least LEAST_BACK back")
 
 
+## A POLE IS NOT A WALL. `--place=pinewood --view=shoulder --put=pipe,barricade,pole`
+## stood a 0.12-wide pole 0.8 behind the player, on the line to the eye, and the
+## camera came all the way in to LEAST_BACK and drew the side of the player's
+## head across the whole frame. A thing narrower than `Shoulder.THIN` is seen
+## past, the way a trunk is: it only moves the eye when the eye would stand in it.
+func test_a_pole_on_the_line_does_not_pull_the_eye_in() -> void:
+	var head := Vector3(0.0, 1.45, 0.0)
+	var eye := Vector3(3.6, 2.1, 0.0)
+	var pole: Array[Vector4] = [Vector4(0.8, 0.0, 0.12, 2.9)]
+	near(Shoulder.room(head, eye, _flat(0.0), pole), 1.0, 1e-6, "a pole across the line: the eye keeps its distance")
+	var trunk: Array[Vector4] = [Vector4(2.0, 0.0, 0.3, 9.0)]
+	near(Shoulder.room(head, eye, _flat(0.0), trunk), 1.0, 1e-6, "a pine's trunk across the line: the same")
+
+
+func test_an_eye_that_would_stand_in_a_pole_stops_in_front_of_it() -> void:
+	var head := Vector3(0.0, 1.45, 0.0)
+	var eye := Vector3(3.6, 2.1, 0.0)
+	var pole: Array[Vector4] = [Vector4(3.6, 0.0, 0.12, 2.9)]
+	var at := head.lerp(eye, Shoulder.room(head, eye, _flat(0.0), pole))
+	lt(at.x, 3.6 - 0.12, "the eye stands on the player's side of the pole")
+	gt(at.x, 2.5, "and no nearer than the pole asks")
+
+
+## THE PLAYER'S HEAD IS NEVER THE PICTURE. However hard the eye is pulled in,
+## it comes in along the line it looks down, toward the point over the right
+## shoulder, so the head stays beside the middle of the frame and never fills it.
+## Asked of the live camera with every step of the line refused.
+func test_a_pulled_in_eye_looks_past_the_head() -> void:
+	var g := await _make()
+	var cam := g.camera
+	cam.shoulder = true
+	# Every step of the line behind is refused; the short leg from the head to
+	# the shoulder point (under a unit) is clear, as it is beside any wall behind.
+	cam.sight_room = func(a: Vector3, b: Vector3) -> float: return 1.0 if a.distance_to(b) < 1.0 else 0.0
+	_step(cam, 40)
+	var d := PersonBody.dims(&"man")
+	var feet := cam.get("_smoothed") as Vector3
+	var skull := feet + Vector3(0.0, float(d.hip_y) + float(d.torso) + float(d.head) * 0.5, 0.0)
+	var r := float(d.head) * 0.5
+	var dist := cam.global_position.distance_to(skull)
+	gt(dist, r * 2.0, "the eye is well outside the skull")
+	# The head's height as a share of the frame's.
+	var share := (2.0 * r / dist) / (2.0 * tan(deg_to_rad(cam.fov * 0.5)))
+	lt(share, 0.35, "the head is a third of the frame at most (%.2f)" % share)
+	var ahead := -cam.global_transform.basis.z
+	var to := skull - cam.global_position
+	var off := (to - ahead * to.dot(ahead)).length()
+	gt(off, r * 1.2, "the middle of the frame looks past the head, not through it")
+	_done()
+
+
 ## The rig stands the eye where the room says: asked in a running game with a
 ## wall put across the line, of the live camera.
 func test_the_rig_stands_where_the_room_allows() -> void:

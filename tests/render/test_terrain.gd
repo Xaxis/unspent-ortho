@@ -392,3 +392,45 @@ func test_streamed_chunks_are_built_off_the_main_thread_and_match_a_direct_build
 		eq(streamed.terrain.surface_get_array_len(0), direct.terrain.surface_get_array_len(0), "and the same mesh")
 	view.queue_free()
 	await tree.process_frame
+
+
+## A terrace wall is LAND seen from the side: at eye level a vertical sheet per
+## segment read as stacked slabs (docs/LOOK.md: nothing like a voxel game). So
+## its facets lean and its foot runs out and tucks under the terrace below,
+## while the pieces still meet: a crack between two segments is sky showing
+## through the hill.
+func test_terrace_walls_lean_and_break_and_still_meet() -> void:
+	var w := fixture()
+	var ch := TerrainMesher.new(w).build(0, 0)
+	var arrays := ch.terrain.surface_get_arrays(0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+	var wall_uv := float(Ink.CONTOUR * 17)
+	var walls := 0
+	var tilted := 0
+	var tucked := 0
+	var at := {}
+	for i in verts.size():
+		if absf(uvs[i].x - wall_uv) > 0.01:
+			continue
+		walls += 1
+		if absf(normals[i].y) > 0.12:
+			tilted += 1
+		var v := verts[i]
+		# Below a level's own height: the foot has gone under the terrace below.
+		if fposmod(v.y, WorldData.STEP) > WorldData.STEP * 0.8:
+			tucked += 1
+		var key := Vector3i((v * 2000.0).round())
+		at[key] = int(at.get(key, 0)) + 1
+	gt(walls, 300, "walls drawn")
+	gt(float(tilted) / walls, 0.4, "share of wall corners on a facet that leans (%d of %d)" % [tilted, walls])
+	gt(float(tucked) / walls, 0.1, "share of wall corners tucked under the terrace below")
+	# Every corner of a wall is shared: by the other triangle of its quad, the
+	# band above or below, or the next segment along. A corner used once is a
+	# hole, except where a chain of wall ends (the chunk's edge, the water).
+	var lone := 0
+	for key: Vector3i in at:
+		if int(at[key]) == 1:
+			lone += 1
+	lt(float(lone) / at.size(), 0.03, "wall corners used by one triangle only (%d of %d)" % [lone, at.size()])
