@@ -8,7 +8,8 @@ extends TestCase
 ## What only a real frame can answer -- the unlit hull is the sky's own colour
 ## at noon, the stars go out behind it at night -- is asked of the LIVE frame by
 ## 19_orbit (`tour_seen` &"ring_ghost", &"ring_hides_stars") in
-## tours/orbit_sky.tour, because a headless run draws nothing.
+## tours/orbit_sky.tour and tours/orbit_night.tour, because a headless run
+## draws nothing.
 
 const Def := preload("res://src/core/orbit/orbit_def.gd")
 const Pass := preload("res://src/core/orbit/orbit_pass.gd")
