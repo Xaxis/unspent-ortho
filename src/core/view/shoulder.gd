@@ -85,9 +85,15 @@ static func smooth(t: float) -> float:
 	return x * x * (3.0 - 2.0 * x)
 
 
+## The most of the glide one frame may take: a frame at 30 Hz. At any rate a
+## player plays at the glide keeps real time; a longer frame (a stall, a loaded
+## machine) moves it one step and not to the end, which was a pop.
+const STEP_MOST := 1.0 / 30.0
+
+
 ## One frame of the linear clock toward `want` (0 top, 1 over the shoulder).
 static func blend_step(t: float, want: bool, delta: float) -> float:
-	var by := delta / BLEND_SECS
+	var by := minf(delta, STEP_MOST) / BLEND_SECS
 	return clampf(t + by if want else t - by, 0.0, 1.0)
 
 
