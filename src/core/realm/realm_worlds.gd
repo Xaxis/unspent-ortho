@@ -28,6 +28,9 @@ static var _tasks: Dictionary = {}
 ## wait out a whole single-worker world (34 s here, over 45 min of CI in all).
 static var _orphans: Array[int] = []
 static var _gen := 0
+## key -> [grown seed, size, kind] of each raise in flight, so `forget` can ask
+## the generation itself to stop (WorldGen.halt) instead of running on for minutes.
+static var _grow: Dictionary = {}
 
 
 static func key_of(seed_value: int, size: int, kind: StringName) -> String:
@@ -74,6 +77,9 @@ static func begin(seed_value: int, size: int, kind: StringName) -> bool:
 	# so the world is the same world; measured, it takes 33-35 s instead of 21
 	# (tests/realm/test_raise_in_background.gd).
 	var gen := _gen
+	_mutex.lock()
+	_grow[key] = [Realm.seed_for(seed_value, kind), size, kind]
+	_mutex.unlock()
 	var task := WorkerThreadPool.add_group_task(func(_i: int) -> void: _raise(key, seed_value, size, kind, gen),
 		1, 1, false, "realm %s" % kind)
 	_mutex.lock()
@@ -134,6 +140,9 @@ static func forget() -> void:
 	_mutex.lock()
 	for t: int in _tasks.values():
 		_orphans.append(t)
+	for g: Array in _grow.values():
+		WorldGen.halt(int(g[0]), int(g[1]), StringName(g[2]))
+	_grow.clear()
 	_tasks.clear()
 	_worlds.clear()
 	_gen += 1
@@ -142,7 +151,15 @@ static func forget() -> void:
 
 
 static func _raise(key: String, seed_value: int, size: int, kind: StringName, gen: int) -> void:
+	# A raise for THIS game grows the whole world, even where an ended game's raise
+	# of the same world was asked to stop (that one then runs to the end too).
+	if gen == _gen:
+		WorldGen.unhalt(Realm.seed_for(seed_value, kind), size, kind)
 	var w := BootWorld.world(Realm.seed_for(seed_value, kind), size, kind)
+	if gen != _gen:
+		# Stopped (or finished) for a game that ended: its stop must not outlive it,
+		# or the next real growing of this world would stop too.
+		WorldGen.unhalt(Realm.seed_for(seed_value, kind), size, kind)
 	_mutex.lock()
 	# A raise begun for a game that has since ended is not this game's world.
 	# Whoever got here first wins: `take` may have raised it while a task ran.
