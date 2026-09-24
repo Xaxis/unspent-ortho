@@ -35,15 +35,23 @@ const BOUND_R := 62000.0
 ## the machinery on its legs; further, L2. At 90 km a shin's cable run is under
 ## half a pixel, so the switch is where nothing that changes can be seen.
 const NEAR_LOD := 90000.0
+## THE SWITCH IS DITHERED, NEVER POPPED: for `LOD_BAND` either side of
+## `NEAR_LOD` both bodies are drawn, each on its own half of a screen-pinned
+## stipple whose share moves with the distance (colossus.gdshader `lod_cut`),
+## so the machinery comes onto the legs a pixel at a time as a walker nears.
+## Stipple and not alpha: both keep writing depth, so neither sees through the
+## other and nothing sorts.
+const LOD_BAND := 8000.0
 
 var defs: Array = []
 var routes: Array = []
-var _meshes: Array[MeshInstance3D] = []
-## Each walker's two bodies: [L2, L1].
-var _bodies: Array = []
-## Which body each walker was drawn with this frame: 1 near, 2 far.
+## Each walker's two bodies, each on its own instance and material: [L2, L1].
+var _meshes: Array = []
+var _mats: Array = []
+## Which body each walker was MOSTLY drawn with this frame: 1 near, 2 far; and
+## how much of it was the near one, 0..1 (1 or 0 outside the band).
 var lod: Array[int] = []
-var _mats: Array[ShaderMaterial] = []
+var lod_share: Array[float] = []
 ## Per walker: whether it was drawn this frame, its last pose, its distance and
 ## bearing from the camera (for --stats and a tour).
 var drawn: Array[bool] = []
@@ -57,21 +65,26 @@ func setup(walker_defs: Array, seed_value: int, world_size: int) -> void:
 	defs = walker_defs
 	for d: RefCounted in defs:
 		routes.append(Route.make(d, seed_value, world_size))
-		var mi := MeshInstance3D.new()
-		mi.name = String(d.id)
-		var bodies: Array[ArrayMesh] = [Model.build(d), Model.build(d, true)]
-		_bodies.append(bodies)
+		var pair: Array[MeshInstance3D] = []
+		var mats: Array[ShaderMaterial] = []
+		for near_one: bool in [false, true]:
+			var mi := MeshInstance3D.new()
+			mi.name = "%s_%s" % [String(d.id), "l1" if near_one else "l2"]
+			mi.mesh = Model.build(d, near_one)
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+			var mat := ShaderMaterial.new()
+			mat.shader = SHADER
+			mat.set_shader_parameter("lod_near", near_one)
+			mi.material_override = mat
+			mi.visible = false
+			add_child(mi)
+			pair.append(mi)
+			mats.append(mat)
+		_meshes.append(pair)
+		_mats.append(mats)
 		lod.append(2)
-		mi.mesh = bodies[0]
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
-		var mat := ShaderMaterial.new()
-		mat.shader = SHADER
-		mi.material_override = mat
-		mi.visible = false
-		add_child(mi)
-		_meshes.append(mi)
-		_mats.append(mat)
+		lod_share.append(0.0)
 		drawn.append(false)
 		poses.append({})
 
@@ -86,7 +99,8 @@ func update(cam: Camera3D, minutes: float, air: Dictionary, wanted: bool) -> voi
 		var t_hidden := Time.get_ticks_usec()
 		for i in _meshes.size():
 			poses[i] = Walk.pose(defs[i], routes[i], minutes)
-			_meshes[i].visible = false
+			for mi: MeshInstance3D in _meshes[i]:
+				mi.visible = false
 			drawn[i] = false
 		last_pose_usec = Time.get_ticks_usec() - t_hidden
 		return
@@ -112,35 +126,64 @@ func update(cam: Camera3D, minutes: float, air: Dictionary, wanted: bool) -> voi
 		var p: Dictionary = Walk.pose(defs[i], routes[i], minutes)
 		poses[i] = p
 		var see := ortho or in_view(eye, fwd, cam.fov, aspect, (p.hub as Transform3D).origin)
-		_meshes[i].visible = see
 		drawn[i] = see
+		var share := near_share(eye.distance_to((p.hub as Transform3D).origin))
+		lod_share[i] = share
+		lod[i] = 1 if share >= 0.5 else 2
+		var pair: Array = _meshes[i]
+		(pair[0] as MeshInstance3D).visible = see and share < 1.0
+		(pair[1] as MeshInstance3D).visible = see and share > 0.0
 		if not see:
 			continue
-		var near_one := eye.distance_to((p.hub as Transform3D).origin) < NEAR_LOD
-		var body: ArrayMesh = _bodies[i][1 if near_one else 0]
-		if _meshes[i].mesh != body:
-			_meshes[i].mesh = body
-		lod[i] = 1 if near_one else 2
-		var mat := _mats[i]
-		mat.set_shader_parameter("bone_rows", rows_of(p.bones))
-		mat.set_shader_parameter("comp_d0", cam.far * KNEE)
-		mat.set_shader_parameter("comp_max", cam.far * CEILING)
-		mat.set_shader_parameter("comp_l", _l)
-		mat.set_shader_parameter("comp_ortho", ortho)
-		mat.set_shader_parameter("land_fog", fog)
-		mat.set_shader_parameter("thick", thick)
-		mat.set_shader_parameter("lens_glow", night)
-		mat.set_shader_parameter("px_angle", px_angle)
-		mat.set_shader_parameter("l0_on", air.has("l0_dir"))
-		if air.has("l0_dir"):
-			mat.set_shader_parameter("l0_dir", air["l0_dir"])
-			mat.set_shader_parameter("l0_size", air["l0_size"])
-			mat.set_shader_parameter("l0_color", air["l0_color"])
-			mat.set_shader_parameter("l0_energy", air["l0_energy"])
-		for k: StringName in dome:
-			mat.set_shader_parameter(k, dome[k])
-		_meshes[i].custom_aabb = box
+		for j in 2:
+			if not (pair[j] as MeshInstance3D).visible:
+				continue
+			(pair[j] as MeshInstance3D).custom_aabb = box
+			_dress(_mats[i][j], i, p, cam, ortho, fog, thick, night, px_angle, air, dome, share)
 	last_pose_usec = Time.get_ticks_usec() - t0
+
+
+## How much of each leg of walker `i` the near foot (colossus_foot.gd) has taken
+## this frame; the far body gives those pixels up below the seam.
+func set_l0(i: int, share: Vector3) -> void:
+	if _l0_said.get(i, Vector3(-1, -1, -1)) == share:
+		return
+	_l0_said[i] = share
+	for mat: ShaderMaterial in _mats[i]:
+		mat.set_shader_parameter("l0_share", share)
+
+
+var _l0_said: Dictionary = {}
+
+
+## How much of a walker `d` metres off is drawn with its near body: 0 past the
+## band, 1 inside it, eased across it.
+static func near_share(d: float) -> float:
+	return smoothstep(NEAR_LOD + LOD_BAND, NEAR_LOD - LOD_BAND, d)
+
+
+func _dress(mat: ShaderMaterial, i: int, p: Dictionary, cam: Camera3D, ortho: bool, fog: Vector4,
+		thick: float, night: float, px_angle: float, air: Dictionary, dome: Dictionary, share: float) -> void:
+	mat.set_shader_parameter("lod_cut", share)
+	mat.set_shader_parameter("bone_rows", rows_of(p.bones))
+	mat.set_shader_parameter("comp_d0", cam.far * KNEE)
+	mat.set_shader_parameter("comp_max", cam.far * CEILING)
+	mat.set_shader_parameter("comp_l", _l)
+	mat.set_shader_parameter("comp_ortho", ortho)
+	mat.set_shader_parameter("land_fog", fog)
+	mat.set_shader_parameter("thick", thick)
+	mat.set_shader_parameter("lens_glow", night)
+	mat.set_shader_parameter("px_angle", px_angle)
+	mat.set_shader_parameter("leg_len", Vector2(float(defs[i].thigh), float(defs[i].shin)))
+	mat.set_shader_parameter("spire_y", float(defs[i].spire_top) - float(defs[i].hip_height))
+	mat.set_shader_parameter("l0_on", air.has("l0_dir"))
+	if air.has("l0_dir"):
+		mat.set_shader_parameter("l0_dir", air["l0_dir"])
+		mat.set_shader_parameter("l0_size", air["l0_size"])
+		mat.set_shader_parameter("l0_color", air["l0_color"])
+		mat.set_shader_parameter("l0_energy", air["l0_energy"])
+	for k: StringName in dome:
+		mat.set_shader_parameter(k, dome[k])
 
 
 ## Whether a walker whose hub stands at `hub` can be on the glass of a lens at

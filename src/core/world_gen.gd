@@ -18,6 +18,7 @@ class_name WorldGen
 ##  12. props      GenScatter    wrecks, villages, the spawn's first frame, landmarks, the grid, scatter
 
 const DEFAULT_SIZE := Tuning.WORLD_SIZE
+const GenTreads := preload("res://src/core/worldgen/gen_treads.gd")
 const MAX_LEVEL := GenRelief.MAX_LEVEL
 
 ## Milliseconds per stage of the most recent generate() (for tools and tests).
@@ -129,6 +130,13 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 		return w
 	GenScatter.props(c)
 	t = _mark(c, marks, &"props", t)
+	if _halted(w):
+		return w
+	# Where a colossus's feet come down: cut LAST, into a world already laid, so
+	# nothing any other stage placed moves by a tile or an id (gen_treads.gd).
+	GenTreads.site(c)
+	GenTreads.dress(c)
+	t = _mark(c, marks, &"treads", t)
 	if _halted(w):
 		return w
 	w.rivers = c.rivers

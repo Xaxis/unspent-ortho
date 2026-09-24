@@ -43,6 +43,24 @@ const PITCH_MOST := 42.0
 ## of it stands there. The player goes under the bottom edge to see it, which is
 ## exactly what looking up at something that size is.
 const GAZE_LEAST := -45.0
+## PAST `PITCH_LEAST` THE PLAYER GETS OUT OF THE WAY. The orbit that tipping
+## up is carries the eye down behind and under the body, so a gaze at -45 was a
+## frame half filled by the back of the player's own head (colossi_gaze.tour
+## frame 02). So tipped further than the ordinary limit the eye comes forward to
+## just in front of the face (`EYE_UP` over the feet, `EYE_FORWARD` ahead), by
+## `rise`, which is full by `YIELD_FULL`; and the figure it comes through is
+## stippled away by the same share (sight.gdshaderinc `sight_yield`). At full
+## rise the eye is where the player's are and the frame is what they see.
+const YIELD_FULL := -30.0
+const EYE_UP := 1.62
+const EYE_FORWARD := 0.22
+
+
+## 0 at `PITCH_LEAST` and above, 1 by `YIELD_FULL`, eased.
+static func rise(pitch_deg: float) -> float:
+	return smooth((PITCH_LEAST - pitch_deg) / (PITCH_LEAST - YIELD_FULL))
+
+
 ## Degrees a second the view comes back down to `PITCH_LEAST` once nothing
 ## holds the gaze any more, eased by how far it has to come: never a snap.
 const GAZE_RETURN := 25.0

@@ -6,7 +6,11 @@
 # after that. Frames a quarter of a second apart while the ground moves show the
 # picture swaying and settling; the awaits prove each arrives, in order, at its
 # own speed.
-#   tools/tour.sh tours/colossi_step.tour --seed=7 --place=coast --hour=12 --colossus=1@728 --view=shoulder --face=314 --weather=clear:0
+# The boom takes two and a half real minutes to arrive, on top of a boot that
+# grows the whole world, so give the run room:
+#   TOUR_TIMEOUT=400 tools/tour.sh tours/colossi_step.tour --seed=7 --place=coast --hour=12 --colossus=1@728 --view=shoulder --face=314 --weather=clear:0
+# The staged eye feels it too (96_eye reads CameraRig.quake_offset):
+#   TOUR_TIMEOUT=400 tools/tour.sh tours/colossi_step.tour --seed=7 --place=coast --hour=12 --colossus=1@728 --eye=1.7,-8 --face=314 --weather=clear:0
 wait 3
 shot 00-before-it-lands with land:coast
 await colossus_quake 40
