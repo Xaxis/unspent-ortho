@@ -197,6 +197,11 @@ var lean_yaw := 0.0
 var lean_pitch := 0.0
 var lean_zoom := 1.0
 var lean_bias := Vector3.ZERO
+## Where the frame from above is drawn toward besides the body it follows, eased
+## like a lean: a room is framed on its middle, not on the player standing in
+## its doorway (21_doors is the one writer). Kept apart from `lean_bias` because
+## targeting squares that to zero every frame its key is up.
+var frame_bias := Vector3.ZERO
 ## Eased per second: in quickly enough to feel like a lean, out more gently.
 const LEAN_IN := 7.0
 const LEAN_OUT := 4.5
@@ -217,6 +222,7 @@ var _yaw := 0.0
 var _pitch := 0.0
 var _zoom := 1.0
 var _bias := Vector3.ZERO
+var _frame := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -555,6 +561,7 @@ func snap_to(p: Vector3) -> void:
 	_pitch = lean_pitch
 	_zoom = lean_zoom
 	_bias = lean_bias
+	_frame = frame_bias
 	_apply()
 
 
@@ -785,6 +792,7 @@ func _ease_lean(delta: float) -> void:
 	_pitch = lerpf(_pitch, lean_pitch, to_out if is_zero_approx(lean_pitch) else to_in)
 	_zoom = lerpf(_zoom, lean_zoom, to_out if is_equal_approx(lean_zoom, 1.0) else to_in)
 	_bias = _bias.lerp(lean_bias, to_out if lean_bias.length() < LEAN_STILL else to_in)
+	_frame = _frame.lerp(frame_bias, to_out)
 
 
 func _apply() -> void:
@@ -797,7 +805,7 @@ func _apply() -> void:
 	var b := Basis.from_euler(rotation)
 	# Express the focus in camera space, snap its screen-plane axes to texels, go back.
 	var texel := size / float(get_viewport().get_visible_rect().size.y)
-	var local := b.inverse() * (_smoothed + _bias)
+	var local := b.inverse() * (_smoothed + _bias + _frame)
 	local.x = roundf(local.x / texel) * texel
 	local.y = roundf(local.y / texel) * texel
 	var focus := b * local

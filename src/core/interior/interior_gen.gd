@@ -88,5 +88,13 @@ static func _turn(l: InteriorLayout, out: Vector2) -> void:
 	l.hearth = (f.call(l.hearth) as Vector2) + shift
 	l.hearth_wall = f.call(l.hearth_wall)
 	l.table = (f.call(l.table) as Vector2) + shift
+	for t: Dictionary in l.things:
+		t.at = (f.call(t.at) as Vector2) + shift
+		t.face = f.call(t.face)
+	for i in l.walks.size():
+		var w2 := l.walks[i]
+		for j in w2.size():
+			w2[j] = (f.call(w2[j]) as Vector2) + shift
+		l.walks[i] = w2
 	var span := hi - lo
 	l.size = int(maxf(span.x, span.y)) + 2

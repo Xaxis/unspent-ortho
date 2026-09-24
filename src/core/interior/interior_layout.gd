@@ -19,6 +19,18 @@ var hearth_wall := Vector2(0, -1)
 var table := Vector2.ZERO
 ## How big the pocket is: every room inside it, a tile of nothing round them.
 var size := 0
+## Which plan the rooms were laid to and which household lives in them: two
+## deals off the door's own hash, so no two neighbours share a room.
+var plan: StringName = &""
+var dressing: StringName = &""
+## What stands in the rooms and hangs on their walls, as data: {kind, at (tile
+## space), face (the way it looks, into the room), solid (the radius a body is
+## stopped at; 0 for a thing on a wall or underfoot)}. The recipe says where;
+## the model says what it looks like.
+var things: Array[Dictionary] = []
+## The ways people walk every day, as [from, to] pairs: the boards along them
+## are worn pale.
+var walks: Array[PackedVector2Array] = []
 
 
 ## Where a player stands on coming in: a stride inside the doorway.

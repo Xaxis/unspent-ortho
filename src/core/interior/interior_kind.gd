@@ -23,8 +23,5 @@ var wall_h := 2.4
 var cut := 0.8
 ## The widest body that fits through the door (a big machine waits outside).
 var door_width := 0.9
-## Changed when a recipe's layout changes: a pocket's saved edits are kept only
-## for the rev they were made in.
-var rev := 1
 ## The script that lays it (`lay(rng) -> InteriorLayout`).
 var recipe: Script

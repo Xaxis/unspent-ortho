@@ -77,3 +77,76 @@ func test_a_landscape_that_declares_nothing_has_no_doors() -> void:
 		if not houses[id]:
 			closed += 1
 	gt(float(closed), 0.0, "and the island has houses in landscapes with no doors, which this asked of (%s)" % str(houses))
+
+
+## Every plan and every household is dealt somewhere on one coast, so walking
+## into the next house is walking into somebody else's.
+func test_a_coast_deals_every_plan_and_every_household() -> void:
+	var w := _world()
+	var plans := {}
+	var homes := {}
+	var pairs := {}
+	for t: Threshold in Interiors.thresholds(w):
+		var l := InteriorGen.grow(4, t).layout
+		plans[l.plan] = true
+		homes[l.dressing] = true
+		pairs["%s/%s" % [l.plan, l.dressing]] = true
+	eq(plans.size(), 3, "three plans dealt (%s)" % [plans.keys()])
+	eq(homes.size(), 3, "three households dealt (%s)" % [homes.keys()])
+	gt(float(pairs.size()), 6.0, "and most of the nine rooms they make (%s)" % [pairs.keys()])
+
+
+## NOTHING A HOUSEHOLD KEEPS WALLS ANYBODY IN. Walked with the real query and the
+## room's real blocks (21_doors._walls: the walls, the breast and every solid
+## thing), a body the player's size gets from the doorway to the hearth, the
+## table and the side of the bed, in every room on the coast.
+func test_every_room_can_be_walked_to_its_hearth_table_and_bed() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var w := _world()
+	var ts := Interiors.thresholds(w)
+	gt(float(ts.size()), 10.0, "the coast has doors to walk")
+	for t: Threshold in ts:
+		var p := InteriorGen.grow(4, t)
+		var l := p.layout
+		var q := WorldQuery.new(p.world)
+		q.set_blocks(&"rooms", doors_script.call(&"_walls", l))
+		var reach := _reach(q, l.inside())
+		var goals := {"hearth": l.hearth - l.hearth_wall * 1.2, "table": l.table + Vector2(0.0, 0.9)}
+		for th: Dictionary in l.things:
+			if th.kind == &"bed":
+				goals["bed"] = (th.at as Vector2) + (th.face as Vector2) * 0.85
+		for g: String in goals:
+			check(_reached(reach, goals[g]), "%s (%s/%s): the %s at %s cannot be walked to from the door" % [
+				t.key, l.plan, l.dressing, g, goals[g]])
+
+
+const STEP := 0.2
+
+
+## Every lattice point a body can walk to from `from`, stepping only where
+## `move_body` really arrives.
+func _reach(q: WorldQuery, from: Vector2) -> Dictionary:
+	var seen := {Vector2i(roundi(from.x / STEP), roundi(from.y / STEP)): true}
+	var todo: Array[Vector2i] = [seen.keys()[0]]
+	while not todo.is_empty():
+		var c: Vector2i = todo.pop_back()
+		for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n := c + d
+			if seen.has(n):
+				continue
+			var a := Vector2(c) * STEP
+			var b := Vector2(n) * STEP
+			if q.move_body(a, b - a, Tuning.PLAYER_RADIUS).distance_to(b) < 0.02:
+				seen[n] = true
+				todo.append(n)
+	return seen
+
+
+## Whether a body gets within a stride of `at`.
+func _reached(reach: Dictionary, at: Vector2) -> bool:
+	var c := Vector2i(roundi(at.x / STEP), roundi(at.y / STEP))
+	for dx in range(-3, 4):
+		for dy in range(-3, 4):
+			if reach.has(c + Vector2i(dx, dy)):
+				return true
+	return false

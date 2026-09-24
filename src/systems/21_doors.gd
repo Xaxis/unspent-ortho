@@ -58,6 +58,12 @@ var _cover: ColorRect
 var _cover_mat: ShaderMaterial
 var _lights: Array[SpotLight3D] = []
 var _windows: Array[Array] = []
+## The house's own lights ([OmniLight3D, &"lamp" | &"machine"]), and per window
+## the shaft of dusty air its sun stands in, and the motes in it.
+var _lamps: Array[Array] = []
+var _beams: Array[MeshInstance3D] = []
+var _motes: Array[CPUParticles3D] = []
+var _beam_mat: StandardMaterial3D
 ## The swap frames, measured: how long the frame that swapped in and out took.
 var swap_in_ms := 0.0
 var swap_out_ms := 0.0
@@ -129,6 +135,11 @@ func _inside_side(_delta: float) -> void:
 	if back.length() > 0.001:
 		back = back.normalized()
 	model.call(&"show_for", back, cam.shoulder_share())
+	# From above, the room is framed on its middle rather than on the doorway the
+	# player is standing in, most of the way: the player stays in the picture.
+	var mid := _room_middle()
+	var lean := (mid - game.player.pos) * 0.7 if cam.shoulder_share() < 0.5 else Vector2.ZERO
+	cam.frame_bias = Vector3(lean.x, 0.0, lean.y)
 	_light_windows()
 	door_near = null
 	if game.player.pos.distance_to(pocket.layout.door) <= REACH:
@@ -143,6 +154,20 @@ func _inside_side(_delta: float) -> void:
 ## numbered after it -- is never seen at all.
 var _use_was := false
 var _use_edge := false
+
+
+## Whether `use` is this door's this frame, so nothing else answers it: while a
+## door is swapping, inside a room at its door, and outside at a door that wins
+## the key (`_door_wins`). 49_story asks every system this before it answers, as
+## it does of a shaft. Without it the press that took a player IN also opened a
+## conversation with a villager outside, which stayed open unseen in the room,
+## and the press meant to let them out closed that instead -- measured in a tour.
+func use_spent() -> bool:
+	if _swapping:
+		return true
+	if door_near == null:
+		return false
+	return pocket != null or _door_wins(door_near.door)
 
 
 func _pressed() -> bool:
@@ -243,12 +268,30 @@ func go_out() -> void:
 	built_after_out = game.view.build_count - before
 
 
+## The middle of every room together.
+func _room_middle() -> Vector2:
+	var box := Rect2(Vector2(pocket.layout.rooms[0].position), Vector2(pocket.layout.rooms[0].size))
+	for r: Rect2i in pocket.layout.rooms:
+		box = box.merge(Rect2(Vector2(r.position), Vector2(r.size)))
+	return box.get_center()
+
+
 func _swap_out() -> void:
 	var realms := _realms()
+	game.camera.frame_bias = Vector3.ZERO
 	var t := pocket.threshold
 	for l: SpotLight3D in _lights:
 		l.queue_free()
 	_lights.clear()
+	for pair: Array in _lamps:
+		(pair[0] as Node).queue_free()
+	_lamps.clear()
+	for b: Node in _beams:
+		b.queue_free()
+	_beams.clear()
+	for m: Node in _motes:
+		m.queue_free()
+	_motes.clear()
 	game.query.set_blocks(&"rooms", [] as Array[Vector3])
 	game.remove_meta(SaveCore.META_OUTSIDE)
 	var inner := game.view
@@ -277,8 +320,18 @@ func _realms() -> Node:
 
 ## The walls as the query's blocks: a circle every half tile along every edge
 ## but the doorways, so a wall stops a body and a doorway lets it through.
+##
+## Where a wall meets a doorway its end circle is the JAMB's size, not the wall's:
+## a full-size circle each side left a doorway 0.4 wide for a body 0.56 across,
+## so no room through a doorway could be walked into (tests/interior, walking the
+## real query from the door to the bed).
 static func _walls(l: InteriorLayout) -> Array[Vector3]:
 	var out: Array[Vector3] = []
+	var jambs := {}
+	for e: Dictionary in l.edges:
+		if e.kind == &"door" or e.kind == &"inner":
+			jambs[_corner(e.a)] = true
+			jambs[_corner(e.b)] = true
 	for e: Dictionary in l.edges:
 		if e.kind == &"door" or e.kind == &"inner":
 			continue
@@ -286,11 +339,28 @@ static func _walls(l: InteriorLayout) -> Array[Vector3]:
 		var b: Vector2 = e.b
 		for k in 3:
 			var p := a.lerp(b, float(k) / 2.0)
-			out.append(Vector3(p.x, p.y, 0.3))
+			var r := 0.12 if k != 1 and jambs.has(_corner(p)) else 0.3
+			out.append(Vector3(p.x, p.y, r))
 	# The chimney breast stands out from its wall.
 	var c := l.hearth + l.hearth_wall * 0.35
 	out.append(Vector3(c.x, c.y, 0.55))
+	# And what the household keeps: a bed is two tiles long, so two circles.
+	for t: Dictionary in l.things:
+		var r := float(t.solid)
+		if r <= 0.0:
+			continue
+		var at: Vector2 = t.at
+		if t.kind == &"bed":
+			var s := Vector2(-(t.face as Vector2).y, (t.face as Vector2).x)
+			out.append(Vector3(at.x + s.x * 0.5, at.y + s.y * 0.5, 0.45))
+			out.append(Vector3(at.x - s.x * 0.5, at.y - s.y * 0.5, 0.45))
+		else:
+			out.append(Vector3(at.x, at.y, r))
 	return out
+
+
+static func _corner(p: Vector2) -> Vector2i:
+	return Vector2i(roundi(p.x * 2.0), roundi(p.y * 2.0))
 
 
 # --- light through the windows -------------------------------------------------
@@ -312,6 +382,27 @@ func _make_lights() -> void:
 		sun.light_energy = 0.0
 		game.view.add_child(sun)
 		_lights.append(sun)
+		var beam := MeshInstance3D.new()
+		beam.mesh = _beam_mesh()
+		beam.material_override = _beam_material()
+		beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		game.view.add_child(beam)
+		_beams.append(beam)
+		var motes := _motes_in_air()
+		game.view.add_child(motes)
+		_motes.append(motes)
+	for at: Array in model.get(&"lights"):
+		var lamp := OmniLight3D.new()
+		var machine: bool = at[1] == &"machine"
+		# The lantern is warm and reaches the room; the stolen strip is the one
+		# cold light in the house and reaches only the bench it hangs over.
+		lamp.light_color = Color(0.74, 0.72, 0.9) if machine else Color(1.0, 0.7, 0.4)
+		lamp.omni_range = 3.2 if machine else 5.5
+		lamp.omni_attenuation = 1.2
+		lamp.shadow_enabled = false
+		game.view.add_child(lamp)
+		lamp.global_position = at[0]
+		_lamps.append([lamp, at[1]])
 
 
 ## THE HOUR COMES IN THROUGH THE WINDOWS. A cottage's lid is under the line where
@@ -335,7 +426,15 @@ func _light_windows() -> void:
 		if sm != null:
 			hor = sm.sky_horizon_color
 	if model != null:
-		model.call(&"daylight", Color(hor.r, hor.g, hor.b) * lerpf(0.18, 1.15, day))
+		# The sky, graded down from the blown white it was, and the land the house
+		# stands in under it, hazed toward the sky with distance.
+		var ground := _land_colour()
+		var lit := lerpf(0.1, 0.9, day)
+		model.call(&"daylight", Color(hor.r, hor.g, hor.b) * lerpf(0.14, 0.92, day),
+			ground.lerp(hor, 0.28) * lit)
+	for pair: Array in _lamps:
+		var lamp := pair[0] as OmniLight3D
+		lamp.light_energy = 0.55 if pair[1] == &"machine" else lerpf(1.6, 0.25, day)
 	for i in _windows.size():
 		var at: Vector3 = _windows[i][0]
 		var inward2: Vector2 = _windows[i][1]
@@ -355,12 +454,115 @@ func _light_windows() -> void:
 		sp.light_color = sun.light_color
 		sp.light_energy = SUN_IN * sun.light_energy * smoothstep(0.0, 0.35, facing)
 		sp.visible = sp.light_energy > 0.01
+		_air_in(i, at, inward2, beam, sp.light_energy / SUN_IN, sun.light_color)
 		var fill := _lights[i * 2] as SpotLight3D
 		var down := (inward + Vector3.DOWN * 0.45).normalized()
 		fill.global_position = at - down * 1.2
 		_aim(fill, down)
 		fill.light_color = hor.lerp(Color(0.78, 0.84, 1.0), 0.5)
 		fill.light_energy = SKY_IN * lerpf(0.15, 1.0, day)
+
+
+## The land outside, as a colour: the host landscape's grass, or its rock.
+func _land_colour() -> Color:
+	var d := BiomeRegistry.by_index(pocket.threshold.land) if pocket != null else null
+	if d != null and not d.grass_colors.is_empty():
+		return d.grass_colors[mini(1, d.grass_colors.size() - 1)]
+	return d.rock_color if d != null else Color(0.4, 0.42, 0.36)
+
+
+## DUST IN THE SUN'S BEAM: a shaft of lit air from the window to the floor, and
+## motes turning in it, as strong as the sun that is on the window, over the
+## shoulder only. A sheared
+## box is the whole beam -- its three columns are the opening's width, its
+## height and the way the light goes, to where it meets the floor.
+func _air_in(i: int, at: Vector3, inward: Vector2, beam: Vector3, strength: float, col: Color) -> void:
+	var shaft := _beams[i]
+	var motes := _motes[i]
+	# Lit air is seen at eye level; a plan from above does not draw air, and there
+	# the shaft read as a pale sheet laid across the room.
+	var on := strength > 0.02 and game.camera.shoulder_share() > 0.5
+	shaft.visible = on
+	motes.emitting = on
+	motes.visible = on
+	if not on:
+		return
+	var across := Vector3(-inward.y, 0.0, inward.x)
+	# The window's middle is 1.3 over the boards; the beam runs down to them.
+	var reach := 1.3 / maxf(-beam.y, 0.2)
+	var basis := Basis(across * 0.58, Vector3.UP * 0.8, beam * reach)
+	shaft.global_transform = Transform3D(basis, at)
+	var m := shaft.material_override as StandardMaterial3D
+	# Faint: lit dust is seen, not a pane of light in the room.
+	var warm := col.lerp(Color(1.0, 0.86, 0.66), 0.35)
+	m.albedo_color = Color(warm.r, warm.g, warm.b, clampf(0.035 * strength, 0.0, 0.05))
+	motes.global_transform = Transform3D(basis, at + beam * reach * 0.5)
+
+
+static func _beam_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var c: Array[Vector3] = []
+	for z in 2:
+		for y in 2:
+			for x in 2:
+				c.append(Vector3(float(x) - 0.5, float(y) - 0.5, float(z)))
+	var faces: Array[Array] = [[0, 1, 3, 2], [4, 6, 7, 5], [0, 4, 5, 1], [2, 3, 7, 6], [0, 2, 6, 4], [1, 5, 7, 3]]
+	for f: Array in faces:
+		for tri: Array in [[f[0], f[1], f[2]], [f[0], f[2], f[3]]]:
+			for v: int in tri:
+				# Brightest at the window, gone by the floor, so the shaft has no
+				# end of its own: it is seen only as lit air.
+				st.set_color(Color(1, 1, 1, 1.0 - c[v].z))
+				st.add_vertex(c[v])
+	return st.commit()
+
+
+## Transparent, added over what is behind it, and drawn at render priority 11:
+## after people (10), so a figure standing in the beam is seen through the lit
+## dust, and before MobFx's hit marks (12), which must stay on top.
+func _beam_material() -> StandardMaterial3D:
+	if _beam_mat == null:
+		_beam_mat = StandardMaterial3D.new()
+		_beam_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_beam_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_beam_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		_beam_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_beam_mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		_beam_mat.vertex_color_use_as_albedo = true
+		_beam_mat.render_priority = 11
+	return _beam_mat.duplicate() as StandardMaterial3D
+
+
+## Motes: a few dozen specks drifting in the beam's box, lit by nothing but being
+## in it (additive, at the beam's own priority).
+func _motes_in_air() -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	p.amount = 36
+	p.lifetime = 7.0
+	p.preprocess = 7.0
+	p.local_coords = true
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(0.5, 0.5, 0.5)
+	p.direction = Vector3.UP
+	p.spread = 180.0
+	p.initial_velocity_min = 0.005
+	p.initial_velocity_max = 0.02
+	p.gravity = Vector3(0.0, -0.004, 0.0)
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.2
+	var q := QuadMesh.new()
+	q.size = Vector2(0.02, 0.02)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.albedo_color = Color(1.0, 0.9, 0.7, 0.55)
+	m.render_priority = 11
+	q.material = m
+	p.mesh = q
+	return p
 
 
 static func _aim(l: Node3D, dir: Vector3) -> void:
@@ -426,42 +628,55 @@ func tour_seen(what: StringName) -> bool:
 			return pocket == null and not _swapping and game.world.realm != Realm.INTERIOR
 	if String(what).begins_with("inside:"):
 		return pocket != null and not _swapping and String(pocket.kind.id) == String(what).substr(7)
+	if String(what).begins_with("room:"):
+		# `room:PLAN` or `room:HOUSEHOLD`: inside a room laid or kept that way.
+		var want := String(what).substr(5)
+		return pocket != null and not _swapping and (String(pocket.layout.plan) == want or String(pocket.layout.dressing) == want)
 	return false
 
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
-const TOUR_PLACES: Array[String] = ["door:house", "door"]
+const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
+	"door:fisher", "door:tinker", "door:keeper"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
-## inside, just inside the room's own door, facing out.
+## inside, just inside the room's own door, facing out. `door:PLAN` and
+## `door:HOUSEHOLD` (cottage.gd's deals) ask for the nearest door whose room is
+## laid to that plan or kept by that household, so a tour stages a room by what
+## is in it rather than by where some house happens to stand.
 func tour_place(what: String) -> Vector2:
-	if what != "door:house" and what != "door":
-		return Vector2.INF
-	if pocket != null:
+	var t := _tour_door(what)
+	if pocket != null and t == null and TOUR_PLACES.has(what):
 		return pocket.layout.door - pocket.layout.door_out * 0.5
-	var best: Threshold = null
-	var bd := INF
-	for t: Threshold in doors:
-		var d := t.door.distance_squared_to(game.player.pos)
-		if d < bd:
-			bd = d
-			best = t
-	if best == null:
-		return Vector2.INF
-	return best.door + best.out * 0.5
+	return t.door + t.out * 0.5 if t != null else Vector2.INF
 
 
 func tour_face(what: String) -> float:
-	if what != "door:house" and what != "door":
-		return NAN
-	if pocket != null:
+	var t := _tour_door(what)
+	if pocket != null and t == null and TOUR_PLACES.has(what):
 		return pocket.layout.door_out.angle()
-	var p := tour_place(what)
-	for t: Threshold in doors:
-		if t.door.distance_to(p - t.out * 0.5) < 0.01:
-			return (-t.out).angle()
-	return NAN
+	return (-t.out).angle() if t != null else NAN
+
+
+## The door a tour name asks for from outside; null inside a room, or for a name
+## this system does not answer.
+func _tour_door(what: String) -> Threshold:
+	if pocket != null or not TOUR_PLACES.has(what):
+		return null
+	var want := what.trim_prefix("door").trim_prefix(":")
+	var any := want == "" or want == "house"
+	var order := doors.duplicate()
+	var from := game.player.pos
+	order.sort_custom(func(a: Threshold, b: Threshold) -> bool:
+		return a.door.distance_squared_to(from) < b.door.distance_squared_to(from))
+	for t: Threshold in order:
+		if any:
+			return t
+		var l := InteriorGen.grow(game.options.seed_value, t).layout
+		if String(l.plan) == want or String(l.dressing) == want:
+			return t
+	return null
 
 
 ## A crossing into another realm is another island with its own doors; a door's

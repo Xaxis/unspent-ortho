@@ -13,7 +13,7 @@ Realms and portals, the rooms behind a house's door, landmarks and caches, regio
 
 ## How to reach it
 
-- `tools/tour.sh tours/realms.tour`, `tours/house.tour`, `tours/landmarks.tour`, `tours/region.tour`.
+- `tools/tour.sh tours/realms.tour`, `tours/house.tour`, `tours/rooms.tour --seed=4 --hour=15 --weather=clear:0`, `tours/landmarks.tour`, `tours/region.tour`.
 
 ## How to check it
 
@@ -32,4 +32,5 @@ Proves it when: the command exits 0 and, for a shot or tour, the frames show the
 
 - Stage by name (`place NAME`, `near KIND`), never by a copied coordinate.
 - A door's cost is `tests/interior/test_doors.gd`: it prints the swap in and out, best and worst of three trips, and fails a stall over 250 ms. Read the house tour's 02 and 04 side by side: the patch of sun on the boards must have moved between them.
+- `tours/rooms.tour` stages three rooms by who lives there (`near door:fisher|tinker|keeper`, claimed `room:...`): read the three frames side by side; no two may be the same room. `tests/interior/test_interiors.gd` walks the real query from every door on seed 4 to its hearth, table and bed.
 - Indoors, the systems that keep the outside sleep (`indoors(inside)`, 20_realms) rather than re-reading it; a new system that keeps per-world state and does not declare `indoors` is still correct, only slower through a door.
