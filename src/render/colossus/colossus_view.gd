@@ -175,6 +175,7 @@ func _dress(mat: ShaderMaterial, i: int, p: Dictionary, cam: Camera3D, ortho: bo
 	mat.set_shader_parameter("lens_glow", night)
 	mat.set_shader_parameter("px_angle", px_angle)
 	mat.set_shader_parameter("leg_len", Vector2(float(defs[i].thigh), float(defs[i].shin)))
+	mat.set_shader_parameter("spire_y", float(defs[i].spire_top) - float(defs[i].hip_height))
 	mat.set_shader_parameter("l0_on", air.has("l0_dir"))
 	if air.has("l0_dir"):
 		mat.set_shader_parameter("l0_dir", air["l0_dir"])
