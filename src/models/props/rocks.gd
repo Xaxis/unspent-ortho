@@ -37,41 +37,190 @@ static func boulder(k: Kit, v: int, c: int) -> void:
 	var g := geology(c)
 	var d := BiomeDressing.of(c)
 	var s := 7000 + v * 37 + c
-	var sides := d.facets
-	var top := 0.0
+	var faces := d.facets + 4
+	var top := Vector3.ZERO
+	# A BOULDER IS BROKEN ROCK, NOT A PEBBLE. Seen from the side over the
+	# shoulder the old one was a smooth ovoid (every ring welded into one
+	# round mass). These are cut by planes: a few big fracture faces, a lean
+	# off the vertical, and a split with one piece slipped from the other.
 	match v % 4:
 		0:
-			k.stone(0, -0.06, 0, 0.52, 0.72, s, g[0], sides, 0.12)
-			top = 0.66
+			# One mass, leaning off true, a spall fallen from its foot.
+			top = faceted(k, Vector3(0.0, -0.06, 0.0), Vector3(0.5, 0.74, 0.46), faces, s, g[0], Vector3(0.08, 0.0, -0.12))
+			faceted(k, Vector3(0.42, -0.07, 0.2), Vector3(0.16, 0.2, 0.14), faces - 6, s + 2, g[1], Vector3(0.3, 0.0, 0.4))
 		1:
-			k.stone(-0.12, -0.06, 0.05, 0.42, 0.6, s, g[0], sides, -0.1)
-			k.stone(0.34, -0.06, -0.2, 0.26, 0.36, s + 1, g[1], 5, 0.2)
-			top = 0.54
+			# Cracked through, the far half settled away from it.
+			var split := Vector3(0.3, 0.12, 1.0).normalized()
+			top = faceted(k, Vector3(-0.1, -0.06, 0.05), Vector3(0.42, 0.62, 0.38), faces, s, g[0], Vector3(0.06, 0.0, 0.1), split, 0.04, 0.05)
+			faceted(k, Vector3(0.36, -0.08, -0.22), Vector3(0.24, 0.34, 0.2), faces - 2, s + 1, g[1], Vector3(-0.3, 0.0, 0.35))
 		2:
-			# A flat slab split along its bedding, one half slipped.
-			k.stone(-0.08, -0.06, 0, 0.6, 0.34, s, g[0], sides, 0.05)
-			k.stone(0.26, -0.04, 0.12, 0.34, 0.3, s + 2, g[1], 5, 0.3)
-			top = 0.3
+			# A slab split along its bedding, one half slipped down and out.
+			var bed := Vector3(1.0, 0.25, 0.2).normalized()
+			top = faceted(k, Vector3(0.0, -0.06, 0.0), Vector3(0.62, 0.36, 0.5), faces, s, g[0], Vector3(0.04, 0.0, 0.08), bed, 0.1, 0.07)
 		_:
-			k.stone(0.02, -0.06, 0, 0.36, 1.05, s, g[0], sides, 0.18)
-			k.stone(-0.34, -0.06, 0.24, 0.2, 0.3, s + 3, g[1], 5, -0.2)
-			top = 0.95
-	var cap_r: float = [0.32, 0.26, 0.4, 0.18][v % 4]
+			# A tall stone leaning hard, a spall fallen at its foot.
+			top = faceted(k, Vector3(0.02, -0.06, 0.0), Vector3(0.34, 1.04, 0.3), faces, s, g[0], Vector3(0.1, 0.0, -0.2))
+			faceted(k, Vector3(-0.36, -0.07, 0.26), Vector3(0.2, 0.26, 0.17), faces - 3, s + 3, g[1], Vector3(0.4, 0.0, -0.3))
+	var cap_r: float = [0.26, 0.22, 0.34, 0.14][v % 4]
 	# What lies on a stone here is the land's answer, not the stone's: snow where
 	# snow lies, an ember seam where nothing green survives, growth where it is
 	# damp enough for anything to take hold, and lichen everywhere else.
 	if d.cold():
-		k.clump(0.06, top - 0.06, 0.0, cap_r + 0.04, 0.14, s + 9, d.snow[0], 6)
+		k.clump(top.x, top.y - 0.2, top.z, cap_r, 0.2, s + 9, d.snow[0], 6)
 	elif BiomeDressing.burnt(c):
-		k.fleck(Vector3(0.3, 0.02, 0.16), Vector3(0.36, 0.02, 0.04), Vector3(0.24, top * 0.7, 0.08), GroundColors.glow(P.EMBER[2], 0.4))
+		k.fleck(Vector3(0.3, 0.02, 0.16), Vector3(0.36, 0.02, 0.04), Vector3(0.24, top.y * 0.7, 0.08), GroundColors.glow(P.EMBER[2], 0.4))
 	elif BiomeDressing.mossy(c):
-		k.clump(-0.06, top - 0.08, 0.03, cap_r, 0.12, s + 9, g[2], 6)
+		k.clump(top.x, top.y - 0.19, top.z, cap_r * 0.8, 0.18, s + 9, g[2], 6)
 	else:
 		# Lichen blooms on the weather side.
 		for i in 3:
 			var a := float(i) * 2.1 + v
-			var p := Vector3(cos(a) * cap_r * 0.6 - 0.05, top + 0.005, sin(a) * cap_r * 0.6)
+			var p := top + Vector3(cos(a) * 0.07, -0.035, sin(a) * 0.07)
 			k.fleck(p, p + Vector3(0.08, 0.02, 0.06), p + Vector3(0.1, 0.0, -0.03), g[2] if i != 1 else P.MOSS[4])
+
+
+## ONE BROKEN ROCK: the intersection of `faces` half-spaces, each pushed out to
+## a jittered ellipsoid of `radii` standing on `base`, so every face is a flat
+## fracture plane and the silhouette is a handful of long edges rather than a
+## ring of small ones -- never a sphere, never a box (docs/LOOK.md). `tilt` is
+## (x, y, z) radians about the base: the lean. With `split` (a unit normal) the
+## mass is cut in two along that plane, `gap` apart, and the far piece slips out
+## and down by `slip`. Faces stay hard on purpose: a fracture is an edge. Returns
+## the highest point, for what lies on top.
+static func faceted(k: Kit, base: Vector3, radii: Vector3, faces: int, seed_value: int, col: Color, tilt: Vector3 = Vector3.ZERO, split: Vector3 = Vector3.ZERO, gap: float = 0.0, slip: float = 0.0) -> Vector3:
+	var centre := Vector3(0.0, radii.y * 0.46, 0.0)
+	var planes: Array[Plane] = [Plane(Vector3.DOWN, 0.0)]
+	var golden := PI * (3.0 - sqrt(5.0))
+	var turn := Rng.hash01(seed_value, 91) * TAU
+	for i in faces:
+		# Spread over everything above the base, crowded toward the top where a
+		# rock is seen, each direction knocked off its place a little.
+		var y := lerpf(0.92, -0.3, (float(i) + 0.5) / faces) + Kit.j(seed_value, i, 0.12)
+		var a := turn + golden * i + Kit.j(seed_value, i + 40, 0.5)
+		var r := sqrt(maxf(0.0, 1.0 - y * y))
+		var n := Vector3(cos(a) * r, y, sin(a) * r).normalized()
+		var reach := Vector3(radii.x * n.x, radii.y * 0.54 * n.y, radii.z * n.z).length()
+		planes.append(Plane(n, n.dot(centre) + reach * (0.72 + Rng.hash01(seed_value, i, 3) * 0.28)))
+	var basis := Basis.from_euler(tilt)
+	if split == Vector3.ZERO:
+		return _hull(k, planes, basis, base, col, seed_value)
+	var off := split.dot(centre) + Kit.j(seed_value, 77, radii.x * 0.1)
+	var near: Array[Plane] = planes.duplicate()
+	near.append(Plane(split, off - gap * 0.5))
+	var far: Array[Plane] = planes.duplicate()
+	far.append(Plane(-split, -off - gap * 0.5))
+	var high := _hull(k, near, basis, base, col, seed_value)
+	# The far piece has slid off the break: out along it and down, and turned
+	# about its foot so the crack opens at the top.
+	var out := Vector3(split.x, 0.0, split.z).normalized()
+	var fall := Basis(Vector3.UP.cross(out).normalized(), -slip * 2.2) * basis
+	var other := _hull(k, far, fall, base + out * slip - Vector3(0.0, slip * 0.4, 0.0), Kit.tone(col, 0.93), seed_value + 5)
+	return high if high.y >= other.y else other
+
+
+## The faces of a convex hull given by planes (keep n.p <= d), laid into the MADE
+## kit through `xf` about `at`. Returns the highest vertex.
+static func _hull(k: Kit, planes: Array[Plane], xf: Basis, at: Vector3, col: Color, seed_value: int) -> Vector3:
+	var pts := PackedVector3Array()
+	var count := planes.size()
+	for a in count:
+		for b in range(a + 1, count):
+			for c2 in range(b + 1, count):
+				var hit: Variant = planes[a].intersect_3(planes[b], planes[c2])
+				if hit == null:
+					continue
+				var p: Vector3 = hit
+				var inside := true
+				for pl: Plane in planes:
+					if pl.normal.dot(p) - pl.d > 1e-4:
+						inside = false
+						break
+				if not inside:
+					continue
+				var dup := false
+				for q in pts:
+					if q.distance_squared_to(p) < 1e-8:
+						dup = true
+						break
+				if not dup:
+					pts.append(p)
+	var high := Vector3(0.0, -INF, 0.0)
+	for fi in count:
+		var pl := planes[fi]
+		var on := PackedVector3Array()
+		for p in pts:
+			if absf(pl.normal.dot(p) - pl.d) < 1e-3:
+				on.append(p)
+		if on.size() < 3:
+			continue
+		var mid := Vector3.ZERO
+		for p in on:
+			mid += p
+		mid /= on.size()
+		var u := (on[0] - mid).normalized()
+		var w := pl.normal.cross(u)
+		var order: Array = []
+		for p in on:
+			var e := p - mid
+			order.append([atan2(e.dot(w), e.dot(u)), p])
+		order.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) < float(y[0]))
+		var face := PackedVector3Array()
+		for o: Array in order:
+			var p: Vector3 = o[1]
+			var world := at + xf * p
+			face.append(world)
+			if world.y > high.y:
+				high = world
+		# A face that looks at the sky is weathered paler than one that looks
+		# at the ground, and no two fracture faces are the same stone.
+		var shade := 0.9 + Rng.hash01(seed_value, fi, 13) * 0.1 + maxf(0.0, pl.normal.y) * 0.06
+		var fc := Kit.tone(col, shade)
+		var wn := xf * pl.normal
+		for tri: Array in _strip(face):
+			var t0: Vector3 = tri[0]
+			var t1: Vector3 = tri[1]
+			var t2: Vector3 = tri[2]
+			if (t1 - t0).cross(t2 - t0).dot(wn) >= 0.0:
+				k.made.tri(t0, t1, t2, fc)
+			else:
+				k.made.tri(t0, t2, t1, fc)
+	return high
+
+
+## A convex face cut into triangles as a strip from its highest corner down to
+## its lowest, the two sides zipped together by height, rather than a fan off
+## one corner. A level line then crosses one or two of them instead of all of
+## them, which is what `Broken.work_down` pays for: a fanned face cut across
+## opened a rim point per triangle and the cap cost as much as the rock.
+static func _strip(face: PackedVector3Array) -> Array:
+	var n := face.size()
+	var top := 0
+	var bottom := 0
+	for i in n:
+		if face[i].y > face[top].y:
+			top = i
+		if face[i].y < face[bottom].y:
+			bottom = i
+	# Down one side first, so no triangle is ever the top corner twice.
+	var a := (top + 1) % n
+	var b := top
+	var out: Array = []
+	while true:
+		var na := (a + 1) % n
+		var nb := (b - 1 + n) % n
+		if a == bottom and b == bottom:
+			break
+		if a == bottom or (b != bottom and face[nb].y >= face[na].y):
+			if nb == a:
+				break
+			out.append([face[a], face[b], face[nb]])
+			b = nb
+		else:
+			if na == b:
+				break
+			out.append([face[a], face[b], face[na]])
+			a = na
+	return out
 
 
 ## A rock drawn in bands: `rings` + 1 jittered rings rising to an apex, the
