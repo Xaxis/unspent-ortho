@@ -1072,7 +1072,15 @@ func seen_air() -> Dictionary:
 	var f := Vector4.ZERO
 	if e != null:
 		f = Vector4(e.fog_depth_begin, e.fog_depth_end, e.fog_depth_curve, e.fog_density)
-	return {"dome": _dome, "fog": f, "thick": clampf(fog.z, 0.0, 1.0), "share": horizon_share(_cam())}
+	var out := {"dome": _dome, "fog": f, "thick": clampf(fog.z, 0.0, 1.0), "share": horizon_share(_cam())}
+	# The sun's own disc as the procedural sky draws it (its LIGHT0), which the
+	# seen sky blends in across the band where the horizon comes into frame.
+	if sun != null and sun.visible:
+		out["l0_dir"] = sun.global_transform.basis.z
+		out["l0_size"] = deg_to_rad(sun.light_angular_distance)
+		out["l0_color"] = sun.light_color
+		out["l0_energy"] = sun.light_energy
+	return out
 
 
 ## The sky that is seen, filled from the same colours the reflected one was.

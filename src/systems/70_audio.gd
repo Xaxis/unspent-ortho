@@ -42,6 +42,9 @@ const WARM: Array[StringName] = [
 	&"whiff", &"dodge", &"pickup", &"gather", &"refuse", &"ui_refuse", &"ui_back", &"cut", &"break",
 	&"dig", &"fell", &"grip", &"pull", &"loose", &"machine_down", &"eat", &"beast_down", &"downed",
 	&"lamp_on", &"lamp_off", &"tool_snap", &"alert", &"windup", &"craft",
+	# The colossi land wherever the player is, from the first minute: a footfall
+	# baked on its first landing would be a footfall nobody heard.
+	&"colossus_step", &"colossus_boom",
 ]
 
 var bank: SoundBank
@@ -221,7 +224,14 @@ func play(emitted: StringName, at: Vector3 = Vector3.ZERO, extra_db: float = 0.0
 	var here := at == Vector3.ZERO or ui
 	var d := 0.0 if here else Vector2(at.x, at.z).distance_to(game.player.pos)
 	var gain := 1.0
-	if cat == &"thunder":
+	# A colossus's landing is played for where it came down, kilometres off: its
+	# own falloff, and heard in the middle of the picture, because a point fifty
+	# kilometres out projects to nowhere useful.
+	var colossal := String(name).begins_with("colossus")
+	if colossal:
+		gain = SoundMix.colossus_gain(d)
+		here = true
+	elif cat == &"thunder":
 		name = SoundMix.thunder_sound(d)
 		gain = SoundMix.thunder_gain(d)
 	elif not here:
@@ -247,6 +257,7 @@ func play(emitted: StringName, at: Vector3 = Vector3.ZERO, extra_db: float = 0.0
 	# Living and made things vary a little each time; a machine never does.
 	var natural := cat != &"thunder" and not SoundSignals.handles(name) and not name in EXACT
 	p.pitch_scale = 1.0 + (Rng.hash01(_played, 0x77) - 0.5) * 0.06 if natural else 1.0
+	p.set_meta(&"key", baked.key)
 	p.position = _screen_centre() if here else _screen_at(Vector2(at.x, at.z))
 	p.play()
 	_remember(baked.key, p.bus, db)
@@ -277,6 +288,19 @@ func _pick_variant(name: StringName) -> SoundBank.Baked:
 	if baked != null:
 		_last_variant[name] = v
 	return baked
+
+
+## A tour asks what is SOUNDING, live: `sound:NAME` is true while a voice is
+## playing a sound whose key begins with NAME (`sound:colossus_step`), and false
+## the moment it has finished -- never a latch of something that once played.
+func tour_seen(what: String) -> bool:
+	if not what.begins_with("sound:"):
+		return false
+	var name := what.substr(6)
+	for v in _voices:
+		if v.playing and String(v.get_meta(&"key", &"")).begins_with(name):
+			return true
+	return false
 
 
 func _remember(key: StringName, bus: StringName, db: float) -> void:
@@ -444,10 +468,19 @@ func _read_weather() -> void:
 	wet = SoundMix.wetness(game.world.seed_value, game.clock.minutes, int(here["country"]))
 
 
+## How loud the colossi are here: whatever system walks them says so on the
+## group `&"colossi"` (19_colossi `hum`), so this knows nothing about them.
+func _colossi() -> float:
+	var h := 0.0
+	for n: Node in get_tree().get_nodes_in_group(&"colossi"):
+		h = maxf(h, float(n.get(&"hum")))
+	return h
+
+
 func _extra() -> Dictionary:
 	return {
 		"hour": game.clock.hour(), "remote": remote, "tide": SoundMix.tide_at(game.clock.minutes), "wet": wet,
-		"wreck": works["wreck"], "installation": works["installation"], "hum": works["hum"], "shelter": works["shelter"], "leaves": works["leaves"],
+		"colossi": _colossi(), "wreck": works["wreck"], "installation": works["installation"], "hum": works["hum"], "shelter": works["shelter"], "leaves": works["leaves"],
 	}
 
 

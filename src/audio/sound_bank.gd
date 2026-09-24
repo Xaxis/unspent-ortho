@@ -143,6 +143,7 @@ const SHEET := {
 	&"bed_wreck": [&"bed", -6.5, 1],
 	&"bed_hum": [&"bed", -7.0, 1],
 	&"bed_far_drone": [&"bed", -9.5, 1],
+	&"bed_colossus": [&"bed", -6.0, 1],
 	&"bed_gutter": [&"bed", -8.0, 1],
 	# Weather beds at full strength. Rain is the reference.
 	&"weather_rain": [&"weather", 0.0, 1],
@@ -298,6 +299,10 @@ const SHEET := {
 	# Thunder only sits above everything.
 	&"thunder": [&"thunder", 8.0, 2],
 	&"thunder_far": [&"thunder", 6.5, 2],
+	# A colossus landing: through the ground, then through the air. Thunder's
+	# category, because it is the one sound bigger than thunder.
+	&"colossus_step": [&"thunder", 7.0, 2],
+	&"colossus_boom": [&"thunder", 6.0, 2],
 	# The interface is the quietest thing in the mix.
 	&"ui_move": [&"ui", -12.0, 1],
 	&"ui_accept": [&"ui", -9.0, 1],

@@ -139,3 +139,61 @@ static func segment(a: Vector3, b: Vector3, outward: Vector3) -> Transform3D:
 	x = x.normalized()
 	var z := x.cross(y)
 	return Transform3D(Basis(x, y, z), a)
+
+
+## Longest stretch of world time a frame may span and still fire its steps. A
+## longer one is a skip (a night slept, a load), and a skip fires NOTHING: the
+## player did not live through those footfalls, and forty of them arriving at
+## once would be the world lying about what just happened.
+const STEP_SKIP := 30.0
+
+
+## Every foot that came down in (m0, m1], in order: {leg, minute, at}. Found by
+## asking the clock, never latched, so a shot, a tour and a loaded game agree on
+## when a foot lands and a frame can never fire one twice.
+static func steps_between(def: RefCounted, route: RefCounted, m0: float, m1: float) -> Array:
+	var out: Array = []
+	if m1 <= m0 or m1 - m0 > STEP_SKIP:
+		return out
+	var cyc := float(def.cycle_minutes)
+	var f: float = def.swing_share()
+	var off := float(route.offset)
+	for k in 3:
+		# Swing j of leg k ends at cycle j + k/3 + f of the walk's own clock.
+		var base := float(k) / 3.0 + f
+		var j0 := ceili((m0 + off) / cyc - base)
+		var j1 := floori((m1 + off) / cyc - base)
+		for j in range(j0, j1 + 1):
+			var minute := (float(j) + base) * cyc - off
+			if minute > m0 and minute <= m1:
+				out.append({"leg": k, "minute": minute, "at": plant(def, route, k, j)})
+	out.sort_custom(_earlier)
+	return out
+
+
+## WHAT A LANDING DOES TO THE PERSON IT IS FELT BY, `d` metres off: (how far the
+## picture moves, in world units, and for how many real seconds). A third of a
+## unit at a kilometre, and it falls off with the LOG of distance so the looming
+## walker fifty kilometres out is still felt in the chest; nothing past 150 km.
+## The further off, the longer and slower the roll, as the ground spreads it.
+const FELT_NEAR := 1000.0
+const FELT_FAR := 150000.0
+const FELT_MOST := 0.35
+static func felt(d: float) -> Vector2:
+	var x := clampf(log(maxf(d, FELT_NEAR) / FELT_NEAR) / log(FELT_FAR / FELT_NEAR), 0.0, 1.0)
+	var strength := FELT_MOST * pow(1.0 - x, 0.7) if x < 1.0 else 0.0
+	return Vector2(strength, lerpf(2.5, 5.0, x))
+
+
+## Real seconds for a landing to reach the player through the ground (3 km/s) and
+## through the air (343 m/s). Real, not world: they are what a body perceives.
+static func ground_delay(d: float) -> float:
+	return d / 3000.0
+
+
+static func air_delay(d: float) -> float:
+	return d / 343.0
+
+
+static func _earlier(a: Dictionary, b: Dictionary) -> bool:
+	return float(a.minute) < float(b.minute)

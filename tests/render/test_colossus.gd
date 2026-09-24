@@ -287,3 +287,84 @@ func test_nothing_on_the_glass_is_ever_culled() -> void:
 						culled += 1
 	gt(float(in_frame), 100.0, "the sweep saw walkers on the glass (%d views)" % in_frame)
 	eq(culled, 0, "and never culled one that was on it")
+
+
+## THE STEPS A PLAYER FEELS are found by asking two minutes the same question:
+## every landing between them, once, at the minute and place the pose puts it,
+## and nothing at all across a skip (a night slept is not forty footfalls).
+func test_every_landing_is_one_step_event() -> void:
+	for d: RefCounted in _walkers():
+		var r := _route(d)
+		var events: Array = []
+		var t := 0.0
+		while t < 3.0 * float(d.cycle_minutes):
+			events.append_array(Walk.steps_between(d, r, t, t + 0.25))
+			t += 0.25
+		eq(events.size(), 9, "%s: three cycles, three legs, nine landings" % d.id)
+		for e: Dictionary in events:
+			var m: float = e.minute
+			var before: Dictionary = Walk.pose(d, r, m - 0.5)
+			var after: Dictionary = Walk.pose(d, r, m + 0.5)
+			var k: int = e.leg
+			gt(before.feet[k].y, 0.0, "%s: leg %d was still in the air just before" % [d.id, k])
+			near(after.feet[k].y, 0.0, 1e-3, "and is down just after")
+			near(after.feet[k].distance_to(e.at), 0.0, 1.0, "where the event says it landed")
+		eq(Walk.steps_between(d, r, 0.0, 600.0).size(), 0, "a skip of ten world hours fires nothing")
+		eq(Walk.steps_between(d, r, 5.0, 5.0).size(), 0, "no time, no step")
+
+
+## What a footfall does to the person hearing it, by how far off it came down:
+## the ground carries it first and the air much later, and it fades to nothing
+## a long way out rather than at the edge of the frame.
+func test_a_step_is_felt_before_it_is_heard_and_fades_with_distance() -> void:
+	near(Walk.felt(1000.0).x, 0.35, 0.02, "a foot at a kilometre shakes the picture a third of a unit")
+	eq(Walk.felt(160000.0).x, 0.0, "past 150 km nothing shakes")
+	var last := INF
+	for d: float in [1000.0, 5000.0, 30000.0, 60000.0, 120000.0]:
+		var f: Vector2 = Walk.felt(d)
+		lt(f.x, last + 1e-6, "weaker further off (%.0f)" % d)
+		gt(f.y, 1.5, "and still a long slow roll (%.0f)" % d)
+		last = f.x
+	near(Walk.ground_delay(30000.0), 10.0, 1e-3, "the ground carries it at 3 km/s")
+	near(Walk.air_delay(34300.0), 100.0, 1e-3, "the air at 343 m/s")
+	gt(Walk.felt(60000.0).x, 0.05, "the looming one is felt")
+
+
+## A landing is heard, and the walkers are always heard: every name the system
+## emits is a sound on the sheet, the landing carries past the edge of the world
+## and fades with it, and the drone follows what the system says its hum is.
+func test_what_a_colossus_sounds_like_is_on_the_sheet() -> void:
+	for n: StringName in [&"colossus_step", &"colossus_boom", &"bed_colossus"]:
+		check(SoundBank.has_sound(SoundNames.resolve(n)), "%s is a sound" % n)
+	gt(SoundMix.colossus_gain(2000.0), SoundMix.colossus_gain(60000.0), "a near landing is louder")
+	gt(SoundMix.colossus_gain(250000.0), 0.0, "and one on the skyline is still heard")
+	var w := WorldData.new(3, 64)
+	var calm := {"kind": &"fair", "strength": 0.0}
+	var quiet: Dictionary = SoundMix.bed_levels(w, Vector2(32, 32), calm, {}, {}, 0.0, {"colossi": 0.0})
+	var loud: Dictionary = SoundMix.bed_levels(w, Vector2(32, 32), calm, {}, {}, 0.0, {"colossi": 0.9})
+	near(float(quiet.get(&"bed_colossus", 0.0)), 0.0, 1e-6, "no walkers, no drone")
+	gt(float(loud.get(&"bed_colossus", 0.0)), 0.8, "a walker overhead fills the air")
+
+
+## THE GAZE: while a colossus is in front of the view it may tip up far enough to
+## take the machine in, and when it is not the view comes home without a jump.
+func test_the_gaze_lets_the_view_tip_up_and_eases_it_home() -> void:
+	const Shoulder := preload("res://src/core/view/shoulder.gd")
+	near(Shoulder.least_for(0.0), Shoulder.PITCH_LEAST, 1e-4, "no walker, the usual limit")
+	near(Shoulder.least_for(1.0), Shoulder.GAZE_LEAST, 1e-4, "a walker ahead, the gaze's")
+	lt(Shoulder.GAZE_LEAST, -40.0, "far enough to see a hub 45 degrees up")
+	var up := Shoulder.look(0.0, Shoulder.PITCH, Vector2(0.0, -5000.0), Shoulder.least_for(1.0))
+	near(up.y, Shoulder.GAZE_LEAST, 1e-4, "the mouse takes it all the way up")
+	var held := Shoulder.look(0.0, -40.0, Vector2(0.0, -100.0), Shoulder.PITCH_LEAST)
+	near(held.y, -40.0, 1e-4, "once the gaze lets go the mouse cannot take it further")
+	var p := -45.0
+	var worst := 0.0
+	var frames := 0
+	while p < Shoulder.PITCH_LEAST - 1e-4 and frames < 2000:
+		var q := Shoulder.settle(p, Shoulder.PITCH_LEAST, 1.0 / 60.0)
+		worst = maxf(worst, q - p)
+		p = q
+		frames += 1
+	near(p, Shoulder.PITCH_LEAST, 1e-3, "it comes home")
+	lt(worst, 0.5, "never more than half a degree a frame (%.2f)" % worst)
+	gt(float(frames) / 60.0, 1.0, "over more than a second (%.1f s)" % (float(frames) / 60.0))

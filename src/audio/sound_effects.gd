@@ -72,6 +72,8 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 		&"door": return _door(rate)
 		&"thunder": return _thunder(rate, variant, true)
 		&"thunder_far": return _thunder(rate, variant, false)
+		&"colossus_step": return _colossus_step(rate, variant)
+		&"colossus_boom": return _colossus_boom(rate, variant)
 		&"ui_move": return _ui_move(rate)
 		&"ui_accept": return _ui_accept(rate)
 		&"ui_back": return _ui_back(rate)
@@ -564,6 +566,72 @@ static func _thunder(rate: int, v: int, near: bool) -> PackedFloat32Array:
 		mid[i] *= pow(1.0 - u, 3.0) * bursts[i]
 	Synth.normalize(mid, 1.0)
 	Synth.add(out, mid, 0, 0.45 if near else 0.25)
+	return out
+
+
+## A COLOSSUS'S FOOT COMING DOWN, as the ground brings it: no crack, no edge, a
+## blow felt through the soles. A laptop cannot play the forty cycles a foot the
+## size of a town really makes, so they are IMPLIED: harmonics four to nine of
+## a 36 Hz fundamental, which the ear hears as that fundamental (the missing
+## fundamental), beating slowly as the ground rings, over a long rumble of the
+## land settling, with the gravel on it shivering at the top.
+static func _colossus_step(rate: int, v: int) -> PackedFloat32Array:
+	var secs := 7.5
+	var n := _at(rate, secs)
+	var out := Synth.buffer(n)
+	var f0 := 36.0 + float(v) * 2.5
+	var body := Synth.buffer(n)
+	for h in range(4, 10):
+		var f := f0 * float(h) * (1.0 + 0.002 * float(h))
+		var ph := Rng.hash01(8801 + v, h) * TAU
+		var amp := 1.0 / float(h - 1)
+		for i in n:
+			var t := float(i) / rate
+			# Each harmonic dies at its own rate: the low ones ring longest.
+			var e := (1.0 - exp(-t * 18.0)) * exp(-t * (0.55 + 0.12 * float(h)))
+			body[i] += sin(ph + TAU * f * t * (1.0 - 0.012 * minf(t, 2.0))) * amp * e
+	Synth.normalize(body, 1.0)
+	Synth.add(out, body, 0, 1.0)
+	var rumble := Synth.pink(n, 8802 + v)
+	Synth.band(rumble, rate, 110.0, 360.0, false, true)
+	var swell := Synth.wander(n, 9, 8803 + v, 0.35, 1.0)
+	for i in n:
+		var t := float(i) / rate
+		rumble[i] *= (1.0 - exp(-t * 3.0)) * exp(-t * 0.45) * swell[i]
+	Synth.normalize(rumble, 1.0)
+	Synth.add(out, rumble, 0, 0.8)
+	var grit := Synth.noise(n, 8804 + v)
+	Synth.band(grit, rate, 900.0, 3200.0, false, false)
+	for i in n:
+		var t := float(i) / rate
+		grit[i] *= smoothstep(0.1, 0.6, t) * exp(-t * 1.1) * (0.5 + 0.5 * swell[i])
+	Synth.normalize(grit, 1.0)
+	Synth.add(out, grit, 0, 0.08)
+	return out
+
+
+## THE SAME LANDING THROUGH THE AIR, minutes later from a walker far out: the
+## pressure front of a thing that size meeting the ground, rolled by every
+## kilometre it crossed. One dull shove, then a long roll with no crack in it.
+static func _colossus_boom(rate: int, v: int) -> PackedFloat32Array:
+	var secs := 8.0
+	var n := _at(rate, secs)
+	var out := Synth.buffer(n)
+	var shove := Synth.buffer(n)
+	Synth.add_chirp(shove, rate, 190.0 + 15.0 * float(v), 120.0, 1.0, 0, _at(rate, 1.2))
+	for i in _at(rate, 1.2):
+		var t := float(i) / rate
+		shove[i] *= (1.0 - exp(-t * 40.0)) * exp(-t * 3.2)
+	Synth.normalize(shove, 1.0)
+	Synth.add(out, shove, 0, 0.9)
+	var roll := Synth.pink(n, 8811 + v)
+	Synth.band(roll, rate, 120.0, 520.0, false, true)
+	var bursts := Synth.wander(n, 14, 8812 + v, 0.2, 1.0)
+	for i in n:
+		var u := float(i) / n
+		roll[i] *= pow(clampf(u * 14.0, 0.0, 1.0), 1.5) * pow(1.0 - u, 1.8) * pow(bursts[i], 1.5)
+	Synth.normalize(roll, 1.0)
+	Synth.add(out, roll, 0, 1.0)
 	return out
 
 

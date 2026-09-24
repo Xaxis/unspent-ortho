@@ -81,6 +81,10 @@ func update(cam: Camera3D, minutes: float, air: Dictionary, wanted: bool) -> voi
 	if cam.is_inside_tree():
 		var sz := cam.get_viewport().get_visible_rect().size
 		aspect = sz.x / maxf(1.0, sz.y)
+	var rows := 1080.0
+	if cam.is_inside_tree():
+		rows = maxf(1.0, cam.get_viewport().get_visible_rect().size.y)
+	var px_angle := 2.0 * tan(deg_to_rad(cam.fov) * 0.5) / rows
 	var box := AABB(eye - Vector3.ONE * cam.far, Vector3.ONE * cam.far * 2.0)
 	var dome: Dictionary = air.get("dome", {})
 	var fog: Vector4 = air.get("fog", Vector4(18.0, 900.0, 1.0, 1.0))
@@ -104,6 +108,13 @@ func update(cam: Camera3D, minutes: float, air: Dictionary, wanted: bool) -> voi
 		mat.set_shader_parameter("land_fog", fog)
 		mat.set_shader_parameter("thick", thick)
 		mat.set_shader_parameter("lens_glow", night)
+		mat.set_shader_parameter("px_angle", px_angle)
+		mat.set_shader_parameter("l0_on", air.has("l0_dir"))
+		if air.has("l0_dir"):
+			mat.set_shader_parameter("l0_dir", air["l0_dir"])
+			mat.set_shader_parameter("l0_size", air["l0_size"])
+			mat.set_shader_parameter("l0_color", air["l0_color"])
+			mat.set_shader_parameter("l0_energy", air["l0_energy"])
 		for k: StringName in dome:
 			mat.set_shader_parameter(k, dome[k])
 		_meshes[i].custom_aabb = box

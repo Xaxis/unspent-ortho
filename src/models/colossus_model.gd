@@ -51,6 +51,13 @@ var _n := PackedVector3Array()
 var _c := PackedColorArray()
 var _b := PackedFloat32Array()
 var _bone := 0
+## What the vertices being laid are, for the shader's minimum sizes (CUSTOM0.y):
+## 0 plate, 1 a strip (a ring round the local Y axis at height `_lc.y`), 2 a
+## beacon and 3 the lens (a lamp round the point `_lc`). A light a kilometre
+## wide fifty kilometres off is a pixel; the shader keeps each at least a few
+## pixels, by kind, so the machine's own light reads however far off it walks.
+var _kind := 0
+var _lc := Vector3.ZERO
 
 
 static func build(def: RefCounted) -> ArrayMesh:
@@ -85,7 +92,7 @@ func _tri(a: Vector3, b: Vector3, c: Vector3, col: Color) -> void:
 		_v.append(p)
 		_n.append(n)
 		_c.append(col)
-		_b.append_array([float(_bone), 0.0, 0.0, 0.0])
+		_b.append_array([float(_bone), float(_kind), _lc.y, _lc.x])
 
 
 func _quad(a: Vector3, b: Vector3, c: Vector3, d: Vector3, col: Color) -> void:
@@ -163,7 +170,9 @@ func _hub(d: RefCounted) -> void:
 	]
 	_lathe(Vector3.ZERO, hull, 16, [DARK, DARK, DARK, BODY, BODY, BODY, BODY, RIM, PLATE, BODY, RIM, PLATE, BODY], PI / 16.0)
 	# The hub ring: a cold strip round the belt, under the rim.
+	_lamp(1, Vector3(0.0, -235.0, 0.0))
 	_lathe(Vector3.ZERO, [Vector2(r * 1.03, -300.0), Vector2(r * 1.03, -170.0)], 16, [STRIP], PI / 16.0)
+	_lamp(0)
 	# The tower: plated courses narrowing up to the crown, a collar between each.
 	var tower := [Vector2(r * 0.78, 1700.0)]
 	var courses := 5
@@ -200,11 +209,15 @@ func _hub(d: RefCounted) -> void:
 		sc.append(PLATE if i % 4 == 2 else BODY)
 	_lathe(Vector3.ZERO, spire, 8, sc)
 	# A beacon at the top of the air, and one on every spire collar.
+	_lamp(2, Vector3(0.0, top - 400.0, 0.0))
 	_ball(Vector3(0.0, top - 400.0, 0.0), 140.0, 6, BEACON, BEACON)
+	_lamp(0)
 	for i in 4:
 		var y := lerpf(hi + 900.0, top - 1200.0, float(i + 1) / 4.0)
 		var w := lerpf(420.0, 60.0, float(i + 1) / 4.0)
+		_lamp(1, Vector3(0.0, y - 60.0, 0.0))
 		_lathe(Vector3.ZERO, [Vector2(w * 1.75, y - 90.0), Vector2(w * 1.75, y - 30.0)], 8, [STRIP])
+		_lamp(0)
 	# Ribs up the tower's flanks, between the hips: the ruled lines that say this
 	# was made to a drawing.
 	for i in 6:
@@ -222,13 +235,49 @@ func _hub(d: RefCounted) -> void:
 	# The lens: one amber eye on the belt, facing the way it walks.
 	var eye := [Vector2(0.0, 260.0), Vector2(520.0, 180.0), Vector2(760.0, 40.0), Vector2(800.0, 0.0)]
 	_bone = 0
+	_lamp(3, Vector3(r * 1.03, 180.0, 0.0))
 	_eye(Vector3(r * 1.03, 180.0, 0.0), eye)
+	_lamp(0)
+
+
+func _lamp(kind: int, centre := Vector3.ZERO) -> void:
+	_kind = kind
+	_lc = centre
+
+
+## A beacon standing proud of the plate at `at`.
+func _beacon(at: Vector3, radius: float) -> void:
+	_lamp(2, at)
+	# A beacon is a point of light: a few facets are all a pixel or two can hold.
+	_ball(at, radius, 5, BEACON, BEACON, 3)
+	_lamp(0)
+
+
+## Four beacons round a part at `at` (on its axis), `out` from it: whichever
+## side of the leg the player sees, a light is on it.
+func _beacons(at: Vector3, out: float, radius: float) -> void:
+	for i in 4:
+		var a := TAU * float(i) / 4.0
+		_beacon(at + Vector3(cos(a), 0.0, sin(a)) * out, radius)
+
+
+## The widest the lathed `profile` (radius, y) is within `reach` of height `y`,
+## counting the straight run between samples, which is what is really drawn.
+static func _radius_near(profile: Array, y: float, reach: float) -> float:
+	var most := 0.0
+	for i in profile.size() - 1:
+		var a: Vector2 = profile[i]
+		var b: Vector2 = profile[i + 1]
+		if b.y < y - reach or a.y > y + reach:
+			continue
+		most = maxf(most, maxf(a.x, b.x))
+	return most
 
 
 ## A faceted ball about `at`: a lathe of a sphere with `sides` flats.
-func _ball(at: Vector3, radius: float, sides: int, col: Color, band: Color) -> void:
+func _ball(at: Vector3, radius: float, sides: int, col: Color, band: Color, rows := 6) -> void:
 	var prof: Array = []
-	var rows := 6
+
 	for i in rows + 1:
 		var a := -PI * 0.5 + PI * float(i) / float(rows)
 		prof.append(Vector2(cos(a) * radius, sin(a) * radius))
@@ -282,7 +331,11 @@ func _leg(d: RefCounted, k: int) -> void:
 	_lathe(Vector3.ZERO, thigh, 8, cols, PI / 8.0)
 	_strut(Vector3(-t_r.x * 1.05, l1 * 0.12, 0.0), Vector3(-t_r.y * 1.1, l1 * 0.86, 0.0), 180.0, 120.0, 4, PLATE)
 	# The knee rides the thigh's end.
-	_ball(Vector3(0.0, l1, 0.0), float(d.knee_r), 10, BODY, BEACON)
+	_ball(Vector3(0.0, l1, 0.0), float(d.knee_r), 10, BODY, RIM)
+	# Beacons down the outer face of the leg: on the knee, and half way down the
+	# thigh, so a walker at night is drawn in points of its own light.
+	_beacons(Vector3(0.0, l1, 0.0), float(d.knee_r) * 0.97, 200.0)
+	_beacons(Vector3(0.0, l1 * 0.5, 0.0), lerpf(t_r.x, t_r.y, 0.5) * 1.02, 160.0)
 	# SHIN (bone 2 + 3k): long, narrowing to the ankle, ringed densest near the
 	# ground where the air thickens fastest.
 	_bone = 2 + 3 * k
@@ -301,8 +354,14 @@ func _leg(d: RefCounted, k: int) -> void:
 	# plan's own light running down the leg at night. A strip is a LINE; laid as
 	# a whole band of plate it read as a white bandage round the leg.
 	for t: float in [0.30, 0.62, 0.86]:
-		var w := lerpf(s_r.x, s_r.y, pow(t, 0.8)) * 1.06
+		# Proud of whatever the plate there really is, sleeves included: set to the
+		# curve the profile was sampled from, the rings sat INSIDE the leg where a
+		# sleeve's chord bulged past them and not one was ever drawn.
+		var w := _radius_near(shin, t * l2, 400.0) * 1.08
+		_lamp(1, Vector3(0.0, t * l2 + 80.0, 0.0))
 		_lathe(Vector3.ZERO, [Vector2(w, t * l2), Vector2(w, t * l2 + 160.0)], 8, [STRIP], PI / 8.0)
+		_lamp(0)
+	_beacons(Vector3(0.0, l2 * 0.965, 0.0), s_r.y * 1.4, 110.0)
 	# FOOT (bone 3 + 3k): the ankle block, its arch, and three toes on pads.
 	_bone = 3 + 3 * k
 	var up: float = d.ankle_up
