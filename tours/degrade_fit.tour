@@ -46,19 +46,21 @@ place bonelands
 wait 0.8
 perf match shots/degrade/desktop/06-bonelands.png
 place burning
+ground ash
+near dead_tree
 wait 0.8
 perf match shots/degrade/desktop/07-burning.png
-# Follows the canon: seed 7 no longer puts the coast against the pinewood, so
-# frame 08 is the city meeting the forest now. See tours/canon.tour.
-place pinewood-slums
+# Follows the canon: the borders seed 7 holds once a landscape stands on one
+# continent. See tours/canon.tour.
+place slums-machine_city
 wait 0.8
-perf match shots/degrade/desktop/08-eco-pinewood-slums.png
-place pinewood-snowfield
+perf match shots/degrade/desktop/08-eco-slums-machine_city.png
+place moss-pinewood
 wait 0.8
-perf match shots/degrade/desktop/09-eco-pinewood-snowfield.png
-place bonelands-burning
+perf match shots/degrade/desktop/09-eco-moss-pinewood.png
+place burning-sulphur_jungle
 wait 0.8
-perf match shots/degrade/desktop/10-eco-bonelands-burning.png
+perf match shots/degrade/desktop/10-eco-burning-sulphur_jungle.png
 place coast-moss
 wait 0.8
 perf match shots/degrade/desktop/11-eco-coast-moss.png
