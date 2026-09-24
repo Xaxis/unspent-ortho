@@ -592,8 +592,28 @@ func test_a_held_road_says_all_three_ways_past_it() -> void:
 		return
 	g.player.pos = closed_at + Vector2(3.0, 0.0)
 	check(_offered(g).has(&"road"), "walking up to it, the three ways are said: %s" % str(_offered(g)))
-	# And far away it has nothing to say about a road nobody is near.
-	g.player.pos = closed_at + Vector2(Guide.ROAD_NEAR + 40.0, 0.0)
+	# And far away it has nothing to say about a road nobody is near. "Far" is
+	# far from EVERY hold the plan keeps, found rather than assumed: a point just
+	# past ROAD_NEAR east of the first hold was open country until villages were
+	# counted per area (GEN 24), and then it was the next hold's road.
+	var far := Vector2.INF
+	for step in range(int(Guide.ROAD_NEAR) + 20, g.world.size, 8):
+		for b in 16:
+			var q := closed_at + Vector2.from_angle(TAU * b / 16.0) * float(step)
+			if g.world.level_at(floori(q.x), floori(q.y)) <= 0:
+				continue
+			var clear := true
+			for h: Variant in sites:
+				if bool(holds.call("closed", h)) and (h.pos as Vector2).distance_to(q) < Guide.ROAD_NEAR + 20.0:
+					clear = false
+					break
+			if clear:
+				far = q
+				break
+		if far.is_finite():
+			break
+	check(far.is_finite(), "seed 4 has land away from every held road")
+	g.player.pos = far
 	check(not _offered(g).has(&"road"), "and not from the other end of the island")
 	# The words carry all three ways, because the whole point is that it is not a lock.
 	var line := String(Guide.HINTS[&"road"][0])

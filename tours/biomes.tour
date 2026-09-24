@@ -50,18 +50,19 @@ wait 1.5
 shot 14-scrapwood-night with land:scrapwood
 hour 11
 # Three ecotones: stand in the band, then walk across it and watch the land turn.
-place coast-salt_flats
+# Borders this seed holds since a landscape stands whole on one continent (GEN 24).
+place salt_flats-scrapwood
 wait 2.0
-shot 15-coast-salt-flats with border:coast-salt_flats
+shot 15-salt-flats-scrapwood with border:salt_flats-scrapwood
 walk 1,-1 2.5 run
-shot 16-coast-salt-flats-crossed with land:coast|salt_flats
-place pinewood-scrapwood
+shot 16-salt-flats-scrapwood-crossed with land:salt_flats|scrapwood
+place scrapwood-grey_orchards
 wait 2.0
-shot 17-pinewood-scrapwood with border:pinewood-scrapwood
+shot 17-scrapwood-grey-orchards with border:scrapwood-grey_orchards
 walk 1,-1 2.5 run
-shot 18-pinewood-scrapwood-crossed with land:pinewood|scrapwood
-place moss-scrapwood
+shot 18-scrapwood-grey-orchards-crossed with land:scrapwood|grey_orchards
+place scrapwood-ruined_metropolis
 wait 2.0
-shot 19-moss-scrapwood with border:moss-scrapwood
+shot 19-scrapwood-metropolis with border:scrapwood-ruined_metropolis
 walk 1,-1 2.5 run
-shot 20-moss-scrapwood-crossed with land:moss|scrapwood
+shot 20-scrapwood-metropolis-crossed with land:scrapwood|ruined_metropolis

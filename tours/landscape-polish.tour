@@ -21,12 +21,13 @@ zoom 15
 walk 1,0 3 run
 wait 1
 shot 04-bonelands-walked with land:bonelands
-place bonelands-burning
+# Borders this seed holds since a landscape stands whole on one continent (GEN 24).
+place bonelands-the_middens
 wait 2
-shot 05-bonelands-burning-ecotone with border:bonelands-burning
+shot 05-bonelands-middens-ecotone with border:bonelands-the_middens
 zoom 34
 wait 1.5
-shot 06-bonelands-burning-band with border:bonelands-burning
+shot 06-bonelands-middens-band with border:bonelands-the_middens
 zoom 15
 place moss
 wait 2

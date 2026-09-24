@@ -23,22 +23,24 @@ shot 03-the-moss-took-over-without-a-gap with land:moss
 place coast-moss
 await score_blend 180
 shot 04-on-the-coast-moss-border with border:coast-moss
+# On seed 1 since GEN 24 the coast lies up-screen of this border sample and a
+# tongue of moss, and a wood that stops a body, lie down-screen: so the walk
+# goes up into the coast and back down into the moss.
+walk 0,-1 3.5 run
+shot 05-walked-up-into-the-coast with land:coast
 walk 0,1 7 run
-walk 0,1 7 run
-shot 05-walked-down-into-the-coast with land:coast
-walk 0,-1 8 run
-walk 0,-1 8 run
 await score_blend 180
-shot 06-walked-back-up-into-the-moss with land:moss
+shot 06-walked-back-down-into-the-moss with land:moss
 # The second border, walked: the pines are the coast's seven notes a fifth
-# down, so this one leans too. East from the ecotone into the wood.
+# down, so this one leans too. West from the ecotone into the wood: on seed 1
+# since GEN 24 east of this sample is moss and then the salt.
 place moss-pinewood
 await score_blend 180
 shot 07-on-the-moss-pinewood-border with border:moss-pinewood
-walk 0.71,0.71 7 run
-walk 0.71,0.71 7 run
+walk -0.71,-0.71 7 run
+walk -0.71,-0.71 7 run
 await score_in:pinewood 240
-shot 08-walked-east-into-the-pines
+shot 08-walked-west-into-the-pines
 await score_pad 240
 shot 09-and-the-pines-fill-out
 # Nothing above was heard over a hole in the score.

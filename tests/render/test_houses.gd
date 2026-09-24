@@ -616,10 +616,52 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 			var lit := 0
 			var nearest := -1
 			var best := INF
+			# THIS SETTLEMENT'S OWN HOUSES, IN THE ORDER THE DEAL WAS MADE. The deal
+			# (`GenScatter`) runs per settlement, nearest the square first, so "was
+			# another form free there" is a question about the houses of THIS
+			# settlement already dealt when this one was. Two things hid that while
+			# settlements stood apart: boroughs of one city now stand closer than
+			# twice their reach, so a neighbour's towers fell inside this reach; and
+			# prop order is not deal order. A house belongs to the square it is
+			# nearest, and what was dealt before it is every own house no further
+			# out -- ties included, since the deal's order among equals is not
+			# recorded, which can only make "free" rarer and never invent a failure.
+			# A house exactly as near another square (seed 1 has one 26.8 from two)
+			# is anybody's: it may block a form, never stand in a pair.
+			var mine: Array[WorldProp] = []
+			var shared: Array[WorldProp] = []
 			for p: WorldProp in w.props:
 				if p.kind != PropKind.HOUSE or p.pos.distance_to(vp) > w.village_reach(v) + 2.0:
 					continue
+				var owned := 1
+				for o: Dictionary in w.villages:
+					if o == v:
+						continue
+					var od := (o.pos as Vector2).distance_to(p.pos)
+					if od < p.pos.distance_to(vp) - 0.01:
+						owned = 0
+						break
+					if od <= p.pos.distance_to(vp) + 0.01:
+						owned = -1
+				if owned == 1:
+					mine.append(p)
+				elif owned == -1:
+					shared.append(p)
+			mine.sort_custom(func(a: WorldProp, b: WorldProp) -> bool:
+				return a.pos.distance_squared_to(vp) < b.pos.distance_squared_to(vp))
+			for p: WorldProp in mine:
 				var variant := PropModels.variant_of(p, w.seed_value, here)
+				var before_v: Array[int] = []
+				var before_at: Array[Vector2] = []
+				for q: WorldProp in mine:
+					if q != p and q.pos.distance_squared_to(vp) <= p.pos.distance_squared_to(vp) + 0.001:
+						before_v.append(PropModels.variant_of(q, w.seed_value, here))
+						before_at.append(q.pos)
+				var blocking_v := before_v.duplicate()
+				var blocking_at := before_at.duplicate()
+				for q: WorldProp in shared:
+					blocking_v.append(PropModels.variant_of(q, w.seed_value, here))
+					blocking_at.append(q.pos)
 				# A SETTLEMENT NEVER STANDS TWO OF ONE SILHOUETTE TOGETHER, which is
 				# not the same rule as "never twice". A village cannot repeat at all,
 				# because its stock is its count; a city says how far apart two of a
@@ -636,21 +678,21 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 					# happen is a repeat under the bar while some OTHER form was
 					# free there: that is the deal ignoring where the building
 					# stands, which is the bug the bar exists to stop.
-					for j in seen.size():
-						if seen[j] != variant or at[j].distance_to(p.pos) >= forms.repeat_apart - 0.01:
+					for j in before_v.size():
+						if before_v[j] != variant or before_at[j].distance_to(p.pos) >= forms.repeat_apart - 0.01:
 							continue
 						var free := -1
 						for t in forms.stock.size():
 							var blocked := false
-							for k in seen.size():
-								if seen[k] == t and at[k].distance_to(p.pos) < forms.repeat_apart:
+							for k in blocking_v.size():
+								if blocking_v[k] == t and blocking_at[k].distance_to(p.pos) < forms.repeat_apart:
 									blocked = true
 									break
 							if not blocked:
 								free = t
 								break
 						eq(free, -1, "%s: two of model %d stand %.2f apart (bar %.0f) while model %d was free there" %
-							[v.get("name", "?"), variant, at[j].distance_to(p.pos), forms.repeat_apart, free])
+							[v.get("name", "?"), variant, before_at[j].distance_to(p.pos), forms.repeat_apart, free])
 				else:
 					check(not seen.has(variant), "%s: two houses drawn the same (model %d)" % [v.get("name", "?"), variant])
 				seen.append(variant)

@@ -49,9 +49,10 @@ zoom 12
 # --- The machines' cuts in the turf -------------------------------------------
 # Four or five bars of identical width at identical spacing with the same grain
 # in each. The order is still ruled; the ladder is not stamped any more.
-place coast-salt_flats
+# Borders this seed holds since a landscape stands whole on one continent (GEN 24).
+place coast-moss
 wait 1.4
-shot 07-the-cuts-are-work-not-a-stamp with border:coast-salt_flats
+shot 07-the-cuts-are-work-not-a-stamp with border:coast-moss
 
 # --- A machine with mass at the distance a player sees it ---------------------
 # The watcher: close up the best-drawn thing in the roster, from a hill away a

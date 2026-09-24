@@ -186,7 +186,7 @@ func _system(part: String) -> Node:
 ## Stand the body somewhere with nothing over it and nothing round it, so what
 ## the sweep reads is the vent and not the roof it happens to have spawned
 ## under: a tour's `at` moves the fight body too, and so does this.
-func _stand_clear(sys: Node) -> Vector2:
+func _stand_clear(sys: Node, also: Callable = Callable()) -> Vector2:
 	var start := game.player.pos
 	for ring in 24:
 		for dy in range(-ring, ring + 1):
@@ -197,6 +197,8 @@ func _stand_clear(sys: Node) -> Vector2:
 				var tx := floori(p.x)
 				var ty := floori(p.y)
 				if not game.query.standable(tx, ty):
+					continue
+				if also.is_valid() and not also.call(p):
 					continue
 				_put_player(p)
 				var here: Hazards.Place = sys.call("place")
@@ -256,7 +258,12 @@ func test_the_system_hands_felt_the_things_near_the_body_and_a_taken_one_presses
 func test_bites_fumes_is_answered_at_a_vent_through_the_tour_path() -> void:
 	var sys := _boot(["--weather=ash:1"])
 	game.body.resist = {}
-	var pos := _stand_clear(sys)
+	# Open ground in a land that does not breathe fumes itself: the Burning
+	# declares them at 0.5 so ash makes them bite there on purpose (its own
+	# file), and whichever landscape lies nearest the spawn is the world's
+	# business -- once landscapes were resized it was the Burning.
+	var pos := _stand_clear(sys, func(at: Vector2) -> bool:
+		return not BiomeRegistry.at(game.world, at).hazards.has(&"fumes"))
 	sys.call("_sweep", 1.0)
 	check(sys.call("tour_seen", &"fumes"), "ash is felt in the open")
 	check(not sys.call("tour_seen", &"bites:fumes"), "and does not bite there")

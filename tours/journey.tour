@@ -17,16 +17,17 @@ place moss-pinewood
 shot 05-moss-pinewood with border:moss-pinewood
 walk 1,-1 2.5 run
 shot 06-moss-pinewood-walked with land:moss|pinewood
-# pinewood up onto the snow
-place pinewood-snowfield
-shot 07-pinewood-snowfield with border:pinewood-snowfield
+# over the water: the snow meeting the mesas on the next continent (GEN 24:
+# the pinewood and the snow no longer share one)
+place snowfield-mesas
+shot 07-snowfield-mesas with border:snowfield-mesas
 walk 0,-1 2.5 run
-shot 08-pinewood-snowfield-walked with land:pinewood|snowfield
-# bonelands to the rim of the burning
-place bonelands-burning
-shot 09-bonelands-burning with border:bonelands-burning
+shot 08-snowfield-mesas-walked with land:snowfield|mesas
+# snow to the rim of the burning
+place snowfield-burning
+shot 09-snowfield-burning with border:snowfield-burning
 walk -1,-1 2.5 run
-shot 10-bonelands-burning-walked with land:bonelands|burning
+shot 10-snowfield-burning-walked with land:snowfield|burning
 # A fumarole field out on the Burning's slopes. THE COORDINATE STAYS, and the
 # claim is what guards it now. `place fumarole` was tried and looked at: it
 # resolves to the first vent in the world's list, which on seed 1 stands on a
@@ -36,7 +37,10 @@ shot 10-bonelands-burning-walked with land:bonelands|burning
 # has to PROVE it found vents: `prop:vent` is asked again at the shutter, and a
 # worldgen change that takes the vents away fails the tour instead of filing a
 # picture of empty ash under the name "fumarole".
-at 207,145
+# (GEN 24 moved the Burning to another continent, and the coordinate into the
+# sea: the field is now found by name, the Burning's heart and its nearest vent.)
+place burning
+near vent
 shot 11-fumarole with land:burning,prop:vent
 # The caldera, which is a landmark and therefore has a name. This was
 # `at 134,142`, the caldera's own tile on seed 1 to the half-tile.
