@@ -994,6 +994,10 @@ const HORIZON_LAYER := 0.14
 ## ProceduralSkyMaterial only while the horizon is in frame.
 var _seen_sky: ShaderMaterial
 var _plain_sky: Material
+## Every `dome_*` uniform the seen sky was last given, by name
+## (sky_dome.gdshaderinc). Kept so anything standing IN that sky can be given the
+## same numbers (`seen_air`) instead of working its own out and drifting.
+var _dome: Dictionary = {}
 ## How high the real sun stands at noon, for the sky's disc and its glow only:
 ## the LIGHT's own elevation is chosen for a shadow's length on screen.
 const SKY_SUN_NOON := 62.0
@@ -1050,6 +1054,27 @@ const EYE_LIGHT_LEAST := 7.0
 const MOON_EYE := 46.0
 
 
+func _dome_set(k: StringName, v: Variant) -> void:
+	_dome[k] = v
+	_seen_sky.set_shader_parameter(k, v)
+
+
+## THE AIR AND THE SKY AS THE EYE-LEVEL CAMERA SEES THEM THIS FRAME, for a thing
+## that stands in both and has to close into them on no line (the colossi,
+## src/render/colossus/). `dome` is every uniform the seen sky was handed, by
+## name, so a shader that includes sky_dome.gdshaderinc gets the sky's own
+## colours; `fog` is the depth fog as `_look_out` left it (begin, end, curve,
+## density), which is what the land at the end of the air is drawn through;
+## `thick` is the weather's fog; `share` is `horizon_share`. `dome` is empty
+## until the horizon has been in frame once.
+func seen_air() -> Dictionary:
+	var e: Environment = env.environment if env != null else null
+	var f := Vector4.ZERO
+	if e != null:
+		f = Vector4(e.fog_depth_begin, e.fog_depth_end, e.fog_depth_curve, e.fog_density)
+	return {"dome": _dome, "fog": f, "thick": clampf(fog.z, 0.0, 1.0), "share": horizon_share(_cam())}
+
+
 ## The sky that is seen, filled from the same colours the reflected one was.
 func _see_sky(e: Environment, sm: ProceduralSkyMaterial, hour: float, nightly: float, seen := 1.0) -> void:
 	if e.sky == null:
@@ -1062,40 +1087,40 @@ func _see_sky(e: Environment, sm: ProceduralSkyMaterial, hour: float, nightly: f
 		e.sky.sky_material = _seen_sky
 	var s := sun_at(hour)
 	var dir := sky_sun(hour, float(s.azimuth))
-	_seen_sky.set_shader_parameter("seen", clampf(seen, 0.0, 1.0))
+	_dome_set(&"dome_seen", clampf(seen, 0.0, 1.0))
 	# The procedural sky's own numbers, so at `seen` 0 this IS that sky.
-	_seen_sky.set_shader_parameter("p_top", sm.sky_top_color)
-	_seen_sky.set_shader_parameter("p_horizon", sm.sky_horizon_color)
-	_seen_sky.set_shader_parameter("p_ground_horizon", sm.ground_horizon_color)
-	_seen_sky.set_shader_parameter("p_ground_bottom", sm.ground_bottom_color)
-	_seen_sky.set_shader_parameter("p_sky_curve", sm.sky_curve)
-	_seen_sky.set_shader_parameter("p_ground_curve", sm.ground_curve)
-	_seen_sky.set_shader_parameter("p_sun_angle_max", deg_to_rad(sm.sun_angle_max))
-	_seen_sky.set_shader_parameter("p_sun_curve", sm.sun_curve)
-	_seen_sky.set_shader_parameter("p_sky_energy", sm.sky_energy_multiplier)
-	_seen_sky.set_shader_parameter("p_ground_energy", sm.ground_energy_multiplier)
-	_seen_sky.set_shader_parameter("top_color", sm.sky_top_color)
-	_seen_sky.set_shader_parameter("horizon_color", sm.sky_horizon_color)
-	_seen_sky.set_shader_parameter("ground_color", sm.ground_bottom_color)
-	_seen_sky.set_shader_parameter("sun_dir", dir)
+	_dome_set(&"dome_p_top", sm.sky_top_color)
+	_dome_set(&"dome_p_horizon", sm.sky_horizon_color)
+	_dome_set(&"dome_p_ground_horizon", sm.ground_horizon_color)
+	_dome_set(&"dome_p_ground_bottom", sm.ground_bottom_color)
+	_dome_set(&"dome_p_sky_curve", sm.sky_curve)
+	_dome_set(&"dome_p_ground_curve", sm.ground_curve)
+	_dome_set(&"dome_p_sun_angle_max", deg_to_rad(sm.sun_angle_max))
+	_dome_set(&"dome_p_sun_curve", sm.sun_curve)
+	_dome_set(&"dome_p_sky_energy", sm.sky_energy_multiplier)
+	_dome_set(&"dome_p_ground_energy", sm.ground_energy_multiplier)
+	_dome_set(&"dome_top_color", sm.sky_top_color)
+	_dome_set(&"dome_horizon_color", sm.sky_horizon_color)
+	_dome_set(&"dome_ground_color", sm.ground_bottom_color)
+	_dome_set(&"dome_sun_dir", dir)
 	# The moon stands where the night's light comes from (`eye_light`), so a
 	# shadow at eye level falls away from the moon that is drawn.
 	var ml := eye_light(hour)
 	var moon := Basis.from_euler(Vector3(deg_to_rad(-ml.y), deg_to_rad(ml.x), 0.0)).z
-	_seen_sky.set_shader_parameter("moon_dir", moon)
+	_dome_set(&"dome_moon_dir", moon)
 	# The glow belongs to a sun near the horizon: from a little above it until
 	# well after it has gone, and not at all in the dead of night.
 	var low := 1.0 - smoothstep(0.02, 0.42, dir.y)
 	var gone := smoothstep(-0.02, -0.34, dir.y)
-	_seen_sky.set_shader_parameter("glow", low * (1.0 - gone) * (1.0 - clampf(clouds.z, 0.0, 1.0) * 0.6))
-	_seen_sky.set_shader_parameter("glow_color", SKY_GLOW.lerp(SKY_GLOW_LATE, smoothstep(0.05, -0.12, dir.y)) * Color(weather_tint.x, weather_tint.y, weather_tint.z))
-	_seen_sky.set_shader_parameter("sun_color", sun.light_color if sun != null else Color(1, 1, 1))
-	_seen_sky.set_shader_parameter("night", clampf(nightly, 0.0, 1.0))
+	_dome_set(&"dome_glow", low * (1.0 - gone) * (1.0 - clampf(clouds.z, 0.0, 1.0) * 0.6))
+	_dome_set(&"dome_glow_color", SKY_GLOW.lerp(SKY_GLOW_LATE, smoothstep(0.05, -0.12, dir.y)) * Color(weather_tint.x, weather_tint.y, weather_tint.z))
+	_dome_set(&"dome_sun_color", sun.light_color if sun != null else Color(1, 1, 1))
+	_dome_set(&"dome_night", clampf(nightly, 0.0, 1.0))
 	# The weather's own cover: cloud shadows' coverage, and rain or snow under it.
 	var wet := clampf(1.0 - (weather_tint.x + weather_tint.y + weather_tint.z) / 3.0, 0.0, 1.0)
-	_seen_sky.set_shader_parameter("cover", clampf(maxf(clouds.z, wet * 2.2), 0.0, 1.0))
-	_seen_sky.set_shader_parameter("cloud_dark", clampf(clouds.w * 0.6 + wet * 1.5, 0.0, 1.0))
-	_seen_sky.set_shader_parameter("drift", Vector2(clouds.x, clouds.y))
+	_dome_set(&"dome_cover", clampf(maxf(clouds.z, wet * 2.2), 0.0, 1.0))
+	_dome_set(&"dome_cloud_dark", clampf(clouds.w * 0.6 + wet * 1.5, 0.0, 1.0))
+	_dome_set(&"dome_drift", Vector2(clouds.x, clouds.y))
 
 
 ## The sun's shadow at eye level: four splits out to this far, fading at the end.
