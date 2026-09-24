@@ -2,7 +2,7 @@
 
 The lit world: sky and hour, weather, lights and lamps, landscape grounds, foreground, fliers, holograms, crowns, the view.
 
-<!-- covers: system:09_view, system:10_sky, system:11_dome, system:12_landscape, system:13_fore, system:14_fliers, system:15_lights, system:16_vents, system:17_holo, system:18_crowns, system:41_shoulder, system:95_flyover, system:96_eye -->
+<!-- covers: system:09_view, system:10_sky, system:11_dome, system:12_landscape, system:13_fore, system:14_fliers, system:15_lights, system:16_vents, system:17_holo, system:18_crowns, system:19_colossi, system:41_shoulder, system:95_flyover, system:96_eye -->
 
 ## Sub-features
 
@@ -18,6 +18,7 @@ The lit world: sky and hour, weather, lights and lamps, landscape grounds, foreg
 - 17_holo: `src/systems/17_holo.gd`, reached by `tools/tour.sh tours/slums_street.tour`.
 - 18_crowns: `src/systems/18_crowns.gd`, reached by `tools/tour.sh tours/foliage.tour`.
 - 95_flyover: `src/systems/95_flyover.gd`, reached by `tools/tour.sh tours/flyover.tour`.
+- 19_colossi: `src/systems/19_colossi.gd`, the walking megastructures in the sky, drawn only while the horizon is in frame (core `src/core/colossus/`, model `src/models/colossus_model.gd`, view and shader `src/render/colossus/`, the dome shared with the sky through `src/render/sky_dome.gdshaderinc`), reached by `tools/shot.sh shots/colossi.png --seed=7 --place=coast --hour=12 --eye=1.7,-5 --face=359 --stats` (the stats line says each walker's bearing, for `--face`; `--colossus=W@MINUTE` stages one, `--colossi=off` takes them away); the walk in real seconds is `tours/colossi_stride.tour`, turning past them `tours/colossi_turn.tour`; tests `tools/test.sh test_colossus`. The top-down camera must draw nothing of them.
 - 96_eye: `src/systems/96_eye.gd`, the eye-level horizon view (sky_eye.gdshader, SkyLight.sees_horizon, world_far silhouettes), reached by `tools/shot.sh shots/eye.png --seed=7 --place=coast --hour=20 --eye=1.7,10,60 --face=110`; tests `tools/test.sh test_horizon`.
 
 ## How to reach it

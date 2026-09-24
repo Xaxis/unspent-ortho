@@ -1,0 +1,28 @@
+# A colossus TAKES A STEP, watched in real seconds (src/systems/19_colossi.gd).
+# The looming walker is staged alone a few world minutes before it lifts its
+# leading foot, and the eye stands looking at that foot: a frame every fifteen
+# seconds for the two minutes the swing takes, so the foot is seen to lift
+# straight up out of the haze, be carried, and set down slowly. The walk is the
+# world clock itself (colossus_walk.gd), so this is the real pace and not a
+# sped-up one.
+#   tools/tour.sh tours/colossi_stride.tour --seed=7 --place=coast --hour=12 --colossus=1@725 --face=353 --eye=1.7,-8 --weather=clear:0
+wait 8
+shot stride-00
+wait 15
+shot stride-01
+wait 15
+shot stride-02
+wait 15
+shot stride-03
+wait 15
+shot stride-04
+wait 15
+shot stride-05
+wait 15
+shot stride-06
+wait 15
+shot stride-07
+wait 15
+shot stride-08
+wait 15
+shot stride-09

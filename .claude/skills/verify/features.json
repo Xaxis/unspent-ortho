@@ -324,6 +324,14 @@
       "tests": []
     },
     {
+      "id": "system:19_colossi",
+      "kind": "system",
+      "entry": "src/systems/19_colossi.gd",
+      "reach": "tools/shot.sh shots/colossi.png --seed=7 --place=coast --hour=12 --eye=1.7,-5 --face=359 --stats",
+      "area": "world-look",
+      "tests": []
+    },
+    {
       "id": "system:20_realms",
       "kind": "system",
       "entry": "src/systems/20_realms.gd",

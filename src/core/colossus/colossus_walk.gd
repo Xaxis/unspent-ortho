@@ -1,0 +1,141 @@
+extends RefCounted
+## HOW A COLOSSUS STANDS AT A GIVEN WORLD MINUTE: pure, periodic, and the only
+## place its gait is decided.
+##
+## `pose(def, route, minutes)` is a function of its arguments and nothing else.
+## Nothing integrates and nothing is saved: the world clock IS the walk. That is
+## what makes a machine this size affordable to be exact about -- a shot at a
+## minute, a tour that waits for a step, and the frame after a save loads all see
+## the one pose the clock says, and the step events a later slice fires are
+## found by asking two minutes the same question.
+##
+## THE GAIT is a tripod wave: in each cycle every leg steps once, in turn, and
+## only one is ever in the air, because a tripod on two legs falls over. Leg k's
+## j-th swing runs over cycles [j + k/3, j + k/3 + swing share); before it the
+## foot stands on plant j-1, after it on plant j. A plant is a point on the
+## route, at the middle of the rest it will stand through, set out to the side
+## at the leg's own bearing from the heading there, so the hub -- which rides the
+## three feet's centroid -- is over the route when all three are down.
+##
+## A swing is lift straight up, carry, lower straight down, with a long eased
+## set-down: the foot is slowest in the last few hundred metres, which is where
+## a thing that size is most dangerous and where a player will be looking.
+##
+## Knees are two-bone IK on rigid bones, bent outward and up away from the hub,
+## so the legs arch like a spider's rather than folding under the body.
+##
+## World units are metres; positions are `Vector3(x, height, z)` over sea level
+## (the land's own heights are a few units and do not matter at this scale).
+
+## Out of a swing's share of the cycle: how much is spent lifting, and where the
+## lowering begins. The carry runs across the middle.
+const LIFT_END := 0.18
+const LOWER_FROM := 0.74
+## The carry's own span (it overlaps both ends, so the foot leaves on a diagonal
+## and arrives on one rather than turning a right angle in the sky).
+const CARRY := Vector2(0.10, 0.90)
+
+
+## Plant `j` of leg `k`: where that foot stands after its j-th swing.
+static func plant(def: RefCounted, route: RefCounted, k: int, j: int) -> Vector3:
+	var f: float = def.swing_share()
+	var u := float(j) + float(k) / 3.0 + (1.0 + f) * 0.5
+	var at: Vector2 = route.at(u)
+	var h: float = route.heading(u) + deg_to_rad(float(def.slots[k]))
+	var p := at + Vector2(cos(h), sin(h)) * float(def.feet_circle)
+	return Vector3(p.x, 0.0, p.y)
+
+
+## Where foot `k` is at `minutes` (its pad, on the ground or in the air), and how
+## far through a swing it is (-1 when it is planted).
+static func foot(def: RefCounted, route: RefCounted, k: int, minutes: float) -> Array:
+	var f: float = def.swing_share()
+	var u := minutes / float(def.cycle_minutes)
+	var v := u - float(k) / 3.0
+	var j := floori(v)
+	var s := (v - float(j)) / f
+	if s >= 1.0:
+		return [plant(def, route, k, j), -1.0]
+	var from := plant(def, route, k, j - 1)
+	var to := plant(def, route, k, j)
+	var carry := smoothstep(CARRY.x, CARRY.y, s)
+	var up := smoothstep(0.0, LIFT_END, s)
+	var down := smoothstep(LOWER_FROM, 1.0, s)
+	# Squared on the way down: the set-down eases in, and the last stretch is the
+	# slowest part of the whole step.
+	var high := float(def.lift) * up * (1.0 - down) * (1.0 - down)
+	var p := from.lerp(to, carry)
+	p.y = high
+	return [p, s]
+
+
+## The whole body at `minutes`.
+##   hub: Transform3D -- origin at the hub's centre at hip height, facing +X
+##        along the heading (`rotation.y = -heading`, as every model here)
+##   hips, knees, ankles, feet: Array[Vector3] per leg
+##   swinging: the leg in the air, or -1
+##   bones: Array[Transform3D], the rigid frames the model rides on
+##          (colossus_model.gd: 0 hub, then thigh, shin, foot per leg)
+static func pose(def: RefCounted, route: RefCounted, minutes: float) -> Dictionary:
+	var t := fposmod(minutes + float(route.offset), float(route.lap_minutes()))
+	var feet: Array[Vector3] = []
+	var swinging := -1
+	for k in 3:
+		var fs: Array = foot(def, route, k, t)
+		feet.append(fs[0])
+		if float(fs[1]) >= 0.0:
+			swinging = k
+	var mid := (feet[0] + feet[1] + feet[2]) / 3.0
+	var u := t / float(def.cycle_minutes)
+	var heading: float = route.heading(u)
+	# A slow roll at the stride's own period: the body settles onto each new foot.
+	var roll := sin(u * TAU * 3.0) * float(def.sway)
+	var hub := Transform3D(Basis(Vector3.UP, -heading), Vector3(mid.x, float(def.hip_height) + roll, mid.z))
+	var hips: Array[Vector3] = []
+	var knees: Array[Vector3] = []
+	var ankles: Array[Vector3] = []
+	var bones: Array[Transform3D] = [hub]
+	for k in 3:
+		var a := deg_to_rad(float(def.slots[k]))
+		var hip := hub * (Vector3(cos(a), 0.0, sin(a)) * float(def.hip_ring))
+		var ankle := feet[k] + Vector3(0.0, float(def.ankle_up), 0.0)
+		var out := Vector3(ankle.x - hub.origin.x, 0.0, ankle.z - hub.origin.z)
+		if out.length() < 1.0:
+			out = hub.basis * Vector3(cos(a), 0.0, sin(a))
+		var knee := knee_of(hip, ankle, float(def.thigh), float(def.shin), out.normalized() + Vector3.UP * 0.6)
+		hips.append(hip)
+		knees.append(knee)
+		ankles.append(ankle)
+		var outward := out.normalized()
+		bones.append(segment(hip, knee, outward))
+		bones.append(segment(knee, ankle, outward))
+		# The foot stands upright and faces out from the body.
+		var yaw := atan2(outward.z, outward.x)
+		bones.append(Transform3D(Basis(Vector3.UP, -yaw), ankle))
+	return {"hub": hub, "hips": hips, "knees": knees, "ankles": ankles, "feet": feet,
+		"swinging": swinging, "bones": bones}
+
+
+## Two-bone IK: the knee between `a` and `c` on bones of length `l1` and `l2`,
+## bent toward `pole`. Out of reach it straightens toward the target, so the
+## lengths are only ever broken by a pose the route should never ask for.
+static func knee_of(a: Vector3, c: Vector3, l1: float, l2: float, pole: Vector3) -> Vector3:
+	var ac := c - a
+	var d := clampf(ac.length(), absf(l1 - l2) + 1.0, l1 + l2 - 1.0)
+	var axis := ac.normalized()
+	var cos_a := clampf((l1 * l1 + d * d - l2 * l2) / (2.0 * l1 * d), -1.0, 1.0)
+	var side := (pole - axis * pole.dot(axis)).normalized()
+	return a + axis * (l1 * cos_a) + side * (l1 * sqrt(maxf(0.0, 1.0 - cos_a * cos_a)))
+
+
+## A rigid bone from `a` to `b`: origin at `a`, its Y along the bone, its X
+## toward `outward` (so the panels of a leg face the same way on every leg), and
+## a right-handed Z.
+static func segment(a: Vector3, b: Vector3, outward: Vector3) -> Transform3D:
+	var y := (b - a).normalized()
+	var x := outward - y * outward.dot(y)
+	if x.length() < 1e-4:
+		x = Vector3.UP.cross(y)
+	x = x.normalized()
+	var z := x.cross(y)
+	return Transform3D(Basis(x, y, z), a)

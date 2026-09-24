@@ -72,6 +72,13 @@
   },
   {
    "kind": "system",
+   "label": "19_colossi",
+   "entry": "src/systems/19_colossi.gd",
+   "reach": "tools/shot.sh shots/colossi.png --seed=7 --place=coast --hour=12 --eye=1.7,-5 --face=359 --stats",
+   "area": "world-look"
+  },
+  {
+   "kind": "system",
    "label": "18_crowns",
    "entry": "src/systems/18_crowns.gd",
    "reach": "tools/tour.sh tours/foliage.tour",
