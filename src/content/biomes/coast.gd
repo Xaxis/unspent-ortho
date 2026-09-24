@@ -51,7 +51,7 @@ static func make() -> BiomeDef:
 	# Cliff meadow: knee-high sward the sea wind combs flat in the gusts, with
 	# shorter turf between and thrift and thistle through it. Thick enough that a
 	# body walking through it parts it (grass.gdshader).
-	d.decor = {Ground.GRASS: [3.6, Decor.MEADOW, 52, Decor.TUFT_TALL, 14, Decor.TUFT, 12, Decor.FLOWER, 12,
+	d.decor = {Ground.GRASS: [Vector2(1.9, 0.9), Decor.MEADOW, 62, Decor.TUFT_TALL, 8, Decor.TUFT, 8, Decor.FLOWER, 10,
 		Decor.STONE, 2, Decor.THISTLE, 3, Decor.MOLEHILL, 1]}
 	# Thrift in bloom on the cliff turf.
 	d.decor_tints = {&"bloom": [P.BLOOM[2], P.BLOOM[3], P.BLOOM[4]]}

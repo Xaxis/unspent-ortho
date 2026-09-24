@@ -13,29 +13,31 @@ hour 10
 coast calm
 place coast
 near meadow
-wait 1.2
+wait 2.5
 shot 01-gust-from-above with land:coast
 wait 0.5
 shot 02-gust-half-a-second-on with land:coast
-walk 1,0 1.0
+walk 1,0 0.6
 wait 0.2
 shot 03-parted-round-the-player with land:coast
 zoom 6
 wait 0.4
 shot 04-parted-close with land:coast
 zoom 12
-perf decor 3.0
-perf grass 3.0
+perf noise 6.0
+perf decor 6.0
+perf grass 6.0
 hold shoulder_peek
 await shoulder 3
 wait 0.8
 shot 05-gust-over-the-shoulder with land:coast
 wait 0.5
 shot 06-gust-over-the-shoulder-half-a-second-on with land:coast
-walk 0,-1 1.0
+walk 0,-1 0.6
 wait 0.2
 shot 07-parted-over-the-shoulder with land:coast
-perf decor 3.0
-perf grass 3.0
+perf noise 6.0
+perf decor 6.0
+perf grass 6.0
 release shoulder_peek
 weather rules

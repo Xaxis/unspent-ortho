@@ -165,6 +165,8 @@ var village_square_ground := Ground.GRAVEL
 ## first village takes a different id.
 var built: BiomeForms = null
 ## Ground id -> [density, kind, weight, kind, weight, ...] for the decor layer.
+## The density may be Vector2(density, evenness) for a cover that should stand
+## evenly rather than in drifts (Decor._table).
 ## A ground with no row here uses the shared table.
 var decor: Dictionary = {}
 ## [blade, tip] of this type's grass, and the colour of its loose rock.

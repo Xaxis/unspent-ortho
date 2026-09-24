@@ -203,7 +203,7 @@ foliage_trample={
 }
 foliage_trample_at={
 "type": "vec4",
-"value": Vector4(0, 0, 0.0625, 16)
+"value": Vector4(0, 0, 0, 0)
 }
 sky_gust={
 "type": "vec4",

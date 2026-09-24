@@ -25,7 +25,10 @@ extends RefCounted
 const ROUNDS := 5
 ## The chunk children each layer toggles: `foliage` the leaf cards, `decor` all
 ## of Decor (its stones and litter, and its grass), `grass` only what sways.
-const LAYERS := {"foliage": ["props_leaf"], "decor": ["decor", "grass"], "grass": ["grass"]}
+## `noise` toggles nothing: the same pairs of halves with no change between
+## them, which is the floor any other layer's difference has to clear on this
+## machine at this load.
+const LAYERS := {"foliage": ["props_leaf"], "decor": ["decor", "grass"], "grass": ["grass"], "noise": []}
 
 
 ## `perf foliage|decor SECS [MS]`: the cost of that layer in every loaded chunk
@@ -47,7 +50,7 @@ static func perf(tour: Node, game: Node, parts: PackedStringArray) -> bool:
 			var m := chunk.get_node_or_null(part) as MeshInstance3D
 			if m != null and m.visible:
 				leaves.append(m)
-	if leaves.is_empty():
+	if leaves.is_empty() and layer != "noise":
 		printerr("tour perf %s: nothing of it is loaded to measure" % layer)
 		return false
 	var vsync := DisplayServer.window_get_vsync_mode()

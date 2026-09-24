@@ -66,8 +66,8 @@ func test_the_upload_encodes_upright_as_the_shader_decodes_it() -> void:
 	var b := f.bytes()
 	eq(b.size(), TrampleField.SIZE * TrampleField.SIZE * 4, "one RGBA8 texel a slot")
 	eq(b[0], 128, "upright is 128")
-	var src := FileAccess.get_file_as_string("res://src/render/foliage/grass.gdshader")
-	check(src.contains("* 255.0 - 128.0) / 127.0"), "grass.gdshader decodes 128 as upright")
+	var src := FileAccess.get_file_as_string("res://src/render/wind.gdshaderinc")
+	check(src.contains("* 255.0 - 128.0) / 127.0"), "wind.gdshaderinc decodes 128 as upright")
 	var w := f.window()
 	eq(w.w, TrampleField.SPAN, "the window says its span")
 

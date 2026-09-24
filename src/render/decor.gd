@@ -88,12 +88,21 @@ class Out:
 	var uv := PackedVector2Array()
 	var uv2 := PackedVector2Array()
 
-	func put(tpl: Tpl, xf: Transform3D, turn: Basis) -> void:
+	## `seed` >= 0 lays a PLANT for grass.gdshader: every vertex's UV2.y becomes
+	## the plant's seed and its UV the plant's root in world xz, so all its
+	## corners decide together how far off it stands.
+	func put(tpl: Tpl, xf: Transform3D, turn: Basis, seed: float = -1.0) -> void:
 		v.append_array(xf * tpl.v)
 		n.append_array(Transform3D(turn, Vector3.ZERO) * tpl.n)
 		c.append_array(tpl.c)
-		uv.append_array(tpl.uv)
-		uv2.append_array(tpl.uv2)
+		if seed < 0.0:
+			uv.append_array(tpl.uv)
+			uv2.append_array(tpl.uv2)
+		else:
+			var root := Vector2(xf.origin.x, xf.origin.z)
+			for w: Vector2 in tpl.uv2:
+				uv.append(root)
+				uv2.append(Vector2(w.x, seed))
 
 	func arrays() -> Array:
 		if v.is_empty():
@@ -150,10 +159,18 @@ func _init(w: WorldData) -> void:
 	for d: BiomeDef in BiomeRegistry.all():
 		for g: int in d.decor:
 			var row: Array = d.decor[g]
-			_table(g * BiomeRegistry.SLOTS + d.index + 1000, float(row[0]), row.slice(1))
+			# row[0] is the density, or Vector2(density, evenness): see `_table`.
+			var head: Variant = row[0]
+			var dens := (head as Vector2).x if head is Vector2 else float(head)
+			var even := (head as Vector2).y if head is Vector2 else 0.0
+			_table(g * BiomeRegistry.SLOTS + d.index + 1000, dens, row.slice(1), even)
 
 
-func _table(g: int, density: float, pairs: Array) -> void:
+## `even` 0..1: how far the drifts give way to an even cover. At 0 a tile carries
+## density x (0.45 + clump), so the ground between drifts lies nearly bare, which
+## is right for specks and stones; a sward wants the clumping as variation in
+## how thick it stands, not as holes (1: density x (0.8 + 0.4 x clump)).
+func _table(g: int, density: float, pairs: Array, even: float = 0.0) -> void:
 	var kinds := PackedInt32Array()
 	var cum := PackedFloat32Array()
 	var total := 0.0
@@ -164,7 +181,7 @@ func _table(g: int, density: float, pairs: Array) -> void:
 		acc += float(pairs[i + 1]) / total
 		kinds.append(pairs[i])
 		cum.append(acc)
-	_tables[g] = [kinds, cum, density]
+	_tables[g] = [kinds, cum, density, even]
 
 
 ## Share of a tile's decor that is the neighbour's at blend b (0..0.5): ahead
@@ -223,9 +240,13 @@ func build_parts(ch: TerrainMesher.Chunk) -> Array:
 			var t := ch.t[li + np + 1]
 			if t <= 0 or (k & 0x10000) != 0:
 				continue
+			# One terrace and one GROUND over the lattice: a key that differs only
+			# in its country (an ecotone's blend) is the same turf, and refusing it
+			# left bare strips through the grass along every border.
 			var ok := true
 			for o: int in [0, 1, 2, np, np + 2, np * 2, np * 2 + 1, np * 2 + 2]:
-				if ch.key[li + o] != k or ch.t[li + o] != t:
+				var ko := ch.key[li + o]
+				if (ko & 0x100FF) != (k & 0x100FF) or ch.t[li + o] != t:
 					ok = false
 					break
 			if not ok:
@@ -235,7 +256,8 @@ func build_parts(ch: TerrainMesher.Chunk) -> Array:
 			if table.is_empty():
 				continue
 			var gather := _clump.get_noise_2d(ch.x0 + tx, ch.y0 + ty) * 0.5 + 0.5
-			var count := int(float(table[2]) * (0.45 + gather) + rng.randf())
+			var even: float = table[3]
+			var count := int(float(table[2]) * lerpf(0.45 + gather, 0.8 + 0.4 * gather, even) + rng.randf())
 			if count <= 0:
 				continue
 			var country := (k >> 8) & 0xFF
@@ -301,7 +323,12 @@ func build_parts(ch: TerrainMesher.Chunk) -> Array:
 				var basis := Basis(Vector3.UP, rng.randf() * TAU)
 				var hy := ch.surface(wx + fx, wy + fy) - 0.004 if soft else h
 				var xf := Transform3D(basis.scaled(Vector3(s, s, s)), Vector3(wx + fx, hy, wy + fy))
-				(grass if tpl.sways else solid).put(tpl, xf, basis)
+				if tpl.sways:
+					# Each plant its own seed: its beat in the wind, and whether it
+					# is one of those a far chunk leaves out (grass.gdshader).
+					grass.put(tpl, xf, basis, Rng.hash01(wx, wy, i, 0x5eed))
+				else:
+					solid.put(tpl, xf, basis)
 	# Rubble fallen from cliff faces, more of it where the rock is hard.
 	for fi in ch.feet.size():
 		var foot := ch.feet[fi]
@@ -546,24 +573,25 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 			k.made.prism(0, -0.02, 0, 0.037, 0.01, 0.037, 7, P.LINEN[2])
 			k.made.pop()
 		MEADOW:
-			# A patch of sward, not a clump: blades rooted all over a disc about
-			# two thirds of a tile across, all laid roughly one way (each patch
-			# its own way, by stage) and bent over at one joint, the tip bleached
-			# paler than the sheath. A rosette from one root reads as a lone
-			# plant; patches like this close into one sward that a wind can comb.
-			var blades := 16
+			# A patch of sward: many thin blades rooted all over a disc about two
+			# thirds of a tile across, laid roughly one way (each patch its own way,
+			# by stage), each a narrow sickle that curves over under its own weight.
+			# Thin is the point: a meadow is a haze of fine blades, and a few wide
+			# ones read as paper spikes. One-sided (grass.gdshader draws both
+			# faces), two triangles a blade.
+			var blades := 28
 			var lay := float(stage) * 2.1 + 0.6
 			for i in blades:
-				var r := sqrt(Rng.hash01(s, i, 11)) * 0.34
+				var r := sqrt(Rng.hash01(s, i, 11)) * 0.4
 				var at := Rng.hash01(s, i, 13) * TAU
 				var base := Vector3(cos(at) * r, 0.0, sin(at) * r)
-				var a := lay + Kit.j(s, i, 0.8)
+				var a := lay + Kit.j(s, i, 0.9)
 				var out := Vector3(cos(a), 0.0, sin(a))
-				var hh := 0.26 + Rng.hash01(s, i, 3) * 0.3
-				var mid := base + out * hh * (0.08 + Rng.hash01(s, i, 5) * 0.12) + Vector3(0.0, hh * 0.6, 0.0)
-				var tip := base + out * hh * (0.3 + Rng.hash01(s, i, 7) * 0.3) + Vector3(0.0, hh * 0.93, 0.0)
+				var hh := 0.22 + Rng.hash01(s, i, 3) * 0.3
+				var reach := hh * (0.2 + Rng.hash01(s, i, 7) * 0.3)
+				var tip := base + out * reach + Vector3(0.0, hh * 0.94, 0.0)
 				var col: Color = gr[i % 2]
-				k.blade2(base, mid, tip, 0.06, a + 1.57, col, col.lerp(P.SAND[4], 0.12 + Rng.hash01(s, i, 17) * 0.24))
+				k.sickle(base, tip, out * reach * 0.15 + Vector3(0.0, hh * 0.08, 0.0), 0.026, a + 1.57, col)
 			k.sway_by_height(0, 0.0, 0.5, 1.0)
 		REBAR:
 			# A lump of cast stone broken off something, its bars standing out of
