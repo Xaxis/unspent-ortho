@@ -31,9 +31,19 @@ const MOST := 2
 ## ground, and the rim of what it threw out, all inside RIM_R. A body steps one
 ## level, so the steps are walkable; the floor is a little wider than the pad
 ## (`ColossusDef.pad`), so the pad sits IN it.
-const FLOOR_R := 22.0
+## FLOOR_R and RIM_R are PAST the pad's own radius, so a heel wider than a toe
+## gets a crater wider by as much: `floor_r(p)`, `rim_r(p)`.
+const FLOOR_R := 2.0
 const STEP_W := 1.5
-const RIM_R := 46.0
+const RIM_R := 26.0
+
+
+static func floor_r(p: Vector3) -> float:
+	return p.z + FLOOR_R
+
+
+static func rim_r(p: Vector3) -> float:
+	return p.z + RIM_R
 ## How far the floor goes down under the lowest ground a pad covers, in levels.
 const DEPTH := 3
 ## How near the spawn a pad may come: a new game does not open in a crater.
@@ -74,15 +84,15 @@ static func wanted(seed_value: int, size: int) -> Array:
 	return out
 
 
-## The three pads of a foot set down at `centre` facing `yaw`, as circles
+## The pads of a foot set down at `centre` facing `yaw` (its toes, then its heel), as circles
 ## Vector3(x, y, radius) in tile space: where its weight is, and so where a
 ## crater is cut, a body is stopped and a prop is crushed.
 static func pads(def: RefCounted, centre: Vector2, yaw: float) -> Array[Vector3]:
 	var out: Array[Vector3] = []
-	for toe in 3:
-		var a := yaw + TAU * float(toe) / 3.0
-		var p := centre + Vector2(cos(a), sin(a)) * float(def.toe_reach)
-		out.append(Vector3(p.x, p.y, float(def.pad)))
+	for i: int in int(def.toes.size()):
+		var t: Vector3 = def.toe(i)
+		var p := centre + Vector2.from_angle(yaw + t.x) * t.y
+		out.append(Vector3(p.x, p.y, t.z))
 	return out
 
 

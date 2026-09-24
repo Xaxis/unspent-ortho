@@ -77,6 +77,16 @@ uniform float thick = 0.0;
 uniform float h_low = 40.0;
 uniform float h_high = 8000.0;
 uniform float beta_high = 1.1e-5;
+// AND A THIRD, BY DISTANCE ALONE: the air between the eye and a thing kilometres
+// off, whatever height it stands at. The two layers leave anything high in the
+// sky nearly clear, which is right for how thin the air is up there and read,
+// at noon, as a flat dark cut-out: nothing said the hub was eighty kilometres
+// off and the knee sixty. This much gives a leg a gradient of air up its whole
+// length toward the body, and takes a walker on the skyline half into the blue.
+uniform float beta_far = 3.0e-6;
+// The top of the spire, over the hub's origin (the hip height), metres: the
+// one light the machine keeps burning by day.
+uniform float spire_y = 41000.0;
 // How much of the lens's own light the hour leaves (0 at noon, 1 at night):
 // a lamp in daylight shows the colour it is made of, not white.
 uniform float lens_glow = 1.0;
@@ -105,6 +115,9 @@ const float EMBER = 5.0;
 // And a floor under it that is not the albedo's: the plate is dark on purpose, and
 // times a dark albedo the last sun came out a smear nobody saw (coast, 21:30).
 const float EMBER_FLOOR = 0.35;
+// How much of the sky's light and the sun's a face takes, over the renderer's own.
+const float SKY_FILL = 0.55;
+const float SUN_TOP = 1.1;
 // How far over a fragment's own horizon (radians) the sun must stand to light it
 // fully, and the colour of the last of it, as a share of the glow: the sun
 // through the whole low air is red and a fifth as bright.
@@ -284,7 +297,7 @@ void fragment() {
 	float low_len = layer_len(eye, true_world, h_low * thicken);
 	float low = clamp(pow(smoothstep(land_fog.x, land_fog.y, low_len), land_fog.z) * land_fog.w, 0.0, 1.0);
 	float high = beta_high * thicken * layer_len(eye, true_world, h_high);
-	float air = 1.0 - (1.0 - low) * exp(-high);
+	float air = 1.0 - (1.0 - low) * exp(-high - beta_far * distance(eye, true_world));
 	// A part drawn wider than it is gives the rest back to the air.
 	air = 1.0 - (1.0 - air) * clamp(thin, 0.0, 1.0);
 	// The procedural sky with the sun's disc on it, as the sky shader lays it
@@ -364,11 +377,31 @@ void fragment() {
 			pulse = smoothstep(-0.015, 0.0, behind) * (1.0 - smoothstep(0.0, PULSE_TRAIL, behind));
 		}
 		glow = (2.4 + 9.0 * pulse) * lens_glow;
+	} else if (lamp && int(bone_phase + 0.5) == 0 && body_local.y > spire_y - 1200.0) {
+		// THE SPIRE'S OWN LIGHT, day and night: a hard strobe at the top of the
+		// air, the way anything that tall carries one -- and at noon the only
+		// thing that says how far up the top of it is.
+		float strobe = step(fract(TIME * 0.42), 0.06);
+		glow = mix(1.2, 2.5, lens_glow) + strobe * mix(14.0, 9.0, lens_glow);
 	} else if (lamp) {
 		float beat = fract(TIME * 0.45 + dot(floor(body_local.xz * 0.001), vec2(0.37, 0.61)));
 		glow = (step(beat, 0.18) * 5.0 + 0.2) * lens_glow;
 	}
 	EMISSION = lamp ? matter_light(c * glow * sky_power()) : vec3(0.0);
+	// DAYLIGHT ON A THING THIS SIZE. The renderer's sun is the one the land is
+	// lit by at eye level; over a body kilometres across it leaves the whole
+	// machine one dark value. So the plate takes the sky's own light too: the
+	// zenith's blue on every face by how far it looks up (the fill a thing in
+	// open air stands in), and the real sun on the faces turned to it -- tops
+	// of the hub and the thighs lit, undersides in their own shade.
+	if (!lamp) {
+		vec3 sun_w = normalize(dome_sun_dir);
+		vec3 n_day = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+		float day = clamp(sun_w.y * 4.0, 0.0, 1.0);
+		vec3 fill = dome_top_color * (0.35 + 0.65 * (n_day.y * 0.5 + 0.5)) * SKY_FILL;
+		vec3 lit = dome_sun_color * max(dot(n_day, sun_w), 0.0) * SUN_TOP;
+		EMISSION += matter_albedo(c * FOUND_MASS) * (fill + lit) * day;
+	}
 	// THE TOP KEEPS THE SUN AFTER THE LAND HAS LOST IT. From `h` metres up the sun
 	// is still over the horizon until it is sqrt(2h / R) below the ground's, and
 	// on a planet of R_EFF that keeps the spire lit an hour and more after dusk:

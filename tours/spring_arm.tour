@@ -1,0 +1,23 @@
+# THE SHOULDER VIEW'S SPRING ARM AT A HOUSE CORNER (owner, 2026-09-24, on
+# Godot's SpringArm3D; 41_shoulder.room is ours). Stood at a house facing it, the
+# view comes up and is turned round in steps, so the eye swings back past the
+# house's corner and eave. The probe stands the eye clear of what is DRAWN, not
+# of the circle a body walks round (drawn up to 1.3 tiles past it at a house),
+# and as wide as the near plane: no frame is drawn from inside the house.
+#   tools/tour.sh tours/spring_arm.tour --seed=4 --hour=11 --weather=clear:0
+coast calm
+near house
+wait 0.6
+tap shoulder
+await shoulder 3
+wait 0.5
+shot 01-at-the-house-looking-at-it with shoulder
+mouse 900,0 0.6
+wait 0.6
+shot 02-turned-the-eye-toward-the-corner with shoulder
+mouse 300,0 0.4
+wait 0.6
+shot 03-turned-further with shoulder
+mouse 300,0 0.4
+wait 0.6
+shot 04-back-to-the-wall with shoulder

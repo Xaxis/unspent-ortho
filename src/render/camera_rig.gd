@@ -749,6 +749,17 @@ func _apply_lens() -> void:
 	_yaw_drawn = yaw
 
 
+## The share of the player's own figure stippled away for the eye, handed to
+## every body's shader (sight.gdshaderinc `eye_yield`). Written only when it
+## changes, so the top-down game never touches it.
+var yield_share := 0.0
+func _set_yield(r: float) -> void:
+	if r == 0.0 and yield_share == 0.0:
+		return
+	yield_share = r
+	RenderingServer.global_shader_parameter_set(&"eye_yield", Vector4(_smoothed.x, _smoothed.y, _smoothed.z, r))
+
+
 ## How far right of the player the eye stands now: a lock moves it out.
 func _right_now() -> float:
 	return lerpf(Shoulder.RIGHT, Shoulder.LOCK_RIGHT, _lock_w)
@@ -765,17 +776,6 @@ func clear_tip() -> float:
 func shoulder_aim_from() -> Vector3:
 	var yb := deg_to_rad(shoulder_yaw)
 	return _smoothed + Vector3(cos(yb), 0.0, -sin(yb)) * _right_now()
-
-
-## The share of the player's own figure stippled away for the eye, handed to
-## every body's shader (sight.gdshaderinc `eye_yield`). Written only when it
-## changes, so the top-down game never touches it.
-var yield_share := 0.0
-func _set_yield(r: float) -> void:
-	if r == 0.0 and yield_share == 0.0:
-		return
-	yield_share = r
-	RenderingServer.global_shader_parameter_set(&"eye_yield", Vector4(_smoothed.x, _smoothed.y, _smoothed.z, r))
 
 
 func _ease_lean(delta: float) -> void:

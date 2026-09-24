@@ -1,0 +1,29 @@
+# A COLOSSUS'S TREAD WITH NO FOOT IN IT (gen_treads.gd): what the island holds
+# between one lap and the next. The straddling walker is staged four world hours
+# before it next comes down here, so the craters stand empty: at the lip of one,
+# looking in -- the forty-metre floor of bared rock with the ring the pad's rim
+# pressed into it and the scars its six claws dragged out through the strata,
+# plate and wreck crushed flat round its edge, the strata stepped up out of it
+# and the spoil thrown over the old ground -- then down into the bowl, then from
+# above, standing on its floor, and drawn out to hold the whole of one print.
+# The whole SOLE -- the heel's round print behind, three toe prints splayed
+# ahead along the way it walked, each toe's two claw gouges raked out ahead of
+# it, the pressure ring round all four -- is 500 m across, wider than the play
+# camera's widest view; it reads on the survey (tools/map.sh --seed=7) and in a
+# staged still:
+#   tools/shot.sh shots/sole.png --seed=7 --place=tread0 --zoom=420 --frames=90 --colossus=2@tread0-240 --hour=12 --weather=clear:0
+#   tools/tour.sh tours/colossi_crater.tour --seed=7 --place=tread0 --colossus=2@tread0-240 --hour=12 --view=shoulder --weather=clear:0
+near colossus_rim
+wait 3
+shot 00-at-the-lip-looking-in
+mouse 0,160 0.5
+wait 1
+shot 01-down-into-the-bowl
+near colossus_crater
+hold shoulder
+wait 1.5
+shot 02-top-down-on-the-floor
+zoom 110
+wait 2
+shot 03-top-down-the-whole-crater
+release shoulder

@@ -43,6 +43,14 @@ var knee_r := 1350.0
 ## The ankle stands this far over the pads: a person walks under it between toes.
 var ankle_up := 120.0
 var toe_reach := 180.0
+## THE SOLE, as the ground reads it: three toes splayed ahead of the ankle along
+## the way the foot walks, and a heel behind it under the drum. Each is
+## (bearing from the foot's forward, degrees; reach from under the ankle; the
+## pad's radius), metres. A foot that is the same all round read from above as a
+## crater and not a footprint; a sole with a front and a back says which way the
+## machine was going.
+var toes: Array[Vector3] = [Vector3(-48.0, 180.0, 20.0), Vector3(0.0, 196.0, 21.0),
+	Vector3(48.0, 180.0, 20.0), Vector3(180.0, 128.0, 30.0)]
 var pad := 20.0
 
 ## Where each foot is set down, about the hub: a circle this wide, at these
@@ -68,6 +76,12 @@ var sway := 350.0
 ## passes over it).
 var route_radius := 180000.0
 var route_offset := 0.0
+
+
+## Toe `i` in the foot's own frame: (bearing in radians from local +X, reach, pad).
+func toe(i: int) -> Vector3:
+	var t: Vector3 = toes[i]
+	return Vector3(deg_to_rad(t.x), t.y, t.z)
 
 
 ## How much of a cycle one leg spends in the air.
