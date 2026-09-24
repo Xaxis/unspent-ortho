@@ -404,3 +404,23 @@ func test_only_a_leg_between_the_player_and_the_sun_is_handed_over() -> void:
 		var t := maxf(0.0, (q - under).dot(sun))
 		best = minf(best, (under + sun * t).distance_to(q))
 	lt(best, float(c[2]) + 1500.0, "the ray to the sun passes through it (%.0f m off, radius %.0f)" % [best, c[2]])
+
+
+## A LEG'S SHADOW TAPERS AS THE LEG DOES: a shin is eight hundred metres at the
+## knee and a hundred and ten at the ankle, and its shadow near the foot is a
+## narrow hard band only if the capsule carries both radii.
+func test_a_shadow_capsule_tapers_like_its_leg() -> void:
+	var d: RefCounted = _walkers()[1]
+	var p: Dictionary = Walk.pose(d, _route(d), 900.0)
+	var sun := Vector3(0.3, 0.35, -0.5).normalized()
+	var ankle: Vector3 = p.ankles[0]
+	var under := ankle - sun * (ankle.y / sun.y)
+	under.y = 0.0
+	var shin: Array = []
+	for c: Array in Walk.shadow_capsules(d, p, sun, under, 1500.0):
+		if (c[1] as Vector3).is_equal_approx(ankle):
+			shin = c
+	eq(shin.size(), 4, "the shin is handed over with a radius at each end")
+	if shin.size() == 4:
+		near(float(shin[2]), float((d.shin_r as Vector2).x), 1e-3, "the knee end is the shin's own root")
+		near(float(shin[3]), float((d.shin_r as Vector2).y), 1e-3, "and the ankle end its tip")

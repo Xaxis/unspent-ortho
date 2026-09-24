@@ -124,7 +124,7 @@ func _cast(open: bool) -> void:
 				var a: Vector3 = c[0]
 				var b: Vector3 = c[1]
 				cols[j * 2] = Vector4(a.x, a.y, a.z, float(c[2]))
-				cols[j * 2 + 1] = Vector4(b.x, b.y, b.z, 0.0)
+				cols[j * 2 + 1] = Vector4(b.x, b.y, b.z, float(c[3]))
 		RenderingServer.global_shader_parameter_set(StringName("colossus_legs%d" % m), Projection(cols[0], cols[1], cols[2], cols[3]))
 
 

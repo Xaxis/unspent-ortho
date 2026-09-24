@@ -36,7 +36,8 @@ global uniform vec3 sky_tint;
 // to the REAL sun (the one the sky draws, not the light, which never sets);
 // w: how many capsules are live, 0..8 -- 0 on every frame nothing of theirs
 // falls near the player, which is nearly all of them, and then nothing below is
-// asked. Each mat4 holds two capsules as columns (a.xyz, radius), (b.xyz, 0).
+// asked. Each mat4 holds two tapered capsules as columns (a.xyz, radius at a),
+// (b.xyz, radius at b).
 global uniform vec4 colossus_sun;
 global uniform mat4 colossus_legs0;
 global uniform mat4 colossus_legs1;
@@ -137,8 +138,10 @@ const vec3 NEON_COOL = vec3(0.80, 0.90, 1.10);
 
 const vec3 SKY_PAGE = vec3(0.910, 0.863, 0.753);      // LINEN[5]: the page itself
 const vec3 SKY_CLOUD_SHADE = vec3(0.88, 0.90, 0.97);
-// A leg's shade: the direct sun gone, the sky's blue left.
-const vec3 COLOSSUS_SHADE = vec3(0.46, 0.49, 0.60);  // a cloud's shade: half a step toward blue-violet
+// A leg's shade: the direct sun gone and the sky's blue left. Deep, because
+// a leg is solid: at a cloud's half step the band crossing the land reads as
+// the light dimming, not as something standing in the sun.
+const vec3 COLOSSUS_SHADE = vec3(0.30, 0.33, 0.45);
 const vec3 SKY_SNOW = vec3(0.90, 0.93, 0.95);         // lying snow: page, a little cold
 const vec3 SKY_ASH = vec3(0.231, 0.251, 0.290);       // ASH[1]: specks of fallen ash
 const vec3 SKY_PUDDLE = vec3(0.365, 0.545, 0.627);    // RIME[3]: sky in standing water
@@ -293,7 +296,7 @@ float sky_cloud_field(vec3 world_pos) {
 // here as in the sky), so a shin's shadow is sharp at its foot and soft a
 // hundred kilometres out. 1 in the umbra.
 const float COLOSSUS_PENUMBRA = 0.006;
-float colossus_capsule(vec3 p, vec3 l, vec3 a, vec3 b, float r) {
+float colossus_capsule(vec3 p, vec3 l, vec3 a, vec3 b, float ra, float rb) {
 	vec3 ab = b - a;
 	vec3 ap = p - a;
 	float d1 = dot(l, ab);
@@ -304,6 +307,8 @@ float colossus_capsule(vec3 p, vec3 l, vec3 a, vec3 b, float r) {
 	// Closest points between the ray p + t l and the segment a + s ab.
 	float sp = den > 1e-6 ? clamp((d4 - d1 * d3) / den, 0.0, 1.0) : 0.0;
 	vec3 q = a + ab * sp;
+	// Tapered: the leg is as thick here as its own profile says.
+	float r = mix(ra, rb, sp);
 	float t = max(dot(q - p, l), 0.0);
 	float dist = length(p + l * t - q);
 	float pen = max(t * COLOSSUS_PENUMBRA, 1.0);
@@ -313,10 +318,10 @@ float colossus_capsule(vec3 p, vec3 l, vec3 a, vec3 b, float r) {
 float colossus_in(mat4 m, int first, int n, vec3 p, vec3 l) {
 	float s = 0.0;
 	if (first < n) {
-		s = max(s, colossus_capsule(p, l, m[0].xyz, m[1].xyz, m[0].w));
+		s = max(s, colossus_capsule(p, l, m[0].xyz, m[1].xyz, m[0].w, m[1].w));
 	}
 	if (first + 1 < n) {
-		s = max(s, colossus_capsule(p, l, m[2].xyz, m[3].xyz, m[2].w));
+		s = max(s, colossus_capsule(p, l, m[2].xyz, m[3].xyz, m[2].w, m[3].w));
 	}
 	return s;
 }

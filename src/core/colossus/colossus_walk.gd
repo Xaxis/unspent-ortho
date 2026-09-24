@@ -195,8 +195,8 @@ static func air_delay(d: float) -> float:
 	return d / 343.0
 
 
-## THE LEGS WHOSE SHADOW FALLS ON THE PLAYER'S GROUND, as capsules [a, b,
-## radius] for sky.gdshaderinc `sky_colossus`: a shadow far too big for any
+## THE LEGS WHOSE SHADOW FALLS ON THE PLAYER'S GROUND, as tapered capsules
+## [a, b, radius at a, radius at b] for sky.gdshaderinc `sky_colossus`: a shadow far too big for any
 ## shadow map, cast the way a cloud's is, by asking per fragment. `sun` is the
 ## way to the real sun; `around` the ground being drawn and `reach` how far
 ## round it. A capsule is kept only if its shadow on the ground (the leg carried
@@ -212,17 +212,20 @@ static func shadow_capsules(def: RefCounted, p: Dictionary, sun: Vector3, around
 	var hub: Transform3D = p.hub
 	var tr: Vector2 = def.thigh_r
 	var sr: Vector2 = def.shin_r
+	# TAPERED, as the legs are: a shin is 800 m at the knee and 110 at the ankle,
+	# and one mean radius drew the shadow of its foot end four times too wide --
+	# a soft blot where a leg standing on the land throws a narrow, hard band.
 	for k in 3:
-		parts.append([p.hips[k], p.knees[k], (tr.x + tr.y) * 0.5])
-		parts.append([p.knees[k], p.ankles[k], (sr.x + sr.y) * 0.5])
+		parts.append([p.hips[k], p.knees[k], tr.x, tr.y])
+		parts.append([p.knees[k], p.ankles[k], sr.x, sr.y])
 	var lo := hub.origin + Vector3(0.0, float(def.hub_low) - float(def.hip_height), 0.0)
 	var hi := hub.origin + Vector3(0.0, float(def.hub_high) - float(def.hip_height), 0.0)
-	parts.append([lo, hi, float(def.hub_radius) * 0.8])
+	parts.append([lo, hi, float(def.hub_radius) * 0.8, float(def.hub_radius) * 0.5])
 	var scored: Array = []
 	for c: Array in parts:
 		var a: Vector3 = c[0]
 		var b: Vector3 = c[1]
-		var r: float = c[2]
+		var r: float = maxf(float(c[2]), float(c[3]))
 		var ga := a - sun * (a.y / sun.y)
 		var gb := b - sun * (b.y / sun.y)
 		var g := Geometry2D.get_closest_point_to_segment(Vector2(around.x, around.z), Vector2(ga.x, ga.z), Vector2(gb.x, gb.z))
