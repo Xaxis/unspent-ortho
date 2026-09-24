@@ -137,7 +137,15 @@ const UNKNOWN := "unknown"
 ##     gouges ahead of it, a soft band of pressed ground rings all four, and the
 ##     foot is set down facing its walk. Level, ground and the tread's own props
 ##     move where a tread lands; nothing moves at 256 (no treads there).
-const GEN := 26
+## 27. Continents are grown, not placed on a ring: `GenBodies._grow` deals one
+##     large and one or two small, each its own aspect, squareness and straits,
+##     packed toward an off-centre middle; every body cuts its own sea lochs from
+##     its own coast; headlands keep off a neighbour's headlands; skerries break
+##     the open water between bodies. Every seed's world of many bodies moves,
+##     and the treads with it (they are sited last, on what was laid). A one-body
+##     world takes none of it, so nothing moves at 256 and `test_parity` is not
+##     the evidence: `tools/gd/probe_regions.gd` at 1840 is.
+const GEN := 27
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

@@ -44,6 +44,11 @@ extends SceneTree
 ##            narrow water from open sea (sea LOCH_OPEN from land): how many,
 ##            the deepest in tiles, and that depth over the body's equivalent
 ##            radius sqrt(tiles / pi) (`reach`)
+##   hole     the widest disc of open water (a diameter, in tiles) that lies
+##            inside the hull of the continents' centres (in brackets, the same
+##            without keeping inside the hull), and `straits` each continent's gap to
+##            its nearest neighbour: a hole much wider than the widest strait
+##            is a ring round an empty sea
 ##   rivers   per continent: how many, and per 10k of its tiles (a river is on
 ##            the body its mouth is on)
 ##   macro    per main region: the spread (m) of height smoothed over a box of
@@ -85,6 +90,7 @@ const TRUNK_REACH := 12
 const SEAM_REACH := 10.0
 const MOTTLE_BLOCK := 16
 const MOTTLE_WINDOW := 64
+const SEA_STEP := 4
 
 var _road := 0
 ## A directory to write one landscape map per seed into (`regions_<seed>.png`).
@@ -215,6 +221,11 @@ func _seed(w: WorldData) -> void:
 			d.id, w.seed_value, runs, int(main.tiles), float(main.tiles) / FRAME_TILES,
 			2.0 * core.z / RUN, eco, view.x, view.y, view.z, int(view.w), poi.size(), walk.x, walk.y / RUN, float(_road) / maxf(1.0, float(main.tiles)), read])
 	_bodies(w)
+	_sea(w)
+	for m: Dictionary in w.landmarks:
+		if StringName(str(m.get("kind", &""))) == &"tread":
+			var tp: Vector2 = m.get("pos", Vector2.ZERO)
+			print("regions tread %d at %s on body %d, %s" % [w.seed_value, tp.round(), w.continent_at(floori(tp.x), floori(tp.y)), BiomeRegistry.name_of(int(m.get("country", 0)))])
 	var places: Array[Vector2] = []
 	for s: LandmarkSite in lm:
 		places.append(s.pos)
@@ -752,3 +763,94 @@ static func _box(v: PackedFloat32Array, bw: int, r: int, along_x: bool) -> Packe
 			else:
 				out[b * bw + a] = s / float(2 * r + 1)
 	return out
+
+
+## hole and straits: see the header. On a grid of every SEA_STEP-th tile.
+func _sea(w: WorldData) -> void:
+	var n := w.size
+	var most := 0
+	for row: Dictionary in w.continents:
+		most = maxi(most, int(row.tiles))
+	var big := {}
+	var centres := PackedVector2Array()
+	for row: Dictionary in w.continents:
+		if float(row.tiles) >= GenBodies.CONTINENT_SHARE * float(most):
+			big[int(row.id)] = true
+			centres.append((row.centre as Vector2) / SEA_STEP)
+	var cw := n / SEA_STEP
+	var any := PackedFloat32Array()
+	any.resize(cw * cw)
+	var d := PackedFloat32Array()
+	d.resize(cw * cw)
+	var lab := PackedInt32Array()
+	lab.resize(cw * cw)
+	for cy in cw:
+		for cx in cw:
+			var i := cy * cw + cx
+			var x := cx * SEA_STEP
+			var y := cy * SEA_STEP
+			var land := w.level[y * n + x] > 0
+			any[i] = 0.0 if land else 1e9
+			var b := w.continent_at(x, y) if land else 0
+			d[i] = 0.0 if big.has(b) else 1e9
+			lab[i] = b if big.has(b) else 0
+	GenFields.propagate_min(any, cw, 1.0)
+	# Nearest continent through two chamfer sweeps, carrying its id.
+	const R2 := 1.41421
+	for sweep in 2:
+		var ys := range(cw) if sweep == 0 else range(cw - 1, -1, -1)
+		var xs := range(cw) if sweep == 0 else range(cw - 1, -1, -1)
+		var sgn := -1 if sweep == 0 else 1
+		for cy: int in ys:
+			for cx: int in xs:
+				var i := cy * cw + cx
+				for o: Vector3 in [Vector3(sgn, 0, 1.0), Vector3(0, sgn, 1.0), Vector3(sgn, sgn, R2), Vector3(-sgn, sgn, R2)]:
+					var nx := cx + int(o.x)
+					var ny := cy + int(o.y)
+					if nx < 0 or ny < 0 or nx >= cw or ny >= cw:
+						continue
+					var j := ny * cw + nx
+					if d[j] + o.z < d[i]:
+						d[i] = d[j] + o.z
+						lab[i] = lab[j]
+	var pair := {}
+	for cy in cw - 1:
+		for cx in cw - 1:
+			var i := cy * cw + cx
+			for j: int in [i + 1, i + cw]:
+				if lab[i] > 0 and lab[j] > 0 and lab[i] != lab[j]:
+					var key := mini(lab[i], lab[j]) * 256 + maxi(lab[i], lab[j])
+					var g := (d[i] + d[j] + 1.0) * SEA_STEP
+					pair[key] = minf(float(pair.get(key, 1e9)), g)
+	# Each continent's strait is its gap to its nearest neighbour.
+	var nearest := {}
+	for key: int in pair:
+		for b: int in [key / 256, key % 256]:
+			nearest[b] = minf(float(nearest.get(b, 1e9)), float(pair[key]))
+	var widest := 0.0
+	var gaps: PackedStringArray = []
+	for b: int in nearest:
+		widest = maxf(widest, float(nearest[b]))
+		gaps.append("%d:%d" % [b, roundi(float(nearest[b]))])
+	var hull := Geometry2D.convex_hull(centres)
+	var hole := 0.0
+	var edge := 0.0
+	var hole_at := Vector2.ZERO
+	for cy in cw:
+		for cx in cw:
+			var p := Vector2(cx, cy)
+			var open := any[cy * cw + cx] * SEA_STEP
+			if open <= hole or not Geometry2D.is_point_in_polygon(p, hull):
+				continue
+			edge = maxf(edge, open)
+			# The disc may not run out of the hull: open water that opens onto
+			# the outer sea is the world's edge, not a hole in its middle.
+			var rim := INF
+			for k in hull.size() - 1:
+				rim = minf(rim, p.distance_to(Geometry2D.get_closest_point_to_segment(p, hull[k], hull[k + 1])) * SEA_STEP)
+			var r := minf(open, rim)
+			if r > hole:
+				hole = r
+				hole_at = p * SEA_STEP
+	print("regions sea %d: hole %d tiles across at %s (%d to the hull's edge), straits [%s], widest %d, hole/widest %.2f" % [
+		w.seed_value, roundi(2.0 * hole), hole_at, roundi(2.0 * edge), " ".join(gaps), roundi(widest), 2.0 * hole / maxf(1.0, widest)])

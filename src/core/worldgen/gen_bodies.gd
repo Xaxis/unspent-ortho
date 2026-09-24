@@ -398,6 +398,10 @@ static func plan(seed_value: int, realm: StringName = &"surface", want_size: int
 			"band": Vector2((rng.randf() - 0.5) * 2.0 * BAND, (rng.randf() - 0.5) * 2.0 * BAND),
 			"home": false,
 		})
+	# The ring sizes the square and fixes the stream; the bodies are then grown
+	# off it, so no world of many is a ring.
+	if count > 1:
+		_grow(bodies, rng, small)
 	# The player wakes on one of them, and it is the one nearest the south — the
 	# journey has run south to north since M1 (docs/DESIGN.md).
 	var home := 0
@@ -406,6 +410,187 @@ static func plan(seed_value: int, realm: StringName = &"surface", want_size: int
 			home = i
 	bodies[home]["home"] = true
 	return {"size": size, "bodies": bodies}
+
+
+## BODIES ARE GROWN, NOT PLACED. The ring in `plan` is where the draws have
+## always been made, so the stream up to it is unchanged; one body never comes
+## here, and everything this adds is drawn after the ring's draws.
+##
+## A ring of equal bodies read as five plates round an empty sea. Here the land
+## the packing solved for is redealt unevenly (one large, one or two small, the
+## sum unchanged, so a world keeps its land), each body gets its own aspect and
+## squareness (`GenShape` reads both), and each PAIR its own strait, SEA_GAP to
+## GROW_STRAIT times it. The centres are scattered, drawn in toward the middle
+## and pushed apart until every pair clears its strait and every body the
+## frame: an archipelago with varied gaps, not a ring round a hole. Each body
+## is an axis-aligned ellipse for this (the shape's own tilt is under 13
+## degrees).
+##
+## A layout is kept when the widest open water inside the bodies' hull is at
+## most GROW_HOLE times the widest strait; after GROW_TRIES scatters the one
+## nearest that is kept. A world that will not pack at all at full size shrinks
+## every body by GROW_SHRINK and tries again, so it always ends.
+const GROW_TRIES := 40
+const GROW_SETTLE := 240
+const GROW_PULL := 0.03
+## How far from the middle a scatter is drawn in toward, so the archipelago is
+## not always centred on the square.
+const GROW_WANDER := 0.1
+## The frame a grown body keeps off: `GenShape` fades land out from 0.035 to
+## 0.09 of the square, and a body packed at FRAME had its headlands and noise
+## shaved into a straight edge along it.
+const GROW_FRAME := 0.065
+const GROW_SHRINK := 0.96
+const GROW_BIG := Vector2(1.25, 1.45)
+const GROW_SMALL := Vector2(0.7, 0.85)
+const GROW_MID := Vector2(0.85, 1.1)
+const GROW_ASPECT := Vector2(0.8, 1.25)
+const GROW_POWER := Vector2(1.9, 2.8)
+const GROW_STRAIT := 1.6
+const GROW_HOLE := 1.5
+const HOLE_GRID := 48
+## A body's reach for packing, over ONE_RADIUS sqrt(share): `GenShape` draws
+## the long axis up to 0.41 against ONE_RADIUS 0.375 and tilts it up to 13
+## degrees, so the plain ellipse under-reaches and two bodies packed on it met.
+const PACK_REACH := 1.08
+
+
+static func _grow(bodies: Array[Dictionary], rng: RandomNumberGenerator, small: float) -> void:
+	var n := bodies.size()
+	var each := float(bodies[0].share)
+	var big := rng.randi() % n
+	var smalls := 1 + rng.randi() % 2
+	var rest: Array[int] = []
+	for i in n:
+		if i != big:
+			rest.append(i)
+	for i in range(rest.size() - 1, 0, -1):
+		var j := rng.randi() % (i + 1)
+		var t := rest[i]
+		rest[i] = rest[j]
+		rest[j] = t
+	var f := PackedFloat64Array()
+	f.resize(n)
+	f[big] = rng.randf_range(GROW_BIG.x, GROW_BIG.y)
+	for k in rest.size():
+		var band := GROW_SMALL if k < smalls else GROW_MID
+		f[rest[k]] = rng.randf_range(band.x, band.y)
+	var sum := 0.0
+	for v in f:
+		sum += v
+	var aspect := PackedFloat64Array()
+	var power := PackedFloat64Array()
+	for i in n:
+		f[i] *= float(n) / sum
+		aspect.append(rng.randf_range(GROW_ASPECT.x, GROW_ASPECT.y))
+		power.append(rng.randf_range(GROW_POWER.x, GROW_POWER.y))
+	var gap := PackedFloat64Array()
+	gap.resize(n * n)
+	for i in n:
+		for j in range(i + 1, n):
+			gap[i * n + j] = SEA_GAP * rng.randf_range(1.0, GROW_STRAIT)
+			gap[j * n + i] = gap[i * n + j]
+	# The radius a share stands for, as `plan` solves it.
+	var unit := ONE_RADIUS / sqrt(maxf(small, 0.0001))
+	var scale := 1.0
+	var at := PackedVector2Array()
+	at.resize(n)
+	while true:
+		var ax := PackedFloat64Array()
+		var ay := PackedFloat64Array()
+		for i in n:
+			var r := unit * sqrt(each * f[i] * scale) * PACK_REACH
+			ax.append(r * aspect[i])
+			ay.append(r / aspect[i])
+		var best := PackedVector2Array()
+		var best_q := INF
+		for attempt in GROW_TRIES:
+			for i in n:
+				at[i] = Vector2(rng.randf_range(ax[i] + GROW_FRAME, 1.0 - ax[i] - GROW_FRAME), rng.randf_range(ay[i] + GROW_FRAME, 1.0 - ay[i] - GROW_FRAME))
+			var toward := Vector2(0.5, 0.5) + Vector2(rng.randf_range(-GROW_WANDER, GROW_WANDER), rng.randf_range(-GROW_WANDER, GROW_WANDER))
+			if not _settle(at, ax, ay, gap, toward):
+				continue
+			var q := _hole_ratio(at, ax, ay)
+			if q < best_q:
+				best_q = q
+				best = at.duplicate()
+			if q <= GROW_HOLE:
+				break
+		if not best.is_empty():
+			for i in n:
+				bodies[i]["at"] = best[i]
+				bodies[i]["share"] = each * f[i] * scale
+				bodies[i]["aspect"] = aspect[i]
+				bodies[i]["power"] = power[i]
+			return
+		scale *= GROW_SHRINK
+
+
+## Draw ellipses in toward `toward` while pushing overlapping pairs apart to
+## their strait `gap[i * n + j]` and holding each off the frame, GROW_SETTLE
+## rounds with the pull easing to nothing; true when every pair then clears.
+static func _settle(at: PackedVector2Array, ax: PackedFloat64Array, ay: PackedFloat64Array, gap: PackedFloat64Array, toward: Vector2) -> bool:
+	var n := at.size()
+	var calm := int(GROW_SETTLE * 0.7)
+	for k in GROW_SETTLE:
+		var pull := GROW_PULL * maxf(0.0, 1.0 - float(k) / float(calm))
+		for i in n:
+			at[i] += (toward - at[i]) * pull
+		var moved := false
+		for i in n:
+			for j in range(i + 1, n):
+				var d := at[j] - at[i]
+				var dist := d.length()
+				var dir := d / dist if dist > 1e-6 else Vector2.RIGHT.rotated(float(i + j))
+				var need := _reach(ax[i], ay[i], dir) + _reach(ax[j], ay[j], dir) + gap[i * n + j]
+				if dist < need:
+					var push := dir * ((need - dist) * 0.5 + 1e-4)
+					at[i] -= push
+					at[j] += push
+					moved = true
+		for i in n:
+			at[i] = Vector2(clampf(at[i].x, ax[i] + GROW_FRAME, 1.0 - ax[i] - GROW_FRAME), clampf(at[i].y, ay[i] + GROW_FRAME, 1.0 - ay[i] - GROW_FRAME))
+		if not moved and k >= calm:
+			return true
+	return false
+
+
+## The widest open water inside the hull of the centres, as a diameter, over
+## the widest strait (each body's gap to its nearest neighbour, the widest of
+## those): what reads as a hole in the middle of the world. On the plan's
+## ellipses, sampled on a HOLE_GRID square.
+static func _hole_ratio(at: PackedVector2Array, ax: PackedFloat64Array, ay: PackedFloat64Array) -> float:
+	var n := at.size()
+	var widest := 0.0
+	for i in n:
+		var nearest := INF
+		for j in n:
+			if j == i:
+				continue
+			var d := at[j] - at[i]
+			var dir := d.normalized()
+			nearest = minf(nearest, d.length() - _reach(ax[i], ay[i], dir) - _reach(ax[j], ay[j], dir))
+		widest = maxf(widest, nearest)
+	var hull := Geometry2D.convex_hull(at)
+	var hole := 0.0
+	for gy in HOLE_GRID:
+		for gx in HOLE_GRID:
+			var p := Vector2((gx + 0.5) / HOLE_GRID, (gy + 0.5) / HOLE_GRID)
+			if not Geometry2D.is_point_in_polygon(p, hull):
+				continue
+			var clear := INF
+			for i in n:
+				var d := p - at[i]
+				var dl := d.length()
+				var dir := d / dl if dl > 1e-6 else Vector2.RIGHT
+				clear = minf(clear, dl - _reach(ax[i], ay[i], dir))
+			hole = maxf(hole, clear)
+	return 2.0 * hole / maxf(1e-6, widest)
+
+
+## How far an axis-aligned ellipse of semi-axes (a, b) reaches along `dir`.
+static func _reach(a: float, b: float, dir: Vector2) -> float:
+	return a * b / sqrt(b * b * dir.x * dir.x + a * a * dir.y * dir.y)
 
 
 # --- The deal (docs/DESIGN.md) ------------------------------------------------
