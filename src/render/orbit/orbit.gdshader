@@ -46,6 +46,11 @@ uniform float night = 1.0;
 // the glass, not a light. Every lamp is multiplied by it.
 uniform float lamp_seen = 1.0;
 
+// The planet's light on the hull: its colour (ocean, cloud and land together)
+// and how bright, against the sun's own `light_energy` on the same albedo.
+const vec3 EARTH_LIGHT = vec3(0.62, 0.72, 0.86);
+const float EARTHSHINE = 1.1;
+
 // DUPLICATES of colossus.gdshader's least sizes.
 const float MIN_PX = 0.75;
 const float LAMP_PX = 1.6;
@@ -224,12 +229,18 @@ void fragment() {
 		METALLIC = sail ? 0.8 : 0.3;
 		ROUGHNESS = sail ? 0.18 : clamp(0.62 + seam * 0.25 - plate * 0.1, 0.05, 1.0);
 		SPECULAR = 0.5 * sl.x;
-		// The planet under it throws its own light back up on the hull (by day
-		// the hull's underside is the sky's colour, plus this).
+		// EARTHSHINE: the sunlit planet under it is a sky-wide lamp, a third as
+		// bright as the sun on what faces it (the ISS's belly is lit by it). So by
+		// day the underside a player looks up at is not a hole in the blue but a
+		// pale mass, shaded by how squarely each face looks down -- the drum's
+		// floor bright, its walls less, the far side of a spoke dark -- and the
+		// sunlit plate over it reads as the lit edge of a solid thing, not as wire.
+		// Only the half of the planet in sunlight shines, so it goes with the day.
 		vec3 n_w = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 		vec3 down = normalize(earth - world_km);
-		float faces = clamp(dot(n_w, down) * 0.5 + 0.5, 0.0, 1.0);
-		EMISSION = matter_albedo(c) * vec3(0.30, 0.34, 0.42) * 0.08 * planet_day * faces;
+		float faces = clamp(dot(n_w, down), 0.0, 1.0);
+		float wrap = clamp(dot(n_w, down) * 0.5 + 0.5, 0.0, 1.0);
+		EMISSION = matter_albedo(c) * EARTH_LIGHT * planet_day * (faces * faces * 0.8 + wrap * 0.2) * EARTHSHINE;
 		// Embers where the rim was torn, deep in the plate.
 		if (burn > 0.6 && !cable) {
 			float flick = 0.6 + 0.4 * sin(TIME * 2.3 + dot(world_km, vec3(3.1, 1.7, 2.3)));

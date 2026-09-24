@@ -242,7 +242,18 @@ func update(cam: Camera3D, pose: Dictionary, sun_dir: Vector3, air: Dictionary, 
 	var basis := cam.global_transform.basis.orthonormalized()
 	var rel: Vector3 = pose.rel
 	var dist: float = pose.dist
-	var r := rect_of(basis, cam.fov, screen, rel, float(def.rim_km) + float(def.sail.x) * 0.3 + 14.0)
+	var bound := float(def.rim_km) + float(def.sail.x) * 0.3 + 14.0
+	# Off the lens's cone altogether: nothing to draw. Asked BEFORE the
+	# rectangle, whose answer for a sphere half behind the lens is the whole
+	# frame -- a ring low beside a view tipped up rendered 8 Mpx of nothing
+	# (the night tour, measured) until this was put back.
+	var t0 := tan_of(cam.fov, float(screen.x) / float(screen.y))
+	var cone := atan(Vector2(t0.x, t0.y).length())
+	var half := asin(clampf(bound / maxf(dist, 1.0), 0.0, 1.0))
+	if (-basis.z).angle_to(rel / dist) > cone + half:
+		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		return false
+	var r := rect_of(basis, cam.fov, screen, rel, bound)
 	if r.size.x <= 0 or r.size.y <= 0:
 		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 		return false

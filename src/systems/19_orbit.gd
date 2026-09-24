@@ -30,14 +30,18 @@ const LayerScript := preload("res://src/render/orbit/orbit_layer.gd")
 ## draw the gaze up to it; and the least elevation that needs the view tipped.
 const GAZE_WIDE := 50.0
 const GAZE_FROM := 28.0
-## The daytime ghost (`frame_probe`): at least this many unlit hull pixels, no
-## further than this in luminance from the open sky beside them (about four
-## levels of eight bits: a hull drawn as a silhouette is tens).
-const GHOST_LEAST := 300
+## The ring by day (`frame_probe`): at least PALE_LEAST hull pixels, lighter
+## than the sky beside them by PALE_LIFT on the whole, and no more than
+## PALE_DARK_MOST of them darker by DARKER (about four levels of eight bits):
+## the sails, the scorch and the window rows are dark on purpose (a noon frame
+## measured 15%), and a hull drawn as a silhouette is nearly all of it.
+const PALE_LEAST := 300
+const PALE_LIFT := 0.01
+const PALE_DARK_MOST := 0.25
+const DARKER := 0.016
 ## How much of the night sky's glow the hull stands in front of (orbit_sky's
 ## `orbit_mass`): enough that an eclipsed wheel reads as a darker ring.
 const MASS_AT_NIGHT := 0.35
-const GHOST_MOST := 0.016
 
 var def: RefCounted
 var layer: LayerScript
@@ -353,7 +357,7 @@ func stats_line() -> String:
 	var probe := ""
 	var fp := frame_probe()
 	if not fp.is_empty():
-		probe = ", on the glass: unlit hull %.4f from the sky beside it over %d px" % [float(fp.ghost), int(fp.ghost_n)]
+		probe = ", on the glass: hull %+.4f over the sky beside it, %.1f%% of it darker, over %d px" % [float(fp.lift), float(fp.dark) * 100.0, int(fp.n)]
 	var rid := layer.viewport.get_viewport_rid()
 	probe += ", layer %d draws %d tris, target %dx%d over frame rect %s, lamps shown %.2f" % [
 		RenderingServer.viewport_get_render_info(rid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME),
@@ -366,12 +370,15 @@ func stats_line() -> String:
 		int(nxt.k), float(nxt.peak_el), float(nxt.rise), fposmod(float(nxt.rise) / 60.0, 24.0)] + probe
 
 
-## THE DAYTIME GHOST, read off the live pictures -- the layer's (what the ring
-## IS on each pixel) and the finished frame's (what the sky made of it):
-##   ghost    the mean difference in luminance between the UNLIT hull and the
-##            open sky a few pixels beside it along the row (by day the hull is
-##            the sky's own colour, a ghost of a wheel like the daytime moon)
-##   ghost_n  how many unlit hull pixels that was asked over
+## THE RING BY DAY, read off the live pictures -- the layer's (what the ring IS
+## on each pixel) and the finished frame's (what the sky made of it) -- over
+## every whole hull pixel, against the open sky nearest it along the row:
+##   lift     the mean of (hull - sky) in luminance: by day the hull is PALE, a
+##            mass lit from below by the sunlit planet and from above by the sun,
+##            the way the daytime moon is a pale thing and never a hole
+##   dark     the share of hull pixels darker than the sky beside them by more
+##            than DARKER: a hull drawn as a silhouette is most of them
+##   n        how many hull pixels that was asked over
 ## Empty when the layer did not render. It reads two textures back from the
 ## GPU, so it is for a tour's question and --stats, never a frame's work.
 func frame_probe() -> Dictionary:
@@ -383,12 +390,13 @@ func frame_probe() -> Dictionary:
 		return {}
 	var lsz := li.get_size()
 	var map := _mapping(lsz, fi.get_size(), layer.frame_rect)
-	var ghost := 0.0
-	var ghost_n := 0
+	var lift := 0.0
+	var darker := 0
+	var n := 0
 	for y in range(0, lsz.y):
 		for x in range(0, lsz.x):
 			var l := li.get_pixel(x, y)
-			if l.a < 0.95 or l.r + l.g + l.b > 0.03:
+			if l.a < 0.95:
 				continue
 			var lum := fi.get_pixelv(_frame_px(map, x, y)).get_luminance()
 			# The open sky nearest along the row, either side.
@@ -397,13 +405,15 @@ func frame_probe() -> Dictionary:
 				for sx: int in [x - step, x + step]:
 					if sx < 0 or sx >= lsz.x or li.get_pixel(sx, y).a > 0.02:
 						continue
-					ghost += absf(lum - fi.get_pixelv(_frame_px(map, sx, y)).get_luminance())
-					ghost_n += 1
+					var d := lum - fi.get_pixelv(_frame_px(map, sx, y)).get_luminance()
+					lift += d
+					darker += 1 if d < -DARKER else 0
+					n += 1
 					hit = true
 					break
 				if hit:
 					break
-	return {"ghost": ghost / float(maxi(ghost_n, 1)), "ghost_n": ghost_n}
+	return {"lift": lift / float(maxi(n, 1)), "dark": float(darker) / float(maxi(n, 1)), "n": n}
 
 
 ## A layer pixel to the frame pixel it lands on: the layer covers `rect` of the
@@ -419,68 +429,120 @@ func _frame_px(map: Array, x: int, y: int) -> Vector2i:
 	return p.clamp(Vector2i(3, 3), fsz - Vector2i(4, 4))
 
 
-## THE STARS GO OUT BEHIND THE HULL, asked of the SAME PIXELS twice: the dark
-## hull's pixels are remembered with the frame they were in, and once the pass
-## has carried the ring off them (STAR_WAIT_MS later, a hundred-odd pixels at
-## the pace) the same pixels are asked again, now open sky. The star field is
-## fixed on the dome, so whatever stars those pixels hold now they held then:
-## true when they show now and did not then. A count over two different patches
-## of sky could not say that -- a field this sparse leaves a band of hull empty
-## by chance about as often as not, and it certified a sky with the stars drawn
-## straight through the hull (measured). Asked by a tour; the camera must hold
-## still between the two looks. The layer covers only the ring's rectangle, so
-## "is it sky now" is asked of the frame pixel's place in the NEW layer.
-const STAR_WAIT_MS := 4000
+## THE STARS GO OUT BEHIND THE HULL, asked of the SAME PIXELS in two frames a
+## few frames apart: one with the ring, and one with the ring's layer held off
+## (as the cost A/B holds it), with the world, the clock and the camera where
+## they were. The dark hull's pixels are taken from the first; the stars on them
+## are counted in both. True when they show without the ring and not with it.
+## Asking the same pixels in two different skies -- two patches, or one patch
+## before and after the pass moved on -- could not tell a hull that hides the
+## stars from one they are drawn straight through: the field is sparse, the
+## plaque on the slate fades over the top of the frame, and the frame's bloom
+## spreads the ring's own lamps over its dark plate (all three measured).
+const STARS_LEAST := 12
+## Measured: as built, 72 on the hull with the ring against 488 without (0.15,
+## the ring's own glow in the frame's bloom); with the stars drawn through the
+## hull, 1587 against 1339.
+const STARS_HID := 0.3
+## Frames the held-off look waits for the sky to be drawn without the ring.
+const STAR_HOLD_FRAMES := 4
+## Shares of the frame's height the slate draws over the sky, top and bottom.
+const HUD_TOP := 0.14
+const HUD_BOTTOM := 0.1
 var _star_then: Dictionary = {}
-## Stars seen on the same pixels (hull then, sky now) by the last ask.
+## Stars seen on the dark hull's pixels (with the ring, without), summed since
+## the tour last asked.
 var last_star_count := Vector2i(-1, -1)
+var _stars_total := Vector2i.ZERO
+
+
+## A tour's answered question is spent (98_tour): the sum starts again.
+func tour_forget(what: StringName) -> void:
+	if what == &"ring_hides_stars":
+		_stars_total = Vector2i.ZERO
+		_star_then = {}
+		_held_off = false
 
 
 func _stars_come_out() -> bool:
-	if layer == null or not layer.drawn:
-		return false
-	var now_ms := Time.get_ticks_msec()
-	if not _star_then.is_empty() and now_ms - int(_star_then.ms) < STAR_WAIT_MS:
-		return false
-	var li := layer.viewport.get_texture().get_image()
-	var fi := get_viewport().get_texture().get_image()
-	if li == null or fi == null:
+	if layer == null:
 		return false
 	if _star_then.is_empty():
-		_star_then = {"ms": now_ms, "layer": li, "frame": fi, "rect": layer.frame_rect}
+		if not layer.drawn:
+			return false
+		RenderingServer.force_draw()
+		var li := layer.viewport.get_texture().get_image()
+		var fi := get_viewport().get_texture().get_image()
+		if li == null or fi == null:
+			return false
+		_star_then = {"frame_no": Engine.get_process_frames(), "layer": li, "frame": fi, "rect": layer.frame_rect}
+		_held_off = true
 		return false
-	var old_l: Image = _star_then.layer
-	var old_f: Image = _star_then.frame
-	var old_rect: Rect2i = _star_then.rect
+	if Engine.get_process_frames() - int(_star_then.frame_no) < STAR_HOLD_FRAMES:
+		return false
+	# A tool run's window is off the screen, and the root is not drawn again
+	# unless something asks: ask, so this is the frame with the ring held off.
+	RenderingServer.force_draw()
+	var bare := get_viewport().get_texture().get_image()
+	_held_off = false
+	var li: Image = _star_then.layer
+	var with_ring: Image = _star_then.frame
+	var rect: Rect2i = _star_then.rect
 	_star_then = {}
-	var fsz := fi.get_size()
-	var old_map := _mapping(old_l.get_size(), fsz, old_rect)
-	var lsz := li.get_size()
-	var new_rect := layer.frame_rect
-	var to_frame := Vector2(fsz) / Vector2(layer.screen)
-	var then := 0
-	var now := 0
-	for y in range(0, old_l.get_height()):
-		for x in range(0, old_l.get_width()):
-			var was := old_l.get_pixel(x, y)
-			if was.a < 0.95 or was.r + was.g + was.b > 0.03:
+	if bare == null:
+		return false
+	var fsz := bare.get_size()
+	var map := _mapping(li.get_size(), fsz, rect)
+	var lit := _lit_cells(li)
+	var reach := int(ceilf(3.0 * float(li.get_width()) / float(rect.size.x))) + 1
+	var hidden := 0
+	var shown := 0
+	for y in range(reach, li.get_height() - reach):
+		for x in range(reach, li.get_width() - reach):
+			var c := li.get_pixel(x, y)
+			if c.a < 0.95 or c.r + c.g + c.b > 0.03 or lit.has(Vector2i(x / LIT_CELL, y / LIT_CELL)):
 				continue
-			var fp := _frame_px(old_map, x, y)
-			# Where that frame pixel lies in the layer now, and is it open sky
-			# there, with room round it.
-			var lp := Vector2i(((Vector2(fp) + Vector2(0.5, 0.5)) / to_frame - Vector2(new_rect.position)) / Vector2(new_rect.size) * Vector2(lsz))
-			var open := true
-			for o: Vector2i in [Vector2i.ZERO, Vector2i(-2, 0), Vector2i(2, 0), Vector2i(0, -2), Vector2i(0, 2)]:
-				var q := lp + o
-				if q.x >= 0 and q.y >= 0 and q.x < lsz.x and q.y < lsz.y and li.get_pixelv(q).a > 0.0:
-					open = false
+			var round_dark := true
+			for o: Vector2i in [Vector2i(-reach, 0), Vector2i(reach, 0), Vector2i(0, -reach), Vector2i(0, reach)]:
+				var n := li.get_pixelv(Vector2i(x, y) + o)
+				if n.a < 0.95:
+					round_dark = false
 					break
-			if not open:
+			if not round_dark:
 				continue
-			then += 1 if _spike(old_f, fp) else 0
-			now += 1 if _spike(fi, fp) else 0
-	last_star_count = Vector2i(then, now)
-	return now >= 3 and float(then) <= float(now) * 0.2
+			var fp := _frame_px(map, x, y)
+			if float(fp.y) < float(fsz.y) * HUD_TOP or float(fp.y) > float(fsz.y) * (1.0 - HUD_BOTTOM):
+				continue
+			hidden += 1 if _spike(with_ring, fp) else 0
+			shown += 1 if _spike(bare, fp) else 0
+	# Summed over every ask since the tour last asked: the hull covers only a
+	# few stars at a time (it is a thirtieth of a steradian, and the dome holds
+	# about 126 stars a steradian), so one look is too few to tell anything.
+	_stars_total += Vector2i(hidden, shown)
+	last_star_count = _stars_total
+	return _stars_total.y >= STARS_LEAST and float(_stars_total.x) <= float(_stars_total.y) * STARS_HID
+
+
+## THE RING'S OWN LIGHT, in cells of LIT_CELL layer pixels: every cell holding a
+## lit pixel of the layer (a lamp, an ember, a lit plate) and the cells round
+## it. The frame's bloom spreads a lamp several pixels over the dark hull beside
+## it, and a spike there is the ring shining, not a star showing through it
+## (measured: 140 "stars" on the dark hull of an eclipsed frame, every one of
+## them in a lamp's glow).
+const LIT_CELL := 8
+
+
+static func _lit_cells(img: Image) -> Dictionary:
+	var out := {}
+	for y in range(0, img.get_height(), 2):
+		for x in range(0, img.get_width(), 2):
+			var c := img.get_pixel(x, y)
+			if c.r + c.g + c.b > 0.05:
+				var k := Vector2i(x / LIT_CELL, y / LIT_CELL)
+				for dy in range(-1, 2):
+					for dx in range(-1, 2):
+						out[k + Vector2i(dx, dy)] = true
+	return out
 
 
 ## A star: a spot two or three pixels across, brighter than its surround asked
@@ -511,10 +573,11 @@ func tour_seen(what: StringName) -> bool:
 			return wake_shown > 0.5
 		&"ring_eclipsed":
 			return layer.drawn and lit < 0.05
-		&"ring_ghost":
-			# By day the unlit hull is within a few levels of the sky beside it.
+		&"ring_pale":
+			# By day the hull is a pale mass: lighter than the sky beside it on
+			# the whole, and almost nowhere darker.
 			var p := frame_probe()
-			return not p.is_empty() and int(p.ghost_n) >= GHOST_LEAST and float(p.ghost) < GHOST_MOST
+			return not p.is_empty() and int(p.n) >= PALE_LEAST and float(p.lift) > PALE_LIFT and float(p.dark) < PALE_DARK_MOST
 		&"ring_hides_stars":
 			return _stars_come_out()
 	return false

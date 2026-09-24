@@ -638,11 +638,16 @@ func _truss(a: Vector3, b: Vector3, o: Vector3, w: float, rng: RandomNumberGener
 func _tanks(a0: float, a1: float) -> void:
 	var fc := C_FRAME
 	fc.a = HULL
-	var step := deg_to_rad(6.0)
-	var al := a0 + step * 0.7
+	var al := a0 + deg_to_rad(4.0)
 	var i := 0
-	while al < a1 - step * 0.7:
-		var n := 2 + int(Rng.hash01(_seed, SALT + 41, i) * 2.0)
+	while al < a1 - deg_to_rad(4.0):
+		# Never a row of teeth: the spacing wanders and a quarter are gone.
+		var step := deg_to_rad(4.0 + Rng.hash01(_seed, SALT + 43, i) * 6.0)
+		if Rng.hash01(_seed, SALT + 44, i) < 0.25:
+			al += step
+			i += 1
+			continue
+		var n := 1 + int(Rng.hash01(_seed, SALT + 41, i) * 3.0)
 		var span := deg_to_rad(1.4 + Rng.hash01(_seed, SALT + 42, i) * 1.8)
 		for t in n:
 			var y := (float(t) - float(n - 1) * 0.5) * _hw * 0.55

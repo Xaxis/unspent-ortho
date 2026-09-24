@@ -5,9 +5,9 @@ extends TestCase
 ## lands on the same pixel as the eye's own camera, and the sky lays it in the
 ## right order.
 ##
-## What only a real frame can answer -- the unlit hull is the sky's own colour
-## at noon, the stars go out behind it at night -- is asked of the LIVE frame by
-## 19_orbit (`tour_seen` &"ring_ghost", &"ring_hides_stars") in
+## What only a real frame can answer -- the hull is a pale mass at noon, the
+## stars go out behind it at night -- is asked of the LIVE frame by
+## 19_orbit (`tour_seen` &"ring_pale", &"ring_hides_stars") in
 ## tours/orbit_sky.tour and tours/orbit_night.tour, because a headless run
 ## draws nothing.
 
