@@ -325,7 +325,10 @@ static func _gouge(c: GenContext, pads: Array[Vector3], centre: Vector2, floor_l
 ## that was there (seed 7). Kept off water, roads and
 ## villages, and out of the craters it rings.
 const PRESS_OUT := 8.0
-const PRESS_WIDE := 2.2
+const PRESS_WIDE := 11.0
+const PRESS_CORE := 2.0
+## At most this share of the band's tiles is pressed: a broken band, not a line.
+const PRESS_DENSE := 0.7
 static func _press_ring(c: GenContext, pads: Array[Vector3], centre: Vector2) -> void:
 	var w := c.w
 	var r := 0.0
@@ -342,12 +345,19 @@ static func _press_ring(c: GenContext, pads: Array[Vector3], centre: Vector2) ->
 			var off := Vector2(float(x) + 0.5 - centre.x, float(y) + 0.5 - centre.y)
 			var a := off.angle()
 			var want := r * (1.0 + 0.035 * sin(a * 5.0 + float(c.s % 31)) + 0.02 * sin(a * 11.0))
-			if absf(off.length() - want) > PRESS_WIDE:
+			var across := absf(off.length() - want)
+			if across > PRESS_WIDE:
 				continue
 			var i := y * c.size + x
 			if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or Ground.is_water(w.ground[i]):
 				continue
-			w.ground[i] = PRESSED
+			# A broad band that thins out to either side on a scatter of tiles,
+			# pressed in its middle and spoil toward its edges: pressed ground,
+			# never the hard-edged even line a road is at map scale.
+			var keep := PRESS_DENSE * (1.0 - smoothstep(PRESS_CORE, PRESS_WIDE, across))
+			if Rng.hash01(c.s, x, y, 0x7E5D) > keep:
+				continue
+			w.ground[i] = PRESSED if Rng.hash01(c.s, x, y, 0x7E5E) < 0.55 else Ground.SCREE
 
 
 ## How far out from the ankle's centre a foot's craters reach, at the most.

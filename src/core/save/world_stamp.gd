@@ -132,7 +132,12 @@ const UNKNOWN := "unknown"
 ##     (what grew in a crater is crushed at load, 19_colossi). NOTHING moves at
 ##     256, where a world gets one walker far out on the skyline and no treads,
 ##     so `test_parity` stays green over it and cannot be the evidence.
-const GEN := 25
+## 26. A colossus's tread reads as a FOOT: the sole has a front (three toe prints
+##     splayed ahead along the walk, a wider heel behind), each toe rakes two claw
+##     gouges ahead of it, a soft band of pressed ground rings all four, and the
+##     foot is set down facing its walk. Level, ground and the tread's own props
+##     move where a tread lands; nothing moves at 256 (no treads there).
+const GEN := 26
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
