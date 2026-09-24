@@ -76,21 +76,28 @@ func test_a_game_that_ends_does_not_wait_for_its_realms() -> void:
 ## AN ABANDONED RAISE STOPS, IT DOES NOT RUN ON. A process cannot exit while a
 ## worker is busy, so a game quit in the middle of a raise used to hang until a
 ## whole world was grown on one worker (minutes on the CI runner). `forget` asks
-## the generation to stop at its next stage.
+## the generation to stop at its next stage. Asked of the state, not the clock:
+## a wall-clock bar was green here and red on a loaded runner for the same code.
 func test_an_abandoned_raise_stops_early() -> void:
 	RealmWorlds.forget()
 	RealmWorlds.settle()
-	var seed_value := 90419
-	var size := Tuning.WORLD_SIZE
-	var full := Time.get_ticks_msec()
+	# A generation told to stop stops after the stage it is in.
+	var s := 90419
+	WorldGen.halt(s, 256, &"underground")
+	var cut := WorldGen.generate(s, 256, &"", &"underground")
+	eq(cut.props.size(), 0, "a halted generation stops before it lays anything")
+	WorldGen.unhalt(s, 256, &"underground")
+	var whole := WorldGen.generate(s, 256, &"", &"underground")
+	gt(float(whole.props.size()), 0.0, "and the same world grown after the stop is whole")
+	# And `forget` is what tells an abandoned raise to stop, and the stop is let go
+	# once that raise has ended.
+	var seed_value := 90420
+	var size := 1024
+	var grown := Realm.seed_for(seed_value, &"underground")
 	RealmWorlds.begin(seed_value, size, &"underground")
-	OS.delay_msec(500)
 	RealmWorlds.forget()
+	check(WorldGen.is_halted(grown, size, &"underground"), "forget asks the abandoned raise to stop")
 	RealmWorlds.settle()
-	var ms := Time.get_ticks_msec() - full
-	lt(float(ms), 12000.0, "an abandoned full-size raise ends in %d ms, not a whole world" % ms)
-	# And the same world grown for real afterwards is whole.
-	var w := RealmWorlds.take(seed_value, 512, &"underground")
-	check(w != null and w.regions.size() > 0, "a world grown after a stop is a whole world")
+	check(not WorldGen.is_halted(grown, size, &"underground"), "and the stop does not outlive the raise")
 	RealmWorlds.forget()
 	RealmWorlds.settle()

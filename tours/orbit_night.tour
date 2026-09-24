@@ -1,0 +1,13 @@
+# THE RING AT NIGHT (19_orbit, src/render/orbit/): a pass staged overhead at
+# half past midnight, deep in the Earth's shadow. It is lit only by its own lamps
+# -- the cold rows with their dead runs, the hub's beacon, the wound's embers --
+# and the stars go out behind the hull (`ring_hides_stars`, asked of the live
+# frame: the same pixels asked while the hull covers them and again once the
+# pass has carried it off, against the fixed star field).
+#   tools/tour.sh tours/orbit_night.tour --seed=7 --place=coast --hour=0.5 --orbit=zenith@0.5 --eye=1.7,-80,70 --face=146 --weather=clear:0
+wait 2
+await ring_eclipsed 5
+await ring_hides_stars 40
+shot 00-eclipsed
+wait 3
+shot 01-eclipsed-moving

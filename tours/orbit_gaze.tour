@@ -1,0 +1,18 @@
+# THE GAZE UP AT THE RING (19_orbit `gaze`, 41_shoulder): over the shoulder at
+# dusk, a pass standing high on the bearing the view faces. Level, the wheel is
+# above the frame; the mouse tips the view up past the ordinary limit because
+# the ring holds the gaze, and the whole wheel, gold over a dark land, comes
+# into the frame. Turned away, the view eases home.
+#   tools/tour.sh tours/orbit_gaze.tour --seed=7 --place=coast --hour=21.5 --orbit=zenith@23.5/225 --view=shoulder --weather=clear:0
+wait 2
+await ring_up 5
+shot 00-level
+mouse 0,-2400 1.5
+wait 0.5
+await ring 5
+shot 01-looking-up-at-it
+wait 2
+shot 02-still-looking
+mouse -900,0 1
+wait 1.5
+shot 03-turned-away
