@@ -124,7 +124,14 @@ const UNKNOWN := "unknown"
 ##     continents in a square of 1840, each landscape on ONE of them with one
 ##     heart, a wander and ecotones sized to the place, villages, landmarks and
 ##     vents counted per area. Every seed's world moves.
-const GEN := 24
+## 16. A colossus's feet come down in the island (gen_treads.gd): the straddling
+##     walker's nearest plants are sited on land and their craters cut -- three
+##     stepped pits of bared rock a tread, a lip of spoil, torn plate and survey
+##     posts appended after every other prop. Level, ground and props
+##     move where a tread lands on every shipped seed; NOTHING moves at 256, where
+##     a world gets one walker far out on the skyline and no treads, so
+##     `test_parity` stays green over it and cannot be the evidence.
+const GEN := 25
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

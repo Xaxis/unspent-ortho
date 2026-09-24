@@ -143,6 +143,13 @@ func update(cam: Camera3D, minutes: float, air: Dictionary, wanted: bool) -> voi
 	last_pose_usec = Time.get_ticks_usec() - t0
 
 
+## How much of each leg of walker `i` the near foot (colossus_foot.gd) has taken
+## this frame; the far body gives those pixels up below the seam.
+func set_l0(i: int, share: Vector3) -> void:
+	for mat: ShaderMaterial in _mats[i]:
+		mat.set_shader_parameter("l0_share", share)
+
+
 ## How much of a walker `d` metres off is drawn with its near body: 0 past the
 ## band, 1 inside it, eased across it.
 static func near_share(d: float) -> float:

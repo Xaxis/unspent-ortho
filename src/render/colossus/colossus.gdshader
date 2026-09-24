@@ -144,6 +144,10 @@ const float STRIP_PROUD = 1.24;
 // is the near one's this frame (ColossusView.near_share).
 uniform bool lod_near = false;
 uniform float lod_cut = 0.0;
+// How much of each leg's foot the near body (L0) has this frame, per leg, and
+// how far up the shin it reaches (colossus_foot_model.gd SEAM).
+uniform vec3 l0_share = vec3(0.0);
+const float L0_SEAM = 400.0;
 // The legs' two bones, for the pulse's run up them: (thigh, shin), metres.
 uniform vec2 leg_len = vec2(34000.0, 36000.0);
 // How often a pulse leaves each ankle (per second), and how far behind its front
@@ -258,6 +262,20 @@ void fragment() {
 		float h = ink_hash(floor(FRAGCOORD.xy) + vec2(5.0, 29.0));
 		if (lod_near ? h >= lod_cut : h < lod_cut) {
 			discard;
+		}
+	}
+	// A foot drawn near (colossus_foot.gd, L0) takes over this leg's foot and
+	// the bottom of its shin up to the seam, on the stipple's other half: here
+	// that is the pixels at or over its share, there the pixels under it.
+	int l0_part = int(bone_phase + 0.5);
+	if (l0_part > 0 && l0_share != vec3(0.0)) {
+		int l0_leg = (l0_part - 1) / 3;
+		int l0_seg = (l0_part - 1) % 3;
+		float take = l0_leg == 0 ? l0_share.x : (l0_leg == 1 ? l0_share.y : l0_share.z);
+		if (take > 0.0 && (l0_seg == 2 || (l0_seg == 1 && body_local.y > leg_len.y - L0_SEAM))) {
+			if (ink_hash(floor(FRAGCOORD.xy) + vec2(5.0, 29.0)) < take) {
+				discard;
+			}
 		}
 	}
 	vec3 eye = CAMERA_POSITION_WORLD;

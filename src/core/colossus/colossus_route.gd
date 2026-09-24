@@ -24,6 +24,13 @@ var sense := 1.0
 var offset := 0.0
 var _cycles := 1
 var _cycle_minutes := 1.0
+## THE TREADS THE LAND WAS MADE WITH (src/core/colossus/colossus_treads.gd): the
+## plants of this walk that come down on the island, keyed by `tread_key`, each
+## Vector4(x, the crater floor's height, z, the foot's yaw). World generation
+## sites them and cuts their craters; a walk handed them steps back into its own
+## holes every lap. Empty on a walk nobody handed any, which is every walk that
+## never reaches land.
+var treads: Dictionary = {}
 
 const SALT := 0x0C0105
 
@@ -48,6 +55,18 @@ static func make(def: RefCounted, seed_value: int, world_size: int) -> RefCounte
 	r._cycles = maxi(1, roundi(TAU * r.radius / float(def.stride)))
 	r._cycle_minutes = float(def.cycle_minutes)
 	return r
+
+
+## Plant `j` of leg `k` as `treads` keys it: the same plant every lap.
+func tread_key(k: int, j: int) -> int:
+	return k * 1000003 + posmod(j, _cycles)
+
+
+## The tread plant `j` of leg `k` comes down on, or a Vector4 of NAN.
+func tread_of(k: int, j: int) -> Vector4:
+	if treads.is_empty():
+		return Vector4(NAN, NAN, NAN, NAN)
+	return treads.get(tread_key(k, j), Vector4(NAN, NAN, NAN, NAN))
 
 
 ## How many gait cycles take the hub once round.

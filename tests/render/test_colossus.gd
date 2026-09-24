@@ -125,8 +125,9 @@ func test_the_legs_do_not_stretch() -> void:
 				near(p.knees[k].distance_to(p.ankles[k]), d.shin, 1.0, "%s: shin %d is its own length" % [d.id, k])
 
 
-## Nothing sets a foot in the world in this slice: a foot on the land wants a
-## tread the land was made with (slice 3), so every plant lands in the sea.
+## Left to its gait, no walk sets a foot on the island: a foot on the land wants
+## a tread the land was made with (test_colossus_treads.gd holds those), so a
+## route handed none lands every plant in the sea.
 func test_no_foot_comes_down_on_the_island() -> void:
 	var c := Vector2(SIZE * 0.5, SIZE * 0.5)
 	for d: RefCounted in _walkers():

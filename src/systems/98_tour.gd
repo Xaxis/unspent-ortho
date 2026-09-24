@@ -9,7 +9,9 @@ extends GameSystem
 ##                          a space written as _), facing it, in reach of `use`: a tour
 ##                          takes from the world without knowing where the world put it
 ##   village N              teleport beside village N
-##   near KIND[,KIND]       stand beside the nearest prop of a kind, facing it
+##   near KIND[,KIND]       stand beside the nearest prop of a kind, facing it; a
+##                          name that is no prop kind is asked of the systems'
+##                          `tour_place` (`near colossus_foot`: under an ankle)
 ##   ground KIND[,KIND]     stand on the nearest tile of a ground (Ground.NAMES, a
 ##                          space written as _), so a tour that needs heather or
 ##                          moss under it says so instead of pinning a coordinate
@@ -281,32 +283,37 @@ func _run() -> void:
 					var ki := PropKind.NAMES.find(name.replace("_", " "))
 					if ki >= 0:
 						want.append(ki)
-				var from: Vector2 = game.player.pos
-				var found: WorldProp = null
-				# The nearest one that still has work in it: a boulder already
-				# picked over is no proof of anything.
-				var best := INF
-				for p2: WorldProp in game.query.props_near(from, 90.0):
-					if not want.has(p2.kind):
-						continue
-					var d := from.distance_squared_to(p2.pos)
-					if d >= best:
-						continue
-					# Work left in it, OR nothing can be done to it at all — a house
-					# is not in the takes table, and `near house` means stand at
-					# one. Said outright instead of leaning on work_left, which
-					# answers true for a prop use_target will never offer.
-					if _near_used.has(p2.id):
-						continue
-					if Survival.work_left(game, p2) or not Takes.workable(p2.kind):
-						best = d
-						found = p2
-				if found == null or want.is_empty():
-					printerr("tour: no %s within reach of %s" % [parts[1], from])
-					ok = false
+				# Not a kind of prop: something a system stands you by (`near
+				# colossus_foot`, 19_colossi `tour_place`).
+				if want.is_empty():
+					ok = _stand_at_named(parts[1])
 				else:
-					_near_used[found.id] = true
-					ok = await _stand_at(found, parts[1])
+					var from: Vector2 = game.player.pos
+					var found: WorldProp = null
+					# The nearest one that still has work in it: a boulder already
+					# picked over is no proof of anything.
+					var best := INF
+					for p2: WorldProp in game.query.props_near(from, 90.0):
+						if not want.has(p2.kind):
+							continue
+						var d := from.distance_squared_to(p2.pos)
+						if d >= best:
+							continue
+						# Work left in it, OR nothing can be done to it at all — a house
+						# is not in the takes table, and `near house` means stand at
+						# one. Said outright instead of leaning on work_left, which
+						# answers true for a prop use_target will never offer.
+						if _near_used.has(p2.id):
+							continue
+						if Survival.work_left(game, p2) or not Takes.workable(p2.kind):
+							best = d
+							found = p2
+					if found == null or want.is_empty():
+						printerr("tour: no %s within reach of %s" % [parts[1], from])
+						ok = false
+					else:
+						_near_used[found.id] = true
+						ok = await _stand_at(found, parts[1])
 			"ground":
 				var want: Array[int] = []
 				for gname: String in parts[1].split(",", false):
@@ -753,6 +760,14 @@ func _stand_at_named(what: String) -> bool:
 		var p: Vector2 = sys.call(&"tour_place", what)
 		if p != Vector2.INF:
 			_teleport(p)
+			# And facing what it stood you by, where the system says which way that is.
+			if sys.has_method(&"tour_face"):
+				var toward: float = sys.call(&"tour_face", what)
+				if not is_nan(toward):
+					Survival.face(game, toward)
+					# Over the shoulder the view stands behind the body it faces.
+					if game.camera != null:
+						game.camera.shoulder_yaw = (load("res://src/core/view/shoulder.gd") as GDScript).call(&"yaw_behind", toward)
 			return true
 	printerr("tour %s: nothing answers at %s" % [_name, what])
 	return false

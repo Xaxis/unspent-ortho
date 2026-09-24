@@ -122,7 +122,8 @@ func test_every_name_a_tour_asks_for_exists() -> void:
 				"near":
 					check(parts.size() == 2, "%s line %d: `near` takes one comma-joined list; write a space as _" % [f, n])
 					for k: String in parts[1].split(",", false):
-						check(PropKind.NAMES.has(k.replace("_", " ")), "%s line %d: no prop kind %s" % [f, n, k])
+						check(PropKind.NAMES.has(k.replace("_", " ")) or _system_places().has(k),
+							"%s line %d: no prop kind %s, and no system stands you by one" % [f, n, k])
 				"ground":
 					check(parts.size() == 2, "%s line %d: `ground` takes one comma-joined list; write a space as _" % [f, n])
 					for k: String in parts[1].split(",", false):
@@ -139,6 +140,19 @@ func test_every_name_a_tour_asks_for_exists() -> void:
 				"walkto":
 					check(parts[1] in (load("res://src/systems/98_tour.gd") as GDScript).get("WALK_TARGETS"),
 						"%s line %d: cannot walk to '%s'" % [f, n, parts[1]])
+
+
+## The names a system answers `near NAME` with instead of a prop kind: every
+## `TOUR_PLACES` a script under src/systems declares (19_colossi's feet).
+static func _system_places() -> Array:
+	var out: Array = []
+	for f: String in DirAccess.get_files_at("res://src/systems"):
+		if not f.ends_with(".gd"):
+			continue
+		var script := load("res://src/systems/" + f) as GDScript
+		if script != null and script.get_script_constant_map().has("TOUR_PLACES"):
+			out.append_array(script.get_script_constant_map()["TOUR_PLACES"])
+	return out
 
 
 ## The wave A hole itself: a body put out and then photographed, with nothing in

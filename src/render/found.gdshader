@@ -24,6 +24,14 @@ render_mode cull_back;
 #include "res://src/render/sight.gdshaderinc"
 
 uniform float emission_strength = 0.0;
+// A share of the pixels this draw keeps, on a screen-pinned stipple: 1 keeps
+// them all (every draw but one). A colossus's near foot comes in over its far
+// body on it (src/render/colossus/colossus_foot.gd), the far body keeping the
+// complement (colossus.gdshader `l0_share`), so the handover never pops.
+uniform float lod_keep = 1.0;
+// How big the plates are, over a man-sized machine's (1). A colossus's foot is
+// made of plates the size of a house (colossus_foot.gd sets it).
+uniform float panel_scale = 1.0;
 // Machines keep their light at night: they are powered and the land is not.
 uniform float night_keep = 0.35;
 // How much of the built-in glow (vertex alpha, below) the hour leaves. 1 is a
@@ -104,9 +112,13 @@ vec2 found_panels(vec3 wp) {
 	// horizontal courses plate is laid in. A machine is a made thing: its
 	// pattern is periodic, not noisy.
 	vec2 q = vec2(wp.x * 0.7071 + wp.z * 0.7071, wp.x * -0.7071 + wp.z * 0.7071);
-	vec3 grid = vec3(q * 1.6, wp.y * 2.4);
+	vec3 grid = vec3(q * 1.6, wp.y * 2.4) / panel_scale;
 	vec3 f = abs(fract(grid) - 0.5);
 	float seam = 1.0 - smoothstep(0.0, 0.055, min(f.x, min(f.y, f.z)));
+	// A seam thinner than a pixel is let go rather than drawn: past that it is
+	// not a ruled line but a crawl of noise across the plate.
+	vec3 fw = fwidth(grid);
+	seam *= 1.0 - smoothstep(0.12, 0.35, max(fw.x, max(fw.y, fw.z)));
 	float panel = ink_hash(floor(grid.xy) + floor(grid.z) * 7.0);
 	return vec2(seam, panel);
 }
@@ -172,6 +184,9 @@ float found_cut(vec3 wp, vec3 camz, vec3 eye, bool persp) {
 
 void fragment() {
 	if (sight_yield(world_pos, FRAGCOORD.xy)) {
+		discard;
+	}
+	if (lod_keep < 1.0 && ink_hash(floor(FRAGCOORD.xy) + vec2(5.0, 29.0)) >= lod_keep) {
 		discard;
 	}
 	if (near_cut > 0.5 && near_drawn(world_pos)) {

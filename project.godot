@@ -144,6 +144,10 @@ colossus_sun={
 "type": "vec4",
 "value": Vector4(0, 1, 0, 0)
 }
+colossus_shock={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
 colossus_legs0={
 "type": "mat4",
 "value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)

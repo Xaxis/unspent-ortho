@@ -18,13 +18,28 @@ extends GameSystem
 ## what they cost), and `--colossus=W@MINUTE` shows walker W alone, standing
 ## where its walk puts it MINUTE world minutes into the clock, and walking on
 ## from there -- a moment of the gait staged by name rather than waited for.
+## `--colossus=W@treadN` (or `@treadN+M`, `@treadN-M`) is the moment walker W's
+## foot comes down in tread N of this world, and M world minutes after or before.
+##
+## A FOOT IN THE REGION (slice 3). The straddling walker steps back into the
+## craters world generation cut for it (src/core/colossus/colossus_treads.gd,
+## src/core/worldgen/gen_treads.gd). While one of its feet is down in a tread,
+## or less than `BLOCK_FROM` over it, its pads stop bodies (`set_blocks`) and a
+## body caught under one is put out at its edge; what stands where a pad comes
+## down is crushed, worked out again from the clock at load and not saved. Its
+## landing throws dust off every pad, vents steam, and sends a shock through
+## everything that sways. Near the camera the foot is drawn in real space by
+## colossus_foot.gd (L0), whose share of the pixels the far body gives up.
 
 const ViewScript := preload("res://src/render/colossus/colossus_view.gd")
+const FootScript := preload("res://src/render/colossus/colossus_foot.gd")
 const Def := preload("res://src/core/colossus/colossus_def.gd")
+const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 
 const Walk := preload("res://src/core/colossus/colossus_walk.gd")
 
 var view: ViewScript
+var foot: FootScript
 var _only := -1
 var _stage := NAN
 var _start := 0.0
@@ -53,18 +68,55 @@ func setup(g: Game) -> void:
 		return
 	var defs: Array = Def.walkers(g.world.size)
 	var spec: String = g.options.colossus
+	var tread_spec := ""
 	if spec != "":
 		var parts := spec.split("@")
 		_only = clampi(parts[0].to_int(), 0, defs.size() - 1)
 		if parts.size() > 1:
-			_stage = parts[1].to_float()
+			if parts[1].begins_with("tread"):
+				tread_spec = parts[1]
+			else:
+				_stage = parts[1].to_float()
 		defs = [defs[_only]]
 	view = ViewScript.new()
 	view.name = "colossi"
 	add_child(view)
 	view.setup(defs, g.world.seed_value, g.world.size)
+	Treads.hand_over(view.defs, view.routes, g.world.landmarks)
+	if tread_spec != "":
+		_stage = _tread_minute(tread_spec)
+	foot = FootScript.new()
+	foot.name = "colossus_feet"
+	add_child(foot)
 	_start = g.clock.minutes if g.clock != null else 0.0
 	add_to_group(&"colossi")
+
+
+## The walk minute a staged `treadN[+M|-M]` names: when the foot comes down in
+## this world's Nth tread, offset by M world minutes. NAN when this
+## world has no such tread, which stages nothing.
+func _tread_minute(spec: String) -> float:
+	var s := spec.trim_prefix("tread")
+	var off := 0.0
+	for sign: String in ["+", "-"]:
+		var at := s.find(sign)
+		if at > 0:
+			off = s.substr(at + 1).to_float() * (1.0 if sign == "+" else -1.0)
+			s = s.left(at)
+	# Counted as `place treadN` counts them (GenPlaces.find): tread0 and tread1
+	# are both the first.
+	var n := maxi(0, s.to_int() - 1)
+	var seen := 0
+	for m: Dictionary in game.world.landmarks:
+		if StringName(m.get("kind", &"")) != &"tread":
+			continue
+		if seen == n:
+			for i in view.defs.size():
+				if view.defs[i].id == StringName(m.walker):
+					return Treads.lands_at(view.defs[i], view.routes[i], int(m.leg), int(m.j)) + off
+		seen += 1
+	push_warning("--colossus: this world has no %s" % spec)
+	return NAN
 
 
 ## The walk's own minute: the world clock, or the staged minute and however long
@@ -84,6 +136,13 @@ func _process(delta: float) -> void:
 	var open := game.sky.closed < 0.5 and SkyLight.last_lid() < 0.5
 	var m := minutes()
 	view.update(cam, m, air, open and float(air.share) > 0.0)
+	# The near feet: drawn whichever way the camera looks, down or out, because a
+	# foot standing in the region is on the land and not in the sky.
+	var dome: Dictionary = air.get("dome", {})
+	foot.update(cam, view.defs, view.poses, float(dome.get(&"dome_night", 0.0)))
+	for i in view.defs.size():
+		view.set_l0(i, foot.shares.get(i, Vector3.ZERO))
+	_treads(m, delta)
 	# Steps are FELT wherever the sky is open, looking down or out: the ground
 	# does not care which way the camera points.
 	_land(m if open else NAN)
@@ -207,6 +266,152 @@ func _player_at() -> Vector3:
 	return Vector3(p.x, 0.0, p.y)
 
 
+## A foot this far over its tread, or less, already stops a body: the last few
+## hundred metres of the set-down are the slowest part of the step, and nobody
+## should be able to walk in under a pad that is about to land.
+const BLOCK_FROM := 300.0
+## How far past a pad's edge a body is put when one comes down on it.
+const PUSH_CLEAR := 1.2
+## A landing is FELT at its tread only if the walk moved less than this since the
+## last frame (world minutes): across a skip (a night slept, a load) it has not
+## landed now, it has been standing there.
+const LANDED_WITHIN := 5.0
+## How fast the shock of a landing runs out through what sways, metres a real
+## second, and how long it runs.
+const SHOCK_SPEED := 70.0
+const SHOCK_SECS := 11.0
+
+## Pads that stop bodies now, as handed to the query (tile space).
+var blocks: Array[Vector3] = []
+## Which feet (walker * 3 + leg) stood on a tread last frame.
+var _down: Dictionary = {}
+var _tread_last := NAN
+## Landings in the treads this run, for --stats. A tour asks the live world
+## (`colossus_tread`), never this.
+var tread_landings := 0
+## The shock running now: [where (tile space), real seconds since the landing].
+var _shock: Array = []
+
+
+## WHAT THE FEET IN THE TREADS DO TO THE REGION, from the clock: which pads stop
+## bodies, who is put out from under one, what is crushed, and -- only when a
+## foot has come down since the last frame -- the landing itself.
+func _treads(m: float, delta: float) -> void:
+	var circles: Array[Vector3] = []
+	var now_down := {}
+	var skipped := is_nan(_tread_last) or is_nan(m) or absf(m - _tread_last) > LANDED_WITHIN
+	_tread_last = m
+	if not is_nan(m):
+		for i in view.defs.size():
+			var d: RefCounted = view.defs[i]
+			for o: Dictionary in Treads.over(d, view.routes[i], m):
+				var t: Vector4 = o.tread
+				var pads := Treads.pads(d, Vector2(t.x, t.z), t.w)
+				if float(o.height) < BLOCK_FROM:
+					for p: Vector3 in pads:
+						circles.append(Vector3(p.x, p.y, p.z + 1.0))
+				if bool(o.planted):
+					var key := i * 3 + int(o.leg)
+					now_down[key] = true
+					if not _down.has(key):
+						_crush(pads)
+						if not skipped:
+							_landed(d, pads, t, (view.poses[i].ankles as Array)[int(o.leg)])
+	_down = now_down
+	if circles != blocks:
+		blocks = circles
+		if game.query != null:
+			game.query.set_blocks(&"colossi", blocks)
+	if not blocks.is_empty():
+		_push_out(blocks)
+	_run_shock(delta)
+
+
+## Everything standing where a pad is now: crushed, for good. Asked again the
+## moment a foot stands in a tread -- including the first frame of a loaded game
+## -- so it is worked out from the clock and never saved.
+func _crush(pads: Array[Vector3]) -> void:
+	var w := game.world
+	for p: Vector3 in pads:
+		var at := Vector2(p.x, p.y)
+		for q: WorldProp in game.query.props_near(at, p.z + 4.0):
+			if w.depleted.has(q.id) and is_inf(float(w.depleted[q.id])):
+				continue
+			if q.pos.distance_to(at) > p.z + q.solid:
+				continue
+			w.depleted[q.id] = INF
+			if game.view != null:
+				game.view.refresh_props(q)
+
+
+## A body under a pad is put out at its edge, the nearest way.
+func _push_out(pads: Array[Vector3]) -> void:
+	var pl := game.player
+	if pl != null:
+		var to := _outside(pads, pl.pos)
+		if to != pl.pos:
+			# The fight body owns the player's place in a running game: both move,
+			# or the next frame puts them back under the pad.
+			pl.pos = to
+			if pl.hero != null:
+				pl.hero.pos = to
+	if pl != null and pl.sim != null:
+		for mob: MobState in pl.sim.mobs:
+			mob.pos = _outside(pads, mob.pos)
+
+
+static func _outside(pads: Array[Vector3], at: Vector2) -> Vector2:
+	for p: Vector3 in pads:
+		var c := Vector2(p.x, p.y)
+		var d := at - c
+		if d.length() < p.z + PUSH_CLEAR:
+			var out := d.normalized() if d.length() > 0.01 else Vector2.RIGHT
+			return c + out * (p.z + PUSH_CLEAR)
+	return at
+
+
+## A foot has come down in a tread: the region feels it.
+func _landed(d: RefCounted, pads: Array[Vector3], t: Vector4, ankle: Vector3) -> void:
+	tread_landings += 1
+	var w := game.world
+	var centre := Vector2(t.x, t.z)
+	var dust := Palette.ASH[3]
+	var gi := floori(centre.y) * w.size + floori(centre.x)
+	if gi >= 0 and gi < w.ground.size():
+		dust = GroundColors.wash(w.ground[gi], w.country[gi])
+	foot.land(pads, t.y, ankle, dust)
+	# The quake, the thump and the boom are the step's own (`_land`), which every
+	# landing sends however near it is.
+	_shock = [centre, 0.0]
+
+
+func _run_shock(delta: float) -> void:
+	if _shock.is_empty():
+		return
+	_shock[1] = float(_shock[1]) + delta
+	var s: float = _shock[1]
+	var c: Vector2 = _shock[0]
+	if s > SHOCK_SECS:
+		_shock = []
+		RenderingServer.global_shader_parameter_set(&"colossus_shock", Vector4.ZERO)
+		return
+	RenderingServer.global_shader_parameter_set(&"colossus_shock", Vector4(c.x, c.y, s * SHOCK_SPEED, 1.0 - s / SHOCK_SECS))
+
+
+## The world under the player changed (a shaft, a gate): its treads are the new
+## world's, and nothing of the old one's pads may stop a body here.
+func realm_changed(_from: StringName, _to: StringName) -> void:
+	if view == null:
+		return
+	for r: RefCounted in view.routes:
+		r.treads.clear()
+	Treads.hand_over(view.defs, view.routes, game.world.landmarks)
+	blocks = []
+	_down = {}
+	if game.query != null:
+		game.query.set_blocks(&"colossi", blocks)
+
+
 ## For `--stats`: where each walker is from the camera, whether it was drawn,
 ## and what posing them cost this frame -- the numbers a frame is staged by
 ## (`--face` toward a bearing) and a budget is argued from.
@@ -215,6 +420,10 @@ func stats_line() -> String:
 		return "\nworld colossi: off"
 	var cam := get_viewport().get_camera_3d()
 	var out := "\nworld colossi: pose %d us, %d landings felt, %d on their way, hum %.2f, gaze %.2f, %d leg shadows on the land, the player at %.0f,%.0f" % [view.last_pose_usec, felt_count, _coming.size(), hum, gaze, shadows, _player_at().x, _player_at().z]
+	out += "\nworld colossi feet: %d drawn near, %d surfaces uploaded, %d feet down in treads, %d pads stopping bodies, %d landings in the treads" % [foot.drawn, foot.uploaded, _down.size(), blocks.size(), tread_landings]
+	for key: int in _down:
+		var a: Vector3 = (view.poses[key / 3].ankles as Array)[key % 3]
+		out += ", walker %d leg %d's ankle over %.0f,%.0f" % [key / 3, key % 3, a.x, a.z]
 	if cam != null:
 		var f := -cam.global_transform.basis.z
 		out += ", the camera looks at bearing %.0f" % fposmod(rad_to_deg(atan2(f.z, f.x)), 360.0)
@@ -250,4 +459,58 @@ func tour_seen(what: StringName) -> bool:
 				if not p.is_empty() and int(p.swinging) >= 0:
 					return true
 			return false
+		&"colossus_foot":
+			return foot != null and foot.drawn > 0
+		&"colossus_tread":
+			return not _down.is_empty()
+		&"colossus_blocks":
+			return not blocks.is_empty()
 	return false
+
+
+## What `near NAME` may ask of this system (tests/tours/test_tour_claims.gd reads
+## it, since no prop kind answers them).
+const TOUR_PLACES := ["colossus_foot", "colossus_pad"]
+
+
+## `near colossus_foot` (or `at colossus:foot`): under the ankle of the nearest
+## tread, between its toes. `near colossus_pad`: outside the nearest crater,
+## beyond its pad, facing it and the ankle behind it.
+func tour_place(what: String) -> Vector2:
+	var pad := what == "colossus_pad" or what == "colossus:pad"
+	if not pad and what != "colossus_foot" and what != "colossus:foot":
+		return Vector2.INF
+	var here: Vector2 = game.player.pos
+	var best := Vector2.INF
+	_facing = NAN
+	for m: Dictionary in game.world.landmarks:
+		if StringName(m.get("kind", &"")) != &"tread":
+			continue
+		var spots: Array[Vector2] = [m.pos as Vector2]
+		var faces: Array[float] = [float(m.yaw)]
+		if pad:
+			spots.clear()
+			faces.clear()
+			for p: Vector3 in (m.pads as Array):
+				var c := Vector2(p.x, p.y)
+				var out := (c - (m.pos as Vector2)).normalized()
+				spots.append(c + out * PAD_STAND)
+				faces.append((-out).angle())
+		for s in spots.size():
+			if best == Vector2.INF or spots[s].distance_to(here) < best.distance_to(here):
+				best = spots[s]
+				_facing = faces[s]
+	return best
+
+
+var _facing := NAN
+## How far from a pad's middle `near colossus_pad` stands: outside the foot, past
+## the crater's lip, looking back in at the pad with the toe and the drum rising
+## behind it, far enough off that the whole pad is in the frame.
+const PAD_STAND := 72.0
+
+
+## Which way `tour_place` stood the player to face: at a pad, toward it; under
+## the ankle, out along the first toe.
+func tour_face(what: String) -> float:
+	return _facing if what.begins_with("colossus") else NAN

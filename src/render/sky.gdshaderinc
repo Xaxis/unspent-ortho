@@ -43,6 +43,11 @@ global uniform mat4 colossus_legs0;
 global uniform mat4 colossus_legs1;
 global uniform mat4 colossus_legs2;
 global uniform mat4 colossus_legs3;
+// THE SHOCK OF A LANDING, for what sways (19_colossi writes it): xy the tread's
+// centre in world XZ, z how far out the front has run (metres), w how hard it
+// still pushes, 0..1 -- 0 on every frame no foot has just come down, and then
+// `sky_shock` returns at once.
+global uniform vec4 colossus_shock;
 // xy: horizontal offset per unit height toward the light (clouds on walls line
 // up with clouds on the ground); z: light level 0..1; w: lightning flash 0..1.
 global uniform vec4 sky_sun;
@@ -324,6 +329,26 @@ float colossus_in(mat4 m, int first, int n, vec3 p, vec3 l) {
 		s = max(s, colossus_capsule(p, l, m[2].xyz, m[3].xyz, m[2].w, m[3].w));
 	}
 	return s;
+}
+
+// How far, and which way, the shock of a landing pushes something that sways at
+// `wp`, in metres at full sway: out from the tread as the front passes, a
+// smaller swing back behind it, less the further out it has run.
+const float SHOCK_FRONT = 22.0;
+const float SHOCK_REACH = 900.0;
+// Metres a crown's tip goes over at full sway weight and full shock.
+const float SHOCK_BEND = 1.4;
+vec3 sky_shock(vec3 wp) {
+	if (colossus_shock.w <= 0.0) {
+		return vec3(0.0);
+	}
+	vec2 d = wp.xz - colossus_shock.xy;
+	float r = length(d);
+	float x = r - colossus_shock.z;
+	float band = exp(-x * x / (2.0 * SHOCK_FRONT * SHOCK_FRONT))
+		- 0.35 * exp(-(x + 45.0) * (x + 45.0) / (2.0 * 30.0 * 30.0));
+	float fall = clamp(1.0 - r / SHOCK_REACH, 0.0, 1.0);
+	return vec3(d.x, 0.0, d.y) / max(r, 1.0) * band * fall * colossus_shock.w;
 }
 
 // 0..1: how much of the sun a colossus's leg takes off this place.
