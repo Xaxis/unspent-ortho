@@ -105,6 +105,11 @@ const float EMBER = 5.0;
 // And a floor under it that is not the albedo's: the plate is dark on purpose, and
 // times a dark albedo the last sun came out a smear nobody saw (coast, 21:30).
 const float EMBER_FLOOR = 0.35;
+// How far over a fragment's own horizon (radians) the sun must stand to light it
+// fully, and the colour of the last of it, as a share of the glow: the sun
+// through the whole low air is red and a fifth as bright.
+const float EMBER_RISE = 0.06;
+const vec3 EMBER_LOW = vec3(0.55, 0.12, 0.10);
 
 float compress_len(float d) {
 	if (d <= comp_d0) {
@@ -343,10 +348,18 @@ void fragment() {
 		vec3 sun = normalize(dome_sun_dir);
 		float sun_el = asin(clamp(sun.y, -1.0, 1.0));
 		float dip = sqrt(2.0 * max(true_world.y, 0.0) / R_EFF);
-		float sees_sun = smoothstep(-dip - 0.012, -dip + 0.012, sun_el);
+		// GRADED BY HEIGHT, not a body lit at once: `over` is how high the sun
+		// stands above this fragment's own horizon. Just over it the light has
+		// crossed the whole low air and is a dim deep red; a few degrees over,
+		// it is the sky's gold at full strength. So the terminator climbs the
+		// legs as a gradient -- dark feet, red knees, a gold hub, the spire the
+		// last thing lit -- and the lit part is never one flat colour.
+		float over = sun_el + dip;
+		float sees_sun = smoothstep(-0.004, EMBER_RISE, over);
 		float land_lost = 1.0 - smoothstep(-0.02, 0.03, sun_el);
+		vec3 last_sun = mix(EMBER_LOW * dome_glow_color, dome_glow_color, smoothstep(0.0, EMBER_RISE * 1.6, over));
 		vec3 n_world = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 		float face = max(dot(n_world, sun), 0.0) * 0.8 + 0.2;
-		EMISSION += (matter_albedo(c) * EMBER + EMBER_FLOOR) * dome_glow_color * (face * sees_sun * land_lost);
+		EMISSION += (matter_albedo(c) * EMBER + EMBER_FLOOR) * last_sun * (face * sees_sun * land_lost);
 	}
 }
