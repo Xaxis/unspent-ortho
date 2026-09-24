@@ -95,6 +95,7 @@ extends GameSystem
 ##                          this frame, shown and hidden in turn (fore_perf.gd)
 ##   perf foliage SECS [MS]  rendered cost of every leaf card in the loaded chunks,
 ##                          shown and hidden in turn (foliage_perf.gd)
+##   perf decor SECS [MS]    the same for every chunk's baked decor: grass, stones, litter
 ##   perf colour            what this renderer does to a value in ALBEDO (render_probe.gd)
 ##   perf features NAME     every expensive thing the frame has, off and on, world held
 ##                          still: which ones this renderer really draws (render_probe.gd)
@@ -457,7 +458,7 @@ func _run() -> void:
 					ok = (preload("res://src/systems/tour/stats_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "lens":
 					ok = await (preload("res://src/systems/tour/lens_perf.gd")).perf(self, game, parts)
-				elif parts.size() > 1 and parts[1] == "foliage":
+				elif parts.size() > 1 and parts[1] in FoliagePerf.LAYERS:
 					ok = await FoliagePerf.perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] in RenderProbe.KINDS:
 					ok = await RenderProbe.run(self, game, parts)

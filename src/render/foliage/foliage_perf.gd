@@ -1,6 +1,6 @@
 class_name FoliagePerf
 extends RefCounted
-## What the leaves cost, measured inside ONE run (docs/LOOK.md, "measure a layer
+## What the leaves -- or the grass -- cost, measured inside ONE run (docs/LOOK.md, "measure a layer
 ## by toggling it inside one run"), the way ForePerf measures the foreground.
 ##
 ## `--stats` fps came back at 83 and 63 for one identical command on this machine,
@@ -23,25 +23,31 @@ extends RefCounted
 ##   draws, primitives  what the renderer was actually handed.
 
 const ROUNDS := 5
+## The chunk child each layer toggles: `foliage` the leaf cards, `decor` the
+## baked grass, stones and litter (Decor, one mesh a chunk).
+const LAYERS := {"foliage": "props_leaf", "decor": "decor"}
 
 
-## `perf foliage SECS [MS]`: the cost of every leaf card in the loaded chunks over
-## SECS of frames. Fails only if nothing was there to measure, or if the render
-## CPU cost is over MS (default: no budget, it is a measurement).
+## `perf foliage|decor SECS [MS]`: the cost of that layer in every loaded chunk
+## over SECS of frames. Fails only if nothing was there to measure, or if the
+## render CPU cost is over MS (default: no budget, it is a measurement).
+## At eye level decor stops at `WorldView.DECOR_TO` by visibility range, so a
+## chunk past it costs nothing on either side and the difference is honest.
 static func perf(tour: Node, game: Node, parts: PackedStringArray) -> bool:
+	var layer := parts[1] if parts.size() > 1 and LAYERS.has(parts[1]) else "foliage"
 	var secs := parts[2].to_float() if parts.size() > 2 else 3.0
 	var max_ms := parts[3].to_float() if parts.size() > 3 else INF
 	var view: WorldView = game.get("view")
 	if view == null:
-		printerr("tour perf foliage: no world view")
+		printerr("tour perf %s: no world view" % layer)
 		return false
 	var leaves: Array[MeshInstance3D] = []
 	for chunk: Node in view.get_children():
-		var m := chunk.get_node_or_null("props_leaf") as MeshInstance3D
+		var m := chunk.get_node_or_null(String(LAYERS[layer])) as MeshInstance3D
 		if m != null and m.visible:
 			leaves.append(m)
 	if leaves.is_empty():
-		printerr("tour perf foliage: no leaves are loaded to measure")
+		printerr("tour perf %s: nothing of it is loaded to measure" % layer)
 		return false
 	var vsync := DisplayServer.window_get_vsync_mode()
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -67,14 +73,14 @@ static func perf(tour: Node, game: Node, parts: PackedStringArray) -> bool:
 	DisplayServer.window_set_vsync_mode(vsync)
 	var ms := _median(cpu)
 	var gpu_line := "gpu %.2f ms" % _median(gpu) if float(with.gpu) > 0.0 else "gpu UNMEASURED (no gpu timer here)"
-	print(("tour perf foliage: %s tier, %s, %d chunks of leaves: render cpu %.2f -> %.2f ms (%+.2f), %s, "
+	print(("tour perf %s: %s tier, %s, %d chunks of it: render cpu %.2f -> %.2f ms (%+.2f), %s, "
 		+ "frame %.2f -> %.2f ms (%+.2f, vsync off, GPU finished each frame), "
 		+ "draw calls %.0f -> %.0f (%+.0f), primitives %.0f -> %.0f (%+.0f)")
-		% [Quality.current_id(), RenderingServer.get_current_rendering_method(), leaves.size(),
+		% [layer, Quality.current_id(), RenderingServer.get_current_rendering_method(), leaves.size(),
 			without.cpu, with.cpu, ms, gpu_line, without.frame, with.frame, _median(frame),
 			without.draws, with.draws, _median(draws), without.prims, with.prims, _median(prims)])
 	if ms > max_ms:
-		printerr("tour perf foliage: %.2f ms of render cpu, budget %.2f" % [ms, max_ms])
+		printerr("tour perf %s: %.2f ms of render cpu, budget %.2f" % [layer, ms, max_ms])
 		return false
 	return true
 
