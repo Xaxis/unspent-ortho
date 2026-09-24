@@ -18,7 +18,7 @@ class_name RealmWorlds
 ## game, so a test can raise a realm and read it.
 
 static var _mutex := Mutex.new()
-## key -> WorldData, and key -> task id while one is in flight.
+## key -> WorldData, and key -> GROUP task id while one is in flight.
 static var _worlds: Dictionary = {}
 static var _tasks: Dictionary = {}
 
@@ -53,8 +53,17 @@ static func begin(seed_value: int, size: int, kind: StringName) -> bool:
 		# No pool to raise it on (the no-threads web build): it is raised where it
 		# is asked for, which is the one frame the shaft costs there.
 		return false
-	var task := WorkerThreadPool.add_task(func() -> void: _raise(key, seed_value, size, kind),
-		true, "realm %s" % kind)
+	# A GROUP OF ONE, AT LOW PRIORITY, so the raise takes one worker and leaves
+	# the rest to the game. As a plain task every stage of it fanned out over
+	# every worker at high priority (`GenFields.parallel`), and it runs for
+	# twenty seconds of play: a job the renderer waits on inside the draw queued
+	# behind it for up to 5.3 s, which on seed 7 was one frame of 4.6-5.2 s the
+	# first time the camera came down over the shoulder. Inside a group,
+	# `parallel` runs inline -- the path a four-thread machine already takes --
+	# so the world is the same world; measured, it takes 33-35 s instead of 21
+	# (tests/realm/test_raise_in_background.gd).
+	var task := WorkerThreadPool.add_group_task(func(_i: int) -> void: _raise(key, seed_value, size, kind),
+		1, 1, false, "realm %s" % kind)
 	_mutex.lock()
 	_tasks[key] = task
 	_mutex.unlock()
@@ -80,7 +89,7 @@ static func take(seed_value: int, size: int, kind: StringName) -> WorldData:
 	if w != null:
 		return w
 	if task != null:
-		WorkerThreadPool.wait_for_task_completion(int(task))
+		WorkerThreadPool.wait_for_group_task_completion(int(task))
 		_mutex.lock()
 		w = _worlds.get(key)
 		_tasks.erase(key)
@@ -115,7 +124,7 @@ static func forget() -> void:
 	_tasks.clear()
 	_mutex.unlock()
 	for t: int in tasks:
-		WorkerThreadPool.wait_for_task_completion(t)
+		WorkerThreadPool.wait_for_group_task_completion(t)
 	_mutex.lock()
 	_worlds.clear()
 	_mutex.unlock()
