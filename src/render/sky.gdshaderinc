@@ -89,6 +89,10 @@ global uniform vec4 sky_settle;
 // For anything that sways: xy = wind along world x/z times strength; z gust;
 // w = phase in radians, advanced by the wind so a sway never jumps.
 global uniform vec4 sky_wind;
+// The travelling gust field (WindField, wind.gdshaderinc): xy its offset in
+// lattice cells, integrated by 10_sky so it never jumps; zw the unit bearing it
+// travels on, kept through a calm.
+global uniform vec4 sky_gust;
 // Lamp and fire pools near the camera, one per column: xyz = the light's world
 // position, w = its range in tiles (0 = unused). The same lights as the
 // OmniLight3D pool, so the pool the light paints is the pool the ink leaves.

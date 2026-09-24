@@ -64,8 +64,7 @@ render_mode cull_disabled;
 #include "res://src/render/matter.gdshaderinc"
 #include "res://src/render/sight.gdshaderinc"
 #include "res://src/render/near_mask.gdshaderinc"
-
-global uniform float wind_strength;
+#include "res://src/render/wind.gdshaderinc"
 
 // Where a crown must not hide a fight: world.gdshader's rule, word for word, and
 // the same six slots 18_crowns writes into both materials every frame. A leaf is
@@ -120,20 +119,14 @@ void vertex() {
 	if (sway_w > 0.0) {
 		// The crown's sway is world.gdshader's, from the same globals, so a card
 		// moves with the trunk it grew on and not to its own beat...
-		vec3 wp = rest_pos;
-		float t = TIME * (1.1 + wind_strength) + UV2.y * 6.283 + wp.x * 0.35 + wp.z * 0.21;
-		float gust = 0.6 + 0.4 * sin(TIME * 0.37 + wp.x * 0.05 - wp.z * 0.03);
-		vec3 push = vec3(sin(t) * 0.7 + 0.45, 0.0, cos(t * 0.8) * 0.5 + 0.3) * sway_w * 0.07 * (0.25 + wind_strength) * gust;
-		// A colossus's landing: the crowns bent over by the shock as it passes.
-		push += sky_shock(wp) * sway_w * SHOCK_BEND;
+		vec3 push = wind_push(rest_pos, sway_w, UV2.y, 1.0);
 		// ...and on top of it the tip of each card flutters on a faster beat of
-		// its own, which is the one motion a solid crown could never make.
-		float f = TIME * (4.7 + UV2.y * 3.1) + UV2.y * 40.0;
+		// its own, which is the one motion a solid crown could never make. A
+		// whole multiple of the sky's phase, 5 to 8 by the card's seed, so it
+		// quickens with the wind and never jumps where the phase wraps.
+		float f = sky_wind.w * (5.0 + floor(UV2.y * 4.0)) + UV2.y * 40.0;
 		push += vec3(sin(f), cos(f * 1.3) * 0.5, cos(f * 0.9)) * UV.y * sway_w * 0.02 * (0.3 + wind_strength);
-		vec3 vp = mat3(VIEW_MATRIX) * push;
-		float texel = 2.0 / max(abs(PROJECTION_MATRIX[1][1]) * VIEWPORT_SIZE.y, 1.0);
-		vp.xy = round(vp.xy / texel) * texel;
-		VERTEX += inverse(mat3(MODEL_MATRIX)) * (mat3(INV_VIEW_MATRIX) * vp);
+		VERTEX += inverse(mat3(MODEL_MATRIX)) * (mat3(INV_VIEW_MATRIX) * wind_view(push, VIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE));
 	}
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }

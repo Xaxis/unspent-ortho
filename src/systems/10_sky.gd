@@ -45,6 +45,8 @@ var settled := {"snow": 0.0, "ash": 0.0, "wet": 0.0}
 var _settle_target := {"snow": 0.0, "ash": 0.0, "wet": 0.0}
 var _settle_minute := -INF
 var _sway_phase := 0.0
+## The gust field's travelled offset and bearing (WindField.advance).
+var _gust := Vector4(0.0, 0.0, 1.0, 0.0)
 ## Milliseconds the sky_ground texture took to build (start-up budget).
 var ground_ms := 0
 ## Real seconds since the last strike (INF before the first): the afterglow and
@@ -143,9 +145,13 @@ func apply_weather(spec: String) -> bool:
 	if not Weather.KINDS.has(kind):
 		push_warning("unknown weather %s" % parts[0])
 		return false
-	Weather.force(kind, parts[1].to_float() if parts.size() > 1 else 1.0)
+	var held_wind := NAN
+	for extra: String in parts.slice(2):
+		if extra.begins_with("wind="):
+			held_wind = extra.trim_prefix("wind=").to_float()
+	Weather.force(kind, parts[1].to_float() if parts.size() > 1 else 1.0, held_wind)
 	_forced_any = true
-	_hold_bolt(parts.size() > 2 and parts[2] == "bolt")
+	_hold_bolt(parts.slice(2).has("bolt"))
 	return true
 
 
@@ -306,6 +312,8 @@ func _update(delta: float, snap: bool) -> void:
 	var gust := clampf(float(look.storm) + float(look.dust) * 0.6 + float(look.whiteout) * 0.6 + absf(wind) * 0.3, 0.0, 1.0)
 	var along := _cloud_bearing * wind
 	sky.wind = Vector4(along.x, along.y, gust, _sway_phase)
+	_gust = WindField.advance(_gust, along, delta)
+	sky.gust = _gust
 	# Tufts and crowns never hang dead still, and a storm bends them hard.
 	sky.sway = clampf(0.15 + absf(wind) * 0.6 + gust * 0.5, 0.0, 1.2)
 	sky.cast_allowed = float(look.overcast) < 0.6
