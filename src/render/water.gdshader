@@ -47,6 +47,27 @@ float band_edge(float d, float t, float w) {
 	return 1.0 - smoothstep(0.0, w, abs(d - t));
 }
 
+// How far the chop bends the normal per unit of its world slope. The camera is
+// orthographic, so every pixel of the sea looks along ONE direction: a low sun
+// either lies in the specular lobe for the whole surface or for none of it. Only
+// normals tilted further than the lobe is wide can break that into a path of
+// glints; at 0.035 (about 6 degrees) the whole sea at 08:00 was one white slab.
+const float CHOP_BEND = 0.12;
+// The chop at `wp`: two octaves of the ink noise, each on axes turned off the
+// lattice (37 and 71 degrees) so neither lays a grid.
+float chop_at(vec2 wp, float t) {
+	vec2 a = mat2(vec2(0.7986, 0.6018), vec2(-0.6018, 0.7986)) * wp;
+	vec2 b = mat2(vec2(0.3256, 0.9455), vec2(-0.9455, 0.3256)) * wp;
+	return ink_vnoise(a * 2.3 + vec2(t, t * 0.7)) * 0.6 + ink_vnoise(b * 6.1 - vec2(t * 1.3, t)) * 0.4;
+}
+
+// Its slope in the world (x, z), by central differences a fifth of a tile wide.
+vec2 chop_slope(vec2 wp, float t) {
+	const float H = 0.1;
+	return vec2(chop_at(wp + vec2(H, 0.0), t) - chop_at(wp - vec2(H, 0.0), t),
+		chop_at(wp + vec2(0.0, H), t) - chop_at(wp - vec2(0.0, H), t)) / (2.0 * H);
+}
+
 // The swash: 0 drawn back .. 1 run up. Travels along the shore, so the foam
 // laps in one stretch while it draws back in the next.
 float swash(vec2 wp) {
@@ -182,14 +203,25 @@ void fragment() {
 	// bank, and a fall is broken white and returns almost nothing.
 	float still = 1.0 - clamp(length(flow) * 1.6, 0.0, 1.0);
 	ROUGHNESS = clamp(mix(0.34, 0.06, still * clamp(d, 0.0, 1.0)), 0.04, 0.6);
-	SPECULAR = 0.9;
+	// F0 4%: real water is 2%, and 0.9 (7%) clipped even the lobe's tails to white.
+	SPECULAR = 0.5;
 	METALLIC = 0.0;
 	// The surface's own chop, small and slow, so the reflection breaks up the
 	// way water does instead of standing as a mirror.
+	//
+	// ITS SLOPE IS TAKEN IN THE WORLD, ON TURNED AXES. It was `dFdx/dFdy` of the
+	// chop, and a low sun turned both halves of that into blocks on the sea: a
+	// screen derivative is one value per 2x2 pixel quad, so the bent normal came
+	// in steps, and `ink_vnoise` blends its lattice with a smoothstep whose slope
+	// is exactly zero along every integer line -- so the surface lay dead flat on
+	// a grid, and a near-mirror caught that grid as white rectangles (seed 1 at
+	// 08:00, the spawn's first view). Central differences of the chop in world
+	// space are smooth at any render scale, and each octave is turned off the
+	// axes so no two share a lattice.
 	float t = TIME * 0.35;
-	float chop = ink_vnoise(wp * 2.3 + vec2(t, t * 0.7)) * 0.6 + ink_vnoise(wp * 6.1 - vec2(t * 1.3, t)) * 0.4;
-	vec3 gx = vec3(dFdx(chop), -dFdy(chop), 0.0) * 0.035 / max(length(dFdx(world_pos)), 1e-5);
-	NORMAL = normalize(NORMAL - clamp(gx, vec3(-1.0), vec3(1.0)));
+	vec2 slope = chop_slope(wp, t);
+	vec3 bend = vec3(slope.x, 0.0, slope.y) * CHOP_BEND;
+	NORMAL = normalize(NORMAL - clamp((VIEW_MATRIX * vec4(bend, 0.0)).xyz, vec3(-1.0), vec3(1.0)));
 }
 
 // There is no light(): the renderer lights the water, and what it finds in it
