@@ -10,6 +10,7 @@ const Route := preload("res://src/core/colossus/colossus_route.gd")
 const Walk := preload("res://src/core/colossus/colossus_walk.gd")
 const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 const FootModel := preload("res://src/models/colossus_foot_model.gd")
+const GenTreads := preload("res://src/core/worldgen/gen_treads.gd")
 const Model := preload("res://src/models/colossus_model.gd")
 
 const BIG := 1840
@@ -159,6 +160,26 @@ func test_the_world_is_cut_where_the_feet_come_down() -> void:
 				if q.pos.distance_to(Vector2(p.x, p.y)) < p.z and q.kind in GenScatter.PLACED and q.solid >= 1.2 and q.id < _dressed_from(w):
 					check(false, "a %s stands under a pad at %s" % [PropKind.NAMES[q.kind], q.pos])
 					break
+
+
+## THE PRESSURE RING LIES ON LAND: no tile it was laid on is sea, water, or
+## within GenTreads.SHORE of either (a band of scree along the water is a beach
+## the land never had). Asked of the tiles the ring itself recorded.
+func test_the_pressure_ring_keeps_off_the_water() -> void:
+	GenTreads.last_ring = PackedInt32Array()
+	_world = null
+	var w := _grown()
+	var laid: PackedInt32Array = GenTreads.last_ring
+	gt(float(laid.size()), 500.0, "the ring was laid (%d tiles)" % laid.size())
+	var wet := 0
+	var shore := 0
+	for i in laid:
+		if w.level[i] <= 0 or Ground.is_water(w.ground[i]):
+			wet += 1
+		elif GenTreads._shore(w, i % w.size, i / w.size):
+			shore += 1
+	eq(wet, 0, "no ring tile is water")
+	eq(shore, 0, "and none is on the shore")
 
 
 ## The walk and the world agree: handed the world's treads, the only feet that

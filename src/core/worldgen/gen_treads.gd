@@ -33,6 +33,7 @@ const APART := 140.0
 
 static func site(c: GenContext) -> void:
 	var w := c.w
+	last_ring = PackedInt32Array()
 	var want: Array = Treads.wanted(w.seed_value, w.size)
 	if want.is_empty():
 		return
@@ -336,6 +337,7 @@ static func _press_ring(c: GenContext, pads: Array[Vector3], centre: Vector2) ->
 		r = maxf(r, centre.distance_to(Vector2(p.x, p.y)) + Treads.rim_r(p))
 	r += PRESS_OUT
 	var ri := ceili(r + 4.0)
+	var laid := PackedInt32Array()
 	for dy in range(-ri, ri + 1):
 		for dx in range(-ri, ri + 1):
 			var x := floori(centre.x) + dx
@@ -349,7 +351,11 @@ static func _press_ring(c: GenContext, pads: Array[Vector3], centre: Vector2) ->
 			if across > PRESS_WIDE:
 				continue
 			var i := y * c.size + x
-			if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or Ground.is_water(w.ground[i]):
+			if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or Ground.is_water(w.ground[i]) or w.level[i] <= 0:
+				continue
+			# Nor on the shore: a band of scree along the water's edge is a beach
+			# the land never had.
+			if _shore(w, x, y):
 				continue
 			# A broad band that thins out to either side on a scatter of tiles,
 			# pressed in its middle and spoil toward its edges: pressed ground,
@@ -358,6 +364,26 @@ static func _press_ring(c: GenContext, pads: Array[Vector3], centre: Vector2) ->
 			if Rng.hash01(c.s, x, y, 0x7E5D) > keep:
 				continue
 			w.ground[i] = PRESSED if Rng.hash01(c.s, x, y, 0x7E5E) < 0.55 else Ground.SCREE
+			laid.append(i)
+	last_ring.append_array(laid)
+
+
+## Every tile the pressure rings of the last world grown were laid on (a test
+## asks what the ring did without guessing it back from the ground).
+static var last_ring := PackedInt32Array()
+
+
+static func _shore(w: WorldData, x: int, y: int) -> bool:
+	for dy in range(-SHORE, SHORE + 1):
+		for dx in range(-SHORE, SHORE + 1):
+			var i := (y + dy) * w.size + x + dx
+			if i >= 0 and i < w.level.size() and (w.level[i] <= 0 or Ground.is_water(w.ground[i])):
+				return true
+	return false
+
+
+## Tiles from water within which the pressure ring is not laid.
+const SHORE := 2
 
 
 ## How far out from the ankle's centre a foot's craters reach, at the most.
