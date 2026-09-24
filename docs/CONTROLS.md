@@ -155,7 +155,10 @@ stood in front of the target and hid it. Under a lock the eye stands wider
 centre. The view is turned by however far the target's bearing moved each frame
 before the ease takes the rest. Eased alone, the view trailed a body circled at
 a tile and a half by more than twenty degrees. When the lock cycles to another
-body, the view eases onto it instead of jumping. **The mouse and the arrows may
+body, the view eases onto it instead of jumping. A villager who walks onto the line between the eye and the lock is looked
+over: the view tips down (`Shoulder.CLEAR_TIP`) so the eye rises over their
+head while the lock stays framed, eased in quickly and out gently
+(`tours/lockon_crowd.tour`). **The mouse and the arrows may
 tip the view up or down under a lock, but they never take the turn**, so the
 mouse and the lock cannot fight.
 

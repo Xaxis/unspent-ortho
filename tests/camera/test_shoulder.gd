@@ -688,3 +688,60 @@ func test_over_the_shoulder_the_arrows_look_and_do_not_walk() -> void:
 	_key(KEY_D, false)
 	PlayerSettings.forget_for_test()
 	_done()
+
+
+# --- people on the line to a lock ------------------------------------------------
+
+func test_a_person_counts_only_between_the_eye_and_the_lock() -> void:
+	var eye := Vector2(0.0, 0.0)
+	var target := Vector2(6.0, 0.0)
+	var on: Array[Vector2] = [Vector2(3.0, 0.3)]
+	check(Shoulder.in_line(eye, target, on), "half way along and a body's width off: on the line")
+	var beside: Array[Vector2] = [Vector2(3.0, 1.2)]
+	check(not Shoulder.in_line(eye, target, beside), "a stride to the side is not")
+	var behind: Array[Vector2] = [Vector2(-1.0, 0.0)]
+	check(not Shoulder.in_line(eye, target, behind), "behind the eye is not")
+	var past: Array[Vector2] = [Vector2(6.5, 0.0)]
+	check(not Shoulder.in_line(eye, target, past), "and neither is standing at or past the lock")
+
+
+## A villager walks between the eye and a locked body: the eye rises over them,
+## the lock stays where it was in the frame, and no frame jumps on the way.
+func test_the_eye_rises_over_a_person_on_the_line_and_the_lock_holds() -> void:
+	var g := await _make(["--view=shoulder", "--folk=1"])
+	var sys := _system(g)
+	var cam := g.camera
+	var folk: Node = sys.call("_folk")
+	check(folk != null and not (folk.get("folk") as Array).is_empty(), "a villager to stand on the line")
+	# The village's own people as well as the one booted: all indoors but one,
+	# and that one off the line first, so the view is a lock alone.
+	for r: Dictionary in folk.get("folk"):
+		r["state"] = &"in"
+	_step(cam, 30)
+	var ahead := Shoulder.forward(cam.shoulder_yaw)
+	var here := g.player.position
+	cam.subject = here + Vector3(ahead.x, 0.0, ahead.y) * 5.0
+	var row: Dictionary = (folk.get("folk") as Array)[0]
+	row["pos"] = Vector2(here.x, here.z) + Vector2(-ahead.y, ahead.x) * 6.0
+	row["state"] = &"out"
+	for i in 150:
+		sys.call("_process", DT)
+		cam._process(DT)
+	var clear_y := cam.global_position.y
+	near(cam.clear_tip(), 0.0, 0.05, "nobody on the line: no tip")
+	# Now half way along the line from the eye to the lock.
+	var eye := Vector2(cam.global_position.x, cam.global_position.z)
+	row["pos"] = eye.lerp(Vector2(cam.subject.x, cam.subject.z), 0.45)
+	var last := cam.global_position
+	var biggest := 0.0
+	for i in 90:
+		sys.call("_process", DT)
+		cam._process(DT)
+		biggest = maxf(biggest, cam.global_position.distance_to(last))
+		last = cam.global_position
+	gt(cam.clear_tip(), Shoulder.CLEAR_TIP * 0.9, "the view has tipped to look over them")
+	gt(cam.global_position.y, clear_y + 0.6, "and the eye stands higher (%.2f from %.2f)" % [cam.global_position.y, clear_y])
+	lt(biggest, 0.12, "eased, never a jump (largest step %.3f)" % biggest)
+	check(bool(sys.call("tour_seen", &"shoulder_locked")), "and the lock is still framed")
+	cam.subject = Vector3.INF
+	_done()

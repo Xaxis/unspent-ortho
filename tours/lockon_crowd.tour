@@ -1,0 +1,30 @@
+# A LOCK OVER THE SHOULDER WITH PEOPLE ABOUT (teammate1, 2026-09-24: two
+# villagers covering the right third of a locked view). Somebody who walks
+# between the eye and the locked machine is looked over: the view tips down and
+# the eye rises over their head, eased, while the machine stays framed; once
+# they have passed it settles back. Staged in a village with people out, and the
+# tour waits for a villager to cross the line rather than placing one there.
+#   tools/tour.sh tours/lockon_crowd.tour --seed=4 --hour=11 --weather=clear:0 --folk=14
+coast calm
+village 0
+wait 1.5
+tap shoulder
+await shoulder 3
+spawn cutter
+wait 0.8
+hold target
+await target:cutter 5
+await shoulder_locked 3
+wait 0.5
+shot 01-locked-with-people-about with shoulder_locked,mob:cutter,folk
+
+try 16
+walk 1,0 0.3
+await person_on_line 0.3
+end
+shot 02-a-villager-steps-onto-the-line with person_on_line,shoulder_locked,folk
+wait 1.0
+shot 03-looked-over-them with shoulder_clearing,shoulder_locked,folk
+
+release target
+await target_none 5

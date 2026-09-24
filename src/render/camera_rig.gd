@@ -170,6 +170,11 @@ var _lock_bearing := NAN
 ## Where the locked subject stood last frame: a subject that JUMPED (the lock
 ## cycled to another body) is a new lock, eased onto rather than carried to.
 var _lock_was := Vector3.INF
+## Degrees the view is asked to tip down to look over a person standing between
+## the eye and a lock (41_shoulder writes it, `Shoulder.in_line`), and the tip it
+## has eased to. Added to the pitch, so the eye rises and the focus holds still.
+var shoulder_clear := 0.0
+var _clear_tip := 0.0
 ## Further than this in one frame is a different body, not the same one moving.
 const LOCK_JUMP := 1.5
 var _room := 1.0
@@ -634,6 +639,7 @@ func _ease_shoulder(delta: float) -> void:
 		_room = 1.0
 	hold_lens(&"shoulder", true)
 	_sh_t = Shoulder.blend_step(_sh_t, shoulder, delta)
+	_clear_tip = Shoulder.clear_step(_clear_tip, shoulder_clear if shoulder else 0.0, delta)
 	var k := 1.0 - exp(-Shoulder.LOCK_RATE * delta)
 	var locking := subject.is_finite() and shoulder
 	_lock_w = lerpf(_lock_w, 1.0 if locking else 0.0, k)
@@ -698,7 +704,7 @@ func _apply_lens() -> void:
 	var right := Vector3(cos(yb), 0.0, -sin(yb))
 	var focus_b := _smoothed + Vector3(0.0, Shoulder.FOCUS_UP, 0.0) + right * _right_now()
 	var yaw := yaw_a + Shoulder.turn(yaw_a, shoulder_yaw) * w
-	var pitch := lerpf(pitch_a, shoulder_pitch, w)
+	var pitch := lerpf(pitch_a, minf(shoulder_pitch + _clear_tip, Shoulder.PITCH_MOST), w)
 	var focus := focus_a.lerp(focus_b, w)
 	var back := lerpf(back_a, shoulder_back, w)
 	fov = lerpf(LENS_FOV, Shoulder.FOV, w)
@@ -735,6 +741,11 @@ func _right_now() -> float:
 ## The point over the shoulder the view looks out from, on the ground plane's
 ## height of the player: what a lock is aimed from, and what a tour asks the
 ## lock's bearing of (41_shoulder `shoulder_locked`).
+## How far the view is tipped over a person on the line to the lock, degrees.
+func clear_tip() -> float:
+	return _clear_tip
+
+
 func shoulder_aim_from() -> Vector3:
 	var yb := deg_to_rad(shoulder_yaw)
 	return _smoothed + Vector3(cos(yb), 0.0, -sin(yb)) * _right_now()
