@@ -23,8 +23,9 @@ const Def := preload("res://src/core/colossus/colossus_def.gd")
 ## The grid candidate centres are tried on, in tiles, and how far a pad's
 ## outline is sampled round (points on the rim circle) in the first pass.
 const GRID := 12
-## How many facings a foot is tried at, across the 120 degrees its pads repeat in.
-const YAWS := 4
+## How many facings a foot is tried at, across SPLAY either side of the walk.
+const YAWS := 5
+const SPLAY := 0.55
 const RING := 10
 ## Room kept between one tread's pads and another's.
 const APART := 140.0
@@ -54,7 +55,7 @@ static func site(c: GenContext) -> void:
 		w.landmarks.append({"kind": &"tread", "pos": at, "country": int(w.country[floori(at.y) * w.size + floori(at.x)]),
 			"region": region, "walker": row.walker, "leg": int(row.leg), "j": int(row.j), "yaw": yaw,
 			"floor": float(floor_l) * WorldData.STEP, "pads": pads,
-			"half": Vector2(Treads.RIM_R, Treads.RIM_R)})
+			"half": Vector2.ONE * _extent(d)})
 
 
 ## The best centre for a foot facing `yaw`, or (-1, -1). Every pad's crater and
@@ -65,20 +66,20 @@ static func site(c: GenContext) -> void:
 static func _find(c: GenContext, d: RefCounted, natural_yaw: float, natural: Vector2, taken: Array[Vector3], built: PackedByteArray) -> Vector3:
 	var w := c.w
 	var size := c.size
-	var margin := int(float(d.toe_reach) + Treads.RIM_R + 4.0)
+	var margin := int(_extent(d) + 4.0)
 	var aim := Vector2(clampf(natural.x, margin, size - margin), clampf(natural.y, margin, size - margin))
 	var home := w.continent[floori(w.spawn.y) * size + floori(w.spawn.x)]
 	var scored: Array = []
-	# The foot may come down facing any way: the walk swings it round to the
-	# tread's own yaw as it carries it (colossus_walk.gd `plant_yaw`). Three
-	# pads repeat every 120 degrees, so a quarter of that is the whole choice;
-	# the gait's own facing is preferred, by a little.
+	# The foot comes down facing the way the machine walks, toes ahead and heel
+	# behind, turned out or in by as much as a foot is (`SPLAY`): the walk swings
+	# it round to the tread's own yaw as it carries it (colossus_walk.gd
+	# `plant_yaw`). The walk's own heading is preferred, by a little.
 	for turn in YAWS:
-		var yaw := natural_yaw + TAU / 3.0 * float(turn) / float(YAWS)
+		var yaw := natural_yaw + SPLAY * (float(turn) / float(YAWS - 1) * 2.0 - 1.0 if YAWS > 1 else 0.0)
 		for y in range(margin, size - margin, GRID):
 			for x in range(margin, size - margin, GRID):
 				var centre := Vector2(x, y)
-				if centre.distance_to(w.spawn) < float(d.toe_reach) + CLEAR_OF_SPAWN_PADS:
+				if centre.distance_to(w.spawn) < _extent(d) + CLEAR_OF_SPAWN_PADS:
 					continue
 				var ci := y * size + x
 				if c.land[ci] == 0 or c.water[ci] != 0:
@@ -102,7 +103,7 @@ static func _find(c: GenContext, d: RefCounted, natural_yaw: float, natural: Vec
 						var pt := Vector2(p.x, p.y)
 						if s < RING:
 							var a := TAU * float(s) / float(RING)
-							pt += Vector2(cos(a), sin(a)) * Treads.RIM_R
+							pt += Vector2(cos(a), sin(a)) * Treads.rim_r(p)
 						var i := floori(pt.y) * size + floori(pt.x)
 						if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or built[i] != 0 or w.continent[i] != body:
 							ok = false
@@ -119,8 +120,7 @@ static func _find(c: GenContext, d: RefCounted, natural_yaw: float, natural: Vec
 				var score := -float(hi - lo) * 3.0 + 2.0 * minf(float(lo), 7.0) - centre.distance_to(aim) / 2000.0
 				if body == home:
 					score += 12.0 - absf(centre.distance_to(w.spawn) - WALK) / 60.0
-				if turn == 0:
-					score += 0.5
+				score -= absf(yaw - natural_yaw) * 1.5
 				scored.append([score, centre, yaw])
 	scored.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) > float(b[0]))
 	# The sieve samples each crater's outline; the whole of it is checked only
@@ -156,7 +156,8 @@ static func _clear(c: GenContext, d: RefCounted, centre: Vector2, yaw: float, bu
 	var lowest := 1 << 20
 	var highest := -1
 	for p: Vector3 in Treads.pads(d, centre, yaw):
-		var r := ceili(Treads.RIM_R)
+		var r := ceili(Treads.rim_r(p))
+		var fr := Treads.floor_r(p)
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
 				var dd := dx * dx + dy * dy
@@ -170,7 +171,7 @@ static func _clear(c: GenContext, d: RefCounted, centre: Vector2, yaw: float, bu
 				if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or built[i] != 0 or w.continent[i] != body:
 					return false
 				highest = maxi(highest, w.level[i])
-				if float(dd) <= Treads.FLOOR_R * Treads.FLOOR_R:
+				if float(dd) <= fr * fr:
 					lowest = mini(lowest, w.level[i])
 	var floor_l := maxi(1, lowest - Treads.DEPTH)
 	return highest - floor_l <= int((Treads.RIM_R - Treads.FLOOR_R) / Treads.STEP_W) - LIP - 1
@@ -229,7 +230,7 @@ static func _cut(c: GenContext, pads: Array[Vector3], centre: Vector2) -> int:
 	var size := c.size
 	var lowest := 1 << 20
 	for p: Vector3 in pads:
-		var r := ceili(Treads.FLOOR_R)
+		var r := ceili(Treads.floor_r(p))
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
 				if dx * dx + dy * dy <= r * r:
@@ -237,7 +238,8 @@ static func _cut(c: GenContext, pads: Array[Vector3], centre: Vector2) -> int:
 	var floor_l := maxi(1, lowest - Treads.DEPTH)
 	for pi in pads.size():
 		var p: Vector3 = pads[pi]
-		var r := ceili(Treads.RIM_R) + 1
+		var r := ceili(Treads.rim_r(p)) + 1
+		var fr := Treads.floor_r(p)
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
 				var x := floori(p.x) + dx
@@ -247,50 +249,127 @@ static func _cut(c: GenContext, pads: Array[Vector3], centre: Vector2) -> int:
 				var a := off.angle()
 				var wander := 1.0 + 0.05 * sin(a * 3.0 + float(pi) * 1.7 + float(c.s % 97)) + 0.03 * sin(a * 7.0 + float(pi))
 				var dist := off.length() / wander
-				if dist > Treads.RIM_R:
+				if dist > Treads.rim_r(p):
 					continue
 				var was := w.level[i]
 				# What the pad itself did, read off its own shape: its rim pressed a
-				# ring of crushed, darkened rock into the floor, and its six claws
-				# dragged scars out through the strata as the weight settled.
+				# ring of crushed, fresh-broken rock into the floor.
 				var r_pad := off.length()
-				var toe := (Vector2(p.x, p.y) - centre).angle()
-				var claw := absf(wrapf(a - toe - TAU / 12.0, -TAU / 12.0, TAU / 12.0))
-				var scar := r_pad > p.z - 0.5 and r_pad < p.z + SCAR_LONG and claw * r_pad < SCAR_WIDE
 				var ring := absf(r_pad - p.z) < RING_WIDE
 				# The strata: one level up for every STEP_W out from the floor's
 				# edge, until they meet the ground as it was -- so however deep the
 				# floor lies under this pad's own ground, every step out is one a
 				# body can climb.
-				var wall := floor_l + (0 if dist < Treads.FLOOR_R else 1 + int((dist - Treads.FLOOR_R) / Treads.STEP_W))
-				if dist < Treads.FLOOR_R:
+				var wall := floor_l + (0 if dist < fr else 1 + int((dist - fr) / Treads.STEP_W))
+				if dist < fr:
 					# The floor is pressed wherever it lies, cut down or not.
 					w.level[i] = mini(was, floor_l)
-					w.ground[i] = FRESH if ring or scar else PRESSED
+					w.ground[i] = FRESH if ring else PRESSED
 				elif wall < was:
 					w.level[i] = wall
-					w.ground[i] = FRESH if scar else Ground.SCREE
+					w.ground[i] = Ground.SCREE
 				elif wall - was < LIP:
 					# The spoil it threw out: a lip one level over the ground just
 					# past where the strata come up to it.
 					w.level[i] = was + 1
 					w.ground[i] = Ground.GRAVEL
+	_gouge(c, pads, centre, floor_l)
+	_press_ring(c, pads, centre)
 	return floor_l
+
+
+## THE CLAWS' GOUGES: two long raked trenches off each toe pad, dragged out ahead
+## of it through the strata and the ground past the lip as the weight came on --
+## what says, from above, that these pits are a foot's. One level below whatever
+## they cross (a body steps into one and out of it), tapering to nothing, in the
+## fresh-broken rock. The heel drags none: it comes down last and straight.
+const GOUGE_LONG := 46.0
+const GOUGE_WIDE := 2.4
+const GOUGE_SPREAD := 0.28
+static func _gouge(c: GenContext, pads: Array[Vector3], centre: Vector2, floor_l: int) -> void:
+	var w := c.w
+	var cut := {}
+	for pi in pads.size() - 1:
+		var p: Vector3 = pads[pi]
+		var pc := Vector2(p.x, p.y)
+		var toe := (pc - centre).angle()
+		for side: float in [-1.0, 1.0]:
+			var dir := Vector2.from_angle(toe + side * GOUGE_SPREAD)
+			var from := pc + dir * (p.z - 1.0)
+			var steps := int(GOUGE_LONG / 0.5)
+			for s in steps:
+				var t := float(s) / float(steps)
+				var at := from + dir * (GOUGE_LONG * t)
+				var half := GOUGE_WIDE * (1.0 - t * 0.8) * 0.5
+				var norm := Vector2(-dir.y, dir.x)
+				for q in 7:
+					var o := (float(q) / 6.0 - 0.5) * 2.0 * half
+					var pt := at + norm * o
+					var x := floori(pt.x)
+					var y := floori(pt.y)
+					if x < 1 or y < 1 or x >= c.size - 1 or y >= c.size - 1:
+						continue
+					var i := y * c.size + x
+					if cut.has(i) or c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0:
+						continue
+					cut[i] = true
+					w.level[i] = maxi(floor_l, w.level[i] - 1)
+					w.ground[i] = FRESH
+
+
+## THE PRESSURE RING round the whole sole: where the ground split as the foot's
+## weight came onto it, a thin wandering line of the same pressed ground as the
+## prints' floors, round all four together, ground only, so the four read as one
+## foot. Pressed and not fresh-broken: the land round a tread is often bare rock
+## already, and a pale line on it was measured at a few percent over the rock
+## that was there (seed 7). Kept off water, roads and
+## villages, and out of the craters it rings.
+const PRESS_OUT := 8.0
+const PRESS_WIDE := 2.2
+static func _press_ring(c: GenContext, pads: Array[Vector3], centre: Vector2) -> void:
+	var w := c.w
+	var r := 0.0
+	for p: Vector3 in pads:
+		r = maxf(r, centre.distance_to(Vector2(p.x, p.y)) + Treads.rim_r(p))
+	r += PRESS_OUT
+	var ri := ceili(r + 4.0)
+	for dy in range(-ri, ri + 1):
+		for dx in range(-ri, ri + 1):
+			var x := floori(centre.x) + dx
+			var y := floori(centre.y) + dy
+			if x < 1 or y < 1 or x >= c.size - 1 or y >= c.size - 1:
+				continue
+			var off := Vector2(float(x) + 0.5 - centre.x, float(y) + 0.5 - centre.y)
+			var a := off.angle()
+			var want := r * (1.0 + 0.035 * sin(a * 5.0 + float(c.s % 31)) + 0.02 * sin(a * 11.0))
+			if absf(off.length() - want) > PRESS_WIDE:
+				continue
+			var i := y * c.size + x
+			if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or Ground.is_water(w.ground[i]):
+				continue
+			w.ground[i] = PRESSED
+
+
+## How far out from the ankle's centre a foot's craters reach, at the most.
+static func _extent(d: RefCounted) -> float:
+	var out := 0.0
+	for i: int in int(d.toes.size()):
+		var t: Vector3 = d.toe(i)
+		out = maxf(out, t.y + Treads.rim_r(Vector3(0, 0, t.z)) + PRESS_OUT + GOUGE_LONG * 0.5)
+	return out
 
 
 ## How wide the spoil's lip is, in steps of the strata past where they meet the
 ## ground.
 const LIP := 3
 ## The marks a pad leaves: its pressure ring, half as wide as this either side
-## of its edge, and each claw's scar, this long past the edge and this wide.
+## of its edge (the claws' gouges are `_gouge`'s).
 const RING_WIDE := 1.4
 ## What the floor is: the ground a pad has pressed, dark and packed, the same in
 ## every landscape -- bared rock in a pale one read as ice or a pond -- and the
-## fresh broken rock of its ring and its scars, pale against it.
+## fresh broken rock of its rings and its gouges, pale against it.
 const PRESSED := Ground.CLINKER
 const FRESH := Ground.ROCK
-const SCAR_LONG := 9.0
-const SCAR_WIDE := 1.1
 
 
 ## What lies round a tread, appended after every other prop.
@@ -316,14 +395,14 @@ static func dress(c: GenContext) -> void:
 			# landscape, and a boulder belongs to the ones that grow them.
 			for s in 7:
 				var a := GenFields.h01(c.s, n, 7011, s) * TAU
-				var r := Treads.FLOOR_R + Treads.STEP_W * float(Treads.DEPTH + 2) + GenFields.h01(c.s, n, 7012, s) * 4.0
+				var r := Treads.floor_r(p) + Treads.STEP_W * float(Treads.DEPTH + 2) + GenFields.h01(c.s, n, 7012, s) * 4.0
 				var q := Vector2(p.x, p.y) + Vector2(cos(a), sin(a)) * r
 				_put(c, PropKind.WRECKAGE if s % 3 == 0 else PropKind.DEBRIS, q)
 			n += 1
 			# The plan keeps a survey post on the far side of every crater: it
 			# measures its own footprint.
 			var out := (Vector2(p.x, p.y) - at).normalized()
-			_put(c, PropKind.SURVEY, Vector2(p.x, p.y) + out * (Treads.RIM_R + 5.0))
+			_put(c, PropKind.SURVEY, Vector2(p.x, p.y) + out * (Treads.rim_r(p) + 5.0))
 		# Under the ankle, between the toes, one more post: the only thing in
 		# the arch a person's size.
 		_put(c, PropKind.SURVEY, at + Vector2(3.0, -2.0))

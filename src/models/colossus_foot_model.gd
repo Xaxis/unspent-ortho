@@ -29,7 +29,7 @@ const Model := preload("res://src/models/colossus_model.gd")
 ## How far up the shin the near body reaches, metres over the ankle.
 const SEAM := 400.0
 ## The surfaces, in the order they are built and uploaded.
-const PARTS := [&"ankle", &"toe0", &"toe1", &"toe2", &"stub"]
+const PARTS := [&"ankle", &"toe0", &"toe1", &"toe2", &"toe3", &"stub"]
 
 const BODY := Model.BODY
 const PLATE := Model.PLATE
@@ -64,6 +64,8 @@ static func build(def: RefCounted, part: StringName) -> MeshKit:
 			_toe(k, def, 1)
 		&"toe2":
 			_toe(k, def, 2)
+		&"toe3":
+			_toe(k, def, 3)
 		&"stub":
 			_stub(k, def)
 	return k
@@ -127,18 +129,22 @@ static func _ankle(k: MeshKit, def: RefCounted) -> void:
 		_ball(k, Vector3(cos(a) * 158.5, -46.5, sin(a) * 158.5), 2.4, 6, BEACON)
 
 
-## ONE TOE, in the foot's frame at 120 degrees times `toe`: a root joint under
+## ONE TOE, in the foot's frame at its bearing (ColossusDef.toes: three ahead,
+## the heel behind), scaled to its reach and its pad: a root joint under
 ## the drum, a thick proximal segment to a knuckle, a distal one to the heel of
 ## the pad, a piston along the top of each, cable runs down the sides, and the
 ## pad itself -- a forty-metre disc with six claws driven into the ground.
 static func _toe(k: MeshKit, def: RefCounted, toe: int) -> void:
 	var up: float = def.ankle_up
-	var reach: float = def.toe_reach
-	var pad: float = def.pad
-	var a := TAU * float(toe) / 3.0
+	var t: Vector3 = def.toe(toe)
+	var reach := t.y
+	var pad := t.z
+	var a := t.x
 	var d := Vector3(cos(a), 0.0, sin(a))
 	var side := Vector3(-d.z, 0.0, d.x)
-	var at := func(p: Vector2) -> Vector3: return d * p.x + Vector3(0.0, p.y, 0.0)
+	# The joints are placed along the reach, so a short heel folds tighter.
+	var along := reach / 196.0
+	var at := func(p: Vector2) -> Vector3: return d * (p.x * along) + Vector3(0.0, p.y, 0.0)
 	var root: Vector3 = at.call(ROOT)
 	var knuckle: Vector3 = at.call(KNUCKLE)
 	var heel: Vector3 = at.call(HEEL)
@@ -156,7 +162,7 @@ static func _toe(k: MeshKit, def: RefCounted, toe: int) -> void:
 	# The pistons that curl the toe: a cylinder off the drum's underside to the
 	# knuckle, and one from the knuckle's top to the heel, rods shining.
 	var over := Vector3(0.0, 1.0, 0.0)
-	var c0: Vector3 = at.call(Vector2(98.0, -64.0))
+	var c0: Vector3 = at.call(Vector2(98.0, -64.0)) if along > 0.8 else d * 60.0 + Vector3(0.0, -64.0, 0.0)
 	var c1 := knuckle + over * 14.0 - d * 5.0
 	k.strut(c0, c0.lerp(c1, 0.62), 6.2, 10, DARK)
 	k.strut(c0.lerp(c1, 0.55), c1, 3.6, 8, PLATE)

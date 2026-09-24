@@ -444,10 +444,11 @@ func _leg(d: RefCounted, k: int) -> void:
 	_bone = 3 + 3 * k
 	var up: float = d.ankle_up
 	_lathe(Vector3.ZERO, [Vector2(s_r.y * 1.05, 0.0), Vector2(s_r.y * 1.3, -30.0), Vector2(s_r.y * 1.25, -60.0), Vector2(s_r.y * 0.7, -up * 0.55)], 6, [PLATE, BODY, DARK], PI / 6.0)
-	var reach: float = d.toe_reach
-	var pad: float = d.pad
-	for toe in 3:
-		var a := TAU * float(toe) / 3.0
+	for ti: int in int(d.toes.size()):
+		var t: Vector3 = d.toe(ti)
+		var a := t.x
+		var reach := t.y
+		var pad := t.z
 		var dir := Vector3(cos(a), 0.0, sin(a))
 		var knuckle := dir * (reach * 0.45) + Vector3(0.0, -up * 0.35, 0.0)
 		var tip := dir * reach + Vector3(0.0, -up + pad * 0.5, 0.0)
