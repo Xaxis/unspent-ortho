@@ -21,6 +21,7 @@ render_mode cull_back;
 #include "res://src/render/ink.gdshaderinc"
 #include "res://src/render/matter.gdshaderinc"
 #include "res://src/render/near_mask.gdshaderinc"
+#include "res://src/render/sight.gdshaderinc"
 
 uniform float emission_strength = 0.0;
 // Machines keep their light at night: they are powered and the land is not.
@@ -170,6 +171,9 @@ float found_cut(vec3 wp, vec3 camz, vec3 eye, bool persp) {
 }
 
 void fragment() {
+	if (sight_yield(world_pos, FRAGCOORD.xy)) {
+		discard;
+	}
 	if (near_cut > 0.5 && near_drawn(world_pos)) {
 		discard;
 	}

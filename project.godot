@@ -136,6 +136,10 @@ textures/vram_compression/import_etc2_astc=true
 
 [shader_globals]
 
+eye_yield={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
 colossus_sun={
 "type": "vec4",
 "value": Vector4(0, 1, 0, 0)

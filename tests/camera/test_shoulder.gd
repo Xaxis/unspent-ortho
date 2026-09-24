@@ -533,3 +533,38 @@ func test_one_right_click_toggles_the_view() -> void:
 	check(not g.camera.shoulder, "a second click takes it back up")
 	PlayerSettings.forget_for_test()
 	_done()
+
+
+## LOOKING UP AT A COLOSSUS, THE PLAYER GETS OUT OF THE WAY. Tipped past the
+## ordinary limit the orbit would carry the eye under the body and fill the
+## frame with the back of the head; instead the eye comes to the face and the
+## figure is stippled away by the same share. Measured on the picture: at the
+## gaze's full tip no part of the body projects inside the frame, and the share
+## handed to the shaders is whole; at the ordinary pitch it is nothing.
+func test_looking_up_the_body_leaves_the_frame() -> void:
+	var g := await _make()
+	var cam := g.camera
+	cam.sight_room = Callable()
+	cam.shoulder = true
+	_step(cam, 40)
+	near(cam.yield_share, 0.0, 1e-6, "at the ordinary pitch the body is whole")
+	cam.shoulder_pitch = Shoulder.GAZE_LEAST
+	_step(cam, 3)
+	near(cam.yield_share, 1.0, 1e-4, "tipped all the way up it is gone")
+	var rect := cam.get_viewport().get_visible_rect()
+	var feet := g.player.position
+	var seen := 0
+	for y: float in [0.1, 0.5, 0.9, 1.2, 1.45]:
+		for side: float in [-0.25, 0.0, 0.25]:
+			var p := feet + Vector3(side, y, side)
+			if cam.is_position_behind(p):
+				continue
+			if rect.has_point(cam.unproject_position(p)):
+				seen += 1
+	eq(seen, 0, "no point of the body below the head is on the glass")
+	for pitch: float in [Shoulder.PITCH_LEAST - 2.0, -22.0, Shoulder.YIELD_FULL]:
+		cam.shoulder_pitch = pitch
+		_step(cam, 2)
+		var w := cam.yield_share
+		near(w, Shoulder.rise(pitch), 1e-4, "the stipple follows the eye at %.0f" % pitch)
+	_done()

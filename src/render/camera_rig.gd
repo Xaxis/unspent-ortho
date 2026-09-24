@@ -652,6 +652,7 @@ func _apply_lens() -> void:
 	# attributes to notice, and was left blurring (see `_near_focus`).
 	_near_focus()
 	if w <= 0.0:
+		_set_yield(0.0)
 		fov = LENS_FOV
 		near = 1.0
 		far = 500.0
@@ -688,12 +689,30 @@ func _apply_lens() -> void:
 		var room := clampf(float(sight_room.call(pivot, eye)), minf(1.0, Shoulder.LEAST_BACK / span), 1.0)
 		_room = room if room < _room else lerpf(_room, room, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
 		eye = pivot.lerp(eye, _room)
+	# Tipped up past the ordinary limit, the eye comes to the face and the body
+	# it passes through is stippled away (Shoulder.rise).
+	var r := Shoulder.rise(shoulder_pitch) * w
+	if r > 0.0:
+		var ahead := Vector3(-sin(yb), 0.0, -cos(yb))
+		eye = eye.lerp(_smoothed + Vector3(0.0, Shoulder.EYE_UP, 0.0) + ahead * Shoulder.EYE_FORWARD, r)
+	_set_yield(r)
 	global_position = eye + (basis.x * _quake_at.x + basis.y * _quake_at.y)
 	# Under a lens a sway of the eye barely moves anything far off, and a quake
 	# is felt in the horizon: so the head nods and rolls with it too.
 	rotation += Vector3(_quake_at.y * QUAKE_TIP, 0.0, _quake_at.x * QUAKE_TIP)
 	_back = maxf(0.001, eye.distance_to(focus))
 	_yaw_drawn = yaw
+
+
+## The share of the player's own figure stippled away for the eye, handed to
+## every body's shader (sight.gdshaderinc `eye_yield`). Written only when it
+## changes, so the top-down game never touches it.
+var yield_share := 0.0
+func _set_yield(r: float) -> void:
+	if r == 0.0 and yield_share == 0.0:
+		return
+	yield_share = r
+	RenderingServer.global_shader_parameter_set(&"eye_yield", Vector4(_smoothed.x, _smoothed.y, _smoothed.z, r))
 
 
 func _ease_lean(delta: float) -> void:
@@ -709,6 +728,7 @@ func _apply() -> void:
 	if lens == &"persp":
 		_apply_lens()
 		return
+	_set_yield(0.0)
 	size = view_height * _zoom
 	rotation = Vector3(deg_to_rad(-(pitch_deg + _pitch)), deg_to_rad(yaw_deg + _yaw), 0.0)
 	var b := Basis.from_euler(rotation)
