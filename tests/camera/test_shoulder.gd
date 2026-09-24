@@ -613,3 +613,78 @@ func test_the_arrows_turn_the_view_and_a_lock_keeps_the_turn() -> void:
 	cam.subject = Vector3.INF
 	PlayerSettings.forget_for_test()
 	_done()
+
+
+## A BROWSER TAKES THE POINTER BACK ON ESC, and the engine never hears the key:
+## over the shoulder the first Esc did nothing. Once the lock was seen held, a
+## pointer handed back is the pause the player asked for.
+func test_the_browser_giving_the_pointer_back_pauses() -> void:
+	var made: Array = await _peek_game()
+	var g: Game = made[0]
+	var sys: Node = made[1]
+	var held := [false]
+	sys.set("focus_check", func() -> bool: return true)
+	sys.set("web_check", func() -> bool: return true)
+	sys.set("mode_check", func() -> bool: return held[0])
+	sys.set("_tool", false)
+	await _toggle_key(sys)
+	eq(sys.get("captured"), true, "the view up: the pointer is asked for")
+	sys.call("_process", DT)
+	check(not g.open_screens.has(&"pause"), "asked for and not yet granted is not a release")
+	held[0] = true
+	sys.call("_process", DT)
+	check(not g.open_screens.has(&"pause"), "held: nothing to answer")
+	held[0] = false
+	sys.call("_process", DT)
+	check(g.open_screens.has(&"pause"), "handed back by the browser: the pause page is up")
+	eq(sys.get("captured"), false, "and the pointer is the player's")
+	PlayerSettings.forget_for_test()
+	_done()
+
+
+func test_a_desktop_keeps_its_capture_through_esc() -> void:
+	var made: Array = await _peek_game()
+	var g: Game = made[0]
+	var sys: Node = made[1]
+	sys.set("focus_check", func() -> bool: return true)
+	sys.set("web_check", func() -> bool: return false)
+	sys.set("mode_check", func() -> bool: return false)
+	sys.set("_tool", false)
+	await _toggle_key(sys)
+	for i in 3:
+		sys.call("_process", DT)
+	check(not g.open_screens.has(&"pause"), "off the web nothing takes the pointer, so nothing pauses")
+	PlayerSettings.forget_for_test()
+	_done()
+
+
+func _key(code: int, down: bool) -> void:
+	var ev := InputEventKey.new()
+	ev.physical_keycode = code
+	ev.pressed = down
+	Input.parse_input_event(ev)
+	Input.flush_buffered_events()
+
+
+## The arrows walk from above -- and every page of the slate is steered by the
+## walk -- and over the shoulder they turn the view instead of walking (C6).
+func test_over_the_shoulder_the_arrows_look_and_do_not_walk() -> void:
+	var made: Array = await _peek_game()
+	var g: Game = made[0]
+	var sys: Node = made[1]
+	_key(KEY_RIGHT, true)
+	g._physics_process(DT)
+	gt(g.player.intent_move.length(), 0.5, "from above the arrow walks")
+	_key(KEY_RIGHT, false)
+	await _toggle_key(sys)
+	check(g.camera.shoulder, "over the shoulder")
+	_key(KEY_RIGHT, true)
+	g._physics_process(DT)
+	lt(g.player.intent_move.length(), 0.01, "there the arrow does not walk")
+	_key(KEY_RIGHT, false)
+	_key(KEY_D, true)
+	g._physics_process(DT)
+	gt(g.player.intent_move.length(), 0.5, "and D still does")
+	_key(KEY_D, false)
+	PlayerSettings.forget_for_test()
+	_done()

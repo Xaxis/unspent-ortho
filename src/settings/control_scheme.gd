@@ -53,12 +53,13 @@ static func events(scheme: StringName, mac: bool) -> Dictionary:
 	# holding it, and only where a hand is on a mouse to keep the left hand free.
 	var ctrl_crouch := mouse and not mac
 	var m := {
-		&"move_up": [_k(KEY_W)],
-		&"move_down": [_k(KEY_S)],
-		&"move_left": [_k(KEY_A)],
-		&"move_right": [_k(KEY_D)],
-		# The arrows walk from above and turn the view over the shoulder (game.gd
-		# asks for them as a walk whenever the view is not up).
+		# The arrows walk (and every page of the slate is steered by the walk), and
+		# over the shoulder they turn the view instead: game.gd walks there only on
+		# the move keys that are not also look keys.
+		&"move_up": [_k(KEY_W), _k(KEY_UP)],
+		&"move_down": [_k(KEY_S), _k(KEY_DOWN)],
+		&"move_left": [_k(KEY_A), _k(KEY_LEFT)],
+		&"move_right": [_k(KEY_D), _k(KEY_RIGHT)],
 		&"look_up": [_k(KEY_UP)],
 		&"look_down": [_k(KEY_DOWN)],
 		&"look_left": [_k(KEY_LEFT)],

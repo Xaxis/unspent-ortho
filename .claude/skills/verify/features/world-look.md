@@ -2,12 +2,13 @@
 
 The lit world: sky and hour, weather, lights and lamps, landscape grounds, foreground, fliers, holograms, crowns, the view.
 
-<!-- covers: system:09_view, system:10_sky, system:11_dome, system:12_landscape, system:13_fore, system:14_fliers, system:15_lights, system:16_vents, system:17_holo, system:18_crowns, system:19_colossi, system:41_shoulder, system:95_flyover, system:96_eye -->
+<!-- covers: system:08_pointer, system:09_view, system:10_sky, system:11_dome, system:12_landscape, system:13_fore, system:14_fliers, system:15_lights, system:16_vents, system:17_holo, system:18_crowns, system:19_colossi, system:41_shoulder, system:95_flyover, system:96_eye -->
 
 ## Sub-features
 
 - 09_view: `src/systems/09_view.gd`, reached by `tools/tour.sh tours/zoom.tour`.
-- 41_shoulder: `src/systems/41_shoulder.gd` (with `CameraRig` and `src/core/view/shoulder.gd`), the view over the shoulder on Left Alt / right mouse, reached by `tools/tour.sh tours/shoulder.tour --seed=4 --hour=12 --weather=clear:0`; a still with `--view=shoulder`; rules in `tools/test.sh test_shoulder`.
+- 08_pointer: `src/systems/08_pointer.gd`, the scroll, a trackpad's pan and pinch: a held lock cycles, the shoulder view moves its eye, else the land zooms (docs/CONTROLS.md); rules in `tools/test.sh test_pointer`.
+- 41_shoulder: `src/systems/41_shoulder.gd` (with `CameraRig` and `src/core/view/shoulder.gd`), the view over the shoulder, a press on Left Alt/Option and a held peek on the right mouse button, the arrows as its keyboard look, and a lock framed from the shoulder, reached by `tools/tour.sh tours/shoulder.tour --seed=4 --hour=12 --weather=clear:0`; a still with `--view=shoulder`; rules in `tools/test.sh test_shoulder`.
 - 10_sky: `src/systems/10_sky.gd`, reached by `tools/tour.sh tours/sky.tour`.
 - 11_dome: `src/systems/11_dome.gd`, reached by `tools/tour.sh tours/slums-dome.tour`.
 - 12_landscape: `src/systems/12_landscape.gd`, reached by `tools/tour.sh tours/landscape.tour`.

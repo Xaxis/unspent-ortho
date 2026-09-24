@@ -155,10 +155,11 @@ func _physics_process(delta: float) -> void:
 	# rests on: what he is shown is the game as it is, not a game he is nudging.
 	elif not input_blocked() and not watch.is_finite():
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
-		# The arrows turn the view over the shoulder (41_shoulder) and walk
-		# everywhere else, as they always did (docs/CONTROLS.md, C6).
-		if not camera.shoulder and InputMap.has_action(&"look_left"):
-			input = (input + Input.get_vector("look_left", "look_right", "look_up", "look_down")).limit_length(1.0)
+		# Over the shoulder the arrows turn the view (41_shoulder), so the walk
+		# there is the move keys that are not also look keys (docs/CONTROLS.md, C6).
+		if camera.shoulder:
+			input = Vector2(_walk_apart(&"move_right") - _walk_apart(&"move_left"),
+				_walk_apart(&"move_down") - _walk_apart(&"move_up")).limit_length(1.0)
 		run = Input.is_action_pressed("run")
 	if Time.get_ticks_msec() / 1000.0 < body.busy_until:
 		input = Vector2.ZERO
@@ -167,6 +168,18 @@ func _physics_process(delta: float) -> void:
 	# shoulder a lock makes the line to it forward instead (LockOn.intent).
 	var lock: Vector2 = player.hero.lock if player.hero != null else Vector2.INF
 	player.drive(LockOn.intent(input, camera.yaw_now(), player.pos, lock, camera.shoulder), run, delta)
+
+
+## 1 when a key of `action` is down that is not also a look key.
+static func _walk_apart(action: StringName) -> float:
+	var look := StringName(String(action).replace("move_", "look_"))
+	for e: InputEvent in InputMap.action_get_events(action):
+		var k := e as InputEventKey
+		if k == null or (InputMap.has_action(look) and InputMap.action_has_event(look, k)):
+			continue
+		if Input.is_physical_key_pressed(k.physical_keycode):
+			return 1.0
+	return 0.0
 
 
 func _process(_delta: float) -> void:

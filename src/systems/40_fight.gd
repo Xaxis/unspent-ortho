@@ -4,8 +4,10 @@ extends GameSystem
 ## what happened in it into the world: Events, sounds, the hitstop, the
 ## camera's shake, the ink marks (MobFx), the clock's jumps and the lines on screen.
 ##
-## Controls: swing on `swing` (Space, J); dodge on `dodge` (K at once; Shift
-## as DodgeInput says, holding it still runs). Pressed while held, swing pulls.
+## Controls: swing on `swing` (J, a click); dodge on `dodge` (K or the thumb
+## button at once; Shift as DodgeInput says, holding it still runs). Pressed
+## while held, swing pulls. The keys are ControlScheme's; a lock (Hero.lock)
+## decides where a swing and a dodge go, inside the simulation.
 
 const HITSTOP_HIT := 0.05
 const HITSTOP_HURT := 0.06

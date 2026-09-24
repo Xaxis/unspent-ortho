@@ -108,6 +108,7 @@ func _process(delta: float) -> void:
 		cam.shoulder = false
 		_hold_pointer(false)
 		return
+	_given_back_by_the_browser()
 	var blocked := game.input_blocked()
 	var key := _key(blocked)
 	cam.shoulder = Shoulder.wanted(opens_over, key)
@@ -233,6 +234,49 @@ func _focused() -> bool:
 		return bool(focus_check.call())
 	var w := get_window()
 	return w != null and w.has_focus()
+
+
+## Whether the pointer really is held right now, or what a test says: a
+## headless run answers VISIBLE whatever was asked.
+var mode_check := Callable()
+## Whether this is a browser, or what a test says.
+var web_check := Callable()
+## The browser has been seen holding the pointer since this system asked for it.
+var _lock_seen := false
+
+
+func _pointer_held() -> bool:
+	if mode_check.is_valid():
+		return bool(mode_check.call())
+	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+
+
+## A BROWSER TAKES THE POINTER BACK ON ESC (docs/CONTROLS.md, web checks). Every
+## browser releases a pointer lock on Escape, and the engine has no listener for
+## that, so the Esc a player pressed to pause was spent on the lock and the game
+## never heard it: over the shoulder the first Esc did nothing. Once the lock has
+## been seen held, a pointer handed back while this system still holds it is the
+## browser answering Esc (or the page losing the player), and the answer is the
+## pause page -- which also gives the view's keys back. Only on the web: a desktop
+## window keeps its capture through Esc.
+func _given_back_by_the_browser() -> void:
+	var web: bool = bool(web_check.call()) if web_check.is_valid() else OS.has_feature("web")
+	if not web or not captured:
+		_lock_seen = false
+		return
+	if _pointer_held():
+		_lock_seen = true
+		return
+	if not _lock_seen:
+		return  # asked for, not yet granted: a lock arrives a frame or more later
+	_lock_seen = false
+	_hold_pointer(false)
+	if game.open_screens.has(&"pause") or Input.is_action_pressed(&"pause"):
+		return
+	for s in game.systems:
+		if s.has_method(&"open_screen") and s.name == "90_ui":
+			s.call(&"open_screen", &"pause")
+			return
 
 
 func _hold_pointer(on: bool) -> void:

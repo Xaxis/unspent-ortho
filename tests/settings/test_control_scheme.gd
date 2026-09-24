@@ -4,7 +4,10 @@ extends TestCase
 ## dashed (C2), Ctrl+click on a Mac is a right click and the right button is the
 ## view (C1), and dev mode's letters were three abilities' keys (C4).
 
-const PAIRS_ON_PURPOSE := [[&"run", &"dodge"]]
+## Shift runs and taps a dodge; the arrows walk, and turn the view over the
+## shoulder, where game.gd walks only on the move keys that are not look keys.
+const PAIRS_ON_PURPOSE := [[&"run", &"dodge"], [&"move_up", &"look_up"], [&"move_down", &"look_down"],
+	[&"move_left", &"look_left"], [&"move_right", &"look_right"]]
 
 
 func _after() -> void:
