@@ -213,6 +213,14 @@ var ui_demo := false
 var tour := ""
 ## Save slot to boot, or -1. SaveSlots.options_for fills seed, size, at and hour from it.
 var load_slot := -1
+## Arguments that could not be read as ONE option, said in words. Several
+## options passed as a single quoted word ("--seed=4 --hour=11 ...") used to be
+## read as `seed`, whose value `to_int` turned into 41101 -- every digit in the
+## string -- while the hour, the sky and what is in hand fell back to defaults.
+## A tour then ran on a different island with a knife in hand in the rain and
+## failed at its first swing, and the frame looked like a bug under load
+## (integ-cam, 2026-09-24). main.gd refuses to start on any of these.
+var problems: PackedStringArray = []
 var saves := ""
 var progress := 0.4
 var probe := false
@@ -242,6 +250,9 @@ var dev_page := ""
 static func parse(args: PackedStringArray) -> BootOptions:
 	var o := BootOptions.new()
 	for a in args:
+		if a.strip_edges().contains(" --"):
+			o.problems.append("'%s' holds several options in one argument: pass each as its own word" % a)
+			continue
 		var kv := a.trim_prefix("--").split("=", true, 1)
 		var k := kv[0]
 		var v := kv[1] if kv.size() > 1 else ""

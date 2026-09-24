@@ -565,7 +565,7 @@ func test_the_making_page_says_when_long_work_comes_off_the_fire() -> void:
 func test_the_controls_page_names_the_key_that_puts_things_down() -> void:
 	var keys := {}
 	for pair: Array in UiPauseScreen.KEYS:
-		keys[String(pair[0])] = String(pair[1])
+		keys[UiPauseScreen.key_line(pair[0])] = String(pair[1])
 	check(keys.has("x"), "X is on the controls page: %s" % str(keys.keys()))
 	check(String(keys.get("x", "")).contains("hold") and String(keys.get("x", "")).contains("put down"), "and it says it is a hold: %s" % keys.get("x", ""))
 	check(InputMap.has_action(&"drop"), "and the game answers that key")

@@ -82,6 +82,12 @@ const FOLLOW_RATE := 1.7
 
 ## A lock (42_target) turns the view onto what it holds at this rate.
 const LOCK_RATE := 6.0
+## Under a lock the eye stands this far right instead of `RIGHT`, and it aims
+## from there: looking from the head, the player's own back stood square in
+## front of what was locked and hid it (lockon_top.tour frame 07, 2026-09-24).
+## From a shoulder this wide what is held sits clear of the body at any range a
+## lock is taken at, and the pair are framed together, the player left of centre.
+const LOCK_RIGHT := 1.15
 
 ## THE CAMERA MAY NOT GO INTO THE LAND OR A HOUSE (docs/LOOK.md law 3: "The land
 ## itself never opens"). The line from the point it looks at (over the right
@@ -268,3 +274,59 @@ static func _blocked(q: Vector3, ground: Callable, solids: Array[Vector4], thin:
 		if dx * dx + dz * dz < r * r and q.y < s.w + CLEAR:
 			return true
 	return false
+
+
+## Degrees a second the arrow keys turn the view (docs/CONTROLS.md, C6): the one
+## look a keyboard alone has. About a third of a turn a second, which crosses a
+## screen's width of sky in the time a key is comfortably held.
+const KEY_TURN_DEG := 110.0
+
+
+## The arrow keys as a look: `keys` is -1..1 on each axis, right and down
+## positive as `Input.get_vector` gives them, spent at `KEY_TURN_DEG` a second
+## through the mouse's own rule (`look`), so the two cannot disagree about which
+## way is up or where the gaze stops.
+static func key_look(yaw_deg: float, pitch_deg: float, keys: Vector2, delta: float, least := PITCH_LEAST) -> Vector2:
+	return look(yaw_deg, pitch_deg, keys * (KEY_TURN_DEG / MOUSE_DEG) * delta, least)
+
+
+## PEOPLE ON THE LINE TO A LOCK (teammate1, 2026-09-24: two villagers covering
+## the right third of a locked view). The room check keeps the eye out of land
+## and walls, and a person is neither, so one who walks between the eye and the
+## locked body stands square in front of it. The answer is to look over them:
+## the view tips down by `CLEAR_TIP`, which lifts the eye (it stands on the
+## focus's own line, `back` out along it) while the focus -- and so the lock --
+## stays exactly where it was in the frame.
+##
+## How near the line a person counts, in tiles: a body's own width and a little.
+const CLEAR_WIDTH := 0.6
+## Degrees the view tips down while a person is on the line. At the shoulder's
+## own distance this puts the eye about a metre higher, over a grown head.
+const CLEAR_TIP := 16.0
+## Eased at these rates (a second): in quickly enough to look over someone as
+## they step in, out gently so a crowd walking past does not bob the camera.
+const CLEAR_IN := 4.0
+const CLEAR_OUT := 1.5
+
+
+## Whether any of `people` stands on the line from `eye` to `target` (tile space,
+## on the ground), within `width` of it and between the two -- not behind the
+## eye, and not at or past the target, who is what is being looked at.
+static func in_line(eye: Vector2, target: Vector2, people: Array[Vector2], width := CLEAR_WIDTH) -> bool:
+	var d := target - eye
+	var len2 := d.length_squared()
+	if len2 < 0.01:
+		return false
+	for p: Vector2 in people:
+		var t := (p - eye).dot(d) / len2
+		if t <= 0.05 or t >= 0.92:
+			continue
+		if p.distance_to(eye + d * t) < width:
+			return true
+	return false
+
+
+## One frame of the tip toward `want` degrees.
+static func clear_step(now: float, want: float, delta: float) -> float:
+	var rate := CLEAR_IN if want > now else CLEAR_OUT
+	return lerpf(now, want, 1.0 - exp(-rate * delta))

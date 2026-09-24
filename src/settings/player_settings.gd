@@ -53,7 +53,11 @@ const SWITCH := &"switch"  # on or off
 const CHOICE := &"choice"  # one of `options`
 
 ## Groups, in the order the page shows them.
-const GROUPS: Array[StringName] = [&"sound", &"picture", &"playing"]
+const GROUPS: Array[StringName] = [&"sound", &"picture", &"playing", &"controls"]
+
+## Which of ControlScheme's three the map is: a mouse, a trackpad, the keyboard
+## alone. Its default is worked out for the machine (`default_of`), not written.
+const SCHEME := &"controls.scheme"
 
 ## Every setting. `applies` says what has to be told when it changes:
 ## &"sound" the buses, &"window" the window, &"" nothing (whoever reads it asks).
@@ -104,8 +108,13 @@ const ROWS: Array[Dictionary] = [
 		"default": &"top", "options": [&"top", &"shoulder"], "applies": &"",
 		"help": "looking down on the land, or over your shoulder"},
 	{"id": &"playing.shoulder", "group": &"playing", "label": "the view over your shoulder", "kind": CHOICE,
-		"default": &"hold", "options": [&"hold", &"toggle"], "applies": &"",
+		"default": &"toggle", "options": [&"hold", &"toggle"], "applies": &"",
 		"help": "hold the key down, or press it once"},
+	# The whole map at once (ControlScheme). Its `default` is only the fallback for
+	# a machine nothing can be learnt about: `default_of` asks the machine.
+	{"id": &"controls.scheme", "group": &"controls", "label": "how you hold the game", "kind": CHOICE,
+		"default": &"mouse", "options": [&"mouse", &"trackpad", &"keys"], "applies": &"controls",
+		"help": "a mouse, a laptop's trackpad, or the keyboard alone"},
 ]
 
 ## The actions a player may put on another key, in the order they meet them.
@@ -122,12 +131,25 @@ const BINDABLE: Array[Dictionary] = [
 	{"action": &"jump", "label": "jump up a ledge, over a gap"},
 	{"action": &"swing", "label": "swing, or pull free"},
 	{"action": &"use", "label": "use what is in reach"},
-	{"action": &"target", "label": "read a machine"},
+	{"action": &"drop", "label": "put down what is in hand"},
+	{"action": &"target", "label": "lock onto a machine"},
+	{"action": &"target_next", "label": "the next one along"},
+	{"action": &"target_prev", "label": "the one before"},
 	{"action": &"shoulder", "label": "look over your shoulder"},
+	{"action": &"look_up", "label": "look up"},
+	{"action": &"look_down", "label": "look down"},
+	{"action": &"look_left", "label": "look left"},
+	{"action": &"look_right", "label": "look right"},
 	{"action": &"ride", "label": "board a craft"},
 	{"action": &"lamp", "label": "lamp"},
+	{"action": &"ability_dash", "label": "dash"},
+	{"action": &"ability_scan", "label": "scan"},
+	{"action": &"ability_grapple", "label": "grapple"},
+	{"action": &"ability_glide", "label": "glide"},
+	{"action": &"ability_spoof", "label": "spoof"},
 	{"action": &"inventory", "label": "carrying"},
 	{"action": &"craft", "label": "making"},
+	{"action": &"holding", "label": "your holding"},
 	{"action": &"zoom_in", "label": "zoom in"},
 	{"action": &"zoom_out", "label": "zoom out"},
 	{"action": &"map", "label": "map"},
@@ -153,7 +175,48 @@ static func row(id: StringName) -> Dictionary:
 
 
 static func default_of(id: StringName) -> Variant:
+	if id == SCHEME:
+		return ControlScheme.detect(mac(), mouse_seen)
+	var by_scheme: Variant = ControlScheme.setting_default(scheme(), mac(), id)
+	if by_scheme != null:
+		return by_scheme
 	return row(id).get("default", null)
+
+
+## A mouse has shown itself this run (08_pointer: a wheel's notch, a middle or a
+## side button, none of which a trackpad sends). Remembered only by what it
+## changes: a Mac that was never told otherwise is moved onto the mouse, and
+## that choice is kept, so the next run does not open on the trackpad again.
+static var mouse_seen := false
+
+
+static func saw_mouse() -> void:
+	if mouse_seen:
+		return
+	mouse_seen = true
+	if not _values.has(SCHEME) and value(SCHEME) != ControlScheme.MOUSE:
+		set_value(SCHEME, ControlScheme.MOUSE)
+
+
+static func scheme() -> StringName:
+	return StringName(str(value(SCHEME)))
+
+
+## Whether the map is laid out for a Mac. Only the player's own run asks the
+## machine: a shot, a tour and a test all answer false, so what they prove and
+## picture never depends on which laptop ran them.
+static func mac() -> bool:
+	return file == FILE and ControlScheme.on_mac()
+
+
+## The scheme on the map, then the player's own keys over it. What the scheme
+## put there is what every reset puts back (`_defaults`).
+static func apply_scheme() -> void:
+	ControlScheme.install(scheme(), mac())
+	_defaults.clear()
+	remember_defaults()
+	for action: StringName in _keys:
+		_apply_key(action, int(_keys[action]))
 
 
 ## A choice's values, in stepping order. A row either names them itself with
@@ -381,7 +444,13 @@ static func load_once() -> void:
 	if _loaded:
 		return
 	_loaded = true
-	remember_defaults()
+	_read_file()
+	# The scheme first, then the player's keys over it: a key they moved wins,
+	# and "put the keys back" goes to the scheme, not to project.godot.
+	apply_scheme()
+
+
+static func _read_file() -> void:
 	var f := FileAccess.open(file, FileAccess.READ)
 	if f == null:
 		return
@@ -400,7 +469,6 @@ static func load_once() -> void:
 		var name := String(r.action)
 		if keys.has(name):
 			_keys[r.action] = int(keys[name])
-			_apply_key(r.action, int(keys[name]))
 
 
 static func save() -> void:
@@ -421,6 +489,7 @@ static func save() -> void:
 static func reset_all() -> void:
 	_values.clear()
 	reset_keys()
+	apply_scheme()
 	apply_all()
 	save()
 
@@ -449,6 +518,8 @@ static func _apply_one(r: Dictionary) -> void:
 		&"quality":
 			if on_quality.is_valid():
 				on_quality.call()
+		&"controls":
+			apply_scheme()
 
 
 ## Only for tests: forget what is in memory and read the runner's file again, so

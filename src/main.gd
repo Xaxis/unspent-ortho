@@ -20,6 +20,13 @@ var _t0 := 0
 func _ready() -> void:
 	_t0 = Time.get_ticks_msec()
 	options = BootOptions.parse(OS.get_cmdline_user_args())
+	if not options.problems.is_empty():
+		# Never a game made from options that were misread: it is a different
+		# island at a different hour, and nothing on the screen says so.
+		for p: String in options.problems:
+			printerr("boot: %s" % p)
+		get_tree().quit(2)
+		return
 	SaveSlots.use_options(options)
 	if options.shot == "":
 		# Every scene that appears (the title, then a game started from it) says when it is up.
@@ -91,10 +98,8 @@ func _read_player_settings() -> void:
 	# A shot or a tour keeps its own settings file: one that wrote the player's
 	# would change what the next run of the game looked and sounded like.
 	PlayerSettings.use_file(&"player" if _a_person_is_playing() else &"tool")
-	# BEFORE the player's own file is read, so a binding they changed still wins:
-	# these are the events the actions SHIP with, and `PlayerSettings.reset_keys`
-	# puts back what shipped.
-	MouseControls.install()
+	# Installs the control scheme (ControlScheme) and then the player's own keys
+	# over it, so a binding they changed still wins and a reset goes to the scheme.
 	PlayerSettings.load_once()
 	SettingsApply.install(_a_person_is_playing())
 
