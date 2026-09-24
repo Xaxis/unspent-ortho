@@ -30,6 +30,10 @@ extends Node3D
 ##                     that this one fixed projection has never shown anybody.
 ##                     The sun does not turn with it, so a face brought round
 ##                     may be in shade: pass --hour as well.
+##   --pitch=DEG       look down DEG degrees instead of the play camera's own:
+##                     5 is an elevation, the model as it stands over the
+##                     shoulder -- a face, a wall, a back -- which the play
+##                     camera's steep pitch never shows.
 ##   --piece=N|list    one model: `list` prints its FOUND pieces numbered, each
 ##                     with its size, where it is, the bearing that shows it and
 ##                     the colour the palette gave it; N then aims the camera at
@@ -112,6 +116,7 @@ func setup(o: BootOptions) -> void:
 	var turned := false
 	var piece := ""
 	var wear: PackedStringArray = []
+	var look_pitch := NAN
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--filter="):
 			filter = a.trim_prefix("--filter=")
@@ -122,6 +127,8 @@ func setup(o: BootOptions) -> void:
 			piece = a.trim_prefix("--piece=")
 		elif a.begins_with("--wear="):
 			wear = a.trim_prefix("--wear=").split(",", false)
+		elif a.begins_with("--pitch="):
+			look_pitch = float(a.trim_prefix("--pitch="))
 	var all_names := items
 	if filter != "":
 		# **THE FILTER AND THE NAMES HAVE TO AGREE ABOUT WHAT A NAME IS.** An item
@@ -178,6 +185,8 @@ func setup(o: BootOptions) -> void:
 	# offset from the one view every other picture in this repository was taken at.
 	var square := cam.yaw_deg
 	cam.yaw_deg += bearing
+	if not is_nan(look_pitch):
+		cam.pitch_deg = look_pitch
 	add_child(cam)
 	_cam = cam
 	# THE FRAME IS THE MODELS' OWN, not a box worked out from the grid. The old
