@@ -36,7 +36,9 @@ extends RefCounted
 ##                     H of the first day (H under 24) or at world minute H (24 and
 ##                     over), alone, crossing on from there; `zenith@H/B` has it
 ##                     rise at bearing B (degrees, 0 east, 90 south); a trailing
-##                     `:ab` measures its cost, layer on and held off (render)
+##                     `:ab` measures its cost, layer on and held off (`:ab-layer`,
+##                     `:ab-wake` one part alone), and `:bench` takes the cost
+##                     apart in back-to-back drawn frames (render)
 ## --eye-round=DEG     stand that eye DEG degrees round the player from behind:
 ##                     180 looks the player in the face, 90 at their side
 ## --walk=DX,DY,SECS   scripted walk in SCREEN directions before the shot

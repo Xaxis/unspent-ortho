@@ -25,6 +25,13 @@ extends RefCounted
 ##                              thing to try once `lit` lands, which is why the
 ##                              knob is a column here and not a constant somewhere
 ##   msaa           int         Viewport.MSAA_* (0 off, 1 2x, 2 4x, 3 8x)
+##   orbit          int         the ring's sky layer (src/render/orbit/): how many
+##                              of its pixels a frame pixel takes on each side (2
+##                              is four samples, the layer's only antialiasing,
+##                              because MSAA would pay for the whole target), 1 one,
+##                              0 no ring at all. The layer only covers the ring's
+##                              own rectangle on the glass, so 2 costs about as
+##                              much as a 400 px square.
 ##   shadow_size    int         the sun's shadow map, px square
 ##   shadow_filter  int         soft shadow filter quality 0..4 (0 hard, 4 softest)
 ##   shadow_lights  int         how many LOCAL lights may cast a shadow at once.
@@ -125,7 +132,7 @@ extends RefCounted
 ## Compatibility path, and it may differ from `low` in kind and not only in degree.
 const ROWS: Array[Dictionary] = [
 	{
-		"id": &"ultra", "label": "ultra", "horizon_near": 110, "eye_shadow_reach": 0, "eye_shadow_full": 30,
+		"id": &"ultra", "label": "ultra", "orbit": 2, "horizon_near": 110, "eye_shadow_reach": 0, "eye_shadow_full": 30,
 		"note": "Native 1920x1080, every light casts, real volumetric air.",
 		"render_scale": 1.0, "upscale": 0, "msaa": 3,
 		"shadow_size": 8192, "shadow_filter": 4, "shadow_lights": 16, "lamps": 32,
@@ -133,7 +140,7 @@ const ROWS: Array[Dictionary] = [
 		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": true, "forward_only": true,
 	},
 	{
-		"id": &"high", "label": "high", "horizon_near": 110, "eye_shadow_reach": 0, "eye_shadow_full": 30,
+		"id": &"high", "label": "high", "orbit": 2, "horizon_near": 110, "eye_shadow_reach": 0, "eye_shadow_full": 30,
 		"note": "Native, the lights that matter cast, volumetric air.",
 		"render_scale": 1.0, "upscale": 0, "msaa": 2,
 		"shadow_size": 4096, "shadow_filter": 2, "shadow_lights": 8, "lamps": 24,
@@ -141,7 +148,7 @@ const ROWS: Array[Dictionary] = [
 		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": false, "forward_only": true,
 	},
 	{
-		"id": &"medium", "label": "medium", "horizon_near": 80, "eye_shadow_reach": 72, "eye_shadow_full": 24,
+		"id": &"medium", "label": "medium", "orbit": 2, "horizon_near": 80, "eye_shadow_reach": 72, "eye_shadow_full": 24,
 		"note": "A little under native, fewer lights cast, no indirect light.",
 		"render_scale": 0.85, "upscale": 0, "msaa": 1,
 		"shadow_size": 4096, "shadow_filter": 1, "shadow_lights": 4, "lamps": 16,
@@ -159,7 +166,7 @@ const ROWS: Array[Dictionary] = [
 		"volumetric": false, "air_stand_in": 1.3, "ssao": false, "ssil": false, "forward_only": false,
 	},
 	{
-		"id": &"low", "label": "low", "horizon_near": 64, "eye_shadow_reach": 48, "eye_shadow_full": 0,
+		"id": &"low", "label": "low", "orbit": 1, "horizon_near": 64, "eye_shadow_reach": 48, "eye_shadow_full": 0,
 		"note": "Two thirds of the pixels, upscaled; the sun casts and little else.",
 		"render_scale": 0.67, "upscale": 0, "msaa": 0,
 		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 2, "lamps": 12,
@@ -171,7 +178,7 @@ const ROWS: Array[Dictionary] = [
 		"volumetric": false, "air_stand_in": 1.3, "ssao": false, "ssil": false, "forward_only": false,
 	},
 	{
-		"id": &"web", "label": "web", "horizon_near": 64, "eye_shadow_reach": 48, "eye_shadow_full": 0,
+		"id": &"web", "label": "web", "orbit": 1, "horizon_near": 64, "eye_shadow_reach": 48, "eye_shadow_full": 0,
 		"note": "The Compatibility path: the same place, on a worse night.",
 		"render_scale": 0.75, "upscale": 0, "msaa": 0,
 		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 0, "lamps": 8,
