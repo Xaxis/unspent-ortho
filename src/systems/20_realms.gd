@@ -336,22 +336,35 @@ func cross(p: Portal) -> void:
 ## only for a loaded game, where the save is the authority on what every realm
 ## holds and the realm being left must not be re-recorded from it.
 func _go(to: StringName, at: Vector2, shaft: int, carry: bool) -> void:
-	var from := _realm
 	var size: int = game.world.size
-	if carry:
-		_stood[String(from)] = game.player.pos
-		_edits[String(from)] = game.world.depleted.duplicate()
 	var w := RealmWorlds.take(game.options.seed_value, size, to)
 	if w == null:
 		return
-	if _edits.has(String(to)):
-		w.depleted = (_edits[String(to)] as Dictionary).duplicate()
 	var land := at
 	if land == Vector2.ZERO:
 		if shaft >= 0 and Portals.count(w) > 0:
 			land = Portals.landing(w, shaft)
 		else:
 			land = _stood.get(String(to), w.spawn)
+	enter(w, to, land, carry)
+
+
+## POINT THE GAME AT `w`, landing at `at`, known from now on as `key`: the one
+## function that moves a running game onto another world, whichever door it came
+## through -- a shaft into another realm (`_go`), or a door into a pocket world
+## (an interior, docs/interiors). It is not a new game: the clock, the score, the
+## body and the creel are the ones it had. `carry` keeps where the player stood
+## and what they took in the world being left, under its own key, and any world
+## entered under a key it has kept gets its edits back.
+func enter(w: WorldData, key: StringName, at: Vector2, carry := true) -> void:
+	var from := _realm
+	if carry:
+		_stood[String(from)] = game.player.pos
+		_edits[String(from)] = game.world.depleted.duplicate()
+	if _edits.has(String(key)):
+		w.depleted = (_edits[String(key)] as Dictionary).duplicate()
+	var to := key
+	var land := at
 	# The world, and everything that reads it through the game's own fields.
 	game.world = w
 	game.query = WorldQuery.new(w)
@@ -374,7 +387,10 @@ func _go(to: StringName, at: Vector2, shaft: int, carry: bool) -> void:
 		sim.clear_mobs()
 	# The view keeps its materials and grows the new land.
 	if game.view != null:
-		game.view.rebind(w)
+		# A view already drawing this world (one set aside and put back) is not
+		# grown again: that is the whole cost of coming back out of a pocket.
+		if game.view.world != w:
+			game.view.rebind(w)
 		game.view.focus = land
 		game.view.ensure_near(land)
 	pl.sync_view(0.0)
