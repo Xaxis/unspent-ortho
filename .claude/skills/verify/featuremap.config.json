@@ -93,6 +93,13 @@
   },
   {
    "kind": "system",
+   "label": "18_trample",
+   "entry": "src/systems/18_trample.gd",
+   "reach": "tools/tour.sh tours/foliage_meadow.tour --seed=7",
+   "area": "world-look"
+  },
+  {
+   "kind": "system",
    "label": "20_realms",
    "entry": "src/systems/20_realms.gd",
    "reach": "tools/tour.sh tours/realms.tour",
