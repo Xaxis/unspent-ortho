@@ -125,10 +125,13 @@ func test_a_landmark_is_seen_before_it_is_named() -> void:
 ##   main (GEN 24)           764.6 / 9,012 ms = 0.0849   load 166
 ##   before                  384.0 / 10,424 ms = 0.0368  load 227
 ##   main                    522.5 / 18,220 ms = 0.0287  load 252
-## The bar is the lowest-load pair's share with 1.5x headroom, 0.038: at 2x a
-## 30 ms regression planted in `sites` still read 0.0274 and passed.
+## The bar is 0.06, a guard against siting DOUBLING, not against drift. The share
+## is not load-proof either: generation fans out over the worker pool and siting
+## does not, so load moves them differently -- clean runs read 0.022-0.042 on this
+## box at load 100-290, and a 1.5x bar (0.038) failed clean code. A 30 ms plant
+## (0.0437) passes it; that size of regression is below what this test can see.
 ## No CI_SPEED on it, unlike `cost_lt`: a share has no machine class to allow for.
-const SITING_SHARE := 0.038
+const SITING_SHARE := 0.06
 
 
 func test_siting_them_costs_nothing_a_player_would_notice() -> void:
