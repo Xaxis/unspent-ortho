@@ -140,7 +140,14 @@ func test_the_door_answers_for_a_running_game() -> void:
 	# (An earlier version of this comment blamed a chapter that "asks nothing"
 	# being born answered. It is not: `defended` is `keeper_down or yard_broken`
 	# and both are false where neither ever existed. Wrong cause, right symptom.)
-	o.size = 256
+	# **AND 512, NOT 256, BECAUSE THE PLAYER HAS TO WAKE IN A PLACE.** Measured
+	# at GEN 24: the spawn stands in a region on 11 of seeds 1-12 at 256, all 12 at
+	# 512, and on 1, 42 and 90210 at the shipped 1840. Seed 1 at 256 is the one
+	# whose coast offers no village that is both inside a region and on a beach the
+	# black site can stand off, and the black site is the spine's; so there the
+	# spawn goes to the beach and stands in no region at all. This test is about
+	# the door, not about that one island.
+	o.size = 512
 	var g := Game.new()
 	tree.root.add_child(g)
 	g.setup(o)

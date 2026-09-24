@@ -19,7 +19,7 @@ static func make() -> BiomeDef:
 	d.display_name = "the glass"
 	d.order = 12
 	d.style_note = "Plates of green-black glass, hard white glare, cracks like a dry riverbed."
-	d.share = Vector2(0.05, 0.09)
+	d.share = Vector2(0.065, 0.115)
 	d.anchors = [{"seq": 12, "u": 0.55, "v": 0.78}]
 	d.temp_range = Vector2(0.6, 1.0)
 	d.moist_range = Vector2(0.0, 0.2)

@@ -17,7 +17,7 @@ static func make() -> BiomeDef:
 	d.display_name = "scrapwood"
 	d.order = 7
 	d.style_note = "Upright strokes over rust: the hand's crowns closed over the ruler's frames."
-	d.share = Vector2(0.055, 0.085)
+	d.share = Vector2(0.105, 0.16)
 	# No anchor: it takes the temperate middle, beside whatever is already wooded.
 	d.temp_range = Vector2(0.3, 0.7)
 	d.moist_range = Vector2(0.4, 0.9)

@@ -11,7 +11,7 @@ static func make() -> BiomeDef:
 	d.display_name = "bonelands"
 	d.order = 4
 	d.style_note = "Cracked broken lines, hard white light, grikes as ink cuts."
-	d.share = Vector2(0.11, 0.15)
+	d.share = Vector2(0.09, 0.13)
 	d.anchors = [{"seq": 5, "u": 0.83, "v": 0.53, "band": &"middle", "slot": 2}]
 	d.temp_range = Vector2(0.4, 0.7)
 	d.moist_range = Vector2(0.0, 0.4)

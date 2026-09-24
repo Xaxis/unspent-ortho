@@ -77,7 +77,11 @@ func test_what_the_region_is_doing_outranks_what_it_wants() -> void:
 
 func test_somebody_in_the_region_says_it_in_a_running_game() -> void:
 	Story.forget()
-	var g := Sx.game(tree, ["--seed=1", "--size=256", "--hour=11", "--folk=6"])
+	# 512, not 256: the player has to wake in a region for anyone in it to ask,
+	# and on seed 1 at 256 -- one of twelve seeds at that size, none at 512 or at
+	# the shipped 1840 (GEN 24) -- the spawn has to choose between a place and a
+	# beach the black site can stand off, and the black site is the spine's.
+	var g := Sx.game(tree, ["--seed=1", "--size=512", "--hour=11", "--folk=6"])
 	await frames(6)
 	var story: Node = Sx.system(g, "49_story")
 	var look: StorySubarcLook = story.call("subarc_look")

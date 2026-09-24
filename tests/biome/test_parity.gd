@@ -355,6 +355,17 @@ extends TestCase
 ## trees +2 on one; every other kind's exact digest is byte-identical, so nothing
 ## the shared rules laid moved. Causation: the previous hashes passed in this same
 ## session with the three batch files put back at HEAD.
+##
+## RE-ACCEPTED A FOURTEENTH TIME (2026-09-23): a landscape is a place (GEN 24,
+## L1). Every digest moves on every seed, and at 256 ALL of it is the coast's
+## share (0.32-0.38 -> 0.14-0.20): five continents, the 1840 square, two
+## continents a landscape and the other seven shares cannot reach a one-body world
+## or the six, and the new `SiteKinds` reader lays nothing no shipped landscape
+## claims. Causation: with the coast's share alone put back, this test passed on
+## the previous hashes in the same session. Per `breakdown`, summed over the five
+## seeds, props 16,286 -> 16,676: the coast's kinds give ground (broadleaf -194,
+## gorse -189, reeds -124, wreckage -38) and its neighbours take it (pine +204,
+## dead tree +153, vent +92, peat bank +67).
 
 
 ## **WHAT THIS BASELINE DOES NOT PIN, AND THE SECOND HALF IS THE ONE NOBODY
@@ -375,11 +386,11 @@ const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "06fa726c d5b85d6c cc7477d6 de6e52ab fe4b52d9 6c0d8cda",
-	3: "2202ae28 60362f9d 5b976a87 15e918c3 585d921b ac416360",
-	7: "4b153668 3424d5c9 64fee617 d3b86b56 72103915 c08dd1e2",
-	42: "e5a96b5f bef1bc39 fa3a07d8 b4709b8b 824c752b 377fdfef",
-	90210: "c3fe6c1a a851aff1 fd9d48e4 01e6dd9b b6884aed 4da8dda8",
+	1: "20b84de7 2b3cacbd f2d915a0 b2bf52ac 61dac31b fa3b9062",
+	3: "1e656893 022d7e5d e5361e6a 6399fea6 a0d7b34c b95c676e",
+	7: "7f71a833 87def4ad 69b48f4d b2392b7a c8564082 b46c4b5d",
+	42: "e0f943c9 a47808a8 b387e1e9 a9712a90 de8bf247 60e16065",
+	90210: "6174286e bee6696f 51defd8f f6fed619 f58b8c6f 2c2f9c9d",
 }
 
 

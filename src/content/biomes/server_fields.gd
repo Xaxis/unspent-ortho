@@ -21,7 +21,7 @@ static func make() -> BiomeDef:
 	d.display_name = "the server fields"
 	d.order = 14
 	d.style_note = "Ruled rows to the horizon, cast floor, one violet strip repeated a thousand times."
-	d.share = Vector2(0.05, 0.09)
+	d.share = Vector2(0.0575, 0.1035)
 	d.anchors = [{"seq": 13, "u": 0.46, "v": 0.3}]
 	d.temp_range = Vector2(0.35, 0.7)
 	d.moist_range = Vector2(0.3, 0.7)

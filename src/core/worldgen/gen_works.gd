@@ -1012,15 +1012,28 @@ static func _snowfield(L: Lay) -> void:
 				_run(L, PropKind.FENCE, at - nrm * 1.5, -nrm, 4, 2.0, -99, 0.1)
 				done += 1
 	# The tall stack, fenced, seen from everywhere.
+	#
+	# ONE STRICT SEARCH, THEN THE LOOSE ONES. The first four attempts asked the
+	# same question -- six tiles of flat ground, 44 clear of every place -- of the
+	# same regions, each a full `_site` of about 3,500 darts at 21 landscapes,
+	# and on a world that has no such spot the three repeats could only fail the
+	# same way: 49-74 ms of a ~150 ms works stage at 256 (task #32). A strict
+	# search that found nothing sends the rest straight to the looser ground.
 	var stacks := 0
+	var strict_failed := false
 	for attempt in 8:
 		if stacks >= _n(c, 1.0):
 			break
-		var p := _site(L, 6 if attempt < 4 else 3, 1, [], 44.0 if attempt < 4 else 16.0, 500, 0.45)
+		var strict := attempt < 4 and not strict_failed
+		if attempt < 4 and strict_failed:
+			continue
+		var p := _site(L, 6 if strict else 3, 1, [], 44.0 if strict else 16.0, 500, 0.45)
 		if p.x < 0:
+			if strict:
+				strict_failed = true
 			continue
 		var at := Vector2(p) + Vector2(0.5, 0.5)
-		if _put(L, PropKind.STACK, at, d.angle(), -99, 1.2 if attempt < 4 else 0.8, true) == null:
+		if _put(L, PropKind.STACK, at, d.angle(), -99, 1.2 if strict else 0.8, true) == null:
 			continue
 		stacks += 1
 		# SCORCH: the soot a stack throws on the snow round it. Unmarked, the

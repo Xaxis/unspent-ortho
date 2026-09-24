@@ -23,7 +23,7 @@ static func make() -> BiomeDef:
 	d.display_name = "the grey orchards"
 	d.order = 16
 	d.style_note = "Ruled rows of grey-green trees, white bloom that is not bloom, everything one step past ripe."
-	d.share = Vector2(0.06, 0.1)
+	d.share = Vector2(0.075, 0.12)
 	d.anchors = [{"seq": 10, "u": 0.36, "v": 0.52}]
 	d.temp_range = Vector2(0.4, 0.75)
 	d.moist_range = Vector2(0.45, 0.85)

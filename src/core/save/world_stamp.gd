@@ -120,7 +120,13 @@ const UNKNOWN := "unknown"
 ##     pines and bushes; declared ore was refused wherever `props` did not repeat
 ##     it; only the first landscape declaring fumaroles got its fields. Props move
 ##     on every seed, and ground moves wherever the jungle's new fields lay salt.
-const GEN := 23
+## 15. A landscape is a PLACE (L1, docs/ROADMAP.md: 40 frames of main region on
+##     every seed). The surface holds five continents at most (`GenBodies.COUNT`),
+##     the square is 1840 (`Tuning.WORLD_SIZE`), a landscape lies on two of the
+##     five (`MOST_BODIES` 0.4), and eight shares rose out of the coast's. Every
+##     seed's world moves; 21 of 21 surface landscapes make 40 frames on seeds 1,
+##     42 and 90210, and none has a smaller main region than it had at 1300.
+const GEN := 24
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
