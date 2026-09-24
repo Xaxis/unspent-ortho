@@ -390,3 +390,48 @@ func test_a_fresh_lock_needs_the_body_in_sight() -> void:
 func _stand(g: Game, at: Vector2) -> void:
 	g.player.hero.pos = at
 	g.player.sync_view(0.0)
+
+
+## THE SWEEP IS HELD TO SIGHT TOO (teammate1, 2026-09-24): otherwise it is the
+## free scan the fresh-pick rule closes. A calm runner on the far side of a house
+## is not in the field; one that has come for the player is, wall or no wall --
+## it is on its way and would be heard.
+func test_a_sweep_reads_only_what_is_seen_or_coming() -> void:
+	var sys := await _make(PackedStringArray(["--spawn=runner", "--target=sweep"]))
+	var g := _game
+	var runner: MobState = null
+	for m: MobState in g.player.sim.mobs:
+		if m.kind == &"runner":
+			runner = m
+	var house: WorldProp = null
+	var best := INF
+	for p: WorldProp in g.world.props:
+		if p.kind == PropKind.HOUSE and p.pos.distance_to(g.player.pos) < best:
+			best = p.pos.distance_to(g.player.pos)
+			house = p
+	var dir := Vector2.RIGHT.rotated(0.3)
+	var near := house.solid + 1.4
+	_stand(g, house.pos + dir * near)
+	runner.pos = house.pos - dir * near
+	runner.calm_until = INF
+	runner.mood = MobState.IDLE
+	sys.call("_process", 0.1)
+	check(bool(sys.get("sweeping")), "sweeping")
+	check(not _in_field(sys, &"runner"), "a calm runner behind the house is not read")
+	runner.mood = MobState.CHASING
+	sys.set("_sweep_next", 0.0)
+	sys.call("_process", 0.1)
+	check(_in_field(sys, &"runner"), "one coming for you is read, wall or no wall")
+	runner.mood = MobState.IDLE
+	runner.pos = house.pos + dir * (near + 2.5)
+	sys.set("_sweep_next", 0.0)
+	sys.call("_process", 0.1)
+	check(_in_field(sys, &"runner"), "and a calm one in the open is read")
+	_done()
+
+
+func _in_field(sys: Node, kind: StringName) -> bool:
+	for s: TargetSubject in sys.get("field"):
+		if s.kind == kind:
+			return true
+	return false

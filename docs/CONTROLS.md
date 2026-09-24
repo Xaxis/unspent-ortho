@@ -153,7 +153,9 @@ fit one key each.
   whatever stood behind it, a free scan in a game about not being seen. A lock
   already held keeps its grace behind cover, as before. Places (a depot, a
   landmark) keep their own rule: they are read by what shows of them over
-  everything else. A sweep still reads the whole field in reach.
+  everything else. A sweep is held to the same rule, or it is the same free
+  scan: it reads what is seen, and any body that has come for the player
+  (alerted, chasing, striking), which would be heard whatever stands between.
 
 **Over the shoulder.** The line to the target is forward: up closes, down
 retreats, left and right circle. The camera aims from the shoulder the eye

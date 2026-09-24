@@ -143,12 +143,14 @@ func _process(delta: float) -> void:
 		Events.sfx.emit(&"ui_slate_switch" if sweeping else &"ui_slate_click", Vector3.ZERO)
 	pages = Targeting.pages_of(_list)
 	if sweeping:
+		var readable := _sweep_seen()
+		pages = Targeting.pages_of(readable)
 		locked = null
 		_lost_at = -INF
 		if cycle != 0 and pages > 1:
 			_page = posmod(_page + cycle, pages)
 			Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
-		field = Targeting.sweep(_list, _page)
+		field = Targeting.sweep(readable, _page)
 		page = posmod(_page, pages) + 1
 	else:
 		field = []
@@ -250,24 +252,65 @@ func _seen(held: TargetSubject) -> Array[TargetSubject]:
 	var now := Time.get_ticks_msec() / 1000.0
 	if held == null and now < _sight_next:
 		return [] as Array[TargetSubject]
-	var head := game.player.position + Vector3(0.0, HEAD_UP, 0.0)
 	var out: Array[TargetSubject] = []
 	for s: TargetSubject in _list:
 		if held != null and s.id == held.id:
 			out.append(s)
 			continue
-		if s.body == null and not s.person:
-			out.append(s)
-			continue
-		var at := s.here()
-		var ground := game.view.surface_height(at) if game.view != null else game.world.height_at(at)
-		if bool(sight.call(&"sight_clear", head, Vector3(at.x, ground + s.height * 0.5, at.y))):
+		if _in_sight(s, sight):
 			out.append(s)
 	# Nothing in sight: the lines are not walked again for SIGHT_EVERY. Only
 	# after a miss -- a pick that found something is never held back.
 	if held == null and out.is_empty() and not _list.is_empty():
 		_sight_next = now + SIGHT_EVERY
 	return out
+
+
+## Whether the player's head sees `s` past what is drawn. A place keeps its own
+## rule (it is read by what shows of it over everything else).
+func _in_sight(s: TargetSubject, sight: Node) -> bool:
+	if s.body == null and not s.person:
+		return true
+	var head := game.player.position + Vector3(0.0, HEAD_UP, 0.0)
+	var at := s.here()
+	var ground := game.view.surface_height(at) if game.view != null else game.world.height_at(at)
+	return bool(sight.call(&"sight_clear", head, Vector3(at.x, ground + s.height * 0.5, at.y)))
+
+
+## THE SWEEP IS HELD TO SIGHT TOO (teammate1, 2026-09-24), or it is the free scan
+## the fresh-pick rule closes: what the field reads is what is seen, and a body
+## that has come for the player (alerted, chasing, striking), which is on its way
+## and would be heard whatever stands between. Which ones pass is worked out every
+## SIGHT_EVERY and kept by id, because the list is rebuilt every frame and the
+## sweep reads it every frame.
+func _sweep_seen() -> Array[TargetSubject]:
+	var sight: Node = null
+	for s in game.systems:
+		if s.has_method(&"sight_clear"):
+			sight = s
+	if sight == null:
+		return _list
+	var now := Time.get_ticks_msec() / 1000.0
+	if now >= _sweep_next:
+		_sweep_next = now + SIGHT_EVERY
+		_sweep_ids.clear()
+		for s: TargetSubject in _list:
+			if (s.body != null and _coming(s.body)) or _in_sight(s, sight):
+				_sweep_ids[s.id] = true
+	var out: Array[TargetSubject] = []
+	for s: TargetSubject in _list:
+		if _sweep_ids.has(s.id):
+			out.append(s)
+	return out
+
+
+## A body that has noticed the player and come for them.
+static func _coming(m: MobState) -> bool:
+	return m.alive and (m.mood == MobState.ALERTED or m.mood == MobState.CHASING or m.mood == MobState.ATTACKING)
+
+
+var _sweep_next := 0.0
+var _sweep_ids: Dictionary = {}
 
 
 ## The player's eyes, above the ground under them; and how often a fresh pick
