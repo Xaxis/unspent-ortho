@@ -419,6 +419,11 @@ var sentinel: StringName = &""
 ## landscape only writes this line when it wants something other than that.
 ## Placed after generation, like a shaft, so the island does not move (LOOK).
 var landmarks: Array[StringName] = []
+## What of this landscape can be WALKED INTO, and what it is inside (docs/
+## interiors): a host (`&"house"`) to an interior kind (`&"cottage"`, one of
+## Interiors.RECIPES). Empty, nothing here has a door. Doors are derived after
+## generation, like a shaft, so the island does not move (LOOK).
+var interiors: Dictionary = {}
 var sound_bed: StringName = &"bed_wind"
 ## Another type's id whose music motif this one borrows; empty composes its own.
 var music_motif: StringName = &""

@@ -1,0 +1,26 @@
+class_name InteriorKind
+extends RefCounted
+## One kind of enterable structure (docs/interiors): what it is like inside,
+## said once, the way a LandmarkDef says a landmark. A recipe under
+## src/content/interiors/ makes one (`static func make() -> InteriorKind`) and
+## lays its rooms (`static func lay(rng) -> InteriorLayout`, in the canonical
+## frame: the entry door in the south wall, facing +y).
+
+var id: StringName = &""
+## How far this place is from the sky, 0..1 (SkyLight.closed): a cottage's
+## windows let the hour in; a bunker is night at noon.
+var closed := 0.5
+## The land's view height inside, orthographic: a room fills the frame.
+var zoom := 9.0
+## Walls' height, and the height the ones facing the camera are CUT at from
+## above (a section, drawn as architecture: the room is never hidden by its own
+## near wall).
+var wall_h := 2.4
+var cut := 0.8
+## The widest body that fits through the door (a big machine waits outside).
+var door_width := 0.9
+## Changed when a recipe's layout changes: a pocket's saved edits are kept only
+## for the rev they were made in.
+var rev := 1
+## The script that lays it (`lay(rng) -> InteriorLayout`).
+var recipe: Script

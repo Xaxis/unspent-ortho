@@ -113,6 +113,8 @@ static func make() -> BiomeDef:
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"lighthouse", &"firewatch", &"cast_stones", &"grown_hulk"]
+	# A coast house can be walked into (docs/interiors): one room and a hearth.
+	d.interiors = {&"house": &"cottage"}
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter

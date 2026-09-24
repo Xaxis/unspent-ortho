@@ -23,9 +23,15 @@ const SURFACE := &"surface"
 const UNDERGROUND := &"underground"
 const ORBITAL := &"orbital"
 const ERA := &"era"
-
+## The inside of something standing on another realm's land: a house, a bunker,
+## a works hall (docs/interiors). A POCKET world, entered through a door the way
+## a shaft enters a realm, and keyed per door: a pocket's realm key is
+## `interior:<door key>`, and every reader of the table sees it as this row.
+const INTERIOR := &"interior"
 ## Every realm a landscape may declare (BiomeDef.realms).
-const KINDS: Array[StringName] = [SURFACE, UNDERGROUND, ORBITAL, ERA]
+const KINDS: Array[StringName] = [SURFACE, UNDERGROUND, ORBITAL, ERA, INTERIOR]
+## The prefix of a pocket's realm key.
+const POCKET := "interior:"
 
 ## The notebook changes medium with the realm (docs/VISION.md). Only the first
 ## two are drawn: the others are named so a landscape written for them cannot be
@@ -121,6 +127,21 @@ const DEFS := {
 		# player is walked back here (docs/STORY.md).
 		"before_the_plan": true,
 	},
+	# A ROOF AND NOTHING ELSE. It lends the roof -- nothing falls indoors, and the
+	# weather goes on rolling outside, so stepping out finds the same storm --
+	# and each interior kind declares its own light (`InteriorKind.closed`):
+	# a cottage's windows still let the hour in, a bunker is night at noon. No
+	# landscape lives here; a pocket's tiles keep the landscape of the land its
+	# door stands on, so a coast cottage is made of the coast's own matter.
+	INTERIOR: {
+		"page": PAGE_WASH, "roofed": true,
+		"light": Color(1, 1, 1), "lift": -0.4, "night": 1.0,
+		"airs": [[Weather.CLEAR, 100, 0.0]], "bans": [Weather.RAIN, Weather.DRIZZLE,
+			Weather.STORM, Weather.HAIL, Weather.SNOW, Weather.BLIZZARD, Weather.FOG,
+			Weather.WHITEOUT, Weather.GLARE, Weather.DUST, Weather.DRY_STORM, Weather.ASH,
+			Weather.HAZE, Weather.GREY, Weather.HEAT],
+		"bed": &"bed_gutter", "salt": 0x1A7E51,
+	},
 }
 
 
@@ -139,7 +160,18 @@ static func land_realm(kind: StringName) -> StringName:
 
 
 static func def(kind: StringName) -> Dictionary:
-	return DEFS.get(kind, DEFS[SURFACE])
+	return DEFS.get(pocket_kind(kind), DEFS[SURFACE])
+
+
+## A pocket's realm key (`interior:<door key>`) as the realm it is, INTERIOR;
+## any other key as itself.
+static func pocket_kind(key: StringName) -> StringName:
+	return INTERIOR if String(key).begins_with(POCKET) else key
+
+
+## Whether this realm key is a pocket's.
+static func is_pocket(key: StringName) -> bool:
+	return String(key).begins_with(POCKET)
 
 
 ## The realm a landscape TYPE belongs to: the first it declares. A type may be
@@ -157,6 +189,10 @@ static func of(d: BiomeDef) -> StringName:
 static func at(w: WorldData, p: Vector2) -> StringName:
 	if w == null:
 		return SURFACE
+	# A pocket is in the realm its world says, whatever landscape its tiles keep:
+	# a coast cottage's floor is the coast's, and it is under a roof.
+	if w.realm == INTERIOR:
+		return INTERIOR
 	var d := BiomeRegistry.at(w, p)
 	return w.realm if d.sea else of(d)
 
