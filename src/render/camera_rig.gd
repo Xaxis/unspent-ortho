@@ -582,6 +582,14 @@ func quaking() -> bool:
 	return not _quakes.is_empty()
 
 
+## Where the quakes running now put the eye (across and up the picture, world
+## units), for a camera that is not this rig but stands on the same ground --
+## 96_eye's stand -- so a landing is felt whichever camera is drawing. The nod
+## and roll that go with it are `QUAKE_TIP` radians per unit.
+func quake_offset() -> Vector2:
+	return _quake_at
+
+
 ## Where the quakes running now put the eye, across and up the picture, in world
 ## units, and each one's clock advanced by `delta`.
 func _quake_step(delta: float) -> Vector2:

@@ -568,3 +568,38 @@ func test_looking_up_the_body_leaves_the_frame() -> void:
 		var w := cam.yield_share
 		near(w, Shoulder.rise(pitch), 1e-4, "the stipple follows the eye at %.0f" % pitch)
 	_done()
+
+
+## A COLOSSUS LANDING IS FELT BY WHICHEVER CAMERA IS DRAWING: the quake sways
+## the staged eye (`--eye`, 96_eye) as it does the rig. Measured on the eye
+## itself: its position with a quake running is not its position without one,
+## by about the quake's own size, and it comes back when the quake is spent.
+func test_a_quake_reaches_the_staged_eye() -> void:
+	var g := await _make(["--eye=1.7,5"])
+	var eye_sys: Node = null
+	for s in g.systems:
+		if s.name == "96_eye":
+			eye_sys = s
+	check(eye_sys != null, "the stand is loaded")
+	g.systems.map(func(s: Node) -> void: if s.has_method(&"started"): s.started())
+	var cam := _drawing_camera(g)
+	check(cam != null and cam != g.camera, "the stand is the camera drawing")
+	eye_sys._process(DT)
+	var still := cam.global_position
+	g.camera.quake(0.35, 2.5, 1.0)
+	var most := 0.0
+	for i in 60:
+		g.camera._process(DT)
+		eye_sys._process(DT)
+		most = maxf(most, cam.global_position.distance_to(still))
+	gt(most, 0.1, "the eye sways (%.3f)" % most)
+	lt(most, 1.0, "by about the quake's size")
+	for i in 200:
+		g.camera._process(DT)
+	eye_sys._process(DT)
+	lt(cam.global_position.distance_to(still), 1e-3, "and stands still again")
+	_done()
+
+
+func _drawing_camera(g: Game) -> Camera3D:
+	return g.get_viewport().get_camera_3d()
