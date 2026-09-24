@@ -24,6 +24,9 @@ shader_type sky;
 // sky_dome.gdshaderinc, so what stands IN this sky (the colossi) takes its air
 // from the same arithmetic. Only the procedural sky's light discs stay here,
 // because LIGHTn_* exist only in a sky shader.
+// The ring in the sky (src/render/orbit/orbit_sky.gdshaderinc), sampled from its
+// own layer; only this shader draws it.
+#define DOME_ORBIT
 #include "res://src/render/sky_dome.gdshaderinc"
 
 vec3 procedural(vec3 d) {

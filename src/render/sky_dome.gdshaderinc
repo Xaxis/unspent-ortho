@@ -114,6 +114,11 @@ vec3 dome_procedural_join(vec3 d, vec3 sky) {
 	return mix(ground, sky, step(0.0, d.y));
 }
 
+#ifdef DOME_ORBIT
+// The ring in the sky (src/render/orbit/): only the seen sky defines this.
+#include "res://src/render/orbit/orbit_sky.gdshaderinc"
+#endif
+
 // The seen dome in direction `d` (world space, unit), before `dome_energy`.
 // `cubemap` is the radiance pass: no moon and no stars, which is exactly what
 // the depth fog's aerial perspective samples, so a caller asking with `true` is
@@ -148,6 +153,15 @@ vec3 dome_seen_col(vec3 d, bool cubemap) {
 		cloud = mix(cloud, col * 0.6, dome_night * 0.85);
 		col = mix(col, cloud, amount);
 	}
+#ifdef DOME_ORBIT
+	// The ring: its light added OVER the air and UNDER the clouds (orbit_sky's
+	// header), its hull taking the sun, the moon and the stars away behind it.
+	vec4 orbit_seen = cubemap ? vec4(0.0) : orbit_at(d);
+	col = col * (1.0 - orbit_seen.a * orbit_mass) + orbit_seen.rgb;
+	float orbit_hide = orbit_seen.a;
+#else
+	float orbit_hide = 0.0;
+#endif
 	float clear = 1.0 - clamp(dome_cover * 1.3, 0.0, 1.0);
 	// The sun itself, where it really is, with a halo that the weather dims.
 	float sd = dot(d, normalize(dome_sun_dir));
@@ -156,9 +170,9 @@ vec3 dome_seen_col(vec3 d, bool cubemap) {
 	float up = smoothstep(-0.03, 0.02, dome_sun_dir.y);
 	// A low sun is seen through the most air: it reddens into the glow and dims.
 	vec3 disc_col = mix(dome_sun_color, dome_glow_color * 1.4, dome_glow * 0.8);
-	col += disc_col * (disc * mix(5.0, 2.2, dome_glow) + halo) * up * mix(1.0, 0.2, 1.0 - clear);
+	col += disc_col * (disc * mix(5.0, 2.2, dome_glow) + halo) * up * mix(1.0, 0.2, 1.0 - clear) * (1.0 - orbit_hide);
 	// The stars and the moon come out only once the sun is really down.
-	float dark = dome_night * smoothstep(-0.02, -0.18, dome_sun_dir.y);
+	float dark = dome_night * smoothstep(-0.02, -0.18, dome_sun_dir.y) * (1.0 - orbit_hide);
 	if (!cubemap) {
 		// The moon: a small pale disc, never a lamp, a little darker at its limb.
 		float md = dot(d, normalize(dome_moon_dir));

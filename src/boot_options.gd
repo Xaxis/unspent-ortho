@@ -30,6 +30,11 @@ extends RefCounted
 ##                     the island passes under), posed MINUTE world minutes into
 ##                     its walk and walking on from there; `--stats` prints where
 ##                     each one stands, for --face (render)
+## --orbit=off         no ring in the sky this run (19_orbit): the only way to
+##                     take one moment with and without it and measure its cost
+## --orbit=zenith@H     stage a pass of the ring whose peak stands overhead at hour
+##                     H of the first day (H under 24) or at world minute H (24 and
+##                     over), alone, crossing on from there (render)
 ## --eye-round=DEG     stand that eye DEG degrees round the player from behind:
 ##                     180 looks the player in the face, 90 at their side
 ## --walk=DX,DY,SECS   scripted walk in SCREEN directions before the shot
@@ -149,6 +154,8 @@ var eye_turn := 0.0
 var colossi: StringName = &""
 ## "W@MINUTE": one walker alone at a staged minute of its walk, or "" (19_colossi).
 var colossus := ""
+## "off", "zenith@H" (19_orbit), or "" for the ring's own schedule.
+var orbit := ""
 var eye_round := 0.0
 var walk := Vector2.ZERO
 var walk_seconds := 0.0
@@ -255,6 +262,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"eye-turn": o.eye_turn = v.to_float()
 			"colossi": o.colossi = StringName(v)
 			"colossus": o.colossus = v
+			"orbit": o.orbit = v
 			"eye-round": o.eye_round = v.to_float()
 			"walk":
 				var p := v.split(",")
