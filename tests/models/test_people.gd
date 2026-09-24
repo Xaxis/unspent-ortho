@@ -61,10 +61,12 @@ func _tris(spec: Dictionary) -> int:
 ## their whole scavenged kit on top (gear, patches, weather coats), and the worst
 ## case below adds every axis's heaviest choice at once, which nobody wears.
 ## Raised from 1300 when the figure was rounded for the view over the shoulder
-## (PersonBody's SKULL_N and siblings): measured on forty random villagers, a
-## street went from 25,677 triangles to 41,049 (641 to 1,026 each), which is
-## nothing to the GPU. What it does cost is the build, on the main thread.
-const BUDGET := 1700
+## (PersonBody's SKULL_N and siblings, hands with thumbs, rolled brims, dented
+## crowns, knees): measured on forty random villagers, a street went from
+## 25,677 triangles to 53,959 (641 to 1,348 each), which is nothing to the GPU.
+## What it does cost is the build, on the main thread, and that was measured
+## too (see Sculpt._weld_walls).
+const BUDGET := 2100
 
 
 func test_no_look_of_any_build_passes_the_triangle_budget() -> void:
