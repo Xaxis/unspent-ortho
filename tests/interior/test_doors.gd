@@ -19,6 +19,24 @@ func _frames(n: int) -> void:
 			return
 
 
+## Nodes under a view, the vertices its meshes hold, and the bytes of its world's
+## per-tile arrays.
+static func _kept_set(view: Node, w: WorldData) -> Vector3i:
+	var nodes := 0
+	var verts := 0
+	var todo: Array[Node] = [view]
+	while not todo.is_empty():
+		var n: Node = todo.pop_back()
+		nodes += 1
+		var mi := n as MeshInstance3D
+		if mi != null and mi.mesh != null:
+			for si in mi.mesh.get_surface_count():
+				verts += (mi.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+		todo.append_array(n.get_children())
+	var tiles := w.size * w.size
+	return Vector3i(nodes, verts, w.level.size() + w.ground.size() + w.country.size() + tiles * 8)
+
+
 func _at_door(g: Game, d: Node) -> Threshold:
 	var p: Vector2 = d.call(&"tour_place", "door:house")
 	g.player.hero.pos = p
@@ -47,6 +65,13 @@ func test_in_through_a_cottage_door_and_out_onto_the_same_coast() -> void:
 	eq(g.world.realm, Realm.INTERIOR, "in a pocket world under a roof")
 	eq(g.view.world, g.world, "drawn by the pocket's own view")
 	check(outside_view.get_parent() == null, "the outside view set aside, not freed")
+	await _frames(10)
+	var kept := _kept_set(g.view, g.world)
+	# What a room costs to keep beside the coast set aside, counted off the room
+	# itself: a process-wide counter reads the coast's own streaming, not this.
+	# Printed, not held to a bar: the owner sets that budget.
+	print("S1 kept set: %d nodes, %d mesh vertices (~%.2f MB of vertex data), world arrays %.2f MB" % [
+		kept.x, kept.y, kept.y * 48.0 / 1048576.0, kept.z / 1048576.0])
 	# What keeps the outside sleeps through the door rather than re-reading it.
 	var sleepers: Array[Node] = []
 	for sys: Node in g.systems:
