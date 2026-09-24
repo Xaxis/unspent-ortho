@@ -77,24 +77,28 @@ shot 05-snowfield with land:snowfield
 place bonelands
 wait 0.8
 shot 06-bonelands with land:bonelands
+# In its burnt forest on ash, not wherever the deepest tile of the landscape
+# falls: in a Burning this size that is the middle of its pale clinker flow,
+# and the frame has to show the scorched ground and what stood on it.
 place burning
+ground ash
+near dead_tree
 wait 0.8
 shot 07-burning with land:burning
-# THE CITY MEETING THE FOREST, where the coast meeting the forest used to be.
-# Seed 7 no longer puts the coast against the pinewood at all — the eleventh
-# landscape moved the island, which is what adding a landscape does, and this
-# frame could not be staged any more. Of the borders seed 7 does hold, this is
-# the one worth a canon frame: the newest landscape in the game had none, and a
-# lit street running into unlit timber is the most it has to say about itself.
-place pinewood-slums
+# THE BORDERS SEED 7 HOLDS, since a landscape stands whole on one continent
+# (GEN 24): two cities meeting, the home continent's moss running into its
+# pinewood, and the fire meeting the jungle. The pinewood no longer meets the
+# slums, the snowfield or the burning on this seed -- they are on other
+# continents -- so those three frames could not be staged any more.
+place slums-machine_city
 wait 0.8
-shot 08-eco-pinewood-slums with border:pinewood-slums
-place pinewood-snowfield
+shot 08-eco-slums-machine_city with border:slums-machine_city
+place moss-pinewood
 wait 0.8
-shot 09-eco-pinewood-snowfield with border:pinewood-snowfield
-place bonelands-burning
+shot 09-eco-moss-pinewood with border:moss-pinewood
+place burning-sulphur_jungle
 wait 0.8
-shot 10-eco-bonelands-burning with border:bonelands-burning
+shot 10-eco-burning-sulphur_jungle with border:burning-sulphur_jungle
 place coast-moss
 wait 0.8
 shot 11-eco-coast-moss with border:coast-moss

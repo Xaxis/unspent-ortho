@@ -381,16 +381,32 @@ extends TestCase
 ## crosses them. `GenBodies.deepen_straits` moves 125 tiles at `Tuning.WORLD_SIZE`
 ## and not one byte here, which is convenient and is also the warning: a green
 ## run of this file is not evidence about the world a player is given.
+##
+## RE-ACCEPTED A FIFTEENTH TIME (2026-09-24), for the same GEN 24, and the
+## fourteenth's hashes were never true of any tree that reached main: they were
+## taken with the coast's share cut, which that branch then put back. In two
+## steps, each measured against the previous tree at 256:
+##   the landscapes-as-places merge (shares, five continents, borough and spawn
+##   rules) moves all six digests: seed 1 d776653d 9d45ec59 01824a96 aef3f8c2
+##   e6b8c99e ab081227, `country` from the shares of the muted six;
+##   immense regions on top moves `country2` only through the blend's distance
+##   spread being exact to 68 tiles instead of 28 (put the reach back to 14 alone
+##   and seed 1's country2 is 9d45ec59 again), and `ground`, `level` and `props`
+##   through settling: the spawn now asks for rough coast when a one-body island
+##   has no flat one and levels that plot, declared villages are settled before
+##   area adds any, roads are eased where a crossing left a step, a pool keeps
+##   one piece, and the way-in seam looks for a smaller flat. `country` and
+##   `blend` are byte-identical to the merge on all five seeds.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "20b84de7 2b3cacbd f2d915a0 b2bf52ac 61dac31b fa3b9062",
-	3: "1e656893 022d7e5d e5361e6a 6399fea6 a0d7b34c b95c676e",
-	7: "7f71a833 87def4ad 69b48f4d b2392b7a c8564082 b46c4b5d",
-	42: "e0f943c9 a47808a8 b387e1e9 a9712a90 de8bf247 60e16065",
-	90210: "6174286e bee6696f 51defd8f f6fed619 f58b8c6f 2c2f9c9d",
+	1: "d776653d 6ad6b905 fad9295c c9461b35 e6b8c99e 15ad2cee",
+	3: "b5edae39 c8d3b8f5 3b4cb3b7 4c69a413 44aa1757 d14a9098",
+	7: "58b06d6a 6d58b415 2463bc7c e866cdde 06bf3a40 06b9494c",
+	42: "dadf03f6 5a0d5b87 03251c49 d215e370 177dc1cd 8e94af18",
+	90210: "ccfb32d9 8cb5fc79 ef5cf0f7 fedceafb 28fb97e2 af0d9cd1",
 }
 
 
