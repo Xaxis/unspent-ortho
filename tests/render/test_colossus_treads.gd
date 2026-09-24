@@ -137,7 +137,7 @@ func test_the_world_is_cut_where_the_feet_come_down() -> void:
 			var c := Vector2i(floori(p.x), floori(p.y))
 			var i := c.y * w.size + c.x
 			eq(w.level[i], floor_l, "a pad's floor is the tread's floor")
-			eq(w.ground[i], Ground.ROCK, "bared rock under the pad")
+			eq(w.ground[i], Ground.CLINKER, "pressed ground under the pad")
 			check(_climbs_out(w, c, Treads.RIM_R + 4.0), "a body on the floor of the crater at %s can climb out of it" % c)
 			for q: WorldProp in w.props:
 				if q.pos.distance_to(Vector2(p.x, p.y)) < p.z and q.kind in GenScatter.PLACED and q.solid >= 1.2 and q.id < _dressed_from(w):

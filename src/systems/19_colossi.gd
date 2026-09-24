@@ -347,11 +347,26 @@ func _crush(pads: Array[Vector3]) -> void:
 		for q: WorldProp in game.query.props_near(at, p.z + 4.0):
 			if w.depleted.has(q.id) and is_inf(float(w.depleted[q.id])):
 				continue
+			if _the_treads_own(q.id):
+				continue
 			if q.pos.distance_to(at) > p.z + q.solid:
 				continue
 			w.depleted[q.id] = INF
 			if game.view != null:
 				game.view.refresh_props(q)
+
+
+## Whether prop `id` is one the tread stage laid round its own craters (the
+## crushed wreck in the bowl, the spoil, the posts): those are what a landing
+## LEAVES, and a landing does not crush them again.
+func _the_treads_own(id: int) -> bool:
+	for m: Dictionary in game.world.landmarks:
+		if StringName(m.get("kind", &"")) != &"tread" or not m.has("props"):
+			continue
+		var span: Vector2i = m.props
+		if id >= span.x and id < span.y:
+			return true
+	return false
 
 
 ## A body under a pad is put out at its edge, the nearest way.
@@ -505,15 +520,18 @@ func tour_seen(what: StringName) -> bool:
 
 ## What `near NAME` may ask of this system (tests/tours/test_tour_claims.gd reads
 ## it, since no prop kind answers them).
-const TOUR_PLACES := ["colossus_foot", "colossus_pad"]
+const TOUR_PLACES := ["colossus_foot", "colossus_pad", "colossus_rim", "colossus_crater"]
 
 
 ## `near colossus_foot` (or `at colossus:foot`): under the ankle of the nearest
 ## tread, between its toes. `near colossus_pad`: outside the nearest crater,
-## beyond its pad, facing it and the ankle behind it.
+## beyond its pad, facing it and the ankle behind it. `near colossus_rim`: on a
+## crater's lip, looking in. `near colossus_crater`: on its floor, in the middle.
 func tour_place(what: String) -> Vector2:
 	var pad := what == "colossus_pad" or what == "colossus:pad"
-	if not pad and what != "colossus_foot" and what != "colossus:foot":
+	var rim := what == "colossus_rim" or what == "colossus:rim"
+	var crater := what == "colossus_crater" or what == "colossus:crater"
+	if not pad and not rim and not crater and what != "colossus_foot" and what != "colossus:foot":
 		return Vector2.INF
 	var here: Vector2 = game.player.pos
 	var best := Vector2.INF
@@ -523,14 +541,30 @@ func tour_place(what: String) -> Vector2:
 			continue
 		var spots: Array[Vector2] = [m.pos as Vector2]
 		var faces: Array[float] = [float(m.yaw)]
-		if pad:
+		if pad or rim or crater:
 			spots.clear()
 			faces.clear()
 			for p: Vector3 in (m.pads as Array):
 				var c := Vector2(p.x, p.y)
 				var out := (c - (m.pos as Vector2)).normalized()
-				spots.append(c + out * PAD_STAND)
-				faces.append((-out).angle())
+				if crater:
+					spots.append(c)
+					faces.append(out.angle())
+					continue
+				if pad:
+					spots.append(c + out * PAD_STAND)
+					faces.append((-out).angle())
+					continue
+				# On the lip, on dry ground, looking in: round the crater from
+				# the outside of the foot until a spot is not in the water.
+				for k in 12:
+					var dir := out.rotated(TAU * float(k) / 12.0 * (1.0 if k % 2 == 0 else -1.0) * 0.5)
+					var at := c + dir * RIM_STAND
+					var gi := floori(at.y) * game.world.size + floori(at.x)
+					if gi >= 0 and gi < game.world.level.size() and game.world.level[gi] > 0 and not Ground.is_water(game.world.ground[gi]):
+						spots.append(at)
+						faces.append((-dir).angle())
+						break
 		for s in spots.size():
 			if best == Vector2.INF or spots[s].distance_to(here) < best.distance_to(here):
 				best = spots[s]
@@ -543,6 +577,8 @@ var _facing := NAN
 ## the crater's lip, looking back in at the pad with the toe and the drum rising
 ## behind it, far enough off that the whole pad is in the frame.
 const PAD_STAND := 72.0
+## How far from a pad's middle `near colossus_rim` stands: on the spoil's lip.
+const RIM_STAND := 34.0
 
 
 ## Which way `tour_place` stood the player to face: at a pad, toward it; under
