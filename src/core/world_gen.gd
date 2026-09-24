@@ -173,6 +173,14 @@ static func unhalt(seed_value: int, size: int, realm: StringName) -> void:
 	_halt_lock.unlock()
 
 
+## Whether a generation of this seed, size and realm has been asked to stop.
+static func is_halted(seed_value: int, size: int, realm: StringName) -> bool:
+	_halt_lock.lock()
+	var h: bool = _halts.has("%d:%d:%s" % [seed_value, size, realm])
+	_halt_lock.unlock()
+	return h
+
+
 static func _halted(w: WorldData) -> bool:
 	_halt_lock.lock()
 	var h: bool = not _halts.is_empty() and _halts.has("%d:%d:%s" % [w.seed_value, w.size, w.realm])
