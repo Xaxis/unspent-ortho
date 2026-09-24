@@ -20,6 +20,7 @@ const SLEEP_MS := 40
 
 func test_the_pool_answers_while_a_realm_is_raised() -> void:
 	RealmWorlds.forget()
+	RealmWorlds.settle()
 	var seed_value := 90417
 	var size := 1024
 	eq(RealmWorlds.begin(seed_value, size, &"underground"), false, "the raise is started, not done")
@@ -47,3 +48,26 @@ func test_the_pool_answers_while_a_realm_is_raised() -> void:
 	var w := RealmWorlds.take(seed_value, size, &"underground")
 	check(w != null and w.size == size, "the raise finishes and hands its world over")
 	RealmWorlds.forget()
+
+
+## A GAME THAT ENDS DOES NOT WAIT FOR ITS REALMS. `forget` used to wait out any
+## raise still running, and a raise is a whole world on one worker, so every game
+## shut down a few frames in paid for one: 34 s here, and enough across the suite
+## to run the CI gate past 45 minutes. It lets go now, and throws the world away.
+func test_a_game_that_ends_does_not_wait_for_its_realms() -> void:
+	RealmWorlds.forget()
+	RealmWorlds.settle()
+	var seed_value := 90418
+	var size := 1024
+	RealmWorlds.begin(seed_value, size, &"underground")
+	OS.delay_msec(300)
+	var t := Time.get_ticks_msec()
+	RealmWorlds.forget()
+	var ms := Time.get_ticks_msec() - t
+	lt(float(ms), 200.0, "forget lets go of a raise in flight (%d ms)" % ms)
+	check(not RealmWorlds.ready(seed_value, size, &"underground"), "and keeps nothing it made")
+	eq(RealmWorlds.begin(seed_value + 1, size, &"underground"), false, "a new raise waits while the old one holds its worker")
+	RealmWorlds.settle()
+	check(not RealmWorlds.ready(seed_value, size, &"underground"), "the abandoned world is thrown away when it finishes")
+	RealmWorlds.forget()
+	RealmWorlds.settle()
