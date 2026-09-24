@@ -70,5 +70,25 @@ func test_the_player_wakes_on_haven_ground() -> void:
 		check(Haven.holds(w, w.spawn), "seed %d: the player wakes inside a town's own reach" % s)
 		# And the question really discriminates -- a haven that answered yes
 		# everywhere would pass the line above and mean nothing.
-		var away := (w.villages[0].pos as Vector2) + Vector2(w.village_reach(w.villages[0]) + 60.0, 0.0)
-		check(not Haven.holds(w, away), "seed %d: and open country is not a haven" % s)
+		# Open country is somewhere NO village reaches: sixty tiles east of village
+		# 0 was that until villages were counted per area (GEN 24), and on seed 7
+		# it became the next village's green. So the point is looked for, off
+		# every village by its own reach and twenty more, on land.
+		var away := Vector2.INF
+		for step in range(8, 120, 4):
+			for b in 8:
+				var q := (w.villages[0].pos as Vector2) + Vector2.from_angle(TAU * b / 8.0) * float(step)
+				if w.level_at(floori(q.x), floori(q.y)) <= 0:
+					continue
+				var clear := true
+				for v: Dictionary in w.villages:
+					if (v.pos as Vector2).distance_to(q) < w.village_reach(v) + 20.0:
+						clear = false
+						break
+				if clear:
+					away = q
+					break
+			if away.is_finite():
+				break
+		check(away.is_finite(), "seed %d has open country to ask about" % s)
+		check(not away.is_finite() or not Haven.holds(w, away), "seed %d: and open country is not a haven" % s)

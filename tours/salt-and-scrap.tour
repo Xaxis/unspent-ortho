@@ -33,6 +33,10 @@ hour 11
 wait 1.2
 
 # --- Glare with nothing on: the wall -----------------------------------------
+# Out on the open pan, by name: the salt's heart is a village since villages
+# are counted per area (GEN 24), and its roofs shade the glare under a bite.
+place open_salt_flats
+wait 1.2
 await glare 20
 await pressure_bites 20
 shot 06-the-flat-bites with glare,pressure_bites
@@ -127,19 +131,20 @@ zoom 12
 # --- Both borders: stood in, then walked across -------------------------------
 # The band has to carry two washes, two marks and two hatch hands. Neither side
 # may clip to paper: a clipped wash holds no shade, no plate and no ink.
-place coast-salt_flats
+# Borders this seed holds since a landscape stands whole on one continent (GEN 24).
+place salt_flats-scrapwood
 wait 2.2
-shot 19-coast-meets-salt with border:coast-salt_flats
+shot 19-salt-meets-scrapwood with border:salt_flats-scrapwood
 walk 1,-1 2.5 run
 wait 0.6
 # Running 2.5 s carries a body clean out the far side of a band that is 12-24
 # tiles wide, so a CROSSED frame is named for having come through it and claims
 # the land on either side, the way tours/biomes.tour does. Claiming the band
 # itself here asks the frame to prove the player never finished crossing.
-shot 20-coast-salt-crossed with land:coast|salt_flats
-place moss-scrapwood
+shot 20-salt-scrapwood-crossed with land:salt_flats|scrapwood
+place scrapwood-grey_orchards
 wait 2.2
-shot 21-moss-meets-scrapwood with border:moss-scrapwood
+shot 21-scrapwood-meets-orchards with border:scrapwood-grey_orchards
 walk 1,-1 2.5 run
 wait 0.6
-shot 22-moss-scrapwood-crossed with land:moss|scrapwood
+shot 22-scrapwood-orchards-crossed with land:scrapwood|grey_orchards

@@ -22,6 +22,8 @@ class_name GenCountries
 ## sample's stride in tiles.
 const BALANCE_PASSES := 3
 const BALANCE_STRIDE := 4
+## The furthest those passes may push one landscape's borders, in tiles.
+const PUSH_MOST := 12.0
 ## The distance a type is put at from land its body was not dealt: past any
 ## weight the balance can reach, so it can never win a cell there.
 const OUT_OF_REACH := 1.0e9
@@ -32,138 +34,19 @@ const SLOTS := 256
 const ENCLAVE_TILES := 400
 ## A run of one type smaller than this (512 world) is not its own region.
 const REGION_TILES := 220
-## AND NO RUN IS A PLACE UNDER THIS, WHATEVER THE WORLD'S SIZE.
+## WHAT SHARE OF A TYPICAL LANDSCAPE'S HOLDING A RUN MUST BE TO BE A PLACE
+## (a region: a chapter, a keeper, a depot, a landmark round, an interference
+## file). Stated against the BODY a run lies on and divided by how many
+## landscapes the REALM lays, `c.land_types.size()`: a share of the square alone
+## outgrew the continents it measured (73.6% of the land in a region at 1300), a
+## share of the body alone left fifteen landscapes with no region at 256, and
+## dividing by the dealt count instead of the realm's lost the most coverage.
+## 0.25 (owner's delegation, docs/ROADMAP.md DECIDED 5) keeps coverage at
+## 0.93-0.95 on seeds 1, 42, 90210 and 7 with every region holding a landmark.
 ##
-## A REGION IS A CHAPTER NOW (docs/VISION.md: explored, mined and defended
-## before the next opens), and it was already the unit a keeper, a depot, a
-## landmark round and an interference file key on. Measured, it could be a puddle:
-## the floor is `REGION_TILES * body_k * body_k`, and `body_k` is a BODY's scale,
-## so it came out at 220 tiles on a 512 island — 15 across, four seconds at
-## walking pace — and 31 tiles on a 192 test world, which is five tiles across.
-## Worse, it SHRANK as the world grew: 178 at 1024, because `body_k` falls when a
-## world gains continents, so the bigger the world the smaller a place was allowed
-## to be.
-##
-## That is `body_k` used for the one question it was never right for. It exists so
-## distances scale with the body a thing stands on rather than with the square,
-## which is correct for a noise wavelength and for how far apart two villages
-## sit. It is wrong for "is this a place", because a place is the same size on a
-## continent as on an island: it is measured in a body's own footsteps.
-##
-## It is stated against the WORLD (`GenContext.k`) and not against a body, so it
-## GROWS as the world grows: 1,250 tiles at 512, 5,000 at 1024, 312 at a 256 test
-## world. That direction is the whole point — a bigger world should hold bigger
-## places, not more of the same small ones, which is exactly what it did while
-## this was `body_k` (178 tiles at 1024, smaller than the 220 it allowed at 512).
-##
-## FLAT 1,250 WAS TRIED FIRST AND IS WRONG, and the suite said so in one run: the
-## scrapwood and the slums are about 5% of the land each, so on a 256 world
-## neither could raise a single region, and 16% of the land belonged to no place
-## at all. A landscape with no region has no keeper, no depot and no chapter — it
-## stops being somewhere the game happens. A floor has to be a share of the world
-## it is floored in.
-##
-## The cost, stated because it is a real one: a body too small to hold a place of
-## this size holds no region, no keeper and no chapter. For the orbital pebbles of
-## docs/DESIGN.md that is a design question and not a bug — a rock you cross in
-## four seconds was never going to be asked to be explored, mined and defended.
-## **AND AT THE SIZE THE GAME SHIPS AT, THIS IS CURRENTLY WRONG. MEASURED
-## 2026-09-19, seed 7 at `Tuning.WORLD_SIZE` (1300), which is what every player
-## gets:**
-##
-##   floor 8,059 tiles       five continents, 104,140 to 140,313 tiles each
-##   coverage 73.6%          a QUARTER of the land is in no region at all
-##   server_fields           26 runs, biggest 6,616  -> NO REGION
-##   glass_desert            14 runs, biggest 7,456  -> NO REGION
-##
-## Two landscapes with no keeper, no depot and no chapter, which the paragraph
-## above calls the thing that must not happen -- and both miss by about 1,500
-## tiles, so this is a floor just over the height of the world it floors.
-##
-## THE REASON IS THE ONE `gen_context.gd` ALREADY WROTE DOWN about `k` versus
-## `body_k`: "right for one island filling the square; wrong for four continents
-## in it". This floor is a share of the SQUARE (`c.k = size / 512`), and it grows
-## with the square's AREA -- but a run lies on ONE CONTINENT, and the world did
-## not get one bigger island when it grew, it got FIVE. A continent is about 7.7%
-## of the 1300 square, so it holds roughly 130,000 tiles across 21 landscapes:
-## about 6,600 each. The floor asks for 8,059. It outgrew the bodies it measures.
-##
-## `body_k` was swapped out for `c.k` because it SHRANK as the world grew (178 at
-## 1024, under the 220 it allowed at 512). That was a real bug and the swap fixed
-## it. It just swung past the answer: the square grows faster than any single
-## body in it, so the floor now overshoots in the other direction.
-##
-## **NOT FIXED HERE, AND THE COST IS WHY.** `GenScatter` iterates `w.regions` and
-## filters props with `region_at` (gen_scatter.gd:110, 140, 159), so ANY change to
-## which runs become regions MOVES PROPS. That is a `tests/biome/test_parity.gd`
-## re-acceptance, a `WorldStamp.GEN` bump by hand and a re-shoot of every frame
-## that stands somewhere by name -- the owner's call to spend, not a builder's.
-## The candidates, in the order they were judged:
-##
-##   PROMOTE        after the floor runs, give any landscape with no region its
-##                  own biggest run. Smallest change, and it encodes exactly the
-##                  rule this header already states. Does not lift coverage.
-##   PER BODY       state the floor as a share of the BODY a run lies on rather
-##                  than of the square. Principled, and it is what `body_k`
-##                  exists for; the most work and the biggest parity move.
-##   FLAT           back to a constant in tiles. Correct at 1300 and the reason
-##                  it was rejected is a 256 TEST world, not a shipped one --
-##                  `tests/biome/test_regions.gd` runs at 256 and so reports
-##                  87-90% where the real number is 73.6%.
-##
-## Whichever is taken, note the test understates the bug by fifteen points
-## because it measures a size nobody plays.
-## **WHAT SHARE OF A TYPICAL LANDSCAPE'S HOLDING A RUN MUST BE TO BE A PLACE**
-## (owner, 2026-09-19, chosen from measurement rather than taste).
-##
-## Stated against the BODY a run lies on and against how many landscapes the
-## REALM lays, `c.land_types.size()`. When this was written every landscape could
-## reach every body, so that count WAS "how many landscapes share that body", and
-## these words said so. Since each body holds only what it was dealt (abd628f) the
-## two are different numbers, and the code has always divided by the realm's
-## count. Dividing by the DEALT count instead was measured and loses the most:
-## coverage 0.86-0.91 on seeds 1, 42, 90210 and 7, because a body dealt fewer
-## landscapes raises its floor. So the divisor stays the realm's, and what the
-## body split cost is paid back through the share below.
-##
-## Both halves are needed and a floor with either one missing was measured and
-## rejected:
-##
-##   SHARE OF THE SQUARE (what was here) grew with the square's AREA while a run
-##   lies on ONE CONTINENT. At 1300 it asked 8,059 tiles of continents that hold
-##   about 6,600 each: 73.6% coverage, two landscapes with no chapter.
-##
-##   SHARE OF THE BODY ALONE fixed 1300 (0 homeless, 83.4%) and destroyed the
-##   small worlds the suite runs on: at 256 it left fifteen landscapes homeless
-##   and 43.6% coverage, because twenty-one landscapes on a small island hold
-##   about a thousand tiles each and no fixed share of the body can be right for
-##   both. Dividing by the count is what makes one number serve every size.
-##
-## `PLACE_LEAST` is the hard floor under it, in plain tiles: a region under
-## `Landmarks.REGION_TILES` can never have a landmark stood in it, so it is a
-## place that can only ever be CROSSED -- `Chapter.read` gives it `explored` for
-## free, because there is nothing there to have been at. Tying the two means a
-## chapter is at least big enough to hold one thing a chapter asks for.
-##
-## **IT IS NOT A BUG FIX AND AN EARLIER VERSION OF THIS COMMENT CLAIMED IT WAS.**
-## I wrote that such regions were "born answered" and lifted their road holds
-## unseen. They are not: `defended` is `keeper_down or yard_broken`, both of
-## which are FALSE where no keeper and no yard ever existed (`Chapters` is
-## careful about exactly that, and says so), so a place that asks nothing is
-## never answered. What actually failed was `test_chapter` reading
-## `here.get("answered", true)` on an EMPTY dictionary, because the player was
-## not standing in a region at all -- the default, not a computation. I had the
-## right symptom, the wrong cause, and I asserted it to a teammate before
-## measuring it. The floor tie stands on the plain reason above and nothing more.
-##
-## **0.35 -> 0.25 on 2026-09-22 (owner's delegation, `docs/ROADMAP.md` DECIDED 5).**
-## Holding each body to its own deal split a landscape's land into more runs, each
-## smaller, and seed 7's coverage fell from 0.9105 to 0.8993 with the same land. At
-## 0.25 the runs that fell under the floor become places of their own: coverage
-## 0.9470 / 0.9361 / 0.9456 / 0.9329 (seeds 1, 42, 90210, 7), every region still
-## holds a landmark, and none is under a keeper's 240 tiles. Folding the runs into
-## their neighbour's landscape reached 0.98 and repainted a tenth of the land;
-## this keeps the variety and gives it a keeper.
+## `PLACE_LEAST` is the hard floor under it: a region under
+## `Landmarks.REGION_TILES` can never have a landmark stood in it, so it would be
+## a place that can only be crossed.
 const BODY_SHARE := 0.25
 const PLACE_LEAST := Landmarks.REGION_TILES
 const PLACE_TILES := 1250.0
@@ -260,7 +143,7 @@ static func coarse(c: GenContext) -> void:
 	var wamp := 58.0 * c.body_k
 	var own: Array[FastNoiseLite] = []
 	for cc in types:
-		own.append(GenFields.noise(c.s, 210 + cc, 1.0 / (90.0 * c.body_k), 3))
+		own.append(GenFields.noise(c.s, 210 + cc, 1.0 / (90.0 * c.body_k * _place_scale(c)), 3))
 	var oamp := 38.0 * c.body_k
 	# dist[cc * cn + k]: warped distance from cell k to type cc's nearest site.
 	var dist := PackedFloat32Array()
@@ -519,6 +402,17 @@ static func _slot_targets(c: GenContext, target: PackedFloat32Array) -> Dictiona
 	return out
 
 
+## How much bigger a place is on a world of continents (four or five landscapes
+## to a body) than on the one island the wander and the enclave floor were tuned
+## for. Held at the island's size, the wander broke a landscape into lobes inside
+## its neighbour. 1 on a one-body world.
+const PLACE_SCALE := 2.0
+
+
+static func _place_scale(c: GenContext) -> float:
+	return PLACE_SCALE if c.bodies.size() > 1 else 1.0
+
+
 ## Where every type's sites go: x, y in tiles, z the type index.
 ##
 ## Types that declare `anchors` lay the island's journey: each anchor names a
@@ -579,6 +473,24 @@ static func _sites(c: GenContext, rng: RandomNumberGenerator) -> Array[Vector3]:
 		out.append(Vector3(r.position.x + u * r.size.x, r.position.y + v * r.size.y, cc))
 	_envelope_sites(c, rng, out)
 	_site_every_dealt_body(c, mirror, out)
+	return _one_heart_per_body(c, out)
+
+
+## One heart per landscape per continent: territory is distance to a type's
+## nearest site, so a second site on one body is a second, separate run of it.
+## The first is kept (anchors come first, in journey order). A one-body test
+## island keeps every site: its second anchors give its journey a shape.
+static func _one_heart_per_body(c: GenContext, sites: Array[Vector3]) -> Array[Vector3]:
+	if c.bodies.size() <= 1:
+		return sites
+	var out: Array[Vector3] = []
+	var seen := {}
+	for s: Vector3 in sites:
+		var key := int(s.z) * 256 + c.w.continent_at(floori(s.x), floori(s.y))
+		if seen.has(key):
+			continue
+		seen[key] = true
+		out.append(s)
 	return out
 
 
@@ -986,7 +898,20 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 	var parts: Array[PackedInt32Array] = []
 	parts.resize(ceili(float(size) / 12))
 	var gain := 60.0 * size / 512.0
-	for it in BALANCE_PASSES:
+	# On a continent the climb (`border_elevation`) moves a border through a
+	# margin whose gradient is shallow between hearts far apart, so it carries
+	# the border much further than on one island: more reach and passes, damped
+	# (a step halves when its error changes sign) because a tile of push there
+	# moves a great deal of land.
+	var reach := PUSH_MOST * _place_scale(c) * _place_scale(c)
+	var passes := BALANCE_PASSES if _place_scale(c) <= 1.0 else BALANCE_PASSES * 3
+	var damped := _place_scale(c) > 1.0
+	var damp := PackedFloat32Array()
+	damp.resize(SLOTS * types)
+	damp.fill(1.0)
+	var last_err := PackedFloat32Array()
+	last_err.resize(SLOTS * types)
+	for it in passes:
 		assign.call(BALANCE_STRIDE, parts)
 		for sl: int in slot_target:
 			var want: PackedFloat32Array = slot_target[sl]
@@ -999,11 +924,16 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 					counts[cc] += part[at + cc]
 					total += part[at + cc]
 			for cc: int in c.land_types:
-				push[at + cc] = clampf(push[at + cc] + (want[cc] - counts[cc] / maxf(1.0, total)) * gain, -12.0, 12.0)
+				var err := want[cc] - counts[cc] / maxf(1.0, total)
+				if damped:
+					if err * last_err[at + cc] < 0.0:
+						damp[at + cc] = maxf(0.05, damp[at + cc] * 0.5)
+					last_err[at + cc] = err
+				push[at + cc] = clampf(push[at + cc] + err * gain * damp[at + cc], -reach, reach)
 	c.mark(&"tiles.balance")
 	assign.call(1, parts)
 	c.mark(&"tiles.assign")
-	_absorb_enclaves(c, roundi(ENCLAVE_TILES * c.body_k * c.body_k))
+	_absorb_enclaves(c, roundi(ENCLAVE_TILES * c.body_k * c.body_k * _place_scale(c) * _place_scale(c)))
 	c.mark(&"tiles.enclaves")
 	if with_blend:
 		_blend(c, widen)
@@ -1296,8 +1226,9 @@ static func _blend(c: GenContext, widen: PackedFloat32Array) -> void:
 				dist[hrow + (x >> 1)] = 0.0
 				pair[hrow + (x >> 1)] = pk
 	, 12)
-	# Exact to 28 tiles, past the widest ecotone.
-	var spread := GenFields.banded([dist, pair], hw, 14, func(arrays: Array, width: int) -> Array:
+	# How wide an ecotone runs on each body, and exact past the widest of them.
+	var reach := GenBodies.by_tile(w, _ecotone_reach(c))
+	var spread := GenFields.banded([dist, pair], hw, ceili(ECOTONE_MOST * 0.5) + 2, func(arrays: Array, width: int) -> Array:
 		var dd: PackedFloat32Array = arrays[0]
 		var pp: PackedInt32Array = arrays[1]
 		_spread_labelled(dd, pp, width, 2.0)
@@ -1396,12 +1327,35 @@ static func _blend(c: GenContext, widen: PackedFloat32Array) -> void:
 				elif hi == own:
 					other = lo
 				country2[i] = other
-				# 12 to 24 tiles, wandering along the border. Every ecotone keeps
-				# inside it, the Burning's ash included.
-				var width := 12.0 + 12.0 * clampf(0.5 + widen[i] * 1.4, 0.0, 1.0)
+				# One to two of the body's `_ecotone_reach`, wandering along the
+				# border. Every ecotone keeps inside it, the Burning's ash included.
+				var least := reach[i]
+				var width := least + least * clampf(0.5 + widen[i] * 1.4, 0.0, 1.0)
 				var fade := maxf(clampf((seam_d[i] * 510.0 - 1.0) / 8.0, 0.0, 1.0), 1.0 - d / 2.0)
 				blend[i] = (0.5 - 0.5 * d / width) * fade if d < width else 0.0
 	)
+
+
+## The narrowest an ecotone runs, per body id, in tiles: a share of how far a
+## walk crosses one of the body's landscapes, never under the one island's 12.
+## The widest is twice it. A fixed 12-24 was a line across a place 300 tiles wide.
+const ECOTONE_SHARE := 0.12
+const ECOTONE_LEAST := 12.0
+## The widest any ecotone runs: what the distance spread is exact to.
+const ECOTONE_MOST := 64.0
+
+
+static func _ecotone_reach(c: GenContext) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(256)
+	out.fill(ECOTONE_LEAST)
+	for row: Dictionary in c.w.continents:
+		var types := (row.get("types", PackedInt32Array()) as PackedInt32Array).size()
+		if types <= 0:
+			continue
+		var across := sqrt(float(row.get("tiles", 0)) / float(types))
+		out[int(row.get("id", 0))] = clampf(across * ECOTONE_SHARE, ECOTONE_LEAST, ECOTONE_MOST * 0.5)
+	return out
 
 
 ## Two-sweep 8-neighbour chamfer distance (cell = `unit` tiles) that also

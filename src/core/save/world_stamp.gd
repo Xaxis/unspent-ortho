@@ -120,7 +120,11 @@ const UNKNOWN := "unknown"
 ##     pines and bushes; declared ore was refused wherever `props` did not repeat
 ##     it; only the first landscape declaring fumaroles got its fields. Props move
 ##     on every seed, and ground moves wherever the jungle's new fields lay salt.
-const GEN := 23
+## 15. A landscape is a PLACE, and an immense one (owner, 2026-09-23): five
+##     continents in a square of 1840, each landscape on ONE of them with one
+##     heart, a wander and ecotones sized to the place, villages, landmarks and
+##     vents counted per area. Every seed's world moves.
+const GEN := 24
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

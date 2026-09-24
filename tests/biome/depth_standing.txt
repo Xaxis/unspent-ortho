@@ -1,7 +1,6 @@
 # The landscape depth debt: `land row` per line, every row test_landscape_depth
 # finds failing on the tree it was written against. It only shrinks: a line
 # that now passes must come out in the commit that made it pass.
-bonelands land.frames
 bonelands land.landmark
 bonelands land.own_props
 bonelands land.site
@@ -9,7 +8,6 @@ bonelands people.built
 bonelands plan.keeper
 bonelands plan.machine
 bonelands player.signature
-burning land.frames
 burning land.landmark
 burning land.own_props
 burning people.built
@@ -24,27 +22,22 @@ coast player.only_in
 coast player.signature
 drowned_city land.frames
 drowned_city land.landmark
-drowned_city land.own_props
 drowned_city land.site
 drowned_city plan.depot
 drowned_city plan.work_props
 drowned_city player.only_in
-frost_sea land.frames
 frost_sea land.landmark
 frost_sea land.own_props
 frost_sea land.site
 frost_sea plan.depot
 frost_sea plan.work_props
 frost_sea player.only_in
-frost_sea player.signature
-glass_desert land.frames
 glass_desert land.landmark
 glass_desert land.own_props
 glass_desert land.site
 glass_desert plan.depot
 glass_desert plan.work_props
 glass_desert player.only_in
-green_towers land.frames
 green_towers land.landmark
 green_towers land.own_props
 green_towers land.site
@@ -55,7 +48,6 @@ green_towers plan.machine
 green_towers plan.work_props
 green_towers player.only_in
 green_towers player.signature
-grey_orchards land.frames
 grey_orchards land.landmark
 grey_orchards land.own_props
 grey_orchards land.site
@@ -65,7 +57,6 @@ grey_orchards plan.keeper
 grey_orchards plan.machine
 grey_orchards plan.work_props
 grey_orchards player.only_in
-machine_city land.frames
 machine_city land.landmark
 machine_city land.own_props
 machine_city land.site
@@ -75,7 +66,6 @@ machine_city plan.machine
 machine_city plan.work_props
 machine_city player.only_in
 machine_city player.signature
-mesas land.frames
 mesas land.landmark
 mesas land.own_props
 mesas land.site
@@ -83,14 +73,12 @@ mesas plan.depot
 mesas plan.work_props
 mesas player.only_in
 mesas player.signature
-moss land.frames
 moss land.landmark
 moss land.own_props
 moss land.site
 moss people.built
 moss plan.keeper
 moss plan.machine
-pinewood land.frames
 pinewood land.landmark
 pinewood land.own_props
 pinewood land.site
@@ -98,21 +86,18 @@ pinewood people.built
 pinewood plan.keeper
 pinewood plan.machine
 pinewood player.signature
-ruined_metropolis land.frames
 ruined_metropolis land.landmark
 ruined_metropolis land.own_props
 ruined_metropolis land.site
 ruined_metropolis plan.depot
 ruined_metropolis plan.work_props
 ruined_metropolis player.only_in
-salt_flats land.frames
 salt_flats land.landmark
 salt_flats land.own_props
 salt_flats land.site
 salt_flats people.built
 salt_flats plan.machine
 salt_flats player.only_in
-scrapwood land.frames
 scrapwood land.landmark
 scrapwood land.own_props
 scrapwood land.site
@@ -120,7 +105,6 @@ scrapwood people.built
 scrapwood plan.keeper
 scrapwood plan.machine
 scrapwood player.only_in
-server_fields land.frames
 server_fields land.landmark
 server_fields land.own_props
 server_fields land.site
@@ -129,7 +113,6 @@ server_fields plan.keeper
 server_fields plan.machine
 server_fields plan.work_props
 server_fields player.only_in
-slums land.frames
 slums land.landmark
 slums land.site
 slums people.built
@@ -138,14 +121,12 @@ slums plan.keeper
 slums plan.work_props
 slums player.only_in
 slums player.signature
-snowfield land.frames
 snowfield land.landmark
 snowfield land.own_props
 snowfield land.site
 snowfield people.built
 snowfield plan.keeper
 snowfield plan.machine
-sulphur_jungle land.frames
 sulphur_jungle land.landmark
 sulphur_jungle land.own_props
 sulphur_jungle people.built
@@ -154,14 +135,12 @@ sulphur_jungle plan.keeper
 sulphur_jungle plan.machine
 sulphur_jungle plan.work_props
 sulphur_jungle player.only_in
-the_crags land.frames
 the_crags land.landmark
 the_crags land.site
 the_crags plan.depot
 the_crags plan.work_props
 the_crags player.only_in
 the_crags player.signature
-the_middens land.frames
 the_middens land.landmark
 the_middens land.site
 the_middens plan.depot

@@ -129,11 +129,28 @@ static func sites(world: WorldData) -> Array[WorksSite]:
 		if rows.size() < MIN_WORKS or int(region.get("tiles", 0)) < MIN_TILES:
 			continue
 		var feed := _keeper_feed(world, region)
-		var heart := _knot(world, rows, region.get("centre", Vector2.ZERO), feed[0], feed[1])
-		if heart.is_empty():
-			continue
-		var at := stand_near(world, heart.get("pos", Vector2.ZERO), true)
-		if not at.is_finite():
+		# The next busiest work where the busiest has no yard's room round it, so
+		# a region on broken ground is not refused its depot outright.
+		var left := rows.duplicate()
+		var heart := {}
+		var at := Vector2.INF
+		while not left.is_empty():
+			heart = _knot(world, left, region.get("centre", Vector2.ZERO), feed[0], feed[1])
+			if heart.is_empty():
+				break
+			# In its region, parts and all where it can be, its own ground always:
+			# `stand_near` looks thirteen tiles round, over any border.
+			at = stand_near(world, heart.get("pos", Vector2.ZERO), true, id, bearing)
+			if not at.is_finite():
+				at = stand_near(world, heart.get("pos", Vector2.ZERO), true, id)
+			if at.is_finite():
+				break
+			at = Vector2.INF
+			for k in left.size():
+				if (left[k].get("pos", Vector2.ZERO) as Vector2) == heart.get("pos", Vector2.ZERO):
+					left.remove_at(k)
+					break
+		if heart.is_empty() or not at.is_finite():
 			continue
 		var s := WorksSite.new()
 		s.region = id
@@ -144,6 +161,21 @@ static func sites(world: WorldData) -> Array[WorksSite]:
 		s.yard = int(heart.get("count", 0))
 		out.append(s)
 	return out
+
+
+## Whether a yard at `at`, facing `bearing`, has its ground and all three of its
+## working parts in region `id`.
+static func _inside(world: WorldData, at: Vector2, bearing: float, id: int) -> bool:
+	var probe := WorksSite.new()
+	probe.pos = at
+	probe.facing = bearing
+	if world.region_at(floori(at.x), floori(at.y)) != id:
+		return false
+	for k in 3:
+		var p := probe.part(k)
+		if world.region_at(floori(p.x), floori(p.y)) != id:
+			return false
+	return true
 
 
 ## The busiest work in a region: the one with the most others within CLUSTER of
@@ -237,30 +269,42 @@ static func _near_village(world: WorldData, p: Vector2) -> bool:
 ## not the same place. A caller that cares about the clearance passes `clear` and
 ## gets a tile that has room AND keeps it; 34_works, which is placing something
 ## against a yard that already stands, does not and is unchanged.
-static func stand_near(world: WorldData, p: Vector2, clear := false) -> Vector2:
+static func stand_near(world: WorldData, p: Vector2, clear := false, region := -1, facing := NAN) -> Vector2:
 	var cx := floori(p.x)
 	var cy := floori(p.y)
-	if _room_at(world, cx, cy) and (not clear or _keeps_clear(world, Vector2(cx + 0.5, cy + 0.5))):
+	if _fits(world, cx, cy, clear, region, facing):
 		return Vector2(cx + 0.5, cy + 0.5)
 	for r in range(1, 14):
 		# The perimeter of the ring, in the order the square scan visited it: the
 		# top row, then the sides of each row between, then the bottom row.
 		for dx in range(-r, r + 1):
-			var a := Vector2(cx + dx + 0.5, cy - r + 0.5)
-			if _room_at(world, cx + dx, cy - r) and (not clear or _keeps_clear(world, a)):
-				return a
+			if _fits(world, cx + dx, cy - r, clear, region, facing):
+				return Vector2(cx + dx + 0.5, cy - r + 0.5)
 		for dy in range(-r + 1, r):
-			var l := Vector2(cx - r + 0.5, cy + dy + 0.5)
-			if _room_at(world, cx - r, cy + dy) and (not clear or _keeps_clear(world, l)):
-				return l
-			var t := Vector2(cx + r + 0.5, cy + dy + 0.5)
-			if _room_at(world, cx + r, cy + dy) and (not clear or _keeps_clear(world, t)):
-				return t
+			if _fits(world, cx - r, cy + dy, clear, region, facing):
+				return Vector2(cx - r + 0.5, cy + dy + 0.5)
+			if _fits(world, cx + r, cy + dy, clear, region, facing):
+				return Vector2(cx + r + 0.5, cy + dy + 0.5)
 		for dx in range(-r, r + 1):
-			var b := Vector2(cx + dx + 0.5, cy + r + 0.5)
-			if _room_at(world, cx + dx, cy + r) and (not clear or _keeps_clear(world, b)):
-				return b
+			if _fits(world, cx + dx, cy + r, clear, region, facing):
+				return Vector2(cx + dx + 0.5, cy + r + 0.5)
 	return Vector2.INF
+
+
+## Room for a yard on this tile, clear of people when asked, and -- given a
+## region -- on that region's ground, and given a facing too, with its three
+## working parts on it as well.
+static func _fits(world: WorldData, x: int, y: int, clear: bool, region: int, facing: float) -> bool:
+	if not _room_at(world, x, y):
+		return false
+	var at := Vector2(x + 0.5, y + 0.5)
+	if clear and not _keeps_clear(world, at):
+		return false
+	if region < 0:
+		return true
+	if is_nan(facing):
+		return world.region_at(x, y) == region
+	return _inside(world, at, facing, region)
 
 
 ## The distances a yard must keep, asked of a real tile rather than of the heart

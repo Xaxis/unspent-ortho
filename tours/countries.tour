@@ -50,7 +50,9 @@ coast calm
 # `prop:driftwood` is what guards it in the meantime: the frame has to hold the
 # strand, so a worldgen change that moves the shoreline out of it fails the tour
 # rather than filing a field under the name "coast-heart".
-at 110.5,436.5
+# By name since GEN 24 moved every seed's coast: the coast, then its strand.
+place coast
+near driftwood
 wait 2.0
 shot 01-coast-heart with land:coast,prop:driftwood
 walk 0,-1 1.2
@@ -78,13 +80,14 @@ wait 2.0
 shot 08-coast-moss with border:coast-moss
 walk 1,-1 2.5 run
 shot 09-coast-moss-crossed with land:coast|moss
-place pinewood-snowfield
+# Borders this seed holds since a landscape stands whole on one continent (GEN 24).
+place snowfield-mesas
 wait 2.0
-shot 10-pinewood-snowfield with border:pinewood-snowfield
+shot 10-snowfield-mesas with border:snowfield-mesas
 walk 1,-1 2.5 run
-shot 11-pinewood-snowfield-crossed with land:pinewood|snowfield
-place bonelands-burning
+shot 11-snowfield-mesas-crossed with land:snowfield|mesas
+place snowfield-burning
 wait 2.0
-shot 12-bonelands-burning with border:bonelands-burning
+shot 12-snowfield-burning with border:snowfield-burning
 walk 1,-1 2.5 run
-shot 13-bonelands-burning-crossed with land:bonelands|burning
+shot 13-snowfield-burning-crossed with land:snowfield|burning

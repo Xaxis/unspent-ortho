@@ -44,7 +44,7 @@ static func make() -> BiomeDef:
 	d.order = 8
 	d.style_note = "Flat rule and low tone: a city drawn in concrete and lit in sodium."
 	# A city is compact. It does not sprawl across an island the way a bog does.
-	d.share = Vector2(0.045, 0.075)
+	d.share = Vector2(0.055, 0.095)
 	# No journey anchor: it takes the temperate, half-dry middle, and it wants a
 	# shore because that is where the plant took its water.
 	d.temp_range = Vector2(0.35, 0.75)
@@ -335,7 +335,8 @@ static func make() -> BiomeDef:
 	# that cost the landscape its whole reason for existing.
 	#
 	# Villages are dealt in `village_order` and no two may stand within `gap`
-	# (26 tiles at this size). The slums is 5.4% of the island on seed 1 and it
+	# (56 x body_k; a borough of a city like this one within `GenSettle.borough_gap`,
+	# since GEN 24). The slums is 5.4% of the island on seed 1 and it
 	# borders coast, moss, salt flats and scrapwood — so by the time order 8 came
 	# round, the eight villages already placed had crowded out every candidate it
 	# had, and it got NONE. A city landscape with no settlement in it builds no

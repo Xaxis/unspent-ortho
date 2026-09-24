@@ -10,7 +10,7 @@ static func make() -> BiomeDef:
 	d.display_name = "snowfield"
 	d.order = 3
 	d.style_note = "Line-dominant, minimal fill; the white is paper, the shade is blue."
-	d.share = Vector2(0.11, 0.15)
+	d.share = Vector2(0.09, 0.13)
 	d.anchors = [
 		{"seq": 6, "u": 0.3, "v": 0.19},
 		{"seq": 9, "u": 0.1, "v": 0.34, "chance": 0.5},

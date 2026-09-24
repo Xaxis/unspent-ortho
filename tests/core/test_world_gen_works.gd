@@ -553,7 +553,14 @@ func test_budgets() -> void:
 	# no timing here has ever been.
 	cost_lt(works_ms / maxf(float(gen_ms), 1.0), 0.22,
 		"the works stage as a share of generation (%.0f ms of %d)" % [works_ms, gen_ms])
-	lt(float(evidence), 1400.0, "evidence the works stage lays at 256 (%d)" % evidence)
+	# 1,600 since GEN 24, and not because anything got heavier. Eight landscapes'
+	# shares rose so each could make a 40-frame place, and most of those eight are
+	# the plan's own (the machine city, the server fields, the slums, the salt
+	# flats): at 256 every landscape shares one island, so more of it is ground the
+	# plan works and the stage lays more evidence -- 1,302 before, 1,454 after,
+	# against a cost that CI measured at 0.119 of generation. The bar still catches
+	# a stage that starts laying evidence for its own sake.
+	lt(float(evidence), 1600.0, "evidence the works stage lays at 256 (%d)" % evidence)
 	# The vertex count is not a clock and is not scaled: it is the same number on
 	# any machine, under any load.
 	lt(float(verts) / maxf(n, 1), 1500.0, "vertices per piece of evidence")

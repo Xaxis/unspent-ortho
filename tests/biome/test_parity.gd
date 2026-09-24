@@ -355,6 +355,17 @@ extends TestCase
 ## trees +2 on one; every other kind's exact digest is byte-identical, so nothing
 ## the shared rules laid moved. Causation: the previous hashes passed in this same
 ## session with the three batch files put back at HEAD.
+##
+## RE-ACCEPTED A FOURTEENTH TIME (2026-09-23): a landscape is a place (GEN 24,
+## L1). Every digest moves on every seed, and at 256 ALL of it is the coast's
+## share (0.32-0.38 -> 0.14-0.20): five continents, the 1840 square, two
+## continents a landscape and the other seven shares cannot reach a one-body world
+## or the six, and the new `SiteKinds` reader lays nothing no shipped landscape
+## claims. Causation: with the coast's share alone put back, this test passed on
+## the previous hashes in the same session. Per `breakdown`, summed over the five
+## seeds, props 16,286 -> 16,676: the coast's kinds give ground (broadleaf -194,
+## gorse -189, reeds -124, wreckage -38) and its neighbours take it (pine +204,
+## dead tree +153, vent +92, peat bank +67).
 
 
 ## **WHAT THIS BASELINE DOES NOT PIN, AND THE SECOND HALF IS THE ONE NOBODY
@@ -370,16 +381,32 @@ extends TestCase
 ## crosses them. `GenBodies.deepen_straits` moves 125 tiles at `Tuning.WORLD_SIZE`
 ## and not one byte here, which is convenient and is also the warning: a green
 ## run of this file is not evidence about the world a player is given.
+##
+## RE-ACCEPTED A FIFTEENTH TIME (2026-09-24), for the same GEN 24, and the
+## fourteenth's hashes were never true of any tree that reached main: they were
+## taken with the coast's share cut, which that branch then put back. In two
+## steps, each measured against the previous tree at 256:
+##   the landscapes-as-places merge (shares, five continents, borough and spawn
+##   rules) moves all six digests: seed 1 d776653d 9d45ec59 01824a96 aef3f8c2
+##   e6b8c99e ab081227, `country` from the shares of the muted six;
+##   immense regions on top moves `country2` only through the blend's distance
+##   spread being exact to 68 tiles instead of 28 (put the reach back to 14 alone
+##   and seed 1's country2 is 9d45ec59 again), and `ground`, `level` and `props`
+##   through settling: the spawn now asks for rough coast when a one-body island
+##   has no flat one and levels that plot, declared villages are settled before
+##   area adds any, roads are eased where a crossing left a step, a pool keeps
+##   one piece, and the way-in seam looks for a smaller flat. `country` and
+##   `blend` are byte-identical to the merge on all five seeds.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "06fa726c d5b85d6c cc7477d6 de6e52ab fe4b52d9 6c0d8cda",
-	3: "2202ae28 60362f9d 5b976a87 15e918c3 585d921b ac416360",
-	7: "4b153668 3424d5c9 64fee617 d3b86b56 72103915 c08dd1e2",
-	42: "e5a96b5f bef1bc39 fa3a07d8 b4709b8b 824c752b 377fdfef",
-	90210: "c3fe6c1a a851aff1 fd9d48e4 01e6dd9b b6884aed 4da8dda8",
+	1: "d776653d 6ad6b905 fad9295c c9461b35 e6b8c99e 15ad2cee",
+	3: "b5edae39 c8d3b8f5 3b4cb3b7 4c69a413 44aa1757 d14a9098",
+	7: "58b06d6a 6d58b415 2463bc7c e866cdde 06bf3a40 06b9494c",
+	42: "dadf03f6 5a0d5b87 03251c49 d215e370 177dc1cd 8e94af18",
+	90210: "ccfb32d9 8cb5fc79 ef5cf0f7 fedceafb 28fb97e2 af0d9cd1",
 }
 
 

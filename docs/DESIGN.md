@@ -6,14 +6,24 @@ look `docs/LOOK.md`, next steps `docs/ROADMAP.md`. Code wins over this file.
 ## World generation
 
 - Deterministic per seed (`Rng.hash01`, `Rng.make`; never `randf`).
-- `GenBodies.plan` lays bodies first: the surface at `Tuning.WORLD_SIZE` (1300)
+- `GenBodies.plan` lays bodies first: the surface at `Tuning.WORLD_SIZE` (1840)
   has 5 continents; `--size` is a ceiling, and 512 or less gives one body.
 - 22 landscapes, one file each in `src/content/biomes/` (21 surface, 1
   underground). A landscape with `spread.x >= 1` is guaranteed and dealt to the
   home continent first (coast, moss, frost sea).
+- **A landscape is immense**: it lies on ONE continent (`MOST_BODIES`), each
+  continent carries four or five, and each landscape has one heart per
+  continent, so it stands there whole. Measure with
+  `tools/gd/probe_regions.gd` (frames, core crossing, ecotone depth, what the
+  eye sees from the shoulder at the core, what there is to walk to).
 - A big enough run of one landscape is a REGION (`WorldData.regions`, global
   ids); keepers, depots, chapters and interference key on its id.
-- Borders are ecotones: `country2`/`blend` fade from 0.5 over 12-24 tiles.
+- Borders are ecotones: `country2`/`blend` fade from 0.5 over a share of the
+  place's width (12-24 tiles on a test island, 24-64 on a continent).
+- Content is counted per area: sites (`GenScatter.TILES_PER_SITE`), landmarks
+  (`Landmarks.wanted_in`, one per 7,000 tiles of a region, 3 to 16) and
+  villages (`GenSettle.village_want`, a landscape's `villages` per 25,000 tiles
+  of its land), so a bigger place is fuller, not emptier.
 - A save keeps only the seed. `WorldStamp` refuses a save from a world that grows
   differently (`&"elsewhere"`); a recipe body change bumps `WorldStamp.GEN` by hand.
 

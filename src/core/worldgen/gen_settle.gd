@@ -38,6 +38,61 @@ const MIN_VILLAGES := 10
 const REGION_TILES_PER_VILLAGE := 2600.0
 
 
+## How many boroughs a region of `tiles` holds for a landscape counting per
+## region. THE ONE FORMULA: the cap (`max_villages`) and the placer both ask
+## here, because the two used to write it out twice and a cap derived a second
+## way is a cap that disagrees.
+## Counted as the placer can stand them: one per REGION_TILES_PER_VILLAGE with
+## `borough_gap` its root is a perfect packing of the whole region, and taking
+## the best spots one at a time stands about two in three (12 of 18 in a
+## 46,588-tile slums).
+static func borough_want(d: BiomeDef, tiles: int) -> int:
+	return maxi(d.villages, roundi(float(tiles) * BOROUGH_PACKING / REGION_TILES_PER_VILLAGE))
+
+
+## The share of a square packing of boroughs a region really holds.
+const BOROUGH_PACKING := 0.66
+
+
+## How many villages a landscape holding `tiles` of land asks for, when it counts
+## over the whole world: one per VILLAGE_TILES of its ground (the density its
+## `villages` was written at), never fewer than it declares, and 0 where it
+## declares nobody. A bigger place is a fuller one, not the same people spread
+## thinner.
+static func village_want(d: BiomeDef, tiles: int) -> int:
+	if d.villages <= 0:
+		return 0
+	return maxi(d.villages, roundi(float(tiles) / VILLAGE_TILES))
+
+
+const VILLAGE_TILES := 25000.0
+
+
+## Land tiles per landscape index, for `village_want`.
+static func land_by_type(w: WorldData) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	out.resize(BiomeRegistry.SLOTS)
+	for i in w.country.size():
+		if w.level[i] > 0:
+			out[w.country[i]] += 1
+	return out
+
+
+## How close two boroughs may stand, read off the same density as the count: a
+## borough per REGION_TILES_PER_VILLAGE tiles is one per square that many tiles
+## wide. It was the villages' `gap` (56 x body_k, ~79 tiles at 1840), which
+## scales with the continent while the count did not, so at 1840 the slums asked
+## for 16-20 boroughs where the spacing let 7-9 stand. Never under the gap a
+## village's own houses need (`MIN_GAP`).
+static func borough_gap() -> float:
+	return maxf(MIN_GAP, sqrt(REGION_TILES_PER_VILLAGE))
+
+
+## The least any two villages may stand apart: a village's houses reach
+## HOUSE_REACH off its square.
+const MIN_GAP := 26.0
+
+
 ## Given a world, the cap knows how many PLACES each landscape actually laid.
 ##
 ## **A CAP THAT TRUNCATES WHAT IT IS CAPPING IS NOT A CAP.** Counting a
@@ -48,8 +103,9 @@ const REGION_TILES_PER_VILLAGE := 2600.0
 ## is what a test asking about the registry alone wants.
 static func max_villages(w: WorldData = null) -> int:
 	var most := 0
+	var tiles := land_by_type(w) if w != null else PackedInt32Array()
 	for d: BiomeDef in BiomeRegistry.land():
-		most += d.villages
+		most += d.villages if w == null or d.villages_each_region else village_want(d, tiles[d.index])
 	if w != null:
 		var first := {}
 		for r: Dictionary in w.regions:
@@ -59,8 +115,7 @@ static func max_villages(w: WorldData = null) -> int:
 				continue
 			# THE SAME FORMULA THE PLACER USES, or this silently truncates what it
 			# just allowed -- a cap derived a second way is a cap that disagrees.
-			var want := maxi(d.villages,
-				roundi(float(int(r.get("tiles", 0))) / REGION_TILES_PER_VILLAGE))
+			var want := borough_want(d, int(r.get("tiles", 0)))
 			# The landscape's first region is already counted once in the sum above.
 			if not first.has(idx):
 				first[idx] = true
@@ -78,6 +133,12 @@ const APRON := 13.0
 const APRON_RUN := 2.0
 ## Farthest a house's footprint reaches from its square (see GenScatter).
 const HOUSE_REACH := 14.5
+## The roughest ground a village is ever put on (levels across its sixteen
+## tiles), last of all, so a landscape steep at walking scale still holds the
+## people its file declares; like one on rough ground it levels its whole plot
+## (HOUSE_REACH). Only on a world of continents, where such a landscape's heart is
+## most of it: on the one test island it crowded the depots off.
+const STEEP_RANGE := 8
 
 
 
@@ -120,6 +181,8 @@ static func villages(c: GenContext) -> void:
 	# Rough ground is levelled for a village only where nothing better exists
 	# (a mountain country's one outpost).
 	var rough: Array[Vector3] = []
+	# And steep ground, last of all: see STEEP_RANGE.
+	var steep: Array[Vector3] = []
 	for gy in range(1, bw - 1):
 		for gx in range(1, bw - 1):
 			var ks: PackedInt32Array = [(gy - 1) * bw + gx - 1, (gy - 1) * bw + gx, gy * bw + gx - 1, gy * bw + gx]
@@ -150,11 +213,14 @@ static func villages(c: GenContext) -> void:
 				relaxed.append(Vector3(tx, ty, score))
 			elif mx - mn <= 4:
 				rough.append(Vector3(tx, ty, score))
+			elif mx - mn <= STEEP_RANGE and c.bodies.size() > 1:
+				steep.append(Vector3(tx, ty, score))
 	var by_score := func(p: Vector3, q: Vector3) -> bool: return p.z > q.z
 	cands.sort_custom(by_score)
 	relaxed.sort_custom(by_score)
 	rough.sort_custom(by_score)
-	var gap := maxf(26.0, 56.0 * c.body_k)
+	steep.sort_custom(by_score)
+	var gap := maxf(MIN_GAP, 56.0 * c.body_k)
 	var chosen: Array[Vector3] = []
 	# The spawn village: as far south as flat coast allows, and close enough to
 	# the sea that the first frame holds the square and the water together (a
@@ -174,7 +240,9 @@ static func villages(c: GenContext) -> void:
 	# (seed 90210's home coast is terraced upland: 101 rough spots and no flat
 	# one, while other bodies had flat coast to spare), and only then any body.
 	# [on home, pools, which half of home: 1 south, -1 north, 0 either]
-	var asks: Array = [[false, [cands, relaxed], 0]]
+	# One body asks for its rough coast too, as home does: the 256 test island can
+	# hold no flat coast at all, and the spawn then fell into the sea.
+	var asks: Array = [[false, [cands, relaxed], 0], [false, [rough], 0]]
 	if home >= 0:
 		# SOUTH OF HOME BEFORE FLAT GROUND. The journey reads south to north from
 		# where he wakes, and flat-before-rough was asked first: on 7@1477 and
@@ -192,8 +260,17 @@ static func villages(c: GenContext) -> void:
 	# water was 38 tiles out with no moat anywhere inside 40. So the home asks are
 	# walked once PREFERRING such a beach, and then again as they always were, so
 	# a world with no such coast still wakes the player. Never off home for it.
+	#
+	# AND A HOME VILLAGE THAT STANDS IN A PLACE. A coast run too small to be a
+	# region is still coast, and a spawn chosen there woke the player in no region
+	# at all: no chapter to stand in, no sub-arc to be asked, on seed 1 at 256 once
+	# eight landscapes took more of a one-island world (GEN 24). So each pass is
+	# walked first asking for a region (`region_at`, known since GenCountries.fine)
+	# and then without, and a world whose coast holds no region still wakes him.
 	var sea := PackedByteArray()
-	for want_site: bool in [true, false]:
+	for want: Array in [[true, true], [true, false], [false, true], [false, false]]:
+		var want_site: bool = want[0]
+		var want_place: bool = want[1]
 		for ask: Array in asks:
 			var on_home: bool = ask[0]
 			var half: int = ask[2]
@@ -208,6 +285,8 @@ static func villages(c: GenContext) -> void:
 						if not c.defs[w.country[i]].spawn_home:
 							continue
 						if on_home and w.continent_at(int(p.x), int(p.y)) != home:
+							continue
+						if want_place and w.region_at(int(p.x), int(p.y)) < 0:
 							continue
 						# Home's own latitude, never the square's.
 						if half != 0 and ((p.y - r.position.y) / r.size.y > 0.5) != (half > 0):
@@ -241,6 +320,9 @@ static func villages(c: GenContext) -> void:
 	if best.x < 0.0:
 		best = Vector3(roundi(r.position.x + r.size.x * 0.5), roundi(r.end.y - 12.0), 0)
 	chosen.append(best)
+	var cut_wide := {}
+	if _in_pool(rough, best):
+		cut_wide[0] = true
 	var counts := PackedInt32Array()
 	counts.resize(c.types)
 	counts[w.country[int(best.y) * size + int(best.x)]] = 1
@@ -254,39 +336,72 @@ static func villages(c: GenContext) -> void:
 	# one for the whole type (`BiomeDef.villages_each_region`): a city with three
 	# boroughs built in one of them and left the other two empty ground.
 	var per_region := {}
-	for pool: Array[Vector3] in [cands, relaxed, rough]:
-		for cc: int in settle_order:
-			var d := c.defs[cc]
-			for p in pool:
-				# `continue`, not `break`, for a per-region landscape: being full
-				# HERE says nothing about the next place in the same pool.
-				if not d.villages_each_region and counts[cc] >= d.villages:
-					break
-				var i := int(p.y) * size + int(p.x)
-				if w.country[i] != cc or _crowded(chosen, p, gap):
-					continue
-				if d.villages_each_region:
-					var rid := w.region_at(int(p.x), int(p.y))
-					# A run too small to be a region belongs to no place and is not
-					# somewhere a borough can stand.
-					if rid < 0:
-						continue
-					var tiles := int(w.region_of(rid).get("tiles", 0))
-					var want := maxi(d.villages, roundi(float(tiles) / REGION_TILES_PER_VILLAGE))
-					if int(per_region.get(rid, 0)) >= want:
-						continue
-					per_region[rid] = int(per_region.get(rid, 0)) + 1
-				chosen.append(p)
-				counts[cc] += 1
+	var type_tiles := land_by_type(w)
+	var want_of := PackedInt32Array()
+	want_of.resize(c.types)
+	for cc: int in c.land_types:
+		want_of[cc] = village_want(c.defs[cc], type_tiles[cc])
+	# Two rounds: what each file declares first (a borough per region), then what
+	# area adds, so a city's many boroughs cannot take a neighbour's only ground.
+	# A village on rough or steep ground levels its whole plot (`cut_wide`): a
+	# building needs its nine tiles level, and plots reach HOUSE_REACH.
+	for round_index in 2:
+		for pool: Array[Vector3] in [cands, relaxed, rough, steep]:
+			var before := chosen.size()
+			_settle_pool(c, pool, settle_order, counts, want_of, per_region, chosen, gap, round_index == 0)
+			if pool == rough or pool == steep:
+				for k in range(before, chosen.size()):
+					cut_wide[k] = true
 	for pool: Array[Vector3] in [cands, relaxed]:
 		for p in pool:
 			if chosen.size() >= MIN_VILLAGES:
 				break
 			if not _crowded(chosen, p, gap):
 				chosen.append(p)
+	_lay_villages(c, chosen, cut_wide)
+
+
+## One pass of one pool: each landscape in settling order takes the candidates of
+## its own ground until it has what it wants, or, in the `first` round, what its
+## file declares.
+static func _settle_pool(c: GenContext, pool: Array[Vector3], settle_order: Array[int], counts: PackedInt32Array, want_of: PackedInt32Array, per_region: Dictionary, chosen: Array[Vector3], gap: float, first: bool) -> void:
+	var w := c.w
+	var size := c.size
+	for cc: int in settle_order:
+		var d := c.defs[cc]
+		var cap := mini(want_of[cc], d.villages) if first else want_of[cc]
+		for p in pool:
+			# `continue`, not `break`, for a per-region landscape: being full
+			# HERE says nothing about the next place in the same pool.
+			if not d.villages_each_region and counts[cc] >= cap:
+				break
+			var i := int(p.y) * size + int(p.x)
+			if w.country[i] != cc or _crowded(chosen, p, borough_gap() if d.villages_each_region else gap):
+				continue
+			if d.villages_each_region:
+				var rid := w.region_at(int(p.x), int(p.y))
+				# A run too small to be a region belongs to no place and is not
+				# somewhere a borough can stand.
+				if rid < 0:
+					continue
+				var tiles := int(w.region_of(rid).get("tiles", 0))
+				var want := d.villages if first else borough_want(d, tiles)
+				if int(per_region.get(rid, 0)) >= want:
+					continue
+				per_region[rid] = int(per_region.get(rid, 0)) + 1
+			chosen.append(p)
+			counts[cc] += 1
+
+
+## The chosen squares become villages, as many as the cap allows, each levelled.
+static func _lay_villages(c: GenContext, chosen: Array[Vector3], cut_wide: Dictionary) -> void:
+	var w := c.w
+	var size := c.size
 	var rng := Rng.make(c.s, 62)
 	var used := {}
-	for p: Vector3 in chosen.slice(0, max_villages(w)):
+	var most := max_villages(w)
+	for n in mini(most, chosen.size()):
+		var p := chosen[n]
 		var tx := int(p.x)
 		var ty := int(p.y)
 		var cc := w.country[ty * size + tx]
@@ -301,7 +416,19 @@ static func villages(c: GenContext) -> void:
 		})
 		# Pools keep three tiles clear of the farthest house.
 		GenWater.drain_pools(c, Vector2(tx + 0.5, ty + 0.5), HOUSE_REACH + 3.0)
-		_flatten(c, tx, ty, w.villages[id].level, c.defs[cc].village_platform)
+		var platform := c.defs[cc].village_platform
+		if cut_wide.has(n):
+			platform = maxf(platform, HOUSE_REACH)
+		_flatten(c, tx, ty, w.villages[id].level, platform)
+
+
+## Is the square `p` stands on one of `pool`'s? The spawn's score is rewritten
+## by its search, so it is matched on the tile.
+static func _in_pool(pool: Array[Vector3], p: Vector3) -> bool:
+	for q in pool:
+		if q.x == p.x and q.y == p.y:
+			return true
+	return false
 
 
 static func _crowded(chosen: Array[Vector3], p: Vector3, gap: float) -> bool:
@@ -577,6 +704,35 @@ static func roads(c: GenContext) -> void:
 				break
 	c.mark(&"roads.rejoin")
 	GenWater.drain_crossed(c)
+	_ease_roads(c)
+
+
+## No road climbs a cliff, whatever laid a tile of it last: a road crossing
+## another re-levels the crossing for its own run, which on steep ground leaves
+## a step of two. Once every road is down, the higher side of any step is cut to
+## one over the lower (a ford is raised to instead).
+static func _ease_roads(c: GenContext) -> void:
+	var w := c.w
+	var size := c.size
+	for sweep in 8:
+		var moved := false
+		for line: PackedVector2Array in w.roads:
+			for j in range(1, line.size()):
+				var a := floori(line[j - 1].y) * size + floori(line[j - 1].x)
+				var b := floori(line[j].y) * size + floori(line[j].x)
+				var hi := a if w.level[a] > w.level[b] else b
+				var lo := b if hi == a else a
+				if w.level[hi] - w.level[lo] <= 1:
+					continue
+				if c.water[hi] == 0:
+					w.level[hi] = w.level[lo] + 1
+				elif c.water[lo] == 0:
+					w.level[lo] = w.level[hi] - 1
+				else:
+					continue
+				moved = true
+		if not moved:
+			break
 
 
 static func _connect(c: GenContext, grid: AStarGrid2D, hw: int, from: int, to: int,

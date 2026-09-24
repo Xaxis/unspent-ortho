@@ -345,30 +345,39 @@ func test_blend_is_half_at_borders_and_zero_deep_inside() -> void:
 		gt(deep, 1000, "seed %d tiles untouched by any ecotone" % s)
 
 
-func test_blend_falls_from_the_border_over_12_to_24_tiles() -> void:
+## THE ECOTONE IS A SHARE OF THE PLACE, so it is measured in the body's own
+## reach: `GenCountries._ecotone_reach` is the narrowest a body's blend runs and
+## twice it the widest (12-24 tiles on a test island, up to 32-64 on a
+## continent). Stated in tiles this was a claim about the one island.
+func test_blend_falls_from_the_border_over_one_to_two_reaches() -> void:
 	var w := world(WORLD_SEEDS[0])
 	var size := w.size
 	var d := GenFields.distance8(_borders(w), size, 999.0)
-	# Mean blend by distance band: 0.5 on the line, about half by 12 tiles,
-	# nothing past 24 (two tiles of slack for the half-resolution spread).
+	var reach := GenCountries._ecotone_reach(GenContext.new(w))
+	# Mean blend by distance in reaches: 0.5 on the line, about half by one
+	# reach, nothing past two (two tiles of slack for the half-resolution spread).
 	var sums := PackedFloat32Array()
 	sums.resize(64)
 	var counts := PackedFloat32Array()
 	counts.resize(64)
 	var far_blended := 0
+	var widest := 0.0
 	for i in size * size:
 		if w.country[i] == Country.SEA:
 			continue
-		var k := mini(63, int(d[i]))
+		var r := reach[w.continent[i]]
+		widest = maxf(widest, r)
+		var k := mini(63, int(d[i] / r * 12.0))
 		sums[k] += w.blend[i]
 		counts[k] += 1.0
-		if d[i] > 26.0 and w.blend[i] > 0.0:
+		if d[i] > 2.0 * r + 2.0 and w.blend[i] > 0.0:
 			far_blended += 1
 	var at := func(k: int) -> float: return sums[k] / maxf(1.0, counts[k])
+	gt(widest, 20.0, "a continent's ecotone runs wider than the island's (%.0f)" % widest)
 	gt(at.call(0), 0.45, "blend on the border")
-	check(at.call(12) > 0.08 and at.call(12) < 0.3, "blend 12 tiles out %.2f" % at.call(12))
-	lt(at.call(22), 0.03, "blend 22 tiles out")
-	eq(far_blended, 0, "tiles blended further than 26 from any border")
+	check(at.call(12) > 0.08 and at.call(12) < 0.3, "blend one reach out %.2f" % at.call(12))
+	lt(at.call(22), 0.03, "blend 1.83 reaches out")
+	eq(far_blended, 0, "tiles blended further than two reaches from any border")
 
 
 func test_country2_never_flips_where_it_shows() -> void:
@@ -616,8 +625,17 @@ func test_river_channels_widen_toward_the_mouth_and_stay_wadeable() -> void:
 			if w.ground[i] == Ground.RIVER:
 				check(w.level[i] >= 1, "seed %d river tile below land" % s)
 				break
-		# The longest river that reaches the sea: a runnel at its head, a
-		# broad channel at its mouth.
+		# The longest river that reaches the sea through WET land: a runnel at its
+		# head, a broad channel at its mouth.
+		#
+		# A channel is cut by the water that falls on its catchment
+		# (`GenWater`, `rain` in a landscape's relief), and a landscape that
+		# declares itself dry declares that its rivers do not grow: seed 42's
+		# longest river since GEN 24 rises in the crags (rain 1.3) and runs 500
+		# tiles across the burning (0.12) to the sea, two tiles wide the whole
+		# way, which is the Burning's own file speaking. The rule is about
+		# rivers that gather water, so a river whose lower half runs through
+		# land declaring under WET_RAIN is not the one it is asked of.
 		var longest := PackedVector2Array()
 		for r in w.rivers:
 			var e := r[r.size() - 1]
@@ -625,7 +643,7 @@ func test_river_channels_widen_toward_the_mouth_and_stay_wadeable() -> void:
 			for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 				if w.level_at(floori(e.x) + d.x, floori(e.y) + d.y) <= 0:
 					at_sea = true
-			if at_sea and r.size() > longest.size():
+			if at_sea and r.size() > longest.size() and _lower_rain(w, r) >= WET_RAIN:
 				longest = r
 		gt(longest.size(), 40, "seed %d a long river reaches the sea" % s)
 		var head := _water_width(w, longest.slice(4, 16))
@@ -654,6 +672,24 @@ func test_river_channels_widen_toward_the_mouth_and_stay_wadeable() -> void:
 
 ## Mean count of water tiles across the channel (the 5x5 around each point,
 ## divided by 5).
+## The least relief `rain` a landscape may declare and still be asked to widen
+## the rivers crossing it.
+const WET_RAIN := 0.5
+
+
+## The mean `rain` declared by the landscapes under the lower half of a river.
+static func _lower_rain(w: WorldData, r: PackedVector2Array) -> float:
+	var sum := 0.0
+	var n := 0
+	for j in range(r.size() / 2, r.size()):
+		var d := BiomeRegistry.by_index(w.country_at(floori(r[j].x), floori(r[j].y)))
+		if d == null:
+			continue
+		sum += float(d.relief.get(&"rain", 1.0))
+		n += 1
+	return sum / maxf(1.0, float(n))
+
+
 static func _water_width(w: WorldData, pts: PackedVector2Array) -> float:
 	var total := 0.0
 	for p in pts:

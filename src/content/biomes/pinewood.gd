@@ -11,6 +11,10 @@ static func make() -> BiomeDef:
 	d.order = 2
 	d.style_note = "Tall tight contours, upright strokes, shafts of light in the clearings."
 	d.share = Vector2(0.11, 0.15)
+	# ON HOME, ALWAYS (docs/DESIGN.md: home "holds the coast, the spawn village
+	# and a full starting economy"): its timber and coal are the first days'
+	# makings. `(1, 0)` is DEPENDENCY, as the coast's and the moss's are.
+	d.spread = Vector2i(1, 0)
 	d.anchors = [
 		{"seq": 4, "u": 0.5, "v": 0.52, "band": &"middle", "slot": 1},
 		{"seq": 8, "u": 0.5, "v": 0.33, "chance": 0.5},
