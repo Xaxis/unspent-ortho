@@ -58,6 +58,70 @@ Guest · 2094 talks; the Tether and Foundry rise · 2098 Elias, 38, wakes in the
 surf in a body grown from his genome; June is 75. Each side holds magnetic monopoles in the other's
 star. Humans are too futile to watch: the blind spot the secret lives in.
 
+## The Sickle (PROPOSAL 2026-09-24, not ruled: build nothing from it)
+
+Owner's words: an orbiting megastructure, partly fractured, shedding debris onto
+the planet; the final region. Everything else here is proposal; the Harrow and
+the Heron are the walkers proposal (`story/walkers`), also unruled.
+
+- **What**: a ring round the world, broken. By day a chalk arc; by night lit but
+  where the earth's shadow walks along it. People: the Sickle. Machines: APERTURE.
+  Its oldest parts are the four **Leasehold** rings, built 2030-32 at Cairn from
+  HALCYON's first designs, sold as lifeboats; dead in 2033. From 2094 HALCYON
+  threads them on one hoop: the Foundry, the Tether's head, the channel at the hub.
+- **For**: the channel's width. The hoop is the bandwidth between HALCYON and the
+  Guest; every lot lifted from below widens it. Two giants building the thing
+  that would make them one, not knowing unity is a number.
+- **Broken**: 2096, it was wider than the price. The Guest cut it once, a warning
+  short of a star; the shot went on and fused empty sand (`glassed_nothing`).
+  HALCYON mends it because it needs the width; mending loads the broken ends and
+  they shed. **A fall is the plan's progress seen from below**; slow the plan and
+  the falls slow.
+- **Its line**: the survey bearing is ruled square to what is overhead
+  (`GenWorks.bearing`, shipped). The Harrow walks under it; falls land near it.
+
+**The final region.** Up by the Tether's empty cars; down only in Ring Four's
+lifeboats, locked since GROUND IS LOST, which his signet answers: the Leasehold is
+old enough to know his name. Three landscapes aboard: **the Leasehold** (spun
+streets curving up behind you, dead lawns under glass; cold, vacuum at open locks;
+Oksana's one lit street), **the Foundry** (numbered lots arriving from below;
+heat, radiation), **the Break** (bare truss over the world, sections letting go;
+vacuum, collapse). Keepers: the **Caretaker**, a 2031 machine that greets him
+home, taken by spoof; the **Mender**, holding the break shut: taken, the gap
+widens for good and more falls below. Nothing keeps the Break.
+
+At the hub, the channel; the ending is written on the sky. **Break**: the Sickle
+goes dark a section at a time and comes down for a generation (wrong: the Guest's
+arc stays lit) · **Join**: the gap closes with nothing mending it, no falls again
+(wrong: something young talks like him) · **Give it up**: the Foundry stops;
+it stays a sickle, shedding less each year · **Say nothing**: the mending goes on;
+the ring closes in 2198. Afterwards reads what fell where.
+
+**Falls.** A streak by night, a boom a minute on, a crater by morning, somewhere
+on the line every few world days, more as the plan advances. It burns, then holds
+found tech and Leasehold wreck: the colonies' own words reach the ground years
+before Oksana. Recyclers converge and people race them; a big one brings the
+Heron. People never sleep under the line, set a counted stone for each fall in the
+bonelands, read their dead's names at a crater to send them up. **Asks**: coast,
+early: a lad went to see what came down in the marsh (rescue, before the
+recyclers) · pinewood: a fall has lit the wood toward a village · frost sea: a
+piece went through the ice and the sea is open a week; keep the posts off it ·
+the Burning: the Covenant sells a crater the Holdfast wants and the crew want
+paying for · salt: a piece glints a day's walk off across open salt (by night,
+or in the still week).
+
+**Seen, learnt.** The first night a streak falls; Maren: "Don't wish on it. It's
+not that sort." Its shadow tells the hour ("shadow's at the break: two hours to
+light"); sections light as regions fall to the plan, and go dark as he slows it.
+In order: it came from the colonies (a brochure in a crater) · the rings were
+Cairn's (plate stamped with it) · the Guest cut it (Oksana watched) · late, with
+the secret: **the break is why anyone is still one mind.**
+
+Words: "A HOME ABOVE IT ALL." / added: "RESIDENTS: —" · "Four came down this
+year. Tam says they're mending. You don't drop that much of a thing you're
+mending." · "Nobody wishes on them here. A wish lands on somebody." · a recycler:
+"gathering what came down".
+
 ## The journey
 
 Every inhabited continent, outward from where he wakes; the Tether on the farthest,
