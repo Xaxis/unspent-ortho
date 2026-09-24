@@ -4,9 +4,12 @@ class_name Sculpt
 ## a `wob` (a few percent of hand irregularity, seeded, so it is the same every
 ## frame and every build); FOUND parts pass wob 0 and stay exact.
 ##
-## A ring is [y, rx, rz, cx, cz]: height along the part's +Y, radii toward +X
-## (the figure's front) and +Z (its right), and a centre offset. Angle 0 points
-## at +X; phase PI/n puts a flat face on the front instead of an edge.
+## A ring is [y, rx, rz, cx, cz] or [y, rx, rz, cx, cz, fold]: height along the
+## part's +Y, radii toward +X (the figure's front) and +Z (its right), and a
+## centre offset. Angle 0 points at +X; phase PI/n puts a flat face on the front
+## instead of an edge. `fold` (a share of the radius, 0.03 or so) runs soft
+## ridges round that ring, so cloth hangs in folds where it is loose and stays
+## taut where the ring leaves it out; the walls weld, so a fold is a curve.
 ##
 ##   Sculpt.loft(k, [[0, .1, .1, 0, 0], [.3, .07, .08, 0, 0]], 6, col)
 ##   Sculpt.limb(k, 0.3, 0.075, 0.06, 6, col, seed)        # hangs along -Y
@@ -39,8 +42,11 @@ static func loft(k: MeshKit, rings: Array, n: int, cols: Variant, cap_lo: bool =
 	var closed := arc >= 0.999
 	var count := n if closed else n + 1
 	var pts: Array[PackedVector3Array] = []
+	var ridges := float(maxi(2, n / 3))
+	var fold_at := Rng.hash01(seed_value, 77) * TAU
 	for ri in rings.size():
 		var r: Array = rings[ri]
+		var fold: float = float(r[5]) if r.size() > 5 else 0.0
 		var ring := PackedVector3Array()
 		ring.resize(count)
 		for i in count:
@@ -48,6 +54,10 @@ static func loft(k: MeshKit, rings: Array, n: int, cols: Variant, cap_lo: bool =
 			var j := 1.0
 			if wob > 0.0:
 				j += (Rng.hash01(seed_value, ri, i % n) - 0.5) * 2.0 * wob
+			if fold > 0.0:
+				# Ridges drift round the body ring by ring, so a fold slants
+				# down the cloth instead of standing as a fluted column.
+				j += fold * cos(a * ridges + fold_at + ri * 0.9)
 			ring[i] = Vector3(float(r[3]) + cos(a) * float(r[1]) * j, float(r[0]), float(r[4]) + sin(a) * float(r[2]) * j)
 		pts.append(ring)
 	var segs := n
@@ -64,7 +74,7 @@ static func loft(k: MeshKit, rings: Array, n: int, cols: Variant, cap_lo: bool =
 	# very thing this vocabulary exists to avoid, arrived at from the other
 	# direction. Done before the caps are laid, so an end stays a flat end, and a
 	# shoulder or a brim that turns harder than the crease stays an edge.
-	k.smooth_range(wall_from, k.vertex_count(), WALL_CREASE)
+	_weld_walls(k, wall_from, rings.size(), n, closed)
 	if closed and cap_lo:
 		var c0 := _centre(rings[0])
 		var lo := pts[0]
@@ -76,6 +86,82 @@ static func loft(k: MeshKit, rings: Array, n: int, cols: Variant, cap_lo: bool =
 		var hi := pts[last]
 		for i in n:
 			k.tri(c1, hi[(i + 1) % n], hi[i], _band(cols, last - 1))
+
+
+## The walls' welded normals, worked out from the loft's own topology instead
+## of `MeshKit.smooth_range`'s search for coincident corners: the same rule
+## (each corner averages, area-weighted, the triangles meeting there that turn
+## less than WALL_CREASE from its own), without a dictionary per vertex. A
+## village builds its people on the main thread, and the search was most of
+## what a rounder figure cost.
+static func _weld_walls(k: MeshKit, from: int, ring_count: int, n: int, closed: bool) -> void:
+	var bands := ring_count - 1
+	var count := n if closed else n + 1
+	var v := k.verts
+	# Area-weighted and unit normals per wall triangle. Per quad (band ri,
+	# segment i) the stored triangles are A (lo i2, hi i, lo i) and
+	# B (lo i2, hi i2, hi i).
+	var tris := bands * n * 2
+	var wn := PackedVector3Array()
+	var un := PackedVector3Array()
+	wn.resize(tris)
+	un.resize(tris)
+	for t in tris:
+		var b := from + t * 3
+		var raw := (v[b + 1] - v[b + 2]).cross(v[b] - v[b + 2])
+		wn[t] = raw * 0.5
+		un[t] = k.normals[b]
+	var limit := cos(deg_to_rad(WALL_CREASE))
+	# Which triangles meet at ring vertex (ri, i).
+	var touch := PackedInt32Array()
+	for ri in ring_count:
+		for i in count:
+			touch.clear()
+			var prev := i - 1
+			if closed:
+				prev = (i + n - 1) % n
+			if ri < bands:
+				# This ring is the LOW ring of band ri.
+				if i < n or closed:
+					touch.append(((ri * n + (i % n)) * 2))
+				if prev >= 0 and prev < n:
+					touch.append((ri * n + prev) * 2)
+					touch.append((ri * n + prev) * 2 + 1)
+			if ri > 0:
+				# ...and the HIGH ring of band ri - 1.
+				if i < n or closed:
+					touch.append(((ri - 1) * n + (i % n)) * 2)
+					touch.append(((ri - 1) * n + (i % n)) * 2 + 1)
+				if prev >= 0 and prev < n:
+					touch.append(((ri - 1) * n + prev) * 2 + 1)
+			for own: int in touch:
+				var acc := Vector3.ZERO
+				for other: int in touch:
+					if other == own or un[own].dot(un[other]) >= limit:
+						acc += wn[other]
+				if acc.length_squared() < 1e-24:
+					continue
+				var nv := acc.normalized()
+				# The slot in triangle `own` that is this ring vertex.
+				var q := own / 2
+				var seg := q % n
+				var high := (q / n) != ri
+				var at := i if seg == i % n and (i < n or closed) else -1
+				var b := from + own * 3
+				var slot := -1
+				if own % 2 == 0:
+					# A: lo i2, hi i, lo i
+					if high:
+						slot = 1
+					else:
+						slot = 2 if at >= 0 else 0
+				else:
+					# B: lo i2, hi i2, hi i
+					if high:
+						slot = 2 if at >= 0 else 1
+					else:
+						slot = 0
+				k.normals[b + slot] = nv
 
 
 static func _centre(r: Array) -> Vector3:
@@ -157,6 +243,18 @@ static func card(k: MeshKit, a: Vector3, b: Vector3, c: Vector3, d: Vector3, col
 static func skirt(k: MeshKit, rings: Array, n: int, col: Variant, lining: Color, arc: float, arc_mid: float = PI, wob: float = 0.0, seed_value: int = 0) -> void:
 	var t := MeshKit.new()
 	loft(t, rings, n, col, false, false, 0.0, wob, seed_value, arc, arc_mid)
+	# The loft welded its walls; `tri` would lay a flat normal back on every
+	# face, and a coat skirt seen from behind is the largest cloth on screen. So
+	# the welded normals are carried across, turned for whatever `k` has pushed,
+	# and the lining takes them reversed.
+	var nb := k._xf.basis.inverse().transposed()
 	for i in range(0, t.verts.size(), 3):
+		var at := k.normals.size()
 		k.tri(t.verts[i], t.verts[i + 2], t.verts[i + 1], t.colors[i])
 		k.tri(t.verts[i], t.verts[i + 1], t.verts[i + 2], lining)
+		for c in 3:
+			var o := (nb * t.normals[i + c]).normalized()
+			k.normals[at + c] = o
+		k.normals[at + 3] = -k.normals[at]
+		k.normals[at + 4] = -k.normals[at + 2]
+		k.normals[at + 5] = -k.normals[at + 1]

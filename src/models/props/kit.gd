@@ -293,8 +293,14 @@ func clump(cx: float, y0: float, cz: float, r: float, h: float, seed_value: int,
 
 
 ## One tier of a conifer: a jagged star of drooping branch tips round an
-## off-centre apex. Never a smooth cone. The camera never sees under a tier, so
-## only the lowest (`under` alpha > 0) gets a darker skirt, for its shadow rim.
+## off-centre apex. Never a smooth cone. Every tier is closed underneath in a
+## darker skirt: the play camera never saw under one, but over the shoulder a
+## tier is at eye level and an open cone shows the sky through the tree. The
+## lowest may name its own `under`; the rest take the bough's shade.
+## How far a tier's facets may turn and still round into one bough.
+const TIER_CREASE := 48.0
+
+
 func tier(cx: float, y_rim: float, cz: float, r: float, rise: float, points: int, droop: float, seed_value: int, col: Color, under: Color) -> void:
 	var rot := Rng.hash01(seed_value, 61) * TAU
 	var ring: Array[Vector3] = []
@@ -309,11 +315,17 @@ func tier(cx: float, y_rim: float, cz: float, r: float, rise: float, points: int
 	var apex := Vector3(cx + j(seed_value, 62, r * 0.12), y_rim + rise, cz + j(seed_value, 63, r * 0.12))
 	var hub := Vector3(cx, y_rim - droop * 0.2, cz)
 	var n := ring.size()
+	var skirt := under if under.a > 0.0 else tone(col, 0.6)
+	var from := made.vertex_count()
 	for i in n:
 		var m := (i + 1) % n
 		made.tri(apex, ring[m], ring[i], col if i % 2 == 0 else tone(col, 0.93))
-		if under.a > 0.0 and i % 2 == 0:
-			made.tri(hub, ring[i], ring[(i + 2) % n], under)
+		if i % 2 == 0:
+			made.tri(hub, ring[i], ring[(i + 2) % n], skirt)
+	# Each bough rounds over; the notches between them, and the top against
+	# the skirt, stay creased. Seen level, a tier of flat facets was a stack of
+	# paper stars.
+	made.smooth_range(from, made.vertex_count(), TIER_CREASE)
 
 
 ## A small two-sided triangle: a fleck of flower, ember, shell, chip.

@@ -60,7 +60,14 @@ func _tris(spec: Dictionary) -> int:
 ## A person's triangle ceiling. The M1 figure fit 800; the last people carry
 ## their whole scavenged kit on top (gear, patches, weather coats), and the worst
 ## case below adds every axis's heaviest choice at once, which nobody wears.
-const BUDGET := 1300
+## Raised from 1300 when the figure was rounded for the view over the shoulder
+## (PersonBody's SKULL_N and siblings, hands with thumbs, rolled brims, dented
+## crowns, knees, a waist, elbows and wrists): measured on forty random
+## villagers, a street went from 25,677 triangles to 57,147 (641 to 1,428
+## each), which is nothing to the GPU.
+## What it does cost is the build, on the main thread, and that was measured
+## too (see Sculpt._weld_walls).
+const BUDGET := 2200
 
 
 func test_no_look_of_any_build_passes_the_triangle_budget() -> void:
@@ -105,7 +112,7 @@ func test_no_look_of_any_build_passes_the_triangle_budget() -> void:
 	var folk := PersonLook.villagers(9, 24, {&"wet": 0.3})
 	for spec: Dictionary in folk:
 		total += _tris(spec)
-	lt(total / folk.size(), 1000, "a typical villager")
+	lt(total / folk.size(), BUDGET * 3 / 4, "a typical villager")
 
 
 func _with(a: Dictionary, b: Dictionary) -> Dictionary:

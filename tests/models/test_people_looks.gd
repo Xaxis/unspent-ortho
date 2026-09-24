@@ -2,6 +2,8 @@ extends TestCase
 ## The last people: dressed by their land and their trade, worn, hungry, and
 ## carrying scavenged tech mended in both idioms (docs/VISION.md, §8).
 
+const People := preload("res://tests/models/test_people.gd")
+
 
 func _hazards(id: StringName) -> Dictionary:
 	return BiomeRegistry.get_def(id).hazards
@@ -206,7 +208,7 @@ func test_every_new_coat_and_hat_dresses_every_build() -> void:
 					for entry: Array in r._kits[bi]:
 						n += (entry[0] as MeshKit).verts.size() / 3
 				gt(n, 600, "%s in %s and %s is dressed" % [b, c, h])
-				lt(n, 1301, "%s in %s and %s fits the budget" % [b, c, h])
+				lt(n, People.BUDGET + 1, "%s in %s and %s fits the budget" % [b, c, h])
 
 
 func test_a_village_dressed_for_one_weather_never_repeats_a_silhouette() -> void:
