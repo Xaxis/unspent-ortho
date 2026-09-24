@@ -131,6 +131,7 @@ func update(cam: Camera3D, minutes: float, air: Dictionary, wanted: bool) -> voi
 		mat.set_shader_parameter("thick", thick)
 		mat.set_shader_parameter("lens_glow", night)
 		mat.set_shader_parameter("px_angle", px_angle)
+		mat.set_shader_parameter("leg_len", Vector2(float(defs[i].thigh), float(defs[i].shin)))
 		mat.set_shader_parameter("l0_on", air.has("l0_dir"))
 		if air.has("l0_dir"):
 			mat.set_shader_parameter("l0_dir", air["l0_dir"])

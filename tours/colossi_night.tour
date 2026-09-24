@@ -1,0 +1,23 @@
+# THE COLOSSI AT NIGHT (colossus.gdshader, colossus_model.gd `_strip`): the
+# skyline walker 180 km off, drawn in its own light -- bold cold rings up every
+# leg, each a flange seen from below as a whole ellipse and held at least a few
+# pixels past its leg however far off it walks, and a pulse that leaves each
+# ankle in turn and climbs ring by ring up the shin and the thigh to the hip.
+# Frames three quarters of a second apart show the front climbing.
+#   tools/tour.sh tours/colossi_night.tour --seed=7 --place=coast --hour=22 --eye=1.7,-6 --face=34 --weather=clear:0
+wait 3
+shot night-00 with land:coast
+wait 0.75
+shot night-01 with land:coast
+wait 0.75
+shot night-02 with land:coast
+wait 0.75
+shot night-03 with land:coast
+wait 0.75
+shot night-04 with land:coast
+wait 0.75
+shot night-05 with land:coast
+wait 0.75
+shot night-06 with land:coast
+wait 0.75
+shot night-07 with land:coast

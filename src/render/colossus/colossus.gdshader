@@ -128,6 +128,19 @@ const float MIN_PX = 0.75;
 const float LAMP_PX = 1.6;
 const float LENS_PX = 2.2;
 const float LAMP_BIAS = 0.06;
+// A ring's least reach past its leg, and its least depth, in pixels; and the
+// share its authored flange stands proud of the plate (colossus_model.gd
+// STRIP_PROUD), to find the plate from the ring's own outer radius.
+const float RING_PX = 1.4;
+const float RING_TALL_PX = 2.6;
+const float STRIP_PROUD = 1.24;
+
+// The legs' two bones, for the pulse's run up them: (thigh, shin), metres.
+uniform vec2 leg_len = vec2(34000.0, 36000.0);
+// How often a pulse leaves each ankle (per second), and how far behind its front
+// it still lights, as a share of the whole leg.
+const float PULSE_RATE = 0.12;
+const float PULSE_TRAIL = 0.22;
 
 varying float thin;
 varying float bone_phase;
@@ -146,19 +159,30 @@ void vertex() {
 	thin = 1.0;
 	if (px > 0.0) {
 		float r = length(local.xz);
-		if (kind == 0 || kind == 1) {
-			// Round the part's own axis: every leg, the spire, a strip's ring.
-			float want = MIN_PX * px * (kind == 1 ? 1.15 : 1.0);
+		if (kind == 0) {
+			// Round the part's own axis: every leg, the spire.
+			float want = MIN_PX * px;
 			if (r > 1e-3 && r < want) {
 				local.xz *= want / r;
-				thin = kind == 0 ? r / want : 1.0;
+				thin = r / want;
 			}
-			if (kind == 1) {
-				float dy = local.y - lamp_c.y;
-				float half_px = LAMP_PX * px * 0.5;
-				if (abs(dy) > 1e-3 && abs(dy) < half_px) {
-					local.y = lamp_c.y + sign(dy) * half_px;
-				}
+		} else if (kind == 1) {
+			// A RING (colossus_model.gd `_strip`): its inner edge follows the
+			// plate as the plate is widened, and its outer edge stands at least
+			// RING_PX past it on every side, so the ring reads as a ring round a
+			// leg however far off the leg is -- a bold line of light and never a
+			// crawl of dashes. `lamp_c.x` is the ring's own outer radius.
+			float outer = lamp_c.x;
+			bool rim = outer > 0.0 && r > outer * 0.995;
+			float plate_want = MIN_PX * px;
+			float want = rim ? max(plate_want, outer / STRIP_PROUD) + RING_PX * px : plate_want;
+			if (r > 1e-3 && r < want) {
+				local.xz *= want / r;
+			}
+			float dy = local.y - lamp_c.y;
+			float half_px = RING_TALL_PX * px * 0.5;
+			if (abs(dy) > 1e-3 && abs(dy) < half_px) {
+				local.y = lamp_c.y + sign(dy) * half_px;
 			}
 		} else {
 			vec3 o = local - lamp_c;
@@ -279,11 +303,30 @@ void fragment() {
 	if (lens) {
 		glow = mix(0.6, 3.0, lens_glow);
 	} else if (strip) {
-		// A pulse climbs every leg on the machines' beat: a ring flares as it
-		// passes, from the ankle to the hip, a leg at a time.
-		float climb = fract(TIME * 0.18 + body_local.y / 36000.0 + bone_phase * 0.31);
-		float pulse = smoothstep(0.0, 0.05, climb) * (1.0 - smoothstep(0.05, 0.22, climb));
-		glow = (1.6 + 5.0 * pulse) * lens_glow;
+		// A PULSE CLIMBS EVERY LEG on the machines' beat: a front of light runs
+		// from the ankle, ring by ring, up the shin and on up the thigh to the
+		// hip, a leg at a time, and trails off behind itself. Measured as the
+		// distance UP THE LEG from the ankle (`leg_len`: thigh, shin), which a
+		// bone's own y does not give -- the shin's runs down from the knee and
+		// the thigh's from the hip -- so the front is one line up the whole leg.
+		int part = int(bone_phase + 0.5);
+		float up = -1.0;
+		if (part > 0) {
+			int seg = (part - 1) % 3;
+			if (seg == 1) {
+				up = leg_len.y - body_local.y;
+			} else if (seg == 0) {
+				up = leg_len.y + leg_len.x - body_local.y;
+			}
+		}
+		float pulse = 0.0;
+		if (up >= 0.0) {
+			float leg_at = float((part - 1) / 3);
+			float front = fract(TIME * PULSE_RATE + leg_at / 3.0) * 1.35 - 0.15;
+			float behind = front - up / (leg_len.x + leg_len.y);
+			pulse = smoothstep(-0.015, 0.0, behind) * (1.0 - smoothstep(0.0, PULSE_TRAIL, behind));
+		}
+		glow = (2.4 + 9.0 * pulse) * lens_glow;
 	} else if (lamp) {
 		float beat = fract(TIME * 0.45 + dot(floor(body_local.xz * 0.001), vec2(0.37, 0.61)));
 		glow = (step(beat, 0.18) * 5.0 + 0.2) * lens_glow;
