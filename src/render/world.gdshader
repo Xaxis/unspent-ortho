@@ -39,8 +39,8 @@ render_mode cull_back;
 #include "res://src/render/ink.gdshaderinc"
 #include "res://src/render/matter.gdshaderinc"
 #include "res://src/render/sight.gdshaderinc"
+#include "res://src/render/wind.gdshaderinc"
 
-global uniform float wind_strength;
 // Where a crown must not hide a fight (18_crowns writes it every frame): up to
 // six points as (x, ground y, z, reach in tiles), reach 0 for an unused slot.
 // Leaves and crowns above a point thin out to stipple and then to nothing
@@ -1369,16 +1369,10 @@ void vertex() {
 	sway_w = UV2.x;
 	if (sway_w > 0.0) {
 		vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-		float t = TIME * (1.1 + wind_strength) + UV2.y * 6.283 + wp.x * 0.35 + wp.z * 0.21;
-		float gust = 0.6 + 0.4 * sin(TIME * 0.37 + wp.x * 0.05 - wp.z * 0.03);
-		vec3 push = vec3(sin(t) * 0.7 + 0.45, 0.0, cos(t * 0.8) * 0.5 + 0.3) * sway_w * 0.07 * (0.25 + wind_strength) * gust;
-		// A colossus's landing: the crowns bent over by the shock as it passes.
-		push += sky_shock(wp) * sway_w * SHOCK_BEND;
-		// Move in whole texels, so a blade steps a pixel and never smears.
-		vec3 vp = mat3(VIEW_MATRIX) * push;
-		float texel = 2.0 / max(abs(PROJECTION_MATRIX[1][1]) * VIEWPORT_SIZE.y, 1.0);
-		vp.xy = round(vp.xy / texel) * texel;
-		VERTEX += inverse(mat3(MODEL_MATRIX)) * (mat3(INV_VIEW_MATRIX) * vp);
+		vec3 push = wind_push(wp, sway_w, UV2.y, 1.0);
+		mat3 to_model = inverse(mat3(MODEL_MATRIX));
+		VERTEX += to_model * (mat3(INV_VIEW_MATRIX) * wind_view(push, VIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE));
+		NORMAL = wind_tilt(NORMAL, to_model * push, sway_w, to_model * vec3(0.0, 1.0, 0.0));
 	}
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	wash2 = CUSTOM0.rgb;

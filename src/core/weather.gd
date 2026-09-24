@@ -97,16 +97,21 @@ const SQUALL_FLOOR := 0.12
 ## the rules decide.
 static var forced_kind: StringName = &""
 static var forced_strength := 0.0
+## A held wind -1..1 (`KIND:S:wind=W`), for a frame about what the wind does to
+## the grass; NAN = the kind and the clock decide.
+static var forced_wind := NAN
 
 
-static func force(kind: StringName, strength: float) -> void:
+static func force(kind: StringName, strength: float, wind: float = NAN) -> void:
 	forced_kind = kind
 	forced_strength = clampf(strength, 0.0, 1.0)
+	forced_wind = clampf(wind, -1.0, 1.0) if not is_nan(wind) else NAN
 
 
 static func unforce() -> void:
 	forced_kind = &""
 	forced_strength = 0.0
+	forced_wind = NAN
 
 
 static func family(kind: StringName) -> StringName:
@@ -152,7 +157,7 @@ static func at_type(seed_value: int, minutes: float, type_id: StringName) -> Dic
 		else:
 			strength = pow(sin(PI * spell_phase(seed_value, minutes)), 2.0)
 			strength *= squall_gain(seed_value, minutes, float(row[2]))
-	var wind := wind_at(seed_value, minutes, kind, strength)
+	var wind := wind_at(seed_value, minutes, kind, strength) if is_nan(forced_wind) else forced_wind
 	return {"kind": kind, "strength": strength, "wind": wind, "mist": mist(seed_value, minutes, type_id, kind, strength, wind)}
 
 

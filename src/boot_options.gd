@@ -48,7 +48,8 @@ extends RefCounted
 ## --place=NAME        start at a named place (GenPlaces): a country ("moss"), an
 ##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
 ## --stats             print render stats (draw calls, chunk build times) before the shot
-## --weather=KIND:S     force the weather (e.g. rain:1, fog:0.6, storm:1:bolt, dry_storm:1:bolt; kinds in Weather.KINDS), sky package
+## --weather=KIND:S     force the weather (e.g. rain:1, fog:0.6, storm:1:bolt, dry_storm:1:bolt; kinds in Weather.KINDS), sky package;
+##                     `:wind=W` also holds the wind at W, -1..1 (clear:0:wind=0.8)
 ## --lamp              start with the player's lantern lit, sky package
 ## --silhouette        gallery: machines (and the lineup's people) drawn flat black
 ## --filter=NAME       gallery: only the items whose name holds NAME

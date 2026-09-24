@@ -23,7 +23,8 @@ extends GameSystem
 ##                          path and press the real jump key at the end of it, so a
 ##                          jump is taken on the move the way a player takes one
 ##   hour H                 set the world clock hour (same day)
-##   weather KIND:S[:bolt]  force the sky as --weather does (`weather rules` hands it back)
+##   weather KIND:S[:bolt][:wind=W]  force the sky as --weather does (`weather rules`
+##                          hands it back); wind=W holds the wind at W, -1..1
 ##   zoom F                 camera view height
 ##   walk DX,DY SECS [run]  hold a SCREEN direction for SECS (real input path)
 ##   press ACTION [SECS]    hold an input action (use, swing, dodge, inventory, craft, lamp, pause, map...)
