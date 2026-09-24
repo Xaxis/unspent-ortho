@@ -112,24 +112,44 @@ func test_a_landmark_is_seen_before_it_is_named() -> void:
 
 ## The start budget is real (docs/ROADMAP.md): siting them is a search over a
 ## region's bounds and it must not be a stage a player waits through.
+## Siting every landmark as a SHARE of growing the world it is sited on, both
+## timed in this run. A bar in milliseconds is a claim about one machine: it was
+## 90 ms here and 180 on CI (CI_SPEED), and it failed there at 190.8 on d1724686
+## after passing on three commits before -- a cost sitting at its bar, read on a
+## runner of another class. A share cancels the machine: whatever makes siting
+## slower on a slower or busier box makes generation slower too.
+##
+## MEASURED, interleaved in one process each (sites best of 5, generate best of
+## 3), under loads nobody could wait out (107-252):
+##   before GEN 24 (ca65224)  66.1 / 2,597 ms = 0.0255   load 107
+##   main (GEN 24)           764.6 / 9,012 ms = 0.0849   load 166
+##   before                  384.0 / 10,424 ms = 0.0368  load 227
+##   main                    522.5 / 18,220 ms = 0.0287  load 252
+## The bar is the lowest-load pair's share with 2x headroom: 0.05.
+const SITING_SHARE := 0.05
+
+
 func test_siting_them_costs_nothing_a_player_would_notice() -> void:
-	var w := WorldGen.generate(1, 512)
+	# BEST of n, not the mean: load only ever ADDS time, so the cheapest run is
+	# the honest cost of each half.
+	# A lambda captures a local by value, so the grown world comes out in a box.
+	var grown: Array[WorldData] = [null]
+	var grow := func() -> void:
+		grown[0] = WorldGen.generate(1, 512)
+	var gen_us := best_of(3, grow)
+	var w := grown[0]
 	# The answer is remembered per island, so every measurement has to forget it
 	# first or it times a dictionary lookup and says the sweep is free.
 	Landmarks.forget()
 	check(not Landmarks.sites(w).is_empty(), "there is something to find")
-	# BEST of three, not the mean of three: load only ever ADDS time, so the
-	# cheapest run is the honest cost and the bar can stay at the real number.
-	# This was `90.0 * machine_slack()` over the MEAN, which failed at 398
-	# against a bar of 369 -- a bar four times its own number, missed anyway,
-	# and by then far too wide to have caught a real regression.
 	var cold := func() -> void:
 		Landmarks.forget()
 		@warning_ignore("return_value_discarded")
 		Landmarks.sites(w)
-	var ms := best_of(3, cold) / 1000.0
-	print("landmarks: %.2f ms to site every landmark in a 512 world (cold, best of 3)" % ms)
-	cost_lt(ms, 90.0, "siting them is not a stage a player waits through")
+	var site_us := best_of(5, cold)
+	var share := site_us / maxf(gen_us, 1.0)
+	print("landmarks: %.2f ms to site every landmark in a 512 world, %.0f ms to grow it: %.4f of it (best of 5 and 3)" % [site_us / 1000.0, gen_us / 1000.0, share])
+	cost_lt(share, SITING_SHARE, "siting them is a small share of growing the world (%.4f)" % share)
 	# And a second ask costs nothing, which is what lets the system, the map and a
 	# shot's --place all want the list without paying for it three times.
 	var t2 := Time.get_ticks_usec()
