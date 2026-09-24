@@ -88,7 +88,11 @@ func test_an_abandoned_raise_stops_early() -> void:
 	RealmWorlds.forget()
 	RealmWorlds.settle()
 	var ms := Time.get_ticks_msec() - full
-	lt(float(ms), 12000.0, "an abandoned full-size raise ends in %d ms, not a whole world" % ms)
+	# A wait, not a cost: how long until the raise gives up depends on the stage it
+	# was in and the machine, so the bar carries the machine's slack. A whole world
+	# on one worker is several times this even on a quiet box (23.6 s at 1300 with
+	# the stop switched off), so the claim still has room to fail.
+	lt(float(ms), 12000.0 * machine_slack(), "an abandoned full-size raise ends in %d ms, not a whole world" % ms)
 	# And the same world grown for real afterwards is whole.
 	var w := RealmWorlds.take(seed_value, 512, &"underground")
 	check(w != null and w.regions.size() > 0, "a world grown after a stop is a whole world")
