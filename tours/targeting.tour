@@ -1,8 +1,9 @@
 # Targeting through the real keys (owner, 2026-09-16): every body carries its
 # wordless tag; holding Z locks the nearest threat, leans the camera in behind
-# the player and reads the body on the slate; a and d cycle the lock; r sweeps
+# the player and reads the body on the slate; u and o (or the scroll) cycle the
+# lock, never the move keys, so a strafe keeps it; r sweeps
 # the whole field and stands the camera back; letting go puts it all away. And
-# a fight is fought with the key held, because targeting never was required.
+# a fight is fought with the key held.
 #   tools/tour.sh tours/targeting.tour --seed=1 --hour=11 --weather=clear:0 --folk=8
 coast calm
 wait 0.8
@@ -23,7 +24,7 @@ shot 02-locked-the-camera-leans with mob:runner
 spawn cutter
 wait 0.6
 shot 03-a-second-machine with mob:cutter,mob:runner
-tap move_right
+tap target_next
 wait 0.5
 await target 3
 shot 04-cycled-to-another with mob:cutter,mob:runner
@@ -53,7 +54,7 @@ shot 07-let-go-and-square with mob:runner
 # --- a village, and a field bigger than one page ----------------------------------
 # One of the last people is read as a person: no health, no signature, just who
 # they are and what they are doing. A person always sorts below everything in the
-# fight, so one step LEFT from a fresh lock wraps onto them, however many machines
+# fight, so one step BACK from a fresh lock wraps onto them, however many machines
 # are about. And with the village's own people and the eight the tour boots with
 # (--folk=8), the field runs past a single page: the gap this closes is a sweep
 # that stopped at eight and never said there were more.
@@ -61,7 +62,7 @@ village 0
 wait 2.5
 hold target
 await target 8
-tap move_left
+tap target_prev
 wait 0.6
 await target_person 8
 shot 08-a-person-read-as-a-person with folk
@@ -70,7 +71,7 @@ await target_sweep 5
 await target_paged 5
 wait 0.6
 shot 09-a-field-on-two-pages with folk
-tap move_right
+tap target_next
 wait 0.6
 shot 10-the-second-page with folk
 release target

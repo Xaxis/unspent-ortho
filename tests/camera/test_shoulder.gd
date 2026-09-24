@@ -32,7 +32,7 @@ func _system(g: Game) -> Node:
 
 
 func _done() -> void:
-	for a: StringName in [&"shoulder", &"target"]:
+	for a: StringName in [&"shoulder", &"target", &"shoulder_peek", &"look_right", &"look_up"]:
 		if InputMap.has_action(a):
 			Input.action_release(a)
 	GameConfig.forget_edits()
@@ -246,6 +246,9 @@ func test_the_pointer_is_held_only_while_the_view_is_up() -> void:
 ## back the moment a page opens (the pause page is a page), taken again when it
 ## closes, and given back when the view is left.
 func test_the_pointer_is_given_back_on_a_page_and_on_leaving() -> void:
+	# Held, so letting go is leaving (the view is a press by default now).
+	PlayerSettings.forget_for_test()
+	PlayerSettings.set_value(&"playing.shoulder", &"hold")
 	var g := await _make()
 	var sys := _system(g)
 	check(sys != null, "41_shoulder is loaded from src/systems")
@@ -265,6 +268,7 @@ func test_the_pointer_is_given_back_on_a_page_and_on_leaving() -> void:
 	Input.action_release(&"shoulder")
 	sys.call("_process", DT)
 	eq(sys.get("captured"), false, "the key let go: given back")
+	PlayerSettings.forget_for_test()
 	_done()
 
 
@@ -508,28 +512,236 @@ func _right(down: bool) -> void:
 	Input.flush_buffered_events()
 
 
-## THE RIGHT BUTTON IS THE VIEW, AND ONE CLICK IS ENOUGH IN TOGGLE MODE. macOS
-## hands Godot a trackpad's two-finger click as a secondary click, which the engine
-## reads as MOUSE_BUTTON_RIGHT, so this is the event a laptop sends. Pressed and
-## let go once, the toggled view comes down and stays; a second click takes it up.
-func test_one_right_click_toggles_the_view() -> void:
+## THE RIGHT BUTTON IS A PEEK (owner, 2026-09-24): the view is up while it is
+## held and lands back wherever the key left it, in every order the two can be
+## pressed. The view's own key is a press by default in every scheme.
+func _peek_game() -> Array:
 	PlayerSettings.forget_for_test()
-	PlayerSettings.set_value(&"playing.shoulder", &"toggle")
+	PlayerSettings.set_value(PlayerSettings.SCHEME, ControlScheme.MOUSE)
 	var g := await _make()
-	var sys := _system(g)
-	_right(true)
-	check(Input.is_action_pressed(&"shoulder"), "the right button says `shoulder`")
+	return [g, _system(g)]
+
+
+func _toggle_key(sys: Node) -> void:
+	Input.action_press(&"shoulder")
 	sys.call("_process", DT)
-	_right(false)
+	Input.action_release(&"shoulder")
 	await tree.process_frame
 	sys.call("_process", DT)
-	check(g.camera.shoulder, "one click, and the view stays down")
-	_right(true)
-	await tree.process_frame
-	sys.call("_process", DT)
-	_right(false)
-	await tree.process_frame
-	sys.call("_process", DT)
-	check(not g.camera.shoulder, "a second click takes it back up")
+
+
+func test_the_view_is_a_press_by_default() -> void:
 	PlayerSettings.forget_for_test()
+	eq(PlayerSettings.value(&"playing.shoulder"), &"toggle", "pressed once, not held")
+	PlayerSettings.forget_for_test()
+
+
+func test_the_right_button_peeks_and_lands_back_down() -> void:
+	var made: Array = await _peek_game()
+	var g: Game = made[0]
+	var sys: Node = made[1]
+	_right(true)
+	check(Input.is_action_pressed(&"shoulder_peek"), "the right button says `shoulder_peek`")
+	check(not Input.is_action_pressed(&"shoulder"), "and not the view's own key")
+	sys.call("_process", DT)
+	check(g.camera.shoulder, "held, the view is up")
+	_right(false)
+	await tree.process_frame
+	sys.call("_process", DT)
+	check(not g.camera.shoulder, "let go, it is back on the land")
+	PlayerSettings.forget_for_test()
+	_done()
+
+
+func test_a_peek_over_a_view_already_up_leaves_it_up() -> void:
+	var made: Array = await _peek_game()
+	var g: Game = made[0]
+	var sys: Node = made[1]
+	await _toggle_key(sys)
+	check(g.camera.shoulder, "pressed on")
+	_right(true)
+	await tree.process_frame
+	sys.call("_process", DT)
+	_right(false)
+	await tree.process_frame
+	sys.call("_process", DT)
+	check(g.camera.shoulder, "a peek and back: still up, because the key put it there")
+	PlayerSettings.forget_for_test()
+	_done()
+
+
+func test_the_key_pressed_during_a_peek_keeps_the_view_after_it() -> void:
+	var made: Array = await _peek_game()
+	var g: Game = made[0]
+	var sys: Node = made[1]
+	_right(true)
+	sys.call("_process", DT)
+	await _toggle_key(sys)
+	_right(false)
+	await tree.process_frame
+	sys.call("_process", DT)
+	check(g.camera.shoulder, "the key pressed while peeking: the view stays once the button is up")
+	PlayerSettings.forget_for_test()
+	_done()
+
+
+## THE ARROWS ARE THE KEYBOARD'S LOOK (C6): over the shoulder they turn the view;
+## under a lock they may tip it but the turn is the lock's.
+func test_the_arrows_turn_the_view_and_a_lock_keeps_the_turn() -> void:
+	var made: Array = await _peek_game()
+	var g: Game = made[0]
+	var sys: Node = made[1]
+	await _toggle_key(sys)
+	var cam := g.camera
+	var yaw := cam.shoulder_yaw
+	var pitch := cam.shoulder_pitch
+	Input.action_press(&"look_right")
+	Input.action_press(&"look_up")
+	for i in 20:
+		sys.call("_process", DT)
+	Input.action_release(&"look_right")
+	Input.action_release(&"look_up")
+	lt(cam.shoulder_yaw, yaw - 10.0, "right turns the view right (%.1f from %.1f)" % [cam.shoulder_yaw, yaw])
+	lt(cam.shoulder_pitch, pitch - 10.0, "up tips it up (%.1f from %.1f)" % [cam.shoulder_pitch, pitch])
+	cam.subject = Vector3(g.player.position.x + 5.0, 0.0, g.player.position.z)
+	yaw = cam.shoulder_yaw
+	Input.action_press(&"look_right")
+	for i in 20:
+		sys.call("_process", DT)
+	Input.action_release(&"look_right")
+	eq(cam.shoulder_yaw, yaw, "under a lock the arrows do not fight it for the turn")
+	cam.subject = Vector3.INF
+	PlayerSettings.forget_for_test()
+	_done()
+
+
+## A BROWSER TAKES THE POINTER BACK ON ESC, and the engine never hears the key:
+## over the shoulder the first Esc did nothing. Once the lock was seen held, a
+## pointer handed back is the pause the player asked for.
+func test_the_browser_giving_the_pointer_back_pauses() -> void:
+	var made: Array = await _peek_game()
+	var g: Game = made[0]
+	var sys: Node = made[1]
+	var held := [false]
+	sys.set("focus_check", func() -> bool: return true)
+	sys.set("web_check", func() -> bool: return true)
+	sys.set("mode_check", func() -> bool: return held[0])
+	sys.set("_tool", false)
+	await _toggle_key(sys)
+	eq(sys.get("captured"), true, "the view up: the pointer is asked for")
+	sys.call("_process", DT)
+	check(not g.open_screens.has(&"pause"), "asked for and not yet granted is not a release")
+	held[0] = true
+	sys.call("_process", DT)
+	check(not g.open_screens.has(&"pause"), "held: nothing to answer")
+	held[0] = false
+	sys.call("_process", DT)
+	check(g.open_screens.has(&"pause"), "handed back by the browser: the pause page is up")
+	eq(sys.get("captured"), false, "and the pointer is the player's")
+	PlayerSettings.forget_for_test()
+	_done()
+
+
+func test_a_desktop_keeps_its_capture_through_esc() -> void:
+	var made: Array = await _peek_game()
+	var g: Game = made[0]
+	var sys: Node = made[1]
+	sys.set("focus_check", func() -> bool: return true)
+	sys.set("web_check", func() -> bool: return false)
+	sys.set("mode_check", func() -> bool: return false)
+	sys.set("_tool", false)
+	await _toggle_key(sys)
+	for i in 3:
+		sys.call("_process", DT)
+	check(not g.open_screens.has(&"pause"), "off the web nothing takes the pointer, so nothing pauses")
+	PlayerSettings.forget_for_test()
+	_done()
+
+
+func _key(code: int, down: bool) -> void:
+	var ev := InputEventKey.new()
+	ev.physical_keycode = code
+	ev.pressed = down
+	Input.parse_input_event(ev)
+	Input.flush_buffered_events()
+
+
+## The arrows walk from above -- and every page of the slate is steered by the
+## walk -- and over the shoulder they turn the view instead of walking (C6).
+func test_over_the_shoulder_the_arrows_look_and_do_not_walk() -> void:
+	var made: Array = await _peek_game()
+	var g: Game = made[0]
+	var sys: Node = made[1]
+	_key(KEY_RIGHT, true)
+	g._physics_process(DT)
+	gt(g.player.intent_move.length(), 0.5, "from above the arrow walks")
+	_key(KEY_RIGHT, false)
+	await _toggle_key(sys)
+	check(g.camera.shoulder, "over the shoulder")
+	_key(KEY_RIGHT, true)
+	g._physics_process(DT)
+	lt(g.player.intent_move.length(), 0.01, "there the arrow does not walk")
+	_key(KEY_RIGHT, false)
+	_key(KEY_D, true)
+	g._physics_process(DT)
+	gt(g.player.intent_move.length(), 0.5, "and D still does")
+	_key(KEY_D, false)
+	PlayerSettings.forget_for_test()
+	_done()
+
+
+# --- people on the line to a lock ------------------------------------------------
+
+func test_a_person_counts_only_between_the_eye_and_the_lock() -> void:
+	var eye := Vector2(0.0, 0.0)
+	var target := Vector2(6.0, 0.0)
+	var on: Array[Vector2] = [Vector2(3.0, 0.3)]
+	check(Shoulder.in_line(eye, target, on), "half way along and a body's width off: on the line")
+	var beside: Array[Vector2] = [Vector2(3.0, 1.2)]
+	check(not Shoulder.in_line(eye, target, beside), "a stride to the side is not")
+	var behind: Array[Vector2] = [Vector2(-1.0, 0.0)]
+	check(not Shoulder.in_line(eye, target, behind), "behind the eye is not")
+	var past: Array[Vector2] = [Vector2(6.5, 0.0)]
+	check(not Shoulder.in_line(eye, target, past), "and neither is standing at or past the lock")
+
+
+## A villager walks between the eye and a locked body: the eye rises over them,
+## the lock stays where it was in the frame, and no frame jumps on the way.
+func test_the_eye_rises_over_a_person_on_the_line_and_the_lock_holds() -> void:
+	var g := await _make(["--view=shoulder", "--folk=1"])
+	var sys := _system(g)
+	var cam := g.camera
+	var folk: Node = sys.call("_folk")
+	check(folk != null and not (folk.get("folk") as Array).is_empty(), "a villager to stand on the line")
+	# The village's own people as well as the one booted: all indoors but one,
+	# and that one off the line first, so the view is a lock alone.
+	for r: Dictionary in folk.get("folk"):
+		r["state"] = &"in"
+	_step(cam, 30)
+	var ahead := Shoulder.forward(cam.shoulder_yaw)
+	var here := g.player.position
+	cam.subject = here + Vector3(ahead.x, 0.0, ahead.y) * 5.0
+	var row: Dictionary = (folk.get("folk") as Array)[0]
+	row["pos"] = Vector2(here.x, here.z) + Vector2(-ahead.y, ahead.x) * 6.0
+	row["state"] = &"out"
+	for i in 150:
+		sys.call("_process", DT)
+		cam._process(DT)
+	var clear_y := cam.global_position.y
+	near(cam.clear_tip(), 0.0, 0.05, "nobody on the line: no tip")
+	# Now half way along the line from the eye to the lock.
+	var eye := Vector2(cam.global_position.x, cam.global_position.z)
+	row["pos"] = eye.lerp(Vector2(cam.subject.x, cam.subject.z), 0.45)
+	var last := cam.global_position
+	var biggest := 0.0
+	for i in 90:
+		sys.call("_process", DT)
+		cam._process(DT)
+		biggest = maxf(biggest, cam.global_position.distance_to(last))
+		last = cam.global_position
+	gt(cam.clear_tip(), Shoulder.CLEAR_TIP * 0.9, "the view has tipped to look over them")
+	gt(cam.global_position.y, clear_y + 0.6, "and the eye stands higher (%.2f from %.2f)" % [cam.global_position.y, clear_y])
+	lt(biggest, 0.12, "eased, never a jump (largest step %.3f)" % biggest)
+	check(bool(sys.call("tour_seen", &"shoulder_locked")), "and the lock is still framed")
+	cam.subject = Vector3.INF
 	_done()

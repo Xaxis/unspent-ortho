@@ -8,21 +8,39 @@ extends UiScreen
 ## the game was last saved. Leaving (to the title, or quit) takes the autosave
 ## first when it is calm (05_save).
 
+## The keys this page lists and what each does. The ACTIONS are written here and
+## the keys are asked of the live map (`key_line`), because this table used to
+## spell its letters and had drifted from the game twice: it said Space swung and
+## Q crouched after both had moved, and a control scheme moves them again.
 const KEYS := [
-	["wasd", "walk"],
-	["shift", "run, tap to dodge"],
-	["k", "dodge"],
-	["ctrl  q", "crouch"],
-	["space  j", "swing, or pull free"],
-	["e", "use what is in reach"],
-	["x", "hold: put down what is in hand"],
-	["f", "lamp"],
-	["tab  i", "carrying"],
-	["c", "making"],
-	["m", "map"],
-	["z", "hold: read a machine; a d another, r the field"],
-	["esc", "pause, or back"],
+	[[&"move_up", &"move_left", &"move_down", &"move_right"], "walk"],
+	[[&"run"], "run, tap to dodge"],
+	[[&"dodge"], "dodge"],
+	[[&"crouch"], "crouch"],
+	[[&"jump"], "jump"],
+	[[&"swing"], "swing, or pull free"],
+	[[&"use"], "use what is in reach"],
+	[[&"drop"], "hold: put down what is in hand"],
+	[[&"lamp"], "lamp"],
+	[[&"inventory"], "carrying"],
+	[[&"craft"], "making"],
+	[[&"map"], "map"],
+	[[&"target"], "hold: lock onto a machine"],
+	[[&"target_prev", &"target_next"], "the one before, the next"],
+	[[&"shoulder"], "over your shoulder"],
+	[[&"pause"], "pause, or back"],
 ]
+
+
+## The keys an entry's actions are on, as the page letters them: a cluster said
+## as one word (WASD), each other action on its own key, lowercase like a cap.
+static func key_line(actions: Array) -> String:
+	if actions.size() == 4:
+		return PlayerSettings.cap_of(actions)
+	var out: PackedStringArray = []
+	for a: StringName in actions:
+		out.append(PlayerSettings.cap_of(a))
+	return "  ".join(out)
 ## The home list starts a clear line under the pane's title, and its rows sit a
 ## little further apart than a list's: they are choices, not entries.
 const LIST_TOP := UiSlate.LIST.position.y + 40
@@ -127,7 +145,7 @@ func saved_line() -> String:
 static func draw_keys_list(ci: CanvasItem, at: Vector2i, key_w: int = 112) -> void:
 	for i in KEYS.size():
 		var top := at.y + i * UiTheme.LINE
-		UiDraw.text(ci, Vector2i(at.x, top), KEYS[i][0], UiTheme.BRIGHT)
+		UiDraw.text(ci, Vector2i(at.x, top), key_line(KEYS[i][0]), UiTheme.BRIGHT)
 		UiDraw.text(ci, Vector2i(at.x + key_w, top), KEYS[i][1], UiTheme.TEXT_DIM)
 
 

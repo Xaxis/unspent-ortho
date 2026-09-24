@@ -404,10 +404,12 @@ func _draw_keys(r: Rect2i, sweeping: bool, pages: int = 1) -> void:
 	UiDraw.hline(_canvas, x, r.end.x - 12, y - 4, UiTheme.GHOST)
 	if not sweeping or pages > 1:
 		var word := "more" if sweeping else "another"
-		x += UiSlate.mini_cap(_canvas, Vector2i(x, y + 2), "a d") + 6
+		# Asked of the live map: these were spelled "a d" and went on saying so
+		# after the cycle moved off the move keys (docs/CONTROLS.md, C3).
+		x += UiSlate.mini_cap(_canvas, Vector2i(x, y + 2), UiPauseScreen.key_line([&"target_prev", &"target_next"])) + 6
 		UiDraw.text(_canvas, Vector2i(x, y), word, UiTheme.TEXT_DIM)
 		x += UiFont.width(word) + 14
-	x += UiSlate.mini_cap(_canvas, Vector2i(x, y + 2), "r") + 6
+	x += UiSlate.mini_cap(_canvas, Vector2i(x, y + 2), PlayerSettings.cap_of(&"ability_scan")) + 6
 	UiDraw.text(_canvas, Vector2i(x, y), "one at a time" if sweeping else "the field", UiTheme.TEXT_DIM)
 
 

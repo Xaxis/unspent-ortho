@@ -707,6 +707,29 @@ if (first && !touring && opt['boot-only']) {
       if (!(await waitLine(/^web ok slot kept/, 20, from))) failures.push('a real save slot did not come back whole across a reload (IndexedDB)');
     }
   }
+  // LAST, because a click and a key are a gesture: asked before the first-key
+  // audio check, they started the audio and shifted every check after them.
+  // The browser's own answers to the game's keys (docs/CONTROLS.md, web checks):
+  // the right button is the peek and must not open a menu; Tab is carrying and
+  // must not move focus off the canvas; Alt is the view over the shoulder and
+  // must not be left to raise a menu bar. Pressed for real, then asked of a
+  // listener on the window, which hears each event after the engine's own.
+  await page.evaluate(() => {
+    window.__defaults = {};
+    for (const type of ['contextmenu', 'keydown', 'keyup']) {
+      window.addEventListener(type, (e) => { window.__defaults[`${type}:${e.key || e.button}`] = e.defaultPrevented; });
+    }
+  });
+  const box = await page.locator('#canvas').boundingBox();
+  if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Alt');
+  await page.waitForTimeout(200);
+  const kept = await page.evaluate(() => ({ seen: window.__defaults, focus: document.activeElement && document.activeElement.id }));
+  console.log(`web browser defaults: ${JSON.stringify(kept.seen)}, focus on '${kept.focus}'`);
+  if (kept.seen['contextmenu:2'] !== true) failures.push('a right click opened (or was not stopped from opening) the browser menu');
+  if (kept.seen['keydown:Tab'] !== true || kept.focus !== 'canvas') failures.push(`Tab left the canvas (focus on '${kept.focus}')`);
+  if (kept.seen['keyup:Alt'] !== true) failures.push('Alt was left to the browser, which raises a menu bar on Windows');
 }
 
 phase = 'closing down';

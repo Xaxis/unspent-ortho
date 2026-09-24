@@ -26,7 +26,7 @@ func _make(extra: PackedStringArray = []) -> Node:
 
 
 func _done() -> void:
-	for a: StringName in [&"target", &"ability_scan", &"move_left", &"move_right"]:
+	for a: StringName in [&"target", &"ability_scan", &"move_left", &"move_right", &"target_next", &"target_prev"]:
 		if InputMap.has_action(a):
 			Input.action_release(a)
 	_game.free()
@@ -75,11 +75,11 @@ func test_the_keys_cycle_the_lock_and_sweep_the_field() -> void:
 	sys.call("_process", 0.1)
 	var first: TargetSubject = sys.get("locked")
 	check(first != null)
-	Input.action_press(&"move_right")
+	Input.action_press(&"target_next")
 	sys.call("_process", 0.1)
-	Input.action_release(&"move_right")
+	Input.action_release(&"target_next")
 	var second: TargetSubject = sys.get("locked")
-	check(second != null and second.id != first.id, "right cycles to another body")
+	check(second != null and second.id != first.id, "the next key cycles to another body")
 	# A frame between the two keys: inside one frame the engine still reads the
 	# cycle key as just pressed, and a cycle key pressed into a sweep pages it.
 	await tree.process_frame
@@ -163,9 +163,9 @@ func test_a_sweep_pages_through_a_big_field() -> void:
 	eq(int(sys.get("page")), 1)
 	var first: Array = (sys.get("field") as Array).duplicate()
 	eq(first.size(), Targeting.SWEEP_MOST, "a page, not a census")
-	Input.action_press(&"move_right")
+	Input.action_press(&"target_next")
 	sys.call("_process", 0.1)
-	Input.action_release(&"move_right")
+	Input.action_release(&"target_next")
 	eq(int(sys.get("page")), 2, "the cycle keys page a sweep")
 	var second: Array = sys.get("field")
 	check(not second.is_empty())
@@ -175,6 +175,62 @@ func test_a_sweep_pages_through_a_big_field() -> void:
 	for s: TargetSubject in second:
 		check(not ids.has(s.id), "the second page holds who the first could not")
 	check(bool(sys.get("sweeping")), "and paging never lets the sweep go")
+	_done()
+
+
+## C3 (docs/CONTROLS.md): a strafe round a locked body must never change which
+## body it is. The move keys used to cycle the lock, so every side-step moved it.
+func test_strafing_never_cycles_the_lock() -> void:
+	var sys := await _make(PackedStringArray(["--spawn=runner,cutter,watcher", "--target"]))
+	sys.call("_process", 0.1)
+	var first: TargetSubject = sys.get("locked")
+	check(first != null)
+	for a: StringName in [&"move_right", &"move_left", &"move_right"]:
+		await tree.process_frame
+		Input.action_press(a)
+		sys.call("_process", 0.1)
+		Input.action_release(a)
+	var still: TargetSubject = sys.get("locked")
+	check(still != null and still.id == first.id, "the same body is locked after three side-steps")
+	_done()
+
+
+## While the key is held the scroll cycles the lock and the zoom is off (owner's
+## ruling); let go, the scroll is the zoom's again.
+func test_the_scroll_cycles_a_held_lock_and_takes_the_zoom() -> void:
+	var sys := await _make(PackedStringArray(["--spawn=runner,cutter,watcher", "--target"]))
+	sys.call("_process", 0.1)
+	var first: TargetSubject = sys.get("locked")
+	check(bool(sys.call("owns_zoom")), "a held lock has the zoom keys")
+	check(bool(sys.call("take_scroll", Vector2(0.0, 1.0))), "and takes a notch of scroll")
+	sys.call("_process", 0.1)
+	var second: TargetSubject = sys.get("locked")
+	check(second != null and second.id != first.id, "one notch moved the lock on")
+	# A trackpad's swipe arrives in fractions: gathered, it moves once, not four times.
+	for i in 4:
+		sys.call("take_scroll", Vector2(0.3, 0.0))
+	sys.call("_process", 0.1)
+	var third: TargetSubject = sys.get("locked")
+	check(third != null and third.id != second.id, "a swipe's fractions made one step")
+	sys.set("_forced", false)
+	sys.call("_process", 0.1)
+	check(not bool(sys.call("owns_zoom")), "let go, the zoom is the camera's again")
+	check(not bool(sys.call("take_scroll", Vector2(0.0, 1.0))), "and so is the scroll")
+	_done()
+
+
+## The one write to the fight: where the lock is, handed to the body, and taken
+## back the moment the key is let go.
+func test_the_lock_is_handed_to_the_body_and_taken_back() -> void:
+	var sys := await _make(PackedStringArray(["--spawn=runner", "--target"]))
+	var hero := _game.player.hero
+	sys.call("_process", 0.1)
+	var locked: TargetSubject = sys.get("locked")
+	eq(hero.lock, locked.here(), "the body holds the point the lock is on")
+	sys.set("_forced", false)
+	sys.call("_process", 0.1)
+	check(not hero.lock.is_finite(), "let go, the body holds nothing")
+	check(is_finite(hero.unlocked_at), "and knows when it was let go, to turn back smoothly")
 	_done()
 
 
@@ -193,7 +249,9 @@ func test_targeting_changes_nothing_in_the_fight() -> void:
 	eq(body.facing, before.facing)
 	eq(sim.hero.health, before.hero_health, "and neither is the player")
 	eq(sim.hero.pos, before.hero_pos)
-	eq(sim.hero.facing, before.hero_facing, "targeting never aims a blow")
+	# The facing turns in the fight's OWN step (LockOn), never here: this system
+	# hands over a point and the simulation decides what a body does with it.
+	eq(sim.hero.facing, before.hero_facing, "targeting itself turns nobody")
 	eq(sim.out.size(), 0, "and the fight hears nothing from it")
 	_done()
 
