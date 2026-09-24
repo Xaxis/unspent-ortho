@@ -1,0 +1,36 @@
+# A COLOSSUS'S FOOT IN THE REGION (slice 3: 19_colossi, colossus_foot.gd, the
+# craters gen_treads.gd cut). The straddling walker is staged twenty world
+# minutes after its foot came down in this world's first tread. Under the ankle
+# first -- a drum three hundred metres across standing its own height over the
+# player, its vents and its ring of cold light the ceiling, the three toes
+# arching down to their pads -- over the shoulder and looking up, then top-down.
+# Then outside a crater, facing its pad: the forty-metre disc on the bared floor,
+# the strata stepped up round it, the spoil on the lip; and top-down there.
+# Run it at noon and at night (the ring under the drum lights the ground between
+# the toes). Not with `hour`: the walk IS the clock, and ten hours on the foot
+# has lifted and gone. The run opens over the shoulder; `hold shoulder` is the
+# top-down view; the glide back down to the shoulder takes its own bearing, so
+# the tour lets it land before standing anywhere that says which way to face.
+#   tools/tour.sh tours/colossi_tread.tour --seed=7 --place=tread0 --colossus=2@tread0+20 --hour=12 --view=shoulder --weather=clear:0
+#   tools/tour.sh tours/colossi_tread.tour --seed=7 --place=tread0 --colossus=2@tread0+20 --hour=22.5 --view=shoulder --weather=clear:0
+await colossus_foot 30
+await colossus_tread 5
+near colossus_foot
+mouse 0,-120 0.3
+wait 2
+shot 00-under-the-ankle
+mouse 0,-1400 1
+wait 1
+shot 01-looking-up-at-the-drum
+hold shoulder
+wait 1.5
+shot 02-top-down-under-the-ankle
+release shoulder
+wait 1
+near colossus_pad
+wait 2
+shot 03-at-a-crater-facing-its-pad
+hold shoulder
+wait 1.5
+shot 04-top-down-at-a-crater
+release shoulder

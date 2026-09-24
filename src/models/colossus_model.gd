@@ -177,9 +177,7 @@ func _hub(d: RefCounted) -> void:
 	]
 	_lathe(Vector3.ZERO, hull, 16, [DARK, DARK, DARK, BODY, BODY, BODY, BODY, RIM, PLATE, BODY, RIM, PLATE, BODY], PI / 16.0)
 	# The hub ring: a cold strip round the belt, under the rim.
-	_lamp(1, Vector3(0.0, -235.0, 0.0))
-	_lathe(Vector3.ZERO, [Vector2(r * 1.03, -300.0), Vector2(r * 1.03, -170.0)], 16, [STRIP], PI / 16.0)
-	_lamp(0)
+	_strip(r * 0.97, -420.0, 16, 1.07, 360.0)
 	# The tower: plated courses narrowing up to the crown, a collar between each.
 	var tower := [Vector2(r * 0.78, 1700.0)]
 	var courses := 5
@@ -222,9 +220,7 @@ func _hub(d: RefCounted) -> void:
 	for i in 4:
 		var y := lerpf(hi + 900.0, top - 1200.0, float(i + 1) / 4.0)
 		var w := lerpf(420.0, 60.0, float(i + 1) / 4.0)
-		_lamp(1, Vector3(0.0, y - 60.0, 0.0))
-		_lathe(Vector3.ZERO, [Vector2(w * 1.75, y - 90.0), Vector2(w * 1.75, y - 30.0)], 8, [STRIP])
-		_lamp(0)
+		_strip(w * 1.45, y - 90.0, 8, 1.2, 60.0)
 	# Ribs up the tower's flanks, between the hips: the ruled lines that say this
 	# was made to a drawing.
 	for i in 6:
@@ -244,6 +240,24 @@ func _hub(d: RefCounted) -> void:
 	_bone = 0
 	_lamp(3, Vector3(r * 1.03, 180.0, 0.0))
 	_eye(Vector3(r * 1.03, 180.0, 0.0), eye)
+	_lamp(0)
+
+
+## A COLD RING round the local Y axis: a FLANGE standing `proud` of a plate of
+## radius `plate` at height `y`, `tall` metres deep, closed underneath (the
+## side every eye on the ground sees; the top is never seen and not built). A
+## band alone showed only its near half -- the far half is behind the leg -- and
+## read as a thin arc; a flange is seen from below as its whole underside, a
+## full ellipse of light round the leg. Its outer radius rides in the lamp
+## centre's x (CUSTOM0.w), so the shader can keep the ring standing past a leg
+## it has widened to a pixel (colossus.gdshader, kind 1).
+const STRIP_PROUD := 1.24
+const STRIP_TALL := 300.0
+func _strip(plate: float, y: float, sides: int, proud := STRIP_PROUD, tall := STRIP_TALL) -> void:
+	var w := plate * proud
+	var inner := plate * 0.96
+	_lamp(1, Vector3(w, y + tall * 0.5, 0.0))
+	_lathe(Vector3.ZERO, [Vector2(inner, y), Vector2(w, y), Vector2(w, y + tall)], sides, [STRIP], PI / float(sides))
 	_lamp(0)
 
 
@@ -394,6 +408,9 @@ func _leg(d: RefCounted, k: int) -> void:
 	if _detail:
 		_thigh_works(d)
 	_strut(Vector3(-t_r.x * 1.05, l1 * 0.12, 0.0), Vector3(-t_r.y * 1.1, l1 * 0.86, 0.0), 180.0, 120.0, 4, PLATE)
+	# And up the thigh, so the pulse that climbs the shin goes on to the hip.
+	for t: float in [0.22, 0.48, 0.74]:
+		_strip(_radius_near(thigh, t * l1, 600.0), t * l1, sides)
 	# The knee rides the thigh's end.
 	_ball(Vector3(0.0, l1, 0.0), float(d.knee_r), 10, BODY, RIM)
 	# Beacons down the outer face of the leg: on the knee, and half way down the
@@ -416,17 +433,12 @@ func _leg(d: RefCounted, k: int) -> void:
 	_lathe(Vector3.ZERO, shin, sides, sc, PI / float(sides))
 	if _detail:
 		_shin_works(d, shin)
-	# Cold strips round the shin: thin rings standing proud of the plate, the
-	# plan's own light running down the leg at night. A strip is a LINE; laid as
-	# a whole band of plate it read as a white bandage round the leg.
-	for t: float in [0.30, 0.62, 0.86]:
-		# Proud of whatever the plate there really is, sleeves included: set to the
-		# curve the profile was sampled from, the rings sat INSIDE the leg where a
-		# sleeve's chord bulged past them and not one was ever drawn.
-		var w := _radius_near(shin, t * l2, 400.0) * 1.08
-		_lamp(1, Vector3(0.0, t * l2 + 80.0, 0.0))
-		_lathe(Vector3.ZERO, [Vector2(w, t * l2), Vector2(w, t * l2 + 160.0)], sides, [STRIP], PI / float(sides))
-		_lamp(0)
+	# Cold rings up the shin, the plan's own light running up the leg at night,
+	# densest toward the ground where a person stands under them. Set to the plate
+	# the profile really draws there, sleeves included (`_radius_near`), or a
+	# ring sits inside a sleeve's chord and is never seen.
+	for t: float in [0.14, 0.34, 0.54, 0.72, 0.88]:
+		_strip(_radius_near(shin, t * l2, 400.0), t * l2, sides)
 	_beacons(Vector3(0.0, l2 * 0.965, 0.0), s_r.y * 1.4, 110.0)
 	# FOOT (bone 3 + 3k): the ankle block, its arch, and three toes on pads.
 	_bone = 3 + 3 * k

@@ -80,3 +80,12 @@ func _place() -> void:
 	var look := Vector3(ahead.x, 0.0, ahead.y)
 	_cam.look_at(at + look, Vector3.UP)
 	_cam.rotate_object_local(Vector3.RIGHT, -deg_to_rad(o.y))
+	# The ground moves under this eye as it does under the rig's: a colossus
+	# landing is felt here too (CameraRig.quake), swaying and nodding the view.
+	if game.camera != null:
+		var q: Vector2 = game.camera.quake_offset()
+		if q != Vector2.ZERO:
+			var b := _cam.global_transform.basis
+			_cam.global_position += b.x * q.x + b.y * q.y
+			_cam.rotate_object_local(Vector3.RIGHT, q.y * CameraRig.QUAKE_TIP)
+			_cam.rotate_object_local(Vector3.BACK, q.x * CameraRig.QUAKE_TIP)

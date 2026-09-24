@@ -21,6 +21,7 @@ render_mode cull_back, depth_draw_always;
 #include "res://src/render/ink.gdshaderinc"
 #include "res://src/render/matter.gdshaderinc"
 #include "res://src/models/people/person_light.gdshaderinc"
+#include "res://src/render/sight.gdshaderinc"
 
 uniform float emission_strength = 0.0;
 
@@ -39,6 +40,9 @@ void vertex() {
 }
 
 void fragment() {
+	if (sight_yield(world_pos, FRAGCOORD.xy)) {
+		discard;
+	}
 	vec3 c = COLOR.rgb;
 	vec3 at;
 	// A person standing in a lamp's pool takes the lamp's own colour on their

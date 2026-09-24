@@ -77,6 +77,16 @@ uniform float thick = 0.0;
 uniform float h_low = 40.0;
 uniform float h_high = 8000.0;
 uniform float beta_high = 1.1e-5;
+// AND A THIRD, BY DISTANCE ALONE: the air between the eye and a thing kilometres
+// off, whatever height it stands at. The two layers leave anything high in the
+// sky nearly clear, which is right for how thin the air is up there and read,
+// at noon, as a flat dark cut-out: nothing said the hub was eighty kilometres
+// off and the knee sixty. This much gives a leg a gradient of air up its whole
+// length toward the body, and takes a walker on the skyline half into the blue.
+uniform float beta_far = 3.0e-6;
+// The top of the spire, over the hub's origin (the hip height), metres: the
+// one light the machine keeps burning by day.
+uniform float spire_y = 41000.0;
 // How much of the lens's own light the hour leaves (0 at noon, 1 at night):
 // a lamp in daylight shows the colour it is made of, not white.
 uniform float lens_glow = 1.0;
@@ -105,6 +115,14 @@ const float EMBER = 5.0;
 // And a floor under it that is not the albedo's: the plate is dark on purpose, and
 // times a dark albedo the last sun came out a smear nobody saw (coast, 21:30).
 const float EMBER_FLOOR = 0.35;
+// How much of the sky's light and the sun's a face takes, over the renderer's own.
+const float SKY_FILL = 0.55;
+const float SUN_TOP = 1.1;
+// How far over a fragment's own horizon (radians) the sun must stand to light it
+// fully, and the colour of the last of it, as a share of the glow: the sun
+// through the whole low air is red and a fifth as bright.
+const float EMBER_RISE = 0.06;
+const vec3 EMBER_LOW = vec3(0.55, 0.12, 0.10);
 
 float compress_len(float d) {
 	if (d <= comp_d0) {
@@ -128,6 +146,27 @@ const float MIN_PX = 0.75;
 const float LAMP_PX = 1.6;
 const float LENS_PX = 2.2;
 const float LAMP_BIAS = 0.06;
+// A ring's least reach past its leg, and its least depth, in pixels; and the
+// share its authored flange stands proud of the plate (colossus_model.gd
+// STRIP_PROUD), to find the plate from the ring's own outer radius.
+const float RING_PX = 1.4;
+const float RING_TALL_PX = 2.6;
+const float STRIP_PROUD = 1.24;
+
+// Which body this material draws (L1 near, L2 far), and how much of the walker
+// is the near one's this frame (ColossusView.near_share).
+uniform bool lod_near = false;
+uniform float lod_cut = 0.0;
+// How much of each leg's foot the near body (L0) has this frame, per leg, and
+// how far up the shin it reaches (colossus_foot_model.gd SEAM).
+uniform vec3 l0_share = vec3(0.0);
+const float L0_SEAM = 400.0;
+// The legs' two bones, for the pulse's run up them: (thigh, shin), metres.
+uniform vec2 leg_len = vec2(34000.0, 36000.0);
+// How often a pulse leaves each ankle (per second), and how far behind its front
+// it still lights, as a share of the whole leg.
+const float PULSE_RATE = 0.12;
+const float PULSE_TRAIL = 0.22;
 
 varying float thin;
 varying float bone_phase;
@@ -146,19 +185,30 @@ void vertex() {
 	thin = 1.0;
 	if (px > 0.0) {
 		float r = length(local.xz);
-		if (kind == 0 || kind == 1) {
-			// Round the part's own axis: every leg, the spire, a strip's ring.
-			float want = MIN_PX * px * (kind == 1 ? 1.15 : 1.0);
+		if (kind == 0) {
+			// Round the part's own axis: every leg, the spire.
+			float want = MIN_PX * px;
 			if (r > 1e-3 && r < want) {
 				local.xz *= want / r;
-				thin = kind == 0 ? r / want : 1.0;
+				thin = r / want;
 			}
-			if (kind == 1) {
-				float dy = local.y - lamp_c.y;
-				float half_px = LAMP_PX * px * 0.5;
-				if (abs(dy) > 1e-3 && abs(dy) < half_px) {
-					local.y = lamp_c.y + sign(dy) * half_px;
-				}
+		} else if (kind == 1) {
+			// A RING (colossus_model.gd `_strip`): its inner edge follows the
+			// plate as the plate is widened, and its outer edge stands at least
+			// RING_PX past it on every side, so the ring reads as a ring round a
+			// leg however far off the leg is -- a bold line of light and never a
+			// crawl of dashes. `lamp_c.x` is the ring's own outer radius.
+			float outer = lamp_c.x;
+			bool rim = outer > 0.0 && r > outer * 0.995;
+			float plate_want = MIN_PX * px;
+			float want = rim ? max(plate_want, outer / STRIP_PROUD) + RING_PX * px : plate_want;
+			if (r > 1e-3 && r < want) {
+				local.xz *= want / r;
+			}
+			float dy = local.y - lamp_c.y;
+			float half_px = RING_TALL_PX * px * 0.5;
+			if (abs(dy) > 1e-3 && abs(dy) < half_px) {
+				local.y = lamp_c.y + sign(dy) * half_px;
 			}
 		} else {
 			vec3 o = local - lamp_c;
@@ -217,13 +267,37 @@ float layer_len(vec3 eye, vec3 p, float scale) {
 }
 
 void fragment() {
+	// The near and far bodies handed over on one screen-pinned stipple
+	// (ColossusView.LOD_BAND): the near one keeps the pixels under `lod_cut`,
+	// the far one the rest, so the two never both draw a pixel and never leave
+	// one empty.
+	if (lod_cut > 0.0 && lod_cut < 1.0) {
+		float h = ink_hash(floor(FRAGCOORD.xy) + vec2(5.0, 29.0));
+		if (lod_near ? h >= lod_cut : h < lod_cut) {
+			discard;
+		}
+	}
+	// A foot drawn near (colossus_foot.gd, L0) takes over this leg's foot and
+	// the bottom of its shin up to the seam, on the stipple's other half: here
+	// that is the pixels at or over its share, there the pixels under it.
+	int l0_part = int(bone_phase + 0.5);
+	if (l0_part > 0 && l0_share != vec3(0.0)) {
+		int l0_leg = (l0_part - 1) / 3;
+		int l0_seg = (l0_part - 1) % 3;
+		float take = l0_leg == 0 ? l0_share.x : (l0_leg == 1 ? l0_share.y : l0_share.z);
+		if (take > 0.0 && (l0_seg == 2 || (l0_seg == 1 && body_local.y > leg_len.y - L0_SEAM))) {
+			if (ink_hash(floor(FRAGCOORD.xy) + vec2(5.0, 29.0)) < take) {
+				discard;
+			}
+		}
+	}
 	vec3 eye = CAMERA_POSITION_WORLD;
 	vec3 dir = normalize(true_world - eye);
 	float thicken = 1.0 + thick * 2.0;
 	float low_len = layer_len(eye, true_world, h_low * thicken);
 	float low = clamp(pow(smoothstep(land_fog.x, land_fog.y, low_len), land_fog.z) * land_fog.w, 0.0, 1.0);
 	float high = beta_high * thicken * layer_len(eye, true_world, h_high);
-	float air = 1.0 - (1.0 - low) * exp(-high);
+	float air = 1.0 - (1.0 - low) * exp(-high - beta_far * distance(eye, true_world));
 	// A part drawn wider than it is gives the rest back to the air.
 	air = 1.0 - (1.0 - air) * clamp(thin, 0.0, 1.0);
 	// The procedural sky with the sun's disc on it, as the sky shader lays it
@@ -279,16 +353,55 @@ void fragment() {
 	if (lens) {
 		glow = mix(0.6, 3.0, lens_glow);
 	} else if (strip) {
-		// A pulse climbs every leg on the machines' beat: a ring flares as it
-		// passes, from the ankle to the hip, a leg at a time.
-		float climb = fract(TIME * 0.18 + body_local.y / 36000.0 + bone_phase * 0.31);
-		float pulse = smoothstep(0.0, 0.05, climb) * (1.0 - smoothstep(0.05, 0.22, climb));
-		glow = (1.6 + 5.0 * pulse) * lens_glow;
+		// A PULSE CLIMBS EVERY LEG on the machines' beat: a front of light runs
+		// from the ankle, ring by ring, up the shin and on up the thigh to the
+		// hip, a leg at a time, and trails off behind itself. Measured as the
+		// distance UP THE LEG from the ankle (`leg_len`: thigh, shin), which a
+		// bone's own y does not give -- the shin's runs down from the knee and
+		// the thigh's from the hip -- so the front is one line up the whole leg.
+		int part = int(bone_phase + 0.5);
+		float up = -1.0;
+		if (part > 0) {
+			int seg = (part - 1) % 3;
+			if (seg == 1) {
+				up = leg_len.y - body_local.y;
+			} else if (seg == 0) {
+				up = leg_len.y + leg_len.x - body_local.y;
+			}
+		}
+		float pulse = 0.0;
+		if (up >= 0.0) {
+			float leg_at = float((part - 1) / 3);
+			float front = fract(TIME * PULSE_RATE + leg_at / 3.0) * 1.35 - 0.15;
+			float behind = front - up / (leg_len.x + leg_len.y);
+			pulse = smoothstep(-0.015, 0.0, behind) * (1.0 - smoothstep(0.0, PULSE_TRAIL, behind));
+		}
+		glow = (2.4 + 9.0 * pulse) * lens_glow;
+	} else if (lamp && int(bone_phase + 0.5) == 0 && body_local.y > spire_y - 1200.0) {
+		// THE SPIRE'S OWN LIGHT, day and night: a hard strobe at the top of the
+		// air, the way anything that tall carries one -- and at noon the only
+		// thing that says how far up the top of it is.
+		float strobe = step(fract(TIME * 0.42), 0.06);
+		glow = mix(1.2, 2.5, lens_glow) + strobe * mix(14.0, 9.0, lens_glow);
 	} else if (lamp) {
 		float beat = fract(TIME * 0.45 + dot(floor(body_local.xz * 0.001), vec2(0.37, 0.61)));
 		glow = (step(beat, 0.18) * 5.0 + 0.2) * lens_glow;
 	}
 	EMISSION = lamp ? matter_light(c * glow * sky_power()) : vec3(0.0);
+	// DAYLIGHT ON A THING THIS SIZE. The renderer's sun is the one the land is
+	// lit by at eye level; over a body kilometres across it leaves the whole
+	// machine one dark value. So the plate takes the sky's own light too: the
+	// zenith's blue on every face by how far it looks up (the fill a thing in
+	// open air stands in), and the real sun on the faces turned to it -- tops
+	// of the hub and the thighs lit, undersides in their own shade.
+	if (!lamp) {
+		vec3 sun_w = normalize(dome_sun_dir);
+		vec3 n_day = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+		float day = clamp(sun_w.y * 4.0, 0.0, 1.0);
+		vec3 fill = dome_top_color * (0.35 + 0.65 * (n_day.y * 0.5 + 0.5)) * SKY_FILL;
+		vec3 lit = dome_sun_color * max(dot(n_day, sun_w), 0.0) * SUN_TOP;
+		EMISSION += matter_albedo(c * FOUND_MASS) * (fill + lit) * day;
+	}
 	// THE TOP KEEPS THE SUN AFTER THE LAND HAS LOST IT. From `h` metres up the sun
 	// is still over the horizon until it is sqrt(2h / R) below the ground's, and
 	// on a planet of R_EFF that keeps the spire lit an hour and more after dusk:
@@ -300,10 +413,18 @@ void fragment() {
 		vec3 sun = normalize(dome_sun_dir);
 		float sun_el = asin(clamp(sun.y, -1.0, 1.0));
 		float dip = sqrt(2.0 * max(true_world.y, 0.0) / R_EFF);
-		float sees_sun = smoothstep(-dip - 0.012, -dip + 0.012, sun_el);
+		// GRADED BY HEIGHT, not a body lit at once: `over` is how high the sun
+		// stands above this fragment's own horizon. Just over it the light has
+		// crossed the whole low air and is a dim deep red; a few degrees over,
+		// it is the sky's gold at full strength. So the terminator climbs the
+		// legs as a gradient -- dark feet, red knees, a gold hub, the spire the
+		// last thing lit -- and the lit part is never one flat colour.
+		float over = sun_el + dip;
+		float sees_sun = smoothstep(-0.004, EMBER_RISE, over);
 		float land_lost = 1.0 - smoothstep(-0.02, 0.03, sun_el);
+		vec3 last_sun = mix(EMBER_LOW * dome_glow_color, dome_glow_color, smoothstep(0.0, EMBER_RISE * 1.6, over));
 		vec3 n_world = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 		float face = max(dot(n_world, sun), 0.0) * 0.8 + 0.2;
-		EMISSION += (matter_albedo(c) * EMBER + EMBER_FLOOR) * dome_glow_color * (face * sees_sun * land_lost);
+		EMISSION += (matter_albedo(c) * EMBER + EMBER_FLOOR) * last_sun * (face * sees_sun * land_lost);
 	}
 }

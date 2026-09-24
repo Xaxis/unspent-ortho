@@ -54,6 +54,15 @@ var _was_blocked := false
 ## Prop tops, keyed by template, in the model's own units.
 var _tops: Dictionary = {}
 var _solids: Array[Vector4] = []
+var _boxes: Array[PackedFloat32Array] = []
+## Each template's DRAWN footprint, keyed as `_tops`: [lo (x, z), hi (x, z)] in
+## the model's own units, what the camera must stand clear of.
+var _shapes: Dictionary = {}
+## Each prop's probe as it will always be (a Vector4 circle for a thin one, a
+## box otherwise), keyed by the prop itself. A prop never moves, so its ground,
+## its dealt model and its drawn box have one answer for the life of a world:
+## worked out per prop per frame, they were most of what the probe cost.
+var _probe_of: Dictionary = {}
 
 
 func setup(g: Game) -> void:
@@ -337,16 +346,31 @@ func room(head: Vector3, eye: Vector3) -> float:
 	if game == null or game.world == null or game.query == null:
 		return 1.0
 	_solids.clear()
+	_boxes.clear()
 	var mid := Vector2((head.x + eye.x) * 0.5, (head.z + eye.z) * 0.5)
 	var reach := Vector2(head.x - eye.x, head.z - eye.z).length() * 0.5 + 3.0
 	for p: WorldProp in game.query.props_near(mid, reach):
 		if p.solid <= 0.0 or game.world.depleted.has(p.id):
 			continue
-		var base := game.view.surface_height(p.pos) if game.view != null else game.world.height_at(p.pos)
-		_solids.append(Vector4(p.pos.x, p.pos.y, p.solid, base + _top(p)))
+		var probe: Variant = _probe_of.get(p)
+		if probe == null:
+			probe = _probe(p)
+			_probe_of[p] = probe
+		if probe is Vector4:
+			_solids.append(probe)
+		else:
+			_boxes.append(probe)
 	var seen := {}
-	for i in Shoulder.STEPS + 1:
-		var q := head.lerp(eye, float(i) / float(Shoulder.STEPS))
+	var steps := Shoulder.steps_for(head.distance_to(eye))
+	# Once per TILE the line crosses: the walls are stamped by tile, and a step
+	# is a fraction of one, so asking at every step asked most tiles five times.
+	var last := Vector2i(-99999, -99999)
+	for i in steps + 1:
+		var q := head.lerp(eye, float(i) / float(steps))
+		var cell := Vector2i(floori(q.x), floori(q.z))
+		if cell == last:
+			continue
+		last = cell
 		for c: Vector3 in game.query.blocks_at(Vector2(q.x, q.z)):
 			if seen.has(c):
 				continue
@@ -354,7 +378,7 @@ func room(head: Vector3, eye: Vector3) -> float:
 			_solids.append(Vector4(c.x, c.y, c.z, INF))
 	var ground := func(p: Vector2) -> float:
 		return game.view.surface_height(p) if game.view != null else game.world.height_at(p)
-	return Shoulder.room(head, eye, ground, _solids)
+	return Shoulder.room(head, eye, ground, _solids, _boxes, _ground_top(head, eye))
 
 
 ## How high a prop's own model stands, off its template (built and cached when
@@ -372,6 +396,59 @@ func _top(p: WorldProp) -> float:
 			top = maxf(top, v.y)
 		_tops[key] = top
 	return float(_tops[key]) * p.scale
+
+
+## No drawn ground within reach of the line from `a` to `b` stands higher than
+## this: one level above the highest tile level within two tiles of it. The
+## drawn surface rounds a smoothed field of the levels round a point and adds a
+## shore lift and a bump that together stay under a level (TerrainMesher:
+## BANK_LIFT 0.36, bumps under 0.1, STEP 0.5). Plain array reads, where a lookup
+## of the drawn surface is a chunk search and an interpolation.
+func _ground_top(a: Vector3, b: Vector3) -> float:
+	var w := game.world
+	var x0 := maxi(0, floori(minf(a.x, b.x)) - 2)
+	var x1 := mini(w.size - 1, floori(maxf(a.x, b.x)) + 2)
+	var y0 := maxi(0, floori(minf(a.z, b.z)) - 2)
+	var y1 := mini(w.size - 1, floori(maxf(a.z, b.z)) + 2)
+	var top := 0
+	for y in range(y0, y1 + 1):
+		var row := y * w.size
+		for x in range(x0, x1 + 1):
+			top = maxi(top, w.level[row + x])
+	return float(top + 1) * WorldData.STEP
+
+
+## A prop's probe: a thin one as the circle it always was (seen past,
+## Shoulder.THIN), anything wider as the box its model is DRAWN in, which stands
+## up to 1.3 tiles past the circle a body walks round at a house's corners and
+## eaves (Shoulder.room says why).
+func _probe(p: WorldProp) -> Variant:
+	var base := game.view.surface_height(p.pos) if game.view != null else game.world.height_at(p.pos)
+	var top := base + _top(p)
+	if p.solid < Shoulder.THIN:
+		return Vector4(p.pos.x, p.pos.y, p.solid, top)
+	return Shoulder.sliced_box_of(p.pos, p.rot, p.scale, base, SLICE, _shape(p), top)
+
+
+## Height of a slice of a model's drawn shape, in the model's own units.
+const SLICE := 0.5
+
+
+## Where a prop's model is drawn, slice by slice up its height, in the model's
+## own units (`Shoulder.slices_of`): everything the chunk bakes, MADE and FOUND.
+func _shape(p: WorldProp) -> PackedFloat32Array:
+	var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
+	var variant := PropModels.variant_of(p, game.world.seed_value, country)
+	var key := (p.kind * PropModels.MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country
+	if not _shapes.has(key):
+		var t := PropModels.template(p.kind, variant, country)
+		var verts: PackedVector3Array = t.made_v + t.found_v
+		var top := 0.0
+		for v: Vector3 in verts:
+			top = maxf(top, v.y)
+		var s := Shoulder.slices_of(verts, top, SLICE)
+		_shapes[key] = s
+	return _shapes[key]
 
 
 ## What a tour may ask of the view. All read off the live camera.
@@ -432,3 +509,31 @@ func tour_seen(what: StringName) -> bool:
 			# The top edge of the picture looks above the horizon.
 			return cam.over_shoulder() and cam.shoulder_pitch < cam.fov * 0.5
 	return false
+
+
+## Whether `a` sees `b` past what is drawn (Shoulder.sees): the same drawn boxes
+## the eye is kept out of, so a wall that stops the camera stops sight. Asked by
+## 42_target for a lock taken fresh; answered here because the boxes are here.
+func sight_clear(a: Vector3, b: Vector3) -> bool:
+	if game == null or game.world == null or game.query == null:
+		return true
+	var boxes: Array[PackedFloat32Array] = []
+	var mid := Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5)
+	var reach := Vector2(a.x - b.x, a.z - b.z).length() * 0.5 + 3.0
+	for p: WorldProp in game.query.props_near(mid, reach):
+		if p.solid <= 0.0 or game.world.depleted.has(p.id):
+			continue
+		var probe: Variant = _probe_of.get(p)
+		if probe == null:
+			probe = _probe(p)
+			_probe_of[p] = probe
+		if probe is PackedFloat32Array:
+			boxes.append(probe)
+	var ground := func(p: Vector2) -> float:
+		return game.view.surface_height(p) if game.view != null else game.world.height_at(p)
+	return Shoulder.sees(a, b, ground, boxes, _ground_top(a, b))
+
+
+## Another world's props are other objects; the old island's probes go with it.
+func realm_changed(_from: StringName, _to: StringName) -> void:
+	_probe_of.clear()

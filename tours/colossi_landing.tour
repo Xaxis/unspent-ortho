@@ -1,0 +1,29 @@
+# THE MOMENT A COLOSSUS'S FOOT COMES DOWN NEARBY (19_colossi `_landed`,
+# colossus_foot.gd `land`). The straddling walker is staged ten world minutes
+# before its foot comes down in this world's first tread, and the player stands
+# outside one of its craters, facing the pad's place, the view tipped up: the pad
+# comes down out of the sky over the last hundred metres, the slowest part of
+# the whole step, and lands. The ground shakes at once (it is a few hundred
+# metres off), a wall of dust rolls out off every pad, steam vents from the
+# drum's joints, and the shock goes out through everything that sways. The
+# pads stop bodies from three hundred metres up (`colossus_blocks`).
+#   TOUR_TIMEOUT=400 tools/tour.sh tours/colossi_landing.tour --seed=7 --place=tread0 --colossus=2@tread0-10 --hour=12 --view=shoulder --weather=clear:0
+await colossus_foot 30
+near colossus_pad
+mouse 0,-100 0.5
+wait 1
+shot 00-coming-down
+until colossus_blocks 20
+shot 01-over-the-crater
+until colossus_tread 30
+shot 02-down
+wait 0.4
+shot 03-the-dust-goes-out
+wait 1
+shot 04-the-dust-goes-out
+wait 2
+shot 05-the-dust-goes-out
+wait 4
+shot 06-settling
+wait 6
+shot 07-settled

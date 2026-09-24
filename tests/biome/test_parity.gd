@@ -397,6 +397,14 @@ extends TestCase
 ##   area adds any, roads are eased where a crossing left a step, a pool keeps
 ##   one piece, and the way-in seam looks for a smaller flat. `country` and
 ##   `blend` are byte-identical to the merge on all five seeds.
+##
+## NOT RE-ACCEPTED at GEN 25 (the colossi's treads, gen_treads.gd), because
+## nothing here moved: all five seeds give their GEN 24 hashes byte for byte.
+## That is the cause and not luck -- a world of 256 gets one walker, out on the
+## skyline, and no straddling walker, so `ColossusTreads.wanted` is empty and the
+## stage returns before it reads a tile (tests/render/test_colossus_treads.gd
+## holds both halves: none at 256, some at the shipped size). The treads' own
+## evidence is the shipped-size world in that file, not this one.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
