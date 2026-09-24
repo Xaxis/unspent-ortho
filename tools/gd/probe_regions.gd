@@ -39,7 +39,8 @@ extends SceneTree
 ##   ring     over the continents (`GenBodies.CONTINENT_SHARE` of the biggest):
 ##            rad_cv the spread of centre distance from the square's middle over
 ##            its mean, share_cv the same of their tiles. 0 and 0 is a ring of
-##            equal bodies
+##            equal bodies. `dice`: `GenBodies.dice` of the continents' centres,
+##            the RMS offset from a quincunx on the square (0 is dice-five)
 ##   lochs    per continent, inlets whose head lies LOCH_DEPTH or more tiles up
 ##            narrow water from open sea (sea LOCH_OPEN from land): how many,
 ##            the deepest in tiles, and that depth over the body's equivalent
@@ -498,8 +499,11 @@ func _bodies(w: WorldData) -> void:
 		tiles.append(float(row.tiles))
 		rad_s.append("%.3f" % rad[-1])
 		til_s.append("%dk" % roundi(float(row.tiles) / 1000.0))
-	print("regions ring %d: %d continents  rad_cv %.3f  share_cv %.3f  rad [%s]  tiles [%s]" % [
-		w.seed_value, big.size(), _cv(rad), _cv(tiles), " ".join(rad_s), " ".join(til_s)])
+	var centres := PackedVector2Array()
+	for row: Dictionary in big:
+		centres.append((row.centre as Vector2) / float(n))
+	print("regions ring %d: %d continents  rad_cv %.3f  share_cv %.3f  dice %.3f  rad [%s]  tiles [%s]" % [
+		w.seed_value, big.size(), _cv(rad), _cv(tiles), GenBodies.dice(centres), " ".join(rad_s), " ".join(til_s)])
 	# Lochs, on a grid of every second tile: a loch is at least six tiles wide.
 	const ST := 2
 	var cw := n / ST

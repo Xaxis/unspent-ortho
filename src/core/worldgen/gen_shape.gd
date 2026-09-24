@@ -14,9 +14,12 @@ const ISLET_TILES := 900
 ## Superellipse exponent of the body: 2 is an oval, higher is squarer.
 const BODY_POWER := 2.6
 ## How many holes between grown bodies take skerries, and how many each.
-const SKERRY_HOLES := 8
+const SKERRY_HOLES := 14
 ## How far out at sea a grown body's loch starts, in tiles.
 const LOCH_OFFSHORE := 6.0
+## How far the frame's fade line wanders on a world of many, as a share of the
+## square per unit of the continent noise (about +-0.5).
+const FRAME_WARP := 0.05
 const LOCH_OPEN_SEA := 24.0
 ## How far in toward its centre a grown body's loch runs, as a share of the
 ## coast-to-centre distance: a third or so, so the body stays whole and still
@@ -24,8 +27,8 @@ const LOCH_OPEN_SEA := 24.0
 const LOCH_REACH := Vector2(0.28, 0.38)
 const SKERRY_COUNT := Vector2i(3, 6)
 ## A hole narrower across than this share of the square keeps its open water:
-## 1.2 of the least strait `GenBodies.SEA_GAP`.
-const SKERRY_FILL := 0.072
+## the least strait `GenBodies.SEA_GAP`.
+const SKERRY_FILL := 0.06
 ## A skerry's radius in tiles: under `ISLET_TILES` in area, so `_clean` keeps it.
 const SKERRY_RADIUS := Vector2(5.0, 14.0)
 
@@ -149,6 +152,7 @@ static func run(c: GenContext) -> void:
 		sh_rx.append(float(sh.ax))
 		sh_ry.append(float(sh.ay))
 		sh_p.append(float(sh.power))
+	var many_bodies := plan.size() > 1
 	GenFields.rows(hw, func(g0: int, g1: int) -> void:
 		for gy in range(g0, g1):
 			var ty := GenFields.cell_centre(gy, hs)
@@ -187,8 +191,11 @@ static func run(c: GenContext) -> void:
 					var q := (du * du + dv * dv) / (lb.z * lb.z)
 					if q < 4.0:
 						h += lobe_amp[k] * exp(-q * 1.6)
-				# Never let the land run into the frame.
-				h -= (1.0 - smoothstep(0.035, 0.09, hard)) * 1.6
+				# Never let the land run into the frame. On a world of many the
+				# fade line is itself warped by the continent noise, so a body
+				# packed near the frame ends in a coast, not a ruler line.
+				var fade := hard + continent[i] * FRAME_WARP if many_bodies else hard
+				h -= (1.0 - smoothstep(0.035, 0.09, fade)) * 1.6
 				lf[i] = h
 				inner[i] = 1
 	)

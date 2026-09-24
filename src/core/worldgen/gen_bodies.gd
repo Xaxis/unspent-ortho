@@ -427,10 +427,10 @@ static func plan(seed_value: int, realm: StringName = &"surface", want_size: int
 ## degrees).
 ##
 ## A layout is kept when the widest open water inside the bodies' hull is at
-## most GROW_HOLE times the widest strait; after GROW_TRIES scatters the one
-## nearest that is kept. A world that will not pack at all at full size shrinks
+## most GROW_HOLE times the widest strait and `dice` is at least GROW_DICE;
+## after GROW_TRIES scatters the one nearest both is kept. A world that will not pack at all at full size shrinks
 ## every body by GROW_SHRINK and tries again, so it always ends.
-const GROW_TRIES := 40
+const GROW_TRIES := 80
 const GROW_SETTLE := 240
 const GROW_PULL := 0.03
 ## How far from the middle a scatter is drawn in toward, so the archipelago is
@@ -441,13 +441,19 @@ const GROW_WANDER := 0.1
 ## shaved into a straight edge along it.
 const GROW_FRAME := 0.065
 const GROW_SHRINK := 0.96
-const GROW_BIG := Vector2(1.25, 1.45)
-const GROW_SMALL := Vector2(0.7, 0.85)
+const GROW_BIG := Vector2(1.7, 1.95)
+const GROW_SMALL := Vector2(0.55, 0.65)
 const GROW_MID := Vector2(0.85, 1.1)
 const GROW_ASPECT := Vector2(0.8, 1.25)
 const GROW_POWER := Vector2(1.9, 2.8)
 const GROW_STRAIT := 1.6
 const GROW_HOLE := 1.5
+## The narrow sound between the twins, as a share of SEA_GAP; how hard they
+## are drawn together, over the common pull; and the least `dice` a layout is
+## kept at.
+const GROW_SOUND := 0.45
+const GROW_TWIN_PULL := 3.0
+const GROW_DICE := 0.12
 const HOLE_GRID := 48
 ## A body's reach for packing, over ONE_RADIUS sqrt(share): `GenShape` draws
 ## the long axis up to 0.41 against ONE_RADIUS 0.375 and tilts it up to 13
@@ -459,7 +465,7 @@ static func _grow(bodies: Array[Dictionary], rng: RandomNumberGenerator, small: 
 	var n := bodies.size()
 	var each := float(bodies[0].share)
 	var big := rng.randi() % n
-	var smalls := 1 + rng.randi() % 2
+	var smalls := 2 + rng.randi() % 1
 	var rest: Array[int] = []
 	for i in n:
 		if i != big:
@@ -490,6 +496,13 @@ static func _grow(bodies: Array[Dictionary], rng: RandomNumberGenerator, small: 
 		for j in range(i + 1, n):
 			gap[i * n + j] = SEA_GAP * rng.randf_range(1.0, GROW_STRAIT)
 			gap[j * n + i] = gap[i * n + j]
+	# TWINS: one pair across a narrow sound, drawn together as they settle, so
+	# the world is a pair and its neighbours rather than five dice spots.
+	var twin_a := rng.randi() % n
+	var twin_b := (twin_a + 1 + rng.randi() % (n - 1)) % n
+	gap[twin_a * n + twin_b] = SEA_GAP * GROW_SOUND
+	gap[twin_b * n + twin_a] = SEA_GAP * GROW_SOUND
+	var twin := Vector2i(twin_a, twin_b)
 	# The radius a share stands for, as `plan` solves it.
 	var unit := ONE_RADIUS / sqrt(maxf(small, 0.0001))
 	var scale := 1.0
@@ -504,17 +517,20 @@ static func _grow(bodies: Array[Dictionary], rng: RandomNumberGenerator, small: 
 			ay.append(r / aspect[i])
 		var best := PackedVector2Array()
 		var best_q := INF
+		var best_score := INF
 		for attempt in GROW_TRIES:
 			for i in n:
 				at[i] = Vector2(rng.randf_range(ax[i] + GROW_FRAME, 1.0 - ax[i] - GROW_FRAME), rng.randf_range(ay[i] + GROW_FRAME, 1.0 - ay[i] - GROW_FRAME))
 			var toward := Vector2(0.5, 0.5) + Vector2(rng.randf_range(-GROW_WANDER, GROW_WANDER), rng.randf_range(-GROW_WANDER, GROW_WANDER))
-			if not _settle(at, ax, ay, gap, toward):
+			if not _settle(at, ax, ay, gap, toward, twin):
 				continue
 			var q := _hole_ratio(at, ax, ay)
-			if q < best_q:
+			var score := maxf(0.0, q - GROW_HOLE) + maxf(0.0, GROW_DICE - dice(at)) * 10.0
+			if score < best_score:
+				best_score = score
 				best_q = q
 				best = at.duplicate()
-			if q <= GROW_HOLE:
+			if score <= 0.0:
 				break
 		if not best.is_empty():
 			for i in n:
@@ -526,16 +542,60 @@ static func _grow(bodies: Array[Dictionary], rng: RandomNumberGenerator, small: 
 		scale *= GROW_SHRINK
 
 
-## Draw ellipses in toward `toward` while pushing overlapping pairs apart to
+## How far from dice-five a layout is: the RMS distance (square units) from
+## each centre to its own spot of a quincunx on the square (the four quarter
+## points and the middle), the best of every matching. A quincunx measures
+## about 0 (S1's first packing 0.05-0.07); five on a ring about 0.18.
+const QUINCUNX: Array[Vector2] = [Vector2(0.25, 0.25), Vector2(0.75, 0.25), Vector2(0.25, 0.75), Vector2(0.75, 0.75), Vector2(0.5, 0.5)]
+
+
+static func dice(at: PackedVector2Array) -> float:
+	if at.size() != QUINCUNX.size():
+		return INF
+	var best := INF
+	for p in _permutations(QUINCUNX.size()):
+		var sum := 0.0
+		for i in p.size():
+			sum += at[i].distance_squared_to(QUINCUNX[p[i]])
+		best = minf(best, sum)
+	return sqrt(best / QUINCUNX.size())
+
+
+static func _permutations(n: int) -> Array[PackedInt32Array]:
+	var out: Array[PackedInt32Array] = []
+	var cur := PackedInt32Array()
+	for i in n:
+		cur.append(i)
+	_permute(cur, 0, out)
+	return out
+
+
+static func _permute(cur: PackedInt32Array, k: int, out: Array[PackedInt32Array]) -> void:
+	if k == cur.size():
+		out.append(cur.duplicate())
+		return
+	for i in range(k, cur.size()):
+		var t := cur[k]
+		cur[k] = cur[i]
+		cur[i] = t
+		_permute(cur, k + 1, out)
+		cur[i] = cur[k]
+		cur[k] = t
+
+
+## Draw ellipses in toward `toward`, and the twins toward each other, while pushing overlapping pairs apart to
 ## their strait `gap[i * n + j]` and holding each off the frame, GROW_SETTLE
 ## rounds with the pull easing to nothing; true when every pair then clears.
-static func _settle(at: PackedVector2Array, ax: PackedFloat64Array, ay: PackedFloat64Array, gap: PackedFloat64Array, toward: Vector2) -> bool:
+static func _settle(at: PackedVector2Array, ax: PackedFloat64Array, ay: PackedFloat64Array, gap: PackedFloat64Array, toward: Vector2, twin: Vector2i) -> bool:
 	var n := at.size()
 	var calm := int(GROW_SETTLE * 0.7)
 	for k in GROW_SETTLE:
 		var pull := GROW_PULL * maxf(0.0, 1.0 - float(k) / float(calm))
 		for i in n:
 			at[i] += (toward - at[i]) * pull
+		var mid := (at[twin.x] + at[twin.y]) * 0.5
+		at[twin.x] += (mid - at[twin.x]) * pull * GROW_TWIN_PULL
+		at[twin.y] += (mid - at[twin.y]) * pull * GROW_TWIN_PULL
 		var moved := false
 		for i in n:
 			for j in range(i + 1, n):

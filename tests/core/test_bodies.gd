@@ -214,12 +214,19 @@ func test_grown_bodies_are_packed_apart_and_not_a_ring() -> void:
 				and at.y - ay[-1] >= GenBodies.GROW_FRAME - 1e-4 and at.y + ay[-1] <= 1.0 - GenBodies.GROW_FRAME + 1e-4,
 				"seed %d body %d: clear of the frame" % [s, int(b.id)])
 			rad.append(at.distance_to(Vector2(0.5, 0.5)))
+		# Every pair clears SEA_GAP but the twins, who clear their narrower sound.
+		var sounds := 0
 		for i in bodies.size():
 			for j in range(i + 1, bodies.size()):
 				var d: Vector2 = (bodies[j].at as Vector2) - (bodies[i].at as Vector2)
 				var dir := d.normalized()
-				var need := GenBodies._reach(ax[i], ay[i], dir) + GenBodies._reach(ax[j], ay[j], dir) + GenBodies.SEA_GAP
-				gt(d.length(), need - 1e-3, "seed %d bodies %d and %d: sea between them" % [s, i + 1, j + 1])
+				var reach := GenBodies._reach(ax[i], ay[i], dir) + GenBodies._reach(ax[j], ay[j], dir)
+				gt(d.length(), reach + GenBodies.SEA_GAP * GenBodies.GROW_SOUND - 1e-3, "seed %d bodies %d and %d: sea between them" % [s, i + 1, j + 1])
+				if d.length() < reach + GenBodies.SEA_GAP - 1e-3:
+					sounds += 1
+		check(sounds <= 1, "seed %d: only the twins stand across a sound (%d pairs)" % [s, sounds])
+		gt(GenBodies.dice(PackedVector2Array(bodies.map(func(b: Dictionary) -> Vector2: return b.at))), GenBodies.GROW_DICE - 1e-3,
+			"seed %d: not dice-five" % s)
 		var lo := INF
 		var hi := 0.0
 		for r: float in rad:

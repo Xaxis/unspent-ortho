@@ -138,8 +138,10 @@ const UNKNOWN := "unknown"
 ##     foot is set down facing its walk. Level, ground and the tread's own props
 ##     move where a tread lands; nothing moves at 256 (no treads there).
 ## 27. Continents are grown, not placed on a ring: `GenBodies._grow` deals one
-##     large and one or two small, each its own aspect, squareness and straits,
-##     packed toward an off-centre middle; every body cuts its own sea lochs from
+##     large and two small, each its own aspect, squareness and straits, one
+##     pair across a narrow sound, packed toward an off-centre middle and kept
+##     off dice-five (`GenBodies.dice`); the frame's fade line is warped, so no
+##     coast runs along a ruler; every body cuts its own sea lochs from
 ##     its own coast; headlands keep off a neighbour's headlands; skerries break
 ##     the open water between bodies. Every seed's world of many bodies moves,
 ##     and the treads with it (they are sited last, on what was laid). A one-body
