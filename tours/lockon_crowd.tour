@@ -18,13 +18,18 @@ await shoulder_locked 3
 wait 0.5
 shot 01-locked-with-people-about with shoulder_locked,mob:cutter,folk
 
+# A villager crossing the line is a moment, not a stay: a fixed wait after the
+# first frame bet they would still be there and lost under load (integ-cam, the
+# tip eased out before the shutter). So each try takes the moment they step on
+# and then waits only for the view to have looked over them, and the frame is
+# taken the instant it has; a crossing too quick for that is tried again.
 try 16
 walk 1,0 0.3
 await person_on_line 0.3
-end
 shot 02-a-villager-steps-onto-the-line with person_on_line,shoulder_locked,folk
-wait 1.0
+await shoulder_clearing 1.2
 shot 03-looked-over-them with shoulder_clearing,shoulder_locked,folk
+end
 
 release target
 await target_none 5

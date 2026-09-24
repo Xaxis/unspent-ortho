@@ -20,6 +20,13 @@ var _t0 := 0
 func _ready() -> void:
 	_t0 = Time.get_ticks_msec()
 	options = BootOptions.parse(OS.get_cmdline_user_args())
+	if not options.problems.is_empty():
+		# Never a game made from options that were misread: it is a different
+		# island at a different hour, and nothing on the screen says so.
+		for p: String in options.problems:
+			printerr("boot: %s" % p)
+		get_tree().quit(2)
+		return
 	SaveSlots.use_options(options)
 	if options.shot == "":
 		# Every scene that appears (the title, then a game started from it) says when it is up.
