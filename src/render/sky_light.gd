@@ -320,6 +320,8 @@ var flash := 0.0
 var settle := Vector4.ZERO
 ## Wind for anything that sways: xy along world x/z, z gust, w phase (see sky.gdshaderinc).
 var wind := Vector4.ZERO
+## The travelling gust field (WindField): xy its offset in cells, zw its bearing.
+var gust := Vector4(0.0, 0.0, 1.0, 0.0)
 ## Lamp and fire pools for the ink (sky_lamps): Vector4(x, y, z, range) each,
 ## at most MAX_LAMPS, filled by the lights system.
 var lamps: Array[Vector4] = []
@@ -630,6 +632,7 @@ func compose() -> void:
 	RenderingServer.global_shader_parameter_set("sky_fog", fog)
 	RenderingServer.global_shader_parameter_set("sky_settle", settle)
 	RenderingServer.global_shader_parameter_set("sky_wind", wind)
+	RenderingServer.global_shader_parameter_set("sky_gust", gust)
 	RenderingServer.global_shader_parameter_set("wind_strength", sway)
 	# What a lamp, a window and a stolen tube burn by when the SKY is not what
 	# made the street dark (`neon_burn`, sky.gdshaderinc). 0 for every landscape
