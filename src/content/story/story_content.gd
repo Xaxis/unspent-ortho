@@ -990,7 +990,7 @@ const ROOMS := {
 	&"hulk_hold": {
 		&"wall:builders_plate": [&"hulk_crew", &"hulk_service"],
 		# The table under the hatch: the thing nearest it is the tube hung over it.
-		&"desk:lamp_tube": [&"hulk_street", &"hulk_tides"],
+		&"desk:table": [&"hulk_street", &"hulk_tides"],
 	},
 	&"rooted_floor": {
 		&"wall:trunk": [&"towers_heights", &"towers_road"],
