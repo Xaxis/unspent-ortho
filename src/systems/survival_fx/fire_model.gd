@@ -3,13 +3,13 @@ extends Node3D
 ## A burning fire, drawn whole: a low ring of hearth stones round a floor of ash,
 ## a bed of embers under charred sticks leant together, flame tongues that rise
 ## well clear of the stones and flicker in stepped frames like a hand-drawn loop,
-## a stipple of smoke rising and thinning as it leans with the air, the odd spark
+## soft smoke rising, spreading and fading as it leans with the air, the odd spark
 ## as a bright pixel, and a light whose pool grows as the day goes.
 ##
 ## The hearth is MADE (world material, strata strokes); flames and embers are
-## EMBER, the one emitter in the palette, never hatched (docs/LOOK.md-6); smoke
-## and sparks are marks (SurvivalMarks). The light is an OmniLight3D, which
-## world.gdshader steps into pools. Pass hearth = false where the FIRE prop's own
+## EMBER, the one emitter in the palette, never hatched (docs/LOOK.md-6); sparks
+## and smoke are soft billboards (`smoke_material`, `spark_material`), never
+## marks. The light is an OmniLight3D, which world.gdshader steps into pools. Pass hearth = false where the FIRE prop's own
 ## model already draws the stones.
 ##
 ##   var f := FireModel.new(); f.build(world_material, prop.id); add_child(f)
@@ -22,8 +22,6 @@ const SMOKE := 22
 const FRAMES := 5
 ## Degrees the flame's plane leans back from upright toward the camera.
 const FLAME_LEAN := 35.0
-## Screen pixels: the radius of a smoke dot and a spark, whatever the zoom.
-const DOT_PX := 1.0
 ## The whole fire is drawn a little larger than its footprint: it is the one warm
 ## thing a person makes, and has to read from across the screen.
 const SIZE := 1.15
@@ -52,6 +50,65 @@ var _sparks: SurvivalMarks.Pool
 var _seed := 0
 
 static var _glow: ShaderMaterial
+static var _puff: StandardMaterial3D
+static var _puff_mesh: QuadMesh
+## A puff's size in world units, low and high in its rise, before SIZE.
+const PUFF_LOW := 0.16
+const PUFF_HIGH := 0.75
+## Smoke low down, where the fire lights it from under: warm. High up, where
+## only the room's light reaches it: grey. How dense it is at its thickest.
+const SMOKE_WARM := Color(0.86, 0.6, 0.42)
+const SMOKE_COOL := Color(0.52, 0.52, 0.55)
+const SMOKE_ALPHA := 0.34
+
+
+## SMOKE IS AIR, NOT A MARK: each puff a soft round falloff on a billboard, lit
+## by what reaches it -- the fire's own light from under it -- so a puff seen
+## close is a haze and never a hard shape. The marks' screen-pixel diamond read
+## as a flat glyph the moment an eye came near it (over the shoulder in a room).
+## Drawn at priority 11 with the other lit air (the hall's vapour, a window's
+## beam), after the marks and people.
+static func smoke_material() -> StandardMaterial3D:
+	if _puff == null:
+		var tex := GradientTexture2D.new()
+		tex.fill = GradientTexture2D.FILL_RADIAL
+		tex.fill_from = Vector2(0.5, 0.5)
+		tex.fill_to = Vector2(1.0, 0.5)
+		var soft := Gradient.new()
+		soft.set_color(0, Color(1, 1, 1, 1))
+		soft.set_color(1, Color(1, 1, 1, 0))
+		soft.add_point(0.45, Color(1, 1, 1, 0.55))
+		tex.gradient = soft
+		_puff = StandardMaterial3D.new()
+		_puff.albedo_texture = tex
+		_puff.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_puff.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		_puff.billboard_keep_scale = true
+		_puff.vertex_color_use_as_albedo = true
+		_puff.roughness = 1.0
+		_puff.shadow_enabled = false
+		_puff.render_priority = 11
+	return _puff
+
+
+## A spark: the same soft falloff, unshaded (it is its own light), small.
+static var _spark: StandardMaterial3D
+const SPARK_SIZE := 0.06
+
+
+static func spark_material() -> StandardMaterial3D:
+	if _spark == null:
+		_spark = smoke_material().duplicate() as StandardMaterial3D
+		_spark.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_spark.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	return _spark
+
+
+static func smoke_mesh() -> QuadMesh:
+	if _puff_mesh == null:
+		_puff_mesh = QuadMesh.new()
+		_puff_mesh.size = Vector2.ONE
+	return _puff_mesh
 
 
 static func glow_material() -> ShaderMaterial:
@@ -114,27 +171,10 @@ func build(world_mat: Material, seed_value: int, hearth: bool = true) -> void:
 	_light.shadow_enabled = false
 	_light.position = Vector3(0, 0.8, 0)
 	add_child(_light)
-	_smoke = SurvivalMarks.Pool.new(SurvivalMarks.dot(), SMOKE, SurvivalMarks.material(), self)
-	_sparks = SurvivalMarks.Pool.new(SurvivalMarks.dot(), SPARKS, SurvivalMarks.material(), self)
+	_smoke = SurvivalMarks.Pool.new(smoke_mesh(), SMOKE, smoke_material(), self)
+	_sparks = SurvivalMarks.Pool.new(smoke_mesh(), SPARKS, spark_material(), self)
 	scale = Vector3.ONE * SIZE
 	_draw()
-
-
-## World units across `n` of the RETIRED FLOOR's pixels -- 1/360 of the view
-## height, from the 640x360 floor -- in this fire's own units (`/ SIZE`), and NOT
-## the screen's, whatever this used to say. Under the orthographic camera that is
-## 3 real pixels per `n` at every zoom, because the height divides back out. The
-## smoke and sparks have been drawn at that size since the floor moved and it is
-## part of the approved look: switching to `units_per_pixel_of` would draw them
-## three times thinner, which is the owner's call and not a cleanup.
-## 14.0 is the old view height, and it is used with no camera AND UNDER THE
-## PERSPECTIVE LENS, where `size` means nothing -- so it is not only a headless
-## fallback. There it comes to 2.8 real pixels per `n` at the focal plane, close
-## enough to leave, but it is a remembered number and not a measurement.
-func _px(n: float) -> float:
-	var cam := get_viewport().get_camera_3d() if is_inside_tree() else null
-	var h := cam.size if cam != null and cam.projection == Camera3D.PROJECTION_ORTHOGONAL else 14.0
-	return n * h / 360.0 / SIZE
 
 
 ## One drawn frame of the flame, in the XY plane facing +Z: an outer tongue shape
@@ -220,24 +260,21 @@ func _draw() -> void:
 	_flame.scale = Vector3(1.0, 0.85 + flick(t, 0) * 0.3, 1.0)
 	_face_page()
 	var lean := Vector3(wind.x, 0.0, wind.y)
-	# Smoke: pale dots that rise, sway and lean, spread as they go, and drop out
-	# one by one; what is left near the top is a few specks, the way a pen fades it.
+	# Smoke: soft puffs that rise, sway and lean, swelling and thinning as they go,
+	# warm where the fire lights them from under and grey where it does not.
 	for i in SMOKE:
 		var age := fposmod(t + i * (SMOKE_LIFE / SMOKE), SMOKE_LIFE)
 		var k := age / SMOKE_LIFE
 		var cycle := floori((t + i * (SMOKE_LIFE / SMOKE)) / SMOKE_LIFE)
-		if Rng.hash01(_seed, i, cycle, 5) < k * k * 1.1:
-			_smoke.hide(i)
-			continue
 		# One wavering thread of smoke that every dot follows, loosening as it climbs.
 		var rise := 0.95 + age * 0.62
 		var thread := Vector3(sin(rise * 3.1 - t * 1.3) * 0.1, 0.0, cos(rise * 2.3 - t * 0.9) * 0.07) * (0.3 + k)
 		var side := Vector3(Rng.hash01(_seed, i, cycle, 6) - 0.5, 0.0, Rng.hash01(_seed, i, cycle, 7) - 0.5) * (0.03 + 0.16 * k * k)
 		var pos := Vector3(0.0, rise, 0.0) + thread + side + lean * age * age * 0.28
-		# Pen stipple low down where the smoke is thick (ink on a pale ground, paper on a
-		# dark one), and specks of ash as it thins.
-		var col := SurvivalMarks.CONTRAST if Rng.hash01(_seed, i, cycle, 8) > k * 0.8 else Palette.ASH[4]
-		_smoke.put(i, pos, _px(DOT_PX * (0.9 + 0.5 * Rng.hash01(_seed, i, cycle, 9))), col)
+		var col := SMOKE_WARM.lerp(SMOKE_COOL, smoothstep(0.0, 0.55, k))
+		# In over its first tenth, out over the rest: never a puff that pops.
+		col.a = SMOKE_ALPHA * smoothstep(0.0, 0.1, k) * (1.0 - smoothstep(0.35, 1.0, k)) * (0.75 + 0.5 * Rng.hash01(_seed, i, cycle, 8))
+		_smoke.put(i, pos, lerpf(PUFF_LOW, PUFF_HIGH, sqrt(k)) * (0.85 + 0.3 * Rng.hash01(_seed, i, cycle, 9)), col)
 	# Sparks: not a stream. Now and then one bright pixel jumps up and is gone.
 	for i in SPARKS:
 		var span := 0.7 + Rng.hash01(_seed, i) * 0.9
@@ -250,7 +287,7 @@ func _draw() -> void:
 		var dir := Vector3(Rng.hash01(_seed, i, cycle) - 0.5, 0.0, Rng.hash01(_seed, i, cycle, 12) - 0.5)
 		var pos := dir * 0.4 * age + Vector3(0, 0.7 + age * 1.8, 0) + lean * age
 		var col := Palette.EMBER[5] if i % 2 else Palette.LENS[3]
-		_sparks.put(i, pos, _px(DOT_PX), Color(col.r, col.g, col.b, 0.0))
+		_sparks.put(i, pos, SPARK_SIZE, Color(col.r, col.g, col.b, 1.0 - age / 0.45))
 
 
 func _add(parent: Node3D, k: MeshKit, mat: Material) -> void:
