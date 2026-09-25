@@ -98,6 +98,8 @@ extends GameSystem
 ##                          shown and hidden in turn (foliage_perf.gd)
 ##   perf decor SECS [MS]    the same for every chunk's baked decor: grass, stones, litter
 ##   perf grass SECS [MS]    the same for only what sways in it (grass.gdshader)
+##   perf meadow SECS [MS]   the same for the eye-level meadow ring (18_meadow), and
+##                          `perf sward` for all the grass: the ring and every chunk's
 ##   perf noise SECS         the same pairs toggling nothing: the floor the others must clear
 ##   perf front SECS         after `near front`: brightness of the grass upwind, the bush
 ##                          and the crown, every frame for SECS (front_probe.gd)

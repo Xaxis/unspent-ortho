@@ -340,6 +340,14 @@
       "tests": ["tests/render/test_trample.gd", "tests/render/test_wind.gd"]
     },
     {
+      "id": "system:18_meadow",
+      "kind": "system",
+      "entry": "src/systems/18_meadow.gd",
+      "reach": "tools/tour.sh tours/foliage_meadow_ring.tour --seed=7",
+      "area": "world-look",
+      "tests": ["tests/render/test_meadow_ring.gd"]
+    },
+    {
       "id": "system:19_colossi",
       "kind": "system",
       "entry": "src/systems/19_colossi.gd",

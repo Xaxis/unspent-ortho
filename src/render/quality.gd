@@ -97,6 +97,13 @@ extends RefCounted
 ##                              "depth fog for volumetrics")
 ##   ssao           bool        screen-space ambient occlusion (Forward+ only)
 ##   ssil           bool        screen-space indirect light (Forward+ only)
+##   grass_reach    int         tiles round the player the meadow ring stands at
+##                              eye level (MeadowView): grass as thick as grass
+##                              grows, handing over to the baked decor's tufts at
+##                              its edge. 0 is no ring. The cost is fill, so it
+##                              is a distance and not a bool
+##   grass_density  float       how thick the ring stands: 1.0 is
+##                              Decor.MEADOW_THICK times the decor's plants
 ##   forward_only   bool        the tier asks for things Compatibility cannot do,
 ##                              so it is never chosen on the web
 ##
@@ -132,7 +139,7 @@ extends RefCounted
 ## Compatibility path, and it may differ from `low` in kind and not only in degree.
 const ROWS: Array[Dictionary] = [
 	{
-		"id": &"ultra", "label": "ultra", "orbit": 2, "horizon_near": 110, "eye_shadow_reach": 0, "eye_shadow_full": 30,
+		"id": &"ultra", "label": "ultra", "grass_reach": 28, "grass_density": 1.0, "orbit": 2, "horizon_near": 110, "eye_shadow_reach": 0, "eye_shadow_full": 30,
 		"note": "Native 1920x1080, every light casts, real volumetric air.",
 		"render_scale": 1.0, "upscale": 0, "msaa": 3,
 		"shadow_size": 8192, "shadow_filter": 4, "shadow_lights": 16, "lamps": 32,
@@ -140,7 +147,7 @@ const ROWS: Array[Dictionary] = [
 		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": true, "forward_only": true,
 	},
 	{
-		"id": &"high", "label": "high", "orbit": 2, "horizon_near": 110, "eye_shadow_reach": 0, "eye_shadow_full": 30,
+		"id": &"high", "label": "high", "grass_reach": 24, "grass_density": 0.8, "orbit": 2, "horizon_near": 110, "eye_shadow_reach": 0, "eye_shadow_full": 30,
 		"note": "Native, the lights that matter cast, volumetric air.",
 		"render_scale": 1.0, "upscale": 0, "msaa": 2,
 		"shadow_size": 4096, "shadow_filter": 2, "shadow_lights": 8, "lamps": 24,
@@ -148,7 +155,7 @@ const ROWS: Array[Dictionary] = [
 		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": false, "forward_only": true,
 	},
 	{
-		"id": &"medium", "label": "medium", "orbit": 2, "horizon_near": 80, "eye_shadow_reach": 72, "eye_shadow_full": 24,
+		"id": &"medium", "label": "medium", "grass_reach": 18, "grass_density": 0.55, "orbit": 2, "horizon_near": 80, "eye_shadow_reach": 72, "eye_shadow_full": 24,
 		"note": "A little under native, fewer lights cast, no indirect light.",
 		"render_scale": 0.85, "upscale": 0, "msaa": 1,
 		"shadow_size": 4096, "shadow_filter": 1, "shadow_lights": 4, "lamps": 16,
@@ -166,7 +173,7 @@ const ROWS: Array[Dictionary] = [
 		"volumetric": false, "air_stand_in": 1.3, "ssao": false, "ssil": false, "forward_only": false,
 	},
 	{
-		"id": &"low", "label": "low", "orbit": 1, "horizon_near": 64, "eye_shadow_reach": 48, "eye_shadow_full": 0,
+		"id": &"low", "label": "low", "grass_reach": 12, "grass_density": 0.35, "orbit": 1, "horizon_near": 64, "eye_shadow_reach": 48, "eye_shadow_full": 0,
 		"note": "Two thirds of the pixels, upscaled; the sun casts and little else.",
 		"render_scale": 0.67, "upscale": 0, "msaa": 0,
 		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 2, "lamps": 12,
@@ -178,7 +185,7 @@ const ROWS: Array[Dictionary] = [
 		"volumetric": false, "air_stand_in": 1.3, "ssao": false, "ssil": false, "forward_only": false,
 	},
 	{
-		"id": &"web", "label": "web", "orbit": 1, "horizon_near": 64, "eye_shadow_reach": 48, "eye_shadow_full": 0,
+		"id": &"web", "label": "web", "grass_reach": 14, "grass_density": 0.4, "orbit": 1, "horizon_near": 64, "eye_shadow_reach": 48, "eye_shadow_full": 0,
 		"note": "The Compatibility path: the same place, on a worse night.",
 		"render_scale": 0.75, "upscale": 0, "msaa": 0,
 		"shadow_size": 2048, "shadow_filter": 0, "shadow_lights": 0, "lamps": 8,

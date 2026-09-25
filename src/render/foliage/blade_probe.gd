@@ -20,13 +20,7 @@ const SETTLE_FRAMES := 3
 
 
 static func perf(tour: Node, game: Node) -> bool:
-	var view: WorldView = game.get("view")
-	var blades: Array[Node3D] = []
-	for chunk: Node in view.get_children():
-		for part: String in ["grass"]:
-			var m := chunk.get_node_or_null(part) as Node3D
-			if m != null and m.visible:
-				blades.append(m)
+	var blades := FoliagePerf.nodes(game, "sward")
 	if blades.is_empty():
 		printerr("tour perf blades: no grass is loaded")
 		return false

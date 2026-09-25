@@ -1,0 +1,32 @@
+# The meadow ring (MeadowView, 18_meadow): over the shoulder, the player
+# knee-deep in the coast's sward as a gust front crosses it, and what it costs.
+#   tools/tour.sh tours/foliage_meadow_ring.tour --seed=7 [--quality=ultra|high|medium|low]
+# Web proxy: godot --path . --rendering-method gl_compatibility -- --tour=tours/foliage_meadow_ring.tour --seed=7 --quality=web
+# `near meadow` (18_trample) stands the player in the widest level sward near
+# the coast's spawn, and a few steps take them out from beside a bush. A full
+# held wind carries a front about 6 tiles a second, so 01-03, 0.6 s apart,
+# watch one come through the grass round the player.
+# `perf meadow` then prints the frame with the ring and without it, and
+# `perf sward` with all the grass and none: the tier's cost at eye level.
+weather clear:0:wind=1
+hour 16
+coast calm
+place coast
+near meadow
+hold shoulder_peek
+await shoulder 3
+await meadow 5
+walk 0,-1 1.2
+wait 2.0
+shot 01-knee-deep-in-the-meadow with land:coast,meadow
+wait 0.6
+shot 02-a-front-crossing-0.6s-on with land:coast,meadow
+wait 0.6
+shot 03-a-front-crossing-1.2s-on with land:coast,meadow
+walk 0,-1 1.5
+shot 04-walked-through-it with land:coast,meadow
+perf meadow 6.0
+perf sward 6.0
+perf noise 6.0
+release shoulder_peek
+weather rules
