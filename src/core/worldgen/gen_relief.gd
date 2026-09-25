@@ -5,14 +5,20 @@ class_name GenRelief
 ## by soft membership so land rises and falls over many tiles. The shore is a
 ## beach in bays and a cliff on headlands, with a shingle ledge at the foot.
 
-const MAX_LEVEL := 15
+## The highest land, in levels (15 units). Twice what it was, so a region's
+## form (`GenForm`) can stand a spine a player sees from the shore.
+const MAX_LEVEL := 30
+## The top of the range the climate and border rules were tuned on: they read
+## height no higher than this, so land standing taller than it used to (a
+## spine, a range no longer clamped) does not move a border or cool a tile.
+const TUNED_TOP := 15.99
 
 
 static func run(c: GenContext) -> void:
 	var size := c.size
 	var s := c.s
 	var n := c.n
-	var p := GenCountries.params(c, [&"base", &"hills", &"ridge", &"near", &"terrace", &"cliff"])
+	var p := GenCountries.params(c, [&"base", &"hills", &"ridge", &"near", &"terrace", &"cliff", &"shelf", &"shelf_var"])
 	c.mark(&"relief.params")
 	const F := GenFields.FIELD
 	const U := GenFields.UP
@@ -24,8 +30,11 @@ static func run(c: GenContext) -> void:
 		[U, p[&"near"], cw, step],
 		[U, p[&"terrace"], cw, step], [U, p[&"cliff"], cw, step],
 		[U, _caldera_soft(c), cw, step], [U, _dunes_soft(c), cw, step],
-		[F, GenFields.noise(s, 301, 1.0 / 58.0, 4), 2],
-		[F, GenFields.noise(s, 302, 1.0 / 92.0, 3), 2],
+		# At walking scale on a body of one island; a continent's swell is
+		# broader by `body_k`, so a region is not one 60-tile swell repeated.
+		# Never narrower than it always was (`body_k` is under 1 below 512).
+		[F, GenFields.noise(s, 301, 1.0 / (58.0 * maxf(1.0, c.body_k)), 4), 2],
+		[F, GenFields.noise(s, 302, 1.0 / (92.0 * maxf(1.0, c.body_k)), 3), 2],
 		[N, GenFields.noise(s, 303, 1.0 / 13.0, 2), size, 1],
 		[F, GenFields.noise(s, 304, 1.0 / 44.0, 2), 4],
 		[F, GenFields.noise(s, 306, 1.0 / 60.0, 2), 8],
@@ -33,6 +42,9 @@ static func run(c: GenContext) -> void:
 		[N, GenFields.noise(s, 308, 1.0 / 8.0, 2), size, 1],
 		# The rim is a broken ring, never a drawn circle.
 		[F, GenFields.noise(s, 307, 1.0 / 26.0, 2), 2],
+		# How tall a shelf's cliff stands, wandering across a range of crags.
+		[F, GenFields.noise(s, 309, 1.0 / 70.0, 2), 8],
+		[U, p[&"shelf"], cw, step], [U, p[&"shelf_var"], cw, step],
 	])
 	c.mark(&"relief.batch")
 	var base := fl[0]
@@ -53,6 +65,9 @@ static func run(c: GenContext) -> void:
 	var heart := c.hearts[c.caldera_type] if c.caldera_type >= 0 else Vector2(-1, -1)
 	var crater := crater_radius(c)
 	var rim_warp := fl[15]
+	var shelfn := fl[16]
+	var shelf_amp := fl[17]
+	var shelf_var := fl[18]
 	c.rim_warp = rim_warp
 	var land := c.land
 	var inland := c.inland
@@ -61,6 +76,8 @@ static func run(c: GenContext) -> void:
 	var islet := c.islet
 	var elev := PackedFloat32Array()
 	elev.resize(n)
+	var form := GenFields.upsample(c.form_e, cw, step, size) if not c.form_e.is_empty() else PackedFloat32Array()
+	var formed := not form.is_empty()
 	c.mark(&"relief.fields")
 	GenFields.rows(size, func(y0: int, y1: int) -> void:
 		for y in range(y0, y1):
@@ -71,6 +88,8 @@ static func run(c: GenContext) -> void:
 					elev[i] = 0.0 if offshore[i] < 2.2 + shelf[i] * 3.0 else -1.0
 					continue
 				var e := base[i] + hills[i] * hills_amp[i]
+				if formed:
+					e += form[i]
 				var r := 1.0 - absf(ridge[i])
 				var ha := hills_amp[i]
 				e += r * r * r * ridge_amp[i]
@@ -82,9 +101,16 @@ static func run(c: GenContext) -> void:
 				var t := terrace[i]
 				if t > 0.01:
 					# Plateaus in steps of two levels with short steep risers: scarps.
-					var q := e * 0.5
+					# A fixed step climbs tall land as a stair of equal treads, so
+					# `shelf` raises the step and `shelf_var` varies it: cliffs
+					# between broad shelves. The riser keeps the two-level scarp's
+					# height of raw land, so a tall step stands as one face rather
+					# than a ramp; the default step keeps its exact bounds.
+					var h := 2.0 + shelf_amp[i] * (1.0 + shelf_var[i] * shelfn[i])
+					var lo := 0.62 if h == 2.0 else 0.88 - 0.52 / h
+					var q := e / h
 					var f := q - floorf(q)
-					e = lerpf(e, (floorf(q) + smoothstep(0.62, 0.88, f)) * 2.0, t)
+					e = lerpf(e, (floorf(q) + smoothstep(lo, 0.88, f)) * h, t)
 				var bw := burning[i]
 				if bw > 0.05:
 					var dx := x - heart.x

@@ -151,7 +151,7 @@ func _pixel(w: WorldData, mesher: TerrainMesher, layer: String, x: int, y: int) 
 	match layer:
 		"country":
 			var c := _country_color(w.country[i]).lerp(_country_color(w.country2[i]), w.blend[i])
-			return (c * shade).lightened(l * 0.012)
+			return (c * shade).lightened(float(l) / float(GenRelief.MAX_LEVEL) * 0.18)
 		"blend":
 			var b := w.blend[i] * 2.0
 			var c := _country_color(w.country[i]).darkened(0.55)

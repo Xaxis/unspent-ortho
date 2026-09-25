@@ -184,13 +184,55 @@ func test_the_size_a_game_is_played_at_is_five_continents() -> void:
 		var p := GenBodies.plan(s, Realm.SURFACE, Tuning.WORLD_SIZE)
 		var bodies: Array = p.bodies
 		eq(bodies.size(), 5, "seed %d: five continents, no more" % s)
+		var least := INF
+		var most := 0.0
 		for b: Dictionary in bodies:
 			# Each is at least a whole island's worth, not a share of one, and the
 			# square's extra room is in the bodies, not between them.
 			var tiles := float(b.share) * float(Tuning.WORLD_SIZE) * float(Tuning.WORLD_SIZE)
 			gt(tiles / (512.0 * 512.0), 0.95, "seed %d: a continent is at least an island's worth" % s)
-			near(tiles, float((bodies[0] as Dictionary).share) * float(Tuning.WORLD_SIZE) * float(Tuning.WORLD_SIZE), 1.0,
-				"seed %d: every continent the same size" % s)
+			least = minf(least, tiles)
+			most = maxf(most, tiles)
+		# GROWN, NOT PLACED (`GenBodies._grow`): one large and one or two small.
+		gt(most / least, 1.4, "seed %d: the continents are not all one size" % s)
+
+
+## Grown bodies are still separate: every pair of the plan's ellipses clears
+## SEA_GAP and every one the frame, and they are not a ring about the middle.
+func test_grown_bodies_are_packed_apart_and_not_a_ring() -> void:
+	for s: int in SEEDS:
+		var bodies: Array = GenBodies.plan(s, Realm.SURFACE, Tuning.WORLD_SIZE).bodies
+		var ax: Array[float] = []
+		var ay: Array[float] = []
+		var rad: Array[float] = []
+		for b: Dictionary in bodies:
+			var r := GenBodies.ONE_RADIUS * sqrt(float(b.share)) * GenBodies.PACK_REACH
+			ax.append(r * float(b.aspect))
+			ay.append(r / float(b.aspect))
+			var at: Vector2 = b.at
+			check(at.x - ax[-1] >= GenBodies.GROW_FRAME - 1e-4 and at.x + ax[-1] <= 1.0 - GenBodies.GROW_FRAME + 1e-4
+				and at.y - ay[-1] >= GenBodies.GROW_FRAME - 1e-4 and at.y + ay[-1] <= 1.0 - GenBodies.GROW_FRAME + 1e-4,
+				"seed %d body %d: clear of the frame" % [s, int(b.id)])
+			rad.append(at.distance_to(Vector2(0.5, 0.5)))
+		# Every pair clears SEA_GAP but the twins, who clear their narrower sound.
+		var sounds := 0
+		for i in bodies.size():
+			for j in range(i + 1, bodies.size()):
+				var d: Vector2 = (bodies[j].at as Vector2) - (bodies[i].at as Vector2)
+				var dir := d.normalized()
+				var reach := GenBodies._reach(ax[i], ay[i], dir) + GenBodies._reach(ax[j], ay[j], dir)
+				gt(d.length(), reach + GenBodies.SEA_GAP * GenBodies.GROW_SOUND - 1e-3, "seed %d bodies %d and %d: sea between them" % [s, i + 1, j + 1])
+				if d.length() < reach + GenBodies.SEA_GAP - 1e-3:
+					sounds += 1
+		check(sounds <= 1, "seed %d: only the twins stand across a sound (%d pairs)" % [s, sounds])
+		gt(GenBodies.dice(PackedVector2Array(bodies.map(func(b: Dictionary) -> Vector2: return b.at))), GenBodies.GROW_DICE - 1e-3,
+			"seed %d: not dice-five" % s)
+		var lo := INF
+		var hi := 0.0
+		for r: float in rad:
+			lo = minf(lo, r)
+			hi = maxf(hi, r)
+		gt(hi - lo, 0.05, "seed %d: the bodies do not stand on one ring" % s)
 
 
 ## And when the square IS big enough, the bodies are really separate land, not one

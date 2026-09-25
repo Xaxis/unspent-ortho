@@ -704,14 +704,14 @@ static func roads(c: GenContext) -> void:
 				break
 	c.mark(&"roads.rejoin")
 	GenWater.drain_crossed(c)
-	_ease_roads(c)
+	ease_roads(c)
 
 
 ## No road climbs a cliff, whatever laid a tile of it last: a road crossing
 ## another re-levels the crossing for its own run, which on steep ground leaves
 ## a step of two. Once every road is down, the higher side of any step is cut to
 ## one over the lower (a ford is raised to instead).
-static func _ease_roads(c: GenContext) -> void:
+static func ease_roads(c: GenContext) -> void:
 	var w := c.w
 	var size := c.size
 	for sweep in 8:
