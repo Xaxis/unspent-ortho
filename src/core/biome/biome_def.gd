@@ -85,6 +85,9 @@ var coastal := 0.0
 ##   valley  levels per tile of a river's side (low: a vale, high: a gorge)
 ##   rain    runoff feeding rivers           temp    0 frozen .. 1 furnace
 ##   moist   0 desert .. 1 drowned           cliff   headland cliff tendency
+##   shelf   levels a terrace step stands above its two: tall cliffs between
+##           broad shelves (0: the two-level scarp)
+##   shelf_var  0..1, how much the shelf's height wanders across the land
 var relief := {
 	# `near` is relief AT WALKING SCALE and it is the one a landscape has to ask
 	# for by name. `hills` and `ridge` ride noise whose wavelengths are 58 and 92

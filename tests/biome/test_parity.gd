@@ -427,6 +427,10 @@ extends TestCase
 ## the same reason. Causation: on world/form3 with the S2 cherry-pick and no
 ## `shore` key, this test passed on the sixteenth hashes (same session, run
 ## with test_bodies and test_world_gen); adding the key alone moves them.
+## Re-derived by a second session on the S2 branch merged with main: with
+## `coast.form` = {} this test passed on the GEN 27 hashes (form3's), so the
+## form is still the only thing that moves the six. The crags' `shelf` that
+## followed moved nothing here: the six do not include them.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 

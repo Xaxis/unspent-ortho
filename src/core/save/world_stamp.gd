@@ -152,6 +152,8 @@ const UNKNOWN := "unknown"
 ##     landscape, broken by passes. The level cap goes 15 -> 30 so a spine can stand where
 ##     a player sees it; relief noise 301/302 widen with `body_k` on continents.
 ##     Every seed moves, at 256 too (through the coast's form alone).
+##     Terraces take a `shelf` height and `shelf_var` (the crags'), so tall
+##     land stands as cliffs between shelves, not a stair of equal treads.
 const GEN := 28
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a

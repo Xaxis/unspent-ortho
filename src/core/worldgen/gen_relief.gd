@@ -18,7 +18,7 @@ static func run(c: GenContext) -> void:
 	var size := c.size
 	var s := c.s
 	var n := c.n
-	var p := GenCountries.params(c, [&"base", &"hills", &"ridge", &"near", &"terrace", &"cliff"])
+	var p := GenCountries.params(c, [&"base", &"hills", &"ridge", &"near", &"terrace", &"cliff", &"shelf", &"shelf_var"])
 	c.mark(&"relief.params")
 	const F := GenFields.FIELD
 	const U := GenFields.UP
@@ -42,6 +42,9 @@ static func run(c: GenContext) -> void:
 		[N, GenFields.noise(s, 308, 1.0 / 8.0, 2), size, 1],
 		# The rim is a broken ring, never a drawn circle.
 		[F, GenFields.noise(s, 307, 1.0 / 26.0, 2), 2],
+		# How tall a shelf's cliff stands, wandering across a range of crags.
+		[F, GenFields.noise(s, 309, 1.0 / 70.0, 2), 8],
+		[U, p[&"shelf"], cw, step], [U, p[&"shelf_var"], cw, step],
 	])
 	c.mark(&"relief.batch")
 	var base := fl[0]
@@ -62,6 +65,9 @@ static func run(c: GenContext) -> void:
 	var heart := c.hearts[c.caldera_type] if c.caldera_type >= 0 else Vector2(-1, -1)
 	var crater := crater_radius(c)
 	var rim_warp := fl[15]
+	var shelfn := fl[16]
+	var shelf_amp := fl[17]
+	var shelf_var := fl[18]
 	c.rim_warp = rim_warp
 	var land := c.land
 	var inland := c.inland
@@ -95,9 +101,16 @@ static func run(c: GenContext) -> void:
 				var t := terrace[i]
 				if t > 0.01:
 					# Plateaus in steps of two levels with short steep risers: scarps.
-					var q := e * 0.5
+					# A fixed step climbs tall land as a stair of equal treads, so
+					# `shelf` raises the step and `shelf_var` varies it: cliffs
+					# between broad shelves. The riser keeps the two-level scarp's
+					# height of raw land, so a tall step stands as one face rather
+					# than a ramp; the default step keeps its exact bounds.
+					var h := 2.0 + shelf_amp[i] * (1.0 + shelf_var[i] * shelfn[i])
+					var lo := 0.62 if h == 2.0 else 0.88 - 0.52 / h
+					var q := e / h
 					var f := q - floorf(q)
-					e = lerpf(e, (floorf(q) + smoothstep(0.62, 0.88, f)) * 2.0, t)
+					e = lerpf(e, (floorf(q) + smoothstep(lo, 0.88, f)) * h, t)
 				var bw := burning[i]
 				if bw > 0.05:
 					var dx := x - heart.x

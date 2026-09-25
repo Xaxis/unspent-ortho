@@ -67,6 +67,11 @@ static func site(c: GenContext) -> void:
 			"region": region, "walker": row.walker, "leg": int(row.leg), "j": int(row.j), "yaw": yaw,
 			"floor": float(floor_l) * WorldData.STEP, "pads": pads,
 			"half": Vector2.ONE * _extent(d)})
+	# The strata climb a level per STEP_W and stop at the reach, so on land that
+	# rises faster than that a cut ends in a step, and a road across it would
+	# climb it. Graded again as settle grades every road.
+	GenSettle.ease_roads(c)
+	c.mark(&"treads.roads.eased")
 
 
 ## The best centre for a foot facing `yaw`, as (x, y, yaw), or x < 0.
