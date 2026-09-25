@@ -268,9 +268,9 @@ static func make() -> BiomeDef:
 	# so it was not the tonemapper running out of range; almost nothing in the
 	# frame was being lit.
 	#
-	# The arithmetic says the same: ambient lerps to `LID_AMBIENT` 0.26 against
-	# the coast's `DAY_AMBIENT` 0.55 and the sun is cut to `LID_SUN` 0.035, so
-	# noon under a full lid is night with the lights on. That is the lid working
+	# The arithmetic says the same: ambient lerps to `LID_AMBIENT` and the sun
+	# is cut to `LID_SUN` 0.035, so noon under a full lid is night with the
+	# lights on. That is the lid working
 	# as written -- and `night_sky` is the door the sky file names for exactly
 	# this, the landscape saying its own LEVEL under a lid, spent into the day as
 	# far as the lid is shut. The dome is lit from beneath by the city under it;

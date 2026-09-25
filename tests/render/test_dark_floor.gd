@@ -81,9 +81,16 @@ func test_the_unlit_night_is_dark_enough_that_a_lantern_is_worth_lighting() -> v
 	# toe, the grade and the air, and so reads a few values high against the
 	# frame: the model predicts 45 where the frame measures 34. The ratios it
 	# gets right, and they are what the law is actually about.
-	var unlit := luma709(lit(turf, SkyLight.NIGHT_AMBIENT * SkyLight.EXPOSURE))
-	var noon := luma709(lit(turf, (SkyLight.DAY_AMBIENT + SkyLight.SUN_NOON * 0.8) * SkyLight.EXPOSURE))
-	lt(unlit, noon * 0.32, "the unlit land at midnight is a small fraction of noon")
+	var night_light := SkyLight.NIGHT_AMBIENT * SkyLight.EXPOSURE
+	var noon_light := (SkyLight.DAY_AMBIENT + SkyLight.SUN_NOON * 0.8) * SkyLight.EXPOSURE
+	var unlit := luma709(lit(turf, night_light))
+	# The night is held in ABSOLUTE terms, because that is what the frame's luma
+	# 24 is about. It used to be held as a share of noon, and noon was lit at
+	# 2.6x its albedo, so the day's wash was quietly part of what made the night
+	# pass. This is the model's 45 from the header (0.178), with room for the
+	# rounding and none for a brighter night.
+	lt(unlit, 0.19, "the unlit land at midnight is as dark as the measured frame")
+	lt(night_light, noon_light * 0.2, "and noon is more than five times its light")
 	gt(unlit, 0.01, "and is still a colour rather than a hole")
 	# A lamp has to WIN, and by a lot, or carrying one changes nothing.
 	var Lights := load("res://src/systems/15_lights.gd")
