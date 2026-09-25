@@ -43,7 +43,10 @@ extends RefCounted
 ## Measured in the exported web build against the desktop, mean absolute channel
 ## difference 0..255 (tools/canon.sh --web): the eighteen canon places 44.4 before,
 ## 10.6 after; five overcast places (tours/degrade_grey.tour) 17.9 before, 7.9 after.
-## The furthest is still the Burning by day (17.3): the web is 14 luma darker and
+## After the desktop's day was relit (2026-09-24) and these rows refitted, the
+## eighteen measure 10.9 in the web build (the spawn morning furthest, 22.1: the
+## sea's glitter is a different pattern on each renderer).
+## Before that, the furthest was the Burning by day (17.3; 12.8 now): the web was 14 luma darker and
 ## the machines' cold vent light carries no halo, which on the desktop is the
 ## volumetric air round it.
 ##
@@ -61,13 +64,27 @@ const KEYS: Array[String] = ["sun", "ambient", "lamps", "exposure", "glow", "fog
 ## two dusks sat between the two, which is what the blend by `night` gives them).
 ## A key no place could tell apart from its neighbours (the lamps by day) takes
 ## the value the places that could see it chose.
-const SHADOWED_DAY := {"sun": 0.17, "ambient": 1.0, "lamps": 0.4, "emission": 1.0, "glow": 0.75, "fog": 0.6, "exposure": 1.0, "contrast": 0.95, "saturation": 0.85}
-const SHADOWED_NIGHT := {"sun": 0.1, "ambient": 0.65, "lamps": 0.4, "emission": 0.75, "glow": 1.0, "fog": 1.5, "exposure": 1.0, "contrast": 0.95, "saturation": 0.8}
+##
+## REFITTED 2026-09-24 after the desktop's day was relit (SUN_NOON 1.17,
+## DAY_AMBIENT 0.26, no depth fog over a clear top-down day). The day FOG is the
+## big mover (0.6 -> 0.1): the desktop dropped its day fog while the web keeps its
+## own as the volumetric stand-in, so the web now counts nearly all of it back.
+## The day CONTRAST stays at 0.95 although its median walked to 0.85, because the
+## rows were measured WHOLE against the shipped ones in one run and 0.85 lost at
+## every pale place (the snowfield 16.83 against 11.53, the bonelands 16.19
+## against 12.86). With it, every one of the 23 places is nearer the desktop than
+## the old rows were: mean distance 15.40 -> 11.05, the four rows as written here
+## against the four they replaced, in one run over tours/degrade_fit.tour's places
+## on desktop Compatibility.
+const SHADOWED_DAY := {"sun": 0.22, "ambient": 0.95, "lamps": 0.7, "emission": 1.0, "glow": 0.6, "fog": 0.1, "exposure": 0.95, "contrast": 0.95, "saturation": 0.9}
+const SHADOWED_NIGHT := {"sun": 0.05, "ambient": 0.8, "lamps": 0.7, "emission": 1.0, "glow": 1.0, "fog": 1.0, "exposure": 1.0, "contrast": 0.95, "saturation": 0.9}
 ## While it does not (an overcast that takes the shadows away, a roof overhead):
 ## no second pass, only the difference in where the lighting is done. Fitted the
-## same way over tours/degrade_grey.tour: three places by day, two by night.
-const OPEN_DAY := {"sun": 0.75, "ambient": 0.95, "lamps": 0.4, "emission": 1.0, "glow": 0.75, "fog": 1.0, "exposure": 1.0, "contrast": 1.05, "saturation": 0.95}
-const OPEN_NIGHT := {"sun": 0.35, "ambient": 0.6, "lamps": 0.45, "emission": 0.5, "glow": 0.6, "fog": 1.25, "exposure": 1.0, "contrast": 0.95, "saturation": 0.9}
+## same way over tours/degrade_grey.tour: three places by day, two by night. The
+## open day's fog median was 0.0, and it is 0.1 because a zero turns a thing off
+## rather than counting it back (tests/render/test_degrade.gd).
+const OPEN_DAY := {"sun": 0.8, "ambient": 1.0, "lamps": 0.7, "emission": 0.75, "glow": 1.0, "fog": 0.1, "exposure": 1.0, "contrast": 1.0, "saturation": 1.1}
+const OPEN_NIGHT := {"sun": 0.05, "ambient": 0.8, "lamps": 0.7, "emission": 1.0, "glow": 1.0, "fog": 1.1, "exposure": 1.0, "contrast": 0.95, "saturation": 0.95}
 
 ## A fit in progress sets this; nothing else may.
 static var override: Dictionary = {}

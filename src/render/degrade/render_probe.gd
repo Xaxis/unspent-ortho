@@ -781,18 +781,24 @@ static func sun_path(tour: Node, game: Node) -> bool:
 ## WIDENED 2026-09-22 because the day refit clamped: glow sat at the old top
 ## (1.0) at 6 of the 12 shadowed day places, and ambient, lamps, glow and
 ## emission at an end at 2 of the 3 open ones -- a median of ends is a clamp, not
-## a measurement (`fit_rows.py` refuses it). 1.0 is also where a walk STARTS, so
+## a measurement (so check every row for a key at an end of its range before
+## taking a median: no tool in the repository does it for you). 1.0 is also where a walk STARTS, so
 ## "at the top" could mean "wants more" or "does not matter here", and only a
 ## range past it can tell the two apart. The night keys got room below too: the
 ## shipped SHADOWED_NIGHT sun (0.10) was the old floor.
+##
+## WIDENED AGAIN 2026-09-24, for the same reason: once the desktop stopped laying
+## depth fog over a clear day (SkyLight.DAY_AIR) while the web kept it as its
+## volumetric stand-in, fog sat at the old floor (0.5) at every day place, clear
+## and grey; ambient at the top (1.5) at two and emission (2.0) at three.
 const FIT_STEPS := {
 	"lamps": [0.15, 0.2, 0.3, 0.35, 0.45, 0.55, 0.7, 1.0, 1.25, 1.5],
 	"sun": [0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2, 0.25, 0.35, 0.5, 0.65, 0.8, 1.0, 1.25],
-	"ambient": [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.15, 1.3, 1.5],
+	"ambient": [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0],
 	"exposure": [0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1.0, 1.1],
 	"glow": [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5],
-	"fog": [0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
-	"emission": [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
+	"fog": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0],
+	"emission": [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0],
 	"contrast": [0.8, 0.85, 0.9, 0.95, 1.0, 1.05],
 	"saturation": [0.7, 0.8, 0.85, 0.9, 0.95, 1.0, 1.1],
 }
