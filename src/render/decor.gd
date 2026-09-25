@@ -51,6 +51,9 @@ const LITTER_WORKS := 0.45
 const STAGES := 3
 ## Tiles from something standing within which a grass with a `lee` drifts.
 const LEE_REACH := 2.5
+## Triangles a plant carries per step of weight: under the lens a heavier plant
+## thins sooner with distance (grass.gdshader).
+const HEAVY_TRIS := 40
 
 const Kit := preload("res://src/models/props/kit.gd")
 const P := preload("res://src/render/palette.gd")
@@ -425,6 +428,8 @@ static func template(kind: int, country: int, stage: int = 0) -> Tpl:
 		if kind >= GRASS_A and kind <= GRASS_C:
 			t.motion = species(kind, country).motion_code()
 			t.casts = species(kind, country).casts
+		if t.sways:
+			t.motion += 100 * clampi(t.v.size() / 3 / HEAVY_TRIS, 0, 9)
 		_templates[key] = t
 	_lock.unlock()
 	return t
@@ -467,8 +472,22 @@ static func _grow(k: Kit, g: GrassSpecies, s: int, stage: int) -> void:
 		k.sickle(base, tip, out * reach * g.curl + Vector3(0.0, hh * 0.08, 0.0), g.width, a + 1.57, root, top)
 		if i < g.heads:
 			# A soft head, not a flake: a small rounded tuft on the stem's tip.
-			k.clump(tip.x, tip.y - g.head_size * 0.3, tip.z, g.head_size * 0.7, g.head_size * 1.2, s + i, g.head_color, 5)
+			_head(k, tip + Vector3(0.0, g.head_size * 0.35, 0.0), g.head_size * 0.55, g.head_color)
 	k.sway_by_height(0, 0.0, g.height.y, 1.0)
+
+
+## A seed head: a small eight-faced puff, lit by grass.gdshader's sky-bent
+## normal so it reads as a soft round tuft. Eight triangles where a clump was
+## thirty: a bog is thick with them.
+static func _head(k: Kit, c: Vector3, r: float, col: Color) -> void:
+	var up := c + Vector3(0.0, r * 1.2, 0.0)
+	var dn := c - Vector3(0.0, r * 0.9, 0.0)
+	var ring: Array[Vector3] = [c + Vector3(r, 0, 0), c + Vector3(0, 0, r), c + Vector3(-r, 0, 0), c + Vector3(0, 0, -r)]
+	for n in 4:
+		var a := ring[n]
+		var b := ring[(n + 1) % 4]
+		k.made.tri(a, b, up, col)
+		k.made.tri(b, a, dn, col)
 
 
 ## Where along a frond's arch its rachis is at `t` 0..1: up out of the crown,
