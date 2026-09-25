@@ -816,10 +816,12 @@ func _land(t0: float, t1: float) -> void:
 		_hurt_hero(m, m.blow.dmg, Vector2.from_angle(m.facing) + (hero.pos - m.pos).normalized(), m.blow.knock, m.blow.knock_ms)
 
 
-## The ground level under a body, read at its own tile: the one height question
-## a blow asks, and never more of the world than where the body stands.
+## The level a body stands at, read at its own tile: the one height question a
+## blow asks, and never more of the world than where the body stands. The sea's
+## surface, not its bed, for a body in it: the same clamp `WorldData.height_at`
+## draws a body at, or a swimmer off a shore shelf is out of every blow.
 func level_of(p: Vector2) -> int:
-	return world.level_at(floori(p.x), floori(p.y)) if world != null else 0
+	return maxi(0, world.level_at(floori(p.x), floori(p.y))) if world != null else 0
 
 
 ## Are two bodies on levels a blow passes between (FightRules.levels_meet)?
