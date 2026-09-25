@@ -49,14 +49,19 @@ func _run(t: UiTitle, seconds: float, until: Callable) -> bool:
 	return until.call()
 
 
-func test_title_shows_a_coast_then_the_next() -> void:
+func test_title_keeps_its_coast_until_the_player_turns_the_island() -> void:
 	var t := _title()
 	var holder := t.get_parent()
 	check(await _run(t, 20.0, func() -> bool: return t.world != null), "a coast is drawn")
 	eq(t.seed_value, 5)
 	check(t.menu.is_open, "the menu is up")
-	t._shown_for = UiTitle.SEED_SECONDS + 1.0
-	check(await _run(t, 30.0, func() -> bool: return t.seed_value == 6), "the next coast follows")
+	# Idle for longer than the old cycle ever waited: no next world is grown.
+	t._shown_for = 600.0
+	t._process(0.05)
+	check(not t._drawing(), "an idle title grows no other world")
+	eq(t.seed_value, 5, "and keeps the coast it shows")
+	t.change_seed(1)
+	check(await _run(t, 30.0, func() -> bool: return t.seed_value == 6), "right draws the next coast")
 	t.change_seed(-1)
 	check(await _run(t, 30.0, func() -> bool: return t.seed_value == 5), "left draws the previous coast")
 	holder.free()
