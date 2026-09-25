@@ -257,7 +257,7 @@ func test_every_house_opens_on_its_own_forms_room() -> void:
 		else:
 			check(doors.has(key) and (doors[key] as Threshold).kind == want,
 				"the %s %s at %s opens on a %s" % [d.id, form, p.pos, want])
-	for k: StringName in [&"roundhouse", &"stilt_room", &"tower_lobby", &"cliff_room", &"hulk_hold"]:
+	for k: StringName in [&"roundhouse", &"stilt_room", &"tower_lobby", &"cliff_room", &"hulk_hold", &"rooted_floor"]:
 		check(seen.has(k), "seed 4 has a house that opens on a %s" % k)
 
 
@@ -441,3 +441,43 @@ func test_every_hulk_hold_can_be_walked_to() -> void:
 		for g: String in goals:
 			check(_reached(reach, goals[g]), "%s (%s/%s): the %s at %s cannot be walked to from the companion" % [t.key, l.plan, l.dressing, g, goals[g]])
 	gt(float(n), 0.0, "seed 4 has hulks to walk")
+
+
+## THE FOREST'S FLOOR CAN BE LIVED IN: from the door of every rooted floor on
+## seed 4 a body gets to the fire, the table, the side of the sleeping platform
+## and round to the far side of the trunk -- and not through the trunk.
+func test_every_rooted_floor_can_be_walked_to() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var n := 0
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind != &"rooted_floor":
+			continue
+		n += 1
+		var p := InteriorGen.grow(4, t)
+		var l := p.layout
+		var q := WorldQuery.new(p.world)
+		var blocks: Array[Vector3] = doors_script.call(&"_walls", l)
+		q.set_blocks(&"rooms", blocks)
+		var reach := _reach(q, l.inside())
+		var middle := Vector2(l.rooms[0].position) + Vector2(l.rooms[0].size) * 0.5
+		var goals := {"fire": l.hearth + (l.inside() - l.hearth).normalized() * 1.1, "table": l.table + (l.inside() - l.table).normalized() * 0.9}
+		for th: Dictionary in l.things:
+			var at: Vector2 = th.at
+			match th.kind:
+				&"trunk":
+					var inward := (l.inside() - at).normalized()
+					check(q.move_body(at + inward * 1.6, -inward * 1.6, Tuning.PLAYER_RADIUS).distance_to(at) > 0.6,
+						"%s: the trunk at %s is not walked through" % [t.key, at])
+					# Round the far side of it from the door.
+					goals["behind the trunk"] = at + (at - l.door).normalized() * 1.0
+				&"nest":
+					var f: Vector2 = th.face
+					var side := Vector2(-f.y, f.x) * signf(Vector2(-f.y, f.x).dot(middle - at) + 0.001)
+					goals["platform"] = at + side * 0.9
+		for g: String in goals:
+			var at: Vector2 = goals[g]
+			if not l.is_floor(floori(at.x), floori(at.y)):
+				continue
+			check(_reached(reach, at), "%s (%s/%s): the %s at %s cannot be walked to from the door" % [t.key, l.plan, l.dressing, g, at])
+	gt(float(n), 0.0, "seed 4 has rooted floors to walk")

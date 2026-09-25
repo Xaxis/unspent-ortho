@@ -119,6 +119,9 @@ static func make() -> BiomeDef:
 	# taken back by the forest has no reason to have been built out of three
 	# shapes in the first place.
 	d.built.stock = BiomeForms.RAISED.duplicate()
+	# Of the six, only the shell is anyone's home: a fallen tower's standing
+	# floor with the forest come up through it (content/interiors/rooted_floor.gd).
+	d.interiors = {&"form:shell": &"rooted_floor"}
 	d.built.plan = &"ring"
 	d.built.apart = BiomeForms.RING_APART
 	d.built.buildings = Vector2i(8, 14)

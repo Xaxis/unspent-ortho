@@ -1,0 +1,34 @@
+# THE STANDING FLOOR OF A FALLEN TOWER IN GREEN TOWERS (docs/interiors, src/content/interiors/rooted_floor.gd):
+# the storeys above came down, this one stood, and the forest came up through it:
+# a trunk out of a break in the slab and out of a hole in the ceiling, roots over
+# the concrete, moss and ferns, vines hanging; a fire on a stone, a sleeping
+# platform woven up off the floor, a basin under the drip.
+#
+#   tools/tour.sh tours/rooted.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is the shell as a player finds it among the trees. 02 is the floor from
+# above as the player comes in. 03 is the same at night by the fire. 04 is over
+# the shoulder, up the trunk to the day.
+coast calm
+near door:rooted_floor
+await door 5
+wait 0.6
+shot 01-a-fallen-tower-standing-in-the-forest with door,land:green_towers
+
+press use 0.1
+await inside:rooted_floor 5
+wait 1.0
+shot 02-the-rooted-floor-from-above-by-day with inside:rooted_floor
+
+near fire
+hour 22
+wait 1.0
+shot 03-the-rooted-floor-by-its-fire-at-night with inside:rooted_floor,station:fire
+
+hour 15
+wait 0.6
+hold shoulder_peek
+await shoulder 3
+mouse 300,0 0.6
+wait 0.6
+shot 04-up-the-trunk-over-the-shoulder with inside:rooted_floor,shoulder
