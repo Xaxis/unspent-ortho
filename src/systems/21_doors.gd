@@ -208,11 +208,14 @@ func _outside_side() -> void:
 			best = t
 	if best == null or bd > WARM * WARM:
 		return
-	_begin(best)
-	if bd <= REACH * REACH:
-		door_near = best
-		if _pressed() and _door_wins(best.door):
-			go_in(best)
+	# The nearest is grown while the player comes; the one they mean is the one
+	# whose house they face (Interiors.door_for).
+	var meant := Interiors.door_for(doors, at, game.player.hero.facing, REACH)
+	_begin(meant if meant != null else best)
+	if meant != null:
+		door_near = meant
+		if _pressed() and _door_wins(meant.door):
+			go_in(meant)
 
 
 func _inside_side(_delta: float) -> void:
@@ -557,14 +560,33 @@ static func _body_for(role: StringName, land: int) -> StringName:
 	if d != null:
 		for kind: Variant in d.roster:
 			var k := StringName(str(kind))
-			var row := Roster.row(k)
-			if row.is_empty() or not bool(row.get("machine", false)):
+			if not _walks_a_hall(k):
 				continue
 			if first == &"":
 				first = k
 			if Roles.of(k) == Roles.HUNTER:
 				return k
 	return first if first != &"" else &"runner"
+
+
+## Whether a body can keep a hall: a machine that walks the floor, fits between
+## the racks and the gantry's legs, and fights what it finds with a blow of its
+## own. The coast's roster lists a flock first among its hunters, and a flock
+## passes over and cannot be fought; its dredger (0.65 across the middle) stood
+## wedged among the gantry's legs raising the alarm, and the warden came.
+## Nothing on the coast fits, so its halls keep the plan's own runner.
+const HALL_BODY := 0.5
+
+
+static func _walks_a_hall(k: StringName) -> bool:
+	var row := Roster.row(k)
+	if row.is_empty() or not bool(row.get("machine", false)):
+		return false
+	if row.get("crosses", &"") == &"fly":
+		return false
+	if float(row.get("radius", 1.0)) > HALL_BODY:
+		return false
+	return row.has("bite")
 
 
 func _count_the_dead() -> void:

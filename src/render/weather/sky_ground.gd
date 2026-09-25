@@ -9,8 +9,9 @@ class_name SkyGround
 ## of stopping on a line. Fog reads A against a fragment's own height: a hollow
 ## is ground lower than its neighbourhood, and fog lies in it.
 
-## World units of height that A spans (0..1).
-const HEIGHT_RANGE := 8.0
+## World units of height that A spans (0..1): the highest land, and a unit
+## over. sky.gdshaderinc's SKY_GROUND_HEIGHT must equal it.
+const HEIGHT_RANGE := 16.0
 ## Halvings before the height is spread back out: 3 is an 8-tile neighbourhood.
 const SMOOTH_HALVINGS := 3
 

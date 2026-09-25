@@ -46,8 +46,6 @@ static func rim_r(p: Vector3) -> float:
 	return p.z + RIM_R
 ## How far the floor goes down under the lowest ground a pad covers, in levels.
 const DEPTH := 3
-## How near the spawn a pad may come: a new game does not open in a crater.
-const CLEAR_OF_SPAWN := 160.0
 
 
 ## The plants world generation should find room for, nearest first: [{walker
