@@ -799,6 +799,131 @@ const FRAGMENTS := {
 			"warm, on its back: wish you were here.",
 		],
 	},
+	# --- a room cut into the mesa (ROOMS) --------------------------------------
+	&"mesa_shell": {
+		"kind": &"mark", "title": "a niche in the rock", "lands": [],
+		"lines": [
+			"A niche cut at shoulder height, worn smooth",
+			"inside. In it: a candle end, a shell from a",
+			"sea nobody here has seen, and a photograph",
+			"gone white but for one hand.",
+		],
+	},
+	&"mesa_bolts": {
+		"kind": &"mark", "title": "a niche in the rock", "lands": [],
+		"lines": [
+			"Bolts in a row in a niche, one to a year, a",
+			"stroke scratched under each. All off the span,",
+			"all with the same maker's stamp.",
+			"",
+			"The newest is no brighter than the oldest.",
+		],
+	},
+	&"mesa_wind": {
+		"kind": &"mark", "title": "the sleeping ledge", "lands": [],
+		"lines": [
+			"The ledge left in the rock to sleep on, a mat",
+			"on it. Cut low in the rock above the pillow,",
+			"where you would see it lying down:",
+			"  the singing is only the wind",
+			"",
+			"Under it, in a bigger hand: mostly",
+		],
+	},
+	&"mesa_pillow": {
+		"kind": &"mark", "title": "the sleeping ledge", "lands": [],
+		"lines": [
+			"Blankets folded on the ledge, red and black,",
+			"the same bands as the rock. Two pillows. One",
+			"is dented. The other is plumped, and dusty.",
+		],
+	},
+	# --- a hulk's hold in the drowned city (ROOMS) ---------------------------
+	&"hulk_crew": {
+		"kind": &"mark", "title": "the builder's plate", "lands": [],
+		"lines": [
+			"A plate by the ladder, stamped, not cast:",
+			"  VESSEL 0-4471  /  CARGO: NONE SPECIFIED",
+			"  CREW: NOT REQUIRED",
+			"",
+			"Under it, scratched with a nail: crew",
+		],
+	},
+	&"hulk_service": {
+		"kind": &"mark", "title": "the builder's plate", "lands": [],
+		"lines": [
+			"A plate by the ladder, in the machines' stamp:",
+			"  VESSEL 0-4471  /  STATUS: IN SERVICE",
+			"",
+			"It has not moved in eleven years. Beside",
+			"IN SERVICE somebody has scratched: yes",
+		],
+	},
+	&"hulk_street": {
+		"kind": &"notebook", "title": "the table", "lands": [],
+		"lines": [
+			"The table is a street sign laid on two drums,",
+			"MARKET ST, face up and scrubbed. On it a bowl,",
+			"a knife, and eel bones sucked clean.",
+			"",
+			"Market Street is twelve feet under the hull.",
+		],
+	},
+	&"hulk_tides": {
+		"kind": &"notebook", "title": "a tide table", "lands": [],
+		"lines": [
+			"Weighted down on the table with a stone: a",
+			"tide table, copied by hand for the year. The",
+			"ferries are written in beside the tides, in",
+			"red, to the minute.",
+			"",
+			"The two have never once disagreed.",
+		],
+	},
+	# --- a standing floor in the green towers (ROOMS) ------------------------
+	&"towers_heights": {
+		"kind": &"mark", "title": "marks in the bark", "lands": [],
+		"lines": [
+			"Cuts in the bark, one a year at a child's",
+			"height, a name at each. The oldest are high",
+			"up now: the tree has carried them out of",
+			"anyone's reach.",
+			"",
+			"The newest is at the height of your knee.",
+		],
+	},
+	&"towers_road": {
+		"kind": &"mark", "title": "a map in the bark", "lands": [],
+		"lines": [
+			"A map cut into the bark: this tower, the",
+			"next, the paths between. The machines' road",
+			"is drawn along the bottom, and stops dead at",
+			"the first tree.",
+			"",
+			"Beside it, small: good",
+		],
+	},
+	&"towers_pass": {
+		"kind": &"notebook", "title": "the sleeping platform", "lands": [],
+		"lines": [
+			"Tied into the weave at the head of the bed,",
+			"a lanyard and a pass, its face a smudge:",
+			"  LEVEL 14  -  PLEASE WEAR AT ALL TIMES",
+			"",
+			"This floor is level 14.",
+		],
+	},
+	&"towers_doll": {
+		"kind": &"notebook", "title": "the sleeping platform", "lands": [],
+		"lines": [
+			"The platform is woven of vine and stolen",
+			"cable, sprung like a nest. There are two",
+			"hollows in it, one long and one small.",
+			"",
+			"In the small one, a doll of leaves bound",
+			"with wire. The leaves are fresh.",
+		],
+	},
 	# --- the carried off ------------------------------------------------------
 	&"boots": {
 		"kind": &"mark", "title": "boots at a fence", "lands": [],
@@ -857,6 +982,19 @@ const ROOMS := {
 	},
 	&"stilt_room": {
 		&"wall:gauge": [&"stilt_nail", &"stilt_names", &"stilt_ticket"],
+	},
+	&"cliff_room": {
+		&"wall:niche": [&"mesa_shell", &"mesa_bolts"],
+		&"desk:ledge": [&"mesa_wind", &"mesa_pillow"],
+	},
+	&"hulk_hold": {
+		&"wall:builders_plate": [&"hulk_crew", &"hulk_service"],
+		# The table under the hatch: the thing nearest it is the tube hung over it.
+		&"desk:lamp_tube": [&"hulk_street", &"hulk_tides"],
+	},
+	&"rooted_floor": {
+		&"wall:trunk": [&"towers_heights", &"towers_road"],
+		&"desk:nest": [&"towers_pass", &"towers_doll"],
 	},
 	&"tower_lobby": {
 		&"wall:lift": [&"lobby_rope", &"lobby_stairs"],
