@@ -403,9 +403,12 @@ func _process(delta: float) -> void:
 	_light_the_reach(delta)
 
 
-## 0..1: how far people have lit up. Lamps go on before full dark and out after
-## first light: up over 19:00-20:30, down over 05:00-06:30 — OR whenever there is
-## a lid over the landscape, whatever the clock says.
+## 0..1: how far people have lit up. People light a lamp AS the light fails,
+## not once it has gone, so this follows the light's own curve
+## (`SkyLight.day_gone`): the first lamps as a fifth of the day's light has gone
+## (about 18:20), the village lit by 19:30, all of it by the time just over half
+## has gone. At dawn the curve walks back and the lamps go out with it. A lid over
+## the landscape lights them whatever the hour.
 ##
 ## People light up because it is DARK, and until a landscape could have something
 ## between it and the sun that was the same thing as because it is LATE. It is
@@ -416,24 +419,34 @@ func _process(delta: float) -> void:
 ## `SkyLight.last_lid()` (`BiomeDef.sky_shut`), and it is taken as a floor rather
 ## than a replacement, so nothing about an open landscape's evening moves.
 static func lamps_wanted(hour: float) -> float:
-	return maxf(_lamps_by_clock(hour), SkyLight.last_lid())
+	return maxf(_lamps_by_light(hour), SkyLight.last_lid())
 
 
-static func _lamps_by_clock(hour: float) -> float:
-	var h := fposmod(hour, 24.0)
-	if h >= 20.5 or h < 5.0:
-		return 1.0
-	if h >= 19.0:
-		return smoothstep(19.0, 20.5, h)
-	if h < 6.5:
-		return 1.0 - smoothstep(5.0, 6.5, h)
-	return 0.0
+static func _lamps_by_light(hour: float) -> float:
+	return smoothstep(LAMPS_FROM, LAMPS_ALL, SkyLight.day_gone(hour))
 
 
-## 0..1 how much a pool of lamplight shows: nothing until dusk is well on,
-## full from an hour after it.
+## How much of the day's light has gone (`SkyLight.day_gone`) when the first lamp
+## is lit, and when the last is. On the old clock schedule (19:00-20:30) not one
+## lamp at seed 7's spawn was lit at 19:30, with nearly half the light gone.
+const LAMPS_FROM := 0.2
+const LAMPS_ALL := 0.55
+
+
+## 0..1 how much a pool of lamplight shows: nothing until the first lamp is lit,
+## then growing as the light goes. It is on the lamps' curve, or a lamp lit at
+## dusk lays no pool until well after it.
 static func pool_dark(hour: float) -> float:
-	return clampf(Weather.night_fall(hour) * 1.4, 0.0, 1.0)
+	return clampf((SkyLight.day_gone(hour) - LAMPS_FROM) / POOL_SPAN, 0.0, 1.0)
+
+
+## How much more of the light has to go, after the first lamp, before a pool is
+## full. As short as the DAWN allows: there `day_gone` is `night_fall`'s ninety
+## minute smoothstep, whose steepest minute moves 0.0167, and a pool is a light
+## nobody should see jump (under 0.03 a minute, tests/sky/test_night_lights.gd).
+## Any longer and the village's pools are weaker at 20:30 than the clock ever
+## made them: a span of 0.8 left them at 0.63 where the old schedule had 1.0.
+const POOL_SPAN := 0.57
 
 
 ## How hard a thing that BURNS lights the ground, at darkness `dark` (0 noon, 1
