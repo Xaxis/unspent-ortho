@@ -94,16 +94,16 @@ static func make() -> BiomeDef:
 	d.village_square_ground = Ground.GRAVEL
 	d.beached_wrecks = false
 	d.decor = {
-		Ground.SALT: [0.4, Decor.SALT_PLATE, 54, Decor.PEBBLES, 8, Decor.BOLT, 3, Decor.SCRAP, 3, Decor.GRASS_A, 22],
+		Ground.SALT: [1.2, Decor.SALT_PLATE, 18, Decor.PEBBLES, 3, Decor.BOLT, 1, Decor.SCRAP, 1, Decor.GRASS_A, 70],
 		Ground.PAN: [0.35, Decor.SALT_PLATE, 18, Decor.PEBBLES, 20, Decor.STONE, 10, Decor.CAN, 4, Decor.WIRE, 4, Decor.GRASS_A, 26],
 		Ground.GRASS: [0.6, Decor.GRASS_A, 30, Decor.THISTLE, 12, Decor.STONE, 12, Decor.BONE, 4],
 	}
 	# Straw: a few stiff dead stems at a time, bleached to the pan, broken short
 	# and ticking in the wind rather than swaying.
 	d.grasses = [
-		GrassSpecies.make(&"straw", {"blades": 18, "height": Vector2(0.14, 0.38), "width": 0.02, "spread": 0.22,
+		GrassSpecies.make(&"straw", {"blades": 12, "height": Vector2(0.14, 0.38), "width": 0.02, "spread": 0.12,
 			"reach": Vector2(0.1, 0.45), "curl": 0.05, "lay": 0.55, "root": _w(P.EARTH[3].lerp(P.SAND[3], 0.5)), "tip": _w(P.LINEN[3]),
-			"stiff": 0.9, "flutter": 6, "casts": true}),
+			"stiff": 0.9, "flutter": 6, "casts": true, "rims": true, "lee": 5.0}),
 	]
 	d.grass_colors = [_w(P.SAND[4]), _w(P.LINEN[4])]
 	d.rock_color = _w(P.LINEN[3])
