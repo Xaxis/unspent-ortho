@@ -157,11 +157,14 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	marks[&"total"] = total
 	last_timings = marks
 	last_detail = c.timings
+	last_memory = c.memory
 	return w
 
 
 ## Finer marks inside stages (GenContext.mark) from the most recent generate().
 static var last_detail: Dictionary = {}
+## Memory at each of those marks, in order (GenContext.memory).
+static var last_memory: Array = []
 
 
 ## WORLDS NOBODY WANTS ANY MORE. A background raise (RealmWorlds) cannot be

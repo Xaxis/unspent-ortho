@@ -190,7 +190,7 @@ func test_the_sketch_draws_the_coast_the_grid_and_the_villages() -> void:
 	check(s.x >= 0 and s.x < 112 and s.y >= 0 and s.y < 112, "the start's mark is on the sketch")
 
 
-func test_without_threads_the_title_keeps_its_coast() -> void:
+func test_an_idle_title_keeps_its_coast() -> void:
 	BootWorld.clear()
 	var holder := _holder()
 	var title := BootPage.make_title(holder, BootOptions.parse(["--seed=8", "--size=%d" % SIZE])) as UiTitle
@@ -204,13 +204,9 @@ func test_without_threads_the_title_keeps_its_coast() -> void:
 		await tree.process_frame
 		OS.delay_msec(2)
 	check(title.world != null, "the title shows a coast")
-	title.cycle_coasts = false
-	title._shown_for = UiTitle.SEED_SECONDS + 1.0
+	title._shown_for = 600.0
 	title._process(0.05)
-	check(not title._drawing(), "no new coast is started on a build that would make it on the main thread")
-	title.cycle_coasts = true
-	title._process(0.05)
-	check(title._drawing(), "with threads the next coast is on its way")
+	check(not title._drawing(), "an idle title starts no new coast, threads or none")
 	holder.free()
 
 

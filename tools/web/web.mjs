@@ -47,6 +47,8 @@
 //                    outside the engine (what a player sees while the engine is blocked)
 //   --uncapped       let the page draw as fast as it can (no vsync, no frame-rate limit), so a
 //                    frame's cost can be read off its interval (perf scale in a tour)
+//   --heap-log       print every heap sample (every 2 s, seconds since the sampler started), not only
+//                    the most it held: when the heap grows says what grew it
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -370,9 +372,13 @@ page.on('console', (m) => {
 // lives, because a tour quits the engine before the run ends. Read off the
 // Memory the init script above keeps.
 let heapMost = 0;
+const heapStart = Date.now();
 const sampleHeap = () => page.evaluate(() => {
   try { return window.__wasmMemory ? window.__wasmMemory.buffer.byteLength : -1; } catch (e) { return -1; }
-}).then((n) => { heapMost = Math.max(heapMost, n); }).catch(() => {});
+}).then((n) => {
+  heapMost = Math.max(heapMost, n);
+  if (opt['heap-log'] && n > 0) console.log(`web heap at ${((Date.now() - heapStart) / 1000).toFixed(0)} s: ${(n / 1048576).toFixed(0)} MB`);
+}).catch(() => {});
 const heapTimer = setInterval(sampleHeap, 2000);
 // A wait on a page that may have stopped answering, bounded: resolves with
 // `null` after `ms` instead of never. A tour quits its engine before the run

@@ -122,6 +122,12 @@ var pool_ground: PackedByteArray
 
 var timings: Dictionary = {}
 var _tick := 0
+## Memory at every mark, in order: [label, bytes in use, the most ever in use].
+## The web's heap never gives memory back, so what a world costs a browser tab is
+## the highest this ever reaches, not what the finished world keeps; this says
+## which step raised it. Only a debug build counts static memory: a release
+## build reads zeros here.
+var memory: Array = []
 
 
 ## May type `cc` hold land on body `id`? True everywhere until the deal is made,
@@ -136,6 +142,7 @@ func mark(label: StringName) -> void:
 	if _tick > 0:
 		timings[label] = timings.get(label, 0.0) + (t - _tick) / 1000.0
 	_tick = t
+	memory.append([label, OS.get_static_memory_usage(), OS.get_static_memory_peak_usage()])
 
 
 func _init(p_world: WorldData) -> void:
