@@ -168,7 +168,7 @@ func test_a_save_made_inside_opens_inside() -> void:
 	await _frames(10)
 	check(bool(db.call(&"tour_seen", &"outside")), "and the door leads out")
 	eq(b.world.realm, Realm.SURFACE, "onto the surface")
-	near(b.player.pos.distance_to(back.threshold.door), 0.0, 1.0, "at the house's door")
+	near(b.player.pos.distance_to(back.threshold.door), 0.0, 1.6, "at the house's door")
 	var kept := false
 	for q: WorldProp in b.world.props:
 		if q.kind == PropKind.FIRE and q.pos.distance_to(built.pos) < 0.01:
@@ -314,7 +314,7 @@ func test_a_hall_remembers_its_dead_and_puts_the_arrested_out() -> void:
 	while not bool(d.call(&"tour_seen", &"outside")) and Time.get_ticks_msec() < until:
 		await _frames(1)
 	check(bool(d.call(&"tour_seen", &"outside")), "arrested in the hall, the player is put outside")
-	near(g.player.pos.distance_to(t.door), 0.0, 1.0, "at the hatch")
+	near(g.player.pos.distance_to(t.door), 0.0, 1.6, "at the hatch")
 	Sx.end(g)
 	Sx.finish()
 
@@ -403,5 +403,41 @@ func test_the_warden_holds_the_turrets_and_the_boxes() -> void:
 	check(not bool(d.call(&"tour_seen", &"turret_shot")), "with the warden broken the turrets stand down")
 	eq(hurts[0], h2, "and nothing more lands")
 	Events.hit.disconnect(on_hit)
+	Sx.end(g)
+	Sx.finish()
+
+
+## THE EYE STAYS OUT OF THE HATCH. Put out at a hatch (an arrest does it), the
+## player faces away from it and the shoulder camera stands behind them -- toward
+## the housing. The eye is never let nearer the head than Shoulder.LEAST_BACK, so
+## no probe can hold it out of a housing the player stands too close to: the door
+## puts them out far enough (21_doors EXIT_OUT), and the housing's own box
+## (`sight_boxes`) holds the eye off its corners from there.
+func test_the_shoulder_eye_stays_out_of_a_hatch() -> void:
+	Sx.use_root("doors-hatch-eye")
+	var g := Sx.game(tree, ["--seed=4", "--hour=11", "--weather=clear:0"])
+	var d := _doors(g)
+	var shoulder: Node = Sx.system(g, "41_shoulder")
+	var t: Threshold = null
+	for th: Threshold in d.get("doors"):
+		if th.kind == &"weapons_hall":
+			t = th
+	check(t != null, "seed 4 has a hatch")
+	# Where an arrest leaves the player, and a line back past them into the housing,
+	# a little off its middle so it runs toward a corner.
+	var stand := t.door + t.out * float(d.get_script().get_script_constant_map()["EXIT_OUT"])
+	var y := g.world.height_at(stand)
+	# A level line at the height the eye stands over the shoulder, aimed at a
+	# CORNER of the housing, where the body's circle does not reach.
+	var head := Vector3(stand.x, y + 1.25, stand.y)
+	var corner := t.host + Vector2(0.75, 0.75).rotated(t.rot)
+	var back := (corner - stand).normalized()
+	var eye := head + Vector3(back.x, 0.0, back.y) * 3.0
+	var share: float = shoulder.call(&"room", head, eye)
+	var at := head.lerp(eye, share)
+	# The housing's face toward the doorstep, in the hatch's own frame.
+	var local := (Vector2(at.x, at.z) - t.host).rotated(-t.rot)
+	var inside := local.x > -1.0 and local.x < 0.82 and absf(local.y) < 0.8
+	check(not inside, "put out, the eye stands outside the housing (%s in its frame, share %.2f)" % [local, share])
 	Sx.end(g)
 	Sx.finish()

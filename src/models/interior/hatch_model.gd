@@ -11,6 +11,11 @@ const Works := preload("res://src/models/props/works.gd")
 ## The housing's reach from its middle, what stops a body (21_doors hands it to
 ## the query as a circle).
 const REACH := 0.85
+## The housing's drawn box in its own frame (lo, hi on x and z) and its height,
+## for the shoulder camera's probe (21_doors `sight_boxes`).
+const LO := Vector2(-1.0, -0.8)
+const HI := Vector2(1.05, 0.8)
+const TOP := 1.6
 
 
 ## `mat` is the world's MADE material, for the dark in the doorway.

@@ -25,6 +25,11 @@ extends GameSystem
 ## REACH of one may go through it.
 const WARM := 7.0
 const REACH := 1.4
+## How far out past the doorstep a player comes out: far enough that the eye's
+## own floor behind the shoulder (Shoulder.LEAST_BACK) clears the host. At 0.3 a
+## player put out of a hatch had the eye inside its housing, which no probe can
+## pull out of, because the eye is never let nearer the head than that floor.
+const EXIT_OUT := 1.4
 ## Seconds the cover takes to close and to open, from above and over the shoulder.
 const CLOSE := 0.18
 const OPEN := 0.24
@@ -94,12 +99,18 @@ func setup(g: Game) -> void:
 ## per depot door, and hands its housing to the query as a wall. They stand on
 ## the world outside and are hidden while the player is in a room.
 const HatchModel := preload("res://src/models/interior/hatch_model.gd")
+const Shoulder := preload("res://src/core/view/shoulder.gd")
 var _hatches: Node3D
+## Each hatch housing as the shoulder camera's probe takes a drawn box
+## (Shoulder.box_of): a circle held the query's walk and missed the housing's
+## corners, and a player put out at the hatch had the eye pushed into it.
+var _hatch_boxes: Array[PackedFloat32Array] = []
 
 
 func _stand_hatches() -> void:
 	if _hatches != null:
 		_hatches.queue_free()
+	_hatch_boxes.clear()
 	_hatches = Node3D.new()
 	_hatches.name = "hatches"
 	game.add_child(_hatches)
@@ -112,7 +123,21 @@ func _stand_hatches() -> void:
 		n.rotation.y = -t.rot
 		_hatches.add_child(n)
 		mass.append(Vector3(t.host.x, t.host.y, HatchModel.REACH))
+		var base := n.position.y
+		_hatch_boxes.append(Shoulder.box_of(t.host, t.rot, 1.0, HatchModel.LO, HatchModel.HI, base + HatchModel.TOP))
 	game.query.set_blocks(&"hatches", mass)
+
+
+## The hatch housings near `mid`, for the shoulder camera's probe (41_shoulder);
+## none while the player is in a room, where the room's own walls hold the eye.
+func sight_boxes(mid: Vector2, reach: float) -> Array[PackedFloat32Array]:
+	var out: Array[PackedFloat32Array] = []
+	if pocket != null:
+		return out
+	for b: PackedFloat32Array in _hatch_boxes:
+		if Vector2(b[0], b[1]).distance_to(mid) <= reach + 1.5:
+			out.append(b)
+	return out
 
 
 ## A game that ends with the player indoors still holds the coast's view, out of
@@ -469,6 +494,8 @@ func _trespass() -> void:
 
 func _wake_residents() -> void:
 	_residents.clear()
+	if game.options.rooms_empty:
+		return
 	var sim: FightSim = game.player.sim
 	if sim == null:
 		return
@@ -594,7 +621,7 @@ func _swap_out() -> void:
 	game.add_child(_outside_view)
 	_outside_view.reclaim()
 	game.view = _outside_view
-	realms.call(&"enter", _outside, _outside_key, t.door + t.out * 0.3, true, _outside_query)
+	realms.call(&"enter", _outside, _outside_key, t.door + t.out * EXIT_OUT, true, _outside_query)
 	game.camera.view_height = _outside_height
 	pocket = null
 	model = null
@@ -717,20 +744,48 @@ func _make_lights() -> void:
 		game.view.add_child(motes)
 		_motes.append(motes)
 	for at: Array in model.get(&"lights"):
-		var lamp := OmniLight3D.new()
-		var machine: bool = at[1] != &"lamp"
-		# The lantern is warm and reaches the room; a stolen strip in a cottage is
-		# the one cold light in the house and reaches only the bench it hangs
-		# over; a hall's strips are the machines' own light, hung high, reaching
-		# the floor in cold pools.
-		lamp.light_color = Color(0.74, 0.72, 0.9) if machine else Color(1.0, 0.7, 0.4)
-		lamp.omni_range = 5.5 if at[1] == &"strip" else (3.2 if machine else 5.5)
-		lamp.omni_attenuation = 1.2
-		lamp.shadow_enabled = false
+		var lamp := _room_light(StringName(at[1]))
 		game.view.add_child(lamp)
 		lamp.global_position = at[0]
+		if lamp is SpotLight3D:
+			_aim(lamp, Vector3.DOWN)
 		_lamps.append([lamp, at[1]])
 		_lend(lamp, false, RANK_LAMP)
+
+
+## One of a room's own lights, by what it is. A lantern is warm and reaches the
+## room. A stolen strip in a cottage is the one cold light in the house and
+## reaches only the bench it hangs over. A hall's strips are the machines' own
+## light, a DOWNLIGHT each -- a cone throws a pool on the deck and leaves the dark
+## between them, which an omni hung that high could not (it lit nothing it
+## reached). The pump's core is the one warm light in a hall's dark end. None
+## scatters in the air: their light is on surfaces.
+static func _room_light(kind: StringName) -> Light3D:
+	var l: Light3D
+	if kind == &"strip":
+		var sp := SpotLight3D.new()
+		sp.spot_range = 4.8
+		sp.spot_angle = 46.0
+		sp.spot_attenuation = 0.9
+		sp.spot_angle_attenuation = 1.4
+		l = sp
+	else:
+		var o := OmniLight3D.new()
+		o.omni_attenuation = 1.2
+		o.omni_range = 5.5
+		match kind:
+			&"machine":
+				o.omni_range = 3.2
+			&"working":
+				o.omni_range = 4.4
+				o.omni_attenuation = 1.3
+		l = o
+	l.light_color = Color(1.0, 0.7, 0.4) if kind == &"lamp" else Color(0.74, 0.72, 0.9)
+	if kind == &"working":
+		l.light_color = Color(1.0, 0.66, 0.26)
+	l.light_volumetric_fog_energy = 0.0
+	l.shadow_enabled = false
+	return l
 
 
 ## THE HOUR COMES IN THROUGH THE WINDOWS. A cottage's lid is under the line where
@@ -761,12 +816,14 @@ func _light_windows() -> void:
 		model.call(&"daylight", Color(hor.r, hor.g, hor.b) * lerpf(0.14, 0.92, day),
 			ground.lerp(hor, 0.28) * lit)
 	for pair: Array in _lamps:
-		var lamp := pair[0] as OmniLight3D
+		var lamp := pair[0] as Light3D
 		match pair[1]:
 			&"machine":
 				lamp.light_energy = 0.55
 			&"strip":
-				lamp.light_energy = 1.5
+				lamp.light_energy = 5.0
+			&"working":
+				lamp.light_energy = 3.2
 			_:
 				lamp.light_energy = lerpf(1.6, 0.25, day)
 	for i in _windows.size():

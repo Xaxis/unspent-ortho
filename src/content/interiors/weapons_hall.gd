@@ -20,8 +20,9 @@ static func make() -> InteriorKind:
 	var k := InteriorKind.new()
 	k.id = &"weapons_hall"
 	# A torn roof: under SkyLight's casting line, so the sun through a tear is the
-	# sun itself, and the rest of the hall is the strips' cold light.
-	k.closed = 0.3
+	# sun itself -- but close under it, so the sky's ambient does not flatten the
+	# hall and the rest of it is the strips' cold light and the dark between.
+	k.closed = 0.45
 	k.zoom = 12.0
 	k.wall_h = 3.6
 	k.cut = 1.0
@@ -131,10 +132,15 @@ static func _fit(l: InteriorLayout, rng: RandomNumberGenerator) -> void:
 	for ri in range(1, l.rooms.size()):
 		var r := l.rooms[ri]
 		_put(l, &"strongbox", Vector2(r.position.x + r.size.x * 0.5, r.position.y + OFF_WALL + 0.1), Vector2(0, 1), 0.36)
-	# The strip lights, ruled in two lines down the hall's length.
-	for xi in range(1, w, 3):
+	# The strip lights, ruled in two lines down the WEST two thirds of the hall:
+	# the far end is left to fall into the dark, lit only by what works there.
+	for xi in range(1, ceili(w * 0.62), 3):
 		for yy: float in [d * 0.3, d * 0.7]:
 			_put(l, &"strip", Vector2(float(xi) + 0.5, yy), Vector2(1, 0), 0.0)
+	# What works in the dark end: a coolant pump in the far wall, turning, and a
+	# vent on the wall beside it breathing off what it cools.
+	_put(l, &"pump", Vector2(w - 0.45, d * 0.5), Vector2(-1, 0), 0.5)
+	_put(l, &"vent", Vector2(w - 0.4, d * 0.5 + 1.8), Vector2(-1, 0), 0.0)
 	# Where the roof is torn: two or three places, never over the door.
 	var tears := 2 + rng.randi_range(0, 1)
 	for _i in tears:
