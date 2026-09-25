@@ -154,8 +154,10 @@ static func _fit(l: InteriorLayout, rng: RandomNumberGenerator) -> void:
 	var post := Vector2(w * 0.5, 1.6)
 	_put(l, &"post", post, Vector2(0, -1), 0.0)
 	l.residents.append({"role": &"warden", "at": post, "face": Vector2(0, -1)})
-	# And what walks the hall: one or two down its length, either side of the gantry.
+	# And what keeps the hall with it: one or two either side of the gantry,
+	# facing the bays as the warden does. Faced the other way, the hatch was in a
+	# guard's cone and nobody came down it unseen, however quietly.
 	var guards := 1 + rng.randi_range(0, 1)
 	for i in guards:
 		var gx := 2.5 if i == 0 else w - 2.5
-		l.residents.append({"role": &"guard", "at": Vector2(gx, d * 0.5 + 0.8), "face": Vector2(0, 1)})
+		l.residents.append({"role": &"guard", "at": Vector2(gx, d * 0.5 + 0.8), "face": Vector2(0, -1)})

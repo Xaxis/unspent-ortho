@@ -20,15 +20,34 @@ const DMG := 2
 
 var at := Vector2.ZERO
 var facing := 0.0
+## The way it looks when it has nobody: into the hall from its corner. Idle, it
+## sweeps a watcher's cone to and fro across that bearing on a fixed rhythm
+## (StealthQuery.sweep) -- a gap a patient player can learn and cross in.
+var base := 0.0
+## Where in the sweep it starts, seconds: each turret its own, so a hall's
+## turrets do not look the same way at once.
+var phase := 0.0
 ## When it began coming round on the player (INF: not aiming), and when it last
 ## fired.
 var aim_since := INF
 var fired_at := -INF
 
 
-func _init(pos: Vector2, face: Vector2) -> void:
+func _init(pos: Vector2, face: Vector2, sweep_phase: float = 0.0) -> void:
 	at = pos
 	facing = face.angle()
+	base = facing
+	phase = sweep_phase
+
+
+## Where its eye points at `now` (ms) while it has nobody.
+func swept(now: float) -> float:
+	return StealthQuery.sweep(base, now / 1000.0, phase)
+
+
+## Whether it is coming round on somebody.
+func aiming() -> bool:
+	return aim_since != INF
 
 
 ## What to do now: &"idle", &"aim" (coming round, turned toward `target`) or

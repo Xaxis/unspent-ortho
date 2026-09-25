@@ -16,6 +16,11 @@ const LADEN_HEARING := 0.35
 const RIDGE_LEVELS := 2
 ## Props at least this wide (solid radius) block a line: houses, boulders, heaps. Trees do not.
 const BLOCKING_SOLID := 0.42
+## A wall (`WorldQuery.set_blocks`: a room's walls, a hall's racks, a hatch's
+## housing, a colossus's pad) at least this wide blocks a line too. Only the
+## ground and props were asked, so in every room a machine saw straight through
+## its walls: a warden looked through a bay's wall at whoever hid in it.
+const BLOCKING_WALL := 0.25
 
 
 static func sight_range(row: Dictionary, m: Moment) -> float:
@@ -94,7 +99,25 @@ static func line_clear(world: WorldData, query: WorldQuery, a: Vector2, b: Vecto
 			tmy += tdy
 		if (x != bx or y != by) and _solid(world, query, x, y, eye):
 			return false
-	return true
+	return not _walled(query, a, b)
+
+
+## Whether a wall stands across the line from `a` to `b`: a block circle the line
+## passes through, other than one either end stands in.
+static func _walled(query: WorldQuery, a: Vector2, b: Vector2) -> bool:
+	if query == null:
+		return false
+	var n := ceili(a.distance_to(b) / 0.25)
+	for i in range(1, n):
+		var q := a.lerp(b, float(i) / float(n))
+		for c: Vector3 in query.blocks_at(q):
+			if c.z < BLOCKING_WALL:
+				continue
+			var at := Vector2(c.x, c.y)
+			if q.distance_to(at) > c.z or a.distance_to(at) <= c.z or b.distance_to(at) <= c.z:
+				continue
+			return true
+	return false
 
 
 static func _solid(world: WorldData, query: WorldQuery, x: int, y: int, eye: int) -> bool:

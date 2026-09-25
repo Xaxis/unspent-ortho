@@ -16,8 +16,11 @@ press use 0.1
 await inside:weapons_hall 5
 wait 0.25
 shot 01-the-halls-machines-turn with inside:weapons_hall,mob:warden
+# To the guard, not the warden: the keeper stands facing the bays, and a blow
+# on its plate only rings. Then round the guard to its working part and strike.
+walkto guard 6
 try 6
-walkto mob 1.0
+walkto part 1.0
 tap swing
 await hit 1.5
 end

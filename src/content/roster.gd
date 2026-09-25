@@ -150,7 +150,11 @@ const DEFS := {
 	&"warden": {
 		"model": &"warden", "role": &"keeper", "machine": true, "approach": &"dart", "part": &"front",
 		"pace": 6.0, "dash": 9.5, "radius": 0.45, "height": 1.6, "life": 55,
-		"sees": 14, "hears": 9, "racket": 9, "reach": 2, "ready": 4, "forget": 25, "tether": 30, "safe": 10,
+		# A keeper CHALLENGES before it takes anyone: sure of you, it stands and
+		# faces you three seconds (`ready`) before it comes, and loses you if you
+		# get out of its sight in that time. At four beats it was on whoever it
+		# noticed before they could do either.
+		"sees": 14, "hears": 9, "racket": 9, "reach": 2, "ready": 30, "forget": 25, "tether": 30, "safe": 10,
 		"nerve": 100, "invuln": 400, "disposition": &"wary",
 		"hits": {"minutes": 60.0, "again": 60.0, "cap": 240.0, "arrest": true,
 			"line": "A warden stands you at the side of the track until it is done with you."},

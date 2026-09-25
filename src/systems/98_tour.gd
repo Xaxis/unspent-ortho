@@ -119,6 +119,12 @@ extends GameSystem
 ##                          or to the plated side opposite (plate), re-aimed every
 ##                          step the way a player steers, ending turned to face it
 ##                          (nothing happens when no body is left)
+##   walkto strongbox SECS  steer the way a quiet player goes to a strongbox in the
+##                          room (21_doors `tour_route`): by its bay's doorway,
+##                          out of the residents' sight, waiting where the next
+##                          step would be seen (`tour_safe`) as a patient player does
+##   walkto guard SECS      steer to beside the nearest guard in the room (not its
+##                          keeper), to fight what keeps it
 ##   walkto shaft SECS      the same steering toward the nearest shaft, stopping
 ##                          inside its reach: a return BY NAME, where a timed walk
 ##                          back ends wherever the props on the way let it
@@ -899,14 +905,16 @@ func _stand_at(found: WorldProp, said: String) -> bool:
 
 ## Every `walkto` target, the one list: `tests/tours/test_tour_claims.gd` reads it,
 ## so a new target cannot be written into a tour and refused by a stale copy.
-const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft"]
+const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft", "strongbox", "guard"]
 
 
 func _walk_to(what: String, secs: float) -> bool:
 	var sim := game.player.sim
-	if sim == null or not what in ["mob", "part", "plate", "shaft"]:
+	if sim == null or not what in ["mob", "part", "plate", "shaft", "strongbox", "guard"]:
 		return false
 	var until := Time.get_ticks_msec() + int(secs * 1000.0)
+	if what == "strongbox" or what == "guard":
+		return await _walk_route(what, until, secs)
 	if what == "shaft":
 		while Time.get_ticks_msec() < until:
 			var shaft := Portals.nearest(game.world, sim.hero.pos)
@@ -964,6 +972,48 @@ func _walk_to(what: String, secs: float) -> bool:
 		game.scripted_seconds = 0.02
 		while game.scripted_seconds > 0.0:
 			await get_tree().physics_frame
+	return true
+
+
+## Steer through the waypoints a system gives for `what` (`tour_route`), each in
+## turn, the way a player steers: re-aimed every step, never teleported.
+func _walk_route(what: String, until: int, secs: float) -> bool:
+	var route := PackedVector2Array()
+	for sys in game.systems:
+		if sys.has_method(&"tour_route"):
+			route = sys.call(&"tour_route", what)
+			if not route.is_empty():
+				break
+	if route.is_empty():
+		printerr("tour %s: nothing gives a way to a %s here" % [_name, what])
+		return false
+	var sim := game.player.sim
+	var safe: Node = null
+	for sys in game.systems:
+		if sys.has_method(&"tour_safe"):
+			safe = sys
+	var i := 0
+	while i < route.size() and Time.get_ticks_msec() < until:
+		var d := route[i] - sim.hero.pos
+		if d.length() <= 0.25:
+			i += 1
+			continue
+		# A patient player: where the next step would be seen they wait -- but
+		# only where they stand hidden. Caught in a sweep, they keep going: a
+		# turret takes most of a second to come round.
+		if safe != null and not bool(safe.call(&"tour_safe", sim.hero.pos + d.normalized() * 0.6)) \
+				and bool(safe.call(&"tour_safe", sim.hero.pos)):
+			game.scripted_seconds = 0.0
+			await get_tree().physics_frame
+			continue
+		game.scripted_move = _keys_toward(d.normalized())
+		game.scripted_run = false
+		game.scripted_seconds = 0.05
+		await get_tree().physics_frame
+	game.scripted_seconds = 0.0
+	if i < route.size():
+		printerr("tour %s: walked the way to the %s for %.1f s and reached %d of its %d marks" % [_name, what, secs, i, route.size()])
+		return false
 	return true
 
 

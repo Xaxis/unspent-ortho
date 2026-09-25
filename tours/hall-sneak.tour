@@ -1,0 +1,26 @@
+# GETTING INTO THE PLAN'S HALL QUIETLY (docs/interiors, 21_doors, FightSim
+# suspicion): the warden stands its watch facing the bays with the hatch at its
+# back. What it only half has -- a step heard, a glimpse behind its cone -- makes
+# it unsure, and unsure long enough it turns to look; only what it sees in its
+# cone makes it sure. The turrets sweep their eyes to and fro on a fixed rhythm.
+# So down the hatch crouched, out of the residents' sight, crossing each turret's
+# ground while it looks away, is the way to a strongbox unseen.
+#
+#   tools/tour.sh tours/hall-sneak.tour --seed=4 --hour=11 --weather=clear:0
+#
+# 01 is the hall just come down into, crouched, the warden's back to the player.
+# 02 is at a strongbox, having waited out the turrets' sweeps: nothing in the
+# hall has noticed the player (`unnoticed`).
+coast calm
+near door:weapons_hall
+await door 5
+hold crouch
+press use 0.1
+await inside:weapons_hall 5
+wait 0.3
+shot 01-down-the-hatch-crouched with inside:weapons_hall,mob:warden
+# Waiting where the next step would be seen, as a patient player learns the
+# turrets' sweep: it takes a while.
+walkto strongbox 45
+wait 0.4
+shot 02-at-a-strongbox-unseen with inside:weapons_hall,box_near,unnoticed
