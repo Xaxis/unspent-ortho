@@ -101,15 +101,25 @@ static var _marks: PackedInt32Array
 static var _cliff: PackedColorArray
 static var _strata: PackedInt32Array
 static var _stride := 0
+static var _fill := Mutex.new()
 
 
 ## Rebuilt on first use, and whenever the registry has changed under us (tests
 ## that mute types to prove parity with the M1 six).
+##
+## Workers ask too (the far blocks, the map), so the fill is ONE thread's, under
+## `_fill`, and `_stride` is written LAST: it is what the quick test below reads,
+## and it once went first, so a thread arriving mid-fill read colours not yet
+## written and two arriving together resized the same arrays.
 static func _ensure() -> void:
 	var n := BiomeRegistry.count()
 	if _stride == n and not _wash.is_empty():
 		return
-	_stride = n
+	_fill.lock()
+	if _stride == n and not _wash.is_empty():
+		_fill.unlock()
+		return
+	_stride = -1
 	_wash.resize(Ground.COUNT * n)
 	_marks.resize(Ground.COUNT * n)
 	_cliff.resize(Ground.COUNT * n)
@@ -121,6 +131,8 @@ static func _ensure() -> void:
 			_marks[i] = d.ground_marks.get(g, _base_mark(g))
 			_cliff[i] = _make_cliff(g, d)
 			_strata[i] = _make_strata(g, d)
+	_stride = n
+	_fill.unlock()
 
 
 static func _m(a: Color, b: Color, t: float) -> Color:

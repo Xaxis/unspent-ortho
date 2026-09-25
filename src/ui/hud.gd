@@ -353,6 +353,13 @@ func shown() -> Dictionary:
 	return out
 
 
+## A place name coming up is shown up (a shot): caught mid-rise it was a plate
+## of glass with nothing on it, the lettering held back for its first 0.18 s.
+func settle_place() -> void:
+	if _place_age < PLACE_IN:
+		_place_age = PLACE_IN
+
+
 ## Jump every fade to where it is heading (screenshots, tests).
 func settle() -> void:
 	# Not PEND_WAIT: a line still waiting for its gauge is waiting for the ui
@@ -363,8 +370,7 @@ func settle() -> void:
 	_charge_alpha = 1.0 if charge_shown else 0.0
 	_hint_alpha = _hint_target
 	_hurt_flash = 0.0
-	if _place_age < PLACE_IN:
-		_place_age = PLACE_IN
+	settle_place()
 	# A flare is an event, not a fade with a target: a settled frame catches it
 	# half closed, so a shot shows which gauge answered for the line it took.
 	for k: StringName in _gauge_flare:

@@ -82,6 +82,11 @@ Each area lists its state and its next few points.
   with world stamps.
 - Next: a verify skill and feature map, memory-safe test runs on this box,
   frame-time budgets on the web.
+- Web memory: the tab reserves 1181 MB, because the wasm heap doubles past 592 and an
+  1840 world's generation peaks 678 MB over the engine (`WorldGen.last_memory`). Trims
+  cannot clear the step (props alone reach 448, the kept world is 260). The options are
+  banded tiles, a broader restructure, a smaller web world (owner), or accepting it
+  (current: fine on desktop browsers, a risk on phones).
 
 ### 10. Feel and balance
 - State: nothing systematic.

@@ -292,18 +292,14 @@ func _draw_cue(id: StringName, cue: Dictionary, v: float) -> void:
 			# Both are put out in front of the face, never at the head's own
 			# point: drawn there and then risen, breath ends up above and behind
 			# the head and stops reading as breath (wave A2, art finding 9).
+			# Under the close eye breath is depth-tested air (MobFx.breath), so
+			# from behind the head hides it the way a head would.
 			var eye := game.camera.shoulder_share() if game.camera != null else 0.0
-			var look := Vector2.ZERO
-			if game.camera != null:
-				var f := -game.camera.global_transform.basis.z
-				look = Vector2(f.x, f.z)
-			var seen := breath_seen(look, ahead, eye)
-			if seen > 0.0:
-				var mouth := head + Vector3(ahead.x, -0.06, ahead.y) * 0.26
-				var k := lerpf(1.0, BREATH_EYE_SIZE, eye)
-				MobFx.breath(_fx_parent(), mouth, col, (0.30 + 0.14 * v) * k, BREATH_SECONDS, drift, seed_value)
-				MobFx.breath(_fx_parent(), mouth + Vector3(ahead.x, 0.10, ahead.y) * 0.30, col,
-					(0.20 + 0.10 * v) * k, BREATH_SECONDS * 0.8, drift, seed_value + 5)
+			var mouth := head + Vector3(ahead.x, -0.06, ahead.y) * 0.26
+			var k := lerpf(1.0, BREATH_EYE_SIZE, eye)
+			MobFx.breath(_fx_parent(), mouth, col, (0.30 + 0.14 * v) * k, BREATH_SECONDS, drift, seed_value)
+			MobFx.breath(_fx_parent(), mouth + Vector3(ahead.x, 0.10, ahead.y) * 0.30, col,
+				(0.20 + 0.10 * v) * k, BREATH_SECONDS * 0.8, drift, seed_value + 5)
 			if bool(cue.get("shiver", false)) and v >= Hazards.BITE:
 				game.player.shudder(0.22)
 		&"shimmer":
@@ -324,23 +320,8 @@ func _draw_cue(id: StringName, cue: Dictionary, v: float) -> void:
 			game.player.shudder(0.2)
 
 
-## BREATH IS SEEN ONLY WHERE THE FACE IS. A mark is drawn over everything
-## (depth test off), which is right from above: the puff lands beside the head
-## on the ground. From behind at eye level the puff in front of the mouth lands
-## ON the back of the head, a white stipple ball where the hair is. So over the
-## shoulder (`eye`, the view's share 0..1) it is drawn only as far as the camera
-## looks at the face, and smaller there (`BREATH_EYE_SIZE`), because at eye level
-## a puff is near the lens and breath is faint. `look` and `ahead` are ground
-## directions: where the camera looks and where the face points.
-static func breath_seen(look: Vector2, ahead: Vector2, eye: float) -> float:
-	if eye <= 0.0 or look.length() < 1e-4 or ahead.length() < 1e-4:
-		return 1.0
-	var behind := smoothstep(-0.2, 0.35, look.normalized().dot(ahead.normalized()))
-	var seen := 1.0 - clampf(eye, 0.0, 1.0) * behind
-	return seen if seen > 0.5 else 0.0
-
-
-## How big a puff is at eye level against from above.
+## How big a puff is at eye level against from above: a puff near the lens is
+## big on screen, and breath is faint.
 const BREATH_EYE_SIZE := 0.6
 
 

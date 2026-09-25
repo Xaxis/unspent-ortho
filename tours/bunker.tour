@@ -1,0 +1,34 @@
+# THE BUNKER UNDER THE CAST STONES (docs/interiors, src/content/interiors/bunker.gd):
+# a concrete hatch sunk in the ring beside the tall stone, and under it the rooms
+# somebody dug before the machines and left -- a corridor of emergency lamps
+# still on their batteries, the bunk room, the work room with its dark terminal
+# and its whiteboard, the records room and the sealed door in its back wall.
+#
+#   tools/tour.sh tours/bunker.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is the hatch as a player finds it among the stones. 02 is the bunker from
+# above as the player comes down, lit by its own lamps. 03 is the same with the
+# player's lantern lit, the light worth carrying down here. 04 is over the
+# shoulder, down the corridor.
+coast calm
+near door:bunker
+await door 5
+wait 0.6
+shot 01-a-hatch-among-the-cast-stones with door,landmark:cast_stones
+
+press use 0.1
+await inside:bunker 5
+wait 1.0
+shot 02-the-bunker-from-above-by-its-own-lamps with inside:bunker
+
+tap lamp
+wait 1.0
+shot 03-the-bunker-by-the-lantern with inside:bunker,lamp
+
+hold shoulder_peek
+await shoulder 3
+# The peek comes up on the top view's own bearing, which in a corridor can be
+# its side wall; a player turns the view with the mouse to look down it.
+mouse 520,0 0.6
+wait 0.6
+shot 04-down-the-corridor-over-the-shoulder with inside:bunker,shoulder,lamp

@@ -1,0 +1,34 @@
+# A TOWER'S LOBBY IN THE RUINED METROPOLIS (docs/interiors, src/content/interiors/tower_lobby.gd):
+# a dead tower's ground floor walled in with doors from every floor above and
+# lived in -- its columns, the counter that is a kitchen now, the letterboxes,
+# the lift prised open, the stair choked with rubble, a stall behind a curtain,
+# a fire on the terrazzo and a tube taken off the machines' street furniture.
+#
+#   tools/tour.sh tours/lobby.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is the infill as a player finds it. 02 is the lobby from above as the
+# player comes in. 03 is the same at night from beside the fire, lit by it and
+# the stolen tube. 04 is over the shoulder.
+coast calm
+near door:tower_lobby
+await door 5
+wait 0.6
+shot 01-a-tower-lobby-walled-in-with-doors with door,land:ruined_metropolis
+
+press use 0.1
+await inside:tower_lobby 5
+wait 1.0
+shot 02-the-lobby-from-above-by-day with inside:tower_lobby
+
+near fire
+hour 22
+wait 1.0
+shot 03-the-lobby-by-its-fire-at-night with inside:tower_lobby,station:fire
+
+hour 15
+wait 0.6
+hold shoulder_peek
+await shoulder 3
+mouse 300,0 0.6
+wait 0.6
+shot 04-the-lobby-over-the-shoulder with inside:tower_lobby,shoulder

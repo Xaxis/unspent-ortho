@@ -60,6 +60,42 @@ static func of_depot(site: WorksSite, kind: StringName, land: int) -> Threshold:
 	return t
 
 
+## A hatch let into a landmark's ground (the cast stones keep a bunker under
+## the ring): in the ring, beside the tall stone in the middle, opening toward
+## the GAP between two standing stones nearest the side away from the landmark's
+## cache, so the way out walks out of the ring and never onto the cache.
+const LANDMARK := 0x1A9D3A
+## How far from the landmark's heart the hatch stands, and the ring's make:
+## nine stones at `Landmarks`' 3.6, the first at 0.2 radians (landmark_models).
+const IN_RING := 1.9
+const RING_N := 9
+const RING_FROM := 0.2
+
+
+static func of_landmark(site: LandmarkSite, kind: StringName, land: int) -> Threshold:
+	var t := Threshold.new()
+	t.kind = kind
+	var away := site.facing + PI
+	var best := 0.0
+	var bd := INF
+	for i in RING_N:
+		# The ring is laid in the site's own frame, turned by its facing
+		# (22_landmarks hands its stones over `rotated(site.facing)`).
+		var g := site.facing + RING_FROM + (float(i) + 0.5) * TAU / float(RING_N)
+		var d := absf(angle_difference(g, away))
+		if d < bd:
+			bd = d
+			best = g
+	t.out = Vector2.from_angle(best)
+	t.rot = best
+	t.host = site.pos + t.out * IN_RING
+	t.door = t.host + t.out * 0.9
+	t.land = land
+	t.key = "landmark@%d,%d" % [floori(site.pos.x * 4.0), floori(site.pos.y * 4.0)]
+	t.host_code = LANDMARK
+	return t
+
+
 ## The realm key a pocket behind this door is known by (Realm.POCKET).
 func realm_key() -> StringName:
 	return StringName(Realm.POCKET + key)

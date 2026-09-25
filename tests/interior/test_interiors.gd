@@ -66,12 +66,12 @@ func test_a_pocket_keeps_its_own_word() -> void:
 func test_a_landscape_that_declares_nothing_has_no_doors() -> void:
 	for t: Threshold in Interiors.thresholds(_world()):
 		var d := BiomeRegistry.by_index(t.land)
-		check(d.interiors.has(&"house"), "%s: a door in %s, which declares no interiors" % [t.key, d.id])
+		check(not d.interiors.is_empty(), "%s: a door in %s, which declares no interiors" % [t.key, d.id])
 	var houses := {}
 	for p: WorldProp in _world().props:
 		if p.kind == PropKind.HOUSE:
 			var d := BiomeRegistry.by_index(_world().country_at(floori(p.pos.x), floori(p.pos.y)))
-			houses[d.id] = d.interiors.has(&"house")
+			houses[d.id] = not d.interiors.is_empty()
 	var closed := 0
 	for id: Variant in houses:
 		if not houses[id]:
@@ -176,3 +176,192 @@ func test_every_coast_depot_has_a_hall_behind_a_clear_hatch() -> void:
 		var p := InteriorGen.grow(4, t)
 		eq(p.kind.id, &"weapons_hall", "%s grows a weapons hall" % t.key)
 		check(not p.layout.has_hearth, "%s: a hall has no hearth for the walls to stand round" % t.key)
+
+
+## EVERY RING OF CAST STONES ON THE COAST KEEPS A BUNKER, its hatch in the ring
+## beside the tall stone and opening toward a GAP: the doorstep, and where a
+## player is put out, clear of every standing stone's mass (LandmarkModels.blocks
+## for cast_stones, turned by the site the way 22_landmarks hands it over).
+## And the bunker carries the story's slots -- a desk, a terminal, a wall -- for
+## the words to be written into.
+func test_every_ring_of_cast_stones_keeps_a_bunker() -> void:
+	# The full-size island: at 256 seed 4 grows no ring of stones on its coast.
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var rings: Array[LandmarkSite] = []
+	for site: LandmarkSite in Landmarks.sites(w):
+		var d := BiomeRegistry.by_index(w.country_at(floori(site.pos.x), floori(site.pos.y)))
+		if site.kind == &"cast_stones" and d != null and d.interiors.has(&"landmark:cast_stones"):
+			rings.append(site)
+	gt(float(rings.size()), 0.0, "seed 4 has a ring of cast stones where a bunker is declared")
+	var bunkers: Array[Threshold] = []
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind == &"bunker":
+			bunkers.append(t)
+	eq(bunkers.size(), rings.size(), "one bunker door per ring")
+	var exit_out := float((load("res://src/systems/21_doors.gd") as GDScript).get_script_constant_map()["EXIT_OUT"])
+	for i in rings.size():
+		var site := rings[i]
+		var t: Threshold = null
+		for b: Threshold in bunkers:
+			if b.host.distance_to(site.pos) < 3.0:
+				t = b
+		check(t != null, "ring at %s has its bunker" % site.pos)
+		if t == null:
+			continue
+		# The door opens toward a GAP: its bearing from the ring's heart stands well
+		# off every ring stone's (the tall one in the middle has no bearing).
+		for c: Vector3 in LandmarkModels.blocks(&"cast_stones"):
+			var off := Vector2(c.x, c.y).rotated(site.facing)
+			if off.length() < 1.0:
+				continue
+			gt(absf(angle_difference(off.angle(), t.out.angle())), deg_to_rad(12.0),
+				"%s: the door opens between the stones, not at one" % t.key)
+		for c: Vector3 in LandmarkModels.blocks(&"cast_stones"):
+			var stone := site.pos + Vector2(c.x, c.y).rotated(site.facing)
+			for p: Vector2 in [t.door, t.door + t.out * exit_out]:
+				check(p.distance_to(stone) > c.z + Tuning.PLAYER_RADIUS, "%s: %s is clear of a stone at %s" % [t.key, p, stone])
+		var l := InteriorGen.grow(4, t).layout
+		var kinds := {}
+		for sl: Dictionary in l.slots:
+			kinds[sl.slot] = true
+		for want: StringName in [&"desk", &"terminal", &"wall"]:
+			check(kinds.has(want), "%s: the bunker has a %s slot for the story" % [t.key, want])
+
+
+## A LANDSCAPE'S OWN FORM KEEPS ITS OWN ROOM (`form:ID` before `house`): in every
+## landscape that declares one, every house of that form opens on that kind of
+## room, and a house of any other form opens only on the landscape's own `house`
+## kind, if it has one. The crags' roundhouse and the drowned city's stilt house
+## both stand on seed 4.
+func test_every_house_opens_on_its_own_forms_room() -> void:
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var doors := {}
+	for t: Threshold in Interiors.thresholds(w):
+		if t.host_code == PropKind.HOUSE:
+			doors[t.key] = t
+	var seen := {}
+	for p: WorldProp in w.props:
+		if p.kind != PropKind.HOUSE:
+			continue
+		var land := w.country_at(floori(p.pos.x), floori(p.pos.y))
+		var d := BiomeRegistry.by_index(land)
+		if d == null:
+			continue
+		var key := "house@%d,%d" % [floori(p.pos.x * 4.0), floori(p.pos.y * 4.0)]
+		var form := Interiors.form_of(p, w.seed_value, land)
+		var want: StringName = d.interiors.get(StringName("form:%s" % form), d.interiors.get(&"house", &""))
+		if d.interiors.has(StringName("form:%s" % form)):
+			seen[want] = true
+		if want == &"":
+			check(not doors.has(key), "the %s %s at %s has no door" % [d.id, form, p.pos])
+		else:
+			check(doors.has(key) and (doors[key] as Threshold).kind == want,
+				"the %s %s at %s opens on a %s" % [d.id, form, p.pos, want])
+	for k: StringName in [&"roundhouse", &"stilt_room", &"tower_lobby"]:
+		check(seen.has(k), "seed 4 has a house that opens on a %s" % k)
+
+
+## EVERY BAY OF A ROUNDHOUSE CAN BE WALKED INTO, between piers that stand as
+## solid as they are drawn: from the doorway to the fire's side, the bed's side
+## and the front of every other thing a bay keeps, with the real query and the
+## room's real blocks (21_doors._walls).
+func test_every_roundhouse_bay_can_be_walked_to() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var n := 0
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind != &"roundhouse":
+			continue
+		n += 1
+		var l := InteriorGen.grow(4, t).layout
+		var q := WorldQuery.new(InteriorGen.grow(4, t).world)
+		var blocks: Array[Vector3] = doors_script.call(&"_walls", l)
+		q.set_blocks(&"rooms", blocks)
+		var reach := _reach(q, l.inside())
+		var goals := {"fire": l.hearth + (l.inside() - l.hearth).normalized() * 1.2}
+		var piers := 0
+		for th: Dictionary in l.things:
+			if th.kind == &"pier":
+				piers += 1
+				# A pier stops a body along its whole depth, not only at its foot.
+				var tip := (th.at as Vector2) + (th.face as Vector2) * float(th.deep) * 0.5
+				var held := false
+				for b: Vector3 in blocks:
+					if Vector2(b.x, b.y).distance_to(tip) < b.z + 0.05:
+						held = true
+				check(held, "%s: the pier's inner end at %s stops a body" % [t.key, tip])
+			elif th.kind in [&"bed", &"kist", &"quern", &"slates", &"loom", &"peat"]:
+				var off := 0.85 if th.kind == &"bed" else 0.6
+				goals["%s@%s" % [th.kind, th.at]] = (th.at as Vector2) + (th.face as Vector2) * off
+		eq(piers, 8, "%s: eight piers" % t.key)
+		for g: String in goals:
+			check(_reached(reach, goals[g]), "%s: the %s at %s cannot be walked to from the door" % [t.key, g, goals[g]])
+	gt(float(n), 0.0, "seed 4 has roundhouses to walk")
+
+
+## NOTHING OVER THE WATER WALLS ANYBODY IN: from the door of every stilt room on
+## seed 4, a body gets to the sand hearth, the table, the hammock's side and the
+## trapdoor's edge, with the real query and the room's real blocks -- the
+## hammock stands its whole length, and the trapdoor is a hole nobody walks over.
+func test_every_stilt_room_can_be_walked_to() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var n := 0
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind != &"stilt_room":
+			continue
+		n += 1
+		var p := InteriorGen.grow(4, t)
+		var l := p.layout
+		var q := WorldQuery.new(p.world)
+		var blocks: Array[Vector3] = doors_script.call(&"_walls", l)
+		q.set_blocks(&"rooms", blocks)
+		var reach := _reach(q, l.inside())
+		var middle := Vector2(l.rooms[0].position) + Vector2(l.rooms[0].size) * 0.5
+		var goals := {"hearth": l.hearth - l.hearth_wall * 1.2, "table": l.table + (middle - l.table).normalized() * 0.2}
+		for th: Dictionary in l.things:
+			var at: Vector2 = th.at
+			var inward := (middle - at).normalized()
+			match th.kind:
+				&"hammock", &"trapdoor":
+					goals["%s" % th.kind] = at + inward * 1.0
+					check(q.move_body(at + inward * 1.5, -inward * 1.5, Tuning.PLAYER_RADIUS).distance_to(at) > 0.45,
+						"%s: nobody walks into the %s at %s" % [t.key, th.kind, at])
+		for g: String in goals:
+			check(_reached(reach, goals[g]), "%s (%s/%s): the %s at %s cannot be walked to from the door" % [t.key, l.plan, l.dressing, g, goals[g]])
+	gt(float(n), 0.0, "seed 4 has stilt rooms to walk")
+
+
+## THE LOBBY CAN BE LIVED IN: from the door of every tower lobby on seed 4 a
+## body gets between the columns to the fire, the counter, the letterboxes, the
+## lift and into the stall past its curtain to the mattress -- and not up the
+## stair, which is choked to the slab.
+func test_every_tower_lobby_can_be_walked_to() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var n := 0
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind != &"tower_lobby":
+			continue
+		n += 1
+		var p := InteriorGen.grow(4, t)
+		var l := p.layout
+		var q := WorldQuery.new(p.world)
+		var blocks: Array[Vector3] = doors_script.call(&"_walls", l)
+		q.set_blocks(&"rooms", blocks)
+		var reach := _reach(q, l.inside())
+		var middle := Vector2(l.rooms[0].position) + Vector2(l.rooms[0].size) * 0.5
+		var goals := {"fire": l.hearth + (l.inside() - l.hearth).normalized() * 1.1}
+		for th: Dictionary in l.things:
+			var at: Vector2 = th.at
+			var inward := (middle - at).normalized()
+			match th.kind:
+				&"counter", &"letterboxes", &"lift":
+					goals["%s" % th.kind] = at + inward * 0.9
+				&"mattress":
+					goals["mattress"] = at + inward * 0.9
+				&"stair":
+					check(not _reached(reach, at), "%s: the choked stair at %s is not walked onto" % [t.key, at])
+		for g: String in goals:
+			check(_reached(reach, goals[g]), "%s (%s/%s): the %s at %s cannot be walked to from the door" % [t.key, l.plan, l.dressing, g, goals[g]])
+	gt(float(n), 0.0, "seed 4 has tower lobbies to walk")

@@ -1,0 +1,44 @@
+# WHAT THE BUNKER HOLDS (docs/STORY.md, StoryRooms): down the hatch among the cast
+# stones, and read through the real keys -- the terminal on the work room's desk,
+# the drawer under it, and the whiteboard beside it. Nothing speaks because the
+# player walked in; each page is a press of `use` in front of the thing.
+#
+#   tools/tour.sh tours/bunker_words.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is the terminal's page (it lands `was_cia`), 02 the drawer's, the second
+# press at the same desk, 03 the whiteboard's, 04 the room again once the glass
+# is put down.
+coast calm
+near door:bunker
+await door 5
+press use
+await inside:bunker 5
+wait 1.0
+tap lamp
+wait 0.4
+
+at slot:terminal
+wait 0.4
+press use
+await knows:bunker_draft 4
+wait 0.5
+shot 01-the-terminal-wakes-for-your-hands with inside:bunker,reading
+press use
+wait 0.4
+
+press use
+await knows:bunker_phones 4
+wait 0.5
+shot 02-two-phones-in-the-drawer with inside:bunker,reading
+press use
+wait 0.4
+
+at slot:whiteboard
+wait 0.4
+press use
+await knows:bunker_board 4
+wait 0.5
+shot 03-one-line-boxed-on-the-whiteboard with inside:bunker,reading
+press use
+wait 0.5
+shot 04-the-work-room-again with inside:bunker

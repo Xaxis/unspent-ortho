@@ -11,6 +11,7 @@ The player's own body, villagers, fauna, named cast, the story's talks and fragm
 - 37_fauna: `src/systems/37_fauna.gd`, reached by `tools/tour.sh tours/wild.tour`.
 - 49_cast: `src/systems/49_cast.gd`, reached by `tools/tour.sh tours/cast.tour`.
 - 49_story: `src/systems/49_story.gd`, reached by `tools/tour.sh tours/story.tour`.
+- Room words (StoryRooms, `StoryContent.ROOMS`): what a room's story slots hold, read with `use` inside; reached by `tools/tour.sh tours/bunker_words.tour --seed=4 --hour=15 --weather=clear:0`, `tests/story/test_rooms.gd`.
 
 ## How to reach it
 

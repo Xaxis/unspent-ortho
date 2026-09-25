@@ -37,6 +37,9 @@ var props: Array[Dictionary] = []
 ## recipe says where they stand; what body each role is, the door decides from
 ## the land the host stands in (21_doors), because a recipe knows no landscape.
 var residents: Array[Dictionary] = []
+## Where words can be found (docs/STORY.md fills them): {slot (&"desk",
+## &"terminal", &"wall"), at, face}. A recipe says where; the story says what.
+var slots: Array[Dictionary] = []
 ## The ways people walk every day, as [from, to] pairs: the boards along them
 ## are worn pale.
 var walks: Array[PackedVector2Array] = []
@@ -70,9 +73,13 @@ func _edge(seen: Dictionary, a: Vector2, b: Vector2, out: Vector2) -> void:
 	edges.append(e)
 
 
-## Where a player stands on coming in: a stride inside the doorway.
+## Where a player stands on coming in: well inside the doorway. Far enough that
+## the shoulder camera's eye, which is never let nearer the head than
+## Shoulder.LEAST_BACK, has room behind them inside the room: at a stride in, it
+## was pushed out through the doorway and the first frame over the shoulder was
+## the backs of the walls against the sky.
 func inside() -> Vector2:
-	return door - door_out * 0.9
+	return door - door_out * 1.6
 
 
 ## Whether a tile is floor.
