@@ -1,0 +1,42 @@
+# DEBRIS FALLING THROUGH THE SKY (21_falls, src/render/falls/), over the
+# shoulder: each class staged on the bearing the view faces as it lights, at dusk -- the sun
+# gone from the land but not from eighty kilometres up, so a train hangs gold --
+# and again in the dark, where the trains are the moon's. Dust is a short
+# streak; a fragment breaks up, its pieces diverging off the break with trains
+# of their own; a mass burns high overhead, and the view tips up to follow it
+# (21_falls `gaze`) and eases home.
+#   tools/tour.sh tours/falls_sky.tour --seed=7 --place=coast --hour=21.2 --view=shoulder --weather=clear:0 --fall=dust@21.3,fragment@21.4,mass@21.75,dust@23.3,fragment@23.4,mass@23.75
+wait 2
+# The clock ran while the world warmed up; put it back before the first fall.
+hour 21.25
+await fall 10
+shot 00-dusk-dust with fall
+await fall_breakup 15
+shot 01-dusk-fragment-breaking-up
+wait 1.5
+shot 02-dusk-fragment-pieces with fall
+wait 5
+shot 03-dusk-train with fall_train
+until fall 25
+mouse 0,-3000 1.2
+await fall_breakup 15
+shot 04-dusk-mass-overhead
+wait 2
+shot 05-dusk-mass-pieces with fall
+# Once the pieces are out nothing holds the gaze: the view eases home by itself.
+wait 9
+hour 23.25
+await fall 10
+shot 10-night-dust with fall
+await fall_breakup 15
+shot 11-night-fragment-breaking-up
+wait 1.5
+shot 12-night-fragment-pieces with fall
+wait 5
+shot 13-night-train with fall_train
+until fall 25
+mouse 0,-3000 1.2
+await fall_breakup 15
+shot 14-night-mass-overhead
+wait 2
+shot 15-night-mass-pieces with fall

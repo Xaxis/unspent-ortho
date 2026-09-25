@@ -228,8 +228,10 @@ static func boom_secs(f: Dictionary) -> float:
 ## ONE FALL STAGED BY NAME (`--fall=CLASS@MINUTE[/BEARING]`): the class asked
 ## for, lighting up at `minute`, its path's middle on `bearing` and crossing the
 ## view (its heading square to the bearing, not the radiant's), at a range that
-## shows the class whole.
-const STAGED_RANGE := {&"dust": 90.0, &"fragment": 150.0, &"mass": 32.0}
+## shows the class whole: dust and a fragment low enough over the horizon for
+## the shoulder view's own frame (about ten degrees up), a mass as near as its
+## class comes, high overhead, for the view to be tipped up to (21_falls `gaze`).
+const STAGED_RANGE := {&"dust": 300.0, &"fragment": 280.0, &"mass": 45.0}
 
 
 static func staged(_def: RefCounted, seed_value: int, kind: StringName, minute: float, bearing: float) -> Dictionary:
