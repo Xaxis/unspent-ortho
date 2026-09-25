@@ -751,7 +751,7 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 			for gx in cw:
 				var k := gy * cw + gx
 				var tx := clampi(roundi(gx * step + step * 0.5 - 0.5), 0, size - 1)
-				ct[k] = clampf(ct[k] - maxf(0.0, elev[ty * size + tx] - 5.0) * 0.035, 0.0, 1.0)
+				ct[k] = clampf(ct[k] - maxf(0.0, minf(elev[ty * size + tx], GenRelief.TUNED_TOP) - 5.0) * 0.035, 0.0, 1.0)
 				var best := 1
 				var bv := -1e12
 				for cc in range(1, types):
@@ -874,7 +874,7 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 						if sgn != 0.0:
 							# A type that takes the high ground: the local lie of the
 							# land moves the border, the broad slope sets how far.
-							m -= sgn * (elev[i] - 6.5)
+							m -= sgn * (minf(elev[i], GenRelief.TUNED_TOP) - 6.5)
 							gx -= sgn * (elev_smooth[ib] - elev_smooth[ia])
 							gy -= sgn * (elev_smooth[jb] - elev_smooth[ja])
 						var grad := maxf(0.25, sqrt(gx * gx + gy * gy) / float(maxi(1, xb - xa + yb - ya) / 2))

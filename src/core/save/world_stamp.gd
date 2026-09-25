@@ -147,7 +147,12 @@ const UNKNOWN := "unknown"
 ##     and the treads with it (they are sited last, on what was laid). A one-body
 ##     world takes none of it, so nothing moves at 256 and `test_parity` is not
 ##     the evidence: `tools/gd/probe_regions.gd` at 1840 is.
-const GEN := 27
+## 28. A region has a FORM (`GenForm`, `BiomeDef.form`, the coast's first): the
+##     land rises from its shore to a spine at the far side of the landscape,
+##     broken by passes. The level cap goes 15 -> 30 so a spine can stand where
+##     a player sees it; relief noise 301/302 widen with `body_k` on continents.
+##     Every seed moves, at 256 too (through the coast's form alone).
+const GEN := 28
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
@@ -155,7 +160,7 @@ const GEN := 27
 const TERRAIN: Array[String] = [
 	"id", "index", "order", "sea", "realms",
 	"share", "spread", "anchors", "temp_range", "moist_range", "site_count", "adjacency", "coastal",
-	"relief", "caldera", "dunes",
+	"relief", "form", "caldera", "dunes",
 	"border_elevation", "tongues", "reach_out_thin", "reach_in_thin", "reach_out_high", "reach_in_low",
 	"plain_ground", "pool_rim_ground", "rivers_freeze", "village_ground", "village_square_ground", "built",
 	"props", "ore", "gravel_ore", "reed_chance", "scorched", "shore_bush", "surface", "scatter",

@@ -78,6 +78,10 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	t = _mark(c, marks, &"layout", t)
 	if _halted(w):
 		return w
+	GenForm.run(c)
+	t = _mark(c, marks, &"form", t)
+	if _halted(w):
+		return w
 	GenRelief.run(c)
 	t = _mark(c, marks, &"relief", t)
 	if _halted(w):

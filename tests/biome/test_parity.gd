@@ -405,16 +405,28 @@ extends TestCase
 ## stage returns before it reads a tile (tests/render/test_colossus_treads.gd
 ## holds both halves: none at 256, some at the shipped size). The treads' own
 ## evidence is the shipped-size world in that file, not this one.
+##
+## RE-ACCEPTED A SIXTEENTH TIME (2026-09-24, GEN 28): the coast has a FORM
+## (`GenForm`, `BiomeDef.form`), a spine it rises to from its shore, and at 256
+## that is the one thing that moves. All six digests move on all five seeds:
+## `level` from the rise, and `country`, `country2`, `blend` and everything
+## after them because borders and ground follow height. Causation: with
+## `coast.form` set to {} and everything else of GEN 28 in place (the level
+## cap raised 15 -> 30, relief noise 301/302 scaled by max(1, body_k), the
+## climate and border rules read no higher than `GenRelief.TUNED_TOP`), this
+## test passed on the previous hashes in the same session. At 256 `body_k` is
+## 0.5, so the noise scaling is inert here; `tools/gd/probe_regions.gd` at 1840
+## is the evidence for it.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "d776653d 6ad6b905 fad9295c c9461b35 e6b8c99e 15ad2cee",
-	3: "b5edae39 c8d3b8f5 3b4cb3b7 4c69a413 44aa1757 d14a9098",
-	7: "58b06d6a 6d58b415 2463bc7c e866cdde 06bf3a40 06b9494c",
-	42: "dadf03f6 5a0d5b87 03251c49 d215e370 177dc1cd 8e94af18",
-	90210: "ccfb32d9 8cb5fc79 ef5cf0f7 fedceafb 28fb97e2 af0d9cd1",
+	1: "39b456b2 688a6efa 35068f69 2cfa786a 2236a821 6d529f68",
+	3: "16a895db 9ed04033 b593be7d 72fcefcf e0d3a745 f1b845a7",
+	7: "2766f736 b5a0c5b4 1db46e40 847d3ac8 96eec23d 4f0bdac4",
+	42: "de2cfc6f b09abe20 c2a5a406 20aef866 5b85d4e3 4e93a57f",
+	90210: "26a4e6b0 9afcd03c e9193096 edb0aa1b 579e1ebc 0f90b938",
 }
 
 
