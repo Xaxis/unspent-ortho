@@ -1,29 +1,39 @@
 # Snow and ash on the grass (grass.gdshader, slice 4), where they can lie on it.
 # What settles on a blade is masked by what its ground can hold (SkyGround),
-# as on the ground itself, so this is shot where a snowy and an ashen landscape
-# meet grass: on seed 12 the snowfield meets the grey orchards' turf and the
-# burning meets the sulphur jungle's. Each weather beside a dry frame of the
-# same place and hour, over the shoulder.
+# as on the ground itself, so this is shot on grass a snowy and an ashen
+# landscape grow themselves: seed 12's snowfield has some 3,400 tiles of it and
+# the burning some 400. Each weather beside a dry frame of the same place and hour,
+# over the shoulder, and `perf blades` gives the colour of only the blades in
+# each: snow must raise their brightness and ash take their colour.
+# `near snow_meadow` / `near ash_meadow` (18_trample) stand where the ground holds
+# the most of it, since a landscape's grass grows mostly on its ecotone.
 #   tools/tour.sh tours/foliage_snow_ash.tour --seed=12
 hour 11
 coast calm
-place snowfield-grey_orchards
-ground grass
+place snowfield
+near snow_meadow
 hold shoulder_peek
 await shoulder 3
 weather clear:0:wind=0.5
 wait 3.0
-shot 01-orchard-grass-by-the-snowfield-dry with border:snowfield-grey_orchards
+perf blades
+shot 01-snowfield-grass-dry with land:snowfield
 weather snow:1:wind=0.5
 wait 4.0
-shot 02-orchard-grass-by-the-snowfield-snow with border:snowfield-grey_orchards
-place burning-sulphur_jungle
-ground grass
+perf blades
+shot 02-snowfield-grass-snow with land:snowfield
+release shoulder_peek
+place burning
+near ash_meadow
+hold shoulder_peek
+await shoulder 3
 weather clear:0:wind=0.5
 wait 3.0
-shot 03-jungle-grass-by-the-burning-dry with border:burning-sulphur_jungle
+perf blades
+shot 03-burning-grass-dry with land:burning
 weather ash:1:wind=0.5
 wait 4.0
-shot 04-jungle-grass-by-the-burning-ash with border:burning-sulphur_jungle
+perf blades
+shot 04-burning-grass-ash with land:burning
 release shoulder_peek
 weather rules

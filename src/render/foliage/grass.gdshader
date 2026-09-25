@@ -84,7 +84,9 @@ const float RAIN_HITS = 0.012;
 const float WET_DARK = 0.72;
 const float SNOW_BOW = 0.16;
 const float SNOW_STILL = 0.6;
-const float ASH_GREY = 0.65;
+const float ASH_GREY = 0.8;
+// How much lying snow or ash (masked) starts to settle on a blade, and settles fully.
+const vec2 SNOW_HOLD = vec2(0.1, 0.55);
 const vec3 SNOW_ON = vec3(0.8667, 0.9412, 0.9686);
 
 void vertex() {
@@ -163,11 +165,16 @@ void fragment() {
 	// Wet: darker, and slick (ROUGHNESS below).
 	float wet = max(sky_settle.z > 0.0 ? settle_v.z : 0.0, sky_air.x * 0.8);
 	c *= mix(1.0, WET_DARK, wet);
-	// Ash: greyed toward what falls, most on the upper blade that catches it.
-	c = mix(c, mix(vec3(lum) * 0.8, SKY_ASH, 0.5), settle_v.y * ASH_GREY * (0.4 + 0.6 * h));
-	// Snow: lying on the upper blade in lumps, pinned to the world.
+	// Ash: greyed toward what falls, most on the upper blade that catches it,
+	// as soon as the ground round it holds ash (SNOW_HOLD, as snow).
+	float ashed = smoothstep(SNOW_HOLD.x, SNOW_HOLD.y, settle_v.y);
+	c = mix(c, mix(vec3(lum) * 0.8, SKY_ASH, 0.5), ashed * ASH_GREY * (0.4 + 0.6 * h));
+	// Snow: lying on the upper blade in lumps, pinned to the world. A blade
+	// holds snow as soon as the ground round it does (SNOW_HOLD), so where the
+	// ground has gone white the tufts in it have too, not half of each.
 	float lump = sky_noise(world_pos.xz * 5.3 + world_pos.y * 3.1);
-	float snow_on = settle_v.x * smoothstep(0.25, 0.7, h) * smoothstep(0.35, 0.6, lump + settle_v.x * 0.35);
+	float lies = smoothstep(SNOW_HOLD.x, SNOW_HOLD.y, settle_v.x);
+	float snow_on = lies * smoothstep(0.12, 0.55, h) * smoothstep(0.3, 0.45, lump + lies * 0.4);
 	c = mix(c, SNOW_ON, snow_on);
 	c = sky_apply(c, world_pos, TIME);
 	vec3 n_world = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
