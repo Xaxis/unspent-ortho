@@ -13,7 +13,7 @@ Realms and portals, the rooms behind a house's door, landmarks and caches, regio
 
 ## How to reach it
 
-- `tools/tour.sh tours/realms.tour`, `tours/house.tour`, `tours/rooms.tour --seed=4 --hour=15 --weather=clear:0`, `tours/landmarks.tour`, `tours/region.tour`.
+- `tools/tour.sh tours/realms.tour`, `tours/house.tour`, `tours/rooms.tour --seed=4 --hour=15 --weather=clear:0`, `tours/hall.tour --seed=4 --hour=11 --weather=clear:0` (a depot's hatch and the weapons hall under it), `tours/landmarks.tour`, `tours/region.tour`.
 
 ## How to check it
 

@@ -10,6 +10,7 @@ class_name Interiors
 
 const RECIPES := {
 	&"cottage": "res://src/content/interiors/cottage.gd",
+	&"weapons_hall": "res://src/content/interiors/weapons_hall.gd",
 }
 
 static var _kinds: Dictionary = {}
@@ -25,7 +26,8 @@ static func kind(id: StringName) -> InteriorKind:
 	return _kinds[id]
 
 
-## Every door on `w`: each house whose landscape declares a kind for houses.
+## Every door on `w`: each house whose landscape declares a kind for houses, and
+## each works depot whose landscape declares one for `works:depot`.
 ## Derived from the finished island, so it never moves a thing on it, and kept
 ## for the life of that world.
 static func thresholds(w: WorldData) -> Array[Threshold]:
@@ -45,6 +47,16 @@ static func thresholds(w: WorldData) -> Array[Threshold]:
 			if k == &"" or kind(k) == null:
 				continue
 			out.append(Threshold.of_house(p, k, land))
+		# And each depot of the plan whose landscape keeps a hall under its yard.
+		for site: WorksSite in Works.sites(w):
+			var land := w.country_at(floori(site.pos.x), floori(site.pos.y))
+			var d := BiomeRegistry.by_index(land)
+			if d == null:
+				continue
+			var k: StringName = d.interiors.get(&"works:depot", &"")
+			if k == &"" or kind(k) == null:
+				continue
+			out.append(Threshold.of_depot(site, k, land))
 	_doors[id] = out
 	return out
 

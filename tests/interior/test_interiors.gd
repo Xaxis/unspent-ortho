@@ -87,6 +87,8 @@ func test_a_coast_deals_every_plan_and_every_household() -> void:
 	var homes := {}
 	var pairs := {}
 	for t: Threshold in Interiors.thresholds(w):
+		if t.kind != &"cottage":
+			continue
 		var l := InteriorGen.grow(4, t).layout
 		plans[l.plan] = true
 		homes[l.dressing] = true
@@ -150,3 +152,27 @@ func _reached(reach: Dictionary, at: Vector2) -> bool:
 			if reach.has(c + Vector2i(dx, dy)):
 				return true
 	return false
+
+
+## EVERY DEPOT OF THE PLAN ON THE COAST KEEPS A HALL, and its hatch stands clear
+## of the deck: off the yard's back end, with a body's room between the hatch's
+## door and the deck's own mass (WorksDepot.yard_blocks reaches 3.8 back).
+func test_every_coast_depot_has_a_hall_behind_a_clear_hatch() -> void:
+	var w := _world()
+	var coast_sites := 0
+	for site: WorksSite in Works.sites(w):
+		var d := BiomeRegistry.by_index(w.country_at(floori(site.pos.x), floori(site.pos.y)))
+		if d != null and d.interiors.has(&"works:depot"):
+			coast_sites += 1
+	var halls: Array[Threshold] = []
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind == &"weapons_hall":
+			halls.append(t)
+	gt(float(coast_sites), 0.0, "seed 4 has depots where a hall is declared")
+	eq(halls.size(), coast_sites, "one hall door per such depot")
+	for t: Threshold in halls:
+		var site_pos := t.host - t.out * Threshold.HATCH
+		check(t.door.distance_to(site_pos) > 3.8 + Tuning.PLAYER_RADIUS + 0.5, "%s: the hatch door clears the deck" % t.key)
+		var p := InteriorGen.grow(4, t)
+		eq(p.kind.id, &"weapons_hall", "%s grows a weapons hall" % t.key)
+		check(not p.layout.has_hearth, "%s: a hall has no hearth for the walls to stand round" % t.key)

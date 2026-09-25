@@ -21,7 +21,7 @@ static func grow(seed_value: int, t: Threshold) -> Pocket:
 	var k := Interiors.kind(t.kind)
 	if k == null:
 		return null
-	var rng := Rng.make(Rng.hash_ints(seed_value, PropKind.HOUSE, floori(t.host.x * 4.0), floori(t.host.y * 4.0), SALT))
+	var rng := Rng.make(Rng.hash_ints(seed_value, t.host_code, floori(t.host.x * 4.0), floori(t.host.y * 4.0), SALT))
 	var l: InteriorLayout = k.recipe.call(&"lay", rng)
 	_turn(l, _quantize(t.out))
 	var w := WorldData.new(seed_value, l.size)
@@ -34,8 +34,8 @@ static func grow(seed_value: int, t: Threshold) -> Pocket:
 			w.ground[i] = Ground.FLOOR
 			w.country[i] = t.land
 	w.spawn = l.inside()
-	w.props.append(WorldProp.new(0, PropKind.FIRE, l.hearth, (l.hearth_wall).angle(), 1.0))
-	w.props.append(WorldProp.new(1, PropKind.BENCH, l.table, (l.door_out).angle() + PI * 0.5, 1.0))
+	for pr: Dictionary in l.props:
+		w.props.append(WorldProp.new(w.props.size(), int(pr.kind), pr.at, (pr.face as Vector2).angle(), 1.0))
 	var p := Pocket.new()
 	p.world = w
 	p.layout = l
@@ -91,6 +91,9 @@ static func _turn(l: InteriorLayout, out: Vector2) -> void:
 	for t: Dictionary in l.things:
 		t.at = (f.call(t.at) as Vector2) + shift
 		t.face = f.call(t.face)
+	for pr: Dictionary in l.props:
+		pr.at = (f.call(pr.at) as Vector2) + shift
+		pr.face = f.call(pr.face)
 	for i in l.walks.size():
 		var w2 := l.walks[i]
 		for j in w2.size():

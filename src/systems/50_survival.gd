@@ -186,6 +186,9 @@ func _read_keys() -> void:
 	_craft_down = craft_down
 	if game.input_blocked() or Engine.get_process_frames() - _screen_frame <= 1:
 		return
+	if use_pressed and _use_spent():
+		# Another system took this press first (a door, a shaft): it is theirs.
+		return
 	if use_pressed:
 		if Survival.busy(game) and game.body.grip <= 0:
 			# Pressed while a take plays out: kept for the moment the hands are free.
@@ -195,6 +198,16 @@ func _read_keys() -> void:
 	elif craft_pressed:
 		_craft_wait = 2
 		_screen_touched = false
+
+
+## Whether a system numbered before this one has spent this press, the same
+## question 49_story asks (the One use key seam): a door opening on the press
+## that would otherwise have gathered the bush growing against it.
+func _use_spent() -> bool:
+	for sys in game.systems:
+		if sys != self and sys.has_method(&"use_spent") and bool(sys.call(&"use_spent")):
+			return true
+	return false
 
 
 func _process(delta: float) -> void:

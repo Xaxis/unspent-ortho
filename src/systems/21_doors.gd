@@ -19,9 +19,8 @@ extends GameSystem
 ##
 ## Inside, the walls are the layout's, handed to the query as blocks; the model
 ## shows the camera a section from above and the whole room over the shoulder
-## (CottageModel.show_for); the windows let the sun in along its own bearing.
+## (the kind's model, `show_for`); the windows let the sun in along its own bearing.
 
-const CottageModel := preload("res://src/models/interior/cottage_model.gd")
 ## A pocket is grown and its view built within this of a door, and a body within
 ## REACH of one may go through it.
 const WARM := 7.0
@@ -73,6 +72,7 @@ var built_after_out := -1
 func setup(g: Game) -> void:
 	super.setup(g)
 	doors = Interiors.thresholds(g.world)
+	_stand_hatches()
 	var layer := CanvasLayer.new()
 	layer.layer = 90
 	layer.name = "door_cover"
@@ -85,6 +85,32 @@ func setup(g: Game) -> void:
 	_cover.material = _cover_mat
 	_cover.visible = false
 	layer.add_child(_cover)
+
+
+## THE HATCHES OVER THE DEPOTS' HALLS: a door that is not part of anything
+## already drawn (a house's door is its model's), so this system draws it, one
+## per depot door, and hands its housing to the query as a wall. They stand on
+## the world outside and are hidden while the player is in a room.
+const HatchModel := preload("res://src/models/interior/hatch_model.gd")
+var _hatches: Node3D
+
+
+func _stand_hatches() -> void:
+	if _hatches != null:
+		_hatches.queue_free()
+	_hatches = Node3D.new()
+	_hatches.name = "hatches"
+	game.add_child(_hatches)
+	var mass: Array[Vector3] = []
+	for t: Threshold in doors:
+		if t.host_code != Threshold.DEPOT:
+			continue
+		var n := HatchModel.node(game.view.world_material())
+		n.position = game.world.to_3d(t.host)
+		n.rotation.y = -t.rot
+		_hatches.add_child(n)
+		mass.append(Vector3(t.host.x, t.host.y, HatchModel.REACH))
+	game.query.set_blocks(&"hatches", mass)
 
 
 ## A game that ends with the player indoors still holds the coast's view, out of
@@ -181,7 +207,13 @@ func _pressed() -> bool:
 
 ## `use` is one key: the door takes it only when it is nearer than whatever is
 ## under the hand, as a shaft does (20_realms `_shaft_wins`).
+##
+## A door the player is FACING wins outright: a bush growing against a hatch was
+## a hair nearer than its door, so the key gathered the bush every time.
 func _door_wins(at: Vector2) -> bool:
+	var to_door := at - game.player.pos
+	if to_door.length() > 0.01 and Vector2.from_angle(game.player.hero.facing).dot(to_door.normalized()) > 0.7:
+		return true
 	var t := Survival.use_target(game)
 	return t == null or at.distance_to(game.player.pos) <= t.pos.distance_to(game.player.pos)
 
@@ -200,7 +232,9 @@ func _begin(t: Threshold) -> void:
 	_view.setup_sharing(_grown.world, game.view)
 	_view.visible = false
 	_view.focus = _grown.world.spawn
-	_model = CottageModel.new()
+	# The kind names its model by path (InteriorKind.model): a cottage and a
+	# machines' hall are drawn by different scripts answering the same calls.
+	_model = (load(_grown.kind.model) as GDScript).new()
 	_model.name = "rooms"
 	_model.call(&"build", _grown.layout, _grown.kind, t.land, game.view.world_material())
 	_view.add_child(_model)
@@ -239,6 +273,7 @@ func _swap_in() -> void:
 	_outside_key = realms.get("_realm")
 	_outside_height = game.camera.view_height
 	game.set_meta(SaveCore.META_OUTSIDE, _outside)
+	_hatches.visible = false
 	game.remove_child(_outside_view)
 	_view.visible = true
 	game.view = _view
@@ -296,6 +331,7 @@ func _swap_out() -> void:
 	_motes.clear()
 	game.query.set_blocks(&"rooms", [] as Array[Vector3])
 	game.remove_meta(SaveCore.META_OUTSIDE)
+	_hatches.visible = true
 	var inner := game.view
 	game.remove_child(inner)
 	inner.queue_free()
@@ -344,8 +380,9 @@ static func _walls(l: InteriorLayout) -> Array[Vector3]:
 			var r := 0.12 if k != 1 and jambs.has(_corner(p)) else 0.3
 			out.append(Vector3(p.x, p.y, r))
 	# The chimney breast stands out from its wall.
-	var c := l.hearth + l.hearth_wall * 0.35
-	out.append(Vector3(c.x, c.y, 0.55))
+	if l.has_hearth:
+		var c := l.hearth + l.hearth_wall * 0.35
+		out.append(Vector3(c.x, c.y, 0.55))
 	# And what the household keeps: a bed is two tiles long, so two circles.
 	for t: Dictionary in l.things:
 		var r := float(t.solid)
@@ -425,11 +462,13 @@ func _make_lights() -> void:
 		_motes.append(motes)
 	for at: Array in model.get(&"lights"):
 		var lamp := OmniLight3D.new()
-		var machine: bool = at[1] == &"machine"
-		# The lantern is warm and reaches the room; the stolen strip is the one
-		# cold light in the house and reaches only the bench it hangs over.
+		var machine: bool = at[1] != &"lamp"
+		# The lantern is warm and reaches the room; a stolen strip in a cottage is
+		# the one cold light in the house and reaches only the bench it hangs
+		# over; a hall's strips are the machines' own light, hung high, reaching
+		# the floor in cold pools.
 		lamp.light_color = Color(0.74, 0.72, 0.9) if machine else Color(1.0, 0.7, 0.4)
-		lamp.omni_range = 3.2 if machine else 5.5
+		lamp.omni_range = 5.5 if at[1] == &"strip" else (3.2 if machine else 5.5)
 		lamp.omni_attenuation = 1.2
 		lamp.shadow_enabled = false
 		game.view.add_child(lamp)
@@ -467,7 +506,13 @@ func _light_windows() -> void:
 			ground.lerp(hor, 0.28) * lit)
 	for pair: Array in _lamps:
 		var lamp := pair[0] as OmniLight3D
-		lamp.light_energy = 0.55 if pair[1] == &"machine" else lerpf(1.6, 0.25, day)
+		match pair[1]:
+			&"machine":
+				lamp.light_energy = 0.55
+			&"strip":
+				lamp.light_energy = 1.5
+			_:
+				lamp.light_energy = lerpf(1.6, 0.25, day)
 	for i in _windows.size():
 		var at: Vector3 = _windows[i][0]
 		var inward2: Vector2 = _windows[i][1]
@@ -669,14 +714,15 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
 ## inside, just inside the room's own door, facing out. `door:PLAN` and
 ## `door:HOUSEHOLD` (cottage.gd's deals) ask for the nearest door whose room is
-## laid to that plan or kept by that household, so a tour stages a room by what
-## is in it rather than by where some house happens to stand.
+## laid to that plan or kept by that household -- or, `door:KIND`, the nearest
+## door into that kind at all -- so a tour stages a room by what is in it rather
+## than by where some house happens to stand.
 func tour_place(what: String) -> Vector2:
 	var t := _tour_door(what)
 	if pocket != null and t == null and TOUR_PLACES.has(what):
@@ -703,8 +749,10 @@ func _tour_door(what: String) -> Threshold:
 	order.sort_custom(func(a: Threshold, b: Threshold) -> bool:
 		return a.door.distance_squared_to(from) < b.door.distance_squared_to(from))
 	for t: Threshold in order:
-		if any:
+		if any or String(t.kind) == want:
 			return t
+		if Interiors.RECIPES.has(StringName(want)):
+			continue
 		var l := InteriorGen.grow(game.options.seed_value, t).layout
 		if String(l.plan) == want or String(l.dressing) == want:
 			return t
@@ -718,6 +766,7 @@ func realm_changed(from: StringName, to: StringName) -> void:
 		return
 	_drop_grown()
 	doors = Interiors.thresholds(game.world)
+	_stand_hatches()
 
 
 ## A SAVE MADE INSIDE (20_realms `started`): the game opened on the world outside,
