@@ -27,7 +27,9 @@ const HOUSEHOLDS: Array[StringName] = [&"picker", &"grower", &"keeper"]
 static func make() -> InteriorKind:
 	var k := InteriorKind.new()
 	k.id = &"tower_lobby"
-	k.closed = 0.5
+	# Shut in: light only where the walls have gaps, the slab a hole, and the
+	# tube. At 0.5 it was lit evenly from nowhere, a showroom (InteriorKind).
+	k.closed = 0.78
 	k.zoom = 10.0
 	k.wall_h = 3.2
 	k.cut = 0.9
