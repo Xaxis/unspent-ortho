@@ -73,6 +73,8 @@ func setup(g: Game) -> void:
 	super.setup(g)
 	doors = Interiors.thresholds(g.world)
 	_stand_hatches()
+	SaveGame.register(&"doors", _save, _load)
+	Events.time_skipped.connect(_on_time_skipped)
 	var layer := CanvasLayer.new()
 	layer.layer = 90
 	layer.name = "door_cover"
@@ -286,6 +288,7 @@ func _swap_in() -> void:
 	game.camera.view_height = p.kind.zoom
 	_windows = model.call(&"windows")
 	_make_lights()
+	_wake_residents()
 	crossings += 1
 
 
@@ -303,6 +306,106 @@ func go_out() -> void:
 	built_after_out = game.view.build_count - before
 
 
+# --- who is in a room ------------------------------------------------------------
+
+## ARRESTED IN A ROOM, PUT OUT OF IT. A warden's blow stands a body at the side
+## of the track until it is done with them (40_fight: the hours pass, every body
+## is cleared); in the hall it keeps, the side of the track is outside its door.
+## Left inside instead, the hour passed in an empty hall that came back full the
+## next time the player walked in -- and the arrest meant nothing.
+func _on_time_skipped(_minutes: float, reason: StringName) -> void:
+	if reason == &"arrested" and pocket != null and not _swapping:
+		go_out()
+
+
+## A ROOM'S RESIDENTS are put into the fight on the way in, where the recipe
+## stood them, as the bodies the host's land keeps: a keeper is the plan's own
+## warden, a guard the first hunter the land's roster names. They know at once
+## that somebody has come in (a keeper takes it as trespass on what it holds),
+## and one that is broken stays broken: the dead are kept per door, and saved.
+var _residents: Array[Array] = []
+var _dead: Dictionary = {}
+
+
+func _wake_residents() -> void:
+	_residents.clear()
+	var sim: FightSim = game.player.sim
+	if sim == null:
+		return
+	var gone: Array = _dead.get(pocket.threshold.key, [])
+	for i in pocket.layout.residents.size():
+		if gone.has(i):
+			continue
+		var r: Dictionary = pocket.layout.residents[i]
+		var kind := _body_for(StringName(r.role), pocket.threshold.land)
+		if kind == &"":
+			continue
+		var m := sim.add_mob(kind, r.at)
+		m.home = r.at
+		m.facing = (r.face as Vector2).angle()
+		m.aim = m.facing
+		sim.disturb(m, &"trespass")
+		_residents.append([i, m])
+
+
+## Which roster body a role is, in the land the host stands in.
+static func _body_for(role: StringName, land: int) -> StringName:
+	if role == &"warden" and not Roster.row(&"warden").is_empty():
+		return &"warden"
+	var d := BiomeRegistry.by_index(land)
+	var first := &""
+	if d != null:
+		for kind: Variant in d.roster:
+			var k := StringName(str(kind))
+			var row := Roster.row(k)
+			if row.is_empty() or not bool(row.get("machine", false)):
+				continue
+			if first == &"":
+				first = k
+			if Roles.of(k) == Roles.HUNTER:
+				return k
+	return first if first != &"" else &"runner"
+
+
+func _count_the_dead() -> void:
+	_count_live_dead()
+	_residents.clear()
+
+
+## Who has died in which room: the one thing about a room's residents worth
+## keeping, because the room and who stands in it are grown again from the key.
+func _save() -> Variant:
+	_count_live_dead()
+	var out := {}
+	for k: Variant in _dead:
+		out[str(k)] = _dead[k]
+	return {"dead": out}
+
+
+func _load(v: Variant) -> void:
+	_dead.clear()
+	if not (v is Dictionary):
+		return
+	var d: Dictionary = (v as Dictionary).get("dead", {})
+	for k: Variant in d:
+		var idx: Array = []
+		for n: Variant in d[k]:
+			idx.append(SaveCodec.to_int(n))
+		_dead[str(k)] = idx
+
+
+## A save made in a room counts those already broken in it, without leaving.
+func _count_live_dead() -> void:
+	if pocket == null:
+		return
+	var gone: Array = _dead.get(pocket.threshold.key, [])
+	for pair: Array in _residents:
+		if not (pair[1] as MobState).alive and not gone.has(pair[0]):
+			gone.append(pair[0])
+	if not gone.is_empty():
+		_dead[pocket.threshold.key] = gone
+
+
 ## The middle of every room together.
 func _room_middle() -> Vector2:
 	var box := Rect2(Vector2(pocket.layout.rooms[0].position), Vector2(pocket.layout.rooms[0].size))
@@ -313,6 +416,7 @@ func _room_middle() -> Vector2:
 
 func _swap_out() -> void:
 	var realms := _realms()
+	_count_the_dead()
 	game.camera.frame_bias = Vector3.ZERO
 	var t := pocket.threshold
 	for l: SpotLight3D in _lights:

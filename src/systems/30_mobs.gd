@@ -98,7 +98,8 @@ func _physics_process(_delta: float) -> void:
 		return
 	if game == null or not game.options.stats:
 		_read_moment()
-		coast.tick()
+		if not _indoors:
+			coast.tick()
 		_listen()
 		_ensure_nodes()
 		return
@@ -107,7 +108,8 @@ func _physics_process(_delta: float) -> void:
 	var t := Time.get_ticks_usec()
 	_read_moment()
 	t = _mark(0, t)
-	coast.tick()
+	if not _indoors:
+		coast.tick()
 	t = _mark(1, t)
 	_listen()
 	t = _mark(2, t)
@@ -116,11 +118,15 @@ func _physics_process(_delta: float) -> void:
 	_mark(3, t)
 
 
-## Nothing is rolled for a room, and what stood outside waits there: a crossing
-## already cleared the bodies (20_realms.enter), and this keeps the coast's
-## spawner from dealing the room a machine (docs/interiors).
+## Nothing is ROLLED for a room: a crossing already cleared the outside's bodies
+## (20_realms.enter), and this keeps the coast's spawner from dealing the room a
+## machine. It goes on drawing bodies, because a room's own residents are bodies
+## too (21_doors puts them in the fight) -- only the spawner stops.
+var _indoors := false
+
+
 func indoors(inside: bool) -> void:
-	sleep_indoors(inside, [_layer] as Array[Node3D])
+	_indoors = inside
 
 
 func _mark(i: int, since: int) -> int:
@@ -257,6 +263,10 @@ func _read_moment() -> void:
 
 func _on_time_skipped(minutes: float, reason: StringName) -> void:
 	if sim == null or minutes <= JUMP_CLEARS or not CLEARING.has(reason):
+		return
+	# A room's bodies live there: an hour lost in a hall (a snatch) does not empty
+	# it the way it empties the coast, which is only ever the bodies passing by.
+	if _indoors:
 		return
 	if sim.fight_on and reason != &"downed" and reason != &"carried":
 		# Nothing long starts with a fight on (Survival.threat_near); if a jump comes

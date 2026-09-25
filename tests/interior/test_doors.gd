@@ -75,7 +75,9 @@ func test_in_through_a_cottage_door_and_out_onto_the_same_coast() -> void:
 	# What keeps the outside sleeps through the door rather than re-reading it.
 	var sleepers: Array[Node] = []
 	for sys: Node in g.systems:
-		if sys.has_method(&"indoors"):
+		# A system that keeps its own `_indoors` flag stays awake in a room on
+		# purpose (30_mobs draws the room's residents; only its spawner stops).
+		if sys.has_method(&"indoors") and sys.get(&"_indoors") == null:
 			sleepers.append(sys)
 	gt(float(sleepers.size()), 0.0, "some systems keep the outside")
 	for sys: Node in sleepers:
@@ -227,4 +229,91 @@ func test_a_room_never_lights_past_the_tiers_row() -> void:
 		Sx.end(g)
 	SettingsApply.quality_asked = &""
 	SettingsApply.quality()
+	Sx.finish()
+
+
+## A HALL'S RESIDENTS ARE IN THE FIGHT, and they know somebody has come in: the
+## warden where the recipe stood it and whatever walks the hall, as the one
+## FightSim's bodies, still there after the room has run a while.
+func test_a_halls_residents_are_in_the_fight() -> void:
+	Sx.use_root("doors-hall")
+	var g := Sx.game(tree, ["--seed=4", "--hour=11", "--weather=clear:0"])
+	var d := _doors(g)
+	var p: Vector2 = d.call(&"tour_place", "door:weapons_hall")
+	check(p.is_finite(), "seed 4 has a hall door")
+	g.player.hero.pos = p
+	g.player.hero.facing = float(d.call(&"tour_face", "door:weapons_hall"))
+	g.player.sync_view(0.0)
+	await _frames(20)
+	var t: Threshold = d.get("door_near")
+	check(t != null and t.kind == &"weapons_hall", "standing at the hall's hatch")
+	await d.call(&"go_in", t)
+	check(bool(d.call(&"tour_seen", &"inside:weapons_hall")), "inside the hall")
+	var pocket: InteriorGen.Pocket = d.get("pocket")
+	var sim: FightSim = g.player.sim
+	eq(sim.mobs.size(), pocket.layout.residents.size(), "every resident is a body in the fight, as it comes in")
+	await _frames(60)
+	var kinds: Array[StringName] = []
+	for m: MobState in sim.mobs:
+		if m.alive:
+			kinds.append(m.kind)
+	check(kinds.has(&"warden"), "the warden is still there a second later (%s)" % [kinds])
+	eq(kinds.size(), pocket.layout.residents.size(), "and so is everything else that walks the hall")
+	# And they are DRAWN: a body the fight holds and nobody draws is a fight with
+	# the invisible (30_mobs makes a node for each, in group `mobs`).
+	eq(tree.get_nodes_in_group(&"mobs").size(), kinds.size(), "each is drawn")
+	Sx.end(g)
+	Sx.finish()
+
+
+## What a hall keeps: a resident broken stays broken (out through the hatch and
+## back in, it is not there again), and a warden's arrest stands the player
+## outside its door rather than in the hall it emptied.
+func test_a_hall_remembers_its_dead_and_puts_the_arrested_out() -> void:
+	Sx.use_root("doors-hall-dead")
+	var g := Sx.game(tree, ["--seed=4", "--hour=11", "--weather=clear:0"])
+	var d := _doors(g)
+	var sim: FightSim = g.player.sim
+	g.player.hero.pos = d.call(&"tour_place", "door:weapons_hall")
+	g.player.hero.facing = float(d.call(&"tour_face", "door:weapons_hall"))
+	g.player.sync_view(0.0)
+	await _frames(20)
+	var t: Threshold = d.get("door_near")
+	await d.call(&"go_in", t)
+	var before := sim.mobs.size()
+	gt(float(before), 1.0, "the hall has its residents")
+	# Break the warden through the one door anything but the player's swing uses.
+	var warden: MobState = null
+	for m: MobState in sim.mobs:
+		if m.kind == &"warden":
+			warden = m
+	check(warden != null, "a warden keeps the hall")
+	var b := TurretRules.blow()
+	b.dmg = 999
+	for i in 6:
+		if warden.alive:
+			sim.strike(warden, b, warden.pos + Vector2(0.5, 0.0))
+		await _frames(3)
+	check(not warden.alive, "the warden is broken")
+	await d.call(&"go_out")
+	await _frames(40)
+	g.player.hero.pos = d.call(&"tour_place", "door:weapons_hall")
+	g.player.hero.facing = float(d.call(&"tour_face", "door:weapons_hall"))
+	g.player.sync_view(0.0)
+	await _frames(20)
+	await d.call(&"go_in", d.get("door_near"))
+	var kinds: Array[StringName] = []
+	for m: MobState in sim.mobs:
+		kinds.append(m.kind)
+	check(not kinds.has(&"warden"), "back in, the broken warden is not there again (%s)" % [kinds])
+	eq(kinds.size(), before - 1, "and the rest of the hall still is")
+	# An arrest in the hall: out of its door.
+	Events.time_skipped.emit(60.0, &"arrested")
+	# The door's cover takes real time to close and open, so wait on the clock.
+	var until := Time.get_ticks_msec() + 3000 * TestCase.machine_slack()
+	while not bool(d.call(&"tour_seen", &"outside")) and Time.get_ticks_msec() < until:
+		await _frames(1)
+	check(bool(d.call(&"tour_seen", &"outside")), "arrested in the hall, the player is put outside")
+	near(g.player.pos.distance_to(t.door), 0.0, 1.0, "at the hatch")
+	Sx.end(g)
 	Sx.finish()

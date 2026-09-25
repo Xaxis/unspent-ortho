@@ -33,6 +33,10 @@ var things: Array[Dictionary] = []
 ## are what it guards. Declared by the recipe, placed by InteriorGen in order, so
 ## a prop's id (and the saved edits keyed on it) is the recipe's to keep.
 var props: Array[Dictionary] = []
+## Who is in it: {role (&"warden" keeps it, &"guard" walks it), at, face}. The
+## recipe says where they stand; what body each role is, the door decides from
+## the land the host stands in (21_doors), because a recipe knows no landscape.
+var residents: Array[Dictionary] = []
 ## The ways people walk every day, as [from, to] pairs: the boards along them
 ## are worn pale.
 var walks: Array[PackedVector2Array] = []
