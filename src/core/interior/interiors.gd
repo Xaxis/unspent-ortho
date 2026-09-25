@@ -14,6 +14,7 @@ const RECIPES := {
 	&"bunker": "res://src/content/interiors/bunker.gd",
 	&"roundhouse": "res://src/content/interiors/roundhouse.gd",
 	&"stilt_room": "res://src/content/interiors/stilt_room.gd",
+	&"tower_lobby": "res://src/content/interiors/tower_lobby.gd",
 }
 
 static var _kinds: Dictionary = {}
