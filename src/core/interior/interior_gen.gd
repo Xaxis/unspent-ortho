@@ -97,6 +97,9 @@ static func _turn(l: InteriorLayout, out: Vector2) -> void:
 	for r: Dictionary in l.residents:
 		r.at = (f.call(r.at) as Vector2) + shift
 		r.face = f.call(r.face)
+	for sl: Dictionary in l.slots:
+		sl.at = (f.call(sl.at) as Vector2) + shift
+		sl.face = f.call(sl.face)
 	for i in l.walks.size():
 		var w2 := l.walks[i]
 		for j in w2.size():

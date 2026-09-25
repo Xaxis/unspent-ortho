@@ -30,6 +30,7 @@ static func make() -> InteriorKind:
 	k.door_width = 1.3
 	k.recipe = load("res://src/content/interiors/weapons_hall.gd")
 	k.model = "res://src/models/interior/weapons_hall_model.gd"
+	k.hatch = "res://src/models/interior/hatch_model.gd"
 	return k
 
 

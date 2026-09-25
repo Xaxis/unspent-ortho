@@ -91,6 +91,7 @@ func setup(g: Game) -> void:
 		g.view.stands_early = true
 	var cam := g.camera
 	cam.sight_room = room
+	cam.side_room = side_room
 	cam.shoulder = opens_over
 	if opens_over:
 		cam.snap_view()
@@ -345,6 +346,27 @@ func _exit_tree() -> void:
 func room(head: Vector3, eye: Vector3) -> float:
 	if game == null or game.world == null or game.query == null:
 		return 1.0
+	_gather(head, eye)
+	var ground := func(p: Vector2) -> float:
+		return game.view.surface_height(p) if game.view != null else game.world.height_at(p)
+	return Shoulder.room(head, eye, ground, _solids, _boxes, _ground_top(head, eye))
+
+
+## How much of the line from the head sideways is clear, with no floor under it
+## (Shoulder.clear_along): the rig's side room, so the eye stands off a wall at
+## the player's right rather than hugging it down a corridor.
+func side_room(head: Vector3, to: Vector3) -> float:
+	if game == null or game.world == null or game.query == null:
+		return 1.0
+	_gather(head, to)
+	var ground := func(p: Vector2) -> float:
+		return game.view.surface_height(p) if game.view != null else game.world.height_at(p)
+	return Shoulder.clear_along(head, to, ground, _solids, _boxes, _ground_top(head, to))
+
+
+## Everything that stops the eye along the line from `head` to `eye`: solid props
+## near it, walls the query was handed, and the boxes systems draw (sight_boxes).
+func _gather(head: Vector3, eye: Vector3) -> void:
 	_solids.clear()
 	_boxes.clear()
 	var mid := Vector2((head.x + eye.x) * 0.5, (head.z + eye.z) * 0.5)
@@ -382,9 +404,6 @@ func room(head: Vector3, eye: Vector3) -> float:
 				continue
 			seen[c] = true
 			_solids.append(Vector4(c.x, c.y, c.z, INF))
-	var ground := func(p: Vector2) -> float:
-		return game.view.surface_height(p) if game.view != null else game.world.height_at(p)
-	return Shoulder.room(head, eye, ground, _solids, _boxes, _ground_top(head, eye))
 
 
 ## How high a prop's own model stands, off its template (built and cached when

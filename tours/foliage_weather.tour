@@ -1,0 +1,39 @@
+# The grass under the weather (grass.gdshader, slice 4): dry, then rain (tips
+# bowed, a fast shiver of hits, blades wet and dark), snow (blades bowed and
+# stiff, white lying on the upper blade), and ash (blades greyed), at one place
+# and one hour, over the shoulder. Snow and ash lie only where the ground can
+# hold them (SkyGround), and on seed 7 no snowfield meets grass, so snow is
+# shot on the snowfield's own tufts and ash where the burning meets the sulphur
+# jungle's grass; the coast's meadow takes dry and rain. Each weather has a dry
+# frame of the same place beside it.
+#   tools/tour.sh tours/foliage_weather.tour --seed=7
+hour 11
+coast calm
+place coast
+near meadow
+hold shoulder_peek
+await shoulder 3
+weather clear:0:wind=0.5
+wait 3.0
+shot 01-meadow-dry with land:coast
+weather rain:1:wind=0.5
+wait 4.0
+shot 02-meadow-rain with land:coast
+place snowfield
+ground snow
+weather clear:0:wind=0.5
+wait 3.0
+shot 03-snowfield-grass-dry with land:snowfield
+weather snow:1:wind=0.5
+wait 4.0
+shot 04-snowfield-grass-snow with land:snowfield
+place burning-sulphur_jungle
+ground grass
+weather clear:0:wind=0.5
+wait 3.0
+shot 05-burning-grass-dry with land:burning|sulphur_jungle
+weather ash:1:wind=0.5
+wait 4.0
+shot 06-burning-grass-ash with land:burning|sulphur_jungle
+release shoulder_peek
+weather rules

@@ -46,10 +46,10 @@ func test_the_wind_reads_its_phase_and_bearing_from_the_sky() -> void:
 	var src := FileAccess.get_file_as_string(INCLUDE)
 	check(src.contains("sky_wind.w"), "the phase is the sky's continuous one")
 	check(src.contains("sky_wind.xy"), "the push leans the way the sky says the wind blows")
-	check(src.contains("sky_gust.xy"), "the gust field travels by the sky's integrated offset")
+	check(src.contains("sky_gust.x;"), "the gust field travels by the sky's integrated offset")
 	check(src.contains("sky_shock("), "a colossus's landing is a term in the one push")
 	check(not src.contains("TIME"), "nothing in the wind runs on TIME")
-	for pair: Array in [["GUST_CELL", WindField.CELL], ["GUST_PERIOD", WindField.PERIOD], ["FRONT_SHORT", WindField.FRONT_SHORT], ["FRONT_LONG", WindField.FRONT_LONG]]:
+	for pair: Array in [["GUST_SPACING", WindField.SPACING], ["GUST_DEPTH", WindField.DEPTH], ["GUST_REACH", WindField.REACH], ["GUST_PERIOD", WindField.PERIOD]]:
 		check(src.contains("const float %s = %.1f;" % pair), "the shader's %s is WindField's" % pair[0])
 
 
@@ -75,7 +75,8 @@ func test_a_front_moves_fast_enough_to_cross_a_frame() -> void:
 	gt(WindField.speed(0.5), 2.9, "a moderate wind carries fronts at 3 tiles/s or more")
 	lt(WindField.speed(1.0), 6.1, "and a gale no faster than 6")
 	# Fronts are gust-sized, not landscape-sized: a cell well inside a frame.
-	check(WindField.CELL >= 8.0 and WindField.CELL <= 15.0, "a gust cell is 8-15 tiles")
+	check(WindField.DEPTH >= 5.0 and WindField.DEPTH <= 7.0, "a front is 5-7 tiles deep")
+	check(WindField.SPACING >= 15.0 and WindField.SPACING <= 25.0, "and fronts are 15-25 tiles apart")
 
 
 ## The offset wraps where the noise lattice repeats, so a field that has run for
@@ -119,3 +120,56 @@ func test_a_gust_is_a_band_across_the_wind() -> void:
 			along += absf(WindField.gust_at(p + dir * 4.0, g) - WindField.gust_at(p, g))
 			across += absf(WindField.gust_at(p + side * 4.0, g) - WindField.gust_at(p, g))
 		gt(along, across * 1.8, "%s: the field changes faster along the wind than across it (%.1f, %.1f)" % [dir, along, across])
+
+
+## Gusts are DISCRETE: fronts a few tiles deep, separated by calm well wider
+## than the gap between a bush and the crown past it, so one front can be seen
+## to reach grass, then bush, then crown. Walked down the wind along many lines:
+## every stretch of gust is short, and the calm between two is long.
+func test_gusts_are_fronts_separated_by_calm() -> void:
+	var dir := Vector2(0.8, 0.6)
+	var side := Vector2(-dir.y, dir.x)
+	var g := WindField.advance(Vector4(0.0, 0.0, dir.x, dir.y), dir, 0.0)
+	var runs := 0
+	var calm_share := 0.0
+	var samples := 0
+	for line in 30:
+		var start := side * float(line) * 3.3
+		var inside := false
+		var run_from := 0.0
+		var last_end := -INF
+		for k in 800:
+			var t := float(k) * 0.25
+			var v := WindField.gust_at(start + dir * t, g)
+			samples += 1
+			if v < 0.05:
+				calm_share += 1.0
+			if v > 0.3 and not inside:
+				inside = true
+				run_from = t
+				if last_end > -INF:
+					gt(t - last_end, 8.0, "line %d: calm between fronts (%.1f tiles at %.1f)" % [line, t - last_end, t])
+			elif v <= 0.3 and inside:
+				inside = false
+				runs += 1
+				lt(t - run_from, 9.0, "line %d: a front is a few tiles deep (%.1f at %.1f)" % [line, t - run_from, t])
+				last_end = t
+	gt(float(runs), 20.0, "fronts are there to be seen (%d)" % runs)
+	gt(calm_share / float(samples), 0.6, "most of the air is calm between fronts (%.2f)" % (calm_share / float(samples)))
+
+
+## Slice 4: the grass answers the weather that has settled on it (SkyLight's
+## sky_settle: x snow, y ash, z wet) and the rain falling now (sky_air.x). Rain
+## droops the tips and shivers them with its hits; snow bows the blades and lies
+## white on the tops; ash greys them. What a test can hold: the shader reads each
+## in the stage that does it.
+func test_grass_answers_rain_snow_and_ash() -> void:
+	var src := FileAccess.get_file_as_string("res://src/render/foliage/grass.gdshader")
+	var vert := vertex_body(src)
+	var frag := src.substr(src.find("void fragment()"))
+	check(vert.contains("sky_air.x"), "the rain falling now shivers and droops the blades")
+	check(vert.contains("sky_settle.xyz * sky_ground_at("), "what has settled, where the ground can hold it")
+	check(vert.contains("settle_v.x * SNOW_BOW"), "lying snow bows them")
+	check(frag.contains("WET_DARK"), "wet darkens them")
+	check(frag.contains("settle_v.x * smoothstep"), "snow lies white on their tops")
+	check(frag.contains("settle_v.y * ASH_GREY"), "ash greys them")
