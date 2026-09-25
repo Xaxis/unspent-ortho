@@ -6,6 +6,13 @@
 #   tools/deploy.sh --no-check      skip the browser proof (not advised)
 #   tools/deploy.sh --dir=DIR       deploy a build from elsewhere (a kept build: build/kept/<id>/web);
 #                                   implies --no-export
+#   tools/deploy.sh --config=NAME   export from configs/NAME.json (default playtest)
+#
+# Every deployed build is made from a configuration, never from none: with none the
+# schema's `dev.access` "off" applies and the web build is the one platform without
+# dev mode. The default is playtest (dev mode behind the chord: three backticks arm
+# it, and a player who never strikes them never sees it). --prod uses the same
+# default until the owner says a release build ships; then --prod --config=release.
 #
 # The deploy is recorded in the build's build.json (tools/export.sh writes it), so
 # dev mode's shelf says where a build went and whether it was production. The
@@ -21,13 +28,14 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-prod=0; do_export=1; do_check=1; dir=build/web
+prod=0; do_export=1; do_check=1; dir=build/web; config=playtest
 for a in "$@"; do
   case "$a" in
     --prod) prod=1 ;;
     --no-export) do_export=0 ;;
     --no-check) do_check=0 ;;
     --dir=*) dir="${a#--dir=}"; do_export=0 ;;
+    --config=*) config="${a#--config=}" ;;
     *) echo "deploy: unknown option $a"; exit 2 ;;
   esac
 done
@@ -38,7 +46,7 @@ PROJECT_ID="${VERCEL_PROJECT_ID:-prj_tmaEekddT8BxG8axEbV9ubdirCje}"
 ORG_ID="${VERCEL_ORG_ID:-team_pUDLCiJEYW3wgGiFmRXc4ET3}"
 
 if [ "$do_export" = 1 ]; then
-  tools/export.sh web || exit 1
+  tools/export.sh web "--config=$config" || exit 1
 fi
 [ -f "$dir/index.html" ] || { echo "deploy FAILED: no build in $dir (tools/export.sh web)"; exit 1; }
 

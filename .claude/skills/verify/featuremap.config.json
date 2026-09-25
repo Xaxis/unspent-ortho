@@ -107,6 +107,13 @@
   },
   {
    "kind": "system",
+   "label": "18_meadow",
+   "entry": "src/systems/18_meadow.gd",
+   "reach": "tools/tour.sh tours/foliage_meadow_ring.tour --seed=7",
+   "area": "world-look"
+  },
+  {
+   "kind": "system",
    "label": "20_realms",
    "entry": "src/systems/20_realms.gd",
    "reach": "tools/tour.sh tours/realms.tour",

@@ -69,7 +69,7 @@ const MEADOW_HALF := 4
 const MEADOW_REACH := 60
 const DUNE_REACH := 400
 ## The names `tour_place` answers (tests/tours/test_tour_claims.gd reads it).
-const TOUR_PLACES: Array[String] = ["meadow", "dune", "front"]
+const TOUR_PLACES: Array[String] = ["meadow", "dune", "front", "snow_meadow", "ash_meadow"]
 const SkySystem := preload("res://src/systems/10_sky.gd")
 ## `near front`: a bush with a crown downwind of it this far off, in tiles, and
 ## this far off the wind's line at most, in radians.
@@ -92,9 +92,17 @@ func tour_place(what: String) -> Vector2:
 		return Vector2.INF
 	if what == "front":
 		return _front()
+	if what.ends_with("_meadow"):
+		var mask := SkyGround.texture(game.world).get_image()
+		return _settled_meadow(game.world, mask, game.player.pos, 0 if what == "snow_meadow" else 1)
 	var dune := what == "dune"
-	return _best(game.world, game.player.pos, Ground.SAND if dune else Ground.GRASS,
+	var at := _best(game.world, game.player.pos, Ground.SAND if dune else Ground.GRASS,
 		DUNE_REACH if dune else MEADOW_REACH, 6 if dune else 2)
+	# A landscape that grows little grass (the burning's scorched turf) may have
+	# none near where it is named: look as far as for a dune, more coarsely.
+	if at == Vector2.INF and not dune:
+		at = _best(game.world, game.player.pos, Ground.GRASS, DUNE_REACH, 6)
+	return at
 
 
 static func _best(w: WorldData, here: Vector2, g: int, reach: int, step: int) -> Vector2:
@@ -109,6 +117,32 @@ static func _best(w: WorldData, here: Vector2, g: int, reach: int, step: int) ->
 			if n > best:
 				best = n
 				at = Vector2(hx + dx + 0.5, hy + dy + 0.5)
+	return at
+
+
+## `near snow_meadow` / `near ash_meadow`: grass where snow (ash) can lie on
+## it most fully (SkyGround's R or G, which grass.gdshader masks what settles by),
+## so a frame of weather on the blades is not shot on an ecotone that holds a
+## third of it. The stretch with the most level grass times that share squared,
+## within DUNE_REACH.
+static func _settled_meadow(w: WorldData, mask: Image, here: Vector2, channel: int) -> Vector2:
+	var hx := floori(here.x)
+	var hy := floori(here.y)
+	var best := 0.0
+	var at := Vector2.INF
+	for dy in range(-DUNE_REACH, DUNE_REACH + 1, 3):
+		for dx in range(-DUNE_REACH, DUNE_REACH + 1, 3):
+			var x := hx + dx
+			var y := hy + dy
+			if x < 0 or y < 0 or x >= mask.get_width() or y >= mask.get_height() or w.ground_at(x, y) != Ground.GRASS:
+				continue
+			var share: float = mask.get_pixel(x, y)[channel]
+			if share < 0.5:
+				continue
+			var score := float(_open(w, x, y, Ground.GRASS, w.country_at(x, y))) * share * share
+			if score > best:
+				best = score
+				at = Vector2(x + 0.5, y + 0.5)
 	return at
 
 

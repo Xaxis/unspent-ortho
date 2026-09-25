@@ -1,0 +1,36 @@
+# HIS TERMINAL, ONCE HE KNOWS (docs/story/UNDER_THE_STONES.md §3): the same
+# bunker as tours/bunker_words.tour, for a man who has learnt at Cairn that the
+# oldest machines still take his passwords. The terminal wakes for his hands and
+# teaches whom he wrote to at two in the morning (`was_cia`, which opens Ruth's
+# table); the files by the steel door stay shut while that is still settling.
+#
+#   tools/tour.sh tours/bunker_woken.tour --seed=4 --hour=15 --weather=clear:0 --beats=built_halcyon
+#
+# 01 is the terminal awake, 02 the files, still locked.
+coast calm
+near door:bunker
+await door 5
+press use
+await inside:bunker 5
+wait 1.0
+tap lamp
+wait 0.4
+
+at slot:terminal
+wait 0.4
+press use
+await knows:bunker_draft 4
+await beat:was_cia 2
+wait 0.5
+shot 01-the-terminal-wakes-for-your-hands with inside:bunker,tenant:his,reading,beat:was_cia
+press use
+wait 0.4
+
+at slot:vault_door
+wait 0.4
+press use
+await reading 4
+wait 0.5
+shot 02-the-files-still-locked with inside:bunker,tenant:his,reading
+press use
+wait 0.4

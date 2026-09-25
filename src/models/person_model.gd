@@ -13,7 +13,7 @@ extends Node3D
 ##                                 always draw with PersonModel.material(); a material given here
 ##                                 is used only if it is already on the person shader.
 ##   animate(speed, delta)         every frame: speed in tiles/s actually moved
-##   play_action(action, seconds)  &"swing" &"dodge" &"work" &"hurt" &"eat" &"carried" &"downed"
+##   play_action(action, seconds)  &"swing" &"heavy" &"dodge" &"work" &"hurt" &"eat" &"carried" &"downed"
 ##                                 also &"work_break" &"work_dig" &"work_fell" &"work_cut" &"gather";
 ##                                 &"" clears. seconds <= 0 uses the natural length, and
 ##                                 &"carried"/&"downed" hold until replaced. A swing is phased by
@@ -134,8 +134,15 @@ func play_action(a: StringName, seconds: float) -> void:
 	_frozen = -1.0
 	_posed_frozen = false
 	# Swings and dodges must read on the first frame: no blend-in to wait for.
-	if a == &"swing" or a == &"dodge" or a == &"hurt":
+	if a == &"swing" or a == &"heavy" or a == &"dodge" or a == &"hurt":
 		_weight = 1.0
+
+
+## Let an action held by `pose_at` run on from where it was held: a heavy blow's
+## drawn-back tool let go into the strike (40_fight).
+func unfreeze() -> void:
+	_frozen = -1.0
+	_posed_frozen = false
 
 
 ## Freeze an action at seconds `t` into it (gallery, shots, tests). Replaces any action.

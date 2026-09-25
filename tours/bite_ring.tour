@@ -1,0 +1,45 @@
+# EVERY BITE HAS A GROUND RING (mechanics pass, slice 1d; FightRules.tell_ring).
+# A machine's windup pose is small over the shoulder; a pale ring on the ground
+# where the bite will land, for as long as it winds up, reads from above, from
+# behind and under a lock alike. A runner is let come in and bite, and each
+# frame is taken while its tell is up. A harvester's wide bite shows a wide one.
+# Run at a fixed rate, so a frame costs the world no time and the ring is still
+# up when it is taken:
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/bite_ring.tour --seed=4 --hour=11 --weather=clear:0 --give=knife:1 --held=knife
+coast calm
+zoom 7
+wait 0.6
+spawn runner
+await tell 8
+wait 0.15
+shot 01-from-above-the-ring-under-its-bite with mob:runner
+
+coast calm
+tap shoulder
+await shoulder 3
+spawn runner
+await tell 8
+wait 0.15
+shot 02-over-the-shoulder-the-ring-reads-from-behind with shoulder,mob:runner
+
+coast calm
+spawn runner
+wait 0.3
+hold target
+await target 5
+await shoulder_locked 3
+await tell 8
+wait 0.15
+shot 03-locked-on-the-ring-under-its-bite with shoulder_locked,mob:runner
+release target
+
+coast calm
+tap shoulder
+await top_view 3
+spawn harvester
+wait 0.5
+walkto part 3
+press swing 0.1
+await tell 8
+wait 0.2
+shot 04-a-harvester-s-wide-bite-a-wide-ring with mob:harvester

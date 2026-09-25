@@ -14,6 +14,7 @@ const KEYS := {
 	"shadow_size": TYPE_INT, "shadow_filter": TYPE_INT, "shadow_lights": TYPE_INT,
 	"near_stand_in": TYPE_BOOL, "volumetric": TYPE_BOOL, "air_stand_in": TYPE_FLOAT, "ssao": TYPE_BOOL, "ssil": TYPE_BOOL,
 	"forward_only": TYPE_BOOL, "horizon_near": TYPE_INT, "eye_shadow_reach": TYPE_INT, "eye_shadow_full": TYPE_INT,
+	"grass_reach": TYPE_INT, "grass_density": TYPE_FLOAT,
 }
 
 

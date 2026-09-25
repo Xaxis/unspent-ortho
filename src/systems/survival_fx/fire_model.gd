@@ -86,7 +86,7 @@ static func smoke_material() -> StandardMaterial3D:
 		_puff.billboard_keep_scale = true
 		_puff.vertex_color_use_as_albedo = true
 		_puff.roughness = 1.0
-		_puff.shadow_enabled = false
+		# Casting no shadow is the instance's `cast_shadow`, set by every user.
 		_puff.render_priority = 11
 	return _puff
 

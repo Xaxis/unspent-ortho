@@ -364,6 +364,9 @@ func _land_jump(m: AbilityMotion) -> void:
 		var ground := game.world.ground_at(floori(p.to.x), floori(p.to.y))
 		var radius := StealthNoise.radius(&"land", ground, game.body.crouched, 0) * (1.0 + LAND_PER_LEVEL * float(fell))
 		sim.make_noise(p.to, radius)
+		# Come down off a ledge onto something below it and the landing is the blow.
+		if kind != Jump.DIVE:
+			sim.drop_strike(p.from_level)
 
 
 # --- what an ability looks like ------------------------------------------------
