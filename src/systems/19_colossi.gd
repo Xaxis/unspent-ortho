@@ -427,8 +427,8 @@ func _run_shock(delta: float) -> void:
 ## a tread's craters since world generation laid its scatter (gen_treads.gd
 ## cuts them last so no prop is renumbered, and leaves this to the clock). The
 ## same answer every load, so a crater is bare in every game of this world.
-## How far past a pad's edge its crushing reaches (the pad's own claws).
-const CRUSH_R := 8.0
+## What stood in a crater is crushed, out to its rim: the ground it stood on was
+## cut from under it (gen_treads.gd). The tread's own spoil and posts are kept.
 
 
 func started() -> void:
@@ -443,7 +443,7 @@ func _crush_treads() -> void:
 			continue
 		var pressed: Array[Vector3] = []
 		for p: Vector3 in (m.pads as Array):
-			pressed.append(Vector3(p.x, p.y, p.z + CRUSH_R))
+			pressed.append(Vector3(p.x, p.y, Treads.rim_r(p)))
 		_crush(pressed)
 
 

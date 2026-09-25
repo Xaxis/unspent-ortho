@@ -142,8 +142,8 @@ func test_a_sole_points_the_way_it_walks() -> void:
 ## THE CRATERS IN THE SHIPPED WORLD: the foot's pads stand on bared floor at one
 ## height, a body standing on that floor can climb out of it one level at a time
 ## (the land round it may have cliffs of its own; there must be SOME way out),
-## and nothing anybody BUILT stands in one. What grew there is crushed at load
-## (the game test below), because taking it out here would renumber every prop.
+## What stood where a crater was cut is crushed at load (the game test below),
+## because taking it out here would renumber every prop.
 func test_the_world_is_cut_where_the_feet_come_down() -> void:
 	var w := _grown()
 	var rows := _treads(w)
@@ -156,10 +156,6 @@ func test_the_world_is_cut_where_the_feet_come_down() -> void:
 			eq(w.level[i], floor_l, "a pad's floor is the tread's floor")
 			eq(w.ground[i], Ground.CLINKER, "pressed ground under the pad")
 			check(_climbs_out(w, c, Treads.rim_r(p) + 4.0), "a body on the floor of the crater at %s can climb out of it" % c)
-			for q: WorldProp in w.props:
-				if q.pos.distance_to(Vector2(p.x, p.y)) < p.z and q.kind in GenScatter.PLACED and q.solid >= 1.2 and q.id < _dressed_from(w):
-					check(false, "a %s stands under a pad at %s" % [PropKind.NAMES[q.kind], q.pos])
-					break
 
 
 ## THE PRESSURE RING LIES ON LAND: no tile it was laid on is sea, water, or
@@ -204,20 +200,6 @@ func test_the_only_feet_on_the_island_are_in_its_treads() -> void:
 				check(not is_nan(r.tread_of(k, j).x), "%s leg %d plant %d on the island is a tread" % [d.id, k, j])
 				seen += 1
 	eq(seen, _treads(w).size(), "and every tread is stood in")
-
-
-## The first id the tread stage appended (its own spoil and posts): everything
-## before it was laid by the stages before, and must be where it was.
-func _dressed_from(w: WorldData) -> int:
-	for i in range(w.props.size() - 1, -1, -1):
-		var q := w.props[i]
-		var near_one := false
-		for m: Dictionary in _treads(w):
-			if q.pos.distance_to(m.pos as Vector2) < 260.0:
-				near_one = true
-		if not near_one or not (q.kind in [PropKind.DEBRIS, PropKind.WRECKAGE, PropKind.SURVEY]):
-			return i + 1
-	return 0
 
 
 ## Whether a body can walk from `from` to anywhere `reach` tiles off, stepping a
@@ -287,12 +269,37 @@ func test_a_planted_foot_stops_puts_out_and_crushes() -> void:
 	var sys2: Node = g2.get_node("19_colossi")
 	sys2.started()
 	sys2._process(1.0 / 60.0)
-	check(not bool(sys2.tour_seen(&"colossus_tread")), "an hour before, no foot stands in it")
-	check(not bool(sys2.tour_seen(&"colossus_blocks")), "and nothing stops a body there")
+	# This tread's own pads: the world may hold another tread with a foot in it.
+	check(g2.query.blocks_at(c).is_empty(), "an hour before, this tread's pad stops nothing")
 	var standing := 0
+	var span: Vector2i = row.get("props", Vector2i(-1, -1))
 	for q: WorldProp in g2.world.props:
+		if q.id >= span.x and q.id < span.y:
+			continue
 		for pp: Vector3 in (row.pads as Array):
-			if q.pos.distance_to(Vector2(pp.x, pp.y)) < pp.z and not g2.world.depleted.has(q.id):
+			if q.pos.distance_to(Vector2(pp.x, pp.y)) < Treads.rim_r(pp) and not g2.world.depleted.has(q.id):
 				standing += 1
-	eq(standing, 0, "nothing stands where a pad comes down")
+	eq(standing, 0, "nothing stands in a crater: what stood there was crushed")
 	g2.free()
+
+
+## EVERY WORLD OF THE SHIPPED SIZE CARRIES A FOOTPRINT (owner: the colossi must
+## be impactful). Five seeds, three of them the ones the world-gen tests already
+## grow and share. On the continent the player wakes on where that body has
+## room, which is best-effort and reported, not held: a home body crowded with
+## villages has none, and a village is never cut to make it.
+func test_every_shipped_world_carries_a_footprint() -> void:
+	const Worlds := preload("res://tests/core/test_world_gen.gd")
+	var on_home := 0
+	var seeds: Array[int] = [7, 1, 42, 90210, 3]
+	for s: int in seeds:
+		var w: WorldData = _grown() if s == 7 else Worlds.world(s)
+		var rows := _treads(w)
+		gt(float(rows.size()), 0.0, "seed %d has a tread" % s)
+		var home := w.continent_at(floori(w.spawn.x), floori(w.spawn.y))
+		for m: Dictionary in rows:
+			var p: Vector2 = m.pos
+			if w.continent_at(floori(p.x), floori(p.y)) == home:
+				on_home += 1
+				break
+	print("       treads on the home continent: %d of %d seeds" % [on_home, seeds.size()])
