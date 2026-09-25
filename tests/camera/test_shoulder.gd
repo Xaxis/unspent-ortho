@@ -460,23 +460,36 @@ func test_the_web_near_blur_stands_down_under_the_lens() -> void:
 
 # --- breath in the cold ----------------------------------------------------------
 
-func _breaths(g: Game) -> int:
+## The breath put out since the last count, freed as counted: marks (from
+## above) and soft air on the fire's own puff mesh (under the close eye).
+## `air` collects, per puff, whether it is depth-tested air.
+func _breaths(g: Game, air: Array = []) -> int:
 	var n := 0
 	for c: Node in g.get_children():
 		var mi := c as MeshInstance3D
-		if mi == null or not (mi.material_override is ShaderMaterial):
+		if mi == null or mi.is_queued_for_deletion():
 			continue
-		var mode: Variant = (mi.material_override as ShaderMaterial).get_shader_parameter(&"mode")
-		if mode != null and int(mode) == MobFx.VAPOUR and not mi.is_queued_for_deletion():
-			n += 1
-			mi.queue_free()
+		var is_air := mi.mesh == FireModel.smoke_mesh()
+		var is_mark := false
+		if mi.material_override is ShaderMaterial:
+			var mode: Variant = (mi.material_override as ShaderMaterial).get_shader_parameter(&"mode")
+			is_mark = mode != null and int(mode) == MobFx.VAPOUR
+		if not (is_air or is_mark):
+			continue
+		var m := mi.material_override as StandardMaterial3D
+		air.append(is_air and m != null and not m.no_depth_test)
+		n += 1
+		mi.queue_free()
 	return n
 
 
-## FROM BEHIND AT EYE LEVEL BREATH IS NOT DRAWN. A mark draws over everything,
-## so the puff put out in front of the mouth landed on the back of the head as a
-## white stipple ball. Seen from in front it is drawn, and from above as ever.
-func test_breath_is_not_drawn_over_the_back_of_the_head() -> void:
+## UNDER THE CLOSE EYE BREATH IS AIR, NOT A MARK. A mark draws over everything:
+## from behind at eye level the puff in front of the mouth landed on the back of
+## the head, and near the lens it was a white speckled cloud beside it. So over
+## the shoulder it is the fire's soft puff, depth-tested, drawn from every side
+## -- the head hides it the way a head would -- and never held to a frame-pixel
+## floor. From above it is the reviewed mark, as ever.
+func test_breath_is_depth_tested_air_at_every_angle() -> void:
 	var g := await _make()
 	var cam := g.camera
 	cam.sight_room = Callable()
@@ -487,18 +500,29 @@ func test_breath_is_not_drawn_over_the_back_of_the_head() -> void:
 	check(hz != null, "the hazards system runs")
 	var cue := HazardCues.cue(&"cold")
 	_breaths(g)
+	var from_above: Array = []
 	hz.call("_draw_cue", &"cold", cue, 0.7)
-	eq(_breaths(g), 2, "from above, two puffs")
+	eq(_breaths(g, from_above), 2, "from above, two puffs")
+	check(not from_above.has(true), "and from above they are the reviewed marks")
+	var depth: Array = []
 	cam.shoulder = true
 	cam.snap_view()
 	cam.shoulder_yaw = Shoulder.yaw_behind(g.player.facing)
 	_step(cam, 2)
+	check(MobFx.close_eye(g), "over the shoulder the eye is close")
 	hz.call("_draw_cue", &"cold", cue, 0.7)
-	eq(_breaths(g), 0, "from behind the head, none")
-	cam.shoulder_yaw = Shoulder.yaw_behind(g.player.facing + PI)
-	_step(cam, 2)
-	hz.call("_draw_cue", &"cold", cue, 0.7)
-	eq(_breaths(g), 2, "looking at the face, the breath is there")
+	eq(_breaths(g, depth), 2, "from behind the head, two puffs, which the head hides")
+	for d: bool in depth:
+		check(d, "every puff over the shoulder is depth-tested air, so it never draws over the head")
+	# Under the close eye a puff keeps its own size, not the frame's floor.
+	MobFx.breath(g, g.player.global_position + Vector3.UP, Color.WHITE, 0.2, 1.0, Vector2.ZERO, 1)
+	var big := 0.0
+	for c: Node in g.get_children():
+		var mi := c as MeshInstance3D
+		if mi != null and mi.mesh == FireModel.smoke_mesh() and not mi.is_queued_for_deletion():
+			big = maxf(big, mi.scale.x)
+	lt(big, 0.2, "a 0.2 puff under the close eye starts under 0.2 across, not the floor's %.2f" % (MobFx.VAPOUR_PX * MobFx.texel))
+	_breaths(g)
 	_done()
 
 
