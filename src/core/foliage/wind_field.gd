@@ -13,6 +13,13 @@ extends RefCounted
 ## the lattice repeats, so the wrap is invisible; zw the unit bearing the field
 ## travels on, kept through a calm so a dead wind never snaps it to +x.
 ##
+## A GUST IS A FRONT, NOT A BLOB: the lattice is laid in the WIND's frame, cells
+## ACROSS the wind as long as FRONT_LONG of them and ALONG it as short as
+## FRONT_SHORT (`frame`), so a gust is a band across the wind that travels
+## down it. The offset lives in that frame too, so it wraps on the lattice
+## there. The frame is the same for a wind and its reverse, so a wind that
+## turns round changes nothing but the way the bands go.
+##
 ## The shader's `gust_at` is this `gust_at` term for term; the constants are held
 ## equal by tests/render/test_wind.gd.
 
@@ -23,6 +30,16 @@ const PERIOD := 64.0
 ## Tiles a second a front travels in a calm, and more per unit of wind.
 const SPEED_CALM := 2.5
 const SPEED_WIND := 3.5
+## Along-wind and across-wind scale of the lattice: a cell is CELL / FRONT_SHORT
+## tiles along the wind and CELL / FRONT_LONG across it.
+const FRONT_SHORT := 1.5
+const FRONT_LONG := 0.5
+
+
+## World xz (in cells) into the lattice's wind frame.
+static func frame(p: Vector2, dir: Vector2) -> Vector2:
+	var side := Vector2(-dir.y, dir.x)
+	return dir * p.dot(dir) * FRONT_SHORT + side * p.dot(side) * FRONT_LONG
 
 
 ## Tiles a second a front travels in a wind of this strength (|sky_wind.xy|).
@@ -39,13 +56,13 @@ static func advance(g: Vector4, along: Vector2, dt: float) -> Vector4:
 		dir = along / strength
 	elif dir.length_squared() < 1e-6:
 		dir = Vector2(1.0, 0.0)
-	var off := Vector2(g.x, g.y) + dir * speed(strength) * dt / CELL
+	var off := Vector2(g.x, g.y) + frame(dir * speed(strength) * dt / CELL, dir)
 	return Vector4(fposmod(off.x, PERIOD), fposmod(off.y, PERIOD), dir.x, dir.y)
 
 
 ## 0..1: how much gust stands at world `xz` under state `g`.
 static func gust_at(xz: Vector2, g: Vector4) -> float:
-	var q := xz / CELL - Vector2(g.x, g.y)
+	var q := frame(xz / CELL, Vector2(g.z, g.w)) - Vector2(g.x, g.y)
 	var n := _vnoise(q) * 0.65 + _vnoise(q * 2.0 + Vector2(17.0, 17.0)) * 0.35
 	return smoothstep(0.42, 0.78, n)
 

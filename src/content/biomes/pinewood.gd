@@ -41,12 +41,13 @@ static func make() -> BiomeDef:
 	# hung down each side, rocking slowly; and bracken, taller and gone to rust,
 	# held out flat and stiff.
 	d.grasses = [
-		GrassSpecies.make(&"fern", {"blades": 8, "height": Vector2(0.28, 0.45), "width": 0.03, "spread": 0.08,
-			"reach": Vector2(0.65, 0.95), "curl": 0.45, "lay": 0.0, "leaflets": 14, "root": P.SPRUCE[2], "tip": P.MOSS[2],
-			"stiff": 0.6, "flutter": 2}),
-		GrassSpecies.make(&"bracken", {"blades": 4, "height": Vector2(0.4, 0.6), "width": 0.035, "spread": 0.06,
-			"reach": Vector2(0.6, 0.9), "curl": 0.2, "lay": 0.1, "leaflets": 10, "root": P.EARTH[2], "tip": P.RUST[2],
-			"stiff": 0.75, "flutter": 1}),
+		GrassSpecies.make(&"fern", {"blades": 7, "height": Vector2(0.26, 0.42), "width": 0.012, "spread": 0.08,
+			"reach": Vector2(0.9, 1.25), "curl": 0.7, "lay": 0.0, "leaflets": 10, "leaflet": 0.34,
+			"root": P.SPRUCE[3], "tip": P.MOSS[4], "tip_pale": P.MOSS[5].lerp(P.SAND[4], 0.3), "stiff": 0.6, "flutter": 2}),
+		GrassSpecies.make(&"bracken", {"blades": 4, "height": Vector2(0.38, 0.58), "width": 0.014, "spread": 0.07,
+			"reach": Vector2(0.8, 1.1), "curl": 0.35, "lay": 0.1, "leaflets": 10, "leaflet": 0.34,
+			"root": P.EARTH[3].lerp(P.MOSS[3], 0.3), "tip": P.RUST[3].lerp(P.SAND[3], 0.25), "tip_pale": P.SAND[4],
+			"other": P.MOSS[3], "other_share": 0.3, "stiff": 0.75, "flutter": 1}),
 	]
 	d.decor = {
 		Ground.GRASS: [1.2, Decor.GRASS_A, 30, Decor.GRASS_B, 26, Decor.TUFT_TALL, 14, Decor.MUSHROOM, 4, Decor.CONE, 6],

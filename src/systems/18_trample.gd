@@ -69,7 +69,12 @@ const MEADOW_HALF := 4
 const MEADOW_REACH := 60
 const DUNE_REACH := 400
 ## The names `tour_place` answers (tests/tours/test_tour_claims.gd reads it).
-const TOUR_PLACES: Array[String] = ["meadow", "dune"]
+const TOUR_PLACES: Array[String] = ["meadow", "dune", "front"]
+const SkySystem := preload("res://src/systems/10_sky.gd")
+## `near front`: a bush with a crown downwind of it this far off, in tiles, and
+## this far off the wind's line at most, in radians.
+const FRONT_GAP := Vector2(3.0, 9.0)
+const FRONT_LINE := 0.35
 
 
 ## `near meadow`: within MEADOW_REACH, the middle of the stretch with the most
@@ -80,6 +85,8 @@ const TOUR_PLACES: Array[String] = ["meadow", "dune"]
 func tour_place(what: String) -> Vector2:
 	if not what in TOUR_PLACES or game == null or game.world == null or game.player == null:
 		return Vector2.INF
+	if what == "front":
+		return _front()
 	var dune := what == "dune"
 	return _best(game.world, game.player.pos, Ground.SAND if dune else Ground.GRASS,
 		DUNE_REACH if dune else MEADOW_REACH, 6 if dune else 2)
@@ -112,3 +119,33 @@ static func _open(w: WorldData, x: int, y: int, g: int, country: int) -> int:
 			if w.ground_at(x + ox, y + oy) == g and w.level_at(x + ox, y + oy) == lvl and w.country_at(x + ox, y + oy) == country:
 				n += 1
 	return n
+
+
+## `near front`: where one gust front is seen to cross grass, then a bush, then
+## a tree. The nearest bush standing in grass with a broadleaf or pine downwind
+## of it on the world's wind line (SkySystem.bearing_of, which a positive held wind
+## blows along); the player stands upwind in the grass, so from above the frame
+## runs grass, bush, crown along the way the front travels.
+func _front() -> Vector2:
+	var w := game.world
+	var dir := SkySystem.bearing_of(w.seed_value)
+	var here: Vector2 = game.player.pos
+	var best := INF
+	var at := Vector2.INF
+	for b: WorldProp in game.query.props_near(here, 120.0):
+		if b.kind != PropKind.BUSH or w.ground_at(floori(b.pos.x), floori(b.pos.y)) != Ground.GRASS:
+			continue
+		var stand := b.pos - dir * 4.0
+		if w.ground_at(floori(stand.x), floori(stand.y)) != Ground.GRASS:
+			continue
+		for t: WorldProp in game.query.props_near(b.pos, FRONT_GAP.y):
+			if t.kind != PropKind.BROADLEAF and t.kind != PropKind.PINE:
+				continue
+			var d := t.pos - b.pos
+			if d.length() < FRONT_GAP.x or absf(d.angle_to(dir)) > FRONT_LINE:
+				continue
+			var far := here.distance_to(b.pos)
+			if far < best:
+				best = far
+				at = stand
+	return at
