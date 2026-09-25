@@ -684,7 +684,7 @@ func compose() -> void:
 	RenderingServer.global_shader_parameter_set("sky_lid", shut)
 	RenderingServer.global_shader_parameter_set("sky_air", air)
 	RenderingServer.global_shader_parameter_set("sky_bolt", bolt)
-	RenderingServer.global_shader_parameter_set("sky_focus", Vector4(focus.x, focus.y, focus.z, 0.0))
+	RenderingServer.global_shader_parameter_set("sky_focus", Vector4(focus.x, focus.y, focus.z, eye))
 	var gp := glint_columns(glints)
 	var gc := glint_columns(glint_colors)
 	RenderingServer.global_shader_parameter_set("sky_glints", gp[0])
