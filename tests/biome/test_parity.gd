@@ -431,16 +431,26 @@ extends TestCase
 ## `coast.form` = {} this test passed on the GEN 27 hashes (form3's), so the
 ## form is still the only thing that moves the six. The crags' `shelf` that
 ## followed moved nothing here: the six do not include them.
+## RE-ACCEPTED AN EIGHTEENTH TIME (2026-09-25, still GEN 28): the way in (the
+## first iron near the spawn, `GenScatter._way_in_site`) is sited on the land
+## alone and held clear before the works and the scatter, then laid after them.
+## It lays a scree patch, and it used to take its spot from whatever props stood
+## near the spawn, so an era without the plan's works (Realm.ERA) put that
+## GROUND somewhere else: test_era found 29 tiles of cover moved on seed 4.
+## `country`, `country2`, `level` and `blend` are equal on all five seeds; only
+## `ground` (the patch) and `props` (the seam, and what the scatter lays round
+## a spot now held clear) move. Seed 1's spawn, shot top-down before and after,
+## reads the same at island scale.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 caed4672 100053b8 4fd7a826 83fdf992",
-	3: "bd96c6d3 1d22db86 6e28a666 a4316902 7e58a668 82e13e53",
-	7: "ba7a972f 55af42cc 881a0ebc 0f02d42c f555c41d 7c364263",
-	42: "e0ad0bb3 b7ca1370 283751a7 2f4b7f69 1565ed7e 820d1b8c",
-	90210: "2659ea1f 66925798 6484694c 34b30d32 275c7664 bc9f3850",
+	1: "054710a9 3eac3638 94461b7b 100053b8 4fd7a826 5c06a0ae",
+	3: "bd96c6d3 1d22db86 7b140027 a4316902 7e58a668 21618ae8",
+	7: "ba7a972f 55af42cc dc6cb282 0f02d42c f555c41d 36572b9e",
+	42: "e0ad0bb3 b7ca1370 87e9cbb3 2f4b7f69 1565ed7e 3233d301",
+	90210: "2659ea1f 66925798 11348ba2 34b30d32 275c7664 9ac280c7",
 }
 
 
