@@ -73,11 +73,12 @@ func test_a_thing_standing_there_holds_the_place_s_words() -> void:
 		top = maxi(top, q.id)
 	var ashore := WorldProp.new(top + 1, PropKind.RELAY, w.spawn, 0.0, 1.0)
 	w.props.append(ashore)
-	eq(StoryFragments.held_by(w, tank), &"growth_bay", "the first screen is the tank's")
-	eq(StoryFragments.held_by(w, door), &"release_order", "the second is the sea door's")
-	eq(StoryFragments.held_by(w, binder), &"volunteers", "the binder holds the list")
-	check(not StoryFragments.placed(StoryFragments.held_by(w, ashore)), "a screen ashore holds dealt words")
-	eq(StoryFragments.held_by(w, tank), StoryFragments.held_by(w, tank), "and it holds the same words when asked again")
+	var wq := WorldQuery.new(w)
+	eq(StoryFragments.held_by(w, wq, tank), &"growth_bay", "the first screen is the tank's")
+	eq(StoryFragments.held_by(w, wq, door), &"release_order", "the second is the sea door's")
+	eq(StoryFragments.held_by(w, wq, binder), &"volunteers", "the binder holds the list")
+	check(not StoryFragments.placed(StoryFragments.held_by(w, wq, ashore)), "a screen ashore holds dealt words")
+	eq(StoryFragments.held_by(w, wq, tank), StoryFragments.held_by(w, wq, tank), "and it holds the same words when asked again")
 
 
 func test_the_fire_keeper_points_at_it() -> void:

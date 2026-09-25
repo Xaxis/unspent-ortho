@@ -39,7 +39,7 @@ const BUILDERS := [
 	"GenPlaces.find", "GenPlaces.solid_mask", "GenPlaces.country_sample",
 	"GenPlaces.open_sample", "GenPlaces.typical_sample", "SkyGround.texture",
 	"SkyGround.image", "SkyWear.texture", "SkyWear.image", "UiMapData.new",
-	"StoryFragments.held_by", "Chapter.read", "Chapters.of", "Chapters.for_regions",
+	"Chapter.read", "Chapters.of", "Chapters.for_regions",
 	"RoadHold.sites", "Hold.sites", "StoryGates.all", "BlackSite.blocks",
 	"RealmWorlds.keep", "SoundMix.remoteness", "Treads.hand_over", "StoryJourney.bodies",
 	"Spawner.green_distance", "Haven.at",

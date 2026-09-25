@@ -63,8 +63,7 @@ static func ore_kinds(world: WorldData, region_id: int) -> Array[int]:
 
 
 ## Every site id the region holds, in `Landmarks.sites`' own order.
-## THE SAME FIX AS `_standing_counts`, WHICH IS TWENTY LINES BELOW AND WAS NEVER
-## APPLIED HERE. `Landmarks.sites` is already remembered per world, but this
+## `Landmarks.sites` is already remembered per world, but this
 ## SCANNED all of it per region — so a refresh over R regions walked S sites R
 ## times, for an answer that cannot change: which region a landmark stands in is
 ## a property of the world, exactly like how much ore stands in it.
@@ -86,9 +85,8 @@ static func _ids_by_region(world: WorldData) -> Dictionary:
 		if not out.has(s.region):
 			out[s.region] = [] as Array[StringName]
 		(out[s.region] as Array[StringName]).append(s.id)
-	# Held by reference rather than keyed by instance id, for the reason
-	# `_standing_counts` gives: a freed id handed out again would serve another
-	# world's landmarks.
+	# Held by reference rather than keyed by instance id: a freed id handed out
+	# again would serve another world's landmarks.
 	_ids_world = world
 	_ids = out
 	return out
@@ -108,57 +106,19 @@ static func ore_standing(world: WorldData, region_id: int) -> int:
 	return int(_standing_counts(world).get(region_id, 0))
 
 
-## What STANDS is counted once per world, for every region at once, because
-## nothing can change it: a prop never moves and worldgen never adds one, so the
-## answer is a property of the world and not of the moment it is asked in. Only
-## what has been TAKEN changes, and that is `ore_taken` off the small `depleted`
-## set. `Landmarks.sites` remembers per world for exactly this reason.
-##
-## IT WAS ASKED AS THOUGH IT WERE CHEAP. The sweep this replaces walked every
-## prop in the world, calling `region_at` on each, ONCE PER REGION that keeps a
-## hold — and `24_holds` asks every region that keeps one, once a second. Measured
-## on a 1300-tile world: 224 ms inside a single physics tick, landing as a 150 ms
-## hitch every second while the median frame stayed at 8.3 ms (#126). That is the
-## shape the owner called "laggy and jumpy", and an average cannot see it.
-##
-## Note what the earlier fix did and did not do: moving this off the per-frame
-## path (#122) took the game from 5-12 fps to a healthy median with a stall once
-## a second. The cost was rescheduled, not removed. **Work that is too expensive
-## to do every frame is usually too expensive to do at all** — the question to ask
-## is not how often to pay it, but why it is being recomputed when its inputs
-## cannot have moved.
-static var _standing_world: WorldData = null
-static var _standing: Dictionary = {}
-
-
+## What STANDS is counted once per world, by generation (`GenDigest`), because
+## nothing can change it: a prop never moves and nothing after generation adds
+## ore. Only what has been TAKEN changes, and that is `ore_taken` off the small
+## `depleted` set. It must never be a sweep per ask: `24_holds` asks every region
+## that keeps a hold once a second, and a sweep there was a 150 ms hitch each
+## second (#126). Nor at play: a streamed world does not hold every prop.
 static func _standing_counts(world: WorldData) -> Dictionary:
 	if world == null:
 		return {}
-	if world == _standing_world:
-		return _standing
-	var kinds_of := {}
-	var out := {}
-	for p: WorldProp in world.props:
-		var r := world.region_at(floori(p.pos.x), floori(p.pos.y))
-		if r < 0:
-			continue
-		if not kinds_of.has(r):
-			kinds_of[r] = ore_kinds(world, r)
-		var kinds: Array = kinds_of[r]
-		if kinds.has(p.kind):
-			out[r] = int(out.get(r, 0)) + 1
-	# The world is held rather than keyed by instance id: an id freed and handed
-	# out again would serve another world's counts, and the realms package keeps
-	# every world it raises alive anyway, so this costs nothing.
-	_standing_world = world
-	_standing = out
-	return out
-
-
-## Only the tests want this; a running game counts once per world for its life.
-static func forget() -> void:
-	_standing_world = null
-	_standing = {}
+	if not world.ore_counted:
+		world.ore_standing = GenDigest.ore_standing(world)
+		world.ore_counted = true
+	return world.ore_standing
 
 
 ## Taken, off the depleted set — which is small, so this is cheap enough to ask

@@ -96,3 +96,85 @@ func test_working_near_reaches_past_the_near_shells() -> void:
 		if not want.is_empty():
 			asked += 1
 	gt(float(asked), 2.0, "some found a working past 140 tiles (%d)" % asked)
+
+
+## The old `Chapter._standing_counts`: every prop, its region, that region's ore.
+static func _ore_standing_whole(world: WorldData) -> Dictionary:
+	var kinds_of := {}
+	var out := {}
+	for p: WorldProp in world.props:
+		var r := world.region_at(floori(p.pos.x), floori(p.pos.y))
+		if r < 0:
+			continue
+		if not kinds_of.has(r):
+			kinds_of[r] = Chapter.ore_kinds(world, r)
+		if (kinds_of[r] as Array).has(p.kind):
+			out[r] = int(out.get(r, 0)) + 1
+	return out
+
+
+func test_generation_records_the_ore_every_region_stands() -> void:
+	var w := _world()
+	check(w.ore_counted, "generation counted the ore")
+	var want := _ore_standing_whole(w)
+	gt(float(want.size()), 3.0, "several regions stand ore (%d)" % want.size())
+	eq(w.ore_standing, want, "the record is the sweep's count")
+	for r: int in want:
+		eq(Chapter.ore_standing(w, r), int(want[r]), "region %d reads it" % r)
+
+
+## The old `StoryFragments.held_by` count: every prop of the world before it.
+static func _held_by_whole(world: WorldData, prop: WorldProp) -> StringName:
+	var kind := StoryProps.kind_of(prop.kind)
+	if kind == &"":
+		return &""
+	var place := StoryWorld.place_of(world, prop.pos)
+	if place != &"":
+		var n := 0
+		for q: WorldProp in world.props:
+			if q.id < prop.id and StoryProps.kind_of(q.kind) == kind and StoryWorld.place_of(world, q.pos) == place:
+				n += 1
+		var own := StoryFragments.pick_at(place, n, kind)
+		if own != &"":
+			return own
+	var d := BiomeRegistry.at(world, prop.pos)
+	return StoryFragments.pick(kind, d.id if d != null else &"", world.seed_value, prop.id)
+
+
+func test_the_words_a_thing_holds_are_counted_from_its_place() -> void:
+	var w := _world()
+	var site := StoryWorld.black_site(w)
+	check(site != Vector2.INF, "the world has its black site")
+	var in_place := 0
+	var readable := 0
+	for p in w.props:
+		if StoryProps.kind_of(p.kind) == &"":
+			continue
+		readable += 1
+		if StoryWorld.place_of(w, p.pos) != &"":
+			in_place += 1
+		eq(StoryFragments.held_by(w, _q, p), _held_by_whole(w, p), "prop %d holds the same words" % p.id)
+	gt(float(in_place), 2.0, "things stand in the place (%d)" % in_place)
+	gt(float(readable), 20.0, "and elsewhere (%d)" % readable)
+
+
+func test_a_thing_at_the_far_edge_of_a_place_counts_what_stands_across_it() -> void:
+	# The window has to span the whole place: a screen set down at its edge,
+	# opposite the ones already there, counts them all.
+	var w := _world()
+	var site := StoryWorld.black_site(w)
+	var first: WorldProp = null
+	for p in _q.props_near(site, StoryWorld.PLACE_REACH):
+		if p.kind == PropKind.CONSOLE and StoryWorld.place_of(w, p.pos) != &"" and (first == null or p.id < first.id):
+			first = p
+	check(first != null, "a screen stands in the place")
+	if first == null:
+		return
+	var away := (site - first.pos).normalized() if first.pos.distance_to(site) > 0.01 else Vector2.RIGHT
+	var edge := WorldProp.new(w.props.size(), PropKind.CONSOLE, site + away * StoryWorld.PLACE_REACH * 0.95, 0.0, 1.0)
+	w.props.append(edge)
+	_q.add_prop(edge)
+	check(StoryWorld.place_of(w, edge.pos) != &"", "the new screen stands in the place")
+	eq(StoryFragments.held_by(w, _q, edge), _held_by_whole(w, edge), "the edge screen holds what the sweep said")
+	_q.remove_prop(edge)
+	w.props.pop_back()

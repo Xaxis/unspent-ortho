@@ -144,6 +144,11 @@ var landmarks: Array[Dictionary] = []
 ## Props taken from the world: prop id -> world minute it grows back (INF = never).
 ## Owned by survival rules; WorldView and WorldQuery skip depleted props.
 var depleted: Dictionary = {}
+## Region id -> how many of the region's own ore props stand in it, counted by
+## generation (`GenDigest`) so no reader has to walk every prop to ask.
+## `ore_counted` is false on a world built by hand, which is counted on first ask.
+var ore_standing: Dictionary = {}
+var ore_counted := false
 
 
 func _init(p_seed: int, p_size: int) -> void:
