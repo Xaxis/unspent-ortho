@@ -69,6 +69,8 @@ src/core/story/story_casting.gd::_twin::builder WorldGen.generate
 src/core/story/story_casting.gd::cast::builder StoryJourney.bodies
 src/core/story/story_gates.gd::all::builder StoryPlan.cast
 src/core/story/story_journey.gd::bodies::list
+src/core/story/story_rooms.gd::_deal::builder Interiors.thresholds
+src/core/story/story_rooms.gd::_deal::builder StoryPlan.cast
 src/core/survival/haven.gd::at::list
 src/core/survival/survival.gd::add_prop::alloc
 src/core/survival/survival.gd::in_village::list
@@ -154,6 +156,7 @@ src/systems/10_sky.gd::realm_changed::builder SkyWear.texture
 src/systems/10_sky.gd::setup::builder SkyGround.texture
 src/systems/10_sky.gd::setup::builder SkyWear.texture
 src/systems/15_lights.gd::_index_sources::whole
+src/systems/18_trample.gd::tour_place::builder SkyGround.texture
 src/systems/19_colossi.gd::_crush_treads::list
 src/systems/19_colossi.gd::_landed::raw
 src/systems/19_colossi.gd::_the_treads_own::list
