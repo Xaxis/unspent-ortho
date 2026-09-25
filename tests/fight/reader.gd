@@ -131,9 +131,11 @@ func _strike(m: MobState) -> void:
 	# Squarely on the side, not at the edge of it: a turning body carries an edge
 	# swing onto plate before it lands.
 	var square := m.part == &"none" or absf(wrapf((hero.pos - m.pos).angle() - (spot - m.pos).angle(), -PI, PI)) < 0.55
-	var in_box := square and FightRules.box_hits(hero.pos, to_mob.angle(), hero.radius, _blow(), m.pos, m.radius)
+	var in_box := (square or sim.phase_ready(m)) and FightRules.box_hits(hero.pos, to_mob.angle(), hero.radius, _blow(), m.pos, m.radius)
 	var go_heavy := heavy and in_box and _heavy_fits(m)
-	var reaches := in_box and sim.reaches_part(m, hero.pos, false, go_heavy)
+	# A phase coil reads the part through plate for the first blow: that blow may
+	# be thrown from wherever the player stands (FightKit.phase).
+	var reaches := in_box and (sim.reaches_part(m, hero.pos, false, go_heavy) or sim.phase_ready(m))
 	if reaches:
 		hero.move = Vector2.ZERO
 		hero.facing = to_mob.angle()

@@ -10,11 +10,12 @@ const Bot := preload("res://tests/fight/reader.gd")
 const FirstMeetings := preload("res://tests/fight/test_first_meetings.gd")
 
 
-func _bout(kind: StringName, use_bot: bool, seconds: float, heavy: bool = false) -> Dictionary:
+func _bout(kind: StringName, use_bot: bool, seconds: float, heavy: bool = false, kit: Array[StringName] = []) -> Dictionary:
 	var ground := Ground.WATER if kind == &"dredger" else Ground.GRASS
 	var sim := F.make_sim(F.flat_world(96, ground), Vector2(48.5, 48.5))
 	sim.hero.inventory.add(&"knife")
 	sim.hero.inventory.set_held(&"knife")
+	sim.hero.kit = FightKit.of(kit)
 	var m := sim.add_mob(kind, Vector2(53.5, 48.5))
 	m.facing = PI
 	m.aim = PI
@@ -94,3 +95,14 @@ func test_a_player_who_only_holds_the_swing_still_loses() -> void:
 				losses += 1
 		print("  info holding every swing against %s: lost %d of %d" % [kind, losses, FirstMeetings.STARTS])
 		gt(float(losses), FirstMeetings.STARTS * 0.74, "%s beats a player who walks in holding the swing" % kind)
+
+
+## The phase coil's feel metric (mechanics pass 2a): a reader who knows its
+## first blow reads the working part through plate kills the harvester sooner
+## than one without it, and is still never put down.
+func test_a_phase_coil_shortens_a_reader_s_harvester() -> void:
+	var bare := _bout(&"harvester", true, 90.0)
+	var coil := _bout(&"harvester", true, 90.0, false, [&"mod_phase"] as Array[StringName])
+	print("  harvester, bare %.2f s, phase coil %.2f s" % [bare.t, coil.t])
+	check(not coil.alive and coil.outcome != &"downed" and coil.outcome != &"carried", "the reader with a coil won: %s" % coil)
+	lt(float(coil.t), float(bare.t), "the coil shortened it (%.2f s against %.2f s)" % [coil.t, bare.t])

@@ -770,13 +770,12 @@ func _land(t0: float, t1: float) -> void:
 				continue
 			hero.struck[m.id] = true
 			_wear_on_contact()
-			if not reaches_part(m, hero.pos, b.cuts):
+			if not reaches_part(m, hero.pos, b.cuts) and not _phase_reads(m):
 				if b.heavy and reaches_part(m, hero.pos, b.cuts, true) and now >= m.stall_ready_at:
 					_jam(m)
 					continue
 				hero.throw(hero.pos - m.pos, FightRules.RING_RECOIL, FightRules.RING_RECOIL_MS, now)
-				emit(&"hit", {"attacker": hero, "target": m, "damage": 0, "plate": true, "at": m.pos})
-				_wake(m)
+				_ring(m)
 				continue
 			if m.invulnerable(now):
 				continue
@@ -841,6 +840,51 @@ func reaches_part(m: MobState, from: Vector2, cuts: bool = false, heavy: bool = 
 	if cuts or heavy or not m.row.get("guarded", false):
 		return true
 	return m.spent(now) or m.stunned(now) or m.indifferent() or not m.roused()
+
+
+## The first blow on a body with a phase coil fitted reads its working part
+## through the plate (FightKit.phase): counted from the part's own side, so a
+## guard the machine is holding still throws it off. Once a body, spent by
+## asking whether it reads, not by landing.
+var _phase_read: Dictionary = {}
+
+
+func _phase_reads(m: MobState) -> bool:
+	if not phase_ready(m):
+		return false
+	_phase_read[m.id] = true
+	return true
+
+
+## Would a blow on this body now be read through its plate? What a player with
+## a coil fitted knows: it has not been spent on this body, and the part it
+## reads is open.
+func phase_ready(m: MobState) -> bool:
+	if not hero.kit.phase or _phase_read.has(m.id) or m.part == &"none" or m.part == &"":
+		return false
+	var off := 0.0
+	match m.part:
+		&"back": off = PI
+		&"right": off = PI * 0.5
+		&"left": off = -PI * 0.5
+	return reaches_part(m, m.pos + Vector2.from_angle(m.facing + off) * (m.radius + 0.5))
+
+
+## A swing rang off plate. With a harmonic edge fitted it still takes
+## FightKit.HARMONIC_DAMAGE (outside the body's hurt frames), and it says so; a
+## plate blow never stalls a machine, harmonic or not.
+func _ring(m: MobState) -> void:
+	var dmg := 0
+	if hero.kit.harmonic and not m.invulnerable(now):
+		dmg = FightKit.HARMONIC_DAMAGE
+		m.health -= dmg
+		m.invuln_until = now + m.mob_iframes()
+		m.last_hit_at = now
+	emit(&"hit", {"attacker": hero, "target": m, "damage": dmg, "plate": true, "at": m.pos})
+	if m.health <= 0:
+		_kill(m, true)
+		return
+	_wake(m)
 
 
 ## A heavy blow into a guarded part the machine was not holding open: the
