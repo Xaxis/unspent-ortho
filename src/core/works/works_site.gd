@@ -26,6 +26,22 @@ var trade: StringName = &"depot"
 ## A yard with more in it is a bigger depot, which is the whole of how a region
 ## says how much the machines are doing in it.
 var yard := 0
+## The work of the plan the depot was founded on, as its landmark lays it out:
+## centre, bearing and half-extents. A work spreads its machinery past the yard
+## (a salt pan's survey posts stand at its corners, up to 13 tiles out), and
+## breaking the depot takes what the plan built there too (`34_works._strip`).
+var work_pos := Vector2.INF
+var work_dir := Vector2.RIGHT
+var work_half := Vector2.ZERO
+
+
+## Whether `p` lies on the work the depot was founded on, `margin` tiles round.
+func on_work(p: Vector2, margin: float) -> bool:
+	if not work_pos.is_finite():
+		return false
+	var o := p - work_pos
+	var across := Vector2(-work_dir.y, work_dir.x)
+	return absf(o.dot(work_dir)) <= work_half.x + margin and absf(o.dot(across)) <= work_half.y + margin
 
 
 ## The three working parts, in the order a player meets them, in tiles. Each is a
