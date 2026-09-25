@@ -114,6 +114,13 @@
   },
   {
    "kind": "system",
+   "label": "21_falls",
+   "entry": "src/systems/21_falls.gd",
+   "reach": "tools/tour.sh tours/falls_sky.tour --seed=7 --place=coast --hour=21.2 --view=shoulder --weather=clear:0 --fall=dust@21.3,fragment@21.4,mass@21.75,dust@23.3,fragment@23.4,mass@23.75",
+   "area": "world-look"
+  },
+  {
+   "kind": "system",
    "label": "22_landmarks",
    "entry": "src/systems/22_landmarks.gd",
    "reach": "tools/tour.sh tours/landmarks.tour",

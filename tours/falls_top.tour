@@ -1,0 +1,16 @@
+# A MASS FALL, READ FROM ABOVE (21_falls): the play camera never sees the sky,
+# so a fall is read by what it does to the land -- its light thrown from where
+# it burns, hard and pale for the breakup, the land's shadows swinging as it
+# crosses -- and then, minutes on, its boom rolling in through the felt queue
+# (src/core/sky/rumble.gd) with a shake as the shock goes over.
+#   tools/tour.sh tours/falls_top.tour --seed=7 --place=coast --hour=23.4 --view=top --weather=clear:0 --fall=mass@23.5
+wait 2
+# The clock ran while the world warmed up; put it back before the fall.
+hour 23.45
+wait 0.5
+shot 00-before
+await fall_flash 20
+shot 01-mass-light-on-the-land with fall_flash
+await fall_coming 5
+await fall_boom 200
+shot 02-boom-arrives with fall_boom
