@@ -8,6 +8,10 @@ extends Node3D
 ## own rule for where anything small stands, `thick` times its plants and none
 ## of its stones), and dropped once it is out of reach. What a cell grows is
 ## decided by each tile's own place, so nothing swims as the ring follows.
+## Cells grow one at a time, nearest first, STRIP rows a frame: grown whole, a
+## cell of the coast was an 8-9 ms frame every sixteen tiles walked. (On a
+## worker thread the engine intermittently hung at quit, idle, waiting on a
+## thread: not worth a hang for a millisecond a frame.)
 ##
 ## ONE DRAW PER PLANT TEMPLATE FOR THE WHOLE RING. Every cell's plants of one
 ## template are one MultiMesh, drawn on grass.gdshader with `meadow` on: the same
@@ -28,10 +32,10 @@ extends Node3D
 
 ## Tiles on a cell's side. A chunk (TerrainMesher.CHUNK) holds a whole number of them.
 const CELL := 16
-## Cells grown in a frame at most, nearest first, so walking never hitches.
-const GROW_PER_FRAME := 2
 ## Tiles over which the meadow hands over to the decor at its edge.
 const BAND := 6.0
+## Rows of a cell grown in a frame.
+const STRIP := 2
 ## Height over its lowest root a plant may reach, and the lean a gale or a
 ## trample may give it past its cell, in tiles: the ring's bounds.
 const TALLEST := 1.2
@@ -52,6 +56,10 @@ var _heights: Dictionary = {}
 var _draws: Dictionary = {}
 var _dirty: Dictionary = {}
 var _live := true
+## The cell growing, the next row of it to grow, and what it has grown so far.
+var _growing := Vector2i.ZERO
+var _row := -1
+var _grown: Dictionary = {}
 ## One mesh per plant template, shared by every ring.
 static var _meshes: Dictionary = {}
 
@@ -73,6 +81,8 @@ func configure(new_reach: float, new_density: float) -> void:
 
 
 func clear() -> void:
+	_row = -1
+	_grown = {}
 	for mmi: MultiMeshInstance3D in _draws.values():
 		mmi.queue_free()
 	_draws.clear()
@@ -115,12 +125,17 @@ func follow(view: WorldView, centre: Vector2, on: bool) -> void:
 	for cell: Vector2i in _cells.keys():
 		if not keep.has(cell):
 			_drop(cell)
-	var grown := 0
-	for cell: Vector2i in wanted:
-		if grown >= GROW_PER_FRAME:
-			break
-		if not _cells.has(cell) and _grow(cell):
-			grown += 1
+	if _row >= 0 and not keep.has(_growing):
+		_row = -1
+	if _row < 0:
+		for cell: Vector2i in wanted:
+			if not _cells.has(cell):
+				_growing = cell
+				_row = 0
+				_grown = {}
+				break
+	if _row >= 0:
+		_grow_strip()
 	_redraw()
 
 
@@ -150,12 +165,27 @@ func _drop(cell: Vector2i) -> void:
 	_heights.erase(cell)
 
 
-## Grow one cell from its chunk; false when the chunk is not built yet.
-func _grow(cell: Vector2i) -> bool:
-	var ch := _view.chunk_at(Vector2(cell * CELL) + Vector2(0.5, 0.5))
+## Grow the next STRIP rows of the cell growing; the whole cell joins the ring
+## once its last row has grown. Waits while its chunk is not built.
+func _grow_strip() -> void:
+	var ch := _view.chunk_at(Vector2(_growing * CELL) + Vector2(0.5, 0.5))
 	if ch == null:
-		return false
-	var got := _view.decor.meadow(ch, cell.x * CELL - ch.x0, cell.y * CELL - ch.y0, CELL, CELL, Decor.MEADOW_THICK * density)
+		return
+	var got := _view.decor.meadow(ch, _growing.x * CELL - ch.x0, _growing.y * CELL - ch.y0 + _row, CELL, STRIP,
+		Decor.MEADOW_THICK * density)
+	for key: int in got:
+		var buf: PackedFloat32Array = _grown.get(key, PackedFloat32Array())
+		buf.append_array(got[key])
+		_grown[key] = buf
+	_row += STRIP
+	if _row >= CELL:
+		_take(_growing, _grown)
+		_row = -1
+		_grown = {}
+
+
+## A cell's plants in the ring.
+func _take(cell: Vector2i, got: Dictionary) -> void:
 	var lo := INF
 	var hi := -INF
 	for key: int in got:
@@ -167,7 +197,6 @@ func _grow(cell: Vector2i) -> bool:
 	_cells[cell] = got
 	if lo <= hi:
 		_heights[cell] = Vector2(lo, hi)
-	return true
 
 
 ## Write again every template a cell holding it came or went for.

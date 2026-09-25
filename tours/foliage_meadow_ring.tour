@@ -14,8 +14,8 @@ coast calm
 place coast
 near meadow
 hold shoulder_peek
-await shoulder 3
-await meadow 5
+await shoulder 10
+await meadow 15
 walk 0,-1 1.2
 wait 2.0
 shot 01-knee-deep-in-the-meadow with land:coast,meadow

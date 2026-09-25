@@ -1,0 +1,26 @@
+# What the meadow ring costs a tier at eye level, on the frames a player gets:
+# standing in the coast's sward over the shoulder with a gust blowing, then
+# walking through it, each window the `--stats` block, then the ring shown and
+# hidden inside one run (`perf meadow`) against the floor (`perf noise`).
+#   tools/tour.sh tours/foliage_meadow_cost.tour --seed=7 --stats --quality=ultra|high|medium|low
+# Web proxy: godot --path . --rendering-method gl_compatibility -- --tour=tours/foliage_meadow_cost.tour --seed=7 --stats --quality=web
+weather clear:0:wind=1
+hour 16
+coast calm
+place coast
+near meadow
+hold shoulder_peek
+await shoulder 10
+await meadow 15
+walk 0,-1 1.2
+wait 2.0
+perf stats begin
+wait 5.0
+perf stats end meadow-standing
+perf stats begin
+walk 0,-1 4.0
+perf stats end meadow-walking
+perf meadow 6.0
+perf noise 6.0
+release shoulder_peek
+weather rules
