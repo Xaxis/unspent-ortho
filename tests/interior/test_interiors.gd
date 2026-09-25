@@ -66,12 +66,12 @@ func test_a_pocket_keeps_its_own_word() -> void:
 func test_a_landscape_that_declares_nothing_has_no_doors() -> void:
 	for t: Threshold in Interiors.thresholds(_world()):
 		var d := BiomeRegistry.by_index(t.land)
-		check(d.interiors.has(&"house"), "%s: a door in %s, which declares no interiors" % [t.key, d.id])
+		check(not d.interiors.is_empty(), "%s: a door in %s, which declares no interiors" % [t.key, d.id])
 	var houses := {}
 	for p: WorldProp in _world().props:
 		if p.kind == PropKind.HOUSE:
 			var d := BiomeRegistry.by_index(_world().country_at(floori(p.pos.x), floori(p.pos.y)))
-			houses[d.id] = d.interiors.has(&"house")
+			houses[d.id] = not d.interiors.is_empty()
 	var closed := 0
 	for id: Variant in houses:
 		if not houses[id]:
@@ -228,29 +228,37 @@ func test_every_ring_of_cast_stones_keeps_a_bunker() -> void:
 			check(kinds.has(want), "%s: the bunker has a %s slot for the story" % [t.key, want])
 
 
-## A LANDSCAPE'S OWN FORM KEEPS ITS OWN ROOM (`form:ID` before `house`): in the
-## crags only the roundhouse is anyone's home, so every roundhouse there has a
-## door into a round room and no broch or byre has any door at all.
-func test_every_crags_roundhouse_and_only_it_opens_on_a_round_room() -> void:
+## A LANDSCAPE'S OWN FORM KEEPS ITS OWN ROOM (`form:ID` before `house`): in every
+## landscape that declares one, every house of that form opens on that kind of
+## room, and a house of any other form opens only on the landscape's own `house`
+## kind, if it has one. The crags' roundhouse and the drowned city's stilt house
+## both stand on seed 4.
+func test_every_house_opens_on_its_own_forms_room() -> void:
 	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
-	var crags := BiomeRegistry.index_of(&"the_crags")
 	var doors := {}
 	for t: Threshold in Interiors.thresholds(w):
 		if t.host_code == PropKind.HOUSE:
 			doors[t.key] = t
-	var rounds := 0
+	var seen := {}
 	for p: WorldProp in w.props:
-		if p.kind != PropKind.HOUSE or w.country_at(floori(p.pos.x), floori(p.pos.y)) != crags:
+		if p.kind != PropKind.HOUSE:
+			continue
+		var land := w.country_at(floori(p.pos.x), floori(p.pos.y))
+		var d := BiomeRegistry.by_index(land)
+		if d == null:
 			continue
 		var key := "house@%d,%d" % [floori(p.pos.x * 4.0), floori(p.pos.y * 4.0)]
-		var form := Interiors.form_of(p, w.seed_value, crags)
-		if form == &"roundhouse":
-			rounds += 1
-			check(doors.has(key) and (doors[key] as Threshold).kind == &"roundhouse",
-				"the roundhouse at %s opens on a round room" % p.pos)
+		var form := Interiors.form_of(p, w.seed_value, land)
+		var want: StringName = d.interiors.get(StringName("form:%s" % form), d.interiors.get(&"house", &""))
+		if d.interiors.has(StringName("form:%s" % form)):
+			seen[want] = true
+		if want == &"":
+			check(not doors.has(key), "the %s %s at %s has no door" % [d.id, form, p.pos])
 		else:
-			check(not doors.has(key), "the %s at %s has no door" % [form, p.pos])
-	gt(float(rounds), 0.0, "seed 4 has roundhouses in the crags")
+			check(doors.has(key) and (doors[key] as Threshold).kind == want,
+				"the %s %s at %s opens on a %s" % [d.id, form, p.pos, want])
+	for k: StringName in [&"roundhouse", &"stilt_room"]:
+		check(seen.has(k), "seed 4 has a house that opens on a %s" % k)
 
 
 ## EVERY BAY OF A ROUNDHOUSE CAN BE WALKED INTO, between piers that stand as
@@ -289,3 +297,36 @@ func test_every_roundhouse_bay_can_be_walked_to() -> void:
 		for g: String in goals:
 			check(_reached(reach, goals[g]), "%s: the %s at %s cannot be walked to from the door" % [t.key, g, goals[g]])
 	gt(float(n), 0.0, "seed 4 has roundhouses to walk")
+
+
+## NOTHING OVER THE WATER WALLS ANYBODY IN: from the door of every stilt room on
+## seed 4, a body gets to the sand hearth, the table, the hammock's side and the
+## trapdoor's edge, with the real query and the room's real blocks -- the
+## hammock stands its whole length, and the trapdoor is a hole nobody walks over.
+func test_every_stilt_room_can_be_walked_to() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var n := 0
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind != &"stilt_room":
+			continue
+		n += 1
+		var p := InteriorGen.grow(4, t)
+		var l := p.layout
+		var q := WorldQuery.new(p.world)
+		var blocks: Array[Vector3] = doors_script.call(&"_walls", l)
+		q.set_blocks(&"rooms", blocks)
+		var reach := _reach(q, l.inside())
+		var middle := Vector2(l.rooms[0].position) + Vector2(l.rooms[0].size) * 0.5
+		var goals := {"hearth": l.hearth - l.hearth_wall * 1.2, "table": l.table + (middle - l.table).normalized() * 0.2}
+		for th: Dictionary in l.things:
+			var at: Vector2 = th.at
+			var inward := (middle - at).normalized()
+			match th.kind:
+				&"hammock", &"trapdoor":
+					goals["%s" % th.kind] = at + inward * 1.0
+					check(q.move_body(at + inward * 1.5, -inward * 1.5, Tuning.PLAYER_RADIUS).distance_to(at) > 0.45,
+						"%s: nobody walks into the %s at %s" % [t.key, th.kind, at])
+		for g: String in goals:
+			check(_reached(reach, goals[g]), "%s (%s/%s): the %s at %s cannot be walked to from the door" % [t.key, l.plan, l.dressing, g, goals[g]])
+	gt(float(n), 0.0, "seed 4 has stilt rooms to walk")

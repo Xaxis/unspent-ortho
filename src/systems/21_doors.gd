@@ -1141,7 +1141,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "strongbox"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "strongbox"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
