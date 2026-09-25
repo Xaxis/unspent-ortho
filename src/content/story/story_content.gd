@@ -13,6 +13,7 @@ class_name StoryContent
 ##               `reveal` marks a revelation, which lands one at a time (StoryPacing)
 ##   FRAGMENTS   what is written on a thing that can be read
 ##   PLACED      the fragments that belong to one story place and are never dealt
+##   ROOMS       the fragments a kind of room's story slots hold (StoryRooms)
 ##   TALKS       what a stranger of a trade says, and what the player may say back;
 ##               a named person's, marked `cast` (src/content/story/cast/).
 ##   TESTIMONY   what the slate says a machine is FOR, when the player reads one
@@ -568,6 +569,236 @@ const FRAGMENTS := {
 		"kind": &"terminal", "title": "an error log", "lands": [],
 		"ledger": &"machines", "lines": [],
 	},
+	# --- the bunker under the cast stones (ROOMS: never dealt) --------------
+	# 2029, shut since, on the home coast (leg 0). It was where he worked for his
+	# other employer: the terminal lands `was_cia` and nothing past it. The rest is
+	# the man, close and sharp, and a lead or two for later lines to remember.
+	&"bunker_draft": {
+		"kind": &"terminal", "title": "a terminal on its own battery", "lands": [],
+		"lines": [
+			"It wakes when you touch it and asks for a",
+			"name. Your hands give it one before you do.",
+			"",
+			"DRAFTS (1)",
+			"  to ...... WHITETHORN",
+			"  re ...... ASSET CAIRN-1, WEEKLY",
+			"  saved ... 11.03.2029  01:58",
+			"",
+			"Empty. The cursor is where you left it.",
+		],
+		"beats": [&"was_cia"],
+	},
+	&"bunker_phones": {
+		"kind": &"notebook", "title": "two phones in a drawer", "lands": [],
+		"lines": [
+			"In the desk drawer, two phones on one cable.",
+			"One has a sticker on the back, half picked",
+			"off: a cartoon crown. The other has no case,",
+			"no photographs, and one number in it.",
+			"",
+			"Both are dead. The plain one is worn smooth.",
+		],
+	},
+	&"bunker_board": {
+		"kind": &"mark", "title": "a whiteboard", "lands": [],
+		"lines": [
+			"Written over edge to edge, in a hand that",
+			"got faster toward the bottom. Arrows, loops,",
+			"and one word you can read, three times: merge.",
+			"",
+			"One line in the corner is boxed, twice:",
+			"  WED 14  -  2PM  -  SCHOOL HALL",
+			"",
+			"An arrow comes out of the box and runs off",
+			"the edge of the board.",
+		],
+	},
+	&"bunker_drawing": {
+		"kind": &"mark", "title": "a drawing over the cot", "lands": [],
+		"lines": [
+			"A child's drawing, pinned at the corners.",
+			"Rows of chairs, and a stage. On the stage, a",
+			"girl in a yellow crown with her arms out.",
+			"",
+			"One chair in the front row is coloured in so",
+			"hard the crayon has gone through the paper.",
+			"Along the bottom, in capitals: SIT HERE",
+		],
+	},
+	&"bunker_files": {
+		"kind": &"notebook", "title": "a drawer of files", "lands": [],
+		"lines": [
+			"By the steel door, a drawer of hanging files,",
+			"one to a name: HALE, KERR, NAND, a dozen more,",
+			"each fat with notes in one careful hand.",
+			"",
+			"The last has your name on the tab. It is",
+			"empty, and still flat: nobody ever opened it",
+			"out to put anything in.",
+		],
+	},
+	# --- a roundhouse in the crags (ROOMS) ------------------------------------
+	&"crags_weights": {
+		"kind": &"mark", "title": "the loom weights", "lands": [],
+		"lines": [
+			"Stone weights hang on the warp, each with a",
+			"mark cut in it. Most of the marks are names.",
+			"",
+			"The newest stone has been started, and",
+			"stopped at the first letter.",
+		],
+	},
+	&"crags_weave": {
+		"kind": &"mark", "title": "a cloth on the loom", "lands": [],
+		"lines": [
+			"Half a cloth on the loom, grey and brown.",
+			"The pattern is a line that runs straight,",
+			"then bends round nothing, then runs straight.",
+			"",
+			"Every loom in the crags weaves it.",
+		],
+	},
+	&"crags_winters": {
+		"kind": &"mark", "title": "the slates", "lands": [],
+		"lines": [
+			"Slates stacked by the wall, one to a winter:",
+			"a stroke for each week the snow held, a hole",
+			"bored through for each death.",
+			"",
+			"The top slate has three holes. The one under",
+			"it has none, and a lamb drawn in the corner.",
+		],
+	},
+	&"crags_posts": {
+		"kind": &"mark", "title": "a slate with a map", "lands": [],
+		"lines": [
+			"A map scratched on a slate: this house, the",
+			"next, the burn, the peat bank. Round the edge,",
+			"a ring of little posts, each one scored out.",
+			"",
+			"The post over the fire is one of them.",
+		],
+	},
+	&"crags_timetable": {
+		"kind": &"notebook", "title": "the kist", "lands": [],
+		"lines": [
+			"Meal, a cheese in a cloth, a knife wrapped in",
+			"oiled wool. Under the knife, folded small: a",
+			"bus timetable, to a town nobody here knows.",
+			"",
+			"It has been folded and unfolded until the",
+			"creases have gone soft as cloth.",
+		],
+	},
+	&"crags_tin": {
+		"kind": &"notebook", "title": "the kist", "lands": [],
+		"lines": [
+			"Wool, carded and not. Under it, in a tin: a",
+			"first tooth, a curl of fair hair, and a stone",
+			"with a hole worn through it by water.",
+			"",
+			"The tin is the cleanest thing in the house.",
+		],
+	},
+	# --- a stilt house in the drowned city (ROOMS) ----------------------------
+	&"stilt_nail": {
+		"kind": &"mark", "title": "the water post", "lands": [],
+		"lines": [
+			"Cuts up the post by the door, a year beside",
+			"each. They climb. The lowest is under the",
+			"floor now.",
+			"",
+			"Above the top one, a nail has been driven in",
+			"with no year beside it.",
+		],
+	},
+	&"stilt_names": {
+		"kind": &"mark", "title": "the water post", "lands": [],
+		"lines": [
+			"Marks up the post, in three hands. The oldest",
+			"are feet and inches. Then only lines. Then",
+			"names, one to a flood: the Long One, Mag, the",
+			"One That Took the Bridge.",
+			"",
+			"The highest mark has no name yet.",
+		],
+	},
+	&"stilt_ticket": {
+		"kind": &"mark", "title": "a ticket on the post", "lands": [],
+		"lines": [
+			"Tacked above the highest water mark, a ticket",
+			"for the city's water-bus, from before:",
+			"",
+			"  SINGLE  -  ZONE 2  -  VALID TODAY ONLY",
+			"",
+			"It has been valid today for seventy years.",
+		],
+	},
+	# --- a tower lobby in the ruined metropolis (ROOMS) -----------------------
+	&"lobby_rope": {
+		"kind": &"mark", "title": "the lift", "lands": [],
+		"lines": [
+			"The doors are prised apart on a shaft of dark.",
+			"A rope is tied across it at the height of a",
+			"child's chest.",
+			"",
+			"Over the doors the brass arrow still points up.",
+		],
+	},
+	&"lobby_stairs": {
+		"kind": &"sign", "title": "a sign by the lift", "lands": [],
+		"lines": [
+			"IN CASE OF FIRE DO NOT USE LIFTS",
+			"USE STAIRS",
+			"",
+			"The stairs are full to the ceiling with what",
+			"came down them. Under the sign, in chalk:",
+			"noted",
+		],
+	},
+	&"lobby_book": {
+		"kind": &"notebook", "title": "the reception counter", "lands": [],
+		"lines": [
+			"RECEPTION, in steel letters, three gone. On",
+			"the counter where people signed in: a pot,",
+			"knives, an onion.",
+			"",
+			"The visitors' book is under it. They light",
+			"the fire from its back pages forward, and",
+			"have got back as far as 2026.",
+		],
+	},
+	&"lobby_bell": {
+		"kind": &"notebook", "title": "a bell on the counter", "lands": [],
+		"lines": [
+			"A bell on the counter, and a card beside it:",
+			"PLEASE RING FOR ASSISTANCE",
+			"",
+			"The clapper is gone. It hangs on a string",
+			"from the pot handle now, so the pot rings",
+			"when it boils.",
+		],
+	},
+	&"lobby_boxes": {
+		"kind": &"mark", "title": "the letterboxes", "lands": [],
+		"lines": [
+			"Rows of little steel doors, a flat number on",
+			"each. Salt in 1204, nails in 311, seed along",
+			"the top row.",
+			"",
+			"One box is still locked. Nobody has forced",
+			"it, and its name card has been kept clean.",
+		],
+	},
+	&"lobby_post": {
+		"kind": &"mark", "title": "the letterboxes", "lands": [],
+		"lines": [
+			"Post still in a few of the boxes, never",
+			"collected. Bills. A flyer: CAIRN HOME - THE",
+			"HOUSE THAT KNOWS YOU. A postcard of somewhere",
+			"warm, on its back: wish you were here.",
+		],
+	},
 	# --- the carried off ------------------------------------------------------
 	&"boots": {
 		"kind": &"mark", "title": "boots at a fence", "lands": [],
@@ -600,6 +831,38 @@ const PLACED := {
 	&"black_site": [&"growth_bay", &"volunteers", &"release_order"],
 	# At the channel, when the orbital realm is grown: until then it stands nowhere.
 	&"the_channel": [&"channel_console"],
+}
+
+# --- words that belong to a kind of room ---------------------------------------
+#
+# A room's recipe says where words can be found (InteriorLayout.slots) and the
+# story says what they are (StoryRooms). Keyed by the interior kind, then by
+# `SLOT:THING`: the slot, and the thing it is nearest in the room (a `wall` slot
+# on the whiteboard, a `desk` slot at the kist). Where a row lists more than one,
+# each door deals its own, so two neighbours' kists do not hold the same tin.
+# None of these is ever dealt to a sign outside.
+
+const ROOMS := {
+	&"bunker": {
+		&"terminal:desk": [&"bunker_draft"],
+		&"desk:desk": [&"bunker_phones"],
+		&"wall:whiteboard": [&"bunker_board"],
+		&"wall:cot": [&"bunker_drawing"],
+		&"desk:vault_door": [&"bunker_files"],
+	},
+	&"roundhouse": {
+		&"wall:loom": [&"crags_weights", &"crags_weave"],
+		&"wall:slates": [&"crags_winters", &"crags_posts"],
+		&"desk:kist": [&"crags_timetable", &"crags_tin"],
+	},
+	&"stilt_room": {
+		&"wall:gauge": [&"stilt_nail", &"stilt_names", &"stilt_ticket"],
+	},
+	&"tower_lobby": {
+		&"wall:lift": [&"lobby_rope", &"lobby_stairs"],
+		&"desk:counter": [&"lobby_book", &"lobby_bell"],
+		&"wall:letterboxes": [&"lobby_boxes", &"lobby_post"],
+	},
 }
 
 # --- what people say ----------------------------------------------------------

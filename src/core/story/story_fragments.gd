@@ -80,8 +80,10 @@ static func pick_at(place: StringName, n: int, kind: StringName = &"") -> String
 	return &""
 
 
-## Whether a fragment belongs to one place and is never dealt.
+## Whether a fragment belongs to one place, or to a kind of room, and is never dealt.
 static func placed(id: StringName) -> bool:
+	if StoryRooms.placed(id):
+		return true
 	for place: StringName in StoryContent.PLACED:
 		if (StoryContent.PLACED[place] as Array).has(id):
 			return true
