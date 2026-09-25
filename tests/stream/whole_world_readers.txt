@@ -22,6 +22,8 @@ src/boot/boot_world.gd::sketch::list
 src/boot/boot_world.gd::start_of::builder GenPlaces.find
 src/boot/boot_world.gd::world::builder WorldGen.generate
 src/content/biomes/scrapwood.gd::_works::index
+src/core/black_site.gd::_moated::raw
+src/core/black_site.gd::_sea::raw
 src/core/black_site.gd::_sea::tiles
 src/core/chapter/chapter.gd::_def_of::list
 src/core/chapter/chapter.gd::_ids_by_region::builder Landmarks.sites
@@ -74,6 +76,7 @@ src/core/survival/survival.gd::sweep::alloc
 src/core/survival/survival.gd::sweep::index
 src/core/survival/survival.gd::sweep::list
 src/core/works/works.gd::_near_village::list
+src/core/works/works.gd::_room_at::raw
 src/core/works/works.gd::sites::list
 src/core/world_data.gd::_init::tiles
 src/core/world_query.gd::_init::list
@@ -126,6 +129,7 @@ src/render/terrain_mesher.gd::_lv::raw
 src/render/terrain_mesher.gd::_shore_window::raw
 src/render/terrain_mesher.gd::_tally_grounds::raw
 src/render/terrain_mesher.gd::_tally_grounds::tiles
+src/render/terrain_mesher.gd::build_arrays::raw
 src/render/terrain_mesher.gd::drawn_levels::raw
 src/render/transitions.gd::fill::raw
 src/render/weather/sky_ground.gd::image::raw
@@ -137,6 +141,7 @@ src/render/works_map.gd::bake::tiles
 src/render/works_map.gd::keep::list
 src/render/works_map.gd::keep::raw
 src/render/works_map.gd::wet_at::raw
+src/render/world_far.gd::build_arrays::raw
 src/render/world_far.gd::done::tiles
 src/render/world_far.gd::next_block::tiles
 src/render/world_far.gd::stand_arrays::raw
@@ -209,9 +214,12 @@ src/systems/98_tour.gd::_on_border::raw
 src/systems/98_tour.gd::_run::builder GenPlaces.find
 src/ui/ui_explored.gd::_init::tiles
 src/ui/ui_explored.gd::reveal_all::tiles
+src/ui/ui_map_data.gd::_build_images::raw
 src/ui/ui_map_data.gd::country_bytes::raw
 src/ui/ui_map_data.gd::country_bytes::tiles
+src/ui/ui_map_data.gd::ink_table::raw
 src/ui/ui_map_data.gd::mark_bytes::list
+src/ui/ui_map_data.gd::shore_distance::raw
 src/ui/ui_map_data.gd::thinned::raw
 src/ui/ui_map_screen.gd::_draw_overlay::alloc
 src/ui/ui_map_screen.gd::_draw_overlay::index

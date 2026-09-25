@@ -11,8 +11,9 @@ extends RefCounted
 ##   index    a dense `props[...]` lookup: an id read as a place in the list
 ##   tiles    a buffer or loop the size of the whole map (`size * size`, a
 ##            loop bounded by the world's `size`, the far view's every block)
-##   raw      a per-tile array read by absolute index (`w.level[i]`): the
-##            design moves every one of these to a TileWindow
+##   raw      a per-tile array read by absolute index (`w.level[i]`), or
+##            taken whole to be read so (`var level := w.level`): the design
+##            moves every one of these to a TileWindow
 ##   whole    a whole-world list taken as a value: aliased, returned or passed
 ##            on, so whatever walks it next is out of this file's sight
 ##   builder  a call into something that itself reads the whole world
@@ -63,7 +64,10 @@ func _init() -> void:
 	_list.compile("(?:\\bfor\\b.*\\bin\\b.*" + WORLD + "\\." + LISTS + "\\b|" + WORLD + "\\." + LISTS + "\\.(?:filter|map|any|all|reduce)\\()")
 	_index.compile(WORLD + "\\.props\\[")
 	_tiles.compile("\\bsize\\s*\\*\\s*[\\w.]*\\bsize\\b")
-	_raw.compile(WORLD + "\\.(?:level|ground|country|country2|blend|region|recipe|road|continent|moisture|temperature)\\[")
+	# Indexed, or the array itself taken as a value to be indexed later
+	# (`var level := w.level`). Not `region` or `continent` as values: a site's
+	# own `w.region` is an int, and `w` names sites too.
+	_raw.compile(WORLD + "\\.(?:(?:region|continent)\\[|(?:level|ground|country|country2|blend|recipe|road|moisture|temperature)(?:\\[|\\s*(?:[,)]|$)))")
 	_alloc.compile(WORLD + "\\.props\\.size\\(\\)")
 	# The list itself as a value: `var props := w.props`, `f(w.props, ...)`.
 	_whole.compile(WORLD + "\\." + LISTS + "\\s*(?:[,)]|$)")
@@ -132,7 +136,7 @@ func _scan_file_text(rel: String, text: String, worldly: bool, keys: Dictionary)
 			bare = _clamp.sub(bare, "0", true)
 		if worldly and (_tiles.search(bare) != null or _walk.search(bare) != null):
 			keys["%s::%s::tiles" % [rel, fn]] = true
-		if _raw.search(line) != null:
+		if _raw.search(line.strip_edges(false, true)) != null:
 			keys["%s::%s::raw" % [rel, fn]] = true
 		if _whole.search(line.strip_edges(false, true)) != null:
 			keys["%s::%s::whole" % [rel, fn]] = true

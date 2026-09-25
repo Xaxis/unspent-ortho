@@ -45,6 +45,7 @@ func test_the_scan_sees_the_forms_it_names() -> void:
 		"\tbytes.resize(w.size * w.size)": "tiles",
 		"\tfor y in size:": "tiles",
 		"\tvar g := world.ground[i]": "raw",
+		"\tvar level := w.level": "raw",
 		"\tvar props := game.world.props": "whole",
 		"\tvar id := w.props.size()": "alloc",
 		"\tvar sites := Landmarks.sites(world)": "builder Landmarks.sites",
@@ -58,6 +59,7 @@ func test_the_scan_sees_the_forms_it_names() -> void:
 		"\t# for p in w.props: a comment",
 		"\tfor y in range(p, size.y, p * 2):",
 		"\tvar n := near.size()",
+		"\tregion = w.region",
 	]:
 		var keys := {}
 		s._scan_file_text("t.gd", "func f() -> void:\n" + line + "\n", true, keys)
