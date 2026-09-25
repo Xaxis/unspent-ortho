@@ -208,7 +208,11 @@ func _play(g: Game) -> void:
 		if q.id < SaveCore.props_base(g) and Takes.workable(q.kind) and not g.world.depleted.has(q.id):
 			g.world.depleted[q.id] = INF
 			break
-	# Build a fire, and make a haft by hand.
+	# Build a fire, and make a haft by hand. STOOD WHERE ONE FITS, found rather
+	# than assumed: a fire wants level, clear ground in front of the body, and the
+	# walk above ends wherever the land it crossed happens to put it -- on a
+	# coast that climbs in terraces, that can be a step's edge (GEN 28).
+	_to_where_it_fits(g, PropKind.FIRE)
 	var fire: WorldProp = null
 	for turn in 8:
 		Survival.face(g, turn * TAU / 8.0)
@@ -234,6 +238,26 @@ func _play(g: Game) -> void:
 	check(Survival.sleep(g), "slept by the fire: %s" % Survival.sleep_refusal(g))
 	Survival.update_body(g)
 	await tree.process_frame
+
+
+## Stand on the nearest tile, outward from here, where a `kind` can be built in
+## front of the body at some facing.
+func _to_where_it_fits(g: Game, kind: int) -> void:
+	var from := g.player.pos
+	for r in range(0, 16):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var at := Vector2(floori(from.x) + dx + 0.5, floori(from.y) + dy + 0.5)
+				if not g.query.standable(floori(at.x), floori(at.y)):
+					continue
+				_teleport(g, at)
+				for turn in 8:
+					Survival.face(g, turn * TAU / 8.0)
+					if Survival._build_spot(g, kind).x > -1e8:
+						return
+	_teleport(g, from)
 
 
 func _teleport(g: Game, at: Vector2) -> void:

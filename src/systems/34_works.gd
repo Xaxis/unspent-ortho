@@ -465,12 +465,21 @@ func _fell(s: WorksSite, st: WorksState) -> void:
 ## thing a broken depot does to the world that another package reads: a keeper
 ## fed by these is fed by nothing now (src/core/sentinel), and the map's marks
 ## and the reads app stop finding a live work here.
+## Tiles round a depot's work that its stripping still reaches.
+const STRIP_MARGIN := 1.5
+
+
 func _strip(s: WorksSite, st: WorksState) -> void:
 	if st.stripped:
 		return
 	st.stripped = true
-	for q in game.query.props_near(s.pos, Works.YARD):
+	# The yard, and the work it was founded on: the plan's machinery there is
+	# the depot's too, and a keeper that eats it goes hungry when it is taken.
+	var reach := maxf(Works.YARD, s.work_half.length() + STRIP_MARGIN) + s.work_pos.distance_to(s.pos) if s.work_pos.is_finite() else Works.YARD
+	for q in game.query.props_near(s.pos, reach):
 		if not Takes.is_plan_work(q.kind) or game.world.depleted.has(q.id):
+			continue
+		if q.pos.distance_to(s.pos) > Works.YARD and not s.on_work(q.pos, STRIP_MARGIN):
 			continue
 		game.world.depleted[q.id] = INF
 		if game.view != null:

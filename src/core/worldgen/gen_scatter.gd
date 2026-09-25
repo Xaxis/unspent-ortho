@@ -438,13 +438,23 @@ static func props(c: GenContext) -> void:
 	c.mark(&"props.places")
 	_lines(c, occ)
 	c.mark(&"props.lines")
+	# The way in is sited on the land alone and held clear before the works and
+	# the scatter: it lays GROUND (a scree patch), and ground must not depend on
+	# what stands, or an era without the plan's works has a different cover
+	# (test_era).
+	var way := _way_in_site(c)
+	if way.x >= 0:
+		for dy in range(-3, 4):
+			for dx in range(-3, 4):
+				_occupy(c, occ, Vector2(way.x + dx + 0.5, way.y + dy + 0.5), 0.0)
 	# The dystopian evidence of every landscape (GenWorks), before the scatter
 	# so a clearcut or a corridor stays clear.
 	GenWorks.place(c, occ)
 	c.mark(&"props.works")
 	_scatter(c, occ)
 	c.mark(&"props.scatter")
-	_way_in(c)
+	if way.x >= 0:
+		_way_in_lay(c, way)
 	_black_site(c)
 
 
@@ -489,27 +499,17 @@ static func _black_site(c: GenContext) -> void:
 const WAY_IN_NEAR := 22.0
 const WAY_IN_FAR := 46.0
 
-static func _way_in(c: GenContext) -> void:
-	var w := c.w
-	var sp := w.spawn
-	var taken := {}
-	for prop in w.props:
-		if prop.pos.distance_squared_to(sp) > (WAY_IN_FAR + 4.0) * (WAY_IN_FAR + 4.0):
-			continue
-		if prop.kind == PropKind.IRON_ORE and prop.pos.distance_to(sp) < WAY_IN_FAR:
-			return
-		taken[Vector2i(floori(prop.pos.x), floori(prop.pos.y))] = true
+## Where the first iron shows near the spawn, from the land alone (levels,
+## water, roads, villages), so every era of one coast puts it in one place.
+static func _way_in_site(c: GenContext) -> Vector2i:
 	# Five tiles square of one level, else three: a spawn on rough coast can have
 	# no five-square flat in the ring, and then the first iron was hundreds of
 	# tiles off.
-	var best := Vector2i(-1, -1)
 	for flat: int in [2, 1]:
-		best = _way_in_spot(c, taken, flat)
+		var best := _way_in_spot(c, {}, flat)
 		if best.x >= 0:
-			break
-	if best.x < 0:
-		return
-	_way_in_lay(c, best)
+			return best
+	return Vector2i(-1, -1)
 
 
 static func _way_in_spot(c: GenContext, taken: Dictionary, flat: int) -> Vector2i:
