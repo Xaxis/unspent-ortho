@@ -140,7 +140,7 @@ void vertex() {
 		// How hard it shivers: a little always, far more as a gust front reaches
 		// this card (the same field that lays the grass over, so a front moves
 		// the grass, then the bush, then the tree)...
-		float g = gust_at(rest_pos.xz) * mix(0.45, 1.0, sky_wind.z);
+		float g = gust_at(rest_pos.xz);
 		float shiver = LEAF_CALM + g * g * LEAF_GUST;
 		gust_v = g * min(sway_w * 3.0, 1.0);
 		// ...and where a body is pushing through a bush: the trample field under

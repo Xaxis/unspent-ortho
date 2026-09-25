@@ -8,6 +8,8 @@
 # prints where both are. A full held wind carries a band about 6 tiles a second
 # and a band is about 7 tiles deep, so frames 0.75 s apart (01-04, 2.25 s in
 # all) watch one band come over the grass, the bush and the crown in turn.
+# `perf front` then prints the brightness of the grass upwind, the bush and the
+# crown every frame for 8 s: a front shows as a peak in each, in that order.
 # 05-06 over the shoulder, 1.5 s apart.
 weather clear:0:wind=1
 hour 11
@@ -23,6 +25,7 @@ wait 0.75
 shot 03-front-1.5s-on with land:coast,prop:bush
 wait 0.75
 shot 04-front-2.25s-on with land:coast,prop:bush
+perf front 8.0
 zoom 12
 hold shoulder_peek
 await shoulder 3
