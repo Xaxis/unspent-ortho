@@ -100,28 +100,35 @@ func test_every_tenant_writes_for_every_slot_a_bunker_opens() -> void:
 			check((StoryContent.ROOMS.get(row, {}) as Dictionary).has(k), "%s has words at %s" % [row, k])
 
 
-## A full-sized world: at the plan tests' 256 tiles a coast holds one ring at
-## most, and the deal is a count across all of them.
-func test_one_bunker_is_his_and_one_kerr_s_and_the_rest_are_dealt() -> void:
-	for s: int in [3]:
+## The deal is a rule about however many rings a world keeps, never about how
+## many that is: under GEN 28 a full-sized world keeps three to five on his coast
+## (seeds 1-12), and a test that assumed four broke when the coast was regrown.
+## Seed 3 keeps three and seed 10 five, so both ends are held.
+func test_his_is_nearest_kerr_s_farthest_and_the_rest_dealt_in_order() -> void:
+	for s: int in [3, 10]:
 		StoryRooms.forget()
 		var w := WorldGen.generate(s, Tuning.WORLD_SIZE)
 		var dealt := StoryRooms.tenants(w)
-		var count := {}
-		for key: String in dealt:
-			count[dealt[key]] = int(count.get(dealt[key], 0)) + 1
-		var n := 0
+		var bunkers: Array[Threshold] = []
 		for t: Threshold in Interiors.thresholds(w):
 			if t.kind == &"bunker":
-				n += 1
+				bunkers.append(t)
 				check(dealt.has(t.key), "seed %d: every bunker was sunk for somebody" % s)
-		gt(float(n), 3.0, "seed %d: four rings or more on his coast" % s)
-		eq(int(count.get(StoryRooms.HIS, 0)), 1, "seed %d: exactly one is his" % s)
-		eq(int(count.get(StoryRooms.KERR, 0)), 1, "seed %d: and one Kerr's" % s)
-		eq(int(count.get(StoryRooms.PRIYA, 0)), 1, "seed %d: and Priya's" % s)
-		gt(float(count.get(StoryRooms.CAME, 0)), 0.0, "seed %d: and a household that lived out the war" % s)
-		for once: StringName in [StoryRooms.KERR, StoryRooms.PRIYA, StoryRooms.HOLDFAST]:
-			check(int(count.get(once, 0)) <= 1, "seed %d: one %s at most" % [s, once])
+		gt(float(bunkers.size()), 1.0, "seed %d: more than one ring, or there is nothing to deal" % s)
+		bunkers.sort_custom(func(a: Threshold, b: Threshold) -> bool:
+			return a.host.distance_squared_to(w.spawn) < b.host.distance_squared_to(w.spawn))
+		eq(dealt.get(bunkers[0].key, &""), StoryRooms.HIS, "seed %d: the nearest to where he woke is his" % s)
+		eq(dealt.get(bunkers[-1].key, &""), StoryRooms.KERR, "seed %d: the farthest is Kerr's" % s)
+		# The rest, as many as there are: the first of FILL, then nobody.
+		var want: Array = []
+		for i in bunkers.size() - 2:
+			want.append(StoryRooms.FILL[i] if i < StoryRooms.FILL.size() else StoryRooms.NEVER)
+		var got: Array = []
+		for i in range(1, bunkers.size() - 1):
+			got.append(dealt[bunkers[i].key])
+		want.sort()
+		got.sort()
+		eq(got, want, "seed %d: the rest in the order the story wants them" % s)
 		eq(dealt, StoryRooms._deal(w), "seed %d: the same deal every time" % s)
 	StoryRooms.forget()
 
