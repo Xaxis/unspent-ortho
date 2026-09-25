@@ -176,3 +176,53 @@ func test_every_coast_depot_has_a_hall_behind_a_clear_hatch() -> void:
 		var p := InteriorGen.grow(4, t)
 		eq(p.kind.id, &"weapons_hall", "%s grows a weapons hall" % t.key)
 		check(not p.layout.has_hearth, "%s: a hall has no hearth for the walls to stand round" % t.key)
+
+
+## EVERY RING OF CAST STONES ON THE COAST KEEPS A BUNKER, its hatch in the ring
+## beside the tall stone and opening toward a GAP: the doorstep, and where a
+## player is put out, clear of every standing stone's mass (LandmarkModels.blocks
+## for cast_stones, turned by the site the way 22_landmarks hands it over).
+## And the bunker carries the story's slots -- a desk, a terminal, a wall -- for
+## the words to be written into.
+func test_every_ring_of_cast_stones_keeps_a_bunker() -> void:
+	# The full-size island: at 256 seed 4 grows no ring of stones on its coast.
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var rings: Array[LandmarkSite] = []
+	for site: LandmarkSite in Landmarks.sites(w):
+		var d := BiomeRegistry.by_index(w.country_at(floori(site.pos.x), floori(site.pos.y)))
+		if site.kind == &"cast_stones" and d != null and d.interiors.has(&"landmark:cast_stones"):
+			rings.append(site)
+	gt(float(rings.size()), 0.0, "seed 4 has a ring of cast stones where a bunker is declared")
+	var bunkers: Array[Threshold] = []
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind == &"bunker":
+			bunkers.append(t)
+	eq(bunkers.size(), rings.size(), "one bunker door per ring")
+	var exit_out := float((load("res://src/systems/21_doors.gd") as GDScript).get_script_constant_map()["EXIT_OUT"])
+	for i in rings.size():
+		var site := rings[i]
+		var t: Threshold = null
+		for b: Threshold in bunkers:
+			if b.host.distance_to(site.pos) < 3.0:
+				t = b
+		check(t != null, "ring at %s has its bunker" % site.pos)
+		if t == null:
+			continue
+		# The door opens toward a GAP: its bearing from the ring's heart stands well
+		# off every ring stone's (the tall one in the middle has no bearing).
+		for c: Vector3 in LandmarkModels.blocks(&"cast_stones"):
+			var off := Vector2(c.x, c.y).rotated(site.facing)
+			if off.length() < 1.0:
+				continue
+			gt(absf(angle_difference(off.angle(), t.out.angle())), deg_to_rad(12.0),
+				"%s: the door opens between the stones, not at one" % t.key)
+		for c: Vector3 in LandmarkModels.blocks(&"cast_stones"):
+			var stone := site.pos + Vector2(c.x, c.y).rotated(site.facing)
+			for p: Vector2 in [t.door, t.door + t.out * exit_out]:
+				check(p.distance_to(stone) > c.z + Tuning.PLAYER_RADIUS, "%s: %s is clear of a stone at %s" % [t.key, p, stone])
+		var l := InteriorGen.grow(4, t).layout
+		var kinds := {}
+		for sl: Dictionary in l.slots:
+			kinds[sl.slot] = true
+		for want: StringName in [&"desk", &"terminal", &"wall"]:
+			check(kinds.has(want), "%s: the bunker has a %s slot for the story" % [t.key, want])

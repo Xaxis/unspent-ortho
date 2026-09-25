@@ -984,6 +984,7 @@ func _update(delta: float, snap: bool) -> void:
 		night *= 1.0 - 0.9 * under
 		var reach := LANTERN_RANGE * (1.0 - 0.6 * under)
 		var rgb := compensate(WARM, tint, sun) * LANTERN_POWER * night * (0.94 + 0.06 * _flicker({"kind": PropKind.LAMP, "h": 0.5}))
+		rgb *= _held_off(Vector2(at.x, at.z))
 		lantern_light.light_volumetric_fog_energy = FOG_WARM
 		if _set_light(lantern_light, at, reach, rgb):
 			# The player's own pool comes first: it is the one that matters.
@@ -998,6 +999,34 @@ func _update(delta: float, snap: bool) -> void:
 	_show_lent()
 	_cast_shadows(focus3)
 	_update_glints(focus3, hour, lit)
+
+
+## A LANTERN HELD AGAINST A WALL is mostly light the wall catches. Its level is
+## set for a pool on the ground a body's height below it, and at night it is
+## lifted a long way to reach that (`compensate`): a wall a hand's width from it
+## took many times what the ground does and came out a flat blown-out sheet down
+## a corridor (tours/bunker.tour, 04). So the level comes down with the nearest
+## wall within `HELD_NEAR`, to `HELD_LEAST` against it -- and in
+## the open, with nothing that near, it is the lantern it always was: the patch
+## still reads as lamplit, and never as a hole in the picture.
+const HELD_NEAR := 2.2
+const HELD_LEAST := 0.1
+
+
+func _held_off(at: Vector2) -> float:
+	if game.query == null:
+		return 1.0
+	var near := HELD_NEAR
+	# Walls handed to the query only (a room's, a landmark's, a depot's deck, a
+	# hatch). A prop is not asked: dimming the lantern beside every boulder and
+	# house at night would change the whole game's night, which is not this rule's
+	# to decide.
+	for c: Vector3 in game.query.blocks_at(at):
+		near = minf(near, Vector2(c.x, c.y).distance_to(at) - c.z)
+	# Squared, because the light a surface takes goes as the square of how near
+	# it is: a wall a metre off wants far less than half its level.
+	var s := smoothstep(0.05, HELD_NEAR, maxf(near, 0.0))
+	return lerpf(HELD_LEAST, 1.0, s * s)
 
 
 ## Every light near the camera as a glint candidate (Glints), lit as it is now.
