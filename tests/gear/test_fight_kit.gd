@@ -96,6 +96,7 @@ func test_phase_reads_through_a_closed_guard_once() -> void:
 		if coil:
 			eq(hit.get("plate", null), false, "coil: the first blow reads through the guard")
 			lt(float(m.health), float(hp), "and hurts it")
+			check(not m.stunned(sim.now), "and does not stop its work")
 		else:
 			eq(hit.get("plate", null), true, "bare: the closed guard throws it off")
 			eq(m.health, hp)

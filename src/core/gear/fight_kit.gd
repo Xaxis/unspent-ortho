@@ -9,7 +9,8 @@ extends RefCounted
 ##                            still takes HARMONIC_DAMAGE, and rings louder
 ##   phase    (mod_phase)     "it reads the working part through the plate": the
 ##                            first blow on each body reaches its part from any
-##                            side and through a closed guard
+##                            side and through a closed guard; it hurts, and
+##                            does not stall the machine
 ##   damp     (mod_damp)      "your blows go quieter": a blow is DAMP_NOISE as loud
 
 const HARMONIC_DAMAGE := 1
