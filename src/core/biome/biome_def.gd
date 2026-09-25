@@ -192,6 +192,14 @@ var hard_rock := false
 var dressing: BiomeDressing = null
 ## Multiplied into this landscape's light.
 var light_tint := Color(1, 1, 1)
+## How brightly this landscape's DAY is lit against the one daylight (1 = the
+## coast's). It is spent along the light's own evening (`SkyLight.day_gone`), so
+## it is gone by the time night falls and never reaches a night, which is
+## `night_sky`'s. `light_tint` cannot do this: it is multiplied in at every hour,
+## and it lifted the moss's drawn night sky by 10 luma when asked to lift its day.
+## For a ground dark enough that a noon under the shared sun reads as dusk. A
+## roofed realm reads as night at every hour, so it has no day to spend this on.
+var day_light := 1.0
 ## How much of the NIGHT sky's own light reaches the ground here (1 = the
 ## coast's, which is where the night was calibrated and which does not move).
 ##

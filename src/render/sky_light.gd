@@ -1698,13 +1698,13 @@ const LEVEL := {&"burning": Vector3(0.94, 0.8, 0.68)}
 
 
 ## The light a landscape type lays over the hour: its cast, its level, its mood
-## at this hour and its own BiomeDef.light_tint, one multiply. null reads as a
+## at this hour and its own BiomeDef.light_tint and day_light, one multiply. null reads as a
 ## type with nothing of its own.
 static func type_light(def: BiomeDef, hour: float) -> Vector3:
 	var id: StringName = def.id if def != null else &""
 	var own := Vector3.ONE
 	if def != null:
-		own = Vector3(def.light_tint.r, def.light_tint.g, def.light_tint.b)
+		own = Vector3(def.light_tint.r, def.light_tint.g, def.light_tint.b) * lerpf(def.day_light, 1.0, day_gone(hour))
 	return type_tint(id) * (LEVEL.get(id, Vector3.ONE) as Vector3) * mood_light(id, hour) * own
 
 
