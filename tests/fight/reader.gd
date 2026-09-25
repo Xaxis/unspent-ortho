@@ -56,7 +56,9 @@ func act() -> void:
 		return
 	if _charge_to_leave(m):
 		return
-	if _open(m):
+	# A phase coil not yet spent on this body opens it for one blow, whatever it
+	# is doing (FightKit.phase).
+	if _open(m) or sim.phase_ready(m):
 		_strike(m)
 		return
 	_wait(m)

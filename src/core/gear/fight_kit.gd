@@ -8,7 +8,8 @@ extends RefCounted
 ##   harmonic (mod_harmonic)  "it rings their plate": a blow that rings off plate
 ##                            still takes HARMONIC_DAMAGE, and rings louder
 ##   phase    (mod_phase)     "it reads the working part through the plate": the
-##                            first blow on each body counts from any side
+##                            first blow on each body reaches its part from any
+##                            side and through a closed guard
 ##   damp     (mod_damp)      "your blows go quieter": a blow is DAMP_NOISE as loud
 
 const HARMONIC_DAMAGE := 1

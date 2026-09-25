@@ -843,9 +843,10 @@ func reaches_part(m: MobState, from: Vector2, cuts: bool = false, heavy: bool = 
 
 
 ## The first blow on a body with a phase coil fitted reads its working part
-## through the plate (FightKit.phase): counted from the part's own side, so a
-## guard the machine is holding still throws it off. Once a body, spent by
-## asking whether it reads, not by landing.
+## through whatever covers it (FightKit.phase): plate from any side, and a guard
+## the machine is holding closed. Once a body, and spent only by a blow that
+## needed it, so it is an opener and never a way to win: every blow after it
+## meets the machine as it is.
 var _phase_read: Dictionary = {}
 
 
@@ -856,18 +857,10 @@ func _phase_reads(m: MobState) -> bool:
 	return true
 
 
-## Would a blow on this body now be read through its plate? What a player with
-## a coil fitted knows: it has not been spent on this body, and the part it
-## reads is open.
+## Would a blow on this body now be read through what covers its part? What a
+## player with a coil fitted knows: it has not been spent on this body.
 func phase_ready(m: MobState) -> bool:
-	if not hero.kit.phase or _phase_read.has(m.id) or m.part == &"none" or m.part == &"":
-		return false
-	var off := 0.0
-	match m.part:
-		&"back": off = PI
-		&"right": off = PI * 0.5
-		&"left": off = -PI * 0.5
-	return reaches_part(m, m.pos + Vector2.from_angle(m.facing + off) * (m.radius + 0.5))
+	return hero.kit.phase and not _phase_read.has(m.id) and m.part != &"none" and m.part != &""
 
 
 ## A swing rang off plate. With a harmonic edge fitted it still takes

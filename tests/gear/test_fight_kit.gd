@@ -2,7 +2,7 @@ extends TestCase
 ## The fight reads the kit (FightKit, mechanics pass 2a): three modules each do
 ## in a fight what ModifierTable says they decide, with and without the module.
 ##   harmonic  a blow that rings off plate still does 1, and is louder for it
-##   phase     the working part counts from any side for the first blow on a body
+##   phase     the first blow on a body reaches its part from any side, guard and all
 ##   damp      a blow is half as loud
 
 const F := preload("res://tests/fight/fixture.gd")
@@ -77,6 +77,28 @@ func test_phase_reads_the_part_through_plate_for_the_first_blow_only() -> void:
 	eq(second.get("plate", null), true, "the second is a blow on plate again")
 	r = _behind([])
 	eq(_swing(r[0]).get("plate", null), true, "bare: the first blow from its back is plate")
+
+
+func test_phase_reads_through_a_closed_guard_once() -> void:
+	for coil: bool in [false, true]:
+		var sim := F.make_sim()
+		var m := F.still(sim, &"harvester", Vector2(30.5, 20.5), PI)
+		sim.hero.inventory.add(&"knife")
+		sim.hero.inventory.set_held(&"knife")
+		sim.hero.kit = FightKit.of([&"mod_phase"] if coil else [])
+		sim.hero.pos = m.pos + Vector2(-(m.radius + sim.hero.radius + 0.3), 0.0)
+		sim.hero.facing = 0.0
+		m.disturbed = true
+		m.set_mood(MobState.ATTACKING, sim.now)
+		check(not sim.reaches_part(m, sim.hero.pos), "roused, its guard is closed")
+		var hp := m.health
+		var hit := _swing(sim)
+		if coil:
+			eq(hit.get("plate", null), false, "coil: the first blow reads through the guard")
+			lt(float(m.health), float(hp), "and hurts it")
+		else:
+			eq(hit.get("plate", null), true, "bare: the closed guard throws it off")
+			eq(m.health, hp)
 
 
 ## In a running game: what is fitted on the gear page is the kit the fight reads
