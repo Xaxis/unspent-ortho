@@ -117,10 +117,8 @@ func test_the_grass_shader_hands_the_ring_over_to_the_decor() -> void:
 
 
 ## THE RING KEEPS ITS DRAWS. A cell coming or going writes its templates' plants
-## into the MultiMesh that already draws them. A new MultiMesh each time left the
-## freed ones' buffers behind, and a desktop run then hung at quit, the main
-## thread waiting in NSApplication terminate with every worker idle: 5 of 8
-## eye-level tours on seed 7, against 0 of 8 with one MultiMesh kept per template.
+## into the MultiMesh that already draws them, not a new one: a new MultiMesh is
+## a new GPU buffer, and the old one's freed, every time a cell comes or goes.
 func test_a_cell_joining_writes_into_the_draw_already_there() -> void:
 	var ch := _chunk()
 	var ring := MeadowView.new()

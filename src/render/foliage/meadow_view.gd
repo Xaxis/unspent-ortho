@@ -9,9 +9,8 @@ extends Node3D
 ## of its stones), and dropped once it is out of reach. What a cell grows is
 ## decided by each tile's own place, so nothing swims as the ring follows.
 ## Cells grow one at a time, nearest first, STRIP rows a frame: grown whole, a
-## cell of the coast was an 8-9 ms frame every sixteen tiles walked. (On a
-## worker thread the engine intermittently hung at quit, idle, waiting on a
-## thread: not worth a hang for a millisecond a frame.)
+## cell of the coast was an 8-9 ms frame every sixteen tiles walked. A strip is
+## at most 2.7 ms of a frame (18_meadow, cost tour, every tier).
 ##
 ## ONE DRAW PER PLANT TEMPLATE FOR THE WHOLE RING. Every cell's plants of one
 ## template are one MultiMesh, drawn on grass.gdshader with `meadow` on: the same
@@ -19,9 +18,7 @@ extends Node3D
 ## draw per template per cell, 312 of them for fourteen cells of the coast; the
 ## ring's plants are few enough that a behind-the-eye half costs less as vertex
 ## work than as draws. A template is written again only when a cell holding it
-## comes or goes, into the MultiMesh it already has: a new one per write left
-## the dropped ones' buffers behind and a desktop run hung at quit
-## (tests/render/test_meadow_ring.gd).
+## comes or goes, into the MultiMesh it already has, not a new buffer each time.
 ##
 ## THE HAND-OVER. Global `foliage_meadow` (xz the centre, z the reach, w BAND)
 ## tells the grass shader where the ring is. Within BAND of the reach a plant's

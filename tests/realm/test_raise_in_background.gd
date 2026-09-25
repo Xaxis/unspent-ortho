@@ -101,3 +101,26 @@ func test_an_abandoned_raise_stops_early() -> void:
 	check(not WorldGen.is_halted(grown, size, &"underground"), "and the stop does not outlive the raise")
 	RealmWorlds.forget()
 	RealmWorlds.settle()
+
+
+## A PROCESS THAT ENDS CLAIMS ITS REALMS. A game lets go of its raise (above),
+## but the process then came apart with that group task still in the pool, never
+## claimed: `Pages in use exist at exit in PagedAllocator: WorkerThreadPool::Group`
+## on every such run, and on a desktop run 2 in 5 hung for ever inside
+## NSApplication terminate, every worker idle (seed 7, eye-level cost tour). The
+## scene root halts it and waits it out as it leaves: 0 in 5, and no leaked group.
+func test_a_process_that_ends_claims_every_realm_raise() -> void:
+	RealmWorlds.forget()
+	RealmWorlds.settle()
+	RealmWorlds.begin(90421, 1024, &"underground")
+	OS.delay_msec(300)
+	# The game ends first (20_realms), letting go of its raise, then the root.
+	RealmWorlds.forget()
+	check(RealmWorlds._orphan_running(), "the game's raise is still running when it ends")
+	var root := Node.new()
+	root.set_script(load("res://src/main.gd"))
+	root.call("_exit_tree")
+	check(not RealmWorlds._orphan_running(), "no raise is left in the pool when the root has gone")
+	root.free()
+	RealmWorlds.forget()
+	RealmWorlds.settle()

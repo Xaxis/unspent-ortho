@@ -243,6 +243,12 @@ func _exit_tree() -> void:
 	# GDScript's own recursive lock, which the worker holds.
 	(load("res://src/ui/ui_sketch.gd") as GDScript).call("wait")
 	(load("res://src/ui/ui_slate.gd") as GDScript).call("wait")
+	# A realm's raise too (RealmWorlds.begin): a game lets go of it without waiting,
+	# but a process must not come apart with it in the pool. Halted first, so the
+	# wait is one stage of worldgen, not a world.
+	var realms := load("res://src/core/realm/realm_worlds.gd") as GDScript
+	realms.call("forget")
+	realms.call("settle")
 	if FileAccess.file_exists(PLAY_MARK):
 		var f := FileAccess.open(PLAY_MARK, FileAccess.READ)
 		var whose := f.get_as_text().strip_edges() if f != null else ""
