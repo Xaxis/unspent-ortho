@@ -1,4 +1,6 @@
-# The glass desert at eye level and from the play camera, noon and a low sun,
+# The glass desert over the shoulder, at noon and at half past six (a low warm
+# sun: eye_light 28 degrees with 75% of the day's light left), away from the
+# sun and turned into it,
 # with the frame cost over five seconds standing: before and after any change
 # to how the glass is drawn.
 #   tools/tour.sh tours/lands_glass.tour --seed=7 --weather=clear:0 --view=shoulder --stats
@@ -10,9 +12,12 @@ shot noon with land:glass_desert
 perf stats begin
 wait 5.0
 perf stats end glass-noon
-hour 17.5
+hour 18.5
 wait 2.0
 shot low-sun with land:glass_desert
+mouse 1400,0 1.0
+wait 1.0
+shot low-sun-toward with land:glass_desert
 near boulder
 wait 2.0
 shot boulder with land:glass_desert

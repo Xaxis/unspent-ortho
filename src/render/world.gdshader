@@ -1404,44 +1404,17 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		}
 	} else if (id == 11) {
 		// GLASS: a terrace wall the glassing ran over. The melt came over the
-		// lip and ran down the face before it set, so the top of every wall is
-		// a ROLLED LIP of dark glass with a lit bead along it, under it the
-		// glaze hangs in runs of uneven length that end in a rounded drip, and
-		// below them the face is what the heat did not reach: sand baked in
-		// pale, cracked beds. The stepped wall stays a step; it no longer reads
-		// as a stack of courses, because nothing runs level across it.
-		// How far each run got, wandering along the wall rather than in
-		// columns: two octaves, so there are long tongues and short ones.
-		float run = 0.08 + ink_vnoise(vec2(px.x * 0.11, 3.0)) * 0.30 + ink_vnoise(vec2(px.x * 0.45, 7.0)) * 0.10;
-		// Neighbouring runs merge into sheets where the flow was thick.
-		float sheet = ink_vnoise(vec2(px.x * 0.02, 9.0));
-		run += smoothstep(0.55, 0.7, sheet) * 0.2;
-		float lip = 0.035 + vn * 0.02;
-		if (dt < lip) {
-			// The rolled lip: a lit bead on top, the curl in shade under it.
-			c = dt < lip * 0.4 ? mix(SLATE2, RIME3, 0.35) : mix(INK2, SPRUCE1, 0.5);
-		} else if (dt < run) {
-			// The glaze: green-black, streaked down its fall.
-			float st = ink_vnoise(vec2(px.x * 0.6, 41.0));
-			c = mix(SPRUCE1, SLATE1, 0.5);
-			c = st > 0.68 ? mix(c, SPRUCE2, 0.6) : (st < 0.3 ? dn(c, 0.3) : c);
-			// The drip where the run stopped, fat and lit on its belly.
-			if (run - dt < 0.03) {
-				c = run - dt < 0.01 ? INK2 : mix(SLATE2, RIME3, 0.3);
-			}
-		} else {
-			// Baked sand under the glaze, cracked by the heat and scorched
-			// where it lay nearest the melt.
-			float b = (y + (vn - 0.5) * 0.05) / 0.12;
-			c = ink_hash(vec2(floor(b), 12.0)) < 0.5 ? mix(SAND2, LINEN2, 0.5) : SAND2;
-			if (dt < run + 0.06) {
-				c = mix(c, INK3, 0.45);
-			}
-			float cx = floor((px.x + floor(b) * 5.0) / 11.0);
-			if (mod(px.x + floor(b) * 5.0, 11.0) < 1.0 && ink_hash(vec2(cx, floor(b))) > 0.4) {
-				c = dn(c, 0.5);
-			}
-		}
+		// lip and ran down the whole face before it set, so the wall is GLASS
+		// top to foot, and what it has to show is light and not a pattern: the
+		// rolled lip and the runnels are relief (matter_height, row 71) the sun
+		// finds, and the colour only says how thick the glaze lies. Thick under
+		// the lip, it thins toward the foot, where the baked sand shows through
+		// it as a warm cloud -- a gradient in the glass, never an edge drawn on
+		// it, because an outline across the face read as a printed motif.
+		float thick = ink_vnoise(vec2(px.x * 0.035, 3.0)) * 0.7 + ink_vnoise(vec2(px.x * 0.13, 7.0)) * 0.3;
+		float thin = smoothstep(0.12 + thick * 0.3, 0.5 + thick * 0.2, dt);
+		vec3 glaze = mix(SPRUCE1, SLATE1, 0.45 + 0.3 * ink_vnoise(vec2(px.x * 0.4, y * 2.0)));
+		c = mix(glaze, mix(glaze, mix(SAND2, LINEN2, 0.4), 0.55), thin);
 	}
 	return c;
 }
@@ -1707,6 +1680,12 @@ void fragment() {
 	if (m == 58) { takes = 0.06; }
 	c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, takes * (1.0 - unh), rough_add);
 
+	if (m == 71) {
+		// The glaze is not one sheet: runnels polished by the flow alternate
+		// with duller skin, so a wall catches the sun in streaks down its fall
+		// and never as one lit facet.
+		rough_add += ink_vnoise(vec2(world_pos.x + world_pos.z, world_pos.y * 0.3) * 3.1) * 0.35;
+	}
 	ALBEDO = matter_albedo(c);
 	ROUGHNESS = clamp(mr.x + rough_add, 0.04, 1.0);
 	SPECULAR = mr.y;

@@ -152,7 +152,7 @@ vec4 matter_of(int m) {
 	// the green-black floor read as pale ice. 0.30 keeps its body dark.
 	else if (m == 59) { r = vec4(0.30, 0.62, 0.060, 0.0); }
 	// STRATA_GLASS: the melt that ran down a wall, glossy but not a mirror.
-	else if (m == 71) { r = vec4(0.30, 0.72, 0.035, 0.0); }
+	else if (m == 71) { r = vec4(0.42, 0.66, 0.080, 0.0); }
 	else if (m >= 60 && m <= 71) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
 	// --- WHAT A PERSON MADE ---------------------------------------------------
 	// Everything above is GROUND, and until these rows existed every timber post,
@@ -266,8 +266,13 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		float a = cd.z * 6.2832;
 		h = dot(p, vec2(cos(a), sin(a))) * 3.2 + matter_fbm(p * 0.8) * 0.35;
 	} else if (m == 71) {
-		// STRATA_GLASS: runnels down the face, long in height, narrow across.
-		h = matter_fbm(vec2(p.x * 5.5, p.y * 0.7)) * 0.8 + matter_fbm(p * 2.0) * 0.2;
+		// STRATA_GLASS: runnels down the face, long in height and narrow across,
+		// and the ROLLED LIP where the melt curled over the top of the wall: a
+		// swell just under each terrace's top (terraces are 0.5 high), so the
+		// lip catches the light as a curve rather than being drawn on.
+		float dt = (floor(wp.y / 0.5 - 0.002) + 1.0) * 0.5 - wp.y;
+		h = matter_fbm(vec2(p.x * 5.5, p.y * 0.7)) * 0.7 + matter_fbm(p * 2.0) * 0.15;
+		h += exp(-dt * 28.0) * 0.9;
 	} else if (m == 52 || (m >= 60 && m <= 71)) {
 		// ROCK and cliff strata: broken blocks and bedding planes.
 		vec3 cd = matter_cells(p * 1.6);
