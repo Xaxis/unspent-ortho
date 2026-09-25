@@ -36,13 +36,13 @@ enum {
 	# What the drilling left behind it: a core pulled out of the rock and laid
 	# where it was pulled, and a lump of cast stone with its rebar showing.
 	DRILL_CORE, REBAR,
-	# Long grass: a sward left to stand knee-high, for a landscape whose own
-	# d.decor lays it (the coast's cliff meadows).
-	MEADOW,
+	# A landscape's own grasses: the first, second and third of its
+	# `BiomeDef.grasses` (GrassSpecies), laid through its own d.decor.
+	GRASS_A, GRASS_B, GRASS_C,
 }
 ## The enum above, counted. Adding a kind and forgetting this reads off the end
 ## of `_SPECK` on the first chunk built, so a test asserts the two agree.
-const KINDS := 41
+const KINDS := 43
 ## Litter by kind of work (WorksMap channel): cut, scorch, quarry, bores.
 const WORKS_LITTER: Array = [[SCRAP, BOLT, WIRE], [SCRAP, CINDER, CAN], [SPOIL, BOLT, STONE], [SPOIL, BOLT, SCRAP]]
 ## Share of a tile's items that are litter outside any work, and inside one.
@@ -78,6 +78,10 @@ class Tpl:
 	var uv2 := PackedVector2Array()
 	## Anything of it sways: it belongs on the grass surface.
 	var sways := false
+	## A species' GrassSpecies.motion_code, added to each plant's seed in UV2.y.
+	var motion := 0
+	## A species that casts (GrassSpecies.casts): laid on the casting grass surface.
+	var casts := false
 
 
 ## One surface being laid.
@@ -102,7 +106,7 @@ class Out:
 			var root := Vector2(xf.origin.x, xf.origin.z)
 			for w: Vector2 in tpl.uv2:
 				uv.append(root)
-				uv2.append(Vector2(w.x, seed))
+				uv2.append(Vector2(w.x, float(tpl.motion) + seed))
 
 	func arrays() -> Array:
 		if v.is_empty():
@@ -225,12 +229,14 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 	return all.arrays()
 
 
-## A chunk's decor as [solid arrays, grass arrays], each [] when empty. Safe on
+## A chunk's decor as [solid arrays, grass arrays, casting grass arrays], each []
+## when empty. Safe on
 ## a worker thread.
 func build_parts(ch: TerrainMesher.Chunk) -> Array:
 	var rng := Rng.make(world.seed_value, Rng.hash_ints(ch.cx, ch.cy, 0xDEC0))
 	var solid := Out.new()
 	var grass := Out.new()
+	var cast := Out.new()
 	var np := ch.n + 1
 	for ty in ch.h:
 		for tx in ch.w:
@@ -326,7 +332,7 @@ func build_parts(ch: TerrainMesher.Chunk) -> Array:
 				if tpl.sways:
 					# Each plant its own seed: its beat in the wind, and whether it
 					# is one of those a far chunk leaves out (grass.gdshader).
-					grass.put(tpl, xf, basis, Rng.hash01(wx, wy, i, 0x5eed))
+					(cast if tpl.casts else grass).put(tpl, xf, basis, Rng.hash01(wx, wy, i, 0x5eed))
 				else:
 					solid.put(tpl, xf, basis)
 	# Rubble fallen from cliff faces, more of it where the rock is hard.
@@ -348,7 +354,7 @@ func build_parts(ch: TerrainMesher.Chunk) -> Array:
 		var s := 0.7 + rng.randf() * 0.6
 		var basis := Basis(Vector3.UP, rng.randf() * TAU)
 		solid.put(tpl, Transform3D(basis.scaled(Vector3(s, s, s)), p + along * (rng.randf() - 0.5) * 0.4), basis)
-	return [solid.arrays(), grass.arrays()]
+	return [solid.arrays(), grass.arrays(), cast.arrays()]
 
 
 ## True when the lattice cell under (x, y) is one dry terrace.
@@ -383,9 +389,90 @@ static func template(kind: int, country: int, stage: int = 0) -> Tpl:
 			if w.x > 0.0:
 				t.sways = true
 				break
+		if kind >= GRASS_A and kind <= GRASS_C:
+			t.motion = species(kind, country).motion_code()
+			t.casts = species(kind, country).casts
 		_templates[key] = t
 	_lock.unlock()
 	return t
+
+
+## The landscape's grass that GRASS_A/B/C stands for, or the one grown from its
+## grass colours when it declares none.
+static func species(kind: int, c: int) -> GrassSpecies:
+	var own := BiomeRegistry.by_index(c).grasses
+	var i := kind - GRASS_A
+	if i >= 0 and i < own.size():
+		return own[i]
+	return GrassSpecies.fallback(grass(c))
+
+
+## A patch of one grass: blades rooted over a disc, each a thin one-sided sickle
+## (grass.gdshader draws both faces and lights it as grass), laid toward one
+## bearing by the stage so neighbouring patches do not comb alike. Fronds hang
+## leaflets down each side of a blade; seed heads sit at its tip.
+static func _grow(k: Kit, g: GrassSpecies, s: int, stage: int) -> void:
+	var bearing := float(stage) * 2.1 + 0.6
+	for i in g.blades:
+		var r := sqrt(Rng.hash01(s, i, 11)) * g.spread
+		var at := Rng.hash01(s, i, 13) * TAU
+		var base := Vector3(cos(at) * r, 0.0, sin(at) * r)
+		var a := lerp_angle(at, bearing, g.lay) + Kit.j(s, i, 0.9)
+		var out := Vector3(cos(a), 0.0, sin(a))
+		var hh := lerpf(g.height.x, g.height.y, Rng.hash01(s, i, 3))
+		var reach := hh * lerpf(g.reach.x, g.reach.y, Rng.hash01(s, i, 7))
+		var tint := Rng.hash01(s, i, 17) * 0.3
+		var root := g.root.lerp(g.tip, tint * 0.5)
+		var top := g.tip.lerp(g.root, tint)
+		if g.other_share > 0.0 and Rng.hash01(s, i, 23) < g.other_share:
+			root = root.lerp(g.other, 0.7)
+			top = top.lerp(g.other, 0.5)
+		if g.leaflets > 0:
+			_frond(k, g, s, i, base, out, hh, reach, root, top)
+			continue
+		var tip := base + out * reach + Vector3(0.0, hh * 0.94, 0.0)
+		k.sickle(base, tip, out * reach * g.curl + Vector3(0.0, hh * 0.08, 0.0), g.width, a + 1.57, root, top)
+		if i < g.heads:
+			# A soft head, not a flake: a small rounded tuft on the stem's tip.
+			k.clump(tip.x, tip.y - g.head_size * 0.3, tip.z, g.head_size * 0.7, g.head_size * 1.2, s + i, g.head_color, 5)
+	k.sway_by_height(0, 0.0, g.height.y, 1.0)
+
+
+## Where along a frond's arch its rachis is at `t` 0..1: up out of the crown,
+## out along `out`, and arching over so the outer third hangs (`curl`).
+static func _arch(base: Vector3, out: Vector3, hh: float, reach: float, curl: float, t: float) -> Vector3:
+	# Peaks at hh a share 1 / (1 + curl) of the way out, then falls away.
+	var rise := hh * sin(t * PI * 0.5 * (1.0 + curl))
+	return base + out * reach * t + Vector3(0.0, rise, 0.0)
+
+
+## A frond: a thin rachis arching out of the crown in FROND_SEGS segments, and
+## down each side of it, leaflets that are themselves thin curved sickles, lying
+## near flat so they face the sky, shortening toward the tip and paler there.
+## The broad single blade under a fishbone of triangles read as a card.
+const FROND_SEGS := 4
+static func _frond(k: Kit, g: GrassSpecies, s: int, i: int, base: Vector3, out: Vector3, hh: float, reach: float, root: Color, top: Color) -> void:
+	var side := Vector3(-out.z, 0.0, out.x)
+	var prev := base
+	for n in FROND_SEGS:
+		var t1 := float(n + 1) / FROND_SEGS
+		var p1 := _arch(base, out, hh, reach, g.curl, t1)
+		var w := g.width * (1.0 - float(n) / FROND_SEGS * 0.7)
+		k.made.tri(prev - side * w * 0.5, prev + side * w * 0.5, p1, root.lerp(top, t1))
+		prev = p1
+	for j in g.leaflets:
+		var t := 0.22 + 0.74 * float(j) / float(g.leaflets)
+		var p := _arch(base, out, hh, reach, g.curl, t)
+		var along := (_arch(base, out, hh, reach, g.curl, minf(t + 0.05, 1.0)) - p).normalized()
+		var ll := hh * g.leaflet * (1.0 - t * 0.7) * (0.85 + 0.3 * Rng.hash01(s, i * 37 + j, 29))
+		var col := root.lerp(top, t)
+		for sd: float in [-1.0, 1.0]:
+			var droop := 0.12 + 0.2 * Rng.hash01(s, i * 31 + j, 19 + int(sd))
+			var dir := (side * sd + along * 0.55).normalized()
+			var leaf_tip := p + dir * ll - Vector3(0.0, ll * droop, 0.0)
+			# Width across the leaflet, horizontal, so it lies to the sky.
+			var across := Vector3(-dir.z, 0.0, dir.x)
+			k.sickle(p, leaf_tip, along * ll * 0.12, ll * 0.34, atan2(across.z, across.x), col, top.lerp(g.tip_pale, 0.5))
 
 
 ## Grass colours of a landscape: [blade, tip].
@@ -572,27 +659,8 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 			k.made.prism(0, -0.11, 0, 0.035, 0.11, 0.035, 7, P.LINEN[4], P.LINEN[5])
 			k.made.prism(0, -0.02, 0, 0.037, 0.01, 0.037, 7, P.LINEN[2])
 			k.made.pop()
-		MEADOW:
-			# A patch of sward: many thin blades rooted all over a disc about two
-			# thirds of a tile across, laid roughly one way (each patch its own way,
-			# by stage), each a narrow sickle that curves over under its own weight.
-			# Thin is the point: a meadow is a haze of fine blades, and a few wide
-			# ones read as paper spikes. One-sided (grass.gdshader draws both
-			# faces), two triangles a blade.
-			var blades := 28
-			var lay := float(stage) * 2.1 + 0.6
-			for i in blades:
-				var r := sqrt(Rng.hash01(s, i, 11)) * 0.4
-				var at := Rng.hash01(s, i, 13) * TAU
-				var base := Vector3(cos(at) * r, 0.0, sin(at) * r)
-				var a := lay + Kit.j(s, i, 0.9)
-				var out := Vector3(cos(a), 0.0, sin(a))
-				var hh := 0.22 + Rng.hash01(s, i, 3) * 0.3
-				var reach := hh * (0.2 + Rng.hash01(s, i, 7) * 0.3)
-				var tip := base + out * reach + Vector3(0.0, hh * 0.94, 0.0)
-				var col: Color = gr[i % 2]
-				k.sickle(base, tip, out * reach * 0.15 + Vector3(0.0, hh * 0.08, 0.0), 0.026, a + 1.57, col)
-			k.sway_by_height(0, 0.0, 0.5, 1.0)
+		GRASS_A, GRASS_B, GRASS_C:
+			_grow(k, species(kind, c), s, stage)
 		REBAR:
 			# A lump of cast stone broken off something, its bars standing out of
 			# the break, rusted to the colour of what is left of the old world.

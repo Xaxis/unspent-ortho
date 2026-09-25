@@ -360,6 +360,12 @@ func room(head: Vector3, eye: Vector3) -> float:
 			_solids.append(probe)
 		else:
 			_boxes.append(probe)
+	# Drawn things that are no prop but have a shape a circle cannot hold (a
+	# depot's hatch housing, 21_doors): a system that draws one says where.
+	for sys in game.systems:
+		if sys.has_method(&"sight_boxes"):
+			for b: PackedFloat32Array in sys.call(&"sight_boxes", mid, reach):
+				_boxes.append(b)
 	var seen := {}
 	var steps := Shoulder.steps_for(head.distance_to(eye))
 	# Once per TILE the line crosses: the walls are stamped by tile, and a step

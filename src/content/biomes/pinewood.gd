@@ -37,7 +37,22 @@ static func make() -> BiomeDef:
 	d.plain_ground = Ground.NEEDLES
 	d.bank_ground = Ground.NEEDLES
 	d.village_ground = Ground.GRASS
-	d.decor = {Ground.GRASS: [1.2, Decor.FERN, 30, Decor.BRACKEN, 26, Decor.TUFT_TALL, 14, Decor.MUSHROOM, 4, Decor.CONE, 6]}
+	# Under the pines: fern, fronds arching out of one crown with their leaflets
+	# hung down each side, rocking slowly; and bracken, taller and gone to rust,
+	# held out flat and stiff.
+	d.grasses = [
+		GrassSpecies.make(&"fern", {"blades": 7, "height": Vector2(0.26, 0.42), "width": 0.012, "spread": 0.08,
+			"reach": Vector2(0.9, 1.25), "curl": 0.7, "lay": 0.0, "leaflets": 10, "leaflet": 0.34,
+			"root": P.SPRUCE[3], "tip": P.MOSS[4], "tip_pale": P.MOSS[5].lerp(P.SAND[4], 0.3), "stiff": 0.6, "flutter": 2}),
+		GrassSpecies.make(&"bracken", {"blades": 4, "height": Vector2(0.38, 0.58), "width": 0.014, "spread": 0.07,
+			"reach": Vector2(0.8, 1.1), "curl": 0.35, "lay": 0.1, "leaflets": 10, "leaflet": 0.34,
+			"root": P.EARTH[3].lerp(P.MOSS[3], 0.3), "tip": P.RUST[3].lerp(P.SAND[3], 0.25), "tip_pale": P.SAND[4],
+			"other": P.MOSS[3], "other_share": 0.3, "stiff": 0.75, "flutter": 1}),
+	]
+	d.decor = {
+		Ground.GRASS: [1.2, Decor.GRASS_A, 30, Decor.GRASS_B, 26, Decor.TUFT_TALL, 14, Decor.MUSHROOM, 4, Decor.CONE, 6],
+		Ground.NEEDLES: [0.8, Decor.CONE, 30, Decor.GRASS_B, 20, Decor.TWIG, 18, Decor.MUSHROOM, 6, Decor.GRASS_A, 8],
+	}
 	d.grass_colors = [P.SPRUCE[2], P.MOSS[2]]
 	d.rock_color = P.SLATE[2].lerp(P.SPRUCE[2], 0.3)
 	# Green-shadowed slate, resinous timber, and a needle mat over everything

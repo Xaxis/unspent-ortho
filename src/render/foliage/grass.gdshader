@@ -21,7 +21,9 @@
 // Vertex channels (MeshKit, Decor):
 //   COLOR.rgb  the blade's colour (palette sRGB); COLOR.a its MARK code / 255
 //   UV2.x      sway weight: 0 at the root, rising to the tip
-//   UV2.y      the plant's seed 0..1 (Decor writes one per plant)
+//   UV2.y      fraction: the plant's seed 0..1 (Decor writes one per plant);
+//              whole part: its species' motion (GrassSpecies.motion_code), tens
+//              the stiffness in tenths and units the flutter, 0 for no species
 //   UV         the plant's root in world xz (Decor), for what is decided per plant
 shader_type spatial;
 render_mode cull_disabled;
@@ -46,6 +48,9 @@ const float ROOT_SHADE = 0.74;
 const float TIP_BLEACH = 0.42;
 // How much paler a blade laid over by a gust reads.
 const float GUST_PALE = 0.3;
+// How matte a blade is at least, and how much of its matter's specular it keeps.
+const float GRASS_ROUGH = 0.85;
+const float GRASS_SPEC = 0.3;
 // Sun through a blade lit from behind: a blade passes green and yellow.
 const vec3 GRASS_THROUGH = vec3(0.55, 0.62, 0.22);
 // Under the lens: from here the plants thin, by their seed, to GRASS_THIN_KEEP
@@ -57,9 +62,15 @@ const float GRASS_THIN_KEEP = 0.3;
 varying vec3 world_pos;
 varying float sway_w;
 varying float gust_v;
+varying float code_v;
 
 void vertex() {
 	sway_w = UV2.x;
+	float seed = fract(UV2.y);
+	float code = floor(UV2.y);
+	code_v = code;
+	float stiff = code >= 10.0 ? floor(code / 10.0) / 10.0 : GRASS_STIFF;
+	float flutter = mod(code, 10.0);
 	gust_v = 0.0;
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	mat3 to_model = inverse(mat3(MODEL_MATRIX));
@@ -67,15 +78,23 @@ void vertex() {
 	bool left_out = false;
 	if (PROJECTION_MATRIX[3][3] < 0.5) {
 		float d = distance(vec3(UV.x, wp.y, UV.y), INV_VIEW_MATRIX[3].xyz);
-		left_out = UV2.y > mix(1.0, GRASS_THIN_KEEP, smoothstep(GRASS_THIN_FROM, GRASS_THIN_TO, d));
+		left_out = seed > mix(1.0, GRASS_THIN_KEEP, smoothstep(GRASS_THIN_FROM, GRASS_THIN_TO, d));
 	}
 	NORMAL = normalize(mix(NORMAL, up_m, GRASS_UP));
 	if (left_out) {
 		// Every corner of the plant to one point: no area, no fill.
 		VERTEX = vec3(0.0);
 	} else if (sway_w > 0.0) {
-		vec3 push = wind_push(wp, sway_w, UV2.y, GRASS_STIFF);
-		gust_v = gust_at(wp.xz) * sway_w;
+		vec3 push = wind_push(wp, sway_w, seed, stiff);
+		float g = gust_at(wp.xz);
+		gust_v = g * sway_w;
+		// A species' own shiver over the sway: a whole multiple of the sky's
+		// phase, so it quickens with the wind and never jumps at the wrap.
+		if (flutter > 0.0) {
+			vec2 dir = wind_dir();
+			float f = sky_wind.w * (2.0 + flutter) + seed * 40.0;
+			push += vec3(-dir.y, 0.0, dir.x) * sin(f) * sway_w * 0.01 * flutter * (0.3 + wind_strength) * (0.4 + g);
+		}
 		vec3 tr = trample_at(wp.xz);
 		push += vec3(tr.x, 0.0, tr.y) * PART_LEAN * sway_w;
 		push.y -= (length(tr.xy) * 0.5 + tr.z) * PRESS_DROP * sway_w;
@@ -101,16 +120,22 @@ void fragment() {
 	float h = smoothstep(0.0, 0.9, sway_w);
 	float lum = dot(c, vec3(0.3, 0.59, 0.11));
 	vec3 bleached = mix(c, vec3(lum) * vec3(1.32, 1.26, 1.02) + vec3(0.05, 0.045, 0.02), 0.6);
-	c = mix(c * ROOT_SHADE, mix(c, bleached, TIP_BLEACH), smoothstep(0.0, 0.85, h));
+	// A species brings its own tip colour, so it bleaches only a little more.
+	float bleach = code_v >= 10.0 ? TIP_BLEACH * 0.3 : TIP_BLEACH;
+	c = mix(c * ROOT_SHADE, mix(c, bleached, bleach), smoothstep(0.0, 0.85, h));
 	c = mix(c, c * (1.0 + GUST_PALE) + vec3(0.03, 0.03, 0.02), gust_v);
 	c = sky_apply(c, world_pos, TIME);
 	vec3 n_world = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	vec4 mr = matter_of(m);
 	float rough_add = 0.0;
-	c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, 0.85, rough_add);
+	// A living blade is the land growing, not a thing left standing in it: it
+	// takes the land's share of the place's wear (world.gdshader), not a post's.
+	c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, 0.14, rough_add);
 	ALBEDO = matter_albedo(c);
-	ROUGHNESS = clamp(mr.x + rough_add - gust_v * 0.15, 0.04, 1.0);
-	SPECULAR = mr.y;
+	// Matte: a blade lit by a sky-bent normal and seen at a grazing angle would
+	// otherwise mirror the sky and go silver, which reads as paper, not grass.
+	ROUGHNESS = clamp(max(mr.x, GRASS_ROUGH) + rough_add - gust_v * 0.1, 0.04, 1.0);
+	SPECULAR = mr.y * GRASS_SPEC;
 	METALLIC = mr.w;
 	BACKLIGHT = GRASS_THROUGH * (0.35 + 0.65 * h);
 	EMISSION = matter_light(neon_reflect(world_pos, px) + neon_skyglow(c));

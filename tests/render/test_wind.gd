@@ -49,7 +49,7 @@ func test_the_wind_reads_its_phase_and_bearing_from_the_sky() -> void:
 	check(src.contains("sky_gust.xy"), "the gust field travels by the sky's integrated offset")
 	check(src.contains("sky_shock("), "a colossus's landing is a term in the one push")
 	check(not src.contains("TIME"), "nothing in the wind runs on TIME")
-	for pair: Array in [["GUST_CELL", WindField.CELL], ["GUST_PERIOD", WindField.PERIOD]]:
+	for pair: Array in [["GUST_CELL", WindField.CELL], ["GUST_PERIOD", WindField.PERIOD], ["FRONT_SHORT", WindField.FRONT_SHORT], ["FRONT_LONG", WindField.FRONT_LONG]]:
 		check(src.contains("const float %s = %.1f;" % pair), "the shader's %s is WindField's" % pair[0])
 
 
@@ -93,3 +93,29 @@ func test_the_travel_wraps_on_the_lattice_and_never_jumps() -> void:
 func test_a_calm_keeps_the_last_bearing() -> void:
 	var g := WindField.advance(Vector4(0.0, 0.0, 0.0, 1.0), Vector2(0.0, 0.0), 1.0)
 	eq(Vector2(g.z, g.w), Vector2(0.0, 1.0), "a calm has no bearing of its own")
+
+
+## Slice 2: a leaf card's own flutter answers the gust field and the trample
+## field, so a front reaching a crown sets it shivering and a body pushing
+## through a bush rustles it. Before this the flutter ran on wind_strength alone,
+## the same everywhere at once.
+func test_leaves_shiver_in_a_gust_and_rustle_where_a_body_pushes() -> void:
+	var body := vertex_body(FileAccess.get_file_as_string("res://src/render/foliage/leaf.gdshader"))
+	check(body.contains("gust_at("), "a card's flutter reads the gust at its own place")
+	check(body.contains("trample_at("), "and the trample field under it")
+	check(body.contains("crown_clear[0]"), "and only a card near the ground a body stands on rustles")
+
+
+## A gust is a front: a band across the wind. Measured as how far the field
+## stays alike stepping across the wind against stepping along it.
+func test_a_gust_is_a_band_across_the_wind() -> void:
+	for dir: Vector2 in [Vector2(1.0, 0.0), Vector2(0.6, 0.8), Vector2(-0.8, 0.6)]:
+		var g := WindField.advance(Vector4(0.0, 0.0, dir.x, dir.y), dir, 0.0)
+		var side := Vector2(-dir.y, dir.x)
+		var along := 0.0
+		var across := 0.0
+		for i in 400:
+			var p := Vector2(float(i % 20) * 7.3, float(i / 20) * 5.9)
+			along += absf(WindField.gust_at(p + dir * 4.0, g) - WindField.gust_at(p, g))
+			across += absf(WindField.gust_at(p + side * 4.0, g) - WindField.gust_at(p, g))
+		gt(along, across * 1.8, "%s: the field changes faster along the wind than across it (%.1f, %.1f)" % [dir, along, across])
