@@ -171,6 +171,9 @@ var built: BiomeForms = null
 var decor: Dictionary = {}
 ## [blade, tip] of this type's grass, and the colour of its loose rock.
 var grass_colors: Array[Color] = []
+## This landscape's own grasses (GrassSpecies), laid by its d.decor as
+## Decor.GRASS_A, GRASS_B, GRASS_C. Empty: it grows none of its own.
+var grasses: Array[GrassSpecies] = []
 var rock_color := Color(0.42, 0.43, 0.47)
 ## What the small life on this ground is coloured, where it differs from the
 ## shared hand: &"bloom" (a flower's head, three stages), &"fronds" (bracken,

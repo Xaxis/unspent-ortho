@@ -109,6 +109,13 @@ const vec3 THROUGH_TINT = vec3(1.0, 1.15, 0.5);
 // white crystalline star (fore.gdshader found it first).
 const float LEAF_WEAR = 0.2;
 
+// A card's flutter, as a share of what the wind alone gives it: in the lull
+// between fronts, added at the height of a full gust (squared, so the front
+// has an edge), and added again where a body is pushing through it.
+const float LEAF_CALM = 0.3;
+const float LEAF_GUST = 2.2;
+const float LEAF_RUSTLE = 2.8;
+
 varying vec3 world_pos;
 varying vec3 rest_pos;
 varying float sway_w;
@@ -125,7 +132,17 @@ void vertex() {
 		// whole multiple of the sky's phase, 5 to 8 by the card's seed, so it
 		// quickens with the wind and never jumps where the phase wraps.
 		float f = sky_wind.w * (5.0 + floor(UV2.y * 4.0)) + UV2.y * 40.0;
-		push += vec3(sin(f), cos(f * 1.3) * 0.5, cos(f * 0.9)) * UV.y * sway_w * 0.02 * (0.3 + wind_strength);
+		// How hard it shivers: a little always, far more as a gust front reaches
+		// this card (the same field that lays the grass over, so a front moves
+		// the grass, then the bush, then the tree)...
+		float g = gust_at(rest_pos.xz) * mix(0.45, 1.0, sky_wind.z);
+		float shiver = LEAF_CALM + g * g * LEAF_GUST;
+		// ...and where a body is pushing through a bush: the trample field under
+		// a card low enough to be brushed, above the ground the player stands on.
+		vec3 tr = trample_at(rest_pos.xz);
+		float low = 1.0 - smoothstep(1.2, 2.2, rest_pos.y - crown_clear[0].y);
+		shiver += (length(tr.xy) * 2.0 + tr.z) * low * LEAF_RUSTLE;
+		push += vec3(sin(f), cos(f * 1.3) * 0.5, cos(f * 0.9)) * UV.y * sway_w * 0.02 * (0.3 + wind_strength) * shiver;
 		VERTEX += inverse(mat3(MODEL_MATRIX)) * (mat3(INV_VIEW_MATRIX) * wind_view(push, VIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE));
 	}
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;

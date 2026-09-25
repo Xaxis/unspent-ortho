@@ -65,29 +65,35 @@ func _process(delta: float) -> void:
 ## Tiles round the middle of a `near meadow` that are scored: the frame round
 ## the player at play zoom.
 const MEADOW_HALF := 4
-## How far out `near meadow` looks.
+## How far out `near meadow` looks, and `near dune`.
 const MEADOW_REACH := 60
+const DUNE_REACH := 400
 ## The names `tour_place` answers (tests/tours/test_tour_claims.gd reads it).
-const TOUR_PLACES: Array[String] = ["meadow"]
+const TOUR_PLACES: Array[String] = ["meadow", "dune"]
 
 
 ## `near meadow`: within MEADOW_REACH, the middle of the stretch with the most
-## level ground of the player's own ground and landscape round it, so the frame
-## is sward and not a terrace lip or a mud edge. A tour about grass names the
+## level grass of the player's own landscape round it, so the frame is sward and
+## not a terrace lip or a mud edge. `near dune`: the same for sand, looked for
+## further out, since the dunes lie along the bays. A tour about grass names the
 ## grass, not a coordinate that the next worldgen change moves.
 func tour_place(what: String) -> Vector2:
-	if what != "meadow" or game == null or game.world == null or game.player == null:
+	if not what in TOUR_PLACES or game == null or game.world == null or game.player == null:
 		return Vector2.INF
-	var w := game.world
-	var here: Vector2 = game.player.pos
+	var dune := what == "dune"
+	return _best(game.world, game.player.pos, Ground.SAND if dune else Ground.GRASS,
+		DUNE_REACH if dune else MEADOW_REACH, 6 if dune else 2)
+
+
+static func _best(w: WorldData, here: Vector2, g: int, reach: int, step: int) -> Vector2:
 	var hx := floori(here.x)
 	var hy := floori(here.y)
 	var country := w.country_at(hx, hy)
 	var best := 0
 	var at := Vector2.INF
-	for dy in range(-MEADOW_REACH, MEADOW_REACH + 1, 2):
-		for dx in range(-MEADOW_REACH, MEADOW_REACH + 1, 2):
-			var n := _open(w, hx + dx, hy + dy, Ground.GRASS, country)
+	for dy in range(-reach, reach + 1, step):
+		for dx in range(-reach, reach + 1, step):
+			var n := _open(w, hx + dx, hy + dy, g, country)
 			if n > best:
 				best = n
 				at = Vector2(hx + dx + 0.5, hy + dy + 0.5)

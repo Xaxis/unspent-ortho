@@ -346,11 +346,11 @@ func blade(base: Vector3, tip: Vector3, width: float, angle: float, col: Color) 
 ## faces: a straight inner edge from the base to the tip, and an outer edge that
 ## bows out through `bow` (added to the midpoint), so the blade reads as curved
 ## for half what a jointed blade costs. Tapers to the tip.
-func sickle(base: Vector3, tip: Vector3, bow: Vector3, width: float, angle: float, col: Color) -> void:
+func sickle(base: Vector3, tip: Vector3, bow: Vector3, width: float, angle: float, col: Color, tip_col: Color = Color(0, 0, 0, 0)) -> void:
 	var side := Vector3(cos(angle), 0.0, sin(angle)) * width * 0.5
 	var mid := base.lerp(tip, 0.5) + bow + side * 0.4
 	made.tri(base - side, base + side, mid, col)
-	made.tri(base - side, mid, tip, col)
+	made.tri(base - side, mid, tip, col if tip_col.a == 0.0 else tip_col)
 
 
 ## A blade bent at one joint: a tapering sheath from base to mid, the tip on
