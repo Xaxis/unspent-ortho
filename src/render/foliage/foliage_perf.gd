@@ -28,7 +28,10 @@ const ROUNDS := 5
 ## `noise` toggles nothing: the same pairs of halves with no change between
 ## them, which is the floor any other layer's difference has to clear on this
 ## machine at this load.
-const LAYERS := {"foliage": ["props_leaf"], "decor": ["decor", "grass", "grass_cast"], "grass": ["grass", "grass_cast"], "noise": []}
+## `meadow` is the eye-level meadow ring (18_meadow), and `sward` all the grass:
+## the ring and every chunk's.
+const LAYERS := {"foliage": ["props_leaf"], "decor": ["decor", "grass", "grass_cast"], "grass": ["grass", "grass_cast"],
+	"meadow": [], "sward": ["grass", "grass_cast"], "noise": []}
 
 
 ## `perf foliage|decor SECS [MS]`: the cost of that layer in every loaded chunk
@@ -44,12 +47,11 @@ static func perf(tour: Node, game: Node, parts: PackedStringArray) -> bool:
 	if view == null:
 		printerr("tour perf %s: no world view" % layer)
 		return false
-	var leaves: Array[MeshInstance3D] = []
-	for chunk: Node in view.get_children():
-		for part: String in LAYERS[layer]:
-			var m := chunk.get_node_or_null(part) as MeshInstance3D
-			if m != null and m.visible:
-				leaves.append(m)
+	var leaves := nodes(game, layer)
+	for m in leaves:
+		if m is MeadowView:
+			var ring := m as MeadowView
+			print("tour meadow: reach %.0f density %.2f, %d plants in %d draws" % [ring.reach, ring.density, ring.plants, ring.draws])
 	if leaves.is_empty() and layer != "noise":
 		printerr("tour perf %s: nothing of it is loaded to measure" % layer)
 		return false
@@ -87,6 +89,23 @@ static func perf(tour: Node, game: Node, parts: PackedStringArray) -> bool:
 		printerr("tour perf %s: %.2f ms of render cpu, budget %.2f" % [layer, ms, max_ms])
 		return false
 	return true
+
+
+## What `layer` toggles, loaded and shown now.
+static func nodes(game: Node, layer: String) -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	var view: WorldView = game.get("view")
+	for chunk: Node in view.get_children():
+		for part: String in LAYERS[layer]:
+			var m := chunk.get_node_or_null(part) as Node3D
+			if m != null and m.visible:
+				out.append(m)
+	if layer == "meadow" or layer == "sward":
+		for sys: Node in game.get("systems"):
+			var ring: Variant = sys.get(&"meadow")
+			if ring is MeadowView and (ring as MeadowView).visible:
+				out.append(ring)
+	return out
 
 
 ## Medians over SECS of frames.
