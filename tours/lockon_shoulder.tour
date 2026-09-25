@@ -48,7 +48,7 @@ shot 05-dodged-still-facing with shoulder_locked,lock_facing
 try 8
 await target:cutter 0.3
 walkto part 3
-press swing
+tap swing
 await hit 1.2
 end
 wait 0.2

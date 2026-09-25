@@ -1,9 +1,15 @@
 # The keeper a landscape has (docs/VISION.md §3), walked to and fought with real
-# keys: the Coast's reaper at the machines' intake, where it stands on every seed.
+# keys: the Coast's reaper on the ground it holds, found by where it dens.
 #
-#   tools/tour.sh tours/sentinels.tour --seed=1 --hour=11 --weather=clear:0 --held=axe_felling
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/sentinels.tour --seed=7 --hour=11 --weather=clear:0 --held=axe_felling --config=unharmed
 #
-# What it proves, in order: a keeper stands at the works it keeps and holds the
+# `--config=unharmed` (configs/unharmed.json, rules.harm 0) is the staging: a
+# blow still lands on the player, knocks them back and breaks their swing, it
+# only takes no health, so no pass ends with the scripted player downed and the
+# coast cleared. Nothing the frames claim is about the player's health; every
+# claim is the keeper's (its reach, its plate, its tell, its part, its phase).
+#
+# What it proves, in order: a keeper stands where it dens and holds the
 # ground round it; a blow into its plated side rings off; it tells before it bites
 # and the tell hangs over the side that is about to take you; dodging the bite
 # leaves its working part open and a blow there hurts it; the side to be on MOVES
@@ -17,12 +23,16 @@
 # openings it gives and what its fall changes are proved in the real simulation,
 # headless and without luck, in tests/sentinel/test_fight.gd; the tide flats and
 # its works are rules, and are proved in tests/sentinel/test_ways.gd. Neither
-# could be staged honestly on this seed anyway: the reaper stands on the only work
-# that feeds it, and no patch of tide flat wide enough to stand on lies inside the
-# ground it holds.
+# could be staged honestly on this seed anyway: no patch of tide flat wide enough
+# to stand on lies inside the ground it holds.
 
+# Stood by the keeper itself, never by the nearest intake: a keeper dens at the
+# station it can feed from and at none within CLEAR_OF_HOME of the spawn, so
+# `place intake` can name one it is not at (seed 1's only intake is 28 tiles
+# from the spawn, and its reaper dens 189 tiles off). Seed 7's reaper dens at an
+# intake with room all round it for the pass below.
 coast calm
-place intake
+near keeper
 wait 0.6
 await sentinel 12
 shot 01-the-keeper-at-its-intake with mob:sentinel.coast,prop:intake,land:coast
@@ -35,7 +45,7 @@ shot 02-inside-the-keepers-guard with mob:sentinel.coast,sentinel_reach
 # The plated side: a blow anywhere but the working part rings off it.
 try 4
   walkto plate 6
-  press swing 0.25
+  tap swing
   await ring 4
 end
 shot 03-a-blow-off-its-plate with mob:sentinel.coast
@@ -58,23 +68,22 @@ try 8
   press dodge 0.12
   await sentinel_open 6
   walkto part 2
-  press swing 0.25
+  tap swing
   await hit 5
 end
 shot 05-into-the-working-part with mob:sentinel.coast,sentinel_hurt
 
 # The side to be on MOVES as it comes apart. Nothing is said about it: the arch
 # rears, the drum comes up out of the row, and what is open now is the drive in
-# its left leg. Each pass is a player's: wait for the opening, take it, get out.
-try 10
-  walkto mob 6
-  await tell 14
-  press dodge 0.12
-  walkto part 2
-  press swing 0.25
-  await hit 5
-  await sentinel_phase:raised 1
-end
+# its left leg. It is brought there by `wound`, not by more passes: a blow into
+# the part was proved at 05, a phase coming of the health a blow takes is proved
+# in tests/sentinel/test_phases.gd, and a scripted player fed pass after pass to
+# a boss was luck (it went down on most seeds, and on a good one took from one to
+# nine tries). What this frame is of is the phase itself: the arch reared and
+# the player round at the side that is open now.
+wound sentinel.coast 0.55
+await sentinel_phase:raised 3
+walkto part 3
 shot 06-the-arch-rears-and-its-side-moves with mob:sentinel.coast,sentinel_phase:raised
 
 # And what the slate makes of it, held under the key: a keeper reads like any

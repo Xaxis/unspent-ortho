@@ -284,6 +284,31 @@ func test_a_craft_parked_at_boot_is_drawn_and_can_be_boarded() -> void:
 	_done()
 
 
+## Standing at a craft, the player is told once what it is for, in words. The
+## line was built as `"%s: %%s." %% line`, and `%%` is no escape outside a
+## string: GDScript read it as a modulo of `%line`, a lookup of a unique node
+## named `line` that nothing has, so the hint was an engine error instead.
+func test_standing_at_a_craft_says_what_to_do_with_it() -> void:
+	var sys := _boot()
+	if not _to_the_tideline():
+		_done()
+		return
+	var said: Array[String] = []
+	var hear := func(text: String, _key: String) -> void: said.append(text)
+	Events.hint.connect(hear)
+	var spot := Crafts.launch_spot(game.world, game.query, &"raft", game.player.hero.pos, 0.0)
+	var c: Craft = sys.call("add", &"raft", spot, 0.0)
+	check(c != null, "parked beside the player")
+	for i in 5:
+		await tree.process_frame
+	Events.hint.disconnect(hear)
+	var told := said.filter(func(t: String) -> bool: return t.begins_with("Stand on it: "))
+	eq(told.size(), 1, "told once to stand on it (heard %s)" % [said])
+	if told.size() == 1:
+		check(not (told[0] as String).contains("%"), "with the key filled in: %s" % told[0])
+	_done()
+
+
 func _system(part: String) -> Node:
 	for s in game.systems:
 		if String(s.name).contains(part):

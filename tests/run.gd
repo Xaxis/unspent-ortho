@@ -11,7 +11,17 @@ extends SceneTree
 ## 2. Runs every test_* method of every tests/**/test_*.gd, optionally filtered by
 ##    a substring of "file:method".
 ## Exit code 0 only if everything loaded and every test passed.
+##
+## **A SCRIPT ERROR IS RED.** GDScript prints one and carries on, and the
+## function it happened in just stops: a test that died half way returned with
+## no failed assertion and printed "ok" over code that never ran. Every script
+## error (tests/script_error_log.gd) raised while a test runs, its teardown
+## included, fails that test; one raised while the scripts load is a load error.
+## `tools/runner_red.sh` plants both and a control, and proves the runner red.
 
+const ScriptErrorLog := preload("res://tests/script_error_log.gd")
+
+var _script_errors: Logger = ScriptErrorLog.new()
 var _failed := 0
 var _passed := 0
 var _load_errors := 0
@@ -39,6 +49,7 @@ func _run() -> void:
 		elif a != "":
 			filter = a
 	var index := -1
+	OS.add_logger(_script_errors)
 
 	for path in _find("res://src", ".gd"):
 		var s: Script = load(path)
@@ -53,6 +64,7 @@ func _run() -> void:
 	for path in _find("res://tests", ".gd"):
 		if not path.get_file().begins_with("test_") or path.get_file() == "test_case.gd":
 			continue
+		_load_script_errors()
 		index += 1
 		if index % shards != shard:
 			continue
@@ -97,6 +109,7 @@ func _run() -> void:
 			var inst: TestCase = script.new()
 			inst.tree = self
 			inst.current = id
+			_load_script_errors()
 			var t := Time.get_ticks_msec()
 			await inst.call(name)
 			# **A TEST MAY CLEAN UP AFTER ITSELF, AND NOW IT IS ASKED TO.** A file
@@ -129,6 +142,8 @@ func _run() -> void:
 			SaveSlots.turned_away.clear()
 			SaveSlots.handed_back = -1
 			var ms := Time.get_ticks_msec() - t
+			for e: String in _script_errors.call(&"take"):
+				inst.failures.append("%s: %s" % [id, e])
 			if inst.failures.is_empty():
 				_passed += 1
 				print("  ok   %s (%d ms)" % [id, ms])
@@ -137,6 +152,7 @@ func _run() -> void:
 				print("  FAIL %s (%d ms)" % [id, ms])
 				for f in inst.failures:
 					print("       ", f)
+	_load_script_errors()
 	var total := Time.get_ticks_msec() - t0
 	print("\n%d passed, %d failed, %d load errors in %d ms" % [_passed, _failed, _load_errors, total])
 	# A test that started a sketch bake and did not wait for it leaves a worker
@@ -153,6 +169,14 @@ func _run() -> void:
 	(load("res://src/ui/ui_sketch.gd") as GDScript).call("wait")
 	(load("res://src/ui/ui_slate.gd") as GDScript).call("wait")
 	quit(0 if _failed == 0 and _load_errors == 0 and _passed > 0 else 1)
+
+
+## Script errors raised outside any test (loading scripts, making a test's
+## instance): each is a load error, printed where it is counted.
+func _load_script_errors() -> void:
+	for e: String in _script_errors.call(&"take"):
+		_load_errors += 1
+		printerr("LOAD FAIL ", e)
 
 
 func _find(root: String, ext: String) -> PackedStringArray:

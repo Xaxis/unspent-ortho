@@ -488,6 +488,46 @@ func tour_seen(what: String) -> bool:
 	return false
 
 
+## What `near NAME` may ask of this system (tests/tours/test_tour_claims.gd reads it).
+const TOUR_PLACES := ["keeper"]
+## Tiles off its lair a tour is stood: inside Sentinels.PUT_OUT, so it comes out,
+## and far enough that the frame holds the whole of it.
+const TOUR_STAND := 9.0
+var _tour_facing := NAN
+
+
+## `near keeper`: on the ground of the keeper nearest the player that still
+## holds its region, TOUR_STAND tiles off where it dens, facing it. Asked of the
+## keeper's own lair (Sentinels.lair), never of a landmark near it: a keeper
+## dens at the station it can feed from, and at none within CLEAR_OF_HOME of the
+## spawn, so the nearest station of its kind is often not where it is at all.
+func tour_place(what: String) -> Vector2:
+	if what != "keeper":
+		return Vector2.INF
+	var here: Vector2 = game.player.pos
+	var lair := Vector2.INF
+	for s in _states:
+		if s.fallen or s.region < 0:
+			continue
+		if not lair.is_finite() or s.lair.distance_to(here) < lair.distance_to(here):
+			lair = s.lair
+	if not lair.is_finite():
+		return Vector2.INF
+	# From the side the player comes from, round until the ground will stand.
+	var from := (here - lair).angle() if here.distance_to(lair) > 0.1 else 0.0
+	for i in 16:
+		var a := from + float((i + 1) / 2) * (TAU / 16.0) * (1.0 if i % 2 == 0 else -1.0)
+		var p := lair + Vector2.from_angle(a) * TOUR_STAND
+		if game.query.standable(floori(p.x), floori(p.y)) and game.world.same_body(p, lair):
+			_tour_facing = (lair - p).angle()
+			return p
+	return Vector2.INF
+
+
+func tour_face(what: String) -> float:
+	return _tour_facing if what == "keeper" else NAN
+
+
 ## An await is spent by the tour that asked it (98_tour `_forget`).
 func tour_forget(what: StringName) -> void:
 	_seen.erase(what)

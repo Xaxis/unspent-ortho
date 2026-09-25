@@ -34,7 +34,7 @@ shot 04-dodged-still-facing with mob:runner,lock_facing
 try 8
 await target:runner 0.3
 walkto part 3
-press swing
+tap swing
 await hit 1.2
 end
 wait 0.2

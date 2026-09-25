@@ -1,0 +1,6 @@
+{
+	"base": "dev",
+	"settings": {
+		"rules.harm": 0.0
+	}
+}
