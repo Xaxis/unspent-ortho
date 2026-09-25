@@ -180,9 +180,15 @@ became the hiding place in 2033 (Calloway's case, in a hold nothing scans). The
 hoop HALCYON threads the rings onto from 2094 is its own, and it carries the
 cold copy unread. That is the ants blind spot again: HALCYON is building the
 bandwidth that would join it to the Guest round the one thing that could undo
-it. **Open for whoever rules the Sickle:** what the Guest's 2096 cut was aimed
-at, the width or Ring Four's hold. The proposal says the width, and nothing here
-needs it to be otherwise.
+it.
+
+3. **The Guest's 2096 cut was aimed at Ring Four's hold** (teammate1, 2026-09-25,
+   on the owner's delegation). It missed and tore the rim beside the hold. The
+   wound the player sees in the sky is that attempt. Ring Four's hold hangs open
+   at the edge of the wound, still sealed, and the debris falling on the coast
+   is what the cut shook loose, so the falls already in the game belong to this
+   story. HALCYON keeps building its bandwidth round the one thing that could
+   undo it, now with a hole beside it. No new beats.
 
 ## 9. For the interiors owner: the Continuity Line (spec)
 
