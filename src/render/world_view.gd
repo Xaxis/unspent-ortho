@@ -639,7 +639,7 @@ const SHADOW_FULL := 30.0
 func _lod_apply(node: Node3D) -> void:
 	var lod := _lod_on and node.get_node_or_null("mid_done") != null
 	var reach := float(Quality.current().get("eye_shadow_reach", 0)) if _lod_on else 0.0
-	for part: String in ["decor", "grass"]:
+	for part: String in ["decor", "grass", "grass_cast"]:
 		var dm := node.get_node_or_null(part) as GeometryInstance3D
 		if dm != null:
 			dm.visibility_range_end = DECOR_TO if _lod_on else 0.0
@@ -1100,15 +1100,17 @@ func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, wor
 		sea.material_override = _water_mat
 		sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		node.add_child(sea)
-	# decor_arrays: Decor.build_parts, [solid, grass].
+	# decor_arrays: Decor.build_parts, [solid, grass, casting grass].
 	for i in decor_arrays.size():
 		var dm := Decor.make_mesh(decor_arrays[i])
 		if dm != null:
 			var mi := MeshInstance3D.new()
-			mi.name = "decor" if i == 0 else "grass"
+			mi.name = ["decor", "grass", "grass_cast"][i]
 			mi.mesh = dm
 			mi.material_override = _world_mat if i == 0 else _grass_mat
-			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			# Only a grass that asks to (GrassSpecies.casts: sparse straw on a pale
+			# crust, where without a shadow it floats) casts; a meadow never does.
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if i == 2 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			node.add_child(mi)
 	if baked.is_empty():
 		var snap := _snapshot(key)

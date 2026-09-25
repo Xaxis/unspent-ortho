@@ -115,13 +115,18 @@ const float LEAF_WEAR = 0.2;
 const float LEAF_CALM = 0.3;
 const float LEAF_GUST = 2.2;
 const float LEAF_RUSTLE = 2.8;
+// How much paler a leaf turned over by a full gust reads.
+const float LEAF_UNDER = 0.35;
 
 varying vec3 world_pos;
 varying vec3 rest_pos;
 varying float sway_w;
+// How much gust stands on this card now, 0..1 (zero on what does not sway).
+varying float gust_v;
 
 void vertex() {
 	sway_w = UV2.x;
+	gust_v = 0.0;
 	rest_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	if (sway_w > 0.0) {
 		// The crown's sway is world.gdshader's, from the same globals, so a card
@@ -137,6 +142,7 @@ void vertex() {
 		// the grass, then the bush, then the tree)...
 		float g = gust_at(rest_pos.xz) * mix(0.45, 1.0, sky_wind.z);
 		float shiver = LEAF_CALM + g * g * LEAF_GUST;
+		gust_v = g * min(sway_w * 3.0, 1.0);
 		// ...and where a body is pushing through a bush: the trample field under
 		// a card low enough to be brushed, above the ground the player stands on.
 		vec3 tr = trample_at(rest_pos.xz);
@@ -376,6 +382,10 @@ void fragment() {
 	// the whole of how snow on a bough reads as lying ON it and not painted.
 	vec3 snow_col = mix(SNOW_LEE, SNOW_LIT, 0.45 + 0.55 * max(deep, smoothstep(0.0, 0.6, snow)));
 	c = mix(c, snow_col, snow);
+	// A gust turns leaves over, and a leaf's underside is paler: a front shows
+	// crossing a crown as it shows crossing the grass, and a still frame can
+	// see where it is. Squared, so only the front and not the air round it.
+	c = mix(c, c * (1.0 + LEAF_UNDER) + vec3(0.03, 0.035, 0.02), gust_v * gust_v * (1.0 - snow));
 	c = sky_apply(c, world_pos, TIME);
 
 	// THE LIGHT. Snow lies level whatever the leaf under it is doing, so where it

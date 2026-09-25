@@ -28,7 +28,7 @@ const ROUNDS := 5
 ## `noise` toggles nothing: the same pairs of halves with no change between
 ## them, which is the floor any other layer's difference has to clear on this
 ## machine at this load.
-const LAYERS := {"foliage": ["props_leaf"], "decor": ["decor", "grass"], "grass": ["grass"], "noise": []}
+const LAYERS := {"foliage": ["props_leaf"], "decor": ["decor", "grass", "grass_cast"], "grass": ["grass", "grass_cast"], "noise": []}
 
 
 ## `perf foliage|decor SECS [MS]`: the cost of that layer in every loaded chunk
