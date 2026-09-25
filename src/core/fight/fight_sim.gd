@@ -889,6 +889,23 @@ func _ring(m: MobState) -> void:
 	_wake(m)
 
 
+## A blow in the part that lands in a machine's WINDUP breaks the tell: the bite
+## never comes. And interrupting a tell is never worse than dodging it, so the
+## machine stands spent as if that bite had gone past it, for the bite's own
+## recovery and cooldown, and the stall runs alongside: open for the longer of the
+## two. A bold read pays at least as well as a safe one
+## (tests/fight/test_stall_window.gd). Its box is put past, so nothing lands, and
+## it is `opened` as a bite gone by is.
+func _break_tell(m: MobState) -> void:
+	if m.blow == null or m.blow_phase(now) != &"windup":
+		return
+	m.blow_at = now - float(m.blow.windup + m.blow.active) - FightRules.SLICE_MS
+	m.landed_at = -INF
+	m.struck[&"hero"] = true
+	m.opened_at = now
+	emit(&"opened", {"mob": m})
+
+
 ## A heavy blow into a guarded part the machine was not holding open: the
 ## turning blades take it, so it does no harm, but they jam, and the machine
 ## stands stalled as a blow in the part stalls it, its tell lost and its part
@@ -901,8 +918,7 @@ func _jam(m: MobState) -> void:
 	m.charging = false
 	m.flare_until = now + FightRules.PART_FLARE_MS
 	m.dark_until = m.flare_until + FightRules.PART_DARK_MS
-	if m.blow_phase(now) == &"windup":
-		m.blow = null
+	_break_tell(m)
 	emit(&"hit", {"attacker": hero, "target": m, "damage": 0, "plate": false, "jammed": true, "at": m.pos})
 	_wake(m)
 
@@ -955,8 +971,7 @@ func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF, stall_ms: int 
 		m.stall_ready_at = now + FightRules.STALL_EVERY_MS
 		m.stun_until = maxf(m.stun_until, now + stall_ms)
 		m.charging = false
-		if m.blow_phase(now) == &"windup":
-			m.blow = null
+		_break_tell(m)
 	if player_swing:
 		emit(&"hit", {"attacker": hero, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})
 	else:
