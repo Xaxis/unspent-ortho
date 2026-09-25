@@ -894,28 +894,53 @@ func test_a_riser_beside_the_line_stops_the_eye() -> void:
 
 
 ## THE PROBE RUNS EVERY FRAME. Among a village's houses, the two walks the rig
-## makes a frame (head to shoulder, shoulder to eye) cost well under 0.2 ms at the
-## worst of eight bearings, measured as the cheapest of repeated runs.
+## makes a frame (head to shoulder, shoulder to eye) cost under 5.3 YARDSTICKS at
+## the worst of eight bearings: a fixed piece of interpreted vector work timed
+## right beside each bearing's walks, each the cheapest of 200 runs. The yardstick
+## is about 33 us on a quiet box, so 5.3 is about 0.17 ms, 1% of a 60 fps frame.
+##
+## It is a ratio because microseconds on this box are not a measurement: the same
+## code read 88-221 us from one process to the next at load 12-28 (and 206 on CI
+## against a bar of 200), while a yardstick beside it held still. Calibrated
+## 2026-09-25: the shipped walks read a worst ratio of 2.47-4.56 over seven runs,
+## and the same walks done twice 6.20-11.97 over five; 5.3 is the geometric middle,
+## about 14% from each.
 func test_the_probe_is_cheap_among_houses() -> void:
 	var g := await _make(["--village=0", "--view=shoulder"])
 	var sys := _system(g)
 	var head := g.player.position + Vector3(0.0, Shoulder.HEAD_UP, 0.0)
 	var worst := 0.0
+	var worst_ratio := 0.0
 	var boxes := 0
+	# The yardstick: a fixed piece of interpreted vector work, timed right beside
+	# each bearing's walks, so whatever the box is doing to this thread it does to
+	# both.
+	var yard_work := func() -> void:
+		var acc := Vector2.ZERO
+		var pts := PackedVector2Array()
+		pts.resize(64)
+		for i in 400:
+			var p := Vector2(float(i) * 0.37, float(i) * 0.11)
+			pts[i & 63] = p
+			acc += (p - pts[(i * 7) & 63]).normalized() * p.length()
+	var yard := 0.0
 	for k in 8:
 		var yaw := k * 45.0
 		var back := Shoulder.forward(yaw) * -Shoulder.BACK
 		var right := Vector2(cos(deg_to_rad(yaw)), -sin(deg_to_rad(yaw))) * Shoulder.RIGHT
 		var focus := head + Vector3(right.x, 0.0, right.y)
 		var eye := focus + Vector3(back.x, 0.6, back.y)
-		var us := TestCase.best_of(30, func() -> void:
+		var us := TestCase.best_of(200, func() -> void:
 			sys.call("room", head, focus)
 			sys.call("room", focus, eye))
+		var y := TestCase.best_of(200, yard_work)
+		yard = maxf(yard, y)
 		worst = maxf(worst, us)
+		worst_ratio = maxf(worst_ratio, us / maxf(y, 0.001))
 		boxes = maxi(boxes, (sys.get("_boxes") as Array).size())
-	print("probe: worst of 8 bearings %.1f us a frame, %d drawn boxes in reach" % [worst, boxes])
+	print("probe: worst of 8 bearings %.1f us a frame, %d drawn boxes in reach; yardstick %.1f us; worst ratio %.2f" % [worst, boxes, yard, worst_ratio])
 	gt(float(boxes), 0.0, "the village's buildings were in the probe (%d)" % boxes)
-	cost_lt(worst, 100.0, "two probe walks a frame among houses (us)")
+	lt(worst_ratio, 5.3, "two probe walks a frame among houses, in yardsticks (%.0f us)" % worst)
 	_done()
 
 
