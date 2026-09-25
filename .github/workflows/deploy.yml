@@ -70,8 +70,9 @@ jobs:
       - name: Import
         run: tools/_import.sh
 
+      # The same default tools/deploy.sh exports with: dev mode behind the chord.
       - name: Export the web build
-        run: tools/export.sh web
+        run: tools/export.sh web --config=playtest
 
       # The deploy below skips the browser proof, because this runner has no GPU.
       # That let f1ab4dd ship green while every web boot logged "shader type fog

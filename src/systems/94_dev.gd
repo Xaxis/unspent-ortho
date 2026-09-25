@@ -313,6 +313,8 @@ func _take_picture() -> void:
 		return
 	img.resize(img.get_width() * 2, img.get_height() * 2, Image.INTERPOLATE_NEAREST)
 	var name := "picture-%s.png" % Time.get_datetime_string_from_system(false, false).replace("-", "").replace(":", "").replace("T", "-")
+	# Counted on every host, or a tour's `await dev_picture` can never pass on the web.
+	_pictures += 1
 	if DevMode.web():
 		JavaScriptBridge.download_buffer(img.save_png_to_buffer(), name, "image/png")
 		game.hud.say_now("Downloading %s." % name)
@@ -320,7 +322,6 @@ func _take_picture() -> void:
 	var dir := DevMode.project_path("shots/dev") if DevMode.local() else ProjectSettings.globalize_path("user://dev/pictures")
 	DirAccess.make_dir_recursive_absolute(dir)
 	img.save_png(dir.path_join(name))
-	_pictures += 1
 	game.hud.say_now("Picture kept: %s." % name)
 	print("dev picture %s" % dir.path_join(name))
 
