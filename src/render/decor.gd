@@ -408,9 +408,13 @@ static func turf(ch: TerrainMesher.Chunk, tx: int, ty: int) -> int:
 ##
 ## {template key (template_of): PackedFloat32Array}, MEADOW_FLOATS per plant in
 ## MultiMesh order: its transform's three rows (basis columns' x, y, z with the
-## origin last in each) and its custom data (x the plant's seed 0..1, which
+## origin last in each), its colour (white: the template's own is its vertices',
+## and the Compatibility renderer, given no instance colour, dyed a blade with
+## whatever lay there) and its custom data (x the plant's seed 0..1, which
 ## grass.gdshader reads in place of UV2.y's). Safe on a worker thread.
-const MEADOW_FLOATS := 16
+const MEADOW_FLOATS := 20
+## Where a plant's custom data starts among them, past its colour.
+const MEADOW_CUSTOM := 16
 ## How many more plants than the baked decor the meadow ring stands at full
 ## density (Quality `grass_density` 1.0).
 const MEADOW_THICK := 5.0
@@ -471,7 +475,7 @@ func meadow(ch: TerrainMesher.Chunk, tx0: int, ty0: int, w: int, h: int, thick: 
 				var key := (kind * BiomeRegistry.SLOTS + country) * 4 + stage
 				var buf: PackedFloat32Array = out.get(key, PackedFloat32Array())
 				buf.append_array([b.x.x, b.y.x, b.z.x, o.x, b.x.y, b.y.y, b.z.y, o.y, b.x.z, b.y.z, b.z.z, o.z,
-					Rng.hash01(wx, wy, i, 0x5eed), 0.0, 0.0, 0.0])
+					1.0, 1.0, 1.0, 1.0, Rng.hash01(wx, wy, i, 0x5eed), 0.0, 0.0, 0.0])
 				out[key] = buf
 	return out
 

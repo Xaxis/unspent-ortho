@@ -33,7 +33,7 @@ static func _plants(d: Dictionary) -> Array:
 	for key: int in d:
 		var buf: PackedFloat32Array = d[key]
 		for i in range(0, buf.size(), Decor.MEADOW_FLOATS):
-			out.append([key, snappedf(buf[i + 3], 0.0001), snappedf(buf[i + 7], 0.0001), snappedf(buf[i + 11], 0.0001), buf[i + 12]])
+			out.append([key, snappedf(buf[i + 3], 0.0001), snappedf(buf[i + 7], 0.0001), snappedf(buf[i + 11], 0.0001), buf[i + Decor.MEADOW_CUSTOM]])
 	out.sort()
 	return out
 
@@ -144,4 +144,32 @@ func test_a_cell_joining_writes_into_the_draw_already_there() -> void:
 	check(after == mm, "the template's MultiMesh is the one it had")
 	eq(after.instance_count, before + (b[key] as PackedFloat32Array).size() / Decor.MEADOW_FLOATS,
 		"and it holds both cells' plants")
+	ring.free()
+
+
+
+## A MEADOW PLANT IS WHITE AS AN INSTANCE. Its colour is its template's, in the
+## vertices; the Compatibility renderer, given a MultiMesh with no instance
+## colours, dyed each blade with whatever lay there, and the web's meadow came
+## out white, orange, blue and black. So every plant carries white and every
+## ring draw says it has colours.
+func test_a_meadow_plant_carries_white_so_the_web_shows_its_own_colour() -> void:
+	var ch := _chunk()
+	var n := 0
+	var got := _decor.meadow(ch, 0, 0, 16, 16, 1.0)
+	for buf: PackedFloat32Array in got.values():
+		for i in range(0, buf.size(), Decor.MEADOW_FLOATS):
+			n += 1
+			if buf[i + 12] != 1.0 or buf[i + 13] != 1.0 or buf[i + 14] != 1.0 or buf[i + 15] != 1.0:
+				check(false, "plant %d is white" % n)
+				return
+	gt(float(n), 50.0, "a sward cell grows plants (%d)" % n)
+	var ring := MeadowView.new()
+	ring.setup(preload("res://src/render/foliage/grass.gdshader"))
+	ring.call("_take", Vector2i(0, 0), got)
+	ring.call("_redraw")
+	var draws: Dictionary = ring.get("_draws")
+	check(not draws.is_empty(), "the ring draws the cell")
+	for mmi: MultiMeshInstance3D in draws.values():
+		check(mmi.multimesh.use_colors, "and every draw of it reads the white")
 	ring.free()

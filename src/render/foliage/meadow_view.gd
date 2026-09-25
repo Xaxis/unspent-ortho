@@ -233,6 +233,7 @@ func _redraw() -> void:
 			_draws[key] = mmi
 			var fresh := MultiMesh.new()
 			fresh.transform_format = MultiMesh.TRANSFORM_3D
+			fresh.use_colors = true
 			fresh.use_custom_data = true
 			fresh.mesh = _mesh(key)
 			mmi.multimesh = fresh
