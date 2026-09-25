@@ -18,8 +18,8 @@ extends RefCounted
 ##                 `grower`   greens in tins set out under the hatch, where the
 ##                            light falls
 ##                 `ferrier`  oars, floats and nets: they carry people
-## STORY SLOTS: the hull's builder's plate by the ladder (&"wall") and the table
-## (&"desk"). Laid in the canonical frame: the way in is in the south wall (+y).
+## STORY SLOTS: the hull's builder's plate by the ladder (&"wall") and the
+## table, a street sign laid on two drums (&"desk"). Laid in the canonical frame: the way in is in the south wall (+y).
 
 const Cottage := preload("res://src/content/interiors/cottage.gd")
 const PLANS: Array[StringName] = [&"open", &"bulkhead"]
@@ -67,10 +67,12 @@ static func lay(rng: RandomNumberGenerator) -> InteriorLayout:
 	l.hearth = Vector2(mid + (0.5 if aft_left else -0.5), 0.85)
 	l.hearth_wall = Vector2(0, -1)
 	l.table = Vector2(mid + (-1.0 if aft_left else 1.0), float(d) * 0.5 + 0.2)
+	# The bench a thing is made at stands against the hull, clear of the table.
+	var bench := Vector2(l.table.x + (1.5 if aft_left else -1.5), float(d) - 0.75)
 	# The hearth is the world's own fire (lit, cooked at, slept beside), laid in
 	# the brazier the model draws round it.
 	l.props.append({"kind": PropKind.FIRE, "at": l.hearth, "face": Vector2(0, 1)})
-	l.props.append({"kind": PropKind.BENCH, "at": l.table, "face": Vector2(1, 0)})
+	l.props.append({"kind": PropKind.BENCH, "at": bench, "face": Vector2(0, -1)})
 	l.lay_edges()
 	_openings(l, w, d)
 	_furnish(l, rng, w, d, aft_left)
@@ -106,6 +108,9 @@ static func _openings(l: InteriorLayout, w: int, d: int) -> void:
 static func _furnish(l: InteriorLayout, rng: RandomNumberGenerator, w: int, d: int, aft_left: bool) -> void:
 	var fore := Vector2(-1, 0) if not aft_left else Vector2(1, 0)
 	_put(l, &"stove", l.hearth, Vector2(0, 1), 0.0)
+	# The table under the hatch: a street sign off the drowned city laid on two
+	# drums, the tube wired over it.
+	_put(l, &"table", l.table, Vector2(1, 0), 0.45)
 	_put(l, &"lamp_tube", Vector2(l.table.x, float(d) * 0.5), Vector2(1, 0), 0.0)
 	# The builder's plate riveted by the ladder.
 	var plate := l.door - l.door_out * 0.14 + Vector2(-fore.x * 0.7, 0.0)
@@ -126,9 +131,10 @@ static func _furnish(l: InteriorLayout, rng: RandomNumberGenerator, w: int, d: i
 	# What the household lives by, against the hull.
 	var slots := Cottage._slots(l)
 	var keep: Array[Dictionary] = []
+	var bench: Vector2 = l.props[l.props.size() - 1].at
 	for s: Dictionary in slots:
 		var at: Vector2 = s.at
-		if absf(at.x - hx) > 1.4 and at.distance_to(bilge) > 1.2 and at.distance_to(l.hearth) > 1.1:
+		if absf(at.x - hx) > 1.4 and at.distance_to(bilge) > 1.2 and at.distance_to(l.hearth) > 1.1 and at.distance_to(bench) > 1.2:
 			keep.append(s)
 	var wants: Array[StringName] = [&"bucket", &"chest"]
 	match l.dressing:

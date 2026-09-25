@@ -215,6 +215,7 @@ func _boards(k: Kit, l: InteriorLayout, dress: BiomeDressing) -> void:
 			&"builders_plate": _builders_plate(k, at, f)
 			&"helmet": _helmet(k, at, f)
 			&"tins": _tins(k, at, f)
+			&"table": _sign_table(k, at, f)
 
 
 ## The fire's brazier: an oil drum cut down to its bottom third on three legs,
@@ -241,6 +242,35 @@ func _stove(k: Kit, at: Vector2, _f: Vector2) -> void:
 	var h := kind.wall_h
 	k.made.prism(p.x, p.y + 1.5, p.z, R + 0.05, p.y + 1.85, 0.12, 12, hull_dark, hull_dark)
 	k.made.strut(p + Vector3(0, 1.85, 0), p + Vector3(0, h + 0.3, 0), 0.1, 8, drum)
+## The table: a street sign off the drowned city laid across two oil drums,
+## its enamel chipped, a name nobody lives at any more still on it, and on it a
+## tin plate, a cup, a knife.
+func _sign_table(k: Kit, at: Vector2, f: Vector2) -> void:
+	var s := Vector2(-f.y, f.x)
+	for side: float in [-1.0, 1.0]:
+		var p := at + f * side * 0.55
+		k.made.prism(p.x, floor_y, p.y, 0.22, floor_y + 0.68, 0.22, 12, drum, drum)
+		k.hoop(Vector3(p.x, floor_y + 0.34, p.y), 0.225, 14, 0.012, rib)
+	var enamel := GroundColors.made(Color(0.14, 0.26, 0.42), GroundColors.ENAMEL)
+	var letter := GroundColors.made(Color(0.86, 0.86, 0.82), GroundColors.ENAMEL)
+	var top := floor_y + 0.68
+	k.made.push(Transform3D(Basis(Vector3.UP, atan2(-f.x, -f.y)), Vector3(at.x, top, at.y)))
+	k.slab(0.0, 0.0, 0.0, 0.62, 0.035, 1.6, 601, Kit.tone(enamel, 0.8), enamel, 0.004)
+	# Its white border and letters, and the chips where the enamel came off.
+	for i in 7:
+		var z := -0.55 + 0.16 * float(i)
+		k.slab(0.0, 0.036, z, 0.18, 0.003, 0.09, 610 + i, letter, letter, 0.0)
+	for side: float in [-1.0, 1.0]:
+		k.slab(side * 0.27, 0.036, 0.0, 0.025, 0.003, 1.5, 620, letter, letter, 0.0)
+	for i in 4:
+		k.slab(-0.2 + 0.13 * float(i), 0.037, -0.7 + 0.45 * float(i), 0.05, 0.002, 0.04, 630 + i, rust_run, rust_run, 0.0)
+	k.made.pop()
+	var plate := at + s * 0.1 - f * 0.2
+	k.made.prism(plate.x, top + 0.035, plate.y, 0.13, top + 0.05, 0.14, 12, rivet, rivet)
+	var cup := at - s * 0.12 + f * 0.25
+	k.made.prism(cup.x, top + 0.035, cup.y, 0.05, top + 0.14, 0.05, 8, drum, GroundColors.made(Color(0.05, 0.05, 0.05), GroundColors.TAR))
+
+
 ## The stolen tube: a machine's strip light wired to a battery on a beam.
 func _lamp_tube(k: Kit, at: Vector2, f: Vector2) -> void:
 	var y := floor_y + kind.wall_h - 0.3
