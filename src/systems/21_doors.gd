@@ -494,6 +494,8 @@ func _trespass() -> void:
 
 func _wake_residents() -> void:
 	_residents.clear()
+	if game.options.rooms_empty:
+		return
 	var sim: FightSim = game.player.sim
 	if sim == null:
 		return
@@ -742,20 +744,48 @@ func _make_lights() -> void:
 		game.view.add_child(motes)
 		_motes.append(motes)
 	for at: Array in model.get(&"lights"):
-		var lamp := OmniLight3D.new()
-		var machine: bool = at[1] != &"lamp"
-		# The lantern is warm and reaches the room; a stolen strip in a cottage is
-		# the one cold light in the house and reaches only the bench it hangs
-		# over; a hall's strips are the machines' own light, hung high, reaching
-		# the floor in cold pools.
-		lamp.light_color = Color(0.74, 0.72, 0.9) if machine else Color(1.0, 0.7, 0.4)
-		lamp.omni_range = 5.5 if at[1] == &"strip" else (3.2 if machine else 5.5)
-		lamp.omni_attenuation = 1.2
-		lamp.shadow_enabled = false
+		var lamp := _room_light(StringName(at[1]))
 		game.view.add_child(lamp)
 		lamp.global_position = at[0]
+		if lamp is SpotLight3D:
+			_aim(lamp, Vector3.DOWN)
 		_lamps.append([lamp, at[1]])
 		_lend(lamp, false, RANK_LAMP)
+
+
+## One of a room's own lights, by what it is. A lantern is warm and reaches the
+## room. A stolen strip in a cottage is the one cold light in the house and
+## reaches only the bench it hangs over. A hall's strips are the machines' own
+## light, a DOWNLIGHT each -- a cone throws a pool on the deck and leaves the dark
+## between them, which an omni hung that high could not (it lit nothing it
+## reached). The pump's core is the one warm light in a hall's dark end. None
+## scatters in the air: their light is on surfaces.
+static func _room_light(kind: StringName) -> Light3D:
+	var l: Light3D
+	if kind == &"strip":
+		var sp := SpotLight3D.new()
+		sp.spot_range = 4.8
+		sp.spot_angle = 46.0
+		sp.spot_attenuation = 0.9
+		sp.spot_angle_attenuation = 1.4
+		l = sp
+	else:
+		var o := OmniLight3D.new()
+		o.omni_attenuation = 1.2
+		o.omni_range = 5.5
+		match kind:
+			&"machine":
+				o.omni_range = 3.2
+			&"working":
+				o.omni_range = 4.4
+				o.omni_attenuation = 1.3
+		l = o
+	l.light_color = Color(1.0, 0.7, 0.4) if kind == &"lamp" else Color(0.74, 0.72, 0.9)
+	if kind == &"working":
+		l.light_color = Color(1.0, 0.66, 0.26)
+	l.light_volumetric_fog_energy = 0.0
+	l.shadow_enabled = false
+	return l
 
 
 ## THE HOUR COMES IN THROUGH THE WINDOWS. A cottage's lid is under the line where
@@ -786,12 +816,14 @@ func _light_windows() -> void:
 		model.call(&"daylight", Color(hor.r, hor.g, hor.b) * lerpf(0.14, 0.92, day),
 			ground.lerp(hor, 0.28) * lit)
 	for pair: Array in _lamps:
-		var lamp := pair[0] as OmniLight3D
+		var lamp := pair[0] as Light3D
 		match pair[1]:
 			&"machine":
 				lamp.light_energy = 0.55
 			&"strip":
-				lamp.light_energy = 1.5
+				lamp.light_energy = 5.0
+			&"working":
+				lamp.light_energy = 3.2
 			_:
 				lamp.light_energy = lerpf(1.6, 0.25, day)
 	for i in _windows.size():

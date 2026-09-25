@@ -123,6 +123,9 @@ extends RefCounted
 ##                     on one is there, and a reply that wants one is offered (story, the same)
 ## --fail-downed       a bad end (downed or carried off) quits the game with exit 1: a tour that
 ##                     must be survived through real play fails if it is not (fight)
+## --rooms=empty      rooms come in without their residents (21_doors): a frame or
+##                     a tour about how a room LOOKS, which its warden would
+##                     otherwise end by putting the player out of it (interiors)
 ## --realm=KIND        start in that realm (surface | underground), beside its first
 ##                     shaft, or at --at read as a tile of THAT realm's world (realms)
 ## --quality=NAME      the graphics tier this run renders at (src/render/quality.gd):
@@ -228,6 +231,7 @@ var saves := ""
 var progress := 0.4
 var probe := false
 var fail_downed := false
+var rooms_empty := false
 var target := false
 var target_sweep := false
 ## A fragment to open on the glass, and a conversation (and the node in it) to open,
@@ -331,6 +335,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"progress": o.progress = v.to_float()
 			"probe": o.probe = true
 			"fail-downed": o.fail_downed = true
+			"rooms": o.rooms_empty = v == "empty"
 			"read": o.read = v
 			"talk": o.talk = v
 			"beats": o.beats = v
