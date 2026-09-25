@@ -91,6 +91,9 @@ static func make() -> BiomeDef:
 	# settlement here is four buildings: a ward, not a city.
 	d.built = BiomeForms.new()
 	d.built.stock = [&"infill", &"deck_house", &"shaft_loft", &"stall_row"] as Array[StringName]
+	# The infill is a dead tower's lobby walled in and lived in; its room is its
+	# own (content/interiors/tower_lobby.gd).
+	d.interiors = {&"form:infill": &"tower_lobby"}
 	d.built.plan = &"block"
 	d.built.apart = BiomeForms.ROW_APART
 	d.grade = Vector4(-0.05, -0.01, 0.03, -0.02)

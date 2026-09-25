@@ -433,8 +433,10 @@ var sentinel: StringName = &""
 ## Placed after generation, like a shaft, so the island does not move (LOOK).
 var landmarks: Array[StringName] = []
 ## What of this landscape can be WALKED INTO, and what it is inside (docs/
-## interiors): a host (`&"house"`) to an interior kind (`&"cottage"`, one of
-## Interiors.RECIPES). Empty, nothing here has a door. Doors are derived after
+## interiors): a host to an interior kind (one of Interiors.RECIPES). Hosts:
+## `&"house"` every house, `&"form:ID"` a house of that building form (before
+## `house`), `&"works:depot"`, `&"landmark:KIND"`. Empty, nothing here has a
+## door. Doors are derived after
 ## generation, like a shaft, so the island does not move (LOOK).
 var interiors: Dictionary = {}
 var sound_bed: StringName = &"bed_wind"

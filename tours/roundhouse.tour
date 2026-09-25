@@ -1,0 +1,35 @@
+# A ROUNDHOUSE IN THE CRAGS (docs/interiors, src/content/interiors/roundhouse.gd):
+# one round room of dry stone under a cone of sooted thatch, stone piers standing
+# out from the wall like spokes, a bay between each pair -- the box bed, the loom,
+# the quern, the kist, the slates -- and the peat fire in the middle of the floor,
+# its pot hung from one of the chainman's survey posts pulled up and put to use.
+#
+#   tools/tour.sh tours/roundhouse.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is the roundhouse as a player finds it. 02 is the room from above as the
+# player comes in, by the fire and the day down the smoke hole. 03 is the same at
+# night from beside the fire, the only light. 04 is over the shoulder, the room round the
+# fire; 05 the peek turned up to the rafters and the smoke hole.
+coast calm
+near door:roundhouse
+await door 5
+wait 0.6
+shot 01-a-roundhouse-in-the-crags with door,land:the_crags
+
+press use 0.1
+await inside:roundhouse 5
+wait 1.0
+shot 02-the-roundhouse-from-above-by-day with inside:roundhouse
+
+near fire
+hour 22
+wait 1.0
+shot 03-the-roundhouse-by-its-fire-at-night with inside:roundhouse,station:fire
+
+hour 15
+wait 0.6
+hold shoulder_peek
+await shoulder 3
+mouse 300,0 0.6
+wait 0.6
+shot 04-round-the-fire-over-the-shoulder with inside:roundhouse,shoulder,station:fire

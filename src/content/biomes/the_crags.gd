@@ -91,6 +91,9 @@ static func make() -> BiomeDef:
 	d.built = BiomeForms.new()
 	d.built.stock = [&"roundhouse", &"lean_to_broch", &"byre"] as Array[StringName]
 	d.built.plan = &"ring"
+	# Only the roundhouse is anyone's home: the broch's lean-to and the byre are
+	# for beasts and weather. Its room is its own (content/interiors/roundhouse.gd).
+	d.interiors = {&"form:roundhouse": &"roundhouse"}
 	d.grade = Vector4(-0.04, 0.02, 0.04, 0.0)
 	# THE DARKEST NIGHT IN THE GAME, and nothing of the machines' lights it. This
 	# is the one place where a lantern is the only light there is.

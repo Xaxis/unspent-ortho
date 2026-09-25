@@ -12,6 +12,9 @@ const RECIPES := {
 	&"cottage": "res://src/content/interiors/cottage.gd",
 	&"weapons_hall": "res://src/content/interiors/weapons_hall.gd",
 	&"bunker": "res://src/content/interiors/bunker.gd",
+	&"roundhouse": "res://src/content/interiors/roundhouse.gd",
+	&"stilt_room": "res://src/content/interiors/stilt_room.gd",
+	&"tower_lobby": "res://src/content/interiors/tower_lobby.gd",
 }
 
 static var _kinds: Dictionary = {}
@@ -27,7 +30,8 @@ static func kind(id: StringName) -> InteriorKind:
 	return _kinds[id]
 
 
-## Every door on `w`: each house whose landscape declares a kind for houses, and
+## Every door on `w`: each house whose landscape declares a kind for its form or
+## for houses at all, and
 ## each works depot whose landscape declares one for `works:depot`.
 ## Derived from the finished island, so it never moves a thing on it, and kept
 ## for the life of that world.
@@ -44,7 +48,7 @@ static func thresholds(w: WorldData) -> Array[Threshold]:
 			var d := BiomeRegistry.by_index(land)
 			if d == null:
 				continue
-			var k: StringName = d.interiors.get(&"house", &"")
+			var k := house_kind(d, form_of(p, w.seed_value, land))
 			if k == &"" or kind(k) == null:
 				continue
 			out.append(Threshold.of_house(p, k, land))
@@ -71,6 +75,26 @@ static func thresholds(w: WorldData) -> Array[Threshold]:
 			out.append(Threshold.of_landmark(site, k, land))
 	_doors[id] = out
 	return out
+
+
+## Which form of its landscape's building stock a house was dealt: the one its
+## model draws (PropModels.variant_of), so the room behind it is that form's.
+static func form_of(p: WorldProp, seed_value: int, land: int) -> StringName:
+	var stock := BiomeForms.of(land).stock
+	if stock.is_empty():
+		return &""
+	return stock[clampi(PropModels.variant_of(p, seed_value, land), 0, stock.size() - 1)]
+
+
+## The kind of room behind a house of form `form` here: the landscape's own for
+## that form (`form:ID`) when it has one, which is how one landscape's roundhouse
+## is not another's cottage, else its kind for every house, else none.
+static func house_kind(d: BiomeDef, form: StringName) -> StringName:
+	if form != &"":
+		var own: StringName = d.interiors.get(StringName("form:%s" % form), &"")
+		if own != &"":
+			return own
+	return d.interiors.get(&"house", &"")
 
 
 ## The door whose key is `key` on `w`, or null.
