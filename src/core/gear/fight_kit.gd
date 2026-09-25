@@ -22,10 +22,18 @@ extends RefCounted
 ##   clamp    (mod_clamp)     "you stay on the plate": knockback is CLAMP_KNOCK
 
 const HARMONIC_DAMAGE := 1
-## How long the phase coil's opener stops a machine's work: a part hit's own.
-## A broken tell leaves the machine as open as a dodged bite would
-## (FightSim._break_tell), so the opener needs no stall of its own to pay.
-const PHASE_STALL_MS := FightRules.STALL_MS
+## How long the phase coil's opener stops a machine's work. A broken tell
+## already leaves the machine as open as a dodged bite (FightSim._break_tell), so
+## a stall only counts past that window (a harvester's is 1600 ms); the opener's
+## stall runs past it, so the reader who opened at close quarters is out of the
+## box before the machine comes again. Measured on the roused harvester met at
+## its front (tests/fight/test_bouts), mean of 8 starts, gain against bare:
+##   1500 -22%  1600 +26%  1650 +27%  1700 +24%  1750 +22%  1800 +21%
+##   1850 +27%  1900 +35%  2000 +35%  2600 +51%
+## Past the window the curve rises in knife blows (one more every ~420 ms of
+## stall, 4 to 6 in the first opening), so no stall holds the 10-25% band across
+## +-200 ms; 1750 holds it across +-50.
+const PHASE_STALL_MS := 1750
 ## A kill with a leech coil fitted gives back this many charges.
 const LEECH_CHARGES := 1
 ## A capacitor bank carries every this-many-th charged swing without a charge.

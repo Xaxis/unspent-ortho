@@ -155,9 +155,10 @@ func test_a_phase_coil_opens_a_roused_harvester() -> void:
 	tc /= ROUSED_STARTS
 	print("  roused harvester, mean of %d: bare %.2f s, phase coil %.2f s (%.0f%% less); first opening %.1f blows bare, %.1f with the coil"
 		% [ROUSED_STARTS, tb, tc, (1.0 - tc / tb) * 100.0, float(hb) / ROUSED_STARTS, float(hc) / ROUSED_STARTS])
-	# What the coil buys is the opening itself: a tell broken at close quarters
-	# leaves the machine as open as a dodged one (FightSim._break_tell), and the
-	# coil's reader is already in reach. The time is printed and not held: met in
-	# contact at its front, the reader cannot dodge the charge that follows the
-	# window, and that bite is where the time goes, coil or not.
+	# What the coil buys is the opening: a tell broken at close quarters leaves
+	# the machine as open as a dodged one (FightSim._break_tell), the coil's reader
+	# is already in reach, and its stall (FightKit.PHASE_STALL_MS) outlasts the
+	# window so the reader is out of the box before the machine comes again.
 	gt(float(hc), float(hb), "the coil's first opening is worth more blows (%d against %d over %d)" % [hc, hb, ROUSED_STARTS])
+	lt(tc, tb * 0.9, "and the fight is at least a tenth shorter (%.2f s against %.2f s)" % [tc, tb])
+	gt(tc, tb * 0.75, "and no more than a quarter: an opener, not a win")
