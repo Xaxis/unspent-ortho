@@ -98,9 +98,13 @@ extends GameSystem
 ##                          shown and hidden in turn (foliage_perf.gd)
 ##   perf decor SECS [MS]    the same for every chunk's baked decor: grass, stones, litter
 ##   perf grass SECS [MS]    the same for only what sways in it (grass.gdshader)
+##   perf meadow SECS [MS]   the same for the eye-level meadow ring (18_meadow), and
+##                          `perf sward` for all the grass: the ring and every chunk's
 ##   perf noise SECS         the same pairs toggling nothing: the floor the others must clear
 ##   perf front SECS         after `near front`: brightness of the grass upwind, the bush
 ##                          and the crown, every frame for SECS (front_probe.gd)
+##   perf blades            mean brightness and saturation of only the grass blades in
+##                          the frame: grass shown against hidden (blade_probe.gd)
 ##   perf colour            what this renderer does to a value in ALBEDO (render_probe.gd)
 ##   perf features NAME     every expensive thing the frame has, off and on, world held
 ##                          still: which ones this renderer really draws (render_probe.gd)
@@ -465,6 +469,8 @@ func _run() -> void:
 					ok = await (preload("res://src/systems/tour/lens_perf.gd")).perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] == "front":
 					ok = await FrontProbe.perf(self, game, parts)
+				elif parts.size() > 1 and parts[1] == "blades":
+					ok = await BladeProbe.perf(self, game)
 				elif parts.size() > 1 and parts[1] in FoliagePerf.LAYERS:
 					ok = await FoliagePerf.perf(self, game, parts)
 				elif parts.size() > 1 and parts[1] in RenderProbe.KINDS:

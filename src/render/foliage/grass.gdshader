@@ -26,6 +26,9 @@
 //              its species' motion (GrassSpecies.motion_code), tens the
 //              stiffness in tenths and units the flutter, 0 for no species
 //   UV         the plant's root in world xz (Decor), for what is decided per plant
+// A meadow plant (MeadowView, `meadow` on) is one instance of a template: its
+// root is its instance's origin and its seed INSTANCE_CUSTOM.x; UV2.y carries
+// only the whole part.
 shader_type spatial;
 render_mode cull_disabled;
 
@@ -65,6 +68,22 @@ const float GRASS_THIN_KEEP = 0.3;
 const float GRASS_HEAVY_SOONER = 0.25;
 const float GRASS_HEAVY_FEWER = 0.3;
 
+// THE MEADOW RING (MeadowView): on for the ring's MultiMeshes, off for decor.
+uniform bool meadow = false;
+// xz the ring's centre, z its reach, w the band its edge hands over across, in
+// tiles; a reach of 0 is no ring (from above, or none on this tier).
+global uniform vec4 foliage_meadow;
+
+// The share of plants rooted at `root` the meadow draws; the decor draws the
+// rest. 1 deep in the ring, 0 past it, falling across the band, so a plant's
+// seed puts it in exactly one of the two and the edge is a thinning, not a line.
+float meadow_share(vec2 root) {
+	if (foliage_meadow.z <= 0.0) {
+		return 0.0;
+	}
+	return clamp((foliage_meadow.z - distance(root, foliage_meadow.xy)) / foliage_meadow.w, 0.0, 1.0);
+}
+
 varying vec3 world_pos;
 varying float sway_w;
 varying float gust_v;
@@ -84,13 +103,16 @@ const float RAIN_HITS = 0.012;
 const float WET_DARK = 0.72;
 const float SNOW_BOW = 0.16;
 const float SNOW_STILL = 0.6;
-const float ASH_GREY = 0.65;
+const float ASH_GREY = 0.8;
+// How much lying snow or ash (masked) starts to settle on a blade, and settles fully.
+const vec2 SNOW_HOLD = vec2(0.1, 0.55);
 const vec3 SNOW_ON = vec3(0.8667, 0.9412, 0.9686);
 
 void vertex() {
 	sway_w = UV2.x;
 	settle_v = vec3(0.0);
-	float seed = fract(UV2.y);
+	float seed = meadow ? INSTANCE_CUSTOM.x : fract(UV2.y);
+	vec2 root = meadow ? MODEL_MATRIX[3].xz : UV;
 	float heavy = floor(floor(UV2.y) / 100.0);
 	float code = mod(floor(UV2.y), 100.0);
 	code_v = code;
@@ -100,9 +122,10 @@ void vertex() {
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	mat3 to_model = inverse(mat3(MODEL_MATRIX));
 	vec3 up_m = to_model * vec3(0.0, 1.0, 0.0);
-	bool left_out = false;
-	if (PROJECTION_MATRIX[3][3] < 0.5) {
-		float d = distance(vec3(UV.x, wp.y, UV.y), INV_VIEW_MATRIX[3].xyz);
+	float ring = meadow_share(root);
+	bool left_out = meadow ? seed >= ring : seed < ring;
+	if (PROJECTION_MATRIX[3][3] < 0.5 && !left_out) {
+		float d = distance(vec3(root.x, wp.y, root.y), INV_VIEW_MATRIX[3].xyz);
 		// A heavy plant (a frond, a head of cotton) thins sooner and further.
 		float from = GRASS_THIN_FROM / (1.0 + GRASS_HEAVY_SOONER * heavy);
 		float keep = GRASS_THIN_KEEP / (1.0 + GRASS_HEAVY_FEWER * heavy);
@@ -163,11 +186,16 @@ void fragment() {
 	// Wet: darker, and slick (ROUGHNESS below).
 	float wet = max(sky_settle.z > 0.0 ? settle_v.z : 0.0, sky_air.x * 0.8);
 	c *= mix(1.0, WET_DARK, wet);
-	// Ash: greyed toward what falls, most on the upper blade that catches it.
-	c = mix(c, mix(vec3(lum) * 0.8, SKY_ASH, 0.5), settle_v.y * ASH_GREY * (0.4 + 0.6 * h));
-	// Snow: lying on the upper blade in lumps, pinned to the world.
+	// Ash: greyed toward what falls, most on the upper blade that catches it,
+	// as soon as the ground round it holds ash (SNOW_HOLD, as snow).
+	float ashed = smoothstep(SNOW_HOLD.x, SNOW_HOLD.y, settle_v.y);
+	c = mix(c, mix(vec3(lum) * 0.8, SKY_ASH, 0.5), ashed * ASH_GREY * (0.4 + 0.6 * h));
+	// Snow: lying on the upper blade in lumps, pinned to the world. A blade
+	// holds snow as soon as the ground round it does (SNOW_HOLD), so where the
+	// ground has gone white the tufts in it have too, not half of each.
 	float lump = sky_noise(world_pos.xz * 5.3 + world_pos.y * 3.1);
-	float snow_on = settle_v.x * smoothstep(0.25, 0.7, h) * smoothstep(0.35, 0.6, lump + settle_v.x * 0.35);
+	float lies = smoothstep(SNOW_HOLD.x, SNOW_HOLD.y, settle_v.x);
+	float snow_on = lies * smoothstep(0.12, 0.55, h) * smoothstep(0.3, 0.45, lump + lies * 0.4);
 	c = mix(c, SNOW_ON, snow_on);
 	c = sky_apply(c, world_pos, TIME);
 	vec3 n_world = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);

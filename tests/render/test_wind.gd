@@ -171,5 +171,8 @@ func test_grass_answers_rain_snow_and_ash() -> void:
 	check(vert.contains("sky_settle.xyz * sky_ground_at("), "what has settled, where the ground can hold it")
 	check(vert.contains("settle_v.x * SNOW_BOW"), "lying snow bows them")
 	check(frag.contains("WET_DARK"), "wet darkens them")
-	check(frag.contains("settle_v.x * smoothstep"), "snow lies white on their tops")
-	check(frag.contains("settle_v.y * ASH_GREY"), "ash greys them")
+	# Held as soon as the ground round a blade holds it: at the mask's half a
+	# blade is fully laid, or grass on an ecotone never whitens (seed 12's
+	# snowfield grass, `perf blades` in tours/foliage_snow_ash.tour).
+	check(frag.contains("smoothstep(SNOW_HOLD.x, SNOW_HOLD.y, settle_v.x)"), "snow lies white on their tops")
+	check(frag.contains("smoothstep(SNOW_HOLD.x, SNOW_HOLD.y, settle_v.y)") and frag.contains("ashed * ASH_GREY"), "ash greys them")

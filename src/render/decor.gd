@@ -250,23 +250,10 @@ func build_parts(ch: TerrainMesher.Chunk, props: Array = []) -> Array:
 	var np := ch.n + 1
 	for ty in ch.h:
 		for tx in ch.w:
-			# A tile's 3x3 lattice points: one key, one terrace, or no decor.
-			var li := ty * 2 * np + tx * 2
-			var k := ch.key[li + np + 1]
-			var t := ch.t[li + np + 1]
-			if t <= 0 or (k & 0x10000) != 0:
+			var k := turf(ch, tx, ty)
+			if k < 0:
 				continue
-			# One terrace and one GROUND over the lattice: a key that differs only
-			# in its country (an ecotone's blend) is the same turf, and refusing it
-			# left bare strips through the grass along every border.
-			var ok := true
-			for o: int in [0, 1, 2, np, np + 2, np * 2, np * 2 + 1, np * 2 + 2]:
-				var ko := ch.key[li + o]
-				if (ko & 0x100FF) != (k & 0x100FF) or ch.t[li + o] != t:
-					ok = false
-					break
-			if not ok:
-				continue
+			var t := ch.t[ty * 2 * np + tx * 2 + np + 1]
 			var g := k & 0xFF
 			var table: Array = _tables.get(g * BiomeRegistry.SLOTS + ((k >> 8) & 0xFF) + 1000, _tables.get(g, []))
 			if table.is_empty():
@@ -391,6 +378,142 @@ func build_parts(ch: TerrainMesher.Chunk, props: Array = []) -> Array:
 		var basis := Basis(Vector3.UP, rng.randf() * TAU)
 		solid.put(tpl, Transform3D(basis.scaled(Vector3(s, s, s)), p + along * (rng.randf() - 0.5) * 0.4), basis)
 	return [solid.arrays(), grass.arrays(), cast.arrays()]
+
+
+## The drawn key of chunk tile (tx, ty) when it is turf decor may grow on, else
+## -1. A tile's 3x3 lattice points must be one terrace and one GROUND, dry: a key
+## that differs only in its country (an ecotone's blend) is the same turf, and
+## refusing it left bare strips through the grass along every border. The one
+## rule for where anything small stands, so the meadow ring grows exactly where
+## the baked decor does and never hangs over a lip.
+static func turf(ch: TerrainMesher.Chunk, tx: int, ty: int) -> int:
+	var np := ch.n + 1
+	var li := ty * 2 * np + tx * 2
+	var k := ch.key[li + np + 1]
+	var t := ch.t[li + np + 1]
+	if t <= 0 or (k & 0x10000) != 0:
+		return -1
+	for o: int in [0, 1, 2, np, np + 2, np * 2, np * 2 + 1, np * 2 + 2]:
+		if (ch.key[li + o] & 0x100FF) != (k & 0x100FF) or ch.t[li + o] != t:
+			return -1
+	return k
+
+
+## THE MEADOW: what the meadow ring (MeadowView) stands on chunk tiles
+## [tx0, tx0 + w) x [ty0, ty0 + h): the same plants the baked decor lays there,
+## `thick` times as many of them and none of its stones or litter. Each tile is
+## decided by its own world position (Decor.turf, and a generator seeded by the
+## tile), so a plant stands where it stands whatever cell asked for it: the ring
+## is pinned to the world and never swims as it follows the eye.
+##
+## {template key (template_of): PackedFloat32Array}, MEADOW_FLOATS per plant in
+## MultiMesh order: its transform's three rows (basis columns' x, y, z with the
+## origin last in each), its colour (white: the template's own is its vertices',
+## and the Compatibility renderer, given no instance colour, dyed a blade with
+## whatever lay there) and its custom data (x the plant's seed 0..1, which
+## grass.gdshader reads in place of UV2.y's). Safe on a worker thread.
+const MEADOW_FLOATS := 20
+## Where a plant's custom data starts among them, past its colour.
+const MEADOW_CUSTOM := 16
+## How many more plants than the baked decor the meadow ring stands at full
+## density (Quality `grass_density` 1.0).
+const MEADOW_THICK := 5.0
+
+
+func meadow(ch: TerrainMesher.Chunk, tx0: int, ty0: int, w: int, h: int, thick: float) -> Dictionary:
+	var out := {}
+	var np := ch.n + 1
+	for ty in range(ty0, mini(ty0 + h, ch.h)):
+		for tx in range(tx0, mini(tx0 + w, ch.w)):
+			var k := turf(ch, tx, ty)
+			if k < 0:
+				continue
+			var g := k & 0xFF
+			# Salt grass roots only on the crust's rims (build_parts); the meadow
+			# leaves that ground to the decor.
+			if g == Ground.SALT:
+				continue
+			var country := (k >> 8) & 0xFF
+			var tkey := g * BiomeRegistry.SLOTS + country + 1000
+			if not _tables.has(tkey):
+				tkey = g
+				if not _tables.has(tkey):
+					continue
+			var sway := _sway_table(tkey, country)
+			if sway.is_empty():
+				continue
+			var table: Array = _tables[tkey]
+			var wx := ch.x0 + tx
+			var wy := ch.y0 + ty
+			var rng := Rng.make(world.seed_value, Rng.hash_ints(wx, wy, 0x3EAD))
+			var gather := _clump.get_noise_2d(wx, wy) * 0.5 + 0.5
+			var even: float = table[3]
+			var n := float(table[2]) * float(sway[2]) * thick * lerpf(0.45 + gather, 0.8 + 0.4 * gather, even)
+			if works != null:
+				var best := 0.3
+				for wc in 4:
+					best = maxf(best, works.at(wx, wy, wc))
+				if best > 0.3:
+					n *= 1.0 - LITTER_WORKS * best
+			var count := int(n + rng.randf())
+			var t := ch.t[ty * 2 * np + tx * 2 + np + 1]
+			var flat := TerrainMesher.level_height(t) - 0.004
+			var soft := g == Ground.MOSS or g == Ground.PEAT or g == Ground.SNOW or g == Ground.HEATH
+			for i in count:
+				var kind := _pick(sway, rng.randf())
+				var fx := 0.04 + rng.randf() * 0.92
+				var fy := 0.04 + rng.randf() * 0.92
+				var stage := rng.randi() % STAGES
+				if kind == FLOWER:
+					var bl := _bloom.get_noise_2d(wx + fx, wy + fy) * 0.5 + 0.5
+					if bl < 0.4:
+						kind = TUFT
+					stage = clampi(int((bl - 0.4) / 0.6 * STAGES), 0, STAGES - 1)
+				var sc := 0.8 + rng.randf() * 0.45
+				var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc, sc))
+				var o := Vector3(wx + fx, ch.surface(wx + fx, wy + fy) - 0.004 if soft else flat, wy + fy)
+				var key := (kind * BiomeRegistry.SLOTS + country) * 4 + stage
+				var buf: PackedFloat32Array = out.get(key, PackedFloat32Array())
+				buf.append_array([b.x.x, b.y.x, b.z.x, o.x, b.x.y, b.y.y, b.z.y, o.y, b.x.z, b.y.z, b.z.z, o.z,
+					1.0, 1.0, 1.0, 1.0, Rng.hash01(wx, wy, i, 0x5eed), 0.0, 0.0, 0.0])
+				out[key] = buf
+	return out
+
+
+## The template a meadow key names: (kind * SLOTS + country) * 4 + stage.
+static func template_of(key: int) -> Tpl:
+	var kd := key / 4
+	return template(kd / BiomeRegistry.SLOTS, kd % BiomeRegistry.SLOTS, key % 4)
+
+
+## Only the kinds of a decor table that sway, as [kinds, cumulative, share of the
+## table's weight they carry]; [] when none do.
+var _sway: Dictionary = {}
+func _sway_table(tkey: int, country: int) -> Array:
+	if _sway.has(tkey):
+		return _sway[tkey]
+	var table: Array = _tables[tkey]
+	var kinds: PackedInt32Array = table[0]
+	var cum: PackedFloat32Array = table[1]
+	var picked := PackedInt32Array()
+	var weights := PackedFloat32Array()
+	var total := 0.0
+	for i in kinds.size():
+		var wgt := cum[i] - (cum[i - 1] if i > 0 else 0.0)
+		if template(kinds[i], country, 0).sways:
+			picked.append(kinds[i])
+			weights.append(wgt)
+			total += wgt
+	var row: Array = []
+	if total > 0.0:
+		var acc := PackedFloat32Array()
+		var run := 0.0
+		for wgt in weights:
+			run += wgt / total
+			acc.append(run)
+		row = [picked, acc, total]
+	_sway[tkey] = row
+	return row
 
 
 ## True when the lattice cell under (x, y) is one dry terrace.
