@@ -167,6 +167,18 @@ static func reaches(part: StringName, body_pos: Vector2, body_facing: float, swi
 	return side_of(body_pos, body_facing, swinger_pos) == part
 
 
+## Levels apart at which two bodies are out of each other's blows: a walk steps
+## one level, so one level is the same fight, and a ledge (two, what a jump goes
+## up) stands a body off from every bite and every swing, both ways. What comes
+## down off a ledge is the drop strike's, not a swing's.
+const LEDGE_LEVELS := 2
+
+
+## Can a blow pass between a body on `a_level` and one on `b_level`?
+static func levels_meet(a_level: int, b_level: int) -> bool:
+	return absi(a_level - b_level) < LEDGE_LEVELS
+
+
 ## Does the blow box of an owner at `o` facing `facing` (with body radius `orad`)
 ## overlap a round body of radius `trad` at `t`?
 static func box_hits(o: Vector2, facing: float, orad: float, b: Blow, t: Vector2, trad: float) -> bool:

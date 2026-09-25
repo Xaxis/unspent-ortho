@@ -220,6 +220,8 @@ func _swing() -> void:
 		var to := m.pos - hero.pos
 		if to.length() > hero.radius + b.reach + m.radius + FightRules.AIM_ASSIST_EXTRA:
 			continue
+		if not meets(hero.pos, m.pos):
+			continue
 		var off := absf(wrapf(to.angle() - hero.facing, -PI, PI))
 		if off < best_off:
 			best_off = off
@@ -689,6 +691,8 @@ func _touching() -> void:
 			continue
 		if m.pos.distance_to(hero.pos) > m.radius + hero.radius:
 			continue
+		if not meets(m.pos, hero.pos):
+			continue
 		if hero.invulnerable(now):
 			continue
 		_hurt_hero(m, touch, hero.pos - m.pos, 4.0, 200)
@@ -701,6 +705,8 @@ func _land(t0: float, t1: float) -> void:
 			if not m.alive or m.removed or hero.struck.has(m.id):
 				continue
 			if not FightRules.box_hits(hero.pos, hero.facing, hero.radius, b, m.pos, m.radius):
+				continue
+			if not meets(hero.pos, m.pos):
 				continue
 			hero.struck[m.id] = true
 			_wear_on_contact()
@@ -728,6 +734,8 @@ func _land(t0: float, t1: float) -> void:
 			continue
 		if not FightRules.box_hits(m.pos, m.facing, m.radius, m.blow, hero.pos, hero.radius):
 			continue
+		if not meets(m.pos, hero.pos):
+			continue
 		m.struck[&"hero"] = true
 		if not hero.invulnerable(now):
 			_landed(m)
@@ -743,6 +751,17 @@ func _land(t0: float, t1: float) -> void:
 				emit(&"grip", {"by": m, "grip": hero.grip})
 			continue
 		_hurt_hero(m, m.blow.dmg, Vector2.from_angle(m.facing) + (hero.pos - m.pos).normalized(), m.blow.knock, m.blow.knock_ms)
+
+
+## The ground level under a body, read at its own tile: the one height question
+## a blow asks, and never more of the world than where the body stands.
+func level_of(p: Vector2) -> int:
+	return world.level_at(floori(p.x), floori(p.y)) if world != null else 0
+
+
+## Are two bodies on levels a blow passes between (FightRules.levels_meet)?
+func meets(a: Vector2, b: Vector2) -> bool:
+	return FightRules.levels_meet(level_of(a), level_of(b))
 
 
 ## Does a blow from `from` reach this body's working part now? The plate rule,
