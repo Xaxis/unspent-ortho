@@ -236,7 +236,7 @@ static func why_not_local() -> String:
 	if local():
 		return ""
 	if web() or exported():
-		return "Builds are made on the machine the game is built on."
+		return "Builds and proofs run on the machine the game is built on."
 	return "The tools are not beside this copy of the game."
 
 
