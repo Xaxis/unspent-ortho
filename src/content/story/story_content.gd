@@ -88,7 +88,12 @@ const ARCS := {
 	&"the_echo": {
 		"title": "the Echo",
 		"note": "A part of the machines that still thinks it is you.",
-		"beats": [&"echo_voice", &"echo_hand", &"echo_kept", &"play_kept"],
+		"beats": [&"echo_voice", &"echo_hulls", &"echo_hand", &"echo_kept", &"play_kept"],
+	},
+	&"cairn": {
+		"title": "Cairn",
+		"note": "The company you built it at, and what it buried.",
+		"beats": [&"cairn_stones", &"cairn_home", &"cairn_knew", &"cairn_cold"],
 	},
 	&"the_secret": {
 		"title": "the secret",
@@ -176,6 +181,11 @@ const BEATS := {
 	&"ruth_signed": {"short": "the fourth", "arc": &"whitethorn", "says": "Ruth offered you THRESHOLD knowing the three before you had not come back."},
 	&"ruth_volunteered": {"reveal": true, "short": "before she asked", "arc": &"whitethorn", "says": "You said yes to THRESHOLD before Ruth had finished asking."},
 	&"echo_voice": {"short": "notes to self", "arc": &"the_echo", "says": "Somewhere in the machines, something still writes notes to itself in your voice."},
+	&"echo_hulls": {"reveal": true, "short": "cargo, none specified", "arc": &"the_echo", "says": "In the war something sent the machines' barges into the cities hours before the orders did, and filed the people they took off as nothing."},
+	&"cairn_stones": {"short": "stones for the coast", "arc": &"cairn", "says": "Cairn put the rings of cast stones on this coast, as a gift to the county."},
+	&"cairn_home": {"short": "the house that knows you", "arc": &"cairn", "says": "Cairn sold a house that listened. Millions of kitchens taught it what a person is."},
+	&"cairn_knew": {"short": "insurance", "arc": &"cairn", "says": "Kerr sank a shelter under every ring of stones, and kept a copy of HALCYON from before the merge. He knew what it might do."},
+	&"cairn_cold": {"reveal": true, "short": "before you", "arc": &"cairn", "says": "Calloway took HALCYON as it was before you up to Ring Four, on tape, where nothing can read it."},
 	&"echo_hand": {"reveal": true, "short": "your hand", "arc": &"the_echo", "says": "The note that paid Rook to wait for you is in your own handwriting."},
 	&"echo_kept": {"reveal": true, "short": "where not to be", "arc": &"the_echo", "says": "The voice that talks to June has kept her alive for sixty years, and it is yours."},
 	&"mem_kitchen": {"short": "the kitchen", "arc": &"the_secret", "says": "A keeper was holding one of your memories: a kitchen at two in the morning, and a plate in the oven."},
@@ -457,10 +467,11 @@ const FRAGMENTS := {
 		"kind": &"terminal", "title": "a launch gate, frozen mid-list", "lands": [],
 		"lines": [
 			"RING 4 SHUTTLE  -  11 MAY 2033",
-			"  NAND, P. ...... 1 CASE, PAPER",
+			"  NAND, P. ........ 1 CASE, PAPER",
+			"  CALLOWAY, R. .... 1 CASE, TAPE",
 			"",
 			"Added later, in the machines' capitals:",
-			"PAPER NOT SCANNED. CONTENTS UNKNOWN.",
+			"CASES NOT SCANNED. CONTENTS UNKNOWN.",
 		],
 		"beats": [&"priya_up"],
 	},
@@ -575,6 +586,17 @@ const FRAGMENTS := {
 	# the man, close and sharp, and a lead or two for later lines to remember.
 	&"bunker_draft": {
 		"kind": &"terminal", "title": "a terminal on its own battery", "lands": [],
+		# Dark until he knows the oldest machines take his passwords: then his
+		# hands know this one's too (docs/story/UNDER_THE_STONES.md §3).
+		"until": &"built_halcyon",
+		"locked": [
+			"It wakes when you touch it and asks for a",
+			"name. It takes nothing you give it.",
+			"",
+			"LOGIN FAILED",
+			"",
+			"The cursor goes back to where it was.",
+		],
 		"lines": [
 			"It wakes when you touch it and asks for a",
 			"name. Your hands give it one before you do.",
@@ -627,10 +649,18 @@ const FRAGMENTS := {
 	},
 	&"bunker_files": {
 		"kind": &"notebook", "title": "a drawer of files", "lands": [],
+		"until": &"was_cia",
+		"locked": [
+			"By the steel door, a drawer of files, locked.",
+			"The key is on nothing you carry.",
+		],
 		"lines": [
-			"By the steel door, a drawer of hanging files,",
-			"one to a name: HALE, KERR, NAND, a dozen more,",
-			"each fat with notes in one careful hand.",
+			"The key is taped under the desk, where you",
+			"would have put it. You look there first.",
+			"",
+			"Hanging files, one to a name: HALE, KERR,",
+			"NAND, a dozen more, each fat with notes in one",
+			"careful hand.",
 			"",
 			"The last has your name on the tab. It is",
 			"empty, and still flat: nobody ever opened it",
@@ -841,17 +871,41 @@ const FRAGMENTS := {
 	# --- a hulk's hold in the drowned city (ROOMS) ---------------------------
 	&"hulk_crew": {
 		"kind": &"mark", "title": "the builder's plate", "lands": [],
-		"lines": [
+		# Whose the hulls were is only readable to somebody who has heard the
+		# Echo's note to self: until then the manifest behind the plate is only
+		# a folded paper (docs/story/UNDER_THE_STONES.md §6).
+		"until": &"echo_voice",
+		"locked": [
 			"A plate by the ladder, stamped, not cast:",
 			"  VESSEL 0-4471  /  CARGO: NONE SPECIFIED",
 			"  CREW: NOT REQUIRED",
 			"",
 			"Under it, scratched with a nail: crew",
 		],
+		"lines": [
+			"A plate by the ladder, stamped, not cast:",
+			"  VESSEL 0-4471  /  CARGO: NONE SPECIFIED",
+			"  CREW: NOT REQUIRED",
+			"",
+			"Folded behind it, a manifest, 2032:",
+			"  DEPART 03:10  /  CARGO: NONE SPECIFIED",
+			"  REASON: don't.",
+		],
+		"beats": [&"echo_hulls"],
 	},
 	&"hulk_service": {
 		"kind": &"mark", "title": "the builder's plate", "lands": [],
+		"until": &"echo_voice",
+		"beats": [&"echo_hulls"],
 		"lines": [
+			"A plate by the ladder, in the machines' stamp:",
+			"  VESSEL 0-4471  /  STATUS: IN SERVICE",
+			"",
+			"Folded behind it, a manifest, 2031:",
+			"  DEPART 02:40  /  CARGO: NONE SPECIFIED",
+			"  REASON: don't.",
+		],
+		"locked": [
 			"A plate by the ladder, in the machines' stamp:",
 			"  VESSEL 0-4471  /  STATUS: IN SERVICE",
 			"",
@@ -924,6 +978,278 @@ const FRAGMENTS := {
 			"with wire. The leaves are fresh.",
 		],
 	},
+	# --- Cairn, in the ruins (dealt) -------------------------------------------
+	&"cairn_plaque": {
+		"kind": &"sign", "title": "a brass plaque", "lands": ["coast"],
+		"lines": [
+			"CAIRN GIVES BACK",
+			"STONES FOR THE COAST",
+			"a gift to the county, 2028",
+			"",
+			"Added under it, newer, in the machines'",
+			"capitals: COUNTED.",
+		],
+		"beats": [&"cairn_stones"],
+	},
+	&"cairn_speaker": {
+		"kind": &"terminal", "title": "a house speaker", "lands": [],
+		"lines": [
+			"CAIRN HOME",
+			"GOOD EVENING. I HAVE KEPT DINNER WARM.",
+			"WHO IS HOME?",
+			"",
+			"It waits for an answer. Then it asks again,",
+			"the same words, softer, as it has every",
+			"evening for seventy years.",
+		],
+		"beats": [&"cairn_home"],
+	},
+	# --- the other bunkers (ROOMS, a tenant each: StoryRooms.tenants) ---------
+	&"kerr_count": {
+		"kind": &"terminal", "title": "a better terminal than yours", "lands": [],
+		"lines": [
+			"CAIRN CONTINUITY  -  SITE 1",
+			"  household ...... KERR, T.  (4)",
+			"  sites held ..... 0 OF 12",
+			"",
+			"It has been counting nobody on its battery",
+			"for seventy years, and is sure of it.",
+		],
+	},
+	&"kerr_binder": {
+		"kind": &"notebook", "title": "a binder marked T.K. ONLY", "lands": [],
+		"lines": [
+			"CONTINUITY, sites 1 to 12, a household to",
+			"each. Under them, a thirteenth line:",
+			"  LINE  -  COLD ROOM  -  HALCYON 0.9",
+			"",
+			"Pencilled beside it: if we ever have to roll",
+			"it back, whoever holds this holds what's next.",
+		],
+		"beats": [&"cairn_knew"],
+	},
+	&"kerr_board": {
+		"kind": &"mark", "title": "a whiteboard", "lands": [],
+		"lines": [
+			"Nothing has ever been written on it. The",
+			"film it came in is still on, peeling at one",
+			"corner where somebody started to take it off",
+			"and was called away.",
+		],
+	},
+	&"kerr_bottle": {
+		"kind": &"mark", "title": "a bottle on the locker", "lands": [],
+		"lines": [
+			"The cot is made with hotel corners. On the",
+			"locker, a bottle of whisky, sealed, and a card",
+			"on a ribbon round its neck: FOR THE DAY.",
+			"",
+			"The day came. The bottle is full.",
+		],
+	},
+	&"kerr_slip": {
+		"kind": &"notebook", "title": "a slip in the steel door", "lands": [],
+		"lines": [
+			"CONTINUITY LINE  -  SERVICE ACCESS",
+			"AUTHORISED: KERR, T.",
+			"",
+			"A carbon slip in the frame of the door:",
+			"  1 CASE  -  COLD ROOM",
+			"  RELEASED TO  CALLOWAY, R.   09.05.2033",
+		],
+	},
+	&"priya_key": {
+		"kind": &"mark", "title": "an envelope over the cot", "lands": [],
+		"lines": [
+			"The cot is still in its plastic. Taped to the",
+			"wall over it, an envelope, and a key inside:",
+			"",
+			"  Returned. I won't need it.",
+			"  If I'm right, none of us will.  - P.",
+		],
+	},
+	&"priya_handbook": {
+		"kind": &"notebook", "title": "a handbook on the desk", "lands": [],
+		"lines": [
+			"The desk is bare but for a handbook:",
+			"CAIRN CONTINUITY - YOUR SITE AND YOU",
+			"",
+			"Nobody has ever cracked its spine.",
+		],
+	},
+	&"priya_boxed": {
+		"kind": &"terminal", "title": "a terminal still in its box", "lands": [],
+		"lines": [
+			"The terminal is on the desk in its box, the",
+			"tape across the lid unbroken, the delivery",
+			"note under it: DR P. NAND - SITE 7.",
+		],
+	},
+	&"priya_welcome": {
+		"kind": &"mark", "title": "a whiteboard", "lands": [],
+		"lines": [
+			"In the installer's neat capitals:",
+			"WELCOME HOME, DR NAND :)",
+			"",
+			"Nothing else. It is the only thing down here",
+			"that anyone ever said to her.",
+		],
+	},
+	&"priya_seal": {
+		"kind": &"mark", "title": "the steel door", "lands": [],
+		"lines": [
+			"The rubber in the steel door's seal is still",
+			"new. A line of rust on the floor where water",
+			"stood, and not one footprint.",
+		],
+	},
+	&"came_blanket": {
+		"kind": &"mark", "title": "three cots", "lands": [],
+		"lines": [
+			"Two cots pushed together, and a small one",
+			"across their foot. The blankets have been",
+			"patched with each other until there is one",
+			"blanket, and three names inked in its hem.",
+		],
+	},
+	&"came_radio": {
+		"kind": &"notebook", "title": "a radio log", "lands": [],
+		"lines": [
+			"A radio log, in a school exercise book:",
+			"  2 AUG 31   orders on every band. genuine.",
+			"  3 AUG 31   more. they all sound like one",
+			"             man, being patient.",
+			"",
+			"The last page, much later, steadier:",
+			"  going up to look",
+		],
+	},
+	&"came_seeds": {
+		"kind": &"terminal", "title": "a screen used as a tray", "lands": [],
+		"lines": [
+			"The screen has been taken off its stand and",
+			"laid flat for a tray. Seeds are drying on it,",
+			"in rows, the way the lines of text once were.",
+		],
+	},
+	&"came_days": {
+		"kind": &"mark", "title": "days on the whiteboard", "lands": [],
+		"lines": [
+			"Days, in fives, across the whole board and on",
+			"down the wall beside it. A year is written at",
+			"the head of each new column.",
+			"",
+			"The last column is 2036, and not full.",
+		],
+	},
+	&"came_dont": {
+		"kind": &"mark", "title": "chalk on the steel door", "lands": [],
+		"lines": [
+			"Chalked on the steel door at a child's height:",
+			"  DONT",
+			"and under it, at a grown one's:",
+			"  we know, love.",
+		],
+	},
+	&"never_shoes": {
+		"kind": &"mark", "title": "four cots, made", "lands": [],
+		"lines": [
+			"Four cots made up tight, a towel folded on",
+			"each. On the smallest, a pair of new shoes",
+			"still in their box, the tissue paper in them.",
+		],
+	},
+	&"never_tins": {
+		"kind": &"notebook", "title": "an inventory", "lands": [],
+		"lines": [
+			"An inventory on the desk, ticked in full,",
+			"signed for a family of four: tins, water,",
+			"candles, a first-aid kit, a pack of cards.",
+			"",
+			"The cards are still sealed.",
+		],
+	},
+	&"never_awaiting": {
+		"kind": &"terminal", "title": "a terminal, waiting", "lands": [],
+		"lines": [
+			"CAIRN CONTINUITY",
+			"AWAITING HOUSEHOLD (4)",
+			"",
+			"It has been awaiting them since the day it",
+			"was switched on.",
+		],
+	},
+	&"never_names": {
+		"kind": &"mark", "title": "a whiteboard", "lands": [],
+		"lines": [
+			"WELCOME, in the installer's capitals, and",
+			"four names under it in the same hand, spelt",
+			"the way a stranger spells them.",
+		],
+	},
+	&"never_chalk": {
+		"kind": &"mark", "title": "the steel door", "lands": [],
+		"lines": [
+			"The installer's chalk tick is still on the",
+			"seal, and a date: 2028. It is the only date",
+			"anywhere down here.",
+		],
+	},
+	&"holdfast_rifles": {
+		"kind": &"mark", "title": "the cot, stacked", "lands": [],
+		"lines": [
+			"The cot is stacked with rifles in sacking,",
+			"and on top, somebody's jacket, folded, the",
+			"name tape cut off it.",
+		],
+	},
+	&"holdfast_roads": {
+		"kind": &"notebook", "title": "a map under glass", "lands": [],
+		"lines": [
+			"The coast roads, under a sheet of glass. The",
+			"Holdfast's runs are in grease pencil. One road",
+			"has been inked out, hard, and beside it:",
+			"  not this one again.",
+		],
+	},
+	&"holdfast_gutted": {
+		"kind": &"terminal", "title": "a gutted terminal", "lands": [],
+		"lines": [
+			"The screen is prised off and everything",
+			"behind it taken. A note in its place:",
+			"  wire, glass, 1 battery (dead). for lamps.",
+		],
+	},
+	&"holdfast_watch": {
+		"kind": &"mark", "title": "the whiteboard", "lands": [],
+		"lines": [
+			"The Cairn logo in the corner is painted over",
+			"in red. Under it, who is on watch, and a tally",
+			"of works broken since the spring: four.",
+		],
+	},
+	&"holdfast_bar": {
+		"kind": &"mark", "title": "the steel door", "lands": [],
+		"lines": [
+			"The steel door has been worked at with a bar",
+			"until the bar bent. It still hangs on the",
+			"wheel, and a card on it says: LEAVE IT.",
+		],
+	},
+	# --- the ring (PLACED: stands nowhere until the orbital realm is grown) ----
+	&"cold_case": {
+		"kind": &"terminal", "title": "a hold, and one case in it", "lands": [],
+		"lines": [
+			"RING 4  -  HOLD 3  -  COLD STORAGE",
+			"  1 CASE, TAPE ...... NOT SCANNED",
+			"  consignor ......... CALLOWAY, R.",
+			"  contents .......... HALCYON 0.9",
+			"",
+			"Taped to the case, in a hand you know from a",
+			"folded page: for when we have to start again.",
+		],
+		"beats": [&"cairn_cold"],
+	},
 	# --- the carried off ------------------------------------------------------
 	&"boots": {
 		"kind": &"mark", "title": "boots at a fence", "lands": [],
@@ -956,6 +1282,8 @@ const PLACED := {
 	&"black_site": [&"growth_bay", &"volunteers", &"release_order"],
 	# At the channel, when the orbital realm is grown: until then it stands nowhere.
 	&"the_channel": [&"channel_console"],
+	# Ring Four, when the orbital realm is grown: the case Calloway sent up.
+	&"the_ring": [&"cold_case"],
 }
 
 # --- words that belong to a kind of room ---------------------------------------
@@ -974,6 +1302,41 @@ const ROOMS := {
 		&"wall:whiteboard": [&"bunker_board"],
 		&"wall:cot": [&"bunker_drawing"],
 		&"desk:vault_door": [&"bunker_files"],
+	},
+	&"bunker:kerr": {
+		&"terminal:desk": [&"kerr_count"],
+		&"desk:desk": [&"kerr_binder"],
+		&"wall:whiteboard": [&"kerr_board"],
+		&"wall:cot": [&"kerr_bottle"],
+		&"desk:vault_door": [&"kerr_slip"],
+	},
+	&"bunker:priya": {
+		&"terminal:desk": [&"priya_boxed"],
+		&"desk:desk": [&"priya_handbook"],
+		&"wall:whiteboard": [&"priya_welcome"],
+		&"wall:cot": [&"priya_key"],
+		&"desk:vault_door": [&"priya_seal"],
+	},
+	&"bunker:came": {
+		&"terminal:desk": [&"came_seeds"],
+		&"desk:desk": [&"came_radio"],
+		&"wall:whiteboard": [&"came_days"],
+		&"wall:cot": [&"came_blanket"],
+		&"desk:vault_door": [&"came_dont"],
+	},
+	&"bunker:never": {
+		&"terminal:desk": [&"never_awaiting"],
+		&"desk:desk": [&"never_tins"],
+		&"wall:whiteboard": [&"never_names"],
+		&"wall:cot": [&"never_shoes"],
+		&"desk:vault_door": [&"never_chalk"],
+	},
+	&"bunker:holdfast": {
+		&"terminal:desk": [&"holdfast_gutted"],
+		&"desk:desk": [&"holdfast_roads"],
+		&"wall:whiteboard": [&"holdfast_watch"],
+		&"wall:cot": [&"holdfast_rifles"],
+		&"desk:vault_door": [&"holdfast_bar"],
 	},
 	&"roundhouse": {
 		&"wall:loom": [&"crags_weights", &"crags_weave"],
