@@ -24,6 +24,17 @@ var lay := 0.8
 var root := Color(0.3, 0.45, 0.3)
 var tip := Color(0.55, 0.6, 0.4)
 var leaflets := 0
+## A leaflet's length as a share of the frond's height, at the frond's base.
+var leaflet := 0.26
+## What a leaflet's tip pales toward.
+var tip_pale := Color(0.75, 0.78, 0.55)
+## A second colour and the share of blades that take it: bracken turning, some
+## fronds still green among the russet.
+var other := Color(0, 0, 0, 0)
+var other_share := 0.0
+## Casts a real shadow. Costs a shadow pass, so only for sparse grass on pale
+## open ground, where a tuft with no shadow floats.
+var casts := false
 var heads := 0
 var head_color := Color(0.9, 0.88, 0.8)
 var head_size := 0.03
@@ -53,7 +64,8 @@ func motion_code() -> int:
 ## Every property that makes the grass look or move as it does, for comparing
 ## two landscapes' grass (tests/render/test_species.gd).
 func signature() -> Array:
-	return [blades, height, width, spread, reach, curl, lay, root, tip, leaflets, heads, head_color, head_size, stiff, flutter]
+	return [blades, height, width, spread, reach, curl, lay, root, tip, leaflets, leaflet, tip_pale, other, other_share,
+		heads, head_color, head_size, stiff, flutter, casts]
 
 
 ## The grass a landscape that declares none grows, from its grass colours. Only

@@ -35,6 +35,8 @@ vec3 trample_at(vec2 xz) {
 // Held equal to WindField by tests/render/test_wind.gd.
 const float GUST_CELL = 11.0;
 const float GUST_PERIOD = 64.0;
+const float FRONT_SHORT = 1.5;
+const float FRONT_LONG = 0.5;
 // How much further a full gust lays a tip over than the steady lean does.
 const float GUST_LEAN = 2.2;
 // How much a tip's push turns its face toward the sky, per unit of push over
@@ -56,7 +58,11 @@ float wind_vnoise(vec2 q) {
 
 // 0..1: how much gust stands at world xz now.
 float gust_at(vec2 xz) {
-	vec2 q = xz / GUST_CELL - sky_gust.xy;
+	// The lattice in the wind's frame: bands across the wind (WindField.frame).
+	vec2 d = sky_gust.zw;
+	vec2 s = vec2(-d.y, d.x);
+	vec2 p = xz / GUST_CELL;
+	vec2 q = d * dot(p, d) * FRONT_SHORT + s * dot(p, s) * FRONT_LONG - sky_gust.xy;
 	float n = wind_vnoise(q) * 0.65 + wind_vnoise(q * 2.0 + 17.0) * 0.35;
 	return smoothstep(0.42, 0.78, n);
 }
@@ -66,7 +72,7 @@ float gust_at(vec2 xz) {
 const float GROUND_PRESSED = 0.24;
 
 // How much lighter a sward's ground reads under a full gust front.
-const float GROUND_SHEEN = 0.2;
+const float GROUND_SHEEN = 0.26;
 
 // -0.25..0.75: the gust over a sward's ground, less in a calm, so a front shows
 // as a travelling paler band and the lull between as a little darker.

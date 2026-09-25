@@ -111,8 +111,7 @@ func setup(g: Game) -> void:
 	# it is the same sweep over the same world.
 	g.sky.set_wear(SkyWear.texture(g.world))
 	ground_ms = Time.get_ticks_msec() - t0
-	var a := Rng.hash01(g.world.seed_value, 0xC10D) * TAU
-	_cloud_bearing = Vector2.from_angle(a)
+	_cloud_bearing = bearing_of(g.world.seed_value)
 	_last_minutes = g.clock.minutes
 	# Start the drift where the clock is, so a shot at 12:00 is not a shot at 00:00.
 	_cloud_drift = _cloud_bearing * g.clock.minutes * 0.6
@@ -153,6 +152,12 @@ func apply_weather(spec: String) -> bool:
 	_forced_any = true
 	_hold_bolt(parts.slice(2).has("bolt"))
 	return true
+
+
+## The bearing a world's clouds and wind travel on (a positive wind blows
+## along it). Fixed per seed; 18_trample reads it to stage a gust front.
+static func bearing_of(seed_value: int) -> Vector2:
+	return Vector2.from_angle(Rng.hash01(seed_value, 0xC10D) * TAU)
 
 
 ## Hold one strike for a still, or let the held one go. A held bolt asked for
