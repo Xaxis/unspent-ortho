@@ -141,10 +141,12 @@ static func _fit(l: InteriorLayout, rng: RandomNumberGenerator) -> void:
 		var tx := rng.randi_range(1, w - 2)
 		var ty := rng.randi_range(1, d - 3)
 		_put(l, &"tear", Vector2(float(tx) + 0.5, float(ty) + 0.5), Vector2(0, 1), 0.0)
-	# Where the warden stands its watch: in front of the bays, facing the door.
+	# Where the warden stands its watch: in front of the bays, FACING them -- it
+	# guards what is in them, and the way in is at its back. Somebody quiet can
+	# get into the hall; somebody loud is noticed, and stood outside.
 	var post := Vector2(w * 0.5, 1.6)
-	_put(l, &"post", post, Vector2(0, 1), 0.0)
-	l.residents.append({"role": &"warden", "at": post, "face": Vector2(0, 1)})
+	_put(l, &"post", post, Vector2(0, -1), 0.0)
+	l.residents.append({"role": &"warden", "at": post, "face": Vector2(0, -1)})
 	# And what walks the hall: one or two down its length, either side of the gantry.
 	var guards := 1 + rng.randi_range(0, 1)
 	for i in guards:

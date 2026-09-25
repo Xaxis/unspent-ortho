@@ -27,6 +27,9 @@ var _cut: Array[MeshInstance3D] = []
 var _ceiling: MeshInstance3D
 ## Where the hall's own lights hang ([position, &"strip"]).
 var lights: Array[Array] = []
+## The turrets, in the layout's order: each a node that turns about its mount,
+## with its eye as two children (`dim`, `hot`) that `aim_turret` swaps.
+var turrets: Array[Node3D] = []
 
 
 func build(l: InteriorLayout, k: InteriorKind, _land: int, mat: Material) -> void:
@@ -227,7 +230,7 @@ func _thing(k: Kit, t: Dictionary) -> void:
 	var f: Vector2 = t.face
 	match t.kind:
 		&"rack": _rack(k, at, f)
-		&"turret": _turret(k, at, f)
+		&"turret": _turret(at, f)
 		&"gantry": _gantry(k, at)
 		&"strongbox": _strongbox(k, at, f)
 		&"strip": _strip(k, at)
@@ -267,18 +270,61 @@ func _rack(k: Kit, at: Vector2, f: Vector2) -> void:
 				k.cable(_v(c + s * -0.3, h + 0.02), _v(c + s * 0.3, h + 0.02), 0.28, 6, 0.02, P.PLATE[0])
 
 
-## A turret high in a corner: a mount on the wall, a housing that turns, a barrel
-## and the amber eye it sees with.
-func _turret(k: Kit, at: Vector2, f: Vector2) -> void:
+## A turret high in a corner: a mount on the wall, and on it a head that turns
+## -- a housing, a barrel and the amber eye it sees with, which burns hot while
+## it comes round on somebody (the tell). Its own node, so it can turn.
+func _turret(at: Vector2, f: Vector2) -> void:
 	var h := kind.wall_h - 0.7
-	var base := _v(at, h)
-	k.found.box(base - Vector3(0.18, 0.5, 0.18), base + Vector3(0.18, 0.06, 0.18), P.PLATE[1])
-	k.chamfer(base.x, base.y + 0.06, base.z, 0.4, 0.26, 0.4, 0.06, P.PLATE[2])
-	var dir := Vector3(f.x, -0.25, f.y).normalized()
-	var muzzle := base + Vector3.UP * 0.19
-	k.rod(muzzle, muzzle + dir * 0.55, 0.04, 8, P.PLATE[0])
-	var eye := muzzle + dir * 0.18 + Vector3.UP * 0.08
-	k.chamfer(eye.x, eye.y, eye.z, 0.08, 0.05, 0.08, 0.02, P.LENS[2])
+	var mount := Kit.new()
+	mount.found.box(Vector3(-0.18, -0.5, -0.18), Vector3(0.18, 0.06, 0.18), P.PLATE[1])
+	var head := Kit.new()
+	head.chamfer(0.0, 0.06, 0.0, 0.4, 0.26, 0.4, 0.06, P.PLATE[2])
+	var muzzle := Vector3(0.0, 0.19, 0.0)
+	head.rod(muzzle, muzzle + Vector3(0.55, -0.12, 0.0), 0.04, 8, P.PLATE[0])
+	var dim := Kit.new()
+	dim.chamfer(0.18, 0.2, 0.0, 0.05, 0.08, 0.08, 0.02, P.LENS[1])
+	var hot := Kit.new()
+	hot.chamfer(0.18, 0.18, 0.0, 0.09, 0.12, 0.12, 0.02, Works.WORKING)
+	# The sighting line: a hair of steady amber, a unit long along +X, stretched
+	# to the target and pitched down to it by `aim_turret` while the turret comes
+	# round -- the tell, readable at any zoom.
+	var sight := Kit.new()
+	sight.found.box(Vector3(0.0, -0.008, -0.008), Vector3(1.0, 0.008, 0.008), Works.WORKING)
+	var root := Node3D.new()
+	root.name = "turret_%d" % turrets.size()
+	root.position = _v(at, h)
+	root.rotation.y = -f.angle()
+	add_child(root)
+	for part: Array in [[mount, "mount"], [head, "head"], [dim, "dim"], [hot, "hot"], [sight, "sight"]]:
+		var mi := MeshInstance3D.new()
+		mi.name = part[1]
+		mi.mesh = (part[0] as Kit).found.build()
+		mi.material_override = PropModels.found_material()
+		root.add_child(mi)
+	root.get_node("hot").visible = false
+	var sight_node := root.get_node("sight") as Node3D
+	sight_node.position = Vector3(0.2, 0.2, 0.0)
+	sight_node.visible = false
+	turrets.append(root)
+
+
+## Turn turret `i` to `yaw` (radians, the fight's way: 0 east, turning south),
+## burn its eye hot while it is coming round (`hot`) and draw its sighting line
+## `reach` long, down to a body's chest.
+func aim_turret(i: int, yaw: float, hot: bool, reach := 0.0) -> void:
+	if i < 0 or i >= turrets.size():
+		return
+	var t := turrets[i]
+	t.rotation.y = -yaw
+	(t.get_node("hot") as Node3D).visible = hot
+	(t.get_node("dim") as Node3D).visible = not hot
+	var sight := t.get_node("sight") as Node3D
+	sight.visible = hot and reach > 0.3
+	if sight.visible:
+		var drop := kind.wall_h - 0.7 + 0.2 - 1.1
+		var along := maxf(0.1, reach - 0.2)
+		sight.rotation.z = -atan2(drop, along)
+		sight.scale = Vector3(sqrt(along * along + drop * drop), 1.0, 1.0)
 
 
 ## The gantry across the hall's middle, and the machine hung in it half taken

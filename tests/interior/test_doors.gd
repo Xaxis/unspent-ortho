@@ -317,3 +317,91 @@ func test_a_hall_remembers_its_dead_and_puts_the_arrested_out() -> void:
 	near(g.player.pos.distance_to(t.door), 0.0, 1.0, "at the hatch")
 	Sx.end(g)
 	Sx.finish()
+
+
+## THE WARDEN HOLDS THE HALL: while it stands a turret hurts a player in its line
+## and the strongboxes refuse the key; broken, a box gives up the kind's table
+## (the one economy) once, and the turrets stand down.
+func test_the_warden_holds_the_turrets_and_the_boxes() -> void:
+	Sx.use_root("doors-hall-guard")
+	var g := Sx.game(tree, ["--seed=4", "--hour=11", "--weather=clear:0"])
+	var d := _doors(g)
+	var sim: FightSim = g.player.sim
+	g.player.hero.pos = d.call(&"tour_place", "door:weapons_hall")
+	g.player.hero.facing = float(d.call(&"tour_face", "door:weapons_hall"))
+	g.player.sync_view(0.0)
+	await _frames(20)
+	await d.call(&"go_in", d.get("door_near"))
+	var pocket: InteriorGen.Pocket = d.get("pocket")
+	# The residents would settle this before the turrets could: stand them off,
+	# so what is measured is the turrets alone.
+	var warden: MobState = null
+	for m: MobState in sim.mobs:
+		if m.kind == &"warden":
+			warden = m
+		# Stunned and rooted for the length of the test (the fight's own fields).
+		m.stun_until = INF
+		m.pace = 0.0
+		m.dash = 0.0
+	# In a turret's line: the hall's middle, where every corner can see.
+	var mid := Vector2(pocket.layout.hearth.x, pocket.layout.hearth.y + 1.2)
+	g.player.hero.pos = mid
+	g.player.sync_view(0.0)
+	# Hurts are counted as the fight reports them (40_fight turns every one into
+	# Events.hit with the player as the target), not off the health number, which
+	# the body and the hazards also write.
+	var hurts := [0]
+	var on_hit := func(_by: Variant, target: Variant, _dmg: int, _crit: bool, _at: Vector3) -> void:
+		if target == g.player:
+			hurts[0] += 1
+	Events.hit.connect(on_hit)
+	var until := Time.get_ticks_msec() + 6000 * TestCase.machine_slack()
+	while not bool(d.call(&"tour_seen", &"turret_shot")) and Time.get_ticks_msec() < until:
+		g.player.hero.pos = mid
+		await _frames(1)
+	# The fight's events are drained on its physics step, which a headless frame
+	# can outrun: wait on the clock for the report.
+	var report := Time.get_ticks_msec() + 1000 * TestCase.machine_slack()
+	while hurts[0] == 0 and Time.get_ticks_msec() < report:
+		await _frames(1)
+	check(bool(d.call(&"tour_seen", &"turret_shot")), "a turret fired on the player in its line")
+	gt(float(hurts[0]), 0.0, "and it hurt")
+	# A strongbox refuses while the warden stands.
+	var box := Vector2.INF
+	for t: Dictionary in pocket.layout.things:
+		if t.kind == &"strongbox":
+			box = (t.at as Vector2) + (t.face as Vector2) * 0.8
+			break
+	check(box.is_finite(), "the hall has a strongbox")
+	g.player.hero.pos = box
+	g.player.sync_view(0.0)
+	await _frames(5)
+	d.call(&"_open_box", int(d.get("box_near")))
+	check(bool(d.call(&"tour_seen", &"box_refused")), "shut while the warden stands")
+	# Break the warden; the box opens, once, and pays out the table.
+	var b := TurretRules.blow()
+	b.dmg = 999
+	for i in 6:
+		if warden.alive:
+			sim.strike(warden, b, warden.pos + Vector2(0.5, 0.0))
+		await _frames(3)
+	check(not warden.alive, "the warden is broken")
+	var scrap := g.inventory.count(&"scrap")
+	d.call(&"_open_box", int(d.get("box_near")))
+	check(bool(d.call(&"tour_seen", &"box_opened")), "the box opens once the warden is broken")
+	gt(float(g.inventory.count(&"scrap")), float(scrap), "and pays out the hall's table")
+	var after := g.inventory.count(&"scrap")
+	d.call(&"_open_box", int(d.get("box_near")))
+	eq(g.inventory.count(&"scrap"), after, "and only once")
+	# The turrets stand down: nothing more lands.
+	d.call(&"tour_forget", &"turret_shot")
+	var h2: int = hurts[0]
+	until = Time.get_ticks_msec() + 3500 * TestCase.machine_slack()
+	while Time.get_ticks_msec() < until:
+		g.player.hero.pos = mid
+		await _frames(1)
+	check(not bool(d.call(&"tour_seen", &"turret_shot")), "with the warden broken the turrets stand down")
+	eq(hurts[0], h2, "and nothing more lands")
+	Events.hit.disconnect(on_hit)
+	Sx.end(g)
+	Sx.finish()

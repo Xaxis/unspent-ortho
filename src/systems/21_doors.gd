@@ -174,6 +174,12 @@ func _inside_side(_delta: float) -> void:
 		door_near = pocket.threshold
 		if _pressed():
 			go_out()
+			return
+	_trespass()
+	_run_turrets()
+	box_near = _box_near()
+	if box_near >= 0 and _pressed():
+		_open_box(box_near)
 
 
 ## The press is this system's own edge (down now, up the frame before), not
@@ -192,6 +198,8 @@ var _use_edge := false
 ## and the press meant to let them out closed that instead -- measured in a tour.
 func use_spent() -> bool:
 	if _swapping:
+		return true
+	if pocket != null and box_near >= 0:
 		return true
 	if door_near == null:
 		return false
@@ -289,6 +297,7 @@ func _swap_in() -> void:
 	_windows = model.call(&"windows")
 	_make_lights()
 	_wake_residents()
+	_stand_turrets()
 	crossings += 1
 
 
@@ -320,11 +329,142 @@ func _on_time_skipped(_minutes: float, reason: StringName) -> void:
 
 ## A ROOM'S RESIDENTS are put into the fight on the way in, where the recipe
 ## stood them, as the bodies the host's land keeps: a keeper is the plan's own
-## warden, a guard the first hunter the land's roster names. They know at once
-## that somebody has come in (a keeper takes it as trespass on what it holds),
-## and one that is broken stays broken: the dead are kept per door, and saved.
+## warden, a guard the first hunter the land's roster names. A hunter is hostile
+## by its role. A keeper is wary, and TURNS when it notices the player in what it
+## holds -- its own suspicion, which the stealth rules raise, reaching 1 -- as
+## trespass (`_trespass`). Disturbed on the way in instead, a warden crossed the
+## hall and arrested whoever opened the hatch within a second, every time. One
+## that is broken stays broken: the dead are kept per door, and saved.
 var _residents: Array[Array] = []
 var _dead: Dictionary = {}
+
+
+# --- what a hall guards --------------------------------------------------------
+
+## THE WARDEN HOLDS THE HALL. While it stands, the turrets high in the corners
+## turn on whoever is in their line and fire (HallTurret, through
+## `FightSim.strike_hero`), and the strongboxes in the bays are shut. Broken, it
+## lets go of both: the turrets stand down and the boxes open to the `use` key,
+## each once, rolled on the kind's table in the one economy (Interiors.LOOT).
+var _turrets: Array[HallTurret] = []
+var _opened: Dictionary = {}
+## The strongbox in reach (its index among the layout's), -1 for none.
+var box_near := -1
+## Latched, for a tour: a turret fired, a box was refused, a box was opened.
+var _turret_fired := false
+## Live: a turret is coming round on the player this frame (the eye is hot).
+var _aiming := false
+var _box_refused := false
+var _box_opened := false
+
+
+func _warden_stands() -> bool:
+	for pair: Array in _residents:
+		var m: MobState = pair[1]
+		if m.kind == &"warden" and m.alive:
+			return true
+	return false
+
+
+func _stand_turrets() -> void:
+	_turrets.clear()
+	for t: Dictionary in pocket.layout.things:
+		if t.kind == &"turret":
+			_turrets.append(HallTurret.new(t.at, t.face))
+
+
+func _run_turrets() -> void:
+	if _turrets.is_empty():
+		return
+	var sim: FightSim = game.player.sim
+	var armed := _warden_stands()
+	var now := sim.now
+	_aiming = false
+	var target := game.player.pos
+	for i in _turrets.size():
+		var tu := _turrets[i]
+		if not armed:
+			model.call(&"aim_turret", i, tu.facing, false)
+			continue
+		var clear := _turret_sees(tu.at, target)
+		var what := tu.step(now, target, clear)
+		model.call(&"aim_turret", i, tu.facing, what == &"aim", tu.at.distance_to(target))
+		_aiming = _aiming or what == &"aim"
+		if what == &"aim" and now - tu.aim_since < 20.0:
+			Events.sfx.emit(&"turret_aim", game.world.to_3d(tu.at))
+		elif what == &"fire":
+			Events.sfx.emit(&"turret_fire", game.world.to_3d(tu.at))
+			if sim.strike_hero(HallTurret.blow(), tu.at):
+				_turret_fired = true
+
+
+## A turret is mounted high: it sees OVER the racks and the gantry's legs, which
+## stand in the query as walls a body cannot pass. What blocks it is the room's
+## own shape -- a line that leaves the floor goes through a wall. (Asked of every
+## block, a corner turret's line to a player by the door ran along the wall
+## through the racks, and no turret ever fired.)
+func _turret_sees(a: Vector2, b: Vector2) -> bool:
+	var n := ceili(a.distance_to(b) / 0.25)
+	for i in range(1, n):
+		var q := a.lerp(b, float(i) / float(n))
+		if not pocket.layout.is_floor(floori(q.x), floori(q.y)):
+			return false
+	return true
+
+
+## Which strongbox is within reach of the player's hands, or -1.
+func _box_near() -> int:
+	var i := 0
+	var best := -1
+	var bd := 1.4
+	for t: Dictionary in pocket.layout.things:
+		if t.kind != &"strongbox":
+			continue
+		var d := (t.at as Vector2).distance_to(game.player.pos)
+		if d < bd:
+			bd = d
+			best = i
+		i += 1
+	return best
+
+
+func _open_box(i: int) -> void:
+	var key := pocket.threshold.key
+	var done: Array = _opened.get(key, [])
+	if done.has(i):
+		Events.message.emit("It is empty. You emptied it.")
+		return
+	if _warden_stands():
+		_box_refused = true
+		Events.message.emit("It is shut, and it answers to the warden. Not while that stands.")
+		return
+	var land := BiomeRegistry.by_index(pocket.threshold.land).id
+	var instance := Rng.hash_ints(game.options.seed_value, key.hash(), i, 0x5B0C)
+	var got: Array[String] = []
+	for row: Dictionary in Drops.roll(Interiors.loot_source(pocket.kind.id), game.options.seed_value, instance, land):
+		var id: StringName = row.item
+		var n := int(row.count)
+		if Items.def(id).is_empty() or n <= 0:
+			continue
+		game.inventory.add(id, n)
+		Events.took.emit(id, n)
+		got.append("%s x%d" % [String(Items.def(id).get("name", id)), n])
+	done.append(i)
+	_opened[key] = done
+	_box_opened = true
+	Events.sfx.emit(&"door", game.player.position)
+	Events.message.emit("The box gives up what the plan kept in it: %s." % ", ".join(got) if not got.is_empty() else "The box is empty.")
+
+
+## A keeper that has noticed the player in the room it holds takes it as
+## trespass, once.
+func _trespass() -> void:
+	var sim: FightSim = game.player.sim
+	for pair: Array in _residents:
+		var m: MobState = pair[1]
+		if m.alive and Roles.of(m.kind) == Roles.KEEPER and m.suspicion >= 0.99 and not pair.has(&"turned"):
+			sim.disturb(m, &"trespass")
+			pair.append(&"turned")
 
 
 func _wake_residents() -> void:
@@ -344,7 +484,6 @@ func _wake_residents() -> void:
 		m.home = r.at
 		m.facing = (r.face as Vector2).angle()
 		m.aim = m.facing
-		sim.disturb(m, &"trespass")
 		_residents.append([i, m])
 
 
@@ -379,7 +518,10 @@ func _save() -> Variant:
 	var out := {}
 	for k: Variant in _dead:
 		out[str(k)] = _dead[k]
-	return {"dead": out}
+	var opened := {}
+	for k: Variant in _opened:
+		opened[str(k)] = _opened[k]
+	return {"dead": out, "opened": opened}
 
 
 func _load(v: Variant) -> void:
@@ -392,6 +534,13 @@ func _load(v: Variant) -> void:
 		for n: Variant in d[k]:
 			idx.append(SaveCodec.to_int(n))
 		_dead[str(k)] = idx
+	_opened.clear()
+	var o: Dictionary = (v as Dictionary).get("opened", {})
+	for k: Variant in o:
+		var idx: Array = []
+		for n: Variant in o[k]:
+			idx.append(SaveCodec.to_int(n))
+		_opened[str(k)] = idx
 
 
 ## A save made in a room counts those already broken in it, without leaving.
@@ -417,6 +566,9 @@ func _room_middle() -> Vector2:
 func _swap_out() -> void:
 	var realms := _realms()
 	_count_the_dead()
+	_turrets.clear()
+	_aiming = false
+	box_near = -1
 	game.camera.frame_bias = Vector3.ZERO
 	var t := pocket.threshold
 	for l: SpotLight3D in _lights:
@@ -799,8 +951,32 @@ void fragment() {
 
 # --- what a tour may ask, and where it may stand -------------------------------
 
+## An `await` means since I last asked: the three events this system latches are
+## spent when a tour's question is answered.
+func tour_forget(what: StringName) -> void:
+	match what:
+		&"turret_shot":
+			_turret_fired = false
+		&"box_refused":
+			_box_refused = false
+		&"box_opened":
+			_box_opened = false
+
+
 func tour_seen(what: StringName) -> bool:
 	match what:
+		&"turret_shot":
+			return _turret_fired
+		&"turret_aiming":
+			return pocket != null and _aiming
+		&"box_refused":
+			return _box_refused
+		&"box_opened":
+			return _box_opened
+		&"box_near":
+			return pocket != null and box_near >= 0
+		&"warden_down":
+			return pocket != null and not _swapping and not _warden_stands()
 		&"door":
 			return door_near != null
 		&"inside":
@@ -818,7 +994,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "strongbox"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
@@ -828,6 +1004,9 @@ const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:sid
 ## door into that kind at all -- so a tour stages a room by what is in it rather
 ## than by where some house happens to stand.
 func tour_place(what: String) -> Vector2:
+	if what == "strongbox":
+		var box := _first_box()
+		return (box.at as Vector2) + (box.face as Vector2) * 0.8 if not box.is_empty() else Vector2.INF
 	var t := _tour_door(what)
 	if pocket != null and t == null and TOUR_PLACES.has(what):
 		return pocket.layout.door - pocket.layout.door_out * 0.5
@@ -835,10 +1014,23 @@ func tour_place(what: String) -> Vector2:
 
 
 func tour_face(what: String) -> float:
+	if what == "strongbox":
+		var box := _first_box()
+		return (-(box.face as Vector2)).angle() if not box.is_empty() else NAN
 	var t := _tour_door(what)
 	if pocket != null and t == null and TOUR_PLACES.has(what):
 		return pocket.layout.door_out.angle()
 	return (-t.out).angle() if t != null else NAN
+
+
+## `near strongbox`: the first strongbox in the room the player is in.
+func _first_box() -> Dictionary:
+	if pocket == null:
+		return {}
+	for t: Dictionary in pocket.layout.things:
+		if t.kind == &"strongbox":
+			return t
+	return {}
 
 
 ## The door a tour name asks for from outside; null inside a room, or for a name
