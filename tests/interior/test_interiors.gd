@@ -257,7 +257,7 @@ func test_every_house_opens_on_its_own_forms_room() -> void:
 		else:
 			check(doors.has(key) and (doors[key] as Threshold).kind == want,
 				"the %s %s at %s opens on a %s" % [d.id, form, p.pos, want])
-	for k: StringName in [&"roundhouse", &"stilt_room", &"tower_lobby", &"cliff_room"]:
+	for k: StringName in [&"roundhouse", &"stilt_room", &"tower_lobby", &"cliff_room", &"hulk_hold"]:
 		check(seen.has(k), "seed 4 has a house that opens on a %s" % k)
 
 
@@ -397,3 +397,47 @@ func test_every_cliff_room_can_be_walked_to() -> void:
 		for g: String in goals:
 			check(_reached(reach, goals[g]), "%s (%s/%s): the %s at %s cannot be walked to from the door" % [t.key, l.plan, l.dressing, g, goals[g]])
 	gt(float(n), 0.0, "seed 4 has cliff rooms to walk")
+
+
+## A HOLD CAN BE LIVED IN: from the companion of every hulk on seed 4 a body gets
+## to the stove, the table under the hatch, the side of every hammock, and
+## through the bulkhead's door into the fore cabin when there is one -- and the
+## open bilge hatch refuses it.
+func test_every_hulk_hold_can_be_walked_to() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var n := 0
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind != &"hulk_hold":
+			continue
+		n += 1
+		var p := InteriorGen.grow(4, t)
+		var l := p.layout
+		var q := WorldQuery.new(p.world)
+		var blocks: Array[Vector3] = doors_script.call(&"_walls", l)
+		q.set_blocks(&"rooms", blocks)
+		var reach := _reach(q, l.inside())
+		var goals := {}
+		var k := 0
+		for th: Dictionary in l.things:
+			var at: Vector2 = th.at
+			var r := l.rooms[0] if l.rooms[0].has_point(Vector2i(floori(at.x), floori(at.y))) or l.rooms.size() == 1 else l.rooms[1]
+			var middle := Vector2(r.position) + Vector2(r.size) * 0.5
+			match th.kind:
+				&"stove", &"hammock":
+					var side := (middle - at).normalized()
+					if th.kind == &"hammock":
+						var f: Vector2 = th.face
+						side = Vector2(-f.y, f.x) * signf(Vector2(-f.y, f.x).dot(middle - at) + 0.001)
+					goals["%s %d" % [th.kind, k]] = at + side * 0.85
+					k += 1
+				&"trapdoor":
+					var inward := (middle - at).normalized()
+					check(q.move_body(at + inward * 1.5, -inward * 1.5, Tuning.PLAYER_RADIUS).distance_to(at) > 0.45,
+						"%s: the open bilge at %s refuses a body" % [t.key, at])
+		goals["table"] = l.table + (l.inside() - l.table).normalized() * 0.9
+		if l.rooms.size() > 1:
+			goals["fore cabin"] = Vector2(l.rooms[1].position) + Vector2(l.rooms[1].size) * 0.5 + Vector2(0, 1.2)
+		for g: String in goals:
+			check(_reached(reach, goals[g]), "%s (%s/%s): the %s at %s cannot be walked to from the companion" % [t.key, l.plan, l.dressing, g, goals[g]])
+	gt(float(n), 0.0, "seed 4 has hulks to walk")

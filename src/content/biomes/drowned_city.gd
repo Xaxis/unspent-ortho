@@ -100,9 +100,9 @@ static func make() -> BiomeDef:
 	# Quay (test_houses). Four is what held it before.
 	d.built = BiomeForms.new()
 	d.built.stock = [&"upper_floor", &"stilt_house", &"hulk_home", &"shell"] as Array[StringName]
-	# The stilt house is lived in over the water; its room is its own
-	# (content/interiors/stilt_room.gd).
-	d.interiors = {&"form:stilt_house": &"stilt_room"}
+	# The stilt house is lived in over the water, and the hulk in the hold of a
+	# barge moored for good; each room is its own (content/interiors/).
+	d.interiors = {&"form:stilt_house": &"stilt_room", &"form:hulk_home": &"hulk_hold"}
 	d.built.plan = &"block"
 	d.built.apart = BiomeForms.ROW_APART
 	d.built.buildings = Vector2i(14, 22)
