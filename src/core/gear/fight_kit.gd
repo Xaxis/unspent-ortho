@@ -9,8 +9,8 @@ extends RefCounted
 ##                            still takes HARMONIC_DAMAGE, and rings louder
 ##   phase    (mod_phase)     "it reads the working part through the plate": the
 ##                            first blow on each body reaches its part from any
-##                            side and through a closed guard; it hurts, and
-##                            does not stall the machine
+##                            side and through a closed guard, and stalls it as a
+##                            blow in the part does, for PHASE_STALL_MS
 ##   damp     (mod_damp)      "your blows go quieter": a blow is DAMP_NOISE as loud
 ##   leech    (mod_leech)     "a kill gives a charge": LEECH_CHARGES back per kill
 ##   capacitor(mod_capacitor) "it holds charges": every CAPACITOR_EVERY-th charged
@@ -22,6 +22,16 @@ extends RefCounted
 ##   clamp    (mod_clamp)     "you stay on the plate": knockback is CLAMP_KNOCK
 
 const HARMONIC_DAMAGE := 1
+## How long the phase coil's opener stops a machine's work. Longer than a part
+## hit's own stall (FightRules.STALL_MS, 600): a stall cancels the bite being wound
+## up, and so the long spent window after a bite that a reader lives on, so an
+## opener that stalls for less than that window costs the reader a bite cycle.
+## Measured on the roused harvester met at its front (tests/fight/test_bouts):
+##   600 -45%   800 -50%   900 +31%   1000 +29%   1100 +26%   1200 +25%
+##   1250 +24%  1280 +22%  1300 -17%  1500 -21%
+## The effect comes in whole bite cycles, so it steps rather than slides; 1250 is
+## inside the owner's 10-25% band and 50 ms from the step that loses one.
+const PHASE_STALL_MS := 1250
 ## A kill with a leech coil fitted gives back this many charges.
 const LEECH_CHARGES := 1
 ## A capacitor bank carries every this-many-th charged swing without a charge.

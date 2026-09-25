@@ -111,11 +111,13 @@ func test_phase_reads_through_a_closed_guard_once() -> void:
 		m.set_mood(MobState.ATTACKING, sim.now)
 		check(not sim.reaches_part(m, sim.hero.pos), "roused, its guard is closed")
 		var hp := m.health
-		var hit := _swing(sim)
+		sim.press_swing()
+		F.ms(sim, 300)
+		var hit := F.first(sim.drain(), &"hit")
 		if coil:
 			eq(hit.get("plate", null), false, "coil: the first blow reads through the guard")
 			lt(float(m.health), float(hp), "and hurts it")
-			check(not m.stunned(sim.now), "and does not stop its work")
+			check(m.stunned(sim.now), "and stops its work, as a blow in the part does")
 		else:
 			eq(hit.get("plate", null), true, "bare: the closed guard throws it off")
 			eq(m.health, hp)

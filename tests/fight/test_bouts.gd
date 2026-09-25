@@ -10,7 +10,7 @@ const Bot := preload("res://tests/fight/reader.gd")
 const FirstMeetings := preload("res://tests/fight/test_first_meetings.gd")
 
 
-func _bout(kind: StringName, use_bot: bool, seconds: float, heavy: bool = false, kit: Array[StringName] = [], roused: bool = false) -> Dictionary:
+func _bout(kind: StringName, use_bot: bool, seconds: float, heavy: bool = false, kit: Array[StringName] = [], roused: bool = false, start: int = 0) -> Dictionary:
 	var ground := Ground.WATER if kind == &"dredger" else Ground.GRASS
 	var sim := F.make_sim(F.flat_world(96, ground), Vector2(48.5, 48.5))
 	sim.hero.inventory.add(&"knife")
@@ -23,6 +23,16 @@ func _bout(kind: StringName, use_bot: bool, seconds: float, heavy: bool = false,
 		# A worker leaves a still player be: this one has already been struck.
 		m.disturbed = true
 		m.set_mood(MobState.ATTACKING, sim.now)
+	if roused:
+		# Met at close quarters at its front, its guard closed: a player who walked
+		# into it rather than one it came at across a field.
+		# Each `start` meets it a little off square, so one bout's timing is not the
+		# whole of the measure.
+		var skew := (float(start % 8) - 3.5) * 0.14
+		var gap := 0.2 + 0.1 * float(start % 4)
+		m.pos = sim.hero.pos + Vector2.from_angle(skew) * (m.radius + sim.hero.radius + gap)
+		m.facing = skew + PI
+		m.aim = m.facing
 	var bot := Bot.new(sim)
 	bot.heavy = heavy
 	var hurts := 0
@@ -110,12 +120,26 @@ func test_a_phase_coil_never_costs_a_reader_the_harvester() -> void:
 
 
 ## Where the coil earns its place: opening on a machine that is already roused,
-## its guard closed, from its front. The first blow goes through; after that it
-## is the machine as it is.
+## its guard closed, met at its front. The first blow goes through and stalls
+## it; after that it is the machine as it is. The mean of eight meetings, each a
+## little off square and at a different gap. They come out within 0.02 s of one
+## another (the fight falls into the machine's own rhythm), so the mean is the
+## guard against a start that does not, not a smoothing of noise.
+const ROUSED_STARTS := 8
+
+
 func test_a_phase_coil_opens_a_roused_harvester() -> void:
-	var bare := _bout(&"harvester", true, 90.0, false, [] as Array[StringName], true)
-	var coil := _bout(&"harvester", true, 90.0, false, [&"mod_phase"] as Array[StringName], true)
-	print("  roused harvester, bare %.2f s, phase coil %.2f s" % [bare.t, coil.t])
-	check(not bare.alive and not coil.alive, "both readers take it: %s %s" % [bare, coil])
-	check(coil.outcome != &"downed" and coil.outcome != &"carried", "the coil's reader is never put down: %s" % coil)
-	check(float(coil.t) <= float(bare.t) + 0.02, "no slower with it (%.2f s against %.2f s)" % [coil.t, bare.t])
+	var tb := 0.0
+	var tc := 0.0
+	for i in ROUSED_STARTS:
+		var bare := _bout(&"harvester", true, 90.0, false, [] as Array[StringName], true, i)
+		var coil := _bout(&"harvester", true, 90.0, false, [&"mod_phase"] as Array[StringName], true, i)
+		check(not bare.alive and not coil.alive, "start %d: both readers take it: %s %s" % [i, bare, coil])
+		check(coil.outcome != &"downed" and coil.outcome != &"carried", "start %d: the coil's reader is never put down: %s" % [i, coil])
+		tb += float(bare.t)
+		tc += float(coil.t)
+	tb /= ROUSED_STARTS
+	tc /= ROUSED_STARTS
+	print("  roused harvester, mean of %d: bare %.2f s, phase coil %.2f s (%.0f%% less)" % [ROUSED_STARTS, tb, tc, (1.0 - tc / tb) * 100.0])
+	lt(tc, tb * 0.9, "the coil opens it at least a tenth sooner (%.2f s against %.2f s)" % [tc, tb])
+	gt(tc, tb * 0.75, "and no more than a quarter sooner: an opener, not a win")

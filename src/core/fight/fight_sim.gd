@@ -791,8 +791,9 @@ func _land(t0: float, t1: float) -> void:
 				continue
 			if m.invulnerable(now):
 				continue
-			# Read through what covers the part, it hurts; it does not stop the work.
-			_hurt_mob(m, b, Vector2.INF, not phased)
+			# Read through what covers the part, it is a blow in the part like any
+			# other, stall and all, for FightKit.PHASE_STALL_MS.
+			_hurt_mob(m, b, Vector2.INF, FightKit.PHASE_STALL_MS if phased else FightRules.STALL_MS)
 	if b != null and not _whiff_checked and t1 >= hero.blow_at + b.windup + b.active:
 		_whiff_checked = true
 		if hero.struck.is_empty():
@@ -858,8 +859,8 @@ func reaches_part(m: MobState, from: Vector2, cuts: bool = false, heavy: bool = 
 ## The first blow on a body with a phase coil fitted reads its working part
 ## through whatever covers it (FightKit.phase): plate from any side, and a guard
 ## the machine is holding closed. Once a body, spent by the first blow that meets
-## it whether it needed the read or not, and it hurts without stopping the work
-## (no stall), so it is an
+## it whether it needed the read or not, and it stalls the machine as a blow in
+## its part does (for FightKit.PHASE_STALL_MS), so it is an
 ## opener and never a way to win: every blow after it meets the machine as it is,
 ## and the opening a stall gives stays the reader's to earn.
 var _phase_read: Dictionary = {}
@@ -933,7 +934,7 @@ func _wear_on_contact() -> void:
 
 
 ## `from` is where the blow came from; INF is the player's own swing.
-func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF, stalls: bool = true) -> void:
+func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF, stall_ms: int = FightRules.STALL_MS) -> void:
 	var player_swing := not is_finite(from.x)
 	var source := hero.pos if player_swing else from
 	m.struck_from = from
@@ -947,12 +948,12 @@ func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF, stalls: bool =
 		m.throw(m.pos - source, b.knock, b.knock_ms, now)
 		if m.blow_phase(now) == &"windup":
 			m.blow = null
-	elif stalls and m.machine and now >= m.stall_ready_at:
+	elif stall_ms > 0 and m.machine and now >= m.stall_ready_at:
 		# A machine never flinches, but a blow in its working part stops the work:
 		# the light goes out, a tell in progress is lost, and it stands a moment.
 		# Once in a while only, so it is an opening and not a lock.
 		m.stall_ready_at = now + FightRules.STALL_EVERY_MS
-		m.stun_until = maxf(m.stun_until, now + FightRules.STALL_MS)
+		m.stun_until = maxf(m.stun_until, now + stall_ms)
 		m.charging = false
 		if m.blow_phase(now) == &"windup":
 			m.blow = null
