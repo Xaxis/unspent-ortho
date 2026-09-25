@@ -10,6 +10,15 @@ const COUNTRY_COLORS: Array[Color] = [
 ]
 
 
+
+## The registry holds up to BiomeRegistry.SLOTS landscapes and the table above
+## names the first seven; the rest step round the hue wheel by the golden angle
+## so neighbouring indices never share a colour.
+static func _country_color(index: int) -> Color:
+	if index < COUNTRY_COLORS.size():
+		return COUNTRY_COLORS[index]
+	return Color.from_hsv(fmod(float(index) * 0.618034, 1.0), 0.55, 0.75)
+
 func _initialize() -> void:
 	var out := "shots/map.png"
 	var layer := "ground"
@@ -141,11 +150,11 @@ func _pixel(w: WorldData, mesher: TerrainMesher, layer: String, x: int, y: int) 
 		shade = clampf(1.0 - d * 0.07, 0.72, 1.18)
 	match layer:
 		"country":
-			var c := COUNTRY_COLORS[w.country[i]].lerp(COUNTRY_COLORS[w.country2[i]], w.blend[i])
+			var c := _country_color(w.country[i]).lerp(_country_color(w.country2[i]), w.blend[i])
 			return (c * shade).lightened(l * 0.012)
 		"blend":
 			var b := w.blend[i] * 2.0
-			var c := COUNTRY_COLORS[w.country[i]].darkened(0.55)
+			var c := _country_color(w.country[i]).darkened(0.55)
 			return c.lerp(Color(1, 0.9, 0.5), b) * shade
 		"level":
 			if l < 0:

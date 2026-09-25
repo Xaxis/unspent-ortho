@@ -1,0 +1,37 @@
+# One gust front crossing grass, then a bush, then a tree crown
+# (src/render/wind.gdshaderinc gust_at; grass.gdshader and world.gdshader's
+# sward sheen; leaf.gdshader, where a gust turns the leaves pale side up).
+#   tools/tour.sh tours/foliage_front.tour --seed=7
+# `near front` (18_trample) finds a bush in grass with a crown downwind of it on
+# the world's wind line and stands the player beside that line, so from above
+# the frame holds the grass upwind, the bush, and the crown mid-frame; the log
+# prints where both are. A full held wind carries a band about 6 tiles a second
+# and a band is about 7 tiles deep, so frames 0.75 s apart (01-04, 2.25 s in
+# all) watch one band come over the grass, the bush and the crown in turn.
+# `perf front` then prints the brightness of the grass upwind, the bush and the
+# crown every frame for 8 s: a front shows as a peak in each, in that order.
+# 05-06 over the shoulder, 1.5 s apart.
+weather clear:0:wind=1
+hour 11
+coast calm
+place coast
+near front
+zoom 9
+wait 2.0
+shot 01-front-from-above with land:coast,prop:bush
+wait 0.75
+shot 02-front-0.75s-on with land:coast,prop:bush
+wait 0.75
+shot 03-front-1.5s-on with land:coast,prop:bush
+wait 0.75
+shot 04-front-2.25s-on with land:coast,prop:bush
+perf front 8.0
+zoom 12
+hold shoulder_peek
+await shoulder 3
+wait 1.0
+shot 05-front-over-the-shoulder with land:coast
+wait 1.5
+shot 06-front-over-the-shoulder-1.5s-on with land:coast
+release shoulder_peek
+weather rules

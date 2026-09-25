@@ -33,7 +33,9 @@ vec3 trample_at(vec2 xz) {
 }
 
 // Held equal to WindField by tests/render/test_wind.gd.
-const float GUST_CELL = 11.0;
+const float GUST_SPACING = 20.0;
+const float GUST_DEPTH = 6.0;
+const float GUST_REACH = 14.0;
 const float GUST_PERIOD = 64.0;
 // How much further a full gust lays a tip over than the steady lean does.
 const float GUST_LEAN = 2.2;
@@ -41,24 +43,34 @@ const float GUST_LEAN = 2.2;
 // its sway weight: the travelling sheen a front makes under a real sun.
 const float WIND_TILT = 3.0;
 
-float wind_hash(vec2 c) {
-	vec2 m = mod(c, GUST_PERIOD);
+float wind_hash(float band, float cell) {
+	vec2 m = mod(vec2(band, cell), GUST_PERIOD);
 	return fract(sin(m.x * 127.1 + m.y * 311.7) * 43758.5453);
 }
 
-float wind_vnoise(vec2 q) {
-	vec2 i = floor(q);
-	vec2 f = q - i;
-	vec2 u = f * f * (3.0 - 2.0 * f);
-	return mix(mix(wind_hash(i), wind_hash(i + vec2(1.0, 0.0)), u.x),
-		mix(wind_hash(i + vec2(0.0, 1.0)), wind_hash(i + vec2(1.0, 1.0)), u.x), u.y);
+// How hard the fronts blow today, 0..1 (WindField.level): gentle on a fair
+// day, full in a storm.
+float gust_level() {
+	return clamp(0.1 + 0.9 * max(length(sky_wind.xy), sky_wind.z), 0.0, 1.0);
 }
 
-// 0..1: how much gust stands at world xz now.
+// 0..1: how much gust stands at world xz now. DISCRETE FRONTS (WindField): down
+// the wind a front GUST_DEPTH deep every GUST_SPACING tiles with calm between,
+// running across the wind in stretches, each front its own strength.
 float gust_at(vec2 xz) {
-	vec2 q = xz / GUST_CELL - sky_gust.xy;
-	float n = wind_vnoise(q) * 0.65 + wind_vnoise(q * 2.0 + 17.0) * 0.35;
-	return smoothstep(0.42, 0.78, n);
+	vec2 d = sky_gust.zw;
+	vec2 s = vec2(-d.y, d.x);
+	float a = dot(xz, d) / GUST_SPACING - sky_gust.x;
+	float band = floor(a);
+	float t = clamp(abs(a - band - 0.5) / (GUST_DEPTH * 0.5 / GUST_SPACING), 0.0, 1.0);
+	float pulse = (1.0 - t * t) * (1.0 - t * t);
+	float c = dot(xz, s) / GUST_REACH;
+	float ci = floor(c);
+	float cf = c - ci;
+	float u = cf * cf * (3.0 - 2.0 * cf);
+	float runs = mix(wind_hash(band, ci), wind_hash(band, ci + 1.0), u);
+	float on = smoothstep(0.3, 0.55, runs);
+	return pulse * on * (0.6 + 0.4 * wind_hash(band, 97.0)) * gust_level();
 }
 
 // How much darker a sward's ground reads where it is pressed flat and where it
@@ -66,13 +78,14 @@ float gust_at(vec2 xz) {
 const float GROUND_PRESSED = 0.24;
 
 // How much lighter a sward's ground reads under a full gust front.
-const float GROUND_SHEEN = 0.2;
+const float GROUND_SHEEN = 0.26;
 
-// -0.25..0.75: the gust over a sward's ground, less in a calm, so a front shows
-// as a travelling paler band and the lull between as a little darker.
+// About -0.12..1: the gust over a sward's ground, scaled by the day's wind, so a
+// front shows as a travelling paler band and the calm between as a little darker.
 float wind_sheen(vec2 xz) {
-	float blowing = clamp(length(sky_wind.xy) * 1.6, 0.0, 1.0);
-	return (gust_at(xz) * mix(0.45, 1.0, sky_wind.z) - 0.25) * blowing;
+	// A front lightens the sward it lays over; the calm between is a touch
+	// darker, as grass standing up shows its shaded sides.
+	return gust_at(xz) - 0.12 * gust_level();
 }
 
 // The unit bearing the wind blows toward: sky_wind.xy's, or through a calm the
@@ -90,7 +103,7 @@ vec3 wind_push(vec3 rest, float weight, float seed, float stiff) {
 	vec2 dir = wind_dir();
 	vec2 side = vec2(-dir.y, dir.x);
 	float t = sky_wind.w + seed * 6.283 + rest.x * 0.35 + rest.z * 0.21;
-	float g = gust_at(rest.xz) * mix(0.45, 1.0, sky_wind.z);
+	float g = gust_at(rest.xz);
 	vec2 p = (dir * (0.45 + 0.6 * sin(t)) + side * 0.4 * cos(t * 0.8)) * (0.55 + 0.45 * g)
 		+ dir * g * g * GUST_LEAN;
 	vec3 push = vec3(p.x, 0.0, p.y) * weight * 0.07 * (0.25 + wind_strength) / max(stiff, 0.05);

@@ -69,8 +69,9 @@ global uniform vec2 sky_night;
 // y glare 0..1 (hard white light bleaching the washes), z how warm the fog is
 // drawn (0 page-pale mist, 1 furnace haze), w whiteout 0..1.
 global uniform vec4 sky_air;
-// Where the player is looking: xyz the camera's focus in world space, w spare.
-// A whiteout closes in from the distance toward it.
+// Where the player is looking: xyz the camera's focus in world space, w how far
+// the eye-level rules are in force (SkyLight.horizon_share: 0 top-down, 1 over
+// the shoulder). A whiteout closes in from the distance toward it.
 global uniform vec4 sky_focus;
 // Lightning after a strike: xy the strike's world x/z, z the afterglow rolling
 // through the clouds 0..1 (stepped), w the machines' power 0..1 (1 = steady).

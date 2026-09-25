@@ -81,6 +81,9 @@ const EXCUSED := {
 	"res://src/render/shafts.gdshader": "screen",
 	# The whole of ALBEDO is one `: source_color` uniform.
 	"res://src/render/weather/rays.gdshader": "source_color",
+	# A sum of light at several hues and energies: every term goes through the
+	# door on its own (`lit()`), and what is written is their sum.
+	"res://src/render/falls/streak.gdshader": "sum",
 }
 
 

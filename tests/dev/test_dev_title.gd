@@ -104,7 +104,6 @@ func test_a_fixed_island_is_the_only_one_the_title_offers() -> void:
 	GameConfig.set_value("world.seed_locked", true)
 	var t := _title()
 	eq(t.seed_value, 9, "the configuration's island, whatever the title was handed")
-	check(not t.cycle_coasts, "no next coast is drawn")
 	t.menu.refresh()
 	eq(t.menu.menu.rows.filter(func(r: Dictionary) -> bool: return r.get("id") == &"seed").size(), 0, "and no island row to turn")
 	t.change_seed(1)

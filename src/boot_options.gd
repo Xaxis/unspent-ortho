@@ -39,6 +39,16 @@ extends RefCounted
 ##                     `:ab` measures its cost, layer on and held off (`:ab-layer`,
 ##                     `:ab-wake` one part alone), and `:bench` takes the cost
 ##                     apart in back-to-back drawn frames (render)
+## --fall=off          no debris falling through the sky this run (21_falls)
+## --fall=CLASS@AT[/B]  stage one fall of CLASS (dust, fragment, mass) alone,
+##                     lighting at hour AT of the first day (AT under 24) or at
+##                     world minute AT, its middle on bearing B (degrees, 0 east,
+##                     90 south; with none, the bearing the view faces as it
+##                     lights) and crossing the view; several are
+##                     joined with commas; one lights again whenever the clock is
+##                     put back before it; `:age=S` holds each fall S real
+##                     seconds after it lit (one moment, for a frame); a
+##                     trailing `:bench` measures what drawing them costs (render)
 ## --eye-round=DEG     stand that eye DEG degrees round the player from behind:
 ##                     180 looks the player in the face, 90 at their side
 ## --walk=DX,DY,SECS   scripted walk in SCREEN directions before the shot
@@ -164,6 +174,8 @@ var colossi: StringName = &""
 var colossus := ""
 ## "off", "zenith@H" (19_orbit), or "" for the ring's own schedule.
 var orbit := ""
+## "off", "CLASS@AT[/B][,...][:bench]" (21_falls), or "" for the falls' own schedule.
+var fall := ""
 var eye_round := 0.0
 var walk := Vector2.ZERO
 var walk_seconds := 0.0
@@ -283,6 +295,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"colossi": o.colossi = StringName(v)
 			"colossus": o.colossus = v
 			"orbit": o.orbit = v
+			"fall": o.fall = v
 			"eye-round": o.eye_round = v.to_float()
 			"walk":
 				var p := v.split(",")

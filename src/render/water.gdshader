@@ -47,6 +47,50 @@ float band_edge(float d, float t, float w) {
 	return 1.0 - smoothstep(0.0, w, abs(d - t));
 }
 
+// THE SUN'S PATH. From above, under an orthographic camera, every pixel of the
+// sea looks along ONE direction, so the sun's mirror is at the same angle over
+// the whole surface: the share of wave faces that catch it is uniform, and no
+// bend or roughness can make a path. It is all of the sea or none of it -- a
+// white slab at a bend of 0.035, tinfoil from shore to edge at 0.12 (the canon's
+// coast morning, 2026-09-24). A path is what perspective does, so here it is
+// drawn: the sea keeps its reflection in a band from the middle of the view
+// toward the sun's bearing, narrowing as it goes, and elsewhere only OFF_PATH of
+// it, with a few glints. A sun behind the viewer puts no path on the sea at all,
+// which is the truth. The lens over the shoulder makes a real path, so this
+// stands down by the horizon share, and at night it fades out, because the
+// moon, a fire on the shore and a beacon are all reflections too.
+const float SEA_SPECULAR = 0.5;
+const float OFF_PATH = 0.04;
+const float PATH_NEAR = 2.4;
+const float PATH_FAR = 0.7;
+const float PATH_REACH = 14.0;
+const float GLINTS = 0.035;
+
+float sun_path(vec2 wp) {
+	// `sky_sun.xy` is the offset per unit of height TOWARD the light
+	// (SkyLight.compose), so it points along the sun's bearing.
+	vec2 toward = sky_sun.xy;
+	float len = length(toward);
+	if (len < 0.0001) {
+		return 1.0;
+	}
+	toward /= len;
+	vec2 rel = wp - sky_focus.xz;
+	float along = dot(rel, toward);
+	float across = abs(dot(rel, vec2(-toward.y, toward.x)));
+	float half_width = mix(PATH_NEAR, PATH_FAR, clamp(along / PATH_REACH, 0.0, 1.0));
+	float band = 1.0 - smoothstep(half_width * 0.45, half_width, across);
+	return band * smoothstep(-PATH_NEAR, 0.0, along) * (1.0 - smoothstep(PATH_REACH, PATH_REACH * 1.3, along));
+}
+
+// A few round spots off the path that catch the light for a moment. Jittered
+// cells, soft-edged, so they never stand on a grid.
+float sea_glints(vec2 wp, float t) {
+	vec3 cell = matter_cells(wp * 2.5);
+	float on = step(ink_hash(vec2(cell.z * 37.0, floor(t * 1.7 + cell.z * 13.0))), GLINTS);
+	return on * (1.0 - smoothstep(0.05, 0.3, cell.x));
+}
+
 // How far the chop bends the normal per unit of its world slope. The camera is
 // orthographic, so every pixel of the sea looks along ONE direction: a low sun
 // either lies in the specular lobe for the whole surface or for none of it. Only
@@ -204,7 +248,12 @@ void fragment() {
 	float still = 1.0 - clamp(length(flow) * 1.6, 0.0, 1.0);
 	ROUGHNESS = clamp(mix(0.34, 0.06, still * clamp(d, 0.0, 1.0)), 0.04, 0.6);
 	// F0 4%: real water is 2%, and 0.9 (7%) clipped even the lobe's tails to white.
-	SPECULAR = 0.5;
+	// By day the top-down sea keeps it only on the sun's path and at a few glints;
+	// see sun_path() for why a path has to be drawn rather than found.
+	float day = 1.0 - sky_gloom();
+	float top_down = 1.0 - clamp(sky_focus.w, 0.0, 1.0);
+	float caught = max(sun_path(wp), sea_glints(wp, TIME));
+	SPECULAR = SEA_SPECULAR * mix(1.0, mix(OFF_PATH, 1.0, caught), day * top_down);
 	METALLIC = 0.0;
 	// The surface's own chop, small and slow, so the reflection breaks up the
 	// way water does instead of standing as a mirror.

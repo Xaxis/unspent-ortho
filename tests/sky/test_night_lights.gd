@@ -9,24 +9,37 @@ func test_lamps_are_lit_from_dusk_to_first_light_only() -> void:
 	near(Lights.lamps_wanted(22.0), 1.0, 1e-6, "night")
 	near(Lights.lamps_wanted(3.0), 1.0, 1e-6, "small hours")
 	near(Lights.lamps_wanted(7.0), 0.0, 1e-6, "morning")
-	gt(Lights.lamps_wanted(20.0), 0.3, "lit before full dark")
-	lt(Lights.lamps_wanted(20.0), 1.0, "still lighting up")
+	# People light up AS the light fails (SkyLight.day_gone), so the village
+	# glows through the dusk rather than coming on after it has gone.
+	lt(Lights.lamps_wanted(18.0), 0.05, "six o'clock is still the day")
+	gt(Lights.lamps_wanted(19.5), 0.5, "the village is lit by half past seven")
+	lt(Lights.lamps_wanted(19.0), Lights.lamps_wanted(19.5), "and was lighting up through it")
+	var prev_want := Lights.lamps_wanted(16.0)
+	var h := 16.1
+	while h <= 23.0:
+		var w := Lights.lamps_wanted(h)
+		gt(w, prev_want - 1e-6, "no lamp goes out in the evening at %.1f" % h)
+		prev_want = w
+		h += 0.1
 	near(Lights.lamps_wanted(24.0), Lights.lamps_wanted(0.0), 1e-6, "wraps")
 
 
 func test_windows_light_one_by_one_and_most_go_dark_after_midnight() -> void:
-	var lit_at_2030 := 0
+	# Mid-way through the lamps' curve (Lights.LAMPS_FROM..LAMPS_ALL of the light
+	# gone, SkyLight.day_gone), which is seven o'clock: people light up as it fails.
+	var lit_at_1900 := 0
 	var lit_at_2200 := 0
 	var lit_at_0300 := 0
 	var lit_at_noon := 0
 	for i in 200:
 		var s := {"kind": PropKind.HOUSE, "h": Rng.hash01(1, i, 1), "h2": Rng.hash01(1, i, 2)}
-		lit_at_2030 += 1 if Lights.source_lit(s, 20.0) else 0
+		lit_at_1900 += 1 if Lights.source_lit(s, 19.0) else 0
 		lit_at_2200 += 1 if Lights.source_lit(s, 22.0) else 0
 		lit_at_0300 += 1 if Lights.source_lit(s, 3.0) else 0
 		lit_at_noon += 1 if Lights.source_lit(s, 12.0) else 0
 	eq(lit_at_noon, 0, "no lit windows at noon")
-	gt(lit_at_2200, lit_at_2030, "more windows as the night comes on")
+	gt(lit_at_2200, lit_at_1900, "more windows as the night comes on")
+	gt(lit_at_1900, 20, "and some are already lit as the light goes")
 	gt(lit_at_2200, 150, "most houses lit in the evening")
 	lt(lit_at_0300, lit_at_2200 * 0.6, "most go dark after midnight")
 	gt(lit_at_0300, 10, "a few keep a light all night")

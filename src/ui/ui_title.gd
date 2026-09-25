@@ -1,13 +1,17 @@
 class_name UiTitle
 extends Node3D
-## The title: the slate waking over a live coast that drifts slowly
-## past, a new seed every little while. New game starts on the coast being
-## shown. Built like Game (world, view, sky, camera) but with no player.
+## The title: the slate waking over a live coast that drifts slowly past.
+## New game starts on the coast being shown. Built like Game (world, view, sky,
+## camera) but with no player.
+##
+## ONE COAST until the player turns the island row. It used to draw a new one
+## every 36 s, and each is a whole world: 39 s of generation on the web, so the
+## worker never stopped, and the wasm heap (which never shrinks) went from 1182
+## MB to 1892 MB a minute and a half into an idle title. A new island is the
+## player's to ask for (left and right on the island row).
 ##   godot --path .                              (no arguments boots here)
 ##   tools/shot.sh shots/ui/title.png --scene=title
 
-## Seconds a coast is shown before the next one is drawn.
-const SEED_SECONDS := 36.0
 const PAN_SPEED := 1.1
 const FADE_SECONDS := 1.2
 ## Hours the drifting coast is shown at, one per seed, so the title changes light too.
@@ -32,10 +36,6 @@ var settings: UiSettingsScreen
 ## The character page: "new game" opens it, and "begin" on it starts the game with
 ## the body made there (BootOptions.avatar). Continuing a save never opens it.
 var character: UiCharacterScreen
-
-## A new coast every SEED_SECONDS. Off without threads (the no-threads web build):
-## there a coast is made on the main thread and would hold the title still for seconds.
-var cycle_coasts := BootPage.has_threads()
 
 var _layer: CanvasLayer
 var _focus := Vector2.ZERO
@@ -68,7 +68,6 @@ func setup(o: BootOptions) -> void:
 		# A configuration that fixes the island shows it and nothing else, even after
 		# a game gave way to the title (which would draw the next island).
 		seed_value = int(GameConfig.value("world.seed"))
-		cycle_coasts = false
 	sky = SkyLight.new()
 	sky.name = "sky"
 	add_child(sky)
@@ -258,8 +257,6 @@ func _process(delta: float) -> void:
 	camera.target = world.to_3d(_focus)
 	view.focus = _focus
 	sky.set_hour(_hour + _shown_for / 60.0)
-	if _shown_for > SEED_SECONDS and not _drawing() and cycle_coasts:
-		_begin(seed_value + 1)
 
 
 ## Show another coast now (left/right on the seed row).

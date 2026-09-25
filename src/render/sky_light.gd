@@ -106,14 +106,18 @@ const FIGURE_FILL_COLOR := Color(1.0, 0.8, 0.6)
 ## --- LANTERN: the real lights (docs/LOOK.md law 2, "light is the author") ---
 ##
 ## The numbers below are LINEAR light, because that is what the renderer wants
-## and what the palette is decoded into (matter.gdshaderinc). They are chosen so
-## a surface the sun is full on comes back at about the palette value it was
-## authored as, and everything else is honestly less than that.
+## and what the palette is decoded into (matter.gdshaderinc). They are MEASURED
+## against the albedo-only frame (the unshaded debug view): sunlit flat ground at
+## noon comes back about 1.4x its albedo in linear light, and shade about a fifth
+## of that. At 2.10 and 0.55 it came back 2.6x, which put every lit field in the
+## filmic shoulder and washed the whole day pale (the shoulder squeezes green
+## against red and blue), and a stronger ambient made shade a larger share, not
+## a smaller one. Raising one of these without the other undoes one half.
 
 ## The sun's energy at noon and the moon's in the dead of night. The gap between
 ## them and the gap between DAY_AMBIENT and NIGHT_AMBIENT are the whole of why a
 ## lantern matters.
-const SUN_NOON := 2.10
+const SUN_NOON := 1.17
 const MOON_NIGHT := 0.115
 ## The sun's angular size, in degrees. Real penumbra: a fence post has a crisp
 ## shadow at its foot and a soft one four tiles away, which no filter can fake
@@ -159,7 +163,7 @@ const SKY_GROUND_NIGHT := Color(0.045, 0.052, 0.082)
 ## unshippable -- while a lamp still has to be worth carrying. Against
 ## MOON_NIGHT it also decides whether a night has SHAPE in it: a quarter of the
 ## light at midnight is the moon, so a wall still turns away from something.
-const DAY_AMBIENT := 0.55
+const DAY_AMBIENT := 0.26
 const NIGHT_AMBIENT := 0.21
 
 ## And it is the COAST's night. NIGHT_AMBIENT above was measured on the coast's
@@ -192,7 +196,7 @@ const NIGHT_SKY_MOST := 1.80
 ## what decides whether the hour can still be read off the ground.
 ##
 ## Under the open sky the sun is most of the light and the ambient fills the
-## shade: SUN_NOON 2.10 against DAY_AMBIENT 0.55, so noon and midnight are a
+## shade: SUN_NOON against DAY_AMBIENT, about four to one, so noon and midnight are a
 ## different world from each other. Under a lid it is the other way round — the
 ## brightest thing overhead is the lid ITSELF, lit from beneath by whatever the
 ## place runs at night and from above by a sun it does not let through. So the
@@ -264,6 +268,9 @@ const GLOW_HDR := 1.05
 ## and the far world and the open sea are drawn at least this far out.
 const SEE := 900.0
 const FOG_SKY := 0.0
+## How much of the depth fog a CLEAR DAY keeps in the top-down frame (see
+## `_drive_environment`). Night and fog weather are unaffected.
+const DAY_AIR := 0.0
 const FOG_AERIAL := 0.22
 ## Volumetric air, where the tier allows it: this is what makes a lamp in rain a
 ## CONE and a machine's lens a shaft.
@@ -677,7 +684,7 @@ func compose() -> void:
 	RenderingServer.global_shader_parameter_set("sky_lid", shut)
 	RenderingServer.global_shader_parameter_set("sky_air", air)
 	RenderingServer.global_shader_parameter_set("sky_bolt", bolt)
-	RenderingServer.global_shader_parameter_set("sky_focus", Vector4(focus.x, focus.y, focus.z, 0.0))
+	RenderingServer.global_shader_parameter_set("sky_focus", Vector4(focus.x, focus.y, focus.z, eye))
 	var gp := glint_columns(glints)
 	var gc := glint_columns(glint_colors)
 	RenderingServer.global_shader_parameter_set("sky_glints", gp[0])
@@ -881,7 +888,17 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	# Where the tier has no volumetric air, the depth fog stands in for its bank
 	# (Quality.ROWS.air_stand_in), so the bog is still thicker than the salt.
 	var stand_in := 1.0 + float(Quality.current().get("air_stand_in", 0.0)) * (float(a.bank) - 1.0)
-	e.fog_density = Air.density(a, lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0))) * float(trim.fog) * maxf(stand_in, 0.2)
+	# Clear daylight takes the depth fog out of the top-down frame. Seen from
+	# above, the whole frame lies near one depth, so this fog has no distance
+	# to separate: it is one veil over everything, and it was the largest single
+	# term in the daytime wash (land p5 +12, saturation -0.03). Night, fog and
+	# haze weather keep it. `_look_out` then carries the density to the eye
+	# level's own as the shoulder share rises, so the horizon keeps its air. A
+	# tier whose depth fog stands in for the volumetric bank keeps it too,
+	# because that fog is the only air the tier has.
+	var clear_day := 1.0 - maxf(clampf(nightly, 0.0, 1.0), clampf(fog.z, 0.0, 1.0))
+	var day_air := lerpf(1.0, DAY_AIR, clear_day) if float(Quality.current().get("air_stand_in", 0.0)) <= 0.0 else 1.0
+	e.fog_density = Air.density(a, lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0))) * float(trim.fog) * maxf(stand_in, 0.2) * day_air
 	e.glow_intensity = GLOW_INTENSITY * float(trim.glow)
 	e.tonemap_exposure = EXPOSURE * float(trim.exposure)
 	# And WHERE it lies is the camera's, not a constant: the frame is only about
@@ -1681,13 +1698,13 @@ const LEVEL := {&"burning": Vector3(0.94, 0.8, 0.68)}
 
 
 ## The light a landscape type lays over the hour: its cast, its level, its mood
-## at this hour and its own BiomeDef.light_tint, one multiply. null reads as a
+## at this hour and its own BiomeDef.light_tint and day_light, one multiply. null reads as a
 ## type with nothing of its own.
 static func type_light(def: BiomeDef, hour: float) -> Vector3:
 	var id: StringName = def.id if def != null else &""
 	var own := Vector3.ONE
 	if def != null:
-		own = Vector3(def.light_tint.r, def.light_tint.g, def.light_tint.b)
+		own = Vector3(def.light_tint.r, def.light_tint.g, def.light_tint.b) * lerpf(def.day_light, 1.0, day_gone(hour))
 	return type_tint(id) * (LEVEL.get(id, Vector3.ONE) as Vector3) * mood_light(id, hour) * own
 
 

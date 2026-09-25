@@ -155,5 +155,7 @@ choice is scored; saying nothing is always an answer.
 - A keeper per landscape: each holds a memory; some hold a piece of the secret.
 - The works and the plan: Type I industry (server fields, the Tether, the Foundry).
 - The gates, the Before, the After: 2029 rebuilt at the same coordinates; the Emissary's forecast.
+- A room's slots (desk, terminal, wall): what whoever lived there left, colour. The
+  coast's bunker is 2029: where he reported from; it teaches `was_cia` and no further.
 - Settlements and raids: the Holdfast's holdings. Companions are playable; the story stays his.
 - The words themselves live in `src/content/story/`.

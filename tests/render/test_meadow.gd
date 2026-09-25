@@ -1,12 +1,12 @@
 extends TestCase
-## The meadow is a haze of many thin blades (Decor.MEADOW), not a few wide
+## The coast's meadow is a haze of many thin blades (its GRASS_A), not a few wide
 ## shards: owner review of the first cut read it as paper spikes.
 
 
 func test_a_meadow_patch_is_many_thin_blades_at_two_triangles_each() -> void:
 	var coast := BiomeRegistry.index_of(&"coast")
 	for stage in Decor.STAGES:
-		var t := Decor.template(Decor.MEADOW, coast, stage)
+		var t := Decor.template(Decor.GRASS_A, coast, stage)
 		var tris := t.v.size() / 3
 		check(t.sways, "a meadow sways, so it draws on grass.gdshader")
 		check(tris >= 50 and tris <= 80, "stage %d: 25-40 blades at two triangles each (%d triangles)" % [stage, tris])

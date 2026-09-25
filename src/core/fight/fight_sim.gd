@@ -951,6 +951,10 @@ func strike_hero(b: Blow, from: Vector2) -> bool:
 		return false
 	var dir := (hero.pos - from).normalized() if hero.pos.distance_to(from) > 0.01 else Vector2.RIGHT
 	_hurt_hero(null, b.dmg, dir, b.knock, b.knock_ms)
+	# Called between steps, not inside one: the next step opens by reading the
+	# body back (`read_body`), so a hurt left only on the hero would be undone.
+	if hero.body != null:
+		hero.body.health = hero.health
 	return true
 
 
