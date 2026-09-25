@@ -21,6 +21,7 @@
 // the daytime moon, a ghost of a wheel. At night it is a hole in the stars.
 #ifndef ORBIT_SKY_GDSHADERINC
 #define ORBIT_SKY_GDSHADERINC
+#include "res://src/render/far.gdshaderinc"
 
 uniform sampler2D orbit_layer : filter_linear, repeat_disable, hint_default_transparent;
 // 0 while the layer is not being rendered: its texture then holds a stale frame.
@@ -45,21 +46,6 @@ uniform float orbit_mass = 0.0;
 // The weather's fog, 0..1: thickens the low haze the ring is seen through.
 uniform float orbit_thick = 0.0;
 
-// DUPLICATE of the cloud amount in sky_dome.gdshaderinc `dome_seen_col` (the same
-// three lines, number for number). The dome lays its clouds before any hook can
-// see where they are, so the ring asks again rather than edit that block while
-// the colossi builder owns it. To dedupe into a shared `dome_cloud_amount(d)`.
-float orbit_cloud_amount(vec3 d) {
-	float h = d.y;
-	if (h <= 0.0) {
-		return 0.0;
-	}
-	vec2 p = d.xz / (h + 0.08) * 1.6 + dome_drift * 0.004;
-	float n = dome_fbm(p);
-	float amount = smoothstep(1.0 - (0.18 + dome_cover * 0.72), 1.02 - dome_cover * 0.35, n);
-	return amount * smoothstep(0.0, 0.18, h);
-}
-
 // The layer's pixel for direction `d`, or (-1, -1) off its glass.
 vec2 orbit_uv(vec3 d) {
 	vec3 v = orbit_view * d;
@@ -71,16 +57,6 @@ vec2 orbit_uv(vec3 d) {
 		return vec2(-1.0);
 	}
 	return vec2((ndc.x - orbit_rect.x) / (orbit_rect.z - orbit_rect.x), (orbit_rect.w - ndc.y) / (orbit_rect.w - orbit_rect.y));
-}
-
-// How much of the ring's light gets through the air to the eye, per channel:
-// the high air (thin, a few percent at the zenith) and the low haze, both along
-// the slant (1/sin elevation, kept finite at the horizon), blue lost first so a
-// low ring reddens the way a low moon does.
-vec3 orbit_through(vec3 d) {
-	float s = max(d.y, 0.0) + 0.035;
-	float tau = (0.045 + 0.10 * (1.0 + orbit_thick * 3.0)) / s;
-	return exp(-tau * vec3(0.55, 0.85, 1.35)) * smoothstep(-0.01, 0.015, d.y);
 }
 
 // THE WAKE: the shards the wound has shed, strung along the ring's own orbit
@@ -196,10 +172,10 @@ vec4 orbit_at(vec3 d) {
 	}
 	// The clouds are asked only here, where there is a ring or a shard to lay
 	// them over: asked first, five octaves of noise ran on every pixel of sky.
-	float open = 1.0 - orbit_cloud_amount(d);
+	float open = 1.0 - dome_cloud_amount(d);
 	// A shard behind the hull is behind the hull.
 	wake *= 1.0 - ring.a;
-	return vec4((ring.rgb + wake) * orbit_through(d) * open, ring.a * open);
+	return vec4((ring.rgb + wake) * far_through(d, orbit_thick) * open, ring.a * open);
 }
 
 #endif

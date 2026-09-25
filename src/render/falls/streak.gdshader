@@ -25,13 +25,13 @@
 // additive light and writes no depth, so squashing never matters to it; the
 // land still stands in front of it.
 //
-// THE AIR it is seen through is the ring's (orbit_sky.gdshaderinc
-// `orbit_through`, above the weather: blue lost first near the horizon), and
+// THE AIR it is seen through is every far thing's (far.gdshaderinc
+// `far_through`, above the weather: blue lost first near the horizon), and
 // the dome's clouds -- drawn in the sky pass, BEHIND this main-pass ribbon --
-// are asked again here (`streak_cloud_amount`) and let take it, so a streak
+// are asked again here (`dome_cloud_amount`) and let take it, so a streak
 // goes behind cloud rather than burning over it.
 //
-// MINIMUM WIDTHS in pixels (`MIN_PX`, `HEAD_PX`) with the light a widened line
+// MINIMUM WIDTHS in pixels (`STREAK_MIN_PX`, `HEAD_PX`) with the light a widened line
 // did not have given back (`thin`), so a head three hundred kilometres off is a
 // sharp point of a pixel and never a crawl of dashes.
 //
@@ -43,6 +43,7 @@ render_mode blend_add, unshaded, cull_disabled, depth_draw_never, fog_disabled, 
 #include "res://src/render/ink.gdshaderinc"
 #include "res://src/render/matter.gdshaderinc"
 #include "res://src/render/sky_dome.gdshaderinc"
+#include "res://src/render/far.gdshaderinc"
 
 // THE FALL, in metres from `f_origin` (the eye's ground point): where it lit
 // up, which way it goes, how long its lit path is, and its clock.
@@ -85,8 +86,8 @@ uniform float comp_l = 25.0;
 uniform float px_angle = 0.001;
 uniform float thick = 0.0;
 
-const float R_EFF = 4.5e6;
-const float MIN_PX = 0.9;
+// A streak's own least width: finer than a colossus's (far.gdshaderinc MIN_PX).
+const float STREAK_MIN_PX = 0.9;
 const float HEAD_PX = 0.8;
 // How many core radii a head's ribbon reaches out, so its glow fades to nothing
 // inside it.
@@ -267,7 +268,7 @@ void vertex() {
 			w = r;
 		} else {
 			float tw = f_core_m * 1.5 + TRAIN_GROW * sqrt(a);
-			float tw_draw = max(tw, MIN_PX * px);
+			float tw_draw = max(tw, STREAK_MIN_PX * px);
 			v_tw = tw_draw;
 			v_thin = tw / tw_draw;
 			// Round the head the halo reaches: wide enough at and just behind it.
@@ -280,7 +281,7 @@ void vertex() {
 			// core), so the light falls to nothing inside it and no edge shows.
 			w = max(tw_draw * TRAIN_HAZE, halo);
 			if (cap) {
-				ahead = head > 0.0 ? max(reach, MIN_PX * px) : 0.0;
+				ahead = head > 0.0 ? max(reach, STREAK_MIN_PX * px) : 0.0;
 				world += normalize(t) * ahead;
 				w = ahead;
 			}
@@ -305,27 +306,6 @@ void vertex() {
 		}
 		VERTEX = v;
 	}
-}
-
-// DUPLICATE of orbit_sky.gdshaderinc `orbit_cloud_amount` (itself the dome's
-// three lines): to be deduped into a shared `dome_cloud_amount(d)`.
-float streak_cloud_amount(vec3 d) {
-	float h = d.y;
-	if (h <= 0.0) {
-		return 0.0;
-	}
-	vec2 p = d.xz / (h + 0.08) * 1.6 + dome_drift * 0.004;
-	float n = dome_fbm(p);
-	float amount = smoothstep(1.0 - (0.18 + dome_cover * 0.72), 1.02 - dome_cover * 0.35, n);
-	return amount * smoothstep(0.0, 0.18, h);
-}
-
-// DUPLICATE of orbit_sky.gdshaderinc `orbit_through`: the light that gets down
-// through the air from above it, per channel, blue lost first.
-vec3 streak_through(vec3 d) {
-	float s = max(d.y, 0.0) + 0.035;
-	float tau = (0.045 + 0.10 * (1.0 + thick * 3.0)) / s;
-	return exp(-tau * vec3(0.55, 0.85, 1.35)) * smoothstep(-0.01, 0.015, d.y);
 }
 
 // THE WAKE COOLING, by how many wake-times ago the head passed: plasma white,
@@ -410,6 +390,6 @@ void fragment() {
 		c += (lit(own_col, own * v_sub) + scat) * prof;
 	}
 	// Through the air, behind the clouds, as much as the hour lets be seen.
-	c *= streak_through(v_seen) * (1.0 - streak_cloud_amount(v_seen)) * f_vis;
+	c *= far_through(v_seen, thick) * (1.0 - dome_cloud_amount(v_seen)) * f_vis;
 	ALBEDO = c;
 }

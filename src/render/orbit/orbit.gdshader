@@ -28,6 +28,7 @@ render_mode cull_disabled, skip_vertex_transform, shadows_disabled;
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
 #include "res://src/render/matter.gdshaderinc"
+#include "res://src/render/far.gdshaderinc"
 
 uniform vec4 bones[48];
 uniform vec3 sun_dir = vec3(0.0, 1.0, 0.0);
@@ -51,9 +52,6 @@ uniform float lamp_seen = 1.0;
 const vec3 EARTH_LIGHT = vec3(0.62, 0.72, 0.86);
 const float EARTHSHINE = 1.1;
 
-// DUPLICATES of colossus.gdshader's least sizes.
-const float MIN_PX = 0.75;
-const float LAMP_PX = 1.6;
 // OrbitPass.PENUMBRA_KM, RED_LIMB_KM.
 const float PENUMBRA_KM = 20.0;
 const float RED_LIMB_KM = 90.0;

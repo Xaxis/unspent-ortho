@@ -19,7 +19,7 @@ extends RefCounted
 var id: StringName = &"ring"
 
 ## THE PLANET. The colossi's hull-down is stated on the same radius
-## (colossus.gdshader `R_EFF`, 4.5e6 m): small, so a thing on it goes over the
+## (far.gdshaderinc `R_EFF`, 4.5e6 m): small, so a thing on it goes over the
 ## horizon at a distance a player can feel, and so the Earth's shadow reaches a
 ## thing 420 km up an hour or two after the land has lost the sun rather than
 ## minutes. DUPLICATE of that constant, to be promoted to one shared number.

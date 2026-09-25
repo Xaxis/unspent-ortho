@@ -78,6 +78,30 @@ float dome_fbm(vec2 p) {
 	return v;
 }
 
+// THE CLOUD COVER, the one reading of it. The dome draws its clouds from these,
+// and everything seen through them (the orbit's ring, a falling streak, a
+// colossus) asks the same three lines rather than keep a copy of them.
+// The noise the dome's clouds are drawn from, in direction `d` (above the horizon).
+float dome_cloud_noise(vec3 d) {
+	vec2 p = d.xz / (d.y + 0.08) * 1.6 + dome_drift * 0.004;
+	return dome_fbm(p);
+}
+
+// How much of the sky that noise covers at elevation `h`: never down at the
+// horizon, where the air has already taken the sky over.
+float dome_cloud_cover(float n, float h) {
+	float amount = smoothstep(1.0 - (0.18 + dome_cover * 0.72), 1.02 - dome_cover * 0.35, n);
+	return amount * smoothstep(0.0, 0.18, h);
+}
+
+// The cloud between the eye and direction `d`, 0..1.
+float dome_cloud_amount(vec3 d) {
+	if (d.y <= 0.0) {
+		return 0.0;
+	}
+	return dome_cloud_cover(dome_cloud_noise(d), d.y);
+}
+
 // Godot's ProceduralSkyMaterial (scene/resources/3d/sky_material.cpp), with its
 // cover texture left out because this game never sets one: one light's disc.
 vec3 dome_sun_in(vec3 sky, vec3 d, bool on, vec3 dir, float size, vec3 col, float en) {
@@ -144,10 +168,8 @@ vec3 dome_seen_col(vec3 d, bool cubemap) {
 	// Weather over the sky: a cover of cloud, lit on the sun's side, and never
 	// down at the horizon, where the air has already taken the sky over.
 	if (h > 0.0) {
-		vec2 p = d.xz / (h + 0.08) * 1.6 + dome_drift * 0.004;
-		float n = dome_fbm(p);
-		float amount = smoothstep(1.0 - (0.18 + dome_cover * 0.72), 1.02 - dome_cover * 0.35, n);
-		amount *= smoothstep(0.0, 0.18, h);
+		float n = dome_cloud_noise(d);
+		float amount = dome_cloud_cover(n, h);
 		vec3 lit = mix(dome_horizon_color * 1.05, mix(dome_sun_color, dome_glow_color, dome_glow * 0.8), 0.35 + 0.35 * toward);
 		vec3 cloud = mix(lit, dome_horizon_color * 0.55, clamp(dome_cloud_dark + (n - 0.5) * 0.6, 0.0, 1.0));
 		cloud = mix(cloud, col * 0.6, dome_night * 0.85);

@@ -2,7 +2,7 @@
 
 The hacked tablet and every app on it: map, carrying, making, gear, reads, journal, holding, saves, settings, pause, character.
 
-<!-- covers: screen:character, screen:crafting, screen:inventory, screen:journal, screen:loadout, screen:map, screen:pause, screen:reads, screen:saves, screen:settings, screen:settlement, screen:sheet, system:90_ui -->
+<!-- covers: screen:character, screen:crafting, screen:inventory, screen:journal, screen:loadout, screen:map, screen:pause, screen:reads, screen:saves, screen:settings, screen:settlement, screen:sheet, system:58_guide, system:90_ui -->
 
 ## Sub-features
 
@@ -18,6 +18,7 @@ The hacked tablet and every app on it: map, carrying, making, gear, reads, journ
 - settings: `src/ui/ui_settings_screen.gd`, reached by `tools/shot.sh shots/settings.png --screen=settings`.
 - settlement: `src/ui/ui_settlement_screen.gd`, reached by `tools/shot.sh shots/settlement.png --screen=holding`.
 - sheet: `src/ui/ui_sheet_screen.gd`, reached by `tools/shot.sh shots/sheet.png --screen=sheet`.
+- 58_guide: `src/systems/58_guide.gd`, the first hour's guide: the goal line and the key row at wake, then each hint in its moment, retired once used. OFF in every shot (`options.shot`), so only a tour shows it: `tools/tour.sh tours/guide.tour --seed=1 --hour=9 --weather=clear:0 --fit=glide_wing`, and `tours/feel.tour`'s `01-wake-the-goal`; tests `tools/test.sh test_hud`, `test_slate_says`.
 - 90_ui: `src/systems/90_ui.gd`, reached by `tools/tour.sh tours/slate.tour`.
 
 ## How to reach it

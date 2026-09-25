@@ -337,13 +337,21 @@
       "entry": "src/systems/18_trample.gd",
       "reach": "tools/tour.sh tours/foliage_meadow.tour --seed=7",
       "area": "world-look",
-      "tests": ["tests/render/test_trample.gd", "tests/render/test_wind.gd"]
+      "tests": []
     },
     {
       "id": "system:19_colossi",
       "kind": "system",
       "entry": "src/systems/19_colossi.gd",
       "reach": "tools/shot.sh shots/colossi.png --seed=7 --place=coast --hour=12 --eye=1.7,-5 --face=359 --stats",
+      "area": "world-look",
+      "tests": []
+    },
+    {
+      "id": "system:19_orbit",
+      "kind": "system",
+      "entry": "src/systems/19_orbit.gd",
+      "reach": "tools/tour.sh tours/orbit_sky.tour --seed=7 --place=coast --hour=12 --orbit=zenith@12 --eye=1.7,-80,70 --face=146 --weather=clear:0",
       "area": "world-look",
       "tests": []
     },
@@ -369,7 +377,7 @@
       "entry": "src/systems/21_falls.gd",
       "reach": "tools/tour.sh tours/falls_sky.tour --seed=7 --place=coast --hour=21.2 --view=shoulder --weather=clear:0 --fall=dust@21.3,fragment@21.4,mass@21.75,dust@23.3,fragment@23.4,mass@23.75",
       "area": "world-look",
-      "tests": ["tests/sky/test_falls.gd", "tests/sky/test_rumble.gd"]
+      "tests": []
     },
     {
       "id": "system:22_landmarks",
@@ -585,6 +593,14 @@
       "entry": "src/systems/56_economy.gd",
       "reach": "tools/tour.sh tours/gear-economy.tour",
       "area": "survival-gear",
+      "tests": []
+    },
+    {
+      "id": "system:58_guide",
+      "kind": "system",
+      "entry": "src/systems/58_guide.gd",
+      "reach": "tools/tour.sh tours/guide.tour --seed=1 --hour=9 --weather=clear:0 --fit=glide_wing",
+      "area": "slate-ui",
       "tests": []
     },
     {

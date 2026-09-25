@@ -50,6 +50,7 @@ render_mode cull_back, skip_vertex_transform, shadows_disabled;
 #include "res://src/render/ink.gdshaderinc"
 #include "res://src/render/matter.gdshaderinc"
 #include "res://src/render/sky_dome.gdshaderinc"
+#include "res://src/render/far.gdshaderinc"
 
 // The rigid frames the mesh is skinned to (colossus_model.gd): three rows per
 // bone, each (basis row, origin), so bone b maps a local point p to
@@ -106,9 +107,6 @@ varying vec3 body_local;
 const float FOUND_MASS = 0.55;
 const float FOUND_METAL = 0.52;
 const float FOUND_ROUGH = 0.64;
-// The planet the top of the air is measured on, for the sunlit top only: small,
-// so the ember lasts an hour or two of the evening rather than twenty minutes.
-const float R_EFF = 4.5e6;
 // How bright the last sun is on the top: over its albedo, so it reads as lit
 // metal and not as a lamp.
 const float EMBER = 5.0;
@@ -135,15 +133,9 @@ float compress_len(float d) {
 // handed over by the view every frame. 0 turns the minimum sizes off.
 uniform float px_angle = 0.0;
 
-// THE LEAST A PART MAY BE DRAWN, in pixels of radius. A shin ninety metres
-// across is a quarter of a pixel at 150 km, and drawn honestly it is a dashed
-// line that crawls as it walks; a spire's needle is worse. So anything thinner
-// than `MIN_PX` is drawn that wide and let into the air by the share it was
-// widened (`thin`), which keeps it a continuous faint line whose weight is still
-// its own. A LAMP is not let off that way: a light is how a thing is seen at
-// night, so every lamp is at least `LAMP_PX`, and the lens a little more.
-const float MIN_PX = 0.75;
-const float LAMP_PX = 1.6;
+// THE LEAST A PART MAY BE DRAWN is far.gdshaderinc's (MIN_PX, LAMP_PX), shared
+// with the orbit. A spire's needle is the worst case, and the lens is drawn a
+// little over a lamp.
 const float LENS_PX = 2.2;
 const float LAMP_BIAS = 0.06;
 // A ring's least reach past its leg, and its least depth, in pixels; and the

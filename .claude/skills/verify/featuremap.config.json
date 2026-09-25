@@ -86,6 +86,13 @@
   },
   {
    "kind": "system",
+   "label": "19_orbit",
+   "entry": "src/systems/19_orbit.gd",
+   "reach": "tools/tour.sh tours/orbit_sky.tour --seed=7 --place=coast --hour=12 --orbit=zenith@12 --eye=1.7,-80,70 --face=146 --weather=clear:0",
+   "area": "world-look"
+  },
+  {
+   "kind": "system",
    "label": "18_crowns",
    "entry": "src/systems/18_crowns.gd",
    "reach": "tools/tour.sh tours/foliage.tour",
@@ -307,6 +314,13 @@
    "entry": "src/systems/56_economy.gd",
    "reach": "tools/tour.sh tours/gear-economy.tour",
    "area": "survival-gear"
+  },
+  {
+   "kind": "system",
+   "label": "58_guide",
+   "entry": "src/systems/58_guide.gd",
+   "reach": "tools/tour.sh tours/guide.tour --seed=1 --hour=9 --weather=clear:0 --fit=glide_wing",
+   "area": "slate-ui"
   },
   {
    "kind": "system",

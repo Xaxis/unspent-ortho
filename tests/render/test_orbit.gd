@@ -205,7 +205,7 @@ func test_the_dome_lays_the_ring_in_the_right_order() -> void:
 	check(src.contains("smoothstep(-0.02, -0.18, dome_sun_dir.y) * (1.0 - orbit_hide);"), "and the moon and stars (both ride on `dark`)")
 	var inc := FileAccess.get_file_as_string("res://src/render/orbit/orbit_sky.gdshaderinc")
 	check(src.contains("col = col * (1.0 - orbit_seen.a * orbit_mass) + orbit_seen.rgb;"), "its light is ADDED over the air, which by day it does not dim")
-	check(inc.contains("return vec4((ring.rgb + wake) * orbit_through(d) * open, ring.a * open);"), "the clouds, which the dome laid first, are laid back over the ring's light and the wake's")
+	check(inc.contains("return vec4((ring.rgb + wake) * far_through(d, orbit_thick) * open, ring.a * open);"), "the clouds, which the dome laid first, are laid back over the ring's light and the wake's")
 	check(inc.contains("wake *= 1.0 - ring.a;"), "and a shard behind the hull is hidden by it")
 	check(FileAccess.get_file_as_string("res://src/render/sky_eye.gdshader").contains("#define DOME_ORBIT"), "the seen sky asks for it")
 	check(not FileAccess.get_file_as_string("res://src/render/colossus/colossus.gdshader").contains("DOME_ORBIT"), "and the colossi do not")
