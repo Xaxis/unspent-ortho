@@ -4,6 +4,11 @@ extends TestCase
 ##   harmonic  a blow that rings off plate still does 1, and is louder for it
 ##   phase     the first blow on a body reaches its part from any side, guard and all
 ##   damp      a blow is half as loud
+##   leech     a kill gives a charge back
+##   capacitor every third charged swing spends nothing
+##   ablative  soaks one blow that would hurt, and is burnt off doing it
+##   gyro      a blow taken does not break the swing being thrown
+##   clamp     a blow taken throws you a third as far
 
 const F := preload("res://tests/fight/fixture.gd")
 
@@ -143,3 +148,88 @@ func _hit_noise(game: Game) -> float:
 	sim.noise_ms = -INF
 	Events.hit.emit(game.player, null, 1, false, game.player.position)
 	return sim.noise_radius
+
+
+func test_the_second_wave_is_read_off_what_is_fitted() -> void:
+	var none := FightKit.of([])
+	check(not (none.leech or none.capacitor or none.ablative or none.gyro or none.clamp), "bare")
+	for id: StringName in [&"mod_leech", &"mod_capacitor", &"mod_ablative", &"mod_gyro", &"mod_clamp"]:
+		var k := FightKit.of([id])
+		var name := String(id).trim_prefix("mod_")
+		check(bool(k.get(name)), "%s is read" % name)
+
+
+## A hero in reach of a dog's bite, its bite thrown now; `swinging` starts a
+## heavy blow first, so there is a swing for the bite to break.
+func _bitten(kit: Array[StringName], swinging: bool = false) -> Dictionary:
+	var sim := F.make_sim()
+	sim.hero.inventory.add(&"knife")
+	sim.hero.inventory.set_held(&"knife")
+	for id in kit:
+		sim.hero.inventory.add(id)
+	sim.hero.kit = FightKit.of(kit)
+	var m := F.still(sim, &"dog.yard", Vector2(21.3, 20.5), PI)
+	var hp := sim.hero.health
+	var from := sim.hero.pos
+	if swinging:
+		sim.hero.facing = PI * 0.5
+		sim.press_heavy()
+		F.ms(sim, 16)
+	var blow_before := sim.hero.blow
+	m.start_blow(m.bite.copy(), sim.now)
+	F.ms(sim, 380)
+	return {"sim": sim, "lost": hp - sim.hero.health, "moved": from.distance_to(sim.hero.pos),
+		"kept": blow_before != null and sim.hero.blow == blow_before, "events": sim.drain()}
+
+
+func test_ablative_soaks_one_blow_and_burns_off() -> void:
+	var bare := _bitten([])
+	gt(float(bare.lost), 0.0, "bare: the bite hurts")
+	var plate := _bitten([&"mod_ablative"])
+	eq(plate.lost, 0, "the plate took it")
+	var sim: FightSim = plate.sim
+	check(not sim.hero.inventory.has(&"mod_ablative"), "and is gone")
+	eq(F.count(plate.events, &"ablated"), 1, "and says so")
+
+
+func test_gyro_keeps_the_swing_through_a_blow() -> void:
+	check(not bool(_bitten([], true).kept), "bare: the bite breaks the swing")
+	check(bool(_bitten([&"mod_gyro"], true).kept), "gyro: the swing goes on")
+
+
+func test_clamp_keeps_you_on_your_feet() -> void:
+	var bare: float = _bitten([]).moved
+	var held: float = _bitten([&"mod_clamp"]).moved
+	gt(bare, 0.3, "bare: the bite throws you (%.2f)" % bare)
+	near(held, bare * FightKit.CLAMP_KNOCK, 0.08, "clamped: a third as far (%.2f against %.2f)" % [held, bare])
+
+
+func _found_swings(kit: Array[StringName], n: int) -> int:
+	var sim := F.make_sim()
+	sim.hero.inventory.add(&"las_hand")
+	sim.hero.inventory.set_held(&"las_hand")
+	sim.hero.inventory.add(FightRules.CHARGE, 30)
+	sim.hero.kit = FightKit.of(kit)
+	for i in n:
+		sim.press_swing()
+		F.ms(sim, 600)
+	return 30 - sim.hero.inventory.count(FightRules.CHARGE)
+
+
+func test_capacitor_makes_every_third_charged_swing_free() -> void:
+	eq(_found_swings([], 6), 6, "bare: six swings, six charges")
+	eq(_found_swings([&"mod_capacitor"], 6), 4, "capacitor: six swings, four charges")
+
+
+func test_leech_takes_a_charge_back_from_a_kill() -> void:
+	for leech: bool in [false, true]:
+		var sim := F.make_sim()
+		sim.hero.inventory.add(&"knife")
+		sim.hero.inventory.set_held(&"knife")
+		sim.hero.kit = FightKit.of([&"mod_leech"] if leech else [])
+		var m := F.still(sim, &"dog.yard", Vector2(21.2, 20.5), PI)
+		m.health = 1
+		sim.press_swing()
+		F.ms(sim, 300)
+		check(not m.alive, "the dog is down")
+		eq(sim.hero.inventory.count(FightRules.CHARGE), FightKit.LEECH_CHARGES if leech else 0, "leech %s" % leech)

@@ -99,6 +99,8 @@ var _swing_until := -1.0
 ## has a direction of its own to look in: over the shoulder a swing goes where the
 ## camera looks, because that is where the player is looking (CameraRig.aim).
 var _swing_aim := NAN
+## Charged swings thrown with a capacitor fitted, for the one it carries.
+var _charged_swings := 0
 ## The buffered swing is the heavy blow (press_heavy).
 var _swing_heavy := false
 var _dodge_until := -1.0
@@ -243,7 +245,12 @@ func _swing() -> void:
 	if _swing_heavy and hero.wind >= FightRules.HEAVY_WIND:
 		b = b.heavier()
 	_swing_heavy = false
-	var dry := b.wick > 0 and not FightRules.spend_charges(inv, b.wick)
+	# A capacitor bank carries every CAPACITOR_EVERY-th charged swing itself.
+	var carried := false
+	if b.wick > 0 and hero.kit.capacitor:
+		_charged_swings += 1
+		carried = _charged_swings % FightKit.CAPACITOR_EVERY == 0
+	var dry := b.wick > 0 and not carried and not FightRules.spend_charges(inv, b.wick)
 	if dry:
 		b.dry()
 	hero.start_swing(b, now)
@@ -1011,12 +1018,21 @@ func _wake(m: MobState, cause: StringName = &"damaged", from: Vector2 = Vector2.
 func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: int) -> void:
 	if hero.harm != 1.0:
 		dmg = roundi(dmg * maxf(0.0, hero.harm))
+	# An ablative plate takes a blow that would hurt instead of the body, and is
+	# burnt off doing it (FightKit.ablative): the module leaves the bag, and the
+	# gear system takes it out of the loadout when the bag changes.
+	if dmg > 0 and hero.kit.ablative and hero.inventory != null and hero.inventory.has(&"mod_ablative"):
+		hero.inventory.remove(&"mod_ablative", 1)
+		emit(&"ablated", {"at": hero.pos, "damage": dmg})
+		dmg = 0
 	hero.health -= dmg
 	hero.invuln_until = now + FightRules.HURT_IFRAMES_MS
-	hero.throw(dir, knock, knock_ms, now)
+	# A clamp keeps the feet where they stand (FightKit.clamp).
+	hero.throw(dir, knock * (FightKit.CLAMP_KNOCK if hero.kit.clamp else 1.0), knock_ms, now)
 	hero.last_hit_by = by
 	hero.last_hit_at = now
-	if hero.committed(now):
+	# A gyro brace carries the swing through the blow (FightKit.gyro).
+	if hero.committed(now) and not hero.kit.gyro:
 		hero.blow = null
 	emit(&"hurt", {"attacker": by, "target": hero, "damage": dmg, "at": hero.pos})
 
@@ -1025,6 +1041,9 @@ func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: in
 ## hitstop, the shake) and the scrap off it is in their hands. A turret's kill in
 ## a yard is a body lying in the yard.
 func _kill(m: MobState, by_player: bool = true) -> void:
+	# A leech coil takes a charge back out of what the player puts down.
+	if by_player and m.alive and hero.kit.leech and hero.inventory != null:
+		hero.inventory.add(FightRules.CHARGE, FightKit.LEECH_CHARGES)
 	m.health = 0
 	m.alive = false
 	m.blow = null
