@@ -11,6 +11,8 @@ const ROCK := [PropKind.BOULDER, PropKind.CLINTS, PropKind.STANDING_STONE]
 const SHIFT_WEAR := 16
 ## Rock faces tried, nearest first, before giving up on a place to stand.
 const BESIDE_TRIES := 12
+## The radii `working_near` widens through; the last reaches any range.
+const SHELLS: Array[float] = [16.0, 32.0, 64.0, 128.0, INF]
 
 ## Tiles searched out from the track for somewhere to be stood after an arrest.
 const OFF_TRACK_RANGE := 8
@@ -102,28 +104,42 @@ static func _blocked(query: WorldQuery, at: Vector2, except: WorldProp) -> bool:
 
 ## A standable place beside the nearest ore (else bare rock) within `range_tiles`,
 ## and the facing that looks at it. {} if there is none.
+##
+## Searched outward in SHELLS, not over the world's props: the range is
+## hundreds of tiles and a streamed world holds only what is near
+## (whole_world_readers.txt). Candidates are tried nearest first, the lowest id
+## of the equally near first, at most BESIDE_TRIES of each kind in all; every
+## candidate inside a shell is in hand before any past it is tried, so the
+## answer is the one a sweep of every prop gave, and it is almost always found
+## in the first shells.
 static func working_near(world: WorldData, query: WorldQuery, from: Vector2, range_tiles: float) -> Dictionary:
-	var r2 := range_tiles * range_tiles
 	for kinds: Array in [ORE, ROCK]:
-		# Distances once, then nearest-first by selection: a large coast has tens of
-		# thousands of props, and only the first few candidates are ever looked at.
-		var cands: Array[WorldProp] = []
-		var dists: PackedFloat32Array = []
-		for p in world.props:
-			if kinds.has(p.kind) and not world.depleted.has(p.id):
-				var d := p.pos.distance_squared_to(from)
-				if d <= r2:
-					cands.append(p)
-					dists.append(d)
-		for attempt in mini(cands.size(), BESIDE_TRIES):
-			var best := 0
-			for i in dists.size():
-				if dists[i] < dists[best]:
-					best = i
-			var spot := _beside(world, query, cands[best])
-			if not spot.is_empty():
-				return spot
-			dists[best] = INF
+		var tries := 0
+		var lo2 := -1.0
+		for shell: float in SHELLS:
+			var hi := minf(shell, range_tiles)
+			var hi2 := hi * hi
+			var cands: Array[WorldProp] = []
+			var dists: Array[float] = []
+			for p in query.props_near(from, hi):
+				if kinds.has(p.kind) and not world.depleted.has(p.id):
+					var d := p.pos.distance_squared_to(from)
+					if d > lo2 and d <= hi2:
+						cands.append(p)
+						dists.append(d)
+			var order := range(cands.size())
+			order.sort_custom(func(a: int, b: int) -> bool:
+				return dists[a] < dists[b] or (dists[a] == dists[b] and cands[a].id < cands[b].id))
+			for i: int in order:
+				if tries >= BESIDE_TRIES:
+					break
+				tries += 1
+				var spot := _beside(world, query, cands[i])
+				if not spot.is_empty():
+					return spot
+			if tries >= BESIDE_TRIES or hi >= range_tiles:
+				break
+			lo2 = hi2
 	return {}
 
 

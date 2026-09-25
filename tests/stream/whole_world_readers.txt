@@ -33,7 +33,6 @@ src/core/chapter/chapters.gd::for_regions::builder Chapter.read
 src/core/chapter/chapters.gd::of::builder Chapter.read
 src/core/chapter/road_hold.gd::sites::list
 src/core/colossus/colossus_treads.gd::wanted::tiles
-src/core/fight/outcomes.gd::working_near::list
 src/core/interior/interior_gen.gd::grow::alloc
 src/core/interior/interior_gen.gd::grow::raw
 src/core/interior/interiors.gd::thresholds::builder Landmarks.sites
