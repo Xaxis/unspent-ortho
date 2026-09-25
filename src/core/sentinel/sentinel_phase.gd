@@ -34,13 +34,6 @@ var quick := 300
 ## Radians/s it comes round in. Every phase must leave the working side reachable
 ## by a player walking round it (tests/sentinel/test_phases.gd holds this).
 var turn := 1.5
-## A tell on the GROUND for this phase's bite: &"" (none — the body's own pose
-## is the whole tell, as it is for every other machine) or &"ring", a pale ring
-## drawn where the bite will land when its windup begins, for a blow that comes
-## down from above rather than out of a limb. It is a picture and not a rule:
-## 44_sentinels draws it over the box `FightRules.box_hits` will test, and
-## FightSim lands the bite off `bite` exactly as it would with no tell at all.
-var tell: StringName = &""
 ## Levels its body may step in one move while this phase lasts (the roster's
 ## `climbs`), or -1 to leave the row's own. A keeper that walks up scarps and is
 ## brought down off them says so here, so the phase that lames it also puts it

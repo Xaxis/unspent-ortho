@@ -447,13 +447,13 @@ static func _carry(p: Pose, klass: StringName, move: float, run: float, c: float
 
 # ---------------------------------------------------------------- actions
 
-const ACTIONS: Array[StringName] = [&"swing", &"dodge", &"work", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"gather", &"hurt", &"eat", &"carried", &"downed", &"swim", &"jump"]
+const ACTIONS: Array[StringName] = [&"swing", &"heavy", &"dodge", &"work", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"gather", &"hurt", &"eat", &"carried", &"downed", &"swim", &"jump"]
 ## Actions with no natural end: they hold their last pose until replaced. `swim`
 ## is here so a shot can stage a stroke on dry land and the gallery can show it;
 ## in a game the water chooses it, frame by frame, and nobody plays it by hand.
 const HELD: Array[StringName] = [&"carried", &"downed", &"swim"]
 ## Actions whose legs follow the gait when the body is moving (a swing creeps).
-const UPPER_ONLY: Array[StringName] = [&"swing", &"eat"]
+const UPPER_ONLY: Array[StringName] = [&"swing", &"heavy", &"eat"]
 const LOWER: Array[StringName] = [&"hips", &"thigh_l", &"thigh_r", &"shin_l", &"shin_r", &"foot_l", &"foot_r", &"hem"]
 
 
@@ -462,6 +462,7 @@ static func default_seconds(action: StringName, tool_id: StringName) -> float:
 		&"swing":
 			var ms := HeldTools.swing_ms(tool_id)
 			return (ms[0] + ms[1] + ms[2]) / 1000.0
+		&"heavy": return FightRules.HEAVY_WINDUP_MS / 1000.0
 		&"dodge": return 0.42
 		&"jump": return 0.62
 		&"hurt": return 0.45
@@ -493,6 +494,8 @@ static func action(name: StringName, t: float, seconds: float, d: Dictionary, to
 	match name:
 		&"swing":
 			return swing(klass, clampf(t / maxf(seconds, 1e-3), 0.0, 1.0), HeldTools.swing_ms(tool_id), d)
+		&"heavy":
+			return mix_keys(guard(klass, d), heavy_wind(klass, d), _ease_out(clampf(t / HEAVY_GATHER, 0.0, 1.0)))
 		&"dodge":
 			return dodge(t, seconds, d)
 		&"jump":
@@ -565,6 +568,24 @@ static func guard(klass: StringName, d: Dictionary) -> Pose:
 
 
 ## The swing keys per class: [wind, strike, follow], each over guard().
+## Seconds the body takes to gather into the heavy blow's drawn-back pose.
+const HEAVY_GATHER := 0.12
+
+
+## The heavy blow held back (FightRules.HEAVY_WINDUP_MS): the swing's own cock,
+## pushed further for any tool. The shoulders turn away from the target, the
+## striking arm goes up and back over them and the weight sits on the back
+## foot, while the head stays on what is to be hit. It is read from behind as
+## well as from above: over the shoulder the arm and the tool stand clear of the
+## body against the ground beyond, which the ordinary windup never does.
+static func heavy_wind(klass: StringName, d: Dictionary) -> Pose:
+	var wind := swing_keys(klass, d)[0]
+	return wind.with({"@hips": Vector3(-0.04, -0.07, 0), "hips": Vector3(0, -0.6, 0), "spine": Vector3(0, -0.85, 0.12),
+		"head": Vector3(0, 0.75, 0.05), "arm_r": Vector3(-0.35, -0.6, 2.75), "fore_r": Vector3(0, 0, 1.1),
+		"arm_l": Vector3(0.3, 0.35, 1.15), "fore_l": Vector3(0, 0, 0.6),
+		"thigh_l": Vector3(0.06, 0, 0.4), "shin_l": Vector3(0, 0, -0.4), "thigh_r": Vector3(-0.1, 0, -0.5), "shin_r": Vector3(0, 0, -0.45)})
+
+
 static func swing_keys(klass: StringName, d: Dictionary) -> Array[Pose]:
 	var g := guard(klass, d)
 	var wind := g

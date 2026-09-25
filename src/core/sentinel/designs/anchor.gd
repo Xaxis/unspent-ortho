@@ -70,7 +70,6 @@ static func make() -> SentinelDef:
 	bolting.quick = 260
 	bolting.turn = 1.3
 	bolting.climbs = 4
-	bolting.tell = &"ring"
 	bolting.note = "It comes down on you from the wall: the ring is where it lands, the driver on its back is the part."
 
 	# Phase two: swinging. It rides the cable in long lateral dashes, and the

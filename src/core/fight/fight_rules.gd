@@ -205,6 +205,16 @@ static func box_hits(o: Vector2, facing: float, orad: float, b: Blow, t: Vector2
 	return local.distance_squared_to(Vector2(fx, fy)) <= trad * trad
 
 
+## Where a bite's ground ring stands, as (x, y, radius) in tiles: over the middle
+## of the box `box_hits` will test for it, wide enough to take in the box's
+## longer side. Every bite's tell (40_fight draws it as the windup begins, for
+## the windup), so the ring on the ground and the rule that hurts agree.
+static func tell_ring(o: Vector2, facing: float, orad: float, b: Blow) -> Vector3:
+	var length := orad + b.reach
+	var at := o + Vector2.from_angle(facing) * length * 0.5
+	return Vector3(at.x, at.y, 0.5 * maxf(b.width, length))
+
+
 ## Nightfall 0..1, and it is the SAME CURVE THE SKY FALLS ON (`Weather.night_fall`,
 ## 18:30-21:00 eased at both ends). This is the fight's door onto it — the senses,
 ## the hazards, the dark hand's reach, the lamp and Survival.in_the_dark all come

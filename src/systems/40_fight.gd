@@ -40,6 +40,7 @@ var _crowd_told := false
 var _swing_held := -1.0
 ## Simulation ms a heavy blow's drawn-back pose is let go into the strike, or -1.
 var _heavy_let_go := -1.0
+var _heavy_blow: Blow = null
 
 
 func setup(g: Game) -> void:
@@ -136,9 +137,7 @@ func _process(delta: float) -> void:
 	game.player.sync_view(0.0 if frozen else delta, frozen)
 	game.player.draw_swing(sim.now)
 	if _heavy_let_go >= 0.0 and sim.now >= _heavy_let_go:
-		_heavy_let_go = -1.0
-		Events.sfx.emit(&"swing", game.player.position)
-		game.player.model.unfreeze()
+		_let_go()
 	if sim.hero.held() and not frozen:
 		# The struggle, drawn: a dashed ring at the feet on a beat while something has hold.
 		_struggle_t -= delta
@@ -181,18 +180,33 @@ func _landing() -> void:
 
 
 ## The heavy blow's tell, the player's own: the tool held drawn back for the
-## extra windup (the swing's pose frozen at its anticipation), a fan of strokes
-## thrown up off the body for as long, and the drive's sound. Then the pose is
-## let go into the ordinary strike (`_process`). No ground ring: a ring on the
-## ground is where a machine's bite will land, and only that.
+## extra windup (PersonAnim.heavy_wind: turned away, the arm up and back), a fan
+## of strokes thrown up off the body for as long, and the drive's sound. Then it
+## is let go into the ordinary strike from the swing's own cock (`_let_go`). No
+## ground ring: a ring on the ground is where a machine's bite will land, and
+## only that.
 func _heavy_windup(b: Blow) -> void:
 	var player := game.player
-	var light_windup := (b.windup - FightRules.HEAVY_WINDUP_MS) / 1000.0
-	var light_len := (b.committed() - FightRules.HEAVY_WINDUP_MS) / 1000.0
-	player.model.pose_at(&"swing", light_windup, light_len)
+	player.model.play_action(&"heavy", FightRules.HEAVY_WINDUP_MS / 1000.0)
 	_heavy_let_go = sim.now + FightRules.HEAVY_WINDUP_MS
+	_heavy_blow = b
 	Events.sfx.emit(&"windup", player.position)
 	MobFx.tell(player, player.model_centre(), _screen_up(), FightRules.HEAVY_WINDUP_MS / 1000.0, int(sim.now), 0.7, MobFx.FLICK_UP)
+
+
+## The held heavy blow goes: the swing plays on from its cock, unless a hurt took
+## the blow away in the meantime, in which case the hurt's own pose stands.
+func _let_go() -> void:
+	_heavy_let_go = -1.0
+	var b := _heavy_blow
+	_heavy_blow = null
+	if b == null or sim.hero.blow != b:
+		return
+	Events.sfx.emit(&"swing", game.player.position)
+	var light_windup := (b.windup - FightRules.HEAVY_WINDUP_MS) / 1000.0
+	var light_len := (b.committed() - FightRules.HEAVY_WINDUP_MS) / 1000.0
+	game.player.model.pose_at(&"swing", light_windup, light_len)
+	game.player.model.unfreeze()
 
 
 ## One point of health back per hour of the world's clock, counted from the last
@@ -387,6 +401,12 @@ func _handle(events: Array[Dictionary]) -> void:
 					var up := _screen_up()
 					var on: Node = mob.model if mob.model != null else mob
 					MobFx.tell(on, _part_at(m), up, m.blow.windup / 1000.0, m.id, 0.6 + m.radius * 0.5, MobFx.FLICK_DOWN)
+				if m.blow != null:
+					# And on the ground, where it will land: the pose is small over the
+					# shoulder and a ring reads from above and behind alike. It lasts the
+					# windup, so it is gone the instant the bite is down.
+					var ring := FightRules.tell_ring(m.pos, m.facing, m.radius, m.blow)
+					MobFx.tell_ring(fx, _at3(Vector2(ring.x, ring.y)), Palette.LINEN[5], ring.z, m.blow.windup / 1000.0)
 			&"charge":
 				var m: MobState = e.mob
 				MobFx.puffs(fx, _at3(m.pos - m.bearing * m.radius), -m.bearing, _dust_colour(m.pos), 2, 0.5 + m.radius * 0.4, m.id + int(sim.now))

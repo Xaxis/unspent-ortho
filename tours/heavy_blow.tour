@@ -13,10 +13,13 @@ wait 0.6
 spawn harvester
 wait 0.6
 shot 01-a-harvester-at-its-work with mob:harvester
-# A worker walks its round, so the blow may meet its flank and ring: a player
-# who misses goes round to the front and holds it again.
+# A worker walks its round: stood in its way at its front it stops and faces
+# you (held up), and that is when the long windup is safe to start. A blow that
+# met its flank anyway rings; a player who misses goes round and holds it again.
 try 6
 walkto part 3
+wait 0.4
+walkto part 1
 hold swing
 wait 0.45
 shot 02-held-the-tool-drawn-back with mob:harvester
@@ -38,6 +41,8 @@ await shoulder_locked 3
 shot 05-over-the-shoulder-locked-on-it with shoulder_locked,mob:harvester
 try 6
 walkto part 3
+wait 0.4
+walkto part 1
 await lock_facing 1
 hold swing
 wait 0.45
