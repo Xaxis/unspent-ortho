@@ -24,6 +24,10 @@ extends GameSystem
 ##                          turned away from the lip (or to DEG), so the landing is
 ##                          at its back; fails when that jump is no drop (the drop
 ##                          strike, FightSim.drop_strike)
+##   wound KIND SHARE       the nearest live body of that roster kind drops to SHARE of
+##                          its health (never raises it), so a tour can be at a phase a
+##                          boss reaches by damage without feeding a scripted player to
+##                          it pass after pass; fails when no such body is about
 ##   leap SECS              walk the way the player FACES for SECS on the real move
 ##                          path and press the real jump key at the end of it, so a
 ##                          jump is taken on the move the way a player takes one
@@ -458,6 +462,8 @@ func _run() -> void:
 				ok = await _spawn(parts[1])
 			"under":
 				ok = await _spawn_under(parts[1])
+			"wound":
+				ok = _wound(parts[1], parts[2].to_float() if parts.size() > 2 else 0.5)
 			"choose":
 				ok = await _choose(StringName(parts[1]))
 			"coast":
@@ -1038,6 +1044,25 @@ func _spawn(token: String) -> bool:
 			% [_name, kind, m.pos, game.player.pos, game.camera.view_height if game.camera != null else 0.0])
 		return false
 	print("tour spawn %s: %s at %s, %.1f tiles off, in frame" % [kind, m.kind, m.pos, m.pos.distance_to(game.player.pos)])
+	return true
+
+
+## `wound`: the nearest live body of `token`'s kind down to `share` of its health.
+func _wound(token: String, share: float) -> bool:
+	var id := Roster.resolve(token)
+	var sim: FightSim = game.player.sim
+	var best: MobState = null
+	if sim == null:
+		return false
+	for m: MobState in sim.mobs:
+		if m.alive and not m.removed and m.kind == id:
+			if best == null or m.pos.distance_to(sim.hero.pos) < best.pos.distance_to(sim.hero.pos):
+				best = m
+	if best == null:
+		printerr("tour %s: no %s about to wound" % [_name, token])
+		return false
+	best.health = mini(best.health, maxi(1, floori(float(best.max_health) * share)))
+	print("tour wound %s: %d of %d" % [token, best.health, best.max_health])
 	return true
 
 

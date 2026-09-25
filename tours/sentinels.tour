@@ -1,7 +1,13 @@
 # The keeper a landscape has (docs/VISION.md §3), walked to and fought with real
 # keys: the Coast's reaper on the ground it holds, found by where it dens.
 #
-#   tools/tour.sh tours/sentinels.tour --seed=7 --hour=11 --weather=clear:0 --held=axe_felling
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/sentinels.tour --seed=7 --hour=11 --weather=clear:0 --held=axe_felling --config=unharmed
+#
+# `--config=unharmed` (configs/unharmed.json, rules.harm 0) is the staging: a
+# blow still lands on the player, knocks them back and breaks their swing, it
+# only takes no health, so no pass ends with the scripted player downed and the
+# coast cleared. Nothing the frames claim is about the player's health; every
+# claim is the keeper's (its reach, its plate, its tell, its part, its phase).
 #
 # What it proves, in order: a keeper stands where it dens and holds the
 # ground round it; a blow into its plated side rings off; it tells before it bites
@@ -69,16 +75,15 @@ shot 05-into-the-working-part with mob:sentinel.coast,sentinel_hurt
 
 # The side to be on MOVES as it comes apart. Nothing is said about it: the arch
 # rears, the drum comes up out of the row, and what is open now is the drive in
-# its left leg. Each pass is a player's: wait for the opening, take it, get out.
-try 10
-  walkto mob 6
-  await tell 14
-  press dodge 0.12
-  walkto part 2
-  tap swing
-  await hit 5
-  await sentinel_phase:raised 1
-end
+# its left leg. It is brought there by `wound`, not by more passes: a blow into
+# the part was proved at 05, a phase coming of the health a blow takes is proved
+# in tests/sentinel/test_phases.gd, and a scripted player fed pass after pass to
+# a boss was luck (it went down on most seeds, and on a good one took from one to
+# nine tries). What this frame is of is the phase itself: the arch reared and
+# the player round at the side that is open now.
+wound sentinel.coast 0.55
+await sentinel_phase:raised 3
+walkto part 3
 shot 06-the-arch-rears-and-its-side-moves with mob:sentinel.coast,sentinel_phase:raised
 
 # And what the slate makes of it, held under the key: a keeper reads like any
