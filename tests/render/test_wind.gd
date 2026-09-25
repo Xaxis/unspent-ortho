@@ -156,3 +156,20 @@ func test_gusts_are_fronts_separated_by_calm() -> void:
 				last_end = t
 	gt(float(runs), 20.0, "fronts are there to be seen (%d)" % runs)
 	gt(calm_share / float(samples), 0.6, "most of the air is calm between fronts (%.2f)" % (calm_share / float(samples)))
+
+
+## Slice 4: the grass answers the weather that has settled on it (SkyLight's
+## sky_settle: x snow, y ash, z wet) and the rain falling now (sky_air.x). Rain
+## droops the tips and shivers them with its hits; snow bows the blades and lies
+## white on the tops; ash greys them. What a test can hold: the shader reads each
+## in the stage that does it.
+func test_grass_answers_rain_snow_and_ash() -> void:
+	var src := FileAccess.get_file_as_string("res://src/render/foliage/grass.gdshader")
+	var vert := vertex_body(src)
+	var frag := src.substr(src.find("void fragment()"))
+	check(vert.contains("sky_air.x"), "the rain falling now shivers and droops the blades")
+	check(vert.contains("sky_settle.xyz * sky_ground_at("), "what has settled, where the ground can hold it")
+	check(vert.contains("settle_v.x * SNOW_BOW"), "lying snow bows them")
+	check(frag.contains("WET_DARK"), "wet darkens them")
+	check(frag.contains("settle_v.x * smoothstep"), "snow lies white on their tops")
+	check(frag.contains("settle_v.y * ASH_GREY"), "ash greys them")
