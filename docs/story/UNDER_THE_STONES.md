@@ -1,9 +1,8 @@
-# Under the stones: the bunkers, Cairn, the hulls (design, for review)
+# Under the stones: the bunkers, Cairn, the hulls
 
-Status: proposal, 2026-09-25. It follows the owner's rulings of 2026-09-24:
-decide, interleave, gate the reveals, and give every bunker unique detail. It
-extends `docs/STORY.md` and contradicts no ruled beat. Once reviewed, the parts
-that bind get folded into STORY.md with the date.
+Status: approved 2026-09-25 (teammate1, on the owner's delegation), built on
+`story/deep`. The rulings on its two questions are in §8. It extends
+`docs/STORY.md` and contradicts no ruled beat.
 
 ## 1. Who sank them: Cairn, and why
 
@@ -46,10 +45,11 @@ arc:
 | His bunker | the unsent weekly to WHITETHORN | who he was (`was_cia`) |
 | Kerr's bunker and the tunnel | the shelters were insurance; the cold copy is gone | Cairn (`cairn_knew`, `cairn_cold`) |
 
-**`cairn_cold` is the hook** (a reveal, leg 2). The tape room's log reads
-*RELEASED TO: CALLOWAY, R. 2033*. WHITETHORN took HALCYON-before-him in the
-war's second year. Nothing in the game says where it went. That is left open for
-the owner: see question 1.
+**`cairn_cold` is the hook** (a reveal, leg 4, ruled). A carbon slip in Kerr's
+steel door reads *RELEASED TO CALLOWAY, R. 09.05.2033*. Priya's shuttle manifest
+(11 May 2033) lists *CALLOWAY, R. .... 1 CASE, TAPE* under her case of paper.
+Both are leads, found early. The case itself is read on Ring Four (`cold_case`,
+PLACED at `the_ring`), and reading it lands the reveal.
 
 ## 3. The gate on the terminal: `was_cia` as a reveal the arcs lead to
 
@@ -71,12 +71,11 @@ player meets them:
    not on this ring"). After that, its empty folder with his name on it is the
    quiet answer to the reveal.
 
-To make the bunker *the* door, `handler_note` gives up `was_cia`. It becomes a
-lead that points to the stones ("Asset reports from site 4"). That takes a new
-spine slot, `{id: the_bunker, needs: landmark, kind: cast_stones, land: coast,
-leg: 0, apart: 16}`, **required only if `test_plan` proves every seed can cast
-it**. If a seed cannot, the slot stays colour and `handler_note` keeps
-`was_cia`, so no world is stranded.
+**Measured, so colour.** A full-sized world (1840 tiles) holds four or five
+rings on his coast (seeds 1-12). At the plan tests' 256 tiles, half of seeds
+1-24 hold none. So No. 4 is not a spine slot, and `handler_note` keeps
+`was_cia` as the reveal's other door. A slot would also take the landmark the
+camp may be cast on. His bunker is simply the one nearest where he woke.
 
 Mechanics this needs, all in the story package:
 - a fragment `until: BEAT` with a `locked` page. StoryRooms reads the locked
@@ -84,19 +83,21 @@ Mechanics this needs, all in the story package:
 - a `tenant` dealt per bunker door (below), with ROOMS rows keyed
   `bunker:TENANT`.
 
-## 4. The variety: twelve rings, six kinds of tenant
+## 4. The variety: six kinds of tenant
 
-Only the coast has bunkers, because this was Cairn's town. Every coast ring of
-cast stones gets one. Which tenant a bunker gets is dealt off its door. The one
-nearest home is always No. 4.
+Only the coast has bunkers, because this was Cairn's town. Cairn sank twelve,
+and a world keeps four or five of them. The deal (`StoryRooms.tenants`) runs in
+the order the story most wants them: his (nearest home), Kerr's (farthest),
+then Priya's, a war household, the Holdfast's (the one nearest the camp), the
+ones who never came, and after that more war households.
 
 | Tenant | Count | What it holds | Carries |
 |---|---|---|---|
 | **No. 4, his** | 1 (cast) | the pages shipped today, plus the gated terminal and files | `was_cia` |
 | **No. 1, Kerr's** | 1, farthest down the coast | good whisky, a framed first dollar, a steel door with a lit panel: *CONTINUITY LINE - SERVICE ACCESS - AUTHORISED: KERR, T.* | `cairn_knew`; the vault (section 5) |
 | **Priya's** | 1 | never opened: sealed, the key returned in an envelope taped inside the hatch. *"I won't need it. If I'm right, none of us will. - P."* | priya (colour) |
-| **The ones who came** | 2 to 3 | a household that lived out the war under the stones, 2031 to 2036: heights on a doorframe; a radio log copying the forged orders as they went out; the last page is *going up to look* | the war (colour, echoes `forged_order`) |
-| **The ones who never came** | the rest, minus one | beds made, twelve tins, children's shoes still in the box; the door was never opened from inside | colour |
+| **The ones who came** | 1 or more | a household that lived out the war under the stones, 2031 to 2036: heights on a doorframe; a radio log copying the forged orders as they went out; the last page is *going up to look* | the war (colour, echoes `forged_order`) |
+| **The ones who never came** | from the sixth | beds made, twelve tins, children's shoes still in the box; the door was never opened from inside | colour |
 | **The Holdfast's cache** | 1, near the camp | WE TAKE IT BACK painted over the Cairn logo, crates, a route map with one road inked out | the Holdfast (colour; Teague's roads, found early) |
 
 Every tenant keeps the bunker's own shape (bunk room, work room, records room)
@@ -147,7 +148,7 @@ faction. **They were the Echo**, the sliver of HALCYON that is still him
 - The people who came off them stayed aboard, and their grandchildren live in the
   holds. Nobody there knows why the boats came.
 - **A new beat `echo_hulls`** (the Echo, after `echo_voice`; a reveal, leg 1 to
-  2). A hulk's desk holds a manifest page. Once `echo_voice` is felt it reads
+  2). A manifest is folded behind every hulk's builder's plate. Once `echo_voice` is felt it reads
   differently: *DEPART 03:10. CARGO: NONE SPECIFIED. REASON: don't.*, the same
   "don't" as the works log's note to self. The plate is colour until then.
 
@@ -160,11 +161,46 @@ faction. **They were the Echo**, the sliver of HALCYON that is still him
   `built_halcyon`).
 - **The Echo:** `echo_hulls` after `echo_voice`.
 
-## Open for the owner (not answered here)
+## 8. Rulings (2026-09-25)
 
-1. **Where did the cold copy go** after Calloway took it in 2033? Candidates: the
-   Covenant's seat, the ring, or destroyed. Whatever it is must not add an ending
-   to STORY.md's four without his word.
-2. **Does No. 4 become required**, so every world must carry a coast ring of
-   cast stones near home? That is decided by `test_plan`'s measurement, not by
-   taste.
+1. **The cold copy went up.** Calloway sent it to Ring Four on Priya's shuttle.
+   It is what the fractured ring holds, and it adds no fifth ending: it is what
+   the existing endings are decided around. It is a thread into leg 4
+   (`the_ring`) and is revealed there last.
+2. **No. 4 is colour**, by measurement (§3).
+
+**Where this meets `story/platform` (the Sickle, still a proposal).** Its
+Leasehold rings, "built 2030-32 at Cairn ... sold as lifeboats, dead in 2033",
+fit this cleanly: they are CAIRN CONTINUITY taken into orbit, Kerr's insurance
+sold to anyone who could pay. There is one conflict. The Sickle says the hoop
+exists *for the channel's width*, threaded by HALCYON from 2094. The ruling says
+the platform was built *to keep the pre-merge HALCYON out of the machines'
+reach*. These are reconciled if they are two builders and two dates. Ring Four
+became the hiding place in 2033 (Calloway's case, in a hold nothing scans). The
+hoop HALCYON threads the rings onto from 2094 is its own, and it carries the
+cold copy unread. That is the ants blind spot again: HALCYON is building the
+bandwidth that would join it to the Guest round the one thing that could undo
+it. **Open for whoever rules the Sickle:** what the Guest's 2096 cut was aimed
+at, the width or Ring Four's hold. The proposal says the width, and nothing here
+needs it to be otherwise.
+
+## 9. For the interiors owner: the Continuity Line (spec)
+
+Every bunker's sealed steel door (`vault_door`) is one end of Cairn's service
+tunnel.
+- **What is needed:** a pocket-to-realm door that opens from the UNDERGROUND
+  side only. Once the player reaches the Line from HALCYON's deep plant (leg 2,
+  after `war_relay` is felt), each vault's inner face is a door, and going
+  through it comes out in that bunker's records room, the steel door standing
+  open behind.
+- **The Line itself:** one long walkable place in the underground realm. Cast
+  concrete tunnel, three wide, emergency lamps like the bunkers' own but most
+  dead, Cairn's wayfinding (SITE 1 ... SITE 12, COLD ROOM) under seventy years
+  of drip and calcite.
+- **What it passes:** a side door for each bunker on the world's coast, in the
+  same order along the coast. At its inland end, the tape room under where
+  Cairn's lab stood: racks, one bay empty, a desk.
+- **Slots:** a `desk` in the tape room and a `wall` at each side door. The story
+  fills them, as it does every room.
+- **The Line's rules:** machines of the deep plant pass along it without
+  noticing anybody. From above, the vault never opens.

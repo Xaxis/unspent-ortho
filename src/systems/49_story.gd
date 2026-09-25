@@ -182,6 +182,8 @@ func _process(delta: float) -> void:
 		Story.now = game.clock.minutes
 	if game == null or game.player == null:
 		return
+	if game.world != null and game.world.realm == Realm.SURFACE:
+		_surface = game.world
 	_read_journal_key()
 	_witness_in -= delta
 	if _witness_in <= 0.0:
@@ -416,6 +418,17 @@ func _room() -> InteriorGen.Pocket:
 	return null
 
 
+## The last surface world stood in: whose each bunker was is dealt across it
+## (StoryRooms.tenants), and inside a room `game.world` is the room's own.
+var _surface: WorldData = null
+
+
+## The ROOMS row the room the player is in keeps.
+func _room_row(room: InteriorGen.Pocket) -> StringName:
+	var tenant: StringName = StoryRooms.tenants(_surface).get(room.threshold.key, &"")
+	return StoryRooms.room_of(room.kind.id, tenant)
+
+
 ## A story slot of the room in reach and in front, as {i, id, _d}, or {}. Two
 ## slots at one thing (the desk and the terminal on it) are the same distance
 ## off, so the one the player has not yet read answers, and of two unread the
@@ -435,8 +448,9 @@ func _slot_in_front() -> Dictionary:
 	var best_read := true
 	var best_rank := SLOT_FIRST.size()
 	var l := room.layout
+	var row := _room_row(room)
 	for i in l.slots.size():
-		var id := StoryRooms.held(room.kind.id, room.threshold.key, l, i)
+		var id := StoryRooms.held(row, room.threshold.key, l, i)
 		if id == &"":
 			continue
 		var to: Vector2 = (l.slots[i].at as Vector2) - from
@@ -445,7 +459,9 @@ func _slot_in_front() -> Dictionary:
 			continue
 		if d > CLOSE and to.length() > 0.01 and ahead.dot(to.normalized()) < AHEAD:
 			continue
-		var was_read := Story.knows(id)
+		# A page still shut gives way to an open one beside it, as a page read does:
+		# it is never marked read, so it would take every press at the desk.
+		var was_read := Story.knows(id) or StoryFragments.locked(id)
 		var rank := SLOT_FIRST.find(l.slots[i].slot)
 		var nearer := d < best_d - 0.05
 		var level := absf(d - best_d) <= 0.05
@@ -466,8 +482,18 @@ func _start_reading(prop: WorldProp) -> void:
 	_read(id)
 
 
-## A fragment's words on the glass, read off whatever held them.
+## A fragment's words on the glass, read off whatever held them. A page still
+## shut (`until`) shows what it shows while shut, and is not yet found.
 func _read(id: StringName) -> void:
+	if StoryFragments.locked(id):
+		reading = id
+		view.reading = StoryFragments.lines(id)
+		view.reading_title = StoryFragments.title_of(id)
+		game.talking = true
+		_hush(true)
+		Events.sfx.emit(&"ui_slate_ping", Vector3.ZERO)
+		view.refresh()
+		return
 	# A thing that answers (`talk`): reading it is being spoken to.
 	var answers := StringName(str(StoryContent.FRAGMENTS[id].get("talk", &"")))
 	if answers != &"":
@@ -966,6 +992,10 @@ func tour_seen(what: StringName) -> bool:
 		return talk != null
 	if what == &"reading":
 		return reading != &""
+	# `tenant:his`: inside a bunker sunk for that household (StoryRooms.tenants).
+	if what.begins_with("tenant:"):
+		var room := _room()
+		return room != null and StoryRooms.tenants(_surface).get(room.threshold.key, &"") == StringName(what.substr(7))
 	if what.begins_with("knows:"):
 		return Story.knows(StringName(what.substr(6)))
 	if what.begins_with("beat:"):

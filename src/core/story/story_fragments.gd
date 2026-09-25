@@ -111,9 +111,24 @@ static func held_by(world: WorldData, prop: WorldProp) -> StringName:
 	return pick(kind, d.id if d != null else &"", world.seed_value, prop.id)
 
 
+## Whether a page is still shut: it names what must be known first (`until`, a
+## beat felt or a fragment read) and says its `locked` lines until then, landing
+## nothing and not yet found. The terminal in his bunker wakes only for a man who
+## knows the oldest machines take his passwords.
+static func locked(id: StringName) -> bool:
+	var until := StringName(str(StoryContent.FRAGMENTS.get(id, {}).get("until", &"")))
+	if until == &"":
+		return false
+	if StoryContent.FRAGMENTS.has(until):
+		return not Story.knows(until)
+	return not StoryPacing.felt(until)
+
+
 ## What it says: the lines, in the order they are read.
 static func lines(id: StringName) -> PackedStringArray:
 	var f: Dictionary = StoryContent.FRAGMENTS.get(id, {})
+	if locked(id):
+		return PackedStringArray(f.get("locked", []))
 	# The world writing him down: composed from what he has done, not written once.
 	if f.has("ledger"):
 		return StoryLedger.lines(StringName(str(f.ledger)))

@@ -123,7 +123,8 @@ the voice of fifty years was his, and she always knew.
 
 ## The arcs
 
-The secret · who he was · the Holdfast · the crew · June · **Hannah** (died winter
+The secret · who he was · **Cairn** (Kerr's stones and the cold copy Calloway sent up
+to Ring Four, 2026-09-25) · the Holdfast · the crew · June · **Hannah** (died winter
 2034 on the north road; the voice that warned June did not warn her) · WHITETHORN
 (the CIA, or him?) · **Priya** (her last notebook, with Oksana, is what holds HALCYON
 together) · Echo and Seeker · the Covenant (traitors, or why anyone eats) · the
@@ -156,6 +157,7 @@ choice is scored; saying nothing is always an answer.
 - The works and the plan: Type I industry (server fields, the Tether, the Foundry).
 - The gates, the Before, the After: 2029 rebuilt at the same coordinates; the Emissary's forecast.
 - A room's slots (desk, terminal, wall): what whoever lived there left, colour. The
-  coast's bunker is 2029: where he reported from; it teaches `was_cia` and no further.
+  coast's bunkers are Cairn's, 2028 (ruled 2026-09-25, `docs/story/UNDER_THE_STONES.md`):
+  his No. 4 wakes for him once he knows his passwords and teaches `was_cia`.
 - Settlements and raids: the Holdfast's holdings. Companions are playable; the story stays his.
 - The words themselves live in `src/content/story/`.

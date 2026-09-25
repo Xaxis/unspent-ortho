@@ -14,8 +14,10 @@ func _grow(kind: StringName, n: int) -> InteriorLayout:
 
 
 func test_every_room_the_story_writes_for_is_a_room() -> void:
-	for kind: StringName in StoryContent.ROOMS:
-		check(Interiors.kind(kind) != null, "%s is a kind of room (Interiors.RECIPES)" % kind)
+	for room: StringName in StoryContent.ROOMS:
+		# `kind:TENANT` is one household's room of that kind (StoryRooms.room_of).
+		var kind := StringName(String(room).get_slice(":", 0))
+		check(Interiors.kind(kind) != null, "%s is a kind of room (Interiors.RECIPES)" % room)
 
 
 func test_every_slot_a_room_opens_holds_words() -> void:
@@ -87,12 +89,18 @@ func test_the_bunker_says_no_more_than_the_first_leg_allows() -> void:
 		for id: StringName in StoryContent.ROOMS[&"bunker"][key]:
 			landed.append_array(StoryContent.beats_from(id))
 	eq(landed, [&"was_cia"], "the bunker lands one thing")
-	for kind: StringName in StoryContent.ROOMS:
-		if kind == &"bunker":
+	# What else a room may teach, and only through a page shut until it is earned
+	# (docs/story/UNDER_THE_STONES.md): Kerr's binder, and the hulls' manifests.
+	var may := {&"bunker:kerr": [&"cairn_knew"], &"hulk_hold": [&"echo_hulls"]}
+	for room: StringName in StoryContent.ROOMS:
+		if room == &"bunker":
 			continue
-		for key: StringName in StoryContent.ROOMS[kind]:
-			for id: StringName in StoryContent.ROOMS[kind][key]:
-				eq(StoryContent.beats_from(id), [], "%s is what people leave: colour, never load" % id)
+		for key: StringName in StoryContent.ROOMS[room]:
+			for id: StringName in StoryContent.ROOMS[room][key]:
+				for b: StringName in StoryContent.beats_from(id):
+					check((may.get(room, []) as Array).has(b), "%s in %s lands %s: what people leave is colour, never load" % [id, room, b])
+				if room == &"hulk_hold" and not StoryContent.beats_from(id).is_empty():
+					check(StoryContent.FRAGMENTS[id].has("until"), "%s lands the hulls only once the Echo is heard" % id)
 
 
 func test_a_slot_s_words_are_read_off_what_it_stands_at() -> void:
