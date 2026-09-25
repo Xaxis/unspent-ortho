@@ -93,3 +93,14 @@ func test_the_travel_wraps_on_the_lattice_and_never_jumps() -> void:
 func test_a_calm_keeps_the_last_bearing() -> void:
 	var g := WindField.advance(Vector4(0.0, 0.0, 0.0, 1.0), Vector2(0.0, 0.0), 1.0)
 	eq(Vector2(g.z, g.w), Vector2(0.0, 1.0), "a calm has no bearing of its own")
+
+
+## Slice 2: a leaf card's own flutter answers the gust field and the trample
+## field, so a front reaching a crown sets it shivering and a body pushing
+## through a bush rustles it. Before this the flutter ran on wind_strength alone,
+## the same everywhere at once.
+func test_leaves_shiver_in_a_gust_and_rustle_where_a_body_pushes() -> void:
+	var body := vertex_body(FileAccess.get_file_as_string("res://src/render/foliage/leaf.gdshader"))
+	check(body.contains("gust_at("), "a card's flutter reads the gust at its own place")
+	check(body.contains("trample_at("), "and the trample field under it")
+	check(body.contains("crown_clear[0]"), "and only a card near the ground a body stands on rustles")
