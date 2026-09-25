@@ -37,6 +37,16 @@ const GLANCE_AGAIN_MS := 5000.0
 const SEEN_RISE := 1.0
 const HIDDEN_RISE := 0.4
 const NOISE_RISE := 0.28
+## What it only half has -- the player HEARD (their own steps, their breath, in
+## its hearing), or GLIMPSED out of the corner of its optics behind its cone --
+## makes it unsure, not sure: a ramp, not a snap, so there are a few seconds to
+## get out of it. Heard or glimpsed past LOOK_AT, it turns its optics that way
+## and goes to look, and only what it then SEES in its cone makes it sure. A
+## warden in its hall made sure by a glimpse of the hatch behind it arrested
+## whoever came down it within the second, every time.
+const HEAR_RISE := 0.02
+const GLIMPSE_RISE := 0.025
+const LOOK_AT := 0.6
 ## What drains per beat when nothing comes of it: about two seconds to settle.
 const SUSPICION_FADE := 0.05
 ## The player is hidden enough for it to have to look twice at this much cover.
@@ -266,8 +276,9 @@ func _beat() -> void:
 		# cone); one that already has the player keeps track of them all round.
 		var on_round := m.machine and (m.mood == MobState.IDLE or m.mood == MobState.WORKING)
 		var look := m.facing if on_round else NAN
-		var noticed := now >= m.calm_until and StealthQuery.notices(m.row, m.pos, hero.pos, moment, world, query, look)
-		_suspicion(m, noticed)
+		var how := _notice(m, look)
+		var noticed := how != &""
+		_suspicion(m, how)
 		if noticed:
 			m.lost_beats = 0
 			m.last_seen = hero.pos
@@ -342,21 +353,46 @@ func _beat() -> void:
 						m.set_mood(MobState.IDLE, now)
 
 
+## How the body at `m` has the player this beat: &"seen" in its cone (or all
+## round, `look` NAN), &"glimpsed" only out of the corner of its optics behind
+## the cone, &"heard", or &"" not at all. The one door is StealthQuery's, split
+## so that only sight in front is sure at once.
+func _notice(m: MobState, look: float) -> StringName:
+	if now < m.calm_until or not StealthQuery.notices(m.row, m.pos, hero.pos, moment, world, query, look):
+		return &""
+	if StealthQuery.sees(m.row, m.pos, hero.pos, moment, world, query, look):
+		if is_nan(look) or StealthQuery.in_cone(m.pos, look, hero.pos, StealthQuery.cone_half(m.row)):
+			return &"seen"
+		if StealthQuery.hears(m.row, m.pos, hero.pos, moment):
+			return &"heard"
+		return &"glimpsed"
+	return &"heard"
+
+
 ## How sure a body is, beat by beat, and where it is looking while it makes up
 ## its mind. Seen in the open it is sure at once (nothing about a fight
 ## changes); low in the heather it has to look twice; a noise out of sight
 ## turns its optics that way and, kept up, brings it over. Drawn on the machine
 ## (Mob): the working part flickers with it, and the alert snaps at 1.
-func _suspicion(m: MobState, noticed: bool) -> void:
+func _suspicion(m: MobState, how: StringName) -> void:
 	if not m.machine:
 		# A creature is sure or it is not: making up its mind is a machine's
 		# reading, and nothing about a fight with an animal changes here.
-		m.suspicion = 1.0 if noticed else 0.0
+		m.suspicion = 1.0 if how != &"" else 0.0
 		return
-	if noticed:
+	if how == &"seen":
 		var hidden := moment.crouched or moment.cover > HIDDEN_COVER
 		m.suspicion = minf(1.0, m.suspicion + (HIDDEN_RISE if hidden else SEEN_RISE))
 		m.heard_at = hero.pos
+		return
+	if how == &"heard" or how == &"glimpsed":
+		m.suspicion = minf(1.0, m.suspicion + (HEAR_RISE if how == &"heard" else GLIMPSE_RISE))
+		if m.suspicion >= LOOK_AT:
+			# Unsure enough to go and look: its optics turn to where it had them.
+			if m.look_until <= now or m.heard_at.distance_squared_to(hero.pos) > 1.0:
+				emit(&"heard", {"mob": m, "at": hero.pos})
+			m.heard_at = hero.pos
+			m.look_until = now + LOOK_MS
 		return
 	if now - noise_ms < StealthNoise.FRESH_MS and StealthQuery.hears_noise(m.row, m.pos, noise_at, noise_radius, moment):
 		if m.look_until <= now or m.heard_at.distance_squared_to(noise_at) > 1.0:
