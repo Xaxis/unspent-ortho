@@ -138,6 +138,13 @@ func play_action(a: StringName, seconds: float) -> void:
 		_weight = 1.0
 
 
+## Let an action held by `pose_at` run on from where it was held: a heavy blow's
+## drawn-back tool let go into the strike (40_fight).
+func unfreeze() -> void:
+	_frozen = -1.0
+	_posed_frozen = false
+
+
 ## Freeze an action at seconds `t` into it (gallery, shots, tests). Replaces any action.
 func pose_at(a: StringName, t: float, seconds: float = 0.0) -> void:
 	play_action(a, seconds)

@@ -6,6 +6,9 @@ extends RefCounted
 
 var sim: FightSim
 var _last_pull := -1000.0
+## Holds every swing for the heavy blow: a heavy blow thrown without reading
+## the machine must lose as surely as a light one.
+var heavy := false
 
 
 func _init(s: FightSim) -> void:
@@ -34,6 +37,9 @@ func act() -> void:
 		hero.move = Vector2.ZERO
 		hero.facing = to.angle()
 		if hero.swing_refusal(sim.now) == &"":
-			sim.press_swing()
+			if heavy:
+				sim.press_heavy()
+			else:
+				sim.press_swing()
 		return
 	hero.move = to.normalized()

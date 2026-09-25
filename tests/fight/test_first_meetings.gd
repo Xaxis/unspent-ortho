@@ -17,7 +17,7 @@ const FIRST: Array[StringName] = [&"runner", &"dog.yard", &"harvester"]
 const STARTS := 8
 
 
-static func bout(kind: StringName, careful: bool, start: int, seconds: float = 60.0, react_ms: float = 220.0, take_hits: int = 0) -> Dictionary:
+static func bout(kind: StringName, careful: bool, start: int, seconds: float = 60.0, react_ms: float = 220.0, take_hits: int = 0, heavy: bool = false) -> Dictionary:
 	var sim := F.make_sim(F.flat_world(96), Vector2(48.5, 48.5))
 	sim.hero.inventory.add(&"knife")
 	sim.hero.inventory.set_held(&"knife")
@@ -33,6 +33,7 @@ static func bout(kind: StringName, careful: bool, start: int, seconds: float = 6
 		m.line_a = at - Vector2.from_angle(m.facing) * 3.0
 		m.line_b = at + Vector2.from_angle(m.facing) * 3.0
 	var player: Variant = Reader.new(sim) if careful else Masher.new(sim)
+	player.heavy = heavy
 	if careful:
 		player.react_ms = react_ms
 		player.take_hits = take_hits

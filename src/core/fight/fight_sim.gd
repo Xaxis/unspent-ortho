@@ -99,6 +99,8 @@ var _swing_until := -1.0
 ## has a direction of its own to look in: over the shoulder a swing goes where the
 ## camera looks, because that is where the player is looking (CameraRig.aim).
 var _swing_aim := NAN
+## The buffered swing is the heavy blow (press_heavy).
+var _swing_heavy := false
 var _dodge_until := -1.0
 var _whiff_checked := true
 ## The current swing has already worn the edge (once, on the first body it meets).
@@ -136,6 +138,14 @@ func press_swing(aim := NAN) -> void:
 		return
 	_swing_until = now + FightRules.BUFFER_MS
 	_swing_aim = aim
+	_swing_heavy = false
+
+
+## The swing key held past FightRules.HEAVY_HOLD_MS (the fight system times the
+## hold): the heavy blow, buffered as a swing is. Held, it pulls, as a swing does.
+func press_heavy(aim := NAN) -> void:
+	press_swing(aim)
+	_swing_heavy = not hero.held()
 
 
 func press_dodge() -> void:
@@ -229,6 +239,10 @@ func _swing() -> void:
 			best = m
 	if best != null:
 		hero.facing = (best.pos - hero.pos).angle()
+	# Held, it is the heavy blow if there is the wind for it; winded, the light one.
+	if _swing_heavy and hero.wind >= FightRules.HEAVY_WIND:
+		b = b.heavier()
+	_swing_heavy = false
 	var dry := b.wick > 0 and not FightRules.spend_charges(inv, b.wick)
 	if dry:
 		b.dry()
@@ -236,7 +250,7 @@ func _swing() -> void:
 	_whiff_checked = false
 	# The edge wears where it meets something: a swing at air costs wind, not edge.
 	_blow_wore = false
-	emit(&"swing", {"item": held, "dry": dry})
+	emit(&"swing", {"item": held, "dry": dry, "heavy": b.heavy})
 
 
 ## THE JUMP'S LANDING AS A BLOW. Called by whatever lands a jump (54_gear) with
@@ -757,6 +771,9 @@ func _land(t0: float, t1: float) -> void:
 			hero.struck[m.id] = true
 			_wear_on_contact()
 			if not reaches_part(m, hero.pos, b.cuts):
+				if b.heavy and reaches_part(m, hero.pos, b.cuts, true) and now >= m.stall_ready_at:
+					_jam(m)
+					continue
 				hero.throw(hero.pos - m.pos, FightRules.RING_RECOIL, FightRules.RING_RECOIL_MS, now)
 				emit(&"hit", {"attacker": hero, "target": m, "damage": 0, "plate": true, "at": m.pos})
 				_wake(m)
@@ -815,12 +832,31 @@ func meets(a: Vector2, b: Vector2) -> bool:
 ## the machine is open: spent after a bite, stopped by a blow, or not yet
 ## roused. A turning blade row throws a blow off like plate, so walking in
 ## swinging at the front rings, and the opening is the skill.
-func reaches_part(m: MobState, from: Vector2, cuts: bool = false) -> bool:
+## A `heavy` blow goes through the turning blades, and jams them (`_jam`).
+func reaches_part(m: MobState, from: Vector2, cuts: bool = false, heavy: bool = false) -> bool:
 	if not FightRules.reaches(m.part, m.pos, m.facing, from, cuts):
 		return false
-	if cuts or not m.row.get("guarded", false):
+	if cuts or heavy or not m.row.get("guarded", false):
 		return true
 	return m.spent(now) or m.stunned(now) or m.indifferent() or not m.roused()
+
+
+## A heavy blow into a guarded part the machine was not holding open: the
+## turning blades take it, so it does no harm, but they jam, and the machine
+## stands stalled as a blow in the part stalls it, its tell lost and its part
+## open for what comes next. Once a stall, as any stall. What is bought is the
+## opening, not the damage: a heavy thrown at a guard over and over is a slow
+## way to do nothing (tests/fight/test_bouts, the player who holds every swing).
+func _jam(m: MobState) -> void:
+	m.stall_ready_at = now + FightRules.STALL_EVERY_MS
+	m.stun_until = maxf(m.stun_until, now + FightRules.STALL_MS)
+	m.charging = false
+	m.flare_until = now + FightRules.PART_FLARE_MS
+	m.dark_until = m.flare_until + FightRules.PART_DARK_MS
+	if m.blow_phase(now) == &"windup":
+		m.blow = null
+	emit(&"hit", {"attacker": hero, "target": m, "damage": 0, "plate": false, "jammed": true, "at": m.pos})
+	_wake(m)
 
 
 ## A machine's bite met the player: it has what it came for, so it neither

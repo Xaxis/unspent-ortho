@@ -41,6 +41,16 @@ const RING_RECOIL_MS := 90
 ## Running in a fight spends wind; below the floor you walk.
 const RUN_WIND_COST := 220.0
 const RUN_WIND_FLOOR := 350.0
+## The heavy blow: the swing key held this long throws it (a tap, let go
+## sooner, is the light swing), and it is the held tool's blow wound up this much
+## longer, for this much wind, hitting this many times as hard. What it buys
+## beyond the damage is a guarded part: it goes through a machine's turning
+## blades that throw a light blow off (FightSim.reaches_part), so the long tell
+## is the price of not waiting for the machine to open.
+const HEAVY_HOLD_MS := 300
+const HEAVY_WINDUP_MS := 350
+const HEAVY_WIND := 600.0
+const HEAVY_DAMAGE := 2
 ## Swings turn toward a body this close to the facing (radians) and this far past reach.
 const AIM_ASSIST_ANGLE := 1.05
 const AIM_ASSIST_EXTRA := 1.0

@@ -4,9 +4,10 @@ extends GameSystem
 ## what happened in it into the world: Events, sounds, the hitstop, the
 ## camera's shake, the ink marks (MobFx), the clock's jumps and the lines on screen.
 ##
-## Controls: swing on `swing` (J, a click); dodge on `dodge` (K or the thumb
-## button at once; Shift as DodgeInput says, holding it still runs). Pressed
-## while held, swing pulls. The keys are ControlScheme's; a lock (Hero.lock)
+## Controls: swing on `swing` (J, a click), thrown as the key comes up; held
+## FightRules.HEAVY_HOLD_MS it is the heavy blow instead, thrown as the hold
+## is reached. Dodge on `dodge` (K or the thumb button at once; Shift as
+## DodgeInput says, holding it still runs). Pressed while held, swing pulls, at once. The keys are ControlScheme's; a lock (Hero.lock)
 ## decides where a swing and a dodge go, inside the simulation.
 
 const HITSTOP_HIT := 0.05
@@ -33,6 +34,12 @@ var _held := false
 ## Where a held moment keeps the camera (the game points it at the player every frame).
 var _focus := Vector3.ZERO
 var _crowd_told := false
+## Seconds the swing key has been down, while it is down and nothing is thrown
+## yet (-1 otherwise). Counted in the frames' own time, so a hold is the same
+## length to the fight whatever the frame rate, a fixed-rate tour's included.
+var _swing_held := -1.0
+## Simulation ms a heavy blow's drawn-back pose is let go into the strike, or -1.
+var _heavy_let_go := -1.0
 
 
 func setup(g: Game) -> void:
@@ -53,7 +60,7 @@ func setup(g: Game) -> void:
 ## a tour's pressed actions and a bot all reach the same verbs. Shift's own
 ## edges are watched for DodgeInput; the dodge action pressed without Shift
 ## down (K, or an action pressed by a tour) dodges at once.
-func _read_input() -> void:
+func _read_input(delta: float) -> void:
 	var shift := Input.is_physical_key_pressed(KEY_SHIFT)
 	var t := Time.get_ticks_msec()
 	var blocked := game.input_blocked() or _held
@@ -66,11 +73,26 @@ func _read_input() -> void:
 			elif dodge_input.shift_released(t):
 				sim.press_dodge()
 	if blocked:
+		_swing_held = -1.0
 		return
+	# A tap is a swing and a hold is the heavy blow, so the swing is thrown when
+	# the key comes up, or when the hold is long enough, whichever is first. Over
+	# the shoulder it goes where the camera looks (NAN elsewhere, which keeps the
+	# swing's own rule). Held by something, the key wrenches at once.
 	if Input.is_action_just_pressed(&"swing"):
-		# Over the shoulder the swing goes where the camera looks (NAN elsewhere,
-		# which keeps the swing's own rule).
-		sim.press_swing(game.camera.aim())
+		if sim.hero.held():
+			sim.press_swing()
+		else:
+			_swing_held = 0.0
+	elif _swing_held >= 0.0:
+		_swing_held += delta
+	if _swing_held >= 0.0:
+		if not Input.is_action_pressed(&"swing"):
+			_swing_held = -1.0
+			sim.press_swing(game.camera.aim())
+		elif _swing_held * 1000.0 >= FightRules.HEAVY_HOLD_MS:
+			_swing_held = -1.0
+			sim.press_heavy(game.camera.aim())
 	if Input.is_action_just_pressed(&"dodge") and not shift:
 		sim.press_dodge()
 
@@ -87,7 +109,7 @@ func _in_fight() -> bool:
 func _physics_process(delta: float) -> void:
 	if sim == null:
 		return
-	_read_input()
+	_read_input(delta)
 	var now_s := Time.get_ticks_msec() / 1000.0
 	var hero := sim.hero
 	var player := game.player
@@ -113,6 +135,10 @@ func _process(delta: float) -> void:
 	var frozen := sim.hold
 	game.player.sync_view(0.0 if frozen else delta, frozen)
 	game.player.draw_swing(sim.now)
+	if _heavy_let_go >= 0.0 and sim.now >= _heavy_let_go:
+		_heavy_let_go = -1.0
+		Events.sfx.emit(&"swing", game.player.position)
+		game.player.model.unfreeze()
 	if sim.hero.held() and not frozen:
 		# The struggle, drawn: a dashed ring at the feet on a beat while something has hold.
 		_struggle_t -= delta
@@ -152,6 +178,21 @@ func _landing() -> void:
 	_land_at = -1.0
 	var hero := sim.hero
 	MobFx.puff(_fx_parent(), _at3(hero.pos + hero.dodge_dir * 0.15), hero.dodge_dir, _dust_colour(hero.pos), 0.5, int(sim.now) + 2)
+
+
+## The heavy blow's tell, the player's own: the tool held drawn back for the
+## extra windup (the swing's pose frozen at its anticipation), a fan of strokes
+## thrown up off the body for as long, and the drive's sound. Then the pose is
+## let go into the ordinary strike (`_process`). No ground ring: a ring on the
+## ground is where a machine's bite will land, and only that.
+func _heavy_windup(b: Blow) -> void:
+	var player := game.player
+	var light_windup := (b.windup - FightRules.HEAVY_WINDUP_MS) / 1000.0
+	var light_len := (b.committed() - FightRules.HEAVY_WINDUP_MS) / 1000.0
+	player.model.pose_at(&"swing", light_windup, light_len)
+	_heavy_let_go = sim.now + FightRules.HEAVY_WINDUP_MS
+	Events.sfx.emit(&"windup", player.position)
+	MobFx.tell(player, player.model_centre(), _screen_up(), FightRules.HEAVY_WINDUP_MS / 1000.0, int(sim.now), 0.7, MobFx.FLICK_UP)
 
 
 ## One point of health back per hour of the world's clock, counted from the last
@@ -227,9 +268,12 @@ func _handle(events: Array[Dictionary]) -> void:
 		match e.type:
 			&"swing":
 				var b := hero.blow
-				Events.sfx.emit(&"swing", player.position)
-				if b != null:
-					player.model.play_action(&"swing", b.committed() / 1000.0)
+				if b != null and b.heavy:
+					_heavy_windup(b)
+				else:
+					Events.sfx.emit(&"swing", player.position)
+					if b != null:
+						player.model.play_action(&"swing", b.committed() / 1000.0)
 			&"drop_strike":
 				# Came down on it: the swing is thrown from the landing, and the ground
 				# under the feet takes the weight in one ring of its own dust.
