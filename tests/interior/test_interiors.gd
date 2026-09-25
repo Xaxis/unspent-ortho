@@ -257,7 +257,7 @@ func test_every_house_opens_on_its_own_forms_room() -> void:
 		else:
 			check(doors.has(key) and (doors[key] as Threshold).kind == want,
 				"the %s %s at %s opens on a %s" % [d.id, form, p.pos, want])
-	for k: StringName in [&"roundhouse", &"stilt_room", &"tower_lobby"]:
+	for k: StringName in [&"roundhouse", &"stilt_room", &"tower_lobby", &"cliff_room"]:
 		check(seen.has(k), "seed 4 has a house that opens on a %s" % k)
 
 
@@ -365,3 +365,35 @@ func test_every_tower_lobby_can_be_walked_to() -> void:
 		for g: String in goals:
 			check(_reached(reach, goals[g]), "%s (%s/%s): the %s at %s cannot be walked to from the door" % [t.key, l.plan, l.dressing, g, goals[g]])
 	gt(float(n), 0.0, "seed 4 has tower lobbies to walk")
+
+
+## A ROOM IN THE ROCK CAN BE LIVED IN: from the door of every cliff room on
+## seed 4 a body gets round the slab stood against the draught to the fire, to
+## the side of the ledge, and through the low doorway into the store when there
+## is one -- and not through the ledge, which is rock.
+func test_every_cliff_room_can_be_walked_to() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var n := 0
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind != &"cliff_room":
+			continue
+		n += 1
+		var p := InteriorGen.grow(4, t)
+		var l := p.layout
+		var q := WorldQuery.new(p.world)
+		var blocks: Array[Vector3] = doors_script.call(&"_walls", l)
+		q.set_blocks(&"rooms", blocks)
+		var reach := _reach(q, l.inside())
+		var middle := Vector2(l.rooms[0].position) + Vector2(l.rooms[0].size) * 0.5
+		var goals := {"fire": l.hearth + (l.hearth - l.inside()).normalized() * 1.1}
+		for th: Dictionary in l.things:
+			var at: Vector2 = th.at
+			if th.kind == &"ledge":
+				goals["ledge"] = at + (middle - at).normalized() * 0.9
+				check(not _reached(reach, at), "%s: the ledge at %s is rock, not walked onto" % [t.key, at])
+		if l.rooms.size() > 1:
+			goals["store"] = Vector2(l.rooms[1].position) + Vector2(l.rooms[1].size) * 0.5
+		for g: String in goals:
+			check(_reached(reach, goals[g]), "%s (%s/%s): the %s at %s cannot be walked to from the door" % [t.key, l.plan, l.dressing, g, goals[g]])
+	gt(float(n), 0.0, "seed 4 has cliff rooms to walk")
