@@ -48,7 +48,14 @@ func build(l: InteriorLayout, k: InteriorKind, land: int, mat: Material) -> void
 	door_cols = [GroundColors.made(P.EARTH[2], GroundColors.TIMBER), GroundColors.made(_pick(dress.timber, P.EARTH[3]), GroundColors.TIMBER),
 		GroundColors.made(Color(0.32, 0.4, 0.44), GroundColors.ENAMEL), GroundColors.made(Color(0.6, 0.56, 0.48), GroundColors.ENAMEL),
 		GroundColors.made(Color(0.46, 0.2, 0.16), GroundColors.ENAMEL), GroundColors.made(P.LINEN[2].lerp(P.EARTH[2], 0.5), GroundColors.TIMBER)]
+	_tint()
 	super.build(l, k, land, mat)
+
+
+## Where a room built on this one takes the palette its own way, before a wall
+## is drawn in it.
+func _tint() -> void:
+	pass
 
 
 ## A unit of wall: a door taken off its hinges, stood on end in the frame --

@@ -1,0 +1,32 @@
+# THE HOLD OF A HULK IN THE DROWNED CITY (docs/interiors, src/content/interiors/hulk_hold.gd):
+# down the companion ladder from the deck of a barge moored for good, the hull's
+# ribs standing up both sides, riveted plate, portholes on the waterline, boards
+# over the bilge, the open hatch in the deck, a drum stove and a stolen tube.
+#
+#   tools/tour.sh tours/hulk.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is the hulk as a player finds it moored. 02 is the hold from above as the
+# player comes down. 03 is the same at night, by the stove and the tube. 04 is
+# over the shoulder, down the hold.
+coast calm
+near door:hulk_hold
+await door 5
+wait 0.6
+shot 01-a-hulk-moored-for-good with door,land:drowned_city
+
+press use 0.1
+await inside:hulk_hold 5
+wait 1.0
+shot 02-the-hold-from-above-by-day with inside:hulk_hold
+
+hour 22
+wait 1.0
+shot 03-the-hold-at-night-by-its-stove with inside:hulk_hold
+
+hour 15
+wait 0.6
+hold shoulder_peek
+await shoulder 3
+mouse 300,0 0.6
+wait 0.6
+shot 04-down-the-hold-over-the-shoulder with inside:hulk_hold,shoulder

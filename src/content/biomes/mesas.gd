@@ -116,6 +116,9 @@ static func make() -> BiomeDef:
 	# landscape's island, and that is intended.
 	d.built = BiomeForms.new()
 	d.built.stock = [&"cut_room", &"adobe", &"watch_hut"] as Array[StringName]
+	# The cut room is the home here, dug into the scarp; its room is its own
+	# (content/interiors/cliff_room.gd).
+	d.interiors = {&"form:cut_room": &"cliff_room"}
 	# A frontage along a bench (the spec's), and MEASURED flat enough to hold
 	# one: `row` refuses a spot whose nine neighbours are not level, and on
 	# seeds 1, 7 and 90210 all three buildings stood, every one on one level,

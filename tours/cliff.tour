@@ -1,0 +1,34 @@
+# A ROOM CUT INTO THE MESA (docs/interiors, src/content/interiors/cliff_room.gd):
+# dug back into the scarp with only its front wall built, the rock in its bands
+# on every other side and overhead, black over a fire in a pit in the floor, a
+# slab stood against the draught, a sleeping ledge left in the rock, niches cut
+# in the walls, ollas by the door and the span's own wire strung across.
+#
+#   tools/tour.sh tours/cliff.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is the cut room as a player finds it in the scarp. 02 is the room from
+# above as the player comes in. 03 is the same at night from beside the fire.
+# 04 is over the shoulder.
+coast calm
+near door:cliff_room
+await door 5
+wait 0.6
+shot 01-a-room-cut-into-the-mesa with door,land:mesas
+
+press use 0.1
+await inside:cliff_room 5
+wait 1.0
+shot 02-the-cliff-room-from-above-by-day with inside:cliff_room
+
+near fire
+hour 22
+wait 1.0
+shot 03-the-cliff-room-by-its-fire-at-night with inside:cliff_room,station:fire
+
+hour 15
+wait 0.6
+hold shoulder_peek
+await shoulder 3
+mouse 300,0 0.6
+wait 0.6
+shot 04-the-cliff-room-over-the-shoulder with inside:cliff_room,shoulder
