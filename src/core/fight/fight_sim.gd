@@ -449,8 +449,10 @@ func _suspicion(m: MobState, how: StringName) -> void:
 		return
 	if how == &"heard" or how == &"glimpsed":
 		m.suspicion = minf(1.0, m.suspicion + (HEAR_RISE if how == &"heard" else GLIMPSE_RISE))
-		if m.suspicion >= LOOK_AT:
-			# Unsure enough to go and look: its optics turn to where it had them.
+		# Unsure enough to go and look: its optics turn to where it had them. A
+		# machine at its work does not: it glances and goes on (`_beat`); stood
+		# to look, a hauler stopped on its round for someone it only half saw.
+		if m.suspicion >= LOOK_AT and not m.at_work():
 			if m.look_until <= now or m.heard_at.distance_squared_to(hero.pos) > 1.0:
 				emit(&"heard", {"mob": m, "at": hero.pos})
 			m.heard_at = hero.pos
