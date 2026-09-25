@@ -113,6 +113,13 @@ func test_high_ground_is_colder_and_a_fire_and_a_roof_answer_it() -> void:
 	var high := place({&"cold": 0.4}, 2.0)
 	high.level = Hazards.HIGH_LEVEL + 8
 	gt(float(Hazards.felt(high)[&"cold"]), float(Hazards.felt(low)[&"cold"]), "higher is colder")
+	# A region's spine stands over the old cap (GEN 28); the cold was tuned on
+	# land no higher than it, and a moor ridge is not an alp.
+	var old_top := place({&"cold": 0.1}, 2.0)
+	old_top.level = floori(GenRelief.TUNED_TOP)
+	var spine := place({&"cold": 0.1}, 2.0)
+	spine.level = GenRelief.MAX_LEVEL
+	eq(float(Hazards.felt(spine)[&"cold"]), float(Hazards.felt(old_top)[&"cold"]), "no colder past the tuned top")
 	var out_in_it := place({&"cold": 0.8}, 2.0)
 	var by_fire := place({&"cold": 0.8}, 2.0)
 	by_fire.fire = 1.0

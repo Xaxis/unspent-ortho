@@ -390,9 +390,9 @@ static func _carve_valleys(c: GenContext) -> void:
 					var k := hrow + (x >> 1)
 					v[k] = minf(v[k], river_e[i] + 0.9)
 	)
-	# A valley side climbs at least 0.6 levels a cell: 26 cells reach past the
-	# highest ground.
-	v = GenFields.banded([v, cost], hw, 26, func(arrays: Array, width: int) -> Array:
+	# A valley side climbs at least 0.6 levels a cell, so this many cells reach
+	# past the highest ground.
+	v = GenFields.banded([v, cost], hw, ceili((GenRelief.MAX_LEVEL + 1) / 0.6), func(arrays: Array, width: int) -> Array:
 		var vv: PackedFloat32Array = arrays[0]
 		GenFields.propagate_min_field(vv, width, arrays[1])
 		return [vv, arrays[1]]

@@ -92,6 +92,7 @@ ruined_metropolis plan.depot
 ruined_metropolis plan.work_props
 ruined_metropolis player.only_in
 salt_flats land.landmark
+salt_flats land.own_props
 salt_flats land.site
 salt_flats people.built
 salt_flats plan.machine

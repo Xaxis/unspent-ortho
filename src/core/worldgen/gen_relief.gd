@@ -5,7 +5,13 @@ class_name GenRelief
 ## by soft membership so land rises and falls over many tiles. The shore is a
 ## beach in bays and a cliff on headlands, with a shingle ledge at the foot.
 
-const MAX_LEVEL := 15
+## The highest land, in levels (15 units). Twice what it was, so a region's
+## form (`GenForm`) can stand a spine a player sees from the shore.
+const MAX_LEVEL := 30
+## The top of the range the climate and border rules were tuned on: they read
+## height no higher than this, so land standing taller than it used to (a
+## spine, a range no longer clamped) does not move a border or cool a tile.
+const TUNED_TOP := 15.99
 
 
 static func run(c: GenContext) -> void:
@@ -24,8 +30,11 @@ static func run(c: GenContext) -> void:
 		[U, p[&"near"], cw, step],
 		[U, p[&"terrace"], cw, step], [U, p[&"cliff"], cw, step],
 		[U, _caldera_soft(c), cw, step], [U, _dunes_soft(c), cw, step],
-		[F, GenFields.noise(s, 301, 1.0 / 58.0, 4), 2],
-		[F, GenFields.noise(s, 302, 1.0 / 92.0, 3), 2],
+		# At walking scale on a body of one island; a continent's swell is
+		# broader by `body_k`, so a region is not one 60-tile swell repeated.
+		# Never narrower than it always was (`body_k` is under 1 below 512).
+		[F, GenFields.noise(s, 301, 1.0 / (58.0 * maxf(1.0, c.body_k)), 4), 2],
+		[F, GenFields.noise(s, 302, 1.0 / (92.0 * maxf(1.0, c.body_k)), 3), 2],
 		[N, GenFields.noise(s, 303, 1.0 / 13.0, 2), size, 1],
 		[F, GenFields.noise(s, 304, 1.0 / 44.0, 2), 4],
 		[F, GenFields.noise(s, 306, 1.0 / 60.0, 2), 8],
@@ -61,6 +70,8 @@ static func run(c: GenContext) -> void:
 	var islet := c.islet
 	var elev := PackedFloat32Array()
 	elev.resize(n)
+	var form := GenFields.upsample(c.form_e, cw, step, size) if not c.form_e.is_empty() else PackedFloat32Array()
+	var formed := not form.is_empty()
 	c.mark(&"relief.fields")
 	GenFields.rows(size, func(y0: int, y1: int) -> void:
 		for y in range(y0, y1):
@@ -71,6 +82,8 @@ static func run(c: GenContext) -> void:
 					elev[i] = 0.0 if offshore[i] < 2.2 + shelf[i] * 3.0 else -1.0
 					continue
 				var e := base[i] + hills[i] * hills_amp[i]
+				if formed:
+					e += form[i]
 				var r := 1.0 - absf(ridge[i])
 				var ha := hills_amp[i]
 				e += r * r * r * ridge_amp[i]

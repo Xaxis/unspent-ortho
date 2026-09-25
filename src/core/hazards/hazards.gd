@@ -300,9 +300,12 @@ static func _prop_shift(out: Dictionary, place: Place) -> void:
 		_add(out, id, minf(float(sum[id]), float(most[id])))
 
 
-## High ground is colder, and past the tree line the air thins.
+## High ground is colder, and past the tree line the air thins. Read no higher
+## than the range this was tuned on (`GenRelief.TUNED_TOP`): land that stands
+## taller now than the old cap let it (a region's spine) is not an alp, and a
+## body on it would breathe frost on a summer moor.
 static func _height_shift(out: Dictionary, place: Place) -> void:
-	var high := maxi(0, place.level - HIGH_LEVEL)
+	var high := maxi(0, mini(place.level, floori(GenRelief.TUNED_TOP)) - HIGH_LEVEL)
 	if high <= 0:
 		return
 	_add(out, &"cold", 0.04 * high)

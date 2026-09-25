@@ -81,6 +81,9 @@ var caldera_type := -1
 # --- relief ---
 ## Float elevation in levels (land >= 1).
 var elev: PackedFloat32Array
+## Levels a region's form adds to relief, on the coarse grid (`GenForm`); empty
+## when no landscape declares one.
+var form_e: PackedFloat32Array = PackedFloat32Array()
 
 ## Warp of a caldera's rim, in crater radii / 0.3, shared by the rim's relief
 ## and its rock.

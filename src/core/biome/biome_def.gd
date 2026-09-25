@@ -99,6 +99,18 @@ var relief := {
 	&"base": 3.0, &"hills": 2.0, &"ridge": 0.0, &"near": 0.0, &"terrace": 0.0, &"valley": 0.5,
 	&"rain": 1.0, &"temp": 0.5, &"moist": 0.5, &"cliff": 0.0,
 }
+## The region's FORM (`GenForm`): its land at the scale of the region. Empty is
+## no form. Keys, all optional:
+##   crest   levels the land rises from its shore to its spine (the ground
+##           farthest from the sea within this landscape on its body)
+##   rise    how the rise is shaped from shore to spine: t^rise, so above 1 the
+##           shore stays low and the climb comes late
+##   passes  0..1, how deep the saddles along the spine sink, as a share of crest
+##   wave    tiles between one top and the next along the spine, times body_k
+##   shore   tiles from the sea, times body_k, that stay at the landscape's own
+##           height before the rise begins: the lowland where the river mouths
+##           make marsh and the bays back onto dune
+var form := {}
 ## > 0: this type's heart is a crater of this radius in tiles (at world size
 ## 512), with a raised rim and a sunk basin.
 var caldera := 0.0
