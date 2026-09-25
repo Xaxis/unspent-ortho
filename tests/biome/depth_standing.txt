@@ -20,7 +20,6 @@ coast people.built
 coast plan.machine
 coast player.only_in
 coast player.signature
-drowned_city land.frames
 drowned_city land.landmark
 drowned_city land.site
 drowned_city plan.depot

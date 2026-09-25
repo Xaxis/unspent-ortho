@@ -1051,11 +1051,11 @@ func _lens_half_extent(cam: Camera3D) -> float:
 
 
 ## The ground footprint of an orthographic view (height vh, yaw 45) as a square
-## half-side in tile axes, plus room for land up to 6 units high to show from behind.
+## half-side in tile axes, plus room for the highest land to show from behind.
 static func half_extent_for(vh: float, aspect: float, pitch: float) -> float:
 	var hw := vh * aspect * 0.5
 	var hh := vh * 0.5 / maxf(0.2, sin(pitch))
-	var rise := 6.0 / maxf(0.2, tan(pitch))
+	var rise := GenRelief.MAX_LEVEL * WorldData.STEP / maxf(0.2, tan(pitch))
 	return (hw + hh) / sqrt(2.0) + rise
 
 
