@@ -56,6 +56,13 @@ const SCRAP: Array[int] = [PropKind.TIP, PropKind.WRECK, PropKind.POLE, PropKind
 
 var _mat: ShaderMaterial
 var _dots: SurvivalMarks.Pool
+## Smoke off what is cooking: FireModel's soft puffs, never marks.
+var _steam: SurvivalMarks.Pool
+## Where something is cooking in reach, from the last scan.
+var _cooking: Array[Vector3] = []
+const STEAM_AT := 3
+const STEAM_PUFFS := 5
+const STEAM_LIFE := 2.4
 var _ticks: SurvivalMarks.Pool
 var _sparks_pool: SurvivalMarks.Pool
 var _flecks: SurvivalMarks.Pool
@@ -101,6 +108,7 @@ func setup(g: Game) -> void:
 	_mat = g.view.world_material() if g.view != null else ShaderMaterial.new()
 	var marks := SurvivalMarks.material()
 	_dots = SurvivalMarks.Pool.new(SurvivalMarks.dot(), DOTS, marks, self)
+	_steam = SurvivalMarks.Pool.new(FireModel.smoke_mesh(), STEAM_AT * STEAM_PUFFS, FireModel.smoke_material(), self)
 	_ticks = SurvivalMarks.Pool.new(SurvivalMarks.tick(), TICKS, SurvivalMarks.overlay(), self, true)
 	_sparks_pool = SurvivalMarks.Pool.new(SurvivalMarks.dot(), SPARKS, SurvivalMarks.overlay(), self)
 	for i in range(SPARKS - 1, -1, -1):
@@ -162,25 +170,49 @@ func _process(delta: float) -> void:
 	var dt := _acc
 	_acc = 0.0
 	_step_marks(dt)
+	_step_steam()
 	_step_anims(dt)
 	_step_tokens(dt)
 
 
 ## Work left at a station is seen from off across the ground: while it cooks a
-## thin smoke of pale dots rises off it; done, a couple of sparks jump from it
+## thin smoke rises off it (`_step_steam`); done, a couple of sparks jump from it
 ## every half second until it is collected.
 func _mark_station_work() -> void:
 	var now := game.clock.minutes
 	var tick := floori(_time * 2.0)
+	_cooking.clear()
 	for job in Survival.cooking(game):
 		var p: Vector2 = job.pos
 		if p.distance_to(game.player.pos) > FIRE_RADIUS:
 			continue
 		var at := game.world.to_3d(p) + Vector3(0, 0.45, 0)
 		if float(job.done) > now:
-			_dust(at, 3, 0.18, [Palette.STONE[5], Palette.LINEN[5]], tick * 7 + floori(p.x), 0.9, 1.4)
+			if _cooking.size() < STEAM_AT:
+				_cooking.append(at)
 		else:
 			_sparks(at, 2, tick * 11 + floori(p.y))
+
+
+## The smoke off each thing cooking: soft puffs on a wavering thread, swelling
+## and thinning as they rise, the fire's own (FireModel.smoke_material).
+func _step_steam() -> void:
+	for j in STEAM_AT:
+		for i in STEAM_PUFFS:
+			var n := j * STEAM_PUFFS + i
+			if j >= _cooking.size():
+				_steam.hide(n)
+				continue
+			var at := _cooking[j]
+			var run := _time + float(i) * STEAM_LIFE / float(STEAM_PUFFS) + float(j) * 0.37
+			var age := fposmod(run, STEAM_LIFE)
+			var k := age / STEAM_LIFE
+			var cycle := floori(run / STEAM_LIFE)
+			var sway := Vector3(sin(age * 2.6 + float(j)) * 0.06, 0.0, cos(age * 1.9) * 0.05) * (0.3 + k)
+			var side := Vector3(Rng.hash01(j, i, cycle, 6) - 0.5, 0.0, Rng.hash01(j, i, cycle, 7) - 0.5) * 0.12 * k
+			var col := FireModel.SMOKE_WARM.lerp(FireModel.SMOKE_COOL, smoothstep(0.0, 0.4, k))
+			col.a = FireModel.SMOKE_ALPHA * 0.7 * smoothstep(0.0, 0.12, k) * (1.0 - smoothstep(0.3, 1.0, k))
+			_steam.put(n, at + Vector3(0.0, age * 0.42, 0.0) + sway + side, lerpf(0.1, 0.42, sqrt(k)), col)
 
 
 func _follow_job(delta: float) -> void:
