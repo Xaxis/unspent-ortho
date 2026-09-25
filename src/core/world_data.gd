@@ -154,6 +154,17 @@ var ore_counted := false
 var section_props: Dictionary = {}
 var section_spans: Dictionary = {}
 var sectioned := false
+## PROP IDS. A generated prop's id is (section << ORDINAL_BITS) | ordinal,
+## the order its section laid it (GenIds): a change in one section renumbers
+## no other, and a streamed section rebuilt from the plan gets the same ids.
+## A prop set down after generation takes BUILT_BIT | n. `props` holds the
+## generated props section by section, then the set-down ones in order, and
+## `section_start[s]` is where section s begins in it (its last entry is where
+## the set-down ones begin). A world built by hand has no sections and its ids
+## are its list positions.
+const ORDINAL_BITS := 20
+const BUILT_BIT := 1 << 30
+var section_start := PackedInt32Array()
 
 
 func _init(p_seed: int, p_size: int) -> void:
@@ -253,8 +264,56 @@ func to_3d(p: Vector2) -> Vector3:
 	return Vector3(p.x, height_at(p), p.y)
 
 
-## A prop set down after generation: appended with the next id and filed in its
-## section, so a reader asking by section sees it.
+## A prop set down after generation: appended and filed in its section, so a
+## reader asking by section sees it. Its id comes from `next_id()`.
 func add_prop(p: WorldProp) -> void:
 	props.append(p)
 	WorldSections.file(self, p)
+
+
+## The id the next prop set down takes.
+func next_id() -> int:
+	return id_at(props.size())
+
+
+## How many props generation laid: set-down props stand after them.
+func generated() -> int:
+	return section_start[section_start.size() - 1] if not section_start.is_empty() else 0
+
+
+## The prop with this id, or null.
+func prop(id: int) -> WorldProp:
+	var at := position_of(id)
+	return props[at] if at >= 0 and at < props.size() else null
+
+
+## Where the prop with this id stands in `props`, or -1.
+func position_of(id: int) -> int:
+	if id < 0:
+		return -1
+	if id & BUILT_BIT:
+		return generated() + (id & ~BUILT_BIT)
+	if section_start.is_empty():
+		return id
+	var s := id >> ORDINAL_BITS
+	if s + 1 >= section_start.size():
+		return -1
+	var at := section_start[s] + (id & ((1 << ORDINAL_BITS) - 1))
+	return at if at < section_start[s + 1] else -1
+
+
+## The id of the prop at this position in `props`.
+func id_at(at: int) -> int:
+	var gen := generated()
+	if at >= gen:
+		return BUILT_BIT | (at - gen) if not section_start.is_empty() else at
+	var lo := 0
+	var hi := section_start.size() - 2
+	# The last section starting at or before `at`.
+	while lo < hi:
+		var mid := (lo + hi + 1) >> 1
+		if section_start[mid] <= at:
+			lo = mid
+		else:
+			hi = mid - 1
+	return (lo << ORDINAL_BITS) | (at - section_start[lo])

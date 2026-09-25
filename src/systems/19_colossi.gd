@@ -355,8 +355,7 @@ func _the_treads_own(id: int) -> bool:
 	for m: Dictionary in game.world.landmarks:
 		if StringName(m.get("kind", &"")) != &"tread" or not m.has("props"):
 			continue
-		var span: Vector2i = m.props
-		if id >= span.x and id < span.y:
+		if PackedInt32Array(m.props).has(id):
 			return true
 	return false
 

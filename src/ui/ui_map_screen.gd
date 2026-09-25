@@ -478,10 +478,12 @@ func _draw_overlay() -> void:
 	for line: Dictionary in game.world.lines:
 		var ids: PackedInt32Array = line.get("props", PackedInt32Array())
 		for i in range(1, ids.size()):
-			if ids[i - 1] >= game.world.props.size() or ids[i] >= game.world.props.size():
+			var pa := game.world.prop(ids[i - 1])
+			var pb := game.world.prop(ids[i])
+			if pa == null or pb == null:
 				continue
-			var a := game.world.props[ids[i - 1]].pos
-			var b := game.world.props[ids[i]].pos
+			var a := pa.pos
+			var b := pb.pos
 			if explored == null or not (explored.seen(floori(a.x), floori(a.y)) or explored.seen(floori(b.x), floori(b.y))):
 				continue
 			_dotted(ci, to_screen(a), to_screen(b), Color(UiTheme.MACHINE[2], 0.85), 4, inner)

@@ -437,7 +437,7 @@ func bind_section(s: Vector2i) -> void:
 			_far_props[bk] = []
 		_far_props[bk].append(p)
 	for span: Vector2i in WorldSections.spans_in(w, s):
-		var key := _key_of(w.props[span.x].pos)
+		var key := _key_of(w.prop(span.x).pos)
 		if not _cables_by_chunk.has(key):
 			_cables_by_chunk[key] = []
 		_cables_by_chunk[key].append(span)
@@ -1220,8 +1220,8 @@ func _snapshot(key: Vector2i) -> Array:
 			props.append(p)
 	var spans: Array = []
 	for pair: Vector2i in _cables_by_chunk.get(key, []):
-		var a := world.props[pair.x]
-		var b := world.props[pair.y]
+		var a := world.prop(pair.x)
+		var b := world.prop(pair.y)
 		if not world.depleted.has(a.id) and not world.depleted.has(b.id):
 			spans.append([a, b])
 	return [props, spans]

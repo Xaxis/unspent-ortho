@@ -195,9 +195,9 @@ static func _buckets_whole(w: WorldData) -> Array:
 			continue
 		var ids := PackedInt32Array(line["props"])
 		for j in ids.size() - 1:
-			if ids[j] < 0 or ids[j + 1] < 0 or ids[j] >= w.props.size() or ids[j + 1] >= w.props.size():
+			if w.prop(ids[j]) == null or w.prop(ids[j + 1]) == null:
 				continue
-			var key := WorldView._key_of(w.props[ids[j]].pos)
+			var key := WorldView._key_of(w.prop(ids[j]).pos)
 			if not cables.has(key):
 				cables[key] = []
 			cables[key].append(Vector2i(ids[j], ids[j + 1]))

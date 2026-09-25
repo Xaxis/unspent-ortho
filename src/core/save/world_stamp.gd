@@ -154,7 +154,12 @@ const UNKNOWN := "unknown"
 ##     Every seed moves, at 256 too (through the coast's form alone).
 ##     Terraces take a `shelf` height and `shelf_var` (the crags'), so tall
 ##     land stands as cliffs between shelves, not a stair of equal treads.
-const GEN := 28
+## 29. Prop ids are section ids (`GenIds`): (section << 20) | the order laid
+##     in that section, and a prop set down later takes BUILT_BIT | n. No tile
+##     moves; every id does, and with it whatever an id seeds (a tree's lean and
+##     growth, a prop's hung pieces, the words a thing deals). Saves made on 28
+##     keep ids that name other props, so they are refused.
+const GEN := 29
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

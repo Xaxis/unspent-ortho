@@ -590,7 +590,7 @@ static func build(game: Game, station: StringName, free: bool = false, charge: b
 ## A new prop in the world: data, collision and view. `rot` NAN = turned by its id.
 static func add_prop(game: Game, kind: int, pos: Vector2, rot: float = NAN, scale: float = 1.0) -> WorldProp:
 	var w := game.world
-	var id := w.props.size()
+	var id := w.next_id()
 	var prop := WorldProp.new(id, kind, pos, Rng.hash01(w.seed_value, id, 77) * TAU if is_nan(rot) else rot, scale)
 	w.add_prop(prop)
 	game.query.add_prop(prop)
@@ -961,9 +961,9 @@ static func sweep(game: Game, _delta: float) -> void:
 	var now := game.clock.minutes
 	var w := game.world
 	for id: int in w.depleted.keys():
-		if float(w.depleted[id]) > now or id < 0 or id >= w.props.size():
+		var prop := w.prop(id)
+		if float(w.depleted[id]) > now or prop == null:
 			continue
-		var prop := w.props[id]
 		# Nothing grows back through a body standing in it.
 		if prop.solid > 0.0 and prop.pos.distance_to(game.player.pos) < prop.solid + Tuning.PLAYER_RADIUS:
 			w.depleted[id] = now + 30.0

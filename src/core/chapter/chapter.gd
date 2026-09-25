@@ -129,10 +129,9 @@ static func ore_taken(world: WorldData, region_id: int) -> int:
 		return 0
 	var n := 0
 	for id: Variant in world.depleted:
-		var i := int(id)
-		if i < 0 or i >= world.props.size():
+		var p := world.prop(int(id))
+		if p == null:
 			continue
-		var p: WorldProp = world.props[i]
 		if kinds.has(p.kind) and world.region_at(floori(p.pos.x), floori(p.pos.y)) == region_id:
 			n += 1
 	return n

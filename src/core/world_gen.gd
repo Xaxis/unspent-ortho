@@ -161,6 +161,7 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	w.road = c.road
 	w.recipe = c.recipe
 	GenDigest.run(w)
+	GenIds.run(w)
 	var total := 0.0
 	for k: StringName in marks:
 		total += marks[k]

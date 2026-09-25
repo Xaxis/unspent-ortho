@@ -785,9 +785,9 @@ func _refresh_remnants() -> void:
 	for name: StringName in _remnant_mm:
 		lists[name] = []
 	for id: int in w.depleted:
-		if id < 0 or id >= w.props.size():
+		var p := w.prop(id)
+		if p == null:
 			continue
-		var p := w.props[id]
 		var r := RemnantModels.for_kind(p.kind)
 		if r == &"" or p.pos.distance_to(here) > REMNANT_RADIUS:
 			continue
@@ -796,9 +796,9 @@ func _refresh_remnants() -> void:
 	var marked := {}
 	for key: String in spent:
 		var id := key.get_slice(":", 0).to_int()
-		if id < 0 or id >= w.props.size() or w.depleted.has(id):
+		var p := w.prop(id)
+		if p == null or w.depleted.has(id):
 			continue
-		var p := w.props[id]
 		var opts := Takes.options(p.kind)
 		var index := key.get_slice(":", 1).to_int()
 		var verb: StringName = (opts[index] as Dictionary).verb if index >= 0 and index < opts.size() else &""

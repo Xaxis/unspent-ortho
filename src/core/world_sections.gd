@@ -62,9 +62,10 @@ static func _index(w: WorldData) -> void:
 			continue
 		var ids := PackedInt32Array(line["props"])
 		for j in ids.size() - 1:
-			if ids[j] < 0 or ids[j + 1] < 0 or ids[j] >= w.props.size() or ids[j + 1] >= w.props.size():
+			var a := w.prop(ids[j])
+			if a == null or w.prop(ids[j + 1]) == null:
 				continue
-			var s := of(w.props[ids[j]].pos)
+			var s := of(a.pos)
 			if not w.section_spans.has(s):
 				w.section_spans[s] = [] as Array[Vector2i]
 			(w.section_spans[s] as Array[Vector2i]).append(Vector2i(ids[j], ids[j + 1]))
