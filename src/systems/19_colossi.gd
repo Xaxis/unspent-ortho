@@ -441,6 +441,20 @@ func _crush_treads() -> void:
 
 ## The world under the player changed (a shaft, a gate): its treads are the new
 ## world's, and nothing of the old one's pads may stop a body here.
+## THROUGH A DOOR IT SLEEPS (GameSystem.sleep_indoors): the walkers, their feet
+## and the treads are the outside's, and the outside is set aside whole and put
+## back. Answered as a crossing instead, the way out handed every tread on the
+## island over again and crushed it into the land, 270 to 590 ms on GEN 28's
+## coast, a room's whole way out. Going in, the legs' shadows are taken off the
+## land first, or the last ones drawn stay painted on the room's floor.
+func indoors(inside: bool) -> void:
+	if inside and view != null:
+		_cast(false)
+		hum = 0.0
+		gaze = 0.0
+	sleep_indoors(inside)
+
+
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	if view == null:
 		return
