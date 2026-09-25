@@ -226,3 +226,66 @@ func test_every_ring_of_cast_stones_keeps_a_bunker() -> void:
 			kinds[sl.slot] = true
 		for want: StringName in [&"desk", &"terminal", &"wall"]:
 			check(kinds.has(want), "%s: the bunker has a %s slot for the story" % [t.key, want])
+
+
+## A LANDSCAPE'S OWN FORM KEEPS ITS OWN ROOM (`form:ID` before `house`): in the
+## crags only the roundhouse is anyone's home, so every roundhouse there has a
+## door into a round room and no broch or byre has any door at all.
+func test_every_crags_roundhouse_and_only_it_opens_on_a_round_room() -> void:
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var crags := BiomeRegistry.index_of(&"the_crags")
+	var doors := {}
+	for t: Threshold in Interiors.thresholds(w):
+		if t.host_code == PropKind.HOUSE:
+			doors[t.key] = t
+	var rounds := 0
+	for p: WorldProp in w.props:
+		if p.kind != PropKind.HOUSE or w.country_at(floori(p.pos.x), floori(p.pos.y)) != crags:
+			continue
+		var key := "house@%d,%d" % [floori(p.pos.x * 4.0), floori(p.pos.y * 4.0)]
+		var form := Interiors.form_of(p, w.seed_value, crags)
+		if form == &"roundhouse":
+			rounds += 1
+			check(doors.has(key) and (doors[key] as Threshold).kind == &"roundhouse",
+				"the roundhouse at %s opens on a round room" % p.pos)
+		else:
+			check(not doors.has(key), "the %s at %s has no door" % [form, p.pos])
+	gt(float(rounds), 0.0, "seed 4 has roundhouses in the crags")
+
+
+## EVERY BAY OF A ROUNDHOUSE CAN BE WALKED INTO, between piers that stand as
+## solid as they are drawn: from the doorway to the fire's side, the bed's side
+## and the front of every other thing a bay keeps, with the real query and the
+## room's real blocks (21_doors._walls).
+func test_every_roundhouse_bay_can_be_walked_to() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var n := 0
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind != &"roundhouse":
+			continue
+		n += 1
+		var l := InteriorGen.grow(4, t).layout
+		var q := WorldQuery.new(InteriorGen.grow(4, t).world)
+		var blocks: Array[Vector3] = doors_script.call(&"_walls", l)
+		q.set_blocks(&"rooms", blocks)
+		var reach := _reach(q, l.inside())
+		var goals := {"fire": l.hearth + (l.inside() - l.hearth).normalized() * 1.2}
+		var piers := 0
+		for th: Dictionary in l.things:
+			if th.kind == &"pier":
+				piers += 1
+				# A pier stops a body along its whole depth, not only at its foot.
+				var tip := (th.at as Vector2) + (th.face as Vector2) * float(th.deep) * 0.5
+				var held := false
+				for b: Vector3 in blocks:
+					if Vector2(b.x, b.y).distance_to(tip) < b.z + 0.05:
+						held = true
+				check(held, "%s: the pier's inner end at %s stops a body" % [t.key, tip])
+			elif th.kind in [&"bed", &"kist", &"quern", &"slates", &"loom", &"peat"]:
+				var off := 0.85 if th.kind == &"bed" else 0.6
+				goals["%s@%s" % [th.kind, th.at]] = (th.at as Vector2) + (th.face as Vector2) * off
+		eq(piers, 8, "%s: eight piers" % t.key)
+		for g: String in goals:
+			check(_reached(reach, goals[g]), "%s: the %s at %s cannot be walked to from the door" % [t.key, g, goals[g]])
+	gt(float(n), 0.0, "seed 4 has roundhouses to walk")

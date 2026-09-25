@@ -148,7 +148,9 @@ func _box_the_room() -> void:
 			continue
 		var a: Vector2 = e.a
 		var b: Vector2 = e.b
-		_room_boxes.append(Shoulder.box_of((a + b) * 0.5, (b - a).angle(), 1.0, Vector2(-0.62, -0.16), Vector2(0.62, 0.16), top))
+		# As long as its edge: a round room's are chords, not unit tiles.
+		var half := (b - a).length() * 0.5 + 0.12
+		_room_boxes.append(Shoulder.box_of((a + b) * 0.5, (b - a).angle(), 1.0, Vector2(-half, -0.16), Vector2(half, 0.16), top))
 	# The way in: a hole in the walls with nothing beyond it.
 	_room_boxes.append(Shoulder.box_of(l.door + l.door_out * 0.8, l.door_out.angle(), 1.0, Vector2(-0.8, -0.9), Vector2(0.8, 0.9), top + 5.0))
 
@@ -709,6 +711,14 @@ static func _walls(l: InteriorLayout) -> Array[Vector3]:
 			var s := Vector2(-(t.face as Vector2).y, (t.face as Vector2).x)
 			out.append(Vector3(at.x + s.x * 0.5, at.y + s.y * 0.5, 0.45))
 			out.append(Vector3(at.x - s.x * 0.5, at.y - s.y * 0.5, 0.45))
+		elif t.has("deep"):
+			# A thing that runs out from its wall (a roundhouse's pier) stands
+			# the whole of its depth, `deep` along its face through `at`.
+			var f: Vector2 = t.face
+			var deep := float(t.deep)
+			for k in 3:
+				var q := at + f * deep * (float(k) / 2.0 - 0.5)
+				out.append(Vector3(q.x, q.y, r))
 		else:
 			out.append(Vector3(at.x, at.y, r))
 	return out
@@ -819,6 +829,15 @@ static func _room_light(kind: StringName) -> Light3D:
 		sp.spot_attenuation = 0.9
 		sp.spot_angle_attenuation = 1.4
 		l = sp
+	elif kind == &"sky":
+		# The day down a smoke hole: a narrow grey shaft onto the hearth, as
+		# strong as the hour (`_light_windows`), nothing at night.
+		var sp := SpotLight3D.new()
+		sp.spot_range = 6.0
+		sp.spot_angle = 26.0
+		sp.spot_attenuation = 0.6
+		sp.spot_angle_attenuation = 2.2
+		l = sp
 	else:
 		var o := OmniLight3D.new()
 		o.omni_attenuation = 1.2
@@ -837,6 +856,8 @@ static func _room_light(kind: StringName) -> Light3D:
 				o.omni_attenuation = 2.0
 		l = o
 	l.light_color = Color(1.0, 0.7, 0.4) if kind == &"lamp" else Color(0.74, 0.72, 0.9)
+	if kind == &"sky":
+		l.light_color = Color(0.8, 0.84, 0.9)
 	if kind == &"working":
 		l.light_color = Color(1.0, 0.66, 0.26)
 	elif kind == &"emergency":
@@ -891,6 +912,8 @@ func _light_windows() -> void:
 				lamp.light_energy = 1.1
 			&"standby":
 				lamp.light_energy = 0.4
+			&"sky":
+				lamp.light_energy = 2.4 * day
 			_:
 				lamp.light_energy = lerpf(1.6, 0.25, day)
 	for i in _windows.size():
@@ -1118,7 +1141,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "strongbox"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "strongbox"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
