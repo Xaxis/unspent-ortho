@@ -49,6 +49,11 @@ const WORKS_LITTER: Array = [[SCRAP, BOLT, WIRE], [SCRAP, CINDER, CAN], [SPOIL, 
 const LITTER_STRAY := 0.04
 const LITTER_WORKS := 0.45
 const STAGES := 3
+## Tiles from something standing within which a grass with a `lee` drifts.
+const LEE_REACH := 2.5
+## Triangles a plant carries per step of weight: under the lens a heavier plant
+## thins sooner with distance (grass.gdshader).
+const HEAVY_TRIS := 40
 
 const Kit := preload("res://src/models/props/kit.gd")
 const P := preload("res://src/render/palette.gd")
@@ -230,13 +235,18 @@ func build_arrays(ch: TerrainMesher.Chunk) -> Array:
 
 
 ## A chunk's decor as [solid arrays, grass arrays, casting grass arrays], each []
-## when empty. Safe on
+## when empty. `props`: what stands in the chunk (WorldProp), which a grass with
+## a `lee` drifts against. Safe on
 ## a worker thread.
-func build_parts(ch: TerrainMesher.Chunk) -> Array:
+func build_parts(ch: TerrainMesher.Chunk, props: Array = []) -> Array:
 	var rng := Rng.make(world.seed_value, Rng.hash_ints(ch.cx, ch.cy, 0xDEC0))
 	var solid := Out.new()
 	var grass := Out.new()
 	var cast := Out.new()
+	var stands := PackedVector2Array()
+	for q: WorldProp in props:
+		if q.solid > 0.0:
+			stands.append(q.pos)
 	var np := ch.n + 1
 	for ty in ch.h:
 		for tx in ch.w:
@@ -278,6 +288,22 @@ func build_parts(ch: TerrainMesher.Chunk) -> Array:
 			var shore := ch.shore[ty * ch.w + tx]
 			var wx := ch.x0 + tx
 			var wy := ch.y0 + ty
+			# In the lee of something standing: the drift a species with a `lee`
+			# lays against it, as extra plants of that species on this tile.
+			var lee_kind := -1
+			if not stands.is_empty():
+				var near := LEE_REACH
+				var mid := Vector2(wx + 0.5, wy + 0.5)
+				for sp: Vector2 in stands:
+					near = minf(near, mid.distance_to(sp))
+				if near < LEE_REACH:
+					var own_grasses := BiomeRegistry.by_index(country).grasses
+					for gi in own_grasses.size():
+						var gs: GrassSpecies = own_grasses[gi]
+						if gs.lee > 0.0 and (table[0] as PackedInt32Array).has(GRASS_A + gi):
+							lee_kind = GRASS_A + gi
+							count += int(gs.lee * (1.0 - near / LEE_REACH) + rng.randf())
+							break
 			for i in count:
 				var dress := country
 				var kind: int
@@ -286,6 +312,8 @@ func build_parts(ch: TerrainMesher.Chunk) -> Array:
 					dress = other
 				else:
 					kind = _pick(table, rng.randf())
+				if lee_kind >= 0 and i >= count - 3 and rng.randf() < 0.8:
+					kind = lee_kind
 				if _SPECK[kind] == 1 and gather < 0.56:
 					# Out of a drift: the ground's own blades and stones only.
 					kind = _pick(table, 0.0)
@@ -295,6 +323,14 @@ func build_parts(ch: TerrainMesher.Chunk) -> Array:
 					kind = PEBBLES if g == Ground.SHINGLE else (MARRAM if g == Ground.SAND else TUFT)
 				var fx := 0.08 + rng.randf() * 0.84
 				var fy := 0.08 + rng.randf() * 0.84
+				# A grass that seeks the crust's cracks roots on the nearest lifted
+				# rim, or not at all (SaltCrust, the ground's own plates).
+				if g == Ground.SALT and kind >= GRASS_A and kind <= GRASS_C and species(kind, dress).rims:
+					var on := SaltCrust.snap(Vector2(wx + fx, wy + fy))
+					if on == Vector2.INF or floori(on.x) != wx or floori(on.y) != wy:
+						continue
+					fx = on.x - wx
+					fy = on.y - wy
 				# Litter: a stray piece anywhere, thick where the machines worked.
 				var lr := rng.randf()
 				if works != null:
@@ -392,6 +428,8 @@ static func template(kind: int, country: int, stage: int = 0) -> Tpl:
 		if kind >= GRASS_A and kind <= GRASS_C:
 			t.motion = species(kind, country).motion_code()
 			t.casts = species(kind, country).casts
+		if t.sways:
+			t.motion += 100 * clampi(t.v.size() / 3 / HEAVY_TRIS, 0, 9)
 		_templates[key] = t
 	_lock.unlock()
 	return t
@@ -434,8 +472,22 @@ static func _grow(k: Kit, g: GrassSpecies, s: int, stage: int) -> void:
 		k.sickle(base, tip, out * reach * g.curl + Vector3(0.0, hh * 0.08, 0.0), g.width, a + 1.57, root, top)
 		if i < g.heads:
 			# A soft head, not a flake: a small rounded tuft on the stem's tip.
-			k.clump(tip.x, tip.y - g.head_size * 0.3, tip.z, g.head_size * 0.7, g.head_size * 1.2, s + i, g.head_color, 5)
+			_head(k, tip + Vector3(0.0, g.head_size * 0.35, 0.0), g.head_size * 0.55, g.head_color)
 	k.sway_by_height(0, 0.0, g.height.y, 1.0)
+
+
+## A seed head: a small eight-faced puff, lit by grass.gdshader's sky-bent
+## normal so it reads as a soft round tuft. Eight triangles where a clump was
+## thirty: a bog is thick with them.
+static func _head(k: Kit, c: Vector3, r: float, col: Color) -> void:
+	var up := c + Vector3(0.0, r * 1.2, 0.0)
+	var dn := c - Vector3(0.0, r * 0.9, 0.0)
+	var ring: Array[Vector3] = [c + Vector3(r, 0, 0), c + Vector3(0, 0, r), c + Vector3(-r, 0, 0), c + Vector3(0, 0, -r)]
+	for n in 4:
+		var a := ring[n]
+		var b := ring[(n + 1) % 4]
+		k.made.tri(a, b, up, col)
+		k.made.tri(b, a, dn, col)
 
 
 ## Where along a frond's arch its rachis is at `t` 0..1: up out of the crown,
