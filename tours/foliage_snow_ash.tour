@@ -1,0 +1,29 @@
+# Snow and ash on the grass (grass.gdshader, slice 4), where they can lie on it.
+# What settles on a blade is masked by what its ground can hold (SkyGround),
+# as on the ground itself, so this is shot where a snowy and an ashen landscape
+# meet grass: on seed 12 the snowfield meets the grey orchards' turf and the
+# burning meets the sulphur jungle's. Each weather beside a dry frame of the
+# same place and hour, over the shoulder.
+#   tools/tour.sh tours/foliage_snow_ash.tour --seed=12
+hour 11
+coast calm
+place snowfield-grey_orchards
+ground grass
+hold shoulder_peek
+await shoulder 3
+weather clear:0:wind=0.5
+wait 3.0
+shot 01-orchard-grass-by-the-snowfield-dry with border:snowfield-grey_orchards
+weather snow:1:wind=0.5
+wait 4.0
+shot 02-orchard-grass-by-the-snowfield-snow with border:snowfield-grey_orchards
+place burning-sulphur_jungle
+ground grass
+weather clear:0:wind=0.5
+wait 3.0
+shot 03-jungle-grass-by-the-burning-dry with border:burning-sulphur_jungle
+weather ash:1:wind=0.5
+wait 4.0
+shot 04-jungle-grass-by-the-burning-ash with border:burning-sulphur_jungle
+release shoulder_peek
+weather rules
