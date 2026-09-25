@@ -16,7 +16,7 @@ const TOUR := preload("res://src/systems/98_tour.gd")
 ## works if the list is kept beside the runner.
 const COMMANDS := ["at", "near", "ground", "place", "ledge", "leap", "village", "hour", "zoom", "weather",
 	"walk", "press", "hold", "release", "tap", "wait", "shot", "await", "until", "spawn",
-	"choose", "coast", "walkto", "perf", "echo", "key", "mouse", "same", "try", "end", "stale"]
+	"choose", "coast", "walkto", "perf", "echo", "key", "mouse", "same", "try", "end", "stale", "under"]
 ## Subject prefixes with something to check behind them.
 const BODY_PREFIXES := ["mob:", "down:", "body:"]
 
@@ -172,7 +172,7 @@ func test_a_spawn_is_always_followed_by_a_frame_that_claims_it() -> void:
 			var parts := raw.strip_edges().split(" ", false)
 			if parts.is_empty() or parts[0].begins_with("#"):
 				continue
-			if parts[0] == "spawn" and parts.size() > 1:
+			if parts[0] in ["spawn", "under"] and parts.size() > 1:
 				# Through the same door the tour and boot read it by, so a token
 				# that carries a bearing (`runner@-112`) is still held to naming
 				# a kind the roster has.

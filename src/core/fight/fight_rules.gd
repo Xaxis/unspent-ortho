@@ -174,6 +174,13 @@ static func reaches(part: StringName, body_pos: Vector2, body_facing: float, swi
 const LEDGE_LEVELS := 2
 
 
+## Levels below a jump's take-off a body must stand for the landing beside it to
+## be a drop strike (FightSim.drop_strike): a ledge, the same two a jump goes up.
+## A hop or a step down lands as feet, or jumping beside a machine would open its
+## plate at will.
+const DROP_LEVELS := 2
+
+
 ## Can a blow pass between a body on `a_level` and one on `b_level`?
 static func levels_meet(a_level: int, b_level: int) -> bool:
 	return absi(a_level - b_level) < LEDGE_LEVELS

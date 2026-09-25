@@ -230,6 +230,15 @@ func _handle(events: Array[Dictionary]) -> void:
 				Events.sfx.emit(&"swing", player.position)
 				if b != null:
 					player.model.play_action(&"swing", b.committed() / 1000.0)
+			&"drop_strike":
+				# Came down on it: the swing is thrown from the landing, and the ground
+				# under the feet takes the weight in one ring of its own dust.
+				var b := hero.blow
+				Events.sfx.emit(&"swing", player.position)
+				if b != null:
+					player.model.play_action(&"swing", b.committed() / 1000.0)
+				MobFx.ring(fx, _at3(hero.pos), _dust_colour(hero.pos), 0.9, 0.3)
+				game.camera.shake(0.05, 0.1)
 			&"dulled":
 				Events.message.emit(FightRules.DULL_LINE)
 			&"opened":

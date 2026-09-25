@@ -17,7 +17,8 @@ extends RefCounted
 ##   opened (a machine's bite is spent: its working part is open), dulled (a
 ##   blow that met a body wore the edge past dull), noticed (an indifferent
 ##   body looked up), crowded (the player holds a worker up on its round),
-##   crowd_warning (half way to it taking that as interference), disturbed
+##   crowd_warning (half way to it taking that as interference), disturbed,
+##   drop_strike (a jump's landing thrown as a blow: FightSim.drop_strike)
 
 const NAV_EVERY_MS := 240.0
 ## Tiles/s at most that a standing body eases the player out of itself.
@@ -198,7 +199,7 @@ func _presses() -> void:
 func _swing() -> void:
 	var inv := hero.inventory
 	var held: StringName = inv.held if inv != null else &""
-	var b := Blow.for_item(held, inv.edge(held) if inv != null and held != &"" else 10000)
+	var b := _held_blow()
 	var at_lock := is_nan(_swing_aim) and LockOn.locked(hero.lock) \
 		and (hero.lock - hero.pos).length() >= LockOn.NEAR
 	if not is_nan(_swing_aim):
@@ -236,6 +237,51 @@ func _swing() -> void:
 	# The edge wears where it meets something: a swing at air costs wind, not edge.
 	_blow_wore = false
 	emit(&"swing", {"item": held, "dry": dry})
+
+
+## THE JUMP'S LANDING AS A BLOW. Called by whatever lands a jump (54_gear) with
+## the level it took off from. A body in reach of the held blow that stands a
+## ledge (FightRules.DROP_LEVELS) or more below that take-off was come down ON,
+## whatever step the feet happen to find beside it, and the feet ARE the blow: it
+## is live the instant they touch, turned onto the nearest such body, and it
+## opens any plate (`cuts`) for that one hit, so a machine that waits under a
+## ledge can be come down on from any side. Nothing in reach, or no drop, and it
+## was only a landing. Costs no wind: the jump paid for it. True if it struck.
+func drop_strike(from_level: int) -> bool:
+	if hero.swimming or hero.held() or hero.stunned(now) or hero.committed(now):
+		return false
+	var b := _held_blow()
+	var best: MobState = null
+	var best_d := INF
+	for m in mobs:
+		if not m.alive or m.removed or not meets(hero.pos, m.pos):
+			continue
+		if from_level - level_of(m.pos) < FightRules.DROP_LEVELS:
+			continue
+		var d := hero.pos.distance_to(m.pos)
+		if d <= hero.radius + b.reach + m.radius and d < best_d:
+			best_d = d
+			best = m
+	if best == null:
+		return false
+	hero.facing = (best.pos - hero.pos).angle()
+	var inv := hero.inventory
+	if b.wick > 0 and not FightRules.spend_charges(inv, b.wick):
+		b.dry()
+	b.windup = 0
+	b.cuts = true
+	hero.start_blow(b, now)
+	_whiff_checked = false
+	_blow_wore = false
+	emit(&"drop_strike", {"item": inv.held if inv != null else &"", "fell": from_level - level_of(best.pos), "target": best})
+	return true
+
+
+## The blow of whatever is in the hand now, at its edge.
+func _held_blow() -> Blow:
+	var inv := hero.inventory
+	var held: StringName = inv.held if inv != null else &""
+	return Blow.for_item(held, inv.edge(held) if inv != null and held != &"" else 10000)
 
 
 func _dodge() -> void:

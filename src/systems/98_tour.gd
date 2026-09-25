@@ -19,6 +19,11 @@ extends GameSystem
 ##   place NAME             teleport to a named place (GenPlaces: spawn, a country, an ecotone a-b, a landmark)
 ##   ledge up|across|down   stand, facing it, where a jump of that kind lands: the
 ##                          nearest spot `Jump.find` names, never a coordinate
+##   under KIND[@DEG]       after `ledge down`: put a roster body on the low ground
+##                          just past where the jump the player faces comes down,
+##                          turned away from the lip (or to DEG), so the landing is
+##                          at its back; fails when that jump is no drop (the drop
+##                          strike, FightSim.drop_strike)
 ##   leap SECS              walk the way the player FACES for SECS on the real move
 ##                          path and press the real jump key at the end of it, so a
 ##                          jump is taken on the move the way a player takes one
@@ -451,6 +456,8 @@ func _run() -> void:
 				await _until(parts[1], parts[2].to_float() if parts.size() > 2 else 5.0)
 			"spawn":
 				ok = await _spawn(parts[1])
+			"under":
+				ok = await _spawn_under(parts[1])
 			"choose":
 				ok = await _choose(StringName(parts[1]))
 			"coast":
@@ -1031,6 +1038,51 @@ func _spawn(token: String) -> bool:
 			% [_name, kind, m.pos, game.player.pos, game.camera.view_height if game.camera != null else 0.0])
 		return false
 	print("tour spawn %s: %s at %s, %.1f tiles off, in frame" % [kind, m.kind, m.pos, m.pos.distance_to(game.player.pos)])
+	return true
+
+
+## `under`: a body waiting below the lip the player faces, a reach past where
+## the jump comes down, so what lands is a drop strike and not a walk-in. Placed
+## by the spawner first (the node, the frame check) and then stood there.
+func _spawn_under(token: String) -> bool:
+	var dir := Vector2.from_angle(game.player.facing)
+	var plan := Jump.plan(game.world, game.query, game.player.pos, dir, Jump.CARRY)
+	if plan.kind != Jump.DOWN:
+		printerr("tour %s: the jump faced from %s is a %s, not a drop" % [_name, game.player.pos, plan.kind])
+		return false
+	var staged := Spawner.staged(token)
+	var id: StringName = staged.id
+	if id == &"":
+		printerr("tour %s: the roster has no %s" % [_name, token])
+		return false
+	var mobs := _system("30_mobs")
+	var facing: float = staged.facing if not is_nan(float(staged.facing)) else dir.angle()
+	var m := mobs.call("place_near_player", id, facing) as MobState if mobs != null else null
+	if m == null:
+		printerr("tour %s: nothing placed a %s near %s" % [_name, token, game.player.pos])
+		return false
+	# Straight on past the landing if the low ground runs that way, else the
+	# nearest bearing round it that does: a lip is seldom square to the jump.
+	var at := Vector2.INF
+	var gap := m.radius + Tuning.PLAYER_RADIUS + 0.25
+	for i in 13:
+		var turn := float((i + 1) / 2) * (0.35 if i % 2 == 1 else -0.35)
+		var p := plan.to + dir.rotated(turn) * gap
+		if game.query.standable(floori(p.x), floori(p.y)) and game.world.level_at(floori(p.x), floori(p.y)) == plan.to_level:
+			at = p
+			break
+	if at == Vector2.INF:
+		printerr("tour %s: no low ground for a %s past the landing at %s" % [_name, token, plan.to])
+		return false
+	m.pos = at
+	m.home = at
+	m.line_a = at
+	m.line_b = at
+	m.facing = facing
+	m.aim = facing
+	for i in 3:
+		await get_tree().process_frame
+	print("tour under %s: at %s, landing %s, %d levels down" % [token, at, plan.to, plan.from_level - plan.to_level])
 	return true
 
 
