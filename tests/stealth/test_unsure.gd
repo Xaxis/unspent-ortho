@@ -55,3 +55,19 @@ func test_a_player_who_keeps_out_of_its_sight_is_never_found() -> void:
 		F.ms(sim, 100)
 	lt(m.suspicion, 0.5, "twelve tiles behind it, standing still, it never becomes unsure (%.2f)" % m.suspicion)
 	check(m.mood == MobState.IDLE, "and goes on keeping its post")
+
+
+## A WALL HIDES. A room's walls stand in the query as blocks (21_doors), and a
+## machine's line of sight is stopped by them as by a boulder -- or a warden
+## looked through a bay's wall at whoever hid in it.
+func test_a_wall_between_a_machine_and_the_player_hides_them() -> void:
+	var sim := F.make_sim(F.flat_world(64), Vector2(20.5, 24.5))
+	var m := _keeper(sim, Vector2(20.5, 29.5), -PI * 0.5)
+	check(StealthQuery.sees(m.row, m.pos, sim.hero.pos, sim.moment, sim.world, sim.query, m.facing), "in the open, in its cone, it sees them")
+	var wall: Array[Vector3] = []
+	for k in 9:
+		wall.append(Vector3(18.5 + 0.5 * float(k), 27.0, 0.3))
+	sim.query.set_blocks(&"rooms", wall)
+	check(not StealthQuery.sees(m.row, m.pos, sim.hero.pos, sim.moment, sim.world, sim.query, m.facing), "a wall across the line, it does not")
+	sim.query.set_blocks(&"rooms", [] as Array[Vector3])
+	check(StealthQuery.sees(m.row, m.pos, sim.hero.pos, sim.moment, sim.world, sim.query, m.facing), "and the wall gone, it does again")

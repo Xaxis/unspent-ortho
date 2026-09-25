@@ -432,12 +432,12 @@ func _stand_turrets() -> void:
 	_turrets.clear()
 	for t: Dictionary in pocket.layout.things:
 		if t.kind == &"turret":
-			_turrets.append(HallTurret.new(t.at, t.face))
+			_turrets.append(HallTurret.new(t.at, t.face, float(_turrets.size()) * StealthQuery.SWEEP_PERIOD * 0.37))
 
 
 ## What a hall turret's eye is to the stealth rules: a machine's optics that see
 ## as far as it reaches.
-const TURRET_EYE := {"sees": HallTurret.REACH, "machine": true}
+const TURRET_EYE := {"sees": HallTurret.REACH, "machine": true, "role": &"watcher"}
 ## The walls between the pocket's rooms, by their middles (`_corner`), for the
 ## turrets' lines. Built on first ask; cleared with the room.
 var _walls_between: Dictionary = {}
@@ -457,14 +457,16 @@ func _run_turrets() -> void:
 			model.call(&"aim_turret", i, tu.facing, false)
 			continue
 		var clear := _turret_sees(tu.at, target)
-		# Its eye is a machine's optics: it NOTICES the player only within what
-		# it sees of them as they are (StealthQuery: less of someone crouched in
-		# the dark), and once it has come round on them it keeps its full reach.
-		# Noticing anyone in its line at eight tiles, it found every player in
-		# the hall however quiet, and its shots woke every machine there.
-		var had := tu.aim_since != INF
-		if clear and not had and tu.at.distance_to(target) > StealthQuery.sight_range(TURRET_EYE, sim.moment):
-			clear = false
+		# Its eye is a watcher's optics: idle, it sweeps its cone to and fro on
+		# a fixed rhythm, and NOTICES the player only in that cone and within
+		# what it sees of them as they are (StealthQuery: less of someone
+		# crouched in the dark). Once it has come round on them it keeps its
+		# full reach. Noticing anyone in its line at eight tiles, it found every
+		# player in the hall however quiet, and its shots woke every machine.
+		if not tu.aiming():
+			tu.facing = tu.swept(now)
+			if clear and not _turret_notices(tu, target, sim):
+				clear = false
 		var what := tu.step(now, target, clear)
 		model.call(&"aim_turret", i, tu.facing, what == &"aim", tu.at.distance_to(target))
 		_aiming = _aiming or what == &"aim"
@@ -474,6 +476,36 @@ func _run_turrets() -> void:
 			Events.sfx.emit(&"turret_fire", game.world.to_3d(tu.at))
 			if sim.strike_hero(HallTurret.blow(), tu.at):
 				_turret_fired = true
+
+
+## Whether a turret that has nobody would notice someone at `p` now: in its
+## swept cone, in its sight of them as they are, in its line.
+func _turret_notices(tu: HallTurret, p: Vector2, sim: FightSim, facing: float = NAN) -> bool:
+	var f := tu.facing if is_nan(facing) else facing
+	if tu.at.distance_to(p) > StealthQuery.sight_range(TURRET_EYE, sim.moment):
+		return false
+	if not StealthQuery.in_cone(tu.at, f, p, StealthQuery.cone_half(TURRET_EYE)):
+		return false
+	return _turret_sees(tu.at, p)
+
+
+## `walkto` asks this of each next step: would anything in the room have the
+## player there -- a resident's sight, or a turret's swept cone now or a second
+## from now (the time a step takes)? A patient player waits until it would not.
+func tour_safe(p: Vector2) -> bool:
+	if pocket == null:
+		return true
+	var sim: FightSim = game.player.sim
+	for pair: Array in _residents:
+		var m: MobState = pair[1]
+		if m.alive and StealthQuery.sees(m.row, m.pos, p, sim.moment, sim.world, sim.query, m.facing):
+			return false
+	if _warden_stands():
+		for tu: HallTurret in _turrets:
+			for ahead: float in [0.0, 500.0, 1000.0]:
+				if _turret_notices(tu, p, sim, tu.swept(sim.now + ahead)):
+					return false
+	return true
 
 
 ## A turret is mounted high: it sees OVER the racks and the gantry's legs, which
@@ -1188,6 +1220,16 @@ func tour_seen(what: StringName) -> bool:
 			return _box_opened
 		&"box_near":
 			return pocket != null and box_near >= 0
+		&"unnoticed":
+			# In a room and nothing in it has the player: every resident still
+			# idle at its post and no turret coming round.
+			if pocket == null or _aiming:
+				return false
+			for pair: Array in _residents:
+				var m: MobState = pair[1]
+				if m.alive and (m.mood != MobState.IDLE or m.suspicion >= 1.0):
+					return false
+			return true
 		&"warden_down":
 			return pocket != null and not _swapping and not _warden_stands()
 		&"door":
@@ -1310,10 +1352,11 @@ func _seen_along(start: Vector2, route: PackedVector2Array, sim: FightSim) -> fl
 				var m: MobState = pair[1]
 				if m.alive and StealthQuery.sees(m.row, m.pos, q, sim.moment, sim.world, sim.query, m.facing):
 					seen += 1.0
-			# And the turrets' eyes, as they notice (`_run_turrets`).
+			# And the turrets' eyes: a step in a turret's sweep costs a wait, not
+			# a sighting, so it counts for less than a resident who never looks away.
 			for tu: HallTurret in _turrets:
 				if tu.at.distance_to(q) <= StealthQuery.sight_range(TURRET_EYE, sim.moment) and _turret_sees(tu.at, q):
-					seen += 1.0
+					seen += 0.2
 		from = p
 	return seen
 

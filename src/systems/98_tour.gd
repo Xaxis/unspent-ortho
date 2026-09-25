@@ -112,7 +112,8 @@ extends GameSystem
 ##                          (nothing happens when no body is left)
 ##   walkto strongbox SECS  steer the way a quiet player goes to a strongbox in the
 ##                          room (21_doors `tour_route`): by its bay's doorway,
-##                          out of the residents' and turrets' sight
+##                          out of the residents' sight, waiting where the next
+##                          step would be seen (`tour_safe`) as a patient player does
 ##   walkto guard SECS      steer to beside the nearest guard in the room (not its
 ##                          keeper), to fight what keeps it
 ##   walkto shaft SECS      the same steering toward the nearest shaft, stopping
@@ -974,11 +975,23 @@ func _walk_route(what: String, until: int, secs: float) -> bool:
 		printerr("tour %s: nothing gives a way to a %s here" % [_name, what])
 		return false
 	var sim := game.player.sim
+	var safe: Node = null
+	for sys in game.systems:
+		if sys.has_method(&"tour_safe"):
+			safe = sys
 	var i := 0
 	while i < route.size() and Time.get_ticks_msec() < until:
 		var d := route[i] - sim.hero.pos
 		if d.length() <= 0.25:
 			i += 1
+			continue
+		# A patient player: where the next step would be seen they wait -- but
+		# only where they stand hidden. Caught in a sweep, they keep going: a
+		# turret takes most of a second to come round.
+		if safe != null and not bool(safe.call(&"tour_safe", sim.hero.pos + d.normalized() * 0.6)) \
+				and bool(safe.call(&"tour_safe", sim.hero.pos)):
+			game.scripted_seconds = 0.0
+			await get_tree().physics_frame
 			continue
 		game.scripted_move = _keys_toward(d.normalized())
 		game.scripted_run = false
