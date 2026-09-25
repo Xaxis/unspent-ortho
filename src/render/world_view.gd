@@ -139,6 +139,8 @@ var _data: Dictionary = {} # Vector2i -> TerrainMesher.Chunk
 var _props_by_chunk: Dictionary = {} # Vector2i -> Array[WorldProp]
 var _cables_by_chunk: Dictionary = {} # Vector2i -> Array[Vector2i] of prop id pairs
 var _world_mat: ShaderMaterial
+## Whether `works` is on `_world_mat` yet (`_bind_works`).
+var _works_bound := false
 var _water_mat: ShaderMaterial
 ## The leaves' own material (src/render/foliage/leaf.gdshader). One per view, not
 ## PropModels' shared one, for the reason the world material is one per view:
@@ -210,6 +212,7 @@ func setup_sharing(w: WorldData, from: WorldView) -> void:
 func reclaim() -> void:
 	if works != null:
 		works.bind(_world_mat)
+		_works_bound = true
 
 
 ## Point this view at ANOTHER world: a realm crossing (docs/VISION.md,
@@ -271,7 +274,10 @@ func _bind(w: WorldData) -> void:
 	_cables_by_chunk.clear()
 	# The machines' works cut into the ground, for the shader and the decor.
 	works = WorksMap.bake(w)
-	works.bind(_world_mat)
+	# Bound on the MAIN thread (`_bind_works`): binding makes two textures, and
+	# `_bind` runs on a worker for the boot page and the title, where creating a
+	# texture waits on the main thread (the far textures below learnt it first).
+	_works_bound = false
 	decor.works = works
 	_bg_decor.works = works
 	for p in w.props:
@@ -381,7 +387,18 @@ func _write_mask() -> void:
 
 
 func world_material() -> ShaderMaterial:
+	_bind_works()
 	return _world_mat
+
+
+## Put this world's works map on the world material. MAIN THREAD ONLY: it makes
+## textures. Called before anything draws with the material and whenever the
+## main thread first asks for it.
+func _bind_works() -> void:
+	if _works_bound or works == null:
+		return
+	works.bind(_world_mat)
+	_works_bound = true
 
 
 func water_material() -> ShaderMaterial:
@@ -509,6 +526,7 @@ func pending() -> int:
 func _process(_delta: float) -> void:
 	if world == null:
 		return
+	_bind_works()
 	if _task >= 0 and WorkerThreadPool.is_task_completed(_task):
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
@@ -1188,6 +1206,12 @@ func prop_country(p: WorldProp, ch: TerrainMesher.Chunk) -> int:
 
 ## What a chunk's props bake from, taken on the main thread: [standing props,
 ## cable spans as [from prop, to prop]] (taken props left out).
+##
+## The lists are the worker's own; the WorldProps in them are not. A take that
+## works a prop down on the main thread (Harvest.apply_shown) while its chunk
+## bakes changes a field the bake may be reading. That costs one stale drawing,
+## not a crash (plain fields, nothing resized), and refresh_props rebuilds the
+## chunk. Copy the fields here if a bake ever reads anything a take can resize.
 func _snapshot(key: Vector2i) -> Array:
 	var props: Array = []
 	for p: WorldProp in _props_by_chunk.get(key, []):
