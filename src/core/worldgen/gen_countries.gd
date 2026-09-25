@@ -727,9 +727,17 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 	])
 	var fl := GenFields.batch(size, specs)
 	# Scores for types 1..types-1, upsampled, end to end: (cc - 1) * n + i.
+	# Each field is let go as soon as it is copied in. Kept, they held a second
+	# 200 MB copy of the scores through the rest of the stage: letting them go is
+	# 280 MB off an 1840 world's counted high-water on the desktop (958 MB to 678,
+	# GenContext.memory), with the same world. In a browser it bought much less
+	# (the renderer's resident peak 1646 MB to 1601, one run each), and the wasm
+	# heap still doubles to 1181 MB: it grows in steps, and generation plus the
+	# engine still passes the 592 MB below it.
 	var flat := PackedFloat32Array()
 	for cc in range(1, types):
 		flat.append_array(fl[cc - 1])
+		fl[cc - 1] = PackedFloat32Array()
 	var last := types - 1
 	var finger := fl[last]
 	var bend := fl[last + 1]

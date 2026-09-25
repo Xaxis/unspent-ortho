@@ -36,6 +36,11 @@ func started() -> void:
 	_cast()
 
 
+## Through a door: the outside is kept as it stood (20_realms says why).
+func indoors(inside: bool) -> void:
+	sleep_indoors(inside)
+
+
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	_cast()
 

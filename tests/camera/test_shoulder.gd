@@ -460,23 +460,36 @@ func test_the_web_near_blur_stands_down_under_the_lens() -> void:
 
 # --- breath in the cold ----------------------------------------------------------
 
-func _breaths(g: Game) -> int:
+## The breath put out since the last count, freed as counted: marks (from
+## above) and soft air on the fire's own puff mesh (under the close eye).
+## `air` collects, per puff, whether it is depth-tested air.
+func _breaths(g: Game, air: Array = []) -> int:
 	var n := 0
 	for c: Node in g.get_children():
 		var mi := c as MeshInstance3D
-		if mi == null or not (mi.material_override is ShaderMaterial):
+		if mi == null or mi.is_queued_for_deletion():
 			continue
-		var mode: Variant = (mi.material_override as ShaderMaterial).get_shader_parameter(&"mode")
-		if mode != null and int(mode) == MobFx.VAPOUR and not mi.is_queued_for_deletion():
-			n += 1
-			mi.queue_free()
+		var is_air := mi.mesh == FireModel.smoke_mesh()
+		var is_mark := false
+		if mi.material_override is ShaderMaterial:
+			var mode: Variant = (mi.material_override as ShaderMaterial).get_shader_parameter(&"mode")
+			is_mark = mode != null and int(mode) == MobFx.VAPOUR
+		if not (is_air or is_mark):
+			continue
+		var m := mi.material_override as StandardMaterial3D
+		air.append(is_air and m != null and not m.no_depth_test)
+		n += 1
+		mi.queue_free()
 	return n
 
 
-## FROM BEHIND AT EYE LEVEL BREATH IS NOT DRAWN. A mark draws over everything,
-## so the puff put out in front of the mouth landed on the back of the head as a
-## white stipple ball. Seen from in front it is drawn, and from above as ever.
-func test_breath_is_not_drawn_over_the_back_of_the_head() -> void:
+## UNDER THE CLOSE EYE BREATH IS AIR, NOT A MARK. A mark draws over everything:
+## from behind at eye level the puff in front of the mouth landed on the back of
+## the head, and near the lens it was a white speckled cloud beside it. So over
+## the shoulder it is the fire's soft puff, depth-tested, drawn from every side
+## -- the head hides it the way a head would -- and never held to a frame-pixel
+## floor. From above it is the reviewed mark, as ever.
+func test_breath_is_depth_tested_air_at_every_angle() -> void:
 	var g := await _make()
 	var cam := g.camera
 	cam.sight_room = Callable()
@@ -487,18 +500,29 @@ func test_breath_is_not_drawn_over_the_back_of_the_head() -> void:
 	check(hz != null, "the hazards system runs")
 	var cue := HazardCues.cue(&"cold")
 	_breaths(g)
+	var from_above: Array = []
 	hz.call("_draw_cue", &"cold", cue, 0.7)
-	eq(_breaths(g), 2, "from above, two puffs")
+	eq(_breaths(g, from_above), 2, "from above, two puffs")
+	check(not from_above.has(true), "and from above they are the reviewed marks")
+	var depth: Array = []
 	cam.shoulder = true
 	cam.snap_view()
 	cam.shoulder_yaw = Shoulder.yaw_behind(g.player.facing)
 	_step(cam, 2)
+	check(MobFx.close_eye(g), "over the shoulder the eye is close")
 	hz.call("_draw_cue", &"cold", cue, 0.7)
-	eq(_breaths(g), 0, "from behind the head, none")
-	cam.shoulder_yaw = Shoulder.yaw_behind(g.player.facing + PI)
-	_step(cam, 2)
-	hz.call("_draw_cue", &"cold", cue, 0.7)
-	eq(_breaths(g), 2, "looking at the face, the breath is there")
+	eq(_breaths(g, depth), 2, "from behind the head, two puffs, which the head hides")
+	for d: bool in depth:
+		check(d, "every puff over the shoulder is depth-tested air, so it never draws over the head")
+	# Under the close eye a puff keeps its own size, not the frame's floor.
+	MobFx.breath(g, g.player.global_position + Vector3.UP, Color.WHITE, 0.2, 1.0, Vector2.ZERO, 1)
+	var big := 0.0
+	for c: Node in g.get_children():
+		var mi := c as MeshInstance3D
+		if mi != null and mi.mesh == FireModel.smoke_mesh() and not mi.is_queued_for_deletion():
+			big = maxf(big, mi.scale.x)
+	lt(big, 0.2, "a 0.2 puff under the close eye starts under 0.2 across, not the floor's %.2f" % (MobFx.VAPOUR_PX * MobFx.texel))
+	_breaths(g)
 	_done()
 
 
@@ -894,28 +918,53 @@ func test_a_riser_beside_the_line_stops_the_eye() -> void:
 
 
 ## THE PROBE RUNS EVERY FRAME. Among a village's houses, the two walks the rig
-## makes a frame (head to shoulder, shoulder to eye) cost well under 0.2 ms at the
-## worst of eight bearings, measured as the cheapest of repeated runs.
+## makes a frame (head to shoulder, shoulder to eye) cost under 5.3 YARDSTICKS at
+## the worst of eight bearings: a fixed piece of interpreted vector work timed
+## right beside each bearing's walks, each the cheapest of 200 runs. The yardstick
+## is about 33 us on a quiet box, so 5.3 is about 0.17 ms, 1% of a 60 fps frame.
+##
+## It is a ratio because microseconds on this box are not a measurement: the same
+## code read 88-221 us from one process to the next at load 12-28 (and 206 on CI
+## against a bar of 200), while a yardstick beside it held still. Calibrated
+## 2026-09-25: the shipped walks read a worst ratio of 2.47-4.56 over seven runs,
+## and the same walks done twice 6.20-11.97 over five; 5.3 is the geometric middle,
+## about 14% from each.
 func test_the_probe_is_cheap_among_houses() -> void:
 	var g := await _make(["--village=0", "--view=shoulder"])
 	var sys := _system(g)
 	var head := g.player.position + Vector3(0.0, Shoulder.HEAD_UP, 0.0)
 	var worst := 0.0
+	var worst_ratio := 0.0
 	var boxes := 0
+	# The yardstick: a fixed piece of interpreted vector work, timed right beside
+	# each bearing's walks, so whatever the box is doing to this thread it does to
+	# both.
+	var yard_work := func() -> void:
+		var acc := Vector2.ZERO
+		var pts := PackedVector2Array()
+		pts.resize(64)
+		for i in 400:
+			var p := Vector2(float(i) * 0.37, float(i) * 0.11)
+			pts[i & 63] = p
+			acc += (p - pts[(i * 7) & 63]).normalized() * p.length()
+	var yard := 0.0
 	for k in 8:
 		var yaw := k * 45.0
 		var back := Shoulder.forward(yaw) * -Shoulder.BACK
 		var right := Vector2(cos(deg_to_rad(yaw)), -sin(deg_to_rad(yaw))) * Shoulder.RIGHT
 		var focus := head + Vector3(right.x, 0.0, right.y)
 		var eye := focus + Vector3(back.x, 0.6, back.y)
-		var us := TestCase.best_of(30, func() -> void:
+		var us := TestCase.best_of(200, func() -> void:
 			sys.call("room", head, focus)
 			sys.call("room", focus, eye))
+		var y := TestCase.best_of(200, yard_work)
+		yard = maxf(yard, y)
 		worst = maxf(worst, us)
+		worst_ratio = maxf(worst_ratio, us / maxf(y, 0.001))
 		boxes = maxi(boxes, (sys.get("_boxes") as Array).size())
-	print("probe: worst of 8 bearings %.1f us a frame, %d drawn boxes in reach" % [worst, boxes])
+	print("probe: worst of 8 bearings %.1f us a frame, %d drawn boxes in reach; yardstick %.1f us; worst ratio %.2f" % [worst, boxes, yard, worst_ratio])
 	gt(float(boxes), 0.0, "the village's buildings were in the probe (%d)" % boxes)
-	cost_lt(worst, 100.0, "two probe walks a frame among houses (us)")
+	lt(worst_ratio, 5.3, "two probe walks a frame among houses, in yardsticks (%.0f us)" % worst)
 	_done()
 
 

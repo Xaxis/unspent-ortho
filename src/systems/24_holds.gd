@@ -98,6 +98,11 @@ func started() -> void:
 	_set_walls()
 
 
+## Through a door: the outside is kept as it stood (20_realms says why).
+func indoors(inside: bool) -> void:
+	sleep_indoors(inside, [_layer] as Array[Node3D])
+
+
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	# A crossing is per world: another realm's island has its own roads and its
 	# own plan standing on them.

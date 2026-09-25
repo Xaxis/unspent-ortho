@@ -303,3 +303,40 @@ func test_every_shipped_world_carries_a_footprint() -> void:
 				on_home += 1
 				break
 	print("       treads on the home continent: %d of %d seeds" % [on_home, seeds.size()])
+
+
+## THE NEAR FOOT'S BUILD IS ALWAYS CLAIMED. A pool task nobody waits for keeps
+## its Callable -- a lambda on the foot node -- alive in the pool past the node,
+## and the pool frees it at exit: the process dies with signal 11 after every
+## test has passed. So a foot leaving the tree waits its build out, and a build
+## that finishes is claimed the next frame whether or not a foot came near.
+func test_the_near_foot_never_leaves_its_build_unclaimed() -> void:
+	const FootScript := preload("res://src/render/colossus/colossus_foot.gd")
+	var d: RefCounted = Def.walkers(BIG)[2]
+	var foot: Node3D = FootScript.new()
+	tree.root.add_child(foot)
+	foot.call(&"_want_built", d)
+	check(int(foot.get(&"_task")) >= 0, "the build went to a worker")
+	tree.root.remove_child(foot)
+	eq(int(foot.get(&"_task")), -1, "leaving the tree, it waited the build out")
+	check((foot.get(&"_kits") as Dictionary).has(d.id), "and kept what was built")
+	foot.free()
+	var again: Node3D = FootScript.new()
+	tree.root.add_child(again)
+	again.call(&"_want_built", d)
+	var cam := Camera3D.new()
+	tree.root.add_child(cam)
+	cam.global_position = Vector3(1.0e7, 0.0, 1.0e7)
+	# SINCE THE BUILD FINISHED, not at a moment: how long a worker takes is the
+	# machine's business, so wait (bounded) for this task to be done, then give
+	# the foot one frame and ask whether it claimed it.
+	var id := int(again.get(&"_task"))
+	check(id >= 0, "the second build went to a worker")
+	var until := Time.get_ticks_msec() + int(20000.0 * machine_slack())
+	while id >= 0 and not WorkerThreadPool.is_task_completed(id) and Time.get_ticks_msec() < until:
+		await tree.process_frame
+	check(id >= 0 and WorkerThreadPool.is_task_completed(id), "the build finished inside the wait")
+	again.call(&"update", cam, [], [], 0.0)
+	eq(int(again.get(&"_task")), -1, "a build nobody came near is claimed when it is done")
+	cam.free()
+	again.free()

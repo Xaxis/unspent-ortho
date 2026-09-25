@@ -177,6 +177,17 @@ var _cells: Dictionary = {}
 var _assigned: Array = [] # per pool light: source Dictionary or null
 var _refresh := 0.0
 var _glows: Dictionary = {} # prop id -> Node3D
+## The world `sources` indexes, and every other world's index, kept by world.
+var _indexed_world: WorldData = null
+## LIGHTS ANOTHER SYSTEM OWNS AND THIS ONE BUDGETS: a room's window suns, its
+## sky fills and its lanterns (21_doors). The lender aims them and sets their
+## energy; this system decides which of them SHOW and which CAST, out of the same
+## tier row as every lamp here (`Quality` `lamps` and `shadow_lights`), so one
+## place enforces the budget however many packages make lights. A light's
+## energy is its asking to be on; `rank` orders who is dropped first when the
+## row runs out (lower goes first). {light, casts, rank}
+var _lent: Array[Dictionary] = []
+var _index_of: Dictionary = {}
 var _glow_mat: StandardMaterial3D
 var _time := 0.0
 var _lamp_down := false
@@ -259,6 +270,7 @@ func setup(g: Game) -> void:
 	lr.position = Vector3(0, 0.08, 0)
 	lantern.add_child(lr)
 	add_child(lantern)
+	_indexed_world = g.world
 	_index_sources()
 	_update(0.0, true)
 
@@ -346,6 +358,59 @@ func _new_light(n: String) -> OmniLight3D:
 	return l
 
 
+## Put a light another system made under this system's budget (see `_lent`).
+func lend(l: Light3D, casts: bool, rank: int) -> void:
+	l.visible = false
+	l.shadow_enabled = false
+	_lent.append({"light": l, "casts": casts, "rank": rank})
+	_lent.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a.rank) > int(b.rank))
+
+
+## Take a lent light back off the budget (its owner is about to free it).
+func take_back(l: Light3D) -> void:
+	for i in range(_lent.size() - 1, -1, -1):
+		if _lent[i].light == l:
+			_lent.remove_at(i)
+
+
+## How many local lights are on now, this system's and lent ones together, and
+## how many of them cast: what the tier row holds to (tests/render, tests/interior).
+func local_lights_on() -> Vector2i:
+	var on := 0
+	var casting := 0
+	var all: Array[Light3D] = []
+	for l: OmniLight3D in lights:
+		all.append(l)
+	all.append(lantern_light)
+	for d: Dictionary in _lent:
+		all.append(d.light as Light3D)
+	for l: Light3D in all:
+		if l != null and is_instance_valid(l) and l.visible:
+			on += 1
+			if l.shadow_enabled:
+				casting += 1
+	return Vector2i(on, casting)
+
+
+## Which lent lights show: those asking (energy over nothing), best rank first,
+## as many as the row leaves after this system's own pool and the lantern.
+func _show_lent() -> void:
+	var room := Quality.lamp_count()
+	for l: OmniLight3D in lights:
+		if l.visible:
+			room -= 1
+	if lantern_light != null and lantern_light.visible:
+		room -= 1
+	for d: Dictionary in _lent:
+		var l := d.light as Light3D
+		if l == null or not is_instance_valid(l):
+			continue
+		var asks := l.light_energy > 0.01
+		l.visible = asks and room > 0
+		if l.visible:
+			room -= 1
+
+
 ## Which of the live lights cast a shadow, nearest the player first.
 ##
 ## THE TIER DECIDES HOW MANY (`Quality.ROWS.shadow_lights`), and this system is
@@ -355,7 +420,7 @@ func _new_light(n: String) -> OmniLight3D:
 ## is turned off does not dim: it goes on lighting exactly as it did.
 func _cast_shadows(focus: Vector3) -> void:
 	var allow := int(Quality.current().get("shadow_lights", 0))
-	var live: Array[OmniLight3D] = []
+	var live: Array[Light3D] = []
 	for i in lights.size():
 		var l: OmniLight3D = lights[i]
 		if not l.visible:
@@ -372,8 +437,17 @@ func _cast_shadows(focus: Vector3) -> void:
 		# The player's own lantern casts first, whatever else is near: it is the
 		# one light they carry, and its shadow is the one they are steering by.
 		live.insert(0, lantern_light)
-	live.sort_custom(func(a: OmniLight3D, b: OmniLight3D) -> bool:
-		return a.position.distance_squared_to(focus) < b.position.distance_squared_to(focus))
+	# A lent light that asks to cast competes for the same allowance.
+	for d: Dictionary in _lent:
+		var ll := d.light as Light3D
+		if ll == null or not is_instance_valid(ll) or not ll.visible:
+			continue
+		if bool(d.casts):
+			live.append(ll)
+		else:
+			ll.shadow_enabled = false
+	live.sort_custom(func(a: Light3D, b: Light3D) -> bool:
+		return a.global_position.distance_squared_to(focus) < b.global_position.distance_squared_to(focus))
 	for i in live.size():
 		live[i].shadow_enabled = i < allow
 
@@ -399,9 +473,12 @@ func _process(delta: float) -> void:
 	_light_the_reach(delta)
 
 
-## 0..1: how far people have lit up. Lamps go on before full dark and out after
-## first light: up over 19:00-20:30, down over 05:00-06:30 — OR whenever there is
-## a lid over the landscape, whatever the clock says.
+## 0..1: how far people have lit up. People light a lamp AS the light fails,
+## not once it has gone, so this follows the light's own curve
+## (`SkyLight.day_gone`): the first lamps as a fifth of the day's light has gone
+## (about 18:20), the village lit by 19:30, all of it by the time just over half
+## has gone. At dawn the curve walks back and the lamps go out with it. A lid over
+## the landscape lights them whatever the hour.
 ##
 ## People light up because it is DARK, and until a landscape could have something
 ## between it and the sun that was the same thing as because it is LATE. It is
@@ -412,24 +489,34 @@ func _process(delta: float) -> void:
 ## `SkyLight.last_lid()` (`BiomeDef.sky_shut`), and it is taken as a floor rather
 ## than a replacement, so nothing about an open landscape's evening moves.
 static func lamps_wanted(hour: float) -> float:
-	return maxf(_lamps_by_clock(hour), SkyLight.last_lid())
+	return maxf(_lamps_by_light(hour), SkyLight.last_lid())
 
 
-static func _lamps_by_clock(hour: float) -> float:
-	var h := fposmod(hour, 24.0)
-	if h >= 20.5 or h < 5.0:
-		return 1.0
-	if h >= 19.0:
-		return smoothstep(19.0, 20.5, h)
-	if h < 6.5:
-		return 1.0 - smoothstep(5.0, 6.5, h)
-	return 0.0
+static func _lamps_by_light(hour: float) -> float:
+	return smoothstep(LAMPS_FROM, LAMPS_ALL, SkyLight.day_gone(hour))
 
 
-## 0..1 how much a pool of lamplight shows: nothing until dusk is well on,
-## full from an hour after it.
+## How much of the day's light has gone (`SkyLight.day_gone`) when the first lamp
+## is lit, and when the last is. On the old clock schedule (19:00-20:30) not one
+## lamp at seed 7's spawn was lit at 19:30, with nearly half the light gone.
+const LAMPS_FROM := 0.2
+const LAMPS_ALL := 0.55
+
+
+## 0..1 how much a pool of lamplight shows: nothing until the first lamp is lit,
+## then growing as the light goes. It is on the lamps' curve, or a lamp lit at
+## dusk lays no pool until well after it.
 static func pool_dark(hour: float) -> float:
-	return clampf(Weather.night_fall(hour) * 1.4, 0.0, 1.0)
+	return clampf((SkyLight.day_gone(hour) - LAMPS_FROM) / POOL_SPAN, 0.0, 1.0)
+
+
+## How much more of the light has to go, after the first lamp, before a pool is
+## full. As short as the DAWN allows: there `day_gone` is `night_fall`'s ninety
+## minute smoothstep, whose steepest minute moves 0.0167, and a pool is a light
+## nobody should see jump (under 0.03 a minute, tests/sky/test_night_lights.gd).
+## Any longer and the village's pools are weaker at 20:30 than the clock ever
+## made them: a span of 0.8 left them at 0.63 where the old schedule had 1.0.
+const POOL_SPAN := 0.57
 
 
 ## How hard a thing that BURNS lights the ground, at darkness `dark` (0 noon, 1
@@ -627,9 +714,25 @@ func _near(focus: Vector2, reach: float) -> Array[Dictionary]:
 ## standing on. CLAUDE.md's realms row names "light index" as the example of a
 ## cache keyed on the world; this system never had the method.
 func realm_changed(_from: StringName, _to: StringName) -> void:
-	sources.clear()
-	_cells.clear()
-	_indexed = 0
+	# EACH WORLD'S INDEX IS KEPT and handed back when that world comes back: a
+	# door into a house and out again is the same coast, and indexing its every
+	# light again cost 818 ms coming out (docs/interiors). Held weakly, so a world
+	# nobody holds any more takes its index with it.
+	if _indexed_world != null:
+		_index_of[_indexed_world.get_instance_id()] = [weakref(_indexed_world), sources, _cells, _indexed]
+	for k: int in _index_of.keys():
+		if (_index_of[k][0] as WeakRef).get_ref() == null:
+			_index_of.erase(k)
+	var kept: Array = _index_of.get(game.world.get_instance_id(), [])
+	if not kept.is_empty() and (kept[0] as WeakRef).get_ref() == game.world:
+		sources = kept[1]
+		_cells = kept[2]
+		_indexed = kept[3]
+	else:
+		sources = [] as Array[Dictionary]
+		_cells = {}
+		_indexed = 0
+	_indexed_world = game.world
 	for i in _assigned.size():
 		_assigned[i] = null
 	for id: int in _glows.keys():
@@ -881,6 +984,7 @@ func _update(delta: float, snap: bool) -> void:
 		night *= 1.0 - 0.9 * under
 		var reach := LANTERN_RANGE * (1.0 - 0.6 * under)
 		var rgb := compensate(WARM, tint, sun) * LANTERN_POWER * night * (0.94 + 0.06 * _flicker({"kind": PropKind.LAMP, "h": 0.5}))
+		rgb *= _held_off(Vector2(at.x, at.z))
 		lantern_light.light_volumetric_fog_energy = FOG_WARM
 		if _set_light(lantern_light, at, reach, rgb):
 			# The player's own pool comes first: it is the one that matters.
@@ -892,8 +996,37 @@ func _update(delta: float, snap: bool) -> void:
 	pool_rgb.resize(pools.size())
 	game.sky.lamps = pools
 	game.sky.lamp_colors = pool_rgb
+	_show_lent()
 	_cast_shadows(focus3)
 	_update_glints(focus3, hour, lit)
+
+
+## A LANTERN HELD AGAINST A WALL is mostly light the wall catches. Its level is
+## set for a pool on the ground a body's height below it, and at night it is
+## lifted a long way to reach that (`compensate`): a wall a hand's width from it
+## took many times what the ground does and came out a flat blown-out sheet down
+## a corridor (tours/bunker.tour, 04). So the level comes down with the nearest
+## wall within `HELD_NEAR`, to `HELD_LEAST` against it -- and in
+## the open, with nothing that near, it is the lantern it always was: the patch
+## still reads as lamplit, and never as a hole in the picture.
+const HELD_NEAR := 2.2
+const HELD_LEAST := 0.1
+
+
+func _held_off(at: Vector2) -> float:
+	if game.query == null:
+		return 1.0
+	var near := HELD_NEAR
+	# Walls handed to the query only (a room's, a landmark's, a depot's deck, a
+	# hatch). A prop is not asked: dimming the lantern beside every boulder and
+	# house at night would change the whole game's night, which is not this rule's
+	# to decide.
+	for c: Vector3 in game.query.blocks_at(at):
+		near = minf(near, Vector2(c.x, c.y).distance_to(at) - c.z)
+	# Squared, because the light a surface takes goes as the square of how near
+	# it is: a wall a metre off wants far less than half its level.
+	var s := smoothstep(0.05, HELD_NEAR, maxf(near, 0.0))
+	return lerpf(HELD_LEAST, 1.0, s * s)
 
 
 ## Every light near the camera as a glint candidate (Glints), lit as it is now.

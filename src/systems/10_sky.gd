@@ -45,6 +45,8 @@ var settled := {"snow": 0.0, "ash": 0.0, "wet": 0.0}
 var _settle_target := {"snow": 0.0, "ash": 0.0, "wet": 0.0}
 var _settle_minute := -INF
 var _sway_phase := 0.0
+## The gust field's travelled offset and bearing (WindField.advance).
+var _gust := Vector4(0.0, 0.0, 1.0, 0.0)
 ## Milliseconds the sky_ground texture took to build (start-up budget).
 var ground_ms := 0
 ## Real seconds since the last strike (INF before the first): the afterglow and
@@ -109,8 +111,7 @@ func setup(g: Game) -> void:
 	# it is the same sweep over the same world.
 	g.sky.set_wear(SkyWear.texture(g.world))
 	ground_ms = Time.get_ticks_msec() - t0
-	var a := Rng.hash01(g.world.seed_value, 0xC10D) * TAU
-	_cloud_bearing = Vector2.from_angle(a)
+	_cloud_bearing = bearing_of(g.world.seed_value)
 	_last_minutes = g.clock.minutes
 	# Start the drift where the clock is, so a shot at 12:00 is not a shot at 00:00.
 	_cloud_drift = _cloud_bearing * g.clock.minutes * 0.6
@@ -143,10 +144,20 @@ func apply_weather(spec: String) -> bool:
 	if not Weather.KINDS.has(kind):
 		push_warning("unknown weather %s" % parts[0])
 		return false
-	Weather.force(kind, parts[1].to_float() if parts.size() > 1 else 1.0)
+	var held_wind := NAN
+	for extra: String in parts.slice(2):
+		if extra.begins_with("wind="):
+			held_wind = extra.trim_prefix("wind=").to_float()
+	Weather.force(kind, parts[1].to_float() if parts.size() > 1 else 1.0, held_wind)
 	_forced_any = true
-	_hold_bolt(parts.size() > 2 and parts[2] == "bolt")
+	_hold_bolt(parts.slice(2).has("bolt"))
 	return true
+
+
+## The bearing a world's clouds and wind travel on (a positive wind blows
+## along it). Fixed per seed; 18_trample reads it to stage a gust front.
+static func bearing_of(seed_value: int) -> Vector2:
+	return Vector2.from_angle(Rng.hash01(seed_value, 0xC10D) * TAU)
 
 
 ## Hold one strike for a still, or let the held one go. A held bolt asked for
@@ -226,17 +237,28 @@ func _update(delta: float, snap: bool) -> void:
 		target_region += SkyLight.type_light(BiomeRegistry.get_def(id), hour) * float(shares[id])
 		target_wind += float(wx.wind) * float(shares[id])
 		target_mist += float(wx.mist) * float(shares[id])
+	# UNDER A ROOF THE AIR IS THE ROOM'S (Realm.INTERIOR's own `airs`): a pocket's
+	# tiles carry the land the house stands in, so its light is the land's, but
+	# the coast's mist drifting across a cottage's floorboards in pale patches was
+	# measured in a frame, and nothing falls or blows or settles in there.
+	var room := game.world.realm == Realm.INTERIOR
+	if room:
+		entries = [{"kind": Weather.CLEAR, "strength": 0.0, "weight": 1.0}]
+		target_wind = 0.0
+		target_mist = 0.0
 	var target := WeatherLook.compose(entries)
 	# The light and the clouds blend across a border, but what falls through the
 	# air is one landscape's: the one under the focus. A frame at a triple border
 	# must not snow, rain ash and lie in fog all at once.
 	here = fall_type(game.world, focus)
 	var wh := Weather.at_type(seed_value, minutes, here)
+	if room:
+		wh = {"kind": Weather.CLEAR, "strength": 0.0}
 	var falls := WeatherLook.compose([{"kind": wh.kind, "strength": wh.strength, "weight": 1.0}])
 	for k: String in FALL_KEYS:
 		target[k] = falls[k]
 	target.mist = target_mist
-	target.wisp = wisp_amount(float(WISPS.get(here, 0.0)), Weather.night_fall(hour), float(target.rain) + float(target.drizzle), target_wind)
+	target.wisp = 0.0 if room else wisp_amount(float(WISPS.get(here, 0.0)), Weather.night_fall(hour), float(target.rain) + float(target.drizzle), target_wind)
 	# What lies on the ground changes over hours: recompute once a world minute.
 	# Each thing is the most any landscape in view has left; the sky_ground mask
 	# lays it only on the land that makes it.
@@ -244,7 +266,7 @@ func _update(delta: float, snap: bool) -> void:
 		_settle_minute = minutes
 		for k: String in _settle_target:
 			_settle_target[k] = 0.0
-		for id: StringName in shares:
+		for id: StringName in ({} if room else shares):
 			var st := Weather.settled_type(seed_value, minutes, id)
 			for k: String in _settle_target:
 				_settle_target[k] = maxf(float(_settle_target[k]), float(st[k]))
@@ -306,6 +328,8 @@ func _update(delta: float, snap: bool) -> void:
 	var gust := clampf(float(look.storm) + float(look.dust) * 0.6 + float(look.whiteout) * 0.6 + absf(wind) * 0.3, 0.0, 1.0)
 	var along := _cloud_bearing * wind
 	sky.wind = Vector4(along.x, along.y, gust, _sway_phase)
+	_gust = WindField.advance(_gust, along, delta)
+	sky.gust = _gust
 	# Tufts and crowns never hang dead still, and a storm bends them hard.
 	sky.sway = clampf(0.15 + absf(wind) * 0.6 + gust * 0.5, 0.0, 1.2)
 	sky.cast_allowed = float(look.overcast) < 0.6

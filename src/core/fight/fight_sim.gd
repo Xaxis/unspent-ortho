@@ -940,6 +940,24 @@ func remove_mob(m: MobState) -> void:
 	emit(&"removed", {"mob": m})
 
 
+## THE ONE DOOR FOR A BLOW THE PLAYER TAKES FROM SOMETHING THAT IS NOT A BODY: a
+## hall's turret (21_doors). The mirror of `strike`: it meets the same rules a
+## machine's blow does -- nothing lands in the player's hurt frames or through a
+## dodge -- and it hurts through the same `_hurt_hero`, with no attacker, so
+## everything that reads a hurt (the flash, the shake, the downed outcome) works
+## unchanged. `from` is where it came from; returns whether it landed.
+func strike_hero(b: Blow, from: Vector2) -> bool:
+	if hero.health <= 0 or now < hero.invuln_until or hero.dodging(now):
+		return false
+	var dir := (hero.pos - from).normalized() if hero.pos.distance_to(from) > 0.01 else Vector2.RIGHT
+	_hurt_hero(null, b.dmg, dir, b.knock, b.knock_ms)
+	# Called between steps, not inside one: the next step opens by reading the
+	# body back (`read_body`), so a hurt left only on the hero would be undone.
+	if hero.body != null:
+		hero.body.health = hero.health
+	return true
+
+
 ## Take every body off the coast (a bad end, a jump in time).
 func clear_mobs() -> void:
 	for m in mobs:

@@ -51,6 +51,22 @@ static func make() -> BiomeDef:
 	d.village_ground = Ground.GRASS
 	d.grass_colors = [P.MOSS[3], P.MOSS[4].lerp(P.SLATE[3], 0.2)]
 	d.rock_color = P.SLATE[2]
+	# Cliff meadow: knee-high sward the sea wind combs flat in the gusts, fine
+	# blades laid one way and salt-burnt at the tips; and on the dunes, marram:
+	# stiff blue-grey tussocks that stand up and shiver fast in the wind.
+	d.grasses = [
+		GrassSpecies.make(&"sward", {"blades": 28, "height": Vector2(0.22, 0.52), "width": 0.026, "spread": 0.4,
+			"reach": Vector2(0.2, 0.5), "curl": 0.15, "lay": 1.0, "root": P.MOSS[3], "tip": P.MOSS[4].lerp(P.SAND[4], 0.45),
+			"stiff": 0.55, "flutter": 2}),
+		GrassSpecies.make(&"marram", {"blades": 16, "height": Vector2(0.42, 0.72), "width": 0.03, "spread": 0.2,
+			"reach": Vector2(0.08, 0.25), "curl": 0.05, "lay": 0.25, "root": P.MOSS[4].lerp(P.SLATE[3], 0.45), "tip": P.SAND[4],
+			"stiff": 0.8, "flutter": 7}),
+	]
+	d.decor = {
+		Ground.GRASS: [Vector2(1.9, 0.9), Decor.GRASS_A, 62, Decor.TUFT_TALL, 8, Decor.TUFT, 8, Decor.FLOWER, 10,
+			Decor.STONE, 2, Decor.THISTLE, 3, Decor.MOLEHILL, 1],
+		Ground.SAND: [0.45, Decor.GRASS_B, 30, Decor.SHELL, 16, Decor.PEBBLES, 10, Decor.TWIG, 5, Decor.WRACK_BIT, 6],
+	}
 	# Thrift in bloom on the cliff turf.
 	d.decor_tints = {&"bloom": [P.BLOOM[2], P.BLOOM[3], P.BLOOM[4]]}
 	# What a thing built or left here is made of. Slate under turf, sand banked
@@ -116,6 +132,11 @@ static func make() -> BiomeDef:
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"lighthouse", &"firewatch", &"cast_stones", &"grown_hulk"]
+	# A coast house can be walked into (docs/interiors): one room and a hearth.
+	# And the plan's depots here keep a weapons hall under the yard.
+	# And the cast stones stand over a bunker somebody sank there before the
+	# machines, and hid under a ring nobody would dig in.
+	d.interiors = {&"house": &"cottage", &"works:depot": &"weapons_hall", &"landmark:cast_stones": &"bunker"}
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter

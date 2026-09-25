@@ -36,7 +36,19 @@ extends RefCounted
 ##                     H of the first day (H under 24) or at world minute H (24 and
 ##                     over), alone, crossing on from there; `zenith@H/B` has it
 ##                     rise at bearing B (degrees, 0 east, 90 south); a trailing
-##                     `:ab` measures its cost, layer on and held off (render)
+##                     `:ab` measures its cost, layer on and held off (`:ab-layer`,
+##                     `:ab-wake` one part alone), and `:bench` takes the cost
+##                     apart in back-to-back drawn frames (render)
+## --fall=off          no debris falling through the sky this run (21_falls)
+## --fall=CLASS@AT[/B]  stage one fall of CLASS (dust, fragment, mass) alone,
+##                     lighting at hour AT of the first day (AT under 24) or at
+##                     world minute AT, its middle on bearing B (degrees, 0 east,
+##                     90 south; with none, the bearing the view faces as it
+##                     lights) and crossing the view; several are
+##                     joined with commas; one lights again whenever the clock is
+##                     put back before it; `:age=S` holds each fall S real
+##                     seconds after it lit (one moment, for a frame); a
+##                     trailing `:bench` measures what drawing them costs (render)
 ## --eye-round=DEG     stand that eye DEG degrees round the player from behind:
 ##                     180 looks the player in the face, 90 at their side
 ## --walk=DX,DY,SECS   scripted walk in SCREEN directions before the shot
@@ -48,7 +60,8 @@ extends RefCounted
 ## --place=NAME        start at a named place (GenPlaces): a country ("moss"), an
 ##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
 ## --stats             print render stats (draw calls, chunk build times) before the shot
-## --weather=KIND:S     force the weather (e.g. rain:1, fog:0.6, storm:1:bolt, dry_storm:1:bolt; kinds in Weather.KINDS), sky package
+## --weather=KIND:S     force the weather (e.g. rain:1, fog:0.6, storm:1:bolt, dry_storm:1:bolt; kinds in Weather.KINDS), sky package;
+##                     `:wind=W` also holds the wind at W, -1..1 (clear:0:wind=0.8)
 ## --lamp              start with the player's lantern lit, sky package
 ## --silhouette        gallery: machines (and the lineup's people) drawn flat black
 ## --filter=NAME       gallery: only the items whose name holds NAME
@@ -120,6 +133,9 @@ extends RefCounted
 ##                     on one is there, and a reply that wants one is offered (story, the same)
 ## --fail-downed       a bad end (downed or carried off) quits the game with exit 1: a tour that
 ##                     must be survived through real play fails if it is not (fight)
+## --rooms=empty      rooms come in without their residents (21_doors): a frame or
+##                     a tour about how a room LOOKS, which its warden would
+##                     otherwise end by putting the player out of it (interiors)
 ## --realm=KIND        start in that realm (surface | underground), beside its first
 ##                     shaft, or at --at read as a tile of THAT realm's world (realms)
 ## --quality=NAME      the graphics tier this run renders at (src/render/quality.gd):
@@ -158,6 +174,8 @@ var colossi: StringName = &""
 var colossus := ""
 ## "off", "zenith@H" (19_orbit), or "" for the ring's own schedule.
 var orbit := ""
+## "off", "CLASS@AT[/B][,...][:bench]" (21_falls), or "" for the falls' own schedule.
+var fall := ""
 var eye_round := 0.0
 var walk := Vector2.ZERO
 var walk_seconds := 0.0
@@ -225,6 +243,7 @@ var saves := ""
 var progress := 0.4
 var probe := false
 var fail_downed := false
+var rooms_empty := false
 var target := false
 var target_sweep := false
 ## A fragment to open on the glass, and a conversation (and the node in it) to open,
@@ -276,6 +295,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"colossi": o.colossi = StringName(v)
 			"colossus": o.colossus = v
 			"orbit": o.orbit = v
+			"fall": o.fall = v
 			"eye-round": o.eye_round = v.to_float()
 			"walk":
 				var p := v.split(",")
@@ -328,6 +348,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"progress": o.progress = v.to_float()
 			"probe": o.probe = true
 			"fail-downed": o.fail_downed = true
+			"rooms": o.rooms_empty = v == "empty"
 			"read": o.read = v
 			"talk": o.talk = v
 			"beats": o.beats = v

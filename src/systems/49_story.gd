@@ -224,6 +224,15 @@ func _open_what_is_in_front() -> void:
 	var prop := _readable_in_front()
 	var person_d: float = person.get("_d", INF) if not person.is_empty() else INF
 	var prop_d := _edge_to(prop) if prop != null else INF
+	# Inside a room, what its story slots hold (StoryRooms) answers as a thing
+	# with words on it does, and only when it is the nearest of the three.
+	var slot := _slot_in_front()
+	var slot_d: float = slot.get("_d", INF) if not slot.is_empty() else INF
+	if slot_d < person_d and slot_d < prop_d:
+		var take_first := Survival.use_target(game)
+		if take_first == null or _edge_to(take_first) >= slot_d:
+			_read(StringName(str(slot.id)))
+			return
 	# THE GROUND UNDER YOUR HANDS WINS WHEN IT IS NEARER. This system's reach is
 	# generous on purpose, so a notice five tiles off was outranking the driftwood
 	# the player was standing on and facing: the key meant "pick this up" and the
@@ -398,11 +407,67 @@ func _somebody_teaches() -> bool:
 	return false
 
 
+## The room the player is in, or null outside one: asked of whichever system
+## holds the door (21_doors), found by what it does rather than by its number.
+func _room() -> InteriorGen.Pocket:
+	for sys in game.systems:
+		if sys.has_method(&"go_out"):
+			return sys.get(&"pocket") as InteriorGen.Pocket
+	return null
+
+
+## A story slot of the room in reach and in front, as {i, id, _d}, or {}. Two
+## slots at one thing (the desk and the terminal on it) are the same distance
+## off, so the one the player has not yet read answers, and of two unread the
+## screen before the drawer (SLOT_FIRST): a press wakes the terminal, the next
+## opens the desk it stands on.
+const SLOT_FIRST: Array[StringName] = [&"terminal", &"wall", &"desk"]
+
+
+func _slot_in_front() -> Dictionary:
+	var room := _room()
+	if room == null:
+		return {}
+	var from: Vector2 = game.player.pos
+	var ahead := Vector2.from_angle(game.player.facing)
+	var best: Dictionary = {}
+	var best_d := REACH + 1.0
+	var best_read := true
+	var best_rank := SLOT_FIRST.size()
+	var l := room.layout
+	for i in l.slots.size():
+		var id := StoryRooms.held(room.kind.id, room.threshold.key, l, i)
+		if id == &"":
+			continue
+		var to: Vector2 = (l.slots[i].at as Vector2) - from
+		var d := to.length() - StoryRooms.SOLID
+		if d > REACH:
+			continue
+		if d > CLOSE and to.length() > 0.01 and ahead.dot(to.normalized()) < AHEAD:
+			continue
+		var was_read := Story.knows(id)
+		var rank := SLOT_FIRST.find(l.slots[i].slot)
+		var nearer := d < best_d - 0.05
+		var level := absf(d - best_d) <= 0.05
+		var first := (best_read and not was_read) or (best_read == was_read and rank < best_rank)
+		if nearer or (level and first):
+			best = {"i": i, "id": id, "_d": d}
+			best_d = d
+			best_read = was_read
+			best_rank = rank
+	return best
+
+
 func _start_reading(prop: WorldProp) -> void:
 	var id := StoryFragments.held_by(game.world, prop)
 	if id == &"":
 		Events.hint.emit("Nothing on it that can still be read.", "")
 		return
+	_read(id)
+
+
+## A fragment's words on the glass, read off whatever held them.
+func _read(id: StringName) -> void:
 	# A thing that answers (`talk`): reading it is being spoken to.
 	var answers := StringName(str(StoryContent.FRAGMENTS[id].get("talk", &"")))
 	if answers != &"":
@@ -669,6 +734,10 @@ func _load(v: Variant) -> void:
 func tour_place(what: String) -> Vector2:
 	if game.world == null:
 		return Vector2.INF
+	if what.begins_with("slot:"):
+		var room := _room()
+		var i := _tour_slot(what.substr(5))
+		return StoryRooms.stand(room.layout, i) if i >= 0 else Vector2.INF
 	if what.begins_with("rescue:"):
 		var which := what.substr(7)
 		if which == "asker":
@@ -701,6 +770,27 @@ func tour_place(what: String) -> Vector2:
 		if g.id == id:
 			return _beside(g.pos, [0.0, 0.8, 1.2])
 	return Vector2.INF
+
+
+## `at slot:NAME`, inside a room: in front of the first story slot whose key
+## (StoryRooms.key_of) is NAME or names it as its slot or its thing --
+## `slot:terminal`, `slot:whiteboard`, `slot:desk:kist` -- facing it.
+func tour_face(what: String) -> float:
+	if not what.begins_with("slot:"):
+		return NAN
+	var i := _tour_slot(what.substr(5))
+	return StoryRooms.facing(_room().layout, i) if i >= 0 else NAN
+
+
+func _tour_slot(want: String) -> int:
+	var room := _room()
+	if room == null:
+		return -1
+	for i in room.layout.slots.size():
+		var key := String(StoryRooms.key_of(room.layout, room.layout.slots[i]))
+		if key == want or key.begins_with(want + ":") or key.ends_with(":" + want):
+			return i
+	return -1
 
 
 ## A spot within reach of the nearest villager, inside `StoryProps.CLOSE` so the

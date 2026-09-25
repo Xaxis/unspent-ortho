@@ -342,6 +342,29 @@ func blade(base: Vector3, tip: Vector3, width: float, angle: float, col: Color) 
 	made.tri(base + side, base - side, tip, tone(col, 0.92))
 
 
+## One thin blade in two triangles, ONE-SIDED, for a shader that draws both
+## faces: a straight inner edge from the base to the tip, and an outer edge that
+## bows out through `bow` (added to the midpoint), so the blade reads as curved
+## for half what a jointed blade costs. Tapers to the tip.
+func sickle(base: Vector3, tip: Vector3, bow: Vector3, width: float, angle: float, col: Color, tip_col: Color = Color(0, 0, 0, 0)) -> void:
+	var side := Vector3(cos(angle), 0.0, sin(angle)) * width * 0.5
+	var mid := base.lerp(tip, 0.5) + bow + side * 0.4
+	made.tri(base - side, base + side, mid, col)
+	made.tri(base - side, mid, tip, col if tip_col.a == 0.0 else tip_col)
+
+
+## A blade bent at one joint: a tapering sheath from base to mid, the tip on
+## from there, seen from both sides. Long grass, which a straight blade draws as
+## a spike.
+func blade2(base: Vector3, mid: Vector3, tip: Vector3, width: float, angle: float, col: Color, tip_col: Color) -> void:
+	var side := Vector3(cos(angle), 0.0, sin(angle)) * width * 0.5
+	var ms := side * 0.62
+	made.quad(base - side, base + side, mid + ms, mid - ms, col)
+	made.quad(base + side, base - side, mid - ms, mid + ms, tone(col, 0.92))
+	made.tri(mid - ms, mid + ms, tip, tip_col)
+	made.tri(mid + ms, mid - ms, tip, tone(tip_col, 0.92))
+
+
 ## A hand-built block: corners jittered by `rough`, the top `taper`ed and
 ## leaning `lean` toward +x. Walls, chimneys, slabs, planks.
 func slab(cx: float, y0: float, cz: float, w: float, h: float, d: float, seed_value: int, col: Color, top_col: Color = Color(0, 0, 0, 0), rough: float = 0.03, taper: float = 0.0, lean: float = 0.0) -> void:

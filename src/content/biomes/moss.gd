@@ -52,7 +52,20 @@ static func make() -> BiomeDef:
 	d.bank_ground = Ground.PEAT
 	d.pool_rim_ground = Ground.PEAT
 	d.village_ground = Ground.GRASS
-	d.decor = {Ground.GRASS: [1.2, Decor.SEDGE, 30, Decor.TUFT_TALL, 20, Decor.BOG_COTTON, 14, Decor.SPHAGNUM, 8]}
+	# Sedge, heavy and dark, arching over and slow to move; and bog cotton, thin
+	# stems standing out of it with white heads that bob in the least air.
+	d.grasses = [
+		GrassSpecies.make(&"sedge", {"blades": 22, "height": Vector2(0.25, 0.45), "width": 0.028, "spread": 0.22,
+			"reach": Vector2(0.45, 0.8), "curl": 0.35, "lay": 0.15, "root": P.SPRUCE[2], "tip": P.MOSS[3],
+			"stiff": 0.7, "flutter": 1}),
+		GrassSpecies.make(&"bog_cotton", {"blades": 9, "height": Vector2(0.25, 0.42), "width": 0.012, "spread": 0.16,
+			"reach": Vector2(0.05, 0.15), "curl": 0.05, "lay": 0.3, "root": P.MOSS[2], "tip": P.MOSS[3],
+			"heads": 9, "head_color": P.LINEN[5], "head_size": 0.04, "stiff": 0.35, "flutter": 5}),
+	]
+	d.decor = {
+		Ground.GRASS: [1.2, Decor.GRASS_A, 30, Decor.TUFT_TALL, 20, Decor.GRASS_B, 14, Decor.SPHAGNUM, 8],
+		Ground.MOSS: [Vector2(1.3, 0.6), Decor.GRASS_A, 34, Decor.GRASS_B, 20, Decor.SPHAGNUM, 16, Decor.TUFT, 6, Decor.FLOWER, 4],
+	}
 	d.grass_colors = [P.SPRUCE[3], P.MOSS[3]]
 	d.rock_color = P.SLATE[2].lerp(P.SPRUCE[2], 0.3)
 	d.decor_tints = {&"bloom": [P.RUST[4], P.SAND[5], P.RUST[5]]}
@@ -84,6 +97,11 @@ static func make() -> BiomeDef:
 	# global night it was 95.3% below luma 24 at 23:00 against the coast's 81.4%,
 	# which is a bog nobody can cross rather than a bog that is dark.
 	d.night_sky = 1.45
+	# And its DAY is lit brighter than the coast's for the same reason: the ground
+	# is the darkest in the game, so under the one daylight (SkyLight.SUN_NOON) a
+	# bog at noon read as dusk, median luma 52-61 from above. Spent as the day's
+	# light is and gone by night, so `night_sky` above still owns the night.
+	d.day_light = 1.45
 	d.wet = 0.35
 	d.props = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS,
 		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_ORE, PropKind.PEAT_BANK,

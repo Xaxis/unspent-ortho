@@ -29,6 +29,7 @@ extends RefCounted
 
 ## Out of a swing's share of the cycle: how much is spent lifting, and where the
 ## lowering begins. The carry runs across the middle.
+const Rumble := preload("res://src/core/sky/rumble.gd")
 const LIFT_END := 0.18
 const LOWER_FROM := 0.74
 ## The carry's own span (it overlaps both ends, so the foot leaves on a diagonal
@@ -224,12 +225,14 @@ static func felt(d: float) -> Vector2:
 
 ## Real seconds for a landing to reach the player through the ground (3 km/s) and
 ## through the air (343 m/s). Real, not world: they are what a body perceives.
+## The speeds are the felt queue's (src/core/sky/rumble.gd), which every far
+## event rides.
 static func ground_delay(d: float) -> float:
-	return d / 3000.0
+	return Rumble.ground_delay(d)
 
 
 static func air_delay(d: float) -> float:
-	return d / 343.0
+	return Rumble.air_delay(d)
 
 
 ## THE LEGS WHOSE SHADOW FALLS ON THE PLAYER'S GROUND, as tapered capsules

@@ -30,6 +30,9 @@ const ALIAS := {
 	&"killed": &"machine_down",
 	&"called": &"watcher_call",
 	&"regrow": &"",
+	# sky (21_falls): a mass fall's boom rolling in, carried from tens of
+	# kilometres as a colossus's is, with the colossi's own falloff.
+	&"fall_boom": &"colossus_boom",
 	# survival: the lamp guttering out is the lamp going off.
 	&"lamp_out": &"lamp_off",
 	# survival: a tool breaking in the hand is its own snap, not a gather.
@@ -148,8 +151,8 @@ const EMITTED: Array[StringName] = [
 	&"build_ask", &"ask_fire", &"refuse", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"work_gather",
 	&"work_scrape", &"work_tap", &"work_turn", &"took", &"work_broken", &"sleep", &"build_fire",
 	&"build_bench", &"build_kiln", &"regrow", &"lamp_out", &"collapse", &"make", &"hone", &"reedge",
-	# sky (10_sky.gd, 15_lights.gd)
-	&"lamp_on", &"lamp_off",
+	# sky (10_sky.gd, 15_lights.gd, 21_falls.gd)
+	&"lamp_on", &"lamp_off", &"fall_boom",
 	# disposition (32_disposition.gd)
 	&"works_horn",
 	# works and landmarks (34_works.gd, 22_landmarks.gd)

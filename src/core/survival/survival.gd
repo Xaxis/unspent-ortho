@@ -1085,6 +1085,10 @@ static func _act(game: Game, action: StringName, seconds: float) -> void:
 ## Is the sky wetting a body at `minutes`, where it stands (the weather of
 ## the country underfoot, so a front that rains on the coast snows up north)?
 static func _weather_wets(game: Game, minutes: float) -> bool:
+	# Under a roof nothing falls (Realm.roofed): a room's tiles carry the land
+	# its house stands in, and that land's rain does not come through the ceiling.
+	if Realm.roofed(game.world.realm):
+		return false
 	var p := game.player.pos
 	var d := Weather.at_place(game.world.seed_value, minutes, game.world.country_at(floori(p.x), floori(p.y)))
 	return Condition.wets(String(d.get("kind", "")), float(d.get("strength", 0.0)))

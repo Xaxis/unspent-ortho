@@ -37,6 +37,7 @@ const Def := preload("res://src/core/colossus/colossus_def.gd")
 const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 
 const Walk := preload("res://src/core/colossus/colossus_walk.gd")
+const Rumble := preload("res://src/core/sky/rumble.gd")
 
 var view: ViewScript
 var foot: FootScript
@@ -47,9 +48,9 @@ var _start := 0.0
 ## ones that land now (colossus_walk.gd `steps_between`, which fires nothing
 ## across a skip).
 var _last := NAN
-## What a landing sends the player, still on its way: [real seconds left, what
-## (&"quake" | &"thump" | &"boom"), where it landed, how far that is].
-var _coming: Array = []
+## What a landing sends the player, still on its way (&"quake", &"thump",
+## &"boom": src/core/sky/rumble.gd `landing`).
+var rumble := Rumble.new()
 ## How loud the colossi are where the player stands, 0..1, for the far drone
 ## (70_audio reads it off the group `&"colossi"`, SoundMix `bed_colossus`).
 var hum := 0.0
@@ -209,23 +210,14 @@ func _land(m: float) -> void:
 				var d := at.distance_to(here)
 				if Walk.felt(d).x <= 0.0 and d > Walk.FELT_FAR * 1.5:
 					continue
-				_coming.append([Walk.ground_delay(d), &"quake", at, d])
-				_coming.append([Walk.ground_delay(d), &"thump", at, d])
-				_coming.append([Walk.air_delay(d), &"boom", at, d])
+				rumble.landing(at, d)
 	_last = m
 
 
 func _arrive(delta: float) -> void:
-	var i := 0
-	while i < _coming.size():
-		var c: Array = _coming[i]
-		c[0] = float(c[0]) - delta
-		if float(c[0]) > 0.0:
-			i += 1
-			continue
-		_coming.remove_at(i)
-		var d: float = c[3]
-		match c[1]:
+	for c: Dictionary in rumble.arrive(delta):
+		var d: float = c.d
+		match c.what:
 			&"quake":
 				var f := Walk.felt(d)
 				felt_count += 1
@@ -233,9 +225,9 @@ func _arrive(delta: float) -> void:
 					# Slower the further it has come.
 					game.camera.quake(f.x, f.y, lerpf(2.2, 1.0, clampf(d / Walk.FELT_FAR, 0.0, 1.0)))
 			&"thump":
-				Events.sfx.emit(&"colossus_step", c[2])
+				Events.sfx.emit(&"colossus_step", c.at)
 			&"boom":
-				Events.sfx.emit(&"colossus_boom", c[2])
+				Events.sfx.emit(&"colossus_boom", c.at)
 
 
 ## The drone's level, and which way the view is turned: both from the walkers'
@@ -469,7 +461,7 @@ func stats_line() -> String:
 	if view == null:
 		return "\nworld colossi: off"
 	var cam := get_viewport().get_camera_3d()
-	var out := "\nworld colossi: pose %d us, %d landings felt, %d on their way, hum %.2f, gaze %.2f, %d leg shadows on the land, the player at %.0f,%.0f" % [view.last_pose_usec, felt_count, _coming.size(), hum, gaze, shadows, _player_at().x, _player_at().z]
+	var out := "\nworld colossi: pose %d us, %d landings felt, %d on their way, hum %.2f, gaze %.2f, %d leg shadows on the land, the player at %.0f,%.0f" % [view.last_pose_usec, felt_count, rumble.size(), hum, gaze, shadows, _player_at().x, _player_at().z]
 	out += "\nworld colossi cost (us): feet %d, treads %d, landings %d, drone and shadows %d" % [_cost.x, _cost.y, _cost.z, _cost.w]
 	out += "\nworld colossi feet: %d drawn near, %d surfaces uploaded, %d feet down in treads, %d pads stopping bodies, %d landings in the treads" % [foot.drawn, foot.uploaded, _down.size(), blocks.size(), tread_landings]
 	for key: int in _down:

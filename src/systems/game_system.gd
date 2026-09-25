@@ -39,3 +39,30 @@ func started() -> void:
 ## machine, and reported green for two waves.
 func tour_forget(_what: StringName) -> void:
 	pass
+
+
+## What a system that keeps the OUTSIDE does at a door (20_realms calls a
+## system's `indoors(inside)` through a door instead of `realm_changed`, and says
+## why there). This is the common half: stop processing, and hide what was drawn
+## -- `layers` and this system's own 3D children -- putting back exactly what was
+## showing, so a thing hidden on purpose before the door stays hidden after it.
+var _hid_indoors: Array[Node3D] = []
+
+
+func sleep_indoors(inside: bool, layers: Array[Node3D] = []) -> void:
+	set_process(not inside)
+	set_physics_process(not inside)
+	if not inside:
+		for n: Node3D in _hid_indoors:
+			if is_instance_valid(n):
+				n.visible = true
+		_hid_indoors.clear()
+		return
+	var all: Array[Node3D] = layers.duplicate()
+	for c: Node in get_children():
+		if c is Node3D:
+			all.append(c as Node3D)
+	for n: Node3D in all:
+		if n != null and n.visible:
+			n.visible = false
+			_hid_indoors.append(n)

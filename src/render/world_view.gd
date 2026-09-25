@@ -139,11 +139,16 @@ var _data: Dictionary = {} # Vector2i -> TerrainMesher.Chunk
 var _props_by_chunk: Dictionary = {} # Vector2i -> Array[WorldProp]
 var _cables_by_chunk: Dictionary = {} # Vector2i -> Array[Vector2i] of prop id pairs
 var _world_mat: ShaderMaterial
+## Whether `works` is on `_world_mat` yet (`_bind_works`).
+var _works_bound := false
 var _water_mat: ShaderMaterial
 ## The leaves' own material (src/render/foliage/leaf.gdshader). One per view, not
 ## PropModels' shared one, for the reason the world material is one per view:
 ## 18_crowns writes the clearings into it every frame.
 var _leaf_mat: ShaderMaterial
+## What sways in a chunk's decor (src/render/foliage/grass.gdshader): one per
+## view, like the leaves.
+var _grass_mat: ShaderMaterial
 ## Where the machines cut the ground (read-only once baked; both threads read it).
 var works: WorksMap
 
@@ -183,7 +188,31 @@ func setup(w: WorldData) -> void:
 	_water_mat.shader = preload("res://src/render/water.gdshader")
 	_leaf_mat = ShaderMaterial.new()
 	_leaf_mat.shader = preload("res://src/render/foliage/leaf.gdshader")
+	_grass_mat = ShaderMaterial.new()
+	_grass_mat.shader = preload("res://src/render/foliage/grass.gdshader")
 	_bind(w)
+
+
+## A view of a POCKET world (docs/interiors) that draws with `from`'s materials:
+## the player's figure, the crowns and the swing arc hold those, and a pocket
+## must look like the same page. Grown while the player walks up to the door, out
+## of the tree or hidden in it, so the door itself only swaps one view for the
+## other -- and the outside view, set aside WHOLE, keeps its chunks, its far land
+## and its in-flight worker tasks, which finish into its own fields while it is
+## away. Coming back out rebuilds nothing (measured in tests/interior).
+func setup_sharing(w: WorldData, from: WorldView) -> void:
+	_world_mat = from._world_mat
+	_water_mat = from._water_mat
+	_leaf_mat = from._leaf_mat
+	_bind(w)
+
+
+## The one per-world thing this view writes onto the materials it shares (the
+## works map): put back when this view draws again after another drew with them.
+func reclaim() -> void:
+	if works != null:
+		works.bind(_world_mat)
+		_works_bound = true
 
 
 ## Point this view at ANOTHER world: a realm crossing (docs/VISION.md,
@@ -245,7 +274,10 @@ func _bind(w: WorldData) -> void:
 	_cables_by_chunk.clear()
 	# The machines' works cut into the ground, for the shader and the decor.
 	works = WorksMap.bake(w)
-	works.bind(_world_mat)
+	# Bound on the MAIN thread (`_bind_works`): binding makes two textures, and
+	# `_bind` runs on a worker for the boot page and the title, where creating a
+	# texture waits on the main thread (the far textures below learnt it first).
+	_works_bound = false
 	decor.works = works
 	_bg_decor.works = works
 	for p in w.props:
@@ -268,7 +300,10 @@ func _bind(w: WorldData) -> void:
 				if not _cables_by_chunk.has(key):
 					_cables_by_chunk[key] = []
 				_cables_by_chunk[key].append(Vector2i(ids[j], ids[j + 1]))
-	_add_open_sea()
+	if w.realm == Realm.INTERIOR:
+		_add_void()
+	else:
+		_add_open_sea()
 	# Read off the registry HERE, on the main thread, so a far block's worker
 	# never touches it (the chunk workers learnt the same lesson above).
 	_far_tables = Far.tables()
@@ -352,7 +387,18 @@ func _write_mask() -> void:
 
 
 func world_material() -> ShaderMaterial:
+	_bind_works()
 	return _world_mat
+
+
+## Put this world's works map on the world material. MAIN THREAD ONLY: it makes
+## textures. Called before anything draws with the material and whenever the
+## main thread first asks for it.
+func _bind_works() -> void:
+	if _works_bound or works == null:
+		return
+	works.bind(_world_mat)
+	_works_bound = true
 
 
 func water_material() -> ShaderMaterial:
@@ -361,6 +407,10 @@ func water_material() -> ShaderMaterial:
 
 func leaf_material() -> ShaderMaterial:
 	return _leaf_mat
+
+
+func grass_material() -> ShaderMaterial:
+	return _grass_mat
 
 
 func chunk_count() -> int:
@@ -476,6 +526,7 @@ func pending() -> int:
 func _process(_delta: float) -> void:
 	if world == null:
 		return
+	_bind_works()
 	if _task >= 0 and WorkerThreadPool.is_task_completed(_task):
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
@@ -606,10 +657,11 @@ const SHADOW_FULL := 30.0
 func _lod_apply(node: Node3D) -> void:
 	var lod := _lod_on and node.get_node_or_null("mid_done") != null
 	var reach := float(Quality.current().get("eye_shadow_reach", 0)) if _lod_on else 0.0
-	var dm := node.get_node_or_null("decor") as GeometryInstance3D
-	if dm != null:
-		dm.visibility_range_end = DECOR_TO if _lod_on else 0.0
-		dm.visibility_range_end_margin = LOD_MARGIN if _lod_on else 0.0
+	for part: String in ["decor", "grass", "grass_cast"]:
+		var dm := node.get_node_or_null(part) as GeometryInstance3D
+		if dm != null:
+			dm.visibility_range_end = DECOR_TO if _lod_on else 0.0
+			dm.visibility_range_end_margin = LOD_MARGIN if _lod_on else 0.0
 	# The land: all of it casts, out to the reach.
 	_casts(node, "terrain", 0.0, reach, _lod_on and reach > 0.0)
 	for i in 3:
@@ -914,7 +966,14 @@ func _far_worker(slot: int, key: Vector2i) -> void:
 	_far_at[slot] = Time.get_ticks_usec() - began
 
 
-func _exit_tree() -> void:
+## THE WORKERS ARE WAITED FOR WHEN THE VIEW IS DESTROYED, NOT WHEN IT LEAVES THE
+## TREE. A door sets the outside view aside whole (docs/interiors, 21_doors), and
+## its tasks in flight finish into its own fields while it is out and are taken
+## up by `_process` when it is put back. Waited for at the exit instead, a door
+## stood for 4.6 s behind the far rings under load, measured.
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_PREDELETE:
+		return
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
@@ -931,7 +990,7 @@ func _build_worker(key: Vector2i, props: Array, spans: Array) -> void:
 	var t0 := Time.get_ticks_usec()
 	_task_chunk = _bg_mesher.build_arrays(key.x, key.y)
 	var t1 := Time.get_ticks_usec()
-	_task_decor = _bg_decor.build_arrays(_task_chunk)
+	_task_decor = _bg_decor.build_parts(_task_chunk, props)
 	var t2 := Time.get_ticks_usec()
 	_task_props = bake_props(_task_chunk, _bg_mesher, props, spans)
 	var t3 := Time.get_ticks_usec()
@@ -1028,9 +1087,9 @@ func _build(key: Vector2i) -> void:
 	var t0 := Time.get_ticks_usec()
 	var ch := mesher.build_arrays(key.x, key.y)
 	var t1 := Time.get_ticks_usec()
-	var dec := decor.build_arrays(ch)
-	var t2 := Time.get_ticks_usec()
 	var snap := _snapshot(key)
+	var dec := decor.build_parts(ch, snap[0])
+	var t2 := Time.get_ticks_usec()
 	var baked := bake_props(ch, mesher, snap[0], snap[1])
 	var t3 := Time.get_ticks_usec()
 	_last_decor_usec = t2 - t1
@@ -1059,14 +1118,18 @@ func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, wor
 		sea.material_override = _water_mat
 		sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		node.add_child(sea)
-	var dm := Decor.make_mesh(decor_arrays)
-	if dm != null:
-		var mi := MeshInstance3D.new()
-		mi.name = "decor"
-		mi.mesh = dm
-		mi.material_override = _world_mat
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		node.add_child(mi)
+	# decor_arrays: Decor.build_parts, [solid, grass, casting grass].
+	for i in decor_arrays.size():
+		var dm := Decor.make_mesh(decor_arrays[i])
+		if dm != null:
+			var mi := MeshInstance3D.new()
+			mi.name = ["decor", "grass", "grass_cast"][i]
+			mi.mesh = dm
+			mi.material_override = _world_mat if i == 0 else _grass_mat
+			# Only a grass that asks to (GrassSpecies.casts: sparse straw on a pale
+			# crust, where without a shadow it floats) casts; a meadow never does.
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if i == 2 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			node.add_child(mi)
 	if baked.is_empty():
 		var snap := _snapshot(key)
 		baked = bake_props(ch, mesher, snap[0], snap[1])
@@ -1143,6 +1206,12 @@ func prop_country(p: WorldProp, ch: TerrainMesher.Chunk) -> int:
 
 ## What a chunk's props bake from, taken on the main thread: [standing props,
 ## cable spans as [from prop, to prop]] (taken props left out).
+##
+## The lists are the worker's own; the WorldProps in them are not. A take that
+## works a prop down on the main thread (Harvest.apply_shown) while its chunk
+## bakes changes a field the bake may be reading. That costs one stale drawing,
+## not a crash (plain fields, nothing resized), and refresh_props rebuilds the
+## chunk. Copy the fields here if a bake ever reads anything a take can resize.
 func _snapshot(key: Vector2i) -> Array:
 	var props: Array = []
 	for p: WorldProp in _props_by_chunk.get(key, []):
@@ -1391,6 +1460,29 @@ static func _ranked(points: PackedVector3Array, axis: Vector3, rank: int) -> Vec
 
 ## A flat deep-sea sheet around the whole map, so the edge of the world is the
 ## sea and not the void. Four strips, so it never lies under the map's own water.
+## UNDER A POCKET, NOTHING: the rooms stand in the dark the way a drawn section
+## stands on the page, instead of on an ocean that is not there. Just under the
+## floor's own height (InteriorGen.FLOOR_LEVEL), over the tile of lower ground a
+## pocket keeps round its rooms, so what shows past a cut wall is the dark and not
+## a floor that belongs to no room. Named `open_sea` so rebind lets it go the same.
+func _add_void() -> void:
+	var s := float(world.size)
+	var m := 400.0
+	var y := TerrainMesher.level_height(InteriorGen.FLOOR_LEVEL) - 0.03
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(s + 2.0 * m, s + 2.0 * m)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.028, 0.026, 0.03)
+	var dark := MeshInstance3D.new()
+	dark.name = "open_sea"
+	dark.mesh = plane
+	dark.material_override = mat
+	dark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	dark.position = Vector3(s * 0.5, y, s * 0.5)
+	add_child(dark)
+
+
 func _add_open_sea() -> void:
 	var s := float(world.size)
 	# Past everything the eye can see from anywhere on the island (SkyLight.SEE):

@@ -124,7 +124,15 @@ func started() -> void:
 	# the first frame is drawn.
 	if _edits.has(String(_realm)):
 		game.world.depleted = (_edits[String(_realm)] as Dictionary).duplicate()
-	if _saved_realm != _realm:
+	if Realm.is_pocket(_saved_realm):
+		# A save made INSIDE: the world opened is the one outside, and the pocket
+		# is grown again from its key and gone into, where the player stood.
+		var at := game.player.pos
+		for sys in game.systems:
+			if sys != self and sys.has_method(&"reenter"):
+				sys.call(&"reenter", _saved_realm, at)
+				break
+	elif _saved_realm != _realm:
 		_go(_saved_realm, _stood.get(String(_saved_realm), Vector2.ZERO), -1, false)
 	_saved_realm = &""
 
@@ -146,13 +154,24 @@ func _process(delta: float) -> void:
 	# why): night everywhere under a roof, whatever the clock reads, so the floor,
 	# the hatch, the ink and the lamp's pool all come on down there.
 	if game.sky != null:
-		game.sky.closed = 1.0 if Realm.roofed(_realm) else 0.0
+		var want := 1.0 if Realm.roofed(_realm) else 0.0
+		# A pocket says its own (InteriorKind.closed: a cottage's windows let the
+		# hour in), and the light eases across a door rather than snapping at it.
+		if Realm.is_pocket(_realm):
+			want = pocket_closed
+		if Realm.is_pocket(_realm) or _eased > 0.0:
+			game.sky.closed = move_toward(game.sky.closed, want, delta * CLOSED_RATE)
+			_eased = maxf(0.0, _eased - delta)
+		else:
+			game.sky.closed = want
 	if _frames < WARM_AFTER:
 		_frames += 1
 		if _frames == WARM_AFTER and BootPage.has_threads():
 			for p: Portal in here:
 				RealmWorlds.begin(game.options.seed_value, game.world.size, p.to_realm)
 	if _crossing != null and is_instance_valid(_crossing):
+		return
+	if Realm.is_pocket(_realm):
 		return
 	_stand_gates()
 	_look -= delta
@@ -188,6 +207,14 @@ func _shaft_wins() -> bool:
 ## targeting with `target_rows`.
 func use_spent() -> bool:
 	return _settle > 0.0
+
+
+## How far a pocket's inside is from the sky (21_doors writes it on the way in),
+## how fast the light follows across a door, and how long it goes on easing after
+## the door has let the player out.
+var pocket_closed := 0.5
+const CLOSED_RATE := 3.0
+var _eased := 0.0
 
 
 ## Which shaft is near, which is worth raising a world for, and what to say.
@@ -336,25 +363,42 @@ func cross(p: Portal) -> void:
 ## only for a loaded game, where the save is the authority on what every realm
 ## holds and the realm being left must not be re-recorded from it.
 func _go(to: StringName, at: Vector2, shaft: int, carry: bool) -> void:
-	var from := _realm
 	var size: int = game.world.size
-	if carry:
-		_stood[String(from)] = game.player.pos
-		_edits[String(from)] = game.world.depleted.duplicate()
 	var w := RealmWorlds.take(game.options.seed_value, size, to)
 	if w == null:
 		return
-	if _edits.has(String(to)):
-		w.depleted = (_edits[String(to)] as Dictionary).duplicate()
 	var land := at
 	if land == Vector2.ZERO:
 		if shaft >= 0 and Portals.count(w) > 0:
 			land = Portals.landing(w, shaft)
 		else:
 			land = _stood.get(String(to), w.spawn)
+	enter(w, to, land, carry)
+
+
+## POINT THE GAME AT `w`, landing at `at`, known from now on as `key`: the one
+## function that moves a running game onto another world, whichever door it came
+## through -- a shaft into another realm (`_go`), or a door into a pocket world
+## (an interior, docs/interiors). It is not a new game: the clock, the score, the
+## body and the creel are the ones it had. `carry` keeps where the player stood
+## and what they took in the world being left, under its own key, and any world
+## entered under a key it has kept gets its edits back.
+##
+## `query`, when given, is the one that world was walked with before: a door hands
+## the outside's back, so every wall stamped into it (landmarks, works, holdings)
+## is still there, instead of a new query nobody has stamped.
+func enter(w: WorldData, key: StringName, at: Vector2, carry := true, query: WorldQuery = null) -> void:
+	var from := _realm
+	if carry:
+		_stood[String(from)] = game.player.pos
+		_edits[String(from)] = game.world.depleted.duplicate()
+	if _edits.has(String(key)):
+		w.depleted = (_edits[String(key)] as Dictionary).duplicate()
+	var to := key
+	var land := at
 	# The world, and everything that reads it through the game's own fields.
 	game.world = w
-	game.query = WorldQuery.new(w)
+	game.query = query if query != null and query.world == w else WorldQuery.new(w)
 	_realm = to
 	# The body: the fight owns its position, so the hero is moved with it.
 	var pl := game.player
@@ -374,7 +418,10 @@ func _go(to: StringName, at: Vector2, shaft: int, carry: bool) -> void:
 		sim.clear_mobs()
 	# The view keeps its materials and grows the new land.
 	if game.view != null:
-		game.view.rebind(w)
+		# A view already drawing this world (one set aside and put back) is not
+		# grown again: that is the whole cost of coming back out of a pocket.
+		if game.view.world != w:
+			game.view.rebind(w)
 		game.view.focus = land
 		game.view.ensure_near(land)
 	pl.sync_view(0.0)
@@ -383,10 +430,29 @@ func _go(to: StringName, at: Vector2, shaft: int, carry: bool) -> void:
 	# What the land can hold — snow, ash, wet, fog — is a texture of the world.
 	if game.sky != null:
 		game.sky.set_ground(SkyGround.texture(w), w.size)
-	_read_portals()
+	var door := Realm.is_pocket(from) or Realm.is_pocket(to)
+	# A door keeps the outside's shafts as they stood: they are still there when
+	# the player comes back out, and only hidden while they are in.
+	if door:
+		_gates.visible = not Realm.is_pocket(to)
+	else:
+		_read_portals()
 	_settle = SETTLE
+	if door:
+		_eased = 1.0 / CLOSED_RATE
+	# THROUGH A DOOR, A SYSTEM THAT KEEPS THE OUTSIDE IS PUT TO SLEEP, NOT RE-READ.
+	# `indoors(inside)` is how a system says it keeps state about the outside
+	# world and has nothing to do in a room: it hides what it drew, stops, and on
+	# the way out wakes onto the same world it left, with nothing to re-derive.
+	# Re-read instead, a way out cost 239 ms (holds 195, cast 23, shafts 19). A
+	# system without it is told `realm_changed` as for any crossing, which is
+	# always correct and only slower.
 	for sys in game.systems:
-		if sys != self and sys.has_method(&"realm_changed"):
+		if sys == self:
+			continue
+		if door and sys.has_method(&"indoors"):
+			sys.call(&"indoors", Realm.is_pocket(to))
+		elif sys.has_method(&"realm_changed"):
 			sys.call(&"realm_changed", from, to)
 
 
@@ -495,4 +561,4 @@ func _load(v: Variant) -> void:
 			per[str(id).to_int()] = SaveCodec.to_num(rows[id])
 		_edits[str(k)] = per
 	var want := StringName(str(d.get("realm", String(Realm.SURFACE))))
-	_saved_realm = want if Realm.KINDS.has(want) else &""
+	_saved_realm = want if Realm.KINDS.has(want) or Realm.is_pocket(want) else &""

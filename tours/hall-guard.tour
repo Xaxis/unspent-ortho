@@ -1,0 +1,28 @@
+# WHAT A WARDEN HOLDS (docs/interiors, 21_doors, HallTurret): while it stands,
+# the strongboxes in the bays will not open, and the turrets high in the hall's
+# corners turn on whoever is in their line -- the eye burns hot as one comes
+# round, the tell to move on. (Broken, it lets go of both: tests/interior proves
+# the boxes pay out the hall's table once, through the one economy.)
+#
+#   tools/tour.sh tours/hall-guard.tour --seed=4 --hour=11 --weather=clear:0
+#
+# 01 is the key at a strongbox while the warden stands, and the glass saying why
+# it is shut. 02 is a turret come round on the player, its eye hot.
+coast calm
+near door:weapons_hall
+await door 5
+press use 0.1
+await inside:weapons_hall 5
+# A crossing spends the key for a moment (20_realms SETTLE), less time than the
+# walk to the bays takes; a tour's teleport is quicker, so it waits.
+near strongbox
+wait 0.8
+press use 0.1
+await box_refused 3
+wait 0.2
+shot 01-a-strongbox-shut-while-the-warden-stands with inside:weapons_hall,box_near,mob:warden
+# A turret cannot see into a bay (its line would leave the floor through the
+# bay's wall), so step back out into the hall, where every corner can.
+near door
+await turret_aiming 10
+shot 02-a-turret-comes-round-its-eye-hot with inside:weapons_hall,turret_aiming

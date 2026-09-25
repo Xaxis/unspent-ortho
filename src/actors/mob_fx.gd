@@ -812,22 +812,65 @@ static func puff(parent: Node, at: Vector3, dir: Vector2, dust: Color, size: flo
 ## A slow breath of pale steam and ash off a vent, or off a body in the cold: a
 ## puff that rises and thins over `seconds`, drifting with the wind.
 ##
-## It is drawn in TWO values of `col`'s own hue and in no ink at all: a pale core
-## held by a rim in the cue's own mid tone (docs/LOOK.md). Breath drawn the way
-## dust is -- an ink contour on the shaded side -- is three near-black specks,
-## and on a snowfield near-black is soot, not breath (wave A2, art finding 9).
+## FROM ABOVE it is a MARK drawn in TWO values of `col`'s own hue and in no ink
+## at all: a pale core held by a rim in the cue's own mid tone (docs/LOOK.md).
+## Breath drawn the way dust is -- an ink contour on the shaded side -- is three
+## near-black specks, and on a snowfield near-black is soot, not breath (wave A2,
+## art finding 9). The rim is lifted off the cue's own step too: left at the raw
+## colour it is a near-black ring round a pale heart, and on snow half the mark's
+## pixels are that ring, the soot again with a hole in it. A step up puts the
+## contour BETWEEN the core and the snow, so the cloud has an edge without a
+## shadow.
 ##
-## The rim is lifted off the cue's own step too. Left at the raw colour it is a
-## near-black ring round a pale heart, and on snow half the mark's pixels are
-## that ring: the mark reads as a dark blot with a light middle, which is the
-## soot again with a hole in it. A step up puts the contour BETWEEN the core and
-## the snow, so the cloud has an edge without having a shadow.
+## UNDER THE CLOSE EYE it is AIR (`_air`): a mark there is a flat cartoon cloud
+## held to a floor in frame pixels, drawn over everything, a metre from the lens
+## -- a white speckled cloud the size of a door hanging by the player's head.
 static func breath(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int) -> void:
 	if not _ok(parent):
+		return
+	if close_eye(parent):
+		_air(parent, at, col, size, seconds, drift, seed_value)
 		return
 	size = at_least(size, VAPOUR_PX)
 	var mi := _mark(parent, at, size, VAPOUR, &"over", seed_value, col.lightened(0.86), col.lightened(0.34))
 	_run(mi, seconds, Vector3(drift.x, size * 0.6, drift.y))
+
+
+## Whether the eye `parent` is seen through is close: the perspective lens (the
+## view over the shoulder). A mark's floor in frame pixels is a legibility
+## minimum for the camera looking down; under the close eye it is a cloud the
+## size of a door a metre from the lens.
+static func close_eye(parent: Node) -> bool:
+	var cam := parent.get_viewport().get_camera_3d() if parent.is_inside_tree() else null
+	return cam != null and cam.projection == Camera3D.PROJECTION_PERSPECTIVE
+
+
+## Breath as the fire's own soft puff (FireModel.smoke_material): lit by what
+## reaches it, depth-tested so a head in front of it hides it, in world units,
+## swelling and thinning as it rises.
+static func _air(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int) -> void:
+	var mi := MeshInstance3D.new()
+	mi.mesh = FireModel.smoke_mesh()
+	var mat := FireModel.smoke_material().duplicate() as StandardMaterial3D
+	var c := col.lightened(0.72)
+	mat.albedo_color = Color(c.r, c.g, c.b, 0.0)
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)
+	mi.global_position = at
+	var turn := Rng.hash01(seed_value, 3) * 0.3
+	mi.scale = Vector3.ONE * size * (0.55 + turn)
+	var dense := 0.5
+	var tw := mi.create_tween()
+	tw.set_parallel(true)
+	tw.tween_method(func(t: float) -> void:
+		mat.albedo_color.a = dense * smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.3, 1.0, t)), 0.0, 1.0, seconds)
+	tw.tween_property(mi, "scale", Vector3.ONE * size * (1.4 + turn), seconds).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(mi, "global_position", at + Vector3(drift.x, size * 0.6, drift.y), seconds).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.chain().tween_callback(mi.queue_free)
+	if hold:
+		tw.custom_step(seconds * hold_at)
+		tw.pause()
 
 
 ## Several puffs about a point, for a body landing or a charge setting off.

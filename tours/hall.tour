@@ -1,0 +1,35 @@
+# THE PLAN'S WEAPONS HALL (docs/interiors, src/content/interiors/weapons_hall.gd):
+# the hatch off a works depot's back end, and the machines' own hall under the
+# yard -- plated, racked, a gutted machine on a gantry, bays caged in bars, the
+# strips ruled down the ceiling and the day coming through the torn roof.
+#
+#   tools/tour.sh tours/hall.tour --seed=4 --hour=11 --weather=clear:0 --rooms=empty
+#
+# The residents are left out (--rooms=empty): this is how the hall LOOKS, and its
+# warden would otherwise end the tour by putting the player out of it.
+#
+# 01 is the hatch as a player finds it. 02 is the hall from above: the section
+# must read as a machines' place, cold and ruled, with sun on the floor under the
+# tears. 03 is over the shoulder, roofed. 04 is the same hall at night, lit by
+# its strips alone.
+coast calm
+near door:weapons_hall
+await door 5
+wait 0.6
+shot 01-a-hatch-off-a-depot with door
+
+press use 0.1
+await inside:weapons_hall 5
+wait 1.0
+shot 02-the-hall-from-above with inside:weapons_hall
+
+hold shoulder_peek
+await shoulder 3
+wait 0.6
+shot 03-the-hall-over-the-shoulder with inside:weapons_hall,shoulder
+release shoulder_peek
+await top_view 3
+
+hour 22
+wait 1.2
+shot 04-the-hall-at-night with inside:weapons_hall

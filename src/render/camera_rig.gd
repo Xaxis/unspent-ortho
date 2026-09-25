@@ -159,6 +159,13 @@ var subject := Vector3.INF
 ## stand at (Shoulder.room). Unset, nothing is walked and the eye stands where
 ## the pose puts it (a gallery, a test with no world).
 var sight_room := Callable()
+## How much of a line from the head is clear, with no floor (41_shoulder
+## `side_room`): asked to the player's right, so the eye stands off a wall there
+## instead of hugging it. The right the eye actually stands at, eased.
+var side_room := Callable()
+var _side := Shoulder.RIGHT
+## How much room the eye keeps between itself and a wall at the player's right.
+const SIDE_CLEAR := 1.4
 ## The blend's own linear clock, 0 (top) to 1 (over the shoulder).
 var _sh_t := 0.0
 ## How far the eye has moved out to `Shoulder.LOCK_RIGHT` for a lock, 0..1, eased
@@ -197,6 +204,11 @@ var lean_yaw := 0.0
 var lean_pitch := 0.0
 var lean_zoom := 1.0
 var lean_bias := Vector3.ZERO
+## Where the frame from above is drawn toward besides the body it follows, eased
+## like a lean: a room is framed on its middle, not on the player standing in
+## its doorway (21_doors is the one writer). Kept apart from `lean_bias` because
+## targeting squares that to zero every frame its key is up.
+var frame_bias := Vector3.ZERO
 ## Eased per second: in quickly enough to feel like a lean, out more gently.
 const LEAN_IN := 7.0
 const LEAN_OUT := 4.5
@@ -217,6 +229,7 @@ var _yaw := 0.0
 var _pitch := 0.0
 var _zoom := 1.0
 var _bias := Vector3.ZERO
+var _frame := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -555,6 +568,7 @@ func snap_to(p: Vector3) -> void:
 	_pitch = lean_pitch
 	_zoom = lean_zoom
 	_bias = lean_bias
+	_frame = frame_bias
 	_apply()
 
 
@@ -711,7 +725,20 @@ func _apply_lens() -> void:
 	# shoulder's on the one eased clock. The yaw goes the short way round.
 	var yb := deg_to_rad(shoulder_yaw)
 	var right := Vector3(cos(yb), 0.0, -sin(yb))
-	var focus_b := _smoothed + Vector3(0.0, Shoulder.FOCUS_UP, 0.0) + right * _right_now()
+	# THE EYE DOES NOT HUG A WALL AT THE PLAYER'S RIGHT. Down a corridor it stood
+	# a hand's width off the wall, which filled half the frame, and the lantern in
+	# that hand blew it out. So the shoulder offset gives way to the wall: the
+	# eye stands `SIDE_CLEAR` off it, toward the corridor's middle, as far over
+	# as the player's own left side allows.
+	var want := _right_now()
+	var fit := want
+	if side_room.is_valid() and w > 0.01:
+		var head := _smoothed + Vector3(0.0, Shoulder.HEAD_UP, 0.0)
+		var reach := want + SIDE_CLEAR
+		var free := float(side_room.call(head, head + right * reach)) * reach
+		fit = clampf(free - SIDE_CLEAR, -0.3, want)
+	_side = fit if fit < _side else lerpf(_side, fit, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
+	var focus_b := _smoothed + Vector3(0.0, Shoulder.FOCUS_UP, 0.0) + right * _side
 	var yaw := yaw_a + Shoulder.turn(yaw_a, shoulder_yaw) * w
 	var pitch := lerpf(pitch_a, minf(shoulder_pitch + _clear_tip, Shoulder.PITCH_MOST), w)
 	var focus := focus_a.lerp(focus_b, w)
@@ -785,6 +812,7 @@ func _ease_lean(delta: float) -> void:
 	_pitch = lerpf(_pitch, lean_pitch, to_out if is_zero_approx(lean_pitch) else to_in)
 	_zoom = lerpf(_zoom, lean_zoom, to_out if is_equal_approx(lean_zoom, 1.0) else to_in)
 	_bias = _bias.lerp(lean_bias, to_out if lean_bias.length() < LEAN_STILL else to_in)
+	_frame = _frame.lerp(frame_bias, to_out)
 
 
 func _apply() -> void:
@@ -797,7 +825,7 @@ func _apply() -> void:
 	var b := Basis.from_euler(rotation)
 	# Express the focus in camera space, snap its screen-plane axes to texels, go back.
 	var texel := size / float(get_viewport().get_visible_rect().size.y)
-	var local := b.inverse() * (_smoothed + _bias)
+	var local := b.inverse() * (_smoothed + _bias + _frame)
 	local.x = roundf(local.x / texel) * texel
 	local.y = roundf(local.y / texel) * texel
 	var focus := b * local

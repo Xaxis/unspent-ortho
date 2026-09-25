@@ -337,8 +337,8 @@ func _process(delta: float) -> void:
 
 ## Read the landscape under the player and ping its name when someone can read
 ## it. A walked border settles (UiPlaceWatch.SETTLE); a jump is said at once.
-## A name entered under an open app or in a fight waits until there is a HUD
-## to say it on, rather than being swallowed — and is dropped if the ground has
+## A name entered under an open app, in a fight or under the loading page waits
+## until there is a HUD to say it on, rather than being swallowed — and is dropped if the ground has
 ## changed under it while it waited: the caption says where the player stands,
 ## or it says nothing.
 func _watch_place(delta: float, hostile: bool) -> void:
@@ -349,7 +349,7 @@ func _watch_place(delta: float, hostile: bool) -> void:
 	var entered := _places.step(under, delta, jumped)
 	if entered != &"":
 		_pending_place = entered
-	if _pending_place == &"" or not stack.is_empty() or hostile:
+	if _pending_place == &"" or not stack.is_empty() or hostile or _page_up():
 		return
 	if _pending_place != under:
 		# It waited for a glass nobody could read, and the ground has changed
@@ -362,6 +362,13 @@ func _watch_place(delta: float, hostile: bool) -> void:
 	game.hud.show_place(BiomeRegistry.get_def(_pending_place).display_name)
 	Events.sfx.emit(&"ui_slate_ping", Vector3.ZERO)
 	_pending_place = &""
+
+
+## Whether the loading page is still over the HUD (it draws above it while it
+## lifts): the place the player wakes in was pinged underneath it, its plate's
+## whole rise and half its ring spent where nobody could see them.
+func _page_up() -> bool:
+	return not get_tree().get_nodes_in_group(&"boot_page").is_empty()
 
 
 ## The slate's power from the lamp's reserve and the charges carried: the glass

@@ -1,0 +1,44 @@
+# EVERY HOUSE IS SOMEBODY'S (docs/interiors, src/content/interiors/cottage.gd):
+# three doors on one coast, three households behind them -- a fisher's, a
+# tinker's and a keeper's -- each in the room its own door dealt it. Staged by
+# what is in the room, never by where a house stands.
+#
+#   tools/tour.sh tours/rooms.tour --seed=4 --hour=15 --weather=clear:0
+#
+# Read 01, 02 and 03 side by side: no two rooms may share a plan and a
+# household, and each should say who lives there without anybody in it.
+coast calm
+near door:fisher
+await door 5
+press use 0.1
+await inside:cottage 5
+wait 1.0
+shot 01-a-fishers-room with room:fisher
+near door
+wait 0.3
+press use 0.1
+await outside 5
+# A crossing spends the key for a moment (20_realms SETTLE); a walk to the next
+# house takes longer than that, and a tour's teleport does not.
+wait 1.0
+
+near door:tinker
+await door 5
+press use 0.1
+await inside:cottage 5
+wait 1.0
+shot 02-a-tinkers-room with room:tinker
+near door
+wait 0.3
+press use 0.1
+await outside 5
+# A crossing spends the key for a moment (20_realms SETTLE); a walk to the next
+# house takes longer than that, and a tour's teleport does not.
+wait 1.0
+
+near door:keeper
+await door 5
+press use 0.1
+await inside:cottage 5
+wait 1.0
+shot 03-a-keepers-room with room:keeper

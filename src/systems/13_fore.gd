@@ -53,7 +53,13 @@ func _process(_delta: float) -> void:
 	var f3: Vector3 = game.camera.target if game.camera != null else game.player.position
 	var focus := Vector2(f3.x, f3.z)
 	view.follow(focus)
-	view.thin(game.camera.shoulder_share() if game.camera != null else 0.0)
+	# Thinned by whichever camera is DRAWING, not only the rig: a staged eye
+	# (96_eye, `--eye`) is its own Camera3D, the rig's shoulder share stays 0
+	# under it, and the pieces hung for the top-down frame were drawn full across
+	# every eye frame -- the dark triangle in the top-right of the coast at dusk.
+	# The horizon's share is the same test the rest of the eye-level rules use.
+	var sh: float = game.camera.shoulder_share() if game.camera != null else 0.0
+	view.thin(maxf(sh, SkyLight.horizon_share(get_viewport().get_camera_3d())))
 	var here: Vector2 = game.player.pos
 	_pos.clear()
 	_hostile.clear()

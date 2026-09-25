@@ -29,9 +29,11 @@ env:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    # A hang guard, not a speed bar: the suite runs about 25 min on the runner
-    # after the camera and stutter work, and a real hang still runs past this.
-    timeout-minutes: 45
+    # A hang guard, not a speed bar. The suite ran about 25 min after the camera
+    # work; with interiors, foliage and the sky it outgrew 45 (2026-09-25: killed
+    # with shards at 793, 608 and about 800 of roughly 850 each). A real hang
+    # still runs past 80.
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@v4
 

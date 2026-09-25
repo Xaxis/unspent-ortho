@@ -27,6 +27,11 @@ func setup(g: Game) -> void:
 
 ## A crossing points everything at the other realm's world. There is no
 ## advertising in a cave, and the share is the new landscape's.
+## Through a door: the outside is kept as it stood (20_realms says why).
+func indoors(inside: bool) -> void:
+	sleep_indoors(inside)
+
+
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	if view != null and game != null:
 		view.rebind(game.world, game.query)

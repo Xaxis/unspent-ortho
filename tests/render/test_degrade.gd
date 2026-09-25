@@ -31,9 +31,10 @@ func test_the_row_blends_by_night_and_steps_aside_for_a_fit() -> void:
 		eq(CompatTrim.row(true, 0.0), CompatTrim.IDENTITY, "Forward+ counts nothing back")
 		return
 	for k: String in CompatTrim.KEYS:
-		eq(float(CompatTrim.row(true, 0.0)[k]), float(CompatTrim.SHADOWED_DAY[k]), "noon under a casting sun is the day row (%s)" % k)
-		eq(float(CompatTrim.row(true, 1.0)[k]), float(CompatTrim.SHADOWED_NIGHT[k]), "midnight is the night row (%s)" % k)
-		eq(float(CompatTrim.row(false, 0.0)[k]), float(CompatTrim.OPEN_DAY[k]), "an overcast noon is the open row (%s)" % k)
+		# `near`, not `eq`: the row is a lerp, and lerpf(0.22, 0.05, 1.0) is 0.0499...
+		near(float(CompatTrim.row(true, 0.0)[k]), float(CompatTrim.SHADOWED_DAY[k]), 1e-6, "noon under a casting sun is the day row (%s)" % k)
+		near(float(CompatTrim.row(true, 1.0)[k]), float(CompatTrim.SHADOWED_NIGHT[k]), 1e-6, "midnight is the night row (%s)" % k)
+		near(float(CompatTrim.row(false, 0.0)[k]), float(CompatTrim.OPEN_DAY[k]), 1e-6, "an overcast noon is the open row (%s)" % k)
 	var half := CompatTrim.row(true, 0.5)
 	near(float(half.sun), lerpf(float(CompatTrim.SHADOWED_DAY.sun), float(CompatTrim.SHADOWED_NIGHT.sun), 0.5), 0.0001, "dusk is between")
 	CompatTrim.override = {"sun": 0.5}

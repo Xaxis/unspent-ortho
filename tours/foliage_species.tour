@@ -1,0 +1,53 @@
+# Each landscape's own grass (GrassSpecies, BiomeDef.grasses), in a held wind,
+# over the shoulder and from above, and one front crossing grass, bush and tree.
+#   tools/tour.sh tours/foliage_species.tour --seed=7
+# 01-03: the coast's meadow by the wood, from above, half a second apart: a
+# front crossing the sward and on into the scrub and the crowns. 04 the same
+# over the shoulder. 05 marram on the dunes; 06-07 the moss's sedge and bog
+# cotton, and walked through; 08-09 the pinewood's fern and bracken; 10 the salt
+# flats' straw; 11 the moss from above, where each grass must still read as
+# itself at play height.
+weather clear:0:wind=0.9
+hour 10
+coast calm
+place coast
+near meadow
+wait 2.5
+shot 01-front-over-grass-bush-and-tree with land:coast
+wait 0.5
+shot 02-front-half-a-second-on with land:coast
+wait 0.5
+shot 03-front-a-second-on with land:coast
+hold shoulder_peek
+await shoulder 3
+wait 1.0
+shot 04-meadow-and-wood-over-the-shoulder with land:coast
+place coast
+near dune
+wait 1.5
+shot 05-coast-marram-on-the-dunes with land:coast
+place moss
+ground moss
+wait 1.5
+shot 06-moss-sedge-and-bog-cotton with land:moss
+walk 0,-1 0.6
+wait 0.5
+shot 07-moss-walked-through with land:moss
+place pinewood
+ground grass
+wait 1.5
+shot 08-pinewood-fern-and-bracken with land:pinewood
+ground needles
+wait 1.5
+shot 09-pinewood-bracken-under-the-pines with land:pinewood
+place salt_flats
+ground salt
+wait 1.5
+shot 10-salt-flats-straw with land:salt_flats
+release shoulder_peek
+await top_view 3
+place moss
+ground moss
+wait 1.5
+shot 11-moss-from-above with land:moss
+weather rules

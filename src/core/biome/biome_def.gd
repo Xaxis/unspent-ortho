@@ -177,10 +177,15 @@ var village_square_ground := Ground.GRAVEL
 ## first village takes a different id.
 var built: BiomeForms = null
 ## Ground id -> [density, kind, weight, kind, weight, ...] for the decor layer.
+## The density may be Vector2(density, evenness) for a cover that should stand
+## evenly rather than in drifts (Decor._table).
 ## A ground with no row here uses the shared table.
 var decor: Dictionary = {}
 ## [blade, tip] of this type's grass, and the colour of its loose rock.
 var grass_colors: Array[Color] = []
+## This landscape's own grasses (GrassSpecies), laid by its d.decor as
+## Decor.GRASS_A, GRASS_B, GRASS_C. Empty: it grows none of its own.
+var grasses: Array[GrassSpecies] = []
 var rock_color := Color(0.42, 0.43, 0.47)
 ## What the small life on this ground is coloured, where it differs from the
 ## shared hand: &"bloom" (a flower's head, three stages), &"fronds" (bracken,
@@ -199,6 +204,14 @@ var hard_rock := false
 var dressing: BiomeDressing = null
 ## Multiplied into this landscape's light.
 var light_tint := Color(1, 1, 1)
+## How brightly this landscape's DAY is lit against the one daylight (1 = the
+## coast's). It is spent along the light's own evening (`SkyLight.day_gone`), so
+## it is gone by the time night falls and never reaches a night, which is
+## `night_sky`'s. `light_tint` cannot do this: it is multiplied in at every hour,
+## and it lifted the moss's drawn night sky by 10 luma when asked to lift its day.
+## For a ground dark enough that a noon under the shared sun reads as dusk. A
+## roofed realm reads as night at every hour, so it has no day to spend this on.
+var day_light := 1.0
 ## How much of the NIGHT sky's own light reaches the ground here (1 = the
 ## coast's, which is where the night was calibrated and which does not move).
 ##
@@ -431,6 +444,13 @@ var sentinel: StringName = &""
 ## landscape only writes this line when it wants something other than that.
 ## Placed after generation, like a shaft, so the island does not move (LOOK).
 var landmarks: Array[StringName] = []
+## What of this landscape can be WALKED INTO, and what it is inside (docs/
+## interiors): a host to an interior kind (one of Interiors.RECIPES). Hosts:
+## `&"house"` every house, `&"form:ID"` a house of that building form (before
+## `house`), `&"works:depot"`, `&"landmark:KIND"`. Empty, nothing here has a
+## door. Doors are derived after
+## generation, like a shaft, so the island does not move (LOOK).
+var interiors: Dictionary = {}
 var sound_bed: StringName = &"bed_wind"
 ## Another type's id whose music motif this one borrows; empty composes its own.
 var music_motif: StringName = &""

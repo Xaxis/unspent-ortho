@@ -64,8 +64,7 @@ render_mode cull_disabled;
 #include "res://src/render/matter.gdshaderinc"
 #include "res://src/render/sight.gdshaderinc"
 #include "res://src/render/near_mask.gdshaderinc"
-
-global uniform float wind_strength;
+#include "res://src/render/wind.gdshaderinc"
 
 // Where a crown must not hide a fight: world.gdshader's rule, word for word, and
 // the same six slots 18_crowns writes into both materials every frame. A leaf is
@@ -110,30 +109,47 @@ const vec3 THROUGH_TINT = vec3(1.0, 1.15, 0.5);
 // white crystalline star (fore.gdshader found it first).
 const float LEAF_WEAR = 0.2;
 
+// A card's flutter, as a share of what the wind alone gives it: in the lull
+// between fronts, added at the height of a full gust (squared, so the front
+// has an edge), and added again where a body is pushing through it.
+const float LEAF_CALM = 0.3;
+const float LEAF_GUST = 2.2;
+const float LEAF_RUSTLE = 2.8;
+// How much paler a leaf turned over by a full gust reads.
+const float LEAF_UNDER = 0.35;
+
 varying vec3 world_pos;
 varying vec3 rest_pos;
 varying float sway_w;
+// How much gust stands on this card now, 0..1 (zero on what does not sway).
+varying float gust_v;
 
 void vertex() {
 	sway_w = UV2.x;
+	gust_v = 0.0;
 	rest_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	if (sway_w > 0.0) {
 		// The crown's sway is world.gdshader's, from the same globals, so a card
 		// moves with the trunk it grew on and not to its own beat...
-		vec3 wp = rest_pos;
-		float t = TIME * (1.1 + wind_strength) + UV2.y * 6.283 + wp.x * 0.35 + wp.z * 0.21;
-		float gust = 0.6 + 0.4 * sin(TIME * 0.37 + wp.x * 0.05 - wp.z * 0.03);
-		vec3 push = vec3(sin(t) * 0.7 + 0.45, 0.0, cos(t * 0.8) * 0.5 + 0.3) * sway_w * 0.07 * (0.25 + wind_strength) * gust;
-		// A colossus's landing: the crowns bent over by the shock as it passes.
-		push += sky_shock(wp) * sway_w * SHOCK_BEND;
+		vec3 push = wind_push(rest_pos, sway_w, UV2.y, 1.0);
 		// ...and on top of it the tip of each card flutters on a faster beat of
-		// its own, which is the one motion a solid crown could never make.
-		float f = TIME * (4.7 + UV2.y * 3.1) + UV2.y * 40.0;
-		push += vec3(sin(f), cos(f * 1.3) * 0.5, cos(f * 0.9)) * UV.y * sway_w * 0.02 * (0.3 + wind_strength);
-		vec3 vp = mat3(VIEW_MATRIX) * push;
-		float texel = 2.0 / max(abs(PROJECTION_MATRIX[1][1]) * VIEWPORT_SIZE.y, 1.0);
-		vp.xy = round(vp.xy / texel) * texel;
-		VERTEX += inverse(mat3(MODEL_MATRIX)) * (mat3(INV_VIEW_MATRIX) * vp);
+		// its own, which is the one motion a solid crown could never make. A
+		// whole multiple of the sky's phase, 5 to 8 by the card's seed, so it
+		// quickens with the wind and never jumps where the phase wraps.
+		float f = sky_wind.w * (5.0 + floor(UV2.y * 4.0)) + UV2.y * 40.0;
+		// How hard it shivers: a little always, far more as a gust front reaches
+		// this card (the same field that lays the grass over, so a front moves
+		// the grass, then the bush, then the tree)...
+		float g = gust_at(rest_pos.xz);
+		float shiver = LEAF_CALM + g * g * LEAF_GUST;
+		gust_v = g * min(sway_w * 3.0, 1.0);
+		// ...and where a body is pushing through a bush: the trample field under
+		// a card low enough to be brushed, above the ground the player stands on.
+		vec3 tr = trample_at(rest_pos.xz);
+		float low = 1.0 - smoothstep(1.2, 2.2, rest_pos.y - crown_clear[0].y);
+		shiver += (length(tr.xy) * 2.0 + tr.z) * low * LEAF_RUSTLE;
+		push += vec3(sin(f), cos(f * 1.3) * 0.5, cos(f * 0.9)) * UV.y * sway_w * 0.02 * (0.3 + wind_strength) * shiver;
+		VERTEX += inverse(mat3(MODEL_MATRIX)) * (mat3(INV_VIEW_MATRIX) * wind_view(push, VIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE));
 	}
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
@@ -366,6 +382,10 @@ void fragment() {
 	// the whole of how snow on a bough reads as lying ON it and not painted.
 	vec3 snow_col = mix(SNOW_LEE, SNOW_LIT, 0.45 + 0.55 * max(deep, smoothstep(0.0, 0.6, snow)));
 	c = mix(c, snow_col, snow);
+	// A gust turns leaves over, and a leaf's underside is paler: a front shows
+	// crossing a crown as it shows crossing the grass, and a still frame can
+	// see where it is. Squared, so only the front and not the air round it.
+	c = mix(c, c * (1.0 + LEAF_UNDER) + vec3(0.03, 0.035, 0.02), gust_v * gust_v * (1.0 - snow));
 	c = sky_apply(c, world_pos, TIME);
 
 	// THE LIGHT. Snow lies level whatever the leaf under it is doing, so where it

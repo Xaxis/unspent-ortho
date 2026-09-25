@@ -332,6 +332,14 @@
       "tests": []
     },
     {
+      "id": "system:18_trample",
+      "kind": "system",
+      "entry": "src/systems/18_trample.gd",
+      "reach": "tools/tour.sh tours/foliage_meadow.tour --seed=7",
+      "area": "world-look",
+      "tests": ["tests/render/test_trample.gd", "tests/render/test_wind.gd"]
+    },
+    {
       "id": "system:19_colossi",
       "kind": "system",
       "entry": "src/systems/19_colossi.gd",
@@ -346,6 +354,22 @@
       "reach": "tools/tour.sh tours/realms.tour",
       "area": "world-places",
       "tests": []
+    },
+    {
+      "id": "system:21_doors",
+      "kind": "system",
+      "entry": "src/systems/21_doors.gd",
+      "reach": "tools/tour.sh tours/house.tour --seed=4 --hour=11 --weather=clear:0",
+      "area": "world-places",
+      "tests": []
+    },
+    {
+      "id": "system:21_falls",
+      "kind": "system",
+      "entry": "src/systems/21_falls.gd",
+      "reach": "tools/tour.sh tours/falls_sky.tour --seed=7 --place=coast --hour=21.2 --view=shoulder --weather=clear:0 --fall=dust@21.3,fragment@21.4,mass@21.75,dust@23.3,fragment@23.4,mass@23.75",
+      "area": "world-look",
+      "tests": ["tests/sky/test_falls.gd", "tests/sky/test_rumble.gd"]
     },
     {
       "id": "system:22_landmarks",

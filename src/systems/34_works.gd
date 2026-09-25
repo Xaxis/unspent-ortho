@@ -156,6 +156,11 @@ func _set_walls() -> void:
 	game.query.set_blocks(&"works", walls)
 
 
+## Through a door: the outside is kept as it stood (20_realms says why).
+func indoors(inside: bool) -> void:
+	sleep_indoors(inside, [_layer] as Array[Node3D])
+
+
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	_read_sites()
 

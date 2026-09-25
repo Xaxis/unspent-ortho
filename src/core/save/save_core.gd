@@ -25,6 +25,13 @@ class_name SaveCore
 ## The map's memory is the slate's own key (90_ui registers &"ui").
 
 const META_BASE := &"save_props_base"
+## THE WORLD A SAVE KEEPS, while the player is in a room (docs/interiors): a
+## pocket is grown again from its door's key and holds nothing of its own worth
+## keeping here, so the core world state -- what was built and taken, the size
+## the slot boots at -- is the coast outside, which 21_doors sets here on the way
+## in and clears on the way out. Saved as the pocket instead, a save made indoors
+## booted a world the size of a cottage and lost everything built outside.
+const META_OUTSIDE := &"save_outside_world"
 const BODY_FLOATS: Array[String] = ["max_wind", "wind", "hurt_until", "fed_until", "wet", "load", "tired",
 	"spoof_until", "move_factor"]
 const BODY_INTS: Array[String] = ["max_health", "health", "arrests", "filed"]
@@ -82,7 +89,17 @@ static func mark_base(game: Game) -> void:
 
 
 static func props_base(game: Game) -> int:
-	return int(game.get_meta(META_BASE, game.world.props.size()))
+	return int(game.get_meta(META_BASE, ground(game).props.size()))
+
+
+## The world whose state a save carries: the one stood in, or the one outside
+## the room being stood in (META_OUTSIDE).
+static func ground(game: Game) -> WorldData:
+	if game.has_meta(META_OUTSIDE):
+		var o: Variant = game.get_meta(META_OUTSIDE)
+		if o is WorldData:
+			return o as WorldData
+	return game.world
 
 
 ## The header a slot list shows without reading the data. `landscape` is the type
@@ -106,7 +123,7 @@ static func header(game: Game, play_seconds: float, thumb_png: PackedByteArray) 
 		# world is grown from that seed with the realm's own salt (Realm.seed_for),
 		# and a slot boots the seed the player was given.
 		"seed": game.options.seed_value,
-		"size": game.world.size,
+		"size": ground(game).size,
 		"pos": SaveCodec.vec2(p),
 		"thumb": Marshalls.raw_to_base64(thumb_png) if not thumb_png.is_empty() else "",
 	}
@@ -115,7 +132,7 @@ static func header(game: Game, play_seconds: float, thumb_png: PackedByteArray) 
 # --- world ------------------------------------------------------------------
 
 static func save_world(game: Game) -> Dictionary:
-	var w := game.world
+	var w := ground(game)
 	var base := props_base(game)
 	var added: Array = []
 	for i in range(base, w.props.size()):

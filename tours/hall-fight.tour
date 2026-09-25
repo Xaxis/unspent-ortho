@@ -1,0 +1,30 @@
+# A FIGHT IN THE PLAN'S HALL (docs/interiors, 21_doors residents): whoever walks
+# down the hatch is trespassing on what a warden keeps, and the hall's own
+# machines come for them. The bodies are the ordinary fight's -- the one
+# FightSim, the one swing -- only the room is new. A warden's blow is an arrest,
+# and in the hall it keeps an arrest puts you out of its door.
+#
+#   tools/tour.sh tours/hall-fight.tour --seed=4 --hour=11 --weather=clear:0
+#
+# 01 is the hall the moment after coming in, its machines turning. 02 is a blow
+# landed on one of them. 03 is where the warden's arrest leaves you: outside,
+# at the hatch, hours later.
+coast calm
+near door:weapons_hall
+await door 5
+press use 0.1
+await inside:weapons_hall 5
+wait 0.25
+shot 01-the-halls-machines-turn with inside:weapons_hall,mob:warden
+try 6
+walkto mob 1.0
+tap swing
+await hit 1.5
+end
+wait 0.05
+shot 02-a-blow-in-the-hall with inside:weapons_hall,mob
+# Stand and take it: the warden's blow is an arrest, and in its own hall it
+# stands you outside its door while the hours pass.
+await outside 30
+wait 1.0
+shot 03-arrested-and-put-out-at-the-hatch with outside,door

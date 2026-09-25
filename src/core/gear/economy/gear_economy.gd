@@ -46,6 +46,7 @@ static func declare(force: bool = false) -> void:
 	# question gets the whole of it, rather than whatever happened to be declared
 	# by the time it asked.
 	Landmarks.declare_loot(force)
+	Interiors.declare_loot(force)
 
 
 ## Everything the economy hands a player without a recipe: what a machine gives
