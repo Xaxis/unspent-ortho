@@ -178,3 +178,60 @@ func test_a_thing_at_the_far_edge_of_a_place_counts_what_stands_across_it() -> v
 	eq(StoryFragments.held_by(w, _q, edge), _held_by_whole(w, edge), "the edge screen holds what the sweep said")
 	_q.remove_prop(edge)
 	w.props.pop_back()
+
+
+## What the view's `_bind` filed before it bound a section at a time: every
+## prop, every line, every standing prop, walked once each.
+static func _buckets_whole(w: WorldData) -> Array:
+	var chunks := {}
+	for p in w.props:
+		var key := WorldView._key_of(p.pos)
+		if not chunks.has(key):
+			chunks[key] = []
+		chunks[key].append(p)
+	var cables := {}
+	for line: Dictionary in w.lines:
+		if not line.has("props"):
+			continue
+		var ids := PackedInt32Array(line["props"])
+		for j in ids.size() - 1:
+			if ids[j] < 0 or ids[j + 1] < 0 or ids[j] >= w.props.size() or ids[j + 1] >= w.props.size():
+				continue
+			var key := WorldView._key_of(w.props[ids[j]].pos)
+			if not cables.has(key):
+				cables[key] = []
+			cables[key].append(Vector2i(ids[j], ids[j + 1]))
+	var far := {}
+	for p in w.props:
+		if w.depleted.has(p.id):
+			continue
+		var bk := Vector2i(floori(p.pos.x) / WorldView.Far.BLOCK, floori(p.pos.y) / WorldView.Far.BLOCK)
+		if not far.has(bk):
+			far[bk] = []
+		far[bk].append(p)
+	return [chunks, cables, far]
+
+
+func test_the_view_bound_a_section_at_a_time_files_what_the_whole_bind_did() -> void:
+	var w := _world()
+	var view := WorldView.new()
+	view.setup(w)
+	var want := _buckets_whole(w)
+	eq(view._props_by_chunk, want[0], "every chunk holds the same props, in the same order")
+	eq(view._cables_by_chunk, want[1], "every chunk draws the same spans")
+	eq(view._far_props, want[2], "every far block stands the same props")
+	gt(float((want[1] as Dictionary).size()), 0.0, "the world strings a grid (%d chunks of spans)" % (want[1] as Dictionary).size())
+	view.free()
+
+
+func test_a_prop_set_down_later_is_found_in_its_section() -> void:
+	var w := _world()
+	var at := Vector2(300.5, 200.5)
+	var before := WorldSections.props_in(w, WorldSections.of(at)).size()
+	var p := WorldProp.new(w.props.size(), PropKind.FIRE, at, 0.0, 1.0)
+	w.add_prop(p)
+	var got := WorldSections.props_in(w, WorldSections.of(at))
+	eq(got.size(), before + 1, "its section holds one more")
+	check(got.has(p), "and it is the one set down")
+	got.erase(p)
+	w.props.pop_back()

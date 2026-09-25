@@ -12,6 +12,9 @@ extends RefCounted
 const SAMPLE := 2
 ## Tiles each side of a border that a drawn ecotone reaches.
 const REACH := 12.0
+## Tiles past its rectangle that `fill` reads: its country samples, every
+## SAMPLE tiles out to REACH and two samples more.
+const WINDOW := int(REACH) + SAMPLE * 3
 ## A generated blend below this is further out than REACH and drawn as heartland.
 const GEN_FLOOR := 0.2
 
@@ -28,7 +31,8 @@ func _init(w: WorldData) -> void:
 ## Fill country / country2 / blend for the tile rectangle [x0, x1) x [y0, y1)
 ## (clipped to the world). Arrays are resized to the rectangle, row-major.
 ## `country` is the land country a renderer should draw the tile as.
-func fill(x0: int, y0: int, x1: int, y1: int, out_country: PackedByteArray, out_country2: PackedByteArray, out_blend: PackedFloat32Array) -> void:
+## Reads only `win`, which must hold the rectangle and WINDOW round it.
+func fill(x0: int, y0: int, x1: int, y1: int, out_country: PackedByteArray, out_country2: PackedByteArray, out_blend: PackedFloat32Array, win: TileWindow) -> void:
 	var w := world
 	var size := w.size
 	var cw := x1 - x0
@@ -49,7 +53,7 @@ func fill(x0: int, y0: int, x1: int, y1: int, out_country: PackedByteArray, out_
 		var ty := (gy0 + gy) * SAMPLE + SAMPLE / 2
 		for gx in gw:
 			var tx := (gx0 + gx) * SAMPLE + SAMPLE / 2
-			var c: int = w.country[ty * size + tx] if tx >= 0 and ty >= 0 and tx < size and ty < size else Country.SEA
+			var c: int = win.country[win.at(tx, ty)] if tx >= 0 and ty >= 0 and tx < size and ty < size else Country.SEA
 			own[gy * gw + gx] = c
 			any_sea = any_sea or c == Country.SEA
 	# For the sea, the nearest land country (a two-pass chamfer on the samples).
@@ -87,22 +91,22 @@ func fill(x0: int, y0: int, x1: int, y1: int, out_country: PackedByteArray, out_
 		for x in range(x0, x1):
 			var o := (y - y0) * cw + (x - x0)
 			var inside := w.in_bounds(x, y)
-			var i := clampi(y, 0, size - 1) * size + clampi(x, 0, size - 1)
-			var c := w.country[i] if inside else Country.SEA
+			var i := win.at(clampi(x, 0, size - 1), clampi(y, 0, size - 1))
+			var c := win.country[i] if inside else Country.SEA
 			if c == Country.SEA:
 				var u := clampf((x + 0.5) / SAMPLE - gx0 - 0.5, 0.0, gw - 1.001)
 				var iu := floori(u)
 				var near := iv * gw + iu + (1 if u - iu > 0.5 else 0) + (gw if fv > 0.5 else 0)
 				c = land[near] if land[near] != Country.SEA else Country.COAST
-				if inside and w.country2[i] != Country.SEA and w.blend[i] > 0.0:
-					c = w.country2[i]
+				if inside and win.country2[i] != Country.SEA and win.blend[i] > 0.0:
+					c = win.country2[i]
 				out_country[o] = c
 				out_country2[o] = c
 				out_blend[o] = 0.0
 				continue
 			out_country[o] = c
-			out_country2[o] = w.country2[i]
-			out_blend[o] = reach(w.blend[i], GEN_FLOOR)
+			out_country2[o] = win.country2[i]
+			out_blend[o] = reach(win.blend[i], GEN_FLOOR)
 
 
 ## A blend pulled in to the band: `floor` and below is heartland (0), the

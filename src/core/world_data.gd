@@ -149,6 +149,11 @@ var depleted: Dictionary = {}
 ## `ore_counted` is false on a world built by hand, which is counted on first ask.
 var ore_standing: Dictionary = {}
 var ore_counted := false
+## The props and cable spans of each section (`WorldSections`), indexed once
+## `sectioned` is set.
+var section_props: Dictionary = {}
+var section_spans: Dictionary = {}
+var sectioned := false
 
 
 func _init(p_seed: int, p_size: int) -> void:
@@ -246,3 +251,10 @@ func height_at(p: Vector2) -> float:
 ## Tile position to 3D position on the ground surface.
 func to_3d(p: Vector2) -> Vector3:
 	return Vector3(p.x, height_at(p), p.y)
+
+
+## A prop set down after generation: appended with the next id and filed in its
+## section, so a reader asking by section sees it.
+func add_prop(p: WorldProp) -> void:
+	props.append(p)
+	WorldSections.file(self, p)

@@ -82,6 +82,9 @@ src/core/world_data.gd::_init::tiles
 src/core/world_query.gd::_init::list
 src/core/world_query.gd::passable::raw
 src/core/world_query.gd::standable::raw
+src/core/world_sections.gd::_index::alloc
+src/core/world_sections.gd::_index::index
+src/core/world_sections.gd::_index::list
 src/core/worldgen/gen_places.gd::_out_of_the_yard::builder Works.sites
 src/core/worldgen/gen_places.gd::_placed_after::builder Landmarks.sites
 src/core/worldgen/gen_places.gd::_placed_after::builder Works.sites
@@ -125,13 +128,8 @@ src/dev/pages/dev_page_story_plan.gd::rows::builder StoryGates.all
 src/dev/pages/dev_page_story_plan.gd::rows::builder StoryJourney.bodies
 src/dev/pages/dev_page_story_plan.gd::rows::builder StoryPlan.cast
 src/game.gd::setup::builder WorldQuery.new
-src/render/terrain_mesher.gd::_lv::raw
-src/render/terrain_mesher.gd::_shore_window::raw
 src/render/terrain_mesher.gd::_tally_grounds::raw
 src/render/terrain_mesher.gd::_tally_grounds::tiles
-src/render/terrain_mesher.gd::build_arrays::raw
-src/render/terrain_mesher.gd::drawn_levels::raw
-src/render/transitions.gd::fill::raw
 src/render/weather/sky_ground.gd::image::raw
 src/render/weather/sky_wear.gd::image::raw
 src/render/works_map.gd::_line::list
@@ -146,10 +144,9 @@ src/render/world_far.gd::done::tiles
 src/render/world_far.gd::next_block::tiles
 src/render/world_far.gd::stand_arrays::raw
 src/render/world_far.gd::stands_done::tiles
-src/render/world_view.gd::_bind::alloc
-src/render/world_view.gd::_bind::index
-src/render/world_view.gd::_bind::list
+src/render/world_view.gd::_bind::tiles
 src/render/world_view.gd::_snapshot::index
+src/render/world_view.gd::bind_section::index
 src/render/world_view.gd::ensure_far::tiles
 src/render/world_view.gd::far_wanted::tiles
 src/systems/10_sky.gd::_update_ground_marks::whole

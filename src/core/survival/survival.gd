@@ -592,7 +592,7 @@ static func add_prop(game: Game, kind: int, pos: Vector2, rot: float = NAN, scal
 	var w := game.world
 	var id := w.props.size()
 	var prop := WorldProp.new(id, kind, pos, Rng.hash01(w.seed_value, id, 77) * TAU if is_nan(rot) else rot, scale)
-	w.props.append(prop)
+	w.add_prop(prop)
 	game.query.add_prop(prop)
 	if game.view != null:
 		game.view.refresh_props(prop)

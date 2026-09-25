@@ -185,7 +185,7 @@ static func load_world(game: Game, v: Variant) -> void:
 		# Straight into data and collision: the chunks it lands in are rebuilt once, below.
 		var q := WorldProp.new(w.props.size(), kind, Vector2(SaveCodec.to_num(e[1]), SaveCodec.to_num(e[2])),
 			SaveCodec.to_num(e[3]), SaveCodec.to_num(e[4], 1.0))
-		w.props.append(q)
+		w.add_prop(q)
 		game.query.add_prop(q)
 		touched.append(q)
 	for id: int in w.depleted:

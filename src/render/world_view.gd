@@ -280,26 +280,6 @@ func _bind(w: WorldData) -> void:
 	_works_bound = false
 	decor.works = works
 	_bg_decor.works = works
-	for p in w.props:
-		var key := _key_of(p.pos)
-		if not _props_by_chunk.has(key):
-			_props_by_chunk[key] = []
-		_props_by_chunk[key].append(p)
-	# The machines' grid (WorldData.lines, when world generation strings one):
-	# each span is drawn with the chunk of the mast it leaves from.
-	var lines: Variant = w.get("lines")
-	if lines is Array:
-		for line: Variant in lines:
-			if not (line is Dictionary and (line as Dictionary).has("props")):
-				continue
-			var ids: PackedInt32Array = PackedInt32Array((line as Dictionary)["props"])
-			for j in ids.size() - 1:
-				if ids[j] < 0 or ids[j + 1] < 0 or ids[j] >= w.props.size() or ids[j + 1] >= w.props.size():
-					continue
-				var key := _key_of(w.props[ids[j]].pos)
-				if not _cables_by_chunk.has(key):
-					_cables_by_chunk[key] = []
-				_cables_by_chunk[key].append(Vector2i(ids[j], ids[j + 1]))
 	if w.realm == Realm.INTERIOR:
 		_add_void()
 	else:
@@ -308,13 +288,11 @@ func _bind(w: WorldData) -> void:
 	# never touches it (the chunk workers learnt the same lesson above).
 	_far_tables = Far.tables()
 	_far_props.clear()
-	for p in w.props:
-		if w.depleted.has(p.id):
-			continue
-		var bk := Vector2i(floori(p.pos.x) / Far.BLOCK, floori(p.pos.y) / Far.BLOCK)
-		if not _far_props.has(bk):
-			_far_props[bk] = []
-		_far_props[bk].append(p)
+	# The world's props, a section at a time: the unit a streamed world loads.
+	var across := WorldSections.across(w.size)
+	for sy in across:
+		for sx in across:
+			bind_section(Vector2i(sx, sy))
 	_far_tasks.clear()
 	_far_keys.clear()
 	_far_out.clear()
@@ -440,6 +418,29 @@ func surface_height(p: Vector2) -> float:
 	if ch != null:
 		return ch.surface(p.x, p.y)
 	return mesher.surface_height(p.x, p.y)
+
+
+## One section's props into the chunks and far blocks that draw them, and the
+## grid spans that leave a mast in it. A section holds whole chunks and whole far
+## blocks, so each is filled by one section alone.
+func bind_section(s: Vector2i) -> void:
+	var w := world
+	for p: WorldProp in WorldSections.props_in(w, s):
+		var key := _key_of(p.pos)
+		if not _props_by_chunk.has(key):
+			_props_by_chunk[key] = []
+		_props_by_chunk[key].append(p)
+		if w.depleted.has(p.id):
+			continue
+		var bk := Vector2i(floori(p.pos.x) / Far.BLOCK, floori(p.pos.y) / Far.BLOCK)
+		if not _far_props.has(bk):
+			_far_props[bk] = []
+		_far_props[bk].append(p)
+	for span: Vector2i in WorldSections.spans_in(w, s):
+		var key := _key_of(w.props[span.x].pos)
+		if not _cables_by_chunk.has(key):
+			_cables_by_chunk[key] = []
+		_cables_by_chunk[key].append(span)
 
 
 static func _key_of(p: Vector2) -> Vector2i:
