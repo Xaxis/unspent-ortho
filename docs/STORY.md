@@ -77,6 +77,13 @@ the Heron are the walkers proposal (`story/walkers`), also unruled.
   HALCYON mends it because it needs the width; mending loads the broken ends and
   they shed. **A fall is the plan's progress seen from below**; slow the plan and
   the falls slow.
+- **Ruled 2026-09-25** (teammate1, on the owner's delegation; see
+  `docs/story/UNDER_THE_STONES.md` §8 on `story/deep`): the Guest's 2096 cut was
+  aimed at Ring Four's hold, where Calloway's case holds the HALCYON from before
+  the merge. It tore the rim beside the hold instead. The wound in the sky is that
+  attempt, the hold hangs open and still sealed at its edge, and the falls are what
+  the cut shook loose. The Leasehold rings are Cairn Continuity taken into orbit;
+  the hoop from 2094 is HALCYON's. No new beats.
 - **Its line**: the survey bearing is ruled square to what is overhead
   (`GenWorks.bearing`, shipped). The Harrow walks under it; falls land near it.
 
