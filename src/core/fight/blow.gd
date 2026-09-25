@@ -33,6 +33,8 @@ var verb: StringName = &""
 var wind_cost := 180.0
 ## A found weapon's charges spent per swing (0 = made, spends nothing).
 var wick := 0
+## Thrown held (FightRules.HEAVY_*): through a guarded part, and drawn as such.
+var heavy := false
 
 
 func committed() -> int:
@@ -113,8 +115,18 @@ static func for_item(id: StringName, edge: int = 10000) -> Blow:
 func copy() -> Blow:
 	var b := Blow.new()
 	for p: String in ["windup", "active", "recovery", "cooldown", "reach", "width", "dmg", "knock", "knock_ms",
-			"creep", "grip", "cuts", "verb", "wind_cost", "wick"]:
+			"creep", "grip", "cuts", "verb", "wind_cost", "wick", "heavy"]:
 		b.set(p, get(p))
+	return b
+
+
+## This blow thrown held: the heavy blow (FightRules.HEAVY_*).
+func heavier() -> Blow:
+	var b := copy()
+	b.windup += FightRules.HEAVY_WINDUP_MS
+	b.dmg *= FightRules.HEAVY_DAMAGE
+	b.wind_cost = FightRules.HEAVY_WIND
+	b.heavy = true
 	return b
 
 

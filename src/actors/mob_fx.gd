@@ -167,6 +167,21 @@ vec4 ring(vec2 p, float pr) {
 	return inked(abs(r - R) / pw - 1.0, MARK_HALO);
 }
 
+// A bite coming, on the ground where it lands: a dashed ring held still at the
+// size of what it will strike, and a whole ring inside it closing on the middle,
+// which reaches it as the bite goes live. The outer ring says WHERE, the closing
+// one says WHEN; neither spreads or fades, because a tell that thins as it runs
+// is weakest at the moment it matters.
+vec4 tell_ring(vec2 p, float pr) {
+	float r = length(p);
+	float pw = max(fwidth(r), 1e-4) * PEN;
+	float R = 1.0 - pw * 3.0;
+	float seg = floor((atan(p.y, p.x) / TAU + 0.5) * 20.0);
+	float outer = mod(seg, 2.0) > 0.5 ? 1e3 : abs(r - R) / pw - 1.0;
+	float inner = abs(r - R * (1.0 - pr)) / pw - 1.0;
+	return inked(min(outer, inner), MARK_HALO);
+}
+
 // Plate: the pen's sound marks, (( )), and two or three cold bright pixels. The
 // arcs stand OUTSIDE the plate they rang off, and the sparks are pixels, not
 // blobs: this mark says "that was armour", it does not hide the armour.
@@ -399,6 +414,7 @@ void fragment() {
 	else if (mode == 6) { o = streak(p, pw, pr); }
 	else if (mode == 7) { o = bracket(p, pw, pr); }
 	else if (mode == 8) { o = vapour(p, px, pw, pr); }
+	else if (mode == 9) { o = tell_ring(p, pr); }
 	if (o.a < 0.5) {
 		discard;
 	}
@@ -519,6 +535,7 @@ const TELL := 5
 const STREAK := 6
 const BRACKET := 7
 const VAPOUR := 8
+const TELL_RING := 9
 
 ## World units per screen pixel of the BASE (1920x1080; the fight system keeps it
 ## to the camera's own, `40_fight._keep_texel`). Marks are never smaller on screen
@@ -888,6 +905,15 @@ static func ring(parent: Node, at: Vector3, col: Color, radius: float = 0.8, sec
 	if not _ok(parent):
 		return
 	_run(_mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), RING, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col), seconds)
+
+
+## A bite's tell on the ground (FightRules.tell_ring): a dashed ring of the size
+## of what it will strike, held for `seconds` (its windup), with a ring inside it
+## closing on the middle that arrives as the bite goes live.
+static func tell_ring(parent: Node, at: Vector3, col: Color, radius: float, seconds: float) -> void:
+	if not _ok(parent):
+		return
+	_run(_mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_RING, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col), seconds)
 
 
 ## A blow that rang off plate: sound marks and a few cold bright pixels.

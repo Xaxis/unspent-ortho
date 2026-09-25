@@ -43,3 +43,4 @@ Proves it when: the command exits 0 and, for a shot or tour, the frames show the
   every number; this box swings from 10 to 100.
 - Never pipe a gate through `tail` in a way that hides its exit code.
 - `tools/deploy.sh --prod` is deliberate; a push to main deploys a preview.
+- `tools/deploy.sh` exports from `--config=playtest` unless told otherwise (`--prod` too), so a deployed build has dev mode behind the chord; CI's deploy exports the same.

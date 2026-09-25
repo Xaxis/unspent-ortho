@@ -386,7 +386,13 @@ const heapTimer = setInterval(sampleHeap, 2000);
 // the last heap sample after a tour waited on one for 17 minutes, until the
 // deadline killed it.
 const bounded = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), ms))]);
-page.on('pageerror', (e) => { failures.push(`page error: ${e.message}`); console.log(`  [${since()}s pageerror] ${e.message}`); });
+// The same rule as a console error: once a tour has said it reached its end, the
+// engine is tearing itself down after quit() (a wasm fault there was seen once in
+// three dev.tour runs), which no player reaches and is not the tour's evidence.
+page.on('pageerror', (e) => {
+  if (!tourEnded) failures.push(`page error: ${e.message}`);
+  console.log(`  [${since()}s pageerror${tourEnded ? ' after the tour ended' : ''}] ${e.message}`);
+});
 // The engine's loader cancels its first fetch of the wasm once it has the bytes
 // streaming: a cancelled request only fails the run if that URL never answered.
 const aborted = new Map();

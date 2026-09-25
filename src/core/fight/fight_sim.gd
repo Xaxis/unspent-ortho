@@ -17,7 +17,8 @@ extends RefCounted
 ##   opened (a machine's bite is spent: its working part is open), dulled (a
 ##   blow that met a body wore the edge past dull), noticed (an indifferent
 ##   body looked up), crowded (the player holds a worker up on its round),
-##   crowd_warning (half way to it taking that as interference), disturbed
+##   crowd_warning (half way to it taking that as interference), disturbed,
+##   drop_strike (a jump's landing thrown as a blow: FightSim.drop_strike)
 
 const NAV_EVERY_MS := 240.0
 ## Tiles/s at most that a standing body eases the player out of itself.
@@ -37,6 +38,16 @@ const GLANCE_AGAIN_MS := 5000.0
 const SEEN_RISE := 1.0
 const HIDDEN_RISE := 0.4
 const NOISE_RISE := 0.28
+## What it only half has -- the player HEARD (their own steps, their breath, in
+## its hearing), or GLIMPSED out of the corner of its optics behind its cone --
+## makes it unsure, not sure: a ramp, not a snap, so there are a few seconds to
+## get out of it. Heard or glimpsed past LOOK_AT, it turns its optics that way
+## and goes to look, and only what it then SEES in its cone makes it sure. A
+## warden in its hall made sure by a glimpse of the hatch behind it arrested
+## whoever came down it within the second, every time.
+const HEAR_RISE := 0.02
+const GLIMPSE_RISE := 0.025
+const LOOK_AT := 0.6
 ## What drains per beat when nothing comes of it: about two seconds to settle.
 const SUSPICION_FADE := 0.05
 ## The player is hidden enough for it to have to look twice at this much cover.
@@ -98,6 +109,8 @@ var _swing_until := -1.0
 ## has a direction of its own to look in: over the shoulder a swing goes where the
 ## camera looks, because that is where the player is looking (CameraRig.aim).
 var _swing_aim := NAN
+## The buffered swing is the heavy blow (press_heavy).
+var _swing_heavy := false
 var _dodge_until := -1.0
 var _whiff_checked := true
 ## The current swing has already worn the edge (once, on the first body it meets).
@@ -135,6 +148,14 @@ func press_swing(aim := NAN) -> void:
 		return
 	_swing_until = now + FightRules.BUFFER_MS
 	_swing_aim = aim
+	_swing_heavy = false
+
+
+## The swing key held past FightRules.HEAVY_HOLD_MS (the fight system times the
+## hold): the heavy blow, buffered as a swing is. Held, it pulls, as a swing does.
+func press_heavy(aim := NAN) -> void:
+	press_swing(aim)
+	_swing_heavy = not hero.held()
 
 
 func press_dodge() -> void:
@@ -198,7 +219,7 @@ func _presses() -> void:
 func _swing() -> void:
 	var inv := hero.inventory
 	var held: StringName = inv.held if inv != null else &""
-	var b := Blow.for_item(held, inv.edge(held) if inv != null and held != &"" else 10000)
+	var b := _held_blow()
 	var at_lock := is_nan(_swing_aim) and LockOn.locked(hero.lock) \
 		and (hero.lock - hero.pos).length() >= LockOn.NEAR
 	if not is_nan(_swing_aim):
@@ -220,12 +241,18 @@ func _swing() -> void:
 		var to := m.pos - hero.pos
 		if to.length() > hero.radius + b.reach + m.radius + FightRules.AIM_ASSIST_EXTRA:
 			continue
+		if not meets(hero.pos, m.pos):
+			continue
 		var off := absf(wrapf(to.angle() - hero.facing, -PI, PI))
 		if off < best_off:
 			best_off = off
 			best = m
 	if best != null:
 		hero.facing = (best.pos - hero.pos).angle()
+	# Held, it is the heavy blow if there is the wind for it; winded, the light one.
+	if _swing_heavy and hero.wind >= FightRules.HEAVY_WIND:
+		b = b.heavier()
+	_swing_heavy = false
 	var dry := b.wick > 0 and not FightRules.spend_charges(inv, b.wick)
 	if dry:
 		b.dry()
@@ -233,7 +260,52 @@ func _swing() -> void:
 	_whiff_checked = false
 	# The edge wears where it meets something: a swing at air costs wind, not edge.
 	_blow_wore = false
-	emit(&"swing", {"item": held, "dry": dry})
+	emit(&"swing", {"item": held, "dry": dry, "heavy": b.heavy})
+
+
+## THE JUMP'S LANDING AS A BLOW. Called by whatever lands a jump (54_gear) with
+## the level it took off from. A body in reach of the held blow that stands a
+## ledge (FightRules.DROP_LEVELS) or more below that take-off was come down ON,
+## whatever step the feet happen to find beside it, and the feet ARE the blow: it
+## is live the instant they touch, turned onto the nearest such body, and it
+## opens any plate (`cuts`) for that one hit, so a machine that waits under a
+## ledge can be come down on from any side. Nothing in reach, or no drop, and it
+## was only a landing. Costs no wind: the jump paid for it. True if it struck.
+func drop_strike(from_level: int) -> bool:
+	if hero.swimming or hero.held() or hero.stunned(now) or hero.committed(now):
+		return false
+	var b := _held_blow()
+	var best: MobState = null
+	var best_d := INF
+	for m in mobs:
+		if not m.alive or m.removed or not meets(hero.pos, m.pos):
+			continue
+		if from_level - level_of(m.pos) < FightRules.DROP_LEVELS:
+			continue
+		var d := hero.pos.distance_to(m.pos)
+		if d <= hero.radius + b.reach + m.radius and d < best_d:
+			best_d = d
+			best = m
+	if best == null:
+		return false
+	hero.facing = (best.pos - hero.pos).angle()
+	var inv := hero.inventory
+	if b.wick > 0 and not FightRules.spend_charges(inv, b.wick):
+		b.dry()
+	b.windup = 0
+	b.cuts = true
+	hero.start_blow(b, now)
+	_whiff_checked = false
+	_blow_wore = false
+	emit(&"drop_strike", {"item": inv.held if inv != null else &"", "fell": from_level - level_of(best.pos), "target": best})
+	return true
+
+
+## The blow of whatever is in the hand now, at its edge.
+func _held_blow() -> Blow:
+	var inv := hero.inventory
+	var held: StringName = inv.held if inv != null else &""
+	return Blow.for_item(held, inv.edge(held) if inv != null and held != &"" else 10000)
 
 
 func _dodge() -> void:
@@ -266,8 +338,9 @@ func _beat() -> void:
 		# cone); one that already has the player keeps track of them all round.
 		var on_round := m.machine and (m.mood == MobState.IDLE or m.mood == MobState.WORKING)
 		var look := m.facing if on_round else NAN
-		var noticed := now >= m.calm_until and StealthQuery.notices(m.row, m.pos, hero.pos, moment, world, query, look)
-		_suspicion(m, noticed)
+		var how := _notice(m, look)
+		var noticed := how != &""
+		_suspicion(m, how)
 		if noticed:
 			m.lost_beats = 0
 			m.last_seen = hero.pos
@@ -342,21 +415,48 @@ func _beat() -> void:
 						m.set_mood(MobState.IDLE, now)
 
 
+## How the body at `m` has the player this beat: &"seen" in its cone (or all
+## round, `look` NAN), &"glimpsed" only out of the corner of its optics behind
+## the cone, &"heard", or &"" not at all. The one door is StealthQuery's, split
+## so that only sight in front is sure at once.
+func _notice(m: MobState, look: float) -> StringName:
+	if now < m.calm_until or not StealthQuery.notices(m.row, m.pos, hero.pos, moment, world, query, look):
+		return &""
+	if StealthQuery.sees(m.row, m.pos, hero.pos, moment, world, query, look):
+		if is_nan(look) or StealthQuery.in_cone(m.pos, look, hero.pos, StealthQuery.cone_half(m.row)):
+			return &"seen"
+		if StealthQuery.hears(m.row, m.pos, hero.pos, moment):
+			return &"heard"
+		return &"glimpsed"
+	return &"heard"
+
+
 ## How sure a body is, beat by beat, and where it is looking while it makes up
 ## its mind. Seen in the open it is sure at once (nothing about a fight
 ## changes); low in the heather it has to look twice; a noise out of sight
 ## turns its optics that way and, kept up, brings it over. Drawn on the machine
 ## (Mob): the working part flickers with it, and the alert snaps at 1.
-func _suspicion(m: MobState, noticed: bool) -> void:
+func _suspicion(m: MobState, how: StringName) -> void:
 	if not m.machine:
 		# A creature is sure or it is not: making up its mind is a machine's
 		# reading, and nothing about a fight with an animal changes here.
-		m.suspicion = 1.0 if noticed else 0.0
+		m.suspicion = 1.0 if how != &"" else 0.0
 		return
-	if noticed:
+	if how == &"seen":
 		var hidden := moment.crouched or moment.cover > HIDDEN_COVER
 		m.suspicion = minf(1.0, m.suspicion + (HIDDEN_RISE if hidden else SEEN_RISE))
 		m.heard_at = hero.pos
+		return
+	if how == &"heard" or how == &"glimpsed":
+		m.suspicion = minf(1.0, m.suspicion + (HEAR_RISE if how == &"heard" else GLIMPSE_RISE))
+		# Unsure enough to go and look: its optics turn to where it had them. A
+		# machine at its work does not: it glances and goes on (`_beat`); stood
+		# to look, a hauler stopped on its round for someone it only half saw.
+		if m.suspicion >= LOOK_AT and not m.at_work():
+			if m.look_until <= now or m.heard_at.distance_squared_to(hero.pos) > 1.0:
+				emit(&"heard", {"mob": m, "at": hero.pos})
+			m.heard_at = hero.pos
+			m.look_until = now + LOOK_MS
 		return
 	if now - noise_ms < StealthNoise.FRESH_MS and StealthQuery.hears_noise(m.row, m.pos, noise_at, noise_radius, moment):
 		if m.look_until <= now or m.heard_at.distance_squared_to(noise_at) > 1.0:
@@ -689,6 +789,8 @@ func _touching() -> void:
 			continue
 		if m.pos.distance_to(hero.pos) > m.radius + hero.radius:
 			continue
+		if not meets(m.pos, hero.pos):
+			continue
 		if hero.invulnerable(now):
 			continue
 		_hurt_hero(m, touch, hero.pos - m.pos, 4.0, 200)
@@ -702,9 +804,14 @@ func _land(t0: float, t1: float) -> void:
 				continue
 			if not FightRules.box_hits(hero.pos, hero.facing, hero.radius, b, m.pos, m.radius):
 				continue
+			if not meets(hero.pos, m.pos):
+				continue
 			hero.struck[m.id] = true
 			_wear_on_contact()
 			if not reaches_part(m, hero.pos, b.cuts):
+				if b.heavy and reaches_part(m, hero.pos, b.cuts, true) and now >= m.stall_ready_at:
+					_jam(m)
+					continue
 				hero.throw(hero.pos - m.pos, FightRules.RING_RECOIL, FightRules.RING_RECOIL_MS, now)
 				emit(&"hit", {"attacker": hero, "target": m, "damage": 0, "plate": true, "at": m.pos})
 				_wake(m)
@@ -728,6 +835,8 @@ func _land(t0: float, t1: float) -> void:
 			continue
 		if not FightRules.box_hits(m.pos, m.facing, m.radius, m.blow, hero.pos, hero.radius):
 			continue
+		if not meets(m.pos, hero.pos):
+			continue
 		m.struck[&"hero"] = true
 		if not hero.invulnerable(now):
 			_landed(m)
@@ -745,17 +854,49 @@ func _land(t0: float, t1: float) -> void:
 		_hurt_hero(m, m.blow.dmg, Vector2.from_angle(m.facing) + (hero.pos - m.pos).normalized(), m.blow.knock, m.blow.knock_ms)
 
 
+## The level a body stands at, read at its own tile: the one height question a
+## blow asks, and never more of the world than where the body stands. The sea's
+## surface, not its bed, for a body in it: the same clamp `WorldData.height_at`
+## draws a body at, or a swimmer off a shore shelf is out of every blow.
+func level_of(p: Vector2) -> int:
+	return maxi(0, world.level_at(floori(p.x), floori(p.y))) if world != null else 0
+
+
+## Are two bodies on levels a blow passes between (FightRules.levels_meet)?
+func meets(a: Vector2, b: Vector2) -> bool:
+	return FightRules.levels_meet(level_of(a), level_of(b))
+
+
 ## Does a blow from `from` reach this body's working part now? The plate rule,
 ## and for a `guarded` part (a harvester's blade row, its bite side) only while
 ## the machine is open: spent after a bite, stopped by a blow, or not yet
 ## roused. A turning blade row throws a blow off like plate, so walking in
 ## swinging at the front rings, and the opening is the skill.
-func reaches_part(m: MobState, from: Vector2, cuts: bool = false) -> bool:
+## A `heavy` blow goes through the turning blades, and jams them (`_jam`).
+func reaches_part(m: MobState, from: Vector2, cuts: bool = false, heavy: bool = false) -> bool:
 	if not FightRules.reaches(m.part, m.pos, m.facing, from, cuts):
 		return false
-	if cuts or not m.row.get("guarded", false):
+	if cuts or heavy or not m.row.get("guarded", false):
 		return true
 	return m.spent(now) or m.stunned(now) or m.indifferent() or not m.roused()
+
+
+## A heavy blow into a guarded part the machine was not holding open: the
+## turning blades take it, so it does no harm, but they jam, and the machine
+## stands stalled as a blow in the part stalls it, its tell lost and its part
+## open for what comes next. Once a stall, as any stall. What is bought is the
+## opening, not the damage: a heavy thrown at a guard over and over is a slow
+## way to do nothing (tests/fight/test_bouts, the player who holds every swing).
+func _jam(m: MobState) -> void:
+	m.stall_ready_at = now + FightRules.STALL_EVERY_MS
+	m.stun_until = maxf(m.stun_until, now + FightRules.STALL_MS)
+	m.charging = false
+	m.flare_until = now + FightRules.PART_FLARE_MS
+	m.dark_until = m.flare_until + FightRules.PART_DARK_MS
+	if m.blow_phase(now) == &"windup":
+		m.blow = null
+	emit(&"hit", {"attacker": hero, "target": m, "damage": 0, "plate": false, "jammed": true, "at": m.pos})
+	_wake(m)
 
 
 ## A machine's bite met the player: it has what it came for, so it neither

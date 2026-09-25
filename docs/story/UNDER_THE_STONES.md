@@ -71,8 +71,8 @@ player meets them:
    not on this ring"). After that, its empty folder with his name on it is the
    quiet answer to the reveal.
 
-**Measured, so colour.** A full-sized world (1840 tiles) holds four or five
-rings on his coast (seeds 1-12). At the plan tests' 256 tiles, half of seeds
+**Measured, so colour.** A full-sized world (1840 tiles) keeps three to five
+rings on his coast (GEN 28, seeds 1-12; half keep three). At the plan tests' 256 tiles, half of seeds
 1-24 hold none. So No. 4 is not a spine slot, and `handler_note` keeps
 `was_cia` as the reveal's other door. A slot would also take the landmark the
 camp may be cast on. His bunker is simply the one nearest where he woke.
@@ -86,7 +86,7 @@ Mechanics this needs, all in the story package:
 ## 4. The variety: six kinds of tenant
 
 Only the coast has bunkers, because this was Cairn's town. Cairn sank twelve,
-and a world keeps four or five of them. The deal (`StoryRooms.tenants`) runs in
+and a world keeps three to five of them (GEN 28). The deal (`StoryRooms.tenants`) runs in
 the order the story most wants them: his (nearest home), Kerr's (farthest),
 then Priya's, a war household, the Holdfast's (the one nearest the camp), the
 ones who never came, and after that more war households.

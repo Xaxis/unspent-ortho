@@ -1,0 +1,49 @@
+# THE DROP STRIKE (mechanics pass, slice 1b; FightSim.drop_strike). A jump that
+# comes down a ledge onto a machine lands as a blow, and that one blow opens any
+# plate: a harvester's working part is its guarded front, and here it is struck
+# from BEHIND, off the lip, and hurt. From above, then over the shoulder. The
+# ledge is the nearest drop `Jump.find` names and the machine is stood a reach
+# past where that jump comes down (`under`), never a coordinate.
+#   tools/tour.sh tours/drop_strike.tour --seed=1 --hour=11 --weather=clear:0 --give=knife:1 --held=knife
+coast calm
+zoom 7
+wait 0.6
+ledge down
+wait 0.3
+under harvester
+wait 0.6
+shot 01-a-harvester-waits-under-the-lip with mob:harvester
+leap 0.12
+await jumping 2
+wait 0.12
+shot 02-coming-down-on-its-back with jumping,mob:harvester
+await hit 3
+shot 03-the-landing-struck-through-its-plate with mob:harvester
+wait 0.6
+shot 04-down-among-it with mob:harvester
+
+# Over the shoulder the view looks where the camera was left, so the machine is
+# held with the lock (Z), as a player would frame it before stepping off; the
+# body faces it and the leap goes that way.
+coast calm
+tap shoulder
+await shoulder 3
+ledge down
+wait 0.6
+under harvester
+wait 0.3
+hold target
+await target 5
+await shoulder_locked 3
+await lock_facing 3
+wait 0.4
+shot 05-over-the-shoulder-locked-on-it-below with shoulder_locked,mob:harvester
+leap 0.12
+await jumping 2
+wait 0.12
+shot 06-over-the-shoulder-coming-down with shoulder_locked,jumping,mob:harvester
+await hit 3
+shot 07-over-the-shoulder-the-landing-struck with shoulder_locked,mob:harvester
+wait 0.6
+shot 08-over-the-shoulder-after with mob:harvester
+release target

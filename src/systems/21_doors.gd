@@ -208,11 +208,14 @@ func _outside_side() -> void:
 			best = t
 	if best == null or bd > WARM * WARM:
 		return
-	_begin(best)
-	if bd <= REACH * REACH:
-		door_near = best
-		if _pressed() and _door_wins(best.door):
-			go_in(best)
+	# The nearest is grown while the player comes; the one they mean is the one
+	# whose house they face (Interiors.door_for).
+	var meant := Interiors.door_for(doors, at, game.player.hero.facing, REACH)
+	_begin(meant if meant != null else best)
+	if meant != null:
+		door_near = meant
+		if _pressed() and _door_wins(meant.door):
+			go_in(meant)
 
 
 func _inside_side(_delta: float) -> void:
@@ -429,7 +432,15 @@ func _stand_turrets() -> void:
 	_turrets.clear()
 	for t: Dictionary in pocket.layout.things:
 		if t.kind == &"turret":
-			_turrets.append(HallTurret.new(t.at, t.face))
+			_turrets.append(HallTurret.new(t.at, t.face, float(_turrets.size()) * StealthQuery.SWEEP_PERIOD * 0.37))
+
+
+## What a hall turret's eye is to the stealth rules: a machine's optics that see
+## as far as it reaches.
+const TURRET_EYE := {"sees": HallTurret.REACH, "machine": true, "role": &"watcher"}
+## The walls between the pocket's rooms, by their middles (`_corner`), for the
+## turrets' lines. Built on first ask; cleared with the room.
+var _walls_between: Dictionary = {}
 
 
 func _run_turrets() -> void:
@@ -446,6 +457,16 @@ func _run_turrets() -> void:
 			model.call(&"aim_turret", i, tu.facing, false)
 			continue
 		var clear := _turret_sees(tu.at, target)
+		# Its eye is a watcher's optics: idle, it sweeps its cone to and fro on
+		# a fixed rhythm, and NOTICES the player only in that cone and within
+		# what it sees of them as they are (StealthQuery: less of someone
+		# crouched in the dark). Once it has come round on them it keeps its
+		# full reach. Noticing anyone in its line at eight tiles, it found every
+		# player in the hall however quiet, and its shots woke every machine.
+		if not tu.aiming():
+			tu.facing = tu.swept(now)
+			if clear and not _turret_notices(tu, target, sim):
+				clear = false
 		var what := tu.step(now, target, clear)
 		model.call(&"aim_turret", i, tu.facing, what == &"aim", tu.at.distance_to(target))
 		_aiming = _aiming or what == &"aim"
@@ -457,17 +478,64 @@ func _run_turrets() -> void:
 				_turret_fired = true
 
 
+## Whether a turret that has nobody would notice someone at `p` now: in its
+## swept cone, in its sight of them as they are, in its line.
+func _turret_notices(tu: HallTurret, p: Vector2, sim: FightSim, facing: float = NAN) -> bool:
+	var f := tu.facing if is_nan(facing) else facing
+	if tu.at.distance_to(p) > StealthQuery.sight_range(TURRET_EYE, sim.moment):
+		return false
+	if not StealthQuery.in_cone(tu.at, f, p, StealthQuery.cone_half(TURRET_EYE)):
+		return false
+	return _turret_sees(tu.at, p)
+
+
+## `walkto` asks this of each next step: would anything in the room have the
+## player there -- a resident's sight, or a turret's swept cone now or a second
+## from now (the time a step takes)? A patient player waits until it would not.
+func tour_safe(p: Vector2) -> bool:
+	if pocket == null:
+		return true
+	var sim: FightSim = game.player.sim
+	for pair: Array in _residents:
+		var m: MobState = pair[1]
+		if m.alive and StealthQuery.sees(m.row, m.pos, p, sim.moment, sim.world, sim.query, m.facing):
+			return false
+	if _warden_stands():
+		for tu: HallTurret in _turrets:
+			for ahead: float in [0.0, 500.0, 1000.0]:
+				if _turret_notices(tu, p, sim, tu.swept(sim.now + ahead)):
+					return false
+	return true
+
+
 ## A turret is mounted high: it sees OVER the racks and the gantry's legs, which
 ## stand in the query as walls a body cannot pass. What blocks it is the room's
 ## own shape -- a line that leaves the floor goes through a wall. (Asked of every
 ## block, a corner turret's line to a player by the door ran along the wall
 ## through the racks, and no turret ever fired.)
+##
+## Nor through a wall between two rooms: both sides are floor, so a line from a
+## hall's corner into a bay passed every floor check and the bay was no cover.
+## A step from one tile to the next crosses the edge between them, and only a
+## doorway (an &"inner" edge) lets it through.
 func _turret_sees(a: Vector2, b: Vector2) -> bool:
+	if _walls_between.is_empty():
+		for e: Dictionary in pocket.layout.edges:
+			if e.inner and e.kind != &"inner":
+				_walls_between[_corner(((e.a as Vector2) + (e.b as Vector2)) * 0.5)] = true
 	var n := ceili(a.distance_to(b) / 0.25)
+	var last := Vector2i(floori(a.x), floori(a.y))
 	for i in range(1, n):
 		var q := a.lerp(b, float(i) / float(n))
-		if not pocket.layout.is_floor(floori(q.x), floori(q.y)):
+		var tile := Vector2i(floori(q.x), floori(q.y))
+		if not pocket.layout.is_floor(tile.x, tile.y):
 			return false
+		if tile != last:
+			if tile.x != last.x and _walls_between.has(_corner(Vector2(maxi(tile.x, last.x), last.y + 0.5))):
+				return false
+			if tile.y != last.y and _walls_between.has(_corner(Vector2(tile.x + 0.5, maxi(tile.y, last.y)))):
+				return false
+			last = tile
 	return true
 
 
@@ -545,6 +613,13 @@ func _wake_residents() -> void:
 		m.home = r.at
 		m.facing = (r.face as Vector2).angle()
 		m.aim = m.facing
+		# Every resident STANDS ITS WATCH where the recipe put it, facing what it
+		# keeps: a round of no length (Brains). Left the beat every idle machine
+		# is given (MobState: six tiles each way along its facing), it walked
+		# through a seven-deep hall's walls, turned at the ends toward the hatch,
+		# and whoever came down it was seen within the second, however quiet.
+		m.line_a = r.at
+		m.line_b = r.at
 		_residents.append([i, m])
 
 
@@ -557,14 +632,33 @@ static func _body_for(role: StringName, land: int) -> StringName:
 	if d != null:
 		for kind: Variant in d.roster:
 			var k := StringName(str(kind))
-			var row := Roster.row(k)
-			if row.is_empty() or not bool(row.get("machine", false)):
+			if not _walks_a_hall(k):
 				continue
 			if first == &"":
 				first = k
 			if Roles.of(k) == Roles.HUNTER:
 				return k
 	return first if first != &"" else &"runner"
+
+
+## Whether a body can keep a hall: a machine that walks the floor, fits between
+## the racks and the gantry's legs, and fights what it finds with a blow of its
+## own. The coast's roster lists a flock first among its hunters, and a flock
+## passes over and cannot be fought; its dredger (0.65 across the middle) stood
+## wedged among the gantry's legs raising the alarm, and the warden came.
+## Nothing on the coast fits, so its halls keep the plan's own runner.
+const HALL_BODY := 0.5
+
+
+static func _walks_a_hall(k: StringName) -> bool:
+	var row := Roster.row(k)
+	if row.is_empty() or not bool(row.get("machine", false)):
+		return false
+	if row.get("crosses", &"") == &"fly":
+		return false
+	if float(row.get("radius", 1.0)) > HALL_BODY:
+		return false
+	return row.has("bite")
 
 
 func _count_the_dead() -> void:
@@ -628,6 +722,7 @@ func _swap_out() -> void:
 	var realms := _realms()
 	_count_the_dead()
 	_turrets.clear()
+	_walls_between.clear()
 	_room_boxes.clear()
 	_aiming = false
 	box_near = -1
@@ -1125,6 +1220,16 @@ func tour_seen(what: StringName) -> bool:
 			return _box_opened
 		&"box_near":
 			return pocket != null and box_near >= 0
+		&"unnoticed":
+			# In a room and nothing in it has the player: every resident still
+			# idle at its post and no turret coming round.
+			if pocket == null or _aiming:
+				return false
+			for pair: Array in _residents:
+				var m: MobState = pair[1]
+				if m.alive and (m.mood != MobState.IDLE or m.suspicion >= 1.0):
+					return false
+			return true
 		&"warden_down":
 			return pocket != null and not _swapping and not _warden_stands()
 		&"door":
@@ -1171,6 +1276,89 @@ func tour_face(what: String) -> float:
 	if pocket != null and t == null and TOUR_PLACES.has(what):
 		return pocket.layout.door_out.angle()
 	return (-t.out).angle() if t != null else NAN
+
+
+## `walkto strongbox`: the way a quiet player goes to a strongbox, as waypoints.
+## A sneak keeps out of sight: for each box, a few ways to its bay's doorway
+## (along the hatch's wall, straight, through the room's middle), then in to the
+## box's front -- and of all of them, the one that spends least of its length
+## where a resident or a turret would see the player (StealthQuery, the moment
+## as it is: crouched or not). Empty outside a room with one.
+func tour_route(what: String) -> PackedVector2Array:
+	if what == "guard" and pocket != null:
+		return _route_to_guard()
+	if what != "strongbox" or pocket == null:
+		return PackedVector2Array()
+	var l := pocket.layout
+	var sim: FightSim = game.player.sim
+	var along := Vector2(-l.door_out.y, l.door_out.x)
+	var start := l.inside()
+	var best := PackedVector2Array()
+	var best_seen := INF
+	for t: Dictionary in l.things:
+		if t.kind != &"strongbox":
+			continue
+		var door := Vector2.INF
+		for e: Dictionary in l.edges:
+			if e.kind != &"inner":
+				continue
+			var m: Vector2 = ((e.a as Vector2) + (e.b as Vector2)) * 0.5
+			if door == Vector2.INF or m.distance_to(t.at) < door.distance_to(t.at):
+				door = m
+		if door == Vector2.INF:
+			continue
+		var into := ((t.at as Vector2) - door).normalized()
+		var tail := PackedVector2Array([door - into * 0.9, door, (t.at as Vector2) + (t.face as Vector2) * 0.8])
+		# The ways a sneak might go to the bay's doorway: along the wall the
+		# hatch is in, straight across, or through the middle of the room.
+		var middle := _room_middle()
+		for via: Array in [[start + along * along.dot(door - start)], [], [middle]]:
+			var route := PackedVector2Array()
+			for v: Vector2 in via:
+				route.append(v)
+			route.append_array(tail)
+			var seen := _seen_along(start, route, sim)
+			if seen < best_seen:
+				best_seen = seen
+				best = route
+	return best
+
+
+## `walkto guard`: to a tile and a half short of the nearest guard still
+## standing in the room, on the player's side of it -- a loud player going to
+## fight what keeps the hall rather than the warden.
+func _route_to_guard() -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var best: MobState = null
+	for pair: Array in _residents:
+		var m: MobState = pair[1]
+		if m.alive and Roles.of(m.kind) != Roles.KEEPER and (best == null or m.pos.distance_to(game.player.pos) < best.pos.distance_to(game.player.pos)):
+			best = m
+	if best != null:
+		out.append(best.pos + (game.player.pos - best.pos).normalized() * 1.5)
+	return out
+
+
+## How many of the half-tile steps along `route` from `start` a standing
+## resident or a turret would see the player on.
+func _seen_along(start: Vector2, route: PackedVector2Array, sim: FightSim) -> float:
+	var seen := 0.0
+	var from := start
+	for p: Vector2 in route:
+		var n := maxi(1, ceili(from.distance_to(p) / 0.5))
+		for k in n:
+			var q := from.lerp(p, float(k + 1) / float(n))
+			for pair: Array in _residents:
+				var m: MobState = pair[1]
+				if m.alive and StealthQuery.sees(m.row, m.pos, q, sim.moment, sim.world, sim.query, m.facing):
+					seen += 1.0
+			# And the turrets' eyes: a step in a turret's sweep costs a wait, not
+			# a sighting, so it counts for less than a resident who never looks away.
+			for tu: HallTurret in _turrets:
+				if tu.at.distance_to(q) <= StealthQuery.sight_range(TURRET_EYE, sim.moment) and _turret_sees(tu.at, q):
+					seen += 0.2
+		from = p
+	return seen
 
 
 ## `near strongbox`: the first strongbox in the room the player is in.

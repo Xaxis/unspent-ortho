@@ -41,9 +41,6 @@ var _beacons: Dictionary = {}
 var _judge_at := -INF
 ## What the tour has been shown.
 var _seen: Dictionary = {}
-## MobState id -> `blow_at` of the last bite a ground tell was drawn for, so a
-## windup that lasts a second draws one ring and not sixty.
-var _told: Dictionary = {}
 
 
 func setup(g: Game) -> void:
@@ -155,7 +152,6 @@ func _step() -> void:
 		if m != null and not m.removed:
 			s.health = m.health
 			_phases(s, def, m)
-			_ground_tell(s, def, m)
 			if not m.alive and not s.fallen:
 				_fell(s, def, def.way_of(SentinelWay.FORCE), m.pos)
 			if s.fallen and not _kills(def, s.how):
@@ -198,31 +194,12 @@ func _apply_phase(s: SentinelState, def: SentinelDef, i: int, announce: bool) ->
 		_seen["sentinel_phase"] = true
 
 
-## The ground tell a phase asks for (`SentinelPhase.tell`), drawn ONCE per bite
-## as its windup begins, where the bite will land: the middle of the blow box
-## `FightRules.box_hits` will test, at that box's width, so the ring on the sand
-## and the rule that hurts agree by construction. The ring lasts the windup, so
-## it is gone the instant the strike is down — a ring that outlived the blow
-## would be a promise about a second strike nobody is throwing.
-func _ground_tell(s: SentinelState, def: SentinelDef, m: MobState) -> void:
-	var phase := def.phase(s.phase)
-	if phase.tell != &"ring" or m.blow == null or not m.alive:
-		return
-	if m.blow_phase(sim.now) != &"windup" or float(_told.get(m.id, -INF)) == m.blow_at:
-		return
-	_told[m.id] = m.blow_at
-	var ahead := (m.radius + m.blow.reach) * 0.5
-	var at := m.pos + Vector2.from_angle(m.facing) * ahead
-	MobFx.ring(game, game.world.to_3d(at), Palette.LINEN[5], m.blow.width * 0.5, m.blow.windup / 1000.0)
-
-
 ## Its body has gone from the coast (culled, or its wreck has lain its time). The
 ## state keeps everything: come back and it is as hurt as it was.
 func _leave(s: SentinelState, def: SentinelDef, m: MobState) -> void:
 	if s.fallen and not s.hulk_laid and def.hulk >= 0:
 		s.lair = m.pos
 	_bodies.erase(m.id)
-	_told.erase(m.id)
 	s.body = null
 	var b: Beacon = _beacons.get(s.region, null)
 	if b != null and is_instance_valid(b):
@@ -509,6 +486,46 @@ func tour_seen(what: String) -> bool:
 				return true
 		return false
 	return false
+
+
+## What `near NAME` may ask of this system (tests/tours/test_tour_claims.gd reads it).
+const TOUR_PLACES := ["keeper"]
+## Tiles off its lair a tour is stood: inside Sentinels.PUT_OUT, so it comes out,
+## and far enough that the frame holds the whole of it.
+const TOUR_STAND := 9.0
+var _tour_facing := NAN
+
+
+## `near keeper`: on the ground of the keeper nearest the player that still
+## holds its region, TOUR_STAND tiles off where it dens, facing it. Asked of the
+## keeper's own lair (Sentinels.lair), never of a landmark near it: a keeper
+## dens at the station it can feed from, and at none within CLEAR_OF_HOME of the
+## spawn, so the nearest station of its kind is often not where it is at all.
+func tour_place(what: String) -> Vector2:
+	if what != "keeper":
+		return Vector2.INF
+	var here: Vector2 = game.player.pos
+	var lair := Vector2.INF
+	for s in _states:
+		if s.fallen or s.region < 0:
+			continue
+		if not lair.is_finite() or s.lair.distance_to(here) < lair.distance_to(here):
+			lair = s.lair
+	if not lair.is_finite():
+		return Vector2.INF
+	# From the side the player comes from, round until the ground will stand.
+	var from := (here - lair).angle() if here.distance_to(lair) > 0.1 else 0.0
+	for i in 16:
+		var a := from + float((i + 1) / 2) * (TAU / 16.0) * (1.0 if i % 2 == 0 else -1.0)
+		var p := lair + Vector2.from_angle(a) * TOUR_STAND
+		if game.query.standable(floori(p.x), floori(p.y)) and game.world.same_body(p, lair):
+			_tour_facing = (lair - p).angle()
+			return p
+	return Vector2.INF
+
+
+func tour_face(what: String) -> float:
+	return _tour_facing if what == "keeper" else NAN
 
 
 ## An await is spent by the tour that asked it (98_tour `_forget`).

@@ -1,0 +1,54 @@
+# THE HEAVY BLOW (mechanics pass, slice 1c; FightRules.HEAVY_*). The swing key
+# held past HEAVY_HOLD_MS throws the heavy blow: the tool held drawn back for its
+# long windup, strokes thrown up off the body, then the strike, for twice the
+# damage. Staged on a harvester at its work, which is open to it, from above and
+# then over the shoulder locked on. The frame mid-hold is the claim: a player
+# must SEE that the blow is coming slow, and so can a machine's reader.
+# Run at a fixed rate, so the frame mid-hold costs the world no time and the
+# blow that lands after it is the one awaited:
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/heavy_blow.tour --seed=4 --hour=11 --weather=clear:0 --give=knife:1 --held=knife
+coast calm
+zoom 7
+wait 0.6
+spawn harvester
+wait 0.6
+shot 01-a-harvester-at-its-work with mob:harvester
+# A worker walks its round: stood in its way at its front it stops and faces
+# you (held up), and that is when the long windup is safe to start. A blow that
+# met its flank anyway rings; a player who misses goes round and holds it again.
+try 6
+walkto part 3
+wait 0.4
+walkto part 1
+hold swing
+wait 0.45
+shot 02-held-the-tool-drawn-back with mob:harvester
+release swing
+await hit 1.5
+end
+shot 03-the-heavy-blow-lands with mob:harvester
+wait 0.6
+shot 04-after with mob:harvester
+
+coast calm
+tap shoulder
+await shoulder 3
+spawn harvester
+wait 0.6
+hold target
+await target 5
+await shoulder_locked 3
+shot 05-over-the-shoulder-locked-on-it with shoulder_locked,mob:harvester
+try 6
+walkto part 3
+wait 0.4
+walkto part 1
+await lock_facing 1
+hold swing
+wait 0.45
+shot 06-over-the-shoulder-held-drawn-back with shoulder_locked,mob:harvester
+release swing
+await hit 1.5
+end
+shot 07-over-the-shoulder-the-heavy-blow-lands with shoulder_locked,mob:harvester
+release target

@@ -16,7 +16,6 @@ const RULES: Array[String] = ["rules.clock", "rules.harm", "rules.hunger", "rule
 ## What each autosave setting means in hours between saves (rules.autosave).
 const AUTOSAVE_HOURS := {"off": 0.0, "rare": 6.0, "normal": 3.0, "often": 1.5}
 const READOUT_EVERY := 0.25
-const FLAG := Vector2i(603, 348)
 const VIOLET := Color("#b3a8ea")
 
 var screen: UiDevScreen
@@ -313,6 +312,8 @@ func _take_picture() -> void:
 		return
 	img.resize(img.get_width() * 2, img.get_height() * 2, Image.INTERPOLATE_NEAREST)
 	var name := "picture-%s.png" % Time.get_datetime_string_from_system(false, false).replace("-", "").replace(":", "").replace("T", "-")
+	# Counted on every host, or a tour's `await dev_picture` can never pass on the web.
+	_pictures += 1
 	if DevMode.web():
 		JavaScriptBridge.download_buffer(img.save_png_to_buffer(), name, "image/png")
 		game.hud.say_now("Downloading %s." % name)
@@ -320,7 +321,6 @@ func _take_picture() -> void:
 	var dir := DevMode.project_path("shots/dev") if DevMode.local() else ProjectSettings.globalize_path("user://dev/pictures")
 	DirAccess.make_dir_recursive_absolute(dir)
 	img.save_png(dir.path_join(name))
-	_pictures += 1
 	game.hud.say_now("Picture kept: %s." % name)
 	print("dev picture %s" % dir.path_join(name))
 
@@ -363,17 +363,28 @@ func _load(v: Variant) -> void:
 
 # --- the flag and the readout ------------------------------------------------------------------
 
+## Where the DEV flag stands: in the bottom right corner of the base frame
+## (UiBase.SIZE), sized to its word and a line, the corner the slate's own
+## HUD leaves empty (the held tool is bottom left, the clock top right).
+const FLAG_MARGIN := 36
+
+
+static func flag_rect() -> Rect2i:
+	var size := Vector2i(UiFont.width("DEV") + 8, UiTheme.LINE + 2)
+	return Rect2i(UiBase.SIZE - size - Vector2i(FLAG_MARGIN, FLAG_MARGIN), size)
+
+
 func _draw_overlay() -> void:
 	if not DevMode.reachable() or not game.open_screens.is_empty() or _hud_hidden:
 		return
 	# The flag: a violet cap in the corner, so no frame of play is mistaken for a
 	# player's while dev mode can be reached. Touched: a point beside it.
-	var cap := Rect2i(FLAG.x, FLAG.y, 19, 9)
+	var cap := flag_rect()
 	UiDraw.rect(_overlay, cap.grow(1), UiTheme.RIM)
 	UiDraw.frame(_overlay, cap, UiTheme.MACHINE[1])
-	UiDraw.text(_overlay, Vector2i(cap.position.x + 2, cap.position.y - 1), "DEV", VIOLET)
+	UiDraw.text(_overlay, Vector2i(cap.position.x + 4, cap.position.y + 1), "DEV", VIOLET)
 	if DevMode.touched:
-		UiDraw.rect(_overlay, Rect2i(cap.position.x - 5, cap.position.y + 3, 2, 2), VIOLET)
+		UiDraw.rect(_overlay, Rect2i(cap.position.x - 10, cap.position.y + cap.size.y / 2 - 2, 4, 4), VIOLET)
 	if _pairs.is_empty():
 		return
 	var h := _pairs.size() * UiTheme.LINE + 6

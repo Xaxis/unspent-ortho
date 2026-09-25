@@ -13,6 +13,7 @@ Saving and loading, dev mode, the tour runner.
 ## How to reach it
 
 - `tools/tour.sh tours/saves.tour`, `tours/dev.tour`; `--load=N --saves=DIR`.
+- Dev mode in the real web build: `tools/web.sh --config=playtest --tour=tours/dev.tour --args=--seed=1,--hour=10,--weather=clear:0,--config=playtest` (frames in `shots/export/tour/dev/`). The build needs `--config` to have dev mode at all; the tour needs it in `--args` too, because a tool run opens dev mode only when asked.
 
 ## How to check it
 

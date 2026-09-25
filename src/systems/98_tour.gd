@@ -19,6 +19,15 @@ extends GameSystem
 ##   place NAME             teleport to a named place (GenPlaces: spawn, a country, an ecotone a-b, a landmark)
 ##   ledge up|across|down   stand, facing it, where a jump of that kind lands: the
 ##                          nearest spot `Jump.find` names, never a coordinate
+##   under KIND[@DEG]       after `ledge down`: put a roster body on the low ground
+##                          just past where the jump the player faces comes down,
+##                          turned away from the lip (or to DEG), so the landing is
+##                          at its back; fails when that jump is no drop (the drop
+##                          strike, FightSim.drop_strike)
+##   wound KIND SHARE       the nearest live body of that roster kind drops to SHARE of
+##                          its health (never raises it), so a tour can be at a phase a
+##                          boss reaches by damage without feeding a scripted player to
+##                          it pass after pass; fails when no such body is about
 ##   leap SECS              walk the way the player FACES for SECS on the real move
 ##                          path and press the real jump key at the end of it, so a
 ##                          jump is taken on the move the way a player takes one
@@ -114,6 +123,12 @@ extends GameSystem
 ##                          or to the plated side opposite (plate), re-aimed every
 ##                          step the way a player steers, ending turned to face it
 ##                          (nothing happens when no body is left)
+##   walkto strongbox SECS  steer the way a quiet player goes to a strongbox in the
+##                          room (21_doors `tour_route`): by its bay's doorway,
+##                          out of the residents' sight, waiting where the next
+##                          step would be seen (`tour_safe`) as a patient player does
+##   walkto guard SECS      steer to beside the nearest guard in the room (not its
+##                          keeper), to fight what keeps it
 ##   walkto shaft SECS      the same steering toward the nearest shaft, stopping
 ##                          inside its reach: a return BY NAME, where a timed walk
 ##                          back ends wherever the props on the way let it
@@ -451,6 +466,10 @@ func _run() -> void:
 				await _until(parts[1], parts[2].to_float() if parts.size() > 2 else 5.0)
 			"spawn":
 				ok = await _spawn(parts[1])
+			"under":
+				ok = await _spawn_under(parts[1])
+			"wound":
+				ok = _wound(parts[1], parts[2].to_float() if parts.size() > 2 else 0.5)
 			"choose":
 				ok = await _choose(StringName(parts[1]))
 			"coast":
@@ -892,14 +911,16 @@ func _stand_at(found: WorldProp, said: String) -> bool:
 
 ## Every `walkto` target, the one list: `tests/tours/test_tour_claims.gd` reads it,
 ## so a new target cannot be written into a tour and refused by a stale copy.
-const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft"]
+const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft", "strongbox", "guard"]
 
 
 func _walk_to(what: String, secs: float) -> bool:
 	var sim := game.player.sim
-	if sim == null or not what in ["mob", "part", "plate", "shaft"]:
+	if sim == null or not what in ["mob", "part", "plate", "shaft", "strongbox", "guard"]:
 		return false
 	var until := Time.get_ticks_msec() + int(secs * 1000.0)
+	if what == "strongbox" or what == "guard":
+		return await _walk_route(what, until, secs)
 	if what == "shaft":
 		while Time.get_ticks_msec() < until:
 			var shaft := Portals.nearest(game.world, sim.hero.pos)
@@ -957,6 +978,48 @@ func _walk_to(what: String, secs: float) -> bool:
 		game.scripted_seconds = 0.02
 		while game.scripted_seconds > 0.0:
 			await get_tree().physics_frame
+	return true
+
+
+## Steer through the waypoints a system gives for `what` (`tour_route`), each in
+## turn, the way a player steers: re-aimed every step, never teleported.
+func _walk_route(what: String, until: int, secs: float) -> bool:
+	var route := PackedVector2Array()
+	for sys in game.systems:
+		if sys.has_method(&"tour_route"):
+			route = sys.call(&"tour_route", what)
+			if not route.is_empty():
+				break
+	if route.is_empty():
+		printerr("tour %s: nothing gives a way to a %s here" % [_name, what])
+		return false
+	var sim := game.player.sim
+	var safe: Node = null
+	for sys in game.systems:
+		if sys.has_method(&"tour_safe"):
+			safe = sys
+	var i := 0
+	while i < route.size() and Time.get_ticks_msec() < until:
+		var d := route[i] - sim.hero.pos
+		if d.length() <= 0.25:
+			i += 1
+			continue
+		# A patient player: where the next step would be seen they wait -- but
+		# only where they stand hidden. Caught in a sweep, they keep going: a
+		# turret takes most of a second to come round.
+		if safe != null and not bool(safe.call(&"tour_safe", sim.hero.pos + d.normalized() * 0.6)) \
+				and bool(safe.call(&"tour_safe", sim.hero.pos)):
+			game.scripted_seconds = 0.0
+			await get_tree().physics_frame
+			continue
+		game.scripted_move = _keys_toward(d.normalized())
+		game.scripted_run = false
+		game.scripted_seconds = 0.05
+		await get_tree().physics_frame
+	game.scripted_seconds = 0.0
+	if i < route.size():
+		printerr("tour %s: walked the way to the %s for %.1f s and reached %d of its %d marks" % [_name, what, secs, i, route.size()])
+		return false
 	return true
 
 
@@ -1031,6 +1094,70 @@ func _spawn(token: String) -> bool:
 			% [_name, kind, m.pos, game.player.pos, game.camera.view_height if game.camera != null else 0.0])
 		return false
 	print("tour spawn %s: %s at %s, %.1f tiles off, in frame" % [kind, m.kind, m.pos, m.pos.distance_to(game.player.pos)])
+	return true
+
+
+## `wound`: the nearest live body of `token`'s kind down to `share` of its health.
+func _wound(token: String, share: float) -> bool:
+	var id := Roster.resolve(token)
+	var sim: FightSim = game.player.sim
+	var best: MobState = null
+	if sim == null:
+		return false
+	for m: MobState in sim.mobs:
+		if m.alive and not m.removed and m.kind == id:
+			if best == null or m.pos.distance_to(sim.hero.pos) < best.pos.distance_to(sim.hero.pos):
+				best = m
+	if best == null:
+		printerr("tour %s: no %s about to wound" % [_name, token])
+		return false
+	best.health = mini(best.health, maxi(1, floori(float(best.max_health) * share)))
+	print("tour wound %s: %d of %d" % [token, best.health, best.max_health])
+	return true
+
+
+## `under`: a body waiting below the lip the player faces, a reach past where
+## the jump comes down, so what lands is a drop strike and not a walk-in. Placed
+## by the spawner first (the node, the frame check) and then stood there.
+func _spawn_under(token: String) -> bool:
+	var dir := Vector2.from_angle(game.player.facing)
+	var plan := Jump.plan(game.world, game.query, game.player.pos, dir, Jump.CARRY)
+	if plan.kind != Jump.DOWN:
+		printerr("tour %s: the jump faced from %s is a %s, not a drop" % [_name, game.player.pos, plan.kind])
+		return false
+	var staged := Spawner.staged(token)
+	var id: StringName = staged.id
+	if id == &"":
+		printerr("tour %s: the roster has no %s" % [_name, token])
+		return false
+	var mobs := _system("30_mobs")
+	var facing: float = staged.facing if not is_nan(float(staged.facing)) else dir.angle()
+	var m := mobs.call("place_near_player", id, facing) as MobState if mobs != null else null
+	if m == null:
+		printerr("tour %s: nothing placed a %s near %s" % [_name, token, game.player.pos])
+		return false
+	# Straight on past the landing if the low ground runs that way, else the
+	# nearest bearing round it that does: a lip is seldom square to the jump.
+	var at := Vector2.INF
+	var gap := m.radius + Tuning.PLAYER_RADIUS + 0.25
+	for i in 13:
+		var turn := float((i + 1) / 2) * (0.35 if i % 2 == 1 else -0.35)
+		var p := plan.to + dir.rotated(turn) * gap
+		if game.query.standable(floori(p.x), floori(p.y)) and game.world.level_at(floori(p.x), floori(p.y)) == plan.to_level:
+			at = p
+			break
+	if at == Vector2.INF:
+		printerr("tour %s: no low ground for a %s past the landing at %s" % [_name, token, plan.to])
+		return false
+	m.pos = at
+	m.home = at
+	m.line_a = at
+	m.line_b = at
+	m.facing = facing
+	m.aim = facing
+	for i in 3:
+		await get_tree().process_frame
+	print("tour under %s: at %s, landing %s, %d levels down" % [token, at, plan.to, plan.from_level - plan.to_level])
 	return true
 
 

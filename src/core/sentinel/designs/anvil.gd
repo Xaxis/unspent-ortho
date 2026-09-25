@@ -29,9 +29,9 @@
 ##
 ## The calling phase's strike is a real bite, landed by FightSim off the phase's
 ## own row like any other: a long telegraph, then a ring two tiles across in
-## front of it. The pale ring on the sand is `SentinelPhase.tell`, a picture
-## 44_sentinels draws where that bite's box will be tested, so the sand and the
-## rule agree by construction.
+## front of it. The pale ring on the sand is every bite's ground tell
+## (FightRules.tell_ring, drawn by 40_fight) over where that bite's box will be
+## tested, so the sand and the rule agree by construction.
 
 
 
@@ -83,7 +83,6 @@ static func make() -> SentinelDef:
 	var calling := SentinelPhase.make(&"calling", 0.6, &"front",
 		{"swing": [980, 200, 900, 1100], "reach": 2.4, "width": 4.0, "dmg": 5, "knock": 12.0, "knock_ms": 380})
 	calling.guarded = true
-	calling.tell = &"ring"
 	# Planted: it shuffles on its skates and never glides. The founder way is
 	# still open — a planted keeper that is lured is one that has to move.
 	calling.pace = 1.6

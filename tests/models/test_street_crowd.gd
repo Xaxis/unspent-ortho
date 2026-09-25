@@ -7,6 +7,9 @@ extends TestCase
 ## at, taken rather than assumed.
 
 const Fx := preload("res://tests/fight/fixture.gd")
+## Forty on a street a frame, in yardsticks (TestCase.yard_lt). Calibrated
+## 2026-09-25: 16.1 shipped, 27.0 doubled; the bar between them.
+const STREET_BAR := 21.0
 
 static var _world: WorldData
 
@@ -244,6 +247,11 @@ func test_what_a_street_of_forty_costs_through_the_real_path() -> void:
 		for row: Dictionary in folk:
 			f.call("_step", row, 0.016, false)
 	var step_us := best_of(5, step)
+	var street_twice := func() -> void:
+		for k in 2:
+			step.call()
+		count.call()
+	var doubled_us := best_of(5, street_twice)
 
 	var tris := 0
 	var draws := 0
@@ -263,8 +271,10 @@ func test_what_a_street_of_forty_costs_through_the_real_path() -> void:
 	# hold: a street may not cost more than a millisecond a frame to walk
 	# through. No slack on it -- the measurement above already took the noise out,
 	# so this bar is the real number and can still fail for a real reason.
-	cost_lt(step_us + count_us * 0.5, 1000.0,
-		"forty on a street cost under a millisecond a frame (%.0f us step + %.0f us count)" % [step_us, count_us])
+	# In yardsticks, not microseconds: CI's runner is another machine
+	# (TestCase.yard_lt). Doubled is two steps and a whole count: twice the frame.
+	yard_lt(step_us + count_us * 0.5, doubled_us, yardstick_us(), STREET_BAR,
+		"forty on a street a frame (%.0f us step + %.0f us count)" % [step_us, count_us])
 	# And the build stays a ramp rather than a stall, because nothing builds two
 	# in one frame: what a player feels is the street filling in, not a hitch.
 	#

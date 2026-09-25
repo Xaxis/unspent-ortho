@@ -41,6 +41,16 @@ const RING_RECOIL_MS := 90
 ## Running in a fight spends wind; below the floor you walk.
 const RUN_WIND_COST := 220.0
 const RUN_WIND_FLOOR := 350.0
+## The heavy blow: the swing key held this long throws it (a tap, let go
+## sooner, is the light swing), and it is the held tool's blow wound up this much
+## longer, for this much wind, hitting this many times as hard. What it buys
+## beyond the damage is a guarded part: it goes through a machine's turning
+## blades that throw a light blow off (FightSim.reaches_part), so the long tell
+## is the price of not waiting for the machine to open.
+const HEAVY_HOLD_MS := 300
+const HEAVY_WINDUP_MS := 350
+const HEAVY_WIND := 600.0
+const HEAVY_DAMAGE := 2
 ## Swings turn toward a body this close to the facing (radians) and this far past reach.
 const AIM_ASSIST_ANGLE := 1.05
 const AIM_ASSIST_EXTRA := 1.0
@@ -167,6 +177,25 @@ static func reaches(part: StringName, body_pos: Vector2, body_facing: float, swi
 	return side_of(body_pos, body_facing, swinger_pos) == part
 
 
+## Levels apart at which two bodies are out of each other's blows: a walk steps
+## one level, so one level is the same fight, and a ledge (two, what a jump goes
+## up) stands a body off from every bite and every swing, both ways. What comes
+## down off a ledge is the drop strike's, not a swing's.
+const LEDGE_LEVELS := 2
+
+
+## Levels below a jump's take-off a body must stand for the landing beside it to
+## be a drop strike (FightSim.drop_strike): a ledge, the same two a jump goes up.
+## A hop or a step down lands as feet, or jumping beside a machine would open its
+## plate at will.
+const DROP_LEVELS := 2
+
+
+## Can a blow pass between a body on `a_level` and one on `b_level`?
+static func levels_meet(a_level: int, b_level: int) -> bool:
+	return absi(a_level - b_level) < LEDGE_LEVELS
+
+
 ## Does the blow box of an owner at `o` facing `facing` (with body radius `orad`)
 ## overlap a round body of radius `trad` at `t`?
 static func box_hits(o: Vector2, facing: float, orad: float, b: Blow, t: Vector2, trad: float) -> bool:
@@ -174,6 +203,16 @@ static func box_hits(o: Vector2, facing: float, orad: float, b: Blow, t: Vector2
 	var fx := clampf(local.x, 0.0, orad + b.reach)
 	var fy := clampf(local.y, -b.width * 0.5, b.width * 0.5)
 	return local.distance_squared_to(Vector2(fx, fy)) <= trad * trad
+
+
+## Where a bite's ground ring stands, as (x, y, radius) in tiles: over the middle
+## of the box `box_hits` will test for it, wide enough to take in the box's
+## longer side. Every bite's tell (40_fight draws it as the windup begins, for
+## the windup), so the ring on the ground and the rule that hurts agree.
+static func tell_ring(o: Vector2, facing: float, orad: float, b: Blow) -> Vector3:
+	var length := orad + b.reach
+	var at := o + Vector2.from_angle(facing) * length * 0.5
+	return Vector3(at.x, at.y, 0.5 * maxf(b.width, length))
 
 
 ## Nightfall 0..1, and it is the SAME CURVE THE SKY FALLS ON (`Weather.night_fall`,

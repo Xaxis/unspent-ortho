@@ -12,6 +12,11 @@ extends RefCounted
 ## knife, a person meeting it for the first time cannot either.
 
 var react_ms := 220.0
+## Holds the swing for the heavy blow (FightRules.HEAVY_*) when the opening is
+## long enough for its tell, there is the wind for it and a dodge after, or the
+## part is one only a heavy blow goes through; a light swing otherwise.
+var heavy := false
+var heavies := 0
 ## Tells let through on purpose before the reader starts answering them: a
 ## player who takes a bite while learning must still be able to win.
 var take_hits := 0
@@ -126,19 +131,43 @@ func _strike(m: MobState) -> void:
 	# Squarely on the side, not at the edge of it: a turning body carries an edge
 	# swing onto plate before it lands.
 	var square := m.part == &"none" or absf(wrapf((hero.pos - m.pos).angle() - (spot - m.pos).angle(), -PI, PI)) < 0.55
-	var reaches := square and sim.reaches_part(m, hero.pos) \
-			and FightRules.box_hits(hero.pos, to_mob.angle(), hero.radius, _blow(), m.pos, m.radius)
+	var in_box := square and FightRules.box_hits(hero.pos, to_mob.angle(), hero.radius, _blow(), m.pos, m.radius)
+	var go_heavy := heavy and in_box and _heavy_fits(m)
+	var reaches := in_box and sim.reaches_part(m, hero.pos, false, go_heavy)
 	if reaches:
 		hero.move = Vector2.ZERO
 		hero.facing = to_mob.angle()
 		if hero.swing_refusal(sim.now) == &"":
-			sim.press_swing()
+			if go_heavy:
+				sim.press_heavy()
+				heavies += 1
+			else:
+				sim.press_swing()
 			swings += 1
 		return
 	if from_spot < 0.08:
 		hero.move = to_mob.normalized() * 0.3
 		return
 	hero.move = _round_to(m, spot)
+
+
+## Time for a heavy blow's tell before this body can bite, as a player judges
+## it: stopped by a blow, or spent after a bite, for longer than the tell; or not
+## pressing at all. And the wind for it with a dodge left over.
+func _heavy_fits(m: MobState) -> bool:
+	var now := sim.now
+	var hb := _blow().heavier()
+	if sim.hero.wind < FightRules.HEAVY_WIND + FightRules.DODGE_COST:
+		return false
+	var lands := hb.windup + hb.active * 0.5
+	if m.machine and (m.indifferent() or not m.roused()):
+		# At its work and not minding you: the one blow it never sees coming.
+		return true
+	if m.stunned(now):
+		return m.stun_until - now > lands
+	if m.machine and m.spent(now) and m.blow != null:
+		return m.blow_at + m.blow.lockout() - now > lands + 120.0
+	return m.approach == &"charge" and not m.charging and now + lands < m.pause_until
 
 
 ## Stand and let it come (the bite is what opens it), closing in only when it
