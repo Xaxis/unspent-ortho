@@ -75,7 +75,9 @@ func test_in_through_a_cottage_door_and_out_onto_the_same_coast() -> void:
 	# What keeps the outside sleeps through the door rather than re-reading it.
 	var sleepers: Array[Node] = []
 	for sys: Node in g.systems:
-		if sys.has_method(&"indoors"):
+		# A system that keeps its own `_indoors` flag stays awake in a room on
+		# purpose (30_mobs draws the room's residents; only its spawner stops).
+		if sys.has_method(&"indoors") and sys.get(&"_indoors") == null:
 			sleepers.append(sys)
 	gt(float(sleepers.size()), 0.0, "some systems keep the outside")
 	for sys: Node in sleepers:
@@ -173,4 +175,233 @@ func test_a_save_made_inside_opens_inside() -> void:
 			kept = true
 	check(kept, "and the fire built outside before going in is still there")
 	Sx.end(b)
+	Sx.finish()
+
+
+## Visible local lights (not the sun or moon) under these nodes, and how many
+## cast. The lights system's reach light is its own exception, older than the row.
+static func _lights_on(roots: Array) -> Vector2i:
+	var on := Vector2i.ZERO
+	var todo: Array[Node] = []
+	for r: Variant in roots:
+		todo.append(r as Node)
+	while not todo.is_empty():
+		var n: Node = todo.pop_back()
+		todo.append_array(n.get_children())
+		var l := n as Light3D
+		if l == null or l is DirectionalLight3D or not l.is_visible_in_tree() or n.name == &"reach_light":
+			continue
+		on.x += 1
+		if l.shadow_enabled:
+			on.y += 1
+	return on
+
+
+## A ROOM NEVER LIGHTS PAST THE TIER'S ROW. Its window suns, sky fills and lamps
+## are lent to 15_lights, which holds them with its own pool to `Quality`'s
+## `lamps` and `shadow_lights`. Asked on the tightest rows, at noon when the
+## window suns ask to cast and at night when the lamps are up.
+func test_a_room_never_lights_past_the_tiers_row() -> void:
+	for tier: String in ["web", "low"]:
+		Sx.use_root("doors-lights-" + tier)
+		# `--quality` reaches the engine through main.gd, which a test does not
+		# run: the tier is put in force here, before the lights size their pool.
+		SettingsApply.quality_asked = StringName(tier)
+		SettingsApply.quality()
+		eq(Quality.current_id(), StringName(tier), "the %s row is in force" % tier)
+		var g := Sx.game(tree, ["--seed=4", "--village=0", "--hour=11", "--weather=clear:0"])
+		var d := _doors(g)
+		var lights: Node = Sx.system(g, "15_lights")
+		var t := _at_door(g, d)
+		await _frames(20)
+		await d.call(&"go_in", t)
+		check(bool(d.call(&"tour_seen", &"inside:cottage")), "%s: inside" % tier)
+		var row := Quality.row(StringName(tier))
+		for hour: float in [11.0, 22.0]:
+			g.clock.minutes = floorf(g.clock.minutes / 1440.0) * 1440.0 + hour * 60.0
+			await _frames(20)
+			# Counted off the scene, not off the lights system's own books: a light
+			# nobody lent is exactly the one those books cannot see.
+			var on := _lights_on([g.view, lights])
+			check(on.x <= int(row.lamps), "%s at %d: %d lights on, the row allows %d" % [tier, int(hour), on.x, int(row.lamps)])
+			check(on.y <= int(row.shadow_lights), "%s at %d: %d casting, the row allows %d" % [tier, int(hour), on.y, int(row.shadow_lights)])
+			gt(float(on.x), 0.0, "%s at %d: and the room is lit at all" % [tier, int(hour)])
+		Sx.end(g)
+	SettingsApply.quality_asked = &""
+	SettingsApply.quality()
+	Sx.finish()
+
+
+## A HALL'S RESIDENTS ARE IN THE FIGHT, and they know somebody has come in: the
+## warden where the recipe stood it and whatever walks the hall, as the one
+## FightSim's bodies, still there after the room has run a while.
+func test_a_halls_residents_are_in_the_fight() -> void:
+	Sx.use_root("doors-hall")
+	var g := Sx.game(tree, ["--seed=4", "--hour=11", "--weather=clear:0"])
+	var d := _doors(g)
+	var p: Vector2 = d.call(&"tour_place", "door:weapons_hall")
+	check(p.is_finite(), "seed 4 has a hall door")
+	g.player.hero.pos = p
+	g.player.hero.facing = float(d.call(&"tour_face", "door:weapons_hall"))
+	g.player.sync_view(0.0)
+	await _frames(20)
+	var t: Threshold = d.get("door_near")
+	check(t != null and t.kind == &"weapons_hall", "standing at the hall's hatch")
+	await d.call(&"go_in", t)
+	check(bool(d.call(&"tour_seen", &"inside:weapons_hall")), "inside the hall")
+	var pocket: InteriorGen.Pocket = d.get("pocket")
+	var sim: FightSim = g.player.sim
+	eq(sim.mobs.size(), pocket.layout.residents.size(), "every resident is a body in the fight, as it comes in")
+	await _frames(60)
+	var kinds: Array[StringName] = []
+	for m: MobState in sim.mobs:
+		if m.alive:
+			kinds.append(m.kind)
+	check(kinds.has(&"warden"), "the warden is still there a second later (%s)" % [kinds])
+	eq(kinds.size(), pocket.layout.residents.size(), "and so is everything else that walks the hall")
+	# And they are DRAWN: a body the fight holds and nobody draws is a fight with
+	# the invisible (30_mobs makes a node for each, in group `mobs`).
+	eq(tree.get_nodes_in_group(&"mobs").size(), kinds.size(), "each is drawn")
+	Sx.end(g)
+	Sx.finish()
+
+
+## What a hall keeps: a resident broken stays broken (out through the hatch and
+## back in, it is not there again), and a warden's arrest stands the player
+## outside its door rather than in the hall it emptied.
+func test_a_hall_remembers_its_dead_and_puts_the_arrested_out() -> void:
+	Sx.use_root("doors-hall-dead")
+	var g := Sx.game(tree, ["--seed=4", "--hour=11", "--weather=clear:0"])
+	var d := _doors(g)
+	var sim: FightSim = g.player.sim
+	g.player.hero.pos = d.call(&"tour_place", "door:weapons_hall")
+	g.player.hero.facing = float(d.call(&"tour_face", "door:weapons_hall"))
+	g.player.sync_view(0.0)
+	await _frames(20)
+	var t: Threshold = d.get("door_near")
+	await d.call(&"go_in", t)
+	var before := sim.mobs.size()
+	gt(float(before), 1.0, "the hall has its residents")
+	# Break the warden through the one door anything but the player's swing uses.
+	var warden: MobState = null
+	for m: MobState in sim.mobs:
+		if m.kind == &"warden":
+			warden = m
+	check(warden != null, "a warden keeps the hall")
+	var b := TurretRules.blow()
+	b.dmg = 999
+	for i in 6:
+		if warden.alive:
+			sim.strike(warden, b, warden.pos + Vector2(0.5, 0.0))
+		await _frames(3)
+	check(not warden.alive, "the warden is broken")
+	await d.call(&"go_out")
+	await _frames(40)
+	g.player.hero.pos = d.call(&"tour_place", "door:weapons_hall")
+	g.player.hero.facing = float(d.call(&"tour_face", "door:weapons_hall"))
+	g.player.sync_view(0.0)
+	await _frames(20)
+	await d.call(&"go_in", d.get("door_near"))
+	var kinds: Array[StringName] = []
+	for m: MobState in sim.mobs:
+		kinds.append(m.kind)
+	check(not kinds.has(&"warden"), "back in, the broken warden is not there again (%s)" % [kinds])
+	eq(kinds.size(), before - 1, "and the rest of the hall still is")
+	# An arrest in the hall: out of its door.
+	Events.time_skipped.emit(60.0, &"arrested")
+	# The door's cover takes real time to close and open, so wait on the clock.
+	var until := Time.get_ticks_msec() + 3000 * TestCase.machine_slack()
+	while not bool(d.call(&"tour_seen", &"outside")) and Time.get_ticks_msec() < until:
+		await _frames(1)
+	check(bool(d.call(&"tour_seen", &"outside")), "arrested in the hall, the player is put outside")
+	near(g.player.pos.distance_to(t.door), 0.0, 1.0, "at the hatch")
+	Sx.end(g)
+	Sx.finish()
+
+
+## THE WARDEN HOLDS THE HALL: while it stands a turret hurts a player in its line
+## and the strongboxes refuse the key; broken, a box gives up the kind's table
+## (the one economy) once, and the turrets stand down.
+func test_the_warden_holds_the_turrets_and_the_boxes() -> void:
+	Sx.use_root("doors-hall-guard")
+	var g := Sx.game(tree, ["--seed=4", "--hour=11", "--weather=clear:0"])
+	var d := _doors(g)
+	var sim: FightSim = g.player.sim
+	g.player.hero.pos = d.call(&"tour_place", "door:weapons_hall")
+	g.player.hero.facing = float(d.call(&"tour_face", "door:weapons_hall"))
+	g.player.sync_view(0.0)
+	await _frames(20)
+	await d.call(&"go_in", d.get("door_near"))
+	var pocket: InteriorGen.Pocket = d.get("pocket")
+	# The residents would settle this before the turrets could: stand them off,
+	# so what is measured is the turrets alone.
+	var warden: MobState = null
+	for m: MobState in sim.mobs:
+		if m.kind == &"warden":
+			warden = m
+		# Stunned and rooted for the length of the test (the fight's own fields).
+		m.stun_until = INF
+		m.pace = 0.0
+		m.dash = 0.0
+	# In a turret's line: the hall's middle, where every corner can see.
+	var mid := Vector2(pocket.layout.hearth.x, pocket.layout.hearth.y + 1.2)
+	g.player.hero.pos = mid
+	g.player.sync_view(0.0)
+	# Hurts are counted as the fight reports them (40_fight turns every one into
+	# Events.hit with the player as the target), not off the health number, which
+	# the body and the hazards also write.
+	var hurts := [0]
+	var on_hit := func(_by: Variant, target: Variant, _dmg: int, _crit: bool, _at: Vector3) -> void:
+		if target == g.player:
+			hurts[0] += 1
+	Events.hit.connect(on_hit)
+	var until := Time.get_ticks_msec() + 6000 * TestCase.machine_slack()
+	while not bool(d.call(&"tour_seen", &"turret_shot")) and Time.get_ticks_msec() < until:
+		g.player.hero.pos = mid
+		await _frames(1)
+	# The fight's events are drained on its physics step, which a headless frame
+	# can outrun: wait on the clock for the report.
+	var report := Time.get_ticks_msec() + 1000 * TestCase.machine_slack()
+	while hurts[0] == 0 and Time.get_ticks_msec() < report:
+		await _frames(1)
+	check(bool(d.call(&"tour_seen", &"turret_shot")), "a turret fired on the player in its line")
+	gt(float(hurts[0]), 0.0, "and it hurt")
+	# A strongbox refuses while the warden stands.
+	var box := Vector2.INF
+	for t: Dictionary in pocket.layout.things:
+		if t.kind == &"strongbox":
+			box = (t.at as Vector2) + (t.face as Vector2) * 0.8
+			break
+	check(box.is_finite(), "the hall has a strongbox")
+	g.player.hero.pos = box
+	g.player.sync_view(0.0)
+	await _frames(5)
+	d.call(&"_open_box", int(d.get("box_near")))
+	check(bool(d.call(&"tour_seen", &"box_refused")), "shut while the warden stands")
+	# Break the warden; the box opens, once, and pays out the table.
+	var b := TurretRules.blow()
+	b.dmg = 999
+	for i in 6:
+		if warden.alive:
+			sim.strike(warden, b, warden.pos + Vector2(0.5, 0.0))
+		await _frames(3)
+	check(not warden.alive, "the warden is broken")
+	var scrap := g.inventory.count(&"scrap")
+	d.call(&"_open_box", int(d.get("box_near")))
+	check(bool(d.call(&"tour_seen", &"box_opened")), "the box opens once the warden is broken")
+	gt(float(g.inventory.count(&"scrap")), float(scrap), "and pays out the hall's table")
+	var after := g.inventory.count(&"scrap")
+	d.call(&"_open_box", int(d.get("box_near")))
+	eq(g.inventory.count(&"scrap"), after, "and only once")
+	# The turrets stand down: nothing more lands.
+	d.call(&"tour_forget", &"turret_shot")
+	var h2: int = hurts[0]
+	until = Time.get_ticks_msec() + 3500 * TestCase.machine_slack()
+	while Time.get_ticks_msec() < until:
+		g.player.hero.pos = mid
+		await _frames(1)
+	check(not bool(d.call(&"tour_seen", &"turret_shot")), "with the warden broken the turrets stand down")
+	eq(hurts[0], h2, "and nothing more lands")
+	Events.hit.disconnect(on_hit)
+	Sx.end(g)
 	Sx.finish()

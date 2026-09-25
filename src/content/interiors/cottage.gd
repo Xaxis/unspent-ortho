@@ -36,6 +36,7 @@ static func make() -> InteriorKind:
 	k.cut = 0.8
 	k.door_width = 0.9
 	k.recipe = load("res://src/content/interiors/cottage.gd")
+	k.model = "res://src/models/interior/cottage_model.gd"
 	return k
 
 
@@ -80,35 +81,17 @@ static func lay(rng: RandomNumberGenerator) -> InteriorLayout:
 		l.hearth = Vector2(hx + 0.5, 0.75)
 		l.hearth_wall = Vector2(0, -1)
 	l.table = Vector2(w * 0.5 + rng.randf_range(-0.6, 0.6), d * 0.5 + 0.2)
-	_edges(l)
+	# The hearth is the world's own fire (lit, warmed at, slept beside) and the
+	# table a bench to work at, in that order: their ids are what a save keeps.
+	l.props.append({"kind": PropKind.FIRE, "at": l.hearth, "face": l.hearth_wall})
+	l.props.append({"kind": PropKind.BENCH, "at": l.table, "face": Vector2(-l.door_out.y, l.door_out.x)})
+	l.lay_edges()
 	_openings(l)
 	_furnish(l, rng)
 	return l
 
 
 # --- walls ---------------------------------------------------------------------
-
-## Every unit edge of every room; one shared by two rooms is an inner wall.
-static func _edges(l: InteriorLayout) -> void:
-	var seen := {}
-	for r: Rect2i in l.rooms:
-		for x in range(r.position.x, r.end.x):
-			_edge(l, seen, Vector2(x, r.position.y), Vector2(x + 1, r.position.y), Vector2(0, -1))
-			_edge(l, seen, Vector2(x, r.end.y), Vector2(x + 1, r.end.y), Vector2(0, 1))
-		for y in range(r.position.y, r.end.y):
-			_edge(l, seen, Vector2(r.position.x, y), Vector2(r.position.x, y + 1), Vector2(-1, 0))
-			_edge(l, seen, Vector2(r.end.x, y), Vector2(r.end.x, y + 1), Vector2(1, 0))
-
-
-static func _edge(l: InteriorLayout, seen: Dictionary, a: Vector2, b: Vector2, out: Vector2) -> void:
-	var k := "%d,%d,%d,%d" % [int(a.x * 2), int(a.y * 2), int(b.x * 2), int(b.y * 2)]
-	if seen.has(k):
-		(seen[k] as Dictionary).inner = true
-		return
-	var e := {"a": a, "b": b, "out": out, "kind": &"wall", "inner": false}
-	seen[k] = e
-	l.edges.append(e)
-
 
 static func _mid(e: Dictionary) -> Vector2:
 	return ((e.a as Vector2) + (e.b as Vector2)) * 0.5

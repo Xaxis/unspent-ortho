@@ -28,9 +28,46 @@ var dressing: StringName = &""
 ## stopped at; 0 for a thing on a wall or underfoot)}. The recipe says where;
 ## the model says what it looks like.
 var things: Array[Dictionary] = []
+## The pocket's own props, which the world it grows holds: {kind (PropKind),
+## at, face}. A cottage's hearth is a FIRE and its table a BENCH; a hall's crates
+## are what it guards. Declared by the recipe, placed by InteriorGen in order, so
+## a prop's id (and the saved edits keyed on it) is the recipe's to keep.
+var props: Array[Dictionary] = []
+## Who is in it: {role (&"warden" keeps it, &"guard" walks it), at, face}. The
+## recipe says where they stand; what body each role is, the door decides from
+## the land the host stands in (21_doors), because a recipe knows no landscape.
+var residents: Array[Dictionary] = []
 ## The ways people walk every day, as [from, to] pairs: the boards along them
 ## are worn pale.
 var walks: Array[PackedVector2Array] = []
+
+
+## Whether there is a hearth at `hearth` (a chimney breast the walls stand out
+## from). A machines' hall has none.
+var has_hearth := true
+
+
+## Every unit edge of every room as a plain wall; one shared by two rooms is an
+## inner wall. A recipe then says which are doors, doorways and windows.
+func lay_edges() -> void:
+	var seen := {}
+	for r: Rect2i in rooms:
+		for x in range(r.position.x, r.end.x):
+			_edge(seen, Vector2(x, r.position.y), Vector2(x + 1, r.position.y), Vector2(0, -1))
+			_edge(seen, Vector2(x, r.end.y), Vector2(x + 1, r.end.y), Vector2(0, 1))
+		for y in range(r.position.y, r.end.y):
+			_edge(seen, Vector2(r.position.x, y), Vector2(r.position.x, y + 1), Vector2(-1, 0))
+			_edge(seen, Vector2(r.end.x, y), Vector2(r.end.x, y + 1), Vector2(1, 0))
+
+
+func _edge(seen: Dictionary, a: Vector2, b: Vector2, out: Vector2) -> void:
+	var k := "%d,%d,%d,%d" % [int(a.x * 2), int(a.y * 2), int(b.x * 2), int(b.y * 2)]
+	if seen.has(k):
+		(seen[k] as Dictionary).inner = true
+		return
+	var e := {"a": a, "b": b, "out": out, "kind": &"wall", "inner": false}
+	seen[k] = e
+	edges.append(e)
 
 
 ## Where a player stands on coming in: a stride inside the doorway.

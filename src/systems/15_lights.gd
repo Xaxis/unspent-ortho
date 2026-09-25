@@ -179,6 +179,14 @@ var _refresh := 0.0
 var _glows: Dictionary = {} # prop id -> Node3D
 ## The world `sources` indexes, and every other world's index, kept by world.
 var _indexed_world: WorldData = null
+## LIGHTS ANOTHER SYSTEM OWNS AND THIS ONE BUDGETS: a room's window suns, its
+## sky fills and its lanterns (21_doors). The lender aims them and sets their
+## energy; this system decides which of them SHOW and which CAST, out of the same
+## tier row as every lamp here (`Quality` `lamps` and `shadow_lights`), so one
+## place enforces the budget however many packages make lights. A light's
+## energy is its asking to be on; `rank` orders who is dropped first when the
+## row runs out (lower goes first). {light, casts, rank}
+var _lent: Array[Dictionary] = []
 var _index_of: Dictionary = {}
 var _glow_mat: StandardMaterial3D
 var _time := 0.0
@@ -350,6 +358,59 @@ func _new_light(n: String) -> OmniLight3D:
 	return l
 
 
+## Put a light another system made under this system's budget (see `_lent`).
+func lend(l: Light3D, casts: bool, rank: int) -> void:
+	l.visible = false
+	l.shadow_enabled = false
+	_lent.append({"light": l, "casts": casts, "rank": rank})
+	_lent.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a.rank) > int(b.rank))
+
+
+## Take a lent light back off the budget (its owner is about to free it).
+func take_back(l: Light3D) -> void:
+	for i in range(_lent.size() - 1, -1, -1):
+		if _lent[i].light == l:
+			_lent.remove_at(i)
+
+
+## How many local lights are on now, this system's and lent ones together, and
+## how many of them cast: what the tier row holds to (tests/render, tests/interior).
+func local_lights_on() -> Vector2i:
+	var on := 0
+	var casting := 0
+	var all: Array[Light3D] = []
+	for l: OmniLight3D in lights:
+		all.append(l)
+	all.append(lantern_light)
+	for d: Dictionary in _lent:
+		all.append(d.light as Light3D)
+	for l: Light3D in all:
+		if l != null and is_instance_valid(l) and l.visible:
+			on += 1
+			if l.shadow_enabled:
+				casting += 1
+	return Vector2i(on, casting)
+
+
+## Which lent lights show: those asking (energy over nothing), best rank first,
+## as many as the row leaves after this system's own pool and the lantern.
+func _show_lent() -> void:
+	var room := Quality.lamp_count()
+	for l: OmniLight3D in lights:
+		if l.visible:
+			room -= 1
+	if lantern_light != null and lantern_light.visible:
+		room -= 1
+	for d: Dictionary in _lent:
+		var l := d.light as Light3D
+		if l == null or not is_instance_valid(l):
+			continue
+		var asks := l.light_energy > 0.01
+		l.visible = asks and room > 0
+		if l.visible:
+			room -= 1
+
+
 ## Which of the live lights cast a shadow, nearest the player first.
 ##
 ## THE TIER DECIDES HOW MANY (`Quality.ROWS.shadow_lights`), and this system is
@@ -359,7 +420,7 @@ func _new_light(n: String) -> OmniLight3D:
 ## is turned off does not dim: it goes on lighting exactly as it did.
 func _cast_shadows(focus: Vector3) -> void:
 	var allow := int(Quality.current().get("shadow_lights", 0))
-	var live: Array[OmniLight3D] = []
+	var live: Array[Light3D] = []
 	for i in lights.size():
 		var l: OmniLight3D = lights[i]
 		if not l.visible:
@@ -376,8 +437,17 @@ func _cast_shadows(focus: Vector3) -> void:
 		# The player's own lantern casts first, whatever else is near: it is the
 		# one light they carry, and its shadow is the one they are steering by.
 		live.insert(0, lantern_light)
-	live.sort_custom(func(a: OmniLight3D, b: OmniLight3D) -> bool:
-		return a.position.distance_squared_to(focus) < b.position.distance_squared_to(focus))
+	# A lent light that asks to cast competes for the same allowance.
+	for d: Dictionary in _lent:
+		var ll := d.light as Light3D
+		if ll == null or not is_instance_valid(ll) or not ll.visible:
+			continue
+		if bool(d.casts):
+			live.append(ll)
+		else:
+			ll.shadow_enabled = false
+	live.sort_custom(func(a: Light3D, b: Light3D) -> bool:
+		return a.global_position.distance_squared_to(focus) < b.global_position.distance_squared_to(focus))
 	for i in live.size():
 		live[i].shadow_enabled = i < allow
 
@@ -912,6 +982,7 @@ func _update(delta: float, snap: bool) -> void:
 	pool_rgb.resize(pools.size())
 	game.sky.lamps = pools
 	game.sky.lamp_colors = pool_rgb
+	_show_lent()
 	_cast_shadows(focus3)
 	_update_glints(focus3, hour, lit)
 

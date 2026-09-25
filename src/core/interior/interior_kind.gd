@@ -25,3 +25,7 @@ var cut := 0.8
 var door_width := 0.9
 ## The script that lays it (`lay(rng) -> InteriorLayout`).
 var recipe: Script
+## The model that draws it, by path (core holds no rendering): a Node3D script
+## answering `build(layout, kind, land, material)`, `show_for(back, over)`,
+## `windows()`, `daylight(sky, land)` and holding `lights` (21_doors reads them).
+var model := ""

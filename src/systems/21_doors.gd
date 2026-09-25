@@ -19,9 +19,8 @@ extends GameSystem
 ##
 ## Inside, the walls are the layout's, handed to the query as blocks; the model
 ## shows the camera a section from above and the whole room over the shoulder
-## (CottageModel.show_for); the windows let the sun in along its own bearing.
+## (the kind's model, `show_for`); the windows let the sun in along its own bearing.
 
-const CottageModel := preload("res://src/models/interior/cottage_model.gd")
 ## A pocket is grown and its view built within this of a door, and a body within
 ## REACH of one may go through it.
 const WARM := 7.0
@@ -73,6 +72,9 @@ var built_after_out := -1
 func setup(g: Game) -> void:
 	super.setup(g)
 	doors = Interiors.thresholds(g.world)
+	_stand_hatches()
+	SaveGame.register(&"doors", _save, _load)
+	Events.time_skipped.connect(_on_time_skipped)
 	var layer := CanvasLayer.new()
 	layer.layer = 90
 	layer.name = "door_cover"
@@ -85,6 +87,32 @@ func setup(g: Game) -> void:
 	_cover.material = _cover_mat
 	_cover.visible = false
 	layer.add_child(_cover)
+
+
+## THE HATCHES OVER THE DEPOTS' HALLS: a door that is not part of anything
+## already drawn (a house's door is its model's), so this system draws it, one
+## per depot door, and hands its housing to the query as a wall. They stand on
+## the world outside and are hidden while the player is in a room.
+const HatchModel := preload("res://src/models/interior/hatch_model.gd")
+var _hatches: Node3D
+
+
+func _stand_hatches() -> void:
+	if _hatches != null:
+		_hatches.queue_free()
+	_hatches = Node3D.new()
+	_hatches.name = "hatches"
+	game.add_child(_hatches)
+	var mass: Array[Vector3] = []
+	for t: Threshold in doors:
+		if t.host_code != Threshold.DEPOT:
+			continue
+		var n := HatchModel.node(game.view.world_material())
+		n.position = game.world.to_3d(t.host)
+		n.rotation.y = -t.rot
+		_hatches.add_child(n)
+		mass.append(Vector3(t.host.x, t.host.y, HatchModel.REACH))
+	game.query.set_blocks(&"hatches", mass)
 
 
 ## A game that ends with the player indoors still holds the coast's view, out of
@@ -146,6 +174,12 @@ func _inside_side(_delta: float) -> void:
 		door_near = pocket.threshold
 		if _pressed():
 			go_out()
+			return
+	_trespass()
+	_run_turrets()
+	box_near = _box_near()
+	if box_near >= 0 and _pressed():
+		_open_box(box_near)
 
 
 ## The press is this system's own edge (down now, up the frame before), not
@@ -165,6 +199,8 @@ var _use_edge := false
 func use_spent() -> bool:
 	if _swapping:
 		return true
+	if pocket != null and box_near >= 0:
+		return true
 	if door_near == null:
 		return false
 	return pocket != null or _door_wins(door_near.door)
@@ -181,7 +217,13 @@ func _pressed() -> bool:
 
 ## `use` is one key: the door takes it only when it is nearer than whatever is
 ## under the hand, as a shaft does (20_realms `_shaft_wins`).
+##
+## A door the player is FACING wins outright: a bush growing against a hatch was
+## a hair nearer than its door, so the key gathered the bush every time.
 func _door_wins(at: Vector2) -> bool:
+	var to_door := at - game.player.pos
+	if to_door.length() > 0.01 and Vector2.from_angle(game.player.hero.facing).dot(to_door.normalized()) > 0.7:
+		return true
 	var t := Survival.use_target(game)
 	return t == null or at.distance_to(game.player.pos) <= t.pos.distance_to(game.player.pos)
 
@@ -200,7 +242,9 @@ func _begin(t: Threshold) -> void:
 	_view.setup_sharing(_grown.world, game.view)
 	_view.visible = false
 	_view.focus = _grown.world.spawn
-	_model = CottageModel.new()
+	# The kind names its model by path (InteriorKind.model): a cottage and a
+	# machines' hall are drawn by different scripts answering the same calls.
+	_model = (load(_grown.kind.model) as GDScript).new()
 	_model.name = "rooms"
 	_model.call(&"build", _grown.layout, _grown.kind, t.land, game.view.world_material())
 	_view.add_child(_model)
@@ -239,6 +283,7 @@ func _swap_in() -> void:
 	_outside_key = realms.get("_realm")
 	_outside_height = game.camera.view_height
 	game.set_meta(SaveCore.META_OUTSIDE, _outside)
+	_hatches.visible = false
 	game.remove_child(_outside_view)
 	_view.visible = true
 	game.view = _view
@@ -251,6 +296,8 @@ func _swap_in() -> void:
 	game.camera.view_height = p.kind.zoom
 	_windows = model.call(&"windows")
 	_make_lights()
+	_wake_residents()
+	_stand_turrets()
 	crossings += 1
 
 
@@ -268,6 +315,246 @@ func go_out() -> void:
 	built_after_out = game.view.build_count - before
 
 
+# --- who is in a room ------------------------------------------------------------
+
+## ARRESTED IN A ROOM, PUT OUT OF IT. A warden's blow stands a body at the side
+## of the track until it is done with them (40_fight: the hours pass, every body
+## is cleared); in the hall it keeps, the side of the track is outside its door.
+## Left inside instead, the hour passed in an empty hall that came back full the
+## next time the player walked in -- and the arrest meant nothing.
+func _on_time_skipped(_minutes: float, reason: StringName) -> void:
+	if reason == &"arrested" and pocket != null and not _swapping:
+		go_out()
+
+
+## A ROOM'S RESIDENTS are put into the fight on the way in, where the recipe
+## stood them, as the bodies the host's land keeps: a keeper is the plan's own
+## warden, a guard the first hunter the land's roster names. A hunter is hostile
+## by its role. A keeper is wary, and TURNS when it notices the player in what it
+## holds -- its own suspicion, which the stealth rules raise, reaching 1 -- as
+## trespass (`_trespass`). Disturbed on the way in instead, a warden crossed the
+## hall and arrested whoever opened the hatch within a second, every time. One
+## that is broken stays broken: the dead are kept per door, and saved.
+var _residents: Array[Array] = []
+var _dead: Dictionary = {}
+
+
+# --- what a hall guards --------------------------------------------------------
+
+## THE WARDEN HOLDS THE HALL. While it stands, the turrets high in the corners
+## turn on whoever is in their line and fire (HallTurret, through
+## `FightSim.strike_hero`), and the strongboxes in the bays are shut. Broken, it
+## lets go of both: the turrets stand down and the boxes open to the `use` key,
+## each once, rolled on the kind's table in the one economy (Interiors.LOOT).
+var _turrets: Array[HallTurret] = []
+var _opened: Dictionary = {}
+## The strongbox in reach (its index among the layout's), -1 for none.
+var box_near := -1
+## Latched, for a tour: a turret fired, a box was refused, a box was opened.
+var _turret_fired := false
+## Live: a turret is coming round on the player this frame (the eye is hot).
+var _aiming := false
+var _box_refused := false
+var _box_opened := false
+
+
+func _warden_stands() -> bool:
+	for pair: Array in _residents:
+		var m: MobState = pair[1]
+		if m.kind == &"warden" and m.alive:
+			return true
+	return false
+
+
+func _stand_turrets() -> void:
+	_turrets.clear()
+	for t: Dictionary in pocket.layout.things:
+		if t.kind == &"turret":
+			_turrets.append(HallTurret.new(t.at, t.face))
+
+
+func _run_turrets() -> void:
+	if _turrets.is_empty():
+		return
+	var sim: FightSim = game.player.sim
+	var armed := _warden_stands()
+	var now := sim.now
+	_aiming = false
+	var target := game.player.pos
+	for i in _turrets.size():
+		var tu := _turrets[i]
+		if not armed:
+			model.call(&"aim_turret", i, tu.facing, false)
+			continue
+		var clear := _turret_sees(tu.at, target)
+		var what := tu.step(now, target, clear)
+		model.call(&"aim_turret", i, tu.facing, what == &"aim", tu.at.distance_to(target))
+		_aiming = _aiming or what == &"aim"
+		if what == &"aim" and now - tu.aim_since < 20.0:
+			Events.sfx.emit(&"turret_aim", game.world.to_3d(tu.at))
+		elif what == &"fire":
+			Events.sfx.emit(&"turret_fire", game.world.to_3d(tu.at))
+			if sim.strike_hero(HallTurret.blow(), tu.at):
+				_turret_fired = true
+
+
+## A turret is mounted high: it sees OVER the racks and the gantry's legs, which
+## stand in the query as walls a body cannot pass. What blocks it is the room's
+## own shape -- a line that leaves the floor goes through a wall. (Asked of every
+## block, a corner turret's line to a player by the door ran along the wall
+## through the racks, and no turret ever fired.)
+func _turret_sees(a: Vector2, b: Vector2) -> bool:
+	var n := ceili(a.distance_to(b) / 0.25)
+	for i in range(1, n):
+		var q := a.lerp(b, float(i) / float(n))
+		if not pocket.layout.is_floor(floori(q.x), floori(q.y)):
+			return false
+	return true
+
+
+## Which strongbox is within reach of the player's hands, or -1.
+func _box_near() -> int:
+	var i := 0
+	var best := -1
+	var bd := 1.4
+	for t: Dictionary in pocket.layout.things:
+		if t.kind != &"strongbox":
+			continue
+		var d := (t.at as Vector2).distance_to(game.player.pos)
+		if d < bd:
+			bd = d
+			best = i
+		i += 1
+	return best
+
+
+func _open_box(i: int) -> void:
+	var key := pocket.threshold.key
+	var done: Array = _opened.get(key, [])
+	if done.has(i):
+		Events.message.emit("It is empty. You emptied it.")
+		return
+	if _warden_stands():
+		_box_refused = true
+		Events.message.emit("It is shut, and it answers to the warden. Not while that stands.")
+		return
+	var land := BiomeRegistry.by_index(pocket.threshold.land).id
+	var instance := Rng.hash_ints(game.options.seed_value, key.hash(), i, 0x5B0C)
+	var got: Array[String] = []
+	for row: Dictionary in Drops.roll(Interiors.loot_source(pocket.kind.id), game.options.seed_value, instance, land):
+		var id: StringName = row.item
+		var n := int(row.count)
+		if Items.def(id).is_empty() or n <= 0:
+			continue
+		game.inventory.add(id, n)
+		Events.took.emit(id, n)
+		got.append("%s x%d" % [String(Items.def(id).get("name", id)), n])
+	done.append(i)
+	_opened[key] = done
+	_box_opened = true
+	Events.sfx.emit(&"door", game.player.position)
+	Events.message.emit("The box gives up what the plan kept in it: %s." % ", ".join(got) if not got.is_empty() else "The box is empty.")
+
+
+## A keeper that has noticed the player in the room it holds takes it as
+## trespass, once.
+func _trespass() -> void:
+	var sim: FightSim = game.player.sim
+	for pair: Array in _residents:
+		var m: MobState = pair[1]
+		if m.alive and Roles.of(m.kind) == Roles.KEEPER and m.suspicion >= 0.99 and not pair.has(&"turned"):
+			sim.disturb(m, &"trespass")
+			pair.append(&"turned")
+
+
+func _wake_residents() -> void:
+	_residents.clear()
+	var sim: FightSim = game.player.sim
+	if sim == null:
+		return
+	var gone: Array = _dead.get(pocket.threshold.key, [])
+	for i in pocket.layout.residents.size():
+		if gone.has(i):
+			continue
+		var r: Dictionary = pocket.layout.residents[i]
+		var kind := _body_for(StringName(r.role), pocket.threshold.land)
+		if kind == &"":
+			continue
+		var m := sim.add_mob(kind, r.at)
+		m.home = r.at
+		m.facing = (r.face as Vector2).angle()
+		m.aim = m.facing
+		_residents.append([i, m])
+
+
+## Which roster body a role is, in the land the host stands in.
+static func _body_for(role: StringName, land: int) -> StringName:
+	if role == &"warden" and not Roster.row(&"warden").is_empty():
+		return &"warden"
+	var d := BiomeRegistry.by_index(land)
+	var first := &""
+	if d != null:
+		for kind: Variant in d.roster:
+			var k := StringName(str(kind))
+			var row := Roster.row(k)
+			if row.is_empty() or not bool(row.get("machine", false)):
+				continue
+			if first == &"":
+				first = k
+			if Roles.of(k) == Roles.HUNTER:
+				return k
+	return first if first != &"" else &"runner"
+
+
+func _count_the_dead() -> void:
+	_count_live_dead()
+	_residents.clear()
+
+
+## Who has died in which room: the one thing about a room's residents worth
+## keeping, because the room and who stands in it are grown again from the key.
+func _save() -> Variant:
+	_count_live_dead()
+	var out := {}
+	for k: Variant in _dead:
+		out[str(k)] = _dead[k]
+	var opened := {}
+	for k: Variant in _opened:
+		opened[str(k)] = _opened[k]
+	return {"dead": out, "opened": opened}
+
+
+func _load(v: Variant) -> void:
+	_dead.clear()
+	if not (v is Dictionary):
+		return
+	var d: Dictionary = (v as Dictionary).get("dead", {})
+	for k: Variant in d:
+		var idx: Array = []
+		for n: Variant in d[k]:
+			idx.append(SaveCodec.to_int(n))
+		_dead[str(k)] = idx
+	_opened.clear()
+	var o: Dictionary = (v as Dictionary).get("opened", {})
+	for k: Variant in o:
+		var idx: Array = []
+		for n: Variant in o[k]:
+			idx.append(SaveCodec.to_int(n))
+		_opened[str(k)] = idx
+
+
+## A save made in a room counts those already broken in it, without leaving.
+func _count_live_dead() -> void:
+	if pocket == null:
+		return
+	var gone: Array = _dead.get(pocket.threshold.key, [])
+	for pair: Array in _residents:
+		if not (pair[1] as MobState).alive and not gone.has(pair[0]):
+			gone.append(pair[0])
+	if not gone.is_empty():
+		_dead[pocket.threshold.key] = gone
+
+
 ## The middle of every room together.
 func _room_middle() -> Vector2:
 	var box := Rect2(Vector2(pocket.layout.rooms[0].position), Vector2(pocket.layout.rooms[0].size))
@@ -278,12 +565,18 @@ func _room_middle() -> Vector2:
 
 func _swap_out() -> void:
 	var realms := _realms()
+	_count_the_dead()
+	_turrets.clear()
+	_aiming = false
+	box_near = -1
 	game.camera.frame_bias = Vector3.ZERO
 	var t := pocket.threshold
 	for l: SpotLight3D in _lights:
+		_take_back(l)
 		l.queue_free()
 	_lights.clear()
 	for pair: Array in _lamps:
+		_take_back(pair[0] as Light3D)
 		(pair[0] as Node).queue_free()
 	_lamps.clear()
 	for b: Node in _beams:
@@ -294,6 +587,7 @@ func _swap_out() -> void:
 	_motes.clear()
 	game.query.set_blocks(&"rooms", [] as Array[Vector3])
 	game.remove_meta(SaveCore.META_OUTSIDE)
+	_hatches.visible = true
 	var inner := game.view
 	game.remove_child(inner)
 	inner.queue_free()
@@ -342,8 +636,9 @@ static func _walls(l: InteriorLayout) -> Array[Vector3]:
 			var r := 0.12 if k != 1 and jambs.has(_corner(p)) else 0.3
 			out.append(Vector3(p.x, p.y, r))
 	# The chimney breast stands out from its wall.
-	var c := l.hearth + l.hearth_wall * 0.35
-	out.append(Vector3(c.x, c.y, 0.55))
+	if l.has_hearth:
+		var c := l.hearth + l.hearth_wall * 0.35
+		out.append(Vector3(c.x, c.y, 0.55))
 	# And what the household keeps: a bed is two tiles long, so two circles.
 	for t: Dictionary in l.things:
 		var r := float(t.solid)
@@ -365,6 +660,35 @@ static func _corner(p: Vector2) -> Vector2i:
 
 # --- light through the windows -------------------------------------------------
 
+## A ROOM'S LIGHTS ARE ON THE TIER'S BUDGET. Each is lent to the lights system
+## (15_lights `lend`), which decides which show and which cast out of the same
+## `Quality` row as every lamp outside -- this system only aims them and says
+## how bright. When the row runs short, the sky fills go first and the window
+## suns last, because the sun through a window is what the room is lit by.
+const RANK_FILL := 1
+const RANK_LAMP := 2
+const RANK_SUN := 3
+
+
+func _lighting() -> Node:
+	for sys in game.systems:
+		if sys.has_method(&"lend"):
+			return sys
+	return null
+
+
+func _lend(l: Light3D, casts: bool, rank: int) -> void:
+	var lights := _lighting()
+	if lights != null:
+		lights.call(&"lend", l, casts, rank)
+
+
+func _take_back(l: Light3D) -> void:
+	var lights := _lighting()
+	if lights != null:
+		lights.call(&"take_back", l)
+
+
 func _make_lights() -> void:
 	for w: Array in _windows:
 		var sky := SpotLight3D.new()
@@ -374,14 +698,15 @@ func _make_lights() -> void:
 		sky.light_energy = 0.0
 		game.view.add_child(sky)
 		_lights.append(sky)
+		_lend(sky, false, RANK_FILL)
 		var sun := SpotLight3D.new()
 		sun.spot_range = 6.0
 		sun.spot_angle = 16.0
 		sun.spot_attenuation = 0.4
-		sun.shadow_enabled = true
 		sun.light_energy = 0.0
 		game.view.add_child(sun)
 		_lights.append(sun)
+		_lend(sun, true, RANK_SUN)
 		var beam := MeshInstance3D.new()
 		beam.mesh = _beam_mesh()
 		beam.material_override = _beam_material()
@@ -393,16 +718,19 @@ func _make_lights() -> void:
 		_motes.append(motes)
 	for at: Array in model.get(&"lights"):
 		var lamp := OmniLight3D.new()
-		var machine: bool = at[1] == &"machine"
-		# The lantern is warm and reaches the room; the stolen strip is the one
-		# cold light in the house and reaches only the bench it hangs over.
+		var machine: bool = at[1] != &"lamp"
+		# The lantern is warm and reaches the room; a stolen strip in a cottage is
+		# the one cold light in the house and reaches only the bench it hangs
+		# over; a hall's strips are the machines' own light, hung high, reaching
+		# the floor in cold pools.
 		lamp.light_color = Color(0.74, 0.72, 0.9) if machine else Color(1.0, 0.7, 0.4)
-		lamp.omni_range = 3.2 if machine else 5.5
+		lamp.omni_range = 5.5 if at[1] == &"strip" else (3.2 if machine else 5.5)
 		lamp.omni_attenuation = 1.2
 		lamp.shadow_enabled = false
 		game.view.add_child(lamp)
 		lamp.global_position = at[0]
 		_lamps.append([lamp, at[1]])
+		_lend(lamp, false, RANK_LAMP)
 
 
 ## THE HOUR COMES IN THROUGH THE WINDOWS. A cottage's lid is under the line where
@@ -434,7 +762,13 @@ func _light_windows() -> void:
 			ground.lerp(hor, 0.28) * lit)
 	for pair: Array in _lamps:
 		var lamp := pair[0] as OmniLight3D
-		lamp.light_energy = 0.55 if pair[1] == &"machine" else lerpf(1.6, 0.25, day)
+		match pair[1]:
+			&"machine":
+				lamp.light_energy = 0.55
+			&"strip":
+				lamp.light_energy = 1.5
+			_:
+				lamp.light_energy = lerpf(1.6, 0.25, day)
 	for i in _windows.size():
 		var at: Vector3 = _windows[i][0]
 		var inward2: Vector2 = _windows[i][1]
@@ -453,7 +787,6 @@ func _light_windows() -> void:
 		_aim(sp, beam)
 		sp.light_color = sun.light_color
 		sp.light_energy = SUN_IN * sun.light_energy * smoothstep(0.0, 0.35, facing)
-		sp.visible = sp.light_energy > 0.01
 		_air_in(i, at, inward2, beam, sp.light_energy / SUN_IN, sun.light_color)
 		var fill := _lights[i * 2] as SpotLight3D
 		var down := (inward + Vector3.DOWN * 0.45).normalized()
@@ -618,8 +951,32 @@ void fragment() {
 
 # --- what a tour may ask, and where it may stand -------------------------------
 
+## An `await` means since I last asked: the three events this system latches are
+## spent when a tour's question is answered.
+func tour_forget(what: StringName) -> void:
+	match what:
+		&"turret_shot":
+			_turret_fired = false
+		&"box_refused":
+			_box_refused = false
+		&"box_opened":
+			_box_opened = false
+
+
 func tour_seen(what: StringName) -> bool:
 	match what:
+		&"turret_shot":
+			return _turret_fired
+		&"turret_aiming":
+			return pocket != null and _aiming
+		&"box_refused":
+			return _box_refused
+		&"box_opened":
+			return _box_opened
+		&"box_near":
+			return pocket != null and box_near >= 0
+		&"warden_down":
+			return pocket != null and not _swapping and not _warden_stands()
 		&"door":
 			return door_near != null
 		&"inside":
@@ -637,15 +994,19 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "strongbox"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
 ## inside, just inside the room's own door, facing out. `door:PLAN` and
 ## `door:HOUSEHOLD` (cottage.gd's deals) ask for the nearest door whose room is
-## laid to that plan or kept by that household, so a tour stages a room by what
-## is in it rather than by where some house happens to stand.
+## laid to that plan or kept by that household -- or, `door:KIND`, the nearest
+## door into that kind at all -- so a tour stages a room by what is in it rather
+## than by where some house happens to stand.
 func tour_place(what: String) -> Vector2:
+	if what == "strongbox":
+		var box := _first_box()
+		return (box.at as Vector2) + (box.face as Vector2) * 0.8 if not box.is_empty() else Vector2.INF
 	var t := _tour_door(what)
 	if pocket != null and t == null and TOUR_PLACES.has(what):
 		return pocket.layout.door - pocket.layout.door_out * 0.5
@@ -653,10 +1014,23 @@ func tour_place(what: String) -> Vector2:
 
 
 func tour_face(what: String) -> float:
+	if what == "strongbox":
+		var box := _first_box()
+		return (-(box.face as Vector2)).angle() if not box.is_empty() else NAN
 	var t := _tour_door(what)
 	if pocket != null and t == null and TOUR_PLACES.has(what):
 		return pocket.layout.door_out.angle()
 	return (-t.out).angle() if t != null else NAN
+
+
+## `near strongbox`: the first strongbox in the room the player is in.
+func _first_box() -> Dictionary:
+	if pocket == null:
+		return {}
+	for t: Dictionary in pocket.layout.things:
+		if t.kind == &"strongbox":
+			return t
+	return {}
 
 
 ## The door a tour name asks for from outside; null inside a room, or for a name
@@ -671,8 +1045,10 @@ func _tour_door(what: String) -> Threshold:
 	order.sort_custom(func(a: Threshold, b: Threshold) -> bool:
 		return a.door.distance_squared_to(from) < b.door.distance_squared_to(from))
 	for t: Threshold in order:
-		if any:
+		if any or String(t.kind) == want:
 			return t
+		if Interiors.RECIPES.has(StringName(want)):
+			continue
 		var l := InteriorGen.grow(game.options.seed_value, t).layout
 		if String(l.plan) == want or String(l.dressing) == want:
 			return t
@@ -686,6 +1062,7 @@ func realm_changed(from: StringName, to: StringName) -> void:
 		return
 	_drop_grown()
 	doors = Interiors.thresholds(game.world)
+	_stand_hatches()
 
 
 ## A SAVE MADE INSIDE (20_realms `started`): the game opened on the world outside,
