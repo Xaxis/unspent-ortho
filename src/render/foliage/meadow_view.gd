@@ -19,7 +19,9 @@ extends Node3D
 ## draw per template per cell, 312 of them for fourteen cells of the coast; the
 ## ring's plants are few enough that a behind-the-eye half costs less as vertex
 ## work than as draws. A template is written again only when a cell holding it
-## comes or goes.
+## comes or goes, into the MultiMesh it already has: a new one per write left
+## the dropped ones' buffers behind and a desktop run hung at quit
+## (tests/render/test_meadow_ring.gd).
 ##
 ## THE HAND-OVER. Global `foliage_meadow` (xz the centre, z the reach, w BAND)
 ## tells the grass shader where the ring is. Within BAND of the reach a plant's
@@ -229,16 +231,17 @@ func _redraw() -> void:
 			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			add_child(mmi)
 			_draws[key] = mmi
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_custom_data = true
-		mm.mesh = _mesh(key)
+			var fresh := MultiMesh.new()
+			fresh.transform_format = MultiMesh.TRANSFORM_3D
+			fresh.use_custom_data = true
+			fresh.mesh = _mesh(key)
+			mmi.multimesh = fresh
+		var mm := mmi.multimesh
 		mm.instance_count = buf.size() / Decor.MEADOW_FLOATS
 		mm.buffer = buf
 		# A buffer written whole does not give the MultiMesh its bounds, and one
 		# with none is culled from every frame.
 		mm.custom_aabb = box
-		mmi.multimesh = mm
 	_dirty.clear()
 	plants = 0
 	for mmi: MultiMeshInstance3D in _draws.values():

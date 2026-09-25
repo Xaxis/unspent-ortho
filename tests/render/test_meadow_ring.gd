@@ -114,3 +114,34 @@ func test_the_grass_shader_hands_the_ring_over_to_the_decor() -> void:
 	check(src.contains("meadow_share("), "decor and meadow split the band by seed")
 	var godot := FileAccess.get_file_as_string("res://project.godot")
 	check(godot.contains("foliage_meadow={"), "the global is registered")
+
+
+## THE RING KEEPS ITS DRAWS. A cell coming or going writes its templates' plants
+## into the MultiMesh that already draws them. A new MultiMesh each time left the
+## freed ones' buffers behind, and a desktop run then hung at quit, the main
+## thread waiting in NSApplication terminate with every worker idle: 5 of 8
+## eye-level tours on seed 7, against 0 of 8 with one MultiMesh kept per template.
+func test_a_cell_joining_writes_into_the_draw_already_there() -> void:
+	var ch := _chunk()
+	var ring := MeadowView.new()
+	ring.setup(preload("res://src/render/foliage/grass.gdshader"))
+	var a := _decor.meadow(ch, 0, 0, 16, 16, 1.0)
+	var b := _decor.meadow(ch, 16, 0, 16, 16, 1.0)
+	var key: int = -1
+	for k: int in a:
+		if b.has(k):
+			key = k
+			break
+	check(key >= 0, "two cells of one sward share a template")
+	ring.call("_take", Vector2i(0, 0), a)
+	ring.call("_redraw")
+	var draws: Dictionary = ring.get("_draws")
+	var mm := (draws[key] as MultiMeshInstance3D).multimesh
+	var before := mm.instance_count
+	ring.call("_take", Vector2i(1, 0), b)
+	ring.call("_redraw")
+	var after := (draws[key] as MultiMeshInstance3D).multimesh
+	check(after == mm, "the template's MultiMesh is the one it had")
+	eq(after.instance_count, before + (b[key] as PackedFloat32Array).size() / Decor.MEADOW_FLOATS,
+		"and it holds both cells' plants")
+	ring.free()
