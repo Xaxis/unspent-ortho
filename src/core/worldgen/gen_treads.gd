@@ -51,6 +51,7 @@ static func site(c: GenContext) -> void:
 	c.mark(&"treads.tops")
 	var roads := WorldGen.distance_field(c.road, c.size)
 	c.mark(&"treads.roads")
+	var laid: PackedByteArray = GenFields.snapshot(w.ground)
 	for row: Dictionary in want:
 		var d: RefCounted = defs[row.walker]
 		var found := _find(c, d, float(row.yaw), row.natural, taken, no, clear, tops, roads)
@@ -72,6 +73,31 @@ static func site(c: GenContext) -> void:
 	# climb it. Graded again as settle grades every road.
 	GenSettle.ease_roads(c)
 	c.mark(&"treads.roads.eased")
+	_tidy(c, laid, no)
+	c.mark(&"treads.tidy")
+
+
+## The ground a foot laid, tidied as GenSurface's was: the strata's scree meets
+## the spoil's gravel along a contour of the old land, which is ragged tile by
+## tile and draws as a staircase. Only what the feet changed may change, and the
+## ground just round it, so the edge of a crater can meet the land it cut; roads,
+## water and kept ground never do.
+static func _tidy(c: GenContext, laid: PackedByteArray, no: PackedByteArray) -> void:
+	var size := c.size
+	var ground := c.w.ground
+	var fixed := PackedByteArray()
+	fixed.resize(c.n)
+	fixed.fill(1)
+	for y in range(1, size - 1):
+		for x in range(1, size - 1):
+			var i := y * size + x
+			if ground[i] == laid[i]:
+				continue
+			for j: int in [i, i - 1, i + 1, i - size, i + size]:
+				if no[j] == 0 and c.road[j] == 0:
+					fixed[j] = 0
+	for pass_i in 4:
+		GenTidy.unnotch(ground, c.recipe, fixed, size)
 
 
 ## The best centre for a foot facing `yaw`, as (x, y, yaw), or x < 0.
@@ -205,6 +231,17 @@ static func _never(c: GenContext, built: PackedByteArray) -> PackedByteArray:
 			elif village[i] != 0 or built[i] != 0:
 				no[i] = KEPT
 	)
+	# A village is kept to its whole radius, the clearing its people walk, not
+	# only the core `GenSettle` marks: scree laid past the core is still scree in
+	# the middle of a village (test_world_gen_surface).
+	for v: Dictionary in c.w.villages:
+		var vp: Vector2 = v.pos
+		var r: float = v.radius
+		for y in range(maxi(0, floori(vp.y - r)), mini(size, ceili(vp.y + r) + 1)):
+			for x in range(maxi(0, floori(vp.x - r)), mini(size, ceili(vp.x + r) + 1)):
+				var i := y * size + x
+				if no[i] == 0 and Vector2(x + 0.5, y + 0.5).distance_to(vp) <= r:
+					no[i] = KEPT
 	return no
 
 
@@ -367,7 +404,7 @@ static func _floor_of(c: GenContext, pads: Array[Vector3]) -> int:
 
 ## Every tile a tread must never cut: the plan's depots and the landmarks. A
 ## house, a wreck or a tank standing alone out on the land is crushed where a
-## pad comes down (19_colossi, at load); a village is kept by `c.village`.
+## pad comes down (19_colossi, at load); a village is kept to its radius (`_never`).
 ## How far past a depot's yard its parts and walls reach, and a margin.
 const YARD_ROOM := 18.0
 ## How far round a landmark's own spot its model and cache reach, and a margin.
@@ -467,7 +504,7 @@ static func _cut(c: GenContext, pads: Array[Vector3], centre: Vector2, no: Packe
 	c.mark(&"treads.cut.pits")
 	_gouge(c, pads, centre, floor_l, no)
 	c.mark(&"treads.cut.gouge")
-	_press_ring(c, pads, centre)
+	_press_ring(c, pads, centre, no)
 	c.mark(&"treads.cut.ring")
 	return floor_l
 
@@ -517,7 +554,7 @@ static func _gouge(c: GenContext, pads: Array[Vector3], centre: Vector2, floor_l
 ## foot. Pressed and not fresh-broken: the land round a tread is often bare rock
 ## already, and a pale line on it was measured at a few percent over the rock
 ## that was there (seed 7). Kept off water, roads and
-## villages, and out of the craters it rings.
+## kept ground (a village to its radius), and out of the craters it rings.
 const PRESS_OUT := 8.0
 const PRESS_WIDE := 11.0
 const PRESS_CORE := 2.0
@@ -526,7 +563,7 @@ const PRESS_DENSE := 0.62
 ## The ring's blotches, cycles per tile, and the smallest patch it keeps.
 const PRESS_BLOT := 0.09
 const PRESS_SPECK := 8
-static func _press_ring(c: GenContext, pads: Array[Vector3], centre: Vector2) -> void:
+static func _press_ring(c: GenContext, pads: Array[Vector3], centre: Vector2, no: PackedByteArray) -> void:
 	var w := c.w
 	var r := 0.0
 	for p: Vector3 in pads:
@@ -564,7 +601,7 @@ static func _press_ring(c: GenContext, pads: Array[Vector3], centre: Vector2) ->
 			if across > PRESS_WIDE:
 				continue
 			var i := y * c.size + x
-			if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or Ground.is_water(w.ground[i]) or w.level[i] <= 0:
+			if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or no[i] == KEPT or Ground.is_water(w.ground[i]) or w.level[i] <= 0:
 				continue
 			# A broad band that thins out to either side in blotches, pressed
 			# ground and scree: never the hard-edged even line a road is at map
