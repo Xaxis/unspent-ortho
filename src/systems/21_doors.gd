@@ -98,7 +98,6 @@ func setup(g: Game) -> void:
 ## already drawn (a house's door is its model's), so this system draws it, one
 ## per depot door, and hands its housing to the query as a wall. They stand on
 ## the world outside and are hidden while the player is in a room.
-const HatchModel := preload("res://src/models/interior/hatch_model.gd")
 const Shoulder := preload("res://src/core/view/shoulder.gd")
 var _hatches: Node3D
 ## Each hatch housing as the shoulder camera's probe takes a drawn box
@@ -116,23 +115,55 @@ func _stand_hatches() -> void:
 	game.add_child(_hatches)
 	var mass: Array[Vector3] = []
 	for t: Threshold in doors:
-		if t.host_code != Threshold.DEPOT:
+		# The kind says what hatch it is entered by; a house has none of its own.
+		var k := Interiors.kind(t.kind)
+		if k == null or k.hatch == "":
 			continue
-		var n := HatchModel.node(game.view.world_material())
+		var hm := load(k.hatch) as GDScript
+		var n: Node3D = hm.call(&"node", game.view.world_material())
 		n.position = game.world.to_3d(t.host)
 		n.rotation.y = -t.rot
 		_hatches.add_child(n)
-		mass.append(Vector3(t.host.x, t.host.y, HatchModel.REACH))
-		var base := n.position.y
-		_hatch_boxes.append(Shoulder.box_of(t.host, t.rot, 1.0, HatchModel.LO, HatchModel.HI, base + HatchModel.TOP))
+		var c := hm.get_script_constant_map()
+		mass.append(Vector3(t.host.x, t.host.y, float(c.REACH)))
+		_hatch_boxes.append(Shoulder.box_of(t.host, t.rot, 1.0, c.LO, c.HI, n.position.y + float(c.TOP)))
 	game.query.set_blocks(&"hatches", mass)
 
 
-## The hatch housings near `mid`, for the shoulder camera's probe (41_shoulder);
-## none while the player is in a room, where the room's own walls hold the eye.
+## A room's walls as the shoulder camera's probe takes them: one box a unit of
+## wall, and one across the outside of the way in. The walls a body is stopped by
+## are circles of 0.3, and the probe lets anything thinner than Shoulder.THIN
+## (0.38) through along its line -- it takes them for poles -- so without these
+## the eye went straight through a room's walls and the frame over the shoulder
+## was the backs of them against the sky.
+var _room_boxes: Array[PackedFloat32Array] = []
+
+
+func _box_the_room() -> void:
+	_room_boxes.clear()
+	var l := pocket.layout
+	var top := game.world.height_at(l.inside()) + pocket.kind.wall_h + 1.0
+	for e: Dictionary in l.edges:
+		if e.kind == &"door" or e.kind == &"inner":
+			continue
+		var a: Vector2 = e.a
+		var b: Vector2 = e.b
+		_room_boxes.append(Shoulder.box_of((a + b) * 0.5, (b - a).angle(), 1.0, Vector2(-0.62, -0.16), Vector2(0.62, 0.16), top))
+	# The way in: a hole in the walls with nothing beyond it.
+	_room_boxes.append(Shoulder.box_of(l.door + l.door_out * 0.8, l.door_out.angle(), 1.0, Vector2(-0.8, -0.9), Vector2(0.8, 0.9), top + 5.0))
+
+
+## The hatch housings near `mid`, for the shoulder camera's probe (41_shoulder).
+## In a room, the room's own walls hold the eye -- all but the way in, which is a
+## hole in them with nothing beyond it: a player standing just inside turned the
+## eye out through it, and the frame was the backs of the walls against the sky.
+## So in a room the doorway's outside is a box too.
 func sight_boxes(mid: Vector2, reach: float) -> Array[PackedFloat32Array]:
 	var out: Array[PackedFloat32Array] = []
 	if pocket != null:
+		for b: PackedFloat32Array in _room_boxes:
+			if Vector2(b[0], b[1]).distance_to(mid) <= reach + 1.0:
+				out.append(b)
 		return out
 	for b: PackedFloat32Array in _hatch_boxes:
 		if Vector2(b[0], b[1]).distance_to(mid) <= reach + 1.5:
@@ -321,6 +352,7 @@ func _swap_in() -> void:
 	game.camera.view_height = p.kind.zoom
 	_windows = model.call(&"windows")
 	_make_lights()
+	_box_the_room()
 	_wake_residents()
 	_stand_turrets()
 	crossings += 1
@@ -594,6 +626,7 @@ func _swap_out() -> void:
 	var realms := _realms()
 	_count_the_dead()
 	_turrets.clear()
+	_room_boxes.clear()
 	_aiming = false
 	box_near = -1
 	game.camera.frame_bias = Vector3.ZERO
@@ -751,6 +784,23 @@ func _make_lights() -> void:
 			_aim(lamp, Vector3.DOWN)
 		_lamps.append([lamp, at[1]])
 		_lend(lamp, false, RANK_LAMP)
+		if at[1] == &"strip":
+			# THE LIGHT THE POOL THROWS BACK UP: a low cold omni just over the deck
+			# under each strip, so the wall panels and ribs beside a pool take a rim
+			# from below and separate from the dark -- at eye level the downlight
+			# alone lit the deck and left every wall an undifferentiated black. The
+			# first to go when the tier's row runs short.
+			var bounce := OmniLight3D.new()
+			bounce.light_color = Color(0.62, 0.62, 0.8)
+			bounce.omni_range = 3.4
+			bounce.omni_attenuation = 1.6
+			bounce.light_volumetric_fog_energy = 0.0
+			bounce.shadow_enabled = false
+			game.view.add_child(bounce)
+			var foot: Vector3 = at[0]
+			bounce.global_position = Vector3(foot.x, game.world.height_at(Vector2(foot.x, foot.z)) + 0.35, foot.z)
+			_lamps.append([bounce, &"bounce"])
+			_lend(bounce, false, RANK_FILL)
 
 
 ## One of a room's own lights, by what it is. A lantern is warm and reaches the
@@ -779,10 +829,21 @@ static func _room_light(kind: StringName) -> Light3D:
 			&"working":
 				o.omni_range = 4.4
 				o.omni_attenuation = 1.3
+			&"emergency":
+				o.omni_range = 3.4
+				o.omni_attenuation = 1.5
+			&"standby":
+				o.omni_range = 1.2
+				o.omni_attenuation = 2.0
 		l = o
 	l.light_color = Color(1.0, 0.7, 0.4) if kind == &"lamp" else Color(0.74, 0.72, 0.9)
 	if kind == &"working":
 		l.light_color = Color(1.0, 0.66, 0.26)
+	elif kind == &"emergency":
+		# A battery lamp that has been burning for decades: low, warm, reddened.
+		l.light_color = Color(1.0, 0.5, 0.3)
+	elif kind == &"standby":
+		l.light_color = Color(1.0, 0.62, 0.2)
 	l.light_volumetric_fog_energy = 0.0
 	l.shadow_enabled = false
 	return l
@@ -822,8 +883,14 @@ func _light_windows() -> void:
 				lamp.light_energy = 0.55
 			&"strip":
 				lamp.light_energy = 5.0
+			&"bounce":
+				lamp.light_energy = 0.9
 			&"working":
 				lamp.light_energy = 3.2
+			&"emergency":
+				lamp.light_energy = 1.1
+			&"standby":
+				lamp.light_energy = 0.4
 			_:
 				lamp.light_energy = lerpf(1.6, 0.25, day)
 	for i in _windows.size():
@@ -1051,7 +1118,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "strongbox"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "strongbox"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,

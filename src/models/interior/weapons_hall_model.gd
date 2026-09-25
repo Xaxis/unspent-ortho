@@ -144,6 +144,8 @@ func _edge(k: Kit, e: Dictionary, h: float, cut: bool) -> void:
 			if not cut and h > 2.6:
 				k.found.box(_v(a - half, 2.6), _v(b + half, h), body, body, true)
 				k.found.box(_v(a - half * 1.4, 2.45), _v(b + half * 1.4, 2.6), HULL[0], HULL[0], true)
+			if e.kind == &"door":
+				_stair(k, e)
 			return
 	if e.inner:
 		# Bars, floor to head, and a rail along the top.
@@ -179,6 +181,35 @@ func _edge(k: Kit, e: Dictionary, h: float, cut: bool) -> void:
 		var jb := run.lerp(run_b, 0.5) + f * 0.04
 		k.found.box(_v(jb - along * 0.14 - f * 0.06, 1.35), _v(jb + along * 0.14 + f * 0.06, 1.62), HULL[1], HULL[2])
 		k.found.box(_v(jb - along * 0.05 + f * 0.065, 1.44), _v(jb + along * 0.05 + f * 0.075, 1.5), P.LENS[1])
+
+
+## The way up to the hatch: a plated stair climbing out of the doorway into the
+## dark, walled and roofed, so the way out reads as a stair and not as a hole
+## onto whatever lies outside a pocket (as the bunker's does).
+func _stair(k: Kit, e: Dictionary) -> void:
+	var a: Vector2 = e.a
+	var b: Vector2 = e.b
+	var o: Vector2 = e.out
+	var along := (b - a).normalized()
+	var mid := (a + b) * 0.5
+	var step := 0.32
+	for n in 9:
+		var c := mid + o * (THICK * 0.5 + 0.16 + step * float(n))
+		var lo := c - along * 0.5 - o * step * 0.5
+		var hi := c + along * 0.5 + o * step * 0.5
+		k.found.box(Vector3(minf(lo.x, hi.x), floor_y, minf(lo.y, hi.y)), Vector3(maxf(lo.x, hi.x), floor_y + 0.3 * float(n + 1), maxf(lo.y, hi.y)), HULL[1], HULL[2])
+	var deep := 0.2 + step * 9.0
+	var far := mid + o * (THICK * 0.5 + deep)
+	for side: float in [-1.0, 1.0]:
+		var s0 := mid + o * (THICK * 0.5) + along * side * 0.62
+		var s1 := far + along * side * 0.62 + along * side * 0.14
+		k.found.box(Vector3(minf(s0.x, s1.x), floor_y, minf(s0.y, s1.y)), Vector3(maxf(s0.x, s1.x), floor_y + kind.wall_h, maxf(s0.y, s1.y)), HULL[0], HULL[0])
+	var r0 := mid + o * (THICK * 0.5) - along * 0.62
+	var r1 := far + along * 0.62
+	k.found.box(Vector3(minf(r0.x, r1.x), floor_y + 2.7, minf(r0.y, r1.y)), Vector3(maxf(r0.x, r1.x), floor_y + 2.9, maxf(r0.y, r1.y)), HULL[0], HULL[0], true)
+	var e0 := far - along * 0.7
+	var e1 := far + along * 0.7 + o * 0.2
+	k.found.box(Vector3(minf(e0.x, e1.x), floor_y, minf(e0.y, e1.y)), Vector3(maxf(e0.x, e1.x), floor_y + kind.wall_h, maxf(e0.y, e1.y)), HULL[0], HULL[0])
 
 
 # --- the floor and the roof -----------------------------------------------------

@@ -13,7 +13,7 @@ Realms and portals, the rooms behind a house's door, landmarks and caches, regio
 
 ## How to reach it
 
-- `tools/tour.sh tours/realms.tour`, `tours/house.tour`, `tours/rooms.tour --seed=4 --hour=15 --weather=clear:0`, `tours/hall.tour --seed=4 --hour=11 --weather=clear:0 --rooms=empty` (a depot's hatch and the weapons hall under it), `tours/hall-fight.tour --seed=4 --hour=11 --weather=clear:0` (its residents turn, a blow lands, the warden's arrest puts you out at the hatch), `tours/hall-guard.tour --seed=4 --hour=11 --weather=clear:0` (a strongbox shut while the warden stands, a turret's sighting lines), `tours/landmarks.tour`, `tours/region.tour`.
+- `tools/tour.sh tours/realms.tour`, `tours/house.tour`, `tours/rooms.tour --seed=4 --hour=15 --weather=clear:0`, `tours/hall.tour --seed=4 --hour=11 --weather=clear:0 --rooms=empty` (a depot's hatch and the weapons hall under it), `tours/hall-fight.tour --seed=4 --hour=11 --weather=clear:0` (its residents turn, a blow lands, the warden's arrest puts you out at the hatch), `tours/hall-guard.tour --seed=4 --hour=11 --weather=clear:0` (a strongbox shut while the warden stands, a turret's sighting lines), `tours/bunker.tour --seed=4 --hour=15 --weather=clear:0` (the hatch among the cast stones and the bunker under it, from above, by the lantern and over the shoulder), `tours/landmarks.tour`, `tours/region.tour`.
 
 ## How to check it
 

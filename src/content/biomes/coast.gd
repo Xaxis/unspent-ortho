@@ -120,7 +120,9 @@ static func make() -> BiomeDef:
 	d.landmarks = [&"lighthouse", &"firewatch", &"cast_stones", &"grown_hulk"]
 	# A coast house can be walked into (docs/interiors): one room and a hearth.
 	# And the plan's depots here keep a weapons hall under the yard.
-	d.interiors = {&"house": &"cottage", &"works:depot": &"weapons_hall"}
+	# And the cast stones stand over a bunker somebody sank there before the
+	# machines, and hid under a ring nobody would dig in.
+	d.interiors = {&"house": &"cottage", &"works:depot": &"weapons_hall", &"landmark:cast_stones": &"bunker"}
 	d.sound_bed = &"bed_wind"
 	d.surface = _surface
 	d.scatter = _scatter
