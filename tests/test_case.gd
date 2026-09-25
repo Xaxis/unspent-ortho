@@ -182,6 +182,53 @@ static func best_of(n: int, what: Callable) -> float:
 	return best
 
 
+## **A COST IN YARDSTICKS, NOT MILLISECONDS.** A bar in ms is a claim about one
+## machine's clock. CI's runner is a different, slower machine, so four such bars
+## failed there in a week on code that had not changed (a frame of the trample
+## field at 4.244 ms against 4.0). A yardstick is a fixed piece of interpreted
+## work timed beside the cost in the same process, so a slower machine slows both,
+## and the cost is stated as how many yardsticks it takes.
+##
+## The bar is put BETWEEN two measurements, not above one: the shipped ratio and
+## the ratio with the timed work planted twice over. `yard_lt` asserts the
+## first is under the bar AND that the doubled one is over it, so every run
+## proves the bar can still see a doubling. A bar that the doubled cost clears
+## is a bar that catches nothing, and that is caught here instead of later.
+##
+## (How a cost is measured is the caller's: `best_of` for work that repeats,
+## `middle` for samples.)
+static func yardstick_us() -> float:
+	return best_of(40, _yard_work)
+
+
+## The yardstick itself: 400 steps of interpreted vector work, the same the
+## shoulder probe's cost test times (tests/camera/test_shoulder.gd), about the
+## weight of the costs it measures on this laptop (tens of microseconds).
+static func _yard_work() -> void:
+	var acc := Vector2.ZERO
+	var pts := PackedVector2Array()
+	pts.resize(64)
+	for i in 400:
+		var p := Vector2(float(i) * 0.37, float(i) * 0.11)
+		pts[i & 63] = p
+		acc += (p - pts[(i * 7) & 63]).normalized() * p.length()
+
+
+## Assert a cost in yardsticks: `us` (shipped) under `bar` x `yard`, and
+## `doubled_us` (the same work twice) over it. Over the bar on a machine too busy
+## to measure is said and not judged, as `cost_lt` does; a doubling that the bar
+## misses is always a failure, because that is the bar being wrong, not the box.
+func yard_lt(us: float, doubled_us: float, yard: float, bar: float, what: String) -> void:
+	var r := us / maxf(yard, 0.001)
+	var r2 := doubled_us / maxf(yard, 0.001)
+	print("  %s: %.2f yardsticks shipped, %.2f doubled, bar %.2f (%.0f us, yardstick %.1f us)" % [what, r, r2, bar, us, yard])
+	if r < bar or can_measure_cost():
+		lt(r, bar, "%s, in yardsticks" % what)
+	else:
+		unmeasured(what, r, bar)
+	gt(r2, bar, "%s: the bar sees the work doubled" % what)
+
+
 ## The middle of `samples`, which is what to report when a thing is measured
 ## many times and cannot be repeated whole (a frame inside a soak, one villager
 ## inside a street). Same reasoning as `best_of`: the tail is the scheduler's,

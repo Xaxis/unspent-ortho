@@ -4,6 +4,9 @@ extends TestCase
 ## shadow twin only while the sun casts one.
 
 const FRAME := 1.0 / 60.0
+## A stepped villager's animate a frame, in yardsticks (TestCase.yard_lt).
+## Calibrated 2026-09-25: 0.20 shipped, 0.42 doubled; the bar between them.
+const STEPPED_BAR := 0.29
 
 
 func _crowd(n: int, hz: float) -> Array[PersonModel]:
@@ -145,7 +148,15 @@ func test_twenty_four_villagers_cost_about_a_millisecond_each() -> void:
 	# Counted, not timed: a loaded machine can make any one timing lie.
 	lt(float(poses - poses0), frames_n * crowd.size() * 0.25, "a stepped crowd poses a fifth as often as the frames (%d of %d)" % [poses - poses0, frames_n * crowd.size()])
 	print("  crowd of 24 (script): %.3f ms a person a frame stepped" % (stepped / 1000.0))
-	lt(stepped, 1000.0, "a stepped villager's animate is under a millisecond (%.0f us)" % stepped)
+	# The cost, in yardsticks (TestCase.yard_lt), each figure the cheapest of three
+	# runs of n frames, and of 2n for the doubled one, per person per frame.
+	var frames_of := func(n: int) -> void:
+		for f in n:
+			for i in crowd.size():
+				crowd[i].animate(1.2 if i % 2 else 0.0, FRAME)
+	var per := float(frames_n * crowd.size())
+	yard_lt(best_of(3, frames_of.bind(frames_n)) / per, best_of(3, frames_of.bind(frames_n * 2)) / per,
+		yardstick_us(), STEPPED_BAR, "a stepped villager's animate a frame (%.0f us timed once)" % stepped)
 
 	# Whole frames with the crowd standing in the tree, so the engine's skeleton
 	# and skin updates count too, against the same frames with nobody there.
