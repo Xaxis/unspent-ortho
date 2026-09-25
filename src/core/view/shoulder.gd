@@ -291,6 +291,25 @@ static func room(from: Vector3, eye: Vector3, ground: Callable, solids: Array[Ve
 	return least
 
 
+## How far along the line from `from` to `to` is clear, 0..1, walked exactly as
+## `room` walks it but with NO floor: `room` never lets the eye nearer the head
+## than LEAST_BACK, which is right for the eye and wrong for asking how much space
+## there is beside the player (the rig's side room, `CameraRig.side_room`).
+static func clear_along(from: Vector3, to: Vector3, ground: Callable, solids: Array[Vector4],
+		boxes: Array[PackedFloat32Array] = [], ground_top := INF) -> float:
+	var span := from.distance_to(to)
+	if span < 0.001:
+		return 1.0
+	var steps := steps_for(span)
+	var clear := 0.0
+	for i in range(1, steps + 1):
+		var t := float(i) / float(steps)
+		if _blocked(from.lerp(to, t), ground, solids, false, boxes, ground_top):
+			return clear
+		clear = t
+	return 1.0
+
+
 ## WHERE THE EYE MAY STAND, once the near plane itself is asked about: from `t`,
 ## a step in at a time until nothing stands within the near plane's reach of the
 ## eye -- no ground within `NEAR_REACH` across it, nothing drawn within `CLEAR`.
