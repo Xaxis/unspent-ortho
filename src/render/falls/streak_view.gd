@@ -17,8 +17,9 @@ const Sched := preload("res://src/core/sky/fall_schedule.gd")
 const Colossi := preload("res://src/render/colossus/colossus_view.gd")
 const SHADER := preload("res://src/render/falls/streak.gdshader")
 
-## Segments along a ribbon: enough for a train's twist over hundreds of km.
-const STEPS := 64
+## Segments along a ribbon: enough for a train's twist over hundreds of km, and
+## for one passing close overhead to be a curve and never a run of steps.
+const STEPS := 128
 ## Parts a fall is drawn in: the body, six pieces, the flash.
 const PARTS := 8
 ## Transparent world geometry is drawn only with a priority of its own: under

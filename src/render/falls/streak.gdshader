@@ -96,6 +96,8 @@ const float HEAD_KNEE = 4.0;
 const float PIECE_SLOW = 0.7;
 // How fast a train widens: metres over the square root of its age.
 const float TRAIN_GROW = 260.0;
+// How many core widths the train's ribbon reaches out, for its soft haze.
+const float TRAIN_HAZE = 3.6;
 // How much of the light a piece's own train keeps, against the body's.
 const float PIECE_TRAIN = 0.35;
 // The flash: its least size on the glass, and its true one.
@@ -173,9 +175,18 @@ float compress_len(float d) {
 	return min(comp_d0 + comp_l * log(1.0 + (d - comp_d0) / comp_l), comp_max);
 }
 
-// Crowd a strip's vertices toward its head (u = 1).
-float crowd(float u) {
-	return 1.0 - pow(1.0 - clamp(u, 0.0, 1.0), 2.5);
+// WHERE A STRIP'S VERTICES GO: evenly in ANGLE as the eye sees the line, not
+// evenly along it. A line `len` long from `a0` (relative to the eye) along `d`,
+// from share 0 to `s_end`: its nearest point to the eye is where it sweeps
+// fastest across the sky, and there the vertices crowd, so a train passing a
+// few tens of kilometres overhead is a curve and never a run of straight steps,
+// while one on the horizon spends none of them where nothing moves.
+float along_even(float u, vec3 a0, vec3 d, float len, float s_end) {
+	float sc = -dot(a0, d) / max(len, 1.0);
+	float h = max(length(a0 + d * len * sc), 1.0);
+	float t0 = atan(len * (0.0 - sc) / h);
+	float t1 = atan(len * (s_end - sc) / h);
+	return clamp(sc + h * tan(mix(t0, t1, clamp(u, 0.0, 1.0))) / max(len, 1.0), 0.0, s_end);
 }
 
 void vertex() {
@@ -195,7 +206,7 @@ void vertex() {
 	vec3 pb = f_p0 + f_dir * f_sb * f_len;
 	if (part == 0) {
 		float s_end = min(head_s(f_age / f_secs), f_sb);
-		float s = s_end * crowd(u);
+		float s = along_even(u, f_origin + f_p0 - eye, f_dir, f_len, s_end);
 		p = f_p0 + f_dir * s * f_len;
 		v_along = s * f_len;
 		// Thin where it lit up, full by the breakup, closing off at its end.
@@ -207,7 +218,8 @@ void vertex() {
 		vec4 d = f_piece_dir[part - 1];
 		vec4 k = f_piece_k[part - 1];
 		float tau = f_age - f_tb;
-		float x = piece_x(d, k, tau) * crowd(u);
+		float xh = piece_x(d, k, tau);
+		float x = along_even(u, f_origin + pb - eye, d.xyz, xh, 1.0) * xh;
 		p = pb + d.xyz * x;
 		v_along = x + float(part) * 37000.0;
 		v_birth = pow(clamp(1.0 - piece_tau_at(d, k, x) / k.x, 0.0, 1.0), 1.3);
@@ -264,7 +276,9 @@ void vertex() {
 			// cuts the head off square.
 			float reach = max(f_halo_px * px, HEAD_REACH * max(f_core_m, HEAD_PX * px));
 			float halo = head > 0.0 ? reach * (1.0 - smoothstep(0.0, f_wake_s * 6.0, a)) : 0.0;
-			w = max(tw_draw, halo);
+			// The ribbon reaches past the train's outer haze (TRAIN_HAZE of its
+			// core), so the light falls to nothing inside it and no edge shows.
+			w = max(tw_draw * TRAIN_HAZE, halo);
 			if (cap) {
 				ahead = head > 0.0 ? max(reach, MIN_PX * px) : 0.0;
 				world += normalize(t) * ahead;
@@ -364,7 +378,9 @@ void fragment() {
 		// A soft core and a wider haze round it, and BEADS along it: a train is
 		// never even -- it forms where the air at its height let it (between
 		// TRAIN_BAND km), and in knots and gaps along its length.
-		float prof = (exp(-pow(v_across / v_tw, 2.0)) + 0.22 * exp(-pow(v_across / (v_tw * 3.0), 2.0))) * v_thin;
+		// Feathered to nothing before the ribbon's edge whatever the widths.
+		float feather = 1.0 - smoothstep(0.55, 1.0, abs(v_side));
+		float prof = (exp(-pow(v_across / v_tw, 2.0)) + 0.22 * exp(-pow(v_across / (v_tw * 2.4), 2.0))) * v_thin * feather;
 		float km = v_true.y / 1000.0;
 		float band = smoothstep(TRAIN_BAND.w, TRAIN_BAND.z, km) * smoothstep(TRAIN_BAND.x, TRAIN_BAND.y, km);
 		float n = ink_vnoise(vec2(v_along / 7000.0, float(f_pieces) * 3.1 + f_wind.z)) * 0.65
