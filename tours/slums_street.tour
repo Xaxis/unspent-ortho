@@ -53,7 +53,7 @@ wait 0.5
 # network past hostile on its own, which is why the swing is almost never the
 # right answer in this landscape.
 walkto mob 6
-press swing
+tap swing
 await hit 6
 await network_hostile 8
 shot 05-one-swing-in-front-of-a-street with mob:passer,folk

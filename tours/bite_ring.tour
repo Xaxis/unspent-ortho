@@ -39,7 +39,7 @@ await top_view 3
 spawn harvester
 wait 0.5
 walkto part 3
-press swing 0.1
+tap swing
 await tell 8
 wait 0.2
 shot 04-a-harvester-s-wide-bite-a-wide-ring with mob:harvester
