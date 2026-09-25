@@ -334,11 +334,10 @@ func _floor(k: Kit) -> void:
 			continue
 		# To the edge of the tiles the room stands on, and no further: beyond them
 		# the pocket drops away into its own dark.
-		var far := float(layout.rooms[0].size.x) * 0.5
 		var p0 := _v(centre + d0 * (radius + DEEP * 0.8), 0.05)
 		var p1 := _v(centre + d1 * (radius + DEEP * 0.8), 0.05)
-		var q0 := _v(centre + d0 * far / maxf(absf(d0.x), absf(d0.y)), 0.05)
-		var q1 := _v(centre + d1 * far / maxf(absf(d1.x), absf(d1.y)), 0.05)
+		var q0 := _v(centre + d0 * _to_edge(d0), 0.05)
+		var q1 := _v(centre + d1 * _to_edge(d1), 0.05)
 		k.made.quad(p0, p1, q1, q0, cap)
 		k.made.quad(q0, q1, p1, p0, cap)
 	for i in 260:
@@ -450,6 +449,20 @@ func _p(at: Vector2, f: Vector2, u: float, v: float, h: float) -> Vector3:
 	var s := Vector2(-f.y, f.x)
 	var q := at + s * u + f * v
 	return Vector3(q.x, floor_y + h, q.y)
+
+
+## How far from the middle along `d` the edge of the room's tiles is: the
+## middle is not the square's (roundhouse.gd stands it on the door's edge).
+func _to_edge(d: Vector2) -> float:
+	var r := layout.rooms[0]
+	var lo := Vector2(r.position)
+	var hi := Vector2(r.end)
+	var t := INF
+	if absf(d.x) > 1e-4:
+		t = minf(t, ((hi.x if d.x > 0.0 else lo.x) - centre.x) / d.x)
+	if absf(d.y) > 1e-4:
+		t = minf(t, ((hi.y if d.y > 0.0 else lo.y) - centre.y) / d.y)
+	return maxf(t, radius + DEEP)
 
 
 ## A block turned to face `f`, `u` across and `v` out from `at`, `h` up.
