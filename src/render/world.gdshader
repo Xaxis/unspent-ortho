@@ -64,7 +64,7 @@ const float CROWN_SWAY = 0.25;
 // Two things stop this opening holes in the world at large:
 //
 //   THE LAND NEVER OPENS. Only what somebody BUILT is cut: the ground band
-//   40..70, the same discriminator fore.gdshader uses to decide how much wear a
+//   40..71, the same discriminator fore.gdshader uses to decide how much wear a
 //   piece takes. A cliff, a terrace and a bank stay solid, so a player under an
 //   overhang is still under it.
 //
@@ -708,6 +708,67 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		if (ink_vnoise(wp * 0.7) > 0.7) {
 			c = dn(c, 0.2);
 		}
+	} else if (m == 59) {
+		// VITRIFIED: the glass desert's floor. Sand fused to a sheet in one
+		// second and broken ever since, so four things are drawn and nothing
+		// else is: the PLATES it cooled into (the same cells matter_height
+		// tilts, so each plate's glare is its own), the heat CRAZING inside
+		// each plate, the FLOW the melt set in -- smoke-green banding swirled
+		// the way it ran -- and here and there a FULGURITE vein, the branching
+		// track a strike burnt through it, pale fused sand in a dark scorch.
+		vec3 cd = matter_cells(wp * 0.42);
+		float crack = cd.y - cd.x;
+		// Flow: banding along a warped direction, differing per plate a little
+		// because each plate slid as it set.
+		vec2 fw = wp + vec2(ink_vnoise(wp * 0.05 + 5.0), ink_vnoise(wp * 0.05 + 17.0)) * 12.0;
+		float band = fract(dot(fw, vec2(0.52, 0.85)) * 0.45 + cd.z * 0.25);
+		c = band < 0.22 ? mix(c, SPRUCE4, 0.22) : (band > 0.70 ? dn(c, 0.4) : c);
+		// A hairline of paler glass along each band's edge: the set flow lines.
+		if (abs(band - 0.22) < 0.012) {
+			c = up(c, 0.3);
+		}
+		// Clouded patches where the sand did not quite melt: milky, not white.
+		float cloud = ink_vnoise(wp * 0.23 + 40.0) * 0.7 + ink_vnoise(wp * 0.9) * 0.3;
+		if (cloud > 0.7) {
+			c = mix(c, mix(SLATE2, LINEN2, 0.35), clamp((cloud - 0.7) * 2.5, 0.0, 0.45));
+		}
+		// Crazing: where the sheet cooled fastest, a fine net of hairlines, lit
+		// on one side. In patches only, and each line broken, so the floor never
+		// reads as a laid pavement.
+		float craze = ink_vnoise(wp * 0.12 + 55.0) * 0.8 + rag(wp) * 2.0;
+		if (craze > 0.6) {
+			vec3 cz = matter_cells(wp * 2.3 + cd.z * 7.0);
+			float hair = cz.y - cz.x;
+			if (hair < 0.03 && ink_vnoise(wp * 1.7 + cd.z * 3.0) > 0.5) {
+				c = hair < 0.013 ? dn(c, 0.5) : up(c, 0.3);
+			}
+		}
+		// Fulgurite veins: a ridged field thinned to lines that branch and
+		// stop, scorched dark beside and fused pale along the middle.
+		float vr = abs(ink_vnoise(wp * 0.33 + 71.0) - 0.5) + abs(ink_vnoise(wp * 0.9 + 13.0) - 0.5) * 0.35;
+		float gate = ink_vnoise(wp * 0.05 + 29.0);
+		if (gate > 0.56) {
+			float w = 0.018 * clamp((gate - 0.56) * 8.0, 0.0, 1.0);
+			if (vr < w * 0.45) {
+				c = mix(LINEN3, SAND3, 0.4);
+			} else if (vr < w * 2.2) {
+				c = mix(c, INK2, 0.55);
+			}
+		}
+		// The join between plates: a dark crack with a pale chipped lip -- but
+		// only where it has opened. A crack runs a few plates and stops, and
+		// its width wanders, so the plates never read as paving.
+		float open = ink_vnoise(wp * 0.21 + 83.0) + rag(wp) * 1.5;
+		float cw = 0.028 * smoothstep(0.42, 0.62, open);
+		if (crack < cw) {
+			c = mix(INK2, c, 0.2);
+		} else if (crack < cw * 1.7) {
+			c = up(c, 0.35);
+		}
+		// Glints: a few grains standing proud catch the sun.
+		if (ink_hash(px + 23.0) > 0.994) {
+			c = up(c, 0.9);
+		}
 	} else if (m == 55) {
 		// SALT: the crust dries in plates a stride across and lifts at every
 		// join, so the flat is a pale mosaic of raised rims over a duller floor.
@@ -1341,6 +1402,46 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		} else if (ink_hash(vec2(px.x, 11.0)) > 0.84 && dt < 0.14 + ink_hash(vec2(px.x, 12.0)) * 0.3) {
 			c = EARTH1;
 		}
+	} else if (id == 11) {
+		// GLASS: a terrace wall the glassing ran over. The melt came over the
+		// lip and ran down the face before it set, so the top of every wall is
+		// a ROLLED LIP of dark glass with a lit bead along it, under it the
+		// glaze hangs in runs of uneven length that end in a rounded drip, and
+		// below them the face is what the heat did not reach: sand baked in
+		// pale, cracked beds. The stepped wall stays a step; it no longer reads
+		// as a stack of courses, because nothing runs level across it.
+		// How far each run got, wandering along the wall rather than in
+		// columns: two octaves, so there are long tongues and short ones.
+		float run = 0.08 + ink_vnoise(vec2(px.x * 0.11, 3.0)) * 0.30 + ink_vnoise(vec2(px.x * 0.45, 7.0)) * 0.10;
+		// Neighbouring runs merge into sheets where the flow was thick.
+		float sheet = ink_vnoise(vec2(px.x * 0.02, 9.0));
+		run += smoothstep(0.55, 0.7, sheet) * 0.2;
+		float lip = 0.035 + vn * 0.02;
+		if (dt < lip) {
+			// The rolled lip: a lit bead on top, the curl in shade under it.
+			c = dt < lip * 0.4 ? mix(SLATE2, RIME3, 0.35) : mix(INK2, SPRUCE1, 0.5);
+		} else if (dt < run) {
+			// The glaze: green-black, streaked down its fall.
+			float st = ink_vnoise(vec2(px.x * 0.6, 41.0));
+			c = mix(SPRUCE1, SLATE1, 0.5);
+			c = st > 0.68 ? mix(c, SPRUCE2, 0.6) : (st < 0.3 ? dn(c, 0.3) : c);
+			// The drip where the run stopped, fat and lit on its belly.
+			if (run - dt < 0.03) {
+				c = run - dt < 0.01 ? INK2 : mix(SLATE2, RIME3, 0.3);
+			}
+		} else {
+			// Baked sand under the glaze, cracked by the heat and scorched
+			// where it lay nearest the melt.
+			float b = (y + (vn - 0.5) * 0.05) / 0.12;
+			c = ink_hash(vec2(floor(b), 12.0)) < 0.5 ? mix(SAND2, LINEN2, 0.5) : SAND2;
+			if (dt < run + 0.06) {
+				c = mix(c, INK3, 0.45);
+			}
+			float cx = floor((px.x + floor(b) * 5.0) / 11.0);
+			if (mod(px.x + floor(b) * 5.0, 11.0) < 1.0 && ink_hash(vec2(cx, floor(b))) > 0.4) {
+				c = dn(c, 0.5);
+			}
+		}
 	}
 	return c;
 }
@@ -1394,7 +1495,7 @@ float crown_cut(vec3 wp, float sway) {
 // INV_VIEW_MATRIX exists only inside the stage function, so a user function
 // cannot see the camera at all (the shader simply refuses to compile).
 float tall_cut(vec3 wp, int m, vec3 camz, vec3 eye, bool persp) {
-	if (m >= 40 && m <= 70) {
+	if (m >= 40 && m <= 71) {
 		return 0.0;
 	}
 	float cut = 0.0;
@@ -1464,7 +1565,7 @@ void fragment() {
 	float cut = max(crown_cut(world_pos, sway_w), tall_cut(world_pos, m1, camz, eye, persp));
 	// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line of
 	// sight to a body, at any height (sight.gdshaderinc). Never the land.
-	if (persp && !(m1 >= 40 && m1 <= 70)) {
+	if (persp && !(m1 >= 40 && m1 <= 71)) {
 		float close = sight_close(eye, crown_clear[0]);
 		if (close > 0.0) {
 			for (int i = 0; i < CROWN_CLEAR; i++) {
@@ -1509,7 +1610,8 @@ void fragment() {
 	}
 	if (m >= 40 && m < 60) {
 		c = ground_mark(m, c, world_pos.xz, px, emit, unh);
-		if (unh < 0.5) {
+		// The fused sheet is not trodden to earth: nothing walks glass to a path.
+		if (unh < 0.5 && m != 59) {
 			c = ground_wear(m, c, world_pos.xz, px);
 		}
 		// Turf, heath and fen are a sward, and a gust crossing one lays it over:
@@ -1536,7 +1638,7 @@ void fragment() {
 		if ((m == 55 || m == 57) && c.r >= c.b) {
 			c *= min(1.0, SALT_TOP.r / max(max(c.r, max(c.g, c.b)), 1e-4));
 		}
-	} else if (m > 60 && m <= 70) {
+	} else if (m > 60 && m <= 71) {
 		// A wall's pattern runs ALONG the wall. `px` is the play camera's screen
 		// grid laid on the world, whose x does not change with height: from
 		// above that is invisible, but at eye level every feature keyed on it
@@ -1595,7 +1697,7 @@ void fragment() {
 	// it. Anything STANDING in the land takes it nearly whole, which is the law
 	// in one line: the same house, fence and machine carry the bog on them, or
 	// the flat, or the Burning, and nobody had to author three of each.
-	float takes = (m >= 40 && m <= 70) ? 0.14 : 0.85;
+	float takes = (m >= 40 && m <= 71) ? 0.14 : 0.85;
 	// A face opened a moment ago (GroundColors.FRESH: the cut through a boulder
 	// somebody is quarrying) has had almost nothing settle on it. The wear map
 	// reads the PLACE, not the age, so without this a cut made in a bog rusts as

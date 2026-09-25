@@ -100,7 +100,7 @@ vec3 matter_cells(vec2 p) {
 // --- What a surface is -----------------------------------------------------
 //
 // Keyed on the ground MARK the vertex stream already carries (GroundColors:
-// 40..57 the grounds, 60..70 cliff strata, 0/255 anything a person made). One
+// 40..59 the grounds, 60..71 cliff strata, 0/255 anything a person made). One
 // row per material:
 //   x roughness   0 mirror .. 1 dead matte
 //   y specular    how much light it returns at a glancing angle (Godot's 0..1,
@@ -145,7 +145,15 @@ vec4 matter_of(int m) {
 	else if (m == 56) { r = vec4(0.50, 0.66, 0.012, 0.22); }  // SWARF: metal filings
 	else if (m == 57) { r = vec4(0.86, 0.30, 0.008, 0.0); }   // PAN: dry silt
 	else if (m == 58) { r = vec4(0.90, 0.28, 0.010, 0.0); }   // FRESH: broken open, so dusty and dead matte -- a glossy fracture reads as ice
-	else if (m >= 60 && m <= 70) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
+	// VITRIFIED: fused glass, hard and smooth, so the sun comes back off each
+	// plate as glare -- the desert's hazard is `glare`, and this is it on screen.
+	// Tilted per plate in matter_height, so the glare breaks plate by plate.
+	// Not ice's 0.16: measured at eye level, 0.12 handed back only the sky and
+	// the green-black floor read as pale ice. 0.30 keeps its body dark.
+	else if (m == 59) { r = vec4(0.30, 0.62, 0.060, 0.0); }
+	// STRATA_GLASS: the melt that ran down a wall, glossy but not a mirror.
+	else if (m == 71) { r = vec4(0.30, 0.72, 0.035, 0.0); }
+	else if (m >= 60 && m <= 71) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
 	// --- WHAT A PERSON MADE ---------------------------------------------------
 	// Everything above is GROUND, and until these rows existed every timber post,
 	// thatched roof, canvas awning, concrete slab, glass pane and rope lashing in
@@ -250,7 +258,17 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		vec2 qw = p + vec2(ink_vnoise(p * 0.09 + 3.0) - 0.5, ink_vnoise(p * 0.09 + 21.0) - 0.5) * 2.6;
 		vec3 cd = matter_cells(qw * 6.0);
 		h = 1.0 - smoothstep(0.0, 0.42, cd.x);
-	} else if (m == 52 || (m >= 60 && m <= 70)) {
+	} else if (m == 59) {
+		// VITRIFIED: each plate set at its own small tilt as it cooled, on the
+		// same cells the wash draws (world.gdshader), so the plate the light
+		// finds is the plate you see. The step at a join is the crack.
+		vec3 cd = matter_cells(p * 0.42);
+		float a = cd.z * 6.2832;
+		h = dot(p, vec2(cos(a), sin(a))) * 3.2 + matter_fbm(p * 0.8) * 0.35;
+	} else if (m == 71) {
+		// STRATA_GLASS: runnels down the face, long in height, narrow across.
+		h = matter_fbm(vec2(p.x * 5.5, p.y * 0.7)) * 0.8 + matter_fbm(p * 2.0) * 0.2;
+	} else if (m == 52 || (m >= 60 && m <= 71)) {
 		// ROCK and cliff strata: broken blocks and bedding planes.
 		vec3 cd = matter_cells(p * 1.6);
 		h = (cd.y - cd.x) * 0.9 + matter_fbm(p * 0.7) * 0.3;
