@@ -159,6 +159,9 @@ static func sites(world: WorldData) -> Array[WorksSite]:
 		s.facing = bearing
 		s.trade = StringName(str(heart.get("kind", &"depot")))
 		s.yard = int(heart.get("count", 0))
+		s.work_pos = heart.get("pos", Vector2.INF)
+		s.work_dir = heart.get("dir", Vector2.RIGHT)
+		s.work_half = heart.get("half", Vector2.ZERO)
 		out.append(s)
 	return out
 
@@ -217,7 +220,8 @@ static func _knot(world: WorldData, rows: Array, centre: Vector2,
 		if fed != best_fed or score > best_score:
 			best_score = score
 			best_fed = fed
-			best = {"pos": p, "kind": StringName(str(m.get("kind", &"depot"))), "count": n}
+			best = {"pos": p, "kind": StringName(str(m.get("kind", &"depot"))), "count": n,
+				"dir": m.get("dir", Vector2.RIGHT), "half": m.get("half", Vector2.ZERO)}
 	return best
 
 

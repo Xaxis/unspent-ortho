@@ -122,11 +122,11 @@ func _play(s: int) -> void:
 	_gather_wood(8)
 	_gather(&"mussels", 2)
 	_collect(fire)
-	_make_any([&"charcoal", &"charcoal_deadwood"])
+	_make_topped([&"charcoal", &"charcoal_deadwood"], fire)
 	_eat_if_hungry()
 	_sleep_if_night(fire)
 	_collect(fire)
-	_make_any([&"charcoal", &"charcoal_deadwood"])
+	_make_topped([&"charcoal", &"charcoal_deadwood"], fire)
 	_collect(fire)
 	_make_any([&"iron", &"iron_coal"])
 	_collect(fire)
@@ -288,6 +288,21 @@ func _make(id: StringName) -> void:
 		_spend(MENU_SECONDS)
 		actions += 1
 		_note("made %s" % id)
+
+
+## `_make_any` for a recipe of wood. How much a run of wood gave depends on what
+## lay nearest (two driftwood a take, one dead wood), so what is left can be a
+## mix that makes neither recipe; a player gathers another armful, and so does
+## this, back at the fire each time.
+func _make_topped(ids: Array[StringName], fire: WorldProp) -> void:
+	for more in 6:
+		for id in ids:
+			if Crafting.why_not(g, Crafting.recipe(id)) == "":
+				_make(id)
+				return
+		_gather_wood(2)
+		_collect(fire)
+	_make(ids[0])
 
 
 func _make_any(ids: Array[StringName]) -> void:
