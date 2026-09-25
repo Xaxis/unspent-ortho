@@ -97,6 +97,11 @@ static func make() -> BiomeDef:
 	# global night it was 95.3% below luma 24 at 23:00 against the coast's 81.4%,
 	# which is a bog nobody can cross rather than a bog that is dark.
 	d.night_sky = 1.45
+	# And its DAY is lit brighter than the coast's for the same reason: the ground
+	# is the darkest in the game, so under the one daylight (SkyLight.SUN_NOON) a
+	# bog at noon read as dusk, median luma 52-61 from above. Spent as the day's
+	# light is and gone by night, so `night_sky` above still owns the night.
+	d.day_light = 1.45
 	d.wet = 0.35
 	d.props = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS,
 		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_ORE, PropKind.PEAT_BANK,
