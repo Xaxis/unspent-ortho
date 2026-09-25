@@ -770,9 +770,11 @@ func _land(t0: float, t1: float) -> void:
 				continue
 			hero.struck[m.id] = true
 			_wear_on_contact()
+			# The coil is spent on the first blow that meets the body, needed or not.
 			var phased := false
-			if not reaches_part(m, hero.pos, b.cuts):
-				phased = _phase_reads(m)
+			if phase_ready(m):
+				_phase_read[m.id] = true
+				phased = not reaches_part(m, hero.pos, b.cuts)
 			if not phased and not reaches_part(m, hero.pos, b.cuts):
 				if b.heavy and reaches_part(m, hero.pos, b.cuts, true) and now >= m.stall_ready_at:
 					_jam(m)
@@ -848,18 +850,12 @@ func reaches_part(m: MobState, from: Vector2, cuts: bool = false, heavy: bool = 
 
 ## The first blow on a body with a phase coil fitted reads its working part
 ## through whatever covers it (FightKit.phase): plate from any side, and a guard
-## the machine is holding closed. Once a body, and spent only by a blow that
-## needed it, and it hurts without stopping the work (no stall), so it is an
+## the machine is holding closed. Once a body, spent by the first blow that meets
+## it whether it needed the read or not, and it hurts without stopping the work
+## (no stall), so it is an
 ## opener and never a way to win: every blow after it meets the machine as it is,
 ## and the opening a stall gives stays the reader's to earn.
 var _phase_read: Dictionary = {}
-
-
-func _phase_reads(m: MobState) -> bool:
-	if not phase_ready(m):
-		return false
-	_phase_read[m.id] = true
-	return true
 
 
 ## Would a blow on this body now be read through what covers its part? What a

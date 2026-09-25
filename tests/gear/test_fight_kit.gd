@@ -79,6 +79,20 @@ func test_phase_reads_the_part_through_plate_for_the_first_blow_only() -> void:
 	eq(_swing(r[0]).get("plate", null), true, "bare: the first blow from its back is plate")
 
 
+func test_the_coil_is_spent_on_first_contact_even_when_not_needed() -> void:
+	var r := _behind([&"mod_phase"])
+	var sim: FightSim = r[0]
+	var m: MobState = r[1]
+	# First contact at its open front: a plain blow, and the coil goes with it.
+	sim.hero.pos = m.pos + Vector2(-(m.radius + sim.hero.radius + 0.3), 0.0)
+	sim.hero.facing = 0.0
+	eq(_swing(sim).get("plate", null), false, "the front is open anyway")
+	check(not sim.phase_ready(m), "and the coil is spent on it")
+	sim.hero.pos = m.pos + Vector2(m.radius + sim.hero.radius + 0.3, 0.0)
+	sim.hero.facing = PI
+	eq(_swing(sim).get("plate", null), true, "so its back is plate to the next")
+
+
 func test_phase_reads_through_a_closed_guard_once() -> void:
 	for coil: bool in [false, true]:
 		var sim := F.make_sim()
