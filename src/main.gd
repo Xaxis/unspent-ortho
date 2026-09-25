@@ -204,6 +204,11 @@ func _shoot() -> void:
 		game.get("camera").call("snap_to", player.position)
 	for i in options.frames:
 		await get_tree().process_frame
+	# A shot is of a moment settled, not of how fast its first frames ran: the
+	# place ping fires on the first frame, and eight quick frames caught it with
+	# its plate up and its lettering not yet on.
+	if game != null and game.get("hud") != null:
+		game.get("hud").call("settle_place")
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	if options.scale > 1:

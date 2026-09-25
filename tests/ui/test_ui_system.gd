@@ -374,6 +374,30 @@ func test_the_watcher_reads_the_land_under_the_player_after_a_jump() -> void:
 	g.free()
 
 
+## THE PLACE YOU WAKE IN IS SAID WHERE YOU CAN SEE IT. The loading page draws
+## over the HUD while it lifts, and the first ping fired on the game's first
+## frame, underneath it: the plate's whole rise and half its ring went by where
+## nobody could see them. So the name waits for the page, like a name under an
+## open app does, and is pinged the frame it is gone.
+func test_the_first_place_waits_for_the_loading_page_to_lift() -> void:
+	var page := Node.new()
+	page.add_to_group(&"boot_page")
+	tree.root.add_child(page)
+	var g := _make()
+	var ui := _ui(g)
+	_calm(g)
+	for i in 3:
+		await tree.process_frame
+	eq(g.hud.place, "", "under the loading page nothing is pinged")
+	check(StringName(ui.get("_pending_place")) != &"", "the name waits for the page")
+	page.queue_free()
+	for i in 3:
+		await tree.process_frame
+	check(g.hud.place != "", "the page gone, the name is said")
+	check(g.hud.place_alpha() < 1.0, "and from the start of its rise, where it can be seen")
+	g.free()
+
+
 ## A name that waited for a glass nobody could read is only said if it is still
 ## true. Cross a border in a fight, be pushed back over it, and have the fight
 ## end inside the settle: the caption must say the ground under the player, not
