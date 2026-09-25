@@ -682,8 +682,19 @@ static func deal(c: GenContext) -> void:
 	var got: Array[PackedInt32Array] = []
 	for i in planned:
 		got.append(PackedInt32Array())
-	# The biggest first, each to the continents holding the fewest so far, so every
-	# continent carries about as many and each landscape gets about the same room;
+	# HOW MUCH EACH CONTINENT CAN HOLD is its size: grown bodies differ by three
+	# times (`_grow`), and dealing them equal counts gave the small ones places
+	# too small to be places. Each takes landscapes in proportion to its tiles.
+	var room := PackedFloat32Array()
+	var mean := 0.0
+	for i in planned:
+		room.append(maxf(1.0, float(bodies[i].get("tiles", 1))))
+		mean += room[i]
+	mean /= float(planned)
+	for i in planned:
+		room[i] /= mean
+	# The biggest first, each to the continents holding the fewest for their size
+	# so far, so each landscape gets about the same room;
 	# the seed breaks ties (breaking them on share dealt every seed one hand). The
 	# ones that must stand on home go first, so home's count includes them.
 	var order_types: Array[int] = []
@@ -722,8 +733,10 @@ static func deal(c: GenContext) -> void:
 		for i: int in rest:
 			jitter[i] = rng.randf()
 		rest.sort_custom(func(a: int, b: int) -> bool:
-			if got[a].size() != got[b].size():
-				return got[a].size() < got[b].size()
+			var la := float(got[a].size()) / room[a]
+			var lb := float(got[b].size()) / room[b]
+			if not is_equal_approx(la, lb):
+				return la < lb
 			return float(jitter[a]) < float(jitter[b]))
 		order.append_array(rest)
 		for r in mini(want, order.size()):
