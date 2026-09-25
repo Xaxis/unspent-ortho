@@ -35,6 +35,11 @@ var other_share := 0.0
 ## Casts a real shadow. Costs a shadow pass, so only for sparse grass on pale
 ## open ground, where a tuft with no shadow floats.
 var casts := false
+## On salt crust, roots only along the crust's lifted rims (SaltCrust.snap).
+var rims := false
+## Extra plants a tile carries hard against something standing on it (a drift
+## in the lee), falling to none LEE_REACH tiles off (Decor).
+var lee := 0.0
 var heads := 0
 var head_color := Color(0.9, 0.88, 0.8)
 var head_size := 0.03
@@ -65,7 +70,7 @@ func motion_code() -> int:
 ## two landscapes' grass (tests/render/test_species.gd).
 func signature() -> Array:
 	return [blades, height, width, spread, reach, curl, lay, root, tip, leaflets, leaflet, tip_pale, other, other_share,
-		heads, head_color, head_size, stiff, flutter, casts]
+		heads, head_color, head_size, stiff, flutter, casts, rims, lee]
 
 
 ## The grass a landscape that declares none grows, from its grass colours. Only

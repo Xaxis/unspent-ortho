@@ -75,6 +75,11 @@ const SkySystem := preload("res://src/systems/10_sky.gd")
 ## this far off the wind's line at most, in radians.
 const FRONT_GAP := Vector2(3.0, 9.0)
 const FRONT_LINE := 0.35
+## Tiles aside from the bush-to-crown line the player stands for `near front`.
+const FRONT_ASIDE := 2.5
+## The bush and crown `near front` last chose, for a tour to print.
+var front_bush := Vector2.INF
+var front_crown := Vector2.INF
 
 
 ## `near meadow`: within MEADOW_REACH, the middle of the stretch with the most
@@ -144,8 +149,17 @@ func _front() -> Vector2:
 			var d := t.pos - b.pos
 			if d.length() < FRONT_GAP.x or absf(d.angle_to(dir)) > FRONT_LINE:
 				continue
+			# Stand beside the line, level with the bush, so the frame holds the
+			# grass upwind, the bush, and the crown past it, the crown mid-frame.
+			var beside := b.pos + d * 0.35 + Vector2(-dir.y, dir.x) * FRONT_ASIDE
+			if w.ground_at(floori(beside.x), floori(beside.y)) != Ground.GRASS:
+				continue
 			var far := here.distance_to(b.pos)
 			if far < best:
 				best = far
-				at = stand
+				at = beside
+				front_bush = b.pos
+				front_crown = t.pos
+	if at != Vector2.INF:
+		print("tour front: bush %s crown %s wind toward %s" % [front_bush, front_crown, dir])
 	return at

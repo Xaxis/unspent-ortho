@@ -40,6 +40,7 @@ render_mode cull_back;
 #include "res://src/render/matter.gdshaderinc"
 #include "res://src/render/sight.gdshaderinc"
 #include "res://src/render/wind.gdshaderinc"
+#include "res://src/render/salt_crust.gdshaderinc"
 
 // Where a crown must not hide a fight (18_crowns writes it every frame): up to
 // six points as (x, ground y, z, reach in tiles), reach 0 for an unused slot.
@@ -716,29 +717,10 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		// of shadow on the plate it overhangs — so the crust has thickness and
 		// never reads as paving. The floor of a plate is grained, not flat: salt
 		// dries in grains and a few of them catch the sun.
-		vec2 q = wp * 2.1;
-		vec2 gi = floor(q);
-		float d1 = 9.0;
-		float d2 = 9.0;
-		vec2 own = vec2(0.0);
-		vec2 next = vec2(0.0);
-		for (int yy = -1; yy <= 1; yy++) {
-			for (int xx = -1; xx <= 1; xx++) {
-				vec2 g = gi + vec2(float(xx), float(yy));
-				vec2 ctr = g + vec2(ink_hash(g + 1.7), ink_hash(g + 5.3)) * 0.8 + 0.1;
-				float d = length(q - ctr) + rag(wp) * 0.7;
-				if (d < d1) {
-					d2 = d1;
-					d1 = d;
-					next = own;
-					own = g;
-				} else if (d < d2) {
-					d2 = d;
-					next = g;
-				}
-			}
-		}
-		float join = d2 - d1;
+		vec2 own;
+		vec2 next;
+		float join;
+		salt_cells(wp, rag(wp) * 0.7, own, next, join);
 		float ch = ink_hash(own + 11.0);
 		// Plate against plate is a VALUE step, not a tint: the crust carries a
 		// second wash under its first, so the flat still draws structure when a
@@ -769,11 +751,9 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		}
 		// Which joins have lifted: decided per pair, in runs, so a rim has ends,
 		// and no two rims weigh the same.
-		vec2 lo_c = min(own, next);
-		vec2 hi_c = max(own, next);
-		float lifted = ink_hash(lo_c * 3.1 + hi_c * 7.3);
-		float weight = 0.03 + lifted * 0.075;
-		if (lifted < 0.62 && join < weight) {
+		float lifted = salt_lifted(own, next);
+		float weight = SALT_RIM_MIN + lifted * SALT_RIM_SPAN;
+		if (lifted < SALT_LIFT && join < weight) {
 			// The plate that sorts above rode up over the other: this side is
 			// the lit edge of the lift, the other is under its overhang.
 			bool over = own.x * 7.0 + own.y > next.x * 7.0 + next.y;

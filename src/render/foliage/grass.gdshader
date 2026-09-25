@@ -22,8 +22,9 @@
 //   COLOR.rgb  the blade's colour (palette sRGB); COLOR.a its MARK code / 255
 //   UV2.x      sway weight: 0 at the root, rising to the tip
 //   UV2.y      fraction: the plant's seed 0..1 (Decor writes one per plant);
-//              whole part: its species' motion (GrassSpecies.motion_code), tens
-//              the stiffness in tenths and units the flutter, 0 for no species
+//              whole part: its weight in the hundreds (Decor.HEAVY_TRIS), then
+//              its species' motion (GrassSpecies.motion_code), tens the
+//              stiffness in tenths and units the flutter, 0 for no species
 //   UV         the plant's root in world xz (Decor), for what is decided per plant
 shader_type spatial;
 render_mode cull_disabled;
@@ -58,6 +59,11 @@ const vec3 GRASS_THROUGH = vec3(0.55, 0.62, 0.22);
 const float GRASS_THIN_FROM = 22.0;
 const float GRASS_THIN_TO = 72.0;
 const float GRASS_THIN_KEEP = 0.3;
+// Per step of a plant's weight (its triangles / Decor.HEAVY_TRIS, 0..9, in the
+// hundreds of UV2.y's whole part): how much sooner it starts to thin and how
+// many fewer of it are kept at the far edge.
+const float GRASS_HEAVY_SOONER = 0.25;
+const float GRASS_HEAVY_FEWER = 0.3;
 
 varying vec3 world_pos;
 varying float sway_w;
@@ -67,7 +73,8 @@ varying float code_v;
 void vertex() {
 	sway_w = UV2.x;
 	float seed = fract(UV2.y);
-	float code = floor(UV2.y);
+	float heavy = floor(floor(UV2.y) / 100.0);
+	float code = mod(floor(UV2.y), 100.0);
 	code_v = code;
 	float stiff = code >= 10.0 ? floor(code / 10.0) / 10.0 : GRASS_STIFF;
 	float flutter = mod(code, 10.0);
@@ -78,7 +85,10 @@ void vertex() {
 	bool left_out = false;
 	if (PROJECTION_MATRIX[3][3] < 0.5) {
 		float d = distance(vec3(UV.x, wp.y, UV.y), INV_VIEW_MATRIX[3].xyz);
-		left_out = seed > mix(1.0, GRASS_THIN_KEEP, smoothstep(GRASS_THIN_FROM, GRASS_THIN_TO, d));
+		// A heavy plant (a frond, a head of cotton) thins sooner and further.
+		float from = GRASS_THIN_FROM / (1.0 + GRASS_HEAVY_SOONER * heavy);
+		float keep = GRASS_THIN_KEEP / (1.0 + GRASS_HEAVY_FEWER * heavy);
+		left_out = seed > mix(1.0, keep, smoothstep(from, GRASS_THIN_TO, d));
 	}
 	NORMAL = normalize(mix(NORMAL, up_m, GRASS_UP));
 	if (left_out) {
