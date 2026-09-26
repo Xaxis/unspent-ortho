@@ -400,6 +400,9 @@ static func standing_stone(k: Kit, v: int, c: int) -> void:
 			k.slab(0.0, -0.08, 0.0, 0.52, 1.8, 0.3, s, g[0], GroundColors.up(g[0], 0.2), 0.05, 0.35, 0.06)
 			k.made.quad(Vector3(-0.19, 1.05, 0.13), Vector3(0.02, 1.07, 0.12), Vector3(0.04, 1.3, 0.1), Vector3(-0.16, 1.28, 0.11), P.LINEN[3])
 			k.made.quad(Vector3(0.02, 0.44, 0.155), Vector3(0.2, 0.46, 0.155), Vector3(0.2, 0.62, 0.15), Vector3(0.02, 0.6, 0.15), P.MOSS[4])
+			if d.old_light.a > 0.0:
+				_old_ring(k, Vector3(-0.04, 0.9, 0.158), 0.15, s, d.old_light, 1.0)
+				_old_ring(k, Vector3(0.04, 1.0, -0.158), 0.13, s + 1, d.old_light, -1.0)
 			cap_y = 1.7
 		1:
 			# Cast, not quarried: a machine's leg snapped off, tilted in the
@@ -451,6 +454,32 @@ static func standing_stone(k: Kit, v: int, c: int) -> void:
 	k.clump(-0.28, -0.05, -0.1, 0.13, 0.14, s + 31, P.MOSS[3], 5)
 	if d.cold():
 		k.clump(0.0, cap_y, 0.0, 0.2, 0.12, s + 5, d.snow[0], 6)
+
+
+## A ring of marks cut into a stone's face, centred at `at` on a face looking +Z:
+## nine short strokes round a gap and a dot in the middle, one of them missing,
+## and lamp-coded, so by day they are worn grooves and after dark they give off
+## the land's old light (BiomeDressing.old_light). Faint: it is not a lamp. `face` is +1 for the +Z face, -1 for the -Z one.
+static func _old_ring(k: Kit, at: Vector3, r: float, s: int, col: Color, face: float) -> void:
+	var lit := GroundColors.lamp(Color(col.r, col.g, col.b), 0.9 * col.a)
+	var gone := int(Rng.hash01(s, 3, 91) * 9.0)
+	for i in 9:
+		if i == gone:
+			continue
+		var a := float(i) / 9.0 * TAU + Rng.hash01(s, i, 92) * 0.2
+		var dir := Vector3(cos(a), sin(a), 0.0)
+		var side := Vector3(-sin(a), cos(a), 0.0) * 0.016
+		var p0 := at + dir * r * 0.72
+		var p1 := at + dir * r * 1.05
+		if face > 0.0:
+			k.made.quad(p0 - side, p1 - side, p1 + side, p0 + side, lit)
+		else:
+			k.made.quad(p0 + side, p1 + side, p1 - side, p0 - side, lit)
+	var dot := 0.016
+	if face > 0.0:
+		k.made.quad(at + Vector3(-dot, -dot, 0.0), at + Vector3(dot, -dot, 0.0), at + Vector3(dot, dot, 0.0), at + Vector3(-dot, dot, 0.0), lit)
+	else:
+		k.made.quad(at + Vector3(-dot, dot, 0.0), at + Vector3(dot, dot, 0.0), at + Vector3(dot, -dot, 0.0), at + Vector3(-dot, -dot, 0.0), lit)
 
 
 ## A cast member, exact in plan (eight-sided, corners cut), standing from y0 to

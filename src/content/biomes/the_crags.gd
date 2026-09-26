@@ -93,6 +93,9 @@ static func make() -> BiomeDef:
 	# a plate sheet weighted onto its roof (props/crags.gd), never a shack of
 	# boards, because there is no timber that was ever dry.
 	dress.shelter = &"roundhouse"
+	# The old stones' cut rings give off a pale cold light after dark, and nothing
+	# the machines or anyone else runs reaches them.
+	dress.old_light = Color(0.62, 0.84, 0.86, 1.0)
 	d.dressing = dress
 	# What its people BUILT (docs/LANDSCAPES.md PEOPLE): three forms, none of
 	# them lit, so this is the one village with no stolen neon, and the stock's

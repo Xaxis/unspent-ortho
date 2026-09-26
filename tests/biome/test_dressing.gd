@@ -231,3 +231,19 @@ func _has(kind: int, country: int, col: Color) -> bool:
 			if absf(c.r - col.r) < 0.004 and absf(c.g - col.g) < 0.004 and absf(c.b - col.b) < 0.004:
 				return true
 	return false
+
+
+func test_the_old_light_is_cut_only_where_a_land_declares_it() -> void:
+	# The crags' quarried standing stones carry a lamp-coded ring (props/rocks.gd
+	# `_old_ring`); the same stone anywhere that declares no old light has none.
+	var crags := BiomeRegistry.index_of(&"the_crags")
+	check(BiomeDressing.of(crags).old_light.a > 0.0, "the crags declare an old light")
+	var lit_in := func(c: int) -> int:
+		var n := 0
+		for col: Color in PropModels.template(PropKind.STANDING_STONE, 0, c).made_c:
+			var m := roundi(col.a * 255.0)
+			if m > GroundColors.LAMP and m <= GroundColors.LAMP + 16:
+				n += 1
+		return n
+	gt(float(lit_in.call(crags)), 0.0, "a crags standing stone is cut with a lit ring")
+	eq(lit_in.call(Country.COAST), 0, "the coast's is plain stone")

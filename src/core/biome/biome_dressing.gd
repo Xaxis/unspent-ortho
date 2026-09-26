@@ -125,6 +125,10 @@ var windows: StringName = &""
 ##   &"dying"  mostly dead: dark panels under grime, and one or two failing
 ##             tubes stuttering at low strength (GroundColors.FAILING)
 var signage: StringName = &""
+## The light in the old stones' carvings after dark, if this land has any: a
+## quarried standing stone is cut with a ring of marks that give off this colour,
+## faintly, once the light goes (props/rocks.gd). Nobody's power runs to them.
+var old_light := NONE
 
 ## Every form each field may name, so a typo is a failing test and not a
 ## landscape quietly dressed as somewhere else (BiomeRegistry.problems).
@@ -269,6 +273,7 @@ static func resolve(d: BiomeDef) -> BiomeDressing:
 	r.spread = s.spread if s.spread > 0.0 else 1.0
 	r.windows = s.windows if s.windows != &"" else &"floors"
 	r.signage = s.signage if s.signage != &"" else &"lit"
+	r.old_light = s.old_light
 	return r
 
 
