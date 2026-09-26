@@ -9,8 +9,9 @@ func _look() -> SentinelLook:
 	var l := SentinelLook.new()
 	l.health = 1.0
 	l.ground = Ground.GRASS
-	l.feeds = 2
-	l.feeds_at_first = 2
+	# The smallest larder a starve way opens on (SentinelWay.FEEDS_LEAST).
+	l.feeds = 4
+	l.feeds_at_first = 4
 	return l
 
 
@@ -51,8 +52,8 @@ func test_starving_it_wants_its_works_gone_and_time_standing_dark() -> void:
 	var w := SentinelWay.make(SentinelWay.STARVE, 3000.0)
 	var l := _look()
 	check(not w.met(l), "fed, it keeps working")
-	l.feeds = 1
-	near(w.progress(l), 0.5, 1e-4, "one of its two works robbed is half the way")
+	l.feeds = 2
+	near(w.progress(l), 0.5, 1e-4, "two of its four works robbed is half the way")
 	check(not w.met(l), "but it is still fed")
 	l.feeds = 0
 	l.dark_ms = 1500.0

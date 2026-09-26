@@ -215,20 +215,41 @@ func test_a_keeper_has_enough_to_eat_where_it_actually_stands() -> void:
 				continue
 			var lair := Sentinels.lair(w, region, def)
 			var fed := Sentinels.feeds(w, lair, def)
-			# NONE IS ALLOWED AND ONE IS NOT. A region with nothing of the plan in
-			# it closes the way itself (`SentinelWay.progress`: a way with no larder
-			# "must never read as already won because there is nothing to break"),
-			# and that keeper is taken by force or foundering instead. What must not
-			# happen is the way standing OPEN on a larder so small that one press
-			# wins it, which is what the coast had.
-			if fed == 0:
+			# A LARDER TOO SMALL CLOSES THE WAY; IT NEVER STANDS OPEN ON ONE. A
+			# keeper with nothing of the plan round it, or too little, is taken by
+			# force or foundering instead. What must not happen is the way standing
+			# OPEN on a larder so small that one press wins it, which is what the
+			# coast had. Asked of the way itself, with every works robbed and the
+			# keeper dark past its hold.
+			var look := SentinelLook.new()
+			look.feeds_at_first = fed
+			look.feeds = 0
+			look.dark_ms = 1.0e9
+			var starve: SentinelWay = null
+			for way: SentinelWay in def.ways:
+				if way.kind == SentinelWay.STARVE:
+					starve = way
+			if starve.progress(look) <= 0.0:
 				continue
-			gt(fed, STARVE_LEAST - 1,
+			gt(fed, SentinelWay.FEEDS_LEAST - 1,
 				"seed %d: the %s keeper's starve way is open on %d works, which is %s"
 					% [s, def.land, fed, "one theft" if fed <= 1 else "too small a task"])
 
 
-## The fewest works a keeper may feed on and still have starving mean something.
-## Under this, robbing its larder is one or two presses and the way is won by
-## accident rather than chosen.
-const STARVE_LEAST := 4
+## Every larder under the least reads closed, however it is robbed; the least
+## opens, and robbing it all wins it.
+func test_a_larder_too_small_to_starve_never_opens_the_way() -> void:
+	var way := SentinelWay.new()
+	way.kind = SentinelWay.STARVE
+	way.hold_ms = 1000.0
+	for fed in range(0, SentinelWay.FEEDS_LEAST):
+		var look := SentinelLook.new()
+		look.feeds_at_first = fed
+		look.feeds = 0
+		look.dark_ms = 1.0e9
+		eq(way.progress(look), 0.0, "a larder of %d leaves the way closed" % fed)
+	var enough := SentinelLook.new()
+	enough.feeds_at_first = SentinelWay.FEEDS_LEAST
+	enough.feeds = 0
+	enough.dark_ms = 1.0e9
+	eq(way.progress(enough), 1.0, "a larder of %d, robbed and dark, is won" % SentinelWay.FEEDS_LEAST)
