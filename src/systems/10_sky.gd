@@ -259,10 +259,10 @@ func _update(delta: float, snap: bool) -> void:
 		target[k] = falls[k]
 	target.mist = target_mist
 	# How much the weather under the focus cuts a machine's sight (Weather's
-	# SIGHT_CUT, the rules' own number): the air of rain and of dust is drawn
+	# SIGHT_CUT, the rules' own number): the air of rain, fog and dust is drawn
 	# from it (SkyLight.sight_cut), so what is hidden looks hidden and no more.
 	var fam := Weather.family(wh.kind)
-	target.sight_cut = 0.0 if room or not (fam == &"rain" or fam == &"storm") \
+	target.sight_cut = 0.0 if room or not (fam == &"rain" or fam == &"storm" or fam == &"fog") \
 		else 1.0 - Weather.sight_factor(wh.kind, float(wh.strength))
 	target.wisp = 0.0 if room else wisp_amount(_here_def().wisps, Weather.night_fall(hour), float(target.rain) + float(target.drizzle), target_wind)
 	# What lies on the ground changes over hours: recompute once a world minute.

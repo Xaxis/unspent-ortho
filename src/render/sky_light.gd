@@ -423,7 +423,7 @@ const GLARE_GLOW := 1.2
 ## And how far it takes the sky's horizon to that colour (the top a little less).
 const DUST_SKY := 0.8
 ## How much the falling weather over the focus cuts sight (Weather.SIGHT_CUT x
-## strength), for the rain and storm families: their air is drawn from it.
+## strength), for the rain, storm and fog families: their air is drawn from it.
 var sight_cut := 0.0
 ## The airs over the focus: x rain falling now (rain and drizzle), y glare,
 ## z how warm the fog is drawn (furnace haze), w whiteout. (sky_air)
@@ -1017,7 +1017,7 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 			+ Air.frame_depth(_cam_size(), _cam_pitch()) + SHADOW_ROOM
 	_look_out(e, sm, a, horizon, nightly)
 	_dust_air(e, dust)
-	_rain_air(e)
+	_weather_air(e)
 	e.volumetric_fog_albedo = Air.colour(hor, a).lerp(a.dust, dust * DUST_TAKE).lerp(Color(1, 1, 1), 0.35 * (1.0 - dust))
 	e.volumetric_fog_ambient_inject = lerpf(0.35, 0.10, nightly)
 	# Volumetric air thickens in rain, in mist and at night, which is when a
@@ -1342,13 +1342,14 @@ func _dust_air(e: Environment, dust: float) -> void:
 	e.fog_density = lerpf(e.fog_density, maxf(e.fog_density, Air.MOST), k)
 
 
-## RAIN'S AIR IS WHAT RAIN HIDES, and no more. It was a uniform volumetric veil
+## RAIN'S AND FOG'S AIR IS WHAT THEY HIDE, and no more (snow, blizzard and
+## whiteout keep their own air, which already reads). It was a uniform volumetric veil
 ## at the full thickness of fog the moment rain fell (air.x), which flattened
 ## the drowned city's rings and hid far more than the rules do: rain cuts sight
 ## a tenth and a storm three tenths (Weather.SIGHT_CUT). So its air thickens in
 ## proportion to that cut (a full dust storm's 0.55 is the whole of it), and
 ## closes toward the distance a typical machine still sees through it.
-func _rain_air(e: Environment) -> void:
+func _weather_air(e: Environment) -> void:
 	if sight_cut <= 0.0:
 		return
 	var k := clampf(sight_cut / CUT_FULL, 0.0, 1.0)
