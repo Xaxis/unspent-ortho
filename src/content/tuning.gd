@@ -25,6 +25,8 @@ const START_HOUR := 8.0
 
 # --- Player movement ---
 const PLAYER_RADIUS := 0.28
+## How tall the player stands: the headroom a roof must leave (WorldQuery.passable).
+const PLAYER_HEIGHT := 1.8
 ## Tiles per second.
 const WALK_SPEED := 3.4
 const RUN_SPEED := 5.4

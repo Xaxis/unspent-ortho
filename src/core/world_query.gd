@@ -211,8 +211,15 @@ func standable(tx: int, ty: int, on: CraftRide = null, swims: bool = false) -> b
 
 ## A craft may step further than a body's one level: two is a cliff to a body and
 ## a stride to a walker rig.
-func passable(fx: int, fy: int, tx: int, ty: int, on: CraftRide = null, swims: bool = false) -> bool:
+##
+## `tall`: levels of headroom the body needs (a body `h` world units tall needs
+## ceili(h / STEP)). Where mass hangs over a tile (WorldData.overhead) a body
+## taller than the room under it cannot go there: a low roof is a wall to a
+## person and a crawlway to a runner. 0 asks nothing overhead.
+func passable(fx: int, fy: int, tx: int, ty: int, on: CraftRide = null, swims: bool = false, tall: int = 0) -> bool:
 	if not standable(tx, ty, on, swims):
+		return false
+	if tall > 0 and not world.overhead.is_empty() and world.headroom_at(tx, ty) < tall:
 		return false
 	if fx == tx and fy == ty:
 		return true
@@ -228,11 +235,11 @@ const SLIDE_MIN := 0.5
 ## walls. Returns the new position. Pushed into a circle the move is turned along
 ## its edge; testing x and y apart alone left a diagonal push dead against a
 ## trunk (both axes refused), so the player stuck instead of slipping past.
-func move_body(p: Vector2, delta: Vector2, r: float, on: CraftRide = null, swims: bool = false) -> Vector2:
+func move_body(p: Vector2, delta: Vector2, r: float, on: CraftRide = null, swims: bool = false, tall: int = 0) -> Vector2:
 	if delta.length_squared() < 1e-12:
 		return p
 	var full := p + delta
-	if _fits(p, full, r, on, swims):
+	if _fits(p, full, r, on, swims, tall):
 		return full
 	var hit := _blocker(p, full, r)
 	if hit.is_finite():
@@ -241,13 +248,13 @@ func move_body(p: Vector2, delta: Vector2, r: float, on: CraftRide = null, swims
 		var t := delta - n * delta.dot(n)
 		if t.length_squared() > delta.length_squared() * 1e-4:
 			var slide := t.normalized() * maxf(t.length(), delta.length() * SLIDE_MIN)
-			if _fits(p, p + slide, r, on, swims):
+			if _fits(p, p + slide, r, on, swims, tall):
 				return p + slide
 	var nx := Vector2(p.x + delta.x, p.y)
-	if not _fits(p, nx, r, on, swims):
+	if not _fits(p, nx, r, on, swims, tall):
 		nx = p
 	var ny := Vector2(nx.x, nx.y + delta.y)
-	if not _fits(nx, ny, r, on, swims):
+	if not _fits(nx, ny, r, on, swims, tall):
 		ny = nx
 	return ny
 
@@ -287,11 +294,11 @@ func _blocker(from: Vector2, to: Vector2, r: float) -> Vector2:
 	return best
 
 
-func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null, swims: bool = false) -> bool:
+func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null, swims: bool = false, tall: int = 0) -> bool:
 	var ftx := floori(from.x)
 	var fty := floori(from.y)
 	for c: Vector2 in [to, to + Vector2(-r, -r), to + Vector2(r, -r), to + Vector2(-r, r), to + Vector2(r, r)]:
-		if not passable(ftx, fty, floori(c.x), floori(c.y), on, swims):
+		if not passable(ftx, fty, floori(c.x), floori(c.y), on, swims, tall):
 			return false
 	var t := world.table
 	for row in rows_near(to, 2.0):

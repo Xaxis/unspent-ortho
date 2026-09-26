@@ -389,6 +389,15 @@ func _gather(head: Vector3, eye: Vector3) -> void:
 		if sys.has_method(&"sight_boxes"):
 			for b: PackedFloat32Array in sys.call(&"sight_boxes", mid, reach):
 				_boxes.append(b)
+	# Mass hanging over the ground near the line (WorldData.overhead): a roof is
+	# a wall to the eye, pulled in under it as against a wall.
+	var w := game.world
+	if not w.overhead.is_empty():
+		for ty in range(maxi(0, floori(mid.y - reach)), mini(w.size - 1, floori(mid.y + reach)) + 1):
+			for tx in range(maxi(0, floori(mid.x - reach)), mini(w.size - 1, floori(mid.x + reach)) + 1):
+				var o := w.overhead_at(tx, ty)
+				if o.x >= 0:
+					_boxes.append(Shoulder.box_over(tx, ty, float(o.x) * WorldData.STEP, float(o.y) * WorldData.STEP))
 	var seen := {}
 	var steps := Shoulder.steps_for(head.distance_to(eye))
 	# Once per TILE the line crosses: the walls are stamped by tile, and a step

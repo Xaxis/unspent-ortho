@@ -154,6 +154,14 @@ var ore_counted := false
 var section_rows: Dictionary = {}
 var section_spans: Dictionary = {}
 var sectioned := false
+## GROUND ABOVE THE GROUND (scratchpad DESIGN_ABOVE, S0): solid mass hanging
+## over a tile -- a cave's roof, an overhang, an arch -- from an underside level
+## up to a top level, at most one per tile. Sparse: tile index -> Vector3i(under,
+## over, kind). Nothing stands on one yet (Phase A); it is a ceiling to walk
+## under, a wall to see and throw through, a lid on a climb and a jump. Read
+## only through `overhead_at`, `headroom_at` and `solid_at`; empty, every read
+## is the heightfield's alone and costs one `is_empty`.
+var overhead: Dictionary = {}
 ## PROP IDS. A generated prop's id is (section << ORDINAL_BITS) | ordinal,
 ## the order its section laid it (GenIds): a change in one section renumbers
 ## no other, and a streamed section rebuilt from the plan gets the same ids.
@@ -262,6 +270,40 @@ func region_of(id: int) -> Dictionary:
 
 
 ## Height in world units of the ground surface under a point (sea floor clamps to 0).
+## The mass over tile (x, y): Vector3i(under, over, kind), or NO_OVERHEAD.
+const NO_OVERHEAD := Vector3i(-1, -1, 0)
+func overhead_at(x: int, y: int) -> Vector3i:
+	if overhead.is_empty() or x < 0 or y < 0 or x >= size or y >= size:
+		return NO_OVERHEAD
+	return overhead.get(y * size + x, NO_OVERHEAD)
+
+
+## Levels of room between tile (x, y)'s ground and the underside over it, or
+## OPEN_ABOVE where nothing hangs over it.
+const OPEN_ABOVE := 1 << 20
+func headroom_at(x: int, y: int) -> int:
+	var o := overhead_at(x, y)
+	if o.x < 0:
+		return OPEN_ABOVE
+	return o.x - maxi(0, level_at(x, y))
+
+
+## Is the point at (p, y) -- tile space, world height -- inside solid: under the
+## ground, or inside the mass hanging over its tile?
+func solid_at(p: Vector2, y: float) -> bool:
+	var tx := floori(p.x)
+	var ty := floori(p.y)
+	if y < float(maxi(0, level_at(tx, ty))) * STEP:
+		return true
+	var o := overhead_at(tx, ty)
+	return o.x >= 0 and y >= float(o.x) * STEP and y < float(o.y) * STEP
+
+
+## Hang mass over tile (x, y) from level `under` up to `over`.
+func set_overhead(x: int, y: int, under: int, over: int, kind: int = 0) -> void:
+	overhead[y * size + x] = Vector3i(under, over, kind)
+
+
 func height_at(p: Vector2) -> float:
 	return maxi(0, level_at(floori(p.x), floori(p.y))) * STEP
 

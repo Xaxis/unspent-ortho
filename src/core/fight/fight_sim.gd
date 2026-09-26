@@ -659,7 +659,7 @@ func _move_hero(dt: float) -> void:
 	v += _shouldered(dt)
 	var before := hero.pos
 	if v.length_squared() > 0.0:
-		hero.pos = query.move_body(hero.pos, v * dt, hero.radius, hero.ride, hero.swims) if query != null else hero.pos + v * dt
+		hero.pos = query.move_body(hero.pos, v * dt, hero.radius, hero.ride, hero.swims, HERO_TALL) if query != null else hero.pos + v * dt
 	hero.speed = before.distance_to(hero.pos) / dt
 	# Wind: spent on dodges, swings and running in a fight; back at 500/s otherwise.
 	if running and fight_on:
@@ -777,7 +777,7 @@ func _move_mob(m: MobState, dt: float) -> void:
 	# a walker's ride with a longer stride (`CraftRide.levels`, the one field
 	# `WorldQuery.passable` already reads for a walker rig). A climber does not
 	# swim: the ride answers deep water as a walker would.
-	var next := query.move_body(m.pos, v * dt, minf(m.radius, 0.45), climber(m.row), Swim.may_cross(m.row)) if query != null else m.pos + v * dt
+	var next := query.move_body(m.pos, v * dt, minf(m.radius, 0.45), climber(m.row), Swim.may_cross(m.row), tall_of(m.row)) if query != null else m.pos + v * dt
 	next = _held_by_walls(m, next)
 	var keeps: Array = m.row.get("keeps_to", [])
 	if not keeps.is_empty() and world != null:
@@ -955,6 +955,13 @@ var hero_level := -1
 
 func hero_level_now() -> int:
 	return hero_level if hero_level >= 0 else level_of(hero.pos)
+
+
+## Levels of headroom a body needs under a roof (WorldQuery.passable): its
+## roster height, or the player's.
+const HERO_TALL := int(ceil(Tuning.PLAYER_HEIGHT / WorldData.STEP))
+static func tall_of(row: Dictionary) -> int:
+	return int(ceil(float(row.get("height", 1.0)) / WorldData.STEP))
 
 
 ## Do the player and a body at `p` stand on levels a blow passes between?

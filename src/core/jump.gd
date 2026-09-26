@@ -91,6 +91,13 @@ static func _arc(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector
 		t += DT
 		vz -= GRAVITY * DT
 		h += vz * DT
+		# A roof over the body (WorldData.overhead) caps the rise: the head meets
+		# its underside, the body stops going up there and comes down sooner, so
+		# a jump under a low roof lands short of the same jump in the open.
+		var lid := _lid(world, at)
+		if h > lid:
+			h = lid
+			vz = minf(vz, 0.0)
 		if d != Vector2.ZERO:
 			at = _carry(world, query, at, d * speed * DT, radius, h, p.from_level, guard_drops)
 		var ground := _ground(world, at)
@@ -112,6 +119,15 @@ static func _arc(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector
 	p.too_deep = not guard_drops and not dived and p.to_level < p.from_level - DOWN_LEVELS
 	p.kind = _kind(p, crossed_gap, dived)
 	return p
+
+
+## The highest a body's feet can be at `at` with its head under the mass hanging
+## there (WorldData.overhead), or INF with nothing over it.
+static func _lid(world: WorldData, at: Vector2) -> float:
+	if world == null or world.overhead.is_empty():
+		return INF
+	var o := world.overhead_at(floori(at.x), floori(at.y))
+	return INF if o.x < 0 else float(o.x) * WorldData.STEP - Tuning.PLAYER_HEIGHT
 
 
 ## One step of the body through the air: blocked by ground higher than it is right

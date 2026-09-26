@@ -129,6 +129,13 @@ static func face(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector
 		var tt := Vector2i(floori(top.x), floori(top.y))
 		if world.level_at(tt.x, tt.y) != lv or (query != null and not query.standable(tt.x, tt.y)):
 			return {}
+		# Mass hanging over the face (WorldData.overhead): a climb is only as
+		# tall as the room over its foot, and a shelf with less than a body's
+		# room over it is no top. Nothing climbs a ceiling.
+		if not world.overhead.is_empty():
+			var tall := int(ceil(Tuning.PLAYER_HEIGHT / WorldData.STEP))
+			if world.headroom_at(here.x, here.y) < lv - from_level + tall or world.headroom_at(tt.x, tt.y) < tall:
+				return {}
 		return {"foot": from, "top": top, "wall": p - d * PROBE * 0.5, "from_level": from_level, "to_level": lv,
 			"from_height": world.height_at(from), "top_height": world.height_at(top)}
 	return {}
