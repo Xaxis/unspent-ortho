@@ -156,6 +156,10 @@ func _read_player() -> void:
 	var p := hero.pos
 	var ground := game.world.ground_at(floori(p.x), floori(p.y))
 	m.loudness = StealthNoise.loudness(hero.speed, ground, body.crouched, m.laden_tier)
+	# A room's hum over everything swallows a step (21_doors `room_hush`).
+	for sys: GameSystem in game.systems:
+		if sys.has_method(&"room_hush"):
+			m.loudness *= 1.0 - clampf(float(sys.call(&"room_hush")), 0.0, 1.0)
 	m.cover = _cover_now(p, m)
 	m.interference = interference.value(Interference.network(game.world, p))
 

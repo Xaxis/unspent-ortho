@@ -21,6 +21,7 @@ const RECIPES := {
 	&"tenement": "res://src/content/interiors/tenement.gd",
 	&"maintenance_bay": "res://src/content/interiors/maintenance_bay.gd",
 	&"foundry": "res://src/content/interiors/foundry.gd",
+	&"data_hall": "res://src/content/interiors/data_hall.gd",
 }
 
 static var _kinds: Dictionary = {}
@@ -155,6 +156,14 @@ const LOOT := {
 		{"item": &"scrap", "count": Vector2i(3, 6)},
 		{"item": &"blade_seal", "chance": 0.3},
 		{"item": &"record", "chance": 0.2},
+	],
+	# What the machines keep where they think: their own files, always, and now
+	# and then a damper -- a hall where the hum hides a body is where the thing
+	# that hides a blow is found.
+	&"data_hall": [
+		{"item": &"record", "count": Vector2i(2, 3)},
+		{"item": &"scrap", "count": Vector2i(1, 3)},
+		{"item": &"mod_damp", "chance": 0.3, "rarity": Rarity.RARE},
 	],
 	# What somebody kept who knew what was coming: their own records first, the
 	# makings of light, and the odd thing they took off a machine to study.

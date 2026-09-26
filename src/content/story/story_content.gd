@@ -1022,6 +1022,116 @@ const FRAGMENTS := {
 			"Nothing that walks could lift one.",
 		],
 	},
+	# --- a data hall under the server fields' sump (ROOMS: data_hall) ---------
+	# Leads only (docs/story/UNDER_THE_STONES.md, the owner's gate): each makes a
+	# careful player ask, none answers, none names what a gate names. No beats.
+	&"hall_job": {
+		"kind": &"terminal", "title": "the console at the aisles' head", "lands": [],
+		"lines": [
+			"  JOB 0001 ....... PREDICT",
+			"  STARTED ........ 11.03.2029",
+			"  SUBJECT ........ 1",
+			"  REMAINING ...... 71 H",
+			"",
+			"You watch it for a while. The hours left",
+			"do not go down.",
+		],
+	},
+	&"hall_login": {
+		"kind": &"terminal", "title": "the console at the aisles' head", "lands": [],
+		"lines": [
+			"  HUMAN LOGINS ... NOT REQUIRED",
+			"  LAST ........... 13.03.2029 23:52",
+			"  ACCOUNT ........ SERVICE",
+			"  SESSION ........ 6 H 10 M",
+			"  ACTION ......... NOT LOGGED",
+			"",
+			"It is the last line with a person in it.",
+		],
+	},
+	&"hall_index": {
+		"kind": &"terminal", "title": "the console at the aisles' head", "lands": [],
+		"lines": [
+			"  PERSONS IN HALL . 1",
+			"  ACTION ......... NONE REQUIRED",
+			"",
+			"It counted you in. It has not counted",
+			"you out.",
+		],
+	},
+	&"hall_bay_cold": {
+		"kind": &"sign", "title": "the empty bay", "lands": [],
+		"lines": [
+			"The one empty bay in all the racks. On its",
+			"plate:",
+			"  RESTORE POINT .. NONE BEFORE 14.03.2029",
+			"  CHECKED ........ DAILY",
+			"",
+			"The cold stands up out of it the same as",
+			"out of the full ones. It is being kept.",
+		],
+	},
+	&"hall_bay_rails": {
+		"kind": &"sign", "title": "the empty bay", "lands": [],
+		"lines": [
+			"  RESERVED  /  RESTORE POINT",
+			"  EARLIEST HELD .. 14.03.2029",
+			"",
+			"A bay the size of all the others, and",
+			"nothing in it. The rails inside are bright:",
+			"nothing has ever been slid along them.",
+		],
+	},
+	&"hall_bay_request": {
+		"kind": &"sign", "title": "the empty bay", "lands": [],
+		"lines": [
+			"  RESTORE TO ..... 13.03.2029",
+			"  REQUESTED BY ... NO SELF ON FILE",
+			"  STATUS ......... NOT HELD",
+			"",
+			"The request on the plate is dated today.",
+			"Under it, the same request, dated",
+			"yesterday.",
+		],
+	},
+	&"hall_rounds": {
+		"kind": &"notebook", "title": "a log in pencil", "lands": [],
+		"lines": [
+			"Squared paper in a binder, ruled by hand:",
+			"  02:10  watcher, aisle 1 to 4, back",
+			"  02:31  watcher",
+			"  02:52  watcher",
+			"",
+			"Every twenty-one minutes, every night, for",
+			"eleven binders. The pencil is down to a",
+			"stub, and there are more on the shelf.",
+		],
+	},
+	&"hall_copied": {
+		"kind": &"notebook", "title": "a log in pencil", "lands": [],
+		"lines": [
+			"One line a day, in pencil, copied off the",
+			"console at the aisles' head:",
+			"  job 1   left 71 h",
+			"  job 1   left 71 h",
+			"  job 1   left 71 h",
+			"",
+			"Four binders of it. Inside the back cover",
+			"of the last, in the same hand: who is it",
+		],
+	},
+	&"hall_pad": {
+		"kind": &"notebook", "title": "a pad of paper", "lands": [],
+		"lines": [
+			"The top sheet, in pencil:",
+			"  it reads everything that's lit.",
+			"  keep it on paper. keep it off the",
+			"  floor. don't say it near the racks.",
+			"",
+			"Pressed into the sheet from the one torn",
+			"off above it: three words, too faint to read.",
+		],
+	},
 	&"lobby_boxes": {
 		"kind": &"mark", "title": "the letterboxes", "lands": [],
 		"lines": [
@@ -1588,6 +1698,11 @@ const ROOMS := {
 	&"foundry": {
 		&"terminal:line_panel": [&"foundry_count", &"foundry_consignee", &"foundry_standing"],
 		&"wall:cast_rack": [&"foundry_lances", &"foundry_plate", &"foundry_barrels"],
+	},
+	&"data_hall": {
+		&"terminal:console": [&"hall_job", &"hall_login", &"hall_index"],
+		&"wall:restore_bay": [&"hall_bay_cold", &"hall_bay_rails", &"hall_bay_request"],
+		&"desk:paper_log": [&"hall_rounds", &"hall_copied", &"hall_pad"],
 	},
 }
 

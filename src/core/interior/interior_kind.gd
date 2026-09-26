@@ -27,6 +27,10 @@ var cut := 0.8
 ## harder to see. 0, the default, is a room that changes nothing about being
 ## seen. Its light is its things' `glare` (21_doors `room_dark`).
 var dark := 0.0
+## How much of a body's noise the room swallows, 0..1: a hum over everything
+## (a machines' data hall). Hearing inside is cut by it, as `dark` cuts sight
+## (32_disposition, through 21_doors `room_hush`). 0 changes nothing.
+var hush := 0.0
 ## The widest body that fits through the door (a big machine waits outside).
 var door_width := 0.9
 ## The script that lays it (`lay(rng) -> InteriorLayout`).
