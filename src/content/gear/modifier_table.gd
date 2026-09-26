@@ -104,6 +104,12 @@ const MODS := {
 		"short": "a way passed is shut",
 		"costs": "a charge a lock",
 		"gives": [&"charge"]},
+	# The frost sea listener's, turned (GEAR.md §5): `sight`, so it pairs with the
+	# scan head's `read` (PAIRS).
+	&"mod_listen": {"decision": "you hear a machine's tell behind you or past a wall, and it hears you as far",
+		"short": "you hear their tells",
+		"costs": "your noise carries half as far again",
+		"gives": [&"sight"]},
 	# The pan rake's, turned (GEAR.md §5): `loud`, so a damper fights it (PAIRS).
 	&"mod_rake": {"decision": "a heavy blow rakes the ground ahead and holds everything in the arc open, and rings for it",
 		"short": "a heavy rakes the arc",

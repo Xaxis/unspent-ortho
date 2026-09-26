@@ -39,6 +39,10 @@ extends RefCounted
 ##                            things no wider than LOCK_GAP that the player walks
 ##                            through is shut behind them to machines for
 ##                            LOCK_SECONDS (FightSim.lock_walls), for LOCK_CHARGES
+##   listen   (mod_listen)    "you hear their tells": a tell is drawn where it
+##                            cannot be seen, through whatever stands between
+##                            (40_fight); every noise the player makes is
+##                            LISTEN_NOISE as loud (`noise_scale`)
 ##   undertow (mod_undertow)  "your line hauls them in": the grapple takes hold
 ##                            of a machine ahead and drags it one body-length
 ##                            in (FightSim.undertow), its tell broken and its
@@ -93,6 +97,8 @@ const LOCK_SECONDS := 20.0
 const LOCK_CHARGES := 1
 ## Only with a machine coming for the player this near (FightSim._hunted_by_machine).
 const LOCK_HUNTED := 20.0
+## How much further the player's own noise carries with the ear on.
+const LISTEN_NOISE := 1.5
 ## A haul on a machine costs this many times the grapple's wind.
 const UNDERTOW_WIND := 2.0
 
@@ -108,6 +114,7 @@ var lattice := false
 var icelens := false
 var undertow := false
 var rake := false
+var listen := false
 var lock := false
 var anchor := false
 
@@ -127,6 +134,7 @@ static func of(ids: Array) -> FightKit:
 	k.icelens = ids.has(&"mod_icelens")
 	k.undertow = ids.has(&"mod_undertow")
 	k.rake = ids.has(&"mod_rake")
+	k.listen = ids.has(&"mod_listen")
 	k.lock = ids.has(&"mod_lock")
 	k.anchor = ids.has(&"mod_anchor")
 	return k
@@ -134,6 +142,11 @@ static func of(ids: Array) -> FightKit:
 
 static func from_loadout(l: Loadout) -> FightKit:
 	return of(l.all_ids()) if l != null else FightKit.new()
+
+
+## Every noise the player makes, as a share of what it would be bare.
+func noise_scale() -> float:
+	return LISTEN_NOISE if listen else 1.0
 
 
 ## A blow's noise as a share of a plain one's: `plate` when it rang off plate,

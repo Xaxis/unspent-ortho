@@ -985,10 +985,15 @@ static func ring(parent: Node, at: Vector3, col: Color, radius: float = 0.8, sec
 ## A bite's tell on the ground (FightRules.tell_ring): a dashed ring of the size
 ## of what it will strike, held for `seconds` (its windup), with a ring inside it
 ## closing on the middle that arrives as the bite goes live.
-static func tell_ring(parent: Node, at: Vector3, col: Color, radius: float, seconds: float) -> void:
+## `through`: drawn over whatever stands between it and the eye (the listener's
+## ear, FightKit.listen), where a flat mark under the close eye is depth-tested.
+static func tell_ring(parent: Node, at: Vector3, col: Color, radius: float, seconds: float, through := false) -> void:
 	if not _ok(parent):
 		return
-	_run(_mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_RING, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col), seconds)
+	var mi := _mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_RING, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col)
+	if through:
+		(mi.material_override as ShaderMaterial).shader = _shader(&"flat")
+	_run(mi, seconds)
 
 
 ## A throw's tell on the ground (FightRules.tell_lane): the lane it lands along,

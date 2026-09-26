@@ -434,7 +434,8 @@ func _handle(events: Array[Dictionary]) -> void:
 						MobFx.tell_line(fx, _at3(Vector2(lane.x, lane.y)), m.facing, lane.z, lane.w, Palette.LINEN[5], m.blow.windup / 1000.0)
 					else:
 						var ring := FightRules.tell_ring(m.pos, m.facing, m.radius, m.blow)
-						MobFx.tell_ring(fx, _at3(Vector2(ring.x, ring.y)), Palette.LINEN[5], ring.z, m.blow.windup / 1000.0)
+						# Heard through a wall with the listener's ear (FightKit.listen).
+						MobFx.tell_ring(fx, _at3(Vector2(ring.x, ring.y)), Palette.LINEN[5], ring.z, m.blow.windup / 1000.0, hero.kit.listen)
 			&"charge":
 				var m: MobState = e.mob
 				MobFx.puffs(fx, _at3(m.pos - m.bearing * m.radius), -m.bearing, _dust_colour(m.pos), 2, 0.5 + m.radius * 0.4, m.id + int(sim.now))

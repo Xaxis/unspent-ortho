@@ -440,6 +440,10 @@ const DEFS := {
 	# that shut the city's water in, turned. `charge` is its tag (ModifierTable).
 	&"mod_lock": {"name": "lock", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"brine", &"ink"], "fits": [&"back"], "resist": {&"wet": 0.2}},
+	# The frost sea listener's core, bound over one ear (GEAR.md §5): the keeper
+	# that heard the ice, turned. `sight` is its tag (ModifierTable).
+	&"mod_listen": {"name": "the ear", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"scan_lens", &"rime", &"ink"], "fits": [&"head"], "resist": {&"cold": 0.2}},
 	&"mod_undertow": {"name": "undertow", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"brine", &"earth"], "fits": [&"hands"], "resist": {&"magnetism": 0.3}},
 	# The crags' hush slate, lined into a hat, a coat or a pack: what it decides
