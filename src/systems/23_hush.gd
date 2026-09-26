@@ -6,6 +6,8 @@ extends GameSystem
 
 ## How far a tour looks for a ring to stand at.
 const TOUR_REACH := 160.0
+## The places `tour_place` answers (test_tour_claims holds every tour to them).
+const TOUR_PLACES: Array[String] = ["hush_ring", "nobodys_light", "ring_answer"]
 ## How far round the player rings are looked for (a ring's stones turn only
 ## within it), and how often (seconds).
 const LOOK := 40.0
