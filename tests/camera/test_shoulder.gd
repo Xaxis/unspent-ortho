@@ -374,32 +374,58 @@ func test_an_eye_that_would_stand_in_a_pole_stops_in_front_of_it() -> void:
 	gt(at.x, 2.5, "and no nearer than the pole asks")
 
 
-## A ROOM TOO TIGHT TO STAND BEHIND SOMEONE IS SEEN FROM THEIR FACE
+## A ROOM TOO TIGHT TO STAND BEHIND SOMEONE PUTS THEM IN A SIDE THIRD
 ## (Shoulder.crowd). Every step of the line behind refused, as in a bunker's
-## corridor with its wall at the player's back: pulled in beside the head, the
-## frame was the side of the skull (bunker.tour frame 04, 2026-09-25). The eye
-## goes to the face instead, looking where the view looks, and the body it
-## stands in is stippled away -- and with the room to stand back, none of that.
-func test_a_room_too_tight_to_stand_behind_is_seen_from_the_face() -> void:
+## corridor with its wall at the player's back: the eye came to half a metre
+## behind the head, dead in the middle of the frame (bunker.tour frame 04,
+## 2026-09-25). It stays third person, whole, and steps to the side with the
+## room -- the left, here, when a wall stands at the right.
+func test_a_room_too_tight_to_stand_behind_puts_the_player_to_one_side() -> void:
 	var g := await _make()
 	var cam := g.camera
 	cam.shoulder = true
 	cam.sight_room = func(_a: Vector3, _b: Vector3) -> float: return 1.0
+	cam.side_room = func(_a: Vector3, _b: Vector3) -> float: return 1.0
 	_step(cam, 40)
-	near(cam.yield_share, 0.0, 1e-6, "with room behind, the body is whole")
-	var yaw := cam.shoulder_yaw
+	near(float(cam.get("_side")), Shoulder.RIGHT, 1e-3, "with room behind, the ordinary shoulder")
 	# Every step of the line behind is refused; the short leg from the head to
 	# the shoulder point (under a unit) is clear, as it is beside any wall behind.
 	cam.sight_room = func(a: Vector3, b: Vector3) -> float: return 1.0 if a.distance_to(b) < 1.0 else 0.0
-	_step(cam, 60)
-	gt(cam.yield_share, 0.99, "crowded in, the body is stippled away (%.3f)" % cam.yield_share)
+	_step(cam, 90)
+	lt(cam.yield_share, 0.01, "crowded in, the body is still whole (%.3f)" % cam.yield_share)
+	near(float(cam.get("_side")), Shoulder.CROWD_SIDE, 0.02, "and the eye steps out to the crowded side")
 	var feet := cam.get("_smoothed") as Vector3
-	var face := feet + Vector3(0.0, Shoulder.EYE_UP, 0.0) + Vector3(-sin(deg_to_rad(yaw)), 0.0, -cos(deg_to_rad(yaw))) * Shoulder.EYE_FORWARD
-	lt(cam.global_position.distance_to(face), 0.05, "and the eye is where the player's are")
-	var ahead := -cam.global_transform.basis.z
-	var want := Shoulder.forward(yaw)
-	gt(Vector2(ahead.x, ahead.z).normalized().dot(want), 0.999, "looking where the view looked")
+	var head := feet + Vector3(0.0, Shoulder.HEAD_UP, 0.0)
+	var w := cam.get_viewport().get_visible_rect().size.x
+	var x := cam.unproject_position(head).x / w
+	check(x > 0.05 and x < 0.45, "the head is in the left of the frame, not its middle (%.2f)" % x)
+	# A wall close at the right: the eye goes to the left, the player to the right.
+	cam.side_room = func(a: Vector3, b: Vector3) -> float:
+		var r := Vector3(cos(deg_to_rad(cam.shoulder_yaw)), 0.0, -sin(deg_to_rad(cam.shoulder_yaw)))
+		return 0.2 if (b - a).dot(r) > 0.0 else 1.0
+	_step(cam, 120)
+	check(bool(cam.get("_crowd_left")), "the side with the room is taken")
+	near(float(cam.get("_side")), -Shoulder.CROWD_SIDE, 0.02, "and the eye is over there")
+	x = cam.unproject_position(head).x / w
+	check(x > 0.55 and x < 0.95, "so the head is in the right of the frame (%.2f)" % x)
+	lt(cam.yield_share, 0.01, "still whole")
 	_done()
+
+
+## The side is held until the other has clearly more room, so a crowded walk
+## past doorways does not swing the eye across the player at every one.
+func test_the_crowded_side_holds_until_the_other_is_clearly_roomier() -> void:
+	check(not Shoulder.crowd_left(false, 0.3, 0.3 + Shoulder.SIDE_SWITCH * 0.9), "a little more room at the left: stays right")
+	check(Shoulder.crowd_left(false, 0.3, 0.3 + Shoulder.SIDE_SWITCH * 1.1), "clearly more: goes left")
+	check(Shoulder.crowd_left(true, 0.3 + Shoulder.SIDE_SWITCH * 0.9, 0.3), "and back only for as clear a margin")
+	check(not Shoulder.crowd_left(true, 0.3 + Shoulder.SIDE_SWITCH * 1.1, 0.3), "which it then takes")
+
+
+## The body is stippled only by an eye actually in it, never by a crowded one.
+func test_the_body_goes_only_with_the_eye_inside_it() -> void:
+	eq(Shoulder.inside(Shoulder.INSIDE_FROM + 0.01), 0.0, "an eye outside the column leaves it whole")
+	eq(Shoulder.inside(1.05), 0.0, "as in the bunker's corridor")
+	eq(Shoulder.inside(Shoulder.INSIDE_FULL), 1.0, "and one in it takes it all")
 
 
 ## The rig stands the eye where the room says: asked in a running game with a
