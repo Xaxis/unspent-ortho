@@ -74,9 +74,11 @@ const SITES_BAR := 94.0
 ## these two are one measurement written out twice and must stay in step).
 func test_finding_them_costs_nothing_a_player_would_notice() -> void:
 	var w := WorldGen.generate(1, 512)
-	# Nothing here is remembered between asks, so every run is a cold one.
 	check(not Works.sites(w).is_empty(), "there is something to find")
+	# COLD, EVERY RUN: the answer is remembered per world, and a regression in the
+	# real sweep must not hide behind that, so each timed find forgets first.
 	var find := func() -> void:
+		Works.forget()
 		@warning_ignore("return_value_discarded")
 		Works.sites(w)
 	var twice := func() -> void:
@@ -95,6 +97,14 @@ func test_finding_them_costs_nothing_a_player_would_notice() -> void:
 	# number moves by two orders and that is exactly what should be caught here.
 	# In yardsticks (TestCase.yard_lt), not ms: CI's runner is another machine.
 	yard_lt(got[0], got[1], got[2], SITES_BAR, "finding the depots is not a stage a player waits through")
+	# And WARM, once found: the seventeen callers ask again for nothing.
+	@warning_ignore("return_value_discarded")
+	Works.sites(w)
+	var t := Time.get_ticks_usec()
+	var again := Works.sites(w)
+	var warm := Time.get_ticks_usec() - t
+	eq(again.size(), Works.sites(w).size(), "the remembered answer is the answer")
+	lt(float(warm), got[0] / 10.0, "asked again it costs %d us against %.0f cold" % [warm, got[0]])
 
 
 ## **AND THE SPEEDUP IS HELD TO BEING ONE, TILE FOR TILE.** `Works._room_at` reads
