@@ -2126,7 +2126,9 @@ void fragment() {
 	}
 	ALBEDO = matter_albedo(c);
 	ROUGHNESS = clamp(mr.x + rough_add, 0.04, 1.0);
-	SPECULAR = mr.y;
+	// Under a colossus's pad coming down the sun is gone, and its sheen with it.
+	float under_pad = sky_colossus_pads(world_pos);
+	SPECULAR = mr.y * (1.0 - under_pad);
 	METALLIC = mr.w;
 	// THE TILE LATTICE MUST NOT REACH THE EYE (CLAUDE.md: no grid on screen).
 	//
@@ -2148,8 +2150,10 @@ void fragment() {
 	if (unh < 0.5) {
 		NORMAL = matter_bump(NORMAL, world_pos, m, mr.z * relief);
 	}
+	// What the wet ground mirrors is the sky, and under a colossus's pad coming
+	// down there is none left to mirror (sky.gdshaderinc `sky_colossus_pads`).
 	EMISSION = matter_light(c * emission_strength + emit)
-		+ matter_light(neon_reflect(world_pos, px) + neon_skyglow(c));
+		+ matter_light(neon_reflect(world_pos, px) * (1.0 - under_pad) + neon_skyglow(c));
 	// A blow's paper-white, as a sphere in world space: only the part that was
 	// struck goes to paper, so the body it landed on is still showing while the
 	// mark proves the hit (docs/LOOK.md; and see found.gdshader, which carries

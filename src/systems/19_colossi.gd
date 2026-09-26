@@ -308,6 +308,11 @@ var _warned: Dictionary = {}
 var warnings := 0
 ## Whether a marked pad has still to land.
 var _marked := false
+## Pads coming down near the player, for the shade straight under them:
+## [pads (Array[Vector3], tile space), world minute warned, world minute it lands].
+var _coming: Array = []
+## How many pads' shade is on the land this frame (--stats; a tour).
+var pad_shades := 0
 
 
 ## WHAT THE FEET IN THE TREADS DO TO THE REGION, from the clock: which pads stop
@@ -342,6 +347,7 @@ func _treads(m: float, delta: float) -> void:
 		_marked = false
 	if not skipped:
 		_warn(m)
+	_shade_pads(m)
 	if circles != blocks:
 		blocks = circles
 		if game.query != null:
@@ -365,15 +371,45 @@ func _warn(m: float) -> void:
 				continue
 			_warned[key] = true
 			var t: Vector4 = o.tread
-			var seconds := _until_down(d, view.routes[i], m, int(o.leg)) / maxf(lead / WARN_SECONDS, 1e-3)
+			var until := _until_down(d, view.routes[i], m, int(o.leg))
+			var seconds := until / maxf(lead / WARN_SECONDS, 1e-3)
+			var near: Array[Vector3] = []
 			for p: Vector3 in Treads.pads(d, Vector2(t.x, t.z), t.w):
 				var at := Vector2(p.x, p.y)
 				if at.distance_to(game.player.pos) > WARN_REACH + p.z:
 					continue
 				MobFx.tell_shade(game, game.world.to_3d(at), Palette.INK[1], p.z, seconds,
 					game.camera != null and game.camera.shoulder)
+				near.append(p)
 				warnings += 1
 				_marked = true
+			if not near.is_empty():
+				_coming.append([near, m, m + until])
+
+
+## The shade straight under every pad coming down near the player, deepening
+## from its warning to its landing, handed to the land (sky.gdshaderinc
+## `colossus_pads`). Once it has landed the foot stands there itself.
+func _shade_pads(m: float) -> void:
+	var cols: Array[Vector4] = [Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO]
+	var n := 0
+	var keep: Array = []
+	for c: Array in _coming:
+		var from: float = c[1]
+		var to: float = c[2]
+		if is_nan(m) or m >= to or m < from - 1.0:
+			continue
+		keep.append(c)
+		var k := clampf((m - from) / maxf(to - from, 1e-3), 0.0, 1.0)
+		for p: Vector3 in (c[0] as Array):
+			if n < 4:
+				cols[n] = Vector4(p.x, p.y, p.z, 0.55 + 0.45 * k * k * (3.0 - 2.0 * k))
+				n += 1
+	_coming = keep
+	if n == 0 and pad_shades == 0:
+		return
+	pad_shades = n
+	RenderingServer.global_shader_parameter_set(&"colossus_pads", Projection(cols[0], cols[1], cols[2], cols[3]))
 
 
 ## World minutes from `m` until leg `leg` of this walk stands in its tread

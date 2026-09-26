@@ -220,10 +220,10 @@ vec4 tell_drop(vec2 p, vec2 px, float pr) {
 	return inked(outer, MARK_HALO);
 }
 
-// A shadow thrown from far above (a colossus's pad): the whole disc inside a
-// fine dashed ring, filled by an ordered stipple that thickens with progress
-// from nothing to three pixels in four, so the ground under it dims all at once
-// and ever more, rather than a spot growing in the middle. Ink, never a tint.
+// A shadow thrown from far above (a colossus's pad): a fine dashed ring round
+// the ground it will cover, with a light ordered stipple inside thickening to
+// one pixel in four. The dark itself is the land's own shade (sky.gdshaderinc
+// `colossus_pads`, lit, not drawn); this is only the edge a player reads it by.
 vec4 tell_shade(vec2 p, vec2 px, float pr) {
 	float r = length(p);
 	float pw = max(fwidth(r), 1e-4) * PEN;
@@ -233,7 +233,7 @@ vec4 tell_shade(vec2 p, vec2 px, float pr) {
 	vec2 c = mod(px, 4.0);
 	int i = int(c.x) + int(c.y) * 4;
 	const float B[16] = float[](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
-	if (r < R && (B[i] + 0.5) / 16.0 < 0.75 * pr) {
+	if (r < R && (B[i] + 0.5) / 16.0 < 0.25 * pr) {
 		return ink_out();
 	}
 	return inked(outer, MARK_HALO);

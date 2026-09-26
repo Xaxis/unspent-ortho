@@ -263,6 +263,11 @@ void fragment() {
 	float top_down = 1.0 - clamp(sky_focus.w, 0.0, 1.0);
 	float caught = max(sun_path(wp), sea_glints(wp, TIME));
 	SPECULAR = SEA_SPECULAR * mix(1.0, mix(OFF_PATH, 1.0, caught), day * top_down);
+	// Under a colossus's pad coming down there is no sky left to mirror
+	// (sky.gdshaderinc `sky_colossus_pads`): the water goes dark with the land.
+	float under_pad = sky_colossus_pads(world_pos);
+	SPECULAR *= 1.0 - under_pad;
+	ROUGHNESS = mix(ROUGHNESS, 1.0, under_pad);
 	METALLIC = 0.0;
 	// The surface's own chop, small and slow, so the reflection breaks up the
 	// way water does instead of standing as a mirror.
