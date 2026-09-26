@@ -18,6 +18,14 @@ class_name Portals
 ## biggest region first, on bare ground at the foot of a tall face, clear of the
 ## villages and the roads. A region that has no such place has no shaft, and the
 ## indices close up, so a world always has shaft 0 if it has any at all.
+##
+## **SITED ON THE LAND ALONE, IN GENERATION** (`site`, before any prop is laid,
+## which then keeps HOLD tiles round each clear). An era pairs with the surface by
+## index AND shares its coordinates, so shaft i has to be the same tile in both
+## times; sited against the props, it was not, because 2029 has none of the
+## plan's works and the scatter packs differently round where they would stand
+## (seed 4 at 192: 405 solid tiles only in the present, 361 only in 2029, and the
+## two times opened shafts in different regions).
 
 ## At most this many shafts in one world: a handful is a map a player can hold.
 const MOST := 4
@@ -77,12 +85,25 @@ static var _cache: Dictionary = {}
 static func in_world(w: WorldData) -> Array[Portal]:
 	if w == null:
 		return []
+	if w.shafts_sited:
+		return w.shafts
 	var key := w.get_instance_id()
 	if _cache.has(key):
 		return _cache[key]
-	var out := _lay(w)
+	var out := _lay(w, false)
 	_cache[key] = out
 	return out
+
+
+## Tiles round a shaft that nothing laid after it may stand on: the mouth, and
+## the room in front of it `_score` asks for (3.5 tiles out) with the step off.
+const HOLD := 4
+
+
+## The shafts of a world being generated, from its land alone: nothing stands on
+## it yet, so no prop can decide where they go.
+static func site(w: WorldData) -> Array[Portal]:
+	return _lay(w, true)
 
 
 static func forget() -> void:
@@ -126,8 +147,8 @@ static func landing(w: WorldData, id: int) -> Vector2:
 
 ## The nearest tile to `p` a body can stand on, searched outward; `fallback` is
 ## what comes back when nothing near it will do.
-static func standing(w: WorldData, p: Vector2, fallback: Vector2) -> Vector2:
-	var solid := GenPlaces.solid_mask(w)
+static func standing(w: WorldData, p: Vector2, fallback: Vector2, bare: bool = false) -> Vector2:
+	var solid := PackedByteArray() if bare else GenPlaces.solid_mask(w)
 	var px := floori(p.x)
 	var py := floori(p.y)
 	for r in 8:
@@ -142,10 +163,12 @@ static func standing(w: WorldData, p: Vector2, fallback: Vector2) -> Vector2:
 
 # --- laying them -------------------------------------------------------------
 
-static func _lay(w: WorldData) -> Array[Portal]:
+## `bare`: on the land alone, no prop in the way (generation, `site`); else on
+## the world's own props (a world built by hand, whose shafts were never sited).
+static func _lay(w: WorldData, bare: bool) -> Array[Portal]:
+	var solid := PackedByteArray() if bare else GenPlaces.solid_mask(w)
 	var out: Array[Portal] = []
 	var to := Realm.beyond(w.realm)
-	var solid := GenPlaces.solid_mask(w)
 	# A WAY DOWN ON EVERY LANDMASS, not `MOST` for the whole world. The cap was
 	# written when a world was one island and it is still right for one; with
 	# continents it meant the first landmass to yield a shaft could take every
@@ -191,7 +214,7 @@ static func _lay(w: WorldData) -> Array[Portal]:
 	if out.is_empty():
 		var last := Portal.new()
 		var away := maxf(8.0, w.size * CLEAR_SPAWN)
-		last.pos = standing(w, w.spawn + Vector2(away, away) * 0.71, w.spawn)
+		last.pos = standing(w, w.spawn + Vector2(away, away) * 0.71, w.spawn, bare)
 		out.append(last)
 	for i in out.size():
 		out[i].id = i
@@ -324,7 +347,8 @@ static func _stands(w: WorldData, solid: PackedByteArray, x: int, y: int) -> boo
 	var i := y * w.size + x
 	if w.level[i] < 1 or Ground.is_water(w.ground[i]) or w.ground[i] == Ground.ROAD:
 		return false
-	if solid[i] != 0:
+	# An empty mask is bare land: nothing stands on it yet (`site`).
+	if not solid.is_empty() and solid[i] != 0:
 		return false
 	var l := w.level[i]
 	if absi(w.level[i - 1] - l) > 1 or absi(w.level[i + 1] - l) > 1:

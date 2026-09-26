@@ -164,61 +164,32 @@ func test_no_stair_notches_or_chequers() -> void:
 const WASH_BAR := 0.03
 const WASH_MOST := 2.0 / 3.0
 const WASH_CEILING := 2.2
+## Tiles from another country's border before a tile is a country's CORE, where
+## this test measures. Snow and ash cross a border in the ecotone and a long
+## border carries a lot of it: seed 42's middens took the Burning's drift to
+## 7.1% of the whole landscape, every tile of it within 32 of the border and 92%
+## within 16. Measured past the border's reach, a landscape's own ground is what
+## is left, and the bar is held there.
+const CORE_FROM := 18.0
 
 
 func test_snow_and_ash_keep_to_their_countries() -> void:
 	# Snow creeps down ridges and ash drifts over the rim, inside the ecotone:
-	# never more than 3% of another country.
+	# past it, in a country's core, never more than 3% of another country.
 	# TWO THIRDS OF THE SAMPLE, not every last row, and the value is untouched.
 	#
 	# The header below worked out that a landscape's seed-to-seed spread is about
 	# 0.04 and moved the bar from 0.25 to 0.28 to stand clear of it. That was
 	# right and it is still not enough, because the spread is not a property of
 	# the landscape — it is a property of the ISLAND, and every landscape added to
-	# the registry re-rolls every seed's layout. Measured today: adding one type
-	# put the Burning at 0.2803, adding four put it at 0.2900, and moving one of
-	# those four left its number identical to eleven places. Nothing about the
-	# Burning changed in any of it.
-	#
-	# So a per-seed absolute bar fails for whatever moved the island last, and the
-	# owner has asked for a dozen more landscapes. What is kept is the VALUE — a
+	# the registry re-rolls every seed's layout. So what is kept is the VALUE — a
 	# ground that has really broken up still has to be caught — and what changes
-	# is how much of the sample has to clear it, plus a hard ceiling no amount of
-	# noise can reach. Same medicine df used on `test_every_landscape_holds_its_own_works`.
+	# is how much of the sample has to clear it, plus a hard ceiling. Same
+	# medicine df used on `test_every_landscape_holds_its_own_works`.
 	var rows: Array = []
 	for s in Worlds.WORLD_SEEDS:
-		var w := Worlds.world(s)
-		var land := PackedFloat32Array()
-		land.resize(BiomeRegistry.count())
-		var snow := PackedFloat32Array()
-		snow.resize(BiomeRegistry.count())
-		var ash := PackedFloat32Array()
-		ash.resize(BiomeRegistry.count())
-		for i in w.ground.size():
-			if w.level[i] <= 0:
-				continue
-			var c := w.country[i]
-			land[c] += 1.0
-			if w.ground[i] == Ground.SNOW:
-				snow[c] += 1.0
-			elif w.ground[i] == Ground.ASH:
-				ash[c] += 1.0
-		# ACROSS THE SAMPLE, WITH A CEILING NOISE CANNOT REACH. Snow and ash cross a
-		# border in the ecotone, so how much a neighbour carries depends on how long
-		# its border with the source is against its own area — which moves every
-		# time the layout does, and the layout moves every time a landscape is added
-		# or a continent is dealt. One neighbour at 0.047 against a 0.03 bar is that
-		# geometry, not snow in the wrong country. A whole landscape wearing another
-		# one's ground shows up at several times the bar, so the ceiling catches the
-		# failure this is actually for while the share stops it failing on a border
-		# that happens to be long.
-		for c: int in BiomeRegistry.land_indices_in(w.realm):
-			if land[c] < 400.0:
-				continue
-			if c != Country.SNOWFIELD:
-				rows.append([snow[c] / land[c], "snow", BiomeRegistry.name_of(c), s])
-			if c != Country.BURNING:
-				rows.append([ash[c] / land[c], "ash", BiomeRegistry.name_of(c), s])
+		rows.append_array(wash_rows(Worlds.world(s), s))
+	gt(float(rows.size()), 30.0, "enough landscapes have a core to measure")
 	var over := 0
 	var worst := 0.0
 	var worst_says := ""
@@ -229,10 +200,81 @@ func test_snow_and_ash_keep_to_their_countries() -> void:
 			worst = float(r[0])
 			worst_says = "seed %d %s in %s" % [int(r[3]), r[1], r[2]]
 		check(float(r[0]) < WASH_BAR * WASH_CEILING,
-			"seed %d %s in %s is wearing it, not catching it: %.3f" % [int(r[3]), r[1], r[2], float(r[0])])
+			"seed %d %s in %s's core is wearing it, not catching it: %.3f" % [int(r[3]), r[1], r[2], float(r[0])])
 	gt(float(over), float(rows.size()) * WASH_MOST - 0.5,
 		"%d of %d land-and-seed rows keep their own ground (worst %s at %.3f)"
 			% [over, rows.size(), worst_says, worst])
+
+
+## The measure itself must catch what it is for: another landscape's ground
+## laid across a landscape's heart. Ash planted over a sixth of one core (from
+## its middle out) puts that landscape's row over the ceiling.
+func test_a_foreign_wash_in_a_core_is_caught() -> void:
+	var w := Worlds.world(Worlds.WORLD_SEEDS[0])
+	var core := _cores(w)
+	var target := Country.COAST
+	var tiles := PackedInt32Array()
+	for i in w.ground.size():
+		if core[i] != 0 and w.level[i] > 0 and w.country[i] == target:
+			tiles.append(i)
+	gt(float(tiles.size()), 400.0, "the coast has a core to plant in")
+	var was := w.ground.duplicate()
+	for k in range(0, tiles.size(), 6):
+		w.ground[tiles[k]] = Ground.ASH
+	var caught := false
+	for r: Array in wash_rows(w, Worlds.WORLD_SEEDS[0]):
+		if r[1] == "ash" and r[2] == BiomeRegistry.name_of(target):
+			caught = float(r[0]) >= WASH_BAR * WASH_CEILING
+	w.ground = was
+	check(caught, "ash over a sixth of the coast's core is caught")
+
+
+## 1 where a land tile is more than CORE_FROM from any tile of another country.
+static func _cores(w: WorldData) -> PackedByteArray:
+	var edge := PackedByteArray()
+	edge.resize(w.size * w.size)
+	for y in range(1, w.size - 1):
+		for x in range(1, w.size - 1):
+			var i := y * w.size + x
+			var c := w.country[i]
+			if w.country[i - 1] != c or w.country[i + 1] != c or w.country[i - w.size] != c or w.country[i + w.size] != c:
+				edge[i] = 1
+	var d := WorldGen.distance_field(edge, w.size)
+	var out := PackedByteArray()
+	out.resize(w.size * w.size)
+	for i in out.size():
+		out[i] = 1 if d[i] > CORE_FROM else 0
+	return out
+
+
+## [share, "snow" | "ash", landscape, seed] for each landscape with 400 tiles of
+## core, the share of its core wearing the snowfield's or the Burning's ground.
+static func wash_rows(w: WorldData, s: int) -> Array:
+	var core := _cores(w)
+	var land := PackedFloat32Array()
+	land.resize(BiomeRegistry.count())
+	var snow := PackedFloat32Array()
+	snow.resize(BiomeRegistry.count())
+	var ash := PackedFloat32Array()
+	ash.resize(BiomeRegistry.count())
+	for i in w.ground.size():
+		if w.level[i] <= 0 or core[i] == 0:
+			continue
+		var c := w.country[i]
+		land[c] += 1.0
+		if w.ground[i] == Ground.SNOW:
+			snow[c] += 1.0
+		elif w.ground[i] == Ground.ASH:
+			ash[c] += 1.0
+	var rows: Array = []
+	for c: int in BiomeRegistry.land_indices_in(w.realm):
+		if land[c] < 400.0:
+			continue
+		if c != Country.SNOWFIELD:
+			rows.append([snow[c] / land[c], "snow", BiomeRegistry.name_of(c), s])
+		if c != Country.BURNING:
+			rows.append([ash[c] / land[c], "ash", BiomeRegistry.name_of(c), s])
+	return rows
 
 
 func test_heath_drapes_across_terraces() -> void:

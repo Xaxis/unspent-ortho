@@ -33,12 +33,15 @@ const WIND_BEARING := 0.42
 ## coarse `world_far.gd` carries the world, because a chunk is the wrong unit for
 ## looking at an island: see that file's header for the measurement.
 @export var near_limit := 110.0
-## How many chunks are kept built after they leave the view. **This is what
-## stops a zoom out, in and out again rebuilding the world** -- a chunk that
+## How many bytes of chunks are kept built after they leave the view. **This is
+## what stops a zoom out, in and out again rebuilding the world** -- a chunk that
 ## leaves the square is taken out of the scene, not thrown away, and coming back
-## costs nothing. 192 covers the whole near square at `near_limit` three times
-## over, so ordinary play never evicts anything.
-@export var park_most := 192
+## costs nothing. It is bytes, not a count, because a chunk of city is several
+## times one of sea; and a chunk further than the camera could ever ask for from
+## here (`_park_reach`) is let go whatever the budget, because only walking back
+## brings it in and walking back builds anyway. Measured on a ten-minute walk
+## across seed 1, a count of 192 held 1.2 GB of chunks hundreds of tiles behind.
+@export var park_budget := 160 * 1024 * 1024
 ## Build streamed chunks on a worker thread (off: build in _process).
 @export var threaded := true
 
@@ -97,6 +100,9 @@ var _chunks: Dictionary = {} # Vector2i -> Node3D
 var _parked: Dictionary = {} # Vector2i -> Node3D
 var _park_seen: Dictionary = {} # Vector2i -> int, for evicting the least recently wanted
 var _park_clock := 0
+## What each built chunk's arrays came to, for `park_budget`.
+var _chunk_bytes: Dictionary = {} # Vector2i -> int
+var park_bytes := 0
 ## The whole world, coarse, built once and never dropped.
 var far: Far
 var _far_tables: Array = []
@@ -111,6 +117,8 @@ var _far_keys: Array[Vector2i] = []
 var _far_out: Array = []
 ## A stand worker's props, made on the main thread when it is handed its block.
 var _far_in: Array = []
+## The silhouette levels (Far.CLOSE, Far.COARSE) a stand worker is building.
+var _far_mask: Array[int] = []
 var _far_at: Array[int] = []
 ## What each far slot is building: a block's LAND, or its STANDS (world_far's
 ## silhouettes), which are only built once the horizon has been seen.
@@ -242,9 +250,8 @@ func rebind(w: WorldData) -> void:
 		(_chunks[key] as Node3D).queue_free()
 	_chunks.clear()
 	for key: Vector2i in _parked.keys():
-		(_parked[key] as Node3D).queue_free()
-	_parked.clear()
-	_park_seen.clear()
+		_let_go(key)
+	_chunk_bytes.clear()
 	_data.clear()
 	if far != null:
 		remove_child(far)
@@ -306,6 +313,7 @@ func _bind(w: WorldData) -> void:
 		_far_keys.append(Vector2i.ZERO)
 		_far_out.append([])
 		_far_in.append([])
+		_far_mask.append(0)
 		_far_at.append(0)
 		_far_kind.append(LAND)
 	far = Far.new()
@@ -472,22 +480,30 @@ func _revive(key: Vector2i) -> void:
 	var node: Node3D = _parked[key]
 	_parked.erase(key)
 	_park_seen.erase(key)
+	park_bytes -= int(_chunk_bytes.get(key, 0))
 	add_child(node)
 	_chunks[key] = node
 	_mask_dirty = true
 
 
-## Take a chunk out of the scene but keep it built. The least recently wanted
-## are let go once the park is full, and only THEY lose their height data.
+## Take a chunk out of the scene but keep it built. Parked chunks past
+## `_park_reach` are let go, then the least recently wanted until the park fits
+## `park_budget`; only THEY lose their height data.
 func _park(key: Vector2i) -> void:
 	var node: Node3D = _chunks[key]
 	remove_child(node)
 	_chunks.erase(key)
 	_mask_dirty = true
 	_parked[key] = node
+	park_bytes += int(_chunk_bytes.get(key, 0))
 	_park_clock += 1
 	_park_seen[key] = _park_clock
-	while _parked.size() > park_most:
+	var reach := _park_reach()
+	for k: Vector2i in _parked.keys():
+		var mid := (Vector2(k) + Vector2(0.5, 0.5)) * CHUNK
+		if maxf(absf(mid.x - focus.x), absf(mid.y - focus.y)) > reach:
+			_let_go(k)
+	while park_bytes > park_budget and not _parked.is_empty():
 		var oldest := Vector2i.ZERO
 		var oldest_at := 0x7FFFFFFF
 		for k: Vector2i in _parked.keys():
@@ -495,10 +511,24 @@ func _park(key: Vector2i) -> void:
 			if at < oldest_at:
 				oldest_at = at
 				oldest = k
-		(_parked[oldest] as Node3D).queue_free()
-		_parked.erase(oldest)
-		_park_seen.erase(oldest)
-		_data.erase(oldest)
+		_let_go(oldest)
+
+
+## Free a parked chunk; it is built again if it is wanted again.
+func _let_go(key: Vector2i) -> void:
+	(_parked[key] as Node3D).queue_free()
+	_parked.erase(key)
+	_park_seen.erase(key)
+	park_bytes -= int(_chunk_bytes.get(key, 0))
+	_chunk_bytes.erase(key)
+	_data.erase(key)
+
+
+## The furthest a chunk's middle can be from the focus and still be wanted by
+## any camera without the focus moving: the whole near square at `near_limit`,
+## held to `keep`, plus half a chunk.
+func _park_reach() -> float:
+	return near_limit + margin + keep + CHUNK * 0.5
 
 
 ## Build every chunk near the focus synchronously.
@@ -873,7 +903,7 @@ func _far_step(near_busy: bool) -> void:
 			_far_tasks[i] = -1
 			var t_main := Time.get_ticks_usec()
 			if _far_kind[i] == STANDS:
-				far.add_stands(_far_keys[i], _far_out[i], _stand_mats())
+				far.add_stands(_far_keys[i], _far_out[i], _stand_mats(), _far_mask[i])
 			else:
 				far.add_block(_far_keys[i], _far_out[i], _far_land_mat, _far_water_mat)
 			var main_cost := (Time.get_ticks_usec() - t_main) / 1000.0
@@ -895,8 +925,9 @@ func _far_step(near_busy: bool) -> void:
 	far.set_shown(_lod_on or view_half_extent() > near_limit)
 	if not _stands_wanted and (stands_early or is_inside_tree() and SkyLight.sees_horizon(get_viewport().get_camera_3d())):
 		_stands_wanted = true
+	_far_evict()
 	var land_left := not far.done(world.size)
-	if not land_left and (not _stands_wanted or far.stands_done(world.size)):
+	if not land_left and (not _stands_wanted or far.stands_settled(_stand_want)):
 		return
 	# Collecting a finished block above is CHEAP ON AVERAGE and always worth doing;
 	# STARTING one is what yields. So this sits here rather than at the top, or a
@@ -924,12 +955,13 @@ func _far_step(near_busy: bool) -> void:
 		var key := far.next_block(world.size, focus, busy)
 		if key.x < 0 and _stands_wanted:
 			kind = STANDS
-			key = far.next_stand(world.size, focus, busy)
+			key = far.next_stand(_stand_want, focus, busy)
 		if key.x < 0:
 			return
 		busy[key] = true
 		_far_keys[i] = key
 		_far_kind[i] = kind
+		_far_mask[i] = _stand_want(key) & ~far.stood(key) if kind == STANDS else 0
 		_far_in[i] = _stand_props(key) if kind == STANDS else []
 		_far_at[i] = 0
 		_far_tasks[i] = WorkerThreadPool.add_task(_far_worker.bind(i, key), false, "far")
@@ -946,7 +978,7 @@ func ensure_far() -> void:
 		if _far_tasks[i] >= 0:
 			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
 			if _far_kind[i] == STANDS:
-				far.add_stands(_far_keys[i], _far_out[i], _stand_mats())
+				far.add_stands(_far_keys[i], _far_out[i], _stand_mats(), _far_mask[i])
 			else:
 				far.add_block(_far_keys[i], _far_out[i], _far_land_mat, _far_water_mat)
 			_far_tasks[i] = -1
@@ -960,13 +992,98 @@ func ensure_far() -> void:
 		far_ms += (Time.get_ticks_usec() - t0) / 1000.0
 		far_count += 1
 	_stands_wanted = true
-	while not far.stands_done(world.size):
-		var key := far.next_stand(world.size, focus, {})
+	while true:
+		var key := far.next_stand(_stand_want, focus, {})
 		if key.x < 0:
 			break
-		far.add_stands(key, Far.stand_arrays(world, _stand_props(key)), _stand_mats())
+		var need := _stand_want(key) & ~far.stood(key)
+		far.add_stands(key, Far.stand_arrays(world, _stand_props(key), need), _stand_mats(), need)
 	while far.pump():
 		pass
+
+
+## THE FAR SILHOUETTES ARE KEPT WHERE THEY CAN BE SEEN (the streaming design's far
+## tiers). Built for the whole island they were 544 MB of mesh (331 of it the
+## close level), and on the web the tab kept that for good. The close level is
+## drawn only within Far.FAR_AT of an eye, the coarse one only out to where the
+## air closes (SkyLight.SEE) or, from above, to the edge of what the camera takes
+## in; past that neither draws, so letting them go there loses nothing on screen.
+## A level is wanted inside its reach and a margin, and kept until a wider one,
+## so walking along the edge does not build and drop the same block by turns.
+const CLOSE_WANT := Far.FAR_AT + 64.0
+const CLOSE_KEEP := Far.FAR_AT + 128.0
+const COARSE_WANT := 64.0
+const COARSE_KEEP := 192.0
+## And whatever the distances say, the silhouettes held stay under this many
+## bytes of mesh: the farthest levels held past their reach go first.
+const STAND_BUDGET := 256 * 1024 * 1024
+
+
+## How far the coarse silhouettes are seen from this camera.
+func _coarse_reach() -> float:
+	return SkyLight.SEE if _lod_on else maxf(near_limit, view_half_extent() * 1.5)
+
+
+func _stand_d(key: Vector2i) -> float:
+	return (Vector2(key) + Vector2(0.5, 0.5)).distance_to(focus / Far.BLOCK) * Far.BLOCK
+
+
+## The silhouette levels block `key` should have built, from here.
+func _stand_want(key: Vector2i) -> int:
+	var d := _stand_d(key)
+	var out := 0
+	if (_lod_on or stands_early) and d <= CLOSE_WANT:
+		out |= Far.CLOSE
+	if d <= _coarse_reach() + COARSE_WANT:
+		out |= Far.COARSE
+	return out
+
+
+## The levels block `key` may keep, from here: a little wider than it wants.
+func _stand_keep(key: Vector2i) -> int:
+	var d := _stand_d(key)
+	var out := 0
+	if (_lod_on or stands_early) and d <= CLOSE_KEEP:
+		out |= Far.CLOSE
+	if d <= _coarse_reach() + COARSE_KEEP:
+		out |= Far.COARSE
+	return out
+
+
+## Let go the levels out of reach, and the farthest ones past the budget.
+func _far_evict() -> void:
+	if far == null:
+		return
+	for key: Vector2i in far.stood_keys():
+		var gone: int = far.stood(key) & ~_stand_keep(key)
+		if gone & Far.CLOSE:
+			far.drop_level(key, Far.CLOSE)
+		if gone & Far.COARSE:
+			far.drop_level(key, Far.COARSE)
+	# Past the budget, what is only KEPT (held, no longer wanted) goes, farthest
+	# first. What is wanted stays: dropping it would build it again next frame.
+	while far.stand_bytes > STAND_BUDGET:
+		var worst := Vector2i(-1, -1)
+		var worst_d := -1.0
+		for key: Vector2i in far.stood_keys():
+			if not far.stood(key) & ~_stand_want(key):
+				continue
+			var d := _stand_d(key)
+			if d > worst_d:
+				worst_d = d
+				worst = key
+		if worst.x < 0:
+			return
+		var extra: int = far.stood(worst) & ~_stand_want(worst)
+		if extra & Far.CLOSE:
+			far.drop_level(worst, Far.CLOSE)
+		if extra & Far.COARSE:
+			far.drop_level(worst, Far.COARSE)
+
+
+## Whether every far block holds the silhouettes it should from here.
+func far_settled() -> bool:
+	return far != null and far.stands_settled(_stand_want)
 
 
 ## The far world's own copies of the three materials a model is drawn with.
@@ -977,7 +1094,7 @@ func _stand_mats() -> Array:
 func _far_worker(slot: int, key: Vector2i) -> void:
 	var began := Time.get_ticks_usec()
 	if _far_kind[slot] == STANDS:
-		_far_out[slot] = Far.stand_arrays(world, _far_in[slot])
+		_far_out[slot] = Far.stand_arrays(world, _far_in[slot], _far_mask[slot])
 	else:
 		_far_out[slot] = Far.build_arrays(world, key.x, key.y, _far_tables)
 	_far_at[slot] = Time.get_ticks_usec() - began
@@ -1121,6 +1238,9 @@ func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, wor
 	var t0 := Time.get_ticks_usec()
 	var node := Node3D.new()
 	node.name = "chunk_%d_%d" % [key.x, key.y]
+	var bytes := Far._surface_bytes(ch.terrain_arrays) + Far._surface_bytes(ch.water_arrays)
+	for a: Array in decor_arrays:
+		bytes += Far._surface_bytes(a)
 	ch.commit()
 	_data[key] = ch
 	var terrain := MeshInstance3D.new()
@@ -1151,6 +1271,10 @@ func _add_chunk(key: Vector2i, ch: TerrainMesher.Chunk, decor_arrays: Array, wor
 		var snap := _snapshot(key)
 		baked = bake_props(ch, mesher, snap[0], snap[1])
 	_attach_props(node, baked)
+	for a: Variant in baked:
+		if a is Array:
+			bytes += Far._surface_bytes(a)
+	_chunk_bytes[key] = bytes
 	_lod_apply(node)
 	add_child(node)
 	_chunks[key] = node
@@ -1187,10 +1311,7 @@ func refresh_props(prop: WorldProp) -> void:
 	# A parked chunk cannot be patched where it stands, and a stale one is worse
 	# than a missing one: let it go, and it is built again as it is now.
 	if _parked.has(key):
-		(_parked[key] as Node3D).queue_free()
-		_parked.erase(key)
-		_park_seen.erase(key)
-		_data.erase(key)
+		_let_go(key)
 		return
 	if not _chunks.has(key):
 		return

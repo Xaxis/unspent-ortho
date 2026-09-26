@@ -231,6 +231,14 @@ static func _never(c: GenContext, built: PackedByteArray) -> PackedByteArray:
 			elif village[i] != 0 or built[i] != 0:
 				no[i] = KEPT
 	)
+	# A shaft's mouth is kept too: it was sited on this ground in every era.
+	for shaft: Portal in c.w.shafts:
+		var sx := floori(shaft.pos.x)
+		var sy := floori(shaft.pos.y)
+		for y in range(maxi(0, sy - Portals.HOLD), mini(size, sy + Portals.HOLD + 1)):
+			for x in range(maxi(0, sx - Portals.HOLD), mini(size, sx + Portals.HOLD + 1)):
+				if no[y * size + x] == 0:
+					no[y * size + x] = KEPT
 	# A village is kept to its whole radius, the clearing its people walk, not
 	# only the core `GenSettle` marks: scree laid past the core is still scree in
 	# the middle of a village (test_world_gen_surface).
@@ -739,10 +747,16 @@ static func dress(c: GenContext) -> void:
 		m["props"] = Vector2i(first, w.props.size())
 
 
+## Nothing the foot throws lands in a village's own ground: the crater is sited
+## clear of the clearings, but its spoil reaches past the rim, and a tread sited
+## near one would drop plate in the square (seed 42, Chalkstone).
 static func _put(c: GenContext, kind: int, p: Vector2) -> void:
 	var w := c.w
 	var i := floori(p.y) * c.size + floori(p.x)
-	if i < 0 or i >= c.n or w.level[i] <= 0 or Ground.is_water(w.ground[i]) or c.road[i] != 0:
+	if i < 0 or i >= c.n or w.level[i] <= 0 or Ground.is_water(w.ground[i]) or c.road[i] != 0 or c.village[i] != 0:
 		return
+	for shaft: Portal in w.shafts:
+		if maxf(absf(p.x - shaft.pos.x), absf(p.y - shaft.pos.y)) <= Portals.HOLD + 0.5:
+			return
 	var id := w.props.size()
 	w.props.append(WorldProp.new(id, kind, p, GenFields.h01(c.s, id, kind, 77) * TAU, 0.8 + GenFields.h01(c.s, id, kind, 78) * 0.4))

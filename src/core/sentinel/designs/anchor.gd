@@ -51,8 +51,8 @@ static func make() -> SentinelDef:
 	# The spec's DRILL_RIG is left out on MEASUREMENT, the plumb's rule: the
 	# island's own rigs are not the ropeway's, and on seed 1 they came to TWO
 	# inside this keeper's larder (region 14) -- a starve way won by one theft
-	# and an accident, which tests/sentinel/test_world.gd refuses
-	# (STARVE_LEAST). When the works row lays a ropeway with its own bolt rigs,
+	# and an accident, which SentinelWay.FEEDS_LEAST
+	# closes. When the works row lays a ropeway with its own bolt rigs,
 	# those are the ones to name.
 	d.feeds = [PropKind.SPAN_PYLON]
 	d.drops = &"sentinel_anchor"

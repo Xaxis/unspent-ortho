@@ -123,3 +123,25 @@ func test_every_other_realm_is_still_its_own_island() -> void:
 		eq(Realm.land_realm(kind), kind, "%s lays its own landscapes" % kind)
 		check(_land_digest(WorldGen.generate(4, 192, &"", kind)) != now,
 			"%s is somewhere else, not the surface redressed" % kind)
+
+
+## EVERY ERA OPENS ITS SHAFTS ON THE SAME TILES, AND NOTHING STANDS IN THEM. Sited
+## against the props, the two times disagreed wherever the plan's works (which
+## 2029 does not have) crowded a candidate: seed 4 at 192 opened regions 5 and 10
+## in the present and 4 and 5 in 2029. Sited on the land alone and held clear,
+## shaft i is one tile in both, and a body can walk into it in both.
+func test_every_seed_s_shafts_pair_across_the_eras_and_stand_clear() -> void:
+	for s: int in [1, 2, 3, 4, 7, 42]:
+		Portals.forget()
+		var now := WorldGen.generate(s, 192)
+		var then := WorldGen.generate(s, 192, &"", Realm.ERA)
+		var here := Portals.in_world(now)
+		var there := Portals.in_world(then)
+		eq(there.size(), here.size(), "seed %d: the same number of shafts in both times" % s)
+		for i in mini(here.size(), there.size()):
+			eq(there[i].pos, here[i].pos, "seed %d: shaft %d on the same tile" % [s, i])
+		for w: WorldData in [now, then]:
+			var solid := GenPlaces.solid_mask(w)
+			for p: Portal in Portals.in_world(w):
+				var i := floori(p.pos.y) * w.size + floori(p.pos.x)
+				eq(solid[i], 0, "seed %d %s: nothing solid stands in shaft %d's mouth" % [s, w.realm, p.id])

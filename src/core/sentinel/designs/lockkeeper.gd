@@ -59,7 +59,7 @@ static func make() -> SentinelDef:
 	# are the coast's scatter and the island's works, not the lock's, and
 	# measured at 512 they stood ONE (seed 1) and THREE (seed 42) inside the
 	# keeper's larder -- a starve way open on so few is won by one theft and an
-	# accident, which tests/sentinel/test_world.gd refuses (STARVE_LEAST). With
+	# accident, which SentinelWay.FEEDS_LEAST closes. With
 	# the lock's own furniture alone the larder is empty until the works row lays
 	# a lock, which closes the way honestly, and full once it does.
 	d.feeds = [PropKind.LOCK_GATE, PropKind.PUMP_HOUSE]

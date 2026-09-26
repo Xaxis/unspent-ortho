@@ -58,7 +58,7 @@ func _save(w: WorldData, layer: String, out: String) -> void:
 		var ids: PackedInt32Array = line.props
 		var col := Palette.FOUND[4] if line.kind == PropKind.PYLON else Palette.PLATE[4]
 		for j in ids.size() - 1:
-			_segment(img, w.prop_at(ids[j]).pos * scale, w.prop_at(ids[j + 1]).pos * scale, col)
+			_segment(img, w.prop(ids[j]).pos * scale, w.prop(ids[j + 1]).pos * scale, col)
 	for m in w.landmarks:
 		var p: Vector2 = m.pos * scale
 		if m.kind == &"falls" or m.kind == &"bridge":

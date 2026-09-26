@@ -159,7 +159,18 @@ const UNKNOWN := "unknown"
 ##     moves; every id does, and with it whatever an id seeds (a tree's lean and
 ##     growth, a prop's hung pieces, the words a thing deals). Saves made on 28
 ##     keep ids that name other props, so they are refused.
-const GEN := 29
+## 30. The places (`GenScatter.sites`: tips, stone circles, the claimed site
+##     kinds, ruins, vents) throw their darts from a stream of their own per kind
+##     and region, and a tip's or vent's patch takes its size from its own tile,
+##     where one stream for the island made every place depend on every dart
+##     thrown before it anywhere (streamed worldgen S3). The places and their
+##     patches move on every seed; the tiles under them do not.
+## 31. The shafts to the next realm are sited in generation on the land alone
+##     (`Portals.site`, after the surface and before any prop) and HOLD tiles
+##     round each are kept clear of everything laid after, treads included, so
+##     2029 opens them on the tiles the present does. What the scatter lays round
+##     a shaft moves; no tile does.
+const GEN := 31
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

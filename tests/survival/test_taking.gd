@@ -393,3 +393,30 @@ func test_what_was_lost_is_salvage() -> void:
 		check(Takes.workable(kind), "%s can be worked" % PropKind.NAMES[kind])
 		check(UiRules.PROP_VERBS.has(kind), "and the slate says how")
 	Fx.done(g)
+
+
+## THE SWEEP ASKS THE CLOCK BEFORE IT ASKS FOR THE PROP. It runs every second,
+## and most of what it walks is never due: a vein, a used heap, anything a machine
+## took are gone for good (INF). On a packed world each prop it looks up is a
+## view made for the asking, so asking first made one per gone thing per second.
+func test_the_sweep_makes_no_prop_for_what_is_not_due() -> void:
+	var w := WorldData.new(11, 40)
+	for y in 40:
+		for x in 40:
+			var rim := x == 0 or y == 0 or x == 39 or y == 39
+			w.level[y * 40 + x] = -1 if rim else 2
+			w.ground[y * 40 + x] = Ground.DEEP_WATER if rim else Ground.GRASS
+			w.country[y * 40 + x] = Country.SEA if rim else Country.COAST
+	w.spawn = Vector2(20.5, 20.5)
+	for i in 200:
+		w.add_prop(WorldProp.new(w.next_id(), PropKind.IRON_ORE, Vector2(2.5 + i % 30, 2.5 + i / 30), 0.0, 1.0))
+	GenIds.run(w)
+	check(w.packed, "a packed world, where a prop is a view")
+	var g := Fx.from_world(w)
+	for r in w.prop_count():
+		w.depleted[w.table.id[r]] = INF
+	var before := WorldProp.made
+	Survival.sweep(g, 1.0)
+	eq(WorldProp.made - before, 0, "no view made for 200 things gone for good")
+	eq(w.depleted.size(), 200, "and all of them still gone")
+	Fx.done(g)

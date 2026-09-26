@@ -53,7 +53,7 @@ static func make() -> SentinelDef:
 	# too, and that was measured against the world before it was believed: with
 	# CONVEYOR and SURVEY on this list the seed-1 keeper at 512 fed on TWO stray
 	# works at its region's heart, which `tests/sentinel/test_world.gd` refuses
-	# as "one theft wins it" (STARVE_LEAST is four). The spec's own sentence is
+	# as "one theft wins it" (SentinelWay.FEEDS_LEAST is four). The spec's own sentence is
 	# "STARVE on its rods", so the larder is the field's rods and nothing else:
 	# none until the strike field is laid (phase B), which closes the way
 	# honestly (`SentinelWay.progress`: a keeper the plan never fed cannot be

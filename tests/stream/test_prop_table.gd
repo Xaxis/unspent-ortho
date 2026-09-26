@@ -91,3 +91,26 @@ func test_the_live_count_holds_while_threads_make_and_drop_props() -> void:
 	for t in tasks:
 		WorkerThreadPool.wait_for_task_completion(t)
 	eq(WorldProp.live, before, "every prop made on any thread is counted out again")
+
+
+## THE BOOT WALKERS READ THE COLUMNS. The works map, the standing mask, the map's
+## marks and the doors each walked every prop, and on a packed world that made
+## every prop once per walk: four waves of the whole world's objects at boot, the
+## peak the streaming design has to bring down. The doors make only their houses.
+func test_the_boot_walkers_make_no_prop_but_a_house() -> void:
+	var w := _world()
+	var houses := 0
+	for r in w.table.size():
+		houses += 1 if w.table.kind[r] == PropKind.HOUSE else 0
+	var at := WorldProp.made
+	WorksMap.bake(w)
+	eq(WorldProp.made - at, 0, "the works map")
+	at = WorldProp.made
+	GenPlaces.solid_mask(w)
+	eq(WorldProp.made - at, 0, "the standing mask")
+	at = WorldProp.made
+	UiMapData.mark_bytes(w)
+	eq(WorldProp.made - at, 0, "the map's marks")
+	at = WorldProp.made
+	Interiors.thresholds(w)
+	lt(float(WorldProp.made - at), float(houses) + 1.0, "the doors: a house each at most, of %d props" % w.prop_count())

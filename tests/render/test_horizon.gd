@@ -154,10 +154,11 @@ func test_silhouettes_wait_for_the_horizon() -> void:
 		await tree.process_frame
 	await process_frames(8)
 	check(view.far.done(w.size), "the far land is built")
-	check(not view.far.stands_done(w.size), "and no silhouettes are, with no horizon in sight")
+	check(view.far.stood_keys().is_empty(), "and no silhouettes are, with no horizon in sight")
 	view.ensure_far()
-	check(view.far.stands_done(w.size), "a view that looks out builds them")
-	check(view.far.get_child(0).get_node_or_null("stands_leaf") != null, "and the pine stands on the far land")
+	check(view.far_settled(), "a view that looks out builds them")
+	check(view.far.get_child(0).get_node_or_null("stands_leaf_far") != null, "and the pine stands on the far land, at the coarse level the view from above draws")
+	check(view.far.get_child(0).get_node_or_null("stands_leaf") == null, "and not the close level, which only an eye draws and so is not built for one")
 	view.queue_free()
 	cam.queue_free()
 
@@ -285,9 +286,9 @@ func test_silhouettes_come_in_before_the_first_look() -> void:
 	tree.root.add_child(view)
 	view.focus = Vector2(20, 20)
 	var deadline := Time.get_ticks_msec() + 10000
-	while not view.far.stands_done(w.size) and Time.get_ticks_msec() < deadline:
+	while not view.far_settled() and Time.get_ticks_msec() < deadline:
 		await tree.process_frame
-	check(view.far.stands_done(w.size), "the silhouettes are in with the horizon never seen")
+	check(view.far_settled(), "the silhouettes are in with the horizon never seen")
 	view.queue_free()
 	cam.queue_free()
 	var g := Game.new()
@@ -295,3 +296,38 @@ func test_silhouettes_come_in_before_the_first_look() -> void:
 	g.setup(BootOptions.parse(PackedStringArray(["--size=64", "--seed=4"])))
 	check(g.view.stands_early, "and a running game asks for them")
 	g.free()
+
+
+## A BLOCK LET GO AND BUILT AGAIN IS THE BLOCK IT WAS. The far view keeps only the
+## levels its camera can draw and drops the rest (`WorldView._far_evict`), so a
+## level is built alone, and built again on the way back. Either is only safe if
+## a level built alone, or twice, is to the byte the level built with the other.
+func test_a_block_built_again_is_the_block_it_was() -> void:
+	var w := WorldGen.generate(7, 256)
+	var by := {}
+	var houses := {}
+	for r in w.table.size():
+		var key := Vector2i(w.table.pos[r] / float(Far.BLOCK))
+		if not by.has(key):
+			by[key] = []
+		(by[key] as Array).append(r)
+		if w.table.kind[r] == PropKind.HOUSE:
+			houses[key] = int(houses.get(key, 0)) + 1
+	var most := Vector2i.ZERO
+	for key: Vector2i in houses:
+		if int(houses[key]) > int(houses.get(most, 0)):
+			most = key
+	var props: Array = []
+	for r: int in by[most]:
+		props.append(w.prop_at(r))
+	var both := Far.stand_arrays(w, props, Far.BOTH)
+	check(not both.is_empty(), "the block with most houses stands something (%d props)" % props.size())
+	if both.is_empty():
+		return
+	var close := Far.stand_arrays(w, props, Far.CLOSE)
+	var coarse := Far.stand_arrays(w, props, Far.COARSE)
+	gt(float(var_to_bytes(both[0]).size()), 1000.0, "the close level has geometry")
+	eq(hash(var_to_bytes(Far.stand_arrays(w, props, Far.BOTH))), hash(var_to_bytes(both)), "built twice, the same bytes")
+	eq(hash(var_to_bytes(close[0])), hash(var_to_bytes(both[0])), "the close level alone is the close level of both")
+	eq(hash(var_to_bytes(coarse[1])), hash(var_to_bytes(both[1])), "the coarse level alone is the coarse level of both")
+	check(var_to_bytes(close[1]).size() < 64, "and a level not asked for is not built")

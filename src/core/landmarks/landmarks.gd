@@ -709,10 +709,13 @@ static func _pick_one(pool: Array, placed: Array[Vector2], kinds: Array[Landmark
 ## a trunk where the locker goes".
 static func _solid_tiles(world: WorldData) -> Dictionary:
 	var out := {}
-	for p: WorldProp in world.each_prop():
-		if p.solid <= 0.0:
+	# Read off the columns: a WorldProp here would be one made for every prop.
+	world.sync_table()
+	var t := world.table
+	for i in t.size():
+		if t.solid[i] <= 0.0:
 			continue
-		out[floori(p.pos.y) * world.size + floori(p.pos.x)] = true
+		out[floori(t.pos[i].y) * world.size + floori(t.pos[i].x)] = true
 	return out
 
 
