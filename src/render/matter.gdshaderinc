@@ -262,6 +262,22 @@ float matter_fbm(vec2 p) {
 // marks are drawn at. Smooth on purpose: the fine speckle in the wash is
 // pigment, not geometry, and differentiating it would give the light noise to
 // find instead of shape.
+// THE BONELANDS' BEDS, shared by the wall's colour (world.gdshader, strata 5)
+// and its relief (below), so the groove the light finds is the groove drawn.
+// `along` is the wall's own horizontal coordinate in screen grains (px.x), `y`
+// world height. Returns fract of the bed; `bi` the bed, `groove` how deep into
+// the bed from its foot the eroded plane reaches.
+float bone_bed(float along, float y, out float bi, out float groove) {
+	float vn = ink_vnoise(vec2(along * 0.07, y * 3.0));
+	// Limestone is laid level: the beds swell and pinch a little, and no more,
+	// or they wander like contours on a map (measured: at 0.1 they read as grain).
+	float sw = (ink_vnoise(vec2(along * 0.03, 1.0)) - 0.5) * 0.035 + (vn - 0.5) * 0.02;
+	float b = (y + sw) / (0.22 + ink_vnoise(vec2(along * 0.015, 2.0)) * 0.04);
+	bi = floor(b);
+	groove = 0.06 + ink_vnoise(vec2(along * 0.08, bi)) * 0.08;
+	return fract(b);
+}
+
 float matter_height(int m, vec3 wp, vec2 p) {
 	float h = 0.0;
 	if (m == 43) {
@@ -300,6 +316,22 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		// cobbles laid in courses (measured at 18:30 with the cells at 0.7).
 		vec3 cd = matter_cells(vec2(p.x * 1.4, p.y * 2.6) + matter_fbm(p * 0.8) * 1.5);
 		h = smoothstep(0.0, 0.3, cd.y - cd.x) * 0.25 + matter_fbm(p * 2.2) * 0.75;
+	} else if (m == 65) {
+		// BONELANDS walls: each bedding plane weathered back into a groove, so
+		// the bed above OVERHANGS it. Across the groove the face steps back and
+		// then out: a gentle ramp down from the ledge below (it faces the sky and
+		// takes the light) and a sharp return up under the lip (it faces the
+		// ground and is in shade). No stroke is drawn: the sun draws it, and at
+		// a low sun it rakes.
+		float bi;
+		float groove;
+		float f = bone_bed(p.x / SKY_GRAIN, wp.y, bi, groove);
+		if (f < groove) {
+			h = mix(0.9, 0.15, smoothstep(0.0, groove * 0.7, f));
+		} else {
+			h = mix(0.15, 1.0, smoothstep(groove, groove + 0.07, f)) - (f - groove) * 0.1;
+		}
+		h += matter_fbm(p * 2.0) * 0.08;
 	} else if (m == 52 || (m >= 61 && m <= 74)) {
 		// ROCK and cliff strata: broken blocks and bedding planes.
 		vec3 cd = matter_cells(p * 1.6);

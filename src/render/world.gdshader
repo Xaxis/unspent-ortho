@@ -1390,20 +1390,19 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		// vertical joints few, leaning, and only where the rock has opened. The
 		// old joints were one in every 13 pixels of every bed, which is
 		// masonry: at eye level the whole landscape read as dry-stone walling.
-		float sw = (ink_vnoise(vec2(px.x * 0.03, 1.0)) - 0.5) * 0.1 + (vn - 0.5) * 0.04;
-		float b = (y + sw) / (0.2 + ink_vnoise(vec2(px.x * 0.015, 2.0)) * 0.1);
-		float bi = floor(b);
+		float bi;
+		float groove;
+		float fb = bone_bed(px.x, y, bi, groove);
 		float tone = ink_vnoise(vec2(px.x * 0.05, bi * 3.1));
 		c = mix(LINEN3, LINEN4, smoothstep(0.3, 0.7, tone * 0.6 + ink_hash(vec2(bi, 1.0)) * 0.4));
-		// The bedding plane: weathered back into a groove, its depth wandering.
-		float groove = 0.05 + ink_vnoise(vec2(px.x * 0.08, bi)) * 0.07;
-		if (fract(b) < groove) {
-			c = mix(LINEN1, LINEN2, fract(b) / groove);
-		} else if (fract(b) > 0.9) {
-			c = up(c, 0.15);
+		// The bedding plane is RELIEF (matter_height, row 65): an undercut the
+		// sun shades under a lit ledge. Here it is only a little dirtier, where
+		// water sits in it; no stroke is drawn.
+		if (fb < groove) {
+			c = mix(c, LINEN2, 0.35);
 		}
 		// A joint: sparse, leaning across the bed, and only where it has opened.
-		float lean = (fract(b) - 0.5) * 3.0;
+		float lean = (fb - 0.5) * 3.0;
 		float jc = (px.x + lean) / 31.0;
 		float jx = abs(fract(jc + ink_hash(vec2(bi, 7.0))) - 0.5) * 31.0;
 		if (jx < 0.8 && ink_hash(vec2(floor(jc), bi + 11.0)) > 0.62) {
@@ -1624,7 +1623,11 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			}
 		} else if (kind < 0.72) {
 			// White goods: yellowed enamel in chips over the dark between them.
-			c = mix(mix(INK3, RUST1, 0.4), mix(LINEN2, ASH3, 0.5), smoothstep(0.42, 0.6, n1));
+			// Fewer, larger, dirtier pieces heaped in the dark between them; the
+			// enamel is seventy years of dust, not paint.
+			float piece = ink_vnoise(vec2(px.x * 0.07, y * 3.5 + 7.0));
+			vec3 enamel = mix(mix(LINEN2, ASH3, 0.4), RUST1, 0.25 * ink_vnoise(vec2(px.x * 0.3, y * 9.0)));
+			c = mix(mix(INK3, RUST1, 0.4), enamel, smoothstep(0.55, 0.68, piece));
 		} else {
 			c = mix(RUST1, mix(RUST2, EARTH1, 0.4), n1);
 		}
