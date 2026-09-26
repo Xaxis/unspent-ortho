@@ -21,6 +21,14 @@ if [ $# -eq 0 ]; then
 else
   echo "tour options: $* (from the command line)"
 fi
+# Simulated time when the header asks for it and the caller did not say.
+if [ -z "${TOUR_FIXED_FPS:-}" ]; then
+  fixed="$(tour_header_fixed_fps "$tour")"
+  if [ -n "$fixed" ]; then
+    export TOUR_FIXED_FPS="$fixed"
+    echo "tour fixed fps: $fixed (from its header)"
+  fi
+fi
 # One run of a tour at a time per checkout. shots/tour/<name>/ is a single
 # directory: two runs overwrite each other's frames and both come out worthless
 # with a green exit, which is the worst failure this project has, because the
