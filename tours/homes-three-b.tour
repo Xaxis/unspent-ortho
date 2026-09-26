@@ -1,0 +1,67 @@
+# THREE MORE HOMES (src/content/interiors/home.gd, BiomeDef.home): a peat
+# cutter's in the moss, a salt raker's on the flats, a filer's in the scrapwood,
+# who gathers the iron the dead field combs into arcs. Staged by who keeps the
+# room.
+#
+#   tools/tour.sh tours/homes-three-b.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01, 03, 05 are each home from above; 02, 04, 06 over the shoulder at what the
+# household lives by.
+coast calm
+near door:cutter
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 01-a-peat-cutters-home with room:cutter,land:moss
+hold shoulder_peek
+await shoulder 3
+near thing:peat_stack
+wait 1.0
+shot 02-its-peat-stack with room:cutter,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:raker
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 03-a-rakers-home with room:raker,land:salt_flats
+hold shoulder_peek
+await shoulder 3
+near thing:salt_cones
+wait 1.0
+shot 04-its-salt-cones with room:raker,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:filer
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 05-a-filers-home with room:filer,land:scrapwood
+hold shoulder_peek
+await shoulder 3
+near thing:filings_trays
+wait 1.0
+shot 06-its-filings-trays with room:filer,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+

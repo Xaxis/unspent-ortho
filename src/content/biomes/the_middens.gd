@@ -115,6 +115,14 @@ static func make() -> BiomeDef:
 		&"sorter": {"weight": 1.2},
 	}
 	d.landmarks = [&"grown_hulk", &"blinking_stack", &"clerks_office", &"poured_pillar"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
+	# Who kept them: the sorter, who has the refuse into bins by what it is, and
+	# the wirer, who makes it work again.
+	d.home = {"households": {
+		&"sorter": {"wants": [&"sorted_bins", &"sorted_bins", &"shelf_salvage", &"basket"], "by_hearth": []},
+		&"wirer": {"wants": [&"workbench", &"coil", &"machine_lamp", &"sorted_bins"], "by_hearth": []},
+	}}
 	d.sound_bed = &"bed_wreck"
 	d.surface = _surface
 	d.scatter = _scatter

@@ -1,0 +1,67 @@
+# HOMES BEHIND THE LAST FORMS (src/content/interiors/home.gd, BiomeDef.home):
+# a byre keeper's in the crags, the beast's stall under the same roof; a
+# stallholder's in the metropolis, the counter carried in off the stall row; a
+# spinner's in the mesas, a cloth half woven on the loom. Staged by who keeps it.
+#
+#   tools/tour.sh tours/homes-forms-b.tour --seed=4 --hour=15 --weather=clear:0
+#
+# Odd frames are each home from above; even frames over the shoulder at what
+# the household lives by.
+coast calm
+near door:byrer
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 01-a-byrers-home with room:byrer,land:the_crags
+hold shoulder_peek
+await shoulder 3
+near thing:stall
+wait 1.0
+shot 02-its-stall with room:byrer,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:stallholder
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 03-a-stallholders-home with room:stallholder,land:ruined_metropolis
+hold shoulder_peek
+await shoulder 3
+near thing:counter
+wait 1.0
+shot 04-its-counter with room:stallholder,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:spinner
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 05-a-spinners-home with room:spinner,land:mesas
+hold shoulder_peek
+await shoulder 3
+near thing:loom
+wait 1.0
+shot 06-its-loom with room:spinner,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+

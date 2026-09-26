@@ -492,7 +492,9 @@ func _exit_tree() -> void:
 	# leave a view nobody frees.
 	stages.wait()
 	if _view != null and is_instance_valid(_view) and not (_view as Node).is_inside_tree():
-		(_view as Node).free()
+		# Through the view's own script: the page names no world class, so its
+		# scripts load in the first stage and not before the page is up.
+		((_view as Node).get_script() as GDScript).call(&"dispose", _view)
 		_view = null
 
 

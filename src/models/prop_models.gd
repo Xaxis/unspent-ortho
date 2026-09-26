@@ -93,6 +93,8 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 		# heap (BAG_CAIRN), so `pick_variant` deals from the first three.
 		PropKind.CAIRN:
 			return 4
+		PropKind.FIRE:
+			return 2
 		PropKind.SNOW_PINE, PropKind.DRIFTWOOD, PropKind.BONES, PropKind.RUIN, PropKind.STANDING_STONE, PropKind.REEDS, \
 		PropKind.GORSE, PropKind.CLINTS, PropKind.MUSSEL_ROCK, PropKind.PEAT_BANK, PropKind.WRACK:
 			return 3
@@ -167,7 +169,15 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 
 ## A variant for an instance from its hash (any int).
 static func pick_variant(kind: int, h: int, country: int = Country.COAST) -> int:
+	if kind == PropKind.FIRE:
+		return 0
 	return absi(h) % (DEALT_CAIRNS if kind == PropKind.CAIRN else variants(kind, country))
+
+
+## A fire HELD in something a room draws round it (a stove, a brazier: a home's
+## `hearth`, src/content/interiors/cottage.gd): its embers only. Set on the
+## prop, never dealt, so every fire the world lays is the open one.
+const HELD_FIRE := 1
 
 
 ## The cairn a bad end leaves over the player's bag (Survival.leave_bag): set on

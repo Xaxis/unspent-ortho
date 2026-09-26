@@ -21,8 +21,16 @@ const RECIPES := {
 	&"tenement": "res://src/content/interiors/tenement.gd",
 	&"maintenance_bay": "res://src/content/interiors/maintenance_bay.gd",
 	&"foundry": "res://src/content/interiors/foundry.gd",
+	&"data_hall": "res://src/content/interiors/data_hall.gd",
+	&"laid_table": "res://src/content/interiors/laid_table.gd",
+	&"saw_hall": "res://src/content/interiors/saw_hall.gd",
+	&"frozen_hold": "res://src/content/interiors/frozen_hold.gd",
+	&"home": "res://src/content/interiors/home.gd",
+	&"squat": "res://src/content/interiors/squat.gd",
 }
 
+## Which of a sparse landscape's houses have somebody in them (`home.open`).
+const OPEN_SALT := 0x5C0A7
 static var _kinds: Dictionary = {}
 ## Per world OBJECT (never its seed: a test grows one seed twice): its doors.
 static var _doors: Dictionary = {}
@@ -57,8 +65,15 @@ static func thresholds(w: WorldData) -> Array[Threshold]:
 			var d := BiomeRegistry.by_index(land)
 			if d == null:
 				continue
-			var k := house_kind(d, form_of(p, w.seed_value, land))
+			var form := form_of(p, w.seed_value, land)
+			var k := house_kind(d, form)
 			if k == &"" or kind(k) == null:
+				continue
+			# A landscape may keep somebody in only some of its houses
+			# (`home.open`, a share, dealt by where the house stands); its own
+			# forms' rooms are always open.
+			if not d.interiors.has(StringName("form:%s" % form)) and d.home.has("open") \
+					and Rng.hash01(w.seed_value, floori(p.pos.x * 4.0), floori(p.pos.y * 4.0), OPEN_SALT) >= float(d.home.open):
 				continue
 			out.append(Threshold.of_house(p, k, land))
 		# And each depot of the plan whose landscape keeps a hall under its yard.
@@ -158,6 +173,30 @@ const LOOT := {
 		{"item": &"scrap", "count": Vector2i(3, 6)},
 		{"item": &"blade_seal", "chance": 0.3},
 		{"item": &"record", "chance": 0.2},
+	],
+	# What the machines keep where they think: their own files, always, and now
+	# and then a damper -- a hall where the hum hides a body is where the thing
+	# that hides a blow is found.
+	&"data_hall": [
+		{"item": &"record", "count": Vector2i(2, 3)},
+		{"item": &"scrap", "count": Vector2i(1, 3)},
+		{"item": &"mod_damp", "chance": 0.3, "rarity": Rarity.RARE},
+	],
+	# What the pinewood's saw hall dried in its kiln: seasoned timber, always, as
+	# much as a settlement's cellar or tower wants -- the reason to go in -- and
+	# the scrap of the saw.
+	&"saw_hall": [
+		{"item": &"seasoned_timber", "count": Vector2i(6, 10)},
+		{"item": &"scrap", "count": Vector2i(1, 3)},
+		{"item": &"record", "chance": 0.15},
+	],
+	# What a trawler's crew kept in their sea chest their last winter: the lamp's
+	# oil and its rags, fish smoked against it, and now and then a record.
+	&"frozen_hold": [
+		{"item": &"smoked", "count": Vector2i(1, 3)},
+		{"item": &"oil", "count": Vector2i(1, 2), "chance": 0.8},
+		{"item": &"rag", "count": Vector2i(1, 3), "chance": 0.7},
+		{"item": &"record", "chance": 0.3},
 	],
 	# What somebody kept who knew what was coming: their own records first, the
 	# makings of light, and the odd thing they took off a machine to study.

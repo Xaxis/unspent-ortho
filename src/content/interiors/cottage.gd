@@ -23,6 +23,17 @@ extends RefCounted
 
 const PLANS: Array[StringName] = [&"hall", &"side", &"back"]
 const HOUSEHOLDS: Array[StringName] = [&"fisher", &"tinker", &"keeper"]
+## What each household keeps, as data (a landscape's `BiomeDef.home` is the
+## same shape, src/content/interiors/home.gd): `wants`, the pieces dealt to the
+## walls' free places in order; `by_hearth`, what stands `off` out from the
+## hearth, a `side` step along its wall to one side or the other.
+const COAST := {
+	&"fisher": {"wants": [&"nets", &"oars", &"creel", &"floats"],
+		"by_hearth": [{"kind": &"fishline", "off": 1.2, "solid": 0.0}]},
+	&"tinker": {"wants": [&"workbench", &"machine_lamp", &"shelf_salvage", &"coil"], "by_hearth": []},
+	&"keeper": {"wants": [&"jars", &"jars", &"basket", &"shelf"],
+		"by_hearth": [{"kind": &"herbs", "off": 1.3, "solid": 0.0}, {"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+}
 ## How far out from a wall a thing standing against it stands.
 const OFF_WALL := 0.36
 
@@ -37,13 +48,44 @@ static func make() -> InteriorKind:
 	k.door_width = 0.9
 	k.recipe = load("res://src/content/interiors/cottage.gd")
 	k.model = "res://src/models/interior/cottage_model.gd"
+	# The coast's houses are homes too, and speak from the homes' row.
+	k.words = &"home"
 	return k
 
 
 static func lay(rng: RandomNumberGenerator) -> InteriorLayout:
+	var l := lay_with(rng, COAST)
+	open_slots(l, COAST, -1)
+	return l
+
+
+## A home's STORY SLOTS, where the story has written for its landscape (`land`,
+## -1 the coast) and household (StoryRooms.words_for, row `home`): the table
+## (`desk:home`) and the household's first piece (`wall:home`: the fisher's
+## nets, the wireman's coils). None written, none opened, so no slot stands
+## empty.
+static func open_slots(l: InteriorLayout, households: Dictionary, land: int) -> void:
+	if not StoryRooms.words_for(&"home", &"desk:home", land, l.dressing).is_empty():
+		l.slots.append({"slot": &"desk", "thing": &"home", "at": l.table, "face": Vector2(0, 1)})
+	var wants: Array = (households.get(l.dressing, {}) as Dictionary).get("wants", [])
+	if wants.is_empty() or StoryRooms.words_for(&"home", &"wall:home", land, l.dressing).is_empty():
+		return
+	for t: Dictionary in l.things:
+		if t.kind == StringName(wants[0]):
+			l.slots.append({"slot": &"wall", "thing": &"home", "at": t.at, "face": t.face})
+			return
+
+
+## A cottage kept by one of `households` (COAST's shape), dealt off `rng`, round
+## a `hearth`: &"fire" the open hearth and its chimney breast; &"stove",
+## &"raised_stove", &"brazier" that thing standing at the hearth's place, holding
+## the fire (PropModels.HELD_FIRE: warmth, light, sleep, and the same prop ids
+## as an open hearth); &"none" no fire at all.
+static func lay_with(rng: RandomNumberGenerator, households: Dictionary, hearth: StringName = &"fire") -> InteriorLayout:
 	var l := InteriorLayout.new()
 	l.plan = PLANS[rng.randi_range(0, PLANS.size() - 1)]
-	l.dressing = HOUSEHOLDS[rng.randi_range(0, HOUSEHOLDS.size() - 1)]
+	var ids := households.keys()
+	l.dressing = StringName(ids[rng.randi_range(0, ids.size() - 1)])
 	var w := 0
 	var d := 0
 	match l.plan:
@@ -83,11 +125,17 @@ static func lay(rng: RandomNumberGenerator) -> InteriorLayout:
 	l.table = Vector2(w * 0.5 + rng.randf_range(-0.6, 0.6), d * 0.5 + 0.2)
 	# The hearth is the world's own fire (lit, warmed at, slept beside) and the
 	# table a bench to work at, in that order: their ids are what a save keeps.
-	l.props.append({"kind": PropKind.FIRE, "at": l.hearth, "face": l.hearth_wall})
+	if hearth != &"fire":
+		l.has_hearth = false
+	if hearth == &"fire":
+		l.props.append({"kind": PropKind.FIRE, "at": l.hearth, "face": l.hearth_wall})
+	elif hearth != &"none":
+		l.props.append({"kind": PropKind.FIRE, "at": l.hearth, "face": l.hearth_wall, "variant": PropModels.HELD_FIRE})
+		_put(l, hearth, l.hearth, -l.hearth_wall, 0.42)
 	l.props.append({"kind": PropKind.BENCH, "at": l.table, "face": Vector2(-l.door_out.y, l.door_out.x)})
 	l.lay_edges()
 	_openings(l)
-	_furnish(l, rng)
+	_furnish(l, rng, households.get(l.dressing, {}) as Dictionary)
 	return l
 
 
@@ -204,7 +252,7 @@ static func _put(l: InteriorLayout, kind: StringName, at: Vector2, face: Vector2
 	l.things.append({"kind": kind, "at": at, "face": face, "solid": solid})
 
 
-static func _furnish(l: InteriorLayout, rng: RandomNumberGenerator) -> void:
+static func _furnish(l: InteriorLayout, rng: RandomNumberGenerator, household: Dictionary) -> void:
 	var slots := _slots(l)
 	# The bed, as far from the door as the house allows, in the other room when
 	# there is one: nobody sleeps across the way in.
@@ -230,17 +278,26 @@ static func _furnish(l: InteriorLayout, rng: RandomNumberGenerator) -> void:
 	if not bed.is_empty():
 		_put(l, &"rug", bed_at + (bed[0].face as Vector2) * 0.9, bed[0].face, 0.0)
 	var wants: Array[StringName] = [&"shelf", &"chest", &"patch"]
-	match l.dressing:
-		&"fisher":
-			wants.append_array([&"nets", &"oars", &"creel", &"floats"])
-			_put(l, &"fishline", l.hearth - l.hearth_wall * 1.2, l.hearth_wall, 0.0)
-		&"tinker":
-			wants.append_array([&"workbench", &"machine_lamp", &"shelf_salvage", &"coil"])
-		_:
-			wants.append_array([&"jars", &"jars", &"basket", &"shelf"])
-			_put(l, &"herbs", l.hearth - l.hearth_wall * 1.3, l.hearth_wall, 0.0)
-			var side := Vector2(-l.hearth_wall.y, l.hearth_wall.x) * (1.0 if rng.randf() < 0.5 else -1.0)
-			_put(l, &"chair", l.hearth - l.hearth_wall * 1.25 + side * 1.0, l.hearth_wall, 0.25)
+	for w: Variant in household.get("wants", []):
+		wants.append(StringName(w))
+	for h: Dictionary in household.get("by_hearth", []):
+		var at := l.hearth - l.hearth_wall * float(h.off)
+		var solid := float(h.solid)
+		if h.has("side"):
+			# The side dealt, else the other: never where it would stand a body
+			# off something already there (a chair dealt to the bed's foot shut
+			# the bed in). Neither clear, it is not kept.
+			var step := Vector2(-l.hearth_wall.y, l.hearth_wall.x) * float(h.side)
+			var sign := 1.0 if rng.randf() < 0.5 else -1.0
+			var picks: Array[Vector2] = [at + step * sign, at - step * sign]
+			at = Vector2.INF
+			for c: Vector2 in picks:
+				if _clear_of(l, c, solid):
+					at = c
+					break
+			if at == Vector2.INF:
+				continue
+		_put(l, StringName(h.kind), at, l.hearth_wall, solid)
 	for kind: StringName in wants:
 		var s := _take(slots, rng)
 		if s.is_empty():
@@ -255,6 +312,16 @@ static func _furnish(l: InteriorLayout, rng: RandomNumberGenerator) -> void:
 		l.walks.append(PackedVector2Array([l.door, bed_at + (bed[0].face as Vector2) * 0.8]))
 
 
+## Whether a thing `solid` across at `at` leaves a body's width of floor between
+## it and every solid thing already laid.
+static func _clear_of(l: InteriorLayout, at: Vector2, solid: float) -> bool:
+	for t: Dictionary in l.things:
+		var ts := float(t.get("solid", 0.0))
+		if ts > 0.0 and (t.at as Vector2).distance_to(at) < solid + ts + 2.0 * Tuning.PLAYER_RADIUS:
+			return false
+	return true
+
+
 ## How much of the room a thing stands in (what stops a body), by kind.
 static func _solid(kind: StringName) -> float:
 	match kind:
@@ -266,4 +333,12 @@ static func _solid(kind: StringName) -> float:
 			return 0.36
 		&"coil":
 			return 0.22
+		&"resin_pots", &"charcoal_sacks", &"core_samples", &"peat_stack", &"salt_cones", &"filings_trays", \
+				&"steam_box", &"sulphur_lumps", &"seed_trays", &"glass_blades", &"glass_still", &"slag_lumps", &"oil_drums", &"sorted_bins", \
+				&"radio", &"ledgers", &"rope_coil", &"buckets", &"stall", &"counter", &"quern":
+			return 0.3
+		&"wardrobe":
+			return 0.4
+		&"mason_rack":
+			return 0.26
 	return 0.0

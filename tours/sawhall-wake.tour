@@ -1,0 +1,18 @@
+# THE SAW HALL AT THE CURFEW, WALKED UPRIGHT (21_doors `docks`, `_trespass`): the
+# same way to the kiln at a walk, standing up. A walk is heard the length of
+# the hall, and a hauler asleep in its dock wakes and takes whoever is in its
+# store for a thief (Roles.TURNS: a worker turns on theft).
+#
+#   tools/tour.sh tours/sawhall-wake.tour --seed=4 --hour=23 --weather=clear:0
+#
+# 01 is the moment one wakes and turns (`woke`).
+coast calm
+near door:saw_hall
+await door 5
+press use 0.1
+await inside:saw_hall 5
+wait 0.3
+walkto strongbox 90
+await woke 20
+wait 0.6
+shot 01-a-hauler-wakes with inside:saw_hall,mob:hauler

@@ -124,7 +124,14 @@ static func make() -> BiomeDef:
 	d.built.stock = [&"cut_room", &"adobe", &"watch_hut"] as Array[StringName]
 	# The cut room is the home here, dug into the scarp; its room is its own
 	# (content/interiors/cliff_room.gd).
-	d.interiors = {&"form:cut_room": &"cliff_room"}
+	d.interiors = {&"form:cut_room": &"cliff_room", &"house": &"home"}
+	# Behind the other forms, the miller at the quern and the spinner at the loom,
+	# as in the rooms cut into the rock.
+	d.home = {"households": {
+		&"miller": {"wants": [&"quern", &"jars", &"basket", &"shelf"], "by_hearth": []},
+		&"spinner": {"wants": [&"loom", &"basket", &"jars", &"shelf"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+	}}
 	# A frontage along a bench (the spec's), and MEASURED flat enough to hold
 	# one: `row` refuses a spot whose nine neighbours are not level, and on
 	# seeds 1, 7 and 90210 all three buildings stood, every one on one level,

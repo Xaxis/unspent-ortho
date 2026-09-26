@@ -17,7 +17,7 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 	k.hand(Ink.HAND)
 	match kind:
 		PropKind.LAMP: lamp_post(k, c)
-		PropKind.FIRE: fire(k, c)
+		PropKind.FIRE: fire(k, c) if v == 0 else embers(k)
 		PropKind.BENCH: bench(k)
 		PropKind.KILN: kiln(k, v)
 		PropKind.PYLON: pylon(k, c)
@@ -50,6 +50,16 @@ static func lamp_post(k: Kit, c: int) -> void:
 
 ## The fire station: a ring of stones, logs, a bed of embers, flames, and a pot
 ## on a tripod. Readable from across a screen by its glow and its tripod.
+## A fire held in a stove or a brazier the room draws round it: its bed of
+## embers and nothing that would stand out through the iron.
+static func embers(k: Kit) -> void:
+	for i in 7:
+		var a := float(i) * 2.39996
+		var r := 0.03 + fmod(i * 0.05, 0.14)
+		var p := Vector3(cos(a) * r, 0.02, sin(a) * r)
+		k.fleck(p, p + Vector3(0.05, 0.0, 0.02), p + Vector3(0.01, 0.03, 0.05), GroundColors.glow(P.EMBER[3] if i % 2 else P.EMBER[4], 1.2))
+
+
 static func fire(k: Kit, _c: int) -> void:
 	for i in 10:
 		var a := float(i) / 10.0 * TAU + Kit.j(1901, i, 0.15)

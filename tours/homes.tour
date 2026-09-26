@@ -1,0 +1,25 @@
+# A HOME IN A LANDSCAPE THAT HAD NO ROOMS (src/content/interiors/home.gd): the
+# nearest house of any landscape that keeps homes, and inside it, the cottage's
+# bones in that landscape's own timber, cloth and clay, kept by one of its
+# households.
+#
+#   tools/tour.sh tours/homes.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is the door as a player finds it. 02 is the home from above. 03 is over the
+# shoulder, inside.
+coast calm
+near door:home
+await door 5
+wait 0.6
+shot 01-a-door-that-opens with door
+
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 02-a-home-kept with inside:home
+
+hold shoulder_peek
+await shoulder 3
+near thing:rug
+wait 1.0
+shot 03-over-the-shoulder-inside with inside:home,shoulder

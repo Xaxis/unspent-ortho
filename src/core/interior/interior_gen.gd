@@ -22,7 +22,7 @@ static func grow(seed_value: int, t: Threshold) -> Pocket:
 	if k == null:
 		return null
 	var rng := Rng.make(Rng.hash_ints(seed_value, t.host_code, floori(t.host.x * 4.0), floori(t.host.y * 4.0), SALT))
-	var l: InteriorLayout = k.recipe.call(&"lay", rng)
+	var l: InteriorLayout = k.recipe.call(&"lay", rng, t.land) if k.by_land else k.recipe.call(&"lay", rng)
 	_turn(l, _quantize(t.out))
 	var w := WorldData.new(seed_value, l.size)
 	w.realm = Realm.INTERIOR
@@ -35,7 +35,9 @@ static func grow(seed_value: int, t: Threshold) -> Pocket:
 			w.country[i] = t.land
 	w.spawn = l.inside()
 	for pr: Dictionary in l.props:
-		w.add_prop(WorldProp.new(w.next_id(), int(pr.kind), pr.at, (pr.face as Vector2).angle(), 1.0))
+		var prop := WorldProp.new(w.next_id(), int(pr.kind), pr.at, (pr.face as Vector2).angle(), 1.0)
+		prop.variant = int(pr.get("variant", -1))
+		w.add_prop(prop)
 	var p := Pocket.new()
 	p.world = w
 	p.layout = l

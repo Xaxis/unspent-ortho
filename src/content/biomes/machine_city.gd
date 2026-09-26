@@ -96,7 +96,10 @@ static func make() -> BiomeDef:
 	d.built.stock = [&"tower", &"stack", &"block"] as Array[StringName]
 	# Behind a block's service hatch, the bay one machine is kept in
 	# (src/content/interiors/maintenance_bay.gd).
-	d.interiors = {&"form:block": &"maintenance_bay"}
+	d.interiors = {&"form:block": &"maintenance_bay", &"house": &"squat"}
+	# Built for machines: no person keeps a home here. But one house in eight has
+	# somebody squatting in the machines' own gaps (src/content/interiors/squat.gd).
+	d.home = {"open": 0.125}
 	d.built.plan = &"block"
 	d.built.apart = BiomeForms.ROW_APART
 	d.built.buildings = Vector2i(26, 38)

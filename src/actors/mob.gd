@@ -137,7 +137,9 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 		if p == &"windup" and s.blow != null and model is MachineModel:
 			(model as MachineModel).tell_s = s.blow.windup / 1000.0
 		model.set_pose(p)
-	var lit := s.alive and not s.part_dark(now_ms)
+	# Asleep in a dock its optics are dark, beams and all, until it stirs: they
+	# come on as it grows unsure, which is how a player sees one waking.
+	var lit := s.alive and not s.part_dark(now_ms) and (not s.asleep or s.suspicion > SUSPECT_FLOOR)
 	if lit != _was_lit:
 		model.set_part_lit(lit)
 		_was_lit = lit

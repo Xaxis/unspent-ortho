@@ -518,6 +518,14 @@ var landmarks: Array[StringName] = []
 ## door. Doors are derived after
 ## generation, like a shaft, so the island does not move (LOOK).
 var interiors: Dictionary = {}
+## WHO LIVED IN THIS LANDSCAPE'S HOUSES, for the `home` kind behind them
+## (src/content/interiors/home.gd). `households`: {id: {"wants": [piece...],
+## "by_hearth": [{"kind", "off", "solid", "side"}...]}}, where a piece is one
+## Furnish draws (src/models/interior/furnish.gd). Dealt one per door. `hearth`:
+## what keeps its fire (cottage.gd `lay_with`: &"fire", &"issued_stove",
+## &"raised_stove", &"brazier", &"none"). Empty, a home is furnished as the
+## coast's cottages are (cottage.gd COAST), round an open hearth.
+var home: Dictionary = {}
 var sound_bed: StringName = &"bed_wind"
 ## Another type's id whose music motif this one borrows; empty composes its own.
 var music_motif: StringName = &""
