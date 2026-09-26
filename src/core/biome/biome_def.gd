@@ -429,7 +429,11 @@ var mist := 0.0
 ## time_shear). The hazards package reads this.
 var hazards: Dictionary = {}
 ## Roster id -> {weight: float, hours: Vector2} for the mob spawner. An entry
-## with no hours is awake all day.
+## with no hours is awake all day. `over` (a Dictionary of roster keys) makes the
+## kind this landscape's own: every body of it put down here wears those keys
+## over the roster's (a whole `bite` included), and fights, senses and reads on
+## the slate by them. Numbers only: a model builds its working part where the
+## roster's `part` says, so a part moved here would be drawn on the wrong side.
 var roster: Dictionary = {}
 ## Sentinel design id for this type (empty until designed).
 var sentinel: StringName = &""

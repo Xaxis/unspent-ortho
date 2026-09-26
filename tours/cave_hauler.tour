@@ -1,0 +1,14 @@
+# A landscape's own kind (mechanics pass 3a; BiomeDef.roster `over`): the hauler
+# down in the limestone caves works the dark by ear. Held under the target key,
+# the slate reads it off the same row it fights by: sees 3, hears 13, a slower
+# pace, and a 780 ms tell where the bonelands' hauler tells in 600.
+#   tools/tour.sh tours/cave_hauler.tour --seed=7 --realm=underground --hour=11
+coast calm
+wait 0.6
+spawn hauler
+wait 0.6
+hold target
+await target 5
+wait 0.6
+shot 01-the-cave-hauler-read-by-its-own-row with mob:hauler,target
+release target

@@ -162,3 +162,32 @@ func test_a_phase_coil_opens_a_roused_harvester() -> void:
 	gt(float(hc), float(hb), "the coil's first opening is worth more blows (%d against %d over %d)" % [hc, hb, ROUSED_STARTS])
 	lt(tc, tb * 0.9, "and the fight is at least a tenth shorter (%.2f s against %.2f s)" % [tc, tb])
 	gt(tc, tb * 0.75, "and no more than a quarter: an opener, not a win")
+
+
+## A landscape's own kind is still a first-hour fight a reader wins
+## (mechanics pass 3a): the cave hauler, down in the limestone caves.
+func test_a_reader_beats_the_cave_hauler() -> void:
+	var caves := BiomeRegistry.get_def(&"limestone_caves")
+	var times: Array[float] = []
+	for country: int in [Country.BONELANDS, caves.index]:
+		var sim := F.make_sim(F.flat_world(96, Ground.LIMESTONE, country), Vector2(48.5, 48.5))
+		sim.hero.inventory.add(&"knife")
+		sim.hero.inventory.set_held(&"knife")
+		var m := sim.add_mob(&"hauler", Vector2(53.5, 48.5))
+		m.facing = PI
+		m.aim = PI
+		m.disturbed = true
+		m.set_mood(MobState.ATTACKING, sim.now)
+		var bot := Bot.new(sim)
+		var t := 0.0
+		var downed := false
+		while t < 90000.0 and m.alive and not downed:
+			bot.act()
+			sim.slices(2)
+			t += 16.0
+			for e in sim.drain():
+				if e.type == &"outcome" and e.outcome in [&"downed", &"carried"]:
+					downed = true
+		check(not m.alive and not downed, "the reader takes the %s hauler: %.1f s" % ["cave" if country == caves.index else "bonelands", t / 1000.0])
+		times.append(t / 1000.0)
+	print("  hauler, roused: bonelands %.2f s, cave %.2f s" % [times[0], times[1]])

@@ -142,13 +142,19 @@ var put_out_at := 0.0
 var speed := 0.0
 
 
-func _init(kind_id: StringName = &"", at: Vector2 = Vector2.ZERO, seed_value: int = 0) -> void:
+## `over` is a landscape's own rewrite of the kind's row (BiomeDef.roster
+## `over`, FightSim.add_mob): its keys replace the roster's on this body alone,
+## `bite` whole, and everything read off the row reads the rewritten one.
+func _init(kind_id: StringName = &"", at: Vector2 = Vector2.ZERO, seed_value: int = 0, over: Dictionary = {}) -> void:
 	id = _next_id
 	_next_id += 1
 	if kind_id == &"":
 		return
 	kind = kind_id
 	row = Roster.row(kind_id)
+	if not over.is_empty():
+		row = row.duplicate(true)
+		row.merge(over.duplicate(true), true)
 	pos = at
 	home = at
 	radius = row.get("radius", 0.4)
@@ -163,6 +169,9 @@ func _init(kind_id: StringName = &"", at: Vector2 = Vector2.ZERO, seed_value: in
 	if quick <= 0.0:
 		quick = dash
 	bite = Roster.bite(kind_id)
+	if over.has("bite"):
+		bite = Blow.from_dict(row.bite)
+		bite.creep = 1.0
 	# Hashed from where it came into the world, so a seed and a place give the same body.
 	var hx := floori(at.x * 8.0)
 	var hy := floori(at.y * 8.0)

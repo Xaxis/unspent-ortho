@@ -117,10 +117,21 @@ func _init(w: WorldData, q: WorldQuery, h: Hero = null, m: Moment = null) -> voi
 	nav = NavField.new(w, q) if w != null and q != null else null
 
 
+## A body of `kind` put down at `at`, as the landscape there makes that kind
+## (BiomeDef.roster `over`): read at the one tile it stands on.
 func add_mob(kind: StringName, at: Vector2) -> MobState:
-	var m := MobState.new(kind, at, moment.seed_value)
+	var m := MobState.new(kind, at, moment.seed_value, _landscape_over(kind, at))
 	mobs.append(m)
 	return m
+
+
+func _landscape_over(kind: StringName, at: Vector2) -> Dictionary:
+	if world == null or not world.in_bounds(floori(at.x), floori(at.y)):
+		return {}
+	var def := BiomeRegistry.by_index(world.country_at(floori(at.x), floori(at.y)))
+	if def == null:
+		return {}
+	return def.roster.get(kind, {}).get("over", {})
 
 
 func living() -> int:

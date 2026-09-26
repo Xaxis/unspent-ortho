@@ -153,3 +153,19 @@ func test_every_landscape_says_how_one_is_spoken_of_in_it() -> void:
 		eq(said, said.to_lower(), "%s: lower case" % d.id)
 		check(said.contains(d.display_name.trim_prefix("the ")), "%s: it names the place (%s / %s)" % [d.id, said, d.display_name])
 		check(not said.ends_with("."), "%s: a phrase, not a sentence" % d.id)
+
+
+## A landscape's own kind rewrites numbers, never the body: the model builds
+## its working part, its size and its silhouette off the roster's own row, so a
+## part side or a radius changed here would be drawn somewhere it is not.
+const OVER_NEVER := ["part", "model", "radius", "height", "machine", "approach"]
+
+
+func test_a_landscape_s_own_kind_keeps_the_body_it_is_drawn_with() -> void:
+	for d: BiomeDef in BiomeRegistry.all():
+		for kind: StringName in d.roster:
+			var over: Dictionary = d.roster[kind].get("over", {})
+			for k: String in OVER_NEVER:
+				check(not over.has(k), "%s's %s rewrites %s, which its model is built from" % [d.id, kind, k])
+			for k: String in over:
+				check(Roster.row(kind).has(k), "%s's %s rewrites %s, a key the roster never had" % [d.id, kind, k])
