@@ -630,12 +630,29 @@ func _steam_box(at: Vector2, f: Vector2) -> void:
 	var pipe := GroundColors.made(Color(0.5, 0.42, 0.2), GroundColors.ENAMEL)
 	k.made.box(_p(at, f, -0.35, -0.2, 0.0), _p(at, f, 0.35, 0.2, 0.55), dark_wood, wood)
 	k.made.box(_p(at, f, -0.37, -0.22, 0.55), _p(at, f, 0.37, 0.22, 0.6), wood, wood)
-	var c := _p(at, f, 0.0, 0.0, 0.0)
-	k.made.prism(c.x, c.y - 0.05, c.z + 0.0, 0.07, c.y + 0.1, 0.07, 8, pipe, pipe)
-	var crust := GroundColors.made(Color(0.86, 0.76, 0.2), GroundColors.CLAY)
+	# The pipe out of its side and down into the floor, a crusted collar where
+	# it goes into the warm ground.
+	var side_out := _p(at, f, 0.35, 0.0, 0.3)
+	var elbow := _p(at, f, 0.55, 0.0, 0.3)
+	var ground := _p(at, f, 0.55, 0.0, 0.0)
+	k.made.strut(side_out, elbow, 0.045, 8, pipe)
+	k.made.strut(elbow, ground, 0.045, 8, pipe)
+	var collar := GroundColors.made(Color(0.9, 0.78, 0.18), GroundColors.CLAY)
+	k.made.prism(ground.x, ground.y, ground.z, 0.12, ground.y + 0.05, 0.08, 10, collar, collar)
+	# Steam off the vent in the lid, standing up in soft heaps and thinning.
+	var steam := GroundColors.made(Color(0.84, 0.84, 0.8), GroundColors.CLOTH)
+	var v := _p(at, f, -0.12, 0.0, 0.6)
+	for i in 9:
+		var t := float(i) / 8.0
+		var q := v + Vector3.UP * (0.05 + 0.1 * float(i)) + _side(f) * (0.05 * sin(float(i) * 1.3))
+		k.clump(q.x, q.y, q.z, 0.05 + 0.07 * sin(t * PI), 0.14, 90 + i, steam, 7)
+	# The vent's crust creeps up everything it warms: the box's foot and lid.
+	var crust := GroundColors.made(Color(0.9, 0.78, 0.18), GroundColors.CLAY)
 	for i in 5:
 		var q := _p(at, f, -0.3 + 0.15 * float(i), 0.24, 0.0)
-		k.stone(q.x, q.y, q.z, 0.04, 0.03, 70 + i, crust, 5)
+		k.stone(q.x, q.y, q.z, 0.07, 0.06, 70 + i, crust, 5)
+	k.made.box(_p(at, f, -0.37, -0.22, 0.6), _p(at, f, 0.37, -0.1, 0.63), crust)
+	k.made.box(_p(at, f, -0.37, 0.12, 0.6), _p(at, f, 0.1, 0.22, 0.62), crust)
 
 
 ## Lumps of sulphur, knocked off the vents' crust, in a basket and on the floor.
@@ -666,15 +683,16 @@ func _seed_trays(at: Vector2, f: Vector2) -> void:
 
 ## Blades knapped from the desert's fused plate, laid out on a cloth by edge.
 func _glass_blades(at: Vector2, f: Vector2) -> void:
-	var glass := GroundColors.made(Color(0.36, 0.42, 0.34), GroundColors.GLASS)
+	var glass := GroundColors.made(Color(0.62, 0.8, 0.64), GroundColors.GLASS)
 	k.made.box(_p(at, f, -0.44, -0.24, 0.0), _p(at, f, 0.44, 0.24, 0.7), dark_wood, wood)
-	k.made.box(_p(at, f, -0.4, -0.2, 0.7), _p(at, f, 0.4, 0.2, 0.705), linen)
-	for i in 6:
-		var u := -0.3 + 0.12 * float(i)
-		var a := _p(at, f, u, -0.12, 0.705)
-		var b := _p(at, f, u + 0.02, 0.12 - 0.03 * float(i % 2), 0.705)
-		var a2 := a + Vector3.UP * 0.01 + _side(f) * 0.04
-		var b2 := b + Vector3.UP * 0.01 + _side(f) * 0.015
+	k.made.box(_p(at, f, -0.42, -0.22, 0.7), _p(at, f, 0.42, 0.22, 0.705), leather)
+	for i in 3:
+		var u := -0.26 + 0.24 * float(i)
+		var a := _p(at, f, u, -0.19, 0.706)
+		var b := _p(at, f, u + 0.04, 0.19 - 0.05 * float(i % 2), 0.706)
+		# Tilted up off the cloth on one edge, so a face catches the light.
+		var a2 := a + Vector3.UP * 0.05 + _side(f) * 0.13
+		var b2 := b + Vector3.UP * 0.03 + _side(f) * 0.05
 		k.made.quad(a, a2, b2, b, glass)
 		k.made.quad(b, b2, a2, a, glass)
 
