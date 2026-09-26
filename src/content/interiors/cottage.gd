@@ -302,7 +302,8 @@ static func _solid(kind: StringName) -> float:
 			return 0.36
 		&"coil":
 			return 0.22
-		&"resin_pots", &"charcoal_sacks", &"core_samples", &"peat_stack", &"salt_cones", &"filings_trays":
+		&"resin_pots", &"charcoal_sacks", &"core_samples", &"peat_stack", &"salt_cones", &"filings_trays", \
+				&"steam_box", &"sulphur_lumps", &"seed_trays", &"glass_blades", &"glass_still", &"slag_lumps", &"oil_drums", &"sorted_bins":
 			return 0.3
 		&"mason_rack":
 			return 0.26

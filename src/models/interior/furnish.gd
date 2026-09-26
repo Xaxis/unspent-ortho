@@ -99,6 +99,14 @@ func thing(t: Dictionary) -> void:
 		&"salt_rake": _salt_rake(at, f)
 		&"lodestones": _lodestones(at, f)
 		&"filings_trays": _filings_trays(at, f)
+		&"steam_box": _steam_box(at, f)
+		&"sulphur_lumps": _sulphur_lumps(at, f)
+		&"seed_trays": _seed_trays(at, f)
+		&"glass_blades": _glass_blades(at, f)
+		&"glass_still": _glass_still(at, f)
+		&"slag_lumps": _slag_lumps(at, f)
+		&"oil_drums": _oil_drums(at, f)
+		&"sorted_bins": _sorted_bins(at, f)
 
 
 # --- the frame -----------------------------------------------------------------
@@ -614,6 +622,112 @@ func _filings_trays(at: Vector2, f: Vector2) -> void:
 				var p0 := pole + (_side(f) * sin(t0) + Vector3(f.x, 0.0, f.y) * cos(t0)) * r
 				var p1 := pole + (_side(f) * sin(t1) + Vector3(f.x, 0.0, f.y) * cos(t1)) * r
 				k.made.strut(p0, p1, 0.006, 3, iron)
+
+
+## The steam box: a lidded crate over a pipe let up through the floor from the
+## warm ground, where the food is cooked with no fire at all.
+func _steam_box(at: Vector2, f: Vector2) -> void:
+	var pipe := GroundColors.made(Color(0.5, 0.42, 0.2), GroundColors.ENAMEL)
+	k.made.box(_p(at, f, -0.35, -0.2, 0.0), _p(at, f, 0.35, 0.2, 0.55), dark_wood, wood)
+	k.made.box(_p(at, f, -0.37, -0.22, 0.55), _p(at, f, 0.37, 0.22, 0.6), wood, wood)
+	var c := _p(at, f, 0.0, 0.0, 0.0)
+	k.made.prism(c.x, c.y - 0.05, c.z + 0.0, 0.07, c.y + 0.1, 0.07, 8, pipe, pipe)
+	var crust := GroundColors.made(Color(0.86, 0.76, 0.2), GroundColors.CLAY)
+	for i in 5:
+		var q := _p(at, f, -0.3 + 0.15 * float(i), 0.24, 0.0)
+		k.stone(q.x, q.y, q.z, 0.04, 0.03, 70 + i, crust, 5)
+
+
+## Lumps of sulphur, knocked off the vents' crust, in a basket and on the floor.
+func _sulphur_lumps(at: Vector2, f: Vector2) -> void:
+	var yellow := GroundColors.made(Color(0.9, 0.78, 0.18), GroundColors.CLAY)
+	var c := _p(at, f, 0.0, 0.0, 0.0)
+	k.made.prism(c.x, c.y, c.z, 0.26, c.y + 0.32, 0.3, 10, rope, rope)
+	for i in 7:
+		var h := Rng.hash_ints(i, 0x5071)
+		var o := Vector2(float(h & 255) / 255.0 - 0.5, float((h >> 8) & 255) / 255.0 - 0.5) * 0.36
+		k.stone(c.x + o.x, c.y + 0.24, c.z + o.y, 0.06, 0.08, h, yellow, 5)
+
+
+## Seed trays on a rack, green already: here everything grows twice as fast.
+func _seed_trays(at: Vector2, f: Vector2) -> void:
+	var green := GroundColors.made(Color(0.36, 0.56, 0.24), GroundColors.CLOTH)
+	var earth := GroundColors.made(Color(0.24, 0.18, 0.12), GroundColors.CLAY)
+	for r in 3:
+		var h := 0.3 + 0.45 * float(r)
+		k.made.box(_p(at, f, -0.45, -0.2, h), _p(at, f, 0.45, 0.2, h + 0.04), dark_wood)
+		k.made.box(_p(at, f, -0.42, -0.17, h + 0.04), _p(at, f, 0.42, 0.17, h + 0.09), earth)
+		for i in 9:
+			var q := _p(at, f, -0.36 + 0.09 * float(i), 0.05 * float((i + r) % 3 - 1), h + 0.09)
+			k.made.strut(q, q + Vector3.UP * (0.1 + 0.08 * float((i * 7 + r) % 3)), 0.012, 3, green)
+	for u: float in [-0.45, 0.45]:
+		k.made.box(_p(at, f, u - 0.02, -0.2, 0.0), _p(at, f, u + 0.02, -0.16, 1.3), dark_wood)
+
+
+## Blades knapped from the desert's fused plate, laid out on a cloth by edge.
+func _glass_blades(at: Vector2, f: Vector2) -> void:
+	var glass := GroundColors.made(Color(0.36, 0.42, 0.34), GroundColors.GLASS)
+	k.made.box(_p(at, f, -0.44, -0.24, 0.0), _p(at, f, 0.44, 0.24, 0.7), dark_wood, wood)
+	k.made.box(_p(at, f, -0.4, -0.2, 0.7), _p(at, f, 0.4, 0.2, 0.705), linen)
+	for i in 6:
+		var u := -0.3 + 0.12 * float(i)
+		var a := _p(at, f, u, -0.12, 0.705)
+		var b := _p(at, f, u + 0.02, 0.12 - 0.03 * float(i % 2), 0.705)
+		var a2 := a + Vector3.UP * 0.01 + _side(f) * 0.04
+		var b2 := b + Vector3.UP * 0.01 + _side(f) * 0.015
+		k.made.quad(a, a2, b2, b, glass)
+		k.made.quad(b, b2, a2, a, glass)
+
+
+## A still: a glass pane over a dish, the drops running down it to a jar, the
+## only water here that is not bought.
+func _glass_still(at: Vector2, f: Vector2) -> void:
+	var glass := GroundColors.made(Color(0.6, 0.72, 0.7), GroundColors.GLASS)
+	var c := _p(at, f, 0.0, 0.0, 0.0)
+	k.made.prism(c.x, c.y, c.z, 0.34, c.y + 0.12, 0.34, 12, clay, GroundColors.made(Color(0.2, 0.26, 0.28), GroundColors.GLASS))
+	k.made.quad(_p(at, f, -0.34, -0.3, 0.12), _p(at, f, -0.34, 0.0, 0.5), _p(at, f, 0.34, 0.0, 0.5), _p(at, f, 0.34, -0.3, 0.12), glass)
+	k.made.quad(_p(at, f, 0.34, 0.3, 0.12), _p(at, f, 0.34, 0.0, 0.5), _p(at, f, -0.34, 0.0, 0.5), _p(at, f, -0.34, 0.3, 0.12), glass)
+	var j := _p(at, f, 0.45, 0.2, 0.0)
+	k.made.prism(j.x, j.y, j.z, 0.08, j.y + 0.2, 0.06, 10, glass, glass)
+
+
+## Slag glass picked from the runs, black and blue-green, heaped in a basket.
+func _slag_lumps(at: Vector2, f: Vector2) -> void:
+	var slag: Array[Color] = [GroundColors.made(Color(0.08, 0.1, 0.12), GroundColors.GLASS), GroundColors.made(Color(0.14, 0.3, 0.3), GroundColors.GLASS)]
+	var c := _p(at, f, 0.0, 0.0, 0.0)
+	k.made.prism(c.x, c.y, c.z, 0.26, c.y + 0.3, 0.3, 10, rope, rope)
+	for i in 8:
+		var h := Rng.hash_ints(i, 0x51A9)
+		var o := Vector2(float(h & 255) / 255.0 - 0.5, float((h >> 8) & 255) / 255.0 - 0.5) * 0.4
+		k.stone(c.x + o.x, c.y + 0.22, c.z + o.y, 0.06, 0.09, h, slag[i % 2], 5)
+
+
+## Drums of oil siphoned off the refineries, stood against the wall, one on
+## its side with a tap in it and a pan under.
+func _oil_drums(at: Vector2, f: Vector2) -> void:
+	for i in 2:
+		var c := _p(at, f, -0.22 + 0.44 * float(i), -0.02, 0.0)
+		k.found.prism(c.x, c.y, c.z, 0.2, c.y + 0.62, 0.2, 12, P.PLATE[i % 2], P.PLATE[1])
+		k.hoop(c + Vector3.UP * 0.2, 0.205, 12, 0.015, P.PLATE[0])
+		k.hoop(c + Vector3.UP * 0.44, 0.205, 12, 0.015, P.PLATE[0])
+	var pan := _p(at, f, 0.0, 0.3, 0.0)
+	k.made.prism(pan.x, pan.y, pan.z, 0.12, pan.y + 0.04, 0.12, 10, GroundColors.made(Color(0.05, 0.05, 0.05), GroundColors.GLASS), GroundColors.made(Color(0.05, 0.05, 0.05), GroundColors.GLASS))
+
+
+## Bins of what the middens give up, sorted: screws, boards, cells, glass, each
+## its own bin, labelled in chalk.
+func _sorted_bins(at: Vector2, f: Vector2) -> void:
+	var chalk := GroundColors.made(Color(0.86, 0.84, 0.78), GroundColors.CLAY)
+	for r in 2:
+		for i in 3:
+			var u := -0.3 + 0.3 * float(i)
+			var h := 0.45 * float(r)
+			k.made.box(_p(at, f, u - 0.14, -0.2, h), _p(at, f, u + 0.14, 0.2, h + 0.4), dark_wood, wood)
+			k.made.box(_p(at, f, u - 0.08, 0.2, h + 0.25), _p(at, f, u + 0.08, 0.205, h + 0.3), chalk)
+			var bits := P.PLATE[(i + r) % 2]
+			for b in 4:
+				var q := _p(at, f, u - 0.08 + 0.05 * float(b), 0.0, h + 0.4)
+				k.found.box(q, q + Vector3(0.03, 0.02, 0.03), bits)
 
 
 func _side(f: Vector2) -> Vector3:

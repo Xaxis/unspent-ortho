@@ -104,6 +104,13 @@ static func make() -> BiomeDef:
 	# Under its works depot, the foundry the refinery feeds: where the machines
 	# make what they fight with (src/content/interiors/foundry.gd).
 	d.interiors = {&"works:depot": &"foundry", &"house": &"home"}
+	# Who kept them: the slag picker, who works the runs for glass, and the
+	# siphoner, who takes the refineries' oil a drum at a time.
+	d.home = {"households": {
+		&"picker": {"wants": [&"slag_lumps", &"slag_lumps", &"shelf", &"creel"], "by_hearth": []},
+		&"siphoner": {"wants": [&"oil_drums", &"jars", &"workbench", &"coil"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+	}}
 	d.sound_bed = &"bed_burning"
 	d.surface = _surface
 	d.scatter = _scatter
