@@ -29,7 +29,7 @@ const WORK_WORDS := {
 	&"iced_line": "a line iced up", &"shelter": "a shelter", &"cistern": "a cistern",
 	&"dugout": "a dugout", &"graves": "graves in rows", &"stolen_light": "light stolen off a machine",
 	&"pans": "pans ruled across the flat", &"breaking_yard": "a yard for breaking machines",
-	&"closing_corridor": "a corridor closing over",
+	&"closing_corridor": "a corridor closing over", &"orchard_block": "an orchard planted in rows",
 }
 ## Works listed when nothing living reads back: kinds, not repeats of one kind.
 const WORKS_ROWS := 6
