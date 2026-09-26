@@ -46,7 +46,7 @@ func test_past_the_pick_the_goal_points_at_an_elite_material() -> void:
 	print("  late goal: %s" % line)
 	var name := String(Items.def(want).get("name", String(want)))
 	check(line.to_lower().contains(name.to_lower()), "the goal names it (%s): %s" % [name, line])
-	check(line.contains("harvester") and line.contains("coast"), "on the coast, the coast's own: cut out of a harvester: %s" % line)
+	check(line.contains("harvester") and line.contains("here on the coast"), "on the coast, the coast's own: cut out of a harvester, here on the coast: %s" % line)
 	# One line on the goal window, left of the place name, whatever it names.
 	for id: Variant in EliteStock.ids():
 		var said := Guide.elite_goal(g, StringName(id))
@@ -57,7 +57,7 @@ func test_past_the_pick_the_goal_points_at_an_elite_material() -> void:
 	check(after != want and EliteStock.is_elite(after), "held, the next one is asked for: %s" % after)
 	var where := String(EliteStock.land_of(after))
 	if where != "":
-		check(Guide.goal(g).contains(BiomeRegistry.get_def(StringName(where)).display_name.to_lower().trim_prefix("the ")), "and where it lies: %s" % Guide.goal(g))
+		check(Guide.goal(g).contains(BiomeRegistry.get_def(StringName(where)).spoken_in), "and where it lies, in its own words: %s" % Guide.goal(g))
 	Fx.done(g)
 
 

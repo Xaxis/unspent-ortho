@@ -37,6 +37,12 @@ var realms: Array[StringName] = [&"surface"]
 var sea := false
 ## A one-line note on what this landscape is for, in the notebook's own words.
 var style_note := ""
+## How the game says someone is in this landscape: "on the coast", "out on the
+## glass", "down in the middens". Flat and present (docs/STORY.md, the voice):
+## a place's own preposition, which no rule can guess ("in the coast" is how a
+## sentence built off `display_name` said it). Every landscape declares one
+## (tests/biome/test_registry.gd).
+var spoken_in := ""
 
 # --- placement ------------------------------------------------------------
 

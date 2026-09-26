@@ -218,9 +218,9 @@ static func elite_goal(game: Game, id: StringName) -> String:
 	var here := _land_here(game)
 	var where := ""
 	if all.has(here):
-		where = "here in the %s" % _land_name(here)
+		where = "here %s" % _land_said(here)
 	elif not all.is_empty():
-		where = "in the %s" % _land_name(all[0])
+		where = _land_said(all[0])
 	var kind := EliteStock.kind_of(id)
 	var how := ""
 	if kind != &"":
@@ -230,11 +230,10 @@ static func elite_goal(game: Game, id: StringName) -> String:
 	return "%s: %s." % [name.left(1).to_upper() + name.substr(1), how.strip_edges()]
 
 
-## A landscape as the goal says it: its display name without its article.
-static func _land_name(id: StringName) -> String:
+## A landscape as the goal says someone is in it: its own words (BiomeDef.spoken_in).
+static func _land_said(id: StringName) -> String:
 	var b := BiomeRegistry.get_def(id)
-	var n := b.display_name.to_lower() if b != null and b.display_name != "" else String(id).replace("_", " ")
-	return n.trim_prefix("the ")
+	return b.spoken_in if b != null and b.spoken_in != "" else "in the %s" % String(id).replace("_", " ")
 
 
 ## The first lesson that fits and has not been spent. `keyed_only` asks for the

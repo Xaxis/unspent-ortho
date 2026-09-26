@@ -140,3 +140,16 @@ func test_guaranteed_answers_only_for_a_landscape_with_a_floor() -> void:
 			promised += 1
 	lt(float(promised), float(BiomeRegistry.count()) * 0.5,
 		"the guaranteed set stays small: every floor is a landscape that can never be rare")
+
+
+## Every landscape says how a body is spoken of in it: its own preposition and
+## its own name, lower case, as the game's flat present voice uses it
+## (BiomeDef.spoken_in; Guide's late goal is the first reader). A new landscape
+## cannot ship saying "in the coast".
+func test_every_landscape_says_how_one_is_spoken_of_in_it() -> void:
+	for d: BiomeDef in BiomeRegistry.all():
+		var said := d.spoken_in
+		check(said != "", "%s declares spoken_in" % d.id)
+		eq(said, said.to_lower(), "%s: lower case" % d.id)
+		check(said.contains(d.display_name.trim_prefix("the ")), "%s: it names the place (%s / %s)" % [d.id, said, d.display_name])
+		check(not said.ends_with("."), "%s: a phrase, not a sentence" % d.id)

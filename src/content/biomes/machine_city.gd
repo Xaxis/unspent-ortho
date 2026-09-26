@@ -24,6 +24,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"machine_city"
 	d.display_name = "the machine city"
+	d.spoken_in = "in the machine city"
 	d.order = 18
 	d.style_note = "Exact, level, clean. No warmth anywhere and not one thing out of line."
 	d.share = Vector2(0.075, 0.135)

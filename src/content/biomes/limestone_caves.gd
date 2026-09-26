@@ -40,6 +40,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"limestone_caves"
 	d.display_name = "limestone caves"
+	d.spoken_in = "down in the limestone caves"
 	# After every surface landscape: the M1 six keep 1..6 and wave A's two keep
 	# 7..8 whatever is registered under the world.
 	d.order = 200

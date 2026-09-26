@@ -15,6 +15,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"scrapwood"
 	d.display_name = "scrapwood"
+	d.spoken_in = "in the scrapwood"
 	d.order = 7
 	d.style_note = "Upright strokes over rust: the hand's crowns closed over the ruler's frames."
 	d.share = Vector2(0.105, 0.16)
