@@ -239,7 +239,7 @@ const ROWS := {
 		"cost": {&"scrap": 2, &"copper": 2}, "minutes": 90.0, "wear": 0.02,
 		"power": 4.0,
 		"needs_one": [&"reaper_core", &"rake_core", &"plumb_core", &"anvil_core",
-			&"unbuilder_core", &"lockkeeper_core", &"anchor_core"],
+			&"unbuilder_core", &"lockkeeper_core", &"anchor_core", &"listener_core"],
 	},
 	RADIO_MAST: {
 		"name": "radio mast", "idiom": Idiom.MENDED, "health": 6.0, "solid": 0.3,

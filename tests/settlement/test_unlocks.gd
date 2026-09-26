@@ -27,3 +27,9 @@ func test_it_is_the_loudest_thing_a_holding_can_stand_up() -> void:
 	gt(float(StructureKind.signs(StructureKind.STOLEN_CELL).get("found_tech", 0.0)),
 		float(StructureKind.signs(StructureKind.TURRET).get("found_tech", 0.0)), "louder in found tech than a turret")
 	gt(float(StructureKind.row(StructureKind.STOLEN_CELL).get("power", 0.0)), float(StructureKind.row(StructureKind.SOLAR_ARRAY).get("power", 0.0)), "and more power than an array, day and night")
+
+
+func test_any_keepers_core_powers_it() -> void:
+	for def: SentinelDef in Sentinels.all():
+		check(StructureKind.needs_one(StructureKind.STOLEN_CELL).has(def.core),
+			"%s's core powers a stolen cell" % def.id)
