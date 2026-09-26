@@ -214,6 +214,63 @@ static func _yard_work() -> void:
 		acc += (p - pts[(i * 7) & 63]).normalized() * p.length()
 
 
+## A cost, its doubling and its yardstick, timed IN TURN over `rounds` rounds,
+## each the cheapest of `reps`: [work_us, doubled_us, yard_us]. Timed apart,
+## a burst of load that lands on the yardstick alone moves the ratio as much as
+## a regression would (measured: the interpreted yardstick read 68 us against its
+## usual 40 in one run, and a doubled trample frame fell under its bar). In turn,
+## the three share whatever the machine was doing, round by round.
+static func yard_sample(work: Callable, doubled: Callable, yard: Callable, rounds: int = 6, reps: int = 3) -> Array[float]:
+	var w := INF
+	var d := INF
+	var y := INF
+	for r in rounds:
+		y = minf(y, best_of(reps * 4, yard))
+		w = minf(w, best_of(reps, work))
+		d = minf(d, best_of(reps, doubled))
+	return [w, d, y]
+
+
+## The interpreted yardstick's work, as a Callable for `yard_sample`.
+static func yard_work() -> Callable:
+	return _yard_work
+
+
+## The rig yardstick's work (see bone_yardstick_us), as a Callable.
+static func bone_work() -> Callable:
+	bone_yardstick_us()
+	return _bone_work
+
+
+## A yardstick for a cost that is mostly the engine's own work: posing a rig.
+## An interpreted loop is a poor ruler for it, because one machine's interpreter
+## and another's engine code are not slower by the same factor (measured on CI:
+## the interpreted yardstick ran 2.2x this laptop's, a street of forty's step
+## 1.3x, so a doubled street read UNDER a bar it cleared twice over here). This
+## times what `SkinRig.pose` does, per bone, on a skeleton of its own: a
+## rotation from euler angles and a position written back, 24 bones, twenty
+## times over: tens of microseconds, well clear of the timer's own step.
+static func bone_yardstick_us() -> float:
+	if _bones == null:
+		_bones = Skeleton3D.new()
+		for i in 24:
+			_bones.add_bone("b%d" % i)
+			if i > 0:
+				_bones.set_bone_parent(i, i - 1)
+	return best_of(40, _bone_work)
+
+
+static var _bones: Skeleton3D = null
+
+
+static func _bone_work() -> void:
+	for k in 20:
+		for i in 24:
+			var e := Vector3(float(i) * 0.07, float(k) * 0.3, 0.1)
+			_bones.set_bone_pose_rotation(i, Quaternion.from_euler(e))
+			_bones.set_bone_pose_position(i, Vector3(0.0, float(i) * 0.1, 0.0))
+
+
 ## Assert a cost in yardsticks: `us` (shipped) under `bar` x `yard`, and
 ## `doubled_us` (the same work twice) over it. Over the bar on a machine too busy
 ## to measure is said and not judged, as `cost_lt` does; a doubling that the bar
