@@ -2490,6 +2490,12 @@ void fragment() {
 		float wall_dt = (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y;
 		rough_add -= smoothstep(TIDE_WEED - 0.02, TIDE_WEED + 0.04, wall_dt) * 0.45;
 	}
+	if (m == M_VITRIFIED) {
+		// By night the fused sheet is what holds the sky: smoother as the
+		// dark comes (sky_view.y), so the moon lies on the glass in a long
+		// streak and the stars are in it, and nothing else in the desert is lit.
+		rough_add -= sky_view.y * 0.2;
+	}
 	if (m == M_STRATA_GLASS) {
 		// The glaze is not one sheet: runnels polished by the flow alternate
 		// with duller skin, so a wall catches the sun in streaks down its fall
