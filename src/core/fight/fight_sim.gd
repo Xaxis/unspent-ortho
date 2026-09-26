@@ -1223,6 +1223,18 @@ func _hunted_by_machine() -> bool:
 	return false
 
 
+## Where `m` will be when it next tells a blow, as the plumb reads it
+## (FightKit.plumb): coming for the player, at the edge of its reach on the line
+## between them; at its work, where it stands.
+func next_tell_at(m: MobState) -> Vector2:
+	if not m.roused():
+		return m.pos
+	var to := m.pos - hero.pos
+	if to.length() < 1e-4:
+		return m.pos
+	return hero.pos + to.normalized() * Brains.strike_range(m, self)
+
+
 ## The undertow's haul (FightKit.undertow): a machine the line has taken hold of
 ## is dragged one body-length toward the player, never nearer than UNDERTOW_GAP,
 ## over ground it could walk; a tell it was winding up is broken and a charge

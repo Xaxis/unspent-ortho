@@ -444,6 +444,10 @@ const DEFS := {
 	# that heard the ice, turned. `sight` is its tag (ModifierTable).
 	&"mod_listen": {"name": "the ear", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"scan_lens", &"rime", &"ink"], "fits": [&"head"], "resist": {&"cold": 0.2}},
+	# The crags plumb's core, set in a lens frame (GEAR.md §5): the keeper that
+	# read the ground's lean before it moved, turned. `read` (ModifierTable).
+	&"mod_plumb": {"name": "plumb", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"scan_lens", &"stone", &"ink"], "fits": [&"head"], "resist": {&"collapse": 0.2}},
 	&"mod_undertow": {"name": "undertow", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"brine", &"earth"], "fits": [&"hands"], "resist": {&"magnetism": 0.3}},
 	# The crags' hush slate, lined into a hat, a coat or a pack: what it decides

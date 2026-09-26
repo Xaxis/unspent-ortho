@@ -39,6 +39,11 @@ func refusal(ctx: AbilityCtx) -> StringName:
 	return &""
 
 
+## How long a scan takes to come back with this kit (a plumb makes it longer).
+static func cooldown_of(kit: FightKit) -> float:
+	return COOLDOWN * (FightKit.PLUMB_COOLDOWN if kit != null and kit.plumb else 1.0)
+
+
 ## How far a scan reads with this kit fitted (an icelens reads further).
 static func reach_of(kit: FightKit) -> float:
 	return REACH * (FightKit.ICELENS_REACH if kit != null and kit.icelens else 1.0)
@@ -60,6 +65,9 @@ func _reach(ctx: AbilityCtx) -> float:
 
 
 func on_press(ctx: AbilityCtx) -> bool:
+	# The book sets the cooldown from this after the press (a plumb doubles it).
+	if ctx.game != null and ctx.game.player != null and ctx.game.player.hero != null:
+		cooldown = cooldown_of(ctx.game.player.hero.kit)
 	until = ctx.now + SECONDS
 	_next_beat = ctx.now
 	ctx.draw(&"scan", {"reach": _reach(ctx), "seconds": SECONDS, "beat": BEAT})

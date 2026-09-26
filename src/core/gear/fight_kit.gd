@@ -43,6 +43,10 @@ extends RefCounted
 ##                            cannot be seen, through whatever stands between
 ##                            (40_fight); every noise the player makes is
 ##                            LISTEN_NOISE as loud (`noise_scale`)
+##   plumb    (mod_plumb)     "a scan reads their next blow": the scan marks where
+##                            each machine will tell its next blow
+##                            (FightSim.next_tell_at); the scan's cooldown is
+##                            PLUMB_COOLDOWN as long
 ##   undertow (mod_undertow)  "your line hauls them in": the grapple takes hold
 ##                            of a machine ahead and drags it one body-length
 ##                            in (FightSim.undertow), its tell broken and its
@@ -99,6 +103,8 @@ const LOCK_CHARGES := 1
 const LOCK_HUNTED := 20.0
 ## How much further the player's own noise carries with the ear on.
 const LISTEN_NOISE := 1.5
+## How much longer the scan takes to come back with the plumb set.
+const PLUMB_COOLDOWN := 2.0
 ## A haul on a machine costs this many times the grapple's wind.
 const UNDERTOW_WIND := 2.0
 
@@ -114,6 +120,7 @@ var lattice := false
 var icelens := false
 var undertow := false
 var rake := false
+var plumb := false
 var listen := false
 var lock := false
 var anchor := false
@@ -134,6 +141,7 @@ static func of(ids: Array) -> FightKit:
 	k.icelens = ids.has(&"mod_icelens")
 	k.undertow = ids.has(&"mod_undertow")
 	k.rake = ids.has(&"mod_rake")
+	k.plumb = ids.has(&"mod_plumb")
 	k.listen = ids.has(&"mod_listen")
 	k.lock = ids.has(&"mod_lock")
 	k.anchor = ids.has(&"mod_anchor")

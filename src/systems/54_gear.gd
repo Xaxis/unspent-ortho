@@ -605,6 +605,11 @@ func _scan_marks(reach: float, opening: bool) -> void:
 				MobFx.ring(game, game.world.to_3d(mob.pos), Palette.LENS[2], mob.state.radius + 0.5, 0.5)
 		if mob.aware and tell_due:
 			MobFx.tell(game, mob.screen_top(up), up, AWARE_BEAT, mob.get_instance_id() + 3, 0.7)
+		# The plumb (FightKit.plumb): where it will tell its next blow, marked on
+		# the ground in the lens's own light.
+		var sim := game.player.sim
+		if sim != null and sim.hero.kit.plumb and mob.state.roused():
+			MobFx.ring(game, game.world.to_3d(sim.next_tell_at(mob.state)), Palette.LENS[3], mob.state.radius + 0.8, _read_for)
 
 
 # --- the slate's gear page -----------------------------------------------------

@@ -110,6 +110,11 @@ const MODS := {
 		"short": "you hear their tells",
 		"costs": "your noise carries half as far again",
 		"gives": [&"sight"]},
+	# The crags plumb's, turned (GEAR.md §5): `read`, as the scan head's.
+	&"mod_plumb": {"decision": "a scan marks where each machine will be when it next strikes",
+		"short": "a scan reads their next blow",
+		"costs": "the scan takes twice as long to come back",
+		"gives": [&"read"]},
 	# The pan rake's, turned (GEAR.md §5): `loud`, so a damper fights it (PAIRS).
 	&"mod_rake": {"decision": "a heavy blow rakes the ground ahead and holds everything in the arc open, and rings for it",
 		"short": "a heavy rakes the arc",

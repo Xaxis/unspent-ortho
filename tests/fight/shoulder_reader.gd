@@ -25,6 +25,15 @@ const SIGHT_REACH := 22.0
 const HEARD_BESIDE := 2.5
 const EAR_REACH := 20.0
 const RECALL_MS := 1000.0
+## With `scan` it presses the scan whenever it is ready (AbilityScan: SECONDS
+## on, its cooldown off, doubled by the plumb); while it stands, every machine
+## in its reach is known. With the plumb its marks say where each will tell,
+## and a tell met where it was marked is answered PLUMB_REACT_MS after it
+## starts instead of react_ms.
+var scan := false
+const PLUMB_REACT_MS := 80.0
+var _scan_until := -INF
+var _scan_ready := 0.0
 ## Radians a second a player turns the camera looking for what they lost.
 const LOOK_TURN := 2.5
 
@@ -36,10 +45,20 @@ func _init(s: FightSim) -> void:
 
 
 func act() -> void:
+	var hero := sim.hero
+	if scan and sim.now >= _scan_ready:
+		_scan_until = sim.now + AbilityScan.SECONDS * 1000.0
+		_scan_ready = sim.now + AbilityScan.cooldown_of(hero.kit) * 1000.0
+	var plumbed := _scanning() and hero.kit != null and hero.kit.plumb
+	react_ms = PLUMB_REACT_MS if plumbed else 220.0
 	var known := _live()
 	if known.is_empty() and sim.hero.move.length() < 0.1:
 		sim.hero.facing = wrapf(sim.hero.facing + LOOK_TURN * FightRules.SLICE_MS * 2.0 / 1000.0, -PI, PI)
 	super()
+
+
+func _scanning() -> bool:
+	return sim.now < _scan_until
 
 
 ## Whether the player knows of `m` now.
@@ -48,7 +67,7 @@ func _knows(m: MobState) -> bool:
 	var to := m.pos - hero.pos
 	var d := to.length()
 	var seen := d <= SIGHT_REACH and absf(wrapf(to.angle() - hero.facing, -PI, PI)) <= SIGHT_CONE * 0.5
-	var heard := d <= HEARD_BESIDE
+	var heard := d <= HEARD_BESIDE or (_scanning() and m.machine and d <= AbilityScan.reach_of(hero.kit))
 	if not heard and hero.kit != null and hero.kit.listen and d <= EAR_REACH:
 		heard = m.blow != null and m.blow_phase(sim.now) == &"windup"
 	if seen or heard:
