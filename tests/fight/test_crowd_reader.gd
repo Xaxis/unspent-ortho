@@ -14,10 +14,12 @@ const TOOL := &"knife"
 
 ## One gate bout: {won, downed, t, health_lost}. `kit` is what is fitted.
 static func gate(crowd_reader: bool, start: int, kind: StringName = &"runner", count: int = 2,
-		kit: Array[StringName] = [], seconds: float = 120.0) -> Dictionary:
+		kit: Array[StringName] = [], seconds: float = 120.0, tool: StringName = TOOL, charges: int = 0) -> Dictionary:
 	var sim := F.make_sim(F.flat_world(96), Vector2(48.5, 48.5))
-	sim.hero.inventory.add(TOOL)
-	sim.hero.inventory.set_held(TOOL)
+	if charges > 0:
+		sim.hero.inventory.add(FightRules.CHARGE, charges)
+	sim.hero.inventory.add(tool)
+	sim.hero.inventory.set_held(tool)
 	sim.hero.kit = FightKit.of(kit)
 	var a := float(start) / 8.0 * TAU
 	var mid := sim.hero.pos + Vector2.from_angle(a) * 5.0

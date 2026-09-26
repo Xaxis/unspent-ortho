@@ -1120,7 +1120,9 @@ func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF, stall_ms: int 
 		_break_tell(m)
 	if player_swing:
 		emit(&"hit", {"attacker": hero, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})
-		if hero.kit.lattice:
+		# A discharge is a charge spent, as a charged weapon's swing is: dry, the
+		# blow lands and nothing jumps (the capacitor and the leech pair with it).
+		if hero.kit.lattice and FightRules.spend_charges(hero.inventory, FightKit.LATTICE_CHARGES):
 			_lattice(m)
 	else:
 		emit(&"struck", {"from": from, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})

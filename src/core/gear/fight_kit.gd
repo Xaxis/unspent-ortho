@@ -22,7 +22,8 @@ extends RefCounted
 ##   clamp    (mod_clamp)     "you stay on the plate": knockback is CLAMP_KNOCK
 ##   lattice  (mod_lattice)   "every blow shocks": a blow that lands in a part
 ##                            also takes LATTICE_DAMAGE off every other body
-##                            within LATTICE_REACH of it (hot: it wants a cool)
+##                            within LATTICE_REACH of it, for LATTICE_CHARGES
+##                            (hot: it wants a cool)
 ##   icelens  (mod_icelens)   "sight": the scan reads ICELENS_REACH as far
 
 const HARMONIC_DAMAGE := 1
@@ -50,6 +51,8 @@ const DAMP_NOISE := 0.5
 ## A lattice discharge: how far from the body struck it jumps, and what it takes.
 ## A crowd is where it pays: two machines shoulder to shoulder at a gate.
 const LATTICE_REACH := 2.0
+## What one discharge spends (FightRules.CHARGE).
+const LATTICE_CHARGES := 1
 const LATTICE_DAMAGE := 2
 ## How much further an icelens scan reads.
 const ICELENS_REACH := 1.5
