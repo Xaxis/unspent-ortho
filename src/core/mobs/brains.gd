@@ -1,11 +1,13 @@
 class_name Brains
 ## What a body wants to do, every 64 ms (design-extract §7.3, §7.4). A brain
 ## only sets `want` (tiles/s), `aim` and starts bites; FightSim moves bodies,
-## turns them and lands blows. Four approaches:
+## turns them and lands blows. Five approaches:
 ##   errand  walks its line; closes on you only when you are near, seen clear, and rested
 ##   charge  commits to a bearing for a run, then stands and comes round (420 ms x turns)
 ##   rush    a 1000 ms lunge cycle: press in and bite for 620 ms, circle for the rest
 ##   dart    closes, takes what it came for, and runs until it is clear
+##   throw   keeps a lane's length off, throws down it when squarely aimed, and
+##           stands to reload after (FightRules.throws: its bite IS the lane)
 
 const RUN_MS := 900
 const TURN_PAUSE_MS := 420
@@ -22,6 +24,14 @@ const FACING_BITE := 0.6
 const GO_ROUND_AHEAD := 6.0
 const GO_ROUND_CLEAR := 0.9
 const VIA_RETRY_MS := 4000.0
+## A thrower comes on until the player is inside this share of its lane, and
+## gives ground to one inside the near share of it.
+const THROW_FAR := 0.85
+const THROW_NEAR := 0.45
+## Radians off the player it throws at. A load goes where the arm faces, and a
+## lane is half a tile wide five tiles out: any looser and a player standing
+## still is missed, which is not a thrower.
+const THROW_AIM := 0.05
 
 
 static func think(m: MobState, sim: FightSim) -> void:
@@ -55,12 +65,14 @@ static func think(m: MobState, sim: FightSim) -> void:
 				&"errand": _errand(m, sim)
 				&"dart": _dart(m, sim)
 				&"charge": _charge(m, sim, m.dash, TURN_PAUSE_MS * 0.25 * int(m.stat("turns", 1)))
+				&"throw": _throw(m, sim)
 				_: _seek(m, sim, _target(m, sim), m.dash)
 		MobState.ATTACKING:
 			match m.approach:
 				&"errand": _errand(m, sim)
 				&"dart": _dart(m, sim)
 				&"charge": _charge(m, sim, m.quick, TURN_PAUSE_MS * int(m.stat("turns", 1)))
+				&"throw": _throw(m, sim)
 				_: _lunge(m, sim)
 		MobState.FLEEING:
 			_flee(m, sim)
@@ -322,6 +334,34 @@ static func _lunge(m: MobState, sim: FightSim) -> void:
 		var want_d := strike + 0.4
 		var radial := clampf(d - want_d, -1.0, 1.0)
 		m.want = (dir.orthogonal() * side * 0.8 + dir * (radial * 0.6 - inout)).normalized() * m.quick * 0.6
+
+
+## Throw: come on to a lane's length, turn square on and throw down the lane.
+## Once thrown, whether it landed or not, it stands and reloads through the
+## blow's recovery and cooldown, coming round only slowly (FightRules.RECOVER_TURN):
+## the one time to close on it. Inside the near part of its lane it backs off
+## at its close-quarters pace, slower than a player walks, before it throws.
+static func _throw(m: MobState, sim: FightSim) -> void:
+	var now := sim.now
+	var to := sim.hero.pos - m.pos
+	var d := to.length()
+	m.aim = to.angle()
+	if m.locked_out(now):
+		m.want = Vector2.ZERO
+		return
+	var lane := m.radius + (m.bite.reach if m.bite != null else 1.0)
+	if d > lane * THROW_FAR:
+		_seek(m, sim, _target(m, sim), m.dash)
+		return
+	# Too close to throw down a lane, it backs off first, unless backing off has
+	# stopped against something: then it throws from where it is.
+	var backing := d < lane * THROW_NEAR
+	if backing and m.want != Vector2.ZERO and m.pos.distance_to(m.last_think_pos) < m.quick * FightRules.THINK_MS / 1000.0 * BLOCKED_SHARE:
+		backing = false
+	if not backing and absf(wrapf(to.angle() - m.facing, -PI, PI)) < THROW_AIM and can_bite(m, now):
+		bite(m, sim)
+		return
+	m.want = -to / maxf(d, 1e-4) * m.quick if backing else Vector2.ZERO
 
 
 static func _dart(m: MobState, sim: FightSim) -> void:

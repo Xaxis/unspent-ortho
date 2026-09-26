@@ -182,6 +182,24 @@ vec4 tell_ring(vec2 p, float pr) {
 	return inked(min(outer, inner), MARK_HALO);
 }
 
+// A throw's tell (MobFx.tell_line): the lane it lands along, on a quad
+// stretched to the lane, x along it from the thrower (-1) to its far end (1).
+// Both long edges dashed and the far end ruled across, and a bar across the lane
+// that travels out from the thrower and reaches the far end as the throw goes
+// live. Pens are measured per axis, since the quad is far longer than wide.
+vec4 tell_line(vec2 p, float pr) {
+	vec2 pw = max(fwidth(p), vec2(1e-4)) * PEN;
+	vec2 q = p / pw;
+	vec2 R = 1.0 / pw - 2.0;
+	bool in_len = abs(q.x) <= R.x;
+	bool in_wid = abs(q.y) <= R.y;
+	float dash = mod(floor((p.x * 0.5 + 0.5) * R.x / 3.0), 2.0);
+	float sides = (in_len && dash < 0.5) ? abs(abs(q.y) - R.y) - 1.0 : 1e3;
+	float far_end = in_wid ? abs(q.x - R.x) - 1.0 : 1e3;
+	float bar = in_wid ? abs(q.x - mix(-R.x, R.x, pr)) - 1.0 : 1e3;
+	return inked(min(min(sides, far_end), bar), MARK_HALO);
+}
+
 // Plate: the pen's sound marks, (( )), and two or three cold bright pixels. The
 // arcs stand OUTSIDE the plate they rang off, and the sparks are pixels, not
 // blobs: this mark says "that was armour", it does not hide the armour.
@@ -415,6 +433,7 @@ void fragment() {
 	else if (mode == 7) { o = bracket(p, pw, pr); }
 	else if (mode == 8) { o = vapour(p, px, pw, pr); }
 	else if (mode == 9) { o = tell_ring(p, pr); }
+	else if (mode == 10) { o = tell_line(p, pr); }
 	if (o.a < 0.5) {
 		discard;
 	}
@@ -536,6 +555,7 @@ const STREAK := 6
 const BRACKET := 7
 const VAPOUR := 8
 const TELL_RING := 9
+const TELL_LINE := 10
 
 ## World units per screen pixel of the BASE (1920x1080; the fight system keeps it
 ## to the camera's own, `40_fight._keep_texel`). Marks are never smaller on screen
@@ -914,6 +934,21 @@ static func tell_ring(parent: Node, at: Vector3, col: Color, radius: float, seco
 	if not _ok(parent):
 		return
 	_run(_mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_RING, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col), seconds)
+
+
+## A throw's tell on the ground (FightRules.tell_lane): the lane it lands along,
+## from `from` out along `angle` (the sim's, radians in the ground plane) for
+## `length` tiles and `width` across, held for `seconds` (its windup), with a bar
+## travelling out along it that reaches the far end as the throw goes live.
+static func tell_line(parent: Node, from: Vector3, angle: float, length: float, width: float, col: Color, seconds: float) -> void:
+	if not _ok(parent):
+		return
+	var along := Vector3(cos(angle), 0.0, sin(angle))
+	var mi := _mark(parent, from + along * length * 0.5 + Vector3(0, 0.04, 0), 2.0, TELL_LINE, &"flat", int(from.x * 13.0 + from.z * 7.0), col, col)
+	# Laid flat (as every ground mark is), then turned so its x runs down the lane.
+	mi.rotation = Vector3(-PI * 0.5, -angle, 0.0)
+	mi.scale = Vector3(length * 0.5, at_least(width, RING_PX * 0.25) * 0.5, 1.0)
+	_run(mi, seconds)
 
 
 ## A blow that rang off plate: sound marks and a few cold bright pixels.

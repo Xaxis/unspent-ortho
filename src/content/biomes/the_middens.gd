@@ -102,6 +102,8 @@ static func make() -> BiomeDef:
 		&"cutter": {"weight": 0.9, "grounds": ["rock", "scree", "gravel"]},
 		&"hauler": {"weight": 0.9},
 		&"dog.feral": {"weight": 0.7},
+		# Its own: the sorter, throwing the rejects up onto the walls (Roster).
+		&"sorter": {"weight": 1.2},
 	}
 	d.landmarks = [&"grown_hulk", &"blinking_stack", &"clerks_office", &"poured_pillar"]
 	d.sound_bed = &"bed_wreck"

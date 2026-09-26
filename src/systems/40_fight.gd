@@ -405,8 +405,14 @@ func _handle(events: Array[Dictionary]) -> void:
 					# And on the ground, where it will land: the pose is small over the
 					# shoulder and a ring reads from above and behind alike. It lasts the
 					# windup, so it is gone the instant the bite is down.
-					var ring := FightRules.tell_ring(m.pos, m.facing, m.radius, m.blow)
-					MobFx.tell_ring(fx, _at3(Vector2(ring.x, ring.y)), Palette.LINEN[5], ring.z, m.blow.windup / 1000.0)
+					# A thrown blow is told by its lane: a ring that long would mark the
+					# ground either side of it, which is where a player has to go.
+					if FightRules.throws(m.blow):
+						var lane := FightRules.tell_lane(m.pos, m.radius, m.blow, sim.hero.radius)
+						MobFx.tell_line(fx, _at3(Vector2(lane.x, lane.y)), m.facing, lane.z, lane.w, Palette.LINEN[5], m.blow.windup / 1000.0)
+					else:
+						var ring := FightRules.tell_ring(m.pos, m.facing, m.radius, m.blow)
+						MobFx.tell_ring(fx, _at3(Vector2(ring.x, ring.y)), Palette.LINEN[5], ring.z, m.blow.windup / 1000.0)
 			&"charge":
 				var m: MobState = e.mob
 				MobFx.puffs(fx, _at3(m.pos - m.bearing * m.radius), -m.bearing, _dust_colour(m.pos), 2, 0.5 + m.radius * 0.4, m.id + int(sim.now))

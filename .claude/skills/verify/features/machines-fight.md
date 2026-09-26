@@ -18,6 +18,10 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   metric prints there), `TOUR_FIXED_FPS=60 tools/tour.sh tours/heavy_blow.tour`.
   Every bite's ground ring (dashed where it lands, an inner ring closing on the strike):
   `tools/test.sh test_tell_ring`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/bite_ring.tour`.
+  The thrower (the middens' sorter, Brains `throw`): a lane-long bite told by its lane on the
+  ground, a reload that is the opening; `tools/test.sh test_throw` (the reader's bout numbers print
+  there), `TOUR_FIXED_FPS=60 tools/tour.sh tours/thrower.tour` (header has its options).
+  Ten awake machines' draw cost: `tools/test.sh test_awake_cost`.
 - 42_target: `src/systems/42_target.gd`, reached by `tools/tour.sh tours/targeting.tour`. A lock holds the body (facing, strafe arc, swing, dodge: `src/core/fight/lock_on.gd`, `tools/test.sh test_lock_on`), proven in both views by `tools/tour.sh tours/lockon_top.tour` and `tours/lockon_shoulder.tour` (each tour's header has its options).
 - 44_sentinels: `src/systems/44_sentinels.gd`, reached by `tools/tour.sh tours/sentinels.tour`.
 - 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.

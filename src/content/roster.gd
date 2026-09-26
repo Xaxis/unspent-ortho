@@ -8,7 +8,7 @@ class_name Roster
 ## Schema:
 ##   model: StringName       FigureModel.create(model)
 ##   machine: bool           FOUND: plated, never flinches, drops scrap
-##   approach: StringName    errand | charge | rush | dart
+##   approach: StringName    errand | charge | rush | dart | throw
 ##   part: StringName        working part side: front back left right none
 ##   pace, dash: float       tiles/s (source scale); quick: int close-quarters x100
 ##   radius, height: float   hit body (tiles) and figure height (world units)
@@ -277,6 +277,24 @@ const DEFS := {
 			"empty_line": "A gull comes down on your bag, finds nothing, and goes."},
 		"takes": 0.0, "drops": 0, "linger": 8.0, "chance": 14,
 		"where": {"countries": GREEN_COUNTRIES, "grounds": ["sand", "shingle", "gravel", "strand"], "hours": [6, 20]},
+	},
+
+	# --- The Middens' own worker: the sorter (improvement 3b) ----------------
+	# It picks the tipped refuse over and throws what the plan has no use for up
+	# onto the walls, which is what the walls are. Turned, it throws at you: its
+	# bite is a LANE five tiles long and half a tile wide (FightRules.throws), told
+	# by the lane on the ground and its arm cocked back over the hopper for 850 ms.
+	# Then it has to reach into the hopper for the next load, and that reload is
+	# the opening: the hopper on its back is its working part. It gives ground to
+	# a body that comes in close, at a pace a walking player gains on.
+	&"sorter": {
+		"model": &"sorter", "role": &"worker", "machine": true, "approach": &"throw", "part": &"back",
+		"pace": 3.5, "dash": 5.0, "quick": 150, "radius": 0.55, "height": 1.5, "life": 48,
+		"sees": 12, "hears": 6, "racket": 14, "reach": 6, "ready": 3, "forget": 18, "tether": 26, "safe": 14,
+		"nerve": 100, "invuln": 420, "disposition": &"indifferent",
+		"bite": {"swing": [850, 100, 900, 1500], "reach": 5.0, "width": 0.5, "dmg": 2, "knock": 5.0, "knock_ms": 220},
+		"takes": 45.0, "drops": 2, "linger": 40.0, "chance": 4,
+		"where": {"countries": ["the_middens"], "grounds": ["swarf", "scree", "gravel", "road"]},
 	},
 
 	# --- The Crags' one worker of its own (docs/LANDSCAPES.md) -------------

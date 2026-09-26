@@ -5,7 +5,7 @@ extends TestCase
 ##
 ## Measured on the real meshes in model space, hidden nodes and halos skipped.
 
-const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk"]
+const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk", &"sorter"]
 const MG := preload("res://src/models/machines/machine_gallery.gd")
 const GROUND := -0.05
 ## Radius a kind may reach from its origin, as a multiple of the room it gets
