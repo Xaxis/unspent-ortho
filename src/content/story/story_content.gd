@@ -809,6 +809,26 @@ const FRAGMENTS := {
 			"when it boils.",
 		],
 	},
+	&"lobby_boxes": {
+		"kind": &"mark", "title": "the letterboxes", "lands": [],
+		"lines": [
+			"Rows of little steel doors, a flat number on",
+			"each. Salt in 1204, nails in 311, seed along",
+			"the top row.",
+			"",
+			"One box is still locked. Nobody has forced",
+			"it, and its name card has been kept clean.",
+		],
+	},
+	&"lobby_post": {
+		"kind": &"mark", "title": "the letterboxes", "lands": [],
+		"lines": [
+			"Post still in a few of the boxes, never",
+			"collected. Bills. A flyer: CAIRN HOME - THE",
+			"HOUSE THAT KNOWS YOU. A postcard of somewhere",
+			"warm, on its back: wish you were here.",
+		],
+	},
 	# --- a tenement stair hall in the slums (ROOMS: tenement) -------------------
 	&"tenement_cards": {
 		"kind": &"sign", "title": "the shift board", "lands": [],
@@ -1317,24 +1337,78 @@ const FRAGMENTS := {
 			"BEYOND THIS POINT.",
 		],
 	},
-	&"lobby_boxes": {
-		"kind": &"mark", "title": "the letterboxes", "lands": [],
+	# --- the frozen hold under the frost sea's mast (ROOMS: frozen_hold) ---
+	# Colour: the machines took her hull as a fixed place to hang a line, and the
+	# crew's winter was not a factor (humans are ants). What the line hears stays a
+	# question: the panel says what it reads, never what is down there. No beats.
+	&"cable_depth": {
+		"kind": &"terminal", "title": "the panel at the well", "lands": [],
 		"lines": [
-			"Rows of little steel doors, a flat number on",
-			"each. Salt in 1204, nails in 311, seed along",
-			"the top row.",
+			"  SOUNDING LINE .. 0-0031",
+			"  PAID OUT ....... 3,418 M",
+			"  BOTTOM ......... NOT SOUGHT",
 			"",
-			"One box is still locked. Nobody has forced",
-			"it, and its name card has been kept clean.",
+			"It was never sent to find the bottom. The",
+			"drum over the clamp still has a sea's",
+			"worth of cable on it.",
 		],
 	},
-	&"lobby_post": {
-		"kind": &"mark", "title": "the letterboxes", "lands": [],
+	&"cable_listen": {
+		"kind": &"terminal", "title": "the panel at the well", "lands": [],
 		"lines": [
-			"Post still in a few of the boxes, never",
-			"collected. Bills. A flyer: CAIRN HOME - THE",
-			"HOUSE THAT KNOWS YOU. A postcard of somewhere",
-			"warm, on its back: wish you were here.",
+			"  LISTENING FOR .. CHANGE",
+			"  HEARD .......... NO CHANGE",
+			"  LISTENED ....... 21,904 D",
+			"  REPORT ......... ON CHANGE",
+			"",
+			"The field under REPORT is blank, and wide",
+			"enough for a long answer.",
+		],
+	},
+	&"cable_host": {
+		"kind": &"terminal", "title": "the panel at the well", "lands": [],
+		"lines": [
+			"  HOST ........... HULL, STEEL, ICEBOUND",
+			"  HOST STABLE .... YES",
+			"  CONTENTS ....... NOT A FACTOR",
+			"",
+			"The hole through her bottom is cut clean",
+			"and round. The bunks are ten steps from",
+			"it. Whoever lay in them heard it cut.",
+		],
+	},
+	&"bunk_tally": {
+		"kind": &"mark", "title": "the board over the bunks", "lands": [],
+		"lines": [
+			"A plank over the bunks, and cut into it",
+			"with a knife, a tally in fives. Row on row,",
+			"the whole length, then down the end grain.",
+			"",
+			"The last five has four strokes in it. The",
+			"fourth is barely a scratch.",
+		],
+	},
+	&"bunk_coal": {
+		"kind": &"mark", "title": "the board over the bunks", "lands": [],
+		"lines": [
+			"Two tallies, side by side. One cut under",
+			"DAYS. One under COAL, struck off a sack at",
+			"a time.",
+			"",
+			"The coal runs out a long way before the",
+			"days do. Below the board, the bunk rails",
+			"have been sawn off short.",
+		],
+	},
+	&"bunk_hands": {
+		"kind": &"mark", "title": "the board over the bunks", "lands": [],
+		"lines": [
+			"Four hands cut the tally. You can tell them",
+			"by the stroke: one deep, one slanted, one",
+			"neat, one that crosses its fours instead of",
+			"closing them.",
+			"",
+			"Near the end there are two hands. Then one.",
 		],
 	},
 	# --- a room cut into the mesa (ROOMS) --------------------------------------
@@ -1897,6 +1971,10 @@ const ROOMS := {
 	&"saw_hall": {
 		&"terminal:saw_panel": [&"saw_count", &"saw_stand", &"saw_drawing"],
 		&"wall:dock_plate": [&"dock_home", &"dock_curfew", &"dock_hardhats"],
+	},
+	&"frozen_hold": {
+		&"terminal:cable_panel": [&"cable_depth", &"cable_listen", &"cable_host"],
+		&"wall:bunk_board": [&"bunk_tally", &"bunk_coal", &"bunk_hands"],
 	},
 }
 

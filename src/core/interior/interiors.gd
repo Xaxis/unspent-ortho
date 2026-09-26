@@ -24,6 +24,7 @@ const RECIPES := {
 	&"data_hall": "res://src/content/interiors/data_hall.gd",
 	&"laid_table": "res://src/content/interiors/laid_table.gd",
 	&"saw_hall": "res://src/content/interiors/saw_hall.gd",
+	&"frozen_hold": "res://src/content/interiors/frozen_hold.gd",
 }
 
 static var _kinds: Dictionary = {}
@@ -174,6 +175,14 @@ const LOOT := {
 		{"item": &"seasoned_timber", "count": Vector2i(6, 10)},
 		{"item": &"scrap", "count": Vector2i(1, 3)},
 		{"item": &"record", "chance": 0.15},
+	],
+	# What a trawler's crew kept in their sea chest their last winter: the lamp's
+	# oil and its rags, fish smoked against it, and now and then a record.
+	&"frozen_hold": [
+		{"item": &"smoked", "count": Vector2i(1, 3)},
+		{"item": &"oil", "count": Vector2i(1, 2), "chance": 0.8},
+		{"item": &"rag", "count": Vector2i(1, 3), "chance": 0.7},
+		{"item": &"record", "chance": 0.3},
 	],
 	# What somebody kept who knew what was coming: their own records first, the
 	# makings of light, and the odd thing they took off a machine to study.

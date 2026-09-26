@@ -245,6 +245,9 @@ func _inside_side(_delta: float) -> void:
 	hatch_near = _hatch_near()
 	if hatch_near >= 0 and box_near < 0 and _pressed():
 		_take_meal(hatch_near)
+	stove_near = _stove_near()
+	if stove_near >= 0 and box_near < 0 and hatch_near < 0 and _pressed():
+		_relight(stove_near)
 	_show_trays()
 
 
@@ -265,7 +268,7 @@ var _use_edge := false
 func use_spent() -> bool:
 	if _swapping:
 		return true
-	if pocket != null and (box_near >= 0 or hatch_near >= 0):
+	if pocket != null and (box_near >= 0 or hatch_near >= 0 or stove_near >= 0):
 		return true
 	if door_near == null:
 		return false
@@ -363,6 +366,7 @@ func _swap_in() -> void:
 	_windows = model.call(&"windows")
 	_make_lights()
 	_box_the_room()
+	_light_stoves()
 	_wake_residents()
 	_stand_turrets()
 	crossings += 1
@@ -657,6 +661,92 @@ func _show_trays() -> void:
 		n += 1
 
 
+# --- a stove to relight ------------------------------------------------------------
+
+## A thing with a `fuel` (a frozen hold's galley stove) is out until the player
+## feeds it what a campfire burns, without the stones: then it is a FIRE in the
+## room's world -- warmth against the land's cold (52_hazards), light, and
+## somewhere to sleep (Survival.fire_near) -- and it stays lit for whoever
+## comes back, saved per door. Its flame is the model's (`stove_lit`), not a
+## campfire's: the prop is put in the world and its query, never in the view.
+var stove_near := -1
+var _lit: Dictionary = {}
+## Latched, for a tour: a stove was lit.
+var _kindled := false
+
+
+func _stove_near() -> int:
+	if pocket == null:
+		return -1
+	var i := 0
+	var best := -1
+	var bd := 1.4
+	for t: Dictionary in pocket.layout.things:
+		if not t.has("fuel"):
+			continue
+		var d := (t.at as Vector2).distance_to(game.player.pos)
+		if d < bd and not _lit.has("%s#%d" % [pocket.threshold.key, i]):
+			bd = d
+			best = i
+		i += 1
+	return best
+
+
+## What a stove takes to light from what is carried: the first campfire's
+## makings that can be met, less its stones; empty for none.
+static func stove_fuel(inv: Inventory) -> Dictionary:
+	for r: Dictionary in Crafting.recipes_at(&"hand"):
+		if r.get("builds", &"") != &"fire":
+			continue
+		var needs := (r.needs as Dictionary).duplicate()
+		needs.erase(&"stone")
+		var ok := not needs.is_empty()
+		for id: Variant in needs:
+			ok = ok and inv.count(StringName(id)) >= int(needs[id])
+		if ok:
+			return needs
+	return {}
+
+
+func _relight(i: int) -> void:
+	var fuel := stove_fuel(game.inventory)
+	if fuel.is_empty():
+		Events.message.emit("The stove is cold. It wants something to burn: driftwood, dead wood, peat or timber.")
+		return
+	for id: Variant in fuel:
+		game.inventory.remove(StringName(id), int(fuel[id]))
+	_lit["%s#%d" % [pocket.threshold.key, i]] = true
+	_kindle(i)
+	_kindled = true
+	Events.sfx.emit(&"build_fire", game.player.position)
+	Events.message.emit("The stove takes. The iron ticks as it warms, and the hold with it.")
+
+
+func _light_stoves() -> void:
+	var n := 0
+	for t: Dictionary in pocket.layout.things:
+		if t.has("fuel"):
+			if _lit.has("%s#%d" % [pocket.threshold.key, n]):
+				_kindle(n)
+			n += 1
+
+
+func _kindle(i: int) -> void:
+	var n := 0
+	for t: Dictionary in pocket.layout.things:
+		if not t.has("fuel"):
+			continue
+		if n == i:
+			var w := game.world
+			var prop := WorldProp.new(w.props.size(), PropKind.FIRE, t.at, 0.0, 1.0)
+			w.props.append(prop)
+			game.query.add_prop(prop)
+			if model != null and model.has_method(&"stove_lit"):
+				model.call(&"stove_lit", i)
+			return
+		n += 1
+
+
 ## The meal a thing serving at `hours` has out at `minutes`: a stamp (day * 8 +
 ## which meal), or -1 before its first meal ever.
 static func meal_at(hours: Array, minutes: float) -> int:
@@ -886,7 +976,10 @@ func _save() -> Variant:
 	var served := {}
 	for k: Variant in _served:
 		served[str(k)] = _served[k]
-	return {"dead": out, "opened": opened, "served": served}
+	var lit := {}
+	for k: Variant in _lit:
+		lit[str(k)] = true
+	return {"dead": out, "opened": opened, "served": served, "lit": lit}
 
 
 func _load(v: Variant) -> void:
@@ -910,6 +1003,9 @@ func _load(v: Variant) -> void:
 	var sv: Dictionary = (v as Dictionary).get("served", {})
 	for k: Variant in sv:
 		_served[str(k)] = SaveCodec.to_int(sv[k])
+	_lit.clear()
+	for k: Variant in (v as Dictionary).get("lit", {}):
+		_lit[str(k)] = true
 
 
 ## A save made in a room counts those already broken in it, without leaving.
@@ -941,6 +1037,7 @@ func _swap_out() -> void:
 	_aiming = false
 	box_near = -1
 	hatch_near = -1
+	stove_near = -1
 	game.camera.frame_bias = Vector3.ZERO
 	var t := pocket.threshold
 	for l: SpotLight3D in _lights:
@@ -1426,6 +1523,8 @@ func tour_forget(what: StringName) -> void:
 			_box_opened = false
 		&"meal_taken":
 			_meal_taken = false
+		&"kindled":
+			_kindled = false
 		&"woke":
 			_woke = false
 
@@ -1448,6 +1547,13 @@ func tour_seen(what: StringName) -> bool:
 			return pocket != null and box_near >= 0
 		&"hatch_near":
 			return pocket != null and hatch_near >= 0
+		&"stove_near":
+			return pocket != null and stove_near >= 0
+		&"kindled":
+			return _kindled
+		# A fire is warming the player where they stand (Survival.fire_near).
+		&"by_fire":
+			return Survival.fire_near(game) != null
 		# Somebody in here is asleep in a dock now.
 		&"asleep":
 			return _sleepers() > 0
@@ -1487,7 +1593,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
@@ -1519,8 +1625,8 @@ func tour_place(what: String) -> Vector2:
 	if what == "strongbox":
 		var box := _first_box()
 		return (box.at as Vector2) + (box.face as Vector2) * 0.8 if not box.is_empty() else Vector2.INF
-	if what == "hatch":
-		var h := _first_serving()
+	if what == "hatch" or what == "stove":
+		var h := _first_with("serves" if what == "hatch" else "fuel")
 		return (h.at as Vector2) + (h.face as Vector2) * 0.8 if not h.is_empty() else Vector2.INF
 	var t := _tour_door(what)
 	if pocket != null and t == null and TOUR_PLACES.has(what):
@@ -1537,8 +1643,8 @@ func tour_face(what: String) -> float:
 	if what == "strongbox":
 		var box := _first_box()
 		return (-(box.face as Vector2)).angle() if not box.is_empty() else NAN
-	if what == "hatch":
-		var h := _first_serving()
+	if what == "hatch" or what == "stove":
+		var h := _first_with("serves" if what == "hatch" else "fuel")
 		return (-(h.face as Vector2)).angle() if not h.is_empty() else NAN
 	var t := _tour_door(what)
 	if pocket != null and t == null and TOUR_PLACES.has(what):
@@ -1672,13 +1778,13 @@ func _first_box() -> Dictionary:
 	return {}
 
 
-## `near hatch`: the first thing in the room that serves a meal, stood at in
-## reach of it.
-func _first_serving() -> Dictionary:
+## `near hatch`, `near stove`: the first thing in the room that serves a meal,
+## or that burns, stood at in reach of it.
+func _first_with(key: String) -> Dictionary:
 	if pocket == null:
 		return {}
 	for t: Dictionary in pocket.layout.things:
-		if t.has("serves"):
+		if t.has(key):
 			return t
 	return {}
 
