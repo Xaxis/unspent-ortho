@@ -76,7 +76,7 @@ static func make() -> BiomeDef:
 	# Lit all night by things that never stop: the least dark place in the game,
 	# and none of the light is anybody's to warm their hands at.
 	d.night_sky = 0.8
-	d.props = [PropKind.RELAY, PropKind.WATER_TANK, PropKind.INTAKE,
+	d.props = [PropKind.SERVER_BLADE, PropKind.RELAY, PropKind.WATER_TANK, PropKind.INTAKE,
 		PropKind.PYLON, PropKind.CONSOLE, PropKind.DEBRIS, PropKind.STACK, PropKind.FENCE]
 	d.ore = [[PropKind.COPPER_ORE, 0.02], [PropKind.IRON_ORE, 0.016]]
 	d.sites = {"tips": 3}
@@ -141,6 +141,10 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.RELAY
 		if r < 0.068:
 			return PropKind.DEBRIS
+		# A blade pulled out of a rack and dropped: the land's own material
+		# (PropKind.SERVER_BLADE).
+		if r < 0.078:
+			return PropKind.SERVER_BLADE
 		return PropKind.STACK if r > 0.55 and r < 0.557 else BiomeScatter.NONE
 	if g == Ground.MUD:
 		if r < 0.030:

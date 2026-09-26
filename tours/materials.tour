@@ -1,0 +1,53 @@
+# The land materials' raws (GEAR.md §11), each walked up to by name and looked
+# at over the shoulder, at eye level: what a player crosses a landscape for has
+# to be known when they get there. The caves' dripstone is in
+# tours/materials_caves.tour, under the ground.
+#   tools/tour.sh tours/materials.tour --seed=1
+# Options: --seed=1 --weather=clear:0
+hour 11
+coast calm
+place salt_flats
+near salt_ridge
+hold shoulder_peek
+await shoulder 3
+wait 1.0
+shot 01-salt-ridge with land:salt_flats,prop:salt_ridge
+release shoulder_peek
+place sulphur_jungle
+near vent_cap
+hold shoulder_peek
+await shoulder 3
+wait 1.0
+shot 02-vent-cap with land:sulphur_jungle,prop:vent_cap
+release shoulder_peek
+place grey_orchards
+near graft_tree
+hold shoulder_peek
+await shoulder 3
+wait 1.0
+shot 03-graft-tree with land:grey_orchards,prop:graft_tree
+release shoulder_peek
+place green_towers
+near moss_core
+# A step back and aside: beside it the tower's wall filled the frame.
+walk -1,0 0.5
+walk 0,1 0.5
+hold shoulder_peek
+await shoulder 3
+wait 1.0
+shot 04-moss-core with land:green_towers,prop:moss_core
+release shoulder_peek
+place server_fields
+near server_blade
+hold shoulder_peek
+await shoulder 3
+wait 1.0
+shot 05-server-blade with land:server_fields,prop:server_blade
+release shoulder_peek
+place the_middens
+near midden_bale
+hold shoulder_peek
+await shoulder 3
+wait 1.0
+shot 06-midden-bale with land:the_middens,prop:midden_bale
+release shoulder_peek

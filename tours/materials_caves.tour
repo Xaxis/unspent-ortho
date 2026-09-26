@@ -1,0 +1,16 @@
+# The limestone caves' raw, the dripstone (GEAR.md §11), walked up to by name
+# and looked at over the shoulder, under the ground. The surface raws are in
+# tours/materials.tour.
+#   tools/tour.sh tours/materials_caves.tour --seed=1 --realm=underground
+# Options: --seed=1 --realm=underground
+coast calm
+near dripstone
+hold shoulder_peek
+await shoulder 3
+wait 1.0
+shot 01-dripstone with land:limestone_caves,prop:dripstone
+press lamp
+await lamp 5
+wait 0.6
+shot 02-dripstone-by-lamp with land:limestone_caves,prop:dripstone
+release shoulder_peek

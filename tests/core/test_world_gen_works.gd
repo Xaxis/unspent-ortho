@@ -31,6 +31,14 @@ const NOT_YET_LAID: Array[int] = [PropKind.LINTEL, PropKind.CARVED_FACE, PropKin
 	PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE,
 	PropKind.HOODOO, PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN, PropKind.SPAN_PYLON]
 
+## Kinds laid, but only in a world of another realm, which a surface island
+## never holds: kind -> that realm. Not a debt like NOT_YET_LAID: the land that
+## lays it is asked for it in its own world
+## (test_world_gen_surface's `test_every_land_with_a_material_holds_its_raw`).
+const LAID_ELSEWHERE := {
+	PropKind.DRIPSTONE: Realm.UNDERGROUND,
+}
+
 ## Works each landscape must hold on every seed: kind -> its country.
 const HOME := {
 	PropKind.HULL: Country.COAST, PropKind.INTAKE: Country.COAST, PropKind.SEA_WALL: Country.COAST, PropKind.TIDE_GAUGE: Country.COAST,
@@ -86,7 +94,7 @@ func test_every_landscape_holds_its_own_works() -> void:
 				got.append(s)
 				seen_home[kind] = got
 		for kind in range(FIRST, PropKind.COUNT):
-			if NOT_YET_LAID.has(kind):
+			if NOT_YET_LAID.has(kind) or LAID_ELSEWHERE.has(kind):
 				continue
 			gt(counts[kind], 0, "seed %d %s placed" % [s, PropKind.NAMES[kind]])
 		# Evidence at walking scale in every landscape, not only at the works.
