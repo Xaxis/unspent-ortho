@@ -324,8 +324,20 @@ func set_solid(p: WorldProp, v: float) -> void:
 ## The table row of `p`, or -1 for a prop the world does not hold (a
 ## settlement's ghost of a planned building).
 func _row_of(p: WorldProp) -> int:
-	var at := position_of(p.id)
-	return at if at >= 0 and at < table.size() and at < props.size() and props[at] == p else -1
+	return row_of_id(p.id)
+
+
+## The table row holding id `id`, or -1.
+func row_of_id(id: int) -> int:
+	var at := position_of(id)
+	return at if at >= 0 and at < table.size() and table.id[at] == id else -1
+
+
+## Rows for props put straight into `props` (a world built by hand in a test),
+## so every reader of rows sees them.
+func sync_table() -> void:
+	for i in range(table.size(), props.size()):
+		table.append(props[i])
 
 
 ## The id the next prop set down takes.

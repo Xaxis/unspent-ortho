@@ -7,7 +7,12 @@ extends RefCounted
 ## blocks. Solid props block as circles.
 
 var world: WorldData
-var _cells: Dictionary = {} # int tile index -> Array[WorldProp]
+## Tile index -> the table rows of the props standing on it (`WorldData.table`):
+## rows, not objects, so a world's props are not held here as ~130k objects.
+var _cells: Dictionary = {}
+## Tile index -> props the world does not hold (a settlement's ghosts of what it
+## plans to build): objects, a handful, stopping bodies like any prop.
+var _ghosts: Dictionary = {}
 ## Circles that stop a body but are NOT props: the mass of something a package
 ## draws itself and the world never recorded — a landmark's tower, a depot's deck
 ## (src/core/landmarks, src/core/works). Kept apart from props on purpose: nothing
@@ -23,8 +28,18 @@ const BLOCK_SLACK := 1.0
 
 func _init(w: WorldData) -> void:
 	world = w
-	for p in w.each_prop():
-		add_prop(p)
+	w.sync_table()
+	var pos := w.table.pos
+	for row in w.table.size():
+		_file(floori(pos[row].y) * w.size + floori(pos[row].x), row)
+
+
+func _file(k: int, row: int) -> void:
+	if not _cells.has(k):
+		_cells[k] = PackedInt32Array()
+	var cell: PackedInt32Array = _cells[k]
+	cell.append(row)
+	_cells[k] = cell
 
 
 ## Everything `owner` stops a body with, replacing whatever it said before. The
@@ -100,33 +115,66 @@ func blocks_at(p: Vector2) -> Array:
 
 func add_prop(p: WorldProp) -> void:
 	var k := floori(p.pos.y) * world.size + floori(p.pos.x)
-	if not _cells.has(k):
-		_cells[k] = []
-	_cells[k].append(p)
+	var row := world.row_of_id(p.id)
+	if row >= 0:
+		_file(k, row)
+		return
+	if not _ghosts.has(k):
+		_ghosts[k] = [] as Array[WorldProp]
+	(_ghosts[k] as Array[WorldProp]).append(p)
 
 
 func remove_prop(p: WorldProp) -> void:
 	var k := floori(p.pos.y) * world.size + floori(p.pos.x)
-	if not _cells.has(k):
+	var row := world.row_of_id(p.id)
+	if row >= 0 and _cells.has(k):
+		var cell: PackedInt32Array = _cells[k]
+		var at := cell.find(row)
+		if at >= 0:
+			cell.remove_at(at)
+			_cells[k] = cell
 		return
-	var cell: Array = _cells[k]
-	for i in cell.size():
-		if WorldProp.same(cell[i], p):
-			cell.remove_at(i)
-			return
+	if _ghosts.has(k):
+		var ghosts: Array[WorldProp] = _ghosts[k]
+		for i in ghosts.size():
+			if WorldProp.same(ghosts[i], p):
+				ghosts.remove_at(i)
+				return
 
 
 ## Every prop whose tile is within r tiles (square) of p.
 func props_near(p: Vector2, r: float) -> Array[WorldProp]:
 	var out: Array[WorldProp] = []
+	for row in rows_near(p, r):
+		out.append(world.prop_at(row))
+	out.append_array(ghosts_near(p, r))
+	return out
+
+
+## The table rows of every prop whose tile is within r tiles (square) of p: what
+## a hot loop reads the columns by, making no object.
+func rows_near(p: Vector2, r: float) -> PackedInt32Array:
+	var out := PackedInt32Array()
 	# Clamp to the map: an unclamped tx past the east edge would wrap into the
 	# next row's keys and return props twice.
 	for ty in range(maxi(0, floori(p.y - r)), mini(world.size - 1, floori(p.y + r)) + 1):
 		for tx in range(maxi(0, floori(p.x - r)), mini(world.size - 1, floori(p.x + r)) + 1):
 			var k := ty * world.size + tx
 			if _cells.has(k):
-				for q: WorldProp in _cells[k]:
-					out.append(q)
+				out.append_array(_cells[k])
+	return out
+
+
+## The ghosts (props the world does not hold) within r tiles (square) of p.
+func ghosts_near(p: Vector2, r: float) -> Array[WorldProp]:
+	var out: Array[WorldProp] = []
+	if _ghosts.is_empty():
+		return out
+	for ty in range(maxi(0, floori(p.y - r)), mini(world.size - 1, floori(p.y + r)) + 1):
+		for tx in range(maxi(0, floori(p.x - r)), mini(world.size - 1, floori(p.x + r)) + 1):
+			var k := ty * world.size + tx
+			if _ghosts.has(k):
+				out.append_array(_ghosts[k])
 	return out
 
 
@@ -210,8 +258,19 @@ func move_body(p: Vector2, delta: Vector2, r: float, on: CraftRide = null, swims
 func _blocker(from: Vector2, to: Vector2, r: float) -> Vector2:
 	var best := Vector2.INF
 	var best_d := INF
-	for q in props_near(to, 2.0):
-		if q.solid <= 0.0 or world.depleted.has(q.id):
+	var t := world.table
+	for row in rows_near(to, 2.0):
+		var solid := t.solid[row]
+		if solid <= 0.0 or world.depleted.has(t.id[row]):
+			continue
+		var at := t.pos[row]
+		var rr := solid + r
+		var after := at.distance_squared_to(to)
+		if after < rr * rr and after < at.distance_squared_to(from) and after < best_d:
+			best_d = after
+			best = at
+	for q in ghosts_near(to, 2.0):
+		if q.solid <= 0.0:
 			continue
 		var rr := q.solid + r
 		var after := q.pos.distance_squared_to(to)
@@ -234,12 +293,22 @@ func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null, swims: bo
 	for c: Vector2 in [to, to + Vector2(-r, -r), to + Vector2(r, -r), to + Vector2(-r, r), to + Vector2(r, r)]:
 		if not passable(ftx, fty, floori(c.x), floori(c.y), on, swims):
 			return false
-	for q in props_near(to, 2.0):
-		if q.solid <= 0.0 or world.depleted.has(q.id):
+	var t := world.table
+	for row in rows_near(to, 2.0):
+		var solid := t.solid[row]
+		if solid <= 0.0 or world.depleted.has(t.id[row]):
+			continue
+		var at := t.pos[row]
+		var rr := solid + r
+		var after := at.distance_squared_to(to)
+		# Only block when it would bring us closer: bodies can always leave an overlap.
+		if after < rr * rr and after < at.distance_squared_to(from):
+			return false
+	for q in ghosts_near(to, 2.0):
+		if q.solid <= 0.0:
 			continue
 		var rr := q.solid + r
 		var after := q.pos.distance_squared_to(to)
-		# Only block when it would bring us closer: bodies can always leave an overlap.
 		if after < rr * rr and after < q.pos.distance_squared_to(from):
 			return false
 	for c: Vector3 in blocks_at(to):

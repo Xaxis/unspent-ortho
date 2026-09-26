@@ -44,6 +44,7 @@ func test_the_scan_sees_the_forms_it_names() -> void:
 		"\tfor i in range(base, w.prop_count()):": "list",
 		"\treturn feeds_among(world.each_prop(), at)": "list",
 		"\twhile _indexed < w.prop_count():": "list",
+		"\tfor row in w.table.size():": "list",
 		"\tfor i in game.world.villages.size():": "list",
 		"\tvar q: WorldProp = world.props[id]": "index",
 		"\tbytes.resize(w.size * w.size)": "tiles",

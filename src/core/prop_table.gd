@@ -12,6 +12,7 @@ extends RefCounted
 ## (their footprint follows the model) or the plan's works (scale-free).
 ## `shown` is sparse: only a prop being worked down is not whole.
 
+var id := PackedInt32Array()
 var kind := PackedByteArray()
 var pos := PackedVector2Array()
 var rot := PackedFloat64Array()
@@ -24,6 +25,7 @@ var shown := {}
 
 static func of(props: Array[WorldProp]) -> PropTable:
 	var t := PropTable.new()
+	t.id.resize(props.size())
 	t.kind.resize(props.size())
 	t.pos.resize(props.size())
 	t.rot.resize(props.size())
@@ -41,6 +43,7 @@ func size() -> int:
 
 func append(p: WorldProp) -> void:
 	var i := size()
+	id.resize(i + 1)
 	kind.resize(i + 1)
 	pos.resize(i + 1)
 	rot.resize(i + 1)
@@ -52,11 +55,12 @@ func append(p: WorldProp) -> void:
 
 ## Bytes the columns hold (not counting `shown`, which is a handful).
 func bytes() -> int:
-	return kind.size() + pos.size() * 8 + (rot.size() + scale.size() + solid.size()) * 8 + variant.size() * 4
+	return id.size() * 4 + kind.size() + pos.size() * 8 + (rot.size() + scale.size() + solid.size()) * 8 + variant.size() * 4
 
 
 func _write(i: int, p: WorldProp) -> void:
 	assert(p.kind >= 0 and p.kind < 256, "a prop kind fits a byte")
+	id[i] = p.id
 	kind[i] = p.kind
 	pos[i] = p.pos
 	rot[i] = p.rot

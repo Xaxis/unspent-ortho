@@ -32,7 +32,7 @@ const SKIP_FILES := ["res://src/core/world_gen.gd"]
 const KEEP_FILES := ["res://src/core/worldgen/gen_places.gd"]
 
 const WORLD := "(?:\\bworld|\\bw|\\b_world|\\bc\\.w|\\bgame\\.world|\\bwd)"
-const LISTS := "(?:props|villages|landmarks|regions|roads|rivers|lines|continents|depleted)"
+const LISTS := "(?:props|villages|landmarks|regions|roads|rivers|lines|continents|depleted|table)"
 ## Calls whose own bodies read the whole world, so a caller does too.
 const BUILDERS := [
 	"Landmarks.sites", "Works.sites", "StoryPlan.cast", "Portals.in_world",
@@ -72,7 +72,9 @@ func _init() -> void:
 	_raw.compile(WORLD + "\\.(?:(?:region|continent)\\[|(?:level|ground|country|country2|blend|recipe|road|moisture|temperature)(?:\\[|\\s*(?:[,)]|$)))")
 	_alloc.compile(WORLD + "\\.props\\.size\\(\\)")
 	# The list itself as a value: `var props := w.props`, `f(w.props, ...)`.
-	_whole.compile(WORLD + "\\." + LISTS + "\\s*(?:[,)]|$)")
+	# Not `table`: a reader holds the table to read the rows it found near a
+	# point, which is how a local read of the columns is written.
+	_whole.compile(WORLD + "\\." + LISTS.replace("|table", "") + "\\s*(?:[,)]|$)")
 	# A loop bounded by the map: `for y in size`, `range(0, size, 2)`,
 	# `while x < w.size - 3`; and the far view's block count over the world.
 	_walk.compile("\\b(?:for|while)\\b.*(?<![\\w.])(?:(?:w|world|c|c\\.w|game\\.world)\\.)?size\\b(?!\\s*\\(|\\.)|\\bacross\\((?:\\w+\\.)*size\\)")

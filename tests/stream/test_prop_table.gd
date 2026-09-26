@@ -28,7 +28,7 @@ func test_every_row_is_its_prop() -> void:
 			if bad < 4:
 				fail("row %d differs from prop %d (%s at %s)" % [i, p.id, PropKind.NAMES[p.kind], p.pos])
 	eq(bad, 0, "no row differs")
-	lt(float(t.bytes()) / maxf(1.0, t.size()), 40.0, "a row is under 40 bytes (%d B)" % (t.bytes() / maxi(1, t.size())))
+	lt(float(t.bytes()) / maxf(1.0, t.size()), 44.0, "a row is under 44 bytes (%d B)" % (t.bytes() / maxi(1, t.size())))
 
 
 func test_what_play_changes_changes_the_row() -> void:
