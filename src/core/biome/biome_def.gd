@@ -345,6 +345,13 @@ var scatter := Callable()
 ##   summit int         the order this landscape's cairn is raised in (0: none)
 ##   kiln_ground int    the Ground a village's kiln stands on (absent: no kiln)
 var sites: Dictionary = {}
+## HAUNTED (docs/HUSH.md): this landscape's own stone circles are the hush's
+## rings -- machines will not follow past them, their stones stand
+## differently when looked back at, sound stops in them, lights stand in the
+## fog that are nobody's, and a light brought in at night is answered. Never
+## explained. Read by HushSites and the systems of the hush; no worldgen
+## stage reads it.
+var hush := false
 ## The ground a scrap tip lies on here.
 var tip_ground := Ground.GRAVEL
 ## Hulls are hauled up on this landscape's beaches.

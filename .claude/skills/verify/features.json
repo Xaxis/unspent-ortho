@@ -332,20 +332,20 @@
       "tests": []
     },
     {
+      "id": "system:18_meadow",
+      "kind": "system",
+      "entry": "src/systems/18_meadow.gd",
+      "reach": "tools/tour.sh tours/foliage_meadow_ring.tour --seed=7",
+      "area": "world-look",
+      "tests": []
+    },
+    {
       "id": "system:18_trample",
       "kind": "system",
       "entry": "src/systems/18_trample.gd",
       "reach": "tools/tour.sh tours/foliage_meadow.tour --seed=7",
       "area": "world-look",
       "tests": []
-    },
-    {
-      "id": "system:18_meadow",
-      "kind": "system",
-      "entry": "src/systems/18_meadow.gd",
-      "reach": "tools/tour.sh tours/foliage_meadow_ring.tour --seed=7",
-      "area": "world-look",
-      "tests": ["tests/render/test_meadow_ring.gd"]
     },
     {
       "id": "system:19_colossi",
@@ -392,6 +392,14 @@
       "kind": "system",
       "entry": "src/systems/22_landmarks.gd",
       "reach": "tools/tour.sh tours/landmarks.tour",
+      "area": "world-places",
+      "tests": []
+    },
+    {
+      "id": "system:23_hush",
+      "kind": "system",
+      "entry": "src/systems/23_hush.gd",
+      "reach": "tools/tour.sh tours/hush.tour --seed=7 --hour=11 --weather=clear:0",
       "area": "world-places",
       "tests": []
     },

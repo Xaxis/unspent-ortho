@@ -2,11 +2,12 @@
 
 Realms and portals, the rooms behind a house's door, landmarks and caches, regional holds.
 
-<!-- covers: system:20_realms, system:21_doors, system:22_landmarks, system:24_holds -->
+<!-- covers: system:20_realms, system:21_doors, system:22_landmarks, system:23_hush, system:24_holds -->
 
 ## Sub-features
 
 - 20_realms: `src/systems/20_realms.gd`, reached by `tools/tour.sh tours/realms.tour`. The shafts are sited in generation on the land alone and held clear (`Portals.site`), so 2029 opens them on the present's tiles: `tools/test.sh test_every_seed_s_shafts`, and a still beside one with `--realm=era`.
+- 23_hush: `src/systems/23_hush.gd` with `src/core/hush_sites.gd`, the crags' haunting (docs/HUSH.md), on their own stone circles only (`BiomeDef.hush`): `near hush_ring` stands a tour in the nearest, reached by `tools/tour.sh tours/hush.tour --seed=7 --hour=11 --weather=clear:0`; rules in `tools/test.sh test_hush_sites`.
 - 21_doors: `src/systems/21_doors.gd`, reached by `tools/tour.sh tours/house.tour --seed=4 --hour=11 --weather=clear:0`: a coast house's door, the room behind it (a pocket world, `src/core/interior/`, `src/models/interior/`), both views, and out again.
 - 22_landmarks: `src/systems/22_landmarks.gd`, reached by `tools/tour.sh tours/landmarks.tour`.
 - 24_holds: `src/systems/24_holds.gd`, reached by `tools/tour.sh tours/region.tour`.
