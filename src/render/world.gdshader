@@ -1299,8 +1299,11 @@ vec3 tide_floor(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
 		// that glows a sick green along the puddles' edges in the dark. Only
 		// in drifts and only at night (sky_view.y), faint: poisoned water,
 		// not a lamp.
-		float bloom = smoothstep(0.55, 0.75, ink_vnoise(wp.xz * 0.2 + 33.0)) * (1.0 - smoothstep(0.3, 0.8, pool));
-		emit += vec3(0.10, 0.34, 0.24) * bloom * sky_view.y * (0.7 + 0.3 * sin(TIME * 0.7 + wp.x));
+		// Over the whole of a puddle, faintly, and thickest where it drifts.
+		// (Measured: on the puddles' edges alone it was under a pixel wide and
+		// the frame did not move.)
+		float bloom = 0.3 + 0.7 * smoothstep(0.5, 0.75, ink_vnoise(wp.xz * 0.2 + 33.0));
+		emit += vec3(0.10, 0.34, 0.24) * 3.5 * bloom * pool * sky_view.y * (0.75 + 0.25 * sin(TIME * 0.7 + wp.x));
 	} else if (rim > 0.0) {
 		c = mix(c, MOSS2, rim * 0.6);
 	}
@@ -1504,7 +1507,7 @@ vec3 machine_deck(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
 		c = mix(c, mix(mix(c, GUIDE_WHITE, 0.25), mix(c, GUIDE_WHITE, 0.7), on), guide);
 		// Held low by day and dusk, and full only once night has fallen
 		// (sky_view.y): then the ruled lines are the city, to the horizon.
-		emit += GUIDE_WHITE * mix(0.45, 1.8, sky_view.y) * on * guide;
+		emit += GUIDE_WHITE * mix(0.45, 4.0, sky_view.y) * on * guide;
 	}
 	return c;
 }
@@ -1938,11 +1941,11 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			// pixel, amber or green, blinking slow and out of step, seen only
 			// once the light goes. The last thing in the midden that thinks.
 			float led = ink_hash(vec2(floor(px.x / 3.0), floor(y * 20.0)) + 71.0);
-			if (led > 0.994) {
+			if (led > 0.9975) {
 				vec3 lc = led > 0.997 ? vec3(0.55, 0.9, 0.35) : vec3(1.0, 0.62, 0.2);
 				float blink = step(0.35, fract(TIME * (0.2 + led * 0.3) + led * 17.0));
 				c = mix(c, lc, 0.6);
-				emit += lc * 1.4 * blink * sky_view.y;
+				emit += lc * 3.0 * blink * sky_view.y;
 			}
 		} else if (kind < 0.5) {
 			// Cable: black, with loops showing as paler arcs.
@@ -2510,7 +2513,7 @@ void fragment() {
 		// By night the fused sheet is what holds the sky: smoother as the
 		// dark comes (sky_view.y), so the moon lies on the glass in a long
 		// streak and the stars are in it, and nothing else in the desert is lit.
-		rough_add -= sky_view.y * 0.2;
+		rough_add -= sky_view.y * 0.24;
 	}
 	if (m == M_STRATA_GLASS) {
 		// The glaze is not one sheet: runnels polished by the flow alternate
