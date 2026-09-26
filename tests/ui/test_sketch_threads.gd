@@ -12,9 +12,18 @@ extends TestCase
 
 ## Every function that runs on a worker, reached from `_bake`.
 const ON_A_WORKER := [
-	"_bake", "_raster", "to_phosphor", "_poly_of", "_box_of", "_colour",
+	"_bake", "_raster", "to_phosphor", "_box_of", "_colour",
 	"_id", "_wobble", "_plot", "_stroke", "_glow",
 ]
+
+## An operator on an untyped value (an element of a plain Array, a Dictionary
+## value, an untyped const Array) is resolved by the VM the first time it runs
+## and written into the bytecode with no barrier for readers; two workers
+## reaching the same cold one at once crash the process (sound_bank.gd's header;
+## tools/gd/probe_sketch_race.gd crashed 1 cold process in 150 at `match
+## part[0]`). The worker reads the shape tables only through `_plan`'s typed
+## arrays, never by indexing them.
+const UNTYPED := ["part[", "parts[", "part.slice(", "BAYER["]
 
 ## Naming one of these from a worker is the bug this file exists to stop. The
 ## content classes because a worker must not be the thread that asks them
@@ -58,6 +67,16 @@ func test_no_worker_side_function_asks_a_content_class() -> void:
 		for bad: String in OFF_LIMITS:
 			check(not body.contains(bad),
 				"%s runs on a worker and must not name %s — resolve it in _item_job/_station_job/_ramps_for instead" % [fn, bad])
+
+
+func test_a_worker_runs_no_operator_on_an_untyped_value() -> void:
+	var bodies := _bodies(FileAccess.get_file_as_string("res://src/ui/ui_sketch.gd"))
+	for fn: String in ON_A_WORKER:
+		var body: String = bodies.get(fn, "")
+		for bad: String in UNTYPED:
+			check(not body.contains(bad),
+				"%s runs on a worker and indexes an untyped value (%s): read it in _plan, on the main thread" % [fn, bad])
+	check(not bodies.get("_raster", "").contains("_poly_of("), "_raster takes its polygons from the plan, not from the parts")
 
 
 func test_the_split_did_not_change_a_single_pixel() -> void:

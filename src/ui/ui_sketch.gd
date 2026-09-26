@@ -768,7 +768,7 @@ static func _item_job(id: StringName, size: int) -> Dictionary:
 	var shape: StringName = st[0]
 	var parts: Array = SHAPES.get(shape, SHAPES[&"bundle"])
 	return {
-		"parts": parts,
+		"plan": _plan(parts),
 		"grid": Vector2(GRID, GRID),
 		"px": Vector2i(size, size),
 		"ramps": _ramps_for(parts, st[1], st[2]),
@@ -782,7 +782,7 @@ static func _item_job(id: StringName, size: int) -> Dictionary:
 static func _station_job(station: StringName, w: int) -> Dictionary:
 	var st: Array = STATIONS.get(station, STATIONS[&"hand"])
 	return {
-		"parts": st[0],
+		"plan": _plan(st[0]),
 		"grid": Vector2(48, 32),
 		"px": station_size(w),
 		"ramps": _ramps_for(st[0], st[1], st[2]),
@@ -795,7 +795,7 @@ static func _station_job(station: StringName, w: int) -> Dictionary:
 ## The worker's whole job: arithmetic on what it was handed, into an Image of its
 ## own. It asks no content class anything, so nothing it does can reach a Node.
 static func _bake(job: Dictionary) -> Image:
-	var img := _raster(job["parts"], job["grid"], job["px"], job["ramps"], job["found"], job["seed"])
+	var img := _raster(job["plan"], job["grid"], job["px"], job["ramps"], job["found"], job["seed"])
 	return to_phosphor(img, job["tones"])
 
 
@@ -827,7 +827,7 @@ static func _ramps_for(parts: Array, ramp_a: StringName, ramp_b: StringName) -> 
 ## the hatched shade and bled wash as the faintest tone, and a working part as
 ## the hottest pixel. `tones` is a five-step ramp (phosphor, or the violet).
 static func to_phosphor(src: Image, tones: Array[Color]) -> Image:
-	const BAYER := [0.0, 0.5, 0.75, 0.25]
+	var bayer := PackedFloat64Array([0.0, 0.5, 0.75, 0.25])
 	var w := src.get_width()
 	var h := src.get_height()
 	var out := Image.create_empty(w, h, false, Image.FORMAT_RGBA8)
@@ -851,7 +851,7 @@ static func to_phosphor(src: Image, tones: Array[Color]) -> Image:
 				var lum := c.r * 0.3 + c.g * 0.55 + c.b * 0.15
 				var level := clampf(lum * 3.4, 0.0, 2.99)
 				var idx := floori(level)
-				if level - idx > BAYER[(y % 2) * 2 + x % 2]:
+				if level - idx > bayer[(y % 2) * 2 + x % 2]:
 					idx += 1
 				col = tones[clampi(idx, 0, 3)]
 			out.set_pixel(x, y, col)
@@ -861,7 +861,52 @@ static func to_phosphor(src: Image, tones: Array[Color]) -> Image:
 ## The sketch as a colour drawing with a clear ground round it (the scanner
 ## takes it from here: to_phosphor).
 static func render(parts: Array, grid: Vector2, px: Vector2i, ramp_a: StringName, ramp_b: StringName, found: bool, seed: int) -> Image:
-	return _raster(parts, grid, px, _ramps_for(parts, ramp_a, ramp_b), found, seed)
+	return _raster(_plan(parts), grid, px, _ramps_for(parts, ramp_a, ramp_b), found, seed)
+
+
+## A shape table's parts, read into typed arrays. MAIN THREAD ONLY, and the
+## reason the worker never sees `parts`: an operator on an element of a plain
+## Array has no evaluator until it first runs, the VM writes one into the
+## bytecode then with no barrier for readers, and two workers reaching the same
+## cold operator at once jump through a half-written pointer (sound_bank.gd's
+## header has the engine side). `match part[0]` in `_poly_of` was that operator:
+## tools/gd/probe_sketch_race.gd crashed 1 cold process in 150 there. Every
+## operator the worker runs is now on typed values.
+##   polys   Array[PackedVector2Array], one per part (empty for a part that is
+##           not an area), in part order: a pixel's part id indexes it
+##   tokens  PackedStringArray, each part's colour token ("" when it has none)
+##   glows   Array[Vector3] (x, y, radius) in grid units
+##   lines   Array[PackedVector2Array], each a pen stroke's points
+##   dots    PackedFloat64Array, x, y pairs in grid units (doubles, as the
+##           rivets were always placed)
+##   marks   PackedInt32Array, the strokes and rivets in part order (a stroke
+##           is its index into `lines`, a rivet is -1 - its pair in `dots`), so
+##           one drawn over another still lands on top
+static func _plan(parts: Array) -> Dictionary:
+	var polys: Array[PackedVector2Array] = []
+	var tokens := PackedStringArray()
+	var glows: Array[Vector3] = []
+	var lines: Array[PackedVector2Array] = []
+	var dots := PackedFloat64Array()
+	var marks := PackedInt32Array()
+	for part: Array in parts:
+		polys.append(_poly_of(part))
+		tokens.append(String(part[1]) if part.size() > 1 and (part[1] is String or part[1] is StringName) else "")
+		match String(part[0]):
+			"glow":
+				glows.append(Vector3(part[1], part[2], part[3]))
+			"line":
+				var pts: Array = part.slice(1)
+				var stroke := PackedVector2Array()
+				for j in range(0, pts.size() - 1, 2):
+					stroke.append(Vector2(pts[j], pts[j + 1]))
+				marks.append(lines.size())
+				lines.append(stroke)
+			"dot":
+				marks.append(-1 - dots.size() / 2)
+				dots.append(float(part[1]))
+				dots.append(float(part[2]))
+	return {"polys": polys, "tokens": tokens, "glows": glows, "lines": lines, "dots": dots, "marks": marks}
 
 
 ## The raster itself, and the reason the ramps arrive already resolved: this runs
@@ -870,7 +915,7 @@ static func render(parts: Array, grid: Vector2, px: Vector2i, ramp_a: StringName
 ## are pennies next to the raster — the whole of a creel is microseconds of
 ## dictionary reads against 1390 ms of pixels — so they are done by whoever asked
 ## for the sketch, on its own thread, and the worker is handed numbers.
-static func _raster(parts: Array, grid: Vector2, px: Vector2i, ramps: Dictionary, found: bool, seed: int) -> Image:
+static func _raster(plan: Dictionary, grid: Vector2, px: Vector2i, ramps: Dictionary, found: bool, seed: int) -> Image:
 	var w := px.x
 	var h := px.y
 	var s := float(w) / grid.x
@@ -882,11 +927,10 @@ static func _raster(parts: Array, grid: Vector2, px: Vector2i, ramps: Dictionary
 	# four comparisons. It matters now that a sketch is rasterised at the base's
 	# resolution: at 234 pixels square this loop is nine times the pixels it was
 	# and the carrying page warms one of these per thing carried.
-	var polys: Array = []
+	var polys: Array[PackedVector2Array] = plan["polys"]
+	var tokens: PackedStringArray = plan["tokens"]
 	var boxes: Array[Rect2] = []
-	for part: Array in parts:
-		var poly := _poly_of(part)
-		polys.append(poly)
+	for poly in polys:
 		boxes.append(_box_of(poly))
 	var ids := PackedInt32Array()
 	ids.resize(w * h)
@@ -898,7 +942,7 @@ static func _raster(parts: Array, grid: Vector2, px: Vector2i, ramps: Dictionary
 			p /= s
 			var got := -1
 			for i in polys.size():
-				var poly: PackedVector2Array = polys[i]
+				var poly := polys[i]
 				if poly.size() < 3 or not boxes[i].has_point(p):
 					continue
 				if Geometry2D.is_point_in_polygon(p, poly):
@@ -908,10 +952,7 @@ static func _raster(parts: Array, grid: Vector2, px: Vector2i, ramps: Dictionary
 	img.fill(Color(0, 0, 0, 0))
 	var ink := INK
 	var shade_k := maxi(2, roundi(w * 0.09))
-	var glows: Array[Vector3] = []
-	for part: Array in parts:
-		if part[0] == "glow":
-			glows.append(Vector3(part[1], part[2], part[3]))
+	var glows: Array[Vector3] = plan["glows"]
 	# 2. Cast shadow behind the thing, hatched, down and right of it.
 	if not found:
 		for y in h:
@@ -932,7 +973,7 @@ static func _raster(parts: Array, grid: Vector2, px: Vector2i, ramps: Dictionary
 				continue
 			if wi < 0:
 				wi = i
-			var base := _colour(parts[wi][1], ramps)
+			var base := _colour(tokens[wi], ramps)
 			var col := base
 			var lit := _id(ids, w, h, x - 2, y - 2) != wi
 			var shaded := false
@@ -940,7 +981,7 @@ static func _raster(parts: Array, grid: Vector2, px: Vector2i, ramps: Dictionary
 				if _id(ids, w, h, x + k, y + k) != wi:
 					shaded = true
 					break
-			if parts[wi][1] == "l":
+			if tokens[wi] == "l":
 				# An amber working part is lit from inside: it takes no shade.
 				pass
 			elif found:
@@ -987,20 +1028,23 @@ static func _raster(parts: Array, grid: Vector2, px: Vector2i, ramps: Dictionary
 	# 5. Details, rivets and the working part.
 	var plate: Array[Color] = ramps[&"plate"]
 	var lens: Array[Color] = ramps[&"lens"]
-	for part: Array in parts:
-		match part[0]:
-			"line":
-				var pts: Array = part.slice(1)
-				for j in range(0, pts.size() - 2, 2):
-					_stroke(img, Vector2(pts[j], pts[j + 1]) * s, Vector2(pts[j + 2], pts[j + 3]) * s, Color(ink, 0.8), found, seed + j)
-			"dot":
-				# A rivet on found plate catches the light; a knot in wood is ink.
-				var c := Vector2i(roundi(float(part[1]) * s - 0.5), roundi(float(part[2]) * s - 0.5))
-				_plot(img, c.x, c.y, plate[5] if found else ink)
-				if found:
-					_plot(img, c.x + 1, c.y + 1, INK)
-				elif w >= 64:
-					_plot(img, c.x + 1, c.y, ink)
+	var lines: Array[PackedVector2Array] = plan["lines"]
+	var dots: PackedFloat64Array = plan["dots"]
+	var marks: PackedInt32Array = plan["marks"]
+	for m in marks:
+		if m >= 0:
+			var stroke := lines[m]
+			for k in range(0, stroke.size() - 1):
+				_stroke(img, stroke[k] * s, stroke[k + 1] * s, Color(ink, 0.8), found, seed + k * 2)
+			continue
+		# A rivet on found plate catches the light; a knot in wood is ink.
+		var at := (-1 - m) * 2
+		var c := Vector2i(roundi(dots[at] * s - 0.5), roundi(dots[at + 1] * s - 0.5))
+		_plot(img, c.x, c.y, plate[5] if found else ink)
+		if found:
+			_plot(img, c.x + 1, c.y + 1, INK)
+		elif w >= 64:
+			_plot(img, c.x + 1, c.y, ink)
 	for g in glows:
 		_glow(img, Vector2(g.x, g.y) * s, g.z * s, lens)
 	return img
