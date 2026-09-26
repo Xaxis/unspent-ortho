@@ -126,9 +126,18 @@ func test_a_headless_export_packs_the_game_and_nothing_else() -> void:
 			check(not f.begins_with(d), "%s does not ship" % f)
 	var size := FileAccess.open(pck, FileAccess.READ).get_length() if FileAccess.file_exists(pck) else 0
 	# A cap on the GAME's size, not a check on what ships: dev files are refused one
-	# by one above. 4 MB was crossed by real code (far models, the shoulder view,
-	# the stutter fixes: 4,097 KB on 2026-09-24), so the cap has headroom again.
-	lt(float(size), 5.0 * 1024 * 1024, "the pack stays small (%d KB)" % (size / 1024))
+	# by one above. 4 MB was crossed by real code on 2026-09-24 (4,097 KB), and 5 MB
+	# by real code on 2026-09-26: the assembly packed 5,141 KB against main's
+	# 4,935, all of it the game's own (compiled scripts +162 KB, shaders +38 KB:
+	# new interiors, climbing, weather), and nothing in the pack but src, configs,
+	# the project and Godot's class and uid caches. Its biggest files are the
+	# story's words (137 KB), the world shader (124 KB) and the remains models.
+	# Growth measured over a week: 3,687 KB on 2026-09-19 to 4,935 on 2026-09-26,
+	# about 180 KB a day, so 10 MB holds about a month more of it. Compression
+	# buys little (brotli 5,141 -> 4,529 KB: compiled scripts are already dense),
+	# and the engine's own wasm dwarfs the pack either way. When this trips again,
+	# list the pack by size against main before raising it.
+	lt(float(size), 10.0 * 1024 * 1024, "the pack stays small (%d KB)" % (size / 1024))
 	lt(float(ms), 60000.0, "and exports in well under a minute (%d ms)" % ms)
 	for f in DirAccess.get_files_at(dir):
 		DirAccess.remove_absolute(dir.path_join(f))
