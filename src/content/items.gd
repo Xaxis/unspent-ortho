@@ -428,6 +428,10 @@ const DEFS := {
 	# The tide reaper's core, wound into the grapple's glove (GEAR.md §5): the
 	# keeper that dragged bodies off the strand, turned. Hands only: it is the
 	# line's own hand. `held` is its tag (ModifierTable).
+	# The pan rake's core, set in the tool's head (GEAR.md §5): the keeper that
+	# raked the crust into rows, turned. `loud` is its tag (ModifierTable).
+	&"mod_rake": {"name": "rake", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"rime", &"earth"], "fits": [&"tool"], "resist": {&"heat": 0.2}},
 	&"mod_undertow": {"name": "undertow", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"brine", &"earth"], "fits": [&"hands"], "resist": {&"magnetism": 0.3}},
 	# The crags' hush slate, lined into a hat, a coat or a pack: what it decides

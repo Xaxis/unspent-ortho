@@ -370,7 +370,8 @@ func _on_keeper_fell(region: int, _land: StringName, _how: StringName) -> void:
 ## file you for it and the hunt could never end.
 func _on_hit(attacker: Object, target: Object, _damage: int, plate: bool, at: Vector3) -> void:
 	# The player's own blow is as loud as their kit makes it (FightKit.blow_noise).
-	_noise(&"hit", sim.hero.kit.blow_noise(plate) if attacker == game.player else 1.0)
+	var heavy := sim.hero.blow != null and sim.hero.blow.heavy
+	_noise(&"hit", sim.hero.kit.blow_noise(plate, heavy) if attacker == game.player else 1.0)
 	if attacker != game.player:
 		return
 	var mob := target as Mob

@@ -367,6 +367,8 @@ func _handle(events: Array[Dictionary]) -> void:
 				_on_hit(e)
 			&"struck":
 				_on_struck(e)
+			&"rake":
+				_rake_marks(e)
 			&"hurt":
 				_on_hurt(e)
 			&"killed":
@@ -488,6 +490,32 @@ func _crackle(from: Vector2, m: MobState, h: float) -> void:
 	pts.append(b)
 	for k in 3:
 		MobFx.line(fx, pts[k], pts[k + 1], Palette.COLD[3], 0.2)
+
+
+## Real second the last rake was drawn, for the tour's `raked`.
+var _raked_at := -INF
+
+
+## `raked`: a rake's tines are on the ground now (they stand 0.35 s).
+func tour_seen(what: StringName) -> bool:
+	return what == &"raked" and Time.get_ticks_msec() / 1000.0 - _raked_at < 0.35
+
+
+## A rake (FightKit.rake): the tines drawn across the ground ahead, five short
+## strokes fanned over the arc, and a glint on the part of every body it holds
+## open, so the player sees what the heavy has opened before it comes down.
+func _rake_marks(e: Dictionary) -> void:
+	_raked_at = Time.get_ticks_msec() / 1000.0
+	var fx := _fx_parent()
+	var from: Vector2 = e.from
+	var facing: float = e.facing
+	for k in 5:
+		var a := facing + FightKit.RAKE_ARC * (float(k) / 2.0 - 1.0)
+		var dir := Vector2.from_angle(a)
+		MobFx.line(fx, _at3(from + dir * 1.0, 0.06), _at3(from + dir * FightKit.RAKE_REACH, 0.06), Palette.LINEN[4], 0.35)
+	for m: MobState in (e.bodies as Array):
+		MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id, 0.7)
+	Events.sfx.emit(&"hit_plate", _at3(from))
 
 
 func _on_struck(e: Dictionary) -> void:

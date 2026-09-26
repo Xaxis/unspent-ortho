@@ -25,6 +25,11 @@ extends RefCounted
 ##                            among the other bodies within LATTICE_REACH, for
 ##                            LATTICE_CHARGES (hot: it wants a cool)
 ##   icelens  (mod_icelens)   "sight": the scan reads ICELENS_REACH as far
+##   rake     (mod_rake)      "a heavy rakes the arc": as a heavy blow is drawn,
+##                            every body within RAKE_REACH and RAKE_ARC of the
+##                            facing has its tell broken and its part lit
+##                            (stalled open); a charger rides over it; a heavy
+##                            is RAKE_NOISE as loud
 ##   undertow (mod_undertow)  "your line hauls them in": the grapple takes hold
 ##                            of a machine ahead and drags it one body-length
 ##                            in (FightSim.undertow), its tell broken and its
@@ -61,6 +66,13 @@ const LATTICE_CHARGES := 1
 const LATTICE_DAMAGE := 2
 ## How much further an icelens scan reads.
 const ICELENS_REACH := 1.5
+## The rake's arc: how far, how wide either side of the facing, and how loud a
+## heavy blow is with it fitted. Measured with the crowd reader at a gate
+## (tests/gear/test_rake): throwing what it holds back 0.6 or 1.2 tiles lost
+## more bouts than holding it where it stands, so it holds.
+const RAKE_REACH := 3.0
+const RAKE_ARC := deg_to_rad(60.0)
+const RAKE_NOISE := 1.5
 ## A haul on a machine costs this many times the grapple's wind.
 const UNDERTOW_WIND := 2.0
 
@@ -75,6 +87,7 @@ var clamp := false
 var lattice := false
 var icelens := false
 var undertow := false
+var rake := false
 
 
 ## The kit of these fitted ids (pieces and modules alike; only modules count).
@@ -91,6 +104,7 @@ static func of(ids: Array) -> FightKit:
 	k.lattice = ids.has(&"mod_lattice")
 	k.icelens = ids.has(&"mod_icelens")
 	k.undertow = ids.has(&"mod_undertow")
+	k.rake = ids.has(&"mod_rake")
 	return k
 
 
@@ -98,9 +112,12 @@ static func from_loadout(l: Loadout) -> FightKit:
 	return of(l.all_ids()) if l != null else FightKit.new()
 
 
-## A blow's noise as a share of a plain one's: `plate` when it rang off plate.
-func blow_noise(plate: bool) -> float:
+## A blow's noise as a share of a plain one's: `plate` when it rang off plate,
+## `heavy` when it was the held blow.
+func blow_noise(plate: bool, heavy: bool = false) -> float:
 	var n := 1.0
+	if rake and heavy:
+		n *= RAKE_NOISE
 	if harmonic and plate:
 		n *= HARMONIC_NOISE
 	if damp:

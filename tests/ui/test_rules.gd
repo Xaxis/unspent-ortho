@@ -346,5 +346,5 @@ func test_a_keepers_core_reads_as_a_choice() -> void:
 		gt((u.get("gives", []) as Array).size(), 1, "and says what it gives and what it costs: %s" % u.get("makes"))
 	check(" ".join(PackedStringArray(uses[0].gives)).contains("4 power"), "the cell's power is a number")
 	# A core whose power is not built yet still reads as a holding's cell.
-	eq(UiRules.core_uses(&"rake_core").size(), 1, "the rake's core: a cell until its power is made")
+	eq(UiRules.core_uses(&"plumb_core").size(), 1, "the plumb's core: a cell until its power is made")
 	eq(UiRules.core_uses(&"scrap").size(), 0, "scrap is no keeper's core")

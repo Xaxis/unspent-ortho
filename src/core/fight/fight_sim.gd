@@ -280,6 +280,8 @@ func _swing() -> void:
 		b.dry()
 	hero.start_swing(b, now)
 	_whiff_checked = false
+	if b.heavy and hero.kit.rake:
+		_rake()
 	# The edge wears where it meets something: a swing at air costs wind, not edge.
 	_blow_wore = false
 	emit(&"swing", {"item": held, "dry": dry, "heavy": b.heavy})
@@ -1035,6 +1037,34 @@ func _break_tell(m: MobState) -> void:
 ## Where a haul stops short of the player: an arm and a blade off, so what came
 ## in is in reach of a swing and not on top of the one who pulled it.
 const UNDERTOW_GAP := 1.0
+
+
+## The rake (FightKit.rake): as a heavy blow is drawn back, the tool rakes the
+## ground ahead. Every live body in the arc has a tell it was winding up broken
+## and its part lit: stalled open as a jammed part is (once per STALL_EVERY_MS,
+## as every stall), so the heavy comes down on it open. Held where it stands,
+## not thrown: a body thrown back is a body given room to come again.
+func _rake() -> void:
+	var hit: Array[MobState] = []
+	for m in mobs:
+		# A charger's weight goes over the tines: what the rake holds is what
+		# stands and bites.
+		if not m.alive or m.removed or m.approach == &"charge":
+			continue
+		var to := m.pos - hero.pos
+		if to.length() - m.radius > FightKit.RAKE_REACH or absf(wrapf(to.angle() - hero.facing, -PI, PI)) > FightKit.RAKE_ARC:
+			continue
+		if not meets_hero(m.pos):
+			continue
+		m.charging = false
+		_break_tell(m)
+		m.flare_until = now + FightRules.PART_FLARE_MS
+		if now >= m.stall_ready_at:
+			m.stall_ready_at = now + FightRules.STALL_EVERY_MS
+			m.stun_until = maxf(m.stun_until, now + FightRules.STALL_MS)
+		hit.append(m)
+		_wake(m)
+	emit(&"rake", {"from": hero.pos, "facing": hero.facing, "bodies": hit})
 
 
 ## The undertow's haul (FightKit.undertow): a machine the line has taken hold of

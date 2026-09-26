@@ -1,0 +1,17 @@
+# The rake (GEAR.md G4): the pan rake's core set in the tool. A heavy, drawn,
+# rakes the ground ahead and holds the biters in the arc open.
+#   tools/tour.sh tours/rake.tour --seed=1 --hour=11 --weather=clear:0 --fit=axe_works,mod_rake --held=axe_works
+coast calm
+place open_coast
+wait 1.0
+spawn cutter
+spawn cutter
+wait 0.5
+try 6
+walkto mob 1.5
+hold swing
+wait 0.34
+release swing
+await raked 0.6
+end
+shot 01-the-rake-drawn with mob:cutter

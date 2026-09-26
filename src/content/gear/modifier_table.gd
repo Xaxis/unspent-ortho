@@ -92,6 +92,11 @@ const MODS := {
 	&"mod_lattice": {"decision": "every blow throws a shock, and the whole kit runs hot",
 		"short": "every blow shocks",
 		"gives": [&"hot", &"loud"], "wants": [&"cool"]},
+	# The pan rake's, turned (GEAR.md §5): `loud`, so a damper fights it (PAIRS).
+	&"mod_rake": {"decision": "a heavy blow rakes the ground ahead and holds everything in the arc open, and rings for it",
+		"short": "a heavy rakes the arc",
+		"costs": "a heavy rings half as loud again",
+		"gives": [&"loud"]},
 	# The tide reaper's, turned (GEAR.md §5): `held`, so with a gyro's steady
 	# it is a planted grappler (PAIRS).
 	&"mod_undertow": {"decision": "your line takes hold of a machine and drags it in off its line, for twice the breath",

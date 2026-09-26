@@ -70,6 +70,8 @@ func act() -> void:
 			return
 	if _haul(live):
 		return
+	if _rake_crowd(live):
+		return
 	if live.size() > 1 and _flanked(live):
 		hero.move = _give_ground(live)
 		return
@@ -178,12 +180,60 @@ func _heavy_fits(m: MobState) -> bool:
 	for o in _live():
 		if o == m or o.stunned(sim.now) or o.spent(sim.now) or not o.roused():
 			continue
-		if o.pos.distance_to(sim.hero.pos) < HEAVY_CLEAR:
-			return false
+		if o.pos.distance_to(sim.hero.pos) >= HEAVY_CLEAR:
+			continue
+		return false
 	return true
 
 
 var _seen_since := {}
+## With a rake fitted: a heavy thrown into two or more roused bodies pressing
+## ahead, none of them a charger, throws them back and opens them as it is
+## drawn (FightKit.rake), and comes down on the nearest of them open.
+func _rake_crowd(live: Array[MobState]) -> bool:
+	var hero := sim.hero
+	if hero.kit == null or not hero.kit.rake or hero.wind < FightRules.HEAVY_WIND + FightRules.DODGE_COST:
+		return false
+	if hero.swing_refusal(sim.now) != &"":
+		return false
+	var lands := float(_blow().heavier().windup)
+	var near := _nearest()
+	if near == null:
+		return false
+	var face := (near.pos - hero.pos).angle()
+	if sim.now < _rake_ready_at:
+		return false
+	var in_arc := 0
+	for m in live:
+		if not m.roused() or m.stunned(sim.now):
+			continue
+		var to := m.pos - hero.pos
+		if to.length() - m.radius > FightKit.RAKE_REACH:
+			continue
+		# A charger raked is a charger given its run again: a player rakes the
+		# ones that stand and bite.
+		if m.approach == &"charge":
+			return false
+		# Pressing: close enough to bite soon. One standing off is no reason.
+		var bite_reach := m.bite.reach if m.bite != null else 0.6
+		if to.length() > m.radius + hero.radius + bite_reach + 0.8:
+			continue
+		if absf(wrapf(to.angle() - face, -PI, PI)) > FightKit.RAKE_ARC:
+			return false
+		if m.blow != null and m.blow_phase(sim.now) == &"windup" and m.blow_at + float(m.blow.windup) - sim.now < lands:
+			return false
+		in_arc += 1
+	if in_arc < 2:
+		return false
+	hero.move = Vector2.ZERO
+	hero.facing = face
+	sim.press_heavy()
+	heavies += 1
+	_rake_ready_at = sim.now + FightRules.STALL_EVERY_MS
+	return true
+
+
+var _rake_ready_at := 0.0
 var _haul_ready_at := 0.0
 ## Roused bodies nearer than this, more than one, and it does not haul.
 const HAUL_ALONE := 8.0
