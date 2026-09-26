@@ -1075,6 +1075,25 @@ func _wear_on_contact() -> void:
 		emit(&"dulled", {"item": inv.held})
 
 
+## A lattice discharge off the body just struck: every other live body within
+## FightKit.LATTICE_REACH takes LATTICE_DAMAGE, as a source of its own (so the
+## swing's hurt frames do not eat it), and dies of it like any other blow.
+func _lattice(struck: MobState) -> void:
+	for o in mobs:
+		if o == struck or not o.alive or o.removed:
+			continue
+		if o.pos.distance_to(struck.pos) - o.radius > FightKit.LATTICE_REACH:
+			continue
+		if o.hurt_by_now(&"lattice", now):
+			continue
+		o.health -= FightKit.LATTICE_DAMAGE
+		o.hurt_by[&"lattice"] = now + o.mob_iframes()
+		o.last_hit_at = now
+		emit(&"struck", {"from": struck.pos, "target": o, "damage": FightKit.LATTICE_DAMAGE, "plate": false, "at": o.pos})
+		if o.health <= 0:
+			_kill(o, true)
+
+
 ## `from` is where the blow came from; INF is the player's own swing.
 func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF, stall_ms: int = FightRules.STALL_MS) -> void:
 	var player_swing := not is_finite(from.x)
@@ -1101,6 +1120,8 @@ func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF, stall_ms: int 
 		_break_tell(m)
 	if player_swing:
 		emit(&"hit", {"attacker": hero, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})
+		if hero.kit.lattice:
+			_lattice(m)
 	else:
 		emit(&"struck", {"from": from, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})
 	if m.health <= 0:
