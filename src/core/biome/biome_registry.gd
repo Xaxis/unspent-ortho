@@ -220,7 +220,7 @@ static func problems() -> PackedStringArray:
 			for row: Array in d.weather:
 				total += float(row[1])
 				if not Weather.KINDS.has(row[0]):
-					out.append(w + "weather has no kind %s" % row[0])
+					out.append(w + "weather has no kind %s" % str(row[0]))
 			if absf(total - 100.0) > 0.01:
 				out.append(w + "weather weights sum to %.1f, not 100" % total)
 		if d.music_motif != &"" and not _defs.has(d.music_motif):

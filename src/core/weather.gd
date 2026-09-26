@@ -201,7 +201,7 @@ static func row_for(seed_value: int, spell: int, type_id: StringName, day: int =
 		if r < acc:
 			row = t
 			break
-	if row[0] == CLEAR and day + 1 > TURNING_DAY:
+	if StringName(row[0]) == CLEAR and day + 1 > TURNING_DAY:
 		return [GREY, row[1], 0.0]
 	return row
 

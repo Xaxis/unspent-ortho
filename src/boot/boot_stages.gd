@@ -142,7 +142,7 @@ func _run_one(s: Stage) -> bool:
 	var t0 := Time.get_ticks_usec()
 	var r: Variant = s.run.call()
 	s.ms = maxf(0.0, s.ms) + (Time.get_ticks_usec() - t0) / 1000.0
-	return not (r is bool and r == false)
+	return not (r is bool and not bool(r))
 
 
 func _collect() -> void:

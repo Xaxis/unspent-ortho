@@ -1,0 +1,2 @@
+# Worker-reached operators on untyped values that are safe, one per line:
+# the finding exactly as test_worker_types prints it, then " -- " and why.

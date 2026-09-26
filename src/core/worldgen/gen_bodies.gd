@@ -47,7 +47,7 @@ static func run(c: GenContext) -> void:
 		if lab < 0:
 			continue
 		var got: Variant = id_of.get(lab)
-		if got == null:
+		if typeof(got) == TYPE_NIL:
 			continue
 		var id := int(got)
 		body[i] = id

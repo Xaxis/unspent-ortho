@@ -127,7 +127,7 @@ static func _hull(k: Kit, planes: Array[Plane], xf: Basis, at: Vector3, col: Col
 		for b in range(a + 1, count):
 			for c2 in range(b + 1, count):
 				var hit: Variant = planes[a].intersect_3(planes[b], planes[c2])
-				if hit == null:
+				if typeof(hit) == TYPE_NIL:
 					continue
 				var p: Vector3 = hit
 				var inside := true
@@ -379,7 +379,7 @@ static func tin_ore(k: Kit, v: int, c: int) -> void:
 	for i in spikes.size():
 		if v == 1 and i == 3:
 			continue
-		var sp: Array = spikes[i]
+		var sp := PackedFloat64Array(spikes[i])
 		k.made.push(Transform3D(Basis(Vector3.BACK, float(sp[5])) * Basis(Vector3.RIGHT, float(sp[5]) * 0.6), Vector3(sp[0], sp[1], sp[2])))
 		k.made.prism(0, 0, 0, sp[3], sp[4] * 0.7, float(sp[3]) * 0.85, 5, P.ASH[4] if i % 2 == 0 else P.STONE[4], GroundColors.glint(P.STONE[5]))
 		k.made.prism(0, sp[4] * 0.7, 0, float(sp[3]) * 0.85, sp[4], 0.0, 5, P.STONE[5])
@@ -524,7 +524,7 @@ static func clints(k: Kit, v: int, c: int) -> void:
 	for i in slabs.size():
 		if v == 2 and i == 3:
 			continue
-		var b: Array = slabs[i]
+		var b := PackedFloat64Array(slabs[i])
 		var h := 0.1 + Kit.j(s, i, 0.03)
 		var r: float = b[2]
 		var sides := 6 + (i + v) % 2

@@ -108,7 +108,7 @@ static func summary(kind: int, variant: int, country: int) -> PackedFloat32Array
 	_sum_lock.lock()
 	var got: Variant = _sums.get(key)
 	_sum_lock.unlock()
-	if got != null:
+	if typeof(got) != TYPE_NIL:
 		return got
 	var t := PropModels.template(kind, variant, country)
 	var top := 0.0
@@ -452,7 +452,7 @@ static func _windows(k: MeshKit, t: PropModels.Template, xf: Transform3D, nx: Tr
 				var lift := n * 0.04
 				var sx := along * WINDOW_WIDE * 0.5
 				var sy := Vector3.UP * WINDOW_TALL * 0.5
-				var q := [c - sx - sy + lift, c + sx - sy + lift, c + sx + sy + lift, c - sx + sy + lift]
+				var q := PackedVector3Array([c - sx - sy + lift, c + sx - sy + lift, c + sx + sy + lift, c - sx + sy + lift])
 				# Wound the way the wall it lies on is.
 				var order: Array = [0, 2, 1, 0, 3, 2] if (q[2] - q[0]).cross(q[1] - q[0]).dot(f) > 0.0 else [0, 1, 2, 0, 2, 3]
 				for j: int in order:
