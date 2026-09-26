@@ -274,7 +274,22 @@ static func found_material(emission_strength: float) -> ShaderMaterial:
 	m.set_shader_parameter("emission_strength", emission_strength)
 	# A live machine keeps more of its colour at night than salvage does.
 	m.set_shader_parameter("night_keep", NIGHT_KEEP)
+	# And it is drawn through the land where the land hides it, in the machines'
+	# own cold band (render/behind.gdshader).
+	m.next_pass = behind_material()
 	return m
+
+
+static var _behind: ShaderMaterial
+
+
+static func behind_material() -> ShaderMaterial:
+	if _behind == null:
+		_behind = ShaderMaterial.new()
+		_behind.shader = preload("res://src/render/behind.gdshader")
+		_behind.render_priority = 12
+		_behind.set_shader_parameter("ink", Color(0.52, 0.46, 0.74))
+	return _behind
 
 
 static func side_normal(side: StringName) -> Vector3:
