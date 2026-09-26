@@ -26,9 +26,10 @@ wait 1.0
 shot 03-the-flat-by-its-stove-at-night with inside:tenement,station:fire
 
 hour 15
-near thing:turnstile
-wait 0.6
+# The peek comes up on the top view's bearing; stood by name once it is up,
+# the view turns to stand behind the player's facing.
 hold shoulder_peek
 await shoulder 3
-wait 0.6
+near thing:turnstile
+wait 1.0
 shot 04-the-stair-over-the-shoulder with inside:tenement,shoulder
