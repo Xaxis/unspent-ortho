@@ -77,6 +77,7 @@ const int M_OVERGROWN = 99;
 const int M_CAST_FLOOR = 100;
 const int M_MACHINE_DECK = 101;
 const int M_SULPHUR = 102;
+const int M_DESERT_PAVEMENT = 103;
 const int M_STRATA_BONE = 133;
 const int M_STRATA_GLASS = 139;
 const int M_STRATA_TIDE = 140;
@@ -87,6 +88,7 @@ const int M_STRATA_DECK = 145;
 const int M_STRATA_ROOTED = 146;
 const int M_STRATA_CAST = 147;
 const int M_STRATA_MACHINE = 148;
+const int M_STRATA_MESA = 149;
 
 bool mark_ground(int m) {
 	return (m >= MARK_GROUND_A0 && m <= MARK_GROUND_A1) || (m >= MARK_GROUND_B0 && m <= MARK_GROUND_B1);
@@ -218,6 +220,8 @@ vec4 matter_of(int m) {
 	else if (m == M_CAST_FLOOR) { r = vec4(0.52, 0.52, 0.006, 0.0); }
 	else if (m == M_STRATA_CAST) { r = vec4(0.56, 0.50, 0.010, 0.0); }
 	// MACHINE_DECK / STRATA_MACHINE: machined plate, kept: smooth, a little metal.
+	else if (m == M_DESERT_PAVEMENT) { r = vec4(0.80, 0.44, 0.015, 0.0); }
+	else if (m == M_STRATA_MESA) { r = vec4(0.84, 0.38, 0.060, 0.0); }
 	else if (m == M_SULPHUR) { r = vec4(0.46, 0.60, 0.050, 0.0); }
 	else if (m == M_MACHINE_DECK) { r = vec4(0.42, 0.58, 0.004, 0.18); }
 	else if (m == M_STRATA_MACHINE) { r = vec4(0.40, 0.60, 0.006, 0.22); }
@@ -397,6 +401,16 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		vec2 q = vec2(p.x * 1.1 + matter_fbm(p * 0.6) * 1.2, p.y * 0.45);
 		vec3 cd = matter_cells(q);
 		h = smoothstep(0.0, 0.45, cd.y - cd.x) + matter_fbm(p * 5.0) * 0.18;
+	} else if (m == M_DESERT_PAVEMENT) {
+		// DESERT_PAVEMENT: the wind-scoured floor's gentle swell. The stones are
+		// pigment; given relief each, the lit cells read as a floor of craters.
+		h = matter_fbm(p * 0.9) * 0.7 + matter_fbm(p * 3.0) * 0.3;
+	} else if (m == M_STRATA_MESA) {
+		// STRATA_MESA: hard bands stand proud, soft ones weather back; the
+		// caprock (top of the face) proudest of all.
+		float dt = (floor(wp.y / 0.5 - 0.002) + 1.0) * 0.5 - wp.y;
+		float band = sin((wp.y + matter_fbm(p * 0.3) * 0.15) * 26.0) * 0.5 + 0.5;
+		h = band * 0.55 + matter_fbm(p * 2.2) * 0.2 + (1.0 - smoothstep(0.03, 0.07, dt)) * 0.6;
 	} else if (m == M_SULPHUR) {
 		// SULPHUR: rimstone -- lobed pools, each rim standing proud of the pool
 		// below it, where the hot water laid its sinter.

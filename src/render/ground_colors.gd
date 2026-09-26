@@ -151,6 +151,9 @@ const STRATA_CAST := 19
 ## A machine city wall: machined plate, an exact vent row, a cold lit seam
 ## under the lip, and nothing on it at all (148).
 const STRATA_MACHINE := 20
+## The mesas' walls: sandstone in bands, cross-bedded, under a hard pale caprock,
+## streaked dark with desert varnish from the lip (149).
+const STRATA_MESA := 21
 ## THE CITY'S FLOOR, a GROUND drawn with the grounds although its number sits
 ## past the strata (the ground numbers ran out at 60): poured slabs in bays,
 ## their joints grown through, faded lane paint, spidered cracks and drifts of
@@ -168,6 +171,9 @@ const MACHINE_DECK := 101
 ## The sulphur jungle's crust round its vents: sinter terraces laid by the hot
 ## water, lobed rims stepping down, sulphur crystals, iron-orange runs (102).
 const SULPHUR := 102
+## The mesas' floor: desert pavement, small stones packed tight and varnished
+## dark by the sun over red sand, with the wind's ripples in the lee (103).
+const DESERT_PAVEMENT := 103
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array

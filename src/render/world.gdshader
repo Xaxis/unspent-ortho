@@ -1518,6 +1518,35 @@ vec3 sulphur_crust(vec3 c, vec3 wp, vec2 px) {
 	return c;
 }
 
+// DESERT_PAVEMENT: the mesas' floor, where the wind has taken the fine sand and
+// left the stones: packed tight, each a small dome, the tops varnished dark by
+// the sun and the sides the red of the ground; and in the lee of anything, red
+// sand lying in ripples. Nothing else here moves.
+vec3 desert_pavement(vec3 c, vec3 wp, vec2 px) {
+	vec2 p = wp.xz;
+	// Stones of every size, not a pattern: two scales of cells, thinned by a
+	// field, so the pavement is packed in places and open sand in others, and
+	// the varnish is a shade on each stone, never a hole punched in the floor.
+	float packed = smoothstep(0.3, 0.6, ink_vnoise(p * 0.2 + 3.0));
+	vec3 cd = matter_cells(p * 7.0 + ink_vnoise(p * 1.1) * 0.8);
+	vec3 cd2 = matter_cells(p * 3.1 + 17.0);
+	float fw = max(fwidth(cd.x), 1e-4);
+	float r1 = 0.18 + cd.z * 0.18;
+	float stone = (1.0 - smoothstep(r1 - fw, r1 + fw, cd.x)) * step(0.35, cd.z);
+	float big = (1.0 - smoothstep(0.22 - fw, 0.22 + fw, cd2.x)) * step(0.8, cd2.z);
+	vec3 varnish = mix(c, mix(RUST1, EARTH1, 0.4), 0.35 + cd.z * 0.15);
+	c = mix(c, varnish, max(stone * packed, big) * 0.8);
+	// Drifts of red sand in the lee, rippled across the wind.
+	float lee = ink_vnoise(p * 0.12 + 5.0) * 0.8 + ink_vnoise(p * 0.5) * 0.2;
+	float sand = smoothstep(0.58, 0.7, lee);
+	if (sand > 0.0) {
+		float rip = sin(dot(p, vec2(0.6, 0.8)) * 7.0 + ink_vnoise(p * 0.6) * 4.0);
+		vec3 drift = mix(SAND3, RUST3, 0.45) * (1.0 + 0.08 * rip);
+		c = mix(c, drift, sand);
+	}
+	return c;
+}
+
 // Terrace walls: each country's rock, banded by world height. dt: depth below
 // the wall's top (a wall is one level tall).
 vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
@@ -2000,6 +2029,41 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			emit += GUIDE_WHITE * 1.2 * on;
 			unh = max(unh, on);
 		}
+	} else if (id == 21) {
+		// MESA: sandstone laid down in a desert that was here before this one,
+		// so its bands are its history. Red, cream and a bruised purple in beds
+		// that swell and pinch, some cross-bedded (thin laminae at a slant
+		// inside the bed, the old dunes' faces); a hard pale caprock at the top
+		// holding the lip up; and desert varnish streaked dark down the face
+		// from the lip, where water ran for a thousand years a night at a time.
+		float sw = (ink_vnoise(vec2(px.x * 0.02, 3.0)) - 0.5) * 0.06;
+		// Beds a hand to a forearm deep, in reds close in value: a strong
+		// contrast between neighbours drew a tiger stripe (measured, the first
+		// cut). One bed in five is the pale one.
+		float b = (y + sw) / (0.16 + ink_vnoise(vec2(px.x * 0.01, 5.0)) * 0.1);
+		float bi = floor(b);
+		float kind = ink_hash(vec2(bi, 41.0));
+		c = kind < 0.4 ? mix(RUST2, RUST3, 0.55) : (kind < 0.8 ? mix(RUST2, EARTH2, 0.4) : mix(SAND3, RUST3, 0.35));
+		// Soft bedding planes between them.
+		c = mix(c, dn(c, 0.18), 1.0 - smoothstep(0.0, 0.12, fract(b)));
+		// Cross-bedding: faint slanted laminae inside a few beds.
+		if (ink_hash(vec2(bi, 43.0)) > 0.6) {
+			float lam = fract(fract(b) * 4.0 + px.x * 0.025 * (ink_hash(vec2(bi, 44.0)) > 0.5 ? 1.0 : -1.0));
+			c = mix(c, dn(c, 0.1), smoothstep(0.75, 0.9, lam));
+		}
+		// The caprock.
+		float cap = 0.06 + ink_vnoise(vec2(px.x * 0.05, 7.0)) * 0.03;
+		if (dt < cap) {
+			c = mix(LINEN3, SAND3, 0.35);
+		} else if (dt < cap + 0.02) {
+			c = dn(c, 0.4);
+		}
+		// Desert varnish: dark streaks from the lip down the face.
+		float vs = ink_vnoise(vec2(px.x * 0.12, 9.0)) * 0.7 + ink_vnoise(vec2(px.x * 0.5, 11.0)) * 0.3;
+		float reach = 0.1 + ink_vnoise(vec2(px.x * 0.04, 13.0)) * 0.35;
+		if (vs > 0.56 && dt > cap && dt < reach) {
+			c = mix(c, mix(INK2, RUST1, 0.35), smoothstep(0.56, 0.72, vs) * (1.0 - (dt - cap) / reach) * 0.7);
+		}
 	}
 	return c;
 }
@@ -2182,6 +2246,9 @@ void fragment() {
 		}
 		if (m == M_SULPHUR) {
 			c = sulphur_crust(c, world_pos, px);
+		}
+		if (m == M_DESERT_PAVEMENT) {
+			c = desert_pavement(c, world_pos, px);
 		}
 		if (m == M_TIDEFLAT) {
 			c = tide_floor(c, world_pos, px);

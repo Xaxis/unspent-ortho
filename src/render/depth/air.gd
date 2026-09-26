@@ -101,6 +101,9 @@ const ROWS := {
 	# The sulphur jungle's air is WET and HOT: a yellow-green haze that begins
 	# close, so the canopy fades into its own steam.
 	&"sulphur_jungle": {"tow": Color(0.52, 0.55, 0.36), "pull": 0.52, "depth": 1.22, "near": 0.85, "bank": 1.4},
+	# The mesas' distance goes to warm red dust, and begins far: the air is dry
+	# and the canyon country is seen a long way off.
+	&"mesas": {"tow": Color(0.80, 0.62, 0.50), "pull": 0.46, "depth": 1.05, "near": 1.05, "bank": 0.8},
 	&"the_crags": {"tow": Color(0.62, 0.66, 0.70), "pull": 0.66, "depth": 1.30, "near": 0.80, "bank": 1.7},
 	&"slums": {"tow": Color(0.300, 0.228, 0.170), "pull": 0.34, "depth": 1.20, "near": 0.90, "bank": 1.45},
 }
