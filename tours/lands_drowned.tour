@@ -1,0 +1,22 @@
+# The drowned city over the shoulder: its most characteristic floor at noon,
+# in the golden hour, and at night; then beside a tide gauge, where the water
+# still comes in; with the frame cost over five seconds standing at noon.
+#   tools/tour.sh tours/lands_drowned.tour --seed=7 --weather=clear:0 --view=shoulder --stats
+coast calm
+hour 12
+place typical_drowned_city
+wait 3.0
+shot noon with land:drowned_city
+perf stats begin
+wait 5.0
+perf stats end drowned-noon
+hour 19
+wait 2.0
+shot golden with land:drowned_city
+hour 22.5
+wait 2.0
+shot night with land:drowned_city
+hour 12
+near tide_gauge
+wait 2.5
+shot gauge with land:drowned_city

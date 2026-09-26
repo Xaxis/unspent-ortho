@@ -36,13 +36,20 @@ enum {
 	# What the drilling left behind it: a core pulled out of the rock and laid
 	# where it was pulled, and a lump of cast stone with its rebar showing.
 	DRILL_CORE, REBAR,
+	# What the glassing left standing in its own floor: a plate of the sheet
+	# broken and tipped up on edge, and a fulgurite, the fused tube a strike
+	# drove into the sand, branching, dug half out by the wind.
+	GLASS_SHARD, FULGURITE,
+	# What the flood left on the drowned city's floor when it went down: a shoe,
+	# a child's toy boat, a bottle, each silted and weeded where it came to rest.
+	DROWNED_LITTER,
 	# A landscape's own grasses: the first, second and third of its
 	# `BiomeDef.grasses` (GrassSpecies), laid through its own d.decor.
 	GRASS_A, GRASS_B, GRASS_C,
 }
 ## The enum above, counted. Adding a kind and forgetting this reads off the end
 ## of `_SPECK` on the first chunk built, so a test asserts the two agree.
-const KINDS := 43
+const KINDS := 46
 ## Litter by kind of work (WorksMap channel): cut, scorch, quarry, bores.
 const WORKS_LITTER: Array = [[SCRAP, BOLT, WIRE], [SCRAP, CINDER, CAN], [SPOIL, BOLT, STONE], [SPOIL, BOLT, SCRAP]]
 ## Share of a tile's items that are litter outside any work, and inside one.
@@ -846,6 +853,74 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 				var ra := float(i) * 2.1 + 0.4
 				var rb := Vector3(cos(ra) * 0.03, 0.06, sin(ra) * 0.03)
 				k.limb(rb, rb + Vector3(cos(ra) * 0.09, 0.13 + float(i) * 0.03, sin(ra) * 0.09), 0.012, 0.009, 3, P.RUST[2] if i % 2 else P.RUST[3])
+		GLASS_SHARD:
+			# A plate of the fused sheet, snapped and tipped up on edge: green-black
+			# on its faces, a pale fracture along its broken top edge, and the face
+			# turned to the sky glints. Leaning, never upright, never square.
+			var lean := 0.35 + float(stage) * 0.2
+			var w := 0.16 + float(stage) * 0.06
+			var tall := 0.22 + float(stage) * 0.1
+			var top := Vector3(0.02, tall, tall * lean)
+			var a := Vector3(-w, 0.0, 0.0)
+			var b := Vector3(w * 0.8, 0.0, 0.02)
+			var face := P.SPRUCE[1].lerp(P.SLATE[1], 0.4)
+			k.made.tri(a, b, top + Vector3(w * 0.3, 0.0, 0.0), GroundColors.glint(face))
+			k.made.tri(a, top + Vector3(w * 0.3, 0.0, 0.0), top + Vector3(-w * 0.4, -tall * 0.2, 0.0), face)
+			k.made.tri(b, a, top + Vector3(w * 0.3, 0.0, 0.0), GroundColors.down(face, 0.2))
+			k.made.tri(top + Vector3(w * 0.3, 0.0, 0.0), a, top + Vector3(-w * 0.4, -tall * 0.2, 0.0), GroundColors.down(face, 0.2))
+			# The broken edge, pale where the glass is thin enough to see through.
+			k.fleck(top + Vector3(-w * 0.4, -tall * 0.2, 0.0), top + Vector3(w * 0.3, 0.0, 0.0), top + Vector3(0.0, -tall * 0.12, 0.012), P.SLATE[4])
+			# Its own socket: a chip of the sheet it came out of, lying flat.
+			k.fleck(Vector3(0.08, 0.006, -0.1), Vector3(0.24, 0.006, -0.05), Vector3(0.16, 0.008, -0.18), face)
+			k.still()
+		FULGURITE:
+			# A strike's track in the sand, fused into a crusted tube and dug half
+			# out by the wind: a trunk out of the ground, leaning, forking twice,
+			# pale sand-glass with a scorched collar where it goes in.
+			var col := P.SAND[3].lerp(P.LINEN[3], 0.35)
+			var dk := P.SAND[2].lerp(P.INK[3], 0.3)
+			var yaw := float(stage) * 1.9
+			var dirv := Vector3(cos(yaw) * 0.25, 1.0, sin(yaw) * 0.25).normalized()
+			var p0 := Vector3.ZERO
+			var p1 := dirv * (0.3 + float(stage) * 0.1)
+			k.limb(p0 + Vector3(0, -0.02, 0), p1, 0.04, 0.026, 5, col, Vector3(0.04, 0.0, -0.02))
+			for bi in 2 + stage % 2:
+				var ba := yaw + 1.3 + float(bi) * 2.2
+				var from := p0.lerp(p1, 0.45 + float(bi) * 0.2)
+				var to := from + Vector3(cos(ba) * 0.15, 0.1 + float(bi) * 0.04, sin(ba) * 0.15)
+				k.limb(from, to, 0.02, 0.009, 4, col if bi % 2 == 0 else dk)
+			k.limb(p1, p1 + Vector3(cos(yaw + 0.6) * 0.07, 0.09, sin(yaw + 0.6) * 0.07), 0.02, 0.008, 4, dk)
+			# The scorch it stands in.
+			k.fleck(Vector3(-0.13, 0.005, -0.05), Vector3(0.11, 0.005, -0.1), Vector3(0.03, 0.006, 0.14), P.INK[3])
+			k.still()
+		DROWNED_LITTER:
+			# Not litter the machines shed: what PEOPLE lost when the water came in,
+			# three things a flood leaves on a floor, faded to the silt's colours.
+			var weed := P.SPRUCE[1].lerp(P.MOSS[2], 0.35)
+			if stage == 0:
+				# A shoe on its side: sole, upper, the open heel, weed in the lace.
+				var sole := P.INK[3].lerp(P.EARTH[1], 0.4)
+				var upper := P.EARTH[2].lerp(P.ASH[2], 0.35)
+				k.made.push(Transform3D(Basis(Vector3.BACK, 1.35), Vector3(0.0, 0.035, 0.0)))
+				k.made.prism(0, -0.11, 0, 0.035, 0.22, 0.012, 6, sole)
+				k.made.prism(0, -0.08, 0.03, 0.03, 0.15, 0.045, 6, upper)
+				k.made.pop()
+				k.limb(Vector3(-0.05, 0.05, 0.02), Vector3(0.06, 0.012, 0.09), 0.006, 0.004, 3, weed)
+			elif stage == 1:
+				# A child's toy boat, keel up, its red faded almost to the floor's.
+				var hull := P.RUST[3].lerp(P.ASH[3], 0.45)
+				k.made.prism(0, 0.0, 0, 0.1, 0.035, 0.04, 5, hull, P.RUST[2].lerp(P.ASH[2], 0.4))
+				k.made.prism(0.02, 0.035, 0, 0.012, 0.07, 0.012, 4, P.LINEN[3])
+				k.fleck(Vector3(-0.1, 0.004, -0.05), Vector3(0.12, 0.004, -0.07), Vector3(0.0, 0.005, 0.1), P.EARTH[2].lerp(P.SPRUCE[2], 0.4))
+			else:
+				# A bottle lying where it rolled, silt banked on its downhill side.
+				k.made.push(Transform3D(Basis(Vector3.BACK, PI * 0.5) * Basis(Vector3.UP, 0.7), Vector3(0.0, 0.03, 0.0)))
+				k.made.prism(0, -0.09, 0, 0.028, 0.14, 0.028, 6, GroundColors.glint(P.SPRUCE[2].lerp(P.SLATE[3], 0.3)))
+				k.made.prism(0, 0.05, 0, 0.012, 0.05, 0.012, 5, P.SPRUCE[2])
+				k.made.pop()
+				k.clump(0.03, -0.02, 0.05, 0.07, 0.03, s, P.EARTH[2].lerp(P.SPRUCE[2], 0.45), 5)
+				k.limb(Vector3(0.1, 0.01, -0.02), Vector3(-0.02, 0.015, -0.06), 0.006, 0.003, 3, weed)
+			k.still()
 		CROTTLE:
 			k.stone(0, -0.02, 0, 0.1, 0.09, s, P.SLATE[2], 5)
 			k.fleck(Vector3(-0.04, 0.075, -0.03), Vector3(-0.03, 0.08, 0.04), Vector3(0.04, 0.075, 0.03), P.LINEN[3])

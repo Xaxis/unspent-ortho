@@ -38,18 +38,33 @@ static func make() -> BiomeDef:
 	d.grounds = {
 		Ground.ROAD: P.SLATE[3].lerp(P.SAND[3], 0.3),
 		Ground.SAND: P.SAND[4].lerp(P.LINEN[4], 0.3),
-		Ground.ROCK: P.SLATE[2].lerp(P.SPRUCE[2], 0.35),
+		# The fused sheet: green-black glass, darker than the slate it was and
+		# lit by its own glare (GroundColors.VITRIFIED, below).
+		Ground.ROCK: P.SPRUCE[1].lerp(P.SPRUCE[2], 0.5),
 		Ground.SCREE: P.SLATE[3].lerp(P.SAND[3], 0.4),
 		Ground.GRAVEL: P.SAND[3].lerp(P.SLATE[3], 0.3),
 		Ground.SALT: P.LINEN[5],
 	}
+	# WHAT THE GLASS IS MADE OF, and a LOOK choice only: the ground stays ROCK to
+	# worldgen, so no seed moves. The floor is drawn as plates, crazing, flow and
+	# fulgurite veins under a near-mirror finish, and every terrace wall as melt
+	# that ran over the lip and set (world.gdshader, VITRIFIED and STRATA_GLASS).
+	# Before this the floor was a flat slate wash and the walls were the salt
+	# flats' evaporite beds, so the frame read as painted steps, not as glass.
+	d.ground_marks = {Ground.ROCK: GroundColors.VITRIFIED}
 	d.cliff_wash = P.SLATE[2].lerp(P.SPRUCE[2], 0.3)
-	d.strata = GroundColors.STRATA_SALT
+	d.strata = GroundColors.STRATA_GLASS
 	d.plain_ground = Ground.ROCK
 	d.bank_ground = Ground.SAND
 	d.pool_rim_ground = Ground.SALT
 	d.village_ground = Ground.GRAVEL
-	d.decor = {Ground.SAND: [0.35, Decor.SEA_GLASS, 26, Decor.TUFT, 4]}
+	# On the sheet, only what the glassing left: plates broken and tipped on
+	# edge, fulgurites the wind has dug out, and cinders. The shared ROCK row is
+	# lichen, and nothing grows on glass.
+	d.decor = {
+		Ground.SAND: [0.35, Decor.SEA_GLASS, 26, Decor.FULGURITE, 5, Decor.TUFT, 4],
+		Ground.ROCK: [0.6, Decor.GLASS_SHARD, 30, Decor.FULGURITE, 14, Decor.CINDER, 8],
+	}
 	d.grass_colors = [P.SAND[3], P.LINEN[3]]
 	d.rock_color = P.SLATE[2]
 	d.decor_tints = {&"fronds": [P.SAND[2], P.LINEN[2], P.SPRUCE[2]]}

@@ -163,8 +163,11 @@ vec3 dome_seen_col(vec3 d, bool cubemap) {
 	vec2 flat_d = normalize(d.xz + vec2(1e-5));
 	vec2 flat_s = normalize(dome_sun_dir.xz + vec2(1e-5));
 	float toward = max(dot(flat_d, flat_s), 0.0);
-	float band = exp(-max(h, 0.0) * 5.5) * (h > -0.05 ? 1.0 : exp((h + 0.05) * 30.0));
-	col = mix(col, dome_glow_color, clamp(dome_glow * band * (0.25 + 0.75 * pow(toward, 4.0)), 0.0, 1.0));
+	// It rises further up the sky than it did (a golden hour is a sky, not a
+	// band), and the far side keeps almost none of it, so the sky goes from warm
+	// on the sun's side to cool blue behind the viewer who has it at their back.
+	float band = exp(-max(h, 0.0) * 3.4) * (h > -0.05 ? 1.0 : exp((h + 0.05) * 30.0));
+	col = mix(col, dome_glow_color, clamp(dome_glow * band * (0.08 + 0.92 * pow(toward, 3.0)), 0.0, 1.0));
 	// Weather over the sky: a cover of cloud, lit on the sun's side, and never
 	// down at the horizon, where the air has already taken the sky over.
 	if (h > 0.0) {
