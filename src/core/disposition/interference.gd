@@ -45,7 +45,15 @@ const CAUSES := {
 	# player is a body the network has had in its hands. Less than a theft, so a
 	# bad night does not turn a region on its own; enough that a second one does.
 	&"downed": 0.09,
+	# BUILDING IS NOTICED (SETTLE.md S2): each piece that goes up in a region, by
+	# how loud it is (StructureKind.loudness, the `scale` of `raise`). A lean-to
+	# is 0.02 and a turret about 0.06: a holding grown loud turns a region wary on
+	# its own, which is the price of the comfort, seen as it is paid.
+	&"built": 0.02,
 }
+## Causes every instance of which counts, however close the last: a second
+## piece built within SAME_CAUSE_GAP is a second piece, not the same news.
+const UNGAPPED: Array[StringName] = [&"built"]
 
 ## VIOLENCE HAS A SOCIAL PRICE, AND THE PRICE IS WHO SAW IT. The same blow is one
 ## machine's word for it in an empty bog and a street's worth of filings in a
@@ -184,14 +192,14 @@ func level_name(net: int) -> StringName:
 ## Raise a network by a cause. Returns how much it actually rose (0 when the
 ## same cause has already counted recently). `witnesses` is how many people
 ## watched it happen, which multiplies the causes a crowd can see (WITNESSED).
-func raise(net: int, cause: StringName, at: Vector2, minutes: float, witnesses: int = 0) -> float:
-	var add: float = CAUSES.get(cause, 0.0)
+func raise(net: int, cause: StringName, at: Vector2, minutes: float, witnesses: int = 0, scale: float = 1.0) -> float:
+	var add: float = CAUSES.get(cause, 0.0) * maxf(0.0, scale)
 	if add <= 0.0:
 		return 0.0
 	if witnesses > 0 and WITNESSED.has(cause):
 		add *= witness_scale(witnesses)
 	var key := "%d|%s" % [net, cause]
-	if counted.has(key) and minutes - float(counted[key]) < SAME_CAUSE_GAP:
+	if not UNGAPPED.has(cause) and counted.has(key) and minutes - float(counted[key]) < SAME_CAUSE_GAP:
 		return 0.0
 	counted[key] = minutes
 	var before := value(net)

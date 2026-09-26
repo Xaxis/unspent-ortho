@@ -170,6 +170,7 @@ func setup(g: Game) -> void:
 	Events.killed.connect(_on_killed)
 	Events.sentinel_fell.connect(_on_sentinel_fell)
 	Events.settlement_founded.connect(_on_founded)
+	Events.fight_ended.connect(_on_fight_ended)
 	if g.options != null and g.options.attention > 0.0:
 		attention_out = clampf(g.options.attention, 0.0, 1.0)
 
@@ -429,6 +430,30 @@ func _mob(sim: FightSim, id: int) -> MobState:
 		if m.id == id:
 			return m
 	return null
+
+
+## TAKEN BESIDE YOUR OWN HOLDING, IT WAS READ (SETTLE.md S2). Put down or
+## carried off within Outcomes.CARRIED_HOME of a holding, the machine that had
+## you had the place too: one notice, as a filed reading is. ONCE: a reading of
+## that holding already in flight is the same one, and over the lost hours it
+## files on its own (`_carry_home`, HOME_MINUTES) -- which is what the line
+## "What it had of ... is in the plan's hands now" after a carry is. Emitted
+## before a carry moves the player, so the player's place is where it happened.
+func _on_fight_ended(outcome: StringName) -> void:
+	if outcome != &"downed" and outcome != &"carried":
+		return
+	if game.player == null:
+		return
+	for s: Settlement in places():
+		if s.realm != realm_here() or s.centre.distance_to(game.player.pos) > Outcomes.CARRIED_HOME:
+			continue
+		var in_flight := false
+		for n: Notice in notices:
+			if n.settlement_id == s.id and n.carried():
+				in_flight = true
+				break
+		if not in_flight:
+			_raise(s, &"notice")
 
 
 ## It got home. This is the one thing in the game that raises attention by a

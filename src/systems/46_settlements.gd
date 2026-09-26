@@ -281,6 +281,12 @@ func build_here(kind: int) -> String:
 	var minutes := StructureKind.minutes(kind)
 	game.clock.skip(minutes)
 	Events.time_skipped.emit(minutes, &"build")
+	# The region watched it go up (SETTLE.md S2): louder pieces, louder news.
+	# Filed as the work FINISHES, after the hours it took: filed at the start,
+	# the building's own hours cooled it away before anybody could see it.
+	for sys in game.systems:
+		if sys.has_method(&"raise") and sys.get(&"interference") is Interference:
+			sys.call(&"raise", &"built", spot, StructureKind.loudness(kind))
 	Events.sfx.emit(StringName("build_%s" % String(StructureKind.display_name(kind)).replace(" ", "_")), game.world.to_3d(spot))
 	Events.made.emit(StringName(String(StructureKind.display_name(kind)).replace(" ", "_")), 1)
 	if game.player.model != null:

@@ -303,6 +303,19 @@ const BUILDABLE: Array[int] = [LEAN_TO, HEARTH, HUT, BUNK, STORE, PLOT, CATCHMEN
 	DECOY_MAST, SPOOFER, TURRET]
 
 
+## How loud a piece is to the region that watches it go up (SETTLE.md S2,
+## Interference `&"built"`): 1 for anything, plus what it gives off, with found
+## tech counted two and a half times -- the plan knows its own parts.
+static func loudness(kind: int) -> float:
+	var loud := 1.0
+	var signs := signs(kind)
+	for ch: String in signs:
+		if ch == "mask":
+			continue
+		loud += float(signs[ch]) * (2.5 if ch == "found_tech" else 1.0)
+	return loud
+
+
 ## What this kind gives off, standing and working. Empty for most pieces.
 static func signs(kind: int) -> Dictionary:
 	return SIGNS.get(kind, {})
