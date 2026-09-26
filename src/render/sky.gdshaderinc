@@ -585,6 +585,25 @@ float sky_wet_cover(vec3 world_pos, float w) {
 	return smoothstep(-SKY_WET_FEATHER, SKY_WET_FEATHER, 1.5 * w + 0.6 * lay - 0.55);
 }
 
+// Rain on standing water: rings spreading and gone, one to a small cell, each
+// on its own beat, more of them the harder it falls (sky_air.x). 0..1, the
+// ring's own line; any water a shader draws may lay it (puddles, the drowned
+// city's pools).
+float sky_rain_rings(vec3 wp) {
+	if (sky_air.x <= 0.02) {
+		return 0.0;
+	}
+	vec2 cell = floor(wp.xz / 0.42);
+	float ph = sky_hash(cell + vec2(3.0, 91.0));
+	float beat = TIME * 1.7 + ph * 9.0;
+	float age = fract(beat);
+	vec2 centre = (cell + 0.25 + 0.5 * vec2(sky_hash(cell + floor(beat)), sky_hash(cell.yx + floor(beat) + 7.0))) * 0.42;
+	vec2 dv = (wp.xz - centre) / max(sky_view.x, 0.001);
+	float rad = 1.0 + age * 5.0;
+	float ring = step(abs(length(vec2(dv.x, dv.y * 1.2)) - rad), 0.55) * step(age, 0.8);
+	return ring * step(sky_hash(cell + floor(beat) + vec2(17.0, 5.0)), sky_air.x * 0.8);
+}
+
 // Snow, ash and wet left on the land. Flat faces take it first, and it lies in
 // patches that join up as it deepens, with a stippled rim. Faces are found from
 // screen derivatives of the world position (every face here is flat). Water and
@@ -619,18 +638,7 @@ vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 		float pool = smoothstep(0.0, 0.02, puddle_lay - 0.86 + (w - 0.5) * 0.12) * flat_face * step(0.5, w);
 		c = mix(c, SKY_PUDDLE, step(h, pool) * 0.45);
 		if (sky_air.x > 0.02 && pool > 0.5) {
-			// Rain on standing water: rings spreading and gone, one to a small
-			// cell, each on its own beat, more of them the harder it falls.
-			vec2 cell = floor(world_pos.xz / 0.42);
-			float ph = sky_hash(cell + vec2(3.0, 91.0));
-			float beat = TIME * 1.7 + ph * 9.0;
-			float age = fract(beat);
-			vec2 centre = (cell + 0.25 + 0.5 * vec2(sky_hash(cell + floor(beat)), sky_hash(cell.yx + floor(beat) + 7.0))) * 0.42;
-			vec2 dv = (world_pos.xz - centre) / max(sky_view.x, 0.001);
-			float rad = 1.0 + age * 5.0;
-			float ring = step(abs(length(vec2(dv.x, dv.y * 1.2)) - rad), 0.55) * step(age, 0.8);
-			ring *= step(sky_hash(cell + floor(beat) + vec2(17.0, 5.0)), sky_air.x * 0.8);
-			c = mix(c, min(SKY_PUDDLE * 1.35, vec3(1.0)), ring * 0.7);
+			c = mix(c, min(SKY_PUDDLE * 1.35, vec3(1.0)), sky_rain_rings(world_pos) * 0.7);
 		}
 	}
 	if (settle.y > 0.001) {

@@ -1311,6 +1311,13 @@ vec3 tide_floor(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
 	} else if (rim > 0.0) {
 		c = mix(c, MOSS2, rim * 0.6);
 	}
+	// RAIN ON THE DROWNED FLOOR. Everything under the flood's line lies wet in a
+	// film, and rain on it rings: on every pool at full, and across the wet silt
+	// between them thinner, so the whole low city is seen being rained on.
+	float wet_floor = max(pool, under * 0.55);
+	if (wet_floor > 0.05) {
+		c = mix(c, mix(RIME4, RIME5, 0.5), sky_rain_rings(wp) * wet_floor);
+	}
 	return c;
 }
 
@@ -1889,6 +1896,13 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		} else {
 			float wd = ink_vnoise(vec2(px.x * 0.08, y * 4.0));
 			c = mix(mix(SPRUCE1, INK2, 0.4), mix(SPRUCE1, MOSS2, 0.35), smoothstep(0.4, 0.7, wd));
+		}
+		// In rain the wall runs: water sheets down it in the channels its own
+		// stains follow, catching the light as it comes down in pulses.
+		if (sky_air.x > 0.02) {
+			float run = smoothstep(0.5, 0.62, ink_vnoise(vec2(px.x * 0.18, 5.0)));
+			float pulse = smoothstep(0.7, 1.0, fract(dt * 5.0 - TIME * 1.3 + ink_hash(vec2(floor(px.x / 3.0), 3.0)) * 4.0));
+			c = mix(c, up(c, 0.55), run * pulse * clamp(sky_air.x, 0.0, 1.0) * 0.6);
 		}
 	} else if (id == 13) {
 		// CAVE: a wall of wet limestone that water has been building on for
@@ -2602,7 +2616,8 @@ void fragment() {
 	}
 	if (m == M_TIDEFLAT) {
 		// Standing water on the drowned floor is a mirror; the silt round it is not.
-		rough_add -= tide_pool(world_pos) * 0.72;
+		// ...unless it is raining on it: a pool under rain is broken, not a mirror.
+		rough_add -= tide_pool(world_pos) * (0.72 - 0.3 * clamp(sky_air.x, 0.0, 1.0));
 	} else if (m == M_STRATA_CAVE) {
 		// A cave wall runs wet in streaks: shinier where water is on it now.
 		rough_add -= smoothstep(0.55, 0.8, ink_vnoise(vec2(world_pos.x + world_pos.z, world_pos.y * 0.2) * 1.3)) * 0.2;
