@@ -1,0 +1,21 @@
+# THE POUR'S LIGHT IS WHAT SHOWS YOU (21_doors `room_dark`, `_screens`): the same
+# body, standing up and not hiding, for longer than a turret takes to sweep its
+# round (StealthQuery.SWEEP_PERIOD): behind the cooling racks nothing in the
+# foundry has it; in front of them, in the pour's light, a turret fires.
+#
+#   tools/tour.sh tours/foundry-light.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is behind the racks after a full sweep and more: unnoticed, and no turret
+# has fired the whole time (`unshot`). 02 is in front of them after the same: a
+# turret has fired on the player.
+coast calm
+near door:foundry
+await door 5
+press use 0.1
+await inside:foundry 5
+near behind:cast_rack
+wait 12.0
+shot 01-behind-the-racks-a-whole-sweep-unseen with inside:foundry,unnoticed,unshot
+near thing:cast_rack
+wait 12.0
+shot 02-in-the-pours-light-a-turret-fires with inside:foundry,turret_shot

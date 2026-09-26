@@ -156,7 +156,11 @@ static func goal(game: Game) -> String:
 	if inv.has(&"pick"):
 		if not inv.has(&"iron_ore") and not inv.has(&"iron"):
 			return "Take the pick to the ore in the rock."
-		# Past the first tools, the long game: the next elite material, and where.
+		# Past the first tools, the long game: the next elite material, and where
+		# -- and a part a room keeps, once the material it follows is held.
+		var part := next_part(game)
+		if part != &"":
+			return part_goal(part)
 		var want := next_elite(game)
 		if want != &"":
 			return elite_goal(game, want)
@@ -199,6 +203,34 @@ static func next_elite(game: Game) -> StringName:
 		if first == &"":
 			first = sid
 	return first
+
+
+## THE PARTS A ROOM KEEPS, in the long game: a thing kept in one kind of room
+## (Interiors.LOOT), wanted once the elite material it `follows` is held -- the
+## burning's glass first, then what the burning's foundry casts, which is what a
+## cast lance is built on (recipes `lance_cast`).
+const PARTS := {
+	&"lance_casting": {"room": &"foundry", "follows": &"cinder_glass"},
+}
+
+
+## The part wanted next: one the bag lacks whose material it holds. &"" for none.
+static func next_part(game: Game) -> StringName:
+	for id: Variant in PARTS:
+		var row: Dictionary = PARTS[id]
+		if not game.inventory.has(StringName(id)) and game.inventory.has(StringName(row.follows)):
+			return StringName(id)
+	return &""
+
+
+## Where a part is kept, said as the long game's goals say it: "Lance casting:
+## kept in the foundry, in the burning."
+static func part_goal(id: StringName) -> String:
+	var row: Dictionary = PARTS[id]
+	var name := String(Items.def(id).get("name", String(id).replace("_", " ")))
+	var lands := Interiors.lands_of(StringName(row.room))
+	var where := ", %s" % _land_said(lands[0]) if not lands.is_empty() else ""
+	return "%s: kept in the %s%s." % [name.left(1).to_upper() + name.substr(1), String(row.room).replace("_", " "), where]
 
 
 ## The landscapes an elite material comes from: its own, or the lands its one

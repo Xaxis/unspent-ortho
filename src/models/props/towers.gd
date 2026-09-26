@@ -616,27 +616,31 @@ static func block(k: Kit, c: int) -> void:
 	var t := corners(w + FRAME, d + FRAME, 0.0, top, s)
 	var faces := Houses.faces(t)
 	Houses.struck_plate(k, faces[0][0], faces[0][1], faces[0][2], faces[0][3], 0.9, 0.24)
-	# An awning over the frontage, on poles: the one thing that breaks a wide
-	# building's silhouette at the height a player walks at.
-	var fb: Array = faces[0]
-	var out := Houses.wall_out(fb[0], fb[1], fb[2], fb[3])
-	var wa := Houses.on_wall(fb[0], fb[1], fb[2], fb[3], 0.06, 0.34, 0.0)
-	var wb := Houses.on_wall(fb[0], fb[1], fb[2], fb[3], 0.72, 0.34, 0.0)
-	var fa := wa + out * 0.62 + Vector3(0, -0.16, 0)
-	var fbb := wb + out * 0.58 + Vector3(0, -0.2, 0)
-	k.plate(fa, fbb, wb, wa, P.PLATE[3], P.PLATE[1], P.PLATE[4])
-	for p: Vector3 in [fa, fbb]:
-		k.rod(Vector3(p.x, 0.0, p.z), p, 0.026, 4, P.PLATE[2])
+	# THE WAY IN IS A MACHINE'S where this landscape keeps a room behind a block
+	# (BiomeDef.interiors `form:block`): a service hatch in the frontage's middle,
+	# where the threshold stands (Threshold.of_house), and no awning -- a shelter
+	# for a person, which that city has none of, and under it the hatch was out
+	# of every bearing the play camera takes (test_found_drawn).
+	var def := BiomeRegistry.by_index(c)
+	var machines := def != null and def.interiors.has(&"form:block")
+	if machines:
+		service_hatch(k, faces[0], top, w + FRAME)
+	else:
+		# An awning over the frontage, on poles: the one thing that breaks a
+		# wide building's silhouette at the height a player walks at.
+		var fb: Array = faces[0]
+		var out := Houses.wall_out(fb[0], fb[1], fb[2], fb[3])
+		var wa := Houses.on_wall(fb[0], fb[1], fb[2], fb[3], 0.06, 0.34, 0.0)
+		var wb := Houses.on_wall(fb[0], fb[1], fb[2], fb[3], 0.72, 0.34, 0.0)
+		var fa := wa + out * 0.62 + Vector3(0, -0.16, 0)
+		var fbb := wb + out * 0.58 + Vector3(0, -0.2, 0)
+		k.plate(fa, fbb, wb, wa, P.PLATE[3], P.PLATE[1], P.PLATE[4])
+		for p: Vector3 in [fa, fbb]:
+			k.rod(Vector3(p.x, 0.0, p.z), p, 0.026, 4, P.PLATE[2])
 	# The sign runs along the top of the frontage, where the awning does not
 	# reach: a shop's own, not the city's, so it is the smaller colour.
 	billboard(k, faces[2], 0.56, 0.84, SIGN_COLOURS[1], s + 5)
 	Houses.salvage(k, faces[1][0], faces[1][1], faces[1][2], faces[1][3], 0.7, s + 9)
-	# THE WAY IN IS A MACHINE'S. Where this landscape keeps a room behind a block
-	# (BiomeDef.interiors `form:block`), the frontage's middle -- where the
-	# threshold stands (Threshold.of_house) -- has a service hatch in it.
-	var def := BiomeRegistry.by_index(c)
-	if def != null and def.interiors.has(&"form:block"):
-		service_hatch(k, faces[0], top, w + FRAME)
 	var r := parapet(k, w, d, top, s + 60, c)
 	plant(k, w, d, r[0] + 0.05, s + 70, c)
 	# A second tank at the other end: a wide roof with one tank on it reads empty.

@@ -20,6 +20,7 @@ const RECIPES := {
 	&"rooted_floor": "res://src/content/interiors/rooted_floor.gd",
 	&"tenement": "res://src/content/interiors/tenement.gd",
 	&"maintenance_bay": "res://src/content/interiors/maintenance_bay.gd",
+	&"foundry": "res://src/content/interiors/foundry.gd",
 }
 
 static var _kinds: Dictionary = {}
@@ -144,6 +145,16 @@ const LOOT := {
 		{"item": &"mod_capacitor", "chance": 0.35, "rarity": Rarity.RARE},
 		{"item": &"mod_harmonic", "chance": 0.3, "rarity": Rarity.RARE},
 		{"item": &"record", "chance": 0.25},
+	],
+	# What the burning's foundry casts and keeps at the end of its line: its own
+	# landscape's glass, always, and the lance body it was pouring, always -- the
+	# reason to go down past the warden -- and the scrap of the pour.
+	&"foundry": [
+		{"item": &"cinder_glass", "count": Vector2i(1, 2)},
+		{"item": &"lance_casting"},
+		{"item": &"scrap", "count": Vector2i(3, 6)},
+		{"item": &"blade_seal", "chance": 0.3},
+		{"item": &"record", "chance": 0.2},
 	],
 	# What somebody kept who knew what was coming: their own records first, the
 	# makings of light, and the odd thing they took off a machine to study.

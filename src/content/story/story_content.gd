@@ -953,6 +953,75 @@ const FRAGMENTS := {
 			"the one thing in the city not in its line.",
 		],
 	},
+	# --- a foundry under the works yard in the burning (ROOMS: foundry) ---------
+	&"foundry_count": {
+		"kind": &"terminal", "title": "the line's panel", "lands": [],
+		"lines": [
+			"  LINE 3  /  POUR IN PROGRESS",
+			"  THIS SHIFT ..... 1,904",
+			"  THIS LINE ...... 11,602,340",
+			"  REQUIRED ....... ALL",
+			"",
+			"The point for the pour is lit amber. The",
+			"point beside it, marked STOP, has no bulb.",
+		],
+	},
+	&"foundry_consignee": {
+		"kind": &"terminal", "title": "the line's panel", "lands": [],
+		"lines": [
+			"  LINE 3  /  CAST TO PATTERN",
+			"  CONSIGNEE ...... WITHHELD",
+			"  PERSONNEL USE .. NOT ANTICIPATED",
+			"  OPERATOR ....... NOT REQUIRED",
+			"",
+			"Nothing on the line is made to be held.",
+		],
+	},
+	&"foundry_standing": {
+		"kind": &"terminal", "title": "the line's panel", "lands": [],
+		"lines": [
+			"  ORDER .......... STANDING",
+			"  OPENED ......... 2094",
+			"  CLOSES ......... ON AGREEMENT",
+			"",
+			"One point lit amber, low on the plate. It",
+			"has never once been dark: the steel round",
+			"it is scorched in a ring.",
+		],
+	},
+	&"foundry_lances": {
+		"kind": &"mark", "title": "the cooling racks", "lands": [],
+		"lines": [
+			"Lance bodies racked to the ceiling, each as",
+			"long as the hall is wide. Not one has a grip.",
+			"",
+			"The rows are numbered on the upright. The",
+			"gaps are numbered in a column of their own,",
+			"and that column is longer.",
+		],
+	},
+	&"foundry_plate": {
+		"kind": &"mark", "title": "the cooling racks", "lands": [],
+		"lines": [
+			"Armour plate, racked on edge, each sheet",
+			"thicker than your hand is long and curved",
+			"to fit something wider than this hall.",
+			"",
+			"One slot is empty. The rack arm over it is",
+			"still ticking as it cools.",
+		],
+	},
+	&"foundry_barrels": {
+		"kind": &"mark", "title": "the cooling racks", "lands": [],
+		"lines": [
+			"Barrels racked like pipe, rows to the roof,",
+			"each bore wide enough to crawl into. Inside,",
+			"they are polished bright enough to see the",
+			"pour in, small, at the far end.",
+			"",
+			"Nothing that walks could lift one.",
+		],
+	},
 	&"lobby_boxes": {
 		"kind": &"mark", "title": "the letterboxes", "lands": [],
 		"lines": [
@@ -1515,6 +1584,10 @@ const ROOMS := {
 	&"maintenance_bay": {
 		&"terminal:diag_panel": [&"bay_out", &"bay_mass", &"bay_short"],
 		&"wall:tally": [&"bay_tally", &"bay_bedroll", &"bay_half"],
+	},
+	&"foundry": {
+		&"terminal:line_panel": [&"foundry_count", &"foundry_consignee", &"foundry_standing"],
+		&"wall:cast_rack": [&"foundry_lances", &"foundry_plate", &"foundry_barrels"],
 	},
 }
 
