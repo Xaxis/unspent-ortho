@@ -102,7 +102,7 @@ static func threat(m: MobState, from: Vector2) -> float:
 			t = THREAT_ATTACKING
 		MobState.CHASING:
 			t = THREAT_CHASING
-		MobState.ALERTED:
+		MobState.ALERTED, MobState.HOLDING:
 			t = THREAT_AWARE
 		_:
 			t = THREAT_STIRRED if m.suspicion > 0.05 else 0.0

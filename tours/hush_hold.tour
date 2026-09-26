@@ -14,9 +14,33 @@ await noticed 10
 at mark:ring
 wait 4.0
 shot 01-held-at-the-edge-from-above with mob:runner
+# The slate on one of them: what a machine held at a ring reads, from a step
+# nearer them (still well inside the stones, with a clear line to them).
+walkto mob 0.5
+hold target
+await target 5
+wait 0.9
+shot 01b-the-read-of-one-held with mob:runner
+release target
+wait 0.4
 # Turned to them (a touch of the keys; still well inside the stones).
 walkto mob 0.15
 tap shoulder
 await shoulder 3
 wait 0.8
 shot 02-held-at-the-edge-over-the-shoulder with shoulder
+# Fen, told of it (the beat landed as they stopped): her reply about the rings.
+tap shoulder
+wait 0.6
+at cast:fen
+await cast:fen 8
+press use
+await talking 3
+tap move_down
+wait 0.2
+tap move_down
+wait 0.3
+shot 03-telling-fen with talking,cast:fen
+press use
+wait 0.6
+shot 04-fen-on-the-rings with talking,cast:fen

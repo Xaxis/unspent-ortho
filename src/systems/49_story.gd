@@ -70,6 +70,7 @@ func setup(g: Game) -> void:
 	Events.sentinel_fell.connect(_on_sentinel_fell)
 	Events.settlement_founded.connect(_on_settlement_founded)
 	Events.raid_ended.connect(_on_raid_ended)
+	Events.ring_held.connect(_on_ring_held)
 
 
 func started() -> void:
@@ -156,6 +157,8 @@ func _exit_tree() -> void:
 		Events.settlement_founded.disconnect(_on_settlement_founded)
 	if Events.raid_ended.is_connected(_on_raid_ended):
 		Events.raid_ended.disconnect(_on_raid_ended)
+	if Events.ring_held.is_connected(_on_ring_held):
+		Events.ring_held.disconnect(_on_ring_held)
 
 
 ## The journal's key, read as 46_settlements reads the holding's: it opens the
@@ -611,6 +614,12 @@ func _hunted_here() -> bool:
 func _on_took(item: StringName, _count: int) -> void:
 	if item == &"record":
 		_witnessed(StoryContent.WITNESS_ON[&"record"])
+
+
+## Watched a machine stop at a crags ring and hold (docs/HUSH.md H1): the first
+## time lands the beat, and says it.
+func _on_ring_held(_kind: StringName) -> void:
+	_witnessed(StoryContent.WITNESS_ON[&"ring_held"])
 
 
 func _on_works_broken(_region: int, land: StringName) -> void:

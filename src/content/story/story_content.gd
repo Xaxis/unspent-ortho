@@ -68,7 +68,7 @@ const ARCS := {
 	&"the_lands": {
 		"title": "the lands",
 		"note": "What the people of each land have noticed, and nobody wrote down.",
-		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count", &"same_weight", &"old_timetable", &"harvest_day", &"kerb_moves", &"more_goes_in", &"survey_bends", &"vents_keep_time", &"under_the_leaves", &"wrack_new", &"sea_froze", &"glassed_nothing", &"fields_tune", &"words_tipped"],
+		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count", &"same_weight", &"old_timetable", &"harvest_day", &"kerb_moves", &"more_goes_in", &"survey_bends", &"ring_held", &"vents_keep_time", &"under_the_leaves", &"wrack_new", &"sea_froze", &"glassed_nothing", &"fields_tune", &"words_tipped"],
 	},
 	&"priya": {
 		"title": "Priya",
@@ -153,6 +153,7 @@ const BEATS := {
 	&"kerb_moves": {"short": "the line moves", "arc": &"the_lands", "says": "In the metropolis the line between the kept streets and the dead ones moves a street at a time, always inward. The plan is giving the city up by inches."},
 	&"more_goes_in": {"short": "more goes in", "arc": &"the_lands", "says": "More goes into the machine city than comes out of it, every year anyone has counted. Nothing built that clean mislays things."},
 	&"survey_bends": {"short": "the survey bends", "arc": &"the_lands", "says": "The machines' bearing is ruled straight across the whole world and bends round the crags. They surveyed everything and left that out."},
+	&"ring_held": {"short": "they stop at the stones", "arc": &"the_lands", "says": "In the crags, machines hunting you stopped at the edge of a ring of old stones, turned to face it, and would not come in."},
 	&"vents_keep_time": {"short": "the vents keep time", "arc": &"the_lands", "says": "The sulphur vents open and close together, in an order, and come back round. Nothing under a mountain keeps time."},
 	&"under_the_leaves": {"short": "under the leaves", "arc": &"the_lands", "says": "The machines' roads stop at the treeline of the green towers and start again on the far side. In seventy years they have not mapped what is under the canopy."},
 	&"dam_order": {"short": "the dam", "arc": &"the_lands", "says": "The moss is a drowned valley. The dam was opened in the war, on an order that checked out."},
@@ -205,6 +206,18 @@ const BEATS := {
 # The old world's words are FOUND; the machines' words are ADDED.
 
 const FRAGMENTS := {
+	# --- the crags' rings (docs/HUSH.md): dealt to a crags standing stone --
+	&"ring_offerings": {
+		"kind": &"mark", "title": "a stone in the ring", "lands": ["the_crags"],
+		"lines": [
+			"A cup cut in the stone, worn smooth, and in",
+			"it: a button, a crust, a shell, and a key",
+			"to a lock nowhere in the crags.",
+			"",
+			"The crust is today's. The rest are older,",
+			"and nothing has had them. Not the birds.",
+		],
+	},
 	# --- the world before, still advertising -------------------------------
 	&"seated": {
 		"kind": &"sign", "title": "a laminated sign", "lands": [],
@@ -2964,8 +2977,27 @@ const TALKS := {
 				"replies": [
 					{"text": "No survey at all?", "pick": &"asked_survey", "to": &"survey"},
 					{"text": "[follow her]", "pick": &"followed", "to": &"survey"},
+					{"text": "They stopped at the stones.", "when": &"ring_held", "pick": &"told_rings", "to": &"rings"},
 					{"text": "[leave]", "to": &""},
 				],
+			},
+			&"rings": {
+				"says": ["They do that. Right at the edge, facing in, like dogs at a church door.", "Nobody's ever seen one go in. Nobody's asked them why, either."],
+				"replies": [
+					{"text": "What do you do there?", "pick": &"asked_rings_do", "to": &"leave_things"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"leave_things": {
+				"says": ["Leave a bit of what you have on the stones. Bread. A button.", "Not at night. If it goes quiet on you in there, stand still till it doesn't."],
+				"replies": [
+					{"text": "Is anyone out there at night?", "pick": &"asked_night", "to": &"night"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"night": {
+				"says": ["...", "Keep your lamp shut near the stones. Stay behind me in this."],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"survey": {
 				"says": ["Their line runs ruled across the world. You've seen it. Nothing bends it.", "It bends here. Goes round, picks up clean on the far side.", "They measured everything there is and left this out on purpose."],
@@ -3529,6 +3561,14 @@ const KEEPER_MEMORY := {
 ## that strange, is exactly what the player has been standing in. (The slums wave
 ## wrote this row; its reading changed with the story on 2026-09-18.)
 const TESTIMONY_PASSES := {"says": "shows what being kept is like", "beats": [&"covenant_fed"]}
+## A machine held at a crags ring's edge (docs/HUSH.md H1): the absence of a
+## file, never a name for what is there. A state, not a role: one of the three,
+## dealt by hash(seed, machine) (`holding_says`).
+const TESTIMONY_HOLDING := {"says": [
+	"HOLDING. NO FILE HERE.",
+	"NOT ON FILE. WAITING.",
+	"HOLDING AT UNFILED GROUND",
+]}
 
 
 # --- what was done to the player (channel 4: the player's own state) -----------
@@ -3545,6 +3585,7 @@ const WITNESS_ON := {
 	&"other_realm": &"seeker",
 	&"hunted": &"noticed",
 	&"works_dark": &"holdfast_price",
+	&"ring_held": &"ring_held",
 }
 ## The signet only means his own old password once he knows he had one.
 const SIGNET_AFTER := &"built_halcyon"
@@ -3556,10 +3597,18 @@ const WITNESSED := {
 	&"seeker": "the player stands below the world or above it (not in the Before, which is his own past)",
 	&"noticed": "the region the player stands in is hunting them",
 	&"holdfast_price": "a works yard is put dark",
+	&"ring_held": "a machine hunting the player stops at a crags ring's edge and holds there, facing in",
 }
 
 
 # --- reading the tables -------------------------------------------------------
+
+## What a machine held at a ring reads, one of TESTIMONY_HOLDING's, fixed for
+## the machine in its world.
+static func holding_says(seed_value: int, id: int) -> String:
+	var said: Array = TESTIMONY_HOLDING.says
+	return str(said[clampi(int(Rng.hash01(seed_value, id, 0x484F) * said.size()), 0, said.size() - 1)])
+
 
 ## What a machine is for, or {} for anything that is not the plan's.
 static func testimony(role: StringName, row: Dictionary) -> Dictionary:

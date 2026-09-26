@@ -128,7 +128,7 @@ static func of(m: MobState, from: Vector2, moment: Moment, world: WorldData = nu
 		"stats": stats(m, from),
 		"powers": powers(m),
 		"awareness": awareness(m, from, moment, world, query),
-		"thinking": thinking(m, now),
+		"thinking": thinking(m, now, moment.seed_value if moment != null else 0),
 		# What it is FOR, in the plan's own terms (StoryContent.TESTIMONY): the
 		# story's one line on this panel, and "" for anything not of the plan.
 		"testimony": String(StoryContent.testimony(m.role, row).get("says", "")),
@@ -238,7 +238,9 @@ static func awareness(m: MobState, from: Vector2, moment: Moment, world: WorldDa
 
 ## What it is doing about the player, in one plain line: its mood, what its
 ## blow is doing, and what its place in the plan makes of them.
-static func thinking(m: MobState, now: float = 0.0) -> String:
+## `seed_value` is the world's: a machine held at a crags ring reads one of
+## StoryContent.TESTIMONY_HOLDING's lines, fixed for it in its world.
+static func thinking(m: MobState, now: float = 0.0, seed_value: int = 0) -> String:
 	if not m.alive:
 		return "down"
 	match m.mood:
@@ -256,7 +258,7 @@ static func thinking(m: MobState, now: float = 0.0) -> String:
 		MobState.FLEEING:
 			return "making for home"
 		MobState.HOLDING:
-			return "holding at the stones"
+			return StoryContent.holding_says(seed_value, m.id)
 		MobState.ALERTED:
 			if now < m.look_until:
 				return "looking where the noise was"

@@ -500,7 +500,9 @@ func _hush_beat(m: MobState, in_ring: Vector3) -> bool:
 		m.hold_at = in_ring
 		m.hold_since = moment.minutes if moment != null else 0.0
 		m.set_mood(MobState.HOLDING, now)
-		emit(&"holding", {"mob": m})
+		# `seen`: the player went in under its optics, and so saw it stop. The
+		# ring hides them from it from now on; this is the last it had them.
+		emit(&"holding", {"mob": m, "seen": StealthQuery.sees(m.row, m.pos, hero.pos, moment, world, query, NAN)})
 		return true
 	if m.mood != MobState.HOLDING:
 		return false

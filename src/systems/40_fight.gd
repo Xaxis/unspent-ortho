@@ -430,6 +430,9 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"filed":
 				# Nothing is said: machines seeing further is what the player notices.
 				Snatch.file(game.body)
+			&"holding":
+				if bool(e.get("seen", false)):
+					Events.ring_held.emit((e.mob as MobState).kind)
 			&"outcome":
 				_on_outcome(e)
 

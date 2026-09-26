@@ -133,6 +133,8 @@ func test_every_word_fits_the_glass_it_is_shown_on() -> void:
 		var said := str(StoryContent.TESTIMONY[role].says)
 		check(UiFont.width(said) <= read_wide, "what a %s is for fits the read: %s" % [role, said])
 	check(UiFont.width(str(StoryContent.TESTIMONY_SENTINEL.says)) <= read_wide, "and a keeper's")
+	for said: String in StoryContent.TESTIMONY_HOLDING.says:
+		check(UiFont.width(said) <= read_wide, "a machine held at a ring's read fits: %s" % said)
 
 
 func test_the_new_words_never_say_it_either() -> void:
