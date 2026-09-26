@@ -8,6 +8,27 @@ const PRESETS := "res://export_presets.cfg"
 const DEV_DIRS: Array[String] = ["shots/", "tours/", "tools/", "tests/", "docs/", "build/"]
 
 
+
+## Whether a path in the pack is one the game ships: its code and shaders under
+## src/, its configurations, and the few files Godot writes for itself. A dev
+## leftover (a .uid or .import beside a file, a scratch file, a tool or a test)
+## is not, wherever it sits.
+static func ships(f: String) -> bool:
+	if f.ends_with(".uid") or f.ends_with(".import") or f.contains("scratch"):
+		return false
+	if f == "project.binary" or f == ".godot/global_script_class_cache.cfg" or f == ".godot/uid_cache.bin":
+		return true
+	if f.begins_with(".godot/exported/") and f.ends_with(".scn"):
+		return true
+	if f.begins_with("configs/"):
+		return f.ends_with(".json")
+	if f.begins_with("src/"):
+		for ext: String in [".gdc", ".remap", ".gdshader", ".gdshaderinc", ".scn", ".json", ".html"]:
+			if f.ends_with(ext):
+				return true
+	return false
+
+
 func _presets() -> Dictionary:
 	var cfg := ConfigFile.new()
 	var err := cfg.load(PRESETS)
@@ -124,6 +145,15 @@ func test_a_headless_export_packs_the_game_and_nothing_else() -> void:
 	for f: String in files:
 		for d in DEV_DIRS:
 			check(not f.begins_with(d), "%s does not ship" % f)
+	# WHAT SHIPS, BY ITS SHAPE: the cap below is a ceiling, and under it this is
+	# what keeps junk out, naming the file. Scanned 2026-09-26: 607 compiled
+	# scripts and their remaps, 36 shaders, 5 configs, the main scene Godot bakes
+	# under .godot/exported, its two caches and project.binary. Nothing else.
+	var strays: PackedStringArray = []
+	for f: String in files:
+		if not ships(f):
+			strays.append(f)
+	eq(strays.size(), 0, "only the game ships, and these do not belong in it: %s" % ", ".join(strays.slice(0, 12)))
 	var size := FileAccess.open(pck, FileAccess.READ).get_length() if FileAccess.file_exists(pck) else 0
 	# A cap on the GAME's size, not a check on what ships: dev files are refused one
 	# by one above. 4 MB was crossed by real code on 2026-09-24 (4,097 KB), and 5 MB
