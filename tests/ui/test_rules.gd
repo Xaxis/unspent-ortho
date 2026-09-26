@@ -331,3 +331,20 @@ func test_a_shortfall_reads_as_plain_english() -> void:
 	var rows := UiRules.inventory_rows(inv)
 	eq(UiRules.list_name(&"scrap", 3), UiRules.plural(UiRules.item_name(&"scrap")), "a list row of several says the plural")
 	eq(rows.size(), 2)
+
+
+## ONE CORE, TWO USES (GEAR.md G5): a keeper's core read on the slate says both
+## things it can become, side by side, and what each gives and costs, so the
+## choice is read before it is made. Anything else says nothing of the kind.
+func test_a_keepers_core_reads_as_a_choice() -> void:
+	var uses := UiRules.core_uses(&"reaper_core")
+	eq(uses.size(), 2, "the reaper's core: two uses")
+	eq(uses[0].get("makes", &""), &"stolen cell", "power a holding: the stolen cell")
+	eq(uses[1].get("makes", &""), &"undertow", "or wear it: the undertow")
+	for u: Dictionary in uses:
+		check(String(u.get("title", "")) != "", "each use is named")
+		gt((u.get("gives", []) as Array).size(), 1, "and says what it gives and what it costs: %s" % u.get("makes"))
+	check(" ".join(PackedStringArray(uses[0].gives)).contains("4 power"), "the cell's power is a number")
+	# A core whose power is not built yet still reads as a holding's cell.
+	eq(UiRules.core_uses(&"rake_core").size(), 1, "the rake's core: a cell until its power is made")
+	eq(UiRules.core_uses(&"scrap").size(), 0, "scrap is no keeper's core")

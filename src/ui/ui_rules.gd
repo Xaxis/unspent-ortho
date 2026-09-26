@@ -256,6 +256,38 @@ static func all_recipes(extra: Array[Dictionary] = []) -> Array[Dictionary]:
 	return out
 
 
+## A keeper's core read as the choice it is (GEAR.md G5): what it becomes in a
+## holding and what it becomes worn, side by side, each with what it gives and
+## what it costs. [{title, makes, gives: [String], at}] — the cell first, then
+## the power made of it on the jig once that power is built; [] for anything
+## that is no keeper's core. One core goes into one of them.
+static func core_uses(id: StringName) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if Sources.keeper_of_core(id) == &"":
+		return out
+	var cell := StructureKind.STOLEN_CELL
+	if StructureKind.needs_one(cell).has(id):
+		out.append({"title": "power a holding", "makes": StructureKind.display_name(cell),
+			"gives": ["%s power, day and night" % num(StructureKind.makes_power(cell)),
+				"the loudest thing a holding stands up"],
+			"at": "built at your holding"})
+	for r: Dictionary in Recipes.LIST:
+		if not (r.get("needs", {}) as Dictionary).has(id):
+			continue
+		var made := recipe_output(r)
+		if not Gear.is_module(made):
+			continue
+		var gives: Array[String] = [ModifierTable.short(made)]
+		if ModifierTable.costs(made) != "":
+			gives.append(ModifierTable.costs(made))
+		var slots := PackedStringArray()
+		for s: Variant in (Items.def(made).get("fits", []) as Array):
+			slots.append(String(s))
+		out.append({"title": "wear it", "makes": item_name(made), "gives": gives,
+			"at": "made %s, worn on the %s" % [station_words(StringName(r.get("at", &""))), " or ".join(slots)]})
+	return out
+
+
 static func item_group(id: StringName) -> StringName:
 	return UiLink.group_of(id)
 

@@ -31,6 +31,8 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   Keeper powers (a keeper's core on the jig, a relic module): the undertow (reaper_core, hands) makes the grapple
   haul a machine in, stalled, for double wind: `tools/test.sh test_undertow` (its bout prints),
   `tools/tour.sh tours/undertow.tour` (options in its header).
+  A keeper's core reads on the slate as the choice it is (the holding's cell, the power worn), side by side:
+  `tools/test.sh test_rules:test_a_keepers_core`, `tools/tour.sh tours/core_choice.tour` (options in its header).
 - 56_economy: `src/systems/56_economy.gd`, reached by `tools/tour.sh tours/gear-economy.tour`.
 
 ## How to reach it

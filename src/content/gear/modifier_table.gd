@@ -96,6 +96,7 @@ const MODS := {
 	# it is a planted grappler (PAIRS).
 	&"mod_undertow": {"decision": "your line takes hold of a machine and drags it in off its line, for twice the breath",
 		"short": "your line hauls them in",
+		"costs": "a haul takes twice the breath",
 		"gives": [&"held"]},
 	# The crags' hush slate, worn: stone a scanner reads as nothing at all
 	# (docs/LANDSCAPES.md). It gives `quiet`, so a lattice rings through it
@@ -167,6 +168,12 @@ static func decision(id: StringName) -> String:
 ## row that forgets one is caught by the test rather than by a blank line.
 static func short(id: StringName) -> String:
 	return row(id).get("short", decision(id))
+
+
+## What a keeper's power takes back (GEAR.md §5: a relic changes a rule and
+## takes something back), in the socket row's width; "" for a module with none.
+static func costs(id: StringName) -> String:
+	return row(id).get("costs", "")
 
 
 static func gives(id: StringName) -> Array:
