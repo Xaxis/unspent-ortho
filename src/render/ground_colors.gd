@@ -193,6 +193,9 @@ const SCRAP_FLOOR := 106
 ## The moss's fen: FEN by day in every respect, and by night the gas off its
 ## black pools burns in faint cold flames on the water (107).
 const BOG_FLOOR := 107
+## The middens' floor: SWARF by day in every respect, and by night the screens
+## buried in it leach phosphor into the standing wet, a faint green (108).
+const MIDDEN_FLOOR := 108
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array

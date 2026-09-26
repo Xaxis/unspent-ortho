@@ -2380,6 +2380,18 @@ vec3 bog_gas(vec2 wp, vec2 px) {
 	return vec3(0.34, 0.62, 0.72) * 3.2 * pool * lit * lick * tongue * sky_view.y;
 }
 
+// THE MIDDENS' NIGHT. The screens and tubes buried in the floor leach their
+// phosphor into whatever wet stands in the low places, and after dark the
+// puddles glow a faint sick green, steady, in a few of them only.
+vec3 midden_leak(vec2 wp) {
+	if (sky_view.y <= 0.0) {
+		return vec3(0.0);
+	}
+	float wet = smoothstep(0.66, 0.78, ink_vnoise(wp * 0.33 + 71.0));
+	float which = smoothstep(0.5, 0.7, ink_vnoise(wp * 0.06 + 13.0));
+	return vec3(0.28, 0.72, 0.36) * 1.4 * wet * which * sky_view.y;
+}
+
 // THE SCRAPWOOD'S NIGHT. The field still in the dead iron is what combed the
 // filings into arcs (SWARF), and after dark it shows: the combed lines glow a
 // faint cold blue-white where the field is strongest, in slow drifts that wander
@@ -2476,6 +2488,11 @@ void fragment() {
 	if (bog) {
 		m = 48;
 	}
+	// And the middens' is the swarf, but for what leaches out of it at night.
+	bool midden = m == M_MIDDEN_FLOOR;
+	if (midden) {
+		m = 56;
+	}
 	float s1 = mod(style_packed, 16.0);
 	float s2 = floor(style_packed / 16.0 + 0.01);
 	float unh = 0.0;
@@ -2518,6 +2535,9 @@ void fragment() {
 		}
 		if (bog) {
 			emit += bog_gas(world_pos.xz, px);
+		}
+		if (midden) {
+			emit += midden_leak(world_pos.xz);
 		}
 		// The fused sheet is not trodden to earth: nothing walks glass to a path.
 		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK && m != M_SULPHUR) {

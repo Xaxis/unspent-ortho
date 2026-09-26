@@ -20,9 +20,16 @@ uniform sampler2D depth_tex : hint_depth_texture, filter_nearest, repeat_disable
 uniform vec3 ink : source_color = vec3(0.86, 0.82, 0.72);
 // How much nearer the world must be, in world units, before a surface counts
 // as hidden: a body never finds its own skin, or the ground at its feet.
-uniform float margin = 0.35;
+uniform float margin = 0.6;
 
 void fragment() {
+	// Only for the camera looking down, where a wall can stand between it and a
+	// body in a slot. Over the shoulder the eye stands behind the player and a
+	// body's own kit on its back, or a ledge's lip at its knees, would stipple
+	// it (measured: a jacket checkered under its pack).
+	if (PROJECTION_MATRIX[3][3] < 0.5) {
+		discard;
+	}
 	float d = texture(depth_tex, SCREEN_UV).r;
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 	vec3 ndc = vec3(SCREEN_UV * 2.0 - 1.0, d * 2.0 - 1.0);
