@@ -636,7 +636,12 @@ vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 		// shrink as it dries; standing water shows the sky in the flat hollows.
 		float w = settle.z;
 		float dark = sky_wet_cover(world_pos, w);
-		c *= mix(vec3(1.0), vec3(0.87, 0.89, 0.94), step(h, dark));
+		// The dapple is a stipple on the play camera's grain. Over the shoulder,
+		// within a few metres of the eye, that grain is a hand across and the
+		// dapple read as a checker printed on a coat and on the rock at its feet
+		// (measured in fog, which settles wet): there it is laid smooth instead.
+		float near_eye = (1.0 - smoothstep(2.5, 7.0, length(world_pos - sky_focus.xyz))) * clamp(sky_focus.w, 0.0, 1.0);
+		c *= mix(vec3(1.0), vec3(0.87, 0.89, 0.94), mix(step(h, dark), dark, near_eye));
 		float puddle_lay = sky_noise(world_pos.xz * 1.3 + vec2(11.0, 47.0)) * 0.6 + broad * 0.4;
 		float pool = smoothstep(0.0, 0.02, puddle_lay - 0.86 + (w - 0.5) * 0.12) * flat_face * step(0.5, w);
 		c = mix(c, SKY_PUDDLE, step(h, pool) * 0.45);
