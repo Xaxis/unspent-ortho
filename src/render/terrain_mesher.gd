@@ -1206,6 +1206,7 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 	if has_water and any_wet:
 		_build_water(ch, depth)
 	var _t6 := Time.get_ticks_usec()
+	_spans(ch)
 	ch.terrain_arrays = _terrain_arrays()
 	ch.water_arrays = _water_arrays()
 	prof[0] += _t1 - _t0
@@ -2213,3 +2214,296 @@ func _flow(x: int, y: int) -> Vector2:
 			dir = -dir
 		return dir
 	return Vector2.ZERO
+
+
+## GROUND ABOVE THE GROUND, drawn (DESIGN_ABOVE S1): the mass WorldData.overhead
+## hangs over tiles is contoured on the chunk's own half-tile lattice through
+## the same slow warp as a terrace edge, so a roof's edge wanders as a
+## terrace's does and is never a tile-stepped block. Each region is drawn as
+## its top (its landscape's wash, with a lip), its rim (banded rock like a
+## cliff, its lower band undercut so the mass reads as hanging, not as a
+## wall standing on the ground) and its underside (facing down, darker than
+## the rim, hung with drip relief). How far inside a point is, and the heights
+## of its underside and top, are functions of where it is, so neighbouring
+## chunks meet: the tile mask read bilinearly at tile centres through the warp,
+## the heights weighted the same way over the spanned tiles alone, so an arch's
+## underside curves instead of stepping.
+## The warp and fray a span's edge is read through, as shares of a terrace
+## edge's: less, because the rules stop a body at the tile (WorldData.headroom_at)
+## and a drawn edge a tile off would put a head through rock or stop it at air.
+const SPAN_WARP := 0.35
+const SPAN_FRAY := 0.5
+## How far drips hang below the underside, and how far the rim's lower band
+## tucks in above its edge.
+const SPAN_DRIP := 0.16
+const SPAN_UNDERCUT := 0.2
+## An underside is its rim's rock in shadow.
+const SPAN_UNDER_SHADE := 0.55
+
+
+func _spans(ch: Chunk) -> void:
+	var w := world
+	if w.overhead.is_empty():
+		return
+	# Only a chunk with mass over it, or within the warp's reach of it.
+	var any := false
+	for y in range(ch.y0 - 2, ch.y0 + ch.h + 2):
+		for x in range(ch.x0 - 2, ch.x0 + ch.w + 2):
+			if w.overhead_at(x, y).x >= 0:
+				any = true
+				break
+		if any:
+			break
+	if not any:
+		return
+	var n := ch.n
+	var m := ch.h * RES
+	var np := n + 1
+	var ins := PackedFloat32Array()
+	ins.resize(np * (m + 1))
+	for j in m + 1:
+		for i in np:
+			ins[j * np + i] = _span_sample(ch.x0 + i * 0.5, ch.y0 + j * 0.5).x
+	_w00 = 0.0
+	_w10 = 0.0
+	_w11 = 0.0
+	_w01 = 0.0
+	for j in m:
+		for i in n:
+			var li := j * np + i
+			var v := PackedFloat32Array([ins[li], ins[li + 1], ins[li + np + 1], ins[li + np]])
+			if v[0] < 0.5 and v[1] < 0.5 and v[2] < 0.5 and v[3] < 0.5:
+				continue
+			_span_cell(ch, i, j, v)
+
+
+## (inside, underside y, top y) at tile-space point (x, y), read through the warp.
+## Inside is 0..1 (a region is where it is at least 0.5); the heights are those
+## of the spanned tiles round it, or 0 where there are none.
+func _span_sample(x: float, y: float) -> Vector3:
+	var wp := warp_at(x, y)
+	var gx := x + wp.x * SPAN_WARP + wp.z * SPAN_FRAY - 0.5
+	var gy := y + wp.y * SPAN_WARP + wp.w * SPAN_FRAY - 0.5
+	var ix := floori(gx)
+	var iy := floori(gy)
+	var fx := gx - ix
+	var fy := gy - iy
+	var inside := 0.0
+	var wsum := 0.0
+	var under := 0.0
+	var over := 0.0
+	for c in 4:
+		var tx := ix + (c & 1)
+		var ty := iy + (c >> 1)
+		var o := world.overhead_at(tx, ty)
+		if o.x < 0:
+			continue
+		var wt := (fx if (c & 1) == 1 else 1.0 - fx) * (fy if (c >> 1) == 1 else 1.0 - fy)
+		inside += wt
+		wsum += wt
+		under += wt * o.x
+		over += wt * o.y
+	if wsum <= 0.0:
+		# Only a lattice point well outside asks here; a crossing always has a
+		# spanned tile under its footprint.
+		return Vector3(inside, 0.0, 0.0)
+	var drip := SPAN_DRIP * (0.55 + 0.45 * _lip.get_noise_2d(x * 2.1 + 140.0, y * 2.1))
+	return Vector3(inside, under / wsum * WorldData.STEP - drip, over / wsum * WorldData.STEP)
+
+
+## One lattice cell with mass over some of it: marching squares on `v` (NW, NE,
+## SE, SW) as a terrace edge is traced, a saddle settled by the cell's middle.
+func _span_cell(ch: Chunk, i: int, j: int, v: PackedFloat32Array) -> void:
+	var x0 := ch.x0 + i * 0.5
+	var y0 := ch.y0 + j * 0.5
+	var cx := PackedFloat32Array([x0, x0 + 0.5, x0 + 0.5, x0])
+	var cz := PackedFloat32Array([y0, y0, y0 + 0.5, y0 + 0.5])
+	var np := ch.n + 1
+	var li := j * np + i
+	var keys := PackedInt32Array([ch.key[li], ch.key[li + 1], ch.key[li + np + 1], ch.key[li + np]])
+	var inside: Array[bool] = [v[0] >= 0.5, v[1] >= 0.5, v[2] >= 0.5, v[3] >= 0.5]
+	# Mass is its country's rock, whatever ground lies under it: painting it
+	# from the ground below drew every ground edge under a roof on its top.
+	var k := Ground.ROCK
+	for c in 4:
+		if inside[c]:
+			k = Ground.ROCK | (keys[c] & 0xFF00)
+			break
+	# Crossings on each edge c (corner c to c + 1), where the edge changes.
+	var ex := PackedFloat32Array([0, 0, 0, 0])
+	var ez := PackedFloat32Array([0, 0, 0, 0])
+	var nx := 0
+	for c in 4:
+		var d := (c + 1) % 4
+		if inside[c] != inside[d]:
+			var t := clampf((0.5 - v[c]) / (v[d] - v[c]), 0.05, 0.95)
+			ex[c] = lerpf(cx[c], cx[d], t)
+			ez[c] = lerpf(cz[c], cz[d], t)
+			nx += 1
+	var polys: Array[PackedVector2Array] = []
+	var segs: Array[PackedVector2Array] = []
+	var saddle := nx == 4
+	var middle_in := (v[0] + v[1] + v[2] + v[3]) * 0.25 >= 0.5
+	if saddle and not middle_in:
+		# Two corners, each cut off on its own.
+		for c in 4:
+			if inside[c]:
+				var b := (c + 3) % 4
+				polys.append(PackedVector2Array([Vector2(cx[c], cz[c]), Vector2(ex[c], ez[c]), Vector2(ex[b], ez[b])]))
+				segs.append(PackedVector2Array([Vector2(ex[b], ez[b]), Vector2(ex[c], ez[c]), Vector2(cx[c], cz[c])]))
+	else:
+		var poly := PackedVector2Array()
+		for c in 4:
+			var d := (c + 1) % 4
+			if inside[c]:
+				poly.append(Vector2(cx[c], cz[c]))
+			if inside[c] != inside[d]:
+				poly.append(Vector2(ex[c], ez[c]))
+		polys.append(poly)
+		if saddle:
+			# The middle joins them: the edges cut off the two outside corners.
+			for c in 4:
+				if not inside[c]:
+					var b := (c + 3) % 4
+					segs.append(PackedVector2Array([Vector2(ex[b], ez[b]), Vector2(ex[c], ez[c]), Vector2(x0 + 0.25, y0 + 0.25)]))
+		elif nx == 2:
+			var e := PackedVector2Array()
+			var ref := Vector2.ZERO
+			var nin := 0
+			for c in 4:
+				if inside[c] != inside[(c + 1) % 4]:
+					e.append(Vector2(ex[c], ez[c]))
+				if inside[c]:
+					ref += Vector2(cx[c], cz[c])
+					nin += 1
+			e.append(ref / nin)
+			segs.append(e)
+	for poly in polys:
+		_span_faces(poly, k)
+	for sg in segs:
+		_span_rim(sg[0], sg[1], sg[2], k)
+
+
+## A region's top and underside over one polygon (in NW, NE, SE, SW order, the
+## order _vtop draws facing up).
+func _span_faces(poly: PackedVector2Array, k: int) -> void:
+	var ys := PackedVector2Array()
+	for p in poly:
+		var s := _span_sample(p.x, p.y)
+		ys.append(Vector2(s.y, s.z))
+	_paint(k, -1, SPAN_PAINT)
+	_m2 += SPAN_LIFTED
+	_ox = poly[0].x
+	_oy = poly[0].y
+	var ups := PackedVector3Array()
+	var downs := PackedVector3Array()
+	for p in poly:
+		var g := _span_slope(p.x, p.y)
+		ups.append(Vector3(-g.z, 1.0, -g.w).normalized())
+		downs.append(Vector3(g.x, -1.0, g.y).normalized())
+	for a in range(1, poly.size() - 1):
+		for b: int in [0, a, a + 1]:
+			_vtop(poly[b].x, ys[b].y, poly[b].y)
+			_tn[_tn.size() - 1] = ups[b]
+	var rock := _tab_cliff[_span_gi(k)]
+	var col := Color(rock.r * SPAN_UNDER_SHADE, rock.g * SPAN_UNDER_SHADE, rock.b * SPAN_UNDER_SHADE, rock.a)
+	var c0 := Color(col.r, col.g, col.b, 0.0)
+	for a in range(1, poly.size() - 1):
+		for b: int in [0, a + 1, a]:
+			_tv.append(Vector3(poly[b].x, ys[b].x, poly[b].y))
+			_tn.append(downs[b])
+			_tc.append(col)
+			_tuv.append(_UV_CONTOUR)
+			_tuv2.append(Vector2.ZERO)
+			_tc0.append(c0)
+
+
+## The rim along a region's edge from p to q, facing away from `ref` inside
+## it: from the underside up to the top, its lower band tucked in under the mass,
+## the face bulging as a cliff's does, a lip on its top edge.
+func _span_rim(p: Vector2, q: Vector2, ref: Vector2, k: int) -> void:
+	var d := q - p
+	if d.length_squared() < 1e-8:
+		return
+	# Face (d.y, -d.x), as _wall's quads do; flip it away from the inside.
+	var mid := (p + q) * 0.5
+	if d.y * (ref.x - mid.x) - d.x * (ref.y - mid.y) > 0.0:
+		var t := p
+		p = q
+		q = t
+		d = -d
+	var o := Vector2(d.y, -d.x).normalized()
+	var nrm := Vector3(o.x, 0.0, o.y)
+	var sp := _span_sample(p.x, p.y)
+	var sq := _span_sample(q.x, q.y)
+	var terrace := roundi(sp.z / WorldData.STEP)
+	var gi := _span_gi(k)
+	var col := _tab_cliff[gi]
+	var grid := PackedVector3Array()
+	grid.resize(8)
+	var ends: Array[Vector2] = [p, q]
+	var ys: Array[Vector3] = [sp, sq]
+	for c in 2:
+		var at := ends[c]
+		var lo := ys[c].y
+		var hi := ys[c].z
+		var wc := _wall_column(at.x, at.y, terrace, hi - lo)
+		grid[c * 4] = Vector3(at.x, lo, at.y)
+		grid[c * 4 + 1] = Vector3(at.x + o.x * (wc[1] - SPAN_UNDERCUT), lerpf(lo, hi, wc[3]), at.y + o.y * (wc[1] - SPAN_UNDERCUT))
+		grid[c * 4 + 2] = Vector3(at.x + o.x * wc[2], lerpf(lo, hi, wc[4]), at.y + o.y * wc[2])
+		grid[c * 4 + 3] = Vector3(at.x, hi, at.y)
+	var c0 := Color(col.r, col.g, col.b, 0.0)
+	for r in 3:
+		var p_lo := grid[r]
+		var p_hi := grid[r + 1]
+		var q_lo := grid[4 + r]
+		var q_hi := grid[4 + r + 1]
+		var na := (p_lo - q_lo).cross(p_hi - q_lo).normalized()
+		var nb := (p_hi - q_lo).cross(q_hi - q_lo).normalized()
+		if na.dot(nrm) < 0.0:
+			na = -na
+		if nb.dot(nrm) < 0.0:
+			nb = -nb
+		for vtx: Vector3 in [q_lo, p_hi, p_lo, q_lo, q_hi, p_hi]:
+			_tv.append(vtx)
+		for vv in 3:
+			_tn.append(na)
+		for vv in 3:
+			_tn.append(nb)
+		for vv in 6:
+			_tc.append(col)
+			_tuv.append(_UV_CONTOUR)
+			_tuv2.append(Vector2.ZERO)
+			_tc0.append(c0)
+	var lip := _tab_lip[gi]
+	if lip > 0:
+		_lip_strip(p.x, p.y, q.x, q.y, nrm, sp.z, gi, lip == 2)
+
+
+## The paint row a span is drawn from: its ground key's, always as an odd
+## terrace. A sloping top or underside crosses levels cell by cell, and the
+## terraces' alternating shade would stripe it in triangles.
+const SPAN_PAINT := 1
+## Added to a span top's UV2.y: world.gdshader draws none of the ground's wear,
+## trampling or works on it.
+const SPAN_LIFTED := 512.0
+func _span_gi(k: int) -> int:
+	return ((k & 0xFF) * BiomeRegistry.SLOTS + ((k >> 8) & 0xFF)) * 2 + SPAN_PAINT
+
+
+## The slopes of the underside and the top at (x, y): d(under)/dx, d(under)/dz,
+## d(top)/dx, d(top)/dz, by central differences on _span_sample, so a face is
+## lit smooth across its cells and chunks rather than stepped cell by cell.
+const SPAN_SLOPE_H := 0.25
+func _span_slope(x: float, y: float) -> Vector4:
+	var e := SPAN_SLOPE_H
+	var a := _span_sample(x - e, y)
+	var b := _span_sample(x + e, y)
+	var c := _span_sample(x, y - e)
+	var d := _span_sample(x, y + e)
+	# A side sampled off the mass has no heights: take the slope as flat there.
+	var ux := (b.y - a.y) / (2.0 * e) if a.x > 0.0 and b.x > 0.0 else 0.0
+	var uz := (d.y - c.y) / (2.0 * e) if c.x > 0.0 and d.x > 0.0 else 0.0
+	var tx := (b.z - a.z) / (2.0 * e) if a.x > 0.0 and b.x > 0.0 else 0.0
+	var tz := (d.z - c.z) / (2.0 * e) if c.x > 0.0 and d.x > 0.0 else 0.0
+	return Vector4(ux, uz, tx, tz)

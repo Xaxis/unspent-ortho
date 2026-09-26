@@ -1,0 +1,24 @@
+# GROUND ABOVE THE GROUND, DRAWN (DESIGN_ABOVE S1): a slab of rock staged over
+# the moss's heart with `--above=roof` (AboveStage), its west edge two tiles
+# west of where the player starts. From above the roof covers the player (the
+# section cut is S2); over the shoulder the player stands under it, and walks
+# out past its edge and looks back at the rim: banded, undercut, a dark
+# underside, no tile steps.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/above-roof.tour --seed=1 --place=moss --above=roof --hour=10.5 --weather=clear:0
+coast calm
+wait 0.6
+shot 01-the-roof-from-above
+tap shoulder
+await shoulder 3
+wait 0.8
+shot 02-under-the-roof with shoulder
+mouse 0,-260 0.4
+wait 0.8
+shot 03-up-at-the-underside with shoulder
+mouse 0,260 0.4
+leap 1.5
+wait 0.6
+shot 04-out-past-its-edge with shoulder
+mouse 1100,0 0.8
+wait 0.8
+shot 05-back-at-the-rim with shoulder
