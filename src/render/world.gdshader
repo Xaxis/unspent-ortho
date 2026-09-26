@@ -1267,7 +1267,7 @@ float tide_pool(vec3 wp) {
 // broken expansion joints on the slant the city was laid to; weed greening the
 // rims of the standing water; and the water itself, black-green and still,
 // taking the sky (its roughness is taken off in fragment()).
-vec3 tide_floor(vec3 c, vec3 wp, vec2 px) {
+vec3 tide_floor(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
 	float under = tide_under(wp.y);
 	// The joints: bays six units across on a turned grid, drawn only where they
 	// have opened, so it reads as a floor that was laid and never as a grid.
@@ -1295,6 +1295,12 @@ vec3 tide_floor(vec3 c, vec3 wp, vec2 px) {
 		if (pool < 0.45) {
 			c = dn(c, 0.4);
 		}
+		// What is in the water: whatever the port spilled, feeding a bloom
+		// that glows a sick green along the puddles' edges in the dark. Only
+		// in drifts and only at night (sky_view.y), faint: poisoned water,
+		// not a lamp.
+		float bloom = smoothstep(0.55, 0.75, ink_vnoise(wp.xz * 0.2 + 33.0)) * (1.0 - smoothstep(0.3, 0.8, pool));
+		emit += vec3(0.10, 0.34, 0.24) * bloom * sky_view.y * (0.7 + 0.3 * sin(TIME * 0.7 + wp.x));
 	} else if (rim > 0.0) {
 		c = mix(c, MOSS2, rim * 0.6);
 	}
@@ -2343,7 +2349,7 @@ void fragment() {
 			c = sea_ice(c, world_pos, px);
 		}
 		if (m == M_TIDEFLAT) {
-			c = tide_floor(c, world_pos, px);
+			c = tide_floor(c, world_pos, px, emit);
 		}
 		// The fused sheet is not trodden to earth: nothing walks glass to a path.
 		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK && m != M_SULPHUR) {
