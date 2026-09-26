@@ -2578,6 +2578,8 @@ func _span_rim(p: Vector2, q: Vector2, ref: Vector2, k: int) -> void:
 			var v := _tv[vi]
 			var tt := clampf((Vector2(v.x, v.z) - p).dot(along) / along.length_squared(), 0.0, 1.0)
 			_tv[vi] = Vector3(v.x, v.y + rise * tt, v.z)
+			# A span's lip is the span's (world.gdshader cuts it with the mass).
+			_tuv[vi] = Vector2(_tuv[vi].x, -(sp.z + rise * tt))
 
 
 ## The paint row a span is drawn from: its ground key's, always as an odd

@@ -1,24 +1,34 @@
-# GROUND ABOVE THE GROUND, DRAWN (DESIGN_ABOVE S1): a slab of rock staged over
-# the moss's heart with `--above=roof` (AboveStage), its west edge two tiles
-# west of where the player starts. From above the roof covers the player (the
-# section cut is S2); over the shoulder the player stands under it, and walks
-# out past its edge and looks back at the rim: banded, undercut, a dark
-# underside, no tile steps.
+# GROUND ABOVE THE GROUND (docs/ABOVE.md S1-S2): a slab of rock staged over the
+# moss's heart with `--above=roof` (AboveStage), its west edge two tiles west
+# of where the player starts. From above (law 3, docs/LOOK.md), the mass the
+# player is under is architecture, cut at the section plane: under it, the roof
+# is gone over the player and its outline is chalked, dashed, on the ground in
+# its shade; out from under it, it is whole again. Over the shoulder the cut
+# stands down and the roof is a ceiling: the underside overhead, then its rim
+# from outside.
 #   TOUR_FIXED_FPS=60 tools/tour.sh tours/above-roof.tour --seed=1 --place=moss --above=roof --hour=10.5 --weather=clear:0
 coast calm
 wait 0.6
-shot 01-the-roof-from-above
+await above_cut 3
+shot 01-under-the-roof-from-above-cut
+walk -1,-0.45 1.6
+await above_whole 3
+shot 02-out-from-under-it-whole
+walk 1,0.45 1.6
+await above_cut 3
+shot 03-back-under-cut-again
 tap shoulder
 await shoulder 3
+await above_whole 3
 wait 0.8
-shot 02-under-the-roof with shoulder
+shot 04-under-the-roof-a-ceiling with shoulder
 mouse 0,-260 0.4
 wait 0.8
-shot 03-up-at-the-underside with shoulder
+shot 05-up-at-the-underside with shoulder
 mouse 0,260 0.4
 leap 1.5
 wait 0.6
-shot 04-out-past-its-edge with shoulder
+shot 06-out-past-its-edge with shoulder
 mouse 1100,0 0.8
 wait 0.8
-shot 05-back-at-the-rim with shoulder
+shot 07-back-at-the-rim with shoulder

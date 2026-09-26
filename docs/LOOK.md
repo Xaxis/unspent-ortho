@@ -40,6 +40,13 @@ twelve directions as "papery": *"ONE right one, unique and amazing."*
    not haze. **Nothing in front may hide what the player must see.** Crowns,
    foreground pieces and anything built above 3 units are cut where they draw
    over the player, as a stipple, never a fade. The land itself never opens.
+   Mass hung over the ground (a cave's roof, an overhang, an arch; docs/ABOVE.md)
+   is architecture, not land: from above, where it hangs over the player it is
+   drawn cut at a section plane (the player's level and about 2.4 above) with
+   an inked cap along the cut, as a room's near walls are, and only over the
+   connected mass the player is under. It is sectioned, never stippled open.
+   Dropping to the shoulder view under a roof is a player's option, not the
+   default.
 
 ## Two materials, and where they meet
 
