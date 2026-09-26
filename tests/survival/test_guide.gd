@@ -29,6 +29,38 @@ func test_the_goal_walks_the_way_in() -> void:
 	Fx.done(g)
 
 
+## Past the first tools the goal points outward (mechanics pass 2c): the next
+## elite material the player lacks, what it is, and where in the world it comes
+## from, off the same walk the economy proves every material by
+## (Sources.path_to). The one the land underfoot gives comes first.
+func test_past_the_pick_the_goal_points_at_an_elite_material() -> void:
+	var g := Fx.flat()
+	Survival.build(g, &"fire", true)
+	g.inventory.add(&"pick", 1)
+	check(Guide.goal(g).contains("ore"), "with a pick and no ore, the ore: %s" % Guide.goal(g))
+	g.inventory.add(&"iron_ore", 1)
+	var want := Guide.next_elite(g)
+	check(EliteStock.is_elite(want), "an elite material is wanted next: %s" % want)
+	check(Sources.reachable(want), "and there is a way to it")
+	var line := Guide.goal(g)
+	print("  late goal: %s" % line)
+	var name := String(Items.def(want).get("name", String(want)))
+	check(line.to_lower().contains(name.to_lower()), "the goal names it (%s): %s" % [name, line])
+	check(line.contains("harvester") and line.contains("coast"), "on the coast, the coast's own: cut out of a harvester: %s" % line)
+	# One line on the goal window, left of the place name, whatever it names.
+	for id: Variant in EliteStock.ids():
+		var said := Guide.elite_goal(g, StringName(id))
+		lt(float(Hud.goal_clip(said).end.x), float(UiBase.mid_x() - 120), "fits its window: %s" % said)
+	g.inventory.add(want, 1)
+	var after := Guide.next_elite(g)
+	print("  then: %s" % Guide.goal(g))
+	check(after != want and EliteStock.is_elite(after), "held, the next one is asked for: %s" % after)
+	var where := String(EliteStock.land_of(after))
+	if where != "":
+		check(Guide.goal(g).contains(BiomeRegistry.get_def(StringName(where)).display_name.to_lower().trim_prefix("the ")), "and where it lies: %s" % Guide.goal(g))
+	Fx.done(g)
+
+
 func test_hints_fit_the_moment_and_stay_retired() -> void:
 	var g := Fx.flat()
 	var retired := {}

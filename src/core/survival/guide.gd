@@ -9,7 +9,8 @@ class_name Guide
 ## its key row (90_ui).
 ##
 ##   goal(game) -> String                     the want now: a fire, charcoal, a haft, plate, a pick,
-##                                            food, light; or the ore once there is a pick
+##                                            food, light; or the ore once there is a pick;
+##                                            then the next elite material and where it is
 ##   hint_for(game, retired) -> Dictionary    the first hint that applies and is not retired:
 ##                                            {id: StringName, line: String, keys: Array} or {}
 ##   HINTS                                    id -> [line template, action names] for every hint
@@ -144,6 +145,12 @@ static func goal(game: Game) -> String:
 	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and inv.has(&"lamp"):
 		return "Light the lamp against the dark."
 	if inv.has(&"pick"):
+		if not inv.has(&"iron_ore") and not inv.has(&"iron"):
+			return "Take the pick to the ore in the rock."
+		# Past the first tools, the long game: the next elite material, and where.
+		var want := next_elite(game)
+		if want != &"":
+			return elite_goal(game, want)
 		return "Take the pick to the ore in the rock."
 	var fire := _fire(game)
 	if fire == null:
@@ -165,6 +172,69 @@ static func goal(game: Game) -> String:
 	if inv.count(&"scrap") == 0:
 		return "Plate for a pick: turn over the tip."
 	return "A pick, made at %s." % at
+
+
+## The elite material wanted next (EliteStock): the first the bag holds none of
+## that the world has a way to (Sources.reachable), and of those, one the land
+## underfoot gives before any other, so the long game starts where the player
+## stands. &"" once every one has been held.
+static func next_elite(game: Game) -> StringName:
+	var here := _land_here(game)
+	var first := &""
+	for id: Variant in EliteStock.ids():
+		var sid := StringName(id)
+		if game.inventory.has(sid) or not Sources.reachable(sid):
+			continue
+		if _elite_lands(sid).has(here):
+			return sid
+		if first == &"":
+			first = sid
+	return first
+
+
+## The landscapes an elite material comes from: its own, or the lands its one
+## machine keeps to.
+static func _elite_lands(id: StringName) -> Array[StringName]:
+	var land := EliteStock.land_of(id)
+	if land != &"":
+		return [land] as Array[StringName]
+	var kind := EliteStock.kind_of(id)
+	return Sources.lands_of_kind(kind) if kind != &"" else [] as Array[StringName]
+
+
+static func _land_here(game: Game) -> StringName:
+	var p: Vector2 = game.player.pos if game.player != null else game.world.spawn
+	return BiomeRegistry.by_index(game.world.country_at(floori(p.x), floori(p.y))).id
+
+
+## The late goal's words: what it is, how it is had, and where. One line on
+## the glass's goal window, which stands left of the place name at the top, so
+## it is kept to the length of the first hour's goals and says no more.
+static func elite_goal(game: Game, id: StringName) -> String:
+	var def := EliteStock.material(id)
+	var name := String(Items.def(id).get("name", String(id).replace("_", " ")))
+	# Where: here, if the land underfoot gives it; else the first land that does.
+	var all := _elite_lands(id)
+	var here := _land_here(game)
+	var where := ""
+	if all.has(here):
+		where = "here in the %s" % _land_name(here)
+	elif not all.is_empty():
+		where = "in the %s" % _land_name(all[0])
+	var kind := EliteStock.kind_of(id)
+	var how := ""
+	if kind != &"":
+		how = "cut out of a %s, %s" % [String(kind).replace(".", " "), where]
+	else:
+		how = "%s at a %s, %s" % [String(def.get("raw", "")).replace("_", " "), String(def.get("at", "fire")), where]
+	return "%s: %s." % [name.left(1).to_upper() + name.substr(1), how.strip_edges()]
+
+
+## A landscape as the goal says it: its display name without its article.
+static func _land_name(id: StringName) -> String:
+	var b := BiomeRegistry.get_def(id)
+	var n := b.display_name.to_lower() if b != null and b.display_name != "" else String(id).replace("_", " ")
+	return n.trim_prefix("the ")
 
 
 ## The first lesson that fits and has not been spent. `keyed_only` asks for the
