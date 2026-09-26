@@ -308,7 +308,8 @@ const DEFS := {
 	# throws a blow off like plate until it is open (`guarded`): it lands facing
 	# where it dropped, so a part on its back would be against the cliff it came
 	# off. Missed, it stands a long moment where it landed, legs splayed and the
-	# guard open, which is the opening.
+	# guard open, which is the opening. The scrapwood's own, and only its: it
+	# waits on the heaps over the floors the rest of the roster walks.
 	&"tamper": {
 		"model": &"tamper", "role": &"hunter", "machine": true, "approach": &"drop", "part": &"front", "climbs": 3, "guarded": true,
 		"pace": 4.0, "dash": 6.0, "quick": 280, "radius": 0.5, "height": 1.1, "life": 70,
@@ -317,7 +318,7 @@ const DEFS := {
 		"bite": {"swing": [380, 110, 380, 620], "reach": 0.9, "width": 1.0, "dmg": 2, "knock": 4.5, "knock_ms": 200},
 		"drop": {"swing": [900, 120, 1300, 900], "reach": 0.7, "width": 0.0, "dmg": 3, "knock": 7.0, "knock_ms": 260, "area": true},
 		"takes": 40.0, "drops": 2, "linger": 40.0, "chance": 4,
-		"where": {"countries": ["scrapwood", "the_crags"], "green_min": 14},
+		"where": {"countries": ["scrapwood"], "green_min": 14},
 	},
 
 	# --- The Crags' one worker of its own (docs/LANDSCAPES.md) -------------

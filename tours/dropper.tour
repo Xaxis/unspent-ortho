@@ -4,7 +4,8 @@
 # (FightRules.tell_drop, MobFx.tell_drop), with the body crouched and coiled on
 # the lip and the drive in its face warming to the leap. Each frame is taken with
 # the shadow up: from above, then over the shoulder, where a shadow on the ground
-# is read the same way. On the crags' shelves, the lip is the nearest drop
+# is read the same way. It lives in the scrapwood; it is staged here on the
+# crags' shelves, the tallest sure lips on seed 7. The lip is the nearest drop
 # `Jump.find` names, and the tamper takes the player's place on it (`over`),
 # never a coordinate.
 # Run at a fixed rate, so a frame costs the world no time:

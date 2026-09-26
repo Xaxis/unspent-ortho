@@ -141,8 +141,6 @@ static func make() -> BiomeDef:
 		# The survey's chainman, by day, on the survey's own grounds (Roster
 		# `where`): the one machine here still working, and what it does is measure.
 		&"chainman": {"weight": 1.2, "hours": Vector2(8, 18)},
-		# The tamper waits on the shelves over the paths between them (Roster).
-		&"tamper": {"weight": 0.6},
 	}
 	d.landmarks = [&"cast_stones", &"firewatch", &"leaning_mast", &"clerks_office"]
 	# Its keeper: the plumb, a survey instrument that never finished surveying

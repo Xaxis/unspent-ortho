@@ -6,8 +6,8 @@ extends MachineModel
 ## grasshopper's, knees above the block, and the ram's drive in its face behind
 ## a guard of bars.
 ##
-## Why THIS silhouette. The scrapwood's and the crags' other bodies are masts,
-## walkers and low workers; this is a block with its knees up round it, and on a
+## Why THIS silhouette. The scrapwood's other bodies are masts, walkers and
+## low workers; this is a block with its knees up round it, and on a
 ## lip it reads as a thing crouched to jump. Ruled like every machine: the block
 ## is one loft on exact chamfers, the legs are tapered members with a spring
 ## laid along each shin at one pitch, and the only turned things are the knees

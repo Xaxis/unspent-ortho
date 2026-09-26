@@ -21,7 +21,7 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   The thrower (the middens' sorter, Brains `throw`): a lane-long bite told by its lane on the
   ground, a reload that is the opening; `tools/test.sh test_throw` (the reader's bout numbers print
   there), `TOUR_FIXED_FPS=60 tools/tour.sh tours/thrower.tour` (header has its options).
-  The dropper (the tamper, Brains `drop`): waits on a ledge and comes down on where the player
+  The dropper (the tamper, the scrapwood's own, Brains `drop`): waits on a ledge and comes down on where the player
   stood, told by its shadow growing on the ground; `tools/test.sh test_dropper`,
   `TOUR_FIXED_FPS=60 tools/tour.sh tours/dropper.tour` (top view and over the shoulder; the tour
   command `over KIND` stages a body on a lip with the player below).
