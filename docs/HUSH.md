@@ -23,6 +23,13 @@ builds it. Design only; nothing is built until it is agreed.
   in WorldStamp), `HushSites.near/nearest/inside` (windowed: the stones near a
   point, grouped, the centre fitted where their facing lines meet), 23_hush's
   `tour_place "hush_ring"`, tests/core/test_hush_sites.gd, tours/hush.tour.
+- **H3 built** (world/hush): `Hush` (the answer, its span, the quiet's curve),
+  23_hush's `quiet` on the group `&"hush"`, read by 70_audio (every bed and the
+  scatter fall away; `await beds_silent`) and 10_sky (wind, sway and the fog and
+  cloud drift hold). The music only thins, as the ruling kept. `--hush=always`
+  stages it. tests/core/test_hush.gd; tours/hush-quiet.tour (two frames half a
+  second apart in the quiet differ 0.0043, against 0.0066 once it lifts from
+  above and 0.0072 over the shoulder).
 
 ## Rules every phenomenon keeps
 
