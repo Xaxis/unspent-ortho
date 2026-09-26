@@ -368,6 +368,7 @@ func build_parts(ch: TerrainMesher.Chunk, props: Array = []) -> Array:
 					(cast if tpl.casts else grass).put(tpl, xf, basis, Rng.hash01(wx, wy, i, 0x5eed))
 				else:
 					solid.put(tpl, xf, basis)
+	_lay_span_tops(ch, solid)
 	# Rubble fallen from cliff faces, more of it where the rock is hard.
 	for fi in ch.feet.size():
 		var foot := ch.feet[fi]
@@ -388,6 +389,61 @@ func build_parts(ch: TerrainMesher.Chunk, props: Array = []) -> Array:
 		var basis := Basis(Vector3.UP, rng.randf() * TAU)
 		solid.put(tpl, Transform3D(basis.scaled(Vector3(s, s, s)), p + along * (rng.randf() - 0.5) * 0.4), basis)
 	return [solid.arrays(), grass.arrays(), cast.arrays()]
+
+
+## SPAN TOPS (docs/ABOVE.md): mass hung over the ground carries a little of its
+## landscape's growth on its top, as a hilltop would, SPAN_DECOR of the ground's
+## density: its plain ground's own table (TerrainMesher paints the top that
+## ground), no litter, no drifts, no shore wrack. Only on tiles whose eight
+## neighbours hang at the same top, where the drawn top is level at that
+## height, so nothing floats off a sloping or warped edge. Its own random
+## stream, so the ground's decor is the same with or without it. Laid in the
+## solid part: a baked plant in the grass part is thinned inside the meadow
+## ring by its seed, and the ring grows nothing up here to stand in for it
+## (world.gdshader still sways what sways).
+const SPAN_DECOR := 0.3
+
+
+func _lay_span_tops(ch: TerrainMesher.Chunk, solid: Out) -> void:
+	if world.overhead.is_empty():
+		return
+	var rng: RandomNumberGenerator = null
+	for ty in ch.h:
+		for tx in ch.w:
+			var wx := ch.x0 + tx
+			var wy := ch.y0 + ty
+			var o := world.overhead_at(wx, wy)
+			if o.x < 0 or not _level_top(wx, wy, o.y):
+				continue
+			if rng == null:
+				rng = Rng.make(world.seed_value, Rng.hash_ints(ch.cx, ch.cy, 0x5BA7))
+			var country := world.country_at(wx, wy)
+			var d := BiomeRegistry.by_index(country)
+			var g := d.plain_ground if d != null else Ground.ROCK
+			var table: Array = _tables.get(g * BiomeRegistry.SLOTS + country + 1000, _tables.get(g, []))
+			if table.is_empty():
+				continue
+			var count := int(float(table[2]) * SPAN_DECOR + rng.randf())
+			var h := float(o.y) * WorldData.STEP - 0.004
+			for i in count:
+				var kind := _pick(table, rng.randf())
+				if _SPECK[kind] == 1 or kind == WRACK_BIT or kind == SHELL or kind == SEA_GLASS:
+					continue
+				var fx := 0.08 + rng.randf() * 0.84
+				var fy := 0.08 + rng.randf() * 0.84
+				var tpl := template(kind, country, rng.randi() % STAGES)
+				var sc := 0.8 + rng.randf() * 0.45
+				var basis := Basis(Vector3.UP, rng.randf() * TAU)
+				solid.put(tpl, Transform3D(basis.scaled(Vector3(sc, sc, sc)), Vector3(wx + fx, h, wy + fy)), basis)
+
+
+## Whether tile (x, y) and its eight neighbours all hang a top at level `top`.
+func _level_top(x: int, y: int, top: int) -> bool:
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if world.overhead_at(x + dx, y + dy).y != top:
+				return false
+	return true
 
 
 ## The drawn key of chunk tile (tx, ty) when it is turf decor may grow on, else
