@@ -228,8 +228,11 @@ nothing to do. The shafts pass (light through holes) reads the span texture (§4
   the component mask (sampled from the same span texture, component id in G),
   and an inked cap drawn along the cut line by the mesher's lip strip
   (`_lip_strip` already inks terrace lips).
-- **Far land** (world_far.gd): islands and arches over the horizon need a
-  far-mesh impostor (their silhouette is the point); roofs never do.
+- **Far land** (world_far.gd): a roofed tile is its roof's top out there
+  (`WorldData.overhead_tops`, painted the landscape's plain ground), or past
+  the near square a roofed cave is open halls under the sky. Islands and arches
+  over the horizon still need a far-mesh impostor with an underside (their
+  silhouette is the point); a lid on the heightfield cannot draw the gap under.
 
 ## 5. Streaming
 

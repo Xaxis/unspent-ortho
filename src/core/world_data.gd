@@ -311,6 +311,37 @@ func has_overhead() -> bool:
 	return not _oh.is_empty()
 
 
+## The top level + 1 of the mass over every tile of rect (x0, y0, wide, high),
+## row-major, 0 where nothing hangs; empty when nothing hangs in the rect. For a
+## bulk reader (the far world) that cannot afford a call a tile: tiles outside
+## the world read 0.
+func overhead_tops(x0: int, y0: int, wide: int, high: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	if _oh.is_empty() or not overhead_box.intersects(Rect2i(x0, y0, wide, high)):
+		return out
+	out.resize(wide * high)
+	for j in high:
+		var y := y0 + j
+		if y < 0 or y >= size:
+			continue
+		var x := maxi(x0, 0)
+		var x_end := mini(x0 + wide, size)
+		while x < x_end:
+			var run_end := mini(x_end, (x / OH_SECTION + 1) * OH_SECTION)
+			var k := _oh_key(x, y)
+			if _oh.has(k):
+				var b: PackedByteArray = _oh[k]
+				var i := ((y % OH_SECTION) * OH_SECTION + x % OH_SECTION) * 3
+				var o := j * wide + (x - x0)
+				for t in run_end - x:
+					if b[i] != 0:
+						out[o] = b[i + 1] + 1
+					i += 3
+					o += 1
+			x = run_end
+	return out
+
+
 ## Take every span away.
 func clear_overhead() -> void:
 	_oh.clear()
