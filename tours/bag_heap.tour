@@ -1,0 +1,38 @@
+# CARRIED OFF COSTS PLACE (mechanics improvement 4a; Survival.leave_bag). A
+# lineman is struck at its round, takes hold, and a player who does not pull
+# free is carried off. They wake far away with what was in the hand, told in
+# words where their things are; the survey marks the place with an X lettered
+# "your things"; and at the place the heap stands under the player's own pale
+# rag on a stick, found by eye from well off. `use` takes it all back.
+#   tools/tour.sh tours/bag_heap.tour --seed=1 --hour=11 --weather=clear:0 --give=knife:1,driftwood:6,stone:4 --held=knife
+coast calm
+zoom 8
+wait 0.6
+spawn lineman
+try 3
+  walkto part 3
+  tap swing
+  await tell 8
+end
+await grip 6
+shot 01-held-and-not-pulling-free with grip,mob:lineman
+await skipped 12
+wait 0.6
+shot 02-woken-far-off-the-goal-says-where-your-things-are
+tap map
+await app:map 3
+wait 0.6
+shot 03-the-survey-marks-your-things with app:map
+tap map
+await app:none 3
+near bag
+wait 1.0
+shot 04-your-things-under-your-own-rag with prop:cairn
+zoom 16
+wait 0.6
+shot 05-found-by-eye-from-well-off with prop:cairn
+zoom 8
+press use 0.1
+await took 3
+wait 0.6
+shot 06-taken-back

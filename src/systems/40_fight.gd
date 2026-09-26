@@ -574,7 +574,9 @@ func _on_outcome(e: Dictionary) -> void:
 			Events.time_skipped.emit(float(r.minutes), &"downed")
 			Events.message.emit(String(r.line))
 		&"carried":
+			var taken_at := hero.pos
 			var r := Outcomes.carried(game.body, game.inventory, game.clock, game.world, game.query, hero.pos)
+			var bag := Survival.leave_bag(game, taken_at)
 			hero.pos = r.pos
 			hero.facing = r.facing
 			hero.throw_until = 0.0
@@ -584,6 +586,36 @@ func _on_outcome(e: Dictionary) -> void:
 			_wake()
 			Events.time_skipped.emit(float(r.minutes), &"carried")
 			Events.message.emit(String(r.line))
+			if bag != null:
+				Events.message.emit(Survival.BAG_LINE)
+
+
+## `near bag`: beside the heap the last bad end left (Survival.leave_bag), a
+## step off it toward the camera, facing it, in reach of `use`.
+const TOUR_PLACES: Array[String] = ["bag"]
+
+
+func tour_place(what: String) -> Vector2:
+	var heap := _last_bag()
+	if what != "bag" or heap == null:
+		return Vector2.INF
+	return heap.pos + Vector2(0.9, 0.5)
+
+
+func tour_face(what: String) -> float:
+	var heap := _last_bag()
+	if what != "bag" or heap == null:
+		return NAN
+	return (heap.pos - (heap.pos + Vector2(0.9, 0.5))).angle()
+
+
+func _last_bag() -> WorldProp:
+	var state := SurvivalState.of(game)
+	var best := -1
+	for id: int in state.bags:
+		if best < 0 or float(state.bags[id]) >= float(state.bags[best]):
+			best = id
+	return game.world.props[best] if best >= 0 else null
 
 
 ## Moved while the hours went by: the player, the land about them and the camera all at once.

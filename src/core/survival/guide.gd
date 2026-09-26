@@ -8,7 +8,8 @@ class_name Guide
 ## until it lifts. The slate shows `goal` standing on the HUD and the hint on
 ## its key row (90_ui).
 ##
-##   goal(game) -> String                     the want now: a fire, charcoal, a haft, plate, a pick,
+##   goal(game) -> String                     the want now: your things back after a bad end; a fire,
+##                                            charcoal, a haft, plate, a pick,
 ##                                            food, light; or the ore once there is a pick;
 ##                                            then the next elite material and where it is
 ##   hint_for(game, retired) -> Dictionary    the first hint that applies and is not retired:
@@ -137,11 +138,19 @@ const MAP_FAR := 60.0
 const ROAD_NEAR := 60.0
 
 
+## The want after a bad end, while the bag lies where it was taken
+## (Survival.leave_bag): standing on the HUD until it is taken back, so where
+## the player's things are is never a line that scrolled past.
+const BAG_GOAL := "Your things lie where it took you. The survey marks them."
+
+
 static func goal(game: Game) -> String:
 	var inv := game.inventory
 	var now := game.clock.minutes
 	if game.body.hunger_level(now) >= 2:
 		return "Eat something: mussels off the rocks, or berries."
+	if not SurvivalState.of(game).bags.is_empty():
+		return BAG_GOAL
 	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and inv.has(&"lamp"):
 		return "Light the lamp against the dark."
 	if inv.has(&"pick"):

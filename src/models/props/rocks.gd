@@ -589,6 +589,11 @@ static func cairn(k: Kit, v: int, c: int) -> void:
 	# The capstone, upright.
 	k.slab(0.02, y - 0.02, 0.0, 0.16, 0.34, 0.1, s + 90, g[0], GroundColors.up(g[0], 0.3), 0.02, 0.35, 0.03)
 	y += 0.3
+	if v == PropModels.BAG_CAIRN:
+		_bag_marker(k, y)
+		if d.cold():
+			k.clump(0, y - 0.34, 0, 0.18, 0.1, s + 60, d.snow[0], 6)
+		return
 	match v % 3:
 		1:
 			# A lens from a machine set on top on a bar, looking out to sea: a
@@ -610,6 +615,37 @@ static func cairn(k: Kit, v: int, c: int) -> void:
 			k.found.prism(0.7, y + 0.3, 0, 0.05, y + 0.4, 0.05, 4, P.PLATE[2], P.PLATE[4], PI * 0.25)
 	if d.cold():
 		k.clump(0, y - 0.34, 0, 0.18, 0.1, s + 60, d.snow[0], 6)
+
+
+## Over the player's own bag (PropModels.BAG_CAIRN): a stick driven in beside the
+## heap and a strip of pale cloth knotted at its top, standing out from it --
+## the one thing on the land in the player's own linen, so it is found by eye
+## from a long way off -- and the creel's strap hanging over the stones.
+static func _bag_marker(k: Kit, y: float) -> void:
+	var top := Vector3(0.22, y + 1.6, 0.0)
+	k.rod(Vector3(0.22, -0.05, 0.0), top, 0.045, 5, P.LINEN[1])
+	# The rag: a long strip and a short one off the knot, stood out on the air,
+	# each drawn from both sides (a strip of cloth has two), and wide enough to
+	# be a patch of light cloth at play zoom, not a hair.
+	for strip: Array in [[Vector3(0.95, -0.2, 0.08), Vector3(0.9, -0.52, 0.0), 0.0], [Vector3(0.6, -0.5, -0.08), Vector3(0.52, -0.72, 0.0), -0.12]]:
+		var a: Vector3 = strip[0]
+		var b: Vector3 = strip[1]
+		var drop: float = strip[2]
+		var r0 := top + Vector3(0.0, drop, -0.03)
+		var r1 := top + Vector3(0.0, drop - 0.26, 0.03)
+		k.found.quad(r0, r1, top + b, top + a, P.LINEN[5])
+		k.found.quad(top + a, top + b, r1, r0, P.LINEN[4])
+	k.rod(top + Vector3(0.0, 0.03, 0.0), top + Vector3(0.0, -0.12, 0.0), 0.06, 5, P.LINEN[3])
+	# A scrap of machine lens knotted in with the rag, catching what light there
+	# is (a FOUND built-in light, as a lamp's lens is): the cloth is pale by day,
+	# and after dark this is how the heap is found by eye.
+	var g := Color(P.COLD[3].r, P.COLD[3].g, P.COLD[3].b, 0.7)
+	var n := Vector3(0.0, 0.0, 0.07)
+	k.found.quad(top + Vector3(-0.07, -0.02, 0.0) + n, top + Vector3(0.07, -0.02, 0.0) + n, top + Vector3(0.07, -0.16, 0.0) + n, top + Vector3(-0.07, -0.16, 0.0) + n, g)
+	k.found.quad(top + Vector3(0.07, -0.02, 0.0) - n, top + Vector3(-0.07, -0.02, 0.0) - n, top + Vector3(-0.07, -0.16, 0.0) - n, top + Vector3(0.07, -0.16, 0.0) - n, g)
+	# The strap over the stones.
+	k.rod(Vector3(-0.3, y - 0.5, 0.2), Vector3(0.0, y - 0.1, 0.1), 0.025, 4, P.LINEN[2])
+	k.rod(Vector3(0.0, y - 0.1, 0.1), Vector3(0.28, y - 0.55, 0.2), 0.025, 4, P.LINEN[2])
 
 
 static func mussel_rock(k: Kit, v: int, _c: int) -> void:
