@@ -1497,9 +1497,12 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 ## The surface format a baked prop array needs: the storey channel is one float
 ## a vertex in CUSTOM1 where any building in it carries one.
 static func prop_flags(arrays: Array) -> int:
-	if arrays.size() > Mesh.ARRAY_CUSTOM1 and arrays[Mesh.ARRAY_CUSTOM1] != null:
-		return Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT
-	return 0
+	if arrays.size() <= Mesh.ARRAY_CUSTOM1:
+		return 0
+	var storey: Variant = arrays[Mesh.ARRAY_CUSTOM1]
+	if typeof(storey) != TYPE_PACKED_FLOAT32_ARRAY:
+		return 0
+	return Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT
 
 
 ## Where a prop stands and how it is turned and cast, with its foot at height `h`.
