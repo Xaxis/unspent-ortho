@@ -308,6 +308,11 @@ var overgrowth := 0.0
 ## takes the Burning's. Above 1 the machine caps breathe too, leaking round
 ## their seals. Runtime only, so a LOOK field.
 var vent_breath := Color(0, 0, 0, 0)
+## What lights this land's trees from below after dark, if anything: the colour,
+## and in ALPHA how strongly (leaf.gdshader, through SkyWear's growth map). The
+## grey orchards' is the plan's grow light, still run on schedule for trees
+## nobody will pick. Runtime only, so a LOOK field.
+var underlight := Color(0, 0, 0, 0)
 ## The dystopian grade offset added to SkyLight's own (`SkyLight.neon_row`):
 ## (dark, desat, cool, contrast). `sky.gdshaderinc` scales the graded colour by
 ## (1 - dark), so POSITIVE dark dims and NEGATIVE lifts: every landscape's dark

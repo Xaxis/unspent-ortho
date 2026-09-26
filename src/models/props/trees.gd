@@ -19,11 +19,30 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 	match kind:
 		PropKind.PINE: pine(k, v, c, false)
 		PropKind.SNOW_PINE: pine(k, v, c, true)
-		PropKind.BROADLEAF: broadleaf(k, v, c)
+		PropKind.BROADLEAF:
+			broadleaf(k, v, c)
+			_grow_lamp(k, v, c)
 		PropKind.DEAD_TREE: dead_tree(k, v, c)
 		PropKind.BUSH: bush(k, v, c)
 		PropKind.GORSE: gorse(k, v, c)
 		PropKind.REEDS: reeds(k, v, c)
+
+
+## Where a land lights its trees from below after dark (`BiomeDef.underlight`),
+## the lamp that does it: a stake at the foot with its head turned up into the
+## crown, lamp-coded so it burns only at night. What the crown's underside is
+## lit by has to be standing somewhere, or the leaves are only tinted.
+static func _grow_lamp(k: Kit, v: int, c: int) -> void:
+	var u := BiomeRegistry.by_index(c).underlight
+	if u.a <= 0.0:
+		return
+	var a := Rng.hash01(v, 7, 81) * TAU
+	var foot := Vector3(cos(a) * 0.32, 0.0, sin(a) * 0.32)
+	var head := foot + Vector3(0.0, 0.16, 0.0)
+	k.rod(foot, head, 0.012, 4, P.PLATE[1])
+	# MADE, not FOUND: the lamp code is a lamp only on the made surface (on FOUND
+	# metal a low alpha is a beacon's blink).
+	k.slab(head.x, head.y, head.z, 0.1, 0.04, 0.1, v * 13 + 5, P.PLATE[1], GroundColors.lamp(Color(u.r, u.g, u.b), 2.0), 0.0)
 
 
 ## Kinds whose silhouette leans with the prevailing wind where a landscape
