@@ -184,8 +184,10 @@ const REFUSE: Array[int] = [PropKind.TIP, PropKind.WRECK, PropKind.HULL]
 func _populate_refuse(key: int, centre: Vector2) -> void:
 	var s := game.world.seed_value
 	var heaps: Array[WorldProp] = []
+	var seen := {}
 	for p in game.query.props_near(centre, SITE_JOIN):
-		if REFUSE.has(p.kind) and not heaps.has(p):
+		if REFUSE.has(p.kind) and not seen.has(p.id):
+			seen[p.id] = true
 			heaps.append(p)
 	if heaps.is_empty():
 		return

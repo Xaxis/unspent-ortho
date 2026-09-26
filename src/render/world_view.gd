@@ -1165,7 +1165,7 @@ func refresh_props(prop: WorldProp) -> void:
 	var key := _key_of(prop.pos)
 	if not _props_by_chunk.has(key):
 		_props_by_chunk[key] = []
-	if not _props_by_chunk[key].has(prop):
+	if not (_props_by_chunk[key] as Array).any(func(q: WorldProp) -> bool: return WorldProp.same(q, prop)):
 		_props_by_chunk[key].append(prop)
 	if _task >= 0 and key == _task_key:
 		_task_dirty = true

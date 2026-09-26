@@ -243,12 +243,12 @@ static func _refresh(game: Game, props: Array[WorldProp]) -> void:
 	var done := {}
 	for q in props:
 		var key := WorldView._key_of(q.pos)
-		if done.has(key) and done[key] != q:
+		if done.has(key) and done[key] != q.id:
 			# Already rebuilt for another prop in the chunk; a new prop still needs listing.
 			if ground(game).position_of(q.id) >= props_base(game):
 				game.view.refresh_props(q)
 			continue
-		done[key] = q
+		done[key] = q.id
 		game.view.refresh_props(q)
 
 

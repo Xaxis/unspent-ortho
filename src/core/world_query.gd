@@ -107,8 +107,13 @@ func add_prop(p: WorldProp) -> void:
 
 func remove_prop(p: WorldProp) -> void:
 	var k := floori(p.pos.y) * world.size + floori(p.pos.x)
-	if _cells.has(k):
-		_cells[k].erase(p)
+	if not _cells.has(k):
+		return
+	var cell: Array = _cells[k]
+	for i in cell.size():
+		if WorldProp.same(cell[i], p):
+			cell.remove_at(i)
+			return
 
 
 ## Every prop whose tile is within r tiles (square) of p.

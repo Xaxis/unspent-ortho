@@ -218,7 +218,7 @@ func _step_steam() -> void:
 func _follow_job(delta: float) -> void:
 	var job := SurvivalState.of(game).job
 	var prop: WorldProp = job.get("prop", null)
-	if prop != _job_prop:
+	if not WorldProp.same(prop, _job_prop):
 		if _job_prop != null:
 			_ended_prop = _job_prop
 			_ended_frame = Engine.get_process_frames()

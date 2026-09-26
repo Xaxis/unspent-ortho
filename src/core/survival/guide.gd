@@ -336,7 +336,7 @@ static func fire_name(game: Game, fire: WorldProp) -> String:
 		return "a fire"
 	if Haven.holds(game.world, fire.pos):
 		return "the village fire"
-	if SurvivalState.of(game).built.has(fire):
+	if SurvivalState.of(game).built.any(func(q: WorldProp) -> bool: return WorldProp.same(q, fire)):
 		return "your fire"
 	return "the fire"
 

@@ -37,6 +37,15 @@ static var live := 0
 ## Quarter-tile resolution: props are jittered off tile centres, and two can
 ## share a tile. `PropModels.variant_of` and `GenWorks._note_lit_shack` both ask
 ## this and nothing else, so what is drawn and what is lit cannot disagree.
+## Whether `a` and `b` are the same prop: both none, or the same id. Never `==`
+## on two props: a prop is a view made from its row (PropTable), so two asks for
+## one prop are two objects (tests/stream/test_prop_identity.gd).
+static func same(a: WorldProp, b: WorldProp) -> bool:
+	if a == null or b == null:
+		return a == null and b == null
+	return a.id == b.id
+
+
 static func deal_hash(seed_value: int, kind: int, pos: Vector2) -> int:
 	return Rng.hash_ints(seed_value, kind, floori(pos.x * 4.0), floori(pos.y * 4.0), 90)
 
