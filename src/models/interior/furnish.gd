@@ -120,6 +120,12 @@ func thing(t: Dictionary) -> void:
 		&"issued_stove": _issued_stove(at, f, 0.0)
 		&"raised_stove": _issued_stove(at, f, 0.42)
 		&"brazier": _brazier(at, f)
+		&"hay_rack": _hay_rack(at, f)
+		&"stall": _stall(at, f)
+		&"counter": _counter(at, f)
+		&"pulley": _pulley(at, f)
+		&"quern": _quern(at, f)
+		&"loom": _loom(at, f)
 
 
 # --- the frame -----------------------------------------------------------------
@@ -907,6 +913,96 @@ func _brazier(at: Vector2, f: Vector2) -> void:
 		var a := TAU * float(i) / 8.0
 		var q := c + Vector3(cos(a) * 0.262, 0.2 + 0.12 * float(i % 2), sin(a) * 0.262)
 		k.made.box(q - Vector3(0.025, 0.025, 0.025), q + Vector3(0.025, 0.025, 0.025), GroundColors.glow(Color(1.0, 0.5, 0.16), 1.4))
+
+
+## A hay rack on the wall, slatted, the hay pulled through it.
+func _hay_rack(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.05
+	var hay := GroundColors.made(Color(0.7, 0.6, 0.34), GroundColors.ROPE)
+	k.made.box(_p(at, f, -0.5, -back, 1.0), _p(at, f, 0.5, -back + 0.35, 1.05), dark_wood)
+	for i in 8:
+		var u := -0.44 + 0.125 * float(i)
+		k.made.strut(_p(at, f, u, -back + 0.35, 1.05), _p(at, f, u, -back, 1.6), 0.015, 4, dark_wood)
+	for i in 5:
+		var c := _p(at, f, -0.35 + 0.18 * float(i), -back + 0.15, 1.2)
+		k.clump(c.x, c.y, c.z, 0.14, 0.25, 60 + i, hay, 7)
+
+
+## The beast's stall: a low hurdle across the byre's end, straw down, a pail.
+func _stall(at: Vector2, f: Vector2) -> void:
+	var straw := GroundColors.made(Color(0.68, 0.58, 0.32), GroundColors.ROPE)
+	for u: float in [-0.5, 0.0, 0.5]:
+		k.made.strut(_p(at, f, u, 0.3, 0.0), _p(at, f, u, 0.3, 0.9), 0.03, 5, dark_wood)
+	for h: float in [0.35, 0.8]:
+		k.made.strut(_p(at, f, -0.52, 0.3, h), _p(at, f, 0.52, 0.3, h), 0.025, 5, wood)
+	k.made.box(_p(at, f, -0.5, -0.3, 0.0), _p(at, f, 0.5, 0.28, 0.03), straw, straw)
+	var p := _p(at, f, 0.3, -0.1, 0.03)
+	k.made.prism(p.x, p.y, p.z, 0.12, p.y + 0.24, 0.14, 10, wood, GroundColors.made(Color(0.86, 0.84, 0.78), GroundColors.CLAY))
+
+
+## A stallholder's counter, carried in off the stall row at night: a board on
+## trestles, the goods still on it in their rows.
+func _counter(at: Vector2, f: Vector2) -> void:
+	for u: float in [-0.45, 0.45]:
+		k.made.strut(_p(at, f, u - 0.1, 0.0, 0.0), _p(at, f, u, 0.0, 0.8), 0.03, 4, dark_wood)
+		k.made.strut(_p(at, f, u + 0.1, 0.0, 0.0), _p(at, f, u, 0.0, 0.8), 0.03, 4, dark_wood)
+	k.made.box(_p(at, f, -0.55, -0.25, 0.8), _p(at, f, 0.55, 0.25, 0.85), wood, wood)
+	for i in 5:
+		var u := -0.42 + 0.21 * float(i)
+		var c := _p(at, f, u, 0.0, 0.85)
+		match i % 3:
+			0: k.made.prism(c.x, c.y, c.z, 0.05, c.y + 0.14, 0.04, 8, clay, clay)
+			1: k.found.box(c + Vector3(-0.06, 0.0, -0.05), c + Vector3(0.06, 0.05, 0.05), P.PLATE[1])
+			_: k.made.box(c + Vector3(-0.05, 0.0, -0.08), c + Vector3(0.05, 0.03, 0.08), linen)
+
+
+## A pulley block hung from the beam over the shaft, its rope run down to a
+## cleat on the wall: how a rigger brings things up the tower.
+func _pulley(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.3
+	var top := _p(at, f, 0.0, -back, wall_h - 0.1)
+	var block := top + Vector3.DOWN * 0.3
+	k.found.box(block + Vector3(-0.08, -0.12, -0.05), block + Vector3(0.08, 0.12, 0.05), P.PLATE[0])
+	k.made.strut(top, block, 0.015, 4, rope)
+	k.made.strut(block + _side(f) * 0.06, _p(at, f, 0.3, -BACK + 0.03, 1.1), 0.012, 4, rope)
+	k.made.strut(block - _side(f) * 0.06, _p(at, f, -0.2, -back + 0.1, 0.2), 0.012, 4, rope)
+	k.made.box(_p(at, f, 0.24, -BACK + 0.0, 1.05), _p(at, f, 0.36, -BACK + 0.05, 1.12), dark_wood)
+
+
+## A quern: two stones, the top one with its peg handle, flour at the rim.
+func _quern(at: Vector2, f: Vector2) -> void:
+	var stone := GroundColors.made(Color(0.52, 0.46, 0.4), GroundColors.CUTSTONE)
+	var flour := GroundColors.made(Color(0.88, 0.86, 0.8), GroundColors.CLAY)
+	var c := _p(at, f, 0.0, 0.0, 0.0)
+	k.made.prism(c.x, c.y, c.z, 0.28, c.y + 0.12, 0.3, 14, flour, flour)
+	k.made.prism(c.x, c.y + 0.12, c.z, 0.24, c.y + 0.26, 0.24, 14, stone, stone)
+	k.made.prism(c.x, c.y + 0.26, c.z, 0.24, c.y + 0.38, 0.23, 14, stone, stone)
+	k.made.strut(c + Vector3(0.15, 0.38, 0.0), c + Vector3(0.15, 0.56, 0.0), 0.02, 4, dark_wood)
+	var j := _p(at, f, 0.42, 0.0, 0.0)
+	k.made.prism(j.x, j.y, j.z, 0.12, j.y + 0.4, 0.1, 10, clay, clay)
+
+
+## An upright loom against the wall, a cloth half woven on it in the mesas'
+## banded colours, the weights hanging below.
+func _loom(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.08
+	for u: float in [-0.5, 0.5]:
+		k.made.strut(_p(at, f, u, -back, 0.0), _p(at, f, u, -back + 0.1, 1.9), 0.035, 5, dark_wood)
+	k.made.strut(_p(at, f, -0.55, -back + 0.1, 1.85), _p(at, f, 0.55, -back + 0.1, 1.85), 0.03, 5, dark_wood)
+	for b in 6:
+		var h0 := 1.8 - 0.1 * float(b)
+		var q0 := _p(at, f, -0.45, -back + 0.1, h0 - 0.1)
+		var q1 := _p(at, f, -0.45, -back + 0.1, h0)
+		var q2 := _p(at, f, 0.45, -back + 0.1, h0)
+		var q3 := _p(at, f, 0.45, -back + 0.1, h0 - 0.1)
+		var col := wool[b % wool.size()]
+		k.made.quad(q0, q1, q2, q3, col)
+		k.made.quad(q3, q2, q1, q0, col)
+	for i in 10:
+		var u := -0.42 + 0.093 * float(i)
+		k.made.strut(_p(at, f, u, -back + 0.1, 1.2), _p(at, f, u, -back + 0.1, 0.45), 0.004, 3, linen)
+		var w := _p(at, f, u, -back + 0.1, 0.4)
+		k.made.prism(w.x, w.y, w.z, 0.03, w.y + 0.06, 0.03, 6, clay, clay)
 
 
 func _side(f: Vector2) -> Vector3:

@@ -106,7 +106,13 @@ static func make() -> BiomeDef:
 	d.built.stock = [&"infill", &"deck_house", &"shaft_loft", &"stall_row"] as Array[StringName]
 	# The infill is a dead tower's lobby walled in and lived in; its room is its
 	# own (content/interiors/tower_lobby.gd).
-	d.interiors = {&"form:infill": &"tower_lobby"}
+	d.interiors = {&"form:infill": &"tower_lobby", &"house": &"home"}
+	# Behind the other forms, the stallholder, who carries the counter in off the
+	# stall row at night, and the hoister who brings things up the shafts.
+	d.home = {"households": {
+		&"stallholder": {"wants": [&"counter", &"sorted_bins", &"ledgers", &"shelf"], "by_hearth": []},
+		&"hoister": {"wants": [&"pulley", &"rope_coil", &"workbench", &"coil"], "by_hearth": []},
+	}}
 	d.built.plan = &"block"
 	d.built.apart = BiomeForms.ROW_APART
 	d.grade = Vector4(-0.05, -0.01, 0.03, -0.02)

@@ -104,7 +104,14 @@ static func make() -> BiomeDef:
 	d.built.plan = &"ring"
 	# Only the roundhouse is anyone's home: the broch's lean-to and the byre are
 	# for beasts and weather. Its room is its own (content/interiors/roundhouse.gd).
-	d.interiors = {&"form:roundhouse": &"roundhouse"}
+	d.interiors = {&"form:roundhouse": &"roundhouse", &"house": &"home"}
+	# Behind the other forms, the byre keeper, whose beast sleeps under the same
+	# roof, and the waller who keeps the drystone standing.
+	d.home = {"households": {
+		&"byrer": {"wants": [&"stall", &"hay_rack", &"buckets", &"creel"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+		&"waller": {"wants": [&"mason_rack", &"creel", &"basket", &"shelf"], "by_hearth": []},
+	}}
 	d.grade = Vector4(-0.04, 0.02, 0.04, 0.0)
 	# THE DARKEST NIGHT IN THE GAME, and nothing of the machines' lights it. This
 	# is the one place where a lantern is the only light there is.
