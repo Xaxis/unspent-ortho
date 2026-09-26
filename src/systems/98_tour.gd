@@ -8,7 +8,9 @@ extends GameSystem
 ##   at prop:NAME           stand beside the nearest prop of that kind (PropKind.NAMES,
 ##                          a space written as _), facing it, in reach of `use`: a tour
 ##                          takes from the world without knowing where the world put it
-##   village N              teleport beside village N
+##   village N|LAND         teleport beside village N, or the first village in the
+##                          landscape LAND (by id), which holds when worldgen
+##                          reorders the villages
 ##   near KIND[,KIND]       stand beside the nearest prop of a kind, facing it; a
 ##                          name that is no prop kind is asked of the systems'
 ##                          `tour_place` (`near colossus_foot`: under an ankle)
@@ -398,11 +400,18 @@ func _run() -> void:
 				else:
 					_teleport(pp)
 			"village":
-				var vi := parts[1].to_int()
-				if vi < game.world.villages.size():
-					_teleport(game.world.village_stand(game.world.villages[vi]))
+				if parts[1].is_valid_int():
+					var vi := parts[1].to_int()
+					if vi < game.world.villages.size():
+						_teleport(game.world.village_stand(game.world.villages[vi]))
+					else:
+						ok = false
 				else:
-					ok = false
+					var at := GenPlaces.find(game.world, "village:" + parts[1])
+					if at.x >= 0.0:
+						_teleport(at)
+					else:
+						ok = false
 			"hour":
 				var day := floorf(game.clock.minutes / 1440.0)
 				game.clock.minutes = day * 1440.0 + parts[1].to_float() * 60.0

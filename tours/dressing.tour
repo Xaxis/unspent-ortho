@@ -5,40 +5,45 @@
 # claiming the landscape it says it is in — because the whole package is the
 # claim that a village here is not a village there, and a frame that shows the
 # coast's houses under the name "bonelands" would prove the opposite of itself.
-# The village INDICES are the world's own list; if worldgen moves one under us
-# the `with land:` claim fails the tour rather than quietly renaming a picture.
+# Each village is asked for BY ITS LANDSCAPE, the first of that land's in the
+# world's list: indices were, and a worldgen change reordered them under the
+# frames (village 1 stopped being the moss's). The `with land:` claim still
+# fails the tour if a landscape holds no village at all: on this world the
+# bonelands and the scrapwood hold none now (2026-09-26), so the machine city
+# and the grey orchards stand in for them (the slums' one village stands on the
+# glass desert's ground).
 zoom 30
 hour 11
 weather clear:0
 
-village 0
+village coast
 wait 0.4
 shot 01-coast with land:coast
 
-village 1
+village moss
 wait 0.4
 shot 02-moss with land:moss
 
-village 4
+village pinewood
 wait 0.4
 shot 03-pinewood with land:pinewood
 
-village 12
+village snowfield
 wait 0.4
 shot 04-snowfield with land:snowfield
 
-village 6
+village machine_city
 wait 0.4
-shot 05-bonelands with land:bonelands
+shot 05-machine-city with land:machine_city
 
-village 8
+village burning
 wait 0.4
 shot 06-burning with land:burning
 
-village 7
+village salt_flats
 wait 0.4
 shot 07-salt-flats with land:salt_flats
 
-village 3
+village grey_orchards
 wait 0.4
-shot 08-scrapwood with land:scrapwood
+shot 08-grey-orchards with land:grey_orchards
