@@ -52,7 +52,9 @@ func _process(delta: float) -> void:
 		if floorf((before + offset) / period) == floorf((_t + offset) / period):
 			continue
 		var at := game.world.to_3d(v.pos) + Vector3(0, 0.55 * v.scale, 0)
-		_plume(at, col, (0.5 + 0.25 * h) * much, (2.2 + h) * sqrt(much), wind * (0.6 + h), v.id * 31 + int(_t))
+		# A land that says what its vents breathe gets exactly that colour; the
+		# Burning's ash is whitened as a breath always was.
+		_plume(at, col, (0.5 + 0.25 * h) * much, (2.2 + h) * sqrt(much), wind * (0.6 + h), v.id * 31 + int(_t), 0.0 if own.a > 0.0 else 0.72)
 
 
 ## How many puffs one breath is laid as, from the vent's mouth up.
@@ -65,7 +67,7 @@ const PLUME := 5
 ## its top into wisps set off to either side. One soft ball per breath read as
 ## a string of cotton wool over every vent. `size` is the breath's width at
 ## its widest.
-func _plume(at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int) -> void:
+func _plume(at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int, lighten: float) -> void:
 	for i in PLUME:
 		var f := float(i) / float(PLUME - 1)
 		var rise := size * (0.15 + f * 1.6)
@@ -75,5 +77,7 @@ func _plume(at: Vector3, col: Color, size: float, seconds: float, drift: Vector2
 		var across := Vector2(-drift.y, drift.x).normalized() * side
 		var p := at + Vector3(shear.x + across.x, rise, shear.y + across.y)
 		var w := size * lerpf(0.28, 1.0, f)
-		MobFx.breath(_layer, p, col, w, seconds * lerpf(0.55, 1.1, f), drift * lerpf(0.5, 1.6, f), seed_value * 11 + i)
+		# A land's own colour is passed through unwhitened: a white plume lit red
+		# from below and blue from the night sky came out pink.
+		MobFx.breath(_layer, p, col, w, seconds * lerpf(0.55, 1.1, f), drift * lerpf(0.5, 1.6, f), seed_value * 11 + i, lighten)
 

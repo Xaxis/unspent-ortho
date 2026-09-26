@@ -76,7 +76,10 @@ static func make() -> BiomeDef:
 	d.ground_marks = {Ground.SALT: GroundColors.SULPHUR}
 	# And its vents breathe STEAM, not the Burning's ash: white, wet, half again the
 	# size and more often, and the machines' caps leak it round their seals.
-	d.vent_breath = Color(0.92, 0.94, 0.86, 1.6)
+	# Sulphur-warm, and passed through unwhitened: pure white steam lit red by
+	# the vent from below and blue by the night above came out magenta; with
+	# the blue taken down it reads orange over the vent and sulphur-pale above.
+	d.vent_breath = Color(0.92, 0.90, 0.48, 1.6)
 	d.village_ground = Ground.MUD
 	d.decor = {Ground.GRASS: [0.95, Decor.TUFT, 36, Decor.CROTTLE, 14]}
 	d.grass_colors = [P.MOSS[3], P.SPRUCE[3]]

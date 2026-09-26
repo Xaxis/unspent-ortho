@@ -842,11 +842,13 @@ static func puff(parent: Node, at: Vector3, dir: Vector2, dust: Color, size: flo
 ## UNDER THE CLOSE EYE it is AIR (`_air`): a mark there is a flat cartoon cloud
 ## held to a floor in frame pixels, drawn over everything, a metre from the lens
 ## -- a white speckled cloud the size of a door hanging by the player's head.
-static func breath(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int) -> void:
+## `lighten` is how far the colour is taken toward white first (a body's breath
+## is near white); a vent's steam passes its own colour through at 0.
+static func breath(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int, lighten: float = 0.72) -> void:
 	if not _ok(parent):
 		return
 	if close_eye(parent):
-		_air(parent, at, col, size, seconds, drift, seed_value)
+		_air(parent, at, col, size, seconds, drift, seed_value, lighten)
 		return
 	size = at_least(size, VAPOUR_PX)
 	var mi := _mark(parent, at, size, VAPOUR, &"over", seed_value, col.lightened(0.86), col.lightened(0.34))
@@ -865,11 +867,11 @@ static func close_eye(parent: Node) -> bool:
 ## Breath as the fire's own soft puff (FireModel.smoke_material): lit by what
 ## reaches it, depth-tested so a head in front of it hides it, in world units,
 ## swelling and thinning as it rises.
-static func _air(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int) -> void:
+static func _air(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int, lighten: float = 0.72) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = FireModel.smoke_mesh()
 	var mat := FireModel.smoke_material().duplicate() as StandardMaterial3D
-	var c := col.lightened(0.72)
+	var c := col.lightened(lighten)
 	mat.albedo_color = Color(c.r, c.g, c.b, 0.0)
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
