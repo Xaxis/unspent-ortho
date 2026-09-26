@@ -4,7 +4,7 @@
 #
 # What this proves, in order: the landscape is reachable and names itself; it is
 # under a lid at every hour; and THE HOUR BARELY REACHES THE STREET.
-#   tools/tour.sh tours/slums-dome.tour --seed=7
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/slums-dome.tour --seed=7
 
 # --- the control, first, and it is the whole instrument -------------------
 #

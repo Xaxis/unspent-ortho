@@ -3,7 +3,7 @@
 # this tour keeps working when the layout changes: `place NAME` asks GenPlaces,
 # which asks the registry (a landscape id, or two joined by a dash for the band
 # between them). If a landscape ever stops being generated, this tour fails.
-#   tools/tour.sh tours/biomes.tour --seed=7 --hour=11 --weather=clear:0
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/biomes.tour --seed=7 --hour=11 --weather=clear:0
 coast calm
 place coast
 wait 2.0

@@ -4,7 +4,7 @@
 # its lee in the Burning, a pale bloom out of its seams on the bone, frost on
 # what faces the sky in the snow. Nobody authored four harvesters.
 #
-#   tools/tour.sh tours/matter.tour --seed=7 --hour=11 --weather=clear:0
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/matter.tour --seed=7 --hour=11 --weather=clear:0
 #
 # Eleven in the morning and a clear sky on purpose: the wear has to read in
 # plain daylight, not be rescued by a mood. The frames are meant to be laid

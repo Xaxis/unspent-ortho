@@ -3,7 +3,7 @@
 # itself only swaps under the cover; inside is lit by the hearth and by the sky
 # through the windows, and the window light moves with the hour.
 #
-#   tools/tour.sh tours/house.tour --seed=4 --hour=11 --weather=clear:0
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/house.tour --seed=4 --hour=11 --weather=clear:0
 #
 # Read the frames as a player: 02 and 04 are the same room at noon and in the
 # late afternoon, and the patches of sun on the floor must have moved between

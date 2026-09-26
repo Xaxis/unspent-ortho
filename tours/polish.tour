@@ -4,7 +4,7 @@
 # the HAND with no bench against a cold that now comes on with the dusk the sky
 # draws, and the targeting tag over a body in the world.
 #
-#   tools/tour.sh tours/polish.tour --seed=7 --hour=11 --weather=clear:0 \
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/polish.tour --seed=7 --hour=11 --weather=clear:0 \
 #     --give=rag:5,wrack:4,pitch:1
 #
 # Every frame here says what it is OF, because a frame of a vent that holds no

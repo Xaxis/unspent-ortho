@@ -6,7 +6,7 @@
 # the machine still reads. An occluder that hides a threat is a worse game
 # however beautiful the frame, and that is the one claim this package cannot
 # make with an argument.
-#   tools/tour.sh tours/depth.tour --seed=1
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/depth.tour --seed=1
 #   tools/tour.sh tours/depth.tour --seed=1 --fore=0   (the same run with the
 #   layer off, to hold the two against each other)
 place pinewood

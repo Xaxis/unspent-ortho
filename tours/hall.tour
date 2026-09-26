@@ -3,7 +3,7 @@
 # yard -- plated, racked, a gutted machine on a gantry, bays caged in bars, the
 # strips ruled down the ceiling and the day coming through the torn roof.
 #
-#   tools/tour.sh tours/hall.tour --seed=4 --hour=11 --weather=clear:0 --rooms=empty
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/hall.tour --seed=4 --hour=11 --weather=clear:0 --rooms=empty
 #
 # The residents are left out (--rooms=empty): this is how the hall LOOKS, and its
 # warden would otherwise end the tour by putting the player out of it.

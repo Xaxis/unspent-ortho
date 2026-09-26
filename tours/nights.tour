@@ -1,7 +1,7 @@
 # A night belongs to the landscape it falls on, and a bog is a mat and not a
 # mirror. The frames this package is judged on.
 #
-#   tools/tour.sh tours/nights.tour --seed=7
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/nights.tour --seed=7
 #
 # Every frame is at 23:00 under a forced clear sky, EXCEPT the two that say
 # noon: the night rows are what changed and a landscape's weather rolling a fog

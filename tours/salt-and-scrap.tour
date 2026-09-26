@@ -6,7 +6,7 @@
 # Each landscape at three zooms and three hours, both borders stood in and
 # walked across, and a body standing in each with the best kit the game can
 # make — put on through the slate's gear page with the real keys.
-#   tools/tour.sh tours/salt-and-scrap.tour --seed=7 --hour=11 --weather=clear:0 \
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/salt-and-scrap.tour --seed=7 --hour=11 --weather=clear:0 \
 #     --give=hat_brim:1,mod_shade:1,vest_heatsink:1,condenser:1,mitts_corded:1,mod_foil:1
 coast calm
 

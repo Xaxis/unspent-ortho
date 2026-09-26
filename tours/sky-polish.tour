@@ -2,7 +2,7 @@
 # a lamp that lays nothing on a bright land and a warm pool on a dark one, snow
 # drawn pale against pale, a whiteout that takes the far field, dry lightning
 # with its afterglow, and a wet night where the lights carry into the air.
-#   tools/tour.sh tours/sky-polish.tour --seed=1
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/sky-polish.tour --seed=1
 coast calm
 
 # Noon on the snowfield, the brightest ground in the game. Press the real lamp

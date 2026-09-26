@@ -4,7 +4,7 @@
 # the concrete, moss and ferns, vines hanging; a fire on a stone, a sleeping
 # platform woven up off the floor, a basin under the drip.
 #
-#   tools/tour.sh tours/rooted.tour --seed=4 --hour=15 --weather=clear:0
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/rooted.tour --seed=4 --hour=15 --weather=clear:0
 #
 # 01 is the shell as a player finds it among the trees. 02 is the floor from
 # above as the player comes in. 03 is the same at night by the fire. 04 is over

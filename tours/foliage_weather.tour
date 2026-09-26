@@ -6,7 +6,7 @@
 # shot on the snowfield's own tufts and ash where the burning meets the sulphur
 # jungle's grass; the coast's meadow takes dry and rain. Each weather has a dry
 # frame of the same place beside it.
-#   tools/tour.sh tours/foliage_weather.tour --seed=7
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/foliage_weather.tour --seed=7
 hour 11
 coast calm
 place coast

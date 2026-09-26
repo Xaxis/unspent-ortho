@@ -4,7 +4,7 @@
 # to the ceiling -- lit by nothing but the pour, a warden watching it, turrets
 # in the corners, and the store barred off the far end.
 #
-#   tools/tour.sh tours/foundry.tour --seed=4 --hour=15 --weather=clear:0
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/foundry.tour --seed=4 --hour=15 --weather=clear:0
 #
 # 01 is the hatch in the burning as a player finds it. 02 is the foundry from
 # above as the player comes down. 03 is over the shoulder in front of the racks,

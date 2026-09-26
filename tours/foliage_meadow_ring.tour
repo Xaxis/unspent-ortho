@@ -1,6 +1,6 @@
 # The meadow ring (MeadowView, 18_meadow): over the shoulder, the player
 # knee-deep in the coast's sward as a gust front crosses it, and what it costs.
-#   tools/tour.sh tours/foliage_meadow_ring.tour --seed=7 [--quality=ultra|high|medium|low]
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/foliage_meadow_ring.tour --seed=7 [--quality=ultra|high|medium|low]
 # Web proxy: godot --path . --rendering-method gl_compatibility -- --tour=tours/foliage_meadow_ring.tour --seed=7 --quality=web
 # `near meadow` (18_trample) stands the player in the widest level sward near
 # the coast's spawn, and a few steps take them out from beside a bush. A full

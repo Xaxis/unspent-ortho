@@ -2,7 +2,7 @@
 # a squall off the sea, dawn mist lying in the moss, a whiteout on the
 # snowfield, dry lightning over the bonelands, ash falling on the burning at
 # dusk, and a wet village night mirroring its lights.
-#   tools/tour.sh tours/sky.tour --seed=1
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/sky.tour --seed=1
 coast calm
 # The coast: bleak grey afternoon, a squall coming in off the sea.
 place coast

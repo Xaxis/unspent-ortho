@@ -1,6 +1,6 @@
 # Every landscape at its most characteristic standing ground, one frame each, for
 # a look audit. Run once at the default camera and once over the shoulder:
-#   tools/tour.sh tours/lands_audit.tour --seed=7 --weather=clear:0
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/lands_audit.tour --seed=7 --weather=clear:0
 #   tools/tour.sh tours/lands_audit.tour --seed=7 --weather=clear:0 --view=shoulder
 coast calm
 hour 11

@@ -1,6 +1,6 @@
 # Each landscape's own grass (GrassSpecies, BiomeDef.grasses), in a held wind,
 # over the shoulder and from above, and one front crossing grass, bush and tree.
-#   tools/tour.sh tours/foliage_species.tour --seed=7
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/foliage_species.tour --seed=7
 # 01-03: the coast's meadow by the wood, from above, half a second apart: a
 # front crossing the sward and on into the scrub and the crowns. 04 the same
 # over the shoulder. 05 marram on the dunes; 06-07 the moss's sedge and bog

@@ -1,7 +1,7 @@
 # The places worth the walk (docs/VISION.md §3, §8), visited through real keys:
 # read from a distance, named on arrival, opened with E, and on the map after.
 #
-#   tools/tour.sh tours/landmarks.tour --seed=1 --hour=10 --weather=clear:0
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/landmarks.tour --seed=1 --hour=10 --weather=clear:0
 #
 # THE FAR FRAMES ARE SHOT AT THE PLAY CAMERA. The first version of this tour
 # zoomed to 26-30 for every silhouette — twice what a player is ever given — so
