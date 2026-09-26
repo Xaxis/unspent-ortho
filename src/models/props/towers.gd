@@ -387,7 +387,8 @@ static func plant(k: Kit, w: float, d: float, y: float, s: int, c: int) -> void:
 ## It hangs on a WALL and not on the roof, unlike a house's stolen tube. A house
 ## puts its tube where this camera always looks because a tube is thin; a sign
 ## four storeys tall is read from anywhere, and a city's signs face its streets.
-static func billboard(k: Kit, f: Array, v0: float, v1: float, col: Color, s: int) -> void:
+static func billboard(k: Kit, f: Array, v0: float, v1: float, col: Color, s: int, c: int) -> void:
+	var dying := BiomeDressing.of(c).signage == &"dying"
 	var bl: Vector3 = f[0]
 	var br: Vector3 = f[1]
 	var tr: Vector3 = f[2]
@@ -420,6 +421,13 @@ static func billboard(k: Kit, f: Array, v0: float, v1: float, col: Color, s: int
 	var g := out * 0.015
 	var lit := GroundColors.neon(col)
 	var dim := GroundColors.neon(col.darkened(0.45))
+	# Where the plan no longer feeds its boards (BiomeDressing.signage) the faces
+	# are dead enamel under the land's grime, and only a letter or two still
+	# catches, on its last power.
+	var grime := BiomeDressing.of(c).growth
+	if dying:
+		lit = col.darkened(0.72).lerp(grime, 0.35)
+		dim = col.darkened(0.8).lerp(grime, 0.45)
 	k.made.quad(a + g, b + g, cc + g, dd + g, P.INK[0])
 	var rows: Array[Vector2] = [Vector2(0.06, 0.3), Vector2(0.37, 0.72), Vector2(0.79, 0.95)]
 	for r in rows.size():
@@ -443,10 +451,23 @@ static func billboard(k: Kit, f: Array, v0: float, v1: float, col: Color, s: int
 			var p := out * 0.045
 			k.made.quad(ga.lerp(ca, lo + 0.08) + p, gb.lerp(cb, lo + 0.08) + p,
 				gb.lerp(cb, hi - 0.08) + p, ga.lerp(ca, hi - 0.08) + p,
-				P.INK[0] if i == 2 else GroundColors.neon(Color(1, 1, 1)))
+				P.INK[0] if i == 2 else _letter(dying, col, s, i))
 	# And the conduit somebody ran down the wall to feed it.
 	var foot := Houses.on_wall(bl, br, tr, tl, u0 + 0.05, 0.0, 0.0)
 	k.rod(Houses.on_wall(bl, br, tr, tl, u0 + 0.05, v0, 0.0) + out * 0.04, foot + out * 0.04, 0.018, 4, P.PLATE[1])
+
+
+## One letter of a board's type: burning on the plan's power, or, where the
+## plan has stopped feeding it, dead grey but for one or two still catching.
+## Always at least one: a lit form (BiomeForms.LIT) draws a tube of some kind,
+## which is how tests/biome/test_forms.gd holds the table to the geometry.
+static func _letter(dying: bool, col: Color, s: int, i: int) -> Color:
+	if not dying:
+		return GroundColors.neon(Color(1, 1, 1))
+	var pick: int = [0, 1, 3, 4][int(Rng.hash01(s, 0, 48) * 4.0)]
+	if i == pick or Rng.hash01(s, i, 47) < 0.2:
+		return GroundColors.failing(Color(1, 1, 1).lerp(col, 0.3))
+	return P.STONE[1]
 
 
 ## The ground floor as a street frontage: shutters rolled down over what were
@@ -572,7 +593,7 @@ static func tower(k: Kit, c: int) -> void:
 	Houses.door(k, fb[0], fb[1], fb[2], fb[3], 0.62, 0.11, 0.16)
 	Houses.struck_plate(k, fb[0], fb[1], fb[2], fb[3], 0.28, 0.1)
 	# The sign on the +z flank, where a street would run past it.
-	billboard(k, faces[1], 0.40, 0.74, SIGN_COLOURS[0], s + 5)
+	billboard(k, faces[1], 0.40, 0.74, SIGN_COLOURS[0], s + 5, c)
 	Houses.salvage(k, faces[3][0], faces[3][1], faces[3][2], faces[3][3], 0.3, s + 9)
 	var r := parapet(k, w, d, top, s + 60, c)
 	plant(k, w, d, r[0] + 0.05, s + 70, c)
@@ -598,7 +619,7 @@ static func stack(k: Kit, c: int) -> void:
 	# everywhere, and a stack of let storeys is exactly the wall a sign is hung
 	# on. Mercury green here, so the street is not one colour: SIGN_COLOURS is
 	# read across the stock rather than each form reaching for the sodium.
-	billboard(k, faces[1], 0.30, 0.86, SIGN_COLOURS[1], s + 5)
+	billboard(k, faces[1], 0.30, 0.86, SIGN_COLOURS[1], s + 5, c)
 	# What people put on a terrace they can get out onto: a rail, a tank, washing.
 	for i in range(1, 8):
 		var y := STOREY * i
@@ -640,7 +661,7 @@ static func block(k: Kit, c: int) -> void:
 		k.rod(Vector3(p.x, 0.0, p.z), p, 0.026, 4, P.PLATE[2])
 	# The sign runs along the top of the frontage, where the awning does not
 	# reach: a shop's own, not the city's, so it is the smaller colour.
-	billboard(k, faces[2], 0.56, 0.84, SIGN_COLOURS[1], s + 5)
+	billboard(k, faces[2], 0.56, 0.84, SIGN_COLOURS[1], s + 5, c)
 	Houses.salvage(k, faces[1][0], faces[1][1], faces[1][2], faces[1][3], 0.7, s + 9)
 	var r := parapet(k, w, d, top, s + 60, c)
 	plant(k, w, d, r[0] + 0.05, s + 70, c)
@@ -725,7 +746,7 @@ static func arcade(k: Kit, c: int) -> void:
 	# height somebody walking under it reads rather than four storeys up. Warm
 	# white: the light a frontage spills onto a wet pavement, which is what the
 	# landscape's reflections are made of.
-	billboard(k, faces[1], 0.14, 0.52, SIGN_COLOURS[2], s + 5)
+	billboard(k, faces[1], 0.14, 0.52, SIGN_COLOURS[2], s + 5, c)
 	# The walkway: a deck out of the second storey, a rail along both sides, the
 	# struts under it, and the torn end where it stopped.
 	var y := STOREY * 2.0 + 0.2
@@ -781,7 +802,7 @@ static func spire(k: Kit, c: int) -> void:
 	# is anyway, and it is the surest way not to look like every cyberpunk frame
 	# ever made.
 	var high := Houses.faces(corners(w + FRAME, d + FRAME, STOREY * 3.6, STOREY * 5.4, s + 11))
-	billboard(k, high[1], 0.24, 0.78, SIGN_COLOURS[0], s + 12)
+	billboard(k, high[1], 0.24, 0.78, SIGN_COLOURS[0], s + 12, c)
 	var r := parapet(k, w - 0.3, d - 0.3, top, s + 60, c)
 	var head := r[0] + 0.05
 	# The mast, guyed to three corners of the deck.

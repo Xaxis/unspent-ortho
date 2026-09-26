@@ -28,6 +28,10 @@ const GLINT := 33
 ## every strip and beacon on the coast. A hearth and a window keep burning, which
 ## is why this cannot be a lamp code (world.gdshader lights 17..32 steadily).
 const NEON := 34
+## A tube on its last power: a board the plan stopped feeding. Lit only after
+## dark, weak, and stuttering out of step with everything else; it throws no
+## pool (PropModels.neon_point reads NEON alone).
+const FAILING := 35
 const TURF := 40
 const HEATH := 41
 const SAND := 42
@@ -101,7 +105,7 @@ const STRATA := 128
 ## of it with room in each; a shader asks `mark_ground` / `mark_strata` /
 ## `mark_land` (matter.gdshaderinc) and never spells a range, so a new material
 ## takes the next number in its run and touches nothing else.
-##    1..34   light: glow, lamp, glint, stolen neon
+##    1..35   light: glow, lamp, glint, stolen neon, a failing tube
 ##   40..58   grounds, the first run (the shared table's)
 ##   80..95   what a person MADE
 ##   96..127  grounds, the second run (a landscape's own: VITRIFIED, TIDEFLAT...)
@@ -406,6 +410,11 @@ static func glint(col: Color) -> Color:
 ## A tube of stolen machine light, wired into a wall by somebody.
 static func neon(col: Color) -> Color:
 	return marked(col, NEON)
+
+
+## A tube of the plan's light that the plan has stopped feeding.
+static func failing(col: Color) -> Color:
+	return marked(col, FAILING)
 
 
 ## Ground a turf of one landscape becomes when drawn as landscape index `to`, so

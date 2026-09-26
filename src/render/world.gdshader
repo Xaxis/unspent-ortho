@@ -2463,6 +2463,18 @@ void fragment() {
 		emit += c * 2.0 * non;
 		c = mix(BRINE2, c, non);
 		unh = non;
+	} else if (m == 35) {
+		// A failing tube (GroundColors.FAILING): the plan stopped feeding this
+		// board. Only after dark, weak, and stuttering: dead for stretches, then
+		// catching in bursts, each tube out of step with the next.
+		float fdim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
+		float fh = ink_hash(floor(world_pos.xz * 1.5) + floor(world_pos.y * 1.5) * 7.0);
+		float burst = step(0.55, fract(TIME * 0.11 + fh * 5.0));
+		float catch_on = step(0.4, ink_hash(vec2(floor(TIME * (6.0 + fh * 6.0)), fh * 91.0)));
+		float fon = neon_burn(fdim) * sky_power() * burst * catch_on;
+		emit += c * 0.7 * fon;
+		c = mix(BRINE2, c, fon * 0.7);
+		unh = fon;
 	} else if (m == 33) {
 		// A glint: glass or ice catching the light for a moment.
 		float gh = ink_hash(floor(world_pos.xz * 7.0) + floor(world_pos.y * 7.0));

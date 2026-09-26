@@ -120,6 +120,11 @@ var spread := 0.0
 ##              rest of it dark glass -- people living in the gaps of a tower
 ##              that is not theirs
 var windows: StringName = &""
+## How much power the plan's signage still gets here (props/towers.gd billboard):
+##   &"lit"    full: the plan runs this place and keeps its boards burning
+##   &"dying"  mostly dead: dark panels under grime, and one or two failing
+##             tubes stuttering at low strength (GroundColors.FAILING)
+var signage: StringName = &""
 
 ## Every form each field may name, so a typo is a failing test and not a
 ## landscape quietly dressed as somewhere else (BiomeRegistry.problems).
@@ -137,6 +142,7 @@ const SHELTERS: Array[StringName] = [&"shack", &"stilt", &"blind", &"pod", &"lea
 	&"cut_room"]
 const CROWNS: Array[StringName] = [&"full", &"bare", &"low"]
 const WINDOWS: Array[StringName] = [&"floors", &"gaps"]
+const SIGNAGE: Array[StringName] = [&"lit", &"dying"]
 ## Every ramp `BiomeDef.tree_tints` may name, and how many colours each wants.
 const RAMPS := {&"leaf": 4, &"trunk": 1, &"needle": 3, &"under": 1, &"scrub": 3,
 	&"gorse": 3, &"dead": 2, &"reed": 3, &"reed_head": 1}
@@ -262,6 +268,7 @@ static func resolve(d: BiomeDef) -> BiomeDressing:
 	r.crown = s.crown if s.crown != &"" else (&"bare" if cold or burnt else &"full")
 	r.spread = s.spread if s.spread > 0.0 else 1.0
 	r.windows = s.windows if s.windows != &"" else &"floors"
+	r.signage = s.signage if s.signage != &"" else &"lit"
 	return r
 
 
@@ -343,6 +350,8 @@ static func problems(d: BiomeDef) -> PackedStringArray:
 			out.append(w + "no crown is %s" % s.crown)
 		if s.windows != &"" and not WINDOWS.has(s.windows):
 			out.append(w + "no window is lit as %s" % s.windows)
+		if s.signage != &"" and not SIGNAGE.has(s.signage):
+			out.append(w + "no sign is powered as %s" % s.signage)
 		if s.facets != 0 and (s.facets < 4 or s.facets > 9):
 			out.append(w + "rock breaks into %d sides, which is not 4..9" % s.facets)
 	# Tree tints are a dictionary, so a misspelt key is silent the same way.

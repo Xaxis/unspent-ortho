@@ -322,7 +322,7 @@ static func mural(k: Kit, v: int, c: int) -> void:
 	_painting(k, v, wall, s + 5)
 	_drips(k, FACE + 0.02, WALL_HZ, WALL_H, wall, s + 6, true)
 	if v % 4 >= 2:
-		_bolted_over(k, v, s + 7)
+		_bolted_over(k, v, s + 7, c)
 	Remains.banks(k, [[0.9, 2.4, 0.6, 0.18], [1.0, -2.2, 0.55, 0.15], [-0.9, 0.4, 0.5, 0.14]],
 		Remains.drift_of(c)[0], s + 8)
 
@@ -338,7 +338,7 @@ static func mural(k: Kit, v: int, c: int) -> void:
 ## indifference, which is the point. The projection is not malicious and not
 ## even aware. It is simply brighter, and somebody with the right to put it
 ## there put it there.
-static func _bolted_over(k: Kit, v: int, s: int) -> void:
+static func _bolted_over(k: Kit, v: int, s: int, c: int) -> void:
 	# The wall handed over as the four corners `Towers.billboard` expects, wound
 	# so `Houses.wall_out` gives +X: bl and br run along the foot from +z to -z.
 	# Getting that order backwards would point the whole sign INTO the wall and
@@ -353,10 +353,10 @@ static func _bolted_over(k: Kit, v: int, s: int) -> void:
 	# player reads two of them whole and infers the three behind the sign.
 	var col: Color = Towers.SIGN_COLOURS[absi(s) % Towers.SIGN_COLOURS.size()]
 	if v % 4 == 2:
-		Towers.billboard(k, face, SIGN_FOOT, SIGN_HEAD, col, s)
+		Towers.billboard(k, face, SIGN_FOOT, SIGN_HEAD, col, s, c)
 	else:
 		# Hung higher and shallower, so the two walls are not the same wall
 		# twice: this one takes the heads and leaves the bodies, where the first
 		# takes the bodies and leaves the raised hands.
-		Towers.billboard(k, face, 0.44, 0.74, col, s + 3)
+		Towers.billboard(k, face, 0.44, 0.74, col, s + 3, c)
 

@@ -126,6 +126,7 @@ func test_every_resolved_ramp_is_as_long_as_its_readers_index_it() -> void:
 		check(BiomeDressing.SHELTERS.has(r.shelter), "%s builds a real shelter: %s" % [d.id, r.shelter])
 		check(BiomeDressing.CROWNS.has(r.crown), "%s grows a real crown: %s" % [d.id, r.crown])
 		check(BiomeDressing.WINDOWS.has(r.windows), "%s lights a real window: %s" % [d.id, r.windows])
+		check(BiomeDressing.SIGNAGE.has(r.signage), "%s powers its signs a real way: %s" % [d.id, r.signage])
 		check(r.facets >= 4 and r.facets <= 9, "%s rock breaks into %d sides" % [d.id, r.facets])
 		if r.covers == &"snow":
 			eq(r.snow.size(), 4, "%s says what colour its snow is" % d.id)
@@ -147,6 +148,7 @@ func test_a_dressing_nobody_can_wear_is_caught() -> void:
 	d.dressing.covers = &"glitter"
 	d.dressing.crown = &"topiary"
 	d.dressing.windows = &"chandelier"
+	d.dressing.signage = &"hologram"
 	d.dressing.facets = 40
 	d.dressing.stone = [Palette.INK[1]]
 	d.tree_tints = {&"branches": [Palette.MOSS[2]], &"leaf": [Palette.MOSS[2]]}
@@ -155,6 +157,7 @@ func test_a_dressing_nobody_can_wear_is_caught() -> void:
 	check(said.contains("glitter"), "a covering nobody has")
 	check(said.contains("topiary"), "a crown nobody grows")
 	check(said.contains("chandelier"), "a window nobody lights")
+	check(said.contains("hologram"), "a sign nobody powers")
 	check(said.contains("40 sides"), "rock that breaks into forty")
 	check(said.contains("stone wants 3"), "a ramp of the wrong length")
 	check(said.contains("branches"), "a tint key nothing grows")

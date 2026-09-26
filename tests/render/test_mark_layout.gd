@@ -41,7 +41,7 @@ func test_every_wall_is_in_the_strata_run() -> void:
 
 
 func test_the_runs_do_not_touch_each_other_or_the_other_codes() -> void:
-	var runs: Array[Vector2i] = [Vector2i(1, 34), GroundColors.GROUND_A,
+	var runs: Array[Vector2i] = [Vector2i(1, GroundColors.FAILING), GroundColors.GROUND_A,
 		Vector2i(GroundColors.MADE_FIRST, 95), GroundColors.GROUND_B, GroundColors.STRATA_RUN]
 	for i in runs.size():
 		lt(float(runs[i].y), 256.0, "a mark is one byte")

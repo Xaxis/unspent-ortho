@@ -114,6 +114,9 @@ static func make() -> BiomeDef:
 	# Nobody here has the city's power: a lived-in storey is one lamp in a dark
 	# band, and the towers at night are a few warm squares in the canopy.
 	dress.windows = &"gaps"
+	# And the plan's boards here were abandoned with the city: dead faces under
+	# the moss, a letter or two still catching on the last of the power.
+	dress.signage = &"dying"
 	dress.sink = 0.24
 	dress.lie = Vector2(-0.1, 0.16)
 	d.dressing = dress

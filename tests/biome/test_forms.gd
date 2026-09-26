@@ -154,7 +154,10 @@ func test_the_table_and_the_geometry_agree_about_which_forms_are_lit() -> void:
 			continue
 		argued += 1
 		for v in stock.size():
-			var drew := not PropModels.neon_point(PropKind.HOUSE, v, d.index).is_empty()
+			# Where the plan stopped feeding its boards (BiomeDressing.signage) the
+			# tube is a failing one: still drawn, throwing no pool.
+			var drew := not PropModels.neon_point(PropKind.HOUSE, v, d.index).is_empty() \
+				or _draws_mark(PropKind.HOUSE, v, d.index, GroundColors.FAILING)
 			var says: bool = bool(BiomeForms.FORMS[stock[v]][BiomeForms.LIT])
 			eq(drew, says, "%s in %s: the table says lit=%s and the model drew a tube=%s"
 				% [stock[v], d.id, says, drew])
@@ -314,3 +317,11 @@ func test_the_street_a_block_is_laid_round_is_the_street_world_gen_lays() -> voi
 			continue
 		gt(f.block_deep(), f.widest() * 4.0 + BiomeForms.STREET_WIDE * 2.0 - 0.01,
 			"%s: two frontages and a street fit between two lanes" % d.id)
+
+
+func _draws_mark(kind: int, v: int, c: int, mark: int) -> bool:
+	var t := PropModels.template(kind, v, c)
+	for col: Color in t.made_c:
+		if roundi(col.a * 255.0) == mark:
+			return true
+	return false
