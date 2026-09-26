@@ -224,8 +224,8 @@ static func _flooded(t: BiomeSurface, i: int) -> bool:
 
 static func _street(t: BiomeSurface, i: int) -> bool:
 	var a := Rng.hash01(t.seed_value, 0xD120) * PI * 0.5
-	var x := float(i % t.size)
-	var y := float(i / t.size)
+	var x := float(t.x0 + i % t.size)
+	var y := float(t.y0 + i / t.size)
 	var u := x * cos(a) + y * sin(a)
 	var v := y * cos(a) - x * sin(a)
 	return fposmod(u, STREET_PITCH) < STREET_WIDTH or fposmod(v, STREET_PITCH) < STREET_WIDTH

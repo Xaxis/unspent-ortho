@@ -34,10 +34,14 @@ const BANK := 4
 
 # --- the band's fields (set once, not per tile) ---------------------------
 
-## Where the band is: the world's width and seed, so a recipe can find a tile's
-## place (`i % size`, `i / size`) and draw a pattern ruled on the land, a street
-## grid. A section laid on its own will hand its window's origin over here too.
+## The window the recipe is asked over: its width (the stride from a tile to the
+## one below it) and the world tile its first tile stands on, so a recipe finds
+## a tile's place in the WORLD as (x0 + i % size, y0 + i / size) and a pattern
+## ruled on the land (a street grid) comes out the same whichever window a
+## section lays. The whole world today: size is the world's, x0 = y0 = 0.
 var size := 0
+var x0 := 0
+var y0 := 0
 var seed_value := 0
 ## Smoothed float elevation in levels.
 var elev: PackedFloat32Array
