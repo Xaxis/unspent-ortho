@@ -52,4 +52,28 @@ func _process(delta: float) -> void:
 		if floorf((before + offset) / period) == floorf((_t + offset) / period):
 			continue
 		var at := game.world.to_3d(v.pos) + Vector3(0, 0.55 * v.scale, 0)
-		MobFx.breath(_layer, at, col, (0.5 + 0.25 * h) * much, (2.2 + h) * sqrt(much), wind * (0.6 + h), v.id * 31 + int(_t))
+		_plume(at, col, (0.5 + 0.25 * h) * much, (2.2 + h) * sqrt(much), wind * (0.6 + h), v.id * 31 + int(_t))
+
+
+## How many puffs one breath is laid as, from the vent's mouth up.
+const PLUME := 5
+
+
+## A breath as a PLUME, not a ball: a column of puffs laid at once from a
+## narrow mouth up, each higher one wider, fainter-lived and further
+## downwind, so the whole leans and shears with the wind and breaks up at
+## its top into wisps set off to either side. One soft ball per breath read as
+## a string of cotton wool over every vent. `size` is the breath's width at
+## its widest.
+func _plume(at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int) -> void:
+	for i in PLUME:
+		var f := float(i) / float(PLUME - 1)
+		var rise := size * (0.15 + f * 1.6)
+		var shear := drift * f * f * 1.4
+		# The top breaks into wisps: offset across the wind, one side or the other.
+		var side := (Rng.hash01(seed_value, i, 3) - 0.5) * size * 0.9 * f
+		var across := Vector2(-drift.y, drift.x).normalized() * side
+		var p := at + Vector3(shear.x + across.x, rise, shear.y + across.y)
+		var w := size * lerpf(0.28, 1.0, f)
+		MobFx.breath(_layer, p, col, w, seconds * lerpf(0.55, 1.1, f), drift * lerpf(0.5, 1.6, f), seed_value * 11 + i)
+
