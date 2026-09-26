@@ -21,9 +21,9 @@ extends RefCounted
 ##                            break the swing being thrown
 ##   clamp    (mod_clamp)     "you stay on the plate": knockback is CLAMP_KNOCK
 ##   lattice  (mod_lattice)   "every blow shocks": a blow that lands in a part
-##                            also takes LATTICE_DAMAGE off every other body
-##                            within LATTICE_REACH of it, for LATTICE_CHARGES
-##                            (hot: it wants a cool)
+##                            discharges LATTICE_DAMAGE, shared nearest first
+##                            among the other bodies within LATTICE_REACH, for
+##                            LATTICE_CHARGES (hot: it wants a cool)
 ##   icelens  (mod_icelens)   "sight": the scan reads ICELENS_REACH as far
 
 const HARMONIC_DAMAGE := 1

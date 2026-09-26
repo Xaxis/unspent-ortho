@@ -32,6 +32,10 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   `TOUR_FIXED_FPS=60 tools/tour.sh tours/dropper.tour` (top view and over the shoulder; the tour
   command `over KIND` stages a body on a lip with the player below).
   Ten awake machines' draw cost: `tools/test.sh test_awake_cost`.
+  No hopeless matchup: every weapon beats every common machine (not a keeper, not a dart) at
+  least 1 start of 4 with the crowd reader (`tests/fight/crowd_reader.gd`, which sprints, heavies,
+  walks in on a stand-off and baits a thrower): `tools/test.sh test_matchups` (~35 s, prints any
+  hopeless pairing). The crowd reader against the one-machine reader: `tools/test.sh test_crowd_reader`.
   Part sides (a landscape's `over` part moves the working part; the model builds it there):
   `tools/test.sh test_part_sides`, `tools/shot.sh shots/x.png --scene=gallery --filter=sides_hauler --zoom=4`,
   `tools/tour.sh tours/part_sides.tour` and `tours/part_sides_cave.tour` (headers have their options).
