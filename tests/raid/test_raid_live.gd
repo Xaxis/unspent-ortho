@@ -83,11 +83,7 @@ const GUNS := 3
 
 
 func _prepare(h: Node, s: Settlement) -> void:
-	var n := ceili(TAU * RING / 0.9)
-	for k in n:
-		var at := s.centre + Vector2.from_angle(TAU * k / float(n)) * RING
-		@warning_ignore("return_value_discarded")
-		h.call("place_piece", s, StructureKind.GATE if k == 0 else StructureKind.PALISADE, at, TAU * k / float(n) + PI * 0.5)
+	h.call("wall_in", s, RING, 0.0)
 	for k in GUNS:
 		var gun: Structure = h.call("place_piece", s, StructureKind.TURRET,
 			s.centre + Vector2.from_angle(TAU * k / float(GUNS)) * 1.6, 0.0)

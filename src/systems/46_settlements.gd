@@ -332,6 +332,42 @@ func _realise(s: Settlement, p: Structure) -> void:
 	_node_for(s, p)
 
 
+## How far out `--walled` rings a staged holding: past the furthest piece the
+## staging sets down (3.6) and its footprint.
+const WALL_RING := 5.0
+## How far from the centre `--walled` stands the guns: close enough together
+## that each covers the others and the whole ring (TurretRules.REACH).
+const GUN_RING := 1.6
+
+
+## Ring `s` in palisade at `radius` from its centre, a stake every 0.9 tiles and
+## a gate at `gate_bearing`: what a holding that answered its warning stands
+## behind (`--walled`; tests/raid/test_raid_live.gd). Tiles nobody could stand
+## on (water, a cliff) are left open, as a builder would leave them.
+func wall_in(s: Settlement, radius: float, gate_bearing: float) -> void:
+	var n := ceili(TAU * radius / 0.9)
+	for k in n:
+		var a := gate_bearing + TAU * float(k) / float(n)
+		var at := s.centre + Vector2.from_angle(a) * radius
+		if not game.query.standable(floori(at.x), floori(at.y)):
+			continue
+		@warning_ignore("return_value_discarded")
+		place_piece(s, StructureKind.GATE if k == 0 else StructureKind.PALISADE, at, a + PI * 0.5)
+
+
+## The footprint ids of this holding's own walls (palisade, gate, plate wall):
+## what its turrets stand above and see past (Senses.line_clear `over`).
+func walls_of(s: Settlement) -> Dictionary:
+	var out := {}
+	for p in s.pieces:
+		if p.kind != StructureKind.PALISADE and p.kind != StructureKind.GATE and p.kind != StructureKind.PLATE_WALL:
+			continue
+		var ghost: WorldProp = _ghosts.get(_key(s, p))
+		if ghost != null:
+			out[ghost.id] = true
+	return out
+
+
 func _recentre(s: Settlement) -> void:
 	# A decoy is out in a field on purpose. Counted in, it would drag the centre —
 	# where a machine reads the place and a party marches to — toward itself, and
@@ -1115,6 +1151,13 @@ func _from_options() -> void:
 			push_warning("--holding: no piece called %s" % word)
 			continue
 		kinds.append(kind)
+	# Walled, the guns stand in the middle covering each other (`cover`), where
+	# every stretch of the ring is in their reach, rather than out in the arc.
+	var guns := 0
+	if game.options.walled:
+		guns = kinds.count(StructureKind.TURRET)
+		while kinds.has(StructureKind.TURRET):
+			kinds.erase(StructureKind.TURRET)
 	if kinds.is_empty():
 		return
 	var s := found(realm_here(), game.player.pos)
@@ -1136,6 +1179,12 @@ func _from_options() -> void:
 	if placed == 0:
 		return
 	_recentre(s)
+	if game.options.walled:
+		wall_in(s, WALL_RING, game.player.facing)
+		for k in guns:
+			var gun := place_piece(s, StructureKind.TURRET,
+				s.centre + Vector2.from_angle(game.player.facing + TAU * float(k) / float(guns)) * GUN_RING, 0.0)
+			gun.powered = true
 	s.stores[&"berries"] = 3
 	# Its cells full, as a place somebody has lived in for a while would have them.
 	s.charge = maxf(2.0, s.charge_room())

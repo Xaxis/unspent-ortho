@@ -69,7 +69,10 @@ static func notices(row: Dictionary, from: Vector2, target: Vector2, m: Moment, 
 
 ## A clear line between two points: walks every tile the segment touches. A
 ## corner passed exactly blocks only if both tiles beside it are solid.
-static func line_clear(world: WorldData, query: WorldQuery, a: Vector2, b: Vector2) -> bool:
+##
+## `over` holds the ids of props the looker stands above and sees past (a
+## turret over its own holding's walls, 47_defences); empty for everybody else.
+static func line_clear(world: WorldData, query: WorldQuery, a: Vector2, b: Vector2, over: Dictionary = {}) -> bool:
 	if world == null:
 		return true
 	var ax := floori(a.x)
@@ -90,8 +93,8 @@ static func line_clear(world: WorldData, query: WorldQuery, a: Vector2, b: Vecto
 	while (x != bx or y != by) and guard < 256:
 		guard += 1
 		if absf(tmx - tmy) < 1e-6:
-			var side_a := _solid(world, query, x + sx, y, eye)
-			var side_b := _solid(world, query, x, y + sy, eye)
+			var side_a := _solid(world, query, x + sx, y, eye, over)
+			var side_b := _solid(world, query, x, y + sy, eye, over)
 			if side_a and side_b:
 				return false
 			x += sx
@@ -104,7 +107,7 @@ static func line_clear(world: WorldData, query: WorldQuery, a: Vector2, b: Vecto
 		else:
 			y += sy
 			tmy += tdy
-		if (x != bx or y != by) and _solid(world, query, x, y, eye):
+		if (x != bx or y != by) and _solid(world, query, x, y, eye, over):
 			return false
 	return not _walled(query, a, b)
 
@@ -127,12 +130,12 @@ static func _walled(query: WorldQuery, a: Vector2, b: Vector2) -> bool:
 	return false
 
 
-static func _solid(world: WorldData, query: WorldQuery, x: int, y: int, eye: int) -> bool:
+static func _solid(world: WorldData, query: WorldQuery, x: int, y: int, eye: int, over: Dictionary = {}) -> bool:
 	if world.level_at(x, y) >= eye + RIDGE_LEVELS:
 		return true
 	if query == null:
 		return false
 	for p in query.props_near(Vector2(x + 0.5, y + 0.5), 0.0):
-		if p.solid >= BLOCKING_SOLID and not world.depleted.has(p.id):
+		if p.solid >= BLOCKING_SOLID and not world.depleted.has(p.id) and not over.has(p.id):
 			return true
 	return false
