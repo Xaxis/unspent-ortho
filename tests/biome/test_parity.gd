@@ -475,6 +475,10 @@ extends TestCase
 ## none of them among the six, and the one shared change (recipe water fixed
 ## against tidying) touches only recipes that lay water, which none of the six
 ## do. The five have tests of their own in tests/core/test_world_gen_surface.gd.
+## GEN 34 (2026-09-26) CHANGED NO DIGEST: its content is the middens' slot
+## labyrinth (GenSlots, `relief.slots`) and the salt flats' pans sited deeper in
+## their own ground, neither among the six; the labyrinth's fields are built only
+## where a landscape declares `slots`, so a world of the six never makes one.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 

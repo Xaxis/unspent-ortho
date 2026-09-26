@@ -30,13 +30,14 @@ static func make() -> BiomeDef:
 	d.moist_range = Vector2(0.2, 0.6)
 	d.adjacency = {&"scrapwood": 0.4, &"machine_city": 0.25, &"slums": 0.2}
 	d.coastal = -0.4
-	# THE MAZE IS IN THIS ROW. The highest ridge amplitude anywhere against a low
-	# base and a hard cliff factor, so the land comes out as walls with slots
-	# between them rather than as hills — which is the difference between a place
-	# you cross and a place you get lost in.
+	# THE MAZE IS IN THIS ROW. `slots` stands a plateau six levels (three units)
+	# over a drawn labyrinth of floors (GenSlots): walls on both hands, a strip
+	# of sky, dead ends, rooms where floors cross, and ramps the only ways up.
+	# The rest is kept low so the floors lie nearly flat and the walls stand as
+	# one face each: no terraces to stair them, little swell to tilt them.
 	d.relief = {
-		&"base": 5.5, &"hills": 9.0, &"ridge": 3.0, &"near": 10.0, &"terrace": 0.9, &"valley": 3.0,
-		&"rain": 0.6, &"temp": 0.1, &"moist": 0.25, &"cliff": 1.0,
+		&"base": 5.5, &"hills": 0.5, &"ridge": 0.2, &"near": 0.3, &"terrace": 0.0, &"valley": 3.0,
+		&"rain": 0.6, &"temp": 0.1, &"moist": 0.25, &"cliff": 1.0, &"slots": 6.0,
 	}
 	d.border_elevation = 1.2
 	d.reach_out_high = Vector4(5.0, 0.1, 0.12, 0.35)

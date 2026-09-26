@@ -18,7 +18,7 @@ static func run(c: GenContext) -> void:
 	var size := c.size
 	var s := c.s
 	var n := c.n
-	var p := GenCountries.params(c, [&"base", &"hills", &"ridge", &"near", &"terrace", &"cliff", &"shelf", &"shelf_var"])
+	var p := GenCountries.params(c, [&"base", &"hills", &"ridge", &"near", &"terrace", &"cliff", &"shelf", &"shelf_var", &"slots"])
 	c.mark(&"relief.params")
 	const F := GenFields.FIELD
 	const U := GenFields.UP
@@ -45,6 +45,7 @@ static func run(c: GenContext) -> void:
 		# How tall a shelf's cliff stands, wandering across a range of crags.
 		[F, GenFields.noise(s, 309, 1.0 / 70.0, 2), 8],
 		[U, p[&"shelf"], cw, step], [U, p[&"shelf_var"], cw, step],
+		[U, p[&"slots"], cw, step], [U, _slotted_soft(c), cw, step],
 	])
 	c.mark(&"relief.batch")
 	var base := fl[0]
@@ -68,6 +69,14 @@ static func run(c: GenContext) -> void:
 	var shelfn := fl[16]
 	var shelf_amp := fl[17]
 	var shelf_var := fl[18]
+	# SLOT CANYONS (`slots`, GenSlots): the plateau stands `slots` levels over a
+	# labyrinth of floors, only where a landscape asks for it.
+	var slots := fl[19]
+	var slot_share := fl[20]
+	var slotted := false
+	for v: float in p[&"slots"]:
+		slotted = slotted or v > 0.01
+	var slot_up := GenSlots.plan(s, size).field(s, size, slots) if slotted else PackedFloat32Array()
 	c.rim_warp = rim_warp
 	var land := c.land
 	var inland := c.inland
@@ -99,6 +108,13 @@ static func run(c: GenContext) -> void:
 				# whatever its hills happen to carry (`BiomeDef.relief.near`).
 				e += detail[i] * near_amp[i]
 				var t := terrace[i]
+				# SLOTS: how firmly a slot labyrinth holds this tile. A
+				# neighbour's terraces are kept off it: their two-level risers
+				# would stair its floors into pieces no body can walk between.
+				var hold := 0.0
+				if slotted and slot_share[i] > 0.01:
+					hold = smoothstep(0.04, 0.16, slot_share[i])
+					t *= 1.0 - hold
 				if t > 0.01:
 					# Plateaus in steps of two levels with short steep risers: scarps.
 					# A fixed step climbs tall land as a stair of equal treads, so
@@ -139,6 +155,13 @@ static func run(c: GenContext) -> void:
 				if islet[i] != 0 and cliffn[i] < 0.25:
 					# Most islets are low skerries; the rest stand as stacks.
 					e = 1.0 + minf(1.6, d_in * 0.35)
+				elif hold > 0.0:
+					# The plateau over the slots, at the declared height wherever
+					# the landscape holds the ground (not its blend-weighted share
+					# of it, so its core walls stand full height), faded across
+					# its border in a few tiles; laid after the shore so the shore
+					# cannot flatten it, and let down in the last tiles to the sea.
+					e += slots[i] / slot_share[i] * hold * slot_up[i] * smoothstep(1.5, 6.0, d_in)
 				elev[i] = clampf(e, 1.0, MAX_LEVEL + 0.99)
 	)
 	c.elev = elev
@@ -158,6 +181,19 @@ static func _caldera_soft(c: GenContext) -> PackedFloat32Array:
 	var empty := PackedFloat32Array()
 	empty.resize(c.cw * c.cw)
 	return empty
+
+
+## Where a slot labyrinth may stand: every type that asks for one.
+static func _slotted_soft(c: GenContext) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(c.cw * c.cw)
+	for cc: int in c.land_types:
+		if c.defs[cc].param(&"slots") <= 0.0:
+			continue
+		var s := c.soft[cc]
+		for k in out.size():
+			out[k] += s[k]
+	return out
 
 
 ## Where dunes may ridge up behind the bays: every type that makes them.
