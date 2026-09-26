@@ -122,6 +122,8 @@ static func make() -> BiomeDef:
 		&"dog.feral": {"weight": 0.7},
 	}
 	d.landmarks = [&"evaporator", &"blinking_stack", &"firewatch", &"clerks_office"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
 	d.sound_bed = &"bed_moss"
 	d.surface = _surface
 	d.scatter = _scatter

@@ -81,6 +81,16 @@ func thing(t: Dictionary) -> void:
 		&"coil": _coil(at, f)
 		&"herbs": _herbs(at, f)
 		&"chair": _chair(at, f)
+		&"pelts": _pelts(at, f)
+		&"snares": _snares(at, f)
+		&"resin_pots": _resin_pots(at, f)
+		&"tallow": _tallow(at, f)
+		&"charcoal_sacks": _charcoal_sacks(at, f)
+		&"wire_coils": _wire_coils(at, f)
+		&"insulators": _insulators(at, f)
+		&"snowshoes": _snowshoes(at, f)
+		&"core_samples": _core_samples(at, f)
+		&"mason_rack": _mason_rack(at, f)
 
 
 # --- the frame -----------------------------------------------------------------
@@ -361,3 +371,138 @@ func _chair(at: Vector2, f: Vector2) -> void:
 			_block(at, f, u, v, 0.0, 0.05, 0.05, 0.42, dark_wood, sd + int(u * 10.0 + v * 100.0))
 	_block(at, back, 0.0, 0.2, 0.47, 0.46, 0.05, 0.5, dark_wood, sd + 7)
 	_block(at, f, 0.0, 0.02, 0.47, 0.4, 0.36, 0.05, wool[2], sd + 8, Color(0, 0, 0, 0), 0.02)
+
+
+# --- the pieces other landscapes' households keep (BiomeDef.home) ----------------
+
+## Hides pinned flat to the wall to dry, stretched on their pegs, the fur side in.
+func _pelts(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.02
+	var furs: Array[Color] = [GroundColors.made(Color(0.42, 0.36, 0.3), GroundColors.HIDE), GroundColors.made(Color(0.56, 0.52, 0.46), GroundColors.HIDE), GroundColors.made(Color(0.3, 0.25, 0.22), GroundColors.HIDE)]
+	for i in 3:
+		var u := -0.5 + 0.5 * float(i)
+		var h := 1.1 + 0.12 * float(i % 2)
+		var a := _p(at, f, u - 0.2, -back, h)
+		var b := _p(at, f, u - 0.16, -back, h + 0.62)
+		var c := _p(at, f, u + 0.18, -back, h + 0.6)
+		var d := _p(at, f, u + 0.2, -back, h + 0.04)
+		k.made.quad(a, b, c, d, furs[i])
+		k.made.quad(d, c, b, a, furs[i])
+
+
+## Snares: wire loops hung on pegs in a row, each with its running noose.
+func _snares(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.03
+	var wire := GroundColors.made(Color(0.5, 0.5, 0.52), GroundColors.ENAMEL)
+	k.made.box(_p(at, f, -0.6, -back - 0.02, 1.52), _p(at, f, 0.6, -back + 0.02, 1.56), dark_wood)
+	for i in 5:
+		var u := -0.48 + 0.24 * float(i)
+		k.hoop(_p(at, f, u, -back + 0.04, 1.38), 0.09 + 0.02 * float(i % 2), 10, 0.006, wire, Vector3(f.x, 0.0, f.y))
+
+
+## The resin crop: clay pots in a row on a plank, each skinned amber at the top.
+func _resin_pots(at: Vector2, f: Vector2) -> void:
+	var amber := GroundColors.made(Color(0.92, 0.56, 0.1), GroundColors.GLASS)
+	# Within its unit of wall: a neighbour stands on the next.
+	k.made.box(_p(at, f, -0.44, -0.2, 0.0), _p(at, f, 0.44, 0.2, 0.08), dark_wood)
+	for i in 3:
+		var c := _p(at, f, -0.28 + 0.28 * float(i), 0.0, 0.08)
+		k.made.prism(c.x, c.y, c.z, 0.11, c.y + 0.3, 0.13, 12, clay, clay)
+		k.made.prism(c.x, c.y + 0.28, c.z, 0.12, c.y + 0.35, 0.09, 12, amber, amber)
+	# The spiles the trees are tapped with, a bundle leant at the end.
+	for j in 5:
+		var b := _p(at, f, 0.4, -0.12 + 0.05 * float(j), 0.08)
+		k.made.strut(b, b + Vector3.UP * 0.5 + Vector3(f.x, 0.0, f.y) * -0.06, 0.012, 4, wood)
+
+
+## Tallow candles dipped and hung to harden from a stick across two pegs.
+func _tallow(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.05
+	var wax := GroundColors.made(Color(0.86, 0.82, 0.7), GroundColors.CLAY)
+	k.made.strut(_p(at, f, -0.5, -back + 0.08, 1.8), _p(at, f, 0.5, -back + 0.08, 1.8), 0.015, 5, dark_wood)
+	for i in 8:
+		var u := -0.42 + 0.12 * float(i)
+		k.made.strut(_p(at, f, u, -back + 0.08, 1.8), _p(at, f, u, -back + 0.08, 1.62 - 0.03 * float(i % 3)), 0.014, 5, wax)
+
+
+## Sacks of charcoal slumped against the wall, black spilling from one.
+func _charcoal_sacks(at: Vector2, f: Vector2) -> void:
+	var sack := GroundColors.made(Color(0.36, 0.3, 0.24), GroundColors.CLOTH)
+	var coal := GroundColors.made(Color(0.06, 0.06, 0.06), GroundColors.TAR)
+	for i in 2:
+		var c := _p(at, f, -0.2 + 0.4 * float(i), -0.02, 0.0)
+		k.clump(c.x, c.y, c.z, 0.2, 0.5 - 0.08 * float(i), 11 + i, sack, 6)
+	for i in 5:
+		var c := _p(at, f, 0.1 + 0.08 * float(i), 0.22 + 0.04 * float(i % 2), 0.0)
+		k.stone(c.x, c.y, c.z, 0.05, 0.04, 30 + i, coal, 5)
+
+
+## Wire stripped off the pylons, coiled and hung on pegs: what the line carried.
+func _wire_coils(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.06
+	var copper := GroundColors.made(Color(0.62, 0.36, 0.2), GroundColors.ENAMEL)
+	var bright := GroundColors.made(Color(0.76, 0.5, 0.3), GroundColors.ENAMEL)
+	for i in 3:
+		var c := _p(at, f, -0.42 + 0.42 * float(i), -back + 0.06, 1.3 + 0.1 * float(i % 2))
+		for r in 6:
+			_ring(c + Vector3.DOWN * 0.008 * float(r) + Vector3(f.x, 0.0, f.y) * 0.012 * float(r), 0.17 - 0.008 * float(r), 16, 0.016, copper if r % 2 == 0 else bright, f)
+		k.found.strut(c + Vector3.UP * 0.17, c + Vector3.UP * 0.22 + Vector3(f.x, 0.0, f.y) * -0.05, 0.014, 4, P.PLATE[0])
+
+
+## Glass insulators off the line, kept on a shelf, the only glass in the house.
+func _insulators(at: Vector2, f: Vector2) -> void:
+	var glass := GroundColors.made(Color(0.52, 0.68, 0.62), GroundColors.GLASS)
+	k.made.box(_p(at, f, -0.5, -0.15, 1.05), _p(at, f, 0.5, 0.15, 1.09), dark_wood)
+	for i in 5:
+		var c := _p(at, f, -0.4 + 0.2 * float(i), 0.0, 1.09)
+		k.made.prism(c.x, c.y, c.z, 0.07, c.y + 0.1, 0.035, 10, glass, glass)
+		k.made.prism(c.x, c.y + 0.1, c.z, 0.04, c.y + 0.14, 0.03, 8, glass, glass)
+
+
+## Snowshoes: two bent frames laced across, hung by the door on a peg.
+func _snowshoes(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.04
+	for i in 2:
+		var c := _p(at, f, -0.16 + 0.32 * float(i), -back + 0.05, 1.2)
+		_ring(c, 0.18, 12, 0.018, dark_wood, f)
+		for r in 3:
+			var h := -0.1 + 0.1 * float(r)
+			k.made.strut(c + Vector3(0, h, 0) + _side(f) * -0.15, c + Vector3(0, h, 0) + _side(f) * 0.15, 0.006, 3, leather)
+
+
+## Cores from the machines' drill grids, pulled out of the clints: limestone
+## cylinders racked on pegs like bottles, one split to show its bands.
+func _core_samples(at: Vector2, f: Vector2) -> void:
+	var lime := GroundColors.made(Color(0.78, 0.76, 0.7), GroundColors.CUTSTONE)
+	var band := GroundColors.made(Color(0.6, 0.58, 0.54), GroundColors.CUTSTONE)
+	for r in 3:
+		var h := 0.5 + 0.4 * float(r)
+		k.found.box(_p(at, f, -0.55, -0.22, h - 0.03), _p(at, f, 0.55, 0.12, h), P.PLATE[0])
+		for i in 5:
+			var u := -0.44 + 0.22 * float(i)
+			k.made.strut(_p(at, f, u, -0.2, h + 0.05), _p(at, f, u, 0.1, h + 0.05), 0.045, 8, band if (i + r) % 3 == 0 else lime)
+
+
+## The mason's tools on their board, and at its foot a squared stone, half cut.
+func _mason_rack(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.03
+	var iron := GroundColors.made(Color(0.3, 0.3, 0.32), GroundColors.ENAMEL)
+	k.made.box(_p(at, f, -0.45, -back - 0.02, 1.0), _p(at, f, 0.45, -back + 0.02, 1.5), dark_wood)
+	for i in 5:
+		var u := -0.34 + 0.17 * float(i)
+		k.made.strut(_p(at, f, u, -back + 0.04, 1.42), _p(at, f, u, -back + 0.04, 1.14), 0.012, 4, iron)
+	var st := _p(at, f, 0.0, 0.05, 0.0)
+	k.slab(st.x, st.y, st.z, 0.44, 0.34, 0.36, 77, GroundColors.made(Color(0.8, 0.78, 0.72), GroundColors.CUTSTONE), Color(0, 0, 0, 0), 0.01)
+
+
+func _side(f: Vector2) -> Vector3:
+	return Vector3(-f.y, 0.0, f.x)
+
+
+## A ring of made things (bent wood, rope) standing in the wall's plane.
+func _ring(c: Vector3, r: float, n: int, thick: float, col: Color, f: Vector2) -> void:
+	var s := _side(f)
+	for i in n:
+		var a0 := TAU * float(i) / float(n)
+		var a1 := TAU * float(i + 1) / float(n)
+		k.made.strut(c + (s * cos(a0) + Vector3.UP * sin(a0)) * r, c + (s * cos(a1) + Vector3.UP * sin(a1)) * r, thick, 4, col)

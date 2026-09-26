@@ -31,6 +31,9 @@ var dark := 0.0
 ## (a machines' data hall). Hearing inside is cut by it, as `dark` cuts sight
 ## (32_disposition, through 21_doors `room_hush`). 0 changes nothing.
 var hush := 0.0
+## Its recipe lays it for the landscape it stands in: `lay(rng, land)` rather
+## than `lay(rng)` (a home, whose household is the landscape's).
+var by_land := false
 ## THE HOURS IT WORKS, [from, to) on the clock, wrapping past midnight, or
 ## (-1, -1) for a room that never stops. Outside them is the curfew: its `hush`
 ## goes quiet, the glare of the things that run on the shift (`shift`) goes out,

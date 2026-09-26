@@ -103,7 +103,7 @@ static func make() -> BiomeDef:
 	d.landmarks = [&"blinking_stack", &"evaporator", &"clerks_office"]
 	# Under its works depot, the foundry the refinery feeds: where the machines
 	# make what they fight with (src/content/interiors/foundry.gd).
-	d.interiors = {&"works:depot": &"foundry"}
+	d.interiors = {&"works:depot": &"foundry", &"house": &"home"}
 	d.sound_bed = &"bed_burning"
 	d.surface = _surface
 	d.scatter = _scatter

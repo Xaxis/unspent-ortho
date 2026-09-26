@@ -133,6 +133,8 @@ static func make() -> BiomeDef:
 		&"skater": {"weight": 0.8, "hours": Vector2(9, 19), "grounds": ["rock", "salt"]},
 	}
 	d.landmarks = [&"cast_stones", &"evaporator", &"blinking_stack", &"poured_pillar"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
 	# Its keeper: the anvil, the mast the strike fields are called through
 	# (src/core/sentinel/designs/anvil.gd, docs/LANDSCAPES.md).
 	d.sentinel = &"anvil"

@@ -25,6 +25,7 @@ const RECIPES := {
 	&"laid_table": "res://src/content/interiors/laid_table.gd",
 	&"saw_hall": "res://src/content/interiors/saw_hall.gd",
 	&"frozen_hold": "res://src/content/interiors/frozen_hold.gd",
+	&"home": "res://src/content/interiors/home.gd",
 }
 
 static var _kinds: Dictionary = {}

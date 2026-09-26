@@ -113,6 +113,8 @@ static func make() -> BiomeDef:
 		&"sorter": {"weight": 1.2},
 	}
 	d.landmarks = [&"grown_hulk", &"blinking_stack", &"clerks_office", &"poured_pillar"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
 	d.sound_bed = &"bed_wreck"
 	d.surface = _surface
 	d.scatter = _scatter

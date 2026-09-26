@@ -110,7 +110,15 @@ static func make() -> BiomeDef:
 	# Under the works' yard, the saw hall: where the machines TAKE the wood, on a
 	# shift, and dock their haulers asleep at the curfew
 	# (src/content/interiors/saw_hall.gd).
-	d.interiors = {&"works:depot": &"saw_hall"}
+	d.interiors = {&"works:depot": &"saw_hall", &"house": &"home"}
+	# Who kept them: the tapper, who bleeds the pines the machines have not
+	# squared yet, the collier who burns what they leave, and the trapper.
+	d.home = {"households": {
+		&"tapper": {"wants": [&"resin_pots", &"tallow", &"basket", &"shelf"], "by_hearth": []},
+		&"collier": {"wants": [&"charcoal_sacks", &"charcoal_sacks", &"workbench", &"creel"], "by_hearth": []},
+		&"trapper": {"wants": [&"pelts", &"snares", &"creel", &"tallow"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+	}}
 	d.sound_bed = &"bed_pines"
 	d.surface = _surface
 	d.scatter = _scatter

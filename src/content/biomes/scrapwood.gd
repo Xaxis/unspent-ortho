@@ -168,6 +168,8 @@ static func make() -> BiomeDef:
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"firewatch", &"grown_hulk", &"clerks_office", &"blinking_stack"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
 	d.sound_bed = &"bed_pines"
 	d.music_motif = &"pinewood"
 	d.surface = _surface

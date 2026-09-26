@@ -67,21 +67,27 @@ func test_a_pocket_keeps_its_own_word() -> void:
 
 
 ## A landscape that declares nothing to walk into has no doors, whatever stands in
-## it: every door found on the island belongs to a landscape that declared its host.
+## it: every door found on the island belongs to a landscape that declared its
+## host, and a landmark whose landscape does not declare it opens on nothing --
+## asked of the landmarks standing where they are not declared, which the
+## island has (a mast in the moss is not a trawler).
 func test_a_landscape_that_declares_nothing_has_no_doors() -> void:
+	var doors: Array[Threshold] = []
 	for t: Threshold in Interiors.thresholds(_world()):
 		var d := BiomeRegistry.by_index(t.land)
 		check(not d.interiors.is_empty(), "%s: a door in %s, which declares no interiors" % [t.key, d.id])
-	var houses := {}
-	for p: WorldProp in _world().each_prop():
-		if p.kind == PropKind.HOUSE:
-			var d := BiomeRegistry.by_index(_world().country_at(floori(p.pos.x), floori(p.pos.y)))
-			houses[d.id] = not d.interiors.is_empty()
-	var closed := 0
-	for id: Variant in houses:
-		if not houses[id]:
-			closed += 1
-	gt(float(closed), 0.0, "and the island has houses in landscapes with no doors, which this asked of (%s)" % str(houses))
+		doors.append(t)
+	var undeclared := 0
+	for site: LandmarkSite in Landmarks.sites(_world()):
+		var d := BiomeRegistry.by_index(_world().country_at(floori(site.pos.x), floori(site.pos.y)))
+		if d == null or d.interiors.has(StringName("landmark:%s" % site.kind)):
+			continue
+		undeclared += 1
+		var near := false
+		for t: Threshold in doors:
+			near = near or (t.host_code == Threshold.LANDMARK and t.host.distance_to(site.pos) < 4.0)
+		check(not near, "a %s in %s, which does not declare it, has a door" % [site.kind, d.id])
+	gt(float(undeclared), 0.0, "and the island has landmarks where they are not declared, which this asked of")
 
 
 ## Every plan and every household is dealt somewhere on one coast, so walking
