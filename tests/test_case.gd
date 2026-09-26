@@ -272,9 +272,11 @@ static func _bone_work() -> void:
 
 
 ## Assert a cost in yardsticks: `us` (shipped) under `bar` x `yard`, and
-## `doubled_us` (the same work twice) over it. Over the bar on a machine too busy
-## to measure is said and not judged, as `cost_lt` does; a doubling that the bar
-## misses is a failure, because that is the bar being wrong, not the box.
+## `doubled_us` (the same work twice) over it. **THE SHIPPED READING IS JUDGED ON
+## ANY MACHINE.** It is timed in turn with its ruler, so load lands on both, and
+## a bar skipped "because the box was busy" is how a real regression ships on a
+## busy gate. A doubling that the bar misses is a failure too, because that is
+## the bar being wrong, not the box (tests/core/test_yard_bar.gd).
 ##
 ## **UNLESS THE DOUBLING WAS NOT SEEN AT ALL.** Twice the work reads about twice
 ## the time on any machine; read at under DOUBLED_SEEN times the shipped, the
@@ -288,10 +290,7 @@ func yard_lt(us: float, doubled_us: float, yard: float, bar: float, what: String
 	var r := us / maxf(yard, 0.001)
 	var r2 := doubled_us / maxf(yard, 0.001)
 	print("  %s: %.2f yardsticks shipped, %.2f doubled, bar %.2f (%.0f us, yardstick %.1f us)" % [what, r, r2, bar, us, yard])
-	if r < bar or can_measure_cost():
-		lt(r, bar, "%s, in yardsticks" % what)
-	else:
-		unmeasured(what, r, bar)
+	lt(r, bar, "%s, in yardsticks" % what)
 	if r2 > bar or r2 >= r * DOUBLED_SEEN:
 		gt(r2, bar, "%s: the bar sees the work doubled" % what)
 	else:
