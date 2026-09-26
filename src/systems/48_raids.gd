@@ -745,9 +745,12 @@ func _party_for(s: Settlement, stage: StringName) -> Array:
 		return moment == null or Spawner.moment_fits(row, moment)
 	var want := RaidStage.party_size(stage)
 	var roles: Array = RaidRoles.roles_for(stage)
+	# Raided by its own land's machines (RaidRoles.of_land).
+	var here := BiomeRegistry.at(game.world, s.centre)
+	var land: StringName = here.id if here != null else &""
 	for i in mini(want, roles.size()):
 		var role: StringName = roles[i]
-		var kind := RaidRoles.kind_for(role, fits)
+		var kind := RaidRoles.kind_for(role, fits, land)
 		if kind == &"":
 			continue
 		out.append({"role": role, "kind": kind, "target": RaidRoles.target_for(role, s), "mob": -1})

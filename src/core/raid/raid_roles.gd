@@ -51,10 +51,14 @@ static func roles_for(stage: StringName) -> Array:
 ## than from a list of names, so a landscape that brings its own roster is raided
 ## by its own machines with no edit in this file.
 ##
-## `fits` is asked of every candidate first (the world and the hour), and only if
-## nothing in the whole roster fits does a trade fall back to the best body for
-## the job wherever it stands: a party the plan decided to send is sent.
-static func kind_for(role: StringName, fits: Callable = Callable()) -> StringName:
+## `land`, the holding's landscape: only what that land fields is drawn on
+## (`of_land`), and a trade nobody there can take is not sent (&""). With no
+## land given, the whole roster.
+##
+## `fits` is asked of every candidate first (the hour, the weather), and only if
+## nothing fits does a trade fall back to the best of the land's bodies for it
+## whatever the hour: a party the plan decided to send is sent.
+static func kind_for(role: StringName, fits: Callable = Callable(), land: StringName = &"") -> StringName:
 	var best: StringName = &""
 	var best_score := -INF
 	var loose: StringName = &""
@@ -62,6 +66,8 @@ static func kind_for(role: StringName, fits: Callable = Callable()) -> StringNam
 	for kind: StringName in Roster.kinds():
 		var row := Roster.row(kind)
 		if not row.get("machine", false) or row.get("sentinel", &"") != &"":
+			continue
+		if land != &"" and not of_land(kind, row, land):
 			continue
 		var score := score_for(role, row)
 		if score <= -INF:
@@ -75,6 +81,17 @@ static func kind_for(role: StringName, fits: Callable = Callable()) -> StringNam
 			best_score = score
 			best = kind
 	return best if best != &"" else loose
+
+
+## Whether `land` fields this kind: its row names the land among its countries,
+## or has none (it goes everywhere), or the land took it onto its own roster
+## (BiomeDef.roster) -- the same two doors Spawner.place_fits keeps.
+static func of_land(kind: StringName, row: Dictionary, land: StringName) -> bool:
+	var countries: Array = (row.get("where", {}) as Dictionary).get("countries", [])
+	if countries.is_empty() or countries.has(String(land)):
+		return true
+	var d := BiomeRegistry.get_def(land)
+	return d != null and d.roster.has(kind)
 
 
 ## How well a body suits a trade. A breacher is whatever hits hardest; a
