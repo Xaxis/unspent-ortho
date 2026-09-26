@@ -21,6 +21,11 @@ var variant := -1
 ## works it out again.
 var shown := 1.0
 
+## How many WorldProps are alive: the number the streaming design drives toward
+## the working set near the camera (tests/stream/test_prop_table.gd). Counted, not
+## exact across threads, which is all a trend needs.
+static var live := 0
+
 
 ## WHICH MODEL A PROP IS DRAWN AS COMES FROM WHAT IT IS AND WHERE IT STANDS, NOT
 ## FROM ITS ID. An id is its place in the order world gen laid things, so any
@@ -43,3 +48,9 @@ func _init(p_id: int, p_kind: int, p_pos: Vector2, p_rot: float, p_scale: float)
 	rot = p_rot
 	scale = p_scale
 	solid = PropKind.SOLID[kind] * scale
+	live += 1
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		live -= 1

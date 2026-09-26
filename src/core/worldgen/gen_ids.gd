@@ -39,6 +39,7 @@ static func run(w: WorldData) -> void:
 		w.props[i].id = new_id[i]
 	w.props = out
 	w.section_start = start
+	w.table = PropTable.of(out)
 	var remap := func(old: int) -> int: return new_id[old] if old >= 0 and old < new_id.size() else old
 	for line: Dictionary in w.lines:
 		if line.has("props"):

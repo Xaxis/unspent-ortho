@@ -165,6 +165,9 @@ var sectioned := false
 const ORDINAL_BITS := 20
 const BUILT_BIT := 1 << 30
 var section_start := PackedInt32Array()
+## The props as packed columns, row for row with `props` (`PropTable`). Beside
+## the objects for now; the truth once readers go through the facade below.
+var table := PropTable.new()
 
 
 func _init(p_seed: int, p_size: int) -> void:
@@ -268,7 +271,61 @@ func to_3d(p: Vector2) -> Vector3:
 ## reader asking by section sees it. Its id comes from `next_id()`.
 func add_prop(p: WorldProp) -> void:
 	props.append(p)
+	table.append(p)
 	WorldSections.file(self, p)
+
+
+# --- the props facade -------------------------------------------------------
+# What a reader asks instead of walking `props`: every prop by row, and the
+# three things play changes on one. A streamed world answers these from its
+# loaded sections' tables.
+
+## How many props there are.
+func prop_count() -> int:
+	return props.size()
+
+
+## The prop at row `i`.
+func prop_at(i: int) -> WorldProp:
+	return props[i]
+
+
+## Every prop, in row order: section by section, then the ones set down later.
+func each_prop() -> Array[WorldProp]:
+	return props
+
+
+## How much of `p` is left (Harvest.shown), kept on its row too.
+func set_shown(p: WorldProp, v: float) -> void:
+	p.shown = v
+	var at := _row_of(p)
+	if at < 0:
+		return
+	if v < 1.0:
+		table.shown[at] = v
+	else:
+		table.shown.erase(at)
+
+
+func set_scale(p: WorldProp, v: float) -> void:
+	p.scale = v
+	var at := _row_of(p)
+	if at >= 0:
+		table.scale[at] = v
+
+
+func set_solid(p: WorldProp, v: float) -> void:
+	p.solid = v
+	var at := _row_of(p)
+	if at >= 0:
+		table.solid[at] = v
+
+
+## The table row of `p`, or -1 for a prop the world does not hold (a
+## settlement's ghost of a planned building).
+func _row_of(p: WorldProp) -> int:
+	var at := position_of(p.id)
+	return at if at >= 0 and at < table.size() and at < props.size() and props[at] == p else -1
 
 
 ## The id the next prop set down takes.

@@ -113,6 +113,7 @@ func _one(s: int, size: int, section: int) -> void:
 		verts += r.size()
 	var rows := w.villages.size() + w.landmarks.size() + w.regions.size() + w.lines.size()
 	var plan := coarse + half + verts * 12 + rows * 96
+	_hot(w)
 	print("stream plan coarse %d² %.1f MB, half-res %.1f MB, polylines %d verts %.1f MB, rows %d %.2f MB: %.1f MB" % [
 		cw, coarse / 1048576.0, half / 1048576.0, verts, verts * 12 / 1048576.0, rows, rows * 96 / 1048576.0, plan / 1048576.0])
 
@@ -139,3 +140,31 @@ func _margin() -> void:
 		for k: Variant in d.tongues:
 			tongue = maxf(tongue, (d.tongues[k] as Vector2).x)
 	print("stream margin ecotone out %.1f in %.1f tongue %.1f tidy patch %d tiles" % [out_reach, in_reach, tongue, GenTidy.MIN_PATCH])
+
+
+## THE HOT PATHS PROPS ARE READ ON, timed, so moving props into packed columns
+## can be held to "no slower" (the design's S7: over ~10% and a loop reads the
+## columns directly). Collision-style asks round points near props, a far-view
+## walk over every prop, and id lookups.
+func _hot(w: WorldData) -> void:
+	var q := WorldQuery.new(w)
+	var n := w.prop_count()
+	var t0 := Time.get_ticks_usec()
+	var acc := 0.0
+	for k in 50000:
+		var p := w.prop_at(int(Rng.hash01(w.seed_value, k, 1, 0x40) * n))
+		for o in q.props_near(p.pos + Vector2(0.7, -0.4), 1.5):
+			acc += o.solid + o.pos.x + float(o.id & 1)
+	var near_ms := (Time.get_ticks_usec() - t0) / 1000.0
+	t0 = Time.get_ticks_usec()
+	for i in n:
+		var o := w.prop_at(i)
+		acc += o.pos.x + o.kind + o.variant + o.scale + o.rot + float(o.id & 1)
+	var walk_ms := (Time.get_ticks_usec() - t0) / 1000.0
+	t0 = Time.get_ticks_usec()
+	for k in 200000:
+		var o := w.prop(w.prop_at(int(Rng.hash01(w.seed_value, k, 2, 0x40) * n)).id)
+		acc += o.pos.y
+	var id_ms := (Time.get_ticks_usec() - t0) / 1000.0
+	print("stream hot near %.0f ms (50k asks) walk %.0f ms (%d props) ids %.0f ms (200k) [%d]" % [near_ms, walk_ms, n, id_ms, int(acc) & 1])
+
