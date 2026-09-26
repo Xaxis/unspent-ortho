@@ -28,6 +28,10 @@ const GLINT := 33
 ## every strip and beacon on the coast. A hearth and a window keep burning, which
 ## is why this cannot be a lamp code (world.gdshader lights 17..32 steadily).
 const NEON := 34
+## A tube on its last power: a board the plan stopped feeding. Lit only after
+## dark, weak, and stuttering out of step with everything else; it throws no
+## pool (PropModels.neon_point reads NEON alone).
+const FAILING := 35
 const TURF := 40
 const HEATH := 41
 const SAND := 42
@@ -101,7 +105,7 @@ const STRATA := 128
 ## of it with room in each; a shader asks `mark_ground` / `mark_strata` /
 ## `mark_land` (matter.gdshaderinc) and never spells a range, so a new material
 ## takes the next number in its run and touches nothing else.
-##    1..34   light: glow, lamp, glint, stolen neon
+##    1..35   light: glow, lamp, glint, stolen neon, a failing tube
 ##   40..58   grounds, the first run (the shared table's)
 ##   80..95   what a person MADE
 ##   96..127  grounds, the second run (a landscape's own: VITRIFIED, TIDEFLAT...)
@@ -145,6 +149,18 @@ const STRATA_DECK := 17
 ## A deck edge the forest has: concrete under a curtain of hanging roots and
 ## vine, ferns out of its cracks, moss on the lip (the green towers).
 const STRATA_ROOTED := 18
+## A machine-cast retaining wall: formwork panels, tie holes in exact rows, a
+## violet strip along the lip, and no weather on it at all (the server fields).
+const STRATA_CAST := 19
+## A machine city wall: machined plate, an exact vent row, a cold lit seam
+## under the lip, and nothing on it at all (148).
+const STRATA_MACHINE := 20
+## The mesas' walls: sandstone in bands, cross-bedded, under a hard pale caprock,
+## streaked dark with desert varnish from the lip (149).
+const STRATA_MESA := 21
+## The edge of a floe standing out of the sea: ice in blue and white layers,
+## melt hung off the lip in clusters, deep blue at the waterline (150).
+const STRATA_FLOE := 22
 ## THE CITY'S FLOOR, a GROUND drawn with the grounds although its number sits
 ## past the strata (the ground numbers ran out at 60): poured slabs in bays,
 ## their joints grown through, faded lane paint, spidered cracks and drifts of
@@ -153,6 +169,30 @@ const CITY_FLOOR := 98
 ## The same city floor with the forest taking it back: moss out of every joint
 ## and spreading, roots across it, leaf litter (the green towers).
 const OVERGROWN := 99
+## The machines' own cast floor (the server fields): exact, swept, laid in long
+## runs with a cable tray between them and a violet status strip in each tray.
+const CAST_FLOOR := 100
+## The machine city's deck: plate laid in an exact running bond, fastened in
+## exact rows, with lit guide lines for the traffic it was built for (101).
+const MACHINE_DECK := 101
+## The sulphur jungle's crust round its vents: sinter terraces laid by the hot
+## water, lobed rims stepping down, sulphur crystals, iron-orange runs (102).
+const SULPHUR := 102
+## The mesas' floor: desert pavement, small stones packed tight and varnished
+## dark by the sun over red sand, with the wind's ripples in the lee (103).
+const DESERT_PAVEMENT := 103
+## The frost sea's ice: floes frozen together with their rafted edges standing,
+## thin black ice between where the sea shows through, snow dust in streaks (104).
+const SEA_ICE := 104
+## The pinewood's needle floor: NEEDLES by day in every respect, and by night
+## the only light under the canopy, foxfire in the rotting litter (105).
+const PINE_FLOOR := 105
+## The scrapwood's floor: SWARF by day in every respect, and by night the field
+## still in the dead iron shows along its combed arcs, faint and cold (106).
+const SCRAP_FLOOR := 106
+## The moss's fen: FEN by day in every respect, and by night the gas off its
+## black pools burns in faint cold flames on the water (107).
+const BOG_FLOOR := 107
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array
@@ -376,6 +416,11 @@ static func glint(col: Color) -> Color:
 ## A tube of stolen machine light, wired into a wall by somebody.
 static func neon(col: Color) -> Color:
 	return marked(col, NEON)
+
+
+## A tube of the plan's light that the plan has stopped feeding.
+static func failing(col: Color) -> Color:
+	return marked(col, FAILING)
 
 
 ## Ground a turf of one landscape becomes when drawn as landscape index `to`, so

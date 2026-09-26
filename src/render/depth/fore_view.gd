@@ -229,7 +229,8 @@ func _place(i: int, p: WorldProp, focus: Vector2) -> void:
 	var hang := ForeKinds.hang(p, world.seed_value, _country(p))
 	var node := _slot(i)
 	var tint := _tint(p)
-	node.mesh = ForeKinds.template(int(hang.shape), int(hang.variant), tint)
+	node.mesh = ForeKinds.template(int(hang.shape), int(hang.variant), tint,
+		BiomeDressing.of(_country(p)).signage == &"dying")
 	var base: Vector3 = world.to_3d(p.pos)
 	var span := float(hang.span)
 	# WHICH WAY IT REACHES. Biased toward the far side of the frame, because a

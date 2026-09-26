@@ -137,6 +137,8 @@ static func make() -> BiomeDef:
 		[Weather.DUST, 16, 0.5], [Weather.FOG, 10, 0.0],
 	]
 	d.mist = 0.22
+	# Concrete dust off the demolition: grey, cold and fine.
+	d.weather_style = {&"dust": {"air": Color(0.64, 0.63, 0.60), "thick": 1.1}}
 	# What a dead city does to a body: the dark of it, the drop off a deck that
 	# is not there any more, and the dust off crushed concrete on the skin — a
 	# plain 0.25, felt and never biting on its own, because `_weather_shift`

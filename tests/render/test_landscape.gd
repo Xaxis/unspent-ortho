@@ -4,6 +4,7 @@ extends TestCase
 ## across it.
 
 const Terrain := preload("res://tests/render/test_terrain.gd")
+const FarModels := preload("res://src/models/far_models.gd")
 
 
 ## The terrain fixture with a few props and a strung pair of poles on it.
@@ -128,3 +129,54 @@ func test_drifts_are_soft_mounds_not_shards() -> void:
 		lo = lo.min(Vector2(v.x, v.z))
 		hi = hi.max(Vector2(v.x, v.z))
 	gt((hi - lo).length(), top * 5.0, "long and low")
+
+
+## THE STOREY CHANNEL. Ivy hangs off a raised building's real ledges only if the
+## bake tells the shader where they are (matter_grown, CUSTOM1): the template
+## holds each vertex's height in storeys, the bake writes it for that building
+## and 0 for everything else, and the surface is built with the format for it.
+func test_a_building_raised_in_storeys_carries_its_floor_lines_to_the_shader() -> void:
+	var towers := BiomeRegistry.index_of(&"green_towers")
+	var t := PropModels.template(PropKind.HOUSE, 0, towers)
+	eq(t.made_storey.size(), t.made_v.size(), "a raised form has a storey for every made vertex")
+	var top := 0
+	for i in t.made_v.size():
+		if t.made_v[i].y > t.made_v[top].y:
+			top = i
+	near(t.made_storey[top], 1.0 + t.made_v[top].y / PropModels.Houses.Towers.STOREY, 1e-4, "its roof stands its own height in storeys up")
+	eq(PropModels.template(PropKind.HOUSE, 0, Country.COAST).made_storey.size(), 0, "a cottage has no floor lines")
+	var far := FarModels.template(PropKind.HOUSE, 0, towers, FarModels.MID)
+	eq(far.made_storey.size(), far.made_v.size(), "the mid model keeps the channel")
+	# Baked: the house in the green towers, a pine and a boulder on the coast.
+	var w := Terrain.fixture()
+	for y in range(40, 50):
+		for x in range(30, 40):
+			w.country[y * 64 + x] = towers
+	var kinds: Array[int] = [PropKind.PINE, PropKind.BOULDER, PropKind.HOUSE]
+	var at: Array[Vector2] = [Vector2(20.5, 30.5), Vector2(22.5, 31.5), Vector2(34.5, 44.5)]
+	for i in kinds.size():
+		w.add_prop(WorldProp.new(i, kinds[i], at[i], 0.3, 1.0))
+	var view := WorldView.new()
+	view.setup(w)
+	var baked := view.bake_props(view.chunk_at(Vector2(34, 44)), TerrainMesher.new(w), w.each_prop(), [])
+	var made: Array = baked[0]
+	var verts := made[Mesh.ARRAY_VERTEX] as PackedVector3Array
+	var st: Variant = made[Mesh.ARRAY_CUSTOM1]
+	check(st != null, "the bake writes the storey channel")
+	if st != null:
+		var ch := st as PackedFloat32Array
+		eq(ch.size(), verts.size(), "one storey value per made vertex")
+		var raised := 0
+		var plain := 0
+		for v in ch:
+			if v == 0.0:
+				plain += 1
+			else:
+				raised += 1
+		gt(float(raised), 0.0, "the tower's vertices carry storeys")
+		gt(float(plain), 0.0, "the pine and the boulder carry none")
+		eq(raised, PropModels.template(PropKind.HOUSE, PropModels.variant_of(w.prop_at(2), w.seed_value, towers), towers).made_v.size(), "every tower vertex and nothing else carries one")
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, made, [], {}, WorldView.prop_flags(made))
+	check(mesh.surface_get_format(0) & Mesh.ARRAY_FORMAT_CUSTOM1 != 0, "the surface is built with it")
+	view.free()

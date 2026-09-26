@@ -29,6 +29,7 @@
 //              is gone; works_mark and survey_mark still read it to tell one
 //              landscape's ground from another's.   UV.y  weight of that edge
 //   UV2.x      wind sway weight (0 = rigid)
+//   CUSTOM1.x  on a building raised in storeys, 1 + its height in storeys (0 = none)
 //   UV2.y      sway phase when swaying; on rigid geometry, how much the wash
 //              breaks into large organic light/dark patches (0..1). Terrain
 //              writes 2 + the second wash's mark code (patches at full).
@@ -111,6 +112,9 @@ uniform float relief = 1.0;
 // tile and every animal draws with.
 uniform vec3 flash_at = vec3(0.0);
 uniform float flash_r = 0.0;
+// Whether the land's growth takes this draw (matter_grown): 1 for what stands,
+// 0 for what walks -- a figure or a machine does not stand still long enough.
+uniform float grows = 1.0;
 uniform vec3 flash_col = vec3(0.9098, 0.8627, 0.7529);
 
 varying vec3 world_pos;
@@ -122,6 +126,9 @@ varying float style_packed;
 varying float style_blend;
 varying float patch_raw;
 varying float sway_w;
+// A building's height in its own storeys + 1 (CUSTOM1.x, WorldView.bake_props);
+// 0 on anything without floor lines.
+varying float storey_v;
 
 const vec3 STEP = vec3(0.700, 0.704, 0.749);
 const vec3 INK1 = vec3(0.0706, 0.0667, 0.1137);
@@ -610,17 +617,20 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		}
 	} else if (m == 48) {
 		// FEN: hummocks and hollows, black pools with green edges, bog cotton.
+		// Hummock and hollow are RELIEF (matter_height's FEN mounds): the wash only
+		// leans with them, softly. Hard two-tone steps here were the camouflage
+		// print over every mossy ground (the crags' lichened turf most of all).
+		// The pools below are water and keep their shore.
 		float n = ink_vnoise(wp * 0.95) * 0.7 + ink_vnoise(wp * 2.3 + 4.0) * 0.3 + rag(wp);
+		c = up(c, 0.4 * smoothstep(0.56, 0.72, n));
+		c = dn(c, 0.5 * (1.0 - smoothstep(0.24, 0.40, n)) * step(0.2, n));
 		if (n > 0.64) {
-			c = up(c, 0.4);
 			// Bog cotton in drifts on a few hummocks, none on the rest.
 			if (ink_vnoise(wp * 0.12 + 40.0) > 0.68 && ink_hash(px) > 0.97) {
 				c = LINEN5;
 			}
 		} else if (n < 0.2) {
 			c = n < 0.165 ? BRINE0 : SPRUCE2;
-		} else if (n < 0.33) {
-			c = dn(c, 0.5);
 		}
 		if (ink_vnoise(wp * 0.45 + 20.0) > 0.78 && n > 0.33) {
 			c = mix(c, RUST2, 0.55);
@@ -680,10 +690,10 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			c = RIME5;
 		}
 	} else if (m == 52) {
-		// ROCK: bare stone: a few long cracks, lichen in small blooms.
-		if (ink_vnoise(wp * 0.35) > 0.62) {
-			c = dn(c, 0.25);
-		}
+		// ROCK: bare stone: a few long cracks, lichen in small blooms. The stone's
+		// own tone drifts softly; a hard threshold here drew two-tone patches
+		// a few tiles across over every rocky land (the camouflage finding).
+		c = dn(c, 0.25 * smoothstep(0.52, 0.72, ink_vnoise(wp * 0.35)));
 		float crack = abs(ink_vnoise(wp * 0.8 + 1.0) - 0.5);
 		if (crack < 0.014 && ink_vnoise(wp * 1.5) > 0.4) {
 			c = dn(c, 1.0);
@@ -795,7 +805,7 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		// second wash under its first, so the flat still draws structure when a
 		// neighbour's grade lifts the whole frame (art review 1 — clipped white
 		// holds no wash, no shade, no plate and no hatch).
-		c = ch < 0.3 ? dn(c, 0.30) : (ch > 0.72 ? up(c, 0.10) : c);
+		c = ch < 0.3 ? dn(c, 0.12) : (ch > 0.72 ? up(c, 0.05) : c);
 		// Grain across the plate, at its own angle: a dried floor, not a panel.
 		float gr = ink_vnoise(wp * 4.1 + own * 3.3) * 0.7 + ink_vnoise(wp * 11.0) * 0.3;
 		c = gr > 0.6 ? up(c, 0.07) : (gr < 0.33 ? dn(c, 0.12) : c);
@@ -827,14 +837,22 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			// the lit edge of the lift, the other is under its overhang.
 			bool over = own.x * 7.0 + own.y > next.x * 7.0 + next.y;
 			if (join < weight * 0.3) {
-				c = dn(c, 0.95);
+				c = dn(c, 0.7);
 			} else {
-				c = over ? mix(dn(SALT_TOP, 0.35), SALT_TOP, lifted) : dn(c, 0.55);
+				c = over ? mix(dn(SALT_TOP, 0.35), SALT_TOP, lifted) : dn(c, 0.45);
 			}
-		} else if (join < 0.028) {
-			// An unlifted join is only a hairline.
-			c = dn(c, 0.3);
+		} else if (join < 0.028 && ink_vnoise(wp * 0.9 + own * 1.7) > 0.55) {
+			// An unlifted join is only a hairline, and only where it has opened:
+			// every plate outlined drew a paved floor over the whole flat.
+			c = dn(c, 0.18);
 		}
+		// THE PRESSURE RIDGES: the crust grows, has nowhere to go, and buckles up
+		// along the edges of great polygons tens of plates across: a pale ridge
+		// of salt pushed up and catching the light (its relief is matter_height's).
+		// Two scales, so the flat is never one repeating tile.
+		vec3 big = matter_cells(wp * 0.22 + vec2(ink_vnoise(wp * 0.05), ink_vnoise(wp * 0.05 + 7.0)) * 2.0);
+		float ridge = 1.0 - smoothstep(0.0, 0.12 + max(fwidth(big.y - big.x), 1e-4), big.y - big.x);
+		c = mix(c, min(up(c, 0.25), SALT_TOP), ridge * 0.7);
 		float sh = ink_hash(px + 9.0);
 		if (sh > 0.991) {
 			c = up(c, 0.22);
@@ -892,10 +910,14 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			// The next line over, fainter: the field drew more than one.
 			c = arc < 0.5 ? mix(c, RUST3, 0.42) : dn(c, 0.3);
 		}
-		if (ink_vnoise(wp * 1.3 + 4.0) + rag(wp) > 0.78) {
-			// Leaf litter gone to mulch in the hollows.
-			c = dn(c, 0.4);
+		// Leaf litter over it all, gone to mulch in the hollows: warm brown
+		// between the arcs, soft-edged, so the floor is a wood's and not a
+		// swept yard's.
+		float mulch = ink_vnoise(wp * 0.6 + 4.0) * 0.7 + ink_vnoise(wp * 2.1) * 0.3;
+		if (arc >= 0.17) {
+			c = mix(c, mix(EARTH2, RUST1, 0.35), smoothstep(0.45, 0.7, mulch) * 0.55);
 		}
+		c = dn(c, 0.4 * smoothstep(0.7, 0.85, ink_vnoise(wp * 1.3 + 4.0) + rag(wp)));
 		// Cut shavings gather where something was broken up, not evenly over a
 		// wood: a drift of them, and only a few bright enough to catch the eye.
 		float drift = ink_vnoise(wp * 0.13 + 19.0);
@@ -1249,7 +1271,7 @@ float tide_pool(vec3 wp) {
 // broken expansion joints on the slant the city was laid to; weed greening the
 // rims of the standing water; and the water itself, black-green and still,
 // taking the sky (its roughness is taken off in fragment()).
-vec3 tide_floor(vec3 c, vec3 wp, vec2 px) {
+vec3 tide_floor(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
 	float under = tide_under(wp.y);
 	// The joints: bays six units across on a turned grid, drawn only where they
 	// have opened, so it reads as a floor that was laid and never as a grid.
@@ -1277,8 +1299,24 @@ vec3 tide_floor(vec3 c, vec3 wp, vec2 px) {
 		if (pool < 0.45) {
 			c = dn(c, 0.4);
 		}
+		// What is in the water: whatever the port spilled, feeding a bloom
+		// that glows a sick green along the puddles' edges in the dark. Only
+		// in drifts and only at night (sky_view.y), faint: poisoned water,
+		// not a lamp.
+		// Over the whole of a puddle, faintly, and thickest where it drifts.
+		// (Measured: on the puddles' edges alone it was under a pixel wide and
+		// the frame did not move.)
+		float bloom = 0.3 + 0.7 * smoothstep(0.5, 0.75, ink_vnoise(wp.xz * 0.2 + 33.0));
+		emit += vec3(0.10, 0.34, 0.24) * 3.5 * bloom * pool * sky_view.y * (0.75 + 0.25 * sin(TIME * 0.7 + wp.x));
 	} else if (rim > 0.0) {
 		c = mix(c, MOSS2, rim * 0.6);
+	}
+	// RAIN ON THE DROWNED FLOOR. Everything under the flood's line lies wet in a
+	// film, and rain on it rings: on every pool at full, and across the wet silt
+	// between them thinner, so the whole low city is seen being rained on.
+	float wet_floor = max(pool, under * 0.55);
+	if (wet_floor > 0.05) {
+		c = mix(c, mix(RIME4, RIME5, 0.5), sky_rain_rings(wp) * wet_floor);
 	}
 	return c;
 }
@@ -1392,6 +1430,192 @@ vec3 overgrow(vec3 c, vec3 wp, vec2 px) {
 	return c;
 }
 
+// The machines' status light: the one violet in the world that is theirs.
+const vec3 STATUS_VIOLET = vec3(0.50, 0.34, 0.92);
+
+// CAST_FLOOR: the server fields' floor, the machines' own and still maintained.
+// Long cast runs on the survey's bearing, exact and swept, with a cable tray
+// between each pair; in every tray a violet status strip, dashed, lit on the
+// machines' power (so a strike stutters it, as it does every strip they own)
+// and repeated to the horizon. Across the runs only the panel ends, faint, so
+// the floor is ruled one way and never a grid. Coolant weeps from the trays in
+// dark tongues, the one thing on it the machines do not clean.
+vec3 cast_floor(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
+	vec2 q = mat2(vec2(0.97, 0.26), vec2(-0.26, 0.97)) * wp.xz;
+	float row = fract(q.y / 6.0) * 6.0;
+	// The tray: a channel 0.5 wide in the middle of the gap between runs.
+	float tray = abs(row - 3.0);
+	if (tray < 0.28) {
+		c = mix(INK2, INK3, 0.5);
+		if (tray > 0.2) {
+			c = mix(STONE2, LINEN3, 0.3);
+		}
+		// The strip: dashed, on the machines' power.
+		if (tray < 0.07 && fract(q.x / 2.2) < 0.72) {
+			float ndim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
+			float on = max(neon_burn(ndim), 0.25) * sky_power();
+			c = mix(mix(INK3, STATUS_VIOLET, 0.4), STATUS_VIOLET, on);
+			emit += STATUS_VIOLET * 1.6 * on;
+		}
+	} else {
+		// A run: the pour lines trowelled flat, exact.
+		if (abs(row - 1.5) < 0.02 || abs(row - 4.5) < 0.02) {
+			c = dn(c, 0.12);
+		}
+		// Panel ends across the run, faint.
+		if (abs(fract(q.x / 9.0) - 0.5) > 0.497) {
+			c = dn(c, 0.18);
+		}
+		// Coolant weeping out of the tray onto the run, in tongues.
+		float weep = ink_vnoise(vec2(q.x * 0.4, 7.0));
+		if (weep > 0.66 && tray < 0.9 + (weep - 0.66) * 3.0) {
+			c = mix(c, mix(SPRUCE1, INK2, 0.5), 0.5);
+		}
+	}
+	return c;
+}
+
+// The machine city's own light: cold, exact, white with the least blue in it.
+const vec3 GUIDE_WHITE = vec3(0.70, 0.82, 0.95);
+
+// MACHINE_DECK: the machine city's floor, built for what drives on it. Plate in
+// an exact running bond on the survey bearing (never a square grid: every
+// course is offset half a plate), each plate a hair different in its temper,
+// fastened in exact rows at its ends; and guide lines for the traffic: a lane
+// edge every eight units, and down the middle of each lane a row of arrows
+// pointing the way it runs, lit cold on the machines' power when the light goes.
+// Nothing weathers here and nothing is left lying: no wear, no litter.
+vec3 machine_deck(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
+	vec2 q = mat2(vec2(0.97, 0.26), vec2(-0.26, 0.97)) * wp.xz;
+	float course = floor(q.y / 1.5);
+	float pl = (q.x + mod(course, 2.0) * 1.5) / 3.0;
+	float fy = fract(q.y / 1.5);
+	float fx = fract(pl);
+	c *= 1.0 + (ink_hash(vec2(floor(pl), course) + 7.0) - 0.5) * 0.06;
+	float fwq = max(length(fwidth(q)), 1e-4);
+	// Plate seams, filtered so a far seam fades rather than aliases.
+	float seam = min(min(fx, 1.0 - fx) * 3.0, min(fy, 1.0 - fy) * 1.5);
+	c = mix(dn(c, 0.35), c, smoothstep(0.0, 0.02 + fwq, seam));
+	// Fastener rows at each plate's ends.
+	float fast = abs(fract(q.y / 0.3) - 0.5);
+	if (min(fx, 1.0 - fx) * 3.0 < 0.1 && fast < 0.12) {
+		c = mix(c, STONE2, 0.5);
+	}
+	// Lane edges and the arrows down each lane.
+	float lane = fract(q.y / 8.0) * 8.0;
+	float edge = min(lane, 8.0 - lane);
+	float ndim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
+	float on = max(neon_burn(ndim), 0.0) * sky_power();
+	float line = 1.0 - smoothstep(0.05, 0.05 + fwq, edge);
+	float mid = abs(lane - 4.0);
+	float ax = fract(q.x / 5.0) * 5.0;
+	float arrow = (ax < 1.2 && mid < 0.5 - ax * 0.4 && mid > 0.3 - ax * 0.4) ? 1.0 : 0.0;
+	float guide = max(line, arrow);
+	if (guide > 0.0) {
+		// Held low: a guide for a machine's sensor, not a lamp for anybody's
+		// eyes. At full strength the lines ruled bright scratches across the
+		// slums' dusk next door (canon 08).
+		c = mix(c, mix(mix(c, GUIDE_WHITE, 0.25), mix(c, GUIDE_WHITE, 0.7), on), guide);
+		// Held low by day and dusk, and full only once night has fallen
+		// (sky_view.y): then the ruled lines are the city, to the horizon.
+		emit += GUIDE_WHITE * mix(0.45, 4.0, sky_view.y) * on * guide;
+	}
+	return c;
+}
+
+// SULPHUR: the crust the vents' water laid. Sinter in lobed terraces, each
+// pool rimmed with a pale lip standing proud (matter_height) and floored in
+// warm water gone milky; sulphur growing yellow in crystal clusters where the
+// steam condenses, thickest on the rims; iron runs bleeding orange down the
+// steps; and the wet of it all, which never dries (its roughness in fragment()).
+vec3 sulphur_crust(vec3 c, vec3 wp, vec2 px) {
+	vec2 p = wp.xz;
+	vec3 cd = matter_cells(p * 0.9 + vec2(ink_vnoise(p * 0.4), ink_vnoise(p * 0.4 + 9.0)) * 1.5);
+	float rim = cd.y - cd.x;
+	float fw = max(fwidth(rim), 1e-4);
+	// The pool floor is the land's own wash, the sulphur yellow that names the
+	// place (the only yellow in the game), a shade deeper under the water.
+	vec3 pool = mix(dn(c, 0.25), SPRUCE2, 0.12);
+	vec3 sinter = mix(LINEN3, SAND3, 0.5);
+	float lip = 1.0 - smoothstep(0.06 - fw, 0.06 + fw, rim);
+	c = mix(pool, sinter, lip);
+	// Sulphur: yellow crystals on the rims, clustered.
+	float sul = ink_vnoise(p * 1.6 + cd.z * 7.0) * 0.7 + ink_vnoise(p * 5.0) * 0.3;
+	c = mix(c, c * 0.3 + vec3(0.78, 0.66, 0.16) * 0.7, smoothstep(0.55, 0.72, sul) * mix(0.45, 1.0, lip));
+	// Iron runs, orange, down the steps in one direction.
+	float run = ink_vnoise(vec2(dot(p, vec2(0.8, 0.6)) * 2.5, dot(p, vec2(-0.6, 0.8)) * 0.4));
+	c = mix(c, mix(RUST3, EMBER4, 0.3), smoothstep(0.68, 0.8, run) * 0.6);
+	return c;
+}
+
+// DESERT_PAVEMENT: the mesas' floor, where the wind has taken the fine sand and
+// left the stones: packed tight, each a small dome, the tops varnished dark by
+// the sun and the sides the red of the ground; and in the lee of anything, red
+// sand lying in ripples. Nothing else here moves.
+vec3 desert_pavement(vec3 c, vec3 wp, vec2 px) {
+	vec2 p = wp.xz;
+	// Stones of every size, not a pattern: two scales of cells, thinned by a
+	// field, so the pavement is packed in places and open sand in others, and
+	// the varnish is a shade on each stone, never a hole punched in the floor.
+	float packed = smoothstep(0.3, 0.6, ink_vnoise(p * 0.2 + 3.0));
+	vec3 cd = matter_cells(p * 7.0 + ink_vnoise(p * 1.1) * 0.8);
+	vec3 cd2 = matter_cells(p * 3.1 + 17.0);
+	float fw = max(fwidth(cd.x), 1e-4);
+	float r1 = 0.18 + cd.z * 0.18;
+	float stone = (1.0 - smoothstep(r1 - fw, r1 + fw, cd.x)) * step(0.35, cd.z);
+	float big = (1.0 - smoothstep(0.22 - fw, 0.22 + fw, cd2.x)) * step(0.8, cd2.z);
+	vec3 varnish = mix(c, mix(RUST1, EARTH1, 0.4), 0.35 + cd.z * 0.15);
+	c = mix(c, varnish, max(stone * packed, big) * 0.8);
+	// Drifts of red sand in the lee, rippled across the wind.
+	float lee = ink_vnoise(p * 0.12 + 5.0) * 0.8 + ink_vnoise(p * 0.5) * 0.2;
+	float sand = smoothstep(0.58, 0.7, lee);
+	if (sand > 0.0) {
+		float rip = sin(dot(p, vec2(0.6, 0.8)) * 7.0 + ink_vnoise(p * 0.6) * 4.0);
+		vec3 drift = mix(SAND3, RUST3, 0.45) * (1.0 + 0.08 * rip);
+		c = mix(c, drift, sand);
+	}
+	return c;
+}
+
+// SEA_ICE: the frost sea's floor, which is the sea's lid. Floes frozen together,
+// each its own white, their rafted edges ridged up and bright where one rode
+// over the next (relief); between the floes, where the lead froze last, thin
+// BLACK ice the sea shows through, strung with frozen bubbles and near a
+// mirror (its roughness in fragment()); and snow dust blown along the wind in
+// streaks. No square anything: the floes are the cells of a warped field.
+float sea_black(vec2 p) {
+	vec3 cd = matter_cells(p * 0.35 + vec2(ink_vnoise(p * 0.2), ink_vnoise(p * 0.2 + 5.0)) * 1.2);
+	float lead = 1.0 - smoothstep(0.05, 0.3, cd.y - cd.x);
+	return lead * smoothstep(0.3, 0.5, ink_vnoise(p * 0.15 + 21.0));
+}
+
+vec3 sea_ice(vec3 c, vec3 wp, vec2 px) {
+	vec2 p = wp.xz;
+	vec3 cd = matter_cells(p * 0.35 + vec2(ink_vnoise(p * 0.2), ink_vnoise(p * 0.2 + 5.0)) * 1.2);
+	float fw = max(fwidth(cd.y - cd.x), 1e-4);
+	c *= 1.0 + (cd.z - 0.5) * 0.08;
+	// The rafted edge: a bright ridge where two floes met.
+	// A bright crest with a blue shadow on its lee side, so the ridge reads on
+	// ice that is already pale.
+	float ridge = 1.0 - smoothstep(0.02 - fw, 0.06 + fw, cd.y - cd.x);
+	float lee = (1.0 - smoothstep(0.06, 0.14 + fw, cd.y - cd.x)) - ridge;
+	c = mix(c, mix(RIME3, SLATE2, 0.3), clamp(lee, 0.0, 1.0) * 0.5);
+	c = mix(c, RIME5, ridge * 0.8);
+	// Black ice in the frozen leads.
+	float black = sea_black(p);
+	if (black > 0.0) {
+		vec3 dark = mix(BRINE0, SLATE1, 0.4);
+		// Bubbles frozen in it, in strings.
+		float bub = ink_vnoise(vec2(dot(p, vec2(0.7, 0.7)) * 3.0, dot(p, vec2(-0.7, 0.7)) * 0.6));
+		dark = mix(dark, RIME3, smoothstep(0.78, 0.9, bub) * 0.6);
+		c = mix(c, dark, black * 0.85);
+	}
+	// Snow dust along the wind.
+	float dust = ink_vnoise(vec2(dot(p, vec2(0.83, -0.55)) * 0.3, dot(p, vec2(0.55, 0.83)) * 1.8));
+	c = mix(c, RIME5, smoothstep(0.6, 0.78, dust) * 0.5 * (1.0 - black));
+	return c;
+}
+
 // Terrace walls: each country's rock, banded by world height. dt: depth below
 // the wall's top (a wall is one level tall).
 vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
@@ -1464,15 +1688,34 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			c = EARTH2;
 		}
 	} else if (id == 4) {
-		// SNOWFIELD: a snow cap with a ragged hem and icicle runs over blue rock.
-		float hem = 0.07 + ink_hash(vec2(col, 1.0)) * 0.06;
-		if (dt < hem) {
-			c = RIME5;
-		} else if (ink_hash(vec2(col, 2.0)) > 0.78 && dt < hem + ink_hash(vec2(col, 3.0)) * 0.24) {
-			c = RIME4;
+		// SNOWFIELD: a CORNICE, not a cap: the wind loads snow over the lip
+		// until it overhangs, a rounded roll with a deep blue shadow in the curl
+		// under it, its depth swelling and thinning along the wall. Under it
+		// the rock is wind-scoured dark, rimed white on its ledges in streaks
+		// that lean with the wind, and ice hangs only where meltwater runs:
+		// in clusters, each run its own length, never a comb. All on smooth
+		// fields: a hash per two-pixel column drew the comb and the bricks.
+		float roll = 0.06 + ink_vnoise(vec2(px.x * 0.04, 1.0)) * 0.07 + ink_vnoise(vec2(px.x * 0.15, 2.0)) * 0.025;
+		float curl = roll + 0.03 + ink_vnoise(vec2(px.x * 0.05, 3.0)) * 0.03;
+		if (dt < roll) {
+			// The roll: lit on top, shading round its belly.
+			c = mix(RIME5, RIME4, smoothstep(roll * 0.4, roll, dt));
+		} else if (dt < curl) {
+			c = mix(RIME3, SLATE2, 0.35);
 		} else {
-			float b = floor((y + (vn - 0.5) * 0.08) / 0.17);
-			c = ink_hash(vec2(b, 4.0)) < 0.5 ? SLATE2 : RIME2;
+			float b = (y + (vn - 0.5) * 0.08 + px.x * 0.003) / 0.19;
+			c = mix(SLATE1, SLATE2, smoothstep(0.3, 0.7, ink_vnoise(vec2(px.x * 0.04, floor(b) * 2.3))));
+			// Rime on the ledges, where snow can lie, and a soft frost breathing
+			// over the face: never a threshold on a stretched field, which drew
+			// marbled ribbons across the rock.
+			c = mix(c, RIME4, smoothstep(0.78, 0.9, fract(b)) * 0.7);
+			c = mix(c, RIME3, ink_vnoise(vec2(px.x * 0.03, y * 1.5 + 5.0)) * 0.25);
+			// Ice where meltwater runs from the cornice: clusters only.
+			float melt = smoothstep(0.55, 0.72, ink_vnoise(vec2(px.x * 0.05, 7.0)));
+			float run = curl + (0.06 + ink_vnoise(vec2(px.x * 0.45, 9.0)) * 0.3) * melt;
+			if (melt > 0.0 && dt < run && ink_vnoise(vec2(px.x * 0.7, 11.0)) > 0.45) {
+				c = mix(RIME4, RIME3, (dt - curl) / max(run - curl, 0.01));
+			}
 		}
 	} else if (id == 5) {
 		// BONELANDS: thick limestone beds that swell and pinch along the face,
@@ -1654,6 +1897,13 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			float wd = ink_vnoise(vec2(px.x * 0.08, y * 4.0));
 			c = mix(mix(SPRUCE1, INK2, 0.4), mix(SPRUCE1, MOSS2, 0.35), smoothstep(0.4, 0.7, wd));
 		}
+		// In rain the wall runs: water sheets down it in the channels its own
+		// stains follow, catching the light as it comes down in pulses.
+		if (sky_air.x > 0.02) {
+			float run = smoothstep(0.5, 0.62, ink_vnoise(vec2(px.x * 0.18, 5.0)));
+			float pulse = smoothstep(0.7, 1.0, fract(dt * 5.0 - TIME * 1.3 + ink_hash(vec2(floor(px.x / 3.0), 3.0)) * 4.0));
+			c = mix(c, up(c, 0.55), run * pulse * clamp(sky_air.x, 0.0, 1.0) * 0.6);
+		}
 	} else if (id == 13) {
 		// CAVE: a wall of wet limestone that water has been building on for
 		// longer than there were people. Flowstone curtains come down from the
@@ -1705,6 +1955,16 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			if (ink_vnoise(vec2(px.x * 1.1, y * 30.0)) > 0.9) {
 				c = mix(RUST3, LINEN3, 0.4);
 			}
+			// A board somewhere in the heap still has power: a status light, one
+			// pixel, amber or green, blinking slow and out of step, seen only
+			// once the light goes. The last thing in the midden that thinks.
+			float led = ink_hash(vec2(floor(px.x / 3.0), floor(y * 20.0)) + 71.0);
+			if (led > 0.9975) {
+				vec3 lc = led > 0.997 ? vec3(0.55, 0.9, 0.35) : vec3(1.0, 0.62, 0.2);
+				float blink = step(0.35, fract(TIME * (0.2 + led * 0.3) + led * 17.0));
+				c = mix(c, lc, 0.6);
+				emit += lc * 3.0 * blink * sky_view.y;
+			}
 		} else if (kind < 0.5) {
 			// Cable: black, with loops showing as paler arcs.
 			c = mix(INK2, INK3, n1);
@@ -1755,12 +2015,24 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		// Lichen: round rosettes a hand across, scattered in drifts, each its own
 		// disc with a paler rim. On a noise threshold they came out as square
 		// pixel blocks, a camouflage print on the rock.
+		// Laid on the wall's CONTINUOUS world coordinate, not the screen grain
+		// `px` (a whole grain wide, so every rim came out as a stair of square
+		// pixels), and its edges filtered by the footprint (fwidth): a rosette
+		// fades into the rock over one pixel at any distance, never a hard ring.
 		float drift = ink_vnoise(vec2(px.x * 0.05, y * 0.9 + 23.0));
-		vec3 rc = matter_cells(vec2(px.x * SKY_GRAIN * 9.0, y * 9.0));
+		vec2 lp = vec2(wp.x + wp.z, y) * 9.0;
+		vec3 rc = matter_cells(lp);
 		float rr = 0.18 + rc.z * 0.16;
-		if (drift > 0.55 && rc.z > 0.55 && rc.x < rr) {
+		float fw = max(fwidth(rc.x), 1e-4);
+		float disc = 1.0 - smoothstep(rr - fw, rr + fw, rc.x);
+		// Far off, where a rosette is under a couple of pixels, it fades to the
+		// average tint of the drift rather than twinkling.
+		float far = smoothstep(0.08, 0.3, fw);
+		if (drift > 0.55 && rc.z > 0.55) {
 			vec3 lich = rc.z > 0.93 ? mix(SAND3, EMBER4, 0.2) : mix(LINEN2, MOSS3, 0.35);
-			c = mix(c, lich, rc.x > rr * 0.7 ? 0.9 : 0.6);
+			float rim = smoothstep(rr * 0.6 - fw, rr * 0.8 + fw, rc.x);
+			float cover = disc * mix(0.6, 0.9, rim);
+			c = mix(c, lich, mix(cover, 0.25, far));
 		}
 	} else if (id == 17) {
 		// DECK: the broken edge of a cast highway deck, which is what a terrace
@@ -1823,6 +2095,101 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		if (dt < 0.035 + ink_vnoise(vec2(px.x * 0.1, 13.0)) * 0.03) {
 			c = mix(MOSS2, MOSS3, 0.4);
 		}
+	} else if (id == 19) {
+		// CAST: a retaining wall the machines cast and keep. Formwork panels to an
+		// exact module, tie holes in exact rows, a violet strip along the lip on
+		// their power, and a clean face -- no weather is allowed on it, and that
+		// is what makes it the most frightening wall in the world.
+		c = mix(STONE2, SLATE2, 0.35);
+		float pan = fract(px.x / 48.0);
+		if (pan < 0.02) {
+			c = dn(c, 0.3);
+		}
+		if (abs(fract(px.x / 12.0) - 0.5) < 0.04 && abs(fract(dt / 0.125) - 0.5) < 0.1) {
+			c = INK3;
+		}
+		if (dt < 0.03) {
+			float ndim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
+			float on = max(neon_burn(ndim), 0.25) * sky_power();
+			c = mix(mix(INK3, STATUS_VIOLET, 0.4), STATUS_VIOLET, on);
+			emit += STATUS_VIOLET * 1.4 * on;
+			unh = max(unh, on);
+		}
+	} else if (id == 20) {
+		// MACHINE: a wall of the machine city. Machined plate to an exact module,
+		// a row of vents at one height along every wall, and a cold lit seam
+		// under the lip on the machines' power. Clean: nothing weathers it.
+		c = mix(SLATE1, STONE1, 0.5);
+		if (fract(px.x / 36.0) < 0.03) {
+			c = dn(c, 0.35);
+		}
+		float vy = abs(dt - 0.26);
+		if (vy < 0.05 && fract(px.x / 6.0) < 0.6) {
+			c = fract(vy * 60.0) < 0.5 ? INK2 : SLATE1;
+		}
+		if (dt > 0.03 && dt < 0.05) {
+			float ndim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
+			float on = max(neon_burn(ndim), 0.0) * sky_power();
+			c = mix(mix(c, GUIDE_WHITE, 0.3), GUIDE_WHITE, on);
+			emit += GUIDE_WHITE * mix(1.2, 2.0, sky_view.y) * on;
+			unh = max(unh, on);
+		}
+	} else if (id == 21) {
+		// MESA: sandstone laid down in a desert that was here before this one,
+		// so its bands are its history. Red, cream and a bruised purple in beds
+		// that swell and pinch, some cross-bedded (thin laminae at a slant
+		// inside the bed, the old dunes' faces); a hard pale caprock at the top
+		// holding the lip up; and desert varnish streaked dark down the face
+		// from the lip, where water ran for a thousand years a night at a time.
+		// Laid LEVEL, with a long low undulation and a steady thickness: a
+		// thickness that varied along the wall bent every bed and the face
+		// read as marbled swirls at a low sun (the bonelands lesson).
+		float sw = (ink_vnoise(vec2(px.x * 0.006, 3.0)) - 0.5) * 0.03;
+		// Beds a forearm deep, in reds close in value: a strong contrast
+		// between neighbours drew a tiger stripe. One bed in five is paler.
+		float b = (y + sw) / 0.19;
+		float bi = floor(b);
+		float kind = ink_hash(vec2(bi, 41.0));
+		c = kind < 0.4 ? mix(RUST2, RUST3, 0.5) : (kind < 0.8 ? mix(RUST2, EARTH2, 0.3) : mix(RUST3, SAND3, 0.3));
+		// Soft bedding planes between them.
+		c = mix(c, dn(c, 0.18), 1.0 - smoothstep(0.0, 0.12, fract(b)));
+		// Cross-bedding: faint slanted laminae inside a few beds.
+		if (ink_hash(vec2(bi, 43.0)) > 0.6 && fract(b) > 0.15 && fract(b) < 0.9) {
+			float lam = fract(fract(b) * 4.0 + px.x * 0.025 * (ink_hash(vec2(bi, 44.0)) > 0.5 ? 1.0 : -1.0));
+			c = mix(c, dn(c, 0.07), smoothstep(0.75, 0.9, lam));
+		}
+		// The caprock.
+		float cap = 0.06 + ink_vnoise(vec2(px.x * 0.05, 7.0)) * 0.03;
+		if (dt < cap) {
+			c = mix(LINEN3, SAND3, 0.35);
+		} else if (dt < cap + 0.02) {
+			c = dn(c, 0.4);
+		}
+		// Desert varnish: dark streaks from the lip down the face.
+		float vs = ink_vnoise(vec2(px.x * 0.12, 9.0)) * 0.7 + ink_vnoise(vec2(px.x * 0.5, 11.0)) * 0.3;
+		float reach = 0.1 + ink_vnoise(vec2(px.x * 0.04, 13.0)) * 0.35;
+		if (vs > 0.56 && dt > cap && dt < reach) {
+			c = mix(c, mix(INK2, RUST1, 0.35), smoothstep(0.56, 0.72, vs) * (1.0 - (dt - cap) / reach) * 0.7);
+		}
+	} else if (id == 22) {
+		// FLOE: the edge of a floe standing out of the sea. The ice is laid in
+		// blue and white layers, a winter each, the blue deepening down toward
+		// the waterline; melt hung off the lip in icicles that cluster where the
+		// sun works on the lip and are absent elsewhere, each its own length;
+		// and a snow cap along the top.
+		float sw = (ink_vnoise(vec2(px.x * 0.03, 3.0)) - 0.5) * 0.04;
+		float b = fract((y + sw) / 0.07);
+		c = mix(RIME4, RIME3, smoothstep(0.55, 0.8, b));
+		c = mix(c, mix(RIME2, BRINE2, 0.4), smoothstep(0.15, 0.5, dt));
+		float cap = 0.035 + ink_vnoise(vec2(px.x * 0.07, 5.0)) * 0.03;
+		float cluster = smoothstep(0.45, 0.7, ink_vnoise(vec2(px.x * 0.04, 7.0)));
+		float ic = ink_vnoise(vec2(px.x * 0.6, 9.0));
+		float run = cap + (0.05 + ink_vnoise(vec2(px.x * 0.25, 11.0)) * 0.25) * cluster;
+		if (dt < cap) {
+			c = RIME5;
+		} else if (ic > 0.5 && dt < run) {
+			c = mix(RIME5, RIME4, (dt - cap) / max(run - cap, 0.01));
+		}
 	}
 	return c;
 }
@@ -1843,6 +2210,7 @@ void vertex() {
 	style_packed = UV.x;
 	style_blend = UV.y;
 	patch_raw = UV2.x > 0.0 ? 0.0 : UV2.y;
+	storey_v = CUSTOM1.x;
 }
 
 // How much of a crown is taken away at this point: 0 keep it, 1 take it all.
@@ -1921,6 +2289,66 @@ float tall_cut(vec3 wp, int m, vec3 camz, vec3 eye, bool persp) {
 	return cut;
 }
 
+// THE PINEWOOD'S NIGHT. Under the closed canopy nothing of the sky reaches the
+// floor, and the only light is the wood's own: honey fungus threading the
+// rotting litter, a cold green-white in fine veins, in a few drifts where the
+// deadfall has lain longest and nowhere else. Steady, because fungus does not
+// blink; it breathes very slowly. Only after dark (sky_view.y): by day it is
+// invisible, as it is.
+vec3 pine_foxfire(vec2 wp, vec2 px) {
+	float drift = smoothstep(0.62, 0.8, ink_vnoise(wp * 0.09 + 17.0));
+	if (drift <= 0.0 || sky_view.y <= 0.0) {
+		return vec3(0.0);
+	}
+	// A glow soaked into the litter, a hand or two across and grained like the
+	// litter itself. A line read as ruled neon, a speck alone as fireflies, and
+	// an even wash as a lit lawn.
+	float clump = smoothstep(0.6, 0.9, ink_vnoise(wp * 0.7 + 5.0) * 0.75 + ink_vnoise(wp * 2.1 + 9.0) * 0.25);
+	float grain = 0.3 + 0.7 * step(0.5, ink_hash(floor(px / 2.0) + 29.0));
+	float breath = 0.85 + 0.15 * sin(TIME * 0.35 + wp.x * 0.05 + wp.y * 0.07);
+	return vec3(0.32, 0.62, 0.42) * 0.8 * drift * clump * grain * breath * sky_view.y;
+}
+
+// THE MOSS'S NIGHT. The fen's black pools (FEN's hollows, n < 0.2) give off gas,
+// and after dark a few of them burn with it: a faint cold flame lying on the
+// water, low, flickering and going out and catching again somewhere else. A
+// few pools in a stretch and never all of them; never a lamp, never a dot.
+vec3 bog_gas(vec2 wp, vec2 px) {
+	if (sky_view.y <= 0.0) {
+		return vec3(0.0);
+	}
+	float n = ink_vnoise(wp * 0.95) * 0.7 + ink_vnoise(wp * 2.3 + 4.0) * 0.3 + rag(wp);
+	float pool = 1.0 - smoothstep(0.16, 0.3, n);
+	if (pool <= 0.0) {
+		return vec3(0.0);
+	}
+	// Which pools burn, and when: a slow field drifting over the bog.
+	float lit = smoothstep(0.42, 0.66, ink_vnoise(wp * 0.11 + vec2(TIME * 0.02, -TIME * 0.015)));
+	float lick = 0.55 + 0.45 * flicker(vec3(floor(wp.x * 2.0), 3.0, floor(wp.y * 2.0)), 2.4);
+	float tongue = smoothstep(0.25, 0.65, ink_vnoise(wp * 3.1 + vec2(0.0, TIME * 0.6)));
+	return vec3(0.34, 0.62, 0.72) * 3.2 * pool * lit * lick * tongue * sky_view.y;
+}
+
+// THE SCRAPWOOD'S NIGHT. The field still in the dead iron is what combed the
+// filings into arcs (SWARF), and after dark it shows: the combed lines glow a
+// faint cold blue-white where the field is strongest, in slow drifts that wander
+// across the floor, as if something under the litter were still switched on.
+// Only on the lines, never between them; steady, never a blink.
+vec3 scrap_field(vec2 wp) {
+	if (sky_view.y <= 0.0) {
+		return vec3(0.0);
+	}
+	float f = ink_vnoise(wp * 0.11) * 0.75 + ink_vnoise(wp * 0.4) * 0.25;
+	float arc = fract(f * 11.0);
+	// Thin, and broken where the filings are: a lit line unbroken read as a
+	// ruled neon tube laid through the wood (measured at 1.6: the floor was
+	// striped white).
+	float line = (1.0 - smoothstep(0.02, 0.07, arc)) * step(0.24, ink_vnoise(wp * 0.5 + 7.0))
+		* smoothstep(0.4, 0.65, ink_vnoise(wp * 2.7 + 3.0));
+	float drift = smoothstep(0.5, 0.78, ink_vnoise(wp * 0.045 + vec2(TIME * 0.012, -TIME * 0.008)));
+	return vec3(0.42, 0.55, 0.95) * 0.9 * line * drift * sky_view.y;
+}
+
 void fragment() {
 	if (near_cut > 0.5 && near_drawn(world_pos)) {
 		discard;
@@ -1981,6 +2409,22 @@ void fragment() {
 	}
 	vec3 c = second ? wash2 : COLOR.rgb;
 	int m = second ? m2 : m1;
+	// The pine floor IS the needle floor, in its matter, its marks and its wear;
+	// it differs only in what it gives off after dark (pine_foxfire).
+	bool pine = m == M_PINE_FLOOR;
+	if (pine) {
+		m = 50;
+	}
+	// And the scrapwood's is the swarf, but for the field it shows at night.
+	bool scrap = m == M_SCRAP_FLOOR;
+	if (scrap) {
+		m = 56;
+	}
+	// And the moss's is the fen, but for what burns on its pools at night.
+	bool bog = m == M_BOG_FLOOR;
+	if (bog) {
+		m = 48;
+	}
 	float s1 = mod(style_packed, 16.0);
 	float s2 = floor(style_packed / 16.0 + 0.01);
 	float unh = 0.0;
@@ -1997,11 +2441,35 @@ void fragment() {
 		if (m == M_OVERGROWN) {
 			c = overgrow(c, world_pos, px);
 		}
+		if (m == M_CAST_FLOOR) {
+			c = cast_floor(c, world_pos, px, emit);
+		}
+		if (m == M_MACHINE_DECK) {
+			c = machine_deck(c, world_pos, px, emit);
+		}
+		if (m == M_SULPHUR) {
+			c = sulphur_crust(c, world_pos, px);
+		}
+		if (m == M_DESERT_PAVEMENT) {
+			c = desert_pavement(c, world_pos, px);
+		}
+		if (m == M_SEA_ICE) {
+			c = sea_ice(c, world_pos, px);
+		}
 		if (m == M_TIDEFLAT) {
-			c = tide_floor(c, world_pos, px);
+			c = tide_floor(c, world_pos, px, emit);
+		}
+		if (pine) {
+			emit += pine_foxfire(world_pos.xz, px);
+		}
+		if (scrap) {
+			emit += scrap_field(world_pos.xz);
+		}
+		if (bog) {
+			emit += bog_gas(world_pos.xz, px);
 		}
 		// The fused sheet is not trodden to earth: nothing walks glass to a path.
-		if (unh < 0.5 && m != M_VITRIFIED) {
+		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK && m != M_SULPHUR) {
 			c = ground_wear(m, c, world_pos.xz, px);
 		}
 		// Turf, heath and fen are a sward, and a gust crossing one lays it over:
@@ -2011,7 +2479,9 @@ void fragment() {
 			vec3 tr = trample_at(world_pos.xz);
 			c *= (1.0 + GROUND_SHEEN * wind_sheen(world_pos.xz)) * (1.0 - GROUND_PRESSED * max(tr.z, length(tr.xy) * 0.6));
 		}
-		if (works_inv_size > 0.0) {
+		// The machine city's deck IS the plan's order, laid by it: the works'
+		// marks and the survey's ruling would draw a second, square grid over it.
+		if (works_inv_size > 0.0 && m != M_MACHINE_DECK) {
 			vec4 wk = texture(works_map, world_pos.xz * works_inv_size);
 			vec3 wl = texture(works_lines, world_pos.xz * works_inv_size).rgb;
 			if (wk.r + wk.g + wk.b + wk.a > 0.02) {
@@ -2040,8 +2510,10 @@ void fragment() {
 		vec2 wpx = vec2(floor(along / SKY_GRAIN), px.y);
 		c = strata(m - MARK_STRATA, c, world_pos, wpx, emit, unh);
 		// The weathering pass, on every wall: whatever it is cut through, the
-		// lip, the run-off and the foot are the weather's.
-		{
+		// lip, the run-off and the foot are the weather's -- except the one the
+		// machines cast and still maintain.
+		// A cornice is snow, and the weather's lip shade would sit in its roll.
+		if (m != M_STRATA_CAST && m != M_STRATA_MACHINE && m != MARK_STRATA + 4) {
 			c = strata_weather(c, (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y, wpx);
 		}
 	} else if (m >= 1 && m <= 16) {
@@ -2066,6 +2538,18 @@ void fragment() {
 		emit += c * 2.0 * non;
 		c = mix(BRINE2, c, non);
 		unh = non;
+	} else if (m == 35) {
+		// A failing tube (GroundColors.FAILING): the plan stopped feeding this
+		// board. Only after dark, weak, and stuttering: dead for stretches, then
+		// catching in bursts, each tube out of step with the next.
+		float fdim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
+		float fh = ink_hash(floor(world_pos.xz * 1.5) + floor(world_pos.y * 1.5) * 7.0);
+		float burst = step(0.55, fract(TIME * 0.11 + fh * 5.0));
+		float catch_on = step(0.4, ink_hash(vec2(floor(TIME * (6.0 + fh * 6.0)), fh * 91.0)));
+		float fon = neon_burn(fdim) * sky_power() * burst * catch_on;
+		emit += c * 0.7 * fon;
+		c = mix(BRINE2, c, fon * 0.7);
+		unh = fon;
 	} else if (m == 33) {
 		// A glint: glass or ice catching the light for a moment.
 		float gh = ink_hash(floor(world_pos.xz * 7.0) + floor(world_pos.y * 7.0));
@@ -2102,14 +2586,41 @@ void fragment() {
 	// the picture rather than out of the rock.
 	if (m == 58) { takes = 0.06; }
 	c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, takes * (1.0 - unh), rough_add);
+	// And the land's growth over what was built in it: never the land itself.
+	if (!mark_land(m)) {
+		c = matter_grown(c, n_world, world_pos, (1.0 - unh) * grows, storey_v, rough_add);
+	}
 
+	if (m == M_SEA_ICE) {
+		// The black ice in the leads is near a mirror: the sky lies in it.
+		rough_add -= sea_black(world_pos.xz) * 0.25;
+	}
+	if (m == 55) {
+		// THE MIRAGE. Far off across the flat the air over the hot crust bends
+		// the sky down onto it: a band of the sky lying on the ground at the
+		// horizon, shimmering. It is the light's: the far crust is made smooth
+		// enough to mirror what is above it, and the shimmer moves that mirror.
+		// In glare the air over the crust is hotter and the mirage comes in
+		// nearer and wavers harder: the far flat is water that is not there.
+		float gl = clamp(sky_air.y, 0.0, 1.0);
+		float far_off = smoothstep(mix(35.0, 16.0, gl), mix(90.0, 50.0, gl), length(world_pos - INV_VIEW_MATRIX[3].xyz));
+		float shimmer = ink_vnoise(vec2(world_pos.x * 0.3 + TIME * mix(0.6, 1.4, gl), world_pos.z * mix(0.3, 0.9, gl)));
+		rough_add -= far_off * (0.55 + mix(0.2, 0.4, gl) * shimmer);
+	}
+	if (m == M_SULPHUR) {
+		// The pools are wet and warm and never dry: they take the sky; the
+		// sinter rims do not.
+		vec3 scd = matter_cells(world_pos.xz * 0.9 + vec2(ink_vnoise(world_pos.xz * 0.4), ink_vnoise(world_pos.xz * 0.4 + 9.0)) * 1.5);
+		rough_add -= smoothstep(0.05, 0.1, scd.y - scd.x) * 0.3;
+	}
 	if (m == M_CITY_FLOOR) {
 		// Window glass lying in drifts on the city floor catches the light.
 		rough_add -= city_glass(world_pos.xz) * 0.35;
 	}
 	if (m == M_TIDEFLAT) {
 		// Standing water on the drowned floor is a mirror; the silt round it is not.
-		rough_add -= tide_pool(world_pos) * 0.72;
+		// ...unless it is raining on it: a pool under rain is broken, not a mirror.
+		rough_add -= tide_pool(world_pos) * (0.72 - 0.3 * clamp(sky_air.x, 0.0, 1.0));
 	} else if (m == M_STRATA_CAVE) {
 		// A cave wall runs wet in streaks: shinier where water is on it now.
 		rough_add -= smoothstep(0.55, 0.8, ink_vnoise(vec2(world_pos.x + world_pos.z, world_pos.y * 0.2) * 1.3)) * 0.2;
@@ -2117,6 +2628,12 @@ void fragment() {
 		// The weed at a wall's foot is slick and never dries.
 		float wall_dt = (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y;
 		rough_add -= smoothstep(TIDE_WEED - 0.02, TIDE_WEED + 0.04, wall_dt) * 0.45;
+	}
+	if (m == M_VITRIFIED) {
+		// By night the fused sheet is what holds the sky: smoother as the
+		// dark comes (sky_view.y), so the moon lies on the glass in a long
+		// streak and the stars are in it, and nothing else in the desert is lit.
+		rough_add -= sky_view.y * 0.24;
 	}
 	if (m == M_STRATA_GLASS) {
 		// The glaze is not one sheet: runnels polished by the flow alternate
@@ -2128,6 +2645,16 @@ void fragment() {
 	ROUGHNESS = clamp(mr.x + rough_add, 0.04, 1.0);
 	SPECULAR = mr.y;
 	METALLIC = mr.w;
+	if (m == 56) {
+		// SWARF (and the scrapwood's floor, aliased to it above): only the combed filings are metal. Metal over the whole floor
+		// mirrored the sky at eye level and the wood's floor came back a pale
+		// lavender sheet; the mulch between the arcs is the matte of wet leaves.
+		float sf = ink_vnoise(world_pos.xz * 0.11) * 0.75 + ink_vnoise(world_pos.xz * 0.4) * 0.25;
+		float on_arc = 1.0 - smoothstep(0.12, 0.2, fract(sf * 11.0));
+		METALLIC = mr.w * on_arc;
+		ROUGHNESS = clamp(ROUGHNESS + (1.0 - on_arc) * 0.4, 0.04, 1.0);
+		SPECULAR = mix(0.3, mr.y, on_arc);
+	}
 	// THE TILE LATTICE MUST NOT REACH THE EYE (CLAUDE.md: no grid on screen).
 	//
 	// The terrain is a triangle lattice with FLAT per-face normals, and its

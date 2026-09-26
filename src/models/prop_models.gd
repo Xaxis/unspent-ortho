@@ -59,6 +59,11 @@ class Template:
 	var leaf_c := PackedColorArray()
 	var leaf_uv := PackedVector2Array()
 	var leaf_uv2 := PackedVector2Array()
+	## THE STOREY CHANNEL, one float per made vertex: 1 + the vertex's height in
+	## storeys (`Towers.STOREY`) on a building raised in storeys, empty on
+	## anything else. Model space, so an instance's cast cannot move it off its
+	## own floor lines: it is where the ivy hangs from (matter_grown, CUSTOM1).
+	var made_storey := PackedFloat32Array()
 
 
 static var _templates: Dictionary = {}
@@ -201,6 +206,7 @@ static func template(kind: int, variant: int = 0, country: int = Country.COAST, 
 	var t: Template = _templates.get(key)
 	if t == null:
 		t = _extract(build_kit(kind, variant, country, worked))
+		_storeys(t, kind, variant, country)
 		_templates[key] = t
 	_lock.unlock()
 	return t
@@ -265,6 +271,16 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 		Broken.work_down(k.made, share, kind * 131 + variant)
 		Broken.work_down(k.found, share, kind * 131 + variant + 7)
 	return k
+
+
+## Fill a template's storey channel when it is a building raised in storeys
+## (`BiomeForms.RAISED`, all drawn by props/towers.gd on its STOREY).
+static func _storeys(t: Template, kind: int, variant: int, country: int) -> void:
+	if kind != PropKind.HOUSE or not BiomeForms.RAISED.has(BiomeForms.of(country).form(variant)):
+		return
+	t.made_storey.resize(t.made_v.size())
+	for i in t.made_v.size():
+		t.made_storey[i] = 1.0 + t.made_v[i].y / Houses.Towers.STOREY
 
 
 static func _extract(k: Kit) -> Template:

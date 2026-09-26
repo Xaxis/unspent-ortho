@@ -25,6 +25,13 @@ extends GameSystem
 ## Real seconds between two guide lines, and before the first.
 const SPACING := 4.5
 const FIRST_AT := 1.5
+## Real seconds between two readings of the moment when there was nothing to
+## say. `Guide.goal` and `Guide.hint_for` walk the fires, the recipes, the bodies
+## about and a jump's whole arc; asked on every frame that had nothing to say they
+## were the most expensive thing in the game (6.9 ms a frame in the scrapwood,
+## 12.6 in the sulphur jungle, measured). 90_ui reads the same answers at this
+## same cadence (GUIDE_EVERY); a line is late by at most this much.
+const ASK_EVERY := 0.25
 ## Tiles walked that retire the walking hint.
 const WALKED := 3.0
 ## Seconds after coming round before the goal is said again, and before any key hint.
@@ -88,6 +95,8 @@ func _process(delta: float) -> void:
 		return
 	if _lesson != "" and _hold_lesson():
 		return
+	# Asked again after ASK_EVERY whatever the answer; `_say` puts it further off.
+	_next = _t + ASK_EVERY
 	var goal := Guide.goal(game)
 	if goal != _goal and (_goal == "" or _t - _goal_at >= SPACING):
 		_goal = goal

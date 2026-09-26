@@ -331,3 +331,43 @@ func test_a_block_built_again_is_the_block_it_was() -> void:
 	eq(hash(var_to_bytes(close[0])), hash(var_to_bytes(both[0])), "the close level alone is the close level of both")
 	eq(hash(var_to_bytes(coarse[1])), hash(var_to_bytes(both[1])), "the coarse level alone is the coarse level of both")
 	check(var_to_bytes(close[1]).size() < 64, "and a level not asked for is not built")
+
+
+## A DUST STORM IS THE LAND'S OWN AIR (BiomeDef.weather_style `dust`): the mesas'
+## red and the salt's white are not the shared sand, a land that says nothing
+## blows the shared sand, and a misspelt row is named.
+func test_each_land_blows_its_own_dust() -> void:
+	var mesas: Color = Air.dust_of(&"mesas").air
+	var salt: Color = Air.dust_of(&"salt_flats").air
+	gt(mesas.r - mesas.b, 0.3, "the mesas' dust is red iron")
+	gt(salt.get_luminance(), mesas.get_luminance() + 0.2, "the salt's dust is pale")
+	eq(Air.dust_of(&"coast").air, Air.DUST_AIR, "a land with no row blows the shared sand")
+	eq(Air.at({&"mesas": 1.0}).dust, mesas, "and the air over a frame carries it")
+	var bad := BiomeDef.new()
+	bad.weather_style = {&"dust": {"colour": Color.RED}, &"sleet": {}}
+	var said := "\n".join(PackedStringArray(bad.style_problems()))
+	check(said.contains("no field colour"), "a misspelt field is named: %s" % said)
+	check(said.contains("no row for sleet"), "and a kind with no style")
+
+
+## WHERE A MACHINE CANNOT SEE YOU, YOU CANNOT SEE FAR EITHER: a dust storm's air
+## closes at the distance the rules still let a typical machine see.
+func test_a_dust_storm_closes_the_air_where_sight_ends() -> void:
+	for s: float in [0.5, 1.0]:
+		var r := SkyLight.dust_reach(30.0, s)
+		near(r.y - 30.0, SkyLight.SIGHT_TYPICAL * Weather.sight_factor(&"dust", s), 1e-4, "closed at sight, strength %.1f" % s)
+		lt(r.x, 30.0, "and clear up to the player")
+	gt(SkyLight.dust_reach(30.0, 0.5).y, SkyLight.dust_reach(30.0, 1.0).y, "a thinner storm is seen further through")
+
+
+## The sulphur jungle's fog is its own acid yellow, lying low; a land that says
+## nothing keeps the shared pale mist.
+func test_the_sulphur_jungle_fog_is_its_own() -> void:
+	var row: Dictionary = BiomeRegistry.get_def(&"sulphur_jungle").weather_style.get(&"fog", {})
+	check(not row.is_empty(), "the sulphur jungle styles its fog")
+	var c: Color = row.get("air", Color.BLACK)
+	gt(c.r + c.g - 2.0 * c.b, 0.4, "sulphur-yellow, not pale grey")
+	gt(float(row.get("low", 0.0)), 0.5, "and it lies low")
+	check(BiomeRegistry.get_def(&"coast").weather_style.get(&"fog", {}).is_empty(), "the coast keeps the shared fog")
+	eq(BiomeRegistry.get_def(&"sulphur_jungle").style_problems().size(), 0, "a well-formed row")
+

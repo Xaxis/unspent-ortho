@@ -159,6 +159,8 @@ static func make() -> BiomeDef:
 	# A white pan under nothing at all. It throws the night sky back harder than
 	# the snow does, and there is not a thing on it to cast a shadow.
 	d.night_sky = 1.40
+	# A dust storm here is the pan's own salt lifted: a white glare wall, not sand.
+	d.weather_style = {&"dust": {"air": Color(0.90, 0.89, 0.84), "thick": 1.2}}
 	# A warm cast taken out of the blue rather than added to the red: a light
 	# tint over 1 is one more gain on a landscape with no headroom left.
 	d.light_tint = Color(1.0, 0.985, 0.95)

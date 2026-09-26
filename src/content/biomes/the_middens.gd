@@ -101,6 +101,8 @@ static func make() -> BiomeDef:
 		[Weather.RAIN, 16, 0.5], [Weather.FOG, 10, 0.0],
 	]
 	d.mist = 0.18
+	# What blows off the heaps: rust and ground-up refuse, brown and dirty.
+	d.weather_style = {&"dust": {"air": Color(0.52, 0.40, 0.30), "thick": 1.1}}
 	# What a dump of machine parts does to a body: the heaps pull on anything
 	# ferrous, and the walls come down.
 	d.hazards = {&"magnetism": 0.6, &"collapse": 0.45}

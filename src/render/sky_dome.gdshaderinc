@@ -26,6 +26,8 @@ uniform float dome_glow = 0.0;
 uniform vec3 dome_sun_dir = vec3(0.0, 1.0, 0.0);
 uniform vec3 dome_sun_color : source_color = vec3(1.0, 0.95, 0.85);
 uniform vec3 dome_moon_dir = vec3(0.0, 1.0, 0.0);
+// The moon's phase (Weather.moon_phase): 0 full, 0.5 new.
+uniform float dome_moon_phase = 0.0;
 // 0 in daylight .. 1 once night has fallen: stars and the moon.
 uniform float dome_night = 0.0;
 // How much of the sky the weather has covered (0..1), how dark its underside
@@ -203,8 +205,21 @@ vec3 dome_seen_col(vec3 d, bool cubemap) {
 		float md = dot(d, normalize(dome_moon_dir));
 		float moon = smoothstep(0.99900, 0.99925, md);
 		float limb = clamp((md - 0.99900) / 0.00100, 0.0, 1.0);
-		col = mix(col, vec3(0.80, 0.82, 0.88) * mix(0.55, 1.0, sqrt(limb)), moon * dark * clear);
-		col += vec3(0.55, 0.60, 0.75) * pow(max(md, 0.0), 400.0) * 0.25 * dark * clear;
+		// The phase: the terminator is the ellipse x = k*sqrt(1 - y^2) across the
+		// disc, k = cos(phase), lit on the waxing or the waning side. What is not
+		// lit is the moon's own dark, a shade over the sky, never a hole in it.
+		vec3 mdir = normalize(dome_moon_dir);
+		vec3 tx = normalize(cross(mdir, vec3(0.0, 1.0, 0.0)) + vec3(1e-4, 0.0, 0.0));
+		vec3 ty = cross(tx, mdir);
+		vec2 q = vec2(dot(d, tx), dot(d, ty)) / 0.0419;
+		float k = cos(6.2832 * dome_moon_phase);
+		float side = dome_moon_phase < 0.5 ? 1.0 : -1.0;
+		float edge = -k * sqrt(max(1.0 - q.y * q.y, 0.0));
+		float lit = smoothstep(edge - 0.08, edge + 0.08, q.x * side);
+		vec3 disc_c = mix(col * 0.85, vec3(0.80, 0.82, 0.88) * mix(0.55, 1.0, sqrt(limb)), lit);
+		col = mix(col, disc_c, moon * dark * clear);
+		float glow_share = 0.12 + 0.88 * (0.5 + 0.5 * k);
+		col += vec3(0.55, 0.60, 0.75) * pow(max(md, 0.0), 400.0) * 0.25 * dark * clear * glow_share;
 		// Stars: a fixed field, only where night has fallen and the sky is clear,
 		// thinning into the air near the horizon.
 		if (h > 0.02 && dark > 0.0) {

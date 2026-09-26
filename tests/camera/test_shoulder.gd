@@ -503,8 +503,11 @@ func _breaths(g: Game, air: Array = []) -> int:
 			is_mark = mode != null and int(mode) == MobFx.VAPOUR
 		if not (is_air or is_mark):
 			continue
-		var m := mi.material_override as StandardMaterial3D
-		air.append(is_air and m != null and not m.no_depth_test)
+		# Air is the soft plume shader (render/weather/plume.gdshader), depth-tested:
+		# its render mode never turns the depth test off.
+		var sm := mi.material_override as ShaderMaterial
+		var tested := sm != null and sm.shader == MobFx.PLUME_SHADER and not sm.shader.code.contains("depth_test_disabled")
+		air.append(is_air and tested)
 		n += 1
 		mi.queue_free()
 	return n

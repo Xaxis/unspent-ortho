@@ -88,3 +88,34 @@ func test_a_mural_lights_only_where_something_was_bolted_over_it() -> void:
 			check(pts.is_empty(), "mural %d is bare paint and gives no light" % v)
 		else:
 			check(not pts.is_empty(), "mural %d carries a hoarding and lights the street" % v)
+
+
+## WHERE THE PLAN'S POWER HAS GONE NOTHING BURNS AT FULL STRENGTH. A landscape
+## whose signage is dying (BiomeDressing.signage) may draw no NEON face on any
+## model it deals: its boards are dead enamel, its stolen tubes are failing ones,
+## and the sign arms over its lanes hang dead boards. A lit landscape keeps them.
+func test_a_dying_landscape_draws_no_full_strength_neon() -> void:
+	var dying := 0
+	for d: BiomeDef in BiomeRegistry.land():
+		var c := d.index
+		var dead := BiomeDressing.of(c).signage == &"dying"
+		var neon := 0
+		for kind: int in [PropKind.HOUSE, PropKind.MURAL, PropKind.SHACK] + Array(d.props):
+			for v in PropModels.variants(kind, c):
+				neon += _count(PropModels.template(kind, v, c).made_c, GroundColors.NEON)
+		if dead:
+			dying += 1
+			eq(neon, 0, "%s is dying and still draws %d neon vertices" % [d.id, neon])
+			var arm := ForeKinds.template(ForeKinds.SIGN_ARM, 0, Color(0.5, 0.4, 0.3), true)
+			eq(_count(arm.surface_get_arrays(0)[Mesh.ARRAY_COLOR], GroundColors.NEON), 0, "%s hangs a dead sign board" % d.id)
+		elif d.id == &"slums":
+			gt(float(neon), 0.0, "the slums keep their neon")
+	gt(float(dying), 0.0, "some landscape's signage is dying")
+
+
+func _count(cols: PackedColorArray, mark: int) -> int:
+	var n := 0
+	for col: Color in cols:
+		if roundi(col.a * 255.0) == mark:
+			n += 1
+	return n

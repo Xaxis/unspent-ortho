@@ -88,6 +88,10 @@ static func make() -> BiomeDef:
 	# ROCK and GRAVEL here are the city's broken floor too, not bedrock.
 	d.ground_marks = {Ground.FLOOR: GroundColors.OVERGROWN, Ground.ROCK: GroundColors.OVERGROWN, Ground.GRAVEL: GroundColors.OVERGROWN}
 	d.strata = GroundColors.STRATA_ROOTED
+	# The forest has the towers too: moss on every ledge, ivy down every storey
+	# (BiomeDef.overgrowth, matter_grown). The whole dose: this is the landscape
+	# named for it.
+	d.overgrowth = 1.0
 	d.plain_ground = Ground.GRASS
 	d.bank_ground = Ground.MUD
 	d.pool_rim_ground = Ground.MUD
@@ -108,6 +112,12 @@ static func make() -> BiomeDef:
 	dress.concrete = P.ASH[3].lerp(P.MOSS[2], 0.35)
 	dress.walling = [P.ASH[2], P.MOSS[2], P.STONE[3], P.SPRUCE[2]]
 	dress.crown = &"full"
+	# Nobody here has the city's power: a lived-in storey is one lamp in a dark
+	# band, and the towers at night are a few warm squares in the canopy.
+	dress.windows = &"gaps"
+	# And the plan's boards here were abandoned with the city: dead faces under
+	# the moss, a letter or two still catching on the last of the power.
+	dress.signage = &"dying"
 	dress.sink = 0.24
 	dress.lie = Vector2(-0.1, 0.16)
 	d.dressing = dress

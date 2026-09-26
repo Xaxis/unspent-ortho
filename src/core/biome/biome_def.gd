@@ -297,6 +297,53 @@ var sky_shut := 0.0
 ## only opens holes in a roof a realm already has, and touches nothing else.
 ## Runtime only, so a LOOK field: it moves no island.
 var sky_holes := 0.0
+## How far the growth of this land has taken the things people built in it,
+## 0..1: moss on every ledge, ivy hanging from every storey, green streaks where
+## run-off feeds it, dense low and thinning upward (`matter_grown`, SkyWear's
+## growth map). 1 is a city the forest has; a wet land might take 0.2.
+## Runtime only, so a LOOK field: it moves no island.
+var overgrowth := 0.0
+## What this land's vents breathe (16_vents): the colour of the puff, and in
+## ALPHA how big and how often, as a multiple of the Burning's ash (1). 0 alpha
+## takes the Burning's. Above 1 the machine caps breathe too, leaking round
+## their seals. Runtime only, so a LOOK field.
+var vent_breath := Color(0, 0, 0, 0)
+## What lights this land's trees from below after dark, if anything: the colour,
+## and in ALPHA how strongly (leaf.gdshader, through SkyWear's growth map). The
+## grey orchards' is the plan's grow light, still run on schedule for trees
+## nobody will pick. Runtime only, so a LOOK field.
+var underlight := Color(0, 0, 0, 0)
+## How much more rain comes down as drips here, under a canopy (10_sky, Drips):
+## 1 is open ground. Runtime only, so a LOOK field.
+var canopy_drip := 1.0
+## Cold lights drifting low after dark, how many (10_sky wisps): 0 is none.
+## Never in rain or a wind. Runtime only, so a LOOK field.
+var wisps := 0.0
+## HOW THIS LAND'S WEATHER LOOKS, per weather kind (Weather.KINDS), where it is
+## not the shared look (src/render/weather). A kind with no row here looks as
+## it does everywhere. Rows so far:
+##   &"dust": {"air": Color, "thick": float}  the colour a dust storm carries the
+##            air to here (red iron in the mesas, salt on the flats) and how much
+##            thicker than the shared dust it lies (1 = the shared)
+##   &"fog":  {"air": Color, "low": float}  the colour this land's fog is, and how
+##            low and heavy it lies in the hollows, 0..1
+## Runtime only, so a LOOK field; BiomeRegistry.problems names a bad row.
+var weather_style: Dictionary = {}
+## Every field a weather_style row may carry, per kind.
+const WEATHER_STYLE_FIELDS := {&"dust": ["air", "thick"], &"fog": ["air", "low"]}
+
+
+## What is wrong with `weather_style`, one line each (BiomeRegistry.problems).
+func style_problems() -> Array[String]:
+	var out: Array[String] = []
+	for kind: StringName in weather_style:
+		if not WEATHER_STYLE_FIELDS.has(kind):
+			out.append("weather_style has no row for %s" % kind)
+			continue
+		for field: String in (weather_style[kind] as Dictionary):
+			if not (WEATHER_STYLE_FIELDS[kind] as Array).has(field):
+				out.append("weather_style %s has no field %s" % [kind, field])
+	return out
 ## The dystopian grade offset added to SkyLight's own (`SkyLight.neon_row`):
 ## (dark, desat, cool, contrast). `sky.gdshaderinc` scales the graded colour by
 ## (1 - dark), so POSITIVE dark dims and NEGATIVE lifts: every landscape's dark

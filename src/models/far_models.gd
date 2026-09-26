@@ -49,8 +49,10 @@ const LIT_KEEP := 0.45
 ## mid range the first cut took the tank off every roof in the slums while the
 ## wall under it kept every stripe. A far level's budget still caps them.
 const FOUND_KEEP := 0.33
-## The share of leaf cards each level keeps.
-const LEAF_KEEP: Array[float] = [0.5, 0.2, 0.1, 0.4]
+## The share of leaf cards each level keeps. SHADE's crowns are only ever a shadow,
+## cast from LEAF_SHADOW out (WorldView): 0.15, grown to the same mass, still
+## darkens under each pine tier, where 0.4 cost 350k shadow primitives in a wood.
+const LEAF_KEEP: Array[float] = [0.5, 0.2, 0.1, 0.15]
 ## The most faces a level keeps of one model, longest first, so one ornate model
 ## cannot spend a block's whole budget; and under that, a far level spends in
 ## proportion to the model's own height SQUARED (`PER_AREA`), because that is how
@@ -99,6 +101,7 @@ static func reduce(t: PropModels.Template, level: int) -> PropModels.Template:
 	out.made_c = _pickc(t.made_c, made)
 	out.made_uv = _pick2(t.made_uv, made)
 	out.made_uv2 = _pick2(t.made_uv2, made)
+	out.made_storey = _pickf(t.made_storey, made)
 	var found := _keep(t.found_v, t.found_c, tol * FOUND_KEEP, maxi(most / 4, most - made.size()), false, crown)
 	out.found_v = _pick3(t.found_v, found)
 	out.found_n = _pick3(t.found_n, found)
@@ -179,6 +182,19 @@ static func _pick3(a: PackedVector3Array, at: PackedInt32Array) -> PackedVector3
 
 static func _pick2(a: PackedVector2Array, at: PackedInt32Array) -> PackedVector2Array:
 	var out := PackedVector2Array()
+	if a.is_empty():
+		return out
+	out.resize(at.size() * 3)
+	for j in at.size():
+		var i := at[j]
+		out[j * 3] = a[i]
+		out[j * 3 + 1] = a[i + 1]
+		out[j * 3 + 2] = a[i + 2]
+	return out
+
+
+static func _pickf(a: PackedFloat32Array, at: PackedInt32Array) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
 	if a.is_empty():
 		return out
 	out.resize(at.size() * 3)

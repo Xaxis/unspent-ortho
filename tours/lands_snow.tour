@@ -1,0 +1,17 @@
+# The snowfield over the shoulder: its most characteristic ground at noon and in
+# the golden hour, with the frame cost standing at noon.
+#   tools/tour.sh tours/lands_snow.tour --seed=7 --weather=clear:0 --view=shoulder --stats
+coast calm
+hour 12
+place typical_snowfield
+wait 3.0
+shot noon with land:snowfield
+perf stats begin
+wait 5.0
+perf stats end snowfield-noon
+hour 19
+wait 2.0
+shot golden with land:snowfield
+mouse 1400,0 1.0
+wait 1.0
+shot golden-turned with land:snowfield

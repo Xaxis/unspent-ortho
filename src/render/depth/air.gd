@@ -98,14 +98,23 @@ const ROWS := {
 	# The crags are what fog is FOR (BiomeDef.mist, its weather): the far land goes
 	# to a wet pale grey, the air begins close, and the bank is thick, so even a
 	# clear day there has distance in it that no other upland has.
+	# The sulphur jungle's air is WET and HOT: a yellow-green haze that begins
+	# close, so the canopy fades into its own steam.
+	&"sulphur_jungle": {"tow": Color(0.52, 0.55, 0.36), "pull": 0.52, "depth": 1.22, "near": 0.85, "bank": 1.4},
+	# The mesas' distance goes to warm red dust, and begins far: the air is dry
+	# and the canyon country is seen a long way off.
+	&"mesas": {"tow": Color(0.80, 0.62, 0.50), "pull": 0.46, "depth": 1.05, "near": 1.05, "bank": 0.8},
 	&"the_crags": {"tow": Color(0.62, 0.66, 0.70), "pull": 0.66, "depth": 1.30, "near": 0.80, "bank": 1.7},
 	&"slums": {"tow": Color(0.300, 0.228, 0.170), "pull": 0.34, "depth": 1.20, "near": 0.90, "bank": 1.45},
 }
 
+## The shared dust: pale sand, where a landscape has not said what its dust is.
+const DUST_AIR := Color(0.80, 0.70, 0.54)
 ## A landscape with no row of its own: the coast's air, which is nearly neutral.
 ## A new landscape reads as ordinary rather than as broken, and adds a row when
 ## somebody has looked at it.
-const DEFAULT := {"tow": Color(0.66, 0.71, 0.75), "pull": 0.18, "depth": 1.00, "near": 1.00, "bank": 1.0}
+const DEFAULT := {"tow": Color(0.66, 0.71, 0.75), "pull": 0.18, "depth": 1.00, "near": 1.00, "bank": 1.0,
+	"dust": DUST_AIR, "dust_thick": 1.0}
 
 ## Where the air begins and ends, as multiples of the frame's own depth half-span
 ## either side of the focus. BEGIN_K under 1 keeps the near part of the picture
@@ -148,6 +157,8 @@ static func at(shares: Dictionary) -> Dictionary:
 	var depth := 0.0
 	var near := 0.0
 	var bank := 0.0
+	var dust := Color(0, 0, 0, 0)
+	var thick := 0.0
 	var total := 0.0
 	for id: StringName in shares:
 		var w := float(shares[id])
@@ -160,6 +171,10 @@ static func at(shares: Dictionary) -> Dictionary:
 		depth += float(r.depth) * w
 		near += float(r.near) * w
 		bank += float(r.bank) * w
+		var ds := dust_of(id)
+		var dc: Color = ds.air
+		dust += Color(dc.r * w, dc.g * w, dc.b * w, 0.0)
+		thick += float(ds.thick) * w
 		total += w
 	if total <= 0.0:
 		return DEFAULT.duplicate()
@@ -167,7 +182,16 @@ static func at(shares: Dictionary) -> Dictionary:
 		"tow": Color(tow.r / total, tow.g / total, tow.b / total),
 		"pull": pull / total, "depth": depth / total,
 		"near": near / total, "bank": bank / total,
+		"dust": Color(dust.r / total, dust.g / total, dust.b / total), "dust_thick": thick / total,
 	}
+
+
+## What a dust storm carries this landscape's air to, and how thick it lies
+## (BiomeDef.weather_style `dust`); the shared sand where it says nothing.
+static func dust_of(id: StringName) -> Dictionary:
+	var d := BiomeRegistry.get_def(id)
+	var row: Dictionary = d.weather_style.get(&"dust", {}) if d != null else {}
+	return {"air": row.get("air", DUST_AIR), "thick": float(row.get("thick", 1.0))}
 
 
 ## Where the air begins and ends, in world units of depth, for the camera that is

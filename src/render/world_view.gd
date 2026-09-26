@@ -698,6 +698,16 @@ func _look_out() -> void:
 ## twins that share each surface's mesh (nothing is copied), each over the range it
 ## casts, while the drawn surface itself stops casting.
 const SHADOW_FULL := 30.0
+## LEAF CARDS CAST ONLY CLOSE IN. A crown's shadow past this is a soft blot
+## under a tree whose trunk and boughs still cast it to SHADOW_FULL, and each
+## card is alpha-tested into every split it touches: in the scrapwood, at 602
+## crowns within forty tiles, leaves that cast to the last split were 1.35M of
+## the frame's 3.6M shadow primitives and about 3 ms. So past this the crown
+## casts from its SHADE model, whose cards are a share of the full crown's grown
+## to cover the same mass (FarModels.LEAF_KEEP): a pine keeps the dark under each
+## tier, which it lost when far cards cast nothing at all (measured: the pinewood's
+## mid-distance pines went flat and paler).
+const LEAF_SHADOW := 15.0
 
 
 func _lod_apply(node: Node3D) -> void:
@@ -727,12 +737,14 @@ func _lod_apply(node: Node3D) -> void:
 			# Full shadows close in (the tier's `eye_shadow_full`), the shade
 			# models' past that, none past the reach, and never the mid ones.
 			var near_full := float(Quality.current().get("eye_shadow_full", SHADOW_FULL))
-			if near_full > 0.0:
-				_casts(node, full, 0.0, _cut(near_full, reach), true)
+			var leaf := i == 2
+			var own_full := minf(near_full, LEAF_SHADOW) if leaf else near_full
+			if own_full > 0.0:
+				_casts(node, full, 0.0, _cut(own_full, reach), true)
 			else:
 				_no_cast(node, full)
 			_no_cast(node, mid)
-			_casts(node, shade, near_full, reach, true)
+			_casts(node, shade, own_full, reach, true)
 		else:
 			_casts(node, full, 0.0, reach, _lod_on and reach > 0.0)
 			_casts(node, mid, 0.0, 0.0, false)
@@ -849,7 +861,7 @@ func _attach_mid(node: Node3D, baked: Array) -> void:
 		if arrays.is_empty():
 			continue
 		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, prop_flags(arrays))
 		var mi := MeshInstance3D.new()
 		mi.name = names[i]
 		mi.mesh = mesh
@@ -1373,6 +1385,10 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 	var mc := PackedColorArray()
 	var muv := PackedVector2Array()
 	var muv2 := PackedVector2Array()
+	# The storey channel (PropModels.Template.made_storey): 0 on anything that
+	# is not raised in storeys, which the shader reads as "no floor lines".
+	var mst := PackedFloat32Array()
+	var any_storey := false
 	var fv := PackedVector3Array()
 	var fn := PackedVector3Array()
 	var fc := PackedColorArray()
@@ -1403,6 +1419,11 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 			mc.append_array(tpl.made_c)
 			muv.append_array(tpl.made_uv)
 			muv2.append_array(tpl.made_uv2)
+			if tpl.made_storey.size() == tpl.made_v.size():
+				mst.append_array(tpl.made_storey)
+				any_storey = true
+			else:
+				mst.resize(mv.size())
 		if not tpl.found_v.is_empty():
 			fv.append_array(xf * tpl.found_v)
 			fn.append_array(nx * tpl.found_n)
@@ -1427,6 +1448,7 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 		mc.append_array(ice.colors)
 		muv.append_array(ice.uvs)
 		muv2.append_array(ice.uv2s)
+	mst.resize(mv.size())
 	var made := []
 	if not mv.is_empty():
 		made.resize(Mesh.ARRAY_MAX)
@@ -1435,6 +1457,8 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 		made[Mesh.ARRAY_COLOR] = mc
 		made[Mesh.ARRAY_TEX_UV] = muv
 		made[Mesh.ARRAY_TEX_UV2] = muv2
+		if any_storey:
+			made[Mesh.ARRAY_CUSTOM1] = mst
 	var found := []
 	if not fv.is_empty():
 		found.resize(Mesh.ARRAY_MAX)
@@ -1450,6 +1474,14 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 		leaves[Mesh.ARRAY_TEX_UV] = luv
 		leaves[Mesh.ARRAY_TEX_UV2] = luv2
 	return [made, found, leaves]
+
+
+## The surface format a baked prop array needs: the storey channel is one float
+## a vertex in CUSTOM1 where any building in it carries one.
+static func prop_flags(arrays: Array) -> int:
+	if arrays.size() > Mesh.ARRAY_CUSTOM1 and arrays[Mesh.ARRAY_CUSTOM1] != null:
+		return Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT
+	return 0
 
 
 ## Where a prop stands and how it is turned and cast, with its foot at height `h`.
@@ -1492,7 +1524,7 @@ func _attach_props(node: Node3D, baked: Array) -> void:
 	var made: Array = baked[0]
 	if not made.is_empty():
 		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, made)
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, made, [], {}, prop_flags(made))
 		var mi := MeshInstance3D.new()
 		mi.name = "props"
 		mi.mesh = mesh

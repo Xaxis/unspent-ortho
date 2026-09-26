@@ -71,6 +71,19 @@ static func make() -> BiomeDef:
 	d.plain_ground = Ground.GRASS
 	d.bank_ground = Ground.MUD
 	d.pool_rim_ground = Ground.SALT
+	# ITS OWN CRUST, LOOK only (no seed moves): the SALT round its vents is the
+	# sinter the hot water laid, in lobed terraces with sulphur on the rims
+	# (GroundColors.SULPHUR); it was the salt flats' plate crust recoloured.
+	d.ground_marks = {Ground.SALT: GroundColors.SULPHUR}
+	# And its vents breathe STEAM, not the Burning's ash: white, wet, half again the
+	# size and more often, and the machines' caps leak it round their seals.
+	# Sulphur-warm, and passed through unwhitened: pure white steam lit red by
+	# the vent from below and blue by the night above came out magenta; with
+	# the blue taken down it reads orange over the vent and sulphur-pale above.
+	d.vent_breath = Color(0.92, 0.90, 0.48, 1.6)
+	# Its fog is the vents' own: a sulphur-yellow acid fog that lies low and heavy
+	# in the hollows round them, stinging-bright, never a pale mist.
+	d.weather_style = {&"fog": {"air": Color(0.72, 0.74, 0.40), "low": 1.0}}
 	d.village_ground = Ground.MUD
 	d.decor = {Ground.GRASS: [0.95, Decor.TUFT, 36, Decor.CROTTLE, 14]}
 	d.grass_colors = [P.MOSS[3], P.SPRUCE[3]]

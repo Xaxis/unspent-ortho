@@ -28,7 +28,7 @@ func test_every_ground_mark_lies_in_a_ground_run() -> void:
 			var m: int = d.ground_marks[g]
 			check(_in(m, GroundColors.GROUND_A) or _in(m, GroundColors.GROUND_B),
 				"%s names mark %d for %s, in a ground run" % [d.id, m, Ground.NAMES[g]])
-	for m: int in [GroundColors.FRESH, GroundColors.VITRIFIED, GroundColors.TIDEFLAT, GroundColors.CITY_FLOOR, GroundColors.OVERGROWN]:
+	for m: int in [GroundColors.FRESH, GroundColors.VITRIFIED, GroundColors.TIDEFLAT, GroundColors.CITY_FLOOR, GroundColors.OVERGROWN, GroundColors.CAST_FLOOR, GroundColors.MACHINE_DECK, GroundColors.SULPHUR, GroundColors.DESERT_PAVEMENT, GroundColors.SEA_ICE, GroundColors.PINE_FLOOR, GroundColors.SCRAP_FLOOR, GroundColors.BOG_FLOOR]:
 		check(_in(m, GroundColors.GROUND_A) or _in(m, GroundColors.GROUND_B), "mark %d is a ground" % m)
 
 
@@ -41,7 +41,7 @@ func test_every_wall_is_in_the_strata_run() -> void:
 
 
 func test_the_runs_do_not_touch_each_other_or_the_other_codes() -> void:
-	var runs: Array[Vector2i] = [Vector2i(1, 34), GroundColors.GROUND_A,
+	var runs: Array[Vector2i] = [Vector2i(1, GroundColors.FAILING), GroundColors.GROUND_A,
 		Vector2i(GroundColors.MADE_FIRST, 95), GroundColors.GROUND_B, GroundColors.STRATA_RUN]
 	for i in runs.size():
 		lt(float(runs[i].y), 256.0, "a mark is one byte")
@@ -57,6 +57,10 @@ func test_the_shader_states_the_same_layout() -> void:
 			["MARK_STRATA", GroundColors.STRATA], ["MARK_STRATA_END", GroundColors.STRATA_RUN.y],
 			["M_VITRIFIED", GroundColors.VITRIFIED], ["M_TIDEFLAT", GroundColors.TIDEFLAT],
 			["M_CITY_FLOOR", GroundColors.CITY_FLOOR], ["M_OVERGROWN", GroundColors.OVERGROWN],
+			["M_CAST_FLOOR", GroundColors.CAST_FLOOR], ["M_MACHINE_DECK", GroundColors.MACHINE_DECK], ["M_SULPHUR", GroundColors.SULPHUR], ["M_DESERT_PAVEMENT", GroundColors.DESERT_PAVEMENT], ["M_SEA_ICE", GroundColors.SEA_ICE], ["M_PINE_FLOOR", GroundColors.PINE_FLOOR], ["M_SCRAP_FLOOR", GroundColors.SCRAP_FLOOR], ["M_BOG_FLOOR", GroundColors.BOG_FLOOR],
+			["M_STRATA_FLOE", GroundColors.STRATA + GroundColors.STRATA_FLOE],
+			["M_STRATA_MESA", GroundColors.STRATA + GroundColors.STRATA_MESA],
+			["M_STRATA_MACHINE", GroundColors.STRATA + GroundColors.STRATA_MACHINE], ["M_STRATA_CAST", GroundColors.STRATA + GroundColors.STRATA_CAST],
 			["M_STRATA_ROOTED", GroundColors.STRATA + GroundColors.STRATA_ROOTED],
 			["M_STRATA_BONE", GroundColors.STRATA + GroundColors.STRATA_BONE],
 			["M_STRATA_GLASS", GroundColors.STRATA + GroundColors.STRATA_GLASS],
