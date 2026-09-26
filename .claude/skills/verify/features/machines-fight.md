@@ -26,6 +26,8 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   `TOUR_FIXED_FPS=60 tools/tour.sh tours/dropper.tour` (top view and over the shoulder; the tour
   command `over KIND` stages a body on a lip with the player below).
   Ten awake machines' draw cost: `tools/test.sh test_awake_cost`.
+  Night hearing (a machine hears further and makes up its mind faster by ear at night): the day
+  and night noticing distances and night bouts print in `tools/test.sh test_first_meetings:test_by_night`.
 - 42_target: `src/systems/42_target.gd`, reached by `tools/tour.sh tours/targeting.tour`. A lock holds the body (facing, strafe arc, swing, dodge: `src/core/fight/lock_on.gd`, `tools/test.sh test_lock_on`), proven in both views by `tools/tour.sh tours/lockon_top.tour` and `tours/lockon_shoulder.tour` (each tour's header has its options).
 - 44_sentinels: `src/systems/44_sentinels.gd`, reached by `tools/tour.sh tours/sentinels.tour`.
 - 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.

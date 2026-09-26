@@ -46,6 +46,10 @@ const NOISE_RISE := 0.28
 ## warden in its hall made sure by a glimpse of the hatch behind it arrested
 ## whoever came down it within the second, every time.
 const HEAR_RISE := 0.02
+## And a machine makes up its mind by ear this much faster at full night, when
+## its ears are what it has (Senses.NIGHT_HEARING): three times, so a walker
+## heard in the dark is turned on in about a second.
+const NIGHT_HEAR_RISE := 2.0
 const GLIMPSE_RISE := 0.025
 const LOOK_AT := 0.6
 ## What drains per beat when nothing comes of it: about two seconds to settle.
@@ -466,7 +470,8 @@ func _suspicion(m: MobState, how: StringName) -> void:
 		m.heard_at = hero.pos
 		return
 	if how == &"heard" or how == &"glimpsed":
-		m.suspicion = minf(1.0, m.suspicion + (HEAR_RISE if how == &"heard" else GLIMPSE_RISE))
+		var rise := HEAR_RISE * (1.0 + NIGHT_HEAR_RISE * moment.nightfall()) if how == &"heard" else GLIMPSE_RISE
+		m.suspicion = minf(1.0, m.suspicion + rise)
 		# Unsure enough to go and look: its optics turn to where it had them. A
 		# machine at its work does not: it glances and goes on (`_beat`); stood
 		# to look, a hauler stopped on its round for someone it only half saw.
