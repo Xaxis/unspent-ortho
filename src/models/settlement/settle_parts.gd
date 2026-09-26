@@ -38,7 +38,7 @@ const Works := preload("res://src/models/props/works.gd")
 ##
 ## **TURF AND ASH ARE DELIBERATELY LEFT ALONE, and they are the dangerous two.**
 ## Sod banked at the foot of a wall really is turf and there really is a TURF
-## row — but it is 40, a GROUND mark, and `world.gdshader` gives 40..73 the
+## row — but it is 40, a GROUND mark, and `world.gdshader` gives 40..74 the
 ## landscape's own ground treatment. That is not a hypothesis: `towers.gd`
 ## carries the frame where a deck drawn from a `wash()`-derived colour pulled a
 ## landscape's ground stipple over every roof in the settlement. A made surface

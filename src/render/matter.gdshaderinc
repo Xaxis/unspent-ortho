@@ -100,7 +100,7 @@ vec3 matter_cells(vec2 p) {
 // --- What a surface is -----------------------------------------------------
 //
 // Keyed on the ground MARK the vertex stream already carries (GroundColors:
-// 40..60 the grounds, 61..73 cliff strata, 0/255 anything a person made). One
+// 40..60 the grounds, 61..74 cliff strata, 0/255 anything a person made). One
 // row per material:
 //   x roughness   0 mirror .. 1 dead matte
 //   y specular    how much light it returns at a glancing angle (Godot's 0..1,
@@ -162,7 +162,10 @@ vec4 matter_of(int m) {
 	// STRATA_CAVE: wet limestone and flowstone. It never dries, so it shines;
 	// the curtains' own relief (matter_height) is what the lamp finds.
 	else if (m == 73) { r = vec4(0.34, 0.70, 0.070, 0.0); }
-	else if (m >= 61 && m <= 73) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
+	// STRATA_REFUSE: compacted machine refuse, a little metal in it, so the lit
+	// face picks out the plate and the bales between stay matte.
+	else if (m == 74) { r = vec4(0.66, 0.48, 0.045, 0.10); }
+	else if (m >= 61 && m <= 74) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
 	// --- WHAT A PERSON MADE ---------------------------------------------------
 	// Everything above is GROUND, and until these rows existed every timber post,
 	// thatched roof, canvas awning, concrete slab, glass pane and rope lashing in
@@ -290,7 +293,14 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		// narrow across, over the rippled rims of the flow that built them.
 		float drape = matter_fbm(vec2(p.x * 3.2, p.y * 0.35));
 		h = sin(p.x * 9.0 + drape * 6.0) * 0.35 + drape * 0.5 + matter_fbm(p * 2.4) * 0.15;
-	} else if (m == 52 || (m >= 61 && m <= 73)) {
+	} else if (m == 74) {
+		// STRATA_REFUSE: bales pressed into the wall, lumped at the scale of a
+		// crushed cabinet, over the bands they were sorted into.
+		// Mostly lumpy fill; the bale edges only faintly, or the wall reads as
+		// cobbles laid in courses (measured at 18:30 with the cells at 0.7).
+		vec3 cd = matter_cells(vec2(p.x * 1.4, p.y * 2.6) + matter_fbm(p * 0.8) * 1.5);
+		h = smoothstep(0.0, 0.3, cd.y - cd.x) * 0.25 + matter_fbm(p * 2.2) * 0.75;
+	} else if (m == 52 || (m >= 61 && m <= 74)) {
 		// ROCK and cliff strata: broken blocks and bedding planes.
 		vec3 cd = matter_cells(p * 1.6);
 		h = (cd.y - cd.x) * 0.9 + matter_fbm(p * 0.7) * 0.3;

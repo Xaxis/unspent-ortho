@@ -56,12 +56,19 @@ static func make() -> BiomeDef:
 	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
 		d.grounds[g] = d.grounds[Ground.GRAVEL]
 	d.cliff_wash = P.RUST[2].lerp(P.SLATE[2], 0.4)
-	d.strata = GroundColors.STRATA_SCRAP
+	# ITS WALLS ARE ITS OWN (GroundColors.STRATA_REFUSE): refuse the plan sorted
+	# before it dumped it, banded by what it is, cable hanging off every lip. It
+	# was the scrapwood's bank of made ground, which is soil with plate in it --
+	# the one thing the middens is not. A LOOK field: no seed moves.
+	d.strata = GroundColors.STRATA_REFUSE
 	d.plain_ground = Ground.SWARF
 	d.bank_ground = Ground.MUD
 	d.pool_rim_ground = Ground.SWARF
 	d.village_ground = Ground.GRAVEL
-	d.decor = {Ground.SWARF: [0.8, Decor.SCRAP, 34, Decor.SEA_GLASS, 8]}
+	# Underfoot, what fell off the walls: plate, cable, cans, shell cases, bolts,
+	# filings combed by the heaps' pull, and a glint of broken screen.
+	d.decor = {Ground.SWARF: [1.0, Decor.SCRAP, 30, Decor.WIRE, 16, Decor.CAN, 8, Decor.BOLT, 10,
+		Decor.SHELL_CASE, 6, Decor.FILINGS, 8, Decor.SEA_GLASS, 6]}
 	d.grass_colors = [P.RUST[3], P.SLATE[3]]
 	d.rock_color = P.SLATE[3]
 	d.decor_tints = {&"fronds": [P.RUST[2], P.SLATE[2], P.ASH[2]]}

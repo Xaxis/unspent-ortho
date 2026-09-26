@@ -64,7 +64,7 @@ const float CROWN_SWAY = 0.25;
 // Two things stop this opening holes in the world at large:
 //
 //   THE LAND NEVER OPENS. Only what somebody BUILT is cut: the ground band
-//   40..73, the same discriminator fore.gdshader uses to decide how much wear a
+//   40..74, the same discriminator fore.gdshader uses to decide how much wear a
 //   piece takes. A cliff, a terrace and a bank stay solid, so a player under an
 //   overhang is still under it.
 //
@@ -1579,6 +1579,48 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 				c = dn(c, 0.3);
 			}
 		}
+	} else if (id == 14) {
+		// REFUSE: the middens' walls, seventy years of it -- and the plan SORTED
+		// it before it dumped it, which is the one thing that makes a wall of
+		// rubbish into something worse than a heap. Bands by what it is, each
+		// pinching out along the wall: dead boards (green, with a few lit
+		// solder points), cable (black, looping), white goods (pale enamel
+		// chips, yellowed), and rust. Bales pressed into it (matter_height) and
+		// cable hanging off the lip in loops of uneven length.
+		float wander = (ink_vnoise(vec2(px.x * 0.035, 3.0)) - 0.5) * 0.2;
+		float b = (y + wander + (vn - 0.5) * 0.04) / 0.15;
+		float kind = ink_hash(vec2(floor(b), 61.0));
+		// Blotches as wide as they are tall: crushed things, not grain.
+		float n1 = ink_vnoise(vec2(px.x * 0.16, y * 7.0)) * 0.7 + ink_vnoise(vec2(px.x * 0.45, y * 18.0)) * 0.3;
+		if (kind < 0.25) {
+			// Boards: green, and a few points of copper catching the light.
+			c = mix(mix(SPRUCE1, MOSS2, 0.3), SPRUCE1, smoothstep(0.4, 0.7, n1));
+			if (ink_vnoise(vec2(px.x * 1.1, y * 30.0)) > 0.9) {
+				c = mix(RUST3, LINEN3, 0.4);
+			}
+		} else if (kind < 0.5) {
+			// Cable: black, with loops showing as paler arcs.
+			c = mix(INK2, INK3, n1);
+			if (abs(fract(n1 * 5.0) - 0.5) < 0.05) {
+				c = mix(INK3, SLATE2, 0.5);
+			}
+		} else if (kind < 0.72) {
+			// White goods: yellowed enamel in chips over the dark between them.
+			c = mix(mix(INK3, RUST1, 0.4), mix(LINEN2, ASH3, 0.5), smoothstep(0.42, 0.6, n1));
+		} else {
+			c = mix(RUST1, mix(RUST2, EARTH1, 0.4), n1);
+		}
+		// Loads meet on a dark seam only where it has opened.
+		if (fract(b) < 0.06 && ink_vnoise(vec2(px.x * 0.09, floor(b))) > 0.5) {
+			c = mix(c, INK1, 0.7);
+		}
+		// Seventy years: everything the colour of what it used to be.
+		c = mix(c, vec3(dot(c, vec3(0.3, 0.59, 0.11))), 0.3);
+		// Cable hung off the lip in loops.
+		float hang = 0.04 + ink_vnoise(vec2(px.x * 0.18, 91.0)) * 0.14;
+		if (dt < hang && abs(fract(px.x * 0.07 + ink_vnoise(vec2(px.x * 0.05, 93.0)) * 3.0) - 0.5) < 0.06) {
+			c = INK2;
+		}
 	}
 	return c;
 }
@@ -1632,7 +1674,7 @@ float crown_cut(vec3 wp, float sway) {
 // INV_VIEW_MATRIX exists only inside the stage function, so a user function
 // cannot see the camera at all (the shader simply refuses to compile).
 float tall_cut(vec3 wp, int m, vec3 camz, vec3 eye, bool persp) {
-	if (m >= 40 && m <= 73) {
+	if (m >= 40 && m <= 74) {
 		return 0.0;
 	}
 	float cut = 0.0;
@@ -1702,7 +1744,7 @@ void fragment() {
 	float cut = max(crown_cut(world_pos, sway_w), tall_cut(world_pos, m1, camz, eye, persp));
 	// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line of
 	// sight to a body, at any height (sight.gdshaderinc). Never the land.
-	if (persp && !(m1 >= 40 && m1 <= 73)) {
+	if (persp && !(m1 >= 40 && m1 <= 74)) {
 		float close = sight_close(eye, crown_clear[0]);
 		if (close > 0.0) {
 			for (int i = 0; i < CROWN_CLEAR; i++) {
@@ -1778,7 +1820,7 @@ void fragment() {
 		if ((m == 55 || m == 57) && c.r >= c.b) {
 			c *= min(1.0, SALT_TOP.r / max(max(c.r, max(c.g, c.b)), 1e-4));
 		}
-	} else if (m > 60 && m <= 73) {
+	} else if (m > 60 && m <= 74) {
 		// A wall's pattern runs ALONG the wall. `px` is the play camera's screen
 		// grid laid on the world, whose x does not change with height: from
 		// above that is invisible, but at eye level every feature keyed on it
@@ -1790,7 +1832,7 @@ void fragment() {
 		vec2 wpx = vec2(floor(along / SKY_GRAIN), px.y);
 		c = strata(m - 60, c, world_pos, wpx, emit, unh);
 		// The weathering pass, on the two walls it is proposed on first.
-		if (m == 62 || m == 70) {
+		if (m == 62 || m == 70 || m == 74) {
 			c = strata_weather(c, (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y, wpx);
 		}
 	} else if (m >= 1 && m <= 16) {
@@ -1842,7 +1884,7 @@ void fragment() {
 	// it. Anything STANDING in the land takes it nearly whole, which is the law
 	// in one line: the same house, fence and machine carry the bog on them, or
 	// the flat, or the Burning, and nobody had to author three of each.
-	float takes = (m >= 40 && m <= 73) ? 0.14 : 0.85;
+	float takes = (m >= 40 && m <= 74) ? 0.14 : 0.85;
 	// A face opened a moment ago (GroundColors.FRESH: the cut through a boulder
 	// somebody is quarrying) has had almost nothing settle on it. The wear map
 	// reads the PLACE, not the age, so without this a cut made in a bog rusts as
