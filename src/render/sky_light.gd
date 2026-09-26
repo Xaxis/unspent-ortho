@@ -707,6 +707,13 @@ func compose() -> void:
 	var hue := Color(sh.x, sh.y, sh.z)
 	# Godot decodes light_color from sRGB, so encode the ratio we mean.
 	sun.light_color = hue.linear_to_srgb()
+	# What water divides out of its body (water.gdshader): the SUN's hue, as far
+	# as the sun is up (`sun_share`). White at noon, so no day frame moves, and
+	# white all night, where the light is the moon's and water keeps the night
+	# blue it has always had.
+	var sun_up := minf(sun_share(hour), 1.0 - closed)
+	var own := Vector3.ONE.lerp(sh, sun_up)
+	RenderingServer.global_shader_parameter_set("sun_hue", Vector4(own.x, own.y, own.z, 0.0))
 	# How much of the night sky stands over the landscapes in view. It scales the
 	# moon here and the ambient in _drive_environment, TOGETHER, so the ratio
 	# between them — which is what puts shape in a night — is the same in every
@@ -745,6 +752,15 @@ func compose() -> void:
 	var keep := lerpf(1.0, _warm_keep(tint_at(hour)), sun_lit if fposmod(hour, 24.0) > EVENING_FROM else 0.0)
 	sun.light_energy = lerpf(MOON_NIGHT * ns, SUN_NOON * level * keep * glow * lerpf(1.0, LID_SUN, shut) * (1.0 - orbit_shade), sun_lit) \
 		* float(trim.sun)
+	# THE AIR IS LIT ON THE DAY'S CURVE, NOT THE SUN'S. Looking down, the volumetric
+	# bank over the land scatters the sun back into every pixel, and a low amber
+	# sun at full strength came out as a brown veil over the whole frame, deepest
+	# over the dark sea (canon 12). So the air takes only what the day's curve
+	# would have given it; where the horizon is seen the air IS the golden hour,
+	# and takes it all.
+	var day_energy := lerpf(MOON_NIGHT * ns, SUN_NOON * level * glow * lerpf(1.0, LID_SUN, shut) * (1.0 - orbit_shade), lit) * float(trim.sun)
+	var air_share := clampf(day_energy / maxf(sun.light_energy, 0.001), 0.0, 1.0)
+	sun.light_volumetric_fog_energy = lerpf(air_share, 1.0, horizon_share(_cam()))
 	# A low sun is seen through more air, so its edge is softer. Real penumbra,
 	# and it is spent against the evening rather than against `el`: the elevation
 	# this file computes is chosen to give a SCREEN-SPACE shadow length, not to say
@@ -826,8 +842,26 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	var nightly := maxf(night, closed)
 	var dusky := clampf(low_light(hour), 0.0, 1.0)
 	var mood := Color(weather_tint.x * region_tint.x, weather_tint.y * region_tint.y, weather_tint.z * region_tint.z)
-	var top := DAY_SKY_TOP.lerp(DUSK_SKY_TOP, dusky).lerp(NIGHT_SKY_TOP, nightly) * mood
-	var hor := DAY_SKY_HORIZON.lerp(DUSK_SKY_HORIZON, dusky).lerp(NIGHT_SKY_HORIZON, nightly) * mood
+	# THE SKY FOLLOWS THE SUN. On the day's curve it went to night while the sun
+	# was still up (`sun_share`), and its dusk and its night mixed into one flat
+	# lavender-grey at seven. So the SKY's dusk and night are the sun's: warm at
+	# the horizon and deep blue overhead while it sets (`sky_dusk`), night only
+	# once it has gone. The AMBIENT keeps the day's curve (`hor_amb`), so shade
+	# stays the cool it was and the warmth lands where the sun does.
+	var sky_night := maxf(closed, minf(nightly, 1.0 - sun_share(hour)))
+	var sky_dusky := maxf(dusky, sky_dusk(hour))
+	var top := DAY_SKY_TOP.lerp(DUSK_SKY_TOP, sky_dusky).lerp(NIGHT_SKY_TOP, sky_night) * mood
+	var hor := DAY_SKY_HORIZON.lerp(DUSK_SKY_HORIZON, sky_dusky).lerp(NIGHT_SKY_HORIZON, sky_night) * mood
+	var hor_amb := DAY_SKY_HORIZON.lerp(DUSK_SKY_HORIZON, dusky).lerp(NIGHT_SKY_HORIZON, nightly) * mood
+	var top_amb := DAY_SKY_TOP.lerp(DUSK_SKY_TOP, dusky).lerp(NIGHT_SKY_TOP, nightly) * mood
+	# And the sun's sky is the SEEN sky's: looking down there is no sky in the
+	# frame, only its reflection in every wet thing and the air over the land,
+	# and a warm horizon there is a brown veil over the whole picture, sea and
+	# all (canon 12). So the sky's own colours are spent as far as the horizon is
+	# in frame (`horizon_share`), and from above everything keeps the day's curve.
+	var seen := horizon_share(_cam())
+	top = top_amb.lerp(top, seen)
+	hor = hor_amb.lerp(hor, seen)
 	var gnd := SKY_GROUND_DAY.lerp(SKY_GROUND_NIGHT, nightly) * mood
 	# A lid REPLACES the sky rather than dimming it. What is overhead is no longer
 	# blue at noon and indigo at midnight: it is the underside of the thing in the
@@ -850,14 +884,14 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	# The ambient takes the sky's own hue at unit level, so shade is the colour
 	# of the sky over it -- blue at noon, warm at dusk, indigo at night -- and
 	# the LEVEL is the one number law 3 is measured by.
-	var hl := maxf((hor.r + hor.g + hor.b) / 3.0, 0.02)
+	var hl := maxf((hor_amb.r + hor_amb.g + hor_amb.b) / 3.0, 0.02)
 	# Part of the way to white. The sky's own hue at full strength paints every
 	# shadow in the frame the same colour, and shade should be TINTED by the sky
 	# rather than made of it -- but this is also the door a LANDSCAPE's own light
 	# comes through (`mood`, from BiomeDef.light_tint), so taking it far toward
 	# white takes each place's own light away from it. At 0.40 the mean pairwise
 	# Lab dE across the six heartlands was 19.5; at 0.26 it is 22.9.
-	e.ambient_light_color = Color(hor.r / hl, hor.g / hl, hor.b / hl).lerp(Color(1, 1, 1), 0.26)
+	e.ambient_light_color = Color(hor_amb.r / hl, hor_amb.g / hl, hor_amb.b / hl).lerp(Color(1, 1, 1), 0.26)
 	# Under a roof there is no sky to be ambient: what light there is comes off
 	# the walls, and it is very little. That is what makes a cave a cave.
 	#
@@ -1148,7 +1182,9 @@ func _see_sky(e: Environment, sm: ProceduralSkyMaterial, hour: float, nightly: f
 	_dome_set(&"dome_moon_dir", moon)
 	# The glow belongs to a sun near the horizon: from a little above it until
 	# well after it has gone, and not at all in the dead of night.
-	var low := 1.0 - smoothstep(0.02, 0.42, dir.y)
+	# From the golden hour (the drawn sun under about 38 degrees), not only once
+	# it is touching the horizon: at seven it stood at 23 and had no glow at all.
+	var low := 1.0 - smoothstep(0.02, 0.62, dir.y)
 	var gone := smoothstep(-0.02, -0.34, dir.y)
 	_dome_set(&"dome_glow", low * (1.0 - gone) * (1.0 - clampf(clouds.z, 0.0, 1.0) * 0.6))
 	_dome_set(&"dome_glow_color", SKY_GLOW.lerp(SKY_GLOW_LATE, smoothstep(0.05, -0.12, dir.y)) * Color(weather_tint.x, weather_tint.y, weather_tint.z))
@@ -1508,6 +1544,16 @@ static func sun_share(hour: float) -> float:
 	if h <= EVENING_FROM or h >= EVENING_TO:
 		return 1.0 - day_gone(h)
 	return 1.0 - smoothstep(SUN_DOWN_FROM, SUNSET, h)
+
+
+## How far the SKY has gone to its dusk colours, 0..1, by the sun: from the
+## start of its lowering to the moment it sets. 0 outside the evening, where the
+## sky's dusk is the day's low light as it always was.
+static func sky_dusk(hour: float) -> float:
+	var h := fposmod(hour, 24.0)
+	if h <= EVENING_FROM or h >= EVENING_TO:
+		return 0.0
+	return smoothstep(LOWER_TO, SUNSET - 0.4, h)
 
 
 ## The hour's tint's brightest channel over its mean: how much a warm tint's
