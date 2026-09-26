@@ -56,9 +56,8 @@ hour 21.2
 wait 0.5
 shot 14-snowfield-checkpoint-dusk with land:snowfield
 hour 12
-place iced_line
-walk 0,1 0.6
-shot 15-snowfield-iced-line-day with land:snowfield
+# The grid hung with ice is its own tour (tours/iced_line.tour): seed 7's
+# pylon and pole lines no longer cross the snowfield, so it holds no iced line.
 place stack
 walk 0,1 1.0
 shot 16-snowfield-stack-day with land:snowfield,prop:stack

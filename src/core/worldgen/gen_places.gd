@@ -25,6 +25,17 @@ static func find(w: WorldData, name: String) -> Vector2:
 	var key := name.to_lower().strip_edges()
 	if key == "spawn":
 		return w.spawn
+	# "village:LAND": the first village, in the world's list, whose stand is on
+	# LAND's ground (where `village_stand` puts a body, which on a border can be
+	# the other landscape's): a tour asks for one by landscape, not by an index
+	# that moves when worldgen does.
+	if key.begins_with("village:"):
+		var want := StringName(key.trim_prefix("village:"))
+		for v: Dictionary in w.villages:
+			var at := w.village_stand(v)
+			if BiomeRegistry.at(w, at).id == want:
+				return at
+		return Vector2(-1, -1)
 	if key == "lit_village":
 		var sq := lit_village_square(w)
 		return _stand_near(w, sq) if sq.x >= 0.0 else Vector2(-1, -1)
