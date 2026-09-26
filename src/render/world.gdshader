@@ -1383,17 +1383,33 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			c = ink_hash(vec2(b, 4.0)) < 0.5 ? SLATE2 : RIME2;
 		}
 	} else if (id == 5) {
-		// BONELANDS: thick limestone beds, dark bedding planes, joints as ink cuts.
-		float b = (y + (vn - 0.5) * 0.04) / 0.24;
-		c = ink_hash(vec2(floor(b), 1.0)) < 0.5 ? LINEN3 : LINEN4;
-		if (fract(b) < 0.09) {
-			c = LINEN1;
-		} else if (fract(b) > 0.88) {
-			c = up(c, 0.2);
+		// BONELANDS: thick limestone beds that swell and pinch along the face,
+		// each bedding plane an eroded groove rather than a ruled line, and the
+		// vertical joints few, leaning, and only where the rock has opened. The
+		// old joints were one in every 13 pixels of every bed, which is
+		// masonry: at eye level the whole landscape read as dry-stone walling.
+		float sw = (ink_vnoise(vec2(px.x * 0.03, 1.0)) - 0.5) * 0.1 + (vn - 0.5) * 0.04;
+		float b = (y + sw) / (0.2 + ink_vnoise(vec2(px.x * 0.015, 2.0)) * 0.1);
+		float bi = floor(b);
+		float tone = ink_vnoise(vec2(px.x * 0.05, bi * 3.1));
+		c = mix(LINEN3, LINEN4, smoothstep(0.3, 0.7, tone * 0.6 + ink_hash(vec2(bi, 1.0)) * 0.4));
+		// The bedding plane: weathered back into a groove, its depth wandering.
+		float groove = 0.05 + ink_vnoise(vec2(px.x * 0.08, bi)) * 0.07;
+		if (fract(b) < groove) {
+			c = mix(LINEN1, LINEN2, fract(b) / groove);
+		} else if (fract(b) > 0.9) {
+			c = up(c, 0.15);
 		}
-		float jx = floor(px.x / 13.0);
-		if (px.x - jx * 13.0 == floor(ink_hash(vec2(jx, floor(b))) * 12.0)) {
-			c = LINEN1;
+		// A joint: sparse, leaning across the bed, and only where it has opened.
+		float lean = (fract(b) - 0.5) * 3.0;
+		float jc = (px.x + lean) / 31.0;
+		float jx = abs(fract(jc + ink_hash(vec2(bi, 7.0))) - 0.5) * 31.0;
+		if (jx < 0.8 && ink_hash(vec2(floor(jc), bi + 11.0)) > 0.62) {
+			c = mix(c, LINEN1, 0.8);
+		}
+		// Solution pits: the rain has been at the face for a long time.
+		if (ink_vnoise(vec2(px.x * 0.6, y * 14.0)) > 0.84) {
+			c = dn(c, 0.25);
 		}
 	} else if (id == 6) {
 		// BURNING: basalt in upright columns of uneven width, each with a lit
