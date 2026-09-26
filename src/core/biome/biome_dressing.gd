@@ -114,6 +114,18 @@ var shelter: StringName = &""
 var crown: StringName = &""
 ## How wide that crown stands, as a multiple of the ordinary one.
 var spread := 0.0
+## WHAT A BROADLEAF IS HERE, one form per model (a broadleaf's four variants are
+## dealt from these in turn), where the land grows more than one kind of tree:
+##   &"broad"  the ordinary crowned broadleaf
+##   &"fern"   a tree fern: a scaly trunk and a flat rosette of arching fronds
+##   &"fig"    a strangler fig: a lattice of roots wrapped round the host it
+##             killed, and a wide flat crown
+##   &"palm"   a palm with its crown broken: a tall curved stem, a few fronds
+##   &"snag"   a trunk bleached pale by what the ground breathes, a shelf of
+##             fungus on it, no leaf at all
+## Empty and every broadleaf is `broad`. Render only: which variant a tree is
+## does not move.
+var broadleaf_forms: Array[StringName] = []
 ## How a storey somebody still lives behind shows after dark (props/towers.gd):
 ##   &"floors"  the whole band lit on the city's stolen power, a floor left on
 ##   &"gaps"    no power: one light of the band, by a lamp or a fire, and the
@@ -145,6 +157,7 @@ const SHELTERS: Array[StringName] = [&"shack", &"stilt", &"blind", &"pod", &"lea
 	# hearth in the mouth of the cut.
 	&"cut_room"]
 const CROWNS: Array[StringName] = [&"full", &"bare", &"low"]
+const BROADLEAF_FORMS: Array[StringName] = [&"broad", &"fern", &"fig", &"palm", &"snag"]
 const WINDOWS: Array[StringName] = [&"floors", &"gaps"]
 const SIGNAGE: Array[StringName] = [&"lit", &"dying"]
 ## Every ramp `BiomeDef.tree_tints` may name, and how many colours each wants.
@@ -271,6 +284,7 @@ static func resolve(d: BiomeDef) -> BiomeDressing:
 		r.shelter = &"shack"
 	r.crown = s.crown if s.crown != &"" else (&"bare" if cold or burnt else &"full")
 	r.spread = s.spread if s.spread > 0.0 else 1.0
+	r.broadleaf_forms = s.broadleaf_forms
 	r.windows = s.windows if s.windows != &"" else &"floors"
 	r.signage = s.signage if s.signage != &"" else &"lit"
 	r.old_light = s.old_light
@@ -353,6 +367,9 @@ static func problems(d: BiomeDef) -> PackedStringArray:
 			out.append(w + "nobody builds a %s" % s.shelter)
 		if s.crown != &"" and not CROWNS.has(s.crown):
 			out.append(w + "no crown is %s" % s.crown)
+		for f: StringName in s.broadleaf_forms:
+			if not BROADLEAF_FORMS.has(f):
+				out.append(w + "no broadleaf grows as %s" % f)
 		if s.windows != &"" and not WINDOWS.has(s.windows):
 			out.append(w + "no window is lit as %s" % s.windows)
 		if s.signage != &"" and not SIGNAGE.has(s.signage):

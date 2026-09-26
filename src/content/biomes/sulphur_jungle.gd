@@ -97,6 +97,10 @@ static func make() -> BiomeDef:
 	dress.walling = [P.SLATE[2], P.EARTH[2], P.SAND[3], P.SPRUCE[2]]
 	dress.timber = [P.EARTH[2], P.SPRUCE[2]]
 	dress.crown = &"full"
+	# Not one tree but a jungle: tree ferns in the damp, strangler figs whose hosts
+	# are gone, palms with their crowns broken, and snags bleached pale by the
+	# vents. Each of the four broadleaf models is one of them.
+	dress.broadleaf_forms = [&"fig", &"fern", &"palm", &"snag"]
 	dress.sink = 0.2
 	dress.lie = Vector2(-0.08, 0.14)
 	d.dressing = dress

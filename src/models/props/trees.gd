@@ -225,6 +225,20 @@ static func leaf_cards(r: float, h: float, size: float, layers: float = LAYERS) 
 
 static func broadleaf(k: Kit, v: int, c: int) -> void:
 	var d := BiomeDressing.of(c)
+	if not d.broadleaf_forms.is_empty():
+		match d.broadleaf_forms[v % d.broadleaf_forms.size()]:
+			&"fern":
+				tree_fern(k, v, c)
+				return
+			&"fig":
+				strangler_fig(k, v, c)
+				return
+			&"palm":
+				broken_palm(k, v, c)
+				return
+			&"snag":
+				bleached_snag(k, v, c)
+				return
 	var burnt := BiomeDressing.burnt(c)
 	var s := 2000 + v * 31 + c * 5
 	# A landscape colours its own trees (BiomeDef.tree_tints), so a new one is
@@ -469,3 +483,122 @@ static func reeds(k: Kit, v: int, c: int) -> void:
 		k.rod(Vector3(-0.75, 0.05, -0.16), Vector3(-0.1, 0.1, 0.0), 0.03, 6, P.INK[2])
 		k.rod(Vector3(-0.1, 0.1, 0.0), Vector3(0.14, 0.11, 0.05), 0.02, 6, P.COPPER[3])
 		k.rod(Vector3(0.14, 0.11, 0.05), Vector3(0.75, 0.04, 0.2), 0.03, 6, P.INK[2])
+
+
+## A tree fern: a scaly trunk, bare and dark, and at its top a flat rosette of
+## long fronds arching out and down. From above it is a star, not a ball.
+static func tree_fern(k: Kit, v: int, c: int) -> void:
+	var s := 5100 + v * 29 + c * 5
+	var trunk := BiomeDressing.tint1(c, &"trunk", P.EARTH[1])
+	var leaves := BiomeDressing.tint(c, &"leaf", [P.MOSS[2], P.MOSS[3], P.SPRUCE[3], P.MOSS[4]])
+	var h := 1.1 + Kit.j(s, 1, 0.25) + 0.2
+	var lean := Vector2(Kit.j(s, 2, 0.1), Kit.j(s, 3, 0.1))
+	var top := Vector3(lean.x, h, lean.y)
+	k.limb(Vector3.ZERO, top, 0.11, 0.09, 6, trunk, Vector3(Kit.j(s, 4, 0.06), 0.0, Kit.j(s, 5, 0.06)))
+	# The old frond bases left down the trunk: a shaggy skirt of dead leaf.
+	for i in 5:
+		var a := float(i) * 1.3 + Kit.j(s, 6 + i, 0.3)
+		var at := top.lerp(Vector3.ZERO, 0.12 + i * 0.05)
+		k.limb(at, at + Vector3(cos(a) * 0.22, -0.2, sin(a) * 0.22), 0.025, 0.006, 3, P.EARTH[2].lerp(P.SAND[3], 0.3))
+	var start := k.leaf.vertex_count()
+	var n := 9
+	for i in n:
+		var a := float(i) / n * TAU + Kit.j(s, 20 + i, 0.25)
+		var dir := Vector3(cos(a), 0.0, sin(a))
+		var mid := top + dir * 0.45 + Vector3(0, 0.18, 0)
+		var tip := top + dir * 0.9 + Vector3(0, -0.12, 0)
+		k.limb(top, mid, 0.02, 0.012, 3, leaves[0])
+		k.limb(mid, tip, 0.012, 0.004, 3, leaves[0])
+		var mass: Array[Color] = [leaves[i % 3], leaves[(i + 1) % 3], leaves[3]]
+		var fp := top.lerp(tip, 0.6) + Vector3(0, 0.02, 0)
+		k.canopy(fp.x, fp.y - 0.06, fp.z, 0.24, 0.16, s + i * 7, mass, Kit.LEAF_SPINE, SPINE_CARD, 8)
+	k.sway_by_height(start, top.y - 0.3, top.y + 0.3, 0.5, k.leaf)
+
+
+## A strangler fig: the host tree it grew round is long gone, and what stands is
+## the fig's own lattice of roots, a cage of grey trunks braided round a hollow,
+## under a wide flat crown. Buttress roots run out over the ground.
+static func strangler_fig(k: Kit, v: int, c: int) -> void:
+	var s := 5300 + v * 31 + c * 5
+	var bark := BiomeDressing.tint1(c, &"trunk", P.STONE[2].lerp(P.EARTH[2], 0.3))
+	var leaves := BiomeDressing.tint(c, &"leaf", [P.MOSS[2], P.MOSS[3], P.SPRUCE[3], P.MOSS[4]])
+	var h := 1.5 + Kit.j(s, 1, 0.2)
+	var top := Vector3(Kit.j(s, 2, 0.1), h, Kit.j(s, 3, 0.1))
+	# The cage: five root-trunks spiralling up round a hollow and meeting at the top.
+	for i in 5:
+		var a := float(i) / 5.0 * TAU + Kit.j(s, 10 + i, 0.3)
+		var foot := Vector3(cos(a) * 0.3, -0.05, sin(a) * 0.3)
+		var mid := Vector3(cos(a + 1.1) * 0.2, h * 0.5, sin(a + 1.1) * 0.2)
+		k.limb(foot, mid, 0.06, 0.05, 5, bark)
+		k.limb(mid, top, 0.05, 0.06, 5, bark)
+		# A buttress running out over the ground.
+		k.limb(foot, foot * 2.3 + Vector3(0, -0.06, 0), 0.05, 0.015, 4, GroundColors.down(bark, 0.15))
+	var start := k.leaf.vertex_count()
+	for i in 4:
+		var a := float(i) / 4.0 * TAU + Kit.j(s, 30 + i, 0.4)
+		var tip := top + Vector3(cos(a) * 0.55, 0.12, sin(a) * 0.55)
+		k.limb(top, tip, 0.05, 0.02, 4, bark)
+		var mass: Array[Color] = [leaves[i % 3], leaves[(i + 2) % 3], leaves[3]]
+		k.canopy(tip.x, tip.y - 0.12, tip.z, 0.5, 0.4, s + i * 7, mass, Kit.LEAF_BROAD, BROAD_CARD, leaf_cards(0.5, 0.4, BROAD_CARD))
+	var crest: Array[Color] = [leaves[3], leaves[0], leaves[1]]
+	k.canopy(top.x, top.y + 0.05, top.z, 0.6, 0.45, s + 99, crest, Kit.LEAF_BROAD, BROAD_CARD, leaf_cards(0.6, 0.45, BROAD_CARD))
+	k.sway_by_height(start, top.y - 0.2, top.y + 0.8, 0.45, k.leaf)
+
+
+## A palm whose crown was broken: a tall stem curving with the years, ringed by
+## old leaf scars, and at its top a few fronds left, some hanging dead.
+static func broken_palm(k: Kit, v: int, c: int) -> void:
+	var s := 5500 + v * 37 + c * 5
+	var stem := BiomeDressing.tint1(c, &"trunk", P.EARTH[2].lerp(P.STONE[3], 0.3))
+	var leaves := BiomeDressing.tint(c, &"leaf", [P.MOSS[2], P.MOSS[3], P.SPRUCE[3], P.MOSS[4]])
+	var h := 2.1 + Kit.j(s, 1, 0.3)
+	var bow := Vector3(Kit.j(s, 2, 0.35) + 0.2, 0.0, Kit.j(s, 3, 0.3))
+	var mid := Vector3(bow.x * 0.35, h * 0.5, bow.z * 0.35)
+	var top := Vector3(bow.x, h, bow.z)
+	k.limb(Vector3.ZERO, mid, 0.08, 0.065, 6, stem)
+	k.limb(mid, top, 0.065, 0.055, 6, stem)
+	# Leaf-scar rings up the stem.
+	for i in 6:
+		var at := Vector3.ZERO.lerp(top, 0.15 + i * 0.13)
+		k.limb(at + Vector3(-0.07, 0, 0), at + Vector3(0.07, 0.01, 0), 0.012, 0.012, 3, GroundColors.down(stem, 0.3))
+	var start := k.leaf.vertex_count()
+	var n := 5 + v % 2
+	for i in n:
+		var a := float(i) / n * TAU + Kit.j(s, 20 + i, 0.4)
+		var dead := i % 3 == 2
+		var dir := Vector3(cos(a), 0.0, sin(a))
+		var tip := top + dir * (0.75 if not dead else 0.35) + Vector3(0, 0.1 if not dead else -0.55, 0)
+		var col: Color = leaves[i % 3] if not dead else P.SAND[3].lerp(P.EARTH[2], 0.4)
+		k.limb(top, tip, 0.018, 0.006, 3, col)
+		if not dead:
+			var mass: Array[Color] = [leaves[i % 3], leaves[3], leaves[(i + 1) % 3]]
+			var fp := top.lerp(tip, 0.65)
+			k.canopy(fp.x, fp.y - 0.08, fp.z, 0.28, 0.14, s + i * 5, mass, Kit.LEAF_SPINE, SPINE_CARD, 7)
+	k.sway_by_height(start, top.y - 0.2, top.y + 0.3, 0.6, k.leaf)
+
+
+## A snag bleached to bone by what the ground breathes: a pale stripped trunk,
+## its top broken off, and a shelf of fungus stepping up one side. No leaf.
+static func bleached_snag(k: Kit, v: int, c: int) -> void:
+	var s := 5700 + v * 41 + c * 5
+	var wood := GroundColors.made(P.LINEN[3].lerp(P.SAND[4], 0.4), GroundColors.TIMBER)
+	var stain := P.SAND[4].lerp(P.EMBER[4], 0.25)
+	var h := 1.6 + Kit.j(s, 1, 0.3)
+	var lean := Vector2(Kit.j(s, 2, 0.12), Kit.j(s, 3, 0.12))
+	var top := Vector3(lean.x, h, lean.y)
+	k.limb(Vector3(0, -0.06, 0), top.lerp(Vector3.ZERO, 0.5), 0.17, 0.1, 6, wood)
+	k.limb(top.lerp(Vector3.ZERO, 0.5), top, 0.1, 0.05, 5, wood)
+	k.made.prism(top.x, top.y, top.z, 0.05, top.y + 0.2, 0.0, 4, GroundColors.down(wood, 0.25), Color(0, 0, 0, 0), Kit.j(s, 4, 1.0))
+	# Two stubs of branch, stripped.
+	for i in 2:
+		var at := top.lerp(Vector3.ZERO, 0.3 + i * 0.25)
+		var a := Kit.j(s, 10 + i, 3.0)
+		k.limb(at, at + Vector3(cos(a) * 0.35, 0.18, sin(a) * 0.35), 0.035, 0.012, 4, wood)
+	# The sulphur stain rising from the foot, yellow on the bone.
+	k.limb(Vector3(0, -0.04, 0), Vector3(0, 0.3, 0), 0.18, 0.16, 6, stain)
+	# Shelf fungus stepping up one side.
+	for i in 3:
+		var y := 0.45 + i * 0.22
+		var a := 0.6 + i * 0.4
+		k.clump(cos(a) * 0.12, y, sin(a) * 0.12, 0.1, 0.03, s + 20 + i, P.EMBER[4].lerp(P.LINEN[3], 0.5), 6)
+
