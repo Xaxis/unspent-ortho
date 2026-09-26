@@ -49,8 +49,10 @@ const LIT_KEEP := 0.45
 ## mid range the first cut took the tank off every roof in the slums while the
 ## wall under it kept every stripe. A far level's budget still caps them.
 const FOUND_KEEP := 0.33
-## The share of leaf cards each level keeps.
-const LEAF_KEEP: Array[float] = [0.5, 0.2, 0.1, 0.4]
+## The share of leaf cards each level keeps. SHADE's crowns are only ever a shadow,
+## cast from LEAF_SHADOW out (WorldView): 0.15, grown to the same mass, still
+## darkens under each pine tier, where 0.4 cost 350k shadow primitives in a wood.
+const LEAF_KEEP: Array[float] = [0.5, 0.2, 0.1, 0.15]
 ## The most faces a level keeps of one model, longest first, so one ornate model
 ## cannot spend a block's whole budget; and under that, a far level spends in
 ## proportion to the model's own height SQUARED (`PER_AREA`), because that is how

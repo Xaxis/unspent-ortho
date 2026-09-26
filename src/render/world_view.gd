@@ -668,6 +668,16 @@ func _look_out() -> void:
 ## twins that share each surface's mesh (nothing is copied), each over the range it
 ## casts, while the drawn surface itself stops casting.
 const SHADOW_FULL := 30.0
+## LEAF CARDS CAST ONLY CLOSE IN. A crown's shadow past this is a soft blot
+## under a tree whose trunk and boughs still cast it to SHADOW_FULL, and each
+## card is alpha-tested into every split it touches: in the scrapwood, at 602
+## crowns within forty tiles, leaves that cast to the last split were 1.35M of
+## the frame's 3.6M shadow primitives and about 3 ms. So past this the crown
+## casts from its SHADE model, whose cards are a share of the full crown's grown
+## to cover the same mass (FarModels.LEAF_KEEP): a pine keeps the dark under each
+## tier, which it lost when far cards cast nothing at all (measured: the pinewood's
+## mid-distance pines went flat and paler).
+const LEAF_SHADOW := 15.0
 
 
 func _lod_apply(node: Node3D) -> void:
@@ -697,12 +707,14 @@ func _lod_apply(node: Node3D) -> void:
 			# Full shadows close in (the tier's `eye_shadow_full`), the shade
 			# models' past that, none past the reach, and never the mid ones.
 			var near_full := float(Quality.current().get("eye_shadow_full", SHADOW_FULL))
-			if near_full > 0.0:
-				_casts(node, full, 0.0, _cut(near_full, reach), true)
+			var leaf := i == 2
+			var own_full := minf(near_full, LEAF_SHADOW) if leaf else near_full
+			if own_full > 0.0:
+				_casts(node, full, 0.0, _cut(own_full, reach), true)
 			else:
 				_no_cast(node, full)
 			_no_cast(node, mid)
-			_casts(node, shade, near_full, reach, true)
+			_casts(node, shade, own_full, reach, true)
 		else:
 			_casts(node, full, 0.0, reach, _lod_on and reach > 0.0)
 			_casts(node, mid, 0.0, 0.0, false)

@@ -112,6 +112,30 @@ func test_eye_level_parks_what_is_behind_and_turning_brings_it_back() -> void:
 	cam.queue_free()
 
 
+## At eye level a crown's full cards cast only to LEAF_SHADOW and its shade model
+## casts past that, while trunks and boughs keep casting in full to SHADOW_FULL:
+## far leaf cards were a third of a wooded frame's shadow primitives.
+func test_leaf_cards_cast_close_in_and_the_shade_crowns_past_it() -> void:
+	var w := _plain()
+	var cam := _eye(Vector3(76, 4.0, 64), Vector3(200, 3.8, 64))
+	var view := WorldView.new()
+	view.setup(w)
+	tree.root.add_child(view)
+	view.ensure_near(Vector2(76, 64))
+	await process_frames(2)
+	var node: Node3D = view._chunks[Vector2i(3, 2)]
+	var leaf := node.get_node_or_null("props_leaf_casts") as GeometryInstance3D
+	var made := node.get_node_or_null("props_casts") as GeometryInstance3D
+	var shade := node.get_node_or_null("shade_leaf_casts") as GeometryInstance3D
+	check(leaf != null and made != null and shade != null, "the leaves, the trunks and the shade crowns each cast by a twin")
+	if leaf != null and made != null and shade != null:
+		near(leaf.visibility_range_end, minf(WorldView.LEAF_SHADOW, WorldView.SHADOW_FULL), 1e-3, "leaf cards cast to LEAF_SHADOW")
+		gt(made.visibility_range_end, leaf.visibility_range_end, "trunks and boughs cast further than the cards")
+		near(shade.visibility_range_begin, leaf.visibility_range_end, 1e-3, "and the shade crowns take over where the cards stop")
+	view.queue_free()
+	cam.queue_free()
+
+
 ## Past MID_FROM a chunk's props are drawn as their mid models, at eye level only:
 ## the top-down game keeps every chunk whole at any range and casting for itself.
 func test_the_hand_over_is_the_eyes_and_never_the_top_down_games() -> void:
