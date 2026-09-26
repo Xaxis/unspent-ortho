@@ -1371,7 +1371,7 @@ vec3 strata_weather(vec3 c, float dt, vec2 px) {
 // length; and wherever the face turns under (`ny`, its world normal's y, down
 // on the undercut and the underside) the rock is damp and darker. All on
 // smooth fields, as the strata are, so nothing reads as bricks or a comb.
-vec3 hung_rock(vec3 c, float dt, float y, vec2 px, float ny) {
+vec3 hung_rock(vec3 c, float dt, float y, vec2 px, float ny, vec2 xz) {
 	float depth = smoothstep(0.35, 0.6, dt);
 	float wob = (ink_vnoise(vec2(px.x * 0.03, 11.0)) - 0.5) * 0.35 + (ink_vnoise(vec2(px.x * 0.11, 13.0)) - 0.5) * 0.08;
 	float bb = (y + wob) / (0.28 + ink_vnoise(vec2(px.x * 0.02, 17.0)) * 0.14);
@@ -1384,7 +1384,17 @@ vec3 hung_rock(vec3 c, float dt, float y, vec2 px, float ny) {
 	float reach = 0.8 + ink_vnoise(vec2(px.x * 0.07, 43.0)) * 2.0;
 	deep = mix(deep, dn(deep, 0.25), streak * (1.0 - smoothstep(reach * 0.6, reach, dt)));
 	c = mix(c, deep, depth);
-	return mix(c, dn(c, 0.3), smoothstep(0.1, 0.8, -ny));
+	c = mix(c, dn(c, 0.3), smoothstep(0.1, 0.8, -ny));
+	// An underside hangs with drips: dark wet beads in clusters where water
+	// gathers, a pale bead caught in the light here and there. Drawn, since
+	// geometry for them cost a vertex a half tile under every hall.
+	if (ny < -0.5) {
+		float gather = ink_vnoise(xz * 0.6 + 17.0);
+		float bead = ink_vnoise(xz * 4.3 + 5.0);
+		c = mix(c, dn(c, 0.4), smoothstep(0.55, 0.7, bead) * smoothstep(0.4, 0.7, gather));
+		c = mix(c, up(c, 0.35), smoothstep(0.86, 0.92, bead) * smoothstep(0.5, 0.8, gather));
+	}
+	return c;
 }
 
 // CITY_FLOOR: the metropolis' own floor. What a city's ground is after
@@ -2082,6 +2092,17 @@ void fragment() {
 					}
 				}
 			} else {
+				// Whatever stands ON the mass being cut (the growth on its top:
+				// Decor's span pass, world material) goes with it: over its
+				// tiles, above the plane and at or over its underside. The
+				// ground is always under the underside.
+				if (above_cut.z > 0.0 && !IN_SHADOW_PASS) {
+					vec4 t = texelFetch(above_map, ivec2(at), 0);
+					float plane = above_cut.y + (1.0 - above_cut.z) * ABOVE_SWEEP;
+					if (t.r > 0.5 && abs(above_id(at) - above_cut.x) < 0.5 && world_pos.y > plane && world_pos.y >= t.a * 255.0 * 0.5 - 0.05) {
+						discard;
+					}
+				}
 				// The shade under mass, read smoothly across tiles (never a tile
 				// step), and only below its underside.
 				vec2 cu = above_cover(at);
@@ -2198,7 +2219,7 @@ void fragment() {
 			c = strata_weather(c, hung ? min(lip - world_pos.y, 0.33) : lip - world_pos.y, wpx);
 		}
 		if (hung) {
-			c = hung_rock(c, lip - world_pos.y, world_pos.y, wpx, (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y);
+			c = hung_rock(c, lip - world_pos.y, world_pos.y, wpx, (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y, world_pos.xz);
 		}
 	} else if (m >= 1 && m <= 16) {
 		// Embers and flames: they give light, so they are never shaded or hatched.

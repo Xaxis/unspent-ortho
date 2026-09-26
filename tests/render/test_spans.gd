@@ -37,7 +37,7 @@ func test_a_slab_is_drawn_as_an_underside_a_top_and_a_rim() -> void:
 		if v[i].y < GROUND * WorldData.STEP + 0.5:
 			continue
 		# The rim's undercut band faces out and down too, higher up.
-		if nn[i].y < -0.5 and absf(v[i].y - under_y) < TerrainMesher.SPAN_DRIP + 0.01:
+		if nn[i].y < -0.5 and absf(v[i].y - under_y) < 0.01:
 			down += 1
 		elif nn[i].y > 0.5 and absf(v[i].y - over_y) < 0.2:
 			up += 1
@@ -110,6 +110,31 @@ func test_a_spanned_chunk_costs_little_more() -> void:
 		roofed = mini(roofed, Time.get_ticks_usec() - t0)
 	print("span cost: chunk bare %d us, with a 12x10 slab %d us (+%.0f%%)" % [bare, roofed, 100.0 * (roofed - bare) / bare])
 	lt(float(roofed), float(bare) * 2.2, "a slab costs its chunk no more than a second land")
+
+
+## A HALL'S CHUNK COSTS LITTLE (docs/ABOVE.md S3's target): a chunk wholly under
+## one level mass is drawn as one top, underside and section, not sampled
+## point by point. Measured +13% (10.1 to 11.5 ms, best of five); it was +204%
+## before, and +35% with only the flat stretches merged.
+func test_a_chunk_wholly_under_a_roof_costs_little_more() -> void:
+	var bare_w := F.flat_world(96, Ground.GRASS, Country.COAST, GROUND)
+	var roof_w := F.flat_world(96, Ground.GRASS, Country.COAST, GROUND)
+	for y in 96:
+		for x in 96:
+			roof_w.set_overhead(x, y, UNDER, OVER)
+	var bm := TerrainMesher.new(bare_w)
+	var rm := TerrainMesher.new(roof_w)
+	var bare := 1 << 40
+	var roofed := 1 << 40
+	for i in 5:
+		var t0 := Time.get_ticks_usec()
+		bm.build_arrays(1, 1)
+		bare = mini(bare, Time.get_ticks_usec() - t0)
+		t0 = Time.get_ticks_usec()
+		rm.build_arrays(1, 1)
+		roofed = mini(roofed, Time.get_ticks_usec() - t0)
+	print("span cost: a chunk wholly roofed %d us, bare %d us (+%.0f%%)" % [roofed, bare, 100.0 * (roofed - bare) / bare])
+	lt(float(roofed), float(bare) * 1.3, "a roofed hall's chunk costs under a third more than bare")
 
 
 ## THE TOP GROWS A LITTLE (Decor, SPAN_DECOR): pieces of the landscape's own

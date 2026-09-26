@@ -279,7 +279,13 @@ nothing to do. The shafts pass (light through holes) reads the span texture (§4
   lattice samples per chunk so a rebuild does not redo the warp, and draws the
   wholly-roofed interior of a hall as merged runs top and bottom (only its
   edge cells marched), with the drips moved into the shader. Measured on a
-  cave chunk with test_spans' method before and after. PROOF: parity re-accepted;
+  cave chunk with test_spans' method before and after. BUILT ahead of S3
+  (world/above-cost): a chunk wholly under one level mass is one quad each
+  (+13%, was +204%); level stretches of core merge; drips are world.gdshader's.
+  A chunk the roof's edge crosses stays near +70%. So S3's `roof_level` must be
+  TERRACED, level plateaus stepping like the land's own terraces, not a smooth
+  field: a roof whose height changes everywhere has no core and takes the slow
+  path on every chunk. PROOF: parity re-accepted;
   the caves tour: halls read as halls (a roof, dark, shafts through holes),
   from above and over the shoulder; walk tests: every portal/shaft reachable
   under the roof (no hall sealed by low headroom).
