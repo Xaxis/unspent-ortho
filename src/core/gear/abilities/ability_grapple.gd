@@ -16,6 +16,25 @@ const COOLDOWN := 2.6
 const WIND := 200.0
 ## Levels above the body that count as a ledge to be pulled onto.
 const LEDGE_LEVELS := 2
+## THE VERTICAL LINE (mechanics improvement 5b). At the foot of a face, of any
+## ground, with something solid standing at its top -- a post, a pylon, a bolt,
+## a mast -- the line goes straight UP to that hold and hauls the body up the
+## face and over the lip, HAUL_RATE levels a second, no more than MAX_UP levels
+## (a ledge further up than that is out of the line's reach, vertical or not).
+## A hold is a solid prop on the top's own level within HOLD_REACH of the lip.
+const MAX_UP := 8
+const HAUL_RATE := 6.0
+const HOLD_REACH := 2.0
+## How near the foot of a face the body must stand for the line to go up it.
+const FOOT_REACH := 1.2
+## What a line hauled up a face takes hold of: an upright thing a magnet line
+## wraps and a body's weight does not pull over -- a trunk, a post, a mast, a
+## pylon, a rod -- not a shrub, a heap or a boulder, which a player would never
+## read as a hold.
+const HOLD_KINDS: Array[int] = [PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE,
+	PropKind.PYLON, PropKind.LAMP, PropKind.POLE, PropKind.SIGN, PropKind.TIDE_GAUGE, PropKind.FIRE_TOWER,
+	PropKind.RELAY, PropKind.THEODOLITE_MAST, PropKind.STRIKE_ROD, PropKind.MOORING_POST, PropKind.SPAN_PYLON,
+	PropKind.STANDING_STONE]
 
 
 func _init() -> void:
@@ -33,6 +52,9 @@ static func anchor(world: WorldData, query: WorldQuery, at: Vector2, dir: Vector
 	if world == null or dir.length() < 0.01:
 		return {}
 	var d := dir.normalized()
+	var up := vertical(world, query, at, d)
+	if not up.is_empty():
+		return up
 	var best: Dictionary = {}
 	var best_d := INF
 	if query != null:
@@ -56,12 +78,74 @@ static func anchor(world: WorldData, query: WorldQuery, at: Vector2, dir: Vector
 		if not _inside(world, q):
 			break
 		var l := world.level_at(tx, ty)
+		if l - here > MAX_UP:
+			break
 		if l - here >= LEDGE_LEVELS and (query == null or query.standable(tx, ty)):
 			if travelled < best_d:
 				return {"pos": q, "height": world.height_at(q), "what": &"ledge"}
 			break
 		travelled += 0.5
 	return best
+
+
+## The vertical line: a face at the foot of which the body stands, no taller
+## than MAX_UP, and a solid prop at its top to hold. {pos (the top), height,
+## what: &"face", hold: Vector2, plan: Climb.Plan} or {}. Pure.
+static func vertical(world: WorldData, query: WorldQuery, at: Vector2, d: Vector2) -> Dictionary:
+	if query == null:
+		return {}
+	var p := Climb.plan(world, query, at, d, 1e9, true)
+	if p == null or p.levels > MAX_UP or p.from.distance_to(p.on_face) > FOOT_REACH:
+		return {}
+	var best: WorldProp = null
+	var best_d := INF
+	for q: WorldProp in query.props_near(p.top, HOLD_REACH + 1.0):
+		if not HOLD_KINDS.has(q.kind) or world.depleted.has(q.id):
+			continue
+		if world.level_at(floori(q.pos.x), floori(q.pos.y)) != p.to_level:
+			continue
+		var dd := q.pos.distance_to(p.top)
+		if dd <= HOLD_REACH and dd < best_d:
+			best_d = dd
+			best = q
+	if best == null:
+		return {}
+	p.rate = HAUL_RATE
+	p.seconds = p.up_seconds() + Climb.LIP_SECONDS
+	return {"pos": p.top, "height": p.top_height, "what": &"face", "hold": best.pos, "plan": p}
+
+
+## The nearest foot of a face the vertical line goes up, at least `min_levels`
+## tall (by default one a jump will not do), for tours and tests, which name one
+## and never a coordinate (`ledge haul`): {at, dir} or {}.
+static func find_vertical(world: WorldData, query: WorldQuery, near: Vector2, reach: float = 80.0, min_levels: int = Jump.UP_LEVELS + 1) -> Dictionary:
+	if world == null or query == null:
+		return {}
+	var cx := floori(near.x)
+	var cy := floori(near.y)
+	var dirs: Array[Vector2] = [Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT, Vector2.UP]
+	for r in range(0, int(reach) + 1):
+		for dx in range(-r, r + 1):
+			for dy in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var tx := cx + dx
+				var ty := cy + dy
+				if not world.in_bounds(tx, ty) or not query.standable(tx, ty) or Ground.is_water(world.ground_at(tx, ty)):
+					continue
+				var here := world.level_at(tx, ty)
+				for d in dirs:
+					var nx := tx + int(d.x)
+					var ny := ty + int(d.y)
+					if not world.in_bounds(nx, ny):
+						continue
+					var up := world.level_at(nx, ny) - here
+					if up < maxi(LEDGE_LEVELS, min_levels) or up > MAX_UP:
+						continue
+					var at := Vector2(tx + 0.5, ty + 0.5)
+					if not vertical(world, query, at, d).is_empty():
+						return {"at": at, "dir": d}
+	return {}
 
 
 static func _inside(world: WorldData, p: Vector2) -> bool:
@@ -85,6 +169,14 @@ func on_press(ctx: AbilityCtx) -> bool:
 		return false
 	var at := ctx.pos()
 	var target: Vector2 = a.pos
+	if a.what == &"face":
+		var m := AbilityMotion.climb_face(a.plan)
+		m.kind = &"haul"
+		var hold: Vector2 = a.hold
+		m.hold = Vector3(hold.x, ctx.game.world.height_at(hold), hold.y)
+		ctx.motion = m
+		ctx.draw(&"grapple", {"at": at, "to": hold, "what": a.what, "seconds": m.seconds})
+		return true
 	var short := 0.9 if a.what == &"prop" else 0.0
 	ctx.motion = AbilityMotion.grapple(at, target, SPEED, short, ctx.game.world.height_at(at), float(a.height))
 	# The mark on the anchor is held for as long as the pull runs, so the hold is

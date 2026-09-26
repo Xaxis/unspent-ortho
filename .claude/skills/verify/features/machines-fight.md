@@ -15,6 +15,9 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   Climbing (the jump key at a rock face too tall to jump; a route ruled up a face you face; breath a
   level, fall damage when it runs out; the climber's level on the face for blows):
   `tools/test.sh test_climb`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/climb.tour` (header has its options).
+  The vertical line (the grapple at the foot of a face up to 8 levels, hauled up to a post, pylon or
+  trunk at the top): `tools/test.sh test_vertical_grapple`,
+  `TOUR_FIXED_FPS=60 tools/tour.sh tours/vertical_grapple.tour` (header has its options).
   The drop strike, a jump's landing off a ledge as a plate-opening blow: `tools/test.sh test_drop_strike`,
   `tools/tour.sh tours/drop_strike.tour` (header has its options).
   The heavy blow, swing held 300 ms: `tools/test.sh "test_heavy,test_bouts"` (the reader's time-to-kill

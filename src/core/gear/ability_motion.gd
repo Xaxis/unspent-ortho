@@ -52,6 +52,8 @@ var plan: JumpPlan = null
 ## and the level the body is at on the face now (FightSim.hero_level).
 var climb: Climb.Plan = null
 var at_level := -1
+## A vertical haul (AbilityGrapple): what the line is fast to, at the top.
+var hold := Vector3.INF
 
 var t := 0.0
 var lift := 0.0
@@ -195,7 +197,7 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 				next = plan.to
 				lift = 0.0
 				finished = true
-		&"climb":
+		&"climb", &"haul":
 			# Replayed like a jump: up the face at the foot, then over the lip onto
 			# the top, or back down it when the breath ran out.
 			var here: Array = climb.at(t)

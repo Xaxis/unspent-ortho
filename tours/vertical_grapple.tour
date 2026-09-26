@@ -1,0 +1,28 @@
+# THE VERTICAL LINE (mechanics improvement 5b; AbilityGrapple.vertical). At the
+# foot of a face with something solid standing at its top -- a post, a pylon, a
+# bolt -- the magnet line goes straight up to that hold and hauls the body up
+# the face and over the lip. The face is the nearest one `find_vertical` names,
+# never a coordinate. From above, then over the shoulder.
+#   tools/tour.sh tours/vertical_grapple.tour --seed=7 --hour=11 --weather=clear:0 --fit=boots_magnet
+coast calm
+zoom 7
+wait 0.6
+ledge haul
+wait 0.6
+shot 01-at-the-foot-a-post-at-the-top
+tap ability_grapple
+await hauled 2
+wait 0.3
+shot 02-the-line-goes-up-to-the-post with hauled
+wait 1.6
+shot 03-over-the-lip-by-the-post
+
+coast calm
+tap shoulder
+await shoulder 3
+ledge haul
+wait 0.6
+tap ability_grapple
+await hauled 2
+wait 0.3
+shot 04-over-the-shoulder-hauled-up-the-face with shoulder,hauled

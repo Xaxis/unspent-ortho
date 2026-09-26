@@ -212,7 +212,7 @@ func _start_motion(m: AbilityMotion) -> void:
 			game.player.hero.airborne = true
 		if game.player.model != null:
 			game.player.model.play_action(&"jump", m.seconds + JUMP_LANDING)
-	if m.kind == &"climb":
+	if m.kind == &"climb" or m.kind == &"haul":
 		if game.player.hero != null:
 			game.player.hero.airborne = true
 		if game.player.model != null:
@@ -257,7 +257,7 @@ func _run_motion(delta: float) -> void:
 	game.player.pos = next
 	game.player.facing = facing
 	game.player.lift = _motion.lift
-	if _motion.kind == &"climb" and game.player.sim != null:
+	if (_motion.kind == &"climb" or _motion.kind == &"haul") and game.player.sim != null:
 		game.player.sim.hero_level = _motion.at_level
 	if game.view != null:
 		game.view.ensure_near(next)
@@ -277,7 +277,7 @@ func _run_motion(delta: float) -> void:
 ## has got to back to the anchor: a player watches the line shorten and knows
 ## what is pulling them, instead of seeing a sparkle and being moved.
 func _travel_marks(delta: float) -> void:
-	if _motion.kind == &"grapple":
+	if _motion.kind == &"grapple" or _motion.kind == &"haul":
 		_aim_line()
 	_travel_at -= delta
 	if _travel_at > 0.0:
@@ -301,7 +301,11 @@ func _draw_line(from: Vector2, to: Vector2) -> void:
 func _aim_line() -> void:
 	if _line == null or not is_instance_valid(_line):
 		return
-	MobFx.aim_line(_line, _hand(), _line_end(_motion.to, LINE_TO))
+	# A haul's line runs up to the hold at the top, not to where the feet end.
+	var end := _line_end(_motion.to, LINE_TO)
+	if _motion.kind == &"haul" and _motion.hold != Vector3.INF:
+		end = _line_end(Vector2(_motion.hold.x, _motion.hold.z), LINE_TO)
+	MobFx.aim_line(_line, _hand(), end)
 
 
 ## Where the line leaves the body: the hand that threw it, so the rope does not
@@ -327,7 +331,9 @@ func _land(m: AbilityMotion) -> void:
 	if m.kind == &"jump":
 		_land_jump(m)
 		return
-	if m.kind == &"climb":
+	if m.kind == &"climb" or m.kind == &"haul":
+		if m.kind == &"haul":
+			_drop_line()
 		_land_climb(m)
 		return
 	if m.kind == &"glide":
@@ -766,6 +772,7 @@ func tour_seen(what: StringName) -> bool:
 		return _worn(StringName(s.substr(5)))
 	match what:
 		&"jumping": return _motion != null and _motion.kind == &"jump"
+		&"hauled": return _motion != null and _motion.kind == &"haul"
 		&"climbing": return _motion != null and _motion.kind == &"climb"
 		&"jumped": return _jumped.has(&"")
 		&"gliding": return _gliding

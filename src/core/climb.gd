@@ -73,11 +73,14 @@ class Plan:
 	var wind := 0.0
 	var fall_damage := 0
 	var seconds := 0.0
+	## Levels a second up the face: Climb.RATE by hand, faster on a line
+	## (AbilityGrapple's vertical haul).
+	var rate := Climb.RATE
 
 	## Seconds from the press until the top (or until the arms give out): the
 	## step in to the rock, then the climb.
 	func up_seconds() -> float:
-		return Climb.APPROACH_SECONDS + float(reached) / Climb.RATE
+		return Climb.APPROACH_SECONDS + float(reached) / rate
 
 	## [position, height in the world, level the body is at] `t` seconds in.
 	func at(t: float) -> Array:
@@ -85,7 +88,7 @@ class Plan:
 			return [from.lerp(on_face, t / Climb.APPROACH_SECONDS), from_height, from_level]
 		var up := up_seconds()
 		if t < up:
-			var lv := (t - Climb.APPROACH_SECONDS) * Climb.RATE
+			var lv := (t - Climb.APPROACH_SECONDS) * rate
 			return [on_face, from_height + lv * WorldData.STEP, from_level + floori(lv)]
 		var u := clampf((t - up) / (Climb.SLIDE_SECONDS if slides else Climb.LIP_SECONDS), 0.0, 1.0)
 		var peak := from_height + float(reached) * WorldData.STEP
@@ -100,7 +103,9 @@ static func holds(ground: int) -> bool:
 	return GROUNDS.has(ground)
 
 
-static func face(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector2, reach: float = REACH) -> Dictionary:
+## `any_ground`: a face of whatever ground, for a line that does not need the
+## rock to hold (AbilityGrapple's vertical haul hangs off a prop at the top).
+static func face(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector2, reach: float = REACH, any_ground: bool = false) -> Dictionary:
 	if world == null or dir.length() < 0.01:
 		return {}
 	var d := dir.normalized()
@@ -117,7 +122,7 @@ static func face(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector
 		var lv := world.level_at(t.x, t.y)
 		if lv - from_level < FightRules.LEDGE_LEVELS:
 			return {}
-		if not holds(world.ground_at(t.x, t.y)):
+		if not any_ground and not holds(world.ground_at(t.x, t.y)):
 			return {}
 		# Over the lip onto the shelf, clear of it by a body's width.
 		var top := p + d * (Tuning.PLAYER_RADIUS + 0.2)
@@ -129,8 +134,8 @@ static func face(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector
 	return {}
 
 
-static func plan(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector2, wind: float) -> Plan:
-	var f := face(world, query, from, dir)
+static func plan(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector2, wind: float, any_ground: bool = false) -> Plan:
+	var f := face(world, query, from, dir, REACH, any_ground)
 	if f.is_empty():
 		return null
 	var p := Plan.new()
