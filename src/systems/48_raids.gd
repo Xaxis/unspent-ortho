@@ -1026,18 +1026,29 @@ func _standable(want: Vector2, toward: Vector2) -> Vector2:
 func _step_raid(p: RaidPlan, s: Settlement, now: float) -> void:
 	var sim: FightSim = game.player.sim
 	var live := 0
+	var working := 0
+	var came_to_work := false
 	for row: Dictionary in p.party:
 		if p.over():
 			# One of them bought the whole party off with what was lying in the
 			# yard (`_tribute`): there is no raid left to steer.
 			return
+		var scout: bool = row.get("role", &"") == RaidRoles.SCOUT
+		came_to_work = came_to_work or not scout
 		var m := _mob(sim, int(row.get("mob", -1)))
 		if m == null or not m.alive or m.removed:
 			continue
 		live += 1
+		if not scout:
+			working += 1
 		_drive(p, s, m, sim)
 	if p.over():
 		return
+	if live > 0 and working == 0 and came_to_work:
+		# The working party is down or gone: the scout has nothing left to watch
+		# and carries its report home, so the step ends with the fight.
+		_withdraw_scouts(p, sim)
+		live = 0
 	if live > 0 and not _near(s):
 		# The player has left the yard while it was going on. The rest of it
 		# happens without them, on the same arithmetic as a raid they were never
@@ -1086,18 +1097,42 @@ func _pull_party(p: RaidPlan, sim: FightSim) -> void:
 		_raiders.erase(m.id)
 
 
+## Take a party's scouts off the land, their errand done (`_step_raid`).
+func _withdraw_scouts(p: RaidPlan, sim: FightSim) -> void:
+	for row: Dictionary in p.party:
+		if row.get("role", &"") != RaidRoles.SCOUT:
+			continue
+		row["done"] = true
+		var m := _mob(sim, int(row.get("mob", -1)))
+		if m == null or not m.alive or m.removed:
+			continue
+		m.raider = false
+		sim.remove_mob(m)
+		@warning_ignore("return_value_discarded")
+		_raiders.erase(m.id)
+
+
 ## The share of a step still in the hands of bodies that neither died in the yard
 ## nor finished what they came for: what is settled on paper when the party stops
 ## being something the player is standing in front of.
 func _unspent(p: RaidPlan) -> float:
+	# Weighted by what each trade carries of the step's force (RaidRoles.SHARE),
+	# as the paper settle weighs it: a scout still standing carries none of it.
 	var sent := 0
+	var sent_share := 0.0
+	var left_share := 0.0
 	var left := 0
 	for row: Dictionary in p.party:
 		if int(row.get("mob", -1)) < 0:
 			continue
 		sent += 1
+		var share := float(RaidRoles.SHARE.get(row.get("role", &""), 0.0))
+		sent_share += share
 		if not bool(row.get("done", false)) and not bool(row.get("killed", false)):
 			left += 1
+			left_share += share
+	if sent > 0 and sent_share > 0.0:
+		return left_share / sent_share
 	if sent <= 0:
 		# Nothing of this party is a body any more: a game loaded back into the
 		# middle of a step, or a realm crossed. What it is still worth is what it

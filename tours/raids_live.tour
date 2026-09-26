@@ -32,11 +32,8 @@ await turret_hit 90
 wait 0.1
 shot 02-the-party-at-the-wall-and-the-guns-fire with mob, piece:turret, piece:gate
 await raider_down 60
+# The working party down, the scout carries its report home and the step ends
+# with the fight: held, with nothing struck.
+await raid_ended:held 30
 wait 0.6
-shot 03-the-one-at-the-wall-is-down with holding, piece:turret
-# The rest of the step's hours go by; what it struck, if anything, stays struck.
-hour 14.6
-wait 1.5
-await raid_ended:held 60
-wait 1.0
-shot 04-held with holding
+shot 03-held with holding, piece:turret

@@ -151,6 +151,58 @@ func test_a_struck_piece_left_standing_is_held_at_cost() -> void:
 	eq(RaidResolve.outcome_of(s, {"took": [3]}), &"broken", "somebody taken: broken")
 
 
+
+## THE SCOUT GOES HOME WHEN THE WORK IS OVER. A probe is a scout and a working
+## party; with the working party down, the scout has nothing left to watch and
+## carries its report home, so the step ends when the fight does, not when its
+## hours run out. It carries no share of the step's force (RaidRoles.SHARE), so
+## nothing is left over to settle on paper either.
+func test_with_the_working_party_down_the_scout_withdraws_and_the_step_ends() -> void:
+	Sx.use_root("raid_live")
+	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10", "--held=axe_felling",
+		"--holding=hut,plot,store,radio_mast", "--attention=0.5"])
+	await frames(3)
+	var coast: Coast = Sx.system(g, "30_mobs").get("coast")
+	coast.spawning = false
+	coast.rounds = false
+	g.player.sim.clear_mobs()
+	var sys := Sx.system(g, "48_raids")
+	var s: Settlement = Sx.system(g, "46_settlements").call("here")
+	(sys.call("book", s.id) as Dictionary)["last_read"] = g.clock.minutes
+	for i in 24:
+		if bool(sys.call("tour_seen", "party")):
+			break
+		g.clock.skip(15.0)
+		sys.call("pass_now")
+	var plan: RaidPlan = null
+	for p: RaidPlan in (sys.get("plans") as Array):
+		if not p.over():
+			plan = p
+	check(plan != null and plan.stage == RaidStage.PROBE, "a probe is under way")
+	var sim: FightSim = g.player.sim
+	var scout: MobState = null
+	for m in sim.mobs:
+		if not (m.raider and m.alive and not m.removed):
+			continue
+		var role: StringName = (sys.get("_raiders") as Dictionary).get(m.id, {}).get("role", &"")
+		if role == RaidRoles.SCOUT:
+			scout = m
+			continue
+		var guard := 0
+		while m.alive and guard < 60:
+			guard += 1
+			m.hurt_by.clear()
+			@warning_ignore("return_value_discarded")
+			sim.strike(m, TurretRules.blow(), m.pos + Vector2.from_angle(m.facing + PI) * 2.0)
+	check(scout != null, "the probe brought its scout")
+	await frames(10)
+	sys.call("pass_now")
+	check(plan.over(), "the working party down, the step is over (%s)" % plan.state)
+	eq(plan.outcome, &"held", "and nothing was struck, so it held")
+	check(scout.removed or not scout.alive, "the scout has gone home with what it saw")
+	Sx.end(g)
+	Sx.finish()
+
 func _nearest_raider(sim: FightSim, s: Settlement) -> MobState:
 	var best: MobState = null
 	for m in sim.mobs:
