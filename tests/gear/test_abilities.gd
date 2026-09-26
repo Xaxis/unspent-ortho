@@ -283,3 +283,10 @@ func test_the_gear_page_reads_the_book() -> void:
 	check(not bool(warm[0].ready), "a warm one does not")
 	check(String(warm[0].note).ends_with("s"), "and says how long")
 	Fx.done(g)
+
+
+## A dart is not there to be fought (tests/fight/test_matchups.gd leaves it
+## out): a scan that reads one says what its answer is. Nothing else is read.
+func test_a_scan_says_what_answers_a_dart() -> void:
+	eq(AbilityScan.advice(Roster.row(&"warden")), "It takes and goes. Break its sight.", "a warden's read")
+	eq(AbilityScan.advice(Roster.row(&"cutter")), "", "a machine that fights gets no advice")

@@ -588,6 +588,15 @@ func _scan_marks(reach: float, opening: bool) -> void:
 	var tell_due := now >= _aware_at
 	if tell_due:
 		_aware_at = now + AWARE_BEAT
+	if opening:
+		# The nearest body with a line to it says it once, when the scan opens,
+		# and at once: a dart's challenge is the three seconds the advice is
+		# for, and a line held until the fight is over would come after it.
+		for mob in found:
+			var words := AbilityScan.advice(mob.state.row)
+			if words != "" and game.hud != null:
+				game.hud.say_now(words)
+				break
 	for i in mini(found.size(), SCAN_MOST):
 		var mob := found[i]
 		if not thrown:

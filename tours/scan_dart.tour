@@ -1,0 +1,12 @@
+# A dart is not there to be fought (tests/fight/test_matchups.gd): a scan that
+# reads one says so on the glass, once, as it opens.
+#   tools/tour.sh tours/scan_dart.tour --seed=1 --hour=22 --weather=clear:0 --fit=scanner_lens
+coast calm
+place pinewood
+wait 1.0
+spawn warden
+wait 1.2
+tap ability_scan
+await ability:scan 5
+wait 0.4
+shot 01-a-warden-read with mob:warden

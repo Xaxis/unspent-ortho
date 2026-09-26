@@ -44,6 +44,15 @@ static func reach_of(kit: FightKit) -> float:
 	return REACH * (FightKit.ICELENS_REACH if kit != null and kit.icelens else 1.0)
 
 
+## What the read says of a body, beyond its part: only a dart has a line, since
+## a dart is not there to be fought (it snatches and outruns a sprint), and the
+## answer to it is getting out of its sight while it stands challenging.
+static func advice(row: Dictionary) -> String:
+	if row.get("approach", &"") == &"dart":
+		return "It takes and goes. Break its sight."
+	return ""
+
+
 func _reach(ctx: AbilityCtx) -> float:
 	if ctx.game == null or ctx.game.player == null or ctx.game.player.hero == null:
 		return REACH

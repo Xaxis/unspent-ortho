@@ -6,6 +6,7 @@ extends TestCase
 ##   icelens (mod_icelens)  "sight": the scan reads further (ICELENS_REACH x)
 
 const F := preload("res://tests/fight/fixture.gd")
+const G := preload("res://tests/fight/test_crowd_reader.gd")
 
 
 ## A harvester facing west with the hero at its working part, and two runners
@@ -114,3 +115,35 @@ func test_a_discharge_is_shared_by_a_crowd() -> void:
 		after += o.health
 	eq(before - after, FightKit.LATTICE_DAMAGE, "three bodies share one discharge's %d" % FightKit.LATTICE_DAMAGE)
 	lt(float(near[0].health), float(near[2].health) + 0.5, "the nearest takes its share first")
+
+
+## THE LATTICE AT A GATE: three of a kind roused shoulder to shoulder, the crowd
+## reader with the knife and six charges, 24 bouts (tests/fight/test_crowd_reader
+## `gate`). Its identity, held both ways: nothing against a crowd that is already
+## easy (harvesters: no faster), and strong against the hardest (cutters: won 25
+## to 55% sooner, and at least twice as often).
+func _at_gate(kind: StringName, kit: Array[StringName]) -> Dictionary:
+	var won := 0
+	var t := 0.0
+	for i in 24:
+		var r := G.gate(true, i % 8, kind, 3, kit, 120.0, &"knife", 6, 1000 + i / 8)
+		won += int(r.won)
+		if r.won:
+			t += float(r.t)
+	return {"won": won, "t": t / maxf(won, 1)}
+
+
+func test_the_lattice_at_a_gate() -> void:
+	var lat: Array[StringName] = [&"mod_lattice"]
+	var hb := _at_gate(&"harvester", [])
+	var hl := _at_gate(&"harvester", lat)
+	var cb := _at_gate(&"cutter", [])
+	var cl := _at_gate(&"cutter", lat)
+	print("  info 3 harvesters: bare won %d/24 in %.1f s, lattice %d/24 in %.1f s" % [hb.won, hb.t, hl.won, hl.t])
+	print("  info 3 cutters: bare won %d/24 in %.1f s, lattice %d/24 in %.1f s" % [cb.won, cb.t, cl.won, cl.t])
+	eq(hl.won, hb.won, "harvesters are won as often with it as without")
+	gt(float(hl.t), float(hb.t) * 0.9, "and no faster: a lattice is nothing against an easy crowd")
+	var cut := 1.0 - float(cl.t) / maxf(float(cb.t), 1e-3)
+	gt(cut, 0.25, "against cutters it shortens the fight by 25% or more")
+	lt(cut, 0.55, "and by no more than 55%")
+	gt(float(cl.won), float(cb.won) * 2.0 - 0.5, "and wins it at least twice as often")

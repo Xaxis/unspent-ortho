@@ -23,6 +23,9 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
 - 52_survival_fx: `src/systems/52_survival_fx.gd`, reached by `tools/tour.sh tours/survival.tour`.
 - 53_tracks: `src/systems/53_tracks.gd`, reached by `tools/tour.sh tours/tracks.tour`.
 - 54_gear: `src/systems/54_gear.gd`, reached by `tools/tour.sh tours/gear-economy.tour`.
+  A scan over a dart says its answer at once ("It takes and goes. Break its sight."):
+  `tools/test.sh test_abilities:test_a_scan_says`, `tools/tour.sh tours/scan_dart.tour` (options in its header).
+  The lattice at a gate (nothing against harvesters, strong against cutters): `tools/test.sh test_lattice_icelens:test_the_lattice_at_a_gate`.
 - 56_economy: `src/systems/56_economy.gd`, reached by `tools/tour.sh tours/gear-economy.tour`.
 
 ## How to reach it
