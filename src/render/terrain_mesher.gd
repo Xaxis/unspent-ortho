@@ -2256,32 +2256,117 @@ func _spans(ch: Chunk) -> void:
 			break
 	if not any:
 		return
+	# A point is asked for by every cell round it, and for its slope by four
+	# more: each is worked out once a build.
+	_sp_memo.clear()
+	_sp_slopes.clear()
+	_sp_warps.clear()
+	# Which tiles round the chunk have mass within a point's reach (the read's
+	# window, -1..2 tiles), marked out from each spanned tile.
+	_sp_x0 = ch.x0 - SPAN_REACH
+	_sp_y0 = ch.y0 - SPAN_REACH
+	_sp_w = ch.w + SPAN_REACH * 2
+	_sp_h = ch.h + SPAN_REACH * 2
+	_sp_near.resize(_sp_w * _sp_h)
+	_sp_near.fill(0)
+	for ty in range(_sp_y0 - 1, _sp_y0 + _sp_h + 2):
+		for tx in range(_sp_x0 - 1, _sp_x0 + _sp_w + 2):
+			if w.overhead_at(tx, ty).x < 0:
+				continue
+			# A point whose window (-1..2 round tile t0) holds (tx, ty).
+			for y in range(ty - 2, ty + 2):
+				for x in range(tx - 2, tx + 2):
+					var lx := x - _sp_x0
+					var ly := y - _sp_y0
+					if lx >= 0 and ly >= 0 and lx < _sp_w and ly < _sp_h:
+						_sp_near[ly * _sp_w + lx] = 1
 	var n := ch.n
 	var m := ch.h * RES
 	var np := n + 1
+	# Every lattice point's sample, and its underside's and top's normals.
 	var ins := PackedFloat32Array()
 	ins.resize(np * (m + 1))
+	_sp_lat.resize(np * (m + 1))
 	for j in m + 1:
 		for i in np:
-			ins[j * np + i] = _span_sample(ch.x0 + i * 0.5, ch.y0 + j * 0.5).x
+			var sx := ch.x0 + i * 0.5
+			var sy := ch.y0 + j * 0.5
+			var s := Vector3.ZERO
+			if _near(sx, sy):
+				s = _span_sample(sx, sy)
+			ins[j * np + i] = s.x
+			_sp_lat[j * np + i] = s
 	_w00 = 0.0
 	_w10 = 0.0
 	_w11 = 0.0
 	_w01 = 0.0
 	for j in m:
+		var run := -1
 		for i in n:
 			var li := j * np + i
-			var v := PackedFloat32Array([ins[li], ins[li + 1], ins[li + np + 1], ins[li + np]])
-			if v[0] < 0.5 and v[1] < 0.5 and v[2] < 0.5 and v[3] < 0.5:
+			var a := ins[li]
+			var b := ins[li + 1]
+			var c := ins[li + np + 1]
+			var d := ins[li + np]
+			if a >= 0.5 and b >= 0.5 and c >= 0.5 and d >= 0.5:
+				# Wholly under the mass: its underside now, its top in a run.
+				_span_under_cell(ch, i, j)
+				if run < 0:
+					run = i
 				continue
-			_span_cell(ch, i, j, v)
+			if run >= 0:
+				_span_top_run(ch, run, i, j)
+				run = -1
+			if a < 0.5 and b < 0.5 and c < 0.5 and d < 0.5:
+				continue
+			_span_cell(ch, i, j, PackedFloat32Array([a, b, c, d]))
+		if run >= 0:
+			_span_top_run(ch, run, n, j)
 
 
 ## (inside, underside y, top y) at tile-space point (x, y), read through the warp.
 ## Inside is 0..1 (a region is where it is at least 0.5); the heights are those
 ## of the spanned tiles round it, or 0 where there are none.
+## Tiles past the chunk a span's points are read over (the slope's step and
+## the warp), and per tile there whether any mass is within the read's window.
+const SPAN_REACH := 3
+var _sp_x0 := 0
+var _sp_y0 := 0
+var _sp_w := 0
+var _sp_h := 0
+var _sp_near := PackedByteArray()
+var _sp_lat := PackedVector3Array()
+var _sp_memo: Dictionary = {}
+
+
+## Whether any mass is within reach of point (x, y): outside the chunk's ring,
+## ask as if it were.
+func _near(x: float, y: float) -> bool:
+	var tx := floori(x - 0.5) - _sp_x0
+	var ty := floori(y - 0.5) - _sp_y0
+	if tx < 0 or ty < 0 or tx >= _sp_w or ty >= _sp_h:
+		return true
+	return _sp_near[ty * _sp_w + tx] != 0
+var _sp_slopes: Dictionary = {}
+var _sp_warps: Dictionary = {}
+
+
 func _span_sample(x: float, y: float) -> Vector3:
-	var wp := warp_at(x, y)
+	var at := Vector2(x, y)
+	if _sp_memo.has(at):
+		return _sp_memo[at]
+	var s := _span_sample_now(x, y)
+	_sp_memo[at] = s
+	return s
+
+
+func _span_sample_now(x: float, y: float) -> Vector3:
+	# The warp moves a point by half a tile at most, and the read takes the four
+	# tiles round where it lands: with nothing spanned in the three by three
+	# round it, it is outside, and the noise need not be read.
+	if not _near(x, y):
+		return Vector3.ZERO
+	var wp := _span_warp(x, y)
 	var gx := x + wp.x * SPAN_WARP + wp.z * SPAN_FRAY - 0.5
 	var gy := y + wp.y * SPAN_WARP + wp.w * SPAN_FRAY - 0.5
 	var ix := floori(gx)
@@ -2494,8 +2579,33 @@ func _span_gi(k: int) -> int:
 ## The slopes of the underside and the top at (x, y): d(under)/dx, d(under)/dz,
 ## d(top)/dx, d(top)/dz, by central differences on _span_sample, so a face is
 ## lit smooth across its cells and chunks rather than stepped cell by cell.
-const SPAN_SLOPE_H := 0.25
+const SPAN_SLOPE_H := 0.5
 func _span_slope(x: float, y: float) -> Vector4:
+	var at := Vector2(x, y)
+	if _sp_slopes.has(at):
+		return _sp_slopes[at]
+	var g := _span_slope_now(x, y)
+	_sp_slopes[at] = g
+	return g
+
+
+## warp_at, with the tile corners it reads kept for the build.
+func _span_warp(x: float, y: float) -> Vector4:
+	var ix := floori(x)
+	var iy := floori(y)
+	var fx := x - ix
+	var fy := y - iy
+	return _span_corner(ix, iy).lerp(_span_corner(ix + 1, iy), fx).lerp(_span_corner(ix, iy + 1).lerp(_span_corner(ix + 1, iy + 1), fx), fy)
+
+
+func _span_corner(x: int, y: int) -> Vector4:
+	var at := Vector2i(x, y)
+	if not _sp_warps.has(at):
+		_sp_warps[at] = _warp_corner(x, y)
+	return _sp_warps[at]
+
+
+func _span_slope_now(x: float, y: float) -> Vector4:
 	var e := SPAN_SLOPE_H
 	var a := _span_sample(x - e, y)
 	var b := _span_sample(x + e, y)
@@ -2507,3 +2617,68 @@ func _span_slope(x: float, y: float) -> Vector4:
 	var tx := (b.z - a.z) / (2.0 * e) if a.x > 0.0 and b.x > 0.0 else 0.0
 	var tz := (d.z - c.z) / (2.0 * e) if c.x > 0.0 and d.x > 0.0 else 0.0
 	return Vector4(ux, uz, tx, tz)
+
+
+
+## A cell wholly under the mass: its underside, two triangles hung with drips,
+## from the corners' own samples and slopes.
+func _span_under_cell(ch: Chunk, i: int, j: int) -> void:
+	var x0 := ch.x0 + i * 0.5
+	var y0 := ch.y0 + j * 0.5
+	var px := [x0, x0 + 0.5, x0 + 0.5, x0]
+	var pz := [y0, y0, y0 + 0.5, y0 + 0.5]
+	var k := Ground.ROCK | (ch.key[j * (ch.n + 1) + i] & 0xFF00)
+	var rock := _tab_cliff[_span_gi(k)]
+	var col := Color(rock.r * SPAN_UNDER_SHADE, rock.g * SPAN_UNDER_SHADE, rock.b * SPAN_UNDER_SHADE, rock.a)
+	var c0 := Color(col.r, col.g, col.b, 0.0)
+	var np := ch.n + 1
+	var li := j * np + i
+	var at := [li, li + 1, li + np + 1, li + np]
+	for b: int in [0, 2, 1, 0, 3, 2]:
+		var x: float = px[b]
+		var z: float = pz[b]
+		var g := _span_slope(x, z)
+		_tv.append(Vector3(x, _sp_lat[at[b]].y, z))
+		_tn.append(Vector3(g.x, -1.0, g.y).normalized())
+		_tc.append(col)
+		_tuv.append(_UV_CONTOUR)
+		_tuv2.append(Vector2.ZERO)
+		_tc0.append(c0)
+
+
+## The top over cells [i0, i1) of lattice row j, all wholly under the mass: one
+## quad a stretch where the top is level, a quad a cell where it slopes.
+func _span_top_run(ch: Chunk, i0: int, i1: int, j: int) -> void:
+	var y0 := ch.y0 + j * 0.5
+	var y1 := y0 + 0.5
+	var k := Ground.ROCK | (ch.key[j * (ch.n + 1) + i0] & 0xFF00)
+	_paint(k, -1, SPAN_PAINT)
+	_m2 += SPAN_LIFTED
+	var i := i0
+	while i < i1:
+		var xa := ch.x0 + i * 0.5
+		var h := _span_sample(xa, y0).z
+		# How far the top stays level along the row, both edges of it.
+		var e := i
+		while e < i1:
+			var xb := ch.x0 + (e + 1) * 0.5
+			if absf(_span_sample(xb, y0).z - h) > 1e-4 or absf(_span_sample(xb, y1).z - h) > 1e-4 or absf(_span_sample(ch.x0 + e * 0.5, y1).z - h) > 1e-4:
+				break
+			e += 1
+		if e > i:
+			var xb := ch.x0 + e * 0.5
+			_ox = xa
+			_oy = y0
+			for q: Vector2 in [Vector2(xa, y0), Vector2(xb, y0), Vector2(xb, y1), Vector2(xa, y0), Vector2(xb, y1), Vector2(xa, y1)]:
+				_vtop(q.x, h, q.y)
+			i = e
+			continue
+		# A sloping cell, lit by its corners' slopes.
+		var xb := xa + 0.5
+		_ox = xa
+		_oy = y0
+		for q: Vector2 in [Vector2(xa, y0), Vector2(xb, y0), Vector2(xb, y1), Vector2(xa, y0), Vector2(xb, y1), Vector2(xa, y1)]:
+			var g := _span_slope(q.x, q.y)
+			_vtop(q.x, _span_sample(q.x, q.y).z, q.y)
+			_tn[_tn.size() - 1] = Vector3(-g.z, 1.0, -g.w).normalized()
+		i += 1

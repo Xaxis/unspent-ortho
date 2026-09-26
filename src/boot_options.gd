@@ -59,7 +59,7 @@ extends RefCounted
 ## --scene=NAME        which scene to boot: game (default) | gallery | title | loading (the loading page, still)
 ## --place=NAME        start at a named place (GenPlaces): a country ("moss"), an
 ##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
-## --above=KIND[@PLACE] hang a synthetic span over the start (or a named place):
+## --above=KIND        hang a synthetic span over the start (`--place` says where):
 ##                     `roof` or `arch`, for drawing what hangs overhead on any
 ##                     seed without worldgen (AboveStage)
 ## --stats             print render stats (draw calls, chunk build times) before the shot
@@ -196,7 +196,7 @@ var frames := 8
 var scale := 1
 var scene := "game"
 var place := ""
-## "KIND[@PLACE]" or "": a staged span (AboveStage), planted before a chunk is drawn.
+## "roof", "arch" or "": a staged span (AboveStage), planted before a chunk is drawn.
 var above := ""
 var stats := false
 ## "kind:strength[:bolt]" or "" (the weather rules decide). Read by 10_sky.
