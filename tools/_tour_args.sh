@@ -49,3 +49,23 @@ tour_header_args() {
     END { if (joining) flush(acc) }
   ' "$file"
 }
+
+
+# The simulated frame rate a tour's header asks to be run at, or nothing:
+#   #   TOUR_FIXED_FPS=60 tools/tour.sh tours/<name>.tour --seed=4 ...
+# A tour that only has to come out the same as itself (a room's layout, a
+# frame read for how it looks) says so here, so every run of it steps the world
+# in simulated time and not on however busy the machine is (tools/tour.sh,
+# TOUR_FIXED_FPS). A tour that proves timing leaves it off.
+tour_header_fixed_fps() {
+  awk '
+    !/^#/ { exit }
+    {
+      at = index($0, "tools/tour.sh")
+      if (at == 0) next
+      pre = substr($0, 1, at - 1)
+      if (match(pre, /TOUR_FIXED_FPS=[0-9]+/)) print substr(pre, RSTART + 15, RLENGTH - 15)
+      exit
+    }
+  ' "$1"
+}
