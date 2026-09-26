@@ -113,13 +113,20 @@ func test_every_room_can_be_walked_to_its_hearth_table_and_bed() -> void:
 		var q := WorldQuery.new(p.world)
 		q.set_blocks(&"rooms", doors_script.call(&"_walls", l))
 		var reach := _reach(q, l.inside())
-		var goals := {"hearth": l.hearth - l.hearth_wall * 1.2, "table": l.table + Vector2(0.0, 0.9)}
+		var goals := {"hearth": l.hearth - l.hearth_wall * 1.2}
 		for th: Dictionary in l.things:
 			if th.kind == &"bed":
 				goals["bed"] = (th.at as Vector2) + (th.face as Vector2) * 0.85
 		for g: String in goals:
 			check(_reached(reach, goals[g]), "%s (%s/%s): the %s at %s cannot be walked to from the door" % [
 				t.key, l.plan, l.dressing, g, goals[g]])
+		# The table: a stride off ANY side of it, the way a body comes up to one.
+		# Asked on world +y alone, a turned room's table was only ever asked about
+		# one of its sides, and which one turned with the door.
+		var sat := false
+		for d: Vector2 in [Vector2(0, 0.9), Vector2(0, -0.9), Vector2(0.9, 0), Vector2(-0.9, 0)]:
+			sat = sat or _reached(reach, l.table + d)
+		check(sat, "%s (%s/%s): no side of the table at %s can be walked to from the door" % [t.key, l.plan, l.dressing, l.table])
 
 
 const STEP := 0.2
@@ -154,38 +161,44 @@ func _reached(reach: Dictionary, at: Vector2) -> bool:
 	return false
 
 
-## EVERY DEPOT OF THE PLAN ON THE COAST KEEPS A HALL, and its hatch stands clear
+## EVERY DEPOT OF THE PLAN KEEPS THE ROOM ITS LANDSCAPE DECLARES (`works:depot`:
+## the coast's weapons hall, the burning's foundry), and its hatch stands clear
 ## of the deck: off the yard's back end, with a body's room between the hatch's
 ## door and the deck's own mass (WorksDepot.yard_blocks reaches 3.8 back).
 ##
 ## Found by what the island holds, never by its seed: which islands deal a
-## depot to the coast is the world's deal to make (GEN 28 dealt seed 4's small
-## island none), so every island of the first ten that has one is checked, and
-## at least one must.
-func test_every_coast_depot_has_a_hall_behind_a_clear_hatch() -> void:
+## depot where is the world's deal to make (GEN 28 dealt seed 4's small island
+## none), so every island of the first ten that has one is checked, and at least
+## one must.
+func test_every_depot_keeps_its_room_behind_a_clear_hatch() -> void:
 	var islands := 0
+	var kinds := {}
 	for seed_value in range(1, 11):
 		var w := BootWorld.world(seed_value, 256)
-		var coast_sites := 0
+		var want := {}
 		for site: WorksSite in Works.sites(w):
 			var d := BiomeRegistry.by_index(w.country_at(floori(site.pos.x), floori(site.pos.y)))
 			if d != null and d.interiors.has(&"works:depot"):
-				coast_sites += 1
-		if coast_sites == 0:
+				var k: StringName = d.interiors[&"works:depot"]
+				want[k] = int(want.get(k, 0)) + 1
+		if want.is_empty():
 			continue
 		islands += 1
-		var halls: Array[Threshold] = []
-		for t: Threshold in Interiors.thresholds(w):
-			if t.kind == &"weapons_hall":
-				halls.append(t)
-		eq(halls.size(), coast_sites, "seed %d: one hall door per depot where a hall is declared" % seed_value)
-		for t: Threshold in halls:
-			var site_pos := t.host - t.out * Threshold.HATCH
-			check(t.door.distance_to(site_pos) > 3.8 + Tuning.PLAYER_RADIUS + 0.5, "seed %d %s: the hatch door clears the deck" % [seed_value, t.key])
-			var p := InteriorGen.grow(seed_value, t)
-			eq(p.kind.id, &"weapons_hall", "%s grows a weapons hall" % t.key)
-			check(not p.layout.has_hearth, "%s: a hall has no hearth for the walls to stand round" % t.key)
-	gt(float(islands), 0.0, "the first ten islands have a depot where a hall is declared")
+		for k: StringName in want:
+			kinds[k] = true
+			var doors: Array[Threshold] = []
+			for t: Threshold in Interiors.thresholds(w):
+				if t.kind == k:
+					doors.append(t)
+			eq(doors.size(), int(want[k]), "seed %d: one %s door per depot where one is declared" % [seed_value, k])
+			for t: Threshold in doors:
+				var site_pos := t.host - t.out * Threshold.HATCH
+				check(t.door.distance_to(site_pos) > 3.8 + Tuning.PLAYER_RADIUS + 0.5, "seed %d %s: the hatch door clears the deck" % [seed_value, t.key])
+				var p := InteriorGen.grow(seed_value, t)
+				eq(p.kind.id, k, "%s grows a %s" % [t.key, k])
+				check(not p.layout.has_hearth, "%s: a %s has no hearth for the walls to stand round" % [t.key, k])
+	gt(float(islands), 0.0, "the first ten islands have a depot where a room is declared")
+	check(kinds.has(&"weapons_hall") and kinds.has(&"foundry"), "both kinds of depot room are met (%s)" % [kinds.keys()])
 
 
 ## EVERY RING OF CAST STONES ON THE COAST KEEPS A BUNKER, its hatch in the ring

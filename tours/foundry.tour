@@ -1,0 +1,29 @@
+# THE BURNING'S FOUNDRY (docs/interiors, src/content/interiors/foundry.gd): a
+# hatch off the burning's works yard, and under it the line still pouring --
+# the furnace, the channel molten down the hall, the quench, the cooling racks
+# to the ceiling -- lit by nothing but the pour, a warden watching it, turrets
+# in the corners, and the store barred off the far end.
+#
+#   tools/tour.sh tours/foundry.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is the hatch in the burning as a player finds it. 02 is the foundry from
+# above as the player comes down. 03 is over the shoulder in front of the racks,
+# the pour's light on them. 04 is the store, behind its bars.
+coast calm
+near door:foundry
+await door 5
+wait 0.6
+shot 01-a-hatch-off-the-burnings-works with door,land:burning
+
+press use 0.1
+await inside:foundry 5
+wait 1.0
+shot 02-the-line-pouring-from-above with inside:foundry
+
+# The peek comes up on the top view's bearing; stood by name once it is up,
+# the view turns to stand behind the player's facing.
+hold shoulder_peek
+await shoulder 3
+near thing:cast_rack
+wait 1.0
+shot 03-the-racks-in-the-pours-light with inside:foundry,shoulder

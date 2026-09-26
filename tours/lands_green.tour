@@ -1,0 +1,28 @@
+# The green towers over the shoulder: its most characteristic ground at noon
+# and in the evening, then beside a mural; then the server fields at noon and
+# at night. With the frame cost standing at noon in each.
+#   tools/tour.sh tours/lands_green.tour --seed=7 --weather=clear:0 --view=shoulder --stats
+coast calm
+hour 12
+place typical_green_towers
+wait 3.0
+shot green-noon with land:green_towers
+perf stats begin
+wait 5.0
+perf stats end green-noon
+hour 18.5
+wait 2.0
+shot green-evening with land:green_towers
+hour 12
+place typical_server_fields
+wait 3.0
+shot servers-noon with land:server_fields
+perf stats begin
+wait 5.0
+perf stats end servers-noon
+hour 18.5
+wait 2.0
+shot servers-evening with land:server_fields
+hour 22.5
+wait 2.0
+shot servers-night with land:server_fields

@@ -64,12 +64,20 @@ static func make() -> BiomeDef:
 	for g: int in [Ground.BONE, Ground.GRAVEL, Ground.ICE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
 		d.grounds[g] = d.grounds[Ground.LIMESTONE]
 	d.cliff_wash = P.SLATE[2].lerp(P.MOSS[2], 0.3)
-	d.strata = GroundColors.STRATA_MOSS
+	# ITS OWN FACES (GroundColors.STRATA_CRAG): gritstone in joint-bounded blocks,
+	# lichened and streaked with water. It was the moss's peat bank, and a crag is
+	# the one thing a bog is not. A LOOK field: no seed moves.
+	d.strata = GroundColors.STRATA_CRAG
 	d.plain_ground = Ground.MOSS
 	d.bank_ground = Ground.PEAT
 	d.pool_rim_ground = Ground.PEAT
 	d.village_ground = Ground.GRASS
-	d.decor = {Ground.MOSS: [0.85, Decor.TUFT, 30, Decor.CROTTLE, 18, Decor.BOG_COTTON, 8]}
+	# On the lichened ground, stones: some of them carved, by hands older than any
+	# the machines have a file on (Decor.CUP_RING), and the rest lichened.
+	d.decor = {
+		Ground.MOSS: [0.85, Decor.TUFT, 30, Decor.CROTTLE, 18, Decor.BOG_COTTON, 8, Decor.CUP_RING, 3, Decor.LICHEN, 8],
+		Ground.ROCK: [0.5, Decor.LICHEN, 30, Decor.CUP_RING, 6, Decor.STONE, 20],
+	}
 	d.grass_colors = [P.MOSS[2], P.SPRUCE[2]]
 	d.rock_color = P.SLATE[3]
 	d.decor_tints = {&"fronds": [P.MOSS[2], P.SPRUCE[2], P.EARTH[2]]}

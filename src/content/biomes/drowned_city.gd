@@ -40,9 +40,10 @@ static func make() -> BiomeDef:
 	d.reach_in_low = Vector3(6.0, 0.1, 0.35)
 	d.hatch = Ink.NONE
 	d.grounds = {
-		# Poured concrete the tide came up over: darker and greener than a dry
-		# floor, which is what kept it reading as snow at eye level.
-		Ground.FLOOR: P.ASH[2].lerp(P.SPRUCE[2], 0.3),
+		# Poured concrete the tide came up over, silted green-grey: darker and
+		# greener than a dry floor (which read as snow at eye level), and apart
+		# from every other landscape's turf (test_terrain holds them apart).
+		Ground.FLOOR: P.SPRUCE[2].lerp(P.MOSS[2], 0.3).lerp(P.ASH[2], 0.35),
 		Ground.ROAD: P.ASH[2].lerp(P.SLATE[2], 0.4),
 		Ground.MUD: P.EARTH[2].lerp(P.SPRUCE[2], 0.45),
 		Ground.SHINGLE: P.STONE[3].lerp(P.SPRUCE[2], 0.3),

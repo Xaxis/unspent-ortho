@@ -101,6 +101,9 @@ static func make() -> BiomeDef:
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"blinking_stack", &"evaporator", &"clerks_office"]
+	# Under its works depot, the foundry the refinery feeds: where the machines
+	# make what they fight with (src/content/interiors/foundry.gd).
+	d.interiors = {&"works:depot": &"foundry"}
 	d.sound_bed = &"bed_burning"
 	d.surface = _surface
 	d.scatter = _scatter

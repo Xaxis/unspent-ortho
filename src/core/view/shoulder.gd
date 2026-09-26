@@ -80,6 +80,12 @@ const CROWD_FULL := 1.3
 const CROWD_SIDE := 0.42
 const CROWD_SIDE_CLEAR := 0.45
 const CROWD_FOCUS_UP := 1.1
+## And the view tips down by this much more, degrees: an eye a metre off the
+## player at ten degrees down frames nothing lower than their chest, and what a
+## body comes up to in a room is low -- a machine's panel at its sensor's
+## height, a table, a box (maintenance.tour frame 05, 2026-09-25: the panel at
+## 0.3 to 0.7 metres was under the frame's edge).
+const CROWD_TIP := 16.0
 ## Metres more room the other side must have before the player swaps sides.
 const SIDE_SWITCH := 0.35
 ## Eased at this rate a second both ways.
