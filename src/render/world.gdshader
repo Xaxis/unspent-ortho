@@ -111,6 +111,9 @@ uniform float relief = 1.0;
 // tile and every animal draws with.
 uniform vec3 flash_at = vec3(0.0);
 uniform float flash_r = 0.0;
+// Whether the land's growth takes this draw (matter_grown): 1 for what stands,
+// 0 for what walks -- a figure or a machine does not stand still long enough.
+uniform float grows = 1.0;
 uniform vec3 flash_col = vec3(0.9098, 0.8627, 0.7529);
 
 varying vec3 world_pos;
@@ -2171,6 +2174,10 @@ void fragment() {
 	// the picture rather than out of the rock.
 	if (m == 58) { takes = 0.06; }
 	c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, takes * (1.0 - unh), rough_add);
+	// And the land's growth over what was built in it: never the land itself.
+	if (!mark_land(m)) {
+		c = matter_grown(c, n_world, world_pos, (1.0 - unh) * grows, rough_add);
+	}
 
 	if (m == M_CITY_FLOOR) {
 		// Window glass lying in drifts on the city floor catches the light.

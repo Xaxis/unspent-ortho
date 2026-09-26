@@ -97,7 +97,7 @@ const STUTTER: Array[Vector2] = [
 ## ground map itself; the wear map is this package's, so it is taken here.
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	if game != null and game.sky != null and game.world != null:
-		game.sky.set_wear(SkyWear.texture(game.world))
+		game.sky.set_wear(SkyWear.texture(game.world), SkyWear.growth_texture(game.world))
 
 
 func setup(g: Game) -> void:
@@ -109,7 +109,7 @@ func setup(g: Game) -> void:
 	# What the land DOES to a thing standing in it (LANTERN law 1): rust, salt
 	# bloom, soot, frost, by world position. Baked beside the ground map because
 	# it is the same sweep over the same world.
-	g.sky.set_wear(SkyWear.texture(g.world))
+	g.sky.set_wear(SkyWear.texture(g.world), SkyWear.growth_texture(g.world))
 	ground_ms = Time.get_ticks_msec() - t0
 	_cloud_bearing = bearing_of(g.world.seed_value)
 	_last_minutes = g.clock.minutes

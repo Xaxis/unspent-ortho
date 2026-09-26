@@ -86,6 +86,49 @@ static func image(w: WorldData) -> Image:
 	return Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, rgba)
 
 
+## THE GROWTH MAP, one channel beside the wear's four: how far each landscape's
+## growth has taken what was built in it (`BiomeDef.overgrowth`), one texel per
+## tile, blended across ecotones the same way. Read by matter_grown().
+static func growth_image(w: WorldData) -> Image:
+	var n := w.size
+	var rows := PackedFloat32Array()
+	rows.resize(256)
+	var seen := PackedByteArray()
+	seen.resize(256)
+	var indoors := w.realm == Realm.INTERIOR
+	for y in range(0, n, 4):
+		for x in range(0, n, 4):
+			var c := int(w.country[y * n + x])
+			if seen[c] == 0:
+				seen[c] = 1
+				rows[c] = 0.0 if indoors else BiomeRegistry.at(w, Vector2(x, y)).overgrowth
+	var px := PackedByteArray()
+	px.resize(n * n)
+	var has_blend := w.blend.size() == n * n and w.country2.size() == n * n
+	for i in n * n:
+		var g := rows[int(w.country[i])]
+		if has_blend and w.blend[i] > 0.0:
+			g = lerpf(g, rows[int(w.country2[i])], clampf(w.blend[i], 0.0, 1.0))
+		px[i] = int(clampf(g, 0.0, 1.0) * 255.0)
+	return Image.create_from_data(n, n, false, Image.FORMAT_L8, px)
+
+
+static var _kept_growth: Dictionary = {}
+
+
+static func growth_texture(w: WorldData) -> ImageTexture:
+	var id := w.get_instance_id()
+	var got: Array = _kept_growth.get(id, [])
+	if not got.is_empty() and (got[0] as WeakRef).get_ref() == w:
+		return got[1]
+	for k: int in _kept_growth.keys():
+		if (_kept_growth[k][0] as WeakRef).get_ref() == null:
+			_kept_growth.erase(k)
+	var t := ImageTexture.create_from_image(growth_image(w))
+	_kept_growth[id] = [weakref(w), t]
+	return t
+
+
 ## PURE AND DERIVED, SO KEPT: one texture per world OBJECT (never per seed: a
 ## test grows one seed twice), so walking back out of a house onto the coast
 ## hands the coast's own back instead of sweeping the island again (4.6 s for

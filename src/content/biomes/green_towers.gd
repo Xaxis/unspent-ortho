@@ -87,6 +87,10 @@ static func make() -> BiomeDef:
 	# ROCK and GRAVEL here are the city's broken floor too, not bedrock.
 	d.ground_marks = {Ground.FLOOR: GroundColors.OVERGROWN, Ground.ROCK: GroundColors.OVERGROWN, Ground.GRAVEL: GroundColors.OVERGROWN}
 	d.strata = GroundColors.STRATA_ROOTED
+	# The forest has the towers too: moss on every ledge, ivy down every storey
+	# (BiomeDef.overgrowth, matter_grown). The whole dose: this is the landscape
+	# named for it.
+	d.overgrowth = 1.0
 	d.plain_ground = Ground.GRASS
 	d.bank_ground = Ground.MUD
 	d.pool_rim_ground = Ground.MUD

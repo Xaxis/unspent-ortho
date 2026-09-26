@@ -1297,8 +1297,11 @@ func set_ground(tex: Texture2D, world_size: int) -> void:
 ## frost, by world position. Read by matter_worn() in every lit shader, which is
 ## LANTERN law 1. Kept apart from set_ground because a realm crossing replaces
 ## the world and 10_sky hands both over again.
-func set_wear(tex: Texture2D) -> void:
+func set_wear(tex: Texture2D, growth: Texture2D = null) -> void:
 	RenderingServer.global_shader_parameter_set("sky_wear", tex)
+	# And how far each land's growth has taken what was built in it
+	# (SkyWear.growth_texture). None, and nothing grows on anything.
+	RenderingServer.global_shader_parameter_set("sky_growth", growth)
 
 
 func _on_node_added(n: Node) -> void:

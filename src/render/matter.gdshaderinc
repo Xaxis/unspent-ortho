@@ -680,4 +680,52 @@ vec3 matter_worn(vec3 c, vec4 wear, vec3 n_world, vec3 wp, float amount, out flo
 	return c;
 }
 
+// THE LAND'S GROWTH ON WHAT PEOPLE BUILT (BiomeDef.overgrowth), keyed on FORM as
+// matter_worn is, never on blobs: moss cushions on what faces the sky (every
+// ledge, sill and parapet), ivy let down in strands from each storey line on a
+// flank, each strand its own length, and a green stain where run-off feeds it.
+// Dense low and thinning upward. `amount` is how much a surface takes at all
+// (the land itself is its own growth and takes none).
+const vec3 MATTER_MOSS = vec3(0.173, 0.267, 0.188);   // MOSS[2]
+const vec3 MATTER_IVY = vec3(0.114, 0.235, 0.255);    // SPRUCE[2]
+const vec3 MATTER_IVY_LIT = vec3(0.275, 0.412, 0.228); // MOSS[3]
+
+vec3 matter_grown(vec3 c, vec3 n_world, vec3 wp, float amount, inout float rough_add) {
+	if (amount <= 0.001 || sky_view.z <= 0.0) {
+		return c;
+	}
+	float g = texture(sky_growth, wp.xz * sky_view.z).r * amount;
+	if (g <= 0.004) {
+		return c;
+	}
+	float up = n_world.y;
+	float flank = clamp(0.78 - up, 0.0, 1.0);
+	// Thinning upward: the ground's damp feeds it from below.
+	float low = 1.0 - smoothstep(4.0, 22.0, wp.y);
+	// Ledges: moss on anything facing the sky.
+	float ledge = smoothstep(0.55, 0.85, up) * smoothstep(0.35, 0.6, ink_vnoise(wp.xz * 1.9 + 3.0) * 0.7 + 0.3 * ink_vnoise(wp.xz * 6.0));
+	// Ivy: strands hung from each storey line (every 2.4 units), on the face's
+	// own horizontal coordinate, each let down its own distance.
+	vec2 fn = normalize(n_world.xz + vec2(1e-4, 0.0));
+	float along = dot(wp.xz, vec2(-fn.y, fn.x));
+	float storey = fract(wp.y / 2.4);
+	float below = 1.0 - storey;
+	// Strands: two octaves across, so they are thin and uneven and never bars;
+	// each ends raggedly, and the leaves break every edge.
+	float strand = ink_vnoise(vec2(along * 7.3, floor(wp.y / 2.4) * 7.1)) * 0.6 + ink_vnoise(vec2(along * 19.0, 3.0)) * 0.4;
+	float reach = 0.15 + 0.85 * ink_vnoise(vec2(along * 1.1, floor(wp.y / 2.4) * 3.3 + 11.0))
+		+ (ink_vnoise(vec2(along * 23.0, wp.y * 4.0)) - 0.5) * 0.18;
+	float leaves = smoothstep(0.2, 0.55, ink_vnoise(vec2(along * 14.0, wp.y * 14.0)));
+	float ivy = flank * smoothstep(0.5, 0.66, strand) * (1.0 - smoothstep(reach * 0.8, reach, below)) * mix(0.45, 1.0, low) * mix(0.35, 1.0, leaves);
+	// Run-off: a green stain down the flank where water feeds it.
+	float stain = flank * smoothstep(0.55, 0.8, ink_vnoise(vec2(along * 2.0, wp.y * 0.3 + 5.0))) * 0.4;
+	float grown = clamp(max(max(ledge * mix(0.6, 1.0, low), ivy), stain) * g, 0.0, 0.9);
+	if (grown > 0.001) {
+		vec3 leaf = mix(MATTER_IVY, MATTER_IVY_LIT, ink_vnoise(wp.xz * 5.0 + wp.y * 3.0));
+		c = mix(c, ledge > ivy ? mix(MATTER_MOSS, MATTER_IVY_LIT, 0.3) : leaf, grown);
+		rough_add += grown * 0.25;
+	}
+	return c;
+}
+
 #endif

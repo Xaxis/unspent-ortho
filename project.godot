@@ -249,6 +249,10 @@ sky_wear={
 "type": "sampler2D",
 "value": ""
 }
+sky_growth={
+"type": "sampler2D",
+"value": ""
+}
 world_px={
 "type": "vec2",
 "value": Vector2(0, 0)

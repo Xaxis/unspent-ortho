@@ -276,6 +276,12 @@ var sky_shut := 0.0
 ## only opens holes in a roof a realm already has, and touches nothing else.
 ## Runtime only, so a LOOK field: it moves no island.
 var sky_holes := 0.0
+## How far the growth of this land has taken the things people built in it,
+## 0..1: moss on every ledge, ivy hanging from every storey, green streaks where
+## run-off feeds it, dense low and thinning upward (`matter_grown`, SkyWear's
+## growth map). 1 is a city the forest has; a wet land might take 0.2.
+## Runtime only, so a LOOK field: it moves no island.
+var overgrowth := 0.0
 ## The dystopian grade offset added to SkyLight's own (`SkyLight.neon_row`):
 ## (dark, desat, cool, contrast). `sky.gdshaderinc` scales the graded colour by
 ## (1 - dark), so POSITIVE dark dims and NEGATIVE lifts: every landscape's dark

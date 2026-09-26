@@ -115,6 +115,10 @@ global uniform sampler2D sky_ground;
 // r rust, g salt bloom, b soot, a frost. The same sampling as sky_ground.
 // Read by matter_worn(); LANTERN law 1.
 global uniform sampler2D sky_wear;
+// How far the land's growth has taken what was built in it (SkyWear's growth
+// map, BiomeDef.overgrowth), by world position, the same sampling. Read by
+// matter_grown().
+global uniform sampler2D sky_growth;
 // 1 where the renderer wants ALBEDO in LINEAR light and will encode the frame
 // to sRGB itself (Forward+), 0 where it hands the value straight to the display
 // (Compatibility). Measured, both; matter.gdshaderinc says what it is for.

@@ -924,6 +924,8 @@ static func _matter_material() -> ShaderMaterial:
 	if _matter_mat == null:
 		_matter_mat = ShaderMaterial.new()
 		_matter_mat.shader = preload("res://src/render/world.gdshader")
+		# A machine walks: nothing grows on it (matter_grown).
+		_matter_mat.set_shader_parameter(&"grows", 0.0)
 	return _matter_mat
 
 
