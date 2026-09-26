@@ -83,8 +83,20 @@ func setup(s: MobState, world: WorldData, base_material: Material, figure: Figur
 		# Animals are the hand's shapes varied by seed: no two yard dogs alike.
 		model = AnimalModel.spawn(model_kind, base_material, Rng.hash_ints(world.seed_value, s.id, 0xA11))
 	pivot.add_child(model)
+	# A standing or walking machine is drawn at POSE_HZ, staggered by body so ten
+	# of them do not all pose on one frame; its tells, strikes, hurts and death
+	# every frame (MachineModel.pose_hz).
+	if model is MachineModel:
+		(model as MachineModel).pose_hz = POSE_HZ
+		(model as MachineModel)._step_left = fposmod(float(s.id) * 0.37, 1.0) / POSE_HZ
 	_z = world.height_at(s.pos)
 	sync_view(0.0, 0.0)
+
+
+## Poses a second a machine stands or walks at in a running game: half the
+## screen's, which a machine's exact servo motion carries without a stutter, and
+## half the cost of ten of them (measured 1.3 ms a frame posed every frame).
+const POSE_HZ := 30.0
 
 
 ## Draw the state at simulation time `now_ms`. delta 0 holds the pose (hitstop).

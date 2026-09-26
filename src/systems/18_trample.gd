@@ -3,7 +3,7 @@ extends GameSystem
 ## path they walked stays pressed a while (grass.gdshader reads it).
 ##
 ## Once a frame: follow the player with the window, let what was pressed stand
-## back up, press it again under the player and under each live body within
+## back up, press it again under the player and (on its own beat) each live body within
 ## NEAR, and upload the 16 KB field as global `foliage_trample`, with the window
 ## in `foliage_trample_at` (xz its low corner, z 1/span, w span). Bodies are read
 ## as 18_crowns reads them: anything in the `mobs` group that answers `alive`
@@ -20,6 +20,12 @@ const PRESS_STILL := 0.45
 const PRESS_MOVING := 0.8
 
 var field := TrampleField.new()
+## Frames between a moving body's stamps, and how far it has to have gone since
+## its last one to count as moving (tiles).
+const BODY_EVERY := 2
+const MOVED := 0.05
+var _frame := 0
+var _stamped: Dictionary = {}
 var _img: Image
 var _tex: ImageTexture
 var _last := Vector2.INF
@@ -44,6 +50,7 @@ func _process(delta: float) -> void:
 	var moving := _last.is_finite() and here.distance_to(_last) > 0.2 * delta
 	_last = here
 	field.stamp(here, REACH, 1.0, PRESS_MOVING if moving else PRESS_STILL)
+	_frame += 1
 	for m: Node in get_tree().get_nodes_in_group(&"mobs"):
 		var alive: Variant = m.get(&"alive")
 		var pos: Variant = m.get(&"pos")
@@ -52,8 +59,23 @@ func _process(delta: float) -> void:
 		var p := pos as Vector2
 		if p.distance_to(here) > NEAR:
 			continue
+		# A body is stamped on its own beat, not every frame: a stamp only has to
+		# be renewed faster than the lean falls away (TrampleField.RECOVER, 1.3 s),
+		# and a body stamping every frame cost a tenth of a millisecond each
+		# (the widest body presses some 300 texels). A moving body every BODY_EVERY
+		# frames, one standing still half as often: its lean dips 5% between stamps.
+		var id := m.get_instance_id()
+		var last: Vector2 = _stamped.get(id, Vector2.INF)
+		var moved := not last.is_finite() or last.distance_to(p) > MOVED
+		var every := BODY_EVERY if moved else BODY_EVERY * 2
+		if (_frame + id) % every != 0:
+			continue
+		_stamped[id] = p
 		var r: Variant = m.get(&"radius")
 		field.stamp(p, clampf(float(r) * 1.6, 0.5, 2.5) if r is float else BODY_REACH, 1.0, PRESS_STILL)
+	# Forget bodies now and then, so the freed ones do not pile up.
+	if _frame % 600 == 0:
+		_stamped.clear()
 	# Once more after the field goes quiet, so the last lean does not hang on.
 	if not field.quiet or not _clean:
 		_img.set_data(TrampleField.SIZE, TrampleField.SIZE, false, Image.FORMAT_RGBA8, field.bytes())

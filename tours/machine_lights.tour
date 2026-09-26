@@ -10,7 +10,7 @@ zoom 16
 hour 23
 wait 1.0
 perf stats begin
-wait 3.0
+wait 10.0
 perf stats end no-machines-night
 spawn harvester
 spawn cutter
@@ -24,12 +24,12 @@ spawn sweeper
 spawn watcher
 wait 1.0
 perf stats begin
-wait 3.0
+wait 10.0
 perf stats end ten-machines-night
-shot 01-ten-machines-at-night-by-their-own-light with mob:harvester,mob:watcher
+shot 01-ten-machines-at-night-by-their-own-light with mob:harvester,mob:cutter,mob:hauler,mob:sweeper,mob:watcher
 hour 12
 wait 1.0
 perf stats begin
-wait 3.0
+wait 10.0
 perf stats end ten-machines-noon
 shot 02-the-same-ten-at-noon-subtle with mob:harvester,mob:watcher
