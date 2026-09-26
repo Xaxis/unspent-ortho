@@ -22,9 +22,12 @@ var variant := -1
 var shown := 1.0
 
 ## How many WorldProps are alive: the number the streaming design drives toward
-## the working set near the camera (tests/stream/test_prop_table.gd). Counted, not
-## exact across threads, which is all a trend needs.
+## the working set near the camera (tests/stream/test_prop_table.gd). Exact, so
+## under a lock: views handed to the chunk and far workers are let go on those
+## threads, and a plain `+=` raced against them and drifted by hundreds over a
+## full test run.
 static var live := 0
+static var _live_lock := Mutex.new()
 
 
 ## WHICH MODEL A PROP IS DRAWN AS COMES FROM WHAT IT IS AND WHERE IT STANDS, NOT
@@ -57,9 +60,13 @@ func _init(p_id: int, p_kind: int, p_pos: Vector2, p_rot: float, p_scale: float)
 	rot = p_rot
 	scale = p_scale
 	solid = PropKind.SOLID[kind] * scale
+	_live_lock.lock()
 	live += 1
+	_live_lock.unlock()
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
+		_live_lock.lock()
 		live -= 1
+		_live_lock.unlock()

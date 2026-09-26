@@ -73,3 +73,21 @@ func test_a_grown_world_holds_no_props_as_objects() -> void:
 	gt(float(WorldProp.live), float(w.prop_count()) - 1.0, "a walk makes every prop")
 	every.clear()
 	lt(float(WorldProp.live), 100.0, "and lets them all go (%d)" % WorldProp.live)
+
+
+## THE COUNT IS EXACT ACROSS THREADS. Views are handed to the chunk and far
+## workers and let go there, so props are made and freed on several threads at
+## once; a count that drifts under that cannot hold the bound above.
+func test_the_live_count_holds_while_threads_make_and_drop_props() -> void:
+	var before := WorldProp.live
+	var churn := func() -> void:
+		for i in 20000:
+			var p := WorldProp.new(i, PropKind.FIRE, Vector2(i, i), 0.0, 1.0)
+			p.shown = 1.0
+	var tasks: Array[int] = []
+	for k in 4:
+		tasks.append(WorkerThreadPool.add_task(churn))
+	churn.call()
+	for t in tasks:
+		WorkerThreadPool.wait_for_task_completion(t)
+	eq(WorldProp.live, before, "every prop made on any thread is counted out again")
