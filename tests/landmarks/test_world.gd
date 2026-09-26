@@ -163,8 +163,8 @@ func test_siting_them_costs_nothing_a_player_would_notice() -> void:
 		unmeasured(what, share, SITING_SHARE)
 	# And a second ask costs nothing, which is what lets the system, the map and a
 	# shot's --place all want the list without paying for it three times.
-	var t2 := Time.get_ticks_usec()
-	for i in 20:
+	# Against the cold sweep it saves, measured in the same run, not a clock.
+	var again_us := best_of(20, func() -> void:
 		@warning_ignore("return_value_discarded")
-		Landmarks.sites(w)
-	lt((Time.get_ticks_usec() - t2) / 20000.0, 1.0, "asking again is free")
+		Landmarks.sites(w))
+	lt(again_us, site_us * 0.01, "asking again is free (%.1f us against %.0f us cold)" % [again_us, site_us])

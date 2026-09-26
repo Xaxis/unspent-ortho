@@ -648,17 +648,27 @@ static func block(k: Kit, c: int) -> void:
 	var t := corners(w + FRAME, d + FRAME, 0.0, top, s)
 	var faces := Houses.faces(t)
 	Houses.struck_plate(k, faces[0][0], faces[0][1], faces[0][2], faces[0][3], 0.9, 0.24)
-	# An awning over the frontage, on poles: the one thing that breaks a wide
-	# building's silhouette at the height a player walks at.
-	var fb: Array = faces[0]
-	var out := Houses.wall_out(fb[0], fb[1], fb[2], fb[3])
-	var wa := Houses.on_wall(fb[0], fb[1], fb[2], fb[3], 0.06, 0.34, 0.0)
-	var wb := Houses.on_wall(fb[0], fb[1], fb[2], fb[3], 0.72, 0.34, 0.0)
-	var fa := wa + out * 0.62 + Vector3(0, -0.16, 0)
-	var fbb := wb + out * 0.58 + Vector3(0, -0.2, 0)
-	k.plate(fa, fbb, wb, wa, P.PLATE[3], P.PLATE[1], P.PLATE[4])
-	for p: Vector3 in [fa, fbb]:
-		k.rod(Vector3(p.x, 0.0, p.z), p, 0.026, 4, P.PLATE[2])
+	# THE WAY IN IS A MACHINE'S where this landscape keeps a room behind a block
+	# (BiomeDef.interiors `form:block`): a service hatch in the frontage's middle,
+	# where the threshold stands (Threshold.of_house), and no awning -- a shelter
+	# for a person, which that city has none of, and under it the hatch was out
+	# of every bearing the play camera takes (test_found_drawn).
+	var def := BiomeRegistry.by_index(c)
+	var machines := def != null and def.interiors.has(&"form:block")
+	if machines:
+		service_hatch(k, faces[0], top, w + FRAME)
+	else:
+		# An awning over the frontage, on poles: the one thing that breaks a
+		# wide building's silhouette at the height a player walks at.
+		var fb: Array = faces[0]
+		var out := Houses.wall_out(fb[0], fb[1], fb[2], fb[3])
+		var wa := Houses.on_wall(fb[0], fb[1], fb[2], fb[3], 0.06, 0.34, 0.0)
+		var wb := Houses.on_wall(fb[0], fb[1], fb[2], fb[3], 0.72, 0.34, 0.0)
+		var fa := wa + out * 0.62 + Vector3(0, -0.16, 0)
+		var fbb := wb + out * 0.58 + Vector3(0, -0.2, 0)
+		k.plate(fa, fbb, wb, wa, P.PLATE[3], P.PLATE[1], P.PLATE[4])
+		for p: Vector3 in [fa, fbb]:
+			k.rod(Vector3(p.x, 0.0, p.z), p, 0.026, 4, P.PLATE[2])
 	# The sign runs along the top of the frontage, where the awning does not
 	# reach: a shop's own, not the city's, so it is the smaller colour.
 	billboard(k, faces[2], 0.56, 0.84, SIGN_COLOURS[1], s + 5, c)
@@ -667,6 +677,27 @@ static func block(k: Kit, c: int) -> void:
 	plant(k, w, d, r[0] + 0.05, s + 70, c)
 	# A second tank at the other end: a wide roof with one tank on it reads empty.
 	k.found.prism(-w * 0.3, r[0] + 0.05, d * 0.22, 0.26, r[0] + 0.6, 0.23, 9, P.RUST[3], P.PLATE[4])
+
+
+## A service hatch in a face `f` (Houses.faces) of a building `top` high and
+## `span` across: steel in a dark recess, the hazard band over it, a standby
+## lamp -- and its head lower than a person stands, because it was cut for a
+## machine. Inside the ground storey (`STOREY`), band and all: at 0.84 to 1.26
+## in the world, as the prop's scale deals it, a person stoops through it.
+const HATCH := 1.05
+
+
+static func service_hatch(k: Kit, f: Array, top: float, span: float) -> void:
+	var hv := HATCH / top
+	var hw := 0.45 / span
+	Houses.wall_rect(k.found, f[0], f[1], f[2], f[3], 0.5 - hw * 1.3, 0.0, 0.5 + hw * 1.3, hv * 1.15, 0.01, P.INK[1])
+	Houses.wall_rect(k.found, f[0], f[1], f[2], f[3], 0.5 - hw, 0.0, 0.5 + hw, hv, 0.02, P.PLATE[2])
+	Houses.wall_rect(k.found, f[0], f[1], f[2], f[3], 0.5 - hw * 0.08, 0.02, 0.5 + hw * 0.08, hv * 0.96, 0.024, P.PLATE[0])
+	for i in 8:
+		var u0 := 0.5 - hw * 1.3 + hw * 2.6 * float(i) / 8.0
+		Houses.wall_rect(k.found, f[0], f[1], f[2], f[3], u0, hv * 1.02, u0 + hw * 2.6 / 8.0, hv * 1.13, 0.022,
+			P.LENS[2] if i % 2 == 0 else P.INK[0])
+	Houses.wall_rect(k.found, f[0], f[1], f[2], f[3], 0.5 + hw * 1.1, hv * 0.7, 0.5 + hw * 1.22, hv * 0.8, 0.03, P.COPPER[4])
 
 
 ## "shell": a tower whose top storeys came down. What is left is lived in — the

@@ -76,7 +76,7 @@ func test_every_landscape_holds_its_own_works() -> void:
 		var at_home := {}
 		var counts := PackedInt32Array()
 		counts.resize(PropKind.COUNT)
-		for p in w.props:
+		for p in w.each_prop():
 			counts[p.kind] += 1
 			if HOME.has(p.kind) and w.country_at(floori(p.pos.x), floori(p.pos.y)) == int(HOME[p.kind]):
 				at_home[p.kind] = true
@@ -97,7 +97,7 @@ func test_every_landscape_holds_its_own_works() -> void:
 				land[w.country[i]] += 1.0
 		var evidence := PackedFloat32Array()
 		evidence.resize(BiomeRegistry.count())
-		for p in w.props:
+		for p in w.each_prop():
 			if is_evidence(p.kind):
 				evidence[w.country_at(floori(p.pos.x), floori(p.pos.y))] += 1.0
 		# ACROSS THE SAMPLE, for the same reason the `HOME` half above is: a share
@@ -147,7 +147,7 @@ func test_the_snowfield_checkpoints_stand_at_a_road() -> void:
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
 		var found := 0
-		for p in w.props:
+		for p in w.each_prop():
 			if p.kind != PropKind.CHECKPOINT:
 				continue
 			found += 1
@@ -200,7 +200,7 @@ func test_trawlers_lie_on_the_beach() -> void:
 		for m in w.landmarks:
 			if m.kind == &"hulk":
 				hulks[m.pos] = true
-		for p in w.props:
+		for p in w.each_prop():
 			if p.kind != PropKind.HULL or not hulks.has(p.pos):
 				continue
 			hulls += 1
@@ -236,7 +236,7 @@ func test_places_worth_walking_to_are_recorded() -> void:
 		var w := Worlds.world(s)
 		var lit := GenPlaces.find(w, "stolen_light")
 		check(lit.x >= 0.0, "seed %d: a shack with stolen light is recorded" % s)
-		for p in w.props:
+		for p in w.each_prop():
 			if p.kind == PropKind.SHACK and p.pos.distance_to(lit) < 3.0:
 				eq(PropModels.variant_of(p, w.seed_value), 1, "seed %d: the recorded shack is the lit one" % s)
 				break
@@ -246,7 +246,7 @@ func test_the_first_frame_shows_what_was_lost() -> void:
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
 		var n := 0
-		for p in w.props:
+		for p in w.each_prop():
 			if p.kind >= FIRST and absf(p.pos.x - w.spawn.x) < 16.0 and absf(p.pos.y - w.spawn.y) < 12.0:
 				n += 1
 		gt(n, 10, "seed %d: evidence round the spawn" % s)
@@ -276,7 +276,7 @@ func test_evidence_keeps_off_roads_water_and_village_squares() -> void:
 		# rather than by its kinds, because `ARCHIVE` and `CONSOLE` stand elsewhere
 		# too and exempting the kinds would blind the rule to the bug it exists for.
 		var threshold := BlackSite.site(w)
-		for p in w.props:
+		for p in w.each_prop():
 			if not is_evidence(p.kind):
 				continue
 			if threshold != Vector2.INF and p.pos.distance_to(threshold) < 6.0:
@@ -330,7 +330,7 @@ func test_the_machines_works_lie_ruled_on_the_survey_bearing() -> void:
 			near(absf(md.dot(d)) * absf(md.cross(d)), 0.0, 0.02, "%s lies along or across the bearing" % m.kind)
 	gt(marked, 10, "works that mark the ground")
 	# Runs stand exact: whole pieces at scale 1, turned along their run.
-	for p in w.props:
+	for p in w.each_prop():
 		if p.kind == PropKind.PIPE or p.kind == PropKind.CONVEYOR or p.kind == PropKind.DRILL_RIG:
 			near(p.scale, 1.0, 1e-6, "%s at scale 1" % PropKind.NAMES[p.kind])
 			var pd := Vector2.from_angle(p.rot)
@@ -380,7 +380,7 @@ func test_works_map_keeps_off_roads_villages_and_houses() -> void:
 	for y in 64:
 		w.ground[y * 64 + 30] = Ground.ROAD
 	w.villages.append({"name": "test", "pos": Vector2(12, 50), "radius": 4.0})
-	w.props.append(WorldProp.new(0, PropKind.HOUSE, Vector2(50.5, 12.5), 0.0, 1.0))
+	w.add_prop(WorldProp.new(0, PropKind.HOUSE, Vector2(50.5, 12.5), 0.0, 1.0))
 	w.landmarks.append({"kind": &"turf_rows", "pos": Vector2(32, 32), "dir": Vector2.RIGHT, "half": Vector2(30, 30), "mark": &"cut"})
 	var m := WorksMap.bake(w)
 	near(m.at(30, 20, 0), 0.0, 1e-3, "nothing on the road")
@@ -414,7 +414,7 @@ func test_the_works_keep_off_roads_and_village_squares_on_every_seed() -> void:
 		var corridor := GenPlaces.find(w, "corridor")
 		if corridor.x >= 0.0:
 			var masts := 0
-			for p in w.props:
+			for p in w.each_prop():
 				if p.kind == PropKind.RELAY and p.pos.distance_to(corridor) < 12.0:
 					masts += 1
 			gt(masts, 0, "seed %d: masts in view of the corridor" % s)
@@ -514,14 +514,14 @@ func test_budgets() -> void:
 			works_ms = stage
 			w = made
 	var evidence := 0
-	for p in w.props:
+	for p in w.each_prop():
 		if p.kind >= FIRST:
 			evidence += 1
-	print("       works at 256: %d evidence props of %d, works %.0f ms of gen %d ms" % [evidence, w.props.size(), works_ms, gen_ms])
+	print("       works at 256: %d evidence props of %d, works %.0f ms of gen %d ms" % [evidence, w.prop_count(), works_ms, gen_ms])
 	var big := Worlds.world(Worlds.WORLD_SEEDS[0])
 	var verts := 0
 	var n := 0
-	for p in big.props:
+	for p in big.each_prop():
 		if p.kind >= FIRST:
 			var tpl := PropModels.template(p.kind, 0, Country.COAST)
 			verts += tpl.made_v.size() + tpl.found_v.size()

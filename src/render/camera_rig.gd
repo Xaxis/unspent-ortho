@@ -185,6 +185,10 @@ var _clear_tip := 0.0
 ## Further than this in one frame is a different body, not the same one moving.
 const LOCK_JUMP := 1.5
 var _room := 1.0
+## How crowded in by a wall behind the eye is (Shoulder.crowd), eased, and which
+## side of the player it has stepped to for it.
+var _crowd := 0.0
+var _crowd_left := false
 var _dt := 0.0
 var _yaw_drawn := 45.0
 ## Who is holding the lens on (a lock, the shoulder), and what the camera had
@@ -730,17 +734,33 @@ func _apply_lens() -> void:
 	# that hand blew it out. So the shoulder offset gives way to the wall: the
 	# eye stands `SIDE_CLEAR` off it, toward the corridor's middle, as far over
 	# as the player's own left side allows.
-	var want := _right_now()
+	# Crowded in by a wall behind (Shoulder.crowd), it stands further over, to
+	# whichever side has the room, and may come nearer the wall there. Never
+	# under a lock, which is framed from the right.
+	var c := _crowd * (1.0 - _lock_w)
+	var want := lerpf(_right_now(), Shoulder.CROWD_SIDE, c)
+	var clear := lerpf(SIDE_CLEAR, Shoulder.CROWD_SIDE_CLEAR, c)
 	var fit := want
 	if side_room.is_valid() and w > 0.01:
 		var head := _smoothed + Vector3(0.0, Shoulder.HEAD_UP, 0.0)
-		var reach := want + SIDE_CLEAR
-		var free := float(side_room.call(head, head + right * reach)) * reach
-		fit = clampf(free - SIDE_CLEAR, -0.3, want)
-	_side = fit if fit < _side else lerpf(_side, fit, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
-	var focus_b := _smoothed + Vector3(0.0, Shoulder.FOCUS_UP, 0.0) + right * _side
+		var reach := want + clear
+		fit = clampf(float(side_room.call(head, head + right * reach)) * reach - clear, -0.3, want)
+		if c > 0.05:
+			var fit_l := clampf(float(side_room.call(head, head - right * reach)) * reach - clear, -0.3, want)
+			_crowd_left = Shoulder.crowd_left(_crowd_left, fit, fit_l)
+			if _crowd_left:
+				fit = -fit_l
+		else:
+			_crowd_left = false
+	# Pulled toward the player at once by a wall on its own side; everything
+	# else, a change of side included, eased.
+	if signf(fit) == signf(_side) and absf(fit) < absf(_side):
+		_side = fit
+	else:
+		_side = lerpf(_side, fit, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
+	var focus_b := _smoothed + Vector3(0.0, lerpf(Shoulder.FOCUS_UP, Shoulder.CROWD_FOCUS_UP, c), 0.0) + right * _side
 	var yaw := yaw_a + Shoulder.turn(yaw_a, shoulder_yaw) * w
-	var pitch := lerpf(pitch_a, minf(shoulder_pitch + _clear_tip, Shoulder.PITCH_MOST), w)
+	var pitch := lerpf(pitch_a, minf(shoulder_pitch + _clear_tip + Shoulder.CROWD_TIP * c, Shoulder.PITCH_MOST), w)
 	var focus := focus_a.lerp(focus_b, w)
 	var back := lerpf(back_a, shoulder_back, w)
 	fov = lerpf(LENS_FOV, Shoulder.FOV, w)
@@ -761,13 +781,18 @@ func _apply_lens() -> void:
 		var room := clampf(float(sight_room.call(pivot, eye)), minf(1.0, Shoulder.LEAST_BACK / span), 1.0)
 		_room = room if room < _room else lerpf(_room, room, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
 		eye = pivot.lerp(eye, _room)
+	var crowd_want := Shoulder.crowd(eye.distance_to(focus)) if sight_room.is_valid() else 0.0
+	_crowd = lerpf(_crowd, crowd_want, 1.0 - exp(-Shoulder.CROWD_RATE * _dt))
 	# Tipped up past the ordinary limit, the eye comes to the face and the body
 	# it passes through is stippled away (Shoulder.rise).
 	var r := Shoulder.rise(shoulder_pitch) * w
 	if r > 0.0:
 		var ahead := Vector3(-sin(yb), 0.0, -cos(yb))
 		eye = eye.lerp(_smoothed + Vector3(0.0, Shoulder.EYE_UP, 0.0) + ahead * Shoulder.EYE_FORWARD, r)
-	_set_yield(r)
+	# And an eye pressed into the body itself stipples it (Shoulder.inside).
+	var d := Vector2(eye.x - _smoothed.x, eye.z - _smoothed.z).length()
+	var gone := Shoulder.inside(d) * w if eye.y < _smoothed.y + 2.0 else 0.0
+	_set_yield(maxf(r, gone))
 	global_position = eye + (basis.x * _quake_at.x + basis.y * _quake_at.y)
 	# Under a lens a sway of the eye barely moves anything far off, and a quake
 	# is felt in the horizon: so the head nods and rolls with it too.

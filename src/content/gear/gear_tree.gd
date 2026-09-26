@@ -98,6 +98,9 @@ const PIECES := {
 	# the same rung, one across the moss and one across the glass.
 	&"lance_glass": {"grade": &"rare", "family": &"lance", "from": &"fulgurite_core"},
 	&"lance_die": {"grade": &"prime", "family": &"lance", "from": &"clerk_die"},
+	# A third road to the lance's top rung: through the burning's foundry, whose
+	# store keeps the casting a machine's lance is poured on.
+	&"lance_cast": {"grade": &"prime", "family": &"lance", "from": &"lance_casting"},
 	&"blade_die": {"grade": &"prime", "family": &"thin", "from": &"clerk_die"},
 	# The relic. Three sockets like a prime, and one thing nothing else does. A
 	# pour of it that goes wrong hands back the blade that went into it: `flawed`

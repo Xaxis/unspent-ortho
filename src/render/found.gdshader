@@ -182,6 +182,24 @@ float found_cut(vec3 wp, vec3 camz, vec3 eye, bool persp) {
 	return cut;
 }
 
+// THE CUT'S STIPPLE: a hash per world-pinned cell, the cell a power of two in
+// size near a pixel and a half of this fragment's own footprint, in all three
+// axes. Hashed on raw world coordinates, as it was, this hash (made for whole
+// cells) varied smoothly and beat against the pixel grid: rings across a plate
+// a hand from the eye, and on a vertical face `xz` runs one way only
+// (maintenance.tour frame 05). Hashed on the land's grain (matter_px), sized for
+// the view from above, a plate a hand from the eye was cut in squares a hand
+// across. Pinned to the world it does not crawl as the eye moves; a power of
+// two, it changes size only in whole steps.
+float found_stipple(vec3 wp) {
+	vec3 fw = fwidth(wp);
+	float foot = max(max(fw.x, fw.y), max(fw.z, 1e-5));
+	float lv = ceil(log2(foot * 1.5));
+	vec3 c = floor(wp / exp2(lv));
+	return ink_hash(vec2(c.x + c.y * 57.0, c.z - c.y * 113.0) + lv * 7.0 + vec2(53.0, 11.0));
+}
+
+
 void fragment() {
 	if (sight_yield(world_pos, FRAGCOORD.xy)) {
 		discard;
@@ -198,7 +216,19 @@ void fragment() {
 	vec3 eye = INV_VIEW_MATRIX[3].xyz;
 	bool persp = PROJECTION_MATRIX[3][3] < 0.5;
 	float cut = found_cut(world_pos, camz, eye, persp);
-	if (cut > 0.0 && ink_hash(world_pos.xz * 64.0 + vec2(53.0, 11.0)) < cut) {
+	// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line of
+	// sight to a body, at any height, as world.gdshader does: a machine city's
+	// deck at chest height stood square between the eye and the player, who
+	// read as a head on a floor (tours/tight_eye.tour frame 01).
+	if (persp) {
+		float close = sight_close(eye, found_clear[0]);
+		if (close > 0.0) {
+			for (int i = 0; i < 4; i++) {
+				cut = max(cut, sight_cone(world_pos, eye, found_clear[i]) * close);
+			}
+		}
+	}
+	if (cut > 0.0 && found_stipple(world_pos) < cut) {
 		discard;
 	}
 	vec3 c = COLOR.rgb;

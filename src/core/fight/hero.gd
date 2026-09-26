@@ -57,6 +57,9 @@ var lock := Vector2.INF
 ## When the last lock was let go, on the fight's clock, so the body turns back
 ## onto the way it is walking instead of snapping there (LockOn.RELEASE_MS).
 var unlocked_at := -INF
+## What the fitted kit changes in a fight (FightKit), written by 54_gear from the
+## loadout whenever it changes; bare until then.
+var kit := FightKit.new()
 
 
 func _init() -> void:

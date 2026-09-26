@@ -113,6 +113,13 @@ func test_high_ground_is_colder_and_a_fire_and_a_roof_answer_it() -> void:
 	var high := place({&"cold": 0.4}, 2.0)
 	high.level = Hazards.HIGH_LEVEL + 8
 	gt(float(Hazards.felt(high)[&"cold"]), float(Hazards.felt(low)[&"cold"]), "higher is colder")
+	# A region's spine stands over the old cap (GEN 28); the cold was tuned on
+	# land no higher than it, and a moor ridge is not an alp.
+	var old_top := place({&"cold": 0.1}, 2.0)
+	old_top.level = floori(GenRelief.TUNED_TOP)
+	var spine := place({&"cold": 0.1}, 2.0)
+	spine.level = GenRelief.MAX_LEVEL
+	eq(float(Hazards.felt(spine)[&"cold"]), float(Hazards.felt(old_top)[&"cold"]), "no colder past the tuned top")
 	var out_in_it := place({&"cold": 0.8}, 2.0)
 	var by_fire := place({&"cold": 0.8}, 2.0)
 	by_fire.fire = 1.0
@@ -176,6 +183,50 @@ func test_the_drain_is_slow_and_never_takes_the_last_point() -> void:
 	eq(Hazards.drained_health(1, 99.0), 1, "and never goes under it")
 	# Two pressures at once are heavy on the legs, not twice as deadly.
 	near(Hazards.drain({&"cold": 1.0, &"heat": 1.0}, 60.0), an_hour, 1e-6)
+
+
+## THE FLOOR HOLDS AGAINST THE WEATHER, NOT AGAINST WHAT COMES WITH IT (mechanics
+## improvement 4). Hollowed to the last point with something hunting close, the
+## next point the cold takes puts you down: the weather alone still never kills,
+## but it takes you to where the rest of the world can finish it.
+func test_at_the_floor_with_a_threat_near_the_weather_puts_you_down() -> void:
+	eq(Hazards.drained_health(1, 1.0, true), 0, "at the floor, drained again, with a threat near: down")
+	eq(Hazards.drained_health(1, 1.0, false), Hazards.HARM_FLOOR, "with nothing near it still stops there")
+	eq(Hazards.drained_health(3, 5.0, true), Hazards.HARM_FLOOR, "reaching the floor is not going under it, threat or no")
+	eq(Hazards.drained_health(1, 0.5, true), 1, "and less than a whole point takes nothing")
+
+
+## In a running game: the hazards system asks whether anything is close, and a
+## body at the floor with a runner on it goes down to the fight's own outcome.
+func test_in_a_running_game_the_floor_gives_way_with_a_hunter_close() -> void:
+	var o := BootOptions.parse(PackedStringArray(["--seed=1", "--size=48", "--hour=11"]))
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(o)
+	var mobs: Node = null
+	var haz: Node = null
+	for s in g.systems:
+		if s.name == "30_mobs":
+			mobs = s
+		if s.name == "52_hazards":
+			haz = s
+	mobs.get("coast").set("spawning", false)
+	g.player.sim.clear_mobs()
+	g.body.health = Hazards.HARM_FLOOR
+	haz.call("_drain", {&"cold": 1.0}, 60.0)
+	eq(g.body.health, Hazards.HARM_FLOOR, "alone, the cold leaves the last point")
+	var m: MobState = mobs.call("place_near_player", &"runner")
+	m.set_mood(MobState.ATTACKING, g.player.sim.now)
+	haz.call("_drain", {&"cold": 1.0}, 60.0)
+	eq(g.body.health, 0, "with a runner on them, it takes it")
+	var ended: Array[StringName] = []
+	var on_end := func(outcome: StringName) -> void: ended.append(outcome)
+	Events.fight_ended.connect(on_end)
+	await frames(10)
+	Events.fight_ended.disconnect(on_end)
+	check(ended.has(&"downed"), "and they go down, the fight's own way: %s" % [ended])
+	g.queue_free()
+	await frames(2)
 
 
 func test_the_worst_pressure_is_the_one_the_body_answers() -> void:

@@ -59,6 +59,11 @@ func test_a_patrol_route_runs_along_the_survey_the_machines_laid_everything_else
 	near((line[0] as Vector2).distance_to(line[1] as Vector2), Works.ROUTE_LENGTH, 0.01, "and it is a round of its own length")
 
 
+## Finding the depots, in yardsticks (TestCase.yard_lt). Calibrated 2026-09-25:
+## 66 shipped, 133 doubled; the bar between them.
+const SITES_BAR := 94.0
+
+
 ## The start budget is real (docs/ROADMAP.md): finding the depots is a search
 ## over what the world already recorded, and it must not be a stage a player
 ## waits through. Measured BEST of four rather than scaled by `machine_slack`:
@@ -74,7 +79,11 @@ func test_finding_them_costs_nothing_a_player_would_notice() -> void:
 	var find := func() -> void:
 		@warning_ignore("return_value_discarded")
 		Works.sites(w)
-	var ms := best_of(4, find) / 1000.0
+	var twice := func() -> void:
+		find.call()
+		find.call()
+	var got := yard_sample(find, twice, yard_work(), 4, 2)
+	var ms := got[0] / 1000.0
 	print("works: %.2f ms to find every depot in a 512 world (%d of them, best of 4)"
 		% [ms, Works.sites(w).size()])
 	# 0.45 ms measured on a quiet machine, so 5 is eleven times its own subject
@@ -84,7 +93,8 @@ func test_finding_them_costs_nothing_a_player_would_notice() -> void:
 	# cost is low because the sweep only reads what worldgen already recorded;
 	# if it ever has to LOOK at the land the way Landmarks.sites does, this
 	# number moves by two orders and that is exactly what should be caught here.
-	cost_lt(ms, 5.0, "finding the depots is not a stage a player waits through")
+	# In yardsticks (TestCase.yard_lt), not ms: CI's runner is another machine.
+	yard_lt(got[0], got[1], got[2], SITES_BAR, "finding the depots is not a stage a player waits through")
 
 
 ## **AND THE SPEEDUP IS HELD TO BEING ONE, TILE FOR TILE.** `Works._room_at` reads

@@ -21,6 +21,12 @@ var zoom := 9.0
 ## near wall).
 var wall_h := 2.4
 var cut := 0.8
+## How dark it is to the machines' eyes where none of the room's own light
+## falls, 0..1, as the night is outside (Cover.at's `dark`): a room built for
+## machines is lit only where they need it, and a body out of that light is
+## harder to see. 0, the default, is a room that changes nothing about being
+## seen. Its light is its things' `glare` (21_doors `room_dark`).
+var dark := 0.0
 ## The widest body that fits through the door (a big machine waits outside).
 var door_width := 0.9
 ## The script that lays it (`lay(rng) -> InteriorLayout`).

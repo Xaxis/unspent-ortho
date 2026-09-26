@@ -21,6 +21,14 @@ var variant := -1
 ## works it out again.
 var shown := 1.0
 
+## How many WorldProps are alive: the number the streaming design drives toward
+## the working set near the camera (tests/stream/test_prop_table.gd). Exact, so
+## under a lock: views handed to the chunk and far workers are let go on those
+## threads, and a plain `+=` raced against them and drifted by hundreds over a
+## full test run.
+static var live := 0
+static var _live_lock := Mutex.new()
+
 
 ## WHICH MODEL A PROP IS DRAWN AS COMES FROM WHAT IT IS AND WHERE IT STANDS, NOT
 ## FROM ITS ID. An id is its place in the order world gen laid things, so any
@@ -32,6 +40,15 @@ var shown := 1.0
 ## Quarter-tile resolution: props are jittered off tile centres, and two can
 ## share a tile. `PropModels.variant_of` and `GenWorks._note_lit_shack` both ask
 ## this and nothing else, so what is drawn and what is lit cannot disagree.
+## Whether `a` and `b` are the same prop: both none, or the same id. Never `==`
+## on two props: a prop is a view made from its row (PropTable), so two asks for
+## one prop are two objects (tests/stream/test_prop_identity.gd).
+static func same(a: WorldProp, b: WorldProp) -> bool:
+	if a == null or b == null:
+		return a == null and b == null
+	return a.id == b.id
+
+
 static func deal_hash(seed_value: int, kind: int, pos: Vector2) -> int:
 	return Rng.hash_ints(seed_value, kind, floori(pos.x * 4.0), floori(pos.y * 4.0), 90)
 
@@ -43,3 +60,13 @@ func _init(p_id: int, p_kind: int, p_pos: Vector2, p_rot: float, p_scale: float)
 	rot = p_rot
 	scale = p_scale
 	solid = PropKind.SOLID[kind] * scale
+	_live_lock.lock()
+	live += 1
+	_live_lock.unlock()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		_live_lock.lock()
+		live -= 1
+		_live_lock.unlock()

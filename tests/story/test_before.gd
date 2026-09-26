@@ -124,8 +124,11 @@ func test_a_mirrored_place_does_not_ask_its_own_world_for_its_ground() -> void:
 	var now := WorldGen.generate(SEED, SIZE)
 	var then := WorldGen.generate(SEED, SIZE, &"", Realm.ERA)
 	var placed_now := StoryPlan.cast(now)
-	# Strip the Before of every works site: the slot must not care.
-	then.props = then.props.filter(func(p: WorldProp) -> bool: return not Takes.is_plan_work(p.kind))
+	# Every works piece in the Before taken away, the world's own way of saying a
+	# thing is gone: the slot must not care.
+	for i in then.prop_count():
+		if Takes.is_plan_work(then.table.kind[i]):
+			then.depleted[then.table.id[i]] = INF
 	var placed_then := StoryPlan.cast(then)
 	check(placed_then.has(&"then_lab"), "the lab is cast in a Before with no works in it")
 	if placed_then.has(&"then_lab"):

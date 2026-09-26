@@ -38,10 +38,15 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	# size asked for is a ceiling: at every size this project currently uses it
 	# comes back one body, which is the island that has always been here.
 	c.bodies = GenBodies.plan(seed_value, realm, size).bodies
-	# A place is measured against the BODY it stands on, never against the square.
+	# A place is measured against the BODY it stands on, never against the square:
+	# the mean body, since grown bodies differ (`GenBodies._grow`) and one scale
+	# serves them all.
 	var share := 1.0
-	for body: Dictionary in c.bodies:
-		share = minf(share, float(body.get("share", 1.0)))
+	if not c.bodies.is_empty():
+		share = 0.0
+		for body: Dictionary in c.bodies:
+			share += float(body.get("share", 1.0))
+		share /= float(c.bodies.size())
 	c.body_k = c.k * sqrt(clampf(share, 0.01, 1.0))
 	# A REALM NOBODY HAS BUILT IS EMPTY, NOT A FAKE OF ANOTHER ONE. `land_types` is
 	# the types whose `BiomeDef.realms` names this realm, and for `orbital` and
@@ -76,6 +81,10 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 		return w
 	GenCountries.coarse(c)
 	t = _mark(c, marks, &"layout", t)
+	if _halted(w):
+		return w
+	GenForm.run(c)
+	t = _mark(c, marks, &"form", t)
 	if _halted(w):
 		return w
 	GenRelief.run(c)
@@ -151,6 +160,8 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	# whose land a tile is on.
 	w.road = c.road
 	w.recipe = c.recipe
+	GenDigest.run(w)
+	GenIds.run(w)
 	var total := 0.0
 	for k: StringName in marks:
 		total += marks[k]

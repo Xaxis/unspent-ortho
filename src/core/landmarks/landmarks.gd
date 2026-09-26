@@ -709,7 +709,7 @@ static func _pick_one(pool: Array, placed: Array[Vector2], kinds: Array[Landmark
 ## a trunk where the locker goes".
 static func _solid_tiles(world: WorldData) -> Dictionary:
 	var out := {}
-	for p: WorldProp in world.props:
+	for p: WorldProp in world.each_prop():
 		if p.solid <= 0.0:
 			continue
 		out[floori(p.pos.y) * world.size + floori(p.pos.x)] = true

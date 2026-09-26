@@ -21,6 +21,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"the_middens"
 	d.display_name = "the middens"
+	d.spoken_in = "down in the middens"
 	d.order = 19
 	d.style_note = "Walls of sorted refuse, a strip of sky, everything the colour of what it used to be."
 	d.share = Vector2(0.06, 0.1)
@@ -108,6 +109,8 @@ static func make() -> BiomeDef:
 		&"cutter": {"weight": 0.9, "grounds": ["rock", "scree", "gravel"]},
 		&"hauler": {"weight": 0.9},
 		&"dog.feral": {"weight": 0.7},
+		# Its own: the sorter, throwing the rejects up onto the walls (Roster).
+		&"sorter": {"weight": 1.2},
 	}
 	d.landmarks = [&"grown_hulk", &"blinking_stack", &"clerks_office", &"poured_pillar"]
 	d.sound_bed = &"bed_wreck"

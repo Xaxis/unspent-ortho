@@ -79,6 +79,11 @@ var _blur: Dictionary = {}
 var prof := PackedInt64Array([0, 0, 0, 0, 0, 0, 0, 0])
 ## Tiles of country and shore data kept around a chunk for warped lookups.
 const RING := 2
+## Tiles past a chunk its build reads (`TileWindow`): the transitions' country
+## samples past the ring reach furthest, beyond the shore field's MARGIN and the
+## spur filter's 3 + SPUR_PASSES. A read outside the window is an out-of-bounds
+## error, never a wrong tile.
+const WINDOW := RING + Transitions.WINDOW
 
 var world: WorldData
 var eco: Transitions
@@ -580,10 +585,10 @@ static func level_height(l: int) -> float:
 	return 0.0 if l == 0 else SEA_FLOOR
 
 
-func _lv(x: int, y: int) -> float:
-	var i := clampi(y, 0, world.size - 1) * world.size + clampi(x, 0, world.size - 1)
-	var l := drawn_levels(x, y, 1, 1)[0]
-	return float(l) - (WATER_BIAS if l > 0 and _WET[world.ground[i]] == 1 else 0.0)
+func _lv(x: int, y: int, win: TileWindow) -> float:
+	var i := win.at(clampi(x, 0, world.size - 1), clampi(y, 0, world.size - 1))
+	var l := drawn_levels(x, y, 1, 1, win)[0]
+	return float(l) - (WATER_BIAS if l > 0 and _WET[win.ground[i]] == 1 else 0.0)
 
 
 ## The levels the land is DRAWN at over the tile rectangle (x0, y0, w, h),
@@ -593,23 +598,28 @@ func _lv(x: int, y: int) -> float:
 ## drawn at theirs. Contours are forced through every tile centre's own side,
 ## so without this each such tile turns the wall in a right-angled notch.
 ## Two passes, so a two-tile finger goes as well. Inland water and the sea are
-## never moved, and nothing is drawn into the sea.
-func drawn_levels(x0: int, y0: int, w: int, h: int) -> PackedInt32Array:
+## never moved, and nothing is drawn into the sea. Read from `win`, which must
+## hold the rectangle and SPUR_PASSES round it; one is made when none is given.
+func drawn_levels(x0: int, y0: int, w: int, h: int, win: TileWindow = null) -> PackedInt32Array:
 	const PAD := SPUR_PASSES
 	var size := world.size
+	if win == null:
+		win = TileWindow.of(world, x0 - PAD, y0 - PAD, x0 + w + PAD, y0 + h + PAD)
 	var ww := w + PAD * 2
 	var wh := h + PAD * 2
 	var lv := PackedInt32Array()
 	lv.resize(ww * wh)
 	var dry := PackedByteArray()
 	dry.resize(ww * wh)
+	var level := win.level
+	var ground := win.ground
 	for yy in wh:
-		var ty := clampi(y0 - PAD + yy, 0, size - 1) * size
+		var ty := (clampi(y0 - PAD + yy, 0, size - 1) - win.y0) * win.w - win.x0
 		for xx in ww:
 			var ti := ty + clampi(x0 - PAD + xx, 0, size - 1)
-			var l: int = world.level[ti]
+			var l: int = level[ti]
 			lv[yy * ww + xx] = l
-			dry[yy * ww + xx] = 1 if l > 0 and _WET[world.ground[ti]] == 0 else 0
+			dry[yy * ww + xx] = 1 if l > 0 and _WET[ground[ti]] == 0 else 0
 	for _pass in SPUR_PASSES:
 		var out := lv.duplicate()
 		for yy in range(1, wh - 1):
@@ -651,12 +661,15 @@ func drawn_levels(x0: int, y0: int, w: int, h: int) -> PackedInt32Array:
 ## terrace: the shape between tile centres is smoothed, the rules are not.
 ## Inland water counts a little lower, so a one-tile river keeps its terrace
 ## right across its width instead of pinching to a thread between its banks.
-func smooth_level(x: int, y: int) -> float:
-	var c := _lv(x, y)
-	var own := float(drawn_levels(x, y, 1, 1)[0])
+## `win` must hold the tile, its neighbours and SPUR_PASSES round them.
+func smooth_level(x: int, y: int, win: TileWindow = null) -> float:
+	if win == null:
+		win = TileWindow.of(world, x - 1 - SPUR_PASSES, y - 1 - SPUR_PASSES, x + 2 + SPUR_PASSES, y + 2 + SPUR_PASSES)
+	var c := _lv(x, y, win)
+	var own := float(drawn_levels(x, y, 1, 1, win)[0])
 	var sum := c * 4.0
-	sum += (_lv(x - 1, y) + _lv(x + 1, y) + _lv(x, y - 1) + _lv(x, y + 1)) * 2.0
-	sum += _lv(x - 1, y - 1) + _lv(x + 1, y - 1) + _lv(x - 1, y + 1) + _lv(x + 1, y + 1)
+	sum += (_lv(x - 1, y, win) + _lv(x + 1, y, win) + _lv(x, y - 1, win) + _lv(x, y + 1, win)) * 2.0
+	sum += _lv(x - 1, y - 1, win) + _lv(x + 1, y - 1, win) + _lv(x - 1, y + 1, win) + _lv(x + 1, y + 1, win)
 	return clampf(sum / 16.0, own - 0.45, own + 0.45)
 
 
@@ -710,16 +723,20 @@ func field(x: float, y: float) -> float:
 	var iy := floori(gy)
 	var fx := gx - ix
 	var fy := gy - iy
+	# Every tile this reads: smooth levels from ix-2 to ix+3, each a tile and
+	# SPUR_PASSES further.
+	const R := 3 + SPUR_PASSES
+	var tiles := TileWindow.of(world, ix - R, iy - R, ix + R + 2, iy + R + 2)
 	# Warp only where the land actually changes height, so flats stay flat.
-	if _lv(ix, iy) != _lv(ix + 1, iy) or _lv(ix, iy) != _lv(ix, iy + 1) or _lv(ix, iy) != _lv(ix + 1, iy + 1):
+	if _lv(ix, iy, tiles) != _lv(ix + 1, iy, tiles) or _lv(ix, iy, tiles) != _lv(ix, iy + 1, tiles) or _lv(ix, iy, tiles) != _lv(ix + 1, iy + 1, tiles):
 		var win := PackedFloat32Array()
 		win.resize(36)
 		for yy in 6:
 			for xx in 6:
-				win[yy * 6 + xx] = smooth_level(ix - 2 + xx, iy - 2 + yy)
+				win[yy * 6 + xx] = smooth_level(ix - 2 + xx, iy - 2 + yy, tiles)
 		var wp := warp_at(x, y)
 		return _edge_field(x, y, win, 6, ix - 1, iy - 1, wp.x, wp.y)
-	return lerpf(lerpf(smooth_level(ix, iy), smooth_level(ix + 1, iy), fx), lerpf(smooth_level(ix, iy + 1), smooth_level(ix + 1, iy + 1), fx), fy)
+	return lerpf(lerpf(smooth_level(ix, iy, tiles), smooth_level(ix + 1, iy, tiles), fx), lerpf(smooth_level(ix, iy + 1, tiles), smooth_level(ix + 1, iy + 1, tiles), fx), fy)
 
 
 ## Height of the drawn land at a point, for things placed outside a chunk build.
@@ -760,6 +777,9 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 	var x0 := ch.x0
 	var y0 := ch.y0
 	var _t0 := Time.get_ticks_usec()
+	# Every tile this build reads, and no other (a streamed world holds only
+	# some sections).
+	var win := TileWindow.of(w, x0 - WINDOW, y0 - WINDOW, x1 + WINDOW, y1 + WINDOW)
 	# Countries and transitions over the chunk and a ring (the ground lookup is
 	# warped by up to RING tiles).
 	var rx0 := x0 - RING
@@ -769,9 +789,9 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 	var rc := PackedByteArray()
 	var rc2 := PackedByteArray()
 	var rb := PackedFloat32Array()
-	eco.fill(rx0, ry0, x1 + RING, y1 + RING, rc, rc2, rb)
+	eco.fill(rx0, ry0, x1 + RING, y1 + RING, rc, rc2, rb, win)
 	var _t1 := Time.get_ticks_usec()
-	var shore := _shore_window(rx0, ry0, x1 + RING, y1 + RING)
+	var shore := _shore_window(rx0, ry0, x1 + RING, y1 + RING, win)
 	# `has_water` is "within MARGIN of the waterline", which the DEPTH FIELD needs
 	# for the terrain shader. The water MESH needs the stronger thing: a lattice
 	# point actually wet. A chunk nine tiles inland satisfies the first and not
@@ -806,8 +826,8 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 			ch.shore[y * ch.w + x] = shore[ro]
 			ch.c2[y * ch.w + x] = rc2[ro] if rc[ro] != rc2[ro] else 0
 			ch.blend[y * ch.w + x] = rb[ro]
-	var level := w.level
-	var ground := w.ground
+	var level := win.level
+	var ground := win.ground
 	# Per tile of the ring: the tile's ground and whether it holds inland water.
 	var tg := PackedByteArray()
 	tg.resize(rw * rh)
@@ -823,10 +843,11 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 		for xx in rw:
 			var tx := clampi(rx0 + xx, 0, size - 1)
 			var o := yy * rw + xx
-			var g: int = ground[ty * size + tx]
-			if _WET[g] == 1 and level[ty * size + tx] > 0:
+			var ti := (ty - win.y0) * win.w + tx - win.x0
+			var g: int = ground[ti]
+			if _WET[g] == 1 and level[ti] > 0:
 				inland = true
-				wl[o] = level[ty * size + tx]
+				wl[o] = level[ti]
 			tg[o] = g
 	if inland:
 		# Lattice points within reach of inland water (the field and its warp).
@@ -844,11 +865,11 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 	# instead of stepping round every tile. Raw covers x0-3 .. x1+2.
 	var aw := ch.w + 6
 	var ah := ch.h + 6
-	var raw := drawn_levels(x0 - 3, y0 - 3, aw, ah)
+	var raw := drawn_levels(x0 - 3, y0 - 3, aw, ah, win)
 	var biased := PackedFloat32Array()
 	biased.resize(aw * ah)
 	for yy in ah:
-		var ty := clampi(y0 - 3 + yy, 0, size - 1) * size
+		var ty := (clampi(y0 - 3 + yy, 0, size - 1) - win.y0) * win.w - win.x0
 		for xx in aw:
 			var ti := ty + clampi(x0 - 3 + xx, 0, size - 1)
 			var l: int = raw[yy * aw + xx]
@@ -1817,9 +1838,8 @@ func _lip_strip(px: float, pz: float, qx: float, qz: float, nrm: Vector3, h: flo
 ## Signed distance (tiles) from each tile centre in [x0, x1) x [y0, y1) to the
 ## waterline: water positive, land negative. Exact within MARGIN tiles of the
 ## window, so neighbouring chunks agree. Row-major over the window.
-func _shore_window(x0: int, y0: int, x1: int, y1: int) -> PackedFloat32Array:
-	var w := world
-	var size := w.size
+func _shore_window(x0: int, y0: int, x1: int, y1: int, win: TileWindow) -> PackedFloat32Array:
+	var size := world.size
 	var wx0 := x0 - MARGIN
 	var wy0 := y0 - MARGIN
 	var ww := x1 - x0 + MARGIN * 2
@@ -1829,14 +1849,14 @@ func _shore_window(x0: int, y0: int, x1: int, y1: int) -> PackedFloat32Array:
 	var any_wet := false
 	var any_dry := false
 	for y in wh:
-		var ty := clampi(wy0 + y, 0, size - 1) * size
+		var ty := (clampi(wy0 + y, 0, size - 1) - win.y0) * win.w - win.x0
 		var outside_y := wy0 + y < 0 or wy0 + y >= size
 		for x in ww:
 			var tx := wx0 + x
 			var water := outside_y or tx < 0 or tx >= size
 			if not water:
 				var i := ty + tx
-				water = w.level[i] <= 0 or Ground.is_water(w.ground[i])
+				water = win.level[i] <= 0 or Ground.is_water(win.ground[i])
 			wet[y * ww + x] = 1 if water else 0
 			if water:
 				any_wet = true

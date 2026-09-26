@@ -60,3 +60,20 @@ func test_the_rule_is_the_same_both_ways() -> void:
 	check(FightRules.levels_meet(2, 2), "level")
 	check(FightRules.levels_meet(2, 3) and FightRules.levels_meet(3, 2), "a step either way")
 	check(not FightRules.levels_meet(2, 4) and not FightRules.levels_meet(4, 2), "a ledge either way")
+
+
+## A body in the sea is at the water's surface, not on the bed under it: the
+## rule reads the same surface the world draws a body on (WorldData.height_at
+## clamps the sea floor to 0). Read off the bed, a swimmer two levels "down" off
+## a shore shelf was out of every bite a machine on the shore threw.
+func test_a_swimmer_off_a_shore_is_in_the_fight() -> void:
+	var w := F.flat_world(64, Ground.GRASS, Country.COAST, 1)
+	for y in w.size:
+		for x in EDGE_X:
+			w.level[y * w.size + x] = -1
+			w.ground[y * w.size + x] = Ground.DEEP_WATER
+	var sim := F.make_sim(w, Vector2(20.6, 20.5))
+	var m := F.still(sim, &"dog.yard", Vector2(21.35, 20.5), PI)
+	m.start_blow(m.bite.copy(), sim.now)
+	F.ms(sim, 700)
+	eq(F.count(sim.drain(), &"hurt"), 1, "a dog on the shore bit the swimmer beside it")

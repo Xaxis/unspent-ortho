@@ -1,0 +1,27 @@
+# THE THROWER (improvement 3b; Brains `throw`, the middens' sorter). Its bite is
+# a lane five tiles long, thrown from where it stands, and its tell is that lane
+# on the ground for the whole windup (FightRules.tell_lane, MobFx.tell_line) with
+# the arm cocked up and back over its hopper and the hopper's light climbing to
+# the throw. A sorter is a worker: struck at its round, it backs off to a lane's
+# length and throws. Each frame is taken while its tell is up, by day and by
+# night, where the lane and its own light are all there is to read it by.
+# Run at a fixed rate, so a frame costs the world no time:
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/thrower.tour --seed=7 --hour=11 --weather=clear:0 --give=knife:1 --held=knife --config=unharmed
+place the_middens
+zoom 9
+wait 0.6
+spawn sorter
+try 3
+  walkto part 3
+  tap swing
+  await tell 8
+end
+wait 0.45
+shot 01-a-sorter-throws-down-a-lane-by-day with mob:sorter
+
+# The same sorter, its next throw, at night: past this throw and its reload first.
+hour 23
+wait 2.6
+await tell 8
+wait 0.45
+shot 02-and-by-night-its-lane-and-its-own-light with mob:sorter

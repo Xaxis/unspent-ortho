@@ -117,10 +117,12 @@ static func sketch(w: WorldData, px: int, inks: Dictionary) -> Image:
 	for line: Dictionary in w.lines:
 		var ids: PackedInt32Array = PackedInt32Array(line.get("props", []))
 		for j in ids.size() - 1:
-			if ids[j] < 0 or ids[j + 1] < 0 or ids[j] >= w.props.size() or ids[j + 1] >= w.props.size():
+			var pa := w.prop(ids[j])
+			var pb := w.prop(ids[j + 1])
+			if pa == null or pb == null:
 				continue
-			var a := w.props[ids[j]].pos * scale
-			var b := w.props[ids[j + 1]].pos * scale
+			var a := pa.pos * scale
+			var b := pb.pos * scale
 			var steps := maxi(1, ceili(a.distance_to(b)))
 			for k in steps + 1:
 				var q := Vector2i(a.lerp(b, k / float(steps)).floor())

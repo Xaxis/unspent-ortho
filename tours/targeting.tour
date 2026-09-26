@@ -40,7 +40,7 @@ await target 3
 
 # --- a fight, with the key still held ---------------------------------------------
 walkto part 6
-press swing
+tap swing
 await hit 6
 wait 0.3
 shot 06-fought-while-reading with mob:runner

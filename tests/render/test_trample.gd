@@ -97,18 +97,24 @@ func test_a_running_game_presses_the_grass_under_the_player() -> void:
 
 
 ## What a frame of it costs the CPU with the whole window pressed, the worst
-## case: a long walk leaves the path lying across all of it.
+## case: a long walk leaves the path lying across all of it. In yardsticks
+## (TestCase.yard_lt), because a bar in ms failed CI's slower runner at 4.244
+## against 4.0 on code nothing had touched.
+## Calibrated 2026-09-25, cost and yardstick timed in turn (TestCase.yard_sample):
+## 21.3-22.9 shipped, 44.5-46.5 doubled; the bar between them.
+const FRAME_BAR := 32.0
+
+
 func test_a_frame_of_the_field_is_cheap() -> void:
 	var f := TrampleField.new()
 	f.focus(Vector2(8.0, 8.0))
 	for y in 16:
 		for x in 16:
 			f.stamp(Vector2(float(x), float(y)), 0.75, 1.0, 1.0)
-	var t0 := Time.get_ticks_usec()
-	for i in 30:
-		f.decay(0.016)
-		f.stamp(Vector2(8.0, 8.0), 0.75, 1.0, 0.8)
-		f.bytes()
-	var ms := (Time.get_ticks_usec() - t0) / 30000.0
-	print("trample field frame: %.3f ms" % ms)
-	lt(ms, 4.0, "a frame of the field (%.3f ms)" % ms)
+	var frames_of := func(n: int) -> void:
+		for i in n:
+			f.decay(0.016)
+			f.stamp(Vector2(8.0, 8.0), 0.75, 1.0, 0.8)
+			f.bytes()
+	var got := yard_sample(frames_of.bind(10), frames_of.bind(20), yard_work())
+	yard_lt(got[0] / 10.0, got[1] / 10.0, got[2], FRAME_BAR, "a frame of the trample field")

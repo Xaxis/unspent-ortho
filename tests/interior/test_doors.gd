@@ -170,7 +170,7 @@ func test_a_save_made_inside_opens_inside() -> void:
 	eq(b.world.realm, Realm.SURFACE, "onto the surface")
 	near(b.player.pos.distance_to(back.threshold.door), 0.0, 1.6, "at the house's door")
 	var kept := false
-	for q: WorldProp in b.world.props:
+	for q: WorldProp in b.world.each_prop():
 		if q.kind == PropKind.FIRE and q.pos.distance_to(built.pos) < 0.01:
 			kept = true
 	check(kept, "and the fire built outside before going in is still there")

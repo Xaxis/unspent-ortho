@@ -94,14 +94,17 @@ static func placed(id: StringName) -> bool:
 ## readable things of its kind that stand there in id order, or else the words its
 ## kind deals. Pure and derived, like `pick`, so a save opens onto the same words.
 ## A placer stands a readable prop at the place; it never names the words.
-static func held_by(world: WorldData, prop: WorldProp) -> StringName:
+## A place reaches `StoryWorld.PLACE_REACH` round its site, so everything else in
+## it stands within twice that of this prop: asked of the query there, never of
+## the whole world.
+static func held_by(world: WorldData, query: WorldQuery, prop: WorldProp) -> StringName:
 	var kind := StoryProps.kind_of(prop.kind)
 	if kind == &"":
 		return &""
 	var place := StoryWorld.place_of(world, prop.pos)
 	if place != &"":
 		var n := 0
-		for q: WorldProp in world.props:
+		for q: WorldProp in query.props_near(prop.pos, 2.0 * StoryWorld.PLACE_REACH):
 			if q.id < prop.id and StoryProps.kind_of(q.kind) == kind and StoryWorld.place_of(world, q.pos) == place:
 				n += 1
 		var own := pick_at(place, n, kind)

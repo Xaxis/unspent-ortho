@@ -137,7 +137,29 @@ const UNKNOWN := "unknown"
 ##     gouges ahead of it, a soft band of pressed ground rings all four, and the
 ##     foot is set down facing its walk. Level, ground and the tread's own props
 ##     move where a tread lands; nothing moves at 256 (no treads there).
-const GEN := 26
+## 27. Continents are grown, not placed on a ring: `GenBodies._grow` deals one
+##     large and two small, each its own aspect, squareness and straits, one
+##     pair across a narrow sound, packed toward an off-centre middle and kept
+##     off dice-five (`GenBodies.dice`); the frame's fade line is warped, so no
+##     coast runs along a ruler; every body cuts its own sea lochs from
+##     its own coast; headlands keep off a neighbour's headlands; skerries break
+##     the open water between bodies. Every seed's world of many bodies moves,
+##     and the treads with it (they are sited last, on what was laid). A one-body
+##     world takes none of it, so nothing moves at 256 and `test_parity` is not
+##     the evidence: `tools/gd/probe_regions.gd` at 1840 is.
+## 28. A region has a FORM (`GenForm`, `BiomeDef.form`, the coast's first): the
+##     land rises past a lowland shore to a spine at the far side of the
+##     landscape, broken by passes. The level cap goes 15 -> 30 so a spine can stand where
+##     a player sees it; relief noise 301/302 widen with `body_k` on continents.
+##     Every seed moves, at 256 too (through the coast's form alone).
+##     Terraces take a `shelf` height and `shelf_var` (the crags'), so tall
+##     land stands as cliffs between shelves, not a stair of equal treads.
+## 29. Prop ids are section ids (`GenIds`): (section << 20) | the order laid
+##     in that section, and a prop set down later takes BUILT_BIT | n. No tile
+##     moves; every id does, and with it whatever an id seeds (a tree's lean and
+##     growth, a prop's hung pieces, the words a thing deals). Saves made on 28
+##     keep ids that name other props, so they are refused.
+const GEN := 29
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
@@ -145,7 +167,7 @@ const GEN := 26
 const TERRAIN: Array[String] = [
 	"id", "index", "order", "sea", "realms",
 	"share", "spread", "anchors", "temp_range", "moist_range", "site_count", "adjacency", "coastal",
-	"relief", "caldera", "dunes",
+	"relief", "form", "caldera", "dunes",
 	"border_elevation", "tongues", "reach_out_thin", "reach_in_thin", "reach_out_high", "reach_in_low",
 	"plain_ground", "pool_rim_ground", "rivers_freeze", "village_ground", "village_square_ground", "built",
 	"props", "ore", "gravel_ore", "reed_chance", "scorched", "shore_bush", "surface", "scatter",
@@ -166,7 +188,7 @@ const LOOK: Array[String] = [
 	"decor", "grasses", "grass_colors", "rock_color", "decor_tints", "tree_tints", "hard_rock", "dressing",
 	"light_tint", "day_light", "night_sky", "web_contrast", "sky_shut", "grade", "wet", "lip_snow", "street_folk",
 	"weather", "mist", "hazards", "roster", "sentinel", "landmarks", "sound_bed", "music_motif",
-	"fliers", "holograms", "interiors", "sky_holes", "overgrowth", "vent_breath",
+	"fliers", "holograms", "interiors", "sky_holes", "overgrowth", "vent_breath", "spoken_in",
 ]
 
 

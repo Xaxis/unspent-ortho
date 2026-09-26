@@ -315,6 +315,33 @@ func test_set_hunting_is_the_last_word() -> void:
 	f.free()
 
 
+## The part warms across the WHOLE tell and is brightest as the strike comes:
+## the light is the tell in the dark, so it keeps climbing for as long as the bite
+## is wound up (MachineModel.tell_s, set from the bite by Mob), a long tell as
+## well as a short one, and never tops out half way.
+func test_the_part_warms_through_the_whole_tell() -> void:
+	for tell: float in [0.4, 0.78, 1.4]:
+		var m := FigureModel.create(&"hauler") as MachineModel
+		var n := MachineModel.side_normal(m.part_side)
+		m.rotation.y = -PI * 0.25 - atan2(-n.z, n.x)
+		m.set_pose(&"stand")
+		m.settle()
+		m.tell_s = tell
+		m.set_pose(&"windup")
+		var steps := roundi(tell / STEP)
+		var levels: Array[float] = []
+		for i in steps:
+			m.animate(STEP, 0.0)
+			if i == steps / 4 or i == steps / 2 or i == (steps * 3) / 4 or i == steps - 1:
+				levels.append(m.part_emission())
+		for j in levels.size() - 1:
+			lt(levels[j], levels[j + 1], "%.2f s tell: still warming at step %d of 4 (%s)" % [tell, j + 1, levels])
+		m.set_pose(&"strike")
+		m.animate(STEP, 0.0)
+		check(m.part_emission() >= levels[levels.size() - 1] - 1e-4, "%.2f s tell: brightest at the strike" % tell)
+		m.free()
+
+
 func test_windup_brightens_the_working_side() -> void:
 	for kid in LIT:
 		var m := FigureModel.create(kid) as MachineModel

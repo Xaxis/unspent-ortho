@@ -334,7 +334,7 @@ func test_pools_are_round_rimmed_and_clear_of_houses() -> void:
 					if g == Ground.PEAT or g == Ground.MUD or g == BiomeRegistry.at(w, Vector2(x + 0.5, y + 0.5)).pool_rim_ground:
 						rimmed += 1.0
 		gt(rimmed / maxf(1.0, shore), 0.9, "seed %d black water rimmed as its landscape says it is" % s)
-		for p in w.props:
+		for p in w.each_prop():
 			if p.kind != PropKind.HOUSE:
 				continue
 			var reach := ceili(p.solid + 3.0)
@@ -458,7 +458,7 @@ func test_props_keep_to_their_country() -> void:
 		# the scatter may deal, and reading it alone called a landscape's own
 		# declared ore an intruder in its own ground.
 		var allow := GenScatter.declared(GenContext.new(w))
-		for p in w.props:
+		for p in w.each_prop():
 			if p.kind in GenScatter.PLACED:
 				continue
 			# THE BLACK SITE IS THE STORY'S, AND IT STANDS IN THE SEA ON PURPOSE
@@ -484,7 +484,7 @@ func test_props_keep_to_their_country() -> void:
 				var key := "%s in %s" % [PropKind.NAMES[p.kind], BiomeRegistry.name_of(cc)]
 				bad[key] = int(bad.get(key, 0)) + 1
 		check(bad.is_empty(), "seed %d off-theme props: %s" % [s, bad])
-		for p in w.props:
+		for p in w.each_prop():
 			var cc := w.country_at(floori(p.pos.x), floori(p.pos.y))
 			if p.kind == PropKind.STANDING_STONE or p.kind == PropKind.CLINTS or p.kind == PropKind.PEAT_BANK:
 				check(cc != Country.COAST, "seed %d %s on the Coast" % [s, PropKind.NAMES[p.kind]])
@@ -522,7 +522,7 @@ func test_the_burning_has_things_to_find() -> void:
 		props.resize(BiomeRegistry.count())
 		var vents := 0
 		var dead := 0
-		for p in w.props:
+		for p in w.each_prop():
 			var cc := w.country_at(floori(p.pos.x), floori(p.pos.y))
 			props[cc] += 1.0
 			if cc == Country.BURNING:
@@ -571,7 +571,7 @@ func test_wrecks_on_sand_and_kilns_by_villages() -> void:
 	var rows := 0
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
-		for p in w.props:
+		for p in w.each_prop():
 			var g := w.ground_at(floori(p.pos.x), floori(p.pos.y))
 			if p.kind == PropKind.WRECK:
 				check(g == Ground.SAND or g == Ground.GRAVEL or g == Ground.CLINKER, "seed %d wreck at %s on %s" % [s, p.pos, Ground.NAMES[g]])
@@ -643,7 +643,7 @@ func test_a_recipe_band_above_the_shared_cap_is_laid() -> void:
 		for i in w.country.size():
 			if w.country[i] == land and w.blend[i] == 0.0:
 				core += 1
-		for p in w.props:
+		for p in w.each_prop():
 			var i := floori(p.pos.y) * w.size + floori(p.pos.x)
 			if p.kind == PropKind.STACK and w.country[i] == land and w.blend[i] == 0.0:
 				stacks += 1

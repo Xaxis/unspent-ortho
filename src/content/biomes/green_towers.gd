@@ -23,6 +23,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"green_towers"
 	d.display_name = "the green towers"
+	d.spoken_in = "among the green towers"
 	d.order = 22
 	d.style_note = "Canopy to the horizon with concrete through it, and a grid nobody has swept in seventy years."
 	d.share = Vector2(0.06, 0.1)

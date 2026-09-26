@@ -196,7 +196,7 @@ const vec3 SKY_NIGHT_INK = vec3(0.16, 0.20, 0.42);    // what ink turns to under
 //
 // tests/render/test_page_ceiling.gd pinned the old shoulder's arithmetic;
 // tests/render/test_ceiling.gd now measures the frames themselves.
-const float SKY_GROUND_HEIGHT = 8.0;                  // SkyGround.HEIGHT_RANGE
+const float SKY_GROUND_HEIGHT = 16.0;                 // SkyGround.HEIGHT_RANGE
 
 // The GRAIN cell a world point falls in. The camera never rotates (yaw 45,
 // pitch 57), so projecting on its two axes gives a stable 2D field pinned to the

@@ -224,7 +224,7 @@ static func _indexed(w: WorldData) -> Dictionary:
 		return _index
 	var core := {}
 	var evidence := {}
-	for p in w.props:
+	for p in w.each_prop():
 		var i := floori(p.pos.y) * w.size + floori(p.pos.x)
 		if w.blend[i] == 0.0:
 			var c: int = w.country[i]
@@ -317,7 +317,7 @@ func _print_density(worlds: Array[WorldData]) -> void:
 	var per := {}
 	for w in worlds:
 		var at_tile := {}
-		for p in w.props:
+		for p in w.each_prop():
 			var i := floori(p.pos.y) * w.size + floori(p.pos.x)
 			if at_tile.has(i):
 				(at_tile[i] as Array).append(p.kind)

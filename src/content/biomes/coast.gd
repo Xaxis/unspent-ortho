@@ -9,6 +9,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"coast"
 	d.display_name = "coast"
+	d.spoken_in = "on the coast"
 	d.order = 0
 	d.style_note = "Calm long contours, fast cloud shadows, everything leaning off the sea."
 	# NOT THE ONE THAT PAYS for the others' room, though it looks like it should
@@ -40,6 +41,9 @@ static func make() -> BiomeDef:
 		&"base": 2.6, &"hills": 3.4, &"ridge": 1.0, &"near": 2.0, &"terrace": 0.0, &"valley": 0.42,
 		&"rain": 1.0, &"temp": 0.58, &"moist": 0.55, &"cliff": 0.0,
 	}
+	# A moor ridge behind the shore: turf and dune low by the sea, the climb
+	# late, a broken crest with passes a road can take.
+	d.form = {&"crest": 26.0, &"rise": 1.2, &"passes": 0.45, &"wave": 300.0, &"shore": 24.0}
 	d.hatch = Ink.WIND
 	d.cliff_wash = P.EARTH[3].lerp(P.SAND[3], 0.4)
 	d.strata = GroundColors.STRATA_COAST

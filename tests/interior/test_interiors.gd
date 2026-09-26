@@ -54,7 +54,7 @@ func test_a_pocket_keeps_its_own_word() -> void:
 		var just_out := l.door + l.door_out * 0.4
 		check(not l.is_floor(floori(just_out.x), floori(just_out.y)), "%s: the door is in an outside wall" % t.key)
 		var fires := 0
-		for pr: WorldProp in p.world.props:
+		for pr: WorldProp in p.world.each_prop():
 			if pr.kind == PropKind.FIRE:
 				fires += 1
 		eq(fires, 1, "%s: one hearth" % t.key)
@@ -68,7 +68,7 @@ func test_a_landscape_that_declares_nothing_has_no_doors() -> void:
 		var d := BiomeRegistry.by_index(t.land)
 		check(not d.interiors.is_empty(), "%s: a door in %s, which declares no interiors" % [t.key, d.id])
 	var houses := {}
-	for p: WorldProp in _world().props:
+	for p: WorldProp in _world().each_prop():
 		if p.kind == PropKind.HOUSE:
 			var d := BiomeRegistry.by_index(_world().country_at(floori(p.pos.x), floori(p.pos.y)))
 			houses[d.id] = not d.interiors.is_empty()
@@ -113,13 +113,20 @@ func test_every_room_can_be_walked_to_its_hearth_table_and_bed() -> void:
 		var q := WorldQuery.new(p.world)
 		q.set_blocks(&"rooms", doors_script.call(&"_walls", l))
 		var reach := _reach(q, l.inside())
-		var goals := {"hearth": l.hearth - l.hearth_wall * 1.2, "table": l.table + Vector2(0.0, 0.9)}
+		var goals := {"hearth": l.hearth - l.hearth_wall * 1.2}
 		for th: Dictionary in l.things:
 			if th.kind == &"bed":
 				goals["bed"] = (th.at as Vector2) + (th.face as Vector2) * 0.85
 		for g: String in goals:
 			check(_reached(reach, goals[g]), "%s (%s/%s): the %s at %s cannot be walked to from the door" % [
 				t.key, l.plan, l.dressing, g, goals[g]])
+		# The table: a stride off ANY side of it, the way a body comes up to one.
+		# Asked on world +y alone, a turned room's table was only ever asked about
+		# one of its sides, and which one turned with the door.
+		var sat := false
+		for d: Vector2 in [Vector2(0, 0.9), Vector2(0, -0.9), Vector2(0.9, 0), Vector2(-0.9, 0)]:
+			sat = sat or _reached(reach, l.table + d)
+		check(sat, "%s (%s/%s): no side of the table at %s can be walked to from the door" % [t.key, l.plan, l.dressing, l.table])
 
 
 const STEP := 0.2
@@ -154,28 +161,44 @@ func _reached(reach: Dictionary, at: Vector2) -> bool:
 	return false
 
 
-## EVERY DEPOT OF THE PLAN ON THE COAST KEEPS A HALL, and its hatch stands clear
+## EVERY DEPOT OF THE PLAN KEEPS THE ROOM ITS LANDSCAPE DECLARES (`works:depot`:
+## the coast's weapons hall, the burning's foundry), and its hatch stands clear
 ## of the deck: off the yard's back end, with a body's room between the hatch's
 ## door and the deck's own mass (WorksDepot.yard_blocks reaches 3.8 back).
-func test_every_coast_depot_has_a_hall_behind_a_clear_hatch() -> void:
-	var w := _world()
-	var coast_sites := 0
-	for site: WorksSite in Works.sites(w):
-		var d := BiomeRegistry.by_index(w.country_at(floori(site.pos.x), floori(site.pos.y)))
-		if d != null and d.interiors.has(&"works:depot"):
-			coast_sites += 1
-	var halls: Array[Threshold] = []
-	for t: Threshold in Interiors.thresholds(w):
-		if t.kind == &"weapons_hall":
-			halls.append(t)
-	gt(float(coast_sites), 0.0, "seed 4 has depots where a hall is declared")
-	eq(halls.size(), coast_sites, "one hall door per such depot")
-	for t: Threshold in halls:
-		var site_pos := t.host - t.out * Threshold.HATCH
-		check(t.door.distance_to(site_pos) > 3.8 + Tuning.PLAYER_RADIUS + 0.5, "%s: the hatch door clears the deck" % t.key)
-		var p := InteriorGen.grow(4, t)
-		eq(p.kind.id, &"weapons_hall", "%s grows a weapons hall" % t.key)
-		check(not p.layout.has_hearth, "%s: a hall has no hearth for the walls to stand round" % t.key)
+##
+## Found by what the island holds, never by its seed: which islands deal a
+## depot where is the world's deal to make (GEN 28 dealt seed 4's small island
+## none), so every island of the first ten that has one is checked, and at least
+## one must.
+func test_every_depot_keeps_its_room_behind_a_clear_hatch() -> void:
+	var islands := 0
+	var kinds := {}
+	for seed_value in range(1, 11):
+		var w := BootWorld.world(seed_value, 256)
+		var want := {}
+		for site: WorksSite in Works.sites(w):
+			var d := BiomeRegistry.by_index(w.country_at(floori(site.pos.x), floori(site.pos.y)))
+			if d != null and d.interiors.has(&"works:depot"):
+				var k: StringName = d.interiors[&"works:depot"]
+				want[k] = int(want.get(k, 0)) + 1
+		if want.is_empty():
+			continue
+		islands += 1
+		for k: StringName in want:
+			kinds[k] = true
+			var doors: Array[Threshold] = []
+			for t: Threshold in Interiors.thresholds(w):
+				if t.kind == k:
+					doors.append(t)
+			eq(doors.size(), int(want[k]), "seed %d: one %s door per depot where one is declared" % [seed_value, k])
+			for t: Threshold in doors:
+				var site_pos := t.host - t.out * Threshold.HATCH
+				check(t.door.distance_to(site_pos) > 3.8 + Tuning.PLAYER_RADIUS + 0.5, "seed %d %s: the hatch door clears the deck" % [seed_value, t.key])
+				var p := InteriorGen.grow(seed_value, t)
+				eq(p.kind.id, k, "%s grows a %s" % [t.key, k])
+				check(not p.layout.has_hearth, "%s: a %s has no hearth for the walls to stand round" % [t.key, k])
+	gt(float(islands), 0.0, "the first ten islands have a depot where a room is declared")
+	check(kinds.has(&"weapons_hall") and kinds.has(&"foundry"), "both kinds of depot room are met (%s)" % [kinds.keys()])
 
 
 ## EVERY RING OF CAST STONES ON THE COAST KEEPS A BUNKER, its hatch in the ring
@@ -240,7 +263,7 @@ func test_every_house_opens_on_its_own_forms_room() -> void:
 		if t.host_code == PropKind.HOUSE:
 			doors[t.key] = t
 	var seen := {}
-	for p: WorldProp in w.props:
+	for p: WorldProp in w.each_prop():
 		if p.kind != PropKind.HOUSE:
 			continue
 		var land := w.country_at(floori(p.pos.x), floori(p.pos.y))
@@ -257,7 +280,7 @@ func test_every_house_opens_on_its_own_forms_room() -> void:
 		else:
 			check(doors.has(key) and (doors[key] as Threshold).kind == want,
 				"the %s %s at %s opens on a %s" % [d.id, form, p.pos, want])
-	for k: StringName in [&"roundhouse", &"stilt_room", &"tower_lobby", &"cliff_room", &"hulk_hold", &"rooted_floor"]:
+	for k: StringName in [&"roundhouse", &"stilt_room", &"tower_lobby", &"cliff_room", &"hulk_hold", &"rooted_floor", &"tenement", &"maintenance_bay"]:
 		check(seen.has(k), "seed 4 has a house that opens on a %s" % k)
 
 
@@ -297,6 +320,73 @@ func test_every_roundhouse_bay_can_be_walked_to() -> void:
 		for g: String in goals:
 			check(_reached(reach, goals[g]), "%s: the %s at %s cannot be walked to from the door" % [t.key, g, goals[g]])
 	gt(float(n), 0.0, "seed 4 has roundhouses to walk")
+
+
+## A TENEMENT'S STAIR HALL LEADS TO THE ONE OPEN DOOR. From the street door of
+## every tenement on seed 4, a body gets to the shift board, the turnstile at the
+## stair's foot, down the corridor through the flat's open door, and to its
+## table, its bed and its stove: the corridor's shut doors, the stair and the
+## turnstile stand as solid as they are drawn and none of them walls the way.
+func test_every_tenement_can_be_walked_through() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var n := 0
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind != &"tenement":
+			continue
+		n += 1
+		var p := InteriorGen.grow(4, t)
+		var l := p.layout
+		var q := WorldQuery.new(p.world)
+		q.set_blocks(&"rooms", doors_script.call(&"_walls", l) as Array[Vector3])
+		var reach := _reach(q, l.inside())
+		var goals := {"table": l.table}
+		for th: Dictionary in l.things:
+			var off := {&"shift_board": 0.5, &"turnstile": 0.6, &"bed": 0.85, &"stove": 0.9}
+			if off.has(th.kind):
+				goals["%s@%s" % [th.kind, th.at]] = (th.at as Vector2) + (th.face as Vector2) * float(off[th.kind])
+		eq(goals.size(), 5, "%s: a board, a turnstile, a bed, a stove and the table" % t.key)
+		for g: String in goals:
+			check(_reached(reach, goals[g]), "%s: the %s at %s cannot be walked to from the door" % [t.key, g, goals[g]])
+	gt(float(n), 0.0, "seed 4 has tenements to walk")
+
+
+## A MAINTENANCE BAY IS WALKED THROUGH TO THE GAP. From the hatch of every bay on
+## seed 4, a body gets to the diagnostic panel, the front of the cradle or the
+## sorting bench, and through the missing panel into the niche to the count
+## scratched in it: the racks, bins and cradle stand as solid as they are drawn
+## the length of them, and none of them walls the way.
+func test_every_maintenance_bay_can_be_walked_through() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var n := 0
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind != &"maintenance_bay":
+			continue
+		n += 1
+		var p := InteriorGen.grow(4, t)
+		var l := p.layout
+		var q := WorldQuery.new(p.world)
+		q.set_blocks(&"rooms", doors_script.call(&"_walls", l) as Array[Vector3])
+		var reach := _reach(q, l.inside())
+		var goals := {"niche": l.table}
+		for th: Dictionary in l.things:
+			var off := {&"diag_panel": 0.6, &"tally": 0.6, &"cradle": 1.3, &"sort_bench": 0.8}
+			if off.has(th.kind):
+				goals["%s@%s" % [th.kind, th.at]] = (th.at as Vector2) + (th.face as Vector2) * float(off[th.kind])
+		# A rack or a row of bins runs along its wall (`long`): its ends stop a
+		# body as its middle does.
+		for th: Dictionary in l.things:
+			if th.has("long"):
+				var along := Vector2(-(th.face as Vector2).y, (th.face as Vector2).x)
+				for e: float in [-1.0, 1.0]:
+					var tip := (th.at as Vector2) + along * e * (float(th.long) * 0.5 - 0.15)
+					check(not reach.has(Vector2i(roundi(tip.x / STEP), roundi(tip.y / STEP))),
+						"%s: a body stands inside the %s's end at %s" % [t.key, th.kind, tip])
+		eq(goals.size(), 4, "%s: a panel, a count, a cradle or a bench, and the niche" % t.key)
+		for g: String in goals:
+			check(_reached(reach, goals[g]), "%s: the %s at %s cannot be walked to from the hatch" % [t.key, g, goals[g]])
+	gt(float(n), 0.0, "seed 4 has maintenance bays to walk")
 
 
 ## NOTHING OVER THE WATER WALLS ANYBODY IN: from the door of every stilt room on
@@ -481,3 +571,45 @@ func test_every_rooted_floor_can_be_walked_to() -> void:
 				continue
 			check(_reached(reach, at), "%s (%s/%s): the %s at %s cannot be walked to from the door" % [t.key, l.plan, l.dressing, g, at])
 	gt(float(n), 0.0, "seed 4 has rooted floors to walk")
+
+
+## THE DOOR YOU FACE IS THE DOOR YOU GO THROUGH. Stood half a tile out from any
+## door on seed 4 and facing its house, the use key means that door -- even where
+## two houses face each other across a channel with their doors half a tile
+## apart (GEN 28 put a stilt house and a hulk so), where nearest-first opened
+## the house behind the player.
+func test_the_door_a_player_faces_is_the_one_they_open() -> void:
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var doors := Interiors.thresholds(w)
+	var reach := float((load("res://src/systems/21_doors.gd") as GDScript).get_script_constant_map()["REACH"])
+	var close := 0
+	for t: Threshold in doors:
+		for o: Threshold in doors:
+			if o != t and o.door.distance_to(t.door) < reach:
+				close += 1
+		var at := t.door + t.out * 0.5
+		var got := Interiors.door_for(doors, at, (-t.out).angle(), reach)
+		check(got == t, "%s: facing its house from its doorstep, the key opens %s" % [t.key, got.key if got != null else "nothing"])
+	gt(float(close), 0.0, "seed 4 has doors near enough each other for this to be asked")
+
+
+## A HALL'S GUARD IS A BODY THAT KEEPS A HALL: in every landscape that keeps a
+## hall behind its depot, the guard it stands in there walks the floor, fits
+## between the racks and the gantry's legs, and fights with a blow of its own --
+## whatever the landscape's roster lists. The coast's lists a flock first among
+## its hunters (it passed over and could not be fought) and a dredger after it,
+## which stood wedged among the gantry's legs while its alarm brought the warden.
+func test_a_halls_guard_walks_the_floor_and_fights() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var halls := 0
+	for d: BiomeDef in BiomeRegistry.all():
+		if not d.interiors.has(&"works:depot"):
+			continue
+		halls += 1
+		var k: StringName = doors_script.call(&"_body_for", &"guard", d.index)
+		var row := Roster.row(k)
+		check(not row.is_empty(), "%s: the guard %s has a row" % [d.id, k])
+		check(row.get("crosses", &"") != &"fly", "%s: the guard %s walks the floor" % [d.id, k])
+		check(row.has("bite"), "%s: the guard %s fights with a blow of its own" % [d.id, k])
+		lt(float(row.get("radius", 1.0)), 0.51, "%s: the guard %s fits between the racks" % [d.id, k])
+	gt(float(halls), 0.0, "some landscape keeps a hall")

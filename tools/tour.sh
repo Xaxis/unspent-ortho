@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Play a tour (src/systems/98_tour.gd) through the real game and save its frames.
 #   tools/tour.sh tours/smoke.tour [BootOptions like --seed=3 --spawn=...]
+# Given no BootOptions, it runs with the ones the tour's own header gives
+# (`#   tools/tour.sh tours/<name>.tour --seed=...`, tools/_tour_args.sh); any
+# given on the command line are used instead, all of them. Either way it says
+# which it booted with.
 # Frames land in shots/tour/<tour name>/. Fails on script errors, a bad tour
 # line, or TOUR_TIMEOUT seconds (default 180).
 # A FAILED run also keeps the whole godot log beside its frames, at
@@ -8,6 +12,15 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 tour="$1"; shift
+. tools/_tour_args.sh
+if [ $# -eq 0 ]; then
+  while IFS= read -r opt; do
+    [ -n "$opt" ] && set -- "$@" "$opt"
+  done < <(tour_header_args "$tour")
+  echo "tour options: ${*:-(none)} (from its header)"
+else
+  echo "tour options: $* (from the command line)"
+fi
 # One run of a tour at a time per checkout. shots/tour/<name>/ is a single
 # directory: two runs overwrite each other's frames and both come out worthless
 # with a green exit, which is the worst failure this project has, because the

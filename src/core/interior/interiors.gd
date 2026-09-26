@@ -18,6 +18,9 @@ const RECIPES := {
 	&"cliff_room": "res://src/content/interiors/cliff_room.gd",
 	&"hulk_hold": "res://src/content/interiors/hulk_hold.gd",
 	&"rooted_floor": "res://src/content/interiors/rooted_floor.gd",
+	&"tenement": "res://src/content/interiors/tenement.gd",
+	&"maintenance_bay": "res://src/content/interiors/maintenance_bay.gd",
+	&"foundry": "res://src/content/interiors/foundry.gd",
 }
 
 static var _kinds: Dictionary = {}
@@ -44,7 +47,7 @@ static func thresholds(w: WorldData) -> Array[Threshold]:
 		return _doors[id]
 	var out: Array[Threshold] = []
 	if w.realm != Realm.INTERIOR:
-		for p: WorldProp in w.props:
+		for p: WorldProp in w.each_prop():
 			if p.kind != PropKind.HOUSE:
 				continue
 			var land := w.country_at(floori(p.pos.x), floori(p.pos.y))
@@ -100,6 +103,28 @@ static func house_kind(d: BiomeDef, form: StringName) -> StringName:
 	return d.interiors.get(&"house", &"")
 
 
+## WHICH DOOR A PLAYER MEANS: of the doors within `reach` of `at`, the one whose
+## house they are facing, before the nearest. Two houses can face each other
+## across a channel with their doors half a tile apart (GEN 28's drowned city:
+## a stilt house and a hulk, 0.59): nearest-first opened the house behind the
+## player. Returns null when no door is in reach.
+static func door_for(doors: Array[Threshold], at: Vector2, facing: float, reach: float) -> Threshold:
+	var look := Vector2.from_angle(facing)
+	var best: Threshold = null
+	var score := INF
+	for t: Threshold in doors:
+		var d := t.door.distance_to(at)
+		if d > reach:
+			continue
+		var to_house := t.host - at
+		var faced := maxf(0.0, look.dot(to_house.normalized())) if to_house.length() > 0.01 else 0.0
+		var sc := d - 1.5 * faced
+		if sc < score:
+			score = sc
+			best = t
+	return best
+
+
 ## The door whose key is `key` on `w`, or null.
 static func by_key(w: WorldData, key: String) -> Threshold:
 	for t: Threshold in thresholds(w):
@@ -120,6 +145,16 @@ const LOOT := {
 		{"item": &"mod_capacitor", "chance": 0.35, "rarity": Rarity.RARE},
 		{"item": &"mod_harmonic", "chance": 0.3, "rarity": Rarity.RARE},
 		{"item": &"record", "chance": 0.25},
+	],
+	# What the burning's foundry casts and keeps at the end of its line: its own
+	# landscape's glass, always, and the lance body it was pouring, always -- the
+	# reason to go down past the warden -- and the scrap of the pour.
+	&"foundry": [
+		{"item": &"cinder_glass", "count": Vector2i(1, 2)},
+		{"item": &"lance_casting"},
+		{"item": &"scrap", "count": Vector2i(3, 6)},
+		{"item": &"blade_seal", "chance": 0.3},
+		{"item": &"record", "chance": 0.2},
 	],
 	# What somebody kept who knew what was coming: their own records first, the
 	# makings of light, and the odd thing they took off a machine to study.

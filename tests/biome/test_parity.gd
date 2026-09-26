@@ -405,16 +405,63 @@ extends TestCase
 ## stage returns before it reads a tile (tests/render/test_colossus_treads.gd
 ## holds both halves: none at 256, some at the shipped size). The treads' own
 ## evidence is the shipped-size world in that file, not this one.
+##
+## RE-ACCEPTED A SIXTEENTH TIME (2026-09-24, GEN 28): the coast has a FORM
+## (`GenForm`, `BiomeDef.form`), a spine it rises to from its shore, and at 256
+## that is the one thing that moves. All six digests move on all five seeds:
+## `level` from the rise, and `country`, `country2`, `blend` and everything
+## after them because borders and ground follow height. Causation: with
+## `coast.form` set to {} and everything else of GEN 28 in place (the level
+## cap raised 15 -> 30, relief noise 301/302 scaled by max(1, body_k), the
+## climate and border rules read no higher than `GenRelief.TUNED_TOP`), this
+## test passed on the previous hashes in the same session. At 256 `body_k` is
+## 0.5, so the noise scaling is inert here; `tools/gd/probe_regions.gd` at 1840
+## is the evidence for it.
+##
+## RE-ACCEPTED A SEVENTEENTH TIME (2026-09-24, still GEN 28): the coast's form
+## keeps a SHORE (`BiomeDef.form.shore`, 24 tiles times body_k) at its own
+## height before the rise begins, because the rise from the waterline took the
+## river-mouth marsh with it (test_world_gen: seed 90210's coast mud 0.0068,
+## under its 0.01; 0.0075 with the rise at 1.8; passing with the shore). All six
+## digests move on all five seeds, as the form's own re-acceptance did, and for
+## the same reason. Causation: on world/form3 with the S2 cherry-pick and no
+## `shore` key, this test passed on the sixteenth hashes (same session, run
+## with test_bodies and test_world_gen); adding the key alone moves them.
+## Re-derived by a second session on the S2 branch merged with main: with
+## `coast.form` = {} this test passed on the GEN 27 hashes (form3's), so the
+## form is still the only thing that moves the six. The crags' `shelf` that
+## followed moved nothing here: the six do not include them.
+## RE-ACCEPTED AN EIGHTEENTH TIME (2026-09-25, still GEN 28): the way in (the
+## first iron near the spawn, `GenScatter._way_in_site`) is sited on the land
+## alone and held clear before the works and the scatter, then laid after them.
+## It lays a scree patch, and it used to take its spot from whatever props stood
+## near the spawn, so an era without the plan's works (Realm.ERA) put that
+## GROUND somewhere else: test_era found 29 tiles of cover moved on seed 4.
+## `country`, `country2`, `level` and `blend` are equal on all five seeds; only
+## `ground` (the patch) and `props` (the seam, and what the scatter lays round
+## a spot now held clear) move. Seed 1's spawn, shot top-down before and after,
+## reads the same at island scale.
+## GEN 29 (2026-09-25) CHANGED NO DIGEST, and here is why that is evidence and
+## not a blind spot. Prop ids became section ids (`GenIds`: (section << 20) |
+## the order laid in that 256-tile section). A 256 world is ONE section, so its
+## ids and its list order are what they were, and all five digests stand. At
+## 1840 (seed 1), against the same tree with GenIds taken out: the six tile
+## arrays hash the same (e93fc15a 20864c98 788f7377 7662526b 03d6ea51
+## 8a2c4a18), the props are the same 129,974 things in the same places (a
+## multiset of kind, position and turn: 07b4f127), and only the ids differ
+## (1b17a03e -> 2dbde53b); every one of the grid's 508 masts resolves. What an
+## id seeds (a tree's lean, the far windows) moves once with it: an eye-level
+## frame moved 1.6 mean on the far city's windows.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "d776653d 6ad6b905 fad9295c c9461b35 e6b8c99e 15ad2cee",
-	3: "b5edae39 c8d3b8f5 3b4cb3b7 4c69a413 44aa1757 d14a9098",
-	7: "58b06d6a 6d58b415 2463bc7c e866cdde 06bf3a40 06b9494c",
-	42: "dadf03f6 5a0d5b87 03251c49 d215e370 177dc1cd 8e94af18",
-	90210: "ccfb32d9 8cb5fc79 ef5cf0f7 fedceafb 28fb97e2 af0d9cd1",
+	1: "054710a9 3eac3638 94461b7b 100053b8 4fd7a826 5c06a0ae",
+	3: "bd96c6d3 1d22db86 7b140027 a4316902 7e58a668 21618ae8",
+	7: "ba7a972f 55af42cc dc6cb282 0f02d42c f555c41d 36572b9e",
+	42: "e0ad0bb3 b7ca1370 87e9cbb3 2f4b7f69 1565ed7e 3233d301",
+	90210: "2659ea1f 66925798 11348ba2 34b30d32 275c7664 9ac280c7",
 }
 
 
@@ -463,7 +510,7 @@ static func digest(w: WorldData) -> String:
 	# below anything a player can see and far above any float's last bit; a
 	# placement that really moves or flips still moves this digest.
 	var props := PackedInt32Array()
-	for p in w.props:
+	for p in w.each_prop():
 		props.append(p.kind)
 		props.append(roundi(p.pos.x * 1000.0))
 		props.append(roundi(p.pos.y * 1000.0))
@@ -484,7 +531,7 @@ static func breakdown(w: WorldData) -> String:
 	# Packed arrays are values: each is read out, grown and written back.
 	var exact := {}
 	var rounded := {}
-	for p in w.props:
+	for p in w.each_prop():
 		var e: PackedFloat32Array = exact.get(p.kind, PackedFloat32Array())
 		e.append(p.pos.x)
 		e.append(p.pos.y)

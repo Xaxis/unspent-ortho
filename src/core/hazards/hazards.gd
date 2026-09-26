@@ -300,9 +300,12 @@ static func _prop_shift(out: Dictionary, place: Place) -> void:
 		_add(out, id, minf(float(sum[id]), float(most[id])))
 
 
-## High ground is colder, and past the tree line the air thins.
+## High ground is colder, and past the tree line the air thins. Read no higher
+## than the range this was tuned on (`GenRelief.TUNED_TOP`): land that stands
+## taller now than the old cap let it (a region's spine) is not an alp, and a
+## body on it would breathe frost on a summer moor.
 static func _height_shift(out: Dictionary, place: Place) -> void:
-	var high := maxi(0, place.level - HIGH_LEVEL)
+	var high := maxi(0, mini(place.level, floori(GenRelief.TUNED_TOP)) - HIGH_LEVEL)
 	if high <= 0:
 		return
 	_add(out, &"cold", 0.04 * high)
@@ -423,8 +426,14 @@ static func drain(pressure: Dictionary, minutes: float) -> float:
 	return DRAIN_PER_MINUTE * minutes * clampf((top - HARM) / (1.0 - HARM), 0.0, 1.0)
 
 
-## Health after a drain: it stops at HARM_FLOOR, so the weather never kills.
-static func drained_health(health: int, carried: float) -> int:
+## Health after a drain: it stops at HARM_FLOOR, so the weather never kills --
+## on its own. Already at the floor, with a threat near (Survival.threat_near),
+## the next whole point it takes is the last one: the weather has hollowed the
+## body out to where what came with it finishes the work (mechanics
+## improvement 4), and the fight's own downed outcome follows.
+static func drained_health(health: int, carried: float, threat_near: bool = false) -> int:
+	if threat_near and health <= HARM_FLOOR and floori(carried) >= 1:
+		return 0
 	return maxi(HARM_FLOOR, health - floori(carried))
 
 

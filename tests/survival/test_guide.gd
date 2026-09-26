@@ -29,6 +29,38 @@ func test_the_goal_walks_the_way_in() -> void:
 	Fx.done(g)
 
 
+## Past the first tools the goal points outward (mechanics pass 2c): the next
+## elite material the player lacks, what it is, and where in the world it comes
+## from, off the same walk the economy proves every material by
+## (Sources.path_to). The one the land underfoot gives comes first.
+func test_past_the_pick_the_goal_points_at_an_elite_material() -> void:
+	var g := Fx.flat()
+	Survival.build(g, &"fire", true)
+	g.inventory.add(&"pick", 1)
+	check(Guide.goal(g).contains("ore"), "with a pick and no ore, the ore: %s" % Guide.goal(g))
+	g.inventory.add(&"iron_ore", 1)
+	var want := Guide.next_elite(g)
+	check(EliteStock.is_elite(want), "an elite material is wanted next: %s" % want)
+	check(Sources.reachable(want), "and there is a way to it")
+	var line := Guide.goal(g)
+	print("  late goal: %s" % line)
+	var name := String(Items.def(want).get("name", String(want)))
+	check(line.to_lower().contains(name.to_lower()), "the goal names it (%s): %s" % [name, line])
+	check(line.contains("harvester") and line.contains("here on the coast"), "on the coast, the coast's own: cut out of a harvester, here on the coast: %s" % line)
+	# One line on the goal window, left of the place name, whatever it names.
+	for id: Variant in EliteStock.ids():
+		var said := Guide.elite_goal(g, StringName(id))
+		lt(float(Hud.goal_clip(said).end.x), float(UiBase.mid_x() - 120), "fits its window: %s" % said)
+	g.inventory.add(want, 1)
+	var after := Guide.next_elite(g)
+	print("  then: %s" % Guide.goal(g))
+	check(after != want and EliteStock.is_elite(after), "held, the next one is asked for: %s" % after)
+	var where := String(EliteStock.land_of(after))
+	if where != "":
+		check(Guide.goal(g).contains(BiomeRegistry.get_def(StringName(where)).spoken_in), "and where it lies, in its own words: %s" % Guide.goal(g))
+	Fx.done(g)
+
+
 func test_hints_fit_the_moment_and_stay_retired() -> void:
 	var g := Fx.flat()
 	var retired := {}
@@ -595,24 +627,28 @@ func test_a_held_road_says_all_three_ways_past_it() -> void:
 	# And far away it has nothing to say about a road nobody is near. "Far" is
 	# far from EVERY hold the plan keeps, found rather than assumed: a point just
 	# past ROAD_NEAR east of the first hold was open country until villages were
-	# counted per area (GEN 24), and then it was the next hold's road.
+	# counted per area (GEN 24), and then it was the next hold's road; and walking
+	# out from one hold on sixteen bearings found nothing once a grown coast (GEN
+	# 28) strung fourteen holds across the island. So: the land farthest from
+	# every hold, which has to be past ROAD_NEAR of all of them.
 	var far := Vector2.INF
-	for step in range(int(Guide.ROAD_NEAR) + 20, g.world.size, 8):
-		for b in 16:
-			var q := closed_at + Vector2.from_angle(TAU * b / 16.0) * float(step)
-			if g.world.level_at(floori(q.x), floori(q.y)) <= 0:
+	var far_d := 0.0
+	for y in range(0, g.world.size, 2):
+		for x in range(0, g.world.size, 2):
+			if g.world.level_at(x, y) <= 0 or not g.query.standable(x, y):
 				continue
-			var clear := true
+			var q := Vector2(x + 0.5, y + 0.5)
+			var nearest := INF
 			for h: Variant in sites:
-				if bool(holds.call("closed", h)) and (h.pos as Vector2).distance_to(q) < Guide.ROAD_NEAR + 20.0:
-					clear = false
-					break
-			if clear:
+				if bool(holds.call("closed", h)):
+					nearest = minf(nearest, (h.pos as Vector2).distance_to(q))
+			if nearest > far_d:
+				far_d = nearest
 				far = q
-				break
-		if far.is_finite():
-			break
-	check(far.is_finite(), "seed 4 has land away from every held road")
+	check(far_d > Guide.ROAD_NEAR + 2.0, "seed 4 has land away from every held road (the farthest is %.0f tiles from one)" % far_d)
+	if far_d <= Guide.ROAD_NEAR + 2.0:
+		g.free()
+		return
 	g.player.pos = far
 	check(not _offered(g).has(&"road"), "and not from the other end of the island")
 	# The words carry all three ways, because the whole point is that it is not a lock.

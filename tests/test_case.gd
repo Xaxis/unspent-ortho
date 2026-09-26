@@ -182,6 +182,121 @@ static func best_of(n: int, what: Callable) -> float:
 	return best
 
 
+## **A COST IN YARDSTICKS, NOT MILLISECONDS.** A bar in ms is a claim about one
+## machine's clock. CI's runner is a different, slower machine, so four such bars
+## failed there in a week on code that had not changed (a frame of the trample
+## field at 4.244 ms against 4.0). A yardstick is a fixed piece of interpreted
+## work timed beside the cost in the same process, so a slower machine slows both,
+## and the cost is stated as how many yardsticks it takes.
+##
+## The bar is put BETWEEN two measurements, not above one: the shipped ratio and
+## the ratio with the timed work planted twice over. `yard_lt` asserts the
+## first is under the bar AND that the doubled one is over it, so every run
+## proves the bar can still see a doubling. A bar that the doubled cost clears
+## is a bar that catches nothing, and that is caught here instead of later.
+##
+## (How a cost is measured is the caller's: `best_of` for work that repeats,
+## `middle` for samples.)
+static func yardstick_us() -> float:
+	return best_of(40, _yard_work)
+
+
+## The yardstick itself: 400 steps of interpreted vector work, the same the
+## shoulder probe's cost test times (tests/camera/test_shoulder.gd), about the
+## weight of the costs it measures on this laptop (tens of microseconds).
+static func _yard_work() -> void:
+	var acc := Vector2.ZERO
+	var pts := PackedVector2Array()
+	pts.resize(64)
+	for i in 400:
+		var p := Vector2(float(i) * 0.37, float(i) * 0.11)
+		pts[i & 63] = p
+		acc += (p - pts[(i * 7) & 63]).normalized() * p.length()
+
+
+## A cost, its doubling and its yardstick, timed IN TURN over `rounds` rounds,
+## each the cheapest of `reps`: [work_us, doubled_us, yard_us]. Timed apart,
+## a burst of load that lands on the yardstick alone moves the ratio as much as
+## a regression would (measured: the interpreted yardstick read 68 us against its
+## usual 40 in one run, and a doubled trample frame fell under its bar). In turn,
+## the three share whatever the machine was doing, round by round.
+static func yard_sample(work: Callable, doubled: Callable, yard: Callable, rounds: int = 6, reps: int = 3) -> Array[float]:
+	var w := INF
+	var d := INF
+	var y := INF
+	for r in rounds:
+		y = minf(y, best_of(reps * 4, yard))
+		w = minf(w, best_of(reps, work))
+		d = minf(d, best_of(reps, doubled))
+	return [w, d, y]
+
+
+## The interpreted yardstick's work, as a Callable for `yard_sample`.
+static func yard_work() -> Callable:
+	return _yard_work
+
+
+## The rig yardstick's work (see bone_yardstick_us), as a Callable.
+static func bone_work() -> Callable:
+	bone_yardstick_us()
+	return _bone_work
+
+
+## A yardstick for a cost that is mostly the engine's own work: posing a rig.
+## An interpreted loop is a poor ruler for it, because one machine's interpreter
+## and another's engine code are not slower by the same factor (measured on CI:
+## the interpreted yardstick ran 2.2x this laptop's, a street of forty's step
+## 1.3x, so a doubled street read UNDER a bar it cleared twice over here). This
+## times what `SkinRig.pose` does, per bone, on a skeleton of its own: a
+## rotation from euler angles and a position written back, 24 bones, twenty
+## times over: tens of microseconds, well clear of the timer's own step.
+static func bone_yardstick_us() -> float:
+	if _bones == null:
+		_bones = Skeleton3D.new()
+		for i in 24:
+			_bones.add_bone("b%d" % i)
+			if i > 0:
+				_bones.set_bone_parent(i, i - 1)
+	return best_of(40, _bone_work)
+
+
+static var _bones: Skeleton3D = null
+
+
+static func _bone_work() -> void:
+	for k in 20:
+		for i in 24:
+			var e := Vector3(float(i) * 0.07, float(k) * 0.3, 0.1)
+			_bones.set_bone_pose_rotation(i, Quaternion.from_euler(e))
+			_bones.set_bone_pose_position(i, Vector3(0.0, float(i) * 0.1, 0.0))
+
+
+## Assert a cost in yardsticks: `us` (shipped) under `bar` x `yard`, and
+## `doubled_us` (the same work twice) over it. **THE SHIPPED READING IS JUDGED ON
+## ANY MACHINE.** It is timed in turn with its ruler, so load lands on both, and
+## a bar skipped "because the box was busy" is how a real regression ships on a
+## busy gate. A doubling that the bar misses is a failure too, because that is
+## the bar being wrong, not the box (tests/core/test_yard_bar.gd).
+##
+## **UNLESS THE DOUBLING WAS NOT SEEN AT ALL.** Twice the work reads about twice
+## the time on any machine; read at under DOUBLED_SEEN times the shipped, the
+## instrument failed on this run (measured: a trample frame 1337 us shipped and
+## 1875 doubled beside other sessions' runs, 1.4x), and that says nothing about
+## the bar. Said, not judged.
+const DOUBLED_SEEN := 1.6
+
+
+func yard_lt(us: float, doubled_us: float, yard: float, bar: float, what: String) -> void:
+	var r := us / maxf(yard, 0.001)
+	var r2 := doubled_us / maxf(yard, 0.001)
+	print("  %s: %.2f yardsticks shipped, %.2f doubled, bar %.2f (%.0f us, yardstick %.1f us)" % [what, r, r2, bar, us, yard])
+	lt(r, bar, "%s, in yardsticks" % what)
+	if r2 > bar or r2 >= r * DOUBLED_SEEN:
+		gt(r2, bar, "%s: the bar sees the work doubled" % what)
+	else:
+		print("  UNMEASURED %s doubled: read %.2fx the shipped, not twice — the run was disturbed, re-run it alone" % [what, r2 / maxf(r, 0.0001)])
+
+
 ## The middle of `samples`, which is what to report when a thing is measured
 ## many times and cannot be repeated whole (a frame inside a soak, one villager
 ## inside a street). Same reasoning as `best_of`: the tail is the scheduler's,

@@ -109,8 +109,8 @@ static func room_of(kind: StringName, tenant: StringName) -> StringName:
 ## farthest from it; the rest are dealt off their keys, the Holdfast's the one
 ## nearest its camp.
 ##
-## Not a spine slot, by measurement: a full-sized world holds four or five rings
-## on his coast (seeds 1-12), but at the plan tests' 256 tiles half of seeds 1-24
+## Not a spine slot, by measurement: a full-sized world keeps three to five rings
+## on his coast (GEN 28, seeds 1-12), but at the plan tests' 256 tiles half of seeds 1-24
 ## hold none, so his bunker is colour and `handler_note` keeps `was_cia`'s other
 ## door. A slot would also take a landmark the camp may be cast on.
 ## Held per world object, as StoryPlan.cast is.
@@ -144,8 +144,9 @@ static func _deal(world: WorldData) -> Dictionary:
 		rest.append(bunkers[i])
 	rest.sort_custom(func(a: Threshold, b: Threshold) -> bool:
 		return Rng.hash01(a.key.hash(), SALT) < Rng.hash01(b.key.hash(), SALT))
-	# A full-sized world holds four or five rings on his coast (measured, seeds
-	# 1-12), so the deal goes in the order the story most wants them.
+	# A full-sized world keeps three to five rings on his coast (GEN 28, seeds
+	# 1-12: half keep three), so the deal goes in the order the story most wants
+	# them and a small coast keeps the front of it.
 	for want: StringName in FILL:
 		if rest.is_empty():
 			break

@@ -252,7 +252,7 @@ func test_an_installation_and_a_sentinel_are_heard() -> void:
 	var sys: MusicSystem = parts[0]
 	var g: Game = parts[1]
 	var pylon := WorldProp.new(900001, PropKind.PYLON, g.player.pos + Vector2(2, 0), 0.0, 1.0)
-	g.world.props.append(pylon)
+	g.world.add_prop(pylon)
 	g.query.add_prop(pylon)
 	var s := FakeSentinel.new()
 	s.pos = g.player.pos + Vector2(4, 0)
@@ -265,7 +265,6 @@ func test_an_installation_and_a_sentinel_are_heard() -> void:
 	check(sys.cues_played.any(func(k: StringName) -> bool: return String(k).ends_with("_motif")), "its motif played")
 	s.free()
 	g.query.remove_prop(pylon)
-	g.world.props.erase(pylon)
 	_done(parts)
 
 

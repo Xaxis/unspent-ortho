@@ -19,6 +19,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"server_fields"
 	d.display_name = "the server fields"
+	d.spoken_in = "out among the server fields"
 	d.order = 14
 	d.style_note = "Ruled rows to the horizon, cast floor, one violet strip repeated a thousand times."
 	d.share = Vector2(0.0575, 0.1035)

@@ -15,6 +15,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"scrapwood"
 	d.display_name = "scrapwood"
+	d.spoken_in = "in the scrapwood"
 	d.order = 7
 	d.style_note = "Upright strokes over rust: the hand's crowns closed over the ruler's frames."
 	d.share = Vector2(0.105, 0.16)
@@ -162,6 +163,8 @@ static func make() -> BiomeDef:
 		&"watcher": {"weight": 0.8, "grounds": floor_g},
 		&"flock": {"weight": 0.8, "hours": Vector2(7, 18), "grounds": floor_g},
 		&"dog.feral": {"weight": 1.0, "grounds": floor_g},
+		# Its own: the tamper, waiting on the heaps over the floor (Roster).
+		&"tamper": {"weight": 1.0},
 	}
 	d.sentinel = &""
 	# The places worth the walk it holds (docs/VISION.md, src/core/landmarks):

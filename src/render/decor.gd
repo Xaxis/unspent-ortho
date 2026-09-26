@@ -433,8 +433,10 @@ const MEADOW_THICK := 5.0
 func meadow(ch: TerrainMesher.Chunk, tx0: int, ty0: int, w: int, h: int, thick: float) -> Dictionary:
 	var out := {}
 	var np := ch.n + 1
-	for ty in range(ty0, mini(ty0 + h, ch.h)):
-		for tx in range(tx0, mini(tx0 + w, ch.w)):
+	# Clamped at both ends: the ring asks for a cell from where the cell starts,
+	# which can be before this chunk (a pocket's chunks are small).
+	for ty in range(maxi(ty0, 0), mini(ty0 + h, ch.h)):
+		for tx in range(maxi(tx0, 0), mini(tx0 + w, ch.w)):
 			var k := turf(ch, tx, ty)
 			if k < 0:
 				continue

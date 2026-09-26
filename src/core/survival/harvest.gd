@@ -107,18 +107,18 @@ static func apply_shown(game: Game, prop: WorldProp) -> bool:
 		var base: Vector2 = state.base_size[prop.id]
 		state.base_size.erase(prop.id)
 		var changed := not is_equal_approx(prop.solid, base.y) or not is_equal_approx(prop.shown, 1.0)
-		prop.scale = base.x
-		prop.solid = base.y
-		prop.shown = 1.0
+		game.world.set_scale(prop, base.x)
+		game.world.set_solid(prop, base.y)
+		game.world.set_shown(prop, 1.0)
 		return changed
 	if not state.base_size.has(prop.id):
 		state.base_size[prop.id] = Vector2(prop.scale, prop.solid)
 	var b: Vector2 = state.base_size[prop.id]
 	var was := prop.shown
-	prop.shown = share
+	game.world.set_shown(prop, share)
 	# What is left stands where it stood: a rock worked down keeps most of its
 	# footprint until the last go takes it away.
-	prop.solid = b.y * lerpf(size_for(share), 1.0, 0.5)
+	game.world.set_solid(prop, b.y * lerpf(size_for(share), 1.0, 0.5))
 	return not is_equal_approx(was, prop.shown)
 
 

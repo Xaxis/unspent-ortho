@@ -134,7 +134,7 @@ func test_every_registered_key_reads_back_the_same_after_a_played_day() -> void:
 	check(b.inventory.held is StringName, "held is a StringName again")
 	var fire: WorldProp = SurvivalState.of(b).built[0] if not SurvivalState.of(b).built.is_empty() else null
 	check(fire != null and fire.kind == PropKind.FIRE, "the built fire is a fire")
-	check(fire != null and b.query.nearest_prop(fire.pos, 0.5, [PropKind.FIRE] as Array[int]) == fire, "and it stands in collision")
+	check(fire != null and WorldProp.same(b.query.nearest_prop(fire.pos, 0.5, [PropKind.FIRE] as Array[int]), fire), "and it stands in collision")
 	check(Survival.fire_near(b) != null, "the player wakes beside it")
 	eq(Weather.forced_kind, &"rain", "the forced sky came back")
 	# A frame later the loaded world is drawn: the built fire burns.
@@ -204,11 +204,15 @@ func _play(g: Game) -> void:
 	_take_from(g, PropKind.MUSSEL_ROCK, "mussels taken", func() -> bool:
 		return g.inventory.count(&"mussels") > 0)
 	# A generated prop taken for good, somewhere else on the map.
-	for q in g.world.props:
+	for q in g.world.each_prop():
 		if q.id < SaveCore.props_base(g) and Takes.workable(q.kind) and not g.world.depleted.has(q.id):
 			g.world.depleted[q.id] = INF
 			break
-	# Build a fire, and make a haft by hand.
+	# Build a fire, and make a haft by hand. STOOD WHERE ONE FITS, found rather
+	# than assumed: a fire wants level, clear ground in front of the body, and the
+	# walk above ends wherever the land it crossed happens to put it -- on a
+	# coast that climbs in terraces, that can be a step's edge (GEN 28).
+	_to_where_it_fits(g, PropKind.FIRE)
 	var fire: WorldProp = null
 	for turn in 8:
 		Survival.face(g, turn * TAU / 8.0)
@@ -236,6 +240,26 @@ func _play(g: Game) -> void:
 	await tree.process_frame
 
 
+## Stand on the nearest tile, outward from here, where a `kind` can be built in
+## front of the body at some facing.
+func _to_where_it_fits(g: Game, kind: int) -> void:
+	var from := g.player.pos
+	for r in range(0, 16):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var at := Vector2(floori(from.x) + dx + 0.5, floori(from.y) + dy + 0.5)
+				if not g.query.standable(floori(at.x), floori(at.y)):
+					continue
+				_teleport(g, at)
+				for turn in 8:
+					Survival.face(g, turn * TAU / 8.0)
+					if Survival._build_spot(g, kind).x > -1e8:
+						return
+	_teleport(g, from)
+
+
 func _teleport(g: Game, at: Vector2) -> void:
 	g.player.pos = at
 	if g.player.hero != null:
@@ -251,9 +275,9 @@ func _live(g: Game) -> Dictionary:
 		built.append([q.id, q.kind, q.pos])
 	var depleted := {}
 	for id: int in g.world.depleted:
-		depleted[id] = [g.world.depleted[id], g.world.props[id].kind]
+		depleted[id] = [g.world.depleted[id], g.world.prop(id).kind]
 	return {
-		"props": g.world.props.size(),
+		"props": g.world.prop_count(),
 		"depleted": depleted,
 		"built": built,
 		"minutes": g.clock.minutes,
@@ -291,14 +315,14 @@ func test_world_edits_follow_their_props_and_stay_off_other_worlds() -> void:
 	Survival.add_prop(h, PropKind.BOULDER, h.player.pos + Vector2(-3, 0))
 	SaveCore.mark_base(h)
 	SaveCore.load_world(h, saved)
-	eq(h.world.props.size(), SaveCore.props_base(h) + 1, "the fire is put back")
-	var moved := h.world.props[SaveCore.props_base(h)]
+	eq(h.world.prop_count(), SaveCore.props_base(h) + 1, "the fire is put back")
+	var moved := h.world.prop_at(SaveCore.props_base(h))
 	eq(moved.kind, PropKind.FIRE)
 	eq(moved.pos, fire.pos, "where it stood")
 	near(float(h.world.depleted.get(moved.id, -1.0)), 500.0, 1e-6, "its depletion follows it")
 	check(is_inf(float(SurvivalState.of(h).spent.get(SurvivalState.key(moved.id, 0), 0.0))), "so does its spent option")
 	eq(SurvivalState.of(h).taken.get(SurvivalState.key(moved.id, 0)), 2, "and its takes")
-	check(SurvivalState.of(h).built.size() == 1 and SurvivalState.of(h).built[0] == moved, "it is still the one built")
+	check(SurvivalState.of(h).built.size() == 1 and WorldProp.same(SurvivalState.of(h).built[0], moved), "it is still the one built")
 	Fx.done(h)
 
 	# A save of another world changes nothing here.
@@ -309,8 +333,8 @@ func test_world_edits_follow_their_props_and_stay_off_other_worlds() -> void:
 	other.options.seed_value = 99
 	other.world.seed_value = 99
 	SaveCore.mark_base(other)
-	var count := other.world.props.size()
+	var count := other.world.prop_count()
 	SaveCore.load_world(other, saved)
-	eq(other.world.props.size(), count, "no props from another world")
+	eq(other.world.prop_count(), count, "no props from another world")
 	check(other.world.depleted.is_empty(), "no edits from another world")
 	Fx.done(other)

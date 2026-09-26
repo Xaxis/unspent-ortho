@@ -22,9 +22,13 @@ extends RefCounted
 ## kist); the story fills them (docs/STORY.md). Laid in the canonical frame: the
 ## way in is in the south wall (+y).
 
-## The room's radius and its middle, in tiles.
+## The room's radius and its middle, in tiles. The middle stands so that the
+## doorway's chord lies on the edge of the tiles the room stands in (y 8): a
+## circle centred in its square put the doorway inside the last row, with
+## floor beyond the way out.
 const R := 3.6
-const C := Vector2(4.0, 4.0)
+## (8 - R cos(PI / 22), written out.)
+const C := Vector2(4.0, 4.43664)
 ## Chords the wall is laid in: one of them is the doorway.
 const SIDES := 22
 ## Spokes: how far a pier reaches in from the wall, and at what bearings, as

@@ -37,6 +37,12 @@ var realms: Array[StringName] = [&"surface"]
 var sea := false
 ## A one-line note on what this landscape is for, in the notebook's own words.
 var style_note := ""
+## How the game says someone is in this landscape: "on the coast", "out on the
+## glass", "down in the middens". Flat and present (docs/STORY.md, the voice):
+## a place's own preposition, which no rule can guess ("in the coast" is how a
+## sentence built off `display_name` said it). Every landscape declares one
+## (tests/biome/test_registry.gd).
+var spoken_in := ""
 
 # --- placement ------------------------------------------------------------
 
@@ -85,6 +91,9 @@ var coastal := 0.0
 ##   valley  levels per tile of a river's side (low: a vale, high: a gorge)
 ##   rain    runoff feeding rivers           temp    0 frozen .. 1 furnace
 ##   moist   0 desert .. 1 drowned           cliff   headland cliff tendency
+##   shelf   levels a terrace step stands above its two: tall cliffs between
+##           broad shelves (0: the two-level scarp)
+##   shelf_var  0..1, how much the shelf's height wanders across the land
 var relief := {
 	# `near` is relief AT WALKING SCALE and it is the one a landscape has to ask
 	# for by name. `hills` and `ridge` ride noise whose wavelengths are 58 and 92
@@ -99,6 +108,18 @@ var relief := {
 	&"base": 3.0, &"hills": 2.0, &"ridge": 0.0, &"near": 0.0, &"terrace": 0.0, &"valley": 0.5,
 	&"rain": 1.0, &"temp": 0.5, &"moist": 0.5, &"cliff": 0.0,
 }
+## The region's FORM (`GenForm`): its land at the scale of the region. Empty is
+## no form. Keys, all optional:
+##   crest   levels the land rises from its shore to its spine (the ground
+##           farthest from the sea within this landscape on its body)
+##   rise    how the rise is shaped from shore to spine: t^rise, so above 1 the
+##           shore stays low and the climb comes late
+##   passes  0..1, how deep the saddles along the spine sink, as a share of crest
+##   wave    tiles between one top and the next along the spine, times body_k
+##   shore   tiles from the sea, times body_k, that stay at the landscape's own
+##           height before the rise begins: the lowland where the river mouths
+##           make marsh and the bays back onto dune
+var form := {}
 ## > 0: this type's heart is a crater of this radius in tiles (at world size
 ## 512), with a raised rim and a sunk basin.
 var caldera := 0.0
@@ -441,7 +462,11 @@ var mist := 0.0
 ## time_shear). The hazards package reads this.
 var hazards: Dictionary = {}
 ## Roster id -> {weight: float, hours: Vector2} for the mob spawner. An entry
-## with no hours is awake all day.
+## with no hours is awake all day. `over` (a Dictionary of roster keys) makes the
+## kind this landscape's own: every body of it put down here wears those keys
+## over the roster's (a whole `bite` included), and fights, senses and reads on
+## the slate by them. Numbers only: a model builds its working part where the
+## roster's `part` says, so a part moved here would be drawn on the wrong side.
 var roster: Dictionary = {}
 ## Sentinel design id for this type (empty until designed).
 var sentinel: StringName = &""

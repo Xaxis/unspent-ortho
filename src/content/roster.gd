@@ -8,7 +8,8 @@ class_name Roster
 ## Schema:
 ##   model: StringName       FigureModel.create(model)
 ##   machine: bool           FOUND: plated, never flinches, drops scrap
-##   approach: StringName    errand | charge | rush | dart
+##   approach: StringName    errand | charge | rush | dart | throw | drop
+##   drop: Dictionary        drop: the Blow it comes down with (an `area` blow)
 ##   part: StringName        working part side: front back left right none
 ##   pace, dash: float       tiles/s (source scale); quick: int close-quarters x100
 ##   radius, height: float   hit body (tiles) and figure height (world units)
@@ -150,7 +151,11 @@ const DEFS := {
 	&"warden": {
 		"model": &"warden", "role": &"keeper", "machine": true, "approach": &"dart", "part": &"front",
 		"pace": 6.0, "dash": 9.5, "radius": 0.45, "height": 1.6, "life": 55,
-		"sees": 14, "hears": 9, "racket": 9, "reach": 2, "ready": 4, "forget": 25, "tether": 30, "safe": 10,
+		# A keeper CHALLENGES before it takes anyone: sure of you, it stands and
+		# faces you three seconds (`ready`) before it comes, and loses you if you
+		# get out of its sight in that time. At four beats it was on whoever it
+		# noticed before they could do either.
+		"sees": 14, "hears": 9, "racket": 9, "reach": 2, "ready": 30, "forget": 25, "tether": 30, "safe": 10,
 		"nerve": 100, "invuln": 400, "disposition": &"wary",
 		"hits": {"minutes": 60.0, "again": 60.0, "cap": 240.0, "arrest": true,
 			"line": "A warden stands you at the side of the track until it is done with you."},
@@ -273,6 +278,47 @@ const DEFS := {
 			"empty_line": "A gull comes down on your bag, finds nothing, and goes."},
 		"takes": 0.0, "drops": 0, "linger": 8.0, "chance": 14,
 		"where": {"countries": GREEN_COUNTRIES, "grounds": ["sand", "shingle", "gravel", "strand"], "hours": [6, 20]},
+	},
+
+	# --- The Middens' own worker: the sorter (improvement 3b) ----------------
+	# It picks the tipped refuse over and throws what the plan has no use for up
+	# onto the walls, which is what the walls are. Turned, it throws at you: its
+	# bite is a LANE five tiles long and half a tile wide (FightRules.throws), told
+	# by the lane on the ground and its arm cocked back over the hopper for 850 ms.
+	# Then it has to reach into the hopper for the next load, and that reload is
+	# the opening: the hopper on its back is its working part. It gives ground to
+	# a body that comes in close, at a pace a walking player gains on.
+	&"sorter": {
+		"model": &"sorter", "role": &"worker", "machine": true, "approach": &"throw", "part": &"back",
+		"pace": 3.5, "dash": 5.0, "quick": 150, "radius": 0.55, "height": 1.5, "life": 48,
+		"sees": 12, "hears": 6, "racket": 14, "reach": 6, "ready": 3, "forget": 18, "tether": 26, "safe": 14,
+		"nerve": 100, "invuln": 420, "disposition": &"indifferent",
+		"bite": {"swing": [850, 100, 900, 1500], "reach": 5.0, "width": 0.5, "dmg": 2, "knock": 5.0, "knock_ms": 220},
+		"takes": 45.0, "drops": 2, "linger": 40.0, "chance": 4,
+		"where": {"countries": ["the_middens"], "grounds": ["swarf", "scree", "gravel", "road"]},
+	},
+
+	# --- The dropper: the tamper (improvement 3c) ----------------------------
+	# A weight on sprung legs that packs ground for the plan by dropping itself
+	# on it. It waits on a ledge over a path, and comes down on whoever walks
+	# under it (Brains `drop`): its tell is a shadow on the ground where it will
+	# land, growing to the size of the landing as it leaps, and the landing is a
+	# round of ground, not a box ahead. Down among you it is a close fighter.
+	# Its working part is the ram's drive at its FRONT, behind a guard that
+	# throws a blow off like plate until it is open (`guarded`): it lands facing
+	# where it dropped, so a part on its back would be against the cliff it came
+	# off. Missed, it stands a long moment where it landed, legs splayed and the
+	# guard open, which is the opening. The scrapwood's own, and only its: it
+	# waits on the heaps over the floors the rest of the roster walks.
+	&"tamper": {
+		"model": &"tamper", "role": &"hunter", "machine": true, "approach": &"drop", "part": &"front", "climbs": 3, "guarded": true,
+		"pace": 4.0, "dash": 6.0, "quick": 280, "radius": 0.5, "height": 1.1, "life": 70,
+		"sees": 10, "hears": 8, "racket": 12, "reach": 5, "ready": 2, "forget": 20, "tether": 24, "safe": 12,
+		"nerve": 100, "invuln": 420, "overrun": 0.6,
+		"bite": {"swing": [380, 110, 380, 620], "reach": 0.9, "width": 1.0, "dmg": 2, "knock": 4.5, "knock_ms": 200},
+		"drop": {"swing": [900, 120, 1300, 900], "reach": 0.7, "width": 0.0, "dmg": 3, "knock": 7.0, "knock_ms": 260, "area": true},
+		"takes": 40.0, "drops": 2, "linger": 40.0, "chance": 4,
+		"where": {"countries": ["scrapwood"], "green_min": 14},
 	},
 
 	# --- The Crags' one worker of its own (docs/LANDSCAPES.md) -------------

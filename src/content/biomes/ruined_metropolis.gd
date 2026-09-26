@@ -25,6 +25,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"ruined_metropolis"
 	d.display_name = "the ruined metropolis"
+	d.spoken_in = "in the ruined metropolis"
 	d.order = 17
 	d.style_note = "Grey on grey, tiers of broken road, and one district in six with its lights still on."
 	d.share = Vector2(0.07, 0.12)

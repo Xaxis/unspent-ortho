@@ -69,7 +69,7 @@ func test_a_thing_that_is_both_words_and_works_is_read_once_then_robbed() -> voi
 	var relay := Survival.add_prop(g, PropKind.RELAY, at + Vector2(0.9, 0.0), 0.0, 1.0)
 	await frames(2)
 	check(Takes.is_plan_work(relay.kind), "a relay is one of the plan's works")
-	eq(Survival.use_target(g), relay, "and it is what the hands are on")
+	check(WorldProp.same(Survival.use_target(g), relay), "and it is what the hands are on")
 	# FIRST press: the words, because a thing is only read once.
 	story._open_what_is_in_front()
 	check(story.view.showing(), "the first press reads what is written on it")

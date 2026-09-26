@@ -180,6 +180,10 @@ const LIST: Array[Dictionary] = [
 	{"id": &"hook_screw", "at": &"bench", "minutes": 150.0, "needs": {&"hook_varnish": 1, &"dredge_screw": 1, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"hook_screw": 1}},
 	{"id": &"beam_lens", "at": &"bench", "minutes": 170.0, "needs": {&"beam_hafted": 1, &"keeper_lens": 1, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"beam_lens": 1}},
 	{"id": &"lance_die", "at": &"bench", "minutes": 170.0, "needs": {&"lance_hafted": 1, &"clerk_die": 1, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"lance_die": 1}},
+	# A lance on the machines' own body: the casting their foundry in the burning
+	# poured for a lineman's lance, taken out of its store and built up at a
+	# person's bench, its emitter set in the burning's glass.
+	{"id": &"lance_cast", "at": &"bench", "minutes": 190.0, "needs": {&"lance_casting": 1, &"cinder_glass": 1, &"copper": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"lance_cast": 1}},
 	{"id": &"blade_die", "at": &"bench", "minutes": 180.0, "needs": {&"scrap": 3, &"clerk_die": 1, &"wick": 2, &"copper": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"blade_die": 1}},
 	# The relic: a filer's die set into a blade, so the thing in your hand wears
 	# their name. A pour that fails leaves the flawed twin, which still works.

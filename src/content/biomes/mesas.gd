@@ -23,6 +23,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"mesas"
 	d.display_name = "the mesas"
+	d.spoken_in = "up on the mesas"
 	d.order = 11
 	d.style_note = "Banded red rock, hard shadow, the horizon cut into steps."
 	d.share = Vector2(0.07, 0.12)

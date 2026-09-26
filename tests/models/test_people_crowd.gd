@@ -4,6 +4,12 @@ extends TestCase
 ## shadow twin only while the sun casts one.
 
 const FRAME := 1.0 / 60.0
+## A stepped villager's animate a frame, in interpreted yardsticks
+## (TestCase.yard_work): stepped, four frames in five pose nothing and only keep
+## the clocks, which is script. Against the rig yardstick CI read it at 0.19
+## over a bar of 0.17 it clears by a third here. Calibrated 2026-09-25, timed
+## in turn with its ruler: 0.16-0.23 shipped, 0.33-0.52 doubled; the bar between.
+const STEPPED_BAR := 0.29
 
 
 func _crowd(n: int, hz: float) -> Array[PersonModel]:
@@ -145,7 +151,15 @@ func test_twenty_four_villagers_cost_about_a_millisecond_each() -> void:
 	# Counted, not timed: a loaded machine can make any one timing lie.
 	lt(float(poses - poses0), frames_n * crowd.size() * 0.25, "a stepped crowd poses a fifth as often as the frames (%d of %d)" % [poses - poses0, frames_n * crowd.size()])
 	print("  crowd of 24 (script): %.3f ms a person a frame stepped" % (stepped / 1000.0))
-	lt(stepped, 1000.0, "a stepped villager's animate is under a millisecond (%.0f us)" % stepped)
+	# The cost, in yardsticks (TestCase.yard_lt), each figure the cheapest of three
+	# runs of n frames, and of 2n for the doubled one, per person per frame.
+	var frames_of := func(n: int) -> void:
+		for f in n:
+			for i in crowd.size():
+				crowd[i].animate(1.2 if i % 2 else 0.0, FRAME)
+	var per := float(frames_n * crowd.size())
+	var got := yard_sample(frames_of.bind(frames_n), frames_of.bind(frames_n * 2), yard_work(), 4, 2)
+	yard_lt(got[0] / per, got[1] / per, got[2], STEPPED_BAR, "a stepped villager's animate a frame (%.0f us timed once)" % stepped)
 
 	# Whole frames with the crowd standing in the tree, so the engine's skeleton
 	# and skin updates count too, against the same frames with nobody there.

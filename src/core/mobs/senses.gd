@@ -2,9 +2,13 @@ class_name Senses
 ## How a machine or creature notices the player (design-extract §7.4).
 ##   sight   = sees x (1 - 0.8 x nightfall x 0.62), undone by a lit lamp,
 ##             x weather, x records (each filing +25%, four at most), with a clear line
-##   hearing = hears x (1 + 0.35 x laden tier): never night, never weather, and
-##             not how fast you go (running is the way to get away)
-## You hear it before you see it; it hears you whatever the dark.
+##   hearing = hears x (1 + 0.35 x laden tier), and a MACHINE's x (1 + 0.6 x
+##             nightfall): never weather, and not how fast you go (running is
+##             the way to get away)
+## You hear it before you see it; it hears you whatever the dark, and a machine
+## hears you further in it (mechanics improvement 4b: sight falls at night, so
+## by day the lamp and the open were what gave you away, and by night it is
+## your steps; a crouch and soft ground are the night's answer).
 
 ## The source's darkest night is 0.62 of full dark.
 const DARKEST := 0.62
@@ -12,10 +16,17 @@ const NIGHT_SIGHT := 0.8
 const FILED_SIGHT := 0.25
 const FILED_CAP := 4
 const LADEN_HEARING := 0.35
+## How much further a machine hears at full night (FightRules.nightfall 1).
+const NIGHT_HEARING := 0.6
 ## A tile at least this many levels above both ends of a line hides one from the other.
 const RIDGE_LEVELS := 2
 ## Props at least this wide (solid radius) block a line: houses, boulders, heaps. Trees do not.
 const BLOCKING_SOLID := 0.42
+## A wall (`WorldQuery.set_blocks`: a room's walls, a hall's racks, a hatch's
+## housing, a colossus's pad) at least this wide blocks a line too. Only the
+## ground and props were asked, so in every room a machine saw straight through
+## its walls: a warden looked through a bay's wall at whoever hid in it.
+const BLOCKING_WALL := 0.25
 
 
 static func sight_range(row: Dictionary, m: Moment) -> float:
@@ -31,7 +42,8 @@ static func hearing_range(row: Dictionary, m: Moment) -> float:
 	if row.get("sight_only", false):
 		return 0.0
 	var hears: float = row.get("hears", 0)
-	return hears * (1.0 + LADEN_HEARING * m.laden_tier)
+	var night := NIGHT_HEARING * m.nightfall() if row.get("machine", false) else 0.0
+	return hears * (1.0 + LADEN_HEARING * m.laden_tier) * (1.0 + night)
 
 
 ## Distances are Chebyshev on the grid, as the source measured them.
@@ -94,7 +106,25 @@ static func line_clear(world: WorldData, query: WorldQuery, a: Vector2, b: Vecto
 			tmy += tdy
 		if (x != bx or y != by) and _solid(world, query, x, y, eye):
 			return false
-	return true
+	return not _walled(query, a, b)
+
+
+## Whether a wall stands across the line from `a` to `b`: a block circle the line
+## passes through, other than one either end stands in.
+static func _walled(query: WorldQuery, a: Vector2, b: Vector2) -> bool:
+	if query == null:
+		return false
+	var n := ceili(a.distance_to(b) / 0.25)
+	for i in range(1, n):
+		var q := a.lerp(b, float(i) / float(n))
+		for c: Vector3 in query.blocks_at(q):
+			if c.z < BLOCKING_WALL:
+				continue
+			var at := Vector2(c.x, c.y)
+			if q.distance_to(at) > c.z or a.distance_to(at) <= c.z or b.distance_to(at) <= c.z:
+				continue
+			return true
+	return false
 
 
 static func _solid(world: WorldData, query: WorldQuery, x: int, y: int, eye: int) -> bool:
