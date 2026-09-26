@@ -18,7 +18,9 @@ extends GameSystem
 ##                          that the next change to worldgen quietly invalidates
 ##   place NAME             teleport to a named place (GenPlaces: spawn, a country, an ecotone a-b, a landmark)
 ##   ledge up|across|down   stand, facing it, where a jump of that kind lands: the
-##                          nearest spot `Jump.find` names, never a coordinate
+##                          nearest spot `Jump.find` names, never a coordinate;
+##   ledge climb            or at the foot of the nearest rock face too tall to
+##                          jump, facing it (`Climb.find`)
 ##   under KIND[@DEG]       after `ledge down`: put a roster body on the low ground
 ##                          just past where the jump the player faces comes down,
 ##                          turned away from the lip (or to DEG), so the landing is
@@ -359,7 +361,8 @@ func _run() -> void:
 				else:
 					_teleport(gp)
 			"ledge":
-				var found := Jump.find(game.world, game.query, game.player.pos, StringName(parts[1]))
+				var found := Climb.find(game.world, game.query, game.player.pos) if parts[1] == "climb" \
+					else Jump.find(game.world, game.query, game.player.pos, StringName(parts[1]))
 				if found.is_empty():
 					printerr("tour: no %s jump within reach of %s" % [parts[1], game.player.pos])
 					ok = false

@@ -258,7 +258,7 @@ func _swing() -> void:
 		var to := m.pos - hero.pos
 		if to.length() > hero.radius + b.reach + m.radius + FightRules.AIM_ASSIST_EXTRA:
 			continue
-		if not meets(hero.pos, m.pos):
+		if not meets_hero(m.pos):
 			continue
 		var off := absf(wrapf(to.angle() - hero.facing, -PI, PI))
 		if off < best_off:
@@ -300,7 +300,7 @@ func drop_strike(from_level: int) -> bool:
 	var best: MobState = null
 	var best_d := INF
 	for m in mobs:
-		if not m.alive or m.removed or not meets(hero.pos, m.pos):
+		if not m.alive or m.removed or not meets_hero(m.pos):
 			continue
 		if from_level - level_of(m.pos) < FightRules.DROP_LEVELS:
 			continue
@@ -820,7 +820,7 @@ func _touching() -> void:
 			continue
 		if m.pos.distance_to(hero.pos) > m.radius + hero.radius:
 			continue
-		if not meets(m.pos, hero.pos):
+		if not meets_hero(m.pos):
 			continue
 		if hero.invulnerable(now):
 			continue
@@ -835,7 +835,7 @@ func _land(t0: float, t1: float) -> void:
 				continue
 			if not FightRules.box_hits(hero.pos, hero.facing, hero.radius, b, m.pos, m.radius):
 				continue
-			if not meets(hero.pos, m.pos):
+			if not meets_hero(m.pos):
 				continue
 			hero.struck[m.id] = true
 			_wear_on_contact()
@@ -875,7 +875,7 @@ func _land(t0: float, t1: float) -> void:
 				continue
 		elif not FightRules.box_hits(m.pos, m.facing, m.radius, m.blow, hero.pos, hero.radius):
 			continue
-		if not meets(m.pos, hero.pos):
+		if not meets_hero(m.pos):
 			continue
 		m.struck[&"hero"] = true
 		if not hero.invulnerable(now):
@@ -900,6 +900,21 @@ func _land(t0: float, t1: float) -> void:
 ## draws a body at, or a swimmer off a shore shelf is out of every blow.
 func level_of(p: Vector2) -> int:
 	return maxi(0, world.level_at(floori(p.x), floori(p.y))) if world != null else 0
+
+
+## The level the player's body is at: the ground's under it, or, on a rock face,
+## the level it has climbed to (54_gear sets `hero_level` while a climb runs),
+## so a machine at the foot reaches a climber only within a ledge of the ground.
+var hero_level := -1
+
+
+func hero_level_now() -> int:
+	return hero_level if hero_level >= 0 else level_of(hero.pos)
+
+
+## Do the player and a body at `p` stand on levels a blow passes between?
+func meets_hero(p: Vector2) -> bool:
+	return FightRules.levels_meet(hero_level_now(), level_of(p))
 
 
 ## Are two bodies on levels a blow passes between (FightRules.levels_meet)?

@@ -65,6 +65,9 @@ const HINTS := {
 	# walking round ledges the game meant them to go over. Said standing at one,
 	# because a movement lesson given on flat ground is a sentence about nothing.
 	&"jump": ["%s clears it: up two, across two, down three, and no further.", [&"jump"]],
+	# CLIMBING (mechanics improvement 5a): the same key, at a rock face too tall
+	# to jump, ruled with a route up it. Said standing at one, facing it.
+	&"climb": ["%s at a rock face climbs it. Every level costs breath; run out and you come down.", [&"jump"]],
 	# The third of the sixteen, and the one the world's own size argues for: a
 	# 1300-tile island is not a place you hold in your head. Said once the wake
 	# is out of sight behind you, because a survey of ground you can see is a
@@ -341,6 +344,15 @@ static func _at_a_ledge(game: Game) -> bool:
 	return p != null and (p.kind == Jump.UP or p.kind == Jump.ACROSS)
 
 
+## Facing a rock face too tall to jump, near enough to see the route up it.
+static func _at_a_face(game: Game) -> bool:
+	var sim := game.player.sim if game.player != null else null
+	if sim == null or game.query == null or sim.hero.airborne:
+		return false
+	var f := Climb.face(game.world, game.query, sim.hero.pos, Vector2.from_angle(sim.hero.facing), 2.2)
+	return not f.is_empty() and int(f.to_level) - int(f.from_level) > Jump.UP_LEVELS
+
+
 static func _applicable(game: Game) -> Array[StringName]:
 	var out: Array[StringName] = []
 	var sim := game.player.sim if game.player != null else null
@@ -379,6 +391,8 @@ static func _applicable(game: Game) -> Array[StringName]:
 	if game.world != null and game.player != null \
 			and game.player.pos.distance_to(game.world.spawn) > MAP_FAR:
 		out.append(&"map")
+	if _at_a_face(game):
+		out.append(&"climb")
 	if _at_a_ledge(game):
 		out.append(&"jump")
 	if Survival.use_target(game) != null:

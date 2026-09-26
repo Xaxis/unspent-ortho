@@ -1,0 +1,44 @@
+# CLIMBING (mechanics improvement 5a; Climb, the jump key at a rock face). Faced
+# toward a rock face too tall to jump, a route is ruled up it in the player's own
+# pale before anything is tried: that is how a face that can be climbed reads,
+# from above and over the shoulder alike, and a turf bank beside it gets none.
+# The jump key then climbs it hand over hand, a level a second and a bit, on
+# breath, and over the lip. From above, over the shoulder, and at night. The
+# face is the nearest one `Climb.find` names on the crags' shelves, never a
+# coordinate.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/climb.tour --seed=7 --hour=11 --weather=clear:0
+place the_crags
+coast calm
+zoom 7
+wait 0.6
+ledge climb
+wait 0.8
+shot 01-a-rock-face-reads-as-climbable
+tap jump
+await climbing 2
+wait 1.2
+shot 02-hand-over-hand-up-the-face with climbing
+wait 4.0
+shot 03-over-the-lip
+
+place the_crags
+coast calm
+tap shoulder
+await shoulder 3
+ledge climb
+wait 0.8
+shot 04-over-the-shoulder-the-route-reads-the-same with shoulder
+tap jump
+await climbing 2
+wait 1.2
+shot 05-over-the-shoulder-on-the-face with shoulder,climbing
+wait 4.0
+
+place the_crags
+coast calm
+tap shoulder
+await top_view 3
+hour 23
+ledge climb
+wait 0.8
+shot 06-at-night-the-route-still-reads

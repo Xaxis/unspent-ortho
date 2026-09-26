@@ -58,6 +58,18 @@ func on_press(ctx: AbilityCtx) -> bool:
 	var dir := ctx.heading()
 	var pace := Tuning.RUN_SPEED if player.intent_run and moving else Tuning.WALK_SPEED
 	var plan := Jump.plan(ctx.game.world, ctx.game.query, ctx.pos(), dir, Jump.speed_for(moving, pace))
+	# THE SAME KEY CLIMBS (mechanics improvement 5a): at a rock face too tall for
+	# the jump to land on, the press is a climb instead. One key for "get up
+	# that", so there is nothing new to teach but the face itself.
+	if plan.kind != Jump.UP:
+		var hero: Hero = player.hero
+		var c := Climb.plan(ctx.game.world, ctx.game.query, ctx.pos(), dir, hero.wind if hero != null else FightRules.WIND)
+		if c != null and c.levels > Jump.UP_LEVELS:
+			if hero != null:
+				hero.wind = maxf(0.0, hero.wind - c.wind)
+			ctx.motion = AbilityMotion.climb_face(c)
+			ctx.draw(&"climb", {"plan": c, "at": ctx.pos()})
+			return true
 	ctx.motion = AbilityMotion.jump(plan)
 	ctx.draw(&"jump", {"plan": plan, "at": ctx.pos()})
 	return true
