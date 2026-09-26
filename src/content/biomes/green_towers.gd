@@ -111,6 +111,9 @@ static func make() -> BiomeDef:
 	dress.concrete = P.ASH[3].lerp(P.MOSS[2], 0.35)
 	dress.walling = [P.ASH[2], P.MOSS[2], P.STONE[3], P.SPRUCE[2]]
 	dress.crown = &"full"
+	# Nobody here has the city's power: a lived-in storey is one lamp in a dark
+	# band, and the towers at night are a few warm squares in the canopy.
+	dress.windows = &"gaps"
 	dress.sink = 0.24
 	dress.lie = Vector2(-0.1, 0.16)
 	d.dressing = dress

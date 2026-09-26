@@ -84,6 +84,9 @@ const FRAME := 0.07
 ## and ply — what somebody nailed up, which is the one place a city admits it is
 ## patched.
 const MULLION := Color(0.208, 0.220, 0.239)
+## A lived-in light where there is no power to steal: oil and a fire's glow,
+## dimmer and warmer than a floor on the city's copper.
+static var GAP_LIGHT := GroundColors.lamp(P.EMBER[4].lerp(P.EMBER[5], 0.25), 0.6)
 const BOARDING := Color(0.478, 0.451, 0.416)
 
 ## Stolen light, as the city runs it: a sign nobody has turned off in twenty
@@ -208,14 +211,16 @@ static func ledge(k: Kit, w: float, d: float, y: float, s: int, col: Color, out:
 ##   2  gone — the floor behind it open to the weather, which is the darkest
 ##      thing on the building and what makes the rest read as inhabited
 ##   3  somebody is behind it: the one in five that is lamp-coded, so it holds its
-##      value into the night while the rest of the frontage goes with the hour
+##      value into the night while the rest of the frontage goes with the hour.
+##      Where the land has no power to steal (`gaps`, BiomeDressing.windows) it
+##      is ONE light of the band, lamp- or firelit, and the rest is dark glass.
 ##
 ## The sill and the head stand PROUD and the glass sits back against them. A
 ## recess cut into the wall would be the honest thing and is not drawable here:
 ## the wall is one opaque quad, so anything behind it is not dim, it is invisible.
 ## What a sill actually does at this camera is throw a bar of shade down the
 ## glass, and that is what is built.
-static func band(k: Kit, f: Array, v0: float, v1: float, lights: int, s: int, state: int, glass: Color, frame: Color, board: Color) -> void:
+static func band(k: Kit, f: Array, v0: float, v1: float, lights: int, s: int, state: int, glass: Color, frame: Color, board: Color, gaps: bool = false) -> void:
 	var bl: Vector3 = f[0]
 	var br: Vector3 = f[1]
 	var tr: Vector3 = f[2]
@@ -243,12 +248,18 @@ static func band(k: Kit, f: Array, v0: float, v1: float, lights: int, s: int, st
 				var u := 0.05 + (i + 1) * 0.9 / lights
 				Houses.wall_rect(k.made, bl, br, tr, tl, u - 0.008, v0, u + 0.008, lerpf(v0, v1, 0.35), 0.03, GroundColors.down(frame, 0.4))
 		_:
-			var pane := GroundColors.lamp(P.COPPER[4], 0.85) if state == 3 else glass
+			var pane := GroundColors.lamp(P.COPPER[4], 0.85) if state == 3 and not gaps else glass
 			Houses.wall_rect(k.made, bl, br, tr, tl, 0.05, v0, 0.95, v1, face, pane)
+			if state == 3 and gaps:
+				# One room, one lamp: a warm square in a dark band, the rest of the
+				# floor as empty as the tower round it.
+				var j := int(Rng.hash01(s, 1, 67) * lights)
+				var ua := 0.05 + 0.9 / lights * j
+				Houses.wall_rect(k.made, bl, br, tr, tl, ua, v0 + 0.02, ua + 0.9 / lights, v1 - 0.02, 0.02, GAP_LIGHT)
 			for i in lights - 1:
 				var u := 0.05 + (i + 1) * 0.9 / lights
 				Houses.wall_rect(k.made, bl, br, tr, tl, u - 0.011, v0, u + 0.011, v1, 0.028, frame)
-			if state == 3:
+			if state == 3 and not gaps:
 				# One light of it is curtained: a room somebody arranged, not a
 				# floor left on. Drawn over the pane, so it reads at any hour.
 				var u0 := 0.05 + 0.9 / lights * float(1 + int(Rng.hash01(s, 0, 66) * (lights - 1)))
@@ -539,7 +550,7 @@ static func shaft(k: Kit, w: float, d: float, n: int, step: float, s: int, c: in
 			# is reading the column of lit floors, not which side of it they are on.
 			if not near_ground and fi % 2 == 1:
 				continue
-			band(k, wf, v0, v1, 4 if fi % 2 == 0 else 5, s + i * 41 + fi, state, glass, MULLION, BOARDING)
+			band(k, wf, v0, v1, 4 if fi % 2 == 0 else 5, s + i * 41 + fi, state, glass, MULLION, BOARDING, dress.windows == &"gaps")
 		y += STOREY
 		ledge(k, w - step * i, d - step * i, y - SLAB * 0.5, s + i * 23, GroundColors.up(body, 0.12))
 	return y
