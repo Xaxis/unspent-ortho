@@ -290,4 +290,4 @@ func test_the_wheel_shades_the_land_only_where_it_crosses_the_sun() -> void:
 			gt(c, 0.9, "the sun behind the rim is covered (%.2f)" % c)
 		else:
 			lt(c, 0.05, "the sun seen through the wheel's middle or its wound is not (%.2f)" % c)
-	check(FileAccess.get_file_as_string("res://src/render/sky_light.gd").contains("* (1.0 - orbit_shade), lit)"), "and SkyLight takes it off the sun's term alone")
+	check(FileAccess.get_file_as_string("res://src/render/sky_light.gd").contains("* (1.0 - orbit_shade), sun_lit)"), "and SkyLight takes it off the sun's term alone")

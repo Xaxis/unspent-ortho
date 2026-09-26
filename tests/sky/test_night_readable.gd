@@ -395,7 +395,10 @@ func test_noon_still_reads_as_day_in_every_landscape() -> void:
 		var def := BiomeRegistry.get_def(id)
 		var noon := SkyLight.frame_level(12.0, SkyLight.type_light(def, 12.0))
 		gt(noon, plain * 0.72, "%s at noon is still a day" % id)
-		gt(noon, SkyLight.frame_level(20.0, SkyLight.type_light(def, 20.0)) * 1.35, "%s: noon is well clear of eight in the evening" % id)
+		# Eight o'clock is the golden hour now (SkyLight.sun_share): the sun is
+		# still up at nearly full strength, so noon is held clear of the BLUE HOUR
+		# after it has set, which is where the evening's own light has gone.
+		gt(noon, SkyLight.frame_level(21.0, SkyLight.type_light(def, 21.0)) * 1.35, "%s: noon is well clear of the blue hour" % id)
 
 
 ## Each row's SETTLE KEY: from nine o'clock a landscape's own light does not move
@@ -547,7 +550,10 @@ func test_the_sun_casts_through_the_whole_dusk_and_its_shadows_fade_out() -> voi
 	check(not SkyLight.casts_at(4.9), "and not before the sun is properly up")
 	near(SkyLight.shadow_strength(12.0), 1.0, 1e-6, "full at noon")
 	gt(SkyLight.shadow_strength(19.5), 0.9, "still solid at half seven")
-	lt(SkyLight.shadow_strength(20.5), 0.5, "going with the light")
+	# The evening shadow goes with the SUN (SkyLight.sun_share), not with the
+	# day: still over half at half past eight, under half by a quarter to nine.
+	lt(SkyLight.shadow_strength(20.5), SkyLight.sun_share(20.5) + 0.1, "going with the sun")
+	lt(SkyLight.shadow_strength(20.75), 0.5, "and mostly gone a quarter of an hour before it sets")
 	near(SkyLight.shadow_strength(SkyLight.SHADOW_TO), 0.0, 1e-6, "and gone where the sun stops casting")
 	near(SkyLight.shadow_strength(2.0), 0.0, 1e-6, "the moon casts nothing")
 	# It fades rather than switching, and it is still worth looking at at half
