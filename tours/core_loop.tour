@@ -52,6 +52,7 @@ shot 04-stone
 # and the press is rightly refused. `ground grass` takes the coast's own
 # plain_ground and prefers a tile clear of props, which is what open ground IS.
 ground grass
+mark fire
 press use 0.1
 await fire_asked 2
 wait 0.3
@@ -147,11 +148,10 @@ shot 13-after-the-fight with body:watcher
 coast calm
 # Back to the fire as the light goes: the lamp against the dark.
 zoom 15
-# Back to where the fire was laid, and then AT it: `station:fire` is crafting
-# reach (STATION_REACH, edge to edge) and the hard-coded spot need not be inside
-# it, while `at prop:fire` alone would walk to whichever fire is nearest — which
-# after the fight up the coast is a village one, sixty tiles the other way.
-at 189.5,428.5
+# Back to where the fire was laid (the `mark` taken as it was laid), and then AT
+# it: `at prop:fire` alone would walk to whichever fire is nearest — which after
+# the fight up the coast is a village one, sixty tiles the other way.
+at mark:fire
 at prop:fire
 hour 21.5
 wait 0.6

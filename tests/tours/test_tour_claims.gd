@@ -16,7 +16,8 @@ const TOUR := preload("res://src/systems/98_tour.gd")
 ## works if the list is kept beside the runner.
 const COMMANDS := ["at", "near", "ground", "place", "ledge", "leap", "village", "hour", "zoom", "weather",
 	"walk", "press", "hold", "release", "tap", "wait", "shot", "await", "until", "spawn",
-	"choose", "coast", "walkto", "perf", "echo", "key", "mouse", "same", "try", "end", "stale", "under", "over", "wound"]
+	"choose", "coast", "walkto", "perf", "echo", "key", "mouse", "same", "try", "end", "stale", "under", "over", "wound",
+	"mark", "back"]
 ## Subject prefixes with something to check behind them.
 const BODY_PREFIXES := ["mob:", "down:", "body:"]
 
@@ -132,10 +133,18 @@ func test_every_name_a_tour_asks_for_exists() -> void:
 					check(parts.size() == 2, "%s line %d: `ground` takes one comma-joined list; write a space as _" % [f, n])
 					for k: String in parts[1].split(",", false):
 						check(Ground.NAMES.has(k.replace("_", " ")), "%s line %d: no ground %s" % [f, n, k])
+				"back":
+					for k: String in parts[1].split(",", false):
+						check(PropKind.NAMES.has(k.replace("_", " ")), "%s line %d: no prop kind %s to stand back from" % [f, n, k])
 				"at":
 					if parts[1].begins_with("prop:"):
 						var k := parts[1].substr(5).replace("_", " ")
 						check(PropKind.NAMES.has(k), "%s line %d: no prop kind %s" % [f, n, k])
+					# Stage by name, never by coordinate: a number off one world's
+					# map lands somewhere else on the next (CLAUDE.md).
+					var xy := parts[1].split(",")
+					check(not (xy.size() == 2 and xy[0].is_valid_float() and xy[1].is_valid_float()),
+						"%s line %d: `at %s` is a coordinate; stand by a name (prop:, mark:, a place)" % [f, n, parts[1]])
 				"press", "tap", "hold", "release", "key":
 					# Dev mode's own keys are added to the map while it can be
 					# reached, so they are not in project.godot's list.

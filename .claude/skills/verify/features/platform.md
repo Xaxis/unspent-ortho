@@ -10,6 +10,9 @@ Saving and loading, dev mode, the tour runner.
 - 94_dev: `src/systems/94_dev.gd`, reached by `tools/tour.sh tours/dev.tour`.
 - 98_tour: `src/systems/98_tour.gd`, reached by `tools/tour.sh tours/smoke.tour`.
   `walkto prop:KIND SECS` walks to a prop by name with the real keys (`TOUR_TIMEOUT=500 tools/tour.sh tours/wild.tour --fail-downed`);
+  `mark NAME` / `at mark:NAME` and `back KIND DIST` + `walkto prop:KIND SECS run through` (the slide round a lone trunk,
+  printed as tiles past its middle): `TOUR_TIMEOUT=600 tools/tour.sh tours/feel.tour --give=driftwood:6,scrap:1`;
+  a coordinate in `at` fails `tools/test.sh test_tour_claims`;
   `await fire_asked` is the fire's first press, `await asked` the region's ask (`tools/tour.sh tours/region.tour`, options in its header).
 
 ## How to reach it
