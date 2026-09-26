@@ -406,14 +406,17 @@ var last_energy := 1.0
 ## everyone else: the fore layer asks it how thick the air is so an occluder
 ## sits in the same weather the land behind it does, and a test measures it.
 var last_air: Dictionary = Air.DEFAULT.duplicate()
-## How far a full dust storm carries the air to the land's dust colour, and how
-## much thicker the depth air lies in one (times the land's own `thick`).
+## How far a full dust storm carries the air to the land's dust colour.
 const DUST_TAKE := 0.85
-const DUST_THICK := 2.4
+## How far a machine typically sees in clear air, in tiles: the middle of the
+## roster's `sees` (8..18, most 11..15). A dust storm's air is laid so that
+## what it cuts from THIS is what it cuts from the eye (see `_dust_air`).
+const SIGHT_TYPICAL := 12.0
+## The dust strength past which the air is wholly the storm's: under it the
+## storm's reach blends in from the hour's own, so a storm rising is seen coming.
+const DUST_FULL := 0.3
 ## And how far it takes the sky's horizon to that colour (the top a little less).
 const DUST_SKY := 0.8
-## How near a full dust storm brings the start of the air, as a share of its own.
-const DUST_NEAR := 0.55
 ## The airs over the focus: x rain falling now (rain and drizzle), y glare,
 ## z how warm the fog is drawn (furnace haze), w whiteout. (sky_air)
 var air := Vector4.ZERO
@@ -973,15 +976,13 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	# because that fog is the only air the tier has.
 	var clear_day := 1.0 - maxf(clampf(nightly, 0.0, 1.0), maxf(clampf(fog.z, 0.0, 1.0), dust))
 	var day_air := lerpf(1.0, DAY_AIR, clear_day) if float(Quality.current().get("air_stand_in", 0.0)) <= 0.0 else 1.0
-	e.fog_density = Air.density(a, lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0)) * lerpf(1.0, DUST_THICK * float(a.dust_thick), dust)) \
-		* float(trim.fog) * maxf(stand_in, 0.2) * day_air
+	e.fog_density = Air.density(a, lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0))) * float(trim.fog) * maxf(stand_in, 0.2) * day_air
 	e.glow_intensity = GLOW_INTENSITY * float(trim.glow)
 	e.tonemap_exposure = EXPOSURE * float(trim.exposure)
 	# And WHERE it lies is the camera's, not a constant: the frame is only about
 	# ten units deep, so two numbers written for the loaded chunks left the air
 	# entirely outside the picture (Air's header has the measurement).
-	# A dust storm closes the air in: it begins nearer the eye as it thickens.
-	var reach := Air.reach(_cam_distance(), _cam_size(), _cam_pitch(), float(a.near) * lerpf(1.0, DUST_NEAR, dust), _cam_fov())
+	var reach := Air.reach(_cam_distance(), _cam_size(), _cam_pitch(), float(a.near), _cam_fov())
 	e.fog_depth_begin = reach.x
 	e.fog_depth_end = reach.y
 	var horizon := horizon_share(_cam())
@@ -996,6 +997,7 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 		sun.directional_shadow_max_distance = _cam_distance() \
 			+ Air.frame_depth(_cam_size(), _cam_pitch()) + SHADOW_ROOM
 	_look_out(e, sm, a, horizon, nightly)
+	_dust_air(e, dust)
 	e.volumetric_fog_albedo = Air.colour(hor, a).lerp(a.dust, dust * DUST_TAKE).lerp(Color(1, 1, 1), 0.35 * (1.0 - dust))
 	e.volumetric_fog_ambient_inject = lerpf(0.35, 0.10, nightly)
 	# Volumetric air thickens in rain, in mist and at night, which is when a
@@ -1294,6 +1296,30 @@ func _look_out(e: Environment, sm: ProceduralSkyMaterial, a: Dictionary, share: 
 		sun.directional_shadow_max_distance = lerpf(sun.directional_shadow_max_distance, HORIZON_SHADOW, w)
 		sun.directional_shadow_blend_splits = true
 		sun.directional_shadow_fade_start = lerpf(0.8, 0.75, w)
+
+
+## WHERE A MACHINE CANNOT SEE YOU, YOU CANNOT SEE FAR EITHER. A dust storm cuts
+## sight by Weather.SIGHT_CUT; the air it draws is laid from the same number, so
+## the picture and the rules agree: clear from the eye to the player, then
+## closing to the air's cap at the distance a typical machine still sees at this
+## strength. Air.MOST's cap stands (a threat close in is never lost in it), and
+## the eye level's own denser horizon is never thinned. The land's `thick` is
+## character only (the volumetric bank), never the reach.
+## Where a dust storm's air begins and closes, in depth from the eye, for a
+## focus `at` deep: clear to the player, closed at what a machine still sees.
+static func dust_reach(at: float, dust: float) -> Vector2:
+	return Vector2(at * 0.96, at + SIGHT_TYPICAL * Weather.sight_factor(&"dust", clampf(dust, 0.0, 1.0)))
+
+
+func _dust_air(e: Environment, dust: float) -> void:
+	if dust <= 0.0:
+		return
+	var k := smoothstep(0.0, DUST_FULL, dust)
+	var r := dust_reach(_cam_distance(), dust)
+	e.fog_depth_begin = lerpf(e.fog_depth_begin, r.x, k)
+	e.fog_depth_end = lerpf(e.fog_depth_end, r.y, k)
+	e.fog_depth_curve = lerpf(e.fog_depth_curve, 1.0, k)
+	e.fog_density = lerpf(e.fog_density, maxf(e.fog_density, Air.MOST), k)
 
 
 ## The column's density moved into the layer (see AIR_HIGH).

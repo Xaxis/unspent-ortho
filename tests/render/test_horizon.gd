@@ -312,3 +312,14 @@ func test_each_land_blows_its_own_dust() -> void:
 	var said := "\n".join(PackedStringArray(bad.style_problems()))
 	check(said.contains("no field colour"), "a misspelt field is named: %s" % said)
 	check(said.contains("no row for sleet"), "and a kind with no style")
+
+
+## WHERE A MACHINE CANNOT SEE YOU, YOU CANNOT SEE FAR EITHER: a dust storm's air
+## closes at the distance the rules still let a typical machine see.
+func test_a_dust_storm_closes_the_air_where_sight_ends() -> void:
+	for s: float in [0.5, 1.0]:
+		var r := SkyLight.dust_reach(30.0, s)
+		near(r.y - 30.0, SkyLight.SIGHT_TYPICAL * Weather.sight_factor(&"dust", s), 1e-4, "closed at sight, strength %.1f" % s)
+		lt(r.x, 30.0, "and clear up to the player")
+	gt(SkyLight.dust_reach(30.0, 0.5).y, SkyLight.dust_reach(30.0, 1.0).y, "a thinner storm is seen further through")
+
