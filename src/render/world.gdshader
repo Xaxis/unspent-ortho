@@ -64,7 +64,7 @@ const float CROWN_SWAY = 0.25;
 // Two things stop this opening holes in the world at large:
 //
 //   THE LAND NEVER OPENS. Only what somebody BUILT is cut: the ground band
-//   40..74, the same discriminator fore.gdshader uses to decide how much wear a
+//   40..75, the same discriminator fore.gdshader uses to decide how much wear a
 //   piece takes. A cliff, a terrace and a bank stay solid, so a player under an
 //   overhang is still under it.
 //
@@ -1642,6 +1642,36 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		if (dt < hang && abs(fract(px.x * 0.07 + ink_vnoise(vec2(px.x * 0.05, 93.0)) * 3.0) - 0.5) < 0.06) {
 			c = INK2;
 		}
+	} else if (id == 15) {
+		// CRAG: gritstone, split by vertical joints of no fixed spacing into
+		// tall blocks the weather has rounded (matter_height, row 75). The water
+		// runs down it in black streaks from the lip, and it is crusted with
+		// lichen: pale grey-green rosettes and a few of the sulphur-yellow ones
+		// that grow only where the air is clean -- which, here, it is. No bedding
+		// and no courses: nothing about a crag is laid.
+		float blk = ink_vnoise(vec2(px.x * 0.04, 5.0));
+		c = mix(SLATE2, mix(SLATE2, STONE2, 0.5), smoothstep(0.3, 0.7, blk));
+		c = mix(c, dn(c, 0.3), smoothstep(0.55, 0.8, ink_vnoise(vec2(px.x * 0.12, y * 0.8))));
+		// A joint: open, leaning, and not in every block.
+		float jw = abs(fract(px.x / (19.0 + blk * 17.0) + ink_vnoise(vec2(y * 2.0, 11.0)) * 0.15) - 0.5);
+		if (jw < 0.018 && ink_vnoise(vec2(px.x * 0.03, y * 1.5 + 3.0)) > 0.4) {
+			c = mix(c, INK2, 0.7);
+		}
+		// Black water streaks from the lip.
+		float wet = ink_vnoise(vec2(px.x * 0.25, 17.0));
+		if (wet > 0.62 && dt < 0.1 + ink_vnoise(vec2(px.x * 0.07, 19.0)) * 0.35) {
+			c = mix(c, INK2, 0.45 * smoothstep(0.62, 0.8, wet));
+		}
+		// Lichen: round rosettes a hand across, scattered in drifts, each its own
+		// disc with a paler rim. On a noise threshold they came out as square
+		// pixel blocks, a camouflage print on the rock.
+		float drift = ink_vnoise(vec2(px.x * 0.05, y * 0.9 + 23.0));
+		vec3 rc = matter_cells(vec2(px.x * SKY_GRAIN * 9.0, y * 9.0));
+		float rr = 0.18 + rc.z * 0.16;
+		if (drift > 0.55 && rc.z > 0.55 && rc.x < rr) {
+			vec3 lich = rc.z > 0.93 ? mix(SAND3, EMBER4, 0.2) : mix(LINEN2, MOSS3, 0.35);
+			c = mix(c, lich, rc.x > rr * 0.7 ? 0.9 : 0.6);
+		}
 	}
 	return c;
 }
@@ -1695,7 +1725,7 @@ float crown_cut(vec3 wp, float sway) {
 // INV_VIEW_MATRIX exists only inside the stage function, so a user function
 // cannot see the camera at all (the shader simply refuses to compile).
 float tall_cut(vec3 wp, int m, vec3 camz, vec3 eye, bool persp) {
-	if (m >= 40 && m <= 74) {
+	if (m >= 40 && m <= 75) {
 		return 0.0;
 	}
 	float cut = 0.0;
@@ -1765,7 +1795,7 @@ void fragment() {
 	float cut = max(crown_cut(world_pos, sway_w), tall_cut(world_pos, m1, camz, eye, persp));
 	// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line of
 	// sight to a body, at any height (sight.gdshaderinc). Never the land.
-	if (persp && !(m1 >= 40 && m1 <= 74)) {
+	if (persp && !(m1 >= 40 && m1 <= 75)) {
 		float close = sight_close(eye, crown_clear[0]);
 		if (close > 0.0) {
 			for (int i = 0; i < CROWN_CLEAR; i++) {
@@ -1841,7 +1871,7 @@ void fragment() {
 		if ((m == 55 || m == 57) && c.r >= c.b) {
 			c *= min(1.0, SALT_TOP.r / max(max(c.r, max(c.g, c.b)), 1e-4));
 		}
-	} else if (m > 60 && m <= 74) {
+	} else if (m > 60 && m <= 75) {
 		// A wall's pattern runs ALONG the wall. `px` is the play camera's screen
 		// grid laid on the world, whose x does not change with height: from
 		// above that is invisible, but at eye level every feature keyed on it
@@ -1906,7 +1936,7 @@ void fragment() {
 	// it. Anything STANDING in the land takes it nearly whole, which is the law
 	// in one line: the same house, fence and machine carry the bog on them, or
 	// the flat, or the Burning, and nobody had to author three of each.
-	float takes = (m >= 40 && m <= 74) ? 0.14 : 0.85;
+	float takes = (m >= 40 && m <= 75) ? 0.14 : 0.85;
 	// A face opened a moment ago (GroundColors.FRESH: the cut through a boulder
 	// somebody is quarrying) has had almost nothing settle on it. The wear map
 	// reads the PLACE, not the age, so without this a cut made in a bog rusts as

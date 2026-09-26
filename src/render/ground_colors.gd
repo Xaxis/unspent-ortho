@@ -63,7 +63,7 @@ const TIDEFLAT := 60
 ## ONE default material, so under a single sun only the mesh normal told a roof
 ## from a wall — and the normals are flat facets.
 ##
-## **75..79 ARE DELIBERATELY EMPTY**, between the cliff strata (61..74) and this
+## **76..79 ARE DELIBERATELY EMPTY**, between the cliff strata (61..75) and this
 ## band, so an off-by-one lands on nothing instead of on a material. 92..95 are
 ## spare. Tag a surface with `GroundColors.made(col, GroundColors.THATCH)`; a
 ## builder that tags nothing still gets the default, which is what every model
@@ -120,6 +120,10 @@ const STRATA_CAVE := 13
 ## what it is -- boards, cable, white goods, rust -- with cable hanging off the
 ## lip (74).
 const STRATA_REFUSE := 14
+## The crags' faces: grey gritstone split by vertical joints of no fixed
+## spacing, rounded at every arris, black with the water that runs down it and
+## crusted with pale lichen (75).
+const STRATA_CRAG := 15
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array
