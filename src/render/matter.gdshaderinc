@@ -582,23 +582,32 @@ vec3 matter_worn(vec3 c, vec4 wear, vec3 n_world, vec3 wp, float amount, out flo
 		vec3 cd = matter_cells(vec2(p.x + wp.y * 1.7, p.y - wp.y * 1.3) * 3.3);
 		seam = smoothstep(0.11, 0.0, cd.y - cd.x);
 	}
-	// Streaks: long in one world direction and short across it, so what weeps
-	// out of a seam RUNS instead of blooming in a circle.
-	float run = ink_vnoise(vec2(p.x * 0.8 + wp.y * 2.6, p.y * 3.4));
+	// WEATHERING FOLLOWS FORM. On a flank what weeps out of a fixing or a seam
+	// RUNS DOWN: the field is keyed on the face's own horizontal coordinate and
+	// only slowly on height, so it comes out as vertical streaks of varying
+	// length and never as a blob. It used to be keyed on world xz and y alike,
+	// with a threshold that took the colour most of the way to rust: on any big
+	// face -- a tower, a wall -- that drew hard two-tone blotches, a camouflage
+	// print laid over the city (measured on the metropolis' towers at noon).
+	vec2 fn = normalize(n_world.xz + vec2(1e-4, 0.0));
+	float along = dot(p, vec2(-fn.y, fn.x));
+	float streak = ink_vnoise(vec2(along * 3.1, wp.y * 0.35 + 5.0)) * 0.7 + ink_vnoise(vec2(along * 9.0, wp.y * 0.8)) * 0.3;
+	float run = mix(ink_vnoise(vec2(p.x * 0.8 + wp.y * 2.6, p.y * 3.4)), streak, flank);
 	float grain = ink_vnoise(p * 2.7 + wp.y * 1.9);
 	// 1. RUST: out of the seams and down the flanks, worst where nothing dries.
 	float rust = wear.r * amount
-		* clamp(flank * 1.15 + seam * 0.85 + top * run * 0.55, 0.0, 1.2)
-		* smoothstep(0.30, 0.66, grain * 0.55 + run * 0.45);
+		* clamp(flank * (0.35 + 0.8 * smoothstep(0.45, 0.75, streak)) + seam * 0.85 + top * run * 0.55, 0.0, 1.2)
+		* mix(smoothstep(0.30, 0.66, grain * 0.55 + run * 0.45), smoothstep(0.35, 0.7, streak), flank);
 	if (rust > 0.001) {
-		c = mix(c, mix(MATTER_RUST, MATTER_RUST_HOT, grain), clamp(rust, 0.0, 0.88));
+		// Never all the way to rust in one step: a stain, not a painted patch.
+		c = mix(c, mix(MATTER_RUST, MATTER_RUST_HOT, grain), clamp(rust, 0.0, 0.62));
 		rough_add += rust * 0.40;
 	}
 	// 2. SALT: a dry granular bloom, out of every seam and lying on every ledge.
 	//    Rougher than what it grows on, which is how it reads apart from frost.
 	float salt = wear.g * amount
 		* clamp(seam * 1.5 + top * 0.75 + flank * 0.30, 0.0, 1.2)
-		* smoothstep(0.30, 0.62, ink_vnoise(p * 1.3 + 41.0) * 0.6 + grain * 0.4);
+		* mix(smoothstep(0.30, 0.62, ink_vnoise(p * 1.3 + 41.0) * 0.6 + grain * 0.4), smoothstep(0.4, 0.7, streak), flank);
 	if (salt > 0.001) {
 		c = mix(c, MATTER_SALT, clamp(salt, 0.0, 0.80));
 		rough_add += salt * 0.45;
@@ -609,9 +618,9 @@ vec3 matter_worn(vec3 c, vec4 wear, vec3 n_world, vec3 wp, float amount, out flo
 	float in_lee = clamp(-dot(normalize(n_world.xz + vec2(1e-4)), lee), 0.0, 1.0);
 	float soot = wear.b * amount
 		* clamp(in_lee * 0.85 + top * 0.70 + seam * 0.35, 0.0, 1.2)
-		* smoothstep(0.24, 0.66, ink_vnoise(p * 0.9 + 7.0) * 0.6 + grain * 0.4);
+		* mix(smoothstep(0.24, 0.66, ink_vnoise(p * 0.9 + 7.0) * 0.6 + grain * 0.4), smoothstep(0.3, 0.7, streak), flank);
 	if (soot > 0.001) {
-		c = mix(c, MATTER_SOOT, clamp(soot, 0.0, 0.85));
+		c = mix(c, MATTER_SOOT, clamp(soot, 0.0, 0.6));
 		rough_add += soot * 0.30;
 	}
 	// 4. FROST: on what faces the sky, and in the seams it splits. SMOOTHER than

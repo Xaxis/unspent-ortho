@@ -251,7 +251,15 @@ vec3 ground_wear(int m, vec3 c, vec2 wp, vec2 px) {
 	float worn = ink_vnoise(wp * 0.11 + 61.0) * 0.55 + ink_vnoise(wp * 0.31 + 13.0) * 0.3
 		+ ink_vnoise(wp * 0.9 + 5.0) * 0.15 + rag(wp);
 	float lay = step(WEAR_CUT.x, worn) + step(WEAR_CUT.y, worn) + step(WEAR_CUT.z, worn);
-	c = dn(c, (lay - WEAR_MID) * wear * 0.75);
+	// The bands are cut where `lay` says, but their EDGES are soft and their
+	// steps shallow: at 0.75 of the wear per band and a hard step, four bands
+	// of torn-edged two-tone patches read as a camouflage print over the whole
+	// of the land (the crags, the drowned floor, the metropolis' squares).
+	float soft = smoothstep(WEAR_CUT.x - 0.03, WEAR_CUT.x + 0.03, worn) + smoothstep(WEAR_CUT.y - 0.03, WEAR_CUT.y + 0.03, worn)
+		+ smoothstep(WEAR_CUT.z - 0.03, WEAR_CUT.z + 0.03, worn);
+	// The shallower steps keep the land's mean where the old ladder put it: the
+	// mean band is 1.5, and the lift the old steps gave at it is added back.
+	c = dn(c, (soft - WEAR_MID) * wear * 0.4 + (1.5 - WEAR_MID) * wear * 0.35);
 	if (lay > 2.5 && ink_hash(px + 29.0) > 0.965) {
 		c = mix(c, bare, 0.5);
 	}
