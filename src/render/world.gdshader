@@ -1348,12 +1348,20 @@ vec3 city_floor(vec3 c, vec3 wp, vec2 px) {
 	if (oil > 0.74) {
 		c = mix(c, INK3, clamp((oil - 0.74) * 3.0, 0.0, 0.4));
 	}
-	// Window glass, in drifts: dark specks, a few bright ones.
-	float g = city_glass(wp.xz);
+	// Window glass, in drifts: dark specks, a few bright ones -- and only near
+	// the eye. Far off a speck per pixel is noise, not glass (the city at eye
+	// level came back as white pixel static), so the drift thins as a pixel
+	// covers more ground.
+	float near_eye = 1.0 - smoothstep(0.02, 0.07, length(fwidth(wp.xz)));
+	float g = city_glass(wp.xz) * near_eye;
 	if (g > 0.0) {
 		float h = ink_hash(px + 51.0);
+		// Only the dark of it is drawn. A painted bright speck is a white pixel
+		// whatever the sun is doing; the glint is the light's, off the lower
+		// roughness where the glass lies (fragment()), so it comes only toward
+		// the sun.
 		if (h > 1.0 - 0.05 * g) {
-			c = h > 1.0 - 0.012 * g ? mix(SLATE2, RIME4, 0.6) : mix(c, SLATE1, 0.4);
+			c = mix(c, SLATE1, 0.4);
 		}
 	}
 	return c;
