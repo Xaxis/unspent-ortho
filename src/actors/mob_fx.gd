@@ -909,12 +909,21 @@ static func close_eye(parent: Node) -> bool:
 ## Breath as the fire's own soft puff (FireModel.smoke_material): lit by what
 ## reaches it, depth-tested so a head in front of it hides it, in world units,
 ## swelling and thinning as it rises.
+const PLUME_SHADER := preload("res://src/render/weather/plume.gdshader")
+
+
 static func _air(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int, lighten: float = 0.72) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = FireModel.smoke_mesh()
-	var mat := FireModel.smoke_material().duplicate() as StandardMaterial3D
+	# Soft vapour, not a disc (render/weather/plume.gdshader): the edge torn by
+	# noise so the puffs of one breath melt into a column.
+	var mat := ShaderMaterial.new()
+	mat.shader = PLUME_SHADER
+	mat.render_priority = 11
 	var c := col.lightened(lighten)
-	mat.albedo_color = Color(c.r, c.g, c.b, 0.0)
+	mat.set_shader_parameter("tint", Color(c.r, c.g, c.b))
+	mat.set_shader_parameter("seed_phase", Rng.hash01(seed_value, 5))
+	mat.set_shader_parameter("density", 0.0)
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
@@ -925,7 +934,7 @@ static func _air(parent: Node, at: Vector3, col: Color, size: float, seconds: fl
 	var tw := mi.create_tween()
 	tw.set_parallel(true)
 	tw.tween_method(func(t: float) -> void:
-		mat.albedo_color.a = dense * smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.3, 1.0, t)), 0.0, 1.0, seconds)
+		mat.set_shader_parameter("density", dense * smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.3, 1.0, t))), 0.0, 1.0, seconds)
 	tw.tween_property(mi, "scale", Vector3.ONE * size * (1.4 + turn), seconds).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 	tw.tween_property(mi, "global_position", at + Vector3(drift.x, size * 0.6, drift.y), seconds).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 	tw.chain().tween_callback(mi.queue_free)
