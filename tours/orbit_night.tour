@@ -4,7 +4,7 @@
 # and the stars go out behind the hull (`ring_hides_stars`, asked of the live
 # frame: the dark hull's pixels asked in a frame with the ring and one a few
 # frames later with its layer held off).
-#   tools/tour.sh tours/orbit_night.tour --seed=7 --place=coast --hour=0.5 --orbit=zenith@0.5 --eye=1.7,-80,70 --face=146 --weather=clear:0
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/orbit_night.tour --seed=7 --place=coast --hour=0.5 --orbit=zenith@0.5 --eye=1.7,-80,70 --face=146 --weather=clear:0
 wait 2
 # The clock ran while the world warmed up; put it back where the pass is staged.
 hour 0.5

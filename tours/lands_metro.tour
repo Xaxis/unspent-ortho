@@ -1,7 +1,7 @@
 # The ruined metropolis over the shoulder: its most characteristic floor at
 # noon, in the golden hour and at night; then beside a mural. With the frame
 # cost standing at noon.
-#   tools/tour.sh tours/lands_metro.tour --seed=7 --weather=clear:0 --view=shoulder --stats
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/lands_metro.tour --seed=7 --weather=clear:0 --view=shoulder --stats
 coast calm
 hour 12
 place typical_ruined_metropolis

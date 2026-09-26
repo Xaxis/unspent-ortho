@@ -1,7 +1,7 @@
 # One gust front crossing grass, then a bush, then a tree crown
 # (src/render/wind.gdshaderinc gust_at; grass.gdshader and world.gdshader's
 # sward sheen; leaf.gdshader, where a gust turns the leaves pale side up).
-#   tools/tour.sh tours/foliage_front.tour --seed=7
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/foliage_front.tour --seed=7
 # `near front` (18_trample) finds a bush in grass with a crown downwind of it on
 # the world's wind line and stands the player beside that line, so from above
 # the frame holds the grass upwind, the bush, and the crown mid-frame; the log

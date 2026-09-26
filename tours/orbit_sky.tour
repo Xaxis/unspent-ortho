@@ -4,7 +4,7 @@
 # hole -- asked of the live frame (`ring_pale`: lighter than the open sky beside
 # it on the whole, and almost nowhere darker), and the pass moves across the sky
 # while it is watched.
-#   tools/tour.sh tours/orbit_sky.tour --seed=7 --place=coast --hour=12 --orbit=zenith@12 --eye=1.7,-80,70 --face=146 --weather=clear:0
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/orbit_sky.tour --seed=7 --place=coast --hour=12 --orbit=zenith@12 --eye=1.7,-80,70 --face=146 --weather=clear:0
 wait 2
 await ring 5
 await ring_pale 5

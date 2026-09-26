@@ -5,7 +5,7 @@
 # tests/tracks/test_tracks_in_game.gd: this island's shore is too narrow a strip for
 # a tour to stand on).
 #
-#   tools/tour.sh tours/tracks.tour --seed=1 --hour=10 --weather=clear:0
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/tracks.tour --seed=1 --hour=10 --weather=clear:0
 coast calm
 zoom 6
 place snowfield

@@ -10,7 +10,7 @@
 # stays out to dark for the stolen neon the canon could not catch (art review 11:
 # zero tube pixels in three frames, because the tube was on the door wall, which
 # faces the square, and under the eave, which at this pitch hides it).
-#   tools/tour.sh tours/houses.tour --seed=7 --weather=clear:0
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/houses.tour --seed=7 --weather=clear:0
 
 coast calm
 place spawn

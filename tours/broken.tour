@@ -4,7 +4,7 @@
 # ago. That last part is the whole point of the change, so it is shown in the two
 # lands whose ground weathers a rock least alike: the bog and the salt.
 #
-#   tools/tour.sh tours/broken.tour --seed=4 --hour=11 --weather=clear:0 --give=pick:1 --held=pick
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/broken.tour --seed=4 --hour=11 --weather=clear:0 --give=pick:1 --held=pick
 #
 # Seed 4 because it is a seed whose bog AND salt each hold a boulder; seed 1's bog
 # has none, and `near` would walk out of the land the frame is named after. The

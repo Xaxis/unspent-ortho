@@ -1,7 +1,7 @@
 # The coast's cliff meadow in a held wind (src/render/wind.gdshaderinc,
 # src/render/foliage/grass.gdshader, src/systems/18_trample.gd). Played through
 # the real game on the seed the canon uses:
-#   tools/tour.sh tours/foliage_meadow.tour --seed=7
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/foliage_meadow.tour --seed=7
 #
 # What it is for, in both views: two frames half a second apart, in which a gust
 # front has visibly moved across the sward (the paler, laid-over grass); and a

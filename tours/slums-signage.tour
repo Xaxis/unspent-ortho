@@ -2,7 +2,7 @@
 # generations old, half covered by a hoarding that is still cheerfully selling
 # something -- and the light that hoarding throws on wet ground.
 #
-# tools/tour.sh tours/slums-signage.tour --seed=3 --place=coast --hour=23 --weather=rain:0.85 --put=mural,mural,mural
+# TOUR_FIXED_FPS=60 tools/tour.sh tours/slums-signage.tour --seed=3 --place=coast --hour=23 --weather=rain:0.85 --put=mural,mural,mural
 #
 # STAGED ON THE COAST ON PURPOSE, and this is the one thing to know before
 # reading the frames: the Slums' own landscape file belongs to another builder

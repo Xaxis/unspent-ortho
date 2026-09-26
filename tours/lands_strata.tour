@@ -1,7 +1,7 @@
 # Terrace walls at eye level on the landscapes whose walls read blockiest, at
 # noon and in the evening, for any change to how a stratum wall is drawn; with
 # the frame cost over five seconds on the middens.
-#   tools/tour.sh tours/lands_strata.tour --seed=7 --weather=clear:0 --view=shoulder --stats
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/lands_strata.tour --seed=7 --weather=clear:0 --view=shoulder --stats
 coast calm
 hour 12
 place typical_the_middens

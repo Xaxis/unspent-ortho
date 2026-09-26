@@ -3,7 +3,7 @@
 # tinker's and a keeper's -- each in the room its own door dealt it. Staged by
 # what is in the room, never by where a house stands.
 #
-#   tools/tour.sh tours/rooms.tour --seed=4 --hour=15 --weather=clear:0
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/rooms.tour --seed=4 --hour=15 --weather=clear:0
 #
 # Read 01, 02 and 03 side by side: no two rooms may share a plan and a
 # household, and each should say who lives there without anybody in it.
