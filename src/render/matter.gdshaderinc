@@ -60,6 +60,40 @@ vec3 matter_linear(vec3 c) {
 // black". Both halves of that were true of Compatibility and neither is true of
 // Forward+. The rule now is: every palette colour goes through this function,
 // and it decides per renderer. Nothing writes ALBEDO directly.
+// THE MARK LAYOUT (GroundColors, THE LAYOUT): the land is two runs of grounds and
+// one of walls. Every range test goes through these, so no shader spells a
+// range; tests/render/test_mark_layout.gd holds these numbers to GroundColors'.
+const int MARK_GROUND_A0 = 40;
+const int MARK_GROUND_A1 = 58;
+const int MARK_GROUND_B0 = 96;
+const int MARK_GROUND_B1 = 127;
+const int MARK_STRATA = 128;
+const int MARK_STRATA_END = 159;
+// The named codes the shaders branch on (GroundColors' constants).
+const int M_VITRIFIED = 96;
+const int M_TIDEFLAT = 97;
+const int M_CITY_FLOOR = 98;
+const int M_STRATA_BONE = 133;
+const int M_STRATA_GLASS = 139;
+const int M_STRATA_TIDE = 140;
+const int M_STRATA_CAVE = 141;
+const int M_STRATA_REFUSE = 142;
+const int M_STRATA_CRAG = 143;
+const int M_STRATA_DECK = 145;
+
+bool mark_ground(int m) {
+	return (m >= MARK_GROUND_A0 && m <= MARK_GROUND_A1) || (m >= MARK_GROUND_B0 && m <= MARK_GROUND_B1);
+}
+
+bool mark_strata(int m) {
+	return m > MARK_STRATA && m <= MARK_STRATA_END;
+}
+
+// The LAND: a ground or a wall. What the cuts never open and wear barely takes.
+bool mark_land(int m) {
+	return mark_ground(m) || mark_strata(m);
+}
+
 vec3 matter_albedo(vec3 srgb) {
 	return mix(srgb, matter_linear(srgb), sky_linear);
 }
@@ -100,7 +134,7 @@ vec3 matter_cells(vec2 p) {
 // --- What a surface is -----------------------------------------------------
 //
 // Keyed on the ground MARK the vertex stream already carries (GroundColors:
-// 40..60 and 76 the grounds, 61..75 and 77 cliff strata, 0/255 anything a person made). One
+// 40..58 and 96..127 the grounds, 129..159 cliff strata, 0/255 anything a person made). One
 // row per material:
 //   x roughness   0 mirror .. 1 dead matte
 //   y specular    how much light it returns at a glancing angle (Godot's 0..1,
@@ -150,29 +184,29 @@ vec4 matter_of(int m) {
 	// Tilted per plate in matter_height, so the glare breaks plate by plate.
 	// Not ice's 0.16: measured at eye level, 0.12 handed back only the sky and
 	// the green-black floor read as pale ice. 0.30 keeps its body dark.
-	else if (m == 59) { r = vec4(0.30, 0.62, 0.060, 0.0); }
+	else if (m == M_VITRIFIED) { r = vec4(0.30, 0.62, 0.060, 0.0); }
 	// STRATA_GLASS: the melt that ran down a wall, glossy but not a mirror.
-	else if (m == 71) { r = vec4(0.42, 0.66, 0.080, 0.0); }
+	else if (m == M_STRATA_GLASS) { r = vec4(0.42, 0.66, 0.080, 0.0); }
 	// TIDEFLAT: silted poured concrete; world.gdshader takes roughness off where
 	// a puddle stands on it (`tide_pool`).
-	else if (m == 60) { r = vec4(0.80, 0.42, 0.020, 0.0); }
+	else if (m == M_TIDEFLAT) { r = vec4(0.80, 0.42, 0.020, 0.0); }
 	// STRATA_TIDE: cast concrete walls; the slick under the tide is made wet in
 	// world.gdshader, by height.
-	else if (m == 72) { r = vec4(0.78, 0.40, 0.035, 0.0); }
+	else if (m == M_STRATA_TIDE) { r = vec4(0.78, 0.40, 0.035, 0.0); }
 	// STRATA_CAVE: wet limestone and flowstone. It never dries, so it shines;
 	// the curtains' own relief (matter_height) is what the lamp finds.
-	else if (m == 73) { r = vec4(0.34, 0.70, 0.070, 0.0); }
+	else if (m == M_STRATA_CAVE) { r = vec4(0.34, 0.70, 0.070, 0.0); }
 	// STRATA_REFUSE: compacted machine refuse, a little metal in it, so the lit
 	// face picks out the plate and the bales between stay matte.
-	else if (m == 74) { r = vec4(0.66, 0.48, 0.045, 0.10); }
+	else if (m == M_STRATA_REFUSE) { r = vec4(0.66, 0.48, 0.045, 0.10); }
 	// STRATA_CRAG: wet gritstone, rough, its blocks rounded (matter_height).
-	else if (m == 75) { r = vec4(0.74, 0.46, 0.080, 0.0); }
+	else if (m == M_STRATA_CRAG) { r = vec4(0.74, 0.46, 0.080, 0.0); }
 	// CITY_FLOOR: worn poured concrete, a little glass in it (the glass is made
 	// shinier where it lies, in world.gdshader).
-	else if (m == 76) { r = vec4(0.80, 0.40, 0.012, 0.0); }
+	else if (m == M_CITY_FLOOR) { r = vec4(0.80, 0.40, 0.012, 0.0); }
 	// STRATA_DECK: the broken edge of a cast deck.
-	else if (m == 77) { r = vec4(0.78, 0.40, 0.050, 0.0); }
-	else if (m >= 61 && m <= 77) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
+	else if (m == M_STRATA_DECK) { r = vec4(0.78, 0.40, 0.050, 0.0); }
+	else if (mark_strata(m)) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
 	// --- WHAT A PERSON MADE ---------------------------------------------------
 	// Everything above is GROUND, and until these rows existed every timber post,
 	// thatched roof, canvas awning, concrete slab, glass pane and rope lashing in
@@ -293,14 +327,14 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		vec2 qw = p + vec2(ink_vnoise(p * 0.09 + 3.0) - 0.5, ink_vnoise(p * 0.09 + 21.0) - 0.5) * 2.6;
 		vec3 cd = matter_cells(qw * 6.0);
 		h = 1.0 - smoothstep(0.0, 0.42, cd.x);
-	} else if (m == 59) {
+	} else if (m == M_VITRIFIED) {
 		// VITRIFIED: each plate set at its own small tilt as it cooled, on the
 		// same cells the wash draws (world.gdshader), so the plate the light
 		// finds is the plate you see. The step at a join is the crack.
 		vec3 cd = matter_cells(p * 0.42);
 		float a = cd.z * 6.2832;
 		h = dot(p, vec2(cos(a), sin(a))) * 3.2 + matter_fbm(p * 0.8) * 0.35;
-	} else if (m == 71) {
+	} else if (m == M_STRATA_GLASS) {
 		// STRATA_GLASS: runnels down the face, long in height and narrow across,
 		// and the ROLLED LIP where the melt curled over the top of the wall: a
 		// swell just under each terrace's top (terraces are 0.5 high), so the
@@ -308,22 +342,22 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		float dt = (floor(wp.y / 0.5 - 0.002) + 1.0) * 0.5 - wp.y;
 		h = matter_fbm(vec2(p.x * 5.5, p.y * 0.7)) * 0.7 + matter_fbm(p * 2.0) * 0.15;
 		h += exp(-dt * 28.0) * 0.9;
-	} else if (m == 60) {
+	} else if (m == M_TIDEFLAT) {
 		// TIDEFLAT: a cast floor's aggregate and the silt ridged on it.
 		h = matter_fbm(p * 3.1) * 0.6 + matter_fbm(p * 0.6 + 9.0) * 0.4;
-	} else if (m == 73) {
+	} else if (m == M_STRATA_CAVE) {
 		// STRATA_CAVE: flowstone curtains, rounded drapes long in height and
 		// narrow across, over the rippled rims of the flow that built them.
 		float drape = matter_fbm(vec2(p.x * 3.2, p.y * 0.35));
 		h = sin(p.x * 9.0 + drape * 6.0) * 0.35 + drape * 0.5 + matter_fbm(p * 2.4) * 0.15;
-	} else if (m == 74) {
+	} else if (m == M_STRATA_REFUSE) {
 		// STRATA_REFUSE: bales pressed into the wall, lumped at the scale of a
 		// crushed cabinet, over the bands they were sorted into.
 		// Mostly lumpy fill; the bale edges only faintly, or the wall reads as
 		// cobbles laid in courses (measured at 18:30 with the cells at 0.7).
 		vec3 cd = matter_cells(vec2(p.x * 1.4, p.y * 2.6) + matter_fbm(p * 0.8) * 1.5);
 		h = smoothstep(0.0, 0.3, cd.y - cd.x) * 0.25 + matter_fbm(p * 2.2) * 0.75;
-	} else if (m == 65) {
+	} else if (m == M_STRATA_BONE) {
 		// BONELANDS walls: each bedding plane weathered back into a groove, so
 		// the bed above OVERHANGS it. Across the groove the face steps back and
 		// then out: a gentle ramp down from the ledge below (it faces the sky and
@@ -339,17 +373,17 @@ float matter_height(int m, vec3 wp, vec2 p) {
 			h = mix(0.15, 1.0, smoothstep(groove, groove + 0.07, f)) - (f - groove) * 0.1;
 		}
 		h += matter_fbm(p * 2.0) * 0.08;
-	} else if (m == 75) {
+	} else if (m == M_STRATA_CRAG) {
 		// STRATA_CRAG: joint-bounded blocks, tall and of no fixed width, each
 		// swelling out between its joints so the arrises are rounded, over a
 		// grain of the grit itself.
 		vec2 q = vec2(p.x * 1.1 + matter_fbm(p * 0.6) * 1.2, p.y * 0.45);
 		vec3 cd = matter_cells(q);
 		h = smoothstep(0.0, 0.45, cd.y - cd.x) + matter_fbm(p * 5.0) * 0.18;
-	} else if (m == 76) {
+	} else if (m == M_CITY_FLOOR) {
 		// CITY_FLOOR: the aggregate of a poured slab, fine and shallow.
 		h = matter_fbm(p * 4.0) * 0.7 + matter_fbm(p * 0.7 + 3.0) * 0.3;
-	} else if (m == 52 || (m >= 61 && m <= 77)) {
+	} else if (m == 52 || mark_strata(m)) {
 		// ROCK and cliff strata: broken blocks and bedding planes.
 		vec3 cd = matter_cells(p * 1.6);
 		h = (cd.y - cd.x) * 0.9 + matter_fbm(p * 0.7) * 0.3;

@@ -139,13 +139,13 @@ void fragment() {
 		c = mix(c * 0.32, c, non);
 	}
 	// How much of the land a piece takes ON, by exactly world.gdshader's rule:
-	// a GROUND material (40..77) takes a little, anything else takes it nearly
+	// a GROUND material (`mark_land`) takes a little, anything else takes it nearly
 	// whole. It matters more here than anywhere, because `matter_worn` only
 	// grows SEAMS above 0.5 -- seams are for things that were built -- and a
 	// bough given 0.85 came back as a white crystalline star: salt and frost
 	// blooming out of the seams of a pine needle. A girder over the bog still
 	// rusts along its flanks and an eave over the salt still blooms.
-	float takes = (mi >= 40 && mi <= 77) ? 0.14 : 0.85;
+	float takes = mark_land(mi) ? 0.14 : 0.85;
 	if (!neon) {
 		c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, takes, rough_add);
 	}

@@ -50,21 +50,19 @@ const PAN := 57
 ## and breaking ever since. It is ROCK there (`BiomeDef.ground_marks`), so the
 ## island does not move; world.gdshader draws plates, crazing and flow banding,
 ## and matter_of gives it the one mirror-hard floor in the game besides ice.
-const VITRIFIED := 59
+const VITRIFIED := 96
 ## The drowned city's floor: poured concrete the tide came up over and went down
 ## off, silted below the old high-water line and standing in puddles. It is
-## FLOOR there (`BiomeDef.ground_marks`), so the island does not move. 60 is
-## STRATA + 0, which no wall is ever given (strata ids start at 1), so it was
-## free; world.gdshader dispatches it with the grounds.
-const TIDEFLAT := 60
+## FLOOR there (`BiomeDef.ground_marks`), so the island does not move.
+const TIDEFLAT := 97
 ## --- WHAT A PERSON MADE (matter.gdshaderinc `matter_of`) ---------------------
 ## 40..58 above are GROUND. Until this band existed, every timber post, thatched
 ## roof, canvas awning, concrete slab, glass pane and rope lashing came back as
 ## ONE default material, so under a single sun only the mesh normal told a roof
 ## from a wall — and the normals are flat facets.
 ##
-## **78..79 ARE DELIBERATELY EMPTY**, between the land codes (40..77: 76 is a
-## ground and 77 a wall, both past the strata) and this
+## **59..79 ARE EMPTY** (see THE LAYOUT, below FRESH), between the first run of
+## grounds and this
 ## band, so an off-by-one lands on nothing instead of on a material. 92..95 are
 ## spare. Tag a surface with `GroundColors.made(col, GroundColors.THATCH)`; a
 ## builder that tags nothing still gets the default, which is what every model
@@ -95,8 +93,24 @@ const MADE_LAST := SLATE
 ## lays on everything standing in it (`matter_worn`) is kept off this face alone
 ## (Broken, world.gdshader). It carries no mark of its own.
 const FRESH := 58
-## Cliff strata: STRATA + one of the STRATA_* ids.
-const STRATA := 60
+## Cliff strata: STRATA + one of the STRATA_* ids (1..31).
+const STRATA := 128
+
+## --- THE LAYOUT, the one place it is stated ---------------------------------
+## A mark is one byte (a vertex colour's alpha, x255), and the LAND is two runs
+## of it with room in each; a shader asks `mark_ground` / `mark_strata` /
+## `mark_land` (matter.gdshaderinc) and never spells a range, so a new material
+## takes the next number in its run and touches nothing else.
+##    1..34   light: glow, lamp, glint, stolen neon
+##   40..58   grounds, the first run (the shared table's)
+##   80..95   what a person MADE
+##   96..127  grounds, the second run (a landscape's own: VITRIFIED, TIDEFLAT...)
+##  129..159  terrace walls, STRATA + id
+## tests/render/test_mark_layout.gd holds the constants to these runs, and the
+## shader's own consts to these numbers.
+const GROUND_A := Vector2i(40, 58)
+const GROUND_B := Vector2i(96, 127)
+const STRATA_RUN := Vector2i(129, 159)
 const STRATA_COAST := 1
 const STRATA_MOSS := 2
 const STRATA_PINE := 3
@@ -132,7 +146,7 @@ const STRATA_DECK := 17
 ## past the strata (the ground numbers ran out at 60): poured slabs in bays,
 ## their joints grown through, faded lane paint, spidered cracks and drifts of
 ## window glass (76). It is FLOOR in the metropolis (`BiomeDef.ground_marks`).
-const CITY_FLOOR := 76
+const CITY_FLOOR := 98
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array

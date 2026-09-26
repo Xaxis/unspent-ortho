@@ -64,7 +64,7 @@ const float CROWN_SWAY = 0.25;
 // Two things stop this opening holes in the world at large:
 //
 //   THE LAND NEVER OPENS. Only what somebody BUILT is cut: the ground band
-//   40..77, the same discriminator fore.gdshader uses to decide how much wear a
+//   `mark_land`, the same discriminator fore.gdshader uses to decide how much wear a
 //   piece takes. A cliff, a terrace and a bank stay solid, so a player under an
 //   overhang is still under it.
 //
@@ -716,7 +716,7 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		if (ink_vnoise(wp * 0.7) > 0.7) {
 			c = dn(c, 0.2);
 		}
-	} else if (m == 59) {
+	} else if (m == M_VITRIFIED) {
 		// VITRIFIED: the glass desert's floor. Sand fused to a sheet in one
 		// second and broken ever since, so four things are drawn and nothing
 		// else is: the PLATES it cooled into (the same cells matter_height
@@ -1818,7 +1818,7 @@ float crown_cut(vec3 wp, float sway) {
 // INV_VIEW_MATRIX exists only inside the stage function, so a user function
 // cannot see the camera at all (the shader simply refuses to compile).
 float tall_cut(vec3 wp, int m, vec3 camz, vec3 eye, bool persp) {
-	if (m >= 40 && m <= 77) {
+	if (mark_land(m)) {
 		return 0.0;
 	}
 	float cut = 0.0;
@@ -1888,7 +1888,7 @@ void fragment() {
 	float cut = max(crown_cut(world_pos, sway_w), tall_cut(world_pos, m1, camz, eye, persp));
 	// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line of
 	// sight to a body, at any height (sight.gdshaderinc). Never the land.
-	if (persp && !(m1 >= 40 && m1 <= 77)) {
+	if (persp && !mark_land(m1)) {
 		float close = sight_close(eye, crown_clear[0]);
 		if (close > 0.0) {
 			for (int i = 0; i < CROWN_CLEAR; i++) {
@@ -1931,16 +1931,16 @@ void fragment() {
 		float pn = ink_vnoise(world_pos.xz * 0.11) * 0.65 + ink_vnoise(world_pos.xz * 0.37) * 0.35 + rag(world_pos.xz);
 		c *= 1.0 + patchy * (step(0.66, pn) * 0.04 - step(pn, 0.32) * 0.04);
 	}
-	if ((m >= 40 && m <= 60) || m == 76) {
+	if (mark_ground(m)) {
 		c = ground_mark(m, c, world_pos.xz, px, emit, unh);
-		if (m == 76) {
+		if (m == M_CITY_FLOOR) {
 			c = city_floor(c, world_pos, px);
 		}
-		if (m == 60) {
+		if (m == M_TIDEFLAT) {
 			c = tide_floor(c, world_pos, px);
 		}
 		// The fused sheet is not trodden to earth: nothing walks glass to a path.
-		if (unh < 0.5 && m != 59) {
+		if (unh < 0.5 && m != M_VITRIFIED) {
 			c = ground_wear(m, c, world_pos.xz, px);
 		}
 		// Turf, heath and fen are a sward, and a gust crossing one lays it over:
@@ -1967,7 +1967,7 @@ void fragment() {
 		if ((m == 55 || m == 57) && c.r >= c.b) {
 			c *= min(1.0, SALT_TOP.r / max(max(c.r, max(c.g, c.b)), 1e-4));
 		}
-	} else if (m > 60 && m <= 77) {
+	} else if (mark_strata(m)) {
 		// A wall's pattern runs ALONG the wall. `px` is the play camera's screen
 		// grid laid on the world, whose x does not change with height: from
 		// above that is invisible, but at eye level every feature keyed on it
@@ -1977,7 +1977,7 @@ void fragment() {
 		vec3 fn = cross(dFdx(world_pos), dFdy(world_pos));
 		float along = abs(fn.x) > abs(fn.z) ? world_pos.z : world_pos.x;
 		vec2 wpx = vec2(floor(along / SKY_GRAIN), px.y);
-		c = strata(m - 60, c, world_pos, wpx, emit, unh);
+		c = strata(m - MARK_STRATA, c, world_pos, wpx, emit, unh);
 		// The weathering pass, on every wall: whatever it is cut through, the
 		// lip, the run-off and the foot are the weather's.
 		{
@@ -2032,7 +2032,7 @@ void fragment() {
 	// it. Anything STANDING in the land takes it nearly whole, which is the law
 	// in one line: the same house, fence and machine carry the bog on them, or
 	// the flat, or the Burning, and nobody had to author three of each.
-	float takes = (m >= 40 && m <= 77) ? 0.14 : 0.85;
+	float takes = mark_land(m) ? 0.14 : 0.85;
 	// A face opened a moment ago (GroundColors.FRESH: the cut through a boulder
 	// somebody is quarrying) has had almost nothing settle on it. The wear map
 	// reads the PLACE, not the age, so without this a cut made in a bog rusts as
@@ -2042,22 +2042,22 @@ void fragment() {
 	if (m == 58) { takes = 0.06; }
 	c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, takes * (1.0 - unh), rough_add);
 
-	if (m == 76) {
+	if (m == M_CITY_FLOOR) {
 		// Window glass lying in drifts on the city floor catches the light.
 		rough_add -= city_glass(world_pos.xz) * 0.35;
 	}
-	if (m == 60) {
+	if (m == M_TIDEFLAT) {
 		// Standing water on the drowned floor is a mirror; the silt round it is not.
 		rough_add -= tide_pool(world_pos) * 0.72;
-	} else if (m == 73) {
+	} else if (m == M_STRATA_CAVE) {
 		// A cave wall runs wet in streaks: shinier where water is on it now.
 		rough_add -= smoothstep(0.55, 0.8, ink_vnoise(vec2(world_pos.x + world_pos.z, world_pos.y * 0.2) * 1.3)) * 0.2;
-	} else if (m == 72) {
+	} else if (m == M_STRATA_TIDE) {
 		// The weed at a wall's foot is slick and never dries.
 		float wall_dt = (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y;
 		rough_add -= smoothstep(TIDE_WEED - 0.02, TIDE_WEED + 0.04, wall_dt) * 0.45;
 	}
-	if (m == 71) {
+	if (m == M_STRATA_GLASS) {
 		// The glaze is not one sheet: runnels polished by the flow alternate
 		// with duller skin, so a wall catches the sun in streaks down its fall
 		// and never as one lit facet.
