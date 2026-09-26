@@ -59,6 +59,8 @@ extends RefCounted
 ## --scene=NAME        which scene to boot: game (default) | gallery | title | loading (the loading page, still)
 ## --place=NAME        start at a named place (GenPlaces): a country ("moss"), an
 ##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
+## --hush=always       every visit to a hush ring answers, at any hour (23_hush),
+##                     for a proof tour; without it a ring answers as it will
 ## --stats             print render stats (draw calls, chunk build times) before the shot
 ## --weather=KIND:S     force the weather (e.g. rain:1, fog:0.6, storm:1:bolt, dry_storm:1:bolt; kinds in Weather.KINDS), sky package;
 ##                     `:wind=W` also holds the wind at W, -1..1 (clear:0:wind=0.8)
@@ -193,6 +195,8 @@ var frames := 8
 var scale := 1
 var scene := "game"
 var place := ""
+## "always" or "": staging for the hush (23_hush).
+var hush := ""
 var stats := false
 ## "kind:strength[:bolt]" or "" (the weather rules decide). Read by 10_sky.
 var weather := ""
@@ -313,6 +317,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"scale": o.scale = v.to_int()
 			"scene": o.scene = v
 			"place": o.place = v
+			"hush": o.hush = v
 			"realm": o.realm = StringName(v)
 			"stats": o.stats = true
 			"weather": o.weather = v

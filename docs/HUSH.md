@@ -29,6 +29,22 @@ builds it. Design only; nothing is built until it is agreed.
   nothing, home at dawn or past forget out of the ring, ferals not stopped.
   tests/hazards/test_hush_hold.gd (its bout: hunted into a ring, 0 health lost
   in 40 s against 12 with no ring), tours/hush_hold.tour.
+- **H3 built** (world/hush): `Hush` (the answer, its span, the quiet's curve),
+  23_hush's `quiet` on the group `&"hush"`, read by 70_audio (every bed and the
+  scatter fall away; `await beds_silent`) and 10_sky (wind, sway and the fog and
+  cloud drift hold). The music only thins, as the ruling kept. `--hush=always`
+  stages it. tests/core/test_hush.gd; tours/hush-quiet.tour (two frames half a
+  second apart in the quiet differ 0.0043, against 0.0066 once it lifts from
+  above and 0.0072 over the shoulder).
+- **H2 built** (world/hush): `Hush.turned` (one stone a ring an epoch, 9-18
+  degrees), 23_hush turns it only while `CameraRig.sees_ground` says it is off
+  screen (`WorldData.turn_prop`, footprint unchanged), and the view redraws its
+  chunk's props on a worker (`WorldView.refresh_props_soon`: rebaked with the
+  mid models off the main thread, only the swap on it, 3-8 ms; the main-thread
+  rebake was 10-20 ms, a dropped frame). Ring ids are their lowest stone's prop
+  id, stable whatever window finds them. tests: test_hush, test_props_rebake;
+  tours/hush-stones.tour (a stone stands differently after a look away, from
+  above and over the shoulder).
 
 ## Rules every phenomenon keeps
 
@@ -91,8 +107,8 @@ Then it gives up and goes home (`flee_home`, calm).
   sound.
 
 ### H2: the stones stand differently when you look back
-Each stone of a crags ring has a few stances: turned 4-14 degrees, a lean of
-a few degrees, never moved off its footprint (collision and the walk are
+Each stone of a crags ring has a few stances: turned 9-18 degrees (under 9 read as
+nothing from above; a prop has no lean), never moved off its footprint (collision and the walk are
 unchanged). The stance a stone SHOULD have is a function of time,
 `hash(seed, site, stone, floor(minutes / 25))`. A stone only takes a new
 stance while it is off screen (`CameraRig.sees_ground` false for its foot and

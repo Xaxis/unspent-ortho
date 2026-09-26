@@ -1,0 +1,39 @@
+# THE HUSH (docs/HUSH.md H3): in a crags ring the world falls silent -- every
+# bed and scatter sound gone (`await beds_silent`, 70_audio), the player's own
+# left -- and the air holds: the grass and the fog stop moving. Proven by the
+# frames: two half a second apart in the quiet differ no more than two half a
+# second apart once it lifts, over the right of the frame (the sea on the
+# left moves by its own clock, as it should). `--hush=always` makes every visit answer, so the
+# proof does not wait on a night's hash; fog by day, so the grass is seen.
+# From above, then out and back in over the shoulder.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/hush-quiet.tour --seed=7 --hour=11 --weather=fog:0.6:wind=0.9 --hush=always
+place the_crags
+coast calm
+wait 1.0
+near hush_ring
+await hush_quiet 6
+await beds_silent 4
+shot 01-silent-a
+wait 0.5
+shot 02-silent-b
+await hush_gone 15
+wait 1.0
+shot 03-moving-a
+wait 0.5
+shot 04-moving-b
+same 01-silent-a 02-silent-b no_more_than 03-moving-a 04-moving-b 1900,252,1900,1700
+tap shoulder
+await shoulder 3
+walk 0,1 2.0
+wait 0.5
+near hush_ring
+await hush_quiet 6
+shot 05-silent-over-the-shoulder-a with shoulder
+wait 0.5
+shot 06-silent-over-the-shoulder-b with shoulder
+await hush_gone 15
+wait 1.0
+shot 07-moving-over-the-shoulder-a with shoulder
+wait 0.5
+shot 08-moving-over-the-shoulder-b with shoulder
+same 05-silent-over-the-shoulder-a 06-silent-over-the-shoulder-b no_more_than 07-moving-over-the-shoulder-a 08-moving-over-the-shoulder-b 1900,252,1900,1700

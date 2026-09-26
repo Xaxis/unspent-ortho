@@ -16,7 +16,7 @@ const JOIN := 5.0
 
 
 class Ring:
-	## A stable id: the centre's quarter tile (Threshold's precedent).
+	## A stable id: its lowest stone's prop id.
 	var id := 0
 	var centre := Vector2.ZERO
 	var radius := 0.0
@@ -102,5 +102,10 @@ static func _ring_of(group: Array[WorldProp]) -> Ring:
 		sum += s.pos.distance_to(r.centre)
 		r.stones.append(s.id)
 	r.radius = sum / order.size()
-	r.id = floori(r.centre.x * 4.0) * 65536 + floori(r.centre.y * 4.0)
+	# Its lowest stone's prop id: fixed for the seed, whatever window found it
+	# (the fitted centre moves by a hair with the stones a window holds).
+	var lowest := r.stones[0]
+	for id in r.stones:
+		lowest = mini(lowest, id)
+	r.id = lowest
 	return r

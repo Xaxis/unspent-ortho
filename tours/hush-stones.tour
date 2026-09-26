@@ -1,0 +1,31 @@
+# THE STONES STAND DIFFERENTLY (docs/HUSH.md H2): in a crags ring one stone an
+# epoch (Hush.EPOCH world minutes) stands turned, and a stone only takes its
+# stance while nobody is looking. Frame the ring, go out of sight of it while an
+# epoch passes, come back to the same place: one stone is not as it was (01
+# against 02 from above, 03 against 04 over the shoulder), and the log says
+# which turned and what its redraw cost.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/hush-stones.tour --seed=7 --hour=11 --weather=clear:0
+place the_crags
+coast calm
+near hush_ring
+wait 1.0
+shot 01-the-ring
+walk 1,0 5.0 run
+wait 0.5
+hour 11.5
+wait 1.5
+near hush_ring
+wait 1.0
+await stone_turned 3
+shot 02-back-an-epoch-later
+tap shoulder
+await shoulder 3
+wait 0.8
+shot 03-the-ring-over-the-shoulder with shoulder
+mouse 1100,0 0.8
+wait 0.5
+hour 12
+wait 1.5
+mouse -1100,0 0.8
+wait 1.0
+shot 04-looked-back-an-epoch-later with shoulder

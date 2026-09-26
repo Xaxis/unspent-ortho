@@ -356,6 +356,18 @@ func _row_of(p: WorldProp) -> int:
 
 
 ## The table row holding id `id`, or -1.
+## Turn the prop with this id to `rot` where it stands (the hush's stones,
+## 23_hush). Its footprint is its position and radius, so nothing it blocks
+## changes; whoever draws it is told by the caller (WorldView.refresh_props).
+func turn_prop(id: int, rot: float) -> void:
+	var row := row_of_id(id)
+	if row < 0:
+		return
+	table.rot[row] = rot
+	if not packed:
+		props[row].rot = rot
+
+
 func row_of_id(id: int) -> int:
 	var at := position_of(id)
 	return at if at >= 0 and at < table.size() and table.id[at] == id else -1

@@ -288,8 +288,11 @@ func _update(delta: float, snap: bool) -> void:
 	var dm := clampf(minutes - _last_minutes, 0.0, 600.0)
 	_scan_lightning(_last_minutes, minutes, seed_value, wh.kind, float(wh.strength))
 	_last_minutes = minutes
-	_cloud_drift += _cloud_bearing * dm * (0.35 + 1.1 * absf(wind))
-	_fog_drift += _cloud_bearing.orthogonal() * dm * (0.08 + 0.3 * absf(wind))
+	# The hush (23_hush) holds the air: the fog and cloud stop drifting, the wind
+	# drops, and what sways hangs still, for as long as the world is silent.
+	var hold := 1.0 - _hush()
+	_cloud_drift += _cloud_bearing * dm * (0.35 + 1.1 * absf(wind)) * hold
+	_fog_drift += _cloud_bearing.orthogonal() * dm * (0.08 + 0.3 * absf(wind)) * hold
 
 	# A forced bolt (shots) holds its strike drawn with no flash on the page;
 	# real strikes flash for a few frames.
@@ -324,14 +327,14 @@ func _update(delta: float, snap: bool) -> void:
 			sky.bolt = Vector4(at.x, at.y, float(sheet_now.level) * SHEET_GAIN, 1.0)
 			sky.glow_reach = AFTERGLOW_ROLL * 0.6
 	# Sway advances faster in a strong wind, so reeds never snap to a new speed.
-	_sway_phase = fposmod(_sway_phase + delta * (0.8 + 3.2 * absf(wind)), TAU * 1000.0)
-	var gust := clampf(float(look.storm) + float(look.dust) * 0.6 + float(look.whiteout) * 0.6 + absf(wind) * 0.3, 0.0, 1.0)
-	var along := _cloud_bearing * wind
+	_sway_phase = fposmod(_sway_phase + delta * (0.8 + 3.2 * absf(wind)) * hold, TAU * 1000.0)
+	var gust := clampf(float(look.storm) + float(look.dust) * 0.6 + float(look.whiteout) * 0.6 + absf(wind) * 0.3, 0.0, 1.0) * hold
+	var along := _cloud_bearing * wind * hold
 	sky.wind = Vector4(along.x, along.y, gust, _sway_phase)
 	_gust = WindField.advance(_gust, along, delta)
 	sky.gust = _gust
 	# Tufts and crowns never hang dead still, and a storm bends them hard.
-	sky.sway = clampf(0.15 + absf(wind) * 0.6 + gust * 0.5, 0.0, 1.2)
+	sky.sway = clampf(0.15 + absf(wind) * 0.6 + gust * 0.5, 0.0, 1.2) * hold
 	sky.cast_allowed = float(look.overcast) < 0.6
 	sky.focus = f3
 	sky.set_hour(hour)
@@ -510,3 +513,12 @@ func tour_seen(what: StringName) -> bool:
 		_tour_dimmest = now
 		return true
 	return false
+
+
+
+## The hush's quiet (23_hush `quiet`, group `&"hush"`), 0..1.
+func _hush() -> float:
+	var q := 0.0
+	for n: Node in get_tree().get_nodes_in_group(&"hush"):
+		q = maxf(q, float(n.get(&"quiet")))
+	return q
