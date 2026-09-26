@@ -68,7 +68,8 @@ static func make() -> BiomeDef:
 		Ground.MOSS: P.SPRUCE[2].lerp(P.MOSS[2], 0.45),
 		Ground.NEEDLES: P.SPRUCE[2].lerp(P.EARTH[2], 0.45),
 		Ground.MUD: P.EARTH[3].lerp(P.SPRUCE[2], 0.3),
-		Ground.FLOOR: P.ASH[3].lerp(P.MOSS[2], 0.45),
+		# The city's poured floor under the forest's damp: grey-green, not pale.
+		Ground.FLOOR: P.ASH[2].lerp(P.MOSS[2], 0.4),
 		Ground.GRAVEL: P.STONE[3].lerp(P.MOSS[2], 0.3),
 		Ground.ROCK: P.SLATE[3].lerp(P.MOSS[2], 0.2),
 	}
@@ -79,12 +80,22 @@ static func make() -> BiomeDef:
 	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
 		d.grounds[g] = d.grounds[Ground.GRAVEL]
 	d.cliff_wash = P.ASH[2].lerp(P.MOSS[2], 0.4)
-	d.strata = GroundColors.STRATA_MOSS
+	# THE CITY UNDER THE FOREST, and LOOK only (no seed moves): its floor is the
+	# city's own with the moss out of every joint (GroundColors.OVERGROWN) and every
+	# terrace a deck edge hung with roots (STRATA_ROOTED). It was the moss's peat
+	# bank over a pale wash, which said bog, not city.
+	# ROCK and GRAVEL here are the city's broken floor too, not bedrock.
+	d.ground_marks = {Ground.FLOOR: GroundColors.OVERGROWN, Ground.ROCK: GroundColors.OVERGROWN, Ground.GRAVEL: GroundColors.OVERGROWN}
+	d.strata = GroundColors.STRATA_ROOTED
 	d.plain_ground = Ground.GRASS
 	d.bank_ground = Ground.MUD
 	d.pool_rim_ground = Ground.MUD
 	d.village_ground = Ground.FLOOR
-	d.decor = {Ground.GRASS: [0.95, Decor.TUFT, 34, Decor.CROTTLE, 16]}
+	d.decor = {
+		Ground.GRASS: [0.95, Decor.TUFT, 30, Decor.FERN, 14, Decor.CROTTLE, 12, Decor.REBAR, 4],
+		# The floor: ferns up through it, cast stone with its bars out, leaves.
+		Ground.FLOOR: [0.6, Decor.FERN, 20, Decor.REBAR, 8, Decor.TWIG, 10, Decor.MUSHROOM, 4, Decor.TUFT, 10],
+	}
 	d.grass_colors = [P.MOSS[3], P.SPRUCE[3]]
 	d.rock_color = P.SLATE[3]
 	d.tree_tints = {&"leaf": [P.SPRUCE[3], P.MOSS[3], P.SPRUCE[2], P.MOSS[2]]}

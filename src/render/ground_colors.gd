@@ -142,11 +142,17 @@ const STRATA_CRAG := 15
 ## The metropolis' walls: the broken edge of a cast deck -- a slab with its
 ## rebar out, a conduit run through it, spalled where it broke (77).
 const STRATA_DECK := 17
+## A deck edge the forest has: concrete under a curtain of hanging roots and
+## vine, ferns out of its cracks, moss on the lip (the green towers).
+const STRATA_ROOTED := 18
 ## THE CITY'S FLOOR, a GROUND drawn with the grounds although its number sits
 ## past the strata (the ground numbers ran out at 60): poured slabs in bays,
 ## their joints grown through, faded lane paint, spidered cracks and drifts of
 ## window glass (76). It is FLOOR in the metropolis (`BiomeDef.ground_marks`).
 const CITY_FLOOR := 98
+## The same city floor with the forest taking it back: moss out of every joint
+## and spreading, roots across it, leaf litter (the green towers).
+const OVERGROWN := 99
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array

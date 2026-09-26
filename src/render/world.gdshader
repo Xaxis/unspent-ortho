@@ -1359,6 +1359,31 @@ vec3 city_floor(vec3 c, vec3 wp, vec2 px) {
 	return c;
 }
 
+// OVERGROWN: the green towers' floor, the city's own under the forest. Moss has
+// come out of every joint first and spread from them, so the green follows the
+// slabs' edges; roots run across it; leaves have gathered in the lee of the
+// joints. What shows between is the old poured floor with its lane paint.
+vec3 overgrow(vec3 c, vec3 wp, vec2 px) {
+	vec2 q = mat2(vec2(0.97, 0.26), vec2(-0.26, 0.97)) * wp.xz;
+	vec2 fq = abs(fract(q / vec2(5.0, 3.2)) - 0.5);
+	float joint = min(0.5 - fq.x, (0.5 - fq.y) * 0.64);
+	float spread = ink_vnoise(wp.xz * 0.12 + 13.0) * 0.8 + ink_vnoise(wp.xz * 0.5) * 0.2;
+	float reach = 0.04 + spread * 0.45;
+	float moss = 1.0 - smoothstep(reach * 0.7, reach, joint);
+	c = mix(c, mix(MOSS2, SPRUCE2, ink_vnoise(wp.xz * 1.3)), moss * 0.85);
+	// Roots: long, wandering, dark, from the canopy's trunks across the slab.
+	float root = abs(ink_vnoise(vec2(dot(wp.xz, vec2(0.8, 0.6)) * 0.35, dot(wp.xz, vec2(-0.6, 0.8)) * 1.4)) - 0.5);
+	if (root < 0.02 && ink_vnoise(wp.xz * 0.09 + 29.0) > 0.45) {
+		c = mix(EARTH1, EARTH2, root * 30.0);
+	}
+	// Leaf litter in drifts, warm against the green.
+	float leaf = ink_vnoise(wp.xz * 0.2 + 51.0);
+	if (leaf > 0.64 && ink_hash(px + 13.0) > 0.55) {
+		c = mix(c, ink_hash(px + 17.0) > 0.5 ? mix(EARTH3, RUST2, 0.4) : mix(MOSS3, EARTH2, 0.5), 0.7);
+	}
+	return c;
+}
+
 // Terrace walls: each country's rock, banded by world height. dt: depth below
 // the wall's top (a wall is one level tall).
 vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
@@ -1765,6 +1790,31 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		if (drain > 0.7 && dt < 0.4 * ink_vnoise(vec2(px.x * 0.1, 19.0)) + 0.1) {
 			c = mix(c, mix(RUST1, INK3, 0.5), 0.45 * smoothstep(0.7, 0.85, drain));
 		}
+	} else if (id == 18) {
+		// ROOTED: a deck edge the forest has. Grey concrete in its pours, and over
+		// it a curtain of roots and vine let down from the canopy on top,
+		// hanging in strands of uneven length, darker at their tips; ferns out of
+		// the cracks; a cushion of moss along the lip.
+		c = mix(STONE2, mix(STONE2, MOSS2, 0.35), smoothstep(0.3, 0.7, ink_vnoise(vec2(px.x * 0.03, 3.0))));
+		if (fract(y * 4.0 + 0.1) < 0.04) {
+			c = dn(c, 0.15);
+		}
+		// Green creeping up from the foot.
+		c = mix(c, mix(MOSS2, SPRUCE1, 0.4), smoothstep(0.3, 0.5, dt + (ink_vnoise(vec2(px.x * 0.08, 5.0)) - 0.5) * 0.2) * 0.6);
+		// The curtain: strands a couple of pixels wide, each its own length.
+		float strand = ink_vnoise(vec2(px.x * 0.35, 7.0));
+		float hang = 0.06 + ink_vnoise(vec2(px.x * 0.11, 9.0)) * 0.36;
+		if (strand > 0.52 && dt < hang) {
+			c = mix(mix(SPRUCE2, MOSS3, ink_vnoise(vec2(px.x * 0.9, y * 4.0))), EARTH1, smoothstep(hang * 0.6, hang, dt));
+		}
+		// Ferns in the cracks.
+		if (ink_vnoise(vec2(px.x * 0.2, y * 6.0 + 11.0)) > 0.8 && dt > 0.15) {
+			c = mix(MOSS3, SPRUCE2, 0.3);
+		}
+		// Moss cushion on the lip.
+		if (dt < 0.035 + ink_vnoise(vec2(px.x * 0.1, 13.0)) * 0.03) {
+			c = mix(MOSS2, MOSS3, 0.4);
+		}
 	}
 	return c;
 }
@@ -1933,8 +1983,11 @@ void fragment() {
 	}
 	if (mark_ground(m)) {
 		c = ground_mark(m, c, world_pos.xz, px, emit, unh);
-		if (m == M_CITY_FLOOR) {
+		if (m == M_CITY_FLOOR || m == M_OVERGROWN) {
 			c = city_floor(c, world_pos, px);
+		}
+		if (m == M_OVERGROWN) {
+			c = overgrow(c, world_pos, px);
 		}
 		if (m == M_TIDEFLAT) {
 			c = tide_floor(c, world_pos, px);

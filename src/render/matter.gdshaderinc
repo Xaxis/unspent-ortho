@@ -73,6 +73,7 @@ const int MARK_STRATA_END = 159;
 const int M_VITRIFIED = 96;
 const int M_TIDEFLAT = 97;
 const int M_CITY_FLOOR = 98;
+const int M_OVERGROWN = 99;
 const int M_STRATA_BONE = 133;
 const int M_STRATA_GLASS = 139;
 const int M_STRATA_TIDE = 140;
@@ -80,6 +81,7 @@ const int M_STRATA_CAVE = 141;
 const int M_STRATA_REFUSE = 142;
 const int M_STRATA_CRAG = 143;
 const int M_STRATA_DECK = 145;
+const int M_STRATA_ROOTED = 146;
 
 bool mark_ground(int m) {
 	return (m >= MARK_GROUND_A0 && m <= MARK_GROUND_A1) || (m >= MARK_GROUND_B0 && m <= MARK_GROUND_B1);
@@ -204,6 +206,8 @@ vec4 matter_of(int m) {
 	// CITY_FLOOR: worn poured concrete, a little glass in it (the glass is made
 	// shinier where it lies, in world.gdshader).
 	else if (m == M_CITY_FLOOR) { r = vec4(0.80, 0.40, 0.012, 0.0); }
+	// OVERGROWN: the slab under a damp mat of moss and leaves, softer and matte.
+	else if (m == M_OVERGROWN) { r = vec4(0.88, 0.30, 0.025, 0.0); }
 	// STRATA_DECK: the broken edge of a cast deck.
 	else if (m == M_STRATA_DECK) { r = vec4(0.78, 0.40, 0.050, 0.0); }
 	else if (mark_strata(m)) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
@@ -380,7 +384,7 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		vec2 q = vec2(p.x * 1.1 + matter_fbm(p * 0.6) * 1.2, p.y * 0.45);
 		vec3 cd = matter_cells(q);
 		h = smoothstep(0.0, 0.45, cd.y - cd.x) + matter_fbm(p * 5.0) * 0.18;
-	} else if (m == M_CITY_FLOOR) {
+	} else if (m == M_CITY_FLOOR || m == M_OVERGROWN) {
 		// CITY_FLOOR: the aggregate of a poured slab, fine and shallow.
 		h = matter_fbm(p * 4.0) * 0.7 + matter_fbm(p * 0.7 + 3.0) * 0.3;
 	} else if (m == 52 || mark_strata(m)) {
