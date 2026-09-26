@@ -1664,10 +1664,16 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		// each ends where the flow gave out in a rounded lobe; between them the
 		// rock is dark and running wet. No beds and no joints: nothing about a
 		// cave wall is laid in courses, and the courses were what read as brick.
-		float lip = 0.03 + (vn - 0.5) * 0.02;
-		float fall = 0.16 + ink_vnoise(vec2(px.x * 0.07, 3.0)) * 0.3 + ink_vnoise(vec2(px.x * 0.22, 7.0)) * 0.1;
-		float across = ink_vnoise(vec2(px.x * 0.16, 11.0));
-		float curtain = smoothstep(0.42, 0.5, across);
+		// The lip SAGS: calcite hangs over it in swags of their own length, so
+		// no terrace top reads as a ruled edge.
+		float swag = ink_vnoise(vec2(px.x * 0.035, 5.0));
+		float lip = 0.02 + swag * swag * 0.09 + (vn - 0.5) * 0.02;
+		// Curtains of every width and length, and where two come near they
+		// run together and pool at the foot: the width is two scales of noise
+		// and not one, and the fall grows where the curtain is wide.
+		float across = ink_vnoise(vec2(px.x * 0.045, 11.0)) * 0.6 + ink_vnoise(vec2(px.x * 0.19, 13.0)) * 0.4;
+		float curtain = smoothstep(0.44, 0.56, across);
+		float fall = 0.08 + ink_vnoise(vec2(px.x * 0.05, 3.0)) * 0.28 + curtain * 0.18 * ink_vnoise(vec2(px.x * 0.13, 7.0));
 		vec3 rock = mix(SLATE1, INK2, 0.35 + 0.3 * ink_vnoise(vec2(px.x * 0.05, y * 3.0)));
 		vec3 calcite = mix(LINEN2, LINEN3, ink_vnoise(vec2(px.x * 0.3, y * 2.0)));
 		// Iron in the flow: rust bands running the curtain's length.

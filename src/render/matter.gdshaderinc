@@ -352,8 +352,12 @@ float matter_height(int m, vec3 wp, vec2 p) {
 	} else if (m == M_STRATA_CAVE) {
 		// STRATA_CAVE: flowstone curtains, rounded drapes long in height and
 		// narrow across, over the rippled rims of the flow that built them.
-		float drape = matter_fbm(vec2(p.x * 3.2, p.y * 0.35));
-		h = sin(p.x * 9.0 + drape * 6.0) * 0.35 + drape * 0.5 + matter_fbm(p * 2.4) * 0.15;
+		// No sine: a sine laid the drapes at one pitch, and the lamp read an
+		// even rhythm of bands down every wall, which is masonry and not
+		// flowstone. Drapes of every width, wandering, running into each other.
+		float drape = matter_fbm(vec2(p.x * 1.1 + matter_fbm(vec2(p.y * 0.4, p.x * 0.3)) * 2.0, p.y * 0.3));
+		float fine = matter_fbm(vec2(p.x * 3.7, p.y * 0.5));
+		h = drape * 0.65 + fine * 0.25 + matter_fbm(p * 2.4) * 0.1;
 	} else if (m == M_STRATA_REFUSE) {
 		// STRATA_REFUSE: bales pressed into the wall, lumped at the scale of a
 		// crushed cabinet, over the bands they were sorted into.
