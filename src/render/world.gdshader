@@ -1831,8 +1831,9 @@ void fragment() {
 		float along = abs(fn.x) > abs(fn.z) ? world_pos.z : world_pos.x;
 		vec2 wpx = vec2(floor(along / SKY_GRAIN), px.y);
 		c = strata(m - 60, c, world_pos, wpx, emit, unh);
-		// The weathering pass, on the two walls it is proposed on first.
-		if (m == 62 || m == 70 || m == 74) {
+		// The weathering pass, on every wall: whatever it is cut through, the
+		// lip, the run-off and the foot are the weather's.
+		{
 			c = strata_weather(c, (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y, wpx);
 		}
 	} else if (m >= 1 && m <= 16) {

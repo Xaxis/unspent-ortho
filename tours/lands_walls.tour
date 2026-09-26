@@ -1,0 +1,42 @@
+# Terrace walls at eye level on the landscapes whose walls every other one
+# shares a family with, at noon and in the evening: before and after any change
+# to how stratum walls are drawn, with the frame cost standing on the moss.
+#   tools/tour.sh tours/lands_walls.tour --seed=7 --weather=clear:0 --view=shoulder --stats
+coast calm
+hour 12
+place typical_moss
+wait 3.0
+shot moss-noon with land:moss
+perf stats begin
+wait 5.0
+perf stats end moss-noon
+hour 18.5
+wait 1.5
+shot moss-evening with land:moss
+hour 12
+place typical_pinewood
+wait 3.0
+shot pinewood-noon with land:pinewood
+hour 12
+place typical_bonelands
+wait 3.0
+shot bonelands-noon with land:bonelands
+hour 18.5
+wait 1.5
+shot bonelands-evening with land:bonelands
+hour 12
+place typical_burning
+wait 3.0
+shot burning-noon with land:burning
+hour 12
+place typical_coast
+wait 3.0
+shot coast-noon with land:coast
+hour 12
+place typical_snowfield
+wait 3.0
+shot snowfield-noon with land:snowfield
+hour 12
+place typical_salt_flats
+wait 3.0
+shot salt-noon with land:salt_flats
