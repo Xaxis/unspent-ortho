@@ -148,6 +148,10 @@ const PIECES := {
 	# The shock lattice had no `from` (docs/VISION.md names the gap): it is
 	# wound round a fulgurite core now, so the glass desert is its gate.
 	&"mod_lattice": {"grade": &"prime", "family": &"", "from": &"fulgurite_core"},
+	# The keepers' powers (GEAR.md §5): each a relic, made of its keeper's core,
+	# which is then not a cell in a holding (one use per core).
+	&"mod_undertow": {"grade": &"relic", "family": &"", "from": &"reaper_core",
+		"unique": "the only line that takes hold of a machine"},
 }
 
 ## Mechanical numbers a family holds equal across its rungs: the fight, the

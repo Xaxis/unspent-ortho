@@ -22,6 +22,9 @@ extends "res://tests/fight/reader.gd"
 ##   - and when walking in has not landed a blow in PRESS_MS (a thrower backing
 ##     off and turning to keep its plate to them), stands off BAIT_MS instead
 ##     and lets it throw: the throw is what opens it.
+## With an undertow fitted (FightKit.undertow) it hauls in a machine that stands
+## off out of reach, when the grapple is ready, there is breath for it, and it
+## is the only roused body near.
 ## Raids, gates and every multi-machine balance number are measured with it.
 
 ## How wide the crowd may stand around the player, seen from where they stand,
@@ -65,6 +68,8 @@ func act() -> void:
 	for m in live:
 		if _charge_to_leave(m):
 			return
+	if _haul(live):
+		return
 	if live.size() > 1 and _flanked(live):
 		hero.move = _give_ground(live)
 		return
@@ -179,6 +184,43 @@ func _heavy_fits(m: MobState) -> bool:
 
 
 var _seen_since := {}
+var _haul_ready_at := 0.0
+## Roused bodies nearer than this, more than one, and it does not haul.
+const HAUL_ALONE := 8.0
+var hauls := 0
+
+
+## The grapple on a machine that stands off out of reach, as AbilityGrapple does
+## it: ahead of the player (turned to it), in RANGE, for UNDERTOW_WIND x its wind,
+## on its cooldown.
+func _haul(live: Array[MobState]) -> bool:
+	var hero := sim.hero
+	if hero.kit == null or not hero.kit.undertow or sim.now < _haul_ready_at:
+		return false
+	var cost := AbilityGrapple.WIND * FightKit.UNDERTOW_WIND
+	if hero.wind < cost + FightRules.DODGE_COST:
+		return false
+	# One body hauled into a crowd is one more at the player's side: a player
+	# hauls a machine they are facing alone.
+	var roused := 0
+	for m in live:
+		roused += int(m.roused() and m.pos.distance_to(hero.pos) < HAUL_ALONE)
+	if roused > 1:
+		return false
+	for m in live:
+		if not m.machine or m.stunned(sim.now) or (m.blow != null and m.blow_phase(sim.now) == &"active"):
+			continue
+		var d := m.pos.distance_to(hero.pos)
+		if d < m.radius + hero.radius + _blow().reach + 1.0 or d > AbilityGrapple.RANGE:
+			continue
+		hero.facing = (m.pos - hero.pos).angle()
+		if sim.undertow(m):
+			hero.wind -= cost
+			_haul_ready_at = sim.now + AbilityGrapple.COOLDOWN * 1000.0
+			hauls += 1
+			hero.move = Vector2.ZERO
+			return true
+	return false
 ## Per body walked in on: [since, its health then, last pressed]; and until
 ## when it is baited.
 var _press := {}

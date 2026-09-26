@@ -47,8 +47,10 @@ func _init() -> void:
 
 
 ## What the line would take hold of: {pos: Vector2, height: float, what: StringName}
-## or {} if nothing is in range. Pure.
-static func anchor(world: WorldData, query: WorldQuery, at: Vector2, dir: Vector2) -> Dictionary:
+## or {} if nothing is in range. Pure. With an undertow fitted (`sim`'s hero's
+## kit), a live machine ahead is a hold too, the nearest thing ahead winning:
+## what: &"machine", mob: MobState.
+static func anchor(world: WorldData, query: WorldQuery, at: Vector2, dir: Vector2, sim: FightSim = null) -> Dictionary:
 	if world == null or dir.length() < 0.01:
 		return {}
 	var d := dir.normalized()
@@ -57,6 +59,17 @@ static func anchor(world: WorldData, query: WorldQuery, at: Vector2, dir: Vector
 		return up
 	var best: Dictionary = {}
 	var best_d := INF
+	if sim != null and sim.hero != null and sim.hero.kit != null and sim.hero.kit.undertow:
+		for m in sim.mobs:
+			if not m.alive or m.removed or not m.machine:
+				continue
+			var to := m.pos - at
+			var away := to.length()
+			if away < 1.2 or away > RANGE or absf(to.angle_to(d)) > CONE:
+				continue
+			if away < best_d:
+				best_d = away
+				best = {"pos": m.pos, "height": world.height_at(m.pos), "what": &"machine", "mob": m}
 	if query != null:
 		for p: WorldProp in query.props_near(at, RANGE):
 			if p.solid < SOLID:
@@ -158,17 +171,34 @@ func refusal(ctx: AbilityCtx) -> StringName:
 		return &"nothing"
 	if b.grip > 0:
 		return &"held"
-	if anchor(ctx.game.world, ctx.game.query, ctx.pos(), ctx.heading()).is_empty():
+	var a := anchor(ctx.game.world, ctx.game.query, ctx.pos(), ctx.heading(), _sim(ctx))
+	if a.is_empty():
 		return &"no_anchor"
+	# The haul's second share of wind (the book takes the first).
+	if a.what == &"machine" and _sim(ctx).hero.wind < wind * FightKit.UNDERTOW_WIND:
+		return &"winded"
 	return &""
 
 
+static func _sim(ctx: AbilityCtx) -> FightSim:
+	return ctx.game.player.sim if ctx.game != null and ctx.game.player != null else null
+
+
 func on_press(ctx: AbilityCtx) -> bool:
-	var a := anchor(ctx.game.world, ctx.game.query, ctx.pos(), ctx.heading())
+	var a := anchor(ctx.game.world, ctx.game.query, ctx.pos(), ctx.heading(), _sim(ctx))
 	if a.is_empty():
 		return false
 	var at := ctx.pos()
 	var target: Vector2 = a.pos
+	if a.what == &"machine":
+		# The machine comes; the player stays planted. The book spends one
+		# grapple's wind; the rest of the haul's is spent here.
+		var sim := _sim(ctx)
+		if not sim.undertow(a.mob):
+			return false
+		sim.hero.wind = maxf(0.0, sim.hero.wind - wind * (FightKit.UNDERTOW_WIND - 1.0))
+		ctx.draw(&"grapple", {"at": at, "to": (a.mob as MobState).pos, "what": a.what, "seconds": 0.3})
+		return true
 	if a.what == &"face":
 		var m := AbilityMotion.climb_face(a.plan)
 		m.kind = &"haul"

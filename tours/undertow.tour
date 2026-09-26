@@ -1,0 +1,14 @@
+# The undertow (GEAR.md G4): the tide reaper's core in the magnet boots' socket.
+# The grapple takes hold of a machine ahead and hauls it in off its line.
+#   tools/tour.sh tours/undertow.tour --seed=1 --hour=11 --weather=clear:0 --fit=boots_magnet,mod_undertow
+coast calm
+place open_coast
+wait 1.0
+spawn harvester
+wait 0.6
+walkto mob 0.2
+shot 01-before-the-haul with mob:harvester
+tap ability_grapple
+await ability:grapple 2
+wait 0.12
+shot 02-hauled-in with mob:harvester

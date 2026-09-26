@@ -28,6 +28,9 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   A scan over a dart says its answer at once ("It takes and goes. Break its sight."):
   `tools/test.sh test_abilities:test_a_scan_says`, `tools/tour.sh tours/scan_dart.tour` (options in its header).
   The lattice at a gate (nothing against harvesters, strong against cutters): `tools/test.sh test_lattice_icelens:test_the_lattice_at_a_gate`.
+  Keeper powers (a keeper's core on the jig, a relic module): the undertow (reaper_core, hands) makes the grapple
+  haul a machine in, stalled, for double wind: `tools/test.sh test_undertow` (its bout prints),
+  `tools/tour.sh tours/undertow.tour` (options in its header).
 - 56_economy: `src/systems/56_economy.gd`, reached by `tools/tour.sh tours/gear-economy.tour`.
 
 ## How to reach it

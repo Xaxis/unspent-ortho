@@ -92,6 +92,11 @@ const MODS := {
 	&"mod_lattice": {"decision": "every blow throws a shock, and the whole kit runs hot",
 		"short": "every blow shocks",
 		"gives": [&"hot", &"loud"], "wants": [&"cool"]},
+	# The tide reaper's, turned (GEAR.md §5): `held`, so with a gyro's steady
+	# it is a planted grappler (PAIRS).
+	&"mod_undertow": {"decision": "your line takes hold of a machine and drags it in off its line, for twice the breath",
+		"short": "your line hauls them in",
+		"gives": [&"held"]},
 	# The crags' hush slate, worn: stone a scanner reads as nothing at all
 	# (docs/LANDSCAPES.md). It gives `quiet`, so a lattice rings through it
 	# the way it rings through a damper (PAIRS): one hides you, the other shouts.

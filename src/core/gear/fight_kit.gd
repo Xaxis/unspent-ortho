@@ -25,6 +25,11 @@ extends RefCounted
 ##                            among the other bodies within LATTICE_REACH, for
 ##                            LATTICE_CHARGES (hot: it wants a cool)
 ##   icelens  (mod_icelens)   "sight": the scan reads ICELENS_REACH as far
+##   undertow (mod_undertow)  "your line hauls them in": the grapple takes hold
+##                            of a machine ahead and drags it one body-length
+##                            in (FightSim.undertow), its tell broken and its
+##                            line lost for a stall; the haul costs
+##                            UNDERTOW_WIND x the grapple's wind
 
 const HARMONIC_DAMAGE := 1
 ## How long the phase coil's opener stops a machine's work. A broken tell
@@ -56,6 +61,8 @@ const LATTICE_CHARGES := 1
 const LATTICE_DAMAGE := 2
 ## How much further an icelens scan reads.
 const ICELENS_REACH := 1.5
+## A haul on a machine costs this many times the grapple's wind.
+const UNDERTOW_WIND := 2.0
 
 var harmonic := false
 var phase := false
@@ -67,6 +74,7 @@ var gyro := false
 var clamp := false
 var lattice := false
 var icelens := false
+var undertow := false
 
 
 ## The kit of these fitted ids (pieces and modules alike; only modules count).
@@ -82,6 +90,7 @@ static func of(ids: Array) -> FightKit:
 	k.clamp = ids.has(&"mod_clamp")
 	k.lattice = ids.has(&"mod_lattice")
 	k.icelens = ids.has(&"mod_icelens")
+	k.undertow = ids.has(&"mod_undertow")
 	return k
 
 

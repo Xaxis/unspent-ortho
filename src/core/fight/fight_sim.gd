@@ -1032,6 +1032,35 @@ func _break_tell(m: MobState) -> void:
 	emit(&"opened", {"mob": m})
 
 
+## Where a haul stops short of the player: an arm and a blade off, so what came
+## in is in reach of a swing and not on top of the one who pulled it.
+const UNDERTOW_GAP := 1.0
+
+
+## The undertow's haul (FightKit.undertow): a machine the line has taken hold of
+## is dragged one body-length toward the player, never nearer than UNDERTOW_GAP,
+## over ground it could walk; a tell it was winding up is broken and a charge
+## stopped, and it stands stalled as a jammed part stalls it (once per
+## STALL_EVERY_MS, as every stall). Anything not a machine is not hauled.
+func undertow(m: MobState) -> bool:
+	if m == null or not m.alive or m.removed or not m.machine:
+		return false
+	var to := hero.pos - m.pos
+	var room := to.length() - (m.radius + hero.radius + UNDERTOW_GAP)
+	var pull := minf(m.radius * 2.0, room)
+	if pull > 0.0:
+		var step := to.normalized() * pull
+		m.pos = query.move_body(m.pos, step, minf(m.radius, 0.45), climber(m.row), Swim.may_cross(m.row)) if query != null else m.pos + step
+	m.charging = false
+	_break_tell(m)
+	if now >= m.stall_ready_at:
+		m.stall_ready_at = now + FightRules.STALL_EVERY_MS
+		m.stun_until = maxf(m.stun_until, now + FightRules.STALL_MS)
+	emit(&"undertow", {"mob": m, "at": m.pos})
+	_wake(m)
+	return true
+
+
 ## A heavy blow into a guarded part the machine was not holding open: the
 ## turning blades take it, so it does no harm, but they jam, and the machine
 ## stands stalled as a blow in the part stalls it, its tell lost and its part

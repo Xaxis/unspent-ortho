@@ -93,10 +93,21 @@ func test_the_top_grades_do_not_hold_the_hardest_hit() -> void:
 		"something ordinary still hits harder than the relic")
 
 
+## One relic you hold in the hand, so it reads as one; every other relic is a
+## keeper's power (GEAR.md §5), made of that keeper's core, and each says what
+## only it does.
 func test_the_relic_is_one_thing_and_it_does_something_nothing_else_does() -> void:
 	var relics := GearTree.at_grade(Rarity.RELIC)
-	eq(relics.size(), 1, "one relic, so it reads as one: %s" % [relics])
-	var relic: StringName = relics[0]
+	var held: Array[StringName] = []
+	for id in relics:
+		if bool(Items.def(id).get("tool", false)):
+			held.append(id)
+			continue
+		check(Gear.is_module(id), "%s: a relic not held is a keeper's power, a module" % id)
+		check(Sources.keeper_of_core(GearTree.made_of(id)) != &"", "%s is made of a keeper's core" % id)
+		check(GearTree.unique(id) != "", "%s says what only it does" % id)
+	eq(held.size(), 1, "one relic in the hand, so it reads as one: %s" % [held])
+	var relic: StringName = held[0]
 	check(Rarity.unique(GearTree.grade(relic)), "a relic carries a unique")
 	check(GearTree.unique(relic) != "", "%s says what only it does" % relic)
 	# And the thing it does is really only its: nothing else you can HOLD grants it.

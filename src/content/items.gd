@@ -425,6 +425,11 @@ const DEFS := {
 		"icon": [&"scan_lens", &"lens", &"earth"], "fits": [&"head", &"body"], "resist": {&"em": 0.3, &"time_shear": 0.2}, "ability": &"scan"},
 	&"mod_lattice": {"name": "shock lattice", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"vest", &"plate", &"earth"], "fits": [&"tool"], "resist": {&"em": 0.25}},
+	# The tide reaper's core, wound into the grapple's glove (GEAR.md §5): the
+	# keeper that dragged bodies off the strand, turned. Hands only: it is the
+	# line's own hand. `held` is its tag (ModifierTable).
+	&"mod_undertow": {"name": "undertow", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"brine", &"earth"], "fits": [&"hands"], "resist": {&"magnetism": 0.3}},
 	# The crags' hush slate, lined into a hat, a coat or a pack: what it decides
 	# is the `quiet` tag (ModifierTable); the numbers are what stone that reads
 	# as nothing keeps off a body, and they are small on purpose.
