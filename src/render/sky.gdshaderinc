@@ -444,7 +444,13 @@ float sky_fog_at(vec3 world_pos, vec2 px, float band) {
 	float n = sky_fbm(p * vec2(0.17, 0.13) + vec2(41.0, 7.0)) * 0.8 + sky_noise(p * 0.45 + vec2(9.0, 2.0)) * 0.2;
 	float hollow = sky_ground_at(world_pos).a * SKY_GROUND_HEIGHT - world_pos.y;
 	n += clamp(hollow, -1.5, 1.0) * (0.14 + low) + (1.0 - step(0.36, world_pos.y)) * 0.06;
-	n += (sky_noise(vec2(px.x * 0.025, px.y * 0.22) + p * 0.02) - 0.5) * 0.07;
+	// The wisps are laid on the top view's axes but CONTINUOUSLY: `px` is
+	// floored to the grain, and a noise read at whole grain cells gave the
+	// bank's edge whole-cell steps. From above a cell is a pixel and nothing
+	// showed; at eye level near the camera a cell is many, and the edge was a
+	// staircase across the floor (the caves, 2026-09-26).
+	vec2 pc = vec2(dot(world_pos, vec3(0.7071, 0.0, -0.7071)), dot(world_pos, vec3(-0.5931, 0.5446, -0.5931))) / SKY_GRAIN;
+	n += (sky_noise(vec2(pc.x * 0.025, pc.y * 0.22) + p * 0.02) - 0.5) * 0.07;
 	float t1 = mix(0.7, 0.585, sky_fog.z);
 	float t2 = t1 + 0.1;
 	float h = sky_hash(px + vec2(61.0, 17.0));
