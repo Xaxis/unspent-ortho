@@ -1985,6 +1985,57 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		if (fract(b) < 0.06 && ink_vnoise(vec2(px.x * 0.09, floor(b))) > 0.5) {
 			c = mix(c, INK1, 0.7);
 		}
+		// THE DECADES. The loads are laid in years, a unit of wall to each, and
+		// every one was capped when it was full: a pale seam of ash and crushed
+		// concrete the next was tipped on. The deeper a decade, the harder it is
+		// packed and the darker; the top one is still loose and paler. Read from
+		// the floor of a slot, the wall is a dated record, not a heap.
+		float dec = wp.y + (ink_vnoise(vec2(px.x * 0.02, 41.0)) - 0.5) * 0.18;
+		float age = floor(dec);
+		c *= mix(0.72, 1.06, clamp((age + 1.0) / 6.0, 0.0, 1.0)) * (0.94 + 0.12 * ink_hash(vec2(age, 17.0)));
+		float cap = fract(dec);
+		if (cap < 0.045 && ink_vnoise(vec2(px.x * 0.05, age + 5.0)) > 0.3) {
+			c = mix(mix(ASH3, LINEN2, 0.3), c, smoothstep(0.02, 0.045, cap) * 0.6);
+		}
+		// THINGS BURIED IN IT, a face at a time: a server rack's front with its
+		// vent slots (and, after dark, one status light still on), a white-goods
+		// door with its handle, a car's nose with a round lamp. Each is a hand
+		// or two across and flush with the wall, rare enough that each is found.
+		float along = px.x * SKY_GRAIN;
+		vec2 bc = vec2(floor(along / 0.9), floor(wp.y / 0.7));
+		float bh = ink_hash(bc + vec2(29.0, 83.0));
+		if (bh > 0.9) {
+			vec2 lp = vec2(fract(along / 0.9), fract(wp.y / 0.7));
+			vec2 q = abs(lp - 0.5);
+			float kind2 = ink_hash(bc + 7.0);
+			if (max(q.x / 0.36, q.y / 0.32) < 1.0) {
+				if (kind2 < 0.4) {
+					// A rack: dark plate ruled with vent slots, a lit point low.
+					c = mix(INK2, SLATE1, 0.4);
+					if (fract(lp.y * 9.0) < 0.3 && q.x < 0.3) {
+						c = INK1;
+					}
+					if (length(lp - vec2(0.26, 0.28)) < 0.03) {
+						c = vec3(0.55, 0.9, 0.35);
+						emit += c * 2.0 * sky_view.y * step(0.4, fract(TIME * 0.3 + bh * 13.0));
+					}
+				} else if (kind2 < 0.75) {
+					// A white-goods door: yellowed enamel, a dark gasket rim and handle.
+					c = mix(mix(LINEN2, ASH3, 0.35), RUST1, 0.2 * ink_vnoise(lp * 6.0 + bh));
+					if (max(q.x / 0.36, q.y / 0.32) > 0.9 || (abs(lp.x - 0.78) < 0.02 && q.y < 0.14)) {
+						c = INK2;
+					}
+				} else {
+					// A car's nose: dark paint gone to rust, a round lamp and the grille.
+					c = mix(mix(RUST1, INK2, 0.5), RUST2, 0.4 * ink_vnoise(lp * 5.0 + bh));
+					if (length(lp - vec2(0.3, 0.55)) < 0.08) {
+						c = mix(RIME2, LINEN3, 0.4);
+					} else if (lp.x > 0.45 && lp.x < 0.8 && q.y < 0.1 && fract(lp.x * 22.0) < 0.4) {
+						c = INK1;
+					}
+				}
+			}
+		}
 		// Seventy years: everything the colour of what it used to be.
 		c = mix(c, vec3(dot(c, vec3(0.3, 0.59, 0.11))), 0.3);
 		// Cable hung off the lip in loops.
