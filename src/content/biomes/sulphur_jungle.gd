@@ -160,9 +160,12 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.VENT
 		return PropKind.VENT_CAP if r < 0.125 else BiomeScatter.NONE
 	if g == Ground.GRASS:
-		if r < 0.28:
+		# The thickest canopy in the game, held against the pines
+		# (test_world_gen_surface): at 0.28 seed 42's jungle stood at 101 trees
+		# per 1000 tiles against its pinewood's 115.
+		if r < 0.31:
 			return PropKind.BROADLEAF
-		return PropKind.BUSH if r < 0.34 else BiomeScatter.NONE
+		return PropKind.BUSH if r < 0.37 else BiomeScatter.NONE
 	if g == Ground.MUD:
 		return PropKind.REEDS if r < 0.05 else BiomeScatter.NONE
 	return BiomeScatter.NONE
