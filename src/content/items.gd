@@ -374,6 +374,10 @@ const DEFS := {
 		"icon": [&"boathook", &"slate", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [120, 90, 150, 180], "reach": 2.4, "width": 0.7, "dmg": 8, "knock": 3.5, "knock_ms": 160},
 	&"lance_die": {"name": "stamped lance", "bulk": 3.0, "group": &"tool", "tier": &"mended", "sockets": 3,
 		"icon": [&"boathook", &"ink", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [120, 90, 150, 180], "reach": 2.4, "width": 0.7, "dmg": 8, "knock": 3.5, "knock_ms": 160},
+	# The lance built on a casting out of the burning's foundry (recipes
+	# `lance_cast`). Every number is the lance's; a third socket for the prime.
+	&"lance_cast": {"name": "cast lance", "bulk": 3.0, "group": &"tool", "tier": &"mended", "sockets": 3,
+		"icon": [&"boathook", &"plate", &"earth"], "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0, "wick": 1, "swing": [120, 90, 150, 180], "reach": 2.4, "width": 0.7, "dmg": 8, "knock": 3.5, "knock_ms": 160},
 	# The glass desert's lance: a skater's blade bound to a lance round a
 	# fulgurite core (docs/LANDSCAPES.md). Every number is the lance's.
 	&"lance_glass": {"name": "glass lance", "bulk": 2.5, "group": &"tool", "tier": &"mended", "sockets": 2,
@@ -458,6 +462,10 @@ const DEFS := {
 	&"vane_true": {"name": "trued vane", "bulk": 1.5, "group": &"found", "stuff": &"found", "icon": [&"broad", &"plate", &"lens"]},
 	&"dredge_screw": {"name": "dredge screw", "bulk": 2.5, "group": &"found", "stuff": &"found", "icon": [&"hammer", &"plate", &"lens"]},
 	&"fab_jig": {"name": "fabricator jig", "bulk": 3.0, "group": &"found", "stuff": &"found", "icon": [&"brace", &"plate", &"lens"]},
+	# Out of the burning's foundry (Interiors.LOOT `foundry`) and nowhere else:
+	# the cast body a machine's lance is built on, still dark from the quench,
+	# and what a person's cast lance is built on (recipes `lance_cast`).
+	&"lance_casting": {"name": "lance casting", "bulk": 3.0, "group": &"found", "stuff": &"found", "icon": [&"beam", &"plate", &"ink"]},
 	# Off the glass desert's skater (EliteStock.SPOILS): a runner blade ground
 	# to ride glass, and the edge a glass lance is bound round.
 	&"skate_blade": {"name": "skate blade", "bulk": 1.5, "group": &"found", "stuff": &"found", "icon": [&"blade", &"plate", &"lens"]},

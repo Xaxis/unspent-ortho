@@ -171,7 +171,13 @@ func _cover_now(p: Vector2, m: Moment) -> float:
 	_cover_at = p
 	_cover_lamp = m.lamp_lit
 	_cover_crouched = m.crouched
-	_cover = Cover.at(game.world, game.query, p, m.crouched, m.nightfall() * Senses.DARKEST, m.lamp_lit)
+	# The night, or a room's own dark where its light does not fall (21_doors
+	# `room_dark`): whichever is darker.
+	var dark := m.nightfall() * Senses.DARKEST
+	for sys: GameSystem in game.systems:
+		if sys.has_method(&"room_dark"):
+			dark = maxf(dark, float(sys.call(&"room_dark", p)))
+	_cover = Cover.at(game.world, game.query, p, m.crouched, dark, m.lamp_lit)
 	return _cover
 
 

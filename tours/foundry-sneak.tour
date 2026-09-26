@@ -1,0 +1,23 @@
+# INTO THE BURNING'S FOUNDRY QUIETLY (docs/interiors, 21_doors `room_dark` and
+# `_screens`): the pour is the only light, and it is what shows you; the cooling
+# racks stand to the ceiling between the line and the south wall, and behind
+# them it is darker than any night and out of both turrets' lines. So down the
+# hatch crouched, under the sweep of the turret over the furnace, along behind
+# the racks, and into the store at the far end while the one over the quench
+# looks away: at the box, nothing in the foundry has noticed the player.
+#
+#   tools/tour.sh tours/foundry-sneak.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is the foundry just come down into, crouched. 02 is at the store's box,
+# having kept behind the racks and waited out the sweeps (`unnoticed`).
+coast calm
+near door:foundry
+await door 5
+hold crouch
+press use 0.1
+await inside:foundry 5
+wait 0.3
+shot 01-down-the-hatch-crouched with inside:foundry,mob:warden
+walkto strongbox 60
+wait 0.4
+shot 02-at-the-store-unseen with inside:foundry,box_near,unnoticed
