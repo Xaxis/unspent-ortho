@@ -119,6 +119,17 @@ const FIGURE_FILL_COLOR := Color(1.0, 0.8, 0.6)
 ## lantern matters.
 const SUN_NOON := 1.17
 const MOON_NIGHT := 0.115
+## How much of the full moon's light a new moon leaves: the sky's own glow and
+## the stars. A new-moon night is truly dark where the land has no light of its
+## own; the player's fill (FIGURE_FILL) keeps a body readable whatever the moon.
+const MOON_NEW := 0.12
+## How much of the night's AMBIENT the moon carries: the rest is the sky itself.
+const MOON_AMBIENT := 0.4
+
+
+## How much of the full moon's light there is at phase `p`: 1 full, MOON_NEW new.
+static func moon_share(p: float) -> float:
+	return lerpf(MOON_NEW, 1.0, 0.5 + 0.5 * cos(TAU * p))
 ## The sun's angular size, in degrees. Real penumbra: a fence post has a crisp
 ## shadow at its foot and a soft one four tiles away, which no filter can fake
 ## and which is most of what says a shadow is cast by something standing up.
@@ -317,6 +328,9 @@ var weather_tint := Vector3.ONE
 var region_tint := Vector3.ONE
 ## 0..1 through the autumn (Weather.season_turn).
 var season_turn := 0.0
+## Where the moon is in its month (Weather.moon_phase): 0 full, 0.5 new. Set by
+## 10_sky; the moon's light and its disc follow it (`moon_share`).
+var moon_phase := 0.0
 ## Cloud shadows: xy drift offset in tiles, z coverage 0..1, w strength 0..1.
 var clouds := Vector4.ZERO
 ## Fog banks: xy drift offset, z density 0..1, w spare.
@@ -750,7 +764,8 @@ func compose() -> void:
 	# it, not what is left of the day. A roof still takes it all.
 	var sun_lit := minf(sun_share(hour), 1.0 - closed)
 	var keep := lerpf(1.0, _warm_keep(tint_at(hour)), sun_lit if fposmod(hour, 24.0) > EVENING_FROM else 0.0)
-	sun.light_energy = lerpf(MOON_NIGHT * ns, SUN_NOON * level * keep * glow * lerpf(1.0, LID_SUN, shut) * (1.0 - orbit_shade), sun_lit) \
+	var moon := MOON_NIGHT * ns * moon_share(moon_phase)
+	sun.light_energy = lerpf(moon, SUN_NOON * level * keep * glow * lerpf(1.0, LID_SUN, shut) * (1.0 - orbit_shade), sun_lit) \
 		* float(trim.sun)
 	# THE AIR IS LIT ON THE DAY'S CURVE, NOT THE SUN'S. Looking down, the volumetric
 	# bank over the land scatters the sun back into every pixel, and a low amber
@@ -758,7 +773,7 @@ func compose() -> void:
 	# over the dark sea (canon 12). So the air takes only what the day's curve
 	# would have given it; where the horizon is seen the air IS the golden hour,
 	# and takes it all.
-	var day_energy := lerpf(MOON_NIGHT * ns, SUN_NOON * level * glow * lerpf(1.0, LID_SUN, shut) * (1.0 - orbit_shade), lit) * float(trim.sun)
+	var day_energy := lerpf(moon, SUN_NOON * level * glow * lerpf(1.0, LID_SUN, shut) * (1.0 - orbit_shade), lit) * float(trim.sun)
 	var air_share := clampf(day_energy / maxf(sun.light_energy, 0.001), 0.0, 1.0)
 	sun.light_volumetric_fog_energy = lerpf(air_share, 1.0, horizon_share(_cam()))
 	# A low sun is seen through more air, so its edge is softer. Real penumbra,
@@ -906,7 +921,7 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	# where the lid is torn. A landscape still says its own level here — `ns` is
 	# on both ends now, so `night_sky` reaches the day as far as the lid is shut,
 	# and a landscape that wanted a brighter night gets a brighter street with it.
-	var open_sky := lerpf(DAY_AMBIENT, NIGHT_AMBIENT * ns, nightly)
+	var open_sky := lerpf(DAY_AMBIENT, NIGHT_AMBIENT * ns * lerpf(1.0 - MOON_AMBIENT, 1.0, moon_share(moon_phase)), nightly)
 	e.ambient_light_energy = lerpf(open_sky, LID_AMBIENT * ns, shut) \
 		* lerpf(1.0, 0.45, closed) * float(trim.ambient)
 	# The air takes its colour from the sky, so distance separates by atmosphere.
@@ -1180,6 +1195,8 @@ func _see_sky(e: Environment, sm: ProceduralSkyMaterial, hour: float, nightly: f
 	var ml := eye_light(hour)
 	var moon := Basis.from_euler(Vector3(deg_to_rad(-ml.y), deg_to_rad(ml.x), 0.0)).z
 	_dome_set(&"dome_moon_dir", moon)
+	# Its phase, for the disc's terminator: 0 full, 0.5 new.
+	_dome_set(&"dome_moon_phase", moon_phase)
 	# The glow belongs to a sun near the horizon: from a little above it until
 	# well after it has gone, and not at all in the dead of night.
 	# From the golden hour (the drawn sun under about 38 degrees), not only once

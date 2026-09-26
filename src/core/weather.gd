@@ -367,6 +367,19 @@ static func light_level(hour: float) -> float:
 
 
 ## 0 at the start of the autumn, 1 once the light has fully drained.
+## THE MOON'S MONTH, in game days, and the world minute it is full at: 23:00
+## on the first day, so the first night of every game (and every frame shot on
+## day 1) is the full moon it always was.
+const LUNAR_DAYS := 12.0
+const MOON_FULL_AT := 23.0 * 60.0
+
+
+## Where the moon is in its month at world minute `minutes`: 0 full, 0.5 new,
+## back to full at 1. Time, not worldgen: nothing a seed makes reads it.
+static func moon_phase(minutes: float) -> float:
+	return fposmod((minutes - MOON_FULL_AT) / (LUNAR_DAYS * 1440.0), 1.0)
+
+
 static func season_turn(minutes: float) -> float:
 	return clampf(minutes / 1440.0 / SEASON_DAYS, 0.0, 1.0)
 

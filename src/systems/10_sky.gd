@@ -303,6 +303,7 @@ func _update(delta: float, snap: bool) -> void:
 	sky.region_tint = region
 	sky.weather_tint = look.tint
 	sky.season_turn = Weather.season_turn(minutes)
+	sky.moon_phase = Weather.moon_phase(minutes)
 	sky.clouds = Vector4(_cloud_drift.x, _cloud_drift.y, float(look.cover), float(look.cloud))
 	sky.fog = Vector4(_fog_drift.x, _fog_drift.y, clampf(float(look.fog) + float(look.mist), 0.0, 1.0), 0.0)
 	sky.flash = _flash
