@@ -1241,8 +1241,7 @@ const FRAGMENTS := {
 	},
 	# --- the saw hall under the pinewood's works (ROOMS: saw_hall) ------------
 	# Colour: the machines take the wood by drawing and by the clock, and keep
-	# the hours out of inertia, never regard (humans are ants). Leads only
-	# (docs/story/UNDER_THE_STONES.md): none answers, none names a gate. No beats.
+	# the hours out of inertia, never regard (humans are ants). No beats.
 	&"saw_count": {
 		"kind": &"terminal", "title": "the saw's panel", "lands": [],
 		"lines": [
@@ -1273,12 +1272,12 @@ const FRAGMENTS := {
 		"lines": [
 			"  TIMBER ......... GRADE 1, SEASONED",
 			"  CUT TO ......... DRAWING",
-			"  DRAWING DATED .. 02.2029",
+			"  DRAWING ........ NOT HELD LOCALLY",
 			"  QUANTITY ....... AS DRAWN",
 			"",
-			"It gives no place. On the stack: joists,",
-			"rafters, a door frame. The same house, cut",
-			"again and again.",
+			"It gives no place. On the stack, baulks",
+			"longer than the hall, squared to a size",
+			"that would pass no door you have seen.",
 		],
 	},
 	&"dock_home": {
