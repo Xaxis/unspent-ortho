@@ -46,6 +46,9 @@ render_mode cull_back;
 // six points as (x, ground y, z, reach in tiles), reach 0 for an unused slot.
 // Leaves and crowns above a point thin out to stipple and then to nothing
 // within its reach, so the player and any body they can see are never covered.
+// Roughness a cave wall gains once its ripples are under a pixel (specular
+// aliasing; the M_STRATA_CAVE branch below says why).
+const float CAVE_FAR_ROUGH = 0.5;
 const int CROWN_CLEAR = 6;
 uniform vec4 crown_clear[CROWN_CLEAR];
 // How far above a point's own ground a leaf has to be before it is in the way.
@@ -2113,6 +2116,13 @@ void fragment() {
 	} else if (m == M_STRATA_CAVE) {
 		// A cave wall runs wet in streaks: shinier where water is on it now.
 		rough_add -= smoothstep(0.55, 0.8, ink_vnoise(vec2(world_pos.x + world_pos.z, world_pos.y * 0.2) * 1.3)) * 0.2;
+		// But its curtains ripple finer than a pixel once the wall is off a way
+		// (matter_height, a ripple about 0.7 across), and a near-mirror over
+		// ripples a pixel cannot hold catches the light at random: the wall
+		// shimmered in bright broken streaks at every distance but the nearest.
+		// So the sheen widens with the pixel's own footprint on the wall, and a
+		// far wall is wet satin while a near one keeps its shine.
+		rough_add += smoothstep(0.004, 0.035, length(fwidth(world_pos))) * CAVE_FAR_ROUGH;
 	} else if (m == M_STRATA_TIDE) {
 		// The weed at a wall's foot is slick and never dries.
 		float wall_dt = (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y;
