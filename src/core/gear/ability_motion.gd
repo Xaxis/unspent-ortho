@@ -128,7 +128,7 @@ static func climb_face(p: Climb.Plan) -> AbilityMotion:
 	m.kind = &"climb"
 	m.climb = p
 	m.from = p.from
-	m.to = p.from if p.slides else p.top
+	m.to = p.on_face if p.slides else p.top
 	m.dir = p.dir
 	m.seconds = p.seconds
 	m.from_height = p.from_height

@@ -218,6 +218,11 @@ func _start_motion(m: AbilityMotion) -> void:
 		if game.player.model != null:
 			game.player.model.play_action(&"climb", m.climb.up_seconds() + 0.05)
 		_drop_route()
+		# Over the shoulder the eye goes behind the climber, onto the face they
+		# are climbing, not left looking along the drop at their back: the
+		# crowded shoulder (Shoulder.crowd) then takes it in against the rock.
+		if game.camera != null and game.camera.shoulder:
+			game.camera.shoulder_yaw = ShoulderView.yaw_behind(m.dir.angle())
 	if m.kind == &"glide":
 		_gliding = true
 		_ensure_wing()
@@ -397,6 +402,10 @@ func _land_climb(m: AbilityMotion) -> void:
 		game.player.sim.hero_level = -1
 	var at := game.player.position
 	var p := m.climb
+	# Put somewhere else before the top (a warp, a carry): the climb is over, and
+	# so is the climbing.
+	if not m.finished and game.player.model != null:
+		game.player.model.play_action(&"", 0.0)
 	if p == null or not p.slides:
 		Events.sfx.emit(&"jump_land", at)
 		MobFx.puff(game, at, Vector2.ZERO, Palette.STONE[4], 0.3, int(Time.get_ticks_msec()))
@@ -424,6 +433,7 @@ const CLIMB_SLID_LINE := "Your arms give out, and the face puts you back where y
 ## none, so the difference is learnt by looking. A ribbon that faces the camera,
 ## so it reads over the shoulder as well as from above.
 const ROUTE_REACH := 2.2
+const ShoulderView := preload("res://src/core/view/shoulder.gd")
 const ROUTE_BEAT := 0.2
 var _route: MeshInstance3D = null
 var _route_at := 0.0

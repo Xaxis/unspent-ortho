@@ -37,10 +37,27 @@ func test_a_rock_face_is_climbed_and_turf_is_not() -> void:
 	eq(p.reached, FACE, "all of them on full breath")
 	check(not p.slides, "and over the top")
 	eq(p.wind, FACE * Climb.WIND_PER_LEVEL, "at %d breath a level" % int(Climb.WIND_PER_LEVEL))
-	lt(absf(p.seconds - (FACE / Climb.RATE + Climb.LIP_SECONDS)), 1e-4, "a level every %.2f s" % (1.0 / Climb.RATE))
+	lt(absf(p.seconds - (Climb.APPROACH_SECONDS + FACE / Climb.RATE + Climb.LIP_SECONDS)), 1e-4, "a level every %.2f s" % (1.0 / Climb.RATE))
 	eq(w.level_at(floori(p.top.x), floori(p.top.y)), 2 + FACE, "the top is on the shelf")
 	check(Climb.plan(w, q, Vector2(20.5, TURF - 0.5), Vector2.DOWN, FightRules.WIND) == null, "a turf bank of the same height gives nothing to hold")
 	check(Climb.plan(w, q, Vector2(20.5, 20.5), Vector2.RIGHT, FightRules.WIND) == null, "and open ground is no face")
+
+
+## The climber is against the rock, arms on it: from the first level to the
+## top, the body's middle is a hand's reach from the face, never standing back
+## over the ground it climbed from.
+func test_the_climber_is_against_the_rock() -> void:
+	var w := _world()
+	var q := WorldQuery.new(w)
+	var p := Climb.plan(w, q, Vector2(LIP - 0.9, 20.5), Vector2.RIGHT, FightRules.WIND)
+	var worst := 0.0
+	var t := Climb.APPROACH_SECONDS
+	while t < p.up_seconds():
+		var at: Array = p.at(t)
+		worst = maxf(worst, absf(float(LIP) - (at[0] as Vector2).x))
+		t += 0.05
+	lt(worst, Tuning.PLAYER_RADIUS + 0.12, "a hand's reach off the face at most, all the way up (%.2f tiles)" % worst)
+	gt(worst, Tuning.PLAYER_RADIUS - 0.05, "and not inside it")
 
 
 func test_short_of_breath_the_arms_give_out_and_a_long_fall_hurts() -> void:
@@ -51,7 +68,7 @@ func test_short_of_breath_the_arms_give_out_and_a_long_fall_hurts() -> void:
 	check(p.slides, "and come back down")
 	eq(p.fall_damage, 0, "three levels is a jump's drop: no harm")
 	var end: Array = p.at(p.seconds)
-	lt((end[0] as Vector2).distance_to(p.from), 0.01, "back where it started")
+	lt((end[0] as Vector2).distance_to(p.on_face), 0.01, "back at the foot of the face")
 	eq(Climb.fall_damage(4), 1, "four levels down: one")
 	eq(Climb.fall_damage(6), 1, "six: still one")
 	eq(Climb.fall_damage(7), 2, "seven: two")

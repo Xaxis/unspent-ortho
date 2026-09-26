@@ -47,11 +47,18 @@ const SLIDE_SECONDS := 0.5
 const REACH := 0.9
 ## The step along the heading the face is looked for in.
 const PROBE := 0.05
+## Where a climber's middle is from the rock: a hand's reach in, so the arms are
+## on the face and the body reads as against it, never hanging over the drop
+## behind. Stepped to at the start, over APPROACH_SECONDS.
+const ON_FACE := Tuning.PLAYER_RADIUS + 0.05
+const APPROACH_SECONDS := 0.15
 
 
 class Plan:
 	extends RefCounted
 	var from := Vector2.ZERO
+	## Where the body climbs: ON_FACE out from the rock, straight in from `from`.
+	var on_face := Vector2.ZERO
 	var top := Vector2.ZERO
 	var dir := Vector2.ZERO
 	var from_level := 0
@@ -67,21 +74,25 @@ class Plan:
 	var fall_damage := 0
 	var seconds := 0.0
 
+	## Seconds from the press until the top (or until the arms give out): the
+	## step in to the rock, then the climb.
 	func up_seconds() -> float:
-		return float(reached) / Climb.RATE
+		return Climb.APPROACH_SECONDS + float(reached) / Climb.RATE
 
 	## [position, height in the world, level the body is at] `t` seconds in.
 	func at(t: float) -> Array:
+		if t < Climb.APPROACH_SECONDS:
+			return [from.lerp(on_face, t / Climb.APPROACH_SECONDS), from_height, from_level]
 		var up := up_seconds()
 		if t < up:
-			var lv := t * Climb.RATE
-			return [from, from_height + lv * WorldData.STEP, from_level + floori(lv)]
+			var lv := (t - Climb.APPROACH_SECONDS) * Climb.RATE
+			return [on_face, from_height + lv * WorldData.STEP, from_level + floori(lv)]
 		var u := clampf((t - up) / (Climb.SLIDE_SECONDS if slides else Climb.LIP_SECONDS), 0.0, 1.0)
 		var peak := from_height + float(reached) * WorldData.STEP
 		if slides:
-			# Down the face faster and faster, to where it started.
-			return [from, lerpf(peak, from_height, u * u), from_level + floori(float(reached) * (1.0 - u * u))]
-		return [from.lerp(top, u), lerpf(peak, top_height, u), to_level]
+			# Down the face faster and faster, to its foot.
+			return [on_face, lerpf(peak, from_height, u * u), from_level + floori(float(reached) * (1.0 - u * u))]
+		return [on_face.lerp(top, u), lerpf(peak, top_height, u), to_level]
 
 
 ## Is this ground climbable?
@@ -113,7 +124,7 @@ static func face(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector
 		var tt := Vector2i(floori(top.x), floori(top.y))
 		if world.level_at(tt.x, tt.y) != lv or (query != null and not query.standable(tt.x, tt.y)):
 			return {}
-		return {"foot": from, "top": top, "from_level": from_level, "to_level": lv,
+		return {"foot": from, "top": top, "wall": p - d * PROBE * 0.5, "from_level": from_level, "to_level": lv,
 			"from_height": world.height_at(from), "top_height": world.height_at(top)}
 	return {}
 
@@ -126,6 +137,10 @@ static func plan(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector
 	p.from = from
 	p.top = f.top
 	p.dir = dir.normalized()
+	# In to the rock along the heading, never past where it stands already.
+	var wall: Vector2 = f.wall
+	var in_to := wall - p.dir * ON_FACE
+	p.on_face = in_to if (in_to - from).dot(p.dir) > 0.0 else from
 	p.from_level = f.from_level
 	p.to_level = f.to_level
 	p.from_height = f.from_height
