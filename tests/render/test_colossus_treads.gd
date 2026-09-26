@@ -124,6 +124,15 @@ func test_a_foot_about_to_land_is_warned_of_first() -> void:
 		eq(int(soon[0].leg), int(row.leg), "that leg")
 	eq(Treads.landing_soon(d, r, down - lead * 3.0, lead).size(), 0, "not while it is still high in its swing")
 	eq(Treads.landing_soon(d, r, down + 1.0, lead).size(), 0, "nor once it is down")
+	# Asked for the moment it comes low enough to stop bodies, it answers ahead
+	# of THAT: a warning that came after the push would warn of nothing.
+	var below := 300.0
+	var cross := down - 30.0
+	while cross < down and float((Treads.over(d, r, cross)[0] as Dictionary).height) >= below:
+		cross += 0.05
+	lt(cross, down, "it comes below %.0f before it lands" % below)
+	eq(Treads.landing_soon(d, r, cross - lead * 0.5, lead, below).size(), 1, "half the warning before it stops bodies, it is warned of")
+	eq(Treads.landing_soon(d, r, cross + 0.5, lead, below).size(), 0, "not once it already does")
 
 
 ## The near foot and the far body are one shape where they meet: the stub's

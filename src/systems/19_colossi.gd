@@ -293,10 +293,11 @@ var _tread_last := NAN
 var tread_landings := 0
 ## The shock running now: [where (tile space), real seconds since the landing].
 var _shock: Array = []
-## A PAD THROWS ITS SHADOW BEFORE IT LANDS (DESIGN 5c): this many real seconds
-## ahead, every pad of a foot about to come down in a tread near the player
-## marks the ground it will cover, growing dark as it comes, so nobody walks in
-## under one. A foot never hurts anybody; the shadow is what says "not here".
+## A PAD THROWS ITS SHADOW BEFORE IT COMES (DESIGN 5c): this many real seconds
+## before a foot coming down in a tread near the player is low enough to stop
+## bodies (BLOCK_FROM, when one caught under it is put out), every pad marks
+## the ground it will cover, and the ground inside darkens all the way down to
+## the landing. A foot never hurts anybody; the shadow is what says "not here".
 const WARN_SECONDS := 1.5
 ## How near the player a pad is marked: the land in the play camera's frame and
 ## a little past it.
@@ -358,19 +359,33 @@ func _warn(m: float) -> void:
 	var lead := WARN_SECONDS * (game.clock.rate if game.clock != null else Tuning.MINUTES_PER_SECOND)
 	for i in view.defs.size():
 		var d: RefCounted = view.defs[i]
-		for o: Dictionary in Treads.landing_soon(d, view.routes[i], m, lead):
+		for o: Dictionary in Treads.landing_soon(d, view.routes[i], m, lead, BLOCK_FROM):
 			var key := i * 3 + int(o.leg)
 			if _warned.has(key):
 				continue
 			_warned[key] = true
 			var t: Vector4 = o.tread
+			var seconds := _until_down(d, view.routes[i], m, int(o.leg)) / maxf(lead / WARN_SECONDS, 1e-3)
 			for p: Vector3 in Treads.pads(d, Vector2(t.x, t.z), t.w):
 				var at := Vector2(p.x, p.y)
 				if at.distance_to(game.player.pos) > WARN_REACH + p.z:
 					continue
-				MobFx.tell_drop(game, game.world.to_3d(at), Palette.INK[1], p.z, WARN_SECONDS)
+				MobFx.tell_shade(game, game.world.to_3d(at), Palette.INK[1], p.z, seconds,
+					game.camera != null and game.camera.shoulder)
 				warnings += 1
 				_marked = true
+
+
+## World minutes from `m` until leg `leg` of this walk stands in its tread
+## (found by stepping the clock; asked once a landing).
+func _until_down(d: RefCounted, route: RefCounted, m: float, leg: int) -> float:
+	var dt := 0.0
+	while dt < 120.0:
+		for o: Dictionary in Treads.over(d, route, m + dt):
+			if int(o.leg) == leg and bool(o.planted):
+				return dt
+		dt += 0.1
+	return 0.0
 
 
 ## Everything standing where a pad is now: crushed, for good. Asked again the

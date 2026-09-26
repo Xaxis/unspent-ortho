@@ -220,6 +220,25 @@ vec4 tell_drop(vec2 p, vec2 px, float pr) {
 	return inked(outer, MARK_HALO);
 }
 
+// A shadow thrown from far above (a colossus's pad): the whole disc inside a
+// fine dashed ring, filled by an ordered stipple that thickens with progress
+// from nothing to three pixels in four, so the ground under it dims all at once
+// and ever more, rather than a spot growing in the middle. Ink, never a tint.
+vec4 tell_shade(vec2 p, vec2 px, float pr) {
+	float r = length(p);
+	float pw = max(fwidth(r), 1e-4) * PEN;
+	float R = 1.0 - pw * 3.0;
+	float seg = floor((atan(p.y, p.x) / TAU + 0.5) * 96.0);
+	float outer = mod(seg, 2.0) > 0.5 ? 1e3 : abs(r - R) / pw - 1.0;
+	vec2 c = mod(px, 4.0);
+	int i = int(c.x) + int(c.y) * 4;
+	const float B[16] = float[](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
+	if (r < R && (B[i] + 0.5) / 16.0 < 0.75 * pr) {
+		return ink_out();
+	}
+	return inked(outer, MARK_HALO);
+}
+
 // Plate: the pen's sound marks, (( )), and two or three cold bright pixels. The
 // arcs stand OUTSIDE the plate they rang off, and the sparks are pixels, not
 // blobs: this mark says "that was armour", it does not hide the armour.
@@ -455,6 +474,7 @@ void fragment() {
 	else if (mode == 9) { o = tell_ring(p, pr); }
 	else if (mode == 10) { o = tell_line(p, pr); }
 	else if (mode == 11) { o = tell_drop(p, px, pr); }
+	else if (mode == 12) { o = tell_shade(p, px, pr); }
 	if (o.a < 0.5) {
 		discard;
 	}
@@ -578,6 +598,7 @@ const VAPOUR := 8
 const TELL_RING := 9
 const TELL_LINE := 10
 const TELL_DROP := 11
+const TELL_SHADE := 12
 
 ## World units per screen pixel of the BASE (1920x1080; the fight system keeps it
 ## to the camera's own, `40_fight._keep_texel`). Marks are never smaller on screen
@@ -692,6 +713,8 @@ static func _shader(key: StringName) -> Shader:
 			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _BILLBOARD + _MARKS
 		&"flat":
 			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _FLAT + _MARKS
+		&"ground":
+			s.code = "shader_type spatial;\n" + (_COMMON % "") + open + _FLAT + _MARKS
 		&"swing":
 			s.code = "shader_type spatial;\n" + open + _SWING
 		&"line":
@@ -733,7 +756,7 @@ static func _mark(parent: Node, at: Vector3, size: float, mode: int, shader: Str
 	parent.add_child(mi)
 	mi.global_position = at
 	mi.scale = Vector3.ONE * size * 0.5
-	if shader == &"flat":
+	if shader == &"flat" or shader == &"ground":
 		mi.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
 	return mi
 
@@ -980,6 +1003,17 @@ static func tell_drop(parent: Node, at: Vector3, col: Color, radius: float, seco
 	if not _ok(parent):
 		return
 	_run(_mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_DROP, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col), seconds)
+
+
+## A shadow from far above on the ground (a colossus's pad, 19_colossi): a
+## dashed ring the size of what is coming, the whole ground inside it dimming
+## over `seconds` as it comes down. `eye_level`: seen from the shoulder, where a
+## mark tens of tiles wide drawn over everything would lie across the sky and
+## the body, so it is depth-tested and lies on the land it covers.
+static func tell_shade(parent: Node, at: Vector3, col: Color, radius: float, seconds: float, eye_level: bool = false) -> void:
+	if not _ok(parent):
+		return
+	_run(_mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_SHADE, &"ground" if eye_level else &"flat", int(at.x * 13.0 + at.z * 7.0), col, col), seconds)
 
 
 ## A blow that rang off plate: sound marks and a few cold bright pixels.
