@@ -1,0 +1,24 @@
+# The middens' slot canyons (GenSlots, GEN 34): from above at noon, then on a
+# slot floor over the shoulder, turned four ways, walls on both hands.
+#   tools/tour.sh tours/lands_slots.tour --seed=1 --weather=clear:0
+coast calm
+hour 12
+place typical_the_middens
+wait 3.0
+shot slots-above with land:the_middens
+place slot_the_middens
+wait 2.0
+shot slots-floor-above with land:the_middens
+tap shoulder
+await shoulder 3
+wait 1.0
+shot slots-floor-0 with land:the_middens
+mouse 400,0 0.6
+wait 0.8
+shot slots-floor-1 with land:the_middens
+mouse 400,0 0.6
+wait 0.8
+shot slots-floor-2 with land:the_middens
+mouse 400,0 0.6
+wait 0.8
+shot slots-floor-3 with land:the_middens

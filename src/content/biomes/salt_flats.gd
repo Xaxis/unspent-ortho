@@ -277,9 +277,12 @@ static func _works(L: Object) -> void:
 	var d: Vector2 = L.d
 	var nrm: Vector2 = L.nrm
 	var floors: Array = [Ground.SALT, Ground.PAN, Ground.GRAVEL, Ground.SAND]
-	# Pan batteries: two or three pans side by side, each a ruled rectangle.
+	# Pan batteries: two or three pans side by side, each a ruled rectangle,
+	# well inside the flat (blend 0.2): a pan half out in the next landscape is
+	# a gate nobody reads as the flats' own. Seed 1 at GEN 34 laid all five
+	# gates at blend 0.07-0.40 when the search allowed 0.4.
 	for n in GenWorks._n(c, 2.0):
-		var p := GenWorks._site(L, 8, 1, floors, 34.0, 700, 0.4)
+		var p := GenWorks._site(L, 8, 1, floors, 34.0, 700, 0.2)
 		if p.x < 0:
 			continue
 		var at := Vector2(p) + Vector2(0.5, 0.5)

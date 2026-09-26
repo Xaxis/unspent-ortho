@@ -183,7 +183,7 @@ const UNKNOWN := "unknown"
 ##     and its decks laid on the ground (`decks_grounded`). The six parity
 ##     landscapes take none of it, so `test_parity` stands; every world holding
 ##     one of these moves.
-const GEN := 33
+const GEN := 34
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
