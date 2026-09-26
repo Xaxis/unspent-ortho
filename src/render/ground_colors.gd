@@ -165,6 +165,9 @@ const CAST_FLOOR := 100
 ## The machine city's deck: plate laid in an exact running bond, fastened in
 ## exact rows, with lit guide lines for the traffic it was built for (101).
 const MACHINE_DECK := 101
+## The sulphur jungle's crust round its vents: sinter terraces laid by the hot
+## water, lobed rims stepping down, sulphur crystals, iron-orange runs (102).
+const SULPHUR := 102
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array

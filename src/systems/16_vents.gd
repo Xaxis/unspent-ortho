@@ -29,7 +29,10 @@ func _process(delta: float) -> void:
 		_scan = 1.0
 		_vents.clear()
 		for q in game.query.props_near(game.player.pos, REACH):
-			if q.kind == PropKind.VENT and not game.world.depleted.has(q.id):
+			if game.world.depleted.has(q.id):
+				continue
+			# A capped vent leaks only where the land says its vents breathe hard.
+			if q.kind == PropKind.VENT or (q.kind == PropKind.VENT_CAP and BiomeRegistry.at(game.world, q.pos).vent_breath.a > 1.0):
 				_vents.append(q)
 	if _vents.is_empty():
 		_t += delta
@@ -39,9 +42,14 @@ func _process(delta: float) -> void:
 	var wind := Vector2(0.35, -0.2)
 	for v in _vents:
 		var h := Rng.hash01(game.world.seed_value, v.id, 0x7E47)
-		var period := BREATH * (0.75 + 0.6 * h)
+		# The land's own breath (BiomeDef.vent_breath): its colour, and how big
+		# and how often. Unset is the Burning's slow ash.
+		var own := BiomeRegistry.at(game.world, v.pos).vent_breath
+		var much := own.a if own.a > 0.0 else 1.0
+		var col := Color(own.r, own.g, own.b) if own.a > 0.0 else Palette.ASH[4]
+		var period := BREATH * (0.75 + 0.6 * h) / sqrt(much)
 		var offset := h * period
 		if floorf((before + offset) / period) == floorf((_t + offset) / period):
 			continue
 		var at := game.world.to_3d(v.pos) + Vector3(0, 0.55 * v.scale, 0)
-		MobFx.breath(_layer, at, Palette.ASH[4], 0.5 + 0.25 * h, 2.2 + h, wind * (0.6 + h), v.id * 31 + int(_t))
+		MobFx.breath(_layer, at, col, (0.5 + 0.25 * h) * much, (2.2 + h) * sqrt(much), wind * (0.6 + h), v.id * 31 + int(_t))

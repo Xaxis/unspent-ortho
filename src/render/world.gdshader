@@ -1493,6 +1493,31 @@ vec3 machine_deck(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
 	return c;
 }
 
+// SULPHUR: the crust the vents' water laid. Sinter in lobed terraces, each
+// pool rimmed with a pale lip standing proud (matter_height) and floored in
+// warm water gone milky; sulphur growing yellow in crystal clusters where the
+// steam condenses, thickest on the rims; iron runs bleeding orange down the
+// steps; and the wet of it all, which never dries (its roughness in fragment()).
+vec3 sulphur_crust(vec3 c, vec3 wp, vec2 px) {
+	vec2 p = wp.xz;
+	vec3 cd = matter_cells(p * 0.9 + vec2(ink_vnoise(p * 0.4), ink_vnoise(p * 0.4 + 9.0)) * 1.5);
+	float rim = cd.y - cd.x;
+	float fw = max(fwidth(rim), 1e-4);
+	// The pool floor is the land's own wash, the sulphur yellow that names the
+	// place (the only yellow in the game), a shade deeper under the water.
+	vec3 pool = mix(dn(c, 0.25), SPRUCE2, 0.12);
+	vec3 sinter = mix(LINEN3, SAND3, 0.5);
+	float lip = 1.0 - smoothstep(0.06 - fw, 0.06 + fw, rim);
+	c = mix(pool, sinter, lip);
+	// Sulphur: yellow crystals on the rims, clustered.
+	float sul = ink_vnoise(p * 1.6 + cd.z * 7.0) * 0.7 + ink_vnoise(p * 5.0) * 0.3;
+	c = mix(c, c * 0.3 + vec3(0.78, 0.66, 0.16) * 0.7, smoothstep(0.55, 0.72, sul) * mix(0.45, 1.0, lip));
+	// Iron runs, orange, down the steps in one direction.
+	float run = ink_vnoise(vec2(dot(p, vec2(0.8, 0.6)) * 2.5, dot(p, vec2(-0.6, 0.8)) * 0.4));
+	c = mix(c, mix(RUST3, EMBER4, 0.3), smoothstep(0.68, 0.8, run) * 0.6);
+	return c;
+}
+
 // Terrace walls: each country's rock, banded by world height. dt: depth below
 // the wall's top (a wall is one level tall).
 vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
@@ -2155,11 +2180,14 @@ void fragment() {
 		if (m == M_MACHINE_DECK) {
 			c = machine_deck(c, world_pos, px, emit);
 		}
+		if (m == M_SULPHUR) {
+			c = sulphur_crust(c, world_pos, px);
+		}
 		if (m == M_TIDEFLAT) {
 			c = tide_floor(c, world_pos, px);
 		}
 		// The fused sheet is not trodden to earth: nothing walks glass to a path.
-		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK) {
+		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK && m != M_SULPHUR) {
 			c = ground_wear(m, c, world_pos.xz, px);
 		}
 		// Turf, heath and fen are a sward, and a gust crossing one lays it over:
@@ -2268,6 +2296,12 @@ void fragment() {
 		c = matter_grown(c, n_world, world_pos, (1.0 - unh) * grows, rough_add);
 	}
 
+	if (m == M_SULPHUR) {
+		// The pools are wet and warm and never dry: they take the sky; the
+		// sinter rims do not.
+		vec3 scd = matter_cells(world_pos.xz * 0.9 + vec2(ink_vnoise(world_pos.xz * 0.4), ink_vnoise(world_pos.xz * 0.4 + 9.0)) * 1.5);
+		rough_add -= smoothstep(0.05, 0.1, scd.y - scd.x) * 0.3;
+	}
 	if (m == M_CITY_FLOOR) {
 		// Window glass lying in drifts on the city floor catches the light.
 		rough_add -= city_glass(world_pos.xz) * 0.35;

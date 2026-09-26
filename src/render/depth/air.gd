@@ -98,6 +98,9 @@ const ROWS := {
 	# The crags are what fog is FOR (BiomeDef.mist, its weather): the far land goes
 	# to a wet pale grey, the air begins close, and the bank is thick, so even a
 	# clear day there has distance in it that no other upland has.
+	# The sulphur jungle's air is WET and HOT: a yellow-green haze that begins
+	# close, so the canopy fades into its own steam.
+	&"sulphur_jungle": {"tow": Color(0.52, 0.55, 0.36), "pull": 0.52, "depth": 1.22, "near": 0.85, "bank": 1.4},
 	&"the_crags": {"tow": Color(0.62, 0.66, 0.70), "pull": 0.66, "depth": 1.30, "near": 0.80, "bank": 1.7},
 	&"slums": {"tow": Color(0.300, 0.228, 0.170), "pull": 0.34, "depth": 1.20, "near": 0.90, "bank": 1.45},
 }

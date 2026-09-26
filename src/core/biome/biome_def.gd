@@ -282,6 +282,11 @@ var sky_holes := 0.0
 ## growth map). 1 is a city the forest has; a wet land might take 0.2.
 ## Runtime only, so a LOOK field: it moves no island.
 var overgrowth := 0.0
+## What this land's vents breathe (16_vents): the colour of the puff, and in
+## ALPHA how big and how often, as a multiple of the Burning's ash (1). 0 alpha
+## takes the Burning's. Above 1 the machine caps breathe too, leaking round
+## their seals. Runtime only, so a LOOK field.
+var vent_breath := Color(0, 0, 0, 0)
 ## The dystopian grade offset added to SkyLight's own (`SkyLight.neon_row`):
 ## (dark, desat, cool, contrast). `sky.gdshaderinc` scales the graded colour by
 ## (1 - dark), so POSITIVE dark dims and NEGATIVE lifts: every landscape's dark

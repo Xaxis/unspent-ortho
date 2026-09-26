@@ -76,6 +76,7 @@ const int M_CITY_FLOOR = 98;
 const int M_OVERGROWN = 99;
 const int M_CAST_FLOOR = 100;
 const int M_MACHINE_DECK = 101;
+const int M_SULPHUR = 102;
 const int M_STRATA_BONE = 133;
 const int M_STRATA_GLASS = 139;
 const int M_STRATA_TIDE = 140;
@@ -217,6 +218,7 @@ vec4 matter_of(int m) {
 	else if (m == M_CAST_FLOOR) { r = vec4(0.52, 0.52, 0.006, 0.0); }
 	else if (m == M_STRATA_CAST) { r = vec4(0.56, 0.50, 0.010, 0.0); }
 	// MACHINE_DECK / STRATA_MACHINE: machined plate, kept: smooth, a little metal.
+	else if (m == M_SULPHUR) { r = vec4(0.46, 0.60, 0.050, 0.0); }
 	else if (m == M_MACHINE_DECK) { r = vec4(0.42, 0.58, 0.004, 0.18); }
 	else if (m == M_STRATA_MACHINE) { r = vec4(0.40, 0.60, 0.006, 0.22); }
 	// STRATA_DECK: the broken edge of a cast deck.
@@ -395,6 +397,11 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		vec2 q = vec2(p.x * 1.1 + matter_fbm(p * 0.6) * 1.2, p.y * 0.45);
 		vec3 cd = matter_cells(q);
 		h = smoothstep(0.0, 0.45, cd.y - cd.x) + matter_fbm(p * 5.0) * 0.18;
+	} else if (m == M_SULPHUR) {
+		// SULPHUR: rimstone -- lobed pools, each rim standing proud of the pool
+		// below it, where the hot water laid its sinter.
+		vec3 cd = matter_cells(p * 0.9 + matter_fbm(p * 0.4) * 1.5);
+		h = smoothstep(0.0, 0.12, cd.y - cd.x) * 0.3 + (1.0 - smoothstep(0.0, 0.08, cd.y - cd.x)) * 0.7;
 	} else if (m == M_CITY_FLOOR || m == M_OVERGROWN) {
 		// CITY_FLOOR: the aggregate of a poured slab, fine and shallow.
 		h = matter_fbm(p * 4.0) * 0.7 + matter_fbm(p * 0.7 + 3.0) * 0.3;
