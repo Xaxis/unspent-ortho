@@ -332,6 +332,6 @@ func test_the_sulphur_jungle_fog_is_its_own() -> void:
 	var c: Color = row.get("air", Color.BLACK)
 	gt(c.r + c.g - 2.0 * c.b, 0.4, "sulphur-yellow, not pale grey")
 	gt(float(row.get("low", 0.0)), 0.5, "and it lies low")
-	check(BiomeRegistry.get_def(&"the_crags").weather_style.get(&"fog", {}).is_empty(), "the crags keep the shared fog")
+	check(BiomeRegistry.get_def(&"coast").weather_style.get(&"fog", {}).is_empty(), "the coast keeps the shared fog")
 	eq(BiomeRegistry.get_def(&"sulphur_jungle").style_problems().size(), 0, "a well-formed row")
 

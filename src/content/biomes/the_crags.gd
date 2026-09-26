@@ -134,6 +134,9 @@ static func make() -> BiomeDef:
 	]
 	# The foggiest place there is: it is what the landscape is FOR.
 	d.mist = 0.55
+	# Its fog is its own wet pale grey, the colour the far land goes to (Air), and it
+	# lies in the ruins' hollows and between the stones rather than over them.
+	d.weather_style = {&"fog": {"air": Color(0.70, 0.74, 0.76), "low": 0.5}}
 	# Wet and dark and nothing else — no machine exhaust, no spores, no glare.
 	# What is dangerous here is not a pressure, which is exactly the point.
 	#
