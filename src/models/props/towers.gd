@@ -631,10 +631,37 @@ static func block(k: Kit, c: int) -> void:
 	# reach: a shop's own, not the city's, so it is the smaller colour.
 	billboard(k, faces[2], 0.56, 0.84, SIGN_COLOURS[1], s + 5)
 	Houses.salvage(k, faces[1][0], faces[1][1], faces[1][2], faces[1][3], 0.7, s + 9)
+	# THE WAY IN IS A MACHINE'S. Where this landscape keeps a room behind a block
+	# (BiomeDef.interiors `form:block`), the frontage's middle -- where the
+	# threshold stands (Threshold.of_house) -- has a service hatch in it.
+	var def := BiomeRegistry.by_index(c)
+	if def != null and def.interiors.has(&"form:block"):
+		service_hatch(k, faces[0], top, w + FRAME)
 	var r := parapet(k, w, d, top, s + 60, c)
 	plant(k, w, d, r[0] + 0.05, s + 70, c)
 	# A second tank at the other end: a wide roof with one tank on it reads empty.
 	k.found.prism(-w * 0.3, r[0] + 0.05, d * 0.22, 0.26, r[0] + 0.6, 0.23, 9, P.RUST[3], P.PLATE[4])
+
+
+## A service hatch in a face `f` (Houses.faces) of a building `top` high and
+## `span` across: steel in a dark recess, the hazard band over it, a standby
+## lamp -- and its head lower than a person stands, because it was cut for a
+## machine. Inside the ground storey (`STOREY`), band and all: at 0.84 to 1.26
+## in the world, as the prop's scale deals it, a person stoops through it.
+const HATCH := 1.05
+
+
+static func service_hatch(k: Kit, f: Array, top: float, span: float) -> void:
+	var hv := HATCH / top
+	var hw := 0.45 / span
+	Houses.wall_rect(k.found, f[0], f[1], f[2], f[3], 0.5 - hw * 1.3, 0.0, 0.5 + hw * 1.3, hv * 1.15, 0.01, P.INK[1])
+	Houses.wall_rect(k.found, f[0], f[1], f[2], f[3], 0.5 - hw, 0.0, 0.5 + hw, hv, 0.02, P.PLATE[2])
+	Houses.wall_rect(k.found, f[0], f[1], f[2], f[3], 0.5 - hw * 0.08, 0.02, 0.5 + hw * 0.08, hv * 0.96, 0.024, P.PLATE[0])
+	for i in 8:
+		var u0 := 0.5 - hw * 1.3 + hw * 2.6 * float(i) / 8.0
+		Houses.wall_rect(k.found, f[0], f[1], f[2], f[3], u0, hv * 1.02, u0 + hw * 2.6 / 8.0, hv * 1.13, 0.022,
+			P.LENS[2] if i % 2 == 0 else P.INK[0])
+	Houses.wall_rect(k.found, f[0], f[1], f[2], f[3], 0.5 + hw * 1.1, hv * 0.7, 0.5 + hw * 1.22, hv * 0.8, 0.03, P.COPPER[4])
 
 
 ## "shell": a tower whose top storeys came down. What is left is lived in — the

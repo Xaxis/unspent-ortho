@@ -809,6 +809,150 @@ const FRAGMENTS := {
 			"when it boils.",
 		],
 	},
+	# --- a tenement stair hall in the slums (ROOMS: tenement) -------------------
+	&"tenement_cards": {
+		"kind": &"sign", "title": "the shift board", "lands": [],
+		"lines": [
+			"Cards in rows under a clock, one to a flat:",
+			"  4C  NIGHT  PANS",
+			"  4D  DAY    PANS",
+			"  4E  DAY    PANS",
+			"",
+			"The clock is right to the second. The cards",
+			"are changed in the night. There is no dust",
+			"on the rail and no mark of a finger.",
+		],
+	},
+	&"tenement_rows": {
+		"kind": &"sign", "title": "the shift board", "lands": [],
+		"lines": [
+			"Cards in rows under a clock, one to a flat.",
+			"The bottom row has been painted over, slots",
+			"and all, the grey of the wall, and the rows",
+			"above numbered down to close the gap.",
+			"",
+			"The board is full.",
+		],
+	},
+	&"tenement_notice": {
+		"kind": &"sign", "title": "the shift board", "lands": [],
+		"lines": [
+			"Over the clock, an enamel notice, older than",
+			"the board:",
+			"  STAFF MUST CLOCK IN AND OUT",
+			"",
+			"Under it, newer, in the machines' capitals:",
+			"  CLOCKING OUT IS DISCONTINUED.",
+			"  THANK YOU FOR YOUR TIME.",
+			"",
+			"Every card on the board is at IN.",
+		],
+	},
+	&"tenement_persons": {
+		"kind": &"notebook", "title": "the ration book", "lands": [],
+		"lines": [
+			"The ration book, square to the table's edge:",
+			"  HOUSEHOLD 4E  -  PERSONS 3",
+			"",
+			"Two chairs. Two cups on the drainer. Every",
+			"dawn has three stamps in its row.",
+			"",
+			"On the shelf, the third person's tins,",
+			"unopened, in date order.",
+		],
+	},
+	&"tenement_ticks": {
+		"kind": &"notebook", "title": "the ration book", "lands": [],
+		"lines": [
+			"The ration book, and a pencil laid along it.",
+			"Beside each week's stamps somebody has",
+			"weighed the tins and written the sum. Beside",
+			"each sum, a tick.",
+			"",
+			"Nine years of ticks. The newest is this",
+			"morning's. There is not one cross.",
+		],
+	},
+	&"tenement_drink": {
+		"kind": &"notebook", "title": "the ration book", "lands": [],
+		"lines": [
+			"The ration book was a coffee shop's card once,",
+			"stapled thick with new pages. On the cover:",
+			"  10 STAMPS = 1 FREE DRINK",
+			"",
+			"Every box on every page is stamped RECEIVED.",
+			"Nobody has asked for the drink.",
+		],
+	},
+	# --- a maintenance bay in the machine city (ROOMS: maintenance_bay) --------
+	&"bay_out": {
+		"kind": &"terminal", "title": "a diagnostic panel", "lands": [],
+		"lines": [
+			"  BAY 0-88  /  CRADLE: CLEAR",
+			"  UNIT ....... OUT",
+			"  RETURN ..... NOT SCHEDULED",
+			"  FAULTS ..... NONE",
+			"",
+			"The one lit point is at the height of a",
+			"dog's eye. You kneel on the deck to read it.",
+		],
+	},
+	&"bay_mass": {
+		"kind": &"terminal", "title": "a diagnostic panel", "lands": [],
+		"lines": [
+			"  BAY 0-88  /  MASS ON DECK: 61 KG",
+			"  CLASSIFICATION: NOT REQUIRED",
+			"",
+			"The figure changes when you step onto the",
+			"guide line. Nothing else on the panel does.",
+		],
+	},
+	&"bay_short": {
+		"kind": &"terminal", "title": "a diagnostic panel", "lands": [],
+		"lines": [
+			"  BAY 0-88  /  SPARES: ONE SHORT",
+			"  REORDER .... NOT REQUIRED",
+			"  RECONCILED.",
+			"",
+			"A column of points down the plate, all dark",
+			"but the top one. Nothing has come to make",
+			"up the one.",
+		],
+	},
+	&"bay_tally": {
+		"kind": &"mark", "title": "a gap in the rack", "lands": [],
+		"lines": [
+			"One panel is out of the rack. On the plate",
+			"behind it, scratched, strokes in fives, row",
+			"under row: a hundred and nineteen.",
+			"",
+			"On the floor of the gap, a tin, eaten from,",
+			"the lid folded back and pressed flat again.",
+		],
+	},
+	&"bay_bedroll": {
+		"kind": &"mark", "title": "a gap in the rack", "lands": [],
+		"lines": [
+			"A panel out of the wall, and behind it a gap",
+			"exactly the size of the panel. A bedroll is",
+			"pushed into it, rolled tight, ready to go.",
+			"",
+			"On the plate over it, in fives: a hundred",
+			"and nineteen. A spoon in an empty tin.",
+		],
+	},
+	&"bay_half": {
+		"kind": &"mark", "title": "a gap in the rack", "lands": [],
+		"lines": [
+			"Strokes in fives on the back plate, where a",
+			"panel should be: a hundred and nineteen,",
+			"and half of the next, begun and not drawn",
+			"through.",
+			"",
+			"A tin, eaten from. A bedroll folded square,",
+			"the one thing in the city not in its line.",
+		],
+	},
 	&"lobby_boxes": {
 		"kind": &"mark", "title": "the letterboxes", "lands": [],
 		"lines": [
@@ -1363,6 +1507,14 @@ const ROOMS := {
 		&"wall:lift": [&"lobby_rope", &"lobby_stairs"],
 		&"desk:counter": [&"lobby_book", &"lobby_bell"],
 		&"wall:letterboxes": [&"lobby_boxes", &"lobby_post"],
+	},
+	&"tenement": {
+		&"wall:shift_board": [&"tenement_cards", &"tenement_rows", &"tenement_notice"],
+		&"desk:ration_book": [&"tenement_persons", &"tenement_ticks", &"tenement_drink"],
+	},
+	&"maintenance_bay": {
+		&"terminal:diag_panel": [&"bay_out", &"bay_mass", &"bay_short"],
+		&"wall:tally": [&"bay_tally", &"bay_bedroll", &"bay_half"],
 	},
 }
 

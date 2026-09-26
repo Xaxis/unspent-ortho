@@ -1,0 +1,49 @@
+# A MAINTENANCE BAY IN THE MACHINE CITY (docs/interiors,
+# src/content/interiors/maintenance_bay.gd): a block's service hatch, lower than
+# a person stands, and behind it the bay one machine is kept in -- the gantry,
+# the guide line, the cradle or the racks, the diagnostic panel at a machine's
+# height -- dark but for what the machines see by; and off it, through a panel
+# taken out, the niche somebody has been living in.
+#
+#   tools/tour.sh tours/maintenance.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is the block as a player finds it from above; 02 its hatch over the
+# shoulder, lower than the player. 03 is the bay from above as the player comes
+# in, by its own lamps; 04 the same by the lantern. 05 is over the shoulder at
+# the diagnostic panel, 06 at the count in the niche.
+coast calm
+near door:maintenance_bay
+await door 5
+wait 0.6
+shot 01-a-block-in-the-machine-city with door,land:machine_city
+
+# The peek comes up on the top view's bearing; stood by name once it is up,
+# the view turns to stand behind the player's facing.
+hold shoulder_peek
+await shoulder 3
+near door:maintenance_bay
+# Stood facing the hatch the body covers it: the view turns off to one side.
+mouse 300,0 0.6
+wait 1.0
+shot 02-its-hatch-lower-than-a-person with door,shoulder,land:machine_city
+release shoulder_peek
+wait 1.0
+
+press use 0.1
+await inside:maintenance_bay 5
+wait 1.0
+shot 03-the-bay-from-above-by-its-own-lamps with inside:maintenance_bay
+
+tap lamp
+wait 1.0
+shot 04-the-bay-by-the-lantern with inside:maintenance_bay,lamp
+
+hold shoulder_peek
+await shoulder 3
+near thing:diag_panel
+wait 1.0
+shot 05-the-panel-at-a-machines-height with inside:maintenance_bay,shoulder,lamp
+
+near thing:tally
+wait 1.0
+shot 06-the-count-in-the-gap with inside:maintenance_bay,shoulder,lamp
