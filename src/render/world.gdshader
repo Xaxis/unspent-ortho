@@ -1934,6 +1934,16 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			if (ink_vnoise(vec2(px.x * 1.1, y * 30.0)) > 0.9) {
 				c = mix(RUST3, LINEN3, 0.4);
 			}
+			// A board somewhere in the heap still has power: a status light, one
+			// pixel, amber or green, blinking slow and out of step, seen only
+			// once the light goes. The last thing in the midden that thinks.
+			float led = ink_hash(vec2(floor(px.x / 3.0), floor(y * 20.0)) + 71.0);
+			if (led > 0.994) {
+				vec3 lc = led > 0.997 ? vec3(0.55, 0.9, 0.35) : vec3(1.0, 0.62, 0.2);
+				float blink = step(0.35, fract(TIME * (0.2 + led * 0.3) + led * 17.0));
+				c = mix(c, lc, 0.6);
+				emit += lc * 1.4 * blink * sky_view.y;
+			}
 		} else if (kind < 0.5) {
 			// Cable: black, with loops showing as paler arcs.
 			c = mix(INK2, INK3, n1);
