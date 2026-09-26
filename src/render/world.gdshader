@@ -613,17 +613,20 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		}
 	} else if (m == 48) {
 		// FEN: hummocks and hollows, black pools with green edges, bog cotton.
+		// Hummock and hollow are RELIEF (matter_height's FEN mounds): the wash only
+		// leans with them, softly. Hard two-tone steps here were the camouflage
+		// print over every mossy ground (the crags' lichened turf most of all).
+		// The pools below are water and keep their shore.
 		float n = ink_vnoise(wp * 0.95) * 0.7 + ink_vnoise(wp * 2.3 + 4.0) * 0.3 + rag(wp);
+		c = up(c, 0.4 * smoothstep(0.56, 0.72, n));
+		c = dn(c, 0.5 * (1.0 - smoothstep(0.24, 0.40, n)) * step(0.2, n));
 		if (n > 0.64) {
-			c = up(c, 0.4);
 			// Bog cotton in drifts on a few hummocks, none on the rest.
 			if (ink_vnoise(wp * 0.12 + 40.0) > 0.68 && ink_hash(px) > 0.97) {
 				c = LINEN5;
 			}
 		} else if (n < 0.2) {
 			c = n < 0.165 ? BRINE0 : SPRUCE2;
-		} else if (n < 0.33) {
-			c = dn(c, 0.5);
 		}
 		if (ink_vnoise(wp * 0.45 + 20.0) > 0.78 && n > 0.33) {
 			c = mix(c, RUST2, 0.55);
@@ -683,10 +686,10 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			c = RIME5;
 		}
 	} else if (m == 52) {
-		// ROCK: bare stone: a few long cracks, lichen in small blooms.
-		if (ink_vnoise(wp * 0.35) > 0.62) {
-			c = dn(c, 0.25);
-		}
+		// ROCK: bare stone: a few long cracks, lichen in small blooms. The stone's
+		// own tone drifts softly; a hard threshold here drew two-tone patches
+		// a few tiles across over every rocky land (the camouflage finding).
+		c = dn(c, 0.25 * smoothstep(0.52, 0.72, ink_vnoise(wp * 0.35)));
 		float crack = abs(ink_vnoise(wp * 0.8 + 1.0) - 0.5);
 		if (crack < 0.014 && ink_vnoise(wp * 1.5) > 0.4) {
 			c = dn(c, 1.0);
@@ -1803,12 +1806,24 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		// Lichen: round rosettes a hand across, scattered in drifts, each its own
 		// disc with a paler rim. On a noise threshold they came out as square
 		// pixel blocks, a camouflage print on the rock.
+		// Laid on the wall's CONTINUOUS world coordinate, not the screen grain
+		// `px` (a whole grain wide, so every rim came out as a stair of square
+		// pixels), and its edges filtered by the footprint (fwidth): a rosette
+		// fades into the rock over one pixel at any distance, never a hard ring.
 		float drift = ink_vnoise(vec2(px.x * 0.05, y * 0.9 + 23.0));
-		vec3 rc = matter_cells(vec2(px.x * SKY_GRAIN * 9.0, y * 9.0));
+		vec2 lp = vec2(wp.x + wp.z, y) * 9.0;
+		vec3 rc = matter_cells(lp);
 		float rr = 0.18 + rc.z * 0.16;
-		if (drift > 0.55 && rc.z > 0.55 && rc.x < rr) {
+		float fw = max(fwidth(rc.x), 1e-4);
+		float disc = 1.0 - smoothstep(rr - fw, rr + fw, rc.x);
+		// Far off, where a rosette is under a couple of pixels, it fades to the
+		// average tint of the drift rather than twinkling.
+		float far = smoothstep(0.08, 0.3, fw);
+		if (drift > 0.55 && rc.z > 0.55) {
 			vec3 lich = rc.z > 0.93 ? mix(SAND3, EMBER4, 0.2) : mix(LINEN2, MOSS3, 0.35);
-			c = mix(c, lich, rc.x > rr * 0.7 ? 0.9 : 0.6);
+			float rim = smoothstep(rr * 0.6 - fw, rr * 0.8 + fw, rc.x);
+			float cover = disc * mix(0.6, 0.9, rim);
+			c = mix(c, lich, mix(cover, 0.25, far));
 		}
 	} else if (id == 17) {
 		// DECK: the broken edge of a cast highway deck, which is what a terrace
