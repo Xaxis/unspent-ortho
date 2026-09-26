@@ -2270,6 +2270,26 @@ float tall_cut(vec3 wp, int m, vec3 camz, vec3 eye, bool persp) {
 	return cut;
 }
 
+// THE PINEWOOD'S NIGHT. Under the closed canopy nothing of the sky reaches the
+// floor, and the only light is the wood's own: honey fungus threading the
+// rotting litter, a cold green-white in fine veins, in a few drifts where the
+// deadfall has lain longest and nowhere else. Steady, because fungus does not
+// blink; it breathes very slowly. Only after dark (sky_view.y): by day it is
+// invisible, as it is.
+vec3 pine_foxfire(vec2 wp, vec2 px) {
+	float drift = smoothstep(0.62, 0.8, ink_vnoise(wp * 0.09 + 17.0));
+	if (drift <= 0.0 || sky_view.y <= 0.0) {
+		return vec3(0.0);
+	}
+	// A glow soaked into the litter, a hand or two across and grained like the
+	// litter itself. A line read as ruled neon, a speck alone as fireflies, and
+	// an even wash as a lit lawn.
+	float clump = smoothstep(0.6, 0.9, ink_vnoise(wp * 0.7 + 5.0) * 0.75 + ink_vnoise(wp * 2.1 + 9.0) * 0.25);
+	float grain = 0.3 + 0.7 * step(0.5, ink_hash(floor(px / 2.0) + 29.0));
+	float breath = 0.85 + 0.15 * sin(TIME * 0.35 + wp.x * 0.05 + wp.y * 0.07);
+	return vec3(0.32, 0.62, 0.42) * 0.8 * drift * clump * grain * breath * sky_view.y;
+}
+
 void fragment() {
 	if (near_cut > 0.5 && near_drawn(world_pos)) {
 		discard;
@@ -2330,6 +2350,12 @@ void fragment() {
 	}
 	vec3 c = second ? wash2 : COLOR.rgb;
 	int m = second ? m2 : m1;
+	// The pine floor IS the needle floor, in its matter, its marks and its wear;
+	// it differs only in what it gives off after dark (pine_foxfire).
+	bool pine = m == M_PINE_FLOOR;
+	if (pine) {
+		m = 50;
+	}
 	float s1 = mod(style_packed, 16.0);
 	float s2 = floor(style_packed / 16.0 + 0.01);
 	float unh = 0.0;
@@ -2363,6 +2389,9 @@ void fragment() {
 		}
 		if (m == M_TIDEFLAT) {
 			c = tide_floor(c, world_pos, px, emit);
+		}
+		if (pine) {
+			emit += pine_foxfire(world_pos.xz, px);
 		}
 		// The fused sheet is not trodden to earth: nothing walks glass to a path.
 		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK && m != M_SULPHUR) {

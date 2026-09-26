@@ -79,6 +79,9 @@ static func make() -> BiomeDef:
 	# Needle-damp moss on the ledges under the canopy, and little ivy in the shade.
 	# (BiomeDef.overgrowth: lighter than the green towers' whole dose.)
 	d.overgrowth = 0.20
+	# Foxfire in the needle litter is the only light under it after dark
+	# (GroundColors.PINE_FLOOR): the wood lit from the floor, faintly, in drifts.
+	d.ground_marks = {Ground.NEEDLES: GroundColors.PINE_FLOOR}
 	d.night_sky = 0.80
 	d.wet = 0.2
 	d.props = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS,

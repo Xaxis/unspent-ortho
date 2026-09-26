@@ -180,6 +180,9 @@ const DESERT_PAVEMENT := 103
 ## The frost sea's ice: floes frozen together with their rafted edges standing,
 ## thin black ice between where the sea shows through, snow dust in streaks (104).
 const SEA_ICE := 104
+## The pinewood's needle floor: NEEDLES by day in every respect, and by night
+## the only light under the canopy, foxfire in the rotting litter (105).
+const PINE_FLOOR := 105
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array
