@@ -9,7 +9,16 @@
 # The game used to get BRIGHTER and bluer from 18:00 to 20:00 and then lose a
 # third of its light between 20:00 and 20:30; then it kept a smaller rise at
 # 20:00-20:30 on five landscapes of six (moss +11.9%). Either would fail below.
-#   tools/tour.sh tours/evening.tour --seed=7 --hour=17 --weather=clear:0
+#
+# THE CURVE IS MEASURED ALONE. The walkers' shadows (19_colossi), the ring's
+# pass (19_orbit) and the debris falls (21_falls) all move with world minutes,
+# so a tour that jumps the clock half an hour at a time samples them wherever
+# they happen to be: measured 10 minutes apart on seed 7, a colossus's shadow
+# took the frame from 69 to 44 luma at 19:30 and back to 70 at 19:40, and the
+# ring put a bump at 18:20. With them off the evening falls smoothly every ten
+# minutes (97 -> 53 from 17:00 to 21:00, never rising). Each is staged and
+# proven in its own tour.
+#   tools/tour.sh tours/evening.tour --seed=7 --hour=17 --weather=clear:0 --colossi=off --orbit=off --fall=off
 coast calm
 weather clear:0
 
