@@ -15,4 +15,4 @@ wait 0.3
 walkto strongbox 90
 await woke 20
 wait 0.6
-shot 01-a-hauler-wakes with inside:saw_hall
+shot 01-a-hauler-wakes with inside:saw_hall,mob:hauler
