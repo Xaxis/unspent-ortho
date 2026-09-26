@@ -132,7 +132,9 @@ static func sites(world: WorldData) -> Array[WorksSite]:
 	_cache_lock.lock()
 	var had: Variant = _cache.get(key)
 	_cache_lock.unlock()
-	if had != null:
+	# Asked by type, never by an operator on the Variant: this runs on the
+	# realm raise's worker (tests/core/test_worker_types.gd).
+	if typeof(had) != TYPE_NIL:
 		return (had as Array[WorksSite]).duplicate()
 	var bearing := GenWorks.bearing(world.seed_value)
 	var by_region := {}
