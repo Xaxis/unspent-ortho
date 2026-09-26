@@ -103,6 +103,10 @@ global uniform mat4 sky_lamps2;
 // dawn and dusk warmth back out of them, so low sun is warm on what it lights
 // and shade stays blue; w: low light 0..1 (0 at midday, 1 from dusk to dawn).
 global uniform vec4 sky_shade;
+// The sun's hue while it is up, mean 1, white at night (SkyLight.compose): what
+// water divides out of its body so the sun's colour is in its reflection and
+// not in its albedo.
+global uniform vec4 sun_hue;
 // What the land can hold, by world position (SkyGround): r snow can lie, g ash
 // can lie, b wet can show, a the ground's height smoothed over ~8 tiles / 8.
 // Sampled at world xz * sky_view.z.

@@ -1,0 +1,16 @@
+# The limestone caves, beside the first shaft down, at noon and at night: over
+# the shoulder, then from the play camera; with the frame cost over five seconds.
+#   tools/tour.sh tours/lands_caves.tour --seed=7 --realm=underground --view=shoulder --stats
+coast calm
+hour 12
+wait 3.0
+shot noon with land:limestone_caves
+perf stats begin
+wait 5.0
+perf stats end caves-noon
+walk 1,0 2.0
+wait 1.5
+shot walked with land:limestone_caves
+hour 23
+wait 2.0
+shot night with land:limestone_caves

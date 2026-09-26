@@ -40,7 +40,9 @@ static func make() -> BiomeDef:
 	d.reach_in_low = Vector3(6.0, 0.1, 0.35)
 	d.hatch = Ink.NONE
 	d.grounds = {
-		Ground.FLOOR: P.ASH[3].lerp(P.SPRUCE[2], 0.3),
+		# Poured concrete the tide came up over: darker and greener than a dry
+		# floor, which is what kept it reading as snow at eye level.
+		Ground.FLOOR: P.ASH[2].lerp(P.SPRUCE[2], 0.3),
 		Ground.ROAD: P.ASH[2].lerp(P.SLATE[2], 0.4),
 		Ground.MUD: P.EARTH[2].lerp(P.SPRUCE[2], 0.45),
 		Ground.SHINGLE: P.STONE[3].lerp(P.SPRUCE[2], 0.3),
@@ -55,14 +57,27 @@ static func make() -> BiomeDef:
 	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SNOW]:
 		d.grounds[g] = d.grounds[Ground.GRAVEL]
 	d.cliff_wash = P.ASH[2].lerp(P.SPRUCE[2], 0.35)
-	d.strata = GroundColors.STRATA_SCRAP
+	# THE TIDE IS DRAWN ON EVERYTHING, and it is a LOOK choice only: the floor
+	# stays FLOOR to worldgen and no seed moves. Its floor is silted under one
+	# high-water line and stands in puddles (GroundColors.TIDEFLAT), and every
+	# wall carries that same line at the same height -- weed under the working
+	# tide, a white band of salt at the flood's, bleached pour lines above
+	# (STRATA_TIDE). Before this the floor was a dry pale wash and the walls were
+	# the scrapwood's made ground, and at eye level the city read as snow.
+	d.ground_marks = {Ground.FLOOR: GroundColors.TIDEFLAT}
+	d.strata = GroundColors.STRATA_TIDE
 	d.plain_ground = Ground.FLOOR
 	d.bank_ground = Ground.MUD
 	d.pool_rim_ground = Ground.MUD
 	d.village_ground = Ground.FLOOR
 	# Its inland water is the street, so it is drawn as water and never as a hole.
 	d.water_wash = P.SPRUCE[2].lerp(P.MOSS[2], 0.3)
-	d.decor = {Ground.MOSS: [0.55, Decor.TUFT, 20, Decor.SCRAP, 10]}
+	# On the floor, what the flood left of the people it went through, and the
+	# city's own broken cast stone; nothing grows on it but the weed in the wet.
+	d.decor = {
+		Ground.MOSS: [0.55, Decor.TUFT, 20, Decor.SCRAP, 10],
+		Ground.FLOOR: [0.22, Decor.DROWNED_LITTER, 10, Decor.REBAR, 6, Decor.SCRAP, 6, Decor.PEBBLES, 6],
+	}
 	d.grass_colors = [P.MOSS[2], P.SPRUCE[2]]
 	d.rock_color = P.ASH[3]
 	d.decor_tints = {&"fronds": [P.MOSS[2], P.SPRUCE[2], P.ASH[2]]}
@@ -109,6 +124,11 @@ static func make() -> BiomeDef:
 	d.built.buildings = Vector2i(14, 22)
 	d.built.repeat_apart = 11.0
 	d.grade = Vector4(-0.06, 0.02, 0.06, -0.03)
+	# NOTHING DRY AT GROUND LEVEL (the style note), and it had never said so: wet
+	# is what the sky's soak and every lamp's reflection read (SkyLight.neon_row),
+	# so at 0 the city stood dry in the rain it is named for. A LOOK field: no
+	# worldgen stage reads it.
+	d.wet = 0.5
 	d.night_sky = 0.95
 	d.props = [PropKind.RUIN, PropKind.DEBRIS, PropKind.WRECKAGE,
 		PropKind.SEA_WALL, PropKind.TIDE_GAUGE, PropKind.HULL, PropKind.REEDS, PropKind.POLE,

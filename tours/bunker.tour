@@ -29,6 +29,6 @@ hold shoulder_peek
 await shoulder 3
 # The peek comes up on the top view's own bearing, which in a corridor can be
 # its side wall; a player turns the view with the mouse to look down it.
-mouse 520,0 0.6
+mouse -321,0 0.6
 wait 0.6
 shot 04-down-the-corridor-over-the-shoulder with inside:bunker,shoulder,lamp

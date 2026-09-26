@@ -48,7 +48,7 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 ##
 ## **DELIBERATELY UNTAGGED, and it is the one here most tempting to tag.** Every
 ## material it names is real and every one of them has a row — SAND 42, SNOW 44,
-## ASH 46. They are GROUND rows, in the 40..70 band that `world.gdshader` gives
+## ASH 46. They are GROUND rows, in the 40..73 band that `world.gdshader` gives
 ## the landscape's own ground treatment, so a drift wearing one stops being a
 ## drift banked against a wreck and becomes a hole in the wreck with the land
 ## showing through it. `towers.gd`'s header carries the frame where that happened

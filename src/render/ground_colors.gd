@@ -46,13 +46,24 @@ const ROAD := 54
 const SALT := 55
 const SWARF := 56
 const PAN := 57
+## The glass desert's fused sheet: sand turned to green-black glass in a second
+## and breaking ever since. It is ROCK there (`BiomeDef.ground_marks`), so the
+## island does not move; world.gdshader draws plates, crazing and flow banding,
+## and matter_of gives it the one mirror-hard floor in the game besides ice.
+const VITRIFIED := 59
+## The drowned city's floor: poured concrete the tide came up over and went down
+## off, silted below the old high-water line and standing in puddles. It is
+## FLOOR there (`BiomeDef.ground_marks`), so the island does not move. 60 is
+## STRATA + 0, which no wall is ever given (strata ids start at 1), so it was
+## free; world.gdshader dispatches it with the grounds.
+const TIDEFLAT := 60
 ## --- WHAT A PERSON MADE (matter.gdshaderinc `matter_of`) ---------------------
 ## 40..58 above are GROUND. Until this band existed, every timber post, thatched
 ## roof, canvas awning, concrete slab, glass pane and rope lashing came back as
 ## ONE default material, so under a single sun only the mesh normal told a roof
 ## from a wall — and the normals are flat facets.
 ##
-## **71..79 ARE DELIBERATELY EMPTY**, between the cliff strata (60..70) and this
+## **74..79 ARE DELIBERATELY EMPTY**, between the cliff strata (61..73) and this
 ## band, so an off-by-one lands on nothing instead of on a material. 92..95 are
 ## spare. Tag a surface with `GroundColors.made(col, GroundColors.THATCH)`; a
 ## builder that tags nothing still gets the default, which is what every model
@@ -95,6 +106,16 @@ const STRATA_SAND := 7
 const STRATA_ICE := 8
 const STRATA_SALT := 9
 const STRATA_SCRAP := 10
+## A terrace wall the glassing ran over: melt that ran down the face and set,
+## a rolled lip with drips, fulgurite veins (71).
+const STRATA_GLASS := 11
+## The drowned city's walls: slick weed under the working tide, stained concrete
+## up to one white high-water line at the same height on every wall in the city,
+## and salt-bleached pour lines above it (72).
+const STRATA_TIDE := 12
+## A cave wall: dark wet limestone hung with flowstone curtains that run down
+## from the lip and end in rounded lobes, stained with iron, and wet (73).
+const STRATA_CAVE := 13
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array

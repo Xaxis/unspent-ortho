@@ -1,0 +1,40 @@
+# The evening on three landscapes: the coast, the glass and the moss at six,
+# seven and eight, each from the same standing place. Run at the play camera and
+# over the shoulder, before and after any change to the evening's light.
+#   tools/tour.sh tours/golden_hour.tour --seed=7 --weather=clear:0
+#   tools/tour.sh tours/golden_hour.tour --seed=7 --weather=clear:0 --view=shoulder
+# With --stats it also times five seconds standing on the coast at seven.
+coast calm
+place typical_coast
+hour 18
+wait 2.0
+shot coast-18 with land:coast
+hour 19
+wait 1.5
+shot coast-19 with land:coast
+perf stats begin
+wait 5.0
+perf stats end coast-19
+hour 20
+wait 1.5
+shot coast-20 with land:coast
+place typical_glass_desert
+hour 18
+wait 2.0
+shot glass-18 with land:glass_desert
+hour 19
+wait 1.5
+shot glass-19 with land:glass_desert
+hour 20
+wait 1.5
+shot glass-20 with land:glass_desert
+place typical_moss
+hour 18
+wait 2.0
+shot moss-18 with land:moss
+hour 19
+wait 1.5
+shot moss-19 with land:moss
+hour 20
+wait 1.5
+shot moss-20 with land:moss

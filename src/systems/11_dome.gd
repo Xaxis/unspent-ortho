@@ -52,6 +52,15 @@ const SHAFT_LOW := Color(1.0, 0.46, 0.16)
 ## How solid the column is in the air. Well over 1: the whole reason a shaft
 ## reads as a THING rather than as a bright patch is the air it is standing in.
 const SHAFT_FOG := 5.0
+## Daylight down a SINKHOLE into a cave (`BiomeDef.sky_holes`): not smog-dirty
+## like a torn lid's but the plain cold day, whitest at noon, and it comes down
+## through wet air, so it stands as a column in the dark.
+const SINK_HIGH := Color(0.88, 0.94, 1.0)
+const SINK_LOW := Color(1.0, 0.7, 0.45)
+const SINK_NOON := 3.4
+## How thick the air in a sinkhole's column is (FogMaterial density): damp, and
+## full of what drips down it, so the light stands in it.
+const SINK_AIR := 0.4
 ## Sharpness of the cone's edge. A tear has a hard edge, not a vignette.
 const SHAFT_FALLOFF := 0.35
 ## How far the pool may be from the player before its shaft is not worth lighting.
@@ -59,12 +68,21 @@ const PATCH_REACH := 22.0
 
 var _layer: Node3D
 var _shafts: Array[SpotLight3D] = []
+## The damp air a sinkhole's light stands in, one column per shaft (only where
+## the tier has volumetric air: Compatibility cannot compile a fog volume). The
+## cave's own air is a layer a couple of units deep over the floor, so without
+## these a shaft was a pool on the ground with nothing above it.
+var _columns: Array[FogVolume] = []
 var _scan := 0.0
 var _tears: Array[Vector2] = []
 ## The last shut this system composed with, and where each live pool landed, so
 ## a tour can be answered off the world instead of off a latch.
 var _shut := 0.0
 var _pools: Array[Vector2] = []
+## The names `tour_place` answers (tests/tours/test_tour_claims.gd reads this).
+const TOUR_PLACES: Array[String] = ["shaft_pool"]
+## Which way the last `tour_place` stood the player facing.
+var _facing := NAN
 
 
 func setup(g: Game) -> void:
@@ -96,6 +114,8 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 	_scan = 0.0
 	for s in _shafts:
 		s.visible = false
+	for v in _columns:
+		v.visible = false
 
 
 func _process(delta: float) -> void:
@@ -105,10 +125,17 @@ func _process(delta: float) -> void:
 	# never disagree with the darkness they are a hole in. Squared shares means a
 	# walk out of a shut landscape takes its shafts with it.
 	_shut = SkyLight.sky_shut_at(game.sky.neon_shares)
+	# A roof with holes in it is torn the same way a lid is, and the holes win
+	# where they are the larger: a cave has no lid of its own to be torn.
+	var holes := SkyLight.sky_holes_at(game.sky.neon_shares)
+	var sink := holes > _shut
+	_shut = maxf(_shut, holes)
 	if _shut < SHUT_FLOOR:
 		_pools.clear()
 		for s in _shafts:
 			s.visible = false
+		for v in _columns:
+			v.visible = false
 		return
 	var at: Vector2 = game.player.pos
 	_scan -= delta
@@ -123,6 +150,9 @@ func _process(delta: float) -> void:
 	# is doing is the one thing a shaft still carries into a shut street.
 	var col := SHAFT_LOW.lerp(SHAFT_HIGH, clampf(lit, 0.0, 1.0))
 	var energy := lerpf(SHAFT_NIGHT, SHAFT_NOON, clampf(lit, 0.0, 1.0)) * _shut
+	if sink:
+		col = SINK_LOW.lerp(SINK_HIGH, clampf(lit, 0.0, 1.0))
+		energy = lerpf(SHAFT_NIGHT, SINK_NOON, clampf(lit, 0.0, 1.0)) * _shut
 	# Nearest POOL first, not nearest tear: what the player sees is where the
 	# light lands, and at a low sun those are two different places entirely.
 	var live: Array[Vector2] = []
@@ -133,8 +163,24 @@ func _process(delta: float) -> void:
 	live.sort_custom(func(a: Vector2, b: Vector2) -> bool:
 		return Dome.patch(a, az, el).distance_squared_to(at) < Dome.patch(b, az, el).distance_squared_to(at))
 	_pools.clear()
+	var air := sink and game.sky.env != null and game.sky.env.environment != null and game.sky.env.environment.volumetric_fog_enabled
+	if air and _columns.is_empty():
+		for i in MOST:
+			var v := FogVolume.new()
+			v.name = "sink_air_%d" % i
+			v.shape = RenderingServer.FOG_VOLUME_SHAPE_CYLINDER
+			var fm := FogMaterial.new()
+			fm.edge_fade = 0.9
+			fm.density = SINK_AIR
+			v.material = fm
+			v.visible = false
+			_layer.add_child(v)
+			_columns.append(v)
 	for i in MOST:
 		var s := _shafts[i]
+		var v: FogVolume = _columns[i] if i < _columns.size() else null
+		if v != null:
+			v.visible = false
 		if i >= live.size():
 			s.visible = false
 			continue
@@ -149,6 +195,40 @@ func _process(delta: float) -> void:
 		s.light_energy = energy
 		s.visible = true
 		_pools.append(pool)
+		if v != null and air:
+			# The column runs from the hole down to where the light lands.
+			var top := s.global_position
+			var floor_at := game.world.to_3d(pool)
+			var dir := (floor_at - top)
+			var length := dir.length()
+			if length > 0.1:
+				dir /= length
+				v.size = Vector3(Dome.SPREAD * 1.1, length, Dome.SPREAD * 1.1)
+				v.global_transform = Transform3D(Basis.looking_at(dir) * Basis(Vector3.RIGHT, -PI * 0.5), (top + floor_at) * 0.5)
+				(v.material as FogMaterial).albedo = col
+				(v.material as FogMaterial).density = SINK_AIR * clampf(lit, 0.15, 1.0)
+				v.visible = true
+
+
+## `near shaft_pool` in a tour: a standable spot a few tiles short of where the
+## nearest live shaft lands, so the frame looks into the column rather than
+## standing inside it. INF when no shaft is lit.
+func tour_place(what: String) -> Vector2:
+	if what != "shaft_pool" or _pools.is_empty() or game == null or game.player == null:
+		return Vector2.INF
+	var here: Vector2 = game.player.pos
+	var best: Vector2 = _pools[0]
+	for p in _pools:
+		if p.distance_to(here) < best.distance_to(here):
+			best = p
+	var back := (here - best).normalized() if here.distance_to(best) > 0.01 else Vector2(1, 0)
+	_facing = (-back).angle()
+	return best + back * 4.0
+
+
+## And facing the pool it stood you short of (radians, as `Survival.face`).
+func tour_face(what: String) -> float:
+	return _facing if what == "shaft_pool" else NAN
 
 
 ## Answer a tour off the LIVE world, never off a latch: a shaft is a thing that
