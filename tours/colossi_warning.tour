@@ -1,0 +1,17 @@
+# A PAD THROWS ITS SHADOW BEFORE IT LANDS (19_colossi `_warn`, DESIGN 5c). The
+# straddling walker is staged ten world minutes before its foot comes down in
+# this world's first tread; the player stands in its crater in the
+# play view, on its floor, looking down. A breath and a half before the foot lands, the ground
+# every pad will cover is marked and darkens as it comes; then it lands there.
+#   TOUR_TIMEOUT=400 tools/tour.sh tours/colossi_warning.tour --seed=7 --place=tread0 --colossus=2@tread0-10 --hour=12 --weather=clear:0
+zoom 34
+await colossus_foot 30
+near colossus_crater
+until colossus_warned 30
+wait 0.3
+shot 00-the-shadow-falls with colossus_warned
+wait 0.8
+shot 01-darker-as-it-comes
+until colossus_tread 10
+wait 0.2
+shot 02-it-lands-where-it-said

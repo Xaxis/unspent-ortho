@@ -14,6 +14,7 @@ try 3
   await tell 8
 end
 await grip 6
+shot 00-the-lineman-has-hold with mob:lineman
 await skipped 12
 wait 0.6
 shot 01-woken-by-your-own-fire with station:fire

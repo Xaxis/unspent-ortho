@@ -108,6 +108,24 @@ func test_a_foot_coming_down_into_its_tread_is_seen_coming() -> void:
 		near(float(now[0].height), 0.0, 1e-3, "on the floor")
 
 
+## A PAD'S SHADOW BEFORE IT LANDS (DESIGN 5c): the walk says which feet come
+## down within `lead` world minutes, and only those: not one still high in its
+## swing, not one already standing.
+func test_a_foot_about_to_land_is_warned_of_first() -> void:
+	var d: RefCounted = Def.walkers(BIG)[2]
+	var r: RefCounted = Route.make(d, 7, BIG)
+	var row: Dictionary = Treads.wanted(7, BIG)[0]
+	Treads.hand_over([d], [r], [{"kind": &"tread", "pos": Vector2(900, 700), "walker": d.id, "leg": row.leg, "j": row.j, "yaw": 0.0, "floor": 1.0}])
+	var down := Treads.lands_at(d, r, row.leg, row.j)
+	var lead := 1.5 * Tuning.MINUTES_PER_SECOND
+	var soon: Array = Treads.landing_soon(d, r, down - lead * 0.5, lead)
+	eq(soon.size(), 1, "half the warning before it lands, it is warned of")
+	if soon.size() == 1:
+		eq(int(soon[0].leg), int(row.leg), "that leg")
+	eq(Treads.landing_soon(d, r, down - lead * 3.0, lead).size(), 0, "not while it is still high in its swing")
+	eq(Treads.landing_soon(d, r, down + 1.0, lead).size(), 0, "nor once it is down")
+
+
 ## The near foot and the far body are one shape where they meet: the stub's
 ## radius at the seam is the far shin's there.
 func test_the_near_foot_meets_the_far_leg_at_the_seam() -> void:

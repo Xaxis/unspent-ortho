@@ -293,6 +293,20 @@ var _tread_last := NAN
 var tread_landings := 0
 ## The shock running now: [where (tile space), real seconds since the landing].
 var _shock: Array = []
+## A PAD THROWS ITS SHADOW BEFORE IT LANDS (DESIGN 5c): this many real seconds
+## ahead, every pad of a foot about to come down in a tread near the player
+## marks the ground it will cover, growing dark as it comes, so nobody walks in
+## under one. A foot never hurts anybody; the shadow is what says "not here".
+const WARN_SECONDS := 1.5
+## How near the player a pad is marked: the land in the play camera's frame and
+## a little past it.
+const WARN_REACH := 80.0
+## Feet (walker * 3 + leg) whose coming landing has been marked, until they land.
+var _warned: Dictionary = {}
+## Pads marked this run (--stats; a tour asks `colossus_warned`).
+var warnings := 0
+## Whether a marked pad has still to land.
+var _marked := false
 
 
 ## WHAT THE FEET IN THE TREADS DO TO THE REGION, from the clock: which pads stop
@@ -320,6 +334,13 @@ func _treads(m: float, delta: float) -> void:
 						if not skipped:
 							_landed(d, pads, t, (view.poses[i].ankles as Array)[int(o.leg)])
 	_down = now_down
+	for key: int in _warned.keys():
+		if now_down.has(key):
+			_warned.erase(key)
+	if _warned.is_empty():
+		_marked = false
+	if not skipped:
+		_warn(m)
 	if circles != blocks:
 		blocks = circles
 		if game.query != null:
@@ -327,6 +348,29 @@ func _treads(m: float, delta: float) -> void:
 	if not blocks.is_empty():
 		_push_out(blocks)
 	_run_shock(delta)
+
+
+## Mark the ground under every pad about to land near the player (WARN_SECONDS
+## ahead of it), once per landing.
+func _warn(m: float) -> void:
+	if game.player == null or game.world == null:
+		return
+	var lead := WARN_SECONDS * (game.clock.rate if game.clock != null else Tuning.MINUTES_PER_SECOND)
+	for i in view.defs.size():
+		var d: RefCounted = view.defs[i]
+		for o: Dictionary in Treads.landing_soon(d, view.routes[i], m, lead):
+			var key := i * 3 + int(o.leg)
+			if _warned.has(key):
+				continue
+			_warned[key] = true
+			var t: Vector4 = o.tread
+			for p: Vector3 in Treads.pads(d, Vector2(t.x, t.z), t.w):
+				var at := Vector2(p.x, p.y)
+				if at.distance_to(game.player.pos) > WARN_REACH + p.z:
+					continue
+				MobFx.tell_drop(game, game.world.to_3d(at), Palette.INK[1], p.z, WARN_SECONDS)
+				warnings += 1
+				_marked = true
 
 
 ## Everything standing where a pad is now: crushed, for good. Asked again the
@@ -521,6 +565,9 @@ func tour_seen(what: StringName) -> bool:
 			return not _down.is_empty()
 		&"colossus_blocks":
 			return not blocks.is_empty()
+		&"colossus_warned":
+			# A pad's shadow is on the ground: marked near the player, not landed yet.
+			return _marked
 	return false
 
 

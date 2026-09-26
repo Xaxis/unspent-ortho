@@ -18,6 +18,7 @@ coast calm
 wait 0.8
 spawn clerk
 await noticed 14
+shot 00-a-clerk-reads-the-yard with mob:clerk, holding
 await warned 25
 wait 0.6
 shot 01-the-warning with holding, piece:gate, piece:turret
@@ -30,7 +31,7 @@ await party 40
 # the frame is the moment a gun over the stakes first hits one of them there.
 await turret_hit 90
 wait 0.1
-shot 02-the-party-at-the-wall-and-the-guns-fire with mob, piece:turret, piece:gate
+shot 02-the-party-at-the-wall-and-the-guns-shoot with mob, piece:turret, piece:gate
 await raider_down 60
 # The working party down, the scout carries its report home and the step ends
 # with the fight: held, with nothing struck.

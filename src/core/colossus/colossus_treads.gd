@@ -121,6 +121,21 @@ static func lands_at(def: RefCounted, route: RefCounted, k: int, j: int) -> floa
 ## Vector4), height (the pads over the crater floor, metres), planted (bool),
 ## at (the foot now, Vector3)}. A foot lifting off one is `height` above it too,
 ## until it is carried away. Asked of the clock, never latched.
+## The feet that are not down in a tread at `minutes` and will be within `lead`
+## world minutes: `over`'s rows as they will stand, for the shadow a pad throws
+## before it lands (19_colossi, DESIGN 5c).
+static func landing_soon(def: RefCounted, route: RefCounted, minutes: float, lead: float) -> Array:
+	var down := {}
+	for o: Dictionary in over(def, route, minutes):
+		if bool(o.planted):
+			down[int(o.leg)] = true
+	var out: Array = []
+	for o: Dictionary in over(def, route, minutes + lead):
+		if bool(o.planted) and not down.has(int(o.leg)):
+			out.append(o)
+	return out
+
+
 static func over(def: RefCounted, route: RefCounted, minutes: float) -> Array:
 	var out: Array = []
 	if route.treads.is_empty():
