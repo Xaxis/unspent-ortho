@@ -122,3 +122,39 @@ static func nobody(seed_value: int, night: int, minutes: float, at: Vector2, rin
 ## it never changes in the dark).
 static func night_of(minutes: float) -> int:
 	return floori((minutes + 12.0 * 60.0) / (24.0 * 60.0))
+
+
+
+## THE RINGS ANSWER (H5): a light brought into a ring at night (the lamp held,
+## a fire within its stones) is answered once a night: the stones take the light
+## and give it back one after another round the circle, in an order of their own
+## for the night, a slow pale pulse each. Seconds each stone takes.
+const ANSWER_STEP := 0.9
+
+
+## Whether a ring may answer: dark enough, a light in it, and not yet tonight.
+static func may_answer(dark: float, lit: bool, answered_night: int, night: int) -> bool:
+	return dark >= LIT_DARK and lit and answered_night != night
+
+
+## The order the ring's `n` stones answer in tonight: a permutation.
+static func answer_order(seed_value: int, ring: int, night: int, n: int) -> PackedInt32Array:
+	var order := PackedInt32Array()
+	for i in n:
+		order.append(i)
+	for i in range(n - 1, 0, -1):
+		var j := mini(i, int(Rng.hash01(seed_value, ring, night, i, SALT + 20) * (i + 1)))
+		var t := order[i]
+		order[i] = order[j]
+		order[j] = t
+	return order
+
+
+## (which place in the order is answering, how bright 0..1) `t` seconds in; the
+## place is -1 once every stone has answered.
+static func answering(t: float, n: int) -> Vector2:
+	if t < 0.0 or t >= ANSWER_STEP * n:
+		return Vector2(-1, 0)
+	var k := floori(t / ANSWER_STEP)
+	var u := (t - k * ANSWER_STEP) / ANSWER_STEP
+	return Vector2(k, sin(PI * u))

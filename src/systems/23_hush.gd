@@ -32,6 +32,14 @@ var _always := false
 const LIGHTS_SYSTEM := preload("res://src/systems/15_lights.gd")
 var _lamps: Array[OmniLight3D] = []
 var _lamps_on := 0
+## The rings answering (H5): the night each ring last answered, by ring id; the
+## one answering now, its order, how far in; and the light the stones give back.
+var _answered: Dictionary = {}
+var _ans_ring: HushSites.Ring
+var _ans_order := PackedInt32Array()
+var _ans_t := -1.0
+var _ans_light: OmniLight3D
+var answered_count := 0
 ## Each ring stone's laid rot (the first time it was near), and the turn it
 ## stands at now (Hush.turned), by prop id.
 var _laid: Dictionary = {}
@@ -65,6 +73,7 @@ func _process(delta: float) -> void:
 		if now != 0:
 			_enter(now)
 	_stand_lights()
+	_answer(delta)
 	if _t >= 0.0:
 		_t += delta
 		quiet = Hush.level(_t, _span.x, _span.y)
@@ -93,6 +102,10 @@ func tour_seen(what: StringName) -> bool:
 			return quiet >= 0.999
 		&"hush_gone":
 			return _t < 0.0
+		&"ring_answering":
+			return _ans_t >= 0.0
+		&"ring_answered":
+			return answered_count > 0 and _ans_t < 0.0
 		&"nobodys_light":
 			return _lamps_on > 0
 		&"stone_turned":
@@ -111,6 +124,9 @@ func tour_place(what: String) -> Vector2:
 	# `near nobodys_light`: stay where you are, turned toward the nearest.
 	if what == "nobodys_light":
 		return game.player.pos if _lamps_on > 0 else Vector2.INF
+	# `near ring_answer`: stay, turned toward the stone answering now.
+	if what == "ring_answer":
+		return game.player.pos if _ans_t >= 0.0 else Vector2.INF
 	if what != "hush_ring":
 		return Vector2.INF
 	var r := HushSites.nearest(game.world, game.query, game.player.pos, TOUR_REACH)
@@ -195,6 +211,8 @@ func _make_lamp() -> OmniLight3D:
 
 
 func _exit_tree() -> void:
+	if _ans_light != null:
+		_lamps.append(_ans_light)
 	if game != null:
 		for l: OmniLight3D in _lamps:
 			for sys: Node in game.systems:
@@ -206,6 +224,8 @@ func _exit_tree() -> void:
 
 ## Which way `near nobodys_light` turns the player: toward the nearest light.
 func tour_face(what: String) -> float:
+	if what == "ring_answer" and _ans_t >= 0.0 and _ans_light != null:
+		return (Vector2(_ans_light.position.x, _ans_light.position.z) - game.player.pos).angle()
 	if what != "nobodys_light" or _lamps_on == 0:
 		return NAN
 	var at: Vector2 = game.player.pos
@@ -214,3 +234,47 @@ func tour_face(what: String) -> float:
 		if Vector2(_lamps[i].position.x, _lamps[i].position.z).distance_to(at) < Vector2(best.position.x, best.position.z).distance_to(at):
 			best = _lamps[i]
 	return (Vector2(best.position.x, best.position.z) - at).angle()
+
+
+
+## THE RINGS ANSWER (H5): the lamp held in a ring at night, or a fire lit within
+## its stones, and the stones give the light back one after another, once a night.
+func _answer(delta: float) -> void:
+	if _ans_t >= 0.0:
+		_ans_t += delta
+		var a := Hush.answering(_ans_t, _ans_order.size())
+		if a.x < 0.0:
+			_ans_t = -1.0
+			_ans_light.visible = false
+			return
+		var p := game.world.prop(_ans_ring.stones[_ans_order[int(a.x)]])
+		if p != null:
+			_ans_light.position = Vector3(p.pos.x, game.world.height_at(p.pos) + 1.4, p.pos.y)
+		_ans_light.light_energy = 3.2 * a.y
+		_ans_light.visible = a.y > 0.02
+		return
+	if _in == 0:
+		return
+	var ring: HushSites.Ring = null
+	for r: HushSites.Ring in _rings:
+		if r.id == _in:
+			ring = r
+	if ring == null:
+		return
+	var night := Hush.night_of(game.clock.minutes)
+	var lit := game.body != null and game.body.lamp_lit
+	if not lit:
+		for q: WorldProp in game.query.props_near(ring.centre, ring.radius):
+			if q.kind == PropKind.FIRE and not game.world.depleted.has(q.id):
+				lit = true
+				break
+	if not Hush.may_answer(Weather.night_fall(game.clock.hour()), lit, int(_answered.get(ring.id, -1)), night):
+		return
+	_answered[ring.id] = night
+	_ans_ring = ring
+	_ans_order = Hush.answer_order(game.world.seed_value, ring.id, night, ring.stones.size())
+	_ans_t = 0.0
+	answered_count += 1
+	if _ans_light == null:
+		_ans_light = _make_lamp()
+		_ans_light.omni_range = 5.0

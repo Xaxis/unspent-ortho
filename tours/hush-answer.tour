@@ -1,0 +1,33 @@
+# THE RINGS ANSWER (docs/HUSH.md H5): at night, the lamp lit in a crags ring,
+# and the stones give the light back one after another round the circle, a slow
+# pale pulse each, once a night. From above as it begins and goes round, over
+# the shoulder while it is still going, and the ring dark again after (the same
+# night, it does not answer twice). Over the shoulder the lamp is put out once
+# the answer has begun (it runs on without it), so the pale pulse is not lost in
+# the lamp's warm pool, and the player steps back off the cairn from the stone
+# answering, so the eye has room and the stone is in front of them.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/hush-answer.tour --seed=7 --hour=23 --weather=clear:0
+place the_crags
+coast calm
+near hush_ring
+wait 1.0
+tap lamp
+await ring_answering 3
+wait 0.45
+shot 01-a-stone-answers-from-above
+wait 1.8
+shot 02-another-answers-from-above
+tap shoulder
+await shoulder 3
+tap lamp
+await ring_answering 1
+near ring_answer
+walk 0,1 0.7
+near ring_answer
+wait 0.15
+shot 03-a-stone-answering-over-the-shoulder with shoulder
+await ring_answered 12
+walk 1,0 1.5
+near hush_ring
+wait 2.5
+shot 04-the-same-night-it-stays-dark with shoulder

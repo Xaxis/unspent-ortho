@@ -47,6 +47,14 @@ builds it. Design only; nothing is built until it is agreed.
   the nearest. tests: test_hush; tours/hush-lights.tour (the pool at the top
   view's edge; a pale cross and its cold pool in the fog over the shoulder, as
   far after walking at it).
+- **H5 built** (world/hush): `Hush.may_answer / answer_order / answering`: at
+  night, the lamp lit or a fire in a ring, once a night, round every stone in
+  the night's own order, 0.9 s a stone; one lent light walks the pulse from
+  stone to stone. `await ring_answering` / `ring_answered`; `near ring_answer`
+  turns a tour to the stone answering. tests: test_hush; tours/hush-answer.tour
+  (from above, a pale pulse at a stone against the lamp's warm pool, then at
+  another; over the shoulder with the lamp put out, a stone lit across the
+  ring; the same night, it stays dark).
 
 ## Rules every phenomenon keeps
 

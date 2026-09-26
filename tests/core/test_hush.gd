@@ -99,3 +99,27 @@ func test_nobodys_lights_keep_their_distance_and_keep_out_of_the_rings() -> void
 	var ring := PackedVector3Array([Vector3(start.x, start.y, 4.0)])
 	for p: Vector2 in Hush.nobody(7, 3, 700.0, Vector2(50, 50), ring):
 		check(p.distance_to(start) > 4.0 + Hush.RING_CLEAR, "never in a ring")
+
+
+## THE RINGS ANSWER (H5): only at night, only to a light, once a night; round
+## every stone once, in an order of the night's own that another night need not
+## share; each stone a pulse up and down.
+func test_a_ring_answers_a_light_once_a_night_round_every_stone() -> void:
+	check(not Hush.may_answer(0.0, true, -1, 5), "not by day")
+	check(not Hush.may_answer(1.0, false, -1, 5), "not without a light")
+	check(Hush.may_answer(1.0, true, -1, 5), "at night, to a light")
+	check(not Hush.may_answer(1.0, true, 5, 5), "once a night")
+	check(Hush.may_answer(1.0, true, 5, 6), "and again the next")
+	var a := Hush.answer_order(7, 99, 5, 8)
+	var sorted := a.duplicate()
+	sorted.sort()
+	eq(sorted, PackedInt32Array([0, 1, 2, 3, 4, 5, 6, 7]), "every stone once")
+	eq(Hush.answer_order(7, 99, 5, 8), a, "the same night, the same order")
+	var differs := false
+	for night in range(6, 16):
+		if Hush.answer_order(7, 99, night, 8) != a:
+			differs = true
+	check(differs, "other nights, other orders")
+	eq(Hush.answering(-0.1, 8).x, -1.0, "nothing before")
+	eq(Hush.answering(Hush.ANSWER_STEP * 8 + 0.01, 8).x, -1.0, "nothing after")
+	near(Hush.answering(Hush.ANSWER_STEP * 2.5, 8).y, 1.0, 1e-4, "each stone at its brightest mid-pulse")
