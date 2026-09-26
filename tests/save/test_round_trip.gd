@@ -275,7 +275,7 @@ func _live(g: Game) -> Dictionary:
 		built.append([q.id, q.kind, q.pos])
 	var depleted := {}
 	for id: int in g.world.depleted:
-		depleted[id] = [g.world.depleted[id], g.world.props[id].kind]
+		depleted[id] = [g.world.depleted[id], g.world.prop(id).kind]
 	return {
 		"props": g.world.props.size(),
 		"depleted": depleted,

@@ -962,11 +962,11 @@ func test_the_grid_strides_straight_across_countries() -> void:
 		gt(ids.size(), 1, "line length")
 		var seen := {}
 		for j in ids.size():
-			var p := w.props[ids[j]]
+			var p := w.prop(ids[j])
 			check(p.kind == line.kind, "line mixes kinds")
 			seen[w.country_at(floori(p.pos.x), floori(p.pos.y))] = true
 			if j > 0:
-				lt(p.pos.distance_to(w.props[ids[j - 1]].pos), 40.0, "span length")
+				lt(p.pos.distance_to(w.prop(ids[j - 1]).pos), 40.0, "span length")
 		if line.kind == PropKind.PYLON:
 			pylons += ids.size()
 			if seen.size() >= 3:
