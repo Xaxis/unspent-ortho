@@ -56,7 +56,9 @@ func act() -> void:
 		return
 	if _charge_to_leave(m):
 		return
-	if _open(m):
+	# A phase coil not yet spent on this body opens it for one blow, whatever it
+	# is doing (FightKit.phase).
+	if (_open(m) and _open_long_enough(m)) or sim.phase_ready(m):
 		_strike(m)
 		return
 	_wait(m)
@@ -122,6 +124,23 @@ func _open(m: MobState) -> bool:
 	return m.approach == &"charge" and not m.charging and (now < m.pause_until or m.part != &"front")
 
 
+## An opening is only worth a swing that lands before it closes: the last
+## sliver of a stall or a cooldown is spent getting out of the way, not swinging
+## into the next bite. What a player sees: the light coming back on, the arm
+## coming round.
+func _open_long_enough(m: MobState) -> bool:
+	var now := sim.now
+	var b := _blow()
+	# The swing, and then the walk to where a dodge would clear its next bite.
+	var need := float(b.windup + b.active) + _walk_out_ms(m)
+	var left := INF
+	if m.stunned(now):
+		left = m.stun_until - now
+	if m.machine and m.spent(now) and m.blow != null:
+		left = maxf(left if left != INF else 0.0, m.blow_at + m.blow.lockout() - now)
+	return left >= need
+
+
 func _strike(m: MobState) -> void:
 	var hero := sim.hero
 	var reach := _blow().reach
@@ -131,9 +150,11 @@ func _strike(m: MobState) -> void:
 	# Squarely on the side, not at the edge of it: a turning body carries an edge
 	# swing onto plate before it lands.
 	var square := m.part == &"none" or absf(wrapf((hero.pos - m.pos).angle() - (spot - m.pos).angle(), -PI, PI)) < 0.55
-	var in_box := square and FightRules.box_hits(hero.pos, to_mob.angle(), hero.radius, _blow(), m.pos, m.radius)
+	var in_box := (square or sim.phase_ready(m)) and FightRules.box_hits(hero.pos, to_mob.angle(), hero.radius, _blow(), m.pos, m.radius)
 	var go_heavy := heavy and in_box and _heavy_fits(m)
-	var reaches := in_box and sim.reaches_part(m, hero.pos, false, go_heavy)
+	# A phase coil reads the part through plate for the first blow: that blow may
+	# be thrown from wherever the player stands (FightKit.phase).
+	var reaches := in_box and (sim.reaches_part(m, hero.pos, false, go_heavy) or sim.phase_ready(m))
 	if reaches:
 		hero.move = Vector2.ZERO
 		hero.facing = to_mob.angle()
@@ -179,7 +200,7 @@ func _wait(m: MobState) -> void:
 	var b := m.bite
 	var keep := m.radius + hero.radius + (b.reach if b != null else 0.6) + 0.7
 	var dir := Vector2.ZERO
-	if d < m.radius + hero.radius + 0.2:
+	if d < m.radius + hero.radius + 0.2 or _no_way_out(m):
 		dir = away / maxf(d, 0.001)
 	elif d > keep + 2.0:
 		dir = -away / d
@@ -188,6 +209,33 @@ func _wait(m: MobState) -> void:
 		if local.x > 0.0 and absf(local.y) < m.radius + hero.radius + 0.6:
 			dir += Vector2.from_angle(m.facing + PI * 0.5) * (1.0 if local.y >= 0.0 else -1.0)
 	hero.move = dir.limit_length(1.0)
+
+
+## Standing where its bite would land with no dodge long enough to leave the box
+## either way: waiting there is waiting to be bitten, so the player backs off
+## to where the way out is a dodge long. Letting it come is still the plan.
+const DODGE_CLEAR := 0.9
+
+
+func _no_way_out(m: MobState) -> bool:
+	return _trapped_by(m) > 0.0
+
+
+## How much further than a dodge carries the player would have to go to leave
+## the box of its next bite from here, the shorter way (0: a dodge will do).
+func _trapped_by(m: MobState) -> float:
+	var b := m.bite
+	var hero := sim.hero
+	if b == null or not _in_box_of(b, m, hero.pos, 0.0):
+		return 0.0
+	var local := (hero.pos - m.pos).rotated(-m.facing)
+	var back_need := m.radius + b.reach + hero.radius - local.x
+	var side_need := b.width * 0.5 + hero.radius - absf(local.y)
+	return maxf(0.0, minf(back_need, side_need) - DODGE_CLEAR)
+
+
+func _walk_out_ms(m: MobState) -> float:
+	return _trapped_by(m) / maxf(sim.hero.walk_speed, 0.1) * 1000.0
 
 
 func _round_to(m: MobState, spot: Vector2) -> Vector2:

@@ -9,6 +9,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"bonelands"
 	d.display_name = "bonelands"
+	d.spoken_in = "out on the bonelands"
 	d.order = 4
 	d.style_note = "Cracked broken lines, hard white light, grikes as ink cuts."
 	d.share = Vector2(0.09, 0.13)

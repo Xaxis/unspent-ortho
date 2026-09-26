@@ -29,13 +29,14 @@
 # Stood by the keeper itself, never by the nearest intake: a keeper dens at the
 # station it can feed from and at none within CLEAR_OF_HOME of the spawn, so
 # `place intake` can name one it is not at (seed 1's only intake is 28 tiles
-# from the spawn, and its reaper dens 189 tiles off). Seed 7's reaper dens at an
-# intake with room all round it for the pass below.
+# from the spawn, and its reaper dens 189 tiles off). Which of its stations it
+# dens at is the seed's (Sentinels.lair: intake, sea wall, hulk, turf rows), so
+# the frame claims the keeper and its ground, never one kind of station.
 coast calm
 near keeper
 wait 0.6
 await sentinel 12
-shot 01-the-keeper-at-its-intake with mob:sentinel.coast,prop:intake,land:coast
+shot 01-the-keeper-where-it-dens with mob:sentinel.coast,land:coast
 
 # Its ground: everything inside its reach is held while it stands.
 walkto mob 8

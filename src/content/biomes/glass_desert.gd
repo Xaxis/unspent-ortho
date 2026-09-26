@@ -17,6 +17,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"glass_desert"
 	d.display_name = "the glass"
+	d.spoken_in = "out on the glass"
 	d.order = 12
 	d.style_note = "Plates of green-black glass, hard white glare, cracks like a dry riverbed."
 	d.share = Vector2(0.065, 0.115)

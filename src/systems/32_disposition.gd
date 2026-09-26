@@ -349,8 +349,9 @@ func _on_keeper_fell(region: int, _land: StringName, _how: StringName) -> void:
 ## about the plan's work is sabotage; a blow thrown in a fight the machines
 ## started is not, or defending yourself from what was sent after you would
 ## file you for it and the hunt could never end.
-func _on_hit(attacker: Object, target: Object, _damage: int, _plate: bool, at: Vector3) -> void:
-	_noise(&"hit")
+func _on_hit(attacker: Object, target: Object, _damage: int, plate: bool, at: Vector3) -> void:
+	# The player's own blow is as loud as their kit makes it (FightKit.blow_noise).
+	_noise(&"hit", sim.hero.kit.blow_noise(plate) if attacker == game.player else 1.0)
 	if attacker != game.player:
 		return
 	var mob := target as Mob
@@ -362,10 +363,10 @@ func _on_hit(attacker: Object, target: Object, _damage: int, _plate: bool, at: V
 	raise(&"sabotage", Vector2(at.x, at.z))
 
 
-func _noise(act: StringName) -> void:
+func _noise(act: StringName, scale: float = 1.0) -> void:
 	var p := sim.hero.pos
 	var ground := game.world.ground_at(floori(p.x), floori(p.y))
-	sim.make_noise(p, StealthNoise.radius(act, ground, game.body.crouched, sim.moment.laden_tier))
+	sim.make_noise(p, StealthNoise.radius(act, ground, game.body.crouched, sim.moment.laden_tier) * scale)
 
 
 ## A job under way is a noise that keeps going, and a job on the plan's own

@@ -37,6 +37,12 @@ var realms: Array[StringName] = [&"surface"]
 var sea := false
 ## A one-line note on what this landscape is for, in the notebook's own words.
 var style_note := ""
+## How the game says someone is in this landscape: "on the coast", "out on the
+## glass", "down in the middens". Flat and present (docs/STORY.md, the voice):
+## a place's own preposition, which no rule can guess ("in the coast" is how a
+## sentence built off `display_name` said it). Every landscape declares one
+## (tests/biome/test_registry.gd).
+var spoken_in := ""
 
 # --- placement ------------------------------------------------------------
 
@@ -438,7 +444,11 @@ var mist := 0.0
 ## time_shear). The hazards package reads this.
 var hazards: Dictionary = {}
 ## Roster id -> {weight: float, hours: Vector2} for the mob spawner. An entry
-## with no hours is awake all day.
+## with no hours is awake all day. `over` (a Dictionary of roster keys) makes the
+## kind this landscape's own: every body of it put down here wears those keys
+## over the roster's (a whole `bite` included), and fights, senses and reads on
+## the slate by them. Numbers only: a model builds its working part where the
+## roster's `part` says, so a part moved here would be drawn on the wrong side.
 var roster: Dictionary = {}
 ## Sentinel design id for this type (empty until designed).
 var sentinel: StringName = &""

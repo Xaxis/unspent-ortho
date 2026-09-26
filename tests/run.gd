@@ -38,6 +38,9 @@ func _run() -> void:
 	# at whatever zoom the owner last played at, and a night zoomed fully in
 	# turned test_lock_lens red at 38 degrees on a tree nobody had touched.
 	PlayerSettings.use_file(&"test")
+	# Everything this runner writes, in a folder no other runner on the machine
+	# shares (RunnerHome), taken away again at the end.
+	RunnerHome.open()
 	var filter := ""
 	var shard := 0
 	var shards := 1
@@ -168,6 +171,7 @@ func _run() -> void:
 	# behind it. Measured — three load errors, and the gate red for a new reason.
 	(load("res://src/ui/ui_sketch.gd") as GDScript).call("wait")
 	(load("res://src/ui/ui_slate.gd") as GDScript).call("wait")
+	RunnerHome.remove()
 	quit(0 if _failed == 0 and _load_errors == 0 and _passed > 0 else 1)
 
 
