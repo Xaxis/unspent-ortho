@@ -739,10 +739,13 @@ static func dress(c: GenContext) -> void:
 		m["props"] = Vector2i(first, w.props.size())
 
 
+## Nothing the foot throws lands in a village's own ground: the crater is sited
+## clear of the clearings, but its spoil reaches past the rim, and a tread sited
+## near one would drop plate in the square (seed 42, Chalkstone).
 static func _put(c: GenContext, kind: int, p: Vector2) -> void:
 	var w := c.w
 	var i := floori(p.y) * c.size + floori(p.x)
-	if i < 0 or i >= c.n or w.level[i] <= 0 or Ground.is_water(w.ground[i]) or c.road[i] != 0:
+	if i < 0 or i >= c.n or w.level[i] <= 0 or Ground.is_water(w.ground[i]) or c.road[i] != 0 or c.village[i] != 0:
 		return
 	var id := w.props.size()
 	w.props.append(WorldProp.new(id, kind, p, GenFields.h01(c.s, id, kind, 77) * TAU, 0.8 + GenFields.h01(c.s, id, kind, 78) * 0.4))

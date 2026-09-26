@@ -452,16 +452,24 @@ extends TestCase
 ## (1b17a03e -> 2dbde53b); every one of the grid's 508 masts resolves. What an
 ## id seeds (a tree's lean, the far windows) moves once with it: an eye-level
 ## frame moved 1.6 mean on the far city's windows.
+## RE-ACCEPTED AT GEN 30 (2026-09-26): the places throw their darts per kind and
+## region (`GenScatter._site_rng`) and a patch's size comes from its own tile.
+## `country`, `country2`, `level` and `blend` are equal on all five seeds; only
+## `ground` (the tips' and vents' patches) and `props` (what stands on them and
+## the scatter round them) move. Seed 1 at 512, top-down: the same island, 2.0%
+## of ground pixels differ, all of them site patches and the marks on them. Over
+## seeds 2, 3, 4, 7, 42 and 90210 at 512 the island holds 954 places where it
+## held 939: a different search, not a thinner one.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 94461b7b 100053b8 4fd7a826 5c06a0ae",
-	3: "bd96c6d3 1d22db86 7b140027 a4316902 7e58a668 21618ae8",
-	7: "ba7a972f 55af42cc dc6cb282 0f02d42c f555c41d 36572b9e",
-	42: "e0ad0bb3 b7ca1370 87e9cbb3 2f4b7f69 1565ed7e 3233d301",
-	90210: "2659ea1f 66925798 11348ba2 34b30d32 275c7664 9ac280c7",
+	1: "054710a9 3eac3638 1ad8f3f5 100053b8 4fd7a826 63843be3",
+	3: "bd96c6d3 1d22db86 1008c39c a4316902 7e58a668 77b19d9e",
+	7: "ba7a972f 55af42cc 0f10d2e3 0f02d42c f555c41d 14435036",
+	42: "e0ad0bb3 b7ca1370 0c07876f 2f4b7f69 1565ed7e b76cf559",
+	90210: "2659ea1f 66925798 c128779c 34b30d32 275c7664 25153af5",
 }
 
 
