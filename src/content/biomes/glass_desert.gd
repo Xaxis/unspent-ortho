@@ -111,6 +111,8 @@ static func make() -> BiomeDef:
 		[Weather.GREY, 8, 0.0], [Weather.DRY_STORM, 8, 0.5],
 	]
 	d.mist = 0.02
+	# Its dust is glass grit off the broken sheet: grey-green and hard-edged.
+	d.weather_style = {&"dust": {"air": Color(0.56, 0.60, 0.54), "thick": 1.2}}
 	# Three at once and no shade to answer any of them: this is the landscape that
 	# is crossed with gear or not crossed.
 	#

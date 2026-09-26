@@ -295,3 +295,20 @@ func test_silhouettes_come_in_before_the_first_look() -> void:
 	g.setup(BootOptions.parse(PackedStringArray(["--size=64", "--seed=4"])))
 	check(g.view.stands_early, "and a running game asks for them")
 	g.free()
+
+
+## A DUST STORM IS THE LAND'S OWN AIR (BiomeDef.weather_style `dust`): the mesas'
+## red and the salt's white are not the shared sand, a land that says nothing
+## blows the shared sand, and a misspelt row is named.
+func test_each_land_blows_its_own_dust() -> void:
+	var mesas: Color = Air.dust_of(&"mesas").air
+	var salt: Color = Air.dust_of(&"salt_flats").air
+	gt(mesas.r - mesas.b, 0.3, "the mesas' dust is red iron")
+	gt(salt.get_luminance(), mesas.get_luminance() + 0.2, "the salt's dust is pale")
+	eq(Air.dust_of(&"coast").air, Air.DUST_AIR, "a land with no row blows the shared sand")
+	eq(Air.at({&"mesas": 1.0}).dust, mesas, "and the air over a frame carries it")
+	var bad := BiomeDef.new()
+	bad.weather_style = {&"dust": {"colour": Color.RED}, &"sleet": {}}
+	var said := "\n".join(PackedStringArray(bad.style_problems()))
+	check(said.contains("no field colour"), "a misspelt field is named: %s" % said)
+	check(said.contains("no row for sleet"), "and a kind with no style")

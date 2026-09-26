@@ -305,7 +305,7 @@ func _update(delta: float, snap: bool) -> void:
 	sky.season_turn = Weather.season_turn(minutes)
 	sky.moon_phase = Weather.moon_phase(minutes)
 	sky.clouds = Vector4(_cloud_drift.x, _cloud_drift.y, float(look.cover), float(look.cloud))
-	sky.fog = Vector4(_fog_drift.x, _fog_drift.y, clampf(float(look.fog) + float(look.mist), 0.0, 1.0), 0.0)
+	sky.fog = Vector4(_fog_drift.x, _fog_drift.y, clampf(float(look.fog) + float(look.mist), 0.0, 1.0), clampf(float(look.dust), 0.0, 1.0))
 	sky.flash = _flash
 	for k: String in settled:
 		settled[k] = lerpf(float(settled[k]), float(_settle_target[k]), kr)
@@ -336,6 +336,8 @@ func _update(delta: float, snap: bool) -> void:
 	sky.cast_allowed = float(look.overcast) < 0.6
 	sky.focus = f3
 	sky.set_hour(hour)
+	var dust_row: Dictionary = _here_def().weather_style.get(&"dust", {})
+	view.dust_air = dust_row.get("air", Color(0, 0, 0, 0))
 	view.update(look, wind, f3, delta)
 	_update_ground_marks(focus, minutes, seed_value, delta, snap)
 	_tick_thunder(delta)

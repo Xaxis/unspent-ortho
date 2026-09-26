@@ -319,6 +319,29 @@ var canopy_drip := 1.0
 ## Cold lights drifting low after dark, how many (10_sky wisps): 0 is none.
 ## Never in rain or a wind. Runtime only, so a LOOK field.
 var wisps := 0.0
+## HOW THIS LAND'S WEATHER LOOKS, per weather kind (Weather.KINDS), where it is
+## not the shared look (src/render/weather). A kind with no row here looks as
+## it does everywhere. Rows so far:
+##   &"dust": {"air": Color, "thick": float}  the colour a dust storm carries the
+##            air to here (red iron in the mesas, salt on the flats) and how much
+##            thicker than the shared dust it lies (1 = the shared)
+## Runtime only, so a LOOK field; BiomeRegistry.problems names a bad row.
+var weather_style: Dictionary = {}
+## Every field a weather_style row may carry, per kind.
+const WEATHER_STYLE_FIELDS := {&"dust": ["air", "thick"]}
+
+
+## What is wrong with `weather_style`, one line each (BiomeRegistry.problems).
+func style_problems() -> Array[String]:
+	var out: Array[String] = []
+	for kind: StringName in weather_style:
+		if not WEATHER_STYLE_FIELDS.has(kind):
+			out.append("weather_style has no row for %s" % kind)
+			continue
+		for field: String in (weather_style[kind] as Dictionary):
+			if not (WEATHER_STYLE_FIELDS[kind] as Array).has(field):
+				out.append("weather_style %s has no field %s" % [kind, field])
+	return out
 ## The dystopian grade offset added to SkyLight's own (`SkyLight.neon_row`):
 ## (dark, desat, cool, contrast). `sky.gdshaderinc` scales the graded colour by
 ## (1 - dark), so POSITIVE dark dims and NEGATIVE lifts: every landscape's dark

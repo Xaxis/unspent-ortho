@@ -161,6 +161,9 @@ static func make() -> BiomeDef:
 		[Weather.HEAT, 16, 0.0], [Weather.DRY_STORM, 8, 0.6],
 	]
 	d.mist = 0.04
+	# A dust storm here is the canyon country's own red iron dust, and it lies
+	# thick: the far mesas go to a red wall and the sun to a dull disc.
+	d.weather_style = {&"dust": {"air": Color(0.72, 0.38, 0.24), "thick": 1.4}}
 	# The wind is not in `Hazards.IDS` and is not invented here: what a mesa
 	# actually presses a body with is the sun on bare rock and no water in reach.
 	# The water in reach is the cistern (52_hazards SPRINGS).

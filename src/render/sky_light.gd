@@ -333,7 +333,7 @@ var season_turn := 0.0
 var moon_phase := 0.0
 ## Cloud shadows: xy drift offset in tiles, z coverage 0..1, w strength 0..1.
 var clouds := Vector4.ZERO
-## Fog banks: xy drift offset, z density 0..1, w spare.
+## Fog banks: xy drift offset, z density 0..1, w dust in the air 0..1.
 var fog := Vector4.ZERO
 ## Lightning: 0..1, decays in a few frames.
 var flash := 0.0
@@ -406,6 +406,14 @@ var last_energy := 1.0
 ## everyone else: the fore layer asks it how thick the air is so an occluder
 ## sits in the same weather the land behind it does, and a test measures it.
 var last_air: Dictionary = Air.DEFAULT.duplicate()
+## How far a full dust storm carries the air to the land's dust colour, and how
+## much thicker the depth air lies in one (times the land's own `thick`).
+const DUST_TAKE := 0.85
+const DUST_THICK := 2.4
+## And how far it takes the sky's horizon to that colour (the top a little less).
+const DUST_SKY := 0.8
+## How near a full dust storm brings the start of the air, as a share of its own.
+const DUST_NEAR := 0.55
 ## The airs over the focus: x rain falling now (rain and drizzle), y glare,
 ## z how warm the fog is drawn (furnace haze), w whiteout. (sky_air)
 var air := Vector4.ZERO
@@ -878,6 +886,14 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	top = top_amb.lerp(top, seen)
 	hor = hor_amb.lerp(hor, seen)
 	var gnd := SKY_GROUND_DAY.lerp(SKY_GROUND_NIGHT, nightly) * mood
+	# In a dust storm the sky is the dust: the horizon goes to the land's own
+	# dust at the hour's own level, and the top most of the way after it.
+	var sky_dust := clampf(fog.w, 0.0, 1.0)
+	if sky_dust > 0.0:
+		var dc: Color = Air.at(neon_shares).dust
+		var dl := maxf(0.05, dc.get_luminance())
+		hor = hor.lerp(dc * (hor.get_luminance() / dl), sky_dust * DUST_SKY)
+		top = top.lerp(dc * (top.get_luminance() / dl), sky_dust * DUST_SKY * 0.7)
 	# A lid REPLACES the sky rather than dimming it. What is overhead is no longer
 	# blue at noon and indigo at midnight: it is the underside of the thing in the
 	# way, the same colour at every hour, and it is what metal reflects and where
@@ -937,7 +953,12 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	# on the same shares the light and the grade are composed from.
 	var a := Air.at(neon_shares)
 	last_air = a
-	e.fog_light_color = Air.colour(hor, a)
+	# DUST IS AIR. A dust storm cuts sight by more than half (Weather.SIGHT_CUT)
+	# and was drawn as a few streaks over clear air, so a player was unseen in a
+	# frame that looked clear. The air takes the land's own dust (Air.dust_of:
+	# red iron in the mesas, salt on the flats) and thickens with it.
+	var dust := clampf(fog.w, 0.0, 1.0)
+	e.fog_light_color = Air.colour(hor, a).lerp(a.dust, dust * DUST_TAKE)
 	e.fog_light_energy = lerpf(1.0, 0.10, nightly)
 	# Where the tier has no volumetric air, the depth fog stands in for its bank
 	# (Quality.ROWS.air_stand_in), so the bog is still thicker than the salt.
@@ -950,15 +971,17 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	# level's own as the shoulder share rises, so the horizon keeps its air. A
 	# tier whose depth fog stands in for the volumetric bank keeps it too,
 	# because that fog is the only air the tier has.
-	var clear_day := 1.0 - maxf(clampf(nightly, 0.0, 1.0), clampf(fog.z, 0.0, 1.0))
+	var clear_day := 1.0 - maxf(clampf(nightly, 0.0, 1.0), maxf(clampf(fog.z, 0.0, 1.0), dust))
 	var day_air := lerpf(1.0, DAY_AIR, clear_day) if float(Quality.current().get("air_stand_in", 0.0)) <= 0.0 else 1.0
-	e.fog_density = Air.density(a, lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0))) * float(trim.fog) * maxf(stand_in, 0.2) * day_air
+	e.fog_density = Air.density(a, lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0)) * lerpf(1.0, DUST_THICK * float(a.dust_thick), dust)) \
+		* float(trim.fog) * maxf(stand_in, 0.2) * day_air
 	e.glow_intensity = GLOW_INTENSITY * float(trim.glow)
 	e.tonemap_exposure = EXPOSURE * float(trim.exposure)
 	# And WHERE it lies is the camera's, not a constant: the frame is only about
 	# ten units deep, so two numbers written for the loaded chunks left the air
 	# entirely outside the picture (Air's header has the measurement).
-	var reach := Air.reach(_cam_distance(), _cam_size(), _cam_pitch(), float(a.near), _cam_fov())
+	# A dust storm closes the air in: it begins nearer the eye as it thickens.
+	var reach := Air.reach(_cam_distance(), _cam_size(), _cam_pitch(), float(a.near) * lerpf(1.0, DUST_NEAR, dust), _cam_fov())
 	e.fog_depth_begin = reach.x
 	e.fog_depth_end = reach.y
 	var horizon := horizon_share(_cam())
@@ -973,7 +996,7 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 		sun.directional_shadow_max_distance = _cam_distance() \
 			+ Air.frame_depth(_cam_size(), _cam_pitch()) + SHADOW_ROOM
 	_look_out(e, sm, a, horizon, nightly)
-	e.volumetric_fog_albedo = Air.colour(hor, a).lerp(Color(1, 1, 1), 0.35)
+	e.volumetric_fog_albedo = Air.colour(hor, a).lerp(a.dust, dust * DUST_TAKE).lerp(Color(1, 1, 1), 0.35 * (1.0 - dust))
 	e.volumetric_fog_ambient_inject = lerpf(0.35, 0.10, nightly)
 	# Volumetric air thickens in rain, in mist and at night, which is when a
 	# lamp is a cone and a machine's lens is a shaft.
@@ -989,7 +1012,7 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	# air, and the one thing the player is meant to walk into here is a column you
 	# can see the edges of.
 	e.volumetric_fog_density = VOLUME_DENSITY * float(a.bank) * lerpf(0.12, 2.4,
-		clampf(maxf(fog.z, maxf(air.x, maxf(nightly * 0.5, shut * 0.35))), 0.0, 1.0))
+		clampf(maxf(maxf(fog.z, dust * float(a.dust_thick)), maxf(air.x, maxf(nightly * 0.5, shut * 0.35))), 0.0, 1.0))
 	_lay_air(e, nightly, horizon)
 	# The grade, on the finished image. Same inputs the shader's own multiply
 	# had; one place that can see the whole frame.
