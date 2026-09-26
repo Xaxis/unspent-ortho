@@ -114,6 +114,8 @@ static func make() -> BiomeDef:
 		PropKind.DEAD_TREE, PropKind.STONE_ORE]
 	d.ore = [[PropKind.STONE_ORE, 0.028], [PropKind.IRON_ORE, 0.012]]
 	d.sites = {"stone_circles": 3, "ruins": true, "summit": 1}
+	# The force nobody has a file on lives in these circles (docs/HUSH.md).
+	d.hush = true
 	d.beached_wrecks = false
 	d.pools = {"order": 2, "cell": 28, "chance": 0.5, "r_min": 2.0, "r_max": 4.4, "ground": Ground.BLACKWATER}
 	d.villages = 1

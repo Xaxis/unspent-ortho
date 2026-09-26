@@ -6,6 +6,24 @@ Today it is only implied (the_crags.gd header, Fen's talk, `survey_bends`, the
 roundhouse fragments). Nothing uncanny HAPPENS. This is what would, and who
 builds it. Design only; nothing is built until it is agreed.
 
+## Rulings (teammate1, 2026-09-26, the design approved)
+
+- The standoff ENDS: machines hold at a ring's edge until dawn, or until the
+  player is out of their sight and past their forget, then go home. A ring is
+  a refuge for a night, never a fortress.
+- H4's pale grey-green stands: neither a person's warm nor a machine's cold.
+- The crags only, on their own rings. Nothing reaches past them.
+- H0, H2, H3, H4, H5 are cb's; H1 (the HOLD, and 46_settlements' overwrite of
+  `mob_walls`) is the fight builder's; the words are the story-wright's once H1
+  lands.
+
+## Status
+
+- **H0 built** (world/hush): `BiomeDef.hush` (the crags declare it; classed LOOK
+  in WorldStamp), `HushSites.near/nearest/inside` (windowed: the stones near a
+  point, grouped, the centre fitted where their facing lines meet), 23_hush's
+  `tour_place "hush_ring"`, tests/core/test_hush_sites.gd, tours/hush.tour.
+
 ## Rules every phenomenon keeps
 
 1. **It never explains itself.** No line, fragment, machine read or journal
@@ -143,10 +161,11 @@ night per ring.
 - **Owner:** me.
 
 ### H0 (enabling): the rings, named
-`HushSites.of(world)`: the crags' own stone circles from `world.landmarks`
-(`kind == &"stone_circle"` in the_crags country): centre, radius and stone
-ids. Pure and cached per world, so systems read it and never hard-code a
-place. `tour_place "hush_ring"` stands a tour at the nearest one.
+`HushSites.near(world, query, at, reach)`: the rings of a `BiomeDef.hush`
+landscape round a point, from the stones themselves (worldgen turns each
+circle's stones to face its centre). Not from `world.landmarks`: that is a
+whole-world list and a streamed world may not hold it. Centre, radius and
+stone ids, so systems read it and never hard-code a place. `tour_place "hush_ring"` stands a tour at the nearest one.
 - **Test:** every crags circle is found; no `cast_stones` site ever is; no
   other landscape's circle is.
 - **Owner:** me.
