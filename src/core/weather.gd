@@ -81,7 +81,7 @@ const WIND_PUSH := {
 const SIGHT_CUT := {
 	&"dust": 0.55, &"fog": 0.45, &"storm": 0.30, &"blizzard": 0.45, &"snow": 0.25,
 	&"hail": 0.20, &"ash": 0.25, &"rain": 0.10, &"heat": 0.08,
-	&"drizzle": 0.15, &"whiteout": 0.75, &"glare": 0.10, &"dry_storm": 0.35, &"haze": 0.35,
+	&"drizzle": 0.15, &"whiteout": 0.75, &"glare": 0.25, &"dry_storm": 0.35, &"haze": 0.35,
 }
 
 ## Hearing is cut by c * strength: rain on everything, wind in the ears, hail
