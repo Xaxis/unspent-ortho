@@ -154,7 +154,7 @@ func test_a_raider_in_reach_is_shot_through_the_fight_and_the_kill_is_not_the_pl
 	var guard := 0
 	while m.alive and guard < 40:
 		guard += 1
-		m.invuln_until = 0.0
+		m.hurt_by.clear()
 		@warning_ignore("return_value_discarded")
 		sim.strike(m, TurretRules.blow(), gun.pos)
 	check(not m.alive, "struck enough, it is down")

@@ -447,7 +447,7 @@ static func _carry(p: Pose, klass: StringName, move: float, run: float, c: float
 
 # ---------------------------------------------------------------- actions
 
-const ACTIONS: Array[StringName] = [&"swing", &"heavy", &"dodge", &"work", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"gather", &"hurt", &"eat", &"carried", &"downed", &"swim", &"jump"]
+const ACTIONS: Array[StringName] = [&"swing", &"heavy", &"dodge", &"work", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"gather", &"hurt", &"eat", &"carried", &"downed", &"swim", &"jump", &"climb"]
 ## Actions with no natural end: they hold their last pose until replaced. `swim`
 ## is here so a shot can stage a stroke on dry land and the gallery can show it;
 ## in a game the water chooses it, frame by frame, and nobody plays it by hand.
@@ -500,6 +500,8 @@ static func action(name: StringName, t: float, seconds: float, d: Dictionary, to
 			return dodge(t, seconds, d)
 		&"jump":
 			return jump(t, seconds, d)
+		&"climb":
+			return climb(t, d)
 		&"hurt":
 			return hurt(clampf(t / maxf(seconds, 1e-3), 0.0, 1.0), d)
 		&"eat":
@@ -751,6 +753,25 @@ const JUMP_ABSORB := 0.16
 ## straight and the arms thrown up; the knees come to the chest over the top, the
 ## legs reach for the ground on the way down, and the last JUMP_ABSORB seconds are
 ## the knees folding under the landing and the body rising out of it.
+## Hand over hand up a face (Climb): the arms reach high in turn and the knees
+## come up in turn under them, at a pull a level (Climb.RATE), the body pressed
+## in to the rock.
+const CLIMB_PULL := 1.0 / 1.2
+
+
+static func climb(t: float, d: Dictionary) -> Pose:
+	var s := sin(TAU * t / (CLIMB_PULL * 2.0))
+	return _stand(d).with({
+		"@hips": Vector3(0.04, 0, 0), "spine": Vector3(0, 0, -0.12), "head": Vector3(0, 0, -0.35),
+		"arm_l": Vector3(0.25, 0, 2.55 + 0.35 * s), "fore_l": Vector3(0, 0, 0.45 - 0.35 * s),
+		"arm_r": Vector3(-0.25, 0, 2.55 - 0.35 * s), "fore_r": Vector3(0, 0, 0.45 + 0.35 * s),
+		"thigh_l": Vector3(0.08, 0, 0.8 + 0.45 * s), "shin_l": Vector3(0, 0, -1.3 - 0.3 * s),
+		"thigh_r": Vector3(-0.08, 0, 0.8 - 0.45 * s), "shin_r": Vector3(0, 0, -1.3 + 0.3 * s),
+		"foot_l": Vector3(0, 0, 0.4), "foot_r": Vector3(0, 0, 0.4),
+		"hem": Vector3(0, 0, 0.3), "aerial": Vector3(0, 0, 0.2), "tool": Vector3(0, 0, -0.6),
+	})
+
+
 static func jump(t: float, seconds: float, d: Dictionary) -> Pose:
 	var dur := seconds if seconds > 0.0 else 0.62
 	var absorb := minf(JUMP_ABSORB, dur * 0.3)

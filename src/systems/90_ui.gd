@@ -225,6 +225,9 @@ const PAGE_KEYS := [[&"pause", &"back"], [&"use", &"confirm"], [&"swing", &"conf
 const MOVE_KEYS := [[&"move_up", &"up"], [&"move_down", &"down"], [&"move_left", &"left"], [&"move_right", &"right"]]
 ## The frame the last app opened on: a direction that went down on it is not a press on it.
 var _opened_frame := -1
+## Whether a conversation was up this frame, and the frame before (`_read_keys`).
+var _was_talking := false
+var _talk_prev := false
 ## Keys that open an app from play.
 const OPEN_KEYS := {&"inventory": &"inventory", &"craft": &"crafting", &"map": &"map", &"pause": &"pause"}
 
@@ -238,6 +241,14 @@ func _read_keys() -> bool:
 	var down := {}
 	for pair: Array in PAGE_KEYS:
 		down[pair[0]] = _went_down(pair[0])
+	# A KEY THAT CLOSED A CONVERSATION IS SPENT. 49_story reads its own keys and
+	# runs first, so the frame esc put a talk down, this saw esc go down with
+	# nobody talking and opened the pause menu over the world: every "esc leave"
+	# was "esc leave, then pause". While a talk is up, and on the frame it
+	# closes, the keys are the talk's (their held state is still taken above, so
+	# the next press is a fresh one).
+	if game.talking or _talk_prev:
+		return top() != null
 	var s := top()
 	if s != null:
 		for pair: Array in PAGE_KEYS:
@@ -284,6 +295,8 @@ func _physics_process(_delta: float) -> void:
 func _process(delta: float) -> void:
 	if game == null or game.world == null:
 		return
+	_talk_prev = _was_talking
+	_was_talking = game.talking
 	if _map_build_in > 0.0:
 		_map_build_in -= delta
 		if _map_build_in <= 0.0:

@@ -155,10 +155,12 @@ func test_every_landscape_says_how_one_is_spoken_of_in_it() -> void:
 		check(not said.ends_with("."), "%s: a phrase, not a sentence" % d.id)
 
 
-## A landscape's own kind rewrites numbers, never the body: the model builds
-## its working part, its size and its silhouette off the roster's own row, so a
-## part side or a radius changed here would be drawn somewhere it is not.
-const OVER_NEVER := ["part", "model", "radius", "height", "machine", "approach"]
+## A landscape's own kind rewrites numbers and where its working part is, never
+## the body: the model builds its size and silhouette off the roster's own row,
+## so a radius changed here would be drawn somewhere it is not. The PART may
+## move -- the model builds it on the side it is asked for
+## (MachineModel._move_part) -- but only to a real side.
+const OVER_NEVER := ["model", "radius", "height", "machine", "approach"]
 
 
 func test_a_landscape_s_own_kind_keeps_the_body_it_is_drawn_with() -> void:
@@ -169,3 +171,5 @@ func test_a_landscape_s_own_kind_keeps_the_body_it_is_drawn_with() -> void:
 				check(not over.has(k), "%s's %s rewrites %s, which its model is built from" % [d.id, kind, k])
 			for k: String in over:
 				check(Roster.row(kind).has(k), "%s's %s rewrites %s, a key the roster never had" % [d.id, kind, k])
+			if over.has("part"):
+				check(StringName(str(over.part)) in [&"front", &"back", &"left", &"right"], "%s's %s moves its part to a real side" % [d.id, kind])

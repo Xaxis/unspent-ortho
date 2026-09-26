@@ -11,6 +11,7 @@ extends RefCounted
 ##   ... --filter=sheet_watcher --zoom=6     one kind: a person, stand, alert, windup, strike, dead
 ##   ... --filter=sheet_watcher_snow         the same on snow (lineup_snow for the lineup)
 ##   ... --filter=gait_watcher               six phases of one stride
+##   ... --filter=sides_hauler --zoom=6      one kind with its part on each side
 ##   ... --filter=terrace --zoom=10 --hour=23  watchers and harvesters throwing their
 ##                                          light into a raised step and over a ledge
 ##   ... --filter=disposed_harvester --zoom=15 --hour=12  ONE kind standing at each of
@@ -60,6 +61,18 @@ static func gallery() -> Array:
 		var did: StringName = StringName(rest[0]) if rest.size() > 0 else &"harvester"
 		var only: StringName = StringName(rest[1]) if rest.size() > 1 else &""
 		out.append({"name": filter, "node": disposed(did if KINDS.has(did) else &"harvester", silhouette, only)})
+		return out
+	if filter.begins_with("sides_"):
+		# One kind, the same stance, its working part on each side a landscape
+		# may ask for (MachineModel._move_part), in a row, each lettered.
+		var sk := StringName(filter.trim_prefix("sides_"))
+		for side: StringName in [&"front", &"back", &"left", &"right"]:
+			var m := FigureModel.create(sk, null, side)
+			m.rotation.y = deg_to_rad(20.0)
+			var holder := Node3D.new()
+			holder.add_child(_finish(m, silhouette))
+			_label_later(holder, "%s, part %s" % [sk, side], Vector3(0.7, 0.0, 0.7))
+			out.append({"name": "sides %s %s" % [sk, side], "node": holder})
 		return out
 	if filter.begins_with("sheet_") or filter.begins_with("gait_"):
 		var kid := StringName(filter.trim_prefix("sheet_").trim_prefix("gait_").trim_suffix("_snow"))

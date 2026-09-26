@@ -192,9 +192,14 @@ func _cover_now(p: Vector2, m: Moment) -> float:
 ## it cost given who watched. Each system that puts people on the land answers
 ## `witnesses` for its own (35_folk), so this one goes on knowing nothing about
 ## villagers or crowds and a package that adds people needs no line here.
-func raise(cause: StringName, at: Vector2) -> float:
+func raise(cause: StringName, at: Vector2, scale: float = 1.0) -> float:
+	# The hours already gone by cool the file BEFORE the news lands on it. Left to
+	# the next frame's `_cool`, a clock skipped just before this (the hours a
+	# piece took to build, a night slept) was charged against the news itself,
+	# and a turret built at a cost of two hours was forgotten the frame after.
+	_cool(0.0)
 	var net := Interference.network(game.world, at)
-	var rose := interference.raise(net, cause, at, game.clock.minutes, crowd_witnesses(at))
+	var rose := interference.raise(net, cause, at, game.clock.minutes, crowd_witnesses(at), scale)
 	if rose > 0.0:
 		_seen[&"interference"] = true
 	return rose

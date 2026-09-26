@@ -33,8 +33,8 @@ enum {
 	## Shelter: a roof, a bed, a place to come back to.
 	LEAN_TO,          # (built)
 	HUT,              # (built)
-	CELLAR,           # (planned) stores a raid cannot loot — the answer to RaidRoles
-	                  # going for the stores, which has no answer today.
+	CELLAR,           # (built) stores a raid cannot loot — the answer to RaidRoles
+	                  # going for the stores (SETTLE.md S4).
 	HEARTH,           # (built)
 	STORE,            # (built)
 	## Power: made, mended and stolen.
@@ -43,8 +43,9 @@ enum {
 	PEDAL_DYNAMO,     # (planned) power that costs a person instead of attention:
 	                  # the only generator with no SIGNS row, which is its whole point.
 	BATTERY_STACK,    # (built)
-	STOLEN_CELL,      # (planned) the loudest piece in the game (found_tech 1.0), and the
+	STOLEN_CELL,      # (built) the loudest piece in the game (found_tech 1.0), and the
 	                  # holding `tests/raid/test_attention.gd` weighs every other against.
+	                  # Unlocked by reward: it wants a keeper's core (`needs_one`).
 	## Food and water.
 	PLOT,             # (built)
 	GREENHOUSE,       # (planned) declares SIGNS light 0.5: lit glass at night is food
@@ -70,8 +71,8 @@ enum {
 	## Defence.
 	PALISADE,         # (built)
 	PLATE_WALL,       # (built)
-	GATE,             # (planned) a wall you can get out of. Ring a yard in palisade
-	                  # today and you have walled yourself in.
+	GATE,             # (built) a wall you can get out of: a length of it a body walks
+	                  # through, and the weak point a breaching party goes for.
 	DITCH,            # (planned) defence that costs hours and no materials.
 	TOWER,            # (planned) height, which a turret and a watch both want.
 	SNARE,            # (planned) a trap that holds a raider.
@@ -176,6 +177,14 @@ const ROWS := {
 		"name": "hearth", "idiom": Idiom.MADE, "health": 5.0, "solid": 0.45,
 		"cost": {&"stone": 3, &"deadwood": 2}, "minutes": 25.0, "wear": 0.05,
 	},
+	# Dug in and lined with stone under a lid of seasoned timber, the pinewood saw
+	# hall's reward: what lies within `keeps` of it a raid does not take, on paper
+	# or by the harvester in the yard (RaidResolve.take_stores). It is also room.
+	CELLAR: {
+		"name": "cellar", "idiom": Idiom.MADE, "health": 18.0, "solid": 0.0,
+		"cost": {&"stone": 4, &"timber": 2, &"seasoned_timber": 1}, "minutes": 90.0, "wear": 0.008,
+		"store": 12.0, "keeps": 20.0,
+	},
 	STORE: {
 		"name": "store", "idiom": Idiom.MADE, "health": 8.0, "solid": 0.65,
 		"cost": {&"timber": 1, &"reeds": 3}, "minutes": 45.0, "wear": 0.025,
@@ -220,6 +229,18 @@ const ROWS := {
 		"cost": {&"scrap": 3, &"copper": 1}, "minutes": 80.0, "wear": 0.03,
 		"banks": 6.0,
 	},
+	# A keeper's core in a timber cradle, its lens lit: power the machines made
+	# for themselves, day and night, in any weather. The build list grows by what
+	# the player ends (SETTLE.md S5): any one of `needs_one` goes into it on top of
+	# `cost`, and lives outside `cost` so mending never asks for another core and
+	# salvage never hands one back. The loudest thing a holding can stand up.
+	STOLEN_CELL: {
+		"name": "stolen cell", "idiom": Idiom.FOUND, "health": 10.0, "solid": 0.45,
+		"cost": {&"scrap": 2, &"copper": 2}, "minutes": 90.0, "wear": 0.02,
+		"power": 4.0,
+		"needs_one": [&"reaper_core", &"rake_core", &"plumb_core", &"anvil_core",
+			&"unbuilder_core", &"lockkeeper_core", &"anchor_core", &"listener_core"],
+	},
 	RADIO_MAST: {
 		"name": "radio mast", "idiom": Idiom.MENDED, "health": 6.0, "solid": 0.3,
 		"cost": {&"timber": 1, &"scrap": 1, &"copper": 1}, "minutes": 70.0, "wear": 0.03,
@@ -229,6 +250,15 @@ const ROWS := {
 		"name": "palisade", "idiom": Idiom.MADE, "health": 10.0, "solid": 0.5,
 		"cost": {&"timber": 1, &"deadwood": 1}, "minutes": 30.0, "wear": 0.03,
 		"defence": 1.0,
+	},
+	# A hurdle hung between two posts: walked through (no footprint), a wall
+	# still for what it turns of a raid, and the weak point in the ring --
+	# RaidRoles.breach_target goes for it first, so the breach comes where the
+	# player chose to put it (SETTLE.md S3).
+	GATE: {
+		"name": "gate", "idiom": Idiom.MADE, "health": 8.0, "solid": 0.0,
+		"cost": {&"timber": 2, &"scrap": 1}, "minutes": 40.0, "wear": 0.035,
+		"defence": 0.6,
 	},
 	PLATE_WALL: {
 		"name": "plate wall", "idiom": Idiom.MENDED, "health": 22.0, "solid": 0.55,
@@ -298,9 +328,22 @@ const ROWS := {
 ## The bunk stands with the roofs it is one of, straight after the hut, because
 ## the moment a player wants one is the moment a piece asks for hands they have
 ## not got. The array stands beside the spinner it is the alternative to.
-const BUILDABLE: Array[int] = [LEAN_TO, HEARTH, HUT, BUNK, STORE, PLOT, CATCHMENT,
-	PALISADE, PLATE_WALL, NETTING, WIND_SPINNER, SOLAR_ARRAY, BATTERY_STACK, RADIO_MAST,
+const BUILDABLE: Array[int] = [LEAN_TO, HEARTH, HUT, BUNK, STORE, CELLAR, PLOT, CATCHMENT,
+	PALISADE, PLATE_WALL, GATE, NETTING, WIND_SPINNER, SOLAR_ARRAY, BATTERY_STACK, STOLEN_CELL, RADIO_MAST,
 	DECOY_MAST, SPOOFER, TURRET]
+
+
+## How loud a piece is to the region that watches it go up (SETTLE.md S2,
+## Interference `&"built"`): 1 for anything, plus what it gives off, with found
+## tech counted two and a half times -- the plan knows its own parts.
+static func loudness(kind: int) -> float:
+	var loud := 1.0
+	var signs := signs(kind)
+	for ch: String in signs:
+		if ch == "mask":
+			continue
+		loud += float(signs[ch]) * (2.5 if ch == "found_tech" else 1.0)
+	return loud
 
 
 ## What this kind gives off, standing and working. Empty for most pieces.
@@ -332,6 +375,11 @@ static func row(kind: int) -> Dictionary:
 
 ## Whether a player can put this kind up now. A kind in the enum with no row is
 ## one the raids package may still name and nobody has learnt to build.
+## Tiles round a standing gate's middle that no body but the player's passes
+## (FightSim.mob_walls, set by 46_settlements): the length of the ring it hangs in.
+const GATE_HOLD := 0.8
+
+
 static func buildable(kind: int) -> bool:
 	return BUILDABLE.has(kind)
 
@@ -382,8 +430,19 @@ static func makes_power(kind: int) -> float:
 	return float(row(kind).get("power", 0.0))
 
 
+## The rewards a piece takes one of on top of its cost (SETTLE.md S5): empty for
+## anything a player can put up from what the land gives.
+static func needs_one(kind: int) -> Array:
+	return row(kind).get("needs_one", []) as Array
+
+
 static func makes(kind: int) -> Dictionary:
 	return row(kind).get("makes", {}) as Dictionary
+
+
+## What a standing piece keeps from a raid's hands (a cellar's `keeps`).
+static func keeps(kind: int) -> float:
+	return float(row(kind).get("keeps", 0.0))
 
 
 static func store_room(kind: int) -> float:

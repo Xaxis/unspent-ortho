@@ -48,6 +48,12 @@ var to_height := 0.0
 ## Jump: the whole arc, planned at the press (Jump.plan) and replayed here, so
 ## what is drawn and what a test measured are the same jump.
 var plan: JumpPlan = null
+## Climb: the whole climb, planned at the press (Climb.plan) and replayed here;
+## and the level the body is at on the face now (FightSim.hero_level).
+var climb: Climb.Plan = null
+var at_level := -1
+## A vertical haul (AbilityGrapple): what the line is fast to, at the top.
+var hold := Vector3.INF
 
 var t := 0.0
 var lift := 0.0
@@ -119,6 +125,22 @@ static func jump(p: JumpPlan) -> AbilityMotion:
 	return m
 
 
+static func climb_face(p: Climb.Plan) -> AbilityMotion:
+	var m := AbilityMotion.new()
+	m.kind = &"climb"
+	m.climb = p
+	m.from = p.from
+	m.to = p.on_face if p.slides else p.top
+	m.dir = p.dir
+	m.seconds = p.seconds
+	m.from_height = p.from_height
+	m.to_height = p.from_height if p.slides else p.top_height
+	m.height = p.from_height
+	m.at_level = p.from_level
+	m.landing = m.to
+	return m
+
+
 ## Move the body on by `delta`. Returns where it now is (tile space).
 ## A dash is refused by walls (it slides along them like walking does); a glide
 ## and a grapple pass over ground a walk could not climb, which is the point.
@@ -174,6 +196,20 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 			if t >= seconds:
 				next = plan.to
 				lift = 0.0
+				finished = true
+		&"climb", &"haul":
+			# Replayed like a jump: up the face at the foot, then over the lip onto
+			# the top, or back down it when the breath ran out.
+			var here: Array = climb.at(t)
+			next = here[0]
+			height = float(here[1])
+			at_level = int(here[2])
+			var ground := world.height_at(next) if world != null else 0.0
+			lift = maxf(0.0, height - ground)
+			if t >= seconds:
+				next = to
+				lift = 0.0
+				at_level = -1
 				finished = true
 		&"grapple":
 			var left := to.distance_to(pos)

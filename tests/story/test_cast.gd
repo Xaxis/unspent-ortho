@@ -63,6 +63,25 @@ func test_home_is_the_village_he_wakes_beside() -> void:
 				"seed %d: Maren's fire is the nearest coast village to where he wakes" % s)
 
 
+## Two named people never stand on one tile, or within 49_cast.APART of each
+## other: the key answers the nearest of the cast, and a tour or a player put
+## beside Vera must be able to be nearer her than anybody. At the Holdfast's
+## camp on seed 1 (the shipped size) Vera, Sabine and Teague stood on one tile.
+func test_no_two_of_the_cast_stand_in_each_other() -> void:
+	var g := Sx.game(tree, ["--seed=1", "--hour=11"])
+	await frames(3)
+	var cast: Node = Sx.system(g, "49_cast")
+	var people: Array = cast.get("people")
+	var apart: float = cast.get("APART")
+	for i in people.size():
+		for j in range(i + 1, people.size()):
+			var a: Dictionary = people[i]
+			var b: Dictionary = people[j]
+			gt((a.pos as Vector2).distance_to(b.pos), apart - 1e-3,
+				"%s and %s stand apart" % [a.character, b.character])
+	Sx.end(g)
+
+
 func test_a_named_person_is_there_and_answers_the_use_key() -> void:
 	Story.forget()
 	var g := Sx.game(tree, ["--seed=1", "--size=%d" % SIZE, "--hour=11"])

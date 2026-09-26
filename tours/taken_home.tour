@@ -1,0 +1,43 @@
+# A RAID'S LOSS IS SOMETHING YOU GO AND FIX (SETTLE.md S6). The holding's one
+# resident was carried off to the region's depot; the yard is put dark, the
+# resident walks out, is walked home, and is on the holding's books again.
+#
+#   tools/tour.sh tours/taken_home.tour --seed=1 --hour=11 --weather=clear:0 --held=axe_felling --holding=hut,hearth,plot --carried=1
+#
+# `--holding` stands a staffed holding at the start; `--carried=1` with it takes
+# that holding's resident off its books and holds them at the first depot with a
+# village in its region (45_taken). `at rescue:yard` is that depot and
+# `at taken:home` the holding, by name.
+
+coast calm
+wait 1.0
+
+# --- the yard, and the one act -------------------------------------------------
+at rescue:yard
+wait 1.0
+await held_here 6
+press use 5.5
+await works_part 14
+at rescue:yard_breaker
+wait 0.5
+press use 5.5
+await works_open:2 14
+at rescue:yard_coolant
+wait 0.5
+press use 5.5
+await works_broken 14
+wait 0.8
+await walking_home 6
+shot 01-the-resident-walks-out-of-the-dark-yard with works,works_dark,folk
+
+# --- home ----------------------------------------------------------------------
+# The walk comes with a warp; at the holding they make the last steps themselves.
+at taken:home
+wait 1.0
+shot 02-walked-back-to-the-holding with folk
+until got_home 30
+await holding_people 6
+wait 1.5
+shot 03-home-and-on-the-books-again with folk,holding
+press pause
+wait 0.5

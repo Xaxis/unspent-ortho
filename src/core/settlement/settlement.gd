@@ -132,6 +132,16 @@ func store_room() -> float:
 	return room
 
 
+## What of the stores a raid cannot reach: the room of every standing cellar
+## (StructureKind.keeps), by its condition.
+func kept_room() -> float:
+	var room := 0.0
+	for s in pieces:
+		if s.standing():
+			room += StructureKind.keeps(s.kind) * s.condition()
+	return room
+
+
 ## Stores with nowhere to go: what a holding with no store loses every time.
 const BARE_STORE := 6.0
 

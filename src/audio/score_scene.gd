@@ -64,7 +64,7 @@ static func _weather_at(points: Array, t: float) -> Dictionary:
 				var q: Array = points[i + 1]
 				var u := clampf((t - float(p[0])) / maxf(1e-6, float(q[0]) - float(p[0])), 0.0, 1.0)
 				# Strength eases toward the next point's, the kind holds.
-				s = lerpf(float(p[2]), float(q[2]), u) if q[1] == kind else float(p[2]) * (1.0 - u)
+				s = lerpf(float(p[2]), float(q[2]), u) if StringName(q[1]) == kind else float(p[2]) * (1.0 - u)
 	return {"kind": kind, "strength": s}
 
 

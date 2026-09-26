@@ -170,6 +170,7 @@ func setup(g: Game) -> void:
 	Events.killed.connect(_on_killed)
 	Events.sentinel_fell.connect(_on_sentinel_fell)
 	Events.settlement_founded.connect(_on_founded)
+	Events.fight_ended.connect(_on_fight_ended)
 	if g.options != null and g.options.attention > 0.0:
 		attention_out = clampf(g.options.attention, 0.0, 1.0)
 
@@ -429,6 +430,30 @@ func _mob(sim: FightSim, id: int) -> MobState:
 		if m.id == id:
 			return m
 	return null
+
+
+## TAKEN BESIDE YOUR OWN HOLDING, IT WAS READ (SETTLE.md S2). Put down or
+## carried off within Outcomes.CARRIED_HOME of a holding, the machine that had
+## you had the place too: one notice, as a filed reading is. ONCE: a reading of
+## that holding already in flight is the same one, and over the lost hours it
+## files on its own (`_carry_home`, HOME_MINUTES) -- which is what the line
+## "What it had of ... is in the plan's hands now" after a carry is. Emitted
+## before a carry moves the player, so the player's place is where it happened.
+func _on_fight_ended(outcome: StringName) -> void:
+	if outcome != &"downed" and outcome != &"carried":
+		return
+	if game.player == null:
+		return
+	for s: Settlement in places():
+		if s.realm != realm_here() or s.centre.distance_to(game.player.pos) > Outcomes.CARRIED_HOME:
+			continue
+		var in_flight := false
+		for n: Notice in notices:
+			if n.settlement_id == s.id and n.carried():
+				in_flight = true
+				break
+		if not in_flight:
+			_raise(s, &"notice")
 
 
 ## It got home. This is the one thing in the game that raises attention by a
@@ -1001,18 +1026,29 @@ func _standable(want: Vector2, toward: Vector2) -> Vector2:
 func _step_raid(p: RaidPlan, s: Settlement, now: float) -> void:
 	var sim: FightSim = game.player.sim
 	var live := 0
+	var working := 0
+	var came_to_work := false
 	for row: Dictionary in p.party:
 		if p.over():
 			# One of them bought the whole party off with what was lying in the
 			# yard (`_tribute`): there is no raid left to steer.
 			return
+		var scout: bool = row.get("role", &"") == RaidRoles.SCOUT
+		came_to_work = came_to_work or not scout
 		var m := _mob(sim, int(row.get("mob", -1)))
 		if m == null or not m.alive or m.removed:
 			continue
 		live += 1
+		if not scout:
+			working += 1
 		_drive(p, s, m, sim)
 	if p.over():
 		return
+	if live > 0 and working == 0 and came_to_work:
+		# The working party is down or gone: the scout has nothing left to watch
+		# and carries its report home, so the step ends with the fight.
+		_withdraw_scouts(p, sim)
+		live = 0
 	if live > 0 and not _near(s):
 		# The player has left the yard while it was going on. The rest of it
 		# happens without them, on the same arithmetic as a raid they were never
@@ -1061,18 +1097,42 @@ func _pull_party(p: RaidPlan, sim: FightSim) -> void:
 		_raiders.erase(m.id)
 
 
+## Take a party's scouts off the land, their errand done (`_step_raid`).
+func _withdraw_scouts(p: RaidPlan, sim: FightSim) -> void:
+	for row: Dictionary in p.party:
+		if row.get("role", &"") != RaidRoles.SCOUT:
+			continue
+		row["done"] = true
+		var m := _mob(sim, int(row.get("mob", -1)))
+		if m == null or not m.alive or m.removed:
+			continue
+		m.raider = false
+		sim.remove_mob(m)
+		@warning_ignore("return_value_discarded")
+		_raiders.erase(m.id)
+
+
 ## The share of a step still in the hands of bodies that neither died in the yard
 ## nor finished what they came for: what is settled on paper when the party stops
 ## being something the player is standing in front of.
 func _unspent(p: RaidPlan) -> float:
+	# Weighted by what each trade carries of the step's force (RaidRoles.SHARE),
+	# as the paper settle weighs it: a scout still standing carries none of it.
 	var sent := 0
+	var sent_share := 0.0
+	var left_share := 0.0
 	var left := 0
 	for row: Dictionary in p.party:
 		if int(row.get("mob", -1)) < 0:
 			continue
 		sent += 1
+		var share := float(RaidRoles.SHARE.get(row.get("role", &""), 0.0))
+		sent_share += share
 		if not bool(row.get("done", false)) and not bool(row.get("killed", false)):
 			left += 1
+			left_share += share
+	if sent > 0 and sent_share > 0.0:
+		return left_share / sent_share
 	if sent <= 0:
 		# Nothing of this party is a body any more: a game loaded back into the
 		# middle of a step, or a realm crossed. What it is still worth is what it
@@ -1400,7 +1460,9 @@ func _settle_raid(p: RaidPlan, s: Settlement, share: float) -> void:
 		_seen["looted"] = true
 	if not p.broke.is_empty():
 		_seen["raid_damage"] = true
-	_end(p, s, RaidResolve.outcome_of(s, report))
+	# The whole step's losses, the blows struck by hand as well as the settle's:
+	# the settle of what was left over alone would call a yard it struck `held`.
+	_end(p, s, RaidResolve.outcome_of(s, {"broke": p.broke, "ruined": p.ruined, "took": p.took}))
 
 
 ## What a broken piece leaves in the yard: a machine's blow does not tidy up
@@ -1449,6 +1511,7 @@ func _end(p: RaidPlan, s: Settlement, outcome: StringName) -> void:
 func _says_ended(s: Settlement, outcome: StringName) -> String:
 	match outcome:
 		&"held": return "%s held." % s.name
+		RaidResolve.HELD_AT_COST: return "%s held. What they struck wants mending." % s.name
 		&"broken": return "They have been through %s." % s.name
 		&"razed": return "There is nothing left of %s but what it was made of." % s.name
 	return "They came to %s and went away again." % s.name

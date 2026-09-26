@@ -47,6 +47,44 @@ static func palisade(k: MeshKit, v: int, ruined: bool) -> void:
 					Vector3(-0.12, y - 0.03, lerpf(-0.72, 0.72, (float(i) + 0.5) / float(n))), v, 100 + rail * 6 + i, 0.022)
 
 
+## A gate: two heavier posts with a crossbar pegged over them, and a hurdle of
+## woven stakes hung off one post on rope hinges, swung half open -- the length
+## of the ring a body walks through. Wrecked, the crossbar is down and the
+## hurdle lies flat in the gap.
+static func gate(k: MeshKit, v: int, ruined: bool) -> void:
+	Parts.hand(k)
+	var h := 1.25 + Parts.wob(v, 1) * 0.12
+	for side: float in [-1.0, 1.0]:
+		var z := side * 0.72
+		var top := h * (0.4 if ruined and side > 0.0 else 1.0)
+		Parts.post(k, Vector3(Parts.lean(v, 2 + int(side), 0.04), 0.0, z), Vector3(Parts.lean(v, 4 + int(side), 0.08), top, z), 0.085,
+			Parts.pick(Parts.TIMBER, v, 6 + int(side)))
+		Parts.stone(k, Vector3(0.0, 0.0, z), 0.13, v, 8 + int(side))
+	if not ruined:
+		k.strut(Vector3(0.0, h - 0.05, -0.82), Vector3(0.0, h - 0.02 + Parts.lean(v, 10, 0.05), 0.82), 0.05, 4, Parts.pick(Parts.TIMBER, v, 11))
+	# The hurdle: hung off the -Z post, swung out toward +X by a third of a turn;
+	# wrecked, lying flat in the gap.
+	var hinge := Vector3(0.0, 0.1, -0.64)
+	var swing := Vector3(sin(1.0), 0.0, cos(1.0)) if not ruined else Vector3(0, 0, 1)
+	var width := 1.2
+	var n := 7
+	for i in n:
+		var t := (float(i) + 0.5) / float(n)
+		var at := hinge + swing * width * t
+		if ruined:
+			k.strut(at + Vector3(-0.35, 0.02, 0.0), at + Vector3(0.35, 0.05, 0.0), 0.025, 4, Parts.pick(Parts.TIMBER, v, 20 + i))
+		else:
+			Parts.post(k, at, at + Vector3(Parts.lean(v, 30 + i, 0.03), 0.95 + Parts.wob(v, 40 + i) * 0.15, 0.0), 0.028,
+				Parts.pick(Parts.TIMBER, v, 20 + i))
+	if not ruined:
+		for rail in 2:
+			var y := 0.35 + 0.4 * float(rail)
+			k.strut(hinge + Vector3(0, y, 0), hinge + swing * width + Vector3(0, y, 0), 0.03, 4, Parts.pick(Parts.TIMBER, v, 50 + rail))
+		# Rope hinges: two lashings at the post.
+		for y: float in [0.45, 0.85]:
+			Parts.lash(k, hinge + Vector3(0.04, y, -0.06), hinge + Vector3(-0.04, y - 0.03, 0.06), v, 60 + int(y * 10.0), 0.03)
+
+
 ## The made half of a plate wall: the posts, the rails and every lashing that
 ## holds a panel somebody could not lift alone.
 static func plate_wall_made(k: MeshKit, v: int, ruined: bool) -> void:

@@ -20,6 +20,11 @@ extends RefCounted
 ##   gyro     (mod_gyro)      "a blow does not turn you": a blow taken does not
 ##                            break the swing being thrown
 ##   clamp    (mod_clamp)     "you stay on the plate": knockback is CLAMP_KNOCK
+##   lattice  (mod_lattice)   "every blow shocks": a blow that lands in a part
+##                            also takes LATTICE_DAMAGE off every other body
+##                            within LATTICE_REACH of it, for LATTICE_CHARGES
+##                            (hot: it wants a cool)
+##   icelens  (mod_icelens)   "sight": the scan reads ICELENS_REACH as far
 
 const HARMONIC_DAMAGE := 1
 ## How long the phase coil's opener stops a machine's work. A broken tell
@@ -43,6 +48,14 @@ const CLAMP_KNOCK := 0.3
 ## How loud a harmonic ring is against a plain blow: they hear it.
 const HARMONIC_NOISE := 1.5
 const DAMP_NOISE := 0.5
+## A lattice discharge: how far from the body struck it jumps, and what it takes.
+## A crowd is where it pays: two machines shoulder to shoulder at a gate.
+const LATTICE_REACH := 2.0
+## What one discharge spends (FightRules.CHARGE).
+const LATTICE_CHARGES := 1
+const LATTICE_DAMAGE := 2
+## How much further an icelens scan reads.
+const ICELENS_REACH := 1.5
 
 var harmonic := false
 var phase := false
@@ -52,6 +65,8 @@ var capacitor := false
 var ablative := false
 var gyro := false
 var clamp := false
+var lattice := false
+var icelens := false
 
 
 ## The kit of these fitted ids (pieces and modules alike; only modules count).
@@ -65,6 +80,8 @@ static func of(ids: Array) -> FightKit:
 	k.ablative = ids.has(&"mod_ablative")
 	k.gyro = ids.has(&"mod_gyro")
 	k.clamp = ids.has(&"mod_clamp")
+	k.lattice = ids.has(&"mod_lattice")
+	k.icelens = ids.has(&"mod_icelens")
 	return k
 
 

@@ -212,6 +212,17 @@ func _start_motion(m: AbilityMotion) -> void:
 			game.player.hero.airborne = true
 		if game.player.model != null:
 			game.player.model.play_action(&"jump", m.seconds + JUMP_LANDING)
+	if m.kind == &"climb" or m.kind == &"haul":
+		if game.player.hero != null:
+			game.player.hero.airborne = true
+		if game.player.model != null:
+			game.player.model.play_action(&"climb", m.climb.up_seconds() + 0.05)
+		_drop_route()
+		# Over the shoulder the eye goes behind the climber, onto the face they
+		# are climbing, not left looking along the drop at their back: the
+		# crowded shoulder (Shoulder.crowd) then takes it in against the rock.
+		if game.camera != null and game.camera.shoulder:
+			game.camera.shoulder_yaw = ShoulderView.yaw_behind(m.dir.angle())
 	if m.kind == &"glide":
 		_gliding = true
 		_ensure_wing()
@@ -246,6 +257,8 @@ func _run_motion(delta: float) -> void:
 	game.player.pos = next
 	game.player.facing = facing
 	game.player.lift = _motion.lift
+	if (_motion.kind == &"climb" or _motion.kind == &"haul") and game.player.sim != null:
+		game.player.sim.hero_level = _motion.at_level
 	if game.view != null:
 		game.view.ensure_near(next)
 	if not _motion.finished:
@@ -264,7 +277,7 @@ func _run_motion(delta: float) -> void:
 ## has got to back to the anchor: a player watches the line shorten and knows
 ## what is pulling them, instead of seeing a sparkle and being moved.
 func _travel_marks(delta: float) -> void:
-	if _motion.kind == &"grapple":
+	if _motion.kind == &"grapple" or _motion.kind == &"haul":
 		_aim_line()
 	_travel_at -= delta
 	if _travel_at > 0.0:
@@ -288,7 +301,11 @@ func _draw_line(from: Vector2, to: Vector2) -> void:
 func _aim_line() -> void:
 	if _line == null or not is_instance_valid(_line):
 		return
-	MobFx.aim_line(_line, _hand(), _line_end(_motion.to, LINE_TO))
+	# A haul's line runs up to the hold at the top, not to where the feet end.
+	var end := _line_end(_motion.to, LINE_TO)
+	if _motion.kind == &"haul" and _motion.hold != Vector3.INF:
+		end = _line_end(Vector2(_motion.hold.x, _motion.hold.z), LINE_TO)
+	MobFx.aim_line(_line, _hand(), end)
 
 
 ## Where the line leaves the body: the hand that threw it, so the rope does not
@@ -314,6 +331,11 @@ func _land(m: AbilityMotion) -> void:
 	if m.kind == &"jump":
 		_land_jump(m)
 		return
+	if m.kind == &"climb" or m.kind == &"haul":
+		if m.kind == &"haul":
+			_drop_line()
+		_land_climb(m)
+		return
 	if m.kind == &"glide":
 		_gliding = false
 		if _wing != null:
@@ -328,6 +350,8 @@ func _land(m: AbilityMotion) -> void:
 func _process(delta: float) -> void:
 	if _wing != null:
 		_wing.step(delta)
+	if game != null and game.world != null:
+		_read_faces(delta)
 
 
 func _ensure_wing() -> void:
@@ -372,6 +396,89 @@ func _land_jump(m: AbilityMotion) -> void:
 			sim.drop_strike(p.from_level)
 
 
+## Over the lip, or back down the face when the arms gave out. Coming down a
+## face is the first fall in the game that hurts: 1 health for every 3 levels
+## past what a jump may drop (Climb.fall_damage), taken the way the weather
+## takes it -- not a blow, nothing struck you.
+func _land_climb(m: AbilityMotion) -> void:
+	var hero: Hero = game.player.hero
+	if hero != null:
+		hero.airborne = false
+	if game.player.sim != null:
+		game.player.sim.hero_level = -1
+	var at := game.player.position
+	var p := m.climb
+	# Put somewhere else before the top (a warp, a carry): the climb is over, and
+	# so is the climbing.
+	if not m.finished and game.player.model != null:
+		game.player.model.play_action(&"", 0.0)
+	if p == null or not p.slides:
+		Events.sfx.emit(&"jump_land", at)
+		MobFx.puff(game, at, Vector2.ZERO, Palette.STONE[4], 0.3, int(Time.get_ticks_msec()))
+		return
+	Events.sfx.emit(&"jump_land", at)
+	MobFx.puffs(game, at, Vector2.ZERO, Palette.STONE[4], 3, 0.5, int(Time.get_ticks_msec()))
+	if p.fall_damage > 0:
+		game.body.health = maxi(0, game.body.health - p.fall_damage)
+		if hero != null:
+			hero.health = game.body.health
+		game.player.flash(0.12)
+		game.player.shudder(0.3)
+	Events.message.emit(CLIMB_SLID_LINE)
+
+
+const CLIMB_SLID_LINE := "Your arms give out, and the face puts you back where you started."
+
+
+# --- what can be climbed, read before trying -------------------------------------
+
+## A ROCK FACE READS AS CLIMBABLE BEFORE IT IS TRIED (mechanics improvement 5a).
+## Turned toward one within ROUTE_REACH, a route is ruled up it from the foot to
+## the lip in the player's own pale -- a line of chalked holds -- and it stays
+## while they face it. A face the ground will not hold (turf, scree, snow) gets
+## none, so the difference is learnt by looking. A ribbon that faces the camera,
+## so it reads over the shoulder as well as from above.
+const ROUTE_REACH := 2.2
+const ShoulderView := preload("res://src/core/view/shoulder.gd")
+const ROUTE_BEAT := 0.2
+var _route: MeshInstance3D = null
+var _route_at := 0.0
+var _route_key := Vector3.INF
+
+
+func _read_faces(delta: float) -> void:
+	_route_at -= delta
+	if _route_at > 0.0:
+		return
+	_route_at = ROUTE_BEAT
+	var hero: Hero = game.player.hero if game.player != null else null
+	if hero == null or _motion != null or hero.swimming:
+		_drop_route()
+		return
+	var f := Climb.face(game.world, game.query, hero.pos, Vector2.from_angle(hero.facing), ROUTE_REACH)
+	if f.is_empty() or int(f.to_level) - int(f.from_level) <= Jump.UP_LEVELS:
+		_drop_route()
+		return
+	# Where the face is: along the heading from the foot to the lip.
+	var top: Vector2 = f.top
+	var lip := top - Vector2.from_angle(hero.facing) * (Tuning.PLAYER_RADIUS + 0.2)
+	var key := Vector3(lip.x, lip.y, float(f.to_level))
+	if _route != null and is_instance_valid(_route) and key.distance_to(_route_key) < 0.3:
+		return
+	_drop_route()
+	_route_key = key
+	var foot := game.world.to_3d(lip) + Vector3(0, float(f.from_height) - game.world.height_at(lip) + 0.05, 0)
+	var head := game.world.to_3d(lip) + Vector3(0, 0.12, 0)
+	_route = MobFx.line(game, foot, head, Palette.LINEN[5])
+
+
+func _drop_route() -> void:
+	if _route != null and is_instance_valid(_route):
+		_route.queue_free()
+	_route = null
+	_route_key = Vector3.INF
+
+
 # --- what an ability looks like ------------------------------------------------
 
 ## Every ability effect is drawn here, in ink and stipple for what a person
@@ -398,6 +505,8 @@ func _fx(what: StringName, args: Dictionary) -> void:
 		&"jump":
 			Events.sfx.emit(&"jump", at)
 			MobFx.puff(game, at, -game.player.intent_move, Palette.STONE[4], 0.22, seed_value)
+		&"climb":
+			Events.sfx.emit(&"jump", at)
 		&"glide":
 			Events.sfx.emit(&"ability_glide", at)
 		&"scan":
@@ -663,6 +772,8 @@ func tour_seen(what: StringName) -> bool:
 		return _worn(StringName(s.substr(5)))
 	match what:
 		&"jumping": return _motion != null and _motion.kind == &"jump"
+		&"hauled": return _motion != null and _motion.kind == &"haul"
+		&"climbing": return _motion != null and _motion.kind == &"climb"
 		&"jumped": return _jumped.has(&"")
 		&"gliding": return _gliding
 		&"ability": return not _fired.is_empty()

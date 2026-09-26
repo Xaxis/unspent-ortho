@@ -78,7 +78,8 @@ func setup(s: MobState, world: WorldData, base_material: Material, figure: Figur
 	if figure != null:
 		model = figure
 	elif s.row.get("machine", true):
-		model = FigureModel.create(model_kind, base_material)
+		# On the side the landscape's own kind has it (BiomeDef.roster `over`).
+		model = FigureModel.create(model_kind, base_material, s.part)
 	else:
 		# Animals are the hand's shapes varied by seed: no two yard dogs alike.
 		model = AnimalModel.spawn(model_kind, base_material, Rng.hash_ints(world.seed_value, s.id, 0xA11))

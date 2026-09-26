@@ -39,10 +39,21 @@ func refusal(ctx: AbilityCtx) -> StringName:
 	return &""
 
 
+## How far a scan reads with this kit fitted (an icelens reads further).
+static func reach_of(kit: FightKit) -> float:
+	return REACH * (FightKit.ICELENS_REACH if kit != null and kit.icelens else 1.0)
+
+
+func _reach(ctx: AbilityCtx) -> float:
+	if ctx.game == null or ctx.game.player == null or ctx.game.player.hero == null:
+		return REACH
+	return reach_of(ctx.game.player.hero.kit)
+
+
 func on_press(ctx: AbilityCtx) -> bool:
 	until = ctx.now + SECONDS
 	_next_beat = ctx.now
-	ctx.draw(&"scan", {"reach": REACH, "seconds": SECONDS, "beat": BEAT})
+	ctx.draw(&"scan", {"reach": _reach(ctx), "seconds": SECONDS, "beat": BEAT})
 	return true
 
 
@@ -52,4 +63,4 @@ func passive(ctx: AbilityCtx, _delta: float) -> void:
 	if not active(ctx.now) or ctx.now < _next_beat:
 		return
 	_next_beat = ctx.now + BEAT
-	ctx.draw(&"scan_beat", {"reach": REACH, "beat": BEAT, "left": until - ctx.now})
+	ctx.draw(&"scan_beat", {"reach": _reach(ctx), "beat": BEAT, "left": until - ctx.now})

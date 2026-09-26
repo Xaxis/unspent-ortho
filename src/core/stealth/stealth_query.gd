@@ -117,7 +117,8 @@ static func hears_noise(row: Dictionary, from: Vector2, at: Vector2, radius: flo
 	var base: float = row.get("hears", 0)
 	if base > 0.0:
 		scale = clampf(base / 9.0, 0.5, 1.6)
-	return Senses.chebyshev(from, at) <= radius * scale
+	# A clang in a storm carries less far, as a step does (Weather.HEARING_CUT).
+	return Senses.chebyshev(from, at) <= radius * scale * m.weather_hearing()
 
 
 ## Where an observant machine is looking at time `t` seconds, given the bearing

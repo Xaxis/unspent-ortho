@@ -1,0 +1,20 @@
+# YOUR HOLDING IS WHERE YOU COME BACK TO (SETTLE.md S1; Outcomes.home_hearth).
+# With a holding of your own and its hearth near, a lineman that takes hold and
+# is not pulled free carries you off, and you wake beside your own fire, not at
+# a rock face; the bag still lies where it took you.
+#   tools/tour.sh tours/carried_home.tour --seed=1 --hour=11 --weather=clear:0 --give=knife:1,driftwood:6,stone:4 --held=knife --holding=hearth,lean_to
+coast calm
+zoom 8
+walk 0,1 1.6
+wait 0.6
+spawn lineman
+try 3
+  walkto part 3
+  tap swing
+  await tell 8
+end
+await grip 6
+shot 00-the-lineman-has-hold with mob:lineman
+await skipped 12
+wait 0.6
+shot 01-woken-by-your-own-fire with station:fire

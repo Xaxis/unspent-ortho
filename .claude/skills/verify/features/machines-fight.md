@@ -12,6 +12,12 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
 - 36_machine_parade: `src/systems/36_machine_parade.gd`, reached by `tools/tour.sh tours/machines-day.tour`.
 - 40_fight: `src/systems/40_fight.gd`, reached by `tools/tour.sh tours/fight.tour`.
   Height: a ledge (2 levels) stands bodies out of each other's blows (`tools/test.sh test_height`).
+  Climbing (the jump key at a rock face too tall to jump; a route ruled up a face you face; breath a
+  level, fall damage when it runs out; the climber's level on the face for blows):
+  `tools/test.sh test_climb`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/climb.tour` (header has its options).
+  The vertical line (the grapple at the foot of a face up to 8 levels, hauled up to a post, pylon or
+  trunk at the top): `tools/test.sh test_vertical_grapple`,
+  `TOUR_FIXED_FPS=60 tools/tour.sh tours/vertical_grapple.tour` (header has its options).
   The drop strike, a jump's landing off a ledge as a plate-opening blow: `tools/test.sh test_drop_strike`,
   `tools/tour.sh tours/drop_strike.tour` (header has its options).
   The heavy blow, swing held 300 ms: `tools/test.sh "test_heavy,test_bouts"` (the reader's time-to-kill
@@ -26,13 +32,23 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   `TOUR_FIXED_FPS=60 tools/tour.sh tours/dropper.tour` (top view and over the shoulder; the tour
   command `over KIND` stages a body on a lip with the player below).
   Ten awake machines' draw cost: `tools/test.sh test_awake_cost`.
+  Part sides (a landscape's `over` part moves the working part; the model builds it there):
+  `tools/test.sh test_part_sides`, `tools/shot.sh shots/x.png --scene=gallery --filter=sides_hauler --zoom=4`,
+  `tools/tour.sh tours/part_sides.tour` and `tours/part_sides_cave.tour` (headers have their options).
   Night hearing (a machine hears further and makes up its mind faster by ear at night): the day
   and night noticing distances and night bouts print in `tools/test.sh test_first_meetings:test_by_night`.
 - 42_target: `src/systems/42_target.gd`, reached by `tools/tour.sh tours/targeting.tour`. A lock holds the body (facing, strafe arc, swing, dodge: `src/core/fight/lock_on.gd`, `tools/test.sh test_lock_on`), proven in both views by `tools/tour.sh tours/lockon_top.tour` and `tours/lockon_shoulder.tour` (each tour's header has its options).
 - 44_sentinels: `src/systems/44_sentinels.gd`, reached by `tools/tour.sh tours/sentinels.tour`.
 - 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.
+  Freed by a dark yard or a fallen keeper, and back on a standing holding's books
+  (`tools/test.sh test_come_home`; `tools/tour.sh tours/taken_home.tour`, options in its header;
+  `tours/escort.tour` walks one to a village).
 - 47_defences: `src/systems/47_defences.gd`, reached by `tools/tour.sh tours/defences.tour`.
+  A gun sees over its own holding's walls, not another's (`tools/test.sh test_turret_sight`).
 - 48_raids: `src/systems/48_raids.gd`, reached by `tools/tour.sh tours/raids.tour`.
+  A probe fought live against a walled yard with covering guns, held (`tools/tour.sh tours/raids_live.tour`,
+  options in its header, `--walled`); graded outcomes and the prepared-versus-open bout
+  (`tools/test.sh test_raid_live`); hits from several sources land in one window (`tools/test.sh test_hits_stack`).
 
 ## How to reach it
 

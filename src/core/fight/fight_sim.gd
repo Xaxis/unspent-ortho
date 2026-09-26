@@ -258,7 +258,7 @@ func _swing() -> void:
 		var to := m.pos - hero.pos
 		if to.length() > hero.radius + b.reach + m.radius + FightRules.AIM_ASSIST_EXTRA:
 			continue
-		if not meets(hero.pos, m.pos):
+		if not meets_hero(m.pos):
 			continue
 		var off := absf(wrapf(to.angle() - hero.facing, -PI, PI))
 		if off < best_off:
@@ -300,7 +300,7 @@ func drop_strike(from_level: int) -> bool:
 	var best: MobState = null
 	var best_d := INF
 	for m in mobs:
-		if not m.alive or m.removed or not meets(hero.pos, m.pos):
+		if not m.alive or m.removed or not meets_hero(m.pos):
 			continue
 		if from_level - level_of(m.pos) < FightRules.DROP_LEVELS:
 			continue
@@ -539,10 +539,19 @@ func strike(m: MobState, b: Blow, from: Vector2) -> StringName:
 		emit(&"struck", {"from": from, "target": m, "damage": 0, "plate": true, "at": m.pos})
 		_wake(m, &"damaged", from)
 		return &"plate"
-	if m.invulnerable(now):
+	if m.hurt_by_now(source_of(from), now):
 		return &""
 	_hurt_mob(m, b, from)
 	return &"hit"
+
+
+## Which source a blow comes from, for a body's hurt frames (MobState.hurt_by):
+## the player's own swing is one source, and a blow from anywhere else is the
+## thing standing where it came from.
+static func source_of(from: Vector2) -> Variant:
+	if not is_finite(from.x):
+		return &"hero"
+	return Vector2i(roundi(from.x * 4.0), roundi(from.y * 4.0))
 
 
 ## The player has done something to this body that its role takes amiss
@@ -776,6 +785,7 @@ func _move_mob(m: MobState, dt: float) -> void:
 	# `WorldQuery.passable` already reads for a walker rig). A climber does not
 	# swim: the ride answers deep water as a walker would.
 	var next := query.move_body(m.pos, v * dt, minf(m.radius, 0.45), climber(m.row), Swim.may_cross(m.row)) if query != null else m.pos + v * dt
+	next = _held_by_walls(m, next)
 	var keeps: Array = m.row.get("keeps_to", [])
 	if not keeps.is_empty() and world != null:
 		if not _ground_in(next, keeps):
@@ -827,7 +837,7 @@ func _touching() -> void:
 			continue
 		if m.pos.distance_to(hero.pos) > m.radius + hero.radius:
 			continue
-		if not meets(m.pos, hero.pos):
+		if not meets_hero(m.pos):
 			continue
 		if hero.invulnerable(now):
 			continue
@@ -842,7 +852,7 @@ func _land(t0: float, t1: float) -> void:
 				continue
 			if not FightRules.box_hits(hero.pos, hero.facing, hero.radius, b, m.pos, m.radius):
 				continue
-			if not meets(hero.pos, m.pos):
+			if not meets_hero(m.pos):
 				continue
 			hero.struck[m.id] = true
 			_wear_on_contact()
@@ -858,7 +868,7 @@ func _land(t0: float, t1: float) -> void:
 				hero.throw(hero.pos - m.pos, FightRules.RING_RECOIL, FightRules.RING_RECOIL_MS, now)
 				_ring(m)
 				continue
-			if m.invulnerable(now):
+			if m.hurt_by_now(&"hero", now):
 				continue
 			# Read through what covers the part, it is a blow in the part like any
 			# other, stall and all, for FightKit.PHASE_STALL_MS.
@@ -882,7 +892,7 @@ func _land(t0: float, t1: float) -> void:
 				continue
 		elif not FightRules.box_hits(m.pos, m.facing, m.radius, m.blow, hero.pos, hero.radius):
 			continue
-		if not meets(m.pos, hero.pos):
+		if not meets_hero(m.pos):
 			continue
 		m.struck[&"hero"] = true
 		if not hero.invulnerable(now):
@@ -901,12 +911,62 @@ func _land(t0: float, t1: float) -> void:
 		_hurt_hero(m, m.blow.dmg, Vector2.from_angle(m.facing) + (hero.pos - m.pos).normalized(), m.blow.knock, m.blow.knock_ms)
 
 
+## Walls that stop every body but the player's: a standing gate's hold
+## (x, y, radius), set by the settlements system each step. The player's own
+## movement never reads this, which is the whole of what a gate is.
+var mob_walls: Array[Vector3] = []
+
+
+## A step that would take a body into a standing gate's hold goes round it, or
+## stays: the same "only closer is refused" rule every solid thing keeps, so a
+## body already inside one can always leave it.
+func _held_by_walls(m: MobState, next: Vector2) -> Vector2:
+	if mob_walls.is_empty():
+		return next
+	var r := minf(m.radius, 0.45)
+	for c: Vector3 in mob_walls:
+		var at := Vector2(c.x, c.y)
+		var rr := c.z + r
+		var after := at.distance_squared_to(next)
+		if after < rr * rr and after < at.distance_squared_to(m.pos):
+			# Along the edge of the hold, if that is out of it; else not at all.
+			var n := (m.pos - at).normalized() if m.pos.distance_squared_to(at) > 1e-8 else Vector2.RIGHT
+			var d := next - m.pos
+			var along := m.pos + (d - n * d.dot(n))
+			if along.distance_squared_to(at) >= rr * rr or along.distance_squared_to(at) >= at.distance_squared_to(m.pos):
+				next = along
+			else:
+				return m.pos
+	for c: Vector3 in mob_walls:
+		var at := Vector2(c.x, c.y)
+		var rr := c.z + r
+		var after := at.distance_squared_to(next)
+		if after < rr * rr and after < at.distance_squared_to(m.pos):
+			return m.pos
+	return next
+
+
 ## The level a body stands at, read at its own tile: the one height question a
 ## blow asks, and never more of the world than where the body stands. The sea's
 ## surface, not its bed, for a body in it: the same clamp `WorldData.height_at`
 ## draws a body at, or a swimmer off a shore shelf is out of every blow.
 func level_of(p: Vector2) -> int:
 	return maxi(0, world.level_at(floori(p.x), floori(p.y))) if world != null else 0
+
+
+## The level the player's body is at: the ground's under it, or, on a rock face,
+## the level it has climbed to (54_gear sets `hero_level` while a climb runs),
+## so a machine at the foot reaches a climber only within a ledge of the ground.
+var hero_level := -1
+
+
+func hero_level_now() -> int:
+	return hero_level if hero_level >= 0 else level_of(hero.pos)
+
+
+## Do the player and a body at `p` stand on levels a blow passes between?
+func meets_hero(p: Vector2) -> bool:
+	return FightRules.levels_meet(hero_level_now(), level_of(p))
 
 
 ## Are two bodies on levels a blow passes between (FightRules.levels_meet)?
@@ -949,10 +1009,11 @@ func phase_ready(m: MobState) -> bool:
 ## plate blow never stalls a machine, harmonic or not.
 func _ring(m: MobState) -> void:
 	var dmg := 0
-	if hero.kit.harmonic and not m.invulnerable(now):
+	if hero.kit.harmonic and not m.hurt_by_now(&"hero", now):
 		dmg = FightKit.HARMONIC_DAMAGE
 		m.health -= dmg
 		m.invuln_until = now + m.mob_iframes()
+		m.hurt_by[&"hero"] = m.invuln_until
 		m.last_hit_at = now
 	emit(&"hit", {"attacker": hero, "target": m, "damage": dmg, "plate": true, "at": m.pos})
 	if m.health <= 0:
@@ -1021,6 +1082,25 @@ func _wear_on_contact() -> void:
 		emit(&"dulled", {"item": inv.held})
 
 
+## A lattice discharge off the body just struck: every other live body within
+## FightKit.LATTICE_REACH takes LATTICE_DAMAGE, as a source of its own (so the
+## swing's hurt frames do not eat it), and dies of it like any other blow.
+func _lattice(struck: MobState) -> void:
+	for o in mobs:
+		if o == struck or not o.alive or o.removed:
+			continue
+		if o.pos.distance_to(struck.pos) - o.radius > FightKit.LATTICE_REACH:
+			continue
+		if o.hurt_by_now(&"lattice", now):
+			continue
+		o.health -= FightKit.LATTICE_DAMAGE
+		o.hurt_by[&"lattice"] = now + o.mob_iframes()
+		o.last_hit_at = now
+		emit(&"struck", {"from": struck.pos, "target": o, "damage": FightKit.LATTICE_DAMAGE, "plate": false, "at": o.pos, "arc": true})
+		if o.health <= 0:
+			_kill(o, true)
+
+
 ## `from` is where the blow came from; INF is the player's own swing.
 func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF, stall_ms: int = FightRules.STALL_MS) -> void:
 	var player_swing := not is_finite(from.x)
@@ -1028,6 +1108,7 @@ func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF, stall_ms: int 
 	m.struck_from = from
 	m.health -= b.dmg
 	m.invuln_until = now + m.mob_iframes()
+	m.hurt_by[source_of(from)] = m.invuln_until
 	m.last_hit_at = now
 	# A creature has no part to flare: it is hurt at once.
 	m.flare_until = now + (FightRules.PART_FLARE_MS if m.machine else 0.0)
@@ -1046,6 +1127,10 @@ func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF, stall_ms: int 
 		_break_tell(m)
 	if player_swing:
 		emit(&"hit", {"attacker": hero, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})
+		# A discharge is a charge spent, as a charged weapon's swing is: dry, the
+		# blow lands and nothing jumps (the capacitor and the leech pair with it).
+		if hero.kit.lattice and FightRules.spend_charges(hero.inventory, FightKit.LATTICE_CHARGES):
+			_lattice(m)
 	else:
 		emit(&"struck", {"from": from, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})
 	if m.health <= 0:

@@ -112,6 +112,11 @@ static func score_for(role: StringName, row: Dictionary) -> float:
 ## yard and the outside. Nothing defended, and it goes for the shelter instead,
 ## because a holding with no wall is a holding whose roof is the wall.
 static func breach_target(s: Settlement) -> int:
+	# A standing gate first: it is the weak point in the ring, and it is where
+	# the player chose to let the ring be weak (SETTLE.md S3).
+	for p in s.pieces:
+		if p.kind == StructureKind.GATE and p.standing():
+			return p.id
 	var best := -1
 	var top := 0.0
 	for p in s.pieces:

@@ -384,7 +384,7 @@ static func _drop(m: MobState, sim: FightSim) -> void:
 	if m.locked_out(now):
 		m.want = Vector2.ZERO
 		return
-	if sim.level_of(m.pos) - sim.level_of(sim.hero.pos) >= FightRules.LEDGE_LEVELS:
+	if sim.level_of(m.pos) - sim.hero_level_now() >= FightRules.LEDGE_LEVELS:
 		m.want = Vector2.ZERO
 		if m.drop != null and to.length() <= FightRules.DROP_REACH and not m.stunned(now):
 			m.drop_from = m.pos

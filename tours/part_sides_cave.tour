@@ -1,0 +1,10 @@
+# The cave hauler with its knuckle drive on its BACK (mechanics 3a, part sides;
+# the limestone caves' `over` part), turned the way tours/part_sides.tour turns
+# the bonelands one, whose drive is on its left.
+#   tools/tour.sh tours/part_sides_cave.tour --seed=7 --realm=underground --hour=11
+coast calm
+walk -1,0 1.6
+wait 0.6
+spawn hauler@135
+wait 0.8
+shot 01-the-cave-hauler-works-with-its-back with mob:hauler,land:limestone_caves

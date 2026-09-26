@@ -342,10 +342,10 @@ func _take_its_table(s: SentinelState, def: SentinelDef) -> void:
 		if id == &"" or n <= 0:
 			continue
 		if Items.def(id).is_empty():
-			# A core is declared on the table and in `Materials` before there is an
-			# item row to carry it: the gear package owns src/content/items.gd this
-			# wave, so what the table promises is read by the economy and the slate
-			# and is not forced into the bag here.
+			# Never quietly: skipping in silence is how the frost sea's keeper gave
+			# nothing for a whole wave (no `listener_core` row). test_designs holds
+			# every core to an Items row; this says so if one slips.
+			push_error("keeper %s drops %s, which has no Items row" % [def.id, id])
 			continue
 		game.inventory.add(id, n)
 		Events.took.emit(id, n)

@@ -1657,7 +1657,7 @@ static func _survey(L: Lay) -> void:
 		for e: Array in dressing:
 			if roll >= float(e[0]):
 				continue
-			match e[1]:
+			match StringName(e[1]):
 				&"snow_fence_line":
 					_run(L, PropKind.FENCE, a + dir * (4.0 + roll * 8.0) + side * 1.2, dir, 4, 2.0, -99, 0.15)
 				&"pipe_line":
@@ -1671,7 +1671,7 @@ static func _survey(L: Lay) -> void:
 ## The landscape at (x, y) dresses the survey with `dressing`.
 static func _survey_has(L: Lay, x: int, y: int, dressing: StringName) -> bool:
 	for e: Array in evidence(L.type_at(x, y)).survey:
-		if e[1] == dressing:
+		if StringName(e[1]) == dressing:
 			return true
 	return false
 

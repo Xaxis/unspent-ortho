@@ -293,6 +293,26 @@ var _tread_last := NAN
 var tread_landings := 0
 ## The shock running now: [where (tile space), real seconds since the landing].
 var _shock: Array = []
+## A PAD THROWS ITS SHADOW BEFORE IT COMES (DESIGN 5c): this many real seconds
+## before a foot coming down in a tread near the player is low enough to stop
+## bodies (BLOCK_FROM, when one caught under it is put out), every pad marks
+## the ground it will cover, and the ground inside darkens all the way down to
+## the landing. A foot never hurts anybody; the shadow is what says "not here".
+const WARN_SECONDS := 1.5
+## How near the player a pad is marked: the land in the play camera's frame and
+## a little past it.
+const WARN_REACH := 80.0
+## Feet (walker * 3 + leg) whose coming landing has been marked, until they land.
+var _warned: Dictionary = {}
+## Pads marked this run (--stats; a tour asks `colossus_warned`).
+var warnings := 0
+## Whether a marked pad has still to land.
+var _marked := false
+## Pads coming down near the player, for the shade straight under them:
+## [pads (Array[Vector3], tile space), world minute warned, world minute it lands].
+var _coming: Array = []
+## How many pads' shade is on the land this frame (--stats; a tour).
+var pad_shades := 0
 
 
 ## WHAT THE FEET IN THE TREADS DO TO THE REGION, from the clock: which pads stop
@@ -320,6 +340,14 @@ func _treads(m: float, delta: float) -> void:
 						if not skipped:
 							_landed(d, pads, t, (view.poses[i].ankles as Array)[int(o.leg)])
 	_down = now_down
+	for key: int in _warned.keys():
+		if now_down.has(key):
+			_warned.erase(key)
+	if _warned.is_empty():
+		_marked = false
+	if not skipped:
+		_warn(m)
+	_shade_pads(m)
 	if circles != blocks:
 		blocks = circles
 		if game.query != null:
@@ -327,6 +355,73 @@ func _treads(m: float, delta: float) -> void:
 	if not blocks.is_empty():
 		_push_out(blocks)
 	_run_shock(delta)
+
+
+## Mark the ground under every pad about to land near the player (WARN_SECONDS
+## ahead of it), once per landing.
+func _warn(m: float) -> void:
+	if game.player == null or game.world == null:
+		return
+	var lead := WARN_SECONDS * (game.clock.rate if game.clock != null else Tuning.MINUTES_PER_SECOND)
+	for i in view.defs.size():
+		var d: RefCounted = view.defs[i]
+		for o: Dictionary in Treads.landing_soon(d, view.routes[i], m, lead, BLOCK_FROM):
+			var key := i * 3 + int(o.leg)
+			if _warned.has(key):
+				continue
+			_warned[key] = true
+			var t: Vector4 = o.tread
+			var until := _until_down(d, view.routes[i], m, int(o.leg))
+			var seconds := until / maxf(lead / WARN_SECONDS, 1e-3)
+			var near: Array[Vector3] = []
+			for p: Vector3 in Treads.pads(d, Vector2(t.x, t.z), t.w):
+				var at := Vector2(p.x, p.y)
+				if at.distance_to(game.player.pos) > WARN_REACH + p.z:
+					continue
+				MobFx.tell_shade(game, game.world.to_3d(at), Palette.INK[1], p.z, seconds,
+					game.camera != null and game.camera.shoulder)
+				near.append(p)
+				warnings += 1
+				_marked = true
+			if not near.is_empty():
+				_coming.append([near, m, m + until])
+
+
+## The shade straight under every pad coming down near the player, deepening
+## from its warning to its landing, handed to the land (sky.gdshaderinc
+## `colossus_pads`). Once it has landed the foot stands there itself.
+func _shade_pads(m: float) -> void:
+	var cols: Array[Vector4] = [Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO]
+	var n := 0
+	var keep: Array = []
+	for c: Array in _coming:
+		var from: float = c[1]
+		var to: float = c[2]
+		if is_nan(m) or m >= to or m < from - 1.0:
+			continue
+		keep.append(c)
+		var k := clampf((m - from) / maxf(to - from, 1e-3), 0.0, 1.0)
+		for p: Vector3 in (c[0] as Array):
+			if n < 4:
+				cols[n] = Vector4(p.x, p.y, p.z, 0.55 + 0.45 * k * k * (3.0 - 2.0 * k))
+				n += 1
+	_coming = keep
+	if n == 0 and pad_shades == 0:
+		return
+	pad_shades = n
+	RenderingServer.global_shader_parameter_set(&"colossus_pads", Projection(cols[0], cols[1], cols[2], cols[3]))
+
+
+## World minutes from `m` until leg `leg` of this walk stands in its tread
+## (found by stepping the clock; asked once a landing).
+func _until_down(d: RefCounted, route: RefCounted, m: float, leg: int) -> float:
+	var dt := 0.0
+	while dt < 120.0:
+		for o: Dictionary in Treads.over(d, route, m + dt):
+			if int(o.leg) == leg and bool(o.planted):
+				return dt
+		dt += 0.1
+	return 0.0
 
 
 ## Everything standing where a pad is now: crushed, for good. Asked again the
@@ -521,6 +616,9 @@ func tour_seen(what: StringName) -> bool:
 			return not _down.is_empty()
 		&"colossus_blocks":
 			return not blocks.is_empty()
+		&"colossus_warned":
+			# A pad's shadow is on the ground: marked near the player, not landed yet.
+			return _marked
 	return false
 
 

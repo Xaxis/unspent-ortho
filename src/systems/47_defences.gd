@@ -70,7 +70,9 @@ func _work(sim: FightSim, h: Node, s: Settlement, p: Structure, key: String) -> 
 	if not TurretRules.armed(p):
 		st["target"] = -1
 		return
-	var clear := func(q: MobState) -> bool: return Senses.line_clear(game.world, game.query, p.pos, q.pos)
+	# A gun stands above its own holding's stake walls, and nothing else's.
+	var over: Dictionary = h.call("walls_of", s)
+	var clear := func(q: MobState) -> bool: return Senses.line_clear(game.world, game.query, p.pos, q.pos, over)
 	var m := _mob(sim, int(st["target"]))
 	if m == null or not TurretRules.keeps(m, p.pos) or not bool(clear.call(m)):
 		m = TurretRules.pick(sim.mobs, p.pos, clear)

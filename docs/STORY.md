@@ -160,4 +160,12 @@ choice is scored; saying nothing is always an answer.
   coast's bunkers are Cairn's, 2028 (ruled 2026-09-25, `docs/story/UNDER_THE_STONES.md`):
   his No. 4 wakes for him once he knows his passwords and teaches `was_cia`.
 - Settlements and raids: the Holdfast's holdings. Companions are playable; the story stays his.
+
+**Proposal (orchestrator, 2026-09-26): what the plan does with people it carries.**
+Nothing. They are not wanted: a person is stock the plan files and moves like
+anything else, sorted at the region's depot and kept only because nothing has told
+it to discard them, the same inertia that still lays the orchard house's table. No
+machine speaks of them; the depot's register on the slate shows their names. Put
+the yard dark or fell the region's keeper and they walk out; walked home, they are
+the holding's people again. Ants, moved, never hated.
 - The words themselves live in `src/content/story/`.
