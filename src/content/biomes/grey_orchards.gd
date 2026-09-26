@@ -103,6 +103,10 @@ static func make() -> BiomeDef:
 		&"dog.feral": {"weight": 0.8},
 	}
 	d.landmarks = [&"clerks_office", &"poured_pillar", &"sump_pump", &"blinking_stack"]
+	# Behind every grower's door, the house the machines still keep for them:
+	# the table laid, a hot meal through the hatch at every mealtime
+	# (src/content/interiors/laid_table.gd).
+	d.interiors = {&"house": &"laid_table"}
 	d.sound_bed = &"bed_pines"
 	d.surface = _surface
 	d.scatter = _scatter

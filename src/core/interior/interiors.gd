@@ -22,6 +22,7 @@ const RECIPES := {
 	&"maintenance_bay": "res://src/content/interiors/maintenance_bay.gd",
 	&"foundry": "res://src/content/interiors/foundry.gd",
 	&"data_hall": "res://src/content/interiors/data_hall.gd",
+	&"laid_table": "res://src/content/interiors/laid_table.gd",
 }
 
 static var _kinds: Dictionary = {}

@@ -1132,6 +1132,113 @@ const FRAGMENTS := {
 			"off above it: three words, too faint to read.",
 		],
 	},
+	# --- a grower's house in the grey orchards (ROOMS: laid_table) ------------
+	# Leads only: the machines still keep house for whoever lived here. Nothing
+	# counts the places, because the household is dealt per door. No beats.
+	&"orchard_table_cloth": {
+		"kind": &"mark", "title": "the table, laid", "lands": [],
+		"lines": [
+			"A cloth, pressed. At each place a bowl, a",
+			"spoon, a cup turned down, a napkin folded",
+			"into a point.",
+			"",
+			"The bowls are warm. The cloth has never",
+			"had a thing spilled on it.",
+		],
+	},
+	&"orchard_table_name": {
+		"kind": &"mark", "title": "the table, laid", "lands": [],
+		"lines": [
+			"Salt, full. Pepper, full. Honey with the",
+			"lid on and a clean spoon laid by it.",
+			"",
+			"Where the cloth's corner lifts, a name is",
+			"cut into the wood: pip. Somebody has been",
+			"sanding at it for a long time.",
+		],
+	},
+	&"orchard_table_cushion": {
+		"kind": &"mark", "title": "the table, laid", "lands": [],
+		"lines": [
+			"Every chair pushed in square to its place,",
+			"a cushion on each, plumped.",
+			"",
+			"One is worn through to the stuffing. It has",
+			"been mended, many times, in a stitch too",
+			"even for a hand.",
+		],
+	},
+	&"orchard_plate_hours": {
+		"kind": &"sign", "title": "the plate by the hatch", "lands": [],
+		"lines": [
+			"White enamel, blue letters, chipped round",
+			"the screws:",
+			"  BREAKFAST ...... 7",
+			"  DINNER ......... 12",
+			"  TEA ............ 6",
+			"  PLEASE BE SEATED",
+			"",
+			"Stamped under it, newer: ATTENDANCE NOTED.",
+		],
+	},
+	&"orchard_plate_rota": {
+		"kind": &"sign", "title": "the plate by the hatch", "lands": [],
+		"lines": [
+			"BREAKFAST 7, DINNER 12, TEA 6. Tucked",
+			"behind the rim, a card in felt pen:",
+			"  WASHING UP   mum  dad  gran  pip",
+			"",
+			"A tick a day under somebody, in four hands.",
+			"The ticks stop on a Thursday. The hatch has",
+			"done the washing up since.",
+		],
+	},
+	&"orchard_plate_service": {
+		"kind": &"sign", "title": "the plate by the hatch", "lands": [],
+		"lines": [
+			"  MEAL SERVICE ... 07:00 12:00 18:00",
+			"  PLACES ......... AS REGISTERED",
+			"  UNEATEN ........ RECOVERED",
+			"  REGISTER ....... NOT AMENDED",
+			"",
+			"Riveted over an older plate. Round its edge",
+			"the enamel still shows: ...LCOME HOME.",
+		],
+	},
+	&"orchard_marks_pip": {
+		"kind": &"mark", "title": "the door frame", "lands": [],
+		"lines": [
+			"Pencil lines up the frame, a date at each:",
+			"  pip  2 apr 29",
+			"  pip  9 oct 29",
+			"  pip  3 apr 30",
+			"  pip  1 sep 31",
+			"",
+			"Above the last, the paint is wiped every",
+			"day. The wiping goes round the pencil.",
+		],
+	},
+	&"orchard_marks_lower": {
+		"kind": &"mark", "title": "the door frame", "lands": [],
+		"lines": [
+			"Pencil up the frame, a line and a date:",
+			"  apr 30   sep 31   mar 32   dec 32",
+			"",
+			"The last is lower than the one before.",
+			"Nobody has rubbed it out and done it again.",
+		],
+	},
+	&"orchard_marks_held": {
+		"kind": &"mark", "title": "the door frame", "lands": [],
+		"lines": [
+			"Lines climb the frame to about your hip,",
+			"dated, the last in 31. Below them all, one",
+			"more, very low, in another hand:",
+			"  new one, held up, 2 feb 32",
+			"",
+			"Nothing after that, for either of them.",
+		],
+	},
 	&"lobby_boxes": {
 		"kind": &"mark", "title": "the letterboxes", "lands": [],
 		"lines": [
@@ -1703,6 +1810,11 @@ const ROOMS := {
 		&"terminal:console": [&"hall_job", &"hall_login", &"hall_index"],
 		&"wall:restore_bay": [&"hall_bay_cold", &"hall_bay_rails", &"hall_bay_request"],
 		&"desk:paper_log": [&"hall_rounds", &"hall_copied", &"hall_pad"],
+	},
+	&"laid_table": {
+		&"desk:laid_table": [&"orchard_table_cloth", &"orchard_table_name", &"orchard_table_cushion"],
+		&"wall:schedule_plate": [&"orchard_plate_hours", &"orchard_plate_rota", &"orchard_plate_service"],
+		&"wall:height_marks": [&"orchard_marks_pip", &"orchard_marks_lower", &"orchard_marks_held"],
 	},
 }
 

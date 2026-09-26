@@ -57,7 +57,12 @@ func test_a_pocket_keeps_its_own_word() -> void:
 		for pr: WorldProp in p.world.props:
 			if pr.kind == PropKind.FIRE:
 				fires += 1
-		eq(fires, 1, "%s: one hearth" % t.key)
+		var laid := 0
+		for pr: Dictionary in l.props:
+			if int(pr.kind) == PropKind.FIRE:
+				laid += 1
+		check(laid <= 1, "%s: one fire at most" % t.key)
+		eq(fires, laid, "%s: the fire it lays, and only that" % t.key)
 		eq(p.world.country_at(floori(inside.x), floori(inside.y)), t.land, "%s: made of the land it stands on" % t.key)
 
 
