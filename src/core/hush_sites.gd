@@ -34,23 +34,27 @@ static func near(w: WorldData, q: WorldQuery, at: Vector2, reach: float) -> Arra
 		var d := BiomeRegistry.by_index(w.country_at(floori(p.pos.x), floori(p.pos.y)))
 		if d != null and d.hush:
 			stones.append(p)
-	var taken := {}
-	for s: WorldProp in stones:
-		if taken.has(s.id):
+	# Groups are indices into `stones`: a prop is a view of its row, and is
+	# never held or compared as an object (test_prop_identity).
+	var taken := PackedByteArray()
+	taken.resize(stones.size())
+	for si in stones.size():
+		if taken[si] == 1:
 			continue
 		# The group this stone stands in: every stone within JOIN of one in it.
-		var group: Array[WorldProp] = [s]
-		taken[s.id] = true
+		var group := PackedInt32Array([si])
+		taken[si] = 1
 		var k := 0
 		while k < group.size():
-			for o: WorldProp in stones:
-				if not taken.has(o.id) and o.pos.distance_to(group[k].pos) <= JOIN:
-					taken[o.id] = true
-					group.append(o)
+			var here := stones[group[k]].pos
+			for oi in stones.size():
+				if taken[oi] == 0 and stones[oi].pos.distance_to(here) <= JOIN:
+					taken[oi] = 1
+					group.append(oi)
 			k += 1
 		if group.size() < MIN_STONES:
 			continue
-		var r := _ring_of(group)
+		var r := _ring_of(stones, group)
 		if r != null and r.centre.distance_to(at) <= reach + r.radius:
 			out.append(r)
 	return out
@@ -72,13 +76,14 @@ static func inside(r: Ring, p: Vector2, pad := 0.0) -> bool:
 
 ## Centre by least squares on the stones' facing lines: each stone looks along
 ## `rot` at the centre, so the centre is the point nearest every such line.
-static func _ring_of(group: Array[WorldProp]) -> Ring:
+static func _ring_of(stones: Array[WorldProp], group: PackedInt32Array) -> Ring:
 	var a := 0.0
 	var b := 0.0
 	var c := 0.0
 	var bx := 0.0
 	var by := 0.0
-	for s: WorldProp in group:
+	for gi in group:
+		var s := stones[gi]
 		var d := Vector2.from_angle(s.rot)
 		# (I - d d^T), and its product with the stone's position.
 		var m00 := 1.0 - d.x * d.x
@@ -95,12 +100,12 @@ static func _ring_of(group: Array[WorldProp]) -> Ring:
 	var r := Ring.new()
 	r.centre = Vector2((c * bx - b * by) / det, (a * by - b * bx) / det)
 	var sum := 0.0
-	var order: Array[WorldProp] = group.duplicate()
-	order.sort_custom(func(p: WorldProp, o: WorldProp) -> bool:
-		return (p.pos - r.centre).angle() < (o.pos - r.centre).angle())
-	for s: WorldProp in order:
-		sum += s.pos.distance_to(r.centre)
-		r.stones.append(s.id)
+	var order := Array(group)
+	order.sort_custom(func(p: int, o: int) -> bool:
+		return (stones[p].pos - r.centre).angle() < (stones[o].pos - r.centre).angle())
+	for gi: int in order:
+		sum += stones[gi].pos.distance_to(r.centre)
+		r.stones.append(stones[gi].id)
 	r.radius = sum / order.size()
 	# Its lowest stone's prop id: fixed for the seed, whatever window found it
 	# (the fitted centre moves by a hair with the stones a window holds).
