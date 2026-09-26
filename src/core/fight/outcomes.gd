@@ -3,7 +3,8 @@ class_name Outcomes
 ## (design-extract §6.5). No death and no respawn: time is what you lose.
 ##   downed   +180 minutes (and the threat's own toll) where you fell; wake hurt at 3
 ##   carried  +480 minutes, a shift of work: wake at the nearest rock face within
-##            300 tiles, facing it, lamp burnt out, hurt
+##            300 tiles, facing it, lamp burnt out, hurt; and the bag stays where
+##            you were taken (Survival.leave_bag, which 40_fight calls)
 
 const ORE := [PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE]
 const ROCK := [PropKind.BOULDER, PropKind.CLINTS, PropKind.STANDING_STONE]

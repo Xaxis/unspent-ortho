@@ -760,7 +760,7 @@ func _apply_lens() -> void:
 		_side = lerpf(_side, fit, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
 	var focus_b := _smoothed + Vector3(0.0, lerpf(Shoulder.FOCUS_UP, Shoulder.CROWD_FOCUS_UP, c), 0.0) + right * _side
 	var yaw := yaw_a + Shoulder.turn(yaw_a, shoulder_yaw) * w
-	var pitch := lerpf(pitch_a, minf(shoulder_pitch + _clear_tip, Shoulder.PITCH_MOST), w)
+	var pitch := lerpf(pitch_a, minf(shoulder_pitch + _clear_tip + Shoulder.CROWD_TIP * c, Shoulder.PITCH_MOST), w)
 	var focus := focus_a.lerp(focus_b, w)
 	var back := lerpf(back_a, shoulder_back, w)
 	fov = lerpf(LENS_FOV, Shoulder.FOV, w)

@@ -40,6 +40,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"limestone_caves"
 	d.display_name = "limestone caves"
+	d.spoken_in = "down in the limestone caves"
 	# After every surface landscape: the M1 six keep 1..6 and wave A's two keep
 	# 7..8 whatever is registered under the world.
 	d.order = 200
@@ -196,7 +197,12 @@ static func make() -> BiomeDef:
 	# blind crawlers want a body of their own, and that is M3's.
 	d.roster = {
 		&"cutter": {"weight": 1.0, "grounds": ["limestone", "rock", "gravel", "scree", "bone"]},
-		&"hauler": {"weight": 0.7, "grounds": ["limestone", "gravel", "bone", "mud"]},
+		# The cave hauler works the dark by ear: it hardly sees and hears
+		# everything, walks the face slower, and winds its bite up longer, which
+		# is what makes it a cave's to fight and not the bonelands' (BiomeDef.roster).
+		&"hauler": {"weight": 0.7, "grounds": ["limestone", "gravel", "bone", "mud"],
+			"over": {"sees": 3, "hears": 13, "pace": 3.4,
+				"bite": {"swing": [780, 160, 600, 800], "reach": 1.5, "width": 2.0, "dmg": 4, "knock": 9.5, "knock_ms": 320}}},
 	}
 	d.surface = _surface
 	d.scatter = _scatter

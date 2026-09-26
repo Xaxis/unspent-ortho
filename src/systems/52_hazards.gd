@@ -8,7 +8,8 @@ extends GameSystem
 ## hurts**. At Hazards.FELT a gauge lights, breath shows in the cold, heat lifts
 ## off the ground, a cough answers the fumes. At BITE walking slows and a line is
 ## said, once. Only at HARM does health go, slowly, with hours to answer it, and
-## it stops at Hazards.HARM_FLOOR: the weather never kills outright.
+## it stops at Hazards.HARM_FLOOR: the weather never kills outright, though at
+## the floor with a threat near it puts the player down (Hazards.drained_health).
 ##
 ## Look at it:
 ##   tools/shot.sh shots/hazards/cold.png --place=snowfield --hour=19 --frames=90
@@ -230,15 +231,17 @@ func _tell(pressure: Dictionary) -> void:
 			_said.erase(key)
 
 
-## Above HARM the body loses health slowly, and never its last point: what the
-## weather does is take you down to where everything else is dangerous.
+## Above HARM the body loses health slowly, and never its last point while
+## nothing is near: what the weather does is take you down to where everything
+## else is dangerous, and with something hunting close that is the last point
+## (Hazards.drained_health), which the fight takes as a downed player.
 func _drain(pressure: Dictionary, span: float) -> void:
 	var minutes := span * Tuning.MINUTES_PER_SECOND
 	_carried += Hazards.drain(pressure, minutes)
 	if _carried < 1.0:
 		return
 	var before := game.body.health
-	var after := Hazards.drained_health(before, _carried)
+	var after := Hazards.drained_health(before, _carried, Survival.threat_near(game))
 	_carried -= floorf(_carried)
 	if after >= before:
 		return

@@ -176,6 +176,10 @@ var disposition: StringName = &"indifferent"
 ## True while the machine's walk is running something down: the lights hold
 ## locked (optics hot, scans centred, beams narrowed, status double-blink).
 var hunting := false
+## How long the bite being told takes to wind up, in seconds: the working part's
+## light climbs across all of it and tops out at the strike (_light_scale). Mob
+## sets it from the bite as the windup starts.
+var tell_s := 0.6
 ## The merged meshes by surface kind, once built.
 var surfaces: Dictionary = {}
 var skeleton: Skeleton3D
@@ -602,6 +606,19 @@ func set_pose(p: StringName) -> void:
 		(_matter_swap[0] as MeshInstance3D).mesh = _matter_swap[2] if p == &"dead" else _matter_swap[1]
 
 
+## Poses a second a machine is drawn at while it is only standing or walking
+## (0: every frame). A tell, a strike, a hurt and a death are always drawn every
+## frame: those are what a player reads the fight by. Set by Mob in a running
+## game; tests and the gallery draw every frame. The clock, the gait and the
+## pose's own time run every frame whatever this says, so a stepped machine is
+## where it would have been, only drawn less often.
+var pose_hz := 0.0
+var _step_left := 0.0
+var _held_dt := 0.0
+## Poses that are never stepped.
+const EVERY_FRAME: Array[StringName] = [&"windup", &"strike", &"hurt", &"dead", &"alert"]
+
+
 func animate(delta: float, speed: float) -> void:
 	_dt = delta
 	clock += delta
@@ -613,10 +630,20 @@ func animate(delta: float, speed: float) -> void:
 		var v := maxf(speed, nominal_speed if forced else 0.0)
 		gait += delta * v / stride
 		walk_w = move_toward(walk_w, 1.0 if moving else 0.0, delta * 5.0)
+	_held_dt += delta
+	if pose_hz > 0.0 and delta > 0.0 and not EVERY_FRAME.has(pose):
+		_step_left -= delta
+		if _step_left > 0.0:
+			return
+		_step_left += 1.0 / pose_hz
+		if _step_left <= 0.0:
+			_step_left = 1.0 / pose_hz
+	var dt := _held_dt
+	_held_dt = 0.0
 	_apply_pose()
-	_routine(delta, running())
+	_routine(dt, running())
 	_run_scans()
-	_apply_light(delta)
+	_apply_light(dt)
 	_run_lights()
 	_show_dead_only()
 	_sync_bones()
@@ -835,7 +862,9 @@ func _routine(_delta: float, _on: bool) -> void:
 func _light_scale() -> float:
 	match pose:
 		&"windup":
-			return 1.0 + 0.9 * smoothstep(0.0, 0.6, minf(pose_time, 1.0))
+			# Across the whole tell, however long this bite winds up: the light
+			# is the tell in the dark, so it tops out as the strike comes.
+			return 1.0 + 0.9 * smoothstep(0.0, maxf(0.1, tell_s), pose_time)
 		&"strike":
 			return 1.9
 	return 1.0

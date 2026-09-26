@@ -113,6 +113,9 @@ func _on_inventory_changed() -> void:
 
 func _refit() -> void:
 	game.body.resist = Gear.resist_total(loadout)
+	# And what it changes in a fight (FightKit): read where a blow lands.
+	if game.player != null and game.player.hero != null:
+		game.player.hero.kit = FightKit.from_loadout(loadout)
 	# Gear grants what it grants; legs are everybody's (Abilities.INNATE).
 	book.fit(Abilities.with_innate(Gear.abilities_of(loadout)))
 	_dress_player()

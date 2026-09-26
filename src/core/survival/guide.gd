@@ -8,8 +8,10 @@ class_name Guide
 ## until it lifts. The slate shows `goal` standing on the HUD and the hint on
 ## its key row (90_ui).
 ##
-##   goal(game) -> String                     the want now: a fire, charcoal, a haft, plate, a pick,
-##                                            food, light; or the ore once there is a pick
+##   goal(game) -> String                     the want now: your things back after a bad end; a fire,
+##                                            charcoal, a haft, plate, a pick,
+##                                            food, light; or the ore once there is a pick;
+##                                            then the next elite material and where it is
 ##   hint_for(game, retired) -> Dictionary    the first hint that applies and is not retired:
 ##                                            {id: StringName, line: String, keys: Array} or {}
 ##   HINTS                                    id -> [line template, action names] for every hint
@@ -136,14 +138,32 @@ const MAP_FAR := 60.0
 const ROAD_NEAR := 60.0
 
 
+## The want after a bad end, while the bag lies where it was taken
+## (Survival.leave_bag): standing on the HUD until it is taken back, so where
+## the player's things are is never a line that scrolled past.
+const BAG_GOAL := "Your things lie where it took you. The survey marks them."
+
+
 static func goal(game: Game) -> String:
 	var inv := game.inventory
 	var now := game.clock.minutes
 	if game.body.hunger_level(now) >= 2:
 		return "Eat something: mussels off the rocks, or berries."
+	if not SurvivalState.of(game).bags.is_empty():
+		return BAG_GOAL
 	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and inv.has(&"lamp"):
 		return "Light the lamp against the dark."
 	if inv.has(&"pick"):
+		if not inv.has(&"iron_ore") and not inv.has(&"iron"):
+			return "Take the pick to the ore in the rock."
+		# Past the first tools, the long game: the next elite material, and where
+		# -- and a part a room keeps, once the material it follows is held.
+		var part := next_part(game)
+		if part != &"":
+			return part_goal(part)
+		var want := next_elite(game)
+		if want != &"":
+			return elite_goal(game, want)
 		return "Take the pick to the ore in the rock."
 	var fire := _fire(game)
 	if fire == null:
@@ -165,6 +185,96 @@ static func goal(game: Game) -> String:
 	if inv.count(&"scrap") == 0:
 		return "Plate for a pick: turn over the tip."
 	return "A pick, made at %s." % at
+
+
+## The elite material wanted next (EliteStock): the first the bag holds none of
+## that the world has a way to (Sources.reachable), and of those, one the land
+## underfoot gives before any other, so the long game starts where the player
+## stands. &"" once every one has been held.
+static func next_elite(game: Game) -> StringName:
+	var here := _land_here(game)
+	var first := &""
+	for id: Variant in EliteStock.ids():
+		var sid := StringName(id)
+		if game.inventory.has(sid) or not Sources.reachable(sid):
+			continue
+		if _elite_lands(sid).has(here):
+			return sid
+		if first == &"":
+			first = sid
+	return first
+
+
+## THE PARTS A ROOM KEEPS, in the long game: a thing kept in one kind of room
+## (Interiors.LOOT), wanted once the elite material it `follows` is held -- the
+## burning's glass first, then what the burning's foundry casts, which is what a
+## cast lance is built on (recipes `lance_cast`).
+const PARTS := {
+	&"lance_casting": {"room": &"foundry", "follows": &"cinder_glass"},
+}
+
+
+## The part wanted next: one the bag lacks whose material it holds. &"" for none.
+static func next_part(game: Game) -> StringName:
+	for id: Variant in PARTS:
+		var row: Dictionary = PARTS[id]
+		if not game.inventory.has(StringName(id)) and game.inventory.has(StringName(row.follows)):
+			return StringName(id)
+	return &""
+
+
+## Where a part is kept, said as the long game's goals say it: "Lance casting:
+## kept in the foundry, in the burning."
+static func part_goal(id: StringName) -> String:
+	var row: Dictionary = PARTS[id]
+	var name := String(Items.def(id).get("name", String(id).replace("_", " ")))
+	var lands := Interiors.lands_of(StringName(row.room))
+	var where := ", %s" % _land_said(lands[0]) if not lands.is_empty() else ""
+	return "%s: kept in the %s%s." % [name.left(1).to_upper() + name.substr(1), String(row.room).replace("_", " "), where]
+
+
+## The landscapes an elite material comes from: its own, or the lands its one
+## machine keeps to.
+static func _elite_lands(id: StringName) -> Array[StringName]:
+	var land := EliteStock.land_of(id)
+	if land != &"":
+		return [land] as Array[StringName]
+	var kind := EliteStock.kind_of(id)
+	return Sources.lands_of_kind(kind) if kind != &"" else [] as Array[StringName]
+
+
+static func _land_here(game: Game) -> StringName:
+	var p: Vector2 = game.player.pos if game.player != null else game.world.spawn
+	return BiomeRegistry.by_index(game.world.country_at(floori(p.x), floori(p.y))).id
+
+
+## The late goal's words: what it is, how it is had, and where. One line on
+## the glass's goal window, which stands left of the place name at the top, so
+## it is kept to the length of the first hour's goals and says no more.
+static func elite_goal(game: Game, id: StringName) -> String:
+	var def := EliteStock.material(id)
+	var name := String(Items.def(id).get("name", String(id).replace("_", " ")))
+	# Where: here, if the land underfoot gives it; else the first land that does.
+	var all := _elite_lands(id)
+	var here := _land_here(game)
+	var where := ""
+	if all.has(here):
+		where = "here %s" % _land_said(here)
+	elif not all.is_empty():
+		where = _land_said(all[0])
+	var kind := EliteStock.kind_of(id)
+	var how := ""
+	if kind != &"":
+		how = "cut out of a %s, %s" % [String(kind).replace(".", " "), where]
+	else:
+		how = "%s at a %s, %s" % [String(def.get("raw", "")).replace("_", " "), String(def.get("at", "fire")), where]
+	return "%s: %s." % [name.left(1).to_upper() + name.substr(1), how.strip_edges()]
+
+
+## A landscape as the goal says someone is in it: its own words (BiomeDef.spoken_in).
+static func _land_said(id: StringName) -> String:
+	var b := BiomeRegistry.get_def(id)
+	return b.spoken_in if b != null and b.spoken_in != "" else "in the %s" % String(id).replace("_", " ")
 
 
 ## The first lesson that fits and has not been spent. `keyed_only` asks for the

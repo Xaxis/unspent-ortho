@@ -1,0 +1,19 @@
+# ALONG A WALL, CLOSE (found.gdshader `found_stipple`, matter.gdshaderinc's
+# ruled heights): the patterns a surface is drawn in, seen at a grazing angle
+# from over the shoulder, must not beat against the pixels.
+#
+#   tools/tour.sh tours/grazing.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is a house's wall seen nearly edge-on from beside it; 02 the same turned
+# the other way along it.
+coast calm
+near house
+wait 0.6
+hold shoulder_peek
+await shoulder 3
+mouse 560,0 0.6
+wait 1.0
+shot 01-along-a-house-wall with shoulder
+mouse -1120,0 0.8
+wait 1.0
+shot 02-along-it-the-other-way with shoulder

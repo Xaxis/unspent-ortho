@@ -126,22 +126,32 @@ static func _null_side(line: String, m: RegExMatch) -> bool:
 	return around.contains("null")
 
 
+## The line without its comment, and with every string's contents blanked: a
+## message saying "the heap in reach" is not a prop in a list.
 static func _code(line: String) -> String:
 	var quote := ""
+	var out := ""
 	var i := 0
 	while i < line.length():
 		var ch := line[i]
 		if quote != "":
 			if ch == "\\":
 				i += 1
+				out += "  "
 			elif ch == quote:
 				quote = ""
+				out += ch
+			else:
+				out += " "
 		elif ch == "\"" or ch == "'":
 			quote = ch
+			out += ch
 		elif ch == "#":
-			return line.substr(0, i)
+			return out
+		else:
+			out += ch
 		i += 1
-	return line
+	return out
 
 
 func test_no_prop_is_compared_as_an_object() -> void:
@@ -166,6 +176,7 @@ func test_the_scan_sees_what_it_names() -> void:
 		pass
 	if p.id == q.id:
 		pass
+	check(WorldProp.same(p, q), "the heap in reach")
 """
 	var got := scan_text("t.gd", src)
 	eq(got.size(), 4, "four comparisons of objects, and none of null or ids: %s" % [got])

@@ -9,6 +9,9 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
 - 44_crafts: `src/systems/44_crafts.gd`, reached by `tools/tour.sh tours/crafts.tour`.
 - 46_settlements: `src/systems/46_settlements.gd`, reached by `tools/tour.sh tours/settlements.tour`.
 - 50_survival: `src/systems/50_survival.gd`, reached by `tools/tour.sh tours/survival.tour`.
+  Carried off leaves the bag on a heap where you were taken, under your own rag, marked on the
+  survey ("your things") and standing as the goal until taken back; a bad end is filed against
+  the region: `tools/test.sh test_bag_heap`, `tools/tour.sh tours/bag_heap.tour` (header has its options).
 - 51_harvest: `src/systems/51_harvest.gd`, reached by `tools/tour.sh tours/harvest.tour`.
 - 52_hazards: `src/systems/52_hazards.gd`, reached by `tools/tour.sh tours/hazards.tour`.
 - 52_survival_fx: `src/systems/52_survival_fx.gd`, reached by `tools/tour.sh tours/survival.tour`.

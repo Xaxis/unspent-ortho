@@ -21,6 +21,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"grey_orchards"
 	d.display_name = "the grey orchards"
+	d.spoken_in = "in the grey orchards"
 	d.order = 16
 	d.style_note = "Ruled rows of grey-green trees, white bloom that is not bloom, everything one step past ripe."
 	d.share = Vector2(0.075, 0.12)

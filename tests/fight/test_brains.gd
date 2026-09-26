@@ -102,7 +102,8 @@ func test_a_blow_in_the_working_part_stops_the_work_once_in_a_while() -> void:
 	sim.press_swing()
 	F.ms(sim, 120)
 	check(h.stunned(sim.now), "stalled")
-	eq(h.blow, null, "its tell is lost")
+	check(h.blow != null and h.blow_phase(sim.now) != &"windup" and h.spent(sim.now),
+		"its tell is lost, and it stands spent as if the bite had gone past (FightSim._break_tell)")
 	var ready := h.stall_ready_at
 	near(ready - (sim.now - 120.0), float(FightRules.STALL_EVERY_MS), 130.0)
 	F.ms(sim, 500)

@@ -324,7 +324,15 @@ func test_a_holding_settled_after_a_week_away_does_not_stall_the_load() -> void:
 	# So: a fresh primed holding per run, built before the clock starts, and the
 	# minimum taken by hand. The minimum is still the honest number -- load only
 	# ever ADDS time -- but only over runs that each did the work.
-	var runs := 3
+	#
+	# **ENOUGH ROUNDS FOR THE MINIMUM TO BE ONE.** Three were not: a serial gate
+	# on a box other sessions were loading read a month at 55846 us against a
+	# day's 667 (the test took 391 ms where it takes 13 alone), because a month
+	# is seven times as long a window for the scheduler to land in, and all
+	# three of them were hit. The day and the month are timed in turn, round by
+	# round, as TestCase.yard_sample does, so load lands on both; nine rounds of
+	# a few milliseconds each cost nothing.
+	var runs := 9
 	var one_day := INF
 	var one_month := INF
 	for i in runs:

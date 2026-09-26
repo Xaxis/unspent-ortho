@@ -23,7 +23,9 @@ class_name PlayerSettings
 ## a level once turned the sound down in every shot taken afterwards, and nothing
 ## on the screen said why.
 const FILE := "user://settings.json"
-const TEST_FILE := "user://test-settings.json"
+## The runner's is in its own home (RunnerHome), since runners on one machine
+## share user://.
+static var TEST_FILE := RunnerHome.path().path_join("settings.json")
 const TOOL_FILE := "user://tool-settings.json"
 const VERSION := 1
 

@@ -41,6 +41,10 @@ const CAUSES := {
 	&"filed": 0.14,
 	&"killed_machine": 0.13,
 	&"killed_worker": 0.22,
+	# A BAD END IS FILED (mechanics improvement 4): put down or carried off, the
+	# player is a body the network has had in its hands. Less than a theft, so a
+	# bad night does not turn a region on its own; enough that a second one does.
+	&"downed": 0.09,
 }
 
 ## VIOLENCE HAS A SOCIAL PRICE, AND THE PRICE IS WHO SAW IT. The same blow is one

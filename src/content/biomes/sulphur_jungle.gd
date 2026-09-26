@@ -20,6 +20,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"sulphur_jungle"
 	d.display_name = "the sulphur jungle"
+	d.spoken_in = "in the sulphur jungle"
 	d.order = 21
 	d.style_note = "Green over yellow crust, steam standing in the trees, nothing dry and nothing cool."
 	d.share = Vector2(0.07, 0.115)

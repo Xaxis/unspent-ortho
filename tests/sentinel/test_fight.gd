@@ -9,11 +9,12 @@ const F := preload("res://tests/fight/fixture.gd")
 
 ## A keeper out on flat ground with the player beside it, as 44_sentinels puts one
 ## out: its own row, its first phase, roused and fighting.
-func _fight(land: StringName) -> Dictionary:
+func _fight(land: StringName, kit: Array[StringName] = []) -> Dictionary:
 	var def := Sentinels.for_land(land)
 	var sim := F.make_sim(F.flat_world(80), Vector2(40.5, 40.5))
 	sim.hero.inventory.add(&"axe_felling")
 	sim.hero.inventory.set_held(&"axe_felling")
+	sim.hero.kit = FightKit.of(kit)
 	var m := sim.add_mob(def.kind, Vector2(44.5, 40.5))
 	Sentinels.own_row(m)
 	Sentinels.wear_phase(m, def, 0)
@@ -45,10 +46,10 @@ func _play(sim: FightSim, m: MobState) -> void:
 		hero.pos = _at_part(m, hero.radius + m.bite.reach + 1.0)
 		hero.facing = (m.pos - hero.pos).angle()
 		return
-	if m.spent(sim.now) or m.stunned(sim.now) or not m.roused():
+	if m.spent(sim.now) or m.stunned(sim.now) or not m.roused() or sim.phase_ready(m):
 		hero.pos = _at_part(m, hero.radius + 0.4)
 		hero.facing = (m.pos - hero.pos).angle()
-		if sim.reaches_part(m, hero.pos) and not hero.committed(sim.now):
+		if (sim.reaches_part(m, hero.pos) or sim.phase_ready(m)) and not hero.committed(sim.now):
 			sim.press_swing()
 		return
 	# In front of it, inside its reach: what makes it throw a bite at all.
@@ -57,8 +58,8 @@ func _play(sim: FightSim, m: MobState) -> void:
 
 
 ## Fight it down, taking only the openings it gives.
-func _beat(land: StringName, slices: int = 12000) -> Dictionary:
-	var f := _fight(land)
+func _beat(land: StringName, slices: int = 12000, kit: Array[StringName] = []) -> Dictionary:
+	var f := _fight(land, kit)
 	var sim: FightSim = f.sim
 	var m: MobState = f.mob
 	var def: SentinelDef = f.def
@@ -174,3 +175,17 @@ func test_a_keeper_that_stood_down_is_not_a_keeper_any_more() -> void:
 	check(not s.holds(s.lair, def.reach), "and holds nothing once it has stood down")
 	check(not s.alive(), "the region is taken")
 	eq(s.health, s.max_health, "though nothing was ever done to its body")
+
+
+## The phase coil's opener against a keeper: a shorter fight, still through
+## every phase, and not a win (mechanics pass 2a).
+func test_a_phase_coil_opens_a_keeper_and_does_not_take_it() -> void:
+	for land: StringName in [&"coast", &"salt_flats"]:
+		var bare := _beat(land)
+		var coil := _beat(land, 12000, [&"mod_phase"] as Array[StringName])
+		var tb := float((bare.sim as FightSim).now) / 1000.0
+		var tc := float((coil.sim as FightSim).now) / 1000.0
+		print("sentinel %s: bare %.1f s, phase coil %.1f s (%.0f%% less)" % [land, tb, tc, (1.0 - tc / tb) * 100.0])
+		check(not (coil.mob as MobState).alive, "%s: the coil's reader takes it" % land)
+		eq(coil.phases, (coil.def as SentinelDef).phases.size() - 1, "%s: through every phase" % land)
+		check(tc <= tb + 0.02, "%s: never slower with it" % land)

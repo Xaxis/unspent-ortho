@@ -95,6 +95,10 @@ const ROWS := {
 	# a street out, which is the opposite of a cave and the opposite of what was
 	# first written here. A near-black tow at pull 0.58 took a noon frame to
 	# almost nothing — past the luma-24 floor `noir` was rejected for.
+	# The crags are what fog is FOR (BiomeDef.mist, its weather): the far land goes
+	# to a wet pale grey, the air begins close, and the bank is thick, so even a
+	# clear day there has distance in it that no other upland has.
+	&"the_crags": {"tow": Color(0.62, 0.66, 0.70), "pull": 0.66, "depth": 1.30, "near": 0.80, "bank": 1.7},
 	&"slums": {"tow": Color(0.300, 0.228, 0.170), "pull": 0.34, "depth": 1.20, "near": 0.90, "bank": 1.45},
 }
 

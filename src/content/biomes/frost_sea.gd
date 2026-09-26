@@ -20,6 +20,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"frost_sea"
 	d.display_name = "the frost sea"
+	d.spoken_in = "out on the frost sea"
 	d.order = 13
 	d.style_note = "White going blue in the hollows, black leads, ridges thrown up like slate."
 	d.share = Vector2(0.115, 0.19)

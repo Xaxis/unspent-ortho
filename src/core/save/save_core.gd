@@ -137,7 +137,7 @@ static func save_world(game: Game) -> Dictionary:
 	var added: Array = []
 	for i in range(base, w.prop_count()):
 		var q := w.prop_at(i)
-		added.append([q.kind, q.pos.x, q.pos.y, q.rot, q.scale])
+		added.append([q.kind, q.pos.x, q.pos.y, q.rot, q.scale, q.variant])
 	var depleted := {}
 	for id: int in w.depleted:
 		depleted[str(id)] = SaveCodec.num(float(w.depleted[id]))
@@ -148,9 +148,18 @@ static func save_world(game: Game) -> Dictionary:
 	var built: Array = []
 	for q: WorldProp in state.built:
 		built.append(q.id)
+	# What lies on the heaps the player left, and which of them a bad end left:
+	# a heap without its goods is a cairn with nothing under it.
+	var left := {}
+	for id: int in state.left:
+		left[str(id)] = (state.left[id] as Dictionary).duplicate()
+	var bags := {}
+	for id: int in state.bags:
+		bags[str(id)] = SaveCodec.num(float(state.bags[id]))
 	return {"seed": game.options.seed_value, "size": w.size, "realm": String(w.realm),
 		"stamp": WorldStamp.current(), "props_base": base,
-		"props": added, "depleted": depleted, "taken": state.taken.duplicate(), "spent": spent, "built": built}
+		"props": added, "depleted": depleted, "taken": state.taken.duplicate(), "spent": spent, "built": built,
+		"left": left, "bags": bags}
 
 
 static func load_world(game: Game, v: Variant) -> void:
@@ -189,6 +198,8 @@ static func load_world(game: Game, v: Variant) -> void:
 		# Straight into data and collision: the chunks it lands in are rebuilt once, below.
 		var q := WorldProp.new(w.next_id(), kind, Vector2(SaveCodec.to_num(e[1]), SaveCodec.to_num(e[2])),
 			SaveCodec.to_num(e[3]), SaveCodec.to_num(e[4], 1.0))
+		if (e as Array).size() > 5:
+			q.variant = SaveCodec.to_int(e[5], -1)
 		w.add_prop(q)
 		game.query.add_prop(q)
 		touched.append(q)
@@ -225,6 +236,23 @@ static func load_world(game: Game, v: Variant) -> void:
 		var q := w.prop(remap.call(SaveCodec.to_int(e, -1)))
 		if q != null:
 			state.built.append(q)
+	state.left.clear()
+	var left := _d(d.get("left"))
+	for k: String in left:
+		var id: int = remap.call(k.to_int())
+		if w.prop(id) == null:
+			continue
+		var goods := {}
+		var saved := _d(left[k])
+		for g: String in saved:
+			goods[g if g.begins_with("edge:") else StringName(g)] = SaveCodec.to_int(saved[g])
+		state.left[id] = goods
+	state.bags.clear()
+	var bags := _d(d.get("bags"))
+	for k: String in bags:
+		var id: int = remap.call(k.to_int())
+		if state.left.has(id):
+			state.bags[id] = SaveCodec.to_num(bags[k])
 	_refresh(game, touched)
 
 

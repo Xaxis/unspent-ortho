@@ -20,7 +20,7 @@ class_name DevMode
 ## the tools keep their own, as their saves do, so no test, shot or tour ever
 ## writes into the owner's notes, configurations or logs.
 const USER_ROOT := "user://dev"
-const TEST_ROOT := "user://test-dev"
+static var TEST_ROOT := RunnerHome.path().path_join("dev")
 const TOOL_ROOT := "user://tool-dev"
 ## Three strikes of ` inside this many milliseconds arm dev mode.
 const CHORD_MS := 1500

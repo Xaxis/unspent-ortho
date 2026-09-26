@@ -519,6 +519,8 @@ func tour_safe(p: Vector2) -> bool:
 ## A step from one tile to the next crosses the edge between them, and only a
 ## doorway (an &"inner" edge) lets it through.
 func _turret_sees(a: Vector2, b: Vector2) -> bool:
+	if _screens(a, b):
+		return false
 	if _walls_between.is_empty():
 		for e: Dictionary in pocket.layout.edges:
 			if e.inner and e.kind != &"inner":
@@ -537,6 +539,61 @@ func _turret_sees(a: Vector2, b: Vector2) -> bool:
 				return false
 			last = tile
 	return true
+
+
+## Whether a thing that stands to the ceiling (`screens`: a foundry's cooling
+## racks) is across the line from `a` to `b`: a turret high in a corner sees over
+## a gantry's leg and a strongbox, but not through a rack as tall as the room.
+## Its footprint is `long` across its face and `SCREEN_DEEP` through it.
+const SCREEN_DEEP := 0.3
+
+
+func _screens(a: Vector2, b: Vector2) -> bool:
+	return screened(pocket.layout, a, b)
+
+
+static func screened(l: InteriorLayout, a: Vector2, b: Vector2) -> bool:
+	var n := ceili(a.distance_to(b) / 0.2)
+	for t: Dictionary in l.things:
+		if not t.get("screens", false):
+			continue
+		var f: Vector2 = t.face
+		var s := Vector2(-f.y, f.x)
+		var half := float(t.get("long", 0.6)) * 0.5
+		for i in range(1, n):
+			var q := a.lerp(b, float(i) / float(n)) - (t.at as Vector2)
+			if absf(q.dot(s)) <= half and absf(q.dot(f)) <= SCREEN_DEEP:
+				return true
+	return false
+
+
+## HOW DARK THE ROOM IS AT `p` to the machines' eyes (InteriorKind.dark), where
+## its own light does not reach: each thing with a `glare` lights a pool that
+## far round it -- along the whole of a thing with a `long` -- and undoes the
+## dark there, fully within half of it. 0 outside a room. 32_disposition takes
+## the darker of this and the night.
+func room_dark(p: Vector2) -> float:
+	if pocket == null:
+		return 0.0
+	return dark_at(pocket.kind, pocket.layout, p)
+
+
+static func dark_at(k: InteriorKind, l: InteriorLayout, p: Vector2) -> float:
+	if k.dark <= 0.0:
+		return 0.0
+	var lit := 0.0
+	for t: Dictionary in l.things:
+		var r := float(t.get("glare", 0.0))
+		if r <= 0.0:
+			continue
+		var f: Vector2 = t.face
+		var s := Vector2(-f.y, f.x)
+		var q := p - (t.at as Vector2)
+		var half := float(t.get("long", 0.0)) * 0.5
+		var along := clampf(q.dot(s), -half, half)
+		var d := (q - s * along).length()
+		lit = maxf(lit, 1.0 - smoothstep(r * 0.5, r, d))
+	return k.dark * (1.0 - lit)
 
 
 ## Which strongbox is within reach of the player's hands, or -1.
@@ -1215,6 +1272,10 @@ func tour_seen(what: StringName) -> bool:
 	match what:
 		&"turret_shot":
 			return _turret_fired
+		# No turret has fired since the tour last asked for a shot: held the whole
+		# time, where `unnoticed` is the moment of the frame.
+		&"unshot":
+			return pocket != null and not _turret_fired
 		&"turret_aiming":
 			return pocket != null and _aiming
 		&"box_refused":
@@ -1252,7 +1313,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
@@ -1264,7 +1325,23 @@ const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:sid
 func tour_place(what: String) -> Vector2:
 	var th := _tour_thing(what)
 	if not th.is_empty():
-		return (th.at as Vector2) + (th.face as Vector2) * 0.9
+		var f: Vector2 = th.face
+		if what.begins_with("behind:"):
+			return (th.at as Vector2) - f * 1.0
+		# A step out from it and along its wall, facing the wall: from over the
+		# shoulder a thing squarely in front of the player at arm's length is
+		# covered by their own back (maintenance.tour frame 05), and a little to
+		# one side it still is from the other shoulder. `STAND_ASIDE` along, it
+		# clears the body from either (the eye's line crosses the player's plane
+		# at about half the eye's offset from the thing).
+		# Whichever way along the wall keeps the player on the room's floor with
+		# a body's room round them, and nearer in where neither does.
+		var out := (th.at as Vector2) + f * 1.0
+		for aside: float in [STAND_ASIDE, -STAND_ASIDE, STAND_ASIDE * 0.6, -STAND_ASIDE * 0.6]:
+			var p := out + Vector2(-f.y, f.x) * aside
+			if _roomy(p):
+				return p
+		return out
 	if what == "strongbox":
 		var box := _first_box()
 		return (box.at as Vector2) + (box.face as Vector2) * 0.8 if not box.is_empty() else Vector2.INF
@@ -1277,7 +1354,9 @@ func tour_place(what: String) -> Vector2:
 func tour_face(what: String) -> float:
 	var th := _tour_thing(what)
 	if not th.is_empty():
-		return (-(th.face as Vector2)).angle()
+		# In front, facing it; behind, facing along it, the way a body keeps to it.
+		var f: Vector2 = th.face
+		return (Vector2(-f.y, f.x)).angle() if what.begins_with("behind:") else (-f).angle()
 	if what == "strongbox":
 		var box := _first_box()
 		return (-(box.face as Vector2)).angle() if not box.is_empty() else NAN
@@ -1288,13 +1367,29 @@ func tour_face(what: String) -> float:
 
 
 ## `near thing:KIND`: the first of the room's things of that kind, stood in
-## front of and faced (a tenement's turnstile at the foot of its stair). Empty
+## front of and faced (a tenement's turnstile at the foot of its stair); `near
+## behind:KIND`, a tile behind it, along it (a foundry's cooling racks). Empty
 ## outside a room, or in one without it.
+const STAND_ASIDE := 1.3
+
+
+## Whether a body can stand at `p` in the room: floor under it and a wall's
+## thickness and a body's width of floor round it.
+func _roomy(p: Vector2) -> bool:
+	var l := pocket.layout
+	for d: Vector2 in [Vector2.ZERO, Vector2(0.45, 0), Vector2(-0.45, 0), Vector2(0, 0.45), Vector2(0, -0.45)]:
+		var q := p + d
+		if not l.is_floor(floori(q.x), floori(q.y)):
+			return false
+	return true
+
+
 func _tour_thing(what: String) -> Dictionary:
-	if pocket == null or not what.begins_with("thing:"):
+	if pocket == null or not (what.begins_with("thing:") or what.begins_with("behind:")):
 		return {}
+	var kind := what.get_slice(":", 1)
 	for t: Dictionary in pocket.layout.things:
-		if String(t.kind) == what.substr(6):
+		if String(t.kind) == kind:
 			return t
 	return {}
 

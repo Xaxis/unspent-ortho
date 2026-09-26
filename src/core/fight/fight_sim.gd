@@ -46,6 +46,10 @@ const NOISE_RISE := 0.28
 ## warden in its hall made sure by a glimpse of the hatch behind it arrested
 ## whoever came down it within the second, every time.
 const HEAR_RISE := 0.02
+## And a machine makes up its mind by ear this much faster at full night, when
+## its ears are what it has (Senses.NIGHT_HEARING): three times, so a walker
+## heard in the dark is turned on in about a second.
+const NIGHT_HEAR_RISE := 2.0
 const GLIMPSE_RISE := 0.025
 const LOOK_AT := 0.6
 ## What drains per beat when nothing comes of it: about two seconds to settle.
@@ -109,6 +113,8 @@ var _swing_until := -1.0
 ## has a direction of its own to look in: over the shoulder a swing goes where the
 ## camera looks, because that is where the player is looking (CameraRig.aim).
 var _swing_aim := NAN
+## Charged swings thrown with a capacitor fitted, for the one it carries.
+var _charged_swings := 0
 ## The buffered swing is the heavy blow (press_heavy).
 var _swing_heavy := false
 var _dodge_until := -1.0
@@ -125,10 +131,21 @@ func _init(w: WorldData, q: WorldQuery, h: Hero = null, m: Moment = null) -> voi
 	nav = NavField.new(w, q) if w != null and q != null else null
 
 
+## A body of `kind` put down at `at`, as the landscape there makes that kind
+## (BiomeDef.roster `over`): read at the one tile it stands on.
 func add_mob(kind: StringName, at: Vector2) -> MobState:
-	var m := MobState.new(kind, at, moment.seed_value)
+	var m := MobState.new(kind, at, moment.seed_value, _landscape_over(kind, at))
 	mobs.append(m)
 	return m
+
+
+func _landscape_over(kind: StringName, at: Vector2) -> Dictionary:
+	if world == null or not world.in_bounds(floori(at.x), floori(at.y)):
+		return {}
+	var def := BiomeRegistry.by_index(world.country_at(floori(at.x), floori(at.y)))
+	if def == null:
+		return {}
+	return def.roster.get(kind, {}).get("over", {})
 
 
 func living() -> int:
@@ -253,7 +270,12 @@ func _swing() -> void:
 	if _swing_heavy and hero.wind >= FightRules.HEAVY_WIND:
 		b = b.heavier()
 	_swing_heavy = false
-	var dry := b.wick > 0 and not FightRules.spend_charges(inv, b.wick)
+	# A capacitor bank carries every CAPACITOR_EVERY-th charged swing itself.
+	var carried := false
+	if b.wick > 0 and hero.kit.capacitor:
+		_charged_swings += 1
+		carried = _charged_swings % FightKit.CAPACITOR_EVERY == 0
+	var dry := b.wick > 0 and not carried and not FightRules.spend_charges(inv, b.wick)
 	if dry:
 		b.dry()
 	hero.start_swing(b, now)
@@ -448,7 +470,8 @@ func _suspicion(m: MobState, how: StringName) -> void:
 		m.heard_at = hero.pos
 		return
 	if how == &"heard" or how == &"glimpsed":
-		m.suspicion = minf(1.0, m.suspicion + (HEAR_RISE if how == &"heard" else GLIMPSE_RISE))
+		var rise := HEAR_RISE * (1.0 + NIGHT_HEAR_RISE * moment.nightfall()) if how == &"heard" else GLIMPSE_RISE
+		m.suspicion = minf(1.0, m.suspicion + rise)
 		# Unsure enough to go and look: its optics turn to where it had them. A
 		# machine at its work does not: it glances and goes on (`_beat`); stood
 		# to look, a hauler stopped on its round for someone it only half saw.
@@ -678,6 +701,14 @@ func _move_mob(m: MobState, dt: float) -> void:
 	if not m.alive:
 		m.speed = 0.0
 		return
+	var fall := m.drop_fall(now)
+	if fall >= 0.0:
+		# Through the air and then down where it said: no ground to go round, and
+		# nothing stops a body falling onto the place it chose at the tell.
+		var was := m.pos
+		m.pos = m.drop_from.lerp(m.drop_at, fall)
+		m.speed = was.distance_to(m.pos) / dt
+		return
 	if not m.committed(now) and not m.stunned(now):
 		m.facing = rotate_toward(m.facing, m.aim, m.turn_rate_at(now) * dt)
 	var v := m.want
@@ -808,17 +839,23 @@ func _land(t0: float, t1: float) -> void:
 				continue
 			hero.struck[m.id] = true
 			_wear_on_contact()
-			if not reaches_part(m, hero.pos, b.cuts):
+			# The coil is spent on the first blow that meets the body, needed or not.
+			var phased := false
+			if phase_ready(m):
+				_phase_read[m.id] = true
+				phased = not reaches_part(m, hero.pos, b.cuts)
+			if not phased and not reaches_part(m, hero.pos, b.cuts):
 				if b.heavy and reaches_part(m, hero.pos, b.cuts, true) and now >= m.stall_ready_at:
 					_jam(m)
 					continue
 				hero.throw(hero.pos - m.pos, FightRules.RING_RECOIL, FightRules.RING_RECOIL_MS, now)
-				emit(&"hit", {"attacker": hero, "target": m, "damage": 0, "plate": true, "at": m.pos})
-				_wake(m)
+				_ring(m)
 				continue
 			if m.invulnerable(now):
 				continue
-			_hurt_mob(m, b)
+			# Read through what covers the part, it is a blow in the part like any
+			# other, stall and all, for FightKit.PHASE_STALL_MS.
+			_hurt_mob(m, b, Vector2.INF, FightKit.PHASE_STALL_MS if phased else FightRules.STALL_MS)
 	if b != null and not _whiff_checked and t1 >= hero.blow_at + b.windup + b.active:
 		_whiff_checked = true
 		if hero.struck.is_empty():
@@ -833,7 +870,10 @@ func _land(t0: float, t1: float) -> void:
 			continue
 		if not m.blow.live_in(m.blow_at, t0, t1):
 			continue
-		if not FightRules.box_hits(m.pos, m.facing, m.radius, m.blow, hero.pos, hero.radius):
+		if m.blow.area:
+			if not FightRules.drop_hits(m.pos, m.radius, m.blow, hero.pos, hero.radius):
+				continue
+		elif not FightRules.box_hits(m.pos, m.facing, m.radius, m.blow, hero.pos, hero.radius):
 			continue
 		if not meets(m.pos, hero.pos):
 			continue
@@ -881,6 +921,56 @@ func reaches_part(m: MobState, from: Vector2, cuts: bool = false, heavy: bool = 
 	return m.spent(now) or m.stunned(now) or m.indifferent() or not m.roused()
 
 
+## The first blow on a body with a phase coil fitted reads its working part
+## through whatever covers it (FightKit.phase): plate from any side, and a guard
+## the machine is holding closed. Once a body, spent by the first blow that meets
+## it whether it needed the read or not, and it stalls the machine as a blow in
+## its part does (for FightKit.PHASE_STALL_MS), so it is an
+## opener and never a way to win: every blow after it meets the machine as it is,
+## and the opening a stall gives stays the reader's to earn.
+var _phase_read: Dictionary = {}
+
+
+## Would a blow on this body now be read through what covers its part? What a
+## player with a coil fitted knows: it has not been spent on this body.
+func phase_ready(m: MobState) -> bool:
+	return hero.kit.phase and not _phase_read.has(m.id) and m.part != &"none" and m.part != &""
+
+
+## A swing rang off plate. With a harmonic edge fitted it still takes
+## FightKit.HARMONIC_DAMAGE (outside the body's hurt frames), and it says so; a
+## plate blow never stalls a machine, harmonic or not.
+func _ring(m: MobState) -> void:
+	var dmg := 0
+	if hero.kit.harmonic and not m.invulnerable(now):
+		dmg = FightKit.HARMONIC_DAMAGE
+		m.health -= dmg
+		m.invuln_until = now + m.mob_iframes()
+		m.last_hit_at = now
+	emit(&"hit", {"attacker": hero, "target": m, "damage": dmg, "plate": true, "at": m.pos})
+	if m.health <= 0:
+		_kill(m, true)
+		return
+	_wake(m)
+
+
+## A blow in the part that lands in a machine's WINDUP breaks the tell: the bite
+## never comes. And interrupting a tell is never worse than dodging it, so the
+## machine stands spent as if that bite had gone past it, for the bite's own
+## recovery and cooldown, and the stall runs alongside: open for the longer of the
+## two. A bold read pays at least as well as a safe one
+## (tests/fight/test_stall_window.gd). Its box is put past, so nothing lands, and
+## it is `opened` as a bite gone by is.
+func _break_tell(m: MobState) -> void:
+	if m.blow == null or m.blow_phase(now) != &"windup":
+		return
+	m.blow_at = now - float(m.blow.windup + m.blow.active) - FightRules.SLICE_MS
+	m.landed_at = -INF
+	m.struck[&"hero"] = true
+	m.opened_at = now
+	emit(&"opened", {"mob": m})
+
+
 ## A heavy blow into a guarded part the machine was not holding open: the
 ## turning blades take it, so it does no harm, but they jam, and the machine
 ## stands stalled as a blow in the part stalls it, its tell lost and its part
@@ -893,8 +983,7 @@ func _jam(m: MobState) -> void:
 	m.charging = false
 	m.flare_until = now + FightRules.PART_FLARE_MS
 	m.dark_until = m.flare_until + FightRules.PART_DARK_MS
-	if m.blow_phase(now) == &"windup":
-		m.blow = null
+	_break_tell(m)
 	emit(&"hit", {"attacker": hero, "target": m, "damage": 0, "plate": false, "jammed": true, "at": m.pos})
 	_wake(m)
 
@@ -926,7 +1015,7 @@ func _wear_on_contact() -> void:
 
 
 ## `from` is where the blow came from; INF is the player's own swing.
-func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF) -> void:
+func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF, stall_ms: int = FightRules.STALL_MS) -> void:
 	var player_swing := not is_finite(from.x)
 	var source := hero.pos if player_swing else from
 	m.struck_from = from
@@ -940,15 +1029,14 @@ func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF) -> void:
 		m.throw(m.pos - source, b.knock, b.knock_ms, now)
 		if m.blow_phase(now) == &"windup":
 			m.blow = null
-	elif m.machine and now >= m.stall_ready_at:
+	elif stall_ms > 0 and m.machine and now >= m.stall_ready_at:
 		# A machine never flinches, but a blow in its working part stops the work:
 		# the light goes out, a tell in progress is lost, and it stands a moment.
 		# Once in a while only, so it is an opening and not a lock.
 		m.stall_ready_at = now + FightRules.STALL_EVERY_MS
-		m.stun_until = maxf(m.stun_until, now + FightRules.STALL_MS)
+		m.stun_until = maxf(m.stun_until, now + stall_ms)
 		m.charging = false
-		if m.blow_phase(now) == &"windup":
-			m.blow = null
+		_break_tell(m)
 	if player_swing:
 		emit(&"hit", {"attacker": hero, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})
 	else:
@@ -1011,12 +1099,21 @@ func _wake(m: MobState, cause: StringName = &"damaged", from: Vector2 = Vector2.
 func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: int) -> void:
 	if hero.harm != 1.0:
 		dmg = roundi(dmg * maxf(0.0, hero.harm))
+	# An ablative plate takes a blow that would hurt instead of the body, and is
+	# burnt off doing it (FightKit.ablative): the module leaves the bag, and the
+	# gear system takes it out of the loadout when the bag changes.
+	if dmg > 0 and hero.kit.ablative and hero.inventory != null and hero.inventory.has(&"mod_ablative"):
+		hero.inventory.remove(&"mod_ablative", 1)
+		emit(&"ablated", {"at": hero.pos, "damage": dmg})
+		dmg = 0
 	hero.health -= dmg
 	hero.invuln_until = now + FightRules.HURT_IFRAMES_MS
-	hero.throw(dir, knock, knock_ms, now)
+	# A clamp keeps the feet where they stand (FightKit.clamp).
+	hero.throw(dir, knock * (FightKit.CLAMP_KNOCK if hero.kit.clamp else 1.0), knock_ms, now)
 	hero.last_hit_by = by
 	hero.last_hit_at = now
-	if hero.committed(now):
+	# A gyro brace carries the swing through the blow (FightKit.gyro).
+	if hero.committed(now) and not hero.kit.gyro:
 		hero.blow = null
 	emit(&"hurt", {"attacker": by, "target": hero, "damage": dmg, "at": hero.pos})
 
@@ -1025,6 +1122,9 @@ func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: in
 ## hitstop, the shake) and the scrap off it is in their hands. A turret's kill in
 ## a yard is a body lying in the yard.
 func _kill(m: MobState, by_player: bool = true) -> void:
+	# A leech coil takes a charge back out of what the player puts down.
+	if by_player and m.alive and hero.kit.leech and hero.inventory != null:
+		hero.inventory.add(FightRules.CHARGE, FightKit.LEECH_CHARGES)
 	m.health = 0
 	m.alive = false
 	m.blow = null
