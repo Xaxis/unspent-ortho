@@ -1476,6 +1476,7 @@ func _end(p: RaidPlan, s: Settlement, outcome: StringName) -> void:
 func _says_ended(s: Settlement, outcome: StringName) -> String:
 	match outcome:
 		&"held": return "%s held." % s.name
+		RaidResolve.HELD_AT_COST: return "%s held. What they struck wants mending." % s.name
 		&"broken": return "They have been through %s." % s.name
 		&"razed": return "There is nothing left of %s but what it was made of." % s.name
 	return "They came to %s and went away again." % s.name

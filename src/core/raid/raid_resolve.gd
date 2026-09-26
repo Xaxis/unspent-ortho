@@ -30,6 +30,9 @@ const SNATCH_NEEDS := 6.0
 ## Wear is the raid's, not the weather's: a piece struck loses at least this, so
 ## nothing is ever "raided" and unmarked.
 const LEAST := 1.0
+## The step's grade when it struck pieces and left them standing, with nobody
+## taken: the holding held, and what was struck wants mending (SETTLE.md S7).
+const HELD_AT_COST := &"held_at_cost"
 
 
 ## What `defence_total` buys: 0..MOST_TURNED of everything coming.
@@ -140,12 +143,14 @@ static func take_stores(s: Settlement, force: float) -> Dictionary:
 static func outcome_of(s: Settlement, report: Dictionary) -> StringName:
 	if s.standing().is_empty() and not s.pieces.is_empty():
 		return &"razed"
+	# Broken is the raid getting what it came for: a piece brought down, or
+	# somebody carried off. Struck and still standing is held, at a cost.
 	if not (report.get("ruined", []) as Array).is_empty():
 		return &"broken"
 	if not (report.get("took", []) as Array).is_empty():
 		return &"broken"
 	if not (report.get("broke", []) as Array).is_empty():
-		return &"broken"
+		return HELD_AT_COST
 	return &"held"
 
 

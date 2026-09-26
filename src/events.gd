@@ -68,7 +68,7 @@ signal attention_changed(settlement_id: int, from: float, to: float)
 ## &"survey" &"probe" &"raid" &"siege".
 signal raid_warned(settlement_id: int, stage: StringName)
 signal raid_began(settlement_id: int, stage: StringName)
-## outcome: &"held" &"broken" &"razed" &"left" (nobody was home).
+## outcome: &"held" &"held_at_cost" (struck, standing) &"broken" &"razed" &"left" (nobody was home).
 signal raid_ended(settlement_id: int, outcome: StringName)
 
 ## The story (docs/STORY.md): a thing read for the first time, a reply chosen,

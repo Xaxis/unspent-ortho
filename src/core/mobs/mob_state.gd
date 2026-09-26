@@ -88,6 +88,11 @@ var stall_ready_at := 0.0
 ## When the last bite ended and the machine went spent (sim ms): the view flares
 ## the working part once for it, so the opening is seen and not only timed.
 var opened_at := -INF
+## Hurt frames per source (FightSim `_hurt_mob`): a source cannot land twice
+## in one window, but several sources land in the same one, so three turrets
+## covering each other, or a turret and a swing, all count (SETTLE.md S7).
+## Keyed by `FightSim.source_of`.
+var hurt_by := {}
 ## blow_at of the bite that last met the player (a landed bite is not spent).
 var landed_at := -INF
 ## How it takes the player (VISION §2): &"hostile" hunts, &"indifferent" works
@@ -311,6 +316,12 @@ func watchful() -> bool:
 ## At its work, whatever it makes of the player: it has not left its round.
 func at_work() -> bool:
 	return indifferent() or watchful()
+
+
+## Whether `source` (FightSim.source_of) is still inside the hurt frames of its
+## own last blow on this body.
+func hurt_by_now(source: Variant, now: float) -> bool:
+	return now < float(hurt_by.get(source, -INF))
 
 
 func mob_iframes() -> int:

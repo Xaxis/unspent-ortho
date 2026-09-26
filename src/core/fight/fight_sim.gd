@@ -532,10 +532,19 @@ func strike(m: MobState, b: Blow, from: Vector2) -> StringName:
 		emit(&"struck", {"from": from, "target": m, "damage": 0, "plate": true, "at": m.pos})
 		_wake(m, &"damaged", from)
 		return &"plate"
-	if m.invulnerable(now):
+	if m.hurt_by_now(source_of(from), now):
 		return &""
 	_hurt_mob(m, b, from)
 	return &"hit"
+
+
+## Which source a blow comes from, for a body's hurt frames (MobState.hurt_by):
+## the player's own swing is one source, and a blow from anywhere else is the
+## thing standing where it came from.
+static func source_of(from: Vector2) -> Variant:
+	if not is_finite(from.x):
+		return &"hero"
+	return Vector2i(roundi(from.x * 4.0), roundi(from.y * 4.0))
 
 
 ## The player has done something to this body that its role takes amiss
@@ -852,7 +861,7 @@ func _land(t0: float, t1: float) -> void:
 				hero.throw(hero.pos - m.pos, FightRules.RING_RECOIL, FightRules.RING_RECOIL_MS, now)
 				_ring(m)
 				continue
-			if m.invulnerable(now):
+			if m.hurt_by_now(&"hero", now):
 				continue
 			# Read through what covers the part, it is a blow in the part like any
 			# other, stall and all, for FightKit.PHASE_STALL_MS.
@@ -993,10 +1002,11 @@ func phase_ready(m: MobState) -> bool:
 ## plate blow never stalls a machine, harmonic or not.
 func _ring(m: MobState) -> void:
 	var dmg := 0
-	if hero.kit.harmonic and not m.invulnerable(now):
+	if hero.kit.harmonic and not m.hurt_by_now(&"hero", now):
 		dmg = FightKit.HARMONIC_DAMAGE
 		m.health -= dmg
 		m.invuln_until = now + m.mob_iframes()
+		m.hurt_by[&"hero"] = m.invuln_until
 		m.last_hit_at = now
 	emit(&"hit", {"attacker": hero, "target": m, "damage": dmg, "plate": true, "at": m.pos})
 	if m.health <= 0:
@@ -1072,6 +1082,7 @@ func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF, stall_ms: int 
 	m.struck_from = from
 	m.health -= b.dmg
 	m.invuln_until = now + m.mob_iframes()
+	m.hurt_by[source_of(from)] = m.invuln_until
 	m.last_hit_at = now
 	# A creature has no part to flare: it is hurt at once.
 	m.flare_until = now + (FightRules.PART_FLARE_MS if m.machine else 0.0)

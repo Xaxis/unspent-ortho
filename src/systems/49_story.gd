@@ -632,7 +632,7 @@ func _on_settlement_founded(_id: int) -> void:
 
 
 func _on_raid_ended(_id: int, outcome: StringName) -> void:
-	if outcome == &"held":
+	if outcome == &"held" or outcome == RaidResolve.HELD_AT_COST:
 		_note(&"raid_held")
 	elif outcome == &"razed":
 		_note(&"razed")
