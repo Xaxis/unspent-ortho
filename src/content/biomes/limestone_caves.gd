@@ -69,7 +69,9 @@ static func make() -> BiomeDef:
 		Ground.SCREE: FLOOR.lerp(P.SLATE[2], 0.30),
 		Ground.GRAVEL: FLOOR.lerp(P.STONE[2], 0.42),
 		# Flowstone and gour rims: the pale scraped forms the eye reads first.
-		Ground.BONE: CALCITE,
+		# Flowstone underfoot: calcite, but damp and in the dark, never the page.
+		# At CALCITE it came back as snow-white patches under any lamp.
+		Ground.BONE: CALCITE.lerp(P.SLATE[1], 0.5),
 		# Cave clay, and the silt bank the river lays on the inside of a bend.
 		Ground.MUD: P.EARTH[1].lerp(P.SLATE[1], 0.35),
 		Ground.SAND: P.EARTH[2].lerp(P.SLATE[1], 0.45),
@@ -87,7 +89,10 @@ static func make() -> BiomeDef:
 	d.ground_marks = {Ground.LIMESTONE: GroundColors.ROCK}
 	# Every terrace wall is calcite over bedded limestone: the pale line.
 	d.cliff_wash = CALCITE.lerp(P.LINEN[2], 0.35)
-	d.strata = GroundColors.STRATA_BONE
+	# The walls are the CAVE's own (GroundColors.STRATA_CAVE): wet rock hung with
+	# flowstone curtains. They were the bonelands' limestone beds, laid in courses
+	# with ruled joints, and underground that read as brick terraces.
+	d.strata = GroundColors.STRATA_CAVE
 	d.plain_ground = Ground.LIMESTONE
 	d.bank_ground = Ground.GRAVEL
 	d.pool_rim_ground = Ground.BONE
@@ -150,6 +155,9 @@ static func make() -> BiomeDef:
 	d.sound_bed = Realm.bed(Realm.UNDERGROUND)
 	# Saturated air: it lies wet whether or not anything is falling.
 	d.wet = 0.55
+	# Sinkholes to the day above (11_dome): columns of cold daylight standing in
+	# the dark and the damp, the one place in the caves the hour is seen.
+	d.sky_holes = 0.8
 	d.mist = 0.0
 	# Black, and still a chart: the soundings and the swash survive the tint
 	# (tests/render/test_water_wash.gd).

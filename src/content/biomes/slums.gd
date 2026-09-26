@@ -99,6 +99,9 @@ static func make() -> BiomeDef:
 	# building on it, which is why the terrace term is a third of what it was.
 	d.built = BiomeForms.new()
 	d.built.stock = BiomeForms.RAISED
+	# Behind a tower's or a stack's door, the stair hall the plan keeps swept
+	# (src/content/interiors/tenement.gd).
+	d.interiors = {&"form:tower": &"tenement", &"form:stack": &"tenement"}
 	# A CITY IS BLOCKS, NOT A STREET. One frontage through the square is a village
 	# with a street; this is several of them side by side, which is what lets the
 	# count below be a city's rather than a stock's.

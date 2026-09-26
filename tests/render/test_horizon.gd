@@ -249,7 +249,10 @@ func test_the_light_at_eye_level_is_the_drawn_sun() -> void:
 	var down: Dictionary = rows[0]
 	near(float(level.sun_el), SkyLight.eye_light(18.6).y, 0.05, "level, the light stands at the drawn sun's height")
 	near(float(down.sun_el), float(SkyLight.sun_at(18.6).elevation), 0.05, "45 degrees down, the play camera's light")
-	lt(float(level.sun_el), float(down.sun_el) - 15.0, "and at dusk the eye's sun is much lower")
+	# The evening sun comes down onto the eye's own arc (SkyLight.LOWER_FROM), so
+	# by dusk the play camera and the eye are lit by one low sun, not by two.
+	lt(float(level.sun_el), 30.0, "at dusk the eye's sun is low")
+	lt(absf(float(level.sun_el) - float(down.sun_el)), 1.0, "and the play camera's has come down to meet it")
 	for at: float in [SkyLight.SUNSET, SkyLight.SUNRISE]:
 		lt(SkyLight.eye_light(at - 0.001).distance_to(SkyLight.eye_light(at + 0.001)), 0.1, "the sun and the moon hand over at one place")
 	var ortho := _camera(false, CameraRig.PITCH_DEG, CameraRig.LENS_FOV)

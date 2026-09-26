@@ -267,7 +267,7 @@ func test_every_house_opens_on_its_own_forms_room() -> void:
 		else:
 			check(doors.has(key) and (doors[key] as Threshold).kind == want,
 				"the %s %s at %s opens on a %s" % [d.id, form, p.pos, want])
-	for k: StringName in [&"roundhouse", &"stilt_room", &"tower_lobby", &"cliff_room", &"hulk_hold", &"rooted_floor"]:
+	for k: StringName in [&"roundhouse", &"stilt_room", &"tower_lobby", &"cliff_room", &"hulk_hold", &"rooted_floor", &"tenement", &"maintenance_bay"]:
 		check(seen.has(k), "seed 4 has a house that opens on a %s" % k)
 
 
@@ -307,6 +307,73 @@ func test_every_roundhouse_bay_can_be_walked_to() -> void:
 		for g: String in goals:
 			check(_reached(reach, goals[g]), "%s: the %s at %s cannot be walked to from the door" % [t.key, g, goals[g]])
 	gt(float(n), 0.0, "seed 4 has roundhouses to walk")
+
+
+## A TENEMENT'S STAIR HALL LEADS TO THE ONE OPEN DOOR. From the street door of
+## every tenement on seed 4, a body gets to the shift board, the turnstile at the
+## stair's foot, down the corridor through the flat's open door, and to its
+## table, its bed and its stove: the corridor's shut doors, the stair and the
+## turnstile stand as solid as they are drawn and none of them walls the way.
+func test_every_tenement_can_be_walked_through() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var n := 0
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind != &"tenement":
+			continue
+		n += 1
+		var p := InteriorGen.grow(4, t)
+		var l := p.layout
+		var q := WorldQuery.new(p.world)
+		q.set_blocks(&"rooms", doors_script.call(&"_walls", l) as Array[Vector3])
+		var reach := _reach(q, l.inside())
+		var goals := {"table": l.table}
+		for th: Dictionary in l.things:
+			var off := {&"shift_board": 0.5, &"turnstile": 0.6, &"bed": 0.85, &"stove": 0.9}
+			if off.has(th.kind):
+				goals["%s@%s" % [th.kind, th.at]] = (th.at as Vector2) + (th.face as Vector2) * float(off[th.kind])
+		eq(goals.size(), 5, "%s: a board, a turnstile, a bed, a stove and the table" % t.key)
+		for g: String in goals:
+			check(_reached(reach, goals[g]), "%s: the %s at %s cannot be walked to from the door" % [t.key, g, goals[g]])
+	gt(float(n), 0.0, "seed 4 has tenements to walk")
+
+
+## A MAINTENANCE BAY IS WALKED THROUGH TO THE GAP. From the hatch of every bay on
+## seed 4, a body gets to the diagnostic panel, the front of the cradle or the
+## sorting bench, and through the missing panel into the niche to the count
+## scratched in it: the racks, bins and cradle stand as solid as they are drawn
+## the length of them, and none of them walls the way.
+func test_every_maintenance_bay_can_be_walked_through() -> void:
+	var doors_script := load("res://src/systems/21_doors.gd") as GDScript
+	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
+	var n := 0
+	for t: Threshold in Interiors.thresholds(w):
+		if t.kind != &"maintenance_bay":
+			continue
+		n += 1
+		var p := InteriorGen.grow(4, t)
+		var l := p.layout
+		var q := WorldQuery.new(p.world)
+		q.set_blocks(&"rooms", doors_script.call(&"_walls", l) as Array[Vector3])
+		var reach := _reach(q, l.inside())
+		var goals := {"niche": l.table}
+		for th: Dictionary in l.things:
+			var off := {&"diag_panel": 0.6, &"tally": 0.6, &"cradle": 1.3, &"sort_bench": 0.8}
+			if off.has(th.kind):
+				goals["%s@%s" % [th.kind, th.at]] = (th.at as Vector2) + (th.face as Vector2) * float(off[th.kind])
+		# A rack or a row of bins runs along its wall (`long`): its ends stop a
+		# body as its middle does.
+		for th: Dictionary in l.things:
+			if th.has("long"):
+				var along := Vector2(-(th.face as Vector2).y, (th.face as Vector2).x)
+				for e: float in [-1.0, 1.0]:
+					var tip := (th.at as Vector2) + along * e * (float(th.long) * 0.5 - 0.15)
+					check(not reach.has(Vector2i(roundi(tip.x / STEP), roundi(tip.y / STEP))),
+						"%s: a body stands inside the %s's end at %s" % [t.key, th.kind, tip])
+		eq(goals.size(), 4, "%s: a panel, a count, a cradle or a bench, and the niche" % t.key)
+		for g: String in goals:
+			check(_reached(reach, goals[g]), "%s: the %s at %s cannot be walked to from the hatch" % [t.key, g, goals[g]])
+	gt(float(n), 0.0, "seed 4 has maintenance bays to walk")
 
 
 ## NOTHING OVER THE WATER WALLS ANYBODY IN: from the door of every stilt room on

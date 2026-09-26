@@ -240,6 +240,15 @@ void fragment() {
 	float pale = smoothstep(0.80, 0.96, dot(c, vec3(0.2126, 0.7152, 0.0722)));
 	float deep = clamp(kind == 0 ? d : d * 0.8, 0.0, 1.0);
 	c *= mix(mix(1.0, 0.22, deep), 1.0, pale);
+	// THE SUN'S HUE BELONGS IN THE WATER'S REFLECTION, NOT IN ITS BODY. The body
+	// colour is lit by the sun like any albedo, so an amber evening sun turned a
+	// blue sea to ochre from above and dragged the frame brown (canon 12). Water
+	// barely scatters what falls on it; what it shows of the sun is the path and
+	// the glints (SPECULAR below) and the sky it mirrors. So the sun's hue is
+	// divided back out of the body, and foam, which does scatter, keeps it.
+	// Most of it, not all: the whole of it lit a dusk shallows noon blue.
+	vec3 sh = mix(vec3(1.0), max(sun_hue.rgb, vec3(0.3)), 0.6);
+	c /= mix(sh, vec3(1.0), pale);
 	ALBEDO = matter_albedo(sky_apply(c, world_pos, TIME));
 	// Water is the smoothest thing in the world and it is what makes a night
 	// coast worth looking at: the sky, the moon, a fire on the shore and every

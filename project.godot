@@ -225,6 +225,10 @@ sky_shade={
 "type": "vec4",
 "value": Vector4(1, 1, 1, 0)
 }
+sun_hue={
+"type": "vec4",
+"value": Vector4(1, 1, 1, 0)
+}
 sky_ground={
 "type": "sampler2D",
 "value": ""

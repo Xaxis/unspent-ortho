@@ -284,6 +284,13 @@ var web_contrast := 1.0
 ## between an open landscape and a shut one is a walk into shade and not a line
 ## drawn across the frame.
 var sky_shut := 0.0
+## How torn a ROOFED landscape's roof is to the day above, 0..1: where it is,
+## a column of daylight comes down a sinkhole into the dark (`11_dome`, on the
+## same tears and the same sun as a torn lid). It is not `sky_shut`: that is a
+## landscape putting a lid over itself and is spent on the whole light; this
+## only opens holes in a roof a realm already has, and touches nothing else.
+## Runtime only, so a LOOK field: it moves no island.
+var sky_holes := 0.0
 ## The dystopian grade offset added to SkyLight's own (`SkyLight.neon_row`):
 ## (dark, desat, cool, contrast). `sky.gdshaderinc` scales the graded colour by
 ## (1 - dark), so POSITIVE dark dims and NEGATIVE lifts: every landscape's dark
