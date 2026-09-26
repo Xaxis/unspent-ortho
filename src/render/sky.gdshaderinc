@@ -828,9 +828,10 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 		c = mix(c, white, max(veil, 0.12 * sky_air.w));
 	}
 	if (sky_air.y > 0.001) {
-		// Glare: hard white light bleaches a surface toward a lifted grey.
+		// Glare: hard white light bleaches a surface toward a lifted white, the
+		// darks most of all, so shade goes thin and colour burns out of it.
 		float gl = dot(c, vec3(0.299, 0.587, 0.114));
-		c = mix(c, vec3(gl) * vec3(1.04, 1.03, 0.99) + (1.0 - vec3(gl)) * 0.17, sky_air.y * 0.5);
+		c = mix(c, vec3(gl) * vec3(1.05, 1.04, 0.99) + (1.0 - vec3(gl)) * 0.34, sky_air.y * 0.6);
 	}
 	if (sky_bolt.z > 0.001) {
 		// The strike's afterglow rolling through the cloud, and the land under

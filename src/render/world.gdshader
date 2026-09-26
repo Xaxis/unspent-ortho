@@ -2600,9 +2600,12 @@ void fragment() {
 		// the sky down onto it: a band of the sky lying on the ground at the
 		// horizon, shimmering. It is the light's: the far crust is made smooth
 		// enough to mirror what is above it, and the shimmer moves that mirror.
-		float far_off = smoothstep(35.0, 90.0, length(world_pos - INV_VIEW_MATRIX[3].xyz));
-		float shimmer = ink_vnoise(vec2(world_pos.x * 0.3 + TIME * 0.6, world_pos.z * 0.3));
-		rough_add -= far_off * (0.55 + 0.2 * shimmer);
+		// In glare the air over the crust is hotter and the mirage comes in
+		// nearer and wavers harder: the far flat is water that is not there.
+		float gl = clamp(sky_air.y, 0.0, 1.0);
+		float far_off = smoothstep(mix(35.0, 16.0, gl), mix(90.0, 50.0, gl), length(world_pos - INV_VIEW_MATRIX[3].xyz));
+		float shimmer = ink_vnoise(vec2(world_pos.x * 0.3 + TIME * mix(0.6, 1.4, gl), world_pos.z * mix(0.3, 0.9, gl)));
+		rough_add -= far_off * (0.55 + mix(0.2, 0.4, gl) * shimmer);
 	}
 	if (m == M_SULPHUR) {
 		// The pools are wet and warm and never dry: they take the sky; the

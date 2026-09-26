@@ -417,6 +417,9 @@ const SIGHT_TYPICAL := 12.0
 const DUST_FULL := 0.3
 ## The sight cut at which weather's air is at its whole: a full dust storm's.
 const CUT_FULL := 0.55
+## How much glare lifts the exposure and the bloom at full strength.
+const GLARE_EXPOSURE := 0.22
+const GLARE_GLOW := 1.2
 ## And how far it takes the sky's horizon to that colour (the top a little less).
 const DUST_SKY := 0.8
 ## How much the falling weather over the focus cuts sight (Weather.SIGHT_CUT x
@@ -896,6 +899,13 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	var gnd := SKY_GROUND_DAY.lerp(SKY_GROUND_NIGHT, nightly) * mood
 	# In a dust storm the sky is the dust: the horizon goes to the land's own
 	# dust at the hour's own level, and the top most of the way after it.
+	# In glare the sky burns white from the horizon up: a dome of hard light
+	# with no blue left low in it.
+	var glare := clampf(air.y, 0.0, 1.0)
+	if glare > 0.0:
+		var burn := Color(1.0, 0.99, 0.95) * maxf(hor.get_luminance(), 0.6) * 1.1
+		hor = hor.lerp(burn, glare * 0.75)
+		top = top.lerp(burn * 0.9, glare * 0.35)
 	var sky_dust := clampf(fog.w, 0.0, 1.0)
 	if sky_dust > 0.0:
 		var dc: Color = Air.at(neon_shares).dust
@@ -983,7 +993,11 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	var day_air := lerpf(1.0, DAY_AIR, clear_day) if float(Quality.current().get("air_stand_in", 0.0)) <= 0.0 else 1.0
 	e.fog_density = Air.density(a, lerpf(1.0, 2.1, clampf(fog.z, 0.0, 1.0))) * float(trim.fog) * maxf(stand_in, 0.2) * day_air
 	e.glow_intensity = GLOW_INTENSITY * float(trim.glow)
-	e.tonemap_exposure = EXPOSURE * float(trim.exposure)
+	# Glare is a harder light, not a whiter paint: the whole exposure lifts and
+	# what is bright blooms, so the salt burns and the eye squints at it.
+	var glare_now := clampf(air.y, 0.0, 1.0)
+	e.tonemap_exposure = EXPOSURE * float(trim.exposure) * (1.0 + GLARE_EXPOSURE * glare_now)
+	e.glow_intensity *= 1.0 + GLARE_GLOW * glare_now
 	# And WHERE it lies is the camera's, not a constant: the frame is only about
 	# ten units deep, so two numbers written for the loaded chunks left the air
 	# entirely outside the picture (Air's header has the measurement).
