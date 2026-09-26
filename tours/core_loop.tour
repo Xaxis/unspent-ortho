@@ -53,7 +53,7 @@ shot 04-stone
 # plain_ground and prefers a tile clear of props, which is what open ground IS.
 ground grass
 press use 0.1
-await asked 2
+await fire_asked 2
 wait 0.3
 shot 05-asked-where
 press use 0.1

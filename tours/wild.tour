@@ -7,22 +7,20 @@
 #
 wait 2.4
 shot 01-wake
-# Down to the driftwood on the strand below the village, pressing E when it is close.
-walk -0.92,0.40 1.0
-try 8
-walk -0.92,0.40 0.1
+# Down to the nearest driftwood on the strand, walked to by name (a screen
+# direction held for a second landed at the fire-keeper once the world moved,
+# and E spoke to her), pressing E when it is close.
+walkto prop:driftwood 20
+try 4
 press use 0.1
 await took 1.6
 end
 shot 02-gathered-on-the-strand
-# Up through the village and out along the road east, into the coast fields.
-walk 1,-0.25 3.5
-shot 03-through-the-village
-walk 1,-0.25 3.5
-shot 04-out-along-the-road
-# Dead wood under the trees beside the road, while the land goes about its work.
-try 10
-walk 1,0 0.15
+# Up off the strand and out to the nearest trees, walked to by name, for the
+# dead wood under them while the land goes about its work.
+walkto prop:dead_tree,broadleaf,pine 40
+shot 03-out-to-the-trees
+try 4
 press use 0.1
 await took 1.6
 end
@@ -59,7 +57,12 @@ shot 11-on-its-round with on_round
 until noticed 20
 shot 12-watching-it-work
 # It has noticed, and comes: read the tell, round to its back, strike, strike.
-await tell 60
+# One that walked its round past without looking up is walked out to, as a
+# player who wants the fight does, until it has them and tells.
+try 4
+walkto mob 8
+await tell 15
+end
 shot 13-its-tell with mob
 try 12
 await tell 8

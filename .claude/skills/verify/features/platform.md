@@ -9,6 +9,8 @@ Saving and loading, dev mode, the tour runner.
 - 05_save: `src/systems/05_save.gd`, reached by `tools/tour.sh tours/saves.tour`.
 - 94_dev: `src/systems/94_dev.gd`, reached by `tools/tour.sh tours/dev.tour`.
 - 98_tour: `src/systems/98_tour.gd`, reached by `tools/tour.sh tours/smoke.tour`.
+  `walkto prop:KIND SECS` walks to a prop by name with the real keys (`TOUR_TIMEOUT=500 tools/tour.sh tours/wild.tour --fail-downed`);
+  `await fire_asked` is the fire's first press, `await asked` the region's ask (`tools/tour.sh tours/region.tour`, options in its header).
 
 ## How to reach it
 

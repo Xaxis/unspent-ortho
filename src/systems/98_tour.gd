@@ -106,6 +106,11 @@ extends GameSystem
 ##                          score_dissonance, score_grid, score_texture, score_phrase,
 ##                          score_resolve; and of the blend score_blend, score_here,
 ##                          score_in:LAND, score_full, score_unbroken)
+##   walkto prop:KIND[,KIND] SECS  steer the real walk to the nearest prop of those
+##                          kinds that still has work in it, as `near` picks one, and
+##                          stop within reach of it: the walk a tour that must not
+##                          teleport stages by name (a screen direction held for a
+##                          time lands wherever the next world put things)
 ##   walkto folk|dog|refuse SECS  walk to a villager the camera can see, a village dog,
 ##                          or within sight of a tip's gulls (tour_people.gd)
 ##   perf stats begin|end LABEL [raw]  the --stats block over just the lines between
@@ -192,7 +197,7 @@ extends GameSystem
 ## A tour outlives the game it began in: when that game gives way to the title or
 ## to a loaded game, the runner stays at the tree's root and follows the next game.
 ## Awaits for that: title (the title is up, its coast drawn), game (a new game has
-## started since the last action), saved (a save was written), asked (`use` has
+## started since the last action), saved (a save was written), fire_asked (`use` has
 ## asked where a fire would go and wants a second press); and station:NAME
 ## (a station of that name, e.g. fire, is in reach of the player).
 ##   await title SECS       the title's slate has woken over its coast (a tour booted
@@ -489,7 +494,9 @@ func _run() -> void:
 			"coast":
 				ok = _coast(parts[1] == "calm")
 			"walkto":
-				if parts[1] in ["folk", "refuse", "dog"]:
+				if parts[1].begins_with("prop:"):
+					ok = await _walk_to_prop(parts[1].substr(5), parts[2].to_float() if parts.size() > 2 else 1.0)
+				elif parts[1] in ["folk", "refuse", "dog"]:
 					ok = await TourPeople.walk(self, game, parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
 				else:
 					ok = await _walk_to(parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
@@ -707,7 +714,7 @@ func _now_true(what: String) -> bool:
 	# It is here because a frame called "asked where" was a picture of the player
 	# picking up a stone -- the press had answered a pebble in reach, which is the
 	# key working correctly, and nothing in the tour could tell.
-	if what == "asked":
+	if what == "fire_asked":
 		return Survival.build_asked(game).is_finite()
 	if what == "mob" or what.begins_with("mob:"):
 		return _body_in_frame(what.substr(4), 1)
@@ -926,6 +933,51 @@ func _stand_at(found: WorldProp, said: String) -> bool:
 ## Every `walkto` target, the one list: `tests/tours/test_tour_claims.gd` reads it,
 ## so a new target cannot be written into a tour and refused by a stale copy.
 const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft", "strongbox", "guard"]
+
+
+## The nearest prop of `kinds` (PropKind names, _ for space) with work left in
+## it, or that nothing can be done to, not already stood at by `near`.
+func _nearest_prop(kinds: String) -> WorldProp:
+	var want: Array[int] = []
+	for name: String in kinds.split(",", false):
+		var ki := PropKind.NAMES.find(name.replace("_", " "))
+		if ki >= 0:
+			want.append(ki)
+	var from: Vector2 = game.player.pos
+	var found: WorldProp = null
+	var best := INF
+	for p2: WorldProp in game.query.props_near(from, 90.0):
+		if not want.has(p2.kind) or _near_used.has(p2.id):
+			continue
+		var d := from.distance_squared_to(p2.pos)
+		if d < best and (Survival.work_left(game, p2) or not Takes.workable(p2.kind)):
+			best = d
+			found = p2
+	return found
+
+
+func _walk_to_prop(kinds: String, secs: float) -> bool:
+	var target := _nearest_prop(kinds)
+	if target == null:
+		printerr("tour %s: no %s within reach of %s" % [_name, kinds, game.player.pos])
+		return false
+	var until := Time.get_ticks_msec() + int(secs * 1000.0)
+	while Time.get_ticks_msec() < until:
+		var d := target.pos - game.player.pos
+		if d.length() <= Survival.REACH * 0.6:
+			game.scripted_seconds = 0.0
+			game.scripted_move = _keys_toward(d.normalized()) * 0.2
+			game.scripted_seconds = 0.05
+			await get_tree().physics_frame
+			game.scripted_seconds = 0.0
+			return true
+		game.scripted_move = _keys_toward(d.normalized())
+		game.scripted_run = false
+		game.scripted_seconds = 0.05
+		await get_tree().physics_frame
+	game.scripted_seconds = 0.0
+	printerr("tour %s: walked toward the %s at %s for %.1f s and never came within reach" % [_name, kinds, target.pos, secs])
+	return false
 
 
 func _walk_to(what: String, secs: float) -> bool:
