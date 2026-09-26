@@ -29,6 +29,7 @@
 //              is gone; works_mark and survey_mark still read it to tell one
 //              landscape's ground from another's.   UV.y  weight of that edge
 //   UV2.x      wind sway weight (0 = rigid)
+//   CUSTOM1.x  on a building raised in storeys, 1 + its height in storeys (0 = none)
 //   UV2.y      sway phase when swaying; on rigid geometry, how much the wash
 //              breaks into large organic light/dark patches (0..1). Terrain
 //              writes 2 + the second wash's mark code (patches at full).
@@ -125,6 +126,9 @@ varying float style_packed;
 varying float style_blend;
 varying float patch_raw;
 varying float sway_w;
+// A building's height in its own storeys + 1 (CUSTOM1.x, WorldView.bake_props);
+// 0 on anything without floor lines.
+varying float storey_v;
 
 const vec3 STEP = vec3(0.700, 0.704, 0.749);
 const vec3 INK1 = vec3(0.0706, 0.0667, 0.1137);
@@ -2192,6 +2196,7 @@ void vertex() {
 	style_packed = UV.x;
 	style_blend = UV.y;
 	patch_raw = UV2.x > 0.0 ? 0.0 : UV2.y;
+	storey_v = CUSTOM1.x;
 }
 
 // How much of a crown is taken away at this point: 0 keep it, 1 take it all.
@@ -2513,7 +2518,7 @@ void fragment() {
 	c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, takes * (1.0 - unh), rough_add);
 	// And the land's growth over what was built in it: never the land itself.
 	if (!mark_land(m)) {
-		c = matter_grown(c, n_world, world_pos, (1.0 - unh) * grows, rough_add);
+		c = matter_grown(c, n_world, world_pos, (1.0 - unh) * grows, storey_v, rough_add);
 	}
 
 	if (m == M_SEA_ICE) {

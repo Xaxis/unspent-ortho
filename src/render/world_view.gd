@@ -819,7 +819,7 @@ func _attach_mid(node: Node3D, baked: Array) -> void:
 		if arrays.is_empty():
 			continue
 		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, prop_flags(arrays))
 		var mi := MeshInstance3D.new()
 		mi.name = names[i]
 		mi.mesh = mesh
@@ -1252,6 +1252,10 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 	var mc := PackedColorArray()
 	var muv := PackedVector2Array()
 	var muv2 := PackedVector2Array()
+	# The storey channel (PropModels.Template.made_storey): 0 on anything that
+	# is not raised in storeys, which the shader reads as "no floor lines".
+	var mst := PackedFloat32Array()
+	var any_storey := false
 	var fv := PackedVector3Array()
 	var fn := PackedVector3Array()
 	var fc := PackedColorArray()
@@ -1282,6 +1286,11 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 			mc.append_array(tpl.made_c)
 			muv.append_array(tpl.made_uv)
 			muv2.append_array(tpl.made_uv2)
+			if tpl.made_storey.size() == tpl.made_v.size():
+				mst.append_array(tpl.made_storey)
+				any_storey = true
+			else:
+				mst.resize(mv.size())
 		if not tpl.found_v.is_empty():
 			fv.append_array(xf * tpl.found_v)
 			fn.append_array(nx * tpl.found_n)
@@ -1306,6 +1315,7 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 		mc.append_array(ice.colors)
 		muv.append_array(ice.uvs)
 		muv2.append_array(ice.uv2s)
+	mst.resize(mv.size())
 	var made := []
 	if not mv.is_empty():
 		made.resize(Mesh.ARRAY_MAX)
@@ -1314,6 +1324,8 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 		made[Mesh.ARRAY_COLOR] = mc
 		made[Mesh.ARRAY_TEX_UV] = muv
 		made[Mesh.ARRAY_TEX_UV2] = muv2
+		if any_storey:
+			made[Mesh.ARRAY_CUSTOM1] = mst
 	var found := []
 	if not fv.is_empty():
 		found.resize(Mesh.ARRAY_MAX)
@@ -1329,6 +1341,14 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 		leaves[Mesh.ARRAY_TEX_UV] = luv
 		leaves[Mesh.ARRAY_TEX_UV2] = luv2
 	return [made, found, leaves]
+
+
+## The surface format a baked prop array needs: the storey channel is one float
+## a vertex in CUSTOM1 where any building in it carries one.
+static func prop_flags(arrays: Array) -> int:
+	if arrays.size() > Mesh.ARRAY_CUSTOM1 and arrays[Mesh.ARRAY_CUSTOM1] != null:
+		return Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT
+	return 0
 
 
 ## Where a prop stands and how it is turned and cast, with its foot at height `h`.
@@ -1371,7 +1391,7 @@ func _attach_props(node: Node3D, baked: Array) -> void:
 	var made: Array = baked[0]
 	if not made.is_empty():
 		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, made)
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, made, [], {}, prop_flags(made))
 		var mi := MeshInstance3D.new()
 		mi.name = "props"
 		mi.mesh = mesh
