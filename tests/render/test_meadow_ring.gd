@@ -171,3 +171,17 @@ func test_a_meadow_plant_carries_white_so_the_web_shows_its_own_colour() -> void
 	for mmi: MultiMeshInstance3D in draws.values():
 		check(mmi.multimesh.use_colors, "and every draw of it reads the white")
 	ring.free()
+
+
+## A CELL THAT OVERHANGS THE CHUNK'S NEAR EDGE grows what lies inside the chunk
+## and nothing else. The ring asks for a cell from where the cell starts
+## (`cell * CELL - chunk origin`), which can be before the chunk: a pocket's
+## chunks are small, and under a bunker the ring's cell started hundreds of tiles
+## back and `Decor.turf` read before its arrays, a script error every tile.
+func test_a_cell_starting_before_the_chunk_grows_only_what_is_in_it() -> void:
+	var ch := _chunk()
+	var inside := _plants(_decor.meadow(ch, 0, 0, 16, 16, 1.0))
+	var over := _plants(_decor.meadow(ch, -8, -8, 24, 24, 1.0))
+	eq(over, inside, "the overhang grows nothing; what is inside grows as ever")
+	var far := _decor.meadow(ch, -900, -900, 16, 16, 1.0)
+	eq(far.size(), 0, "a cell wholly before the chunk grows nothing")
