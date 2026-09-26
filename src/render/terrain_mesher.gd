@@ -2407,12 +2407,16 @@ func _span_cell(ch: Chunk, i: int, j: int, v: PackedFloat32Array) -> void:
 	var li := j * np + i
 	var keys := PackedInt32Array([ch.key[li], ch.key[li + 1], ch.key[li + np + 1], ch.key[li + np]])
 	var inside: Array[bool] = [v[0] >= 0.5, v[1] >= 0.5, v[2] >= 0.5, v[3] >= 0.5]
-	# Mass is its country's rock, whatever ground lies under it: painting it
-	# from the ground below drew every ground edge under a roof on its top.
-	var k := Ground.ROCK
+	# Mass is its landscape's own: its plain ground on top and that ground's
+	# cliff in its rim, whatever lies under it (a path, a river's bed), as a
+	# hilltop is. Painting it from the ground below drew every ground edge
+	# under a roof on its top.
+	for c in 4:
+		keys[c] = _span_key(keys[c])
+	var k := keys[0]
 	for c in 4:
 		if inside[c]:
-			k = Ground.ROCK | (keys[c] & 0xFF00)
+			k = keys[c]
 			break
 	# Crossings on each edge c (corner c to c + 1), where the edge changes.
 	var ex := PackedFloat32Array([0, 0, 0, 0])
@@ -2464,22 +2468,23 @@ func _span_cell(ch: Chunk, i: int, j: int, v: PackedFloat32Array) -> void:
 			e.append(ref / nin)
 			segs.append(e)
 	for poly in polys:
-		_span_faces(poly, k)
+		_span_faces(poly, k, keys, li, x0, y0)
 	for sg in segs:
 		_span_rim(sg[0], sg[1], sg[2], k)
 
 
 ## A region's top and underside over one polygon (in NW, NE, SE, SW order, the
 ## order _vtop draws facing up).
-func _span_faces(poly: PackedVector2Array, k: int) -> void:
+func _span_faces(poly: PackedVector2Array, k: int, keys: PackedInt32Array, li: int, ox: float, oy: float) -> void:
 	var ys := PackedVector2Array()
 	for p in poly:
 		var s := _span_sample(p.x, p.y)
 		ys.append(Vector2(s.y, s.z))
-	_paint(k, -1, SPAN_PAINT)
+	_pick_keys(keys[0], keys[1], keys[2], keys[3], li)
+	_paint(_k1, _k2, SPAN_PAINT)
 	_m2 += SPAN_LIFTED
-	_ox = poly[0].x
-	_oy = poly[0].y
+	_ox = ox
+	_oy = oy
 	var ups := PackedVector3Array()
 	var downs := PackedVector3Array()
 	for p in poly:
@@ -2498,7 +2503,7 @@ func _span_faces(poly: PackedVector2Array, k: int) -> void:
 			_tv.append(Vector3(poly[b].x, ys[b].x, poly[b].y))
 			_tn.append(downs[b])
 			_tc.append(col)
-			_tuv.append(_UV_CONTOUR)
+			_tuv.append(Vector2(_UV_CONTOUR.x, -ys[b].y))
 			_tuv2.append(Vector2.ZERO)
 			_tc0.append(c0)
 
@@ -2555,14 +2560,24 @@ func _span_rim(p: Vector2, q: Vector2, ref: Vector2, k: int) -> void:
 			_tn.append(na)
 		for vv in 3:
 			_tn.append(nb)
-		for vv in 6:
+		# Each vertex hangs from its own column's top (world.gdshader's lip).
+		for top: float in [sq.z, sp.z, sp.z, sq.z, sq.z, sp.z]:
 			_tc.append(col)
-			_tuv.append(_UV_CONTOUR)
+			_tuv.append(Vector2(_UV_CONTOUR.x, -top))
 			_tuv2.append(Vector2.ZERO)
 			_tc0.append(c0)
 	var lip := _tab_lip[gi]
 	if lip > 0:
+		var from := _tv.size()
 		_lip_strip(p.x, p.y, q.x, q.y, nrm, sp.z, gi, lip == 2)
+		# The strip is laid level at p's top; tilt it to q's, so a sloping top's
+		# lip follows it instead of stepping at every segment.
+		var along := q - p
+		var rise := sq.z - sp.z
+		for vi in range(from, _tv.size()):
+			var v := _tv[vi]
+			var tt := clampf((Vector2(v.x, v.z) - p).dot(along) / along.length_squared(), 0.0, 1.0)
+			_tv[vi] = Vector3(v.x, v.y + rise * tt, v.z)
 
 
 ## The paint row a span is drawn from: its ground key's, always as an odd
@@ -2627,7 +2642,7 @@ func _span_under_cell(ch: Chunk, i: int, j: int) -> void:
 	var y0 := ch.y0 + j * 0.5
 	var px := [x0, x0 + 0.5, x0 + 0.5, x0]
 	var pz := [y0, y0, y0 + 0.5, y0 + 0.5]
-	var k := Ground.ROCK | (ch.key[j * (ch.n + 1) + i] & 0xFF00)
+	var k := _span_key(ch.key[j * (ch.n + 1) + i])
 	var rock := _tab_cliff[_span_gi(k)]
 	var col := Color(rock.r * SPAN_UNDER_SHADE, rock.g * SPAN_UNDER_SHADE, rock.b * SPAN_UNDER_SHADE, rock.a)
 	var c0 := Color(col.r, col.g, col.b, 0.0)
@@ -2641,7 +2656,7 @@ func _span_under_cell(ch: Chunk, i: int, j: int) -> void:
 		_tv.append(Vector3(x, _sp_lat[at[b]].y, z))
 		_tn.append(Vector3(g.x, -1.0, g.y).normalized())
 		_tc.append(col)
-		_tuv.append(_UV_CONTOUR)
+		_tuv.append(Vector2(_UV_CONTOUR.x, -_sp_lat[at[b]].z))
 		_tuv2.append(Vector2.ZERO)
 		_tc0.append(c0)
 
@@ -2651,30 +2666,44 @@ func _span_under_cell(ch: Chunk, i: int, j: int) -> void:
 func _span_top_run(ch: Chunk, i0: int, i1: int, j: int) -> void:
 	var y0 := ch.y0 + j * 0.5
 	var y1 := y0 + 0.5
-	var k := Ground.ROCK | (ch.key[j * (ch.n + 1) + i0] & 0xFF00)
-	_paint(k, -1, SPAN_PAINT)
-	_m2 += SPAN_LIFTED
+	var np := ch.n + 1
 	var i := i0
 	while i < i1:
 		var xa := ch.x0 + i * 0.5
+		var li := j * np + i
+		var keys := PackedInt32Array([_span_key(ch.key[li]), _span_key(ch.key[li + 1]), _span_key(ch.key[li + np + 1]), _span_key(ch.key[li + np])])
 		var h := _span_sample(xa, y0).z
-		# How far the top stays level along the row, both edges of it.
+		# How far the top stays level and one ground along the row.
 		var e := i
 		while e < i1:
+			var le := j * np + e
 			var xb := ch.x0 + (e + 1) * 0.5
+			var ke := _span_key(ch.key[le])
+			if ke != keys[0] or _span_key(ch.key[le + 1]) != ke or _span_key(ch.key[le + np + 1]) != ke or _span_key(ch.key[le + np]) != ke:
+				break
 			if absf(_span_sample(xb, y0).z - h) > 1e-4 or absf(_span_sample(xb, y1).z - h) > 1e-4 or absf(_span_sample(ch.x0 + e * 0.5, y1).z - h) > 1e-4:
 				break
 			e += 1
 		if e > i:
 			var xb := ch.x0 + e * 0.5
+			_paint(keys[0], -1, SPAN_PAINT)
+			_m2 += SPAN_LIFTED
+			_w00 = 0.0
+			_w10 = 0.0
+			_w11 = 0.0
+			_w01 = 0.0
 			_ox = xa
 			_oy = y0
 			for q: Vector2 in [Vector2(xa, y0), Vector2(xb, y0), Vector2(xb, y1), Vector2(xa, y0), Vector2(xb, y1), Vector2(xa, y1)]:
 				_vtop(q.x, h, q.y)
 			i = e
 			continue
-		# A sloping cell, lit by its corners' slopes.
+		# A cell that slopes or crosses grounds: its own keys, lit by its
+		# corners' slopes.
 		var xb := xa + 0.5
+		_pick_keys(keys[0], keys[1], keys[2], keys[3], li)
+		_paint(_k1, _k2, SPAN_PAINT)
+		_m2 += SPAN_LIFTED
 		_ox = xa
 		_oy = y0
 		for q: Vector2 in [Vector2(xa, y0), Vector2(xb, y0), Vector2(xb, y1), Vector2(xa, y0), Vector2(xb, y1), Vector2(xa, y1)]:
@@ -2682,3 +2711,13 @@ func _span_top_run(ch: Chunk, i0: int, i1: int, j: int) -> void:
 			_vtop(q.x, _span_sample(q.x, q.y).z, q.y)
 			_tn[_tn.size() - 1] = Vector3(-g.z, 1.0, -g.w).normalized()
 		i += 1
+
+
+## The key a span is painted from at a lattice point whose ground key is `k`:
+## the plain ground of the landscape drawn there (BiomeDef.plain_ground), in
+## that landscape.
+func _span_key(k: int) -> int:
+	var country := (k >> 8) & 0xFF
+	var d := BiomeRegistry.by_index(country)
+	var g := d.plain_ground if d != null else Ground.ROCK
+	return g | (country << 8)
