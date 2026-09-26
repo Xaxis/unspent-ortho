@@ -92,6 +92,12 @@ const MODS := {
 	&"mod_lattice": {"decision": "every blow throws a shock, and the whole kit runs hot",
 		"short": "every blow shocks",
 		"gives": [&"hot", &"loud"], "wants": [&"cool"]},
+	# The mesas anchor's, turned (GEAR.md §5): `steady`, so with a gyro and the
+	# undertow (held) it is a planted grappler (PAIRS).
+	&"mod_anchor": {"decision": "stand still a moment and you are rooted: no blow throws you and no grip takes you",
+		"short": "stood still, rooted",
+		"costs": "rooted, you cannot dodge",
+		"gives": [&"steady"]},
 	# The pan rake's, turned (GEAR.md §5): `loud`, so a damper fights it (PAIRS).
 	&"mod_rake": {"decision": "a heavy blow rakes the ground ahead and holds everything in the arc open, and rings for it",
 		"short": "a heavy rakes the arc",

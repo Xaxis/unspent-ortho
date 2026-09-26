@@ -212,6 +212,7 @@ const LIST: Array[Dictionary] = [
 	{"id": &"mod_leech", "at": &"bench", "minutes": 140.0, "needs": {&"clerk_die": 1, &"copper": 2, &"wick": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_leech": 1}},
 	{"id": &"mod_phase", "at": &"bench", "minutes": 145.0, "needs": {&"keeper_lens": 1, &"copper": 2, &"resin": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_phase": 1}},
 	{"id": &"mod_lattice", "at": &"bench", "minutes": 150.0, "needs": {&"scrap": 3, &"copper": 2, &"wick": 2, &"fulgurite_core": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_lattice": 1}},
+	{"id": &"mod_anchor", "at": &"bench", "minutes": 180.0, "needs": {&"anchor_core": 1, &"scrap": 3, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_anchor": 1}},
 	{"id": &"mod_rake", "at": &"bench", "minutes": 180.0, "needs": {&"rake_core": 1, &"scrap": 3, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_rake": 1}},
 	{"id": &"mod_undertow", "at": &"bench", "minutes": 180.0, "needs": {&"reaper_core": 1, &"copper": 2, &"scrap": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_undertow": 1}},
 	# --- Crafts (docs/VISION.md) ---

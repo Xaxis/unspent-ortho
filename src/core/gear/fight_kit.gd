@@ -30,6 +30,11 @@ extends RefCounted
 ##                            facing has its tell broken and its part lit
 ##                            (stalled open); a charger rides over it; a heavy
 ##                            is RAKE_NOISE as loud
+##   anchor   (mod_anchor)    "stood still, rooted": ANCHOR_MS without a step and
+##                            the body is rooted (Hero.rooted): a blow does not
+##                            throw it, a grip does not take it; rooted, and
+##                            for ANCHOR_LIFT_MS after the first step, it
+##                            cannot dodge
 ##   undertow (mod_undertow)  "your line hauls them in": the grapple takes hold
 ##                            of a machine ahead and drags it one body-length
 ##                            in (FightSim.undertow), its tell broken and its
@@ -73,6 +78,10 @@ const ICELENS_REACH := 1.5
 const RAKE_REACH := 3.0
 const RAKE_ARC := deg_to_rad(60.0)
 const RAKE_NOISE := 1.5
+## How long the player must stand without a step to be rooted by the anchor, and
+## how long a root holds once they step (no dodge while it does: its cost).
+const ANCHOR_MS := 600.0
+const ANCHOR_LIFT_MS := 300.0
 ## A haul on a machine costs this many times the grapple's wind.
 const UNDERTOW_WIND := 2.0
 
@@ -88,6 +97,7 @@ var lattice := false
 var icelens := false
 var undertow := false
 var rake := false
+var anchor := false
 
 
 ## The kit of these fitted ids (pieces and modules alike; only modules count).
@@ -105,6 +115,7 @@ static func of(ids: Array) -> FightKit:
 	k.icelens = ids.has(&"mod_icelens")
 	k.undertow = ids.has(&"mod_undertow")
 	k.rake = ids.has(&"mod_rake")
+	k.anchor = ids.has(&"mod_anchor")
 	return k
 
 

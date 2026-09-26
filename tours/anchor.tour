@@ -1,0 +1,12 @@
+# The anchor (GEAR.md G4): the mesas anchor's core set in the coat. Stood still,
+# the player is rooted, and a lineman's grip rings off them and takes nothing.
+#   tools/tour.sh tours/anchor.tour --seed=1 --hour=11 --weather=clear:0 --fit=wrap_warm,mod_anchor
+coast calm
+place open_coast
+wait 1.0
+spawn lineman
+# A blow on it turns it; then stand, and let the root take.
+walkto mob 1.5
+tap swing
+await grip_failed 15
+shot 01-the-grip-rings-off with mob:lineman

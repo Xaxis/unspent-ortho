@@ -369,6 +369,13 @@ func _handle(events: Array[Dictionary]) -> void:
 				_on_struck(e)
 			&"rake":
 				_rake_marks(e)
+			&"grip_failed":
+				# The anchor held (FightKit.anchor): the grip rang off a body that
+				# would not be taken, and the ground round the feet says why.
+				_grip_failed_at = Time.get_ticks_msec() / 1000.0
+				MobFx.clang(fx, _at3(hero.pos, 0.9), int(sim.now))
+				MobFx.ring(fx, _at3(hero.pos), Palette.STONE[4], hero.radius + 0.5, 0.4)
+				Events.sfx.emit(&"hit_plate", player.position)
 			&"hurt":
 				_on_hurt(e)
 			&"killed":
@@ -495,13 +502,22 @@ func _crackle(from: Vector2, m: MobState, h: float) -> void:
 		MobFx.line(fx, pts[k], pts[k + 1], Palette.COLD[3], 0.2)
 
 
-## Real second the last rake was drawn, for the tour's `raked`.
+## Real second the last rake was drawn, and the last grip failed on an anchored
+## player, for the tour's `raked` and `grip_failed`.
 var _raked_at := -INF
+var _grip_failed_at := -INF
 
 
-## `raked`: a rake's tines are on the ground now (they stand 0.35 s).
+## `raked`: a rake's tines are on the ground now (they stand 0.35 s);
+## `grip_failed`: a grip rang off a rooted player just now.
 func tour_seen(what: StringName) -> bool:
-	return what == &"raked" and Time.get_ticks_msec() / 1000.0 - _raked_at < 0.35
+	var now := Time.get_ticks_msec() / 1000.0
+	match what:
+		&"raked":
+			return now - _raked_at < 0.35
+		&"grip_failed":
+			return now - _grip_failed_at < 0.4
+	return false
 
 
 ## A rake (FightKit.rake): the tines drawn across the ground ahead, five short

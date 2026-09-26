@@ -47,6 +47,28 @@ func _init(s: FightSim) -> void:
 
 
 func act() -> void:
+	_act()
+	_keep_unrooted()
+
+
+## With an anchor fitted (FightKit.anchor), a player who means to dodge does not
+## let the root take: facing anything whose bite hurts, a stand of ANCHOR_MS is
+## broken by a small shift of weight. Facing only grippers and throwers, the
+## root is the point, and it is let take.
+func _keep_unrooted() -> void:
+	var hero := sim.hero
+	if hero.kit == null or not hero.kit.anchor or hero.move.length() > 0.1 or hero.held():
+		return
+	if sim.now - hero.still_since < FightKit.ANCHOR_MS - 120.0:
+		return
+	for m in _live():
+		var b := m.bite
+		if b != null and m.roused() and (b.dmg > 0 or b.area) and m.pos.distance_to(hero.pos) < 8.0:
+			hero.move = Vector2.from_angle(hero.facing + PI * 0.5) * 0.15
+			return
+
+
+func _act() -> void:
 	var hero := sim.hero
 	var now := sim.now
 	hero.run = false
@@ -168,6 +190,15 @@ func _standing_off(m: MobState) -> bool:
 	if m.blow != null and m.blow_phase(now) in [&"windup", &"active"]:
 		return false
 	return now - m.blow_at > STANDOFF_MS and now - _seen_since.get(m.id, now) > STANDOFF_MS
+
+
+## With an anchor fitted and rooted (FightKit.anchor): a bite that only grips or
+## throws does nothing to a rooted body, so it is stood through, not dodged. (It
+## lets the root take only against those: `_keep_unrooted`.)
+func _tell_to_answer(m: MobState) -> bool:
+	if sim.hero.rooted(sim.now) and m.blow != null and m.blow.dmg <= 0 and m.blow_phase(sim.now) == &"windup":
+		return false
+	return super(m)
 
 
 ## Another body nearer than this could be on the player while a heavy is told.

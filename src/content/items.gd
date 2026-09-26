@@ -432,6 +432,10 @@ const DEFS := {
 	# raked the crust into rows, turned. `loud` is its tag (ModifierTable).
 	&"mod_rake": {"name": "rake", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"rime", &"earth"], "fits": [&"tool"], "resist": {&"heat": 0.2}},
+	# The mesas anchor's core, set in a belt plate (GEAR.md §5): the keeper that
+	# would not be moved, turned. `steady` is its tag (ModifierTable).
+	&"mod_anchor": {"name": "anchor", "bulk": 3.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"stone", &"earth"], "fits": [&"body"], "resist": {&"collapse": 0.3}},
 	&"mod_undertow": {"name": "undertow", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"brine", &"earth"], "fits": [&"hands"], "resist": {&"magnetism": 0.3}},
 	# The crags' hush slate, lined into a hat, a coat or a pack: what it decides

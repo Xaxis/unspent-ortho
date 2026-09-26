@@ -152,6 +152,8 @@ const PIECES := {
 	# which is then not a cell in a holding (one use per core).
 	&"mod_undertow": {"grade": &"relic", "family": &"", "from": &"reaper_core",
 		"unique": "the only line that takes hold of a machine"},
+	&"mod_anchor": {"grade": &"relic", "family": &"", "from": &"anchor_core",
+		"unique": "the only footing a blow cannot move and a grip cannot take"},
 	&"mod_rake": {"grade": &"relic", "family": &"", "from": &"rake_core",
 		"unique": "the only blow that opens what it does not hit"},
 }

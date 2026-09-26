@@ -116,6 +116,27 @@ func write_body(now: float, real_s: float) -> void:
 	body.dodging = dodging(now)
 
 
+## When the body last stepped, dodged or left the ground (FightSim keeps it), so
+## the anchor can root it once it has stood ANCHOR_MS; and until when a root
+## being pulled up still holds (ANCHOR_LIFT_MS from the first step).
+var still_since := 0.0
+var lift_until := -INF
+
+
+## Rooted by the anchor (FightKit.anchor): stood still long enough, or still
+## pulling the root up.
+func rooted(now: float) -> bool:
+	return kit != null and kit.anchor and (now - still_since >= FightKit.ANCHOR_MS or now < lift_until)
+
+
+## A step, a dodge or a jump: the root starts coming up (it holds ANCHOR_LIFT_MS
+## more if it was down), and standing still starts over.
+func stepped(now: float) -> void:
+	if kit != null and kit.anchor and now - still_since >= FightKit.ANCHOR_MS:
+		lift_until = now + FightKit.ANCHOR_LIFT_MS
+	still_since = now
+
+
 func dodging(now: float) -> bool:
 	return now - dodge_at < FightRules.DODGE_MS
 
@@ -162,6 +183,8 @@ func dodge_refusal(now: float) -> StringName:
 		return &"stunned"
 	if committed(now):
 		return &"swinging"
+	if rooted(now):
+		return &"rooted"
 	if dodge_locked(now):
 		return &"dodge_locked"
 	if wind < FightRules.DODGE_COST:

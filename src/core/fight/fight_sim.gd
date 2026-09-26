@@ -742,6 +742,9 @@ func _move_hero(dt: float) -> void:
 				hero.facing = hero.move.angle()
 	v += hero.throw_velocity(now)
 	v += _shouldered(dt)
+	# A step, a dodge or a jump lifts the anchor's root (Hero.rooted).
+	if hero.move.length() > 0.1 or since_dodge < FightRules.DODGE_MS or hero.airborne:
+		hero.stepped(now)
 	var before := hero.pos
 	if v.length_squared() > 0.0:
 		hero.pos = query.move_body(hero.pos, v * dt, hero.radius, hero.ride, hero.swims) if query != null else hero.pos + v * dt
@@ -973,6 +976,11 @@ func _land(t0: float, t1: float) -> void:
 		if not meets_hero(m.pos):
 			continue
 		m.struck[&"hero"] = true
+		# Rooted by the anchor, a grip closes on nothing (FightKit.anchor): a miss,
+		# and the body stands spent and open as after any bite that missed.
+		if m.blow.grip > 0 and m.blow.dmg <= 0 and hero.rooted(now) and not hero.invulnerable(now):
+			emit(&"grip_failed", {"by": m})
+			continue
 		if not hero.invulnerable(now):
 			_landed(m)
 		if hero.invulnerable(now):
@@ -982,6 +990,8 @@ func _land(t0: float, t1: float) -> void:
 			emit(&"evaded", {"by": m, "dodge": FightRules.dodge_invulnerable(now - hero.dodge_at)})
 			continue
 		if m.blow.grip > 0:
+			if hero.rooted(now):
+				continue
 			if hero.seize(m, m.blow.grip, now):
 				hero.blow = null
 				emit(&"grip", {"by": m, "grip": hero.grip})
@@ -1358,8 +1368,10 @@ func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: in
 		dmg = 0
 	hero.health -= dmg
 	hero.invuln_until = now + FightRules.HURT_IFRAMES_MS
-	# A clamp keeps the feet where they stand (FightKit.clamp).
-	hero.throw(dir, knock * (FightKit.CLAMP_KNOCK if hero.kit.clamp else 1.0), knock_ms, now)
+	# A clamp keeps the feet where they stand (FightKit.clamp); rooted by the
+	# anchor, nothing moves them (FightKit.anchor).
+	if not hero.rooted(now):
+		hero.throw(dir, knock * (FightKit.CLAMP_KNOCK if hero.kit.clamp else 1.0), knock_ms, now)
 	hero.last_hit_by = by
 	hero.last_hit_at = now
 	# A gyro brace carries the swing through the blow (FightKit.gyro).
