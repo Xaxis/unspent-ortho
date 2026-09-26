@@ -70,3 +70,55 @@ static func turned(seed_value: int, ring: int, stones: int, epoch: int) -> Vecto
 	if Rng.hash01(seed_value, ring, epoch, SALT + 5) < 0.5:
 		by = -by
 	return Vector2(which, by)
+
+
+
+## NOBODY'S LIGHTS (H4): on a hush landscape's night in fog, one to three steady
+## lights stand low in the fog NEAR to FAR tiles from the player, drifting slowly
+## round them: walk toward one and it is always that far. Never inside a ring
+## (its stones and RING_CLEAR more). Pale grey-green: neither a person's warm
+## unsteady flame nor a machine's cold ruled beam (LOOK law 2).
+## Near enough to stand at the edge of the top view's frame (about 13 tiles
+## either side of the player), far enough to be deep in the fog over the shoulder.
+const NEAR := 11.0
+const FAR := 20.0
+const RING_CLEAR := 2.0
+## At least this dark, in at least this much fog, for them to stand.
+const LIT_DARK := 0.5
+const LIT_FOG := 0.25
+## Radians a world minute a light drifts round the player.
+const DRIFT := 0.015
+const LIGHT_COLOR := Color(0.70, 0.82, 0.72)
+
+
+## Whether they stand at all: dark enough, foggy enough.
+static func lit(dark: float, fog: float) -> bool:
+	return dark >= LIT_DARK and fog >= LIT_FOG
+
+
+## Where they stand tonight at world minute `minutes`, round the player at `at`:
+## one to three points, each its own distance and drift for the night. `rings`
+## are (centre x, centre y, radius) of the rings near; a light that would stand
+## in one does not stand.
+static func nobody(seed_value: int, night: int, minutes: float, at: Vector2, rings: PackedVector3Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var n := 1 + mini(2, int(Rng.hash01(seed_value, night, SALT + 10) * 3.0))
+	for i in n:
+		var d := lerpf(NEAR, FAR, Rng.hash01(seed_value, night, i, SALT + 11))
+		var turn := DRIFT * (1.0 if Rng.hash01(seed_value, night, i, SALT + 12) < 0.5 else -1.0)
+		var a := TAU * Rng.hash01(seed_value, night, i, SALT + 13) + turn * minutes
+		var p := at + Vector2.from_angle(a) * d
+		var clear := true
+		for r: Vector3 in rings:
+			if Vector2(r.x, r.y).distance_to(p) <= r.z + RING_CLEAR:
+				clear = false
+				break
+		if clear:
+			out.append(p)
+	return out
+
+
+## Which night world minute `minutes` falls in (a night runs noon to noon, so
+## it never changes in the dark).
+static func night_of(minutes: float) -> int:
+	return floori((minutes + 12.0 * 60.0) / (24.0 * 60.0))

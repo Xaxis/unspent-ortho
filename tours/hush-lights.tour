@@ -1,0 +1,22 @@
+# NOBODY'S LIGHTS (docs/HUSH.md H4): on a crags night in fog, one to three steady
+# pale grey-green lights stand low in the fog 11 to 20 tiles off, and walking
+# toward them brings them no nearer. From above (the nearest at the frame's
+# edge), then over the shoulder turned toward it, then after walking at it.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/hush-lights.tour --seed=7 --hour=23 --weather=fog:0.7
+place the_crags
+coast calm
+wait 1.5
+await nobodys_light 3
+near nobodys_light
+wait 0.5
+shot 01-nobodys-lights-from-above
+tap shoulder
+await shoulder 3
+near nobodys_light
+wait 1.0
+shot 02-nobodys-light-over-the-shoulder with shoulder
+leap 5.0
+wait 0.5
+near nobodys_light
+wait 0.8
+shot 03-walked-at-it-and-it-is-as-far with shoulder

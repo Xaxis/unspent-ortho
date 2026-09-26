@@ -39,6 +39,14 @@ builds it. Design only; nothing is built until it is agreed.
   id, stable whatever window finds them. tests: test_hush, test_props_rebake;
   tours/hush-stones.tour (a stone stands differently after a look away, from
   above and over the shoulder).
+- **H4 built** (world/hush): `Hush.nobody` (one to three, 11-20 tiles off,
+  drifting round the player a night at a time, never in a ring; 18-30 put them
+  outside the top view's frame), only on a hush landscape's nights in fog; an
+  OmniLight3D each lent to 15_lights' budget, with a steady four-stroke star
+  (`rays`, no flicker); never on a road. `near nobodys_light` turns a tour to
+  the nearest. tests: test_hush; tours/hush-lights.tour (the pool at the top
+  view's edge; a pale cross and its cold pool in the fog over the shoulder, as
+  far after walking at it).
 
 ## Rules every phenomenon keeps
 
@@ -144,12 +152,12 @@ lasts (the air's drift held), so it reads at both cameras too.
 
 ### H4: lights in the fog that are nobody's
 On crags nights in fog or mist, one to three pale lights stand low in the fog
-at 18-30 tiles from the player: far enough to be at the edge of the top
+at 11-20 tiles from the player: far enough to be at the edge of the top
 view's frame and deep in the fog over the shoulder. They are steady, not
 flickering: not a person's warm unsteady flame and not a machine's cold
 ruled beam (LOOK law 2). They are a colour neither uses, a pale grey-green.
 Walk toward one and it is always that far. When the fog thins they are gone.
-Never closer than 18 tiles, never inside a ring, never on a road.
+Never closer than 11 tiles, never inside a ring, never on a road.
 - **Hooks:** positions `hash(seed, night, i)` along slow paths keyed to the
   player's bearing. Real light lent from 15_lights (`lend`/`take_back`), as
   21_doors does, and a glow in the fog (a `rays()` card or the fog's own

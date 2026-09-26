@@ -27,6 +27,11 @@ var _t := -1.0
 var _span := Vector2.ZERO
 ## `--hush=always`: every visit answers, at any hour, for a proof tour.
 var _always := false
+## Nobody's lights (H4): up to three, each an OmniLight3D lent to 15_lights'
+## budget with its glow in the fog, drawn where Hush.nobody puts them.
+const LIGHTS_SYSTEM := preload("res://src/systems/15_lights.gd")
+var _lamps: Array[OmniLight3D] = []
+var _lamps_on := 0
 ## Each ring stone's laid rot (the first time it was near), and the turn it
 ## stands at now (Hush.turned), by prop id.
 var _laid: Dictionary = {}
@@ -59,6 +64,7 @@ func _process(delta: float) -> void:
 		_in = now
 		if now != 0:
 			_enter(now)
+	_stand_lights()
 	if _t >= 0.0:
 		_t += delta
 		quiet = Hush.level(_t, _span.x, _span.y)
@@ -87,6 +93,8 @@ func tour_seen(what: StringName) -> bool:
 			return quiet >= 0.999
 		&"hush_gone":
 			return _t < 0.0
+		&"nobodys_light":
+			return _lamps_on > 0
 		&"stone_turned":
 			for v: float in _turn.values():
 				if v != 0.0:
@@ -98,7 +106,12 @@ func tour_seen(what: StringName) -> bool:
 ## `near hush_ring`: the centre of the nearest ring, so a tour stands in it by
 ## name and never at a coordinate.
 func tour_place(what: String) -> Vector2:
-	if what != "hush_ring" or game == null or game.world == null or game.player == null:
+	if game == null or game.world == null or game.player == null:
+		return Vector2.INF
+	# `near nobodys_light`: stay where you are, turned toward the nearest.
+	if what == "nobodys_light":
+		return game.player.pos if _lamps_on > 0 else Vector2.INF
+	if what != "hush_ring":
 		return Vector2.INF
 	var r := HushSites.nearest(game.world, game.query, game.player.pos, TOUR_REACH)
 	return r.centre if r != null else Vector2.INF
@@ -135,3 +148,69 @@ func _stand_stones() -> void:
 			turn_usec_max = maxi(turn_usec_max, Time.get_ticks_usec() - t0)
 			if game.options != null and game.options.tour != "":
 				print("tour hush: a stone of ring %d turned by %.1f degrees; %d us to ask, the longest swap so far %d us" % [r.id, rad_to_deg(want), Time.get_ticks_usec() - t0, game.view.rebake_swap_usec_max])
+
+
+
+## NOBODY'S LIGHTS (H4): on a hush landscape's fog nights, where Hush.nobody
+## says, and nowhere else; never on a road.
+func _stand_lights() -> void:
+	var at: Vector2 = game.player.pos
+	var here := BiomeRegistry.by_index(game.world.country_at(floori(at.x), floori(at.y)))
+	var pts := PackedVector2Array()
+	var fog := game.sky.fog.z if game.sky != null else 0.0
+	if here != null and here.hush and Hush.lit(Weather.night_fall(game.clock.hour()), fog):
+		var rings := PackedVector3Array()
+		for r: HushSites.Ring in _rings:
+			rings.append(Vector3(r.centre.x, r.centre.y, r.radius))
+		for p: Vector2 in Hush.nobody(game.world.seed_value, Hush.night_of(game.clock.minutes), game.clock.minutes, at, rings):
+			if not game.world.on_road(floori(p.x), floori(p.y)):
+				pts.append(p)
+	while _lamps.size() < pts.size():
+		_lamps.append(_make_lamp())
+	_lamps_on = pts.size()
+	for i in _lamps.size():
+		var l := _lamps[i]
+		l.visible = i < pts.size()
+		if i < pts.size():
+			var p := pts[i]
+			l.position = Vector3(p.x, game.world.height_at(p) + 1.1, p.y)
+
+
+func _make_lamp() -> OmniLight3D:
+	var l := OmniLight3D.new()
+	l.light_color = Hush.LIGHT_COLOR
+	l.light_energy = 1.4
+	l.omni_range = 7.0
+	l.shadow_enabled = false
+	# Steady: no flicker and no spokes. A person's flame wavers and a machine's
+	# light is ruled; this is neither.
+	# Screen pixels: a small steady star, straight strokes only.
+	l.add_child(LIGHTS_SYSTEM.rays(Hush.LIGHT_COLOR, 2.0, 11.0, 0.0, 4.0))
+	game.view.add_child(l)
+	for sys: Node in game.systems:
+		if sys.has_method(&"lend"):
+			sys.call(&"lend", l, false, 1)
+			break
+	return l
+
+
+func _exit_tree() -> void:
+	if game != null:
+		for l: OmniLight3D in _lamps:
+			for sys: Node in game.systems:
+				if sys.has_method(&"take_back"):
+					sys.call(&"take_back", l)
+	_lamps.clear()
+
+
+
+## Which way `near nobodys_light` turns the player: toward the nearest light.
+func tour_face(what: String) -> float:
+	if what != "nobodys_light" or _lamps_on == 0:
+		return NAN
+	var at: Vector2 = game.player.pos
+	var best := _lamps[0]
+	for i in _lamps_on:
+		if Vector2(_lamps[i].position.x, _lamps[i].position.z).distance_to(at) < Vector2(best.position.x, best.position.z).distance_to(at):
+			best = _lamps[i]
+	return (Vector2(best.position.x, best.position.z) - at).angle()
