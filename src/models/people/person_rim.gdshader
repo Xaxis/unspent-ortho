@@ -19,11 +19,14 @@ render_mode unshaded, cull_front, depth_draw_always, skip_vertex_transform, fog_
 #include "res://src/render/sight.gdshaderinc"
 
 uniform vec3 step_down = vec3(0.700, 0.704, 0.749);
-// Rim width in WORLD units, not in pixels. It used to be one texel of the
-// 640x360 image, which at 1920x1080 is a third as thick and at another zoom is
-// something else again; a width in world units is the same apparent line
-// whatever the tier renders at, which is what the web path needs.
+// Rim width as a share of the FRAME, given in world units at the frame the top
+// view shows (`frame_at`, CameraRig.VIEW_HEIGHT): the same apparent hairline at
+// any resolution, any tier and any distance from the eye. Held in world units
+// alone it was a hairline from the top and, over the shoulder a metre from the
+// head, a band thirteen times as thick, lit by the lantern into a white fringe
+// round the whole figure (bunker.tour frame 04).
 uniform float width = 0.021;
+uniform float frame_at = 15.0;
 // How far past a pool's own range a figure still takes its colour.
 uniform float reach = 1.6;
 
@@ -36,11 +39,14 @@ void vertex() {
 	vec3 v = (MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vec3 n = (MODELVIEW_MATRIX * vec4(TANGENT, 0.0)).xyz;
 	vec2 dir = length(n.xy) > 1e-4 ? normalize(n.xy) : vec2(0.0);
-	// Orthographic: 2 / P[1][1] is the view height in world units.
-	v.xy += dir * width;
+	// The frame's height in world units at this vertex: 2 / P[1][1] under an
+	// orthographic camera, and that times the depth under a lens.
+	float depth = PROJECTION_MATRIX[3][3] != 0.0 ? 1.0 : -v.z;
+	float w = width * (2.0 * depth / PROJECTION_MATRIX[1][1]) / frame_at;
+	v.xy += dir * w;
 	// A hair toward the camera would let the rim cover the body; a hair away
 	// keeps it behind.
-	v.z -= width * 0.5;
+	v.z -= w * 0.5;
 	VERTEX = v;
 	NORMAL = (MODELVIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	toward = dot(dir, normalize(vec2(-1.0, 1.0)));

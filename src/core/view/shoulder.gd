@@ -61,6 +61,55 @@ static func rise(pitch_deg: float) -> float:
 	return smooth((PITCH_LEAST - pitch_deg) / (PITCH_LEAST - YIELD_FULL))
 
 
+## WHERE THERE IS NO ROOM BEHIND, THE PLAYER STEPS TO THE SIDE OF THE FRAME.
+## A wall at the back pulls the eye in along its own line (`room`); down a
+## bunker's corridor it came to half a metre behind the head, which sat dead in
+## the middle of the frame and hid the corridor (bunker.tour frame 04,
+## 2026-09-25). So as the eye is crowded in from `CROWD_FROM` to `CROWD_FULL`,
+## the shoulder offset becomes `CROWD_SIDE` toward whichever side has more room
+## (hysteresis `SIDE_SWITCH`, so it does not flip at every step), the wall on that
+## side may come as near as `CROWD_SIDE_CLEAR`, and the focus drops to
+## `CROWD_FOCUS_UP`: the player is in a side third, low, and the way ahead reads.
+## It stays third person -- the crouch, the lantern and the stance are how a
+## stealth player reads themselves -- and the body is stippled away only when the
+## eye is actually in it (`inside`).
+##
+## TUNING IS THE OWNER'S: every number here is a constant so he can overrule it.
+const CROWD_FROM := 2.4
+const CROWD_FULL := 1.3
+const CROWD_SIDE := 0.42
+const CROWD_SIDE_CLEAR := 0.45
+const CROWD_FOCUS_UP := 1.1
+## Metres more room the other side must have before the player swaps sides.
+const SIDE_SWITCH := 0.35
+## Eased at this rate a second both ways.
+const CROWD_RATE := 6.0
+## The body goes, by stipple, only with the eye within `INSIDE_FROM` of the
+## column it stands in, and is gone by `INSIDE_FULL`.
+const INSIDE_FROM := 0.5
+const INSIDE_FULL := 0.25
+
+
+## 0 with the eye `CROWD_FROM` or more from the point it looks at, 1 by
+## `CROWD_FULL`, eased.
+static func crowd(back: float) -> float:
+	return smooth((CROWD_FROM - back) / (CROWD_FROM - CROWD_FULL))
+
+
+## How much of the player's body is stippled away for an eye `d` from the column
+## it stands in (on the ground plane): 0 past `INSIDE_FROM`, 1 by `INSIDE_FULL`.
+static func inside(d: float) -> float:
+	return smooth((INSIDE_FROM - d) / (INSIDE_FROM - INSIDE_FULL))
+
+
+## Which side the crowded eye stands, given how far it fits to the right and to
+## the left and which side it was on: it moves only for `SIDE_SWITCH` more room.
+static func crowd_left(was_left: bool, fit_right: float, fit_left: float) -> bool:
+	if was_left:
+		return not (fit_right > fit_left + SIDE_SWITCH)
+	return fit_left > fit_right + SIDE_SWITCH
+
+
 ## Degrees a second the view comes back down to `PITCH_LEAST` once nothing
 ## holds the gaze any more, eased by how far it has to come: never a snap.
 const GAZE_RETURN := 25.0
