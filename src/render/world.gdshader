@@ -2295,6 +2295,26 @@ vec3 pine_foxfire(vec2 wp, vec2 px) {
 	return vec3(0.32, 0.62, 0.42) * 0.8 * drift * clump * grain * breath * sky_view.y;
 }
 
+// THE SCRAPWOOD'S NIGHT. The field still in the dead iron is what combed the
+// filings into arcs (SWARF), and after dark it shows: the combed lines glow a
+// faint cold blue-white where the field is strongest, in slow drifts that wander
+// across the floor, as if something under the litter were still switched on.
+// Only on the lines, never between them; steady, never a blink.
+vec3 scrap_field(vec2 wp) {
+	if (sky_view.y <= 0.0) {
+		return vec3(0.0);
+	}
+	float f = ink_vnoise(wp * 0.11) * 0.75 + ink_vnoise(wp * 0.4) * 0.25;
+	float arc = fract(f * 11.0);
+	// Thin, and broken where the filings are: a lit line unbroken read as a
+	// ruled neon tube laid through the wood (measured at 1.6: the floor was
+	// striped white).
+	float line = (1.0 - smoothstep(0.02, 0.07, arc)) * step(0.24, ink_vnoise(wp * 0.5 + 7.0))
+		* smoothstep(0.4, 0.65, ink_vnoise(wp * 2.7 + 3.0));
+	float drift = smoothstep(0.5, 0.78, ink_vnoise(wp * 0.045 + vec2(TIME * 0.012, -TIME * 0.008)));
+	return vec3(0.42, 0.55, 0.95) * 0.9 * line * drift * sky_view.y;
+}
+
 void fragment() {
 	if (near_cut > 0.5 && near_drawn(world_pos)) {
 		discard;
@@ -2361,6 +2381,11 @@ void fragment() {
 	if (pine) {
 		m = 50;
 	}
+	// And the scrapwood's is the swarf, but for the field it shows at night.
+	bool scrap = m == M_SCRAP_FLOOR;
+	if (scrap) {
+		m = 56;
+	}
 	float s1 = mod(style_packed, 16.0);
 	float s2 = floor(style_packed / 16.0 + 0.01);
 	float unh = 0.0;
@@ -2397,6 +2422,9 @@ void fragment() {
 		}
 		if (pine) {
 			emit += pine_foxfire(world_pos.xz, px);
+		}
+		if (scrap) {
+			emit += scrap_field(world_pos.xz);
 		}
 		// The fused sheet is not trodden to earth: nothing walks glass to a path.
 		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK && m != M_SULPHUR) {
@@ -2572,7 +2600,7 @@ void fragment() {
 	SPECULAR = mr.y;
 	METALLIC = mr.w;
 	if (m == 56) {
-		// SWARF: only the combed filings are metal. Metal over the whole floor
+		// SWARF (and the scrapwood's floor, aliased to it above): only the combed filings are metal. Metal over the whole floor
 		// mirrored the sky at eye level and the wood's floor came back a pale
 		// lavender sheet; the mulch between the arcs is the matte of wet leaves.
 		float sf = ink_vnoise(world_pos.xz * 0.11) * 0.75 + ink_vnoise(world_pos.xz * 0.4) * 0.25;

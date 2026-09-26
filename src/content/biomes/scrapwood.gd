@@ -86,6 +86,9 @@ static func make() -> BiomeDef:
 	# The wood has what was left in it too: moss on every frame's ledges and
 	# ivy up the plate, less than the green towers' (BiomeDef.overgrowth).
 	d.overgrowth = 0.45
+	# By night the field in the iron shows along the combed arcs, faint and cold
+	# (GroundColors.SCRAP_FLOOR): the one light in the wood nobody lit.
+	d.ground_marks = {Ground.SWARF: GroundColors.SCRAP_FLOOR}
 	d.decor_tints = {&"bloom": [P.RUST[3], P.BLOOM[2], P.RUST[4]], &"twig": [P.EARTH[1]], &"spoil": [P.RUST[2]]}
 	# Leaves that grew in a metal taste: darker and greyer than any other wood,
 	# over bark stained by what runs off the frames they took.

@@ -187,6 +187,9 @@ const SEA_ICE := 104
 ## The pinewood's needle floor: NEEDLES by day in every respect, and by night
 ## the only light under the canopy, foxfire in the rotting litter (105).
 const PINE_FLOOR := 105
+## The scrapwood's floor: SWARF by day in every respect, and by night the field
+## still in the dead iron shows along its combed arcs, faint and cold (106).
+const SCRAP_FLOOR := 106
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array
