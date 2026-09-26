@@ -10,6 +10,9 @@ var world: WorldData
 ## Tile index -> the table rows of the props standing on it (`WorldData.table`):
 ## rows, not objects, so a world's props are not held here as ~130k objects.
 var _cells: Dictionary = {}
+## Bumped every time a prop is filed or taken out, so a reader holding what it
+## gathered round a place knows when that is stale (41_shoulder's probe).
+var changes := 0
 ## Tile index -> props the world does not hold (a settlement's ghosts of what it
 ## plans to build): objects, a handful, stopping bodies like any prop.
 var _ghosts: Dictionary = {}
@@ -114,6 +117,7 @@ func blocks_at(p: Vector2) -> Array:
 
 
 func add_prop(p: WorldProp) -> void:
+	changes += 1
 	var k := floori(p.pos.y) * world.size + floori(p.pos.x)
 	var row := world.row_of_id(p.id)
 	if row >= 0:
@@ -125,6 +129,7 @@ func add_prop(p: WorldProp) -> void:
 
 
 func remove_prop(p: WorldProp) -> void:
+	changes += 1
 	var k := floori(p.pos.y) * world.size + floori(p.pos.x)
 	var row := world.row_of_id(p.id)
 	if row >= 0 and _cells.has(k):
