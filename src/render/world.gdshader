@@ -67,12 +67,39 @@ uniform vec4 above_cut = vec4(0.0);
 // How far over the plane the cut starts as it eases in (it comes down from
 // over the mass), how deep the inked cap is, and how dark the shade under mass.
 const float ABOVE_SWEEP = 12.0;
-const float ABOVE_CAP = 0.07;
+const float ABOVE_CAP = 0.14;
 // Dashes a tile along the overhead outline.
 const float ABOVE_DASH = 1.6;
 const float ABOVE_SHADE = 0.55;
 const vec3 ABOVE_INK = vec3(0.07, 0.06, 0.06);
 const vec3 ABOVE_CHALK = vec3(0.78, 0.76, 0.69);
+// The section's cut face (TerrainMesher's section sheet): cut stone hatched in
+// ink, as a plan hatches what the section plane cuts. The ring a wholly-over
+// mass shows is where its cover is under ABOVE_RING (about half a tile in from
+// its edge).
+const vec3 ABOVE_STONE = vec3(0.30, 0.28, 0.26);
+const float ABOVE_HATCH = 5.5;
+const float ABOVE_RING = 0.93;
+
+// How much of the ground at `at` (tiles into above_rect) mass hangs over,
+// smoothly across tiles, and the highest underside round it (world height).
+vec2 above_cover(vec2 at) {
+	vec2 g = at - 0.5;
+	ivec2 i0 = ivec2(floor(g));
+	vec2 f = fract(g);
+	ivec2 hi = ivec2(above_rect.zw) - 1;
+	vec4 a = texelFetch(above_map, clamp(i0, ivec2(0), hi), 0);
+	vec4 b = texelFetch(above_map, clamp(i0 + ivec2(1, 0), ivec2(0), hi), 0);
+	vec4 c = texelFetch(above_map, clamp(i0 + ivec2(0, 1), ivec2(0), hi), 0);
+	vec4 d = texelFetch(above_map, clamp(i0 + ivec2(1, 1), ivec2(0), hi), 0);
+	return vec2(mix(mix(a.r, b.r, f.x), mix(c.r, d.r, f.x), f.y), max(max(a.a, b.a), max(c.a, d.a)) * 255.0 * 0.5);
+}
+
+// The id of the mass over tile `at` (tiles into above_rect), 0 none.
+float above_id(vec2 at) {
+	vec4 t = texelFetch(above_map, ivec2(at), 0);
+	return floor(t.g * 255.0 + 0.5) + floor(t.b * 255.0 + 0.5) * 256.0;
+}
 // How far above a point's own ground a leaf has to be before it is in the way.
 const float CROWN_LIFT = 0.85;
 // Below this sway weight the geometry is a trunk, a wall or the land, and never
@@ -1885,6 +1912,12 @@ void vertex() {
 		VERTEX += to_model * (mat3(INV_VIEW_MATRIX) * wind_view(push, VIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE));
 		NORMAL = wind_tilt(NORMAL, to_model * push, sway_w, to_model * vec3(0.0, 1.0, 0.0));
 	}
+	// A span's section sheet rides up to the cut plane, never out of its mass:
+	// laid at the underside, it may rise to the top (UV.y, negative).
+	if (UV2.x <= 0.0 && UV2.y >= 1023.5 && above_cut.z > 0.0) {
+		float plane = above_cut.y + (1.0 - above_cut.z) * ABOVE_SWEEP;
+		VERTEX.y = clamp(plane, VERTEX.y, max(VERTEX.y, -UV.y));
+	}
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	wash2 = CUSTOM0.rgb;
 	// A mesh without CUSTOM0 reads (0, 0, 0, 1): no second wash is ever pure black.
@@ -2008,11 +2041,31 @@ void fragment() {
 	}
 	// Mass hung over the ground: its tops are lifted (UV2.y +512), its rims,
 	// undersides and lips carry their top in UV.y (negative).
-	bool span_frag = patch_raw >= 513.5 || style_blend < -0.001;
+	bool sheet = patch_raw >= 1023.5;
+	bool span_frag = !sheet && (patch_raw >= 513.5 || style_blend < -0.001);
+	bool above_sec = false;
 	bool above_cap = false;
 	bool above_dash = false;
 	float roofed = 0.0;
-	if (above_rect.z > 0.0) {
+	if (sheet) {
+		// The cut face, only on the mass being cut and never in a shadow: all
+		// of it where the plane runs through the mass (the sheet rose to the
+		// plane), a ring along the edge where the mass is wholly over it (the
+		// sheet stayed at the underside, above the plane).
+		vec2 at = world_pos.xz - above_rect.xy;
+		bool inside = above_rect.z > 0.0 && at.x >= 0.0 && at.y >= 0.0 && at.x < above_rect.z && at.y < above_rect.w;
+		if (IN_SHADOW_PASS || above_cut.z <= 0.0 || !inside || abs(above_id(at) - above_cut.x) > 0.5) {
+			discard;
+		}
+		float plane = above_cut.y + (1.0 - above_cut.z) * ABOVE_SWEEP;
+		bool through = abs(world_pos.y - plane) < 0.02;
+		bool ring = world_pos.y > plane && above_cover(at).x < ABOVE_RING;
+		if (!through && !ring) {
+			discard;
+		}
+		above_sec = true;
+	}
+	if (above_rect.z > 0.0 && !sheet) {
 		vec2 at = world_pos.xz - above_rect.xy;
 		if (at.x >= 0.0 && at.y >= 0.0 && at.x < above_rect.z && at.y < above_rect.w) {
 			if (span_frag) {
@@ -2020,9 +2073,7 @@ void fragment() {
 				// shadow pass keeps the whole mass: the roof still shades what
 				// is under it while it is drawn open.
 				if (above_cut.z > 0.0 && !IN_SHADOW_PASS) {
-					vec4 t = texelFetch(above_map, ivec2(at), 0);
-					float id = floor(t.g * 255.0 + 0.5) + floor(t.b * 255.0 + 0.5) * 256.0;
-					if (abs(id - above_cut.x) < 0.5) {
+					if (abs(above_id(at) - above_cut.x) < 0.5) {
 						float plane = above_cut.y + (1.0 - above_cut.z) * ABOVE_SWEEP;
 						if (world_pos.y > plane) {
 							discard;
@@ -2033,23 +2084,15 @@ void fragment() {
 			} else {
 				// The shade under mass, read smoothly across tiles (never a tile
 				// step), and only below its underside.
-				vec2 g = at - 0.5;
-				ivec2 i0 = ivec2(floor(g));
-				vec2 f = fract(g);
-				ivec2 hi = ivec2(above_rect.zw) - 1;
-				vec4 a = texelFetch(above_map, clamp(i0, ivec2(0), hi), 0);
-				vec4 b = texelFetch(above_map, clamp(i0 + ivec2(1, 0), ivec2(0), hi), 0);
-				vec4 cc = texelFetch(above_map, clamp(i0 + ivec2(0, 1), ivec2(0), hi), 0);
-				vec4 d = texelFetch(above_map, clamp(i0 + ivec2(1, 1), ivec2(0), hi), 0);
-				float cover = mix(mix(a.r, b.r, f.x), mix(cc.r, d.r, f.x), f.y);
-				float under = max(max(a.a, b.a), max(cc.a, d.a)) * 255.0 * 0.5;
+				vec2 cu = above_cover(at);
+				float cover = cu.x;
+				float under = cu.y;
 				roofed = cover * (1.0 - smoothstep(under - 0.4, under - 0.05, world_pos.y));
 				// Over the cut mass the plan shows what is above the section as a
 				// plan drawing does: its outline dashed on the ground under it,
 				// in chalk, since most of it lies in the mass's own shadow.
 				if (above_cut.z > 0.0) {
-					vec4 t = texelFetch(above_map, ivec2(at), 0);
-					float id = floor(t.g * 255.0 + 0.5) + floor(t.b * 255.0 + 0.5) * 256.0;
+					float id = above_id(at);
 					float line = abs(cover - 0.5) / max(fwidth(cover), 1e-4);
 					float dash = fract(dot(world_pos.xz, vec2(0.71, 0.71)) * ABOVE_DASH);
 					if (abs(id - above_cut.x) < 0.5 && line < 1.4 && dash < 0.55 * above_cut.z) {
@@ -2059,7 +2102,7 @@ void fragment() {
 			}
 		}
 	}
-	bool lifted = patch_raw >= 513.5;
+	bool lifted = !sheet && patch_raw >= 513.5;
 	float pr = lifted ? patch_raw - 512.0 : patch_raw;
 	int m2 = pr >= 1.5 ? int(mod(pr - 2.0 + 0.5, 256.0)) : m1;
 	float bend = pr >= 257.5 ? -1.0 : 1.0;
@@ -2239,6 +2282,10 @@ void fragment() {
 	}
 	if (above_cap) {
 		c = ABOVE_INK;
+	}
+	if (above_sec) {
+		float hh = fract(dot(world_pos.xz, vec2(0.7071, 0.7071)) * ABOVE_HATCH);
+		c = hh < 0.38 ? ABOVE_INK : ABOVE_STONE;
 	}
 	c *= 1.0 - (1.0 - ABOVE_SHADE) * roofed;
 	// Laid after the shade: chalk on the plan, read on light ground and in the

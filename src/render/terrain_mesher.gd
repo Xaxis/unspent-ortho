@@ -2506,6 +2506,9 @@ func _span_faces(poly: PackedVector2Array, k: int, keys: PackedInt32Array, li: i
 			_tuv.append(Vector2(_UV_CONTOUR.x, -ys[b].y))
 			_tuv2.append(Vector2.ZERO)
 			_tc0.append(c0)
+	for a in range(1, poly.size() - 1):
+		for b: int in [0, a, a + 1]:
+			_span_sheet_vertex(Vector3(poly[b].x, ys[b].x, poly[b].y), ys[b].y)
 
 
 ## The rim along a region's edge from p to q, facing away from `ref` inside
@@ -2661,6 +2664,8 @@ func _span_under_cell(ch: Chunk, i: int, j: int) -> void:
 		_tuv.append(Vector2(_UV_CONTOUR.x, -_sp_lat[at[b]].z))
 		_tuv2.append(Vector2.ZERO)
 		_tc0.append(c0)
+	for b: int in [0, 1, 2, 0, 2, 3]:
+		_span_sheet_vertex(Vector3(px[b], _sp_lat[at[b]].y, pz[b]), _sp_lat[at[b]].z)
 
 
 ## The top over cells [i0, i1) of lattice row j, all wholly under the mass: one
@@ -2723,3 +2728,22 @@ func _span_key(k: int) -> int:
 	var d := BiomeRegistry.by_index(country)
 	var g := d.plain_ground if d != null else Ground.ROCK
 	return g | (country << 8)
+
+
+
+## THE SECTION SHEET: a copy of a span's footprint, facing up, laid at its
+## underside, that world.gdshader draws only as the section of the mass it
+## cuts (43_above): lifted to the cut plane within the mass (vertex()) and
+## drawn there as the inked, hatched cut face -- all of it where the plane runs
+## through the mass (an arch's feet), a ring along its edge where the mass is
+## wholly over the plane (a roof's outline in section). Everywhere else it is
+## discarded. UV2.y SPAN_SHEET marks it; UV.y is minus the mass's top here,
+## the highest the sheet may be lifted.
+const SPAN_SHEET := 1024.0
+func _span_sheet_vertex(at: Vector3, top: float) -> void:
+	_tv.append(at)
+	_tn.append(Vector3.UP)
+	_tc.append(Color(0.0, 0.0, 0.0, 0.0))
+	_tuv.append(Vector2(0.0, -top))
+	_tuv2.append(Vector2(0.0, SPAN_SHEET))
+	_tc0.append(Color(0.0, 0.0, 0.0, 0.0))
