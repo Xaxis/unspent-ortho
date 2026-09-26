@@ -8,6 +8,8 @@ extends SceneTree
 ##   stage    ms per `WorldGen` stage, tagged by the design's split: plan (runs
 ##            once, up front), local (runs per section) or mixed (both)
 ##   memory   static memory at the start, the peak while growing, and after
+##   engine   the engine's own memory monitors after growing: the figure to
+##            compare between builds (a browser's heap is only a sanity check)
 ##   tile     bytes per tile the WorldData keeps in its per-tile arrays
 ##   section  per `--section` square: land share and props; how many hold land
 ##   prop     bytes one WorldProp costs resident (made and measured here)
@@ -67,6 +69,10 @@ func _one(s: int, size: int, section: int) -> void:
 		print("stream stage %-10s %-10s %8.0f ms" % [k, cls, v])
 	print("stream stage plan-only sum %.0f ms of %.0f" % [plan_ms, float(WorldGen.last_timings.get(&"total", 0.0))])
 	print("stream memory start %d MB peak %d MB after %d MB (kept %d MB)" % [m0 >> 20, peak >> 20, m1 >> 20, (m1 - m0) >> 20])
+	# Measured inside the engine, which gives the same number for the same build
+	# every run; a browser's heap grows in steps and wanders by ~200 MB.
+	print("stream engine static %d MB static_max %d MB objects %d" % [int(Performance.get_monitor(Performance.MEMORY_STATIC)) >> 20,
+		int(Performance.get_monitor(Performance.MEMORY_STATIC_MAX)) >> 20, int(Performance.get_monitor(Performance.OBJECT_COUNT))])
 	var n := size * size
 	var tile := w.level.size() * 4 + w.ground.size() + w.country.size() + w.country2.size() \
 		+ w.blend.size() * 4 + w.region.size() * 4 + w.moisture.size() * 4 + w.temperature.size() * 4 \
