@@ -865,8 +865,27 @@ static func _front_of(kind: int, variant: int, country: int) -> Vector3:
 	return Vector3.ZERO if n == 0 else sum / float(n)
 
 
+## The weather where the player stands, as the machines read it (30_mobs'
+## Moment): what `gutter` takes a flame down by.
+var _wet_kind: StringName = &"clear"
+var _wet_strength := 0.0
+
+
+func _read_wet() -> void:
+	var mobs: Node = null
+	for sys in game.systems:
+		if sys.name == "30_mobs":
+			mobs = sys
+	var m: Moment = mobs.get("moment") if mobs != null else null
+	if m == null:
+		return
+	_wet_kind = m.weather
+	_wet_strength = m.weather_strength
+
+
 func _update(delta: float, snap: bool) -> void:
 	_time += delta
+	_read_wet()
 	var hour := game.clock.hour()
 	var focus3 := game.camera.target if game.camera != null else game.player.position
 	var focus := Vector2(focus3.x, focus3.z)
@@ -933,7 +952,7 @@ func _update(delta: float, snap: bool) -> void:
 				level *= clampf(game.sky.bolt.w, 0.0, 1.0)
 		# A flicker changes how bright the pool is, never how big: the ink's
 		# edge must not crawl.
-		level *= _flicker(s)
+		level *= _flicker(s) * gutter(kind, false, _wet_kind, _wet_strength, _time, float(s.h))
 		# A flame reaches much further and falls off much faster, so its core is
 		# the same size and its tail has no edge on it anywhere (FLAME_KINDS).
 		var flame := is_flame(kind)
@@ -989,7 +1008,8 @@ func _update(delta: float, snap: bool) -> void:
 		var under := smoothstep(0.05, 0.45, covered)
 		night *= 1.0 - 0.9 * under
 		var reach := LANTERN_RANGE * (1.0 - 0.6 * under)
-		var rgb := compensate(WARM, tint, sun) * LANTERN_POWER * night * (0.94 + 0.06 * _flicker({"kind": PropKind.LAMP, "h": 0.5}))
+		var rgb := compensate(WARM, tint, sun) * LANTERN_POWER * night * (0.94 + 0.06 * _flicker({"kind": PropKind.LAMP, "h": 0.5})) \
+			* gutter(PropKind.LAMP, true, _wet_kind, _wet_strength, _time, 0.5)
 		rgb *= _held_off(Vector2(at.x, at.z))
 		lantern_light.light_volumetric_fog_energy = FOG_WARM
 		if _set_light(lantern_light, at, reach, rgb):
@@ -1289,6 +1309,33 @@ func _set_light(l: OmniLight3D, at: Vector3, reach: float, rgb: Vector3,
 ## Stepped, not smooth: a flame changes its mind a dozen times a second.
 func _flicker(s: Dictionary) -> float:
 	return flicker(s, _time)
+
+
+## How wet each weather is on a flame, 0..1 at full strength (`gutter`).
+const WET := {
+	&"drizzle": 0.3, &"rain": 0.6, &"storm": 1.0, &"hail": 0.7, &"blizzard": 0.8, &"whiteout": 0.8,
+}
+
+
+## A flame in the wet (the lands builder's weather audit): a multiply on its
+## level. An open fire burns low and stutters as the rain gets at it, and never
+## quite out; a carried lamp dims and gutters behind its glass; a street lamp
+## under its hood hardly; a hearth under a roof and a kiln not at all. Dry
+## weather, however dark, costs no flame anything.
+static func gutter(kind: int, carried: bool, weather: StringName, strength: float, time: float, h: float) -> float:
+	var wet := float(WET.get(weather, 0.0)) * clampf(strength, 0.0, 1.0)
+	if wet <= 0.0:
+		return 1.0
+	var gust := Rng.hash01(floori(time * 7.0 + h * 40.0), int(h * 1000.0) + 11)
+	if carried:
+		# Rain on the glass and wind in the vent: the flame ducks and catches.
+		return 1.0 - wet * (0.2 + 0.35 * gust)
+	match kind:
+		PropKind.FIRE:
+			return 1.0 - wet * (0.45 + 0.35 * gust)
+		PropKind.LAMP:
+			return 1.0 - wet * 0.1 * gust
+	return 1.0
 
 
 ## A light's flicker at `time` seconds: a multiply on its level, stepped.
