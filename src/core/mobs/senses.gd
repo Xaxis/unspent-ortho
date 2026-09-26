@@ -3,8 +3,9 @@ class_name Senses
 ##   sight   = sees x (1 - 0.8 x nightfall x 0.62), undone by a lit lamp,
 ##             x weather, x records (each filing +25%, four at most), with a clear line
 ##   hearing = hears x (1 + 0.35 x laden tier), and a MACHINE's x (1 + 0.6 x
-##             nightfall): never weather, and not how fast you go (running is
-##             the way to get away)
+##             nightfall), x the weather's noise (Weather.HEARING_CUT: rain,
+##             storm, blizzard and blown dust cover your steps); not how fast
+##             you go (running is the way to get away)
 ## You hear it before you see it; it hears you whatever the dark, and a machine
 ## hears you further in it (mechanics improvement 4b: sight falls at night, so
 ## by day the lamp and the open were what gave you away, and by night it is
@@ -43,7 +44,7 @@ static func hearing_range(row: Dictionary, m: Moment) -> float:
 		return 0.0
 	var hears: float = row.get("hears", 0)
 	var night := NIGHT_HEARING * m.nightfall() if row.get("machine", false) else 0.0
-	return hears * (1.0 + LADEN_HEARING * m.laden_tier) * (1.0 + night)
+	return hears * (1.0 + LADEN_HEARING * m.laden_tier) * (1.0 + night) * m.weather_hearing()
 
 
 ## Distances are Chebyshev on the grid, as the source measured them.

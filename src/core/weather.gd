@@ -84,6 +84,16 @@ const SIGHT_CUT := {
 	&"drizzle": 0.15, &"whiteout": 0.75, &"glare": 0.10, &"dry_storm": 0.35, &"haze": 0.35,
 }
 
+## Hearing is cut by c * strength: rain on everything, wind in the ears, hail
+## rattling, sand hissing past cover a body's noise, so a storm is the time to
+## walk up on something (the lands builder's weather audit). Only what makes
+## noise of its own is here; fog, heat, snow falling and a still haze hide no
+## sound, and nothing deafens outright.
+const HEARING_CUT := {
+	&"rain": 0.25, &"drizzle": 0.1, &"storm": 0.5, &"hail": 0.35,
+	&"blizzard": 0.5, &"whiteout": 0.5, &"dust": 0.4, &"dry_storm": 0.4,
+}
+
 ## Strikes per world minute at full strength (times strength^2). (source: storm 0.22)
 const LIGHTNING := {&"storm": 0.22, &"dry_storm": 0.12}
 
@@ -259,6 +269,10 @@ static func wind_at(seed_value: int, minutes: float, kind: StringName, strength:
 	if push > 0.5:
 		w += clampf(base * 4.0, -1.0, 1.0) * 0.35 * push * strength
 	return clampf(w, -1.0, 1.0)
+
+
+static func hearing_factor(kind: StringName, strength: float) -> float:
+	return 1.0 - float(HEARING_CUT.get(kind, 0.0)) * clampf(strength, 0.0, 1.0)
 
 
 static func sight_factor(kind: StringName, strength: float) -> float:
