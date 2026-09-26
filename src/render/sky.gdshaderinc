@@ -53,8 +53,11 @@ global uniform vec4 colossus_shock;
 global uniform vec4 sky_sun;
 // xy: cloud drift in tiles; z: coverage 0..1; w: shadow strength 0..1 (0 at night).
 global uniform vec4 sky_clouds;
-// xy: fog drift in tiles; z: fog density 0..1; w: spare.
+// xy: fog drift in tiles; z: fog density 0..1; w: dust in the air 0..1.
 global uniform vec4 sky_fog;
+// The land's own fog (BiomeDef.weather_style `fog`): rgb its colour, a how low
+// and heavy it lies in the hollows 0..1; a 0 where the land says nothing.
+global uniform vec4 sky_fog_tint;
 // x: world units per screen pixel; y: night fall 0..1; z: 1 / world size (for
 // sky_ground); w: tiles the afterglow of the last strike has rolled out.
 global uniform vec4 sky_view;
@@ -443,7 +446,7 @@ float sky_fog_at(vec3 world_pos, vec2 px, float band) {
 		return 0.0;
 	}
 	// Furnace haze lies lower and heavier in the hollows than a pale mist.
-	float low = sky_air.z * 0.08;
+	float low = sky_air.z * 0.08 + sky_fog_tint.a * 0.14;
 	vec2 p = world_pos.xz - sky_fog.xy;
 	float n = sky_fbm(p * vec2(0.17, 0.13) + vec2(41.0, 7.0)) * 0.8 + sky_noise(p * 0.45 + vec2(9.0, 2.0)) * 0.2;
 	float hollow = sky_ground_at(world_pos).a * SKY_GROUND_HEIGHT - world_pos.y;
@@ -814,10 +817,11 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	// ground showing between them.
 	float fog = sky_fog_at(world_pos, px, max(fwidth(world_pos.x) + fwidth(world_pos.z), 0.01) * 0.12);
 	vec3 fog_col = mix(SKY_PAGE, SKY_HAZE * vec3(1.0, 0.7, 0.45), sky_air.z);
+	fog_col = mix(fog_col, sky_fog_tint.rgb, step(0.001, sky_fog_tint.a) * 0.85);
 	vec3 white = SKY_WHITEOUT;
 	fog_col = mix(fog_col, white, sky_air.w);
 	if (fog > 0.0) {
-		c = mix(c, fog_col, fog * (0.34 + 0.12 * sky_air.z));
+		c = mix(c, fog_col, fog * (0.34 + 0.12 * sky_air.z + 0.14 * sky_fog_tint.a));
 	}
 	if (sky_air.w > 0.001) {
 		// A whiteout: the land round the player still reads and the distance

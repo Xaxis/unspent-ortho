@@ -325,10 +325,12 @@ var wisps := 0.0
 ##   &"dust": {"air": Color, "thick": float}  the colour a dust storm carries the
 ##            air to here (red iron in the mesas, salt on the flats) and how much
 ##            thicker than the shared dust it lies (1 = the shared)
+##   &"fog":  {"air": Color, "low": float}  the colour this land's fog is, and how
+##            low and heavy it lies in the hollows, 0..1
 ## Runtime only, so a LOOK field; BiomeRegistry.problems names a bad row.
 var weather_style: Dictionary = {}
 ## Every field a weather_style row may carry, per kind.
-const WEATHER_STYLE_FIELDS := {&"dust": ["air", "thick"]}
+const WEATHER_STYLE_FIELDS := {&"dust": ["air", "thick"], &"fog": ["air", "low"]}
 
 
 ## What is wrong with `weather_style`, one line each (BiomeRegistry.problems).

@@ -323,3 +323,15 @@ func test_a_dust_storm_closes_the_air_where_sight_ends() -> void:
 		lt(r.x, 30.0, "and clear up to the player")
 	gt(SkyLight.dust_reach(30.0, 0.5).y, SkyLight.dust_reach(30.0, 1.0).y, "a thinner storm is seen further through")
 
+
+## The sulphur jungle's fog is its own acid yellow, lying low; a land that says
+## nothing keeps the shared pale mist.
+func test_the_sulphur_jungle_fog_is_its_own() -> void:
+	var row: Dictionary = BiomeRegistry.get_def(&"sulphur_jungle").weather_style.get(&"fog", {})
+	check(not row.is_empty(), "the sulphur jungle styles its fog")
+	var c: Color = row.get("air", Color.BLACK)
+	gt(c.r + c.g - 2.0 * c.b, 0.4, "sulphur-yellow, not pale grey")
+	gt(float(row.get("low", 0.0)), 0.5, "and it lies low")
+	check(BiomeRegistry.get_def(&"the_crags").weather_style.get(&"fog", {}).is_empty(), "the crags keep the shared fog")
+	eq(BiomeRegistry.get_def(&"sulphur_jungle").style_problems().size(), 0, "a well-formed row")
+

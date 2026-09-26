@@ -81,6 +81,9 @@ static func make() -> BiomeDef:
 	# the vent from below and blue by the night above came out magenta; with
 	# the blue taken down it reads orange over the vent and sulphur-pale above.
 	d.vent_breath = Color(0.92, 0.90, 0.48, 1.6)
+	# Its fog is the vents' own: a sulphur-yellow acid fog that lies low and heavy
+	# in the hollows round them, stinging-bright, never a pale mist.
+	d.weather_style = {&"fog": {"air": Color(0.72, 0.74, 0.40), "low": 1.0}}
 	d.village_ground = Ground.MUD
 	d.decor = {Ground.GRASS: [0.95, Decor.TUFT, 36, Decor.CROTTLE, 14]}
 	d.grass_colors = [P.MOSS[3], P.SPRUCE[3]]

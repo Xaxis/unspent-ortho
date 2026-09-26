@@ -425,6 +425,8 @@ const DUST_SKY := 0.8
 ## How much the falling weather over the focus cuts sight (Weather.SIGHT_CUT x
 ## strength), for the rain, storm and fog families: their air is drawn from it.
 var sight_cut := 0.0
+## The land's own fog under the focus (sky_fog_tint): rgb colour, a how low.
+var fog_tint := Color(0, 0, 0, 0)
 ## The airs over the focus: x rain falling now (rain and drizzle), y glare,
 ## z how warm the fog is drawn (furnace haze), w whiteout. (sky_air)
 var air := Vector4.ZERO
@@ -670,6 +672,7 @@ func compose() -> void:
 	RenderingServer.global_shader_parameter_set("sky_sun", Vector4(proj.x, proj.y, s.energy, flash))
 	RenderingServer.global_shader_parameter_set("sky_clouds", Vector4(clouds.x, clouds.y, clouds.z, clouds.w * daylight))
 	RenderingServer.global_shader_parameter_set("sky_fog", fog)
+	RenderingServer.global_shader_parameter_set("sky_fog_tint", Vector4(fog_tint.r, fog_tint.g, fog_tint.b, fog_tint.a))
 	RenderingServer.global_shader_parameter_set("sky_settle", settle)
 	RenderingServer.global_shader_parameter_set("sky_wind", wind)
 	RenderingServer.global_shader_parameter_set("sky_gust", gust)
@@ -977,6 +980,9 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	# red iron in the mesas, salt on the flats) and thickens with it.
 	var dust := clampf(fog.w, 0.0, 1.0)
 	e.fog_light_color = Air.colour(hor, a).lerp(a.dust, dust * DUST_TAKE)
+	# A land's own fog colours the distance it closes, as far as the fog is thick.
+	if fog_tint.a > 0.0:
+		e.fog_light_color = e.fog_light_color.lerp(Color(fog_tint.r, fog_tint.g, fog_tint.b), clampf(fog.z, 0.0, 1.0) * 0.6)
 	e.fog_light_energy = lerpf(1.0, 0.10, nightly)
 	# Where the tier has no volumetric air, the depth fog stands in for its bank
 	# (Quality.ROWS.air_stand_in), so the bog is still thicker than the salt.

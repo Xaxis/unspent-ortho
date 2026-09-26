@@ -314,6 +314,9 @@ func _update(delta: float, snap: bool) -> void:
 	sky.fog = Vector4(_fog_drift.x, _fog_drift.y, clampf(float(look.fog) + float(look.mist), 0.0, 1.0), clampf(float(look.dust), 0.0, 1.0))
 	sky.flash = _flash
 	sky.sight_cut = float(look.get("sight_cut", 0.0))
+	var fog_row: Dictionary = _here_def().weather_style.get(&"fog", {})
+	var fc: Color = fog_row.get("air", Color(0, 0, 0))
+	sky.fog_tint = Color(fc.r, fc.g, fc.b, float(fog_row.get("low", 0.0))) if not fog_row.is_empty() else Color(0, 0, 0, 0)
 	for k: String in settled:
 		settled[k] = lerpf(float(settled[k]), float(_settle_target[k]), kr)
 	sky.settle = Vector4(float(settled.snow), float(settled.ash), float(settled.wet), 0.0)
