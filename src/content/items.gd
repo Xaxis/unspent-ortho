@@ -72,7 +72,7 @@ const DEFS := {
 		"speed": 5000, "bite": 260, "swing": [190, 130, 230, 270], "reach": 1.25, "width": 1.2, "dmg": 5, "knock": 7.5, "knock_ms": 230},
 	# Rare; never craftable.
 	&"axe_works": {"name": "fine axe", "bulk": 3.0, "group": &"tool", "tool": true, "verb": &"fell", "stuff": &"crucible",
-		"speed": 4200, "bite": 520, "swing": [170, 140, 200, 230], "reach": 1.4, "width": 1.8, "dmg": 6, "knock": 8.0, "knock_ms": 240},
+		"speed": 4200, "bite": 520, "swing": [170, 140, 200, 230], "reach": 1.4, "width": 1.8, "dmg": 6, "knock": 8.0, "knock_ms": 240, "sockets": 2},
 
 	# --- Found ladder (§9.3): no verb, never mended, spend charges ---
 	&"las_hand": {"name": "short beam", "bulk": 1.0, "group": &"found", "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0,
