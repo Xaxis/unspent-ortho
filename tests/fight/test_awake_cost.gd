@@ -26,10 +26,11 @@ func _pose_of(m: MachineModel) -> Array[Transform3D]:
 	return out
 
 
-## Calibrated 2026-09-25 (TestCase.yard_sample against the rig yardstick):
-## ten standing machines a frame 4.8 shipped, 9.6 doubled, 8.3 posed every frame
-## (Mob.POSE_HZ 0); the bar between.
-const AWAKE_BAR := 7.0
+## In interpreted yardsticks (TestCase.yard_work): a machine's pose, its lights
+## and its routine are script, and the bone writes a third of it. Calibrated
+## 2026-09-25, timed in turn with the ruler: ten standing machines a frame
+## 7.5-8.3 shipped, 15.0-16.5 doubled; the bar between.
+const AWAKE_BAR := 11.5
 
 
 func test_ten_awake_machines_are_cheap_to_draw() -> void:
@@ -40,7 +41,7 @@ func test_ten_awake_machines_are_cheap_to_draw() -> void:
 			for mob in mobs:
 				mob.sync_view(1.0 / 60.0, 0.0)
 	frames_of.call(30)
-	var got := yard_sample(frames_of.bind(10), frames_of.bind(20), bone_work())
+	var got := yard_sample(frames_of.bind(10), frames_of.bind(20), yard_work())
 	yard_lt(got[0] / 10.0, got[1] / 10.0, got[2], AWAKE_BAR, "a frame of ten awake machines")
 	for mob in mobs:
 		mob.free()
