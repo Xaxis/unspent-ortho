@@ -61,7 +61,7 @@ extends RefCounted
 ##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
 ## --hush=always       every visit to a hush ring answers, at any hour (23_hush),
 ##                     for a proof tour; without it a ring answers as it will
-## --above=KIND[@PLACE] hang a synthetic span over the start (or a named place):
+## --above=KIND        hang a synthetic span over the start (`--place` says where):
 ##                     `roof` or `arch`, for drawing what hangs overhead on any
 ##                     seed without worldgen (AboveStage)
 ## --stats             print render stats (draw calls, chunk build times) before the shot
@@ -200,7 +200,7 @@ var scene := "game"
 var place := ""
 ## "always" or "": staging for the hush (23_hush).
 var hush := ""
-## "KIND[@PLACE]" or "": a staged span (AboveStage), planted before a chunk is drawn.
+## "roof", "arch" or "": a staged span (AboveStage), planted before a chunk is drawn.
 var above := ""
 var stats := false
 ## "kind:strength[:bolt]" or "" (the weather rules decide). Read by 10_sky.

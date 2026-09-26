@@ -1,7 +1,7 @@
 class_name AboveStage
 extends RefCounted
-## DEV STAGING of ground above the ground (DESIGN_ABOVE S1): `--above=KIND[@PLACE]`
-## hangs a synthetic span over the start, or over a named place (GenPlaces.find),
+## DEV STAGING of ground above the ground (docs/ABOVE.md S1): `--above=KIND`
+## hangs a synthetic span over where the game starts (so `--place` says where),
 ## before a chunk is drawn and without touching worldgen, so what hangs overhead
 ## can be drawn, walked under and looked at on any seed. Planting twice plants
 ## the same tiles.
@@ -22,17 +22,10 @@ const ARCH_RISE := 8
 const ARCH_THICK := 3
 
 
-static func plant(w: WorldData, spec: String, start: Vector2) -> void:
-	var parts := spec.split("@")
-	var at := start
-	if parts.size() > 1 and parts[1] != "":
-		at = GenPlaces.find(w, parts[1])
-		if at.x < 0:
-			push_warning("--above: no place '%s'" % parts[1])
-			return
+static func plant(w: WorldData, kind: String, at: Vector2) -> void:
 	var ax := floori(at.x)
 	var ay := floori(at.y)
-	match parts[0]:
+	match kind:
 		"roof":
 			var tiles := _tiles(w, ax - 2, ay - 4, ax + 9, ay + 4, true)
 			var under := _highest(w, tiles) + ROOF_ROOM
@@ -45,7 +38,7 @@ static func plant(w: WorldData, spec: String, start: Vector2) -> void:
 				var under := foot + roundi(ARCH_RISE * sin(PI * float(t.x - (ax - 7)) / 14.0))
 				w.set_overhead(t.x, t.y, under, under + ARCH_THICK, ARCH)
 		_:
-			push_warning("--above: no kind '%s' (roof, arch)" % parts[0])
+			push_warning("--above: no kind '%s' (roof, arch)" % kind)
 
 
 ## The tiles of the rectangle x0..x1, y0..y1 inside the world, with its four
