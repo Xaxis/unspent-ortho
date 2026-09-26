@@ -898,10 +898,14 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			// The next line over, fainter: the field drew more than one.
 			c = arc < 0.5 ? mix(c, RUST3, 0.42) : dn(c, 0.3);
 		}
-		if (ink_vnoise(wp * 1.3 + 4.0) + rag(wp) > 0.78) {
-			// Leaf litter gone to mulch in the hollows.
-			c = dn(c, 0.4);
+		// Leaf litter over it all, gone to mulch in the hollows: warm brown
+		// between the arcs, soft-edged, so the floor is a wood's and not a
+		// swept yard's.
+		float mulch = ink_vnoise(wp * 0.6 + 4.0) * 0.7 + ink_vnoise(wp * 2.1) * 0.3;
+		if (arc >= 0.17) {
+			c = mix(c, mix(EARTH2, RUST1, 0.35), smoothstep(0.45, 0.7, mulch) * 0.55);
 		}
+		c = dn(c, 0.4 * smoothstep(0.7, 0.85, ink_vnoise(wp * 1.3 + 4.0) + rag(wp)));
 		// Cut shavings gather where something was broken up, not evenly over a
 		// wood: a drift of them, and only a few bright enough to catch the eye.
 		float drift = ink_vnoise(wp * 0.13 + 19.0);
@@ -2219,6 +2223,16 @@ void fragment() {
 	ROUGHNESS = clamp(mr.x + rough_add, 0.04, 1.0);
 	SPECULAR = mr.y;
 	METALLIC = mr.w;
+	if (m == 56) {
+		// SWARF: only the combed filings are metal. Metal over the whole floor
+		// mirrored the sky at eye level and the wood's floor came back a pale
+		// lavender sheet; the mulch between the arcs is the matte of wet leaves.
+		float sf = ink_vnoise(world_pos.xz * 0.11) * 0.75 + ink_vnoise(world_pos.xz * 0.4) * 0.25;
+		float on_arc = 1.0 - smoothstep(0.12, 0.2, fract(sf * 11.0));
+		METALLIC = mr.w * on_arc;
+		ROUGHNESS = clamp(ROUGHNESS + (1.0 - on_arc) * 0.4, 0.04, 1.0);
+		SPECULAR = mix(0.3, mr.y, on_arc);
+	}
 	// THE TILE LATTICE MUST NOT REACH THE EYE (CLAUDE.md: no grid on screen).
 	//
 	// The terrain is a triangle lattice with FLAT per-face normals, and its

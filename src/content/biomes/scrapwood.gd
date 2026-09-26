@@ -82,6 +82,9 @@ static func make() -> BiomeDef:
 	}
 	d.grass_colors = [P.SPRUCE[2], P.MOSS[3]]
 	d.rock_color = P.SLATE[2].lerp(P.RUST[1], 0.3)
+	# The wood has what was left in it too: moss on every frame's ledges and
+	# ivy up the plate, less than the green towers' (BiomeDef.overgrowth).
+	d.overgrowth = 0.45
 	d.decor_tints = {&"bloom": [P.RUST[3], P.BLOOM[2], P.RUST[4]], &"twig": [P.EARTH[1]], &"spoil": [P.RUST[2]]}
 	# Leaves that grew in a metal taste: darker and greyer than any other wood,
 	# over bark stained by what runs off the frames they took.
