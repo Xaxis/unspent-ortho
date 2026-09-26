@@ -1,0 +1,22 @@
+# THE MACHINES WILL NOT FOLLOW (docs/HUSH.md H1): hunted out on the crags, the
+# player goes back into a ring and the machines stop at its edge, facing in,
+# and hold there. From above: bodies stopped on a circle; over the shoulder,
+# their optics on you through the stones.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/hush_hold.tour --seed=7 --hour=11 --weather=clear:0
+place the_crags
+coast calm
+near hush_ring
+mark ring
+walk 1,0 1.4 run
+spawn runner
+spawn runner
+await noticed 10
+at mark:ring
+wait 4.0
+shot 01-held-at-the-edge-from-above with mob:runner
+# Turned to them (a touch of the keys; still well inside the stones).
+walkto mob 0.15
+tap shoulder
+await shoulder 3
+wait 0.8
+shot 02-held-at-the-edge-over-the-shoulder with shoulder

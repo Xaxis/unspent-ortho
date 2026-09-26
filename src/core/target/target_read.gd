@@ -255,6 +255,8 @@ static func thinking(m: MobState, now: float = 0.0) -> String:
 			return "coming for you"
 		MobState.FLEEING:
 			return "making for home"
+		MobState.HOLDING:
+			return "holding at the stones"
 		MobState.ALERTED:
 			if now < m.look_until:
 				return "looking where the noise was"

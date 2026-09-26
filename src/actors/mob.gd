@@ -238,7 +238,7 @@ func _pose(now_ms: float) -> StringName:
 			if s.speed > 0.2:
 				return &"walk"
 			return &"alert"
-		MobState.CHASING, MobState.FLEEING:
+		MobState.CHASING, MobState.FLEEING, MobState.HOLDING:
 			return &"walk" if s.speed > 0.2 else &"alert"
 	return &"walk" if s.speed > 0.2 else &"stand"
 

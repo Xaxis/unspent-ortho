@@ -23,6 +23,12 @@ builds it. Design only; nothing is built until it is agreed.
   in WorldStamp), `HushSites.near/nearest/inside` (windowed: the stones near a
   point, grouped, the centre fitted where their facing lines meet), 23_hush's
   `tour_place "hush_ring"`, tests/core/test_hush_sites.gd, tours/hush.tour.
+- **H1 built** (fix/fight-followups): FightSim.hush_walls (machines only, a list
+  of its own beside the gates' `mob_walls`, so neither writer wipes the other),
+  the HOLDING mood (MobState, Brains `_hold`), senses reading a ring's inside as
+  nothing, home at dawn or past forget out of the ring, ferals not stopped.
+  tests/hazards/test_hush_hold.gd (its bout: hunted into a ring, 0 health lost
+  in 40 s against 12 with no ring), tours/hush_hold.tour.
 
 ## Rules every phenomenon keeps
 

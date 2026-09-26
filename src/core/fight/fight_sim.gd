@@ -21,6 +21,13 @@ extends RefCounted
 ##   drop_strike (a jump's landing thrown as a blow: FightSim.drop_strike)
 
 const NAV_EVERY_MS := 240.0
+## THE HUSH (docs/HUSH.md H1): how far past a crags ring's stones no machine
+## steps, how far round the player the rings are read, how often, and the hour
+## a standoff ends.
+const HUSH_PAD := 1.5
+const HUSH_REACH := 20.0
+const HUSH_EVERY_MS := 1000.0
+const HUSH_DAWN_HOUR := 6.0
 ## Tiles/s at most that a standing body eases the player out of itself.
 const SHOULDER_SPEED := 4.0
 ## An indifferent worker the player holds up on its round stops and faces them;
@@ -355,8 +362,12 @@ func _try_pull() -> void:
 # --- moods (100 ms beats) ----------------------------------------------------
 
 func _beat() -> void:
+	_hush_read()
+	var in_ring := hush_disc(hero.pos)
 	for m in mobs:
 		if not m.alive or m.removed:
+			continue
+		if m.machine and _hush_beat(m, in_ring):
 			continue
 		# A body at its work reads only what its own optics cover (StealthQuery's
 		# cone); one that already has the player keeps track of them all round.
@@ -444,6 +455,9 @@ func _beat() -> void:
 ## the cone, &"heard", or &"" not at all. The one door is StealthQuery's, split
 ## so that only sight in front is sure at once.
 func _notice(m: MobState, look: float) -> StringName:
+	# A machine's senses read a crags ring's inside as nothing (docs/HUSH.md H1).
+	if m.machine and hush_disc(hero.pos).is_finite():
+		return &""
 	if now < m.calm_until or not StealthQuery.notices(m.row, m.pos, hero.pos, moment, world, query, look):
 		return &""
 	if StealthQuery.sees(m.row, m.pos, hero.pos, moment, world, query, look):
@@ -453,6 +467,73 @@ func _notice(m: MobState, look: float) -> StringName:
 			return &"heard"
 		return &"glimpsed"
 	return &"heard"
+
+
+## The crags rings round the player, read every HUSH_EVERY_MS (HushSites is
+## windowed through the query, so a streamed world finds the same rings).
+func _hush_read() -> void:
+	if now - _hush_read_at < HUSH_EVERY_MS or world == null or query == null:
+		return
+	_hush_read_at = now
+	hush_walls.clear()
+	for r: HushSites.Ring in HushSites.near(world, query, hero.pos, HUSH_REACH):
+		hush_walls.append(Vector3(r.centre.x, r.centre.y, r.radius + HUSH_PAD))
+
+
+## The ring's disc `p` stands in (x, y, radius), or Vector3.INF.
+func hush_disc(p: Vector2) -> Vector3:
+	for c: Vector3 in hush_walls:
+		if p.distance_to(Vector2(c.x, c.y)) <= c.z:
+			return c
+	return Vector3.INF
+
+
+## A machine and the rings (docs/HUSH.md H1), before its ordinary mood. True
+## when this beat is the ring's to decide:
+##   chasing or attacking a player who is in a ring: it holds at the edge;
+##   holding: it holds while the player stays in (counting nothing lost, it
+##   knows where they are), and goes home at the next dawn; the player out of
+##   the ring, it reads them as any body does, and past its forget goes home.
+func _hush_beat(m: MobState, in_ring: Vector3) -> bool:
+	if (m.mood == MobState.CHASING or m.mood == MobState.ATTACKING) and in_ring.is_finite():
+		m.charging = false
+		m.hold_at = in_ring
+		m.hold_since = moment.minutes if moment != null else 0.0
+		m.set_mood(MobState.HOLDING, now)
+		emit(&"holding", {"mob": m})
+		return true
+	if m.mood != MobState.HOLDING:
+		return false
+	if moment != null and _dawn_since(m.hold_since, moment.minutes):
+		_go_home(m)
+		return true
+	if in_ring.is_finite():
+		m.hold_at = in_ring
+		m.lost_beats = 0
+		return true
+	var how := _notice(m, NAN)
+	if how != &"":
+		m.lost_beats = 0
+		m.last_seen = hero.pos
+		m.set_mood(MobState.CHASING, now)
+	else:
+		m.lost_beats += 1
+		if m.lost_beats >= _forget(m):
+			_go_home(m)
+	return true
+
+
+func _go_home(m: MobState) -> void:
+	m.hold_at = Vector3.INF
+	m.disturbed = false
+	m.flee_home = true
+	m.set_mood(MobState.FLEEING, now)
+
+
+## Whether a dawn (HUSH_DAWN_HOUR) has come between two world minutes.
+static func _dawn_since(from_minutes: float, to_minutes: float) -> bool:
+	var dawn := HUSH_DAWN_HOUR * 60.0
+	return floorf((to_minutes - dawn) / 1440.0) > floorf((from_minutes - dawn) / 1440.0)
 
 
 ## How sure a body is, beat by beat, and where it is looking while it makes up
@@ -910,16 +991,24 @@ func _land(t0: float, t1: float) -> void:
 ## (x, y, radius), set by the settlements system each step. The player's own
 ## movement never reads this, which is the whole of what a gate is.
 var mob_walls: Array[Vector3] = []
+## Walls that stop machines only: the crags rings' discs (x, y, radius + HUSH_PAD),
+## read here round the player (`_hush_read`). A list of its own, so nothing that
+## sets the gates' list can wipe it, and the other way round.
+var hush_walls: Array[Vector3] = []
+var _hush_read_at := -INF
 
 
 ## A step that would take a body into a standing gate's hold goes round it, or
 ## stays: the same "only closer is refused" rule every solid thing keeps, so a
 ## body already inside one can always leave it.
 func _held_by_walls(m: MobState, next: Vector2) -> Vector2:
-	if mob_walls.is_empty():
+	var walls := mob_walls
+	if m.machine and not hush_walls.is_empty():
+		walls = mob_walls + hush_walls
+	if walls.is_empty():
 		return next
 	var r := minf(m.radius, 0.45)
-	for c: Vector3 in mob_walls:
+	for c: Vector3 in walls:
 		var at := Vector2(c.x, c.y)
 		var rr := c.z + r
 		var after := at.distance_squared_to(next)
@@ -932,7 +1021,7 @@ func _held_by_walls(m: MobState, next: Vector2) -> Vector2:
 				next = along
 			else:
 				return m.pos
-	for c: Vector3 in mob_walls:
+	for c: Vector3 in walls:
 		var at := Vector2(c.x, c.y)
 		var rr := c.z + r
 		var after := at.distance_squared_to(next)
@@ -1515,7 +1604,9 @@ func _end(outcome: StringName) -> void:
 		&"away":
 			for id: int in fight_mobs:
 				var m: MobState = fight_mobs[id]
-				if not m.alive or m.removed:
+				# Held at a ring's edge (docs/HUSH.md H1): the fight is over, the
+				# standoff is not, and it is the ring's to end.
+				if not m.alive or m.removed or m.mood == MobState.HOLDING:
 					continue
 				m.charging = false
 				m.closing_since = -1.0

@@ -6,6 +6,9 @@ extends Fighter
 ## Moods (design-extract §7.4):
 ##   idle / working -> (notices) alerted -> `ready` beats -> chasing -> (in reach) attacking
 ##   chasing -> fleeing home past `tether`; -> idle after `forget` beats unseen
+##   chasing / attacking -> holding at a crags ring's edge while the player is in
+##     it (a machine; docs/HUSH.md H1) -> fleeing home at dawn, or once the
+##     player is out of it and past `forget`
 ##   fleeing -> idle once `safe` tiles clear; dead lies `linger` seconds, then goes
 
 const IDLE := &"idle"
@@ -14,9 +17,15 @@ const ALERTED := &"alerted"
 const CHASING := &"chasing"
 const ATTACKING := &"attacking"
 const FLEEING := &"fleeing"
+const HOLDING := &"holding"
 const DEAD := &"dead"
 
 static var _next_id := 1
+
+## Holding (HOLDING): the ring's disc it will not enter (x, y, radius) and the
+## world minute the hold began, which a dawn ends.
+var hold_at := Vector3.INF
+var hold_since := 0.0
 
 var id := 0
 var kind: StringName = &""

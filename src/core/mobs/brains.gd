@@ -83,6 +83,8 @@ static func think(m: MobState, sim: FightSim) -> void:
 				_: _lunge(m, sim)
 		MobState.FLEEING:
 			_flee(m, sim)
+		MobState.HOLDING:
+			_hold(m, sim)
 		_:
 			m.want = Vector2.ZERO
 	m.last_think_pos = m.pos
@@ -419,6 +421,21 @@ static func _dart(m: MobState, sim: FightSim) -> void:
 		sim.snatch(m)
 		return
 	_seek(m, sim, sim.hero.pos, m.dash)
+
+
+## Holding at a crags ring (docs/HUSH.md H1): to the edge of its disc on the
+## side it came from, and there, facing in. It never bites from here.
+static func _hold(m: MobState, sim: FightSim) -> void:
+	var c := Vector2(m.hold_at.x, m.hold_at.y)
+	var out := m.pos - c
+	if out.length() < 1e-4:
+		out = Vector2.from_angle(m.facing + PI)
+	var edge := c + out.normalized() * (m.hold_at.z + m.radius + 0.2)
+	if m.pos.distance_to(edge) > 0.4:
+		_seek(m, sim, edge, m.pace)
+	else:
+		m.want = Vector2.ZERO
+	m.aim = (c - m.pos).angle()
 
 
 static func _flee(m: MobState, sim: FightSim) -> void:
