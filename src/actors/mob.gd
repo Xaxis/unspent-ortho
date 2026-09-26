@@ -97,6 +97,8 @@ func setup(s: MobState, world: WorldData, base_material: Material, figure: Figur
 ## screen's, which a machine's exact servo motion carries without a stutter, and
 ## half the cost of ten of them (measured 1.3 ms a frame posed every frame).
 const POSE_HZ := 30.0
+## How high a dropping body hops off its ledge before it falls, world units.
+const DROP_HOP := 0.5
 
 
 ## Draw the state at simulation time `now_ms`. delta 0 holds the pose (hitstop).
@@ -120,7 +122,13 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	# above it, so a body left on the ground there is a body under the sea.
 	var swimming := Swim.swims(s.row) and Swim.deep(_world, s.pos)
 	var ground := _world.height_at(s.pos) + (Swim.WATER_Y - Swim.sink_of(s.row) if swimming else 0.0)
-	_z = ground if delta == 0.0 else lerpf(_z, ground, 1.0 - exp(-12.0 * delta))
+	var fall := s.drop_fall(now_ms)
+	if fall >= 0.0 and fall < 1.0:
+		# Through the air (Brains `drop`): off the ledge's height with a hop, and
+		# down onto where it lands falling faster as it goes.
+		_z = lerpf(_world.height_at(s.drop_from), _world.height_at(s.drop_at), fall * fall) + DROP_HOP * 4.0 * fall * (1.0 - fall)
+	else:
+		_z = ground if delta == 0.0 else lerpf(_z, ground, 1.0 - exp(-12.0 * delta))
 	position = Vector3(s.pos.x, _z, s.pos.y)
 	_wake(delta, swimming)
 	model.rotation.y = -s.facing

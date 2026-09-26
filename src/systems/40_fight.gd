@@ -407,7 +407,11 @@ func _handle(events: Array[Dictionary]) -> void:
 					# windup, so it is gone the instant the bite is down.
 					# A thrown blow is told by its lane: a ring that long would mark the
 					# ground either side of it, which is where a player has to go.
-					if FightRules.throws(m.blow):
+					if m.blow.area and m.drop_at.is_finite():
+						# Coming down from above: its shadow, growing where it lands.
+						var spot := FightRules.tell_drop(m.drop_at, m.radius, m.blow, sim.hero.radius)
+						MobFx.tell_drop(fx, _at3(Vector2(spot.x, spot.y)), Palette.LINEN[5], spot.z, m.blow.windup / 1000.0)
+					elif FightRules.throws(m.blow):
 						var lane := FightRules.tell_lane(m.pos, m.radius, m.blow, sim.hero.radius)
 						MobFx.tell_line(fx, _at3(Vector2(lane.x, lane.y)), m.facing, lane.z, lane.w, Palette.LINEN[5], m.blow.windup / 1000.0)
 					else:

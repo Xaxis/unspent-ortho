@@ -200,6 +200,26 @@ vec4 tell_line(vec2 p, float pr) {
 	return inked(min(min(sides, far_end), bar), MARK_HALO);
 }
 
+// A drop's tell (MobFx.tell_drop): its shadow on the ground where it will land,
+// a stipple of ink that grows from a pip to the whole of the landing as the body
+// comes down, inside a dashed ring the size of the landing. A shadow that grows
+// is read from above and from over the shoulder alike: it is flat on the ground
+// and it is the one mark that means "something is coming down here".
+vec4 tell_drop(vec2 p, vec2 px, float pr) {
+	float r = length(p);
+	float pw = max(fwidth(r), 1e-4) * PEN;
+	float R = 1.0 - pw * 3.0;
+	float seg = floor((atan(p.y, p.x) / TAU + 0.5) * 24.0);
+	float outer = mod(seg, 2.0) > 0.5 ? 1e3 : abs(r - R) / pw - 1.0;
+	float grown = R * (0.12 + 0.88 * pr * pr);
+	// Three pixels in four: dense enough to read as a shadow on sunlit rock from
+	// a low camera, open enough that the ground still shows through it.
+	if (r < grown && (mod(px.x, 2.0) < 1.0 || mod(px.y, 2.0) < 1.0)) {
+		return ink_out();
+	}
+	return inked(outer, MARK_HALO);
+}
+
 // Plate: the pen's sound marks, (( )), and two or three cold bright pixels. The
 // arcs stand OUTSIDE the plate they rang off, and the sparks are pixels, not
 // blobs: this mark says "that was armour", it does not hide the armour.
@@ -434,6 +454,7 @@ void fragment() {
 	else if (mode == 8) { o = vapour(p, px, pw, pr); }
 	else if (mode == 9) { o = tell_ring(p, pr); }
 	else if (mode == 10) { o = tell_line(p, pr); }
+	else if (mode == 11) { o = tell_drop(p, px, pr); }
 	if (o.a < 0.5) {
 		discard;
 	}
@@ -556,6 +577,7 @@ const BRACKET := 7
 const VAPOUR := 8
 const TELL_RING := 9
 const TELL_LINE := 10
+const TELL_DROP := 11
 
 ## World units per screen pixel of the BASE (1920x1080; the fight system keeps it
 ## to the camera's own, `40_fight._keep_texel`). Marks are never smaller on screen
@@ -949,6 +971,15 @@ static func tell_line(parent: Node, from: Vector3, angle: float, length: float, 
 	mi.rotation = Vector3(-PI * 0.5, -angle, 0.0)
 	mi.scale = Vector3(length * 0.5, at_least(width, RING_PX * 0.25) * 0.5, 1.0)
 	_run(mi, seconds)
+
+
+## A drop's tell on the ground (FightRules.tell_drop): a dashed ring the size of
+## the landing, with its shadow growing inside it to fill it as the body comes
+## down, over `seconds` (its windup).
+static func tell_drop(parent: Node, at: Vector3, col: Color, radius: float, seconds: float) -> void:
+	if not _ok(parent):
+		return
+	_run(_mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_DROP, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col), seconds)
 
 
 ## A blow that rang off plate: sound marks and a few cold bright pixels.

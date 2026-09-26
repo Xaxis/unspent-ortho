@@ -35,6 +35,12 @@ var dash := 1.0
 var quick := 1.0
 
 var bite: Blow = null
+## A body that drops on you (Brains `drop`): the blow it comes down with (the
+## roster's `drop`), and while one is under way where it left from and where it
+## lands, set when the tell starts and never after.
+var drop: Blow = null
+var drop_from := Vector2.INF
+var drop_at := Vector2.INF
 var second_act := false
 ## Desired velocity from the brain (tiles/s), applied by the sim each slice.
 var want := Vector2.ZERO
@@ -169,6 +175,9 @@ func _init(kind_id: StringName = &"", at: Vector2 = Vector2.ZERO, seed_value: in
 	if quick <= 0.0:
 		quick = dash
 	bite = Roster.bite(kind_id)
+	if row.has("drop"):
+		drop = Blow.from_dict(row.drop)
+		drop.creep = 1.0
 	if over.has("bite"):
 		bite = Blow.from_dict(row.bite)
 		bite.creep = 1.0
@@ -199,6 +208,20 @@ func _init(kind_id: StringName = &"", at: Vector2 = Vector2.ZERO, seed_value: in
 	var axis := Vector2.from_angle(roundf(facing / (PI * 0.5)) * PI * 0.5)
 	line_a = at - axis * stretch
 	line_b = at + axis * stretch
+
+
+## How far through its fall a dropping body is at `now`: -1 when it is not
+## falling, 0..1 through the leap (the last FightRules.DROP_FALL_MS of the
+## windup), and 1 from the landing until the blow's committed time is over, while
+## it stands where it came down.
+func drop_fall(now: float) -> float:
+	if blow == null or not blow.area or not drop_at.is_finite():
+		return -1.0
+	var e := now - blow_at
+	var start := blow.windup - FightRules.DROP_FALL_MS
+	if e < start or e >= blow.committed():
+		return -1.0
+	return clampf((e - start) / FightRules.DROP_FALL_MS, 0.0, 1.0)
 
 
 func stat(key: String, fallback: Variant = 0) -> Variant:

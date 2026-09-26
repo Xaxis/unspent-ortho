@@ -80,6 +80,16 @@ func _tell_to_answer(m: MobState) -> bool:
 		take_hits -= 1
 		return false
 	var b := m.blow
+	if b.area:
+		# Coming down on where the player stood: out from under the shadow, the
+		# shortest way, which is straight away from its middle.
+		var off := hero.pos - m.drop_at
+		_escape = off.normalized() if off.length() > 0.05 else Vector2.from_angle(m.facing + PI * 0.5)
+		hero.move = _escape
+		sim.press_dodge()
+		dodges += 1
+		_escape_until = m.blow_at + b.windup + b.active + ESCAPE_HOLD_MS
+		return true
 	var local := (hero.pos - m.pos).rotated(-m.facing)
 	var fwd := Vector2.from_angle(m.facing)
 	var side := Vector2.from_angle(m.facing + PI * 0.5) * (1.0 if local.y >= 0.0 else -1.0)
@@ -290,4 +300,7 @@ func _in_box(m: MobState, p: Vector2, margin: float) -> bool:
 
 
 func _in_box_of(b: Blow, m: MobState, p: Vector2, margin: float) -> bool:
+	if b.area:
+		# A drop is read by its shadow: where it will come down (MobState.drop_at).
+		return m.drop_at.is_finite() and FightRules.drop_hits(m.drop_at, m.radius, b, p, sim.hero.radius + margin)
 	return FightRules.box_hits(m.pos, m.facing, m.radius, b, p, sim.hero.radius + margin)

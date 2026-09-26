@@ -224,6 +224,26 @@ static func tell_lane(o: Vector2, orad: float, b: Blow, trad: float) -> Vector4:
 	return Vector4(o.x, o.y, orad + b.reach + trad, b.width + 2.0 * trad)
 
 
+## A body that drops (Brains `drop`) leaps for the last this-many ms of its
+## windup: the tell is the rest, and the fall is what the tell was for.
+const DROP_FALL_MS := 260.0
+## How far out from under its ledge a dropper comes down on someone, in tiles.
+const DROP_REACH := 5.0
+
+
+## Does an area blow landing at `at` from a body of radius `orad` reach a round
+## body of radius `trad` at `t`? A round of ground, the body's own radius plus
+## the blow's reach: where it comes down, not a box ahead of it.
+static func drop_hits(at: Vector2, orad: float, b: Blow, t: Vector2, trad: float) -> bool:
+	return at.distance_to(t) <= orad + b.reach + trad
+
+
+## Where a drop's ground mark stands, as (x, y, radius) in tiles: over where it
+## lands, as wide as the ground a player standing there is hit on.
+static func tell_drop(at: Vector2, orad: float, b: Blow, trad: float) -> Vector3:
+	return Vector3(at.x, at.y, orad + b.reach + trad)
+
+
 ## Where a bite's ground ring stands, as (x, y, radius) in tiles: over the middle
 ## of the box `box_hits` will test for it, wide enough to take in the box's
 ## longer side. Every bite's tell (40_fight draws it as the windup begins, for

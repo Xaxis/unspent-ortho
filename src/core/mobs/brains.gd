@@ -1,13 +1,15 @@
 class_name Brains
 ## What a body wants to do, every 64 ms (design-extract §7.3, §7.4). A brain
 ## only sets `want` (tiles/s), `aim` and starts bites; FightSim moves bodies,
-## turns them and lands blows. Five approaches:
+## turns them and lands blows. Six approaches:
 ##   errand  walks its line; closes on you only when you are near, seen clear, and rested
 ##   charge  commits to a bearing for a run, then stands and comes round (420 ms x turns)
 ##   rush    a 1000 ms lunge cycle: press in and bite for 620 ms, circle for the rest
 ##   dart    closes, takes what it came for, and runs until it is clear
 ##   throw   keeps a lane's length off, throws down it when squarely aimed, and
 ##           stands to reload after (FightRules.throws: its bite IS the lane)
+##   drop    waits on a ledge over you and comes down on where you stood; once
+##           down among you it fights at close quarters, as a rush does
 
 const RUN_MS := 900
 const TURN_PAUSE_MS := 420
@@ -32,6 +34,9 @@ const THROW_NEAR := 0.45
 ## lane is half a tile wide five tiles out: any looser and a player standing
 ## still is missed, which is not a thrower.
 const THROW_AIM := 0.05
+## A dropper leads a moving player by this share of its windup (Brains._drop_spot).
+const DROP_LEAD := 0.8
+const DROP_LEAD_MAX := 2.5
 
 
 static func think(m: MobState, sim: FightSim) -> void:
@@ -66,6 +71,7 @@ static func think(m: MobState, sim: FightSim) -> void:
 				&"dart": _dart(m, sim)
 				&"charge": _charge(m, sim, m.dash, TURN_PAUSE_MS * 0.25 * int(m.stat("turns", 1)))
 				&"throw": _throw(m, sim)
+				&"drop": _drop(m, sim)
 				_: _seek(m, sim, _target(m, sim), m.dash)
 		MobState.ATTACKING:
 			match m.approach:
@@ -73,6 +79,7 @@ static func think(m: MobState, sim: FightSim) -> void:
 				&"dart": _dart(m, sim)
 				&"charge": _charge(m, sim, m.quick, TURN_PAUSE_MS * int(m.stat("turns", 1)))
 				&"throw": _throw(m, sim)
+				&"drop": _drop(m, sim)
 				_: _lunge(m, sim)
 		MobState.FLEEING:
 			_flee(m, sim)
@@ -362,6 +369,43 @@ static func _throw(m: MobState, sim: FightSim) -> void:
 		bite(m, sim)
 		return
 	m.want = -to / maxf(d, 1e-4) * m.quick if backing else Vector2.ZERO
+
+
+## Drop: from a ledge a blow cannot cross (FightRules.LEDGE_LEVELS or more over
+## the player) it waits, watching, until the player is within DROP_REACH of
+## under it; then it tells, and comes down on where they stood when it told
+## (MobState.drop_at, set here and never moved). Down among them it is a close
+## fighter like any rush. Nothing here climbs it back up: that is its legs'
+## business on the way to wherever it is chasing.
+static func _drop(m: MobState, sim: FightSim) -> void:
+	var now := sim.now
+	var to := sim.hero.pos - m.pos
+	m.aim = to.angle()
+	if m.locked_out(now):
+		m.want = Vector2.ZERO
+		return
+	if sim.level_of(m.pos) - sim.level_of(sim.hero.pos) >= FightRules.LEDGE_LEVELS:
+		m.want = Vector2.ZERO
+		if m.drop != null and to.length() <= FightRules.DROP_REACH and not m.stunned(now):
+			m.drop_from = m.pos
+			m.drop_at = _drop_spot(m, sim)
+			m.start_blow(m.drop, now)
+			sim.emit(&"windup", {"mob": m})
+		return
+	_lunge(m, sim)
+
+
+## Where a dropper comes down: where the player will be if they keep on as they
+## are going for DROP_LEAD of its windup, no more than DROP_LEAD_MAX tiles on,
+## and never onto other ground than theirs. So walking on under it is walking
+## into it, and reading the shadow and leaving it is the answer.
+static func _drop_spot(m: MobState, sim: FightSim) -> Vector2:
+	var hero := sim.hero
+	var on := hero.move.limit_length(1.0) * hero.speed * m.drop.windup / 1000.0 * DROP_LEAD
+	var spot := hero.pos + on.limit_length(DROP_LEAD_MAX)
+	if sim.level_of(spot) != sim.level_of(hero.pos):
+		return hero.pos
+	return spot
 
 
 static func _dart(m: MobState, sim: FightSim) -> void:

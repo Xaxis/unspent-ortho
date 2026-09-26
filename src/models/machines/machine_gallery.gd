@@ -31,10 +31,10 @@ extends RefCounted
 ## (the frost sea's icesaw): `tests/models/test_machines*.gd` hold the twelve by
 ## their own lists, so a kind added here joins the lineup and the sheets without
 ## widening a test that was written about the coast.
-const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk", &"icesaw", &"sorter"]
+const KINDS: Array[StringName] = [&"watcher", &"longlegs", &"harvester", &"cutter", &"hauler", &"warden", &"sweeper", &"dredger", &"lineman", &"flock", &"runner", &"clerk", &"icesaw", &"sorter", &"tamper"]
 const SHOWN: Array[StringName] = [&"stand", &"alert", &"windup", &"dead"]
 ## Room each kind needs across a review row, in tiles.
-const WIDTHS := {&"watcher": 1.3, &"longlegs": 2.3, &"harvester": 3.0, &"cutter": 1.9, &"hauler": 2.6, &"warden": 1.3, &"sweeper": 1.6, &"dredger": 2.1, &"lineman": 1.4, &"flock": 1.9, &"runner": 1.0, &"clerk": 1.5, &"icesaw": 1.8, &"sorter": 1.8}
+const WIDTHS := {&"watcher": 1.3, &"longlegs": 2.3, &"harvester": 3.0, &"cutter": 1.9, &"hauler": 2.6, &"warden": 1.3, &"sweeper": 1.6, &"dredger": 2.1, &"lineman": 1.4, &"flock": 1.9, &"runner": 1.0, &"clerk": 1.5, &"icesaw": 1.8, &"sorter": 1.8, &"tamper": 1.6}
 
 
 static func gallery() -> Array:

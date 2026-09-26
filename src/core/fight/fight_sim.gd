@@ -696,6 +696,14 @@ func _move_mob(m: MobState, dt: float) -> void:
 	if not m.alive:
 		m.speed = 0.0
 		return
+	var fall := m.drop_fall(now)
+	if fall >= 0.0:
+		# Through the air and then down where it said: no ground to go round, and
+		# nothing stops a body falling onto the place it chose at the tell.
+		var was := m.pos
+		m.pos = m.drop_from.lerp(m.drop_at, fall)
+		m.speed = was.distance_to(m.pos) / dt
+		return
 	if not m.committed(now) and not m.stunned(now):
 		m.facing = rotate_toward(m.facing, m.aim, m.turn_rate_at(now) * dt)
 	var v := m.want
@@ -857,7 +865,10 @@ func _land(t0: float, t1: float) -> void:
 			continue
 		if not m.blow.live_in(m.blow_at, t0, t1):
 			continue
-		if not FightRules.box_hits(m.pos, m.facing, m.radius, m.blow, hero.pos, hero.radius):
+		if m.blow.area:
+			if not FightRules.drop_hits(m.pos, m.radius, m.blow, hero.pos, hero.radius):
+				continue
+		elif not FightRules.box_hits(m.pos, m.facing, m.radius, m.blow, hero.pos, hero.radius):
 			continue
 		if not meets(m.pos, hero.pos):
 			continue
