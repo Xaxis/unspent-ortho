@@ -2233,9 +2233,9 @@ func _flow(x: int, y: int) -> Vector2:
 ## and a drawn edge a tile off would put a head through rock or stop it at air.
 const SPAN_WARP := 0.35
 const SPAN_FRAY := 0.5
-## How far drips hang below the underside, and how far the rim's lower band
-## tucks in above its edge.
-const SPAN_DRIP := 0.16
+## How far the rim's lower band tucks in above its edge. (An underside's drips
+## are world.gdshader's, hung_rock: geometry for them cost a vertex a half tile
+## over every hall.)
 const SPAN_UNDERCUT := 0.2
 ## An underside is its rim's rock in shadow.
 const SPAN_UNDER_SHADE := 0.55
@@ -2261,38 +2261,89 @@ func _spans(ch: Chunk) -> void:
 	_sp_memo.clear()
 	_sp_slopes.clear()
 	_sp_warps.clear()
-	# Which tiles round the chunk have mass within a point's reach (the read's
-	# window, -1..2 tiles), marked out from each spanned tile.
+	# The region round the chunk a point is read over, and one tile more on the
+	# low side and two on the high (a point's window, -1..2 tiles round the tile
+	# under it): each tile's mass read ONCE into flat arrays.
 	_sp_x0 = ch.x0 - SPAN_REACH
 	_sp_y0 = ch.y0 - SPAN_REACH
 	_sp_w = ch.w + SPAN_REACH * 2
 	_sp_h = ch.h + SPAN_REACH * 2
-	_sp_near.resize(_sp_w * _sp_h)
-	_sp_near.fill(0)
-	for ty in range(_sp_y0 - 1, _sp_y0 + _sp_h + 2):
-		for tx in range(_sp_x0 - 1, _sp_x0 + _sp_w + 2):
-			if w.overhead_at(tx, ty).x < 0:
-				continue
-			# A point whose window (-1..2 round tile t0) holds (tx, ty).
-			for y in range(ty - 2, ty + 2):
-				for x in range(tx - 2, tx + 2):
-					var lx := x - _sp_x0
-					var ly := y - _sp_y0
-					if lx >= 0 and ly >= 0 and lx < _sp_w and ly < _sp_h:
-						_sp_near[ly * _sp_w + lx] = 1
+	var ew := _sp_w + 3
+	var eh := _sp_h + 3
+	var eu := PackedInt32Array()
+	var eo := PackedInt32Array()
+	eu.resize(ew * eh)
+	eo.resize(ew * eh)
+	for ey in eh:
+		for ex in ew:
+			var o := w.overhead_at(_sp_x0 - 1 + ex, _sp_y0 - 1 + ey)
+			eu[ey * ew + ex] = o.x
+			eo[ey * ew + ex] = o.y
+	# NEAR: any mass in a tile's window, as a row pass then a column pass.
+	var rows := PackedByteArray()
+	rows.resize(_sp_w * eh)
+	for ey in eh:
+		for lx in _sp_w:
+			var e0 := ey * ew + lx
+			rows[ey * _sp_w + lx] = 1 if eu[e0] >= 0 or eu[e0 + 1] >= 0 or eu[e0 + 2] >= 0 or eu[e0 + 3] >= 0 else 0
+	var cells := _sp_w * _sp_h
+	_sp_near.resize(cells)
+	for ly in _sp_h:
+		for lx in _sp_w:
+			_sp_near[ly * _sp_w + lx] = rows[ly * _sp_w + lx] | rows[(ly + 1) * _sp_w + lx] | rows[(ly + 2) * _sp_w + lx] | rows[(ly + 3) * _sp_w + lx]
+	# Each tile's mass, and which tiles are CORE: the three by three round them
+	# hang one mass at one height, so any point read over them is inside and
+	# level, with no warp or noise to read. A cave's roof is nearly all core.
+	_sp_u.resize(cells)
+	_sp_o.resize(cells)
+	var key := PackedInt32Array()
+	key.resize(cells)
+	for ly in _sp_h:
+		for lx in _sp_w:
+			var e0 := (ly + 1) * ew + lx + 1
+			var li := ly * _sp_w + lx
+			_sp_u[li] = eu[e0]
+			_sp_o[li] = eo[e0]
+			key[li] = eu[e0] * 4096 + eo[e0] if eu[e0] >= 0 else -1
+	var row := PackedInt32Array()
+	row.resize(cells)
+	row.fill(-2)
+	for ly in _sp_h:
+		for lx in range(1, _sp_w - 1):
+			var k := key[ly * _sp_w + lx]
+			if k >= 0 and key[ly * _sp_w + lx - 1] == k and key[ly * _sp_w + lx + 1] == k:
+				row[ly * _sp_w + lx] = k
+	_sp_core.resize(cells)
+	_sp_core.fill(0)
+	for ly in range(1, _sp_h - 1):
+		for lx in _sp_w:
+			var k := row[ly * _sp_w + lx]
+			if k >= 0 and row[(ly - 1) * _sp_w + lx] == k and row[(ly + 1) * _sp_w + lx] == k:
+				_sp_core[ly * _sp_w + lx] = 1
 	var n := ch.n
 	var m := ch.h * RES
 	var np := n + 1
+	if _span_whole(ch):
+		return
 	# Every lattice point's sample, and its underside's and top's normals.
 	var ins := PackedFloat32Array()
 	ins.resize(np * (m + 1))
 	_sp_lat.resize(np * (m + 1))
+	# Which lattice points are read over core: flat, and needing nothing.
+	var lcore := PackedByteArray()
+	lcore.resize(np * (m + 1))
 	for j in m + 1:
 		for i in np:
 			var sx := ch.x0 + i * 0.5
 			var sy := ch.y0 + j * 0.5
 			var s := Vector3.ZERO
-			if _near(sx, sy):
+			var cx := floori(sx) - _sp_x0
+			var cy := floori(sy) - _sp_y0
+			var ci := cy * _sp_w + cx
+			if _sp_core[ci] == 1:
+				s = Vector3(1.0, _sp_u[ci] * WorldData.STEP, _sp_o[ci] * WorldData.STEP)
+				lcore[j * np + i] = 1
+			elif _near(sx, sy):
 				s = _span_sample(sx, sy)
 			ins[j * np + i] = s.x
 			_sp_lat[j * np + i] = s
@@ -2302,15 +2353,30 @@ func _spans(ch: Chunk) -> void:
 	_w01 = 0.0
 	for j in m:
 		var run := -1
+		var flat := -1
 		for i in n:
 			var li := j * np + i
+			# A cell over core at every corner: flat and inside, taken in a
+			# stretch of one height and one country, and nothing else asked.
+			if lcore[li] == 1 and lcore[li + 1] == 1 and lcore[li + np] == 1 and lcore[li + np + 1] == 1:
+				if run >= 0:
+					_span_top_run(ch, run, i, j)
+					run = -1
+				if flat >= 0 and (_sp_lat[li] != _sp_lat[j * np + flat] or (ch.key[li] & 0xFF00) != (ch.key[j * np + flat] & 0xFF00)):
+					_span_flat_run(ch, flat, i, j)
+					flat = -1
+				if flat < 0:
+					flat = i
+				continue
+			if flat >= 0:
+				_span_flat_run(ch, flat, i, j)
+				flat = -1
 			var a := ins[li]
 			var b := ins[li + 1]
 			var c := ins[li + np + 1]
 			var d := ins[li + np]
 			if a >= 0.5 and b >= 0.5 and c >= 0.5 and d >= 0.5:
-				# Wholly under the mass: its underside now, its top in a run.
-				_span_under_cell(ch, i, j)
+				# Wholly under the mass: its top, underside and section in a run.
 				if run < 0:
 					run = i
 				continue
@@ -2322,6 +2388,8 @@ func _spans(ch: Chunk) -> void:
 			_span_cell(ch, i, j, PackedFloat32Array([a, b, c, d]))
 		if run >= 0:
 			_span_top_run(ch, run, n, j)
+		if flat >= 0:
+			_span_flat_run(ch, flat, n, j)
 
 
 ## (inside, underside y, top y) at tile-space point (x, y), read through the warp.
@@ -2336,6 +2404,9 @@ var _sp_w := 0
 var _sp_h := 0
 var _sp_near := PackedByteArray()
 var _sp_lat := PackedVector3Array()
+var _sp_u := PackedInt32Array()
+var _sp_o := PackedInt32Array()
+var _sp_core := PackedByteArray()
 var _sp_memo: Dictionary = {}
 
 
@@ -2352,6 +2423,11 @@ var _sp_warps: Dictionary = {}
 
 
 func _span_sample(x: float, y: float) -> Vector3:
+	var cx := floori(x) - _sp_x0
+	var cy := floori(y) - _sp_y0
+	if cx >= 0 and cy >= 0 and cx < _sp_w and cy < _sp_h and _sp_core[cy * _sp_w + cx] == 1:
+		var ci := cy * _sp_w + cx
+		return Vector3(1.0, _sp_u[ci] * WorldData.STEP, _sp_o[ci] * WorldData.STEP)
 	var at := Vector2(x, y)
 	if _sp_memo.has(at):
 		return _sp_memo[at]
@@ -2380,7 +2456,7 @@ func _span_sample_now(x: float, y: float) -> Vector3:
 	for c in 4:
 		var tx := ix + (c & 1)
 		var ty := iy + (c >> 1)
-		var o := world.overhead_at(tx, ty)
+		var o := _span_tile(tx, ty)
 		if o.x < 0:
 			continue
 		var wt := (fx if (c & 1) == 1 else 1.0 - fx) * (fy if (c >> 1) == 1 else 1.0 - fy)
@@ -2392,8 +2468,7 @@ func _span_sample_now(x: float, y: float) -> Vector3:
 		# Only a lattice point well outside asks here; a crossing always has a
 		# spanned tile under its footprint.
 		return Vector3(inside, 0.0, 0.0)
-	var drip := SPAN_DRIP * (0.55 + 0.45 * _lip.get_noise_2d(x * 2.1 + 140.0, y * 2.1))
-	return Vector3(inside, under / wsum * WorldData.STEP - drip, over / wsum * WorldData.STEP)
+	return Vector3(inside, under / wsum * WorldData.STEP, over / wsum * WorldData.STEP)
 
 
 ## One lattice cell with mass over some of it: marching squares on `v` (NW, NE,
@@ -2668,8 +2743,10 @@ func _span_under_cell(ch: Chunk, i: int, j: int) -> void:
 		_span_sheet_vertex(Vector3(px[b], _sp_lat[at[b]].y, pz[b]), _sp_lat[at[b]].z)
 
 
-## The top over cells [i0, i1) of lattice row j, all wholly under the mass: one
-## quad a stretch where the top is level, a quad a cell where it slopes.
+## The top, underside and section sheet over cells [i0, i1) of lattice row j,
+## all wholly under the mass: one quad each a stretch where the top and the
+## underside are level and the ground one, a cell at a time where they slope
+## or the ground changes. A cave's roof is nearly all one stretch a row.
 func _span_top_run(ch: Chunk, i0: int, i1: int, j: int) -> void:
 	var y0 := ch.y0 + j * 0.5
 	var y1 := y0 + 0.5
@@ -2679,8 +2756,11 @@ func _span_top_run(ch: Chunk, i0: int, i1: int, j: int) -> void:
 		var xa := ch.x0 + i * 0.5
 		var li := j * np + i
 		var keys := PackedInt32Array([_span_key(ch.key[li]), _span_key(ch.key[li + 1]), _span_key(ch.key[li + np + 1]), _span_key(ch.key[li + np])])
-		var h := _span_sample(xa, y0).z
-		# How far the top stays level and one ground along the row.
+		# Every corner here is a lattice point: its sample is kept (_sp_lat).
+		var s0 := _sp_lat[li]
+		var h := s0.z
+		var hu := s0.y
+		# How far the top and the underside stay level and one ground along the row.
 		var e := i
 		while e < i1:
 			var le := j * np + e
@@ -2688,7 +2768,11 @@ func _span_top_run(ch: Chunk, i0: int, i1: int, j: int) -> void:
 			var ke := _span_key(ch.key[le])
 			if ke != keys[0] or _span_key(ch.key[le + 1]) != ke or _span_key(ch.key[le + np + 1]) != ke or _span_key(ch.key[le + np]) != ke:
 				break
-			if absf(_span_sample(xb, y0).z - h) > 1e-4 or absf(_span_sample(xb, y1).z - h) > 1e-4 or absf(_span_sample(ch.x0 + e * 0.5, y1).z - h) > 1e-4:
+			var sb0 := _sp_lat[le + 1]
+			var sb1 := _sp_lat[le + np + 1]
+			var sa1 := _sp_lat[le + np]
+			if absf(sb0.z - h) > 1e-4 or absf(sb1.z - h) > 1e-4 or absf(sa1.z - h) > 1e-4 \
+					or absf(sb0.y - hu) > 1e-4 or absf(sb1.y - hu) > 1e-4 or absf(sa1.y - hu) > 1e-4:
 				break
 			e += 1
 		if e > i:
@@ -2701,8 +2785,21 @@ func _span_top_run(ch: Chunk, i0: int, i1: int, j: int) -> void:
 			_w01 = 0.0
 			_ox = xa
 			_oy = y0
-			for q: Vector2 in [Vector2(xa, y0), Vector2(xb, y0), Vector2(xb, y1), Vector2(xa, y0), Vector2(xb, y1), Vector2(xa, y1)]:
+			var quad: Array[Vector2] = [Vector2(xa, y0), Vector2(xb, y0), Vector2(xb, y1), Vector2(xa, y0), Vector2(xb, y1), Vector2(xa, y1)]
+			for q: Vector2 in quad:
 				_vtop(q.x, h, q.y)
+			var rock := _tab_cliff[_span_gi(keys[0])]
+			var col := Color(rock.r * SPAN_UNDER_SHADE, rock.g * SPAN_UNDER_SHADE, rock.b * SPAN_UNDER_SHADE, rock.a)
+			var c0 := Color(col.r, col.g, col.b, 0.0)
+			for qi: int in [0, 2, 1, 3, 5, 4]:
+				_tv.append(Vector3(quad[qi].x, hu, quad[qi].y))
+				_tn.append(Vector3.DOWN)
+				_tc.append(col)
+				_tuv.append(Vector2(_UV_CONTOUR.x, -h))
+				_tuv2.append(Vector2.ZERO)
+				_tc0.append(c0)
+			for q: Vector2 in quad:
+				_span_sheet_vertex(Vector3(q.x, hu, q.y), h)
 			i = e
 			continue
 		# A cell that slopes or crosses grounds: its own keys, lit by its
@@ -2717,6 +2814,7 @@ func _span_top_run(ch: Chunk, i0: int, i1: int, j: int) -> void:
 			var g := _span_slope(q.x, q.y)
 			_vtop(q.x, _span_sample(q.x, q.y).z, q.y)
 			_tn[_tn.size() - 1] = Vector3(-g.z, 1.0, -g.w).normalized()
+		_span_under_cell(ch, i, j)
 		i += 1
 
 
@@ -2725,9 +2823,17 @@ func _span_top_run(ch: Chunk, i0: int, i1: int, j: int) -> void:
 ## that landscape.
 func _span_key(k: int) -> int:
 	var country := (k >> 8) & 0xFF
+	var got: int = _span_keys.get(country, -1)
+	if got >= 0:
+		return got
 	var d := BiomeRegistry.by_index(country)
 	var g := d.plain_ground if d != null else Ground.ROCK
-	return g | (country << 8)
+	_span_keys[country] = g | (country << 8)
+	return _span_keys[country]
+
+
+## _span_key by country: the registry is fixed for a mesher's life.
+var _span_keys: Dictionary = {}
 
 
 
@@ -2747,3 +2853,80 @@ func _span_sheet_vertex(at: Vector3, top: float) -> void:
 	_tuv.append(Vector2(0.0, -top))
 	_tuv2.append(Vector2(0.0, SPAN_SHEET))
 	_tc0.append(Color(0.0, 0.0, 0.0, 0.0))
+
+
+
+## (under, over) of the mass over tile (x, y) from this build's arrays, or
+## the world's past them; x < 0 for none.
+func _span_tile(x: int, y: int) -> Vector2i:
+	var lx := x - _sp_x0
+	var ly := y - _sp_y0
+	if lx >= 0 and ly >= 0 and lx < _sp_w and ly < _sp_h:
+		var li := ly * _sp_w + lx
+		return Vector2i(_sp_u[li], _sp_o[li])
+	var o := world.overhead_at(x, y)
+	return Vector2i(o.x, o.y)
+
+
+
+## Cells [i0, i1) of lattice row j, all over core: one level stretch of one
+## country, its top, underside and section sheet a quad each.
+func _span_flat_run(ch: Chunk, i0: int, i1: int, j: int) -> void:
+	var np := ch.n + 1
+	var y0 := ch.y0 + j * 0.5
+	_span_flat_quad(ch.x0 + i0 * 0.5, ch.x0 + i1 * 0.5, y0, y0 + 0.5, _sp_lat[j * np + i0], _span_key(ch.key[j * np + i0]))
+
+
+## A level stretch of mass from (xa, y0) to (xb, y1): its top, underside and
+## section sheet a quad each, `s0` its (inside, underside, top), `k` its key.
+func _span_flat_quad(xa: float, xb: float, y0: float, y1: float, s0: Vector3, k: int) -> void:
+	_paint(k, -1, SPAN_PAINT)
+	_m2 += SPAN_LIFTED
+	_w00 = 0.0
+	_w10 = 0.0
+	_w11 = 0.0
+	_w01 = 0.0
+	_ox = xa
+	_oy = y0
+	var quad: Array[Vector2] = [Vector2(xa, y0), Vector2(xb, y0), Vector2(xb, y1), Vector2(xa, y0), Vector2(xb, y1), Vector2(xa, y1)]
+	for q: Vector2 in quad:
+		_vtop(q.x, s0.z, q.y)
+	var rock := _tab_cliff[_span_gi(k)]
+	var col := Color(rock.r * SPAN_UNDER_SHADE, rock.g * SPAN_UNDER_SHADE, rock.b * SPAN_UNDER_SHADE, rock.a)
+	var c0 := Color(col.r, col.g, col.b, 0.0)
+	for qi: int in [0, 2, 1, 3, 5, 4]:
+		_tv.append(Vector3(quad[qi].x, s0.y, quad[qi].y))
+		_tn.append(Vector3.DOWN)
+		_tc.append(col)
+		_tuv.append(Vector2(_UV_CONTOUR.x, -s0.z))
+		_tuv2.append(Vector2.ZERO)
+		_tc0.append(c0)
+	for q: Vector2 in quad:
+		_span_sheet_vertex(Vector3(q.x, s0.y, q.y), s0.z)
+
+
+
+## A chunk wholly under one mass: every tile its points are read over is core,
+## at one height, and it is one country throughout. Most chunks of a roofed
+## hall are, and each is then one top, one underside and one section sheet,
+## with not a point sampled. False (and nothing drawn) otherwise.
+func _span_whole(ch: Chunk) -> bool:
+	var k0 := -1
+	for ly in range(SPAN_REACH - 1, SPAN_REACH + ch.h + 1):
+		for lx in range(SPAN_REACH - 1, SPAN_REACH + ch.w + 1):
+			var li := ly * _sp_w + lx
+			if _sp_core[li] == 0:
+				return false
+			var k := _sp_u[li] * 4096 + _sp_o[li]
+			if k0 < 0:
+				k0 = k
+			elif k != k0:
+				return false
+	var country := ch.key[0] & 0xFF00
+	for kk in ch.key:
+		if (kk & 0xFF00) != country:
+			return false
+	var li0 := SPAN_REACH * _sp_w + SPAN_REACH
+	_span_flat_quad(ch.x0, ch.x0 + ch.w, ch.y0, ch.y0 + ch.h,
+		Vector3(1.0, _sp_u[li0] * WorldData.STEP, _sp_o[li0] * WorldData.STEP), _span_key(ch.key[0]))
+	return true
