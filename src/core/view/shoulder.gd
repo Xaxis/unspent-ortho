@@ -460,6 +460,15 @@ const GROUND_PROBE: Array[Vector2] = [Vector2.ZERO, Vector2(NEAR_REACH, 0.0), Ve
 ##    then per slice lo.x, lo.z, hi.x, hi.z]  (lo > hi: nothing drawn there)
 ## `slices` are the template's own extents, `slice_h` its slice height, both
 ## before scaling; `base` and `top` are world heights.
+## The mass hanging over tile (tx, ty) (WorldData.overhead) as a box the eye
+## stands clear of: the whole tile, from its underside `base` to its `top`, one
+## slice. So a roof is a wall to the eye as a house's eaves are, and nothing
+## about the line test changes.
+static func box_over(tx: int, ty: int, base: float, top: float) -> PackedFloat32Array:
+	return PackedFloat32Array([tx + 0.5, ty + 0.5, 1.0, 0.0, base, maxf(0.01, top - base), 1.0, top,
+		-0.5, -0.5, 0.5, 0.5])
+
+
 static func sliced_box_of(pos: Vector2, rot: float, scale: float, base: float, slice_h: float,
 		slices: PackedFloat32Array, top: float) -> PackedFloat32Array:
 	var out := PackedFloat32Array([pos.x, pos.y, cos(rot), sin(rot), base, slice_h * scale,

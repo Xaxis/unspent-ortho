@@ -21,6 +21,9 @@ const LADEN_HEARING := 0.35
 const NIGHT_HEARING := 0.6
 ## A tile at least this many levels above both ends of a line hides one from the other.
 const RIDGE_LEVELS := 2
+## How high over the higher end's ground a line of sight runs: a body's middle,
+## where mass hanging over a tile (WorldData.overhead) is asked for it.
+const SIGHT_HEIGHT := 0.9
 ## Props at least this wide (solid radius) block a line: houses, boulders, heaps. Trees do not.
 const BLOCKING_SOLID := 0.42
 ## A wall (`WorldQuery.set_blocks`: a room's walls, a hall's racks, a hatch's
@@ -133,6 +136,9 @@ static func _walled(query: WorldQuery, a: Vector2, b: Vector2) -> bool:
 
 static func _solid(world: WorldData, query: WorldQuery, x: int, y: int, eye: int, over: Dictionary = {}) -> bool:
 	if world.level_at(x, y) >= eye + RIDGE_LEVELS:
+		return true
+	# A roof across the line at the height it runs is a wall, as a ridge is.
+	if not world.overhead.is_empty() and world.solid_at(Vector2(x + 0.5, y + 0.5), float(eye) * WorldData.STEP + SIGHT_HEIGHT):
 		return true
 	if query == null:
 		return false
