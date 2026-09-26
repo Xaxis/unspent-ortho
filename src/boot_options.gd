@@ -61,6 +61,9 @@ extends RefCounted
 ##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
 ## --hush=always       every visit to a hush ring answers, at any hour (23_hush),
 ##                     for a proof tour; without it a ring answers as it will
+## --above=KIND[@PLACE] hang a synthetic span over the start (or a named place):
+##                     `roof` or `arch`, for drawing what hangs overhead on any
+##                     seed without worldgen (AboveStage)
 ## --stats             print render stats (draw calls, chunk build times) before the shot
 ## --weather=KIND:S     force the weather (e.g. rain:1, fog:0.6, storm:1:bolt, dry_storm:1:bolt; kinds in Weather.KINDS), sky package;
 ##                     `:wind=W` also holds the wind at W, -1..1 (clear:0:wind=0.8)
@@ -197,6 +200,8 @@ var scene := "game"
 var place := ""
 ## "always" or "": staging for the hush (23_hush).
 var hush := ""
+## "KIND[@PLACE]" or "": a staged span (AboveStage), planted before a chunk is drawn.
+var above := ""
 var stats := false
 ## "kind:strength[:bolt]" or "" (the weather rules decide). Read by 10_sky.
 var weather := ""
@@ -318,6 +323,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"scene": o.scene = v
 			"place": o.place = v
 			"hush": o.hush = v
+			"above": o.above = v
 			"realm": o.realm = StringName(v)
 			"stats": o.stats = true
 			"weather": o.weather = v

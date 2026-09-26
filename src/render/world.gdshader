@@ -31,7 +31,11 @@
 //   UV2.x      wind sway weight (0 = rigid)
 //   UV2.y      sway phase when swaying; on rigid geometry, how much the wash
 //              breaks into large organic light/dark patches (0..1). Terrain
-//              writes 2 + the second wash's mark code (patches at full).
+//              writes 2 + the second wash's mark code (patches at full),
+//              +256 when its keys are the other way round, and +512 on the top
+//              of mass hanging over the ground (TerrainMesher SPAN_LIFTED):
+//              no feet, wheels or survey ever touched it, so none of the
+//              ground's wear, trampling or works are drawn there.
 shader_type spatial;
 render_mode cull_back;
 
@@ -1957,9 +1961,11 @@ void fragment() {
 	if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
 		discard;
 	}
-	int m2 = patch_raw >= 1.5 ? int(mod(patch_raw - 2.0 + 0.5, 256.0)) : m1;
-	float bend = patch_raw >= 257.5 ? -1.0 : 1.0;
-	float patchy = min(patch_raw, 1.0);
+	bool lifted = patch_raw >= 513.5;
+	float pr = lifted ? patch_raw - 512.0 : patch_raw;
+	int m2 = pr >= 1.5 ? int(mod(pr - 2.0 + 0.5, 256.0)) : m1;
+	float bend = pr >= 257.5 ? -1.0 : 1.0;
+	float patchy = min(pr, 1.0);
 	// A second wash (another ground, another country) meets this one on a
 	// crisp, ragged edge: never a muddy average, never a dither, never a tile
 	// square. The weight is bent by a world field so the edge wanders freely
@@ -2001,17 +2007,17 @@ void fragment() {
 			c = tide_floor(c, world_pos, px);
 		}
 		// The fused sheet is not trodden to earth: nothing walks glass to a path.
-		if (unh < 0.5 && m != M_VITRIFIED) {
+		if (unh < 0.5 && m != M_VITRIFIED && !lifted) {
 			c = ground_wear(m, c, world_pos.xz, px);
 		}
 		// Turf, heath and fen are a sward, and a gust crossing one lays it over:
 		// the front reads from above as a paler band travelling over the land, to
 		// the horizon, with no geometry (wind_sheen).
-		if (m == 40 || m == 41 || m == 48) {
+		if ((m == 40 || m == 41 || m == 48) && !lifted) {
 			vec3 tr = trample_at(world_pos.xz);
 			c *= (1.0 + GROUND_SHEEN * wind_sheen(world_pos.xz)) * (1.0 - GROUND_PRESSED * max(tr.z, length(tr.xy) * 0.6));
 		}
-		if (works_inv_size > 0.0) {
+		if (works_inv_size > 0.0 && !lifted) {
 			vec4 wk = texture(works_map, world_pos.xz * works_inv_size);
 			vec3 wl = texture(works_lines, world_pos.xz * works_inv_size).rgb;
 			if (wk.r + wk.g + wk.b + wk.a > 0.02) {
