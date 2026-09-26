@@ -8,18 +8,18 @@ hour 12
 place moss
 near house
 wait 3.0
-shot moss-house with prop:house
+shot house-a with prop:house
 perf stats begin
 wait 5.0
-perf stats end moss-house
+perf stats end house-a
 place the_crags
 near house
 wait 3.0
-shot crags-house with prop:house
+shot house-b with prop:house
 place drowned_city
 near house
 wait 3.0
-shot drowned-house with prop:house
+shot house-c with prop:house
 place typical_green_towers
 wait 3.0
 shot towers with land:green_towers
