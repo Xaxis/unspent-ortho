@@ -110,3 +110,29 @@ func test_a_spanned_chunk_costs_little_more() -> void:
 		roofed = mini(roofed, Time.get_ticks_usec() - t0)
 	print("span cost: chunk bare %d us, with a 12x10 slab %d us (+%.0f%%)" % [bare, roofed, 100.0 * (roofed - bare) / bare])
 	lt(float(roofed), float(bare) * 2.2, "a slab costs its chunk no more than a second land")
+
+
+## THE TOP GROWS A LITTLE (Decor, SPAN_DECOR): pieces of the landscape's own
+## decor stand on a slab's level top, only over its tiles, and none of them at
+## its warped edge; the ground's own decor is the same with or without it.
+func test_a_slab_top_grows_a_little_and_the_ground_is_unchanged() -> void:
+	var w := _roofed()
+	var ch := TerrainMesher.new(w).build_arrays(0, 0)
+	var parts := Decor.new(w).build_parts(ch)
+	var solid: Array = parts[0]
+	var on_top := 0
+	var over_y := OVER * WorldData.STEP
+	if not solid.is_empty():
+		for v: Vector3 in (solid[Mesh.ARRAY_VERTEX] as PackedVector3Array):
+			if v.y > over_y - 0.05:
+				on_top += 1
+				# Rooted on the inner tiles (11..20, 11..18); a piece reaches a few
+				# tenths past its root.
+				check(v.x > 10.5 and v.x < 21.5 and v.z > 10.5 and v.z < 19.5, "on the slab's inner tiles (%.2f, %.2f)" % [v.x, v.z])
+	gt(float(on_top), 50.0, "the top grows something (%d vertices)" % on_top)
+	var bare := F.flat_world(64, Ground.GRASS, Country.COAST, GROUND)
+	var bch := TerrainMesher.new(bare).build_arrays(0, 0)
+	var bparts := Decor.new(bare).build_parts(bch)
+	eq((parts[1] as Array).size() > 0, (bparts[1] as Array).size() > 0, "the grass part is laid alike")
+	if not (bparts[1] as Array).is_empty():
+		eq((parts[1][Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), (bparts[1][Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), "and it is the same grass")
