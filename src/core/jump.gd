@@ -124,7 +124,7 @@ static func _arc(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector
 ## The highest a body's feet can be at `at` with its head under the mass hanging
 ## there (WorldData.overhead), or INF with nothing over it.
 static func _lid(world: WorldData, at: Vector2) -> float:
-	if world == null or world.overhead.is_empty():
+	if world == null or not world.has_overhead():
 		return INF
 	var o := world.overhead_at(floori(at.x), floori(at.y))
 	return INF if o.x < 0 else float(o.x) * WorldData.STEP - Tuning.PLAYER_HEIGHT

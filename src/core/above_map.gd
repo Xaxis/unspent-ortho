@@ -6,12 +6,13 @@ extends RefCounted
 ## carries nothing.
 ##   R  255 where mass hangs over the tile, else 0
 ##   G, B  the connected mass it belongs to (4-connected over tiles, 16 bits,
-##         0 none), spread one tile past the mass, so a rim the warp draws
-##         past its tiles is still that mass's
+##         0 none), spread one tile past the mass, so a
+##         rim the warp draws past its tiles is still that mass's
 ##   A  the level of its underside (0 where none)
 ## World.gdshader cuts the mass the player stands under at the section plane
-## (43_above), and shades the ground under any mass. Pure and derived: built
-## once a world's spans are laid, never written after.
+## (43_above), and shades the ground under any mass. Pure and derived; over a
+## window round the player where the spans are wide (a roofed cave), rebuilt
+## as the player moves (43_above).
 
 ## Tiles of margin round the spans' box: the id's spread, and the warp.
 const PAD := 2
@@ -25,46 +26,59 @@ var ids := PackedInt32Array()
 var image: Image
 
 
-static func of(world: WorldData) -> AboveMap:
+static func of(world: WorldData, centre := Vector2.INF, half := 0) -> AboveMap:
 	var m := AboveMap.new()
-	if world.overhead.is_empty():
+	if not world.has_overhead():
 		return m
-	var lo := Vector2i(world.size, world.size)
-	var hi := Vector2i(-1, -1)
-	for k: int in world.overhead.keys():
-		var t := Vector2i(k % world.size, k / world.size)
-		lo = Vector2i(mini(lo.x, t.x), mini(lo.y, t.y))
-		hi = Vector2i(maxi(hi.x, t.x), maxi(hi.y, t.y))
-	m.x0 = lo.x - PAD
-	m.y0 = lo.y - PAD
-	m.w = hi.x - lo.x + 1 + PAD * 2
-	m.h = hi.y - lo.y + 1 + PAD * 2
+	# The spans' own box, cut to the window round `centre` when one is asked:
+	# a cave roofed over its whole world is millions of tiles, and only what is
+	# round the player is ever cut.
+	var box := world.overhead_box.grow(PAD)
+	if half > 0:
+		box = box.intersection(Rect2i(floori(centre.x) - half, floori(centre.y) - half, half * 2 + 1, half * 2 + 1))
+	if box.size.x <= 0 or box.size.y <= 0:
+		return m
+	m.x0 = box.position.x
+	m.y0 = box.position.y
+	m.w = box.size.x
+	m.h = box.size.y
 	var mask := PackedByteArray()
 	mask.resize(m.w * m.h)
+	var under := PackedInt32Array()
+	under.resize(m.w * m.h)
 	for y in m.h:
 		for x in m.w:
-			if world.overhead_at(m.x0 + x, m.y0 + y).x >= 0:
+			var o := world.overhead_at(m.x0 + x, m.y0 + y)
+			if o.x >= 0:
 				mask[y * m.w + x] = 1
-	# The box is square for the labeller; it asks for one width.
-	var side := maxi(m.w, m.h)
-	var sq := PackedByteArray()
-	sq.resize(side * side)
-	for y in m.h:
-		for x in m.w:
-			sq[y * side + x] = mask[y * m.w + x]
-	var sizes := PackedInt32Array()
-	var label := GenFields.components(sq, side, sizes)
-	# Labels are representative cells; number the masses 1, 2, ... in order.
-	var number := {}
+				under[y * m.w + x] = o.x
+	# A MASS is tiles joined 4-ways, whatever their underside: a roof stepping
+	# between plateaus is ONE mass, cut together. Split by plateau, the cut
+	# opened only the step over the player, and the steps round it, uncut,
+	# stood between the camera and the player (cave-roofs.tour, frame 01).
 	m.ids.resize(m.w * m.h)
-	for y in m.h:
-		for x in m.w:
-			var l := label[y * side + x]
-			if l < 0:
-				continue
-			if not number.has(l):
-				number[l] = number.size() + 1
-			m.ids[y * m.w + x] = number[l]
+	var next := 0
+	var stack := PackedInt32Array()
+	for start in m.w * m.h:
+		if mask[start] == 0 or m.ids[start] != 0:
+			continue
+		next += 1
+		m.ids[start] = next
+		stack.append(start)
+		while not stack.is_empty():
+			var i := stack[stack.size() - 1]
+			stack.resize(stack.size() - 1)
+			var ix := i % m.w
+			var iy := i / m.w
+			for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var nx := ix + d.x
+				var ny := iy + d.y
+				if nx < 0 or ny < 0 or nx >= m.w or ny >= m.h:
+					continue
+				var j := ny * m.w + nx
+				if mask[j] != 0 and m.ids[j] == 0:
+					m.ids[j] = next
+					stack.append(j)
 	# Spread each mass one tile out, over tiles no mass holds.
 	var spread := m.ids.duplicate()
 	for y in m.h:

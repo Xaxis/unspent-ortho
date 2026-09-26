@@ -132,7 +132,7 @@ static func face(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector
 		# Mass hanging over the face (WorldData.overhead): a climb is only as
 		# tall as the room over its foot, and a shelf with less than a body's
 		# room over it is no top. Nothing climbs a ceiling.
-		if not world.overhead.is_empty():
+		if world.has_overhead():
 			var tall := int(ceil(Tuning.PLAYER_HEIGHT / WorldData.STEP))
 			if world.headroom_at(here.x, here.y) < lv - from_level + tall or world.headroom_at(tt.x, tt.y) < tall:
 				return {}

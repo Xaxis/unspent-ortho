@@ -162,12 +162,20 @@ var section_spans: Dictionary = {}
 var sectioned := false
 ## GROUND ABOVE THE GROUND (scratchpad DESIGN_ABOVE, S0): solid mass hanging
 ## over a tile -- a cave's roof, an overhang, an arch -- from an underside level
-## up to a top level, at most one per tile. Sparse: tile index -> Vector3i(under,
-## over, kind). Nothing stands on one yet (Phase A); it is a ceiling to walk
-## under, a wall to see and throw through, a lid on a climb and a jump. Read
-## only through `overhead_at`, `headroom_at` and `solid_at`; empty, every read
-## is the heightfield's alone and costs one `is_empty`.
-var overhead: Dictionary = {}
+## up to a top level, at most one per tile. Three bytes a tile, in OH_SECTION
+## square sections, made for a section on its first span: a cave roofed over
+## most of a world is millions of tiles, which as a Dictionary of Vector3i was
+## hundreds of megabytes; an arch costs its one section, and a streamed world
+## can hold the sections it holds. A section's bytes are (under + 1, over,
+## kind) a tile, under + 1 = 0 for nothing overhead; `overhead_box` bounds
+## every span. Nothing stands on one
+## yet (Phase A); it is a ceiling to walk under, a wall to see and throw
+## through, a lid on a climb and a jump. Read only through `overhead_at`,
+## `headroom_at` and `solid_at`; with none, every read is the heightfield's
+## alone and costs one `has_overhead`.
+const OH_SECTION := 256
+var _oh: Dictionary = {}
+var overhead_box := Rect2i()
 ## PROP IDS. A generated prop's id is (section << ORDINAL_BITS) | ordinal,
 ## the order its section laid it (GenIds): a change in one section renumbers
 ## no other, and a streamed section rebuilt from the plan gets the same ids.
@@ -279,9 +287,34 @@ func region_of(id: int) -> Dictionary:
 ## The mass over tile (x, y): Vector3i(under, over, kind), or NO_OVERHEAD.
 const NO_OVERHEAD := Vector3i(-1, -1, 0)
 func overhead_at(x: int, y: int) -> Vector3i:
-	if overhead.is_empty() or x < 0 or y < 0 or x >= size or y >= size:
+	if _oh.is_empty() or x < 0 or y < 0 or x >= size or y >= size:
 		return NO_OVERHEAD
-	return overhead.get(y * size + x, NO_OVERHEAD)
+	# A `has` and a typed read, never an operator on the untyped value: the
+	# mesh and view workers read this (the worker VM race; worker_scan.gd).
+	var k := _oh_key(x, y)
+	if not _oh.has(k):
+		return NO_OVERHEAD
+	var b: PackedByteArray = _oh[k]
+	var i := ((y % OH_SECTION) * OH_SECTION + x % OH_SECTION) * 3
+	var u := int(b[i])
+	if u == 0:
+		return NO_OVERHEAD
+	return Vector3i(u - 1, int(b[i + 1]), int(b[i + 2]))
+
+
+func _oh_key(x: int, y: int) -> int:
+	return (y / OH_SECTION) * 4096 + x / OH_SECTION
+
+
+## Whether anything hangs over any tile of this world.
+func has_overhead() -> bool:
+	return not _oh.is_empty()
+
+
+## Take every span away.
+func clear_overhead() -> void:
+	_oh.clear()
+	overhead_box = Rect2i()
 
 
 ## Levels of room between tile (x, y)'s ground and the underside over it, or
@@ -306,8 +339,29 @@ func solid_at(p: Vector2, y: float) -> bool:
 
 
 ## Hang mass over tile (x, y) from level `under` up to `over`.
+## Put a section's spans at once (GenAbove): `bytes` is OH_SECTION squared
+## tiles of (under + 1, over, kind), for the section holding tile (x, y); `box`
+## is merged into overhead_box. A cave roofed over millions of tiles, set a
+## tile at a time, was most of its stage's cost.
+func put_overhead_section(x: int, y: int, bytes: PackedByteArray, box: Rect2i) -> void:
+	_oh[_oh_key(x, y)] = bytes
+	overhead_box = box if overhead_box.size == Vector2i.ZERO else overhead_box.merge(box)
+
+
+## Levels are bytes: under at most 254, over at most 255.
 func set_overhead(x: int, y: int, under: int, over: int, kind: int = 0) -> void:
-	overhead[y * size + x] = Vector3i(under, over, kind)
+	var k := _oh_key(x, y)
+	if not _oh.has(k):
+		var fresh := PackedByteArray()
+		fresh.resize(OH_SECTION * OH_SECTION * 3)
+		_oh[k] = fresh
+	overhead_box = Rect2i(x, y, 1, 1) if _oh.size() == 1 and overhead_box.size == Vector2i.ZERO else overhead_box.merge(Rect2i(x, y, 1, 1))
+	var b: PackedByteArray = _oh[k]
+	var i := ((y % OH_SECTION) * OH_SECTION + x % OH_SECTION) * 3
+	b[i] = clampi(under, 0, 254) + 1
+	b[i + 1] = clampi(over, 0, 255)
+	b[i + 2] = kind
+	_oh[k] = b
 
 
 func height_at(p: Vector2) -> float:

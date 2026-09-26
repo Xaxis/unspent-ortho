@@ -405,7 +405,7 @@ const SPAN_DECOR := 0.3
 
 
 func _lay_span_tops(ch: TerrainMesher.Chunk, solid: Out) -> void:
-	if world.overhead.is_empty():
+	if not world.has_overhead():
 		return
 	var rng: RandomNumberGenerator = null
 	for ty in ch.h:

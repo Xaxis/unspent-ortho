@@ -159,6 +159,12 @@ static func make() -> BiomeDef:
 	# Sinkholes to the day above (11_dome): columns of cold daylight standing in
 	# the dark and the damp, the one place in the caves the hour is seen.
 	d.sky_holes = 0.8
+	# THE HALLS ARE ROOFED (GenAbove, docs/ABOVE.md S3): a lid of rock six levels
+	# (three units) at least over the highest floor within three tiles, stepped
+	# in plateaus of four levels, so a hall is a hall and not open terraces under
+	# a dark sky; open only where the dome's tears let the day down and over the
+	# shafts' mouths.
+	d.above = {"roof": {"room": 6, "clear": 3, "step": 4, "thick": 4, "tear": 3.0, "shaft": 3.5}}
 	d.mist = 0.0
 	# Black, and still a chart: the soundings and the swash survive the tint
 	# (tests/render/test_water_wash.gd).

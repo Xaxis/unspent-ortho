@@ -138,7 +138,7 @@ static func _solid(world: WorldData, query: WorldQuery, x: int, y: int, eye: int
 	if world.level_at(x, y) >= eye + RIDGE_LEVELS:
 		return true
 	# A roof across the line at the height it runs is a wall, as a ridge is.
-	if not world.overhead.is_empty() and world.solid_at(Vector2(x + 0.5, y + 0.5), float(eye) * WorldData.STEP + SIGHT_HEIGHT):
+	if world.has_overhead() and world.solid_at(Vector2(x + 0.5, y + 0.5), float(eye) * WorldData.STEP + SIGHT_HEIGHT):
 		return true
 	if query == null:
 		return false

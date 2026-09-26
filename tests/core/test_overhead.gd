@@ -103,7 +103,7 @@ func test_a_climb_needs_room_over_its_foot_and_its_top() -> void:
 	check(not Climb.face(w, q, at, Vector2(1, 0)).is_empty(), "in the open, a face")
 	w.set_overhead(29, 20, GROUND + 5, GROUND + 9)
 	check(Climb.face(w, q, at, Vector2(1, 0)).is_empty(), "an overhang over its foot: none")
-	w.overhead.clear()
+	w.clear_overhead()
 	w.set_overhead(30, 20, GROUND + 4 + 2, GROUND + 4 + 6)
 	check(Climb.face(w, q, at, Vector2(1, 0)).is_empty(), "a shelf with no room over it: none")
 

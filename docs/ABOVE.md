@@ -29,6 +29,17 @@ field. The design, and what is built of it.
   shoulder. The ground under any span is shaded (ABOVE_SHADE), smoothly across
   tiles. Shafts through holes wait for S3, which makes the first holes.
   tests/core/test_above_map.gd; tours above-roof and above-arch.
+- **S3 built** (world/cave-roofs, GEN 37): `GenAbove`, the last worldgen
+  stage, roofs a landscape that declares `BiomeDef.above.roof` (the limestone
+  caves): an underside at the highest floor within `clear` tiles (by 4x4
+  blocks) plus `room` levels, rounded up to `step`, `thick` levels deep, so
+  plateaus a block wide and more; open over the dome's tears (the daylight
+  columns 11_dome draws) and every shaft's mouth. Overhead is stored by 256-tile
+  section (three bytes a tile, put a section at once): a roofed 1840 cave is
+  about 10 MB, and GenAbove is 2.4 s of its 37.7 s. AboveMap is a window of 96
+  round the player, rebuilt on a worker as they move; a roof across plateaus is
+  ONE mass (split by plateau, the uncut steps round the player hid them from
+  above). tests/biome/test_cave_roofs.gd; tours/cave-roofs.tour.
 - Law 3 is ruled (§3): from above, mass hung over the player is architecture,
   drawn cut at a section plane with an inked cap; the land never opens.
 

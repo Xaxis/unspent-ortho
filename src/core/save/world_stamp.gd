@@ -195,7 +195,10 @@ const UNKNOWN := "unknown"
 ##     that gave up on a lip now stand; a stack stands only where a depot's yard
 ##     can; the salt flats' brine house stands on a battery's rim. The sulphur
 ##     jungle's broadleaf share goes 0.28 -> 0.31. Every seed moves; no tile does.
-const GEN := 36
+## 39. The limestone caves are roofed (GenAbove, docs/ABOVE.md S3): a new
+##     BiomeDef TERRAIN field, `above`, and the caves' overhead mass, laid last
+##     of all. The surface grows as it did; every world holding the caves moves.
+const GEN := 39
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
@@ -209,7 +212,7 @@ const TERRAIN: Array[String] = [
 	"props", "ore", "gravel_ore", "reed_chance", "scorched", "shore_bush", "surface", "scatter", "scatter_ruled",
 	"sites", "tip_ground", "beached_wrecks", "pools", "villages", "village_names", "village_order",
 	"villages_each_region", "village_platform",
-	"spawn_home",
+	"spawn_home", "above",
 ]
 
 ## The BiomeDef fields that decide how a landscape LOOKS, SOUNDS or is LIVED in,

@@ -18,6 +18,14 @@ const SECTION := 2.4
 ## Seconds the cut takes to come in or go out.
 const EASE := 0.45
 
+## Tiles either side of the player the map covers (a roofed cave is a world
+## of spans), and where it was centred.
+const WINDOW := 96
+var _map_at := Vector2.ZERO
+## The map being built on a worker, round `_task_at`.
+var _task := -1
+var _task_at := Vector2.ZERO
+var _task_map: AboveMap
 var _mat: ShaderMaterial
 var _world: WorldData
 var _map: AboveMap
@@ -36,6 +44,21 @@ func _process(delta: float) -> void:
 		return
 	if game.world != _world:
 		_bind(game.world)
+	elif _map != null and not _map.ids.is_empty() and game.player.pos.distance_to(_map_at) > WINDOW * 0.5 and _task < 0:
+		# Walked toward the window's edge: build it again round the player, on
+		# a worker (a window of a roofed cave is 0.1 s), keeping the old until
+		# the new is done.
+		var w := game.world
+		var at: Vector2 = game.player.pos
+		_task_at = at
+		_task = WorkerThreadPool.add_task(func() -> void:
+			_task_map = AboveMap.of(w, at, WINDOW), false, "above map")
+	if _task >= 0 and WorkerThreadPool.is_task_completed(_task):
+		WorkerThreadPool.wait_for_task_completion(_task)
+		_task = -1
+		if _task_map != null and game.world == _world:
+			_take(_task_map, _task_at)
+		_task_map = null
 	if _map == null or _map.ids.is_empty():
 		return
 	var at := game.player.pos
@@ -56,17 +79,65 @@ func _process(delta: float) -> void:
 
 
 func _bind(w: WorldData) -> void:
+	if _task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task)
+		_task = -1
+		_task_map = null
 	_world = w
-	_map = AboveMap.of(w)
 	_share = 0.0
 	_fresh = true
 	_id = 0
+	_take(AboveMap.of(w, game.player.pos, WINDOW), game.player.pos)
+
+
+## Draw with `m`, a map built round `at`.
+func _take(m: AboveMap, at: Vector2) -> void:
+	_map = m
+	_map_at = at
 	if _map.ids.is_empty():
 		_mat.set_shader_parameter("above_rect", Vector4.ZERO)
 		_mat.set_shader_parameter("above_cut", Vector4(0.0, 0.0, 0.0, 0.0))
 		return
 	_mat.set_shader_parameter("above_map", ImageTexture.create_from_image(_map.image))
 	_mat.set_shader_parameter("above_rect", _map.rect())
+
+
+func _exit_tree() -> void:
+	if _task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task)
+		_task = -1
+
+
+const TOUR_PLACES: Array[String] = ["under_roof"]
+
+
+## `near under_roof`: the nearest walkable tile within 40 under the middle of a
+## plateau (its three by three all one mass), so a tour stands under a roof by
+## name and never at a coordinate.
+func tour_place(what: String) -> Vector2:
+	if what != "under_roof" or game == null or game.world == null or game.player == null:
+		return Vector2.INF
+	var w := game.world
+	var at := game.player.pos
+	var best := Vector2.INF
+	var best_d := INF
+	for dy in range(-40, 41, 2):
+		for dx in range(-40, 41, 2):
+			var x := floori(at.x) + dx
+			var y := floori(at.y) + dy
+			var o := w.overhead_at(x, y)
+			if o.x < 0 or not game.query.standable(x, y):
+				continue
+			var core := true
+			for ey in range(-1, 2):
+				for ex in range(-1, 2):
+					if w.overhead_at(x + ex, y + ey) != o:
+						core = false
+			var d := Vector2(dx, dy).length()
+			if core and d < best_d:
+				best_d = d
+				best = Vector2(x + 0.5, y + 0.5)
+	return best
 
 
 ## For tours: `await above_cut` once the cut is fully drawn.

@@ -219,7 +219,7 @@ func standable(tx: int, ty: int, on: CraftRide = null, swims: bool = false) -> b
 func passable(fx: int, fy: int, tx: int, ty: int, on: CraftRide = null, swims: bool = false, tall: int = 0) -> bool:
 	if not standable(tx, ty, on, swims):
 		return false
-	if tall > 0 and not world.overhead.is_empty() and world.headroom_at(tx, ty) < tall:
+	if tall > 0 and world.has_overhead() and world.headroom_at(tx, ty) < tall:
 		return false
 	if fx == tx and fy == ty:
 		return true

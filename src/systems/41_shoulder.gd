@@ -392,7 +392,7 @@ func _gather(head: Vector3, eye: Vector3) -> void:
 	# Mass hanging over the ground near the line (WorldData.overhead): a roof is
 	# a wall to the eye, pulled in under it as against a wall.
 	var w := game.world
-	if not w.overhead.is_empty():
+	if not not w.has_overhead():
 		for ty in range(maxi(0, floori(mid.y - reach)), mini(w.size - 1, floori(mid.y + reach)) + 1):
 			for tx in range(maxi(0, floori(mid.x - reach)), mini(w.size - 1, floori(mid.x + reach)) + 1):
 				var o := w.overhead_at(tx, ty)

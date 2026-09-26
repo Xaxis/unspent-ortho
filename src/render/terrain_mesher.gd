@@ -2243,7 +2243,7 @@ const SPAN_UNDER_SHADE := 0.55
 
 func _spans(ch: Chunk) -> void:
 	var w := world
-	if w.overhead.is_empty():
+	if not w.has_overhead():
 		return
 	# Only a chunk with mass over it, or within the warp's reach of it.
 	var any := false
