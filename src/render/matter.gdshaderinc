@@ -421,7 +421,8 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		// STRATA_MESA: hard bands stand proud, soft ones weather back; the
 		// caprock (top of the face) proudest of all.
 		float dt = (floor(wp.y / 0.5 - 0.002) + 1.0) * 0.5 - wp.y;
-		float band = sin((wp.y + matter_fbm(p * 0.3) * 0.15) * 26.0) * 0.5 + 0.5;
+		// Level bands: the wander here is what swirled them at a low sun.
+		float band = sin((wp.y + (matter_fbm(p * 0.05) - 0.5) * 0.03) * 33.0) * 0.5 + 0.5;
 		h = band * 0.55 + matter_fbm(p * 2.2) * 0.2 + (1.0 - smoothstep(0.03, 0.07, dt)) * 0.6;
 	} else if (m == M_SULPHUR) {
 		// SULPHUR: rimstone -- lobed pools, each rim standing proud of the pool

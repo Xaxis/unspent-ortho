@@ -2102,20 +2102,22 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		// inside the bed, the old dunes' faces); a hard pale caprock at the top
 		// holding the lip up; and desert varnish streaked dark down the face
 		// from the lip, where water ran for a thousand years a night at a time.
-		float sw = (ink_vnoise(vec2(px.x * 0.02, 3.0)) - 0.5) * 0.06;
-		// Beds a hand to a forearm deep, in reds close in value: a strong
-		// contrast between neighbours drew a tiger stripe (measured, the first
-		// cut). One bed in five is the pale one.
-		float b = (y + sw) / (0.16 + ink_vnoise(vec2(px.x * 0.01, 5.0)) * 0.1);
+		// Laid LEVEL, with a long low undulation and a steady thickness: a
+		// thickness that varied along the wall bent every bed and the face
+		// read as marbled swirls at a low sun (the bonelands lesson).
+		float sw = (ink_vnoise(vec2(px.x * 0.006, 3.0)) - 0.5) * 0.03;
+		// Beds a forearm deep, in reds close in value: a strong contrast
+		// between neighbours drew a tiger stripe. One bed in five is paler.
+		float b = (y + sw) / 0.19;
 		float bi = floor(b);
 		float kind = ink_hash(vec2(bi, 41.0));
-		c = kind < 0.4 ? mix(RUST2, RUST3, 0.55) : (kind < 0.8 ? mix(RUST2, EARTH2, 0.4) : mix(SAND3, RUST3, 0.35));
+		c = kind < 0.4 ? mix(RUST2, RUST3, 0.5) : (kind < 0.8 ? mix(RUST2, EARTH2, 0.3) : mix(RUST3, SAND3, 0.3));
 		// Soft bedding planes between them.
 		c = mix(c, dn(c, 0.18), 1.0 - smoothstep(0.0, 0.12, fract(b)));
 		// Cross-bedding: faint slanted laminae inside a few beds.
-		if (ink_hash(vec2(bi, 43.0)) > 0.6) {
+		if (ink_hash(vec2(bi, 43.0)) > 0.6 && fract(b) > 0.15 && fract(b) < 0.9) {
 			float lam = fract(fract(b) * 4.0 + px.x * 0.025 * (ink_hash(vec2(bi, 44.0)) > 0.5 ? 1.0 : -1.0));
-			c = mix(c, dn(c, 0.1), smoothstep(0.75, 0.9, lam));
+			c = mix(c, dn(c, 0.07), smoothstep(0.75, 0.9, lam));
 		}
 		// The caprock.
 		float cap = 0.06 + ink_vnoise(vec2(px.x * 0.05, 7.0)) * 0.03;
