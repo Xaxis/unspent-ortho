@@ -680,6 +680,12 @@ const CELL := 16
 const CELL_STRIDE := 4096
 
 
+## A source's prop, made from its table row when it is asked for: the index
+## keeps rows, not ~1,800 props (the streaming design, S7).
+func _prop_of(s: Dictionary) -> WorldProp:
+	return game.world.prop_at(int(s.row))
+
+
 func _bucket(p: WorldProp) -> void:
 	var key := floori(p.pos.y / float(CELL)) * CELL_STRIDE + floori(p.pos.x / float(CELL))
 	if not _cells.has(key):
@@ -763,12 +769,12 @@ func _index_sources() -> void:
 					world_pts.append(base + Basis(Vector3.UP, -p.rot) * ((g.at as Vector3) * p.scale))
 					var c: Color = g.color
 					rgb.append(Vector3(c.r, c.g, c.b))
-				sources.append({"prop": p, "kind": p.kind, "h": Rng.hash01(game.world.seed_value, p.id, 0x11A), "h2": 0.0,
+				sources.append({"row": _indexed - 1, "kind": p.kind, "h": Rng.hash01(game.world.seed_value, p.id, 0x11A), "h2": 0.0,
 					"at": world_pts[0], "range": 0.0, "power": 0.0, "warm": WARM, "machine_points": world_pts, "machine_rgb": rgb, "blink": bool(pts[0].get("blink", false))})
 				_bucket(p)
 			continue
 		var s := {
-			"prop": p, "kind": p.kind,
+			"row": _indexed - 1, "kind": p.kind,
 			"h": Rng.hash01(game.world.seed_value, p.id, 0x11A),
 			"h2": Rng.hash01(game.world.seed_value, p.id, 0x11B),
 		}
@@ -834,7 +840,7 @@ func _index_sources() -> void:
 func _tube_of(s: Dictionary) -> void:
 	if s.has("neon_at") or bool(s.get("dark", false)):
 		return
-	var p: WorldProp = s.prop
+	var p := _prop_of(s)
 	var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
 	var tube := PropModels.neon_point(p.kind, PropModels.variant_of(p, game.world.seed_value, country), country)
 	if tube.is_empty():
@@ -1111,7 +1117,7 @@ func _gather_glints(focus: Vector2) -> void:
 	_glint_near.clear()
 	var near: Array = []
 	for s in _near(focus, Glints.REACH):
-		var p: WorldProp = s.prop
+		var p := _prop_of(s)
 		if game.world.depleted.has(p.id):
 			continue
 		var d := p.pos.distance_squared_to(focus)
@@ -1313,7 +1319,7 @@ func _assign(focus: Vector2, hour: float) -> void:
 	for s in _near(focus, REACH):
 		if float(s.range) <= 0.0:
 			continue
-		var p: WorldProp = s.prop
+		var p := _prop_of(s)
 		if game.world.depleted.has(p.id):
 			continue
 		var d := p.pos.distance_squared_to(focus)
@@ -1348,7 +1354,7 @@ func _assign(focus: Vector2, hour: float) -> void:
 func _update_glows(focus: Vector2, hour: float) -> void:
 	var keep := {}
 	for s in _near(focus, GLOW_REACH):
-		var p: WorldProp = s.prop
+		var p := _prop_of(s)
 		if p.pos.distance_squared_to(focus) > GLOW_REACH * GLOW_REACH or game.world.depleted.has(p.id):
 			continue
 		var on := false
@@ -1399,7 +1405,7 @@ static func glow_points(kind: int, variant: int = 0, country: int = Country.COAS
 
 
 func _glow_node(s: Dictionary) -> Node3D:
-	var p: WorldProp = s.prop
+	var p := _prop_of(s)
 	var pts := _points_for(p)
 	if pts.is_empty():
 		return null

@@ -60,10 +60,10 @@ func test_the_grid_holds_every_light_the_sweep_would_have_found() -> void:
 			var near: Array = lights.call(&"_near", focus, reach)
 			var held := {}
 			for s: Dictionary in near:
-				held[(s.prop as WorldProp).id] = true
+				held[(lights.call(&"_prop_of", s) as WorldProp).id] = true
 			var missed := 0
 			for s: Dictionary in all:
-				var p: WorldProp = s.prop
+				var p: WorldProp = lights.call(&"_prop_of", s)
 				if p.pos.distance_to(focus) <= reach and not held.has(p.id):
 					missed += 1
 			check(missed == 0, "reach %.0f at %s: the grid dropped %d lights the sweep finds" % [reach, focus, missed])

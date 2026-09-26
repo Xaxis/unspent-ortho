@@ -149,9 +149,9 @@ var depleted: Dictionary = {}
 ## `ore_counted` is false on a world built by hand, which is counted on first ask.
 var ore_standing: Dictionary = {}
 var ore_counted := false
-## The props and cable spans of each section (`WorldSections`), indexed once
-## `sectioned` is set.
-var section_props: Dictionary = {}
+## The table rows and cable spans of each section (`WorldSections`), indexed
+## once `sectioned` is set.
+var section_rows: Dictionary = {}
 var section_spans: Dictionary = {}
 var sectioned := false
 ## PROP IDS. A generated prop's id is (section << ORDINAL_BITS) | ordinal,

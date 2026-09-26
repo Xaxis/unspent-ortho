@@ -212,26 +212,36 @@ static func _buckets_whole(w: WorldData) -> Array:
 	return [chunks, cables, far]
 
 
+## The view keeps table rows; the reference kept props. Compared as props.
+static func _as_props(w: WorldData, lists: Dictionary) -> Dictionary:
+	var out := {}
+	for key: Vector2i in lists:
+		var props: Array = []
+		for row: int in lists[key]:
+			props.append(w.prop_at(row))
+		out[key] = props
+	return out
+
+
 func test_the_view_bound_a_section_at_a_time_files_what_the_whole_bind_did() -> void:
 	var w := _world()
 	var view := WorldView.new()
 	view.setup(w)
 	var want := _buckets_whole(w)
-	eq(view._props_by_chunk, want[0], "every chunk holds the same props, in the same order")
+	eq(_as_props(w, view._props_by_chunk), want[0], "every chunk holds the same props, in the same order")
 	eq(view._cables_by_chunk, want[1], "every chunk draws the same spans")
-	eq(view._far_props, want[2], "every far block stands the same props")
+	eq(_as_props(w, view._far_props), want[2], "every far block stands the same props")
 	gt(float((want[1] as Dictionary).size()), 0.0, "the world strings a grid (%d chunks of spans)" % (want[1] as Dictionary).size())
 	view.free()
 
 
 func test_a_prop_set_down_later_is_found_in_its_section() -> void:
-	var w := _world()
-	var at := Vector2(300.5, 200.5)
+	# Its own small world: a prop set down stays set down.
+	var w := WorldGen.generate(SEED, 192)
+	var at := Vector2(150.5, 100.5)
 	var before := WorldSections.props_in(w, WorldSections.of(at)).size()
-	var p := WorldProp.new(w.props.size(), PropKind.FIRE, at, 0.0, 1.0)
+	var p := WorldProp.new(w.next_id(), PropKind.FIRE, at, 0.0, 1.0)
 	w.add_prop(p)
 	var got := WorldSections.props_in(w, WorldSections.of(at))
 	eq(got.size(), before + 1, "its section holds one more")
-	check(got.has(p), "and it is the one set down")
-	got.erase(p)
-	w.props.pop_back()
+	check(got.any(func(q: WorldProp) -> bool: return WorldProp.same(q, p)), "and it is the one set down")

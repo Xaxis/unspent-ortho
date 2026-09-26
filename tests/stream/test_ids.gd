@@ -46,17 +46,15 @@ func test_the_ids_a_world_keeps_are_section_ids_too() -> void:
 
 
 func test_a_prop_set_down_later_takes_the_built_range() -> void:
-	var w := _world()
+	# Its own small world: a prop set down stays set down.
+	var w := WorldGen.generate(SEED, 192)
 	var id := w.next_id()
 	check(id & WorldData.BUILT_BIT != 0, "a set-down prop's id is in the built range")
 	var p := WorldProp.new(id, PropKind.FIRE, Vector2(100.5, 100.5), 0.0, 1.0)
 	w.add_prop(p)
-	check(w.prop(id) == p, "and its id finds it")
+	check(WorldProp.same(w.prop(id), p), "and its id finds it")
 	eq(w.id_at(w.position_of(id)), id, "position and id agree")
 	eq(w.next_id(), WorldData.BUILT_BIT | 1, "the next one follows it")
-	w.props.pop_back()
-	var s := WorldSections.props_in(w, WorldSections.of(p.pos))
-	s.erase(p)
 
 
 func test_a_world_built_by_hand_keeps_its_list_positions_as_ids() -> void:

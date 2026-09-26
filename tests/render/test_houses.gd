@@ -560,7 +560,7 @@ func test_a_lit_house_puts_its_glint_on_its_own_tube() -> void:
 	await frames(20)
 	var by_prop := {}
 	for src: Dictionary in lights.get("sources"):
-		by_prop[(src.prop as WorldProp).id] = src
+		by_prop[(lights.call(&"_prop_of", src) as WorldProp).id] = src
 	check(not (by_prop.get(dark.id, {}) as Dictionary).has("neon_at"), "a house with nothing wired in throws no tube light")
 	for p: WorldProp in houses:
 		var src: Dictionary = by_prop.get(p.id, {})

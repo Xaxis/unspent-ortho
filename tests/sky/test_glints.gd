@@ -142,7 +142,7 @@ func test_the_lands_works_and_wired_shacks_give_light_where_their_models_do() ->
 	await frames(20)
 	var by_prop := {}
 	for src: Dictionary in lights.get("sources"):
-		by_prop[(src.prop as WorldProp).id] = src
+		by_prop[(lights.call(&"_prop_of", src) as WorldProp).id] = src
 	check(by_prop.has(shack.id), "a shack with stolen tech is a light")
 	check(not by_prop.has(dark_shack.id), "one with nothing wired in is not")
 	check(by_prop.has(gate.id) and float(by_prop[gate.id].range) > 0.0, "the gate's flood throws a pool")
