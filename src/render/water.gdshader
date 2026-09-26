@@ -169,10 +169,15 @@ void fragment() {
 		// light as the wave breaks and runs up -- a cold blue along the foam line,
 		// brightest at the run-up, in drifts along the coast and not the whole of
 		// it. Only after dark (sky_view.y); by day it is only foam.
-		if (sky_view.y > 0.0 && surf > 0.5 && d < lap + 0.03) {
-			float bloom = smoothstep(0.45, 0.7, ink_vnoise(wp * 0.07 + vec2(TIME * 0.01, 0.0)));
-			float edge = 1.0 - smoothstep(lap - 0.004, lap + 0.03, d);
-			glow = vec3(0.04, 0.5, 1.0) * 5.0 * edge * bloom * (0.35 + 0.65 * s) * sky_view.y
+		// The band is the foam line's own width and never a shelf's: on a long
+		// shallow beach `d` barely moves across tens of tiles, and a band in `d`
+		// alone lit the whole shallows as one neon strip (measured on the glass
+		// desert's shore, the brightest thing in the frame).
+		float band = min(0.02, 3.0 * w);
+		if (sky_view.y > 0.0 && surf > 0.5 && d < lap + band) {
+			float bloom = smoothstep(0.5, 0.72, ink_vnoise(wp * 0.07 + vec2(TIME * 0.01, 0.0)));
+			float edge = 1.0 - smoothstep(lap - 0.004, lap + band, d);
+			glow = vec3(0.04, 0.5, 1.0) * 1.6 * edge * bloom * (0.35 + 0.65 * s) * sky_view.y
 				* (0.6 + 0.4 * ink_hash(floor(px / 2.0) + floor(TIME * 3.0)));
 		}
 		// Wave ticks: short dashes that appear and fade on a slow beat.
