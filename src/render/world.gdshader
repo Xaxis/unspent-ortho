@@ -64,7 +64,7 @@ const float CROWN_SWAY = 0.25;
 // Two things stop this opening holes in the world at large:
 //
 //   THE LAND NEVER OPENS. Only what somebody BUILT is cut: the ground band
-//   40..75, the same discriminator fore.gdshader uses to decide how much wear a
+//   40..77, the same discriminator fore.gdshader uses to decide how much wear a
 //   piece takes. A cliff, a terrace and a bank stay solid, so a player under an
 //   overhang is still under it.
 //
@@ -1302,6 +1302,55 @@ vec3 strata_weather(vec3 c, float dt, vec2 px) {
 	return c;
 }
 
+// CITY_FLOOR: the metropolis' own floor. What a city's ground is after
+// seventy years: poured slabs in bays on the city's own grid (turned, and
+// drawn only where a joint has opened, so it is never a grid laid over the
+// land), with grass up through the joints; the lane paint of a road nobody
+// drives, faded to a few dashes; a crack spidered out from where something
+// heavy came down; oil stains; and drifts of window glass from the towers,
+// glinting (their roughness is taken off in fragment()).
+float city_glass(vec2 wp) {
+	float drift = ink_vnoise(wp * 0.07 + 91.0) * 0.8 + ink_vnoise(wp * 0.3) * 0.2;
+	return smoothstep(0.62, 0.7, drift);
+}
+
+vec3 city_floor(vec3 c, vec3 wp, vec2 px) {
+	vec2 q = mat2(vec2(0.97, 0.26), vec2(-0.26, 0.97)) * wp.xz;
+	vec2 bay = q / vec2(5.0, 3.2);
+	vec2 fq = abs(fract(bay) - 0.5);
+	float joint = min(0.5 - fq.x, (0.5 - fq.y) * 0.64);
+	float opened = ink_vnoise(wp.xz * 0.35 + 5.0);
+	if (joint < 0.05 && opened > 0.4) {
+		c = opened > 0.62 ? mix(c, MOSS2, 0.6) : dn(c, 0.4);
+	}
+	// Each slab a little different: poured on different days.
+	c *= 1.0 + (ink_hash(floor(bay) + 3.0) - 0.5) * 0.08;
+	// Lane paint along the old road, faded, in dashes, broken where worn.
+	float lane = abs(fract(q.y / 7.0) - 0.5) * 7.0;
+	if (lane < 0.08 && fract(q.x / 2.4) < 0.55 && ink_vnoise(wp.xz * 0.5 + 17.0) > 0.35) {
+		c = mix(c, mix(LINEN4, SAND3, 0.3), 0.55);
+	}
+	// A crack spidered out from an impact.
+	float sp = abs(ink_vnoise(wp.xz * 0.6 + 33.0) - 0.5) + abs(ink_vnoise(wp.xz * 1.7 + 41.0) - 0.5) * 0.4;
+	if (sp < 0.018 && ink_vnoise(wp.xz * 0.06 + 7.0) > 0.5) {
+		c = dn(c, 0.55);
+	}
+	// Oil, where vehicles stood.
+	float oil = ink_vnoise(wp.xz * 0.18 + 71.0);
+	if (oil > 0.74) {
+		c = mix(c, INK3, clamp((oil - 0.74) * 3.0, 0.0, 0.4));
+	}
+	// Window glass, in drifts: dark specks, a few bright ones.
+	float g = city_glass(wp.xz);
+	if (g > 0.0) {
+		float h = ink_hash(px + 51.0);
+		if (h > 1.0 - 0.05 * g) {
+			c = h > 1.0 - 0.012 * g ? mix(SLATE2, RIME4, 0.6) : mix(c, SLATE1, 0.4);
+		}
+	}
+	return c;
+}
+
 // Terrace walls: each country's rock, banded by world height. dt: depth below
 // the wall's top (a wall is one level tall).
 vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
@@ -1672,6 +1721,42 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			vec3 lich = rc.z > 0.93 ? mix(SAND3, EMBER4, 0.2) : mix(LINEN2, MOSS3, 0.35);
 			c = mix(c, lich, rc.x > rr * 0.7 ? 0.9 : 0.6);
 		}
+	} else if (id == 17) {
+		// DECK: the broken edge of a cast highway deck, which is what a terrace
+		// in the metropolis is. A slab of grey concrete in its pours, the top a
+		// kerb and a strip of asphalt, spalled where it broke with the aggregate
+		// showing, rebar standing out of the break in rust, a conduit run along
+		// it, and stains bled down from the drains.
+		c = mix(STONE2, mix(STONE2, LINEN2, 0.5), smoothstep(0.3, 0.7, ink_vnoise(vec2(px.x * 0.03, 3.0))));
+		if (fract(y * 4.0 + 0.1) < 0.04) {
+			c = dn(c, 0.18);
+		}
+		if (dt < 0.035) {
+			c = mix(INK3, STONE1, 0.4);
+		} else if (dt < 0.05) {
+			c = up(c, 0.2);
+		}
+		float spall = ink_vnoise(vec2(px.x * 0.06, y * 2.0 + 7.0));
+		if (spall > 0.66 && dt > 0.08) {
+			c = mix(c, mix(STONE1, EARTH2, 0.3), 0.6);
+			if (ink_vnoise(vec2(px.x * 0.9, y * 20.0)) > 0.8) {
+				c = dn(c, 0.3);
+			}
+			// Rebar out of the break: short rusty stubs in a row.
+			if (mod(px.x, 7.0) < 1.0 && abs(fract(y * 4.0) - 0.55) < 0.12) {
+				c = mix(RUST2, RUST3, 0.4);
+			}
+		}
+		// A conduit along the deck's face.
+		float cy = 0.16 + ink_vnoise(vec2(px.x * 0.01, 9.0)) * 0.05;
+		if (abs(dt - cy) < 0.012 && ink_vnoise(vec2(px.x * 0.02, 13.0)) > 0.45) {
+			c = abs(dt - cy) < 0.005 ? mix(SLATE2, STONE2, 0.5) : INK3;
+		}
+		// A drain's stain bled down the face.
+		float drain = ink_vnoise(vec2(px.x * 0.3, 17.0));
+		if (drain > 0.7 && dt < 0.4 * ink_vnoise(vec2(px.x * 0.1, 19.0)) + 0.1) {
+			c = mix(c, mix(RUST1, INK3, 0.5), 0.45 * smoothstep(0.7, 0.85, drain));
+		}
 	}
 	return c;
 }
@@ -1725,7 +1810,7 @@ float crown_cut(vec3 wp, float sway) {
 // INV_VIEW_MATRIX exists only inside the stage function, so a user function
 // cannot see the camera at all (the shader simply refuses to compile).
 float tall_cut(vec3 wp, int m, vec3 camz, vec3 eye, bool persp) {
-	if (m >= 40 && m <= 75) {
+	if (m >= 40 && m <= 77) {
 		return 0.0;
 	}
 	float cut = 0.0;
@@ -1795,7 +1880,7 @@ void fragment() {
 	float cut = max(crown_cut(world_pos, sway_w), tall_cut(world_pos, m1, camz, eye, persp));
 	// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line of
 	// sight to a body, at any height (sight.gdshaderinc). Never the land.
-	if (persp && !(m1 >= 40 && m1 <= 75)) {
+	if (persp && !(m1 >= 40 && m1 <= 77)) {
 		float close = sight_close(eye, crown_clear[0]);
 		if (close > 0.0) {
 			for (int i = 0; i < CROWN_CLEAR; i++) {
@@ -1838,8 +1923,11 @@ void fragment() {
 		float pn = ink_vnoise(world_pos.xz * 0.11) * 0.65 + ink_vnoise(world_pos.xz * 0.37) * 0.35 + rag(world_pos.xz);
 		c *= 1.0 + patchy * (step(0.66, pn) * 0.04 - step(pn, 0.32) * 0.04);
 	}
-	if (m >= 40 && m <= 60) {
+	if ((m >= 40 && m <= 60) || m == 76) {
 		c = ground_mark(m, c, world_pos.xz, px, emit, unh);
+		if (m == 76) {
+			c = city_floor(c, world_pos, px);
+		}
 		if (m == 60) {
 			c = tide_floor(c, world_pos, px);
 		}
@@ -1871,7 +1959,7 @@ void fragment() {
 		if ((m == 55 || m == 57) && c.r >= c.b) {
 			c *= min(1.0, SALT_TOP.r / max(max(c.r, max(c.g, c.b)), 1e-4));
 		}
-	} else if (m > 60 && m <= 75) {
+	} else if (m > 60 && m <= 77) {
 		// A wall's pattern runs ALONG the wall. `px` is the play camera's screen
 		// grid laid on the world, whose x does not change with height: from
 		// above that is invisible, but at eye level every feature keyed on it
@@ -1936,7 +2024,7 @@ void fragment() {
 	// it. Anything STANDING in the land takes it nearly whole, which is the law
 	// in one line: the same house, fence and machine carry the bog on them, or
 	// the flat, or the Burning, and nobody had to author three of each.
-	float takes = (m >= 40 && m <= 75) ? 0.14 : 0.85;
+	float takes = (m >= 40 && m <= 77) ? 0.14 : 0.85;
 	// A face opened a moment ago (GroundColors.FRESH: the cut through a boulder
 	// somebody is quarrying) has had almost nothing settle on it. The wear map
 	// reads the PLACE, not the age, so without this a cut made in a bog rusts as
@@ -1946,6 +2034,10 @@ void fragment() {
 	if (m == 58) { takes = 0.06; }
 	c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, takes * (1.0 - unh), rough_add);
 
+	if (m == 76) {
+		// Window glass lying in drifts on the city floor catches the light.
+		rough_add -= city_glass(world_pos.xz) * 0.35;
+	}
 	if (m == 60) {
 		// Standing water on the drowned floor is a mirror; the silt round it is not.
 		rough_add -= tide_pool(world_pos) * 0.72;

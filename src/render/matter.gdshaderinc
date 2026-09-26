@@ -100,7 +100,7 @@ vec3 matter_cells(vec2 p) {
 // --- What a surface is -----------------------------------------------------
 //
 // Keyed on the ground MARK the vertex stream already carries (GroundColors:
-// 40..60 the grounds, 61..75 cliff strata, 0/255 anything a person made). One
+// 40..60 and 76 the grounds, 61..75 and 77 cliff strata, 0/255 anything a person made). One
 // row per material:
 //   x roughness   0 mirror .. 1 dead matte
 //   y specular    how much light it returns at a glancing angle (Godot's 0..1,
@@ -167,7 +167,12 @@ vec4 matter_of(int m) {
 	else if (m == 74) { r = vec4(0.66, 0.48, 0.045, 0.10); }
 	// STRATA_CRAG: wet gritstone, rough, its blocks rounded (matter_height).
 	else if (m == 75) { r = vec4(0.74, 0.46, 0.080, 0.0); }
-	else if (m >= 61 && m <= 75) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
+	// CITY_FLOOR: worn poured concrete, a little glass in it (the glass is made
+	// shinier where it lies, in world.gdshader).
+	else if (m == 76) { r = vec4(0.80, 0.40, 0.012, 0.0); }
+	// STRATA_DECK: the broken edge of a cast deck.
+	else if (m == 77) { r = vec4(0.78, 0.40, 0.050, 0.0); }
+	else if (m >= 61 && m <= 77) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
 	// --- WHAT A PERSON MADE ---------------------------------------------------
 	// Everything above is GROUND, and until these rows existed every timber post,
 	// thatched roof, canvas awning, concrete slab, glass pane and rope lashing in
@@ -341,7 +346,10 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		vec2 q = vec2(p.x * 1.1 + matter_fbm(p * 0.6) * 1.2, p.y * 0.45);
 		vec3 cd = matter_cells(q);
 		h = smoothstep(0.0, 0.45, cd.y - cd.x) + matter_fbm(p * 5.0) * 0.18;
-	} else if (m == 52 || (m >= 61 && m <= 75)) {
+	} else if (m == 76) {
+		// CITY_FLOOR: the aggregate of a poured slab, fine and shallow.
+		h = matter_fbm(p * 4.0) * 0.7 + matter_fbm(p * 0.7 + 3.0) * 0.3;
+	} else if (m == 52 || (m >= 61 && m <= 77)) {
 		// ROCK and cliff strata: broken blocks and bedding planes.
 		vec3 cd = matter_cells(p * 1.6);
 		h = (cd.y - cd.x) * 0.9 + matter_fbm(p * 0.7) * 0.3;

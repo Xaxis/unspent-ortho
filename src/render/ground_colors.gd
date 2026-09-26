@@ -63,7 +63,8 @@ const TIDEFLAT := 60
 ## ONE default material, so under a single sun only the mesh normal told a roof
 ## from a wall — and the normals are flat facets.
 ##
-## **76..79 ARE DELIBERATELY EMPTY**, between the cliff strata (61..75) and this
+## **78..79 ARE DELIBERATELY EMPTY**, between the land codes (40..77: 76 is a
+## ground and 77 a wall, both past the strata) and this
 ## band, so an off-by-one lands on nothing instead of on a material. 92..95 are
 ## spare. Tag a surface with `GroundColors.made(col, GroundColors.THATCH)`; a
 ## builder that tags nothing still gets the default, which is what every model
@@ -124,6 +125,14 @@ const STRATA_REFUSE := 14
 ## spacing, rounded at every arris, black with the water that runs down it and
 ## crusted with pale lichen (75).
 const STRATA_CRAG := 15
+## The metropolis' walls: the broken edge of a cast deck -- a slab with its
+## rebar out, a conduit run through it, spalled where it broke (77).
+const STRATA_DECK := 17
+## THE CITY'S FLOOR, a GROUND drawn with the grounds although its number sits
+## past the strata (the ground numbers ran out at 60): poured slabs in bays,
+## their joints grown through, faded lane paint, spidered cracks and drifts of
+## window glass (76). It is FLOOR in the metropolis (`BiomeDef.ground_marks`).
+const CITY_FLOOR := 76
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array

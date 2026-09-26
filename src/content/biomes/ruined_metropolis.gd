@@ -45,7 +45,9 @@ static func make() -> BiomeDef:
 	d.reach_in_low = Vector3(5.0, 0.08, 0.32)
 	d.hatch = Ink.NONE
 	d.grounds = {
-		Ground.FLOOR: P.ASH[3].lerp(P.STONE[3], 0.45),
+		# Poured concrete seventy years under the weather: grey, not pale. At
+		# ASH[3] it came back as snow at eye level.
+		Ground.FLOOR: P.ASH[2].lerp(P.STONE[2], 0.5),
 		Ground.ROAD: P.ASH[2].lerp(P.SLATE[2], 0.35),
 		Ground.GRAVEL: P.STONE[3].lerp(P.ASH[3], 0.5),
 		Ground.SCREE: P.ASH[2].lerp(P.STONE[2], 0.45),
@@ -60,12 +62,21 @@ static func make() -> BiomeDef:
 	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
 		d.grounds[g] = d.grounds[Ground.GRAVEL]
 	d.cliff_wash = P.ASH[2].lerp(P.SLATE[2], 0.4)
-	d.strata = GroundColors.STRATA_SCRAP
+	# ITS OWN FLOOR AND WALLS, and LOOK only (no seed moves): the floor is a city's
+	# (GroundColors.CITY_FLOOR) and every terrace is the broken edge of a deck
+	# (STRATA_DECK). It was a pale wash over the scrapwood's bank of made ground.
+	d.ground_marks = {Ground.FLOOR: GroundColors.CITY_FLOOR}
+	d.strata = GroundColors.STRATA_DECK
 	d.plain_ground = Ground.FLOOR
 	d.bank_ground = Ground.GRAVEL
 	d.pool_rim_ground = Ground.GRAVEL
 	d.village_ground = Ground.FLOOR
-	d.decor = {Ground.GRASS: [0.5, Decor.TUFT, 18, Decor.SCRAP, 14]}
+	d.decor = {
+		Ground.GRASS: [0.5, Decor.TUFT, 18, Decor.SCRAP, 14],
+		# What a dead city sheds on its floor: cast stone with its rebar out,
+		# glass, cans, a tuft up through a crack.
+		Ground.FLOOR: [0.35, Decor.REBAR, 10, Decor.SEA_GLASS, 10, Decor.CAN, 6, Decor.SCRAP, 8, Decor.TUFT, 6],
+	}
 	d.grass_colors = [P.MOSS[2], P.ASH[3]]
 	d.rock_color = P.SLATE[3]
 	d.decor_tints = {&"fronds": [P.MOSS[2], P.ASH[2], P.STONE[2]]}
