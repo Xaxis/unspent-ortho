@@ -1325,7 +1325,23 @@ const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:sid
 func tour_place(what: String) -> Vector2:
 	var th := _tour_thing(what)
 	if not th.is_empty():
-		return (th.at as Vector2) + (th.face as Vector2) * (-1.0 if what.begins_with("behind:") else 0.9)
+		var f: Vector2 = th.face
+		if what.begins_with("behind:"):
+			return (th.at as Vector2) - f * 1.0
+		# A step out from it and along its wall, facing the wall: from over the
+		# shoulder a thing squarely in front of the player at arm's length is
+		# covered by their own back (maintenance.tour frame 05), and a little to
+		# one side it still is from the other shoulder. `STAND_ASIDE` along, it
+		# clears the body from either (the eye's line crosses the player's plane
+		# at about half the eye's offset from the thing).
+		# Whichever way along the wall keeps the player on the room's floor with
+		# a body's room round them, and nearer in where neither does.
+		var out := (th.at as Vector2) + f * 1.0
+		for aside: float in [STAND_ASIDE, -STAND_ASIDE, STAND_ASIDE * 0.6, -STAND_ASIDE * 0.6]:
+			var p := out + Vector2(-f.y, f.x) * aside
+			if _roomy(p):
+				return p
+		return out
 	if what == "strongbox":
 		var box := _first_box()
 		return (box.at as Vector2) + (box.face as Vector2) * 0.8 if not box.is_empty() else Vector2.INF
@@ -1354,6 +1370,20 @@ func tour_face(what: String) -> float:
 ## front of and faced (a tenement's turnstile at the foot of its stair); `near
 ## behind:KIND`, a tile behind it, along it (a foundry's cooling racks). Empty
 ## outside a room, or in one without it.
+const STAND_ASIDE := 1.3
+
+
+## Whether a body can stand at `p` in the room: floor under it and a wall's
+## thickness and a body's width of floor round it.
+func _roomy(p: Vector2) -> bool:
+	var l := pocket.layout
+	for d: Vector2 in [Vector2.ZERO, Vector2(0.45, 0), Vector2(-0.45, 0), Vector2(0, 0.45), Vector2(0, -0.45)]:
+		var q := p + d
+		if not l.is_floor(floori(q.x), floori(q.y)):
+			return false
+	return true
+
+
 func _tour_thing(what: String) -> Dictionary:
 	if pocket == null or not (what.begins_with("thing:") or what.begins_with("behind:")):
 		return {}
