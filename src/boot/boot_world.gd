@@ -54,7 +54,7 @@ static func offer(w: WorldData, v: WorldView = null) -> void:
 	_view = v
 	_mutex.unlock()
 	if old != null and old != v and not old.is_inside_tree():
-		old.free()
+		WorldView.dispose(old)
 
 
 ## True while a world is on offer (tests, the page).

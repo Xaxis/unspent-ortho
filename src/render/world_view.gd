@@ -989,8 +989,14 @@ func _far_worker(slot: int, key: Vector2i) -> void:
 ## up by `_process` when it is put back. Waited for at the exit instead, a door
 ## stood for 4.6 s behind the far rings under load, measured.
 func _notification(what: int) -> void:
-	if what != NOTIFICATION_PREDELETE:
-		return
+	if what == NOTIFICATION_PREDELETE:
+		finish_tasks()
+
+
+## Wait for every task in flight on the workers. A task runs a method of this
+## view, and the view is LOCKED while it runs: `free()` refuses a locked object
+## before predelete could wait, so a view is freed through `dispose`.
+func finish_tasks() -> void:
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
@@ -1001,6 +1007,15 @@ func _notification(what: int) -> void:
 		if _far_tasks[i] >= 0:
 			WorkerThreadPool.wait_for_task_completion(_far_tasks[i])
 			_far_tasks[i] = -1
+
+
+## Free a view that is out of the tree, its workers finished first so it is not
+## locked. Static: a method of the view freeing it would itself hold the lock.
+static func dispose(v: WorldView) -> void:
+	if v == null or not is_instance_valid(v):
+		return
+	v.finish_tasks()
+	v.free()
 
 
 func _build_worker(key: Vector2i, props: Array, spans: Array) -> void:
