@@ -9,9 +9,9 @@ extends TestCase
 const Sx := preload("res://tests/save/save_fixture.gd")
 
 
-func _game() -> Game:
+func _game(size: int = 64) -> Game:
 	Sx.use_root("bag-heap")
-	return Sx.game(tree, ["--seed=1", "--size=64", "--hour=11", "--give=knife:1,driftwood:6,stone:4,lamp:1,oil:2,kit_rig:1", "--held=knife"])
+	return Sx.game(tree, ["--seed=1", "--size=%d" % size, "--hour=11", "--give=knife:1,driftwood:6,stone:4,lamp:1,oil:2,kit_rig:1", "--held=knife"])
 
 
 ## A bad end, as 40_fight has it: the fight's outcome for the player carried off.
@@ -101,6 +101,57 @@ func test_a_save_keeps_the_heap_and_what_is_on_it() -> void:
 		eq(int((s2.left[id2] as Dictionary).get(&"driftwood", 0)), 6, "with the driftwood on it")
 	Sx.end(b)
 	Sx.finish()
+
+
+## YOUR HOLDING IS WHERE YOU COME BACK TO (SETTLE.md S1). Carried off within
+## Outcomes.CARRIED_HOME of a holding with a hearth standing, the player wakes
+## beside that hearth instead of at a rock face; the bag still lies where they
+## were taken. With no holding near, it is the rock face as before.
+func test_carried_off_near_your_holding_you_wake_at_its_hearth() -> void:
+	var g := _game()
+	var set := Sx.system(g, "46_settlements")
+	var taken_at := g.player.pos
+	var spot := _dry_ground(g, taken_at, 14.0)
+	var home: Settlement = set.call("found", set.call("realm_here"), spot)
+	var hearth: Structure = set.call("place_piece", home, StructureKind.HEARTH, spot)
+	_carried_off(g)
+	lt(g.player.pos.distance_to(hearth.pos), 2.0, "woke beside the hearth (%.1f tiles off)" % g.player.pos.distance_to(hearth.pos))
+	var state := SurvivalState.of(g)
+	eq(state.bags.size(), 1, "and the bag lies")
+	if state.bags.size() == 1:
+		lt(g.world.props[state.bags.keys()[0]].pos.distance_to(taken_at), 1.6, "where they were taken")
+	Sx.end(g)
+	Sx.finish()
+
+
+func test_a_holding_too_far_off_is_not_where_you_wake() -> void:
+	var g := _game(256)
+	var set := Sx.system(g, "46_settlements")
+	var far := _dry_ground(g, g.player.pos, Outcomes.CARRIED_HOME + 10.0)
+	gt(far.distance_to(g.player.pos), Outcomes.CARRIED_HOME, "there is dry ground past reach to build on")
+	var home: Settlement = set.call("found", set.call("realm_here"), far)
+	var hearth: Structure = set.call("place_piece", home, StructureKind.HEARTH, far)
+	_carried_off(g)
+	gt(g.player.pos.distance_to(hearth.pos), 3.0, "a holding past reach does not take you home")
+	Sx.end(g)
+	Sx.finish()
+
+
+## Dry, standable ground about `d` tiles from `from`, round the compass: a
+## holding is never built in the shallows.
+func _dry_ground(g: Game, from: Vector2, d: float) -> Vector2:
+	for i in 32:
+		var p := from + Vector2.from_angle(TAU * i / 32.0) * d
+		var t := Vector2i(floori(p.x), floori(p.y))
+		var ok := true
+		for dy in range(-2, 3):
+			for dx in range(-2, 3):
+				if not g.world.in_bounds(t.x + dx, t.y + dy) or not g.query.standable(t.x + dx, t.y + dy) \
+						or Ground.is_water(g.world.ground_at(t.x + dx, t.y + dy)):
+					ok = false
+		if ok:
+			return p
+	return from
 
 
 ## Put down or carried off, the network where it happened files it: the price of

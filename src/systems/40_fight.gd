@@ -577,6 +577,11 @@ func _on_outcome(e: Dictionary) -> void:
 			var taken_at := hero.pos
 			var r := Outcomes.carried(game.body, game.inventory, game.clock, game.world, game.query, hero.pos)
 			var bag := Survival.leave_bag(game, taken_at)
+			var home := Outcomes.home_hearth(_holdings(), taken_at, game.world, game.query)
+			if not home.is_empty():
+				r.pos = home.pos
+				r.facing = home.facing
+				r.line = HOME_LINE
 			hero.pos = r.pos
 			hero.facing = r.facing
 			hero.throw_until = 0.0
@@ -616,6 +621,18 @@ func _last_bag() -> WorldProp:
 		if best < 0 or float(state.bags[id]) >= float(state.bags[best]):
 			best = id
 	return game.world.props[best] if best >= 0 else null
+
+
+const HOME_LINE := "You wake by your own fire, hands raw. The lamp is out."
+
+
+## The player's holdings in the realm they are in, from whichever system keeps
+## them (46_settlements), found by its `places` rather than its name.
+func _holdings() -> Array:
+	for sys in game.systems:
+		if sys.get(&"places") is Array and sys.has_method(&"realm_here") and sys.has_method(&"all"):
+			return sys.call(&"all", sys.call(&"realm_here"))
+	return []
 
 
 ## Moved while the hours went by: the player, the land about them and the camera all at once.

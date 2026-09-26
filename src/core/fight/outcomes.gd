@@ -4,7 +4,8 @@ class_name Outcomes
 ##   downed   +180 minutes (and the threat's own toll) where you fell; wake hurt at 3
 ##   carried  +480 minutes, a shift of work: wake at the nearest rock face within
 ##            300 tiles, facing it, lamp burnt out, hurt; and the bag stays where
-##            you were taken (Survival.leave_bag, which 40_fight calls)
+##            you were taken (Survival.leave_bag, which 40_fight calls); near a
+##            holding of your own, you wake at its hearth (home_hearth)
 
 const ORE := [PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE]
 const ROCK := [PropKind.BOULDER, PropKind.CLINTS, PropKind.STANDING_STONE]
@@ -15,6 +16,9 @@ const BESIDE_TRIES := 12
 
 ## Tiles searched out from the track for somewhere to be stood after an arrest.
 const OFF_TRACK_RANGE := 8
+## Tiles within which a holding with its hearth standing is where a carried
+## player wakes (SETTLE.md S1).
+const CARRIED_HOME := 60.0
 
 const DOWNED_LINE := "You come to where you fell. Hours have gone."
 const CARRIED_LINE := "You wake at a rock face, hands raw, far from where you were. The lamp is out."
@@ -48,6 +52,33 @@ static func carried(body: Body, inv: Inventory, clock: WorldClock, world: WorldD
 		result.facing = spot.facing
 		result.moved = true
 	return result
+
+
+## YOUR HOLDING IS WHERE YOU COME BACK TO. The standing hearth of the nearest
+## holding in `places` within CARRIED_HOME of `from`, and a place to wake
+## beside it facing it: {pos, facing} or {} (then the rock face, as ever).
+static func home_hearth(places: Array, from: Vector2, world: WorldData, query: WorldQuery) -> Dictionary:
+	var best: Structure = null
+	var best_d := CARRIED_HOME
+	for s: Settlement in places:
+		for p: Structure in s.structures_of(StructureKind.HEARTH):
+			if not p.standing():
+				continue
+			var d := p.pos.distance_to(from)
+			if d <= best_d:
+				best_d = d
+				best = p
+	if best == null:
+		return {}
+	# South-east of it first, as at a rock face: the fire is seen past the player.
+	for d: Vector2 in [Vector2(1, 1), Vector2(0, 1), Vector2(1, 0), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, 0), Vector2(0, -1), Vector2(-1, -1)]:
+		var at := best.pos + d.normalized() * 1.1
+		var tx := floori(at.x)
+		var ty := floori(at.y)
+		if query != null and (not query.standable(tx, ty) or Ground.is_water(world.ground_at(tx, ty))):
+			continue
+		return {"pos": at, "facing": (best.pos - at).angle()}
+	return {}
 
 
 ## Where a warden leaves the player it arrested: the nearest ground beside the
