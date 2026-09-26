@@ -41,7 +41,7 @@ func _reached(reach: Dictionary, at: Vector2) -> bool:
 func test_every_grey_orchards_house_opens_on_a_laid_table() -> void:
 	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
 	var houses := 0
-	for p: WorldProp in w.props:
+	for p: WorldProp in w.each_prop():
 		if p.kind != PropKind.HOUSE:
 			continue
 		var d := BiomeRegistry.by_index(w.country_at(floori(p.pos.x), floori(p.pos.y)))

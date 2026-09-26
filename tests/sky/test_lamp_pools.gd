@@ -57,8 +57,8 @@ func test_lamps_hand_their_pools_to_the_ink_at_night_only() -> void:
 
 	# A lamp two tiles from the player, placed after the world was indexed.
 	var at := g.player.pos + Vector2(2, 0)
-	var lamp := WorldProp.new(g.world.props.size(), PropKind.LAMP, at, 0.0, 1.0)
-	g.world.props.append(lamp)
+	var lamp := WorldProp.new(g.world.next_id(), PropKind.LAMP, at, 0.0, 1.0)
+	g.world.add_prop(lamp)
 	await frames(20)
 	var found := false
 	for p: Vector4 in g.sky.lamps:

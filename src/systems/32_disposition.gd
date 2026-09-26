@@ -77,6 +77,7 @@ func setup(g: Game) -> void:
 	super.setup(g)
 	sim = g.player.sim
 	Events.killed.connect(_on_killed)
+	Events.fight_ended.connect(_on_fight_ended)
 	Events.took.connect(_on_took)
 	Events.made.connect(_on_made)
 	Events.hit.connect(_on_hit)
@@ -313,6 +314,13 @@ func _on_killed(kind: StringName, at: Vector3) -> void:
 	if s != null and s.sent:
 		return
 	raise(&"killed_worker" if Roles.of(kind) == Roles.WORKER else &"killed_machine", p)
+
+
+## Put down or carried off: the network where it happened files it (Interference
+## `downed`). Emitted before a carry moves the player, so this is where it was.
+func _on_fight_ended(outcome: StringName) -> void:
+	if outcome == &"downed" or outcome == &"carried":
+		raise(&"downed", sim.hero.pos)
 
 
 ## The body that just went down at `p`, while the simulation still holds it.

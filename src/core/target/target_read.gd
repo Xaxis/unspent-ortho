@@ -194,6 +194,10 @@ static func powers(m: MobState) -> PackedStringArray:
 			out.append("comes to take and go")
 		"errand":
 			out.append("keeps to its round")
+		"throw":
+			out.append("throws down a lane")
+		"drop":
+			out.append("drops on you from above")
 	var hits: Dictionary = row.get("hits", {})
 	if bool(hits.get("files", false)):
 		out.append("files you with the plan")

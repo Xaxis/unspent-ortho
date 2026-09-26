@@ -24,6 +24,12 @@ extends GameSystem
 ##                          turned away from the lip (or to DEG), so the landing is
 ##                          at its back; fails when that jump is no drop (the drop
 ##                          strike, FightSim.drop_strike)
+##   over KIND              after `ledge down`: the other way round. The roster body
+##                          takes the player's place on the lip, facing out over the
+##                          drop, and the player goes down onto the low ground past
+##                          where the jump lands, facing back up at it; fails when
+##                          the drop is less than a ledge a blow cannot cross
+##                          (FightRules.LEDGE_LEVELS: the dropper, Brains `drop`)
 ##   wound KIND SHARE       the nearest live body of that roster kind drops to SHARE of
 ##                          its health (never raises it), so a tour can be at a phase a
 ##                          boss reaches by damage without feeding a scripted player to
@@ -468,6 +474,8 @@ func _run() -> void:
 				ok = await _spawn(parts[1])
 			"under":
 				ok = await _spawn_under(parts[1])
+			"over":
+				ok = await _spawn_over(parts[1])
 			"wound":
 				ok = _wound(parts[1], parts[2].to_float() if parts.size() > 2 else 0.5)
 			"choose":
@@ -1158,6 +1166,53 @@ func _spawn_under(token: String) -> bool:
 	for i in 3:
 		await get_tree().process_frame
 	print("tour under %s: at %s, landing %s, %d levels down" % [token, at, plan.to, plan.from_level - plan.to_level])
+	return true
+
+
+## `over`: a body on the lip over a drop and the player below it (see the header).
+func _spawn_over(token: String) -> bool:
+	var lip := game.player.pos
+	var dir := Vector2.from_angle(game.player.facing)
+	var plan := Jump.plan(game.world, game.query, lip, dir, Jump.CARRY)
+	if plan.kind != Jump.DOWN or plan.from_level - plan.to_level < FightRules.LEDGE_LEVELS:
+		printerr("tour %s: the jump faced from %s is a %s of %d levels, not a ledge to drop from" % [_name, lip, plan.kind, plan.from_level - plan.to_level])
+		return false
+	# A step or so on past where the jump lands if the low ground runs on, else
+	# where it lands: a shelf is seldom wider than that.
+	var below := Vector2.INF
+	for i in 14:
+		var turn := float((i + 1) / 2) * (0.35 if i % 2 == 1 else -0.35)
+		var p := plan.to + dir.rotated(turn) * 1.5 if i < 13 else plan.to
+		if game.query.standable(floori(p.x), floori(p.y)) and game.world.level_at(floori(p.x), floori(p.y)) == plan.to_level \
+				and not Swim.deep(game.world, p):
+			below = p
+			break
+	if below == Vector2.INF:
+		printerr("tour %s: no low ground past the landing at %s" % [_name, plan.to])
+		return false
+	var staged := Spawner.staged(token)
+	var id: StringName = staged.id
+	if id == &"":
+		printerr("tour %s: the roster has no %s" % [_name, token])
+		return false
+	var mobs := _system("30_mobs")
+	var m := mobs.call("place_near_player", id, dir.angle()) as MobState if mobs != null else null
+	if m == null:
+		printerr("tour %s: nothing placed a %s near %s" % [_name, token, lip])
+		return false
+	m.pos = lip
+	m.home = lip
+	m.line_a = lip
+	m.line_b = lip
+	m.facing = dir.angle()
+	m.aim = m.facing
+	_teleport(below)
+	game.player.facing = (lip - below).angle()
+	if game.player.hero != null:
+		game.player.hero.facing = game.player.facing
+	for i in 3:
+		await get_tree().process_frame
+	print("tour over %s: on the lip at %s, the player below at %s, %d levels down" % [token, lip, below, plan.from_level - plan.to_level])
 	return true
 
 

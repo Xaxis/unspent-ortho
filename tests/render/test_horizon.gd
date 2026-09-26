@@ -65,7 +65,7 @@ func test_a_far_ridge_keeps_its_height() -> void:
 func test_a_far_tree_stands_up_off_the_land() -> void:
 	var w := _ridge()
 	var p := WorldProp.new(0, PropKind.PINE, Vector2(20.5, 20.5), 0.0, 1.0)
-	w.props.append(p)
+	w.add_prop(p)
 	eq(Far.stand_arrays(w, []).size(), 0, "nothing standing, nothing drawn")
 	var levels: Array = Far.stand_arrays(w, [p])
 	eq(levels.size(), Far.LEVELS.size(), "one set of far models per far level")
@@ -136,7 +136,7 @@ func test_the_far_world_stands_down_only_under_near_chunks() -> void:
 ## player can look out (`stands_early`), builds its far land and stops.
 func test_silhouettes_wait_for_the_horizon() -> void:
 	var w := _ridge()
-	w.props.append(WorldProp.new(0, PropKind.PINE, Vector2(20.5, 20.5), 0.0, 1.0))
+	w.add_prop(WorldProp.new(0, PropKind.PINE, Vector2(20.5, 20.5), 0.0, 1.0))
 	# The view asks the viewport's CURRENT camera whether the horizon shows, so
 	# this stands its own top-down one: a perspective camera another test left
 	# current would answer yes and build the silhouettes before the claim.
@@ -273,7 +273,7 @@ func test_the_light_at_eye_level_is_the_drawn_sun() -> void:
 ## horizon ever in sight.
 func test_silhouettes_come_in_before_the_first_look() -> void:
 	var w := _ridge()
-	w.props.append(WorldProp.new(0, PropKind.PINE, Vector2(20.5, 20.5), 0.0, 1.0))
+	w.add_prop(WorldProp.new(0, PropKind.PINE, Vector2(20.5, 20.5), 0.0, 1.0))
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	cam.rotation = Vector3(deg_to_rad(-CameraRig.PITCH_DEG), 0.0, 0.0)

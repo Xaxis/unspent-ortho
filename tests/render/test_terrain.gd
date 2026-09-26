@@ -179,7 +179,7 @@ func test_transitions_draw_the_generated_band_and_give_the_sea_its_shore() -> vo
 	var c := PackedByteArray()
 	var c2 := PackedByteArray()
 	var b := PackedFloat32Array()
-	t.fill(0, 0, 64, 64, c, c2, b)
+	t.fill(0, 0, 64, 64, c, c2, b, TileWindow.of(w, -Transitions.WINDOW, -Transitions.WINDOW, 64 + Transitions.WINDOW, 64 + Transitions.WINDOW))
 	near(b[32 * 64 + 39], Transitions.reach(w.blend[32 * 64 + 39], Transitions.GEN_FLOOR), 1e-5, "the band is the generated blend, pulled in")
 	gt(b[32 * 64 + 39], 0.4, "blend at the coast/pinewood border")
 	eq(b[32 * 64 + 12], 0.0, "a heartland is its country alone")

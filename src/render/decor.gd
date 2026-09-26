@@ -43,13 +43,16 @@ enum {
 	# What the flood left on the drowned city's floor when it went down: a shoe,
 	# a child's toy boat, a bottle, each silted and weeded where it came to rest.
 	DROWNED_LITTER,
+	# A flat slab in the crags with rings and a cup pecked into it by hand, older
+	# than anything anybody here remembers.
+	CUP_RING,
 	# A landscape's own grasses: the first, second and third of its
 	# `BiomeDef.grasses` (GrassSpecies), laid through its own d.decor.
 	GRASS_A, GRASS_B, GRASS_C,
 }
 ## The enum above, counted. Adding a kind and forgetting this reads off the end
 ## of `_SPECK` on the first chunk built, so a test asserts the two agree.
-const KINDS := 46
+const KINDS := 47
 ## Litter by kind of work (WorksMap channel): cut, scorch, quarry, bores.
 const WORKS_LITTER: Array = [[SCRAP, BOLT, WIRE], [SCRAP, CINDER, CAN], [SPOIL, BOLT, STONE], [SPOIL, BOLT, SCRAP]]
 ## Share of a tile's items that are litter outside any work, and inside one.
@@ -920,6 +923,31 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 				k.made.pop()
 				k.clump(0.03, -0.02, 0.05, 0.07, 0.03, s, P.EARTH[2].lerp(P.SPRUCE[2], 0.45), 5)
 				k.limb(Vector3(0.1, 0.01, -0.02), Vector3(-0.02, 0.015, -0.06), 0.006, 0.003, 3, weed)
+			k.still()
+		CUP_RING:
+			# A low slab, and on its top the carving: a cup in the middle and two
+			# or three rings round it, pecked, with a channel running out through
+			# them. Flat to the sky, so it reads from above and at a low sun.
+			var slab := P.SLATE[3].lerp(P.STONE[3], 0.35)
+			var cut := GroundColors.down(slab, 0.35)
+			k.stone(0, -0.05, 0, 0.26, 0.09, s, slab, 7, 0.0, GroundColors.up(slab, 0.08))
+			var top := 0.042
+			var rings := 2 + stage % 2
+			for ri in rings:
+				var r := 0.05 + float(ri) * 0.05
+				var segs := 14
+				for si in segs:
+					if ri == rings - 1 and si == 3:
+						continue
+					var a0 := float(si) / segs * TAU
+					var a1 := float(si + 1) / segs * TAU
+					var p0 := Vector3(cos(a0) * r, top, sin(a0) * r)
+					var p1 := Vector3(cos(a1) * r, top, sin(a1) * r)
+					var o := Vector3(cos(a0), 0, sin(a0)) * 0.01
+					k.made.quad(p0 - o, p1 - o * 0.9, p1 + o * 0.9, p0 + o, cut)
+			k.fleck(Vector3(-0.02, top + 0.001, -0.02), Vector3(0.02, top + 0.001, -0.02), Vector3(0.0, top + 0.001, 0.025), cut)
+			k.made.quad(Vector3(0.0, top, -0.006), Vector3(0.0, top, 0.006), Vector3(0.22, top - 0.01, 0.01), Vector3(0.22, top - 0.01, -0.01), cut)
+			k.fleck(Vector3(-0.15, top, 0.08), Vector3(-0.08, top, 0.16), Vector3(-0.18, top - 0.005, 0.15), P.LINEN[3].lerp(P.MOSS[3], 0.35))
 			k.still()
 		CROTTLE:
 			k.stone(0, -0.02, 0, 0.1, 0.09, s, P.SLATE[2], 5)

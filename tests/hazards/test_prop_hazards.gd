@@ -229,17 +229,17 @@ func test_the_system_hands_felt_the_things_near_the_body_and_a_taken_one_presses
 	var vent := Survival.add_prop(game, PropKind.VENT, pos)
 	var p: Hazards.Place = sys.call("place")
 	eq(p.pos, game.player.pos, "the place knows where the body stands")
-	check(p.near_props.has(vent), "the vent beside the body is on the place")
+	check(p.near_props.any(func(q: WorldProp) -> bool: return WorldProp.same(q, vent)), "the vent beside the body is on the place")
 	sys.call("_sweep", 1.0)
 	gt(float(game.body.pressure.get(&"fumes", 0.0)), before, "and the body breathes it")
 	check(sys.call("tour_seen", &"fumes"), "a tour asking `fumes` is answered beside it")
 	var far := Survival.add_prop(game, PropKind.VENT, pos + Vector2(10.0, 0.0))
 	p = sys.call("place")
-	check(not p.near_props.has(far), "a vent ten tiles off is not even looked at")
+	check(not p.near_props.any(func(q: WorldProp) -> bool: return WorldProp.same(q, far)), "a vent ten tiles off is not even looked at")
 	# (b) Taken, it presses nothing: the filter is the system's, at the index.
 	game.world.depleted[vent.id] = INF
 	p = sys.call("place")
-	check(not p.near_props.has(vent), "a depleted vent is not on the place")
+	check(not p.near_props.any(func(q: WorldProp) -> bool: return WorldProp.same(q, vent)), "a depleted vent is not on the place")
 	sys.call("_sweep", 1.0)
 	near(float(game.body.pressure.get(&"fumes", 0.0)), before, 1e-5, "and adds nothing")
 	# The cost, stated in 52_hazards' own comment: a 9x9 block of cell lookups

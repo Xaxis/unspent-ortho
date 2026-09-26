@@ -544,9 +544,9 @@ func test_a_lit_house_puts_its_glint_on_its_own_tube() -> void:
 		check(off.is_finite(), "house %d has ground of its own landscape to stand on" % i)
 		if not off.is_finite():
 			continue
-		var p := WorldProp.new(g.world.props.size(), PropKind.HOUSE, g.player.pos + off, 0.0, 1.0)
+		var p := WorldProp.new(g.world.next_id(), PropKind.HOUSE, g.player.pos + off, 0.0, 1.0)
 		p.variant = lit[i]
-		g.world.props.append(p)
+		g.world.add_prop(p)
 		houses.append(p)
 	var unlit := -1
 	for v in forms.stock.size():
@@ -554,13 +554,13 @@ func test_a_lit_house_puts_its_glint_on_its_own_tube() -> void:
 			unlit = v
 			break
 	check(unlit >= 0, "and something unlit, to prove the light is the tube's")
-	var dark := WorldProp.new(g.world.props.size(), PropKind.HOUSE, g.player.pos + Vector2(-3.0, 1.0), 0.0, 1.0)
+	var dark := WorldProp.new(g.world.next_id(), PropKind.HOUSE, g.player.pos + Vector2(-3.0, 1.0), 0.0, 1.0)
 	dark.variant = unlit
-	g.world.props.append(dark)
+	g.world.add_prop(dark)
 	await frames(20)
 	var by_prop := {}
 	for src: Dictionary in lights.get("sources"):
-		by_prop[(src.prop as WorldProp).id] = src
+		by_prop[(lights.call(&"_prop_of", src) as WorldProp).id] = src
 	check(not (by_prop.get(dark.id, {}) as Dictionary).has("neon_at"), "a house with nothing wired in throws no tube light")
 	for p: WorldProp in houses:
 		var src: Dictionary = by_prop.get(p.id, {})
@@ -632,7 +632,7 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 			# is anybody's: it may block a form, never stand in a pair.
 			var mine: Array[WorldProp] = []
 			var shared: Array[WorldProp] = []
-			for p: WorldProp in w.props:
+			for p: WorldProp in w.each_prop():
 				if p.kind != PropKind.HOUSE or p.pos.distance_to(vp) > w.village_reach(v) + 2.0:
 					continue
 				var owned := 1
@@ -656,7 +656,7 @@ func test_a_village_deals_every_house_a_different_model() -> void:
 				var before_v: Array[int] = []
 				var before_at: Array[Vector2] = []
 				for q: WorldProp in mine:
-					if q != p and q.pos.distance_squared_to(vp) <= p.pos.distance_squared_to(vp) + 0.001:
+					if not WorldProp.same(q, p) and q.pos.distance_squared_to(vp) <= p.pos.distance_squared_to(vp) + 0.001:
 						before_v.append(PropModels.variant_of(q, w.seed_value, here))
 						before_at.append(q.pos)
 				var blocking_v := before_v.duplicate()
@@ -780,7 +780,7 @@ func test_the_canon_stands_where_a_tube_burns() -> void:
 			at = m.pos
 	check(at.x >= 0.0, "seed 7 recorded a shack with stolen light")
 	var tubes := 0
-	for p: WorldProp in w.props:
+	for p: WorldProp in w.each_prop():
 		if p.kind != PropKind.SHACK or p.pos.distance_to(at) > 0.01:
 			continue
 		var country := maxi(Country.COAST, w.country_at(floori(p.pos.x), floori(p.pos.y)))

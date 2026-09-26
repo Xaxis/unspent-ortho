@@ -50,7 +50,7 @@ func _save(w: WorldData, layer: String, out: String) -> void:
 		for x in w.size:
 			img.set_pixel(x, y, _pixel(w, mesher, layer, x, y))
 	if layer == "props":
-		for p in w.props:
+		for p in w.each_prop():
 			img.set_pixel(clampi(floori(p.pos.x), 0, w.size - 1), clampi(floori(p.pos.y), 0, w.size - 1), _prop_color(p.kind))
 	var scale := 3 if w.size <= 256 else 2
 	img.resize(w.size * scale, w.size * scale, Image.INTERPOLATE_NEAREST)
@@ -58,7 +58,7 @@ func _save(w: WorldData, layer: String, out: String) -> void:
 		var ids: PackedInt32Array = line.props
 		var col := Palette.FOUND[4] if line.kind == PropKind.PYLON else Palette.PLATE[4]
 		for j in ids.size() - 1:
-			_segment(img, w.props[ids[j]].pos * scale, w.props[ids[j + 1]].pos * scale, col)
+			_segment(img, w.prop_at(ids[j]).pos * scale, w.prop_at(ids[j + 1]).pos * scale, col)
 	for m in w.landmarks:
 		var p: Vector2 = m.pos * scale
 		if m.kind == &"falls" or m.kind == &"bridge":
@@ -117,7 +117,7 @@ func _report(w: WorldData, gen_ms: int) -> void:
 		print("landmarks %-13s %3d  %s%s" % [kind, at.size(), "  ".join(PackedStringArray(at.slice(0, 8))), "  ..." if at.size() > 8 else ""])
 	var r := GenPlaces.river_sample(w)
 	var cl := GenPlaces.cliff_sample(w)
-	print("places river at %d,%d  cliff at %d,%d  rivers %d  roads %d  lines %d  props %d" % [r.x, r.y, cl.x, cl.y, w.rivers.size(), w.roads.size(), w.lines.size(), w.props.size()])
+	print("places river at %d,%d  cliff at %d,%d  rivers %d  roads %d  lines %d  props %d" % [r.x, r.y, cl.x, cl.y, w.rivers.size(), w.roads.size(), w.lines.size(), w.prop_count()])
 	var timing := ""
 	for k: StringName in WorldGen.last_timings:
 		timing += "%s %.0f  " % [k, WorldGen.last_timings[k]]

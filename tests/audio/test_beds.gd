@@ -117,7 +117,7 @@ func test_the_works_around_the_listener_are_found_by_name() -> void:
 	var id := 800000
 	for spec: Array in [[PropKind.PYLON, Vector2(6, 0)], [PropKind.WRECK, Vector2(3, 2)], [PropKind.HOUSE, Vector2(-9, 0)], [PropKind.PINE, Vector2(0, 4)], [PropKind.PINE, Vector2(1, 5)]]:
 		var prop := WorldProp.new(id, spec[0], at + spec[1], 0.0, 1.0)
-		w.props.append(prop)
+		w.add_prop(prop)
 		q.add_prop(prop)
 		id += 1
 	var some := SoundMix.works_near(q, at)
@@ -154,7 +154,7 @@ func test_an_installation_is_heard_where_it_stands_and_a_pole_only_sings() -> vo
 	var q := WorldQuery.new(w)
 	var at := Vector2(30.5, 30.5)
 	var pole_prop := WorldProp.new(810000, PropKind.POLE, at + Vector2(1.5, 0), 0.0, 1.0)
-	w.props.append(pole_prop)
+	w.add_prop(pole_prop)
 	q.add_prop(pole_prop)
 	var by_pole := SoundMix.works_near(q, at)
 	eq(float(by_pole["grid"]), 0.0, "no grid under a pole")
@@ -163,7 +163,7 @@ func test_an_installation_is_heard_where_it_stands_and_a_pole_only_sings() -> vo
 	lt(SoundBeds.works_scatter_level("wires", by_pole), SoundMix.WIRE_FAINT + 1e-6, "singing faintly")
 	q.remove_prop(pole_prop)
 	var pylon := WorldProp.new(810001, PropKind.PYLON, at + Vector2(1.5, 0), 0.0, 1.0)
-	w.props.append(pylon)
+	w.add_prop(pylon)
 	q.add_prop(pylon)
 	var under := SoundMix.works_near(q, at)
 	gt(float(under["grid"]), 0.95, "under a pylon, its whole grid")
@@ -175,7 +175,7 @@ func test_an_installation_is_heard_where_it_stands_and_a_pole_only_sings() -> vo
 	var id := 810002
 	for off: Vector2 in [Vector2(1.5, 2.0), Vector2(1.5, -2.0)]:
 		var more := WorldProp.new(id, PropKind.PYLON, at + off, 0.0, 1.0)
-		w.props.append(more)
+		w.add_prop(more)
 		q.add_prop(more)
 		id += 1
 	gt(float(SoundMix.works_near(q, at + Vector2(-2.5, 0))["grid"]), lone * 2.0, "several together carry further")

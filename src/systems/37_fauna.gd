@@ -107,12 +107,12 @@ func _stream_one(key: int, centre: Vector2, at: Vector2, now: bool, populate: Ca
 ## Gather the tips and wrecks into sites. Props are only ever appended (worldgen,
 ## then the strand and whatever is built), so only the new ones are looked at.
 func _find_sites() -> void:
-	var props := game.world.props
-	if props.size() < _props_seen:
+	var w := game.world
+	if w.prop_count() < _props_seen:
 		sites.clear()
 		_props_seen = 0
-	for n in range(_props_seen, props.size()):
-		var p := props[n]
+	for n in range(_props_seen, w.prop_count()):
+		var p := w.prop_at(n)
 		if not REFUSE.has(p.kind):
 			continue
 		var joined := false
@@ -122,7 +122,7 @@ func _find_sites() -> void:
 				break
 		if not joined:
 			sites.append({"key": REFUSE_KEY - p.id, "pos": p.pos})
-	_props_seen = props.size()
+	_props_seen = w.prop_count()
 
 
 ## Build the next queued animal. Returns false when there was none.
@@ -184,8 +184,10 @@ const REFUSE: Array[int] = [PropKind.TIP, PropKind.WRECK, PropKind.HULL]
 func _populate_refuse(key: int, centre: Vector2) -> void:
 	var s := game.world.seed_value
 	var heaps: Array[WorldProp] = []
+	var seen := {}
 	for p in game.query.props_near(centre, SITE_JOIN):
-		if REFUSE.has(p.kind) and not heaps.has(p):
+		if REFUSE.has(p.kind) and not seen.has(p.id):
+			seen[p.id] = true
 			heaps.append(p)
 	if heaps.is_empty():
 		return

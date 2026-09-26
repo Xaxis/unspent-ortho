@@ -18,6 +18,16 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   metric prints there), `TOUR_FIXED_FPS=60 tools/tour.sh tours/heavy_blow.tour`.
   Every bite's ground ring (dashed where it lands, an inner ring closing on the strike):
   `tools/test.sh test_tell_ring`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/bite_ring.tour`.
+  The thrower (the middens' sorter, Brains `throw`): a lane-long bite told by its lane on the
+  ground, a reload that is the opening; `tools/test.sh test_throw` (the reader's bout numbers print
+  there), `TOUR_FIXED_FPS=60 tools/tour.sh tours/thrower.tour` (header has its options).
+  The dropper (the tamper, the scrapwood's own, Brains `drop`): waits on a ledge and comes down on where the player
+  stood, told by its shadow growing on the ground; `tools/test.sh test_dropper`,
+  `TOUR_FIXED_FPS=60 tools/tour.sh tours/dropper.tour` (top view and over the shoulder; the tour
+  command `over KIND` stages a body on a lip with the player below).
+  Ten awake machines' draw cost: `tools/test.sh test_awake_cost`.
+  Night hearing (a machine hears further and makes up its mind faster by ear at night): the day
+  and night noticing distances and night bouts print in `tools/test.sh test_first_meetings:test_by_night`.
 - 42_target: `src/systems/42_target.gd`, reached by `tools/tour.sh tours/targeting.tour`. A lock holds the body (facing, strafe arc, swing, dodge: `src/core/fight/lock_on.gd`, `tools/test.sh test_lock_on`), proven in both views by `tools/tour.sh tours/lockon_top.tour` and `tours/lockon_shoulder.tour` (each tour's header has its options).
 - 44_sentinels: `src/systems/44_sentinels.gd`, reached by `tools/tour.sh tours/sentinels.tour`.
 - 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.

@@ -738,8 +738,8 @@ func _kindle(i: int) -> void:
 			continue
 		if n == i:
 			var w := game.world
-			var prop := WorldProp.new(w.props.size(), PropKind.FIRE, t.at, 0.0, 1.0)
-			w.props.append(prop)
+			var prop := WorldProp.new(w.next_id(), PropKind.FIRE, t.at, 0.0, 1.0)
+			w.add_prop(prop)
 			game.query.add_prop(prop)
 			if model != null and model.has_method(&"stove_lit"):
 				model.call(&"stove_lit", i)

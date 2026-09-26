@@ -85,11 +85,11 @@ static func spoken(id: StringName) -> String:
 
 ## Note how many props the world holds once every system is set up.
 static func mark_base(game: Game) -> void:
-	game.set_meta(META_BASE, game.world.props.size())
+	game.set_meta(META_BASE, game.world.prop_count())
 
 
 static func props_base(game: Game) -> int:
-	return int(game.get_meta(META_BASE, ground(game).props.size()))
+	return int(game.get_meta(META_BASE, ground(game).prop_count()))
 
 
 ## The world whose state a save carries: the one stood in, or the one outside
@@ -135,9 +135,9 @@ static func save_world(game: Game) -> Dictionary:
 	var w := ground(game)
 	var base := props_base(game)
 	var added: Array = []
-	for i in range(base, w.props.size()):
-		var q := w.props[i]
-		added.append([q.kind, q.pos.x, q.pos.y, q.rot, q.scale])
+	for i in range(base, w.prop_count()):
+		var q := w.prop_at(i)
+		added.append([q.kind, q.pos.x, q.pos.y, q.rot, q.scale, q.variant])
 	var depleted := {}
 	for id: int in w.depleted:
 		depleted[str(id)] = SaveCodec.num(float(w.depleted[id]))
@@ -148,9 +148,18 @@ static func save_world(game: Game) -> Dictionary:
 	var built: Array = []
 	for q: WorldProp in state.built:
 		built.append(q.id)
+	# What lies on the heaps the player left, and which of them a bad end left:
+	# a heap without its goods is a cairn with nothing under it.
+	var left := {}
+	for id: int in state.left:
+		left[str(id)] = (state.left[id] as Dictionary).duplicate()
+	var bags := {}
+	for id: int in state.bags:
+		bags[str(id)] = SaveCodec.num(float(state.bags[id]))
 	return {"seed": game.options.seed_value, "size": w.size, "realm": String(w.realm),
 		"stamp": WorldStamp.current(), "props_base": base,
-		"props": added, "depleted": depleted, "taken": state.taken.duplicate(), "spent": spent, "built": built}
+		"props": added, "depleted": depleted, "taken": state.taken.duplicate(), "spent": spent, "built": built,
+		"left": left, "bags": bags}
 
 
 static func load_world(game: Game, v: Variant) -> void:
@@ -174,7 +183,11 @@ static func load_world(game: Game, v: Variant) -> void:
 		return
 	var saved_base := SaveCodec.to_int(d.get("props_base"), props_base(game))
 	var base := props_base(game)
-	var remap := func(id: int) -> int: return id - saved_base + base if id >= saved_base else id
+	# Props set down since the save's base shift with the base, by position: the
+	# stamp says generation laid the same props, so a position is the same prop.
+	var remap := func(id: int) -> int:
+		var at := w.position_of(id)
+		return w.id_at(at - saved_base + base) if at >= saved_base else id
 	var touched: Array[WorldProp] = []
 	for e: Variant in d.get("props", []):
 		if not (e is Array) or (e as Array).size() < 5:
@@ -183,21 +196,25 @@ static func load_world(game: Game, v: Variant) -> void:
 		if kind < 0 or kind >= PropKind.NAMES.size():
 			continue
 		# Straight into data and collision: the chunks it lands in are rebuilt once, below.
-		var q := WorldProp.new(w.props.size(), kind, Vector2(SaveCodec.to_num(e[1]), SaveCodec.to_num(e[2])),
+		var q := WorldProp.new(w.next_id(), kind, Vector2(SaveCodec.to_num(e[1]), SaveCodec.to_num(e[2])),
 			SaveCodec.to_num(e[3]), SaveCodec.to_num(e[4], 1.0))
-		w.props.append(q)
+		if (e as Array).size() > 5:
+			q.variant = SaveCodec.to_int(e[5], -1)
+		w.add_prop(q)
 		game.query.add_prop(q)
 		touched.append(q)
 	for id: int in w.depleted:
-		if id >= 0 and id < w.props.size():
-			touched.append(w.props[id])
+		var was := w.prop(id)
+		if was != null:
+			touched.append(was)
 	w.depleted.clear()
 	var depleted := _d(d.get("depleted"))
 	for k: String in depleted:
 		var id: int = remap.call(k.to_int())
-		if id >= 0 and id < w.props.size():
+		var q := w.prop(id)
+		if q != null:
 			w.depleted[id] = SaveCodec.to_num(depleted[k])
-			touched.append(w.props[id])
+			touched.append(q)
 	var state := SurvivalState.of(game)
 	state.taken.clear()
 	var taken := _d(d.get("taken"))
@@ -207,18 +224,35 @@ static func load_world(game: Game, v: Variant) -> void:
 	# that were saved work it down again (Harvest.apply_shown).
 	state.base_size.clear()
 	for k: String in state.taken:
-		var id := k.get_slice(":", 0).to_int()
-		if id >= 0 and id < w.props.size() and Harvest.apply_shown(game, w.props[id]):
-			touched.append(w.props[id])
+		var q := w.prop(k.get_slice(":", 0).to_int())
+		if q != null and Harvest.apply_shown(game, q):
+			touched.append(q)
 	state.spent.clear()
 	var spent := _d(d.get("spent"))
 	for k: String in spent:
 		state.spent[_rekey(k, remap)] = SaveCodec.to_num(spent[k])
 	state.built.clear()
 	for e: Variant in d.get("built", []):
-		var id: int = remap.call(SaveCodec.to_int(e, -1))
-		if id >= 0 and id < w.props.size():
-			state.built.append(w.props[id])
+		var q := w.prop(remap.call(SaveCodec.to_int(e, -1)))
+		if q != null:
+			state.built.append(q)
+	state.left.clear()
+	var left := _d(d.get("left"))
+	for k: String in left:
+		var id: int = remap.call(k.to_int())
+		if w.prop(id) == null:
+			continue
+		var goods := {}
+		var saved := _d(left[k])
+		for g: String in saved:
+			goods[g if g.begins_with("edge:") else StringName(g)] = SaveCodec.to_int(saved[g])
+		state.left[id] = goods
+	state.bags.clear()
+	var bags := _d(d.get("bags"))
+	for k: String in bags:
+		var id: int = remap.call(k.to_int())
+		if state.left.has(id):
+			state.bags[id] = SaveCodec.to_num(bags[k])
 	_refresh(game, touched)
 
 
@@ -237,12 +271,12 @@ static func _refresh(game: Game, props: Array[WorldProp]) -> void:
 	var done := {}
 	for q in props:
 		var key := WorldView._key_of(q.pos)
-		if done.has(key) and done[key] != q:
+		if done.has(key) and done[key] != q.id:
 			# Already rebuilt for another prop in the chunk; a new prop still needs listing.
-			if q.id >= props_base(game):
+			if ground(game).position_of(q.id) >= props_base(game):
 				game.view.refresh_props(q)
 			continue
-		done[key] = q
+		done[key] = q.id
 		game.view.refresh_props(q)
 
 

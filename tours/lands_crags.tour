@@ -1,0 +1,23 @@
+# The crags over the shoulder: its most characteristic ground clear at noon,
+# then in the fog it is for, then in the evening; then beside a standing stone.
+# With the frame cost standing at noon.
+#   tools/tour.sh tours/lands_crags.tour --seed=7 --weather=clear:0 --view=shoulder --stats
+coast calm
+hour 12
+place typical_the_crags
+wait 3.0
+shot noon with land:the_crags
+perf stats begin
+wait 5.0
+perf stats end crags-noon
+weather fog:0.7
+wait 2.0
+shot fog with land:the_crags
+weather clear:0
+hour 18.5
+wait 2.0
+shot evening with land:the_crags
+hour 12
+near standing_stone
+wait 2.5
+shot stone with land:the_crags

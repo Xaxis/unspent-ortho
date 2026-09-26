@@ -297,16 +297,16 @@ func test_use_on_nothing_builds_a_fire_then_eats_before_it_sleeps_by_it() -> voi
 	g.inventory.add(&"stone", 2)
 	g.inventory.add(&"mussels", 2)
 	eq(Survival.describe_target(g), "campfire - build?", "fed, it is evening, no fire: build, if pressed twice")
-	var props := g.world.props.size()
+	var props := g.world.prop_count()
 	check(Survival.use(g), "the first press asks")
-	eq(g.world.props.size(), props, "and lays nothing")
+	eq(g.world.prop_count(), props, "and lays nothing")
 	eq(g.inventory.count(&"driftwood"), 3, "nor spends anything")
 	check(Survival.build_asked(g).is_finite(), "the spot is marked")
 	eq(Survival.describe_target(g), "campfire - build", "a second press will build")
 	check(Survival.use(g), "built")
 	check(not Survival.build_asked(g).is_finite(), "the ask is spent")
 	eq(g.inventory.count(&"mussels"), 2, "fed: nothing eaten")
-	check(not g.world.props.is_empty() and g.world.props[-1].kind == PropKind.FIRE, "a fire stands")
+	check(g.world.prop_count() > 0 and g.world.prop_at(g.world.prop_count() - 1).kind == PropKind.FIRE, "a fire stands")
 	g.clock.skip(3.0 * 60.0)
 	SurvivalState.of(g).woke_at = g.clock.minutes - 20.0 * 60.0
 	eq(Survival.describe_target(g), "fire - sleep", "fed, at night by a fire: sleep")
@@ -343,13 +343,13 @@ func test_a_press_on_open_ground_asks_and_a_late_or_moved_second_press_asks_agai
 	Survival.fixed_now += Survival.BUILD_ASK_SECONDS + 0.1
 	eq(Survival.describe_target(g), "campfire - build?", "the ask has lapsed")
 	check(Survival.use(g), "asked again")
-	eq(g.world.props.size(), 0, "a lapsed ask builds nothing")
+	eq(g.world.prop_count(), 0, "a lapsed ask builds nothing")
 	g.player.facing = PI
 	check(Survival.use(g), "turned round: that is a new spot, so it asks again")
-	eq(g.world.props.size(), 0)
+	eq(g.world.prop_count(), 0)
 	Survival.fixed_now += 0.5
 	check(Survival.use(g), "built from dead wood")
-	eq(g.world.props.size(), 1)
+	eq(g.world.prop_count(), 1)
 	eq(g.inventory.count(&"deadwood"), 0)
 	Survival.fixed_now = -1.0
 	Fx.done(g)

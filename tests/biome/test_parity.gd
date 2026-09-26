@@ -441,6 +441,17 @@ extends TestCase
 ## `ground` (the patch) and `props` (the seam, and what the scatter lays round
 ## a spot now held clear) move. Seed 1's spawn, shot top-down before and after,
 ## reads the same at island scale.
+## GEN 29 (2026-09-25) CHANGED NO DIGEST, and here is why that is evidence and
+## not a blind spot. Prop ids became section ids (`GenIds`: (section << 20) |
+## the order laid in that 256-tile section). A 256 world is ONE section, so its
+## ids and its list order are what they were, and all five digests stand. At
+## 1840 (seed 1), against the same tree with GenIds taken out: the six tile
+## arrays hash the same (e93fc15a 20864c98 788f7377 7662526b 03d6ea51
+## 8a2c4a18), the props are the same 129,974 things in the same places (a
+## multiset of kind, position and turn: 07b4f127), and only the ids differ
+## (1b17a03e -> 2dbde53b); every one of the grid's 508 masts resolves. What an
+## id seeds (a tree's lean, the far windows) moves once with it: an eye-level
+## frame moved 1.6 mean on the far city's windows.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
@@ -499,7 +510,7 @@ static func digest(w: WorldData) -> String:
 	# below anything a player can see and far above any float's last bit; a
 	# placement that really moves or flips still moves this digest.
 	var props := PackedInt32Array()
-	for p in w.props:
+	for p in w.each_prop():
 		props.append(p.kind)
 		props.append(roundi(p.pos.x * 1000.0))
 		props.append(roundi(p.pos.y * 1000.0))
@@ -520,7 +531,7 @@ static func breakdown(w: WorldData) -> String:
 	# Packed arrays are values: each is read out, grown and written back.
 	var exact := {}
 	var rounded := {}
-	for p in w.props:
+	for p in w.each_prop():
 		var e: PackedFloat32Array = exact.get(p.kind, PackedFloat32Array())
 		e.append(p.pos.x)
 		e.append(p.pos.y)

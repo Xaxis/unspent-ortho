@@ -65,7 +65,7 @@ func test_a_wall_stops_a_body_and_a_machine_s_eye() -> void:
 		if q.id < 0 and q.solid > 0.0:
 			blockers += 1
 	eq(blockers, 1, "one footprint where the wall stands")
-	check(not g.world.props.any(func(p: WorldProp) -> bool: return p.id < 0), "and it is no part of the world's props")
+	check(not g.world.each_prop().any(func(p: WorldProp) -> bool: return p.id < 0), "and it is no part of the world's props")
 	# Walking into it from outside never reaches the middle of it.
 	var from := wall.pos + Vector2(2.0, 0.0)
 	var to := g.query.move_body(from, (wall.pos - from).normalized() * 4.0, Tuning.PLAYER_RADIUS)

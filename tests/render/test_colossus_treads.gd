@@ -272,9 +272,9 @@ func test_a_planted_foot_stops_puts_out_and_crushes() -> void:
 	# This tread's own pads: the world may hold another tread with a foot in it.
 	check(g2.query.blocks_at(c).is_empty(), "an hour before, this tread's pad stops nothing")
 	var standing := 0
-	var span: Vector2i = row.get("props", Vector2i(-1, -1))
-	for q: WorldProp in g2.world.props:
-		if q.id >= span.x and q.id < span.y:
+	var own := PackedInt32Array(row.get("props", []))
+	for q: WorldProp in g2.world.each_prop():
+		if own.has(q.id):
 			continue
 		for pp: Vector3 in (row.pads as Array):
 			if q.pos.distance_to(Vector2(pp.x, pp.y)) < Treads.rim_r(pp) and not g2.world.depleted.has(q.id):
