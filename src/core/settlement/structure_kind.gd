@@ -70,8 +70,8 @@ enum {
 	## Defence.
 	PALISADE,         # (built)
 	PLATE_WALL,       # (built)
-	GATE,             # (planned) a wall you can get out of. Ring a yard in palisade
-	                  # today and you have walled yourself in.
+	GATE,             # (built) a wall you can get out of: a length of it a body walks
+	                  # through, and the weak point a breaching party goes for.
 	DITCH,            # (planned) defence that costs hours and no materials.
 	TOWER,            # (planned) height, which a turret and a watch both want.
 	SNARE,            # (planned) a trap that holds a raider.
@@ -230,6 +230,15 @@ const ROWS := {
 		"cost": {&"timber": 1, &"deadwood": 1}, "minutes": 30.0, "wear": 0.03,
 		"defence": 1.0,
 	},
+	# A hurdle hung between two posts: walked through (no footprint), a wall
+	# still for what it turns of a raid, and the weak point in the ring --
+	# RaidRoles.breach_target goes for it first, so the breach comes where the
+	# player chose to put it (SETTLE.md S3).
+	GATE: {
+		"name": "gate", "idiom": Idiom.MADE, "health": 8.0, "solid": 0.0,
+		"cost": {&"timber": 2, &"scrap": 1}, "minutes": 40.0, "wear": 0.035,
+		"defence": 0.6,
+	},
 	PLATE_WALL: {
 		"name": "plate wall", "idiom": Idiom.MENDED, "health": 22.0, "solid": 0.55,
 		"cost": {&"timber": 1, &"scrap": 3}, "minutes": 60.0, "wear": 0.015,
@@ -299,7 +308,7 @@ const ROWS := {
 ## the moment a player wants one is the moment a piece asks for hands they have
 ## not got. The array stands beside the spinner it is the alternative to.
 const BUILDABLE: Array[int] = [LEAN_TO, HEARTH, HUT, BUNK, STORE, PLOT, CATCHMENT,
-	PALISADE, PLATE_WALL, NETTING, WIND_SPINNER, SOLAR_ARRAY, BATTERY_STACK, RADIO_MAST,
+	PALISADE, PLATE_WALL, GATE, NETTING, WIND_SPINNER, SOLAR_ARRAY, BATTERY_STACK, RADIO_MAST,
 	DECOY_MAST, SPOOFER, TURRET]
 
 

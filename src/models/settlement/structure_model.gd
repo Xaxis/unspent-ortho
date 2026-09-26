@@ -252,6 +252,8 @@ static func _meshes(piece_kind: int, v: int, broken: bool, on: bool) -> Array:
 			Power.mast_found(found, v, broken, on)
 		StructureKind.PALISADE:
 			Defence.palisade(made, v, broken)
+		StructureKind.GATE:
+			Defence.gate(made, v, broken)
 		StructureKind.PLATE_WALL:
 			Defence.plate_wall_made(made, v, broken)
 			Defence.plate_wall_found(found, v, broken)
