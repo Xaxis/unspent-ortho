@@ -565,6 +565,8 @@ func test_a_lit_house_puts_its_glint_on_its_own_tube() -> void:
 	for p: WorldProp in houses:
 		var src: Dictionary = by_prop.get(p.id, {})
 		check(src.has("neon_at"), "the lit house throws its tube's light")
+		if not src.has("neon_at"):
+			continue
 		var tube := PropModels.neon_point(PropKind.HOUSE, p.variant, here)
 		var at: Vector3 = src.neon_at
 		var want := g.world.to_3d(p.pos) + (tube.at as Vector3)
