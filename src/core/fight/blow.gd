@@ -35,6 +35,10 @@ var wind_cost := 180.0
 var wick := 0
 ## Thrown held (FightRules.HEAVY_*): through a guarded part, and drawn as such.
 var heavy := false
+## Lands on a round of ground, not in a box ahead: a body coming down on where
+## the player stood (FightRules.drop_hits). `reach` is how far past the body's
+## own radius the landing reaches; `width` means nothing to it.
+var area := false
 
 
 func committed() -> int:
@@ -84,6 +88,7 @@ static func from_dict(d: Dictionary) -> Blow:
 	b.creep = float(d.get("creep", b.creep))
 	b.grip = int(d.get("grip", 0))
 	b.cuts = bool(d.get("cuts", false))
+	b.area = bool(d.get("area", false))
 	return b
 
 
@@ -115,7 +120,7 @@ static func for_item(id: StringName, edge: int = 10000) -> Blow:
 func copy() -> Blow:
 	var b := Blow.new()
 	for p: String in ["windup", "active", "recovery", "cooldown", "reach", "width", "dmg", "knock", "knock_ms",
-			"creep", "grip", "cuts", "verb", "wind_cost", "wick", "heavy"]:
+			"creep", "grip", "cuts", "verb", "wind_cost", "wick", "heavy", "area"]:
 		b.set(p, get(p))
 	return b
 

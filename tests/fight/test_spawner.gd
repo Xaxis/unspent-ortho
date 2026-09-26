@@ -136,3 +136,34 @@ func test_a_measured_yaw_is_reproduced_by_its_negation() -> void:
 	for yaw: float in [0.6, 0.79, 1.96, 2.3]:
 		var token := "runner@%.4f" % -rad_to_deg(yaw)
 		near(-Spawner.staged(token).facing, yaw, 1e-4, "yaw %.2f is asked for as %s" % [yaw, token])
+
+
+## A landscape may make a kind its own (mechanics pass 3a): its roster row's
+## `over` rewrites the base row for every body of that kind put down on its
+## ground, and the body fights, senses and reads on the slate by the rewritten
+## row. The cave hauler works the dark by ear, and it tells longer.
+func test_a_landscape_makes_a_kind_its_own() -> void:
+	var caves := BiomeRegistry.get_def(&"limestone_caves")
+	var over: Dictionary = caves.roster.get(&"hauler", {}).get("over", {})
+	check(not over.is_empty(), "the caves declare a hauler of their own")
+	var w := F.flat_world(48, Ground.LIMESTONE, caves.index)
+	var sim := F.make_sim(w, Vector2(10.5, 10.5))
+	var there := sim.add_mob(&"hauler", Vector2(20.5, 20.5))
+	var base := Roster.row(&"hauler")
+	for k: String in over:
+		if k == "bite":
+			continue
+		eq(there.stat(k), over[k], "the cave hauler's %s is the caves'" % k)
+	eq(there.bite.windup, int((over.get("bite", {}).get("swing", base.bite.swing) as Array)[0]), "and so is its tell")
+	var home := F.flat_world(48, Ground.LIMESTONE, Country.BONELANDS)
+	var sim2 := F.make_sim(home, Vector2(10.5, 10.5))
+	var plain := sim2.add_mob(&"hauler", Vector2(20.5, 20.5))
+	eq(plain.stat("sees"), base.sees, "a bonelands hauler is the roster's")
+	eq(plain.bite.windup, int((base.bite.swing as Array)[0]), "tell and all")
+	eq(Roster.row(&"hauler").sees, base.sees, "and the roster row itself is untouched")
+	var read := TargetRead.stats(there, there.pos + Vector2(3, 0))
+	var tell := ""
+	for pair: Array in read:
+		if pair[0] == "tell":
+			tell = String(pair[1])
+	eq(tell, "%d ms" % there.bite.windup, "the slate reads the cave hauler's own tell")

@@ -1,7 +1,7 @@
 extends RefCounted
 ## Games and slot folders for the save tests.
 ##   const Sx := preload("res://tests/save/save_fixture.gd")
-##   Sx.use_root("round-trip")          # SaveSlots.root = user://test-saves/round-trip, emptied
+##   Sx.use_root("round-trip")          # SaveSlots.root = TEST_ROOT/round-trip, emptied
 ##   var g := Sx.game(tree, ["--seed=1", "--size=64"])
 ##   Sx.system(g, "05_save")
 ##   Sx.end(g)                          # out of the tree and freed: the registry clears
@@ -9,7 +9,7 @@ extends RefCounted
 
 
 static func use_root(name: String) -> String:
-	SaveSlots.root = "user://test-saves".path_join(name)
+	SaveSlots.root = SaveSlots.TEST_ROOT.path_join(name)
 	forget()
 	wipe()
 	return SaveSlots.root

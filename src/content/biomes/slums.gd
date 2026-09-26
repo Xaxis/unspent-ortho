@@ -40,6 +40,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"slums"
 	d.display_name = "the slums"
+	d.spoken_in = "in the slums"
 	# After the scrapwood (7), well clear of the M1 six, who keep indices 1..6.
 	d.order = 8
 	d.style_note = "Flat rule and low tone: a city drawn in concrete and lit in sodium."

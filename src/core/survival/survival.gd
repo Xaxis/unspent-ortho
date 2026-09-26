@@ -43,6 +43,10 @@ class_name Survival
 ##                                           verb calls) on a heap in front of the player, which `use`
 ##                                           takes back; returns how many went (0 with a hostile close,
 ##                                           or nowhere to put it). Never drops the lamp lit.
+##   leave_bag(game, at) -> WorldProp        a bad end (carried off): everything carried but what is
+##                                           on the body -- the tool in the hand, the kit worn, the
+##                                           gear fitted -- on a heap where they were taken, marked
+##                                           (SurvivalState.bags); null when there was nothing to leave
 ##   take_back(game, heap) -> int            pick up everything on a heap the player left; how many
 ##   heap_near(game) -> WorldProp            the player's own heap in reach, or null
 ##   last_weapon(game, id) -> bool           id is the only carried thing that fights better than fists
@@ -759,6 +763,67 @@ static func drop(game: Game, id: StringName, n: int = 1) -> int:
 	return k
 
 
+## CARRIED OFF COSTS PLACE AS WELL AS TIME (mechanics improvement 4a). What the
+## player carried stays where they were taken, on a heap of their own with their
+## own rag tied on a stick over it (PropModels BAG_CAIRN), marked on the survey,
+## and said once in so many words. Nothing takes it and nothing spoils it: the
+## cost is the walk back, which the player can see and plan, never a loss they
+## cannot. What is on the body stays on it: the tool in the hand, the kit worn,
+## the gear fitted (a module socketed in it included).
+const BAG_LINE := "Your things are where it took you. The survey marks the place."
+const BAG_SCALE := 0.8
+
+
+static func leave_bag(game: Game, at: Vector2) -> WorldProp:
+	var inv := game.inventory
+	if inv == null:
+		return null
+	var keep := {}
+	if inv.held != &"":
+		keep[inv.held] = 1
+	if inv.worn != &"":
+		keep[inv.worn] = maxi(int(keep.get(inv.worn, 0)), 1)
+	var fitted := _loadout(game)
+	if fitted != null:
+		for id: StringName in fitted.all_ids():
+			keep[id] = maxi(int(keep.get(id, 0)), fitted.fitted_count(id))
+	var goods := {}
+	for id: StringName in inv.items.keys():
+		var n := inv.count(id) - int(keep.get(id, 0))
+		if n <= 0:
+			continue
+		if id == &"lamp" and game.body != null:
+			game.body.lamp_lit = false
+		if Items.has_edge(id):
+			goods["edge:%s" % id] = inv.edge(id)
+		goods[id] = n
+		inv.remove(id, n)
+	if goods.is_empty():
+		return null
+	var spot := _heap_spot_at(game, at, game.player.facing if game.player != null else 0.0, BAG_SCALE)
+	if spot.x < -1e8:
+		# Nowhere clear round it: the heap goes where they were, whatever is there.
+		spot = at
+	var heap := add_prop(game, PropKind.CAIRN, spot, NAN, BAG_SCALE)
+	heap.variant = PropModels.BAG_CAIRN
+	if game.view != null:
+		game.view.refresh_props(heap)
+	var state := SurvivalState.of(game)
+	state.left[heap.id] = goods
+	state.bags[heap.id] = game.clock.minutes if game.clock != null else 0.0
+	update_body(game)
+	return heap
+
+
+## The gear system's loadout, found by the field rather than the name; null without one.
+static func _loadout(game: Game) -> Loadout:
+	for sys in game.systems:
+		var l: Variant = sys.get("loadout")
+		if l is Loadout:
+			return l
+	return null
+
+
 ## A heap is a small cairn: a few stones over what was left.
 const HEAP_SCALE := 0.6
 ## A heap this close (edge, tiles) is found by `use` whichever way the player faces.
@@ -769,12 +834,16 @@ const HEAP_REACH := 0.8
 ## their own level, dry, and clear of trunks and rocks (a heap may lie under a
 ## crown, unlike a fire). Vector2(-INF) if nowhere.
 static func _heap_spot(game: Game) -> Vector2:
-	var p := game.player.pos
+	return _heap_spot_at(game, game.player.pos, game.player.facing, HEAP_SCALE)
+
+
+## The same round any point, for a heap of `scale`.
+static func _heap_spot_at(game: Game, p: Vector2, facing: float, scale: float) -> Vector2:
 	var w := game.world
 	var here := w.level_at(floori(p.x), floori(p.y))
-	var radius: float = PropKind.SOLID[PropKind.CAIRN] * HEAP_SCALE
+	var radius: float = PropKind.SOLID[PropKind.CAIRN] * scale
 	for turn: float in [0.0, 0.6, -0.6, 1.2, -1.2, 1.8, -1.8, 2.5, -2.5, PI]:
-		var at := p + Vector2.from_angle(game.player.facing + turn) * (Tuning.PLAYER_RADIUS + radius + 0.15)
+		var at := p + Vector2.from_angle(facing + turn) * (Tuning.PLAYER_RADIUS + radius + 0.15)
 		var t := Vector2i(floori(at.x), floori(at.y))
 		if not game.query.standable(t.x, t.y) or Ground.is_water(w.ground_at(t.x, t.y)) or w.level_at(t.x, t.y) != here:
 			continue
@@ -813,6 +882,7 @@ static func take_back(game: Game, heap: WorldProp) -> int:
 		return 0
 	var goods: Dictionary = state.left[heap.id]
 	state.left.erase(heap.id)
+	state.bags.erase(heap.id)
 	var inv := game.inventory
 	var got := 0
 	var parts: PackedStringArray = []

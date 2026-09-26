@@ -17,8 +17,9 @@ const FIRST: Array[StringName] = [&"runner", &"dog.yard", &"harvester"]
 const STARTS := 8
 
 
-static func bout(kind: StringName, careful: bool, start: int, seconds: float = 60.0, react_ms: float = 220.0, take_hits: int = 0, heavy: bool = false) -> Dictionary:
+static func bout(kind: StringName, careful: bool, start: int, seconds: float = 60.0, react_ms: float = 220.0, take_hits: int = 0, heavy: bool = false, hour: float = 12.0) -> Dictionary:
 	var sim := F.make_sim(F.flat_world(96), Vector2(48.5, 48.5))
+	sim.moment.minutes = hour * 60.0
 	sim.hero.inventory.add(&"knife")
 	sim.hero.inventory.set_held(&"knife")
 	sim.hero.inventory.set_edge(&"knife", START_EDGE)
@@ -143,3 +144,46 @@ func test_the_half_worn_start_knife_out_damages_fists() -> void:
 	eq(FightRules.damage_at_edge(2, FightRules.KEEN_EDGE - 1), 1, "a truly dull knife is a fist")
 	eq(FightRules.damage_at_edge(4, 0), 1, "a dull edge still does 1")
 	eq(FightRules.damage_at_edge(1, 10000), 1, "the floor never lifts a tool past its own bite")
+
+
+## How far off a body notices a player walking straight at it from 30 tiles, at
+## `hour`, lamp out: the tiles between them when it first glances up, turns its
+## optics to what it heard, or is alerted, whichever comes first.
+static func noticed_at(kind: StringName, hour: float) -> float:
+	var sim := F.make_sim(F.flat_world(96), Vector2(18.5, 48.5))
+	sim.moment.minutes = hour * 60.0
+	var m := F.still(sim, kind, Vector2(48.5, 48.5), PI)
+	m.calm_until = 0.0
+	sim.hero.move = Vector2(1, 0)
+	var t := 0.0
+	while t < 12000.0:
+		sim.slices(2)
+		t += 16.0
+		for e in sim.drain():
+			if e.type in [&"noticed", &"heard", &"alerted"] and e.get("mob") == m:
+				return m.pos.distance_to(sim.hero.pos)
+	return 0.0
+
+
+## THE NIGHT (mechanics improvement 4b): sight falls in the dark and hearing
+## rises, so by night a machine knows you are there from further off by ear
+## than it saw you by day, and the lamp is no longer the only thing that gives
+## you away. The fight itself is as fair by night: a careful player still wins
+## every first meeting from every start.
+func test_by_night_the_first_machines_hear_you_further_off_and_are_still_fair() -> void:
+	for kind in FIRST:
+		var day := noticed_at(kind, 12.0)
+		var night := noticed_at(kind, 23.0)
+		var won := 0
+		var lost := 0
+		var longest := 0.0
+		for i in STARTS * 2:
+			var r := bout(kind, true, i, 60.0, 220.0, 0, false, 23.0)
+			won += int(r.won and not r.downed)
+			lost += int(r.lost_health)
+			longest = maxf(longest, float(r.t))
+		print("  info first meeting %s: noticed %.1f tiles off by day, %.1f by night; by night a careful player won %d of %d, lost %.1f health a bout, longest %.1f s"
+			% [kind, day, night, won, STARTS * 2, float(lost) / (STARTS * 2), longest])
+		if Roster.row(kind).get("machine", false):
+			gt(night, day, "%s hears a walking player further off at night than it notices one by day" % kind)
+		eq(won, STARTS * 2, "%s by night: a careful player wins every start" % kind)

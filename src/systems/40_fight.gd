@@ -405,8 +405,18 @@ func _handle(events: Array[Dictionary]) -> void:
 					# And on the ground, where it will land: the pose is small over the
 					# shoulder and a ring reads from above and behind alike. It lasts the
 					# windup, so it is gone the instant the bite is down.
-					var ring := FightRules.tell_ring(m.pos, m.facing, m.radius, m.blow)
-					MobFx.tell_ring(fx, _at3(Vector2(ring.x, ring.y)), Palette.LINEN[5], ring.z, m.blow.windup / 1000.0)
+					# A thrown blow is told by its lane: a ring that long would mark the
+					# ground either side of it, which is where a player has to go.
+					if m.blow.area and m.drop_at.is_finite():
+						# Coming down from above: its shadow, growing where it lands.
+						var spot := FightRules.tell_drop(m.drop_at, m.radius, m.blow, sim.hero.radius)
+						MobFx.tell_drop(fx, _at3(Vector2(spot.x, spot.y)), Palette.LINEN[5], spot.z, m.blow.windup / 1000.0)
+					elif FightRules.throws(m.blow):
+						var lane := FightRules.tell_lane(m.pos, m.radius, m.blow, sim.hero.radius)
+						MobFx.tell_line(fx, _at3(Vector2(lane.x, lane.y)), m.facing, lane.z, lane.w, Palette.LINEN[5], m.blow.windup / 1000.0)
+					else:
+						var ring := FightRules.tell_ring(m.pos, m.facing, m.radius, m.blow)
+						MobFx.tell_ring(fx, _at3(Vector2(ring.x, ring.y)), Palette.LINEN[5], ring.z, m.blow.windup / 1000.0)
 			&"charge":
 				var m: MobState = e.mob
 				MobFx.puffs(fx, _at3(m.pos - m.bearing * m.radius), -m.bearing, _dust_colour(m.pos), 2, 0.5 + m.radius * 0.4, m.id + int(sim.now))
@@ -564,7 +574,9 @@ func _on_outcome(e: Dictionary) -> void:
 			Events.time_skipped.emit(float(r.minutes), &"downed")
 			Events.message.emit(String(r.line))
 		&"carried":
+			var taken_at := hero.pos
 			var r := Outcomes.carried(game.body, game.inventory, game.clock, game.world, game.query, hero.pos)
+			var bag := Survival.leave_bag(game, taken_at)
 			hero.pos = r.pos
 			hero.facing = r.facing
 			hero.throw_until = 0.0
@@ -574,6 +586,36 @@ func _on_outcome(e: Dictionary) -> void:
 			_wake()
 			Events.time_skipped.emit(float(r.minutes), &"carried")
 			Events.message.emit(String(r.line))
+			if bag != null:
+				Events.message.emit(Survival.BAG_LINE)
+
+
+## `near bag`: beside the heap the last bad end left (Survival.leave_bag), a
+## step off it toward the camera, facing it, in reach of `use`.
+const TOUR_PLACES: Array[String] = ["bag"]
+
+
+func tour_place(what: String) -> Vector2:
+	var heap := _last_bag()
+	if what != "bag" or heap == null:
+		return Vector2.INF
+	return heap.pos + Vector2(0.9, 0.5)
+
+
+func tour_face(what: String) -> float:
+	var heap := _last_bag()
+	if what != "bag" or heap == null:
+		return NAN
+	return (heap.pos - (heap.pos + Vector2(0.9, 0.5))).angle()
+
+
+func _last_bag() -> WorldProp:
+	var state := SurvivalState.of(game)
+	var best := -1
+	for id: int in state.bags:
+		if best < 0 or float(state.bags[id]) >= float(state.bags[best]):
+			best = id
+	return game.world.props[best] if best >= 0 else null
 
 
 ## Moved while the hours went by: the player, the land about them and the camera all at once.

@@ -1,0 +1,36 @@
+# THE DROPPER (improvement 3c; Brains `drop`, the tamper). It waits on a lip over
+# lower ground and comes down on whoever is under it. Its tell is its SHADOW on
+# the ground where it will land, growing to the size of the landing as it comes
+# (FightRules.tell_drop, MobFx.tell_drop), with the body crouched and coiled on
+# the lip and the drive in its face warming to the leap. Each frame is taken with
+# the shadow up: from above, then over the shoulder, where a shadow on the ground
+# is read the same way. It lives in the scrapwood; it is staged here on the
+# crags' shelves, the tallest sure lips on seed 7. The lip is the nearest drop
+# `Jump.find` names, and the tamper takes the player's place on it (`over`),
+# never a coordinate.
+# Run at a fixed rate, so a frame costs the world no time:
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/dropper.tour --seed=7 --hour=11 --weather=clear:0 --give=knife:1 --held=knife --config=unharmed
+place the_crags
+coast calm
+zoom 8
+wait 0.6
+ledge down
+wait 0.3
+over tamper
+await tell 8
+wait 0.5
+shot 01-its-shadow-grows-where-it-will-land with mob:tamper
+# Down: the landing, where the shadow was.
+wait 0.45
+shot 02-down-where-the-shadow-was with mob:tamper
+
+place the_crags
+coast calm
+tap shoulder
+await shoulder 3
+ledge down
+wait 0.3
+over tamper
+await tell 8
+wait 0.5
+shot 03-over-the-shoulder-the-shadow-reads-the-same with shoulder,mob:tamper

@@ -237,6 +237,21 @@ static func mark_for(kind: StringName) -> Array:
 	return MARKS[d.mark]
 
 
+## What the survey letters beside a bag heap.
+const BAG_WORD := "your things"
+
+
+## Where the heaps a bad end left lie (SurvivalState.bags): known wherever they
+## are, since the player was there.
+static func bags(game: Game) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var state := SurvivalState.of(game)
+	for id: int in state.bags:
+		if id >= 0 and id < game.world.props.size() and not game.world.depleted.has(id):
+			out.append(game.world.props[id].pos)
+	return out
+
+
 ## Landmarks the player has seen: the discoveries. [{kind, pos, machine: bool}]
 static func discoveries(w: WorldData, seen: UiExplored) -> Array[Dictionary]:
 	const MACHINE_MADE: Array[StringName] = [&"tip", &"wreck"]
@@ -572,6 +587,23 @@ func _draw_overlay() -> void:
 				placed.append(box)
 				UiMapScreen.clearing(ci, box)
 				UiDraw.text(ci, box.position + Vector2i(4, 0), word, col)
+	# Where the player's things are, after a bad end (Survival.leave_bag): an X in
+	# the player's own bright, lettered, whatever the scale -- the walk back is
+	# the whole of the cost, so where it goes is never a guess.
+	for at: Vector2 in UiMapScreen.bags(game):
+		var s := to_screen(at)
+		if not r.grow(-8).has_point(s):
+			continue
+		UiDraw.rect(ci, Rect2i(s.x - 4 * p, s.y - 4 * p, 9 * p, 9 * p), Color(UiTheme.GLASS, 0.85))
+		for k in range(-3, 4):
+			UiDraw.px(ci, s.x + k * p, s.y + k * p, UiTheme.BRIGHT)
+			UiDraw.px(ci, s.x + k * p, s.y - k * p, UiTheme.BRIGHT)
+		var word := BAG_WORD
+		var box := Rect2i(s.x + 14, s.y - UiFont.SIZE / 2, UiFont.width(word) + 8, UiFont.SIZE)
+		if r.grow(-4).encloses(box):
+			placed.append(box)
+			UiMapScreen.clearing(ci, box)
+			UiDraw.text(ci, box.position + Vector2i(4, 0), word, UiTheme.BRIGHT)
 	for v: Dictionary in villages:
 		var s: Vector2i = v.at
 		var box: Rect2i = v.box

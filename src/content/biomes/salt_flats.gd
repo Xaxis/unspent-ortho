@@ -28,6 +28,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"salt_flats"
 	d.display_name = "salt flats"
+	d.spoken_in = "out on the salt flats"
 	d.order = 6
 	d.style_note = "Hard white glare on a cracked mosaic; the pans ruled straight across it."
 	d.share = Vector2(0.065, 0.10)

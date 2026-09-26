@@ -7,9 +7,11 @@ extends TestCase
 ## at, taken rather than assumed.
 
 const Fx := preload("res://tests/fight/fixture.gd")
-## Forty on a street a frame, in yardsticks (TestCase.yard_lt). Calibrated
-## 2026-09-25: 16.1 shipped, 27.0 doubled; the bar between them.
-const STREET_BAR := 21.0
+## Forty on a street a frame, in rig yardsticks (TestCase.bone_yardstick_us):
+## the step is two thirds posing rigs, and against an interpreted ruler a CI
+## runner read it doubled at 17.8 under a bar of 21. Calibrated 2026-09-25:
+## 9.3-10.5 shipped, 18.6-19.1 doubled; the bar between them.
+const STREET_BAR := 14.0
 
 static var _world: WorldData
 
@@ -273,8 +275,17 @@ func test_what_a_street_of_forty_costs_through_the_real_path() -> void:
 	# so this bar is the real number and can still fail for a real reason.
 	# In yardsticks, not microseconds: CI's runner is another machine
 	# (TestCase.yard_lt). Doubled is two steps and a whole count: twice the frame.
-	yard_lt(step_us + count_us * 0.5, doubled_us, yardstick_us(), STREET_BAR,
-		"forty on a street a frame (%.0f us step + %.0f us count)" % [step_us, count_us])
+	#
+	# SCALED TO FORTY, since what stood is the world's to say: GEN 28 moved seed
+	# 5's spawn by the shore and 28 of the 40 stood, which read as a street grown
+	# 40% cheaper with nothing about villagers changed. The step goes as the
+	# count, the crowd count as its square.
+	var got := yard_sample(step, street_twice, bone_work())
+	var k := 40.0 / float(maxi(n, 1))
+	var frame := got[0] + count_us * 0.5
+	var forty := got[0] * k + count_us * 0.5 * k * k
+	yard_lt(forty, got[1] * forty / frame, got[2], STREET_BAR,
+		"forty on a street a frame (%d stood: %.0f us step + %.0f us count, scaled to forty)" % [n, step_us, count_us])
 	# And the build stays a ramp rather than a stall, because nothing builds two
 	# in one frame: what a player feels is the street filling in, not a hitch.
 	#

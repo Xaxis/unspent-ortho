@@ -25,8 +25,9 @@ const PLAYER_ROOT := "user://saves"
 ## player's autosave, and a tour run beside another never continues its save.
 const TOOL_ROOT := "user://tool-saves"
 
-## A process run as a script (the test runner) keeps its saves here.
-const TEST_ROOT := "user://test-saves"
+## A process run as a script (the test runner) keeps its saves here, in a
+## folder of its own process (RunnerHome): runners on one machine share user://.
+static var TEST_ROOT := RunnerHome.path().path_join("saves")
 
 ## Where slots live. Tests point it somewhere of their own.
 static var root := TEST_ROOT if OS.get_cmdline_args().has("-s") else PLAYER_ROOT

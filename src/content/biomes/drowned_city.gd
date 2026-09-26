@@ -19,6 +19,7 @@ static func make() -> BiomeDef:
 	var d := BiomeDef.new()
 	d.id = &"drowned_city"
 	d.display_name = "the drowned city"
+	d.spoken_in = "in the drowned city"
 	d.order = 15
 	d.style_note = "Green-black water between concrete, tide lines up every wall, nothing dry at ground level."
 	d.share = Vector2(0.05, 0.09)

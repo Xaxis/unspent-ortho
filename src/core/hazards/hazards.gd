@@ -426,8 +426,14 @@ static func drain(pressure: Dictionary, minutes: float) -> float:
 	return DRAIN_PER_MINUTE * minutes * clampf((top - HARM) / (1.0 - HARM), 0.0, 1.0)
 
 
-## Health after a drain: it stops at HARM_FLOOR, so the weather never kills.
-static func drained_health(health: int, carried: float) -> int:
+## Health after a drain: it stops at HARM_FLOOR, so the weather never kills --
+## on its own. Already at the floor, with a threat near (Survival.threat_near),
+## the next whole point it takes is the last one: the weather has hollowed the
+## body out to where what came with it finishes the work (mechanics
+## improvement 4), and the fight's own downed outcome follows.
+static func drained_health(health: int, carried: float, threat_near: bool = false) -> int:
+	if threat_near and health <= HARM_FLOOR and floori(carried) >= 1:
+		return 0
 	return maxi(HARM_FLOOR, health - floori(carried))
 
 

@@ -83,8 +83,22 @@ func setup(s: MobState, world: WorldData, base_material: Material, figure: Figur
 		# Animals are the hand's shapes varied by seed: no two yard dogs alike.
 		model = AnimalModel.spawn(model_kind, base_material, Rng.hash_ints(world.seed_value, s.id, 0xA11))
 	pivot.add_child(model)
+	# A standing or walking machine is drawn at POSE_HZ, staggered by body so ten
+	# of them do not all pose on one frame; its tells, strikes, hurts and death
+	# every frame (MachineModel.pose_hz).
+	if model is MachineModel:
+		(model as MachineModel).pose_hz = POSE_HZ
+		(model as MachineModel)._step_left = fposmod(float(s.id) * 0.37, 1.0) / POSE_HZ
 	_z = world.height_at(s.pos)
 	sync_view(0.0, 0.0)
+
+
+## Poses a second a machine stands or walks at in a running game: half the
+## screen's, which a machine's exact servo motion carries without a stutter, and
+## half the cost of ten of them (measured 1.3 ms a frame posed every frame).
+const POSE_HZ := 30.0
+## How high a dropping body hops off its ledge before it falls, world units.
+const DROP_HOP := 0.5
 
 
 ## Draw the state at simulation time `now_ms`. delta 0 holds the pose (hitstop).
@@ -108,12 +122,20 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	# above it, so a body left on the ground there is a body under the sea.
 	var swimming := Swim.swims(s.row) and Swim.deep(_world, s.pos)
 	var ground := _world.height_at(s.pos) + (Swim.WATER_Y - Swim.sink_of(s.row) if swimming else 0.0)
-	_z = ground if delta == 0.0 else lerpf(_z, ground, 1.0 - exp(-12.0 * delta))
+	var fall := s.drop_fall(now_ms)
+	if fall >= 0.0 and fall < 1.0:
+		# Through the air (Brains `drop`): off the ledge's height with a hop, and
+		# down onto where it lands falling faster as it goes.
+		_z = lerpf(_world.height_at(s.drop_from), _world.height_at(s.drop_at), fall * fall) + DROP_HOP * 4.0 * fall * (1.0 - fall)
+	else:
+		_z = ground if delta == 0.0 else lerpf(_z, ground, 1.0 - exp(-12.0 * delta))
 	position = Vector3(s.pos.x, _z, s.pos.y)
 	_wake(delta, swimming)
 	model.rotation.y = -s.facing
 	var p := _pose(now_ms)
 	if p != model.pose:
+		if p == &"windup" and s.blow != null and model is MachineModel:
+			(model as MachineModel).tell_s = s.blow.windup / 1000.0
 		model.set_pose(p)
 	var lit := s.alive and not s.part_dark(now_ms)
 	if lit != _was_lit:

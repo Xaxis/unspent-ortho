@@ -1,0 +1,10 @@
+# The goal past the first tools (mechanics pass 2c; Guide.next_elite): with a
+# pick in the bag and ore off the rock, the standing goal stops asking for the
+# first hour's things and names the next elite material the player lacks, how
+# it is had, and where: the coast's own first, the machine that walks here.
+# A tour, because `58_guide` is off in every tools/shot.sh run (tours/guide.tour).
+#   tools/tour.sh tours/late_goal.tour --seed=7 --hour=11 --weather=clear:0 --give=pick:1,iron_ore:1
+coast calm
+place spawn
+wait 3.0
+shot 01-the-goal-names-an-elite-material-and-where

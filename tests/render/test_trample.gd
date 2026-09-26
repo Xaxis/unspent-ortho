@@ -100,8 +100,9 @@ func test_a_running_game_presses_the_grass_under_the_player() -> void:
 ## case: a long walk leaves the path lying across all of it. In yardsticks
 ## (TestCase.yard_lt), because a bar in ms failed CI's slower runner at 4.244
 ## against 4.0 on code nothing had touched.
-## Calibrated 2026-09-25: 29.1 shipped, 58.6 doubled; the bar between them.
-const FRAME_BAR := 41.0
+## Calibrated 2026-09-25, cost and yardstick timed in turn (TestCase.yard_sample):
+## 21.3-22.9 shipped, 44.5-46.5 doubled; the bar between them.
+const FRAME_BAR := 32.0
 
 
 func test_a_frame_of_the_field_is_cheap() -> void:
@@ -115,6 +116,5 @@ func test_a_frame_of_the_field_is_cheap() -> void:
 			f.decay(0.016)
 			f.stamp(Vector2(8.0, 8.0), 0.75, 1.0, 0.8)
 			f.bytes()
-	var us := best_of(5, frames_of.bind(10)) / 10.0
-	var doubled := best_of(5, frames_of.bind(20)) / 10.0
-	yard_lt(us, doubled, yardstick_us(), FRAME_BAR, "a frame of the trample field")
+	var got := yard_sample(frames_of.bind(10), frames_of.bind(20), yard_work())
+	yard_lt(got[0] / 10.0, got[1] / 10.0, got[2], FRAME_BAR, "a frame of the trample field")

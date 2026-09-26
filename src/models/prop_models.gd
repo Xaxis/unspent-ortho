@@ -84,8 +84,12 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 			return BiomeForms.of(country).stock.size()
 		PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.BOULDER:
 			return 4
+		# A cairn has a fourth model world gen never deals: the player's own bag
+		# heap (BAG_CAIRN), so `pick_variant` deals from the first three.
+		PropKind.CAIRN:
+			return 4
 		PropKind.SNOW_PINE, PropKind.DRIFTWOOD, PropKind.BONES, PropKind.RUIN, PropKind.STANDING_STONE, PropKind.REEDS, \
-		PropKind.GORSE, PropKind.CLINTS, PropKind.CAIRN, PropKind.MUSSEL_ROCK, PropKind.PEAT_BANK, PropKind.WRACK:
+		PropKind.GORSE, PropKind.CLINTS, PropKind.MUSSEL_ROCK, PropKind.PEAT_BANK, PropKind.WRACK:
 			return 3
 		# Four: the Burning puts nine vents in one frame, and two shapes there is a
 		# stamp (art finding 16). Even variants are a hole burnt in the ground,
@@ -158,7 +162,13 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 
 ## A variant for an instance from its hash (any int).
 static func pick_variant(kind: int, h: int, country: int = Country.COAST) -> int:
-	return absi(h) % variants(kind, country)
+	return absi(h) % (DEALT_CAIRNS if kind == PropKind.CAIRN else variants(kind, country))
+
+
+## The cairn a bad end leaves over the player's bag (Survival.leave_bag): set on
+## the prop, never dealt, so no cairn world gen lays ever looks like one.
+const BAG_CAIRN := 3
+const DEALT_CAIRNS := 3
 
 
 ## The model one placed prop is drawn as: what world gen dealt it (`WorldProp.variant`,
