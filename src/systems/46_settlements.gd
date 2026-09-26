@@ -878,6 +878,31 @@ func lose_person(s: Settlement, who: int) -> void:
 	_send_away(s, who)
 
 
+## Somebody the plan carried off, back at a door (45_taken, SETTLE.md S6). The
+## holding they were taken from takes them back under their own id (ids are never
+## reused, so it is the same person) if it still stands; otherwise a standing
+## holding within JOIN of `at` takes them in as somebody new. Beds do not cap it:
+## a bed is what a stranger asks for, and this is their home. Returns the
+## holding's id, or -1 when nowhere stands to take them.
+func come_home(home: int, at: Vector2, who: int) -> int:
+	for s in places:
+		if s.id == home and who >= 0 and not s.standing().is_empty():
+			if not s.people.has(who):
+				s.people.append(who)
+				s.looks[who] = s.id * 1013 + who
+			return s.id
+	if not at.is_finite():
+		return -1
+	for s in places:
+		if s.standing().is_empty() or s.centre.distance_to(at) > SettlementBuild.JOIN:
+			continue
+		var id := s.take_person_id()
+		s.people.append(id)
+		s.looks[id] = s.id * 1013 + id
+		return s.id
+	return -1
+
+
 ## Somebody who has gone: their body goes back to being nobody's, and the holding
 ## forgets them.
 func _send_away(s: Settlement, who: int) -> void:

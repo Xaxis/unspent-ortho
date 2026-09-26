@@ -104,7 +104,8 @@ extends RefCounted
 ##                     1.0 the region's keeper. Nothing is sent until something reads it (raids)
 ## --carried=N         N people are already being held at the first depot of the plan,
 ##                     taken out of a village of that same region, so the region has
-##                     somebody to ask him about (taken, story)
+##                     somebody to ask him about (taken, story); with --holding, taken
+##                     off the staged holding's books instead, to walk home to it
 ## --craft=KIND        park a craft (raft | hover_sled | walker_rig) in reach of the player (crafts)
 ## --aboard=KIND      park a craft and stand the player on it, ready to steer (crafts)
 ## --act=NAME[:MS]     play a fight moment and hold it for the shot: swing | grip | hurt | dodge | alert | windup

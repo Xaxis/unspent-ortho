@@ -40,6 +40,9 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
 - 42_target: `src/systems/42_target.gd`, reached by `tools/tour.sh tours/targeting.tour`. A lock holds the body (facing, strafe arc, swing, dodge: `src/core/fight/lock_on.gd`, `tools/test.sh test_lock_on`), proven in both views by `tools/tour.sh tours/lockon_top.tour` and `tours/lockon_shoulder.tour` (each tour's header has its options).
 - 44_sentinels: `src/systems/44_sentinels.gd`, reached by `tools/tour.sh tours/sentinels.tour`.
 - 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.
+  Freed by a dark yard or a fallen keeper, and back on a standing holding's books
+  (`tools/test.sh test_come_home`; `tools/tour.sh tours/taken_home.tour`, options in its header;
+  `tours/escort.tour` walks one to a village).
 - 47_defences: `src/systems/47_defences.gd`, reached by `tools/tour.sh tours/defences.tour`.
 - 48_raids: `src/systems/48_raids.gd`, reached by `tools/tour.sh tours/raids.tour`.
 
