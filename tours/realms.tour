@@ -25,10 +25,14 @@ walkto shaft 6
 await portal 15
 shot 02-a-shaft-in-the-rock with realm:surface,portal
 
-# Down. The world under the world is raised while a player walks toward a shaft,
-# so the key is all that is left to press.
+# Down. The world under the world is raised on one worker from the game's third
+# frame (20_realms WARM_AFTER), and `place` above stood us at the shaft long
+# before a walk would have: the page covers the rest of the raise. An 1840
+# underground on one worker is 73 s at load 15-18 and 95 s at load 22 (measured
+# 2026-09-26, after its one-landscape tiles stage stopped costing 15 s of it),
+# so the wait is the raise's, not a stall's.
 press use
-await realm:underground 40
+await realm:underground 150
 await crossed 5
 await land:limestone_caves 10
 wait 1.2

@@ -804,6 +804,21 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 	# into parts (one count per band).
 	var restricted := not c.allow.is_empty()
 	var body := w.continent
+	# A BODY DEALT ONE TYPE IS THAT TYPE, every tile of it. `_best_two` answers it
+	# with the type twice, and a border between a type and itself has a margin of
+	# nothing, so every one of its tiles took the long way round (gradient,
+	# tongues, climb) to the answer it started with: 19 of the underground's 41 s
+	# at 1840, a realm of one landscape. Per body: that type, or 0 for a body with
+	# a choice.
+	var only := PackedInt32Array()
+	only.resize(256)
+	if restricted:
+		for id in mini(only.size(), c.allow.size() / types):
+			var one := 0
+			for cc in range(1, types):
+				if c.may_stand(cc, id):
+					one = cc if one == 0 else -1
+			only[id] = maxi(one, 0)
 	var assign := func(stride: int, parts: Array[PackedInt32Array]) -> void:
 		GenFields.rows(size, func(y0: int, y1: int) -> void:
 			var counts := PackedInt32Array()
@@ -818,6 +833,14 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 						if stride == 1:
 							country[i] = Country.SEA
 							country2[i] = top1[(y / step) * cw + x / step]
+						continue
+					if restricted and only[body[i]] > 0:
+						var one := only[body[i]]
+						if stride == 1:
+							country[i] = one
+							country2[i] = one
+						else:
+							counts[body[i] * types + one] += 1
 						continue
 					var a := 1
 					var b := 2
