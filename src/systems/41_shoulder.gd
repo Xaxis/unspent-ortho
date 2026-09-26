@@ -451,13 +451,14 @@ func _gather_frame(head: Vector3, want: Rect2i) -> void:
 	var w := game.world
 	var c := Vector2((box.position.x + box.end.x) * 0.5, (box.position.y + box.end.y) * 0.5)
 	var r := maxf(box.size.x, box.size.y) * 0.5
+	# The rows the query's own window gives, read from the table as the query
+	# reads them (every world keeps one, packed or not: WorldData.add_prop).
+	var t := w.table
 	for row: int in game.query.rows_near(c, r):
-		var id := w.table.id[row] if w.packed else w.props[row].id
-		var solid := w.table.solid[row] if w.packed else w.props[row].solid
-		if solid <= 0.0:
+		if t.solid[row] <= 0.0:
 			continue
-		var at: Vector2 = w.table.pos[row] if w.packed else w.props[row].pos
-		_frame_rows.append(Vector4i(row, floori(at.x), floori(at.y), id))
+		var at := t.pos[row]
+		_frame_rows.append(Vector4i(row, floori(at.x), floori(at.y), t.id[row]))
 	_frame_ghosts = game.query.ghosts_near(c, r)
 
 
