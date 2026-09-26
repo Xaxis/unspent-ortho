@@ -31,9 +31,10 @@ jobs:
     runs-on: ubuntu-latest
     # A hang guard, not a speed bar. The suite ran about 25 min after the camera
     # work; with interiors, foliage and the sky it outgrew 45 (2026-09-25: killed
-    # with shards at 793, 608 and about 800 of roughly 850 each). A real hang
-    # still runs past 80.
-    timeout-minutes: 80
+    # with shards at 793, 608 and about 800 of roughly 850 each), then 80 (2026-09-26,
+    # the homes and landscapes assembly: killed at shard 801, none red). A real hang
+    # still runs past 120.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
 
