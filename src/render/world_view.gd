@@ -978,6 +978,9 @@ func _far_worker(slot: int, key: Vector2i) -> void:
 	var began := Time.get_ticks_usec()
 	if _far_kind[slot] == STANDS:
 		_far_out[slot] = Far.stand_arrays(world, _far_in[slot])
+		# Its props are views, and the slot is this task's until it is collected:
+		# let them go now rather than hold a batch alive until the slot's next.
+		_far_in[slot] = []
 	else:
 		_far_out[slot] = Far.build_arrays(world, key.x, key.y, _far_tables)
 	_far_at[slot] = Time.get_ticks_usec() - began
