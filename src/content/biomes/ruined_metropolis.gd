@@ -45,9 +45,10 @@ static func make() -> BiomeDef:
 	d.reach_in_low = Vector3(5.0, 0.08, 0.32)
 	d.hatch = Ink.NONE
 	d.grounds = {
-		# Poured concrete seventy years under the weather: grey, not pale. At
-		# ASH[3] it came back as snow at eye level.
-		Ground.FLOOR: P.ASH[2].lerp(P.STONE[2], 0.5),
+		# Poured concrete seventy years under the weather, gone the warm grey of
+		# dust and rust: not pale (at ASH[3] it read as snow at eye level), and not
+		# the slums' blue-grey either, which is the living city next door.
+		Ground.FLOOR: P.ASH[2].lerp(P.EARTH[2], 0.62),
 		Ground.ROAD: P.ASH[2].lerp(P.SLATE[2], 0.35),
 		Ground.GRAVEL: P.STONE[3].lerp(P.ASH[3], 0.5),
 		Ground.SCREE: P.ASH[2].lerp(P.STONE[2], 0.45),
