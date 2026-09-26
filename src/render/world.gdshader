@@ -1392,6 +1392,51 @@ vec3 overgrow(vec3 c, vec3 wp, vec2 px) {
 	return c;
 }
 
+// The machines' status light: the one violet in the world that is theirs.
+const vec3 STATUS_VIOLET = vec3(0.50, 0.34, 0.92);
+
+// CAST_FLOOR: the server fields' floor, the machines' own and still maintained.
+// Long cast runs on the survey's bearing, exact and swept, with a cable tray
+// between each pair; in every tray a violet status strip, dashed, lit on the
+// machines' power (so a strike stutters it, as it does every strip they own)
+// and repeated to the horizon. Across the runs only the panel ends, faint, so
+// the floor is ruled one way and never a grid. Coolant weeps from the trays in
+// dark tongues, the one thing on it the machines do not clean.
+vec3 cast_floor(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
+	vec2 q = mat2(vec2(0.97, 0.26), vec2(-0.26, 0.97)) * wp.xz;
+	float row = fract(q.y / 6.0) * 6.0;
+	// The tray: a channel 0.5 wide in the middle of the gap between runs.
+	float tray = abs(row - 3.0);
+	if (tray < 0.28) {
+		c = mix(INK2, INK3, 0.5);
+		if (tray > 0.2) {
+			c = mix(STONE2, LINEN3, 0.3);
+		}
+		// The strip: dashed, on the machines' power.
+		if (tray < 0.07 && fract(q.x / 2.2) < 0.72) {
+			float ndim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
+			float on = max(neon_burn(ndim), 0.25) * sky_power();
+			c = mix(mix(INK3, STATUS_VIOLET, 0.4), STATUS_VIOLET, on);
+			emit += STATUS_VIOLET * 1.6 * on;
+		}
+	} else {
+		// A run: the pour lines trowelled flat, exact.
+		if (abs(row - 1.5) < 0.02 || abs(row - 4.5) < 0.02) {
+			c = dn(c, 0.12);
+		}
+		// Panel ends across the run, faint.
+		if (abs(fract(q.x / 9.0) - 0.5) > 0.497) {
+			c = dn(c, 0.18);
+		}
+		// Coolant weeping out of the tray onto the run, in tongues.
+		float weep = ink_vnoise(vec2(q.x * 0.4, 7.0));
+		if (weep > 0.66 && tray < 0.9 + (weep - 0.66) * 3.0) {
+			c = mix(c, mix(SPRUCE1, INK2, 0.5), 0.5);
+		}
+	}
+	return c;
+}
+
 // Terrace walls: each country's rock, banded by world height. dt: depth below
 // the wall's top (a wall is one level tall).
 vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
@@ -1823,6 +1868,26 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		if (dt < 0.035 + ink_vnoise(vec2(px.x * 0.1, 13.0)) * 0.03) {
 			c = mix(MOSS2, MOSS3, 0.4);
 		}
+	} else if (id == 19) {
+		// CAST: a retaining wall the machines cast and keep. Formwork panels to an
+		// exact module, tie holes in exact rows, a violet strip along the lip on
+		// their power, and a clean face -- no weather is allowed on it, and that
+		// is what makes it the most frightening wall in the world.
+		c = mix(STONE2, SLATE2, 0.35);
+		float pan = fract(px.x / 48.0);
+		if (pan < 0.02) {
+			c = dn(c, 0.3);
+		}
+		if (abs(fract(px.x / 12.0) - 0.5) < 0.04 && abs(fract(dt / 0.125) - 0.5) < 0.1) {
+			c = INK3;
+		}
+		if (dt < 0.03) {
+			float ndim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
+			float on = max(neon_burn(ndim), 0.25) * sky_power();
+			c = mix(mix(INK3, STATUS_VIOLET, 0.4), STATUS_VIOLET, on);
+			emit += STATUS_VIOLET * 1.4 * on;
+			unh = max(unh, on);
+		}
 	}
 	return c;
 }
@@ -1997,6 +2062,9 @@ void fragment() {
 		if (m == M_OVERGROWN) {
 			c = overgrow(c, world_pos, px);
 		}
+		if (m == M_CAST_FLOOR) {
+			c = cast_floor(c, world_pos, px, emit);
+		}
 		if (m == M_TIDEFLAT) {
 			c = tide_floor(c, world_pos, px);
 		}
@@ -2040,8 +2108,9 @@ void fragment() {
 		vec2 wpx = vec2(floor(along / SKY_GRAIN), px.y);
 		c = strata(m - MARK_STRATA, c, world_pos, wpx, emit, unh);
 		// The weathering pass, on every wall: whatever it is cut through, the
-		// lip, the run-off and the foot are the weather's.
-		{
+		// lip, the run-off and the foot are the weather's -- except the one the
+		// machines cast and still maintain.
+		if (m != M_STRATA_CAST) {
 			c = strata_weather(c, (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y, wpx);
 		}
 	} else if (m >= 1 && m <= 16) {

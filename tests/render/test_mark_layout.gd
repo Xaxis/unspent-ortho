@@ -28,7 +28,7 @@ func test_every_ground_mark_lies_in_a_ground_run() -> void:
 			var m: int = d.ground_marks[g]
 			check(_in(m, GroundColors.GROUND_A) or _in(m, GroundColors.GROUND_B),
 				"%s names mark %d for %s, in a ground run" % [d.id, m, Ground.NAMES[g]])
-	for m: int in [GroundColors.FRESH, GroundColors.VITRIFIED, GroundColors.TIDEFLAT, GroundColors.CITY_FLOOR, GroundColors.OVERGROWN]:
+	for m: int in [GroundColors.FRESH, GroundColors.VITRIFIED, GroundColors.TIDEFLAT, GroundColors.CITY_FLOOR, GroundColors.OVERGROWN, GroundColors.CAST_FLOOR]:
 		check(_in(m, GroundColors.GROUND_A) or _in(m, GroundColors.GROUND_B), "mark %d is a ground" % m)
 
 
@@ -57,6 +57,7 @@ func test_the_shader_states_the_same_layout() -> void:
 			["MARK_STRATA", GroundColors.STRATA], ["MARK_STRATA_END", GroundColors.STRATA_RUN.y],
 			["M_VITRIFIED", GroundColors.VITRIFIED], ["M_TIDEFLAT", GroundColors.TIDEFLAT],
 			["M_CITY_FLOOR", GroundColors.CITY_FLOOR], ["M_OVERGROWN", GroundColors.OVERGROWN],
+			["M_CAST_FLOOR", GroundColors.CAST_FLOOR], ["M_STRATA_CAST", GroundColors.STRATA + GroundColors.STRATA_CAST],
 			["M_STRATA_ROOTED", GroundColors.STRATA + GroundColors.STRATA_ROOTED],
 			["M_STRATA_BONE", GroundColors.STRATA + GroundColors.STRATA_BONE],
 			["M_STRATA_GLASS", GroundColors.STRATA + GroundColors.STRATA_GLASS],

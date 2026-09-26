@@ -38,7 +38,9 @@ static func make() -> BiomeDef:
 	d.reach_in_low = Vector3(4.5, 0.07, 0.3)
 	d.hatch = Ink.NONE
 	d.grounds = {
-		Ground.FLOOR: P.ASH[3].lerp(P.SLATE[3], 0.4),
+		# Their cast floor: a dense trowelled grey, not pale. At ASH[3] it came
+		# back as snow at eye level.
+		Ground.FLOOR: P.ASH[2].lerp(P.SLATE[3], 0.45),
 		Ground.ROAD: P.ASH[3].lerp(P.SLATE[2], 0.3),
 		Ground.GRAVEL: P.STONE[3].lerp(P.ASH[3], 0.4),
 		Ground.ROCK: P.SLATE[3],
@@ -53,7 +55,12 @@ static func make() -> BiomeDef:
 	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
 		d.grounds[g] = d.grounds[Ground.GRAVEL]
 	d.cliff_wash = P.SLATE[2].lerp(P.ASH[2], 0.35)
-	d.strata = GroundColors.STRATA_SCRAP
+	# THEIRS, and LOOK only (no seed moves): their floor (GroundColors.CAST_FLOOR),
+	# ruled one way with a violet status strip in every tray, and their walls
+	# (STRATA_CAST), cast clean and kept clean. It was a pale wash over the
+	# scrapwood's bank of made ground, which is the opposite of what this is.
+	d.ground_marks = {Ground.FLOOR: GroundColors.CAST_FLOOR, Ground.ROAD: GroundColors.CAST_FLOOR}
+	d.strata = GroundColors.STRATA_CAST
 	d.plain_ground = Ground.FLOOR
 	d.bank_ground = Ground.GRAVEL
 	d.pool_rim_ground = Ground.GRAVEL

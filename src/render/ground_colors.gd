@@ -145,6 +145,9 @@ const STRATA_DECK := 17
 ## A deck edge the forest has: concrete under a curtain of hanging roots and
 ## vine, ferns out of its cracks, moss on the lip (the green towers).
 const STRATA_ROOTED := 18
+## A machine-cast retaining wall: formwork panels, tie holes in exact rows, a
+## violet strip along the lip, and no weather on it at all (the server fields).
+const STRATA_CAST := 19
 ## THE CITY'S FLOOR, a GROUND drawn with the grounds although its number sits
 ## past the strata (the ground numbers ran out at 60): poured slabs in bays,
 ## their joints grown through, faded lane paint, spidered cracks and drifts of
@@ -153,6 +156,9 @@ const CITY_FLOOR := 98
 ## The same city floor with the forest taking it back: moss out of every joint
 ## and spreading, roots across it, leaf litter (the green towers).
 const OVERGROWN := 99
+## The machines' own cast floor (the server fields): exact, swept, laid in long
+## runs with a cable tray between them and a violet status strip in each tray.
+const CAST_FLOOR := 100
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array

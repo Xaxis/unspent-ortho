@@ -74,6 +74,7 @@ const int M_VITRIFIED = 96;
 const int M_TIDEFLAT = 97;
 const int M_CITY_FLOOR = 98;
 const int M_OVERGROWN = 99;
+const int M_CAST_FLOOR = 100;
 const int M_STRATA_BONE = 133;
 const int M_STRATA_GLASS = 139;
 const int M_STRATA_TIDE = 140;
@@ -82,6 +83,7 @@ const int M_STRATA_REFUSE = 142;
 const int M_STRATA_CRAG = 143;
 const int M_STRATA_DECK = 145;
 const int M_STRATA_ROOTED = 146;
+const int M_STRATA_CAST = 147;
 
 bool mark_ground(int m) {
 	return (m >= MARK_GROUND_A0 && m <= MARK_GROUND_A1) || (m >= MARK_GROUND_B0 && m <= MARK_GROUND_B1);
@@ -208,6 +210,10 @@ vec4 matter_of(int m) {
 	else if (m == M_CITY_FLOOR) { r = vec4(0.80, 0.40, 0.012, 0.0); }
 	// OVERGROWN: the slab under a damp mat of moss and leaves, softer and matte.
 	else if (m == M_OVERGROWN) { r = vec4(0.88, 0.30, 0.025, 0.0); }
+	// CAST_FLOOR / STRATA_CAST: the machines' own casting, dense and trowelled,
+	// a little glossy: the one floor in the world somebody still maintains.
+	else if (m == M_CAST_FLOOR) { r = vec4(0.52, 0.52, 0.006, 0.0); }
+	else if (m == M_STRATA_CAST) { r = vec4(0.56, 0.50, 0.010, 0.0); }
 	// STRATA_DECK: the broken edge of a cast deck.
 	else if (m == M_STRATA_DECK) { r = vec4(0.78, 0.40, 0.050, 0.0); }
 	else if (mark_strata(m)) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
