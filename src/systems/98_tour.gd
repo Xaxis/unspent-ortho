@@ -932,6 +932,7 @@ func _stand_at(found: WorldProp, said: String) -> bool:
 
 ## Every `walkto` target, the one list: `tests/tours/test_tour_claims.gd` reads it,
 ## so a new target cannot be written into a tour and refused by a stale copy.
+## (`prop:KIND` is checked against PropKind.NAMES there instead.)
 const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft", "strongbox", "guard"]
 
 
