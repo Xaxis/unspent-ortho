@@ -176,6 +176,10 @@ var disposition: StringName = &"indifferent"
 ## True while the machine's walk is running something down: the lights hold
 ## locked (optics hot, scans centred, beams narrowed, status double-blink).
 var hunting := false
+## How long the bite being told takes to wind up, in seconds: the working part's
+## light climbs across all of it and tops out at the strike (_light_scale). Mob
+## sets it from the bite as the windup starts.
+var tell_s := 0.6
 ## The merged meshes by surface kind, once built.
 var surfaces: Dictionary = {}
 var skeleton: Skeleton3D
@@ -835,7 +839,9 @@ func _routine(_delta: float, _on: bool) -> void:
 func _light_scale() -> float:
 	match pose:
 		&"windup":
-			return 1.0 + 0.9 * smoothstep(0.0, 0.6, minf(pose_time, 1.0))
+			# Across the whole tell, however long this bite winds up: the light
+			# is the tell in the dark, so it tops out as the strike comes.
+			return 1.0 + 0.9 * smoothstep(0.0, maxf(0.1, tell_s), pose_time)
 		&"strike":
 			return 1.9
 	return 1.0

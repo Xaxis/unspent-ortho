@@ -114,6 +114,8 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 	model.rotation.y = -s.facing
 	var p := _pose(now_ms)
 	if p != model.pose:
+		if p == &"windup" and s.blow != null and model is MachineModel:
+			(model as MachineModel).tell_s = s.blow.windup / 1000.0
 		model.set_pose(p)
 	var lit := s.alive and not s.part_dark(now_ms)
 	if lit != _was_lit:

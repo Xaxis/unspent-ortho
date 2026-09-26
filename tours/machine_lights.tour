@@ -1,0 +1,35 @@
+# Every machine carries its own light (MachineModel): optics that burn faintly
+# always, a working part that warms across the whole tell to its brightest at
+# the strike, all of it scaled by how dark it is (darkness()). Ten machines on
+# the coast at night, then the same ten at noon where the light has to stay
+# subtle, and what ten lit machines cost a frame against none.
+#   tools/tour.sh tours/machine_lights.tour --seed=7 --weather=clear:0 --stats
+coast calm
+place spawn
+zoom 16
+hour 23
+wait 1.0
+perf stats begin
+wait 3.0
+perf stats end no-machines-night
+spawn harvester
+spawn cutter
+spawn hauler
+spawn sweeper
+spawn watcher
+spawn harvester
+spawn cutter
+spawn hauler
+spawn sweeper
+spawn watcher
+wait 1.0
+perf stats begin
+wait 3.0
+perf stats end ten-machines-night
+shot 01-ten-machines-at-night-by-their-own-light with mob:harvester,mob:watcher
+hour 12
+wait 1.0
+perf stats begin
+wait 3.0
+perf stats end ten-machines-noon
+shot 02-the-same-ten-at-noon-subtle with mob:harvester,mob:watcher

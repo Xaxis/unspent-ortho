@@ -1,14 +1,29 @@
 # A landscape's own kind (mechanics pass 3a; BiomeDef.roster `over`): the hauler
 # down in the limestone caves works the dark by ear. Held under the target key,
 # the slate reads it off the same row it fights by: sees 3, hears 13, a slower
-# pace, and a 780 ms tell where the bonelands' hauler tells in 600.
+# pace, and a 780 ms tell where the bonelands' hauler tells in 600. By day in
+# the dark of a cave it carries its own light (MachineModel.land_dark).
 #   tools/tour.sh tours/cave_hauler.tour --seed=7 --realm=underground --hour=11
 coast calm
+# Out onto the open floor first: at the shaft foot the spawner stands it behind
+# the pipe run, and a frame of the pipe is not a frame of the machine.
+walk -1,0 1.6
 wait 0.6
 spawn hauler
 wait 0.6
+shot 01-the-cave-hauler-by-its-own-light with mob:hauler
 hold target
 await target 5
 wait 0.6
-shot 01-the-cave-hauler-read-by-its-own-row with mob:hauler,target
+shot 02-the-cave-hauler-read-by-its-own-row with mob:hauler,target
 release target
+# Its tell in the dark: the working part warming as it winds up. A worker bites
+# only once it is struck, so it is struck first.
+try 4
+walkto part 3
+tap swing
+await hit 1.5
+end
+await tell 10
+wait 0.35
+shot 03-its-tell-in-the-dark with mob:hauler
