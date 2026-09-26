@@ -88,3 +88,29 @@ func test_a_lattice_discharge_spends_a_charge() -> void:
 	sim.press_swing()
 	F.ms(sim, 400)
 	eq(a.health, hp, "dry, nothing jumps")
+
+
+## One discharge carries LATTICE_DAMAGE in all, split among the bodies in reach,
+## nearest first: a crowd shares it rather than each taking the whole.
+func test_a_discharge_is_shared_by_a_crowd() -> void:
+	var sim := F.make_sim()
+	var m := F.still(sim, &"harvester", Vector2(30.5, 20.5), PI)
+	var near: Array[MobState] = []
+	for k in 3:
+		near.append(F.still(sim, &"runner", m.pos + Vector2.from_angle(PI * 0.5 + float(k) * 0.9) * (0.9 + 0.2 * k), PI))
+	sim.hero.inventory.add(&"knife")
+	sim.hero.inventory.set_held(&"knife")
+	sim.hero.inventory.add(FightRules.CHARGE, 5)
+	sim.hero.kit = FightKit.of([&"mod_lattice"])
+	sim.hero.pos = m.pos - Vector2(m.radius + sim.hero.radius + 0.3, 0.0)
+	sim.hero.facing = 0.0
+	var before := 0
+	for o in near:
+		before += o.health
+	sim.press_swing()
+	F.ms(sim, 400)
+	var after := 0
+	for o in near:
+		after += o.health
+	eq(before - after, FightKit.LATTICE_DAMAGE, "three bodies share one discharge's %d" % FightKit.LATTICE_DAMAGE)
+	lt(float(near[0].health), float(near[2].health) + 0.5, "the nearest takes its share first")

@@ -1079,6 +1079,7 @@ func _wear_on_contact() -> void:
 ## FightKit.LATTICE_REACH takes LATTICE_DAMAGE, as a source of its own (so the
 ## swing's hurt frames do not eat it), and dies of it like any other blow.
 func _lattice(struck: MobState) -> void:
+	var near: Array[MobState] = []
 	for o in mobs:
 		if o == struck or not o.alive or o.removed:
 			continue
@@ -1086,10 +1087,24 @@ func _lattice(struck: MobState) -> void:
 			continue
 		if o.hurt_by_now(&"lattice", now):
 			continue
-		o.health -= FightKit.LATTICE_DAMAGE
+		near.append(o)
+	if near.is_empty():
+		return
+	# One discharge carries LATTICE_DAMAGE in all, shared nearest first: an even
+	# share each and the remainder a point at a time from the nearest, so a
+	# crowd shares it rather than each body taking the whole.
+	near.sort_custom(func(a: MobState, b: MobState) -> bool: return a.pos.distance_to(struck.pos) < b.pos.distance_to(struck.pos))
+	var share := FightKit.LATTICE_DAMAGE / near.size()
+	var extra := FightKit.LATTICE_DAMAGE % near.size()
+	for i in near.size():
+		var o := near[i]
+		var dmg := share + (1 if i < extra else 0)
+		if dmg <= 0:
+			continue
+		o.health -= dmg
 		o.hurt_by[&"lattice"] = now + o.mob_iframes()
 		o.last_hit_at = now
-		emit(&"struck", {"from": struck.pos, "target": o, "damage": FightKit.LATTICE_DAMAGE, "plate": false, "at": o.pos, "arc": true})
+		emit(&"struck", {"from": struck.pos, "target": o, "damage": dmg, "plate": false, "at": o.pos, "arc": true})
 		if o.health <= 0:
 			_kill(o, true)
 
