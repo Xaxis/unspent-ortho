@@ -48,8 +48,8 @@ func test_the_enum_is_bigger_than_the_game_and_by_exactly_this_much() -> void:
 	# 15 when this was written; the bunk and the solar array closed the two holes
 	# that audit found, and no enum value was added for either.
 	# 18 with the gate (SETTLE.md S3): a ring of wall a player can get out of.
-	# 19 with the cellar (SETTLE.md S4).
-	eq(offered, 19, "pieces a player can put up")
+	# 20 with the cellar (SETTLE.md S4) and the stolen cell (S5).
+	eq(offered, 20, "pieces a player can put up")
 	eq(StructureKind.ROWS.size(), offered,
 		"a row nobody can choose, or a choice with no row, is a half-built piece")
 	for k: int in StructureKind.BUILDABLE:
@@ -75,9 +75,9 @@ func test_which_families_a_player_can_build_nothing_in() -> void:
 		"every family needs a piece a player can put up; these are empty: %s" % [empty])
 
 
-## A signature nobody can produce. Three of the four `found_tech` kinds cannot be
-## built, so the loudest stolen technology a player can actually make the plan
-## smell is the turret's half, and `Attention`'s header has to say that.
+## The loudest stolen technology a player can make the plan smell is a stolen
+## cell's whole signature, unlocked by a keeper's core (SETTLE.md S5), and
+## `Attention`'s header has to say that.
 func test_the_loudest_stolen_technology_a_player_can_stand_up() -> void:
 	var loudest := 0.0
 	var by := -1
@@ -87,13 +87,12 @@ func test_the_loudest_stolen_technology_a_player_can_stand_up() -> void:
 		if v > loudest and StructureKind.buildable(kind):
 			loudest = v
 			by = kind
-	eq(by, int(StructureKind.TURRET), "the turret is the only stolen technology a player can build")
-	near(loudest, 0.5, 1e-6, "and it is half a signature, not a whole one")
+	eq(by, int(StructureKind.STOLEN_CELL), "a stolen cell is the loudest stolen technology a player can build")
+	near(loudest, 1.0, 1e-6, "and it is a whole signature")
 	# The solar array was on this list and is buildable now — its day curve and
 	# weather dimming had been written and left unreachable. The turret is still
 	# the loudest a player can stand up, so the assertion above is untouched.
-	for kind: int in [int(StructureKind.STOLEN_CELL),
-			int(StructureKind.MACHINE_SHOP)]:
+	for kind: int in [int(StructureKind.MACHINE_SHOP)]:
 		gt(float((StructureKind.SIGNS[kind] as Dictionary).get("found_tech", 0.0)), 0.0,
 			"%d is only named here because it declares found_tech" % kind)
 		check(not StructureKind.buildable(kind),

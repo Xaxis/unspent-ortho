@@ -249,6 +249,9 @@ static func _meshes(piece_kind: int, v: int, broken: bool, on: bool) -> Array:
 		StructureKind.BATTERY_STACK:
 			Power.battery_made(made, v, broken)
 			Power.battery_found(found, v, broken, on)
+		StructureKind.STOLEN_CELL:
+			Power.cell_made(made, v, broken)
+			Power.cell_found(found, v, broken, on)
 		StructureKind.RADIO_MAST:
 			Power.mast_made(made, v, broken)
 			Power.mast_found(found, v, broken, on)

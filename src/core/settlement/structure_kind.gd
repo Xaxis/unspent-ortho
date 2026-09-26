@@ -43,8 +43,9 @@ enum {
 	PEDAL_DYNAMO,     # (planned) power that costs a person instead of attention:
 	                  # the only generator with no SIGNS row, which is its whole point.
 	BATTERY_STACK,    # (built)
-	STOLEN_CELL,      # (planned) the loudest piece in the game (found_tech 1.0), and the
+	STOLEN_CELL,      # (built) the loudest piece in the game (found_tech 1.0), and the
 	                  # holding `tests/raid/test_attention.gd` weighs every other against.
+	                  # Unlocked by reward: it wants a keeper's core (`needs_one`).
 	## Food and water.
 	PLOT,             # (built)
 	GREENHOUSE,       # (planned) declares SIGNS light 0.5: lit glass at night is food
@@ -228,6 +229,18 @@ const ROWS := {
 		"cost": {&"scrap": 3, &"copper": 1}, "minutes": 80.0, "wear": 0.03,
 		"banks": 6.0,
 	},
+	# A keeper's core in a timber cradle, its lens lit: power the machines made
+	# for themselves, day and night, in any weather. The build list grows by what
+	# the player ends (SETTLE.md S5): any one of `needs_one` goes into it on top of
+	# `cost`, and lives outside `cost` so mending never asks for another core and
+	# salvage never hands one back. The loudest thing a holding can stand up.
+	STOLEN_CELL: {
+		"name": "stolen cell", "idiom": Idiom.FOUND, "health": 10.0, "solid": 0.45,
+		"cost": {&"scrap": 2, &"copper": 2}, "minutes": 90.0, "wear": 0.02,
+		"power": 4.0,
+		"needs_one": [&"reaper_core", &"rake_core", &"plumb_core", &"anvil_core",
+			&"unbuilder_core", &"lockkeeper_core", &"anchor_core"],
+	},
 	RADIO_MAST: {
 		"name": "radio mast", "idiom": Idiom.MENDED, "health": 6.0, "solid": 0.3,
 		"cost": {&"timber": 1, &"scrap": 1, &"copper": 1}, "minutes": 70.0, "wear": 0.03,
@@ -316,7 +329,7 @@ const ROWS := {
 ## the moment a player wants one is the moment a piece asks for hands they have
 ## not got. The array stands beside the spinner it is the alternative to.
 const BUILDABLE: Array[int] = [LEAN_TO, HEARTH, HUT, BUNK, STORE, CELLAR, PLOT, CATCHMENT,
-	PALISADE, PLATE_WALL, GATE, NETTING, WIND_SPINNER, SOLAR_ARRAY, BATTERY_STACK, RADIO_MAST,
+	PALISADE, PLATE_WALL, GATE, NETTING, WIND_SPINNER, SOLAR_ARRAY, BATTERY_STACK, STOLEN_CELL, RADIO_MAST,
 	DECOY_MAST, SPOOFER, TURRET]
 
 
@@ -415,6 +428,12 @@ static func draw_power(kind: int) -> float:
 
 static func makes_power(kind: int) -> float:
 	return float(row(kind).get("power", 0.0))
+
+
+## The rewards a piece takes one of on top of its cost (SETTLE.md S5): empty for
+## anything a player can put up from what the land gives.
+static func needs_one(kind: int) -> Array:
+	return row(kind).get("needs_one", []) as Array
 
 
 static func makes(kind: int) -> Dictionary:

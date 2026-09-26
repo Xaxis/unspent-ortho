@@ -12,7 +12,8 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   raises the region's interference by loudness (`tools/test.sh test_noticed`, `tours/built_noticed.tour`);
   the gate, walked through and breached first (`tools/test.sh test_gate`,
   `tools/shot.sh shots/x.png --scene=gallery --filter="holding gate"`); the cellar, whose stores a raid
-  cannot take (`tools/test.sh test_cellar`, gallery `--filter="holding cellar"`).
+  cannot take (`tools/test.sh test_cellar`, gallery `--filter="holding cellar"`); the stolen cell,
+  unlocked by a keeper's core (`tools/test.sh test_unlocks`, gallery `--filter="holding stolen cell"`).
 - 50_survival: `src/systems/50_survival.gd`, reached by `tools/tour.sh tours/survival.tour`.
   Carried off leaves the bag on a heap where you were taken, under your own rag, marked on the
   survey ("your things") and standing as the goal until taken back; a bad end is filed against

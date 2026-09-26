@@ -142,6 +142,60 @@ static func battery_found(k: MeshKit, v: int, ruined: bool, lit: bool) -> void:
 		k.prism(0.3, 0.6, 0.12, 0.035, 0.66, 0.025, 6, P.LENS[0], P.LENS[0])
 
 
+# --- stolen cell -----------------------------------------------------------
+
+## A sled of four split logs with two chocks across it: what a core too heavy to
+## carry far was dragged home on, and left standing on.
+static func cell_made(k: MeshKit, v: int, ruined: bool) -> void:
+	Parts.hand(k)
+	for i in 4:
+		var z := lerpf(-0.3, 0.3, float(i) / 3.0)
+		var y := 0.05 + Parts.wob(v, 10 + i) * 0.02
+		k.strut(Vector3(-0.5, y, z + Parts.lean(v, 14 + i, 0.03)), Vector3(0.5, y, z), 0.055, 5,
+			Parts.pick(Parts.TIMBER, v, 20 + i))
+	if ruined:
+		# The sled pulled apart, one runner thrown clear.
+		k.strut(Vector3(0.6, 0.04, 0.5), Vector3(1.2, 0.04, 0.9), 0.05, 5, Parts.pick(Parts.TIMBER, v, 30))
+		return
+	for sx: int in [-1, 1]:
+		k.strut(Vector3(sx * 0.3, 0.12, -0.36), Vector3(sx * 0.3, 0.2, 0.36), 0.06, 4, Parts.pick(Parts.TIMBER, v, 32 + sx))
+	# Straps over the drum to the sled's outer logs.
+	for i in 2:
+		var x := -0.12 + 0.24 * float(i)
+		Parts.lash(k, Vector3(x, 0.08, -0.34), Vector3(x, 0.62, 0.0), v, 40 + i, 0.028)
+		Parts.lash(k, Vector3(x, 0.62, 0.0), Vector3(x, 0.08, 0.34), v, 44 + i, 0.028)
+
+
+## The core itself: a keeper's heart, a heavy ribbed drum laid on its side, its
+## lens burning while it runs. Cables spliced off it to a stake. Wrecked, the
+## drum is split and its lens dark.
+static func cell_found(k: MeshKit, v: int, ruined: bool, lit: bool) -> void:
+	Parts.ruled(k)
+	if ruined:
+		k.prism(-0.1, 0.0, 0.0, 0.2, 0.22, 0.2, 8, P.PLATE[1], P.PLATE[1])
+		k.prism(0.28, 0.0, -0.12, 0.14, 0.16, 0.15, 7, P.PLATE[1], P.PLATE[1])
+		k.prism(0.22, 0.0, 0.18, 0.05, 0.08, 0.04, 6, P.LENS[0], P.LENS[0])
+		return
+	# The drum on its side, across the sled.
+	k.strut(Vector3(0.0, 0.42, -0.3), Vector3(0.0, 0.42, 0.3), 0.24, 10, P.PLATE[3])
+	for i in 5:
+		var z := lerpf(-0.24, 0.24, float(i) / 4.0)
+		k.strut(Vector3(0.0, 0.42, z - 0.015), Vector3(0.0, 0.42, z + 0.015), 0.26, 10, P.PLATE[2])
+	# End caps, the machine's own, darker than the sheet round them.
+	for sz: int in [-1, 1]:
+		k.strut(Vector3(0.0, 0.42, sz * 0.3), Vector3(0.0, 0.42, sz * 0.34), 0.19, 10, P.PLATE[4])
+	# The cables, spliced off one cap to a stake in the ground.
+	k.strut(Vector3(0.06, 0.46, 0.34), Vector3(0.3, 0.3, 0.55), 0.022, 5, P.PLATE[1])
+	k.strut(Vector3(0.3, 0.3, 0.55), Vector3(0.62, 0.02, 0.62), 0.022, 5, P.PLATE[1])
+	k.strut(Vector3(-0.06, 0.4, 0.34), Vector3(-0.2, 0.2, 0.62), 0.02, 5, P.PLATE[1])
+	k.strut(Vector3(0.62, 0.0, 0.62), Vector3(0.62, 0.2, 0.62), 0.03, 5, P.PLATE[2])
+	# The lens on top, where the keeper looked out of it.
+	if lit:
+		Parts.tell_tale(k, Vector3(0.0, 0.68, 0.0), 0.06)
+	else:
+		k.prism(0.0, 0.66, 0.0, 0.06, 0.72, 0.05, 6, P.LENS[0], P.LENS[0])
+
+
 # --- radio mast -------------------------------------------------------------
 
 ## The tallest thing a holding has, and the loudest. Three spars, guys to three
