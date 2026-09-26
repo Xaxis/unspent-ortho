@@ -23,6 +23,7 @@ const RECIPES := {
 	&"foundry": "res://src/content/interiors/foundry.gd",
 	&"data_hall": "res://src/content/interiors/data_hall.gd",
 	&"laid_table": "res://src/content/interiors/laid_table.gd",
+	&"saw_hall": "res://src/content/interiors/saw_hall.gd",
 }
 
 static var _kinds: Dictionary = {}
@@ -165,6 +166,14 @@ const LOOT := {
 		{"item": &"record", "count": Vector2i(2, 3)},
 		{"item": &"scrap", "count": Vector2i(1, 3)},
 		{"item": &"mod_damp", "chance": 0.3, "rarity": Rarity.RARE},
+	],
+	# What the pinewood's saw hall dried in its kiln: seasoned timber, always, as
+	# much as a settlement's cellar or tower wants -- the reason to go in -- and
+	# the scrap of the saw.
+	&"saw_hall": [
+		{"item": &"seasoned_timber", "count": Vector2i(6, 10)},
+		{"item": &"scrap", "count": Vector2i(1, 3)},
+		{"item": &"record", "chance": 0.15},
 	],
 	# What somebody kept who knew what was coming: their own records first, the
 	# makings of light, and the odd thing they took off a machine to study.

@@ -236,6 +236,7 @@ func _inside_side(_delta: float) -> void:
 		if _pressed():
 			go_out()
 			return
+	_keep_hours()
 	_trespass()
 	_run_turrets()
 	box_near = _box_near()
@@ -421,6 +422,8 @@ var _turret_fired := false
 ## Live: a turret is coming round on the player this frame (the eye is hot).
 var _aiming := false
 var _box_refused := false
+## Latched, for a tour: a docked sleeper woke and turned.
+var _woke := false
 var _box_opened := false
 
 
@@ -502,7 +505,7 @@ func tour_safe(p: Vector2) -> bool:
 	var sim: FightSim = game.player.sim
 	for pair: Array in _residents:
 		var m: MobState = pair[1]
-		if m.alive and StealthQuery.sees(m.row, m.pos, p, sim.moment, sim.world, sim.query, m.facing):
+		if m.alive and not m.asleep and StealthQuery.sees(m.row, m.pos, p, sim.moment, sim.world, sim.query, m.facing):
 			return false
 	if _warden_stands():
 		for tu: HallTurret in _turrets:
@@ -574,7 +577,7 @@ static func screened(l: InteriorLayout, a: Vector2, b: Vector2) -> bool:
 ## How much of a body's noise the room it is in swallows (InteriorKind.hush):
 ## 0 outside a room. 32_disposition turns the player's loudness down by it.
 func room_hush() -> float:
-	return pocket.kind.hush if pocket != null else 0.0
+	return pocket.kind.hush if pocket != null and working() else 0.0
 
 
 ## HOW DARK THE ROOM IS AT `p` to the machines' eyes (InteriorKind.dark), where
@@ -585,16 +588,17 @@ func room_hush() -> float:
 func room_dark(p: Vector2) -> float:
 	if pocket == null:
 		return 0.0
-	return dark_at(pocket.kind, pocket.layout, p)
+	return dark_at(pocket.kind, pocket.layout, p, working())
 
 
-static func dark_at(k: InteriorKind, l: InteriorLayout, p: Vector2) -> float:
+static func dark_at(k: InteriorKind, l: InteriorLayout, p: Vector2, at_work := true) -> float:
 	if k.dark <= 0.0:
 		return 0.0
 	var lit := 0.0
 	for t: Dictionary in l.things:
 		var r := float(t.get("glare", 0.0))
-		if r <= 0.0:
+		# What runs on the shift is dark at the curfew.
+		if r <= 0.0 or (t.get("shift", false) and not at_work):
 			continue
 		var f: Vector2 = t.face
 		var s := Vector2(-f.y, f.x)
@@ -750,9 +754,43 @@ func _trespass() -> void:
 	var sim: FightSim = game.player.sim
 	for pair: Array in _residents:
 		var m: MobState = pair[1]
-		if m.alive and Roles.of(m.kind) == Roles.KEEPER and m.suspicion >= 0.99 and not pair.has(&"turned"):
+		if not m.alive or m.suspicion < 0.99 or pair.has(&"turned"):
+			continue
+		if Roles.of(m.kind) == Roles.KEEPER:
 			sim.disturb(m, &"trespass")
 			pair.append(&"turned")
+		elif pocket.layout.residents[pair[0]].get("docks", false):
+			# Woken in its dock with somebody in its store: whatever it is, it
+			# takes that for theft, which a worker turns on (Roles.TURNS).
+			sim.disturb(m, &"theft")
+			pair.append(&"turned")
+			_woke = true
+
+
+func _sleepers() -> int:
+	var n := 0
+	for pair: Array in _residents:
+		var m: MobState = pair[1]
+		if m.alive and m.asleep:
+			n += 1
+	return n
+
+
+## Whether the room is at its work now (InteriorKind.shift): outside the room,
+## always.
+func working() -> bool:
+	return pocket == null or pocket.kind.working(fmod(game.clock.minutes / 60.0, 24.0))
+
+
+## THE SHIFT COMES ROUND while the player is inside: whoever sleeps in a dock
+## wakes when the room goes back to work, and goes about it.
+func _keep_hours() -> void:
+	if not working():
+		return
+	for pair: Array in _residents:
+		var m: MobState = pair[1]
+		if m.asleep:
+			m.asleep = false
 
 
 func _wake_residents() -> void:
@@ -767,10 +805,18 @@ func _wake_residents() -> void:
 		if gone.has(i):
 			continue
 		var r: Dictionary = pocket.layout.residents[i]
+		# Its hours (InteriorKind.shift): one "on" the shift is here only while
+		# the room works; one that "docks" comes home at the curfew and sleeps.
+		var at_work := working()
+		if (r.get("on", &"") == &"shift" and not at_work) or (r.get("docks", false) and at_work):
+			continue
 		var kind := _body_for(StringName(r.role), pocket.threshold.land)
+		if r.has("body") and not Roster.row(StringName(r.body)).is_empty():
+			kind = StringName(r.body)
 		if kind == &"":
 			continue
 		var m := sim.add_mob(kind, r.at)
+		m.asleep = bool(r.get("docks", false))
 		m.home = r.at
 		m.facing = (r.face as Vector2).angle()
 		m.aim = m.facing
@@ -1177,7 +1223,7 @@ func _light_windows() -> void:
 			&"bounce":
 				lamp.light_energy = 0.9
 			&"working":
-				lamp.light_energy = 3.2
+				lamp.light_energy = 3.2 if working() else 0.0
 			&"emergency":
 				lamp.light_energy = 1.1
 			&"standby":
@@ -1380,6 +1426,8 @@ func tour_forget(what: StringName) -> void:
 			_box_opened = false
 		&"meal_taken":
 			_meal_taken = false
+		&"woke":
+			_woke = false
 
 
 func tour_seen(what: StringName) -> bool:
@@ -1400,6 +1448,14 @@ func tour_seen(what: StringName) -> bool:
 			return pocket != null and box_near >= 0
 		&"hatch_near":
 			return pocket != null and hatch_near >= 0
+		# Somebody in here is asleep in a dock now.
+		&"asleep":
+			return _sleepers() > 0
+		# They are, and none has woken since the tour last asked for a shot.
+		&"unwoken":
+			return _sleepers() > 0 and not _woke
+		&"woke":
+			return _woke
 		&"meal_taken":
 			return _meal_taken
 		&"unnoticed":
@@ -1431,7 +1487,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
@@ -1550,9 +1606,11 @@ func tour_route(what: String) -> PackedVector2Array:
 		var into := ((t.at as Vector2) - door).normalized()
 		var tail := PackedVector2Array([door - into * 0.9, door, (t.at as Vector2) + (t.face as Vector2) * 0.8])
 		# The ways a sneak might go to the bay's doorway: along the wall the
-		# hatch is in, straight across, or through the middle of the room.
+		# hatch is in, straight across, through the middle of the room, or
+		# straight in from the hatch and then along.
 		var middle := _room_middle()
-		for via: Array in [[start + along * along.dot(door - start)], [], [middle]]:
+		var inward := -l.door_out
+		for via: Array in [[start + along * along.dot(door - start)], [], [middle], [start + inward * inward.dot(door - start)]]:
 			var route := PackedVector2Array()
 			for v: Vector2 in via:
 				route.append(v)
@@ -1580,7 +1638,8 @@ func _route_to_guard() -> PackedVector2Array:
 
 
 ## How many of the half-tile steps along `route` from `start` a standing
-## resident or a turret would see the player on.
+## resident or a turret would see the player on, or a sleeper hear a crouched
+## step on.
 func _seen_along(start: Vector2, route: PackedVector2Array, sim: FightSim) -> float:
 	var seen := 0.0
 	var from := start
@@ -1590,7 +1649,9 @@ func _seen_along(start: Vector2, route: PackedVector2Array, sim: FightSim) -> fl
 			var q := from.lerp(p, float(k + 1) / float(n))
 			for pair: Array in _residents:
 				var m: MobState = pair[1]
-				if m.alive and StealthQuery.sees(m.row, m.pos, q, sim.moment, sim.world, sim.query, m.facing):
+				if m.alive and not m.asleep and StealthQuery.sees(m.row, m.pos, q, sim.moment, sim.world, sim.query, m.facing):
+					seen += 1.0
+				elif m.alive and m.asleep and Senses.chebyshev(m.pos, q) <= float(m.row.get("hears", 0)) * StealthNoise.loudness(Tuning.WALK_SPEED, sim.world.ground_at(floori(q.x), floori(q.y)), true, 0):
 					seen += 1.0
 			# And the turrets' eyes: a step in a turret's sweep costs a wait, not
 			# a sighting, so it counts for less than a resident who never looks away.

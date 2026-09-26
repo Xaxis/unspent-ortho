@@ -107,6 +107,10 @@ static func make() -> BiomeDef:
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"leaning_mast", &"firewatch", &"grown_hulk", &"cast_stones"]
+	# Under the works' yard, the saw hall: where the machines TAKE the wood, on a
+	# shift, and dock their haulers asleep at the curfew
+	# (src/content/interiors/saw_hall.gd).
+	d.interiors = {&"works:depot": &"saw_hall"}
 	d.sound_bed = &"bed_pines"
 	d.surface = _surface
 	d.scatter = _scatter

@@ -440,6 +440,9 @@ func _beat() -> void:
 func _notice(m: MobState, look: float) -> StringName:
 	if now < m.calm_until or not StealthQuery.notices(m.row, m.pos, hero.pos, moment, world, query, look):
 		return &""
+	# Asleep, its optics are dark: only what it hears reaches it.
+	if m.asleep:
+		return &"heard" if StealthQuery.hears(m.row, m.pos, hero.pos, moment) else &""
 	if StealthQuery.sees(m.row, m.pos, hero.pos, moment, world, query, look):
 		if is_nan(look) or StealthQuery.in_cone(m.pos, look, hero.pos, StealthQuery.cone_half(m.row)):
 			return &"seen"
@@ -467,6 +470,8 @@ func _suspicion(m: MobState, how: StringName) -> void:
 		return
 	if how == &"heard" or how == &"glimpsed":
 		m.suspicion = minf(1.0, m.suspicion + (HEAR_RISE if how == &"heard" else GLIMPSE_RISE))
+		if m.suspicion >= 1.0:
+			m.asleep = false
 		# Unsure enough to go and look: its optics turn to where it had them. A
 		# machine at its work does not: it glances and goes on (`_beat`); stood
 		# to look, a hauler stopped on its round for someone it only half saw.
@@ -482,6 +487,8 @@ func _suspicion(m: MobState, how: StringName) -> void:
 		m.heard_at = noise_at
 		m.look_until = now + LOOK_MS
 		m.suspicion = minf(1.0, m.suspicion + NOISE_RISE)
+		if m.suspicion >= 1.0:
+			m.asleep = false
 		return
 	# A wary body never settles all the way: its part goes on catching, which is
 	# how a region that has been stirred up is read without a word.

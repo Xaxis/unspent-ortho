@@ -219,7 +219,7 @@ static func awareness(m: MobState, from: Vector2, moment: Moment, world: WorldDa
 	var sees := false
 	var hears := false
 	if world != null and query != null and moment != null:
-		sees = StealthQuery.sees(m.row, m.pos, from, moment, world, query, m.facing)
+		sees = not m.asleep and StealthQuery.sees(m.row, m.pos, from, moment, world, query, m.facing)
 		hears = StealthQuery.hears(m.row, m.pos, from, moment)
 	var sure := m.suspicion >= 1.0 or m.roused()
 	var word := "has not noticed you"

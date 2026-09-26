@@ -1239,6 +1239,85 @@ const FRAGMENTS := {
 			"Nothing after that, for either of them.",
 		],
 	},
+	# --- the saw hall under the pinewood's works (ROOMS: saw_hall) ------------
+	# Colour: the machines take the wood by drawing and by the clock, and keep
+	# the hours out of inertia, never regard (humans are ants). Leads only
+	# (docs/story/UNDER_THE_STONES.md): none answers, none names a gate. No beats.
+	&"saw_count": {
+		"kind": &"terminal", "title": "the saw's panel", "lands": [],
+		"lines": [
+			"  GANG SAW 2  /  CUT IN PROGRESS",
+			"  SHIFT .......... 05:00 - 20:00",
+			"  THIS SHIFT ..... 2,316",
+			"  THIS SAW ....... 40,881,907",
+			"",
+			"Beside the count, a column headed REGROWN.",
+			"Nothing has ever been written in it.",
+		],
+	},
+	&"saw_stand": {
+		"kind": &"terminal", "title": "the saw's panel", "lands": [],
+		"lines": [
+			"  STAND .......... 0-2217",
+			"  FELLED ......... TO THE SQUARE",
+			"  EDGE ........... AS SURVEYED",
+			"  NEXT ........... 0-2218",
+			"",
+			"Under it the stands already cut, a column",
+			"of numbers that scrolls for as long as you",
+			"watch it.",
+		],
+	},
+	&"saw_drawing": {
+		"kind": &"terminal", "title": "the saw's panel", "lands": [],
+		"lines": [
+			"  TIMBER ......... GRADE 1, SEASONED",
+			"  CUT TO ......... DRAWING",
+			"  DRAWING DATED .. 02.2029",
+			"  QUANTITY ....... AS DRAWN",
+			"",
+			"It gives no place. On the stack: joists,",
+			"rafters, a door frame. The same house, cut",
+			"again and again.",
+		],
+	},
+	&"dock_home": {
+		"kind": &"sign", "title": "the plate over the docks", "lands": [],
+		"lines": [
+			"  DOCK 1 ......... HOME 20:00",
+			"  DOCK 2 ......... HOME 20:00",
+			"  DOCK 3 ......... HOME 20:00",
+			"  DOCK 4 ......... NOT HOME",
+			"",
+			"There are three docks. Past the third, four",
+			"bolt holes in the wall, and a charge lead",
+			"hung in a neat loop, kept dusted.",
+		],
+	},
+	&"dock_curfew": {
+		"kind": &"sign", "title": "the plate over the docks", "lands": [],
+		"lines": [
+			"Stencilled on steel, every letter square:",
+			"  YARD CLOSED ..... 20:00 - 05:00",
+			"  HAULERS ......... DOCKED, CHARGING",
+			"  ANY MOVEMENT .... TO BE RECOVERED",
+			"",
+			"It is a rule for loads. It has no line",
+			"for anything that walks in on its own.",
+		],
+	},
+	&"dock_hardhats": {
+		"kind": &"sign", "title": "the plate over the docks", "lands": [],
+		"lines": [
+			"  DOCK NOSE IN",
+			"  CHARGE TO FULL BEFORE SHIFT",
+			"  LOADS COUNTED OUT AND IN",
+			"",
+			"Where the paint has lifted, older letters",
+			"in yellow, a hand's width tall: HARD HATS",
+			"BEYOND THIS POINT.",
+		],
+	},
 	&"lobby_boxes": {
 		"kind": &"mark", "title": "the letterboxes", "lands": [],
 		"lines": [
@@ -1815,6 +1894,10 @@ const ROOMS := {
 		&"desk:laid_table": [&"orchard_table_cloth", &"orchard_table_name", &"orchard_table_cushion"],
 		&"wall:schedule_plate": [&"orchard_plate_hours", &"orchard_plate_rota", &"orchard_plate_service"],
 		&"wall:height_marks": [&"orchard_marks_pip", &"orchard_marks_lower", &"orchard_marks_held"],
+	},
+	&"saw_hall": {
+		&"terminal:saw_panel": [&"saw_count", &"saw_stand", &"saw_drawing"],
+		&"wall:dock_plate": [&"dock_home", &"dock_curfew", &"dock_hardhats"],
 	},
 }
 
