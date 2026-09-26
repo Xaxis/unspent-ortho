@@ -769,6 +769,7 @@ func _move_mob(m: MobState, dt: float) -> void:
 	# `WorldQuery.passable` already reads for a walker rig). A climber does not
 	# swim: the ride answers deep water as a walker would.
 	var next := query.move_body(m.pos, v * dt, minf(m.radius, 0.45), climber(m.row), Swim.may_cross(m.row)) if query != null else m.pos + v * dt
+	next = _held_by_walls(m, next)
 	var keeps: Array = m.row.get("keeps_to", [])
 	if not keeps.is_empty() and world != null:
 		if not _ground_in(next, keeps):
@@ -892,6 +893,41 @@ func _land(t0: float, t1: float) -> void:
 				emit(&"grip", {"by": m, "grip": hero.grip})
 			continue
 		_hurt_hero(m, m.blow.dmg, Vector2.from_angle(m.facing) + (hero.pos - m.pos).normalized(), m.blow.knock, m.blow.knock_ms)
+
+
+## Walls that stop every body but the player's: a standing gate's hold
+## (x, y, radius), set by the settlements system each step. The player's own
+## movement never reads this, which is the whole of what a gate is.
+var mob_walls: Array[Vector3] = []
+
+
+## A step that would take a body into a standing gate's hold goes round it, or
+## stays: the same "only closer is refused" rule every solid thing keeps, so a
+## body already inside one can always leave it.
+func _held_by_walls(m: MobState, next: Vector2) -> Vector2:
+	if mob_walls.is_empty():
+		return next
+	var r := minf(m.radius, 0.45)
+	for c: Vector3 in mob_walls:
+		var at := Vector2(c.x, c.y)
+		var rr := c.z + r
+		var after := at.distance_squared_to(next)
+		if after < rr * rr and after < at.distance_squared_to(m.pos):
+			# Along the edge of the hold, if that is out of it; else not at all.
+			var n := (m.pos - at).normalized() if m.pos.distance_squared_to(at) > 1e-8 else Vector2.RIGHT
+			var d := next - m.pos
+			var along := m.pos + (d - n * d.dot(n))
+			if along.distance_squared_to(at) >= rr * rr or along.distance_squared_to(at) >= at.distance_squared_to(m.pos):
+				next = along
+			else:
+				return m.pos
+	for c: Vector3 in mob_walls:
+		var at := Vector2(c.x, c.y)
+		var rr := c.z + r
+		var after := at.distance_squared_to(next)
+		if after < rr * rr and after < at.distance_squared_to(m.pos):
+			return m.pos
+	return next
 
 
 ## The level a body stands at, read at its own tile: the one height question a

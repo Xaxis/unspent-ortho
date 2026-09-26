@@ -21,3 +21,42 @@ func test_a_breaching_party_goes_for_the_gate_first() -> void:
 	eq(RaidRoles.breach_target(s), gate.id, "the gate, not the plate wall beside it")
 	s.destroy_structure(gate.id)
 	check(RaidRoles.breach_target(s) != gate.id, "and with the gate down, the heaviest wall again")
+
+
+## THE GATE STOPS MACHINES (SETTLE.md S3b): a wall the player's own feet pass
+## and every other body's do not. A runner walking into the yard through the
+## gate is held at it while it stands, and goes through once it is wrecked; the
+## player walks through it either way.
+const F := preload("res://tests/fight/fixture.gd")
+
+
+## A line of wall across the field at x = LINE, each of it a gate's hold, so the
+## only way to the player on the far side is through it.
+const LINE := 30.5
+
+
+func _walls() -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for y in 64:
+		out.append(Vector3(LINE, float(y) + 0.5, StructureKind.GATE_HOLD))
+	return out
+
+
+func test_an_intact_gate_holds_a_machine_and_the_player_walks_through() -> void:
+	var sim := F.make_sim(F.flat_world(64), Vector2(34.5, 20.5))
+	sim.mob_walls = _walls()
+	var m := sim.add_mob(&"runner", Vector2(26.5, 20.5))
+	m.facing = 0.0
+	m.aim = 0.0
+	m.set_mood(MobState.CHASING, sim.now)
+	F.ms(sim, 4000.0)
+	lt(m.pos.x, LINE, "an intact gate holds the machine outside (x %.2f)" % m.pos.x)
+	sim.mob_walls = [] as Array[Vector3]
+	F.ms(sim, 4000.0)
+	gt(m.pos.x, LINE, "a wrecked one lets it through (x %.2f)" % m.pos.x)
+	# The player walks through an intact one.
+	var sim2 := F.make_sim(F.flat_world(64), Vector2(26.5, 40.5))
+	sim2.mob_walls = _walls()
+	sim2.hero.move = Vector2.RIGHT
+	F.ms(sim2, 2500.0)
+	gt(sim2.hero.pos.x, LINE + 1.0, "the player walks through it (x %.2f)" % sim2.hero.pos.x)

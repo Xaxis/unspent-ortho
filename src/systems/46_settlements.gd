@@ -1035,6 +1035,23 @@ func _process(delta: float) -> void:
 func _physics_process(_delta: float) -> void:
 	if game != null and game.world != null:
 		_reconcile()
+		_hold_gates()
+
+
+## Every standing gate in this realm stops every body but the player's
+## (FightSim.mob_walls, StructureKind.GATE_HOLD); a wrecked one stops nothing.
+func _hold_gates() -> void:
+	var sim: FightSim = game.player.sim if game.player != null else null
+	if sim == null:
+		return
+	var walls: Array[Vector3] = []
+	for s in places:
+		if s.realm != realm_here():
+			continue
+		for p in s.structures_of(StructureKind.GATE):
+			if p.standing():
+				walls.append(Vector3(p.pos.x, p.pos.y, StructureKind.GATE_HOLD))
+	sim.mob_walls = walls
 
 
 func _read_keys() -> void:

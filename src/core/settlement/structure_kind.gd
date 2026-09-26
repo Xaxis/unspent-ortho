@@ -354,6 +354,11 @@ static func row(kind: int) -> Dictionary:
 
 ## Whether a player can put this kind up now. A kind in the enum with no row is
 ## one the raids package may still name and nobody has learnt to build.
+## Tiles round a standing gate's middle that no body but the player's passes
+## (FightSim.mob_walls, set by 46_settlements): the length of the ring it hangs in.
+const GATE_HOLD := 0.8
+
+
 static func buildable(kind: int) -> bool:
 	return BUILDABLE.has(kind)
 
