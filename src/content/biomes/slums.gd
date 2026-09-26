@@ -102,7 +102,15 @@ static func make() -> BiomeDef:
 	d.built.stock = BiomeForms.RAISED
 	# Behind a tower's or a stack's door, the stair hall the plan keeps swept
 	# (src/content/interiors/tenement.gd).
-	d.interiors = {&"form:tower": &"tenement", &"form:stack": &"tenement"}
+	d.interiors = {&"form:tower": &"tenement", &"form:stack": &"tenement", &"house": &"home"}
+	# Behind the other forms, homes kept by the plan's own households, as the
+	# tenement's flats are: the clerk, the shift and the keeper.
+	d.home = {"households": {
+		&"clerk": {"wants": [&"ledgers", &"calendar", &"wardrobe", &"radio"], "by_hearth": []},
+		&"shift": {"wants": [&"overalls", &"calendar", &"wardrobe", &"radio"], "by_hearth": []},
+		&"keeper": {"wants": [&"key_board", &"calendar", &"wardrobe", &"ledgers"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+	}}
 	# A CITY IS BLOCKS, NOT A STREET. One frontage through the square is a village
 	# with a street; this is several of them side by side, which is what lets the
 	# count below be a city's rather than a stock's.

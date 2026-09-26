@@ -133,7 +133,13 @@ static func make() -> BiomeDef:
 	d.built.stock = BiomeForms.RAISED.duplicate()
 	# Of the six, only the shell is anyone's home: a fallen tower's standing
 	# floor with the forest come up through it (content/interiors/rooted_floor.gd).
-	d.interiors = {&"form:shell": &"rooted_floor"}
+	d.interiors = {&"form:shell": &"rooted_floor", &"house": &"home"}
+	# Behind the other forms, people in the gaps: squatters on a tower floor under
+	# the one stolen lamp, and the climber who goes up for what grows there.
+	d.home = {"households": {
+		&"squatter": {"wants": [&"hammock", &"machine_lamp", &"basket", &"shelf_salvage"], "by_hearth": []},
+		&"climber": {"wants": [&"rope_coil", &"hammock", &"creel", &"basket"], "by_hearth": []},
+	}}
 	d.built.plan = &"ring"
 	d.built.apart = BiomeForms.RING_APART
 	d.built.buildings = Vector2i(8, 14)

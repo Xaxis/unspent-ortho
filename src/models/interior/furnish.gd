@@ -107,6 +107,16 @@ func thing(t: Dictionary) -> void:
 		&"slag_lumps": _slag_lumps(at, f)
 		&"oil_drums": _oil_drums(at, f)
 		&"sorted_bins": _sorted_bins(at, f)
+		&"radio": _radio(at, f)
+		&"calendar": _calendar(at, f)
+		&"wardrobe": _wardrobe(at, f)
+		&"ledgers": _ledgers(at, f)
+		&"overalls": _overalls(at, f)
+		&"key_board": _key_board(at, f)
+		&"hammock": _hammock(at, f)
+		&"rope_coil": _rope_coil(at, f)
+		&"buckets": _buckets(at, f)
+		&"tide_gauge": _tide_gauge(at, f)
 
 
 # --- the frame -----------------------------------------------------------------
@@ -746,6 +756,116 @@ func _sorted_bins(at: Vector2, f: Vector2) -> void:
 			for b in 4:
 				var q := _p(at, f, u - 0.08 + 0.05 * float(b), 0.0, h + 0.4)
 				k.found.box(q, q + Vector3(0.03, 0.02, 0.03), bits)
+
+
+## A wireless on a shelf, the plan's own set, its dial lit on the one band.
+func _radio(at: Vector2, f: Vector2) -> void:
+	var case := GroundColors.made(Color(0.34, 0.24, 0.16), GroundColors.TIMBER)
+	k.made.box(_p(at, f, -0.3, -0.18, 0.0), _p(at, f, 0.3, 0.18, 0.8), dark_wood, wood)
+	k.made.box(_p(at, f, -0.2, -0.12, 0.8), _p(at, f, 0.2, 0.1, 1.08), case, case)
+	k.made.box(_p(at, f, -0.14, 0.1, 0.86), _p(at, f, 0.02, 0.105, 1.0), GroundColors.made(Color(0.2, 0.18, 0.16), GroundColors.CLOTH))
+	k.made.box(_p(at, f, 0.06, 0.1, 0.95), _p(at, f, 0.16, 0.106, 1.0), GroundColors.glow(Color(1.0, 0.72, 0.3), 0.8))
+
+
+## The plan's calendar on the wall, the shifts printed on it, the days crossed.
+func _calendar(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.01
+	var paper := GroundColors.made(Color(0.84, 0.82, 0.74), GroundColors.CLOTH)
+	var ink := GroundColors.made(Color(0.2, 0.2, 0.24), GroundColors.CLOTH)
+	k.made.box(_p(at, f, -0.2, -back, 1.2), _p(at, f, 0.2, -back + 0.01, 1.7), paper)
+	for r in 4:
+		for c in 5:
+			if (r * 5 + c) < 13:
+				var u := -0.16 + 0.08 * float(c)
+				var h := 1.56 - 0.08 * float(r)
+				k.made.box(_p(at, f, u - 0.02, -back + 0.01, h - 0.02), _p(at, f, u + 0.02, -back + 0.012, h + 0.02), ink)
+
+
+## A wardrobe, issued, the same one in every flat, its door not quite shut.
+func _wardrobe(at: Vector2, f: Vector2) -> void:
+	var grey := GroundColors.made(Color(0.42, 0.42, 0.4), GroundColors.ENAMEL)
+	k.made.box(_p(at, f, -0.4, -0.28, 0.0), _p(at, f, 0.4, 0.22, 1.9), grey, grey)
+	k.made.box(_p(at, f, 0.0, 0.22, 0.1), _p(at, f, 0.02, 0.3, 1.8), GroundColors.made(Color(0.36, 0.36, 0.35), GroundColors.ENAMEL))
+
+
+## Ledgers stacked by the table: the household's hours, kept for the plan.
+func _ledgers(at: Vector2, f: Vector2) -> void:
+	var covers: Array[Color] = [GroundColors.made(Color(0.3, 0.34, 0.44), GroundColors.CLOTH), GroundColors.made(Color(0.44, 0.3, 0.26), GroundColors.CLOTH)]
+	k.made.box(_p(at, f, -0.3, -0.2, 0.0), _p(at, f, 0.3, 0.2, 0.72), dark_wood, wood)
+	for i in 5:
+		var h := 0.72 + 0.045 * float(i)
+		var o := 0.01 * float(i % 2)
+		k.made.box(_p(at, f, -0.16 + o, -0.12, h), _p(at, f, 0.16 + o, 0.12, h + 0.04), covers[i % 2], linen)
+
+
+## Overalls hung on a hook by the door, the shift's number on the back.
+func _overalls(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.04
+	var blue := GroundColors.made(Color(0.24, 0.3, 0.4), GroundColors.CLOTH)
+	var a := _p(at, f, -0.2, -back + 0.02, 0.7)
+	var b := _p(at, f, -0.18, -back + 0.02, 1.7)
+	var c := _p(at, f, 0.2, -back + 0.02, 1.7)
+	var d := _p(at, f, 0.18, -back + 0.02, 0.7)
+	k.made.quad(a, b, c, d, blue)
+	k.made.quad(d, c, b, a, blue)
+	k.made.box(_p(at, f, -0.08, -back + 0.025, 1.35), _p(at, f, 0.08, -back + 0.03, 1.5), linen)
+
+
+## The key board: numbered hooks, most of them empty.
+func _key_board(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.02
+	var brass := GroundColors.made(Color(0.66, 0.54, 0.28), GroundColors.ENAMEL)
+	k.made.box(_p(at, f, -0.35, -back, 1.2), _p(at, f, 0.35, -back + 0.03, 1.6), dark_wood)
+	for i in 8:
+		var u := -0.28 + 0.08 * float(i)
+		k.made.strut(_p(at, f, u, -back + 0.03, 1.45), _p(at, f, u, -back + 0.07, 1.45), 0.006, 3, brass)
+		if i % 3 == 1:
+			k.made.box(_p(at, f, u - 0.01, -back + 0.06, 1.34), _p(at, f, u + 0.01, -back + 0.07, 1.43), brass)
+
+
+## A hammock slung along the wall between two pegs, sagging, a blanket in it.
+func _hammock(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.2
+	var cloth := GroundColors.made(Color(0.5, 0.46, 0.36), GroundColors.CLOTH)
+	var l := _p(at, f, -0.8, -back, 1.3)
+	var r := _p(at, f, 0.8, -back, 1.3)
+	for j in 5:
+		var o := Vector3(f.x, 0.0, f.y) * (0.06 * float(j) - 0.12)
+		k.sag(l + o * 0.3, r + o * 0.3, 0.55 + 0.02 * float(j), 10, 0.03, cloth)
+	k.made.strut(l, l + Vector3.UP * 0.2, 0.02, 4, dark_wood)
+	k.made.strut(r, r + Vector3.UP * 0.2, 0.02, 4, dark_wood)
+	var mid := l.lerp(r, 0.5) + Vector3.DOWN * 0.5
+	k.clump(mid.x, mid.y - 0.05, mid.z, 0.2, 0.1, 71, wool[0], 6)
+
+
+## Climbing rope coiled on the floor, its end hitched to a peg.
+func _rope_coil(at: Vector2, f: Vector2) -> void:
+	var c := _p(at, f, 0.0, 0.0, 0.0)
+	for i in 6:
+		k.hoop(c + Vector3.UP * (0.025 + 0.03 * float(i)), 0.24 - 0.01 * float(i), 16, 0.025, rope)
+	k.made.strut(c + Vector3.UP * 0.2, _p(at, f, 0.0, -BACK + 0.05, 1.2), 0.02, 4, rope)
+
+
+## Buckets for the water that comes in, stacked, one full.
+func _buckets(at: Vector2, f: Vector2) -> void:
+	var tin := GroundColors.made(Color(0.5, 0.5, 0.5), GroundColors.ENAMEL)
+	var water := GroundColors.made(Color(0.14, 0.2, 0.22), GroundColors.GLASS)
+	for i in 2:
+		var c := _p(at, f, -0.18 + 0.36 * float(i), 0.0, 0.0)
+		k.made.prism(c.x, c.y, c.z, 0.13, c.y + 0.3, 0.16, 12, tin, water if i == 0 else tin)
+	var c2 := _p(at, f, 0.18, 0.0, 0.3)
+	k.made.prism(c2.x, c2.y, c2.z, 0.13, c2.y + 0.3, 0.16, 12, tin, tin)
+
+
+## A tide gauge chalked up the wall: the water's marks, each higher.
+func _tide_gauge(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.01
+	var chalk := GroundColors.made(Color(0.86, 0.86, 0.82), GroundColors.CLAY)
+	var stain := GroundColors.made(Color(0.3, 0.32, 0.3), GroundColors.CLAY)
+	k.made.box(_p(at, f, -0.5, -back, 0.0), _p(at, f, 0.5, -back + 0.004, 0.55), stain)
+	for i in 6:
+		var h := 0.15 + 0.12 * float(i)
+		k.made.box(_p(at, f, -0.12, -back + 0.004, h), _p(at, f, 0.12, -back + 0.008, h + 0.015), chalk)
 
 
 func _side(f: Vector2) -> Vector3:

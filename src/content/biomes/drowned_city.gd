@@ -119,7 +119,14 @@ static func make() -> BiomeDef:
 	d.built.stock = [&"upper_floor", &"stilt_house", &"hulk_home", &"shell"] as Array[StringName]
 	# The stilt house is lived in over the water, and the hulk in the hold of a
 	# barge moored for good; each room is its own (content/interiors/).
-	d.interiors = {&"form:stilt_house": &"stilt_room", &"form:hulk_home": &"hulk_hold"}
+	d.interiors = {&"form:stilt_house": &"stilt_room", &"form:hulk_home": &"hulk_hold", &"house": &"home"}
+	# Behind the other forms, stilt families, wet and raised: the water marked up
+	# the wall, the buckets, the hammocks off the floor.
+	d.home = {"households": {
+		&"stilter": {"wants": [&"tide_gauge", &"hammock", &"nets", &"buckets"], "by_hearth": []},
+		&"bailer": {"wants": [&"buckets", &"buckets", &"oars", &"tide_gauge"],
+			"by_hearth": [{"kind": &"fishline", "off": 1.2, "solid": 0.0}]},
+	}}
 	d.built.plan = &"block"
 	d.built.apart = BiomeForms.ROW_APART
 	d.built.buildings = Vector2i(14, 22)
