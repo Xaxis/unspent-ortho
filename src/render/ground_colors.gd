@@ -63,7 +63,7 @@ const TIDEFLAT := 60
 ## ONE default material, so under a single sun only the mesh normal told a roof
 ## from a wall — and the normals are flat facets.
 ##
-## **73..79 ARE DELIBERATELY EMPTY**, between the cliff strata (61..72) and this
+## **74..79 ARE DELIBERATELY EMPTY**, between the cliff strata (61..73) and this
 ## band, so an off-by-one lands on nothing instead of on a material. 92..95 are
 ## spare. Tag a surface with `GroundColors.made(col, GroundColors.THATCH)`; a
 ## builder that tags nothing still gets the default, which is what every model
@@ -113,6 +113,9 @@ const STRATA_GLASS := 11
 ## up to one white high-water line at the same height on every wall in the city,
 ## and salt-bleached pour lines above it (72).
 const STRATA_TIDE := 12
+## A cave wall: dark wet limestone hung with flowstone curtains that run down
+## from the lip and end in rounded lobes, stained with iron, and wet (73).
+const STRATA_CAVE := 13
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array

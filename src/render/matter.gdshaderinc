@@ -100,7 +100,7 @@ vec3 matter_cells(vec2 p) {
 // --- What a surface is -----------------------------------------------------
 //
 // Keyed on the ground MARK the vertex stream already carries (GroundColors:
-// 40..60 the grounds, 61..72 cliff strata, 0/255 anything a person made). One
+// 40..60 the grounds, 61..73 cliff strata, 0/255 anything a person made). One
 // row per material:
 //   x roughness   0 mirror .. 1 dead matte
 //   y specular    how much light it returns at a glancing angle (Godot's 0..1,
@@ -159,7 +159,10 @@ vec4 matter_of(int m) {
 	// STRATA_TIDE: cast concrete walls; the slick under the tide is made wet in
 	// world.gdshader, by height.
 	else if (m == 72) { r = vec4(0.78, 0.40, 0.035, 0.0); }
-	else if (m >= 61 && m <= 72) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
+	// STRATA_CAVE: wet limestone and flowstone. It never dries, so it shines;
+	// the curtains' own relief (matter_height) is what the lamp finds.
+	else if (m == 73) { r = vec4(0.34, 0.70, 0.070, 0.0); }
+	else if (m >= 61 && m <= 73) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
 	// --- WHAT A PERSON MADE ---------------------------------------------------
 	// Everything above is GROUND, and until these rows existed every timber post,
 	// thatched roof, canvas awning, concrete slab, glass pane and rope lashing in
@@ -282,7 +285,12 @@ float matter_height(int m, vec3 wp, vec2 p) {
 	} else if (m == 60) {
 		// TIDEFLAT: a cast floor's aggregate and the silt ridged on it.
 		h = matter_fbm(p * 3.1) * 0.6 + matter_fbm(p * 0.6 + 9.0) * 0.4;
-	} else if (m == 52 || (m >= 61 && m <= 72)) {
+	} else if (m == 73) {
+		// STRATA_CAVE: flowstone curtains, rounded drapes long in height and
+		// narrow across, over the rippled rims of the flow that built them.
+		float drape = matter_fbm(vec2(p.x * 3.2, p.y * 0.35));
+		h = sin(p.x * 9.0 + drape * 6.0) * 0.35 + drape * 0.5 + matter_fbm(p * 2.4) * 0.15;
+	} else if (m == 52 || (m >= 61 && m <= 73)) {
 		// ROCK and cliff strata: broken blocks and bedding planes.
 		vec3 cd = matter_cells(p * 1.6);
 		h = (cd.y - cd.x) * 0.9 + matter_fbm(p * 0.7) * 0.3;

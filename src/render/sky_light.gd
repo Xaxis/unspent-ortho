@@ -2052,6 +2052,24 @@ static func web_contrast_at(shares: Dictionary) -> float:
 ## Unsquared, a shut landscape would start dimming the open one a whole frame
 ## before its border — and this is the one of the five that is spent at every
 ## hour, so that error would show at noon, which is where it would be worst.
+static func sky_holes_at(shares: Dictionary) -> float:
+	var sum := 0.0
+	var total := 0.0
+	for k: Variant in shares:
+		var w := float(shares[k])
+		if w <= 0.0:
+			continue
+		w *= w
+		var d := BiomeRegistry.get_def(k) if k is StringName else BiomeRegistry.by_index(int(k))
+		sum += (d.sky_holes if d != null else 0.0) * w
+		total += w
+	if total <= 0.0:
+		return 0.0
+	return clampf(sum / total, 0.0, 1.0)
+
+
+## How far the landscapes in view are shut (`BiomeDef.sky_shut`), on squared
+## shares like everything else a place says about its sky.
 static func sky_shut_at(shares: Dictionary) -> float:
 	var sum := 0.0
 	var total := 0.0

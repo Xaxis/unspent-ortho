@@ -64,7 +64,7 @@ const float CROWN_SWAY = 0.25;
 // Two things stop this opening holes in the world at large:
 //
 //   THE LAND NEVER OPENS. Only what somebody BUILT is cut: the ground band
-//   40..72, the same discriminator fore.gdshader uses to decide how much wear a
+//   40..73, the same discriminator fore.gdshader uses to decide how much wear a
 //   piece takes. A cliff, a terrace and a bank stay solid, so a player under an
 //   overhang is still under it.
 //
@@ -1504,6 +1504,38 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			float wd = ink_vnoise(vec2(px.x * 0.08, y * 4.0));
 			c = mix(mix(SPRUCE1, INK2, 0.4), mix(SPRUCE1, MOSS2, 0.35), smoothstep(0.4, 0.7, wd));
 		}
+	} else if (id == 13) {
+		// CAVE: a wall of wet limestone that water has been building on for
+		// longer than there were people. Flowstone curtains come down from the
+		// lip, pale calcite with an iron stain in bands down their length, and
+		// each ends where the flow gave out in a rounded lobe; between them the
+		// rock is dark and running wet. No beds and no joints: nothing about a
+		// cave wall is laid in courses, and the courses were what read as brick.
+		float lip = 0.03 + (vn - 0.5) * 0.02;
+		float fall = 0.16 + ink_vnoise(vec2(px.x * 0.07, 3.0)) * 0.3 + ink_vnoise(vec2(px.x * 0.22, 7.0)) * 0.1;
+		float across = ink_vnoise(vec2(px.x * 0.16, 11.0));
+		float curtain = smoothstep(0.42, 0.5, across);
+		vec3 rock = mix(SLATE1, INK2, 0.35 + 0.3 * ink_vnoise(vec2(px.x * 0.05, y * 3.0)));
+		vec3 calcite = mix(LINEN2, LINEN3, ink_vnoise(vec2(px.x * 0.3, y * 2.0)));
+		// Iron in the flow: rust bands running the curtain's length.
+		float iron = ink_vnoise(vec2(px.x * 0.45, 17.0));
+		calcite = mix(calcite, mix(RUST1, EARTH2, 0.5), smoothstep(0.62, 0.8, iron) * 0.55);
+		if (dt < lip) {
+			c = mix(calcite, LINEN3, 0.4);
+		} else if (dt < fall && curtain > 0.0) {
+			c = mix(rock, calcite, curtain);
+			// The lobe where the flow stopped: lit on its belly, dark under it.
+			float end = fall - dt;
+			if (end < 0.025 && curtain > 0.5) {
+				c = end < 0.008 ? dn(c, 0.5) : up(c, 0.15);
+			}
+		} else {
+			c = rock;
+			// A wet streak down the face, darker, where water is running now.
+			if (ink_vnoise(vec2(px.x * 0.2, 29.0)) > 0.7) {
+				c = dn(c, 0.3);
+			}
+		}
 	}
 	return c;
 }
@@ -1557,7 +1589,7 @@ float crown_cut(vec3 wp, float sway) {
 // INV_VIEW_MATRIX exists only inside the stage function, so a user function
 // cannot see the camera at all (the shader simply refuses to compile).
 float tall_cut(vec3 wp, int m, vec3 camz, vec3 eye, bool persp) {
-	if (m >= 40 && m <= 72) {
+	if (m >= 40 && m <= 73) {
 		return 0.0;
 	}
 	float cut = 0.0;
@@ -1627,7 +1659,7 @@ void fragment() {
 	float cut = max(crown_cut(world_pos, sway_w), tall_cut(world_pos, m1, camz, eye, persp));
 	// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line of
 	// sight to a body, at any height (sight.gdshaderinc). Never the land.
-	if (persp && !(m1 >= 40 && m1 <= 72)) {
+	if (persp && !(m1 >= 40 && m1 <= 73)) {
 		float close = sight_close(eye, crown_clear[0]);
 		if (close > 0.0) {
 			for (int i = 0; i < CROWN_CLEAR; i++) {
@@ -1703,7 +1735,7 @@ void fragment() {
 		if ((m == 55 || m == 57) && c.r >= c.b) {
 			c *= min(1.0, SALT_TOP.r / max(max(c.r, max(c.g, c.b)), 1e-4));
 		}
-	} else if (m > 60 && m <= 72) {
+	} else if (m > 60 && m <= 73) {
 		// A wall's pattern runs ALONG the wall. `px` is the play camera's screen
 		// grid laid on the world, whose x does not change with height: from
 		// above that is invisible, but at eye level every feature keyed on it
@@ -1762,7 +1794,7 @@ void fragment() {
 	// it. Anything STANDING in the land takes it nearly whole, which is the law
 	// in one line: the same house, fence and machine carry the bog on them, or
 	// the flat, or the Burning, and nobody had to author three of each.
-	float takes = (m >= 40 && m <= 72) ? 0.14 : 0.85;
+	float takes = (m >= 40 && m <= 73) ? 0.14 : 0.85;
 	// A face opened a moment ago (GroundColors.FRESH: the cut through a boulder
 	// somebody is quarrying) has had almost nothing settle on it. The wear map
 	// reads the PLACE, not the age, so without this a cut made in a bog rusts as
@@ -1775,6 +1807,9 @@ void fragment() {
 	if (m == 60) {
 		// Standing water on the drowned floor is a mirror; the silt round it is not.
 		rough_add -= tide_pool(world_pos) * 0.72;
+	} else if (m == 73) {
+		// A cave wall runs wet in streaks: shinier where water is on it now.
+		rough_add -= smoothstep(0.55, 0.8, ink_vnoise(vec2(world_pos.x + world_pos.z, world_pos.y * 0.2) * 1.3)) * 0.2;
 	} else if (m == 72) {
 		// The weed at a wall's foot is slick and never dries.
 		float wall_dt = (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y;
