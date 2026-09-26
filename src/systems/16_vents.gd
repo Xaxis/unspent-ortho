@@ -19,6 +19,46 @@ var _layer: Node3D
 ## a fixed ring once, and plume.gdshader runs it against `plume_now`.
 var _puffs: MultiMeshInstance3D
 var _next_puff := 0
+## Seconds to the next beat of each geyser that is going (vent id -> seconds).
+var _geyser_gap: Dictionary = {}
+
+
+## Where a tour can be stood by name (98_tour `near NAME`): `geyser`, four tiles
+## off the nearest geyser in reach, with the clock put a moment before its next
+## warning so the frame that follows sees it go up.
+const TOUR_PLACES: Array[String] = ["geyser"]
+var _face := NAN
+
+
+func tour_place(what: String) -> Vector2:
+	if what != "geyser" or game == null or game.player == null:
+		return Vector2.INF
+	var best: WorldProp = null
+	for q in game.query.props_near(game.player.pos, 60.0):
+		if q.kind != PropKind.VENT:
+			continue
+		var row := BiomeRegistry.at(game.world, q.pos).geysers
+		if not Geysers.is_geyser(row, game.world.seed_value, q.id):
+			continue
+		if best == null or q.pos.distance_to(game.player.pos) < best.pos.distance_to(game.player.pos):
+			best = q
+	if best == null:
+		return Vector2.INF
+	var row := BiomeRegistry.at(game.world, best.pos).geysers
+	var m := game.clock.minutes
+	for i in 400:
+		var st := Geysers.state(row, game.world.seed_value, best.id, m + float(i) * 0.25)
+		if int(st.stage) == Geysers.WARNING:
+			game.clock.minutes = m + float(i) * 0.25
+			break
+	# Stood six tiles off, back to the open side, looking at it.
+	var off := Vector2(6.0, 0.0).rotated(Rng.hash01(game.world.seed_value, best.id, 9) * TAU)
+	_face = (-off).angle()
+	return best.pos + off
+
+
+func tour_face(what: String) -> float:
+	return _face if what == "geyser" else NAN
 
 
 func setup(g: Game) -> void:
@@ -52,7 +92,11 @@ func _process(delta: float) -> void:
 		var h := Rng.hash01(game.world.seed_value, v.id, 0x7E47)
 		# The land's own breath (BiomeDef.vent_breath): its colour, and how big
 		# and how often. Unset is the Burning's slow ash.
-		var own := BiomeRegistry.at(game.world, v.pos).vent_breath
+		var land := BiomeRegistry.at(game.world, v.pos)
+		if Geysers.is_geyser(land.geysers, game.world.seed_value, v.id):
+			_geyser(v, land.geysers, delta)
+			continue
+		var own := land.vent_breath
 		var much := own.a if own.a > 0.0 else 1.0
 		var col := Color(own.r, own.g, own.b) if own.a > 0.0 else Palette.ASH[4]
 		var period := BREATH * (0.75 + 0.6 * h) / sqrt(much)
@@ -151,3 +195,72 @@ func _make_puffs() -> void:
 	# The puffs are placed by the shader, anywhere in reach of the player.
 	_puffs.custom_aabb = AABB(Vector3(-4096, -64, -4096), Vector3(8192, 256, 8192))
 	_layer.add_child(_puffs)
+
+
+
+## A geyser at its stage (Geysers): resting it breathes nothing; warning, a low
+## skirt of steam spreads round the mouth; erupting, a column stands up to its
+## height, holds and falls, with spray thrown out round its foot.
+func _geyser(v: WorldProp, row: Dictionary, delta: float) -> void:
+	var st := Geysers.state(row, game.world.seed_value, v.id, game.clock.minutes)
+	var stage := int(st.stage)
+	if stage == Geysers.RESTING:
+		return
+	var key := v.id
+	var gap := float(_geyser_gap.get(key, 0.0)) - delta
+	if gap > 0.0:
+		_geyser_gap[key] = gap
+		return
+	var col: Color = row.get("colour", Color(0.9, 0.9, 0.85))
+	var at := game.world.to_3d(v.pos) + Vector3(0, 0.3 * v.scale, 0)
+	var eye := MobFx.close_eye(_layer)
+	var seed_value := v.id * 53 + int(_t * 7.0)
+	if stage == Geysers.WARNING:
+		_geyser_gap[key] = 0.35
+		# The skirt: wide low puffs round the mouth, hugging the ground.
+		var a := Rng.hash01(seed_value, 1) * TAU
+		var p := at + Vector3(cos(a) * 0.5, -0.1, sin(a) * 0.5)
+		if eye:
+			_plume_pooled(p, col, 0.5, 1.6, Vector2(cos(a), sin(a)) * 0.8, seed_value)
+		else:
+			_plume(p, col, 0.4, 1.4, Vector2(cos(a), sin(a)) * 0.6, seed_value, 0.0)
+		return
+	_geyser_gap[key] = 0.12
+	var hold := Geysers.column(float(st.k))
+	if hold <= 0.02:
+		return
+	var height := float(row.get("height", 6.0)) * hold
+	if eye:
+		_column_pooled(at, col, height, seed_value)
+	else:
+		# From above, a column is its foot: a burst of wide puffs.
+		_plume(at, col, 1.2 * hold, 1.6, Vector2(0.3, -0.2), seed_value, 0.0)
+
+
+## One beat of a standing column: puffs stacked from the mouth to `height`, each
+## rising a little further and dying quickly, so the column is renewed from
+## below and holds; a few thrown sideways at its top are the spray falling back.
+func _column_pooled(at: Vector3, col: Color, height: float, seed_value: int) -> void:
+	if _puffs == null:
+		_make_puffs()
+	var mm := _puffs.multimesh
+	var n := 10
+	for i in n + 3:
+		var f := float(i) / float(n - 1)
+		var p: Vector3
+		var w: float
+		var travel: Vector3
+		if i < n:
+			p = at + Vector3(Rng.hash01(seed_value, i, 2) * 0.2 - 0.1, height * f, Rng.hash01(seed_value, i, 3) * 0.2 - 0.1)
+			w = lerpf(0.9, 2.0, f)
+			travel = Vector3(0.0, height * 0.25, 0.0)
+		else:
+			var a := Rng.hash01(seed_value, i, 4) * TAU
+			p = at + Vector3(0.0, height * 0.85, 0.0)
+			w = 0.9
+			travel = Vector3(cos(a) * 1.8, -height * 0.6, sin(a) * 1.8)
+		var basis := Basis(Vector3(w * 0.7, 0.0, 0.0), travel, Vector3(0.0, 0.0, 1.0))
+		mm.set_instance_transform(_next_puff, Transform3D(basis, p))
+		mm.set_instance_color(_next_puff, Color(col.r, col.g, col.b, Rng.hash01(seed_value, i, 5)))
+		mm.set_instance_custom_data(_next_puff, Color(_t, 1.2, 1.6, 0.8))
+		_next_puff = (_next_puff + 1) % PUFFS

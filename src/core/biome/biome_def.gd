@@ -335,6 +335,14 @@ var weather_style: Dictionary = {}
 ## cables and girders across their slots at the walls' own height.
 ## Runtime only, so a LOOK field.
 var fore_rows: Dictionary = {}
+## GEYSERS: which of this land's vents erupt on a cycle instead of breathing,
+## and how (16_vents, Geysers). {} and none do. Fields:
+##   share    0..1 of the vents that are geysers
+##   period   world minutes from one eruption to the next (each its own offset)
+##   height   how tall the column stands, in units
+##   colour   the column's steam
+## Runtime only, so a LOOK field.
+var geysers: Dictionary = {}
 ## Every field a weather_style row may carry, per kind.
 const WEATHER_STYLE_FIELDS := {&"dust": ["air", "thick"], &"fog": ["air", "low"]}
 

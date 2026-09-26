@@ -81,6 +81,10 @@ static func make() -> BiomeDef:
 	# the vent from below and blue by the night above came out magenta; with
 	# the blue taken down it reads orange over the vent and sulphur-pale above.
 	d.vent_breath = Color(0.92, 0.90, 0.48, 1.6)
+	# One vent in five is a geyser: it hisses and skirts itself in steam, then
+	# throws a column of sulphur steam twice the height of the trees, holds it and
+	# lets it fall, about every forty world minutes.
+	d.geysers = {"share": 0.2, "period": 40.0, "height": 7.0, "colour": Color(0.94, 0.93, 0.70)}
 	# Its fog is the vents' own: a sulphur-yellow acid fog that lies low and heavy
 	# in the hollows round them, stinging-bright, never a pale mist.
 	d.weather_style = {&"fog": {"air": Color(0.72, 0.74, 0.40), "low": 1.0}}
