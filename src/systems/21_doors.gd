@@ -1249,7 +1249,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "strongbox"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "strongbox", "thing:turnstile"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
@@ -1259,6 +1259,9 @@ const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:sid
 ## door into that kind at all -- so a tour stages a room by what is in it rather
 ## than by where some house happens to stand.
 func tour_place(what: String) -> Vector2:
+	var th := _tour_thing(what)
+	if not th.is_empty():
+		return (th.at as Vector2) + (th.face as Vector2) * 0.9
 	if what == "strongbox":
 		var box := _first_box()
 		return (box.at as Vector2) + (box.face as Vector2) * 0.8 if not box.is_empty() else Vector2.INF
@@ -1269,6 +1272,9 @@ func tour_place(what: String) -> Vector2:
 
 
 func tour_face(what: String) -> float:
+	var th := _tour_thing(what)
+	if not th.is_empty():
+		return (-(th.face as Vector2)).angle()
 	if what == "strongbox":
 		var box := _first_box()
 		return (-(box.face as Vector2)).angle() if not box.is_empty() else NAN
@@ -1276,6 +1282,18 @@ func tour_face(what: String) -> float:
 	if pocket != null and t == null and TOUR_PLACES.has(what):
 		return pocket.layout.door_out.angle()
 	return (-t.out).angle() if t != null else NAN
+
+
+## `near thing:KIND`: the first of the room's things of that kind, stood in
+## front of and faced (a tenement's turnstile at the foot of its stair). Empty
+## outside a room, or in one without it.
+func _tour_thing(what: String) -> Dictionary:
+	if pocket == null or not what.begins_with("thing:"):
+		return {}
+	for t: Dictionary in pocket.layout.things:
+		if String(t.kind) == what.substr(6):
+			return t
+	return {}
 
 
 ## `walkto strongbox`: the way a quiet player goes to a strongbox, as waypoints.

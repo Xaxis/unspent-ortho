@@ -18,6 +18,7 @@ const RECIPES := {
 	&"cliff_room": "res://src/content/interiors/cliff_room.gd",
 	&"hulk_hold": "res://src/content/interiors/hulk_hold.gd",
 	&"rooted_floor": "res://src/content/interiors/rooted_floor.gd",
+	&"tenement": "res://src/content/interiors/tenement.gd",
 }
 
 static var _kinds: Dictionary = {}

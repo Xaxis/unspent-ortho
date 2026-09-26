@@ -809,6 +809,81 @@ const FRAGMENTS := {
 			"when it boils.",
 		],
 	},
+	# --- a tenement stair hall in the slums (ROOMS: tenement) -------------------
+	&"tenement_cards": {
+		"kind": &"sign", "title": "the shift board", "lands": [],
+		"lines": [
+			"Cards in rows under a clock, one to a flat:",
+			"  4C  NIGHT  PANS",
+			"  4D  DAY    PANS",
+			"  4E  DAY    PANS",
+			"",
+			"The clock is right to the second. The cards",
+			"are changed in the night. There is no dust",
+			"on the rail and no mark of a finger.",
+		],
+	},
+	&"tenement_rows": {
+		"kind": &"sign", "title": "the shift board", "lands": [],
+		"lines": [
+			"Cards in rows under a clock, one to a flat.",
+			"The bottom row has been painted over, slots",
+			"and all, the grey of the wall, and the rows",
+			"above numbered down to close the gap.",
+			"",
+			"The board is full.",
+		],
+	},
+	&"tenement_notice": {
+		"kind": &"sign", "title": "the shift board", "lands": [],
+		"lines": [
+			"Over the clock, an enamel notice, older than",
+			"the board:",
+			"  STAFF MUST CLOCK IN AND OUT",
+			"",
+			"Under it, newer, in the machines' capitals:",
+			"  CLOCKING OUT IS DISCONTINUED.",
+			"  THANK YOU FOR YOUR TIME.",
+			"",
+			"Every card on the board is at IN.",
+		],
+	},
+	&"tenement_persons": {
+		"kind": &"notebook", "title": "the ration book", "lands": [],
+		"lines": [
+			"The ration book, square to the table's edge:",
+			"  HOUSEHOLD 4E  -  PERSONS 3",
+			"",
+			"Two chairs. Two cups on the drainer. Every",
+			"dawn has three stamps in its row.",
+			"",
+			"On the shelf, the third person's tins,",
+			"unopened, in date order.",
+		],
+	},
+	&"tenement_ticks": {
+		"kind": &"notebook", "title": "the ration book", "lands": [],
+		"lines": [
+			"The ration book, and a pencil laid along it.",
+			"Beside each week's stamps somebody has",
+			"weighed the tins and written the sum. Beside",
+			"each sum, a tick.",
+			"",
+			"Nine years of ticks. The newest is this",
+			"morning's. There is not one cross.",
+		],
+	},
+	&"tenement_drink": {
+		"kind": &"notebook", "title": "the ration book", "lands": [],
+		"lines": [
+			"The ration book was a coffee shop's card once,",
+			"stapled thick with new pages. On the cover:",
+			"  10 STAMPS = 1 FREE DRINK",
+			"",
+			"Every box on every page is stamped RECEIVED.",
+			"Nobody has asked for the drink.",
+		],
+	},
 	&"lobby_boxes": {
 		"kind": &"mark", "title": "the letterboxes", "lands": [],
 		"lines": [
@@ -1363,6 +1438,10 @@ const ROOMS := {
 		&"wall:lift": [&"lobby_rope", &"lobby_stairs"],
 		&"desk:counter": [&"lobby_book", &"lobby_bell"],
 		&"wall:letterboxes": [&"lobby_boxes", &"lobby_post"],
+	},
+	&"tenement": {
+		&"wall:shift_board": [&"tenement_cards", &"tenement_rows", &"tenement_notice"],
+		&"desk:ration_book": [&"tenement_persons", &"tenement_ticks", &"tenement_drink"],
 	},
 }
 
