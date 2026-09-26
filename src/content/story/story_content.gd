@@ -1346,11 +1346,11 @@ const FRAGMENTS := {
 		"lines": [
 			"  SOUNDING LINE .. 0-0031",
 			"  PAID OUT ....... 3,418 M",
-			"  BOTTOM ......... NOT SOUGHT",
+			"  BOTTOM ......... 3,418 M",
 			"",
-			"It was never sent to find the bottom. The",
-			"drum over the clamp still has a sea's",
-			"worth of cable on it.",
+			"It was let down until it touched, and",
+			"stopped. The drum over the clamp still",
+			"has a sea's worth of cable on it.",
 		],
 	},
 	&"cable_listen": {
@@ -1361,8 +1361,8 @@ const FRAGMENTS := {
 			"  LISTENED ....... 21,904 D",
 			"  REPORT ......... ON CHANGE",
 			"",
-			"The field under REPORT is blank, and wide",
-			"enough for a long answer.",
+			"The field under REPORT is blank. It is the",
+			"only part of the panel kept clear of frost.",
 		],
 	},
 	&"cable_host": {
