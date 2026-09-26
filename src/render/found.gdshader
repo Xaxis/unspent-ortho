@@ -198,6 +198,18 @@ void fragment() {
 	vec3 eye = INV_VIEW_MATRIX[3].xyz;
 	bool persp = PROJECTION_MATRIX[3][3] < 0.5;
 	float cut = found_cut(world_pos, camz, eye, persp);
+	// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line of
+	// sight to a body, at any height, as world.gdshader does: a machine city's
+	// deck at chest height stood square between the eye and the player, who
+	// read as a head on a floor (tours/tight_eye.tour frame 01).
+	if (persp) {
+		float close = sight_close(eye, found_clear[0]);
+		if (close > 0.0) {
+			for (int i = 0; i < 4; i++) {
+				cut = max(cut, sight_cone(world_pos, eye, found_clear[i]) * close);
+			}
+		}
+	}
 	if (cut > 0.0 && ink_hash(world_pos.xz * 64.0 + vec2(53.0, 11.0)) < cut) {
 		discard;
 	}

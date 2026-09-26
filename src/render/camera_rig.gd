@@ -185,6 +185,8 @@ var _clear_tip := 0.0
 ## Further than this in one frame is a different body, not the same one moving.
 const LOCK_JUMP := 1.5
 var _room := 1.0
+## How far a tight room has brought the eye to the face (Shoulder.crowd), eased.
+var _crowd := 0.0
 var _dt := 0.0
 var _yaw_drawn := 45.0
 ## Who is holding the lens on (a lock, the shoulder), and what the camera had
@@ -761,9 +763,12 @@ func _apply_lens() -> void:
 		var room := clampf(float(sight_room.call(pivot, eye)), minf(1.0, Shoulder.LEAST_BACK / span), 1.0)
 		_room = room if room < _room else lerpf(_room, room, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
 		eye = pivot.lerp(eye, _room)
-	# Tipped up past the ordinary limit, the eye comes to the face and the body
-	# it passes through is stippled away (Shoulder.rise).
-	var r := Shoulder.rise(shoulder_pitch) * w
+	# Crowded in by a wall behind, or tipped up past the ordinary limit, the eye
+	# comes to the face and the body it passes through is stippled away
+	# (Shoulder.crowd, Shoulder.rise).
+	var crowd_want := Shoulder.crowd(eye.distance_to(focus)) if sight_room.is_valid() else 0.0
+	_crowd = lerpf(_crowd, crowd_want, 1.0 - exp(-Shoulder.CROWD_RATE * _dt))
+	var r := maxf(Shoulder.rise(shoulder_pitch), _crowd) * w
 	if r > 0.0:
 		var ahead := Vector3(-sin(yb), 0.0, -cos(yb))
 		eye = eye.lerp(_smoothed + Vector3(0.0, Shoulder.EYE_UP, 0.0) + ahead * Shoulder.EYE_FORWARD, r)

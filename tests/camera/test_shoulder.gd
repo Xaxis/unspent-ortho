@@ -374,31 +374,31 @@ func test_an_eye_that_would_stand_in_a_pole_stops_in_front_of_it() -> void:
 	gt(at.x, 2.5, "and no nearer than the pole asks")
 
 
-## THE PLAYER'S HEAD IS NEVER THE PICTURE. However hard the eye is pulled in,
-## it comes in along the line it looks down, toward the point over the right
-## shoulder, so the head stays beside the middle of the frame and never fills it.
-## Asked of the live camera with every step of the line refused.
-func test_a_pulled_in_eye_looks_past_the_head() -> void:
+## A ROOM TOO TIGHT TO STAND BEHIND SOMEONE IS SEEN FROM THEIR FACE
+## (Shoulder.crowd). Every step of the line behind refused, as in a bunker's
+## corridor with its wall at the player's back: pulled in beside the head, the
+## frame was the side of the skull (bunker.tour frame 04, 2026-09-25). The eye
+## goes to the face instead, looking where the view looks, and the body it
+## stands in is stippled away -- and with the room to stand back, none of that.
+func test_a_room_too_tight_to_stand_behind_is_seen_from_the_face() -> void:
 	var g := await _make()
 	var cam := g.camera
 	cam.shoulder = true
+	cam.sight_room = func(_a: Vector3, _b: Vector3) -> float: return 1.0
+	_step(cam, 40)
+	near(cam.yield_share, 0.0, 1e-6, "with room behind, the body is whole")
+	var yaw := cam.shoulder_yaw
 	# Every step of the line behind is refused; the short leg from the head to
 	# the shoulder point (under a unit) is clear, as it is beside any wall behind.
 	cam.sight_room = func(a: Vector3, b: Vector3) -> float: return 1.0 if a.distance_to(b) < 1.0 else 0.0
-	_step(cam, 40)
-	var d := PersonBody.dims(&"man")
+	_step(cam, 60)
+	gt(cam.yield_share, 0.99, "crowded in, the body is stippled away (%.3f)" % cam.yield_share)
 	var feet := cam.get("_smoothed") as Vector3
-	var skull := feet + Vector3(0.0, float(d.hip_y) + float(d.torso) + float(d.head) * 0.5, 0.0)
-	var r := float(d.head) * 0.5
-	var dist := cam.global_position.distance_to(skull)
-	gt(dist, r * 2.0, "the eye is well outside the skull")
-	# The head's height as a share of the frame's.
-	var share := (2.0 * r / dist) / (2.0 * tan(deg_to_rad(cam.fov * 0.5)))
-	lt(share, 0.35, "the head is a third of the frame at most (%.2f)" % share)
+	var face := feet + Vector3(0.0, Shoulder.EYE_UP, 0.0) + Vector3(-sin(deg_to_rad(yaw)), 0.0, -cos(deg_to_rad(yaw))) * Shoulder.EYE_FORWARD
+	lt(cam.global_position.distance_to(face), 0.05, "and the eye is where the player's are")
 	var ahead := -cam.global_transform.basis.z
-	var to := skull - cam.global_position
-	var off := (to - ahead * to.dot(ahead)).length()
-	gt(off, r * 1.2, "the middle of the frame looks past the head, not through it")
+	var want := Shoulder.forward(yaw)
+	gt(Vector2(ahead.x, ahead.z).normalized().dot(want), 0.999, "looking where the view looked")
 	_done()
 
 
@@ -412,12 +412,13 @@ func test_the_rig_stands_where_the_room_allows() -> void:
 	_step(cam, 40)
 	var head := cam.get("_smoothed") as Vector3 + Vector3(0.0, Shoulder.HEAD_UP, 0.0)
 	var full := cam.global_position.distance_to(head)
-	cam.sight_room = func(_h: Vector3, _e: Vector3) -> float: return 0.3
+	# Pulled in only as far as still leaves room to stand behind (Shoulder.crowd).
+	cam.sight_room = func(_h: Vector3, _e: Vector3) -> float: return 0.7
 	cam._process(DT)
-	near(cam.global_position.distance_to(head), full * 0.3, 0.05, "pulled in at once, the same frame")
+	near(cam.global_position.distance_to(head), full * 0.7, 0.05, "pulled in at once, the same frame")
 	cam.sight_room = func(_h: Vector3, _e: Vector3) -> float: return 1.0
 	cam._process(DT)
-	lt(cam.global_position.distance_to(head), full * 0.5, "and let back out gently, not snapped")
+	lt(cam.global_position.distance_to(head), full * 0.8, "and let back out gently, not snapped")
 	_done()
 
 

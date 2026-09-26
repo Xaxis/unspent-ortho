@@ -61,6 +61,27 @@ static func rise(pitch_deg: float) -> float:
 	return smooth((PITCH_LEAST - pitch_deg) / (PITCH_LEAST - YIELD_FULL))
 
 
+## WHERE THERE IS NO ROOM BEHIND, THE EYE IS THE PLAYER'S. A wall at the back
+## pulls the eye in along its own line (`room`), and in a bunker's corridor it
+## came to a metre off the shoulder point at head height: the frame was the side
+## of the player's skull, a third of it, and none of the corridor
+## (bunker.tour frame 04). So as the eye is crowded in from `CROWD_FROM` to
+## `CROWD_FULL` it goes to the face instead, exactly as the gaze does (`rise`),
+## with the body stippled away by the same share: in a room too tight to stand
+## behind someone, the frame is what they see, down the way they face.
+const CROWD_FROM := 2.4
+const CROWD_FULL := 1.3
+## Eased at this rate a second both ways: pulled in by a wall at once, the eye
+## would jump from behind the head to in front of it in one frame.
+const CROWD_RATE := 6.0
+
+
+## 0 with the eye `CROWD_FROM` or more from the point it looks at, 1 by
+## `CROWD_FULL`, eased.
+static func crowd(back: float) -> float:
+	return smooth((CROWD_FROM - back) / (CROWD_FROM - CROWD_FULL))
+
+
 ## Degrees a second the view comes back down to `PITCH_LEAST` once nothing
 ## holds the gaze any more, eased by how far it has to come: never a snap.
 const GAZE_RETURN := 25.0
