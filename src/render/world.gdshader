@@ -1496,7 +1496,9 @@ vec3 machine_deck(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
 		// eyes. At full strength the lines ruled bright scratches across the
 		// slums' dusk next door (canon 08).
 		c = mix(c, mix(mix(c, GUIDE_WHITE, 0.25), mix(c, GUIDE_WHITE, 0.7), on), guide);
-		emit += GUIDE_WHITE * 0.45 * on * guide;
+		// Held low by day and dusk, and full only once night has fallen
+		// (sky_view.y): then the ruled lines are the city, to the horizon.
+		emit += GUIDE_WHITE * mix(0.45, 1.8, sky_view.y) * on * guide;
 	}
 	return c;
 }
@@ -2092,7 +2094,7 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			float ndim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
 			float on = max(neon_burn(ndim), 0.0) * sky_power();
 			c = mix(mix(c, GUIDE_WHITE, 0.3), GUIDE_WHITE, on);
-			emit += GUIDE_WHITE * 1.2 * on;
+			emit += GUIDE_WHITE * mix(1.2, 2.0, sky_view.y) * on;
 			unh = max(unh, on);
 		}
 	} else if (id == 21) {
