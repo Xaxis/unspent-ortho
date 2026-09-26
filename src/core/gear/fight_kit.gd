@@ -49,8 +49,8 @@ const HARMONIC_NOISE := 1.5
 const DAMP_NOISE := 0.5
 ## A lattice discharge: how far from the body struck it jumps, and what it takes.
 ## A crowd is where it pays: two machines shoulder to shoulder at a gate.
-const LATTICE_REACH := 1.5
-const LATTICE_DAMAGE := 1
+const LATTICE_REACH := 2.0
+const LATTICE_DAMAGE := 2
 ## How much further an icelens scan reads.
 const ICELENS_REACH := 1.5
 

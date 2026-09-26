@@ -470,6 +470,26 @@ func _on_hit(e: Dictionary) -> void:
 ## where it landed and nowhere else: no hitstop and no shake, because the
 ## player's hands did nothing, and no `Events.hit`, because every reader of that
 ## signal means the player struck something.
+## A lattice discharge (FightKit.lattice): a crackle from the body struck to the
+## one it jumped to, three kinked strokes of cold light for a fifth of a second,
+## so the player sees why a machine they never touched took the hit. A line
+## (MobFx.line) keeps its pixel width at both cameras.
+func _crackle(from: Vector2, m: MobState, h: float) -> void:
+	var fx := _fx_parent()
+	var y := clampf(h * 0.5, 0.35, 0.7)
+	var a := _at3(from, y)
+	var b := _at3(m.pos, y)
+	var side := Vector3(-(b - a).z, 0.0, (b - a).x).normalized()
+	var pts: Array[Vector3] = [a]
+	for k in 2:
+		var t := (float(k) + 1.0) / 3.0
+		var kink := (Rng.hash01(m.id, int(sim.now), k) - 0.5) * 0.7
+		pts.append(a.lerp(b, t) + side * kink + Vector3(0.0, kink * 0.3, 0.0))
+	pts.append(b)
+	for k in 3:
+		MobFx.line(fx, pts[k], pts[k + 1], Palette.COLD[3], 0.2)
+
+
 func _on_struck(e: Dictionary) -> void:
 	var m := e.target as MobState
 	if m == null:
@@ -477,6 +497,8 @@ func _on_struck(e: Dictionary) -> void:
 	var from: Vector2 = e.from
 	var fx := _fx_parent()
 	var h: float = m.row.get("height", 1.0)
+	if bool(e.get("arc", false)):
+		_crackle(from, m, h)
 	var dir := (m.pos - from).normalized()
 	var impact := _at3(m.pos - dir * m.radius, clampf(h * 0.5, 0.35, 0.7))
 	if e.plate:

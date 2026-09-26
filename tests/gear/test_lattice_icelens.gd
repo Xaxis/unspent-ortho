@@ -14,7 +14,7 @@ func _crowd(kit: Array[StringName]) -> Array:
 	var sim := F.make_sim()
 	var m := F.still(sim, &"harvester", Vector2(30.5, 20.5), PI)
 	var a := F.still(sim, &"runner", m.pos + Vector2(0.0, 1.0), PI)
-	var b := F.still(sim, &"runner", m.pos + Vector2(0.0, -3.0), PI)
+	var b := F.still(sim, &"runner", m.pos + Vector2(0.0, -3.5), PI)
 	sim.hero.inventory.add(&"knife")
 	sim.hero.inventory.set_held(&"knife")
 	sim.hero.kit = FightKit.of(kit)
@@ -67,3 +67,4 @@ func test_the_lattice_bout() -> void:
 		out[kit.size()] = hp - a.health
 	print("  info lattice bout: the runner beside the harvester loses %d health in 10 s bare, %d with a lattice" % [out[0], out[1]])
 	gt(float(out[1]), float(out[0]), "a lattice wears the bystander down")
+

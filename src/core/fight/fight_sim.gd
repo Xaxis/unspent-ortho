@@ -1089,7 +1089,7 @@ func _lattice(struck: MobState) -> void:
 		o.health -= FightKit.LATTICE_DAMAGE
 		o.hurt_by[&"lattice"] = now + o.mob_iframes()
 		o.last_hit_at = now
-		emit(&"struck", {"from": struck.pos, "target": o, "damage": FightKit.LATTICE_DAMAGE, "plate": false, "at": o.pos})
+		emit(&"struck", {"from": struck.pos, "target": o, "damage": FightKit.LATTICE_DAMAGE, "plate": false, "at": o.pos, "arc": true})
 		if o.health <= 0:
 			_kill(o, true)
 
