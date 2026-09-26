@@ -9,6 +9,7 @@ extends TestCase
 const F := preload("res://tests/fight/fixture.gd")
 const Reader := preload("res://tests/fight/reader.gd")
 const CrowdReader := preload("res://tests/fight/crowd_reader.gd")
+const ShoulderReader := preload("res://tests/fight/shoulder_reader.gd")
 
 const TOOL := &"knife"
 ## Eight starts round the compass, each with three runs of body ids (they steer
@@ -18,7 +19,8 @@ const BOUTS := 24
 
 ## One gate bout: {won, downed, t, health_lost}. `kit` is what is fitted.
 static func gate(crowd_reader: bool, start: int, kind: StringName = &"runner", count: int = 2,
-		kit: Array[StringName] = [], seconds: float = 120.0, tool: StringName = TOOL, charges: int = 0, ids: int = 1000) -> Dictionary:
+		kit: Array[StringName] = [], seconds: float = 120.0, tool: StringName = TOOL, charges: int = 0, ids: int = 1000,
+		shoulder := false) -> Dictionary:
 	# A body's id steers its side-steps (Brains); ids count up across a run, so
 	# without this a bout's outcome would hang on how many ran before it.
 	MobState._next_id = ids
@@ -42,7 +44,11 @@ static func gate(crowd_reader: bool, start: int, kind: StringName = &"runner", c
 		m.disturbed = true
 		m.set_mood(MobState.CHASING, sim.now)
 		crowd.append(m)
-	var player: Variant = CrowdReader.new(sim) if crowd_reader else Reader.new(sim)
+	# `shoulder`: the crowd reader as a player over the shoulder knows the fight
+	# (tests/fight/shoulder_reader.gd), facing the crowd as it starts.
+	var player: Variant = ShoulderReader.new(sim) if shoulder else (CrowdReader.new(sim) if crowd_reader else Reader.new(sim))
+	if shoulder:
+		sim.hero.facing = (mid - sim.hero.pos).angle()
 	var t := 0.0
 	var lost := 0
 	var raked := 0

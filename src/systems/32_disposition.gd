@@ -156,7 +156,8 @@ func _read_player() -> void:
 	m.spoofed = game.clock.minutes < body.spoof_until
 	var p := hero.pos
 	var ground := game.world.ground_at(floori(p.x), floori(p.y))
-	m.loudness = StealthNoise.loudness(hero.speed, ground, body.crouched, m.laden_tier)
+	# The listener's ear is heard as far as it hears, steps and all (FightKit.listen).
+	m.loudness = StealthNoise.loudness(hero.speed, ground, body.crouched, m.laden_tier) * hero.kit.noise_scale()
 	m.cover = _cover_now(p, m)
 	m.interference = interference.value(Interference.network(game.world, p))
 
