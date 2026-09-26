@@ -26,12 +26,14 @@ static func make() -> InteriorKind:
 	k.wall_h = 2.4
 	k.cut = 0.8
 	k.door_width = 0.9
+	# Its words are its landscape's (a squat's slot opens where they are written).
+	k.by_land = true
 	k.recipe = load("res://src/content/interiors/squat.gd")
 	k.model = "res://src/models/interior/cottage_model.gd"
 	return k
 
 
-static func lay(rng: RandomNumberGenerator) -> InteriorLayout:
+static func lay(rng: RandomNumberGenerator, land: int = -1) -> InteriorLayout:
 	var l := InteriorLayout.new()
 	l.plan = &"squat"
 	# How long it has been lived in: a bedroll alone, or a second one.
@@ -50,7 +52,7 @@ static func lay(rng: RandomNumberGenerator) -> InteriorLayout:
 			e.kind = &"door"
 		elif m.distance_to(window_at()) < 0.1:
 			e.kind = &"window"
-	_fit(l)
+	_fit(l, land)
 	return l
 
 
@@ -71,7 +73,7 @@ static func _put(l: InteriorLayout, kind: StringName, at: Vector2, face: Vector2
 	l.things.append(t)
 
 
-static func _fit(l: InteriorLayout) -> void:
+static func _fit(l: InteriorLayout, land: int) -> void:
 	_put(l, &"tarp", window_at() - Vector2(0.36, 0.0), Vector2(-1, 0), 0.0)
 	_put(l, &"bedroll", Vector2(0.9, 1.0), Vector2(1, 0), 0.0)
 	if l.dressing == &"two":
@@ -80,4 +82,6 @@ static func _fit(l: InteriorLayout) -> void:
 	_put(l, &"buckets", Vector2(4.5, 3.4), Vector2(-1, 0), 0.3)
 	_put(l, &"chest", l.table, Vector2(0, 1), 0.28)
 	_put(l, &"crawl_hole", crawl_at(), Vector2(0, 1), 0.0, {"exit": true})
+	if not StoryRooms.words_for(&"squat", &"wall:squat", land, l.dressing).is_empty():
+		l.slots.append({"slot": &"wall", "thing": &"squat", "at": crawl_at(), "face": Vector2(0, 1)})
 	l.walks.append(PackedVector2Array([l.door, crawl_at() + Vector2(0.0, 0.8)]))

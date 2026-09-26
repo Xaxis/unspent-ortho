@@ -1411,6 +1411,1335 @@ const FRAGMENTS := {
 			"Near the end there are two hands. Then one.",
 		],
 	},
+	# --- homes, batch A: the snowfield, the bonelands, the pinewood (ROOMS: home)
+	# Colour: people living in the gaps, in their own houses. `lands` says whose
+	# landscape; `households` (proposed field, see the note) whose first piece a
+	# wall line stands at. No beats.
+	# -- the snowfield's table
+	&"home_sf_bowls": {
+		"kind": &"notebook", "title": "the table", "lands": ["snowfield"],
+		"lines": [
+			"Two bowls on the table, one inside the",
+			"other to keep the heat. A spoon in the top.",
+			"",
+			"Frost has grown on the inside of the window,",
+			"except for one clear patch the size of a",
+			"hand, low down, at a child's height.",
+		],
+	},
+	&"home_sf_lamp": {
+		"kind": &"notebook", "title": "the table", "lands": ["snowfield"],
+		"lines": [
+			"A lamp on the table, trimmed low, and a",
+			"cloth folded over its guard so the light",
+			"does not reach the window.",
+			"",
+			"The soot on the ceiling over it is the",
+			"only dark thing in the house.",
+		],
+	},
+	&"home_sf_mitten": {
+		"kind": &"notebook", "title": "the table", "lands": ["snowfield"],
+		"lines": [
+			"A mitten half darned on the table, the",
+			"needle left in it. The wool comes from",
+			"three other mittens, each its own grey.",
+			"",
+			"It is small. The big pair hangs by the",
+			"door, dry.",
+		],
+	},
+	# -- the bonelands' table
+	&"home_bl_clint": {
+		"kind": &"notebook", "title": "the table", "lands": ["bonelands"],
+		"lines": [
+			"The table is one slab of the pavement,",
+			"prised up whole and set on stones. Shells",
+			"in the top, worn smooth by elbows.",
+			"",
+			"One shell has been drawn round in pencil,",
+			"over and over, for a child to find.",
+		],
+	},
+	&"home_bl_jug": {
+		"kind": &"notebook", "title": "the table", "lands": ["bonelands"],
+		"lines": [
+			"A jug on the table, a cloth over it held",
+			"down at the corners with pebbles. The",
+			"water came up out of a grike.",
+			"",
+			"On the cloth, stitched small: boil it",
+		],
+	},
+	&"home_bl_knife": {
+		"kind": &"notebook", "title": "the table", "lands": ["bonelands"],
+		"lines": [
+			"Flat bread under a bowl, and a knife that",
+			"was a drill bit once, ground to an edge",
+			"and bound in leather at the shank.",
+			"",
+			"It is the best knife in the house.",
+		],
+	},
+	# -- the pinewood's table
+	&"home_pw_jar": {
+		"kind": &"notebook", "title": "the table", "lands": ["pinewood"],
+		"lines": [
+			"A candle in a jar on the table, and a lid",
+			"beside it, to go on the jar when the",
+			"curfew horn sounds. Soot inside the lid.",
+			"",
+			"Three plates. The third has a cloth over",
+			"it, in case.",
+		],
+	},
+	&"home_pw_rings": {
+		"kind": &"notebook", "title": "the table", "lands": ["pinewood"],
+		"lines": [
+			"The table is one slab of pine, the rings",
+			"still in it. A child has counted them in",
+			"ink, a dot at every tenth: a hundred and",
+			"forty.",
+			"",
+			"The stand it came from is a square now.",
+		],
+	},
+	&"home_pw_amber": {
+		"kind": &"notebook", "title": "the table", "lands": ["pinewood"],
+		"lines": [
+			"A lump of amber on the table, big as a",
+			"fist, with a fly in it. It has gone hand",
+			"to hand so long it shines.",
+			"",
+			"It is the one thing in the house older",
+			"than the war.",
+		],
+	},
+	# -- the wireman's coils (snowfield)
+	&"home_wire_tags": {
+		"kind": &"mark", "title": "the coils", "lands": ["snowfield"], "households": [&"wireman"],
+		"lines": [
+			"Copper coiled on pegs, sorted by gauge. A",
+			"tag on each, in pencil: which pylon, which",
+			"span, which night.",
+			"",
+			"None of the spans is within a day's walk",
+			"of the house.",
+		],
+	},
+	&"home_wire_glass": {
+		"kind": &"mark", "title": "the insulators", "lands": ["snowfield"], "households": [&"wireman"],
+		"lines": [
+			"Glass insulators along the sill, green and",
+			"clear, washed and set to take the light.",
+			"",
+			"Two are the machines' own, cast in one",
+			"piece, with no seam. Those two are at the",
+			"back.",
+		],
+	},
+	# -- the trapper's line (snowfield and pinewood)
+	&"home_trap_threads": {
+		"kind": &"mark", "title": "the pelts", "lands": ["snowfield", "pinewood"], "households": [&"trapper"],
+		"lines": [
+			"Pelts on a line, fur in, drying. A knot of",
+			"thread at each neck: red, red, blue, red.",
+			"",
+			"Blue is for the ones already dead in the",
+			"snare when it was reached. Not by the cold.",
+		],
+	},
+	&"home_trap_child": {
+		"kind": &"mark", "title": "the snares", "lands": ["snowfield", "pinewood"], "households": [&"trapper"],
+		"lines": [
+			"Snares on a nail, by size, the loops wiped",
+			"and oiled. The wire is copper, stripped of",
+			"its casing.",
+			"",
+			"Among them, a small one, tied wrong, hung",
+			"with the rest as if it were right.",
+		],
+	},
+	&"home_trap_notches": {
+		"kind": &"mark", "title": "the pelts", "lands": ["snowfield", "pinewood"], "households": [&"trapper"],
+		"lines": [
+			"A stick by the pelts, notched. A long",
+			"notch, a pelt. A short one, a pelt given",
+			"at the Covenant's post for leave to set",
+			"the line.",
+			"",
+			"The short ones are more than half.",
+		],
+	},
+	# -- the corer's rack (bonelands)
+	&"home_core_fossils": {
+		"kind": &"mark", "title": "the cores", "lands": ["bonelands"], "households": [&"corer"],
+		"lines": [
+			"Drill cores racked like bottles, each a",
+			"stone rod the length of a forearm, still",
+			"capped with the grid's tag.",
+			"",
+			"The machines leave one lying at every",
+			"hole. These are the ones with shells in.",
+		],
+	},
+	&"home_core_band": {
+		"kind": &"mark", "title": "the cores", "lands": ["bonelands"], "households": [&"corer"],
+		"lines": [
+			"Cores racked by depth, shallow at the top:",
+			"grey, grey, a band of red, grey.",
+			"",
+			"The red is at the same depth on every one.",
+			"Somebody has chalked a line at it on each.",
+		],
+	},
+	# -- the mason's rack (bonelands)
+	&"home_mason_half": {
+		"kind": &"mark", "title": "the mason's rack", "lands": ["bonelands"], "households": [&"mason"],
+		"lines": [
+			"A stone half cut: one face dressed flat,",
+			"the rest as it came out of the ground. The",
+			"chisel marks stop partway along a row.",
+			"",
+			"Every chisel is back on its peg but one.",
+		],
+	},
+	&"home_mason_rebar": {
+		"kind": &"mark", "title": "the mason's rack", "lands": ["bonelands"], "households": [&"mason"],
+		"lines": [
+			"Chisels on a rack, and with them a length",
+			"of rebar ground to a point, black with use.",
+			"It was cut out of one of the cast stones.",
+			"",
+			"The hole was filled after with lime, and",
+			"rubbed with dirt, so it would not show.",
+		],
+	},
+	# -- the tapper's shelf (pinewood)
+	&"home_tap_hers": {
+		"kind": &"mark", "title": "the resin pots", "lands": ["pinewood"], "households": [&"tapper"],
+		"lines": [
+			"Resin pots on a shelf, each a tin, its lid",
+			"punched for a spile. Each labelled with a",
+			"tree, not a place:",
+			"  the leaning one   the split one   hers",
+			"",
+			"The last pot is full, and not for sale.",
+		],
+	},
+	&"home_tap_spiles": {
+		"kind": &"mark", "title": "the spiles", "lands": ["pinewood"], "households": [&"tapper"],
+		"lines": [
+			"Spiles on a string, whittled, the points",
+			"black. Tallow in a crock under them, to",
+			"seal the cuts after.",
+			"",
+			"Most of the string is bare. The rest went",
+			"to the saw still in their trees.",
+		],
+	},
+	# -- the collier's sacks (pinewood)
+	&"home_coll_thumbs": {
+		"kind": &"mark", "title": "the charcoal sacks", "lands": ["pinewood"], "households": [&"collier"],
+		"lines": [
+			"Charcoal sacks stacked to the rafters, each",
+			"tied off and marked with a thumb in soot.",
+			"",
+			"Every thumb is the same thumb. Near the top",
+			"of the stack, a second, smaller one starts.",
+		],
+	},
+	&"home_coll_smoke": {
+		"kind": &"mark", "title": "a drawing in charcoal", "lands": ["pinewood"], "households": [&"collier"],
+		"lines": [
+			"Drawn on the wall in charcoal: a clamp, the",
+			"turf mound the wood burns slow under, and",
+			"the way the smoke should go.",
+			"",
+			"The smoke is drawn along the ground, under",
+			"the canopy, away from the squares.",
+		],
+	},
+	# --- homes, batch B (ROOMS: home). Colour; no beats. ---
+	&"home_mo_boots": {
+		"kind": &"notebook", "title": "the table", "lands": ["moss"],
+		"lines": [
+			"Boots upside down on sticks by the table,",
+			"drying. Black water still runs out of one.",
+			"",
+			"On the table, eels in jelly under a plate,",
+			"and a stone on the plate.",
+		],
+	},
+	&"home_mo_leg": {
+		"kind": &"notebook", "title": "the table", "lands": ["moss"],
+		"lines": [
+			"The table rocks. One leg is short, packed",
+			"with folded paper to make up the difference.",
+			"",
+			"It is packed again every spring. The pumps",
+			"take the ground down a little every year.",
+		],
+	},
+	&"home_mo_rush": {
+		"kind": &"notebook", "title": "the table", "lands": ["moss"],
+		"lines": [
+			"A rush light on the table: a peeled reed in",
+			"a clip, dipped in fat. A dozen more laid",
+			"ready beside it, all one length.",
+			"",
+			"And one short and crooked, dipped too thick:",
+			"a first try, kept.",
+		],
+	},
+	&"home_cut_spade": {
+		"kind": &"mark", "title": "the turf spade", "lands": ["moss"], "households": [&"cutter"],
+		"lines": [
+			"A turf spade by the stack, the blade worn",
+			"thin as a leaf and bright along the edge.",
+			"",
+			"The handle is new. The blade is older than",
+			"anyone who has held it.",
+		],
+	},
+	&"home_cut_crib": {
+		"kind": &"mark", "title": "the peat crib", "lands": ["moss"], "households": [&"cutter"],
+		"lines": [
+			"Peat in a crib to the roof, every sod one",
+			"size, laid in a herringbone so the air",
+			"goes through.",
+			"",
+			"Low in the stack, one sod with a small boot",
+			"print in it, pressed in when it was wet.",
+		],
+	},
+	&"home_reed_wire": {
+		"kind": &"mark", "title": "the reed bundles", "lands": ["moss"], "households": [&"reeder"],
+		"lines": [
+			"Reed bundles on end along the wall, tied at",
+			"the waist, cut green and drying gold.",
+			"",
+			"The new ones are tied with wire off the dead",
+			"trees' insulators. The old, with reed.",
+		],
+	},
+	&"home_reed_pipes": {
+		"kind": &"mark", "title": "the reed bundles", "lands": ["moss"], "households": [&"reeder"],
+		"lines": [
+			"Among the bundles, a set of reed pipes bound",
+			"with thread, seven, long to short.",
+			"",
+			"The longest is cracked, and bound again so",
+			"it still plays. Flat.",
+		],
+	},
+	&"home_eel_mesh": {
+		"kind": &"mark", "title": "the eel traps", "lands": ["moss"], "households": [&"eeler"],
+		"lines": [
+			"Eel traps on pegs, woven willow, each with",
+			"a funnel mouth that lets in and not out.",
+			"",
+			"One is woven round a length of the pumps'",
+			"mesh. It catches more than the rest.",
+		],
+	},
+	&"home_eel_chalk": {
+		"kind": &"mark", "title": "the eel traps", "lands": ["moss"], "households": [&"eeler"],
+		"lines": [
+			"Chalk on the plank by the traps: a number",
+			"a night, in a column, going down.",
+			"",
+			"At the foot of the column, in the same hand:",
+			"further out, then",
+		],
+	},
+	&"home_sa_cloth": {
+		"kind": &"notebook", "title": "the table", "lands": ["salt_flats"],
+		"lines": [
+			"A cloth on the table, stiff with salt. It",
+			"has been washed in the only water there is.",
+			"",
+			"Everything in the house is white at the",
+			"edges: the cups, the bread, the faces in",
+			"the one photograph.",
+		],
+	},
+	&"home_sa_specs": {
+		"kind": &"notebook", "title": "the table", "lands": ["salt_flats"],
+		"lines": [
+			"The shutters are shut at noon, and the room",
+			"is dark and full of lines of light.",
+			"",
+			"On the table, spectacles with the lenses",
+			"smoked black over a candle.",
+		],
+	},
+	&"home_sa_jar": {
+		"kind": &"notebook", "title": "the table", "lands": ["salt_flats"],
+		"lines": [
+			"A jar of water on the table, a wax mark on",
+			"its side, and a mark lower, and lower.",
+			"",
+			"The lowest was made this morning.",
+		],
+	},
+	&"home_rake_teeth": {
+		"kind": &"mark", "title": "the salt rake", "lands": ["salt_flats"], "households": [&"raker"],
+		"lines": [
+			"A salt rake on the wall, its wooden teeth",
+			"worn to different lengths, each shaped by",
+			"one pan.",
+			"",
+			"Out on the flat the machines' rakes go round",
+			"on rails, and never wear.",
+		],
+	},
+	&"home_rake_pink": {
+		"kind": &"mark", "title": "the salt cones", "lands": ["salt_flats"], "households": [&"raker"],
+		"lines": [
+			"Salt cones on the shelf, knocked out of a",
+			"mould whole, white as teeth.",
+			"",
+			"One is pink. It came off a pan the machines",
+			"stopped raking. Nobody here will eat it.",
+		],
+	},
+	&"home_boil_pages": {
+		"kind": &"mark", "title": "the salt cones", "lands": ["salt_flats"], "households": [&"boiler"],
+		"lines": [
+			"Cones of boiled salt in rows, finer than",
+			"the rakers', each in a twist of paper",
+			"against the damp.",
+			"",
+			"The paper is the pages of a book. They have",
+			"got to the part where somebody is rescued.",
+		],
+	},
+	&"home_boil_pan": {
+		"kind": &"mark", "title": "the boiling pan", "lands": ["salt_flats"], "households": [&"boiler"],
+		"lines": [
+			"A cut-down drum by the cones, the boiling",
+			"pan, crusted a hand thick inside.",
+			"",
+			"In the crust, a scratch for every load of",
+			"wood carried in from off the flat. There",
+			"are not many.",
+		],
+	},
+	&"home_sc_nails": {
+		"kind": &"notebook", "title": "the table", "lands": ["scrapwood"],
+		"lines": [
+			"The table's nails have drawn half out of",
+			"the boards, all leaning one way, toward the",
+			"wood.",
+			"",
+			"They are knocked back in every morning.",
+		],
+	},
+	&"home_sc_compass": {
+		"kind": &"notebook", "title": "the table", "lands": ["scrapwood"],
+		"lines": [
+			"A compass on the table, under a cup so it",
+			"cannot be knocked. The needle does not",
+			"point north. It points at the door.",
+			"",
+			"Nobody here needs north.",
+		],
+	},
+	&"home_sc_fork": {
+		"kind": &"notebook", "title": "the table", "lands": ["scrapwood"],
+		"lines": [
+			"No metal on the table: bowls of bark, a",
+			"knife of bone, a cup of horn.",
+			"",
+			"One steel fork hangs high on the wall, the",
+			"filings standing up off it like fur.",
+		],
+	},
+	&"home_file_nopole": {
+		"kind": &"mark", "title": "the filings trays", "lands": ["scrapwood"], "households": [&"filer"],
+		"lines": [
+			"Trays of filings on the wall, each combed",
+			"into arcs round a pole in the middle.",
+			"",
+			"The last tray has no pole in it. The arcs",
+			"go round the middle just the same.",
+		],
+	},
+	&"home_file_turned": {
+		"kind": &"mark", "title": "the lodestones", "lands": ["scrapwood"], "households": [&"filer"],
+		"lines": [
+			"Lodestones on strings from a beam, turning",
+			"slowly, all coming to rest the same way.",
+			"",
+			"The smallest has a name scratched on it,",
+			"and is tied to face the other way.",
+		],
+	},
+	&"home_wright_lamp": {
+		"kind": &"mark", "title": "the strip lamp", "lands": ["scrapwood"], "households": [&"wright"],
+		"lines": [
+			"A strip lamp on the bench, off a machine in",
+			"the trees, its cable cut and spliced to a",
+			"coil.",
+			"",
+			"It lights the room a colour nothing else in",
+			"the house is.",
+		],
+	},
+	&"home_wright_coil": {
+		"kind": &"mark", "title": "the coil", "lands": ["scrapwood"], "households": [&"wright"],
+		"lines": [
+			"A coil on the bench, wound by hand on a",
+			"spindle of antler, the turns tight and even.",
+			"",
+			"The count of turns is chalked beside it,",
+			"crossed out, and counted again.",
+		],
+	},
+	# --- homes, batch C (ROOMS: home). Colour; no beats. ---
+	&"home_su_bread": {
+		"kind": &"notebook", "title": "the table", "lands": ["sulphur_jungle"],
+		"lines": [
+			"Bread on the table under a bell of woven",
+			"leaves, with a skin of green on it already.",
+			"",
+			"It was baked this morning.",
+		],
+	},
+	&"home_su_ring": {
+		"kind": &"notebook", "title": "the table", "lands": ["sulphur_jungle"],
+		"lines": [
+			"A cloth on the table, yellow at the edges",
+			"where the air has got at it. The spoons are",
+			"black. The knife is black.",
+			"",
+			"A silver ring in a dish of ash, kept bright",
+			"by being kept out of the air.",
+		],
+	},
+	&"home_su_masks": {
+		"kind": &"notebook", "title": "the table", "lands": ["sulphur_jungle"],
+		"lines": [
+			"Masks of wet cloth on a nail over the table,",
+			"for going out. Two big ones, and one tied",
+			"short with a knot at the back.",
+		],
+	},
+	&"home_cook_box": {
+		"kind": &"mark", "title": "the steam box", "lands": ["sulphur_jungle"], "households": [&"cook"],
+		"lines": [
+			"A steam box over a pipe from warm ground,",
+			"its lid weighted with a stone. Roots in",
+			"it, soft by noon, and no fire lit.",
+			"",
+			"Nothing has seen smoke from this house in",
+			"years.",
+		],
+	},
+	&"home_cook_net": {
+		"kind": &"mark", "title": "the steam box", "lands": ["sulphur_jungle"], "households": [&"cook"],
+		"lines": [
+			"Eggs in a net in the steam, a knot in the",
+			"net for every minute they want.",
+			"",
+			"The knots are worn smooth, counted by feel,",
+			"in the dark, before anyone is up.",
+		],
+	},
+	&"home_gath_yellows": {
+		"kind": &"mark", "title": "the sulphur", "lands": ["sulphur_jungle"], "households": [&"gatherer"],
+		"lines": [
+			"Sulphur on the shelf, sorted by yellow:",
+			"lemon, yolk, a brown like old teeth.",
+			"",
+			"The best is wrapped in leaves so it will",
+			"not stink the house. It stinks anyway.",
+		],
+	},
+	&"home_gath_gloves": {
+		"kind": &"mark", "title": "the sulphur", "lands": ["sulphur_jungle"], "households": [&"gatherer"],
+		"lines": [
+			"Gloves by the lumps, the fingers burnt",
+			"through at the tips and patched with the",
+			"tips of another pair.",
+			"",
+			"The patches are burnt through too.",
+		],
+	},
+	&"home_grow_green": {
+		"kind": &"mark", "title": "the seed trays", "lands": ["sulphur_jungle"], "households": [&"grower"],
+		"lines": [
+			"Seed trays along the wall, already green.",
+			"The seed went in yesterday. Each tray is",
+			"chalked with what it is.",
+			"",
+			"Some of the names are guesses.",
+		],
+	},
+	&"home_grow_one": {
+		"kind": &"mark", "title": "the seed trays", "lands": ["sulphur_jungle"], "households": [&"grower"],
+		"lines": [
+			"The trays stand on a slab over a crack in",
+			"the floor, and the crack breathes warm.",
+			"",
+			"At the end, a small tray with one seed in",
+			"it, watered too much, and up anyway.",
+		],
+	},
+	&"home_gl_cups": {
+		"kind": &"notebook", "title": "the table", "lands": ["glass_desert"],
+		"lines": [
+			"Cups on the table made of the ground: glass",
+			"broken off a plate and ground at the rim so",
+			"the lip does not cut.",
+			"",
+			"One rim was ground by somebody still",
+			"learning. It is the cup they fight over.",
+		],
+	},
+	&"home_gl_skin": {
+		"kind": &"notebook", "title": "the table", "lands": ["glass_desert"],
+		"lines": [
+			"A water skin on the table, flat. Beside it,",
+			"a stick with notches: a sip, a notch.",
+			"",
+			"The notches at the top are cut smaller, for",
+			"a smaller mouth.",
+		],
+	},
+	&"home_gl_sand": {
+		"kind": &"notebook", "title": "the table", "lands": ["glass_desert"],
+		"lines": [
+			"The table's legs stand in cups of sand, so",
+			"the floor's ringing does not climb them.",
+			"",
+			"When a plate cracks in the heat outside,",
+			"nothing on the table moves.",
+		],
+	},
+	&"home_knap_cloth": {
+		"kind": &"mark", "title": "the blades", "lands": ["glass_desert"], "households": [&"knapper"],
+		"lines": [
+			"Blades on a cloth, knapped from the ground's",
+			"own glass, laid out by length. The longest",
+			"would go through a boot.",
+			"",
+			"One corner of the cloth is bloody. Not much.",
+		],
+	},
+	&"home_knap_bubble": {
+		"kind": &"mark", "title": "a flake in a frame", "lands": ["glass_desert"], "households": [&"knapper"],
+		"lines": [
+			"A flake of the ground in a wire frame, hung",
+			"where the light comes in. There is a bubble",
+			"in it, round and perfect, from the second",
+			"the ground was made.",
+			"",
+			"It is looked through a great deal.",
+		],
+	},
+	&"home_still_cups": {
+		"kind": &"mark", "title": "the still", "lands": ["glass_desert"], "households": [&"stiller"],
+		"lines": [
+			"A still of the ground's own glass, a coil",
+			"over a dish, the sun on it through a hole",
+			"in the roof.",
+			"",
+			"It makes a cup of water a day. There are",
+			"four cups on the shelf.",
+		],
+	},
+	&"home_still_rain": {
+		"kind": &"mark", "title": "the still", "lands": ["glass_desert"], "households": [&"stiller"],
+		"lines": [
+			"Wax marks up the still's jar, one a day, and",
+			"a word by a few of them: rain.",
+			"",
+			"The rain marks are years apart.",
+		],
+	},
+	&"home_bu_face": {
+		"kind": &"notebook", "title": "the table", "lands": ["burning"],
+		"lines": [
+			"Ash on the table, wiped, and ash again. A",
+			"duster made of a bird's wing hangs by it,",
+			"grey to the quill.",
+			"",
+			"The plates are kept face down.",
+		],
+	},
+	&"home_bu_glow": {
+		"kind": &"notebook", "title": "the table", "lands": ["burning"],
+		"lines": [
+			"No lamp. At night the glow from under the",
+			"ground comes up through the boards, enough",
+			"to eat by.",
+			"",
+			"The table has been moved to the widest",
+			"crack.",
+		],
+	},
+	&"home_bu_stone": {
+		"kind": &"notebook", "title": "the table", "lands": ["burning"],
+		"lines": [
+			"Flat bread baked on a stone taken off a",
+			"vent, a tin of lard, salt in a twist.",
+			"",
+			"The stone is still warm. It is always warm.",
+		],
+	},
+	&"home_pick_blue": {
+		"kind": &"mark", "title": "the slag glass", "lands": ["burning"], "households": [&"picker"],
+		"lines": [
+			"Slag glass on the shelf off the machines'",
+			"runs: bottle green, black, and a blue like",
+			"deep water.",
+			"",
+			"Nobody sells the blue.",
+		],
+	},
+	&"home_pick_tongs": {
+		"kind": &"mark", "title": "the slag glass", "lands": ["burning"], "households": [&"picker"],
+		"lines": [
+			"Tongs by the lumps, the arms bound in wet",
+			"rag, a bucket of water under them.",
+			"",
+			"On the wall, in soot: WAIT TILL IT GOES",
+			"DARK. Under it, in a smaller hand: we know",
+		],
+	},
+	&"home_siph_tar": {
+		"kind": &"mark", "title": "the oil drums", "lands": ["burning"], "households": [&"siphoner"],
+		"lines": [
+			"Oil drums along the wall, bunged, each with",
+			"the refinery's stencil, and a stripe of tar",
+			"through the stencil.",
+			"",
+			"The stencils are the machines'. The tar is",
+			"the house's.",
+		],
+	},
+	&"home_siph_tube": {
+		"kind": &"mark", "title": "the siphon", "lands": ["burning"], "households": [&"siphoner"],
+		"lines": [
+			"A tube coiled on a hook, stained to the end,",
+			"and a tin of water for the mouth after.",
+			"",
+			"A mark on the tube says where to stop. It",
+			"has been moved further along twice.",
+		],
+	},
+	&"home_mi_plates": {
+		"kind": &"notebook", "title": "the table", "lands": ["the_middens"],
+		"lines": [
+			"No two plates match. None was made to eat",
+			"off: a lid, a machine's dish, the back of",
+			"a keyboard.",
+			"",
+			"They are washed, and stacked by size.",
+		],
+	},
+	&"home_mi_maze": {
+		"kind": &"notebook", "title": "the table", "lands": ["the_middens"],
+		"lines": [
+			"A maze scratched into the table top, most",
+			"of its lines scored out. One is not.",
+			"",
+			"It goes from the door to the edge of the",
+			"table, and stops.",
+		],
+	},
+	&"home_mi_string": {
+		"kind": &"notebook", "title": "the table", "lands": ["the_middens"],
+		"lines": [
+			"A ball of string on the table, big as a",
+			"head, knotted from every string there is.",
+			"",
+			"The end is tied to a table leg. It goes",
+			"out under the door.",
+		],
+	},
+	&"home_sort_teeth": {
+		"kind": &"mark", "title": "the bins", "lands": ["the_middens"], "households": [&"sorter"],
+		"lines": [
+			"Bins along the wall, chalked: COPPER, GLASS,",
+			"BOARDS, CELLS, SCREENS, TEETH.",
+			"",
+			"The chalk has been rubbed out and done again",
+			"so often the bins are white.",
+		],
+	},
+	&"home_sort_dunno": {
+		"kind": &"mark", "title": "the bins", "lands": ["the_middens"], "households": [&"sorter"],
+		"lines": [
+			"One bin is chalked DON'T KNOW. It is the",
+			"fullest.",
+			"",
+			"On top, a phone in its box, the seal still",
+			"on it. Nobody has wanted to be first.",
+		],
+	},
+	&"home_wirer_tin": {
+		"kind": &"mark", "title": "the bench", "lands": ["the_middens"], "households": [&"wirer"],
+		"lines": [
+			"A radio on the bench, built from four, its",
+			"case a biscuit tin.",
+			"",
+			"It gets one station: the machines, reading",
+			"numbers. It is left on for the company.",
+		],
+	},
+	&"home_wirer_hood": {
+		"kind": &"mark", "title": "the bench", "lands": ["the_middens"], "households": [&"wirer"],
+		"lines": [
+			"A lamp on the bench wired to a cell dug out",
+			"of the walls, hooded in card so it lights",
+			"the bench and nowhere else.",
+			"",
+			"The card is cut to the shape of the work.",
+		],
+	},
+	# --- homes, batch D (ROOMS: home). Colour; no beats. ---
+	&"home_sl_inventory": {
+		"kind": &"notebook", "title": "the table", "lands": ["slums"],
+		"lines": [
+			"The issued stove at its issued mark. On the",
+			"table, two issued cups, washed and turned",
+			"down on the issued cloth.",
+			"",
+			"The inventory pinned by the door lists",
+			"everything in the flat, and itself.",
+		],
+	},
+	&"home_sl_below": {
+		"kind": &"notebook", "title": "the table", "lands": ["slums"],
+		"lines": [
+			"Supper for two on the table, the same as",
+			"the flat below, and the flat below that.",
+			"",
+			"Through the floor, you can hear them eating,",
+			"at the same time.",
+		],
+	},
+	&"home_sl_note": {
+		"kind": &"notebook", "title": "the table", "lands": ["slums"],
+		"lines": [
+			"A note on the table under the salt:",
+			"  back at shift bell. dont wait up",
+			"",
+			"Every note in the drawer says the same.",
+			"There are years of them.",
+		],
+	},
+	&"home_clerk_balance": {
+		"kind": &"mark", "title": "the ledgers", "lands": ["slums"], "households": [&"clerk"],
+		"lines": [
+			"Ledgers on a shelf: the household's own,",
+			"kept in the same columns as the office's.",
+			"",
+			"Nothing asks the household to keep them.",
+			"They balance.",
+		],
+	},
+	&"home_clerk_pencil": {
+		"kind": &"mark", "title": "the calendar", "lands": ["slums"], "households": [&"clerk"],
+		"lines": [
+			"A calendar, every day crossed in the same",
+			"pen at the same angle.",
+			"",
+			"The days of next year are crossed already,",
+			"lightly, in pencil.",
+		],
+	},
+	&"home_shift_nine": {
+		"kind": &"mark", "title": "the overalls", "lands": ["slums"], "households": [&"shift"],
+		"lines": [
+			"Overalls on a hook, washed, a number on the",
+			"back in white: 9. A second hook, a second",
+			"pair: 9 as well.",
+			"",
+			"Two on one shift. They pass at the door.",
+		],
+	},
+	&"home_shift_radio": {
+		"kind": &"mark", "title": "the radio", "lands": ["slums"], "households": [&"shift"],
+		"lines": [
+			"The radio is on, low. It says the time every",
+			"quarter hour, and the shift.",
+			"",
+			"There is no switch on it.",
+		],
+	},
+	&"home_keep_hooks": {
+		"kind": &"mark", "title": "the key board", "lands": ["slums"], "households": [&"keeper"],
+		"lines": [
+			"A board of keys by the door, a hook for each",
+			"flat in the stair, each key tagged.",
+			"",
+			"Three hooks have no key and no tag. The",
+			"paint where the tags hung is touched up.",
+		],
+	},
+	&"home_keep_ins": {
+		"kind": &"mark", "title": "the ledger", "lands": ["slums"], "households": [&"keeper"],
+		"lines": [
+			"A ledger of who went out and who came in, in",
+			"the keeper's hand. Every out has an in",
+			"beside it.",
+			"",
+			"Every one.",
+		],
+	},
+	&"home_gt_pending": {
+		"kind": &"notebook", "title": "the table", "lands": ["green_towers"],
+		"lines": [
+			"The table is an office desk, roots through",
+			"its drawers. The drawers keep their labels:",
+			"PENDING, FILED.",
+			"",
+			"Figs in PENDING. Nothing in FILED.",
+		],
+	},
+	&"home_gt_hole": {
+		"kind": &"notebook", "title": "the table", "lands": ["green_towers"],
+		"lines": [
+			"Rain comes through the roof in one place,",
+			"into a bowl on the table.",
+			"",
+			"Somebody made the hole.",
+		],
+	},
+	&"home_gt_frog": {
+		"kind": &"notebook", "title": "the table", "lands": ["green_towers"],
+		"lines": [
+			"A jar on the table with a frog in it, a leaf",
+			"over the jar, holes in the leaf.",
+			"",
+			"A name on the jar, in a child's letters:",
+			"Director",
+		],
+	},
+	&"home_squat_mug": {
+		"kind": &"mark", "title": "the shelf", "lands": ["green_towers"], "households": [&"squatter"],
+		"lines": [
+			"A shelf of what the floor left: a stapler,",
+			"a mug with a joke on it, a name badge.",
+			"Nobody here knows the name.",
+			"",
+			"The mug is the one they drink from.",
+		],
+	},
+	&"home_squat_lamp": {
+		"kind": &"mark", "title": "the lamp", "lands": ["green_towers"], "households": [&"squatter"],
+		"lines": [
+			"A machine lamp hung from a vine, a rag over",
+			"it to turn it down.",
+			"",
+			"It came off a walker that went into the",
+			"canopy and did not come out.",
+		],
+	},
+	&"home_climb_knots": {
+		"kind": &"mark", "title": "the rope", "lands": ["green_towers"], "households": [&"climber"],
+		"lines": [
+			"Rope coiled by the hammock, knotted every",
+			"arm's length: a knot to a floor.",
+			"",
+			"A red thread at the forty-first knot. Past",
+			"it, nobody in this house goes.",
+		],
+	},
+	&"home_climb_gloves": {
+		"kind": &"mark", "title": "the rope", "lands": ["green_towers"], "households": [&"climber"],
+		"lines": [
+			"A pot of pine tar by the rope, for hands.",
+			"Beside it, small gloves cut down from big",
+			"ones, by somebody who had to guess the size.",
+		],
+	},
+	&"home_dr_legs": {
+		"kind": &"notebook", "title": "the table", "lands": ["drowned_city"],
+		"lines": [
+			"The table has been raised twice. The old",
+			"legs are still on it, new legs lashed on",
+			"below.",
+			"",
+			"There is room under the ceiling for one",
+			"more.",
+		],
+	},
+	&"home_dr_cat": {
+		"kind": &"notebook", "title": "the table", "lands": ["drowned_city"],
+		"lines": [
+			"Fish in bowls on the table, and the heads",
+			"in a bowl of their own, for the cat.",
+			"",
+			"There is no cat. The bowl is filled.",
+		],
+	},
+	&"home_dr_boots": {
+		"kind": &"notebook", "title": "the table", "lands": ["drowned_city"],
+		"lines": [
+			"Boots on the table, not under it. At the",
+			"spring tide the table is the only dry",
+			"place in the room.",
+		],
+	},
+	&"home_stilt_once": {
+		"kind": &"mark", "title": "the gauge", "lands": ["drowned_city"], "households": [&"stilter"],
+		"lines": [
+			"A gauge by the door, a board marked: the",
+			"floor, the sill, the table.",
+			"",
+			"A line at the table, and beside it: once",
+		],
+	},
+	&"home_stilt_beds": {
+		"kind": &"mark", "title": "the hammocks", "lands": ["drowned_city"], "households": [&"stilter"],
+		"lines": [
+			"Hammocks slung high, over where the beds",
+			"were. The bed frames are under the water,",
+			"still made.",
+		],
+	},
+	&"home_bail_things": {
+		"kind": &"mark", "title": "the buckets", "lands": ["drowned_city"], "households": [&"bailer"],
+		"lines": [
+			"Buckets in a row by the door, every one",
+			"something else once: a helmet, a drum, a",
+			"lampshade, sealed with tar.",
+			"",
+			"They are emptied before anyone eats.",
+		],
+	},
+	&"home_bail_oar": {
+		"kind": &"mark", "title": "the oars", "lands": ["drowned_city"], "households": [&"bailer"],
+		"lines": [
+			"Oars on the wall, and one cut down to a",
+			"paddle for a small hand.",
+			"",
+			"The name burnt in the handle is a ferry's.",
+		],
+	},
+	&"home_cr_bolts": {
+		"kind": &"notebook", "title": "the table", "lands": ["the_crags"],
+		"lines": [
+			"The table stands across from the door, so",
+			"whoever sits at it faces the door.",
+			"",
+			"The door has three bolts, inside.",
+		],
+	},
+	&"home_cr_salt": {
+		"kind": &"notebook", "title": "the table", "lands": ["the_crags"],
+		"lines": [
+			"A line of salt along the sill, unbroken, and",
+			"along the foot of the door.",
+			"",
+			"It is kept up. Nobody here says what for.",
+		],
+	},
+	&"home_cr_share": {
+		"kind": &"notebook", "title": "the table", "lands": ["the_crags"],
+		"lines": [
+			"A loaf on the table, a piece cut from it",
+			"and put out on the sill, on a flat stone.",
+			"",
+			"The stone is worn into a dish.",
+		],
+	},
+	&"home_byre_names": {
+		"kind": &"mark", "title": "the stall", "lands": ["the_crags"], "households": [&"byrer"],
+		"lines": [
+			"The stall is inside, on the wall the hearth",
+			"warms. A goat in it, and its name chalked",
+			"on the post.",
+			"",
+			"Under the name, older names, rubbed out.",
+		],
+	},
+	&"home_byre_bell": {
+		"kind": &"mark", "title": "the stall", "lands": ["the_crags"], "households": [&"byrer"],
+		"lines": [
+			"A bell on a nail over the stall, its",
+			"clapper tied in wool so it will not ring.",
+			"",
+			"Not at night.",
+		],
+	},
+	&"home_wall_burn": {
+		"kind": &"mark", "title": "the waller's rack", "lands": ["the_crags"], "households": [&"waller"],
+		"lines": [
+			"Hammers and pins for walling on a rack, and",
+			"a stone on the floor with a hole bored",
+			"through.",
+			"",
+			"The waller builds nothing on the far side",
+			"of the burn.",
+		],
+	},
+	&"home_wall_flint": {
+		"kind": &"mark", "title": "the waller's rack", "lands": ["the_crags"], "households": [&"waller"],
+		"lines": [
+			"On the rack, a hammer with a head of flint,",
+			"bound to a new handle.",
+			"",
+			"It came out of a wall older than the walls.",
+			"It is the one they use.",
+		],
+	},
+	&"home_me_view": {
+		"kind": &"notebook", "title": "the table", "lands": ["ruined_metropolis"],
+		"lines": [
+			"From the table you can see into the lit",
+			"district: swept streets, lamps, nobody.",
+			"",
+			"The chairs are turned to face it.",
+		],
+	},
+	&"home_me_open": {
+		"kind": &"notebook", "title": "the table", "lands": ["ruined_metropolis"],
+		"lines": [
+			"The table is a shop door laid flat, its",
+			"hours still on the glass: OPEN 9 - 5.",
+			"",
+			"They eat off OPEN.",
+		],
+	},
+	&"home_me_sets": {
+		"kind": &"notebook", "title": "the table", "lands": ["ruined_metropolis"],
+		"lines": [
+			"Knives and forks from a dozen sets, matched",
+			"so each place has one of each kind.",
+			"",
+			"It took years.",
+		],
+	},
+	&"home_stall_saint": {
+		"kind": &"mark", "title": "the counter", "lands": ["ruined_metropolis"], "households": [&"stallholder"],
+		"lines": [
+			"A counter across the room, and behind it a",
+			"stock of nothing much: nails by weight,",
+			"batteries, a plaster saint.",
+			"",
+			"The saint has a price, and it is high.",
+		],
+	},
+	&"home_stall_credit": {
+		"kind": &"mark", "title": "the ledger", "lands": ["ruined_metropolis"], "households": [&"stallholder"],
+		"lines": [
+			"A ledger of credit, in cups of meal. Most",
+			"of the names are crossed through.",
+			"",
+			"Not paid. Crossed.",
+		],
+	},
+	&"home_hoist_stairs": {
+		"kind": &"mark", "title": "the pulley", "lands": ["ruined_metropolis"], "households": [&"hoister"],
+		"lines": [
+			"A pulley over the window, a rope through it",
+			"to the street eight floors down.",
+			"",
+			"The stairs are fallen in. The rope is the",
+			"way up.",
+		],
+	},
+	&"home_hoist_basket": {
+		"kind": &"mark", "title": "the pulley", "lands": ["ruined_metropolis"], "households": [&"hoister"],
+		"lines": [
+			"A basket on the rope's end, big enough for",
+			"a child to sit in.",
+			"",
+			"There is a cushion in it.",
+		],
+	},
+	&"home_ms_heavy": {
+		"kind": &"notebook", "title": "the table", "lands": ["mesas"],
+		"lines": [
+			"Everything on the table is heavy: stone",
+			"cups, a stone jug, bread under a slate.",
+			"",
+			"Anything light went over the edge years",
+			"ago.",
+		],
+	},
+	&"home_ms_trestle": {
+		"kind": &"notebook", "title": "the table", "lands": ["mesas"],
+		"lines": [
+			"Through the window, the machines' road on",
+			"its trestle, crossing the gap.",
+			"",
+			"The table is set so that nobody has to sit",
+			"looking at it.",
+		],
+	},
+	&"home_ms_stones": {
+		"kind": &"notebook", "title": "the table", "lands": ["mesas"],
+		"lines": [
+			"A bowl of dates on the table, the stones",
+			"saved in a cup to plant.",
+			"",
+			"The cup is full. Nothing has come up.",
+		],
+	},
+	&"home_mill_quern": {
+		"kind": &"mark", "title": "the quern", "lands": ["mesas"], "households": [&"miller"],
+		"lines": [
+			"A quern by the wall, the top stone worn to",
+			"a dish by a hand going round.",
+			"",
+			"The handle's hole is worn oval, pulled the",
+			"same way for years.",
+		],
+	},
+	&"home_mill_fine": {
+		"kind": &"mark", "title": "the meal jars", "lands": ["mesas"], "households": [&"miller"],
+		"lines": [
+			"Jars of meal on the shelf, coarse to fine.",
+			"The finest jar is the smallest.",
+			"",
+			"It is for bread on one day of the year.",
+		],
+	},
+	&"home_spin_steps": {
+		"kind": &"mark", "title": "the loom", "lands": ["mesas"], "households": [&"spinner"],
+		"lines": [
+			"A loom by the window, a strip on it in a",
+			"pattern of steps, climbing.",
+			"",
+			"The last row stops halfway across.",
+		],
+	},
+	&"home_spin_coarse": {
+		"kind": &"mark", "title": "the wool", "lands": ["mesas"], "households": [&"spinner"],
+		"lines": [
+			"Wool on the distaff, from goats that go",
+			"further down the canyon every year for",
+			"grazing.",
+			"",
+			"The wool is coarser every year too.",
+		],
+	},
+	&"squat_sheet": {
+		"kind": &"mark", "title": "a sheet on the back wall", "lands": [],
+		"lines": [
+			"A sheet over a hole broken low through the",
+			"back wall, the size of a body crawling.",
+			"",
+			"It is pinned at the top only. It has been",
+			"let fall behind somebody many times.",
+		],
+	},
+	&"squat_edges": {
+		"kind": &"mark", "title": "a hole in the back wall", "lands": [],
+		"lines": [
+			"The hole's edges are filed smooth, so",
+			"nothing snags going through fast.",
+			"",
+			"The filings are swept into a pile under",
+			"it, and not thrown out.",
+		],
+	},
+	&"squat_bag": {
+		"kind": &"mark", "title": "a bag by the hole", "lands": [],
+		"lines": [
+			"Beside the hole, a bag packed and tied,",
+			"water on top.",
+			"",
+			"It has been unpacked and packed again. The",
+			"water is today's.",
+		],
+	},
+	# --- homes, batch E (ROOMS: home). Colour; no beats. ---
+	&"home_co_chair": {
+		"kind": &"notebook", "title": "the table", "lands": ["coast"],
+		"lines": [
+			"Fish on the table, gutted, the guts in a",
+			"bucket for the gulls.",
+			"",
+			"A chair by the window, turned to the water.",
+		],
+	},
+	&"home_co_spoons": {
+		"kind": &"notebook", "title": "the table", "lands": ["coast"],
+		"lines": [
+			"A spoon carved from driftwood, a face on",
+			"the handle. Another beside it, the face",
+			"half done.",
+			"",
+			"The knife is on the sill, folded.",
+		],
+	},
+	&"home_co_wish": {
+		"kind": &"notebook", "title": "the table", "lands": ["coast"],
+		"lines": [
+			"Bread under a cloth, held down with a stone",
+			"off the shingle, grey, a white ring round",
+			"it.",
+			"",
+			"A wishing stone. It has been wished on.",
+		],
+	},
+	&"home_fish_blue": {
+		"kind": &"mark", "title": "the nets", "lands": ["coast"], "households": [&"fisher"],
+		"lines": [
+			"Nets hung from the rafters, mended in two",
+			"twines: the old brown, and a blue off the",
+			"machines' cable.",
+			"",
+			"The blue mends hold better.",
+		],
+	},
+	&"home_fish_doll": {
+		"kind": &"mark", "title": "the floats", "lands": ["coast"], "households": [&"fisher"],
+		"lines": [
+			"Floats on a string: glass, cork, a doll's",
+			"head sealed with wax.",
+			"",
+			"The doll's head always comes home.",
+		],
+	},
+	&"home_tink_eyes": {
+		"kind": &"mark", "title": "the bench", "lands": ["coast"], "households": [&"tinker"],
+		"lines": [
+			"A bench of parts in labelled tins: SPRINGS,",
+			"SCREWS, EYES.",
+			"",
+			"Every lens in the EYES tin has been turned",
+			"face down.",
+		],
+	},
+	&"home_tink_dial": {
+		"kind": &"mark", "title": "the bench", "lands": ["coast"], "households": [&"tinker"],
+		"lines": [
+			"A radio on the bench, its back off, tuned to",
+			"hiss. A pencil mark on the dial where it",
+			"last caught something.",
+			"",
+			"The date beside the mark is years old.",
+		],
+	},
+	&"home_keep_wax": {
+		"kind": &"mark", "title": "the jars", "lands": ["coast"], "households": [&"keeper"],
+		"lines": [
+			"Jars on the shelf, labelled: plums,",
+			"samphire, broth. One without a label, its",
+			"wax stamped with a thumb.",
+			"",
+			"It is older than the others by years.",
+		],
+	},
+	&"home_keep_basket": {
+		"kind": &"mark", "title": "the basket", "lands": ["coast"], "households": [&"keeper"],
+		"lines": [
+			"A basket by the door, packed: a blanket, a",
+			"flask, dry socks, a knife.",
+			"",
+			"It is for whoever the sea brings in. It has",
+			"been packed a long time.",
+		],
+	},
 	# --- a room cut into the mesa (ROOMS) --------------------------------------
 	&"mesa_shell": {
 		"kind": &"mark", "title": "a niche in the rock", "lands": [],
@@ -1975,6 +3304,45 @@ const ROOMS := {
 	&"frozen_hold": {
 		&"terminal:cable_panel": [&"cable_depth", &"cable_listen", &"cable_host"],
 		&"wall:bunk_board": [&"bunk_tally", &"bunk_coal", &"bunk_hands"],
+	},
+	&"home": {
+		&"desk:home": [
+			&"home_sf_bowls", &"home_sf_lamp", &"home_sf_mitten", &"home_bl_clint", &"home_bl_jug",
+			&"home_bl_knife", &"home_pw_jar", &"home_pw_rings", &"home_pw_amber", &"home_mo_boots",
+			&"home_mo_leg", &"home_mo_rush", &"home_sa_cloth", &"home_sa_specs", &"home_sa_jar",
+			&"home_sc_nails", &"home_sc_compass", &"home_sc_fork", &"home_su_bread", &"home_su_ring",
+			&"home_su_masks", &"home_gl_cups", &"home_gl_skin", &"home_gl_sand", &"home_bu_face",
+			&"home_bu_glow", &"home_bu_stone", &"home_mi_plates", &"home_mi_maze", &"home_mi_string",
+			&"home_sl_inventory", &"home_sl_below", &"home_sl_note", &"home_gt_pending", &"home_gt_hole",
+			&"home_gt_frog", &"home_dr_legs", &"home_dr_cat", &"home_dr_boots", &"home_cr_bolts",
+			&"home_cr_salt", &"home_cr_share", &"home_me_view", &"home_me_open", &"home_me_sets",
+			&"home_ms_heavy", &"home_ms_trestle", &"home_ms_stones", &"home_co_chair", &"home_co_spoons",
+			&"home_co_wish"
+		],
+		&"wall:home": [
+			&"home_wire_tags", &"home_wire_glass", &"home_trap_threads", &"home_trap_child",
+			&"home_trap_notches", &"home_core_fossils", &"home_core_band", &"home_mason_half",
+			&"home_mason_rebar", &"home_tap_hers", &"home_tap_spiles", &"home_coll_thumbs",
+			&"home_coll_smoke", &"home_cut_spade", &"home_cut_crib", &"home_reed_wire", &"home_reed_pipes",
+			&"home_eel_mesh", &"home_eel_chalk", &"home_rake_teeth", &"home_rake_pink", &"home_boil_pages",
+			&"home_boil_pan", &"home_file_nopole", &"home_file_turned", &"home_wright_lamp",
+			&"home_wright_coil", &"home_cook_box", &"home_cook_net", &"home_gath_yellows",
+			&"home_gath_gloves", &"home_grow_green", &"home_grow_one", &"home_knap_cloth",
+			&"home_knap_bubble", &"home_still_cups", &"home_still_rain", &"home_pick_blue",
+			&"home_pick_tongs", &"home_siph_tar", &"home_siph_tube", &"home_sort_teeth", &"home_sort_dunno",
+			&"home_wirer_tin", &"home_wirer_hood", &"home_clerk_balance", &"home_clerk_pencil",
+			&"home_shift_nine", &"home_shift_radio", &"home_keep_hooks", &"home_keep_ins",
+			&"home_squat_mug", &"home_squat_lamp", &"home_climb_knots", &"home_climb_gloves",
+			&"home_stilt_once", &"home_stilt_beds", &"home_bail_things", &"home_bail_oar",
+			&"home_byre_names", &"home_byre_bell", &"home_wall_burn", &"home_wall_flint",
+			&"home_stall_saint", &"home_stall_credit", &"home_hoist_stairs", &"home_hoist_basket",
+			&"home_mill_quern", &"home_mill_fine", &"home_spin_steps", &"home_spin_coarse",
+			&"home_fish_blue", &"home_fish_doll", &"home_tink_eyes", &"home_tink_dial", &"home_keep_wax",
+			&"home_keep_basket"
+		],
+	},
+	&"squat": {
+		&"wall:squat": [&"squat_sheet", &"squat_edges", &"squat_bag"],
 	},
 }
 

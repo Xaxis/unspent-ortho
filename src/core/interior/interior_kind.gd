@@ -31,6 +31,10 @@ var dark := 0.0
 ## (a machines' data hall). Hearing inside is cut by it, as `dark` cuts sight
 ## (32_disposition, through 21_doors `room_hush`). 0 changes nothing.
 var hush := 0.0
+## The row of StoryContent.ROOMS its story slots are read from; empty, its own
+## id. The coast's cottage speaks from the homes' row (`home`), whose words are
+## dealt by landscape and household (StoryRooms.held).
+var words: StringName = &""
 ## Its recipe lays it for the landscape it stands in: `lay(rng, land)` rather
 ## than `lay(rng)` (a home, whose household is the landscape's).
 var by_land := false

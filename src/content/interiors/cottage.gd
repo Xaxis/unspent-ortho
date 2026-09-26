@@ -48,11 +48,32 @@ static func make() -> InteriorKind:
 	k.door_width = 0.9
 	k.recipe = load("res://src/content/interiors/cottage.gd")
 	k.model = "res://src/models/interior/cottage_model.gd"
+	# The coast's houses are homes too, and speak from the homes' row.
+	k.words = &"home"
 	return k
 
 
 static func lay(rng: RandomNumberGenerator) -> InteriorLayout:
-	return lay_with(rng, COAST)
+	var l := lay_with(rng, COAST)
+	open_slots(l, COAST, -1)
+	return l
+
+
+## A home's STORY SLOTS, where the story has written for its landscape (`land`,
+## -1 the coast) and household (StoryRooms.words_for, row `home`): the table
+## (`desk:home`) and the household's first piece (`wall:home`: the fisher's
+## nets, the wireman's coils). None written, none opened, so no slot stands
+## empty.
+static func open_slots(l: InteriorLayout, households: Dictionary, land: int) -> void:
+	if not StoryRooms.words_for(&"home", &"desk:home", land, l.dressing).is_empty():
+		l.slots.append({"slot": &"desk", "thing": &"home", "at": l.table, "face": Vector2(0, 1)})
+	var wants: Array = (households.get(l.dressing, {}) as Dictionary).get("wants", [])
+	if wants.is_empty() or StoryRooms.words_for(&"home", &"wall:home", land, l.dressing).is_empty():
+		return
+	for t: Dictionary in l.things:
+		if t.kind == StringName(wants[0]):
+			l.slots.append({"slot": &"wall", "thing": &"home", "at": t.at, "face": t.face})
+			return
 
 
 ## A cottage kept by one of `households` (COAST's shape), dealt off `rng`, round

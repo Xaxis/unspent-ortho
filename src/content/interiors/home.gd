@@ -18,14 +18,23 @@ static func make() -> InteriorKind:
 	var k := Cottage.make()
 	k.id = &"home"
 	k.by_land = true
+	k.words = &""
 	k.recipe = load("res://src/content/interiors/home.gd")
 	return k
 
 
 ## `land` -1 (asked with no landscape): kept as the coast's are.
+##
+## STORY SLOTS, where the story has written for this landscape and household
+## (StoryRooms.words_for): the table (`desk:home`) and the household's first
+## piece (`wall:home`: the wireman's coils, the corer's cores). None written,
+## none opened, so no slot stands empty.
 static func lay(rng: RandomNumberGenerator, land: int = -1) -> InteriorLayout:
 	var d := BiomeRegistry.by_index(land) if land >= 0 else null
-	return Cottage.lay_with(rng, households_of(land), StringName(d.home.get("hearth", &"fire")) if d != null else &"fire")
+	var hh := households_of(land)
+	var l := Cottage.lay_with(rng, hh, StringName(d.home.get("hearth", &"fire")) if d != null else &"fire")
+	Cottage.open_slots(l, hh, land)
+	return l
 
 
 ## Who may keep a home in `land`: its declaration, else the coast's.
