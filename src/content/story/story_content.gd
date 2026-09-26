@@ -1133,8 +1133,8 @@ const FRAGMENTS := {
 		],
 	},
 	# --- a grower's house in the grey orchards (ROOMS: laid_table) ------------
-	# Leads only: the machines still keep house for whoever lived here. Nothing
-	# counts the places, because the household is dealt per door. No beats.
+	# Colour: the house still runs its register for a household long gone. The
+	# upkeep is the machines' inertia, never their regard (humans are ants). No beats.
 	&"orchard_table_cloth": {
 		"kind": &"mark", "title": "the table, laid", "lands": [],
 		"lines": [
@@ -1153,7 +1153,7 @@ const FRAGMENTS := {
 			"lid on and a clean spoon laid by it.",
 			"",
 			"Where the cloth's corner lifts, a name is",
-			"cut into the wood: pip. Somebody has been",
+			"cut into the wood: pip. Something has been",
 			"sanding at it for a long time.",
 		],
 	},
