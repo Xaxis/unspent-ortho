@@ -5,6 +5,21 @@ Two interiors for the middens, cut into the walls of the GEN 34 slot labyrinth
 the prototype; built once GEN 34 lands. Nothing here moves a seed: both are
 derived from the finished world, as every door is.
 
+## Rulings (teammate1, 2026-09-26, the design approved)
+
+- **The READER household: yes.** The people who keep the words the refuse
+  brings in. cb builds the household; the story-wright writes its words with
+  the other slots.
+- **The string is EARNED, never sold.** A face_hold household gives it after a
+  deed: help them, or bring back a buried thing they want. Gear comes from a
+  place or a deed.
+- **Steel at 1.6 stands only if a careful player can pass.** The warren slice
+  carries a test: a crouched walk past a docked sorter goes unnoticed, and a
+  standing walk wakes it (the saw hall's rule). The number is tuned until that
+  holds.
+- The `GenSlots.node` read is asked of the lands builder through teammate1.
+- Built after GEN 34 lands, in the slices below.
+
 ## What the middens are, and what their rooms must say
 
 "Miles of cyber refuse cut into slot canyons, so narrow in places that the sky
@@ -126,9 +141,10 @@ read and sorted. Off it:
 - **Rest and trade.** A hearth (a `brazier`, smoke let out through the plateau
   above) and a keeper who trades (56_economy), the middens' goods at the
   middens' prices.
-- **The string.** The settlement sells the way out: a `string` item that
-  marks the route from here to the nearest ramp on the survey (the map app).
-  It is the maze's own answer to the maze, and the reward for finding them.
+- **The string.** A household gives the way out, EARNED by a deed (help
+  them, or bring back a buried thing they want): a `string` item that marks
+  the route from here to the nearest ramp on the survey (the map app). It is
+  the maze's own answer to the maze, and never for sale.
 - **Stealth:** none against them. From the lookout, the slot below is seen
   a long way both ways, and a `sorter` passing on its round is watched go by.
   The settlement stops talking when one passes (a hush here that is a
@@ -174,11 +190,13 @@ by what it tipped.
 2. **The warren** (mine): plans, containers, ladders (`Climb` learns
    `ladder`), steel floor loudness, the sorter on shift and asleep, the vault
    strongbox and LOOT, the buckled bay, the top crawl exit. Tests like the saw
-   hall's and the squat's; tours from above and over the shoulder, up a ladder.
+   hall's and the squat's, and the steel test above (crouched unnoticed,
+   standing wakes the sorter); tours from above and over the shoulder, up a
+   ladder.
 3. **The settlement** (mine): plan, households (the reader added to
    world/homes' middens row), brazier, keeper and trade, the string item, the
-   lookout. Tests: rooms reachable, trade stocked, the string route leads to a
-   ramp.
+   lookout. Tests: rooms reachable, trade stocked, the string given only
+   after its deed, and its route leads to a ramp.
 4. **Words** (the story-wright) against the keys above, any time after slice 2.
 
 Neither room changes what a seed makes, so no GEN bump past 34. test_rooms
@@ -186,7 +204,4 @@ grows for both kinds.
 
 ## Open questions
 
-- A third household, the `reader`: yours or the story-wright's call.
-- Should the string be sold, or earned (a favour, the saw hall's way)?
-- Is the steel floor's loudness too cruel against a sorter asleep? A number
-  for the fight builder to check against StealthNoise.
+None left: see the rulings.
