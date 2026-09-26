@@ -776,7 +776,7 @@ func _refresh_remnants() -> void:
 	var w := game.world
 	var here := game.player.pos
 	var spent := SurvivalState.of(game).spent
-	var sig := "%d:%d:%d" % [w.depleted.size(), w.props.size(), spent.size()]
+	var sig := "%d:%d:%d" % [w.depleted.size(), w.prop_count(), spent.size()]
 	if sig == _remnant_sig and here.distance_to(_remnant_at) < 12.0:
 		return
 	_remnant_sig = sig

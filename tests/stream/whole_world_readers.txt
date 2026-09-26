@@ -139,7 +139,7 @@ src/systems/10_sky.gd::_update_ground_marks::whole
 src/systems/10_sky.gd::realm_changed::builder SkyWear.texture
 src/systems/10_sky.gd::setup::builder SkyGround.texture
 src/systems/10_sky.gd::setup::builder SkyWear.texture
-src/systems/15_lights.gd::_index_sources::whole
+src/systems/15_lights.gd::_index_sources::list
 src/systems/18_trample.gd::tour_place::builder SkyGround.texture
 src/systems/19_colossi.gd::_crush_treads::list
 src/systems/19_colossi.gd::_landed::raw
@@ -169,7 +169,7 @@ src/systems/32_disposition.gd::_reads::builder Chapters.of
 src/systems/34_works.gd::_as_landmark::list
 src/systems/34_works.gd::_read_sites::builder Works.sites
 src/systems/35_folk.gd::_stream::list
-src/systems/37_fauna.gd::_find_sites::whole
+src/systems/37_fauna.gd::_find_sites::list
 src/systems/37_fauna.gd::_stream::list
 src/systems/41_shoulder.gd::_ground_top::raw
 src/systems/44_sentinels.gd::look_at::whole
@@ -187,7 +187,6 @@ src/systems/49_story.gd::subarc_look::builder Landmarks.sites
 src/systems/49_story.gd::subarc_look::builder Works.sites
 src/systems/49_story.gd::tour_place::builder StoryGates.all
 src/systems/49_story.gd::tour_place::builder Works.sites
-src/systems/52_survival_fx.gd::_refresh_remnants::alloc
 src/systems/52_survival_fx.gd::_refresh_remnants::list
 src/systems/70_audio.gd::_scan::builder SoundMix.remoteness
 src/systems/90_ui.gd::_load::tiles

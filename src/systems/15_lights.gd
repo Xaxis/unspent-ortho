@@ -747,9 +747,9 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 
 
 func _index_sources() -> void:
-	var props := game.world.props
-	while _indexed < props.size():
-		var p: WorldProp = props[_indexed]
+	var w := game.world
+	while _indexed < w.prop_count():
+		var p: WorldProp = w.prop_at(_indexed)
 		_indexed += 1
 		if not SOURCES.has(p.kind) and p.kind != PropKind.PYLON:
 			# Any other kind whose model says where its lights are (a relay's

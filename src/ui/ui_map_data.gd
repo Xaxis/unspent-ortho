@@ -245,7 +245,7 @@ static func mark_bytes(w: WorldData, step: int = 1, side: int = 0) -> PackedByte
 	var out := PackedByteArray()
 	out.resize(n * n)
 	const RANK := [0, 2, 2, 3, 1, 6, 5, 4, 0]
-	for p in w.props:
+	for p in w.each_prop():
 		var m := mark_of(p.kind)
 		if m == MARK_NONE:
 			continue
