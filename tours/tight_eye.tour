@@ -1,0 +1,13 @@
+# THE SHOULDER VIEW AMONG WHAT STANDS IN FRONT OF IT (found.gdshader, the close
+# eye's sight cone): the machine city's typical standing ground, among decks
+# set on legs at chest height, whose plate stood square between the eye and the
+# player until FOUND geometry opened in the line of sight as the land's does.
+#
+#   tools/tour.sh tours/tight_eye.tour --seed=7 --weather=clear:0 --view=shoulder
+#
+# 01 is over the shoulder: the player must read whole through the deck in front.
+coast calm
+hour 11
+place typical_machine_city
+wait 2.0
+shot 01-the-machine-city-through-its-lattice with shoulder,land:machine_city

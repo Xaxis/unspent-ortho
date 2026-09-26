@@ -88,6 +88,9 @@ static func make() -> BiomeDef:
 	# What is left repeats on a short pitch, which is what reads as engineered.
 	d.built = BiomeForms.new()
 	d.built.stock = [&"tower", &"stack", &"block"] as Array[StringName]
+	# Behind a block's service hatch, the bay one machine is kept in
+	# (src/content/interiors/maintenance_bay.gd).
+	d.interiors = {&"form:block": &"maintenance_bay"}
 	d.built.plan = &"block"
 	d.built.apart = BiomeForms.ROW_APART
 	d.built.buildings = Vector2i(26, 38)

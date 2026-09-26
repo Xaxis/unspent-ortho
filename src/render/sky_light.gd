@@ -703,9 +703,17 @@ func compose() -> void:
 	# multiply over the whole fragment could never do, and which is most of what
 	# a lit world looks like.
 	var level := maxf((total.x + total.y + total.z) / 3.0, 0.02)
-	var hue := Color(total.x / level, total.y / level, total.z / level)
+	var sh := sun_hue_at(hour, total).lerp(total / level, closed)
+	var hue := Color(sh.x, sh.y, sh.z)
 	# Godot decodes light_color from sRGB, so encode the ratio we mean.
 	sun.light_color = hue.linear_to_srgb()
+	# What water divides out of its body (water.gdshader): the SUN's hue, as far
+	# as the sun is up (`sun_share`). White at noon, so no day frame moves, and
+	# white all night, where the light is the moon's and water keeps the night
+	# blue it has always had.
+	var sun_up := minf(sun_share(hour), 1.0 - closed)
+	var own := Vector3.ONE.lerp(sh, sun_up)
+	RenderingServer.global_shader_parameter_set("sun_hue", Vector4(own.x, own.y, own.z, 0.0))
 	# How much of the night sky stands over the landscapes in view. It scales the
 	# moon here and the ambient in _drive_environment, TOGETHER, so the ratio
 	# between them — which is what puts shape in a night — is the same in every
@@ -738,8 +746,21 @@ func compose() -> void:
 	# midnight" -- and it was not true because the hour still swung the one term
 	# that is directional. Taking LID_SUN off the moon is what lets that residue
 	# be cut from the noon side without touching the midnight frame at all.
-	sun.light_energy = lerpf(MOON_NIGHT * ns, SUN_NOON * level * glow * lerpf(1.0, LID_SUN, shut) * (1.0 - orbit_shade), lit) \
+	# The sun on its own evening (`sun_share`, `sun_energy_at`): what is left of
+	# it, not what is left of the day. A roof still takes it all.
+	var sun_lit := minf(sun_share(hour), 1.0 - closed)
+	var keep := lerpf(1.0, _warm_keep(tint_at(hour)), sun_lit if fposmod(hour, 24.0) > EVENING_FROM else 0.0)
+	sun.light_energy = lerpf(MOON_NIGHT * ns, SUN_NOON * level * keep * glow * lerpf(1.0, LID_SUN, shut) * (1.0 - orbit_shade), sun_lit) \
 		* float(trim.sun)
+	# THE AIR IS LIT ON THE DAY'S CURVE, NOT THE SUN'S. Looking down, the volumetric
+	# bank over the land scatters the sun back into every pixel, and a low amber
+	# sun at full strength came out as a brown veil over the whole frame, deepest
+	# over the dark sea (canon 12). So the air takes only what the day's curve
+	# would have given it; where the horizon is seen the air IS the golden hour,
+	# and takes it all.
+	var day_energy := lerpf(MOON_NIGHT * ns, SUN_NOON * level * glow * lerpf(1.0, LID_SUN, shut) * (1.0 - orbit_shade), lit) * float(trim.sun)
+	var air_share := clampf(day_energy / maxf(sun.light_energy, 0.001), 0.0, 1.0)
+	sun.light_volumetric_fog_energy = lerpf(air_share, 1.0, horizon_share(_cam()))
 	# A low sun is seen through more air, so its edge is softer. Real penumbra,
 	# and it is spent against the evening rather than against `el`: the elevation
 	# this file computes is chosen to give a SCREEN-SPACE shadow length, not to say
@@ -821,8 +842,26 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	var nightly := maxf(night, closed)
 	var dusky := clampf(low_light(hour), 0.0, 1.0)
 	var mood := Color(weather_tint.x * region_tint.x, weather_tint.y * region_tint.y, weather_tint.z * region_tint.z)
-	var top := DAY_SKY_TOP.lerp(DUSK_SKY_TOP, dusky).lerp(NIGHT_SKY_TOP, nightly) * mood
-	var hor := DAY_SKY_HORIZON.lerp(DUSK_SKY_HORIZON, dusky).lerp(NIGHT_SKY_HORIZON, nightly) * mood
+	# THE SKY FOLLOWS THE SUN. On the day's curve it went to night while the sun
+	# was still up (`sun_share`), and its dusk and its night mixed into one flat
+	# lavender-grey at seven. So the SKY's dusk and night are the sun's: warm at
+	# the horizon and deep blue overhead while it sets (`sky_dusk`), night only
+	# once it has gone. The AMBIENT keeps the day's curve (`hor_amb`), so shade
+	# stays the cool it was and the warmth lands where the sun does.
+	var sky_night := maxf(closed, minf(nightly, 1.0 - sun_share(hour)))
+	var sky_dusky := maxf(dusky, sky_dusk(hour))
+	var top := DAY_SKY_TOP.lerp(DUSK_SKY_TOP, sky_dusky).lerp(NIGHT_SKY_TOP, sky_night) * mood
+	var hor := DAY_SKY_HORIZON.lerp(DUSK_SKY_HORIZON, sky_dusky).lerp(NIGHT_SKY_HORIZON, sky_night) * mood
+	var hor_amb := DAY_SKY_HORIZON.lerp(DUSK_SKY_HORIZON, dusky).lerp(NIGHT_SKY_HORIZON, nightly) * mood
+	var top_amb := DAY_SKY_TOP.lerp(DUSK_SKY_TOP, dusky).lerp(NIGHT_SKY_TOP, nightly) * mood
+	# And the sun's sky is the SEEN sky's: looking down there is no sky in the
+	# frame, only its reflection in every wet thing and the air over the land,
+	# and a warm horizon there is a brown veil over the whole picture, sea and
+	# all (canon 12). So the sky's own colours are spent as far as the horizon is
+	# in frame (`horizon_share`), and from above everything keeps the day's curve.
+	var seen := horizon_share(_cam())
+	top = top_amb.lerp(top, seen)
+	hor = hor_amb.lerp(hor, seen)
 	var gnd := SKY_GROUND_DAY.lerp(SKY_GROUND_NIGHT, nightly) * mood
 	# A lid REPLACES the sky rather than dimming it. What is overhead is no longer
 	# blue at noon and indigo at midnight: it is the underside of the thing in the
@@ -845,14 +884,14 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	# The ambient takes the sky's own hue at unit level, so shade is the colour
 	# of the sky over it -- blue at noon, warm at dusk, indigo at night -- and
 	# the LEVEL is the one number law 3 is measured by.
-	var hl := maxf((hor.r + hor.g + hor.b) / 3.0, 0.02)
+	var hl := maxf((hor_amb.r + hor_amb.g + hor_amb.b) / 3.0, 0.02)
 	# Part of the way to white. The sky's own hue at full strength paints every
 	# shadow in the frame the same colour, and shade should be TINTED by the sky
 	# rather than made of it -- but this is also the door a LANDSCAPE's own light
 	# comes through (`mood`, from BiomeDef.light_tint), so taking it far toward
 	# white takes each place's own light away from it. At 0.40 the mean pairwise
 	# Lab dE across the six heartlands was 19.5; at 0.26 it is 22.9.
-	e.ambient_light_color = Color(hor.r / hl, hor.g / hl, hor.b / hl).lerp(Color(1, 1, 1), 0.26)
+	e.ambient_light_color = Color(hor_amb.r / hl, hor_amb.g / hl, hor_amb.b / hl).lerp(Color(1, 1, 1), 0.26)
 	# Under a roof there is no sky to be ambient: what light there is comes off
 	# the walls, and it is very little. That is what makes a cave a cave.
 	#
@@ -1060,14 +1099,19 @@ static func sky_sun(hour: float, azimuth: float) -> Vector3:
 ## handover at SUNSET and SUNRISE is at one bearing and one height.
 static func eye_light(hour: float) -> Vector2:
 	var h := fposmod(hour, 24.0)
-	var az: float = sun_at(h).azimuth
+	return Vector2(float(sun_at(h).azimuth), _eye_elevation(h))
+
+
+## The eye's elevation alone (see eye_light), which sun_at reads for the evening
+## and so cannot ask eye_light for, since that asks sun_at.
+static func _eye_elevation(h: float) -> float:
 	var el: float
 	if h >= SUNRISE and h <= SUNSET:
 		el = SKY_SUN_NOON * sin(PI * (h - SUNRISE) / (SUNSET - SUNRISE))
 	else:
 		var night_len := 24.0 - (SUNSET - SUNRISE)
 		el = MOON_EYE * sin(PI * fposmod(h - SUNSET, 24.0) / night_len)
-	return Vector2(az, maxf(el, EYE_LIGHT_LEAST))
+	return maxf(el, EYE_LIGHT_LEAST)
 
 
 const EYE_LIGHT_LEAST := 7.0
@@ -1138,7 +1182,9 @@ func _see_sky(e: Environment, sm: ProceduralSkyMaterial, hour: float, nightly: f
 	_dome_set(&"dome_moon_dir", moon)
 	# The glow belongs to a sun near the horizon: from a little above it until
 	# well after it has gone, and not at all in the dead of night.
-	var low := 1.0 - smoothstep(0.02, 0.42, dir.y)
+	# From the golden hour (the drawn sun under about 38 degrees), not only once
+	# it is touching the horizon: at seven it stood at 23 and had no glow at all.
+	var low := 1.0 - smoothstep(0.02, 0.62, dir.y)
 	var gone := smoothstep(-0.02, -0.34, dir.y)
 	_dome_set(&"dome_glow", low * (1.0 - gone) * (1.0 - clampf(clouds.z, 0.0, 1.0) * 0.6))
 	_dome_set(&"dome_glow_color", SKY_GLOW.lerp(SKY_GLOW_LATE, smoothstep(0.05, -0.12, dir.y)) * Color(weather_tint.x, weather_tint.y, weather_tint.z))
@@ -1377,6 +1423,17 @@ static func sun_at(hour: float) -> Dictionary:
 		az = KEY_AZIMUTH + lerpf(-SWING, SWING, day)
 		var ends := pow(absf(day * 2.0 - 1.0), 2.0)
 		el = _elevation_for_shadow(az, lerpf(SHADOW_NOON, SHADOW_LOW, ends))
+		# THE EVENING SUN GOES DOWN. The play light above is placed for a
+		# shadow's length on screen and never dropped under about 46 degrees, so
+		# the golden hour had a sun standing overhead in it. From LOWER_FROM it
+		# comes down onto the eye's own arc (`_eye_elevation`, never under
+		# SUN_LEAST), so the play camera and the eye see one low sun; and over
+		# the last of the day it hands over to where the moon rises, while its
+		# own light is going (`sun_share`), so the light never jumps at SUNSET.
+		if h > LOWER_FROM:
+			var low := minf(el, maxf(_eye_elevation(h), SUN_LEAST))
+			el = lerpf(el, low, smoothstep(LOWER_FROM, LOWER_TO, h))
+			el = lerpf(el, _elevation_for_shadow(az, SHADOW_LOW), smoothstep(HANDOVER, SUNSET, h))
 	else:
 		# The moon walks the bearing back overnight, from where the sun set to
 		# where it will rise, riding higher at midnight.
@@ -1447,6 +1504,108 @@ static func day_gone(hour: float) -> float:
 	return pow((h - EVENING_FROM) / (EVENING_TO - EVENING_FROM), EVENING_EASE)
 
 
+## THE GOLDEN HOUR. `day_gone` is how much of the DAY's light has gone, and the
+## sun used to be spent against it with everything else, so by seven it was at
+## half its energy while it was still up and only then turning low and warm:
+## measured, 0.58 of noon's 1.17 at 19:00 and 0.39 at 20:00, at the hour the
+## evening is meant to be most itself (docs/LOOK.md, dusk). The sky, the
+## ambient and the night keep the one curve; the SUN keeps its own: it stays up
+## at nearly full strength, low and amber, raking, until it is on the horizon,
+## and goes out between SUN_DOWN_FROM and SUNSET. The half hour after that is
+## the blue hour -- no sun, the ambient still falling on the one curve -- into a
+## night nothing here touches.
+##
+## The sun starts coming down at LOWER_FROM, is on the eye's arc by LOWER_TO,
+## and from HANDOVER walks to where the moon rises.
+const LOWER_FROM := 16.0
+const LOWER_TO := 17.5
+const HANDOVER := 20.4
+const SUN_DOWN_FROM := 19.7
+## The lowest the evening sun stands before the handover: a player's shadow is
+## about seven of their own heights long on the play camera's screen at this.
+const SUN_LEAST := 20.0
+## The evening sun's own colour, hour -> hue (mean 1), from white through gold to
+## deep amber on the horizon. A hue and not a level: `sun_energy_at` says how much.
+const SUN_KEYS := [
+	[16.0, Vector3(1.00, 1.00, 0.99)],
+	[17.5, Vector3(1.10, 0.99, 0.91)],
+	[18.5, Vector3(1.28, 0.97, 0.75)],
+	[19.5, Vector3(1.50, 0.92, 0.58)],
+	[20.3, Vector3(1.62, 0.86, 0.52)],
+	[21.0, Vector3(1.62, 0.84, 0.54)],
+]
+
+
+## How much of the SUN is still in the sky, 0..1: the day's own curve outside
+## the evening (so the morning and the night are what they were), and in the
+## evening full until SUN_DOWN_FROM and gone at SUNSET.
+static func sun_share(hour: float) -> float:
+	var h := fposmod(hour, 24.0)
+	if h <= EVENING_FROM or h >= EVENING_TO:
+		return 1.0 - day_gone(h)
+	return 1.0 - smoothstep(SUN_DOWN_FROM, SUNSET, h)
+
+
+## How far the SKY has gone to its dusk colours, 0..1, by the sun: from the
+## start of its lowering to the moment it sets. 0 outside the evening, where the
+## sky's dusk is the day's low light as it always was.
+static func sky_dusk(hour: float) -> float:
+	var h := fposmod(hour, 24.0)
+	if h <= EVENING_FROM or h >= EVENING_TO:
+		return 0.0
+	return smoothstep(LOWER_TO, SUNSET - 0.4, h)
+
+
+## The hour's tint's brightest channel over its mean: how much a warm tint's
+## MEAN undersells the sun in it. The keys' level falls as the tint warms, and a
+## sun whose energy follows the mean of an amber tint goes dim for being amber.
+## 1.0 at a white tint, so noon does not move.
+static func _warm_keep(t: Vector3) -> float:
+	var lum := maxf((t.x + t.y + t.z) / 3.0, 0.001)
+	return maxf(t.x, maxf(t.y, t.z)) / lum
+
+
+## The evening sun's hue at `hour` (SUN_KEYS), or white outside it.
+static func sun_key(hour: float) -> Vector3:
+	var h := fposmod(hour, 24.0)
+	if h <= float(SUN_KEYS[0][0]) or h > EVENING_TO:
+		return Vector3(1, 1, 1) if h <= float(SUN_KEYS[0][0]) else SUN_KEYS[SUN_KEYS.size() - 1][1]
+	for i in SUN_KEYS.size() - 1:
+		var a: Array = SUN_KEYS[i]
+		var b: Array = SUN_KEYS[i + 1]
+		if h <= float(b[0]):
+			return (a[1] as Vector3).lerp(b[1], (h - float(a[0])) / (float(b[0]) - float(a[0])))
+	return SUN_KEYS[SUN_KEYS.size() - 1][1]
+
+
+## The sun's energy at `hour` under a composed light `total` (tint x region x
+## weather): what compose() gives the DirectionalLight before the lid, the
+## orbit's shade and the web's count-back. `moon` is the night's share of it.
+static func sun_energy_at(hour: float, total: Vector3, moon: float = MOON_NIGHT) -> float:
+	var level := maxf((total.x + total.y + total.z) / 3.0, 0.02)
+	var t := tint_at(hour)
+	var keep := lerpf(1.0, _warm_keep(t), sun_share(hour) if fposmod(hour, 24.0) > EVENING_FROM else 0.0)
+	return lerpf(moon, SUN_NOON * level * keep * sun_glow(t, sun_at(hour)), sun_share(hour))
+
+
+## The sun's hue (mean 1) under a composed light: the composed light's own hue
+## with the evening sun's colour laid over the hour's, so a landscape's cast
+## survives and the evening sun is amber on every land. Handed back to the
+## composed hue as the sun goes, so the moon takes the night's own colour.
+static func sun_hue_at(hour: float, total: Vector3) -> Vector3:
+	var level := maxf((total.x + total.y + total.z) / 3.0, 0.02)
+	var hue := total / level
+	var h := fposmod(hour, 24.0)
+	if h <= float(SUN_KEYS[0][0]) or h >= EVENING_TO:
+		return hue
+	var t := tint_at(h)
+	var th := t / maxf((t.x + t.y + t.z) / 3.0, 0.001)
+	var amber := sun_key(h) / Vector3(maxf(th.x, 0.05), maxf(th.y, 0.05), maxf(th.z, 0.05))
+	var warm := hue * amber
+	warm /= maxf((warm.x + warm.y + warm.z) / 3.0, 0.001)
+	return hue.lerp(warm, sun_share(h))
+
+
 ## The hours the sun casts a shadow: from properly up in the morning until it
 ## SETS. It used to stop at 20:30, half an hour before `SUNSET`, which is a third
 ## schedule disagreeing with the other two — at half past eight the sun was still
@@ -1482,7 +1641,10 @@ static func casts_at(hour: float) -> bool:
 ## 0..1 how solid the sun's cast shadow is drawn at this hour.
 static func shadow_strength(hour: float) -> float:
 	var h := fposmod(hour, 24.0)
-	return clampf(minf((h - SHADOW_FROM) / SHADOW_FADE, (SHADOW_TO - h) / SHADOW_FADE), 0.0, 1.0)
+	# The evening's shadow goes out WITH the sun (`sun_share`), so the long warm
+	# shadows last as long as the light that throws them.
+	var evening := sun_share(h) if h > EVENING_FROM and h < SHADOW_TO else (0.0 if h >= SHADOW_TO else 1.0)
+	return clampf(minf((h - SHADOW_FROM) / SHADOW_FADE, evening), 0.0, 1.0)
 
 
 ## 0 in full daylight, 1 in the dead of night: HOW LITTLE LIGHT THERE IS, which
@@ -1657,7 +1819,8 @@ static func frame_level(hour: float, region: Vector3, weather := Vector3.ONE, sh
 	# The lid is spent on the SUN and not on the moon, exactly as compose() spends
 	# it now; these two must stay in step or `await darker` grades a composition
 	# the renderer is not drawing.
-	var sun := lerpf(MOON_NIGHT, SUN_NOON * level * sun_glow(tint, sun_at(hour)) * lerpf(1.0, LID_SUN, shut), lit)
+	var keep := lerpf(1.0, _warm_keep(tint), sun_share(hour) if fposmod(hour, 24.0) > EVENING_FROM else 0.0)
+	var sun := lerpf(MOON_NIGHT, SUN_NOON * level * keep * sun_glow(tint, sun_at(hour)) * lerpf(1.0, LID_SUN, shut), sun_share(hour))
 	var amb := lerpf(lerpf(NIGHT_AMBIENT, DAY_AMBIENT, lit), LID_AMBIENT, shut)
 	var hue_lum := maxf(hue.x * 0.3 + hue.y * 0.59 + hue.z * 0.11, 0.01)
 	var sum := 0.0
@@ -1889,6 +2052,24 @@ static func web_contrast_at(shares: Dictionary) -> float:
 ## Unsquared, a shut landscape would start dimming the open one a whole frame
 ## before its border — and this is the one of the five that is spent at every
 ## hour, so that error would show at noon, which is where it would be worst.
+static func sky_holes_at(shares: Dictionary) -> float:
+	var sum := 0.0
+	var total := 0.0
+	for k: Variant in shares:
+		var w := float(shares[k])
+		if w <= 0.0:
+			continue
+		w *= w
+		var d := BiomeRegistry.get_def(k) if k is StringName else BiomeRegistry.by_index(int(k))
+		sum += (d.sky_holes if d != null else 0.0) * w
+		total += w
+	if total <= 0.0:
+		return 0.0
+	return clampf(sum / total, 0.0, 1.0)
+
+
+## How far the landscapes in view are shut (`BiomeDef.sky_shut`), on squared
+## shares like everything else a place says about its sky.
 static func sky_shut_at(shares: Dictionary) -> float:
 	var sum := 0.0
 	var total := 0.0

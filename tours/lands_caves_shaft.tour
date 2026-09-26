@@ -1,0 +1,17 @@
+# A sinkhole's shaft of daylight in the limestone caves (BiomeDef.sky_holes,
+# 11_dome): stand where the nearest one lands, at noon, over the shoulder.
+#   tools/tour.sh tours/lands_caves_shaft.tour --seed=7 --realm=underground --view=shoulder --stats
+coast calm
+hour 12
+wait 2.0
+echo looking for a shaft
+until shaft 4
+near shaft_pool
+wait 2.0
+shot shaft-noon with shaft
+perf stats begin
+wait 5.0
+perf stats end caves-shaft
+hour 17
+wait 2.0
+shot shaft-evening with shaft
