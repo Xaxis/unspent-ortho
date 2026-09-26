@@ -288,6 +288,12 @@ func test_every_house_opens_on_its_own_forms_room() -> void:
 			seen[want] = true
 		if want == &"":
 			check(not doors.has(key), "the %s %s at %s has no door" % [d.id, form, p.pos])
+		elif not d.interiors.has(StringName("form:%s" % form)) and d.home.has("open"):
+			# A landscape that keeps somebody in only some of its houses
+			# (`home.open`, tests/interior/test_squat.gd): where there is a door, it
+			# is the right one.
+			check(not doors.has(key) or (doors[key] as Threshold).kind == want,
+				"the %s %s at %s opens on a %s" % [d.id, form, p.pos, want])
 		else:
 			check(doors.has(key) and (doors[key] as Threshold).kind == want,
 				"the %s %s at %s opens on a %s" % [d.id, form, p.pos, want])

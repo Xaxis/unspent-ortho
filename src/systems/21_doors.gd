@@ -248,6 +248,9 @@ func _inside_side(_delta: float) -> void:
 	stove_near = _stove_near()
 	if stove_near >= 0 and box_near < 0 and hatch_near < 0 and _pressed():
 		_relight(stove_near)
+	crawl_near = _crawl_near()
+	if crawl_near and box_near < 0 and hatch_near < 0 and stove_near < 0 and _pressed():
+		go_out(true)
 	_show_trays()
 
 
@@ -268,7 +271,7 @@ var _use_edge := false
 func use_spent() -> bool:
 	if _swapping:
 		return true
-	if pocket != null and (box_near >= 0 or hatch_near >= 0 or stove_near >= 0):
+	if pocket != null and (box_near >= 0 or hatch_near >= 0 or stove_near >= 0 or crawl_near):
 		return true
 	if door_near == null:
 		return false
@@ -373,9 +376,10 @@ func _swap_in() -> void:
 
 
 ## Out of the door, under the cover, onto the world that was left: the same one.
-func go_out() -> void:
+func go_out(back := false) -> void:
 	if pocket == null or _swapping:
 		return
+	_out_back = back
 	Events.sfx.emit(&"door", game.player.position)
 	await _cover_close(pocket.layout.door)
 	var t0 := Time.get_ticks_usec()
@@ -747,6 +751,37 @@ func _kindle(i: int) -> void:
 		n += 1
 
 
+# --- a second way out -------------------------------------------------------------
+
+## A thing with `exit` (a squat's hole through the back wall) is a way out that
+## is not the door: crawled through, it puts the player out BEHIND the house,
+## as far back from it as the door stands in front, where there is ground to
+## stand on -- else, as a door does, in front.
+var crawl_near := false
+var _out_back := false
+## Latched, for a tour: the player went out the back way.
+var _went_out_back := false
+
+
+func _crawl_near() -> bool:
+	if pocket == null:
+		return false
+	for t: Dictionary in pocket.layout.things:
+		if t.get("exit", false) and (t.at as Vector2).distance_to(game.player.pos) < 1.1:
+			return true
+	return false
+
+
+func _back_of(t: Threshold) -> Vector2:
+	var depth := t.door.distance_to(t.host)
+	var q: WorldQuery = _outside_query
+	for extra: float in [0.3, 0.8, 1.4]:
+		var p := t.host - t.out * (depth + extra)
+		if q == null or q.standable(floori(p.x), floori(p.y)):
+			return p
+	return t.door + t.out * EXIT_OUT
+
+
 ## The meal a thing serving at `hours` has out at `minutes`: a stamp (day * 8 +
 ## which meal), or -1 before its first meal ever.
 static func meal_at(hours: Array, minutes: float) -> int:
@@ -1037,6 +1072,7 @@ func _swap_out() -> void:
 	_aiming = false
 	box_near = -1
 	hatch_near = -1
+	crawl_near = false
 	stove_near = -1
 	game.camera.frame_bias = Vector3.ZERO
 	var t := pocket.threshold
@@ -1063,7 +1099,12 @@ func _swap_out() -> void:
 	game.add_child(_outside_view)
 	_outside_view.reclaim()
 	game.view = _outside_view
-	realms.call(&"enter", _outside, _outside_key, t.door + t.out * EXIT_OUT, true, _outside_query)
+	var out_at := t.door + t.out * EXIT_OUT
+	if _out_back:
+		out_at = _back_of(t)
+		_went_out_back = true
+	_out_back = false
+	realms.call(&"enter", _outside, _outside_key, out_at, true, _outside_query)
 	game.camera.view_height = _outside_height
 	pocket = null
 	model = null
@@ -1525,6 +1566,8 @@ func tour_forget(what: StringName) -> void:
 			_meal_taken = false
 		&"kindled":
 			_kindled = false
+		&"out_back":
+			_went_out_back = false
 		&"woke":
 			_woke = false
 
@@ -1551,6 +1594,10 @@ func tour_seen(what: StringName) -> bool:
 			return pocket != null and stove_near >= 0
 		&"kindled":
 			return _kindled
+		&"crawl_near":
+			return pocket != null and crawl_near
+		&"out_back":
+			return _went_out_back
 		# A fire is warming the player where they stand (Survival.fire_near).
 		&"by_fire":
 			return Survival.fire_near(game) != null
@@ -1593,7 +1640,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "crawl", "thing:crawl_hole"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
@@ -1625,8 +1672,8 @@ func tour_place(what: String) -> Vector2:
 	if what == "strongbox":
 		var box := _first_box()
 		return (box.at as Vector2) + (box.face as Vector2) * 0.8 if not box.is_empty() else Vector2.INF
-	if what == "hatch" or what == "stove":
-		var h := _first_with("serves" if what == "hatch" else "fuel")
+	if what == "hatch" or what == "stove" or what == "crawl":
+		var h := _first_with({"hatch": "serves", "stove": "fuel", "crawl": "exit"}[what])
 		return (h.at as Vector2) + (h.face as Vector2) * 0.8 if not h.is_empty() else Vector2.INF
 	var t := _tour_door(what)
 	if pocket != null and t == null and TOUR_PLACES.has(what):
@@ -1643,8 +1690,8 @@ func tour_face(what: String) -> float:
 	if what == "strongbox":
 		var box := _first_box()
 		return (-(box.face as Vector2)).angle() if not box.is_empty() else NAN
-	if what == "hatch" or what == "stove":
-		var h := _first_with("serves" if what == "hatch" else "fuel")
+	if what == "hatch" or what == "stove" or what == "crawl":
+		var h := _first_with({"hatch": "serves", "stove": "fuel", "crawl": "exit"}[what])
 		return (-(h.face as Vector2)).angle() if not h.is_empty() else NAN
 	var t := _tour_door(what)
 	if pocket != null and t == null and TOUR_PLACES.has(what):

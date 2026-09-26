@@ -41,7 +41,9 @@ func _reached(reach: Dictionary, at: Vector2) -> bool:
 
 ## EVERY HOUSE HAS A DOOR in a landscape that keeps a room behind its houses
 ## (`&"house"`): no house there is left shut. A landscape that declares only its
-## own forms' rooms (`form:ID`) opens those forms and no others.
+## own forms' rooms (`form:ID`) opens those forms and no others, and one that
+## opens only some of its houses (`home.open`, the machine city) is asked of in
+## test_squat.
 func test_every_house_opens_where_its_landscape_keeps_homes() -> void:
 	var w := BootWorld.world(4, Tuning.WORLD_SIZE)
 	var hosts := {}
@@ -56,7 +58,7 @@ func test_every_house_opens_where_its_landscape_keeps_homes() -> void:
 		houses += 1
 		var d := BiomeRegistry.by_index(w.country_at(floori(p.pos.x), floori(p.pos.y)))
 		var k: StringName = hosts.get(Vector2i(roundi(p.pos.x * 4.0), roundi(p.pos.y * 4.0)), &"")
-		if k == &"" and d.interiors.has(&"house"):
+		if k == &"" and d.interiors.has(&"house") and not d.home.has("open"):
 			shut[d.id] = int(shut.get(d.id, 0)) + 1
 		elif k == &"home":
 			homes[d.id] = true

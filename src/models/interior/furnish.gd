@@ -126,6 +126,9 @@ func thing(t: Dictionary) -> void:
 		&"pulley": _pulley(at, f)
 		&"quern": _quern(at, f)
 		&"loom": _loom(at, f)
+		&"tarp": _tarp(at, f)
+		&"bedroll": _bedroll(at, f)
+		&"crawl_hole": _crawl_hole(at, f)
 
 
 # --- the frame -----------------------------------------------------------------
@@ -1003,6 +1006,45 @@ func _loom(at: Vector2, f: Vector2) -> void:
 		k.made.strut(_p(at, f, u, -back + 0.1, 1.2), _p(at, f, u, -back + 0.1, 0.45), 0.004, 3, linen)
 		var w := _p(at, f, u, -back + 0.1, 0.4)
 		k.made.prism(w.x, w.y, w.z, 0.03, w.y + 0.06, 0.03, 6, clay, clay)
+
+
+## A tarp nailed over the window from inside, sagging, so the only day that
+## comes in comes round its edges.
+func _tarp(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.03
+	var tarp := GroundColors.made(Color(0.24, 0.3, 0.26), GroundColors.CLOTH)
+	for j in 6:
+		var h := 0.8 + 0.2 * float(j)
+		var a := _p(at, f, -0.55, -back + 0.02 * float(j % 2), h)
+		var b := _p(at, f, 0.55, -back + 0.02 * float(j % 2), h - 0.02)
+		k.sag(a, b, 0.04, 6, 0.1, tarp)
+	for u: float in [-0.55, 0.55]:
+		k.made.box(_p(at, f, u - 0.02, -back, 1.84), _p(at, f, u + 0.02, -back + 0.03, 1.88), GroundColors.made(Color(0.5, 0.5, 0.5), GroundColors.ENAMEL))
+
+
+## A bedroll on the floor, rolled back at the head, a coat for a pillow.
+func _bedroll(at: Vector2, f: Vector2) -> void:
+	var roll := wool[1] if wool.size() > 1 else linen
+	k.made.box(_p(at, f, -0.85, -0.32, 0.0), _p(at, f, 0.75, 0.32, 0.06), roll, roll)
+	var head := _p(at, f, -0.78, 0.0, 0.06)
+	k.made.strut(head + _side(f) * -0.28, head + _side(f) * 0.28, 0.08, 8, roll)
+	k.clump(head.x, head.y, head.z, 0.16, 0.1, 17, leather, 6)
+
+
+## The way out nobody sees from outside: a hole broken low through the back
+## wall, the broken boards leant beside it, a sheet hung over it.
+func _crawl_hole(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.02
+	var dark := GroundColors.made(Color(0.02, 0.02, 0.02), GroundColors.TAR)
+	k.made.box(_p(at, f, -0.35, -back - 0.1, 0.0), _p(at, f, 0.35, -back + 0.01, 0.75), dark)
+	var sheet := GroundColors.made(Color(0.5, 0.46, 0.4), GroundColors.CLOTH)
+	var a := _p(at, f, -0.42, -back + 0.03, 0.85)
+	var b := _p(at, f, 0.12, -back + 0.03, 0.85)
+	k.made.quad(a, a + Vector3.DOWN * 0.8, b + Vector3.DOWN * 0.8, b, sheet)
+	k.made.quad(b, b + Vector3.DOWN * 0.8, a + Vector3.DOWN * 0.8, a, sheet)
+	for i in 3:
+		var p := _p(at, f, 0.45 + 0.06 * float(i), -back + 0.08, 0.0)
+		k.made.strut(p, p + Vector3.UP * 0.7 + Vector3(f.x, 0.0, f.y) * -0.05, 0.03, 4, dark_wood)
 
 
 func _side(f: Vector2) -> Vector3:

@@ -26,8 +26,11 @@ const RECIPES := {
 	&"saw_hall": "res://src/content/interiors/saw_hall.gd",
 	&"frozen_hold": "res://src/content/interiors/frozen_hold.gd",
 	&"home": "res://src/content/interiors/home.gd",
+	&"squat": "res://src/content/interiors/squat.gd",
 }
 
+## Which of a sparse landscape's houses have somebody in them (`home.open`).
+const OPEN_SALT := 0x5C0A7
 static var _kinds: Dictionary = {}
 ## Per world OBJECT (never its seed: a test grows one seed twice): its doors.
 static var _doors: Dictionary = {}
@@ -59,8 +62,15 @@ static func thresholds(w: WorldData) -> Array[Threshold]:
 			var d := BiomeRegistry.by_index(land)
 			if d == null:
 				continue
-			var k := house_kind(d, form_of(p, w.seed_value, land))
+			var form := form_of(p, w.seed_value, land)
+			var k := house_kind(d, form)
 			if k == &"" or kind(k) == null:
+				continue
+			# A landscape may keep somebody in only some of its houses
+			# (`home.open`, a share, dealt by where the house stands); its own
+			# forms' rooms are always open.
+			if not d.interiors.has(StringName("form:%s" % form)) and d.home.has("open") \
+					and Rng.hash01(w.seed_value, floori(p.pos.x * 4.0), floori(p.pos.y * 4.0), OPEN_SALT) >= float(d.home.open):
 				continue
 			out.append(Threshold.of_house(p, k, land))
 		# And each depot of the plan whose landscape keeps a hall under its yard.
