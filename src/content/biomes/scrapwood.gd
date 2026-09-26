@@ -170,6 +170,13 @@ static func make() -> BiomeDef:
 	d.landmarks = [&"firewatch", &"grown_hulk", &"clerks_office", &"blinking_stack"]
 	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
 	d.interiors = {&"house": &"home"}
+	# Who kept them: the filer who gathers the iron the dead field combs, and the
+	# wright who works the plate the trees grew through.
+	d.home = {"households": {
+		&"filer": {"wants": [&"filings_trays", &"lodestones", &"jars", &"shelf_salvage"], "by_hearth": []},
+		&"wright": {"wants": [&"workbench", &"coil", &"machine_lamp", &"lodestones"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+	}}
 	d.sound_bed = &"bed_pines"
 	d.music_motif = &"pinewood"
 	d.surface = _surface

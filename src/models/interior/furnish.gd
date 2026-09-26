@@ -91,6 +91,14 @@ func thing(t: Dictionary) -> void:
 		&"snowshoes": _snowshoes(at, f)
 		&"core_samples": _core_samples(at, f)
 		&"mason_rack": _mason_rack(at, f)
+		&"peat_stack": _peat_stack(at, f)
+		&"turf_spade": _turf_spade(at, f)
+		&"reed_bundles": _reed_bundles(at, f)
+		&"eel_traps": _eel_traps(at, f)
+		&"salt_cones": _salt_cones(at, f)
+		&"salt_rake": _salt_rake(at, f)
+		&"lodestones": _lodestones(at, f)
+		&"filings_trays": _filings_trays(at, f)
 
 
 # --- the frame -----------------------------------------------------------------
@@ -493,6 +501,119 @@ func _mason_rack(at: Vector2, f: Vector2) -> void:
 		k.made.strut(_p(at, f, u, -back + 0.04, 1.42), _p(at, f, u, -back + 0.04, 1.14), 0.012, 4, iron)
 	var st := _p(at, f, 0.0, 0.05, 0.0)
 	k.slab(st.x, st.y, st.z, 0.44, 0.34, 0.36, 77, GroundColors.made(Color(0.8, 0.78, 0.72), GroundColors.CUTSTONE), Color(0, 0, 0, 0), 0.01)
+
+
+## Peat, cut in bricks and stacked to dry in a crib against the wall, the
+## top course laid crosswise.
+func _peat_stack(at: Vector2, f: Vector2) -> void:
+	var peat := GroundColors.made(Color(0.24, 0.17, 0.12), GroundColors.CLAY)
+	var dry := GroundColors.made(Color(0.5, 0.4, 0.3), GroundColors.CLAY)
+	for course in 5:
+		var h := 0.13 * float(course)
+		for j in 3:
+			var u := -0.3 + 0.3 * float(j)
+			if course % 2 == 0:
+				k.made.box(_p(at, f, u - 0.13, -0.18, h), _p(at, f, u + 0.13, 0.18, h + 0.12), peat, dry)
+			else:
+				k.made.box(_p(at, f, -0.42, -0.18 + 0.12 * float(j), h), _p(at, f, 0.42, -0.08 + 0.12 * float(j), h + 0.12), peat, dry)
+
+
+## The turf spade, its winged blade worn bright, leant at the wall by a bucket.
+func _turf_spade(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.05
+	var iron := GroundColors.made(Color(0.42, 0.42, 0.44), GroundColors.ENAMEL)
+	var foot := _p(at, f, -0.1, -back + 0.25, 0.0)
+	var top := _p(at, f, -0.2, -back + 0.02, 1.45)
+	k.made.strut(foot + Vector3.UP * 0.3, top, 0.025, 5, wood)
+	k.made.box(_p(at, f, -0.2, -back + 0.22, 0.0), _p(at, f, 0.0, -back + 0.28, 0.32), iron)
+	var b := _p(at, f, 0.25, 0.0, 0.0)
+	k.made.prism(b.x, b.y, b.z, 0.14, b.y + 0.3, 0.16, 10, dark_wood, dark_wood)
+
+
+## Reeds cut and bound in bundles, stood up to dry, heads and all.
+func _reed_bundles(at: Vector2, f: Vector2) -> void:
+	var reed := GroundColors.made(Color(0.66, 0.58, 0.38), GroundColors.ROPE)
+	var head := GroundColors.made(Color(0.44, 0.34, 0.26), GroundColors.ROPE)
+	for i in 4:
+		var u := -0.36 + 0.24 * float(i)
+		var lean := 0.08 * (float(i) - 1.5)
+		for j in 6:
+			var o := Vector2(cos(float(j)), sin(float(j))) * 0.04
+			var b := _p(at, f, u + o.x, -0.05 + o.y, 0.0)
+			var t := _p(at, f, u + o.x * 2.0 + lean, -0.12 + o.y * 2.0, 1.5 + 0.06 * float(j % 3))
+			k.made.strut(b, t, 0.008, 3, reed)
+			k.made.strut(t, t + (t - b).normalized() * 0.12, 0.018, 4, head)
+		k.made.strut(_p(at, f, u - 0.05, -0.05, 0.6), _p(at, f, u + 0.05, -0.05, 0.6), 0.03, 5, rope)
+
+
+## Eel traps: long willow baskets, funnel-mouthed, hung on the wall to dry.
+func _eel_traps(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.12
+	var willow := GroundColors.made(Color(0.5, 0.4, 0.26), GroundColors.ROPE)
+	for i in 2:
+		var h := 1.1 + 0.4 * float(i)
+		var a := _p(at, f, -0.5, -back + 0.1, h)
+		var b := _p(at, f, 0.5, -back + 0.1, h - 0.06)
+		for r in 5:
+			var t := float(r) / 4.0
+			var c := a.lerp(b, t)
+			_ring(c, 0.12 - 0.06 * t, 8, 0.008, willow, Vector2(-f.y, f.x))
+		k.made.strut(a, b, 0.006, 3, willow)
+
+
+## Salt, raked into cones on a board and some sacked, white as the flat.
+func _salt_cones(at: Vector2, f: Vector2) -> void:
+	var salt := GroundColors.made(Color(0.92, 0.92, 0.88), GroundColors.CLAY)
+	k.made.box(_p(at, f, -0.44, -0.2, 0.0), _p(at, f, 0.44, 0.2, 0.06), dark_wood)
+	for i in 3:
+		var c := _p(at, f, -0.28 + 0.28 * float(i), 0.0, 0.06)
+		k.made.prism(c.x, c.y, c.z, 0.13, c.y + 0.26 - 0.04 * float(i % 2), 0.0, 10, salt, salt)
+
+
+## The salt rake: a wide wooden head on a long shaft, crusted white, on pegs.
+func _salt_rake(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.04
+	var crust := GroundColors.made(Color(0.86, 0.86, 0.82), GroundColors.CLAY)
+	k.made.strut(_p(at, f, -0.6, -back + 0.05, 1.6), _p(at, f, 0.6, -back + 0.05, 1.3), 0.02, 5, wood)
+	k.made.box(_p(at, f, 0.5, -back, 1.1), _p(at, f, 0.62, -back + 0.1, 1.5), wood, crust)
+	for j in 6:
+		var h := 1.14 + 0.06 * float(j)
+		k.made.box(_p(at, f, 0.62, -back + 0.02, h), _p(at, f, 0.66, -back + 0.08, h + 0.02), crust)
+
+
+## Lodestones hung on strings from a beam, each turned the one way: the dead
+## field still in the iron pulls them round.
+func _lodestones(at: Vector2, f: Vector2) -> void:
+	var back := BACK - 0.2
+	var stone := GroundColors.made(Color(0.22, 0.2, 0.2), GroundColors.CUTSTONE)
+	k.made.strut(_p(at, f, -0.5, -back, 1.9), _p(at, f, 0.5, -back, 1.9), 0.02, 5, dark_wood)
+	for i in 5:
+		var u := -0.4 + 0.2 * float(i)
+		var bottom := _p(at, f, u + 0.05, -back + 0.02, 1.3 + 0.08 * float(i % 2))
+		k.made.strut(_p(at, f, u, -back, 1.9), bottom, 0.004, 3, rope)
+		k.stone(bottom.x, bottom.y - 0.1, bottom.z, 0.05, 0.1, 50 + i, stone, 5)
+
+
+## Trays of iron filings on a bench, combed into arcs by nothing anyone sees.
+func _filings_trays(at: Vector2, f: Vector2) -> void:
+	k.made.box(_p(at, f, -0.44, -0.24, 0.0), _p(at, f, 0.44, 0.24, 0.7), dark_wood, wood)
+	var iron := GroundColors.made(Color(0.2, 0.2, 0.22), GroundColors.ENAMEL)
+	for i in 2:
+		var c := _p(at, f, -0.2 + 0.4 * float(i), 0.0, 0.7)
+		# A pale bed of sand under the iron, so the arcs show.
+		k.made.box(c + Vector3(-0.17, 0.0, -0.17), c + Vector3(0.17, 0.025, 0.17), dark_wood)
+		k.made.box(c + Vector3(-0.15, 0.025, -0.15), c + Vector3(0.15, 0.03, 0.15), linen)
+		# Arcs round one end of the tray, as round a pole nobody put there.
+		var pole := c + Vector3(0, 0.034, 0) - Vector3(f.x, 0.0, f.y) * 0.12
+		for a in 5:
+			var r := 0.05 + 0.03 * float(a)
+			var n := 8
+			for j in n:
+				var t0 := PI * float(j) / float(n) - PI * 0.5
+				var t1 := PI * float(j + 1) / float(n) - PI * 0.5
+				var p0 := pole + (_side(f) * sin(t0) + Vector3(f.x, 0.0, f.y) * cos(t0)) * r
+				var p1 := pole + (_side(f) * sin(t1) + Vector3(f.x, 0.0, f.y) * cos(t1)) * r
+				k.made.strut(p0, p1, 0.006, 3, iron)
 
 
 func _side(f: Vector2) -> Vector3:

@@ -132,6 +132,14 @@ static func make() -> BiomeDef:
 	d.landmarks = [&"leaning_mast", &"cast_stones", &"grown_hulk", &"clerks_office"]
 	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
 	d.interiors = {&"house": &"home"}
+	# Who kept them: the peat cutter, the reed cutter, and the eel catcher on the
+	# drains the machines left running.
+	d.home = {"households": {
+		&"cutter": {"wants": [&"peat_stack", &"turf_spade", &"basket", &"shelf"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+		&"reeder": {"wants": [&"reed_bundles", &"reed_bundles", &"basket", &"jars"], "by_hearth": []},
+		&"eeler": {"wants": [&"eel_traps", &"creel", &"peat_stack", &"shelf"], "by_hearth": []},
+	}}
 	d.sound_bed = &"bed_moss"
 	d.surface = _surface
 	d.scatter = _scatter
