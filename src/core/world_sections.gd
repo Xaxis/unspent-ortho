@@ -51,7 +51,7 @@ static func _index(w: WorldData) -> void:
 	if w.sectioned:
 		return
 	w.sectioned = true
-	for p: WorldProp in w.props:
+	for p: WorldProp in w.each_prop():
 		var s := of(p.pos)
 		if not w.section_props.has(s):
 			w.section_props[s] = [] as Array[WorldProp]

@@ -23,7 +23,7 @@ const BLOCK_SLACK := 1.0
 
 func _init(w: WorldData) -> void:
 	world = w
-	for p in w.props:
+	for p in w.each_prop():
 		add_prop(p)
 
 

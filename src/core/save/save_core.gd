@@ -85,11 +85,11 @@ static func spoken(id: StringName) -> String:
 
 ## Note how many props the world holds once every system is set up.
 static func mark_base(game: Game) -> void:
-	game.set_meta(META_BASE, game.world.props.size())
+	game.set_meta(META_BASE, game.world.prop_count())
 
 
 static func props_base(game: Game) -> int:
-	return int(game.get_meta(META_BASE, ground(game).props.size()))
+	return int(game.get_meta(META_BASE, ground(game).prop_count()))
 
 
 ## The world whose state a save carries: the one stood in, or the one outside
@@ -135,8 +135,8 @@ static func save_world(game: Game) -> Dictionary:
 	var w := ground(game)
 	var base := props_base(game)
 	var added: Array = []
-	for i in range(base, w.props.size()):
-		var q := w.props[i]
+	for i in range(base, w.prop_count()):
+		var q := w.prop_at(i)
 		added.append([q.kind, q.pos.x, q.pos.y, q.rot, q.scale])
 	var depleted := {}
 	for id: int in w.depleted:

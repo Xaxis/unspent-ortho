@@ -47,10 +47,8 @@ src/core/realm/portals.gd::_stands::raw
 src/core/realm/portals.gd::_whole::tiles
 src/core/realm/portals.gd::standing::builder GenPlaces.solid_mask
 src/core/save/save_core.gd::load_world::list
-src/core/save/save_core.gd::mark_base::alloc
-src/core/save/save_core.gd::save_world::alloc
-src/core/save/save_core.gd::save_world::index
 src/core/save/save_core.gd::save_world::list
+src/core/sentinel/sentinels.gd::feeds::list
 src/core/sentinel/sentinels.gd::feeds::whole
 src/core/sentinel/sentinels.gd::lair::list
 src/core/sentinel/sentinels.gd::states::list

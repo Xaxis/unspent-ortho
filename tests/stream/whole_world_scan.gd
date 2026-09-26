@@ -61,7 +61,9 @@ var _touches := RegEx.new()
 func _init() -> void:
 	# `for x in w.props`, `for i in w.props.size()`, `range(w.villages.size())`,
 	# `w.landmarks.filter(`: every way this code base walks a list.
-	_list.compile("(?:\\bfor\\b.*\\bin\\b.*" + WORLD + "\\." + LISTS + "\\b|" + WORLD + "\\." + LISTS + "\\.(?:filter|map|any|all|reduce)\\()")
+	# The props facade walks every prop just as `props` did: `each_prop()`, and a
+	# loop bounded by `prop_count()`.
+	_list.compile("(?:\\bfor\\b.*\\bin\\b.*(?:" + WORLD + "\\." + LISTS + "\\b|" + WORLD + "\\.(?:each_prop|prop_count)\\(\\))|" + WORLD + "\\." + LISTS + "\\.(?:filter|map|any|all|reduce)\\(|" + WORLD + "\\.each_prop\\(\\))")
 	_index.compile(WORLD + "\\.props\\[")
 	_tiles.compile("\\bsize\\s*\\*\\s*[\\w.]*\\bsize\\b")
 	# Indexed, or the array itself taken as a value to be indexed later

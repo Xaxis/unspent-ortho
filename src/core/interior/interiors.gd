@@ -44,7 +44,7 @@ static func thresholds(w: WorldData) -> Array[Threshold]:
 		return _doors[id]
 	var out: Array[Threshold] = []
 	if w.realm != Realm.INTERIOR:
-		for p: WorldProp in w.props:
+		for p: WorldProp in w.each_prop():
 			if p.kind != PropKind.HOUSE:
 				continue
 			var land := w.country_at(floori(p.pos.x), floori(p.pos.y))
