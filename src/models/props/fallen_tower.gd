@@ -52,6 +52,7 @@ static func build(k: Kit, v: int, c: int) -> void:
 		# walls across its length, and its faces lie up and down. Everything the
 		# section carries is drawn standing, in that frame.
 		var lay := Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, roll) * Basis(Vector3.BACK, -PI * 0.5), at)
+		var made_from := k.made.vertex_count()
 		k.made.push(lay)
 		k.found.push(lay)
 		var top := Towers.shaft(k, W, D, n, 0.0, s + i * 101, c, false)
@@ -67,11 +68,45 @@ static func build(k: Kit, v: int, c: int) -> void:
 			_ribs(k, top, ribs, s + i * 7, slab)
 		k.found.pop()
 		k.made.pop()
+		_drop_underside(k.made, made_from)
 		var reach := len + float(ribs) * Towers.STOREY
 		if not last:
 			_rubble(k, at + Basis(Vector3.UP, yaw) * Vector3(reach, 0.0, 0.0), s + i * 11, dress)
 		_growth(k, at, yaw, len, s + i * 19, c)
 		x += reach + 0.3 + Rng.hash01(s, i, 50) * 0.6
+
+
+## The face a laid length rests on points at the ground and is sunk into it: no
+## bearing of the play camera sees it (tests/render/test_found_drawn), so its
+## triangles are taken back out of `pen` from vertex `from` on.
+static func _drop_underside(pen: MeshKit, from: int) -> void:
+	var keep := PackedInt32Array()
+	for t in range(from, pen.verts.size(), 3):
+		if pen.normals[t].y > -0.7:
+			keep.append(t)
+	if keep.size() * 3 == pen.verts.size() - from:
+		return
+	var verts := pen.verts.slice(0, from)
+	var normals := pen.normals.slice(0, from)
+	var colors := pen.colors.slice(0, from)
+	var uvs := pen.uvs.slice(0, from)
+	var uv2s := pen.uv2s.slice(0, from)
+	var custom := pen.custom0.slice(0, from * 4)
+	for t in keep:
+		for v in range(t, t + 3):
+			verts.append(pen.verts[v])
+			normals.append(pen.normals[v])
+			colors.append(pen.colors[v])
+			uvs.append(pen.uvs[v])
+			uv2s.append(pen.uv2s[v])
+			for q in 4:
+				custom.append(pen.custom0[v * 4 + q])
+	pen.verts = verts
+	pen.normals = normals
+	pen.colors = colors
+	pen.uvs = uvs
+	pen.uv2s = uv2s
+	pen.custom0 = custom
 
 
 ## The inside of a snapped length, seen at its broken end: dark, a hair inside
