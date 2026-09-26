@@ -49,3 +49,24 @@ static func level(t: float, wait: float, hold: float) -> float:
 ## Seconds from coming in until the quiet has lifted.
 static func ends(wait: float, hold: float) -> float:
 	return wait + FALL * 2.0 + hold
+
+
+
+## THE STONES THAT STAND DIFFERENTLY (H2): world minutes an epoch lasts. In each
+## epoch one stone of a ring stands turned, by TURN_MIN to TURN_MAX degrees
+## either way; the rest stand as they were laid. 23_hush only lets a stone take
+## the stance its epoch wants while nobody is looking at it. Under nine degrees
+## a turned stone read as no change at all from above (hush-stones.tour): the
+## point is a stone the player doubts, not one they cannot see.
+const EPOCH := 25.0
+const TURN_MIN := 9.0
+const TURN_MAX := 18.0
+
+
+## (which stone of `stones` stands turned in `epoch`, by how much in radians).
+static func turned(seed_value: int, ring: int, stones: int, epoch: int) -> Vector2:
+	var which := mini(stones - 1, int(Rng.hash01(seed_value, ring, epoch, SALT + 3) * stones))
+	var by := deg_to_rad(lerpf(TURN_MIN, TURN_MAX, Rng.hash01(seed_value, ring, epoch, SALT + 4)))
+	if Rng.hash01(seed_value, ring, epoch, SALT + 5) < 0.5:
+		by = -by
+	return Vector2(which, by)

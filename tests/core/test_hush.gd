@@ -45,3 +45,31 @@ func test_silence_takes_every_bed_and_leaves_the_mix_alone_without_it() -> void:
 		eq(float(plain[bed]), float(loud[bed]), "no hush changes nothing (%s)" % bed)
 		eq(float(hushed[bed]), 0.0, "the hush silences %s" % bed)
 	gt(any, 0.05, "there was something to silence")
+
+
+## THE STONES (Hush.turned, H2): in each epoch one stone of a ring stands turned,
+## TURN_MIN to TURN_MAX degrees either way, the same stone and turn for the same epoch; over
+## many epochs every stone of the ring takes its turn.
+func test_one_stone_a_ring_stands_turned_an_epoch() -> void:
+	var seen := {}
+	for e in 200:
+		var t := Hush.turned(7, 4242, 8, e)
+		check(int(t.x) >= 0 and int(t.x) < 8, "a stone of the ring (%d)" % int(t.x))
+		var deg := absf(rad_to_deg(t.y))
+		check(deg >= Hush.TURN_MIN - 1e-4 and deg <= Hush.TURN_MAX + 1e-4, "turned %d to %d degrees (%.1f)" % [Hush.TURN_MIN, Hush.TURN_MAX, deg])
+		seen[int(t.x)] = true
+		eq(Hush.turned(7, 4242, 8, e), t, "the same epoch, the same stone")
+	eq(seen.size(), 8, "every stone takes its turn")
+
+
+## A stone turned where it stands (WorldData.turn_prop) keeps its footprint.
+func test_a_stone_turns_where_it_stands() -> void:
+	var w := WorldData.new(3, 32)
+	var st := WorldProp.new(w.next_id(), PropKind.STANDING_STONE, Vector2(10.5, 10.5), 0.3, 0.6)
+	w.add_prop(st)
+	var before := w.prop(st.id).solid
+	w.turn_prop(st.id, 0.5)
+	var got := w.prop(st.id)
+	near(got.rot, 0.5, 1e-6, "it is turned")
+	eq(got.pos, Vector2(10.5, 10.5), "where it stood")
+	near(got.solid, before, 1e-6, "its footprint the same")

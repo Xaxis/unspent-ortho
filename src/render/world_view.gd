@@ -88,6 +88,15 @@ var _bg_mesher: TerrainMesher
 var _bg_decor: Decor
 var _task := -1
 var _task_key := Vector2i.ZERO
+## Props rebaked off the main thread (refresh_props_soon): the chunks waiting,
+## the one baking, its own mesher (never the chunk worker's), and its result.
+var _rb_wanted: Dictionary = {}
+var _rb_task := -1
+var _rb_key := Vector2i.ZERO
+var _rb_mesher: TerrainMesher
+var _rb_out: Array = []
+## The longest a rebaked chunk's props took to swap in on the main thread, usec.
+var rebake_swap_usec_max := 0
 var _task_chunk: TerrainMesher.Chunk
 var _task_decor: Array = []
 var _task_props: Array = []
@@ -231,6 +240,12 @@ func reclaim() -> void:
 ## player's figure, the crowns and the swing arc were handed them when the game
 ## started and they outlive the world they first drew.
 func rebind(w: WorldData) -> void:
+	if _rb_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_rb_task)
+		_rb_task = -1
+	_rb_wanted.clear()
+	_rb_out = []
+	_rb_mesher = null
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
@@ -581,6 +596,7 @@ func _process(_delta: float) -> void:
 		_task_chunk = null
 		_task_decor = []
 		_task_props = []
+	_rebake_step()
 	_look_out()
 	var wanted := _wanted(0.0)
 	# Reviving is free, so every parked chunk the view has come back to goes in
@@ -1111,6 +1127,9 @@ func _notification(what: int) -> void:
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
+	if _rb_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_rb_task)
+		_rb_task = -1
 	if _mid_task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_mid_task)
 		_mid_task = -1
@@ -1315,19 +1334,81 @@ func refresh_props(prop: WorldProp) -> void:
 		return
 	if not _chunks.has(key):
 		return
+	var snap := _snapshot(key)
+	_swap_props(key, bake_props(_data.get(key), mesher, snap[0], snap[1]))
+
+
+## The same, off the main thread: the chunk's props are rebaked on a worker and
+## swapped in when done, the old ones drawn until then. For a change nobody is
+## watching happen (23_hush turns a stone while it is off screen): a chunk's
+## props rebaked on the main thread cost 10 to 20 ms, a dropped frame each.
+func refresh_props_soon(prop: WorldProp) -> void:
+	if not threaded:
+		refresh_props(prop)
+		return
+	var key := _key_of(prop.pos)
+	var row := world.row_of_id(prop.id)
+	if row >= 0 and not (_props_by_chunk.get(key, PackedInt32Array()) as PackedInt32Array).has(row):
+		_add_row(_props_by_chunk, key, row)
+	if _task >= 0 and key == _task_key:
+		_task_dirty = true
+	if _parked.has(key):
+		_let_go(key)
+		return
+	if _chunks.has(key):
+		_rb_wanted[key] = true
+
+
+## One rebake at a time: take a finished one in, start the next.
+func _rebake_step() -> void:
+	if _rb_task >= 0:
+		if not WorkerThreadPool.is_task_completed(_rb_task):
+			return
+		WorkerThreadPool.wait_for_task_completion(_rb_task)
+		_rb_task = -1
+		# Wanted again while it baked: the next bake has the newer props.
+		if _chunks.has(_rb_key) and not _rb_wanted.has(_rb_key):
+			var t0 := Time.get_ticks_usec()
+			_swap_props(_rb_key, _rb_out[0], _rb_out[1])
+			rebake_swap_usec_max = maxi(rebake_swap_usec_max, Time.get_ticks_usec() - t0)
+		_rb_out = []
+	if _rb_wanted.is_empty():
+		return
+	var key: Vector2i = _rb_wanted.keys()[0]
+	_rb_wanted.erase(key)
+	if not _chunks.has(key):
+		return
+	if _rb_mesher == null:
+		_rb_mesher = TerrainMesher.new(world)
+	var snap := _snapshot(key)
+	_rb_key = key
+	_rb_task = WorkerThreadPool.add_task(_rebake_worker.bind(_data.get(key), snap[0], snap[1]), false, "props")
+
+
+func _rebake_worker(ch: TerrainMesher.Chunk, props: Array, spans: Array) -> void:
+	_rb_out = [bake_props(ch, _rb_mesher, props, spans),
+		bake_props(ch, _rb_mesher, props, spans, FarModels.MID) + bake_props(ch, _rb_mesher, props, [], FarModels.SHADE)]
+
+
+## Put `baked` (bake_props) in as chunk `key`'s props, in place of the old; its
+## mid models too, from `mid` when they were baked with it (a worker's), else
+## here on the main thread.
+func _swap_props(key: Vector2i, baked: Array, mid: Array = []) -> void:
 	var node: Node3D = _chunks[key]
 	for part: String in ["props", "props_found", "props_leaf"]:
 		var old := node.get_node_or_null(part)
 		if old != null:
 			node.remove_child(old)
 			old.queue_free()
-	var snap := _snapshot(key)
-	_attach_props(node, bake_props(_data.get(key), mesher, snap[0], snap[1]))
+	_attach_props(node, baked)
 	if node.get_node_or_null("mid_done") != null:
-		var stale := node.get_node("mid_done")
-		node.remove_child(stale)
-		stale.queue_free()
-		_mid_now(key)
+		if mid.is_empty():
+			var stale := node.get_node("mid_done")
+			node.remove_child(stale)
+			stale.queue_free()
+			_mid_now(key)
+		else:
+			_attach_mid(node, mid)
 	_lod_apply(node)
 
 
