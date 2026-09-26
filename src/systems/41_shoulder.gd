@@ -64,6 +64,27 @@ var _shapes: Dictionary = {}
 ## its dealt model and its drawn box have one answer for the life of a world:
 ## worked out per prop per frame, they were most of what the probe cost.
 var _probe_of: Dictionary = {}
+## THE GATHER, KEPT. The rig asks for the room behind the head and the room at
+## either side, three lines from the same head every frame, and each asked the
+## query for the props on the tiles round it: a walk of a square of tiles, and
+## in a dense wood most of the probe's cost (measured at the scrapwood). Those
+## props do not change while the head moves a few steps. So they are gathered
+## round the head once, into a square `GATHER` tiles each way, kept until the
+## query's props change or a line reaches past the square, and each line takes
+## from them exactly the ones `props_near` would have given it. (Kept by the
+## square, not by where the head is: the rig's side lines start a shoulder's
+## width from the line behind, so a head test threw the gather away twice a
+## frame.)
+const GATHER := 10
+var _frame_rows: Array[Vector4i] = []
+var _frame_ghosts: Array[WorldProp] = []
+var _frame_head := Vector3.INF
+var _frame_box := Rect2i()
+var _frame_changes := -1
+var _frame_query: WorldQuery = null
+## The systems that draw sight boxes, found once (game.systems is fixed).
+var _box_systems: Array = []
+var _box_systems_found := false
 
 
 func setup(g: Game) -> void:
@@ -372,23 +393,29 @@ func _gather(head: Vector3, eye: Vector3) -> void:
 	_boxes.clear()
 	var mid := Vector2((head.x + eye.x) * 0.5, (head.z + eye.z) * 0.5)
 	var reach := Vector2(head.x - eye.x, head.z - eye.z).length() * 0.5 + 3.0
-	for p: WorldProp in game.query.props_near(mid, reach):
-		if p.solid <= 0.0 or game.world.depleted.has(p.id):
+	# The tiles `props_near(mid, reach)` reads, as it clamps them.
+	var w := game.world
+	var want := Rect2i(Vector2i(maxi(0, floori(mid.x - reach)), maxi(0, floori(mid.y - reach))), Vector2i.ZERO)
+	want.end = Vector2i(mini(w.size - 1, floori(mid.x + reach)) + 1, mini(w.size - 1, floori(mid.y + reach)) + 1)
+	_gather_frame(head, want)
+	for r: Vector4i in _frame_rows:
+		if not want.has_point(Vector2i(r.y, r.z)):
 			continue
-		var probe: Variant = _probe_of.get(p.id)
-		if probe == null:
-			probe = _probe(p)
-			_probe_of[p.id] = probe
-		if probe is Vector4:
-			_solids.append(probe)
-		else:
-			_boxes.append(probe)
+		_take(r.x, r.w)
+	for g: WorldProp in _frame_ghosts:
+		if g.solid <= 0.0 or not want.has_point(Vector2i(floori(g.pos.x), floori(g.pos.y))):
+			continue
+		_take_prop(g)
 	# Drawn things that are no prop but have a shape a circle cannot hold (a
 	# depot's hatch housing, 21_doors): a system that draws one says where.
-	for sys in game.systems:
-		if sys.has_method(&"sight_boxes"):
-			for b: PackedFloat32Array in sys.call(&"sight_boxes", mid, reach):
-				_boxes.append(b)
+	if not _box_systems_found:
+		_box_systems_found = true
+		for sys in game.systems:
+			if sys.has_method(&"sight_boxes"):
+				_box_systems.append(sys)
+	for sys: Object in _box_systems:
+		for b: PackedFloat32Array in sys.call(&"sight_boxes", mid, reach):
+			_boxes.append(b)
 	var seen := {}
 	var steps := Shoulder.steps_for(head.distance_to(eye))
 	# Once per TILE the line crosses: the walls are stamped by tile, and a step
@@ -405,6 +432,62 @@ func _gather(head: Vector3, eye: Vector3) -> void:
 				continue
 			seen[c] = true
 			_solids.append(Vector4(c.x, c.y, c.z, INF))
+
+
+## The rows of the solid, standing props on the tiles round `head` this frame,
+## as (row, tile x, tile y, id): a square wide enough for every line the rig
+## asks from that head (`want`, widened if a later one reaches further).
+func _gather_frame(head: Vector3, want: Rect2i) -> void:
+	var q := game.query
+	if q == _frame_query and q.changes == _frame_changes and _frame_box.encloses(want):
+		return
+	_frame_query = q
+	_frame_changes = q.changes
+	_frame_head = head
+	var box := Rect2i(Vector2i(floori(head.x) - GATHER, floori(head.z) - GATHER), Vector2i(GATHER * 2 + 1, GATHER * 2 + 1)).merge(want)
+	box = box.intersection(Rect2i(0, 0, game.world.size, game.world.size))
+	_frame_box = box
+	_frame_rows.clear()
+	var w := game.world
+	var c := Vector2((box.position.x + box.end.x) * 0.5, (box.position.y + box.end.y) * 0.5)
+	var r := maxf(box.size.x, box.size.y) * 0.5
+	for row: int in game.query.rows_near(c, r):
+		var id := w.table.id[row] if w.packed else w.props[row].id
+		var solid := w.table.solid[row] if w.packed else w.props[row].solid
+		if solid <= 0.0:
+			continue
+		var at: Vector2 = w.table.pos[row] if w.packed else w.props[row].pos
+		_frame_rows.append(Vector4i(row, floori(at.x), floori(at.y), id))
+	_frame_ghosts = game.query.ghosts_near(c, r)
+
+
+func _take(row: int, id: int) -> void:
+	# Taken (harvested) since it was gathered: depletion is the world's, not
+	# the query's, so it is asked here, per prop, every time.
+	if game.world.depleted.has(id):
+		return
+	var probe: Variant = _probe_of.get(id)
+	if probe == null:
+		probe = _probe(game.world.prop_at(row))
+		_probe_of[id] = probe
+	_keep(probe)
+
+
+func _take_prop(p: WorldProp) -> void:
+	if game.world.depleted.has(p.id):
+		return
+	var probe: Variant = _probe_of.get(p.id)
+	if probe == null:
+		probe = _probe(p)
+		_probe_of[p.id] = probe
+	_keep(probe)
+
+
+func _keep(probe: Variant) -> void:
+	if probe is Vector4:
+		_solids.append(probe)
+	else:
+		_boxes.append(probe)
 
 
 ## How high a prop's own model stands, off its template (built and cached when
@@ -563,3 +646,4 @@ func sight_clear(a: Vector3, b: Vector3) -> bool:
 ## Another world's props are other objects; the old island's probes go with it.
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	_probe_of.clear()
+	_frame_query = null
