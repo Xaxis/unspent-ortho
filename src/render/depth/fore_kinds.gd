@@ -166,8 +166,8 @@ static func hang(p: WorldProp, seed_value: int, country: int = -1) -> Dictionary
 
 ## The mesh for one (shape, variant), built once and shared by every piece that
 ## wants it. Unit span: the instance scales it, so one mesh serves every length.
-static func template(shape: int, variant: int, tint: Color) -> ArrayMesh:
-	var key := (shape * VARIANTS + variant) * 8 + int(tint.h * 7.99)
+static func template(shape: int, variant: int, tint: Color, dying: bool = false) -> ArrayMesh:
+	var key := ((shape * VARIANTS + variant) * 8 + int(tint.h * 7.99)) * 2 + (1 if dying else 0)
 	if _cache.has(key):
 		return _cache[key]
 	var k := MeshKit.new()
@@ -179,7 +179,7 @@ static func template(shape: int, variant: int, tint: Color) -> ArrayMesh:
 		GIRDER: _girder(k, seed_value, tint)
 		TANGLE: _tangle(k, seed_value, tint)
 		WALKWAY: _walkway(k, seed_value, tint)
-		SIGN_ARM: _sign_arm(k, seed_value, tint)
+		SIGN_ARM: _sign_arm(k, seed_value, tint, dying)
 	var mesh := k.build()
 	_cache[key] = mesh
 	return mesh
@@ -457,7 +457,10 @@ static func _walkway(k: MeshKit, seed_value: int, tint: Color) -> void:
 ## thing that holds a board out over the street, and what the tube's light falls
 ## on. Under sodium at head height that is most of what an advertising street IS,
 ## and it costs a bracket and a plate.
-static func _sign_arm(k: MeshKit, seed_value: int, tint: Color) -> void:
+##
+## Where the plan's signage is dying (BiomeDressing.signage) the board is dead
+## enamel under grime, unlit: nothing over that lane burns at full strength.
+static func _sign_arm(k: MeshKit, seed_value: int, tint: Color, dying: bool = false) -> void:
 	var steel := Palette.PLATE[1].lerp(tint, 0.2)
 	steel.a = M_SWARF / 255.0
 	# Enamel, and warm, because everything the eye reads at street level is lit by
@@ -468,6 +471,9 @@ static func _sign_arm(k: MeshKit, seed_value: int, tint: Color) -> void:
 	# thing in it.
 	var enamel := Palette.EMBER[3].lerp(Palette.LINEN[3], 0.10).lerp(tint, 0.12)
 	enamel.a = M_NEON / 255.0
+	if dying:
+		enamel = enamel.darkened(0.6).lerp(Palette.MOSS[1], 0.3)
+		enamel.a = M_MADE / 255.0
 	k.strut(Vector3(0.0, 0.0, 0.0), Vector3(1.0, -0.06, 0.0), 0.05, 4, steel)
 	k.strut(Vector3(0.04, 0.26, 0.0), Vector3(0.74, -0.04, 0.0), 0.028, 4, steel)
 	# The board, hung under the end and turned a few degrees off the arm, because
