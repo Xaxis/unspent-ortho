@@ -358,7 +358,7 @@ func test_a_fresh_lock_needs_the_body_in_sight() -> void:
 	check(runner != null, "a runner to hide")
 	var house: WorldProp = null
 	var best := INF
-	for p: WorldProp in g.world.props:
+	for p: WorldProp in g.world.each_prop():
 		if p.kind == PropKind.HOUSE and p.pos.distance_to(g.player.pos) < best:
 			best = p.pos.distance_to(g.player.pos)
 			house = p
@@ -405,7 +405,7 @@ func test_a_sweep_reads_only_what_is_seen_or_coming() -> void:
 			runner = m
 	var house: WorldProp = null
 	var best := INF
-	for p: WorldProp in g.world.props:
+	for p: WorldProp in g.world.each_prop():
 		if p.kind == PropKind.HOUSE and p.pos.distance_to(g.player.pos) < best:
 			best = p.pos.distance_to(g.player.pos)
 			house = p

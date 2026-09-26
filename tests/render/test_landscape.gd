@@ -12,7 +12,7 @@ static func _dressed() -> WorldData:
 	var kinds: Array[int] = [PropKind.PINE, PropKind.BOULDER, PropKind.HOUSE, PropKind.POLE, PropKind.POLE]
 	var at: Array[Vector2] = [Vector2(36.5, 38.5), Vector2(42.5, 41.5), Vector2(34.5, 44.5), Vector2(38.5, 33.5), Vector2(44.5, 33.5)]
 	for i in kinds.size():
-		w.props.append(WorldProp.new(i, kinds[i], at[i], 0.3, 1.0))
+		w.add_prop(WorldProp.new(i, kinds[i], at[i], 0.3, 1.0))
 	w.lines.append({"kind": PropKind.POLE, "props": PackedInt32Array([3, 4])})
 	return w
 
@@ -33,20 +33,20 @@ func test_streamed_props_are_baked_on_the_worker_and_match_a_direct_bake() -> vo
 		var made := node.get_node_or_null("props") as MeshInstance3D
 		var found := node.get_node_or_null("props_found") as MeshInstance3D
 		check(made != null and found != null, "both prop meshes are there")
-		var direct := view.bake_props(view.chunk_at(Vector2(40, 40)), TerrainMesher.new(w), w.props, [[w.props[3], w.props[4]]])
+		var direct := view.bake_props(view.chunk_at(Vector2(40, 40)), TerrainMesher.new(w), w.each_prop(), [[w.prop_at(3), w.prop_at(4)]])
 		if made != null:
 			eq(made.mesh.surface_get_array_len(0), (direct[0][Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), "MADE props are the direct bake")
 		if found != null:
 			eq(found.mesh.surface_get_array_len(0), (direct[1][Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), "FOUND props and cables are the direct bake")
 	# A take is seen at once: the chunk's props are baked again without it.
 	w.depleted[0] = INF
-	view.refresh_props(w.props[0])
+	view.refresh_props(w.prop_at(0))
 	var after := view.get_node_or_null("chunk_1_1/props") as MeshInstance3D
 	# Asked of the door the bake uses, never hashed here: a copy of the id hash
 	# went on naming the pine's old model once models were dealt by position.
-	var pine := PropModels.template(PropKind.PINE, PropModels.variant_of(w.props[0], w.seed_value), Country.COAST)
+	var pine := PropModels.template(PropKind.PINE, PropModels.variant_of(w.prop_at(0), w.seed_value), Country.COAST)
 	if node != null and after != null:
-		var before_len := (view.bake_props(view.chunk_at(Vector2(40, 40)), TerrainMesher.new(w), [w.props[0], w.props[1], w.props[2]], [])[0][Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+		var before_len := (view.bake_props(view.chunk_at(Vector2(40, 40)), TerrainMesher.new(w), [w.prop_at(0), w.prop_at(1), w.prop_at(2)], [])[0][Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 		eq(after.mesh.surface_get_array_len(0), before_len - pine.made_v.size(), "the taken pine is gone from the bake")
 	view.queue_free()
 	await tree.process_frame
@@ -95,7 +95,7 @@ func test_cold_lines_hang_with_ice_drawn_by_hand() -> void:
 	var view := WorldView.new()
 	view.setup(w)
 	var ch := view.mesher.build_arrays(0, 1)
-	var spans := [[w.props[3], w.props[4]]]
+	var spans := [[w.prop_at(3), w.prop_at(4)]]
 	var mild := view.bake_props(ch, view.mesher, [], spans)
 	eq((mild[0] as Array).size(), 0, "a span in a mild landscape carries no ice")
 	for i in w.country.size():

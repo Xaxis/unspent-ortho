@@ -33,7 +33,7 @@ func test_carried_off_leaves_the_bag_where_it_took_you_and_keeps_what_is_on_you(
 	Events.message.disconnect(said)
 	var state := SurvivalState.of(g)
 	eq(state.bags.size(), 1, "one heap left by the bad end")
-	var heap: WorldProp = g.world.props[state.bags.keys()[0]]
+	var heap: WorldProp = g.world.prop(state.bags.keys()[0])
 	lt(heap.pos.distance_to(taken_at), 1.6, "where they were taken (%.2f tiles off)" % heap.pos.distance_to(taken_at))
 	gt(g.player.pos.distance_to(heap.pos), 0.0, "and the player woke somewhere else")
 	eq(heap.variant, PropModels.BAG_CAIRN, "under the player's own rag")
@@ -54,7 +54,7 @@ func test_carried_off_leaves_the_bag_where_it_took_you_and_keeps_what_is_on_you(
 		lt(marked[0].distance_to(heap.pos), 0.01, "on the heap")
 	# And it all comes back.
 	g.player.pos = heap.pos + Vector2(0.9, 0.0)
-	eq(Survival.heap_near(g), heap, "stood by it, it is the heap in reach")
+	check(WorldProp.same(Survival.heap_near(g), heap), "stood by it, it is the heap in reach")
 	var left_n := 0
 	for k: Variant in goods:
 		if not String(k).begins_with("edge:"):
@@ -78,7 +78,7 @@ func test_a_save_keeps_the_heap_and_what_is_on_it() -> void:
 	_carried_off(g)
 	var state := SurvivalState.of(g)
 	var id: int = state.bags.keys()[0]
-	var at: Vector2 = g.world.props[id].pos
+	var at: Vector2 = g.world.prop(id).pos
 	var saver := Sx.system(g, "05_save")
 	# Clear of the machines a save would wait out, as a player who walked off would be.
 	Sx.system(g, "30_mobs").get("coast").set("spawning", false)
@@ -95,7 +95,7 @@ func test_a_save_keeps_the_heap_and_what_is_on_it() -> void:
 	eq(s2.bags.size(), 1, "the bag heap is still a bag heap")
 	if s2.bags.size() == 1:
 		var id2: int = s2.bags.keys()[0]
-		var heap: WorldProp = b.world.props[id2]
+		var heap: WorldProp = b.world.prop(id2)
 		lt(heap.pos.distance_to(at), 0.01, "where it was")
 		eq(heap.variant, PropModels.BAG_CAIRN, "under the rag")
 		eq(int((s2.left[id2] as Dictionary).get(&"driftwood", 0)), 6, "with the driftwood on it")

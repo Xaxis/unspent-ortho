@@ -252,7 +252,7 @@ func _open_what_is_in_front() -> void:
 		# of the six plan works impossible to rob for the rest of the game, and
 		# the wick that feeds the lamp comes off a relay. So: the words the FIRST
 		# time, because a thing is only read once, and the parts every time after.
-		if take == prop and _already_read(prop):
+		if WorldProp.same(take, prop) and _already_read(prop):
 			return
 	if person_d <= prop_d and not person.is_empty():
 		_start_talk(person)
@@ -265,7 +265,7 @@ func _open_what_is_in_front() -> void:
 func _already_read(prop: WorldProp) -> bool:
 	if prop == null:
 		return true
-	var id := StoryFragments.held_by(game.world, prop)
+	var id := StoryFragments.held_by(game.world, game.query, prop)
 	return id == &"" or Story.knows(id)
 
 
@@ -475,7 +475,7 @@ func _slot_in_front() -> Dictionary:
 
 
 func _start_reading(prop: WorldProp) -> void:
-	var id := StoryFragments.held_by(game.world, prop)
+	var id := StoryFragments.held_by(game.world, game.query, prop)
 	if id == &"":
 		Events.hint.emit("Nothing on it that can still be read.", "")
 		return

@@ -54,7 +54,7 @@ func test_a_pocket_keeps_its_own_word() -> void:
 		var just_out := l.door + l.door_out * 0.4
 		check(not l.is_floor(floori(just_out.x), floori(just_out.y)), "%s: the door is in an outside wall" % t.key)
 		var fires := 0
-		for pr: WorldProp in p.world.props:
+		for pr: WorldProp in p.world.each_prop():
 			if pr.kind == PropKind.FIRE:
 				fires += 1
 		eq(fires, 1, "%s: one hearth" % t.key)
@@ -68,7 +68,7 @@ func test_a_landscape_that_declares_nothing_has_no_doors() -> void:
 		var d := BiomeRegistry.by_index(t.land)
 		check(not d.interiors.is_empty(), "%s: a door in %s, which declares no interiors" % [t.key, d.id])
 	var houses := {}
-	for p: WorldProp in _world().props:
+	for p: WorldProp in _world().each_prop():
 		if p.kind == PropKind.HOUSE:
 			var d := BiomeRegistry.by_index(_world().country_at(floori(p.pos.x), floori(p.pos.y)))
 			houses[d.id] = not d.interiors.is_empty()
@@ -263,7 +263,7 @@ func test_every_house_opens_on_its_own_forms_room() -> void:
 		if t.host_code == PropKind.HOUSE:
 			doors[t.key] = t
 	var seen := {}
-	for p: WorldProp in w.props:
+	for p: WorldProp in w.each_prop():
 		if p.kind != PropKind.HOUSE:
 			continue
 		var land := w.country_at(floori(p.pos.x), floori(p.pos.y))

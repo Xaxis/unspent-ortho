@@ -218,7 +218,7 @@ func _step_steam() -> void:
 func _follow_job(delta: float) -> void:
 	var job := SurvivalState.of(game).job
 	var prop: WorldProp = job.get("prop", null)
-	if prop != _job_prop:
+	if not WorldProp.same(prop, _job_prop):
 		if _job_prop != null:
 			_ended_prop = _job_prop
 			_ended_frame = Engine.get_process_frames()
@@ -776,7 +776,7 @@ func _refresh_remnants() -> void:
 	var w := game.world
 	var here := game.player.pos
 	var spent := SurvivalState.of(game).spent
-	var sig := "%d:%d:%d" % [w.depleted.size(), w.props.size(), spent.size()]
+	var sig := "%d:%d:%d" % [w.depleted.size(), w.prop_count(), spent.size()]
 	if sig == _remnant_sig and here.distance_to(_remnant_at) < 12.0:
 		return
 	_remnant_sig = sig
@@ -785,9 +785,9 @@ func _refresh_remnants() -> void:
 	for name: StringName in _remnant_mm:
 		lists[name] = []
 	for id: int in w.depleted:
-		if id < 0 or id >= w.props.size():
+		var p := w.prop(id)
+		if p == null:
 			continue
-		var p := w.props[id]
 		var r := RemnantModels.for_kind(p.kind)
 		if r == &"" or p.pos.distance_to(here) > REMNANT_RADIUS:
 			continue
@@ -796,9 +796,9 @@ func _refresh_remnants() -> void:
 	var marked := {}
 	for key: String in spent:
 		var id := key.get_slice(":", 0).to_int()
-		if id < 0 or id >= w.props.size() or w.depleted.has(id):
+		var p := w.prop(id)
+		if p == null or w.depleted.has(id):
 			continue
-		var p := w.props[id]
 		var opts := Takes.options(p.kind)
 		var index := key.get_slice(":", 1).to_int()
 		var verb: StringName = (opts[index] as Dictionary).verb if index >= 0 and index < opts.size() else &""

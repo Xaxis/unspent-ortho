@@ -49,7 +49,7 @@ func _readables_near() -> Array[Dictionary]:
 		var kind := StoryProps.kind_of(q.kind)
 		if kind == &"":
 			continue
-		out.append({"prop": q.id, "kind": kind, "holds": StoryFragments.held_by(game.world, q),
+		out.append({"prop": q.id, "kind": kind, "holds": StoryFragments.held_by(game.world, game.query, q),
 			"d": q.pos.distance_to(game.player.pos)})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.d) < float(b.d))
 	return out

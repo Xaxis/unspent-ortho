@@ -592,11 +592,14 @@ static func build(game: Game, station: StringName, free: bool = false, charge: b
 
 
 ## A new prop in the world: data, collision and view. `rot` NAN = turned by its id.
-static func add_prop(game: Game, kind: int, pos: Vector2, rot: float = NAN, scale: float = 1.0) -> WorldProp:
+## `variant` is given here, not set after: the world keeps a prop as its row, and
+## a field changed on the returned object afterwards is not on the row.
+static func add_prop(game: Game, kind: int, pos: Vector2, rot: float = NAN, scale: float = 1.0, variant: int = -1) -> WorldProp:
 	var w := game.world
-	var id := w.props.size()
+	var id := w.next_id()
 	var prop := WorldProp.new(id, kind, pos, Rng.hash01(w.seed_value, id, 77) * TAU if is_nan(rot) else rot, scale)
-	w.props.append(prop)
+	prop.variant = variant
+	w.add_prop(prop)
 	game.query.add_prop(prop)
 	if game.view != null:
 		game.view.refresh_props(prop)
@@ -804,10 +807,7 @@ static func leave_bag(game: Game, at: Vector2) -> WorldProp:
 	if spot.x < -1e8:
 		# Nowhere clear round it: the heap goes where they were, whatever is there.
 		spot = at
-	var heap := add_prop(game, PropKind.CAIRN, spot, NAN, BAG_SCALE)
-	heap.variant = PropModels.BAG_CAIRN
-	if game.view != null:
-		game.view.refresh_props(heap)
+	var heap := add_prop(game, PropKind.CAIRN, spot, NAN, BAG_SCALE, PropModels.BAG_CAIRN)
 	var state := SurvivalState.of(game)
 	state.left[heap.id] = goods
 	state.bags[heap.id] = game.clock.minutes if game.clock != null else 0.0
@@ -1031,9 +1031,9 @@ static func sweep(game: Game, _delta: float) -> void:
 	var now := game.clock.minutes
 	var w := game.world
 	for id: int in w.depleted.keys():
-		if float(w.depleted[id]) > now or id < 0 or id >= w.props.size():
+		var prop := w.prop(id)
+		if float(w.depleted[id]) > now or prop == null:
 			continue
-		var prop := w.props[id]
 		# Nothing grows back through a body standing in it.
 		if prop.solid > 0.0 and prop.pos.distance_to(game.player.pos) < prop.solid + Tuning.PLAYER_RADIUS:
 			w.depleted[id] = now + 30.0

@@ -144,6 +144,34 @@ var landmarks: Array[Dictionary] = []
 ## Props taken from the world: prop id -> world minute it grows back (INF = never).
 ## Owned by survival rules; WorldView and WorldQuery skip depleted props.
 var depleted: Dictionary = {}
+## Region id -> how many of the region's own ore props stand in it, counted by
+## generation (`GenDigest`) so no reader has to walk every prop to ask.
+## `ore_counted` is false on a world built by hand, which is counted on first ask.
+var ore_standing: Dictionary = {}
+var ore_counted := false
+## The table rows and cable spans of each section (`WorldSections`), indexed
+## once `sectioned` is set.
+var section_rows: Dictionary = {}
+var section_spans: Dictionary = {}
+var sectioned := false
+## PROP IDS. A generated prop's id is (section << ORDINAL_BITS) | ordinal,
+## the order its section laid it (GenIds): a change in one section renumbers
+## no other, and a streamed section rebuilt from the plan gets the same ids.
+## A prop set down after generation takes BUILT_BIT | n. `props` holds the
+## generated props section by section, then the set-down ones in order, and
+## `section_start[s]` is where section s begins in it (its last entry is where
+## the set-down ones begin). A world built by hand has no sections and its ids
+## are its list positions.
+const ORDINAL_BITS := 20
+const BUILT_BIT := 1 << 30
+var section_start := PackedInt32Array()
+## The props as packed columns (`PropTable`). Once generation has laid a world
+## (`packed`), the table is the truth and `props` is empty: a WorldProp is a view
+## made from its row when something asks for one, and dies when it is let go, so
+## a world's ~130k props are not ~130k resident objects (the streaming design,
+## S7). A world built by hand keeps its objects in `props`, row for row.
+var table := PropTable.new()
+var packed := false
 
 
 func _init(p_seed: int, p_size: int) -> void:
@@ -241,3 +269,144 @@ func height_at(p: Vector2) -> float:
 ## Tile position to 3D position on the ground surface.
 func to_3d(p: Vector2) -> Vector3:
 	return Vector3(p.x, height_at(p), p.y)
+
+
+## A prop set down after generation: appended and filed in its section, so a
+## reader asking by section sees it. Its id comes from `next_id()`.
+func add_prop(p: WorldProp) -> void:
+	if not packed:
+		props.append(p)
+	table.append(p)
+	WorldSections.file(self, p)
+
+
+# --- the props facade -------------------------------------------------------
+# What a reader asks instead of walking `props`: every prop by row, and the
+# three things play changes on one. A streamed world answers these from its
+# loaded sections' tables.
+
+## How many props there are.
+func prop_count() -> int:
+	return table.size() if packed else props.size()
+
+
+## The prop at row `i`: a fresh view of its row on a packed world, so compare
+## props by id (`WorldProp.same`), never as objects.
+func prop_at(i: int) -> WorldProp:
+	return _view(i) if packed else props[i]
+
+
+## Every prop, in row order: section by section, then the ones set down later.
+## On a packed world these are views made for the call: a walk of every prop
+## makes every prop, so read `table` instead where a walk is hot.
+func each_prop() -> Array[WorldProp]:
+	if not packed:
+		return props
+	var out: Array[WorldProp] = []
+	out.resize(table.size())
+	for i in table.size():
+		out[i] = _view(i)
+	return out
+
+
+func _view(i: int) -> WorldProp:
+	var p := WorldProp.new(table.id[i], table.kind[i], table.pos[i], table.rot[i], table.scale[i])
+	p.solid = table.solid[i]
+	p.variant = table.variant[i]
+	p.shown = float(table.shown.get(i, 1.0))
+	return p
+
+
+## How much of `p` is left (Harvest.shown), kept on its row too.
+func set_shown(p: WorldProp, v: float) -> void:
+	p.shown = v
+	var at := _row_of(p)
+	if at < 0:
+		return
+	if v < 1.0:
+		table.shown[at] = v
+	else:
+		table.shown.erase(at)
+
+
+func set_scale(p: WorldProp, v: float) -> void:
+	p.scale = v
+	var at := _row_of(p)
+	if at >= 0:
+		table.scale[at] = v
+
+
+func set_solid(p: WorldProp, v: float) -> void:
+	p.solid = v
+	var at := _row_of(p)
+	if at >= 0:
+		table.solid[at] = v
+
+
+## The table row of `p`, or -1 for a prop the world does not hold (a
+## settlement's ghost of a planned building).
+func _row_of(p: WorldProp) -> int:
+	return row_of_id(p.id)
+
+
+## The table row holding id `id`, or -1.
+func row_of_id(id: int) -> int:
+	var at := position_of(id)
+	return at if at >= 0 and at < table.size() and table.id[at] == id else -1
+
+
+## Rows for props put straight into `props` (a world built by hand in a test),
+## so every reader of rows sees them.
+func sync_table() -> void:
+	if packed:
+		return
+	for i in range(table.size(), props.size()):
+		table.append(props[i])
+
+
+## The id the next prop set down takes.
+func next_id() -> int:
+	return id_at(prop_count())
+
+
+## How many props generation laid: set-down props stand after them.
+func generated() -> int:
+	return section_start[section_start.size() - 1] if not section_start.is_empty() else 0
+
+
+## The prop with this id, or null.
+func prop(id: int) -> WorldProp:
+	var at := position_of(id)
+	return prop_at(at) if at >= 0 and at < prop_count() else null
+
+
+## Where the prop with this id stands in `props`, or -1.
+func position_of(id: int) -> int:
+	if id < 0:
+		return -1
+	if id & BUILT_BIT:
+		return generated() + (id & ~BUILT_BIT)
+	if section_start.is_empty():
+		return id
+	var s := id >> ORDINAL_BITS
+	if s + 1 >= section_start.size():
+		return -1
+	var at := section_start[s] + (id & ((1 << ORDINAL_BITS) - 1))
+	return at if at < section_start[s + 1] else -1
+
+
+## The id of the prop at this position in `props`.
+func id_at(at: int) -> int:
+	var gen := generated()
+	if at >= gen:
+		return BUILT_BIT | (at - gen) if not section_start.is_empty() else at
+	var lo := 0
+	var hi := section_start.size() - 2
+	# The last section starting at or before `at`.
+	while lo < hi:
+		var mid := (lo + hi + 1) >> 1
+		if section_start[mid] <= at:
+			lo = mid
+		else:
+			hi = mid - 1
+	return (lo << ORDINAL_BITS) | (at - section_start[lo])

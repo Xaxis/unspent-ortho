@@ -74,7 +74,7 @@ func test_a_save_made_under_the_world_opens_back_under_it() -> void:
 	# Something taken out of the cave, so the save has to carry THIS realm's
 	# edits and not the surface's.
 	var took := -1
-	for p in a.world.props:
+	for p in a.world.each_prop():
 		if p.solid > 0.0:
 			took = p.id
 			break

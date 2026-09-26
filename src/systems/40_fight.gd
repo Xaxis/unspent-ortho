@@ -620,7 +620,7 @@ func _last_bag() -> WorldProp:
 	for id: int in state.bags:
 		if best < 0 or float(state.bags[id]) >= float(state.bags[best]):
 			best = id
-	return game.world.props[best] if best >= 0 else null
+	return game.world.prop(best) if best >= 0 else null
 
 
 const HOME_LINE := "You wake by your own fire, hands raw. The lamp is out."

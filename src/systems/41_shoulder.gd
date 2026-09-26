@@ -59,7 +59,8 @@ var _boxes: Array[PackedFloat32Array] = []
 ## the model's own units, what the camera must stand clear of.
 var _shapes: Dictionary = {}
 ## Each prop's probe as it will always be (a Vector4 circle for a thin one, a
-## box otherwise), keyed by the prop itself. A prop never moves, so its ground,
+## box otherwise), keyed by the prop's id: a prop is a view made from its row, so
+## two asks for one prop are two objects. A prop never moves, so its ground,
 ## its dealt model and its drawn box have one answer for the life of a world:
 ## worked out per prop per frame, they were most of what the probe cost.
 var _probe_of: Dictionary = {}
@@ -374,10 +375,10 @@ func _gather(head: Vector3, eye: Vector3) -> void:
 	for p: WorldProp in game.query.props_near(mid, reach):
 		if p.solid <= 0.0 or game.world.depleted.has(p.id):
 			continue
-		var probe: Variant = _probe_of.get(p)
+		var probe: Variant = _probe_of.get(p.id)
 		if probe == null:
 			probe = _probe(p)
-			_probe_of[p] = probe
+			_probe_of[p.id] = probe
 		if probe is Vector4:
 			_solids.append(probe)
 		else:
@@ -548,10 +549,10 @@ func sight_clear(a: Vector3, b: Vector3) -> bool:
 	for p: WorldProp in game.query.props_near(mid, reach):
 		if p.solid <= 0.0 or game.world.depleted.has(p.id):
 			continue
-		var probe: Variant = _probe_of.get(p)
+		var probe: Variant = _probe_of.get(p.id)
 		if probe == null:
 			probe = _probe(p)
-			_probe_of[p] = probe
+			_probe_of[p.id] = probe
 		if probe is PackedFloat32Array:
 			boxes.append(probe)
 	var ground := func(p: Vector2) -> float:

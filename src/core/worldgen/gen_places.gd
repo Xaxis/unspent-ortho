@@ -123,7 +123,7 @@ static func _placed_after(w: WorldData, key: String, nth: int) -> Vector2:
 static func solid_mask(w: WorldData) -> PackedByteArray:
 	var m := PackedByteArray()
 	m.resize(w.size * w.size)
-	for p in w.props:
+	for p in w.each_prop():
 		if p.solid <= 0.0:
 			continue
 		var r := ceili(p.solid)
@@ -286,7 +286,7 @@ static func typical_sample(w: WorldData, cc: int) -> Vector2:
 	bins.resize(bw * bw * PropKind.COUNT)
 	var land_props := PackedFloat32Array()
 	land_props.resize(PropKind.COUNT)
-	for pr in w.props:
+	for pr in w.each_prop():
 		var px := int(pr.pos.x)
 		var py := int(pr.pos.y)
 		if not w.in_bounds(px, py):
@@ -475,7 +475,7 @@ static func lit_village_square(w: WorldData) -> Vector2:
 			continue
 		var nearest: WorldProp = null
 		var near := INF
-		for p: WorldProp in w.props:
+		for p: WorldProp in w.each_prop():
 			if p.kind != PropKind.HOUSE or p.variant < 0:
 				continue
 			var d := p.pos.distance_to(vp)
@@ -487,15 +487,30 @@ static func lit_village_square(w: WorldData) -> Vector2:
 	return Vector2(-1, -1)
 
 
+## The standable tile nearest `p`, by distance to its centre, the first in scan
+## order among the equally near; `p` itself when none is within 12 tiles. A
+## square ring is searched out to where no tile further out can be nearer (a tile
+## in ring k is at least k - 0.5 from a point in the centre tile), because the
+## FIRST standable tile of a ring can be a corner half as near again as its side:
+## `place works` stood 2.72 tiles off a feed housing that reaches 2.6.
 static func _stand_near(w: WorldData, p: Vector2) -> Vector2:
 	var solid := solid_mask(w)
 	var px := floori(p.x)
 	var py := floori(p.y)
+	var best := p
+	var best_d := INF
 	for r in 12:
+		if best_d <= float(r) - 0.5:
+			break
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
 				if maxi(absi(dx), absi(dy)) != r:
 					continue
-				if standable(w, solid, px + dx, py + dy):
-					return Vector2(px + dx + 0.5, py + dy + 0.5)
-	return p
+				if not standable(w, solid, px + dx, py + dy):
+					continue
+				var at := Vector2(px + dx + 0.5, py + dy + 0.5)
+				var d := at.distance_to(p)
+				if d < best_d:
+					best_d = d
+					best = at
+	return best

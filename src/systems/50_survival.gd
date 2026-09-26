@@ -280,5 +280,5 @@ func _again(held: bool) -> void:
 		return
 	var prop := _again_prop
 	_again_prop = null
-	if Survival.use_target(game) == prop and Survival.can_work(game, prop):
+	if WorldProp.same(Survival.use_target(game), prop) and Survival.can_work(game, prop):
 		Survival.work(game, prop)

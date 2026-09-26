@@ -318,7 +318,7 @@ static func _room_at(world: WorldData, x: int, y: int, radius: float) -> bool:
 static func feeds(world: WorldData, at: Vector2, def: SentinelDef) -> int:
 	if world == null:
 		return 0
-	return feeds_among(world.props, at, def, world.depleted, def.reach * FEED_SHARE)
+	return feeds_among(world.each_prop(), at, def, world.depleted, def.reach * FEED_SHARE)
 
 
 ## The same over a list of props already gathered (`WorldQuery.props_near`), so a

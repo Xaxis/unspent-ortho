@@ -54,8 +54,8 @@ func test_crafting_needs_a_station_or_hand_work() -> void:
 		ui.call("top").handle(&"back")
 	else:
 		check(not opened or Survival.station_near(g) != &"", "no station, no making page")
-	g.world.props.append(WorldProp.new(99999, PropKind.FIRE, g.player.pos + Vector2(1, 0), 0.0, 1.0))
-	g.query.add_prop(g.world.props.back())
+	g.world.add_prop(WorldProp.new(99999, PropKind.FIRE, g.player.pos + Vector2(1, 0), 0.0, 1.0))
+	g.query.add_prop(g.world.prop_at(g.world.prop_count() - 1))
 	check(ui.call("open_screen", &"crafting"), "opens beside a fire")
 	eq((ui.call("top") as UiCraftingScreen).stations[0], &"fire", "the fire's recipes come first")
 	g.free()
@@ -84,8 +84,8 @@ func test_home_is_no_way_round_the_hostile_rule() -> void:
 	for i in 3:
 		await tree.process_frame
 	# A fire in reach, so making would open if nothing were near.
-	g.world.props.append(WorldProp.new(99998, PropKind.FIRE, g.player.pos + Vector2(1, 0), 0.0, 1.0))
-	g.query.add_prop(g.world.props.back())
+	g.world.add_prop(WorldProp.new(99998, PropKind.FIRE, g.player.pos + Vector2(1, 0), 0.0, 1.0))
+	g.query.add_prop(g.world.prop_at(g.world.prop_count() - 1))
 	var mob := _mob(g.player.pos + Vector2(1, 1), &"runner")
 	await _tap(&"pause")
 	var home: UiScreen = ui.call("top")
@@ -127,8 +127,8 @@ func test_app_keys_open_their_apps_over_home() -> void:
 		var back: UiScreen = ui.call("top")
 		check(back != null and back.screen_name == &"pause", "and home is under it")
 	# Making still needs somewhere to make things: beside a fire it opens over home.
-	g.world.props.append(WorldProp.new(99997, PropKind.FIRE, g.player.pos + Vector2(1, 0), 0.0, 1.0))
-	g.query.add_prop(g.world.props.back())
+	g.world.add_prop(WorldProp.new(99997, PropKind.FIRE, g.player.pos + Vector2(1, 0), 0.0, 1.0))
+	g.query.add_prop(g.world.prop_at(g.world.prop_count() - 1))
 	check(await _tap_until(&"craft", _opened(&"crafting")), "c on home opens making beside a fire")
 	check(await _tap_until(&"pause", func() -> bool: return not _live.has(&"crafting")), "esc leaves making")
 	check(await _tap_until(&"pause", _opened(&"")), "and esc again leaves home")

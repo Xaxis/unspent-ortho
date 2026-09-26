@@ -106,8 +106,8 @@ static func _field(props: Array[Vector2], kind: int = PropKind.BROADLEAF) -> Wor
 		w.country[i] = Country.COAST
 	var q := WorldQuery.new(w)
 	for p in props:
-		var prop := WorldProp.new(w.props.size(), kind, p, 0.0, 1.0)
-		w.props.append(prop)
+		var prop := WorldProp.new(w.next_id(), kind, p, 0.0, 1.0)
+		w.add_prop(prop)
 		q.add_prop(prop)
 	return q
 
@@ -123,7 +123,7 @@ func test_a_body_pushed_diagonally_into_a_trunk_slides_round_it() -> void:
 		p = q.move_body(p, dir * 5.4 / 60.0, Tuning.PLAYER_RADIUS)
 	gt(p.distance_to(start), 4.0, "two seconds of running got past the trunk")
 	gt((p - start).dot(dir), 3.0, "and on the way it was going")
-	var trunk: WorldProp = q.world.props[0]
+	var trunk: WorldProp = q.world.prop_at(0)
 	gt(p.distance_to(trunk.pos), trunk.solid + Tuning.PLAYER_RADIUS - 0.01, "never inside it")
 
 
@@ -133,7 +133,7 @@ func test_head_on_into_a_boulder_still_stops() -> void:
 	for i in 120:
 		p = q.move_body(p, Vector2(3.4 / 60.0, 0), Tuning.PLAYER_RADIUS)
 	lt(absf(p.y - 24.0), 0.05, "square on, a body is not thrown sideways")
-	var rock: WorldProp = q.world.props[0]
+	var rock: WorldProp = q.world.prop_at(0)
 	gt(p.distance_to(rock.pos), rock.solid + Tuning.PLAYER_RADIUS - 0.01, "and stays outside it")
 
 

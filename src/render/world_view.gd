@@ -109,6 +109,8 @@ const FAR_WORKERS := 4
 var _far_tasks: Array[int] = []
 var _far_keys: Array[Vector2i] = []
 var _far_out: Array = []
+## A stand worker's props, made on the main thread when it is handed its block.
+var _far_in: Array = []
 var _far_at: Array[int] = []
 ## What each far slot is building: a block's LAND, or its STANDS (world_far's
 ## silhouettes), which are only built once the horizon has been seen.
@@ -134,9 +136,9 @@ var _near_tex: ImageTexture
 var _mask_dirty := true
 ## What stands in each far block, snapshotted on the main thread at bind so a far
 ## worker never reads the live prop list (`world_far._stand_props`).
-var _far_props: Dictionary = {} # Vector2i -> Array[WorldProp]
+var _far_props: Dictionary = {} # Vector2i -> PackedInt32Array, table rows
 var _data: Dictionary = {} # Vector2i -> TerrainMesher.Chunk
-var _props_by_chunk: Dictionary = {} # Vector2i -> Array[WorldProp]
+var _props_by_chunk: Dictionary = {} # Vector2i -> PackedInt32Array, table rows
 var _cables_by_chunk: Dictionary = {} # Vector2i -> Array[Vector2i] of prop id pairs
 var _world_mat: ShaderMaterial
 ## Whether `works` is on `_world_mat` yet (`_bind_works`).
@@ -280,26 +282,6 @@ func _bind(w: WorldData) -> void:
 	_works_bound = false
 	decor.works = works
 	_bg_decor.works = works
-	for p in w.props:
-		var key := _key_of(p.pos)
-		if not _props_by_chunk.has(key):
-			_props_by_chunk[key] = []
-		_props_by_chunk[key].append(p)
-	# The machines' grid (WorldData.lines, when world generation strings one):
-	# each span is drawn with the chunk of the mast it leaves from.
-	var lines: Variant = w.get("lines")
-	if lines is Array:
-		for line: Variant in lines:
-			if not (line is Dictionary and (line as Dictionary).has("props")):
-				continue
-			var ids: PackedInt32Array = PackedInt32Array((line as Dictionary)["props"])
-			for j in ids.size() - 1:
-				if ids[j] < 0 or ids[j + 1] < 0 or ids[j] >= w.props.size() or ids[j + 1] >= w.props.size():
-					continue
-				var key := _key_of(w.props[ids[j]].pos)
-				if not _cables_by_chunk.has(key):
-					_cables_by_chunk[key] = []
-				_cables_by_chunk[key].append(Vector2i(ids[j], ids[j + 1]))
 	if w.realm == Realm.INTERIOR:
 		_add_void()
 	else:
@@ -308,13 +290,11 @@ func _bind(w: WorldData) -> void:
 	# never touches it (the chunk workers learnt the same lesson above).
 	_far_tables = Far.tables()
 	_far_props.clear()
-	for p in w.props:
-		if w.depleted.has(p.id):
-			continue
-		var bk := Vector2i(floori(p.pos.x) / Far.BLOCK, floori(p.pos.y) / Far.BLOCK)
-		if not _far_props.has(bk):
-			_far_props[bk] = []
-		_far_props[bk].append(p)
+	# The world's props, a section at a time: the unit a streamed world loads.
+	var across := WorldSections.across(w.size)
+	for sy in across:
+		for sx in across:
+			bind_section(Vector2i(sx, sy))
 	_far_tasks.clear()
 	_far_keys.clear()
 	_far_out.clear()
@@ -325,6 +305,7 @@ func _bind(w: WorldData) -> void:
 		_far_tasks.append(-1)
 		_far_keys.append(Vector2i.ZERO)
 		_far_out.append([])
+		_far_in.append([])
 		_far_at.append(0)
 		_far_kind.append(LAND)
 	far = Far.new()
@@ -440,6 +421,41 @@ func surface_height(p: Vector2) -> float:
 	if ch != null:
 		return ch.surface(p.x, p.y)
 	return mesher.surface_height(p.x, p.y)
+
+
+## One section's props into the chunks and far blocks that draw them, and the
+## grid spans that leave a mast in it. A section holds whole chunks and whole far
+## blocks, so each is filled by one section alone.
+func bind_section(s: Vector2i) -> void:
+	var w := world
+	var t := w.table
+	# Rows, not props: a view holds its world's props by row and makes a prop
+	# only while a chunk or a far block is built from it.
+	for row in WorldSections.rows_in(w, s):
+		var at := t.pos[row]
+		_add_row(_props_by_chunk, _key_of(at), row)
+		if w.depleted.has(t.id[row]):
+			continue
+		_add_row(_far_props, Vector2i(floori(at.x) / Far.BLOCK, floori(at.y) / Far.BLOCK), row)
+	for span: Vector2i in WorldSections.spans_in(w, s):
+		var key := _key_of(w.prop(span.x).pos)
+		if not _cables_by_chunk.has(key):
+			_cables_by_chunk[key] = []
+		_cables_by_chunk[key].append(span)
+
+
+static func _add_row(lists: Dictionary, key: Vector2i, row: int) -> void:
+	var rows: PackedInt32Array = lists.get(key, PackedInt32Array())
+	rows.append(row)
+	lists[key] = rows
+
+
+## The props a far block's stands are built from, made on the main thread.
+func _stand_props(key: Vector2i) -> Array:
+	var out: Array = []
+	for row: int in _far_props.get(key, PackedInt32Array()):
+		out.append(world.prop_at(row))
+	return out
 
 
 static func _key_of(p: Vector2) -> Vector2i:
@@ -914,6 +930,7 @@ func _far_step(near_busy: bool) -> void:
 		busy[key] = true
 		_far_keys[i] = key
 		_far_kind[i] = kind
+		_far_in[i] = _stand_props(key) if kind == STANDS else []
 		_far_at[i] = 0
 		_far_tasks[i] = WorkerThreadPool.add_task(_far_worker.bind(i, key), false, "far")
 
@@ -947,7 +964,7 @@ func ensure_far() -> void:
 		var key := far.next_stand(world.size, focus, {})
 		if key.x < 0:
 			break
-		far.add_stands(key, Far.stand_arrays(world, _far_props.get(key, [])), _stand_mats())
+		far.add_stands(key, Far.stand_arrays(world, _stand_props(key)), _stand_mats())
 	while far.pump():
 		pass
 
@@ -960,7 +977,7 @@ func _stand_mats() -> Array:
 func _far_worker(slot: int, key: Vector2i) -> void:
 	var began := Time.get_ticks_usec()
 	if _far_kind[slot] == STANDS:
-		_far_out[slot] = Far.stand_arrays(world, _far_props.get(key, []))
+		_far_out[slot] = Far.stand_arrays(world, _far_in[slot])
 	else:
 		_far_out[slot] = Far.build_arrays(world, key.x, key.y, _far_tables)
 	_far_at[slot] = Time.get_ticks_usec() - began
@@ -1162,10 +1179,9 @@ func stage_usec() -> PackedInt64Array:
 ## or was put in the world at runtime, like a built fire).
 func refresh_props(prop: WorldProp) -> void:
 	var key := _key_of(prop.pos)
-	if not _props_by_chunk.has(key):
-		_props_by_chunk[key] = []
-	if not _props_by_chunk[key].has(prop):
-		_props_by_chunk[key].append(prop)
+	var row := world.row_of_id(prop.id)
+	if row >= 0 and not (_props_by_chunk.get(key, PackedInt32Array()) as PackedInt32Array).has(row):
+		_add_row(_props_by_chunk, key, row)
 	if _task >= 0 and key == _task_key:
 		_task_dirty = true
 	# A parked chunk cannot be patched where it stands, and a stale one is worse
@@ -1214,13 +1230,14 @@ func prop_country(p: WorldProp, ch: TerrainMesher.Chunk) -> int:
 ## chunk. Copy the fields here if a bake ever reads anything a take can resize.
 func _snapshot(key: Vector2i) -> Array:
 	var props: Array = []
-	for p: WorldProp in _props_by_chunk.get(key, []):
-		if not world.depleted.has(p.id):
-			props.append(p)
+	var t := world.table
+	for row: int in _props_by_chunk.get(key, PackedInt32Array()):
+		if not world.depleted.has(t.id[row]):
+			props.append(world.prop_at(row))
 	var spans: Array = []
 	for pair: Vector2i in _cables_by_chunk.get(key, []):
-		var a := world.props[pair.x]
-		var b := world.props[pair.y]
+		var a := world.prop(pair.x)
+		var b := world.prop(pair.y)
 		if not world.depleted.has(a.id) and not world.depleted.has(b.id):
 			spans.append([a, b])
 	return [props, spans]

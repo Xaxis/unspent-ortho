@@ -1,0 +1,212 @@
+# Every place outside world generation that reads the WHOLE world, as
+# `tests/stream/whole_world_scan.gd` finds them: path::function::kind.
+# A streamed world keeps only some sections resident, so each line here is a
+# reader that has to change before that can be true. The list may only SHRINK:
+# a new whole-world reader fails `test_whole_world_readers`, and so does a line
+# here that no longer matches anything (delete it: that is the progress).
+# Kinds are defined in whole_world_scan.gd's header.
+src/audio/sound_mix.gd::_weigh_tile::raw
+src/audio/sound_mix.gd::dominant_country::raw
+src/audio/sound_mix.gd::is_sea::raw
+src/audio/sound_mix.gd::land_share::raw
+src/audio/sound_mix.gd::land_soon::raw
+src/audio/sound_mix.gd::remoteness::list
+src/audio/sound_mix.gd::river_near::raw
+src/audio/sound_scene.gd::border_walk::raw
+src/audio/sound_scene.gd::levels_over_time::builder SoundMix.remoteness
+src/audio/sound_scene.gd::levels_over_time::builder WorldQuery.new
+src/audio/sound_scene.gd::render::builder WorldGen.generate
+src/boot/boot_world.gd::sketch::list
+src/boot/boot_world.gd::start_of::builder GenPlaces.find
+src/boot/boot_world.gd::world::builder WorldGen.generate
+src/content/biomes/scrapwood.gd::_works::index
+src/core/black_site.gd::_moated::raw
+src/core/black_site.gd::_sea::raw
+src/core/black_site.gd::_sea::tiles
+src/core/chapter/chapter.gd::_def_of::list
+src/core/chapter/chapter.gd::_ids_by_region::builder Landmarks.sites
+src/core/chapter/chapter.gd::ore_taken::list
+src/core/chapter/chapters.gd::for_regions::builder Chapter.read
+src/core/chapter/chapters.gd::of::builder Chapter.read
+src/core/chapter/road_hold.gd::sites::list
+src/core/colossus/colossus_treads.gd::wanted::tiles
+src/core/interior/interior_gen.gd::grow::raw
+src/core/interior/interiors.gd::thresholds::builder Landmarks.sites
+src/core/interior/interiors.gd::thresholds::builder Works.sites
+src/core/interior/interiors.gd::thresholds::list
+src/core/landmarks/landmarks.gd::_solid_tiles::list
+src/core/landmarks/landmarks.gd::sites::list
+src/core/mobs/coast.gd::_first_due::builder Spawner.green_distance
+src/core/mobs/coast.gd::_first_meeting::builder Spawner.green_distance
+src/core/mobs/nav_field.gd::update::raw
+src/core/mobs/spawner.gd::green_distance::list
+src/core/realm/portals.gd::_lay::builder GenPlaces.solid_mask
+src/core/realm/portals.gd::_lay::list
+src/core/realm/portals.gd::_score::list
+src/core/realm/portals.gd::_stands::raw
+src/core/realm/portals.gd::_whole::tiles
+src/core/realm/portals.gd::standing::builder GenPlaces.solid_mask
+src/core/save/save_core.gd::load_world::list
+src/core/save/save_core.gd::save_world::list
+src/core/sentinel/sentinels.gd::feeds::list
+src/core/sentinel/sentinels.gd::feeds::whole
+src/core/sentinel/sentinels.gd::lair::list
+src/core/sentinel/sentinels.gd::states::list
+src/core/story/story_casting.gd::_candidates::builder Landmarks.sites
+src/core/story/story_casting.gd::_candidates::builder Portals.in_world
+src/core/story/story_casting.gd::_candidates::builder Works.sites
+src/core/story/story_casting.gd::_candidates::list
+src/core/story/story_casting.gd::_twin::builder WorldGen.generate
+src/core/story/story_casting.gd::cast::builder StoryJourney.bodies
+src/core/story/story_gates.gd::all::builder StoryPlan.cast
+src/core/story/story_journey.gd::bodies::list
+src/core/story/story_rooms.gd::_deal::builder Interiors.thresholds
+src/core/story/story_rooms.gd::_deal::builder StoryPlan.cast
+src/core/survival/haven.gd::at::list
+src/core/survival/survival.gd::in_village::list
+src/core/survival/survival.gd::sweep::list
+src/core/works/works.gd::_near_village::list
+src/core/works/works.gd::_room_at::raw
+src/core/works/works.gd::sites::list
+src/core/world_data.gd::_init::tiles
+src/core/world_query.gd::_init::list
+src/core/world_query.gd::passable::raw
+src/core/world_query.gd::standable::raw
+src/core/world_sections.gd::_index::list
+src/core/worldgen/gen_places.gd::_out_of_the_yard::builder Works.sites
+src/core/worldgen/gen_places.gd::_placed_after::builder Landmarks.sites
+src/core/worldgen/gen_places.gd::_placed_after::builder Works.sites
+src/core/worldgen/gen_places.gd::cliff_sample::raw
+src/core/worldgen/gen_places.gd::cliff_sample::tiles
+src/core/worldgen/gen_places.gd::country_sample::raw
+src/core/worldgen/gen_places.gd::country_sample::tiles
+src/core/worldgen/gen_places.gd::ecotone_sample::raw
+src/core/worldgen/gen_places.gd::ecotone_sample::tiles
+src/core/worldgen/gen_places.gd::find::list
+src/core/worldgen/gen_places.gd::find::raw
+src/core/worldgen/gen_places.gd::lit_village_square::list
+src/core/worldgen/gen_places.gd::open_sample::builder Landmarks.sites
+src/core/worldgen/gen_places.gd::open_sample::builder Works.sites
+src/core/worldgen/gen_places.gd::open_sample::list
+src/core/worldgen/gen_places.gd::open_sample::raw
+src/core/worldgen/gen_places.gd::open_sample::tiles
+src/core/worldgen/gen_places.gd::river_sample::list
+src/core/worldgen/gen_places.gd::solid_mask::list
+src/core/worldgen/gen_places.gd::solid_mask::tiles
+src/core/worldgen/gen_places.gd::standable::raw
+src/core/worldgen/gen_places.gd::typical_sample::builder Landmarks.sites
+src/core/worldgen/gen_places.gd::typical_sample::builder Works.sites
+src/core/worldgen/gen_places.gd::typical_sample::list
+src/core/worldgen/gen_places.gd::typical_sample::raw
+src/core/worldgen/gen_places.gd::typical_sample::tiles
+src/dev/dev_cheats.gd::_lands::list
+src/dev/dev_cheats.gd::_marks::builder Works.sites
+src/dev/dev_cheats.gd::_marks::list
+src/dev/dev_cheats.gd::_plan::builder Portals.in_world
+src/dev/dev_cheats.gd::_plan::builder Sentinels.states
+src/dev/dev_cheats.gd::_plan::builder Works.sites
+src/dev/dev_cheats.gd::_survey::builder GenPlaces.solid_mask
+src/dev/dev_cheats.gd::_survey::raw
+src/dev/dev_cheats.gd::_survey::tiles
+src/dev/dev_cheats.gd::find_place::builder GenPlaces.find
+src/dev/dev_cheats.gd::places::list
+src/dev/dev_cheats.gd::settle::builder GenPlaces.find
+src/dev/pages/dev_page_story_cast.gd::rows::builder StoryPlan.cast
+src/dev/pages/dev_page_story_plan.gd::rows::builder StoryGates.all
+src/dev/pages/dev_page_story_plan.gd::rows::builder StoryJourney.bodies
+src/dev/pages/dev_page_story_plan.gd::rows::builder StoryPlan.cast
+src/game.gd::setup::builder WorldQuery.new
+src/render/terrain_mesher.gd::_tally_grounds::raw
+src/render/terrain_mesher.gd::_tally_grounds::tiles
+src/render/weather/sky_ground.gd::image::raw
+src/render/weather/sky_wear.gd::image::raw
+src/render/works_map.gd::_line::list
+src/render/works_map.gd::_line::raw
+src/render/works_map.gd::bake::list
+src/render/works_map.gd::bake::tiles
+src/render/works_map.gd::keep::list
+src/render/works_map.gd::keep::raw
+src/render/works_map.gd::wet_at::raw
+src/render/world_far.gd::build_arrays::raw
+src/render/world_far.gd::done::tiles
+src/render/world_far.gd::next_block::tiles
+src/render/world_far.gd::stand_arrays::raw
+src/render/world_far.gd::stands_done::tiles
+src/render/world_view.gd::_bind::tiles
+src/render/world_view.gd::ensure_far::tiles
+src/render/world_view.gd::far_wanted::tiles
+src/systems/10_sky.gd::_update_ground_marks::whole
+src/systems/10_sky.gd::realm_changed::builder SkyWear.texture
+src/systems/10_sky.gd::setup::builder SkyGround.texture
+src/systems/10_sky.gd::setup::builder SkyWear.texture
+src/systems/15_lights.gd::_index_sources::list
+src/systems/18_trample.gd::tour_place::builder SkyGround.texture
+src/systems/19_colossi.gd::_crush_treads::list
+src/systems/19_colossi.gd::_landed::raw
+src/systems/19_colossi.gd::_the_treads_own::list
+src/systems/19_colossi.gd::_tread_minute::list
+src/systems/19_colossi.gd::realm_changed::builder Treads.hand_over
+src/systems/19_colossi.gd::realm_changed::whole
+src/systems/19_colossi.gd::setup::builder Treads.hand_over
+src/systems/19_colossi.gd::setup::whole
+src/systems/19_colossi.gd::tour_place::list
+src/systems/19_colossi.gd::tour_place::raw
+src/systems/20_realms.gd::_as_landmark::list
+src/systems/20_realms.gd::_draw_gates::builder StoryGates.all
+src/systems/20_realms.gd::_read_portals::builder Portals.in_world
+src/systems/20_realms.gd::_save::whole
+src/systems/20_realms.gd::enter::builder SkyGround.texture
+src/systems/20_realms.gd::enter::builder WorldQuery.new
+src/systems/20_realms.gd::setup::builder RealmWorlds.keep
+src/systems/21_doors.gd::realm_changed::builder Interiors.thresholds
+src/systems/21_doors.gd::setup::builder Interiors.thresholds
+src/systems/22_landmarks.gd::_as_landmark::list
+src/systems/22_landmarks.gd::_read_sites::builder Landmarks.sites
+src/systems/24_holds.gd::_read_sites::builder Hold.sites
+src/systems/24_holds.gd::_refresh_chapters::builder Chapters.for_regions
+src/systems/32_disposition.gd::_network_name::list
+src/systems/32_disposition.gd::_reads::builder Chapters.of
+src/systems/34_works.gd::_as_landmark::list
+src/systems/34_works.gd::_read_sites::builder Works.sites
+src/systems/35_folk.gd::_stream::list
+src/systems/37_fauna.gd::_find_sites::list
+src/systems/37_fauna.gd::_stream::list
+src/systems/41_shoulder.gd::_ground_top::raw
+src/systems/44_sentinels.gd::look_at::whole
+src/systems/44_sentinels.gd::setup::builder Sentinels.states
+src/systems/45_taken.gd::_start_walk::whole
+src/systems/45_taken.gd::_yard_of::builder Works.sites
+src/systems/45_taken.gd::started::builder Works.sites
+src/systems/45_taken.gd::started::list
+src/systems/46_settlements.gd::_village_within::list
+src/systems/49_cast.gd::_cast::builder StoryPlan.cast
+src/systems/49_story.gd::_mark_name::list
+src/systems/49_story.gd::_village_of::list
+src/systems/49_story.gd::_wall_the_site::builder BlackSite.blocks
+src/systems/49_story.gd::subarc_look::builder Landmarks.sites
+src/systems/49_story.gd::subarc_look::builder Works.sites
+src/systems/49_story.gd::tour_place::builder StoryGates.all
+src/systems/49_story.gd::tour_place::builder Works.sites
+src/systems/52_survival_fx.gd::_refresh_remnants::list
+src/systems/70_audio.gd::_scan::builder SoundMix.remoteness
+src/systems/90_ui.gd::_load::tiles
+src/systems/90_ui.gd::setup::builder UiMapData.new
+src/systems/98_tour.gd::_instead::raw
+src/systems/98_tour.gd::_on_border::raw
+src/systems/98_tour.gd::_run::builder GenPlaces.find
+src/ui/ui_explored.gd::_init::tiles
+src/ui/ui_explored.gd::reveal_all::tiles
+src/ui/ui_map_data.gd::_build_images::raw
+src/ui/ui_map_data.gd::country_bytes::raw
+src/ui/ui_map_data.gd::country_bytes::tiles
+src/ui/ui_map_data.gd::ink_table::raw
+src/ui/ui_map_data.gd::mark_bytes::list
+src/ui/ui_map_data.gd::shore_distance::raw
+src/ui/ui_map_data.gd::thinned::raw
+src/ui/ui_map_screen.gd::_draw_overlay::list
+src/ui/ui_map_screen.gd::_on_open::builder UiMapData.new
+src/ui/ui_map_screen.gd::discoveries::list
+src/ui/ui_reads_screen.gd::along_bearing::list
+src/ui/ui_reads_screen.gd::ground::list
+src/ui/ui_title.gd::_village_clearance::list
+src/ui/ui_title.gd::setup::builder WorldGen.generate
