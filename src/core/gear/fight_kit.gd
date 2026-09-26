@@ -35,6 +35,10 @@ extends RefCounted
 ##                            throw it, a grip does not take it; rooted, and
 ##                            for ANCHOR_LIFT_MS after the first step, it
 ##                            cannot dodge
+##   lock     (mod_lock)      "a way passed is shut": a gap between two solid
+##                            things no wider than LOCK_GAP that the player walks
+##                            through is shut behind them to machines for
+##                            LOCK_SECONDS (FightSim.lock_walls), for LOCK_CHARGES
 ##   undertow (mod_undertow)  "your line hauls them in": the grapple takes hold
 ##                            of a machine ahead and drags it one body-length
 ##                            in (FightSim.undertow), its tell broken and its
@@ -82,6 +86,13 @@ const RAKE_NOISE := 1.5
 ## how long a root holds once they step (no dodge while it does: its cost).
 const ANCHOR_MS := 600.0
 const ANCHOR_LIFT_MS := 300.0
+## The lock: the widest gap (edge to edge, tiles) it will shut, how long it holds,
+## and what a lock spends (FightRules.CHARGE).
+const LOCK_GAP := 2.2
+const LOCK_SECONDS := 20.0
+const LOCK_CHARGES := 1
+## Only with a machine coming for the player this near (FightSim._hunted_by_machine).
+const LOCK_HUNTED := 20.0
 ## A haul on a machine costs this many times the grapple's wind.
 const UNDERTOW_WIND := 2.0
 
@@ -97,6 +108,7 @@ var lattice := false
 var icelens := false
 var undertow := false
 var rake := false
+var lock := false
 var anchor := false
 
 
@@ -115,6 +127,7 @@ static func of(ids: Array) -> FightKit:
 	k.icelens = ids.has(&"mod_icelens")
 	k.undertow = ids.has(&"mod_undertow")
 	k.rake = ids.has(&"mod_rake")
+	k.lock = ids.has(&"mod_lock")
 	k.anchor = ids.has(&"mod_anchor")
 	return k
 

@@ -154,6 +154,8 @@ const PIECES := {
 		"unique": "the only line that takes hold of a machine"},
 	&"mod_anchor": {"grade": &"relic", "family": &"", "from": &"anchor_core",
 		"unique": "the only footing a blow cannot move and a grip cannot take"},
+	&"mod_lock": {"grade": &"relic", "family": &"", "from": &"lockkeeper_core",
+		"unique": "the only way to shut a way behind you"},
 	&"mod_rake": {"grade": &"relic", "family": &"", "from": &"rake_core",
 		"unique": "the only blow that opens what it does not hit"},
 }

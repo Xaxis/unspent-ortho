@@ -35,6 +35,8 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   ring 1.5x: `tools/test.sh test_rake` (its gate bout prints), `tools/tour.sh tours/rake.tour` (options in its header).
   The anchor (anchor_core, body): stood still, rooted, no throw and no grip, and no dodge while rooted:
   `tools/test.sh test_anchor` (its bout prints), `tools/tour.sh tours/anchor.tour` (options in its header).
+  The lock (lockkeeper_core, back): a narrow way passed while hunted is shut behind you to machines, a charge a lock:
+  `tools/test.sh test_lock` (its bout prints), `tools/tour.sh tours/lock.tour` (options in its header).
   A keeper's core reads on the slate as the choice it is (the holding's cell, the power worn), side by side:
   `tools/test.sh test_rules:test_a_keepers_core`, `tools/tour.sh tours/core_choice.tour` (options in its header).
 - 56_economy: `src/systems/56_economy.gd`, reached by `tools/tour.sh tours/gear-economy.tour`.

@@ -1,0 +1,17 @@
+# The lock (GEAR.md G4): the lockkeeper's core in a pack frame. A narrow way
+# walked through among the pines by a hunted player is shut behind them to
+# machines: a bar of
+# drowned light across it while it holds.
+#   tools/tour.sh tours/lock.tour --seed=1 --hour=11 --weather=clear:0 --fit=glide_wing,mod_lock --give=wick:4
+coast calm
+place pinewood
+wait 1.0
+# Hunted: a runner out of the trees has the player.
+spawn runner
+await noticed 10
+try 6
+walk 1,0.3 1.5
+await locked 0.5
+end
+wait 0.3
+shot 01-a-way-shut-behind with prop:pine

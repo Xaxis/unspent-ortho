@@ -363,6 +363,10 @@ func _try_pull() -> void:
 
 func _beat() -> void:
 	_hush_read()
+	# A shut way lets go after its seconds (FightKit.lock).
+	for i in range(lock_walls.size() - 1, -1, -1):
+		if lock_walls[i].w <= now / 1000.0:
+			lock_walls.remove_at(i)
 	var in_ring := hush_disc(hero.pos)
 	for m in mobs:
 		if not m.alive or m.removed:
@@ -742,6 +746,8 @@ func _move_hero(dt: float) -> void:
 				hero.facing = hero.move.angle()
 	v += hero.throw_velocity(now)
 	v += _shouldered(dt)
+	if hero.kit.lock and v.length_squared() > 1e-6:
+		_lock_behind(hero.pos, hero.pos + v * dt)
 	# A step, a dodge or a jump lifts the anchor's root (Hero.rooted).
 	if hero.move.length() > 0.1 or since_dodge < FightRules.DODGE_MS or hero.airborne:
 		hero.stepped(now)
@@ -1007,6 +1013,9 @@ var mob_walls: Array[Vector3] = []
 ## read here round the player (`_hush_read`). A list of its own, so nothing that
 ## sets the gates' list can wipe it, and the other way round.
 var hush_walls: Array[Vector3] = []
+## Ways the player shut behind them with the lock (FightKit.lock): (x, y, radius,
+## until), machines only, gone at `until`.
+var lock_walls: Array[Vector4] = []
 var _hush_read_at := -INF
 
 
@@ -1017,6 +1026,10 @@ func _held_by_walls(m: MobState, next: Vector2) -> Vector2:
 	var walls := mob_walls
 	if m.machine and not hush_walls.is_empty():
 		walls = mob_walls + hush_walls
+	if m.machine and not lock_walls.is_empty():
+		walls = walls.duplicate()
+		for l: Vector4 in lock_walls:
+			walls.append(Vector3(l.x, l.y, l.z))
 	if walls.is_empty():
 		return next
 	var r := minf(m.radius, 0.45)
@@ -1166,6 +1179,48 @@ func _rake() -> void:
 		hit.append(m)
 		_wake(m)
 	emit(&"rake", {"from": hero.pos, "facing": hero.facing, "bodies": hit})
+
+
+## The lock (FightKit.lock): a step from `from` to `to` that passes between two
+## solid things no more than LOCK_GAP apart, edge to edge, shuts that gap behind
+## the player to machines for LOCK_SECONDS, for a charge. One lock a gap.
+func _lock_behind(from: Vector2, to: Vector2) -> void:
+	var now_s := now / 1000.0
+	if query == null or not _hunted_by_machine():
+		return
+	var mid := (from + to) * 0.5
+	var near: Array[WorldProp] = []
+	for p: WorldProp in query.props_near(mid, FightKit.LOCK_GAP + 2.0):
+		if p.solid > 0.2:
+			near.append(p)
+	for i in near.size():
+		for j in range(i + 1, near.size()):
+			var a := near[i]
+			var b := near[j]
+			var gap := a.pos.distance_to(b.pos) - a.solid - b.solid
+			if gap <= 0.0 or gap > FightKit.LOCK_GAP:
+				continue
+			if not Geometry2D.segment_intersects_segment(from, to, a.pos, b.pos):
+				continue
+			var at := (a.pos + b.pos) * 0.5
+			for l: Vector4 in lock_walls:
+				if at.distance_to(Vector2(l.x, l.y)) < 0.5:
+					return
+			if not FightRules.spend_charges(hero.inventory, FightKit.LOCK_CHARGES):
+				return
+			lock_walls.append(Vector4(at.x, at.y, gap * 0.5 + 0.3, now_s + FightKit.LOCK_SECONDS))
+			emit(&"locked", {"at": at, "a": a.pos, "b": b.pos})
+			return
+
+
+## Whether a machine is coming for the player within LOCK_HUNTED tiles: the lock
+## shuts a way only on a player being hunted, or a walk through a wood would
+## spend every charge on the trees.
+func _hunted_by_machine() -> bool:
+	for m in mobs:
+		if m.alive and not m.removed and m.machine and m.roused() and m.pos.distance_to(hero.pos) <= FightKit.LOCK_HUNTED:
+			return true
+	return false
 
 
 ## The undertow's haul (FightKit.undertow): a machine the line has taken hold of

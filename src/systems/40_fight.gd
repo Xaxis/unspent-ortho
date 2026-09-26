@@ -369,6 +369,15 @@ func _handle(events: Array[Dictionary]) -> void:
 				_on_struck(e)
 			&"rake":
 				_rake_marks(e)
+			&"locked":
+				# The lock (FightKit.lock): a bar of drowned light across the way
+				# passed, standing as long as the way is shut to them.
+				_locked_at = Time.get_ticks_msec() / 1000.0
+				var a: Vector2 = e.a
+				var b: Vector2 = e.b
+				MobFx.line(fx, _at3(a, 0.6), _at3(b, 0.6), Palette.BRINE[4], FightKit.LOCK_SECONDS)
+				MobFx.line(fx, _at3(a, 1.1), _at3(b, 1.1), Palette.BRINE[3], FightKit.LOCK_SECONDS)
+				Events.sfx.emit(&"hit_plate", _at3(e.at))
 			&"grip_failed":
 				# The anchor held (FightKit.anchor): the grip rang off a body that
 				# would not be taken, and the ground round the feet says why.
@@ -506,6 +515,7 @@ func _crackle(from: Vector2, m: MobState, h: float) -> void:
 ## player, for the tour's `raked` and `grip_failed`.
 var _raked_at := -INF
 var _grip_failed_at := -INF
+var _locked_at := -INF
 
 
 ## `raked`: a rake's tines are on the ground now (they stand 0.35 s);
@@ -517,6 +527,8 @@ func tour_seen(what: StringName) -> bool:
 			return now - _raked_at < 0.35
 		&"grip_failed":
 			return now - _grip_failed_at < 0.4
+		&"locked":
+			return now - _locked_at < FightKit.LOCK_SECONDS
 	return false
 
 

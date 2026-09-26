@@ -98,6 +98,12 @@ const MODS := {
 		"short": "stood still, rooted",
 		"costs": "rooted, you cannot dodge",
 		"gives": [&"steady"]},
+	# The drowned lockkeeper's, turned (GEAR.md §5): `charge`, so a capacitor or
+	# a leech keeps it fed (PAIRS).
+	&"mod_lock": {"decision": "a narrow way you pass through is shut behind you to machines for a while",
+		"short": "a way passed is shut",
+		"costs": "a charge a lock",
+		"gives": [&"charge"]},
 	# The pan rake's, turned (GEAR.md §5): `loud`, so a damper fights it (PAIRS).
 	&"mod_rake": {"decision": "a heavy blow rakes the ground ahead and holds everything in the arc open, and rings for it",
 		"short": "a heavy rakes the arc",

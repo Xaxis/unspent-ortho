@@ -436,6 +436,10 @@ const DEFS := {
 	# would not be moved, turned. `steady` is its tag (ModifierTable).
 	&"mod_anchor": {"name": "anchor", "bulk": 3.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"stone", &"earth"], "fits": [&"body"], "resist": {&"collapse": 0.3}},
+	# The drowned lockkeeper's core, in a pack frame (GEAR.md §5): the keeper
+	# that shut the city's water in, turned. `charge` is its tag (ModifierTable).
+	&"mod_lock": {"name": "lock", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"brine", &"ink"], "fits": [&"back"], "resist": {&"wet": 0.2}},
 	&"mod_undertow": {"name": "undertow", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"brine", &"earth"], "fits": [&"hands"], "resist": {&"magnetism": 0.3}},
 	# The crags' hush slate, lined into a hat, a coat or a pack: what it decides
