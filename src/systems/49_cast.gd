@@ -21,8 +21,10 @@ const WATCH := 6.0
 ## never a frame.
 const RECHECK := 0.5
 
-## One row per placed character: {character, pos, facing, state, trade, model}.
-## The shape 49_story already reads for a villager, plus `character`.
+## One row per placed character: {character, pos, facing, state, trade, model,
+## made}. The shape 49_story already reads for a villager, plus `character`;
+## `model` is the figure while it stands in the world (null while they are away),
+## `made` the figure itself, built once when they are cast.
 var people: Array[Dictionary] = []
 
 var _since := 0.0
@@ -76,10 +78,11 @@ func _process(delta: float) -> void:
 	for row: Dictionary in people:
 		var c := StoryCast.get_def(row.character)
 		var here: bool = (row.pos as Vector2).distance_to(from) <= STREAM and (c == null or c.present())
-		if here and row.model == null:
-			_dress(row, c)
+		if here and row.model == null and row.made != null:
+			add_child(row.made)
+			row.model = row.made
 		elif not here and row.model != null:
-			(row.model as Node).queue_free()
+			remove_child(row.model)
 			row.model = null
 		_watch(row, from)
 
@@ -96,16 +99,22 @@ func _cast() -> void:
 			continue
 		var at: Vector2 = placed[c.at].pos
 		var pos := _stand_near(at, c.id)
-		people.append({
+		var row := {
 			"character": c.id, "pos": pos, "facing": (at - pos).angle(),
-			"state": &"out", "trade": c.trade, "model": null,
-		})
+			"state": &"out", "trade": c.trade, "model": null, "made": null,
+		}
+		# THE FIGURE IS MADE HERE, WITH THE WORLD, and not the moment he walks up:
+		# a person's rig is 19 ms to build, and building it on the frame they came
+		# into reach was the worst frame of a shoulder walk (49_cast 24.6 ms,
+		# 2026-09-26). Walking up now only puts the made figure in the tree.
+		_dress(row, c)
+		people.append(row)
 
 
 func _clear() -> void:
 	for row: Dictionary in people:
-		if row.model != null and is_instance_valid(row.model):
-			(row.model as Node).queue_free()
+		if row.made != null and is_instance_valid(row.made):
+			(row.made as Node).queue_free()
 	people.clear()
 
 
@@ -153,8 +162,7 @@ func _dress(row: Dictionary, c: StoryCharacter) -> void:
 	model.pose_hz = PersonModel.CROWD_HZ
 	model.sun = game.sky.sun if game.sky != null else null
 	model.name = "cast_%s" % c.id
-	add_child(model)
-	row.model = model
+	row.made = model
 
 
 func _watch(row: Dictionary, from: Vector2) -> void:
