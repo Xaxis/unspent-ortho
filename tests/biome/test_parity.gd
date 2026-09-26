@@ -465,16 +465,21 @@ extends TestCase
 ## tile arrays equal on all five seeds; only `props` moves, what the scatter no
 ## longer lays in a shaft's mouth. Seed 4 at 192 shot in 2029 and now at shaft 0:
 ## one tile, the same scree and scrub round it, nothing solid within 4.7 tiles.
+## RE-ACCEPTED AT GEN 32 (2026-09-26): a place's furniture is drawn from a stream
+## keyed on the place (`GenScatter._landmarks`). Five tile arrays equal on all
+## five seeds; only `props` moves. Seed 1's tip shot before and after: the same
+## tip on the same patch, its heaps laid afresh; with one landscape's tips taken
+## away, 28 of 28 far places keep their furniture (1 of 28 before).
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 1ad8f3f5 100053b8 4fd7a826 75921af5",
-	3: "bd96c6d3 1d22db86 1008c39c a4316902 7e58a668 400ca2f9",
-	7: "ba7a972f 55af42cc 0f10d2e3 0f02d42c f555c41d 8c0fbb8c",
-	42: "e0ad0bb3 b7ca1370 0c07876f 2f4b7f69 1565ed7e a6dcd62a",
-	90210: "2659ea1f 66925798 c128779c 34b30d32 275c7664 d3944305",
+	1: "054710a9 3eac3638 1ad8f3f5 100053b8 4fd7a826 3c010e0d",
+	3: "bd96c6d3 1d22db86 1008c39c a4316902 7e58a668 13a8730e",
+	7: "ba7a972f 55af42cc 0f10d2e3 0f02d42c f555c41d e3913545",
+	42: "e0ad0bb3 b7ca1370 0c07876f 2f4b7f69 1565ed7e 5e53cfc5",
+	90210: "2659ea1f 66925798 c128779c 34b30d32 275c7664 75c0436c",
 }
 
 

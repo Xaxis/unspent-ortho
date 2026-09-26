@@ -1110,11 +1110,16 @@ static func _house_pack(rng: RandomNumberGenerator, lit_village: bool, forms: Bi
 	return rest
 
 
+## WHAT A PLACE IS FURNISHED WITH IS DRAWN FROM THE PLACE. One stream laid every
+## tip's heaps, every circle's stones and every wreck's plates in turn, so a
+## place's furniture hung on how many places came before it in the list; keyed
+## on its own kind and tile, a section can furnish a place from the plan's row
+## alone (streamed worldgen S3).
 static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:
 	var w := c.w
-	var rng := Rng.make(c.s, 83)
 	for m in w.landmarks:
 		var p: Vector2 = m.pos
+		var rng := Rng.make(c.s, Rng.hash_ints(83, String(m.kind).hash(), floori(p.x), floori(p.y)))
 		# Every place a landscape claims carries `site`, and the four with placers
 		# of their own are furnished by their own branches below, not from the row.
 		if bool(m.get("site", false)) and not SITES_LAID_ELSEWHERE.has(m.kind):

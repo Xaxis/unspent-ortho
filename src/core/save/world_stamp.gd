@@ -170,7 +170,12 @@ const UNKNOWN := "unknown"
 ##     round each are kept clear of everything laid after, treads included, so
 ##     2029 opens them on the tiles the present does. What the scatter lays round
 ##     a shaft moves; no tile does.
-const GEN := 31
+## 32. What a place is furnished with (`GenScatter._landmarks`: a tip's heaps, a
+##     circle's stones, a wreck's plates, a ruin's walls, a vent field) is drawn
+##     from a stream keyed on the place's kind and tile, where one stream
+##     furnished every place in list order. Every place is furnished anew; no
+##     tile moves.
+const GEN := 32
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

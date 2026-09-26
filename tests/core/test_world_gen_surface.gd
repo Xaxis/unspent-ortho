@@ -3,6 +3,7 @@ extends TestCase
 ## What counts as a wash rather than a salad, and how much of the sample has to
 ## be one. The VALUE is the measured thing (see the table in the test); the SHARE
 ## is what stops a bar failing for whatever moved the island last.
+const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 const EDGE_BAR := 0.28
 const EDGE_CLEAR := 0.66
 ## Grounds read as washes: big patches with long edges, no specks, no stair
@@ -613,8 +614,23 @@ func test_wrecks_on_sand_and_kilns_by_villages() -> void:
 	var rows := 0
 	for s in Worlds.WORLD_SEEDS:
 		var w := Worlds.world(s)
+		# A COLOSSUS CRATER IS ITS OWN GROUND. Treads are cut last, into a world
+		# already laid, and re-cut the ground of every pad's bowl and rim under
+		# whatever stands there: seed 42's tip wreck at (1010.5, 750.5) was laid
+		# on gravel and stands on a rim's fresh rock (GEN 32). What this asks is
+		# where the scatter lays things, so a crater's ground is left out.
+		var pads: Array[Vector3] = []
+		for m: Dictionary in w.landmarks:
+			if m.get("kind") == &"tread":
+				for pad: Vector3 in m.get("pads", []):
+					pads.append(pad)
 		for p in w.each_prop():
 			var g := w.ground_at(floori(p.pos.x), floori(p.pos.y))
+			var in_crater := false
+			for pad in pads:
+				in_crater = in_crater or Vector2(pad.x, pad.y).distance_to(p.pos) <= Treads.rim_r(pad) + 1.0
+			if in_crater:
+				continue
 			if p.kind == PropKind.WRECK:
 				check(g == Ground.SAND or g == Ground.GRAVEL or g == Ground.CLINKER, "seed %d wreck at %s on %s" % [s, p.pos, Ground.NAMES[g]])
 			elif p.kind == PropKind.KILN:
