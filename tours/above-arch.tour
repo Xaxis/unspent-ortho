@@ -1,15 +1,19 @@
-# GROUND ABOVE THE GROUND, DRAWN (DESIGN_ABOVE S1): a rock arch staged over the
+# GROUND ABOVE THE GROUND (docs/ABOVE.md S1-S2): a rock arch staged over the
 # moss's heart with `--above=arch` (AboveStage), no worldgen. It must read as
 # rock hanging in the air and not as a block: an edge that wanders like a
-# terrace's, its rim banded like a cliff and undercut, its underside darker,
-# its shadow on the ground. From above, then over the shoulder from under it,
-# looking along it and up at it.
+# terrace's, its rim the land's own strata, its top the land's own ground, its
+# shadow on the ground. From above, standing under it, the arch is cut at the
+# section plane (law 3): its span over the player gone and chalked, its feet
+# standing with an inked cap. Then over the shoulder, from under it, looking
+# along it and up at it.
 #   TOUR_FIXED_FPS=60 tools/tour.sh tours/above-arch.tour --seed=1 --place=moss --above=arch --hour=10.5 --weather=clear:0
 coast calm
 wait 0.6
-shot 01-the-arch-from-above
+await above_cut 3
+shot 01-under-the-arch-from-above-cut
 tap shoulder
 await shoulder 3
+await above_whole 3
 wait 0.8
 shot 02-under-the-arch-over-the-shoulder with shoulder
 mouse 500,0 0.5

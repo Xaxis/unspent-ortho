@@ -54,6 +54,25 @@ render_mode cull_back;
 // within its reach, so the player and any body they can see are never covered.
 const int CROWN_CLEAR = 6;
 uniform vec4 crown_clear[CROWN_CLEAR];
+// GROUND ABOVE THE GROUND (AboveMap, 43_above; docs/ABOVE.md S2, LOOK law 3).
+// `above_map`, one texel a tile over `above_rect` (origin, size in tiles): R
+// mass overhead, G+B*256 the connected mass's id (spread a tile past it), A its
+// underside's level. `above_cut`: (the id cut, the section plane's height, the
+// share of the cut drawn, unused). Mass hung over the ground is architecture:
+// from above, the mass the player is under is drawn cut at the plane with an
+// inked cap, never stippled open; the ground under any mass is in its shade.
+uniform sampler2D above_map : filter_nearest, repeat_disable;
+uniform vec4 above_rect = vec4(0.0);
+uniform vec4 above_cut = vec4(0.0);
+// How far over the plane the cut starts as it eases in (it comes down from
+// over the mass), how deep the inked cap is, and how dark the shade under mass.
+const float ABOVE_SWEEP = 12.0;
+const float ABOVE_CAP = 0.07;
+// Dashes a tile along the overhead outline.
+const float ABOVE_DASH = 1.6;
+const float ABOVE_SHADE = 0.55;
+const vec3 ABOVE_INK = vec3(0.07, 0.06, 0.06);
+const vec3 ABOVE_CHALK = vec3(0.78, 0.76, 0.69);
 // How far above a point's own ground a leaf has to be before it is in the way.
 const float CROWN_LIFT = 0.85;
 // Below this sway weight the geometry is a trunk, a wall or the land, and never
@@ -1987,6 +2006,59 @@ void fragment() {
 	if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
 		discard;
 	}
+	// Mass hung over the ground: its tops are lifted (UV2.y +512), its rims,
+	// undersides and lips carry their top in UV.y (negative).
+	bool span_frag = patch_raw >= 513.5 || style_blend < -0.001;
+	bool above_cap = false;
+	bool above_dash = false;
+	float roofed = 0.0;
+	if (above_rect.z > 0.0) {
+		vec2 at = world_pos.xz - above_rect.xy;
+		if (at.x >= 0.0 && at.y >= 0.0 && at.x < above_rect.z && at.y < above_rect.w) {
+			if (span_frag) {
+				// The section cut, on the mass the player is under only. The
+				// shadow pass keeps the whole mass: the roof still shades what
+				// is under it while it is drawn open.
+				if (above_cut.z > 0.0 && !IN_SHADOW_PASS) {
+					vec4 t = texelFetch(above_map, ivec2(at), 0);
+					float id = floor(t.g * 255.0 + 0.5) + floor(t.b * 255.0 + 0.5) * 256.0;
+					if (abs(id - above_cut.x) < 0.5) {
+						float plane = above_cut.y + (1.0 - above_cut.z) * ABOVE_SWEEP;
+						if (world_pos.y > plane) {
+							discard;
+						}
+						above_cap = world_pos.y > plane - ABOVE_CAP;
+					}
+				}
+			} else {
+				// The shade under mass, read smoothly across tiles (never a tile
+				// step), and only below its underside.
+				vec2 g = at - 0.5;
+				ivec2 i0 = ivec2(floor(g));
+				vec2 f = fract(g);
+				ivec2 hi = ivec2(above_rect.zw) - 1;
+				vec4 a = texelFetch(above_map, clamp(i0, ivec2(0), hi), 0);
+				vec4 b = texelFetch(above_map, clamp(i0 + ivec2(1, 0), ivec2(0), hi), 0);
+				vec4 cc = texelFetch(above_map, clamp(i0 + ivec2(0, 1), ivec2(0), hi), 0);
+				vec4 d = texelFetch(above_map, clamp(i0 + ivec2(1, 1), ivec2(0), hi), 0);
+				float cover = mix(mix(a.r, b.r, f.x), mix(cc.r, d.r, f.x), f.y);
+				float under = max(max(a.a, b.a), max(cc.a, d.a)) * 255.0 * 0.5;
+				roofed = cover * (1.0 - smoothstep(under - 0.4, under - 0.05, world_pos.y));
+				// Over the cut mass the plan shows what is above the section as a
+				// plan drawing does: its outline dashed on the ground under it,
+				// in chalk, since most of it lies in the mass's own shadow.
+				if (above_cut.z > 0.0) {
+					vec4 t = texelFetch(above_map, ivec2(at), 0);
+					float id = floor(t.g * 255.0 + 0.5) + floor(t.b * 255.0 + 0.5) * 256.0;
+					float line = abs(cover - 0.5) / max(fwidth(cover), 1e-4);
+					float dash = fract(dot(world_pos.xz, vec2(0.71, 0.71)) * ABOVE_DASH);
+					if (abs(id - above_cut.x) < 0.5 && line < 1.4 && dash < 0.55 * above_cut.z) {
+						above_dash = true;
+					}
+				}
+			}
+		}
+	}
 	bool lifted = patch_raw >= 513.5;
 	float pr = lifted ? patch_raw - 512.0 : patch_raw;
 	int m2 = pr >= 1.5 ? int(mod(pr - 2.0 + 0.5, 256.0)) : m1;
@@ -2164,6 +2236,15 @@ void fragment() {
 		// with duller skin, so a wall catches the sun in streaks down its fall
 		// and never as one lit facet.
 		rough_add += ink_vnoise(vec2(world_pos.x + world_pos.z, world_pos.y * 0.3) * 3.1) * 0.35;
+	}
+	if (above_cap) {
+		c = ABOVE_INK;
+	}
+	c *= 1.0 - (1.0 - ABOVE_SHADE) * roofed;
+	// Laid after the shade: chalk on the plan, read on light ground and in the
+	// mass's own shadow alike.
+	if (above_dash) {
+		c = mix(c, ABOVE_CHALK, 0.85);
 	}
 	ALBEDO = matter_albedo(c);
 	ROUGHNESS = clamp(mr.x + rough_add, 0.04, 1.0);

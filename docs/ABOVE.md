@@ -19,7 +19,18 @@ field. The design, and what is built of it.
   A span's top is flagged lifted (UV2.y +512): world.gdshader draws no ground
   wear, trampling or works on it. Cost: a 12x10 slab takes its chunk from about
   17 to 31 ms (+75%, on the worker); see S3's target.
-- The owner's ruling on law 3 (§3) is still needed before S2.
+- **S2 built** (world/above-s2): `AboveMap` (one texel a tile over the spans'
+  box: cover, connected mass id spread a tile, underside level) and `43_above`
+  write the world material's `above_*`. From the top view the mass the player
+  is under is cut at the player's ground + 2.4, the plane sweeping down as it
+  eases in, an inked cap where mass crosses the plane, and the mass's outline
+  chalked dashed on the ground under it (a plan's convention for what is above
+  the cut); the shadow pass keeps the whole mass. It stands down over the
+  shoulder. The ground under any span is shaded (ABOVE_SHADE), smoothly across
+  tiles. Shafts through holes wait for S3, which makes the first holes.
+  tests/core/test_above_map.gd; tours above-roof and above-arch.
+- Law 3 is ruled (§3): from above, mass hung over the player is architecture,
+  drawn cut at a section plane with an inked cap; the land never opens.
 
 The survey below (§0) was taken from main at ced92304, before S0.
 
@@ -164,8 +175,9 @@ The near plane's width (`NEAR_REACH`) is asked of spans too, so the near plane
 never slices a roof's underside.
 
 **The top view (the lens):** a roof over the player hides the player — and the
-shaders' cuts deliberately never open land (law 3). Proposed, **for the owner
-to rule on**: a span is drawn as **ARCHITECTURE, not land** — the same
+shaders' cuts deliberately never open land (law 3). **RULED** (2026-09-26,
+through teammate1; the owner told and not overruling): a span is drawn as
+**ARCHITECTURE, not land** — the same
 language interiors already use: from above, a span over the player's region is
 drawn **cut at the section plane** (the player's level + `SECTION` ≈ 2.4 m)
 with an inked cap along the cut, exactly as a room's near walls are cut at
@@ -180,8 +192,8 @@ its holes lit). Rules:
 - the close-eye `sight_cone` and `tall_cut` stay off land; spans carry their own
   mark range (`M_SPAN_*`, coordinate with the lands builder's mark refactor in
   matter.gdshaderinc) so the section cut is a span rule, not a land rule.
-If the owner rules law 3 covers spans too, the fallback is: under a roof the
-lens drops to the shoulder view (a roof is where the shoulder view is for).
+Dropping the lens to the shoulder view under a roof is a player OPTION, never
+the default.
 
 **Near focus:** `_near_focus` is orthographic DOF only and off under the lens;
 nothing to do. The shafts pass (light through holes) reads the span texture (§4).
@@ -256,8 +268,7 @@ nothing to do. The shafts pass (light through holes) reads the span texture (§4
   canon unchanged; chunk build time within 10% on a spanned chunk.
 - **S2 — light and the section cut.** Span occlusion texture, ambient under a
   span, shafts through holes; the section cut from above with its inked cap,
-  component-masked, eased in. OWNER RULING needed first (law 3 vs spans as
-  architecture). PROOF: a tour walking under a synthetic roof: frame outside
+  component-masked, eased in (law 3 ruled: §3). PROOF: a tour walking under a synthetic roof: frame outside
   (roof whole), frame under (section cut, player readable, cap inked), frame
   under a hole (a shaft of light); the same under the shoulder view (ceiling
   close, crowd rule framing).
@@ -289,9 +300,8 @@ nothing to do. The shafts pass (light through holes) reads the span texture (§4
 
 ## 8. Risks and open questions
 
-- **Law 3 (the land never opens)** vs a roof over the player seen from above —
-  the owner's ruling decides S2 (section-cut as architecture, or the lens drops
-  to the shoulder under a roof).
+- **Law 3 (the land never opens)** vs a roof over the player seen from above:
+  ruled (§3), a span is architecture and is sectioned, never opened.
 - **One span per tile** forbids a cave roof under an island; fine until asked.
 - **Headroom closes paths:** every content slice needs a reachability test, or
   a roof can seal a region (as the niche gap did in the maintenance bay).
