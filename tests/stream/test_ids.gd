@@ -21,15 +21,15 @@ func test_every_generated_id_names_its_own_section_in_the_order_it_was_laid() ->
 	var across := WorldSections.across(SIZE)
 	var next := {}
 	var sections := {}
-	for p in w.props:
+	for p in w.each_prop():
 		var s := WorldSections.of(p.pos)
 		var k := s.y * across + s.x
 		sections[k] = true
 		eq(p.id >> WorldData.ORDINAL_BITS, k, "prop at %s is in section %d" % [p.pos, k])
 		eq(p.id & ((1 << WorldData.ORDINAL_BITS) - 1), int(next.get(k, 0)), "and comes next in it")
 		next[k] = int(next.get(k, 0)) + 1
-		check(w.prop(p.id) == p, "its id finds it (%d)" % p.id)
-		if w.prop(p.id) != p:
+		check(WorldProp.same(w.prop(p.id), p), "its id finds it (%d)" % p.id)
+		if not WorldProp.same(w.prop(p.id), p):
 			return
 	gt(float(sections.size()), 2.0, "the world spans several sections (%d)" % sections.size())
 	check(w.prop(-1) == null and w.prop((across * across) << WorldData.ORDINAL_BITS) == null, "an id nothing holds finds nothing")

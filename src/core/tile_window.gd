@@ -6,8 +6,8 @@ extends RefCounted
 ## sections stitched) and reads that; today the copy is taken from the resident
 ## arrays.
 ##
-## The rectangle is clamped to the map, so a reader that clamps its coordinates
-## to the map, as the mesher does, always lands inside it. Index with
+## The rectangle is clamped to the map tile by tile, so a reader that clamps its
+## coordinates to the map, as the mesher does, always lands inside it. Index with
 ## `(y - y0) * w + (x - x0)` for x in [x0, x0 + w) and y in [y0, y0 + h).
 
 var x0 := 0
@@ -21,16 +21,19 @@ var country2 := PackedByteArray()
 var blend := PackedFloat32Array()
 
 
-## The tiles of [x0, x1) x [y0, y1) that lie on the map.
+## The tiles of [x0, x1) x [y0, y1), each clamped onto the map: what a reader
+## that clamps its coordinates reads. A rectangle wholly off the map is the edge
+## row or column nearest it, never empty, so a body put far off the map still
+## reads the ground at the edge (a height asked there was an index of -1).
 static func of(world: WorldData, ax0: int, ay0: int, ax1: int, ay1: int) -> TileWindow:
 	var t := TileWindow.new()
 	var size := world.size
-	t.x0 = clampi(ax0, 0, size)
-	t.y0 = clampi(ay0, 0, size)
-	var x1 := clampi(ax1, 0, size)
-	var y1 := clampi(ay1, 0, size)
-	t.w = maxi(0, x1 - t.x0)
-	t.h = maxi(0, y1 - t.y0)
+	t.x0 = clampi(ax0, 0, size - 1)
+	t.y0 = clampi(ay0, 0, size - 1)
+	var x1 := maxi(clampi(ax1 - 1, 0, size - 1) + 1, t.x0 + 1)
+	var y1 := maxi(clampi(ay1 - 1, 0, size - 1) + 1, t.y0 + 1)
+	t.w = x1 - t.x0
+	t.h = y1 - t.y0
 	for y in range(t.y0, t.y0 + t.h):
 		var a := y * size + t.x0
 		var b := a + t.w

@@ -36,10 +36,10 @@ func test_drop_puts_things_down_and_empties_the_hand() -> void:
 func test_what_is_put_down_lies_on_a_heap_that_use_takes_back() -> void:
 	var g := Fx.flat()
 	g.inventory.add(&"driftwood", 4)
-	var props := g.world.props.size()
+	var props := g.world.prop_count()
 	Survival.drop(g, &"driftwood", 3)
 	Survival.drop(g, &"knife", 1)
-	eq(g.world.props.size(), props + 1, "one heap for both")
+	eq(g.world.prop_count(), props + 1, "one heap for both")
 	var heap := Survival.heap_near(g)
 	check(heap != null and heap.kind == PropKind.CAIRN, "a heap in reach")
 	if heap == null:

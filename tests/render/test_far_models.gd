@@ -75,7 +75,7 @@ static func _plain() -> WorldData:
 		w.ground[i] = Ground.GRASS
 		w.country[i] = Country.COAST
 	for x: float in [16.5, 110.5]:
-		w.props.append(WorldProp.new(w.props.size(), PropKind.PINE, Vector2(x, 64.5), 0.0, 1.0))
+		w.add_prop(WorldProp.new(w.next_id(), PropKind.PINE, Vector2(x, 64.5), 0.0, 1.0))
 	return w
 
 

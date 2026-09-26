@@ -510,7 +510,7 @@ static func digest(w: WorldData) -> String:
 	# below anything a player can see and far above any float's last bit; a
 	# placement that really moves or flips still moves this digest.
 	var props := PackedInt32Array()
-	for p in w.props:
+	for p in w.each_prop():
 		props.append(p.kind)
 		props.append(roundi(p.pos.x * 1000.0))
 		props.append(roundi(p.pos.y * 1000.0))
@@ -531,7 +531,7 @@ static func breakdown(w: WorldData) -> String:
 	# Packed arrays are values: each is read out, grown and written back.
 	var exact := {}
 	var rounded := {}
-	for p in w.props:
+	for p in w.each_prop():
 		var e: PackedFloat32Array = exact.get(p.kind, PackedFloat32Array())
 		e.append(p.pos.x)
 		e.append(p.pos.y)

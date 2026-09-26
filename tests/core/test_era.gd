@@ -65,8 +65,8 @@ func test_the_before_is_the_same_land() -> void:
 			marked_then += 1
 	gt(float(marked_now), 0.0, "sixty-nine years of the plan left its marks (%d)" % marked_now)
 	eq(marked_then, 0, "and 2029 carries none of them")
-	gt(float(now.props.size()), float(then.props.size()),
-		"and 2098 stands more on the same ground: %d against %d" % [now.props.size(), then.props.size()])
+	gt(float(now.prop_count()), float(then.prop_count()),
+		"and 2098 stands more on the same ground: %d against %d" % [now.prop_count(), then.prop_count()])
 
 
 func test_the_plan_has_not_begun_in_2029() -> void:
@@ -81,10 +81,10 @@ func test_the_plan_has_not_begun_in_2029() -> void:
 	var theirs: Array[int] = GenWorks.THEIRS
 	var back := 0
 	var ahead := 0
-	for p: WorldProp in then.props:
+	for p: WorldProp in then.each_prop():
 		if theirs.has(p.kind):
 			back += 1
-	for p: WorldProp in now.props:
+	for p: WorldProp in now.each_prop():
 		if theirs.has(p.kind):
 			ahead += 1
 	eq(back, 0, "2029 holds none of the machines' works (%d of them stand in 2098)" % ahead)

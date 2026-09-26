@@ -41,8 +41,8 @@ func test_carried_costs_a_shift_and_wakes_at_the_rock_facing_it() -> void:
 	var w := F.flat_world(96)
 	var ore := WorldProp.new(1, PropKind.IRON_ORE, Vector2(70.5, 60.5), 0.0, 1.0)
 	var far_ore := WorldProp.new(2, PropKind.COAL_ORE, Vector2(90.5, 90.5), 0.0, 1.0)
-	w.props.append(ore)
-	w.props.append(far_ore)
+	w.add_prop(ore)
+	w.add_prop(far_ore)
 	var q := WorldQuery.new(w)
 	var body := Body.new()
 	body.lamp_lit = true

@@ -123,7 +123,7 @@ static func _placed_after(w: WorldData, key: String, nth: int) -> Vector2:
 static func solid_mask(w: WorldData) -> PackedByteArray:
 	var m := PackedByteArray()
 	m.resize(w.size * w.size)
-	for p in w.props:
+	for p in w.each_prop():
 		if p.solid <= 0.0:
 			continue
 		var r := ceili(p.solid)
@@ -286,7 +286,7 @@ static func typical_sample(w: WorldData, cc: int) -> Vector2:
 	bins.resize(bw * bw * PropKind.COUNT)
 	var land_props := PackedFloat32Array()
 	land_props.resize(PropKind.COUNT)
-	for pr in w.props:
+	for pr in w.each_prop():
 		var px := int(pr.pos.x)
 		var py := int(pr.pos.y)
 		if not w.in_bounds(px, py):
@@ -475,7 +475,7 @@ static func lit_village_square(w: WorldData) -> Vector2:
 			continue
 		var nearest: WorldProp = null
 		var near := INF
-		for p: WorldProp in w.props:
+		for p: WorldProp in w.each_prop():
 			if p.kind != PropKind.HOUSE or p.variant < 0:
 				continue
 			var d := p.pos.distance_to(vp)

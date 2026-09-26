@@ -33,7 +33,7 @@ func test_a_claimed_place_is_laid_in_every_region_and_furnished() -> void:
 		eq(int(m.country), moss.index, "a den stands in the landscape that claimed it")
 		check(dens.has(int(m.region)), "and in one of its regions, said on the row")
 		dens[int(m.region)] = int(dens.get(int(m.region), 0)) + 1
-		for p in w.props:
+		for p in w.each_prop():
 			if p.kind == PropKind.BONES and p.pos.distance_to(m.pos) <= 4.0:
 				furnished += 1
 				break

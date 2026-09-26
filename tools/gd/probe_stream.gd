@@ -87,7 +87,7 @@ func _one(s: int, size: int, section: int) -> void:
 		for x in size:
 			if w.level[y * size + x] > 0:
 				land[(y / section) * across + x / section] += 1
-	for p: WorldProp in w.props:
+	for p: WorldProp in w.each_prop():
 		var sx := clampi(floori(p.pos.x / section), 0, across - 1)
 		var sy := clampi(floori(p.pos.y / section), 0, across - 1)
 		props[sy * across + sx] += 1
@@ -99,7 +99,7 @@ func _one(s: int, size: int, section: int) -> void:
 			counts.append(props[i])
 	counts.sort()
 	print("stream section %d of %d hold land; props per land section min %d median %d max %d; props total %d" % [
-		with_land, across * across, counts[0], counts[counts.size() / 2], counts[counts.size() - 1], w.props.size()])
+		with_land, across * across, counts[0], counts[counts.size() / 2], counts[counts.size() - 1], w.prop_count()])
 	# The plan, from this world's own counts. Coarse cells at STEP; per cell:
 	# continent 1, top-two types and weight 3, relief params 6x2, level 1,
 	# inland 2, forest 1, region 4 = 24 B. Half-res shape: lf int16 + land 1.

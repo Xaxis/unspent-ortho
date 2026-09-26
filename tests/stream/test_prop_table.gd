@@ -61,11 +61,15 @@ func test_a_prop_set_down_later_gets_a_row() -> void:
 	eq(w.table.rot[0], 0.25, "turned as it was")
 
 
-## THE NUMBER S7 IS BUYING DOWN. Every WorldProp alive after a world is grown:
-## today every prop is one, so this is the world's prop count and more. Recorded
-## here, and bounded to the working set near the camera once the columns are the
-## truth (S7f).
-func test_the_live_props_are_recorded() -> void:
+## THE NUMBER S7 BOUGHT DOWN. A grown world keeps its props as table rows, and a
+## WorldProp lives only while something holds it. Before S7 every prop was one
+## (12,548 alive for 12,548 props at 512); a walk of every prop still makes them
+## all, and lets them all go. A new holder of every prop makes this fail.
+func test_a_grown_world_holds_no_props_as_objects() -> void:
 	var w := _world()
-	print("props/live: %d WorldProps alive for %d props" % [WorldProp.live, w.prop_count()])
-	check(WorldProp.live >= w.prop_count(), "every prop is still an object (%d alive, %d props)" % [WorldProp.live, w.prop_count()])
+	check(w.packed, "the world is packed")
+	lt(float(WorldProp.live), 100.0, "a handful of props alive, not the world's %d (%d)" % [w.prop_count(), WorldProp.live])
+	var every := w.each_prop()
+	gt(float(WorldProp.live), float(w.prop_count()) - 1.0, "a walk makes every prop")
+	every.clear()
+	lt(float(WorldProp.live), 100.0, "and lets them all go (%d)" % WorldProp.live)

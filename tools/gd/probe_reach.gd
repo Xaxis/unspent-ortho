@@ -47,7 +47,7 @@ func _init() -> void:
 		for item: StringName in WANT:
 			var ks: Dictionary = kinds_for[item]
 			var best := INF
-			for p: WorldProp in w.props:
+			for p: WorldProp in w.each_prop():
 				if not ks.has(p.kind):
 					continue
 				var d := w.spawn.distance_to(p.pos)

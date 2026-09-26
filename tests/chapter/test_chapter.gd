@@ -69,7 +69,7 @@ func test_mined_is_read_off_the_world_edits_and_not_off_a_counter() -> void:
 	var want := int(Chapter.read(w, id, {}, false, false).want_ore)
 	var took := 0
 	var before: Dictionary = w.depleted.duplicate()
-	for p: WorldProp in w.props:
+	for p: WorldProp in w.each_prop():
 		if took >= want:
 			break
 		if kinds.has(p.kind) and w.region_at(floori(p.pos.x), floori(p.pos.y)) == id:
@@ -116,7 +116,7 @@ func test_a_chapter_is_answered_only_when_all_three_are() -> void:
 	var kinds := Chapter.ore_kinds(w, id)
 	var before: Dictionary = w.depleted.duplicate()
 	var took := 0
-	for p: WorldProp in w.props:
+	for p: WorldProp in w.each_prop():
 		if took >= int(d.want_ore):
 			break
 		if kinds.has(p.kind) and w.region_at(floori(p.pos.x), floori(p.pos.y)) == id:

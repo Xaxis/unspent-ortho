@@ -25,7 +25,7 @@ static func _working_near_whole(world: WorldData, query: WorldQuery, from: Vecto
 	for kinds: Array in [Outcomes.ORE, Outcomes.ROCK]:
 		var cands: Array[WorldProp] = []
 		var dists: PackedFloat32Array = []
-		for p in world.props:
+		for p in world.each_prop():
 			if kinds.has(p.kind) and not world.depleted.has(p.id):
 				var d := p.pos.distance_squared_to(from)
 				if d <= r2:
@@ -43,13 +43,22 @@ static func _working_near_whole(world: WorldData, query: WorldQuery, from: Vecto
 	return {}
 
 
+## A carried-to spot with its prop as an id: props are views, compared by id.
+static func _spot(d: Dictionary) -> Dictionary:
+	if d.is_empty():
+		return d
+	var out := d.duplicate()
+	out["prop"] = (d["prop"] as WorldProp).id
+	return out
+
+
 func test_working_near_answers_as_the_whole_sweep_did() -> void:
 	var w := _world()
 	# Asked from a real working's surroundings at every distance, so answers are
 	# found in each shell and across its edges: a random spot mostly has ore
 	# well inside the first one, and a search cut short would agree there.
 	var workings: Array[WorldProp] = []
-	for p in w.props:
+	for p in w.each_prop():
 		if Outcomes.ORE.has(p.kind) or Outcomes.ROCK.has(p.kind):
 			workings.append(p)
 	gt(float(workings.size()), 100.0, "the world has workings (%d)" % workings.size())
@@ -67,7 +76,7 @@ func test_working_near_answers_as_the_whole_sweep_did() -> void:
 		n += 1
 		var want := _working_near_whole(w, _q, at, FightRules.CARRIED_RANGE)
 		var got := Outcomes.working_near(w, _q, at, FightRules.CARRIED_RANGE)
-		eq(got, want, "carried from %s" % at)
+		eq(_spot(got), _spot(want), "carried from %s" % at)
 		if not want.is_empty():
 			found += 1
 	gt(float(n), 150.0, "enough land sampled (%d)" % n)
@@ -84,7 +93,7 @@ func test_working_near_reaches_past_the_near_shells() -> void:
 		if w.level_at(floori(at.x), floori(at.y)) <= 0:
 			continue
 		var taken: Array[int] = []
-		for p in w.props:
+		for p in w.each_prop():
 			if (Outcomes.ORE.has(p.kind) or Outcomes.ROCK.has(p.kind)) and p.pos.distance_to(at) < 140.0 and not w.depleted.has(p.id):
 				w.depleted[p.id] = 0.0
 				taken.append(p.id)
@@ -92,7 +101,7 @@ func test_working_near_reaches_past_the_near_shells() -> void:
 		var got := Outcomes.working_near(w, _q, at, FightRules.CARRIED_RANGE)
 		for id in taken:
 			w.depleted.erase(id)
-		eq(got, want, "carried from %s with nothing near" % at)
+		eq(_spot(got), _spot(want), "carried from %s with nothing near" % at)
 		if not want.is_empty():
 			asked += 1
 	gt(float(asked), 2.0, "some found a working past 140 tiles (%d)" % asked)
@@ -102,7 +111,7 @@ func test_working_near_reaches_past_the_near_shells() -> void:
 static func _ore_standing_whole(world: WorldData) -> Dictionary:
 	var kinds_of := {}
 	var out := {}
-	for p: WorldProp in world.props:
+	for p: WorldProp in world.each_prop():
 		var r := world.region_at(floori(p.pos.x), floori(p.pos.y))
 		if r < 0:
 			continue
@@ -131,7 +140,7 @@ static func _held_by_whole(world: WorldData, prop: WorldProp) -> StringName:
 	var place := StoryWorld.place_of(world, prop.pos)
 	if place != &"":
 		var n := 0
-		for q: WorldProp in world.props:
+		for q: WorldProp in world.each_prop():
 			if q.id < prop.id and StoryProps.kind_of(q.kind) == kind and StoryWorld.place_of(world, q.pos) == place:
 				n += 1
 		var own := StoryFragments.pick_at(place, n, kind)
@@ -147,7 +156,7 @@ func test_the_words_a_thing_holds_are_counted_from_its_place() -> void:
 	check(site != Vector2.INF, "the world has its black site")
 	var in_place := 0
 	var readable := 0
-	for p in w.props:
+	for p in w.each_prop():
 		if StoryProps.kind_of(p.kind) == &"":
 			continue
 		readable += 1
@@ -161,34 +170,34 @@ func test_the_words_a_thing_holds_are_counted_from_its_place() -> void:
 func test_a_thing_at_the_far_edge_of_a_place_counts_what_stands_across_it() -> void:
 	# The window has to span the whole place: a screen set down at its edge,
 	# opposite the ones already there, counts them all.
-	var w := _world()
+	# Its own world: a prop set down stays set down.
+	var w := WorldGen.generate(SEED, SIZE)
+	var q := WorldQuery.new(w)
 	var site := StoryWorld.black_site(w)
 	var first: WorldProp = null
-	for p in _q.props_near(site, StoryWorld.PLACE_REACH):
+	for p in q.props_near(site, StoryWorld.PLACE_REACH):
 		if p.kind == PropKind.CONSOLE and StoryWorld.place_of(w, p.pos) != &"" and (first == null or p.id < first.id):
 			first = p
 	check(first != null, "a screen stands in the place")
 	if first == null:
 		return
 	var away := (site - first.pos).normalized() if first.pos.distance_to(site) > 0.01 else Vector2.RIGHT
-	var edge := WorldProp.new(w.props.size(), PropKind.CONSOLE, site + away * StoryWorld.PLACE_REACH * 0.95, 0.0, 1.0)
-	w.props.append(edge)
-	_q.add_prop(edge)
+	var edge := WorldProp.new(w.next_id(), PropKind.CONSOLE, site + away * StoryWorld.PLACE_REACH * 0.95, 0.0, 1.0)
+	w.add_prop(edge)
+	q.add_prop(edge)
 	check(StoryWorld.place_of(w, edge.pos) != &"", "the new screen stands in the place")
-	eq(StoryFragments.held_by(w, _q, edge), _held_by_whole(w, edge), "the edge screen holds what the sweep said")
-	_q.remove_prop(edge)
-	w.props.pop_back()
+	eq(StoryFragments.held_by(w, q, edge), _held_by_whole(w, edge), "the edge screen holds what the sweep said")
 
 
 ## What the view's `_bind` filed before it bound a section at a time: every
 ## prop, every line, every standing prop, walked once each.
 static func _buckets_whole(w: WorldData) -> Array:
 	var chunks := {}
-	for p in w.props:
+	for p in w.each_prop():
 		var key := WorldView._key_of(p.pos)
 		if not chunks.has(key):
 			chunks[key] = []
-		chunks[key].append(p)
+		chunks[key].append(p.id)
 	var cables := {}
 	for line: Dictionary in w.lines:
 		if not line.has("props"):
@@ -202,24 +211,24 @@ static func _buckets_whole(w: WorldData) -> Array:
 				cables[key] = []
 			cables[key].append(Vector2i(ids[j], ids[j + 1]))
 	var far := {}
-	for p in w.props:
+	for p in w.each_prop():
 		if w.depleted.has(p.id):
 			continue
 		var bk := Vector2i(floori(p.pos.x) / WorldView.Far.BLOCK, floori(p.pos.y) / WorldView.Far.BLOCK)
 		if not far.has(bk):
 			far[bk] = []
-		far[bk].append(p)
+		far[bk].append(p.id)
 	return [chunks, cables, far]
 
 
-## The view keeps table rows; the reference kept props. Compared as props.
+## The view keeps table rows; the reference kept props. Compared as ids.
 static func _as_props(w: WorldData, lists: Dictionary) -> Dictionary:
 	var out := {}
 	for key: Vector2i in lists:
-		var props: Array = []
+		var ids: Array = []
 		for row: int in lists[key]:
-			props.append(w.prop_at(row))
-		out[key] = props
+			ids.append(w.prop_at(row).id)
+		out[key] = ids
 	return out
 
 
@@ -245,3 +254,20 @@ func test_a_prop_set_down_later_is_found_in_its_section() -> void:
 	var got := WorldSections.props_in(w, WorldSections.of(at))
 	eq(got.size(), before + 1, "its section holds one more")
 	check(got.any(func(q: WorldProp) -> bool: return WorldProp.same(q, p)), "and it is the one set down")
+
+
+## A height asked for off the map reads the ground at its edge, on every side:
+## a body can be put out there (a flight ended by something else moving it),
+## and a window clamped to an empty rectangle was an index of -1.
+func test_a_height_asked_off_the_map_reads_the_edge() -> void:
+	var w := _world()
+	var m := TerrainMesher.new(w)
+	var y := SIZE * 0.5 + 0.3
+	for side: Array in [[-50.2, -80.7], [SIZE + 50.2, SIZE + 80.7]]:
+		var a := m.surface_height(float(side[0]), y)
+		var b := m.surface_height(float(side[1]), y)
+		check(is_finite(a), "a height at x %.0f" % float(side[0]))
+		eq(a, b, "and the same further out: both read the edge column")
+		var c := m.surface_height(y, float(side[0]))
+		var d := m.surface_height(y, float(side[1]))
+		eq(c, d, "above and below the map as well")

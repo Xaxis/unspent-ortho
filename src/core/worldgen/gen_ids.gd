@@ -40,6 +40,9 @@ static func run(w: WorldData) -> void:
 	w.props = out
 	w.section_start = start
 	w.table = PropTable.of(out)
+	# The table is the truth from here: the objects go (WorldData.packed).
+	w.props = [] as Array[WorldProp]
+	w.packed = true
 	var remap := func(old: int) -> int: return new_id[old] if old >= 0 and old < new_id.size() else old
 	for line: Dictionary in w.lines:
 		if line.has("props"):

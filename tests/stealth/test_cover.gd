@@ -28,7 +28,7 @@ func test_a_prop_you_can_get_behind_beats_the_ground() -> void:
 	var q := WorldQuery.new(w)
 	var at := Vector2(10.5, 10.5)
 	eq(Cover.at(w, q, at, false, 0.0, false), 0.0, "nothing there yet")
-	w.props.append(WorldProp.new(1, PropKind.GORSE, at + Vector2(0.4, 0.0), 0.0, 1.0))
+	w.add_prop(WorldProp.new(1, PropKind.GORSE, at + Vector2(0.4, 0.0), 0.0, 1.0))
 	q = WorldQuery.new(w)
 	var behind := Cover.at(w, q, at, false, 0.0, false)
 	near(behind, Cover.PROPS[PropKind.GORSE], 1e-4, "a gorse bush is most of the way")
@@ -39,7 +39,7 @@ func test_a_prop_you_can_get_behind_beats_the_ground() -> void:
 func test_a_prop_that_has_been_taken_away_is_not_cover() -> void:
 	var w := _world(Ground.SAND)
 	var at := Vector2(10.5, 10.5)
-	w.props.append(WorldProp.new(1, PropKind.GORSE, at + Vector2(0.3, 0.0), 0.0, 1.0))
+	w.add_prop(WorldProp.new(1, PropKind.GORSE, at + Vector2(0.3, 0.0), 0.0, 1.0))
 	var q := WorldQuery.new(w)
 	gt(Cover.at(w, q, at, false, 0.0, false), 0.4, "while it stands")
 	w.depleted[1] = -1.0
@@ -58,7 +58,7 @@ func test_the_night_is_cover_and_it_stacks_with_what_you_are_standing_in() -> vo
 func test_the_lamp_undoes_every_bit_of_it() -> void:
 	var w := _world(Ground.HEATH)
 	var at := Vector2(10.5, 10.5)
-	w.props.append(WorldProp.new(1, PropKind.GORSE, at + Vector2(0.3, 0.0), 0.0, 1.0))
+	w.add_prop(WorldProp.new(1, PropKind.GORSE, at + Vector2(0.3, 0.0), 0.0, 1.0))
 	var q := WorldQuery.new(w)
 	gt(Cover.at(w, q, at, true, 1.0, false), 0.6, "crouched in gorse at night")
 	eq(Cover.at(w, q, at, true, 1.0, true), 0.0, "with the lamp lit, nothing at all")

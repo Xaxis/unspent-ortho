@@ -205,8 +205,8 @@ func test_every_word_on_the_glass_reads() -> void:
 	for sys in g.systems:
 		if sys.name == "90_ui":
 			ui = sys
-	g.world.props.append(WorldProp.new(99996, PropKind.FIRE, g.player.pos + Vector2(1, 0), 0.0, 1.0))
-	g.query.add_prop(g.world.props.back())
+	g.world.add_prop(WorldProp.new(99996, PropKind.FIRE, g.player.pos + Vector2(1, 0), 0.0, 1.0))
+	g.query.add_prop(g.world.prop_at(g.world.prop_count() - 1))
 	var words := {}
 	# [app, a row to choose or "", home's page]
 	# The fed apps first, then the same apps with nothing wired in (what they say empty).

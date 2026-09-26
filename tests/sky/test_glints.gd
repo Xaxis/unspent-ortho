@@ -60,12 +60,12 @@ func test_a_night_village_hands_its_lights_to_the_sky_and_a_strike_dims_machine_
 	check(lights != null, "lights system")
 	# A fire, a lamp and a pylon near the player, placed after indexing.
 	var base := g.player.pos
-	var fire := WorldProp.new(g.world.props.size(), PropKind.FIRE, base + Vector2(2, 1), 0.0, 1.0)
-	g.world.props.append(fire)
-	var lamp := WorldProp.new(g.world.props.size(), PropKind.LAMP, base + Vector2(-2, 1), 0.0, 1.0)
-	g.world.props.append(lamp)
-	var pylon := WorldProp.new(g.world.props.size(), PropKind.PYLON, base + Vector2(0, -3), 0.0, 1.0)
-	g.world.props.append(pylon)
+	var fire := WorldProp.new(g.world.next_id(), PropKind.FIRE, base + Vector2(2, 1), 0.0, 1.0)
+	g.world.add_prop(fire)
+	var lamp := WorldProp.new(g.world.next_id(), PropKind.LAMP, base + Vector2(-2, 1), 0.0, 1.0)
+	g.world.add_prop(lamp)
+	var pylon := WorldProp.new(g.world.next_id(), PropKind.PYLON, base + Vector2(0, -3), 0.0, 1.0)
+	g.world.add_prop(pylon)
 	await frames(20)
 	var kinds := {}
 	for c: Dictionary in lights.get("glint_list"):
@@ -124,7 +124,7 @@ func test_the_lands_works_and_wired_shacks_give_light_where_their_models_do() ->
 			lights = s
 	var base := g.player.pos
 	var add := func(kind: int, at: Vector2, lit_variant: bool) -> WorldProp:
-		var id := g.world.props.size()
+		var id := g.world.prop_count()
 		# A spot whose model is (or is not) the one with a light. Asked through
 		# `variant_of`, never by hashing here: a model is dealt by kind and
 		# POSITION (`WorldProp.deal_hash`), so the spot is nudged a quarter tile
@@ -133,7 +133,7 @@ func test_the_lands_works_and_wired_shacks_give_light_where_their_models_do() ->
 		while (PropModels.variant_of(WorldProp.new(id, kind, spot, 0.0, 1.0), g.world.seed_value) % 2 == 1) != lit_variant:
 			spot.x += 0.25
 		var p := WorldProp.new(id, kind, spot, 0.0, 1.0)
-		g.world.props.append(p)
+		g.world.add_prop(p)
 		return p
 	var shack: WorldProp = add.call(PropKind.SHACK, Vector2(3, 0), true)
 	var dark_shack: WorldProp = add.call(PropKind.SHACK, Vector2(-3, 0), false)

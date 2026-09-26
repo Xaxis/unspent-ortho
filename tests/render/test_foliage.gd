@@ -155,9 +155,9 @@ func test_a_crown_still_opens_over_a_fight() -> void:
 
 func test_a_chunk_draws_its_leaves_in_one_more_call_with_the_views_own_material() -> void:
 	var w := Terrain.fixture()
-	w.props.append(WorldProp.new(0, PropKind.BROADLEAF, Vector2(36.5, 38.5), 0.3, 1.0))
-	w.props.append(WorldProp.new(1, PropKind.BUSH, Vector2(40.5, 40.5), 0.2, 1.0))
-	w.props.append(WorldProp.new(2, PropKind.BOULDER, Vector2(42.5, 41.5), 0.3, 1.0))
+	w.add_prop(WorldProp.new(0, PropKind.BROADLEAF, Vector2(36.5, 38.5), 0.3, 1.0))
+	w.add_prop(WorldProp.new(1, PropKind.BUSH, Vector2(40.5, 40.5), 0.2, 1.0))
+	w.add_prop(WorldProp.new(2, PropKind.BOULDER, Vector2(42.5, 41.5), 0.3, 1.0))
 	var view := WorldView.new()
 	view.setup(w)
 	tree.root.add_child(view)
@@ -170,13 +170,13 @@ func test_a_chunk_draws_its_leaves_in_one_more_call_with_the_views_own_material(
 		if leaves != null:
 			check(leaves.material_override == view.leaf_material(), "drawn with the view's own leaf material, which 18_crowns writes")
 			eq(leaves.mesh.get_surface_count(), 1, "every plant's cards in one draw")
-			var direct := view.bake_props(view.chunk_at(Vector2(40, 40)), TerrainMesher.new(w), [w.props[0], w.props[1], w.props[2]], [])
+			var direct := view.bake_props(view.chunk_at(Vector2(40, 40)), TerrainMesher.new(w), [w.prop_at(0), w.prop_at(1), w.prop_at(2)], [])
 			eq(leaves.mesh.surface_get_array_len(0), (direct[2][Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), "the leaves are the direct bake")
 		# Taking a plant takes its leaves.
 		w.depleted[1] = INF
-		view.refresh_props(w.props[1])
+		view.refresh_props(w.prop_at(1))
 		var after := view.get_node_or_null("chunk_1_1/props_leaf") as MeshInstance3D
-		var bush := PropModels.template(PropKind.BUSH, PropModels.variant_of(w.props[1], w.seed_value), view.prop_country(w.props[1], view.chunk_at(Vector2(40, 40))))
+		var bush := PropModels.template(PropKind.BUSH, PropModels.variant_of(w.prop_at(1), w.seed_value), view.prop_country(w.prop_at(1), view.chunk_at(Vector2(40, 40))))
 		if after != null and leaves != null:
 			eq(after.mesh.surface_get_array_len(0), leaves.mesh.surface_get_array_len(0) - bush.leaf_v.size(), "the taken bush's leaves are gone from the bake")
 	view.queue_free()

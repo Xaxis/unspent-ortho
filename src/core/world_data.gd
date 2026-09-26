@@ -165,9 +165,13 @@ var sectioned := false
 const ORDINAL_BITS := 20
 const BUILT_BIT := 1 << 30
 var section_start := PackedInt32Array()
-## The props as packed columns, row for row with `props` (`PropTable`). Beside
-## the objects for now; the truth once readers go through the facade below.
+## The props as packed columns (`PropTable`). Once generation has laid a world
+## (`packed`), the table is the truth and `props` is empty: a WorldProp is a view
+## made from its row when something asks for one, and dies when it is let go, so
+## a world's ~130k props are not ~130k resident objects (the streaming design,
+## S7). A world built by hand keeps its objects in `props`, row for row.
 var table := PropTable.new()
+var packed := false
 
 
 func _init(p_seed: int, p_size: int) -> void:
@@ -270,7 +274,8 @@ func to_3d(p: Vector2) -> Vector3:
 ## A prop set down after generation: appended and filed in its section, so a
 ## reader asking by section sees it. Its id comes from `next_id()`.
 func add_prop(p: WorldProp) -> void:
-	props.append(p)
+	if not packed:
+		props.append(p)
 	table.append(p)
 	WorldSections.file(self, p)
 
@@ -282,17 +287,34 @@ func add_prop(p: WorldProp) -> void:
 
 ## How many props there are.
 func prop_count() -> int:
-	return props.size()
+	return table.size() if packed else props.size()
 
 
-## The prop at row `i`.
+## The prop at row `i`: a fresh view of its row on a packed world, so compare
+## props by id (`WorldProp.same`), never as objects.
 func prop_at(i: int) -> WorldProp:
-	return props[i]
+	return _view(i) if packed else props[i]
 
 
 ## Every prop, in row order: section by section, then the ones set down later.
+## On a packed world these are views made for the call: a walk of every prop
+## makes every prop, so read `table` instead where a walk is hot.
 func each_prop() -> Array[WorldProp]:
-	return props
+	if not packed:
+		return props
+	var out: Array[WorldProp] = []
+	out.resize(table.size())
+	for i in table.size():
+		out[i] = _view(i)
+	return out
+
+
+func _view(i: int) -> WorldProp:
+	var p := WorldProp.new(table.id[i], table.kind[i], table.pos[i], table.rot[i], table.scale[i])
+	p.solid = table.solid[i]
+	p.variant = table.variant[i]
+	p.shown = float(table.shown.get(i, 1.0))
+	return p
 
 
 ## How much of `p` is left (Harvest.shown), kept on its row too.
@@ -336,13 +358,15 @@ func row_of_id(id: int) -> int:
 ## Rows for props put straight into `props` (a world built by hand in a test),
 ## so every reader of rows sees them.
 func sync_table() -> void:
+	if packed:
+		return
 	for i in range(table.size(), props.size()):
 		table.append(props[i])
 
 
 ## The id the next prop set down takes.
 func next_id() -> int:
-	return id_at(props.size())
+	return id_at(prop_count())
 
 
 ## How many props generation laid: set-down props stand after them.
@@ -353,7 +377,7 @@ func generated() -> int:
 ## The prop with this id, or null.
 func prop(id: int) -> WorldProp:
 	var at := position_of(id)
-	return props[at] if at >= 0 and at < props.size() else null
+	return prop_at(at) if at >= 0 and at < prop_count() else null
 
 
 ## Where the prop with this id stands in `props`, or -1.

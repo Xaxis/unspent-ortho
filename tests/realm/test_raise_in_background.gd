@@ -85,10 +85,10 @@ func test_an_abandoned_raise_stops_early() -> void:
 	var s := 90419
 	WorldGen.halt(s, 256, &"underground")
 	var cut := WorldGen.generate(s, 256, &"", &"underground")
-	eq(cut.props.size(), 0, "a halted generation stops before it lays anything")
+	eq(cut.prop_count(), 0, "a halted generation stops before it lays anything")
 	WorldGen.unhalt(s, 256, &"underground")
 	var whole := WorldGen.generate(s, 256, &"", &"underground")
-	gt(float(whole.props.size()), 0.0, "and the same world grown after the stop is whole")
+	gt(float(whole.prop_count()), 0.0, "and the same world grown after the stop is whole")
 	# And `forget` is what tells an abandoned raise to stop, and the stop is let go
 	# once that raise has ended.
 	var seed_value := 90420

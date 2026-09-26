@@ -75,7 +75,7 @@ func _play(s: int) -> void:
 	seed_value = s
 	g = Fx.from_world(WorldGen.generate(s), Tuning.START_HOUR)
 	var laid := Strand.lay(g)
-	var props_after_setup := g.world.props.size()
+	var props_after_setup := g.world.prop_count()
 	var home := g.world.spawn
 
 	# Food and fuel off the shore and from under the trees.
@@ -145,7 +145,7 @@ func _play(s: int) -> void:
 	var hours := (g.clock.minutes - Tuning.START_HOUR * 60.0) / 60.0
 	print("  info progression seed %d: %d laid, %d actions, %.0f real s, %.1f world h, ends %s, hunger worst %d" % [
 		s, laid.size(), actions, real, hours, g.clock.label(), worst_hunger])
-	eq(g.world.props.size(), props_after_setup + 1, "nothing was placed but the fire the bot built")
+	eq(g.world.prop_count(), props_after_setup + 1, "nothing was placed but the fire the bot built")
 	lt(real, REAL_BUDGET, "fits in ten real minutes")
 	lt(worst_hunger, 3, "never starving on the way")
 	lt(hours, 48.0, "an iron axe inside two days")
@@ -227,7 +227,7 @@ func _take_one(items: Array[StringName]) -> bool:
 		return false
 	_stand_at(prop)
 	var target := Survival.use_target(g)
-	check(target == prop, "%s in front (got %s)" % [PropKind.NAMES[prop.kind], PropKind.NAMES[target.kind] if target else "nothing"])
+	check(WorldProp.same(target, prop), "%s in front (got %s)" % [PropKind.NAMES[prop.kind], PropKind.NAMES[target.kind] if target else "nothing"])
 	var before := g.inventory.items.duplicate()
 	check(Survival.use(g), "use on %s: %s" % [PropKind.NAMES[prop.kind], Survival.describe_target(g)])
 	Survival.finish_work(g)
@@ -266,7 +266,7 @@ func _find(items: Array[StringName]) -> WorldProp:
 				kinds[kind] = true
 	var near: Array = []
 	var far2 := FAR * FAR
-	for p in g.world.props:
+	for p in g.world.each_prop():
 		if not kinds.has(p.kind) or p.pos.distance_squared_to(here) > far2 or g.world.depleted.has(p.id):
 			continue
 		near.append([p.pos.distance_squared_to(here), p])
@@ -322,14 +322,14 @@ func _build_fire_near(p: Vector2) -> WorldProp:
 				continue
 			if Survival.describe_target(g) != "campfire - build?":
 				continue
-			var before := g.world.props.size()
+			var before := g.world.prop_count()
 			check(Survival.use(g), "the first press asks")
-			eq(g.world.props.size(), before, "and builds nothing")
+			eq(g.world.prop_count(), before, "and builds nothing")
 			check(Survival.use(g), "the second builds")
 			_spend(1.0)
 			actions += 2
-			if g.world.props.size() > before:
-				return g.world.props[-1]
+			if g.world.prop_count() > before:
+				return g.world.prop_at(-1)
 	return null
 
 
@@ -373,7 +373,7 @@ func _standing_spot(p: WorldProp) -> Vector2:
 			continue
 		g.player.pos = s
 		g.player.facing = (p.pos - s).angle()
-		if Survival.use_target(g) == p:
+		if WorldProp.same(Survival.use_target(g), p):
 			out = s
 			break
 	g.player.pos = keep_pos

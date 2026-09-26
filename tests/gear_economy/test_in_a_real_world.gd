@@ -141,7 +141,7 @@ func test_the_prop_a_landscapes_material_is_refined_from_really_stands_in_it() -
 				% [id, raw, PropKind.NAMES[kind], land])
 			continue
 		var standing := 0
-		for p: WorldProp in w.props:
+		for p: WorldProp in w.each_prop():
 			if p.kind != kind:
 				continue
 			var d := BiomeRegistry.at(w, p.pos)

@@ -54,7 +54,7 @@ func test_a_thing_standing_there_holds_the_place_s_words() -> void:
 	var tank: WorldProp = null
 	var door: WorldProp = null
 	var binder: WorldProp = null
-	for q: WorldProp in w.props:
+	for q: WorldProp in w.each_prop():
 		if q.pos.distance_to(at) > StoryWorld.PLACE_REACH:
 			continue
 		if q.kind == PropKind.CONSOLE:
@@ -69,10 +69,10 @@ func test_a_thing_standing_there_holds_the_place_s_words() -> void:
 	if tank == null or door == null or binder == null:
 		return
 	var top := 0
-	for q: WorldProp in w.props:
+	for q: WorldProp in w.each_prop():
 		top = maxi(top, q.id)
 	var ashore := WorldProp.new(top + 1, PropKind.RELAY, w.spawn, 0.0, 1.0)
-	w.props.append(ashore)
+	w.add_prop(ashore)
 	var wq := WorldQuery.new(w)
 	eq(StoryFragments.held_by(w, wq, tank), &"growth_bay", "the first screen is the tank's")
 	eq(StoryFragments.held_by(w, wq, door), &"release_order", "the second is the sea door's")

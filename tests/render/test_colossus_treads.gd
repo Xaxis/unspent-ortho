@@ -273,7 +273,7 @@ func test_a_planted_foot_stops_puts_out_and_crushes() -> void:
 	check(g2.query.blocks_at(c).is_empty(), "an hour before, this tread's pad stops nothing")
 	var standing := 0
 	var own := PackedInt32Array(row.get("props", []))
-	for q: WorldProp in g2.world.props:
+	for q: WorldProp in g2.world.each_prop():
 		if own.has(q.id):
 			continue
 		for pp: Vector3 in (row.pads as Array):
