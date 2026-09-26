@@ -715,6 +715,8 @@ static func _shader(key: StringName) -> Shader:
 			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _FLAT + _MARKS
 		&"ground":
 			s.code = "shader_type spatial;\n" + (_COMMON % "") + open + _FLAT + _MARKS
+		&"among":
+			s.code = "shader_type spatial;\n" + (_COMMON % "") + open + _BILLBOARD + _MARKS
 		&"swing":
 			s.code = "shader_type spatial;\n" + open + _SWING
 		&"line":
@@ -730,9 +732,15 @@ static func _v3(c: Color) -> Vector3:
 
 
 ## One mark on a quad. `shader`: over (faces the camera) or flat (lies on the
-## ground). Neither is hidden by what it is drawn on: the land's contours stand
-## a little proud of a tile's level, and a depth-tested mark sank into them.
+## ground). From above neither is hidden by what it is drawn on: the land's
+## contours stand a little proud of a tile's level, and a depth-tested mark sank
+## into them. Under the close eye a flat mark is `ground`, depth-tested: seen from
+## behind the head, a ring round the feet drawn over everything lands on the
+## head. (`among`: a mark facing the camera that bodies hide, for the few drawn
+## by the body at eye level; see `puff`.)
 static func _mark(parent: Node, at: Vector3, size: float, mode: int, shader: StringName, seed_value: int, a: Color, b: Color) -> MeshInstance3D:
+	if shader == &"flat" and close_eye(parent):
+		shader = &"ground"
 	if _quad == null:
 		_quad = QuadMesh.new()
 		_quad.size = Vector2(2, 2)
@@ -879,14 +887,16 @@ static func burst(parent: Node, at: Vector3, size: float = 0.9, seed_value: int 
 		glint(parent, at + Vector3(0, 0.05, 0), accent, seed_value + 5, 0.4)
 
 
-## Dust thrown up at the feet and drifting along `dir` (tile space).
+## Dust thrown up at the feet and drifting along `dir` (tile space). Under the
+## close eye it is `among` the bodies, depth-tested: a puff at the feet or the
+## mouth drawn over everything is a cloud on the back of the head.
 static func puff(parent: Node, at: Vector3, dir: Vector2, dust: Color, size: float = 0.6, seed_value: int = 0) -> void:
 	if not _ok(parent):
 		return
 	var d := dir.normalized() if dir.length() > 0.01 else Vector2.ZERO
 	size = at_least(size, PUFF_PX)
 	var lift := Vector3(0, size * 0.35, 0)
-	var mi := _mark(parent, at + lift, size, PUFF, &"over", seed_value, dust, dust.darkened(0.35))
+	var mi := _mark(parent, at + lift, size, PUFF, &"among" if close_eye(parent) else &"over", seed_value, dust, dust.darkened(0.35))
 	var t := 0.34 + Rng.hash01(seed_value, 1, 2) * 0.12
 	_run(mi, t, Vector3(d.x, 0.0, d.y) * size * 0.9 + Vector3(0, size * 0.3, 0))
 
@@ -1007,13 +1017,12 @@ static func tell_drop(parent: Node, at: Vector3, col: Color, radius: float, seco
 
 ## A shadow from far above on the ground (a colossus's pad, 19_colossi): a
 ## dashed ring the size of what is coming, the whole ground inside it dimming
-## over `seconds` as it comes down. `eye_level`: seen from the shoulder, where a
-## mark tens of tiles wide drawn over everything would lie across the sky and
-## the body, so it is depth-tested and lies on the land it covers.
-static func tell_shade(parent: Node, at: Vector3, col: Color, radius: float, seconds: float, eye_level: bool = false) -> void:
+## over `seconds` as it comes down. Seen from the shoulder it lies on the land it
+## covers, as every flat mark does there (`_mark`).
+static func tell_shade(parent: Node, at: Vector3, col: Color, radius: float, seconds: float) -> void:
 	if not _ok(parent):
 		return
-	_run(_mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_SHADE, &"ground" if eye_level else &"flat", int(at.x * 13.0 + at.z * 7.0), col, col), seconds)
+	_run(_mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_SHADE, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col), seconds)
 
 
 ## A blow that rang off plate: sound marks and a few cold bright pixels.

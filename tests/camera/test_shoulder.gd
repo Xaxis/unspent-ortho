@@ -553,6 +553,64 @@ func test_breath_is_depth_tested_air_at_every_angle() -> void:
 	_done()
 
 
+## Marks and air put out since the last count, freed as counted: how many, and
+## how many of them draw over everything (a mark whose shader has no depth test,
+## or air with its depth test off).
+func _over_all(g: Game) -> Vector2i:
+	var n := 0
+	var over := 0
+	for c: Node in g.get_children():
+		var mi := c as MeshInstance3D
+		if mi == null or mi.is_queued_for_deletion():
+			continue
+		var sm := mi.material_override as ShaderMaterial
+		var st := mi.material_override as StandardMaterial3D
+		if sm != null and sm.get_shader_parameter(&"mode") != null:
+			n += 1
+			over += int(sm.shader.code.contains("depth_test_disabled"))
+		elif st != null and mi.mesh == FireModel.smoke_mesh():
+			n += 1
+			over += int(st.no_depth_test)
+		else:
+			continue
+		mi.queue_free()
+	return Vector2i(n, over)
+
+
+## NOTHING A HAZARD PUTS ON THE BODY DRAWS OVER IT AT EYE LEVEL. From behind
+## the head, a mark drawn over everything lands on the head: the resonance ring
+## round the feet and a cough's puff read as a dashed ring round the head in a
+## fog run. Over the shoulder every cue that lies on the ground or hangs by the
+## body is depth-tested, so the body hides what is behind it. From above they
+## are the reviewed marks.
+func test_no_hazard_cue_draws_over_the_body_at_eye_level() -> void:
+	var g := await _make()
+	var cam := g.camera
+	cam.sight_room = Callable()
+	var hz: Node = null
+	for s in g.systems:
+		if s.name == "52_hazards":
+			hz = s
+	check(hz != null, "the hazards system runs")
+	cam.shoulder = true
+	cam.snap_view()
+	cam.shoulder_yaw = Shoulder.yaw_behind(g.player.facing)
+	_step(cam, 2)
+	_over_all(g)
+	for id: StringName in [&"fumes", &"resonance", &"wet"]:
+		hz.call("_draw_cue", id, HazardCues.cue(id), 0.7)
+		var c := _over_all(g)
+		gt(c.x, 0, "%s puts a cue out" % id)
+		eq(c.y, 0, "and none of %s's %d marks draws over the body from behind" % [id, c.x])
+	# A cough is air out of the mouth, as breath is: a rimmed puff at the head,
+	# even depth-tested, hangs behind it as a dashed ring round the head.
+	hz.call("_draw_cue", &"fumes", HazardCues.cue(&"fumes"), 0.7)
+	var air: Array = []
+	eq(_breaths(g, air), 1, "a cough under the close eye is one puff of air")
+	check(air.has(true), "and it is the depth-tested air, not a mark")
+	_done()
+
+
 # --- the right button ------------------------------------------------------------
 
 func _right(down: bool) -> void:

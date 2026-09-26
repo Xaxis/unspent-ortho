@@ -378,8 +378,7 @@ func _warn(m: float) -> void:
 				var at := Vector2(p.x, p.y)
 				if at.distance_to(game.player.pos) > WARN_REACH + p.z:
 					continue
-				MobFx.tell_shade(game, game.world.to_3d(at), Palette.INK[1], p.z, seconds,
-					game.camera != null and game.camera.shoulder)
+				MobFx.tell_shade(game, game.world.to_3d(at), Palette.INK[1], p.z, seconds)
 				near.append(p)
 				warnings += 1
 				_marked = true

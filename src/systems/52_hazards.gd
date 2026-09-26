@@ -310,7 +310,14 @@ func _draw_cue(id: StringName, cue: Dictionary, v: float) -> void:
 				var away := Vector3(cos(k * 2.1) * 0.5, 0.05, sin(k * 2.1) * 0.5)
 				MobFx.breath(_fx_parent(), at + away, col, 0.22, 1.4, Vector2.ZERO, seed_value + k * 7)
 		&"cough":
-			MobFx.puff(_fx_parent(), head, Vector2.from_angle(game.player.facing), col, 0.36, seed_value)
+			# Under the close eye a puff at the head is a rimmed cloud hanging by
+			# the back of it, which from behind reads as a dashed ring round the
+			# head: there it is air out of the mouth, as breath is.
+			if MobFx.close_eye(_fx_parent()):
+				var mouth := head + Vector3(ahead.x, -0.06, ahead.y) * 0.26
+				MobFx.breath(_fx_parent(), mouth, col, 0.3 * BREATH_EYE_SIZE, 0.6, ahead * 0.6, seed_value)
+			else:
+				MobFx.puff(_fx_parent(), head, ahead, col, 0.36, seed_value)
 			game.player.shudder(0.26)
 		&"tick":
 			for k in 3:

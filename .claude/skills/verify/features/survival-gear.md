@@ -20,6 +20,8 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   the region: `tools/test.sh test_bag_heap`, `tools/tour.sh tours/bag_heap.tour` (header has its options).
 - 51_harvest: `src/systems/51_harvest.gd`, reached by `tools/tour.sh tours/harvest.tour`.
 - 52_hazards: `src/systems/52_hazards.gd`, reached by `tools/tour.sh tours/hazards.tour`.
+  At eye level no cue draws over the body (ground marks depth-tested, a cough is air out of the
+  mouth): `tools/test.sh test_shoulder:test_no_hazard`, `tools/tour.sh tours/cue_eye.tour` (options in its header).
 - 52_survival_fx: `src/systems/52_survival_fx.gd`, reached by `tools/tour.sh tours/survival.tour`.
 - 53_tracks: `src/systems/53_tracks.gd`, reached by `tools/tour.sh tours/tracks.tour`.
 - 54_gear: `src/systems/54_gear.gd`, reached by `tools/tour.sh tours/gear-economy.tour`.
