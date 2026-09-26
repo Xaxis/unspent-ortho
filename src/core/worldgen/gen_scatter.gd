@@ -451,6 +451,10 @@ static func _lay_patch(c: GenContext, p: Vector2i, r: float, ground: int) -> voi
 static func props(c: GenContext) -> void:
 	var occ := PackedByteArray()
 	occ.resize(c.n)
+	# The shafts' mouths and the room before them, held before anything is laid:
+	# sited on the land alone (Portals.site), nothing of either era stands on them.
+	for shaft: Portal in c.w.shafts:
+		_occupy(c, occ, shaft.pos, float(Portals.HOLD))
 	_wrecks(c)
 	_villages(c, occ)
 	GenSettle.frame_spawn(c)

@@ -165,7 +165,12 @@ const UNKNOWN := "unknown"
 ##     where one stream for the island made every place depend on every dart
 ##     thrown before it anywhere (streamed worldgen S3). The places and their
 ##     patches move on every seed; the tiles under them do not.
-const GEN := 30
+## 31. The shafts to the next realm are sited in generation on the land alone
+##     (`Portals.site`, after the surface and before any prop) and HOLD tiles
+##     round each are kept clear of everything laid after, treads included, so
+##     2029 opens them on the tiles the present does. What the scatter lays round
+##     a shaft moves; no tile does.
+const GEN := 31
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

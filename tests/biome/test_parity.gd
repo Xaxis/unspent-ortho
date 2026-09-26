@@ -460,16 +460,21 @@ extends TestCase
 ## of ground pixels differ, all of them site patches and the marks on them. Over
 ## seeds 2, 3, 4, 7, 42 and 90210 at 512 the island holds 954 places where it
 ## held 939: a different search, not a thinner one.
+## RE-ACCEPTED AT GEN 31 (2026-09-26): the shafts are sited on the land before any
+## prop and the ground round each is held clear (`Portals.site`, HOLD). Five
+## tile arrays equal on all five seeds; only `props` moves, what the scatter no
+## longer lays in a shaft's mouth. Seed 4 at 192 shot in 2029 and now at shaft 0:
+## one tile, the same scree and scrub round it, nothing solid within 4.7 tiles.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 1ad8f3f5 100053b8 4fd7a826 63843be3",
-	3: "bd96c6d3 1d22db86 1008c39c a4316902 7e58a668 77b19d9e",
-	7: "ba7a972f 55af42cc 0f10d2e3 0f02d42c f555c41d 14435036",
-	42: "e0ad0bb3 b7ca1370 0c07876f 2f4b7f69 1565ed7e b76cf559",
-	90210: "2659ea1f 66925798 c128779c 34b30d32 275c7664 25153af5",
+	1: "054710a9 3eac3638 1ad8f3f5 100053b8 4fd7a826 75921af5",
+	3: "bd96c6d3 1d22db86 1008c39c a4316902 7e58a668 400ca2f9",
+	7: "ba7a972f 55af42cc 0f10d2e3 0f02d42c f555c41d 8c0fbb8c",
+	42: "e0ad0bb3 b7ca1370 0c07876f 2f4b7f69 1565ed7e a6dcd62a",
+	90210: "2659ea1f 66925798 c128779c 34b30d32 275c7664 d3944305",
 }
 
 

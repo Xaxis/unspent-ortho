@@ -141,6 +141,12 @@ var lines: Array[Dictionary] = []
 ## and sound, bridge (a road over a river; `dir` runs along the road) and
 ## falls (a river's bed steps down a level; `dir` runs downstream).
 var landmarks: Array[Dictionary] = []
+## The shafts to the next realm (`Portals`), sited by generation on the land
+## alone and held clear of everything laid after, so every era of one coast opens
+## them on the same tiles. Empty on a world built by hand: `Portals` searches
+## that one itself.
+var shafts: Array[Portal] = []
+var shafts_sited := false
 ## Props taken from the world: prop id -> world minute it grows back (INF = never).
 ## Owned by survival rules; WorldView and WorldQuery skip depleted props.
 var depleted: Dictionary = {}

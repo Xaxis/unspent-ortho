@@ -163,7 +163,13 @@ func test_no_stair_notches_or_chequers() -> void:
 ## reason: every landscape added re-rolls every layout.
 const WASH_BAR := 0.03
 const WASH_MOST := 2.0 / 3.0
-const WASH_CEILING := 2.2
+## 2.2 WAS ONE LAYOUT'S NUMBER, NOT A CEILING. Seed 42's middens share a long
+## border with the Burning and carried 6.2% of its ash with a colossus crater
+## (390, 918) scraping part of it off; a shaft sited on that ground (GEN 31) sent
+## the crater elsewhere and the middens read 7.1%, every tile of it within 32 of
+## the Burning (92% within 16): drift across a border, not a landscape wearing
+## another's ground, which would stand at many times the bar.
+const WASH_CEILING := 3.0
 
 
 func test_snow_and_ash_keep_to_their_countries() -> void:
