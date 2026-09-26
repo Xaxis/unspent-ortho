@@ -884,6 +884,75 @@ const FRAGMENTS := {
 			"Nobody has asked for the drink.",
 		],
 	},
+	# --- a maintenance bay in the machine city (ROOMS: maintenance_bay) --------
+	&"bay_out": {
+		"kind": &"terminal", "title": "a diagnostic panel", "lands": [],
+		"lines": [
+			"  BAY 0-88  /  CRADLE: CLEAR",
+			"  UNIT ....... OUT",
+			"  RETURN ..... NOT SCHEDULED",
+			"  FAULTS ..... NONE",
+			"",
+			"The one lit point is at the height of a",
+			"dog's eye. You kneel on the deck to read it.",
+		],
+	},
+	&"bay_mass": {
+		"kind": &"terminal", "title": "a diagnostic panel", "lands": [],
+		"lines": [
+			"  BAY 0-88  /  MASS ON DECK: 61 KG",
+			"  CLASSIFICATION: NOT REQUIRED",
+			"",
+			"The figure changes when you step onto the",
+			"guide line. Nothing else on the panel does.",
+		],
+	},
+	&"bay_short": {
+		"kind": &"terminal", "title": "a diagnostic panel", "lands": [],
+		"lines": [
+			"  BAY 0-88  /  SPARES: ONE SHORT",
+			"  REORDER .... NOT REQUIRED",
+			"  RECONCILED.",
+			"",
+			"A column of points down the plate, all dark",
+			"but the top one. Nothing has come to make",
+			"up the one.",
+		],
+	},
+	&"bay_tally": {
+		"kind": &"mark", "title": "a gap in the rack", "lands": [],
+		"lines": [
+			"One panel is out of the rack. On the plate",
+			"behind it, scratched, strokes in fives, row",
+			"under row: a hundred and nineteen.",
+			"",
+			"On the floor of the gap, a tin, eaten from,",
+			"the lid folded back and pressed flat again.",
+		],
+	},
+	&"bay_bedroll": {
+		"kind": &"mark", "title": "a gap in the rack", "lands": [],
+		"lines": [
+			"A panel out of the wall, and behind it a gap",
+			"exactly the size of the panel. A bedroll is",
+			"pushed into it, rolled tight, ready to go.",
+			"",
+			"On the plate over it, in fives: a hundred",
+			"and nineteen. A spoon in an empty tin.",
+		],
+	},
+	&"bay_half": {
+		"kind": &"mark", "title": "a gap in the rack", "lands": [],
+		"lines": [
+			"Strokes in fives on the back plate, where a",
+			"panel should be: a hundred and nineteen,",
+			"and half of the next, begun and not drawn",
+			"through.",
+			"",
+			"A tin, eaten from. A bedroll folded square,",
+			"the one thing in the city not in its line.",
+		],
+	},
 	&"lobby_boxes": {
 		"kind": &"mark", "title": "the letterboxes", "lands": [],
 		"lines": [
@@ -1442,6 +1511,10 @@ const ROOMS := {
 	&"tenement": {
 		&"wall:shift_board": [&"tenement_cards", &"tenement_rows", &"tenement_notice"],
 		&"desk:ration_book": [&"tenement_persons", &"tenement_ticks", &"tenement_drink"],
+	},
+	&"maintenance_bay": {
+		&"terminal:diag_panel": [&"bay_out", &"bay_mass", &"bay_short"],
+		&"wall:tally": [&"bay_tally", &"bay_bedroll", &"bay_half"],
 	},
 }
 

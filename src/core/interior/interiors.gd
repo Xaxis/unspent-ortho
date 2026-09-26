@@ -19,6 +19,7 @@ const RECIPES := {
 	&"hulk_hold": "res://src/content/interiors/hulk_hold.gd",
 	&"rooted_floor": "res://src/content/interiors/rooted_floor.gd",
 	&"tenement": "res://src/content/interiors/tenement.gd",
+	&"maintenance_bay": "res://src/content/interiors/maintenance_bay.gd",
 }
 
 static var _kinds: Dictionary = {}

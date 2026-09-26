@@ -806,13 +806,16 @@ static func _walls(l: InteriorLayout) -> Array[Vector3]:
 			var s := Vector2(-(t.face as Vector2).y, (t.face as Vector2).x)
 			out.append(Vector3(at.x + s.x * 0.5, at.y + s.y * 0.5, 0.45))
 			out.append(Vector3(at.x - s.x * 0.5, at.y - s.y * 0.5, 0.45))
-		elif t.has("deep"):
+		elif t.has("deep") or t.has("long"):
 			# A thing with a length (a pier, a ledge, a partition) stands the
-			# whole of it, `deep` along its face through `at`.
+			# whole of it, `deep` along its face through `at`; one that runs
+			# along its wall (a rack, a bench) `long` across its face.
 			# Circles no further apart than their radius, or a body slips
 			# between them along a long ledge or partition.
 			var f: Vector2 = t.face
-			var deep := float(t.deep)
+			if t.has("long"):
+				f = Vector2(-f.y, f.x)
+			var deep := float(t.get("deep", t.get("long")))
 			var n := maxi(3, ceili(deep / r) + 1)
 			for k in n:
 				var q := at + f * deep * (float(k) / float(n - 1) - 0.5)
@@ -1249,7 +1252,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "strongbox", "thing:turnstile"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
