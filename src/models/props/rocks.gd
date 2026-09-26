@@ -622,6 +622,7 @@ static func cairn(k: Kit, v: int, c: int) -> void:
 ## the one thing on the land in the player's own linen, so it is found by eye
 ## from a long way off -- and the creel's strap hanging over the stones.
 static func _bag_marker(k: Kit, y: float) -> void:
+	const LENS_GLOW := 0.85
 	var top := Vector3(0.22, y + 1.6, 0.0)
 	k.rod(Vector3(0.22, -0.05, 0.0), top, 0.045, 5, P.LINEN[1])
 	# The rag: a long strip and a short one off the knot, stood out on the air,
@@ -637,12 +638,12 @@ static func _bag_marker(k: Kit, y: float) -> void:
 		k.found.quad(top + a, top + b, r1, r0, P.LINEN[4])
 	k.rod(top + Vector3(0.0, 0.03, 0.0), top + Vector3(0.0, -0.12, 0.0), 0.06, 5, P.LINEN[3])
 	# A scrap of machine lens knotted in with the rag, catching what light there
-	# is (a FOUND built-in light, as a lamp's lens is): the cloth is pale by day,
-	# and after dark this is how the heap is found by eye.
-	var g := Color(P.COLD[3].r, P.COLD[3].g, P.COLD[3].b, 0.7)
-	var n := Vector3(0.0, 0.0, 0.07)
-	k.found.quad(top + Vector3(-0.07, -0.02, 0.0) + n, top + Vector3(0.07, -0.02, 0.0) + n, top + Vector3(0.07, -0.16, 0.0) + n, top + Vector3(-0.07, -0.16, 0.0) + n, g)
-	k.found.quad(top + Vector3(0.07, -0.02, 0.0) - n, top + Vector3(-0.07, -0.02, 0.0) - n, top + Vector3(-0.07, -0.16, 0.0) - n, top + Vector3(0.07, -0.16, 0.0) - n, g)
+	# is: a FOUND built-in light (vertex alpha, found.gdshader), faint -- three
+	# quarters of a machine lamp's -- so under the sun it is a cold pixel on a stick and at dusk
+	# and after dark it is how the heap is found by eye. Round, so it reads from
+	# every side the camera stands.
+	var g := Color(P.COLD[3].r, P.COLD[3].g, P.COLD[3].b, LENS_GLOW)
+	k.found.prism(top.x, top.y - 0.26, top.z, 0.1, top.y - 0.1, 0.08, 6, g, g)
 	# The strap over the stones.
 	k.rod(Vector3(-0.3, y - 0.5, 0.2), Vector3(0.0, y - 0.1, 0.1), 0.025, 4, P.LINEN[2])
 	k.rod(Vector3(0.0, y - 0.1, 0.1), Vector3(0.28, y - 0.55, 0.2), 0.025, 4, P.LINEN[2])

@@ -31,6 +31,9 @@ shot 04-your-things-under-your-own-rag with prop:cairn
 zoom 16
 wait 0.6
 shot 05-found-by-eye-from-well-off with prop:cairn
+hour 23
+wait 0.6
+shot 05b-and-after-dark-by-the-lens-in-the-knot with prop:cairn
 zoom 8
 press use 0.1
 await took 3
