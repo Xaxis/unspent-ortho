@@ -71,7 +71,13 @@ static func make() -> BiomeDef:
 		Ground.BLACKWATER: P.SLATE[1],
 	}
 	d.cliff_wash = P.SLATE[2].lerp(P.RIME[2], 0.45)
-	d.strata = GroundColors.STRATA_ICE
+	# ITS OWN ICE, LOOK only (no seed moves): floes frozen together with black
+	# ice in the leads (GroundColors.SEA_ICE), and every step a floe's edge in
+	# blue and white layers (STRATA_FLOE). It was the frozen river's ice, a pale
+	# sheet under a comb of icicles one every three pixels.
+	# ROCK here is the pressure ridge (`_surface`, rs > 1.2), which is ice too.
+	d.ground_marks = {Ground.ICE: GroundColors.SEA_ICE, Ground.ROCK: GroundColors.SEA_ICE}
+	d.strata = GroundColors.STRATA_FLOE
 	d.plain_ground = Ground.ICE
 	d.bank_ground = Ground.ICE
 	d.pool_rim_ground = Ground.ICE

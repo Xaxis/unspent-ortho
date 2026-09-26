@@ -154,6 +154,9 @@ const STRATA_MACHINE := 20
 ## The mesas' walls: sandstone in bands, cross-bedded, under a hard pale caprock,
 ## streaked dark with desert varnish from the lip (149).
 const STRATA_MESA := 21
+## The edge of a floe standing out of the sea: ice in blue and white layers,
+## melt hung off the lip in clusters, deep blue at the waterline (150).
+const STRATA_FLOE := 22
 ## THE CITY'S FLOOR, a GROUND drawn with the grounds although its number sits
 ## past the strata (the ground numbers ran out at 60): poured slabs in bays,
 ## their joints grown through, faded lane paint, spidered cracks and drifts of
@@ -174,6 +177,9 @@ const SULPHUR := 102
 ## The mesas' floor: desert pavement, small stones packed tight and varnished
 ## dark by the sun over red sand, with the wind's ripples in the lee (103).
 const DESERT_PAVEMENT := 103
+## The frost sea's ice: floes frozen together with their rafted edges standing,
+## thin black ice between where the sea shows through, snow dust in streaks (104).
+const SEA_ICE := 104
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array

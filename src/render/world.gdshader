@@ -1555,6 +1555,45 @@ vec3 desert_pavement(vec3 c, vec3 wp, vec2 px) {
 	return c;
 }
 
+// SEA_ICE: the frost sea's floor, which is the sea's lid. Floes frozen together,
+// each its own white, their rafted edges ridged up and bright where one rode
+// over the next (relief); between the floes, where the lead froze last, thin
+// BLACK ice the sea shows through, strung with frozen bubbles and near a
+// mirror (its roughness in fragment()); and snow dust blown along the wind in
+// streaks. No square anything: the floes are the cells of a warped field.
+float sea_black(vec2 p) {
+	vec3 cd = matter_cells(p * 0.35 + vec2(ink_vnoise(p * 0.2), ink_vnoise(p * 0.2 + 5.0)) * 1.2);
+	float lead = 1.0 - smoothstep(0.05, 0.3, cd.y - cd.x);
+	return lead * smoothstep(0.3, 0.5, ink_vnoise(p * 0.15 + 21.0));
+}
+
+vec3 sea_ice(vec3 c, vec3 wp, vec2 px) {
+	vec2 p = wp.xz;
+	vec3 cd = matter_cells(p * 0.35 + vec2(ink_vnoise(p * 0.2), ink_vnoise(p * 0.2 + 5.0)) * 1.2);
+	float fw = max(fwidth(cd.y - cd.x), 1e-4);
+	c *= 1.0 + (cd.z - 0.5) * 0.08;
+	// The rafted edge: a bright ridge where two floes met.
+	// A bright crest with a blue shadow on its lee side, so the ridge reads on
+	// ice that is already pale.
+	float ridge = 1.0 - smoothstep(0.02 - fw, 0.06 + fw, cd.y - cd.x);
+	float lee = (1.0 - smoothstep(0.06, 0.14 + fw, cd.y - cd.x)) - ridge;
+	c = mix(c, mix(RIME3, SLATE2, 0.3), clamp(lee, 0.0, 1.0) * 0.5);
+	c = mix(c, RIME5, ridge * 0.8);
+	// Black ice in the frozen leads.
+	float black = sea_black(p);
+	if (black > 0.0) {
+		vec3 dark = mix(BRINE0, SLATE1, 0.4);
+		// Bubbles frozen in it, in strings.
+		float bub = ink_vnoise(vec2(dot(p, vec2(0.7, 0.7)) * 3.0, dot(p, vec2(-0.7, 0.7)) * 0.6));
+		dark = mix(dark, RIME3, smoothstep(0.78, 0.9, bub) * 0.6);
+		c = mix(c, dark, black * 0.85);
+	}
+	// Snow dust along the wind.
+	float dust = ink_vnoise(vec2(dot(p, vec2(0.83, -0.55)) * 0.3, dot(p, vec2(0.55, 0.83)) * 1.8));
+	c = mix(c, RIME5, smoothstep(0.6, 0.78, dust) * 0.5 * (1.0 - black));
+	return c;
+}
+
 // Terrace walls: each country's rock, banded by world height. dt: depth below
 // the wall's top (a wall is one level tall).
 vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
@@ -2072,6 +2111,25 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		if (vs > 0.56 && dt > cap && dt < reach) {
 			c = mix(c, mix(INK2, RUST1, 0.35), smoothstep(0.56, 0.72, vs) * (1.0 - (dt - cap) / reach) * 0.7);
 		}
+	} else if (id == 22) {
+		// FLOE: the edge of a floe standing out of the sea. The ice is laid in
+		// blue and white layers, a winter each, the blue deepening down toward
+		// the waterline; melt hung off the lip in icicles that cluster where the
+		// sun works on the lip and are absent elsewhere, each its own length;
+		// and a snow cap along the top.
+		float sw = (ink_vnoise(vec2(px.x * 0.03, 3.0)) - 0.5) * 0.04;
+		float b = fract((y + sw) / 0.07);
+		c = mix(RIME4, RIME3, smoothstep(0.55, 0.8, b));
+		c = mix(c, mix(RIME2, BRINE2, 0.4), smoothstep(0.15, 0.5, dt));
+		float cap = 0.035 + ink_vnoise(vec2(px.x * 0.07, 5.0)) * 0.03;
+		float cluster = smoothstep(0.45, 0.7, ink_vnoise(vec2(px.x * 0.04, 7.0)));
+		float ic = ink_vnoise(vec2(px.x * 0.6, 9.0));
+		float run = cap + (0.05 + ink_vnoise(vec2(px.x * 0.25, 11.0)) * 0.25) * cluster;
+		if (dt < cap) {
+			c = RIME5;
+		} else if (ic > 0.5 && dt < run) {
+			c = mix(RIME5, RIME4, (dt - cap) / max(run - cap, 0.01));
+		}
 	}
 	return c;
 }
@@ -2258,6 +2316,9 @@ void fragment() {
 		if (m == M_DESERT_PAVEMENT) {
 			c = desert_pavement(c, world_pos, px);
 		}
+		if (m == M_SEA_ICE) {
+			c = sea_ice(c, world_pos, px);
+		}
 		if (m == M_TIDEFLAT) {
 			c = tide_floor(c, world_pos, px);
 		}
@@ -2371,6 +2432,10 @@ void fragment() {
 		c = matter_grown(c, n_world, world_pos, (1.0 - unh) * grows, rough_add);
 	}
 
+	if (m == M_SEA_ICE) {
+		// The black ice in the leads is near a mirror: the sky lies in it.
+		rough_add -= sea_black(world_pos.xz) * 0.25;
+	}
 	if (m == 55) {
 		// THE MIRAGE. Far off across the flat the air over the hot crust bends
 		// the sky down onto it: a band of the sky lying on the ground at the

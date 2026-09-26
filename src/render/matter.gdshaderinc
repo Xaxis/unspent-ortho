@@ -78,6 +78,7 @@ const int M_CAST_FLOOR = 100;
 const int M_MACHINE_DECK = 101;
 const int M_SULPHUR = 102;
 const int M_DESERT_PAVEMENT = 103;
+const int M_SEA_ICE = 104;
 const int M_STRATA_BONE = 133;
 const int M_STRATA_GLASS = 139;
 const int M_STRATA_TIDE = 140;
@@ -89,6 +90,7 @@ const int M_STRATA_ROOTED = 146;
 const int M_STRATA_CAST = 147;
 const int M_STRATA_MACHINE = 148;
 const int M_STRATA_MESA = 149;
+const int M_STRATA_FLOE = 150;
 
 bool mark_ground(int m) {
 	return (m >= MARK_GROUND_A0 && m <= MARK_GROUND_A1) || (m >= MARK_GROUND_B0 && m <= MARK_GROUND_B1);
@@ -220,6 +222,9 @@ vec4 matter_of(int m) {
 	else if (m == M_CAST_FLOOR) { r = vec4(0.52, 0.52, 0.006, 0.0); }
 	else if (m == M_STRATA_CAST) { r = vec4(0.56, 0.50, 0.010, 0.0); }
 	// MACHINE_DECK / STRATA_MACHINE: machined plate, kept: smooth, a little metal.
+	// Wind-scoured, so not a mirror: at 0.3 every terrain facet lit apart.
+	else if (m == M_SEA_ICE) { r = vec4(0.5, 0.7, 0.030, 0.0); }
+	else if (m == M_STRATA_FLOE) { r = vec4(0.22, 0.85, 0.040, 0.0); }
 	else if (m == M_DESERT_PAVEMENT) { r = vec4(0.80, 0.44, 0.015, 0.0); }
 	else if (m == M_STRATA_MESA) { r = vec4(0.84, 0.38, 0.060, 0.0); }
 	else if (m == M_SULPHUR) { r = vec4(0.46, 0.60, 0.050, 0.0); }
@@ -401,6 +406,13 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		vec2 q = vec2(p.x * 1.1 + matter_fbm(p * 0.6) * 1.2, p.y * 0.45);
 		vec3 cd = matter_cells(q);
 		h = smoothstep(0.0, 0.45, cd.y - cd.x) + matter_fbm(p * 5.0) * 0.18;
+	} else if (m == M_SEA_ICE) {
+		// SEA_ICE: each floe's rafted edge ridged up where it rode over the next.
+		vec3 cd = matter_cells(p * 0.35 + matter_fbm(p * 0.2) * 1.2);
+		h = (1.0 - smoothstep(0.0, 0.1, cd.y - cd.x)) * 0.9 + matter_fbm(p * 1.6) * 0.2;
+	} else if (m == M_STRATA_FLOE) {
+		// STRATA_FLOE: melt runnels down the face.
+		h = matter_fbm(vec2(p.x * 4.0, p.y * 0.6)) * 0.8 + matter_fbm(p * 2.0) * 0.2;
 	} else if (m == M_DESERT_PAVEMENT) {
 		// DESERT_PAVEMENT: the wind-scoured floor's gentle swell. The stones are
 		// pigment; given relief each, the lit cells read as a floor of craters.
