@@ -61,6 +61,7 @@ const ROWS := {
 	PropKind.SNOW_PINE: {"shape": BOUGH, "lift": Vector2(2.5, 3.6), "span": Vector2(3.2, 5.0), "chance": 0.50},
 	PropKind.BROADLEAF: {"shape": BOUGH, "lift": Vector2(2.2, 3.1), "span": Vector2(3.2, 4.8), "chance": 0.46},
 	PropKind.DEAD_TREE: {"shape": TANGLE, "lift": Vector2(1.9, 2.8), "span": Vector2(2.6, 4.0), "chance": 0.50},
+	PropKind.GRAFT_TREE: {"shape": BOUGH, "lift": Vector2(1.6, 2.2), "span": Vector2(2.4, 3.4), "chance": 0.4},
 	PropKind.SCRAP_TREE: {"shape": TANGLE, "lift": Vector2(2.0, 3.0), "span": Vector2(2.4, 3.8), "chance": 0.55},
 	# A line is the strongest of the five and the cheapest: one slack cable
 	# crossing the whole frame says "you are under something" in 24 triangles.

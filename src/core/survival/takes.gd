@@ -410,6 +410,14 @@ const GIVES_NOTHING := {
 	PropKind.HOODOO: "The land's own (PropKind.WILD): cover (Cover.PROPS) and a solid foot to put your back to. The rock is the boulders' beside it, and quarrying a spire that stood through the machines would take the one piece of cover on a bench.",
 	PropKind.ARCH_RIB: "The land's own (PropKind.WILD): shade under it (52_hazards ROOFS) on a landscape with none, and a crossing. Nothing in it comes away that the boulders at its feet do not already give.",
 	PropKind.CISTERN: "Water, and nothing to carry it in: the game has no drink a creel holds, so a cistern answers thirst where it stands (Hazards.Place.spring, 52_hazards SPRINGS) -- the mesas' own spring -- rather than handing over an item nothing consumes.",
+	# The land materials' raws (GEAR.md §11): each one's take, the material it
+	# gives and the recipe that refines it are the fight package's (its G10),
+	# reading these kinds. Until they land, a raw is only what it looks like.
+	PropKind.GRAFT_TREE: "The grey orchards' raw, grafted heartwood (GEAR.md §11): its take and the material arrive with the fight package's G10.",
+	PropKind.MOSS_CORE: "The green towers' raw, root cable (GEAR.md §11): its take and the material arrive with the fight package's G10.",
+	PropKind.SERVER_BLADE: "The server fields' raw, a cold die (GEAR.md §11): its take and the material arrive with the fight package's G10.",
+	PropKind.MIDDEN_BALE: "The middens' raw, midden alloy (GEAR.md §11): its take and the material arrive with the fight package's G10.",
+	PropKind.DRIPSTONE: "The limestone caves' raw, cave lime (GEAR.md §11): its take and the material arrive with the fight package's G10.",
 	PropKind.GLASS_BLISTER: "A burst dome a body steps into: shade is what it gives (52_hazards ROOFS), and its edge cuts (PropHazards collapse). There is nothing in it to carry — the glass is the ground's own — and a boulder beside it gives the same stone.",
 }
 

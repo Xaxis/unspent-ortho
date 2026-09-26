@@ -46,7 +46,6 @@ green_towers plan.keeper
 green_towers plan.machine
 green_towers plan.work_props
 green_towers player.only_in
-green_towers player.signature
 grey_orchards land.landmark
 grey_orchards land.own_props
 grey_orchards land.site
@@ -101,7 +100,6 @@ scrapwood people.built
 scrapwood plan.keeper
 scrapwood player.only_in
 server_fields land.landmark
-server_fields land.own_props
 server_fields land.site
 server_fields plan.depot
 server_fields plan.keeper

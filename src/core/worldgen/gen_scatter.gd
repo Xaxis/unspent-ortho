@@ -75,7 +75,9 @@ const PLACED: Array[int] = [PropKind.PYLON, PropKind.POLE, PropKind.RUIN, PropKi
 	PropKind.SEA_WALL, PropKind.TIDE_GAUGE, PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.STUMP, PropKind.FIRE_TOWER,
 	PropKind.RELAY, PropKind.CHECKPOINT, PropKind.STACK, PropKind.DRILL_RIG, PropKind.CONVEYOR, PropKind.SURVEY, PropKind.WATER_TANK,
 	PropKind.SLAG_HEAP, PropKind.VENT_CAP, PropKind.ARCHIVE, PropKind.WRECKAGE, PropKind.MEMORIAL,
-	PropKind.PAN_GATE, PropKind.SALT_HEAP, PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP]
+	PropKind.PAN_GATE, PropKind.SALT_HEAP, PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP,
+	# The orchards' blocks plant their grafted trees (grey_orchards._works).
+	PropKind.GRAFT_TREE]
 
 
 ## Sites that shape grounds. Records landmarks.

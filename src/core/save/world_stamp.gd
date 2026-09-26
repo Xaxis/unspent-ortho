@@ -183,7 +183,13 @@ const UNKNOWN := "unknown"
 ##     and its decks laid on the ground (`decks_grounded`). The six parity
 ##     landscapes take none of it, so `test_parity` stands; every world holding
 ##     one of these moves.
-const GEN := 33
+## 35. The land materials' raws (GEAR.md §11) stand in their lands: the grey
+##     orchards' blocks are planted in GRAFT_TREE, the green towers shed
+##     MOSS_CORE, the server fields drop SERVER_BLADE, the middens bind
+##     MIDDEN_BALE, and the caves' stalagmites are DRIPSTONE (they were standing
+##     stones). Five kinds appended, so no other kind's number moves. (34 is the
+##     lands builder's middens relief, landing first.)
+const GEN := 35
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

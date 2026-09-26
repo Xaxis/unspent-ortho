@@ -150,7 +150,7 @@ static func make() -> BiomeDef:
 	# Under a closed canopy at night there is nothing at all, and no machine keeps
 	# a light here.
 	d.night_sky = 0.6
-	d.props = [PropKind.BROADLEAF, PropKind.BUSH, PropKind.RUIN, PropKind.DEBRIS,
+	d.props = [PropKind.MOSS_CORE, PropKind.BROADLEAF, PropKind.BUSH, PropKind.RUIN, PropKind.DEBRIS,
 		PropKind.VEHICLE, PropKind.MURAL, PropKind.STUMP, PropKind.WRECKAGE,
 		PropKind.IRON_ORE, PropKind.COPPER_ORE]
 	d.ore = [[PropKind.IRON_ORE, 0.028], [PropKind.COPPER_ORE, 0.024]]
@@ -216,6 +216,10 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.RUIN
 		if r < 0.054:
 			return PropKind.DEBRIS
+		# A plug of the towers' moss and root, fallen to the floor below: the
+		# land's own material (PropKind.MOSS_CORE), found where the walls shed.
+		if r > 0.70 and r < 0.712:
+			return PropKind.MOSS_CORE
 		return PropKind.MURAL if r > 0.62 and r < 0.6275 else BiomeScatter.NONE
 	if g == Ground.NEEDLES:
 		if r < 0.110:

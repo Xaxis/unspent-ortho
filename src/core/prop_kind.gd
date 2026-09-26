@@ -142,9 +142,19 @@ enum {
 	FALLEN_SPAN,
 	CISTERN,
 	SPAN_PYLON,
+	# What only one land gives a smith to work (GEAR.md §11): the grafted trees
+	# the orchards were planted in, a green tower's core of moss and root, a
+	# blade pulled out of a server field's racks, a bale the middens' people
+	# sorted by hand, and the caves' dripstone. Taken by the fight package's
+	# rows; laid by each landscape.
+	GRAFT_TREE,
+	MOSS_CORE,
+	SERVER_BLADE,
+	MIDDEN_BALE,
+	DRIPSTONE,
 }
 
-const COUNT := 95
+const COUNT := 100
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -164,6 +174,7 @@ const NAMES: PackedStringArray = [
 	"deck span", "lift shaft", "shopfront", "sorted bale", "demolition gantry",
 	"stair to water", "drowned tram", "mooring post", "lock gate",
 	"hoodoo", "arch rib", "fallen span", "cistern", "span pylon",
+	"graft tree", "moss core", "server blade", "midden bale", "dripstone",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
@@ -176,7 +187,9 @@ const WILD: Array[int] = [SALT_RIDGE, SCRAP_TREE, MAGNET_HEAP, PRESSURE_BLOCK, S
 	# what the land did, scattered like a boulder; the car and the rod are not.
 	FULGURITE, GLASS_BLISTER,
 	# The mesas' rock: a hoodoo and an arch are what the wind left of a wall.
-	HOODOO, ARCH_RIB]
+	HOODOO, ARCH_RIB,
+	# A green tower's moss core fell off it; the caves grew their dripstone.
+	MOSS_CORE, DRIPSTONE]
 
 ## Collision radius in tiles at scale 1. 0 means you walk through it.
 const SOLID: PackedFloat32Array = [
@@ -240,4 +253,8 @@ const SOLID: PackedFloat32Array = [
 	# down the scree is walked over. A cistern is a tank a body stops at the rim
 	# of; a pylon's four legs splay about a tile and a half across.
 	0.4, 0.0, 0.35, 0.75, 0.7,
+	# A grafted tree stops a body as a broadleaf does; a moss core is a drum
+	# lying on its side; a blade is thin and knee-high, walked round, not into;
+	# a bale is a heap of sorted stuff; a dripstone is a spike and its skirt.
+	0.35, 0.5, 0.2, 0.6, 0.3,
 ]

@@ -40,6 +40,7 @@ const Glass := preload("res://src/models/props/glass_desert.gd")
 const Metropolis := preload("res://src/models/props/metropolis.gd")
 const DrownedCity := preload("res://src/models/props/drowned_city.gd")
 const Mesas := preload("res://src/models/props/mesas.gd")
+const Materials := preload("res://src/models/props/materials.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -147,6 +148,13 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 			return 3
 		PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN:
 			return 2
+		# The land materials: a laden tree and one going over, a core lying and
+		# one on end, a blade stuck and a stack, three sorts of bale, and a tall
+		# dripstone, a pair and a cluster (materials.gd).
+		PropKind.GRAFT_TREE, PropKind.MOSS_CORE, PropKind.SERVER_BLADE:
+			return 2
+		PropKind.MIDDEN_BALE, PropKind.DRIPSTONE:
+			return 3
 		PropKind.BARRICADE, PropKind.SHACK, PropKind.VEHICLE, PropKind.HULL, PropKind.SEA_WALL, PropKind.TIDE_GAUGE, \
 		PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.FIRE_TOWER, PropKind.CHECKPOINT, PropKind.DRILL_RIG, \
 		PropKind.CONVEYOR, PropKind.SURVEY, PropKind.WATER_TANK, PropKind.SLAG_HEAP, PropKind.VENT_CAP, PropKind.ARCHIVE, \
@@ -256,6 +264,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			DrownedCity.build(k, kind, variant, country)
 		PropKind.HOODOO, PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN, PropKind.SPAN_PYLON:
 			Mesas.build(k, kind, variant, country)
+		PropKind.GRAFT_TREE, PropKind.MOSS_CORE, PropKind.SERVER_BLADE, PropKind.MIDDEN_BALE, PropKind.DRIPSTONE:
+			Materials.build(k, kind, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)
