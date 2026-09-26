@@ -437,6 +437,12 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		// SALT and PAN: polygon plates lifted at their rims.
 		vec3 cd = matter_cells(p * 0.9);
 		h = smoothstep(0.0, 0.16, cd.y - cd.x);
+		if (m == 55) {
+			// And the salt's pressure ridges (world.gdshader, SALT), standing up
+			// along the great polygons' edges.
+			vec3 big = matter_cells(p * 0.22 + vec2(ink_vnoise(p * 0.05), ink_vnoise(p * 0.05 + 7.0)) * 2.0);
+			h += (1.0 - smoothstep(0.0, 0.09, big.y - big.x)) * 1.2;
+		}
 	} else if (m == 48) {
 		// FEN: hummock and hollow, which is the SHAPE of a bog and the one thing
 		// it had none of -- it shared the generic growth-mat clump below, at a

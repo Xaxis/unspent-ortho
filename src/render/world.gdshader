@@ -801,7 +801,7 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 		// second wash under its first, so the flat still draws structure when a
 		// neighbour's grade lifts the whole frame (art review 1 — clipped white
 		// holds no wash, no shade, no plate and no hatch).
-		c = ch < 0.3 ? dn(c, 0.30) : (ch > 0.72 ? up(c, 0.10) : c);
+		c = ch < 0.3 ? dn(c, 0.12) : (ch > 0.72 ? up(c, 0.05) : c);
 		// Grain across the plate, at its own angle: a dried floor, not a panel.
 		float gr = ink_vnoise(wp * 4.1 + own * 3.3) * 0.7 + ink_vnoise(wp * 11.0) * 0.3;
 		c = gr > 0.6 ? up(c, 0.07) : (gr < 0.33 ? dn(c, 0.12) : c);
@@ -833,14 +833,22 @@ vec3 ground_mark(int m, vec3 c, vec2 wp, vec2 px, inout vec3 emit, inout float u
 			// the lit edge of the lift, the other is under its overhang.
 			bool over = own.x * 7.0 + own.y > next.x * 7.0 + next.y;
 			if (join < weight * 0.3) {
-				c = dn(c, 0.95);
+				c = dn(c, 0.7);
 			} else {
-				c = over ? mix(dn(SALT_TOP, 0.35), SALT_TOP, lifted) : dn(c, 0.55);
+				c = over ? mix(dn(SALT_TOP, 0.35), SALT_TOP, lifted) : dn(c, 0.45);
 			}
-		} else if (join < 0.028) {
-			// An unlifted join is only a hairline.
-			c = dn(c, 0.3);
+		} else if (join < 0.028 && ink_vnoise(wp * 0.9 + own * 1.7) > 0.55) {
+			// An unlifted join is only a hairline, and only where it has opened:
+			// every plate outlined drew a paved floor over the whole flat.
+			c = dn(c, 0.18);
 		}
+		// THE PRESSURE RIDGES: the crust grows, has nowhere to go, and buckles up
+		// along the edges of great polygons tens of plates across: a pale ridge
+		// of salt pushed up and catching the light (its relief is matter_height's).
+		// Two scales, so the flat is never one repeating tile.
+		vec3 big = matter_cells(wp * 0.22 + vec2(ink_vnoise(wp * 0.05), ink_vnoise(wp * 0.05 + 7.0)) * 2.0);
+		float ridge = 1.0 - smoothstep(0.0, 0.12 + max(fwidth(big.y - big.x), 1e-4), big.y - big.x);
+		c = mix(c, min(up(c, 0.25), SALT_TOP), ridge * 0.7);
 		float sh = ink_hash(px + 9.0);
 		if (sh > 0.991) {
 			c = up(c, 0.22);
@@ -2363,6 +2371,15 @@ void fragment() {
 		c = matter_grown(c, n_world, world_pos, (1.0 - unh) * grows, rough_add);
 	}
 
+	if (m == 55) {
+		// THE MIRAGE. Far off across the flat the air over the hot crust bends
+		// the sky down onto it: a band of the sky lying on the ground at the
+		// horizon, shimmering. It is the light's: the far crust is made smooth
+		// enough to mirror what is above it, and the shimmer moves that mirror.
+		float far_off = smoothstep(35.0, 90.0, length(world_pos - INV_VIEW_MATRIX[3].xyz));
+		float shimmer = ink_vnoise(vec2(world_pos.x * 0.3 + TIME * 0.6, world_pos.z * 0.3));
+		rough_add -= far_off * (0.55 + 0.2 * shimmer);
+	}
 	if (m == M_SULPHUR) {
 		// The pools are wet and warm and never dry: they take the sky; the
 		// sinter rims do not.
