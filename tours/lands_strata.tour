@@ -1,0 +1,30 @@
+# Terrace walls at eye level on the landscapes whose walls read blockiest, at
+# noon and in the evening, for any change to how a stratum wall is drawn; with
+# the frame cost over five seconds on the middens.
+#   tools/tour.sh tours/lands_strata.tour --seed=7 --weather=clear:0 --view=shoulder --stats
+coast calm
+hour 12
+place typical_the_middens
+wait 3.0
+shot middens-noon with land:the_middens
+perf stats begin
+wait 5.0
+perf stats end middens-noon
+hour 18.5
+wait 1.5
+shot middens-evening with land:the_middens
+hour 12
+place typical_the_crags
+wait 3.0
+shot crags-noon with land:the_crags
+hour 18.5
+wait 1.5
+shot crags-evening with land:the_crags
+hour 12
+place typical_ruined_metropolis
+wait 3.0
+shot metropolis-noon with land:ruined_metropolis
+hour 12
+place typical_scrapwood
+wait 3.0
+shot scrapwood-noon with land:scrapwood

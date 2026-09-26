@@ -1275,6 +1275,33 @@ vec3 tide_floor(vec3 c, vec3 wp, vec2 px) {
 	return c;
 }
 
+// WHAT THE WEATHER HAS DONE TO A TERRACE WALL, whatever it is cut through. Laid
+// over a wall's own pattern, so it is the same few things everywhere and the
+// wall's material still decides everything else:
+//  - the LIP is ragged: the ground above overhangs by a depth that wanders along
+//    the wall, and throws a dark band under itself, so the top is never ruled;
+//  - RUN-OFF has stained the face in soft streaks from the lip, darkest where
+//    it starts and fading as it runs down;
+//  - the FOOT is darker and damper, where the wall meets the ground and what
+//    fell off it has lodged, so the wall stands IN the land and not on it.
+// It exists because the stepped terraces are what read as blocks, and a wall
+// that is ruled at the top, flat down its face and cut clean at the foot is a
+// box however it is painted.
+vec3 strata_weather(vec3 c, float dt, vec2 px) {
+	float over = 0.018 + ink_vnoise(vec2(px.x * 0.12, 71.0)) * 0.035 + ink_vnoise(vec2(px.x * 0.45, 73.0)) * 0.012;
+	if (dt < over + 0.03 && dt >= over) {
+		c = dn(c, 0.45 * (1.0 - (dt - over) / 0.03));
+	}
+	float run = ink_vnoise(vec2(px.x * 0.22, 77.0));
+	float reach = 0.12 + ink_vnoise(vec2(px.x * 0.06, 79.0)) * 0.3;
+	if (run > 0.58 && dt < reach) {
+		c = dn(c, 0.3 * smoothstep(0.58, 0.75, run) * (1.0 - dt / reach));
+	}
+	float foot = smoothstep(0.34, 0.5, dt + (ink_vnoise(vec2(px.x * 0.1, 83.0)) - 0.5) * 0.08);
+	c = mix(c, dn(c, 0.35), foot);
+	return c;
+}
+
 // Terrace walls: each country's rock, banded by world height. dt: depth below
 // the wall's top (a wall is one level tall).
 vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
@@ -1303,17 +1330,23 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			c = EARTH2;
 		}
 	} else if (id == 2) {
-		// MOSS: a deep peat bank, fibrous, over dark wet rock.
-		if (dt < 0.3 + (vn - 0.5) * 0.12) {
-			c = ink_hash(vec2(col, floor(y * 30.0))) < 0.3 ? EARTH0 : EARTH1;
-			if (fract(y * 11.0 + vn) < 0.1) {
-				c = EARTH2;
+		// MOSS: a deep peat bank, fibrous, over dark wet rock. The fibres run
+		// DOWN the cut (it is a bank of roots and dead moss, sliced), and the
+		// peat's foot wanders over the rock in a ragged line; moss hangs off the
+		// rock in soft runs. Smooth fields only: a hash per pixel cell here read
+		// as a wall of little bricks at eye level.
+		float peat = 0.3 + (vn - 0.5) * 0.12 + (ink_vnoise(vec2(px.x * 0.09, 5.0)) - 0.5) * 0.12;
+		if (dt < peat) {
+			float fib = ink_vnoise(vec2(px.x * 0.7, y * 5.0)) * 0.7 + ink_vnoise(vec2(px.x * 2.1, y * 1.5)) * 0.3;
+			c = mix(EARTH0, EARTH1, smoothstep(0.3, 0.7, fib));
+			// A paler layer where the bog grew in a dry century.
+			if (abs(fract(y * 5.5 + vn * 0.8) - 0.5) < 0.06) {
+				c = mix(c, EARTH2, 0.6);
 			}
 		} else {
 			c = SLATE1;
-			if (ink_hash(vec2(floor(px.x / 3.0), 2.0)) > 0.75) {
-				c = SPRUCE2;
-			}
+			float moss = ink_vnoise(vec2(px.x * 0.15, 2.0)) - smoothstep(peat, peat + 0.35, dt) * 0.5;
+			c = mix(c, SPRUCE2, smoothstep(0.45, 0.62, moss));
 		}
 	} else if (id == 3) {
 		// PINEWOOD: dark rock in beds of uneven depth that dip along the face,
@@ -1447,21 +1480,31 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		// SCRAPWOOD: a bank of made ground. Crushed plate and cable in courses
 		// between bands of soil, roots reaching down through it, and the odd
 		// whole piece still sticking out of the face.
-		float b = (y + (vn - 0.5) * 0.06) / 0.13;
+		// Dumped, not laid: the layers wander and thicken and pinch out along the
+		// bank, so no line runs level across it; the seam between two loads shows
+		// only where it has opened; and what sticks out is a lump of plate or a
+		// cable end with its own shape, never a ruled dash every few pixels --
+		// the old pale plate lips at a fixed pitch read as mortar, and the whole
+		// bank as brickwork.
+		float wander = (ink_vnoise(vec2(px.x * 0.04, 3.0)) - 0.5) * 0.16 + (ink_vnoise(vec2(px.x * 0.13, 9.0)) - 0.5) * 0.05;
+		float b = (y + (vn - 0.5) * 0.06 + wander) / (0.11 + ink_vnoise(vec2(px.x * 0.02, 17.0)) * 0.08);
 		float bh = ink_hash(vec2(floor(b), 3.0));
 		c = bh < 0.45 ? mix(EARTH1, RUST1, 0.35) : (bh < 0.8 ? EARTH2 : mix(STONE1, RUST2, 0.4));
-		if (fract(b) < 0.12) {
-			c = INK2;
+		// Loads blend a little into each other rather than meeting on a rule.
+		c = mix(c, EARTH1, smoothstep(0.75, 1.0, fract(b)) * 0.35);
+		if (fract(b) < 0.07 && ink_vnoise(vec2(px.x * 0.11, floor(b))) > 0.55) {
+			c = mix(c, INK2, 0.75);
 		}
-		float px_col = floor(px.x / 5.0);
-		if (ink_hash(vec2(px_col, floor(b) + 7.0)) > 0.88) {
-			// A plate end proud of the bank: ruled, and rubbed bright on its lip.
-			c = mod(px.x, 5.0) < 1.0 ? ASH4 : mix(STONE2, RUST2, 0.3);
+		// Plate and cable proud of the face: blobs on a smooth field, lit on top.
+		float lump = ink_vnoise(vec2(px.x * 0.28, b * 2.3 + 40.0));
+		if (lump > 0.8) {
+			c = mix(STONE2, RUST2, 0.35 + 0.3 * ink_vnoise(vec2(px.x * 0.5, b)));
+			if (lump > 0.8 && fract(b * 2.3) > 0.85) {
+				c = up(c, 0.25);
+			}
 		}
 		if (dt < 0.09 + vn * 0.05) {
 			c = mix(EARTH1, MOSS2, 0.4);
-		} else if (ink_hash(vec2(px.x, 11.0)) > 0.84 && dt < 0.14 + ink_hash(vec2(px.x, 12.0)) * 0.3) {
-			c = EARTH1;
 		}
 	} else if (id == 11) {
 		// GLASS: a terrace wall the glassing ran over. The melt came over the
@@ -1744,7 +1787,12 @@ void fragment() {
 		// facet runs along, in the same grain.
 		vec3 fn = cross(dFdx(world_pos), dFdy(world_pos));
 		float along = abs(fn.x) > abs(fn.z) ? world_pos.z : world_pos.x;
-		c = strata(m - 60, c, world_pos, vec2(floor(along / SKY_GRAIN), px.y), emit, unh);
+		vec2 wpx = vec2(floor(along / SKY_GRAIN), px.y);
+		c = strata(m - 60, c, world_pos, wpx, emit, unh);
+		// The weathering pass, on the two walls it is proposed on first.
+		if (m == 62 || m == 70) {
+			c = strata_weather(c, (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y, wpx);
+		}
 	} else if (m >= 1 && m <= 16) {
 		// Embers and flames: they give light, so they are never shaded or hatched.
 		float fl = 0.8 + 0.2 * flicker(world_pos, 6.0);
