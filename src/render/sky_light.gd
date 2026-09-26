@@ -415,8 +415,13 @@ const SIGHT_TYPICAL := 12.0
 ## The dust strength past which the air is wholly the storm's: under it the
 ## storm's reach blends in from the hour's own, so a storm rising is seen coming.
 const DUST_FULL := 0.3
+## The sight cut at which weather's air is at its whole: a full dust storm's.
+const CUT_FULL := 0.55
 ## And how far it takes the sky's horizon to that colour (the top a little less).
 const DUST_SKY := 0.8
+## How much the falling weather over the focus cuts sight (Weather.SIGHT_CUT x
+## strength), for the rain and storm families: their air is drawn from it.
+var sight_cut := 0.0
 ## The airs over the focus: x rain falling now (rain and drizzle), y glare,
 ## z how warm the fog is drawn (furnace haze), w whiteout. (sky_air)
 var air := Vector4.ZERO
@@ -998,6 +1003,7 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 			+ Air.frame_depth(_cam_size(), _cam_pitch()) + SHADOW_ROOM
 	_look_out(e, sm, a, horizon, nightly)
 	_dust_air(e, dust)
+	_rain_air(e)
 	e.volumetric_fog_albedo = Air.colour(hor, a).lerp(a.dust, dust * DUST_TAKE).lerp(Color(1, 1, 1), 0.35 * (1.0 - dust))
 	e.volumetric_fog_ambient_inject = lerpf(0.35, 0.10, nightly)
 	# Volumetric air thickens in rain, in mist and at night, which is when a
@@ -1014,7 +1020,7 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	# air, and the one thing the player is meant to walk into here is a column you
 	# can see the edges of.
 	e.volumetric_fog_density = VOLUME_DENSITY * float(a.bank) * lerpf(0.12, 2.4,
-		clampf(maxf(maxf(fog.z, dust * float(a.dust_thick)), maxf(air.x, maxf(nightly * 0.5, shut * 0.35))), 0.0, 1.0))
+		clampf(maxf(maxf(fog.z, dust * float(a.dust_thick)), maxf(sight_cut / CUT_FULL, maxf(nightly * 0.5, shut * 0.35))), 0.0, 1.0))
 	_lay_air(e, nightly, horizon)
 	# The grade, on the finished image. Same inputs the shader's own multiply
 	# had; one place that can see the whole frame.
@@ -1319,6 +1325,22 @@ func _dust_air(e: Environment, dust: float) -> void:
 	e.fog_depth_begin = lerpf(e.fog_depth_begin, r.x, k)
 	e.fog_depth_end = lerpf(e.fog_depth_end, r.y, k)
 	e.fog_depth_curve = lerpf(e.fog_depth_curve, 1.0, k)
+	e.fog_density = lerpf(e.fog_density, maxf(e.fog_density, Air.MOST), k)
+
+
+## RAIN'S AIR IS WHAT RAIN HIDES, and no more. It was a uniform volumetric veil
+## at the full thickness of fog the moment rain fell (air.x), which flattened
+## the drowned city's rings and hid far more than the rules do: rain cuts sight
+## a tenth and a storm three tenths (Weather.SIGHT_CUT). So its air thickens in
+## proportion to that cut (a full dust storm's 0.55 is the whole of it), and
+## closes toward the distance a typical machine still sees through it.
+func _rain_air(e: Environment) -> void:
+	if sight_cut <= 0.0:
+		return
+	var k := clampf(sight_cut / CUT_FULL, 0.0, 1.0)
+	var at := _cam_distance()
+	e.fog_depth_begin = lerpf(e.fog_depth_begin, at * 0.96, k)
+	e.fog_depth_end = lerpf(e.fog_depth_end, at + SIGHT_TYPICAL * (1.0 - sight_cut), k)
 	e.fog_density = lerpf(e.fog_density, maxf(e.fog_density, Air.MOST), k)
 
 

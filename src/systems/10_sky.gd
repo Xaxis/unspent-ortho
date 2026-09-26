@@ -258,6 +258,12 @@ func _update(delta: float, snap: bool) -> void:
 	for k: String in FALL_KEYS:
 		target[k] = falls[k]
 	target.mist = target_mist
+	# How much the weather under the focus cuts a machine's sight (Weather's
+	# SIGHT_CUT, the rules' own number): the air of rain and of dust is drawn
+	# from it (SkyLight.sight_cut), so what is hidden looks hidden and no more.
+	var fam := Weather.family(wh.kind)
+	target.sight_cut = 0.0 if room or not (fam == &"rain" or fam == &"storm") \
+		else 1.0 - Weather.sight_factor(wh.kind, float(wh.strength))
 	target.wisp = 0.0 if room else wisp_amount(_here_def().wisps, Weather.night_fall(hour), float(target.rain) + float(target.drizzle), target_wind)
 	# What lies on the ground changes over hours: recompute once a world minute.
 	# Each thing is the most any landscape in view has left; the sky_ground mask
@@ -307,6 +313,7 @@ func _update(delta: float, snap: bool) -> void:
 	sky.clouds = Vector4(_cloud_drift.x, _cloud_drift.y, float(look.cover), float(look.cloud))
 	sky.fog = Vector4(_fog_drift.x, _fog_drift.y, clampf(float(look.fog) + float(look.mist), 0.0, 1.0), clampf(float(look.dust), 0.0, 1.0))
 	sky.flash = _flash
+	sky.sight_cut = float(look.get("sight_cut", 0.0))
 	for k: String in settled:
 		settled[k] = lerpf(float(settled[k]), float(_settle_target[k]), kr)
 	sky.settle = Vector4(float(settled.snow), float(settled.ash), float(settled.wet), 0.0)
