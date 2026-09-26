@@ -100,7 +100,7 @@ vec3 matter_cells(vec2 p) {
 // --- What a surface is -----------------------------------------------------
 //
 // Keyed on the ground MARK the vertex stream already carries (GroundColors:
-// 40..59 the grounds, 60..71 cliff strata, 0/255 anything a person made). One
+// 40..60 the grounds, 61..72 cliff strata, 0/255 anything a person made). One
 // row per material:
 //   x roughness   0 mirror .. 1 dead matte
 //   y specular    how much light it returns at a glancing angle (Godot's 0..1,
@@ -153,7 +153,13 @@ vec4 matter_of(int m) {
 	else if (m == 59) { r = vec4(0.30, 0.62, 0.060, 0.0); }
 	// STRATA_GLASS: the melt that ran down a wall, glossy but not a mirror.
 	else if (m == 71) { r = vec4(0.42, 0.66, 0.080, 0.0); }
-	else if (m >= 60 && m <= 71) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
+	// TIDEFLAT: silted poured concrete; world.gdshader takes roughness off where
+	// a puddle stands on it (`tide_pool`).
+	else if (m == 60) { r = vec4(0.80, 0.42, 0.020, 0.0); }
+	// STRATA_TIDE: cast concrete walls; the slick under the tide is made wet in
+	// world.gdshader, by height.
+	else if (m == 72) { r = vec4(0.78, 0.40, 0.035, 0.0); }
+	else if (m >= 61 && m <= 72) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
 	// --- WHAT A PERSON MADE ---------------------------------------------------
 	// Everything above is GROUND, and until these rows existed every timber post,
 	// thatched roof, canvas awning, concrete slab, glass pane and rope lashing in
@@ -273,7 +279,10 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		float dt = (floor(wp.y / 0.5 - 0.002) + 1.0) * 0.5 - wp.y;
 		h = matter_fbm(vec2(p.x * 5.5, p.y * 0.7)) * 0.7 + matter_fbm(p * 2.0) * 0.15;
 		h += exp(-dt * 28.0) * 0.9;
-	} else if (m == 52 || (m >= 60 && m <= 71)) {
+	} else if (m == 60) {
+		// TIDEFLAT: a cast floor's aggregate and the silt ridged on it.
+		h = matter_fbm(p * 3.1) * 0.6 + matter_fbm(p * 0.6 + 9.0) * 0.4;
+	} else if (m == 52 || (m >= 61 && m <= 72)) {
 		// ROCK and cliff strata: broken blocks and bedding planes.
 		vec3 cd = matter_cells(p * 1.6);
 		h = (cd.y - cd.x) * 0.9 + matter_fbm(p * 0.7) * 0.3;

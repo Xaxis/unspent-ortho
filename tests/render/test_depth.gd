@@ -325,7 +325,7 @@ func test_a_landscape_that_builds_upward_hangs_its_own_pieces() -> void:
 func test_the_tall_cut_can_never_reach_a_village_or_the_land() -> void:
 	var src := FileAccess.get_file_as_string("res://src/render/world.gdshader")
 	check(src.contains("float tall_cut("), "the tall cut exists")
-	check(src.contains("if (m >= 40 && m <= 71) {"), "and the ground band (40..71, strata 61..71) is refused: the land never opens")
+	check(src.contains("if (m >= 40 && m <= 72) {"), "and the ground band (40..72: grounds 40..60, strata 61..72) is refused: the land never opens")
 	# Read out of the shader so the two cannot drift apart. It is a UNIFORM now
 	# rather than a const (18_crowns can put it out of reach to ask what the cut
 	# COSTS), so what is pinned here is the DEFAULT the shipped game draws with.

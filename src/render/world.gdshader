@@ -64,7 +64,7 @@ const float CROWN_SWAY = 0.25;
 // Two things stop this opening holes in the world at large:
 //
 //   THE LAND NEVER OPENS. Only what somebody BUILT is cut: the ground band
-//   40..71, the same discriminator fore.gdshader uses to decide how much wear a
+//   40..72, the same discriminator fore.gdshader uses to decide how much wear a
 //   piece takes. A cliff, a terrace and a bank stay solid, so a player under an
 //   overhang is still under it.
 //
@@ -1214,6 +1214,67 @@ vec3 survey_mark(int m, vec3 c, vec2 wp, vec2 px, float wet, int hand) {
 	return c;
 }
 
+// THE DROWNED CITY'S TIDE. Every wall is marked the same way down from its own
+// top (STRATA_TIDE): the flood's salt line TIDE_SALT under the lip, and weed
+// from TIDE_WEED down. The floor is silted wherever it lies under TIDE_HIGH in
+// world height, which is all but the city's highest ground.
+const float TIDE_SALT = 0.12;
+const float TIDE_WEED = 0.34;
+const float TIDE_HIGH = 2.85;
+
+// How far under the old high water a point lies, 0..1.
+float tide_under(float y) {
+	return 1.0 - smoothstep(TIDE_HIGH - 0.1, TIDE_HIGH + 0.2, y);
+}
+
+// Where a puddle stands on the drowned floor, 0..1 (TIDEFLAT): in the hollows of
+// one slow field, with its own shore, most of them under the old high water.
+// Read for the colour and again for the roughness, so the water is where it shows.
+float tide_pool(vec3 wp) {
+	float f = ink_vnoise(wp.xz * 0.09 + 17.0) * 0.75 + ink_vnoise(wp.xz * 0.37 + 3.0) * 0.25 + rag(wp.xz) * 1.2;
+	return smoothstep(0.54, 0.58, f) * max(tide_under(wp.y), 0.6);
+}
+
+// TIDEFLAT: the drowned city's poured floor, and everything on it is the water's:
+// the SILT the flood laid under the high line, in scalloped drift lines with a
+// dark wrack dashed along each (the last tides' own marks); the cast floor's
+// broken expansion joints on the slant the city was laid to; weed greening the
+// rims of the standing water; and the water itself, black-green and still,
+// taking the sky (its roughness is taken off in fragment()).
+vec3 tide_floor(vec3 c, vec3 wp, vec2 px) {
+	float under = tide_under(wp.y);
+	// The joints: bays six units across on a turned grid, drawn only where they
+	// have opened, so it reads as a floor that was laid and never as a grid.
+	vec2 q = mat2(vec2(0.94, 0.34), vec2(-0.34, 0.94)) * wp.xz / 6.0;
+	vec2 fq = abs(fract(q) - 0.5);
+	float joint = 0.5 - max(fq.x, fq.y);
+	if (joint < 0.012 && ink_vnoise(wp.xz * 0.4 + 7.0) > 0.45) {
+		c = dn(c, 0.45);
+	}
+	if (under > 0.0) {
+		// Silt: a grey-green skin over the concrete, heaviest in the low ground.
+		float silt = ink_vnoise(wp.xz * 0.14 + 61.0) * 0.7 + ink_vnoise(wp.xz * 0.5) * 0.3;
+		c = mix(c, mix(EARTH2, SPRUCE2, 0.45), under * clamp((silt - 0.3) * 1.8, 0.0, 0.7));
+		// The drift lines: contours of the silt field, each a dark dashed wrack.
+		float line = abs(fract(silt * 9.0 + rag(wp.xz) * 2.0) - 0.5);
+		if (line < 0.03 && ink_vnoise(wp.xz * 1.7 + 11.0) > 0.42) {
+			c = mix(c, INK2, 0.7 * under);
+		}
+	}
+	float pool = tide_pool(wp);
+	float rim = tide_pool(wp + vec3(0.35, 0.0, 0.2));
+	if (pool > 0.0) {
+		c = mix(c, mix(SPRUCE1, BRINE0, 0.4), pool * 0.85);
+		// The water's edge: a dark wet line where it meets the silt.
+		if (pool < 0.45) {
+			c = dn(c, 0.4);
+		}
+	} else if (rim > 0.0) {
+		c = mix(c, MOSS2, rim * 0.6);
+	}
+	return c;
+}
+
 // Terrace walls: each country's rock, banded by world height. dt: depth below
 // the wall's top (a wall is one level tall).
 vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
@@ -1415,6 +1476,34 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		float thin = smoothstep(0.12 + thick * 0.3, 0.5 + thick * 0.2, dt);
 		vec3 glaze = mix(SPRUCE1, SLATE1, 0.45 + 0.3 * ink_vnoise(vec2(px.x * 0.4, y * 2.0)));
 		c = mix(glaze, mix(glaze, mix(SAND2, LINEN2, 0.4), 0.55), thin);
+	} else if (id == 12) {
+		// TIDE: the drowned city's cast walls, and every one of them carries the
+		// water the same way, measured down from its own top (a terrace is 0.5
+		// high): a white band of salt where the flood stood, TIDE_SALT under the
+		// lip, with wrack hung under it; below that the concrete stained and
+		// streaked down its fall; and the foot, under TIDE_WEED, green-black weed
+		// that never dries (its roughness is taken off in fragment()). Above the
+		// salt the lip is bleached. All of it on smooth fields along the wall,
+		// never a per-pixel hash, which read as sparkle at eye level.
+		float wob = (ink_vnoise(vec2(px.x * 0.06, 3.0)) - 0.5) * 0.04;
+		float salt_at = TIDE_SALT + wob;
+		float weed_at = TIDE_WEED + wob + smoothstep(0.55, 0.75, ink_vnoise(vec2(px.x * 0.12, 21.0))) * 0.08;
+		if (dt < salt_at - 0.012) {
+			c = mix(ASH3, LINEN3, 0.4);
+		} else if (dt < salt_at + 0.012) {
+			c = ink_vnoise(vec2(px.x * 0.25, 13.0)) > 0.3 ? LINEN4 : mix(ASH3, LINEN3, 0.5);
+		} else if (dt < weed_at) {
+			float streak = ink_vnoise(vec2(px.x * 0.18, 5.0));
+			c = mix(mix(ASH1, SPRUCE2, 0.3), SPRUCE1, smoothstep(0.45, 0.8, streak) * 0.5);
+			// Wrack hung under the salt line, in rags of uneven length.
+			float hang = 0.02 + ink_vnoise(vec2(px.x * 0.3, 9.0)) * 0.07;
+			if (dt - salt_at < hang && ink_vnoise(vec2(px.x * 0.2, 33.0)) > 0.45) {
+				c = mix(EARTH1, SPRUCE1, 0.5);
+			}
+		} else {
+			float wd = ink_vnoise(vec2(px.x * 0.08, y * 4.0));
+			c = mix(mix(SPRUCE1, INK2, 0.4), mix(SPRUCE1, MOSS2, 0.35), smoothstep(0.4, 0.7, wd));
+		}
 	}
 	return c;
 }
@@ -1468,7 +1557,7 @@ float crown_cut(vec3 wp, float sway) {
 // INV_VIEW_MATRIX exists only inside the stage function, so a user function
 // cannot see the camera at all (the shader simply refuses to compile).
 float tall_cut(vec3 wp, int m, vec3 camz, vec3 eye, bool persp) {
-	if (m >= 40 && m <= 71) {
+	if (m >= 40 && m <= 72) {
 		return 0.0;
 	}
 	float cut = 0.0;
@@ -1538,7 +1627,7 @@ void fragment() {
 	float cut = max(crown_cut(world_pos, sway_w), tall_cut(world_pos, m1, camz, eye, persp));
 	// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line of
 	// sight to a body, at any height (sight.gdshaderinc). Never the land.
-	if (persp && !(m1 >= 40 && m1 <= 71)) {
+	if (persp && !(m1 >= 40 && m1 <= 72)) {
 		float close = sight_close(eye, crown_clear[0]);
 		if (close > 0.0) {
 			for (int i = 0; i < CROWN_CLEAR; i++) {
@@ -1581,8 +1670,11 @@ void fragment() {
 		float pn = ink_vnoise(world_pos.xz * 0.11) * 0.65 + ink_vnoise(world_pos.xz * 0.37) * 0.35 + rag(world_pos.xz);
 		c *= 1.0 + patchy * (step(0.66, pn) * 0.04 - step(pn, 0.32) * 0.04);
 	}
-	if (m >= 40 && m < 60) {
+	if (m >= 40 && m <= 60) {
 		c = ground_mark(m, c, world_pos.xz, px, emit, unh);
+		if (m == 60) {
+			c = tide_floor(c, world_pos, px);
+		}
 		// The fused sheet is not trodden to earth: nothing walks glass to a path.
 		if (unh < 0.5 && m != 59) {
 			c = ground_wear(m, c, world_pos.xz, px);
@@ -1611,7 +1703,7 @@ void fragment() {
 		if ((m == 55 || m == 57) && c.r >= c.b) {
 			c *= min(1.0, SALT_TOP.r / max(max(c.r, max(c.g, c.b)), 1e-4));
 		}
-	} else if (m > 60 && m <= 71) {
+	} else if (m > 60 && m <= 72) {
 		// A wall's pattern runs ALONG the wall. `px` is the play camera's screen
 		// grid laid on the world, whose x does not change with height: from
 		// above that is invisible, but at eye level every feature keyed on it
@@ -1670,7 +1762,7 @@ void fragment() {
 	// it. Anything STANDING in the land takes it nearly whole, which is the law
 	// in one line: the same house, fence and machine carry the bog on them, or
 	// the flat, or the Burning, and nobody had to author three of each.
-	float takes = (m >= 40 && m <= 71) ? 0.14 : 0.85;
+	float takes = (m >= 40 && m <= 72) ? 0.14 : 0.85;
 	// A face opened a moment ago (GroundColors.FRESH: the cut through a boulder
 	// somebody is quarrying) has had almost nothing settle on it. The wear map
 	// reads the PLACE, not the age, so without this a cut made in a bog rusts as
@@ -1680,6 +1772,14 @@ void fragment() {
 	if (m == 58) { takes = 0.06; }
 	c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, takes * (1.0 - unh), rough_add);
 
+	if (m == 60) {
+		// Standing water on the drowned floor is a mirror; the silt round it is not.
+		rough_add -= tide_pool(world_pos) * 0.72;
+	} else if (m == 72) {
+		// The weed at a wall's foot is slick and never dries.
+		float wall_dt = (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y;
+		rough_add -= smoothstep(TIDE_WEED - 0.02, TIDE_WEED + 0.04, wall_dt) * 0.45;
+	}
 	if (m == 71) {
 		// The glaze is not one sheet: runnels polished by the flow alternate
 		// with duller skin, so a wall catches the sun in streaks down its fall

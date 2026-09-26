@@ -40,13 +40,16 @@ enum {
 	# broken and tipped up on edge, and a fulgurite, the fused tube a strike
 	# drove into the sand, branching, dug half out by the wind.
 	GLASS_SHARD, FULGURITE,
+	# What the flood left on the drowned city's floor when it went down: a shoe,
+	# a child's toy boat, a bottle, each silted and weeded where it came to rest.
+	DROWNED_LITTER,
 	# A landscape's own grasses: the first, second and third of its
 	# `BiomeDef.grasses` (GrassSpecies), laid through its own d.decor.
 	GRASS_A, GRASS_B, GRASS_C,
 }
 ## The enum above, counted. Adding a kind and forgetting this reads off the end
 ## of `_SPECK` on the first chunk built, so a test asserts the two agree.
-const KINDS := 45
+const KINDS := 46
 ## Litter by kind of work (WorksMap channel): cut, scorch, quarry, bores.
 const WORKS_LITTER: Array = [[SCRAP, BOLT, WIRE], [SCRAP, CINDER, CAN], [SPOIL, BOLT, STONE], [SPOIL, BOLT, SCRAP]]
 ## Share of a tile's items that are litter outside any work, and inside one.
@@ -887,6 +890,34 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 			k.limb(p1, p1 + Vector3(cos(yaw + 0.6) * 0.07, 0.09, sin(yaw + 0.6) * 0.07), 0.02, 0.008, 4, dk)
 			# The scorch it stands in.
 			k.fleck(Vector3(-0.13, 0.005, -0.05), Vector3(0.11, 0.005, -0.1), Vector3(0.03, 0.006, 0.14), P.INK[3])
+			k.still()
+		DROWNED_LITTER:
+			# Not litter the machines shed: what PEOPLE lost when the water came in,
+			# three things a flood leaves on a floor, faded to the silt's colours.
+			var weed := P.SPRUCE[1].lerp(P.MOSS[2], 0.35)
+			if stage == 0:
+				# A shoe on its side: sole, upper, the open heel, weed in the lace.
+				var sole := P.INK[3].lerp(P.EARTH[1], 0.4)
+				var upper := P.EARTH[2].lerp(P.ASH[2], 0.35)
+				k.made.push(Transform3D(Basis(Vector3.BACK, 1.35), Vector3(0.0, 0.035, 0.0)))
+				k.made.prism(0, -0.11, 0, 0.035, 0.22, 0.012, 6, sole)
+				k.made.prism(0, -0.08, 0.03, 0.03, 0.15, 0.045, 6, upper)
+				k.made.pop()
+				k.limb(Vector3(-0.05, 0.05, 0.02), Vector3(0.06, 0.012, 0.09), 0.006, 0.004, 3, weed)
+			elif stage == 1:
+				# A child's toy boat, keel up, its red faded almost to the floor's.
+				var hull := P.RUST[3].lerp(P.ASH[3], 0.45)
+				k.made.prism(0, 0.0, 0, 0.1, 0.035, 0.04, 5, hull, P.RUST[2].lerp(P.ASH[2], 0.4))
+				k.made.prism(0.02, 0.035, 0, 0.012, 0.07, 0.012, 4, P.LINEN[3])
+				k.fleck(Vector3(-0.1, 0.004, -0.05), Vector3(0.12, 0.004, -0.07), Vector3(0.0, 0.005, 0.1), P.EARTH[2].lerp(P.SPRUCE[2], 0.4))
+			else:
+				# A bottle lying where it rolled, silt banked on its downhill side.
+				k.made.push(Transform3D(Basis(Vector3.BACK, PI * 0.5) * Basis(Vector3.UP, 0.7), Vector3(0.0, 0.03, 0.0)))
+				k.made.prism(0, -0.09, 0, 0.028, 0.14, 0.028, 6, GroundColors.glint(P.SPRUCE[2].lerp(P.SLATE[3], 0.3)))
+				k.made.prism(0, 0.05, 0, 0.012, 0.05, 0.012, 5, P.SPRUCE[2])
+				k.made.pop()
+				k.clump(0.03, -0.02, 0.05, 0.07, 0.03, s, P.EARTH[2].lerp(P.SPRUCE[2], 0.45), 5)
+				k.limb(Vector3(0.1, 0.01, -0.02), Vector3(-0.02, 0.015, -0.06), 0.006, 0.003, 3, weed)
 			k.still()
 		CROTTLE:
 			k.stone(0, -0.02, 0, 0.1, 0.09, s, P.SLATE[2], 5)
