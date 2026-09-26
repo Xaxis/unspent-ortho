@@ -1317,8 +1317,10 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		// Beds run with the wall at a slant and break off, so a long one-step
 		// wall is a bank of soil, not a rail with posts along it.
 		float b = (y + (vn - 0.5) * 0.08 + px.x * 0.004) / 0.11;
-		float h = ink_hash(vec2(floor(b), floor(px.x / 23.0) + 3.0));
-		c = h < 0.3 ? dn(c, 0.15) : (h > 0.8 ? up(c, 0.12) : c);
+		// Each bed's tone drifts along it on a smooth field. It was a hash per
+		// 23-pixel run of each bed, which cut every bed into blocks of one length.
+		float h = ink_vnoise(vec2(px.x * 0.045, floor(b) * 1.7 + 3.0));
+		c = h < 0.35 ? dn(c, 0.15) : (h > 0.68 ? up(c, 0.12) : c);
 		if (fract(b) < 0.1 && ink_vnoise(vec2(px.x * 0.05, floor(b))) > 0.45) {
 			c = dn(c, 0.3);
 		}
