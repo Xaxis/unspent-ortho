@@ -123,14 +123,19 @@ static func _placed_after(w: WorldData, key: String, nth: int) -> Vector2:
 static func solid_mask(w: WorldData) -> PackedByteArray:
 	var m := PackedByteArray()
 	m.resize(w.size * w.size)
-	for p in w.each_prop():
-		if p.solid <= 0.0:
+	# Read off the columns: a WorldProp here would be one made for every prop.
+	w.sync_table()
+	var t := w.table
+	for i in t.size():
+		var solid := t.solid[i]
+		if solid <= 0.0:
 			continue
-		var r := ceili(p.solid)
+		var r := ceili(solid)
+		var at := t.pos[i]
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
-				var x := floori(p.pos.x) + dx
-				var y := floori(p.pos.y) + dy
+				var x := floori(at.x) + dx
+				var y := floori(at.y) + dy
 				if w.in_bounds(x, y):
 					m[y * w.size + x] = 1
 	return m
