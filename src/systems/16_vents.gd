@@ -51,9 +51,11 @@ func tour_place(what: String) -> Vector2:
 		if int(st.stage) == Geysers.WARNING:
 			game.clock.minutes = m + float(i) * 0.25
 			break
-	# Stood six tiles off, back to the open side, looking at it.
+	# Stood six tiles off, looking toward it.
 	var off := Vector2(6.0, 0.0).rotated(Rng.hash01(game.world.seed_value, best.id, 9) * TAU)
-	_face = (-off).angle()
+	# Turned a little off it, so the column stands in the frame's right third and
+	# not behind the player's head.
+	_face = (-off).angle() - 0.45
 	return best.pos + off
 
 
