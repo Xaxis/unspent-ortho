@@ -27,7 +27,9 @@
 //   CUSTOM0    rgb = second wash for an ecotone or ground edge, a = weight (0..1)
 //   UV.x       landscape hand, style1 + style2 * 16. The hatch it used to pick
 //              is gone; works_mark and survey_mark still read it to tell one
-//              landscape's ground from another's.   UV.y  weight of that edge
+//              landscape's ground from another's.   UV.y  weight of that edge;
+//              on the rim and underside of mass hung over the ground, minus the
+//              height of that mass's top, the lip its strata hang from
 //   UV2.x      wind sway weight (0 = rigid)
 //   UV2.y      sway phase when swaying; on rigid geometry, how much the wash
 //              breaks into large organic light/dark patches (0..1). Terrain
@@ -1314,6 +1316,31 @@ vec3 strata_weather(vec3 c, float dt, vec2 px) {
 	return c;
 }
 
+// HUNG ROCK: the face of mass hung over the ground (TerrainMesher._spans),
+// below the band its landscape's strata draw under a lip. A land's strata are
+// written for banks a level or two high; a rim runs metres down, and deeper
+// than that band every landscape's rock was one flat wash. So: beds that
+// wander along the face and pinch out, each its own tone, parted by seams
+// that come and go; run-off streaking down from the lip, each streak its own
+// length; and wherever the face turns under (`ny`, its world normal's y, down
+// on the undercut and the underside) the rock is damp and darker. All on
+// smooth fields, as the strata are, so nothing reads as bricks or a comb.
+vec3 hung_rock(vec3 c, float dt, float y, vec2 px, float ny) {
+	float depth = smoothstep(0.35, 0.6, dt);
+	float wob = (ink_vnoise(vec2(px.x * 0.03, 11.0)) - 0.5) * 0.35 + (ink_vnoise(vec2(px.x * 0.11, 13.0)) - 0.5) * 0.08;
+	float bb = (y + wob) / (0.28 + ink_vnoise(vec2(px.x * 0.02, 17.0)) * 0.14);
+	float bi = floor(bb);
+	float tone = ink_vnoise(vec2(px.x * 0.05, bi * 2.7 + 1.0));
+	vec3 deep = mix(dn(c, 0.3), up(c, 0.32), smoothstep(0.25, 0.8, tone));
+	float seam = step(fract(bb), 0.08) * step(0.42, ink_vnoise(vec2(px.x * 0.04, bi + 31.0)));
+	deep = mix(deep, dn(deep, 0.45), seam);
+	float streak = smoothstep(0.62, 0.75, ink_vnoise(vec2(px.x * 0.35, 41.0)));
+	float reach = 0.8 + ink_vnoise(vec2(px.x * 0.07, 43.0)) * 2.0;
+	deep = mix(deep, dn(deep, 0.25), streak * (1.0 - smoothstep(reach * 0.6, reach, dt)));
+	c = mix(c, deep, depth);
+	return mix(c, dn(c, 0.3), smoothstep(0.1, 0.8, -ny));
+}
+
 // CITY_FLOOR: the metropolis' own floor. What a city's ground is after
 // seventy years: poured slabs in bays on the city's own grid (turned, and
 // drawn only where a joint has opened, so it is never a grid laid over the
@@ -1398,9 +1425,8 @@ vec3 overgrow(vec3 c, vec3 wp, vec2 px) {
 
 // Terrace walls: each country's rock, banded by world height. dt: depth below
 // the wall's top (a wall is one level tall).
-vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
+vec3 strata(int id, vec3 c, vec3 wp, vec2 px, float top, inout vec3 emit, inout float unh) {
 	float y = wp.y;
-	float top = (floor(y / 0.5 - 0.002) + 1.0) * 0.5;
 	float dt = top - y;
 	float col = floor(px.x / 2.0);
 	float vn = ink_vnoise(vec2(px.x * 0.07, y * 3.0));
@@ -2044,11 +2070,20 @@ void fragment() {
 		vec3 fn = cross(dFdx(world_pos), dFdy(world_pos));
 		float along = abs(fn.x) > abs(fn.z) ? world_pos.z : world_pos.x;
 		vec2 wpx = vec2(floor(along / SKY_GRAIN), px.y);
-		c = strata(m - MARK_STRATA, c, world_pos, wpx, emit, unh);
+		// The lip a wall hangs from: the terrace level above it, or, on mass
+		// hung over the ground, that mass's own top (UV.y, negative: a rim one
+		// face from its top to its underside, not a stack of level steps).
+		bool hung = style_blend < -0.001;
+		float lip = hung ? -style_blend : (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5;
+		c = strata(m - MARK_STRATA, c, world_pos, wpx, lip, emit, unh);
 		// The weathering pass, on every wall: whatever it is cut through, the
-		// lip, the run-off and the foot are the weather's.
+		// lip, the run-off and the foot are the weather's. Hung mass has no
+		// foot on the ground: its lower edge is its underside's.
 		{
-			c = strata_weather(c, (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y, wpx);
+			c = strata_weather(c, hung ? min(lip - world_pos.y, 0.33) : lip - world_pos.y, wpx);
+		}
+		if (hung) {
+			c = hung_rock(c, lip - world_pos.y, world_pos.y, wpx, (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y);
 		}
 	} else if (m >= 1 && m <= 16) {
 		// Embers and flames: they give light, so they are never shaded or hatched.
