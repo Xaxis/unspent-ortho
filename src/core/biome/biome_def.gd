@@ -329,6 +329,12 @@ var wisps := 0.0
 ##            low and heavy it lies in the hollows, 0..1
 ## Runtime only, so a LOOK field; BiomeRegistry.problems names a bad row.
 var weather_style: Dictionary = {}
+## What props hang over the frame HERE where it is not what they hang anywhere
+## (render/depth/fore_kinds.gd ROWS): PropKind -> {shape, lift, span, chance},
+## shape one of ForeKinds' shape names ("line", "girder"...). The middens string
+## cables and girders across their slots at the walls' own height.
+## Runtime only, so a LOOK field.
+var fore_rows: Dictionary = {}
 ## Every field a weather_style row may carry, per kind.
 const WEATHER_STYLE_FIELDS := {&"dust": ["air", "thick"], &"fog": ["air", "low"]}
 

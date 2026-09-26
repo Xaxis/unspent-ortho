@@ -114,6 +114,10 @@ const FORM_ROWS := {
 ## answer is then the kind's own row: a wrong guess about a landscape would hang a
 ## city walkway over a fishing village.
 static func row_of(p: WorldProp, seed_value: int, country: int) -> Dictionary:
+	if country >= 0:
+		var own: Dictionary = BiomeRegistry.by_index(country).fore_rows
+		if own.has(p.kind):
+			return land_row(own[p.kind])
 	if p.kind != PropKind.HOUSE or country < 0:
 		return ROWS.get(p.kind, {})
 	var forms := BiomeForms.of(country)
@@ -127,6 +131,16 @@ static func row_of(p: WorldProp, seed_value: int, country: int) -> Dictionary:
 	return {"shape": city.shape, "lift": Vector2(at.x * high, at.y * high),
 		"span": city.span, "chance": city.chance}
 
+## A landscape's own row (BiomeDef.fore_rows) with its shape named, as ROWS has it.
+static func land_row(row: Dictionary) -> Dictionary:
+	var out := row.duplicate()
+	out["shape"] = SHAPE_NAMES.find(String(row.get("shape", "line")))
+	return out
+
+
+## The shapes by the name a landscape file gives them.
+const SHAPE_NAMES: Array[String] = ["bough", "line", "eave", "girder", "tangle", "walkway", "sign_arm"]
+
 ## Salts, so no two decisions about one prop share a stream.
 const S_TAKE := 0xF0
 const S_LIFT := 0xF1
@@ -139,7 +153,18 @@ static var _cache: Dictionary = {}
 
 ## Whether this prop kind can carry a foreground piece at all.
 static func carries(kind: int) -> bool:
-	return ROWS.has(kind)
+	if ROWS.has(kind):
+		return true
+	if _land_kinds.is_empty():
+		_land_kinds[-1] = true
+		for d: BiomeDef in BiomeRegistry.all():
+			for k: int in d.fore_rows:
+				_land_kinds[k] = true
+	return _land_kinds.has(kind)
+
+
+## Every kind some landscape hangs a piece off (BiomeDef.fore_rows), built once.
+static var _land_kinds: Dictionary = {}
 
 
 ## Whether THIS prop does. Deterministic and stable for the life of the world.
