@@ -198,7 +198,7 @@ const LOOK: Array[String] = [
 	"hatch", "grounds", "ground_marks", "cliff_wash", "water_wash", "strata", "bank_ground", "rock_ground",
 	"decor", "grasses", "grass_colors", "rock_color", "decor_tints", "tree_tints", "hard_rock", "dressing",
 	"light_tint", "day_light", "night_sky", "web_contrast", "sky_shut", "grade", "wet", "lip_snow", "street_folk",
-	"weather", "mist", "hazards", "roster", "sentinel", "landmarks", "sound_bed", "music_motif",
+	"weather", "mist", "hazards", "lip_sag", "roster", "sentinel", "landmarks", "sound_bed", "music_motif",
 	"fliers", "holograms", "interiors", "sky_holes", "spoken_in",
 ]
 

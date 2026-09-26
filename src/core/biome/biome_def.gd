@@ -317,6 +317,12 @@ var water_wash := Color(0, 0, 0, 0)
 ## A ragged overhang of snow hangs on this landscape's terrace lips, whatever
 ## the ground on top (docs/LOOK.md).
 var lip_snow := false
+## How far this landscape's terrace lips SAG below their level, world units, at
+## most (TerrainMesher.lip_sag): the flat bends down into its lip and the wall
+## top drops with it, by a smooth field along the run, so a lip hangs in swags
+## and a terrace's height varies along it instead of running ruled and level.
+## Drawn only: every rule reads the levels. 0: lips run level.
+var lip_sag := 0.0
 
 # --- what grows, what is buried -------------------------------------------
 

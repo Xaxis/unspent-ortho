@@ -105,6 +105,8 @@ var _tab_cliff := PackedColorArray()
 var _tab_front := PackedColorArray()
 ## 0 no lip, 1 turf, 2 snow; per (ground, country, parity).
 var _tab_lip := PackedByteArray()
+## BiomeDef.lip_sag by landscape index.
+var _tab_sag := PackedFloat32Array()
 # Scratch for the cell being emitted: corner keys, values, positions; polygon.
 var _ck := PackedInt32Array([0, 0, 0, 0])
 var _cv := PackedFloat32Array([0, 0, 0, 0])
@@ -306,6 +308,9 @@ func _init(w: WorldData) -> void:
 	_tab_cliff.resize(Ground.COUNT * types * 2)
 	_tab_front.resize(Ground.COUNT * types * 2)
 	_tab_lip.resize(Ground.COUNT * types * 2)
+	_tab_sag.resize(types)
+	for c in BiomeRegistry.count():
+		_tab_sag[c] = BiomeRegistry.by_index(c).lip_sag
 	for g in Ground.COUNT:
 		for c in BiomeRegistry.count():
 			var def := BiomeRegistry.by_index(c)
@@ -1530,7 +1535,9 @@ func _cell(ch: Chunk, i: int, j: int) -> void:
 				else:
 					cross_b = _poly.size()
 					out_b = out
-				_poly.append(Vector3(_cx[e] + (_cx[e2] - _cx[e]) * tt, h, _cz[e] + (_cz[e2] - _cz[e]) * tt))
+				var qx := _cx[e] + (_cx[e2] - _cx[e]) * tt
+				var qz := _cz[e] + (_cz[e2] - _cz[e]) * tt
+				_poly.append(Vector3(qx, h - lip_sag(qx, qz, L, h - hb), qz))
 		var pn := _poly.size()
 		if pn < 3:
 			continue
@@ -1582,16 +1589,16 @@ func _saddle(ch: Chunk, px: float, py: float, L: int) -> void:
 		if ina and not centre:
 			# Separate islands at the inside corners.
 			_vtop(_cx[e], hc, _cz[e])
-			_vtop(ax, h, az)
-			_vtop(bx, h, bz)
+			_vtop(ax, h - lip_sag(ax, az, L, h - hb), az)
+			_vtop(bx, h - lip_sag(bx, bz, L, h - hb), bz)
 			_wall(ch, ax, az, bx, bz, _cx[e], _cz[e], hb, h, L, _ck[e], _out_axis(e, e2), _out_axis(e, e0))
 		elif centre:
 			if ina:
 				_poly.append(Vector3(_cx[e], hc, _cz[e]))
 			else:
 				# The centre is high: walls cut off the outside corners.
-				_poly.append(Vector3(bx, h, bz))
-				_poly.append(Vector3(ax, h, az))
+				_poly.append(Vector3(bx, h - lip_sag(bx, bz, L, h - hb), bz))
+				_poly.append(Vector3(ax, h - lip_sag(ax, az, L, h - hb), az))
 				_wall(ch, bx, bz, ax, az, mx, mz, hb, h, L, _ck[e2], _out_axis(e0, e), _out_axis(e2, e))
 	if centre:
 		var pn := _poly.size()
@@ -1747,7 +1754,8 @@ func _wall(ch: Chunk, px: float, pz: float, qx: float, qz: float, ix: float, iz:
 		grid[c * 4] = Vector3(x + o.x * w[0], hb - WALL_TUCK, z + o.y * w[0])
 		grid[c * 4 + 1] = Vector3(x + o.x * w[1], hb + span * w[3], z + o.y * w[1])
 		grid[c * 4 + 2] = Vector3(x + o.x * w[2], hb + span * w[4], z + o.y * w[2])
-		grid[c * 4 + 3] = Vector3(x, h, z)
+		# The top rides the lip's sag (lip_sag), as the flat's edge does.
+		grid[c * 4 + 3] = Vector3(x, h - lip_sag(x, z, L, span), z)
 	var c0 := Color(col.r, col.g, col.b, 0.0)
 	var n := 0
 	for c in ncol - 1:
@@ -1782,7 +1790,17 @@ func _wall(ch: Chunk, px: float, pz: float, qx: float, qz: float, ix: float, iz:
 		_tc0.append(c0)
 	var lip := _tab_lip[gi]
 	if lip > 0:
+		var from := _tv.size()
 		_lip_strip(px, pz, qx, qz, nrm, h, gi, lip == 2)
+		# A sagging lip (lip_sag) carries its strip down with it, end to end.
+		var sp := lip_sag(px, pz, L, span)
+		var sq := lip_sag(qx, qz, L, span)
+		if sp > 0.0 or sq > 0.0:
+			var along := Vector2(qx - px, qz - pz)
+			for vi in range(from, _tv.size()):
+				var v := _tv[vi]
+				var tt := clampf((Vector2(v.x, v.z) - Vector2(px, pz)).dot(along) / maxf(along.length_squared(), 1e-8), 0.0, 1.0)
+				_tv[vi] = Vector3(v.x, v.y - lerpf(sp, sq, tt), v.z)
 	if span > 0.3:
 		# Rubble lies past the talus, not buried in it.
 		ch.feet.append(Vector3(mx, hb, mz) + nrm * (0.18 + foot_out))
@@ -2213,3 +2231,18 @@ func _flow(x: int, y: int) -> Vector2:
 			dir = -dir
 		return dir
 	return Vector2.ZERO
+
+
+
+## How far the lip of terrace L sags at (x, z), world units: the landscape's
+## `lip_sag` times a smooth field along the run, never more than a share of
+## the wall under it (`span`). A function of where the point is, so the flat's
+## edge and the wall's top, and neighbouring cells and chunks, agree.
+const SAG_SHARE := 0.6
+func lip_sag(x: float, z: float, L: int, span: float) -> float:
+	var c := world.country_at(floori(x), floori(z))
+	var most := _tab_sag[c] if c >= 0 and c < _tab_sag.size() else 0.0
+	if most <= 0.0:
+		return 0.0
+	var f := _lip.get_noise_2d(x * 0.35 + L * 13.7, z * 0.35 - L * 7.1) * 0.5 + 0.5
+	return minf(most * f * f, span * SAG_SHARE)
