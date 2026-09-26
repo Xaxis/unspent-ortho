@@ -81,6 +81,7 @@ const int M_DESERT_PAVEMENT = 103;
 const int M_SEA_ICE = 104;
 const int M_PINE_FLOOR = 105;
 const int M_SCRAP_FLOOR = 106;
+const int M_BOG_FLOOR = 107;
 const int M_STRATA_BONE = 133;
 const int M_STRATA_GLASS = 139;
 const int M_STRATA_TIDE = 140;

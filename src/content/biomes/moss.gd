@@ -46,7 +46,8 @@ static func make() -> BiomeDef:
 		Ground.ROCK: P.SLATE[2].lerp(P.SPRUCE[2], 0.35),
 	}
 	# The mud here is peat that has not dried: it takes the fen's ink, not silt's.
-	d.ground_marks = {Ground.MUD: GroundColors.PEAT}
+	# And its fen's pools burn with their own gas after dark (GroundColors.BOG_FLOOR).
+	d.ground_marks = {Ground.MUD: GroundColors.PEAT, Ground.MOSS: GroundColors.BOG_FLOOR}
 	d.cliff_wash = P.EARTH[1]
 	d.strata = GroundColors.STRATA_MOSS
 	d.plain_ground = Ground.MOSS

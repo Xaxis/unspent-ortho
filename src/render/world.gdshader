@@ -2295,6 +2295,26 @@ vec3 pine_foxfire(vec2 wp, vec2 px) {
 	return vec3(0.32, 0.62, 0.42) * 0.8 * drift * clump * grain * breath * sky_view.y;
 }
 
+// THE MOSS'S NIGHT. The fen's black pools (FEN's hollows, n < 0.2) give off gas,
+// and after dark a few of them burn with it: a faint cold flame lying on the
+// water, low, flickering and going out and catching again somewhere else. A
+// few pools in a stretch and never all of them; never a lamp, never a dot.
+vec3 bog_gas(vec2 wp, vec2 px) {
+	if (sky_view.y <= 0.0) {
+		return vec3(0.0);
+	}
+	float n = ink_vnoise(wp * 0.95) * 0.7 + ink_vnoise(wp * 2.3 + 4.0) * 0.3 + rag(wp);
+	float pool = 1.0 - smoothstep(0.16, 0.3, n);
+	if (pool <= 0.0) {
+		return vec3(0.0);
+	}
+	// Which pools burn, and when: a slow field drifting over the bog.
+	float lit = smoothstep(0.42, 0.66, ink_vnoise(wp * 0.11 + vec2(TIME * 0.02, -TIME * 0.015)));
+	float lick = 0.55 + 0.45 * flicker(vec3(floor(wp.x * 2.0), 3.0, floor(wp.y * 2.0)), 2.4);
+	float tongue = smoothstep(0.25, 0.65, ink_vnoise(wp * 3.1 + vec2(0.0, TIME * 0.6)));
+	return vec3(0.34, 0.62, 0.72) * 3.2 * pool * lit * lick * tongue * sky_view.y;
+}
+
 // THE SCRAPWOOD'S NIGHT. The field still in the dead iron is what combed the
 // filings into arcs (SWARF), and after dark it shows: the combed lines glow a
 // faint cold blue-white where the field is strongest, in slow drifts that wander
@@ -2386,6 +2406,11 @@ void fragment() {
 	if (scrap) {
 		m = 56;
 	}
+	// And the moss's is the fen, but for what burns on its pools at night.
+	bool bog = m == M_BOG_FLOOR;
+	if (bog) {
+		m = 48;
+	}
 	float s1 = mod(style_packed, 16.0);
 	float s2 = floor(style_packed / 16.0 + 0.01);
 	float unh = 0.0;
@@ -2425,6 +2450,9 @@ void fragment() {
 		}
 		if (scrap) {
 			emit += scrap_field(world_pos.xz);
+		}
+		if (bog) {
+			emit += bog_gas(world_pos.xz, px);
 		}
 		// The fused sheet is not trodden to earth: nothing walks glass to a path.
 		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK && m != M_SULPHUR) {

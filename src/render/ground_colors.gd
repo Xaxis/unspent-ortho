@@ -190,6 +190,9 @@ const PINE_FLOOR := 105
 ## The scrapwood's floor: SWARF by day in every respect, and by night the field
 ## still in the dead iron shows along its combed arcs, faint and cold (106).
 const SCRAP_FLOOR := 106
+## The moss's fen: FEN by day in every respect, and by night the gas off its
+## black pools burns in faint cold flames on the water (107).
+const BOG_FLOOR := 107
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array
