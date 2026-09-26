@@ -7,9 +7,14 @@ extends "res://tests/fight/crowd_reader.gd"
 ##   heard     a body within HEARD_BESIDE (its feet, its engine), or, with the
 ##             listener's ear fitted (FightKit.listen), any body telling a blow
 ##             within EAR_REACH;
-##   recalled  a body seen or heard in the last RECALL_MS, where it is now: a
-##             short decay, not a map. (Its true place, not its last-seen one:
-##             a second of drift is inside what a player's memory gets wrong.)
+##   recalled  a body seen or heard in the last RECALL_MS: a short decay, not a
+##             map.
+##
+## ITS KNOWN LIE: a recalled body is read where it truly is, not where it was
+## last seen. The readers read MobState directly, and a proxy at the last-seen
+## spot is a change to all of them; a second of drift is inside what a player's
+## memory gets wrong, but a body that turns hard in that second is followed
+## better than a player would follow it.
 ##
 ## Everything the crowd reader decides -- which tell to answer, who flanks, who
 ## is open, who is nearest -- it decides over these alone. With nothing known it
