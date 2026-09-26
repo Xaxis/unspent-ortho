@@ -14,4 +14,10 @@ walk 1,0.3 1.5
 await locked 0.5
 end
 wait 0.3
-shot 01-a-way-shut-behind with prop:pine
+shot 01-a-way-shut-behind with prop:pine,mob:runner
+# At eye level: the runner stopped at the shut way, and the sheet of light it
+# will not pass.
+tap shoulder
+await shoulder 3
+wait 0.8
+shot 02-stopped-at-it-over-the-shoulder with shoulder,mob:runner

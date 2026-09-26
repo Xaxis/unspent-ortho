@@ -162,6 +162,12 @@ extends GameSystem
 ##                          row ID is chosen; fails if it never comes round
 ##   coast calm|wild        calm: clear the bodies about and stop new ones coming
 ##                          (so a scripted stretch is not a random fight); wild: resume
+##   spawn KIND beyond PROP put a roster body on the far side of the nearest prop of
+##                          that kind, along the player's facing (PropKind names),
+##                          turned to them: a machine behind a house, over the
+##                          shoulder, that the house hides
+##   tell KIND              the nearest live body of that kind starts its bite's tell
+##                          where it stands, turned to the player (what the ear hears)
 ##   spawn KIND[@DEG]       put a roster body (e.g. runner, harvester) in view in
 ##                          front of the player, as --spawn does at boot; fails the
 ##                          tour when the roster has no such kind, when nothing was
@@ -506,7 +512,12 @@ func _run() -> void:
 			"until":
 				await _until(parts[1], parts[2].to_float() if parts.size() > 2 else 5.0)
 			"spawn":
-				ok = await _spawn(parts[1])
+				if parts.size() > 3 and parts[2] == "beyond":
+					ok = _spawn_beyond(parts[1], parts[3])
+				else:
+					ok = await _spawn(parts[1])
+			"tell":
+				ok = _tell(parts[1])
 			"under":
 				ok = await _spawn_under(parts[1])
 			"over":
@@ -1243,6 +1254,49 @@ func _spawn(token: String) -> bool:
 			% [_name, kind, m.pos, game.player.pos, game.camera.view_height if game.camera != null else 0.0])
 		return false
 	print("tour spawn %s: %s at %s, %.1f tiles off, in frame" % [kind, m.kind, m.pos, m.pos.distance_to(game.player.pos)])
+	return true
+
+
+## `spawn KIND beyond PROP`: a body on the far side of the nearest prop of that
+## kind from the player, turned to them.
+func _spawn_beyond(token: String, prop: String) -> bool:
+	var id := Roster.resolve(token)
+	var sim: FightSim = game.player.sim
+	var p := _nearest_prop(prop)
+	if id == &"" or sim == null or p == null:
+		printerr("tour %s: nothing to put a %s beyond (%s)" % [_name, token, prop])
+		return false
+	# Beyond it along the way the player faces it, which is the way the eye over
+	# the shoulder looks: past the far side of the thing, hidden by it.
+	var ahead := Vector2.from_angle(game.player.facing)
+	var r: float = Roster.row(id).get("radius", 0.5)
+	var at := game.player.pos + ahead * ((p.pos - game.player.pos).dot(ahead) + p.solid + r + 1.5)
+	var m := sim.add_mob(id, at)
+	m.facing = (game.player.pos - at).angle()
+	m.aim = m.facing
+	print("tour spawn %s beyond the %s at %s: %s" % [token, prop, p.pos, at])
+	return true
+
+
+## `tell KIND`: the nearest live body of that kind starts its bite's tell.
+func _tell(token: String) -> bool:
+	var id := Roster.resolve(token)
+	var sim: FightSim = game.player.sim
+	if sim == null:
+		return false
+	var best: MobState = null
+	for m: MobState in sim.mobs:
+		if m.alive and not m.removed and m.kind == id and m.bite != null \
+				and (best == null or m.pos.distance_to(sim.hero.pos) < best.pos.distance_to(sim.hero.pos)):
+			best = m
+	if best == null:
+		printerr("tour %s: no %s to tell" % [_name, token])
+		return false
+	best.facing = (sim.hero.pos - best.pos).angle()
+	best.aim = best.facing
+	best.disturbed = true
+	best.set_mood(MobState.ATTACKING, sim.now)
+	Brains.bite(best, sim)
 	return true
 
 

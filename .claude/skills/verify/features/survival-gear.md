@@ -39,7 +39,8 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   `tools/test.sh test_lock` (its bout prints), `tools/tour.sh tours/lock.tour` (options in its header).
   The ear (listener_core, head): a tell's ground ring is drawn through what stands between at eye level; the
   player's noise and steps carry 1.5x: `tools/test.sh "test_listen,test_shoulder:test_no_hazard"` (its bout, with the
-  shoulder reader, and its walk cost print).
+  shoulder reader, and its walk cost print). The frame: `tools/tour.sh tours/ear.tour` over the shoulder, with and without the ear
+  (options in its header; `spawn KIND beyond PROP` and `tell KIND` stage a tell behind a house).
   A keeper's core reads on the slate as the choice it is (the holding's cell, the power worn), side by side:
   `tools/test.sh test_rules:test_a_keepers_core`, `tools/tour.sh tours/core_choice.tour` (options in its header).
 - 56_economy: `src/systems/56_economy.gd`, reached by `tools/tour.sh tours/gear-economy.tour`.
