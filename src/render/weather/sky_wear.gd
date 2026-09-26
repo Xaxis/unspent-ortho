@@ -47,6 +47,9 @@ const OF := {
 	&"scrapwood": Color(0.95, 0.10, 0.32, 0.10),
 	# Cold wet limestone: carbonate bloom and a slow damp rust, never any sun.
 	&"limestone_caves": Color(0.50, 0.38, 0.08, 0.02),
+	# NOTHING WEATHERS IN THE MACHINE CITY: they keep it. No rust, no bloom, no
+	# soot, no frost on anything standing there (the owner's own: clean).
+	&"machine_city": Color(0.0, 0.0, 0.0, 0.0),
 }
 
 

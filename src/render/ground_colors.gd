@@ -148,6 +148,9 @@ const STRATA_ROOTED := 18
 ## A machine-cast retaining wall: formwork panels, tie holes in exact rows, a
 ## violet strip along the lip, and no weather on it at all (the server fields).
 const STRATA_CAST := 19
+## A machine city wall: machined plate, an exact vent row, a cold lit seam
+## under the lip, and nothing on it at all (148).
+const STRATA_MACHINE := 20
 ## THE CITY'S FLOOR, a GROUND drawn with the grounds although its number sits
 ## past the strata (the ground numbers ran out at 60): poured slabs in bays,
 ## their joints grown through, faded lane paint, spidered cracks and drifts of
@@ -159,6 +162,9 @@ const OVERGROWN := 99
 ## The machines' own cast floor (the server fields): exact, swept, laid in long
 ## runs with a cable tray between them and a violet status strip in each tray.
 const CAST_FLOOR := 100
+## The machine city's deck: plate laid in an exact running bond, fastened in
+## exact rows, with lit guide lines for the traffic it was built for (101).
+const MACHINE_DECK := 101
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array

@@ -1447,6 +1447,52 @@ vec3 cast_floor(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
 	return c;
 }
 
+// The machine city's own light: cold, exact, white with the least blue in it.
+const vec3 GUIDE_WHITE = vec3(0.70, 0.82, 0.95);
+
+// MACHINE_DECK: the machine city's floor, built for what drives on it. Plate in
+// an exact running bond on the survey bearing (never a square grid: every
+// course is offset half a plate), each plate a hair different in its temper,
+// fastened in exact rows at its ends; and guide lines for the traffic: a lane
+// edge every eight units, and down the middle of each lane a row of arrows
+// pointing the way it runs, lit cold on the machines' power when the light goes.
+// Nothing weathers here and nothing is left lying: no wear, no litter.
+vec3 machine_deck(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
+	vec2 q = mat2(vec2(0.97, 0.26), vec2(-0.26, 0.97)) * wp.xz;
+	float course = floor(q.y / 1.5);
+	float pl = (q.x + mod(course, 2.0) * 1.5) / 3.0;
+	float fy = fract(q.y / 1.5);
+	float fx = fract(pl);
+	c *= 1.0 + (ink_hash(vec2(floor(pl), course) + 7.0) - 0.5) * 0.06;
+	float fwq = max(length(fwidth(q)), 1e-4);
+	// Plate seams, filtered so a far seam fades rather than aliases.
+	float seam = min(min(fx, 1.0 - fx) * 3.0, min(fy, 1.0 - fy) * 1.5);
+	c = mix(dn(c, 0.35), c, smoothstep(0.0, 0.02 + fwq, seam));
+	// Fastener rows at each plate's ends.
+	float fast = abs(fract(q.y / 0.3) - 0.5);
+	if (min(fx, 1.0 - fx) * 3.0 < 0.1 && fast < 0.12) {
+		c = mix(c, STONE2, 0.5);
+	}
+	// Lane edges and the arrows down each lane.
+	float lane = fract(q.y / 8.0) * 8.0;
+	float edge = min(lane, 8.0 - lane);
+	float ndim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
+	float on = max(neon_burn(ndim), 0.0) * sky_power();
+	float line = 1.0 - smoothstep(0.05, 0.05 + fwq, edge);
+	float mid = abs(lane - 4.0);
+	float ax = fract(q.x / 5.0) * 5.0;
+	float arrow = (ax < 1.2 && mid < 0.5 - ax * 0.4 && mid > 0.3 - ax * 0.4) ? 1.0 : 0.0;
+	float guide = max(line, arrow);
+	if (guide > 0.0) {
+		// Held low: a guide for a machine's sensor, not a lamp for anybody's
+		// eyes. At full strength the lines ruled bright scratches across the
+		// slums' dusk next door (canon 08).
+		c = mix(c, mix(mix(c, GUIDE_WHITE, 0.25), mix(c, GUIDE_WHITE, 0.7), on), guide);
+		emit += GUIDE_WHITE * 0.45 * on * guide;
+	}
+	return c;
+}
+
 // Terrace walls: each country's rock, banded by world height. dt: depth below
 // the wall's top (a wall is one level tall).
 vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
@@ -1910,6 +1956,25 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			emit += STATUS_VIOLET * 1.4 * on;
 			unh = max(unh, on);
 		}
+	} else if (id == 20) {
+		// MACHINE: a wall of the machine city. Machined plate to an exact module,
+		// a row of vents at one height along every wall, and a cold lit seam
+		// under the lip on the machines' power. Clean: nothing weathers it.
+		c = mix(SLATE1, STONE1, 0.5);
+		if (fract(px.x / 36.0) < 0.03) {
+			c = dn(c, 0.35);
+		}
+		float vy = abs(dt - 0.26);
+		if (vy < 0.05 && fract(px.x / 6.0) < 0.6) {
+			c = fract(vy * 60.0) < 0.5 ? INK2 : SLATE1;
+		}
+		if (dt > 0.03 && dt < 0.05) {
+			float ndim = (sky_tint.r + sky_tint.g + sky_tint.b) / 3.0;
+			float on = max(neon_burn(ndim), 0.0) * sky_power();
+			c = mix(mix(c, GUIDE_WHITE, 0.3), GUIDE_WHITE, on);
+			emit += GUIDE_WHITE * 1.2 * on;
+			unh = max(unh, on);
+		}
 	}
 	return c;
 }
@@ -2087,11 +2152,14 @@ void fragment() {
 		if (m == M_CAST_FLOOR) {
 			c = cast_floor(c, world_pos, px, emit);
 		}
+		if (m == M_MACHINE_DECK) {
+			c = machine_deck(c, world_pos, px, emit);
+		}
 		if (m == M_TIDEFLAT) {
 			c = tide_floor(c, world_pos, px);
 		}
 		// The fused sheet is not trodden to earth: nothing walks glass to a path.
-		if (unh < 0.5 && m != M_VITRIFIED) {
+		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK) {
 			c = ground_wear(m, c, world_pos.xz, px);
 		}
 		// Turf, heath and fen are a sward, and a gust crossing one lays it over:
@@ -2101,7 +2169,9 @@ void fragment() {
 			vec3 tr = trample_at(world_pos.xz);
 			c *= (1.0 + GROUND_SHEEN * wind_sheen(world_pos.xz)) * (1.0 - GROUND_PRESSED * max(tr.z, length(tr.xy) * 0.6));
 		}
-		if (works_inv_size > 0.0) {
+		// The machine city's deck IS the plan's order, laid by it: the works'
+		// marks and the survey's ruling would draw a second, square grid over it.
+		if (works_inv_size > 0.0 && m != M_MACHINE_DECK) {
 			vec4 wk = texture(works_map, world_pos.xz * works_inv_size);
 			vec3 wl = texture(works_lines, world_pos.xz * works_inv_size).rgb;
 			if (wk.r + wk.g + wk.b + wk.a > 0.02) {
@@ -2132,7 +2202,7 @@ void fragment() {
 		// The weathering pass, on every wall: whatever it is cut through, the
 		// lip, the run-off and the foot are the weather's -- except the one the
 		// machines cast and still maintain.
-		if (m != M_STRATA_CAST) {
+		if (m != M_STRATA_CAST && m != M_STRATA_MACHINE) {
 			c = strata_weather(c, (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y, wpx);
 		}
 	} else if (m >= 1 && m <= 16) {
