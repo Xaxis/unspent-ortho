@@ -24,7 +24,8 @@ static func make() -> InteriorKind:
 
 ## `land` -1 (asked with no landscape): kept as the coast's are.
 static func lay(rng: RandomNumberGenerator, land: int = -1) -> InteriorLayout:
-	return Cottage.lay_with(rng, households_of(land))
+	var d := BiomeRegistry.by_index(land) if land >= 0 else null
+	return Cottage.lay_with(rng, households_of(land), StringName(d.home.get("hearth", &"fire")) if d != null else &"fire")
 
 
 ## Who may keep a home in `land`: its declaration, else the coast's.

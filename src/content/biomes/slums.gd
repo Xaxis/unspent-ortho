@@ -105,7 +105,7 @@ static func make() -> BiomeDef:
 	d.interiors = {&"form:tower": &"tenement", &"form:stack": &"tenement", &"house": &"home"}
 	# Behind the other forms, homes kept by the plan's own households, as the
 	# tenement's flats are: the clerk, the shift and the keeper.
-	d.home = {"households": {
+	d.home = {"hearth": &"issued_stove", "households": {
 		&"clerk": {"wants": [&"ledgers", &"calendar", &"wardrobe", &"radio"], "by_hearth": []},
 		&"shift": {"wants": [&"overalls", &"calendar", &"wardrobe", &"radio"], "by_hearth": []},
 		&"keeper": {"wants": [&"key_board", &"calendar", &"wardrobe", &"ledgers"],

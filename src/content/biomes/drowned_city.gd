@@ -122,7 +122,7 @@ static func make() -> BiomeDef:
 	d.interiors = {&"form:stilt_house": &"stilt_room", &"form:hulk_home": &"hulk_hold", &"house": &"home"}
 	# Behind the other forms, stilt families, wet and raised: the water marked up
 	# the wall, the buckets, the hammocks off the floor.
-	d.home = {"households": {
+	d.home = {"hearth": &"raised_stove", "households": {
 		&"stilter": {"wants": [&"tide_gauge", &"hammock", &"nets", &"buckets"], "by_hearth": []},
 		&"bailer": {"wants": [&"buckets", &"buckets", &"oars", &"tide_gauge"],
 			"by_hearth": [{"kind": &"fishline", "off": 1.2, "solid": 0.0}]},

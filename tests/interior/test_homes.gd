@@ -126,3 +126,38 @@ func test_every_home_can_be_walked_to_its_hearth_table_and_bed() -> void:
 			sat = sat or _reached(reach, l.table + dd)
 		check(sat, "%s: a side of the table" % t.key)
 	gt(float(per.size()), 5.0, "homes walked in %d landscapes" % per.size())
+
+
+## THE HEARTH A LANDSCAPE KEEPS: a slum flat round the plan's issued stove, not
+## an open hearth and its chimney breast. The stove holds the room's fire (the
+## world's FIRE, drawn as embers only), so it still warms and still lets a body
+## sleep; a hearth of none lays no fire at all; and every hearth is drawn.
+func test_a_home_keeps_its_landscapes_hearth() -> void:
+	var d := BiomeRegistry.get_def(&"slums")
+	var l := Home.lay(Rng.make(4, 3), d.index)
+	check(not l.has_hearth, "no open hearth, no chimney breast")
+	var stoves := 0
+	for th: Dictionary in l.things:
+		if th.kind == &"issued_stove":
+			stoves += 1
+			check((th.at as Vector2).is_equal_approx(l.hearth), "the stove stands at the hearth")
+	eq(stoves, 1, "the plan's issued stove")
+	var fires := 0
+	for pr: Dictionary in l.props:
+		if int(pr.kind) == PropKind.FIRE:
+			fires += 1
+			eq(int(pr.get("variant", -1)), PropModels.HELD_FIRE, "its fire held in the stove")
+	eq(fires, 1, "one fire, so it warms and a body can sleep by it")
+	var coast := Home.lay(Rng.make(4, 3), BiomeRegistry.get_def(&"moss").index)
+	check(coast.has_hearth, "a landscape that declares no hearth keeps the open one")
+	var kept := d.home
+	d.home = {"hearth": &"none", "households": kept.households}
+	var cold := Home.lay(Rng.make(4, 3), d.index)
+	d.home = kept
+	for pr: Dictionary in cold.props:
+		check(int(pr.kind) != PropKind.FIRE, "a hearth of none lays no fire")
+	for piece: StringName in [&"issued_stove", &"raised_stove", &"brazier"]:
+		var kit := Kit.new()
+		var f := Furnish.new(kit, 0.0, 2.4, BiomeDressing.new(), &"clerk")
+		f.thing({"kind": piece, "at": Vector2(2, 2), "face": Vector2(0, 1), "solid": 0.42})
+		gt(float(kit.made.vertex_count()), 0.0, "the %s is drawn" % piece)

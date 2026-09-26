@@ -117,6 +117,9 @@ func thing(t: Dictionary) -> void:
 		&"rope_coil": _rope_coil(at, f)
 		&"buckets": _buckets(at, f)
 		&"tide_gauge": _tide_gauge(at, f)
+		&"issued_stove": _issued_stove(at, f, 0.0)
+		&"raised_stove": _issued_stove(at, f, 0.42)
+		&"brazier": _brazier(at, f)
 
 
 # --- the frame -----------------------------------------------------------------
@@ -866,6 +869,44 @@ func _tide_gauge(at: Vector2, f: Vector2) -> void:
 	for i in 6:
 		var h := 0.15 + 0.12 * float(i)
 		k.made.box(_p(at, f, -0.12, -back + 0.004, h), _p(at, f, 0.12, -back + 0.008, h + 0.015), chalk)
+
+
+## THE HEARTH A HOME KEEPS WHERE IT KEEPS NO OPEN FIRE (cottage.gd `hearth`),
+## standing over the held fire's embers. The plan's issued stove: an enamelled
+## box, a number stencilled on it, its door glowing, its pipe up through the
+## ceiling. Raised (`lift`), a tin stove on a slab off the wet floor.
+func _issued_stove(at: Vector2, f: Vector2, lift: float) -> void:
+	var enamel := GroundColors.made(Color(0.3, 0.34, 0.3), GroundColors.ENAMEL)
+	var dark := GroundColors.made(Color(0.1, 0.1, 0.1), GroundColors.TAR)
+	if lift > 0.0:
+		var slab := GroundColors.made(Color(0.5, 0.48, 0.44), GroundColors.CUTSTONE)
+		for u: float in [-0.3, 0.3]:
+			for v: float in [-0.24, 0.24]:
+				k.made.strut(_p(at, f, u, v, 0.0), _p(at, f, u, v, lift), 0.04, 5, dark_wood)
+		k.made.box(_p(at, f, -0.42, -0.34, lift - 0.06), _p(at, f, 0.42, 0.34, lift), slab, slab)
+	k.made.box(_p(at, f, -0.32, -0.26, lift), _p(at, f, 0.32, 0.26, lift + 0.72), enamel, dark)
+	k.made.box(_p(at, f, -0.16, 0.26, lift + 0.14), _p(at, f, 0.16, 0.28, lift + 0.4), dark)
+	k.made.box(_p(at, f, -0.12, 0.28, lift + 0.18), _p(at, f, 0.12, 0.285, lift + 0.34), GroundColors.glow(Color(1.0, 0.5, 0.16), 1.6))
+	k.made.box(_p(at, f, 0.18, 0.26, lift + 0.5), _p(at, f, 0.28, 0.265, lift + 0.62), linen)
+	var pipe := _p(at, f, 0.0, -0.12, lift + 0.72)
+	k.made.strut(pipe, Vector3(pipe.x, y0 + wall_h, pipe.z), 0.06, 8, dark)
+
+
+## A brazier: a drum on three stones, punched through, banked low so it smokes
+## little -- a squat's fire, that nobody outside should see.
+func _brazier(at: Vector2, f: Vector2) -> void:
+	var drum := GroundColors.made(Color(0.3, 0.22, 0.18), GroundColors.ENAMEL)
+	var stone := GroundColors.made(Color(0.4, 0.4, 0.38), GroundColors.CUTSTONE)
+	for i in 3:
+		var a := TAU * float(i) / 3.0
+		var q := _p(at, f, cos(a) * 0.22, sin(a) * 0.22, 0.0)
+		k.stone(q.x, q.y, q.z, 0.08, 0.12, 40 + i, stone, 5)
+	var c := _p(at, f, 0.0, 0.0, 0.12)
+	k.made.prism(c.x, c.y, c.z, 0.26, c.y + 0.5, 0.26, 12, drum, GroundColors.glow(Color(1.0, 0.44, 0.14), 1.2))
+	for i in 8:
+		var a := TAU * float(i) / 8.0
+		var q := c + Vector3(cos(a) * 0.262, 0.2 + 0.12 * float(i % 2), sin(a) * 0.262)
+		k.made.box(q - Vector3(0.025, 0.025, 0.025), q + Vector3(0.025, 0.025, 0.025), GroundColors.glow(Color(1.0, 0.5, 0.16), 1.4))
 
 
 func _side(f: Vector2) -> Vector3:

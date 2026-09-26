@@ -35,7 +35,9 @@ static func grow(seed_value: int, t: Threshold) -> Pocket:
 			w.country[i] = t.land
 	w.spawn = l.inside()
 	for pr: Dictionary in l.props:
-		w.add_prop(WorldProp.new(w.next_id(), int(pr.kind), pr.at, (pr.face as Vector2).angle(), 1.0))
+		var prop := WorldProp.new(w.next_id(), int(pr.kind), pr.at, (pr.face as Vector2).angle(), 1.0)
+		prop.variant = int(pr.get("variant", -1))
+		w.add_prop(prop)
 	var p := Pocket.new()
 	p.world = w
 	p.layout = l

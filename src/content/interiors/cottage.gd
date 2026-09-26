@@ -55,8 +55,12 @@ static func lay(rng: RandomNumberGenerator) -> InteriorLayout:
 	return lay_with(rng, COAST)
 
 
-## A cottage kept by one of `households` (COAST's shape), dealt off `rng`.
-static func lay_with(rng: RandomNumberGenerator, households: Dictionary) -> InteriorLayout:
+## A cottage kept by one of `households` (COAST's shape), dealt off `rng`, round
+## a `hearth`: &"fire" the open hearth and its chimney breast; &"stove",
+## &"raised_stove", &"brazier" that thing standing at the hearth's place, holding
+## the fire (PropModels.HELD_FIRE: warmth, light, sleep, and the same prop ids
+## as an open hearth); &"none" no fire at all.
+static func lay_with(rng: RandomNumberGenerator, households: Dictionary, hearth: StringName = &"fire") -> InteriorLayout:
 	var l := InteriorLayout.new()
 	l.plan = PLANS[rng.randi_range(0, PLANS.size() - 1)]
 	var ids := households.keys()
@@ -100,7 +104,13 @@ static func lay_with(rng: RandomNumberGenerator, households: Dictionary) -> Inte
 	l.table = Vector2(w * 0.5 + rng.randf_range(-0.6, 0.6), d * 0.5 + 0.2)
 	# The hearth is the world's own fire (lit, warmed at, slept beside) and the
 	# table a bench to work at, in that order: their ids are what a save keeps.
-	l.props.append({"kind": PropKind.FIRE, "at": l.hearth, "face": l.hearth_wall})
+	if hearth != &"fire":
+		l.has_hearth = false
+	if hearth == &"fire":
+		l.props.append({"kind": PropKind.FIRE, "at": l.hearth, "face": l.hearth_wall})
+	elif hearth != &"none":
+		l.props.append({"kind": PropKind.FIRE, "at": l.hearth, "face": l.hearth_wall, "variant": PropModels.HELD_FIRE})
+		_put(l, hearth, l.hearth, -l.hearth_wall, 0.42)
 	l.props.append({"kind": PropKind.BENCH, "at": l.table, "face": Vector2(-l.door_out.y, l.door_out.x)})
 	l.lay_edges()
 	_openings(l)

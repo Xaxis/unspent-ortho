@@ -136,7 +136,7 @@ static func make() -> BiomeDef:
 	d.interiors = {&"form:shell": &"rooted_floor", &"house": &"home"}
 	# Behind the other forms, people in the gaps: squatters on a tower floor under
 	# the one stolen lamp, and the climber who goes up for what grows there.
-	d.home = {"households": {
+	d.home = {"hearth": &"brazier", "households": {
 		&"squatter": {"wants": [&"hammock", &"machine_lamp", &"basket", &"shelf_salvage"], "by_hearth": []},
 		&"climber": {"wants": [&"rope_coil", &"hammock", &"creel", &"basket"], "by_hearth": []},
 	}}
