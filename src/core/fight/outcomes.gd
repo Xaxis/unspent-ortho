@@ -97,7 +97,7 @@ static func _on_track(g: int) -> bool:
 
 static func _blocked(query: WorldQuery, at: Vector2, except: WorldProp) -> bool:
 	for q in query.props_near(at, 2.0):
-		if q != except and q.solid > 0.0 and q.pos.distance_to(at) < q.solid + Tuning.PLAYER_RADIUS:
+		if not WorldProp.same(q, except) and q.solid > 0.0 and q.pos.distance_to(at) < q.solid + Tuning.PLAYER_RADIUS:
 			return true
 	return false
 

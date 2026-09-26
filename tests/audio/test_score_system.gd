@@ -265,7 +265,6 @@ func test_an_installation_and_a_sentinel_are_heard() -> void:
 	check(sys.cues_played.any(func(k: StringName) -> bool: return String(k).ends_with("_motif")), "its motif played")
 	s.free()
 	g.query.remove_prop(pylon)
-	g.world.props.erase(pylon)
 	_done(parts)
 
 

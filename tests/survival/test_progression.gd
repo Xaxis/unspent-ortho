@@ -329,7 +329,7 @@ func _build_fire_near(p: Vector2) -> WorldProp:
 			_spend(1.0)
 			actions += 2
 			if g.world.prop_count() > before:
-				return g.world.prop_at(-1)
+				return g.world.prop_at(g.world.prop_count() - 1)
 	return null
 
 
