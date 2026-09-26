@@ -419,8 +419,8 @@ func _run_shock(delta: float) -> void:
 ## a tread's craters since world generation laid its scatter (gen_treads.gd
 ## cuts them last so no prop is renumbered, and leaves this to the clock). The
 ## same answer every load, so a crater is bare in every game of this world.
-## How far past a pad's edge its crushing reaches (the pad's own claws).
-const CRUSH_R := 8.0
+## What stood in a crater is crushed, out to its rim: the ground it stood on was
+## cut from under it (gen_treads.gd). The tread's own spoil and posts are kept.
 
 
 func started() -> void:
@@ -435,12 +435,26 @@ func _crush_treads() -> void:
 			continue
 		var pressed: Array[Vector3] = []
 		for p: Vector3 in (m.pads as Array):
-			pressed.append(Vector3(p.x, p.y, p.z + CRUSH_R))
+			pressed.append(Vector3(p.x, p.y, Treads.rim_r(p)))
 		_crush(pressed)
 
 
 ## The world under the player changed (a shaft, a gate): its treads are the new
 ## world's, and nothing of the old one's pads may stop a body here.
+## THROUGH A DOOR IT SLEEPS (GameSystem.sleep_indoors): the walkers, their feet
+## and the treads are the outside's, and the outside is set aside whole and put
+## back. Answered as a crossing instead, the way out handed every tread on the
+## island over again and crushed it into the land, 270 to 590 ms on GEN 28's
+## coast, a room's whole way out. Going in, the legs' shadows are taken off the
+## land first, or the last ones drawn stay painted on the room's floor.
+func indoors(inside: bool) -> void:
+	if inside and view != null:
+		_cast(false)
+		hum = 0.0
+		gaze = 0.0
+	sleep_indoors(inside)
+
+
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	if view == null:
 		return

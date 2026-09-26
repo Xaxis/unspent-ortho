@@ -13,6 +13,24 @@ const LAND_SHARE := 0.47
 const ISLET_TILES := 900
 ## Superellipse exponent of the body: 2 is an oval, higher is squarer.
 const BODY_POWER := 2.6
+## How many holes between grown bodies take skerries, and how many each.
+const SKERRY_HOLES := 14
+## How far out at sea a grown body's loch starts, in tiles.
+const LOCH_OFFSHORE := 6.0
+## How far the frame's fade line wanders on a world of many, as a share of the
+## square per unit of the continent noise (about +-0.5).
+const FRAME_WARP := 0.05
+const LOCH_OPEN_SEA := 24.0
+## How far in toward its centre a grown body's loch runs, as a share of the
+## coast-to-centre distance: a third or so, so the body stays whole and still
+## has ground broad enough for a colossus's foot (gen_treads.gd).
+const LOCH_REACH := Vector2(0.28, 0.38)
+const SKERRY_COUNT := Vector2i(3, 6)
+## A hole narrower across than this share of the square keeps its open water:
+## the least strait `GenBodies.SEA_GAP`.
+const SKERRY_FILL := 0.06
+## A skerry's radius in tiles: under `ISLET_TILES` in area, so `_clean` keeps it.
+const SKERRY_RADIUS := Vector2(5.0, 14.0)
 
 
 static func run(c: GenContext) -> void:
@@ -33,13 +51,19 @@ static func run(c: GenContext) -> void:
 	var shapes: Array[Dictionary] = []
 	var lobes := PackedVector3Array()
 	var lobe_amp := PackedFloat32Array()
-	for body: Dictionary in plan:
+	var lobe_body := PackedInt32Array()
+	for bi in plan.size():
+		var body: Dictionary = plan[bi]
 		var at: Vector2 = body.get("at", Vector2(0.5, 0.5))
 		var scale := sqrt(clampf(float(body.get("share", 1.0)), 0.02, 1.0))
-		var ax := rng.randf_range(0.34, 0.38) * scale
-		var ay := rng.randf_range(0.38, 0.41) * scale
+		# A grown body's own aspect (`GenBodies._grow`) stretches one axis and
+		# shrinks the other, so its area is what its share says.
+		var aspect := float(body.get("aspect", 1.0))
+		var ax := rng.randf_range(0.34, 0.38) * scale * aspect
+		var ay := rng.randf_range(0.38, 0.41) * scale / aspect
 		var tilt := rng.randf_range(-0.22, 0.22)
-		shapes.append({"at": at, "ax": ax, "ay": ay, "ct": cos(tilt), "st": sin(tilt)})
+		shapes.append({"at": at, "ax": ax, "ay": ay, "ct": cos(tilt), "st": sin(tilt),
+			"power": float(body.get("power", BODY_POWER)), "tilt": tilt})
 		# A CONTINENT'S HEADLANDS REACH INTO ITS OWN OCEAN. With one island every
 		# direction is its own ocean and this does nothing. With several, a
 		# peninsula thrown inward lands in the strait — and they are big enough to
@@ -48,25 +72,38 @@ static func run(c: GenContext) -> void:
 		# at 1024) but because each one's inward lobes met in the middle. The draws
 		# are unchanged and only the ANGLE is turned, so a single body still takes
 		# the identical stream.
-		var outward := (at - Vector2(0.5, 0.5)).angle() if plan.size() > 1 else 0.0
+		#
+		# SO A HEADLAND IS TURNED ONLY WHERE IT WOULD MEET A NEIGHBOUR: toward
+		# open sea, even the middle of the square, it stands where it was drawn.
+		# The draws are unchanged, so a single body takes the identical stream.
 		var many := plan.size() > 1
 		var lobe_count := rng.randi_range(3, 5)
 		for k in lobe_count:
 			var ang := _rim_angle(rng)
-			if many:
-				ang = outward + wrapf(ang, -PI, PI) * 0.42
 			var reach := rng.randf_range(0.9, 1.08)
-			lobes.append(Vector3(at.x + cos(ang) * ax * reach, at.y + sin(ang) * ay * reach, rng.randf_range(0.06, 0.11)))
-			lobe_amp.append(rng.randf_range(0.35, 0.6))
+			var rad := rng.randf_range(0.06, 0.11)
+			var keep := 1.0
+			if many:
+				var got := _clear_angle(plan, bi, ang, Vector2(ax, ay) * reach, rad, lobes, lobe_body)
+				ang = got.x
+				keep = got.y
+			lobes.append(Vector3(at.x + cos(ang) * ax * reach, at.y + sin(ang) * ay * reach, rad))
+			lobe_amp.append(rng.randf_range(0.35, 0.6) * keep)
+			lobe_body.append(bi)
 		# Islets offshore: small, close enough that some sit on the shallow shelf.
 		var islet_count := rng.randi_range(4, 8)
 		for k in islet_count:
 			var ang := rng.randf() * TAU
-			if many:
-				ang = outward + wrapf(ang, -PI, PI) * 0.42
 			var reach := rng.randf_range(1.12, 1.24)
-			lobes.append(Vector3(at.x + cos(ang) * ax * reach, at.y + sin(ang) * ay * reach, rng.randf_range(0.012, 0.022)))
-			lobe_amp.append(rng.randf_range(0.9, 1.3))
+			var rad := rng.randf_range(0.012, 0.022)
+			var keep := 1.0
+			if many:
+				var got := _clear_angle(plan, bi, ang, Vector2(ax, ay) * reach, rad, lobes, lobe_body)
+				ang = got.x
+				keep = got.y
+			lobes.append(Vector3(at.x + cos(ang) * ax * reach, at.y + sin(ang) * ay * reach, rad))
+			lobe_amp.append(rng.randf_range(0.9, 1.3) * keep)
+			lobe_body.append(bi)
 	var ax: float = shapes[0].ax
 	var ay: float = shapes[0].ay
 	var warp := GenFields.noise(s, 103, 1.0 / (220.0 * c.body_k), 2)
@@ -105,6 +142,7 @@ static func run(c: GenContext) -> void:
 	var sh_st := PackedFloat64Array()
 	var sh_rx := PackedFloat64Array()
 	var sh_ry := PackedFloat64Array()
+	var sh_p := PackedFloat64Array()
 	for sh: Dictionary in shapes:
 		var at: Vector2 = sh.at
 		sh_ax_.append(at.x)
@@ -113,6 +151,8 @@ static func run(c: GenContext) -> void:
 		sh_st.append(float(sh.st))
 		sh_rx.append(float(sh.ax))
 		sh_ry.append(float(sh.ay))
+		sh_p.append(float(sh.power))
+	var many_bodies := plan.size() > 1
 	GenFields.rows(hw, func(g0: int, g1: int) -> void:
 		for gy in range(g0, g1):
 			var ty := GenFields.cell_centre(gy, hs)
@@ -128,16 +168,18 @@ static func run(c: GenContext) -> void:
 				# The nearest body wins the cell: the void between them is simply
 				# where no body reaches, which is what makes an ocean an ocean and
 				# not a hole cut in one.
-				var smin := INF
+				#
+				# The root per body, since a grown body has its own power. One
+				# body takes the min of one value, which is the old arithmetic.
+				var r := INF
 				for si in shape_n:
 					var wu := u + warp_u[i] * 0.05 - sh_ax_[si]
 					var wv := v + warp_v[i] * 0.05 - sh_ay_[si]
 					var pu := absf((wu * sh_ct[si] - wv * sh_st[si]) / sh_rx[si])
 					var pv := absf((wu * sh_st[si] + wv * sh_ct[si]) / sh_ry[si])
-					smin = minf(smin, pow(pu, BODY_POWER) + pow(pv, BODY_POWER))
-				# The root ONCE per cell rather than once per body: it is
-				# monotonic, so it commutes with the min exactly.
-				var r := minf(1e9, pow(smin, 1.0 / BODY_POWER))
+					var p := sh_p[si]
+					r = minf(r, pow(pow(pu, p) + pow(pv, p), 1.0 / p))
+				r = minf(1e9, r)
 				var h := (1.0 - r) * 1.1
 				# Bays bite hardest near the rim, where the coast is.
 				var rim := exp(-(r - 1.0) * (r - 1.0) * 14.0)
@@ -149,8 +191,11 @@ static func run(c: GenContext) -> void:
 					var q := (du * du + dv * dv) / (lb.z * lb.z)
 					if q < 4.0:
 						h += lobe_amp[k] * exp(-q * 1.6)
-				# Never let the land run into the frame.
-				h -= (1.0 - smoothstep(0.035, 0.09, hard)) * 1.6
+				# Never let the land run into the frame. On a world of many the
+				# fade line is itself warped by the continent noise, so a body
+				# packed near the frame ends in a coast, not a ruler line.
+				var fade := hard + continent[i] * FRAME_WARP if many_bodies else hard
+				h -= (1.0 - smoothstep(0.035, 0.09, fade)) * 1.6
 				lf[i] = h
 				inner[i] = 1
 	)
@@ -169,7 +214,12 @@ static func run(c: GenContext) -> void:
 	var thr := GenFields.quantile(lf, inner, want, -2.5, 2.5)
 	for i in hn:
 		lf[i] -= thr
-	_lochs(c, rng, lf, hw, hs, ax, ay)
+	if plan.size() > 1:
+		for bi in shapes.size():
+			_body_lochs(c, rng, lf, hw, hs, shapes[bi], bi)
+		_skerries(c, Rng.make(s, 107), lf, hw, hs, coastline, plan)
+	else:
+		_lochs(c, rng, lf, hw, hs, ax, ay)
 	var land_h := PackedByteArray()
 	land_h.resize(hn)
 	for i in hn:
@@ -267,32 +317,194 @@ static func _lochs(c: GenContext, rng: RandomNumberGenerator, lf: PackedFloat32A
 		var p := Vector2(0.5 + cos(ang) * ax * 1.15, 0.5 + sin(ang) * ay * 1.15) * size
 		var head := Vector2(size * 0.5, size * 0.5)
 		var total := (p.distance_to(head)) * rng.randf_range(0.42, 0.55)
-		var travelled := 0.0
 		var mouth := rng.randf_range(5.0, 8.0)
-		var dir := (head - p).normalized()
-		var salt := float(k) * 97.0
-		while travelled < total:
-			var t := travelled / total
-			# Never narrower than about three tiles: a thinner channel breaks
-			# into a dotted line of pits.
-			var radius := lerpf(mouth, 3.0, t) / hs
-			var bend := wobble.get_noise_2d(travelled, salt) * 1.3
-			var step_dir := dir.rotated(bend)
-			p += step_dir
-			travelled += 1.0
-			var cx := p.x / hs
-			var cy := p.y / hs
-			var ri := ceili(radius + 1.0)
+		_cut_loch(lf, hw, hs, wobble, p, (head - p).normalized(), total, mouth, float(k) * 97.0)
+
+
+## One loch: from `from` (tiles) along `dir`, bending by `wobble`, for `total`
+## tiles, `mouth` tiles in radius at the mouth narrowing to three.
+static func _cut_loch(lf: PackedFloat32Array, hw: int, hs: int, wobble: FastNoiseLite, from: Vector2, dir: Vector2, total: float, mouth: float, salt: float) -> void:
+	var p := from
+	var travelled := 0.0
+	while travelled < total:
+		var t := travelled / total
+		# Never narrower than about three tiles: a thinner channel breaks
+		# into a dotted line of pits.
+		var radius := lerpf(mouth, 3.0, t) / hs
+		var bend := wobble.get_noise_2d(travelled, salt) * 1.3
+		var step_dir := dir.rotated(bend)
+		p += step_dir
+		travelled += 1.0
+		var cx := p.x / hs
+		var cy := p.y / hs
+		var ri := ceili(radius + 1.0)
+		for dy in range(-ri, ri + 1):
+			for dx in range(-ri, ri + 1):
+				var gx := floori(cx) + dx
+				var gy := floori(cy) + dy
+				if gx < 1 or gy < 1 or gx >= hw - 1 or gy >= hw - 1:
+					continue
+				var d := Vector2(gx + 0.5 - cx, gy + 0.5 - cy).length()
+				if d < radius:
+					var i := gy * hw + gx
+					lf[i] = minf(lf[i], -0.06 - 0.25 * (1.0 - d / radius))
+
+
+## Where a headland or islet of body `bi` may stand, drawn at `ang`, `reach`
+## out along its axes with radius `rad` (square units): x the angle, y 1 to lay
+## it or 0 to drop it. The drawn angle where it clears every other body's
+## ellipse and every headland already laid on another body by
+## GenBodies.SEA_GAP; else folded toward the side facing away from what it
+## would meet; else straight away from it; else dropped. Two headlands facing
+## across a strait each clear the other's ELLIPSE and still meet, which is how
+## grown bodies fused.
+static func _clear_angle(plan: Array[Dictionary], bi: int, ang: float, reach: Vector2, rad: float, lobes: PackedVector3Array, lobe_body: PackedInt32Array) -> Vector2:
+	var at: Vector2 = plan[bi].at
+	var got := _gap(plan, bi, at + Vector2(cos(ang) * reach.x, sin(ang) * reach.y), rad, lobes, lobe_body)
+	if got.x >= GenBodies.SEA_GAP:
+		return Vector2(ang, 1.0)
+	var away := (at - Vector2(got.y, got.z)).angle()
+	for turn: float in [away + wrapf(ang - away, -PI, PI) * 0.42, away]:
+		if _gap(plan, bi, at + Vector2(cos(turn) * reach.x, sin(turn) * reach.y), rad, lobes, lobe_body).x >= GenBodies.SEA_GAP:
+			return Vector2(turn, 1.0)
+	return Vector2(ang, 0.0)
+
+
+## The least clearance from a disc at `p` of radius `rad` to anything not of
+## body `bi` (x), and where that nearest thing stands (y, z).
+static func _gap(plan: Array[Dictionary], bi: int, p: Vector2, rad: float, lobes: PackedVector3Array, lobe_body: PackedInt32Array) -> Vector3:
+	var worst := INF
+	var from := p
+	for oi in plan.size():
+		if oi == bi:
+			continue
+		var o: Vector2 = plan[oi].at
+		var r := GenBodies.ONE_RADIUS * sqrt(clampf(float(plan[oi].get("share", 1.0)), 0.02, 1.0)) * GenBodies.PACK_REACH
+		var a := float(plan[oi].get("aspect", 1.0))
+		var d := p - o
+		var dir := d.normalized() if d.length() > 1e-6 else Vector2.RIGHT
+		var gap := d.length() - GenBodies._reach(r * a, r / a, dir) - rad
+		if gap < worst:
+			worst = gap
+			from = o
+	for k in lobes.size():
+		if lobe_body[k] == bi:
+			continue
+		var lb := lobes[k]
+		var gap := p.distance_to(Vector2(lb.x, lb.y)) - rad - lb.z
+		if gap < worst:
+			worst = gap
+			from = Vector2(lb.x, lb.y)
+	return Vector3(worst, from.x, from.y)
+
+
+## SKERRIES WHERE A GROWN WORLD WOULD LEAVE A HOLE. Bodies packed apart leave
+## open water between three or four of them far wider than any strait, and a
+## hole in the middle is the ring's empty sea again. On the thresholded field
+## (land where `lf` > 0), the widest disc of open water that stays inside the
+## hull of the bodies' centres takes a cluster of skerries, and again, until no
+## such disc is wider across than SKERRY_FILL or SKERRY_HOLES have been filled.
+## Each skerry is under `ISLET_TILES`, so `_clean` keeps it, and its rim is
+## crinkled by the coastline noise. Drawn from its own stream, and only on a
+## world of many bodies.
+static func _skerries(c: GenContext, rng: RandomNumberGenerator, lf: PackedFloat32Array, hw: int, hs: int, coastline: PackedFloat32Array, plan: Array[Dictionary]) -> void:
+	const ST := 4
+	var cw := hw / ST
+	var tiles := float(ST * hs)
+	var land := PackedByteArray()
+	land.resize(cw * cw)
+	for cy in cw:
+		for cx in cw:
+			if lf[(cy * ST + ST / 2) * hw + cx * ST + ST / 2] > 0.0:
+				land[cy * cw + cx] = 1
+	var centres := PackedVector2Array()
+	for b: Dictionary in plan:
+		centres.append((b.at as Vector2) * float(cw))
+	var hull := Geometry2D.convex_hull(centres)
+	for _h in SKERRY_HOLES:
+		var d := GenFields.distance8(land, cw)
+		var best := Vector3(0, 0, 0)
+		for cy in cw:
+			for cx in cw:
+				var open := d[cy * cw + cx]
+				if open <= best.z:
+					continue
+				var p := Vector2(cx, cy)
+				if not Geometry2D.is_point_in_polygon(p, hull):
+					continue
+				var r := open
+				for k in hull.size() - 1:
+					r = minf(r, p.distance_to(Geometry2D.get_closest_point_to_segment(p, hull[k], hull[k + 1])))
+				if r > best.z:
+					best = Vector3(cx, cy, r)
+		if 2.0 * best.z * tiles < SKERRY_FILL * c.size:
+			return
+		var count := rng.randi_range(SKERRY_COUNT.x, SKERRY_COUNT.y)
+		for k in count:
+			var at := Vector2(best.x, best.y) + Vector2.from_angle(rng.randf() * TAU) * best.z * 0.6 * sqrt(rng.randf())
+			var rt := rng.randf_range(SKERRY_RADIUS.x, SKERRY_RADIUS.y)
+			# In half-resolution cells.
+			var hc := (at * ST + Vector2(ST, ST) * 0.5)
+			var rr := rt / hs
+			var ri := ceili(rr + 1.0)
 			for dy in range(-ri, ri + 1):
 				for dx in range(-ri, ri + 1):
-					var gx := floori(cx) + dx
-					var gy := floori(cy) + dy
+					var gx := floori(hc.x) + dx
+					var gy := floori(hc.y) + dy
 					if gx < 1 or gy < 1 or gx >= hw - 1 or gy >= hw - 1:
 						continue
-					var d := Vector2(gx + 0.5 - cx, gy + 0.5 - cy).length()
-					if d < radius:
-						var i := gy * hw + gx
-						lf[i] = minf(lf[i], -0.06 - 0.25 * (1.0 - d / radius))
+					var i := gy * hw + gx
+					var dd := Vector2(gx + 0.5 - hc.x, gy + 0.5 - hc.y).length() / rr
+					lf[i] = maxf(lf[i], 0.08 * (1.0 - dd) + coastline[i] * 0.05)
+			var ci := clampi(floori(at.y), 0, cw - 1) * cw + clampi(floori(at.x), 0, cw - 1)
+			land[ci] = 1
+
+
+## Sea lochs for one grown body: as `_lochs`, but from its own rim toward its
+## own centre, with its own axes and tilt, 2-4 of them. A body of a world of
+## many is several islands' worth of land, and the square's centre `_lochs`
+## heads for is open sea or another body.
+static func _body_lochs(c: GenContext, rng: RandomNumberGenerator, lf: PackedFloat32Array, hw: int, hs: int, sh: Dictionary, bi: int) -> void:
+	var size := float(c.size)
+	var at: Vector2 = sh.at
+	var ax: float = sh.ax
+	var ay: float = sh.ay
+	var tilt: float = sh.tilt
+	var count := rng.randi_range(2, 4)
+	var wobble := GenFields.noise(c.s, 106, 1.0 / 30.0, 2)
+	for k in count:
+		var ang := _rim_angle(rng)
+		var rim := Vector2(cos(ang) * ax * 1.15, sin(ang) * ay * 1.15).rotated(tilt)
+		var head := at * size
+		var p := _coast_along(lf, hw, hs, head, (at + rim) * size)
+		var total := p.distance_to(head) * rng.randf_range(LOCH_REACH.x, LOCH_REACH.y) + LOCH_OFFSHORE
+		var mouth := rng.randf_range(5.0, 8.0)
+		var dir := (head - p).normalized()
+		_cut_loch(lf, hw, hs, wobble, p - dir * LOCH_OFFSHORE, dir, total, mouth, float(bi * 5 + k) * 97.0)
+
+
+## The last land from `head` out along the line through `rim` (tiles), before
+## LOCH_OPEN_SEA of open water and no farther than twice `rim`: where a loch's
+## mouth must open, and never on a neighbour across the strait. A loch started at the drawn rim
+## began inland wherever a headland stood there, and `_clean` filled it as an
+## enclosed sea. `rim` itself when the line meets no land.
+static func _coast_along(lf: PackedFloat32Array, hw: int, hs: int, head: Vector2, rim: Vector2) -> Vector2:
+	var dir := (rim - head).normalized()
+	var reach := head.distance_to(rim) * 2.0
+	var last := rim
+	var t := 0.0
+	while t < reach:
+		var q := head + dir * t
+		var gx := floori(q.x / hs)
+		var gy := floori(q.y / hs)
+		if gx < 0 or gy < 0 or gx >= hw or gy >= hw:
+			break
+		if lf[gy * hw + gx] > 0.0:
+			last = q
+		elif q.distance_to(last) > LOCH_OPEN_SEA and last != rim:
+			break
+		t += 2.0
+	return last
 
 
 ## Fill enclosed seas; sink detached land bigger than an islet. Returns 1

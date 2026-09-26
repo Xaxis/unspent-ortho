@@ -32,10 +32,12 @@ static func make() -> BiomeDef:
 	d.adjacency = {&"moss": 0.3, &"pinewood": 0.25, &"bonelands": 0.25}
 	d.coastal = 0.2
 	# Broken, steep and high: crags rather than hills, with the valleys between
-	# them deep enough to hold the fog all day.
+	# them deep enough to hold the fog all day. Tall land on a two-level terrace
+	# climbs as a stair of equal treads, so the steps here are cliffs of three to
+	# eight levels (`shelf`, `shelf_var`) between shelves flat enough to stand on.
 	d.relief = {
-		&"base": 11.0, &"hills": 8.0, &"ridge": 4.0, &"near": 8.5, &"terrace": 0.55, &"valley": 2.8,
-		&"rain": 1.3, &"temp": 0.14, &"moist": 0.75, &"cliff": 0.85,
+		&"base": 11.0, &"hills": 8.0, &"ridge": 4.0, &"near": 8.5, &"terrace": 0.85, &"valley": 2.8,
+		&"rain": 1.3, &"temp": 0.14, &"moist": 0.75, &"cliff": 0.85, &"shelf": 3.5, &"shelf_var": 0.7,
 	}
 	d.border_elevation = 2.0
 	d.reach_out_high = Vector4(6.0, 0.11, 0.13, 0.4)
