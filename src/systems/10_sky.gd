@@ -258,7 +258,7 @@ func _update(delta: float, snap: bool) -> void:
 	for k: String in FALL_KEYS:
 		target[k] = falls[k]
 	target.mist = target_mist
-	target.wisp = 0.0 if room else wisp_amount(float(WISPS.get(here, 0.0)), Weather.night_fall(hour), float(target.rain) + float(target.drizzle), target_wind)
+	target.wisp = 0.0 if room else wisp_amount(_here_def().wisps, Weather.night_fall(hour), float(target.rain) + float(target.drizzle), target_wind)
 	# What lies on the ground changes over hours: recompute once a world minute.
 	# Each thing is the most any landscape in view has left; the sky_ground mask
 	# lays it only on the land that makes it.
@@ -347,7 +347,7 @@ func _update(delta: float, snap: bool) -> void:
 func _update_ground_marks(focus: Vector2, minutes: float, seed_value: int, delta: float, snap: bool) -> void:
 	var drip := Drips.amount(float(look.rain) + float(look.drizzle) * 0.5, float(settled.wet))
 	# Under a canopy the rain comes down as drips.
-	drip = clampf(drip * float(CANOPY_DRIP.get(here, 1.0)), 0.0, 1.0)
+	drip = clampf(drip * _here_def().canopy_drip, 0.0, 1.0)
 	_drip_scan -= delta
 	if drip > 0.01 and (snap or _drip_scan <= 0.0):
 		_drip_scan = 0.5
@@ -365,10 +365,11 @@ func _update_ground_marks(focus: Vector2, minutes: float, seed_value: int, delta
 	view.set_devils(placed)
 
 
-## Landscape types whose canopy turns rain into drips: how much more they drip.
-const CANOPY_DRIP := {&"pinewood": 1.5}
-## Landscape types where cold lights drift low after dark, and how many.
-const WISPS := {&"moss": 1.0}
+## The landscape under the focus, as its own file declares it (canopy drip,
+## wisps): never a table here naming landscapes (CLAUDE.md).
+func _here_def() -> BiomeDef:
+	var d := BiomeRegistry.get_def(here)
+	return d if d != null else BiomeDef.new()
 
 
 ## Wisps: cold lights over the moss after dark, never in rain or a wind.

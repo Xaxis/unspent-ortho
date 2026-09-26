@@ -313,6 +313,12 @@ var vent_breath := Color(0, 0, 0, 0)
 ## grey orchards' is the plan's grow light, still run on schedule for trees
 ## nobody will pick. Runtime only, so a LOOK field.
 var underlight := Color(0, 0, 0, 0)
+## How much more rain comes down as drips here, under a canopy (10_sky, Drips):
+## 1 is open ground. Runtime only, so a LOOK field.
+var canopy_drip := 1.0
+## Cold lights drifting low after dark, how many (10_sky wisps): 0 is none.
+## Never in rain or a wind. Runtime only, so a LOOK field.
+var wisps := 0.0
 ## The dystopian grade offset added to SkyLight's own (`SkyLight.neon_row`):
 ## (dark, desat, cool, contrast). `sky.gdshaderinc` scales the graded colour by
 ## (1 - dark), so POSITIVE dark dims and NEGATIVE lifts: every landscape's dark

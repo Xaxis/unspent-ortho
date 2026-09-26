@@ -188,7 +188,7 @@ const LOOK: Array[String] = [
 	"decor", "grasses", "grass_colors", "rock_color", "decor_tints", "tree_tints", "hard_rock", "dressing",
 	"light_tint", "day_light", "night_sky", "web_contrast", "sky_shut", "grade", "wet", "lip_snow", "street_folk",
 	"weather", "mist", "hazards", "roster", "sentinel", "landmarks", "sound_bed", "music_motif",
-	"fliers", "holograms", "interiors", "sky_holes", "overgrowth", "vent_breath", "underlight", "spoken_in",
+	"fliers", "holograms", "interiors", "sky_holes", "overgrowth", "vent_breath", "underlight", "canopy_drip", "wisps", "spoken_in",
 ]
 
 

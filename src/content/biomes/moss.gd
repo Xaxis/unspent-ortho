@@ -102,6 +102,8 @@ static func make() -> BiomeDef:
 	# (BiomeDef.overgrowth: lighter than the green towers' whole dose.)
 	d.overgrowth = 0.55
 	d.night_sky = 1.45
+	# Cold lights drift low over the bog after dark (10_sky wisps).
+	d.wisps = 1.0
 	# And its DAY is lit brighter than the coast's for the same reason: the ground
 	# is the darkest in the game, so under the one daylight (SkyLight.SUN_NOON) a
 	# bog at noon read as dusk, median luma 52-61 from above. Spent as the day's

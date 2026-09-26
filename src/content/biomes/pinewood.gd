@@ -84,6 +84,8 @@ static func make() -> BiomeDef:
 	# (GroundColors.PINE_FLOOR): the wood lit from the floor, faintly, in drifts.
 	d.ground_marks = {Ground.NEEDLES: GroundColors.PINE_FLOOR}
 	d.night_sky = 0.80
+	# Rain comes down through the canopy as drips, and half as many again.
+	d.canopy_drip = 1.5
 	d.wet = 0.2
 	d.props = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS,
 		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_ORE, PropKind.IRON_ORE, PropKind.SNOW_PINE,
