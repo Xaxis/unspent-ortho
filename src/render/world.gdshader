@@ -1666,15 +1666,34 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			c = EARTH2;
 		}
 	} else if (id == 4) {
-		// SNOWFIELD: a snow cap with a ragged hem and icicle runs over blue rock.
-		float hem = 0.07 + ink_hash(vec2(col, 1.0)) * 0.06;
-		if (dt < hem) {
-			c = RIME5;
-		} else if (ink_hash(vec2(col, 2.0)) > 0.78 && dt < hem + ink_hash(vec2(col, 3.0)) * 0.24) {
-			c = RIME4;
+		// SNOWFIELD: a CORNICE, not a cap: the wind loads snow over the lip
+		// until it overhangs, a rounded roll with a deep blue shadow in the curl
+		// under it, its depth swelling and thinning along the wall. Under it
+		// the rock is wind-scoured dark, rimed white on its ledges in streaks
+		// that lean with the wind, and ice hangs only where meltwater runs:
+		// in clusters, each run its own length, never a comb. All on smooth
+		// fields: a hash per two-pixel column drew the comb and the bricks.
+		float roll = 0.06 + ink_vnoise(vec2(px.x * 0.04, 1.0)) * 0.07 + ink_vnoise(vec2(px.x * 0.15, 2.0)) * 0.025;
+		float curl = roll + 0.03 + ink_vnoise(vec2(px.x * 0.05, 3.0)) * 0.03;
+		if (dt < roll) {
+			// The roll: lit on top, shading round its belly.
+			c = mix(RIME5, RIME4, smoothstep(roll * 0.4, roll, dt));
+		} else if (dt < curl) {
+			c = mix(RIME3, SLATE2, 0.35);
 		} else {
-			float b = floor((y + (vn - 0.5) * 0.08) / 0.17);
-			c = ink_hash(vec2(b, 4.0)) < 0.5 ? SLATE2 : RIME2;
+			float b = (y + (vn - 0.5) * 0.08 + px.x * 0.003) / 0.19;
+			c = mix(SLATE1, SLATE2, smoothstep(0.3, 0.7, ink_vnoise(vec2(px.x * 0.04, floor(b) * 2.3))));
+			// Rime on the ledges, where snow can lie, and a soft frost breathing
+			// over the face: never a threshold on a stretched field, which drew
+			// marbled ribbons across the rock.
+			c = mix(c, RIME4, smoothstep(0.78, 0.9, fract(b)) * 0.7);
+			c = mix(c, RIME3, ink_vnoise(vec2(px.x * 0.03, y * 1.5 + 5.0)) * 0.25);
+			// Ice where meltwater runs from the cornice: clusters only.
+			float melt = smoothstep(0.55, 0.72, ink_vnoise(vec2(px.x * 0.05, 7.0)));
+			float run = curl + (0.06 + ink_vnoise(vec2(px.x * 0.45, 9.0)) * 0.3) * melt;
+			if (melt > 0.0 && dt < run && ink_vnoise(vec2(px.x * 0.7, 11.0)) > 0.45) {
+				c = mix(RIME4, RIME3, (dt - curl) / max(run - curl, 0.01));
+			}
 		}
 	} else if (id == 5) {
 		// BONELANDS: thick limestone beds that swell and pinch along the face,
@@ -2366,7 +2385,8 @@ void fragment() {
 		// The weathering pass, on every wall: whatever it is cut through, the
 		// lip, the run-off and the foot are the weather's -- except the one the
 		// machines cast and still maintain.
-		if (m != M_STRATA_CAST && m != M_STRATA_MACHINE) {
+		// A cornice is snow, and the weather's lip shade would sit in its roll.
+		if (m != M_STRATA_CAST && m != M_STRATA_MACHINE && m != MARK_STRATA + 4) {
 			c = strata_weather(c, (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y, wpx);
 		}
 	} else if (m >= 1 && m <= 16) {
