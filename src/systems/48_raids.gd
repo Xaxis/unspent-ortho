@@ -1425,7 +1425,9 @@ func _settle_raid(p: RaidPlan, s: Settlement, share: float) -> void:
 		_seen["looted"] = true
 	if not p.broke.is_empty():
 		_seen["raid_damage"] = true
-	_end(p, s, RaidResolve.outcome_of(s, report))
+	# The whole step's losses, the blows struck by hand as well as the settle's:
+	# the settle of what was left over alone would call a yard it struck `held`.
+	_end(p, s, RaidResolve.outcome_of(s, {"broke": p.broke, "ruined": p.ruined, "took": p.took}))
 
 
 ## What a broken piece leaves in the yard: a machine's blow does not tidy up

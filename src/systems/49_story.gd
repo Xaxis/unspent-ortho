@@ -823,19 +823,35 @@ func _tour_slot(want: String) -> int:
 ## key answers them without the tour having to aim.
 func _beside_folk() -> Vector2:
 	var from: Vector2 = game.player.pos
-	var best := Vector2.INF
-	var best_d := INF
+	var rows: Array = []
 	for row: Dictionary in _folk_rows():
 		if StringName(str(row.get("state", &"out"))) == &"in":
 			continue
 		var at: Vector2 = row.get("pos", Vector2.INF)
-		var d := at.distance_to(from)
-		if d < best_d:
-			best_d = d
-			best = at
-	if best == Vector2.INF:
-		return Vector2.INF
-	return _beside(best, [0.9, 1.2, 1.4])
+		# Somebody a roof stands between and the camera is not somebody a frame
+		# can hold (TourPeople.hidden, what a `folk` claim asks).
+		if at.is_finite() and not TourPeople.hidden(game, at):
+			rows.append(at)
+	rows.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_to(from) < b.distance_to(from))
+	for at: Vector2 in rows:
+		for r: float in [0.9, 1.2, 1.4]:
+			for i in 12:
+				var p := at + Vector2.from_angle(TAU * i / 12.0) * r
+				if not game.query.standable(floori(p.x), floori(p.y)):
+					continue
+				var stand := Vector2(floorf(p.x) + 0.5, floorf(p.y) + 0.5)
+				if stand.distance_to(at) <= CLOSE and not _by_a_house(stand):
+					return stand
+	return Vector2.INF
+
+
+## Whether a house or a ruin is near enough that `use` would take its door
+## before the person beside it.
+func _by_a_house(p: Vector2) -> bool:
+	for q in game.query.props_near(p, 6.0):
+		if TourPeople.TALL.has(q.kind) and q.pos.distance_to(p) < q.solid + 1.5:
+			return true
+	return false
 
 
 ## Where a body can stand and work the housing at `at`: within Works.PART_REACH
