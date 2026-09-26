@@ -121,10 +121,11 @@ func _free(region: int) -> void:
 	# line, because the next person believes the line.
 	_start_walk(out)
 	# Whoever nobody walks takes the road home by themselves (`freed`), and a
-	# holding that still stands has them back on its books.
+	# holding that still stands has them back on its books. Only holdings are
+	# asked: a village door keeps no count.
 	for t in out:
 		if not t.walking:
-			_come_home(t, Escort.destination(_holdings(), game.world.villages, t))
+			_come_home(t, Escort.destination(_holdings(), [], t))
 	var names := PackedStringArray()
 	for t in out:
 		if t.walking:

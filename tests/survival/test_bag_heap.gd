@@ -119,7 +119,7 @@ func test_carried_off_near_your_holding_you_wake_at_its_hearth() -> void:
 	var state := SurvivalState.of(g)
 	eq(state.bags.size(), 1, "and the bag lies")
 	if state.bags.size() == 1:
-		lt(g.world.props[state.bags.keys()[0]].pos.distance_to(taken_at), 1.6, "where they were taken")
+		lt(g.world.prop(int(state.bags.keys()[0])).pos.distance_to(taken_at), 1.6, "where they were taken")
 	Sx.end(g)
 	Sx.finish()
 

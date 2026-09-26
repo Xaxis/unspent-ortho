@@ -176,8 +176,8 @@ src/systems/44_sentinels.gd::look_at::whole
 src/systems/44_sentinels.gd::setup::builder Sentinels.states
 src/systems/45_taken.gd::_start_walk::whole
 src/systems/45_taken.gd::_yard_of::builder Works.sites
-src/systems/45_taken.gd::started::builder Works.sites
-src/systems/45_taken.gd::started::list
+src/systems/45_taken.gd::_stage::builder Works.sites
+src/systems/45_taken.gd::_stage::list
 src/systems/46_settlements.gd::_village_within::list
 src/systems/49_cast.gd::_cast::builder StoryPlan.cast
 src/systems/49_story.gd::_mark_name::list
