@@ -175,7 +175,15 @@ const UNKNOWN := "unknown"
 ##     from a stream keyed on the place's kind and tile, where one stream
 ##     furnished every place in list order. Every place is furnished anew; no
 ##     tile moves.
-const GEN := 32
+## 33. Content, each landscape its own: the scrapwood thinned to a wood and the
+##     sulphur jungle thickened to a canopy; the grey orchards planted in ruled
+##     blocks on one lattice; the drowned city's streets flooded on its low
+##     ground (water a surface recipe lays is fixed against the tidy passes); the
+##     machine city's scatter stood on a ruled grid (`BiomeDef.scatter_ruled`)
+##     and its decks laid on the ground (`decks_grounded`). The six parity
+##     landscapes take none of it, so `test_parity` stands; every world holding
+##     one of these moves.
+const GEN := 33
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
@@ -186,7 +194,7 @@ const TERRAIN: Array[String] = [
 	"relief", "form", "caldera", "dunes",
 	"border_elevation", "tongues", "reach_out_thin", "reach_in_thin", "reach_out_high", "reach_in_low",
 	"plain_ground", "pool_rim_ground", "rivers_freeze", "village_ground", "village_square_ground", "built",
-	"props", "ore", "gravel_ore", "reed_chance", "scorched", "shore_bush", "surface", "scatter",
+	"props", "ore", "gravel_ore", "reed_chance", "scorched", "shore_bush", "surface", "scatter", "scatter_ruled",
 	"sites", "tip_ground", "beached_wrecks", "pools", "villages", "village_names", "village_order",
 	"villages_each_region", "village_platform",
 	"spawn_home",
@@ -204,7 +212,7 @@ const LOOK: Array[String] = [
 	"decor", "grasses", "grass_colors", "rock_color", "decor_tints", "tree_tints", "hard_rock", "dressing",
 	"light_tint", "day_light", "night_sky", "web_contrast", "sky_shut", "grade", "wet", "lip_snow", "street_folk",
 	"weather", "mist", "hazards", "roster", "sentinel", "landmarks", "sound_bed", "music_motif",
-	"fliers", "holograms", "interiors", "sky_holes", "spoken_in",
+	"fliers", "holograms", "interiors", "sky_holes", "spoken_in", "decks_grounded",
 ]
 
 

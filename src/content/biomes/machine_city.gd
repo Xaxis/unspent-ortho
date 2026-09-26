@@ -99,6 +99,12 @@ static func make() -> BiomeDef:
 	# Lit exactly as much as the work needs and no more, all night, every night —
 	# so it is neither dark nor warm, which is worse than either.
 	d.night_sky = 0.7
+	# THE PLANT IS LAID OUT, NOT STREWN. Its decks, consoles, stacks and tanks
+	# were dealt a tile each at any angle, which read as junk dropped from a
+	# height; they stand on the plan's own grid now, square to its bearing.
+	d.scatter_ruled = true
+	# Its decks are the plant's floor, laid on the ground: see `decks_grounded`.
+	d.decks_grounded = true
 	d.props = [PropKind.RELAY, PropKind.PYLON, PropKind.CONSOLE, PropKind.STACK,
 		PropKind.CHECKPOINT, PropKind.FENCE, PropKind.PLATFORM, PropKind.WATER_TANK]
 	d.ore = [[PropKind.COPPER_ORE, 0.024], [PropKind.IRON_ORE, 0.02]]

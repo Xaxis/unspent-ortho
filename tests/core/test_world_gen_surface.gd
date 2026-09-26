@@ -4,6 +4,7 @@ extends TestCase
 ## be one. The VALUE is the measured thing (see the table in the test); the SHARE
 ## is what stops a bar failing for whatever moved the island last.
 const Treads := preload("res://src/core/colossus/colossus_treads.gd")
+const GenTreads := preload("res://src/core/worldgen/gen_treads.gd")
 const EDGE_BAR := 0.28
 const EDGE_CLEAR := 0.66
 ## Grounds read as washes: big patches with long edges, no specks, no stair
@@ -345,15 +346,29 @@ func test_pools_are_round_rimmed_and_clear_of_houses() -> void:
 		var w := Worlds.world(s)
 		var size := w.size
 		var n := size * size
+		# The drowned city's black water is its flooded STREETS as well as its
+		# pools since GEN 33, cut into stretches at the kerbs where a street
+		# crosses a terrace, and it has a test of its own
+		# (`test_the_drowned_city_stands_in_its_own_streets`); pools everywhere
+		# else are held to being round here.
+		# BY THE PATCH, not the tile: a city pool that crosses into the next
+		# landscape is still the city's water, and cut at the border it left a
+		# two-tile scrap of it in the salt flats to be measured as a pool.
+		var streets := BiomeRegistry.get_def(&"drowned_city").index
 		var not_pool := PackedByteArray()
 		not_pool.resize(n)
 		for i in n:
 			not_pool[i] = 0 if w.ground[i] == Ground.BLACKWATER else 1
 		var sizes := PackedInt32Array()
 		var label := GenFields.patches(w.ground, not_pool, size, sizes)
+		var citys := {}
+		for i in n:
+			if label[i] >= 0 and w.country[i] == streets:
+				citys[label[i]] = true
+		var pool := func(j: int) -> bool: return label[j] >= 0 and not citys.has(label[j])
 		var pools := 0
 		for i in n:
-			if label[i] == i:
+			if label[i] == i and not citys.has(i):
 				pools += 1
 				gt(sizes[i], 9, "seed %d blackwater pool at %d,%d tiles" % [s, i % size, i / size])
 		gt(pools, 4, "seed %d blackwater pools in the Moss" % s)
@@ -366,7 +381,7 @@ func test_pools_are_round_rimmed_and_clear_of_houses() -> void:
 				var g := w.ground[i]
 				if _line(g) or w.level[i] <= 0:
 					continue
-				if w.ground[i - 1] == Ground.BLACKWATER or w.ground[i + 1] == Ground.BLACKWATER or w.ground[i - size] == Ground.BLACKWATER or w.ground[i + size] == Ground.BLACKWATER:
+				if pool.call(i - 1) or pool.call(i + 1) or pool.call(i - size) or pool.call(i + size):
 					shore += 1.0
 					# PEAT AND MUD ARE THE MOSS'S ANSWER, NOT EVERY LANDSCAPE'S.
 					# Black water is not the Moss's alone any more: the Middens
@@ -383,8 +398,9 @@ func test_pools_are_round_rimmed_and_clear_of_houses() -> void:
 			var reach := ceili(p.solid + 3.0)
 			for dy in range(-reach, reach + 1):
 				for dx in range(-reach, reach + 1):
-					var g := w.ground_at(floori(p.pos.x) + dx, floori(p.pos.y) + dy)
-					if g == Ground.BLACKWATER and Vector2(dx, dy).length() <= p.solid + 3.0:
+					var hx := floori(p.pos.x) + dx
+					var hy := floori(p.pos.y) + dy
+					if w.in_bounds(hx, hy) and pool.call(hy * size + hx) and Vector2(dx, dy).length() <= p.solid + 3.0:
 						fail("seed %d blackwater within 3 tiles of a house at %s" % [s, p.pos])
 
 
@@ -619,16 +635,27 @@ func test_wrecks_on_sand_and_kilns_by_villages() -> void:
 		# whatever stands there: seed 42's tip wreck at (1010.5, 750.5) was laid
 		# on gravel and stands on a rim's fresh rock (GEN 32). What this asks is
 		# where the scatter lays things, so a crater's ground is left out.
+		# And the ring a walker's weight presses round the whole footprint
+		# (`GenTreads._press_ring`): seed 90210's kiln was laid on sand and stands
+		# in the ring's clinker (GEN 33 moved a tread under it).
 		var pads: Array[Vector3] = []
+		var rings: Array[Vector3] = []
 		for m: Dictionary in w.landmarks:
 			if m.get("kind") == &"tread":
+				var centre: Vector2 = m.pos
+				var r := 0.0
 				for pad: Vector3 in m.get("pads", []):
 					pads.append(pad)
+					r = maxf(r, centre.distance_to(Vector2(pad.x, pad.y)) + Treads.rim_r(pad))
+				rings.append(Vector3(centre.x, centre.y, r + GenTreads.PRESS_OUT))
 		for p in w.each_prop():
 			var g := w.ground_at(floori(p.pos.x), floori(p.pos.y))
 			var in_crater := false
 			for pad in pads:
 				in_crater = in_crater or Vector2(pad.x, pad.y).distance_to(p.pos) <= Treads.rim_r(pad) + 1.0
+			for ring in rings:
+				var off := Vector2(ring.x, ring.y).distance_to(p.pos)
+				in_crater = in_crater or (off > ring.z * 0.945 - GenTreads.PRESS_WIDE - 1.0 and off < ring.z * 1.055 + GenTreads.PRESS_WIDE + 1.0)
 			if in_crater:
 				continue
 			if p.kind == PropKind.WRECK:
@@ -708,3 +735,165 @@ func test_a_recipe_band_above_the_shared_cap_is_laid() -> void:
 	# Without core tiles the count below proves nothing either way.
 	gt(core, 1000, "the server fields have a core on these seeds")
 	gt(stacks, 0, "its 0.55 stacks stand in it (%d core tiles)" % core)
+
+
+## Trees per 1000 land tiles of each landscape, one world.
+static func _tree_rates(w: WorldData) -> PackedFloat32Array:
+	const TREES: Array[int] = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.SNOW_PINE, PropKind.SCRAP_TREE]
+	var land := PackedFloat32Array()
+	land.resize(BiomeRegistry.count())
+	var trees := PackedFloat32Array()
+	trees.resize(BiomeRegistry.count())
+	for i in w.level.size():
+		if w.level[i] > 0:
+			land[w.country[i]] += 1.0
+	for r in w.table.size():
+		if TREES.has(int(w.table.kind[r])):
+			var p: Vector2 = w.table.pos[r]
+			trees[w.country_at(floori(p.x), floori(p.y))] += 1.0
+	for c in land.size():
+		trees[c] = 1000.0 * trees[c] / maxf(1.0, land[c])
+	return trees
+
+
+## A WOOD IS NOT A THICKET, AND A JUNGLE IS NOT A HEATH. The pinewood is the
+## measure of a wood a player walks through. The scrapwood stood half again as
+## thick (160 trees per 1000 tiles on seed 1 against 106) and held the island's
+## densest square, the heaviest frame in the game; the sulphur jungle, "the
+## thickest canopy in the game", stood at 42. Each is held against the pines.
+func test_the_scrapwood_is_a_wood_and_the_jungle_is_a_canopy() -> void:
+	var pine := BiomeRegistry.get_def(&"pinewood").index
+	var scrap := BiomeRegistry.get_def(&"scrapwood").index
+	var jungle := BiomeRegistry.get_def(&"sulphur_jungle").index
+	for s in Worlds.WORLD_SEEDS:
+		var rate := _tree_rates(Worlds.world(s))
+		print("  trees per 1000, seed %d: pinewood %.1f, scrapwood %.1f, sulphur_jungle %.1f" % [s, rate[pine], rate[scrap], rate[jungle]])
+		lt(rate[scrap], rate[pine] * 1.05, "seed %d: the scrapwood stands no thicker than the pines" % s)
+		gt(rate[jungle], rate[pine] * 0.9, "seed %d: the jungle stands about as thick as the pines or more" % s)
+
+
+## THE ORCHARDS STAND IN ROWS. They were scattered like any wood and read as
+## one; a machine planted these. A tree is in a row when another stands one step
+## (`GreyOrchards.TREE_GAP`) along the survey bearing from it, to a tenth of a
+## tile. Scattered, 0-1% of the trees were; planted, 53-65% are, the rest
+## broken by terrace lips, the odd tree gone to a stump, and strays.
+func test_the_grey_orchards_stand_in_rows() -> void:
+	const Orchards := preload("res://src/content/biomes/grey_orchards.gd")
+	var land := BiomeRegistry.get_def(&"grey_orchards").index
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var d := Vector2.from_angle(GenWorks.bearing(w.seed_value))
+		var trees: Array[Vector2] = []
+		var cells := {}
+		for r in w.table.size():
+			if int(w.table.kind[r]) != PropKind.BROADLEAF:
+				continue
+			var p: Vector2 = w.table.pos[r]
+			if w.country_at(floori(p.x), floori(p.y)) != land:
+				continue
+			trees.append(p)
+			var key := Vector2i(p.floor())
+			if not cells.has(key):
+				cells[key] = []
+			(cells[key] as Array).append(p)
+		var in_row := 0
+		for p in trees:
+			var found := false
+			for q0: Vector2 in [p + d * Orchards.TREE_GAP, p - d * Orchards.TREE_GAP]:
+				for dy in range(-1, 2):
+					for dx in range(-1, 2):
+						for q: Vector2 in cells.get(Vector2i(q0.floor()) + Vector2i(dx, dy), []):
+							found = found or q.distance_to(q0) < 0.1
+			in_row += 1 if found else 0
+		var share := float(in_row) / maxf(1.0, trees.size())
+		print("  orchards, seed %d: %d trees, %.0f%% in rows" % [s, trees.size(), share * 100.0])
+		gt(share, 0.4, "seed %d: the orchards' trees stand in rows" % s)
+		gt(float(trees.size()), 200.0, "seed %d: and there is an orchard to stand in" % s)
+
+
+## THE SEA STANDS IN THE DROWNED CITY'S STREETS. Its water was round pools on a
+## cell grid, 0.9% of the city on seed 1, with 6% of its ruins in sight of any.
+## Flooded along its streets on the low ground, 14% of it is standing water and
+## 80% of its ruins stand within six tiles of it. And standing water is level: no
+## flooded tile has a lower tile beside it to hang over (the tidy passes spread
+## it over 418 lips on seed 1 until recipe water was fixed like a pool's).
+func test_the_drowned_city_stands_in_its_own_streets() -> void:
+	var land := BiomeRegistry.get_def(&"drowned_city").index
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var tiles := 0
+		var wet := 0
+		var hanging := 0
+		for i in w.level.size():
+			if w.country[i] != land or w.level[i] <= 0:
+				continue
+			tiles += 1
+			if w.ground[i] != Ground.BLACKWATER:
+				continue
+			wet += 1
+			var l := w.level[i]
+			if w.level[i - 1] < l or w.level[i + 1] < l or w.level[i - w.size] < l or w.level[i + w.size] < l:
+				hanging += 1
+		var ruins := 0
+		var by := 0
+		for r in w.table.size():
+			if int(w.table.kind[r]) != PropKind.RUIN:
+				continue
+			var p: Vector2 = w.table.pos[r]
+			if w.country_at(floori(p.x), floori(p.y)) != land:
+				continue
+			ruins += 1
+			var near := false
+			for dy in range(-6, 7):
+				for dx in range(-6, 7):
+					near = near or (w.in_bounds(floori(p.x) + dx, floori(p.y) + dy) and w.ground_at(floori(p.x) + dx, floori(p.y) + dy) == Ground.BLACKWATER)
+			by += 1 if near else 0
+		if tiles < 2000:
+			continue
+		var share := float(wet) / tiles
+		var in_sight := float(by) / maxf(1.0, ruins)
+		print("  drowned city, seed %d: %.1f%% standing water, %.0f%% of %d ruins by it" % [s, share * 100.0, in_sight * 100.0, ruins])
+		gt(share, 0.05, "seed %d: the sea stands in the city's streets" % s)
+		gt(in_sight, 0.3, "seed %d: and among its ruins" % s)
+		eq(hanging, 0, "seed %d: every flooded tile is level with or below its neighbours" % s)
+
+
+## THE MACHINE CITY IS LAID OUT, NOT STREWN. Its decks, consoles, stacks and tanks
+## were dealt a tile each at any angle and read as junk dropped from a height.
+## Scattered here now, each stands on the lattice ruled on the survey bearing and
+## square to it; and its decks are its floor, at a step's height, where the
+## threshold site's deck keeps its legs over the sea.
+func test_the_machine_city_stands_on_its_own_grid() -> void:
+	var land := BiomeRegistry.get_def(&"machine_city").index
+	const PLANT: Array[int] = [PropKind.PLATFORM, PropKind.CONSOLE, PropKind.STACK, PropKind.WATER_TANK]
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var bearing := GenWorks.bearing(w.seed_value)
+		var d := Vector2.from_angle(bearing)
+		var n := Vector2(-d.y, d.x)
+		var plant := 0
+		var square := 0
+		for r in w.table.size():
+			if not PLANT.has(int(w.table.kind[r])):
+				continue
+			var p: Vector2 = w.table.pos[r]
+			if w.country_at(floori(p.x), floori(p.y)) != land:
+				continue
+			plant += 1
+			var turn := fposmod(w.table.rot[r] - bearing, PI * 0.5)
+			var on := absf(p.dot(d) - roundf(p.dot(d))) < 0.01 and absf(p.dot(n) - roundf(p.dot(n))) < 0.01
+			if on and (turn < 0.001 or turn > PI * 0.5 - 0.001):
+				square += 1
+		var share := float(square) / maxf(1.0, plant)
+		print("  machine city, seed %d: %d of %d of its plant on the ruled grid" % [s, square, plant])
+		gt(float(plant), 50.0, "seed %d: the city holds its plant" % s)
+		gt(share, 0.8, "seed %d: and stands it square on the bearing's grid" % s)
+	var top := func(t: PropModels.Template) -> float:
+		var y := 0.0
+		for v: Vector3 in t.made_v:
+			y = maxf(y, v.y)
+		for v: Vector3 in t.found_v:
+			y = maxf(y, v.y)
+		return y
+	lt(top.call(PropModels.template(PropKind.PLATFORM, 0, land)), 0.3, "a city deck is a floor a body walks over")
+	gt(top.call(PropModels.template(PropKind.PLATFORM, 0, Country.COAST)), 1.0, "the threshold site's deck still stands over the sea")

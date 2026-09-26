@@ -337,6 +337,15 @@ var shore_bush := PropKind.BUSH
 var surface := Callable()
 ## static func(t: BiomeSample) -> int: the prop on one tile, or -1 for none.
 var scatter := Callable()
+## Whether what `scatter` deals is laid out by the machines rather than grown or
+## dropped: stood on a lattice ruled on their survey bearing and turned square to
+## it (GenScatter), not jittered in its tile and turned any way.
+var scatter_ruled := false
+## Whether a PLATFORM deck here stands on the ground, a plated floor at a step's
+## height, rather than on legs over the water (the threshold site's): a deck at
+## chest height on dry land, with nothing solid to it, is one a body walks
+## through (the machine city's).
+var decks_grounded := false
 ## Landmark sites this type carries:
 ##   tips int           scrap heaps the machines dumped here
 ##   stone_circles int  what stood here before, some of it cast in concrete

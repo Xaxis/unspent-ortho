@@ -184,9 +184,51 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 		return Ground.GRAVEL
 	if f & BiomeSurface.BANK != 0:
 		return Ground.MUD
+	if _flooded(t, i) and _street(t, i):
+		return Ground.BLACKWATER
 	if e <= 2.6:
 		return Ground.MUD
 	return Ground.MOSS if gb > 0.25 else Ground.FLOOR
+
+
+## THE STREETS ARE WHERE THE SEA STANDS. The water was round pools dropped on a
+## cell grid, and the city between them read as a dry plaza with ponds in it.
+## A city has streets, and the sea came in along them: a grid of them, as wide
+## as a street and as far apart as the blocks it held (`built.buildings` is 14 to
+## 22), turned to its own seed's angle, is shallow standing water wherever the
+## land lies low, and the blocks between keep their slabs and their ruins.
+##
+## STANDING WATER IS LEVEL. Flooded by elevation, a street ran up the terraces
+## and its water stood in steps, a stair of dark tiles (seed 1, 518,414). So it
+## floods only on the two lowest levels, where most of the city is (seed 1:
+## 8,342 and 22,101 of its 46,238 tiles), and never on a tile with a lower one
+## beside it: water stands against a higher wall as a bank, never hangs over a
+## drop, so where a street crosses a terrace the upper side is a dry kerb.
+const STREET_PITCH := 18.0
+const STREET_WIDTH := 3.0
+## The highest level a street holds water on; above it the upper town is dry.
+const STREET_FLOOD := 2
+
+
+static func _flooded(t: BiomeSurface, i: int) -> bool:
+	# The city's own ground: this recipe also lays the far half of an ecotone,
+	# and a street flooded there is the city's water standing in the salt flats
+	# (seed 1, 539,314), a stretch of street with no city round it.
+	if t.own_def == null or t.own_def.id != &"drowned_city":
+		return false
+	var l := t.levels[i]
+	if l > STREET_FLOOD:
+		return false
+	return t.levels[i - 1] >= l and t.levels[i + 1] >= l and t.levels[i - t.size] >= l and t.levels[i + t.size] >= l
+
+
+static func _street(t: BiomeSurface, i: int) -> bool:
+	var a := Rng.hash01(t.seed_value, 0xD120) * PI * 0.5
+	var x := float(i % t.size)
+	var y := float(i / t.size)
+	var u := x * cos(a) + y * sin(a)
+	var v := y * cos(a) - x * sin(a)
+	return fposmod(u, STREET_PITCH) < STREET_WIDTH or fposmod(v, STREET_PITCH) < STREET_WIDTH
 
 
 ## THE WATER IS STILL IN IT, and that is the whole landscape: a city at the

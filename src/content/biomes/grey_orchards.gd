@@ -106,6 +106,12 @@ static func make() -> BiomeDef:
 	d.sound_bed = &"bed_pines"
 	d.surface = _surface
 	d.scatter = _scatter
+	# The orchards themselves are the machines' planting, ruled on their bearing
+	# (`_works`); the scatter only lets the odd tree seed itself between blocks.
+	GenWorks.register(&"grey_orchards", {
+		"host": load("res://src/content/biomes/grey_orchards.gd"),
+		"works": &"_works",
+	})
 	return d
 
 
@@ -131,9 +137,11 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 ## never replanted, which is the only thing in the landscape that is failing.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.GRASS:
-		if r < 0.085:
+		# Strays only: the orchards are planted in rows (`_works`), and a tree
+		# the scatter drops at random between them is one that seeded itself.
+		if r < 0.004:
 			return PropKind.BROADLEAF
-		if r < 0.100:
+		if r < 0.019:
 			return PropKind.BUSH
 		return PropKind.STUMP if r > 0.50 and r < 0.508 else BiomeScatter.NONE
 	if g == Ground.GRAVEL:
@@ -155,3 +163,55 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.ROCK:
 		return PropKind.DEBRIS if r < 0.020 else BiomeScatter.NONE
 	return BiomeScatter.NONE
+
+
+## Tiles of the landscape per orchard block: about two fifths of it planted.
+const TILES_PER_BLOCK := 900.0
+## Across the rows and along them, in tiles: grafted trees on a machine's grid.
+const ROW_GAP := 3.2
+const TREE_GAP := 3.0
+
+## THE ORCHARDS, IN ROWS. They were scattered like any wood, at random, and read
+## as one: nothing said a machine had planted them. Each block is ruled on the
+## survey bearing like everything else the plan laid: rows across it, trees at
+## a fixed step, a stump where one went over and was never replaced, the fence
+## along its end and the tank that fed its sprayers at its head.
+static func _works(L: Object) -> void:
+	var c: GenContext = L.c
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	var tiles := 0.0
+	for size: float in L.sizes:
+		tiles += size
+	for n in maxi(1, roundi(tiles / TILES_PER_BLOCK)):
+		var p := GenWorks._site(L, 5, 2, [Ground.GRASS, Ground.HEATH, Ground.MOSS], 18.0, 600, 0.4)
+		if p.x < 0:
+			continue
+		var at := Vector2(p) + Vector2(0.5, 0.5)
+		var rng: RandomNumberGenerator = L.rng
+		var rows := rng.randi_range(5, 7)
+		var per := rng.randi_range(7, 10)
+		var half := Vector2(per * TREE_GAP * 0.5, rows * ROW_GAP * 0.5)
+		var planted := 0
+		# ONE GRID FOR THE WHOLE LANDSCAPE: every block's trees stand on the same
+		# lattice, ruled from the world's origin on the bearing, so blocks that
+		# meet run on into each other instead of laying two grids through one.
+		var i0 := roundi(at.dot(d) / TREE_GAP) - per / 2
+		var j0 := roundi(at.dot(nrm) / ROW_GAP) - rows / 2
+		for k in rows:
+			for j in per:
+				var q := d * float(i0 + j) * TREE_GAP + nrm * float(j0 + k) * ROW_GAP
+				# Only on the orchards' own ground: a block near a border stops at
+				# it (a broadleaf stood in the salt flats on seed 42).
+				if not c.w.in_bounds(floori(q.x), floori(q.y)) or not L.home(floori(q.x), floori(q.y)):
+					continue
+				var gone := rng.randf() < 0.1
+				# Any terrace: the rows run over the land's steps as a machine's
+				# grid would, and a tree is only refused on a lip.
+				if GenWorks._put(L, PropKind.STUMP if gone else PropKind.BROADLEAF, q, rng.randf() * TAU, -99, 0.0, true) != null and not gone:
+					planted += 1
+		if planted < 8:
+			continue
+		GenWorks._record(c, &"orchard_block", at, d, half, GenWorks.CUT)
+		GenWorks._run(L, PropKind.FENCE, at + d * (half.x + 1.2) - nrm * half.y, nrm, ceili(half.y), 2.0, -99, 0.2)
+		GenWorks._put(L, PropKind.WATER_TANK, at - d * (half.x + 1.6), d.angle(), -99, 0.6)

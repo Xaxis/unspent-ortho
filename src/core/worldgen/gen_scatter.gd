@@ -1370,6 +1370,17 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 	for g: int in [Ground.BONE, Ground.GRAVEL, Ground.SAND, Ground.SHINGLE, Ground.SALT, Ground.PAN]:
 		reach[g] = 0.25
 	var solid := PropKind.SOLID
+	# A landscape whose scatter the machines laid out (`BiomeDef.scatter_ruled`)
+	# stands it on a lattice ruled on their survey bearing, a tile's pitch, and
+	# turned square to it. A tile takes the lattice point inside it, so no two
+	# things share a point, and a tile with none takes nothing.
+	var ruled := PackedByteArray()
+	ruled.resize(defs.size())
+	for k in defs.size():
+		ruled[k] = 1 if defs[k].scatter_ruled else 0
+	var bearing := GenWorks.bearing(s)
+	var bd := Vector2.from_angle(bearing)
+	var bn := Vector2(-bd.y, bd.x)
 	var band := 12
 	var parts: Array[PackedFloat32Array] = []
 	parts.resize(ceili(float(size) / band))
@@ -1452,6 +1463,14 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 				if (road[i - 1] != 0 or road[i + 1] != 0 or road[i - size] != 0 or road[i + size] != 0) and solid[kind] > 0.0:
 					continue
 				var p := Vector2(x + 0.2 + ((h >> 24) & 0xFF) / 425.0, y + 0.2 + ((h >> 8) & 0xFF) / 425.0)
+				var rot := -1.0
+				if ruled[cc] != 0:
+					var mid := Vector2(x + 0.5, y + 0.5)
+					var q := bd * roundf(mid.dot(bd)) + bn * roundf(mid.dot(bn))
+					if floori(q.x) != x or floori(q.y) != y:
+						continue
+					p = q
+					rot = fposmod(bearing + float(h & 3) * PI * 0.5, TAU)
 				if solid[kind] > 0.0:
 					var to := p - sp
 					if to.length_squared() < 9.0 or (to.length_squared() < 64.0 and to.normalized().dot(face) > 0.6):
@@ -1459,8 +1478,9 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 				found.append(kind)
 				found.append(p.x)
 				found.append(p.y)
+				found.append(rot)
 		parts[y0 / band] = found
 	, band)
 	for part in parts:
-		for j in range(0, part.size(), 3):
-			_add(c, int(part[j]), Vector2(part[j + 1], part[j + 2]))
+		for j in range(0, part.size(), 4):
+			_add(c, int(part[j]), Vector2(part[j + 1], part[j + 2]), part[j + 3])

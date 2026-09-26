@@ -51,10 +51,8 @@ grey_orchards land.landmark
 grey_orchards land.own_props
 grey_orchards land.site
 grey_orchards people.built
-grey_orchards plan.depot
 grey_orchards plan.keeper
 grey_orchards plan.machine
-grey_orchards plan.work_props
 grey_orchards player.only_in
 machine_city land.landmark
 machine_city land.own_props

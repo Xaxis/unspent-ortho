@@ -145,7 +145,9 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 
 
 ## THE THICKEST CANOPY IN THE GAME, because the ground is warm and wet and has
-## been left alone for seventy years. Twice the coast's broadleaf rate.
+## been left alone for seventy years. At 0.11 on its grass it laid 42 trees per
+## 1000 tiles on seed 1, under half the pinewood's 106, which read as a heath
+## with a few trees on it; 0.28 stands a little above the pines.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	# THE VENTS STAND IN THEIR OWN CRUST, because both are dealt off the same
 	# ground. `_surface` lays ash where the blend runs high and the holes are
@@ -158,9 +160,9 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.VENT
 		return PropKind.VENT_CAP if r < 0.125 else BiomeScatter.NONE
 	if g == Ground.GRASS:
-		if r < 0.11:
+		if r < 0.28:
 			return PropKind.BROADLEAF
-		return PropKind.BUSH if r < 0.17 else BiomeScatter.NONE
+		return PropKind.BUSH if r < 0.34 else BiomeScatter.NONE
 	if g == Ground.MUD:
 		return PropKind.REEDS if r < 0.05 else BiomeScatter.NONE
 	return BiomeScatter.NONE

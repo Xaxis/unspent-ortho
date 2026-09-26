@@ -470,6 +470,11 @@ extends TestCase
 ## five seeds; only `props` moves. Seed 1's tip shot before and after: the same
 ## tip on the same patch, its heaps laid afresh; with one landscape's tips taken
 ## away, 28 of 28 far places keep their furniture (1 of 28 before).
+## GEN 33 (2026-09-26) CHANGED NO DIGEST: its content is the scrapwood, the
+## sulphur jungle, the grey orchards, the drowned city and the machine city,
+## none of them among the six, and the one shared change (recipe water fixed
+## against tidying) touches only recipes that lay water, which none of the six
+## do. The five have tests of their own in tests/core/test_world_gen_surface.gd.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
