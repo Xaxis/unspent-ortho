@@ -113,7 +113,10 @@ static func resolve(s: Settlement, stage: StringName, seed_value: int, instance:
 ## harvester standing in the yard takes it through this same door (48_raids
 ## `_tribute`), so paying them off is one answer however it is reached.
 static func take_stores(s: Settlement, force: float) -> Dictionary:
-	var want := minf(RaidRoles.TRIBUTE, force)
+	# What lies in a cellar is out of reach (SETTLE.md S4): only what is over its
+	# room is loose in the yard.
+	var loose := maxf(0.0, s.stored() - s.kept_room())
+	var want := minf(minf(RaidRoles.TRIBUTE, force), loose)
 	var took := {}
 	for id: Variant in s.stores.keys():
 		if want <= 0.0:

@@ -115,6 +115,10 @@ const DEFS := {
 	&"reeds": {"name": "reeds", "bulk": 2.0, "group": &"material"},
 	&"gorse_cut": {"name": "cut gorse", "bulk": 2.0, "group": &"material"},
 	&"timber": {"name": "timber", "bulk": 6.0, "group": &"material"},
+	# Timber dried for years in the pinewood saw hall's racks: the hall's reward,
+	# found there (6-10) and made nowhere. What a cellar's lid, a tower and
+	# shutters need, and what makes a gate last (SETTLE.md, teammate3's hall).
+	&"seasoned_timber": {"name": "seasoned timber", "bulk": 1.5, "group": &"material"},
 	&"haft": {"name": "haft", "bulk": 1.0, "group": &"material"},
 	&"resin": {"name": "resin", "bulk": 1.0, "group": &"material"},
 	&"pitch": {"name": "pitch", "bulk": 2.0, "group": &"material"},

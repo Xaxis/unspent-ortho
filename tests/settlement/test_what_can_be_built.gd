@@ -48,7 +48,8 @@ func test_the_enum_is_bigger_than_the_game_and_by_exactly_this_much() -> void:
 	# 15 when this was written; the bunk and the solar array closed the two holes
 	# that audit found, and no enum value was added for either.
 	# 18 with the gate (SETTLE.md S3): a ring of wall a player can get out of.
-	eq(offered, 18, "pieces a player can put up")
+	# 19 with the cellar (SETTLE.md S4).
+	eq(offered, 19, "pieces a player can put up")
 	eq(StructureKind.ROWS.size(), offered,
 		"a row nobody can choose, or a choice with no row, is a half-built piece")
 	for k: int in StructureKind.BUILDABLE:

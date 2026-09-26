@@ -231,6 +231,8 @@ static func _meshes(piece_kind: int, v: int, broken: bool, on: bool) -> Array:
 			Shelter.bunk(made, v, broken)
 		StructureKind.STORE:
 			Shelter.store(made, v, broken)
+		StructureKind.CELLAR:
+			Shelter.cellar(made, v, broken)
 		StructureKind.PLOT:
 			Ground.plot(made, v, broken)
 		StructureKind.CATCHMENT:

@@ -33,8 +33,8 @@ enum {
 	## Shelter: a roof, a bed, a place to come back to.
 	LEAN_TO,          # (built)
 	HUT,              # (built)
-	CELLAR,           # (planned) stores a raid cannot loot — the answer to RaidRoles
-	                  # going for the stores, which has no answer today.
+	CELLAR,           # (built) stores a raid cannot loot — the answer to RaidRoles
+	                  # going for the stores (SETTLE.md S4).
 	HEARTH,           # (built)
 	STORE,            # (built)
 	## Power: made, mended and stolen.
@@ -176,6 +176,14 @@ const ROWS := {
 		"name": "hearth", "idiom": Idiom.MADE, "health": 5.0, "solid": 0.45,
 		"cost": {&"stone": 3, &"deadwood": 2}, "minutes": 25.0, "wear": 0.05,
 	},
+	# Dug in and lined with stone under a lid of seasoned timber, the pinewood saw
+	# hall's reward: what lies within `keeps` of it a raid does not take, on paper
+	# or by the harvester in the yard (RaidResolve.take_stores). It is also room.
+	CELLAR: {
+		"name": "cellar", "idiom": Idiom.MADE, "health": 18.0, "solid": 0.0,
+		"cost": {&"stone": 4, &"timber": 2, &"seasoned_timber": 1}, "minutes": 90.0, "wear": 0.008,
+		"store": 12.0, "keeps": 20.0,
+	},
 	STORE: {
 		"name": "store", "idiom": Idiom.MADE, "health": 8.0, "solid": 0.65,
 		"cost": {&"timber": 1, &"reeds": 3}, "minutes": 45.0, "wear": 0.025,
@@ -307,7 +315,7 @@ const ROWS := {
 ## The bunk stands with the roofs it is one of, straight after the hut, because
 ## the moment a player wants one is the moment a piece asks for hands they have
 ## not got. The array stands beside the spinner it is the alternative to.
-const BUILDABLE: Array[int] = [LEAN_TO, HEARTH, HUT, BUNK, STORE, PLOT, CATCHMENT,
+const BUILDABLE: Array[int] = [LEAN_TO, HEARTH, HUT, BUNK, STORE, CELLAR, PLOT, CATCHMENT,
 	PALISADE, PLATE_WALL, GATE, NETTING, WIND_SPINNER, SOLAR_ARRAY, BATTERY_STACK, RADIO_MAST,
 	DECOY_MAST, SPOOFER, TURRET]
 
@@ -411,6 +419,11 @@ static func makes_power(kind: int) -> float:
 
 static func makes(kind: int) -> Dictionary:
 	return row(kind).get("makes", {}) as Dictionary
+
+
+## What a standing piece keeps from a raid's hands (a cellar's `keeps`).
+static func keeps(kind: int) -> float:
+	return float(row(kind).get("keeps", 0.0))
 
 
 static func store_room(kind: int) -> float:
