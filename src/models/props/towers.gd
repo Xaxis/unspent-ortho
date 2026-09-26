@@ -508,8 +508,9 @@ static func frontage(k: Kit, f: Array, s: int, c: int) -> void:
 
 ## A shared skeleton: `n` storeys of (w, d), each stepped in by `step`, the floor
 ## slab between each pair, and a glazing band on the two faces the camera reads.
-## Returns the height the top slab stands at.
-static func shaft(k: Kit, w: float, d: float, n: int, step: float, s: int, c: int) -> float:
+## Returns the height the top slab stands at. Without `ground` the first storey
+## is glazed like the rest: a length of tower that never met a street.
+static func shaft(k: Kit, w: float, d: float, n: int, step: float, s: int, c: int, ground := true) -> float:
 	var dress := BiomeDressing.of(c)
 	# A building that has stood sixty years is STAINED, and its mass has to sit
 	# BELOW the ground it stands on in value or a settlement of these reads as a
@@ -562,7 +563,7 @@ static func shaft(k: Kit, w: float, d: float, n: int, step: float, s: int, c: in
 				state = 2
 			elif h < 0.46:
 				state = 3
-			if i == 0:
+			if i == 0 and ground:
 				# The ground floor is a frontage, not a band of glazing.
 				frontage(k, wf, s + fi * 13, c)
 				continue
