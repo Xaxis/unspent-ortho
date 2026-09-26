@@ -129,6 +129,9 @@ static func make() -> BiomeDef:
 	# so at 0 the city stood dry in the rain it is named for. A LOOK field: no
 	# worldgen stage reads it.
 	d.wet = 0.5
+	# Weed and moss up every wall the tide wets: the green climbs out of the water.
+	# (BiomeDef.overgrowth: lighter than the green towers' whole dose.)
+	d.overgrowth = 0.6
 	d.night_sky = 0.95
 	d.props = [PropKind.RUIN, PropKind.DEBRIS, PropKind.WRECKAGE,
 		PropKind.SEA_WALL, PropKind.TIDE_GAUGE, PropKind.HULL, PropKind.REEDS, PropKind.POLE,

@@ -96,6 +96,9 @@ static func make() -> BiomeDef:
 	# surface landscapes and it still comes out the darkest picture. Under the one
 	# global night it was 95.3% below luma 24 at 23:00 against the coast's 81.4%,
 	# which is a bog nobody can cross rather than a bog that is dark.
+	# The bog grows up whatever stands in it: moss on every sill, a little ivy.
+	# (BiomeDef.overgrowth: lighter than the green towers' whole dose.)
+	d.overgrowth = 0.55
 	d.night_sky = 1.45
 	# And its DAY is lit brighter than the coast's for the same reason: the ground
 	# is the darkest in the game, so under the one daylight (SkyLight.SUN_NOON) a

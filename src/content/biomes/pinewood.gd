@@ -76,6 +76,9 @@ static func make() -> BiomeDef:
 	# else on the surface, which is the whole reason a wood is frightening at
 	# night. It is the one landscape whose night is darker than the coast's, and
 	# it earns it by having something overhead rather than by being told to.
+	# Needle-damp moss on the ledges under the canopy, and little ivy in the shade.
+	# (BiomeDef.overgrowth: lighter than the green towers' whole dose.)
+	d.overgrowth = 0.20
 	d.night_sky = 0.80
 	d.wet = 0.2
 	d.props = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS,

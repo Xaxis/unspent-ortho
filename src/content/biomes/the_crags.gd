@@ -105,6 +105,9 @@ static func make() -> BiomeDef:
 	d.grade = Vector4(-0.04, 0.02, 0.04, 0.0)
 	# THE DARKEST NIGHT IN THE GAME, and nothing of the machines' lights it. This
 	# is the one place where a lantern is the only light there is.
+	# Lichen and a little moss on what was built of its stone; the wind keeps ivy off.
+	# (BiomeDef.overgrowth: lighter than the green towers' whole dose.)
+	d.overgrowth = 0.25
 	d.night_sky = 0.55
 	d.props = [PropKind.STANDING_STONE, PropKind.CAIRN, PropKind.RUIN, PropKind.BOULDER,
 		PropKind.CLINTS, PropKind.GRAVE, PropKind.MEMORIAL, PropKind.BUSH,
