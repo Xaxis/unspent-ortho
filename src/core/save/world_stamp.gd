@@ -244,7 +244,8 @@ const UNKNOWN := "unknown"
 ##     S4j2): a way in keeps off the ways in that outrank it by hash, not the
 ##     ones laid before it, and the stolen light is the lowest-hashed lit shack
 ##     of the first region in the plan's rank that lit one. Barricades and the
-##     stolen light move; every kind's count holds within 2%.
+##     stolen light move; every kind's count holds within 2%. A tread lays
+##     nothing in another tread's craters.
 const GEN := 45
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
