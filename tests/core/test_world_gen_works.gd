@@ -502,6 +502,13 @@ func test_budgets() -> void:
 	# stage. When the plan began deciding the regions (S4e4) seed 1 alone went
 	# 0.204 -> 0.247 while seeds 7, 42 and 90210 went 0.260/0.274/0.297 ->
 	# 0.165/0.170/0.248: the stage got cheaper and the one seed asked got dearer.
+	# Each seed's best of three, then the sums, so a share is still the works and
+	# the generation of the same runs.
+	#
+	# ITS MARGIN IS THIN: 0.213 and 0.214 on a quiet machine (2026-09-26) against
+	# the bar of 0.22, three per cent under it. `cost_lt` answers "cannot
+	# measure" under load rather than failing, but a quiet red here is the margin
+	# and not the stage, until the bar is set again.
 	var works_ms := 0.0
 	var gen_ms := 0
 	var w: WorldData = null
