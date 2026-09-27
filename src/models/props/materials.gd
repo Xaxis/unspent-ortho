@@ -84,6 +84,9 @@ static func graft_tree(k: Kit, v: int, c: int) -> void:
 			var tip := tips[i % tips.size()]
 			var p := tip + Vector3(Kit.j(s, 40 + i, 0.3), -0.18 + Kit.j(s, 50 + i, 0.12), Kit.j(s, 60 + i, 0.3))
 			k.fleck(p, p + Vector3(0.05, 0.02, 0.0), p + Vector3(0.01, 0.06, 0.04), P.RUST[3].lerp(P.ASH[4], 0.45))
+	# The grow light the orchards are lit from below by (`BiomeDef.underlight`,
+	# Trees._grow_lamp): the crown glows, so the lamp that does it stands here.
+	Trees._grow_lamp(k, v, c)
 
 
 ## A DRUM OF MOSS OUT OF A TOWER'S WALL. What held the green towers' face up

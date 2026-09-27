@@ -380,6 +380,9 @@ static func _mesas(t: Dictionary) -> void:
 		{"stuff": &"steel", "keep": true, "uses": 2, "ground": [Ground.SCREE]}),
 		_o(&"turn", &"scrap", 1, 16.0, NEVER, {"keep": true, "uses": 2})]
 	t[PropKind.SPAN_PYLON] = [_o(&"cut", &"scrap", 2, 24.0, NEVER, {"stuff": &"iron"})]
+	# A fallen tower is nobody's work any more: the bars stand out of every
+	# break, and a steel edge cuts them free. It stays lying where it fell.
+	t[PropKind.FALLEN_TOWER] = [_o(&"cut", &"scrap", 2, 22.0, NEVER, {"stuff": &"iron", "keep": true, "uses": 3})]
 
 
 ## The kinds that give NOTHING, on purpose, and why. `tests/survival/

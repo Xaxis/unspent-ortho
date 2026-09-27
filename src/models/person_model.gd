@@ -418,6 +418,11 @@ static func material() -> ShaderMaterial:
 		rim.shader = preload("res://src/models/people/person_rim.gdshader")
 		rim.render_priority = 10
 		_person_mat.next_pass = rim
+		# And drawn through the land where the land hides it (render/behind.gdshader).
+		var behind := ShaderMaterial.new()
+		behind.shader = preload("res://src/render/behind.gdshader")
+		behind.render_priority = 12
+		rim.next_pass = behind
 	return _person_mat
 
 

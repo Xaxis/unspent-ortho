@@ -142,6 +142,7 @@ enum {
 	FALLEN_SPAN,
 	CISTERN,
 	SPAN_PYLON,
+	FALLEN_TOWER,
 	# What only one land gives a smith to work (GEAR.md §11): the grafted trees
 	# the orchards were planted in, a green tower's core of moss and root, a
 	# blade pulled out of a server field's racks, a bale the middens' people
@@ -154,7 +155,7 @@ enum {
 	DRIPSTONE,
 }
 
-const COUNT := 100
+const COUNT := 101
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -174,6 +175,7 @@ const NAMES: PackedStringArray = [
 	"deck span", "lift shaft", "shopfront", "sorted bale", "demolition gantry",
 	"stair to water", "drowned tram", "mooring post", "lock gate",
 	"hoodoo", "arch rib", "fallen span", "cistern", "span pylon",
+	"fallen tower",
 	"graft tree", "moss core", "server blade", "midden bale", "dripstone",
 ]
 
@@ -253,6 +255,11 @@ const SOLID: PackedFloat32Array = [
 	# down the scree is walked over. A cistern is a tank a body stops at the rim
 	# of; a pylon's four legs splay about a tile and a half across.
 	0.4, 0.0, 0.35, 0.75, 0.7,
+	# A fallen tower's origin is the stump of its ground floor: the one circle
+	# stops a body there, and the length lying through the trees beyond is
+	# climbed over or walked round (whoever lays it hands the length to
+	# `WorldQuery.set_blocks`).
+	1.4,
 	# A grafted tree stops a body as a broadleaf does; a moss core is a drum
 	# lying on its side; a blade is thin and knee-high, walked round, not into;
 	# a bale is a heap of sorted stuff; a dripstone is a spike and its skirt.

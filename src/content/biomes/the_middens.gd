@@ -101,6 +101,19 @@ static func make() -> BiomeDef:
 		[Weather.RAIN, 16, 0.5], [Weather.FOG, 10, 0.0],
 	]
 	d.mist = 0.18
+	# Its floor leaches phosphor after dark (GroundColors.MIDDEN_FLOOR), and its
+	# fog is refuse-brown and pools in the slots, leaving the rims clear.
+	d.ground_marks = {Ground.SWARF: GroundColors.MIDDEN_FLOOR}
+	# Over the slots, at the walls' own height: cables the tippers strung and
+	# girders left bridging, so the sky from a slot floor is a strip crossed by
+	# wires (ForeKinds).
+	d.fore_rows = {
+		PropKind.DEBRIS: {"shape": "line", "lift": Vector2(2.8, 3.6), "span": Vector2(5.0, 8.0), "chance": 0.45},
+		PropKind.WRECKAGE: {"shape": "girder", "lift": Vector2(2.8, 3.4), "span": Vector2(3.5, 5.5), "chance": 0.55},
+	}
+	# What blows off the heaps: rust and ground-up refuse, brown and dirty.
+	d.weather_style = {&"dust": {"air": Color(0.52, 0.40, 0.30), "thick": 1.1},
+		&"fog": {"air": Color(0.56, 0.50, 0.44), "low": 1.0}}
 	# What a dump of machine parts does to a body: the heaps pull on anything
 	# ferrous, and the walls come down.
 	d.hazards = {&"magnetism": 0.6, &"collapse": 0.45}
