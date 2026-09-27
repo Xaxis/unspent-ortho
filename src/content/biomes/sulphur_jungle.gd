@@ -71,6 +71,23 @@ static func make() -> BiomeDef:
 	d.plain_ground = Ground.GRASS
 	d.bank_ground = Ground.MUD
 	d.pool_rim_ground = Ground.SALT
+	# ITS OWN CRUST, LOOK only (no seed moves): the SALT round its vents is the
+	# sinter the hot water laid, in lobed terraces with sulphur on the rims
+	# (GroundColors.SULPHUR); it was the salt flats' plate crust recoloured.
+	d.ground_marks = {Ground.SALT: GroundColors.SULPHUR}
+	# And its vents breathe STEAM, not the Burning's ash: white, wet, half again the
+	# size and more often, and the machines' caps leak it round their seals.
+	# Sulphur-warm, and passed through unwhitened: pure white steam lit red by
+	# the vent from below and blue by the night above came out magenta; with
+	# the blue taken down it reads orange over the vent and sulphur-pale above.
+	d.vent_breath = Color(0.92, 0.90, 0.48, 1.6)
+	# One vent in five is a geyser: it hisses and skirts itself in steam, then
+	# throws a column of sulphur steam twice the height of the trees, holds it and
+	# lets it fall, about every forty world minutes.
+	d.geysers = {"share": 0.2, "period": 40.0, "height": 7.0, "colour": Color(0.94, 0.93, 0.70)}
+	# Its fog is the vents' own: a sulphur-yellow acid fog that lies low and heavy
+	# in the hollows round them, stinging-bright, never a pale mist.
+	d.weather_style = {&"fog": {"air": Color(0.72, 0.74, 0.40), "low": 1.0}}
 	d.village_ground = Ground.MUD
 	d.decor = {Ground.GRASS: [0.95, Decor.TUFT, 36, Decor.CROTTLE, 14]}
 	d.grass_colors = [P.MOSS[3], P.SPRUCE[3]]
@@ -84,6 +101,10 @@ static func make() -> BiomeDef:
 	dress.walling = [P.SLATE[2], P.EARTH[2], P.SAND[3], P.SPRUCE[2]]
 	dress.timber = [P.EARTH[2], P.SPRUCE[2]]
 	dress.crown = &"full"
+	# Not one tree but a jungle: tree ferns in the damp, strangler figs whose hosts
+	# are gone, palms with their crowns broken, and snags bleached pale by the
+	# vents. Each of the four broadleaf models is one of them.
+	dress.broadleaf_forms = [&"fig", &"fern", &"palm", &"snag"]
 	dress.sink = 0.2
 	dress.lie = Vector2(-0.08, 0.14)
 	d.dressing = dress

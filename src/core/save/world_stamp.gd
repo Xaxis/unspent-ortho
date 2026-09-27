@@ -270,6 +270,7 @@ const LOOK: Array[String] = [
 	"weather",
 	"mist",
 	"hazards",
+	"lip_sag",
 	"roster",
 	"sentinel",
 	"landmarks",
@@ -283,6 +284,14 @@ const LOOK: Array[String] = [
 	"spoken_in",
 	"hush",
 	"decks_grounded",
+	"overgrowth",
+	"vent_breath",
+	"underlight",
+	"canopy_drip",
+	"wisps",
+	"weather_style",
+	"fore_rows",
+	"geysers",
 ]
 
 

@@ -1,0 +1,31 @@
+# The scrapwood over the shoulder: its most characteristic floor at noon and in
+# the evening, then beside a scrap tree; then the machine city at noon, in the
+# evening and at night. With the frame cost standing at noon in each.
+#   tools/tour.sh tours/lands_scrap.tour --seed=7 --weather=clear:0 --view=shoulder --stats
+coast calm
+hour 12
+place typical_scrapwood
+wait 3.0
+shot scrap-noon with land:scrapwood
+perf stats begin
+wait 5.0
+perf stats end scrap-noon
+hour 18.5
+wait 2.0
+shot scrap-evening with land:scrapwood
+hour 12
+near scrap_tree
+wait 2.5
+shot scrap-tree with prop:scrap_tree
+place typical_machine_city
+wait 3.0
+shot city-noon with land:machine_city
+perf stats begin
+wait 5.0
+perf stats end city-noon
+hour 18.5
+wait 2.0
+shot city-evening with land:machine_city
+hour 22.5
+wait 2.0
+shot city-night with land:machine_city

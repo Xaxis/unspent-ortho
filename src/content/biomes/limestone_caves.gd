@@ -94,6 +94,9 @@ static func make() -> BiomeDef:
 	# flowstone curtains. They were the bonelands' limestone beds, laid in courses
 	# with ruled joints, and underground that read as brick terraces.
 	d.strata = GroundColors.STRATA_CAVE
+	# Flowstone lips SAG: no terrace edge in a cave runs ruled and level, and a
+	# hall of level lips one step apart read as stacked slabs.
+	d.lip_sag = 0.24
 	d.plain_ground = Ground.LIMESTONE
 	d.bank_ground = Ground.GRAVEL
 	d.pool_rim_ground = Ground.BONE
