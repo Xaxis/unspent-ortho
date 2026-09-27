@@ -80,14 +80,18 @@ wait 2.0
 shot 08-coast-moss with border:coast-moss
 walk 1,-1 2.5 run
 shot 09-coast-moss-crossed with land:coast|moss
-# Borders this seed holds since a landscape stands whole on one continent (GEN 24).
-place snowfield-mesas
+# Borders this seed holds. Which landscapes meet is the layout's, and the layout
+# moves: the snowfield met the mesas and the Burning once and on seed 1 today
+# meets only the salt flats and the grey orchards (a scan of every tile's pair,
+# 2026-09-26, the same on main). A border named here that the seed no longer
+# holds fails at `place`, which is the right way for it to fail.
+place snowfield-salt_flats
 wait 2.0
-shot 10-snowfield-mesas with border:snowfield-mesas
+shot 10-snowfield-salt_flats with border:snowfield-salt_flats
 walk 1,-1 2.5 run
-shot 11-snowfield-mesas-crossed with land:snowfield|mesas
-place snowfield-burning
+shot 11-snowfield-salt_flats-crossed with land:snowfield|salt_flats
+place snowfield-grey_orchards
 wait 2.0
-shot 12-snowfield-burning with border:snowfield-burning
+shot 12-snowfield-grey_orchards with border:snowfield-grey_orchards
 walk 1,-1 2.5 run
-shot 13-snowfield-burning-crossed with land:snowfield|burning
+shot 13-snowfield-grey_orchards-crossed with land:snowfield|grey_orchards

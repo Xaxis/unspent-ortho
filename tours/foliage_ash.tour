@@ -1,0 +1,25 @@
+# Ash on the grass (grass.gdshader, slice 4), where it can lie on it: the ash
+# half of tours/foliage_snow_ash.tour, on its own seed because the two need
+# different worlds. Seed 7's burning grows 1,435 tiles of grass (2026-09-26),
+# where seed 1's, the snow tour's, grows 44.
+# A dry frame beside an ashen one of the same place and hour, over the
+# shoulder; `perf blades` gives the colour of only the blades: ash must take
+# their colour. `near ash_meadow` (18_trample) stands where the most of it lies.
+#   tools/tour.sh tours/foliage_ash.tour --seed=7
+# Options: --seed=7
+hour 11
+coast calm
+place burning
+near ash_meadow
+hold shoulder_peek
+await shoulder 3
+weather clear:0:wind=0.5
+wait 3.0
+perf blades
+shot 03-burning-grass-dry with land:burning
+weather ash:1:wind=0.5
+wait 4.0
+perf blades
+shot 04-burning-grass-ash with land:burning
+release shoulder_peek
+weather rules

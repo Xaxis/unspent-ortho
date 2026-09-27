@@ -34,6 +34,15 @@ const BANK := 4
 
 # --- the band's fields (set once, not per tile) ---------------------------
 
+## The window the recipe is asked over: its width (the stride from a tile to the
+## one below it) and the world tile its first tile stands on, so a recipe finds
+## a tile's place in the WORLD as (x0 + i % size, y0 + i / size) and a pattern
+## ruled on the land (a street grid) comes out the same whichever window a
+## section lays. The whole world today: size is the world's, x0 = y0 = 0.
+var size := 0
+var x0 := 0
+var y0 := 0
+var seed_value := 0
 ## Smoothed float elevation in levels.
 var elev: PackedFloat32Array
 ## How far a tile stands above the land about 30 tiles around it.

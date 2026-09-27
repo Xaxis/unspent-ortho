@@ -465,16 +465,38 @@ extends TestCase
 ## tile arrays equal on all five seeds; only `props` moves, what the scatter no
 ## longer lays in a shaft's mouth. Seed 4 at 192 shot in 2029 and now at shaft 0:
 ## one tile, the same scree and scrub round it, nothing solid within 4.7 tiles.
+## RE-ACCEPTED AT GEN 32 (2026-09-26): a place's furniture is drawn from a stream
+## keyed on the place (`GenScatter._landmarks`). Five tile arrays equal on all
+## five seeds; only `props` moves. Seed 1's tip shot before and after: the same
+## tip on the same patch, its heaps laid afresh; with one landscape's tips taken
+## away, 28 of 28 far places keep their furniture (1 of 28 before).
+## GEN 33 (2026-09-26) CHANGED NO DIGEST: its content is the scrapwood, the
+## sulphur jungle, the grey orchards, the drowned city and the machine city,
+## none of them among the six, and the one shared change (recipe water fixed
+## against tidying) touches only recipes that lay water, which none of the six
+## do. The five have tests of their own in tests/core/test_world_gen_surface.gd.
+## RE-ACCEPTED AT GEN 36 (2026-09-26): the works are rows (`GenWorks._work`),
+## each composed from a stream keyed on the work and its tile, blind to other
+## works' pieces, and every prop's turn and scale hash from its kind, position
+## and work, not its id. Five tile arrays equal on all five seeds; only `props`
+## moves. With this change's seven source files put back to GEN 33, this test
+## passed on the previous hashes in the same session. Seed 7 at eye level (a
+## turf field, a clearcut, a drained fen, slag heaps, an orchard block): the
+## same works, each laid afresh. Solid props standing inside each other at 512
+## over seeds 1, 7, 42, 90210: 22/17/13/13 before, 18/20/16/16 after. Works on
+## one solid then took footing a step off a terrace lip (`_put_footed`), which
+## moved `props` again on seeds 1, 3, 7 and 42: shelters over twelve seeds at 512
+## went 8 (GEN 33) -> 20, of a designed 24.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 1ad8f3f5 100053b8 4fd7a826 75921af5",
-	3: "bd96c6d3 1d22db86 1008c39c a4316902 7e58a668 400ca2f9",
-	7: "ba7a972f 55af42cc 0f10d2e3 0f02d42c f555c41d 8c0fbb8c",
-	42: "e0ad0bb3 b7ca1370 0c07876f 2f4b7f69 1565ed7e a6dcd62a",
-	90210: "2659ea1f 66925798 c128779c 34b30d32 275c7664 d3944305",
+	1: "054710a9 3eac3638 1ad8f3f5 100053b8 4fd7a826 5afa970a",
+	3: "bd96c6d3 1d22db86 1008c39c a4316902 7e58a668 c705af59",
+	7: "ba7a972f 55af42cc 0f10d2e3 0f02d42c f555c41d c0f1ccf0",
+	42: "e0ad0bb3 b7ca1370 0c07876f 2f4b7f69 1565ed7e 6b956434",
+	90210: "2659ea1f 66925798 c128779c 34b30d32 275c7664 87bb3618",
 }
 
 

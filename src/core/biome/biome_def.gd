@@ -337,6 +337,15 @@ var shore_bush := PropKind.BUSH
 var surface := Callable()
 ## static func(t: BiomeSample) -> int: the prop on one tile, or -1 for none.
 var scatter := Callable()
+## Whether what `scatter` deals is laid out by the machines rather than grown or
+## dropped: stood on a lattice ruled on their survey bearing and turned square to
+## it (GenScatter), not jittered in its tile and turned any way.
+var scatter_ruled := false
+## Whether a PLATFORM deck here stands on the ground, a plated floor at a step's
+## height, rather than on legs over the water (the threshold site's): a deck at
+## chest height on dry land, with nothing solid to it, is one a body walks
+## through (the machine city's).
+var decks_grounded := false
 ## Landmark sites this type carries:
 ##   tips int           scrap heaps the machines dumped here
 ##   stone_circles int  what stood here before, some of it cast in concrete
@@ -345,6 +354,13 @@ var scatter := Callable()
 ##   summit int         the order this landscape's cairn is raised in (0: none)
 ##   kiln_ground int    the Ground a village's kiln stands on (absent: no kiln)
 var sites: Dictionary = {}
+## HAUNTED (docs/HUSH.md): this landscape's own stone circles are the hush's
+## rings -- machines will not follow past them, their stones stand
+## differently when looked back at, sound stops in them, lights stand in the
+## fog that are nobody's, and a light brought in at night is answered. Never
+## explained. Read by HushSites and the systems of the hush; no worldgen
+## stage reads it.
+var hush := false
 ## The ground a scrap tip lies on here.
 var tip_ground := Ground.GRAVEL
 ## Hulls are hauled up on this landscape's beaches.
