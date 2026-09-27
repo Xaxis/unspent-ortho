@@ -1,0 +1,33 @@
+# A SQUAT IN THE MACHINE CITY (src/content/interiors/squat.gd): one of the few
+# houses somebody lives in, in the machines' own gaps -- dark, no fire, a tarp
+# over the window, a stolen strip lamp, a bedroll -- and the way out nobody
+# sees from outside, a hole through the back wall behind a sheet.
+#
+#   tools/tour.sh tours/squat.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is the door. 02 is the squat from above. 03 is over the shoulder at the
+# crawl hole. 04 is outside behind the house, having crawled out (`out_back`).
+coast calm
+near door:squat
+await door 5
+wait 0.6
+shot 01-a-door-in-the-machine-city with door,land:machine_city
+
+press use 0.1
+await inside:squat 5
+wait 1.0
+shot 02-the-squat with inside:squat
+
+hold shoulder_peek
+await shoulder 3
+near thing:crawl_hole
+wait 1.0
+shot 03-the-way-out-the-back with inside:squat,shoulder
+release shoulder_peek
+near crawl
+await crawl_near 3
+wait 0.3
+press use 0.1
+await out_back 5
+wait 1.2
+shot 04-out-behind-the-house with land:machine_city
