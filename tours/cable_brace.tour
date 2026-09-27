@@ -1,0 +1,20 @@
+# THE CABLE BRACE'S LINE (GEAR.md §6, G8): the grapple, from the tower-cable
+# brace, takes a machine's working part that faces it: the part glints and
+# stalls, and the line pulls the player in to the edge of its body. A harvester
+# in front and locked on, its working part (its front) turned to the player as
+# it tells its bite.
+#   tools/tour.sh tours/cable_brace.tour --seed=1 --hour=11 --weather=clear:0 --fit=brace_cable
+coast calm
+place spawn
+wait 1.0
+spawn harvester
+hold target
+await target 3
+tell harvester
+wait 0.1
+tap ability_grapple
+await cabled 3
+shot 01-the-line-takes-the-part with mob:harvester
+wait 0.5
+shot 02-pulled-in-to-it with mob:harvester
+release target

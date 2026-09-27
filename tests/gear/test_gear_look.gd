@@ -22,7 +22,7 @@ func test_every_wearable_says_what_the_body_is_seen_wearing() -> void:
 				var n := StringName(str(e))
 				check(PersonLook.EXTRAS.has(n) or PersonLook.KIT_EXTRAS.has(n), "%s: no extra %s" % [id, n])
 			for v: Variant in wears.get("salvage", []):
-				check(PersonLook.SALVAGE.has(StringName(str(v))), "%s: no salvage %s" % [id, v])
+				check(PersonLook.SALVAGE.has(StringName(str(v))) or PersonLook.KIT_SALVAGE.has(StringName(str(v))), "%s: no salvage %s" % [id, v])
 			for v: Variant in wears.get("gear", []):
 				check(PersonLook.GEAR.has(StringName(str(v))), "%s: no gear %s" % [id, v])
 			for k: String in wears:

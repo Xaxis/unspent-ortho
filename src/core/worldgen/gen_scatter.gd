@@ -707,11 +707,19 @@ static func _furnish_site(c: GenContext, occ: PackedByteArray, rng: RandomNumber
 				_occupy(c, occ, q, maxf(solid, 0.5))
 
 
-static func _add(c: GenContext, kind: int, p: Vector2, rot: float = -1.0) -> WorldProp:
+## TURN AND SCALE FROM WHERE A PROP STANDS, NOT WHEN IT WAS LAID. They were
+## hashed from its id, its place in the whole world's list, so a work's look hung
+## on how many props came before it anywhere, and a section could never lay it
+## alone (streamed worldgen S4b). Hashed from its kind and its position to a
+## 256th of a tile (two of one kind on one tile stand apart, so they turn apart),
+## and `key`, the laying work's own row where it has one.
+static func _add(c: GenContext, kind: int, p: Vector2, rot: float = -1.0, key: int = 0) -> WorldProp:
 	var w := c.w
 	var id := w.props.size()
-	var r := rot if rot >= 0.0 else GenFields.h01(c.s, id, kind, 77) * TAU
-	var prop := WorldProp.new(id, kind, p, r, 0.8 + GenFields.h01(c.s, id, kind, 78) * 0.4)
+	var px := roundi(p.x * 256.0)
+	var py := roundi(p.y * 256.0)
+	var r := rot if rot >= 0.0 else Rng.hash01(c.s, px, py, kind, key, 77) * TAU
+	var prop := WorldProp.new(id, kind, p, r, 0.8 + Rng.hash01(c.s, px, py, kind, key, 78) * 0.4)
 	w.props.append(prop)
 	return prop
 

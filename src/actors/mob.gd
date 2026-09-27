@@ -78,7 +78,8 @@ func setup(s: MobState, world: WorldData, base_material: Material, figure: Figur
 	if figure != null:
 		model = figure
 	elif s.row.get("machine", true):
-		model = FigureModel.create(model_kind, base_material)
+		# On the side the landscape's own kind has it (BiomeDef.roster `over`).
+		model = FigureModel.create(model_kind, base_material, s.part)
 	else:
 		# Animals are the hand's shapes varied by seed: no two yard dogs alike.
 		model = AnimalModel.spawn(model_kind, base_material, Rng.hash_ints(world.seed_value, s.id, 0xA11))
@@ -137,7 +138,9 @@ func sync_view(delta: float, now_ms: float, holding: bool = false) -> void:
 		if p == &"windup" and s.blow != null and model is MachineModel:
 			(model as MachineModel).tell_s = s.blow.windup / 1000.0
 		model.set_pose(p)
-	var lit := s.alive and not s.part_dark(now_ms)
+	# Asleep in a dock its optics are dark, beams and all, until it stirs: they
+	# come on as it grows unsure, which is how a player sees one waking.
+	var lit := s.alive and not s.part_dark(now_ms) and (not s.asleep or s.suspicion > SUSPECT_FLOOR)
 	if lit != _was_lit:
 		model.set_part_lit(lit)
 		_was_lit = lit
@@ -237,7 +240,7 @@ func _pose(now_ms: float) -> StringName:
 			if s.speed > 0.2:
 				return &"walk"
 			return &"alert"
-		MobState.CHASING, MobState.FLEEING:
+		MobState.CHASING, MobState.FLEEING, MobState.HOLDING:
 			return &"walk" if s.speed > 0.2 else &"alert"
 	return &"walk" if s.speed > 0.2 else &"stand"
 

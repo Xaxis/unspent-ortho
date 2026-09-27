@@ -39,10 +39,38 @@ func refusal(ctx: AbilityCtx) -> StringName:
 	return &""
 
 
+## How long a scan takes to come back with this kit (a plumb makes it longer).
+static func cooldown_of(kit: FightKit) -> float:
+	return COOLDOWN * (FightKit.PLUMB_COOLDOWN if kit != null and kit.plumb else 1.0)
+
+
+## How far a scan reads with this kit fitted (an icelens reads further).
+static func reach_of(kit: FightKit) -> float:
+	return REACH * (FightKit.ICELENS_REACH if kit != null and kit.icelens else 1.0)
+
+
+## What the read says of a body, beyond its part: only a dart has a line, since
+## a dart is not there to be fought (it snatches and outruns a sprint), and the
+## answer to it is getting out of its sight while it stands challenging.
+static func advice(row: Dictionary) -> String:
+	if row.get("approach", &"") == &"dart":
+		return "It takes and goes. Break its sight."
+	return ""
+
+
+func _reach(ctx: AbilityCtx) -> float:
+	if ctx.game == null or ctx.game.player == null or ctx.game.player.hero == null:
+		return REACH
+	return reach_of(ctx.game.player.hero.kit)
+
+
 func on_press(ctx: AbilityCtx) -> bool:
+	# The book sets the cooldown from this after the press (a plumb doubles it).
+	if ctx.game != null and ctx.game.player != null and ctx.game.player.hero != null:
+		cooldown = cooldown_of(ctx.game.player.hero.kit)
 	until = ctx.now + SECONDS
 	_next_beat = ctx.now
-	ctx.draw(&"scan", {"reach": REACH, "seconds": SECONDS, "beat": BEAT})
+	ctx.draw(&"scan", {"reach": _reach(ctx), "seconds": SECONDS, "beat": BEAT})
 	return true
 
 
@@ -52,4 +80,4 @@ func passive(ctx: AbilityCtx, _delta: float) -> void:
 	if not active(ctx.now) or ctx.now < _next_beat:
 		return
 	_next_beat = ctx.now + BEAT
-	ctx.draw(&"scan_beat", {"reach": REACH, "beat": BEAT, "left": until - ctx.now})
+	ctx.draw(&"scan_beat", {"reach": _reach(ctx), "beat": BEAT, "left": until - ctx.now})

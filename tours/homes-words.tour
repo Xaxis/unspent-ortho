@@ -1,0 +1,103 @@
+# WHAT A HOME SAYS (StoryRooms, the homes' row `home`): one home from each batch
+# of the homes' words, read at the household's own piece -- a snowfield
+# wireman's, a moss peat cutter's, a glass desert knapper's, a slums clerk's, and
+# a coast fisher's cottage, which speaks from the same row. Each line was written
+# for that landscape and that household.
+#
+#   tools/tour.sh tours/homes-words.tour --seed=4 --hour=15 --weather=clear:0
+coast calm
+near door:wireman
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+at slot:wall:home
+wait 0.4
+press use
+await reading 4
+wait 0.5
+shot 01-a-wiremans-wall with inside:home,reading
+press use
+wait 0.4
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:cutter
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+at slot:wall:home
+wait 0.4
+press use
+await reading 4
+wait 0.5
+shot 02-a-peat-cutters-wall with inside:home,reading
+press use
+wait 0.4
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:knapper
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+at slot:wall:home
+wait 0.4
+press use
+await reading 4
+wait 0.5
+shot 03-a-knappers-wall with inside:home,reading
+press use
+wait 0.4
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:clerk
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+at slot:wall:home
+wait 0.4
+press use
+await reading 4
+wait 0.5
+shot 04-a-clerks-wall with inside:home,reading
+press use
+wait 0.4
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:fisher
+await door 5
+press use 0.1
+await inside:cottage 5
+wait 1.0
+at slot:wall:home
+wait 0.4
+press use
+await reading 4
+wait 0.5
+shot 05-a-fishers-wall with inside:cottage,reading
+press use
+wait 0.4
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+

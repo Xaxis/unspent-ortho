@@ -50,11 +50,10 @@ const LURED := 0.25
 ##   lost          a machine the plan sent to this place never came home
 ##   interference  the plan's network round the holding went up a level (§2)
 ##   found_tech    stolen FOUND technology running in the walls, per world hour
-##                 at full strength. A stolen cell is 1.0 and `STOLEN_CELL` has
-##                 no row, so nobody can build one: the loudest stolen thing a
-##                 player can actually stand up today is a TURRET at 0.5, and
-##                 `tests/settlement/test_what_can_be_built.gd` fails if that
-##                 changes without this line changing with it.
+##                 at full strength. A stolen cell is 1.0, the loudest stolen
+##                 thing a player can stand up, and only with a keeper's core in
+##                 it (SETTLE.md S5); `tests/settlement/test_what_can_be_built.gd`
+##                 fails if that changes without this line changing with it.
 ##   stopped       a record destroyed before it travelled
 ##   quiet         a quiet world hour: nothing read the place and nothing came
 ##   keeper_fell   the region's keeper is gone; its network is quiet for good

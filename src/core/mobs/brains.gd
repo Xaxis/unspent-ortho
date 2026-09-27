@@ -83,6 +83,8 @@ static func think(m: MobState, sim: FightSim) -> void:
 				_: _lunge(m, sim)
 		MobState.FLEEING:
 			_flee(m, sim)
+		MobState.HOLDING:
+			_hold(m, sim)
 		_:
 			m.want = Vector2.ZERO
 	m.last_think_pos = m.pos
@@ -279,10 +281,13 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 			return
 		var off := wrapf(to.angle() - m.facing, -PI, PI)
 		if absf(off) > 0.6:
-			# Not yet round: keep turning.
+			# Not yet round: keep turning -- and a keeper that cannot come round
+			# on a body kept at its flank sweeps it instead (`_come_round`).
 			m.want = Vector2.ZERO
 			m.aim = to.angle()
+			_come_round(m, sim, to, pause_ms)
 			return
+		m.flank_since = -1.0
 		# Commit along the way it actually faces, corrected a little toward the player.
 		m.bearing = Vector2.from_angle(m.facing + clampf(off, -0.35, 0.35))
 		m.charging = true
@@ -299,6 +304,30 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 	var lead := speed * m.bite.windup / 1000.0 * 0.9 if m.bite != null else 0.0
 	if ahead and to.length() <= strike_range(m, sim) + lead and can_bite(m, now):
 		bite(m, sim)
+
+
+## A keeper (it has a come-round: Sentinels.wear_phase) whose target has kept to
+## its flank or back, inside its bite's reach and a tile, for a whole turn-pause
+## comes round on it: it pivots and throws its sweep at that side. Circling a
+## guarded keeper is then a strategy it answers, not a stalemate in which it can
+## neither face the player to run nor be struck.
+static func _come_round(m: MobState, sim: FightSim, to: Vector2, pause_ms: float) -> void:
+	if m.come_round == null or not can_bite(m, sim.now):
+		m.flank_since = -1.0
+		return
+	if to.length() > m.radius + sim.hero.radius + m.bite.reach + 1.0:
+		m.flank_since = -1.0
+		return
+	if m.flank_since < 0.0:
+		m.flank_since = sim.now
+		return
+	if sim.now - m.flank_since < pause_ms:
+		return
+	m.flank_since = -1.0
+	m.facing = to.angle()
+	m.aim = m.facing
+	m.start_blow(m.come_round, sim.now)
+	sim.emit(&"windup", {"mob": m, "come_round": true})
 
 
 static func _run_blocked(m: MobState, speed: float, now: float) -> bool:
@@ -384,7 +413,7 @@ static func _drop(m: MobState, sim: FightSim) -> void:
 	if m.locked_out(now):
 		m.want = Vector2.ZERO
 		return
-	if sim.level_of(m.pos) - sim.level_of(sim.hero.pos) >= FightRules.LEDGE_LEVELS:
+	if sim.level_of(m.pos) - sim.hero_level_now() >= FightRules.LEDGE_LEVELS:
 		m.want = Vector2.ZERO
 		if m.drop != null and to.length() <= FightRules.DROP_REACH and not m.stunned(now):
 			m.drop_from = m.pos
@@ -419,6 +448,21 @@ static func _dart(m: MobState, sim: FightSim) -> void:
 		sim.snatch(m)
 		return
 	_seek(m, sim, sim.hero.pos, m.dash)
+
+
+## Holding at a crags ring (docs/HUSH.md H1): to the edge of its disc on the
+## side it came from, and there, facing in. It never bites from here.
+static func _hold(m: MobState, sim: FightSim) -> void:
+	var c := Vector2(m.hold_at.x, m.hold_at.y)
+	var out := m.pos - c
+	if out.length() < 1e-4:
+		out = Vector2.from_angle(m.facing + PI)
+	var edge := c + out.normalized() * (m.hold_at.z + m.radius + 0.2)
+	if m.pos.distance_to(edge) > 0.4:
+		_seek(m, sim, edge, m.pace)
+	else:
+		m.want = Vector2.ZERO
+	m.aim = (c - m.pos).angle()
 
 
 static func _flee(m: MobState, sim: FightSim) -> void:

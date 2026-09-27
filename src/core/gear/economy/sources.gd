@@ -10,6 +10,7 @@ class_name Sources
 ##   {how: &"kill", item, kind, lands}      cut it out of one kind of machine
 ##   {how: &"make", item, recipe, at, tier} make it, and then its own steps
 ##   {how: &"open", item, place, lands}     walk to a place and open what is there
+##   {how: &"beat", item, keeper, lands}    beat the keeper of a landscape: its core
 ##
 ## A test walks these (`tests/gear_economy/test_obtainable.gd`) and the slate can
 ## say them out loud, which is the same thing said twice on purpose: a promise
@@ -185,6 +186,10 @@ static func path_to(id: StringName, depth: int = DEPTH) -> Array[Dictionary]:
 	var kind := EliteStock.dropped_by(id)
 	if kind != &"" and Roster.has(kind):
 		return [{"how": &"kill", "item": id, "kind": kind, "lands": lands_of_kind(kind)}]
+	# A keeper's core: its landscape's keeper is the only thing it comes off.
+	var beaten := keeper_of_core(id)
+	if beaten != &"":
+		return [{"how": &"beat", "item": id, "keeper": Sentinels.for_land(beaten).id, "lands": [beaten]}]
 	# Made, if everything it takes can itself be got.
 	for r: Dictionary in recipes_making(id):
 		var under: Array[Dictionary] = []
@@ -211,6 +216,14 @@ static func path_to(id: StringName, depth: int = DEPTH) -> Array[Dictionary]:
 		return [{"how": &"open", "item": id, "place": opened,
 			"lands": Drops.place_lands(opened)}]
 	return []
+
+
+## The landscape whose keeper's core `item` is, &"" if it is no keeper's core.
+static func keeper_of_core(item: StringName) -> StringName:
+	for land: StringName in Sentinels.lands():
+		if Sentinels.for_land(land).core == item:
+			return land
+	return &""
 
 
 ## The place a thing can be found lying in, &"" if none. Only tables that
@@ -259,6 +272,9 @@ static func said(id: StringName) -> String:
 					" or ".join(_strings(s.get("lands", [])))])
 			&"make":
 				words.append("make %s %s" % [s.get("item"), CraftTiers.words(int(s.get("tier", 0)))])
+			&"beat":
+				words.append("beat the %s in the %s for %s" % [String(s.get("keeper", &"")).replace("_", " "),
+					" or ".join(_strings(s.get("lands", []))), s.get("item")])
 			&"open":
 				var place := String(s.get("place", &"")).trim_prefix("landmark_").replace("_", " ")
 				words.append("find %s at %s in the %s" % [s.get("item"), place,

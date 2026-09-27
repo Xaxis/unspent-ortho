@@ -164,6 +164,9 @@ static func make() -> BiomeDef:
 		&"icesaw": {"weight": 0.9, "grounds": ["ice"]},
 	}
 	d.landmarks = [&"leaning_mast", &"blinking_stack", &"sump_pump", &"cast_stones"]
+	# The mast leaning out of the ice is a trawler frozen into the floe, and her
+	# hold is a refuge with a stove to relight (src/content/interiors/frozen_hold.gd).
+	d.interiors = {&"landmark:leaning_mast": &"frozen_hold"}
 	# Its keeper listens through the ice (src/core/sentinel/designs/listener.gd).
 	d.sentinel = &"listener"
 	d.sound_bed = &"bed_snowfield"

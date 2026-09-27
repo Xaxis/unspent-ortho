@@ -415,6 +415,17 @@ var decks_grounded := false
 ##   summit int         the order this landscape's cairn is raised in (0: none)
 ##   kiln_ground int    the Ground a village's kiln stands on (absent: no kiln)
 var sites: Dictionary = {}
+## HAUNTED (docs/HUSH.md): this landscape's own stone circles are the hush's
+## rings -- machines will not follow past them, their stones stand
+## differently when looked back at, sound stops in them, lights stand in the
+## fog that are nobody's, and a light brought in at night is answered. Never
+## explained. Read by HushSites and the systems of the hush; no worldgen
+## stage reads it.
+var hush := false
+## GROUND ABOVE THE GROUND this landscape grows (docs/ABOVE.md, GenAbove):
+## `{"roof": {room, clear, step, thick, tear, shaft}}` roofs it over, with holes
+## at the dome's tears and the shafts' mouths. A TERRAIN field.
+var above: Dictionary = {}
 ## The ground a scrap tip lies on here.
 var tip_ground := Ground.GRAVEL
 ## Hulls are hauled up on this landscape's beaches.
@@ -541,6 +552,14 @@ var landmarks: Array[StringName] = []
 ## door. Doors are derived after
 ## generation, like a shaft, so the island does not move (LOOK).
 var interiors: Dictionary = {}
+## WHO LIVED IN THIS LANDSCAPE'S HOUSES, for the `home` kind behind them
+## (src/content/interiors/home.gd). `households`: {id: {"wants": [piece...],
+## "by_hearth": [{"kind", "off", "solid", "side"}...]}}, where a piece is one
+## Furnish draws (src/models/interior/furnish.gd). Dealt one per door. `hearth`:
+## what keeps its fire (cottage.gd `lay_with`: &"fire", &"issued_stove",
+## &"raised_stove", &"brazier", &"none"). Empty, a home is furnished as the
+## coast's cottages are (cottage.gd COAST), round an open hearth.
+var home: Dictionary = {}
 var sound_bed: StringName = &"bed_wind"
 ## Another type's id whose music motif this one borrows; empty composes its own.
 var music_motif: StringName = &""

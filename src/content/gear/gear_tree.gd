@@ -116,6 +116,13 @@ const PIECES := {
 	# vertical city, so it is where the climbing brace is raised: its top rung
 	# is made of the ram out of the city's own demolisher (docs/LANDSCAPES.md).
 	&"boots_magnet": {"grade": &"uncommon", "family": &"brace"},
+	# The fight's armour (GEAR.md §6): one verb a piece, each on its hook.
+	&"coat_scale": {"grade": &"rare", "family": &"", "from": &"tide_iron",
+		"unique": "the only coat that turns a blow"},
+	&"wrap_hush": {"grade": &"rare", "family": &"", "from": &"hush_slate",
+		"unique": "the only wrap that quiets your steps"},
+	&"cloak_vane": {"grade": &"prime", "family": &"", "from": &"vane_true",
+		"unique": "the only cloak the wind carries"},
 	&"brace_cable": {"grade": &"rare", "family": &"brace", "from": &"tower_cable"},
 	&"brace_ram": {"grade": &"prime", "family": &"brace", "from": &"boom_ram"},
 	# The glide wing is a family the same way (docs/LANDSCAPES.md): every rung
@@ -148,6 +155,22 @@ const PIECES := {
 	# The shock lattice had no `from` (docs/VISION.md names the gap): it is
 	# wound round a fulgurite core now, so the glass desert is its gate.
 	&"mod_lattice": {"grade": &"prime", "family": &"", "from": &"fulgurite_core"},
+	# The keepers' powers (GEAR.md §5): each a relic, made of its keeper's core,
+	# which is then not a cell in a holding (one use per core).
+	&"mod_undertow": {"grade": &"relic", "family": &"", "from": &"reaper_core",
+		"unique": "the only line that takes hold of a machine"},
+	&"mod_anchor": {"grade": &"relic", "family": &"", "from": &"anchor_core",
+		"unique": "the only footing a blow cannot move and a grip cannot take"},
+	&"mod_lock": {"grade": &"relic", "family": &"", "from": &"lockkeeper_core",
+		"unique": "the only way to shut a way behind you"},
+	&"mod_listen": {"grade": &"relic", "family": &"", "from": &"listener_core",
+		"unique": "the only way to hear a tell you cannot see"},
+	&"mod_plumb": {"grade": &"relic", "family": &"", "from": &"plumb_core",
+		"unique": "the only read of where a blow will come from before it does"},
+	&"mod_unbuild": {"grade": &"relic", "family": &"", "from": &"unbuilder_core",
+		"unique": "the only hands that take a machine apart while it stands"},
+	&"mod_rake": {"grade": &"relic", "family": &"", "from": &"rake_core",
+		"unique": "the only blow that opens what it does not hit"},
 }
 
 ## Mechanical numbers a family holds equal across its rungs: the fight, the

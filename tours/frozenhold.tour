@@ -1,0 +1,37 @@
+# THE FROZEN HOLD UNDER THE FROST SEA'S LEANING MAST
+# (src/content/interiors/frozen_hold.gd): the mast is a trawler frozen into the
+# floe, and down her companionway, her hold -- planked, rimed, the ice in along
+# the low side, the machines' cable taut down into a hole cut through her bottom,
+# the crew's bunks forward, and the galley stove, out. Fed what a campfire burns,
+# the stove is a fire again, and the hold is somewhere to live through the night.
+#
+#   tools/tour.sh tours/frozenhold.tour --seed=4 --hour=23 --weather=clear:0 --give=driftwood:3
+#
+# 01 is the mast leaning out of the ice. 02 is the hold from above, cold. 03 is
+# over the shoulder at the cable's panel and the well. 04 is the stove, relit,
+# stood aside from.
+coast calm
+near door:frozen_hold
+await door 5
+wait 0.6
+shot 01-the-mast-in-the-ice with door,land:frost_sea
+
+press use 0.1
+await inside:frozen_hold 5
+wait 1.0
+shot 02-the-hold-cold with inside:frozen_hold
+
+hold shoulder_peek
+await shoulder 3
+near thing:sounding_well
+wait 1.0
+shot 03-the-cable-panel-by-the-well with inside:frozen_hold,shoulder
+
+near stove
+await stove_near 3
+wait 0.4
+press use 0.1
+await kindled 3
+near thing:stove
+wait 1.0
+shot 04-the-stove-relit with inside:frozen_hold,shoulder,by_fire

@@ -92,6 +92,45 @@ const MODS := {
 	&"mod_lattice": {"decision": "every blow throws a shock, and the whole kit runs hot",
 		"short": "every blow shocks",
 		"gives": [&"hot", &"loud"], "wants": [&"cool"]},
+	# The mesas anchor's, turned (GEAR.md §5): `steady`, so with a gyro and the
+	# undertow (held) it is a planted grappler (PAIRS).
+	&"mod_anchor": {"decision": "stand still a moment and you are rooted: no blow throws you and no grip takes you",
+		"short": "stood still, rooted",
+		"costs": "rooted, you cannot dodge",
+		"gives": [&"steady"]},
+	# The drowned lockkeeper's, turned (GEAR.md §5): `charge`, so a capacitor or
+	# a leech keeps it fed (PAIRS).
+	&"mod_lock": {"decision": "a narrow way you pass through is shut behind you to machines for a while",
+		"short": "a way passed is shut",
+		"costs": "a charge a lock",
+		"gives": [&"charge"]},
+	# The frost sea listener's, turned (GEAR.md §5): `sight`, so it pairs with the
+	# scan head's `read` (PAIRS).
+	&"mod_listen": {"decision": "you hear a machine's tell behind you or past a wall, and it hears you as far",
+		"short": "you hear their tells",
+		"costs": "your noise carries half as far again",
+		"gives": [&"sight"]},
+	# The crags plumb's, turned (GEAR.md §5): `read`, as the scan head's.
+	&"mod_plumb": {"decision": "a scan marks where each machine will be when it next strikes",
+		"short": "a scan reads their next blow",
+		"costs": "the scan takes twice as long to come back",
+		"gives": [&"read"]},
+	# The metropolis unbuilder's, turned (GEAR.md §5): `read`.
+	&"mod_unbuild": {"decision": "held use at an open machine's working part strips it: disarmed, and its part is yours",
+		"short": "use strips an open machine",
+		"costs": "the strip is a long hold inside its openings",
+		"gives": [&"read"]},
+	# The pan rake's, turned (GEAR.md §5): `loud`, so a damper fights it (PAIRS).
+	&"mod_rake": {"decision": "a heavy blow rakes the ground ahead and holds everything in the arc open, and rings for it",
+		"short": "a heavy rakes the arc",
+		"costs": "a heavy rings half as loud again",
+		"gives": [&"loud"]},
+	# The tide reaper's, turned (GEAR.md §5): `held`, so with a gyro's steady
+	# it is a planted grappler (PAIRS).
+	&"mod_undertow": {"decision": "your line takes hold of a machine and drags it in off its line, for twice the breath",
+		"short": "your line hauls them in",
+		"costs": "a haul takes twice the breath",
+		"gives": [&"held"]},
 	# The crags' hush slate, worn: stone a scanner reads as nothing at all
 	# (docs/LANDSCAPES.md). It gives `quiet`, so a lattice rings through it
 	# the way it rings through a damper (PAIRS): one hides you, the other shouts.
@@ -162,6 +201,12 @@ static func decision(id: StringName) -> String:
 ## row that forgets one is caught by the test rather than by a blank line.
 static func short(id: StringName) -> String:
 	return row(id).get("short", decision(id))
+
+
+## What a keeper's power takes back (GEAR.md §5: a relic changes a rule and
+## takes something back), in the socket row's width; "" for a module with none.
+static func costs(id: StringName) -> String:
+	return row(id).get("costs", "")
 
 
 static func gives(id: StringName) -> Array:

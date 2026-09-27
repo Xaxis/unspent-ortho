@@ -95,7 +95,9 @@ func _beat(land: StringName, slices: int = 12000, kit: Array[StringName] = []) -
 
 
 func test_a_keeper_can_be_taken_apart_through_the_openings_it_gives() -> void:
-	for land: StringName in [&"coast", &"salt_flats"]:
+	# Every keeper in the registry, not two: a boss per landscape is the vision,
+	# and a keeper nobody has fought down here is a keeper nobody knows is fair.
+	for land: StringName in Sentinels.lands():
 		var r := _beat(land)
 		var m: MobState = r.mob
 		var def: SentinelDef = r.def
@@ -115,28 +117,32 @@ func test_a_keeper_can_be_taken_apart_through_the_openings_it_gives() -> void:
 
 func test_standing_in_front_of_one_and_swinging_never_beats_it() -> void:
 	# The other half of VISION §3: "none by trading hits". A player who walks in
-	# swinging at a guarded keeper rings off it and is taken apart.
-	var f := _fight(&"coast")
-	var sim: FightSim = f.sim
-	var m: MobState = f.mob
-	var rings := 0
-	var hurt := 0
-	for i in 3000:
-		sim.slices(1)
-		if not m.alive:
-			break
-		# Dead in front of its working part, swinging on every cooldown.
-		sim.hero.pos = m.pos + Vector2.from_angle(m.facing) * (m.radius + sim.hero.radius + 0.5)
-		sim.hero.facing = (m.pos - sim.hero.pos).angle()
-		sim.press_swing()
-		for e in sim.drain():
-			if e.type == &"hit" and bool(e.get("plate", false)):
-				rings += 1
-			elif e.type == &"hurt":
-				hurt += 1
-	check(m.alive, "the keeper is still standing (%d of %d)" % [m.health, m.max_health])
-	gt(float(rings), 3.0, "and the blows rang off its drum (%d)" % rings)
-	gt(float(hurt), 0.0, "while it took the player apart (%d blows landed on them)" % hurt)
+	# swinging at a guarded keeper rings off it and is taken apart. Every keeper.
+	for land: StringName in Sentinels.lands():
+		var f := _fight(land)
+		var sim: FightSim = f.sim
+		var m: MobState = f.mob
+		var rings := 0
+		var hurt := 0
+		for i in 3000:
+			sim.slices(1)
+			if not m.alive:
+				break
+			# Dead in front of it, swinging on every cooldown.
+			sim.hero.pos = m.pos + Vector2.from_angle(m.facing) * (m.radius + sim.hero.radius + 0.5)
+			sim.hero.facing = (m.pos - sim.hero.pos).angle()
+			sim.press_swing()
+			for e in sim.drain():
+				if e.type == &"hit" and bool(e.get("plate", false)):
+					rings += 1
+				elif e.type == &"hurt":
+					hurt += 1
+		print("sentinel %s in front: %s at %d of %d, %d rings, %d blows on the player" % [land, "standing" if m.alive else "DOWN", m.health, m.max_health, rings, hurt])
+		check(m.alive, "%s: the keeper is still standing (%d of %d)" % [land, m.health, m.max_health])
+		# Several, not a count tuned to one keeper: a keeper that hits harder
+		# knocks the swinger back out of reach more often, so it rings fewer times.
+		gt(float(rings), 2.0, "%s: and the blows rang off it (%d)" % [land, rings])
+		gt(float(hurt), 0.0, "%s: while it took the player apart (%d blows landed on them)" % [land, hurt])
 
 
 func test_the_land_takes_it_where_it_will_not_carry_it() -> void:

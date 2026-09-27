@@ -176,9 +176,39 @@ static func wear_phase(m: MobState, def: SentinelDef, i: int) -> void:
 	m.turn_rate = p.turn
 	m.bite = Blow.from_dict(p.bite)
 	m.bite.creep = 1.0
+	m.come_round = come_round_of(m.bite)
+	m.flank_since = -1.0
 	# The sim's own one-shot second act belongs to ordinary machines; a keeper's
 	# phases are these, and they are counted here.
 	m.second_act = false
+
+
+## The come-round a phase's bite makes (SentinelDef.come_round says it in the
+## keeper's own words): a sweep at the side a body keeps to, told short -- never
+## longer than COME_ROUND_WINDUP, or than the bite -- as wide as the bite and never
+## wider than COME_ROUND_WIDTH (wider, and no dodge clears it: measured, the
+## anchor's at 3.6 and the plumb's at 3.0 took the reader every time), a
+## little lighter, and with a long recovery after, so the dodge it asks for is
+## also the opening it gives.
+const COME_ROUND_WINDUP := 380
+const COME_ROUND_RECOVERY := 760
+## The widest a sweep is: a dodge (about 1.3 tiles) clears 2.0 from its middle.
+const COME_ROUND_WIDTH := 2.0
+
+
+static func come_round_of(bite: Blow) -> Blow:
+	if bite == null:
+		return null
+	var b := Blow.from_dict({
+		"swing": [mini(COME_ROUND_WINDUP, bite.windup), 150, COME_ROUND_RECOVERY, 900],
+		"reach": bite.reach,
+		"width": minf(bite.width, COME_ROUND_WIDTH),
+		"dmg": maxi(2, bite.dmg - 1),
+		"knock": bite.knock * 0.8,
+		"knock_ms": bite.knock_ms,
+	})
+	b.creep = 1.0
+	return b
 
 
 # --- where a keeper stands --------------------------------------------------
@@ -194,9 +224,12 @@ static func states(world: WorldData) -> Array[SentinelState]:
 	# every time, because a game wears their health down.
 	var key := "%d:%d" % [world.get_instance_id(), world.landmarks.size()]
 	_lairs_lock.lock()
-	var rows: Variant = _lairs.get(key)
+	var got: Variant = _lairs.get(key)
 	_lairs_lock.unlock()
-	if rows == null:
+	# Asked by type, never by an operator on the Variant: this can run on a
+	# worker (tests/core/test_worker_types.gd).
+	var rows: Array = got if typeof(got) == TYPE_ARRAY else []
+	if typeof(got) != TYPE_ARRAY:
 		var found: Array = []
 		for r: Dictionary in world.regions:
 			var def := for_land(StringName(str(r.get("type", &""))))

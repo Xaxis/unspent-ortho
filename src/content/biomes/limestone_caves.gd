@@ -159,6 +159,12 @@ static func make() -> BiomeDef:
 	# Sinkholes to the day above (11_dome): columns of cold daylight standing in
 	# the dark and the damp, the one place in the caves the hour is seen.
 	d.sky_holes = 0.8
+	# THE HALLS ARE ROOFED (GenAbove, docs/ABOVE.md S3): a lid of rock six levels
+	# (three units) at least over the highest floor within three tiles, stepped
+	# in plateaus of four levels, so a hall is a hall and not open terraces under
+	# a dark sky; open only where the dome's tears let the day down and over the
+	# shafts' mouths.
+	d.above = {"roof": {"room": 6, "clear": 3, "step": 4, "thick": 4, "tear": 3.0, "shaft": 3.5}}
 	d.mist = 0.0
 	# Black, and still a chart: the soundings and the swash survive the tint
 	# (tests/render/test_water_wash.gd).
@@ -200,8 +206,11 @@ static func make() -> BiomeDef:
 		# The cave hauler works the dark by ear: it hardly sees and hears
 		# everything, walks the face slower, and winds its bite up longer, which
 		# is what makes it a cave's to fight and not the bonelands' (BiomeDef.roster).
+		# And its knuckle drive is on its BACK, away from the wall it works: a
+		# player who has learned the bonelands hauler's left side goes round to
+		# the wrong one here.
 		&"hauler": {"weight": 0.7, "grounds": ["limestone", "gravel", "bone", "mud"],
-			"over": {"sees": 3, "hears": 13, "pace": 3.4,
+			"over": {"sees": 3, "hears": 13, "pace": 3.4, "part": &"back",
 				"bite": {"swing": [780, 160, 600, 800], "reach": 1.5, "width": 2.0, "dmg": 4, "knock": 9.5, "knock_ms": 320}}},
 	}
 	d.surface = _surface

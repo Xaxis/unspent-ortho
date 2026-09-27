@@ -1,0 +1,15 @@
+# The plumb (GEAR.md G4): the crags plumb's core in the scanner's frame. A scan
+# marks where each machine coming for the player will be when it tells its next
+# blow: a ring of lens light on the ground between them.
+#   tools/tour.sh tours/plumb.tour --seed=1 --hour=11 --weather=clear:0 --fit=scanner_lens,mod_plumb
+coast calm
+place open_coast
+wait 1.0
+spawn runner
+await noticed 10
+# Away from it at a run, so it comes on from a few tiles off, and the scan.
+walk -1,0.3 1.2 run
+tap ability_scan
+await ability:scan 5
+wait 0.15
+shot 01-where-it-will-strike with mob:runner

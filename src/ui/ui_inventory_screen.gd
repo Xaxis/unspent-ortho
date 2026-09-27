@@ -269,6 +269,12 @@ func _draw_detail(R: Rect2i) -> void:
 		UiSlate.heading(self, Vector2i(x0, y), "hardness", right)
 		_draw_ladder(Vector2i(x0 + 12, y + UiTheme.LINE + 2), stuff)
 		y += UiTheme.LINE * 2 + 16
+	# A keeper's core is a choice, and it is drawn as one: its uses side by side,
+	# each with what it gives and costs, instead of a list of recipes.
+	var choice := UiRules.core_uses(id)
+	if not choice.is_empty():
+		_draw_choice(Vector2i(x0, y), right, choice)
+		return
 	# What it goes into: the recipes that want it, so goods are never a dead end.
 	var demo: Array[Dictionary] = []
 	if game != null and game.options.ui_demo:
@@ -291,6 +297,26 @@ func _draw_detail(R: Rect2i) -> void:
 		UiDraw.text_right(self, right, top, "%d, %s" % [want, UiRules.station_words(StringName(r.get("at", &"")))], UiTheme.TEXT_DIM)
 	if uses.size() > shown:
 		UiDraw.text(self, Vector2i(x0 + 38, y + UiTheme.LINE * (shown + 1)), "and %d more" % (uses.size() - shown), UiTheme.TEXT_DIM)
+
+
+## One core, one of these (UiRules.core_uses): a column each, what it becomes,
+## where, and what it gives and costs, with a rule between them.
+func _draw_choice(at: Vector2i, right: int, uses: Array[Dictionary]) -> void:
+	UiSlate.heading(self, at, "one core: one of these", right)
+	var cols := uses.size()
+	var w := (right - at.x - 12) / cols
+	var top := at.y + UiTheme.LINE + 4
+	for i in cols:
+		var u: Dictionary = uses[i]
+		var cx := at.x + 12 + i * w
+		if i > 0:
+			UiDraw.rect(self, Rect2i(cx - 10, top, 1, UiTheme.LINE * 6), UiTheme.GHOST)
+		UiDraw.text(self, Vector2i(cx, top), String(u.title), UiTheme.TEXT_DIM)
+		UiDraw.text(self, Vector2i(cx, top + UiTheme.LINE), String(u.makes), UiTheme.BRIGHT)
+		var y := top + UiTheme.LINE * 2
+		for line: String in (u.gives as Array):
+			y += UiTheme.LINE * UiSlate.wrapped(self, Vector2i(cx, y), w - 16, line, UiTheme.TEXT)
+		UiSlate.wrapped(self, Vector2i(cx, y + 4), w - 16, String(u.at), UiTheme.TEXT_DIM)
 
 
 ## The load, always: carried bulk against the creel as a segmented meter (its

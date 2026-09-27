@@ -43,8 +43,10 @@ near boulder,stone_ore
 walk 0,0 0.05
 press use 0.1
 await took 6
-# Open ground west of the village: the first press asks, the second lays the fire.
-at 188.5,428.5
+# Open ground near the village, asked for by name: the first press asks, the
+# second lays the fire. Marked, to come back to.
+ground grass
+mark fire
 walk -1,0 0.08
 press use 0.1
 wait 0.3
@@ -69,7 +71,7 @@ walk 1,1 2.5
 wait 1.0
 shot 05-walking-while-it-cooks
 # Back at the fire when it is done: it comes off into the creel.
-at 188.5,428.5
+at mark:fire
 walk -1,0 0.05
 await made 60
 wait 0.4
@@ -110,8 +112,11 @@ shot 11-runner-tell with mob:runner
 # to its back, where the drive is, and strike as it stands spent.
 walkto part 1.3
 shot 12-round-to-its-back with mob:runner
-tap swing
+# A swing that met plate or air is not the end of it: round to the back again
+# and strike again, as a player does.
 try 8
+walkto part 1.3
+tap swing
 await hit 1.0
 end
 wait 0.05
@@ -136,20 +141,15 @@ await killed 1.0
 end
 wait 0.6
 shot 14-the-runner-down with down:runner
-# Sliding: a run held north-east into a broadleaf goes round its trunk.
-#
-# THE COORDINATE STAYS and the tree is why. `near broadleaf` stands the player
-# already IN reach of a trunk and facing it, and the slide needs the opposite: a
-# run of 1.4 s held INTO one from open ground, so the body meets it at speed and
-# goes round. Converting this does not move the frame, it deletes what the frame
-# is of. What would retire it is a name for "far enough from a KIND to run into
-# it", which nothing needs yet.
+# Sliding: a run held into a broadleaf goes round its trunk. Not `near`, which
+# stands IN reach already: `back` stands on open ground a run away, and the run
+# is held INTO it for 1.4 s, so the body meets it at speed and goes round.
 coast calm
 zoom 9
-at 119.64,358.00
+back broadleaf 2.5
 wait 0.6
 shot 15-before-the-tree
-walk 1,0 1.4 run
+walkto prop:broadleaf 1.4 run through
 wait 0.2
 shot 16-slid-round-the-tree
 # Something put down: hold X, and the knife in hand is left on a heap (the

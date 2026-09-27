@@ -59,6 +59,11 @@ extends RefCounted
 ## --scene=NAME        which scene to boot: game (default) | gallery | title | loading (the loading page, still)
 ## --place=NAME        start at a named place (GenPlaces): a country ("moss"), an
 ##                     ecotone ("coast-pinewood"), a landmark ("tip2"), "river", "cliff"
+## --hush=always       every visit to a hush ring answers, at any hour (23_hush),
+##                     for a proof tour; without it a ring answers as it will
+## --above=KIND        hang a synthetic span over the start (`--place` says where):
+##                     `roof` or `arch`, for drawing what hangs overhead on any
+##                     seed without worldgen (AboveStage)
 ## --stats             print render stats (draw calls, chunk build times) before the shot
 ## --weather=KIND:S     force the weather (e.g. rain:1, fog:0.6, storm:1:bolt, dry_storm:1:bolt; kinds in Weather.KINDS), sky package;
 ##                     `:wind=W` also holds the wind at W, -1..1 (clear:0:wind=0.8)
@@ -99,12 +104,16 @@ extends RefCounted
 ## --holding=KIND,...  stand a staffed holding in front of the player, free: lean-to,
 ##                     hearth, hut, store, plot, catchment, palisade, plate wall,
 ##                     netting, wind spinner, battery stack, radio mast (settlements)
+## --walled            with --holding: ring the staged holding in palisade with a gate
+##                     in it, facing the way the player faces, and stand its turrets
+##                     in the middle covering each other (settlements)
 ## --attention=F       every holding (stood up at boot or built in play) starts F (0..1)
 ##                     of the way to a siege: 0.22 surveyed, 0.45 probed, 0.70 raided,
 ##                     1.0 the region's keeper. Nothing is sent until something reads it (raids)
 ## --carried=N         N people are already being held at the first depot of the plan,
 ##                     taken out of a village of that same region, so the region has
-##                     somebody to ask him about (taken, story)
+##                     somebody to ask him about (taken, story); with --holding, taken
+##                     off the staged holding's books instead, to walk home to it
 ## --craft=KIND        park a craft (raft | hover_sled | walker_rig) in reach of the player (crafts)
 ## --aboard=KIND      park a craft and stand the player on it, ready to steer (crafts)
 ## --act=NAME[:MS]     play a fight moment and hold it for the shot: swing | grip | hurt | dodge | alert | windup
@@ -189,6 +198,10 @@ var frames := 8
 var scale := 1
 var scene := "game"
 var place := ""
+## "always" or "": staging for the hush (23_hush).
+var hush := ""
+## "roof", "arch" or "": a staged span (AboveStage), planted before a chunk is drawn.
+var above := ""
 var stats := false
 ## "kind:strength[:bolt]" or "" (the weather rules decide). Read by 10_sky.
 var weather := ""
@@ -217,6 +230,8 @@ var fit: PackedStringArray = []
 var spawn: PackedStringArray = []
 ## Pieces of a holding to stand in front of the player at boot (settlements).
 var holding: PackedStringArray = []
+## Ring the staged holding in palisade with a gate in it (settlements).
+var walled := false
 ## How far every holding starts along the plan's escalation, 0..1 (raids).
 var attention := 0.0
 ## How many people the plan is already holding at boot (taken).
@@ -307,6 +322,8 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"scale": o.scale = v.to_int()
 			"scene": o.scene = v
 			"place": o.place = v
+			"hush": o.hush = v
+			"above": o.above = v
 			"realm": o.realm = StringName(v)
 			"stats": o.stats = true
 			"weather": o.weather = v
@@ -335,6 +352,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"fit": o.fit = v.split(",", false)
 			"spawn": o.spawn = v.split(",", false)
 			"holding": o.holding = v.split(",", false)
+			"walled": o.walled = true
 			"attention": o.attention = clampf(v.to_float(), 0.0, 1.0)
 			"carried": o.carried = maxi(0, v.to_int())
 			"craft": o.craft = v

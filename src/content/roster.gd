@@ -391,7 +391,7 @@ const DEFS := {
 	&"sentinel.coast": {
 		"model": &"sentinel_reaper", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
 		"part": &"front", "guarded": true, "sentinel": &"tide_reaper",
-		"pace": 4.2, "dash": 8.5, "quick": 300, "radius": 1.35, "height": 2.6, "life": 132,
+		"pace": 4.2, "dash": 8.5, "quick": 300, "radius": 1.35, "height": 2.6, "life": 343,
 		"sees": 15, "hears": 11, "racket": 26, "reach": 3, "ready": 3, "forget": 26, "tether": 26, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
 		"bite": {"swing": [820, 170, 800, 900], "reach": 1.9, "width": 2.6, "dmg": 3, "knock": 9.0, "knock_ms": 320},
@@ -401,7 +401,7 @@ const DEFS := {
 	&"sentinel.salt": {
 		"model": &"sentinel_rake", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 4,
 		"part": &"back", "sentinel": &"pan_rake",
-		"pace": 4.6, "dash": 9.0, "quick": 310, "radius": 1.3, "height": 3.0, "life": 114,
+		"pace": 4.6, "dash": 9.0, "quick": 310, "radius": 1.3, "height": 3.0, "life": 340,
 		"sees": 17, "hears": 8, "racket": 24, "reach": 3, "ready": 3, "forget": 24, "tether": 26, "safe": 14,
 		"nerve": 100, "invuln": 500, "through": true, "disposition": &"wary", "overrun": 0.8,
 		"bite": {"swing": [620, 150, 700, 820], "reach": 1.8, "width": 1.6, "dmg": 3, "knock": 8.0, "knock_ms": 300},
@@ -415,7 +415,7 @@ const DEFS := {
 	&"sentinel.crags": {
 		"model": &"sentinel_plumb", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
 		"part": &"back", "sentinel": &"plumb",
-		"pace": 3.6, "dash": 7.5, "quick": 260, "radius": 1.35, "height": 7.0, "life": 120,
+		"pace": 3.6, "dash": 7.5, "quick": 260, "radius": 1.35, "height": 7.0, "life": 270,
 		"sees": 16, "hears": 9, "racket": 20, "reach": 3, "ready": 4, "forget": 28, "tether": 28, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.6,
 		"bite": {"swing": [900, 180, 820, 900], "reach": 2.2, "width": 3.0, "dmg": 3, "knock": 9.0, "knock_ms": 320},
@@ -429,7 +429,7 @@ const DEFS := {
 	&"sentinel.frost": {
 		"model": &"sentinel_listener", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
 		"part": &"back", "guarded": true, "sentinel": &"listener",
-		"pace": 2.4, "dash": 6.0, "quick": 260, "radius": 1.4, "height": 2.4, "life": 124,
+		"pace": 2.4, "dash": 6.0, "quick": 260, "radius": 1.4, "height": 2.4, "life": 250,
 		"sees": 9, "hears": 20, "racket": 26, "reach": 3, "ready": 3, "forget": 26, "tether": 34, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
 		"bite": {"swing": [800, 160, 760, 880], "reach": 1.8, "width": 1.8, "dmg": 3, "knock": 8.0, "knock_ms": 300},
@@ -445,7 +445,7 @@ const DEFS := {
 	&"sentinel.glass": {
 		"model": &"sentinel_anvil", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 5,
 		"part": &"back", "sentinel": &"anvil",
-		"pace": 6.0, "dash": 12.0, "quick": 300, "radius": 1.4, "height": 7.6, "life": 120,
+		"pace": 6.0, "dash": 12.0, "quick": 300, "radius": 1.4, "height": 7.6, "life": 380,
 		"sees": 18, "hears": 6, "racket": 24, "reach": 3, "ready": 3, "forget": 24, "tether": 30, "safe": 14,
 		"nerve": 100, "invuln": 500, "through": true, "disposition": &"wary", "overrun": 0.9,
 		"bite": {"swing": [560, 150, 640, 760], "reach": 1.8, "width": 1.8, "dmg": 3, "knock": 9.0, "knock_ms": 320},
@@ -459,7 +459,7 @@ const DEFS := {
 	&"sentinel.metropolis": {
 		"model": &"sentinel_unbuilder", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
 		"part": &"back", "sentinel": &"unbuilder",
-		"pace": 3.8, "dash": 8.0, "quick": 280, "radius": 1.4, "height": 9.6, "life": 150,
+		"pace": 3.8, "dash": 8.0, "quick": 280, "radius": 1.4, "height": 9.6, "life": 390,
 		"sees": 16, "hears": 10, "racket": 28, "reach": 3, "ready": 3, "forget": 26, "tether": 26, "safe": 14,
 		"nerve": 100, "invuln": 540, "through": true, "disposition": &"wary", "overrun": 0.7,
 		"bite": {"swing": [880, 180, 820, 900], "reach": 2.0, "width": 1.8, "dmg": 3, "knock": 9.0, "knock_ms": 320},
@@ -475,7 +475,7 @@ const DEFS := {
 	&"sentinel.drowned": {
 		"model": &"sentinel_lockkeeper", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 4,
 		"part": &"back", "sentinel": &"lockkeeper", "crosses": &"swim",
-		"pace": 3.2, "dash": 7.0, "quick": 260, "radius": 1.35, "height": 6.4, "life": 140,
+		"pace": 3.2, "dash": 7.0, "quick": 260, "radius": 1.35, "height": 6.4, "life": 364,
 		"sees": 15, "hears": 12, "racket": 26, "reach": 3, "ready": 3, "forget": 26, "tether": 30, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
 		"bite": {"swing": [840, 170, 800, 900], "reach": 2.0, "width": 2.0, "dmg": 3, "knock": 8.0, "knock_ms": 300},
@@ -572,7 +572,7 @@ const DEFS := {
 	&"sentinel.mesas": {
 		"model": &"sentinel_anchor", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
 		"part": &"back", "sentinel": &"anchor", "climbs": 4,
-		"pace": 3.4, "dash": 7.0, "quick": 260, "radius": 1.4, "height": 4.6, "life": 124,
+		"pace": 3.4, "dash": 7.0, "quick": 260, "radius": 1.4, "height": 4.6, "life": 322,
 		"sees": 14, "hears": 14, "racket": 22, "reach": 3, "ready": 3, "forget": 26, "tether": 30, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
 		"bite": {"swing": [860, 170, 820, 920], "reach": 2.0, "width": 2.2, "dmg": 4, "knock": 10.0, "knock_ms": 340},
