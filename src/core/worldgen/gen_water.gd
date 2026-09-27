@@ -364,45 +364,112 @@ static func _side_tile(c: GenContext, i: int, nrm: Vector2) -> int:
 ## Valley sides: nothing within reach of a river stands higher than the bed
 ## plus a per-country slope times the distance, so banks stay walkable (or
 ## become gorges where the slope cost is high).
+## THE VALLEY FIELD IS CAPPED at one level over the tallest land: nothing at or
+## above it can carve, and capped, a value is decided by paths costing less
+## than the cap, which the cheapest valley (0.4 a half-cell) holds within
+## VALLEY_REACH half-cells. So a section with that much round its own tiles,
+## and its rows on the world's bands with their reach, carves them as the whole
+## world does (streamed worldgen S4g; tests/stream/test_valley_window.gd).
+const VALLEY_CAP := GenRelief.MAX_LEVEL + 1.0
+const VALLEY_REACH := 78
+## The bands the field is swept in, and how far each sweeps past its own rows:
+## a valley side climbs at least 0.6 levels a cell, so this many cells reach
+## past the highest ground.
+const VALLEY_BAND := 24
+const VALLEY_BAND_REACH := ceili((GenRelief.MAX_LEVEL + 1) / 0.6)
+
+## A test's hook: set, `_carve_valleys` keeps what it carves from in `before`.
+static var keeping := false
+static var before: Dictionary = {}
+
+
 static func _carve_valleys(c: GenContext) -> void:
 	# Worked at half resolution: a valley side is smooth over two tiles, and the
 	# bed itself is exact because river tiles keep their own elevation.
-	var size := c.size
-	var hw := GenFields.coarse_width(size, 2)
 	var coarse_cost: PackedFloat32Array = GenCountries.params(c, [&"valley"])[&"valley"]
-	var cost := GenFields.upsample(coarse_cost, c.cw, 2, hw)
-	for k in cost.size():
-		cost[k] *= 2.0
-	var water := c.water
-	var land := c.land
-	var elev := c.elev
-	var river_e := c.river_e
+	if keeping:
+		before = {"elev": GenFields.snapshot(c.elev), "water": GenFields.snapshot(c.water), "river_e": GenFields.snapshot(c.river_e),
+			"land": GenFields.snapshot(c.land), "cost": GenFields.snapshot(coarse_cost), "cw": c.cw, "size": c.size}
+	carve(c.elev, c.water, c.land, c.river_e, coarse_cost, c.cw, c.size, Rect2i(0, 0, c.size, c.size))
+
+
+## Carve the valleys into `elev` over the tiles of `core`, from arrays that are
+## the whole world's: the whole world as one core, or a section, which reads only
+## the tiles within its reach (`valley_window`).
+static func carve(elev: PackedFloat32Array, water: PackedByteArray, land: PackedByteArray, river_e: PackedFloat32Array,
+		coarse_cost: PackedFloat32Array, cw: int, size: int, core: Rect2i) -> void:
+	var hw := GenFields.coarse_width(size, 2)
+	var win := valley_window(core, size)
+	var gx0 := win.position.x
+	var gy0 := win.position.y
+	var ww := win.size.x
+	var wh := win.size.y
+	var cost_all := GenFields.upsample(coarse_cost, cw, 2, hw) if win.size.x == hw and win.size.y == hw else PackedFloat32Array()
+	var cost := PackedFloat32Array()
+	cost.resize(ww * wh)
+	if not cost_all.is_empty():
+		for k in cost.size():
+			cost[k] = cost_all[k] * 2.0
+	else:
+		var part := GenFields.upsample_rect(coarse_cost, cw, cw, 0, 0, cw, 2, hw, gx0, gy0, ww, wh)
+		for k in cost.size():
+			cost[k] = part[k] * 2.0
 	var v := PackedFloat32Array()
-	v.resize(hw * hw)
+	v.resize(ww * wh)
 	v.fill(1e6)
-	GenFields.rows(size, func(y0: int, y1: int) -> void:
-		for y in range(y0, y1):
-			var row := y * size
-			var hrow := (y >> 1) * hw
-			for x in size:
-				var i := row + x
-				if water[i] == 1:
-					var k := hrow + (x >> 1)
-					v[k] = minf(v[k], river_e[i] + 0.9)
+	GenFields.rows(wh, func(h0: int, h1: int) -> void:
+		for hy in range(h0, h1):
+			for hx in ww:
+				# The half-cell's four tiles.
+				for dy in 2:
+					var y := (gy0 + hy) * 2 + dy
+					if y >= size:
+						continue
+					for dx in 2:
+						var x := (gx0 + hx) * 2 + dx
+						if x >= size:
+							continue
+						var i := y * size + x
+						if water[i] == 1:
+							var k := hy * ww + hx
+							v[k] = minf(v[k], river_e[i] + 0.9)
 	)
-	# A valley side climbs at least 0.6 levels a cell, so this many cells reach
-	# past the highest ground.
-	v = GenFields.banded([v, cost], hw, ceili((GenRelief.MAX_LEVEL + 1) / 0.6), func(arrays: Array, width: int) -> Array:
+	v = GenFields.banded([v, cost], ww, VALLEY_BAND_REACH, func(arrays: Array, width: int) -> Array:
 		var vv: PackedFloat32Array = arrays[0]
 		GenFields.propagate_min_field(vv, width, arrays[1])
 		return [vv, arrays[1]]
-	)[0]
-	var up := GenFields.upsample(v, hw, 2, size)
-	GenFields.rows(size, func(y0: int, y1: int) -> void:
-		for i in range(y0 * size, y1 * size):
-			if land[i] != 0 and water[i] == 0 and up[i] < elev[i]:
-				elev[i] = maxf(1.0, up[i])
+	, VALLEY_BAND)[0]
+	GenFields.rows(wh, func(h0: int, h1: int) -> void:
+		for k in range(h0 * ww, h1 * ww):
+			v[k] = minf(v[k], VALLEY_CAP)
 	)
+	var up := GenFields.upsample_rect(v, ww, wh, gx0, gy0, hw, 2, size, core.position.x, core.position.y, core.size.x, core.size.y)
+	GenFields.rows(core.size.y, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			for x in core.size.x:
+				var i := (core.position.y + y) * size + core.position.x + x
+				var u := up[y * core.size.x + x]
+				if land[i] != 0 and water[i] == 0 and u < elev[i]:
+					elev[i] = maxf(1.0, u)
+	)
+
+
+## The half-resolution cells a section's valleys are swept over: VALLEY_REACH
+## round its own cells across, and down whole bands of the world's, with each
+## band's reach, so every band it holds is swept over the rows the whole world
+## sweeps it over.
+static func valley_window(core: Rect2i, size: int) -> Rect2i:
+	var hw := GenFields.coarse_width(size, 2)
+	if core == Rect2i(0, 0, size, size):
+		return Rect2i(0, 0, hw, hw)
+	var cx0 := maxi(0, floori(core.position.x / 2.0) - VALLEY_REACH - 1)
+	var cx1 := mini(hw, ceili(core.end.x / 2.0) + VALLEY_REACH + 1)
+	var b0 := floori(maxf(0.0, floor(core.position.y / 2.0) - 1.0) / VALLEY_BAND)
+	var b1 := ceili(minf(hw, ceilf(core.end.y / 2.0) + 1.0) / VALLEY_BAND)
+	var cy0 := maxi(0, b0 * VALLEY_BAND - VALLEY_BAND_REACH)
+	cy0 = floori(float(cy0) / VALLEY_BAND) * VALLEY_BAND
+	var cy1 := mini(hw, b1 * VALLEY_BAND + VALLEY_BAND_REACH)
+	return Rect2i(cx0, cy0, cx1 - cx0, cy1 - cy0)
 
 
 ## Pools and tarns, after terracing: round, a dozen tiles or more, on flat

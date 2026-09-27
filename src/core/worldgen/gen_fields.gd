@@ -274,6 +274,38 @@ static func smooth_rect(v: PackedFloat32Array, size: int, levels: int, rx: int, 
 	return out
 
 
+## `upsample` over the tiles of one rectangle of the world, from a PART of the
+## coarse grid: `part` is `pw` x `ph` cells starting at cell (gx0, gy0) of a grid
+## `cw` cells wide, and must hold every cell round the rectangle's own (one more
+## each side, or to the grid's edge). The same values tile for tile: the cells
+## are spread with the world's own weights, clipped where the world's grid ends.
+static func upsample_rect(part: PackedFloat32Array, pw: int, ph: int, gx0: int, gy0: int, cw: int, step: int, size: int,
+		rx: int, ry: int, rw: int, rh: int) -> PackedFloat32Array:
+	var sx0 := maxi(0, floori(float(rx) / step) - 1)
+	var sy0 := maxi(0, floori(float(ry) / step) - 1)
+	var sx1 := mini(cw, ceili(float(rx + rw) / step) + 1)
+	var sy1 := mini(cw, ceili(float(ry + rh) / step) + 1)
+	assert(sx0 >= gx0 and sy0 >= gy0 and sx1 <= gx0 + pw and sy1 <= gy0 + ph, "the part must hold the cells round the rectangle")
+	var sw := sx1 - sx0
+	var sh := sy1 - sy0
+	var sub := PackedFloat32Array()
+	sub.resize(sw * sh)
+	for y in sh:
+		for x in sw:
+			sub[y * sw + x] = part[(sy0 - gy0 + y) * pw + sx0 - gx0 + x]
+	var img := Image.create_from_data(sw, sh, false, Image.FORMAT_RF, sub.to_byte_array())
+	img.resize(sw * step, sh * step, Image.INTERPOLATE_BILINEAR)
+	var iw := sw * step
+	var got := img.get_data().to_float32_array()
+	var out := PackedFloat32Array()
+	out.resize(rw * rh)
+	for y in rh:
+		var iy := clampi(ry + y, 0, size - 1) - sy0 * step
+		for x in rw:
+			out[y * rw + x] = got[iy * iw + clampi(rx + x, 0, size - 1) - sx0 * step]
+	return out
+
+
 ## `field` (as `batch`'s FIELD spec makes it) over the tiles of one rectangle of
 ## the world, the same values tile for tile: the coarse cells it samples are the
 ## world's own, one more round the rectangle for the bilinear spread, clipped
