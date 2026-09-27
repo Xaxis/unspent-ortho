@@ -50,10 +50,18 @@ const CAUSES := {
 	# is 0.02 and a turret about 0.06: a holding grown loud turns a region wary on
 	# its own, which is the price of the comfort, seen as it is paid.
 	&"built": 0.02,
+	# A RELIC CARRIED IS HEAT (GEAR.md G9): a keeper's power, or anything of the
+	# grade, worn is a found-tech signature the network reads, PER RELIC PER HOUR
+	# (the `scale` of `raise`, which 32_disposition hands the hours and the count).
+	# A third of a region's own cooling (DECAY_PER_HOUR): one relic slows a file
+	# going cold, three hold it where it is, and four warm a calm region to wary
+	# on their own in about nine hours. Three hours of one relic is what a stolen
+	# cell raised in a holding files once (`built` x its loudness, about 0.09).
+	&"carried": 0.03,
 }
 ## Causes every instance of which counts, however close the last: a second
 ## piece built within SAME_CAUSE_GAP is a second piece, not the same news.
-const UNGAPPED: Array[StringName] = [&"built"]
+const UNGAPPED: Array[StringName] = [&"built", &"carried"]
 
 ## VIOLENCE HAS A SOCIAL PRICE, AND THE PRICE IS WHO SAW IT. The same blow is one
 ## machine's word for it in an empty bog and a street's worth of filings in a

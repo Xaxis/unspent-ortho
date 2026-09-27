@@ -286,7 +286,7 @@ const DEFS := {
 	# dodge the wind is behind carries twice as far (FightKit.vane).
 	&"cloak_vane": {"name": "vane cloak", "bulk": 3.0, "group": &"kit", "tier": &"mended",
 		"slot": &"back", "sockets": 3, "icon": [&"wing", &"plate", &"lens"],
-		"resist": {&"cold": 0.15, &"wet": 0.2}, "wears": {"extras": [&"shawl"], "salvage": [&"aerial"]}},
+		"resist": {&"cold": 0.15, &"wet": 0.2}, "wears": {"extras": [&"shawl"], "salvage": [&"vanes"]}},
 	# A machine's own coolant loop, cut short and wound: it gives back what a
 	# body breathes out. The one answer to a land that drinks you.
 	&"condenser": {"name": "drip coil", "bulk": 2.0, "group": &"kit", "tier": &"mended",

@@ -76,6 +76,31 @@ func _hunt(sim: FightSim) -> void:
 	m.set_mood(MobState.CHASING, sim.now)
 
 
+## The sheet stands across the gap itself, edge to edge: the `locked` event
+## hands the way's two edges (from, to), each on the face of its rock, so the
+## drawn light spans the opening and never runs into the stone either side.
+func test_the_sheet_spans_the_gap_edge_to_edge() -> void:
+	var sim := _sim([&"mod_lock"] as Array[StringName])
+	_hunt(sim)
+	sim.hero.move = Vector2.RIGHT
+	var got: Dictionary = {}
+	for i in 90:
+		F.ms(sim, 16)
+		for e in sim.drain():
+			if e.type == &"locked":
+				got = e
+	check(not got.is_empty(), "the way is locked")
+	if got.is_empty():
+		return
+	var from: Vector2 = got.get("from", Vector2.INF)
+	var to: Vector2 = got.get("to", Vector2.INF)
+	var a: Vector2 = got.a
+	var b: Vector2 = got.b
+	near(from.distance_to(a), 0.7, 0.01, "one end on the face of the first rock")
+	near(to.distance_to(b), 0.7, 0.01, "the other on the face of the second")
+	near(from.distance_to(to), a.distance_to(b) - 1.4, 0.01, "and it spans only the opening")
+
+
 func test_the_lock_lets_go_after_its_seconds_and_wants_a_charge() -> void:
 	var calm := _sim([&"mod_lock"] as Array[StringName])
 	calm.hero.move = Vector2.RIGHT

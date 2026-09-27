@@ -5326,6 +5326,14 @@ const TESTIMONY_HOLDING := {"says": [
 ]}
 
 
+## What the reads app says under a network's trace for a cause the player keeps
+## feeding, by cause id (Interference.CAUSES). The machines' register. PLACEHOLDER
+## WORDS for the story-wright to replace; the ids are the contract.
+const READS_CAUSE := {
+	&"carried": "WHAT YOU CARRY HUMS",
+}
+
+
 # --- what was done to the player (channel 4: the player's own state) -----------
 #
 # Beats that land because of something that HAPPENED to the player or that they

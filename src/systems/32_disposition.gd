@@ -231,6 +231,26 @@ func _cool(delta: float) -> void:
 	var hidden := m.crouched and m.cover > 0.4 and unseen
 	interference.decay(passed / 60.0, hidden, m.spoofed,
 		Interference.network(game.world, sim.hero.pos), sim.hero.pos, unseen)
+	# A relic carried is heat, by the hour and by the relic (Interference
+	# `carried`, GEAR.md G9), on the network the player is in, after it cooled.
+	var relics := _relics_carried()
+	if relics > 0:
+		interference.raise(Interference.network(game.world, sim.hero.pos), &"carried", sim.hero.pos,
+			minutes, 0, float(relics) * passed / 60.0)
+
+
+## Relics in the loadout, and the one in the hand if it is not already there.
+func _relics_carried() -> int:
+	var ids: Array[StringName] = []
+	for s in game.systems:
+		if s.name == "54_gear":
+			var l: Loadout = s.get("loadout")
+			if l != null:
+				ids = l.all_ids()
+	var held: StringName = game.inventory.held if game.inventory != null else &""
+	if held != &"" and not ids.has(held):
+		ids.append(held)
+	return Gear.relics_in(ids)
 
 
 ## A clerk that got its reading away files the player (Body.filed, which is also
@@ -598,8 +618,13 @@ func _reads(_g: Game) -> Dictionary:
 			continue
 		scans.append({"id": StringName("m%d" % m.id), "kind": m.kind, "name": String(m.kind),
 			"pos": m.pos, "disposition": m.disposition, "note": _note(m)})
+	# What the player keeps feeding the file, named, so a warming region says why
+	# (StoryContent.READS_CAUSE, by cause id).
+	var causes: Array[String] = []
+	if _relics_carried() > 0:
+		causes.append(String(StoryContent.READS_CAUSE[&"carried"]))
 	return {"interference": interference.value(net),
-		"network": _network_name(net), "scans": scans, "asking": _asking}
+		"network": _network_name(net), "scans": scans, "asking": _asking, "causes": causes}
 
 
 ## What the slate calls the network the player is standing in. A region, so two
