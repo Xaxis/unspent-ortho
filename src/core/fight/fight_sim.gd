@@ -1213,7 +1213,9 @@ func _lock_behind(from: Vector2, to: Vector2) -> void:
 			if not FightRules.spend_charges(hero.inventory, FightKit.LOCK_CHARGES):
 				return
 			lock_walls.append(Vector4(at.x, at.y, gap * 0.5 + 0.3, now_s + FightKit.LOCK_SECONDS))
-			emit(&"locked", {"at": at, "a": a.pos, "b": b.pos})
+			# The way's own edges, on the face of each: what the sheet spans.
+			var across := (b.pos - a.pos).normalized()
+			emit(&"locked", {"at": at, "a": a.pos, "b": b.pos, "from": a.pos + across * a.solid, "to": b.pos - across * b.solid})
 			return
 
 
