@@ -31,7 +31,7 @@ static func grow(seed_value: int, t: Threshold) -> Pocket:
 			var i := y * l.size + x
 			var on_floor := l.is_floor(x, y)
 			w.level[i] = FLOOR_LEVEL if on_floor else 0
-			w.ground[i] = Ground.FLOOR
+			w.ground[i] = l.ground_at(x, y)
 			w.country[i] = t.land
 	w.spawn = l.inside()
 	for pr: Dictionary in l.props:

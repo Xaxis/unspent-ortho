@@ -122,6 +122,10 @@ func _stand_hatches() -> void:
 		var hm := load(k.hatch) as GDScript
 		var n: Node3D = hm.call(&"node", game.view.world_material())
 		n.position = game.world.to_3d(t.host)
+		# A door in a face (Threshold.of_face) stands on the floor it opens onto:
+		# its host is just inside the face, where the land is the top of the wall.
+		if t.host_code == Threshold.FACE:
+			n.position.y = game.world.to_3d(t.door).y
 		n.rotation.y = -t.rot
 		_hatches.add_child(n)
 		var c := hm.get_script_constant_map()
@@ -1344,6 +1348,18 @@ static func _room_light(kind: StringName) -> Light3D:
 		sp.spot_attenuation = 0.9
 		sp.spot_angle_attenuation = 1.4
 		l = sp
+	elif kind == &"seep":
+		# The day seeping down through a heap into a sealed room, by a hole
+		# rusted through its roof: a thin grey thread and a small pool, as strong
+		# as the hour on the CLOCK. A room shut from the sky has no sun to read
+		# the hour off (its lid takes the sun's energy to nothing), and the heap
+		# over a warren still lets the day through.
+		var sp := SpotLight3D.new()
+		sp.spot_range = 4.0
+		sp.spot_angle = 24.0
+		sp.spot_attenuation = 0.5
+		sp.spot_angle_attenuation = 1.8
+		l = sp
 	elif kind == &"sky":
 		# The day down a smoke hole: a narrow grey shaft onto the hearth, as
 		# strong as the hour (`_light_windows`), nothing at night.
@@ -1371,7 +1387,7 @@ static func _room_light(kind: StringName) -> Light3D:
 				o.omni_attenuation = 2.0
 		l = o
 	l.light_color = Color(1.0, 0.7, 0.4) if kind == &"lamp" else Color(0.74, 0.72, 0.9)
-	if kind == &"sky":
+	if kind == &"sky" or kind == &"seep":
 		l.light_color = Color(0.8, 0.84, 0.9)
 	if kind == &"working":
 		l.light_color = Color(1.0, 0.66, 0.26)
@@ -1429,6 +1445,8 @@ func _light_windows() -> void:
 				lamp.light_energy = 0.4
 			&"sky":
 				lamp.light_energy = 2.4 * day
+			&"seep":
+				lamp.light_energy = 5.0 * (1.0 - SkyLight.day_gone(game.sky.clock_hour))
 			_:
 				lamp.light_energy = lerpf(1.6, 0.25, day)
 	for i in _windows.size():
@@ -1722,7 +1740,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "door:container_warren", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
