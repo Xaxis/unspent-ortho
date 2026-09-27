@@ -374,6 +374,7 @@ func test_one_node_read_alone_agrees_with_the_plan() -> void:
 	var plan := GenSlots.plan(SEED, SIZE)
 	var w := plan.width
 	var told := 0
+	var stubs := 0
 	for q in 300:
 		var gx := int(Rng.hash01(SEED, q, 0, 77) * w)
 		var gy := int(Rng.hash01(SEED, q, 1, 77) * w)
@@ -388,5 +389,9 @@ func test_one_node_read_alone_agrees_with_the_plan() -> void:
 		eq(open[1], gy < w - 1 and plan.south[k] != 0, "node %d,%d south" % [gx, gy])
 		eq(open[2], gx > 0 and plan.east[k - 1] != 0, "node %d,%d west" % [gx, gy])
 		eq(open[3], gy > 0 and plan.south[k - w] != 0, "node %d,%d north" % [gx, gy])
+		check(absf(float(n.east_stub) - plan.east_stub[k]) < 1e-5, "node %d,%d east blind alley %.3f / %.3f" % [gx, gy, float(n.east_stub), plan.east_stub[k]])
+		check(absf(float(n.south_stub) - plan.south_stub[k]) < 1e-5, "node %d,%d south blind alley %.3f / %.3f" % [gx, gy, float(n.south_stub), plan.south_stub[k]])
+		stubs += 1 if float(n.east_stub) != 0.0 or float(n.south_stub) != 0.0 else 0
 		told += 1 if int(n.degree) >= 3 or bool(n.dead_end) else 0
 	gt(float(told), 50.0, "the sample holds rooms and dead ends: %d" % told)
+	gt(float(stubs), 30.0, "and blind alleys: %d" % stubs)

@@ -166,6 +166,11 @@ static func run(c: GenContext) -> void:
 ## labyrinth's walls are not a hill; and only on its own tiles, because a maze
 ## leaking over a border cuts the neighbour's ground to pieces. Let down across
 ## the last of its blend to the border, and in the last tiles to the sea.
+## Halvings the ground under a labyrinth is smoothed by before it is levelled:
+## 5 is about thirty tiles.
+const FLOOR_SMOOTH := 5
+
+
 static func lift_slots(c: GenContext) -> void:
 	var size := c.size
 	var n := c.n
@@ -193,13 +198,21 @@ static func lift_slots(c: GenContext) -> void:
 	var elev := c.elev
 	var blend := w.blend
 	var inland := c.inland
+	# THE FLOORS LIE LEVEL. Every small rise under a slot is a one-level step,
+	# and seen from above a floor of them is drawn as a survey's contour rings.
+	# The ground under the labyrinth is its own land smoothed over some thirty
+	# tiles and laid on the level it stands at, so a floor runs flat for a long
+	# way and steps where the land really falls.
+	var broad := GenFields.smooth(elev, size, FLOOR_SMOOTH)
 	GenFields.rows(size, func(y0: int, y1: int) -> void:
 		for i in range(y0 * size, y1 * size):
 			if amp[i] <= 0.0:
 				continue
-			var by := height[country[i]] * up[i] * (1.0 - smoothstep(0.3, 0.5, blend[i])) * smoothstep(1.5, 6.0, inland[i])
+			var hold := (1.0 - smoothstep(0.3, 0.5, blend[i])) * smoothstep(1.5, 6.0, inland[i])
+			var ground := lerpf(elev[i], floorf(broad[i]) + 0.5, hold)
+			var by := height[country[i]] * up[i] * hold
 			lift[i] = by
-			elev[i] = minf(elev[i] + by, MAX_LEVEL + 0.99)
+			elev[i] = minf(ground + by, MAX_LEVEL + 0.99)
 	)
 	c.slot_lift = lift
 

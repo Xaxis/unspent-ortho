@@ -15,7 +15,7 @@ extends RefCounted
 ## whole network is connected, it has the dead ends a maze needs, and every
 ## block is dealt from its own seed: a streamed section can dig its own blocks.
 ##
-## Floors are 3 to 6 tiles wide; where three or more meet the node opens into a
+## Floors are 4.4 to 6.2 tiles wide; where three or more meet the node opens into a
 ## room. The tile position is warped before it is read, so the walls wander and
 ## no floor runs straight along a grid line. The wall is the step from floor to
 ## plateau in one tile: a single face.
@@ -45,7 +45,7 @@ const RAMP_RUN := 0.7
 ## A blind alley: where two neighbouring nodes are not joined, a floor dug from
 ## one of them part of the way toward the other and stopped, this often. The
 ## tree's own dead ends are too few for a maze on their own.
-const STUB := 0.3
+const STUB := 0.45
 ## How far toward the other node a blind alley runs.
 const STUB_MIN := 0.4
 const STUB_SPAN := 0.25
@@ -280,6 +280,9 @@ static func _open(s: int, w: int, gx: int, gy: int, side: int, cache: Dictionary
 ##   dead_end one floor in; room: three or more meet; ramp: a dead end that
 ##            climbs to the plateau
 ##   radius   the floor's radius round the node, in tiles
+##   east_stub, south_stub  the blind alley on the undug floor east / south of
+##            it, as `plan` holds it: the share of the way it runs, positive from
+##            this node and negative from the other, 0 for none
 static func node(s: int, size: int, gx: int, gy: int) -> Dictionary:
 	var w := ceili(float(size) / PITCH) + 1
 	var cache := {}
@@ -308,7 +311,36 @@ static func node(s: int, size: int, gx: int, gy: int) -> Dictionary:
 		"room": room,
 		"ramp": deg == 1 and Rng.hash01(s, gx, gy, 3406) < RAMP_SHARE,
 		"radius": ROOM_MIN + Rng.hash01(s, gx, gy, 3405) * ROOM_SPAN if room else widest,
+		"east_stub": _stub(s, w, gx, gy, 0, cache),
+		"south_stub": _stub(s, w, gx, gy, 1, cache),
 	}
+
+
+## Whether node (gx, gy) is a dead end that ramps up, read from its own floors.
+static func _ramp_at(s: int, w: int, gx: int, gy: int, cache: Dictionary) -> bool:
+	if gx < 0 or gy < 0 or gx >= w or gy >= w:
+		return false
+	var deg := 0
+	for q: bool in [_open(s, w, gx, gy, 0, cache), _open(s, w, gx, gy, 1, cache),
+			_open(s, w, gx - 1, gy, 0, cache), _open(s, w, gx, gy - 1, 1, cache)]:
+		deg += 1 if q else 0
+	return deg == 1 and Rng.hash01(s, gx, gy, 3406) < RAMP_SHARE
+
+
+## The blind alley on the undug floor east (side 0) or south (1) of node (gx,
+## gy), as `plan` deals it: none where that floor is dug, and none beside a
+## ramp (a pit half way up it).
+static func _stub(s: int, w: int, gx: int, gy: int, side: int, cache: Dictionary) -> float:
+	if (side == 0 and gx >= w - 1) or (side == 1 and gy >= w - 1):
+		return 0.0
+	if _open(s, w, gx, gy, side, cache):
+		return 0.0
+	if Rng.hash01(s, gx, gy, 3450 + side) >= STUB:
+		return 0.0
+	if _ramp_at(s, w, gx, gy, cache) or _ramp_at(s, w, gx + 1 - side, gy + side, cache):
+		return 0.0
+	var f := STUB_MIN + Rng.hash01(s, gx, gy, 3452 + side) * STUB_SPAN
+	return -f if Rng.hash01(s, gx, gy, 3454 + side) < 0.5 else f
 
 
 static func _root(root: Dictionary, k: int) -> int:

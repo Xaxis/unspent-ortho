@@ -290,8 +290,8 @@ const TYPICAL_OF_LANDMARK := 16.0
 ## as typical is measured off the world every time it is asked.
 ## A slot floor of landscape `cc`, nearest its typical ground: the middle of a
 ## dug floor between two lattice nodes of the labyrinth (GenSlots.node, read
-## node by node, never the whole world), neither of them a ramp, at the lowest
-## tile within two of it (the warp moves the ground off the plan's line).
+## node by node, never the whole world), neither of them a ramp, at the
+## first tile within two of it with the floor level for two all round.
 ## Vector2(-1, -1) if none within `SLOT_REACH` nodes.
 static func slot_sample(w: WorldData, cc: int) -> Vector2:
 	var from := typical_sample(w, cc)
@@ -317,19 +317,27 @@ static func slot_sample(w: WorldData, cc: int) -> Vector2:
 					var mid: Vector2 = ((a.centre as Vector2) + (b.centre as Vector2)) * 0.5
 					if BiomeRegistry.at(w, mid).index != cc:
 						continue
-					var best := Vector2(-1, -1)
-					var low := 1 << 20
+					# A spot with the floor level all round it, so a body stood here
+					# has neither a pit nor a step within two tiles.
 					for oy in range(-2, 3):
 						for ox in range(-2, 3):
 							var tx := int(mid.x) + ox
 							var ty := int(mid.y) + oy
-							var l := w.level_at(tx, ty)
-							if l > 0 and l < low:
-								low = l
-								best = Vector2(tx + 0.5, ty + 0.5)
-					if best.x >= 0.0:
-						return best
+							if _level_round(w, tx, ty, 2):
+								return Vector2(tx + 0.5, ty + 0.5)
 	return Vector2(-1, -1)
+
+
+## Whether every tile within `r` of (x, y) stands at (x, y)'s own level.
+static func _level_round(w: WorldData, x: int, y: int, r: int) -> bool:
+	var l := w.level_at(x, y)
+	if l <= 0:
+		return false
+	for oy in range(-r, r + 1):
+		for ox in range(-r, r + 1):
+			if w.level_at(x + ox, y + oy) != l:
+				return false
+	return true
 
 
 ## How many lattice rings out `slot_sample` looks from the typical ground.

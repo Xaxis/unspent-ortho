@@ -1,5 +1,5 @@
 # The middens' slot canyons (GenSlots, GEN 34): from above at noon, then on a
-# slot floor over the shoulder, turned four ways, walls on both hands.
+# slot floor over the shoulder, held along the slot, walls on both hands.
 #   tools/tour.sh tours/lands_slots.tour --seed=1 --weather=clear:0
 coast calm
 hour 12

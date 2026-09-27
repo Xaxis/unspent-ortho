@@ -196,6 +196,7 @@ static func run(c: GenContext) -> void:
 		t.sea_steps = sea_steps
 		t.marsh = marsh
 		t.levels = level
+		t.lift = c.slot_lift
 		t.blends = blend
 		for y in range(y0, y1):
 			for x in size:

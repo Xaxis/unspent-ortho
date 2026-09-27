@@ -61,10 +61,14 @@ func test_grounds_are_washes_not_salad() -> void:
 				if _line(g):
 					continue
 				field[c] += 1.0
-				var a := ground[i - 1]
-				var b := ground[i + 1]
-				var u := ground[i - size]
-				var d := ground[i + size]
+				# A change of ground across a wall two levels or more high is the
+				# wall, not salad: a slot labyrinth's floor and crust meet on every
+				# wall there is, and a cliff's foot and its top are two places.
+				var l := w.level[i]
+				var a := ground[i - 1] if absi(w.level[i - 1] - l) < 2 else g
+				var b := ground[i + 1] if absi(w.level[i + 1] - l) < 2 else g
+				var u := ground[i - size] if absi(w.level[i - size] - l) < 2 else g
+				var d := ground[i + size] if absi(w.level[i + size] - l) < 2 else g
 				if (a != g and not _line(a)) or (b != g and not _line(b)) or (u != g and not _line(u)) or (d != g and not _line(d)):
 					edge[c] += 1.0
 		var specks := PackedFloat32Array()

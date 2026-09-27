@@ -36,7 +36,7 @@ static func make() -> BiomeDef:
 	# The rest is kept low so the floors lie nearly flat and the walls stand as
 	# one face each: no terraces to stair them, little swell to tilt them.
 	d.relief = {
-		&"base": 5.5, &"hills": 0.5, &"ridge": 0.2, &"near": 0.3, &"terrace": 0.0, &"valley": 3.0,
+		&"base": 5.5, &"hills": 0.0, &"ridge": 0.0, &"near": 0.0, &"terrace": 0.0, &"valley": 3.0,
 		&"rain": 0.6, &"temp": 0.1, &"moist": 0.25, &"cliff": 1.0, &"slots": 6.0,
 	}
 	d.border_elevation = 1.2
@@ -137,6 +137,11 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	# no walls to come off there.
 	if t.own_def.param(&"slots") <= 0.0:
 		return Ground.SWARF
+	# THE MAZE READS FROM ABOVE AS TWO GROUNDS: every plateau top (the lift's
+	# own mask, GenRelief.lift_slots) is the refuse packed to a pale crust, and
+	# every floor and the lower half of every ramp the dark filings.
+	if not t.lift.is_empty():
+		return Ground.ROCK if t.lift[i] >= t.own_def.param(&"slots") * 0.5 else Ground.SWARF
 	if f & BiomeSurface.APRON != 0:
 		return Ground.SCREE
 	if f & BiomeSurface.BANK != 0:
