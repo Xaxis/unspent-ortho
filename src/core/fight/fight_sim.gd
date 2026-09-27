@@ -1373,13 +1373,16 @@ func gap_crossed(from: Vector2, to: Vector2, most: float) -> Dictionary:
 ## mirror. A gap the player passes while a sealing body hunts them within
 ## `within` tiles is sprayed shut BEHIND them: the body stands still for `tell`
 ## ms facing the gap (MobState.seal_until), and then a curtain of lime stands
-## across it for `lasts` s. A curtain stops the PLAYER and nothing else, as the
+## across it for `lasts` s, telling CURTAIN_CRUMBLE_MS before it falls. A curtain stops the PLAYER and nothing else, as the
 ## lock stops machines and nothing else; `breaks` heavy blows break one; a body
 ## keeps `keep` standing, and the oldest crumbles when it raises one more. A
 ## chase is the cave being closed round you, and the answer is choosing where.
 ## Each {id, at, from, to, r, by (mob id), up, rise_at, until, hits}.
 var curtains: Array[Dictionary] = []
 var _curtain_ids := 0
+## How long before a curtain falls it tells it: it cracks and sheds, so the
+## player reads the way about to open (`curtain_crumbling`).
+const CURTAIN_CRUMBLE_MS := 1500.0
 
 
 ## What a row's `seals` says, filled in: {} when it does not seal.
@@ -1441,7 +1444,8 @@ func _curtains_beat() -> void:
 			var sealing := seals_of(m.row)
 			c.up = true
 			c.until = now + float(sealing.lasts) * 1000.0
-			emit(&"curtain_up", {"id": c.id, "mob": m, "at": c.at, "from": c.from, "to": c.to, "r": c.r})
+			c.crumbling = false
+			emit(&"curtain_up", {"id": c.id, "mob": m, "at": c.at, "from": c.from, "to": c.to, "r": c.r, "ms": float(sealing.lasts) * 1000.0})
 			var standing: Array[Dictionary] = []
 			for o: Dictionary in curtains:
 				if bool(o.up) and int(o.by) == m.id:
@@ -1454,6 +1458,9 @@ func _curtains_beat() -> void:
 		if now >= float(c.until):
 			curtains.remove_at(i)
 			emit(&"curtain_down", {"id": c.id, "at": c.at, "broken": false})
+		elif not bool(c.get("crumbling", false)) and now >= float(c.until) - CURTAIN_CRUMBLE_MS:
+			c.crumbling = true
+			emit(&"curtain_crumbling", {"id": c.id, "at": c.at, "ms": float(c.until) - now})
 
 
 ## The player's step, held out of any standing curtain: the "only closer is

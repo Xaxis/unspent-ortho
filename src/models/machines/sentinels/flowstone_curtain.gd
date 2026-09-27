@@ -5,35 +5,53 @@ extends RefCounted
 ## than the way is wide, each hung with drips at its hem and standing in a rim of
 ## the lime that ran off it.
 ##
-## DRAWN AS THE CAVE'S OWN WALL: its vertices carry the cave strata's mark
-## (GroundColors.STRATA + STRATA_CAVE), so world.gdshader lays the wall's drapes,
-## its wet streaks and the lamp's sheen on it, and so it reads as the flowstone the
-## halls are hung with and not as a painted slab. And as land it is never opened
-## by the sight cut (mark_land): it is the thing the player must see in the way.
+## HELD IN SIGHT: its vertices carry GroundColors.HELD, plain matter no cut opens
+## (world.gdshader), so it stands whole in the line from the eye to the player: it
+## is the thing the player must see in the way. Not the cave wall's own mark: the
+## wall's shader paints its dark rock and terrace lips over whatever it is given,
+## and a curtain drawn with it read as old wall.
+##
+## And drawn at a STAGE of its life, so the player reads a
+## fresh curtain from the cave and how long it has: FRESH, lime just set, bright,
+## cold-white and wet (40_fight hangs a glisten light on it too); DRYING, duller;
+## DRY, dull, greyed and cracked, in the last of its time, before it crumbles.
+const FRESH := 0
+const DRYING := 1
+const DRY := 2
 
 ## How tall it stands: well over a person, under most of a hall's roof (4.5).
 const H := 3.1
-## The wall's mark, on every vertex.
-const MARK := GroundColors.STRATA + GroundColors.STRATA_CAVE
+## Held in sight, on every vertex.
+const MARK := GroundColors.HELD
 
 
-static func _lime() -> Array:
+static func _lime(stage: int) -> Array:
 	var a := float(MARK) / 255.0
+	var ramp: Array
+	match stage:
+		FRESH:
+			# Wet lime: the palest the ramp holds, cooled toward the rime's white.
+			ramp = [Palette.LINEN[4], Palette.RIME[5], Palette.LINEN[5], Palette.RIME[5], Palette.LINEN[5], Palette.RIME[5]]
+		DRYING:
+			ramp = [Palette.LINEN[3], Palette.LINEN[4], Palette.LINEN[5], Palette.SAND[5], Palette.LINEN[4], Palette.LINEN[5]]
+		_:
+			# Dry and done: the lime gone to grey chalk.
+			ramp = [Palette.LINEN[2], Palette.LINEN[3], Palette.LINEN[3], Palette.SAND[4], Palette.LINEN[2], Palette.LINEN[3]]
 	var out := []
-	for c: Color in [Palette.LINEN[3], Palette.LINEN[4], Palette.LINEN[5], Palette.SAND[5], Palette.LINEN[4], Palette.LINEN[5]]:
+	for c: Color in ramp:
 		out.append(Color(c.r, c.g, c.b, a))
 	return out
 
 
 ## The curtain across `from`..`to` (world space, ground height), local to their
 ## middle; `seed_value` varies the drapes, one curtain from the next.
-static func mesh(from: Vector3, to: Vector3, seed_value: int) -> ArrayMesh:
+static func mesh(from: Vector3, to: Vector3, seed_value: int, stage: int = FRESH) -> ArrayMesh:
 	var mid := (from + to) * 0.5
 	var a := from - mid
 	var b := to - mid
 	a.y = 0.0
 	b.y = 0.0
-	var lime := _lime()
+	var lime := _lime(stage)
 	var k := FoundKit.matter_kit(Ink.NONE)
 	var across := b - a
 	var out := across.normalized().cross(Vector3.UP)
@@ -48,6 +66,17 @@ static func mesh(from: Vector3, to: Vector3, seed_value: int) -> ArrayMesh:
 		var prof: Array[Vector2] = [Vector2(r * 1.8, 0.0), Vector2(r * 1.25, top * 0.12), Vector2(r * 1.0, top * 0.45),
 			Vector2(r * 0.85, top * 0.8), Vector2(r * 0.55, top * 0.96), Vector2(0.0, top)]
 		FoundKit.lathe(k, p, Vector3.UP, prof, 7, lime, Rng.hash01(seed_value, i, 73) * TAU)
+		# Dry, it has cracked: dark splits run down the drapes, broken and uneven.
+		if stage == DRY:
+			var dark := Color(Palette.LINEN[0].r, Palette.LINEN[0].g, Palette.LINEN[0].b, float(MARK) / 255.0)
+			for q in 2:
+				# Out on both faces of the curtain, so a crack reads from either side.
+				var ang := (Rng.hash01(seed_value, i * 3 + q, 81) - 0.5) * 1.4 + (PI if q == 1 else 0.0)
+				var face := out.rotated(Vector3.UP, ang)
+				var y := top * (0.1 + Rng.hash01(seed_value, i * 3 + q, 82) * 0.4)
+				var len := top * (0.25 + Rng.hash01(seed_value, i * 3 + q, 83) * 0.35)
+				var skew := face.cross(Vector3.UP) * (Rng.hash01(seed_value, i * 3 + q, 84) - 0.5) * 0.2
+				FoundKit.tbar(k, p + face * r * 1.05 + Vector3(0, y, 0), p + face * r * 0.95 + Vector3(0, y + len, 0) + skew, 0.04, 0.02, 4, [dark, dark, dark, dark, dark, dark])
 		# Its hem: drips hung off the swell a hand up, and nubs grown under them.
 		for j in 2:
 			var ang := Rng.hash01(seed_value, i * 7 + j, 76) * TAU

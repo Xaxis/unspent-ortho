@@ -144,12 +144,24 @@ func test_it_keeps_two_standing_and_the_oldest_crumbles() -> void:
 
 func test_a_curtain_falls_after_its_time() -> void:
 	var sim := _gaps([30.5])
-	_warden(sim, Vector2(14.5, 20.5))
+	var m := _warden(sim, Vector2(14.5, 20.5))
 	_walk(sim, Vector2.RIGHT, 1600)
 	F.ms(sim, 1600)
 	eq(sim.curtains.size(), 1, "a curtain stands")
+	# It stands its time whether its warden is about or not: taken off here, so
+	# the fight it would make does not end the test.
+	sim.remove_mob(m)
 	sim.drain()
-	F.ms(sim, 25500)
+	# It tells before it goes: the crumble, a moment before the way opens.
+	F.ms(sim, 22800)
+	var ev := sim.drain()
+	eq(F.count(ev, &"curtain_crumbling"), 0, "no crumble while it has time")
+	eq(F.count(ev, &"curtain_down"), 0, "and it stands")
+	F.ms(sim, 1200)
+	ev = sim.drain()
+	eq(F.count(ev, &"curtain_crumbling"), 1, "it crumbles a moment before its time is up")
+	eq(F.count(ev, &"curtain_down"), 0, "still standing as it crumbles")
+	F.ms(sim, 1500)
 	eq(F.count(sim.drain(), &"curtain_down"), 1, "and falls after its time")
 	eq(sim.curtains.size(), 0, "and is gone")
 

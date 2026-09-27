@@ -142,6 +142,8 @@ func _process(delta: float) -> void:
 		game.camera.snap_to(_focus)
 	var frozen := sim.hold
 	game.player.sync_view(0.0 if frozen else delta, frozen)
+	if not _curtains.is_empty():
+		_age_curtains()
 	game.player.draw_swing(sim.now)
 	if _heavy_let_go >= 0.0 and sim.now >= _heavy_let_go:
 		_let_go()
@@ -296,10 +298,44 @@ func _fell(e: Dictionary) -> void:
 ## THE WARDEN'S CURTAINS (FightSim.curtains), drawn. The tell: a jet of lime
 ## from its crown to the gap and a ring on the ground there, for as long as it
 ## takes, so the player reads which way is about to close and can still get back
-## through. Up: the flowstone curtain standing across the way. A crack: lime
-## knocked off it. Down: broken, a burst of it; its time up, it slumps away.
+## through. Up: the flowstone curtain standing across the way, and it ages where
+## the player can read it: FRESH (wet and bright, a cold glisten on it) for the
+## first CURTAIN_FRESH of its time, DRYING to CURTAIN_DRY, then DRY, greyed and
+## cracked. The crumble: it shakes and sheds, a moment before it goes. A crack:
+## lime knocked off it. Down: broken, a burst of it; its time up, it slumps away.
 const FlowstoneCurtain := preload("res://src/models/machines/sentinels/flowstone_curtain.gd")
+const CURTAIN_FRESH := 0.3
+const CURTAIN_DRY := 0.7
+## Each standing curtain: {node, from, to, seed, up (sim ms), ms, stage, crumbling, rest}.
 var _curtains := {}
+
+
+## Its stage at this share of its time.
+static func curtain_stage(share: float) -> int:
+	if share < CURTAIN_FRESH:
+		return FlowstoneCurtain.FRESH
+	if share < CURTAIN_DRY:
+		return FlowstoneCurtain.DRYING
+	return FlowstoneCurtain.DRY
+
+
+## Every standing curtain drawn at the stage its age says, shaking as it crumbles.
+func _age_curtains() -> void:
+	for id: int in _curtains:
+		var c: Dictionary = _curtains[id]
+		var node: MeshInstance3D = c.node
+		if not is_instance_valid(node):
+			continue
+		var stage := curtain_stage((sim.now - float(c.up)) / maxf(1.0, float(c.ms)))
+		if stage != int(c.stage):
+			c.stage = stage
+			node.mesh = FlowstoneCurtain.mesh(c.from, c.to, int(c.seed), stage)
+		var rest: Vector3 = c.rest
+		if bool(c.crumbling):
+			var t := sim.now * 0.05
+			node.position = rest + Vector3(sin(t * 7.3), 0.0, cos(t * 5.9)) * 0.035
+		else:
+			node.position = rest
 
 
 var _curtain_seen := {}
@@ -320,21 +356,36 @@ func _curtain(e: Dictionary) -> void:
 			Events.sfx.emit(&"splash", _at3(at))
 		&"curtain_up":
 			var node := MeshInstance3D.new()
-			node.mesh = FlowstoneCurtain.mesh(_at3(e.from), _at3(e.to), int(e.id) * 97 + game.world.seed_value)
+			var seed_value := int(e.id) * 97 + game.world.seed_value
+			node.mesh = FlowstoneCurtain.mesh(_at3(e.from), _at3(e.to), seed_value, FlowstoneCurtain.FRESH)
 			node.material_override = game.view.world_material()
 			# Round the middle of the way's own edges, where the mesh is built about.
-			node.position = (_at3(e.from) + _at3(e.to)) * 0.5
+			var rest := (_at3(e.from) + _at3(e.to)) * 0.5
+			node.position = rest
 			fx.add_child(node)
-			_curtains[int(e.id)] = node
+			var ms := float(e.get("ms", 25000.0))
+			_curtains[int(e.id)] = {"node": node, "from": _at3(e.from), "to": _at3(e.to), "seed": seed_value, "up": sim.now,
+				"ms": ms, "stage": FlowstoneCurtain.FRESH, "crumbling": false, "rest": rest}
 			MobFx.puffs(fx, _at3(at, 1.0), Vector2.ZERO, lime, 5, 0.8, int(e.id))
+			# Wet: a cold glisten on the fresh lime for as long as it is fresh, so a
+			# new curtain stands out of the old wall round it.
+			MobFx.glow(fx, _at3(at, 1.6) + (_at3(e.to) - _at3(e.from)).cross(Vector3.UP).normalized() * 0.9,
+				Palette.RIME[5], 2.6, ms / 1000.0 * CURTAIN_FRESH)
+		&"curtain_crumbling":
+			var c: Dictionary = _curtains.get(int(e.id), {})
+			if not c.is_empty():
+				c.crumbling = true
+			MobFx.puffs(fx, _at3(at, 1.8), Vector2.ZERO, Palette.LINEN[3], 6, 0.7, int(e.id) + 11)
+			MobFx.puffs(fx, _at3(at, 0.4), Vector2.ZERO, Palette.LINEN[3], 4, 0.9, int(e.id) + 13)
+			Events.sfx.emit(&"break", _at3(at))
 		&"curtain_cracked":
 			MobFx.puffs(fx, _at3(at, 1.1), Vector2.ZERO, lime, 4, 0.6, int(e.id) + int(e.hits) * 7)
 			Events.sfx.emit(&"break", _at3(at))
 		&"curtain_down":
-			var node: Node3D = _curtains.get(int(e.id), null)
+			var c: Dictionary = _curtains.get(int(e.id), {})
 			_curtains.erase(int(e.id))
-			if node != null and is_instance_valid(node):
-				node.queue_free()
+			if not c.is_empty() and is_instance_valid(c.node):
+				(c.node as Node).queue_free()
 			var broken := bool(e.get("broken", false))
 			MobFx.puffs(fx, _at3(at, 0.9), Vector2.ZERO, lime, 8 if broken else 3, 1.0 if broken else 0.6, int(e.id) + 3)
 			if broken:
@@ -535,7 +586,7 @@ func _handle(events: Array[Dictionary]) -> void:
 					MobFx.line(fx, _at3(a, y), _at3(b, y), Palette.BRINE[5 - mini(k, 3)], FightKit.LOCK_SECONDS)
 				MobFx.glow(fx, _at3((a + b) * 0.5, 0.9), Palette.BRINE[4], maxf(1.2, a.distance_to(b)), FightKit.LOCK_SECONDS)
 				Events.sfx.emit(&"hit_plate", _at3(e.at))
-			&"curtain_tell", &"curtain_up", &"curtain_cracked", &"curtain_down":
+			&"curtain_tell", &"curtain_up", &"curtain_cracked", &"curtain_crumbling", &"curtain_down":
 				_curtain(e)
 			&"stripped":
 				# Its working part comes away in the hands, and into the creel.
@@ -764,7 +815,7 @@ func tour_seen(what: StringName) -> bool:
 		# On the fight's own clock: a tell lasts its sim time however slow the frame.
 		&"curtain_tell":
 			return sim.now - float(_curtain_seen.get(what, -INF)) < 1400.0
-		&"curtain_up", &"curtain_cracked", &"curtain_down":
+		&"curtain_up", &"curtain_cracked", &"curtain_crumbling", &"curtain_down":
 			return sim.now - float(_curtain_seen.get(what, -INF)) < 1000.0
 	return false
 

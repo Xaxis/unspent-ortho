@@ -30,12 +30,15 @@ shot 02-the-curtain-stands with shoulder
 tap lamp
 wait 0.6
 shot 02b-by-the-lamp with shoulder,lamp
-near gap_far
-wait 0.4
-press swing 0.7
-await curtain_cracked 3
-wait 0.4
-press swing 0.7
-await curtain_down 3
+# It ages where the player can read it: duller as it dries, then greyed and
+# cracked, then it shakes and sheds before the way opens.
+wait 7.0
+shot 03-drying with shoulder,lamp
+wait 9.0
+shot 04-dry-and-cracked with shoulder,lamp
+await curtain_crumbling 9
 wait 0.3
-shot 03-broken-through with shoulder
+shot 05-it-crumbles with shoulder,lamp
+await curtain_down 3
+wait 0.5
+shot 06-the-way-open with shoulder,lamp
