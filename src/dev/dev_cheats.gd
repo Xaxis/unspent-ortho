@@ -75,7 +75,7 @@ static func settle(w: WorldData, name: String) -> Vector2:
 ## each REGION, and the most evenly mixed tile of each BORDER.
 ##
 ## The landscape half is `GenPlaces.country_sample` exactly — same range, stride,
-## guard, score and tie-break — so the row and the tools' own `--place=coast`
+## guard, room (`GenPlaces.has_room`), score and tie-break — so the row and the tools' own `--place=coast`
 ## land on the same tile. Doing it once for every landscape at once is the whole
 ## saving: the score is 32 lookups a cell and the cell walk is what costs, not
 ## the landscape being asked about.
@@ -110,10 +110,14 @@ static func _survey(w: WorldData) -> Dictionary:
 						score += 1.0
 			score += Rng.hash01(w.seed_value, x, y, 7) * 0.5
 			var here := Vector2(x + 0.5, y + 0.5)
-			if score > float(land.get(c1, {}).get("score", -1.0)):
-				land[c1] = {"score": score, "pos": here}
+			var wins_land := score > float(land.get(c1, {}).get("score", -1.0))
 			var rid := w.region_at(x, y)
-			if rid >= 0 and score > float(region.get(rid, {}).get("score", -1.0)):
+			var wins_region := rid >= 0 and score > float(region.get(rid, {}).get("score", -1.0))
+			if not (wins_land or wins_region) or not GenPlaces.has_room(w, solid, x, y):
+				continue
+			if wins_land:
+				land[c1] = {"score": score, "pos": here}
+			if wins_region:
 				region[rid] = {"score": score, "pos": here}
 	return {"land": land, "region": region, "border": border}
 
