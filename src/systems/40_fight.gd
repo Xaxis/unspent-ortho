@@ -917,8 +917,10 @@ func _on_outcome(e: Dictionary) -> void:
 ## `near gap`: GAP_BACK before the nearest way between two solid things a warden
 ## seals (the curtains' own gap test, FightSim.gap_crossed), facing through it;
 ## `walkto gap` walks through it and on; `near gap_far` stands just beyond it,
-## turned back to face it.
-const TOUR_PLACES: Array[String] = ["bag", "gap", "gap_far"]
+## turned back to face it, and `near gap_view` further back, for a frame of it.
+const TOUR_PLACES: Array[String] = ["bag", "gap", "gap_far", "gap_view"]
+## `near gap_view`: back from the far side far enough to hold a curtain whole.
+const GAP_VIEW := 3.4
 const GAP_BACK := 2.5
 ## The way last found for `near gap`: {at, n (from the near side toward the far)}.
 var _gap := {}
@@ -931,8 +933,8 @@ func tour_place(what: String) -> Vector2:
 		if _gap.is_empty() or (_gap.at as Vector2).distance_to(game.player.pos) > 10.0:
 			_gap = _nearest_gap()
 		return (_gap.at as Vector2) - (_gap.n as Vector2) * GAP_BACK if not _gap.is_empty() else Vector2.INF
-	if what == "gap_far":
-		return (_gap.at as Vector2) + (_gap.get("d", _gap.n) as Vector2) * 1.6 if not _gap.is_empty() else Vector2.INF
+	if what == "gap_far" or what == "gap_view":
+		return _gap_stand(what) if not _gap.is_empty() else Vector2.INF
 	var heap := _last_bag()
 	if what != "bag" or heap == null:
 		return Vector2.INF
@@ -942,8 +944,8 @@ func tour_place(what: String) -> Vector2:
 func tour_face(what: String) -> float:
 	if what == "gap" and not _gap.is_empty():
 		return (_gap.n as Vector2).angle()
-	if what == "gap_far" and not _gap.is_empty():
-		return (-(_gap.get("d", _gap.n) as Vector2)).angle()
+	if (what == "gap_far" or what == "gap_view") and not _gap.is_empty():
+		return ((_gap.at as Vector2) - _gap_stand(what)).angle()
 	var heap := _last_bag()
 	if what != "bag" or heap == null:
 		return NAN
@@ -967,6 +969,17 @@ func tour_route(what: String) -> PackedVector2Array:
 	_gap.d = d
 	# A step or two past it, so the tell is still going when the walk is done.
 	return PackedVector2Array([at, at + d * 1.2])
+
+
+## Where `gap_far` and `gap_view` stand: out on the side the player came through
+## to, and for the view a step to one side too, so the player's own back is not
+## in front of the curtain over the shoulder.
+func _gap_stand(what: String) -> Vector2:
+	var at: Vector2 = _gap.at
+	var d: Vector2 = _gap.get("d", _gap.n)
+	if what == "gap_far":
+		return at + d * 1.6
+	return at + d * GAP_VIEW - d.orthogonal() * 1.6
 
 
 ## The nearest way a warden seals, with open ground a walk long on both sides.

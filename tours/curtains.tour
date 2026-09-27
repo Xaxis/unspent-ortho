@@ -24,9 +24,14 @@ tap shoulder
 await shoulder 3
 shot 01-it-sprays-the-way-shut with shoulder,mob:sentinel.limestone_caves
 await curtain_up 3
-near gap_far
+near gap_view
 wait 0.8
 shot 02-the-curtain-stands with shoulder
+tap lamp
+wait 0.6
+shot 02b-by-the-lamp with shoulder,lamp
+near gap_far
+wait 0.4
 press swing 0.7
 await curtain_cracked 3
 wait 0.4
