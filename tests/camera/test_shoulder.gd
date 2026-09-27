@@ -1048,3 +1048,58 @@ func test_sight_is_stopped_by_what_is_drawn_and_by_the_ground() -> void:
 	check(Shoulder.sees(a, b, flat, [aside] as Array[PackedFloat32Array]), "a wall a quarter tile off the line: seen")
 	var hill := func(p: Vector2) -> float: return 2.0 if p.x > 3.0 and p.x < 5.0 else 0.0
 	check(not Shoulder.sees(a, b, hill, none), "a rise between: not seen")
+
+
+## A band of rock behind the player, across the view, from `near_d` to `far_d`
+## tiles back and up to `top` over the ground the player stands on: the line
+## from `a` to `b` is walked finely and is clear up to the first point inside it.
+static func _rock_behind(cam: CameraRig, back: Vector3, near_d: float, far_d: float, top: float) -> Callable:
+	return func(a: Vector3, b: Vector3) -> float:
+		var feet := cam.get("_smoothed") as Vector3
+		var clear := 0.0
+		for i in range(1, 61):
+			var t := float(i) / 60.0
+			var q := a.lerp(b, t)
+			var d := (q - feet).dot(back)
+			if d > near_d and d < far_d and q.y < feet.y + top:
+				return clear
+			clear = t
+		return 1.0
+
+
+## A ROCK LOWER THAN THE EYE BEHIND THE PLAYER IS LOOKED OVER, NOT STOOD IN FRONT
+## OF. Landed under the caves' roof (tours/glide-under-roof.tour, frames 03-04) a
+## copper ore rock on the terrace step behind crossed the line from the shoulder
+## to the eye at 3.8 with its top at 4.05 and the eye at 4.9: the rig pulled the
+## eye in to the least it allows and the frame was the side of a face. The eye
+## rises over it instead, keeps its distance, and looks down at the player.
+func test_a_rock_lower_than_the_eye_behind_is_looked_over() -> void:
+	var g := await _make()
+	var cam := g.camera
+	cam.shoulder = true
+	cam.side_room = func(_a: Vector3, _b: Vector3) -> float: return 1.0
+	cam.sight_room = func(_a: Vector3, _b: Vector3) -> float: return 1.0
+	_step(cam, 60)
+	var feet := cam.get("_smoothed") as Vector3
+	var open_eye := cam.global_position
+	var open_back := Vector2(open_eye.x - feet.x, open_eye.z - feet.z).length()
+	var eye_over := open_eye.y - feet.y
+	# Just in front of the eye, its top under the eye but over the line that
+	# climbs to it from the shoulder.
+	var behind := Vector3(open_eye.x - feet.x, 0.0, open_eye.z - feet.z).normalized()
+	cam.sight_room = _rock_behind(cam, behind, open_back - 1.4, open_back - 0.4, eye_over - 0.1)
+	_step(cam, 120)
+	var eye := cam.global_position
+	var back := Vector2(eye.x - feet.x, eye.z - feet.z).length()
+	gt(back, open_back * 0.8, "the eye keeps its distance over the rock (%.2f of %.2f)" % [back, open_back])
+	gt(eye.y - feet.y, eye_over, "by standing higher")
+	var head := feet + Vector3(0.0, Shoulder.HEAD_UP, 0.0)
+	var h := cam.get_viewport().get_visible_rect().size.y
+	var y := cam.unproject_position(head).y / h
+	check(not cam.is_position_behind(head) and y > 0.2 and y < 0.8, "and still has the player in the frame (head at %.2f)" % y)
+	# A rock taller than any lift is still stood in front of.
+	cam.sight_room = _rock_behind(cam, behind, open_back - 1.4, open_back - 0.4, eye_over + 3.0)
+	_step(cam, 120)
+	eye = cam.global_position
+	lt(Vector2(eye.x - feet.x, eye.z - feet.z).length(), open_back - 1.2, "a wall taller than the eye can rise still pulls it in")
+	_done()

@@ -172,6 +172,30 @@ const STEP_LEN := 0.15
 static func steps_for(span: float) -> int:
 	return clampi(ceili(span / STEP_LEN), 4, STEPS)
 const CLEAR := 0.3
+## A LOW THING BEHIND IS LOOKED OVER; A TALL ONE IS STOOD IN FRONT OF. Before the
+## eye is pulled in along its line, it is tried raised by `OVER_STEP` at a time up
+## to `OVER_MOST`, and stands at the first height whose line is clear, looking
+## down at the player from its full distance. Landed below a terrace step under
+## the caves' roof, an ore rock on the step crossed the line under an eye nearly
+## a unit above the rock's top, and the eye came in to the side of a face
+## (tours/glide-under-roof.tour frames 03-04). A wall, a house or a roof overhead
+## clears no raised line, and pulls the eye in as before.
+const OVER_MOST := 1.5
+const OVER_STEP := 0.25
+
+
+## How far up the eye must stand for the line from `pivot` to it to be clear,
+## asked of `room_fn(from, to) -> 0..1`: 0 when it already is, -1 when no height
+## up to OVER_MOST clears it.
+static func over(pivot: Vector3, eye: Vector3, room_fn: Callable) -> float:
+	if float(room_fn.call(pivot, eye)) >= 0.999:
+		return 0.0
+	var up := OVER_STEP
+	while up <= OVER_MOST + 1e-4:
+		if float(room_fn.call(pivot, eye + Vector3(0.0, up, 0.0))) >= 0.999:
+			return up
+		up += OVER_STEP
+	return -1.0
 ## Never nearer the shoulder point than this. At 0.8 the head, 0.62 to the left,
 ## is a quarter of the frame's height; nearer, it is the frame.
 const LEAST_BACK := 0.8
