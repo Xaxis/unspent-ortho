@@ -8,10 +8,17 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
 
 - 30_mobs: `src/systems/30_mobs.gd`, reached by `tools/tour.sh tours/machines.tour`.
 - 32_disposition: `src/systems/32_disposition.gd`, reached by `tools/tour.sh tours/disposition.tour`.
+  Relic heat (GEAR.md G9): each relic worn warms the player's region by Interference `carried` (0.03) an hour; made kit does not, and the reads app names it under the trace (StoryContent.READS_CAUSE `carried`): `tools/test.sh test_relic_heat`, `tools/tour.sh tours/relic_heat.tour` (options in its header).
 - 34_works: `src/systems/34_works.gd`, reached by `tools/tour.sh tours/works.tour`.
 - 36_machine_parade: `src/systems/36_machine_parade.gd`, reached by `tools/tour.sh tours/machines-day.tour`.
 - 40_fight: `src/systems/40_fight.gd`, reached by `tools/tour.sh tours/fight.tour`.
   Height: a ledge (2 levels) stands bodies out of each other's blows (`tools/test.sh test_height`).
+  Climbing (the jump key at a rock face too tall to jump; a route ruled up a face you face; breath a
+  level, fall damage when it runs out; the climber's level on the face for blows):
+  `tools/test.sh test_climb`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/climb.tour` (header has its options).
+  The vertical line (the grapple at the foot of a face up to 8 levels, hauled up to a post, pylon or
+  trunk at the top): `tools/test.sh test_vertical_grapple`,
+  `TOUR_FIXED_FPS=60 tools/tour.sh tours/vertical_grapple.tour` (header has its options).
   The drop strike, a jump's landing off a ledge as a plate-opening blow: `tools/test.sh test_drop_strike`,
   `tools/tour.sh tours/drop_strike.tour` (header has its options).
   The heavy blow, swing held 300 ms: `tools/test.sh "test_heavy,test_bouts"` (the reader's time-to-kill
@@ -26,13 +33,33 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   `TOUR_FIXED_FPS=60 tools/tour.sh tours/dropper.tour` (top view and over the shoulder; the tour
   command `over KIND` stages a body on a lip with the player below).
   Ten awake machines' draw cost: `tools/test.sh test_awake_cost`.
+  The crags rings (docs/HUSH.md H1): a machine will not follow into one; it holds at the edge facing in, goes home at
+  dawn or past its forget, and a feral comes in: `tools/test.sh test_hush_hold` (its bout prints),
+  `TOUR_FIXED_FPS=60 tools/tour.sh tours/hush_hold.tour --seed=7 --hour=11 --weather=clear:0`.
+  No hopeless matchup: every weapon beats every common machine (not a keeper, not a dart) at
+  least 1 start of 4 with the crowd reader (`tests/fight/crowd_reader.gd`, which sprints, heavies,
+  walks in on a stand-off and baits a thrower): `tools/test.sh test_matchups` (~35 s, prints any
+  hopeless pairing). The crowd reader against the one-machine reader: `tools/test.sh test_crowd_reader`.
+  The shoulder reader (`tests/fight/shoulder_reader.gd`: what a player over the shoulder knows -- the eye's cone,
+  what is heard, what was seen a second ago) runs the matchup sweep as its second column.
+  Part sides (a landscape's `over` part moves the working part; the model builds it there):
+  `tools/test.sh test_part_sides`, `tools/shot.sh shots/x.png --scene=gallery --filter=sides_hauler --zoom=4`,
+  `tools/tour.sh tours/part_sides.tour` and `tours/part_sides_cave.tour` (headers have their options).
   Night hearing (a machine hears further and makes up its mind faster by ear at night): the day
   and night noticing distances and night bouts print in `tools/test.sh test_first_meetings:test_by_night`.
 - 42_target: `src/systems/42_target.gd`, reached by `tools/tour.sh tours/targeting.tour`. A lock holds the body (facing, strafe arc, swing, dodge: `src/core/fight/lock_on.gd`, `tools/test.sh test_lock_on`), proven in both views by `tools/tour.sh tours/lockon_top.tour` and `tours/lockon_shoulder.tour` (each tour's header has its options).
 - 44_sentinels: `src/systems/44_sentinels.gd`, reached by `tools/tour.sh tours/sentinels.tour`.
 - 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.
+  Freed by a dark yard or a fallen keeper, and back on a standing holding's books
+  (`tools/test.sh test_come_home`; `tools/tour.sh tours/taken_home.tour`, options in its header;
+  `tours/escort.tour` walks one to a village).
 - 47_defences: `src/systems/47_defences.gd`, reached by `tools/tour.sh tours/defences.tour`.
+  A gun sees over its own holding's walls and roofs, not another's (`tools/test.sh test_turret_sight`), and
+  answers a raider striking a wall piece before anything else (`tools/test.sh test_turret_answers_the_wall`).
 - 48_raids: `src/systems/48_raids.gd`, reached by `tools/tour.sh tours/raids.tour`.
+  A probe fought live against a walled yard with covering guns, held (`tools/tour.sh tours/raids_live.tour`,
+  options in its header, `--walled`); graded outcomes and the prepared-versus-open bout
+  (`tools/test.sh test_raid_live`); hits from several sources land in one window (`tools/test.sh test_hits_stack`).
 
 ## How to reach it
 

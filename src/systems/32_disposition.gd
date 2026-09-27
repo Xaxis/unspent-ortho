@@ -156,7 +156,13 @@ func _read_player() -> void:
 	m.spoofed = game.clock.minutes < body.spoof_until
 	var p := hero.pos
 	var ground := game.world.ground_at(floori(p.x), floori(p.y))
-	m.loudness = StealthNoise.loudness(hero.speed, ground, body.crouched, m.laden_tier)
+	# The listener's ear is heard as far as it hears, steps and all (FightKit.listen).
+	# The hush wrap quiets the steps on any land (FightKit.hush).
+	m.loudness = StealthNoise.loudness(hero.speed, ground, body.crouched, m.laden_tier, hero.kit.hush) * hero.kit.noise_scale()
+	# A room's hum over everything swallows a step (21_doors `room_hush`).
+	for sys: GameSystem in game.systems:
+		if sys.has_method(&"room_hush"):
+			m.loudness *= 1.0 - clampf(float(sys.call(&"room_hush")), 0.0, 1.0)
 	m.cover = _cover_now(p, m)
 	m.interference = interference.value(Interference.network(game.world, p))
 
@@ -188,9 +194,14 @@ func _cover_now(p: Vector2, m: Moment) -> float:
 ## it cost given who watched. Each system that puts people on the land answers
 ## `witnesses` for its own (35_folk), so this one goes on knowing nothing about
 ## villagers or crowds and a package that adds people needs no line here.
-func raise(cause: StringName, at: Vector2) -> float:
+func raise(cause: StringName, at: Vector2, scale: float = 1.0) -> float:
+	# The hours already gone by cool the file BEFORE the news lands on it. Left to
+	# the next frame's `_cool`, a clock skipped just before this (the hours a
+	# piece took to build, a night slept) was charged against the news itself,
+	# and a turret built at a cost of two hours was forgotten the frame after.
+	_cool(0.0)
 	var net := Interference.network(game.world, at)
-	var rose := interference.raise(net, cause, at, game.clock.minutes, crowd_witnesses(at))
+	var rose := interference.raise(net, cause, at, game.clock.minutes, crowd_witnesses(at), scale)
 	if rose > 0.0:
 		_seen[&"interference"] = true
 	return rose
@@ -220,6 +231,26 @@ func _cool(delta: float) -> void:
 	var hidden := m.crouched and m.cover > 0.4 and unseen
 	interference.decay(passed / 60.0, hidden, m.spoofed,
 		Interference.network(game.world, sim.hero.pos), sim.hero.pos, unseen)
+	# A relic carried is heat, by the hour and by the relic (Interference
+	# `carried`, GEAR.md G9), on the network the player is in, after it cooled.
+	var relics := _relics_carried()
+	if relics > 0:
+		interference.raise(Interference.network(game.world, sim.hero.pos), &"carried", sim.hero.pos,
+			minutes, 0, float(relics) * passed / 60.0)
+
+
+## Relics in the loadout, and the one in the hand if it is not already there.
+func _relics_carried() -> int:
+	var ids: Array[StringName] = []
+	for s in game.systems:
+		if s.name == "54_gear":
+			var l: Loadout = s.get("loadout")
+			if l != null:
+				ids = l.all_ids()
+	var held: StringName = game.inventory.held if game.inventory != null else &""
+	if held != &"" and not ids.has(held):
+		ids.append(held)
+	return Gear.relics_in(ids)
 
 
 ## A clerk that got its reading away files the player (Body.filed, which is also
@@ -365,7 +396,8 @@ func _on_keeper_fell(region: int, _land: StringName, _how: StringName) -> void:
 ## file you for it and the hunt could never end.
 func _on_hit(attacker: Object, target: Object, _damage: int, plate: bool, at: Vector3) -> void:
 	# The player's own blow is as loud as their kit makes it (FightKit.blow_noise).
-	_noise(&"hit", sim.hero.kit.blow_noise(plate) if attacker == game.player else 1.0)
+	var heavy := sim.hero.blow != null and sim.hero.blow.heavy
+	_noise(&"hit", sim.hero.kit.blow_noise(plate, heavy) if attacker == game.player else 1.0)
 	if attacker != game.player:
 		return
 	var mob := target as Mob
@@ -380,7 +412,8 @@ func _on_hit(attacker: Object, target: Object, _damage: int, plate: bool, at: Ve
 func _noise(act: StringName, scale: float = 1.0) -> void:
 	var p := sim.hero.pos
 	var ground := game.world.ground_at(floori(p.x), floori(p.y))
-	sim.make_noise(p, StealthNoise.radius(act, ground, game.body.crouched, sim.moment.laden_tier) * scale)
+	# The listener's ear is heard as far as it hears (FightKit.listen).
+	sim.make_noise(p, StealthNoise.radius(act, ground, game.body.crouched, sim.moment.laden_tier, sim.hero.kit.hush) * scale * sim.hero.kit.noise_scale())
 
 
 ## A job under way is a noise that keeps going, and a job on the plan's own
@@ -585,8 +618,13 @@ func _reads(_g: Game) -> Dictionary:
 			continue
 		scans.append({"id": StringName("m%d" % m.id), "kind": m.kind, "name": String(m.kind),
 			"pos": m.pos, "disposition": m.disposition, "note": _note(m)})
+	# What the player keeps feeding the file, named, so a warming region says why
+	# (StoryContent.READS_CAUSE, by cause id).
+	var causes: Array[String] = []
+	if _relics_carried() > 0:
+		causes.append(String(StoryContent.READS_CAUSE[&"carried"]))
 	return {"interference": interference.value(net),
-		"network": _network_name(net), "scans": scans, "asking": _asking}
+		"network": _network_name(net), "scans": scans, "asking": _asking, "causes": causes}
 
 
 ## What the slate calls the network the player is standing in. A region, so two

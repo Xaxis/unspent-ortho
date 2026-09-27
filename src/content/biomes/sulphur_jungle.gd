@@ -122,6 +122,17 @@ static func make() -> BiomeDef:
 		&"dog.feral": {"weight": 0.7},
 	}
 	d.landmarks = [&"evaporator", &"blinking_stack", &"firewatch", &"clerks_office"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
+	# Who kept them: the vent cook, who cooks in the ground's own heat, the
+	# gatherer who knocks sulphur off the vents, and the grower, for whom here
+	# everything comes up twice as fast.
+	d.home = {"households": {
+		&"cook": {"wants": [&"steam_box", &"jars", &"basket", &"shelf"], "by_hearth": []},
+		&"gatherer": {"wants": [&"sulphur_lumps", &"sulphur_lumps", &"creel", &"shelf"], "by_hearth": []},
+		&"grower": {"wants": [&"seed_trays", &"seed_trays", &"jars", &"basket"],
+			"by_hearth": [{"kind": &"herbs", "off": 1.3, "solid": 0.0}]},
+	}}
 	d.sound_bed = &"bed_moss"
 	d.surface = _surface
 	d.scatter = _scatter
@@ -145,7 +156,9 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 
 
 ## THE THICKEST CANOPY IN THE GAME, because the ground is warm and wet and has
-## been left alone for seventy years. Twice the coast's broadleaf rate.
+## been left alone for seventy years. At 0.11 on its grass it laid 42 trees per
+## 1000 tiles on seed 1, under half the pinewood's 106, which read as a heath
+## with a few trees on it; 0.28 stands a little above the pines.
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	# THE VENTS STAND IN THEIR OWN CRUST, because both are dealt off the same
 	# ground. `_surface` lays ash where the blend runs high and the holes are
@@ -158,9 +171,12 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.VENT
 		return PropKind.VENT_CAP if r < 0.125 else BiomeScatter.NONE
 	if g == Ground.GRASS:
-		if r < 0.11:
+		# The thickest canopy in the game, held against the pines
+		# (test_world_gen_surface): at 0.28 seed 42's jungle stood at 101 trees
+		# per 1000 tiles against its pinewood's 115.
+		if r < 0.31:
 			return PropKind.BROADLEAF
-		return PropKind.BUSH if r < 0.17 else BiomeScatter.NONE
+		return PropKind.BUSH if r < 0.37 else BiomeScatter.NONE
 	if g == Ground.MUD:
 		return PropKind.REEDS if r < 0.05 else BiomeScatter.NONE
 	return BiomeScatter.NONE

@@ -332,20 +332,20 @@
       "tests": []
     },
     {
+      "id": "system:18_meadow",
+      "kind": "system",
+      "entry": "src/systems/18_meadow.gd",
+      "reach": "tools/tour.sh tours/foliage_meadow_ring.tour --seed=7",
+      "area": "world-look",
+      "tests": []
+    },
+    {
       "id": "system:18_trample",
       "kind": "system",
       "entry": "src/systems/18_trample.gd",
       "reach": "tools/tour.sh tours/foliage_meadow.tour --seed=7",
       "area": "world-look",
       "tests": []
-    },
-    {
-      "id": "system:18_meadow",
-      "kind": "system",
-      "entry": "src/systems/18_meadow.gd",
-      "reach": "tools/tour.sh tours/foliage_meadow_ring.tour --seed=7",
-      "area": "world-look",
-      "tests": ["tests/render/test_meadow_ring.gd"]
     },
     {
       "id": "system:19_colossi",
@@ -392,6 +392,14 @@
       "kind": "system",
       "entry": "src/systems/22_landmarks.gd",
       "reach": "tools/tour.sh tours/landmarks.tour",
+      "area": "world-places",
+      "tests": []
+    },
+    {
+      "id": "system:23_hush",
+      "kind": "system",
+      "entry": "src/systems/23_hush.gd",
+      "reach": "tools/tour.sh tours/hush.tour --seed=7 --hour=11 --weather=clear:0",
       "area": "world-places",
       "tests": []
     },
@@ -481,6 +489,14 @@
       "entry": "src/systems/42_target.gd",
       "reach": "tools/tour.sh tours/lockon_top.tour --seed=4 --hour=11 --weather=clear:0 --give=axe_felling:1 --held=axe_felling",
       "area": "machines-fight",
+      "tests": []
+    },
+    {
+      "id": "system:43_above",
+      "kind": "system",
+      "entry": "src/systems/43_above.gd",
+      "reach": "tools/tour.sh tours/cave-roofs.tour --seed=7 --realm=underground --hour=12",
+      "area": "world-look",
       "tests": []
     },
     {

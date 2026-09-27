@@ -1,0 +1,11 @@
+# A hazard's cue at eye level lies on the ground and hangs by the body; it never
+# draws over the head (tests/camera/test_shoulder.gd
+# test_no_hazard_cue_draws_over_the_body_at_eye_level). Over the shoulder in the
+# sulphur jungle's fumes, in fog, the frame taken as the cough is drawn.
+#   tools/tour.sh tours/cue_eye.tour --seed=1 --hour=11 --weather=fog:0.6 --view=shoulder
+place typical_sulphur_jungle
+wait 2.0
+await cough 30
+shot 01-a-cough-at-eye-level
+wait 0.1
+shot 02-a-moment-on

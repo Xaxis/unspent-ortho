@@ -178,7 +178,7 @@ func sight_boxes(mid: Vector2, reach: float) -> Array[PackedFloat32Array]:
 ## waited for (WorldView, at predelete) before the engine quits under them.
 func _exit_tree() -> void:
 	if _outside_view != null and is_instance_valid(_outside_view) and not _outside_view.is_inside_tree():
-		_outside_view.free()
+		WorldView.dispose(_outside_view)
 	_outside_view = null
 
 
@@ -236,11 +236,22 @@ func _inside_side(_delta: float) -> void:
 		if _pressed():
 			go_out()
 			return
+	_keep_hours()
 	_trespass()
 	_run_turrets()
 	box_near = _box_near()
 	if box_near >= 0 and _pressed():
 		_open_box(box_near)
+	hatch_near = _hatch_near()
+	if hatch_near >= 0 and box_near < 0 and _pressed():
+		_take_meal(hatch_near)
+	stove_near = _stove_near()
+	if stove_near >= 0 and box_near < 0 and hatch_near < 0 and _pressed():
+		_relight(stove_near)
+	crawl_near = _crawl_near()
+	if crawl_near and box_near < 0 and hatch_near < 0 and stove_near < 0 and _pressed():
+		go_out(true)
+	_show_trays()
 
 
 ## The press is this system's own edge (down now, up the frame before), not
@@ -260,7 +271,7 @@ var _use_edge := false
 func use_spent() -> bool:
 	if _swapping:
 		return true
-	if pocket != null and box_near >= 0:
+	if pocket != null and (box_near >= 0 or hatch_near >= 0 or stove_near >= 0 or crawl_near):
 		return true
 	if door_near == null:
 		return false
@@ -358,15 +369,17 @@ func _swap_in() -> void:
 	_windows = model.call(&"windows")
 	_make_lights()
 	_box_the_room()
+	_light_stoves()
 	_wake_residents()
 	_stand_turrets()
 	crossings += 1
 
 
 ## Out of the door, under the cover, onto the world that was left: the same one.
-func go_out() -> void:
+func go_out(back := false) -> void:
 	if pocket == null or _swapping:
 		return
+	_out_back = back
 	Events.sfx.emit(&"door", game.player.position)
 	await _cover_close(pocket.layout.door)
 	var t0 := Time.get_ticks_usec()
@@ -417,6 +430,8 @@ var _turret_fired := false
 ## Live: a turret is coming round on the player this frame (the eye is hot).
 var _aiming := false
 var _box_refused := false
+## Latched, for a tour: a docked sleeper woke and turned.
+var _woke := false
 var _box_opened := false
 
 
@@ -498,7 +513,7 @@ func tour_safe(p: Vector2) -> bool:
 	var sim: FightSim = game.player.sim
 	for pair: Array in _residents:
 		var m: MobState = pair[1]
-		if m.alive and StealthQuery.sees(m.row, m.pos, p, sim.moment, sim.world, sim.query, m.facing):
+		if m.alive and not m.asleep and StealthQuery.sees(m.row, m.pos, p, sim.moment, sim.world, sim.query, m.facing):
 			return false
 	if _warden_stands():
 		for tu: HallTurret in _turrets:
@@ -567,6 +582,12 @@ static func screened(l: InteriorLayout, a: Vector2, b: Vector2) -> bool:
 	return false
 
 
+## How much of a body's noise the room it is in swallows (InteriorKind.hush):
+## 0 outside a room. 32_disposition turns the player's loudness down by it.
+func room_hush() -> float:
+	return pocket.kind.hush if pocket != null and working() else 0.0
+
+
 ## HOW DARK THE ROOM IS AT `p` to the machines' eyes (InteriorKind.dark), where
 ## its own light does not reach: each thing with a `glare` lights a pool that
 ## far round it -- along the whole of a thing with a `long` -- and undoes the
@@ -575,16 +596,17 @@ static func screened(l: InteriorLayout, a: Vector2, b: Vector2) -> bool:
 func room_dark(p: Vector2) -> float:
 	if pocket == null:
 		return 0.0
-	return dark_at(pocket.kind, pocket.layout, p)
+	return dark_at(pocket.kind, pocket.layout, p, working())
 
 
-static func dark_at(k: InteriorKind, l: InteriorLayout, p: Vector2) -> float:
+static func dark_at(k: InteriorKind, l: InteriorLayout, p: Vector2, at_work := true) -> float:
 	if k.dark <= 0.0:
 		return 0.0
 	var lit := 0.0
 	for t: Dictionary in l.things:
 		var r := float(t.get("glare", 0.0))
-		if r <= 0.0:
+		# What runs on the shift is dark at the curfew.
+		if r <= 0.0 or (t.get("shift", false) and not at_work):
 			continue
 		var f: Vector2 = t.face
 		var s := Vector2(-f.y, f.x)
@@ -594,6 +616,217 @@ static func dark_at(k: InteriorKind, l: InteriorLayout, p: Vector2) -> float:
 		var d := (q - s * along).length()
 		lit = maxf(lit, 1.0 - smoothstep(r * 0.5, r, d))
 	return k.dark * (1.0 - lit)
+
+
+# --- what a room feeds -----------------------------------------------------
+
+## A THING THAT SERVES (`serves`: an item, `meals`: the hours it serves at):
+## a grey orchards house's food hatch, which the machines still fill on the
+## household's schedule. At each meal hour a meal is put out, and it is there
+## until the next meal: taken, it is taken for that meal, per door, and saved.
+## Before the first meal of a day it still holds last night's.
+var hatch_near := -1
+var _served: Dictionary = {}
+var _meal_taken := false
+
+
+## Which serving thing is in reach of the player's hands (its index among the
+## layout's things that serve), or -1.
+func _hatch_near() -> int:
+	if pocket == null:
+		return -1
+	var i := 0
+	var best := -1
+	var bd := 1.4
+	for t: Dictionary in pocket.layout.things:
+		if not t.has("serves"):
+			continue
+		var d := (t.at as Vector2).distance_to(game.player.pos)
+		if d < bd:
+			bd = d
+			best = i
+		i += 1
+	return best
+
+
+## A serving thing's tray (the model's `tray_N` child) stands behind the glass
+## while its meal is out, and is gone once that meal is taken.
+func _show_trays() -> void:
+	if _model == null:
+		return
+	var n := 0
+	for t: Dictionary in pocket.layout.things:
+		if not t.has("serves"):
+			continue
+		var tray := _model.get_node_or_null("tray_%d" % n) as Node3D
+		if tray != null:
+			var stamp := meal_at(t.get("meals", [7, 12, 18]), game.clock.minutes)
+			tray.visible = stamp >= 0 and int(_served.get("%s#%d" % [pocket.threshold.key, n], -9)) != stamp
+		n += 1
+
+
+# --- a stove to relight ------------------------------------------------------------
+
+## A thing with a `fuel` (a frozen hold's galley stove) is out until the player
+## feeds it what a campfire burns, without the stones: then it is a FIRE in the
+## room's world -- warmth against the land's cold (52_hazards), light, and
+## somewhere to sleep (Survival.fire_near) -- and it stays lit for whoever
+## comes back, saved per door. Its flame is the model's (`stove_lit`), not a
+## campfire's: the prop is put in the world and its query, never in the view.
+var stove_near := -1
+var _lit: Dictionary = {}
+## Latched, for a tour: a stove was lit.
+var _kindled := false
+
+
+func _stove_near() -> int:
+	if pocket == null:
+		return -1
+	var i := 0
+	var best := -1
+	var bd := 1.4
+	for t: Dictionary in pocket.layout.things:
+		if not t.has("fuel"):
+			continue
+		var d := (t.at as Vector2).distance_to(game.player.pos)
+		if d < bd and not _lit.has("%s#%d" % [pocket.threshold.key, i]):
+			bd = d
+			best = i
+		i += 1
+	return best
+
+
+## What a stove takes to light from what is carried: the first campfire's
+## makings that can be met, less its stones; empty for none.
+static func stove_fuel(inv: Inventory) -> Dictionary:
+	for r: Dictionary in Crafting.recipes_at(&"hand"):
+		if r.get("builds", &"") != &"fire":
+			continue
+		var needs := (r.needs as Dictionary).duplicate()
+		needs.erase(&"stone")
+		var ok := not needs.is_empty()
+		for id: Variant in needs:
+			ok = ok and inv.count(StringName(id)) >= int(needs[id])
+		if ok:
+			return needs
+	return {}
+
+
+func _relight(i: int) -> void:
+	var fuel := stove_fuel(game.inventory)
+	if fuel.is_empty():
+		Events.message.emit("The stove is cold. It wants something to burn: driftwood, dead wood, peat or timber.")
+		return
+	for id: Variant in fuel:
+		game.inventory.remove(StringName(id), int(fuel[id]))
+	_lit["%s#%d" % [pocket.threshold.key, i]] = true
+	_kindle(i)
+	_kindled = true
+	Events.sfx.emit(&"build_fire", game.player.position)
+	Events.message.emit("The stove takes. The iron ticks as it warms, and the hold with it.")
+
+
+func _light_stoves() -> void:
+	var n := 0
+	for t: Dictionary in pocket.layout.things:
+		if t.has("fuel"):
+			if _lit.has("%s#%d" % [pocket.threshold.key, n]):
+				_kindle(n)
+			n += 1
+
+
+func _kindle(i: int) -> void:
+	var n := 0
+	for t: Dictionary in pocket.layout.things:
+		if not t.has("fuel"):
+			continue
+		if n == i:
+			var w := game.world
+			var prop := WorldProp.new(w.next_id(), PropKind.FIRE, t.at, 0.0, 1.0)
+			w.add_prop(prop)
+			game.query.add_prop(prop)
+			if model != null and model.has_method(&"stove_lit"):
+				model.call(&"stove_lit", i)
+			return
+		n += 1
+
+
+# --- a second way out -------------------------------------------------------------
+
+## A thing with `exit` (a squat's hole through the back wall) is a way out that
+## is not the door: crawled through, it puts the player out BEHIND the house,
+## as far back from it as the door stands in front, where there is ground to
+## stand on -- else, as a door does, in front.
+var crawl_near := false
+var _out_back := false
+## Latched, for a tour: the player went out the back way.
+var _went_out_back := false
+
+
+func _crawl_near() -> bool:
+	if pocket == null:
+		return false
+	for t: Dictionary in pocket.layout.things:
+		if t.get("exit", false) and (t.at as Vector2).distance_to(game.player.pos) < 1.1:
+			return true
+	return false
+
+
+func _back_of(t: Threshold) -> Vector2:
+	var depth := t.door.distance_to(t.host)
+	var q: WorldQuery = _outside_query
+	for extra: float in [0.3, 0.8, 1.4]:
+		var p := t.host - t.out * (depth + extra)
+		if q == null or q.standable(floori(p.x), floori(p.y)):
+			return p
+	return t.door + t.out * EXIT_OUT
+
+
+## The meal a thing serving at `hours` has out at `minutes`: a stamp (day * 8 +
+## which meal), or -1 before its first meal ever.
+static func meal_at(hours: Array, minutes: float) -> int:
+	var day := floori(minutes / 1440.0)
+	var hour := fmod(minutes / 60.0, 24.0)
+	var last := -1
+	for m in hours.size():
+		if hour >= float(hours[m]):
+			last = m
+	if last < 0:
+		return (day - 1) * 8 + hours.size() - 1 if day > 0 else -1
+	return day * 8 + last
+
+
+func _take_meal(i: int) -> void:
+	var th: Dictionary = {}
+	var n := 0
+	for t: Dictionary in pocket.layout.things:
+		if t.has("serves"):
+			if n == i:
+				th = t
+			n += 1
+	var hours: Array = th.get("meals", [7, 12, 18])
+	var stamp := meal_at(hours, game.clock.minutes)
+	var key := "%s#%d" % [pocket.threshold.key, i]
+	if stamp < 0 or int(_served.get(key, -9)) == stamp:
+		var hour := fmod(game.clock.minutes / 60.0, 24.0)
+		var next: int = hours[0]
+		for h: Variant in hours:
+			if float(h) > hour:
+				next = int(h)
+				break
+		Events.message.emit("The hatch is shut. It opens again at %02d:00." % next)
+		return
+	var got: Array[String] = []
+	var serves: Dictionary = th.serves
+	for id: Variant in serves:
+		var c := int(serves[id])
+		game.inventory.add(StringName(id), c)
+		Events.took.emit(StringName(id), c)
+		got.append(String(Items.def(StringName(id)).get("name", id)))
+	_served[key] = stamp
+	_meal_taken = true
+	Events.sfx.emit(&"door", game.player.position)
+	Events.message.emit("The hatch slides up on a tray: %s, still hot. It was set for four." % " and ".join(got))
 
 
 ## Which strongbox is within reach of the player's hands, or -1.
@@ -646,9 +879,43 @@ func _trespass() -> void:
 	var sim: FightSim = game.player.sim
 	for pair: Array in _residents:
 		var m: MobState = pair[1]
-		if m.alive and Roles.of(m.kind) == Roles.KEEPER and m.suspicion >= 0.99 and not pair.has(&"turned"):
+		if not m.alive or m.suspicion < 0.99 or pair.has(&"turned"):
+			continue
+		if Roles.of(m.kind) == Roles.KEEPER:
 			sim.disturb(m, &"trespass")
 			pair.append(&"turned")
+		elif pocket.layout.residents[pair[0]].get("docks", false):
+			# Woken in its dock with somebody in its store: whatever it is, it
+			# takes that for theft, which a worker turns on (Roles.TURNS).
+			sim.disturb(m, &"theft")
+			pair.append(&"turned")
+			_woke = true
+
+
+func _sleepers() -> int:
+	var n := 0
+	for pair: Array in _residents:
+		var m: MobState = pair[1]
+		if m.alive and m.asleep:
+			n += 1
+	return n
+
+
+## Whether the room is at its work now (InteriorKind.shift): outside the room,
+## always.
+func working() -> bool:
+	return pocket == null or pocket.kind.working(fmod(game.clock.minutes / 60.0, 24.0))
+
+
+## THE SHIFT COMES ROUND while the player is inside: whoever sleeps in a dock
+## wakes when the room goes back to work, and goes about it.
+func _keep_hours() -> void:
+	if not working():
+		return
+	for pair: Array in _residents:
+		var m: MobState = pair[1]
+		if m.asleep:
+			m.asleep = false
 
 
 func _wake_residents() -> void:
@@ -663,10 +930,18 @@ func _wake_residents() -> void:
 		if gone.has(i):
 			continue
 		var r: Dictionary = pocket.layout.residents[i]
+		# Its hours (InteriorKind.shift): one "on" the shift is here only while
+		# the room works; one that "docks" comes home at the curfew and sleeps.
+		var at_work := working()
+		if (r.get("on", &"") == &"shift" and not at_work) or (r.get("docks", false) and at_work):
+			continue
 		var kind := _body_for(StringName(r.role), pocket.threshold.land)
+		if r.has("body") and not Roster.row(StringName(r.body)).is_empty():
+			kind = StringName(r.body)
 		if kind == &"":
 			continue
 		var m := sim.add_mob(kind, r.at)
+		m.asleep = bool(r.get("docks", false))
 		m.home = r.at
 		m.facing = (r.face as Vector2).angle()
 		m.aim = m.facing
@@ -733,7 +1008,13 @@ func _save() -> Variant:
 	var opened := {}
 	for k: Variant in _opened:
 		opened[str(k)] = _opened[k]
-	return {"dead": out, "opened": opened}
+	var served := {}
+	for k: Variant in _served:
+		served[str(k)] = _served[k]
+	var lit := {}
+	for k: Variant in _lit:
+		lit[str(k)] = true
+	return {"dead": out, "opened": opened, "served": served, "lit": lit}
 
 
 func _load(v: Variant) -> void:
@@ -753,6 +1034,13 @@ func _load(v: Variant) -> void:
 		for n: Variant in o[k]:
 			idx.append(SaveCodec.to_int(n))
 		_opened[str(k)] = idx
+	_served.clear()
+	var sv: Dictionary = (v as Dictionary).get("served", {})
+	for k: Variant in sv:
+		_served[str(k)] = SaveCodec.to_int(sv[k])
+	_lit.clear()
+	for k: Variant in (v as Dictionary).get("lit", {}):
+		_lit[str(k)] = true
 
 
 ## A save made in a room counts those already broken in it, without leaving.
@@ -783,6 +1071,9 @@ func _swap_out() -> void:
 	_room_boxes.clear()
 	_aiming = false
 	box_near = -1
+	hatch_near = -1
+	crawl_near = false
+	stove_near = -1
 	game.camera.frame_bias = Vector3.ZERO
 	var t := pocket.threshold
 	for l: SpotLight3D in _lights:
@@ -808,7 +1099,12 @@ func _swap_out() -> void:
 	game.add_child(_outside_view)
 	_outside_view.reclaim()
 	game.view = _outside_view
-	realms.call(&"enter", _outside, _outside_key, t.door + t.out * EXIT_OUT, true, _outside_query)
+	var out_at := t.door + t.out * EXIT_OUT
+	if _out_back:
+		out_at = _back_of(t)
+		_went_out_back = true
+	_out_back = false
+	realms.call(&"enter", _outside, _outside_key, out_at, true, _outside_query)
 	game.camera.view_height = _outside_height
 	pocket = null
 	model = null
@@ -1065,7 +1361,7 @@ func _light_windows() -> void:
 			&"bounce":
 				lamp.light_energy = 0.9
 			&"working":
-				lamp.light_energy = 3.2
+				lamp.light_energy = 3.2 if working() else 0.0
 			&"emergency":
 				lamp.light_energy = 1.1
 			&"standby":
@@ -1266,6 +1562,14 @@ func tour_forget(what: StringName) -> void:
 			_box_refused = false
 		&"box_opened":
 			_box_opened = false
+		&"meal_taken":
+			_meal_taken = false
+		&"kindled":
+			_kindled = false
+		&"out_back":
+			_went_out_back = false
+		&"woke":
+			_woke = false
 
 
 func tour_seen(what: StringName) -> bool:
@@ -1284,6 +1588,29 @@ func tour_seen(what: StringName) -> bool:
 			return _box_opened
 		&"box_near":
 			return pocket != null and box_near >= 0
+		&"hatch_near":
+			return pocket != null and hatch_near >= 0
+		&"stove_near":
+			return pocket != null and stove_near >= 0
+		&"kindled":
+			return _kindled
+		&"crawl_near":
+			return pocket != null and crawl_near
+		&"out_back":
+			return _went_out_back
+		# A fire is warming the player where they stand (Survival.fire_near).
+		&"by_fire":
+			return Survival.fire_near(game) != null
+		# Somebody in here is asleep in a dock now.
+		&"asleep":
+			return _sleepers() > 0
+		# They are, and none has woken since the tour last asked for a shot.
+		&"unwoken":
+			return _sleepers() > 0 and not _woke
+		&"woke":
+			return _woke
+		&"meal_taken":
+			return _meal_taken
 		&"unnoticed":
 			# In a room and nothing in it has the player: every resident still
 			# idle at its post and no turret coming round.
@@ -1313,7 +1640,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
@@ -1345,6 +1672,9 @@ func tour_place(what: String) -> Vector2:
 	if what == "strongbox":
 		var box := _first_box()
 		return (box.at as Vector2) + (box.face as Vector2) * 0.8 if not box.is_empty() else Vector2.INF
+	if what == "hatch" or what == "stove" or what == "crawl":
+		var h := _first_with({"hatch": "serves", "stove": "fuel", "crawl": "exit"}[what])
+		return (h.at as Vector2) + (h.face as Vector2) * 0.8 if not h.is_empty() else Vector2.INF
 	var t := _tour_door(what)
 	if pocket != null and t == null and TOUR_PLACES.has(what):
 		return pocket.layout.door - pocket.layout.door_out * 0.5
@@ -1360,6 +1690,9 @@ func tour_face(what: String) -> float:
 	if what == "strongbox":
 		var box := _first_box()
 		return (-(box.face as Vector2)).angle() if not box.is_empty() else NAN
+	if what == "hatch" or what == "stove" or what == "crawl":
+		var h := _first_with({"hatch": "serves", "stove": "fuel", "crawl": "exit"}[what])
+		return (-(h.face as Vector2)).angle() if not h.is_empty() else NAN
 	var t := _tour_door(what)
 	if pocket != null and t == null and TOUR_PLACES.has(what):
 		return pocket.layout.door_out.angle()
@@ -1426,9 +1759,11 @@ func tour_route(what: String) -> PackedVector2Array:
 		var into := ((t.at as Vector2) - door).normalized()
 		var tail := PackedVector2Array([door - into * 0.9, door, (t.at as Vector2) + (t.face as Vector2) * 0.8])
 		# The ways a sneak might go to the bay's doorway: along the wall the
-		# hatch is in, straight across, or through the middle of the room.
+		# hatch is in, straight across, through the middle of the room, or
+		# straight in from the hatch and then along.
 		var middle := _room_middle()
-		for via: Array in [[start + along * along.dot(door - start)], [], [middle]]:
+		var inward := -l.door_out
+		for via: Array in [[start + along * along.dot(door - start)], [], [middle], [start + inward * inward.dot(door - start)]]:
 			var route := PackedVector2Array()
 			for v: Vector2 in via:
 				route.append(v)
@@ -1456,7 +1791,8 @@ func _route_to_guard() -> PackedVector2Array:
 
 
 ## How many of the half-tile steps along `route` from `start` a standing
-## resident or a turret would see the player on.
+## resident or a turret would see the player on, or a sleeper hear a crouched
+## step on.
 func _seen_along(start: Vector2, route: PackedVector2Array, sim: FightSim) -> float:
 	var seen := 0.0
 	var from := start
@@ -1466,7 +1802,9 @@ func _seen_along(start: Vector2, route: PackedVector2Array, sim: FightSim) -> fl
 			var q := from.lerp(p, float(k + 1) / float(n))
 			for pair: Array in _residents:
 				var m: MobState = pair[1]
-				if m.alive and StealthQuery.sees(m.row, m.pos, q, sim.moment, sim.world, sim.query, m.facing):
+				if m.alive and not m.asleep and StealthQuery.sees(m.row, m.pos, q, sim.moment, sim.world, sim.query, m.facing):
+					seen += 1.0
+				elif m.alive and m.asleep and Senses.chebyshev(m.pos, q) <= float(m.row.get("hears", 0)) * StealthNoise.loudness(Tuning.WALK_SPEED, sim.world.ground_at(floori(q.x), floori(q.y)), true, 0):
 					seen += 1.0
 			# And the turrets' eyes: a step in a turret's sweep costs a wait, not
 			# a sighting, so it counts for less than a resident who never looks away.
@@ -1483,6 +1821,17 @@ func _first_box() -> Dictionary:
 		return {}
 	for t: Dictionary in pocket.layout.things:
 		if t.kind == &"strongbox":
+			return t
+	return {}
+
+
+## `near hatch`, `near stove`: the first thing in the room that serves a meal,
+## or that burns, stood at in reach of it.
+func _first_with(key: String) -> Dictionary:
+	if pocket == null:
+		return {}
+	for t: Dictionary in pocket.layout.things:
+		if t.has(key):
 			return t
 	return {}
 

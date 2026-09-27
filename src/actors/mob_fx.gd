@@ -220,6 +220,25 @@ vec4 tell_drop(vec2 p, vec2 px, float pr) {
 	return inked(outer, MARK_HALO);
 }
 
+// A shadow thrown from far above (a colossus's pad): a fine dashed ring round
+// the ground it will cover, with a light ordered stipple inside thickening to
+// one pixel in four. The dark itself is the land's own shade (sky.gdshaderinc
+// `colossus_pads`, lit, not drawn); this is only the edge a player reads it by.
+vec4 tell_shade(vec2 p, vec2 px, float pr) {
+	float r = length(p);
+	float pw = max(fwidth(r), 1e-4) * PEN;
+	float R = 1.0 - pw * 3.0;
+	float seg = floor((atan(p.y, p.x) / TAU + 0.5) * 96.0);
+	float outer = mod(seg, 2.0) > 0.5 ? 1e3 : abs(r - R) / pw - 1.0;
+	vec2 c = mod(px, 4.0);
+	int i = int(c.x) + int(c.y) * 4;
+	const float B[16] = float[](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
+	if (r < R && (B[i] + 0.5) / 16.0 < 0.25 * pr) {
+		return ink_out();
+	}
+	return inked(outer, MARK_HALO);
+}
+
 // Plate: the pen's sound marks, (( )), and two or three cold bright pixels. The
 // arcs stand OUTSIDE the plate they rang off, and the sparks are pixels, not
 // blobs: this mark says "that was armour", it does not hide the armour.
@@ -455,6 +474,7 @@ void fragment() {
 	else if (mode == 9) { o = tell_ring(p, pr); }
 	else if (mode == 10) { o = tell_line(p, pr); }
 	else if (mode == 11) { o = tell_drop(p, px, pr); }
+	else if (mode == 12) { o = tell_shade(p, px, pr); }
 	if (o.a < 0.5) {
 		discard;
 	}
@@ -578,6 +598,7 @@ const VAPOUR := 8
 const TELL_RING := 9
 const TELL_LINE := 10
 const TELL_DROP := 11
+const TELL_SHADE := 12
 
 ## World units per screen pixel of the BASE (1920x1080; the fight system keeps it
 ## to the camera's own, `40_fight._keep_texel`). Marks are never smaller on screen
@@ -692,6 +713,10 @@ static func _shader(key: StringName) -> Shader:
 			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _BILLBOARD + _MARKS
 		&"flat":
 			s.code = "shader_type spatial;\n" + (_COMMON % ", depth_test_disabled") + open + _FLAT + _MARKS
+		&"ground":
+			s.code = "shader_type spatial;\n" + (_COMMON % "") + open + _FLAT + _MARKS
+		&"among":
+			s.code = "shader_type spatial;\n" + (_COMMON % "") + open + _BILLBOARD + _MARKS
 		&"swing":
 			s.code = "shader_type spatial;\n" + open + _SWING
 		&"line":
@@ -707,9 +732,15 @@ static func _v3(c: Color) -> Vector3:
 
 
 ## One mark on a quad. `shader`: over (faces the camera) or flat (lies on the
-## ground). Neither is hidden by what it is drawn on: the land's contours stand
-## a little proud of a tile's level, and a depth-tested mark sank into them.
+## ground). From above neither is hidden by what it is drawn on: the land's
+## contours stand a little proud of a tile's level, and a depth-tested mark sank
+## into them. Under the close eye a flat mark is `ground`, depth-tested: seen from
+## behind the head, a ring round the feet drawn over everything lands on the
+## head. (`among`: a mark facing the camera that bodies hide, for the few drawn
+## by the body at eye level; see `puff`.)
 static func _mark(parent: Node, at: Vector3, size: float, mode: int, shader: StringName, seed_value: int, a: Color, b: Color) -> MeshInstance3D:
+	if shader == &"flat" and close_eye(parent):
+		shader = &"ground"
 	if _quad == null:
 		_quad = QuadMesh.new()
 		_quad.size = Vector2(2, 2)
@@ -733,7 +764,7 @@ static func _mark(parent: Node, at: Vector3, size: float, mode: int, shader: Str
 	parent.add_child(mi)
 	mi.global_position = at
 	mi.scale = Vector3.ONE * size * 0.5
-	if shader == &"flat":
+	if shader == &"flat" or shader == &"ground":
 		mi.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
 	return mi
 
@@ -856,14 +887,16 @@ static func burst(parent: Node, at: Vector3, size: float = 0.9, seed_value: int 
 		glint(parent, at + Vector3(0, 0.05, 0), accent, seed_value + 5, 0.4)
 
 
-## Dust thrown up at the feet and drifting along `dir` (tile space).
+## Dust thrown up at the feet and drifting along `dir` (tile space). Under the
+## close eye it is `among` the bodies, depth-tested: a puff at the feet or the
+## mouth drawn over everything is a cloud on the back of the head.
 static func puff(parent: Node, at: Vector3, dir: Vector2, dust: Color, size: float = 0.6, seed_value: int = 0) -> void:
 	if not _ok(parent):
 		return
 	var d := dir.normalized() if dir.length() > 0.01 else Vector2.ZERO
 	size = at_least(size, PUFF_PX)
 	var lift := Vector3(0, size * 0.35, 0)
-	var mi := _mark(parent, at + lift, size, PUFF, &"over", seed_value, dust, dust.darkened(0.35))
+	var mi := _mark(parent, at + lift, size, PUFF, &"among" if close_eye(parent) else &"over", seed_value, dust, dust.darkened(0.35))
 	var t := 0.34 + Rng.hash01(seed_value, 1, 2) * 0.12
 	_run(mi, t, Vector3(d.x, 0.0, d.y) * size * 0.9 + Vector3(0, size * 0.3, 0))
 
@@ -952,10 +985,15 @@ static func ring(parent: Node, at: Vector3, col: Color, radius: float = 0.8, sec
 ## A bite's tell on the ground (FightRules.tell_ring): a dashed ring of the size
 ## of what it will strike, held for `seconds` (its windup), with a ring inside it
 ## closing on the middle that arrives as the bite goes live.
-static func tell_ring(parent: Node, at: Vector3, col: Color, radius: float, seconds: float) -> void:
+## `through`: drawn over whatever stands between it and the eye (the listener's
+## ear, FightKit.listen), where a flat mark under the close eye is depth-tested.
+static func tell_ring(parent: Node, at: Vector3, col: Color, radius: float, seconds: float, through := false) -> void:
 	if not _ok(parent):
 		return
-	_run(_mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_RING, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col), seconds)
+	var mi := _mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_RING, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col)
+	if through:
+		(mi.material_override as ShaderMaterial).shader = _shader(&"flat")
+	_run(mi, seconds)
 
 
 ## A throw's tell on the ground (FightRules.tell_lane): the lane it lands along,
@@ -980,6 +1018,16 @@ static func tell_drop(parent: Node, at: Vector3, col: Color, radius: float, seco
 	if not _ok(parent):
 		return
 	_run(_mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_DROP, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col), seconds)
+
+
+## A shadow from far above on the ground (a colossus's pad, 19_colossi): a
+## dashed ring the size of what is coming, the whole ground inside it dimming
+## over `seconds` as it comes down. Seen from the shoulder it lies on the land it
+## covers, as every flat mark does there (`_mark`).
+static func tell_shade(parent: Node, at: Vector3, col: Color, radius: float, seconds: float) -> void:
+	if not _ok(parent):
+		return
+	_run(_mark(parent, at + Vector3(0, 0.04, 0), at_least(radius * 2.0, RING_PX), TELL_SHADE, &"flat", int(at.x * 13.0 + at.z * 7.0), col, col), seconds)
 
 
 ## A blow that rang off plate: sound marks and a few cold bright pixels.
@@ -1151,6 +1199,25 @@ static func warm(parent: Node, at: Vector3) -> void:
 	parent.add_child(card)
 	card.global_position = at - Vector3(0, 0.5, 0)
 	_free_after(card, 0.25)
+
+
+## A faint light standing at `at` for `seconds`: what a sheet of found light
+## casts on the ground and the faces either side of it (the world is lit, not
+## drawn, docs/LOOK.md). No shadow, and small: a glow, not a lamp.
+static func glow(parent: Node, at: Vector3, col: Color, reach: float, seconds: float) -> void:
+	if not _ok(parent):
+		return
+	var l := OmniLight3D.new()
+	l.light_color = col
+	l.light_energy = GLOW_ENERGY
+	l.omni_range = reach
+	l.shadow_enabled = false
+	parent.add_child(l)
+	l.global_position = at
+	_free_after(l, seconds)
+
+
+const GLOW_ENERGY := 0.6
 
 
 static func _free_after(n: Node, seconds: float) -> void:

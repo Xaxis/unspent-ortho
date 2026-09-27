@@ -1,0 +1,30 @@
+# THE DATA HALL UNDER THE SERVER FIELDS' SUMP (docs/interiors,
+# src/content/interiors/data_hall.gd): a hatch by the sump's gantry, and under it
+# where the machines think -- aisles of racks to the ceiling lit by nothing but
+# their status points, the cold up off the grates, the console at the aisles'
+# head with its watcher, a sentry at each aisle's end, and the tape room behind
+# bars at the far end.
+#
+#   tools/tour.sh tours/datahall.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is the sump and its hatch as a player finds it. 02 is the hall from above
+# as the player comes down. 03 is over the shoulder at the empty bay, looking up
+# an aisle to the head.
+coast calm
+near door:data_hall
+await door 5
+wait 0.6
+shot 01-a-hatch-by-the-sump with door,land:server_fields
+
+press use 0.1
+await inside:data_hall 5
+wait 1.0
+shot 02-the-aisles-by-their-points with inside:data_hall
+
+# The peek comes up on the top view's bearing; stood by name once it is up,
+# the view turns to stand behind the player's facing.
+hold shoulder_peek
+await shoulder 3
+near thing:restore_bay
+wait 1.0
+shot 03-up-an-aisle-to-the-head with inside:data_hall,shoulder

@@ -200,6 +200,15 @@ static func make() -> BiomeDef:
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"cast_stones", &"evaporator", &"clerks_office"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
+	# Who kept them: the raker who works the pans the machines abandoned, and the
+	# boiler who boils what brine is left down to salt.
+	d.home = {"households": {
+		&"raker": {"wants": [&"salt_rake", &"salt_cones", &"basket", &"shelf"], "by_hearth": []},
+		&"boiler": {"wants": [&"salt_cones", &"salt_cones", &"jars", &"creel"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+	}}
 	d.sound_bed = &"bed_bones"
 	d.music_motif = &"bonelands"
 	d.surface = _surface
@@ -273,42 +282,66 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 ## that carried the salt off to somewhere that stopped wanting it.
 static func _works(L: Object) -> void:
 	var c: GenContext = L.c
+	var floors: Array = [Ground.SALT, Ground.PAN, Ground.GRAVEL, Ground.SAND]
+	# Pan batteries: two or three pans side by side, each a ruled rectangle.
+	var pans: Array = []
+	for n in GenWorks._n(c, 2.0):
+		var p := GenWorks._site(L, 8, 1, floors, 34.0, 700, 0.4)
+		if p.x >= 0 and GenWorks._work(L, &"_pans", Vector2(p) + Vector2(0.5, 0.5)):
+			pans.append(L.w.landmarks.back())
+	# The intake that drained the sea into all this, standing on the rim of a
+	# battery with its pipe run heading out along the bund. ON THE RIM, not on a
+	# dart of its own: the rake dens on its brine house and the depot stands at
+	# the busiest pans, and the two are meant to be one place
+	# (test_in_game:test_what_a_broken_depot_spends_is_what_a_keeper_eats). A
+	# brine house thrown anywhere stood sixty tiles and more from any yard.
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	for n in GenWorks._n(c, 1.0):
+		var stood := false
+		for m: Dictionary in pans:
+			var half: Vector2 = m.half
+			for side: float in [1.0, -1.0]:
+				if not stood:
+					stood = GenWorks._work(L, &"_brine_house", (m.pos as Vector2) + nrm * side * (half.y + 5.0) - d * half.x * 0.5)
+		if stood:
+			continue
+		var p := GenWorks._site(L, 5, 2, [], 40.0, 500, 0.5)
+		if p.x >= 0:
+			GenWorks._work(L, &"_brine_house", Vector2(p) + Vector2(0.5, 0.5))
+
+
+static func _pans(L: Object, at: Vector2, _a: Array) -> bool:
 	var rng: RandomNumberGenerator = L.rng
 	var d: Vector2 = L.d
 	var nrm: Vector2 = L.nrm
-	var floors: Array = [Ground.SALT, Ground.PAN, Ground.GRAVEL, Ground.SAND]
-	# Pan batteries: two or three pans side by side, each a ruled rectangle.
-	for n in GenWorks._n(c, 2.0):
-		var p := GenWorks._site(L, 8, 1, floors, 34.0, 700, 0.4)
-		if p.x < 0:
+	var half := Vector2(rng.randf_range(8.0, 11.0), rng.randf_range(5.0, 7.0))
+	GenWorks._record(L.c, &"pans", at, d, half, GenWorks.CUT)
+	# The bund: a gate at the middle of each long wall, survey posts at the
+	# corners, and a line of pipe carrying brine that never comes.
+	for sx: float in [-1.0, 1.0]:
+		GenWorks._put(L, PropKind.PAN_GATE, at + nrm * half.y * sx, nrm.angle(), -99, 0.4, true)
+		for sy: float in [-1.0, 1.0]:
+			GenWorks._put(L, PropKind.SURVEY, at + d * half.x * sy + nrm * half.y * sx, d.angle(), -99, 0.0, true)
+	GenWorks._run(L, PropKind.PIPE, at + d * (half.x + 1.0), d, rng.randi_range(3, 5), 2.0, -99, 0.25)
+	# What the rakes left standing in the pan, in rows along the bearing.
+	for gx in range(-2, 3):
+		if rng.randf() < 0.3:
 			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var half := Vector2(rng.randf_range(8.0, 11.0), rng.randf_range(5.0, 7.0))
-		GenWorks._record(c, &"pans", at, d, half, GenWorks.CUT)
-		# The bund: a gate at the middle of each long wall, survey posts at the
-		# corners, and a line of pipe carrying brine that never comes.
-		for sx: float in [-1.0, 1.0]:
-			GenWorks._put(L, PropKind.PAN_GATE, at + nrm * half.y * sx, nrm.angle(), -99, 0.4, true)
-			for sy: float in [-1.0, 1.0]:
-				GenWorks._put(L, PropKind.SURVEY, at + d * half.x * sy + nrm * half.y * sx, d.angle(), -99, 0.0, true)
-		GenWorks._run(L, PropKind.PIPE, at + d * (half.x + 1.0), d, rng.randi_range(3, 5), 2.0, -99, 0.25)
-		# What the rakes left standing in the pan, in rows along the bearing.
-		for gx in range(-2, 3):
-			if rng.randf() < 0.3:
-				continue
-			GenWorks._put(L, PropKind.SALT_HEAP, at + d * gx * 3.4 + nrm * rng.randf_range(-1.5, 1.5), 0.0, -99, 0.3)
-		GenWorks._put(L, PropKind.SIGN, at - d * (half.x + 1.6), (-d).angle(), -99, 0.2)
-		GenWorks._about(L, PropKind.DEBRIS, at, 2, half.y, half.x)
-	# The intake that drained the sea into all this, standing on the rim with
-	# its pipe run heading out over the crust.
-	for n in GenWorks._n(c, 1.0):
-		var p := GenWorks._site(L, 5, 2, [], 40.0, 500, 0.5)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		if GenWorks._put(L, PropKind.PUMP_HOUSE, at, d.angle(), -99, 1.0) == null:
-			continue
-		GenWorks._record(c, &"brine_house", at, d, Vector2(4.0, 3.0))
-		GenWorks._run(L, PropKind.PIPE, at + d * 2.5, d, rng.randi_range(4, 6), 2.0, -99, 0.2)
-		GenWorks._about(L, PropKind.WATER_TANK, at, 1, 3.0, 5.0)
-		GenWorks._about(L, PropKind.GRAVE, at, 2, 5.0, 8.0)
+		GenWorks._put(L, PropKind.SALT_HEAP, at + d * gx * 3.4 + nrm * rng.randf_range(-1.5, 1.5), 0.0, -99, 0.3)
+	GenWorks._put(L, PropKind.SIGN, at - d * (half.x + 1.6), (-d).angle(), -99, 0.2)
+	GenWorks._about(L, PropKind.DEBRIS, at, 2, half.y, half.x)
+	return true
+
+
+static func _brine_house(L: Object, at: Vector2, _a: Array) -> bool:
+	var d: Vector2 = L.d
+	var house := GenWorks._put_footed(L, PropKind.PUMP_HOUSE, at, d.angle(), 1.0)
+	if house == null:
+		return false
+	at = house.pos
+	GenWorks._record(L.c, &"brine_house", at, d, Vector2(4.0, 3.0))
+	GenWorks._run(L, PropKind.PIPE, at + d * 2.5, d, L.rng.randi_range(4, 6), 2.0, -99, 0.2)
+	GenWorks._about(L, PropKind.WATER_TANK, at, 1, 3.0, 5.0)
+	GenWorks._about(L, PropKind.GRAVE, at, 2, 5.0, 8.0)
+	return true

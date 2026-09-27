@@ -119,3 +119,37 @@ func test_a_creature_is_nothing_of_the_plan_s() -> void:
 		eq(str(TargetRead.of(dog, g.player.pos, sim.moment).testimony), "", "a dog is read as a dog")
 	Sx.end(g)
 	Story.forget()
+
+
+## Watching a machine that hunts you stop at a crags ring and hold (docs/HUSH.md
+## H1) lands `ring_held`, once, in a running game on the crags.
+func test_a_machine_stopping_at_a_ring_is_known() -> void:
+	Story.forget()
+	var g := Sx.game(tree, ["--seed=7", "--hour=11", "--weather=clear:0", "--place=the_crags"])
+	await frames(3)
+	var hush := Sx.system(g, "23_hush")
+	var c: Vector2 = hush.call("tour_place", "hush_ring")
+	check(c.is_finite(), "a ring on the crags of seed 7")
+	g.player.hero.pos = c
+	g.player.hero.move = Vector2.ZERO
+	g.player.pos = c
+	g.view.ensure_near(c)
+	await frames(10)
+	var sim: FightSim = g.player.sim
+	var ring := HushSites.nearest(g.world, g.query, c, 20.0)
+	var m := sim.add_mob(&"runner", ring.centre + Vector2(ring.radius + FightSim.HUSH_PAD + 4.0, 0.0))
+	m.facing = PI
+	m.disturbed = true
+	m.set_mood(MobState.CHASING, sim.now)
+	var said: Array[String] = []
+	var hear := func(t: String) -> void: said.append(t)
+	Events.message.connect(hear)
+	for i in 120:
+		await frames(1)
+		if Story.landed(&"ring_held"):
+			break
+	check(Story.landed(StoryContent.WITNESS_ON[&"ring_held"]), "watched a machine stop at the stones, it is known")
+	eq(said.count(StoryContent.beat_says(&"ring_held")), 1, "and said once on the glass")
+	Events.message.disconnect(hear)
+	Sx.end(g)
+	Story.forget()

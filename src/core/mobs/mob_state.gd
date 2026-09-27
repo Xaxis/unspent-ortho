@@ -6,6 +6,9 @@ extends Fighter
 ## Moods (design-extract §7.4):
 ##   idle / working -> (notices) alerted -> `ready` beats -> chasing -> (in reach) attacking
 ##   chasing -> fleeing home past `tether`; -> idle after `forget` beats unseen
+##   chasing / attacking -> holding at a crags ring's edge while the player is in
+##     it (a machine; docs/HUSH.md H1) -> fleeing home at dawn, or once the
+##     player is out of it and past `forget`
 ##   fleeing -> idle once `safe` tiles clear; dead lies `linger` seconds, then goes
 
 const IDLE := &"idle"
@@ -14,9 +17,19 @@ const ALERTED := &"alerted"
 const CHASING := &"chasing"
 const ATTACKING := &"attacking"
 const FLEEING := &"fleeing"
+const HOLDING := &"holding"
 const DEAD := &"dead"
 
 static var _next_id := 1
+
+## Holding (HOLDING): the ring's disc it will not enter (x, y, radius) and the
+## world minute the hold began, which a dawn ends.
+var hold_at := Vector3.INF
+var hold_since := 0.0
+## The unbuilder's strip gathered on this body (FightKit.unbuild), in ms; and
+## whether it has been stripped (no bite from then on).
+var strip_ms := 0.0
+var stripped := false
 
 var id := 0
 var kind: StringName = &""
@@ -88,6 +101,11 @@ var stall_ready_at := 0.0
 ## When the last bite ended and the machine went spent (sim ms): the view flares
 ## the working part once for it, so the opening is seen and not only timed.
 var opened_at := -INF
+## Hurt frames per source (FightSim `_hurt_mob`): a source cannot land twice
+## in one window, but several sources land in the same one, so three turrets
+## covering each other, or a turret and a swing, all count (SETTLE.md S7).
+## Keyed by `FightSim.source_of`.
+var hurt_by := {}
 ## blow_at of the bite that last met the player (a landed bite is not spent).
 var landed_at := -INF
 ## How it takes the player (VISION §2): &"hostile" hunts, &"indifferent" works
@@ -101,6 +119,10 @@ var role: StringName = &"hunter"
 ## a noise fills it slowly, and it drains when nothing comes of it. At 1 the
 ## body is sure and the alert pose snaps (drawn on the machine, never as text).
 var suspicion := 0.0
+## DOCKED, ASLEEP: its optics dark (it sees nothing), its hearing still on. It
+## wakes when it is sure (suspicion reaches 1, FightSim) or when whoever docked
+## it says so (21_doors, at the shift).
+var asleep := false
 ## Where the last noise it heard came from, and the sim ms until which its
 ## optics are turned that way.
 var heard_at := Vector2.ZERO
@@ -118,6 +140,9 @@ var sent := false
 ## step is over or the player leaves the yard. Without this, the cheapest answer
 ## to any raid was to walk twenty-five tiles and let the culler eat the party.
 var raider := false
+## When a raider last struck a holding's wall piece (48_raids), for the guns
+## (TurretRules.AT_WALL_MS).
+var struck_wall_at := -INF
 ## Where the last blow that hurt it came from, when that was NOT the player's own
 ## swing (FightSim.strike: a turret); INF when it was the player's, or never. A
 ## party body hurt by the yard goes for what shot it and one hurt by the player
@@ -311,6 +336,12 @@ func watchful() -> bool:
 ## At its work, whatever it makes of the player: it has not left its round.
 func at_work() -> bool:
 	return indifferent() or watchful()
+
+
+## Whether `source` (FightSim.source_of) is still inside the hurt frames of its
+## own last blow on this body.
+func hurt_by_now(source: Variant, now: float) -> bool:
+	return now < float(hurt_by.get(source, -INF))
 
 
 func mob_iframes() -> int:

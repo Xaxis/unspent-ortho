@@ -1,0 +1,68 @@
+# THREE HOMES IN THREE LANDSCAPES (src/content/interiors/home.gd, BiomeDef.home):
+# a wireman's in the snowfield, who strips the pylons and keeps their glass; a
+# corer's in the bonelands, who racks the cores the machines' drills leave; a
+# tapper's in the pinewood, with the resin crop and the tallow. Each in its
+# landscape's own timber and cloth. Staged by who keeps the room.
+#
+#   tools/tour.sh tours/homes-three.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01, 03, 05 are each home from above; 02, 04, 06 over the shoulder at what the
+# household lives by.
+coast calm
+near door:wireman
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 01-a-wiremans-home with room:wireman,land:snowfield
+hold shoulder_peek
+await shoulder 3
+near thing:wire_coils
+wait 1.0
+shot 02-its-wire-coils with room:wireman,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:corer
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 03-a-corers-home with room:corer,land:bonelands
+hold shoulder_peek
+await shoulder 3
+near thing:core_samples
+wait 1.0
+shot 04-its-core-samples with room:corer,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:tapper
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 05-a-tappers-home with room:tapper,land:pinewood
+hold shoulder_peek
+await shoulder 3
+near thing:resin_pots
+wait 1.0
+shot 06-its-resin-pots with room:tapper,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+

@@ -248,3 +248,57 @@ func test_a_holding_belongs_to_the_realm_it_was_built_in() -> void:
 	check(sys.call("nearest", Realm.UNDERGROUND, g.player.pos) == null,
 		"standing on the same coordinates a realm down finds nothing: a holding does not follow anybody through a shaft")
 	Sx.end(g)
+
+
+## Terraced ground round the player: the tile they stand on alone at its level,
+## everything for ten tiles round it one step up, flat, dry and cleared. The
+## bonelands and the ruined metropolis are this, and there nothing could be set
+## down within six tiles of where a player wakes: every candidate spot was
+## refused for not being on the player's own tile's level.
+static func _terrace(g: Game) -> void:
+	var w := g.world
+	var px := floori(g.player.pos.x)
+	var py := floori(g.player.pos.y)
+	var under := maxi(1, w.level_at(px, py))
+	for y in range(py - 10, py + 11):
+		for x in range(px - 10, px + 11):
+			var i := y * w.size + x
+			w.level[i] = under + 1
+			w.ground[i] = Ground.GRASS
+	w.level[py * w.size + px] = under
+	for q in g.query.props_near(g.player.pos, 14.0):
+		w.depleted[q.id] = 0.0
+
+
+func test_a_piece_goes_up_on_ground_a_step_off_the_player_s_own() -> void:
+	var g := Sx.game(tree, ["--seed=4", "--size=128", FULL])
+	await frames(3)
+	_terrace(g)
+	var said := String(holdings(g).call("build_here", StructureKind.HUT))
+	check(not said.begins_with("!"), "a hut goes up on the flat a step up: %s" % said)
+	var fire := Survival.build(g, &"fire", true)
+	check(fire != null, "and a fire can be set down there too")
+	if fire != null:
+		var a := Vector2i(floori(fire.pos.x), floori(fire.pos.y))
+		eq(g.world.level_at(a.x, a.y), g.world.level_at(floori(g.player.pos.x), floori(g.player.pos.y)) + 1, "on the flat, not astride the step")
+	Sx.end(g)
+
+
+func test_nothing_goes_up_astride_a_step() -> void:
+	var g := Sx.game(tree, ["--seed=4", "--size=128", FULL])
+	await frames(3)
+	var w := g.world
+	var px := floori(g.player.pos.x)
+	var py := floori(g.player.pos.y)
+	var base := maxi(1, w.level_at(px, py))
+	# A chequer of two levels: every tile's four neighbours are the other level,
+	# so no footprint anywhere is flat.
+	for y in range(py - 12, py + 13):
+		for x in range(px - 12, px + 13):
+			w.level[y * w.size + x] = base + ((x + y) & 1)
+			w.ground[y * w.size + x] = Ground.GRASS
+	for q in g.query.props_near(g.player.pos, 16.0):
+		w.depleted[q.id] = 0.0
+	var said := String(holdings(g).call("build_here", StructureKind.PLOT))
+	check(said.begins_with("!"), "no piece stands astride a step: %s" % said)
+	Sx.end(g)

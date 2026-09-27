@@ -65,6 +65,11 @@ static func without_making() -> Array[StringName]:
 		for id: StringName in Drops.can_yield(kind):
 			if id != &"" and not out.has(id):
 				out.append(id)
+	# A keeper's core, off the keeper that is the only body it comes out of.
+	for land: StringName in Sentinels.lands():
+		var core := Sentinels.for_land(land).core
+		if core != &"" and not out.has(core):
+			out.append(core)
 	out.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
 	return out
 

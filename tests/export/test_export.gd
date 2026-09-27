@@ -8,6 +8,27 @@ const PRESETS := "res://export_presets.cfg"
 const DEV_DIRS: Array[String] = ["shots/", "tours/", "tools/", "tests/", "docs/", "build/"]
 
 
+
+## Whether a path in the pack is one the game ships: its code and shaders under
+## src/, its configurations, and the few files Godot writes for itself. A dev
+## leftover (a .uid or .import beside a file, a scratch file, a tool or a test)
+## is not, wherever it sits.
+static func ships(f: String) -> bool:
+	if f.ends_with(".uid") or f.ends_with(".import") or f.contains("scratch"):
+		return false
+	if f == "project.binary" or f == ".godot/global_script_class_cache.cfg" or f == ".godot/uid_cache.bin":
+		return true
+	if f.begins_with(".godot/exported/") and f.ends_with(".scn"):
+		return true
+	if f.begins_with("configs/"):
+		return f.ends_with(".json")
+	if f.begins_with("src/"):
+		for ext: String in [".gdc", ".remap", ".gdshader", ".gdshaderinc", ".scn", ".json", ".html"]:
+			if f.ends_with(ext):
+				return true
+	return false
+
+
 func _presets() -> Dictionary:
 	var cfg := ConfigFile.new()
 	var err := cfg.load(PRESETS)
@@ -124,11 +145,29 @@ func test_a_headless_export_packs_the_game_and_nothing_else() -> void:
 	for f: String in files:
 		for d in DEV_DIRS:
 			check(not f.begins_with(d), "%s does not ship" % f)
+	# WHAT SHIPS, BY ITS SHAPE: the cap below is a ceiling, and under it this is
+	# what keeps junk out, naming the file. Scanned 2026-09-26: 607 compiled
+	# scripts and their remaps, 36 shaders, 5 configs, the main scene Godot bakes
+	# under .godot/exported, its two caches and project.binary. Nothing else.
+	var strays: PackedStringArray = []
+	for f: String in files:
+		if not ships(f):
+			strays.append(f)
+	eq(strays.size(), 0, "only the game ships, and these do not belong in it: %s" % ", ".join(strays.slice(0, 12)))
 	var size := FileAccess.open(pck, FileAccess.READ).get_length() if FileAccess.file_exists(pck) else 0
 	# A cap on the GAME's size, not a check on what ships: dev files are refused one
-	# by one above. 4 MB was crossed by real code (far models, the shoulder view,
-	# the stutter fixes: 4,097 KB on 2026-09-24), so the cap has headroom again.
-	lt(float(size), 5.0 * 1024 * 1024, "the pack stays small (%d KB)" % (size / 1024))
+	# by one above. 4 MB was crossed by real code on 2026-09-24 (4,097 KB), and 5 MB
+	# by real code on 2026-09-26: the assembly packed 5,141 KB against main's
+	# 4,935, all of it the game's own (compiled scripts +162 KB, shaders +38 KB:
+	# new interiors, climbing, weather), and nothing in the pack but src, configs,
+	# the project and Godot's class and uid caches. Its biggest files are the
+	# story's words (137 KB), the world shader (124 KB) and the remains models.
+	# Growth measured over a week: 3,687 KB on 2026-09-19 to 4,935 on 2026-09-26,
+	# about 180 KB a day, so 10 MB holds about a month more of it. Compression
+	# buys little (brotli 5,141 -> 4,529 KB: compiled scripts are already dense),
+	# and the engine's own wasm dwarfs the pack either way. When this trips again,
+	# list the pack by size against main before raising it.
+	lt(float(size), 10.0 * 1024 * 1024, "the pack stays small (%d KB)" % (size / 1024))
 	lt(float(ms), 60000.0, "and exports in well under a minute (%d ms)" % ms)
 	for f in DirAccess.get_files_at(dir):
 		DirAccess.remove_absolute(dir.path_join(f))

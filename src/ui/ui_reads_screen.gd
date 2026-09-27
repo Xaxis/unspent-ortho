@@ -29,7 +29,7 @@ const WORK_WORDS := {
 	&"iced_line": "a line iced up", &"shelter": "a shelter", &"cistern": "a cistern",
 	&"dugout": "a dugout", &"graves": "graves in rows", &"stolen_light": "light stolen off a machine",
 	&"pans": "pans ruled across the flat", &"breaking_yard": "a yard for breaking machines",
-	&"closing_corridor": "a corridor closing over",
+	&"closing_corridor": "a corridor closing over", &"orchard_block": "an orchard planted in rows",
 }
 ## Works listed when nothing living reads back: kinds, not repeats of one kind.
 const WORKS_ROWS := 6
@@ -378,6 +378,12 @@ func _draw_interference(r: Rect2i) -> void:
 		UiDraw.rect(self, Rect2i(x, mini(last, y), UiBase.PITCH, absi(y - last) + UiBase.PITCH), UiTheme.MACHINE[3] if level < UiRules.PRESSURE_WARN else UiTheme.WARN)
 		last = y
 	UiDraw.text_right(self, box.end.x - 8, box.position.y + 4, "%d%%  %s" % [roundi(level * 100.0), String(_feed.get("network", ""))], UiTheme.MACHINE[3])
+	# What the player keeps feeding it, named at the foot of the trace: a
+	# warming region says why (the relic worn is heat, `carried`).
+	var y := box.end.y - 8 - UiTheme.LINE
+	for cause: Variant in (_feed.get("causes", []) as Array):
+		UiDraw.text(self, Vector2i(box.position.x + 12, y), String(cause), UiTheme.WARN)
+		y -= UiTheme.LINE
 
 
 ## What the plan still holds this REGION for, under the interference trace

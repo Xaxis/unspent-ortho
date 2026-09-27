@@ -1,0 +1,26 @@
+# THE PINEWOOD'S SAW HALL ON THE SHIFT (src/content/interiors/saw_hall.gd): the
+# works' hatch, and under it the line running -- logs on the chain into the gang
+# saw, beams coming out square and stacked in cubes, the warden at the saw
+# watching it cut, a hauler at the stacks, the empty docks along the south wall,
+# the kiln at the far end.
+#
+#   tools/tour.sh tours/sawhall.tour --seed=4 --hour=12 --weather=clear:0
+#
+# 01 is the works' hatch in the pinewood. 02 is the hall from above on the
+# shift. 03 is over the shoulder at the saw.
+coast calm
+near door:saw_hall
+await door 5
+wait 0.6
+shot 01-the-works-hatch-in-the-pines with door,land:pinewood
+
+press use 0.1
+await inside:saw_hall 5
+wait 1.0
+shot 02-the-line-running with inside:saw_hall,mob:warden
+
+hold shoulder_peek
+await shoulder 3
+near thing:gang_saw
+wait 1.0
+shot 03-at-the-gang-saw with inside:saw_hall,shoulder

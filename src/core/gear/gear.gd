@@ -82,6 +82,15 @@ static func ability_of(id: StringName) -> StringName:
 	return Items.def(id).get("ability", &"")
 
 
+## How many relics are among `ids` (GearTree grade relic): what a network reads
+## off a body as found-tech heat while they are carried (GEAR.md G9).
+static func relics_in(ids: Array) -> int:
+	var n := 0
+	for id: Variant in ids:
+		n += int(GearTree.row(StringName(id)).get("grade", &"") == &"relic")
+	return n
+
+
 ## Every wearable piece for `slot`, in a stable order (the loadout page cycles them).
 static func wearables_for(slot: StringName) -> Array[StringName]:
 	var out: Array[StringName] = []

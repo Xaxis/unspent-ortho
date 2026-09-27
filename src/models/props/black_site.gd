@@ -47,6 +47,10 @@ static func platform(k: Kit, v: int, c: int) -> void:
 	var s := 41100 + v + c
 	var deck := P.PLATE[2]
 	var edge := P.PLATE[3]
+	var def := BiomeRegistry.by_index(c)
+	if def != null and def.decks_grounded:
+		_ground_deck(k, s, deck, edge)
+		return
 	# The legs, planted past the waterline and stained where the sea reaches.
 	for i in 4:
 		var sx := -1.0 if i < 2 else 1.0
@@ -104,6 +108,23 @@ static func platform(k: Kit, v: int, c: int) -> void:
 		k.rod(Vector3(lx, y, -0.32), Vector3(lx, y, 0.32), 0.035, 4, P.RUST[2] if i > 3 else P.PLATE[1])
 	for sz2: float in [-0.32, 0.32]:
 		k.rod(Vector3(lx, DECK_Y + 0.5, sz2), Vector3(lx, -1.0, sz2), 0.045, 4, P.PLATE[1])
+
+
+## THE SAME DECK LAID ON THE GROUND, where a landscape keeps it as a floor
+## (`BiomeDef.decks_grounded`): plated in strips with its lip, at a step's height
+## so a body walks over it, and no rail, leg or ladder, which on dry ground would
+## stand where a walker passes through them.
+const GROUND_DECK_Y := 0.22
+
+
+static func _ground_deck(k: Kit, s: int, deck: Color, edge: Color) -> void:
+	for i in 5:
+		var z0 := -DECK + i * (DECK * 2.0 / 5.0)
+		var z1 := z0 + DECK * 2.0 / 5.0 - 0.04
+		var tone := deck if (i + absi(s)) % 2 == 0 else P.PLATE[3]
+		k.found.quad(Vector3(-DECK, GROUND_DECK_Y, z0), Vector3(-DECK, GROUND_DECK_Y, z1),
+			Vector3(DECK, GROUND_DECK_Y, z1), Vector3(DECK, GROUND_DECK_Y, z0), tone)
+	k.chamfer(0.0, 0.0, 0.0, DECK * 2.0, GROUND_DECK_Y, DECK * 2.0, 0.06, P.PLATE[1], edge)
 
 
 ## The tank, drained and open. It is the whole reason the place is in the game, so

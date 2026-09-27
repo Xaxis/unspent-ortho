@@ -8,7 +8,15 @@ extends GameSystem
 ##   at prop:NAME           stand beside the nearest prop of that kind (PropKind.NAMES,
 ##                          a space written as _), facing it, in reach of `use`: a tour
 ##                          takes from the world without knowing where the world put it
-##   village N              teleport beside village N
+##   village N|LAND         teleport beside village N, or the first village in the
+##                          landscape LAND (by id), which holds when worldgen
+##                          reorders the villages
+##   mark NAME              remember where the player stands, by a name
+##   at mark:NAME           stand there again (a fire the player laid: the place is
+##                          the tour's own doing, so it is named, never written down)
+##   back KIND DIST         stand DIST tiles out from the nearest prop of a kind, on
+##                          open ground with open ground between, facing it (for a
+##                          run held INTO it: `walkto prop:KIND SECS run through`)
 ##   near KIND[,KIND]       stand beside the nearest prop of a kind, facing it; a
 ##                          name that is no prop kind is asked of the systems'
 ##                          `tour_place` (`near colossus_foot`: under an ankle)
@@ -18,7 +26,13 @@ extends GameSystem
 ##                          that the next change to worldgen quietly invalidates
 ##   place NAME             teleport to a named place (GenPlaces: spawn, a country, an ecotone a-b, a landmark)
 ##   ledge up|across|down   stand, facing it, where a jump of that kind lands: the
-##                          nearest spot `Jump.find` names, never a coordinate
+##                          nearest spot `Jump.find` names, never a coordinate;
+##   ledge climb            or at the foot of the nearest rock face too tall to
+##                          jump, facing it (`Climb.find`);
+##   ledge haul             or at the foot of the nearest face the grapple's
+##                          vertical line goes up (AbilityGrapple.find_vertical)
+##   ledge glide            or on the nearest lip over a drop deeper than a glide
+##                          falls in its seconds, facing out (AbilityGlide.find_deep)
 ##   under KIND[@DEG]       after `ledge down`: put a roster body on the low ground
 ##                          just past where the jump the player faces comes down,
 ##                          turned away from the lip (or to DEG), so the landing is
@@ -102,6 +116,15 @@ extends GameSystem
 ##                          score_dissonance, score_grid, score_texture, score_phrase,
 ##                          score_resolve; and of the blend score_blend, score_here,
 ##                          score_in:LAND, score_full, score_unbroken)
+##   walkto prop:KIND[,KIND] SECS [run] [through]  steer the real walk to the nearest
+##                          prop of those kinds that still has work in it, as `near`
+##                          picks one, and stop within reach of it: the walk a tour
+##                          that must not teleport stages by name (a screen direction
+##                          held for a time lands wherever the next world put
+##                          things). `run` holds the run; `through` holds ONE
+##                          direction for all of SECS, at the prop's edge rather
+##                          than its middle, as a player running into a trunk
+##                          does, instead of stopping at reach (a slide round it)
 ##   walkto folk|dog|refuse SECS  walk to a villager the camera can see, a village dog,
 ##                          or within sight of a tip's gulls (tour_people.gd)
 ##   perf stats begin|end LABEL [raw]  the --stats block over just the lines between
@@ -143,6 +166,12 @@ extends GameSystem
 ##                          row ID is chosen; fails if it never comes round
 ##   coast calm|wild        calm: clear the bodies about and stop new ones coming
 ##                          (so a scripted stretch is not a random fight); wild: resume
+##   spawn KIND beyond PROP put a roster body on the far side of the nearest prop of
+##                          that kind, along the player's facing (PropKind names),
+##                          turned to them: a machine behind a house, over the
+##                          shoulder, that the house hides
+##   tell KIND              the nearest live body of that kind starts its bite's tell
+##                          where it stands, turned to the player (what the ear hears)
 ##   spawn KIND[@DEG]       put a roster body (e.g. runner, harvester) in view in
 ##                          front of the player, as --spawn does at boot; fails the
 ##                          tour when the roster has no such kind, when nothing was
@@ -188,7 +217,7 @@ extends GameSystem
 ## A tour outlives the game it began in: when that game gives way to the title or
 ## to a loaded game, the runner stays at the tree's root and follows the next game.
 ## Awaits for that: title (the title is up, its coast drawn), game (a new game has
-## started since the last action), saved (a save was written), asked (`use` has
+## started since the last action), saved (a save was written), fire_asked (`use` has
 ## asked where a fire would go and wants a second press); and station:NAME
 ## (a station of that name, e.g. fire, is in reach of the player).
 ##   await title SECS       the title's slate has woken over its coast (a tour booted
@@ -211,6 +240,10 @@ var _out := ""
 var _held: Array[String] = []
 ## Prop ids this tour has already stood at, so `near` moves on to the next one.
 var _near_used: Dictionary = {}
+## Places the tour named with `mark` (name -> tile position).
+var _marks: Dictionary = {}
+## The prop the last `back` stood out from: a run held `through` is at it.
+var _backed_from: WorldProp = null
 ## The node running the tour, while one runs; later games hand themselves to it.
 static var _runner: Node = null
 ## Set when the tour began on the title.
@@ -297,8 +330,18 @@ func _run() -> void:
 		print("tour t=%.2fs fps=%d: %s" % [Time.get_ticks_msec() / 1000.0, Engine.get_frames_per_second(), line])
 		var ok := true
 		match cmd:
+			"mark":
+				_marks[parts[1]] = game.player.pos
+			"back":
+				ok = await _stand_back(parts[1], parts[2].to_float() if parts.size() > 2 else 2.0)
 			"at":
-				if parts[1].begins_with("prop:"):
+				if parts[1].begins_with("mark:"):
+					ok = _marks.has(parts[1].substr(5))
+					if ok:
+						_teleport(_marks[parts[1].substr(5)])
+					else:
+						printerr("tour %s: no mark %s" % [_name, parts[1]])
+				elif parts[1].begins_with("prop:"):
 					ok = _stand_by(parts[1].substr(5))
 				elif parts[1].contains(":"):
 					# KIND:NAME that a system owns (`cast:maren`): whichever answers
@@ -359,7 +402,10 @@ func _run() -> void:
 				else:
 					_teleport(gp)
 			"ledge":
-				var found := Jump.find(game.world, game.query, game.player.pos, StringName(parts[1]))
+				var found := Climb.find(game.world, game.query, game.player.pos) if parts[1] == "climb" \
+					else (AbilityGlide.find_deep(game.world, game.query, game.player.pos) if parts[1] == "glide" \
+					else (AbilityGrapple.find_vertical(game.world, game.query, game.player.pos) if parts[1] == "haul" \
+					else Jump.find(game.world, game.query, game.player.pos, StringName(parts[1]))))
 				if found.is_empty():
 					printerr("tour: no %s jump within reach of %s" % [parts[1], game.player.pos])
 					ok = false
@@ -398,11 +444,18 @@ func _run() -> void:
 				else:
 					_teleport(pp)
 			"village":
-				var vi := parts[1].to_int()
-				if vi < game.world.villages.size():
-					_teleport(game.world.village_stand(game.world.villages[vi]))
+				if parts[1].is_valid_int():
+					var vi := parts[1].to_int()
+					if vi < game.world.villages.size():
+						_teleport(game.world.village_stand(game.world.villages[vi]))
+					else:
+						ok = false
 				else:
-					ok = false
+					var at := GenPlaces.find(game.world, "village:" + parts[1])
+					if at.x >= 0.0:
+						_teleport(at)
+					else:
+						ok = false
 			"hour":
 				var day := floorf(game.clock.minutes / 1440.0)
 				game.clock.minutes = day * 1440.0 + parts[1].to_float() * 60.0
@@ -471,7 +524,12 @@ func _run() -> void:
 			"until":
 				await _until(parts[1], parts[2].to_float() if parts.size() > 2 else 5.0)
 			"spawn":
-				ok = await _spawn(parts[1])
+				if parts.size() > 3 and parts[2] == "beyond":
+					ok = _spawn_beyond(parts[1], parts[3])
+				else:
+					ok = await _spawn(parts[1])
+			"tell":
+				ok = _tell(parts[1])
 			"under":
 				ok = await _spawn_under(parts[1])
 			"over":
@@ -483,7 +541,10 @@ func _run() -> void:
 			"coast":
 				ok = _coast(parts[1] == "calm")
 			"walkto":
-				if parts[1] in ["folk", "refuse", "dog"]:
+				if parts[1].begins_with("prop:"):
+					ok = await _walk_to_prop(parts[1].substr(5), parts[2].to_float() if parts.size() > 2 else 1.0,
+						parts.has("run"), parts.has("through"))
+				elif parts[1] in ["folk", "refuse", "dog"]:
 					ok = await TourPeople.walk(self, game, parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
 				else:
 					ok = await _walk_to(parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
@@ -701,7 +762,7 @@ func _now_true(what: String) -> bool:
 	# It is here because a frame called "asked where" was a picture of the player
 	# picking up a stone -- the press had answered a pebble in reach, which is the
 	# key working correctly, and nothing in the tour could tell.
-	if what == "asked":
+	if what == "fire_asked":
 		return Survival.build_asked(game).is_finite()
 	if what == "mob" or what.begins_with("mob:"):
 		return _body_in_frame(what.substr(4), 1)
@@ -919,7 +980,110 @@ func _stand_at(found: WorldProp, said: String) -> bool:
 
 ## Every `walkto` target, the one list: `tests/tours/test_tour_claims.gd` reads it,
 ## so a new target cannot be written into a tour and refused by a stale copy.
+## (`prop:KIND` is checked against PropKind.NAMES there instead.)
 const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft", "strongbox", "guard"]
+
+
+## The nearest prop of `kinds` (PropKind names, _ for space) with work left in
+## it, or that nothing can be done to, not already stood at by `near`. `alone`:
+## and with no other solid prop within that many tiles of its edge (a trunk in a
+## clump has another trunk where a body sliding round it would go).
+func _nearest_prop(kinds: String, alone: float = 0.0) -> WorldProp:
+	var want: Array[int] = []
+	for name: String in kinds.split(",", false):
+		var ki := PropKind.NAMES.find(name.replace("_", " "))
+		if ki >= 0:
+			want.append(ki)
+	var from: Vector2 = game.player.pos
+	var found: WorldProp = null
+	var best := INF
+	for p2: WorldProp in game.query.props_near(from, 90.0):
+		if not want.has(p2.kind) or _near_used.has(p2.id):
+			continue
+		var d := from.distance_squared_to(p2.pos)
+		if d < best and (Survival.work_left(game, p2) or not Takes.workable(p2.kind)) and (alone <= 0.0 or _alone(p2, alone)):
+			best = d
+			found = p2
+	return found
+
+
+func _alone(lone: WorldProp, gap: float) -> bool:
+	for other: WorldProp in game.query.props_near(lone.pos, lone.solid + gap + 1.0):
+		if not WorldProp.same(other, lone) and other.solid > 0.0 and other.pos.distance_to(lone.pos) < lone.solid + other.solid + gap:
+			return false
+	return true
+
+
+func _walk_to_prop(kinds: String, secs: float, run: bool = false, through: bool = false) -> bool:
+	var target: WorldProp = _backed_from if through and _backed_from != null else _nearest_prop(kinds)
+	if target == null:
+		printerr("tour %s: no %s within reach of %s" % [_name, kinds, game.player.pos])
+		return false
+	# Reach is measured from the prop's edge (Survival), halved in the dark.
+	var hand := Survival.DARK_REACH if Survival.in_the_dark(game) else Survival.REACH
+	var until := Time.get_ticks_msec() + int(secs * 1000.0)
+	var to := target.pos - game.player.pos
+	var held := (to + to.normalized().orthogonal() * target.solid * 0.6).normalized()
+	while Time.get_ticks_msec() < until:
+		var d := target.pos - game.player.pos
+		if through:
+			game.scripted_move = _keys_toward(held)
+			game.scripted_run = run
+			game.scripted_seconds = 0.05
+			await get_tree().physics_frame
+			continue
+		if d.length() <= target.solid + hand * 0.7:
+			game.scripted_seconds = 0.0
+			game.scripted_move = _keys_toward(d.normalized()) * 0.2
+			game.scripted_seconds = 0.05
+			await get_tree().physics_frame
+			game.scripted_seconds = 0.0
+			return true
+		game.scripted_move = _keys_toward(d.normalized())
+		game.scripted_run = run
+		game.scripted_seconds = 0.05
+		await get_tree().physics_frame
+	game.scripted_seconds = 0.0
+	game.scripted_run = false
+	if through:
+		# Where the held run took the body, measured along the way it was held:
+		# past the prop's middle is round it; short of it is stopped against it.
+		var past := (game.player.pos - target.pos).dot(held)
+		print("tour %s: ran %s the %s at %s, %.2f tiles %s its middle" % [_name, "through" if past > 0.0 else "into",
+			kinds, target.pos, absf(past), "past" if past > 0.0 else "short of"])
+		return true
+	printerr("tour %s: walked toward the %s at %s for %.1f s and never came within reach" % [_name, kinds, target.pos, secs])
+	return false
+
+
+## Stand `dist` tiles out from the edge of the nearest prop of `kinds`, on
+## standable ground with every tile of the way in standable too, facing it.
+func _stand_back(kinds: String, dist: float) -> bool:
+	var target := _nearest_prop(kinds, dist)
+	if target == null:
+		printerr("tour %s: no %s within reach of %s" % [_name, kinds, game.player.pos])
+		return false
+	var away := (game.player.pos - target.pos).normalized()
+	if away.length() < 0.5:
+		away = Vector2(1, 0)
+	for turn in 25:
+		var dir := away if turn == 0 else Vector2.from_angle(TAU * (turn - 1) / 24.0)
+		var spot := target.pos + dir * (target.solid + dist)
+		var clear := true
+		var k := 0.0
+		while k <= dist and clear:
+			var p := target.pos + dir * (target.solid + 0.3 + k)
+			clear = game.query.standable(floori(p.x), floori(p.y))
+			k += 0.4
+		if not clear:
+			continue
+		_teleport(spot)
+		Survival.face(game, (target.pos - spot).angle())
+		await get_tree().physics_frame
+		_backed_from = target
+		return true
+	printerr("tour %s: no open ground %.1f tiles out from the %s at %s" % [_name, dist, kinds, target.pos])
+	return false
 
 
 func _walk_to(what: String, secs: float) -> bool:
@@ -1102,6 +1266,49 @@ func _spawn(token: String) -> bool:
 			% [_name, kind, m.pos, game.player.pos, game.camera.view_height if game.camera != null else 0.0])
 		return false
 	print("tour spawn %s: %s at %s, %.1f tiles off, in frame" % [kind, m.kind, m.pos, m.pos.distance_to(game.player.pos)])
+	return true
+
+
+## `spawn KIND beyond PROP`: a body on the far side of the nearest prop of that
+## kind from the player, turned to them.
+func _spawn_beyond(token: String, prop: String) -> bool:
+	var id := Roster.resolve(token)
+	var sim: FightSim = game.player.sim
+	var p := _nearest_prop(prop)
+	if id == &"" or sim == null or p == null:
+		printerr("tour %s: nothing to put a %s beyond (%s)" % [_name, token, prop])
+		return false
+	# Beyond it along the way the player faces it, which is the way the eye over
+	# the shoulder looks: past the far side of the thing, hidden by it.
+	var ahead := Vector2.from_angle(game.player.facing)
+	var r: float = Roster.row(id).get("radius", 0.5)
+	var at := game.player.pos + ahead * ((p.pos - game.player.pos).dot(ahead) + p.solid + r + 1.5)
+	var m := sim.add_mob(id, at)
+	m.facing = (game.player.pos - at).angle()
+	m.aim = m.facing
+	print("tour spawn %s beyond the %s at %s: %s" % [token, prop, p.pos, at])
+	return true
+
+
+## `tell KIND`: the nearest live body of that kind starts its bite's tell.
+func _tell(token: String) -> bool:
+	var id := Roster.resolve(token)
+	var sim: FightSim = game.player.sim
+	if sim == null:
+		return false
+	var best: MobState = null
+	for m: MobState in sim.mobs:
+		if m.alive and not m.removed and m.kind == id and m.bite != null \
+				and (best == null or m.pos.distance_to(sim.hero.pos) < best.pos.distance_to(sim.hero.pos)):
+			best = m
+	if best == null:
+		printerr("tour %s: no %s to tell" % [_name, token])
+		return false
+	best.facing = (sim.hero.pos - best.pos).angle()
+	best.aim = best.facing
+	best.disturbed = true
+	best.set_mood(MobState.ATTACKING, sim.now)
+	Brains.bite(best, sim)
 	return true
 
 

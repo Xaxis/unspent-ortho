@@ -165,9 +165,14 @@ fi
 if [ "$serial" = "1" ]; then echo "== tests (3 shards, one at a time)"; else echo "== tests (3 shards)"; fi
 logs=()
 tpids=()
+# COSTS ARE MEASURED ALONE (TestCase.yard_lt): beside its sibling shards a cost
+# reads up to 2.2x what it does by itself, which no bar can tell from a
+# regression. Each shard writes the cost tests it met to its own list, and they
+# are run again by themselves once the shards are done.
+later="$(mktemp -d "${TMPDIR:-/tmp}/unspent-costs.XXXXXX")"
 for i in 0 1 2; do
   log="$(mktemp "${TMPDIR:-/tmp}/unspent-test.XXXXXX")"; logs+=("$log")
-  godot --headless --path . -s tests/run.gd -- "--shard=$i/3" >"$log" 2>&1 & tpids+=($!)
+  UNSPENT_COSTS_LATER="$later/shard-$i" godot --headless --path . -s tests/run.gd -- "--shard=$i/3" >"$log" 2>&1 & tpids+=($!)
   # Serial: wait for this shard before starting the next, so only one Godot
   # holds memory at a time. The shards stay THREE so the sharding itself, and
   # anything order-dependent in it, is exactly what the parallel gate runs.
@@ -217,6 +222,27 @@ for i in 0 1 2; do
     rm -f "${logs[$i]}"
   fi
 done
+# The costs, alone. Judged like a shard: its FAIL lines join the run's, a death
+# or a missing summary fails the gate, and its log is kept when it is red.
+costs="$(cat "$later"/shard-* 2>/dev/null | sort -u | paste -sd, -)"
+rm -rf "$later"
+if [ -n "$costs" ]; then
+  echo "== costs, alone ($(echo "$costs" | tr ',' '\n' | wc -l | tr -d ' ') tests)"
+  clog="$(mktemp "${TMPDIR:-/tmp}/unspent-test.XXXXXX")"
+  godot --headless --path . -s tests/run.gd -- "$costs" >"$clog" 2>&1; code=$?
+  if [ "$code" != "0" ] && [ "$code" != "1" ]; then echo "the cost run DIED (exit $code) -- this run proves nothing"; fail=1; unfinished=1; fi
+  if ! grep -qE 'passed,' "$clog"; then echo "the cost run wrote no summary -- it did not finish"; fail=1; unfinished=1; fi
+  grep -E "yardsticks|UNMEASURED|FAIL|^\s{7}|SCRIPT ERROR" "$clog"
+  grep -E 'passed,' "$clog"
+  grep -E '^\s*FAIL ' "$clog" | sed -E 's/^ *FAIL //; s/ \([0-9]+ ms\)$//' >>"$ran"
+  if grep -qE "SCRIPT ERROR" "$clog"; then echo "script error in the cost run"; fail=1; fi
+  rm -f shots/check/costs.log
+  if [ "$code" != "0" ] || ! grep -qE 'passed,' "$clog" || grep -qE "SCRIPT ERROR" "$clog"; then
+    mkdir -p shots/check && mv "$clog" shots/check/costs.log && echo "   full log of the cost run: shots/check/costs.log"
+  else
+    rm -f "$clog"
+  fi
+fi
 # WHICH OF THESE ARE YOURS. A gate that has been red for weeks has an exit code
 # that means nothing, and a real regression sits in the pile unseen (#124). So
 # the run is diffed against the standing list and only the DIFFERENCE decides the

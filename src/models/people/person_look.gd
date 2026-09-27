@@ -47,6 +47,9 @@ const EXTRAS: Array[StringName] = [&"rolled", &"apron", &"buckle", &"shawl", &"n
 ##   mitts  cord-bound leather over both hands, the made answer to a land that
 ##          pulls at anything iron (the corded mitts, owner 2026-09-17)
 const KIT_EXTRAS: Array[StringName] = [&"mitts"]
+## Salvage only a player's fitted kit wears, never dealt to a villager: the vane
+## cloak's blades (Items `cloak_vane`).
+const KIT_SALVAGE: Array[StringName] = [&"vanes"]
 const SALVAGE: Array[StringName] = [&"plate", &"brace", &"rig", &"gauntlet", &"tally", &"aerial", &"lens", &"mask", &"breastplate"]
 ## Mended tech and scavenging kit (PersonGear):
 ##   respirator  a machine filter on a rag mask      goggles  two machine lenses on a strap
@@ -217,7 +220,8 @@ static func normalize(spec: Dictionary) -> Dictionary:
 	out.extras = ex
 	var sv: Array = []
 	for s: Variant in out.salvage:
-		if SALVAGE.has(StringName(str(s))) and not sv.has(StringName(str(s))) and sv.size() < (SALVAGE_KIT if kit else 2):
+		var known := SALVAGE.has(StringName(str(s))) or (kit and KIT_SALVAGE.has(StringName(str(s))))
+		if known and not sv.has(StringName(str(s))) and sv.size() < (SALVAGE_KIT if kit else 2):
 			sv.append(StringName(str(s)))
 	out.salvage = sv
 	var gv: Array = []

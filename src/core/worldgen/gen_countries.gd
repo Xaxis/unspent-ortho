@@ -32,6 +32,13 @@ const SLOTS := 256
 ## A piece of a type cut off inside another and smaller than this (512 world)
 ## joins the type round it: a blot of ash in the limestone is noise, not a place.
 const ENCLAVE_TILES := 400
+## AN ENCLAVE IS SMALL AND NEAR: under its tile count, and no wider or taller
+## than this many tiles. Measured at 1840, the widest absorbed was 91 (seeds 1,
+## 42, 90210). Bounding the reach is what lets a section decide it: a window
+## with ENCLAVE_REACH + 1 tiles round its core absorbs the core's enclaves
+## exactly as the whole world does (streamed worldgen S4e2,
+## tests/stream/test_enclave_window.gd).
+const ENCLAVE_REACH := 128
 ## A run of one type smaller than this (512 world) is not its own region.
 const REGION_TILES := 220
 ## WHAT SHARE OF A TYPICAL LANDSCAPE'S HOLDING A RUN MUST BE TO BE A PLACE
@@ -964,6 +971,7 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 	c.mark(&"tiles.balance")
 	assign.call(1, parts)
 	c.mark(&"tiles.assign")
+	c.coarse_country = sample(country, size, cw, step)
 	_absorb_enclaves(c, roundi(ENCLAVE_TILES * c.body_k * c.body_k * _place_scale(c) * _place_scale(c)))
 	c.mark(&"tiles.enclaves")
 	if with_blend:
@@ -1002,12 +1010,17 @@ static func _best_two(flat: PackedFloat32Array, n: int, i: int, types: int, c: G
 ## their edge (islets, with no land neighbours, stay). Runs before the ecotones
 ## are measured, so the blend follows the borders that remain.
 static func _absorb_enclaves(c: GenContext, min_tiles: int) -> void:
-	var size := c.size
-	var types := c.types
-	var country := c.w.country
-	var country2 := c.w.country2
+	absorb(c.w.country, c.w.country2, c.size, c.types, min_tiles)
+
+
+## `_absorb_enclaves` over one square of `size` tiles: the whole world, or a
+## section with ENCLAVE_REACH + 1 tiles of the world round its own. A run that
+## reaches the square's edge is never an enclave: in the world the edge is sea,
+## and in a section it is a run the square cannot see the end of.
+static func absorb(country: PackedByteArray, country2: PackedByteArray, size: int, types: int, min_tiles: int) -> void:
+	var n := country.size()
 	var sea := PackedByteArray()
-	sea.resize(c.n)
+	sea.resize(n)
 	GenFields.rows(size, func(y0: int, y1: int) -> void:
 		for i in range(y0 * size, y1 * size):
 			sea[i] = 1 if country[i] == Country.SEA else 0
@@ -1027,10 +1040,28 @@ static func _absorb_enclaves(c: GenContext, min_tiles: int) -> void:
 					found.append(i)
 		parts[y0 / band] = found
 	, band)
+	# Each small run's box (x0, y0, x1, y1), from its own tiles only.
+	var box := {}
+	for part in parts:
+		for i in part:
+			var la := label[i]
+			var x := i % size
+			var y := i / size
+			var r: Vector4i = box.get(la, Vector4i(x, y, x, y))
+			box[la] = Vector4i(mini(r.x, x), mini(r.y, y), maxi(r.z, x), maxi(r.w, y))
+	var far := {}
+	for la: int in box:
+		var r: Vector4i = box[la]
+		# A run touching the square's first or last usable row or column may go
+		# on past it (the passes above never read the outermost ring).
+		if r.z - r.x + 1 > ENCLAVE_REACH or r.w - r.y + 1 > ENCLAVE_REACH or r.x <= 1 or r.y <= 1 or r.z >= size - 2 or r.w >= size - 2:
+			far[la] = true
 	var votes := {}
 	for part in parts:
 		for i in part:
 			var la := label[i]
+			if far.has(la):
+				continue
 			var v: PackedInt32Array = votes.get(la, PackedInt32Array())
 			if v.is_empty():
 				v.resize(types)
@@ -1066,146 +1097,174 @@ static func _land_mask(country: PackedByteArray, n: int) -> PackedByteArray:
 	return out
 
 
+## The tile a coarse cell reads the fine world at (the same centre every coarse
+## pass samples).
+static func sample_tile(g: int, step: int, size: int) -> int:
+	return clampi(roundi(g * step + step * 0.5 - 0.5), 0, size - 1)
+
+
+## The fine landscape at every coarse cell's sample tile.
+static func sample(country: PackedByteArray, size: int, cw: int, step: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(cw * cw)
+	for gy in cw:
+		var row := sample_tile(gy, step, size) * size
+		for gx in cw:
+			out[gy * cw + gx] = country[row + sample_tile(gx, step, size)]
+	return out
+
+
 ## Every connected run of one landscape type is a REGION of that type: one type
 ## can hold several in a world, and a sentinel, a works network, a subarc and a
 ## save all key on a region's id (docs/VISION.md, §7.2). Runs too small to
 ## be a place are left out; their tiles keep their type and belong to no region.
+##
+## THE PLAN DECIDES THEM (streamed worldgen S4e4). A run can be as long as the
+## island, so which runs are regions, how big, and which is biggest are asked
+## of the plan's landscapes (`coarse_country`), one sample every STEP tiles;
+## each tile then takes its region from the cells round it (`tile_regions`),
+## which a section can do with its own tiles and the plan's cells.
 static func regions(c: GenContext) -> void:
 	var w := c.w
-	var size := c.size
-	var country := w.country
+	var plan := plan_regions(c.coarse_country, c.cw, GenContext.STEP, c.size, c.land_types.size())
+	w.regions.clear()
+	for r: Dictionary in plan.regions:
+		w.regions.append(r)
+	w.plan_country = c.coarse_country
+	w.plan_cells = plan.cells
+	w.region.resize(c.n)
+	w.region.fill(0)
+	tile_regions(w.country, c.size, Vector2i.ZERO, plan.cells, c.coarse_country, c.cw, GenContext.STEP, c.size, w.region)
+
+
+## The plan's regions: {"regions": the records, ids biggest first, "cells": per
+## coarse cell its region id + 1, 0 where the cell holds none}. Tiles, centre
+## and bounds are the cells' (a cell stands for STEP x STEP tiles); the bounds
+## reach two cells past them, as far as `tile_regions` looks.
+static func plan_regions(coarse: PackedByteArray, cw: int, step: int, size: int, land_types: int) -> Dictionary:
+	var n := cw * cw
 	var sea := PackedByteArray()
-	sea.resize(c.n)
-	GenFields.rows(size, func(y0: int, y1: int) -> void:
-		for i in range(y0 * size, y1 * size):
-			sea[i] = 1 if country[i] == Country.SEA else 0
-	)
+	sea.resize(n)
+	for k in n:
+		sea[k] = 1 if coarse[k] == Country.SEA else 0
 	var sizes := PackedInt32Array()
-	var label := GenFields.patches(country, sea, size, sizes)
+	var label := GenFields.patches(coarse, sea, cw, sizes)
 	# **THE FLOOR IS A SHARE OF THE BODY THE RUN LIES ON** (owner, 2026-09-19).
 	# A run of one landscape is connected land, so it lies wholly within one
 	# continent, and `body_of` says which. See `BODY_SHARE`.
 	var body_sizes := PackedInt32Array()
-	var body := GenFields.patches(_land_mask(country, c.n), sea, size, body_sizes)
+	var body := GenFields.patches(_land_mask(coarse, n), sea, cw, body_sizes)
+	var cell := step * step
 	var floor_of := PackedInt32Array()
 	floor_of.resize(sizes.size())
-	floor_of.fill(0)
-	for i in c.n:
-		if sea[i] != 0:
+	for k in n:
+		if sea[k] != 0:
 			continue
-		var la := label[i]
+		var la := label[k]
 		if floor_of[la] == 0:
-			floor_of[la] = maxi(PLACE_LEAST,
-				roundi(BODY_SHARE * float(body_sizes[body[i]]) / float(maxi(1, c.land_types.size()))))
+			floor_of[la] = maxi(PLACE_LEAST, roundi(BODY_SHARE * float(body_sizes[body[k]] * cell) / float(maxi(1, land_types))))
 	# Biggest first, so region 0 is the largest place in the world and ids stay
 	# stable as long as the shape of the land does.
-	var order := PackedInt32Array()
+	var order: Array[int] = []
 	for la in sizes.size():
-		if floor_of[la] > 0 and sizes[la] >= floor_of[la]:
+		if floor_of[la] > 0 and sizes[la] * cell >= floor_of[la]:
 			order.append(la)
-	var by_size := Array(order)
-	by_size.sort_custom(func(a: int, b: int) -> bool:
+	order.sort_custom(func(a: int, b: int) -> bool:
 		if sizes[a] != sizes[b]:
 			return sizes[a] > sizes[b]
 		return a < b)
-	var id_of := {}
-	w.regions.clear()
-	w.region.resize(c.n)
-	w.region.fill(0)
-	for la: int in by_size:
-		id_of[la] = w.regions.size()
-		w.regions.append({
-			"id": w.regions.size(), "type": &"", "index": 0, "tiles": sizes[la],
-			"centre": Vector2.ZERO, "bounds": Rect2(),
-		})
-	var count := w.regions.size()
-	# Label -> id + 1, as an array: the tile pass asks this once a tile, and a
-	# Dictionary lookup a tile costs more than the whole rest of the pass.
 	var rid_of := PackedInt32Array()
-	rid_of.resize(c.n)
-	for la: int in id_of:
-		rid_of[la] = int(id_of[la]) + 1
-	var region := w.region
-	var band := 16
-	var bands := ceili(float(size) / band)
-	# Each band totals its own rows; the bands are merged in row order, so the
-	# centres come out the same however the pool scheduled them.
-	var b_sum: Array[PackedFloat64Array] = []
-	var b_box: Array[PackedInt32Array] = []
-	b_sum.resize(bands)
-	b_box.resize(bands)
-	GenFields.rows(size, func(y0: int, y1: int) -> void:
-		var s2 := PackedFloat64Array()
-		s2.resize(count * 2)
-		var box := PackedInt32Array()
-		box.resize(count * 5)
-		for r in count:
-			box[r * 5] = 1 << 30
-			box[r * 5 + 1] = 1 << 30
-			box[r * 5 + 2] = -(1 << 30)
-			box[r * 5 + 3] = -(1 << 30)
-			box[r * 5 + 4] = -1
-		for y in range(y0, y1):
-			var row := y * size
-			for x in size:
-				var i := row + x
-				var la := label[i]
-				if la < 0:
-					continue
-				var rid := rid_of[la] - 1
-				if rid < 0:
-					continue
-				region[i] = rid + 1
-				var b := rid * 5
-				s2[rid * 2] += x + 0.5
-				s2[rid * 2 + 1] += y + 0.5
-				if x < box[b]:
-					box[b] = x
-				if y < box[b + 1]:
-					box[b + 1] = y
-				if x > box[b + 2]:
-					box[b + 2] = x
-				if y > box[b + 3]:
-					box[b + 3] = y
-				if box[b + 4] < 0:
-					box[b + 4] = i
-		b_sum[y0 / band] = s2
-		b_box[y0 / band] = box
-	, band)
+	rid_of.resize(n)
+	for r in order.size():
+		rid_of[order[r]] = r + 1
+	var cells := PackedInt32Array()
+	cells.resize(n)
 	var sum := PackedFloat64Array()
-	sum.resize(count * 2)
-	# One tile each region was seen to own, so its type never has to be hunted for.
-	var sample := PackedInt32Array()
-	sample.resize(count)
-	sample.fill(0)
+	sum.resize(order.size() * 2)
 	var lo := PackedInt32Array()
 	var hi := PackedInt32Array()
-	lo.resize(count * 2)
-	hi.resize(count * 2)
+	lo.resize(order.size() * 2)
+	hi.resize(order.size() * 2)
 	lo.fill(1 << 30)
 	hi.fill(-(1 << 30))
-	for b in bands:
-		var s2 := b_sum[b]
-		var box := b_box[b]
-		for rid in count:
-			sum[rid * 2] += s2[rid * 2]
-			sum[rid * 2 + 1] += s2[rid * 2 + 1]
-			lo[rid * 2] = mini(lo[rid * 2], box[rid * 5])
-			lo[rid * 2 + 1] = mini(lo[rid * 2 + 1], box[rid * 5 + 1])
-			hi[rid * 2] = maxi(hi[rid * 2], box[rid * 5 + 2])
-			hi[rid * 2 + 1] = maxi(hi[rid * 2 + 1], box[rid * 5 + 3])
-			if sample[rid] == 0 and box[rid * 5 + 4] >= 0:
-				sample[rid] = box[rid * 5 + 4]
-	for r: Dictionary in w.regions:
-		var rid: int = r.id
-		var tiles := maxi(1, int(r.tiles))
-		r.centre = Vector2(sum[rid * 2] / tiles, sum[rid * 2 + 1] / tiles)
-		r.bounds = Rect2(lo[rid * 2], lo[rid * 2 + 1], hi[rid * 2] - lo[rid * 2] + 1, hi[rid * 2 + 1] - lo[rid * 2 + 1] + 1)
-		# The centre of a bent region can fall outside it, so the type is read
-		# off a tile the region was seen to own.
-		var cc := country[sample[rid]]
-		r.index = cc
-		r.type = BiomeRegistry.by_index(cc).id
+	for k in n:
+		var la := label[k]
+		if la < 0 or rid_of[la] == 0:
+			continue
+		var rid := rid_of[la] - 1
+		cells[k] = rid + 1
+		var gx := k % cw
+		var gy := k / cw
+		sum[rid * 2] += sample_tile(gx, step, size) + 0.5
+		sum[rid * 2 + 1] += sample_tile(gy, step, size) + 0.5
+		lo[rid * 2] = mini(lo[rid * 2], gx)
+		lo[rid * 2 + 1] = mini(lo[rid * 2 + 1], gy)
+		hi[rid * 2] = maxi(hi[rid * 2], gx)
+		hi[rid * 2 + 1] = maxi(hi[rid * 2 + 1], gy)
+	var out: Array[Dictionary] = []
+	for r in order.size():
+		var la := order[r]
+		var cc := coarse[la]
+		var x0 := clampi((lo[r * 2] - 2) * step, 0, size)
+		var y0 := clampi((lo[r * 2 + 1] - 2) * step, 0, size)
+		var x1 := clampi((hi[r * 2] + 3) * step, 0, size)
+		var y1 := clampi((hi[r * 2 + 1] + 3) * step, 0, size)
+		out.append({
+			"id": r, "type": BiomeRegistry.by_index(cc).id, "index": cc, "tiles": sizes[la] * cell,
+			"centre": Vector2(sum[r * 2] / sizes[la], sum[r * 2 + 1] / sizes[la]),
+			"bounds": Rect2(x0, y0, x1 - x0, y1 - y0),
+		})
+	return {"regions": out, "cells": cells}
+
+
+## Each tile's region, over a square of `size` tiles at `origin` in a world
+## `world_size` wide: the region of the cell it lies in when that cell holds its
+## landscape, else of the nearest cell within two that does, else none. Writes
+## `region` (id + 1, 0 for none) for the square's tiles.
+static func tile_regions(country: PackedByteArray, size: int, origin: Vector2i, cells: PackedInt32Array,
+		coarse: PackedByteArray, cw: int, step: int, world_size: int, region: PackedInt32Array) -> void:
+	# Ring order out to two cells, nearest first, a fixed order within a ring.
+	var rings: Array[Vector2i] = []
+	for r in range(1, 3):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) == r:
+					rings.append(Vector2i(dx, dy))
+	rings.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		var da := a.length_squared()
+		var db := b.length_squared()
+		return da < db or (da == db and (a.y < b.y or (a.y == b.y and a.x < b.x))))
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			var wy := origin.y + y
+			for x in size:
+				var i := y * size + x
+				var t := country[i]
+				if t == Country.SEA:
+					region[i] = 0
+					continue
+				var wx := origin.x + x
+				var g := Vector2i(_cell_of(wx, step, cw, world_size), _cell_of(wy, step, cw, world_size))
+				var k := g.y * cw + g.x
+				if coarse[k] == t:
+					region[i] = cells[k]
+					continue
+				var got := 0
+				for d in rings:
+					var q := g + d
+					if q.x < 0 or q.y < 0 or q.x >= cw or q.y >= cw:
+						continue
+					var kq := q.y * cw + q.x
+					if coarse[kq] == t:
+						got = cells[kq]
+						break
+				region[i] = got
+	)
+
+
+## The coarse cell a tile lies in (STEP tiles to a cell, the last cell taking any rest).
+static func _cell_of(t: int, step: int, cw: int, size: int) -> int:
+	return clampi(floori(float(t) / step), 0, cw - 1)
 
 
 ## blend from the true distance to the nearest border, so 0.5 on the border

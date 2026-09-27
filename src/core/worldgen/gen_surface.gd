@@ -186,6 +186,8 @@ static func run(c: GenContext) -> void:
 		var last_recipe := -1
 		var recipe_fn := surf[0]
 		t.crater = crater
+		t.size = size
+		t.seed_value = c.s
 		t.elev = elev_s
 		t.rise = rise
 		t.big = big
@@ -314,6 +316,12 @@ static func run(c: GenContext) -> void:
 				if rim:
 					fixed[i] = 1
 				ground[i] = g
+				# Water a recipe laid is laid on purpose, like a pool's: the tidy
+				# passes smooth washes of ground, and let loose on water they
+				# spread it onto the tiles round it, over terrace lips it cannot
+				# stand on (the drowned city's streets, GEN 33).
+				if Ground.is_water(g):
+					fixed[i] = 1
 	)
 	c.mark(&"surface.tiles")
 	GenTidy.run(c, fixed)

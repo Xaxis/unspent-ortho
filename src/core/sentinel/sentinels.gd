@@ -194,9 +194,12 @@ static func states(world: WorldData) -> Array[SentinelState]:
 	# every time, because a game wears their health down.
 	var key := "%d:%d" % [world.get_instance_id(), world.landmarks.size()]
 	_lairs_lock.lock()
-	var rows: Variant = _lairs.get(key)
+	var got: Variant = _lairs.get(key)
 	_lairs_lock.unlock()
-	if rows == null:
+	# Asked by type, never by an operator on the Variant: this can run on a
+	# worker (tests/core/test_worker_types.gd).
+	var rows: Array = got if typeof(got) == TYPE_ARRAY else []
+	if typeof(got) != TYPE_ARRAY:
 		var found: Array = []
 		for r: Dictionary in world.regions:
 			var def := for_land(StringName(str(r.get("type", &""))))

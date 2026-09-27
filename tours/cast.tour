@@ -8,12 +8,16 @@
 # to the camp. Everyone else here stands where they stand from the first morning.
 #
 # `at cast:NAME` asks 49_cast where that person stands; nothing here is a
-# coordinate, so a new worldgen moves them and this still finds them.
+# coordinate, so a new worldgen moves them and this still finds them. `await
+# cast:NAME` waits for them to be drawn: a warp across the island can take
+# seconds on a loaded box, and a key pressed before they stand there answers
+# whatever else is at hand.
 coast calm
 wait 0.6
 
 # --- Maren, at the village he wakes beside -----------------------------------------------
 at cast:maren
+await cast:maren 8
 wait 0.6
 press use
 await talking 3
@@ -25,6 +29,7 @@ await met:maren 2
 
 # --- Rook, at the Holdfast's camp ----------------------------------------------------------
 at cast:rook
+await cast:rook 8
 wait 0.6
 press use
 await talking 3
@@ -35,6 +40,7 @@ wait 0.5
 
 # --- Vera, come to the camp for the weapon Rook found ------------------------------------
 at cast:vera
+await cast:vera 8
 wait 0.6
 press use
 await talking 3
@@ -46,6 +52,7 @@ await met:vera 2
 
 # --- Teague and Lark, the rest of the crew ------------------------------------------------
 at cast:teague
+await cast:teague 8
 wait 0.6
 press use
 await talking 3
@@ -55,6 +62,7 @@ press pause
 wait 0.5
 
 at cast:lark
+await cast:lark 8
 wait 0.6
 press use
 await talking 3
@@ -65,6 +73,7 @@ wait 0.5
 
 # --- Solis, across the water at the Covenant's seat ---------------------------------------
 at cast:solis
+await cast:solis 8
 wait 0.6
 press use
 await talking 3
@@ -76,6 +85,7 @@ await met:solis 2
 
 # --- Otto, at the war's archive: the lead down --------------------------------------------
 at cast:otto
+await cast:otto 8
 wait 0.6
 press use
 await talking 3
@@ -86,6 +96,7 @@ wait 0.5
 
 # --- Sefa, at the Tether's foot: the lead up ----------------------------------------------
 at cast:sefa
+await cast:sefa 8
 wait 0.6
 press use
 await talking 3

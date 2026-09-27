@@ -161,6 +161,10 @@ var stride := 1.0
 ## Gait speed used when the walk pose is forced at zero speed (tiles/s).
 var nominal_speed := 1.5
 var part_anchor: Node3D
+## The side a caller asked the working part to be on (FigureModel.create's
+## `part_side`: a landscape's own kind, BiomeDef.roster `over` part). &"" leaves
+## it where the kind's script builds it. See `_move_part`.
+var side_asked: StringName = &""
 var part_normal := Vector3.RIGHT
 var emission := 0.45
 ## Degrees the gallery turns the working part away from the camera, so the
@@ -579,6 +583,7 @@ func finish_rig() -> void:
 			# A carriage high off the ground leans less: on a strider the same
 			# few degrees swing a foot a hand's width down through the ground.
 			_root_joints[jn] = clampf(0.45 / maxf(0.3, n.position.y), 0.25, 1.0)
+	_move_part(side_asked)
 	_merge()
 	_apply_light(0.0)
 	_run_lights()
@@ -868,6 +873,86 @@ func _light_scale() -> float:
 		&"strike":
 			return 1.9
 	return 1.0
+
+
+# -- a part on another side ---------------------------------------------------
+
+## THE WORKING PART ON THE SIDE A LANDSCAPE ASKS FOR (mechanics 3a, part sides).
+## Every kind builds its part where its own script says; a landscape's own kind
+## may put it elsewhere (the cave hauler's is at its back). The part's pieces,
+## its anchor and its glow are turned about the body's upright to the asked
+## side, then pushed out along it until they sit on the outside of the body
+## there, so the lens is on the plate and never inside the hull. The kind's
+## lamps and their sockets stay where they were built: they are the body's.
+func _move_part(side: StringName) -> void:
+	if side == &"" or side == part_side or part_side == &"none" or side == &"none":
+		return
+	var from_n := side_normal(part_side)
+	var to_n := side_normal(side)
+	var turn := Basis(Vector3.UP, atan2(-to_n.z, to_n.x) - atan2(-from_n.z, from_n.x))
+	# Where the part will be once turned, across the asked side: its middle.
+	var mid := Vector3.ZERO
+	var count := 0
+	for piece: Array in _queued.get(&"part", []):
+		var xf := _model_xf(piece[1] as Node3D)
+		for v: Vector3 in (piece[0] as MeshKit).verts:
+			mid += turn * (xf * v)
+			count += 1
+	if count > 0:
+		mid /= float(count)
+	var mid_across := mid - to_n * mid.dot(to_n)
+	# How far out the body reaches on the asked side BEHIND THE PART: only the
+	# plate within PART_BED of the part's own line counts, so a part moved onto
+	# a narrow flank sits on that flank and not out past the widest thing the
+	# body carries somewhere else along it.
+	var reach := -INF
+	for piece: Array in _queued.get(&"body", []):
+		var xf := _model_xf(piece[1] as Node3D)
+		for v: Vector3 in (piece[0] as MeshKit).verts:
+			var mv := xf * v
+			var across := mv - to_n * mv.dot(to_n)
+			if across.distance_to(mid_across) <= PART_BED:
+				reach = maxf(reach, mv.dot(to_n))
+	var far := -INF
+	for piece: Array in _queued.get(&"part", []):
+		var k: MeshKit = piece[0]
+		var xf := _model_xf(piece[1] as Node3D)
+		var inv := xf.affine_inverse()
+		for i in k.verts.size():
+			var mv := turn * (xf * k.verts[i])
+			far = maxf(far, mv.dot(to_n))
+			k.verts[i] = inv * mv
+		for i in k.normals.size():
+			k.normals[i] = (inv.basis * (turn * (xf.basis * k.normals[i]))).normalized()
+	# Out onto the plate, never in: a part that stood proud of its own side
+	# (a harvester's comb) stands as proud of the other.
+	var push := maxf(0.0, reach + 0.01 - far) if far > -INF and reach > -INF else 0.0
+	for piece: Array in _queued.get(&"part", []):
+		var k: MeshKit = piece[0]
+		var shift := _model_xf(piece[1] as Node3D).affine_inverse().basis * (to_n * push)
+		for i in k.verts.size():
+			k.verts[i] += shift
+	if part_anchor != null:
+		var pxf := _model_xf(part_anchor.get_parent() as Node3D)
+		part_anchor.position = pxf.affine_inverse() * (turn * (pxf * part_anchor.position) + to_n * push)
+	part_side = side
+	part_normal = to_n
+	if _glow != null:
+		_glow.position = part_normal * 0.06
+
+
+## How far across its own line a part looks for the plate it sits on.
+const PART_BED := 0.3
+
+
+## A node's transform in the model's own space.
+func _model_xf(n: Node3D) -> Transform3D:
+	var xf := Transform3D.IDENTITY
+	var at: Node = n
+	while at != null and at != self:
+		xf = (at as Node3D).transform * xf
+		at = at.get_parent()
+	return xf
 
 
 # -- internals: merging ------------------------------------------------------

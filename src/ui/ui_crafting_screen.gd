@@ -70,6 +70,9 @@ func recipes() -> Array[Dictionary]:
 		if here.is_empty() and game != null and game.options.ui_demo:
 			here = UiDemo.recipes_at(st)
 		list.append_array(here)
+		# At a bench, what is carried can be taken apart again (Reforge.salvage).
+		if st == &"bench" and inventory != null:
+			list.append_array(Reforge.salvage_recipes(inventory))
 	return list
 
 
@@ -287,6 +290,17 @@ func _draw_recipe(R: Rect2i) -> void:
 	# The table starts clear of the box and of the SCAN caption under it.
 	var table_top := box.end.y + UiFont.SIZE + 16
 	var table_bottom := _draw_table(Rect2i(x0, table_top, R.size.x - UiSlate.MARGIN_L - 24, 0), r, row)
+	# Taken apart (Reforge.salvage): what comes back, its elite material first.
+	if StringName(r.get("action", &"")) == &"salvage":
+		var right := R.end.x - UiSlate.SPARE_INSET
+		var y := table_bottom + 12
+		UiSlate.heading(self, Vector2i(x0, y), "gives back", right)
+		for id: StringName in (r.get("makes", {}) as Dictionary):
+			y += UiTheme.LINE
+			UiIcons.draw_item(self, id, Vector2i(x0 + 12, y - 2))
+			UiDraw.text(self, Vector2i(x0 + 38, y), UiRules.item_name(id), UiTheme.TEXT)
+			UiDraw.text_right(self, right, y, "%d" % int(r.makes[id]), UiTheme.TEXT_DIM)
+		table_bottom = y + UiTheme.LINE
 	# Where it is made, scanned at the foot of the panel, if there is room.
 	var sk := UiSketch.station_size(STATION)
 	var sk_at := Vector2i(x0 + 8, R.end.y - 16 - sk.y)

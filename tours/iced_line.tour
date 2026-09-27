@@ -1,0 +1,11 @@
+# The snowfield's grid hung with ice: the span of a pylon or pole line nearest
+# the snow's heart, recorded by the snowfield's works (GenWorks `iced_line`) and
+# staged by that name, then walked up to.
+#   tools/tour.sh tours/iced_line.tour --seed=4 --weather=clear:0
+# Options: --seed=4 --weather=clear:0
+# A seed whose grid crosses the snowfield: 3, 4 and 42 do; 1, 2 and 7 do not
+# (2026-09-26), which is why this is not a stop in tours/landscape.tour.
+hour 12
+place iced_line
+walk 0,1 0.6
+shot 01-snowfield-iced-line-day with land:snowfield

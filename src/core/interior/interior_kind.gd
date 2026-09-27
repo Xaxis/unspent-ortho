@@ -27,6 +27,23 @@ var cut := 0.8
 ## harder to see. 0, the default, is a room that changes nothing about being
 ## seen. Its light is its things' `glare` (21_doors `room_dark`).
 var dark := 0.0
+## How much of a body's noise the room swallows, 0..1: a hum over everything
+## (a machines' data hall). Hearing inside is cut by it, as `dark` cuts sight
+## (32_disposition, through 21_doors `room_hush`). 0 changes nothing.
+var hush := 0.0
+## The row of StoryContent.ROOMS its story slots are read from; empty, its own
+## id. The coast's cottage speaks from the homes' row (`home`), whose words are
+## dealt by landscape and household (StoryRooms.held).
+var words: StringName = &""
+## Its recipe lays it for the landscape it stands in: `lay(rng, land)` rather
+## than `lay(rng)` (a home, whose household is the landscape's).
+var by_land := false
+## THE HOURS IT WORKS, [from, to) on the clock, wrapping past midnight, or
+## (-1, -1) for a room that never stops. Outside them is the curfew: its `hush`
+## goes quiet, the glare of the things that run on the shift (`shift`) goes out,
+## and the residents keep their own hours (21_doors: "on" shift or "docks" at
+## curfew, asleep).
+var shift := Vector2(-1, -1)
 ## The widest body that fits through the door (a big machine waits outside).
 var door_width := 0.9
 ## The script that lays it (`lay(rng) -> InteriorLayout`).
@@ -40,3 +57,10 @@ var hatch := ""
 ## answering `build(layout, kind, land, material)`, `show_for(back, over)`,
 ## `windows()`, `daylight(sky, land)` and holding `lights` (21_doors reads them).
 var model := ""
+
+
+## Whether the room is at work at `hour` (0..24).
+func working(hour: float) -> bool:
+	if shift.x < 0.0:
+		return true
+	return Spawner.hour_in(hour, shift.x, shift.y)

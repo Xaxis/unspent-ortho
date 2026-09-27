@@ -1,0 +1,14 @@
+# A LANDSCAPE MOVES A MACHINE'S WORKING PART (mechanics 3a, part sides;
+# MachineModel._move_part, BiomeDef.roster `over` part). The same hauler, turned
+# the same way, in the bonelands with its knuckle drive on its left and in the
+# limestone caves with it on its back (tours/part_sides_cave.tour, which boots
+# under the world): the lit lens is where the blow must go.
+#   tools/tour.sh tours/part_sides.tour --seed=7 --hour=11 --weather=clear:0
+place bonelands
+coast calm
+zoom 7
+wait 0.6
+spawn hauler@135
+wait 0.8
+shot 01-the-bonelands-hauler-works-with-its-left with mob:hauler,land:bonelands
+
