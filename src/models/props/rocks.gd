@@ -329,24 +329,44 @@ static func iron_ore(k: Kit, v: int, c: int) -> void:
 	k.made.tri(Vector3(0.3, 0.01, 0.3), Vector3(0.1, 0.01, 0.62), Vector3(0.6, 0.01, 0.75), P.EARTH[3])
 
 
-## Copper: a tall jagged spur of dark slate streaked top to bottom in
-## verdigris, bright green running down its faces.
+## Copper: a tall jagged spur of dark slate in weathered beds of its own, cut
+## by two thin veins of verdigris at heights of its own, one bright and one
+## gone back half into the rock, with the green run down its faces from them.
+##
+## IT WAS FIVE EVEN BANDS, rock and green in turn, and under a cave's near light
+## a spur of it read as a post painted in stripes (cave-dark.tour, heading 3).
+## The green is what says copper, so it stays; it is a vein, not a coat.
 static func copper_ore(k: Kit, v: int, c: int) -> void:
 	var g := geology(c)
 	var s := 7700 + v * 41 + c
 	var host := P.SLATE[1].lerp(g[1], 0.3)
+	# The beds: the rock's own three tones, uneven in height.
+	var beds: Array[Color] = [Kit.tone(host, 0.9), host, Kit.tone(host, 1.08)]
+	var lo := 0.16 + Rng.hash01(s, 1) * 0.2
+	var hi := lo + 0.3 + Rng.hash01(s, 2) * 0.28
+	var vein_a := 0.07 + Rng.hash01(s, 3) * 0.04
+	var vein_b := 0.05 + Rng.hash01(s, 4) * 0.03
+	var heights: Array = [-0.06, lo, lo + vein_a, hi, hi + vein_b, 0.95 + Rng.hash01(s, 5) * 0.1, 1.12]
+	var radii: Array = []
+	for h: float in heights:
+		radii.append(0.4 - (h + 0.06) / 1.18 * 0.26 + Kit.j(s, int(h * 100.0), 0.015))
+	var weathered := P.SPRUCE[5].lerp(host, 0.5)
+	var cols: Array = [beds[0], P.SPRUCE[4], beds[1], weathered, beds[2], beds[1]]
 	k.made.push(Transform3D(Basis(Vector3.BACK, -0.14), Vector3.ZERO))
-	banded(k, [0.4, 0.36, 0.3, 0.22, 0.14], [-0.06, 0.3, 0.62, 0.9, 1.12], [host, P.SPRUCE[4], host, P.SPRUCE[5], host], Vector3(0.08, 1.4, -0.04), 5, s)
+	banded(k, radii, heights, cols, Vector3(0.08, 1.4, -0.04), 5, s)
 	k.made.pop()
-	# Verdigris runs down the faces that are seen, bold, two tones.
-	for i in 4:
-		var a := -0.6 + i * 0.45
-		var top := Vector3(cos(a) * 0.3, 1.0 - i * 0.12, sin(a) * 0.3)
+	# The green runs down the seen faces from the veins, thin and toned into the
+	# rock, not bold stripes from the top.
+	for i in 3:
+		var a := -0.5 + i * 0.5 + Kit.j(s, i + 10, 0.15)
+		var from_y: float = lo if i % 2 == 0 else hi
+		var top := Vector3(cos(a) * 0.3, from_y, sin(a) * 0.3)
 		var out := Vector3(cos(a), 0.0, sin(a)) * 0.08
-		var side := Vector3(-sin(a), 0.0, cos(a)) * 0.05
-		k.made.quad(top + out * 0.6 - side, top + out * 0.6 + side, Vector3(top.x * 1.35, 0.02, top.z * 1.35) + out + side * 0.4, Vector3(top.x * 1.35, 0.02, top.z * 1.35) + out - side * 0.4, P.SPRUCE[4] if i % 2 == 0 else P.SPRUCE[5])
+		var side := Vector3(-sin(a), 0.0, cos(a)) * (0.025 + Rng.hash01(s, i + 20) * 0.02)
+		var run := P.SPRUCE[4].lerp(host, 0.35) if i % 2 == 0 else weathered
+		k.made.quad(top + out * 0.6 - side, top + out * 0.6 + side, Vector3(top.x * 1.35, 0.02, top.z * 1.35) + out + side * 0.4, Vector3(top.x * 1.35, 0.02, top.z * 1.35) + out - side * 0.4, run)
 	if v == 1:
-		k.stone(0.42, -0.04, 0.28, 0.2, 0.34, s + 3, host, 5, 0.3, P.SPRUCE[4])
+		k.stone(0.42, -0.04, 0.28, 0.2, 0.34, s + 3, host, 5, 0.3, P.SPRUCE[4].lerp(host, 0.4))
 
 
 ## Coal: a low wide bank of grey beds with thick black seams between, the

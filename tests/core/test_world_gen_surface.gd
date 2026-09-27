@@ -786,7 +786,8 @@ func test_the_grey_orchards_stand_in_rows() -> void:
 		var trees: Array[Vector2] = []
 		var cells := {}
 		for r in w.table.size():
-			if int(w.table.kind[r]) != PropKind.BROADLEAF:
+			var kind := int(w.table.kind[r])
+			if kind != PropKind.BROADLEAF and kind != PropKind.GRAFT_TREE:
 				continue
 			var p: Vector2 = w.table.pos[r]
 			if w.country_at(floori(p.x), floori(p.y)) != land:
@@ -897,3 +898,36 @@ func test_the_machine_city_stands_on_its_own_grid() -> void:
 		return y
 	lt(top.call(PropModels.template(PropKind.PLATFORM, 0, land)), 0.3, "a city deck is a floor a body walks over")
 	gt(top.call(PropModels.template(PropKind.PLATFORM, 0, Country.COAST)), 1.0, "the threshold site's deck still stands over the sea")
+
+
+## EVERY LAND WITH A MATERIAL HOLDS ITS RAW (GEAR.md §11). A material only one
+## land gives is one a player walks out there for, so the land has to hold the
+## thing it comes off: the pan crust's ridges, the vent caps, the grafted trees,
+## the moss cores, the blades, the bales, and under the ground the dripstone.
+const RAWS := {
+	&"salt_flats": PropKind.SALT_RIDGE, &"sulphur_jungle": PropKind.VENT_CAP,
+	&"grey_orchards": PropKind.GRAFT_TREE, &"green_towers": PropKind.MOSS_CORE,
+	&"server_fields": PropKind.SERVER_BLADE, &"the_middens": PropKind.MIDDEN_BALE,
+}
+
+
+func test_every_land_with_a_material_holds_its_raw() -> void:
+	for s in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		var held := {}
+		for r in w.table.size():
+			var p: Vector2 = w.table.pos[r]
+			var here := BiomeRegistry.at(w, p).id
+			if RAWS.has(here) and int(w.table.kind[r]) == int(RAWS[here]):
+				held[here] = int(held.get(here, 0)) + 1
+		print("  raws, seed %d: %s" % [s, held])
+		for land: StringName in RAWS:
+			if BiomeRegistry.get_def(land) == null:
+				continue
+			gt(float(held.get(land, 0)), 5.0, "seed %d: %s holds its raw, %s" % [s, land, PropKind.NAMES[int(RAWS[land])]])
+	var under := WorldGen.generate(Realm.seed_for(1, Realm.UNDERGROUND), 512, &"", Realm.UNDERGROUND)
+	var drips := 0
+	for r in under.table.size():
+		drips += 1 if int(under.table.kind[r]) == PropKind.DRIPSTONE else 0
+	print("  raws, the caves under seed 1: %d dripstone" % drips)
+	gt(float(drips), 5.0, "the limestone caves hold their dripstone")
