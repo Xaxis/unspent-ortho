@@ -1,0 +1,19 @@
+# A GLIDE OFF A DROP DEEPER THAN THE WING FALLS (AbilityMotion.FALL_OUT): its six
+# seconds run out still in the air, and the body falls out of the wing the rest
+# of the way down, never put on the ground in one frame.
+#   tools/tour.sh tours/glide_fall.tour --seed=1 --hour=11 --weather=clear:0 --fit=glide_wing
+# tests/gear/test_abilities.gd measures the fall frame by frame; these are what
+# it looks like: on the lip, gliding high, falling out after the seconds, down.
+coast calm
+place cliff
+ledge glide
+wait 0.8
+shot 01-on-the-lip
+tap ability_glide
+await ability:glide 3
+wait 3.0
+shot 02-gliding-high with gliding
+await falling_out 6
+shot 03-falling-out-of-the-wing with falling_out
+wait 1.6
+shot 04-down

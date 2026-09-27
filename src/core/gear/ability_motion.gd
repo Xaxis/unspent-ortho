@@ -27,6 +27,12 @@ const OVERRUN := 2.5
 const STALL := 4.0
 ## ...skimming this far above whatever is under it while it looks.
 const SKIM := 0.5
+## A glide whose SECONDS run out still in the air (off a drop deeper than the
+## wing falls in them) falls out of it: its sink gathers FALL_OUT units/s every
+## second, and its way on dies over FALL_OUT_CARRY seconds. A body is never set
+## on the ground from a height in one frame.
+const FALL_OUT := 14.0
+const FALL_OUT_CARRY := 0.6
 ## How far out a flight that has run out of everything will look for a tile to
 ## land on before falling back to the last good ground it passed over.
 const LANDING_SEARCH := 8
@@ -150,6 +156,14 @@ static func climb_face(p: Climb.Plan) -> AbilityMotion:
 	return m
 
 
+## A glide run out still in the air, on its way down (FALL_OUT): as the last
+## step found it, over what it would come down onto -- a roof's top it skims is
+## not a fall.
+var _out := false
+func falling_out() -> bool:
+	return kind == &"glide" and not finished and _out
+
+
 ## Move the body on by `delta`. Returns where it now is (tile space).
 ## A dash is refused by walls (it slides along them like walking does); a glide
 ## and a grapple pass over ground a walk could not climb, which is the point.
@@ -165,7 +179,9 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 			if t >= seconds or next.distance_to(pos) < speed * delta * 0.15:
 				finished = true
 		&"glide":
-			next = pos + dir * speed * delta
+			var over := maxf(0.0, t - seconds)
+			var carry := clampf(1.0 - over / FALL_OUT_CARRY, 0.0, 1.0)
+			next = pos + dir * speed * carry * delta
 			var edge := world != null and not _inside(world, next)
 			if edge:
 				# Out of world: the flight ends here rather than off the edge.
@@ -173,12 +189,13 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 			if stalled:
 				next = pos
 			var before := height
-			height -= (STALL if stalled else fall) * delta
+			height -= ((STALL if stalled else fall) + FALL_OUT * over) * delta
 			var ground := world.height_at(next) if world != null else 0.0
 			var ok := _standable(query, next)
 			# MASS OVERHEAD (docs/ABOVE.md §2). A wing over it skims its top, which
-			# nothing stands on yet, so that is no landing. A wing under it is held
-			# its own height below the underside. Where the room under it is less
+			# nothing stands on yet, so that is no landing. A wing under it keeps
+			# its own height below the underside: met higher than that, it is held
+			# at the lip and let down until it fits. Where the room under it is less
 			# than the body the rock is a wall: the wing stops at it and sinks where
 			# it is. `rest` is what the flight comes down onto; `lift` stays the
 			# height over the land, which is where the body is drawn from.
@@ -196,8 +213,15 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 					ground = world.height_at(pos)
 					rest = ground
 					ok = _standable(query, pos)
-				else:
-					height = minf(height, under - tall)
+				elif height > under - tall:
+					# Too high to pass under yet: the lip is a wall at this height.
+					# Held at it and let down at STALL until the body fits, never
+					# dropped to the cap in one frame.
+					next = pos
+					ground = world.height_at(pos)
+					rest = ground
+					ok = _standable(query, pos)
+					height = maxf(under - tall, minf(height, before - STALL * delta))
 			lift = maxf(0.0, height - ground)
 			flown = flown or height - rest > LAUNCH_LIFT * 0.5
 			if ok:
@@ -206,7 +230,10 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 			# over open water it keeps flying, skimming, until there is something
 			# under it. When even the overrun is spent it puts the body on the
 			# nearest ground, or on the last it passed over. Never in the sea.
-			if (flown and height - rest <= DONE_LIFT) or t >= seconds or edge:
+			# Run out still in the air over ground it can stand on: falling out,
+			# not set down. Measured from `rest`, what it would come down onto.
+			_out = t >= seconds and ok and height - rest > DONE_LIFT and not edge
+			if ((flown and height - rest <= DONE_LIFT) or t >= seconds or edge) and not _out:
 				if ok:
 					lift = 0.0
 					finished = true

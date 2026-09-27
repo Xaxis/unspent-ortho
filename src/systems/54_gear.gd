@@ -790,6 +790,7 @@ func tour_seen(what: StringName) -> bool:
 		&"climbing": return _motion != null and _motion.kind == &"climb"
 		&"jumped": return _jumped.has(&"")
 		&"gliding": return _gliding
+		&"falling_out": return _motion != null and _motion.falling_out()
 		&"ability": return not _fired.is_empty()
 		&"spoofed": return AbilitySpoof.spoofed(game.body, game.clock.minutes)
 		&"unnoticed": return _unnoticed()

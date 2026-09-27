@@ -273,6 +273,8 @@ G10 is therefore out of this build; G1–G9 go now.
 
 ## 12. Progress
 
+**Start here before designing a power against chargers.** Two keeper powers (the anvil's heavy blow and its glass) failed for the same reason: a skilled player already beats a lone charger with nothing lost, and a charging crowd is beaten through the shared overrun, when they all arrive and stand spent together. A power that stops or slows chargers one at a time breaks that shared opening and loses to bare.
+
 - G1: listener_core row; a keeper drop with no row is an error, not a skip (160f4bba).
 - G2: sockets follow grade; axe_works 2 (ea25496d).
 - G3: lattice (reach 2.0, 2 damage shared nearest first, 1 charge, a visible arc) and icelens (scan x1.5) (d3ea03fb..bd0e64df). Gate test holds its identity: 3 harvesters no faster; 3 cutters 41% sooner, 3/24 -> 8/24 won (6a6cc010).
