@@ -467,3 +467,5 @@ func test_a_pocket_standing_ready_leaves_the_outside_works_on_the_land() -> void
 	check(d.get("_grown") != null or d.get("_view") != null, "the pocket was grown while the player stood at the door")
 	var bound := float(mat.get_shader_parameter("works_inv_size"))
 	near(bound, 1.0 / float(g.world.size), 1e-9, "the material still carries the outside's works map, not the room's")
+	Sx.end(g)
+	Sx.finish()
