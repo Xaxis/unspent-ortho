@@ -43,10 +43,10 @@ func _set_walls(force: bool) -> void:
 
 
 func _count_fallen() -> int:
+	# A keyed lookup per ruin, never the world's taken list walked or held.
 	var n := 0
-	var depleted := game.world.depleted
 	for id in _ruin_ids:
-		if depleted.has(id):
+		if game.world.depleted.has(id):
 			n += 1
 	return n
 
