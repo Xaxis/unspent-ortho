@@ -54,9 +54,7 @@ static func broke_line(module: StringName) -> String:
 ## (that is the point — an elite material is never lost to a piece you have
 ## outgrown), and half of everything else its recipe took, rounded down.
 ##
-## Nothing in a running game calls this yet: there is no key for breaking a piece
-## down, because the carrying page belongs to another package. The rule is here,
-## tested, for whoever adds that key.
+## Taken apart at a bench from the making page (`salvage_recipes`).
 static func salvage(id: StringName) -> Dictionary:
 	var out: Dictionary = {}
 	var r := _recipe_making(id)
@@ -70,6 +68,37 @@ static func salvage(id: StringName) -> Dictionary:
 			out[key] = maxi(1, had)
 		elif had >= 2:
 			out[key] = had / 2
+	return out
+
+
+## How long taking a piece apart at the bench takes.
+const SALVAGE_MINUTES := 15.0
+
+
+## A carried piece of gear taken apart, as a row the making page lists at a
+## bench: it spends the piece and gives `salvage` back. Only a piece that was
+## made from a recipe, and only one whose taking-apart gives something.
+static func salvage_recipe(id: StringName) -> Dictionary:
+	if not GearTree.PIECES.has(id):
+		return {}
+	var back := salvage(id)
+	if back.is_empty():
+		return {}
+	return {"id": StringName("salvage_%s" % id), "at": &"bench", "minutes": SALVAGE_MINUTES,
+		"needs": {id: 1}, "makes": back, "action": &"salvage", "salvages": id}
+
+
+## Every piece carried that can be taken apart at a bench.
+static func salvage_recipes(inv: Inventory) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var ids: Array = inv.items.keys()
+	ids.sort()
+	for id: Variant in ids:
+		if inv.count(StringName(id)) <= 0:
+			continue
+		var r := salvage_recipe(StringName(id))
+		if not r.is_empty():
+			out.append(r)
 	return out
 
 

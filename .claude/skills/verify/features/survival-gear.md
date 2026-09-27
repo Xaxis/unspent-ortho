@@ -50,6 +50,9 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   A keeper's core reads on the slate as the choice it is (the holding's cell, the power worn), side by side:
   `tools/test.sh test_rules:test_a_keepers_core`, `tools/tour.sh tours/core_choice.tour` (options in its header).
 - 56_economy: `src/systems/56_economy.gd`, reached by `tools/tour.sh tours/gear-economy.tour`.
+  The salvage key (Reforge.salvage_recipes): any carried piece made from a recipe is offered at a bench as
+  "take apart the X", 15 min, giving back its elite material and half of the rest, listed under GIVES BACK:
+  `tools/test.sh test_salvage_key`, `tools/tour.sh tours/salvage.tour` (options in its header).
 
 ## How to reach it
 

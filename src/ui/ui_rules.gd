@@ -379,6 +379,7 @@ static func recipe_title(r: Dictionary, among: Array[Dictionary] = []) -> String
 	match StringName(r.get("action", &"")):
 		&"hone": title = "sharpen what is in hand"
 		&"reedge": title = "re-edge what is in hand"
+		&"salvage": return "take apart the %s" % bare_name(StringName(r.get("salvages", &"")))
 	if builds != &"":
 		title = "build a %s" % builds
 	if title == "":
