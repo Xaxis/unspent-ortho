@@ -1193,8 +1193,19 @@ static func _house_pack(rng: RandomNumberGenerator, lit_village: bool, forms: Bi
 ## alone (streamed worldgen S3).
 static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:
 	var w := c.w
+	# FURNISHED IN AN ORDER OF THEIR OWN. Places that stand close (a summit's
+	# cairn three tiles from a tip) take ground from each other, so the one
+	# furnished first keeps it. That was the list's order, which is the order
+	# the stages happened to site them in; it is each place's own hash, so a
+	# section furnishing the places in its reach keeps the world's order.
+	var keyed: Array = []
 	for li: int in GenWorks._order(w.landmarks.size()):
-		var m: Dictionary = w.landmarks[li]
+		var lm: Dictionary = w.landmarks[li]
+		var lp: Vector2 = lm.pos
+		keyed.append([Rng.hash_ints(83, String(lm.kind).hash(), floori(lp.x), floori(lp.y)), lp.x, lp.y, li])
+	keyed.sort()
+	for row: Array in keyed:
+		var m: Dictionary = w.landmarks[int(row[3])]
 		var p: Vector2 = m.pos
 		var rng := Rng.make(c.s, Rng.hash_ints(83, String(m.kind).hash(), floori(p.x), floori(p.y)))
 		# Every place a landscape claims carries `site`, and the four with placers

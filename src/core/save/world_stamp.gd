@@ -250,7 +250,8 @@ const UNKNOWN := "unknown"
 ##     S4j3a): a village's houses draw from a stream keyed on its square, not one
 ##     stream through every village, and a region's wrecks are its own -- one to
 ##     every `WRECK_BEACH` tiles of its hauling sand, from its own darts, spaced
-##     off its own. Houses and wrecks move; every kind's count holds within 2%.
+##     off its own. Places are furnished in each one's own hash order, not the
+##     order sited. Houses and wrecks move; every kind's count holds within 2%.
 ##     (Provisional; restamped at landing.)
 const GEN := 46
 
