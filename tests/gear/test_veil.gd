@@ -42,28 +42,40 @@ func test_their_sight_does_not_pass_it_and_nothing_else_notices_it() -> void:
 	eq(sim.veils.size(), 0, "gone")
 
 
-func test_a_dart_that_loses_you_breaks_off() -> void:
+## Cut off by the veil, a dart and its flock lose the scent and leave for good:
+## no snatch, not when the water falls, not when the player walks out from it.
+func test_a_dart_that_loses_you_leaves_with_its_flock() -> void:
 	var bare := _dart_run(false)
 	var veiled := _dart_run(true)
-	print("  info a dart diving from 7 tiles: %d snatches bare, %d behind the veil" % [bare, veiled])
-	gt(float(bare), 0.0, "bare, the dart gets its snatch")
-	eq(veiled, 0, "behind the veil it breaks off")
+	print("  info a flock of two diving from 7 tiles, 30 s: %d snatches bare, %d behind the veil, %d of them left" % [bare.snatches, veiled.snatches, veiled.gone])
+	gt(float(bare.snatches), 0.0, "bare, the dart gets its snatch")
+	eq(veiled.snatches, 0, "behind the veil it never does")
+	eq(veiled.gone, 2, "both of the flock are gone")
 
 
-func _dart_run(veil: bool) -> int:
+func _dart_run(veil: bool) -> Dictionary:
 	MobState._next_id = 3000
-	var sim := F.make_sim(F.flat_world(48), Vector2(20.5, 20.5))
+	var sim := F.make_sim(F.flat_world(64), Vector2(30.5, 30.5))
 	sim.hero.inventory.add(&"scrap", 3)
-	var m := sim.add_mob(&"flock", Vector2(27.5, 20.5))
-	m.disturbed = true
-	m.set_mood(MobState.CHASING, sim.now)
+	var flock: Array[MobState] = []
+	# One diving straight in, one off to the side the veil does not cover.
+	for at: Vector2 in [Vector2(37.5, 30.5), Vector2(33.5, 36.5)]:
+		var m := sim.add_mob(&"flock", at)
+		m.disturbed = true
+		m.set_mood(MobState.CHASING, sim.now)
+		flock.append(m)
 	if veil:
 		sim.veil(Vector2.RIGHT)
 	var n := 0
-	for i in 150:
+	for i in 1900:
 		F.ms(sim, 16)
 		n += F.count(sim.drain(), &"snatch")
-	return n
+		# The player walks out from behind the water after two seconds.
+		sim.hero.move = Vector2.DOWN if i > 120 and i < 200 else Vector2.ZERO
+	var gone := 0
+	for m in flock:
+		gone += int(m.removed)
+	return {"snatches": n, "gone": gone}
 
 
 func test_a_thrower_does_not_throw_across_it() -> void:
@@ -163,17 +175,14 @@ func _bout(kinds: Array[StringName], veil: bool, start: int, ids: int, ms: float
 	return {"won": false, "lost": lost, "taken": taken, "veils": player.veils_let}
 
 
-## A flock snatches once and is gone with it (MobState.snatched is the flock's),
-## so over a whole minute the veil can only put the snatch off: the bar is the
-## dive it meets, the veil's own time.
+## Snatches inside one meeting count once (Coast.MEETING_GAP), so a bout takes
+## at most one thing: the bar is how many bouts end with one taken.
 func test_the_veil_bout() -> void:
 	var darts: Array[StringName] = [&"flock", &"flock"]
-	var b := _bouts(darts, false, FightSim.VEIL_MS)
-	var w := _bouts(darts, true, FightSim.VEIL_MS)
-	var bm := _bouts(darts, false)
-	var wm := _bouts(darts, true)
-	print("  info 2 darts, the veil's 12 s: bare took %.2f; veiled took %.2f (%.1f veils a bout). Over a minute: %.2f and %.2f" % [b.taken, w.taken, w.veils, bm.taken, wm.taken])
-	lt(w.taken, b.taken, "two darts take fewer things in the dive the veil meets")
+	var b := _bouts(darts, false)
+	var w := _bouts(darts, true)
+	print("  info 2 darts over a minute: bare took %.2f a bout; veiled took %.2f (%.1f veils a bout)" % [b.taken, w.taken, w.veils])
+	lt(w.taken, b.taken, "two darts take fewer things")
 	var thrower: Array[StringName] = [&"sorter", &"cutter"]
 	b = _bouts(thrower, false)
 	w = _bouts(thrower, true)

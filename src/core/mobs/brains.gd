@@ -560,14 +560,11 @@ static func _dart(m: MobState, sim: FightSim) -> void:
 		return
 	var to := sim.hero.pos - m.pos
 	m.aim = to.angle()
-	# Its sight of you cut by the veil (FightSim.veils): it has lost you, breaks
-	# off its dive and wheels away until the water falls. Going on to where it
-	# last saw you would take it through the veil onto a player who never moved;
-	# coming again the moment you step round the water would make the veil a
-	# half-second's delay.
-	if not sim.veils.is_empty():
-		m.broke_off_until = maxf(m.broke_off_until, sim.veiled_until(m.pos, sim.hero.pos))
-	if sim.now < m.broke_off_until:
+	# Its sight of you cut by the veil (FightSim.veils): it and its flock lose the
+	# scent and leave. The veil is the answer to darts; one that only put the
+	# dive off would be a delay, not an answer.
+	if not sim.veils.is_empty() and sim.veiled(m.pos, sim.hero.pos):
+		sim.lose_scent(m)
 		_flee(m, sim)
 		return
 	var reach := float(m.stat("reach", 1))

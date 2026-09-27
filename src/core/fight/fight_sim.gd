@@ -499,7 +499,9 @@ func _beat() -> void:
 						m.calm_until = now + 3000.0
 						m.set_mood(MobState.IDLE, now)
 				elif d >= float(m.stat("safe", 12)):
-					if m.snatched:
+					if m.lost_scent:
+						remove_mob(m)
+					elif m.snatched:
 						if m.row.get("hits", {}).get("files", false) and not m.reported:
 							m.reported = true
 							emit(&"filed", {"mob": m})
@@ -1597,7 +1599,7 @@ func _falls_beat() -> void:
 ## player, for VEIL_MS. It is SIGHT and nothing else: machines cannot see through
 ## it (WorldQuery.sight_screens, which every look reads through
 ## Senses.line_clear), and bodies, blows and sound go through as through air.
-## So a dart that loses its sight of you breaks off to where it last saw you, a
+## So a dart that loses its sight of you leaves with its flock (lose_scent), a
 ## thrower cannot aim across it, and a hunter goes to its last sight and
 ## searches (FightSim.hunting). Each {id, a, b, until}.
 var veils: Array[Dictionary] = []
@@ -1621,16 +1623,26 @@ func veil(dir: Vector2) -> int:
 
 ## Whether a standing veil lies across the line from `p` to `q`.
 func veiled(p: Vector2, q: Vector2) -> bool:
-	return veiled_until(p, q) > now
-
-
-## When the last veil across the line from `p` to `q` falls; -INF when none is.
-func veiled_until(p: Vector2, q: Vector2) -> float:
-	var until := -INF
 	for v: Dictionary in veils:
 		if Geometry2D.segment_intersects_segment(p, q, v.a, v.b) != null:
-			until = maxf(until, float(v.until))
-	return until
+			return true
+	return false
+
+
+## A dart's dive cut by the veil: it and every dart of its kind within FLOCK_R
+## of it lose the scent and leave for good (MobState.lost_scent), taking nothing.
+const FLOCK_R := 8.0
+
+
+func lose_scent(m: MobState) -> void:
+	for o in mobs:
+		if not o.alive or o.removed or o.snatched or o.lost_scent or o.kind != m.kind or o.approach != &"dart":
+			continue
+		if o != m and o.pos.distance_to(m.pos) > FLOCK_R:
+			continue
+		o.lost_scent = true
+		o.flee_home = false
+		o.set_mood(MobState.FLEEING, now)
 
 
 func _veils_beat() -> void:

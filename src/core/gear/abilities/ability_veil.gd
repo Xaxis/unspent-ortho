@@ -2,7 +2,7 @@ class_name AbilityVeil
 extends Ability
 ## The drip-warden's core, turned (mod_veil): it lets the drip fall. A curtain
 ## of water stands across the way ahead for FightSim.VEIL_MS that machines
-## cannot see through (FightSim.veils): a dart that loses you breaks off, a
+## cannot see through (FightSim.veils): a dart that loses you leaves with its flock, a
 ## thrower cannot aim across it, a hunter goes to where it last saw you. Bodies,
 ## blows and sound pass as through air, so it hides you and never holds anything
 ## back.

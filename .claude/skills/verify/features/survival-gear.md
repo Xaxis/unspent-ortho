@@ -61,9 +61,9 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   The plumb (plumb_core, head): a scan rings where each roused machine will tell its next blow; the scan cools
   twice as long: `tools/test.sh test_plumb` (its bout prints), `tools/tour.sh tours/plumb.tour` (options in its header).
   The veil (drip_core, back; key 1, two wick, 30 s): a curtain of water 3 wide falls a tile ahead for 12 s; a
-  machine's sight does not pass it (sound and bodies do), a dart it cuts off wheels away until it falls, a thrower
+  machine's sight does not pass it (sound and bodies do), a dart it cuts off leaves with its flock for good, a thrower
   will not throw across it; it soaks you and puts the lamp out till it stops: `tools/test.sh test_veil` (its bout
-  prints: darts over the veil's 12 s, a thrower and cutter, harvesters and cutters, the walk past twelve).
+  prints: darts over a minute, a thrower and cutter, harvesters and cutters, the walk past twelve).
   The frame: `tools/tour.sh tours/veil.tour` from above and over the shoulder (options in its header).
   The unbuilder's hands (unbuilder_core, hands): use held at an open machine's part strips it -- disarmed, its elite
   part into the creel: `tools/test.sh test_unbuild` (its bout prints), `tools/tour.sh tours/unbuild.tour` (options in its header).
