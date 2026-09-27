@@ -251,7 +251,8 @@ const UNKNOWN := "unknown"
 ##     stream through every village, and a region's wrecks are its own -- one to
 ##     every `WRECK_BEACH` tiles of its hauling sand, from its own darts, spaced
 ##     off its own. Places are furnished in each one's own hash order, not the
-##     order sited. Houses and wrecks move; every kind's count holds within 2%.
+##     order sited, and a village's spur runs to the island's own lines, never to
+##     another village's spur. Houses, wrecks and spurs move; every kind's count holds within 2%.
 ##     (Provisional; restamped at landing.)
 const GEN := 46
 

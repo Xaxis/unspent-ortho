@@ -1333,7 +1333,8 @@ static func _lines(c: GenContext, occ: PackedByteArray) -> void:
 		Vector3(PropKind.POLE, PI * 0.5 + rng.randf_range(-0.3, 0.3), -side * rng.randf_range(0.2, 0.4)),
 		Vector3(PropKind.POLE, rng.randf_range(-0.3, 0.3), rng.randf_range(0.15, 0.32)),
 	]
-	for spec in specs:
+	for si: int in GenWorks._order(specs.size()):
+		var spec := specs[si]
 		var kind := int(spec.x)
 		var dir := Vector2.from_angle(spec.y)
 		var nrm := Vector2(-dir.y, dir.x)
@@ -1341,12 +1342,16 @@ static func _lines(c: GenContext, occ: PackedByteArray) -> void:
 		var a := through - dir * size * 1.5
 		var b := through + dir * size * 1.5
 		_string_line(c, occ, kind, a, b, 13.0 if kind == PropKind.PYLON else 7.0)
-	# Every village with a line within reach gets a pole spur to its square.
-	for v in w.villages:
+	# Every village with a line within reach gets a pole spur to its square --
+	# to the island's own lines, never to another village's spur: a spur that
+	# took the nearest mast of any line hung on which villages were strung first.
+	var trunks := w.lines.slice(0)
+	for vi: int in GenWorks._order(w.villages.size()):
+		var v: Dictionary = w.villages[vi]
 		var vp: Vector2 = v.pos + Vector2(-3.5, 3.5)
 		var best := Vector2.ZERO
 		var best_d := 90.0 * maxf(c.body_k, 0.4)
-		for line in w.lines:
+		for line: Dictionary in trunks:
 			for id: int in line.props:
 				var d := w.props[id].pos.distance_to(vp)
 				if d < best_d and d > 8.0:

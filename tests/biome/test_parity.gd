@@ -537,13 +537,15 @@ extends TestCase
 ## And again for the places furnished in each one's own hash order, not the
 ## list's: only `props` moves, every prop and mark kind over four seeds at 1840
 ## exactly as before.
+## And for village spurs strung to the island's own lines only, not to each
+## other: `props` moves on seed 3 alone; poles over four seeds at 1840 -0.5%.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
 	1: "054710a9 3eac3638 1ebd687b 100053b8 4fd7a826 5e612fe3",
-	3: "bd96c6d3 1d22db86 ed617960 a4316902 7e58a668 48517df0",
+	3: "bd96c6d3 1d22db86 ed617960 a4316902 7e58a668 6c687dc8",
 	7: "ba7a972f 55af42cc 8eec15a7 0f02d42c f555c41d 24c7cda5",
 	42: "e0ad0bb3 b7ca1370 f18fef97 2f4b7f69 1565ed7e ba1c5653",
 	90210: "2659ea1f 66925798 18341e08 34b30d32 275c7664 cb2bd746",
