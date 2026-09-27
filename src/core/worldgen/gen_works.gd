@@ -157,13 +157,60 @@ class Lay:
 	## square round every landscape at once. Empty while laying the shared things.
 	var rects: Array[Rect2] = []
 	var sizes: PackedFloat32Array = PackedFloat32Array()
+	## Where a landscape's works are SITED from: its darts, thrown in order
+	## (`_dart`). Composing a work draws from `rng`, keyed on the work (`_work`).
+	var site_rng: RandomNumberGenerator
+	## The occupancy the works stage began from. A work composes against this
+	## and its own pieces only, never against another work's, so what it lays is
+	## a function of its row and not of how many works came before it.
+	var base: PackedByteArray
+	## The work being composed: its key (0 outside one), and each tile it took
+	## with what `occ` held there before, so a work that gives up is taken back.
+	var key := 0
+	var in_work := false
+	## Whose works functions compose the works: GenWorks, or the landscape
+	## file that registered its own ("host" in its row).
+	var host: Object = null
+	var mine: Dictionary = {}
 
 	func _init(ctx: GenContext, o: PackedByteArray, bearing_dir: Vector2) -> void:
 		c = ctx
 		w = ctx.w
 		occ = o
+		base = o
 		d = bearing_dir
 		nrm = Vector2(-d.y, d.x)
+
+	## Nothing stands within r of p, as `GenScatter._free` asks it: inside a
+	## work, of the stage's first occupancy and the work's own pieces.
+	func open(p: Vector2, r: float) -> bool:
+		if not in_work:
+			return GenScatter._free(c, occ, p, r)
+		if not GenScatter._free(c, base, p, r):
+			return false
+		if mine.is_empty():
+			return true
+		var ri := ceili(r)
+		for dy in range(-ri, ri + 1):
+			for dx in range(-ri, ri + 1):
+				if mine.has((floori(p.y) + dy) * c.size + floori(p.x) + dx):
+					return false
+		return true
+
+	## Take every tile within r of p, as `GenScatter._occupy` does.
+	func take(p: Vector2, r: float) -> void:
+		var ri := ceili(r)
+		for dy in range(-ri, ri + 1):
+			for dx in range(-ri, ri + 1):
+				var x := floori(p.x) + dx
+				var y := floori(p.y) + dy
+				if x >= 0 and y >= 0 and x < c.size and y < c.size:
+					take_tile(y * c.size + x)
+
+	func take_tile(i: int) -> void:
+		if in_work and not mine.has(i):
+			mine[i] = occ[i]
+		occ[i] = 1
 
 	func type_at(x: int, y: int) -> StringName:
 		return BiomeRegistry.by_index(_index_at(x, y)).id
@@ -215,6 +262,7 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 	if Realm.before_the_plan(c.w.realm):
 		return
 	var lay := Lay.new(c, occ, Vector2.from_angle(bearing(c.s)))
+	lay.base = occ.duplicate()
 	for def in BiomeRegistry.all():
 		var row := evidence(def.id)
 		var fn: StringName = row.works
@@ -228,15 +276,17 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 			if int(r.get("index", -1)) == def.index:
 				lay.rects.append(r.bounds as Rect2)
 				lay.sizes.append(float(r.tiles))
-		lay.rng = Rng.make(c.s, 0x3057 + String(def.id).hash() % 65521)
-		var host: Object = row.get("host", GenWorks)
-		Callable(host, fn).call(lay)
+		lay.site_rng = Rng.make(c.s, 0x3057 + String(def.id).hash() % 65521)
+		lay.rng = lay.site_rng
+		lay.host = row.get("host", GenWorks)
+		Callable(lay.host, fn).call(lay)
 		c.mark(StringName("works." + String(def.id)))
 	lay.id = &""
 	lay.own = -1
 	lay.rects.clear()
 	lay.sizes = PackedFloat32Array()
 	lay.rng = Rng.make(c.s, 0x3058)
+	lay.site_rng = lay.rng
 	_villages(lay)
 	_roads(lay)
 	_remains(lay)
@@ -306,16 +356,82 @@ static func _site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attem
 ## own comment below already called it "nought to two" per landscape.
 static func _dart(L: Lay) -> Vector2i:
 	if L.rects.is_empty():
-		return GenScatter._random_tile(L.c, L.rng)
+		return GenScatter._random_tile(L.c, L.site_rng)
 	var total := 0.0
 	for t in L.sizes:
 		total += t
-	var pick := L.rng.randf() * total
+	var pick := L.site_rng.randf() * total
 	var k := 0
 	while k < L.sizes.size() - 1 and pick > L.sizes[k]:
 		pick -= L.sizes[k]
 		k += 1
-	return GenScatter._random_tile_in(L.c, L.rng, L.rects[k])
+	return GenScatter._random_tile_in(L.c, L.site_rng, L.rects[k])
+
+
+## THE WORKS ARE ROWS: SITED IN ORDER, COMPOSED EACH ON ITS OWN. A landscape's
+## works function sites (its darts are `site_rng`'s, thrown in order) and hands
+## each site here; `fn` on the landscape's host composes the work at `at` with `args` and
+## says whether it stands. It composes from a stream keyed on the landscape,
+## the work and its tile, against the stage's first occupancy and its own
+## pieces (`Lay.open`), so the same row lays the same work wherever and
+## whenever it is composed -- which is what lets a section of a streamed world
+## lay a work from the plan's row alone. A work that gives up is taken back
+## whole: its props, its landmarks, its lines and the tiles it took.
+##
+## `witness`, when a test sets `witnessing`, holds each standing row composed
+## twice: in the world, and again alone on a fresh Lay.
+static var witnessing := false
+static var witness: Array = []
+
+static func _work(L: Lay, fn: StringName, at: Vector2, args: Array = []) -> bool:
+	var w := L.w
+	var n0 := w.props.size()
+	var m0 := w.landmarks.size()
+	var l0 := w.lines.size()
+	L.in_work = true
+	L.mine.clear()
+	L.key = Rng.hash_ints(0x3057, String(L.id).hash(), String(fn).hash(), floori(at.x), floori(at.y))
+	L.rng = Rng.make(L.c.s, L.key)
+	var call := Callable(L.host, fn)
+	var stands: bool = call.call(L, at, args)
+	if not stands:
+		w.props.resize(n0)
+		w.landmarks.resize(m0)
+		w.lines.resize(l0)
+		for i: int in L.mine:
+			L.occ[i] = L.mine[i]
+	var key := L.key
+	L.in_work = false
+	L.key = 0
+	L.rng = L.site_rng
+	if stands and witnessing:
+		var alone := Lay.new(L.c, L.base.duplicate(), L.d)
+		alone.base = L.base
+		alone.id = L.id
+		alone.own = L.own
+		alone.site_rng = L.site_rng
+		alone.host = L.host
+		var n1 := w.props.size()
+		var m1 := w.landmarks.size()
+		var l1 := w.lines.size()
+		alone.in_work = true
+		alone.key = key
+		alone.rng = Rng.make(L.c.s, key)
+		call.call(alone, at, args)
+		witness.append({"work": fn, "at": at, "land": L.id,
+			"world": _pieces(w, n0, n1), "alone": _pieces(w, n1, w.props.size())})
+		w.props.resize(n1)
+		w.landmarks.resize(m1)
+		w.lines.resize(l1)
+	return stands
+
+
+static func _pieces(w: WorldData, from: int, to: int) -> Array:
+	var out: Array = []
+	for i in range(from, to):
+		var p := w.props[i]
+		out.append([p.kind, p.pos, p.rot, p.scale])
+	return out
 
 
 ## Another place worth walking to within d of p. Small marks (falls, bridges,
@@ -363,7 +479,7 @@ static func _put(L: Lay, kind: int, p: Vector2, rot: float, level: int = -99, cl
 		return null
 	if Ground.is_water(w.ground[i]):
 		return null
-	if not GenScatter._free(c, L.occ, p, clear):
+	if not L.open(p, clear):
 		return null
 	var l := w.level[i]
 	if level != -99 and l != level:
@@ -386,12 +502,32 @@ static func _put(L: Lay, kind: int, p: Vector2, rot: float, level: int = -99, cl
 	var face := Vector2.from_angle(w.spawn_facing)
 	if to.length_squared() < 16.0 or (PropKind.SOLID[kind] > 0.0 and to.length_squared() < 100.0 and to.normalized().dot(face) > 0.4):
 		return null
-	var prop := GenScatter._add(c, kind, p, fposmod(rot, TAU))
+	var prop := GenScatter._add(c, kind, p, fposmod(rot, TAU), L.key)
 	if exact:
 		prop.scale = 1.0
 		prop.solid = PropKind.SOLID[kind]
-	GenScatter._occupy(c, L.occ, p, maxf(PropKind.SOLID[prop.kind] * prop.scale, 0.0))
+	L.take(p, maxf(PropKind.SOLID[prop.kind] * prop.scale, 0.0))
 	return prop
+
+
+## A solid a work stands on: at `p` or, where `p` is on a terrace lip, the
+## nearest tile round it that takes one. `_site` allows its site a rise of a
+## level, so the site's own middle can be the lip, and a work that asked only
+## there gave up on ground a step away from where it could stand. The step
+## keeps to the landscape's own ground: a snowfield stack stepped two tiles
+## over a border stood as the slums' work, and the snowfield lost its depot.
+const FOOTING: Array[Vector2] = [Vector2.ZERO, Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1),
+	Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, -1), Vector2(2, 0), Vector2(-2, 0), Vector2(0, 2), Vector2(0, -2)]
+
+static func _put_footed(L: Lay, kind: int, p: Vector2, rot: float, clear: float, exact: bool = false) -> WorldProp:
+	for k in FOOTING:
+		var q := p + k
+		if k != Vector2.ZERO and L.own >= 0 and not (L.w.in_bounds(floori(q.x), floori(q.y)) and L.home(floori(q.x), floori(q.y))):
+			continue
+		var prop := _put(L, kind, q, rot, -99, clear, exact)
+		if prop != null:
+			return prop
+	return null
 
 
 ## A straight run of pieces from `a` along `dir`, `step` apart, each turned
@@ -423,14 +559,15 @@ static func _run(L: Lay, kind: int, a: Vector2, dir: Vector2, pieces: int, step:
 		if prop != null:
 			ids.append(prop.id)
 			# A run owns the tiles along its length.
-			GenScatter._occupy(L.c, L.occ, p + dir * step * 0.3, 0.0)
-			GenScatter._occupy(L.c, L.occ, p - dir * step * 0.3, 0.0)
+			L.take(p + dir * step * 0.3, 0.0)
+			L.take(p - dir * step * 0.3, 0.0)
 	return ids
 
 
 ## Mark every tile of a rotated rectangle occupied, so the scatter grows
 ## nothing there (a clearcut, a corridor, a drill field).
-static func _clear_rect(c: GenContext, occ: PackedByteArray, centre: Vector2, dir: Vector2, half: Vector2) -> void:
+static func _clear_rect(L: Lay, centre: Vector2, dir: Vector2, half: Vector2) -> void:
+	var c := L.c
 	var nrm := Vector2(-dir.y, dir.x)
 	# Walked in the rectangle's own axes at under half a tile, so no tile is missed.
 	var nu := ceili(half.x * 2.5)
@@ -442,7 +579,7 @@ static func _clear_rect(c: GenContext, occ: PackedByteArray, centre: Vector2, di
 			var x := floori(q.x)
 			var y := floori(q.y)
 			if x >= 0 and y >= 0 and x < c.size and y < c.size:
-				occ[y * c.size + x] = 1
+				L.take_tile(y * c.size + x)
 
 
 ## Unit direction from p toward the nearest open sea within `reach`, or zero.
@@ -525,25 +662,12 @@ static func _near_road(c: GenContext, p: Vector2, r: int) -> bool:
 
 static func _coast(L: Lay) -> void:
 	var c := L.c
-	var rng := L.rng
-	var d := L.d
-	var nrm := L.nrm
 	# Turf cut in the machines' rows: a ruled field of strips on the open turf,
 	# survey posts at its corners, a fence along its end, a warning at its side.
 	for n in _n(c, 2.0):
 		var p := _site(L, 8, 1, [Ground.GRASS, Ground.HEATH], 26.0)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var half := Vector2(rng.randf_range(8.0, 11.0), rng.randf_range(5.0, 7.0))
-		_record(c, &"turf_rows", at, d, half, CUT)
-		var l := _level(c, p)
-		for sx: float in [-1.0, 1.0]:
-			for sy: float in [-1.0, 1.0]:
-				_put(L, PropKind.SURVEY, at + d * half.x * sx + nrm * half.y * sy, d.angle(), -99, 0.0, true)
-		_run(L, PropKind.FENCE, at - d * (half.x + 0.6) - nrm * half.y, nrm, ceili(half.y), 2.0, l, 0.15)
-		_put(L, PropKind.SIGN, at + nrm * (half.y + 1.2), nrm.angle(), -99, 0.3)
-		_about(L, PropKind.WRECKAGE, at + d * (half.x + 2.0), 1, 0.0, 2.0)
+		if p.x >= 0:
+			_work(L, &"_turf_rows", Vector2(p) + Vector2(0.5, 0.5))
 	# The intake: a machine housing at the shore, its pipes out to the water,
 	# fenced square, a tide gauge standing in the wash.
 	var intakes := 0
@@ -551,44 +675,8 @@ static func _coast(L: Lay) -> void:
 		if intakes >= _n(c, 1.0):
 			break
 		var p := _shore(L, [Ground.SAND, Ground.SHINGLE, Ground.GRASS, Ground.GRAVEL] if attempt < 5 else [], 40.0)
-		if p.x < 0:
-			continue
-		var sea := _sea_dir(c, p)
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var l := _level(c, p)
-		var intake: WorldProp = null
-		for back in 4:
-			intake = _put(L, PropKind.INTAKE, at - sea * back, sea.angle(), l if back == 0 else -99, 1.0, true)
-			if intake != null:
-				at = intake.pos
-				break
-		if intake == null:
-			continue
-		intakes += 1
-		_record(c, &"intake", at, sea, Vector2(4.0, 4.0))
-		var side := Vector2(-sea.y, sea.x)
-		# The fence square, open to the sea; the gate on the land side.
-		_run(L, PropKind.FENCE, at - sea * 4.0 - side * 4.0, side, 4, 2.0, -99, 0.0)
-		_run(L, PropKind.FENCE, at - sea * 4.0 - side * 4.0, sea, 4, 2.0, -99, 0.1)
-		_run(L, PropKind.FENCE, at - sea * 4.0 + side * 4.0, sea, 4, 2.0, -99, 0.1)
-		_put(L, PropKind.SIGN, at - sea * 5.2 + side * 1.0, (-sea).angle(), -99, 0.2)
-		_gauge(L, at + side * 2.5, sea)
-		# AND THE PIPE IT TAKES THE WATER AWAY IN. An intake that stops at its own
-		# fence is a machine doing half a job, and it left the coast's keeper with
-		# nothing to eat: `tide_reaper` dens AT the intake (`stations`) and feeds on
-		# INTAKE, PUMP_HOUSE, PIPE and RELAY, of which the coast held exactly one --
-		# the intake itself. Pump houses are the moss's (`test_world_gen_works.HOME`)
-		# and relays the pinewood's, so three quarters of its diet was somewhere it
-		# could never reach, and starving it was a way of taking it that was already
-		# taken. The run goes inland, which is where the water was going anyway.
-		# ON THE SURVEY BEARING, like every other work the machines laid: `L.d` is
-		# `GenWorks.bearing` and `test_the_machines_works_lie_ruled_on_the_survey_bearing`
-		# holds the whole file to it. The first version ran the pipe straight inland
-		# on `-sea`, which is what a water main would do and is not what THESE
-		# builders do -- they ruled the coast on one line and the pipe is theirs.
-		# Whichever way along that line leads away from the water.
-		var inland := L.d if L.d.dot(-sea) >= 0.0 else -L.d
-		_run(L, PropKind.PIPE, at - sea * 6.0, inland, rng.randi_range(9, 14), 2.0, -99, 0.1)
+		if p.x >= 0 and _work(L, &"_intake", Vector2(p) + Vector2(0.5, 0.5)):
+			intakes += 1
 	# Trawlers beached where the sea put them: on the sand or the shingle, lying
 	# along the shore, a field of debris and wreckage round each.
 	var hulls := 0
@@ -597,56 +685,23 @@ static func _coast(L: Lay) -> void:
 			break
 		var beach := attempt < 12
 		var p := _shore(L, [Ground.SAND, Ground.SHINGLE] if beach else [], 30.0 if attempt < 6 else 14.0, 1500)
-		if p.x < 0:
-			continue
-		var sea := _sea_dir(c, p)
-		var along := Vector2(-sea.y, sea.x)
-		var hull: WorldProp = null
-		for back: float in [0.0, 1.0, -1.0, 2.0, 3.0]:
-			var at := Vector2(p) + Vector2(0.5, 0.5) - sea * back
-			var turn := along.angle() + rng.randf_range(-0.3, 0.3)
-			if not _berth(L, at, Vector2.from_angle(turn), beach):
-				continue
-			hull = _put(L, PropKind.HULL, at, turn, -99, 0.8, false, true)
-			if hull != null:
-				break
-		if hull == null:
-			continue
-		hulls += 1
-		_record(c, &"hulk", hull.pos, sea, Vector2(3.0, 2.0))
-		_about(L, PropKind.DEBRIS, hull.pos, 3, 2.5, 5.0)
-		_about(L, PropKind.WRECKAGE, hull.pos, 1, 2.5, 4.5)
-		_about(L, PropKind.DRIFTWOOD, hull.pos, 2, 2.0, 5.0)
-		_gauge(L, hull.pos + along * 3.5, sea)
+		if p.x >= 0 and _work(L, &"_hulk", Vector2(p) + Vector2(0.5, 0.5), [beach]):
+			hulls += 1
 	# The sea wall, broken along the shore, a drowned car at its foot.
 	var walls := 0
 	for attempt in 12:
 		if walls >= _n(c, 2.0):
 			break
 		var p := _shore(L, [], 30.0)
-		if p.x < 0:
-			continue
-		var sea := _sea_dir(c, p)
-		var along := Vector2(-sea.y, sea.x)
-		var at := Vector2(p) + Vector2(0.5, 0.5) - sea
-		var ids := _run(L, PropKind.SEA_WALL, at - along * 7.0, along, 5, 2.8, -99, 0.15)
-		if ids.is_empty():
-			continue
-		walls += 1
-		for id in ids:
-			# The wall's sea face (+Z) looks at the sea.
-			c.w.props[id].rot = fposmod(along.angle() + (PI if along.rotated(PI * 0.5).dot(sea) < 0.0 else 0.0), TAU)
-		_record(c, &"sea_wall", at, along, Vector2(7.0, 1.0))
-		_about(L, PropKind.VEHICLE, at + sea * 2.0, 1, 0.0, 3.0)
-		_about(L, PropKind.DEBRIS, at, 2, 1.5, 5.0)
-		_put(L, PropKind.SIGN, at - sea * 2.2, (-sea).angle(), -99, 0.2)
+		if p.x >= 0 and _work(L, &"_sea_wall", Vector2(p) + Vector2(0.5, 0.5)):
+			walls += 1
 	# Tide gauges along the shingle, where the machines read the sea.
 	var gauges := 0
 	for attempt in 12:
 		if gauges >= _n(c, 2.0):
 			break
 		var p := _shore(L, [Ground.SHINGLE, Ground.SAND] if attempt < 6 else [], 24.0, 300)
-		if p.x >= 0 and _gauge(L, Vector2(p) + Vector2(0.5, 0.5), _sea_dir(c, p)) != null:
+		if p.x >= 0 and _work(L, &"_tide_gauge", Vector2(p) + Vector2(0.5, 0.5)):
 			gauges += 1
 	# Cars drowned at the tide line.
 	var cars := 0
@@ -654,10 +709,111 @@ static func _coast(L: Lay) -> void:
 		if cars >= _n(c, 3.0):
 			break
 		var p := _shore(L, [Ground.SAND, Ground.SHINGLE], 12.0, 60)
-		if p.x < 0:
-			continue
-		if _put(L, PropKind.VEHICLE, Vector2(p) + Vector2(0.5, 0.5), rng.randf() * TAU, -99, 0.8) != null:
+		if p.x >= 0 and _work(L, &"_drowned_car", Vector2(p) + Vector2(0.5, 0.5)):
 			cars += 1
+
+
+static func _turf_rows(L: Lay, at: Vector2, _a: Array) -> bool:
+	var d := L.d
+	var nrm := L.nrm
+	var half := Vector2(L.rng.randf_range(8.0, 11.0), L.rng.randf_range(5.0, 7.0))
+	_record(L.c, &"turf_rows", at, d, half, CUT)
+	var l := _level(L.c, Vector2i(at.floor()))
+	for sx: float in [-1.0, 1.0]:
+		for sy: float in [-1.0, 1.0]:
+			_put(L, PropKind.SURVEY, at + d * half.x * sx + nrm * half.y * sy, d.angle(), -99, 0.0, true)
+	_run(L, PropKind.FENCE, at - d * (half.x + 0.6) - nrm * half.y, nrm, ceili(half.y), 2.0, l, 0.15)
+	_put(L, PropKind.SIGN, at + nrm * (half.y + 1.2), nrm.angle(), -99, 0.3)
+	_about(L, PropKind.WRECKAGE, at + d * (half.x + 2.0), 1, 0.0, 2.0)
+	return true
+
+
+static func _intake(L: Lay, at: Vector2, _a: Array) -> bool:
+	var p := Vector2i(at.floor())
+	var sea := _sea_dir(L.c, p)
+	var l := _level(L.c, p)
+	var intake: WorldProp = null
+	for back in 4:
+		intake = _put(L, PropKind.INTAKE, at - sea * back, sea.angle(), l if back == 0 else -99, 1.0, true)
+		if intake != null:
+			at = intake.pos
+			break
+	if intake == null:
+		return false
+	_record(L.c, &"intake", at, sea, Vector2(4.0, 4.0))
+	var side := Vector2(-sea.y, sea.x)
+	# The fence square, open to the sea; the gate on the land side.
+	_run(L, PropKind.FENCE, at - sea * 4.0 - side * 4.0, side, 4, 2.0, -99, 0.0)
+	_run(L, PropKind.FENCE, at - sea * 4.0 - side * 4.0, sea, 4, 2.0, -99, 0.1)
+	_run(L, PropKind.FENCE, at - sea * 4.0 + side * 4.0, sea, 4, 2.0, -99, 0.1)
+	_put(L, PropKind.SIGN, at - sea * 5.2 + side * 1.0, (-sea).angle(), -99, 0.2)
+	_gauge(L, at + side * 2.5, sea)
+	# AND THE PIPE IT TAKES THE WATER AWAY IN. An intake that stops at its own
+	# fence is a machine doing half a job, and it left the coast's keeper with
+	# nothing to eat: `tide_reaper` dens AT the intake (`stations`) and feeds on
+	# INTAKE, PUMP_HOUSE, PIPE and RELAY, of which the coast held exactly one --
+	# the intake itself. Pump houses are the moss's (`test_world_gen_works.HOME`)
+	# and relays the pinewood's, so three quarters of its diet was somewhere it
+	# could never reach, and starving it was a way of taking it that was already
+	# taken. The run goes inland, which is where the water was going anyway.
+	# ON THE SURVEY BEARING, like every other work the machines laid: `L.d` is
+	# `GenWorks.bearing` and `test_the_machines_works_lie_ruled_on_the_survey_bearing`
+	# holds the whole file to it. The first version ran the pipe straight inland
+	# on `-sea`, which is what a water main would do and is not what THESE
+	# builders do -- they ruled the coast on one line and the pipe is theirs.
+	# Whichever way along that line leads away from the water.
+	var inland := L.d if L.d.dot(-sea) >= 0.0 else -L.d
+	_run(L, PropKind.PIPE, at - sea * 6.0, inland, L.rng.randi_range(9, 14), 2.0, -99, 0.1)
+	return true
+
+
+## A trawler on the shore at `at`, `a[0]` whether it must lie on the beach.
+static func _hulk(L: Lay, at: Vector2, a: Array) -> bool:
+	var beach: bool = a[0]
+	var sea := _sea_dir(L.c, Vector2i(at.floor()))
+	var along := Vector2(-sea.y, sea.x)
+	var hull: WorldProp = null
+	for back: float in [0.0, 1.0, -1.0, 2.0, 3.0]:
+		var q := at - sea * back
+		var turn := along.angle() + L.rng.randf_range(-0.3, 0.3)
+		if not _berth(L, q, Vector2.from_angle(turn), beach):
+			continue
+		hull = _put(L, PropKind.HULL, q, turn, -99, 0.8, false, true)
+		if hull != null:
+			break
+	if hull == null:
+		return false
+	_record(L.c, &"hulk", hull.pos, sea, Vector2(3.0, 2.0))
+	_about(L, PropKind.DEBRIS, hull.pos, 3, 2.5, 5.0)
+	_about(L, PropKind.WRECKAGE, hull.pos, 1, 2.5, 4.5)
+	_about(L, PropKind.DRIFTWOOD, hull.pos, 2, 2.0, 5.0)
+	_gauge(L, hull.pos + along * 3.5, sea)
+	return true
+
+
+static func _sea_wall(L: Lay, p: Vector2, _a: Array) -> bool:
+	var sea := _sea_dir(L.c, Vector2i(p.floor()))
+	var along := Vector2(-sea.y, sea.x)
+	var at := p - sea
+	var ids := _run(L, PropKind.SEA_WALL, at - along * 7.0, along, 5, 2.8, -99, 0.15)
+	if ids.is_empty():
+		return false
+	for id in ids:
+		# The wall's sea face (+Z) looks at the sea.
+		L.w.props[id].rot = fposmod(along.angle() + (PI if along.rotated(PI * 0.5).dot(sea) < 0.0 else 0.0), TAU)
+	_record(L.c, &"sea_wall", at, along, Vector2(7.0, 1.0))
+	_about(L, PropKind.VEHICLE, at + sea * 2.0, 1, 0.0, 3.0)
+	_about(L, PropKind.DEBRIS, at, 2, 1.5, 5.0)
+	_put(L, PropKind.SIGN, at - sea * 2.2, (-sea).angle(), -99, 0.2)
+	return true
+
+
+static func _tide_gauge(L: Lay, at: Vector2, _a: Array) -> bool:
+	return _gauge(L, at, _sea_dir(L.c, Vector2i(at.floor()))) != null
+
+
+static func _drowned_car(L: Lay, at: Vector2, _a: Array) -> bool:
+	return _put(L, PropKind.VEHICLE, at, L.rng.randf() * TAU, -99, 0.8) != null
 
 
 ## Ground a hull can lie on: the three tiles along its length (an oblong 1 by
@@ -717,125 +873,71 @@ static func _gauge(L: Lay, from: Vector2, sea: Vector2) -> WorldProp:
 
 static func _moss(L: Lay) -> void:
 	var c := L.c
-	var rng := L.rng
-	var d := L.d
-	var nrm := L.nrm
 	# The drained fen: straight cuts, a pump house on them, its pipeline
 	# striding off on stilts, a car sunk in the black water, reeds in the wire.
 	for n in _n(c, 3.0):
 		var p := _site(L, 7, 1, [Ground.MOSS, Ground.PEAT, Ground.MUD, Ground.GRASS, Ground.HEATH], 30.0, 700, 0.45)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var l := _level(c, p)
-		var half := Vector2(rng.randf_range(11.0, 15.0), rng.randf_range(7.0, 9.0))
-		_record(c, &"drained", at, d, half, CUT)
-		var pump := _put(L, PropKind.PUMP_HOUSE, at, d.angle(), l, 1.0, true)
-		if pump == null:
-			pump = _put(L, PropKind.PUMP_HOUSE, at + nrm * 2.0, d.angle(), -99, 0.8, true)
-		var start := (pump.pos if pump != null else at) + d * 2.8
-		_run(L, PropKind.PIPE, start, d, rng.randi_range(9, 14), 2.0, -99, 0.08)
-		_run(L, PropKind.FENCE, at - d * half.x * 0.8 + nrm * (half.y + 0.5), d, 6, 2.0, -99, 0.25)
-		_about(L, PropKind.VEHICLE, at, 1, 4.0, half.y)
-		_about(L, PropKind.WRECKAGE, at, 1, 3.0, half.y)
-		_put(L, PropKind.SIGN, at - d * 2.5 + nrm * 1.6, d.angle(), -99, 0.2)
+		if p.x >= 0:
+			_work(L, &"_drained", Vector2(p) + Vector2(0.5, 0.5))
 	# Bog graves: stakes in a row by a stilt hut, a memorial for the drowned.
 	for n in _n(c, 2.0):
 		var p := _site(L, 4, 1, [Ground.MOSS, Ground.PEAT, Ground.HEATH, Ground.GRASS], 24.0, 500, 0.45)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var row := Vector2.from_angle(rng.randf() * TAU)
-		var graves := 0
-		for i in rng.randi_range(4, 6):
-			if _put(L, PropKind.GRAVE, at + row * (i * 1.3 - 3.0) + Vector2(rng.randf_range(-0.2, 0.2), rng.randf_range(-0.2, 0.2)), row.angle() + PI * 0.5, -99, 0.2) != null:
-				graves += 1
-		if graves > 0:
-			_record(c, &"bog_graves", at, row, Vector2(4.0, 1.0))
-			_about(L, PropKind.MEMORIAL, at - row.orthogonal() * 2.0, 1, 0.0, 1.5)
-			var shack := _put(L, PropKind.SHACK, at + row.orthogonal() * 4.0, rng.randf() * TAU, -99, 1.0)
-			if shack != null:
-				_note_lit_shack(L, shack)
+		if p.x >= 0:
+			_work(L, &"_bog_graves", Vector2(p) + Vector2(0.5, 0.5))
+
+
+static func _drained(L: Lay, at: Vector2, _a: Array) -> bool:
+	var d := L.d
+	var nrm := L.nrm
+	var l := _level(L.c, Vector2i(at.floor()))
+	var half := Vector2(L.rng.randf_range(11.0, 15.0), L.rng.randf_range(7.0, 9.0))
+	_record(L.c, &"drained", at, d, half, CUT)
+	var pump := _put(L, PropKind.PUMP_HOUSE, at, d.angle(), l, 1.0, true)
+	if pump == null:
+		pump = _put(L, PropKind.PUMP_HOUSE, at + nrm * 2.0, d.angle(), -99, 0.8, true)
+	var start := (pump.pos if pump != null else at) + d * 2.8
+	_run(L, PropKind.PIPE, start, d, L.rng.randi_range(9, 14), 2.0, -99, 0.08)
+	_run(L, PropKind.FENCE, at - d * half.x * 0.8 + nrm * (half.y + 0.5), d, 6, 2.0, -99, 0.25)
+	_about(L, PropKind.VEHICLE, at, 1, 4.0, half.y)
+	_about(L, PropKind.WRECKAGE, at, 1, 3.0, half.y)
+	_put(L, PropKind.SIGN, at - d * 2.5 + nrm * 1.6, d.angle(), -99, 0.2)
+	return true
+
+
+static func _bog_graves(L: Lay, at: Vector2, _a: Array) -> bool:
+	var rng := L.rng
+	var row := Vector2.from_angle(rng.randf() * TAU)
+	var graves := 0
+	for i in rng.randi_range(4, 6):
+		if _put(L, PropKind.GRAVE, at + row * (i * 1.3 - 3.0) + Vector2(rng.randf_range(-0.2, 0.2), rng.randf_range(-0.2, 0.2)), row.angle() + PI * 0.5, -99, 0.2) != null:
+			graves += 1
+	if graves == 0:
+		return false
+	_record(L.c, &"bog_graves", at, row, Vector2(4.0, 1.0))
+	_about(L, PropKind.MEMORIAL, at - row.orthogonal() * 2.0, 1, 0.0, 1.5)
+	var shack := _put(L, PropKind.SHACK, at + row.orthogonal() * 4.0, rng.randf() * TAU, -99, 1.0)
+	if shack != null:
+		_note_lit_shack(L, shack)
+	return true
 
 
 # --- the pinewood ------------------------------------------------------------------
 
 static func _pinewood(L: Lay) -> void:
 	var c := L.c
-	var w := L.w
-	var rng := L.rng
-	var d := L.d
-	var nrm := L.nrm
 	# The relay corridor: one straight cut through the heart of the pines, masts
 	# strung along it with the machines' light on them, stumps at its edges.
 	var through := _heart(L)
 	if through.x < 0:
 		through = _site(L, 2, 3, [], 0.0, 400, 0.5)
 	if through.x >= 0:
-		var mid := Vector2(through) + Vector2(0.5, 0.5)
-		var along := nrm if rng.randf() < 0.5 else d
-		var ends: Array[float] = [0.0, 0.0]
-		for side in 2:
-			var sgn := -1.0 if side == 0 else 1.0
-			var t := 0.0
-			while t < 90.0 * maxf(c.body_k, 0.4):
-				var q := mid + along * sgn * (t + 1.0)
-				var qx := floori(q.x)
-				var qy := floori(q.y)
-				if not w.in_bounds(qx, qy) or not L.home(qx, qy) or w.level_at(qx, qy) <= 0:
-					break
-				t += 1.0
-			ends[side] = t
-		var from := mid - along * ends[0]
-		var length := ends[0] + ends[1]
-		# The cut stops short of a village and resumes past it: split the line
-		# into the stretches that keep clear of every square.
-		var stretches: Array[Vector2] = []
-		var t0 := -1.0
-		var tt := 0.0
-		while tt <= length:
-			var q := from + along * tt
-			var open := not GenScatter._near_village(w, q, _village_clear(w, q))
-			if open and t0 < 0.0:
-				t0 = tt
-			elif not open and t0 >= 0.0:
-				stretches.append(Vector2(t0, tt - 1.0))
-				t0 = -1.0
-			tt += 1.0
-		if t0 >= 0.0:
-			stretches.append(Vector2(t0, length))
-		var kept: Array = []
-		for st: Vector2 in stretches:
-			if st.y - st.x >= 14.0:
-				kept.append([st, _corridor(L, from, along, st.x, st.y)])
-		# The stretch with the most masts is recorded first: it is the one a
-		# visitor is sent to (GenPlaces "corridor").
-		kept.sort_custom(func(x: Array, y: Array) -> bool: return int(x[1]) > int(y[1]))
-		for kv: Array in kept:
-			var st: Vector2 = kv[0]
-			_record(c, &"corridor", from + along * (st.x + st.y) * 0.5, along, Vector2((st.y - st.x) * 0.5, 2.8), CUT)
+		_work(L, &"_relay_corridor", Vector2(through) + Vector2(0.5, 0.5))
 	# Clearcuts in exact squares: stumps in the harvester's rows, the wood
 	# standing thick round the edge, a warning at the corner.
 	for n in _n(c, 3.0):
 		var p := _site(L, 7, 1, [Ground.NEEDLES, Ground.GRASS, Ground.HEATH], 28.0, 700, 0.4)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var half := rng.randf_range(6.0, 8.5)
-		var dd := d if n % 2 == 0 else nrm
-		var dn := Vector2(-dd.y, dd.x)
-		var steps := floori(half)
-		for gy in range(-steps, steps + 1, 2):
-			for gx in range(-steps, steps + 1, 2):
-				var q := at + dd * float(gx) + dn * float(gy)
-				var st := _put(L, PropKind.STUMP, q, rng.randf() * TAU, -99, 0.0)
-				if st != null:
-					st.scale = 0.9 + rng.randf() * 0.25
-		_clear_rect(c, L.occ, at, dd, Vector2(half + 0.5, half + 0.5))
-		_record(c, &"clearcut", at, dd, Vector2(half + 0.5, half + 0.5), CUT)
-		# The sign is put by hand: its corner tile is in the cleared square.
-		var corner := at + (dd + dn) * (half + 1.6)
-		_put(L, PropKind.SIGN, corner, (dd + dn).angle(), -99, 0.0)
+		if p.x >= 0:
+			_work(L, &"_clearcut", Vector2(p) + Vector2(0.5, 0.5), [n % 2 == 0])
 	# Fire towers on the rises, a hunting blind below, a grave for whoever kept it.
 	for n in _n(c, 2.0):
 		var found: Array = []
@@ -843,30 +945,110 @@ static func _pinewood(L: Lay) -> void:
 			var p := _site(L, 3, 1, [], 30.0, 20, 0.4)
 			if p.x >= 0:
 				found.append([c.rise[p.y * c.size + p.x], p])
-		found.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) > float(b[0]))
-		var tower: WorldProp = null
-		for f: Array in found:
-			tower = _put(L, PropKind.FIRE_TOWER, Vector2(f[1] as Vector2i) + Vector2(0.5, 0.5), d.angle(), -99, 0.8, true)
-			if tower != null:
-				break
-		if tower == null:
+		if found.is_empty():
 			continue
-		var at := tower.pos
-		_record(c, &"fire_tower", at, d, Vector2(2.0, 2.0))
-		_about(L, PropKind.SHACK, at, 1, 3.0, 6.0)
-		_about(L, PropKind.GRAVE, at, 1, 2.5, 5.0)
+		found.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) > float(b[0]))
+		var rises: Array[Vector2] = []
+		for f: Array in found:
+			rises.append(Vector2(f[1] as Vector2i) + Vector2(0.5, 0.5))
+		_work(L, &"_fire_tower", rises[0], [rises])
 	# A burned grove: dead trees standing close in scorched ground.
 	for n in _n(c, 1.5):
 		var p := _site(L, 6, 1, [Ground.NEEDLES, Ground.GRASS], 28.0, 600, 0.4)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var r := rng.randf_range(5.0, 7.0)
-		_about(L, PropKind.DEAD_TREE, at, 10, 0.5, r)
-		_about(L, PropKind.STUMP, at, 4, 0.5, r)
-		_about(L, PropKind.WRECKAGE, at, 1, 1.0, r)
-		_clear_rect(c, L.occ, at, d, Vector2(r, r * 0.8))
-		_record(c, &"burned_grove", at, d, Vector2(r, r * 0.8), SCORCH)
+		if p.x >= 0:
+			_work(L, &"_burned_grove", Vector2(p) + Vector2(0.5, 0.5))
+
+
+static func _relay_corridor(L: Lay, mid: Vector2, _a: Array) -> bool:
+	var c := L.c
+	var w := L.w
+	var along := L.nrm if L.rng.randf() < 0.5 else L.d
+	var ends: Array[float] = [0.0, 0.0]
+	for side in 2:
+		var sgn := -1.0 if side == 0 else 1.0
+		var t := 0.0
+		while t < 90.0 * maxf(c.body_k, 0.4):
+			var q := mid + along * sgn * (t + 1.0)
+			var qx := floori(q.x)
+			var qy := floori(q.y)
+			if not w.in_bounds(qx, qy) or not L.home(qx, qy) or w.level_at(qx, qy) <= 0:
+				break
+			t += 1.0
+		ends[side] = t
+	var from := mid - along * ends[0]
+	var length := ends[0] + ends[1]
+	# The cut stops short of a village and resumes past it: split the line
+	# into the stretches that keep clear of every square.
+	var stretches: Array[Vector2] = []
+	var t0 := -1.0
+	var tt := 0.0
+	while tt <= length:
+		var q := from + along * tt
+		var open := not GenScatter._near_village(w, q, _village_clear(w, q))
+		if open and t0 < 0.0:
+			t0 = tt
+		elif not open and t0 >= 0.0:
+			stretches.append(Vector2(t0, tt - 1.0))
+			t0 = -1.0
+		tt += 1.0
+	if t0 >= 0.0:
+		stretches.append(Vector2(t0, length))
+	var kept: Array = []
+	for st: Vector2 in stretches:
+		if st.y - st.x >= 14.0:
+			kept.append([st, _corridor(L, from, along, st.x, st.y)])
+	# The stretch with the most masts is recorded first: it is the one a
+	# visitor is sent to (GenPlaces "corridor").
+	kept.sort_custom(func(x: Array, y: Array) -> bool: return int(x[1]) > int(y[1]))
+	for kv: Array in kept:
+		var st: Vector2 = kv[0]
+		_record(c, &"corridor", from + along * (st.x + st.y) * 0.5, along, Vector2((st.y - st.x) * 0.5, 2.8), CUT)
+	return true
+
+
+## A clearcut at `at`, ruled on the bearing when `a[0]`, across it otherwise.
+static func _clearcut(L: Lay, at: Vector2, a: Array) -> bool:
+	var half := L.rng.randf_range(6.0, 8.5)
+	var dd := L.d if a[0] else L.nrm
+	var dn := Vector2(-dd.y, dd.x)
+	var steps := floori(half)
+	for gy in range(-steps, steps + 1, 2):
+		for gx in range(-steps, steps + 1, 2):
+			var q := at + dd * float(gx) + dn * float(gy)
+			var st := _put(L, PropKind.STUMP, q, L.rng.randf() * TAU, -99, 0.0)
+			if st != null:
+				st.scale = 0.9 + L.rng.randf() * 0.25
+	_clear_rect(L, at, dd, Vector2(half + 0.5, half + 0.5))
+	_record(L.c, &"clearcut", at, dd, Vector2(half + 0.5, half + 0.5), CUT)
+	# The sign is put by hand: its corner tile is in the cleared square.
+	var corner := at + (dd + dn) * (half + 1.6)
+	_put(L, PropKind.SIGN, corner, (dd + dn).angle(), -99, 0.0)
+	return true
+
+
+## A fire tower on the highest of `a[0]`'s rises it can stand on.
+static func _fire_tower(L: Lay, _at: Vector2, a: Array) -> bool:
+	var tower: WorldProp = null
+	for q: Vector2 in a[0]:
+		tower = _put(L, PropKind.FIRE_TOWER, q, L.d.angle(), -99, 0.8, true)
+		if tower != null:
+			break
+	if tower == null:
+		return false
+	_record(L.c, &"fire_tower", tower.pos, L.d, Vector2(2.0, 2.0))
+	_about(L, PropKind.SHACK, tower.pos, 1, 3.0, 6.0)
+	_about(L, PropKind.GRAVE, tower.pos, 1, 2.5, 5.0)
+	return true
+
+
+static func _burned_grove(L: Lay, at: Vector2, _a: Array) -> bool:
+	var r := L.rng.randf_range(5.0, 7.0)
+	_about(L, PropKind.DEAD_TREE, at, 10, 0.5, r)
+	_about(L, PropKind.STUMP, at, 4, 0.5, r)
+	_about(L, PropKind.WRECKAGE, at, 1, 1.0, r)
+	_clear_rect(L, at, L.d, Vector2(r, r * 0.8))
+	_record(L.c, &"burned_grove", at, L.d, Vector2(r, r * 0.8), SCORCH)
+	return true
 
 
 ## p lies within `margin` of a village's square.
@@ -893,7 +1075,7 @@ static func _corridor(L: Lay, from: Vector2, along: Vector2, t0: float, t1: floa
 	var c := L.c
 	var w := L.w
 	var length := t1 - t0
-	_clear_rect(c, L.occ, from + along * (t0 + length * 0.5), along, Vector2(length * 0.5, 2.6))
+	_clear_rect(L, from + along * (t0 + length * 0.5), along, Vector2(length * 0.5, 2.6))
 	var masts := PackedInt32Array()
 	var placed := 0
 	var tt := t0 + 4.0
@@ -912,7 +1094,7 @@ static func _corridor(L: Lay, from: Vector2, along: Vector2, t0: float, t1: floa
 				continue
 			if (qq - w.spawn).length_squared() < 100.0:
 				continue
-			mast = GenScatter._add(c, PropKind.RELAY, qq.floor() + Vector2(0.5, 0.5), fposmod(along.angle(), TAU))
+			mast = GenScatter._add(c, PropKind.RELAY, qq.floor() + Vector2(0.5, 0.5), fposmod(along.angle(), TAU), L.key)
 			mast.scale = 1.0
 			mast.solid = PropKind.SOLID[PropKind.RELAY]
 			break
@@ -942,9 +1124,7 @@ static func _corridor(L: Lay, from: Vector2, along: Vector2, t0: float, t1: floa
 static func _snowfield(L: Lay) -> void:
 	var c := L.c
 	var w := L.w
-	var rng := L.rng
 	var d := L.d
-	var nrm := L.nrm
 	# Checkpoints on the roads through the snow, at a straight stretch: the gate
 	# (a booth beside the way, its boom across it to a far post), snow fence
 	# running off either side, cast blocks, a sign before it.
@@ -969,48 +1149,15 @@ static func _snowfield(L: Lay) -> void:
 		if done >= _n(c, 2.0):
 			break
 		var q: Vector2 = spot[1]
-		var along: Vector2 = spot[2]
-		if _crowded(w, q, 12.0):
-			continue
-		var i := floori(q.y) * c.size + floori(q.x)
-		var across := Vector2(-along.y, along.x)
-		var booth: WorldProp = null
-		for off: float in [2.2, 2.7]:
-			for side: float in [-1.0, 1.0]:
-				# The gate's boom (the model's +Z) swings from the booth over the road.
-				var turn := along.angle() if side < 0.0 else (-along).angle()
-				var stand := q + across * side * off
-				# A booth further from the road than the rule allows is not a gate
-				# on that road, whatever the offset that reached it.
-				if road_gap(w, stand) >= CHECKPOINT_AT_ROAD:
-					continue
-				booth = _put(L, PropKind.CHECKPOINT, stand, turn, w.level[i], 0.6, true, true)
-				if booth != null:
-					across = across * -side
-					break
-			if booth != null:
-				break
-		if booth == null:
-			continue
-		# `across` now points from the booth over the road.
-		_record(c, &"checkpoint", q, along, Vector2(3.0, 3.0))
-		_run(L, PropKind.FENCE, booth.pos - across * 1.2 - along * 0.5, -across, 3, 2.0, -99, 0.1)
-		_run(L, PropKind.FENCE, booth.pos + across * 5.6 + along * 0.5, across, 3, 2.0, -99, 0.1)
-		_put(L, PropKind.BARRICADE, booth.pos + along * 3.4 - across * 0.4, along.angle(), -99, 0.4)
-		_put(L, PropKind.SIGN, booth.pos - along * 4.5, (-along).angle(), -99, 0.2)
-		_about(L, PropKind.DEBRIS, q, 1, 4.0, 6.0)
-		done += 1
+		if not _crowded(w, q, 12.0) and _work(L, &"_checkpoint", q, [spot[2]]):
+			done += 1
 	for attempt in 10:
 		if done > 0:
 			break
 		# No road through the snow took one: it stands on the open field anyway.
 		var p := _site(L, 4 if attempt < 5 else 2, 1, [], 30.0 if attempt < 5 else 10.0, 500, 0.5)
-		if p.x >= 0:
-			var at := Vector2(p) + Vector2(0.5, 0.5)
-			if _put(L, PropKind.CHECKPOINT, at, d.angle(), -99, 0.6, true) != null:
-				_record(c, &"checkpoint", at, d, Vector2(3.0, 3.0))
-				_run(L, PropKind.FENCE, at - nrm * 1.5, -nrm, 4, 2.0, -99, 0.1)
-				done += 1
+		if p.x >= 0 and _work(L, &"_field_checkpoint", Vector2(p) + Vector2(0.5, 0.5)):
+			done += 1
 	# The tall stack, fenced, seen from everywhere.
 	#
 	# ONE STRICT SEARCH, THEN THE LOOSE ONES. The first four attempts asked the
@@ -1032,34 +1179,13 @@ static func _snowfield(L: Lay) -> void:
 			if strict:
 				strict_failed = true
 			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		if _put(L, PropKind.STACK, at, d.angle(), -99, 1.2 if strict else 0.8, true) == null:
-			continue
-		stacks += 1
-		# SCORCH: the soot a stack throws on the snow round it. Unmarked, the
-		# snowfield's works were never a place `Works.sites` counts, so it never
-		# had a depot at all.
-		_record(c, &"stack", at, d, Vector2(4.5, 4.5), SCORCH)
-		for side in 4:
-			var e := d.rotated(side * PI * 0.5)
-			var en := Vector2(-e.y, e.x)
-			_run(L, PropKind.FENCE, at + e * 4.5 - en * 4.5, en, 4 if side != 2 else 2, 2.25, -99, 0.1)
-		_about(L, PropKind.DEBRIS, at, 2, 5.5, 8.0)
-		_put(L, PropKind.SIGN, at - d * 6.0, (-d).angle(), -99, 0.2)
+		if _work(L, &"_stack", Vector2(p) + Vector2(0.5, 0.5), [strict]):
+			stacks += 1
 	# A convoy that never got through: vehicles buried in a line, a snow fence.
 	for n in _n(c, 1.0):
 		var p := _site(L, 5, 1, [Ground.SNOW], 30.0, 600, 0.4)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var placed := 0
-		for i in 4:
-			if _put(L, PropKind.VEHICLE, at + d * (i * 3.4 - 5.0) + nrm * rng.randf_range(-0.3, 0.3), d.angle() + rng.randf_range(-0.15, 0.15), -99, 0.8) != null:
-				placed += 1
-		if placed > 0:
-			_record(c, &"convoy", at, d, Vector2(7.0, 2.0))
-			_run(L, PropKind.FENCE, at - d * 6.0 + nrm * 2.5, d, 6, 2.0, -99, 0.2)
-			_about(L, PropKind.WRECKAGE, at, 2, 2.0, 5.0)
+		if p.x >= 0:
+			_work(L, &"_convoy", Vector2(p) + Vector2(0.5, 0.5))
 	# Where the grid crosses the snow its lines hang with ice (WorldView strings
 	# it): the span nearest the snow's heart is recorded so it can be walked to.
 	var best := 1e9
@@ -1082,74 +1208,124 @@ static func _snowfield(L: Lay) -> void:
 	# Emergency shelters, a grave by each.
 	for n in _n(c, 2.0):
 		var p := _site(L, 3, 1, [], 26.0, 500, 0.45)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var shack := _put(L, PropKind.SHACK, at, rng.randf() * TAU, -99, 1.0)
-		if shack == null:
-			continue
-		_note_lit_shack(L, shack)
-		_record(c, &"shelter", at, d, Vector2(2.0, 2.0))
-		_about(L, PropKind.GRAVE, at, 1, 2.5, 4.0)
+		if p.x >= 0:
+			_work(L, &"_shelter", Vector2(p) + Vector2(0.5, 0.5))
+
+
+## A gate on the road at `q`, the road running `a[0]`.
+static func _checkpoint(L: Lay, q: Vector2, a: Array) -> bool:
+	var w := L.w
+	var along: Vector2 = a[0]
+	var i := floori(q.y) * L.c.size + floori(q.x)
+	var across := Vector2(-along.y, along.x)
+	var booth: WorldProp = null
+	for off: float in [2.2, 2.7]:
+		for side: float in [-1.0, 1.0]:
+			# The gate's boom (the model's +Z) swings from the booth over the road.
+			var turn := along.angle() if side < 0.0 else (-along).angle()
+			var stand := q + across * side * off
+			# A booth further from the road than the rule allows is not a gate
+			# on that road, whatever the offset that reached it.
+			if road_gap(w, stand) >= CHECKPOINT_AT_ROAD:
+				continue
+			booth = _put(L, PropKind.CHECKPOINT, stand, turn, w.level[i], 0.6, true, true)
+			if booth != null:
+				across = across * -side
+				break
+		if booth != null:
+			break
+	if booth == null:
+		return false
+	# `across` now points from the booth over the road.
+	_record(L.c, &"checkpoint", q, along, Vector2(3.0, 3.0))
+	_run(L, PropKind.FENCE, booth.pos - across * 1.2 - along * 0.5, -across, 3, 2.0, -99, 0.1)
+	_run(L, PropKind.FENCE, booth.pos + across * 5.6 + along * 0.5, across, 3, 2.0, -99, 0.1)
+	_put(L, PropKind.BARRICADE, booth.pos + along * 3.4 - across * 0.4, along.angle(), -99, 0.4)
+	_put(L, PropKind.SIGN, booth.pos - along * 4.5, (-along).angle(), -99, 0.2)
+	_about(L, PropKind.DEBRIS, q, 1, 4.0, 6.0)
+	return true
+
+
+static func _field_checkpoint(L: Lay, at: Vector2, _a: Array) -> bool:
+	var booth := _put_footed(L, PropKind.CHECKPOINT, at, L.d.angle(), 0.6, true)
+	if booth == null:
+		return false
+	at = booth.pos
+	_record(L.c, &"checkpoint", at, L.d, Vector2(3.0, 3.0))
+	_run(L, PropKind.FENCE, at - L.nrm * 1.5, -L.nrm, 4, 2.0, -99, 0.1)
+	return true
+
+
+## The stack at `at`, with the room a strict site gave it when `a[0]`.
+static func _stack(L: Lay, at: Vector2, a: Array) -> bool:
+	var d := L.d
+	var stack := _put_footed(L, PropKind.STACK, at, d.angle(), 1.2 if a[0] else 0.8, true)
+	if stack == null:
+		return false
+	at = stack.pos
+	# THE DEPOT STANDS AT IT. The stack is the snowfield's one marked work, so a
+	# stack with no yard's room round it (`Works.sites` looks there) leaves the
+	# snowfield without a depot or a keeper's larder. Asked of the ground alone,
+	# so it is the row's own answer.
+	var region := L.w.region_at(floori(at.x), floori(at.y))
+	if not Works.stand_near(L.w, at, true, region, bearing(L.c.s)).is_finite() and not Works.stand_near(L.w, at, true, region).is_finite():
+		return false
+	# SCORCH: the soot a stack throws on the snow round it. Unmarked, the
+	# snowfield's works were never a place `Works.sites` counts, so it never
+	# had a depot at all.
+	_record(L.c, &"stack", at, d, Vector2(4.5, 4.5), SCORCH)
+	for side in 4:
+		var e := d.rotated(side * PI * 0.5)
+		var en := Vector2(-e.y, e.x)
+		_run(L, PropKind.FENCE, at + e * 4.5 - en * 4.5, en, 4 if side != 2 else 2, 2.25, -99, 0.1)
+	_about(L, PropKind.DEBRIS, at, 2, 5.5, 8.0)
+	_put(L, PropKind.SIGN, at - d * 6.0, (-d).angle(), -99, 0.2)
+	return true
+
+
+static func _convoy(L: Lay, at: Vector2, _a: Array) -> bool:
+	var d := L.d
+	var nrm := L.nrm
+	var placed := 0
+	for i in 4:
+		if _put(L, PropKind.VEHICLE, at + d * (i * 3.4 - 5.0) + nrm * L.rng.randf_range(-0.3, 0.3), d.angle() + L.rng.randf_range(-0.15, 0.15), -99, 0.8) != null:
+			placed += 1
+	if placed == 0:
+		return false
+	_record(L.c, &"convoy", at, d, Vector2(7.0, 2.0))
+	_run(L, PropKind.FENCE, at - d * 6.0 + nrm * 2.5, d, 6, 2.0, -99, 0.2)
+	_about(L, PropKind.WRECKAGE, at, 2, 2.0, 5.0)
+	return true
+
+
+static func _shelter(L: Lay, at: Vector2, _a: Array) -> bool:
+	var shack := _put_footed(L, PropKind.SHACK, at, L.rng.randf() * TAU, 1.0)
+	if shack == null:
+		return false
+	at = shack.pos
+	_note_lit_shack(L, shack)
+	_record(L.c, &"shelter", at, L.d, Vector2(2.0, 2.0))
+	_about(L, PropKind.GRAVE, at, 1, 2.5, 4.0)
+	return true
 
 
 # --- the bonelands -----------------------------------------------------------------
 
 static func _bonelands(L: Lay) -> void:
 	var c := L.c
-	var rng := L.rng
-	var d := L.d
-	var nrm := L.nrm
 	var pale: Array = [Ground.LIMESTONE, Ground.BONE, Ground.GRAVEL, Ground.GRASS, Ground.SCREE, Ground.HEATH]
 	# Quarries cut in the grid: benches in exact squares, drills standing in
 	# them, a conveyor carrying the stone off along the bearing.
 	for n in _n(c, 2.0):
 		var p := _site(L, 7, 1, pale, 30.0, 700, 0.4)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var half := Vector2(rng.randf_range(7.0, 9.0), rng.randf_range(5.0, 6.5))
-		_record(c, &"quarry", at, d, half, QUARRY)
-		for gy in range(-1, 2):
-			for gx in range(-2, 3):
-				if rng.randf() < 0.35:
-					continue
-				_put(L, PropKind.DRILL_RIG, at + d * gx * 3.0 + nrm * gy * 3.0, d.angle(), -99, 0.3, true)
-		for sx: float in [-1.0, 1.0]:
-			for sy: float in [-1.0, 1.0]:
-				_put(L, PropKind.SURVEY, at + d * half.x * sx + nrm * half.y * sy, d.angle(), -99, 0.0, true)
-		# The conveyor leaves by whichever side of the quarry keeps it in the
-		# bonelands' own ground, or failing that any side it can stand on.
-		var pieces := rng.randi_range(5, 8)
-		var laid := false
-		for pass_home: bool in [true, false]:
-			for way: Vector2 in [d, -d, nrm, -nrm]:
-				if laid:
-					break
-				var reach := half.x if absf(way.dot(d)) > 0.5 else half.y
-				var from := at + way * (reach + 0.5)
-				var end := from + way * pieces * 2.5
-				if pass_home and not (L.w.in_bounds(floori(end.x), floori(end.y)) and L.home(floori(end.x), floori(end.y))):
-					continue
-				laid = not _run(L, PropKind.CONVEYOR, from, way, pieces, 2.5, -99, 0.1).is_empty()
-		_put(L, PropKind.SIGN, at - d * (half.x + 1.5), (-d).angle(), -99, 0.2)
-		_about(L, PropKind.DEBRIS, at, 2, half.y, half.x)
+		if p.x >= 0:
+			_work(L, &"_quarry", Vector2(p) + Vector2(0.5, 0.5))
 	# Drill fields: bores in an exact grid, capped or still drilling, the
 	# survey posts that laid them out.
 	for n in _n(c, 2.0):
 		var p := _site(L, 7, 1, pale, 30.0, 700, 0.4)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var half := Vector2(8.0, 6.0)
-		_record(c, &"drill_field", at, nrm, half, BORES)
-		for gy in range(-2, 3):
-			for gx in range(-3, 4):
-				var q := at + nrm * gx * 2.6 + d * gy * 2.6
-				if (gx + gy) % 3 == 0:
-					_put(L, PropKind.SURVEY, q, nrm.angle(), -99, 0.0, true)
-				else:
-					_put(L, PropKind.DRILL_RIG, q, nrm.angle(), -99, 0.2, true)
+		if p.x >= 0:
+			_work(L, &"_drill_field", Vector2(p) + Vector2(0.5, 0.5))
 	# Cisterns where people keep water, a lean-to by each, a fence, a grave.
 	#
 	# A CISTERN IS A SMALL THING AND WAS ASKING FOR AN INSTALLATION'S ROOM. At 26
@@ -1162,15 +1338,67 @@ static func _bonelands(L: Lay) -> void:
 	# flaky test and was a content answer nobody had looked at.
 	for n in _n(c, 2.0):
 		var p := _site(L, 4, 1, [], 14.0, 500, 0.45)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		if _put(L, PropKind.WATER_TANK, at, rng.randf() * TAU, -99, 0.8) == null:
-			continue
-		_record(c, &"cistern", at, d, Vector2(3.0, 3.0))
-		_about(L, PropKind.SHACK, at, 1, 2.8, 4.5)
-		_run(L, PropKind.FENCE, at + Vector2(-3.0, 3.0), Vector2.from_angle(rng.randf() * TAU), 3, 2.0, -99, 0.3)
-		_about(L, PropKind.GRAVE, at, 1, 4.0, 6.0)
+		if p.x >= 0:
+			_work(L, &"_cistern", Vector2(p) + Vector2(0.5, 0.5))
+
+
+static func _quarry(L: Lay, at: Vector2, _a: Array) -> bool:
+	var rng := L.rng
+	var d := L.d
+	var nrm := L.nrm
+	var half := Vector2(rng.randf_range(7.0, 9.0), rng.randf_range(5.0, 6.5))
+	_record(L.c, &"quarry", at, d, half, QUARRY)
+	for gy in range(-1, 2):
+		for gx in range(-2, 3):
+			if rng.randf() < 0.35:
+				continue
+			_put(L, PropKind.DRILL_RIG, at + d * gx * 3.0 + nrm * gy * 3.0, d.angle(), -99, 0.3, true)
+	for sx: float in [-1.0, 1.0]:
+		for sy: float in [-1.0, 1.0]:
+			_put(L, PropKind.SURVEY, at + d * half.x * sx + nrm * half.y * sy, d.angle(), -99, 0.0, true)
+	# The conveyor leaves by whichever side of the quarry keeps it in the
+	# bonelands' own ground, or failing that any side it can stand on.
+	var pieces := rng.randi_range(5, 8)
+	var laid := false
+	for pass_home: bool in [true, false]:
+		for way: Vector2 in [d, -d, nrm, -nrm]:
+			if laid:
+				break
+			var reach := half.x if absf(way.dot(d)) > 0.5 else half.y
+			var from := at + way * (reach + 0.5)
+			var end := from + way * pieces * 2.5
+			if pass_home and not (L.w.in_bounds(floori(end.x), floori(end.y)) and L.home(floori(end.x), floori(end.y))):
+				continue
+			laid = not _run(L, PropKind.CONVEYOR, from, way, pieces, 2.5, -99, 0.1).is_empty()
+	_put(L, PropKind.SIGN, at - d * (half.x + 1.5), (-d).angle(), -99, 0.2)
+	_about(L, PropKind.DEBRIS, at, 2, half.y, half.x)
+	return true
+
+
+static func _drill_field(L: Lay, at: Vector2, _a: Array) -> bool:
+	var d := L.d
+	var nrm := L.nrm
+	_record(L.c, &"drill_field", at, nrm, Vector2(8.0, 6.0), BORES)
+	for gy in range(-2, 3):
+		for gx in range(-3, 4):
+			var q := at + nrm * gx * 2.6 + d * gy * 2.6
+			if (gx + gy) % 3 == 0:
+				_put(L, PropKind.SURVEY, q, nrm.angle(), -99, 0.0, true)
+			else:
+				_put(L, PropKind.DRILL_RIG, q, nrm.angle(), -99, 0.2, true)
+	return true
+
+
+static func _cistern(L: Lay, at: Vector2, _a: Array) -> bool:
+	var tank := _put_footed(L, PropKind.WATER_TANK, at, L.rng.randf() * TAU, 0.8)
+	if tank == null:
+		return false
+	at = tank.pos
+	_record(L.c, &"cistern", at, L.d, Vector2(3.0, 3.0))
+	_about(L, PropKind.SHACK, at, 1, 2.8, 4.5)
+	_run(L, PropKind.FENCE, at + Vector2(-3.0, 3.0), Vector2.from_angle(L.rng.randf() * TAU), 3, 2.0, -99, 0.3)
+	_about(L, PropKind.GRAVE, at, 1, 4.0, 6.0)
+	return true
 
 
 # --- the burning -------------------------------------------------------------------
@@ -1178,78 +1406,99 @@ static func _bonelands(L: Lay) -> void:
 static func _burning(L: Lay) -> void:
 	var c := L.c
 	var w := L.w
-	var rng := L.rng
-	var d := L.d
-	var nrm := L.nrm
 	var dry: Array = [Ground.ASH, Ground.CLINKER, Ground.GRAVEL, Ground.ROCK, Ground.SCREE, Ground.GRASS, Ground.HEATH]
 	# Slag heaps tipped in a line along the bearing, a scorched car by them.
 	for n in _n(c, 2.0):
 		var p := _site(L, 6, 1, dry, 30.0, 700, 0.4)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var heaps := 0
-		for i in rng.randi_range(3, 4):
-			if _put(L, PropKind.SLAG_HEAP, at + d * (i * 3.6 - 5.0), d.angle(), -99, 1.0, true) != null:
-				heaps += 1
-		if heaps == 0:
-			continue
-		_record(c, &"slag", at, d, Vector2(7.5, 3.0), SCORCH)
-		_about(L, PropKind.VEHICLE, at + nrm * 4.0, 1, 0.0, 2.5)
-		_about(L, PropKind.DEBRIS, at, 3, 3.0, 6.0)
-		_about(L, PropKind.WRECKAGE, at, 1, 3.0, 6.0)
+		if p.x >= 0:
+			_work(L, &"_slag", Vector2(p) + Vector2(0.5, 0.5))
 	# Refinery runs: parallel pipelines, collapsed in stretches, vents capped.
 	for n in _n(c, 1.5):
 		var p := _site(L, 6, 1, dry, 30.0, 700, 0.4)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var runs := rng.randi_range(2, 3)
-		var length := rng.randi_range(7, 10)
-		for r in runs:
-			_run(L, PropKind.PIPE, at - d * length + nrm * (r - (runs - 1) * 0.5) * 1.7, d, length, 2.0, -99, 0.12)
-		_record(c, &"refinery", at, d, Vector2(length + 1.0, runs * 1.2), SCORCH)
-		_about(L, PropKind.VENT_CAP, at + nrm * (runs * 1.2 + 2.0), 2, 0.0, 3.5)
-		_about(L, PropKind.DEBRIS, at, 2, 3.0, 7.0)
+		if p.x >= 0:
+			_work(L, &"_refinery", Vector2(p) + Vector2(0.5, 0.5))
 	# The clerks' archive: cabinets in exact rows standing in the ash.
 	var archives := 0
 	for attempt in 8:
 		if archives >= _n(c, 1.0):
 			break
 		var p := _site(L, 5 if attempt < 4 else 3, 1, dry if attempt < 4 else [], 34.0 if attempt < 4 else 14.0, 600, 0.45)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var placed := 0
-		for gy in range(-1, 2):
-			for gx in range(-1, 2):
-				if rng.randf() < 0.25:
-					continue
-				if _put(L, PropKind.ARCHIVE, at + d * gx * 2.4 + nrm * gy * 2.4, d.angle(), -99, 0.4, true) != null:
-					placed += 1
-		if placed == 0:
-			continue
-		archives += 1
-		_record(c, &"archive", at, d, Vector2(4.0, 4.0), SCORCH)
-		_put(L, PropKind.SIGN, at - d * 4.5, (-d).angle(), -99, 0.2)
+		if p.x >= 0 and _work(L, &"_archive", Vector2(p) + Vector2(0.5, 0.5)):
+			archives += 1
 	# The machines bolted caps on the vents of the fumaroles.
-	for m in w.landmarks:
+	for m: Dictionary in w.landmarks.duplicate():
 		if m.kind != &"fumarole":
 			continue
 		var at: Vector2 = m.pos
-		if not L.home(floori(at.x), floori(at.y)):
-			continue
-		for sgn: float in [-1.0, 1.0]:
-			_put(L, PropKind.VENT_CAP, at + d * sgn * 2.2, d.angle(), -99, 0.4, true)
+		if L.home(floori(at.x), floori(at.y)):
+			_work(L, &"_vent_caps", at)
 	# A dugout by the heat.
 	for n in _n(c, 1.0):
 		var p := _site(L, 3, 1, dry, 24.0, 500, 0.45)
-		if p.x < 0:
-			continue
-		var shack := _put(L, PropKind.SHACK, Vector2(p) + Vector2(0.5, 0.5), rng.randf() * TAU, -99, 1.0)
-		if shack != null:
-			_note_lit_shack(L, shack)
-			_record(c, &"dugout", shack.pos, d, Vector2(2.0, 2.0))
+		if p.x >= 0:
+			_work(L, &"_dugout", Vector2(p) + Vector2(0.5, 0.5))
+
+
+static func _slag(L: Lay, at: Vector2, _a: Array) -> bool:
+	var d := L.d
+	var heaps := 0
+	for i in L.rng.randi_range(3, 4):
+		if _put(L, PropKind.SLAG_HEAP, at + d * (i * 3.6 - 5.0), d.angle(), -99, 1.0, true) != null:
+			heaps += 1
+	if heaps == 0:
+		return false
+	_record(L.c, &"slag", at, d, Vector2(7.5, 3.0), SCORCH)
+	_about(L, PropKind.VEHICLE, at + L.nrm * 4.0, 1, 0.0, 2.5)
+	_about(L, PropKind.DEBRIS, at, 3, 3.0, 6.0)
+	_about(L, PropKind.WRECKAGE, at, 1, 3.0, 6.0)
+	return true
+
+
+static func _refinery(L: Lay, at: Vector2, _a: Array) -> bool:
+	var d := L.d
+	var nrm := L.nrm
+	var runs := L.rng.randi_range(2, 3)
+	var length := L.rng.randi_range(7, 10)
+	for r in runs:
+		_run(L, PropKind.PIPE, at - d * length + nrm * (r - (runs - 1) * 0.5) * 1.7, d, length, 2.0, -99, 0.12)
+	_record(L.c, &"refinery", at, d, Vector2(length + 1.0, runs * 1.2), SCORCH)
+	_about(L, PropKind.VENT_CAP, at + nrm * (runs * 1.2 + 2.0), 2, 0.0, 3.5)
+	_about(L, PropKind.DEBRIS, at, 2, 3.0, 7.0)
+	return true
+
+
+static func _archive(L: Lay, at: Vector2, _a: Array) -> bool:
+	var d := L.d
+	var nrm := L.nrm
+	var placed := 0
+	for gy in range(-1, 2):
+		for gx in range(-1, 2):
+			if L.rng.randf() < 0.25:
+				continue
+			if _put(L, PropKind.ARCHIVE, at + d * gx * 2.4 + nrm * gy * 2.4, d.angle(), -99, 0.4, true) != null:
+				placed += 1
+	if placed == 0:
+		return false
+	_record(L.c, &"archive", at, d, Vector2(4.0, 4.0), SCORCH)
+	_put(L, PropKind.SIGN, at - d * 4.5, (-d).angle(), -99, 0.2)
+	return true
+
+
+static func _vent_caps(L: Lay, at: Vector2, _a: Array) -> bool:
+	var placed := false
+	for sgn: float in [-1.0, 1.0]:
+		if _put(L, PropKind.VENT_CAP, at + L.d * sgn * 2.2, L.d.angle(), -99, 0.4, true) != null:
+			placed = true
+	return placed
+
+
+static func _dugout(L: Lay, at: Vector2, _a: Array) -> bool:
+	var shack := _put_footed(L, PropKind.SHACK, at, L.rng.randf() * TAU, 1.0)
+	if shack == null:
+		return false
+	_note_lit_shack(L, shack)
+	_record(L.c, &"dugout", shack.pos, L.d, Vector2(2.0, 2.0))
+	return true
 
 
 # --- people ------------------------------------------------------------------------
@@ -1545,7 +1794,7 @@ static func _compose(L: Lay, name: StringName, at: Vector2, turn: float, angle: 
 				for gx in k:
 					if _put(L, PropKind.STUMP, at + d * (gx * 2.0) + L.nrm * (gy * 2.0), rng.randf() * TAU, -99, 0.0) != null:
 						n += 1
-			_clear_rect(L.c, L.occ, at + d * (k - 1) + L.nrm, d, Vector2(k + 0.4, 1.9))
+			_clear_rect(L, at + d * (k - 1) + L.nrm, d, Vector2(k + 0.4, 1.9))
 		&"snow_fence":
 			n += _run(L, PropKind.FENCE, at, along, 3 + int(turn * 3.0), 2.0, -99, 0.12).size()
 			n += _about(L, PropKind.DEBRIS, at, 1, 1.5, 3.0)
@@ -1646,7 +1895,7 @@ static func _survey(L: Lay) -> void:
 		while t <= SURVEY_SECTION:
 			var q := a + dir * t
 			if q.x >= 1.0 and q.y >= 1.0 and q.x < c.size - 1 and q.y < c.size - 1 and _survey_has(L, floori(q.x), floori(q.y), &"lane"):
-				_clear_rect(c, L.occ, q, dir, Vector2(0.5, 1.3))
+				_clear_rect(L, q, dir, Vector2(0.5, 1.3))
 			t += 1.0
 		# Stations: a post where the survey was read, now and then.
 		var st := 4.0 + rng.randf() * 6.0

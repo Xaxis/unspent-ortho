@@ -29,7 +29,7 @@ The lit world: sky and hour, weather, lights and lamps, landscape grounds, foreg
 
 ## How to reach it
 
-- Read the frame for the change. Night: `--hour=23`; a landscape: `--place=NAME` or a tour's `near KIND`.
+- Read the frame for the change. Night: `--hour=23`; a landscape: `--place=NAME` or a tour's `near KIND`. A landscape's place (GenPlaces.country_sample) stands within four tiles of a flat, clear patch a step off its level (`GenPlaces.has_room`, shared with the dev warp list; `tools/test.sh test_places_room`).
 
 ## How to check it
 

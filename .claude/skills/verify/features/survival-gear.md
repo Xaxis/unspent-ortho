@@ -8,6 +8,7 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
 
 - 44_crafts: `src/systems/44_crafts.gd`, reached by `tools/tour.sh tours/crafts.tour`.
 - 46_settlements: `src/systems/46_settlements.gd`, reached by `tools/tour.sh tours/settlements.tour`.
+  A piece or a craft station stands on flat ground of its own level within one step of the player's (`WorldQuery.flat_footing`; `tools/test.sh test_system:test_a_piece_goes_up_on_ground`, `test_system:test_nothing_goes_up_astride`); on rugged land `tools/shot.sh shots/x.png --seed=7 --place=bonelands --holding=hearth,hut,plot,palisade,store` stands all five with no "no room" warning.
   A piece nobody can staff says why on the holding page (`tools/test.sh test_staff_reason`,
   `tools/tour.sh tours/staff_reason.tour` with settlements.tour's options).
   Carried off near your holding wakes at its hearth (`tools/tour.sh tours/carried_home.tour`); building
