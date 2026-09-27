@@ -69,3 +69,27 @@ func test_the_labyrinth_s_floors_are_corridors_and_wider_ground_is_not() -> void
 		gt(float(Shoulder.corridor(_slot(axis, w, Shoulder.AXIS_REACH))[1]), 0.99, "a floor %.0f m wide is held fully" % w)
 	for w: float in [7.0, 8.0]:
 		eq(float(Shoulder.corridor(_slot(axis, w, Shoulder.AXIS_REACH))[1]), 0.0, "a floor %.0f m wide is not held" % w)
+
+
+## A WALL IS LAND TALLER THAN THE EYE. A floor nine wide between high walls, with
+## a bench 1.3 m high along each side leaving five between them: probed at the
+## head the benches were walls and a wide floor was held as a slot. At the eye
+## they are furniture, and the floor is nine wide.
+func test_a_waist_high_bench_is_no_corridor_wall() -> void:
+	var ground := func(p: Vector2) -> float:
+		var y := absf(p.y)
+		if y >= 4.5:
+			return 20.0
+		return 1.3 if y >= 2.5 else 0.0
+	var room := func(a: Vector3, b: Vector3) -> float:
+		var none: Array[Vector4] = []
+		return Shoulder.clear_along(a, b, ground, none)
+	var feet := Vector3(0.0, 0.0, 0.0)
+	eq(float(Shoulder.corridor_round(feet, room)[1]), 0.0, "a nine-wide floor with benches along it is not a corridor")
+	# And the high walls alone, five apart, still are.
+	var slot := func(p: Vector2) -> float:
+		return 20.0 if absf(p.y) >= 2.5 else 0.0
+	var room5 := func(a: Vector3, b: Vector3) -> float:
+		var none: Array[Vector4] = []
+		return Shoulder.clear_along(a, b, slot, none)
+	gt(float(Shoulder.corridor_round(feet, room5)[1]), 0.99, "five between walls taller than the eye is")

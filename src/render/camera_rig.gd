@@ -723,13 +723,7 @@ func _corridor_step(w: float) -> void:
 	_axis_in -= _dt
 	if _axis_in <= 0.0:
 		_axis_in = Shoulder.AXIS_EVERY
-		var head := _smoothed + Vector3(0.0, Shoulder.HEAD_UP, 0.0)
-		var clear := PackedFloat32Array()
-		for k in Shoulder.AXIS_PROBES:
-			var d := Vector2.from_angle(k * TAU / Shoulder.AXIS_PROBES)
-			var to := head + Vector3(d.x, 0.0, d.y) * Shoulder.AXIS_REACH
-			clear.append(float(land_room.call(head, to)) * Shoulder.AXIS_REACH)
-		var got := Shoulder.corridor(clear)
+		var got := Shoulder.corridor_round(_smoothed, land_room)
 		_axis = got[0]
 		_axis_share = float(got[1])
 		if _axis_share <= 0.0:

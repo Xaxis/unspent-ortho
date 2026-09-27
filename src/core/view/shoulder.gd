@@ -166,6 +166,25 @@ static func corridor(clear: PackedFloat32Array) -> Array:
 	return [Vector2.from_angle(best * TAU / n), narrow * long]
 
 
+## Height over the feet the corridor round a body is probed at: CLEAR over the
+## eye, so what stops the probe (`clear_along` keeps CLEAR off the land) is land
+## taller than the eye. A bench at the waist is furniture, not a corridor's wall;
+## probed at the head, a floor nine wide with 1.3 m benches along it was held.
+const AXIS_AT := EYE_UP + CLEAR
+
+
+## The corridor round a body standing at `feet`: the clear distance at each of
+## AXIS_PROBES headings, AXIS_REACH out at AXIS_AT, asked of `room(from, to)`
+## (0..1 of the way clear), handed to `corridor`.
+static func corridor_round(feet: Vector3, room: Callable) -> Array:
+	var at := feet + Vector3(0.0, AXIS_AT, 0.0)
+	var clear := PackedFloat32Array()
+	for k in AXIS_PROBES:
+		var d := Vector2.from_angle(k * TAU / AXIS_PROBES)
+		clear.append(float(room.call(at, at + Vector3(d.x, 0.0, d.y) * AXIS_REACH)) * AXIS_REACH)
+	return corridor(clear)
+
+
 ## The yaw the view is turned by (degrees) for a view at `yaw_deg` in a corridor
 ## along `axis` of strength `share`, and which end it turns to (1 along `axis`,
 ## -1 against): the end it was turned to, unless the view is past AXIS_KEEP
