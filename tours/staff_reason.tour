@@ -1,0 +1,51 @@
+# NOBODY CAN WORK IT, AND IT SAYS WHY (46_settlements.why_not_staff): the
+# settlements tour's four pieces with no roof among them, the plot chosen on the
+# holding page.
+# (From settlements.tour:) Building at world scale, from a normal game start (docs/VISION.md §9): a
+# holding put up on the real keys out of what is carried, somebody from the
+# village put on the plot, eight world hours gone by, and the place found with a
+# crop laid by and its thatch that much the worse for the weather.
+#   tools/tour.sh tours/staff_reason.tour --seed=1 --hour=10 --weather=clear:0 \
+#     --give=stone:6,deadwood:6,timber:4,reeds:6,scrap:6,pitch:2,rag:4,driftwood:4
+# (--give is an armful of what the first five pieces cost: stone and dead wood
+# for the hearth and the plot, timber and reeds for the store, plate and pitch
+# for the catchment, driftwood and a rag for the lean-to. Everything in it can be taken off the coast by hand; the
+# taking is survival's proof, not this one's.)
+coast calm
+place spawn
+wait 0.4
+# Out of the village square to open ground, on the real keys. Near enough that
+# somebody will walk over for the work; far enough to build.
+walk -1,1 1.5
+wait 0.5
+shot 01-somewhere-to-put-it
+# h opens the holding app: what can go up here, what it wants, and — in the
+# stolen module's violet — what a machine would hear of the place.
+tap holding
+await app:holding 4
+wait 0.6
+shot 02-the-slate-asks-what-to-put-up with app:holding
+# A hearth first, because that is the order a person builds in. It is the game's
+# own fire: it lights the yard, and it can be slept beside and worked at.
+choose build_hearth
+tap use
+await made 6
+wait 0.5
+shot 03-a-hearth-laid with app:holding
+# A plot, a catchment to water it, and a store to put the crop in.
+choose build_plot
+tap use
+await made 6
+wait 0.4
+choose build_catchment
+tap use
+await made 6
+wait 0.4
+choose build_store
+tap use
+await made 6
+wait 0.4
+wait 0.4
+choose piece_2
+wait 0.4
+shot 01-the-plot-says-why with app:holding
