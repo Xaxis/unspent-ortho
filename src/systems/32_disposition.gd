@@ -159,6 +159,10 @@ func _read_player() -> void:
 	# The listener's ear is heard as far as it hears, steps and all (FightKit.listen).
 	# The hush wrap quiets the steps on any land (FightKit.hush).
 	m.loudness = StealthNoise.loudness(hero.speed, ground, body.crouched, m.laden_tier, hero.kit.hush) * hero.kit.noise_scale()
+	# A room's hum over everything swallows a step (21_doors `room_hush`).
+	for sys: GameSystem in game.systems:
+		if sys.has_method(&"room_hush"):
+			m.loudness *= 1.0 - clampf(float(sys.call(&"room_hush")), 0.0, 1.0)
 	m.cover = _cover_now(p, m)
 	m.interference = interference.value(Interference.network(game.world, p))
 

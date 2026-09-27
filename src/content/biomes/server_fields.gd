@@ -107,6 +107,9 @@ static func make() -> BiomeDef:
 		&"sweeper": {"weight": 0.7, "grounds": ["floor", "road", "mud", "grass"]},
 	}
 	d.landmarks = [&"clerks_office", &"blinking_stack", &"poured_pillar", &"sump_pump"]
+	# Under the sump, the hall it kept dry: where the machines think
+	# (src/content/interiors/data_hall.gd).
+	d.interiors = {&"landmark:sump_pump": &"data_hall"}
 	d.sound_bed = &"bed_hum"
 	d.surface = _surface
 	d.scatter = _scatter
