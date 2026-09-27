@@ -294,6 +294,12 @@ func _pick_variant(name: StringName) -> SoundBank.Baked:
 ## playing a sound whose key begins with NAME (`sound:colossus_step`), and false
 ## the moment it has finished -- never a latch of something that once played.
 func tour_seen(what: String) -> bool:
+	# `await beds_silent`: every bed has fallen to nothing (the hush, 23_hush).
+	if what == "beds_silent":
+		for bed: StringName in levels:
+			if float(levels[bed]) > 0.02:
+				return false
+		return not levels.is_empty()
 	if not what.begins_with("sound:"):
 		return false
 	var name := what.substr(6)
@@ -477,10 +483,19 @@ func _colossi() -> float:
 	return h
 
 
+## How quiet the hush has made it (23_hush `quiet`, group `&"hush"`): the beds
+## and the scatter fall away with it; the player's own sounds do not.
+func _hush() -> float:
+	var q := 0.0
+	for n: Node in get_tree().get_nodes_in_group(&"hush"):
+		q = maxf(q, float(n.get(&"quiet")))
+	return q
+
+
 func _extra() -> Dictionary:
 	return {
 		"hour": game.clock.hour(), "remote": remote, "tide": SoundMix.tide_at(game.clock.minutes), "wet": wet,
-		"colossi": _colossi(), "wreck": works["wreck"], "installation": works["installation"], "hum": works["hum"], "shelter": works["shelter"], "leaves": works["leaves"],
+		"colossi": _colossi(), "hush": _hush(), "wreck": works["wreck"], "installation": works["installation"], "hum": works["hum"], "shelter": works["shelter"], "leaves": works["leaves"],
 	}
 
 
@@ -527,6 +542,8 @@ func _sea_lean() -> Vector2:
 ## Scattered one-shots over the beds that are up: never on a pattern, never
 ## the same variant twice running, placed somewhere left or right.
 func _scatter() -> void:
+	if _hush() > 0.2:
+		return
 	var hour := game.clock.hour()
 	var kind: StringName = Weather.family(StringName(weather.get("kind", &"fair")))
 	var s := float(weather.get("strength", 0.0))

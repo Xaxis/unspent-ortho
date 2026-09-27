@@ -142,6 +142,13 @@
   },
   {
    "kind": "system",
+   "label": "23_hush",
+   "entry": "src/systems/23_hush.gd",
+   "reach": "tools/tour.sh tours/hush.tour --seed=7 --hour=11 --weather=clear:0",
+   "area": "world-places"
+  },
+  {
+   "kind": "system",
    "label": "24_holds",
    "entry": "src/systems/24_holds.gd",
    "reach": "tools/tour.sh tours/region.tour",

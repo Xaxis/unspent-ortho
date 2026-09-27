@@ -7,6 +7,7 @@ Growing a world from a seed.
 ## Sub-features
 
 - worldgen: `src/core/world_gen.gd`, reached by `tools/map.sh --seed=7`.
+- works as rows (streamed worldgen S4b): `GenWorks._work` composes each machine work from its row alone; `tools/test.sh test_works_rows` composes every standing work twice (in the world, and alone) and compares the pieces.
 
 ## How to reach it
 

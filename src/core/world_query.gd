@@ -220,6 +220,25 @@ func passable(fx: int, fy: int, tx: int, ty: int, on: CraftRide = null, swims: b
 	return absi(world.level[fy * world.size + fx] - world.level[ty * world.size + tx]) <= step
 
 
+## Whether something set down with footprint radius `r` at `spot` (a holding's
+## piece, a craft station) stands flat: its middle and its four reaches all on
+## dry, standable ground of one level, the spot's own, within a body's one step
+## of `from_level` underfoot. The spot's level and not the player's: on terraced
+## ground the tile the player stands on is often the only one of its level for a
+## stride round, and asking for that level refused every spot near the bonelands'
+## place (0 of 169 tiles within six, against 30 flat a step off).
+func flat_footing(spot: Vector2, r: float, from_level: int) -> bool:
+	var level := world.level_at(floori(spot.x), floori(spot.y))
+	if absi(level - from_level) > 1:
+		return false
+	for c: Vector2 in [spot, spot + Vector2(r, 0), spot - Vector2(r, 0), spot + Vector2(0, r), spot - Vector2(0, r)]:
+		var tx := floori(c.x)
+		var ty := floori(c.y)
+		if not standable(tx, ty) or Ground.is_water(world.ground_at(tx, ty)) or world.level_at(tx, ty) != level:
+			return false
+	return true
+
+
 ## A body leaning into a trunk or boulder slides round it at least this share of its pace.
 const SLIDE_MIN := 0.5
 
