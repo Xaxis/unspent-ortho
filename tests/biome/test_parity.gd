@@ -505,16 +505,20 @@ extends TestCase
 ## treads stand on the south-east continent (1238,1366) where they stood on the
 ## north-east (1414,374). Regions at 1840 (seeds 1, 42, 90210): 42/42/48 ->
 ## 44/44/49, land in a region 98.5-98.9% -> 96.8-98.0%.
+## And again for the works' site search keeping what it learned (GenWorks._site):
+## only `props` moves. Works kinds over seeds 1, 7, 42, 90210 at 512 all held or
+## gained one (shelter, cistern, slag, orchard block); seed 7's archive at eye
+## level stands on its ash as before.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 1ebd687b 100053b8 4fd7a826 fecf3c5c",
-	3: "bd96c6d3 1d22db86 d51b4ba3 a4316902 7e58a668 9e5e7d5d",
-	7: "ba7a972f 55af42cc 8eec15a7 0f02d42c f555c41d 70960758",
-	42: "e0ad0bb3 b7ca1370 f18fef97 2f4b7f69 1565ed7e b599c04a",
-	90210: "2659ea1f 66925798 18341e08 34b30d32 275c7664 c584ffd1",
+	1: "054710a9 3eac3638 1ebd687b 100053b8 4fd7a826 559b79bf",
+	3: "bd96c6d3 1d22db86 d51b4ba3 a4316902 7e58a668 fc1e8e2f",
+	7: "ba7a972f 55af42cc 8eec15a7 0f02d42c f555c41d fe8cc703",
+	42: "e0ad0bb3 b7ca1370 f18fef97 2f4b7f69 1565ed7e 11a954d4",
+	90210: "2659ea1f 66925798 18341e08 34b30d32 275c7664 da85a0b9",
 }
 
 

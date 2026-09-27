@@ -211,7 +211,10 @@ const UNKNOWN := "unknown"
 ##     a tile takes its region from those cells and its own landscape. Region
 ##     edges and ids move on every seed (ids are save-visible), and with them
 ##     the places sited per region and the ground their patches lay; no tile's
-##     landscape or level moves.
+##     landscape or level moves. A works site search keeps what it learned
+##     for the next that asks the same (`GenWorks._site`: a strict search that
+##     found nothing is not asked again, a whole one that found nothing is not
+##     searched again), so the darts after it fall differently.
 const GEN := 40
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
