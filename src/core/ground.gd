@@ -29,15 +29,18 @@ enum {
 	SALT,
 	PAN,
 	SWARF,
+	# The deck of a shipping container: steel that rings under a boot
+	# (container_warren's floor, StealthNoise).
+	STEEL_FLOOR,
 }
 
-const COUNT := 26
+const COUNT := 27
 
 const NAMES: PackedStringArray = [
 	"deep water", "water", "sand", "grass", "moss", "mud", "needles",
 	"snow", "bone", "ash", "rock", "road", "floor",
 	"heath", "shingle", "gravel", "scree", "limestone", "clinker", "ice", "blackwater", "peat", "river",
-	"salt", "pan", "swarf",
+	"salt", "pan", "swarf", "steel floor",
 ]
 
 

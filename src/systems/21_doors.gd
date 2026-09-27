@@ -122,6 +122,10 @@ func _stand_hatches() -> void:
 		var hm := load(k.hatch) as GDScript
 		var n: Node3D = hm.call(&"node", game.view.world_material())
 		n.position = game.world.to_3d(t.host)
+		# A door in a face (Threshold.of_face) stands on the floor it opens onto:
+		# its host is just inside the face, where the land is the top of the wall.
+		if t.host_code == Threshold.FACE:
+			n.position.y = game.world.to_3d(t.door).y
 		n.rotation.y = -t.rot
 		_hatches.add_child(n)
 		var c := hm.get_script_constant_map()
@@ -1123,7 +1127,68 @@ func _room_middle() -> Vector2:
 	return box.get_center()
 
 
+## ONE BUILT-IN MATERIAL OF EACH KIND A ROOM DRAWS WITH, KEPT FOR THE SESSION.
+## Godot shares a built-in material's shader among all materials with its
+## settings and frees it with the last of them. A room builds its materials
+## fresh each time it is entered and frees them when it is left, so its
+## shaders went with it, and on the web every door built them again: the same
+## cottage entered twice built 61 programs the first time and 11 the second,
+## and a program built is a frozen frame there. Keyed by what the shader is made
+## from (every flag, mode and which textures are set, never a colour), so one
+## material holds each shader; a handful per kind of room.
+static var _shader_keep: Dictionary = {}
+
+
+static func _keep_shaders(roots: Array[Node]) -> void:
+	for root: Node in roots:
+		if root == null or not is_instance_valid(root):
+			continue
+		for n: Node in [root] + root.find_children("*", "", true, false):
+			var mats: Array[Material] = []
+			if n is GeometryInstance3D and (n as GeometryInstance3D).material_override != null:
+				mats.append((n as GeometryInstance3D).material_override)
+			var mesh: Mesh = null
+			if n is MeshInstance3D:
+				var mi := n as MeshInstance3D
+				mesh = mi.mesh
+				for i in mi.get_surface_override_material_count():
+					if mi.get_surface_override_material(i) != null:
+						mats.append(mi.get_surface_override_material(i))
+			elif n is CPUParticles3D:
+				mesh = (n as CPUParticles3D).mesh
+			if mesh != null:
+				for i in mesh.get_surface_count():
+					if mesh.surface_get_material(i) != null:
+						mats.append(mesh.surface_get_material(i))
+			for m: Material in mats:
+				if m is BaseMaterial3D:
+					var key := shader_key(m as BaseMaterial3D)
+					if not _shader_keep.has(key):
+						_shader_keep[key] = m
+
+
+## What a built-in material's shader is made from: its flags, modes and which
+## textures it has, never the values the shader is handed.
+static func shader_key(m: BaseMaterial3D) -> String:
+	var parts := PackedStringArray()
+	for p: Dictionary in m.get_property_list():
+		if (int(p.usage) & PROPERTY_USAGE_STORAGE) == 0:
+			continue
+		var v: Variant = m.get(p.name)
+		match typeof(v):
+			TYPE_BOOL, TYPE_INT:
+				parts.append("%s=%s" % [p.name, v])
+			TYPE_OBJECT:
+				if int(p.type) == TYPE_OBJECT and String(p.hint_string).contains("Texture"):
+					parts.append("%s=%s" % [p.name, v != null])
+	return ",".join(parts)
+
+
 func _swap_out() -> void:
+	var leaving: Array[Node] = [game.view]
+	leaving.append_array(_beams)
+	leaving.append_array(_motes)
+	_keep_shaders(leaving)
 	var realms := _realms()
 	_count_the_dead()
 	_turrets.clear()
@@ -1343,6 +1408,18 @@ static func _room_light(kind: StringName) -> Light3D:
 		sp.spot_attenuation = 0.9
 		sp.spot_angle_attenuation = 1.4
 		l = sp
+	elif kind == &"seep":
+		# The day seeping down through a heap into a sealed room, by a hole
+		# rusted through its roof: a thin grey thread and a small pool, as strong
+		# as the hour on the CLOCK. A room shut from the sky has no sun to read
+		# the hour off (its lid takes the sun's energy to nothing), and the heap
+		# over a warren still lets the day through.
+		var sp := SpotLight3D.new()
+		sp.spot_range = 4.0
+		sp.spot_angle = 24.0
+		sp.spot_attenuation = 0.5
+		sp.spot_angle_attenuation = 1.8
+		l = sp
 	elif kind == &"sky":
 		# The day down a smoke hole: a narrow grey shaft onto the hearth, as
 		# strong as the hour (`_light_windows`), nothing at night.
@@ -1370,7 +1447,7 @@ static func _room_light(kind: StringName) -> Light3D:
 				o.omni_attenuation = 2.0
 		l = o
 	l.light_color = Color(1.0, 0.7, 0.4) if kind == &"lamp" else Color(0.74, 0.72, 0.9)
-	if kind == &"sky":
+	if kind == &"sky" or kind == &"seep":
 		l.light_color = Color(0.8, 0.84, 0.9)
 	if kind == &"working":
 		l.light_color = Color(1.0, 0.66, 0.26)
@@ -1428,6 +1505,8 @@ func _light_windows() -> void:
 				lamp.light_energy = 0.4
 			&"sky":
 				lamp.light_energy = 2.4 * day
+			&"seep":
+				lamp.light_energy = 5.0 * (1.0 - SkyLight.day_gone(game.sky.clock_hour))
 			_:
 				lamp.light_energy = lerpf(1.6, 0.25, day)
 	for i in _windows.size():
@@ -1710,7 +1789,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "shelf", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "shelf", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table", "door:container_warren"
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
