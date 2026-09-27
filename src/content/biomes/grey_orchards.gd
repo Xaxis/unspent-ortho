@@ -64,7 +64,14 @@ static func make() -> BiomeDef:
 	d.bank_ground = Ground.MUD
 	d.pool_rim_ground = Ground.MUD
 	d.village_ground = Ground.GRAVEL
-	d.decor = {Ground.GRASS: [0.7, Decor.TUFT, 26, Decor.CROTTLE, 10]}
+	# Nothing flowers here: what comes up in ground the plan sprays every evening
+	# is spore caps and puffballs, grey. Its moss and heath are named too, or the
+	# shared table's bog cotton and meadow flowers come up white through the blight.
+	d.decor = {
+		Ground.GRASS: [0.7, Decor.TUFT, 26, Decor.CROTTLE, 10, Decor.SPORE_CAP, 6],
+		Ground.MOSS: [1.0, Decor.SEDGE, 28, Decor.SPHAGNUM, 16, Decor.TUFT, 8, Decor.SPORE_CAP, 12],
+		Ground.HEATH: [1.0, Decor.HEATHER, 40, Decor.TUFT, 14, Decor.SPORE_CAP, 8, Decor.STONE, 2],
+	}
 	d.grass_colors = [P.MOSS[2].lerp(P.LINEN[3], 0.45), P.LINEN[2].lerp(P.MOSS[2], 0.4)]
 	d.rock_color = P.STONE[3]
 	# What grows is grafted and going over: grey-green rather than green, and the

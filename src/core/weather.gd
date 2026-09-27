@@ -238,14 +238,16 @@ static func mist(seed_value: int, minutes: float, type_id: StringName, kind: Str
 	# The dusk circuit: from mid-afternoon, deepest after sunset, gone by
 	# midnight.
 	var dusk := d.mist_dusk * smoothstep(15.5, 19.0, h) * (1.0 - smoothstep(21.5, 23.8, h))
-	var deep := maxf(dawn, dusk)
-	var shape := 1.0
-	if deep <= 0.0:
+	if dawn <= 0.0 and dusk <= 0.0:
 		return 0.0
 	var morning := lerpf(0.45, 1.0, Rng.hash01(seed_value, day_of(minutes), 0x3157))
 	var still := 1.0 - clampf(absf(wind) * 1.6, 0.0, 1.0)
 	var beaten := 1.0 - clampf(float(WIND_PUSH.get(kind, 0.0)), 0.0, 1.0) * strength
-	return clampf(deep * shape * morning * still * beaten, 0.0, 1.0)
+	# The machines spray whatever the wind: it thins their mist and drags it
+	# along the rows, it never blows it away. Only weather that falls hard beats
+	# it down.
+	var dragged := 1.0 - clampf(absf(wind), 0.0, 1.0) * 0.4
+	return clampf(maxf(dawn * morning * still, dusk * dragged) * beaten, 0.0, 1.0)
 
 
 ## Scalar wind -1..1 (no bearing yet). Continuous in time: the base is a sum of

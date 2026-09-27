@@ -41,6 +41,7 @@ const Metropolis := preload("res://src/models/props/metropolis.gd")
 const DrownedCity := preload("res://src/models/props/drowned_city.gd")
 const Mesas := preload("res://src/models/props/mesas.gd")
 const FallenTower := preload("res://src/models/props/fallen_tower.gd")
+const SprayerGantry := preload("res://src/models/props/sprayer_gantry.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -133,6 +134,9 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 			return 2
 		# A long fall, a short one broken twice, a top section lying well away.
 		PropKind.FALLEN_TOWER:
+			return 3
+		# Running its row, stopped off its rail, and spraying now.
+		PropKind.SPRAYER_GANTRY:
 			return 3
 		# The metropolis: a span with its lamp standing or snapped, a lift core
 		# with its cable in or out, a shop with its shutter a third, two thirds or
@@ -268,6 +272,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Mesas.build(k, kind, variant, country)
 		PropKind.FALLEN_TOWER:
 			FallenTower.build(k, variant, country)
+		PropKind.SPRAYER_GANTRY:
+			SprayerGantry.build(k, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)
