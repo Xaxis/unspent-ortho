@@ -224,8 +224,12 @@ func test_each_lobe_is_one_network_of_floors() -> void:
 	walk.resize(size * size)
 	for i in land.size():
 		land[i] = 1 if w.country[i] == mid and w.level[i] > 0 else 0
-		# The floors and the ramps' floors: never the plateau.
-		walk[i] = 1 if land[i] != 0 and up[i] < 0.98 else 0
+		# Anywhere a body walks at floor level: the floors and the ramps'
+		# floors, and past the plateau's edge the land round it (the plateau
+		# is let down across the last of the blend: GenRelief.lift_slots).
+		# Never the plateau itself.
+		var plateau := land[i] != 0 and up[i] >= 0.98 and w.blend[i] < 0.3
+		walk[i] = 1 if w.level[i] > 0 and not plateau else 0
 	# A lobe is one piece of the middens' land; each keeps its own maze, so
 	# each is measured on its own. The floors of each big one are one network.
 	var lobed := PackedByteArray()

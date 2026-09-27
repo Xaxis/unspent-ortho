@@ -45,7 +45,7 @@ static func run(c: GenContext) -> void:
 		# How tall a shelf's cliff stands, wandering across a range of crags.
 		[F, GenFields.noise(s, 309, 1.0 / 70.0, 2), 8],
 		[U, p[&"shelf"], cw, step], [U, p[&"shelf_var"], cw, step],
-		[U, p[&"slots"], cw, step], [U, _slotted_soft(c), cw, step],
+		[U, _slotted_soft(c), cw, step],
 	])
 	c.mark(&"relief.batch")
 	var base := fl[0]
@@ -69,14 +69,13 @@ static func run(c: GenContext) -> void:
 	var shelfn := fl[16]
 	var shelf_amp := fl[17]
 	var shelf_var := fl[18]
-	# SLOT CANYONS (`slots`, GenSlots): the plateau stands `slots` levels over a
-	# labyrinth of floors, only where a landscape asks for it.
-	var slots := fl[19]
-	var slot_share := fl[20]
+	# Where a slot labyrinth may stand (`slots`): the plateau itself is stood up
+	# once every tile has its landscape (`lift_slots`); here, only the terraces
+	# are kept off the ground it will stand on.
+	var slot_share := fl[19]
 	var slotted := false
 	for v: float in p[&"slots"]:
 		slotted = slotted or v > 0.01
-	var slot_up := GenSlots.plan(s, size).field(s, size, slots) if slotted else PackedFloat32Array()
 	c.rim_warp = rim_warp
 	var land := c.land
 	var inland := c.inland
@@ -155,16 +154,54 @@ static func run(c: GenContext) -> void:
 				if islet[i] != 0 and cliffn[i] < 0.25:
 					# Most islets are low skerries; the rest stand as stacks.
 					e = 1.0 + minf(1.6, d_in * 0.35)
-				elif hold > 0.0:
-					# The plateau over the slots, at the declared height wherever
-					# the landscape holds the ground (not its blend-weighted share
-					# of it, so its core walls stand full height), faded across
-					# its border in a few tiles; laid after the shore so the shore
-					# cannot flatten it, and let down in the last tiles to the sea.
-					e += slots[i] / slot_share[i] * hold * slot_up[i] * smoothstep(1.5, 6.0, d_in)
 				elev[i] = clampf(e, 1.0, MAX_LEVEL + 0.99)
 	)
 	c.elev = elev
+
+
+## Stage 4b, SLOT CANYONS (`BiomeDef.relief.slots`, GenSlots): once every tile has
+## its landscape, the plateau stands its declared height over the labyrinth's
+## floors on the land of a landscape that asks for one, and nowhere else. Laid
+## after the borders, because a border and a climate read height and a
+## labyrinth's walls are not a hill; and only on its own tiles, because a maze
+## leaking over a border cuts the neighbour's ground to pieces. Let down across
+## the last of its blend to the border, and in the last tiles to the sea.
+static func lift_slots(c: GenContext) -> void:
+	var size := c.size
+	var n := c.n
+	var w := c.w
+	var height := PackedFloat32Array()
+	height.resize(c.types)
+	var any := false
+	for cc: int in c.land_types:
+		height[cc] = c.defs[cc].param(&"slots")
+		any = any or height[cc] > 0.0
+	if not any:
+		return
+	var amp := PackedFloat32Array()
+	amp.resize(n)
+	var country := w.country
+	var land := c.land
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for i in range(y0 * size, y1 * size):
+			if land[i] != 0 and height[country[i]] > 0.0:
+				amp[i] = 1.0
+	)
+	var up := GenSlots.plan(c.s, size).field(c.s, size, amp)
+	var lift := PackedFloat32Array()
+	lift.resize(n)
+	var elev := c.elev
+	var blend := w.blend
+	var inland := c.inland
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for i in range(y0 * size, y1 * size):
+			if amp[i] <= 0.0:
+				continue
+			var by := height[country[i]] * up[i] * (1.0 - smoothstep(0.3, 0.5, blend[i])) * smoothstep(1.5, 6.0, inland[i])
+			lift[i] = by
+			elev[i] = minf(elev[i] + by, MAX_LEVEL + 0.99)
+	)
+	c.slot_lift = lift
 
 
 ## Radius in tiles of the caldera rim of the type that has one.

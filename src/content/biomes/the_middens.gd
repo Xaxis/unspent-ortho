@@ -44,10 +44,14 @@ static func make() -> BiomeDef:
 	d.reach_in_low = Vector3(4.5, 0.08, 0.3)
 	d.hatch = Ink.NONE
 	d.grounds = {
-		Ground.SWARF: P.RUST[2].lerp(P.SLATE[2], 0.4),
+		# Filings, a shade under the crust: what makes a slot's floor DARK is the
+		# sky its walls hide (world.gdshader, sky seen), not another ground. A
+		# maze of two grounds is all edges, and the washes rule reads it as salad.
+		Ground.SWARF: P.RUST[1].lerp(P.SLATE[2], 0.45),
 		Ground.GRAVEL: P.STONE[3].lerp(P.RUST[3], 0.35),
 		Ground.SCREE: P.SLATE[2].lerp(P.RUST[2], 0.45),
-		Ground.ROCK: P.SLATE[3].lerp(P.RUST[3], 0.3),
+		# Refuse packed hard where it has stood longest: a pale crust.
+		Ground.ROCK: P.ASH[3].lerp(P.SAND[4], 0.35),
 		Ground.MUD: P.EARTH[2].lerp(P.RUST[2], 0.35),
 		Ground.ROAD: P.ASH[2].lerp(P.SLATE[2], 0.3),
 	}
@@ -69,7 +73,9 @@ static func make() -> BiomeDef:
 	d.village_ground = Ground.GRAVEL
 	# Underfoot, what fell off the walls: plate, cable, cans, shell cases, bolts,
 	# filings combed by the heaps' pull, and a glint of broken screen.
-	d.decor = {Ground.SWARF: [1.0, Decor.SCRAP, 30, Decor.WIRE, 16, Decor.CAN, 8, Decor.BOLT, 10,
+	# A slot floor is where everything that falls off the walls lands, and at
+	# eye level it is half the frame: thick and even, not a drift here and there.
+	d.decor = {Ground.SWARF: [Vector2(1.7, 0.6), Decor.SCRAP, 30, Decor.WIRE, 16, Decor.CAN, 8, Decor.BOLT, 10,
 		Decor.SHELL_CASE, 6, Decor.FILINGS, 8, Decor.SEA_GLASS, 6]}
 	d.grass_colors = [P.RUST[3], P.SLATE[3]]
 	d.rock_color = P.SLATE[3]
@@ -126,6 +132,11 @@ static func make() -> BiomeDef:
 static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f: int) -> int:
 	if f & BiomeSurface.SHORE != 0:
 		return Ground.GRAVEL
+	# Across a border, into ground a labyrinth does not stand on, the tip
+	# arrives as its filings alone: the scree and rock of a slot's walls have
+	# no walls to come off there.
+	if t.own_def.param(&"slots") <= 0.0:
+		return Ground.SWARF
 	if f & BiomeSurface.APRON != 0:
 		return Ground.SCREE
 	if f & BiomeSurface.BANK != 0:
@@ -151,6 +162,8 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.SLAG_HEAP
 		if r < 0.086:
 			return PropKind.SCRAP_TREE
+		if r > 0.60 and r < 0.604:
+			return PropKind.HULL
 		return PropKind.MAGNET_HEAP if r > 0.40 and r < 0.412 else BiomeScatter.NONE
 	if g == Ground.SCREE:
 		if r < 0.036:

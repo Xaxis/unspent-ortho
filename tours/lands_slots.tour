@@ -5,7 +5,10 @@ coast calm
 hour 12
 place typical_the_middens
 wait 3.0
+zoom 40
+wait 1.0
 shot slots-above with land:the_middens
+zoom 15
 place slot_the_middens
 wait 2.0
 shot slots-floor-above with land:the_middens

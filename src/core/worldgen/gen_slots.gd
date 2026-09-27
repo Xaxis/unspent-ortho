@@ -27,14 +27,14 @@ extends RefCounted
 
 ## Tiles between lattice nodes. With floors 3-6 wide this lays about 35-40% of
 ## the land as floor.
-const PITCH := 12
+const PITCH := 14
 ## Nodes on a side of one block: one perfect maze.
-const BLOCK := 5
+const BLOCK := 4
 ## A node may sit this far off its lattice point, in tiles.
 const JITTER := 2.2
 ## Half a floor's width, in tiles: floors are 2 * this wide.
-const HALF_MIN := 1.5
-const HALF_SPAN := 1.0
+const HALF_MIN := 2.2
+const HALF_SPAN := 0.9
 ## A room's radius where three or more floors meet.
 const ROOM_MIN := 3.0
 const ROOM_SPAN := 1.6
@@ -50,7 +50,7 @@ const STUB := 0.3
 const STUB_MIN := 0.4
 const STUB_SPAN := 0.25
 ## A second door between two blocks, this often.
-const SECOND_DOOR := 0.35
+const SECOND_DOOR := 0.6
 ## How far a tile's position wanders before the maze is read, in tiles.
 const WARP := 2.5
 

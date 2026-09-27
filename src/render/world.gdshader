@@ -2083,6 +2083,20 @@ void fragment() {
 	}
 	// Weather that has SETTLED on this surface, the airs it is seen through,
 	// and what the hour does to its colour.
+	// SKY SEEN. Ground lying well under the land about it (the height SkyGround
+	// keeps smoothed over eight tiles) is ground whose walls hide most of the
+	// sky: a slot's floor, a gorge's bed, the foot of a wall that stands over
+	// it. It takes less of the sky's light, darker the deeper it lies. The foot
+	// of an ordinary step, a fraction of a unit down, is left alone.
+	// Ground only: a wall is lit by the slot it faces, and shaded down it would
+	// be one dark band where its refuse should read.
+	if (sky_view.z > 0.0 && mark_ground(m)) {
+		float sunk = sky_ground_at(world_pos).a * SKY_GROUND_HEIGHT - world_pos.y;
+		// And ground standing over the land about it (a plateau's top) has the
+		// whole sky: a little paler, so a maze reads from above as dark floors
+		// cut into a pale crust.
+		c *= (1.0 - smoothstep(0.15, 1.3, sunk) * 0.55) * (1.0 + smoothstep(0.3, 1.2, -sunk) * 0.14);
+	}
 	c = sky_apply(c, world_pos, TIME);
 
 	// --- Law 1: matter is honest (docs/LOOK.md) --------------------------
