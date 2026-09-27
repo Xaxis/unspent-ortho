@@ -12,6 +12,8 @@ var wind := FightRules.WIND
 var max_wind := FightRules.WIND
 var dodge_at := -100000.0
 var dodge_dir := Vector2.ZERO
+## How far this dodge carries against a plain one (the vane cloak's wind).
+var dodge_carry := 1.0
 ## >0 while something has hold: pulls remaining. The holder is the body that seized.
 var grip := 0
 var grip_since := 0.0

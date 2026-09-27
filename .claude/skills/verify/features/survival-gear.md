@@ -35,6 +35,10 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   `tools/test.sh test_scale_coat` (its bout prints), `tools/tour.sh tours/scale_coat.tour` (options in its header).
   The hush wrap (wrap_hush, body): the body's own noise is as on moss on any land:
   `tools/test.sh test_hush_wrap` (its walk prints), `tools/tour.sh tours/hush_wrap.tour` (the wrap worn).
+  The vane cloak (cloak_vane, back): in a strong wind a dodge downwind carries twice as far:
+  `tools/test.sh test_vane_cloak` (its bout and escape print), `tools/tour.sh tours/vane_cloak.tour` (the cloak worn, in a storm).
+  The cable line (brace_cable / brace_ram, hands): the grapple takes a working part that faces it, stalls it, pulls you in:
+  `tools/test.sh test_cable_brace` (its bout prints), `tools/tour.sh tours/cable_brace.tour` (options in its header).
   A scan over a dart says its answer at once ("It takes and goes. Break its sight."):
   `tools/test.sh test_abilities:test_a_scan_says`, `tools/tour.sh tours/scan_dart.tour` (options in its header).
   The lattice at a gate (nothing against harvesters, strong against cutters): `tools/test.sh test_lattice_icelens:test_the_lattice_at_a_gate`.

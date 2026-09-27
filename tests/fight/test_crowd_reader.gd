@@ -20,11 +20,12 @@ const BOUTS := 24
 ## One gate bout: {won, downed, t, health_lost}. `kit` is what is fitted.
 static func gate(crowd_reader: bool, start: int, kind: StringName = &"runner", count: int = 2,
 		kit: Array[StringName] = [], seconds: float = 120.0, tool: StringName = TOOL, charges: int = 0, ids: int = 1000,
-		shoulder := false) -> Dictionary:
+		shoulder := false, wind := 0.0) -> Dictionary:
 	# A body's id steers its side-steps (Brains); ids count up across a run, so
 	# without this a bout's outcome would hang on how many ran before it.
 	MobState._next_id = ids
 	var sim := F.make_sim(F.flat_world(96), Vector2(48.5, 48.5))
+	sim.moment.wind = wind
 	if charges > 0:
 		sim.hero.inventory.add(FightRules.CHARGE, charges)
 	sim.hero.inventory.add(tool)
@@ -53,6 +54,7 @@ static func gate(crowd_reader: bool, start: int, kind: StringName = &"runner", c
 	var lost := 0
 	var raked := 0
 	var stripped := 0
+	var cabled := 0
 	while t < seconds * 1000.0:
 		player.act()
 		sim.slices(2)
@@ -62,18 +64,20 @@ static func gate(crowd_reader: bool, start: int, kind: StringName = &"runner", c
 				lost += int(e.damage)
 			if e.type == &"stripped":
 				stripped += 1
+			if e.type == &"cabled":
+				cabled += 1
 			if e.type == &"rake":
 				raked += (e.bodies as Array).size()
 			if e.type == &"outcome" and e.outcome in [&"downed", &"carried"]:
-				return {"won": false, "downed": true, "t": t / 1000.0, "lost": lost, "heavies": int(player.heavies), "raked": raked, "stripped": stripped}
+				return {"won": false, "downed": true, "t": t / 1000.0, "lost": lost, "heavies": int(player.heavies), "raked": raked, "stripped": stripped, "cabled": cabled}
 		var left := 0
 		for m in crowd:
 			# A stripped machine (FightKit.unbuild) has no bite left: the fight
 			# with it is over.
 			left += int(m.alive and not m.stripped)
 		if left == 0:
-			return {"won": true, "downed": false, "t": t / 1000.0, "lost": lost, "heavies": int(player.heavies), "raked": raked, "stripped": stripped}
-	return {"won": false, "downed": false, "t": t / 1000.0, "lost": lost, "heavies": int(player.heavies), "raked": raked, "stripped": stripped}
+			return {"won": true, "downed": false, "t": t / 1000.0, "lost": lost, "heavies": int(player.heavies), "raked": raked, "stripped": stripped, "cabled": cabled}
+	return {"won": false, "downed": false, "t": t / 1000.0, "lost": lost, "heavies": int(player.heavies), "raked": raked, "stripped": stripped, "cabled": cabled}
 
 
 func test_the_crowd_reader_wins_what_the_single_reader_loses() -> void:

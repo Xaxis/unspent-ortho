@@ -121,6 +121,8 @@ const PIECES := {
 		"unique": "the only coat that turns a blow"},
 	&"wrap_hush": {"grade": &"rare", "family": &"", "from": &"hush_slate",
 		"unique": "the only wrap that quiets your steps"},
+	&"cloak_vane": {"grade": &"prime", "family": &"", "from": &"vane_true",
+		"unique": "the only cloak the wind carries"},
 	&"brace_cable": {"grade": &"rare", "family": &"brace", "from": &"tower_cable"},
 	&"brace_ram": {"grade": &"prime", "family": &"brace", "from": &"boom_ram"},
 	# The glide wing is a family the same way (docs/LANDSCAPES.md): every rung

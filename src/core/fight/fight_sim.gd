@@ -346,6 +346,10 @@ func _dodge() -> void:
 	if hero.move.length() > 0.1 and not LockOn.locked(hero.lock):
 		hero.facing = dir.angle()
 	hero.start_dodge(dir, now)
+	# The vane cloak: a dodge the strong wind is behind carries further
+	# (FightKit.vane); any other, as ever.
+	var down := downwind() if hero.kit.vane else Vector2.ZERO
+	hero.dodge_carry = FightKit.VANE_CARRY if down != Vector2.ZERO and absf(hero.dodge_dir.angle_to(down)) <= FightKit.VANE_ARC else 1.0
 	emit(&"dodge", {})
 
 
@@ -723,7 +727,7 @@ func _move_hero(dt: float) -> void:
 	elif hero.stunned(now):
 		v = Vector2.ZERO
 	elif since_dodge < FightRules.DODGE_MS:
-		v = hero.dodge_dir * FightRules.dodge_speed(since_dodge)
+		v = hero.dodge_dir * FightRules.dodge_speed(since_dodge) * hero.dodge_carry
 		hero.facing = LockOn.face(hero.facing, hero.pos, hero.lock, dt)
 	else:
 		var can_run := (not fight_on or hero.wind > FightRules.RUN_WIND_FLOOR) and not hero.crouched
@@ -1297,6 +1301,30 @@ func undertow(m: MobState) -> bool:
 	return true
 
 
+## The cable brace (FightKit.cable): whether the line from `from` would take
+## this machine's working part (it faces the line; a guard does not stop a hook).
+func cable_takes(m: MobState, from: Vector2) -> bool:
+	return m != null and m.alive and not m.removed and m.machine and m.bite != null \
+		and FightRules.reaches(m.part, m.pos, m.facing, from, false)
+
+
+## The line on its working part: a tell it was winding up is broken, a charge
+## stopped, and it stands stalled as a jammed part does (once per
+## STALL_EVERY_MS, as every stall). The pull is the player's (AbilityGrapple).
+func cable(m: MobState) -> bool:
+	if not cable_takes(m, hero.pos):
+		return false
+	m.charging = false
+	_break_tell(m)
+	m.flare_until = now + FightRules.PART_FLARE_MS
+	if now >= m.stall_ready_at:
+		m.stall_ready_at = now + FightRules.STALL_EVERY_MS
+		m.stun_until = maxf(m.stun_until, now + FightRules.STALL_MS)
+	emit(&"cabled", {"mob": m, "at": m.pos})
+	_wake(m)
+	return true
+
+
 ## A heavy blow into a guarded part the machine was not holding open: the
 ## turning blades take it, so it does no harm, but they jam, and the machine
 ## stands stalled as a blow in the part stalls it, its tell lost and its part
@@ -1489,6 +1517,14 @@ func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: in
 	if hero.committed(now) and not hero.kit.gyro:
 		hero.blow = null
 	emit(&"hurt", {"attacker": by, "target": hero, "damage": dmg, "at": hero.pos})
+
+
+## Downwind, where the wind is stronger than the vane cloak needs
+## (FightKit.VANE_WIND), else ZERO: the world's wind axis times the wind's sign.
+func downwind() -> Vector2:
+	if moment == null or absf(moment.wind) <= FightKit.VANE_WIND:
+		return Vector2.ZERO
+	return Weather.bearing(moment.seed_value) * signf(moment.wind)
 
 
 ## The fight the scale coat last turned a blow in (its `fight_started`).
