@@ -474,6 +474,17 @@ func _handle(events: Array[Dictionary]) -> void:
 				MobFx.clang(fx, _at3(hero.pos + back, 1.1), int(sim.now))
 				MobFx.glint(fx, _at3(hero.pos + back, 1.2), Palette.RUST[4], int(sim.now), 0.7)
 				Events.sfx.emit(&"hit_plate", player.position)
+			&"share_turned":
+				# The ploughshare turned a charge (FightKit.ploughshare): the glove
+				# rings on the machine's flank and rime sprays off along the way it
+				# is carried on.
+				_share_turned_at = Time.get_ticks_msec() / 1000.0
+				var sm: MobState = e.mob
+				var run := Vector2.from_angle(sm.facing)
+				var side := (hero.pos - sm.pos).normalized() * sm.radius
+				MobFx.clang(fx, _at3(sm.pos + side, 0.8), int(sim.now))
+				MobFx.puffs(fx, _at3(sm.pos + side, 0.3), run, Palette.RIME[5], 4, 0.7, sm.id)
+				Events.sfx.emit(&"hit_plate", player.position)
 			&"hurt":
 				_on_hurt(e)
 			&"killed":
@@ -609,6 +620,7 @@ func _crackle(from: Vector2, m: MobState, h: float) -> void:
 var _raked_at := -INF
 var _grip_failed_at := -INF
 var _turned_at := -INF
+var _share_turned_at := -INF
 var _cabled_at := -INF
 var _came_round_at := -INF
 var _bogged_at := -INF
@@ -627,6 +639,8 @@ func tour_seen(what: StringName) -> bool:
 			return now - _grip_failed_at < 0.4
 		&"turned":
 			return now - _turned_at < 0.4
+		&"share_turned":
+			return now - _share_turned_at < 0.6
 		&"cabled":
 			return now - _cabled_at < 0.6
 		&"came_round":

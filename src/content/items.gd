@@ -454,6 +454,10 @@ const DEFS := {
 	# would not be moved, turned. `steady` is its tag (ModifierTable).
 	&"mod_anchor": {"name": "anchor", "bulk": 3.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"stone", &"earth"], "fits": [&"body"], "resist": {&"collapse": 0.3}},
+	# The snowfield plough's core, set in a glove's back plate (the plough keeper):
+	# the share that turns what runs at it, turned. `quick` is its tag (ModifierTable).
+	&"mod_ploughshare": {"name": "ploughshare", "bulk": 2.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"rime", &"lens"], "fits": [&"hands"], "resist": {&"cold": 0.2}},
 	# The drowned lockkeeper's core, in a pack frame (GEAR.md §5): the keeper
 	# that shut the city's water in, turned. `charge` is its tag (ModifierTable).
 	&"mod_lock": {"name": "lock", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,

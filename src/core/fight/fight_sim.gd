@@ -351,6 +351,39 @@ func _dodge() -> void:
 	var down := downwind() if hero.kit.vane else Vector2.ZERO
 	hero.dodge_carry = FightKit.VANE_CARRY if down != Vector2.ZERO and absf(hero.dodge_dir.angle_to(down)) <= FightKit.VANE_ARC else 1.0
 	emit(&"dodge", {})
+	if hero.kit.ploughshare:
+		_share_turns()
+
+
+## The ploughshare (FightKit.ploughshare): every charging machine whose bite is
+## winding up or live, and whose line this dodge crosses square, is turned off
+## the share -- carried on along the way it faces for a run as long again, and
+## left spent SHARE_SPENT as long. Each one turned takes SHARE_WIND dodges'
+## breath more: the shove is the body's, not the glove's. A charge's bite is committed on its facing,
+## often after the run itself has ended against the body it reached, so it is
+## the bite that is turned, not the run.
+func _share_turns() -> void:
+	var square := sin(FightKit.SHARE_ARC)
+	for m in mobs:
+		if not m.alive or not m.machine or m.approach != &"charge" or m.pos.distance_to(hero.pos) > FightKit.SHARE_REACH:
+			continue
+		var phase := m.blow_phase(now)
+		if phase != &"windup" and phase != &"active":
+			continue
+		var line := Vector2.from_angle(m.facing)
+		if absf(hero.dodge_dir.dot(line)) > square:
+			continue
+		var turned := m.blow.copy()
+		turned.recovery = int(turned.recovery * FightKit.SHARE_SPENT)
+		turned.cooldown = int(turned.cooldown * FightKit.SHARE_SPENT)
+		m.blow = turned
+		m.bearing = line
+		m.charging = true
+		m.run_from = m.pos
+		m.last_think_pos = m.pos
+		m.run_until = maxf(m.run_until, now) + Brains.RUN_MS
+		hero.wind -= FightRules.DODGE_COST * FightKit.SHARE_WIND
+		emit(&"share_turned", {"mob": m})
 
 
 func _try_pull() -> void:
