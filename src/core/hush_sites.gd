@@ -39,7 +39,8 @@ static func near(w: WorldData, q: WorldQuery, at: Vector2, reach: float) -> Arra
 		if taken.has(s.id):
 			continue
 		# The group this stone stands in: every stone within JOIN of one in it.
-		var group: Array[WorldProp] = [s]
+		var group: Array[WorldProp] = []
+		group.append(s)
 		taken[s.id] = true
 		var k := 0
 		while k < group.size():

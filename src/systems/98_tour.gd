@@ -1004,9 +1004,9 @@ func _nearest_prop(kinds: String, alone: float = 0.0) -> WorldProp:
 	return found
 
 
-func _alone(p: WorldProp, gap: float) -> bool:
-	for o: WorldProp in game.query.props_near(p.pos, p.solid + gap + 1.0):
-		if o.id != p.id and o.solid > 0.0 and o.pos.distance_to(p.pos) < p.solid + o.solid + gap:
+func _alone(lone: WorldProp, gap: float) -> bool:
+	for other: WorldProp in game.query.props_near(lone.pos, lone.solid + gap + 1.0):
+		if not WorldProp.same(other, lone) and other.solid > 0.0 and other.pos.distance_to(lone.pos) < lone.solid + other.solid + gap:
 			return false
 	return true
 

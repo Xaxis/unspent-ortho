@@ -5,6 +5,10 @@ extends TestCase
 ## and three turrets covering each other) holds, at a cost at worst, and an open
 ## one is broken; with the player fighting, both hold. Measured, not assumed:
 ## the outcome is whatever the plan writes when the step is over.
+##
+## Seed 4 at 64 tiles puts the holding on the coast. Seed 1 did until the merged
+## worldgen moved it into the drowned city, where the yard stands among water a
+## player cannot swing from, and the fight measured the water, not the raid.
 
 const Sx := preload("res://tests/save/save_fixture.gd")
 
@@ -16,7 +20,7 @@ const LOOKS := 60
 
 func _probe(holding: String, fight: bool, prepared: bool) -> Dictionary:
 	Sx.use_root("raid_live")
-	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10", "--held=axe_felling",
+	var g := Sx.game(tree, ["--seed=4", "--size=64", "--hour=10", "--held=axe_felling",
 		"--holding=" + holding, "--attention=0.5"])
 	await frames(3)
 	var mobs := Sx.system(g, "30_mobs")
@@ -56,8 +60,14 @@ func _probe(holding: String, fight: bool, prepared: bool) -> Dictionary:
 				var m := _nearest_raider(sim, s)
 				if m != null:
 					_stand_to_strike(g, m)
-					sim.press_swing()
-					next_swing = sim.now + 60.0
+					# A guarded part (a harvester's blades) takes the held blow
+					# while it is working: a player fighting one knows that much.
+					if m.row.get("guarded", false) and not sim.reaches_part(m, sim.hero.pos):
+						sim.press_heavy()
+						next_swing = sim.now + 400.0
+					else:
+						sim.press_swing()
+						next_swing = sim.now + 60.0
 		sys.call("pass_now")
 		out.looks = i + 1
 		if plan.over():
@@ -159,7 +169,7 @@ func test_a_struck_piece_left_standing_is_held_at_cost() -> void:
 ## nothing is left over to settle on paper either.
 func test_with_the_working_party_down_the_scout_withdraws_and_the_step_ends() -> void:
 	Sx.use_root("raid_live")
-	var g := Sx.game(tree, ["--seed=1", "--size=64", "--hour=10", "--held=axe_felling",
+	var g := Sx.game(tree, ["--seed=4", "--size=64", "--hour=10", "--held=axe_felling",
 		"--holding=hut,plot,store,radio_mast", "--attention=0.5"])
 	await frames(3)
 	var coast: Coast = Sx.system(g, "30_mobs").get("coast")
