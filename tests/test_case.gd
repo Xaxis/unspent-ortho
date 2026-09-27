@@ -8,6 +8,10 @@ var failures: PackedStringArray = []
 var current: String = ""
 ## Set by the runner: the SceneTree, for tests that need nodes or frames.
 var tree: SceneTree
+## A cost met inside a gate shard is deferred to the alone pass (`yard_lt`).
+## False for an instance that judges `yard_lt` itself as its subject
+## (tests/core/test_yard_bar.gd), which has no runner id to be re-run by.
+var defer_costs := true
 
 
 func fail(msg: String) -> void:
@@ -387,7 +391,7 @@ const DOUBLED_SEEN := 1.6
 func yard_lt(us: float, doubled_us: float, yard: float, bar: float, what: String) -> void:
 	var r := us / maxf(yard, 0.001)
 	var r2 := doubled_us / maxf(yard, 0.001)
-	var later := OS.get_environment("UNSPENT_COSTS_LATER")
+	var later := OS.get_environment("UNSPENT_COSTS_LATER") if defer_costs else ""
 	if later != "":
 		var f := FileAccess.open(later, FileAccess.READ_WRITE if FileAccess.file_exists(later) else FileAccess.WRITE)
 		if f != null:
