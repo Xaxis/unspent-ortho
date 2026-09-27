@@ -153,7 +153,9 @@ void fragment() {
 	ROUGHNESS = clamp(mr.x + rough_add, 0.04, 1.0);
 	SPECULAR = mr.y;
 	METALLIC = mr.w;
-	NORMAL = matter_bump(NORMAL, world_pos, mi, mr.z);
+	// Stepped, not `matter_bump`: this shader also cuts a sight cone, and Metal
+	// cannot build the two together (matter.gdshaderinc, matter_bump_stepped).
+	NORMAL = matter_bump_stepped(NORMAL, n_world, world_pos, mi, mr.z);
 	EMISSION = matter_light(neon_reflect(world_pos, px) + emit);
 }
 
