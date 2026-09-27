@@ -45,6 +45,46 @@ static func allow(c: GenContext) -> PackedByteArray:
 
 
 ## Does landscape `cc` hold `kind` in a table from `allow` or `declared`.
+## The rectangle (ox, oy, w, h) of a world array; tiles outside the world 0.
+static func _cut_b(a: PackedByteArray, size: int, ox: int, oy: int, w: int, h: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(w * h)
+	for y in h:
+		var wy := oy + y
+		if wy >= 0 and wy < size:
+			for x in w:
+				var wx := ox + x
+				if wx >= 0 and wx < size:
+					out[y * w + x] = a[wy * size + wx]
+	return out
+
+
+static func _cut_i(a: PackedInt32Array, size: int, ox: int, oy: int, w: int, h: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	out.resize(w * h)
+	for y in h:
+		var wy := oy + y
+		if wy >= 0 and wy < size:
+			for x in w:
+				var wx := ox + x
+				if wx >= 0 and wx < size:
+					out[y * w + x] = a[wy * size + wx]
+	return out
+
+
+static func _cut_f(a: PackedFloat32Array, size: int, ox: int, oy: int, w: int, h: int) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(w * h)
+	for y in h:
+		var wy := oy + y
+		if wy >= 0 and wy < size:
+			for x in w:
+				var wx := ox + x
+				if wx >= 0 and wx < size:
+					out[y * w + x] = a[wy * size + wx]
+	return out
+
+
 static func holds(mask: PackedByteArray, cc: int, kind: int) -> bool:
 	return kind >= 0 and kind < PropKind.COUNT and mask[cc * PropKind.COUNT + kind] != 0
 
@@ -1408,31 +1448,87 @@ static func _string_line(c: GenContext, occ: PackedByteArray, kind: int, a: Vect
 		w.lines.append({"kind": kind, "props": ids})
 
 
+## A test's hook: set, `_scatter` keeps the occupancy it read and everything it
+## found (`kept`), for a section's scatter to be held to.
+static var keeping := false
+static var kept: Dictionary = {}
+
+
 static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
-	var w := c.w
 	var size := c.size
-	var s := c.s & 0xFFFFFFFF
-	var forest := c.forest
-	var rise := c.rise
-	var recipe := c.recipe
 	var fl := GenFields.batch(size, [
 		[GenFields.FIELD, GenFields.noise(c.s, 611, 1.0 / 11.0, 2), 2],
 		[GenFields.NOISE, GenFields.noise(c.s, 612, 1.0 / 26.0, 2), size, 1],
 	])
-	var clump := fl[0]
-	var fissure := fl[1]
+	var f := {"land": c.land, "water": c.water, "road": c.road, "village": c.village, "occ": occ,
+		"ground": c.w.ground, "level": c.w.level, "country": c.w.country, "country2": c.w.country2,
+		"blend": c.w.blend, "recipe": c.recipe, "forest": c.forest, "rise": c.rise, "sea_steps": c.sea_steps,
+		"clump": fl[0], "fissure": fl[1]}
+	var band := 12
+	var parts: Array[PackedFloat32Array] = []
+	parts.resize(ceili(float(size) / band))
+	# Candidates are found in parallel, one list per band, and added in row
+	# order: prop ids come out the same however the bands were scheduled.
+	GenFields.rows(size - 2, func(y0: int, y1: int) -> void:
+		parts[y0 / band] = _scatter_tiles(c, f, size, 0, 0, 2, maxi(y0, 2), size - 2, y1)
+	, band)
+	if keeping:
+		var all := PackedFloat32Array()
+		for part in parts:
+			all.append_array(part)
+		kept = {"occ": GenFields.snapshot(occ), "found": all}
+	for part in parts:
+		for j in range(0, part.size(), 4):
+			_add(c, int(part[j]), Vector2(part[j + 1], part[j + 2]), part[j + 3])
+
+
+## The scatter of one rectangle of the world (streamed worldgen S4j3d): what
+## `_scatter` finds on the tiles of `core`, in row order, as (kind, x, y, turn)
+## -- from a window of the world one tile wider all round (a tile reads its four
+## neighbours' level, water and road, and recipes their ground), with the two
+## noise fields made for that window alone. `occ` is the world's occupancy.
+static func scatter_rect(c: GenContext, occ: PackedByteArray, core: Rect2i) -> PackedFloat32Array:
+	var size := c.size
+	var ox := core.position.x - 1
+	var oy := core.position.y - 1
+	var width := core.size.x + 2
+	var height := core.size.y + 2
+	var f := {"land": _cut_b(c.land, size, ox, oy, width, height), "water": _cut_b(c.water, size, ox, oy, width, height),
+		"road": _cut_b(c.road, size, ox, oy, width, height), "village": _cut_b(c.village, size, ox, oy, width, height),
+		"occ": _cut_b(occ, size, ox, oy, width, height), "ground": _cut_b(c.w.ground, size, ox, oy, width, height),
+		"level": _cut_i(c.w.level, size, ox, oy, width, height), "country": _cut_b(c.w.country, size, ox, oy, width, height),
+		"country2": _cut_b(c.w.country2, size, ox, oy, width, height), "blend": _cut_f(c.w.blend, size, ox, oy, width, height),
+		"recipe": _cut_b(c.recipe, size, ox, oy, width, height), "forest": _cut_f(c.forest, size, ox, oy, width, height),
+		"rise": _cut_f(c.rise, size, ox, oy, width, height), "sea_steps": _cut_b(c.sea_steps, size, ox, oy, width, height),
+		"clump": GenFields.field_rect(GenFields.noise(c.s, 611, 1.0 / 11.0, 2), size, 2, ox, oy, width, height),
+		"fissure": GenFields.noise_rect(GenFields.noise(c.s, 612, 1.0 / 26.0, 2), ox, oy, width, height)}
+	return _scatter_tiles(c, f, width, ox, oy, maxi(core.position.x, 2), maxi(core.position.y, 2),
+		mini(core.end.x, size - 2), mini(core.end.y, size - 2))
+
+
+## The tile loop both share: the world's tiles x0..x1, y0..y1, read from arrays
+## `width` wide whose first tile is the world's (ox, oy).
+static func _scatter_tiles(c: GenContext, f: Dictionary, width: int, ox: int, oy: int, x0: int, y0: int, x1: int, y1: int) -> PackedFloat32Array:
+	var w := c.w
+	var s := c.s & 0xFFFFFFFF
+	var clump: PackedFloat32Array = f.clump
+	var fissure: PackedFloat32Array = f.fissure
+	var forest: PackedFloat32Array = f.forest
+	var rise: PackedFloat32Array = f.rise
+	var recipe: PackedByteArray = f.recipe
 	var sp := w.spawn
 	var face := Vector2.from_angle(w.spawn_facing)
-	var land := c.land
-	var water := c.water
-	var road := c.road
-	var village := c.village
-	var ground := w.ground
-	var level := w.level
-	var country := w.country
-	var country2 := w.country2
-	var blend := w.blend
-	var sea_steps := c.sea_steps
+	var land: PackedByteArray = f.land
+	var water: PackedByteArray = f.water
+	var road: PackedByteArray = f.road
+	var village: PackedByteArray = f.village
+	var occ: PackedByteArray = f.occ
+	var ground: PackedByteArray = f.ground
+	var level: PackedInt32Array = f.level
+	var country: PackedByteArray = f.country
+	var country2: PackedByteArray = f.country2
+	var blend: PackedFloat32Array = f.blend
+	var sea_steps: PackedByteArray = f.sea_steps
 	# DECLARED, not allowed: a landscape's `ore` is the authority on what is under
 	# it, and recipes roll it through `BiomeScatter.ore`. Checked against `props`
 	# alone, a declared ore not ALSO listed there was refused on every tile, and
@@ -1475,106 +1571,99 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 	var bearing := GenWorks.bearing(s)
 	var bd := Vector2.from_angle(bearing)
 	var bn := Vector2(-bd.y, bd.x)
-	var band := 12
-	var parts: Array[PackedFloat32Array] = []
-	parts.resize(ceili(float(size) / band))
-	# Candidates are found in parallel, one list per band, and added in row
-	# order: prop ids come out the same however the bands were scheduled.
-	GenFields.rows(size - 2, func(y0: int, y1: int) -> void:
-		var found := PackedFloat32Array()
-		var t := BiomeScatter.new()
-		# The types in play and the recipe change only where the land does:
-		# hand them over when they change, not once a tile.
-		var last_recipe := -1
-		var last_own := -1
-		var last_other := -1
-		var recipe_fn := recipes[0]
-		t.size = size
-		t.clump = clump
-		t.fissure = fissure
-		t.forest = forest
-		t.rise = rise
-		t.grounds = ground
-		t.sea_steps = sea_steps
-		t.levels = level
-		t.blends = blend
-		for y in range(maxi(y0, 2), y1):
-			var row := y * size
-			for x in range(2, size - 2):
-				var h := (x * 0x27d4eb2d + y * 0x165667b1 + s * 0x9e3779b1) & 0xFFFFFFFF
-				h = ((h ^ (h >> 15)) * 0x2c1b3c6d) & 0xFFFFFFFF
-				h = ((h ^ (h >> 12)) * 0x297a2d39) & 0xFFFFFFFF
-				h ^= h >> 15
-				var r := (h & 0xFFFF) / 65536.0
-				var i := row + x
-				var g := ground[i]
-				if land[i] == 0 or water[i] != 0 or road[i] != 0 or village[i] != 0 or occ[i] != 0:
+	var found := PackedFloat32Array()
+	var t := BiomeScatter.new()
+	# The types in play and the recipe change only where the land does:
+	# hand them over when they change, not once a tile.
+	var last_recipe := -1
+	var last_own := -1
+	var last_other := -1
+	var recipe_fn := recipes[0]
+	t.size = width
+	t.x0 = ox
+	t.y0 = oy
+	t.clump = clump
+	t.fissure = fissure
+	t.forest = forest
+	t.rise = rise
+	t.grounds = ground
+	t.sea_steps = sea_steps
+	t.levels = level
+	t.blends = blend
+	for y in range(y0, y1):
+		var row := (y - oy) * width - ox
+		for x in range(x0, x1):
+			var h := (x * 0x27d4eb2d + y * 0x165667b1 + s * 0x9e3779b1) & 0xFFFFFFFF
+			h = ((h ^ (h >> 15)) * 0x2c1b3c6d) & 0xFFFFFFFF
+			h = ((h ^ (h >> 12)) * 0x297a2d39) & 0xFFFFFFFF
+			h ^= h >> 15
+			var r := (h & 0xFFFF) / 65536.0
+			var i := row + x
+			var g := ground[i]
+			if land[i] == 0 or water[i] != 0 or road[i] != 0 or village[i] != 0 or occ[i] != 0:
+				continue
+			var over := r > reach[g]
+			var own := country[i]
+			# The same island its ground came from.
+			var cc := recipe[i]
+			var l := level[i]
+			# Nothing per-tile is written to the sample: see its header.
+			var up := maxi(maxi(level[i - 1], level[i + 1]), maxi(level[i - width], level[i + width])) - l
+			var wet := water[i - 1] != 0 or water[i + 1] != 0 or water[i - width] != 0 or water[i + width] != 0
+			if over and (up >= 2 or wet):
+				continue
+			if cc != last_recipe:
+				last_recipe = cc
+				t.def = defs[cc]
+				recipe_fn = recipes[cc]
+			if own != last_own:
+				last_own = own
+				t.own_def = defs[own]
+			var c2 := country2[i]
+			if c2 != last_other:
+				last_other = c2
+				t.other_def = defs[c2]
+			# What the land decides, then the landscape's own recipe, then
+			# the grounds every landscape reads the same way.
+			var kind := BiomeScatter.PASS
+			if not over and (up >= 2 or wet):
+				kind = BiomeScatter.first(t, g, r, up, wet)
+			if kind == BiomeScatter.PASS and recipe_fn.is_valid():
+				# A TYPE MAY DECLARE NO RECIPE, and one of the shipped types does
+				# not: the SEA, which holds index 0 and is not a landscape you
+				# walk. `recipe[i]` is the island a tile's ground came from, and
+				# a worldgen change that leaves one land tile's at 0 calls an
+				# invalid Callable and takes the whole scatter stage down —
+				# reported as a bare "script error" with no tile, no seed and no
+				# landscape named. Adding a landscape moves every island, so this
+				# is a trap laid for exactly the wave that adds them; it was hit
+				# on the first try. A type with no recipe falls through to the
+				# shared table, which is what having no recipe means.
+				kind = recipe_fn.call(t, i, g, r)
+			if kind == BiomeScatter.PASS:
+				if over:
 					continue
-				var over := r > reach[g]
-				var own := country[i]
-				# The same island its ground came from.
-				var cc := recipe[i]
-				var l := level[i]
-				# Nothing per-tile is written to the sample: see its header.
-				var up := maxi(maxi(level[i - 1], level[i + 1]), maxi(level[i - size], level[i + size])) - l
-				var wet := water[i - 1] != 0 or water[i + 1] != 0 or water[i - size] != 0 or water[i + size] != 0
-				if over and (up >= 2 or wet):
+				kind = BiomeScatter.shared(t, i, g, r)
+			if not holds(allow_mask, own, kind):
+				continue
+			if (road[i - 1] != 0 or road[i + 1] != 0 or road[i - width] != 0 or road[i + width] != 0) and solid[kind] > 0.0:
+				continue
+			var p := Vector2(x + 0.2 + ((h >> 24) & 0xFF) / 425.0, y + 0.2 + ((h >> 8) & 0xFF) / 425.0)
+			var rot := -1.0
+			if ruled[cc] != 0:
+				var mid := Vector2(x + 0.5, y + 0.5)
+				var q := bd * roundf(mid.dot(bd)) + bn * roundf(mid.dot(bn))
+				if floori(q.x) != x or floori(q.y) != y:
 					continue
-				if cc != last_recipe:
-					last_recipe = cc
-					t.def = defs[cc]
-					recipe_fn = recipes[cc]
-				if own != last_own:
-					last_own = own
-					t.own_def = defs[own]
-				var c2 := country2[i]
-				if c2 != last_other:
-					last_other = c2
-					t.other_def = defs[c2]
-				# What the land decides, then the landscape's own recipe, then
-				# the grounds every landscape reads the same way.
-				var kind := BiomeScatter.PASS
-				if not over and (up >= 2 or wet):
-					kind = BiomeScatter.first(t, g, r, up, wet)
-				if kind == BiomeScatter.PASS and recipe_fn.is_valid():
-					# A TYPE MAY DECLARE NO RECIPE, and one of the shipped types does
-					# not: the SEA, which holds index 0 and is not a landscape you
-					# walk. `recipe[i]` is the island a tile's ground came from, and
-					# a worldgen change that leaves one land tile's at 0 calls an
-					# invalid Callable and takes the whole scatter stage down —
-					# reported as a bare "script error" with no tile, no seed and no
-					# landscape named. Adding a landscape moves every island, so this
-					# is a trap laid for exactly the wave that adds them; it was hit
-					# on the first try. A type with no recipe falls through to the
-					# shared table, which is what having no recipe means.
-					kind = recipe_fn.call(t, i, g, r)
-				if kind == BiomeScatter.PASS:
-					if over:
-						continue
-					kind = BiomeScatter.shared(t, i, g, r)
-				if not holds(allow_mask, own, kind):
+				p = q
+				rot = fposmod(bearing + float(h & 3) * PI * 0.5, TAU)
+			if solid[kind] > 0.0:
+				var to := p - sp
+				if to.length_squared() < 9.0 or (to.length_squared() < 64.0 and to.normalized().dot(face) > 0.6):
 					continue
-				if (road[i - 1] != 0 or road[i + 1] != 0 or road[i - size] != 0 or road[i + size] != 0) and solid[kind] > 0.0:
-					continue
-				var p := Vector2(x + 0.2 + ((h >> 24) & 0xFF) / 425.0, y + 0.2 + ((h >> 8) & 0xFF) / 425.0)
-				var rot := -1.0
-				if ruled[cc] != 0:
-					var mid := Vector2(x + 0.5, y + 0.5)
-					var q := bd * roundf(mid.dot(bd)) + bn * roundf(mid.dot(bn))
-					if floori(q.x) != x or floori(q.y) != y:
-						continue
-					p = q
-					rot = fposmod(bearing + float(h & 3) * PI * 0.5, TAU)
-				if solid[kind] > 0.0:
-					var to := p - sp
-					if to.length_squared() < 9.0 or (to.length_squared() < 64.0 and to.normalized().dot(face) > 0.6):
-						continue
-				found.append(kind)
-				found.append(p.x)
-				found.append(p.y)
-				found.append(rot)
-		parts[y0 / band] = found
-	, band)
-	for part in parts:
-		for j in range(0, part.size(), 4):
-			_add(c, int(part[j]), Vector2(part[j + 1], part[j + 2]), part[j + 3])
+			found.append(kind)
+			found.append(p.x)
+			found.append(p.y)
+			found.append(rot)
+	return found
+

@@ -339,6 +339,20 @@ static func field_rect(n: FastNoiseLite, size: int, step: int, rx: int, ry: int,
 	return out
 
 
+## `batch`'s NOISE at step 1 over the tiles of one rectangle of the world, the
+## same values tile for tile: the noise asked at the same points, the rectangle's
+## first tile at (rx, ry).
+static func noise_rect(n: FastNoiseLite, rx: int, ry: int, rw: int, rh: int) -> PackedFloat32Array:
+	var m := n.duplicate() as FastNoiseLite
+	m.offset = Vector3(n.offset.x + rx, n.offset.y + ry, 0.0)
+	var img := m.get_image(rw, rh, false, false, false)
+	img.convert(Image.FORMAT_RF)
+	var out := img.get_data().to_float32_array()
+	for k in out.size():
+		out[k] = out[k] * 2.0 - 0.996078
+	return out
+
+
 ## A two-sweep propagation (a distance transform, a carve) run in bands of
 ## rows on the worker pool. sweep(arrays: Array, width: int) -> Array takes
 ## private copies of `arrays` covering a band plus `reach` rows either side
