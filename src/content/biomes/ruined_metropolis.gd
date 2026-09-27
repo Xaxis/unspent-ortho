@@ -262,7 +262,7 @@ static func _streets(L: Object) -> void:
 	# The demolition face first, before the streets take the room: the plan
 	# taking the city down, a gantry over the cut
 	# and the bales it sorted the rubble into, in a row along the bearing.
-	for n in GenWorks._n(c, 1.0):
+	for n in GenWorks._n(L, 1.0):
 		var s := GenWorks._site(L, 5, 2, [], 40.0, 700, 0.4)
 		if s.x < 0:
 			continue
