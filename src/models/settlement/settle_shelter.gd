@@ -261,6 +261,34 @@ static func _doorway_at(posts: Array) -> Vector3:
 ## What a holding lays by, kept up off the wet: a crib of boards on four legs,
 ## with a peaked lid over it and a basket standing by. Raised is the whole point
 ## — a store on the ground is a store the weather and the rats have already had.
+## A cellar: a square hole lined with laid stones, its lip a ring of them
+## proud of the ground, and a lid of dark seasoned boards on it -- one board
+## askew -- with a ladder head showing. Wrecked, the lid is torn off and lies
+## beside the open hole.
+static func cellar(k: MeshKit, v: int, ruined: bool) -> void:
+	Parts.hand(k)
+	var w := 0.5 + Parts.wob(v, 1) * 0.05
+	for i in 10:
+		var a := TAU * float(i) / 10.0 + Parts.wob(v, 10 + i) * 0.2
+		var r := w * (1.05 + Parts.wob(v, 20 + i) * 0.1)
+		Parts.stone(k, Vector3(cos(a) * r, 0.0, sin(a) * r), 0.13 + Parts.wob(v, 30 + i) * 0.04, v, 40 + i)
+	# The dark of the hole under it all.
+	k.quad(Vector3(-w * 0.8, 0.01, -w * 0.8), Vector3(-w * 0.8, 0.01, w * 0.8), Vector3(w * 0.8, 0.01, w * 0.8), Vector3(w * 0.8, 0.01, -w * 0.8), Color(0.04, 0.035, 0.05))
+	var dark: Array[Color] = [Color(0.22, 0.16, 0.11), Color(0.28, 0.2, 0.13), Color(0.18, 0.13, 0.09)]
+	var lid_y := 0.1
+	var off := Vector3(1.0, 0.0, 0.2) if ruined else Vector3.ZERO
+	for i in 5:
+		var z := lerpf(-w * 0.7, w * 0.7, float(i) / 4.0)
+		var skew := Parts.lean(v, 50 + i, 0.06) + (0.25 if i == 3 and not ruined else 0.0)
+		k.strut(off + Vector3(-w * 0.8, lid_y, z), off + Vector3(w * 0.8, lid_y + skew * 0.2, z + skew), 0.06, 4, dark[i % 3])
+	if not ruined:
+		for x: float in [-w * 0.5, w * 0.5]:
+			k.strut(Vector3(x, lid_y + 0.05, -w * 0.75), Vector3(x, lid_y + 0.05, w * 0.75), 0.035, 4, dark[1])
+		# The ladder's head, out of the hatch at one corner.
+		for z: float in [w * 0.35, w * 0.6]:
+			Parts.post(k, Vector3(w * 0.55, -0.2, z), Vector3(w * 0.55, 0.45, z), 0.022, Parts.pick(Parts.TIMBER, v, 60))
+
+
 static func store(k: MeshKit, v: int, ruined: bool) -> void:
 	Parts.hand(k)
 	var w := 0.4 + Parts.wob(v, 1) * 0.06

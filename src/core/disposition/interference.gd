@@ -45,7 +45,23 @@ const CAUSES := {
 	# player is a body the network has had in its hands. Less than a theft, so a
 	# bad night does not turn a region on its own; enough that a second one does.
 	&"downed": 0.09,
+	# BUILDING IS NOTICED (SETTLE.md S2): each piece that goes up in a region, by
+	# how loud it is (StructureKind.loudness, the `scale` of `raise`). A lean-to
+	# is 0.02 and a turret about 0.06: a holding grown loud turns a region wary on
+	# its own, which is the price of the comfort, seen as it is paid.
+	&"built": 0.02,
+	# A RELIC CARRIED IS HEAT (GEAR.md G9): a keeper's power, or anything of the
+	# grade, worn is a found-tech signature the network reads, PER RELIC PER HOUR
+	# (the `scale` of `raise`, which 32_disposition hands the hours and the count).
+	# A third of a region's own cooling (DECAY_PER_HOUR): one relic slows a file
+	# going cold, three hold it where it is, and four warm a calm region to wary
+	# on their own in about nine hours. Three hours of one relic is what a stolen
+	# cell raised in a holding files once (`built` x its loudness, about 0.09).
+	&"carried": 0.03,
 }
+## Causes every instance of which counts, however close the last: a second
+## piece built within SAME_CAUSE_GAP is a second piece, not the same news.
+const UNGAPPED: Array[StringName] = [&"built", &"carried"]
 
 ## VIOLENCE HAS A SOCIAL PRICE, AND THE PRICE IS WHO SAW IT. The same blow is one
 ## machine's word for it in an empty bog and a street's worth of filings in a
@@ -184,14 +200,14 @@ func level_name(net: int) -> StringName:
 ## Raise a network by a cause. Returns how much it actually rose (0 when the
 ## same cause has already counted recently). `witnesses` is how many people
 ## watched it happen, which multiplies the causes a crowd can see (WITNESSED).
-func raise(net: int, cause: StringName, at: Vector2, minutes: float, witnesses: int = 0) -> float:
-	var add: float = CAUSES.get(cause, 0.0)
+func raise(net: int, cause: StringName, at: Vector2, minutes: float, witnesses: int = 0, scale: float = 1.0) -> float:
+	var add: float = CAUSES.get(cause, 0.0) * maxf(0.0, scale)
 	if add <= 0.0:
 		return 0.0
 	if witnesses > 0 and WITNESSED.has(cause):
 		add *= witness_scale(witnesses)
 	var key := "%d|%s" % [net, cause]
-	if counted.has(key) and minutes - float(counted[key]) < SAME_CAUSE_GAP:
+	if not UNGAPPED.has(cause) and counted.has(key) and minutes - float(counted[key]) < SAME_CAUSE_GAP:
 		return 0.0
 	counted[key] = minutes
 	var before := value(net)

@@ -141,6 +141,43 @@ func test_a_glide_needs_a_height_and_carries_you_off_it() -> void:
 	Fx.done(g)
 
 
+## Off a drop deeper than the wing's whole span of falling (FALL x SECONDS), the
+## glide runs out in the air: the body falls out of it the rest of the way down,
+## never put on the ground in one frame.
+func test_a_glide_off_a_deep_drop_falls_out_of_the_air() -> void:
+	# Level 24 to the west, level 1 east: 11.5 units down, three times the span.
+	var w := WorldData.new(13, 60)
+	for y in 60:
+		for x in 60:
+			var i := y * 60 + x
+			var rim := x == 0 or y == 0 or x == 59 or y == 59
+			w.level[i] = -1 if rim else (24 if x < 12 else 1)
+			w.ground[i] = Ground.DEEP_WATER if rim else Ground.GRASS
+			w.country[i] = Country.SEA if rim else Country.COAST
+	w.spawn = Vector2(10.5, 30.5)
+	var g := Fx.from_world(w)
+	gt((w.height_at(g.player.pos) - w.height_at(Vector2(40.5, 30.5))), AbilityGlide.FALL * AbilityGlide.SECONDS * 2.0, "deeper than the wing falls")
+	var m := AbilityMotion.glide(g.player.pos, Vector2.RIGHT, AbilityGlide.SPEED, AbilityGlide.FALL,
+		AbilityGlide.SECONDS, w.height_at(g.player.pos))
+	var p := g.player.pos
+	var y := w.height_at(p)
+	var worst := 0.0
+	var dt := 1.0 / 60.0
+	for i in 1200:
+		p = m.step(dt, p, w, g.query, Tuning.PLAYER_RADIUS)
+		var now_y := w.height_at(p) + m.lift
+		worst = maxf(worst, y - now_y)
+		y = now_y
+		if m.finished:
+			break
+	check(m.finished, "it comes down")
+	near(m.lift, 0.0, 1e-6, "onto the ground")
+	eq(w.level_at(floori(p.x), floori(p.y)), 1, "at the foot of the drop")
+	lt(worst, 0.5, "and no frame drops the body more than a fall would (worst %.2f units)" % worst)
+	lt(m.t, AbilityGlide.SECONDS + 2.0, "falling out is quick")
+	Fx.done(g)
+
+
 ## A wing over the sea is the obvious way to drown a player, so it may not end a
 ## flight anywhere a body cannot stand: it skims until there is ground, and when
 ## everything has run out it is set down ashore.
@@ -283,3 +320,130 @@ func test_the_gear_page_reads_the_book() -> void:
 	check(not bool(warm[0].ready), "a warm one does not")
 	check(String(warm[0].note).ends_with("s"), "and says how long")
 	Fx.done(g)
+
+
+## A dart is not there to be fought (tests/fight/test_matchups.gd leaves it
+## out): a scan that reads one says what its answer is. Nothing else is read.
+func test_a_scan_says_what_answers_a_dart() -> void:
+	eq(AbilityScan.advice(Roster.row(&"warden")), "It takes and goes. Break its sight.", "a warden's read")
+	eq(AbilityScan.advice(Roster.row(&"cutter")), "", "a machine that fights gets no advice")
+
+
+## A wing under rock (docs/ABOVE.md §2, fliers): a body in the air never has any
+## of its height inside the mass hanging over it.
+func _glide_clear_of_rock(w: WorldData, start: Vector2, dir: Vector2) -> Dictionary:
+	w.spawn = start
+	var g := Fx.from_world(w)
+	var m := AbilityMotion.glide(g.player.pos, dir, AbilityGlide.SPEED, AbilityGlide.FALL,
+		AbilityGlide.SECONDS, w.height_at(g.player.pos))
+	var p := g.player.pos
+	var inside := 0
+	var worst := 0.0
+	var furthest := p.x
+	var drawn := w.height_at(p)
+	var snap := 0.0
+	for i in 4000:
+		p = m.step(1.0 / 60.0, p, w, g.query, Tuning.PLAYER_RADIUS)
+		furthest = maxf(furthest, p.x)
+		# Where the body is drawn (54_gear: the land plus `lift`) never jumps.
+		var now := w.height_at(p) + m.lift
+		# Past the launch, where the wing takes LAUNCH_LIFT on purpose.
+		if i > 0:
+			snap = maxf(snap, absf(now - drawn))
+		drawn = now
+		var o := w.overhead_at(floori(p.x), floori(p.y))
+		if o.x >= 0 and not m.finished:
+			var body := m.height
+			var under := o.x * WorldData.STEP
+			var top := o.y * WorldData.STEP
+			var dig := minf(body + Tuning.PLAYER_HEIGHT, top) - maxf(body, under)
+			if dig > 0.01:
+				inside += 1
+				worst = maxf(worst, dig)
+		if m.finished:
+			break
+	var out := {"inside": inside, "worst": worst, "end": p, "finished": m.finished, "lift": m.lift,
+		"stands": g.query.standable(floori(p.x), floori(p.y)), "furthest": furthest, "snap": snap}
+	Fx.done(g)
+	return out
+
+
+## A ledge at level 12 (x < 12), a hall at level 2 beyond it, all of it under one
+## roof from level `under` up to level 30 (the ledge's own tiles open above).
+static func _hall(under: int, from_x: int = 12) -> WorldData:
+	var w := WorldData.new(12, 60)
+	for y in 60:
+		for x in 60:
+			var i := y * 60 + x
+			w.level[i] = 12 if x < 12 else 2
+			w.ground[i] = Ground.GRASS
+			w.country[i] = Country.COAST
+			if x >= from_x and x < 58 and y > 0 and y < 59:
+				w.set_overhead(x, y, under, 30)
+	return w
+
+
+func test_a_glide_under_a_roof_is_held_under_it() -> void:
+	# One roof over ledge and hall: its underside at level 20 (10 units) over the
+	# ledge and the first four tiles out, then down to level 10 (5 units). Off
+	# the ledge at 6 units the wing meets that lower underside higher than it fits
+	# under, is let down at the lip, and flies on beneath it; never in the rock.
+	var w := _hall(10, 16)
+	for y in range(1, 59):
+		for x in range(1, 16):
+			w.set_overhead(x, y, 20, 30)
+	var r := _glide_clear_of_rock(w, Vector2(10.5, 30.5), Vector2.RIGHT)
+	eq(int(r.inside), 0, "no frame of the flight has the body in the rock (worst %.2f)" % float(r.worst))
+	check(bool(r.finished) and bool(r.stands), "and it comes down on the hall floor at %s" % r.end)
+	gt(float(r.furthest), 18.0, "having flown on under the lower roof, not stopped at its lip")
+	lt(float(r.snap), 0.3, "let down under the lip, never dropped to it (worst %.2f in a frame)" % float(r.snap))
+
+
+func test_a_glide_never_enters_a_gap_too_low_for_the_body() -> void:
+	# The underside at level 4 (2 units) over a floor at 1 unit: 1.0 of room for a
+	# 1.8 body. The wing stops at the rock and puts the body down short of it.
+	var r := _glide_clear_of_rock(_hall(4, 20), Vector2(10.5, 30.5), Vector2.RIGHT)
+	eq(int(r.inside), 0, "never in the rock (worst %.2f)" % float(r.worst))
+	lt(float(r.furthest), 20.0, "never into the crawlway")
+	check(bool(r.finished) and bool(r.stands), "set down on ground short of it, at %s" % r.end)
+	near(float(r.lift), 0.0, 1e-6, "on the ground, not hanging")
+	lt(float(r.snap), 0.3, "sinking there, never dropped to it in a frame")
+
+
+func test_a_glide_over_a_roof_is_not_set_down_on_it_or_under_it() -> void:
+	# A cliff at level 24 (x < 12), a roof from level 4 up to level 20 beyond it
+	# over a floor at level 2: the wing skims the roof's top, which nothing stands
+	# on yet, and never drops through it into the hall.
+	var w := WorldData.new(12, 60)
+	for y in 60:
+		for x in 60:
+			var i := y * 60 + x
+			w.level[i] = 24 if x < 12 else 2
+			w.ground[i] = Ground.GRASS
+			w.country[i] = Country.COAST
+			if x >= 12 and x < 58 and y > 0 and y < 59:
+				w.set_overhead(x, y, 4, 20)
+	var r := _glide_clear_of_rock(w, Vector2(10.5, 30.5), Vector2.RIGHT)
+	eq(int(r.inside), 0, "never in the rock (worst %.2f)" % float(r.worst))
+	check(bool(r.finished), "the flight ends")
+	var end: Vector2 = r.end
+	check(w.overhead_at(floori(end.x), floori(end.y)).x < 0, "not set down on the roof or in the hall under it, at %s" % end)
+
+
+func test_a_glide_capped_under_a_roof_still_falls_out_of_the_air() -> void:
+	# A ledge at level 30 (15 units) over a hall at level 2, under a roof from
+	# level 32 (16 units): the cap holds the wing at 14.2 from the first step,
+	# and six seconds of it leaves the body 10 units up, so it falls out.
+	var w := WorldData.new(12, 60)
+	for y in 60:
+		for x in 60:
+			var i := y * 60 + x
+			w.level[i] = 30 if x < 12 else 2
+			w.ground[i] = Ground.GRASS
+			w.country[i] = Country.COAST
+			if x >= 12 and x < 58 and y > 0 and y < 59:
+				w.set_overhead(x, y, 32, 40)
+	var r := _glide_clear_of_rock(w, Vector2(10.5, 30.5), Vector2.RIGHT)
+	eq(int(r.inside), 0, "held under the roof all the way (worst %.2f)" % float(r.worst))
+	check(bool(r.finished) and bool(r.stands), "and down on the hall floor at %s" % r.end)
+	lt(float(r.snap), 0.5, "falling out of the air, never dropped (worst %.2f in a frame)" % float(r.snap))

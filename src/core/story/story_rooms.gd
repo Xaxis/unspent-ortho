@@ -20,8 +20,12 @@ const STAND := 0.95
 const SOLID := 0.4
 
 
-## `SLOT:THING`: the slot's kind and the kind of the thing in the room nearest it.
+## `SLOT:THING`: the slot's kind and the kind of the thing in the room nearest it
+## -- or the slot's own `thing`, where a recipe names what its slot stands for
+## (a home's `desk:home`, whatever the household keeps on it).
 static func key_of(l: InteriorLayout, slot: Dictionary) -> StringName:
+	if slot.has("thing"):
+		return StringName("%s:%s" % [slot.get("slot", &""), slot.thing])
 	var at: Vector2 = slot.get("at", Vector2.INF)
 	var best: StringName = &""
 	var bd := INF
@@ -38,20 +42,50 @@ static func key_of(l: InteriorLayout, slot: Dictionary) -> StringName:
 ## door keeps (`room_of`). Where a row offers several, the door deals where to
 ## start and each further slot of the same key takes the next, so one house never
 ## holds the same words twice.
-static func held(room: StringName, door: String, l: InteriorLayout, i: int) -> StringName:
+##
+## Only the words written for THIS room are dealt from: a fragment's `lands`
+## (empty, any) must hold the landscape the door stands in, `land` (-1, the
+## coast's own), and its `households` (empty, any) the household the room was
+## laid for (`l.dressing`). Filtered before the deal, so the deal stays the
+## door's and never lands on a line from another landscape's house.
+static func held(room: StringName, door: String, l: InteriorLayout, i: int, land: int = -1) -> StringName:
 	if i < 0 or i >= l.slots.size():
 		return &""
-	var rows: Dictionary = StoryContent.ROOMS.get(room, {})
-	var key := key_of(l, l.slots[i])
-	var ids: Array = rows.get(key, [])
+	var ids := words_for(room, key_of(l, l.slots[i]), land, l.dressing)
 	if ids.is_empty():
 		return &""
+	var key := key_of(l, l.slots[i])
 	var nth := 0
 	for j in i:
 		if key_of(l, l.slots[j]) == key:
 			nth += 1
 	var start := int(Rng.hash01(door.hash(), SALT) * float(ids.size()))
 	return ids[(start + nth) % ids.size()]
+
+
+## The ids of `room`'s row at `key` written for a room in `land` kept by
+## `household` (see `held`).
+static func words_for(room: StringName, key: StringName, land: int, household: StringName) -> Array:
+	var rows: Dictionary = StoryContent.ROOMS.get(room, {})
+	var here := String(BiomeRegistry.by_index(land).id) if land >= 0 and BiomeRegistry.by_index(land) != null else "coast"
+	var out: Array = []
+	for id: Variant in rows.get(key, []):
+		var f: Dictionary = StoryContent.FRAGMENTS.get(id, {})
+		var lands: Array = f.get("lands", [])
+		var hh: Array = f.get("households", [])
+		if not lands.is_empty() and not _holds(lands, here):
+			continue
+		if not hh.is_empty() and not _holds(hh, String(household)):
+			continue
+		out.append(id)
+	return out
+
+
+static func _holds(names: Array, name: String) -> bool:
+	for n: Variant in names:
+		if String(n) == name:
+			return true
+	return false
 
 
 ## Whether a fragment belongs to a kind of room and is never dealt anywhere else.

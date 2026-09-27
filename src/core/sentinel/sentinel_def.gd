@@ -37,6 +37,10 @@ var ways: Array[SentinelWay] = []
 ## this keeper gives (src/core/loot/materials.gd).
 var drops: StringName = &""
 var core: StringName = &""
+## Its come-round, in words (Sentinels.come_round_of is the blow): what it does
+## when a body keeps to its flank or back inside its reach, so circling it is a
+## strategy it answers and not a dead end. Each keeper's own flavour of it.
+var come_round := ""
 ## What is left where it stood once it has fallen: a hulk in the land, salvageable,
 ## saved with the world (PropKind). -1 for nothing.
 var hulk := -1

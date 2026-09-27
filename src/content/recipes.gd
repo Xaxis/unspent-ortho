@@ -153,6 +153,9 @@ const LIST: Array[Dictionary] = [
 	{"id": &"hook_varnish", "at": &"bench", "minutes": 90.0, "needs": {&"boathook": 1, &"frost_varnish": 1, &"pitch": 1}, "makes": {&"hook_varnish": 1}},
 	# The grapple brace re-cabled with the city's own rope: a vertical city is
 	# where you climb (GearTree family `brace`).
+	{"id": &"cloak_vane", "at": &"bench", "minutes": 150.0, "needs": {&"vane_true": 1, &"rag": 3, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"cloak_vane": 1}},
+	{"id": &"wrap_hush", "at": &"bench", "minutes": 90.0, "needs": {&"wrap_warm": 1, &"hush_slate": 1, &"rag": 2}, "makes": {&"wrap_hush": 1}},
+	{"id": &"coat_scale", "at": &"bench", "minutes": 140.0, "needs": {&"oilskin": 1, &"tide_iron": 2, &"rag": 2}, "makes": {&"coat_scale": 1}},
 	{"id": &"brace_cable", "at": &"bench", "minutes": 100.0, "needs": {&"boots_magnet": 1, &"tower_cable": 1, &"rag": 1}, "makes": {&"brace_cable": 1}},
 	# The glide wing re-strung with the mesas' span wire (GearTree family
 	# `wing`): the wing that goes into it is the wing that comes out, stiffer.
@@ -212,6 +215,13 @@ const LIST: Array[Dictionary] = [
 	{"id": &"mod_leech", "at": &"bench", "minutes": 140.0, "needs": {&"clerk_die": 1, &"copper": 2, &"wick": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_leech": 1}},
 	{"id": &"mod_phase", "at": &"bench", "minutes": 145.0, "needs": {&"keeper_lens": 1, &"copper": 2, &"resin": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_phase": 1}},
 	{"id": &"mod_lattice", "at": &"bench", "minutes": 150.0, "needs": {&"scrap": 3, &"copper": 2, &"wick": 2, &"fulgurite_core": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_lattice": 1}},
+	{"id": &"mod_anchor", "at": &"bench", "minutes": 180.0, "needs": {&"anchor_core": 1, &"scrap": 3, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_anchor": 1}},
+	{"id": &"mod_lock", "at": &"bench", "minutes": 180.0, "needs": {&"lockkeeper_core": 1, &"scrap": 2, &"copper": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_lock": 1}},
+	{"id": &"mod_listen", "at": &"bench", "minutes": 180.0, "needs": {&"listener_core": 1, &"copper": 2, &"rag": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_listen": 1}},
+	{"id": &"mod_plumb", "at": &"bench", "minutes": 180.0, "needs": {&"plumb_core": 1, &"copper": 2, &"scrap": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_plumb": 1}},
+	{"id": &"mod_unbuild", "at": &"bench", "minutes": 180.0, "needs": {&"unbuilder_core": 1, &"copper": 2, &"scrap": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_unbuild": 1}},
+	{"id": &"mod_rake", "at": &"bench", "minutes": 180.0, "needs": {&"rake_core": 1, &"scrap": 3, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_rake": 1}},
+	{"id": &"mod_undertow", "at": &"bench", "minutes": 180.0, "needs": {&"reaper_core": 1, &"copper": 2, &"scrap": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_undertow": 1}},
 	# --- Crafts (docs/VISION.md) ---
 	# A raft is lashed at the shore out of what the tide brings and one drum off a
 	# wreck: the first craft, reachable on day one. The mended two need a bench,

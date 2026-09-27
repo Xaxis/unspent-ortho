@@ -135,6 +135,15 @@ static func make() -> BiomeDef:
 		&"skater": {"weight": 0.8, "hours": Vector2(9, 19), "grounds": ["rock", "salt"]},
 	}
 	d.landmarks = [&"cast_stones", &"evaporator", &"blinking_stack", &"poured_pillar"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
+	# Who kept them: the knapper, who knaps the fused plate into blades, and the
+	# stiller, who draws water through glass.
+	d.home = {"households": {
+		&"knapper": {"wants": [&"glass_blades", &"basket", &"shelf", &"coil"], "by_hearth": []},
+		&"stiller": {"wants": [&"glass_still", &"jars", &"jars", &"basket"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+	}}
 	# Its keeper: the anvil, the mast the strike fields are called through
 	# (src/core/sentinel/designs/anvil.gd, docs/LANDSCAPES.md).
 	d.sentinel = &"anvil"

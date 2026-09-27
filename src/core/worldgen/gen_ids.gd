@@ -24,7 +24,7 @@ static func run(w: WorldData) -> void:
 	for k in sections:
 		start[k + 1] = start[k] + count[k]
 		assert(count[k] < (1 << WorldData.ORDINAL_BITS), "a section holds more props than an ordinal counts")
-	var fill := start.duplicate()
+	var fill: PackedInt32Array = GenFields.snapshot(start)
 	var out: Array[WorldProp] = []
 	out.resize(w.props.size())
 	var new_id := PackedInt32Array()

@@ -4,7 +4,9 @@ extends GameSystem
 ##
 ## It holds the record and nothing else. The raids package puts somebody on it
 ## when a snatcher walks out of a yard; the works package's own signal takes them
-## off it when the depot goes dark. Neither keeps a copy, so there is one answer
+## off it when the depot goes dark or the region's keeper falls, and whoever gets
+## back to a standing holding is on its books again (SETTLE.md S6, and
+## docs/STORY.md on what the plan does with people it carries). Neither keeps a copy, so there is one answer
 ## to "is anybody still being held here" and no two halves of the game can
 ## disagree about it.
 ##
@@ -18,10 +20,11 @@ var taken := Taken.new()
 func setup(g: Game) -> void:
 	super.setup(g)
 	SaveGame.register(&"taken", _save, _load)
-	# The one act that frees anybody: the yard that was holding them going dark.
-	# It is the works package's own signal, so nothing here has to know what a
-	# depot is or watch for one being broken.
+	# The two acts that end the plan in a region free anybody it holds there: the
+	# yard going dark, or the keeper falling. Both are their packages' own signals,
+	# so nothing here has to know what a depot or a keeper is.
 	Events.works_broken.connect(_on_works_broken)
+	Events.sentinel_fell.connect(_on_sentinel_fell)
 
 
 ## A world where the plan is already holding people (`--carried=N`), so a tour or
@@ -34,10 +37,19 @@ func setup(g: Game) -> void:
 ## yard to put dark, and somebody left who knew them. Where that yard is, and
 ## which village, is answered by name (`49_story.tour_place`: `yard`, `asker`),
 ## never by an index a tour file would have to guess.
+##
+## With `--holding` too, they are the staged holding's own residents, taken off
+## its books the way a raid's snatcher does it, so a tour can walk one home to
+## it (tours/taken_home.tour, SETTLE.md S6). Staged a frame late for that: the
+## holding is stood up by 46_settlements, which starts after this.
 func started() -> void:
 	var want: int = game.options.carried if game.options != null else 0
 	if want <= 0 or game.world == null or not taken.people.is_empty():
 		return
+	call_deferred(&"_stage", want)
+
+
+func _stage(want: int) -> void:
 	var region := -1
 	var home := ""
 	for w: WorksSite in Works.sites(game.world):
@@ -54,6 +66,15 @@ func started() -> void:
 		return
 	# Silent: it happened before the game opened, and the glass says what is
 	# happening now. The line itself is proved where it is really said.
+	var holdings := _holdings_system()
+	if holdings != null:
+		for s: Settlement in holdings.get("places"):
+			while want > 0 and not s.people.is_empty():
+				var who: int = s.people[0]
+				holdings.call("lose_person", s, who)
+				@warning_ignore("return_value_discarded")
+				taken.take(who, "", s.id, s.name, region, game.clock.minutes - 600.0 if game.clock != null else 0.0)
+				want -= 1
 	for i in want:
 		@warning_ignore("return_value_discarded")
 		taken.take(-1, "", -1, home, region, game.clock.minutes - 600.0 if game.clock != null else 0.0)
@@ -79,6 +100,16 @@ func took(who: int, person_name: String, home: int, home_name: String, region: i
 ## half of a chapter's DEFENDED and that quiets the region for good: one thing
 ## done, three things it means.
 func _on_works_broken(region: int, _land: StringName) -> void:
+	_free(region)
+
+
+## The keeper is down: nothing is left to tell the depot anything, and nothing
+## told it to keep them either.
+func _on_sentinel_fell(region: int, _land: StringName, _how: StringName) -> void:
+	_free(region)
+
+
+func _free(region: int) -> void:
 	var out := taken.free_region(region)
 	if out.is_empty():
 		return
@@ -89,6 +120,12 @@ func _on_works_broken(region: int, _land: StringName) -> void:
 	# A line that says the opposite of what the player can see is worse than no
 	# line, because the next person believes the line.
 	_start_walk(out)
+	# Whoever nobody walks takes the road home by themselves (`freed`), and a
+	# holding that still stands has them back on its books. Only holdings are
+	# asked: a village door keeps no count.
+	for t in out:
+		if not t.walking:
+			_come_home(t, Escort.destination(_holdings(), [], t))
 	var names := PackedStringArray()
 	for t in out:
 		if t.walking:
@@ -189,6 +226,7 @@ func _end_walk(home: bool, at: Vector2, by: StringName) -> void:
 		folk.call(&"led_done", _led)
 	if home:
 		taken.arrive(_led_who)
+		_come_home(_led_who, _led_who.home_at)
 		_say(&"home", Taken.say(_led_who))
 	else:
 		taken.lose(_led_who, at, by)
@@ -198,6 +236,37 @@ func _end_walk(home: bool, at: Vector2, by: StringName) -> void:
 	_led = -1
 	_led_who = null
 	_behind = 0.0
+
+
+## Put them back on a holding's books (46_settlements `come_home`). A village
+## door needs nothing: the village was never keeping count.
+func _come_home(t: Taken.TakenPerson, at: Vector2) -> void:
+	var holdings := _holdings_system()
+	if holdings != null:
+		@warning_ignore("return_value_discarded")
+		holdings.call(&"come_home", t.home, at, t.who)
+
+
+func _holdings_system() -> Object:
+	for sys in game.systems:
+		if sys.has_method(&"come_home") and sys.get("places") is Array:
+			return sys
+	return null
+
+
+## `taken:home`: beside the holding the first person carried off from one was
+## taken from, for a tour that walks them back to it.
+func tour_place(what: String) -> Vector2:
+	if what != "taken:home":
+		return Vector2.INF
+	var holdings := _holdings_system()
+	if holdings == null:
+		return Vector2.INF
+	for t in taken.people:
+		for s: Settlement in holdings.get("places"):
+			if s.id == t.home:
+				return s.centre + Vector2(2.5, 1.5)
+	return Vector2.INF
 
 
 ## The nearest hostile machine that is close enough to take them, or &"".

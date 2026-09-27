@@ -759,4 +759,7 @@ static func _put(c: GenContext, kind: int, p: Vector2) -> void:
 		if maxf(absf(p.x - shaft.pos.x), absf(p.y - shaft.pos.y)) <= Portals.HOLD + 0.5:
 			return
 	var id := w.props.size()
-	w.props.append(WorldProp.new(id, kind, p, GenFields.h01(c.s, id, kind, 77) * TAU, 0.8 + GenFields.h01(c.s, id, kind, 78) * 0.4))
+	# Turn and scale from where it lies, as GenScatter._add's (S4b).
+	var px := roundi(p.x * 256.0)
+	var py := roundi(p.y * 256.0)
+	w.props.append(WorldProp.new(id, kind, p, Rng.hash01(c.s, px, py, kind, 0, 77) * TAU, 0.8 + Rng.hash01(c.s, px, py, kind, 0, 78) * 0.4))

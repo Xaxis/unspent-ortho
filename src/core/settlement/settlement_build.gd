@@ -11,6 +11,9 @@ const JOIN := 26.0
 ## around it.
 const AHEAD := 1.4
 const CLEARANCE := 0.25
+## What a piece that wants a keeper's core says without one: what would unlock
+## it, not what it is short of (SETTLE.md S5).
+const NEEDS_CORE_LINE := "A keeper's core would power it."
 
 
 ## What `inv` is short of for `kind`: {item id: how many more}. Empty means all in
@@ -28,7 +31,19 @@ static func missing(inv: Inventory, kind: int) -> Dictionary:
 
 
 static func can_make(inv: Inventory, kind: int) -> bool:
-	return StructureKind.buildable(kind) and missing(inv, kind).is_empty()
+	return StructureKind.buildable(kind) and missing(inv, kind).is_empty() and \
+		(StructureKind.needs_one(kind).is_empty() or reward_held(inv, kind) != &"")
+
+
+## The first of `kind`'s `needs_one` rewards in `inv`, or &"" (none held, or none
+## asked for).
+static func reward_held(inv: Inventory, kind: int) -> StringName:
+	if inv == null:
+		return &""
+	for id: StringName in StructureKind.needs_one(kind):
+		if inv.count(id) > 0:
+			return id
+	return &""
 
 
 ## "" when it can go up, else one plain line. The words are the player's, not the
@@ -36,6 +51,8 @@ static func can_make(inv: Inventory, kind: int) -> bool:
 static func why_not(inv: Inventory, kind: int) -> String:
 	if not StructureKind.buildable(kind):
 		return "Nobody knows how to build that yet."
+	if not StructureKind.needs_one(kind).is_empty() and reward_held(inv, kind) == &"":
+		return NEEDS_CORE_LINE
 	var short := missing(inv, kind)
 	if short.is_empty():
 		return ""
@@ -53,6 +70,10 @@ static func take_cost(inv: Inventory, kind: int) -> bool:
 	for id: StringName in StructureKind.cost(kind):
 		@warning_ignore("return_value_discarded")
 		inv.remove(id, int(StructureKind.cost(kind)[id]))
+	var reward := reward_held(inv, kind)
+	if reward != &"":
+		@warning_ignore("return_value_discarded")
+		inv.remove(reward, 1)
 	return true
 
 

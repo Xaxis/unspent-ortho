@@ -27,12 +27,18 @@
 //   CUSTOM0    rgb = second wash for an ecotone or ground edge, a = weight (0..1)
 //   UV.x       landscape hand, style1 + style2 * 16. The hatch it used to pick
 //              is gone; works_mark and survey_mark still read it to tell one
-//              landscape's ground from another's.   UV.y  weight of that edge
+//              landscape's ground from another's.   UV.y  weight of that edge;
+//              on the rim and underside of mass hung over the ground, minus the
+//              height of that mass's top, the lip its strata hang from
 //   UV2.x      wind sway weight (0 = rigid)
 //   CUSTOM1.x  on a building raised in storeys, 1 + its height in storeys (0 = none)
 //   UV2.y      sway phase when swaying; on rigid geometry, how much the wash
 //              breaks into large organic light/dark patches (0..1). Terrain
-//              writes 2 + the second wash's mark code (patches at full).
+//              writes 2 + the second wash's mark code (patches at full),
+//              +256 when its keys are the other way round, and +512 on the top
+//              of mass hanging over the ground (TerrainMesher SPAN_LIFTED):
+//              no feet, wheels or survey ever touched it, so none of the
+//              ground's wear, trampling or works are drawn there.
 shader_type spatial;
 render_mode cull_back;
 
@@ -47,8 +53,57 @@ render_mode cull_back;
 // six points as (x, ground y, z, reach in tiles), reach 0 for an unused slot.
 // Leaves and crowns above a point thin out to stipple and then to nothing
 // within its reach, so the player and any body they can see are never covered.
+// Roughness a cave wall gains once its ripples are under a pixel (specular
+// aliasing; the M_STRATA_CAVE branch below says why).
+const float CAVE_FAR_ROUGH = 0.5;
 const int CROWN_CLEAR = 6;
 uniform vec4 crown_clear[CROWN_CLEAR];
+// GROUND ABOVE THE GROUND (AboveMap, 43_above; docs/ABOVE.md S2, LOOK law 3).
+// `above_map`, one texel a tile over `above_rect` (origin, size in tiles): R
+// mass overhead, G+B*256 the connected mass's id (spread a tile past it), A its
+// underside's level. `above_cut`: (the id cut, the section plane's height, the
+// share of the cut drawn, unused). Mass hung over the ground is architecture:
+// from above, the mass the player is under is drawn cut at the plane with an
+// inked cap, never stippled open; the ground under any mass is in its shade.
+uniform sampler2D above_map : filter_nearest, repeat_disable;
+uniform vec4 above_rect = vec4(0.0);
+uniform vec4 above_cut = vec4(0.0);
+// How far over the plane the cut starts as it eases in (it comes down from
+// over the mass), how deep the inked cap is, and how dark the shade under mass.
+const float ABOVE_SWEEP = 12.0;
+const float ABOVE_CAP = 0.14;
+// Dashes a tile along the overhead outline.
+const float ABOVE_DASH = 1.6;
+const float ABOVE_SHADE = 0.55;
+const vec3 ABOVE_INK = vec3(0.07, 0.06, 0.06);
+const vec3 ABOVE_CHALK = vec3(0.78, 0.76, 0.69);
+// The section's cut face (TerrainMesher's section sheet): cut stone hatched in
+// ink, as a plan hatches what the section plane cuts. The ring a wholly-over
+// mass shows is where its cover is under ABOVE_RING (about half a tile in from
+// its edge).
+const vec3 ABOVE_STONE = vec3(0.30, 0.28, 0.26);
+const float ABOVE_HATCH = 5.5;
+const float ABOVE_RING = 0.93;
+
+// How much of the ground at `at` (tiles into above_rect) mass hangs over,
+// smoothly across tiles, and the highest underside round it (world height).
+vec2 above_cover(vec2 at) {
+	vec2 g = at - 0.5;
+	ivec2 i0 = ivec2(floor(g));
+	vec2 f = fract(g);
+	ivec2 hi = ivec2(above_rect.zw) - 1;
+	vec4 a = texelFetch(above_map, clamp(i0, ivec2(0), hi), 0);
+	vec4 b = texelFetch(above_map, clamp(i0 + ivec2(1, 0), ivec2(0), hi), 0);
+	vec4 c = texelFetch(above_map, clamp(i0 + ivec2(0, 1), ivec2(0), hi), 0);
+	vec4 d = texelFetch(above_map, clamp(i0 + ivec2(1, 1), ivec2(0), hi), 0);
+	return vec2(mix(mix(a.r, b.r, f.x), mix(c.r, d.r, f.x), f.y), max(max(a.a, b.a), max(c.a, d.a)) * 255.0 * 0.5);
+}
+
+// The id of the mass over tile `at` (tiles into above_rect), 0 none.
+float above_id(vec2 at) {
+	vec4 t = texelFetch(above_map, ivec2(at), 0);
+	return floor(t.g * 255.0 + 0.5) + floor(t.b * 255.0 + 0.5) * 256.0;
+}
 // How far above a point's own ground a leaf has to be before it is in the way.
 const float CROWN_LIFT = 0.85;
 // Below this sway weight the geometry is a trunk, a wall or the land, and never
@@ -1377,6 +1432,41 @@ vec3 strata_weather(vec3 c, float dt, vec2 px) {
 	return c;
 }
 
+// HUNG ROCK: the face of mass hung over the ground (TerrainMesher._spans),
+// below the band its landscape's strata draw under a lip. A land's strata are
+// written for banks a level or two high; a rim runs metres down, and deeper
+// than that band every landscape's rock was one flat wash. So: beds that
+// wander along the face and pinch out, each its own tone, parted by seams
+// that come and go; run-off streaking down from the lip, each streak its own
+// length; and wherever the face turns under (`ny`, its world normal's y, down
+// on the undercut and the underside) the rock is damp and darker. All on
+// smooth fields, as the strata are, so nothing reads as bricks or a comb.
+vec3 hung_rock(vec3 c, float dt, float y, vec2 px, float ny, vec2 xz) {
+	float depth = smoothstep(0.35, 0.6, dt);
+	float wob = (ink_vnoise(vec2(px.x * 0.03, 11.0)) - 0.5) * 0.35 + (ink_vnoise(vec2(px.x * 0.11, 13.0)) - 0.5) * 0.08;
+	float bb = (y + wob) / (0.28 + ink_vnoise(vec2(px.x * 0.02, 17.0)) * 0.14);
+	float bi = floor(bb);
+	float tone = ink_vnoise(vec2(px.x * 0.05, bi * 2.7 + 1.0));
+	vec3 deep = mix(dn(c, 0.3), up(c, 0.32), smoothstep(0.25, 0.8, tone));
+	float seam = step(fract(bb), 0.08) * step(0.42, ink_vnoise(vec2(px.x * 0.04, bi + 31.0)));
+	deep = mix(deep, dn(deep, 0.45), seam);
+	float streak = smoothstep(0.62, 0.75, ink_vnoise(vec2(px.x * 0.35, 41.0)));
+	float reach = 0.8 + ink_vnoise(vec2(px.x * 0.07, 43.0)) * 2.0;
+	deep = mix(deep, dn(deep, 0.25), streak * (1.0 - smoothstep(reach * 0.6, reach, dt)));
+	c = mix(c, deep, depth);
+	c = mix(c, dn(c, 0.3), smoothstep(0.1, 0.8, -ny));
+	// An underside hangs with drips: dark wet beads in clusters where water
+	// gathers, a pale bead caught in the light here and there. Drawn, since
+	// geometry for them cost a vertex a half tile under every hall.
+	if (ny < -0.5) {
+		float gather = ink_vnoise(xz * 0.6 + 17.0);
+		float bead = ink_vnoise(xz * 4.3 + 5.0);
+		c = mix(c, dn(c, 0.4), smoothstep(0.55, 0.7, bead) * smoothstep(0.4, 0.7, gather));
+		c = mix(c, up(c, 0.35), smoothstep(0.86, 0.92, bead) * smoothstep(0.5, 0.8, gather));
+	}
+	return c;
+}
+
 // CITY_FLOOR: the metropolis' own floor. What a city's ground is after
 // seventy years: poured slabs in bays on the city's own grid (turned, and
 // drawn only where a joint has opened, so it is never a grid laid over the
@@ -1647,9 +1737,8 @@ vec3 sea_ice(vec3 c, vec3 wp, vec2 px) {
 
 // Terrace walls: each country's rock, banded by world height. dt: depth below
 // the wall's top (a wall is one level tall).
-vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) {
+vec3 strata(int id, vec3 c, vec3 wp, vec2 px, float top, inout vec3 emit, inout float unh) {
 	float y = wp.y;
-	float top = (floor(y / 0.5 - 0.002) + 1.0) * 0.5;
 	float dt = top - y;
 	float col = floor(px.x / 2.0);
 	float vn = ink_vnoise(vec2(px.x * 0.07, y * 3.0));
@@ -1940,10 +2029,16 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		// each ends where the flow gave out in a rounded lobe; between them the
 		// rock is dark and running wet. No beds and no joints: nothing about a
 		// cave wall is laid in courses, and the courses were what read as brick.
-		float lip = 0.03 + (vn - 0.5) * 0.02;
-		float fall = 0.16 + ink_vnoise(vec2(px.x * 0.07, 3.0)) * 0.3 + ink_vnoise(vec2(px.x * 0.22, 7.0)) * 0.1;
-		float across = ink_vnoise(vec2(px.x * 0.16, 11.0));
-		float curtain = smoothstep(0.42, 0.5, across);
+		// The lip SAGS: calcite hangs over it in swags of their own length, so
+		// no terrace top reads as a ruled edge.
+		float swag = ink_vnoise(vec2(px.x * 0.035, 5.0));
+		float lip = 0.02 + swag * swag * 0.09 + (vn - 0.5) * 0.02;
+		// Curtains of every width and length, and where two come near they
+		// run together and pool at the foot: the width is two scales of noise
+		// and not one, and the fall grows where the curtain is wide.
+		float across = ink_vnoise(vec2(px.x * 0.045, 11.0)) * 0.6 + ink_vnoise(vec2(px.x * 0.19, 13.0)) * 0.4;
+		float curtain = smoothstep(0.44, 0.56, across);
+		float fall = 0.08 + ink_vnoise(vec2(px.x * 0.05, 3.0)) * 0.28 + curtain * 0.18 * ink_vnoise(vec2(px.x * 0.13, 7.0));
 		vec3 rock = mix(SLATE1, INK2, 0.35 + 0.3 * ink_vnoise(vec2(px.x * 0.05, y * 3.0)));
 		vec3 calcite = mix(LINEN2, LINEN3, ink_vnoise(vec2(px.x * 0.3, y * 2.0)));
 		// Iron in the flow: rust bands running the curtain's length.
@@ -2296,6 +2391,12 @@ void vertex() {
 		VERTEX += to_model * (mat3(INV_VIEW_MATRIX) * wind_view(push, VIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE));
 		NORMAL = wind_tilt(NORMAL, to_model * push, sway_w, to_model * vec3(0.0, 1.0, 0.0));
 	}
+	// A span's section sheet rides up to the cut plane, never out of its mass:
+	// laid at the underside, it may rise to the top (UV.y, negative).
+	if (UV2.x <= 0.0 && UV2.y >= 1023.5 && above_cut.z > 0.0) {
+		float plane = above_cut.y + (1.0 - above_cut.z) * ABOVE_SWEEP;
+		VERTEX.y = clamp(plane, VERTEX.y, max(VERTEX.y, -UV.y));
+	}
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	wash2 = CUSTOM0.rgb;
 	// A mesh without CUSTOM0 reads (0, 0, 0, 1): no second wash is ever pure black.
@@ -2514,9 +2615,85 @@ void fragment() {
 	if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
 		discard;
 	}
-	int m2 = patch_raw >= 1.5 ? int(mod(patch_raw - 2.0 + 0.5, 256.0)) : m1;
-	float bend = patch_raw >= 257.5 ? -1.0 : 1.0;
-	float patchy = min(patch_raw, 1.0);
+	// Mass hung over the ground: its tops are lifted (UV2.y +512), its rims,
+	// undersides and lips carry their top in UV.y (negative).
+	bool sheet = patch_raw >= 1023.5;
+	bool span_frag = !sheet && (patch_raw >= 513.5 || style_blend < -0.001);
+	bool above_sec = false;
+	bool above_cap = false;
+	bool above_dash = false;
+	float roofed = 0.0;
+	if (sheet) {
+		// The cut face, only on the mass being cut and never in a shadow: all
+		// of it where the plane runs through the mass (the sheet rose to the
+		// plane), a ring along the edge where the mass is wholly over it (the
+		// sheet stayed at the underside, above the plane).
+		vec2 at = world_pos.xz - above_rect.xy;
+		bool inside = above_rect.z > 0.0 && at.x >= 0.0 && at.y >= 0.0 && at.x < above_rect.z && at.y < above_rect.w;
+		if (IN_SHADOW_PASS || above_cut.z <= 0.0 || !inside || abs(above_id(at) - above_cut.x) > 0.5) {
+			discard;
+		}
+		float plane = above_cut.y + (1.0 - above_cut.z) * ABOVE_SWEEP;
+		bool through = abs(world_pos.y - plane) < 0.02;
+		bool ring = world_pos.y > plane && above_cover(at).x < ABOVE_RING;
+		if (!through && !ring) {
+			discard;
+		}
+		above_sec = true;
+	}
+	if (above_rect.z > 0.0 && !sheet) {
+		vec2 at = world_pos.xz - above_rect.xy;
+		if (at.x >= 0.0 && at.y >= 0.0 && at.x < above_rect.z && at.y < above_rect.w) {
+			if (span_frag) {
+				// The section cut, on the mass the player is under only. The
+				// shadow pass keeps the whole mass: the roof still shades what
+				// is under it while it is drawn open.
+				if (above_cut.z > 0.0 && !IN_SHADOW_PASS) {
+					if (abs(above_id(at) - above_cut.x) < 0.5) {
+						float plane = above_cut.y + (1.0 - above_cut.z) * ABOVE_SWEEP;
+						if (world_pos.y > plane) {
+							discard;
+						}
+						above_cap = world_pos.y > plane - ABOVE_CAP;
+					}
+				}
+			} else {
+				// Whatever stands ON the mass being cut (the growth on its top:
+				// Decor's span pass, world material) goes with it: over its
+				// tiles, above the plane and at or over its underside. The
+				// ground is always under the underside.
+				if (above_cut.z > 0.0 && !IN_SHADOW_PASS) {
+					vec4 t = texelFetch(above_map, ivec2(at), 0);
+					float plane = above_cut.y + (1.0 - above_cut.z) * ABOVE_SWEEP;
+					if (t.r > 0.5 && abs(above_id(at) - above_cut.x) < 0.5 && world_pos.y > plane && world_pos.y >= t.a * 255.0 * 0.5 - 0.05) {
+						discard;
+					}
+				}
+				// The shade under mass, read smoothly across tiles (never a tile
+				// step), and only below its underside.
+				vec2 cu = above_cover(at);
+				float cover = cu.x;
+				float under = cu.y;
+				roofed = cover * (1.0 - smoothstep(under - 0.4, under - 0.05, world_pos.y));
+				// Over the cut mass the plan shows what is above the section as a
+				// plan drawing does: its outline dashed on the ground under it,
+				// in chalk, since most of it lies in the mass's own shadow.
+				if (above_cut.z > 0.0) {
+					float id = above_id(at);
+					float line = abs(cover - 0.5) / max(fwidth(cover), 1e-4);
+					float dash = fract(dot(world_pos.xz, vec2(0.71, 0.71)) * ABOVE_DASH);
+					if (abs(id - above_cut.x) < 0.5 && line < 1.4 && dash < 0.55 * above_cut.z) {
+						above_dash = true;
+					}
+				}
+			}
+		}
+	}
+	bool lifted = !sheet && patch_raw >= 513.5;
+	float pr = lifted ? patch_raw - 512.0 : patch_raw;
+	int m2 = pr >= 1.5 ? int(mod(pr - 2.0 + 0.5, 256.0)) : m1;
+	float bend = pr >= 257.5 ? -1.0 : 1.0;
+	float patchy = min(pr, 1.0);
 	// A second wash (another ground, another country) meets this one on a
 	// crisp, ragged edge: never a muddy average, never a dither, never a tile
 	// square. The weight is bent by a world field so the edge wanders freely
@@ -2614,19 +2791,19 @@ void fragment() {
 		// Nor is a slot's floor walked into paths: the wear's lines are the
 		// contours of a noise, and down a maze they read as a survey's rings
 		// (midden_floor lays its own stains and litter).
-		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK && m != M_SULPHUR && !midden) {
+		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK && m != M_SULPHUR && !midden && !lifted) {
 			c = ground_wear(m, c, world_pos.xz, px);
 		}
 		// Turf, heath and fen are a sward, and a gust crossing one lays it over:
 		// the front reads from above as a paler band travelling over the land, to
 		// the horizon, with no geometry (wind_sheen).
-		if (m == 40 || m == 41 || m == 48) {
+		if ((m == 40 || m == 41 || m == 48) && !lifted) {
 			vec3 tr = trample_at(world_pos.xz);
 			c *= (1.0 + GROUND_SHEEN * wind_sheen(world_pos.xz)) * (1.0 - GROUND_PRESSED * max(tr.z, length(tr.xy) * 0.6));
 		}
 		// The machine city's deck IS the plan's order, laid by it: the works'
 		// marks and the survey's ruling would draw a second, square grid over it.
-		if (works_inv_size > 0.0 && m != M_MACHINE_DECK) {
+		if (works_inv_size > 0.0 && m != M_MACHINE_DECK && !lifted) {
 			vec4 wk = texture(works_map, world_pos.xz * works_inv_size);
 			vec3 wl = texture(works_lines, world_pos.xz * works_inv_size).rgb;
 			if (wk.r + wk.g + wk.b + wk.a > 0.02) {
@@ -2653,13 +2830,22 @@ void fragment() {
 		vec3 fn = cross(dFdx(world_pos), dFdy(world_pos));
 		float along = abs(fn.x) > abs(fn.z) ? world_pos.z : world_pos.x;
 		vec2 wpx = vec2(floor(along / SKY_GRAIN), px.y);
-		c = strata(m - MARK_STRATA, c, world_pos, wpx, emit, unh);
+		// The lip a wall hangs from: the terrace level above it, or, on mass
+		// hung over the ground, that mass's own top (UV.y, negative: a rim one
+		// face from its top to its underside, not a stack of level steps).
+		bool hung = style_blend < -0.001;
+		float lip = hung ? -style_blend : (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5;
+		c = strata(m - MARK_STRATA, c, world_pos, wpx, lip, emit, unh);
 		// The weathering pass, on every wall: whatever it is cut through, the
 		// lip, the run-off and the foot are the weather's -- except the one the
-		// machines cast and still maintain.
-		// A cornice is snow, and the weather's lip shade would sit in its roll.
+		// machines cast and still maintain, and a cornice, which is snow and
+		// whose roll the lip shade would sit in. Hung mass has no foot on the
+		// ground: its lower edge is its underside's.
 		if (m != M_STRATA_CAST && m != M_STRATA_MACHINE && m != MARK_STRATA + 4) {
-			c = strata_weather(c, (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y, wpx);
+			c = strata_weather(c, hung ? min(lip - world_pos.y, 0.33) : lip - world_pos.y, wpx);
+		}
+		if (hung) {
+			c = hung_rock(c, lip - world_pos.y, world_pos.y, wpx, (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y, world_pos.xz);
 		}
 	} else if (m >= 1 && m <= 16) {
 		// Embers and flames: they give light, so they are never shaded or hatched.
@@ -2793,6 +2979,13 @@ void fragment() {
 	} else if (m == M_STRATA_CAVE) {
 		// A cave wall runs wet in streaks: shinier where water is on it now.
 		rough_add -= smoothstep(0.55, 0.8, ink_vnoise(vec2(world_pos.x + world_pos.z, world_pos.y * 0.2) * 1.3)) * 0.2;
+		// But its curtains ripple finer than a pixel once the wall is off a way
+		// (matter_height, a ripple about 0.7 across), and a near-mirror over
+		// ripples a pixel cannot hold catches the light at random: the wall
+		// shimmered in bright broken streaks at every distance but the nearest.
+		// So the sheen widens with the pixel's own footprint on the wall, and a
+		// far wall is wet satin while a near one keeps its shine.
+		rough_add += smoothstep(0.004, 0.035, length(fwidth(world_pos))) * CAVE_FAR_ROUGH;
 	} else if (m == M_STRATA_TIDE) {
 		// The weed at a wall's foot is slick and never dries.
 		float wall_dt = (floor(world_pos.y / 0.5 - 0.002) + 1.0) * 0.5 - world_pos.y;
@@ -2810,9 +3003,24 @@ void fragment() {
 		// and never as one lit facet.
 		rough_add += ink_vnoise(vec2(world_pos.x + world_pos.z, world_pos.y * 0.3) * 3.1) * 0.35;
 	}
+	if (above_cap) {
+		c = ABOVE_INK;
+	}
+	if (above_sec) {
+		float hh = fract(dot(world_pos.xz, vec2(0.7071, 0.7071)) * ABOVE_HATCH);
+		c = hh < 0.38 ? ABOVE_INK : ABOVE_STONE;
+	}
+	c *= 1.0 - (1.0 - ABOVE_SHADE) * roofed;
+	// Laid after the shade: chalk on the plan, read on light ground and in the
+	// mass's own shadow alike.
+	if (above_dash) {
+		c = mix(c, ABOVE_CHALK, 0.85);
+	}
 	ALBEDO = matter_albedo(c);
 	ROUGHNESS = clamp(mr.x + rough_add, 0.04, 1.0);
-	SPECULAR = mr.y;
+	// Under a colossus's pad coming down the sun is gone, and its sheen with it.
+	float under_pad = sky_colossus_pads(world_pos);
+	SPECULAR = mr.y * (1.0 - under_pad);
 	METALLIC = mr.w;
 	if (midden) {
 		// The middens' floor is not combed (midden_floor), so it has no arcs to
@@ -2851,8 +3059,10 @@ void fragment() {
 	if (unh < 0.5) {
 		NORMAL = matter_bump(NORMAL, world_pos, m, mr.z * relief);
 	}
+	// What the wet ground mirrors is the sky, and under a colossus's pad coming
+	// down there is none left to mirror (sky.gdshaderinc `sky_colossus_pads`).
 	EMISSION = matter_light(c * emission_strength + emit)
-		+ matter_light(neon_reflect(world_pos, px) + neon_skyglow(c));
+		+ matter_light(neon_reflect(world_pos, px) * (1.0 - under_pad) + neon_skyglow(c));
 	// A blow's paper-white, as a sphere in world space: only the part that was
 	// struck goes to paper, so the body it landed on is still showing while the
 	// mark proves the hit (docs/LOOK.md; and see found.gdshader, which carries

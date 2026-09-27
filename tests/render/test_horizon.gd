@@ -370,3 +370,38 @@ func test_a_block_built_again_is_the_block_it_was() -> void:
 	eq(hash(var_to_bytes(close[0])), hash(var_to_bytes(both[0])), "the close level alone is the close level of both")
 	eq(hash(var_to_bytes(coarse[1])), hash(var_to_bytes(both[1])), "the coarse level alone is the coarse level of both")
 	check(var_to_bytes(close[1]).size() < 64, "and a level not asked for is not built")
+
+
+## A ROOFED CAVE IS ITS LID FROM FAR OFF. The near chunks draw a roof's top, and
+## past them the far world stood the floor of the halls under an open sky.
+func test_a_far_roof_keeps_its_lid() -> void:
+	var w := WorldData.new(3, 128)
+	for y in 128:
+		for x in 128:
+			var i := y * 128 + x
+			w.level[i] = 2
+			w.ground[i] = Ground.SAND
+			w.country[i] = Country.COAST
+	for y in range(40, 90):
+		for x in range(40, 90):
+			w.set_overhead(x, y, 6, 10)
+	var land: Array = Far.build_arrays(w, 0, 0, Far.tables())[0]
+	var inside := -INF
+	var outside := -INF
+	var vs: PackedVector3Array = land[Mesh.ARRAY_VERTEX]
+	var cs: PackedColorArray = land[Mesh.ARRAY_COLOR]
+	var tabs: Array = Far.tables()
+	var roof_wash: Color = (tabs[0] as PackedColorArray)[(tabs[2] as PackedInt32Array)[Country.COAST] * BiomeRegistry.SLOTS + Country.COAST]
+	var painted := 0
+	for k in vs.size():
+		var v := vs[k]
+		if v.x > 48.0 and v.x < 80.0 and v.z > 48.0 and v.z < 80.0:
+			inside = maxf(inside, v.y)
+			if cs[k].is_equal_approx(roof_wash) or cs[k].is_equal_approx(roof_wash.darkened(0.03)):
+				painted += 1
+		elif v.x < 30.0:
+			outside = maxf(outside, v.y)
+	print("roof %.2f, far land over it %.2f, beside it %.2f" % [TerrainMesher.level_height(10), inside, outside])
+	gt(inside, TerrainMesher.level_height(10) - 0.1, "the far land over the cave stands at the roof's top")
+	lt(outside, TerrainMesher.level_height(3), "and the open plain beside it stays down")
+	gt(painted, 0, "the lid is painted with the landscape's plain ground, as the near roof is")

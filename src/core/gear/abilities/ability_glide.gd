@@ -46,6 +46,50 @@ static func launch(world: WorldData, query: WorldQuery, at: Vector2, dir: Vector
 	return Vector2.ZERO
 
 
+## The nearest lip over a drop deeper than the wing falls in its SECONDS, and
+## the way off it: {at, dir}, or {} within `reach`. For tours, which stand a
+## body there by name (`ledge glide`), never by coordinate.
+static func find_deep(world: WorldData, query: WorldQuery, near: Vector2, reach: int = 64) -> Dictionary:
+	if world == null:
+		return {}
+	var need := ceili(FALL * SECONDS / WorldData.STEP) + 2
+	var cx := floori(near.x)
+	var cy := floori(near.y)
+	for r in range(0, reach + 1):
+		for dx in range(-r, r + 1):
+			for dy in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var tx := cx + dx
+				var ty := cy + dy
+				if not world.in_bounds(tx, ty) or (query != null and not query.standable(tx, ty)):
+					continue
+				var at := Vector2(tx + 0.5, ty + 0.5)
+				var here := world.level_at(tx, ty)
+				for i in 8:
+					var dir := Vector2.from_angle(TAU * float(i) / 8.0)
+					# Where the wing's seconds run out: still that far below the lip.
+					var below := at + dir * SPEED * SECONDS
+					var bx := floori(below.x)
+					var by := floori(below.y)
+					if not world.in_bounds(bx, by) or here - world.level_at(bx, by) < need:
+						continue
+					if query != null and not query.standable(bx, by):
+						continue
+					# And nothing along the way rises to meet the wing first.
+					var clear := true
+					var d := 3.0
+					while clear and d < SPEED * SECONDS:
+						var q := at + dir * d
+						clear = world.in_bounds(floori(q.x), floori(q.y)) and here - world.level_at(floori(q.x), floori(q.y)) >= need
+						d += 1.0
+					if not clear:
+						continue
+					if launch(world, query, at, dir) != Vector2.ZERO:
+						return {"at": at, "dir": dir}
+	return {}
+
+
 func refusal(ctx: AbilityCtx) -> StringName:
 	var b := ctx.body()
 	if b == null or ctx.game == null:

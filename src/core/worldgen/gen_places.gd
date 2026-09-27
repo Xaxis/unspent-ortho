@@ -1,7 +1,8 @@
 class_name GenPlaces
 ## Named places in a generated world, for shots, tools and tests:
 ##   "spawn"                   where the player wakes
-##   "moss"                    a standing tile deep inside a country
+##   "moss"                    a standing tile deep inside a country, with room
+##                             round it to set something down
 ##   "coast-pinewood"          a standing tile on that ecotone, where both mix
 ##   "tip", "wreck2", ...      the Nth landmark of a kind (1-based, default 1)
 ##   "works", "works_breaker"  the Nth depot of the plan, or one of its housings
@@ -185,10 +186,40 @@ static func country_sample(w: WorldData, cc: int) -> Vector2:
 					if w.country_at(x + d.x * r, y + d.y * r) == cc:
 						score += 1.0
 			score += Rng.hash01(w.seed_value, x, y, 7) * 0.5
-			if score > best_score:
+			if score > best_score and has_room(w, solid, x, y):
 				best_score = score
 				best = Vector2(x + 0.5, y + 0.5)
 	return best
+
+
+## Tiles from a place within which a patch of `has_room` must lie.
+const ROOM_WITHIN := 4
+## Whether standing at (x, y) there is somewhere to set a thing down: a tile and
+## its four neighbours flat on one level, dry and clear of every solid prop, a
+## body's one step from (x, y)'s own level and within ROOM_WITHIN. A landscape's
+## place is where a shot, a tour or a tester starts, and on seed 7 the green
+## towers' was the floor of a stepped bowl where no piece of a holding fitted
+## within ten tiles, though every sampled tile of that landscape has room in
+## eight. Asked only of a candidate that would win, so a place that has room
+## stays where it was.
+static func has_room(w: WorldData, solid: PackedByteArray, x: int, y: int) -> bool:
+	# Through the accessors: a window of the world, never the whole of it.
+	var l := w.level_at(x, y)
+	for dy in range(-ROOM_WITHIN, ROOM_WITHIN + 1):
+		for dx in range(-ROOM_WITHIN, ROOM_WITHIN + 1):
+			var h := w.level_at(x + dx, y + dy)
+			if h < 1 or absi(h - l) > 1:
+				continue
+			var flat := true
+			for d: Vector2i in [Vector2i.ZERO, Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				var tx := x + dx + d.x
+				var ty := y + dy + d.y
+				if not w.in_bounds(tx, ty) or w.level_at(tx, ty) != h or Ground.is_water(w.ground_at(tx, ty)) or solid[ty * w.size + tx] != 0:
+					flat = false
+					break
+			if flat:
+				return true
+	return false
 
 
 ## How far open ground must be from anything built. The play camera shows about

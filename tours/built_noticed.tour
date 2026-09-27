@@ -1,0 +1,46 @@
+# WHAT YOU BUILD IS NOTICED (SETTLE.md S2; Interference `built`, StructureKind
+# .loudness). The reads app's interference trace before a holding goes up, and
+# again after a hearth, a turret and a solar array: the region watched it happen,
+# and the found tech most of all.
+#   tools/tour.sh tours/built_noticed.tour --seed=1 --hour=10 --weather=clear:0 \
+#     --give=stone:6,deadwood:6,timber:4,scrap:16,copper:6,iron:2,rep_light:2,wick:4
+coast calm
+place spawn
+wait 0.4
+walk -1,1 1.5
+wait 0.5
+tap pause
+await app:pause 3
+choose reads
+tap use
+await app:reads 3
+wait 0.6
+shot 01-the-region-before-anything-went-up with app:reads
+tap pause
+await app:pause 3
+tap pause
+await app:none 3
+tap holding
+await app:holding 4
+choose build_hearth
+tap use
+await made 6
+wait 0.4
+choose build_turret
+tap use
+await made 6
+wait 0.4
+choose build_solar_array
+tap use
+await made 6
+wait 0.4
+shot 01b-the-holding-put-up with app:holding
+tap pause
+await app:none 3
+tap pause
+await app:pause 3
+choose reads
+tap use
+await app:reads 3
+wait 0.6
+shot 02-and-after-a-turret-and-an-array-went-up with app:reads

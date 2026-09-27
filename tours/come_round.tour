@@ -1,0 +1,21 @@
+# THE COME-ROUND (shared keeper rule, 2026-09-27): a keeper whose target keeps
+# to its flank inside its reach for a whole turn-pause comes round on it with a
+# short-told sweep at that side, in its own flavour (SentinelDef.come_round).
+# The salt flats' rake, brought to its guarded second phase (it turns slower than
+# a player walks round it), the player standing at its working side and waiting:
+# it drags itself round and the sweep's tell hangs over that side. (The Coast's
+# reaper turns on the spot in its second phase and never needs to.)
+#
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/come_round.tour --seed=7 --hour=11 --weather=clear:0 --held=axe_felling --config=unharmed
+coast calm
+place salt_flats
+near keeper
+wait 0.6
+await sentinel 12
+wound sentinel.salt 0.5
+wait 0.4
+try 6
+  walkto part 3
+  await came_round 6
+end
+shot 01-it-comes-round-on-its-flank with mob:sentinel.salt

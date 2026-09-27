@@ -23,6 +23,8 @@ class_name SlateFeeds
 ##    asking: String — the plan's own note on what this REGION is still being
 ##      held for, one line, never a checklist (`Chapter.asking`, VISION §10.4);
 ##      "" where nothing has a file on the place,
+##    causes: [String] — what the player is feeding the file right now, named
+##      (StoryContent.READS_CAUSE by cause id: a relic worn is `carried`),
 ##    scans: [{id: StringName, kind: StringName, name: String, pos: Vector2,
 ##             disposition: StringName (hostile wary observant indifferent), note: String}]}
 ##   default: every living machine (roster `machine: true`) within READ_RADIUS

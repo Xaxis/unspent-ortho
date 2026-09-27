@@ -142,6 +142,13 @@
   },
   {
    "kind": "system",
+   "label": "23_hush",
+   "entry": "src/systems/23_hush.gd",
+   "reach": "tools/tour.sh tours/hush.tour --seed=7 --hour=11 --weather=clear:0",
+   "area": "world-places"
+  },
+  {
+   "kind": "system",
    "label": "23_ruins",
    "entry": "src/systems/23_ruins.gd",
    "reach": "tools/test.sh test_ruin_walls",
@@ -223,6 +230,13 @@
    "entry": "src/systems/42_target.gd",
    "reach": "tools/tour.sh tours/lockon_top.tour --seed=4 --hour=11 --weather=clear:0 --give=axe_felling:1 --held=axe_felling",
    "area": "machines-fight"
+  },
+  {
+   "kind": "system",
+   "label": "43_above",
+   "entry": "src/systems/43_above.gd",
+   "reach": "tools/tour.sh tours/cave-roofs.tour --seed=7 --realm=underground --hour=12",
+   "area": "world-look"
   },
   {
    "kind": "system",

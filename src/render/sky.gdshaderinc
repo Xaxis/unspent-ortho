@@ -43,6 +43,10 @@ global uniform mat4 colossus_legs0;
 global uniform mat4 colossus_legs1;
 global uniform mat4 colossus_legs2;
 global uniform mat4 colossus_legs3;
+// Up to four pads of a colossus's foot coming down near the player, each
+// (x, z, radius, how near it is: 0..1): the shade straight under it (19_colossi
+// `_cast`, DESIGN 5c).
+global uniform mat4 colossus_pads;
 // THE SHOCK OF A LANDING, for what sways (19_colossi writes it): xy the tread's
 // centre in world XZ, z how far out the front has run (metres), w how hard it
 // still pushes, 0..1 -- 0 on every frame no foot has just come down, and then
@@ -367,6 +371,24 @@ vec3 sky_shock(vec3 wp) {
 	return vec3(d.x, 0.0, d.y) / max(r, 1.0) * band * fall * colossus_shock.w;
 }
 
+// A pad coming down: the light it takes off the ground straight under it, which
+// the sun's slant would carry a hundred metres off in the capsule's shadow and
+// the eye still reads as the sky going out overhead. Its edge is soft while it
+// is high and hardens as it comes, and it deepens all the way down.
+float colossus_pad(vec4 d, vec3 p) {
+	if (d.w <= 0.0) {
+		return 0.0;
+	}
+	float soft = 1.5 + d.z * 0.3 * (1.0 - d.w);
+	return d.w * (1.0 - smoothstep(d.z - soft, d.z + soft, length(p.xz - d.xy)));
+}
+
+// 0..1: how much of the sky a pad coming down takes off this place.
+float sky_colossus_pads(vec3 world_pos) {
+	return max(max(colossus_pad(colossus_pads[0], world_pos), colossus_pad(colossus_pads[1], world_pos)),
+		max(colossus_pad(colossus_pads[2], world_pos), colossus_pad(colossus_pads[3], world_pos)));
+}
+
 // 0..1: how much of the sun a colossus's leg takes off this place.
 float sky_colossus(vec3 world_pos) {
 	int n = int(colossus_sun.w + 0.5);
@@ -451,7 +473,13 @@ float sky_fog_at(vec3 world_pos, vec2 px, float band) {
 	float n = sky_fbm(p * vec2(0.17, 0.13) + vec2(41.0, 7.0)) * 0.8 + sky_noise(p * 0.45 + vec2(9.0, 2.0)) * 0.2;
 	float hollow = sky_ground_at(world_pos).a * SKY_GROUND_HEIGHT - world_pos.y;
 	n += clamp(hollow, -1.5, 1.0) * (0.14 + low) + (1.0 - step(0.36, world_pos.y)) * 0.06;
-	n += (sky_noise(vec2(px.x * 0.025, px.y * 0.22) + p * 0.02) - 0.5) * 0.07;
+	// The wisps are laid on the top view's axes but CONTINUOUSLY: `px` is
+	// floored to the grain, and a noise read at whole grain cells gave the
+	// bank's edge whole-cell steps. From above a cell is a pixel and nothing
+	// showed; at eye level near the camera a cell is many, and the edge was a
+	// staircase across the floor (the caves, 2026-09-26).
+	vec2 pc = vec2(dot(world_pos, vec3(0.7071, 0.0, -0.7071)), dot(world_pos, vec3(-0.5931, 0.5446, -0.5931))) / SKY_GRAIN;
+	n += (sky_noise(vec2(pc.x * 0.025, pc.y * 0.22) + p * 0.02) - 0.5) * 0.07;
 	float t1 = mix(0.7, 0.585, sky_fog.z);
 	float t2 = t1 + 0.1;
 	float h = sky_hash(px + vec2(61.0, 17.0));
@@ -850,6 +878,13 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 		float away = length(world_pos.xz - sky_bolt.xy);
 		float lifted = clamp(sky_bolt.z, 0.0, 1.0) * (1.0 - smoothstep(sky_view.w * 0.2, sky_view.w + 4.0, away));
 		c = mix(c, min(c * vec3(1.10, 1.14, 1.22), vec3(1.0)), lifted * 0.7);
+	}
+	// A pad coming down straight overhead takes the sky as well as the sun, and
+	// the light off the fog and haze lying under it too: the shade is last, so a
+	// bank of fog or a whiteout under a coming foot goes dark with the land.
+	float pad = sky_colossus_pads(world_pos);
+	if (pad > 0.0) {
+		c *= mix(vec3(1.0), COLOSSUS_SHADE, pad);
 	}
 	return c;
 }

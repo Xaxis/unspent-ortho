@@ -168,6 +168,10 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	w.recipe = c.recipe
 	GenDigest.run(w)
 	GenIds.run(w)
+	# Last: a roof clears the final levels and props, and leaves the shafts'
+	# mouths open (Portals are found from the finished world).
+	GenAbove.run(w)
+	t = _mark(c, marks, &"above", t)
 	var total := 0.0
 	for k: StringName in marks:
 		total += marks[k]

@@ -33,6 +33,11 @@ const float SIGHT_RADIUS = 1.15;
 // holds, the ground it stands on.
 const float SIGHT_KEEP = 0.7;
 const float SIGHT_ON = 6.0;
+// The reach 18_crowns writes for a person-sized body (Crowns.REACH): a bigger
+// body's slot carries its own size past this (Crowns.reach_of), and the cone
+// keeps that much more of it in front of its middle and opens that much wider,
+// so a keeper a gantry across never cuts its own front plates.
+const float SIGHT_REACH = 1.6;
 const float SIGHT_OFF = 9.0;
 
 // How much of the close-eye cut applies, from the eye's distance to slot 0 (the
@@ -59,11 +64,12 @@ float sight_cone(vec3 wp, vec3 eye, vec4 p) {
 	vec3 a = v / len;
 	vec3 r = wp - eye;
 	float t = dot(r, a);
-	if (t <= 0.0 || t > len - SIGHT_KEEP) {
+	float own = max(0.0, p.w - SIGHT_REACH);
+	if (t <= 0.0 || t > len - (SIGHT_KEEP + own)) {
 		return 0.0;
 	}
 	float d = length(r - a * t);
-	float rim = SIGHT_RADIUS * t / len;
+	float rim = (SIGHT_RADIUS + own) * t / len;
 	return 1.0 - smoothstep(rim * 0.72, rim * 1.2, d);
 }
 

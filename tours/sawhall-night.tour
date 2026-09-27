@@ -1,0 +1,27 @@
+# THE SAW HALL AT THE CURFEW (src/content/interiors/saw_hall.gd, 21_doors
+# `docks`, MobState.asleep): the line stopped and dark, the warden gone to walk
+# the wood, and the haulers docked along the south wall asleep -- blind, but
+# they hear. Down the hatch crouched, straight in and along the middle, a
+# crouched step's hearing and more off every dock, to the kiln's box, which is
+# open with no warden standing: none of them has woken.
+#
+#   tools/tour.sh tours/sawhall-night.tour --seed=4 --hour=23 --weather=clear:0
+#
+# 01 is the hall from above at the curfew, the docks full. 02 is at the kiln's
+# box, crouched the whole way, the sleepers asleep (`unwoken`). 03 is the box
+# opened: seasoned timber.
+coast calm
+near door:saw_hall
+await door 5
+hold crouch
+press use 0.1
+await inside:saw_hall 5
+wait 1.0
+shot 01-the-docks-at-the-curfew with inside:saw_hall,asleep
+walkto strongbox 90
+wait 0.4
+shot 02-at-the-kiln-none-woken with inside:saw_hall,box_near,unwoken
+press use 0.1
+await box_opened 3
+wait 0.8
+shot 03-seasoned-timber with inside:saw_hall,unwoken

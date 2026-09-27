@@ -47,12 +47,21 @@ func nightfall() -> float:
 
 
 ## Sight x (1 - c x strength) per weather kind (design-extract §5; the sky's
-## Weather.SIGHT_CUT, which covers every kind it can send). Hearing never.
+## Weather.SIGHT_CUT, which covers every kind it can send).
 func weather_sight() -> float:
 	var k := weather
 	if k == &"sand" or k == &"sandstorm":
 		k = &"dust"
 	return Weather.sight_factor(k, clampf(weather_strength, 0.0, 1.0))
+
+
+## Hearing x (1 - c x strength) per weather kind (Weather.HEARING_CUT): the
+## noise of rain, wind, hail and blown sand over a body's own.
+func weather_hearing() -> float:
+	var k := weather
+	if k == &"sand" or k == &"sandstorm":
+		k = &"dust"
+	return Weather.hearing_factor(k, weather_strength)
 
 
 ## Reads the weather a body is standing in. Every landscape type has its own
