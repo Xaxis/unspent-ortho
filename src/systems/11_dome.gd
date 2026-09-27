@@ -73,6 +73,16 @@ var _shafts: Array[SpotLight3D] = []
 ## cave's own air is a layer a couple of units deep over the floor, so without
 ## these a shaft was a pool on the ground with nothing above it.
 var _columns: Array[FogVolume] = []
+## The same column as geometry where the tier has no volumetric air
+## (shaft_column.gdshader): without it the web saw the pool and nothing above.
+## One material each, so each carries its own colour.
+var _glass: Array[MeshInstance3D] = []
+## Where the column is drawn: the whole of the lit air it stands in, a little
+## over the cone's own width.
+const GLASS_WIDTH := 1.1
+## Transparent world geometry needs its own priority (CLAUDE.md), after the
+## lights' own halos (15_lights, 5).
+const GLASS_PRIORITY := 6
 var _scan := 0.0
 var _tears: Array[Vector2] = []
 ## The last shut this system composed with, and where each live pool landed, so
@@ -116,6 +126,8 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 		s.visible = false
 	for v in _columns:
 		v.visible = false
+	for g in _glass:
+		g.visible = false
 
 
 func _process(delta: float) -> void:
@@ -136,6 +148,8 @@ func _process(delta: float) -> void:
 			s.visible = false
 		for v in _columns:
 			v.visible = false
+		for g in _glass:
+			g.visible = false
 		return
 	var at: Vector2 = game.player.pos
 	_scan -= delta
@@ -176,11 +190,17 @@ func _process(delta: float) -> void:
 			v.visible = false
 			_layer.add_child(v)
 			_columns.append(v)
+	var volumetric := game.sky.env != null and game.sky.env.environment != null and game.sky.env.environment.volumetric_fog_enabled
+	if not volumetric and _glass.is_empty():
+		_make_glass()
 	for i in MOST:
 		var s := _shafts[i]
 		var v: FogVolume = _columns[i] if i < _columns.size() else null
+		var g: MeshInstance3D = _glass[i] if i < _glass.size() else null
 		if v != null:
 			v.visible = false
+		if g != null:
+			g.visible = false
 		if i >= live.size():
 			s.visible = false
 			continue
@@ -208,6 +228,21 @@ func _process(delta: float) -> void:
 				(v.material as FogMaterial).albedo = col
 				(v.material as FogMaterial).density = SINK_AIR * clampf(lit, 0.15, 1.0)
 				v.visible = true
+		if g != null and not volumetric:
+			var top := s.global_position
+			var floor_at := game.world.to_3d(pool)
+			var dir := floor_at - top
+			var length := dir.length()
+			if length > 0.1:
+				dir /= length
+				var w := Dome.SPREAD * GLASS_WIDTH
+				# A unit cylinder stood along the fall: its y from the pool to the tear.
+				g.global_transform = Transform3D(Basis.looking_at(dir) * Basis(Vector3.RIGHT, -PI * 0.5), (top + floor_at) * 0.5) \
+					* Transform3D(Basis.from_scale(Vector3(w, length, w)), Vector3.ZERO)
+				var m := g.material_override as ShaderMaterial
+				m.set_shader_parameter(&"column_tint", Vector3(col.r, col.g, col.b))
+				m.set_shader_parameter(&"column_strength", clampf(energy / SINK_NOON, 0.0, 1.0))
+				g.visible = true
 
 
 ## `near shaft_pool` in a tour: a standable spot a few tiles short of where the
@@ -248,3 +283,26 @@ func tour_seen(what: StringName) -> bool:
 					return true
 			return false
 	return false
+
+
+func _make_glass() -> void:
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 0.5
+	mesh.bottom_radius = 0.5
+	mesh.height = 1.0
+	mesh.radial_segments = 24
+	mesh.rings = 1
+	mesh.cap_top = false
+	mesh.cap_bottom = false
+	for i in MOST:
+		var g := MeshInstance3D.new()
+		g.name = "shaft_glass_%d" % i
+		g.mesh = mesh
+		g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var m := ShaderMaterial.new()
+		m.shader = preload("res://src/render/shaft_column.gdshader")
+		m.render_priority = GLASS_PRIORITY
+		g.material_override = m
+		g.visible = false
+		_layer.add_child(g)
+		_glass.append(g)

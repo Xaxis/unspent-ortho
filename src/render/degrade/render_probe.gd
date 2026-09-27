@@ -431,6 +431,13 @@ static func _switches(tour: Node, game: Node) -> Array[Array]:
 			for l: OmniLight3D in lights_sys.get("lights"):
 				l.shadow_enabled = on
 			ll.shadow_enabled = on])
+	for s: Node in game.get("systems"):
+		var shafts: Variant = s.get("_shafts")
+		if shafts is Array and not (shafts as Array).is_empty() and (shafts as Array)[0] is SpotLight3D:
+			out.append(["dome shafts (a lid's or a sinkhole's spot lights)", func(on: bool) -> void:
+				for l: SpotLight3D in shafts:
+					l.set_meta(&"probe_vis", l.get_meta(&"probe_vis", l.visible))
+					l.visible = bool(l.get_meta(&"probe_vis")) if on else false])
 	out.append(["volumetric fog", func(on: bool) -> void:
 		e.volumetric_fog_enabled = on
 		if on:
@@ -585,7 +592,7 @@ static func features(tour: Node, game: Node, label: String, keep_frames: bool = 
 		RenderingServer.positional_soft_shadow_filter_set_quality(int(q.shadow_filter) as RenderingServer.ShadowQuality)
 	# The lights and the fore layer put back their own visibility.
 	for row: Array in _switches(tour, game):
-		if String(row[0]).begins_with("local lights") or String(row[0]) == "foreground layer":
+		if String(row[0]).begins_with("local lights") or String(row[0]).begins_with("dome shafts") or String(row[0]) == "foreground layer":
 			(row[1] as Callable).call(true)
 	_clear_marks(game)
 	# The lights system decides which lights cast every frame; it takes that back
@@ -611,6 +618,11 @@ static func features(tour: Node, game: Node, label: String, keep_frames: bool = 
 
 static func _clear_marks(game: Node) -> void:
 	for s: Node in game.get("systems"):
+		var shafts: Variant = s.get("_shafts")
+		if shafts is Array:
+			for l: Variant in shafts:
+				if l is Node and (l as Node).has_meta(&"probe_vis"):
+					(l as Node).remove_meta(&"probe_vis")
 		var lights: Variant = s.get("lights")
 		if lights is Array:
 			for l: Variant in lights:
