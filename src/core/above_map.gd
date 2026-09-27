@@ -9,6 +9,8 @@ extends RefCounted
 ##         0 none), spread one tile past the mass, so a
 ##         rim the warp draws past its tiles is still that mass's
 ##   A  the level of its underside (0 where none)
+##   glow (its own R8 image): the day off the nearest open sky under the mass,
+##         1 at a tear, a shaft or the roof's edge, 0 by BOUNCE_REACH tiles in
 ## World.gdshader cuts the mass the player stands under at the section plane
 ## (43_above), and shades the ground under any mass. Pure and derived; over a
 ## window round the player where the spans are wide (a roofed cave), rebuilt
@@ -24,6 +26,11 @@ var h := 0
 ## Per tile of the box: the mass it is under (1-based), or 0.
 var ids := PackedInt32Array()
 var image: Image
+## How much day reaches each tile of the box from the nearest open sky, as a
+## picture (R8): what bounces in off a tear's pool and down a shaft's walls.
+var glow: Image
+## Tiles under the mass the day off an open tile reaches before it is gone.
+const BOUNCE_REACH := 12.0
 
 
 static func of(world: WorldData, centre := Vector2.INF, half := 0) -> AboveMap:
@@ -103,7 +110,57 @@ static func of(world: WorldData, centre := Vector2.INF, half := 0) -> AboveMap:
 			rgba[i * 4 + 2] = (id >> 8) & 0xFF
 			rgba[i * 4 + 3] = clampi(o.x, 0, 255) if o.x >= 0 else 0
 	m.image = Image.create_from_data(m.w, m.h, false, Image.FORMAT_RGBA8, rgba)
+	m.glow = Image.create_from_data(m.w, m.h, false, Image.FORMAT_R8, bounce(mask, m.w, m.h))
 	return m
+
+
+## Per tile of a w x h box, 0..255: how near open sky is to a covered tile
+## (`mask` 1), falling off as the square of the way to BOUNCE_REACH; 255 on open
+## tiles. A two-pass chamfer distance, so a box of a window's size is a few
+## milliseconds on the worker. Past the box's edge is not sky: a window cut out
+## of a roofed world does not light its own border.
+static func bounce(mask: PackedByteArray, w: int, h: int) -> PackedByteArray:
+	const DIAG := 1.4142
+	var d := PackedFloat32Array()
+	d.resize(w * h)
+	for i in w * h:
+		d[i] = 0.0 if mask[i] == 0 else 1e6
+	for y in h:
+		for x in w:
+			var i := y * w + x
+			var v := d[i]
+			if v == 0.0:
+				continue
+			if x > 0:
+				v = minf(v, d[i - 1] + 1.0)
+			if y > 0:
+				v = minf(v, d[i - w] + 1.0)
+				if x > 0:
+					v = minf(v, d[i - w - 1] + DIAG)
+				if x < w - 1:
+					v = minf(v, d[i - w + 1] + DIAG)
+			d[i] = v
+	for y in range(h - 1, -1, -1):
+		for x in range(w - 1, -1, -1):
+			var i := y * w + x
+			var v := d[i]
+			if v == 0.0:
+				continue
+			if x < w - 1:
+				v = minf(v, d[i + 1] + 1.0)
+			if y < h - 1:
+				v = minf(v, d[i + w] + 1.0)
+				if x < w - 1:
+					v = minf(v, d[i + w + 1] + DIAG)
+				if x > 0:
+					v = minf(v, d[i + w - 1] + DIAG)
+			d[i] = v
+	var out := PackedByteArray()
+	out.resize(w * h)
+	for i in w * h:
+		var f := clampf(1.0 - d[i] / BOUNCE_REACH, 0.0, 1.0)
+		out[i] = int(f * f * 255.0)
+	return out
 
 
 ## The mass over tile (x, y) (1-based), or 0.

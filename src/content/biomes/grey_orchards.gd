@@ -94,7 +94,7 @@ static func make() -> BiomeDef:
 	dress.broadleaf_forms = [&"pollard", &"trellis", &"pollard", &"pollard"]
 	# Its typical ground is in the rows, never the clearing where a block was
 	# taken out.
-	d.typical_among = Vector2i(PropKind.BROADLEAF, 40)
+	d.typical_among = Vector2i(PropKind.GRAFT_TREE, 40)
 	# Its grass is the plan's sward: mown in alleys between the rows, rutted by
 	# the sprayers, dusted pale along the rows (GroundColors.ORCHARD_SWARD).
 	d.ground_marks = {Ground.GRASS: GroundColors.ORCHARD_SWARD}
@@ -108,7 +108,7 @@ static func make() -> BiomeDef:
 	# The plan still runs its grow lights on the schedule, all night, for trees
 	# nobody will pick: every crown lit rose-violet from below, in its rows.
 	d.underlight = Color(0.6, 0.4, 0.86, 0.42)
-	d.props = [PropKind.BROADLEAF, PropKind.BUSH, PropKind.GROWTH_TANK,
+	d.props = [PropKind.GRAFT_TREE, PropKind.BROADLEAF, PropKind.BUSH, PropKind.GROWTH_TANK,
 		PropKind.WATER_TANK, PropKind.FENCE, PropKind.STUMP, PropKind.DEBRIS, PropKind.RELAY,
 		# The sprayers that keep the rows, one to a block (`_works`).
 		PropKind.SPRAYER_GANTRY]
@@ -210,7 +210,8 @@ const TREE_GAP := 3.0
 ## THE ORCHARDS, IN ROWS. They were scattered like any wood, at random, and read
 ## as one: nothing said a machine had planted them. Each block is ruled on the
 ## survey bearing like everything else the plan laid: rows across it, trees at
-## a fixed step, a stump where one went over and was never replaced, the fence
+## a fixed step (grafted, `PropKind.GRAFT_TREE`: the land's material), a stump
+## where one went over and was never replaced, the fence
 ## along its end and the tank that fed its sprayers at its head.
 static func _works(L: Object) -> void:
 	var tiles := 0.0
@@ -259,7 +260,7 @@ static func _block(L: Object, at: Vector2, a: Array) -> bool:
 			# turned to the bearing, a hair off, so a trellis's wire runs
 			# along its row and a pollard's fan faces the next.
 			var turn := d.angle() + (rng.randf() - 0.5) * 0.12
-			if GenWorks._put(L, PropKind.STUMP if gone else PropKind.BROADLEAF, q, turn, -99, 0.0, true) != null and not gone:
+			if GenWorks._put(L, PropKind.STUMP if gone else PropKind.GRAFT_TREE, q, turn, -99, 0.0, true) != null and not gone:
 				planted += 1
 	if planted < 8:
 		return false

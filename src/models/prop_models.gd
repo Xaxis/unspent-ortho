@@ -40,6 +40,7 @@ const Glass := preload("res://src/models/props/glass_desert.gd")
 const Metropolis := preload("res://src/models/props/metropolis.gd")
 const DrownedCity := preload("res://src/models/props/drowned_city.gd")
 const Mesas := preload("res://src/models/props/mesas.gd")
+const Materials := preload("res://src/models/props/materials.gd")
 const FallenTower := preload("res://src/models/props/fallen_tower.gd")
 const SprayerGantry := preload("res://src/models/props/sprayer_gantry.gd")
 
@@ -162,6 +163,13 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 			return 3
 		PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN:
 			return 2
+		# The land materials: a laden tree and one going over, a core lying and
+		# one on end, a blade stuck and a stack, three sorts of bale, and a tall
+		# dripstone, a pair and a cluster (materials.gd).
+		PropKind.GRAFT_TREE, PropKind.MOSS_CORE, PropKind.SERVER_BLADE:
+			return 2
+		PropKind.MIDDEN_BALE, PropKind.DRIPSTONE:
+			return 3
 		PropKind.BARRICADE, PropKind.SHACK, PropKind.VEHICLE, PropKind.HULL, PropKind.SEA_WALL, PropKind.TIDE_GAUGE, \
 		PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.FIRE_TOWER, PropKind.CHECKPOINT, PropKind.DRILL_RIG, \
 		PropKind.CONVEYOR, PropKind.SURVEY, PropKind.WATER_TANK, PropKind.SLAG_HEAP, PropKind.VENT_CAP, PropKind.ARCHIVE, \
@@ -284,6 +292,13 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Mesas.build(k, kind, variant, country)
 		PropKind.FALLEN_TOWER:
 			FallenTower.build(k, variant, country)
+		# A land that dresses its trees in forms (BiomeDressing.broadleaf_forms:
+		# the orchards' pollards and trellis) draws its grafts in them: the rows
+		# are grafted trees, and the form is how the plan keeps them.
+		PropKind.GRAFT_TREE when not BiomeDressing.of(country).broadleaf_forms.is_empty():
+			Trees.broadleaf(k, variant, country)
+		PropKind.GRAFT_TREE, PropKind.MOSS_CORE, PropKind.SERVER_BLADE, PropKind.MIDDEN_BALE, PropKind.DRIPSTONE:
+			Materials.build(k, kind, variant, country)
 		PropKind.SPRAYER_GANTRY:
 			SprayerGantry.build(k, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:

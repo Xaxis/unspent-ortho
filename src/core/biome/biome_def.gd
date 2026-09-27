@@ -384,6 +384,13 @@ var lip_snow := false
 ## and a terrace's height varies along it instead of running ruled and level.
 ## Drawn only: every rule reads the levels. 0: lips run level.
 var lip_sag := 0.0
+## HOW A HALL UNDER THIS LANDSCAPE'S ROOF IS SEEN (world.gdshader, over ground
+## the mass hangs over only): x the day that bounces in off the nearest tear or
+## shaft (AboveMap.glow), y its cold seams' glow in the rock, z the light the
+## player's own eyes and body make of the ground near them, w the radius of that
+## in tiles. Under a lid the hall is lit as night at every hour and was black;
+## this is what a body in it can still read. Zero: no light but the lights.
+var cave_light := Vector4.ZERO
 
 # --- what grows, what is buried -------------------------------------------
 

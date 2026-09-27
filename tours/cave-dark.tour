@@ -1,0 +1,22 @@
+# A HALL DEEP UNDER THE CAVES' ROOF (GenAbove), no tear within 16 tiles: what the
+# cave's own light shows of the ground and the nearest walls, over the shoulder
+# at four headings, and from above.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/cave-dark.tour --seed=7 --realm=underground --hour=12
+coast calm
+wait 1.0
+near deep_under_roof
+wait 1.5
+shot 01-deep-hall-from-above
+tap shoulder
+await shoulder 20
+wait 1.0
+shot 02-heading-0 with shoulder
+mouse 640,0 0.6
+wait 0.8
+shot 03-heading-1 with shoulder
+mouse 640,0 0.6
+wait 0.8
+shot 04-heading-2 with shoulder
+mouse 640,0 0.6
+wait 0.8
+shot 05-heading-3 with shoulder

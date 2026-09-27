@@ -179,7 +179,7 @@ func test_twenty_four_villagers_cost_about_a_millisecond_each() -> void:
 	var full := await _frame_usec(crowd, true, 90)
 	var each := maxf(0.0, full - empty) / crowd.size()
 	print("  crowd of 24 (frames): %.3f ms a person a frame (frame %.2f ms, empty %.2f ms)" % [each / 1000.0, full / 1000.0, empty / 1000.0])
-	lt(each, 1000.0, "an animated villager costs under a millisecond a frame (%.0f us)" % each)
+	cost_lt(each, 1000.0, "an animated villager costs under a millisecond a frame (%.0f us)" % each)
 	stage.free()
 
 

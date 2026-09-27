@@ -601,29 +601,43 @@ float matter_height(int m, vec3 wp, vec2 p) {
 // NORMAL is in VIEW space in fragment(); the two screen derivatives are the
 // view's own x and y, so the gradient goes straight in. The minus on y is
 // because FRAGCOORD counts down the screen and view y counts up.
-vec3 matter_bump(vec3 n, vec3 wp, int m, float relief) {
+// The grain's relief, with the plane chosen from `face`, the face's normal in
+// world space (`matter_bump` below works it out from the derivatives).
+// Near a tie between the face's two strongest axes the two planes' grains are
+// BLENDED. Chosen hard, a face near 45 degrees took one plane or the other quad
+// by quad, the field jumped between the two grains, and the jump's slope,
+// clamped, tipped single pixels right away from a hard light: under a tear's
+// spotlight a lit cave lip came out peppered with black dots (cave-walls.tour
+// frame 02). The blend is only steady if `face` is: from the derivatives it is
+// noisy quad to quad, so world.gdshader hands the interpolated normal.
+vec3 matter_bump_on(vec3 n, vec3 face, vec3 wp, int m, float relief) {
 	if (relief <= 0.0) {
 		return n;
 	}
-	// WHICH PLANE THE GRAIN IS DRAWN IN, and the land never noticed this was
-	// missing because the land is flat. `matter_height` was keyed on `wp.xz`
-	// alone, so on a VERTICAL face the field does not change with height and the
-	// surface gets a smeared vertical streak instead of a grain. Every ground in
-	// the game is near-horizontal, so it never showed — and a village is walls.
-	//
-	// The face's own normal comes back out of the derivatives that are already
-	// being taken two lines down, so this needs no varying, no tangent basis and
-	// no new parameter at any call site. On anything near-horizontal `p` IS
-	// `wp.xz` and nothing about the land moves.
-	vec3 fn = cross(dFdx(wp), dFdy(wp));
-	vec3 a = abs(fn);
-	vec2 p = wp.xz;
-	if (a.y < a.x && a.z < a.x) {
-		p = wp.zy;
-	} else if (a.y < a.z) {
-		p = wp.xy;
+	vec3 a = abs(face);
+	vec2 p1 = wp.xz;
+	vec2 p2 = wp.zy;
+	float a1 = a.y;
+	float a2 = a.x;
+	if (a.x >= a.y && a.x >= a.z) {
+		p1 = wp.zy;
+		a1 = a.x;
+		p2 = a.y >= a.z ? wp.xz : wp.xy;
+		a2 = max(a.y, a.z);
+	} else if (a.z >= a.y) {
+		p1 = wp.xy;
+		a1 = a.z;
+		p2 = a.y >= a.x ? wp.xz : wp.zy;
+		a2 = max(a.y, a.x);
+	} else {
+		p2 = a.x >= a.z ? wp.zy : wp.xy;
+		a2 = max(a.x, a.z);
 	}
-	float h = matter_height(m, wp, p);
+	float lead = smoothstep(0.0, 0.25, (a1 - a2) / max(a1, 1e-6));
+	float h = matter_height(m, wp, p1);
+	if (lead < 1.0) {
+		h = mix(0.5 * (h + matter_height(m, wp, p2)), h, lead);
+	}
 	float wx = max(length(dFdx(wp)), 1e-5);
 	float wy = max(length(dFdy(wp)), 1e-5);
 	vec2 g = vec2(dFdx(h) / wx, -dFdy(h) / wy) * relief;
@@ -632,6 +646,20 @@ vec3 matter_bump(vec3 n, vec3 wp, int m, float relief) {
 	g = clamp(g, vec2(-1.0), vec2(1.0));
 	return normalize(n - vec3(g, 0.0));
 }
+
+vec3 matter_bump(vec3 n, vec3 wp, int m, float relief) {
+	// WHICH PLANE THE GRAIN IS DRAWN IN, and the land never noticed this was
+	// missing because the land is flat. `matter_height` was keyed on `wp.xz`
+	// alone, so on a VERTICAL face the field does not change with height and the
+	// surface gets a smeared vertical streak instead of a grain. Every ground in
+	// the game is near-horizontal, so it never showed — and a village is walls.
+	//
+	// Here the face's own normal comes back out of the derivatives, which needs
+	// no varying and no new parameter; a caller that has the face's world normal
+	// hands it to `matter_bump_on` instead, which is steadier (see there).
+	return matter_bump_on(n, cross(dFdx(wp), dFdy(wp)), wp, m, relief);
+}
+
 
 // --- What has happened to it ------------------------------------------------
 

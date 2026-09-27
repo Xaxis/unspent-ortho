@@ -215,13 +215,20 @@ const UNKNOWN := "unknown"
 ##     for the next that asks the same (`GenWorks._site`: a strict search that
 ##     found nothing is not asked again, a whole one that found nothing is not
 ##     searched again), so the darts after it fall differently.
+## 41. The land materials' raws (GEAR.md §11) stand in their lands: the grey
+##     orchards' blocks are planted in GRAFT_TREE, the green towers shed
+##     MOSS_CORE, the server fields drop SERVER_BLADE, the middens bind
+##     MIDDEN_BALE, and the caves' stalagmites are DRIPSTONE (they were standing
+##     stones). Five kinds appended after the last, so no other kind's number
+##     moves.
 ## 42. The middens' slot labyrinth (GenSlots, `relief.slots`, its plateau
 ##     stood after the borders, GenRelief.lift_slots) and the first look
 ##     batch, one GEN: the grey orchards' rows on the bearing, pollards and
 ##     trellis, the sprayers berthed; the salt flats' ridges on the fissures
 ##     and pump houses at the battery heads; the ruined metropolis' streets,
 ##     its block floors (`relief.streets`, GenRelief.flatten_streets) and
-##     frontages. Provisional: renumbered to main + 1 when it lands.
+##     frontages; the orchards' grafts drawn as pollards and trellis, and
+##     SPRAYER_GANTRY appended after the land materials (101).
 const GEN := 42
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
@@ -278,6 +285,7 @@ const LOOK: Array[String] = [
 	"mist",
 	"hazards",
 	"lip_sag",
+	"cave_light",
 	"roster",
 	"sentinel",
 	"landmarks",

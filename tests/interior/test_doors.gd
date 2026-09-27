@@ -125,8 +125,8 @@ func test_in_through_a_cottage_door_and_out_onto_the_same_coast() -> void:
 		outs.append(float(d.get("swap_out_ms")))
 	print("S1 swap in best %.1f worst %.1f ms, swap out best %.1f worst %.1f ms" % [
 		ins.min(), ins.max(), outs.min(), outs.max()])
-	lt(float(ins.min()), 50.0, "the way in swaps under 50 ms")
-	lt(float(outs.min()), 50.0, "the way out swaps under 50 ms")
+	cost_lt(float(ins.min()), 50.0, "the way in swaps under 50 ms")
+	cost_lt(float(outs.min()), 50.0, "the way out swaps under 50 ms")
 	# And no trip STALLS: the bar above is a cost, this is the door a player felt
 	# stand for 4.6 s when the view waited on its far rings to leave the tree.
 	lt(float(ins.max()), 250.0, "no way in stalls")
