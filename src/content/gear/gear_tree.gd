@@ -116,6 +116,11 @@ const PIECES := {
 	# vertical city, so it is where the climbing brace is raised: its top rung
 	# is made of the ram out of the city's own demolisher (docs/LANDSCAPES.md).
 	&"boots_magnet": {"grade": &"uncommon", "family": &"brace"},
+	# The fight's armour (GEAR.md §6): one verb a piece, each on its hook.
+	&"coat_scale": {"grade": &"rare", "family": &"", "from": &"tide_iron",
+		"unique": "the only coat that turns a blow"},
+	&"wrap_hush": {"grade": &"rare", "family": &"", "from": &"hush_slate",
+		"unique": "the only wrap that quiets your steps"},
 	&"brace_cable": {"grade": &"rare", "family": &"brace", "from": &"tower_cable"},
 	&"brace_ram": {"grade": &"prime", "family": &"brace", "from": &"boom_ram"},
 	# The glide wing is a family the same way (docs/LANDSCAPES.md): every rung

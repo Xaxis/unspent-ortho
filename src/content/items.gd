@@ -239,6 +239,17 @@ const DEFS := {
 	# a person uses, and where the abilities come from.
 	&"vest_heatsink": {"name": "heat-sink vest", "bulk": 3.0, "group": &"kit", "tier": &"mended",
 		"slot": &"body", "sockets": 2, "resist": {&"heat": 0.6, &"fumes": 0.2}, "wears": {"salvage": [&"breastplate"], "gear": [&"battery"]}},
+	# Harvester tide iron hammered to scales and sewn over the shoulders of a long
+	# coat (GEAR.md §6): the back is where a crowd's first blow finds you, and
+	# the scales turn it (FightKit.scale).
+	&"coat_scale": {"name": "scale coat", "bulk": 4.0, "group": &"kit", "tier": &"mended",
+		"slot": &"body", "sockets": 2, "icon": [&"vest", &"rust", &"ash"],
+		"resist": {&"cold": 0.2, &"collapse": 0.2}, "wears": {"coat": &"long", "salvage": [&"plate"]}},
+	# A warm wrap lined with crags hush slate at the hem and the soles (GEAR.md
+	# §6): the stone that swallows sound, worn where the steps are.
+	&"wrap_hush": {"name": "hush wrap", "bulk": 3.0, "group": &"kit", "tier": &"mended",
+		"slot": &"body", "sockets": 2, "icon": [&"vest", &"slate", &"ink"],
+		"resist": {&"cold": 0.3}, "wears": {"coat": &"wrap", "extras": [&"shawl"]}},
 	&"rebreather": {"name": "rebreather", "bulk": 2.0, "group": &"kit", "tier": &"mended",
 		"slot": &"head", "sockets": 1, "resist": {&"fumes": 0.7, &"toxins": 0.55}, "wears": {"gear": [&"respirator"]}},
 	&"boots_magnet": {"name": "magnet boots", "bulk": 3.0, "group": &"kit", "tier": &"mended",

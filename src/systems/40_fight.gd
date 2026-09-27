@@ -404,6 +404,15 @@ func _handle(events: Array[Dictionary]) -> void:
 				MobFx.clang(fx, _at3(hero.pos, 0.9), int(sim.now))
 				MobFx.ring(fx, _at3(hero.pos), Palette.STONE[4], hero.radius + 0.5, 0.4)
 				Events.sfx.emit(&"hit_plate", player.position)
+			&"turned":
+				# The scale coat turned a blow at the back (FightKit.scale): the
+				# scales ring where it struck and throw a glint, and no hurt.
+				_turned_at = Time.get_ticks_msec() / 1000.0
+				var by: MobState = e.attacker
+				var back := (by.pos - hero.pos).normalized() * hero.radius
+				MobFx.clang(fx, _at3(hero.pos + back, 1.1), int(sim.now))
+				MobFx.glint(fx, _at3(hero.pos + back, 1.2), Palette.RUST[4], int(sim.now), 0.7)
+				Events.sfx.emit(&"hit_plate", player.position)
 			&"hurt":
 				_on_hurt(e)
 			&"killed":
@@ -535,6 +544,7 @@ func _crackle(from: Vector2, m: MobState, h: float) -> void:
 ## player, for the tour's `raked` and `grip_failed`.
 var _raked_at := -INF
 var _grip_failed_at := -INF
+var _turned_at := -INF
 var _locked_at := -INF
 var _stripped_at := -INF
 
@@ -548,6 +558,8 @@ func tour_seen(what: StringName) -> bool:
 			return now - _raked_at < 0.35
 		&"grip_failed":
 			return now - _grip_failed_at < 0.4
+		&"turned":
+			return now - _turned_at < 0.4
 		&"locked":
 			return now - _locked_at < FightKit.LOCK_SECONDS
 		&"stripped":

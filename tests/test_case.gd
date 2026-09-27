@@ -220,20 +220,108 @@ static func _yard_work() -> void:
 ## a regression would (measured: the interpreted yardstick read 68 us against its
 ## usual 40 in one run, and a doubled trample frame fell under its bar). In turn,
 ## the three share whatever the machine was doing, round by round.
-static func yard_sample(work: Callable, doubled: Callable, yard: Callable, rounds: int = 6, reps: int = 3) -> Array[float]:
-	var w := INF
-	var d := INF
+##
+## **RATIOS ARE PAIRED BY ROUND, and the middle round's is taken.** The cheapest
+## cost and the cheapest ruler over the whole run came from different rounds,
+## so one quiet window for the ruler against loaded windows for the cost read
+## as a regression: beside two running shards on CI, an awake frame read 4.9
+## against its alone 3.0, a depot sweep 5.9 against 2.9. A round's cost and
+## ruler share that round's load; the median of the rounds' ratios rejects a
+## round that load struck on one side only, in either direction. Returned as
+## [ratio x ruler, doubled ratio x ruler, ruler], the shape `yard_lt` reads.
+static func yard_sample(work: Callable, doubled: Callable, yard: Callable, rounds: int = 7, reps: int = 3) -> Array[float]:
+	var ws: Array[float] = []
+	var ds: Array[float] = []
 	var y := INF
 	for r in rounds:
-		y = minf(y, best_of(reps * 4, yard))
-		w = minf(w, best_of(reps, work))
-		d = minf(d, best_of(reps, doubled))
-	return [w, d, y]
+		var y0 := best_of(reps * 4, yard)
+		var w := best_of(reps, work)
+		var d := best_of(reps, doubled)
+		var y1 := best_of(reps * 4, yard)
+		var yr := minf(y0, y1)
+		y = minf(y, yr)
+		ws.append(w / maxf(yr, 0.001))
+		ds.append(d / maxf(yr, 0.001))
+	ws.sort()
+	ds.sort()
+	return [ws[ws.size() / 2] * y, ds[ds.size() / 2] * y, y]
 
 
 ## The interpreted yardstick's work, as a Callable for `yard_sample`.
 static func yard_work() -> Callable:
 	return _yard_work
+
+
+## PICK THE RULER THAT DOES THE SAME KIND OF WORK AS THE COST. CI hands out
+## runners on several CPUs (EPYC 7763, 9V74, 9V45, two Xeons), and each runs a
+## given kind of work at its own speed against the others: timed alone on eight
+## runners and this laptop (2026-09-27), the interpreted yardstick drifted
+## 1.5-1.8x against costs it was a poor match for, which is wider than the
+## space between any shipped cost and its doubling. Against the matching ruler:
+##   a trample frame (a packed grid pass)    grid 1.12x   (yard 1.53x)
+##   stepped villagers (figures posed)       figure 1.14x (yard 1.81x)
+##   finding the depots (a sweep in script)  grid 1.22x   (yard 1.57x)
+##   ten awake machines (figures posed)      figure 1.19x (yard 1.51x)
+## A new cost bar is measured on CI's CPUs before it is trusted.
+
+
+## The grid yardstick: one pass over a 64 x 64 grid of packed vectors, floats
+## and bytes, decayed and written back, the way a field is kept each frame.
+static func grid_work() -> Callable:
+	if _grid_v.is_empty():
+		_grid_v.resize(4096)
+		_grid_f.resize(4096)
+		_grid_b.resize(4096 * 4)
+		for i in 4096:
+			_grid_v[i] = Vector2(0.5, 0.3)
+			_grid_f[i] = 0.8
+	return _grid_work
+
+
+static var _grid_v := PackedVector2Array()
+static var _grid_f := PackedFloat32Array()
+static var _grid_b := PackedByteArray()
+
+
+static func _grid_work() -> void:
+	var k := 0.97
+	for i in 4096:
+		var p := _grid_v[i] * k
+		var f := _grid_f[i] * k
+		if p.length_squared() < 1e-5:
+			p = Vector2.ZERO
+		_grid_v[i] = p
+		_grid_f[i] = f
+		_grid_b[i * 4] = clampi(128 + roundi(p.x * 127.0), 1, 255)
+		_grid_b[i * 4 + 2] = roundi(f * 255.0)
+
+
+## The figure yardstick: ten dogs walking, each posed once, out of the tree.
+## Dogs are figures as people and machines are, so a cost shared by every
+## figure moves the ruler too and is not seen against it: what a bar in figure
+## yardsticks holds is the measured figure's own share.
+static func figure_work() -> Callable:
+	if _fig_dogs.is_empty():
+		for i in 10:
+			var d := FigureModel.create(&"dog")
+			d.set_pose(&"walk")
+			_fig_dogs.append(d)
+	return _figure_work
+
+
+static var _fig_dogs: Array[FigureModel] = []
+
+
+## Free the figure yardstick's dogs: a test that used it calls this when done.
+static func free_figures() -> void:
+	for d in _fig_dogs:
+		d.free()
+	_fig_dogs.clear()
+
+
+static func _figure_work() -> void:
+	for d in _fig_dogs:
+		d.animate(1.0 / 60.0, 1.5)
 
 
 ## The rig yardstick's work (see bone_yardstick_us), as a Callable.
@@ -286,9 +374,28 @@ static func _bone_work() -> void:
 const DOUBLED_SEEN := 1.6
 
 
+##
+## **IN A SHARD OF THE GATE, A COST IS NOT JUDGED THERE: IT IS RUN AGAIN ALONE.**
+## Beside two sibling shards on CI's four-core runner, a cost read up to 2.2x its
+## alone value against even its matched ruler, for the whole of the test, not in
+## bursts (2026-09-27, eight runners: an awake frame 5.5 against 2.4-3.0 alone,
+## the depot sweep 6.1 against 2.5-2.8), which is past its own doubling. No bar
+## can sit between shipped and doubled under that. So `tools/check.sh` sets
+## UNSPENT_COSTS_LATER to a file for its shards; a cost met there is written to
+## it and said, and check.sh runs every test in that file again by itself after
+## the shards, where it is judged in full.
 func yard_lt(us: float, doubled_us: float, yard: float, bar: float, what: String) -> void:
 	var r := us / maxf(yard, 0.001)
 	var r2 := doubled_us / maxf(yard, 0.001)
+	var later := OS.get_environment("UNSPENT_COSTS_LATER")
+	if later != "":
+		var f := FileAccess.open(later, FileAccess.READ_WRITE if FileAccess.file_exists(later) else FileAccess.WRITE)
+		if f != null:
+			f.seek_end()
+			f.store_line(current)
+			f.close()
+			print("  %s: %.2f yardsticks shipped beside the other shards, bar %.2f -- MEASURED AGAIN ALONE after them" % [what, r, bar])
+			return
 	print("  %s: %.2f yardsticks shipped, %.2f doubled, bar %.2f (%.0f us, yardstick %.1f us)" % [what, r, r2, bar, us, yard])
 	lt(r, bar, "%s, in yardsticks" % what)
 	if r2 > bar or r2 >= r * DOUBLED_SEEN:
