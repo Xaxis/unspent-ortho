@@ -33,6 +33,7 @@ static func make() -> SentinelDef:
 	d.reach = 30.0
 	d.stations = [&"brine_house", &"pans"]
 	d.feeds = [PropKind.PAN_GATE, PropKind.WATER_TANK, PropKind.PIPE, PropKind.SURVEY]
+	d.come_round = "It drags the delta round on its stilts and the rake sweeps the side you keep to."
 	d.drops = &"sentinel_pan_rake"
 	d.core = &"rake_core"
 	d.hulk = PropKind.WRECKAGE
@@ -40,7 +41,7 @@ static func make() -> SentinelDef:
 	# Phase one: raking. It drags its beam and stamps with a foreleg at whatever
 	# comes in; the gear that drives the rake is behind it and open.
 	var raking := SentinelPhase.make(&"raking", 1.0, &"back",
-		{"swing": [620, 150, 700, 820], "reach": 1.8, "width": 1.6, "dmg": 3, "knock": 8.0, "knock_ms": 300})
+		{"swing": [520, 150, 700, 820], "reach": 1.8, "width": 1.6, "dmg": 6, "knock": 8.0, "knock_ms": 300})
 	raking.pace = 4.6
 	raking.dash = 9.0
 	raking.quick = 310
@@ -51,7 +52,7 @@ static func make() -> SentinelDef:
 	# works the ground in front of it with the sun, so the side to be on is the one
 	# it is shading — and a blow into the mirror rings.
 	var dazzle := SentinelPhase.make(&"dazzle", 0.62, &"right",
-		{"swing": [480, 140, 580, 700], "reach": 1.7, "width": 2.4, "dmg": 4, "knock": 9.0, "knock_ms": 320})
+		{"swing": [430, 140, 580, 700], "reach": 1.7, "width": 2.4, "dmg": 4, "knock": 9.0, "knock_ms": 320})
 	dazzle.guarded = true
 	dazzle.pace = 5.2
 	dazzle.dash = 10.5
@@ -63,7 +64,7 @@ static func make() -> SentinelDef:
 	# under each foot, and comes down with the whole deck. Slow, heavy, and the
 	# mast's foot is bare at the front.
 	var stilted := SentinelPhase.make(&"stilted", 0.3, &"front",
-		{"swing": [760, 190, 660, 980], "reach": 2.2, "width": 2.0, "dmg": 5, "knock": 11.0, "knock_ms": 360})
+		{"swing": [640, 190, 660, 980], "reach": 2.2, "width": 2.0, "dmg": 5, "knock": 11.0, "knock_ms": 360})
 	stilted.pace = 3.6
 	stilted.dash = 7.0
 	stilted.quick = 250

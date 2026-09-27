@@ -95,6 +95,15 @@ static func make() -> BiomeDef:
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"leaning_mast", &"blinking_stack", &"clerks_office", &"cast_stones"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
+	# Who kept them: the wireman, who strips the pylons of what they carried and
+	# keeps their glass, and the trapper out on the drifts.
+	d.home = {"households": {
+		&"wireman": {"wants": [&"wire_coils", &"insulators", &"workbench", &"coil"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+		&"trapper": {"wants": [&"pelts", &"snares", &"snowshoes", &"creel"], "by_hearth": []},
+	}}
 	d.sound_bed = &"bed_snowfield"
 	d.surface = _surface
 	d.scatter = _scatter

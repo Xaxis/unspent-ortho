@@ -497,16 +497,28 @@ extends TestCase
 ## the roof is laid only on a landscape declaring `BiomeDef.above`, none of the
 ## six does, and GenAbove runs after every stage these hash. The caves' own
 ## worlds move; tests/biome/test_cave_roofs.gd holds them.
+## RE-ACCEPTED AT GEN 40 (2026-09-26): regions are the plan's
+## (GenCountries.plan_regions on the landscape sampled every STEP tiles).
+## country, country2, level and blend are equal on all five seeds; `ground` and
+## `props` move with the places sited per region. Seed 7's map before and after:
+## the same landscapes; tips, circles and ruins moved, and the second walker's
+## treads stand on the south-east continent (1238,1366) where they stood on the
+## north-east (1414,374). Regions at 1840 (seeds 1, 42, 90210): 42/42/48 ->
+## 44/44/49, land in a region 98.5-98.9% -> 96.8-98.0%.
+## And again for the works' site search keeping what it learned (GenWorks._site):
+## only `props` moves. Works kinds over seeds 1, 7, 42, 90210 at 512 all held or
+## gained one (shelter, cistern, slag, orchard block); seed 7's archive at eye
+## level stands on its ash as before.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 1ad8f3f5 100053b8 4fd7a826 8d0cf770",
-	3: "bd96c6d3 1d22db86 1008c39c a4316902 7e58a668 652780b0",
-	7: "ba7a972f 55af42cc 0f10d2e3 0f02d42c f555c41d 5b50aac1",
-	42: "e0ad0bb3 b7ca1370 0c07876f 2f4b7f69 1565ed7e 9e2ae116",
-	90210: "2659ea1f 66925798 c128779c 34b30d32 275c7664 26756568",
+	1: "054710a9 3eac3638 1ebd687b 100053b8 4fd7a826 559b79bf",
+	3: "bd96c6d3 1d22db86 d51b4ba3 a4316902 7e58a668 fc1e8e2f",
+	7: "ba7a972f 55af42cc 8eec15a7 0f02d42c f555c41d fe8cc703",
+	42: "e0ad0bb3 b7ca1370 f18fef97 2f4b7f69 1565ed7e 11a954d4",
+	90210: "2659ea1f 66925798 18341e08 34b30d32 275c7664 da85a0b9",
 }
 
 

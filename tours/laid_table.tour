@@ -1,0 +1,38 @@
+# A GROWER'S HOUSE IN THE GREY ORCHARDS (src/content/interiors/laid_table.gd):
+# the house the machines still keep -- the table laid for four, the hatch in
+# the kitchen wall with a hot meal behind its glass, the plate that says when,
+# the beds made, the seal humming at the door. Nothing in it hunts.
+#
+#   tools/tour.sh tours/laid_table.tour --seed=4 --hour=12.5 --weather=clear:0
+#
+# 01 is a grower's door as a player finds it. 02 is the house from above as the
+# player comes in. 03 is over the shoulder at the table. 04 is the hatch
+# and its plate. 05 is at the hatch, the meal taken from it by a press of use.
+coast calm
+near door:laid_table
+await door 5
+wait 0.6
+shot 01-a-growers-door with door,land:grey_orchards
+
+press use 0.1
+await inside:laid_table 5
+wait 1.0
+shot 02-the-house-kept with inside:laid_table
+
+hold shoulder_peek
+await shoulder 3
+near thing:laid_table
+wait 1.0
+shot 03-the-table-laid-for-four with inside:laid_table,shoulder
+
+near thing:food_hatch
+wait 1.0
+shot 04-the-hatch-and-its-plate with inside:laid_table,shoulder
+
+near hatch
+await hatch_near 3
+wait 0.6
+press use 0.1
+await meal_taken 3
+wait 0.8
+shot 05-the-meal-taken-from-the-hatch with inside:laid_table,shoulder

@@ -168,6 +168,9 @@ class Lay:
 	## with what `occ` held there before, so a work that gives up is taken back.
 	var key := 0
 	var in_work := false
+	## What `_site` learned of this landscape, per question asked of it: 1 when
+	## its strict search came up empty, 2 when the loose one did too.
+	var site_memo: Dictionary = {}
 	## False while a work is composed a second time for `witness`: it reads the
 	## snapshot and keeps what it takes in `mine`, and writes no grid.
 	var writes := true
@@ -281,6 +284,7 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 				lay.rects.append(r.bounds as Rect2)
 				lay.sizes.append(float(r.tiles))
 		lay.site_rng = Rng.make(c.s, 0x3057 + String(def.id).hash() % 65521)
+		lay.site_memo.clear()
 		lay.rng = lay.site_rng
 		lay.host = row.get("host", GenWorks)
 		Callable(lay.host, fn).call(lay)
@@ -291,6 +295,7 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 	lay.sizes = PackedFloat32Array()
 	lay.rng = Rng.make(c.s, 0x3058)
 	lay.site_rng = lay.rng
+	lay.site_memo.clear()
 	lay.host = GenWorks
 	# The people's things are rows too, composed against the land as the works
 	# left it: they keep off the works' pieces, and off nothing else of their own.
@@ -329,7 +334,20 @@ static func _site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attem
 	var w := L.w
 	attempts = roundi(attempts * effort(c))
 	var strict := int(attempts * 0.55)
-	for attempt in attempts * 2:
+	# WHAT A SEARCH LEARNED IS KEPT for the next one that asks the same thing.
+	# The land does not change while the works are laid and places only ever
+	# add, so a strict search that found nothing here will find nothing again
+	# (the archive asks four times running on a burning with no room for it),
+	# and a whole search that found nothing will too: each was 1-5 ms of darts
+	# at 256, most of the works stage on a seed whose landscapes are cramped.
+	var key := hash([r, rise, grounds, apart, attempts, blend_max])
+	var known: int = L.site_memo.get(key, 0)
+	if known == 2:
+		return Vector2i(-1, -1)
+	for attempt in range(strict if known == 1 else 0, attempts * 2):
+		if attempt == strict and known == 0:
+			L.site_memo[key] = 1
+			known = 1
 		var p := _dart(L)
 		var i := p.y * c.size + p.x
 		var loose := attempt >= strict
@@ -350,6 +368,7 @@ static func _site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attem
 		if GenScatter._near_village(w, Vector2(p), maxf(room, 14.0)) or _crowded(w, Vector2(p), room):
 			continue
 		return p
+	L.site_memo[key] = 2
 	return Vector2i(-1, -1)
 
 
@@ -1274,9 +1293,11 @@ static func _stack(L: Lay, at: Vector2, a: Array) -> bool:
 	# THE DEPOT STANDS AT IT. The stack is the snowfield's one marked work, so a
 	# stack with no yard's room round it (`Works.sites` looks there) leaves the
 	# snowfield without a depot or a keeper's larder. Asked of the ground alone,
-	# so it is the row's own answer.
+	# so it is the row's own answer. Asked once, without the yard's facing: a
+	# yard that stands facing the bearing stands at all, so the looser question
+	# answers the same, and a stack with no room was paying for the scan twice.
 	var region := L.w.region_at(floori(at.x), floori(at.y))
-	if not Works.stand_near(L.w, at, true, region, bearing(L.c.s)).is_finite() and not Works.stand_near(L.w, at, true, region).is_finite():
+	if not Works.stand_near(L.w, at, true, region).is_finite():
 		return false
 	# SCORCH: the soot a stack throws on the snow round it. Unmarked, the
 	# snowfield's works were never a place `Works.sites` counts, so it never
