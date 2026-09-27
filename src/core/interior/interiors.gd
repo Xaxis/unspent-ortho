@@ -82,6 +82,21 @@ static func thresholds(w: WorldData) -> Array[Threshold]:
 			if k == &"" or kind(k) == null:
 				continue
 			out.append(Threshold.of_landmark(site, k, land))
+		# And the doors in a slot labyrinth's faces (SlotDoors): a blind alley's
+		# end (`slot:alley`) and a junction room's wall (`slot:room`).
+		for pair: Array in [[&"slot:alley", SlotDoors.alleys], [&"slot:room", SlotDoors.rooms]]:
+			var sites: Array = []
+			for d: BiomeDef in BiomeRegistry.all():
+				var k0: StringName = d.interiors.get(pair[0], &"")
+				if k0 != &"" and kind(k0) != null:
+					sites = (pair[1] as Callable).call(w)
+					break
+			for site: Array in sites:
+				var d := BiomeRegistry.by_index(int(site[2]))
+				var k: StringName = d.interiors.get(pair[0], &"") if d != null else &""
+				if k == &"" or kind(k) == null:
+					continue
+				out.append(Threshold.of_face(site[0], site[1], k, int(site[2])))
 	_doors[id] = out
 	return out
 
