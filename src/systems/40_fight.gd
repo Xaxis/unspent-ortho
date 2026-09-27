@@ -274,6 +274,48 @@ func _fx_parent() -> Node:
 	return game
 
 
+## One segment of a plough's furrow (FightSim furrows), as ground and not a mark:
+## a floor of packed blue-white ice between two low ridges of the snow it threw
+## aside, on the world's own lit material with no ink. Each segment is a little
+## longer than the tile it stands for, so a lane of them reads as one continuous
+## sunk track. It goes when the furrow fills in.
+func _furrow_segment(at: Vector2, angle: float) -> void:
+	var k := MeshKit.new()
+	k.style = Ink.NONE
+	k.style2 = Ink.NONE
+	k.push(Transform3D(Basis(Vector3.UP, -angle), Vector3.ZERO))
+	var half := FURROW_LEN * 0.5
+	var w := FURROW_WIDTH * 0.5
+	# The ice floor, a hair over the snow; banked ridges make it read as sunk.
+	k.quad(Vector3(-half, 0.015, -w), Vector3(-half, 0.015, w), Vector3(half, 0.015, w), Vector3(half, 0.015, -w), Palette.RIME[4])
+	for sd: float in [-1.0, 1.0]:
+		var z := sd * (w + FURROW_RIDGE * 0.5)
+		k.prism(-half * 0.5, 0.0, z, FURROW_RIDGE * 0.5, FURROW_RIDGE_H, FURROW_RIDGE * 0.3, 5, Palette.RIME[5])
+		k.prism(half * 0.5, 0.0, z, FURROW_RIDGE * 0.5, FURROW_RIDGE_H * 0.8, FURROW_RIDGE * 0.3, 5, Palette.RIME[5])
+	k.pop()
+	var mi := MeshInstance3D.new()
+	mi.mesh = k.build()
+	if _furrow_mat == null:
+		_furrow_mat = ShaderMaterial.new()
+		_furrow_mat.shader = preload("res://src/render/world.gdshader")
+	mi.material_override = _furrow_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_fx_parent().add_child(mi)
+	mi.global_position = _at3(at + Vector2(0.5, 0.5) - (at - at.floor()))
+	var tw := mi.create_tween()
+	tw.tween_interval(FightSim.FURROW_SECONDS)
+	tw.tween_callback(mi.queue_free)
+
+
+## A furrow segment: its length along the lane, the lane's width, and the ridges'
+## width and height either side.
+const FURROW_LEN := 1.3
+const FURROW_WIDTH := 1.5
+const FURROW_RIDGE := 0.35
+const FURROW_RIDGE_H := 0.14
+var _furrow_mat: ShaderMaterial = null
+
+
 ## The working part's place in the world, or the body's middle.
 func _part_at(m: MobState) -> Vector3:
 	if m.node is Mob:
@@ -409,9 +451,7 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"furrowed":
 				# The plough's furrow (FightSim furrows): packed ice down the lane it
 				# cut, pale on the drift for as long as the furrow holds.
-				var fa: Vector2 = e.at
-				var ang: float = e.angle
-				MobFx.tell_line(fx, _at3(fa - Vector2.from_angle(ang) * 0.55), ang, 1.1, 1.8, Palette.RIME[4], FightSim.FURROW_SECONDS)
+				_furrow_segment(e.at, e.angle)
 			&"bogged":
 				# A run off its lane into the drift: the share buries itself and
 				# throws snow up either side.
