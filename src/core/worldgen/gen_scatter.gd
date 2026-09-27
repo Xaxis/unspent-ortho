@@ -663,10 +663,14 @@ static func _declares_ore(c: GenContext, cc: int, kind: int) -> bool:
 
 ## Wrecks on beaches in bays: sited once the grounds exist, on sand with sand
 ## round it, never on shingle or turf.
+## Tiles of hauling sand to a wreck on a region's beaches (`_wrecks`): set so
+## the four seeds the world was tuned on keep the wrecks they had.
+const WRECK_BEACH := 100.0
+
+
 static func _wrecks(c: GenContext) -> void:
 	var w := c.w
 	var size := c.size
-	var rng := Rng.make(c.s, 82)
 	var level := w.level
 	var convex := c.convex
 	var inland := c.inland
@@ -700,20 +704,51 @@ static func _wrecks(c: GenContext) -> void:
 				found.append(i)
 		parts[y0 / band] = found
 	, band)
-	var cands := PackedInt32Array()
+	# REGION BY REGION, BY ITS OWN BEACH. One stream over every beach, to a
+	# count for the world, made a wreck's place hang on every dart thrown on
+	# every other shore. A region's wrecks are its own: one to every
+	# `WRECK_BEACH` tiles of sand it can haul a hull up on (the fraction a roll
+	# of its own), from its own darts, spaced off the places sited before the
+	# wrecks and its own wrecks only.
+	var by_region := {}
 	for part in parts:
-		cands.append_array(part)
-	var wrecks := 0
-	var want := maxi(1, roundi(4 * maxf(c.body_k, 0.3)))
-	for attempt in mini(400, cands.size() * 2):
-		if wrecks >= want:
-			break
-		var i := cands[rng.randi_range(0, cands.size() - 1)]
-		var p := Vector2i(i % size, i / size)
-		if _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.4)) or _near_village(w, Vector2(p), 16.0):
+		for i in part:
+			var r := w.region_at(i % size, i / size)
+			var got: PackedInt32Array = by_region.get(r, PackedInt32Array())
+			got.append(i)
+			by_region[r] = got
+	var keys := by_region.keys()
+	keys.sort()
+	var before := w.landmarks.size()
+	for k: int in GenWorks._order(keys.size()):
+		var here: int = keys[k]
+		var cands: PackedInt32Array = by_region[here]
+		var want := floori(float(cands.size()) / WRECK_BEACH + Rng.hash01(c.s, here, 0, 0x82))
+		if want == 0:
 			continue
-		_mark(w, &"wreck", Vector2(p) + Vector2(0.5, 0.5), country[i])
-		wrecks += 1
+		var rng := Rng.make(c.s, Rng.hash_ints(82, here))
+		var mine := w.landmarks.size()
+		var wrecks := 0
+		for attempt in mini(400, cands.size() * 2):
+			if wrecks >= want:
+				break
+			var i := cands[rng.randi_range(0, cands.size() - 1)]
+			var p := Vector2i(i % size, i / size)
+			if _near_landmark_of(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.4), before, mine) or _near_village(w, Vector2(p), 16.0):
+				continue
+			_mark(w, &"wreck", Vector2(p) + Vector2(0.5, 0.5), country[i])
+			wrecks += 1
+
+
+## A landmark within d of p, of those sited before `before` or from `mine` on:
+## what a region's wreck is spaced off, never another region's wrecks.
+static func _near_landmark_of(w: WorldData, p: Vector2, d: float, before: int, mine: int) -> bool:
+	for j in w.landmarks.size():
+		if j >= before and j < mine:
+			continue
+		if (w.landmarks[j].pos as Vector2).distance_squared_to(p) < d * d:
+			return true
+	return false
 
 
 ## A `SiteKinds` place's own props (`props`: [[kind, count, spread], ...]), each
@@ -798,9 +833,13 @@ static func _free(c: GenContext, occ: PackedByteArray, p: Vector2, r: float) -> 
 
 static func _villages(c: GenContext, occ: PackedByteArray) -> void:
 	var w := c.w
-	var rng := Rng.make(c.s, 29)
-	for v in w.villages:
+	for vi: int in GenWorks._order(w.villages.size()):
+		var v: Dictionary = w.villages[vi]
 		var vp: Vector2 = v.pos
+		# Each village its own stream, keyed on its square: one stream for every
+		# village made a village's count, turn and houses hang on the draws of
+		# every village before it, so a section could not lay one village alone.
+		var rng := Rng.make(c.s, Rng.hash_ints(29, floori(vp.x), floori(vp.y)))
 		# The square: the fire in the middle, the bench drawn up to it, the lamp
 		# on the square's edge where the light reaches both. (3, 3) from the
 		# centre stays clear: --village=N starts there.
@@ -1154,7 +1193,8 @@ static func _house_pack(rng: RandomNumberGenerator, lit_village: bool, forms: Bi
 ## alone (streamed worldgen S3).
 static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:
 	var w := c.w
-	for m in w.landmarks:
+	for li: int in GenWorks._order(w.landmarks.size()):
+		var m: Dictionary = w.landmarks[li]
 		var p: Vector2 = m.pos
 		var rng := Rng.make(c.s, Rng.hash_ints(83, String(m.kind).hash(), floori(p.x), floori(p.y)))
 		# Every place a landscape claims carries `site`, and the four with placers
@@ -1240,7 +1280,8 @@ static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:
 					_occupy(c, occ, p, 1.0)
 	# Kilns, only by villages, on the ground the landscape names for them (dune
 	# sand behind the coast's bays, pavement on the Bonelands). Never on a beach.
-	for v in w.villages:
+	for vi: int in GenWorks._order(w.villages.size()):
+		var v: Dictionary = w.villages[vi]
 		var cc: int = v.country
 		var want := int(c.defs[cc].sites.get("kiln_ground", -1))
 		if want < 0:

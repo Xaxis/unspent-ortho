@@ -526,16 +526,24 @@ extends TestCase
 ## moves; every prop kind over four seeds at 1840 within 2%. Seed 7's coast
 ## village at eye level as before; its stolen light now a wired shack at the
 ## foot of the green towers, its tube burning at night.
+## RE-ACCEPTED AT GEN 46 (2026-09-27, provisional): each village draws from its
+## own stream and each region's wrecks are its own (S4j3a). `props` moves on all
+## five seeds, and `ground` on seed 3 only: its first village's houses moved, so
+## `frame_spawn` put the spawn three tiles over, (120.5,223.5) -> (117.5,222.5),
+## and the way in's scree (78 tiles, was 74) went with it. Every prop and mark
+## kind over four seeds at 1840 within 2%; wrecks 22 -> 23. Seed 7's coast
+## village keeps its square and fence, the house by it dealt a turf-roofed
+## cottage; its wreck lies hauled up on the beach, ribs out.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 1ebd687b 100053b8 4fd7a826 a185d68e",
-	3: "bd96c6d3 1d22db86 d51b4ba3 a4316902 7e58a668 5bc9795f",
-	7: "ba7a972f 55af42cc 8eec15a7 0f02d42c f555c41d b508056d",
-	42: "e0ad0bb3 b7ca1370 f18fef97 2f4b7f69 1565ed7e 42531235",
-	90210: "2659ea1f 66925798 18341e08 34b30d32 275c7664 a2ae0dd8",
+	1: "054710a9 3eac3638 1ebd687b 100053b8 4fd7a826 6e9ef703",
+	3: "bd96c6d3 1d22db86 ed617960 a4316902 7e58a668 be694862",
+	7: "ba7a972f 55af42cc 8eec15a7 0f02d42c f555c41d cf5e8b10",
+	42: "e0ad0bb3 b7ca1370 f18fef97 2f4b7f69 1565ed7e c55fe9ee",
+	90210: "2659ea1f 66925798 18341e08 34b30d32 275c7664 203916c7",
 }
 
 
