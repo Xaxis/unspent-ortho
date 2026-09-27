@@ -36,7 +36,10 @@ func _stand(g: Game, p: Vector2) -> void:
 ## taken off the land as they come, because the coast is capped at six living and
 ## a full ring would stop the yard sending anyone: what is being measured is what
 ## the DEPOT does, not how many bodies fit in a frame.
-func _traffic(g: Game, hours: float) -> int:
+## Bodies the depot of `region` put out over `hours` of world time: that yard's
+## own, since a second depot in reach (the grey orchards' planting holds one
+## since GEN 33) puts its own bodies out and is not the yard being asked about.
+func _traffic(g: Game, hours: float, region: int) -> int:
 	var sys := _works(g)
 	var sim := g.player.sim
 	var steps := int(hours * 60.0 / 2.0)
@@ -45,10 +48,7 @@ func _traffic(g: Game, hours: float) -> int:
 		await frames(1)
 		for m: MobState in sim.mobs.duplicate():
 			sim.remove_mob(m)
-	var out := 0
-	for region: Variant in sys.put_out.values():
-		out += int(region)
-	return out
+	return int(sys.put_out.get(region, 0))
 
 
 func test_a_standing_depot_puts_bodies_on_the_land_and_a_broken_one_puts_none() -> void:
@@ -61,7 +61,7 @@ func test_a_standing_depot_puts_bodies_on_the_land_and_a_broken_one_puts_none() 
 		g.queue_free()
 		await frames(1)
 		return
-	var standing := await _traffic(g, 6.0)
+	var standing := await _traffic(g, 6.0, site.region)
 	gt(float(standing), 8.0, "a working depot is why the land round it is busy")
 	# Now put it out, exactly the way a player does, and count the same six hours.
 	var st: WorksState = sys.state(site.region)
@@ -71,7 +71,7 @@ func test_a_standing_depot_puts_bodies_on_the_land_and_a_broken_one_puts_none() 
 	st.dark_day = float(g.clock.day())
 	check(sys.broken(site.region), "the yard is dark")
 	sys.put_out.clear()
-	var quiet := await _traffic(g, 6.0)
+	var quiet := await _traffic(g, 6.0, site.region)
 	eq(quiet, 0, "and a dark one puts nobody out, ever again")
 	print("works in play: %d bodies out of the yard over 6 world hours standing -> %d broken" % [standing, quiet])
 	g.queue_free()

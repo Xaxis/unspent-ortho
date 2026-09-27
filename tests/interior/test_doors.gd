@@ -7,6 +7,11 @@ extends TestCase
 const Sx := preload("res://tests/save/save_fixture.gd")
 
 
+## How long an arrest may take to put the player out before the door is judged
+## never to have let go (a cap, not a budget: see the arrest test).
+const ARREST_CAP_MS := 20000
+
+
 func _doors(g: Game) -> Node:
 	return Sx.system(g, "21_doors")
 
@@ -309,9 +314,13 @@ func test_a_hall_remembers_its_dead_and_puts_the_arrested_out() -> void:
 	eq(kinds.size(), before - 1, "and the rest of the hall still is")
 	# An arrest in the hall: out of its door.
 	Events.time_skipped.emit(60.0, &"arrested")
-	# The door's cover takes real time to close and open, so wait on the clock.
-	var until := Time.get_ticks_msec() + 3000 * TestCase.machine_slack()
-	while not bool(d.call(&"tour_seen", &"outside")) and Time.get_ticks_msec() < until:
+	# What is asked is WHERE the arrested player lands, not how fast the cover
+	# moves: wait on the door's own state -- no pocket, no swap running -- with a
+	# cap only against a door that never lets go. The cover's two tweens and the
+	# swap take 0.6 s here and passed a 3 s clock budget; on a loaded CI runner
+	# they did not (integ/assembly 59a20ee5), and nothing about the door was wrong.
+	var until := Time.get_ticks_msec() + ARREST_CAP_MS
+	while (d.get("pocket") != null or bool(d.get("_swapping"))) and Time.get_ticks_msec() < until:
 		await _frames(1)
 	check(bool(d.call(&"tour_seen", &"outside")), "arrested in the hall, the player is put outside")
 	near(g.player.pos.distance_to(t.door), 0.0, 1.6, "at the hatch")

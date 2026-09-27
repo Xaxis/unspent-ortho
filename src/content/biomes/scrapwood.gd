@@ -209,17 +209,22 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.SWARF:
+		# A WOOD, NOT A THICKET. At 0.11 + 0.26k this laid 160 trees per 1000
+		# tiles on seed 1, half again the pinewood's 106, and the densest 40-tile
+		# square on the island (335 trees) was here: the heaviest frame in the
+		# game and a wall a player could not see into. Six tenths of it stands
+		# about as thick as the pines, still closed overhead.
 		var k := maxf(0.0, t.forest[i] + 0.15)
-		if r < 0.11 + k * 0.26:
+		if r < 0.066 + k * 0.156:
 			return PropKind.SCRAP_TREE
-		if r < 0.15 + k * 0.28:
+		if r < 0.09 + k * 0.168:
 			return PropKind.BROADLEAF
-		if r < 0.17 + k * 0.28:
+		if r < 0.102 + k * 0.168:
 			return PropKind.DEAD_TREE
 		if r > 0.4 and r < 0.418:
 			# Where the field is strongest the filings stand up on their own.
 			return PropKind.MAGNET_HEAP
-		return PropKind.BUSH if r < 0.2 + k * 0.28 else BiomeScatter.NONE
+		return PropKind.BUSH if r < 0.132 + k * 0.168 else BiomeScatter.NONE
 	if g == Ground.GRASS:
 		var k := maxf(0.0, t.forest[i])
 		if r < 0.02 + k * 0.08:

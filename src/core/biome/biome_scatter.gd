@@ -31,8 +31,12 @@ const NONE := -1
 ## `shared` did not claim this tile: the type's own recipe decides.
 const PASS := -2
 
-## The world's width, so a recipe can step to a neighbouring tile.
+## The window's width, so a recipe can step to a neighbouring tile, and the world
+## tile its first tile stands on (a tile's world place is x0 + i % size,
+## y0 + i / size; see BiomeSurface). The whole world today: x0 = y0 = 0.
 var size := 0
+var x0 := 0
+var y0 := 0
 
 # --- the band's fields (set once, not per tile) ---------------------------
 
