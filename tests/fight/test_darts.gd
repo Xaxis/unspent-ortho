@@ -144,3 +144,19 @@ func test_a_day_in_clerk_country_meets_a_few_darts_not_dozens() -> void:
 	gt(float(meetings), 0.0, "a clerk country still reads you")
 	lt(per_hour, 60.0 / Coast.MEETING_GAP + 0.05, "no more than the gap allows")
 	check(filings <= meetings, "a filing is a meeting that got away")
+
+
+## A DART ALREADY OUT KEEPS THE GAP TOO. The gap shut the darts not yet out, and
+## two on the land at once (a clerk and a gull keep different gaps) could both
+## reach the player: two meetings in nine game minutes on seed 1 (test_soak).
+## Inside the gap the second breaks off, takes nothing, files nothing, and goes.
+func test_a_second_dart_inside_the_gap_breaks_off_and_takes_nothing() -> void:
+	var sim := F.make_sim(F.flat_world(96, Ground.ASH, Country.BURNING), Vector2(40.5, 40.5))
+	var first := sim.add_mob(&"clerk", Vector2(46.5, 40.5))
+	var second := sim.add_mob(&"clerk", Vector2(34.5, 40.5))
+	F.ms(sim, 12000)
+	var events := sim.drain()
+	eq(F.count(events, &"snatch"), 1, "one meeting, not two")
+	eq(F.count(events, &"filed"), 1, "and one clerk files")
+	check(first.snatched and second.snatched, "both came close and turned for home")
+	check(first.removed and second.removed, "and both are gone")

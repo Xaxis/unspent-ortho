@@ -1031,8 +1031,12 @@ static func sweep(game: Game, _delta: float) -> void:
 	var now := game.clock.minutes
 	var w := game.world
 	for id: int in w.depleted.keys():
+		# The time first: most entries are not due (INF never is), and a prop is
+		# a view made for the asking.
+		if float(w.depleted[id]) > now:
+			continue
 		var prop := w.prop(id)
-		if float(w.depleted[id]) > now or prop == null:
+		if prop == null:
 			continue
 		# Nothing grows back through a body standing in it.
 		if prop.solid > 0.0 and prop.pos.distance_to(game.player.pos) < prop.solid + Tuning.PLAYER_RADIUS:

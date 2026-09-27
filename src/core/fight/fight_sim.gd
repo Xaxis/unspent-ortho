@@ -1139,11 +1139,20 @@ func _kill(m: MobState, by_player: bool = true) -> void:
 	emit(&"killed", {"mob": m, "at": m.pos, "by_player": by_player})
 
 
-## A dart reached the player: it takes what it came for and runs.
+## A dart reached the player: it takes what it came for and runs. Inside
+## `Coast.MEETING_GAP` of the last meeting it breaks off instead, taking and
+## filing nothing: the gap only shut the darts not yet out, so two already on the
+## land (different kinds keep different gaps) met the player twice in nine game
+## minutes on seed 1 (test_soak), and a meeting is meant to be rare.
 func snatch(m: MobState) -> void:
 	if m.snatched:
 		return
 	m.snatched = true
+	if moment != null and moment.minutes - last_meeting_minutes < Coast.MEETING_GAP:
+		m.reported = true
+		m.flee_home = false
+		m.set_mood(MobState.FLEEING, now)
+		return
 	if moment != null:
 		last_meeting_minutes = moment.minutes
 	m.flee_home = false

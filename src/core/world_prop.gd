@@ -27,6 +27,9 @@ var shown := 1.0
 ## threads, and a plain `+=` raced against them and drifted by hundreds over a
 ## full test run.
 static var live := 0
+## How many WorldProps were ever made: what a walk costs even when it lets them
+## all go again, so a test can see a hot path making views it did not need.
+static var made := 0
 static var _live_lock := Mutex.new()
 
 
@@ -62,6 +65,7 @@ func _init(p_id: int, p_kind: int, p_pos: Vector2, p_rot: float, p_scale: float)
 	solid = PropKind.SOLID[kind] * scale
 	_live_lock.lock()
 	live += 1
+	made += 1
 	_live_lock.unlock()
 
 

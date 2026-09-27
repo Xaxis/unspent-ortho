@@ -26,6 +26,13 @@ enum { FORCE, FOUNDER, STARVE, SPOOF }
 
 const KIND_NAMES: Array[StringName] = [&"force", &"founder", &"starve", &"spoof"]
 
+## The fewest works a keeper may feed on for its STARVE way to be open. Under
+## this, robbing the larder is one to three presses and the way would be won by
+## accident rather than chosen; the keepers' designs are tuned to reach it, and
+## where a world gives one less (a lair whose station has one works in reach,
+## seed 42's coast at GEN 30), the way is closed rather than cheap.
+const FEEDS_LEAST := 4
+
 var kind := FORCE
 ## Grounds that will not carry it (FOUNDER), as Ground ids.
 var grounds: Array[int] = []
@@ -71,9 +78,10 @@ func progress(look: SentinelLook) -> float:
 				return 0.0
 			return clampf(look.ground_ms / maxf(1.0, hold_ms), 0.0, 1.0)
 		STARVE:
-			if look.feeds_at_first <= 0:
-				# Nothing fed it in the first place: this way is not open here, and
-				# it must never read as already won because there is nothing to break.
+			if look.feeds_at_first < FEEDS_LEAST:
+				# Nothing fed it in the first place, or too little for starving it to
+				# be a choice: this way is not open here. Nothing to break must never
+				# read as already won, and one or two presses must not win it.
 				return 0.0
 			if look.feeds > 0:
 				return clampf(1.0 - float(look.feeds) / float(look.feeds_at_first), 0.0, 0.99)

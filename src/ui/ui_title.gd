@@ -306,7 +306,7 @@ func _exit_tree() -> void:
 		_task = -1
 	# A view set up on the worker but never shown is not in the tree: free it here.
 	if _next_view != null and not _next_view.is_inside_tree():
-		_next_view.free()
+		WorldView.dispose(_next_view)
 		_next_view = null
 
 

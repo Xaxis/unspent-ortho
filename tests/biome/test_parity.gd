@@ -452,16 +452,39 @@ extends TestCase
 ## (1b17a03e -> 2dbde53b); every one of the grid's 508 masts resolves. What an
 ## id seeds (a tree's lean, the far windows) moves once with it: an eye-level
 ## frame moved 1.6 mean on the far city's windows.
+## RE-ACCEPTED AT GEN 30 (2026-09-26): the places throw their darts per kind and
+## region (`GenScatter._site_rng`) and a patch's size comes from its own tile.
+## `country`, `country2`, `level` and `blend` are equal on all five seeds; only
+## `ground` (the tips' and vents' patches) and `props` (what stands on them and
+## the scatter round them) move. Seed 1 at 512, top-down: the same island, 2.0%
+## of ground pixels differ, all of them site patches and the marks on them. Over
+## seeds 2, 3, 4, 7, 42 and 90210 at 512 the island holds 954 places where it
+## held 939: a different search, not a thinner one.
+## RE-ACCEPTED AT GEN 31 (2026-09-26): the shafts are sited on the land before any
+## prop and the ground round each is held clear (`Portals.site`, HOLD). Five
+## tile arrays equal on all five seeds; only `props` moves, what the scatter no
+## longer lays in a shaft's mouth. Seed 4 at 192 shot in 2029 and now at shaft 0:
+## one tile, the same scree and scrub round it, nothing solid within 4.7 tiles.
+## RE-ACCEPTED AT GEN 32 (2026-09-26): a place's furniture is drawn from a stream
+## keyed on the place (`GenScatter._landmarks`). Five tile arrays equal on all
+## five seeds; only `props` moves. Seed 1's tip shot before and after: the same
+## tip on the same patch, its heaps laid afresh; with one landscape's tips taken
+## away, 28 of 28 far places keep their furniture (1 of 28 before).
+## GEN 33 (2026-09-26) CHANGED NO DIGEST: its content is the scrapwood, the
+## sulphur jungle, the grey orchards, the drowned city and the machine city,
+## none of them among the six, and the one shared change (recipe water fixed
+## against tidying) touches only recipes that lay water, which none of the six
+## do. The five have tests of their own in tests/core/test_world_gen_surface.gd.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 94461b7b 100053b8 4fd7a826 5c06a0ae",
-	3: "bd96c6d3 1d22db86 7b140027 a4316902 7e58a668 21618ae8",
-	7: "ba7a972f 55af42cc dc6cb282 0f02d42c f555c41d 36572b9e",
-	42: "e0ad0bb3 b7ca1370 87e9cbb3 2f4b7f69 1565ed7e 3233d301",
-	90210: "2659ea1f 66925798 11348ba2 34b30d32 275c7664 9ac280c7",
+	1: "054710a9 3eac3638 1ad8f3f5 100053b8 4fd7a826 3c010e0d",
+	3: "bd96c6d3 1d22db86 1008c39c a4316902 7e58a668 13a8730e",
+	7: "ba7a972f 55af42cc 0f10d2e3 0f02d42c f555c41d e3913545",
+	42: "e0ad0bb3 b7ca1370 0c07876f 2f4b7f69 1565ed7e 5e53cfc5",
+	90210: "2659ea1f 66925798 c128779c 34b30d32 275c7664 75c0436c",
 }
 
 

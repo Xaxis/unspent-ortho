@@ -178,7 +178,7 @@ func sight_boxes(mid: Vector2, reach: float) -> Array[PackedFloat32Array]:
 ## waited for (WorldView, at predelete) before the engine quits under them.
 func _exit_tree() -> void:
 	if _outside_view != null and is_instance_valid(_outside_view) and not _outside_view.is_inside_tree():
-		_outside_view.free()
+		WorldView.dispose(_outside_view)
 	_outside_view = null
 
 

@@ -43,8 +43,8 @@ static func make() -> SentinelDef:
 	# out on purpose: the posts near a region's heart are the island survey's,
 	# not the bench's, and measured at 512 on seeds 1, 4 and 42 they came to TWO
 	# inside the keeper's larder every time -- a starve way open on two works is
-	# won by one theft and an accident, which tests/sentinel/test_world.gd
-	# refuses (STARVE_LEAST). With the masts and racks alone the larder is empty
+	# won by one theft and an accident, which
+	# SentinelWay.FEEDS_LEAST closes. With the masts and racks alone the larder is empty
 	# until the bench is laid, which closes the way honestly, and four masts plus
 	# a row of racks once it is.
 	d.feeds = [PropKind.THEODOLITE_MAST, PropKind.CORE_RACK]

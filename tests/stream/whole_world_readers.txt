@@ -34,7 +34,6 @@ src/core/interior/interior_gen.gd::grow::raw
 src/core/interior/interiors.gd::thresholds::builder Landmarks.sites
 src/core/interior/interiors.gd::thresholds::builder Works.sites
 src/core/interior/interiors.gd::thresholds::list
-src/core/landmarks/landmarks.gd::_solid_tiles::list
 src/core/landmarks/landmarks.gd::sites::list
 src/core/mobs/coast.gd::_first_due::builder Spawner.green_distance
 src/core/mobs/coast.gd::_first_meeting::builder Spawner.green_distance
@@ -91,7 +90,6 @@ src/core/worldgen/gen_places.gd::open_sample::list
 src/core/worldgen/gen_places.gd::open_sample::raw
 src/core/worldgen/gen_places.gd::open_sample::tiles
 src/core/worldgen/gen_places.gd::river_sample::list
-src/core/worldgen/gen_places.gd::solid_mask::list
 src/core/worldgen/gen_places.gd::solid_mask::tiles
 src/core/worldgen/gen_places.gd::standable::raw
 src/core/worldgen/gen_places.gd::typical_sample::builder Landmarks.sites
@@ -131,7 +129,6 @@ src/render/world_far.gd::build_arrays::raw
 src/render/world_far.gd::done::tiles
 src/render/world_far.gd::next_block::tiles
 src/render/world_far.gd::stand_arrays::raw
-src/render/world_far.gd::stands_done::tiles
 src/render/world_view.gd::_bind::tiles
 src/render/world_view.gd::ensure_far::tiles
 src/render/world_view.gd::far_wanted::tiles
@@ -200,7 +197,6 @@ src/ui/ui_map_data.gd::_build_images::raw
 src/ui/ui_map_data.gd::country_bytes::raw
 src/ui/ui_map_data.gd::country_bytes::tiles
 src/ui/ui_map_data.gd::ink_table::raw
-src/ui/ui_map_data.gd::mark_bytes::list
 src/ui/ui_map_data.gd::shore_distance::raw
 src/ui/ui_map_data.gd::thinned::raw
 src/ui/ui_map_screen.gd::_draw_overlay::list

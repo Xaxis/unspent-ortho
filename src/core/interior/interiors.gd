@@ -47,9 +47,12 @@ static func thresholds(w: WorldData) -> Array[Threshold]:
 		return _doors[id]
 	var out: Array[Threshold] = []
 	if w.realm != Realm.INTERIOR:
-		for p: WorldProp in w.each_prop():
-			if p.kind != PropKind.HOUSE:
+		# Only a house is made a WorldProp; the rest are read off the columns.
+		w.sync_table()
+		for i in w.table.size():
+			if w.table.kind[i] != PropKind.HOUSE:
 				continue
+			var p := w.prop_at(i)
 			var land := w.country_at(floori(p.pos.x), floori(p.pos.y))
 			var d := BiomeRegistry.by_index(land)
 			if d == null:

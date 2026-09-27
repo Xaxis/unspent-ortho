@@ -44,10 +44,13 @@ static func bake(w: WorldData) -> WorksMap:
 	m.size = w.size
 	m.bytes.resize(w.size * w.size * 4)
 	m.dir = Vector2.from_angle(GenWorks.bearing(w.seed_value))
+	# Read off the columns: a WorldProp here would be one made for every prop.
+	w.sync_table()
+	var t := w.table
 	var houses := PackedVector2Array()
-	for p in w.each_prop():
-		if p.kind == PropKind.HOUSE:
-			houses.append(p.pos)
+	for i in t.size():
+		if t.kind[i] == PropKind.HOUSE:
+			houses.append(t.pos[i])
 	for lm in w.landmarks:
 		if not lm.has("mark"):
 			continue
@@ -56,9 +59,9 @@ static func bake(w: WorldData) -> WorksMap:
 			continue
 		m._paint(w, houses, lm.pos, lm.get("dir", Vector2.RIGHT), lm.get("half", Vector2(4, 4)), ch)
 	m.survey.resize(w.size * w.size * 3)
-	for p in w.each_prop():
-		if p.kind == PropKind.STUMP:
-			m.survey[(floori(p.pos.y) * w.size + floori(p.pos.x)) * 3 + 1] = 255
+	for i in t.size():
+		if t.kind[i] == PropKind.STUMP:
+			m.survey[(floori(t.pos[i].y) * w.size + floori(t.pos[i].x)) * 3 + 1] = 255
 	m.phase = GenWorks.survey_phase(w.seed_value)
 	for sec: Array in GenWorks.survey_sections(w.seed_value, w.size):
 		m._line(w, houses, sec[0], sec[1])

@@ -6,7 +6,7 @@ Realms and portals, the rooms behind a house's door, landmarks and caches, regio
 
 ## Sub-features
 
-- 20_realms: `src/systems/20_realms.gd`, reached by `tools/tour.sh tours/realms.tour`.
+- 20_realms: `src/systems/20_realms.gd`, reached by `tools/tour.sh tours/realms.tour`. The shafts are sited in generation on the land alone and held clear (`Portals.site`), so 2029 opens them on the present's tiles: `tools/test.sh test_every_seed_s_shafts`, and a still beside one with `--realm=era`.
 - 21_doors: `src/systems/21_doors.gd`, reached by `tools/tour.sh tours/house.tour --seed=4 --hour=11 --weather=clear:0`: a coast house's door, the room behind it (a pocket world, `src/core/interior/`, `src/models/interior/`), both views, and out again.
 - 22_landmarks: `src/systems/22_landmarks.gd`, reached by `tools/tour.sh tours/landmarks.tour`.
 - 24_holds: `src/systems/24_holds.gd`, reached by `tools/tour.sh tours/region.tour`.

@@ -142,6 +142,10 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	t = _mark(c, marks, &"surface", t)
 	if _halted(w):
 		return w
+	# The shafts, on the finished ground and before anything stands on it, so
+	# every era of this coast opens them on the same tiles (Portals.site).
+	w.shafts = Portals.site(w)
+	w.shafts_sited = true
 	GenScatter.props(c)
 	t = _mark(c, marks, &"props", t)
 	if _halted(w):

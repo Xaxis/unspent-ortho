@@ -25,6 +25,17 @@ static func find(w: WorldData, name: String) -> Vector2:
 	var key := name.to_lower().strip_edges()
 	if key == "spawn":
 		return w.spawn
+	# "village:LAND": the first village, in the world's list, whose stand is on
+	# LAND's ground (where `village_stand` puts a body, which on a border can be
+	# the other landscape's): a tour asks for one by landscape, not by an index
+	# that moves when worldgen does.
+	if key.begins_with("village:"):
+		var want := StringName(key.trim_prefix("village:"))
+		for v: Dictionary in w.villages:
+			var at := w.village_stand(v)
+			if BiomeRegistry.at(w, at).id == want:
+				return at
+		return Vector2(-1, -1)
 	if key == "lit_village":
 		var sq := lit_village_square(w)
 		return _stand_near(w, sq) if sq.x >= 0.0 else Vector2(-1, -1)
@@ -123,14 +134,19 @@ static func _placed_after(w: WorldData, key: String, nth: int) -> Vector2:
 static func solid_mask(w: WorldData) -> PackedByteArray:
 	var m := PackedByteArray()
 	m.resize(w.size * w.size)
-	for p in w.each_prop():
-		if p.solid <= 0.0:
+	# Read off the columns: a WorldProp here would be one made for every prop.
+	w.sync_table()
+	var t := w.table
+	for i in t.size():
+		var solid := t.solid[i]
+		if solid <= 0.0:
 			continue
-		var r := ceili(p.solid)
+		var r := ceili(solid)
+		var at := t.pos[i]
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
-				var x := floori(p.pos.x) + dx
-				var y := floori(p.pos.y) + dy
+				var x := floori(at.x) + dx
+				var y := floori(at.y) + dy
 				if w.in_bounds(x, y):
 					m[y * w.size + x] = 1
 	return m

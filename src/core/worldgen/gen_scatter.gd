@@ -164,7 +164,7 @@ const SITES_LAID_ELSEWHERE: Array[StringName] = [&"tip", &"stone_circle", &"ruin
 ## patch (or none, `KEEP`), and marked in `WorldData.landmarks` under the row's
 ## id with its region, so a sub-arc, the depth test and `_landmarks` below all
 ## find it by name. `_landmarks` furnishes it from the row's `props`.
-static func _site_kinds(c: GenContext, rng: RandomNumberGenerator) -> void:
+static func _site_kinds(c: GenContext) -> void:
 	var w := c.w
 	for cc: int in c.land_types:
 		var claims: Dictionary = c.defs[cc].sites
@@ -182,6 +182,7 @@ static func _site_kinds(c: GenContext, rng: RandomNumberGenerator) -> void:
 			for region: Dictionary in _regions_of(w, cc):
 				var want := maxi(1, roundi(rate * float(region.get("tiles", 0)) / 1000.0))
 				var here := int(region.get("id", -1))
+				var rng := _site_rng(c, kind, here)
 				var placed := 0
 				for attempt in 2500:
 					if placed >= want:
@@ -203,15 +204,30 @@ static func _site_kinds(c: GenContext, rng: RandomNumberGenerator) -> void:
 					placed += 1
 
 
+## THE SITING OF EACH KIND IN EACH REGION THROWS ITS OWN DARTS. One stream for
+## every site on the island made a region's places depend on every dart thrown
+## before them anywhere: one more tip in the south moved every stone circle in
+## the north. Keyed on (kind, region), a region's darts are its own, and what is
+## laid round a site is drawn from its tile alone (`_site_radius`), so a section
+## can lay a site knowing only where the plan put it (docs: streamed worldgen, S3).
+static func _site_rng(c: GenContext, kind: StringName, region: int) -> RandomNumberGenerator:
+	return Rng.make(c.s, Rng.hash_ints(81, String(kind).hash(), region))
+
+
+## How far a site's patch reaches, from its own tile.
+static func _site_radius(c: GenContext, p: Vector2i, lo: float, hi: float) -> float:
+	return lerpf(lo, hi, Rng.hash01(c.s, p.x, p.y, 0x517E))
+
+
 static func sites(c: GenContext) -> void:
 	var w := c.w
-	var rng := Rng.make(c.s, 81)
 	# Tips: scrap heaps where a landscape says the machines dumped them. PER
 	# REGION, so a place twice the size holds twice as many (`TILES_PER_SITE`).
 	for cc: int in c.land_types:
 		for region: Dictionary in _regions_of(w, cc):
 			var want := _want_here(int(c.defs[cc].sites.get("tips", 0)), region)
 			var here := int(region.get("id", -1))
+			var rng := _site_rng(c, &"tip", here)
 			var placed := 0
 			for attempt in 2500:
 				if placed >= want:
@@ -225,7 +241,7 @@ static func sites(c: GenContext) -> void:
 				var loose := attempt >= 1500
 				if not _clear_site(c, p, 4 if loose else 6, 3 if loose else 2) or _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
 					continue
-				_lay_tip(c, p, rng.randf_range(4.0, 7.5))
+				_lay_tip(c, p, _site_radius(c, p, 4.0, 7.5))
 				_mark(w, &"tip", Vector2(p) + Vector2(0.5, 0.5), cc, {"site": true})
 				placed += 1
 	# Stone circles on open flat ground where a landscape keeps them, per region
@@ -234,6 +250,7 @@ static func sites(c: GenContext) -> void:
 		for region: Dictionary in _regions_of(w, cc):
 			var circles := _want_here(int(c.defs[cc].sites.get("stone_circles", 0)), region)
 			var here := int(region.get("id", -1))
+			var rng := _site_rng(c, &"stone_circle", here)
 			var placed := 0
 			for attempt in 2500:
 				if placed >= circles:
@@ -246,13 +263,15 @@ static func sites(c: GenContext) -> void:
 					continue
 				_mark(w, &"stone_circle", Vector2(p) + Vector2(0.5, 0.5), cc, {"site": true})
 				placed += 1
-	_site_kinds(c, rng)
-	# Ruins where people had steadings to lose.
+	_site_kinds(c)
+	# Ruins where people had steadings to lose: thrown over the whole island, so
+	# their stream is the island's.
+	var ruin_rng := _site_rng(c, &"ruin", -1)
 	var ruins := 0
 	for attempt in 1200:
 		if ruins >= maxi(2, roundi(7 * maxf(c.body_k, 0.3))):
 			break
-		var p := _random_tile(c, rng)
+		var p := _random_tile(c, ruin_rng)
 		var i := p.y * c.size + p.x
 		var cc := w.country[i]
 		if cc == Country.SEA or not bool(c.defs[cc].sites.get("ruins", false)):
@@ -280,6 +299,7 @@ static func sites(c: GenContext) -> void:
 			var here := int(region.get("id", -1))
 			var bounds: Rect2 = region.get("bounds", c.land_rect)
 			var want := maxi(2, _want_here(vent_count, region))
+			var rng := _site_rng(c, &"fumarole", here)
 			var fumaroles := 0
 			for attempt in 6000:
 				if fumaroles >= want:
@@ -294,7 +314,7 @@ static func sites(c: GenContext) -> void:
 				var rough := 1 if attempt < 3000 else 2
 				if not _clear_site(c, p, 4, rough) or _near_landmark(w, Vector2(p), (30.0 if attempt < 3000 else 20.0) * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), 22.0):
 					continue
-				_lay_patch(c, p, rng.randf_range(4.0, 6.0), vent_ground)
+				_lay_patch(c, p, _site_radius(c, p, 4.0, 6.0), vent_ground)
 				_mark(w, &"fumarole", Vector2(p) + Vector2(0.5, 0.5), vented, {"site": true})
 				fumaroles += 1
 	# Summits: the highest walkable ground in each upland landscape gets a cairn,
@@ -431,6 +451,10 @@ static func _lay_patch(c: GenContext, p: Vector2i, r: float, ground: int) -> voi
 static func props(c: GenContext) -> void:
 	var occ := PackedByteArray()
 	occ.resize(c.n)
+	# The shafts' mouths and the room before them, held before anything is laid:
+	# sited on the land alone (Portals.site), nothing of either era stands on them.
+	for shaft: Portal in c.w.shafts:
+		_occupy(c, occ, shaft.pos, float(Portals.HOLD))
 	_wrecks(c)
 	_villages(c, occ)
 	GenSettle.frame_spawn(c)
@@ -1086,11 +1110,16 @@ static func _house_pack(rng: RandomNumberGenerator, lit_village: bool, forms: Bi
 	return rest
 
 
+## WHAT A PLACE IS FURNISHED WITH IS DRAWN FROM THE PLACE. One stream laid every
+## tip's heaps, every circle's stones and every wreck's plates in turn, so a
+## place's furniture hung on how many places came before it in the list; keyed
+## on its own kind and tile, a section can furnish a place from the plan's row
+## alone (streamed worldgen S3).
 static func _landmarks(c: GenContext, occ: PackedByteArray) -> void:
 	var w := c.w
-	var rng := Rng.make(c.s, 83)
 	for m in w.landmarks:
 		var p: Vector2 = m.pos
+		var rng := Rng.make(c.s, Rng.hash_ints(83, String(m.kind).hash(), floori(p.x), floori(p.y)))
 		# Every place a landscape claims carries `site`, and the four with placers
 		# of their own are furnished by their own branches below, not from the row.
 		if bool(m.get("site", false)) and not SITES_LAID_ELSEWHERE.has(m.kind):
@@ -1341,6 +1370,17 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 	for g: int in [Ground.BONE, Ground.GRAVEL, Ground.SAND, Ground.SHINGLE, Ground.SALT, Ground.PAN]:
 		reach[g] = 0.25
 	var solid := PropKind.SOLID
+	# A landscape whose scatter the machines laid out (`BiomeDef.scatter_ruled`)
+	# stands it on a lattice ruled on their survey bearing, a tile's pitch, and
+	# turned square to it. A tile takes the lattice point inside it, so no two
+	# things share a point, and a tile with none takes nothing.
+	var ruled := PackedByteArray()
+	ruled.resize(defs.size())
+	for k in defs.size():
+		ruled[k] = 1 if defs[k].scatter_ruled else 0
+	var bearing := GenWorks.bearing(s)
+	var bd := Vector2.from_angle(bearing)
+	var bn := Vector2(-bd.y, bd.x)
 	var band := 12
 	var parts: Array[PackedFloat32Array] = []
 	parts.resize(ceili(float(size) / band))
@@ -1423,6 +1463,14 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 				if (road[i - 1] != 0 or road[i + 1] != 0 or road[i - size] != 0 or road[i + size] != 0) and solid[kind] > 0.0:
 					continue
 				var p := Vector2(x + 0.2 + ((h >> 24) & 0xFF) / 425.0, y + 0.2 + ((h >> 8) & 0xFF) / 425.0)
+				var rot := -1.0
+				if ruled[cc] != 0:
+					var mid := Vector2(x + 0.5, y + 0.5)
+					var q := bd * roundf(mid.dot(bd)) + bn * roundf(mid.dot(bn))
+					if floori(q.x) != x or floori(q.y) != y:
+						continue
+					p = q
+					rot = fposmod(bearing + float(h & 3) * PI * 0.5, TAU)
 				if solid[kind] > 0.0:
 					var to := p - sp
 					if to.length_squared() < 9.0 or (to.length_squared() < 64.0 and to.normalized().dot(face) > 0.6):
@@ -1430,8 +1478,9 @@ static func _scatter(c: GenContext, occ: PackedByteArray) -> void:
 				found.append(kind)
 				found.append(p.x)
 				found.append(p.y)
+				found.append(rot)
 		parts[y0 / band] = found
 	, band)
 	for part in parts:
-		for j in range(0, part.size(), 3):
-			_add(c, int(part[j]), Vector2(part[j + 1], part[j + 2]))
+		for j in range(0, part.size(), 4):
+			_add(c, int(part[j]), Vector2(part[j + 1], part[j + 2]), part[j + 3])

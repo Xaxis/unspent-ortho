@@ -50,6 +50,9 @@ static var _defs: Dictionary = {}
 static var _order: Array[SentinelDef] = []
 static var _lock := Mutex.new()
 static var _declared := false
+## Each world's keepers' lairs: [region, def, lair] rows, keyed as `states` asks.
+static var _lairs: Dictionary = {}
+static var _lairs_lock := Mutex.new()
 
 
 static func all() -> Array[SentinelDef]:
@@ -186,18 +189,35 @@ static func states(world: WorldData) -> Array[SentinelState]:
 	var out: Array[SentinelState] = []
 	if world == null:
 		return out
-	for r: Dictionary in world.regions:
-		var def := for_land(StringName(str(r.get("type", &""))))
-		if def == null or int(r.get("tiles", 0)) < MIN_TILES:
-			continue
-		var at := lair(world, r, def)
-		if not at.is_finite():
-			continue
+	# Where each keeper stands is fixed by the world (its regions and the marks
+	# laid on it), so it is worked out once per world; the states are made fresh
+	# every time, because a game wears their health down.
+	var key := "%d:%d" % [world.get_instance_id(), world.landmarks.size()]
+	_lairs_lock.lock()
+	var rows: Variant = _lairs.get(key)
+	_lairs_lock.unlock()
+	if rows == null:
+		var found: Array = []
+		for r: Dictionary in world.regions:
+			var def := for_land(StringName(str(r.get("type", &""))))
+			if def == null or int(r.get("tiles", 0)) < MIN_TILES:
+				continue
+			var at := lair(world, r, def)
+			if at.is_finite():
+				found.append([int(r.get("id", -1)), def, at])
+		_lairs_lock.lock()
+		if _lairs.size() >= 8:
+			_lairs.clear()
+		_lairs[key] = found
+		_lairs_lock.unlock()
+		rows = found
+	for row: Array in rows:
+		var def: SentinelDef = row[1]
 		var s := SentinelState.new()
-		s.region = int(r.get("id", -1))
+		s.region = int(row[0])
 		s.design = def.id
 		s.land = def.land
-		s.lair = at
+		s.lair = row[2]
 		s.max_health = Roster.health_of(def.kind)
 		s.health = s.max_health
 		out.append(s)

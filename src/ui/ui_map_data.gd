@@ -245,12 +245,15 @@ static func mark_bytes(w: WorldData, step: int = 1, side: int = 0) -> PackedByte
 	var out := PackedByteArray()
 	out.resize(n * n)
 	const RANK := [0, 2, 2, 3, 1, 6, 5, 4, 0]
-	for p in w.each_prop():
-		var m := mark_of(p.kind)
+	# Read off the columns: a WorldProp here would be one made for every prop.
+	w.sync_table()
+	var t := w.table
+	for r in t.size():
+		var m := mark_of(t.kind[r])
 		if m == MARK_NONE:
 			continue
-		var x := floori(p.pos.x) / step
-		var y := floori(p.pos.y) / step
+		var x := floori(t.pos[r].x) / step
+		var y := floori(t.pos[r].y) / step
 		if x < 0 or y < 0 or x >= n or y >= n:
 			continue
 		var i := y * n + x

@@ -377,9 +377,16 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array) -> Array:
 ## to 172, contending with the near chunks' own worker for the template lock, for
 ## silhouettes the orthographic camera never shows.
 const LEVELS: Array[int] = [FarModels.NEAR_FAR, FarModels.FAR]
+## Level masks: bit i is LEVELS[i]. CLOSE is drawn only to FAR_AT at eye level,
+## COARSE past it and from above.
+const CLOSE := 1
+const COARSE := 2
+const BOTH := 3
 
 
-static func stand_arrays(w: WorldData, props: Array) -> Array:
+## Each level asked for in `want` (bit i for LEVELS[i]); a level not asked for
+## comes back as three empty surfaces. [] when nothing here stands tall enough.
+static func stand_arrays(w: WorldData, props: Array, want: int = BOTH) -> Array:
 	var outs: Array = []
 	for level: int in LEVELS:
 		outs.append([MeshKit.new(), MeshKit.new(), MeshKit.new()])
@@ -399,6 +406,8 @@ static func stand_arrays(w: WorldData, props: Array) -> Array:
 		var nx := Transform3D(xf.basis.orthonormalized(), Vector3.ZERO)
 		var sm := summary(p.kind, variant, country)
 		for i in LEVELS.size():
+			if not want & (1 << i):
+				continue
 			var t := FarModels.template(p.kind, variant, country, LEVELS[i])
 			var kits: Array = outs[i]
 			_put(kits[0], xf * t.made_v, nx * t.made_n, t.made_c, t.made_uv, t.made_uv2)
@@ -522,21 +531,46 @@ func block_count() -> int:
 	return _blocks.size()
 
 
-## Blocks whose silhouettes are in, whether or not anything stood there.
+## Block -> the levels of its silhouettes that are in (CLOSE, COARSE), whether
+## or not anything stood there. A level is BUILT ONLY WHERE IT CAN BE SEEN and
+## let go when it cannot (WorldView._stand_want, _stand_keep): the close level
+## of the whole island was 331 MB of mesh and is drawn only within FAR_AT of an
+## eye (the streaming design's far tiers).
 var _stood: Dictionary = {}
+## Block -> [close bytes, coarse bytes] of what it holds; and their sum.
+var _bytes: Dictionary = {}
+var stand_bytes := 0
 
 
-func stands_done(size: int) -> bool:
-	var n := across(size)
-	return _stood.size() >= n * n
+## The levels block `key` holds.
+func stood(key: Vector2i) -> int:
+	return int(_stood.get(key, 0))
 
 
-## The nearest block with its land in and its silhouettes not yet, or (-1, -1).
-func next_stand(size: int, focus: Vector2, busy: Dictionary) -> Vector2i:
+## Every block that holds any level.
+func stood_keys() -> Array:
+	return _stood.keys()
+
+
+## Whether every built block holds every level `want` asks of it.
+func stands_settled(want: Callable) -> bool:
+	for key: Vector2i in _blocks.keys():
+		var need: int = want.call(key)
+		if need & ~stood(key):
+			return false
+	return true
+
+
+## The nearest block with its land in and a level `want` asks for missing, or
+## (-1, -1).
+func next_stand(want: Callable, focus: Vector2, busy: Dictionary) -> Vector2i:
 	var best := Vector2i(-1, -1)
 	var best_d := INF
 	for key: Vector2i in _blocks.keys():
-		if _stood.has(key) or busy.has(key):
+		if busy.has(key):
+			continue
+		var need: int = want.call(key)
+		if not need & ~stood(key):
 			continue
 		var mid := Vector2((key.x + 0.5) * BLOCK, (key.y + 0.5) * BLOCK)
 		var d := mid.distance_squared_to(focus)
@@ -544,6 +578,28 @@ func next_stand(size: int, focus: Vector2, busy: Dictionary) -> Vector2i:
 			best_d = d
 			best = key
 	return best
+
+
+## Let block `key`'s level (CLOSE or COARSE) go: its meshes, anything of it still
+## queued, and its bytes. Built again, the same, when it is wanted again.
+func drop_level(key: Vector2i, level: int) -> void:
+	if not stood(key) & level:
+		return
+	var i := 0 if level == CLOSE else 1
+	_stood[key] = stood(key) & ~level
+	if stood(key) == 0:
+		_stood.erase(key)
+	_pending = _pending.filter(func(e: Array) -> bool: return not (e[0] == key and int(e[1]) == i))
+	var node: Node3D = _blocks.get(key)
+	if node != null:
+		for mi: Node in node.get_children():
+			if mi.has_meta(&"far_level") and int(mi.get_meta(&"far_level")) == i:
+				node.remove_child(mi)
+				mi.queue_free()
+	var b: Array = _bytes.get(key, [0, 0])
+	stand_bytes -= int(b[i])
+	b[i] = 0
+	_bytes[key] = b
 
 
 ## Put a block's far models in: each level's made, found and leaf surfaces under
@@ -557,17 +613,43 @@ func next_stand(size: int, focus: Vector2, busy: Dictionary) -> Vector2i:
 var _pending: Array = []
 
 
-func add_stands(key: Vector2i, levels: Array, mats: Array) -> void:
-	if _stood.has(key) or not _blocks.has(key):
+func add_stands(key: Vector2i, levels: Array, mats: Array, built: int = BOTH) -> void:
+	if not _blocks.has(key):
 		return
-	_stood[key] = true
+	built &= ~stood(key)
+	if built == 0:
+		return
+	_stood[key] = stood(key) | built
 	if levels.is_empty():
 		return
+	var b: Array = _bytes.get(key, [0, 0])
 	for i in range(levels.size() - 1, -1, -1):
+		if not built & (1 << i):
+			continue
 		var surf: Array = levels[i]
 		for j in 3:
 			if not (surf[j] as Array).is_empty():
 				_pending.append([key, i, j, surf[j], mats[j]])
+				var n := _surface_bytes(surf[j])
+				b[i] = int(b[i]) + n
+				stand_bytes += n
+	_bytes[key] = b
+
+
+static func _surface_bytes(a: Array) -> int:
+	var n := 0
+	for v: Variant in a:
+		if v is PackedVector3Array:
+			n += (v as PackedVector3Array).size() * 12
+		elif v is PackedVector2Array:
+			n += (v as PackedVector2Array).size() * 8
+		elif v is PackedColorArray:
+			n += (v as PackedColorArray).size() * 16
+		elif v is PackedFloat32Array:
+			n += (v as PackedFloat32Array).size() * 4
+		elif v is PackedInt32Array:
+			n += (v as PackedInt32Array).size() * 4
+	return n
 
 
 ## Put the next queued far surface in; false when none is left.

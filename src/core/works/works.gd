@@ -105,12 +105,35 @@ const GREEN_MOST := 14
 const BREAK_CAUSE := &"sabotage"
 
 
+## Every depot a world holds, by world and by how many marks it had when asked:
+## the marks are fixed once generation has laid them, and a world still being
+## laid (the treads ask mid-way) has fewer, so it is never handed an old answer.
+## Seventeen callers asked it afresh, one of them every warp list opened.
+static var _cache: Dictionary = {}
+static var _cache_lock := Mutex.new()
+const CACHE_MOST := 8
+
+
+## Let go of every remembered answer, so the next ask is worked out afresh (a test
+## timing the real work).
+static func forget() -> void:
+	_cache_lock.lock()
+	_cache.clear()
+	_cache_lock.unlock()
+
+
 ## Every depot in a world, biggest region first (the order `WorldData.regions`
 ## is in), so a save's list and a fresh game's list are the same list.
 static func sites(world: WorldData) -> Array[WorksSite]:
 	var out: Array[WorksSite] = []
 	if world == null:
 		return out
+	var key := "%d:%d" % [world.get_instance_id(), world.landmarks.size()]
+	_cache_lock.lock()
+	var had: Variant = _cache.get(key)
+	_cache_lock.unlock()
+	if had != null:
+		return (had as Array[WorksSite]).duplicate()
 	var bearing := GenWorks.bearing(world.seed_value)
 	var by_region := {}
 	for m: Dictionary in world.landmarks:
@@ -163,6 +186,11 @@ static func sites(world: WorldData) -> Array[WorksSite]:
 		s.work_dir = heart.get("dir", Vector2.RIGHT)
 		s.work_half = heart.get("half", Vector2.ZERO)
 		out.append(s)
+	_cache_lock.lock()
+	if _cache.size() >= CACHE_MOST:
+		_cache.clear()
+	_cache[key] = out.duplicate()
+	_cache_lock.unlock()
 	return out
 
 
