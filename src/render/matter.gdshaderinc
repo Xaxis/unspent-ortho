@@ -600,6 +600,18 @@ float matter_height(int m, vec3 wp, vec2 p) {
 // NORMAL is in VIEW space in fragment(); the two screen derivatives are the
 // view's own x and y, so the gradient goes straight in. The minus on y is
 // because FRAGCOORD counts down the screen and view y counts up.
+// The plane a face's grain is drawn in, from the size of its normal's three
+// parts `a`: the two axes the face spreads along, of `v`.
+vec2 matter_plane(vec3 a, vec3 v) {
+	if (a.y < a.x && a.z < a.x) {
+		return v.zy;
+	}
+	if (a.y < a.z) {
+		return v.xy;
+	}
+	return v.xz;
+}
+
 vec3 matter_bump(vec3 n, vec3 wp, int m, float relief) {
 	if (relief <= 0.0) {
 		return n;
@@ -614,14 +626,8 @@ vec3 matter_bump(vec3 n, vec3 wp, int m, float relief) {
 	// being taken two lines down, so this needs no varying, no tangent basis and
 	// no new parameter at any call site. On anything near-horizontal `p` IS
 	// `wp.xz` and nothing about the land moves.
-	vec3 fn = cross(dFdx(wp), dFdy(wp));
-	vec3 a = abs(fn);
-	vec2 p = wp.xz;
-	if (a.y < a.x && a.z < a.x) {
-		p = wp.zy;
-	} else if (a.y < a.z) {
-		p = wp.xy;
-	}
+	vec3 a = abs(cross(dFdx(wp), dFdy(wp)));
+	vec2 p = matter_plane(a, wp);
 	float h = matter_height(m, wp, p);
 	float wx = max(length(dFdx(wp)), 1e-5);
 	float wy = max(length(dFdy(wp)), 1e-5);
@@ -629,6 +635,35 @@ vec3 matter_bump(vec3 n, vec3 wp, int m, float relief) {
 	// A slope over 1:1 is a cliff, not a grain of sand: clamp so a noisy texel
 	// can never turn a face inside out.
 	g = clamp(g, vec2(-1.0), vec2(1.0));
+	return normalize(n - vec3(g, 0.0));
+}
+
+// The same bump with the height's slope taken by stepping one pixel along each
+// screen axis and asking `matter_height` again, never by `dFdx(h)`.
+//
+// **APPLE'S METAL COMPILER CANNOT BUILD `dFdx(matter_height(...))` BESIDE A
+// SIGHT-CONE LOOP** (sight.gdshaderinc). Every browser on a Mac runs WebGL on
+// Metal through ANGLE, and there fore.gdshader's depth and shadow programs
+// failed to build ("Compiler encountered an internal error") on every draw, so
+// the layer lost its depth pass and drew as flat blocks that glow blew out to
+// white under a tear. Measured by linking the program alone: without the
+// loop, without the bump, or with the height's slope taken like this, it
+// builds. A shader that cuts a sight cone AND bends its normal calls this.
+// It costs two more `matter_height` per fragment.
+vec3 matter_bump_stepped(vec3 n, vec3 wp, int m, float relief) {
+	if (relief <= 0.0) {
+		return n;
+	}
+	vec3 dx = dFdx(wp);
+	vec3 dy = dFdy(wp);
+	vec3 a = abs(cross(dx, dy));
+	vec2 p = matter_plane(a, wp);
+	float h = matter_height(m, wp, p);
+	float hx = matter_height(m, wp + dx, p + matter_plane(a, dx));
+	float hy = matter_height(m, wp + dy, p + matter_plane(a, dy));
+	float wx = max(length(dx), 1e-5);
+	float wy = max(length(dy), 1e-5);
+	vec2 g = clamp(vec2((hx - h) / wx, -(hy - h) / wy) * relief, vec2(-1.0), vec2(1.0));
 	return normalize(n - vec3(g, 0.0));
 }
 
