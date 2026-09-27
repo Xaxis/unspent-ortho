@@ -51,7 +51,9 @@ func _init() -> void:
 ## What the line would take hold of: {pos: Vector2, height: float, what: StringName}
 ## or {} if nothing is in range. Pure. With an undertow fitted (`sim`'s hero's
 ## kit), a live machine ahead is a hold too, the nearest thing ahead winning:
-## what: &"machine", mob: MobState.
+## what: &"machine", mob: MobState. A cracked stone hanging from the roof ahead
+## (FightSim.hangings) is one too, and the line pulls it DOWN rather than the
+## body up to it: what: &"hanging", id.
 static func anchor(world: WorldData, query: WorldQuery, at: Vector2, dir: Vector2, sim: FightSim = null) -> Dictionary:
 	if world == null or dir.length() < 0.01:
 		return {}
@@ -61,6 +63,11 @@ static func anchor(world: WorldData, query: WorldQuery, at: Vector2, dir: Vector
 		return up
 	var best: Dictionary = {}
 	var best_d := INF
+	if sim != null:
+		var h := sim.hanging_ahead(at, d, RANGE, CONE)
+		if not h.is_empty():
+			best_d = (h.at as Vector2).distance_to(at)
+			best = {"pos": h.at, "height": float(h.y), "what": &"hanging", "id": int(h.id)}
 	var kit: FightKit = sim.hero.kit if sim != null and sim.hero != null else null
 	if kit != null and (kit.undertow or kit.cable):
 		for m in sim.mobs:
@@ -197,6 +204,12 @@ func on_press(ctx: AbilityCtx) -> bool:
 		return false
 	var at := ctx.pos()
 	var target: Vector2 = a.pos
+	if a.what == &"hanging":
+		# The line takes the stone and the body stays planted: it comes down.
+		if not _sim(ctx).pull_down(int(a.id)):
+			return false
+		ctx.draw(&"grapple", {"at": at, "to": target, "what": a.what, "seconds": FightSim.FALL_MS / 1000.0})
+		return true
 	if a.what == &"machine":
 		# The machine comes; the player stays planted. The book spends one
 		# grapple's wind; the rest of the haul's is spent here.

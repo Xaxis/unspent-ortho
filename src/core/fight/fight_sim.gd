@@ -405,6 +405,8 @@ func _try_pull() -> void:
 func _beat() -> void:
 	_hush_read()
 	_curtains_beat()
+	if not hangings.is_empty():
+		_falls_beat()
 	# A shut way lets go after its seconds (FightKit.lock).
 	for i in range(lock_walls.size() - 1, -1, -1):
 		if lock_walls[i].w <= now / 1000.0:
@@ -1495,6 +1497,85 @@ func _heavy_on_curtains(b: Blow) -> void:
 			emit(&"curtain_down", {"id": c.id, "at": c.at, "broken": true})
 		else:
 			emit(&"curtain_cracked", {"id": c.id, "at": c.at, "hits": c.hits})
+
+
+## HANGING STONE (the Limestone Caves' cracked roof, AbilityGrapple): a
+## stalactite hung cracked where the roof is thin. The grapple's line takes one
+## and pulls it down: FALL_MS later it lands on what stands under it, FALL_R
+## round where it hung. From above, it is no side's blow: a machine under it is
+## hurt and STALLS FALL_STALL_MS whatever its plate, its tell lost; a player
+## under it is hurt too. Lure it under, and bring the roof down on it.
+## Each {id, at (tiles), y (its tip's world height), falls_at (sim ms, or -1)}.
+var hangings: Array[Dictionary] = []
+var _hanging_ids := 0
+const FALL_MS := 450.0
+const FALL_R := 0.8
+const FALL_DMG := 24
+const FALL_STALL_MS := 1800.0
+const FALL_HERO_DMG := 3
+
+
+## Hang a cracked stone at `at`, its tip at world height `y`. Its id.
+func hang(at: Vector2, y: float) -> int:
+	_hanging_ids += 1
+	hangings.append({"id": _hanging_ids, "at": at, "y": y, "falls_at": -1.0})
+	return _hanging_ids
+
+
+## The line takes the stone `id` and pulls it: it lets go FALL_MS later. False
+## when there is no such stone standing, or it is already coming down.
+func pull_down(id: int) -> bool:
+	for h: Dictionary in hangings:
+		if int(h.id) == id and float(h.falls_at) < 0.0:
+			h.falls_at = now + FALL_MS
+			emit(&"hanging_pulled", {"id": id, "at": h.at, "y": h.y, "ms": FALL_MS})
+			return true
+	return false
+
+
+## The stone a line cast from `from` along `dir` would take: the nearest still
+## hanging within `reach` tiles and `cone` radians of the line. {} when none.
+func hanging_ahead(from: Vector2, dir: Vector2, reach: float, cone: float) -> Dictionary:
+	var best := {}
+	var best_d := INF
+	for h: Dictionary in hangings:
+		if float(h.falls_at) >= 0.0:
+			continue
+		var to: Vector2 = (h.at as Vector2) - from
+		var d := to.length()
+		if d > reach or d < 0.3 or absf(to.angle_to(dir)) > cone:
+			continue
+		if d < best_d:
+			best_d = d
+			best = h
+	return best
+
+
+## Stones let go land: on the bodies under them, and on the player.
+func _falls_beat() -> void:
+	for i in range(hangings.size() - 1, -1, -1):
+		var h := hangings[i]
+		if float(h.falls_at) < 0.0 or now < float(h.falls_at):
+			continue
+		hangings.remove_at(i)
+		var at: Vector2 = h.at
+		var hit: Array[MobState] = []
+		for m in mobs:
+			if not m.alive or m.removed or m.pos.distance_to(at) > FALL_R + m.radius:
+				continue
+			var b := Blow.new()
+			b.dmg = FALL_DMG
+			b.knock = 0.0
+			_hurt_mob(m, b, at, 0)
+			m.stun_until = maxf(m.stun_until, now + FALL_STALL_MS)
+			m.charging = false
+			_break_tell(m)
+			_wake(m, &"damaged", at)
+			hit.append(m)
+			emit(&"fell_on", {"id": h.id, "at": at, "mob": m})
+		if hero.pos.distance_to(at) <= FALL_R + hero.radius and now >= hero.invuln_until:
+			_hurt_hero(null, FALL_HERO_DMG, hero.pos - at, 3.0, 160)
+		emit(&"hanging_fell", {"id": h.id, "at": at, "y": h.y, "bodies": hit})
 
 
 ## FURROWS (a row that `bogs`, the Snowfield's plough): tiles it has ploughed,

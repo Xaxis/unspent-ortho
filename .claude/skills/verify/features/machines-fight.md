@@ -75,6 +75,10 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   staged by walking through a lone way in the stones (`near gap`, `walkto gap`), fresh and wet, drying, dry and
   cracked, crumbling, gone, never stippled by the sight cut (GroundColors.HELD): `TOUR_FIXED_FPS=60 tools/tour.sh
   tours/curtains.tour`.
+  The line brings the roof down (FightSim.hangings, AbilityGrapple `hanging`): the grapple takes a cracked
+  stone hanging ahead and pulls it down; FALL_MS on, it hurts and stalls a machine under it whatever its plate,
+  and a player under it: `tools/test.sh test_hanging_fall`. Where stones hang, and how they look and fall, is the
+  cracked roof's (next).
 - 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.
   Freed by a dark yard or a fallen keeper, and back on a standing holding's books
   (`tools/test.sh test_come_home`; `tools/tour.sh tours/taken_home.tour`, options in its header;
