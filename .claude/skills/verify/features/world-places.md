@@ -12,7 +12,7 @@ Realms and portals, the rooms behind a house's door, landmarks and caches, regio
 - The middens' container warrens (`src/content/interiors/container_warren.gd`, `src/models/interior/warren_model.gd`, doors sited by `src/core/interior/slot_doors.gd` at blind alleys' ends, `Threshold.of_face`): `tools/tour.sh tours/container-warren.tour --seed=1 --hour=11 --weather=clear:0`, frame 01 the container's end in the slot face, 02 the run from above (grey day down each rust hole, `&"seep"` lights), 03 down the run over the shoulder. Rules in `tools/test.sh test_container_warren,test_slot_doors`: every room reached from the door, steel floor (`Ground.STEEL_FLOOR`, the loudest), and a crouched walk down a sorted warren's run passes the docked sorter while a standing one wakes it.
 - 22_landmarks: `src/systems/22_landmarks.gd`, reached by `tools/tour.sh tours/landmarks.tour`.
 - 23_ruins: `src/systems/23_ruins.gd`: every standing ruin's walls stop a body (`RuinWalls`, a croft's walls and a city tower's stump), set for the whole island and again when anything is taken. Checked by `tools/test.sh test_ruin_walls`.
-- 24_holds: `src/systems/24_holds.gd`, reached by `tools/tour.sh tours/region.tour`.
+- 24_holds: `src/systems/24_holds.gd`, reached by `tools/tour.sh tours/region.tour`. A held road's barricades are drawn in the world's material, not the renderer's grey default: `tools/test.sh test_hold_drawn`.
 
 ## How to reach it
 
