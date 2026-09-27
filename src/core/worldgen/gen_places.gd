@@ -261,9 +261,6 @@ const TYPICAL_BUCKET := 8
 ## (`Landmarks.read_reach` is 11-13 tiles at the play camera, so 16 puts a
 ## landmark out of shot). Wider than `open`'s single rule because this frame is
 ## about the LAND, and one roof in it is the whole subject changed.
-## How many of a landscape's `typical_among` kind the 24-tile neighbourhood of
-## its typical ground must hold.
-const TYPICAL_AMONG := 40.0
 const TYPICAL_OF_YARD := 30.0
 const TYPICAL_OF_VILLAGE := 22.0
 const TYPICAL_OF_LANDMARK := 16.0
@@ -324,7 +321,9 @@ static func typical_sample(w: WorldData, cc: int) -> Vector2:
 	_share(land_ground)
 	_share(land_props)
 
-	var want_among := BiomeRegistry.by_index(cc).typical_among
+	var among_row := BiomeRegistry.by_index(cc).typical_among
+	var want_among := among_row.x
+	var least := maxf(1.0, float(among_row.y))
 	var best := Vector2(-1, -1)
 	var best_score := INF
 	for y in range(6, w.size - 6, 2):
@@ -361,10 +360,10 @@ static func typical_sample(w: WorldData, cc: int) -> Vector2:
 			_share(near_props)
 			var score := _apart(near_ground, land_ground) + _apart(near_props, land_props)
 			# Among what the landscape declares it is (`typical_among`): a
-			# neighbourhood holding fewer than TYPICAL_AMONG of them is not
+			# neighbourhood holding fewer than its `least` of them is not
 			# typical of it, however average its mix.
 			if want_among >= 0:
-				score += 2.0 * (1.0 - minf(1.0, among / TYPICAL_AMONG))
+				score += 2.0 * (1.0 - minf(1.0, among / least))
 			# A hair of noise so two identical neighbourhoods do not depend on scan order.
 			score += Rng.hash01(w.seed_value, x, y, 13) * 0.002
 			if score < best_score:

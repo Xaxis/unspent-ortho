@@ -51,42 +51,71 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 		PropKind.PAN_GATE: gate(k, v)
 
 
-## A pressure ridge in the crust: plates that met, buckled and tipped, standing
-## in a low wall along the line where they hit. It has to read at 640x360, so
-## the wall is continuous and its shadow side is dark: a white tick with a cut
-## under it, never a row of dashes.
+## A PRESSURE RIDGE: where the crust grew faster than there was room for it and
+## the polygons shoved up against each other into a tent. Two plates of crust
+## leaning together along a crack, knee to thigh high, their undersides the
+## brown the brine left in them, a rim of fresh crystal along the crest where
+## the brine still wicks up, and gaps where the tent fell in. At eye level it is
+## a low jagged wall to step over; from above, a line with a shadow on one side.
 static func ridge(k: Kit, v: int) -> void:
 	var s := 400 + v * 17
-	var run := 1.9 + v * 0.5
+	var run := 2.2 + v * 0.6
 	var along := Vector3(1, 0, 0.14 + Kit.j(s, 1, 0.22)).normalized()
 	var across := Vector3(-along.z, 0, along.x)
-	var plates := 5 + v
-	var step := run / plates
-	for i in plates:
-		var t := (float(i) - plates * 0.5 + 0.5) * step
-		var lean := Kit.j(s, i * 4, 0.35)
-		var rise := 0.22 + absf(Kit.j(s, i * 4 + 1, 0.16))
-		var base := along * t + across * Kit.j(s, i * 4 + 2, 0.06)
-		# Each plate is a slab of crust stood on edge, overlapping its neighbour
-		# so the line never breaks.
-		var half := step * 0.72
-		var a := base - along * half
-		var b := base + along * half
-		var up := Vector3(0, rise, 0) + across * lean * 0.22
-		var pale := CRUST if i % 3 != 1 else CRUST_DOWN
-		# The lit face, the shaded back, and the dark cut at its foot.
-		k.made.quad(a, b, b + up, a + up, pale)
-		k.made.quad(b - across * 0.07, a - across * 0.07, a + up - across * 0.05, b + up - across * 0.05, CRUST_DOWN)
-		k.made.quad(a + up, b + up, b + up + across * 0.06 - Vector3(0, 0.02, 0), a + up + across * 0.06 - Vector3(0, 0.02, 0), CRUST_UP)
-		k.made.quad(a - across * 0.07, b - across * 0.07, b - across * 0.2, a - across * 0.2,
-			STAIN.lerp(P.LINEN[2], 0.4) if i % 2 == 0 else P.LINEN[2])
-	# Slabs that broke off and fell against the wall, on the sunny side.
-	for i in 3:
-		var t := (float(i) / 3.0 - 0.35) * run
-		var at := along * t + across * 0.22
-		k.made.push(Transform3D(Basis(Vector3.UP, along.angle_to(Vector3.RIGHT) + Kit.j(s, 40 + i, 0.6)) * Basis(Vector3.RIGHT, 1.1), at))
-		k.made.prism(0, 0, 0, 0.13 + Kit.j(s, 50 + i, 0.03), 0.02, 0.1, 5, CRUST_UP, CRUST)
-		k.made.pop()
+	var tents := 4 + v
+	var step := run / tents
+	var under := CRUST_DOWN.lerp(STAIN, 0.45).darkened(0.25)
+	var rim := CRUST_UP
+	for i in tents:
+		var t := (float(i) - tents * 0.5 + 0.5) * step
+		# A fallen tent: the plates lie flat and broken where it gave way.
+		if Rng.hash01(s, i, 5) < 0.18:
+			var at := along * t
+			k.made.push(Transform3D(Basis(Vector3.UP, along.angle_to(Vector3.RIGHT) + Kit.j(s, 60 + i, 0.5)), at))
+			k.made.prism(0, 0, 0, step * 0.45, 0.05, step * 0.4, 5, CRUST_DOWN, CRUST)
+			k.made.pop()
+			continue
+		var rise := 0.22 + Rng.hash01(s, i, 1) * 0.34
+		var spread := 0.1 + Rng.hash01(s, i, 2) * 0.12
+		var half := step * (0.5 + Rng.hash01(s, i, 3) * 0.14)
+		var mid := along * t + across * Kit.j(s, i * 4 + 2, 0.05)
+		var a := mid - along * half
+		var b := mid + along * half
+		var c := mid + along * Kit.j(s, i * 4 + 4, half * 0.4)
+		# A broken crest: each plate snapped at its own height, so the top is a
+		# jag of three points and never a roof line.
+		var lean := across * Kit.j(s, i * 4 + 3, 0.05)
+		var ca := a + Vector3(0, rise * (0.45 + Rng.hash01(s, i, 11) * 0.4), 0) + lean + along * 0.05
+		var cc := c + Vector3(0, rise, 0) + lean
+		var cb := b + Vector3(0, rise * (0.35 + Rng.hash01(s, i, 12) * 0.5), 0) + lean - along * 0.05
+		var crest := Vector3(0, rise, 0) + lean
+		for side: float in [-1.0, 1.0]:
+			var off := across * spread * side
+			var fa := a + off + along * Kit.j(s, i * 4 + 6 + int(side), 0.06)
+			var fb := b + off
+			var fc := c + off * 1.15
+			# A tipped plate shows the side that grew under the brine: the one
+			# facing away is its stained underside, dark from above and at eye
+			# level alike, so a ridge never sinks into the crust round it.
+			var face := CRUST_UP if side > 0.0 else under
+			var back := across * 0.03 * side
+			if side > 0.0:
+				k.made.quad(fa, fc, cc, ca, face)
+				k.made.quad(fc, fb, cb, cc, GroundColors.down(face, 0.08))
+				k.made.quad(fc - back, fa - back, ca - back * 0.6, cc - back * 0.6, under)
+				k.made.quad(fb - back, fc - back, cc - back * 0.6, cb - back * 0.6, under)
+			else:
+				k.made.quad(fc, fa, ca, cc, face)
+				k.made.quad(fb, fc, cc, cb, GroundColors.down(face, 0.08))
+				k.made.quad(fa - back, fc - back, cc - back * 0.6, ca - back * 0.6, under)
+				k.made.quad(fc - back, fb - back, cb - back * 0.6, cc - back * 0.6, under)
+		# The crest: fresh crystal wicked up along it, a row of pale teeth.
+		for q in 3:
+			var at := [ca, cc, cb][q] as Vector3
+			var th := 0.05 + Rng.hash01(s, i * 4 + q, 9) * 0.06
+			k.made.prism(at.x, at.y - 0.02, at.z, 0.045, at.y + th, 0.0, 5, rim, rim)
+		# The brine seep at the shaded foot: a dark wet line.
+		k.made.quad(a - across * (spread + 0.02), b - across * (spread + 0.02), b - across * (spread + 0.42), a - across * (spread + 0.34), STAIN.lerp(CRUST_DOWN, 0.5).darkened(0.2))
 
 
 ## A heap the pan rakers built and never came back for: a raked cone of salt

@@ -168,6 +168,9 @@ static func make() -> BiomeDef:
 	# and heavy, and it does not break white. A chart-blue pool with a paper-white
 	# swash on a landscape with no headroom is two clipped things at once.
 	d.water_wash = Color(0.112, 0.250, 0.264, 0.92)
+	# Its typical ground is out among the pressure ridges, never an empty patch
+	# of plain crust with two stumps on it.
+	d.typical_among = Vector2i(PropKind.SALT_RIDGE, 16)
 	d.props = [PropKind.SALT_RIDGE, PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.BOULDER,
 		PropKind.BONES, PropKind.DEAD_TREE, PropKind.STONE_ORE, PropKind.TIN_ORE, PropKind.COPPER_ORE,
 		PropKind.DRIFTWOOD, PropKind.GORSE, PropKind.BUSH]

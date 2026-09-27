@@ -93,7 +93,7 @@ static func make() -> BiomeDef:
 	dress.broadleaf_forms = [&"pollard"]
 	# Its typical ground is in the rows, never the clearing where a block was
 	# taken out.
-	d.typical_among = PropKind.BROADLEAF
+	d.typical_among = Vector2i(PropKind.BROADLEAF, 40)
 	dress.sink = 0.08
 	dress.lie = Vector2(-0.03, 0.06)
 	d.dressing = dress

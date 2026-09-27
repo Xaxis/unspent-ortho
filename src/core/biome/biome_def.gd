@@ -548,12 +548,13 @@ var landmarks: Array[StringName] = []
 var interiors: Dictionary = {}
 var sound_bed: StringName = &"bed_wind"
 ## The prop kind this landscape's typical ground must stand among
-## (GenPlaces.typical_sample), -1 for none. The typical tile is the one whose
+## (GenPlaces.typical_sample), and how many of it the 24-tile neighbourhood must
+## hold: Vector2i(kind, least), kind -1 for none. The typical tile is the one whose
 ## neighbourhood is most like the whole landscape, and in a land whose point is
 ## a planting that can be the clearing where it was taken out: the orchards'
 ## "typical" was a field of stumps with the rows on the horizon. A LOOK field:
 ## it moves where a shot stands, never what a seed makes.
-var typical_among: int = -1
+var typical_among := Vector2i(-1, 0)
 ## Another type's id whose music motif this one borrows; empty composes its own.
 var music_motif: StringName = &""
 
