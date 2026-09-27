@@ -255,7 +255,16 @@ void fragment() {
 	// thing in the frame.
 	float pale = smoothstep(0.80, 0.96, dot(c, vec3(0.2126, 0.7152, 0.0722)));
 	float deep = clamp(kind == 0 ? d : d * 0.8, 0.0, 1.0);
-	c *= mix(mix(1.0, 0.22, deep), 1.0, pale);
+	// STILL WATER KEEPS A FLOOR. A pool's deep was its darkest chart colour
+	// (blackwater's near black) taken down to a fifth, and from above, where a
+	// pool mirrors almost nothing, it read as a hole cut in the land (the
+	// crags' tarns). Still water with nothing lighting it is dark, not absent:
+	// its deep holds a dark sea-green and loses no more than a fifth to depth.
+	bool pooled = kind == 2 || (kind == 1 && length(flow) < 0.2);
+	if (pooled) {
+		c = max(c, mix(SPRUCE1, BRINE1, 0.5) * mix(1.0, 0.6, pale));
+	}
+	c *= mix(mix(1.0, pooled ? 0.8 : 0.22, deep), 1.0, pale);
 	// THE SUN'S HUE BELONGS IN THE WATER'S REFLECTION, NOT IN ITS BODY. The body
 	// colour is lit by the sun like any albedo, so an amber evening sun turned a
 	// blue sea to ochre from above and dragged the frame brown (canon 12). Water

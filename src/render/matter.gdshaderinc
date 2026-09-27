@@ -600,35 +600,95 @@ float matter_height(int m, vec3 wp, vec2 p) {
 // NORMAL is in VIEW space in fragment(); the two screen derivatives are the
 // view's own x and y, so the gradient goes straight in. The minus on y is
 // because FRAGCOORD counts down the screen and view y counts up.
-vec3 matter_bump(vec3 n, vec3 wp, int m, float relief) {
+// The grain's height at `wp`, with the plane chosen from `face`, the face's
+// normal in world space. Near a tie between the face's two strongest axes the
+// two planes' grains are BLENDED. Chosen hard, a face near 45 degrees took one
+// plane or the other quad by quad, the field jumped between the two grains, and
+// the jump's slope, clamped, tipped single pixels right away from a hard light:
+// under a tear's spotlight a lit cave lip came out peppered with black dots
+// (cave-walls.tour frame 02). The blend is only steady if `face` is: from the
+// derivatives it is noisy quad to quad, so world.gdshader hands the
+// interpolated normal.
+float matter_grain(vec3 face, vec3 wp, int m) {
+	vec3 a = abs(face);
+	vec2 p1 = wp.xz;
+	vec2 p2 = wp.zy;
+	float a1 = a.y;
+	float a2 = a.x;
+	if (a.x >= a.y && a.x >= a.z) {
+		p1 = wp.zy;
+		a1 = a.x;
+		p2 = a.y >= a.z ? wp.xz : wp.xy;
+		a2 = max(a.y, a.z);
+	} else if (a.z >= a.y) {
+		p1 = wp.xy;
+		a1 = a.z;
+		p2 = a.y >= a.x ? wp.xz : wp.zy;
+		a2 = max(a.y, a.x);
+	} else {
+		p2 = a.x >= a.z ? wp.zy : wp.xy;
+		a2 = max(a.x, a.z);
+	}
+	float lead = smoothstep(0.0, 0.25, (a1 - a2) / max(a1, 1e-6));
+	float h = matter_height(m, wp, p1);
+	if (lead < 1.0) {
+		h = mix(0.5 * (h + matter_height(m, wp, p2)), h, lead);
+	}
+	return h;
+}
+
+// Bend `n` by the grain, its plane chosen from `face` (see `matter_grain`).
+vec3 matter_bump_on(vec3 n, vec3 face, vec3 wp, int m, float relief) {
 	if (relief <= 0.0) {
 		return n;
 	}
-	// WHICH PLANE THE GRAIN IS DRAWN IN, and the land never noticed this was
-	// missing because the land is flat. `matter_height` was keyed on `wp.xz`
-	// alone, so on a VERTICAL face the field does not change with height and the
-	// surface gets a smeared vertical streak instead of a grain. Every ground in
-	// the game is near-horizontal, so it never showed — and a village is walls.
-	//
-	// The face's own normal comes back out of the derivatives that are already
-	// being taken two lines down, so this needs no varying, no tangent basis and
-	// no new parameter at any call site. On anything near-horizontal `p` IS
-	// `wp.xz` and nothing about the land moves.
-	vec3 fn = cross(dFdx(wp), dFdy(wp));
-	vec3 a = abs(fn);
-	vec2 p = wp.xz;
-	if (a.y < a.x && a.z < a.x) {
-		p = wp.zy;
-	} else if (a.y < a.z) {
-		p = wp.xy;
-	}
-	float h = matter_height(m, wp, p);
+	float h = matter_grain(face, wp, m);
 	float wx = max(length(dFdx(wp)), 1e-5);
 	float wy = max(length(dFdy(wp)), 1e-5);
 	vec2 g = vec2(dFdx(h) / wx, -dFdy(h) / wy) * relief;
 	// A slope over 1:1 is a cliff, not a grain of sand: clamp so a noisy texel
 	// can never turn a face inside out.
 	g = clamp(g, vec2(-1.0), vec2(1.0));
+	return normalize(n - vec3(g, 0.0));
+}
+
+vec3 matter_bump(vec3 n, vec3 wp, int m, float relief) {
+	// WHICH PLANE THE GRAIN IS DRAWN IN, and the land never noticed this was
+	// missing because the land is flat. `matter_height` was keyed on `wp.xz`
+	// alone, so on a VERTICAL face the field does not change with height and the
+	// surface gets a smeared vertical streak instead of a grain. Every ground in
+	// the game is near-horizontal, so it never showed — and a village is walls.
+	//
+	// Here the face's own normal comes back out of the derivatives, which needs
+	// no varying and no new parameter; a caller that has the face's world normal
+	// hands it to `matter_bump_on` instead, which is steadier (see there).
+	return matter_bump_on(n, cross(dFdx(wp), dFdy(wp)), wp, m, relief);
+}
+
+// The same bump with the grain's slope taken by stepping one pixel along each
+// screen axis and asking `matter_grain` again, never by `dFdx` of it.
+//
+// **APPLE'S METAL COMPILER CANNOT BUILD A SCREEN DERIVATIVE OF THE GRAIN
+// BESIDE A SIGHT-CONE LOOP** (sight.gdshaderinc). Every browser on a Mac runs
+// WebGL on Metal through ANGLE, and there fore.gdshader's depth and shadow
+// programs failed to build ("Compiler encountered an internal error") on every
+// draw, so the layer lost its depth pass and drew as flat blocks that glow
+// blew out to white under a tear. Measured by linking the program alone:
+// without the loop, without the bump, or with the slope taken like this, it
+// builds. A shader that cuts a sight cone AND bends its normal calls this.
+// It costs two more grain lookups per fragment.
+vec3 matter_bump_stepped(vec3 n, vec3 face, vec3 wp, int m, float relief) {
+	if (relief <= 0.0) {
+		return n;
+	}
+	vec3 dx = dFdx(wp);
+	vec3 dy = dFdy(wp);
+	float h = matter_grain(face, wp, m);
+	float hx = matter_grain(face, wp + dx, m);
+	float hy = matter_grain(face, wp + dy, m);
+	float wx = max(length(dx), 1e-5);
+	float wy = max(length(dy), 1e-5);
+	vec2 g = clamp(vec2((hx - h) / wx, -(hy - h) / wy) * relief, vec2(-1.0), vec2(1.0));
 	return normalize(n - vec3(g, 0.0));
 }
 

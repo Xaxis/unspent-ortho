@@ -12,6 +12,11 @@ const Fx := preload("res://tests/fight/fixture.gd")
 ## runner read it doubled at 17.8 under a bar of 21. Calibrated 2026-09-25:
 ## 9.3-10.5 shipped, 18.6-19.1 doubled; the bar between them.
 const STREET_BAR := 14.0
+## One villager built, in build yardsticks (TestCase.build_work): a figure built
+## beside each. Calibrated 2026-09-27 over three runs here: 3.44-3.61 shipped,
+## 6.88-7.23 doubled (two villagers against two rulers); the bar between them,
+## clear of the 1.1-1.2x the matched rulers drift across CI's CPUs.
+const BUILD_BAR := 5.0
 
 static var _world: WorldData
 
@@ -205,6 +210,11 @@ func test_what_a_street_of_forty_costs_through_the_real_path() -> void:
 	# a shared runner landed in the average: 31.93 ms "each" on CI at 1b69d6c6
 	# against 8.47 ms measured here, with nothing about villagers changed.
 	var built: Array[float] = []
+	# Each build is ruled by a figure built beside it (TestCase.build_work), so the
+	# pair share whatever the machine was doing at that moment.
+	var ruler: Array[float] = []
+	var rule := build_work()
+	rule.call()
 	var at: Vector2 = g.player.pos
 	var first := int((f.get_script() as GDScript).get_script_constant_map()["RING_FIRST"])
 	var t0 := Time.get_ticks_usec()
@@ -222,6 +232,7 @@ func test_what_a_street_of_forty_costs_through_the_real_path() -> void:
 		var t := Time.get_ticks_usec()
 		f.call("_add", looks[i], p, &"idle", -2, float(i) / 40.0, p)
 		built.append((Time.get_ticks_usec() - t) / 1000.0)
+		ruler.append(best_of(3, rule) / 1000.0)
 	var build_us := Time.get_ticks_usec() - t0
 	var folk: Array = f.get("folk")
 	var n := folk.size()
@@ -299,7 +310,19 @@ func test_what_a_street_of_forty_costs_through_the_real_path() -> void:
 	# `cost_lt` is the third option. The bar is the REAL figure with no slack on
 	# it, and on a machine too busy to measure a cost the test says so rather than
 	# failing or passing meaninglessly (TestCase.can_measure_cost).
-	cost_lt(each_ms, 12.0,
+	#
+	# IN BUILD YARDSTICKS, judged alone. As an absolute bar it read 24.24 ms
+	# against 24.0 (12 x CI_SPEED) on CI beside two shards, with nothing about
+	# villagers changed. Each build is set against the ruler built beside it and
+	# the middle ratio taken; doubled is two consecutive villagers against theirs.
+	var ratios: Array[float] = []
+	var pairs: Array[float] = []
+	for i in built.size():
+		ratios.append(built[i] / maxf(ruler[i], 0.001))
+		if i > 0:
+			pairs.append((built[i] + built[i - 1]) / maxf(0.5 * (ruler[i] + ruler[i - 1]), 0.001))
+	var yard := middle(ruler) * 1000.0
+	yard_lt(middle(ratios) * yard, middle(pairs) * yard, yard, BUILD_BAR,
 		"one villager still builds in the time a frame can spare (%.2f ms, the middle of %d)" % [each_ms, n])
 
 

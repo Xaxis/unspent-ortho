@@ -125,8 +125,8 @@ func test_in_through_a_cottage_door_and_out_onto_the_same_coast() -> void:
 		outs.append(float(d.get("swap_out_ms")))
 	print("S1 swap in best %.1f worst %.1f ms, swap out best %.1f worst %.1f ms" % [
 		ins.min(), ins.max(), outs.min(), outs.max()])
-	lt(float(ins.min()), 50.0, "the way in swaps under 50 ms")
-	lt(float(outs.min()), 50.0, "the way out swaps under 50 ms")
+	cost_lt(float(ins.min()), 50.0, "the way in swaps under 50 ms")
+	cost_lt(float(outs.min()), 50.0, "the way out swaps under 50 ms")
 	# And no trip STALLS: the bar above is a cost, this is the door a player felt
 	# stand for 4.6 s when the view waited on its far rings to leave the tree.
 	lt(float(ins.max()), 250.0, "no way in stalls")
@@ -502,3 +502,22 @@ static func _carried(g: Game) -> int:
 	for id: Variant in g.inventory.items:
 		n += int(g.inventory.items[id])
 	return n
+
+
+## A POCKET GROWN AT A DOOR DOES NOT TAKE THE LAND'S MARKS. It shares the
+## outside's world material, and bound its own works map (a room's: empty) from
+## its hidden view, so every work's marks vanished off the land round any door
+## for as long as the pocket stood ready (the salt pans, seed 7).
+func test_a_pocket_standing_ready_leaves_the_outside_works_on_the_land() -> void:
+	Sx.use_root("doors-works")
+	var g := Sx.game(tree, ["--seed=4", "--village=0", "--hour=11", "--weather=clear:0"])
+	var d := _doors(g)
+	var outside_view := g.view
+	var mat: ShaderMaterial = outside_view.world_material()
+	_at_door(g, d)
+	await _frames(90)
+	check(d.get("_grown") != null or d.get("_view") != null, "the pocket was grown while the player stood at the door")
+	var bound := float(mat.get_shader_parameter("works_inv_size"))
+	near(bound, 1.0 / float(g.world.size), 1e-9, "the material still carries the outside's works map, not the room's")
+	Sx.end(g)
+	Sx.finish()

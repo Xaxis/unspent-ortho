@@ -81,7 +81,7 @@ static func make() -> BiomeDef:
 	# The plan still runs its grow lights on the schedule, all night, for trees
 	# nobody will pick: every crown lit rose-violet from below, in its rows.
 	d.underlight = Color(0.6, 0.4, 0.86, 0.42)
-	d.props = [PropKind.BROADLEAF, PropKind.BUSH, PropKind.GROWTH_TANK,
+	d.props = [PropKind.GRAFT_TREE, PropKind.BROADLEAF, PropKind.BUSH, PropKind.GROWTH_TANK,
 		PropKind.WATER_TANK, PropKind.FENCE, PropKind.STUMP, PropKind.DEBRIS, PropKind.RELAY]
 	d.ore = [[PropKind.IRON_ORE, 0.014], [PropKind.COPPER_ORE, 0.012]]
 	d.sites = {"tips": 2}
@@ -181,7 +181,8 @@ const TREE_GAP := 3.0
 ## THE ORCHARDS, IN ROWS. They were scattered like any wood, at random, and read
 ## as one: nothing said a machine had planted them. Each block is ruled on the
 ## survey bearing like everything else the plan laid: rows across it, trees at
-## a fixed step, a stump where one went over and was never replaced, the fence
+## a fixed step (grafted, `PropKind.GRAFT_TREE`: the land's material), a stump
+## where one went over and was never replaced, the fence
 ## along its end and the tank that fed its sprayers at its head.
 static func _works(L: Object) -> void:
 	var tiles := 0.0
@@ -227,7 +228,7 @@ static func _block(L: Object, at: Vector2, a: Array) -> bool:
 			var gone := rng.randf() < 0.1
 			# Any terrace: the rows run over the land's steps as a machine's
 			# grid would, and a tree is only refused on a lip.
-			if GenWorks._put(L, PropKind.STUMP if gone else PropKind.BROADLEAF, q, rng.randf() * TAU, -99, 0.0, true) != null and not gone:
+			if GenWorks._put(L, PropKind.STUMP if gone else PropKind.GRAFT_TREE, q, rng.randf() * TAU, -99, 0.0, true) != null and not gone:
 				planted += 1
 	if planted < 8:
 		return false

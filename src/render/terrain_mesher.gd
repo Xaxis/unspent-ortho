@@ -71,6 +71,19 @@ const LIP_START := 0.3
 const WATER_BIAS := 0.7
 ## Passes of the spur and notch filter on drawn levels (drawn_levels()).
 const SPUR_PASSES := 2
+## A FACE OF MANY LEVELS IS ONE FACE. Between two tiles a drop of N levels laid
+## N contours evenly across the tile between their centres, each wall with its
+## own talus and lip, and every cliff read as a ziggurat of ledges nobody could
+## stand on. Where the tiles round a lattice point on a tile's edge or corner
+## differ by SHEER levels or more, the point is drawn at the level of the tile
+## the field puts it in, and on an edge falling several levels every level
+## crosses at one place, where the continuous field meets the drop's middle: the
+## drop is one wall on the land's own curve. Its walls stand on each other, so
+## none but the lowest runs out a talus and none but the highest hangs a lip.
+## A tile centre is never moved, so a shelf a tile wide keeps its flat.
+const SHEER := 3
+## An edge falling this many levels crosses them all at one place.
+const SHEER_EDGE := 1.5
 static var _LIFTS := PackedFloat32Array()
 var _blur: Dictionary = {}
 ## Cumulative build time of this mesher by stage (usec): fill, shore, tiles,
@@ -110,6 +123,8 @@ var _tab_sag := PackedFloat32Array()
 # Scratch for the cell being emitted: corner keys, values, positions; polygon.
 var _ck := PackedInt32Array([0, 0, 0, 0])
 var _cv := PackedFloat32Array([0, 0, 0, 0])
+var _cr := PackedFloat32Array([0, 0, 0, 0])
+var _cs := PackedFloat32Array([0, 0, 0, 0])
 var _cx := PackedFloat32Array([0, 0, 0, 0])
 var _cz := PackedFloat32Array([0, 0, 0, 0])
 var _poly := PackedVector3Array()
@@ -167,7 +182,11 @@ class Chunk:
 	var terrain_arrays: Array = []
 	var water_arrays: Array = []
 	## Per lattice point ((n + 1) * (h * RES + 1), row-major): field, terrace, key.
+	## At the edge of a SHEER drop `f` is the level of the tile the point stands
+	## in; `fr` keeps the continuous field there and `fs` is 1 (0 elsewhere).
 	var f := PackedFloat32Array()
+	var fr := PackedFloat32Array()
+	var fs := PackedFloat32Array()
 	var t := PackedInt32Array()
 	var key := PackedInt32Array()
 	## How far each lattice point is from the nearest change of key, 0 (on it)
@@ -890,6 +909,9 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 			smooth[yy * sw + xx] = clampf(sum / 16.0, c - 0.45, c + 0.45)
 	var cnt := np * (m + 1)
 	ch.f.resize(cnt)
+	ch.fr.resize(cnt)
+	ch.fs.resize(cnt)
+	ch.fs.fill(0.0)
 	ch.t.resize(cnt)
 	ch.key.resize(cnt)
 	ch.margin.resize(cnt)
@@ -939,11 +961,15 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 	var _t3 := Time.get_ticks_usec()
 	# Locals, not members, in the hot loop: a member write costs several reads.
 	var lf := ch.f
+	var lfr := ch.fr
+	var lfs := ch.fs
 	var lt := ch.t
 	var lk := ch.key
 	var lm := ch.margin
 	var lw := ch.wet
 	ch.f = PackedFloat32Array()
+	ch.fr = PackedFloat32Array()
+	ch.fs = PackedFloat32Array()
 	ch.t = PackedInt32Array()
 	ch.key = PackedInt32Array()
 	ch.margin = PackedFloat32Array()
@@ -973,6 +999,7 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 					var lc := smooth[ss + sw]
 					v = top + ((lc + (smooth[ss + sw + 1] - lc) * fx) - top) * fy
 					lf[li] = v
+					lfr[li] = v
 					var terrace := floori(v + 0.5)
 					lt[li] = terrace
 					var g: int = tg[ct]
@@ -1010,6 +1037,35 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 				var top := la + (lb - la) * fx
 				var lc := smooth[ss + sw]
 				v = top + ((lc + (smooth[ss + sw + 1] - lc) * fx) - top) * fy
+			lfr[li] = v
+			var on_x := absf(sx - roundf(sx)) < 0.01
+			var on_y := absf(sy - roundf(sy)) < 0.01
+			if not level_flat and (on_x or on_y):
+				# The tiles this point stands between (two on an edge, four at
+				# a corner), and whether they fall a sheer drop.
+				var tx0 := roundi(sx) - 1 if on_x else floori(sx)
+				var ty0 := roundi(sy) - 1 if on_y else floori(sy)
+				var tx1 := tx0 + (1 if on_x else 0)
+				var ty1 := ty0 + (1 if on_y else 0)
+				var slo := 1 << 20
+				var shi := -1
+				for ty in range(ty0, ty1 + 1):
+					for tx in range(tx0, tx1 + 1):
+						var rl: int = raw[(ty - y0 + 3) * aw + tx - x0 + 3]
+						slo = mini(slo, rl)
+						shi = maxi(shi, rl)
+						# Never beside inland water: its banks are drawn by the shore.
+						if near[(ty - ry0) * rw + (tx - rx0)] != 0:
+							slo = 0
+				if slo > 0 and shi - slo >= SHEER:
+					var best := float(shi)
+					for ty in range(ty0, ty1 + 1):
+						for tx in range(tx0, tx1 + 1):
+							var rl := float(raw[(ty - y0 + 3) * aw + tx - x0 + 3])
+							if absf(rl - v) < absf(best - v) or (absf(rl - v) == absf(best - v) and rl > best):
+								best = rl
+					v = best
+					lfs[li] = 1.0
 			lf[li] = v
 			var terrace := floori(v + 0.5)
 			lt[li] = terrace
@@ -1136,6 +1192,8 @@ func build_arrays(cx: int, cy: int) -> Chunk:
 			else:
 				depth[li] = -float(MARGIN)
 	ch.f = lf
+	ch.fr = lfr
+	ch.fs = lfs
 	ch.t = lt
 	ch.key = lk
 	ch.margin = lm
@@ -1470,6 +1528,14 @@ func _cell(ch: Chunk, i: int, j: int) -> void:
 	_cv[1] = ch.f[i00 + 1]
 	_cv[2] = ch.f[ia + 1]
 	_cv[3] = ch.f[ia]
+	_cr[0] = ch.fr[i00]
+	_cr[1] = ch.fr[i00 + 1]
+	_cr[2] = ch.fr[ia + 1]
+	_cr[3] = ch.fr[ia]
+	_cs[0] = ch.fs[i00]
+	_cs[1] = ch.fs[i00 + 1]
+	_cs[2] = ch.fs[ia + 1]
+	_cs[3] = ch.fs[ia]
 	var t0 := ch.t[i00]
 	var t1 := ch.t[i00 + 1]
 	var t2 := ch.t[ia + 1]
@@ -1501,6 +1567,8 @@ func _cell(ch: Chunk, i: int, j: int) -> void:
 		_vtop(px, ha, py)
 		_vtop(px + s, hc, py + s)
 		_vtop(px, h0 + _lift(_ck[3]), py + s)
+	# On a sheer drop the cell's walls stand on each other (_cross).
+	var sheer := hi - lo >= SHEER and (_cs[0] + _cs[1] + _cs[2] + _cs[3]) > 0.0
 	for L in range(maxi(lo + 1, 1), hi + 1):
 		var thr := L - 0.5
 		var h := level_height(L)
@@ -1528,7 +1596,7 @@ func _cell(ch: Chunk, i: int, j: int) -> void:
 				if near_e < 0:
 					near_e = e
 			if ina != (_cv[e2] >= thr):
-				var tt := clampf((thr - a) / (_cv[e2] - a), 0.05, 0.95)
+				var tt := _cross(e, e2, thr)
 				var out := _out_axis(e, e2) if ina else _out_axis(e2, e)
 				if cross_a < 0:
 					cross_a = _poly.size()
@@ -1563,7 +1631,22 @@ func _cell(ch: Chunk, i: int, j: int) -> void:
 					if dd < best:
 						best = dd
 						near_e = e
-			_wall(ch, ca.x, ca.z, cb.x, cb.z, _cx[near_e], _cz[near_e], hb, h, L, _ck[near_e], out_a, out_b)
+			_wall(ch, ca.x, ca.z, cb.x, cb.z, _cx[near_e], _cz[near_e], hb, h, L, _ck[near_e], out_a, out_b, not (sheer and L - 1 > lo), not (sheer and L < hi))
+
+
+## Where a threshold crosses the lattice edge from corner `a` to corner `b`, as a
+## share of the edge. On an edge of a sheer drop falling SHEER_EDGE levels or
+## more, every level crosses where the continuous field meets the middle of the
+## drop, so they stand as one wall; elsewhere where the drawn field meets the
+## threshold. Read from the two corners alone, so both cells on an edge agree.
+func _cross(a: int, b: int, thr: float) -> float:
+	if (_cs[a] > 0.0 or _cs[b] > 0.0) and absf(_cv[b] - _cv[a]) >= SHEER_EDGE:
+		var ra := _cr[a]
+		var rb := _cr[b]
+		if absf(rb - ra) > 1e-4:
+			return clampf(((_cv[a] + _cv[b]) * 0.5 - ra) / (rb - ra), 0.05, 0.95)
+		return 0.5
+	return clampf((thr - _cv[a]) / (_cv[b] - _cv[a]), 0.05, 0.95)
 
 
 ## A cell whose diagonal corners are on the same side of a threshold.
@@ -1580,8 +1663,8 @@ func _saddle(ch: Chunk, px: float, py: float, L: int) -> void:
 		var e2 := (e + 1) & 3
 		var e0 := (e + 3) & 3
 		var ina := _cv[e] >= thr
-		var tb := clampf((thr - _cv[e]) / (_cv[e0] - _cv[e]), 0.05, 0.95)
-		var ta := clampf((thr - _cv[e]) / (_cv[e2] - _cv[e]), 0.05, 0.95)
+		var tb := _cross(e, e0, thr)
+		var ta := _cross(e, e2, thr)
 		var bx := _cx[e] + (_cx[e0] - _cx[e]) * tb
 		var bz := _cz[e] + (_cz[e0] - _cz[e]) * tb
 		var ax := _cx[e] + (_cx[e2] - _cx[e]) * ta
@@ -1695,7 +1778,10 @@ func _wall_column(x: float, z: float, L: int, span: float) -> PackedFloat32Array
 ## A wall along a terrace edge from p to q, from hb up to h, facing away from
 ## the point (ix, iz) on the high side, under ground key k. `op` and `oq` are
 ## the outward axes at p and q (see _out_axis).
-func _wall(ch: Chunk, px: float, pz: float, qx: float, qz: float, ix: float, iz: float, hb: float, h: float, L: int, k: int, op: Vector2 = Vector2.ZERO, oq: Vector2 = Vector2.ZERO) -> void:
+## `talus` false: another wall stands on the foot of this one, so it drops
+## straight to it rather than running out over it; `lip_on` false: another
+## stands on its top, so no turf hangs off it.
+func _wall(ch: Chunk, px: float, pz: float, qx: float, qz: float, ix: float, iz: float, hb: float, h: float, L: int, k: int, op: Vector2 = Vector2.ZERO, oq: Vector2 = Vector2.ZERO, talus: bool = true, lip_on: bool = true) -> void:
 	if (k & _KEY_WET) != 0 or L <= 0:
 		# Water on the high side, or under the sea: a sheet covers the step.
 		return
@@ -1750,6 +1836,8 @@ func _wall(ch: Chunk, px: float, pz: float, qx: float, qz: float, ix: float, iz:
 		var z := cols_z[c]
 		var o := outs[c]
 		var w := _wall_column(x, z, L, span)
+		if not talus:
+			w[0] = w[1]
 		if c == ncol / 2:
 			foot_out = w[0]
 		grid[c * 4] = Vector3(x + o.x * w[0], hb - WALL_TUCK, z + o.y * w[0])
@@ -1789,7 +1877,7 @@ func _wall(ch: Chunk, px: float, pz: float, qx: float, qz: float, ix: float, iz:
 		_tuv.append(_UV_CONTOUR)
 		_tuv2.append(Vector2.ZERO)
 		_tc0.append(c0)
-	var lip := _tab_lip[gi]
+	var lip := _tab_lip[gi] if lip_on else 0
 	if lip > 0:
 		var from := _tv.size()
 		_lip_strip(px, pz, qx, qz, nrm, h, gi, lip == 2)
@@ -1802,7 +1890,7 @@ func _wall(ch: Chunk, px: float, pz: float, qx: float, qz: float, ix: float, iz:
 				var v := _tv[vi]
 				var tt := clampf((Vector2(v.x, v.z) - Vector2(px, pz)).dot(along) / maxf(along.length_squared(), 1e-8), 0.0, 1.0)
 				_tv[vi] = Vector3(v.x, v.y - lerpf(sp, sq, tt), v.z)
-	if span > 0.3:
+	if span > 0.3 and talus:
 		# Rubble lies past the talus, not buried in it.
 		ch.feet.append(Vector3(mx, hb, mz) + nrm * (0.18 + foot_out))
 		ch.feet_out.append(nrm)

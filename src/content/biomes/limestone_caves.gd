@@ -97,6 +97,7 @@ static func make() -> BiomeDef:
 	# Flowstone lips SAG: no terrace edge in a cave runs ruled and level, and a
 	# hall of level lips one step apart read as stacked slabs.
 	d.lip_sag = 0.24
+	d.cave_light = Vector4(0.35, 0.5, 1.4, 8.0)
 	d.plain_ground = Ground.LIMESTONE
 	d.bank_ground = Ground.GRAVEL
 	d.pool_rim_ground = Ground.BONE
@@ -176,7 +177,7 @@ static func make() -> BiomeDef:
 	# light is a hole in the page, which is the one thing water may never be.
 	d.water_wash = Color(0.31, 0.47, 0.51, 0.70)
 	d.hard_rock = true
-	d.props = [PropKind.BOULDER, PropKind.CLINTS, PropKind.STANDING_STONE,
+	d.props = [PropKind.DRIPSTONE, PropKind.BOULDER, PropKind.CLINTS, PropKind.STANDING_STONE,
 		PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE,
 		PropKind.TIN_ORE, PropKind.BONES, PropKind.DEBRIS]
 	# Deep seams: what the surface only shows at a broken face is everywhere here,
@@ -270,9 +271,11 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.BONE:
 		# Flowstone standing up: a stalagmite where a drip has been landing for
 		# ten thousand years, and a column where it met the roof.
+		# The stalagmite is its own kind now (PropKind.DRIPSTONE, the caves'
+		# material), ringed and skirted; a standing stone was a cairn's slab.
 		var k := maxf(0.0, t.clump[i])
 		if r < 0.035 + k * 0.16:
-			return PropKind.STANDING_STONE
+			return PropKind.DRIPSTONE
 		if r < 0.055 + k * 0.16:
 			return PropKind.BOULDER
 		return BiomeScatter.NONE

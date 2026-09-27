@@ -37,8 +37,10 @@ Proves it when: the command exits 0 and, for a shot or tour, the frames show the
 ## Gotchas
 
 - `tools/check.sh` runs three shards at once and dies on a box with under ~500 MB free.
-- Cost tests (`TestCase.yard_lt`) are not judged inside the shards: each shard lists the ones it met and check.sh runs them again alone after (`== costs, alone`), because beside sibling shards a cost reads up to 2.2x. A cost that fails there is a real miss; its log is kept at `shots/check/costs.log`.
+- Cost tests (`TestCase.yard_lt` and the absolute `TestCase.cost_lt`; a timing bar is never a bare `lt`) are not judged inside the shards: each shard lists the ones it met and check.sh runs them again alone after (`== costs, alone`), because beside sibling shards a cost reads up to 2.2x. A cost that fails there is a real miss; its log is kept at `shots/check/costs.log`.
 - Frame cost in play: `tools/tour.sh tours/stutters.tour --stats --seed=7 --hour=12 --weather=clear:0`
+- Every web run fails on a GL program the browser refuses to draw with (`web FAILED: GL program N (src/…gdshader) failed …`, its GLSL kept as `shots/export/<out>-glfail-pN.{vs,fs}.glsl`): each program's first three draws are checked with getError (tools/web/web.mjs).
+- Frame cost underground, in a lidded hall and under a tear (`tour lidded |` and `tour tear |` lines), on the web build: `tools/web.sh --tour=tours/cave-cost.tour --uncapped --timeout=600 --trace --args=--seed=7,--realm=underground,--hour=12,--stats`. `--trace` prints the tour's step lines (`tour t=... fps=...`), otherwise kept only in the tour's console.log.
   prints p50/p95/p99/worst per window (first shoulder press, over the shoulder, top-down)
   and names what each slow frame spent. Write the load (`sysctl -n vm.loadavg`) beside
   every number; this box swings from 10 to 100.

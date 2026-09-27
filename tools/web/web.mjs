@@ -14,9 +14,11 @@
 // FAILS (exit 1) on: a console error, a page error, a request that never
 // completes, no ready line within --timeout, a blank canvas, a canvas that is not
 // the game drawn at the base's 16:9 shape, the canvas not holding keyboard
-// focus, an AudioContext that is not running after the first key, and any
-// `web FAIL` line from the in-game probe (src/boot/web_probe.gd: systems, focus,
-// audio on the master bus, saves on IndexedDB).
+// focus, an AudioContext that is not running after the first key, a GL program
+// the browser refuses to draw with (named by the .gdshader it came from, its GLSL
+// kept beside the shots), and any `web FAIL` line from the in-game probe
+// (src/boot/web_probe.gd: systems, focus, audio on the master bus, saves on
+// IndexedDB).
 //
 // Options:
 //   --dir=PATH       exported build to serve (default build/web)
@@ -31,6 +33,8 @@
 //   --headed         show the browser
 //   --dpr=N          device pixel ratio of the page (default 1; 2 is a Retina screen)
 //   --verbose        print every console line
+//   --trace          with --tour, print the tour's own step lines too (`tour t=... fps=...`), which
+//                    are otherwise only kept in the tour's console.log
 //   --serve[=PORT]   only serve --dir (default port 8060) with those headers until killed, for a
 //                    person to play in their own browser: dev mode's "play it" (src/dev/dev_jobs.gd)
 //   --tour=PATH      play a tour (tours/*.tour) inside the exported build instead of the player's
@@ -329,9 +333,86 @@ await context.addInitScript(() => {
     if (real) WebAssembly[name] = (...a) => real.apply(WebAssembly, a).then(keep);
   }
 });
+// A GL PROGRAM THE BROWSER CANNOT DRAW WITH IS A FAILED RUN. A shader that
+// compiles and links can still fail to build its pipeline: ANGLE's Metal backend
+// (every browser on a Mac) met an Apple compiler bug in fore.gdshader's depth
+// programs and refused every draw, and the only sign was a flat grey layer and a
+// console warning after the engine's own lines had scrolled by. So each
+// program's first draws are checked with getError, a pipeline refusal repeats
+// on every draw, and after three clean draws a program is left alone, so a
+// frame's cost is not what this measures.
+await context.addInitScript(() => {
+  const P = window.WebGL2RenderingContext && WebGL2RenderingContext.prototype;
+  if (!P) return;
+  const srcOf = new WeakMap();
+  let next = 0;
+  const failed = {};
+  window.__glFailed = failed;
+  const shaderSource = P.shaderSource;
+  P.shaderSource = function (s, src) { srcOf.set(s, src); return shaderSource.call(this, s, src); };
+  const linkProgram = P.linkProgram;
+  P.linkProgram = function (p) {
+    p.__glId = ++next;
+    p.__glChecked = 0;
+    p.__glSrc = this.getAttachedShaders(p).map((s) => srcOf.get(s) || '');
+    return linkProgram.call(this, p);
+  };
+  const useProgram = P.useProgram;
+  P.useProgram = function (p) { this.__glProgram = p; return useProgram.call(this, p); };
+  for (const name of ['drawArrays', 'drawElements', 'drawArraysInstanced', 'drawElementsInstanced', 'drawRangeElements']) {
+    const draw = P[name];
+    if (!draw) continue;
+    P[name] = function (...a) {
+      const p = this.__glProgram;
+      if (!p || p.__glChecked >= 3) return draw.apply(this, a);
+      this.getError();
+      const r = draw.apply(this, a);
+      const e = this.getError();
+      p.__glChecked++;
+      if (e) {
+        const f = failed[p.__glId] || (failed[p.__glId] = { err: e, draws: 0, src: p.__glSrc });
+        f.draws++;
+        // Keep checking a program that failed, so the count says every draw.
+        p.__glChecked = 0;
+      }
+      return r;
+    };
+  }
+});
+// Which of the game's shaders a failed program was made from: the .gdshader
+// whose own uniforms and functions all appear in it (Godot keeps a user name
+// behind an `m_`). Includes are shared, so they name nothing.
+function shaderOf(src) {
+  const files = [];
+  const walk = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith('.gdshader')) files.push(p);
+    }
+  };
+  walk('src');
+  let best = null;
+  let most = 0;
+  for (const f of files) {
+    const text = fs.readFileSync(f, 'utf8');
+    const own = new Set();
+    for (const m of text.matchAll(/^\s*uniform\s+[^;]*?\b(\w+)\s*(?:\[[^\]]*\])?\s*(?::[^;=]*)?(?:=[^;]*)?;/gm)) own.add(m[1]);
+    for (const m of text.matchAll(/^(?:float|int|bool|void|vec[234]|ivec[234]|mat[34])\s+(\w+)\s*\(/gm)) if (!['vertex', 'fragment', 'light'].includes(m[1])) own.add(m[1]);
+    if (own.size === 0) continue;
+    const found = [...own].filter((n) => new RegExp(`\\bm_${n}\\b`).test(src)).length;
+    if (found === own.size && found > most) { best = f; most = found; }
+  }
+  return best;
+}
 const page = await context.newPage();
 let tourEnded = false;
 const failures = [];
+// The browser's own words for a GL refusal, the first time it says them.
+let glReason = '';
+page.on('console', (m) => {
+  if (!glReason && /GL_INVALID_OPERATION|Metal error/.test(m.text())) glReason = m.text().replace(/^\[[^\]]*\]\s*/, '');
+});
 const lines = [];
 const snapAt = typeof opt.snap === 'string' && opt.snap.includes(':')
   ? { re: new RegExp(opt.snap.slice(0, opt.snap.lastIndexOf(':'))), secs: Number(opt.snap.slice(opt.snap.lastIndexOf(':') + 1)) } : null;
@@ -342,7 +423,7 @@ page.on('console', (m) => {
   const text = m.text();
   lines.push({ t: Number(since()), type: m.type(), text });
   // A tour's own findings are its evidence; its per-line trace is not.
-  const told = touring && /^tour /.test(text) && !/^tour (t=|score )/.test(text);
+  const told = touring && /^tour /.test(text) && (opt.trace || !/^tour (t=|score )/.test(text));
   if (opt.verbose || m.type() === 'error' || /^(boot|web) /.test(text) || told) console.log(`  [${since()}s ${m.type()}] ${text}`);
   if (touring) fs.appendFileSync(path.join(tourDir, 'console.log'), `[${since()}s ${m.type()}] ${text}\n`);
   // Once a tour has said it reached its end, what the engine says on its way out
@@ -745,6 +826,14 @@ if (first && !touring && opt['boot-only']) {
 }
 
 phase = 'closing down';
+const glFailed = await bounded(page.evaluate(() => window.__glFailed || {}), 10000).catch(() => ({})) || {};
+for (const [id, f] of Object.entries(glFailed)) {
+  const src = f.src.join('\n');
+  const file = shaderOf(src);
+  const keep = `${opt.out}-glfail-p${id}`;
+  f.src.forEach((t, i) => fs.writeFileSync(`${keep}.${i === 0 ? 'vs' : 'fs'}.glsl`, t));
+  failures.push(`GL program ${id} (${file || 'a shader this could not name'}) failed ${f.draws} draw(s), error ${f.err}${glReason ? `: ${glReason}` : ''}; its GLSL is in ${keep}.*.glsl`);
+}
 for (const [u, why] of aborted) if (!answered.has(u)) failures.push(`request never answered: ${u} (${why})`);
 let wire = 0;
 for (const r of served.values()) wire += r.bytes;
