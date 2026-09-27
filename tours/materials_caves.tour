@@ -12,5 +12,5 @@ shot 01-dripstone with land:limestone_caves,prop:dripstone
 press lamp
 await lamp 5
 wait 0.6
-shot 02-dripstone-by-lamp with land:limestone_caves,prop:dripstone
+shot 02-dripstone-by-lamp with land:limestone_caves,prop:dripstone,lamp
 release shoulder_peek

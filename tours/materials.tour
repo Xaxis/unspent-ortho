@@ -35,7 +35,7 @@ walk 0,1 0.5
 hold shoulder_peek
 await shoulder 3
 wait 1.0
-shot 04-moss-core with land:green_towers,prop:moss_core
+shot 04-green-towers-core with land:green_towers,prop:moss_core
 release shoulder_peek
 place server_fields
 near server_blade
