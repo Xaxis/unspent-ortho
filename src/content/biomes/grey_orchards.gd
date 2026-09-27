@@ -186,10 +186,10 @@ const TREE_GAP := 3.0
 ## along its end and the tank that fed its sprayers at its head.
 static func _works(L: Object) -> void:
 	var tiles := 0.0
-	for size: float in L.sizes:
+	for size: float in L.all_sizes if not L.all_sizes.is_empty() else L.sizes:
 		tiles += size
 	var blocks: Array = []
-	for n in maxi(1, roundi(tiles / TILES_PER_BLOCK)):
+	for n in GenWorks._share(L, maxi(1, roundi(tiles / TILES_PER_BLOCK))):
 		var p := GenWorks._site(L, 5, 2, [Ground.GRASS, Ground.HEATH, Ground.MOSS], 18.0, 600, 0.4)
 		if p.x >= 0 and GenWorks._work(L, &"_block", Vector2(p) + Vector2(0.5, 0.5), [blocks.duplicate()]):
 			blocks.append(L.w.landmarks.back())

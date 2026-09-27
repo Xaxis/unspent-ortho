@@ -283,11 +283,10 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 ## a gate in every wall, the rake's rows still in the floor, and the conveyor
 ## that carried the salt off to somewhere that stopped wanting it.
 static func _works(L: Object) -> void:
-	var c: GenContext = L.c
 	var floors: Array = [Ground.SALT, Ground.PAN, Ground.GRAVEL, Ground.SAND]
 	# Pan batteries: two or three pans side by side, each a ruled rectangle.
 	var pans: Array = []
-	for n in GenWorks._n(c, 2.0):
+	for n in GenWorks._n(L, 2.0):
 		var p := GenWorks._site(L, 8, 1, floors, 34.0, 700, 0.4)
 		if p.x >= 0 and GenWorks._work(L, &"_pans", Vector2(p) + Vector2(0.5, 0.5)):
 			pans.append(L.w.landmarks.back())
@@ -299,7 +298,7 @@ static func _works(L: Object) -> void:
 	# brine house thrown anywhere stood sixty tiles and more from any yard.
 	var d: Vector2 = L.d
 	var nrm: Vector2 = L.nrm
-	for n in GenWorks._n(c, 1.0):
+	for n in GenWorks._n(L, 1.0):
 		var stood := false
 		for m: Dictionary in pans:
 			var half: Vector2 = m.half

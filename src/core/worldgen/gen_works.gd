@@ -157,6 +157,18 @@ class Lay:
 	## square round every landscape at once. Empty while laying the shared things.
 	var rects: Array[Rect2] = []
 	var sizes: PackedFloat32Array = PackedFloat32Array()
+	## THE REGION BEING LAID, and every region of its landscape by size. A
+	## landscape's works are sited one region at a time (`place`), each from its
+	## own darts and its own share of the landscape's count (`_n`), so a region's
+	## works hang on its own ground and never on another region's.
+	var region := -1
+	var at := 0
+	var all_sizes: PackedFloat32Array = PackedFloat32Array()
+	var shares: Dictionary = {}
+	## `w.landmarks` when the works stage began, and when this region's run did:
+	## the rows between are other regions' works, which siting does not see.
+	var m_start := 0
+	var m_region := 0
 	## Where a landscape's works are SITED from: its darts, thrown in order
 	## (`_dart`). Composing a work draws from `rng`, keyed on the work (`_work`).
 	var site_rng: RandomNumberGenerator
@@ -178,6 +190,8 @@ class Lay:
 	## file that registered its own ("host" in its row).
 	var host: Object = null
 	var mine: Dictionary = {}
+	## Every lit shack standing (`_note_lit_shack`).
+	var lit: Array[Vector2] = []
 
 	func _init(ctx: GenContext, o: PackedByteArray, bearing_dir: Vector2) -> void:
 		c = ctx
@@ -246,6 +260,11 @@ class Lay:
 	func home(x: int, y: int) -> bool:
 		return w.country[y * c.size + x] == own
 
+	## Tile (x, y) is in the region being laid: where a work may be SITED.
+	## Composing asks `home`, as a work may reach over into its next region.
+	func here(x: int, y: int) -> bool:
+		return home(x, y) and (region < 0 or w.region_at(x, y) == region)
+
 
 ## **THE PLAN'S OWN PROP KINDS, WHOEVER PUTS THEM DOWN.** `place` below refuses to
 ## run in a year before the machines began, and that was taken as the whole of it
@@ -270,27 +289,42 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 		return
 	var lay := Lay.new(c, occ, Vector2.from_angle(bearing(c.s)))
 	lay.base = GenFields.snapshot(occ)
+	lay.m_start = c.w.landmarks.size()
+	lay.m_region = lay.m_start
+	var laid: Array = []
 	for def in BiomeRegistry.all():
-		var row := evidence(def.id)
-		var fn: StringName = row.works
+		var fn: StringName = evidence(def.id).works
 		if fn == &"":
 			continue
-		lay.id = def.id
-		lay.own = def.index
-		lay.rects.clear()
-		lay.sizes = PackedFloat32Array()
-		for r: Dictionary in c.w.regions:
-			if int(r.get("index", -1)) == def.index:
-				lay.rects.append(r.bounds as Rect2)
-				lay.sizes.append(float(r.tiles))
-		lay.site_rng = Rng.make(c.s, 0x3057 + String(def.id).hash() % 65521)
-		lay.site_memo.clear()
-		lay.rng = lay.site_rng
-		lay.host = row.get("host", GenWorks)
-		Callable(lay.host, fn).call(lay)
+		for k in _regions(lay, def).size():
+			_enter(lay, def, k)
+			var m0 := c.w.landmarks.size()
+			Callable(lay.host, fn).call(lay)
+			if checking:
+				laid.append([def, k, _marks(c.w, m0, c.w.landmarks.size())])
 		c.mark(StringName("works." + String(def.id)))
+	# Each region again, alone, after every other region is laid: what it sites
+	# and composes must not have moved (`checked`).
+	for row: Array in laid:
+		var def: BiomeDef = row[0]
+		_enter(lay, def, int(row[1]))
+		lay.writes = false
+		var n0 := c.w.props.size()
+		var m0 := c.w.landmarks.size()
+		var l0 := c.w.lines.size()
+		Callable(lay.host, evidence(def.id).works as StringName).call(lay)
+		checked.append({"land": def.id, "region": lay.region, "world": row[2], "alone": _marks(c.w, m0, c.w.landmarks.size())})
+		c.w.props.resize(n0)
+		c.w.landmarks.resize(m0)
+		c.w.lines.resize(l0)
+		lay.writes = true
 	lay.id = &""
 	lay.own = -1
+	lay.region = -1
+	lay.at = 0
+	lay.all_sizes = PackedFloat32Array()
+	lay.shares.clear()
+	lay.m_region = lay.m_start
 	lay.rects.clear()
 	lay.sizes = PackedFloat32Array()
 	lay.rng = Rng.make(c.s, 0x3058)
@@ -307,14 +341,96 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 	_spawn_view(lay)
 	_survey(lay)
 	_vignettes(lay)
+	_stolen_light(lay)
 	c.mark(&"works.vignettes")
 
 
 # --- helpers ---------------------------------------------------------------------
 
-## How many of a thing a world of this size gets.
-static func _n(c: GenContext, base: float) -> int:
-	return maxi(1, roundi(base * maxf(c.body_k, 0.3)))
+## A test's hook: set, every region's works are laid a second time alone,
+## after all the others, writing no grid, and `checked` holds what each laid
+## both times (`_marks`).
+static var checking := false
+static var checked: Array = []
+
+
+## The regions of `def`'s landscape, the region -1 standing for them all when it
+## is too small to hold one; sets the Lay's view of them.
+static func _regions(L: Lay, def: BiomeDef) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	L.all_sizes = PackedFloat32Array()
+	for r: Dictionary in L.w.regions:
+		if int(r.get("index", -1)) == def.index:
+			out.append(r)
+			L.all_sizes.append(float(r.tiles))
+	# A landscape too small to hold a region still lays its works, from darts
+	# at the whole land (`_dart`), as region -1.
+	if out.is_empty():
+		out.append({"id": -1})
+	return out
+
+
+## Make the Lay lay region `k` of `def`'s landscape: its darts keyed on the
+## landscape and region, its share of every count, and the works it can see.
+static func _enter(L: Lay, def: BiomeDef, k: int) -> void:
+	var regions := _regions(L, def)
+	var r := regions[k]
+	L.id = def.id
+	L.own = def.index
+	L.host = evidence(def.id).get("host", GenWorks)
+	L.shares.clear()
+	L.region = int(r.id)
+	L.at = k
+	L.rects.clear()
+	L.sizes = PackedFloat32Array()
+	if L.region >= 0:
+		L.rects.append(r.bounds as Rect2)
+		L.sizes.append(float(r.tiles))
+	L.site_rng = Rng.make(L.c.s, Rng.hash_ints(0x3057, String(def.id).hash(), L.region))
+	L.site_memo.clear()
+	L.rng = L.site_rng
+	L.m_region = L.w.landmarks.size()
+
+
+## The works marks from `from` to `to`, as (kind, position) pairs.
+static func _marks(w: WorldData, from: int, to: int) -> Array:
+	var out: Array = []
+	for j in range(from, to):
+		out.append([w.landmarks[j].kind, w.landmarks[j].pos])
+	return out
+
+
+## How many of a thing a world of this size gets: the landscape's count, and of
+## that the region being laid gets its share (`_share`).
+static func _n(L: Lay, base: float) -> int:
+	return _share(L, maxi(1, roundi(base * maxf(L.c.body_k, 0.3))))
+
+
+## The region being laid's share of `total` over its landscape's regions by
+## size, by largest remainder (ties to the earlier region): the shares sum to
+## `total` exactly, and each is known from the regions' sizes alone.
+static func _share(L: Lay, total: int) -> int:
+	if L.all_sizes.size() <= 1:
+		return total
+	if L.shares.has(total):
+		return (L.shares[total] as PackedInt32Array)[L.at]
+	var sum := 0.0
+	for t in L.all_sizes:
+		sum += t
+	var out := PackedInt32Array()
+	out.resize(L.all_sizes.size())
+	var rest: Array = []
+	var left := total
+	for k in L.all_sizes.size():
+		var exact := float(total) * L.all_sizes[k] / sum
+		out[k] = floori(exact)
+		left -= out[k]
+		rest.append([exact - float(out[k]), k])
+	rest.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) > float(b[0]) or (float(a[0]) == float(b[0]) and int(a[1]) < int(b[1])))
+	for j in left:
+		out[int(rest[j][1])] += 1
+	L.shares[total] = out
+	return out[L.at]
 
 
 ## How hard a landscape's works have to look for room. 1 at the six landscapes
@@ -351,7 +467,7 @@ static func _site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attem
 		var p := _dart(L)
 		var i := p.y * c.size + p.x
 		var loose := attempt >= strict
-		if c.land[i] == 0 or w.blend[i] > (blend_max if not loose else blend_max + 0.1) or not L.home(p.x, p.y):
+		if c.land[i] == 0 or w.blend[i] > (blend_max if not loose else blend_max + 0.1) or not L.here(p.x, p.y):
 			continue
 		if attempt < attempts and not grounds.is_empty() and not grounds.has(int(w.ground[i])):
 			continue
@@ -365,7 +481,7 @@ static func _site(L: Lay, r: int, rise: int, grounds: Array, apart: float, attem
 		if not GenScatter._clear_site(c, p, r if not loose else maxi(2, r - 3), rise if not loose else rise + 1):
 			continue
 		var room := apart if not loose else apart * 0.45
-		if GenScatter._near_village(w, Vector2(p), maxf(room, 14.0)) or _crowded(w, Vector2(p), room):
+		if GenScatter._near_village(w, Vector2(p), maxf(room, 14.0)) or _crowded(L, Vector2(p), room):
 			continue
 		return p
 	L.site_memo[key] = 2
@@ -415,6 +531,7 @@ static func _work(L: Lay, fn: StringName, at: Vector2, args: Array = []) -> bool
 	var n0 := w.props.size()
 	var m0 := w.landmarks.size()
 	var l0 := w.lines.size()
+	var lit0 := L.lit.size()
 	L.in_work = true
 	L.mine.clear()
 	L.key = Rng.hash_ints(0x3057, String(L.id).hash(), String(fn).hash(), floori(at.x), floori(at.y), args.hash())
@@ -425,6 +542,7 @@ static func _work(L: Lay, fn: StringName, at: Vector2, args: Array = []) -> bool
 		w.props.resize(n0)
 		w.landmarks.resize(m0)
 		w.lines.resize(l0)
+		L.lit.resize(lit0)
 		for i: int in L.mine:
 			L.occ[i] = L.mine[i]
 	var key := L.key
@@ -463,11 +581,17 @@ static func _pieces(w: WorldData, from: int, to: int) -> Array:
 
 ## Another place worth walking to within d of p. Small marks (falls, bridges,
 ## summits, graves) are passed over: a work may stand near them.
-static func _crowded(w: WorldData, p: Vector2, d: float) -> bool:
+static func _crowded(L: Lay, p: Vector2, d: float) -> bool:
+	var marks := L.w.landmarks
 	var d2 := d * d
 	# Distance before kind: most landmarks are far, and the far test is one
-	# subtraction where the kind test is six StringName compares.
-	for m in w.landmarks:
+	# subtraction where the kind test is six StringName compares. Other regions'
+	# works are not looked at (`Lay.m_region`): the ecotone keeps them apart,
+	# as sites refuse blended ground and two regions of one landscape never touch.
+	for j in marks.size():
+		if j >= L.m_start and j < L.m_region:
+			continue
+		var m: Dictionary = marks[j]
 		if (m.pos as Vector2).distance_squared_to(p) >= d2:
 			continue
 		var k: StringName = m.kind
@@ -639,10 +763,10 @@ static func _shore(L: Lay, grounds: Array, apart: float, attempts: int = 900) ->
 			continue
 		if not grounds.is_empty() and not grounds.has(int(w.ground[i])):
 			continue
-		if c.islet[i] != 0 or not L.home(p.x, p.y):
+		if c.islet[i] != 0 or not L.here(p.x, p.y):
 			continue
 		var room := apart if attempt < attempts * 0.6 else apart * 0.4
-		if _crowded(w, Vector2(p), room) or GenScatter._near_village(w, Vector2(p), maxf(room * 0.7, 14.0)):
+		if _crowded(L, Vector2(p), room) or GenScatter._near_village(w, Vector2(p), maxf(room * 0.7, 14.0)):
 			continue
 		if _sea_dir(c, p).length() < 0.5:
 			continue
@@ -667,10 +791,11 @@ static func _level(c: GenContext, p: Vector2i) -> int:
 	return c.w.level[p.y * c.size + p.x]
 
 
-## The heart of the type being laid: the first country heart that lies in it.
+## The heart of the type being laid: the first country heart that lies in the
+## region being laid.
 static func _heart(L: Lay) -> Vector2i:
 	for h in L.c.hearts:
-		if h.x >= 0.0 and L.w.in_bounds(int(h.x), int(h.y)) and L.home(int(h.x), int(h.y)):
+		if h.x >= 0.0 and L.w.in_bounds(int(h.x), int(h.y)) and L.here(int(h.x), int(h.y)):
 			return Vector2i(h)
 	return Vector2i(-1, -1)
 
@@ -691,7 +816,7 @@ static func _coast(L: Lay) -> void:
 	var c := L.c
 	# Turf cut in the machines' rows: a ruled field of strips on the open turf,
 	# survey posts at its corners, a fence along its end, a warning at its side.
-	for n in _n(c, 2.0):
+	for n in _n(L, 2.0):
 		var p := _site(L, 8, 1, [Ground.GRASS, Ground.HEATH], 26.0)
 		if p.x >= 0:
 			_work(L, &"_turf_rows", Vector2(p) + Vector2(0.5, 0.5))
@@ -699,7 +824,7 @@ static func _coast(L: Lay) -> void:
 	# fenced square, a tide gauge standing in the wash.
 	var intakes := 0
 	for attempt in 10:
-		if intakes >= _n(c, 1.0):
+		if intakes >= _n(L, 1.0):
 			break
 		var p := _shore(L, [Ground.SAND, Ground.SHINGLE, Ground.GRASS, Ground.GRAVEL] if attempt < 5 else [], 40.0)
 		if p.x >= 0 and _work(L, &"_intake", Vector2(p) + Vector2(0.5, 0.5)):
@@ -708,7 +833,7 @@ static func _coast(L: Lay) -> void:
 	# along the shore, a field of debris and wreckage round each.
 	var hulls := 0
 	for attempt in 16:
-		if hulls >= _n(c, 2.0):
+		if hulls >= _n(L, 2.0):
 			break
 		var beach := attempt < 12
 		var p := _shore(L, [Ground.SAND, Ground.SHINGLE] if beach else [], 30.0 if attempt < 6 else 14.0, 1500)
@@ -717,7 +842,7 @@ static func _coast(L: Lay) -> void:
 	# The sea wall, broken along the shore, a drowned car at its foot.
 	var walls := 0
 	for attempt in 12:
-		if walls >= _n(c, 2.0):
+		if walls >= _n(L, 2.0):
 			break
 		var p := _shore(L, [], 30.0)
 		if p.x >= 0 and _work(L, &"_sea_wall", Vector2(p) + Vector2(0.5, 0.5)):
@@ -725,7 +850,7 @@ static func _coast(L: Lay) -> void:
 	# Tide gauges along the shingle, where the machines read the sea.
 	var gauges := 0
 	for attempt in 12:
-		if gauges >= _n(c, 2.0):
+		if gauges >= _n(L, 2.0):
 			break
 		var p := _shore(L, [Ground.SHINGLE, Ground.SAND] if attempt < 6 else [], 24.0, 300)
 		if p.x >= 0 and _work(L, &"_tide_gauge", Vector2(p) + Vector2(0.5, 0.5)):
@@ -733,7 +858,7 @@ static func _coast(L: Lay) -> void:
 	# Cars drowned at the tide line.
 	var cars := 0
 	for attempt in 600:
-		if cars >= _n(c, 3.0):
+		if cars >= _n(L, 3.0):
 			break
 		var p := _shore(L, [Ground.SAND, Ground.SHINGLE], 12.0, 60)
 		if p.x >= 0 and _work(L, &"_drowned_car", Vector2(p) + Vector2(0.5, 0.5)):
@@ -902,12 +1027,12 @@ static func _moss(L: Lay) -> void:
 	var c := L.c
 	# The drained fen: straight cuts, a pump house on them, its pipeline
 	# striding off on stilts, a car sunk in the black water, reeds in the wire.
-	for n in _n(c, 3.0):
+	for n in _n(L, 3.0):
 		var p := _site(L, 7, 1, [Ground.MOSS, Ground.PEAT, Ground.MUD, Ground.GRASS, Ground.HEATH], 30.0, 700, 0.45)
 		if p.x >= 0:
 			_work(L, &"_drained", Vector2(p) + Vector2(0.5, 0.5))
 	# Bog graves: stakes in a row by a stilt hut, a memorial for the drowned.
-	for n in _n(c, 2.0):
+	for n in _n(L, 2.0):
 		var p := _site(L, 4, 1, [Ground.MOSS, Ground.PEAT, Ground.HEATH, Ground.GRASS], 24.0, 500, 0.45)
 		if p.x >= 0:
 			_work(L, &"_bog_graves", Vector2(p) + Vector2(0.5, 0.5))
@@ -954,19 +1079,21 @@ static func _pinewood(L: Lay) -> void:
 	var c := L.c
 	# The relay corridor: one straight cut through the heart of the pines, masts
 	# strung along it with the machines' light on them, stumps at its edges.
-	var through := _heart(L)
-	if through.x < 0:
-		through = _site(L, 2, 3, [], 0.0, 400, 0.5)
-	if through.x >= 0:
-		_work(L, &"_relay_corridor", Vector2(through) + Vector2(0.5, 0.5))
+	# One to a landscape: its largest region's share.
+	if _share(L, 1) > 0:
+		var through := _heart(L)
+		if through.x < 0:
+			through = _site(L, 2, 3, [], 0.0, 400, 0.5)
+		if through.x >= 0:
+			_work(L, &"_relay_corridor", Vector2(through) + Vector2(0.5, 0.5))
 	# Clearcuts in exact squares: stumps in the harvester's rows, the wood
 	# standing thick round the edge, a warning at the corner.
-	for n in _n(c, 3.0):
+	for n in _n(L, 3.0):
 		var p := _site(L, 7, 1, [Ground.NEEDLES, Ground.GRASS, Ground.HEATH], 28.0, 700, 0.4)
 		if p.x >= 0:
 			_work(L, &"_clearcut", Vector2(p) + Vector2(0.5, 0.5), [n % 2 == 0])
 	# Fire towers on the rises, a hunting blind below, a grave for whoever kept it.
-	for n in _n(c, 2.0):
+	for n in _n(L, 2.0):
 		var found: Array = []
 		for attempt in 40:
 			var p := _site(L, 3, 1, [], 30.0, 20, 0.4)
@@ -980,7 +1107,7 @@ static func _pinewood(L: Lay) -> void:
 			rises.append(Vector2(f[1] as Vector2i) + Vector2(0.5, 0.5))
 		_work(L, &"_fire_tower", rises[0], [rises])
 	# A burned grove: dead trees standing close in scorched ground.
-	for n in _n(c, 1.5):
+	for n in _n(L, 1.5):
 		var p := _site(L, 6, 1, [Ground.NEEDLES, Ground.GRASS], 28.0, 600, 0.4)
 		if p.x >= 0:
 			_work(L, &"_burned_grove", Vector2(p) + Vector2(0.5, 0.5))
@@ -1163,7 +1290,7 @@ static func _snowfield(L: Lay) -> void:
 			var q := road[j]
 			var i := floori(q.y) * c.size + floori(q.x)
 			# A checkpoint may hold a village's way in, but not its square.
-			if w.blend[i] > 0.5 or not L.home(floori(q.x), floori(q.y)) or _in_village(w, q, 5.0):
+			if w.blend[i] > 0.5 or not L.here(floori(q.x), floori(q.y)) or _in_village(w, q, 5.0):
 				continue
 			var along := (road[j + 3] - road[j - 3]).normalized()
 			# A straight stretch: the road holds its line for three tiles either way.
@@ -1173,13 +1300,13 @@ static func _snowfield(L: Lay) -> void:
 	spots.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) < float(y[0]))
 	var done := 0
 	for spot: Array in spots:
-		if done >= _n(c, 2.0):
+		if done >= _n(L, 2.0):
 			break
 		var q: Vector2 = spot[1]
-		if not _crowded(w, q, 12.0) and _work(L, &"_checkpoint", q, [spot[2]]):
+		if not _crowded(L, q, 12.0) and _work(L, &"_checkpoint", q, [spot[2]]):
 			done += 1
 	for attempt in 10:
-		if done > 0:
+		if done > 0 or _n(L, 2.0) == 0:
 			break
 		# No road through the snow took one: it stands on the open field anyway.
 		var p := _site(L, 4 if attempt < 5 else 2, 1, [], 30.0 if attempt < 5 else 10.0, 500, 0.5)
@@ -1196,7 +1323,7 @@ static func _snowfield(L: Lay) -> void:
 	var stacks := 0
 	var strict_failed := false
 	for attempt in 8:
-		if stacks >= _n(c, 1.0):
+		if stacks >= _n(L, 1.0):
 			break
 		var strict := attempt < 4 and not strict_failed
 		if attempt < 4 and strict_failed:
@@ -1209,7 +1336,7 @@ static func _snowfield(L: Lay) -> void:
 		if _work(L, &"_stack", Vector2(p) + Vector2(0.5, 0.5), [strict]):
 			stacks += 1
 	# A convoy that never got through: vehicles buried in a line, a snow fence.
-	for n in _n(c, 1.0):
+	for n in _n(L, 1.0):
 		var p := _site(L, 5, 1, [Ground.SNOW], 30.0, 600, 0.4)
 		if p.x >= 0:
 			_work(L, &"_convoy", Vector2(p) + Vector2(0.5, 0.5))
@@ -1218,13 +1345,13 @@ static func _snowfield(L: Lay) -> void:
 	var best := 1e9
 	var iced := Vector2(-1, -1)
 	var heart := _heart(L)
-	for line in w.lines:
+	for line in w.lines if _share(L, 1) > 0 else []:
 		if line.kind != PropKind.PYLON and line.kind != PropKind.POLE:
 			continue
 		var ids: PackedInt32Array = line.props
 		for k in ids.size() - 1:
 			var mid := (w.props[ids[k]].pos + w.props[ids[k + 1]].pos) * 0.5
-			if not L.home(floori(mid.x), floori(mid.y)) or w.blend[floori(mid.y) * c.size + floori(mid.x)] > 0.4:
+			if not L.here(floori(mid.x), floori(mid.y)) or w.blend[floori(mid.y) * c.size + floori(mid.x)] > 0.4:
 				continue
 			var score := mid.distance_squared_to(Vector2(heart)) if heart.x >= 0 else 0.0
 			if score < best:
@@ -1233,7 +1360,7 @@ static func _snowfield(L: Lay) -> void:
 	if iced.x >= 0.0:
 		_record(c, &"iced_line", iced, d, Vector2(1.0, 1.0))
 	# Emergency shelters, a grave by each.
-	for n in _n(c, 2.0):
+	for n in _n(L, 2.0):
 		var p := _site(L, 3, 1, [], 26.0, 500, 0.45)
 		if p.x >= 0:
 			_work(L, &"_shelter", Vector2(p) + Vector2(0.5, 0.5))
@@ -1345,13 +1472,13 @@ static func _bonelands(L: Lay) -> void:
 	var pale: Array = [Ground.LIMESTONE, Ground.BONE, Ground.GRAVEL, Ground.GRASS, Ground.SCREE, Ground.HEATH]
 	# Quarries cut in the grid: benches in exact squares, drills standing in
 	# them, a conveyor carrying the stone off along the bearing.
-	for n in _n(c, 2.0):
+	for n in _n(L, 2.0):
 		var p := _site(L, 7, 1, pale, 30.0, 700, 0.4)
 		if p.x >= 0:
 			_work(L, &"_quarry", Vector2(p) + Vector2(0.5, 0.5))
 	# Drill fields: bores in an exact grid, capped or still drilling, the
 	# survey posts that laid them out.
-	for n in _n(c, 2.0):
+	for n in _n(L, 2.0):
 		var p := _site(L, 7, 1, pale, 30.0, 700, 0.4)
 		if p.x >= 0:
 			_work(L, &"_drill_field", Vector2(p) + Vector2(0.5, 0.5))
@@ -1365,7 +1492,7 @@ static func _bonelands(L: Lay) -> void:
 	# would never meet. `test_every_prop_kind_and_ground_is_placed` had been
 	# failing on whichever seed happened to lose the last one, which reads as a
 	# flaky test and was a content answer nobody had looked at.
-	for n in _n(c, 2.0):
+	for n in _n(L, 2.0):
 		var p := _site(L, 4, 1, [], 14.0, 500, 0.45)
 		if p.x >= 0:
 			_work(L, &"_cistern", Vector2(p) + Vector2(0.5, 0.5))
@@ -1437,19 +1564,19 @@ static func _burning(L: Lay) -> void:
 	var w := L.w
 	var dry: Array = [Ground.ASH, Ground.CLINKER, Ground.GRAVEL, Ground.ROCK, Ground.SCREE, Ground.GRASS, Ground.HEATH]
 	# Slag heaps tipped in a line along the bearing, a scorched car by them.
-	for n in _n(c, 2.0):
+	for n in _n(L, 2.0):
 		var p := _site(L, 6, 1, dry, 30.0, 700, 0.4)
 		if p.x >= 0:
 			_work(L, &"_slag", Vector2(p) + Vector2(0.5, 0.5))
 	# Refinery runs: parallel pipelines, collapsed in stretches, vents capped.
-	for n in _n(c, 1.5):
+	for n in _n(L, 1.5):
 		var p := _site(L, 6, 1, dry, 30.0, 700, 0.4)
 		if p.x >= 0:
 			_work(L, &"_refinery", Vector2(p) + Vector2(0.5, 0.5))
 	# The clerks' archive: cabinets in exact rows standing in the ash.
 	var archives := 0
 	for attempt in 8:
-		if archives >= _n(c, 1.0):
+		if archives >= _n(L, 1.0):
 			break
 		var p := _site(L, 5 if attempt < 4 else 3, 1, dry if attempt < 4 else [], 34.0 if attempt < 4 else 14.0, 600, 0.45)
 		if p.x >= 0 and _work(L, &"_archive", Vector2(p) + Vector2(0.5, 0.5)):
@@ -1459,10 +1586,10 @@ static func _burning(L: Lay) -> void:
 		if m.kind != &"fumarole":
 			continue
 		var at: Vector2 = m.pos
-		if L.home(floori(at.x), floori(at.y)):
+		if L.here(floori(at.x), floori(at.y)):
 			_work(L, &"_vent_caps", at)
 	# A dugout by the heat.
-	for n in _n(c, 1.0):
+	for n in _n(L, 1.0):
 		var p := _site(L, 3, 1, dry, 24.0, 500, 0.45)
 		if p.x >= 0:
 			_work(L, &"_dugout", Vector2(p) + Vector2(0.5, 0.5))
@@ -1471,8 +1598,10 @@ static func _burning(L: Lay) -> void:
 static func _slag(L: Lay, at: Vector2, _a: Array) -> bool:
 	var d := L.d
 	var heaps := 0
+	# Footed: the burning is terraced, and a heap tipped on a lip stood nowhere,
+	# which gave up the whole line on half the sites a region drew.
 	for i in L.rng.randi_range(3, 4):
-		if _put(L, PropKind.SLAG_HEAP, at + d * (i * 3.6 - 5.0), d.angle(), -99, 1.0, true) != null:
+		if _put_footed(L, PropKind.SLAG_HEAP, at + d * (i * 3.6 - 5.0), d.angle(), 1.0, true) != null:
 			heaps += 1
 	if heaps == 0:
 		return false
@@ -1615,9 +1744,10 @@ static func _way_in(L: Lay, _at: Vector2, a: Array) -> bool:
 	return false
 
 
-## Record the first shack with stolen machine light wired in (the lit model:
-## PropModels' variant 1 of 2, by the hash the view bakes with) as the landmark
-## "stolen_light", so it can be walked to and seen after dusk.
+## Note a shack with stolen machine light wired in (the lit model: PropModels'
+## variant 1 of 2, by the hash the view bakes with). One of them is recorded as
+## the landmark "stolen_light" once every work is laid (`_stolen_light`), so it
+## can be walked to and seen after dusk.
 static func _note_lit_shack(L: Lay, shack: WorldProp) -> void:
 	# The shack is lit when the model it is DEALT is its lit one: two models, the
 	# second wired (`tests/core/test_world_gen_works.gd` holds the recorded shack to
@@ -1625,10 +1755,23 @@ static func _note_lit_shack(L: Lay, shack: WorldProp) -> void:
 	# from, so renumbering ids no longer moves the stolen light.
 	if absi(WorldProp.deal_hash(L.c.s, shack.kind, shack.pos)) % 2 != 1:
 		return
-	for m in L.w.landmarks:
-		if m.kind == &"stolen_light":
-			return
-	_record(L.c, &"stolen_light", shack.pos, Vector2.RIGHT, Vector2(1.5, 1.5))
+	if L.writes:
+		L.lit.append(shack.pos)
+
+
+## THE STOLEN LIGHT IS THE WORLD'S ONE, AND NO REGION'S. It went to the first lit
+## shack laid, so which region held it hung on every region laid before; it goes
+## to the lit shack with the lowest hash, which no order of laying can move.
+static func _stolen_light(L: Lay) -> void:
+	var best := Vector2(-1.0, -1.0)
+	var low := 2.0
+	for p: Vector2 in L.lit:
+		var h := Rng.hash01(L.c.s, roundi(p.x * 256.0), roundi(p.y * 256.0), 0x5701)
+		if h < low:
+			low = h
+			best = p
+	if best.x >= 0.0:
+		_record(L.c, &"stolen_light", best, Vector2.RIGHT, Vector2(1.5, 1.5))
 
 
 ## Warnings nobody reads, beside the roads, one every so often away from the

@@ -227,7 +227,14 @@ const UNKNOWN := "unknown"
 ##     landscape's order, then its own roll), not by who was laid first. Pools
 ##     move a little on every seed that holds them; counts hold within 2-4%.
 ##     (Provisional: 42 is the look batch's; restamped at landing.)
-const GEN := 43
+## 44. A landscape's works are sited one region at a time (streamed worldgen
+##     S4j1): each region throws its own darts, takes its share of the
+##     landscape's counts by size, and sees no other region's works. The stolen
+##     light is the lowest-hashed lit shack, not the first laid. Slag heaps take
+##     footing off a terrace lip. Works move on every seed; counts hold within
+##     one per kind over eight seeds, slag rises to its three.
+##     (Provisional; restamped at landing.)
+const GEN := 44
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
