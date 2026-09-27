@@ -57,3 +57,15 @@ func test_a_view_across_is_turned_to_the_nearer_end_and_holds_it() -> void:
 	eq(int(flipped.y), -1, "the other end once well past")
 	eq(Shoulder.along(view, axis, 0.0, 1).x, 0.0, "no corridor, no turn")
 	near(Shoulder.along(east, axis, 1.0, 1).x, 0.0, 1e-4, "looking along, left alone")
+
+
+## A CORRIDOR IS A FLOOR UP TO 7 M BETWEEN WALLS, held fully to 6 m: the
+## labyrinth's floors are 4.4 to 6.2 wide with a median of 6 (GenSlots), and
+## the view down one is held along it as down a four-wide slot. Past 7 m it is
+## ground to turn about on.
+func test_the_labyrinth_s_floors_are_corridors_and_wider_ground_is_not() -> void:
+	var axis := Vector2(1, 0)
+	for w: float in [4.0, 6.0]:
+		gt(float(Shoulder.corridor(_slot(axis, w, Shoulder.AXIS_REACH))[1]), 0.99, "a floor %.0f m wide is held fully" % w)
+	for w: float in [7.0, 8.0]:
+		eq(float(Shoulder.corridor(_slot(axis, w, Shoulder.AXIS_REACH))[1]), 0.0, "a floor %.0f m wide is not held" % w)

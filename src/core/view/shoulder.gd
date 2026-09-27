@@ -130,9 +130,11 @@ const AXIS_PROBES := 12
 const AXIS_REACH := 12.0
 ## A way narrower than this across (metres, wall to wall through the head) is a
 ## corridor, fully by AXIS_WIDE - AXIS_EASE; and it must be AXIS_LONG times
-## longer along than across.
-const AXIS_WIDE := 7.5
-const AXIS_EASE := 2.5
+## longer along than across. Held fully to 6 m because the labyrinth's floors
+## are 4.4 to 6.2 wide with a median of 6 (GenSlots); past 7 m is ground to turn
+## about on.
+const AXIS_WIDE := 7.0
+const AXIS_EASE := 1.0
 const AXIS_LONG := 2.2
 const AXIS_SHARE := 0.75
 const AXIS_SIDE := 0.4
