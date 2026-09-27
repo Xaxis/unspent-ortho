@@ -63,6 +63,8 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   chases, is roused and faces you within 3 s: `tools/test.sh test_keeper_roused` (~2.5 min).
   A keeper goes through a wood: what its drawn body walks into of the kinds its row `breaks` (every keeper: trees and
   shrubs) is felled for good and thrown over (FightSim._break_through, 40_fight `felled`): `tools/test.sh test_keeper_breaks`.
+  The frame, staged as a player does it (walk up to the snowfield's plough, hit it, run for the pines):
+  `TOUR_FIXED_FPS=60 tools/tour.sh tours/plough_wood.tour` (options in its header).
 - 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.
   Freed by a dark yard or a fallen keeper, and back on a standing holding's books
   (`tools/test.sh test_come_home`; `tools/tour.sh tours/taken_home.tour`, options in its header;

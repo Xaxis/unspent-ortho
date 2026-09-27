@@ -527,10 +527,21 @@ func tour_place(what: String) -> Vector2:
 	for i in 16:
 		var a := from + float((i + 1) / 2) * (TAU / 16.0) * (1.0 if i % 2 == 0 else -1.0)
 		var p := lair + Vector2.from_angle(a) * TOUR_STAND
-		if game.query.standable(floori(p.x), floori(p.y)) and game.world.same_body(p, lair):
+		if game.query.standable(floori(p.x), floori(p.y)) and game.world.same_body(p, lair) and _body_fits(p):
 			_tour_facing = (lair - p).angle()
 			return p
 	return Vector2.INF
+
+
+## The whole of the player's body stands at `p`, every corner a step from its
+## middle: a spot with a corner on the terrace above would hold it fast, since
+## every move that leaves that corner where it is gets refused.
+func _body_fits(p: Vector2) -> bool:
+	var r := Tuning.PLAYER_RADIUS
+	for c: Vector2 in [Vector2(-r, -r), Vector2(r, -r), Vector2(-r, r), Vector2(r, r)]:
+		if not game.query.passable(floori(p.x), floori(p.y), floori(p.x + c.x), floori(p.y + c.y)):
+			return false
+	return true
 
 
 func tour_face(what: String) -> float:
