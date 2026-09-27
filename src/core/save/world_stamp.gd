@@ -215,7 +215,13 @@ const UNKNOWN := "unknown"
 ##     for the next that asks the same (`GenWorks._site`: a strict search that
 ##     found nothing is not asked again, a whole one that found nothing is not
 ##     searched again), so the darts after it fall differently.
-const GEN := 40
+## 41. The land materials' raws (GEAR.md §11) stand in their lands: the grey
+##     orchards' blocks are planted in GRAFT_TREE, the green towers shed
+##     MOSS_CORE, the server fields drop SERVER_BLADE, the middens bind
+##     MIDDEN_BALE, and the caves' stalagmites are DRIPSTONE (they were standing
+##     stones). Five kinds appended after the last, so no other kind's number
+##     moves.
+const GEN := 41
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
