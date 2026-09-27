@@ -1,0 +1,10 @@
+# One core, two uses (GEAR.md G5): a keeper's core on the slate reads as the choice
+# it is, the holding's cell and the power worn, side by side.
+#   tools/tour.sh tours/core_choice.tour --seed=1 --hour=11 --weather=clear:0 --give=reaper_core:1
+coast calm
+wait 1.0
+tap inventory
+wait 0.6
+choose reaper_core
+wait 0.4
+shot 01-one-core-two-uses with app:inventory

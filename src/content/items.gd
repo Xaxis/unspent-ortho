@@ -72,7 +72,7 @@ const DEFS := {
 		"speed": 5000, "bite": 260, "swing": [190, 130, 230, 270], "reach": 1.25, "width": 1.2, "dmg": 5, "knock": 7.5, "knock_ms": 230},
 	# Rare; never craftable.
 	&"axe_works": {"name": "fine axe", "bulk": 3.0, "group": &"tool", "tool": true, "verb": &"fell", "stuff": &"crucible",
-		"speed": 4200, "bite": 520, "swing": [170, 140, 200, 230], "reach": 1.4, "width": 1.8, "dmg": 6, "knock": 8.0, "knock_ms": 240},
+		"speed": 4200, "bite": 520, "swing": [170, 140, 200, 230], "reach": 1.4, "width": 1.8, "dmg": 6, "knock": 8.0, "knock_ms": 240, "sockets": 2},
 
 	# --- Found ladder (§9.3): no verb, never mended, spend charges ---
 	&"las_hand": {"name": "short beam", "bulk": 1.0, "group": &"found", "tool": true, "verb": &"", "stuff": &"found", "speed": 10000, "bite": 0,
@@ -115,6 +115,10 @@ const DEFS := {
 	&"reeds": {"name": "reeds", "bulk": 2.0, "group": &"material"},
 	&"gorse_cut": {"name": "cut gorse", "bulk": 2.0, "group": &"material"},
 	&"timber": {"name": "timber", "bulk": 6.0, "group": &"material"},
+	# Timber dried for years in the pinewood saw hall's racks: the hall's reward,
+	# found there (6-10) and made nowhere. What a cellar's lid, a tower and
+	# shutters need, and what makes a gate last (SETTLE.md, teammate3's hall).
+	&"seasoned_timber": {"name": "seasoned timber", "bulk": 1.5, "group": &"material"},
 	&"haft": {"name": "haft", "bulk": 1.0, "group": &"material"},
 	&"resin": {"name": "resin", "bulk": 1.0, "group": &"material"},
 	&"pitch": {"name": "pitch", "bulk": 2.0, "group": &"material"},
@@ -143,6 +147,7 @@ const DEFS := {
 	&"unbuilder_core": {"name": "unbuilder core", "bulk": 3.0, "group": &"material"},
 	&"lockkeeper_core": {"name": "lockkeeper core", "bulk": 3.0, "group": &"material"},
 	&"anchor_core": {"name": "anchor core", "bulk": 3.0, "group": &"material"},
+	&"listener_core": {"name": "listener core", "bulk": 3.0, "group": &"material"},
 	&"lime": {"name": "lime", "bulk": 1.0, "group": &"material"},
 	&"salt": {"name": "salt", "bulk": 1.0, "group": &"material"},
 	&"kelp_ash": {"name": "kelp ash", "bulk": 1.0, "group": &"material"},
@@ -234,6 +239,17 @@ const DEFS := {
 	# a person uses, and where the abilities come from.
 	&"vest_heatsink": {"name": "heat-sink vest", "bulk": 3.0, "group": &"kit", "tier": &"mended",
 		"slot": &"body", "sockets": 2, "resist": {&"heat": 0.6, &"fumes": 0.2}, "wears": {"salvage": [&"breastplate"], "gear": [&"battery"]}},
+	# Harvester tide iron hammered to scales and sewn over the shoulders of a long
+	# coat (GEAR.md §6): the back is where a crowd's first blow finds you, and
+	# the scales turn it (FightKit.scale).
+	&"coat_scale": {"name": "scale coat", "bulk": 4.0, "group": &"kit", "tier": &"mended",
+		"slot": &"body", "sockets": 2, "icon": [&"vest", &"rust", &"ash"],
+		"resist": {&"cold": 0.2, &"collapse": 0.2}, "wears": {"coat": &"long", "salvage": [&"plate"]}},
+	# A warm wrap lined with crags hush slate at the hem and the soles (GEAR.md
+	# §6): the stone that swallows sound, worn where the steps are.
+	&"wrap_hush": {"name": "hush wrap", "bulk": 3.0, "group": &"kit", "tier": &"mended",
+		"slot": &"body", "sockets": 2, "icon": [&"vest", &"slate", &"ink"],
+		"resist": {&"cold": 0.3}, "wears": {"coat": &"wrap", "extras": [&"shawl"]}},
 	&"rebreather": {"name": "rebreather", "bulk": 2.0, "group": &"kit", "tier": &"mended",
 		"slot": &"head", "sockets": 1, "resist": {&"fumes": 0.7, &"toxins": 0.55}, "wears": {"gear": [&"respirator"]}},
 	&"boots_magnet": {"name": "magnet boots", "bulk": 3.0, "group": &"kit", "tier": &"mended",
@@ -265,6 +281,12 @@ const DEFS := {
 		"resist": {}, "ability": &"glide", "wears": {"wing": true}},
 	&"scanner_lens": {"name": "scanner lens", "bulk": 1.0, "group": &"kit", "tier": &"mended",
 		"slot": &"head", "sockets": 2, "resist": {&"dark": 0.5, &"glare": 0.35}, "ability": &"scan", "wears": {"salvage": [&"lens"]}},
+	# A sweeper's trued vane cut into a cloak's shoulders (GEAR.md §6): the
+	# machine that rides the wind along its track, turned; in a strong wind a
+	# dodge the wind is behind carries twice as far (FightKit.vane).
+	&"cloak_vane": {"name": "vane cloak", "bulk": 3.0, "group": &"kit", "tier": &"mended",
+		"slot": &"back", "sockets": 3, "icon": [&"wing", &"plate", &"lens"],
+		"resist": {&"cold": 0.15, &"wet": 0.2}, "wears": {"extras": [&"shawl"], "salvage": [&"vanes"]}},
 	# A machine's own coolant loop, cut short and wound: it gives back what a
 	# body breathes out. The one answer to a land that drinks you.
 	&"condenser": {"name": "drip coil", "bulk": 2.0, "group": &"kit", "tier": &"mended",
@@ -420,6 +442,35 @@ const DEFS := {
 		"icon": [&"scan_lens", &"lens", &"earth"], "fits": [&"head", &"body"], "resist": {&"em": 0.3, &"time_shear": 0.2}, "ability": &"scan"},
 	&"mod_lattice": {"name": "shock lattice", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"vest", &"plate", &"earth"], "fits": [&"tool"], "resist": {&"em": 0.25}},
+	# The tide reaper's core, wound into the grapple's glove (GEAR.md §5): the
+	# keeper that dragged bodies off the strand, turned. Hands only: it is the
+	# line's own hand. `held` is its tag (ModifierTable).
+	# The pan rake's core, set in the tool's head (GEAR.md §5): the keeper that
+	# raked the crust into rows, turned. `loud` is its tag (ModifierTable).
+	&"mod_rake": {"name": "rake", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"rime", &"earth"], "fits": [&"tool"], "resist": {&"heat": 0.2}},
+	# The mesas anchor's core, set in a belt plate (GEAR.md §5): the keeper that
+	# would not be moved, turned. `steady` is its tag (ModifierTable).
+	&"mod_anchor": {"name": "anchor", "bulk": 3.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"stone", &"earth"], "fits": [&"body"], "resist": {&"collapse": 0.3}},
+	# The drowned lockkeeper's core, in a pack frame (GEAR.md §5): the keeper
+	# that shut the city's water in, turned. `charge` is its tag (ModifierTable).
+	&"mod_lock": {"name": "lock", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"brine", &"ink"], "fits": [&"back"], "resist": {&"wet": 0.2}},
+	# The frost sea listener's core, bound over one ear (GEAR.md §5): the keeper
+	# that heard the ice, turned. `sight` is its tag (ModifierTable).
+	&"mod_listen": {"name": "the ear", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"scan_lens", &"rime", &"ink"], "fits": [&"head"], "resist": {&"cold": 0.2}},
+	# The crags plumb's core, set in a lens frame (GEAR.md §5): the keeper that
+	# read the ground's lean before it moved, turned. `read` (ModifierTable).
+	&"mod_plumb": {"name": "plumb", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"scan_lens", &"stone", &"ink"], "fits": [&"head"], "resist": {&"collapse": 0.2}},
+	# The metropolis unbuilder's core, wired into a glove (GEAR.md §5): the keeper
+	# that took the city apart piece by piece, turned. `read` (ModifierTable).
+	&"mod_unbuild": {"name": "unbuilder's hands", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"plate", &"ink"], "fits": [&"hands"], "resist": {&"em": 0.2}},
+	&"mod_undertow": {"name": "undertow", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"brine", &"earth"], "fits": [&"hands"], "resist": {&"magnetism": 0.3}},
 	# The crags' hush slate, lined into a hat, a coat or a pack: what it decides
 	# is the `quiet` tag (ModifierTable); the numbers are what stone that reads
 	# as nothing keeps off a body, and they are small on purpose.

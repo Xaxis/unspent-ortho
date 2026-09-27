@@ -114,6 +114,45 @@ var shelter: StringName = &""
 var crown: StringName = &""
 ## How wide that crown stands, as a multiple of the ordinary one.
 var spread := 0.0
+## WHAT A BROADLEAF IS HERE, one form per model (a broadleaf's four variants are
+## dealt from these in turn), where the land grows more than one kind of tree:
+##   &"broad"  the ordinary crowned broadleaf
+##   &"fern"   a tree fern: a scaly trunk and a flat rosette of arching fronds
+##   &"fig"    a strangler fig: a lattice of roots wrapped round the host it
+##             killed, and a wide flat crown
+##   &"palm"   a palm with its crown broken: a tall curved stem, a few fronds
+##   &"snag"   a trunk bleached pale by what the ground breathes, a shelf of
+##             fungus on it, no leaf at all
+## Empty and every broadleaf is `broad`. Render only: which variant a tree is
+## does not move.
+var broadleaf_forms: Array[StringName] = []
+## The plan's works here move BRINE, and brine leaves itself on everything it
+## goes through (props/works.gd): a pump house crusted white to the waist with
+## crystal where it seeped, a brine outfall green-black and not an oil slick,
+## and a pipe run beaded with salt at every joint. Render only.
+var brine := false
+## What a RUIN is here (models/props/fallen_tower.gd `stump`):
+##   &""       a drystone house fallen to its walls (Houses.ruin)
+##   &"tower"  the stump of a city tower: two to four storeys of cast frame
+##             standing, snapped above, its floor plates out of the break like
+##             ribs and its rubble round the foot
+## Render only.
+var ruin_form: StringName = &""
+## How a storey somebody still lives behind shows after dark (props/towers.gd):
+##   &"floors"  the whole band lit on the city's stolen power, a floor left on
+##   &"gaps"    no power: one light of the band, by a lamp or a fire, and the
+##              rest of it dark glass -- people living in the gaps of a tower
+##              that is not theirs
+var windows: StringName = &""
+## How much power the plan's signage still gets here (props/towers.gd billboard):
+##   &"lit"    full: the plan runs this place and keeps its boards burning
+##   &"dying"  mostly dead: dark panels under grime, and one or two failing
+##             tubes stuttering at low strength (GroundColors.FAILING)
+var signage: StringName = &""
+## The light in the old stones' carvings after dark, if this land has any: a
+## quarried standing stone is cut with a ring of marks that give off this colour,
+## faintly, once the light goes (props/rocks.gd). Nobody's power runs to them.
+var old_light := NONE
 
 ## Every form each field may name, so a typo is a failing test and not a
 ## landscape quietly dressed as somewhere else (BiomeRegistry.problems).
@@ -130,6 +169,9 @@ const SHELTERS: Array[StringName] = [&"shack", &"stilt", &"blind", &"pod", &"lea
 	# hearth in the mouth of the cut.
 	&"cut_room"]
 const CROWNS: Array[StringName] = [&"full", &"bare", &"low"]
+const BROADLEAF_FORMS: Array[StringName] = [&"broad", &"fern", &"fig", &"palm", &"snag", &"pollard", &"trellis"]
+const WINDOWS: Array[StringName] = [&"floors", &"gaps"]
+const SIGNAGE: Array[StringName] = [&"lit", &"dying"]
 ## Every ramp `BiomeDef.tree_tints` may name, and how many colours each wants.
 const RAMPS := {&"leaf": 4, &"trunk": 1, &"needle": 3, &"under": 1, &"scrub": 3,
 	&"gorse": 3, &"dead": 2, &"reed": 3, &"reed_head": 1}
@@ -254,6 +296,12 @@ static func resolve(d: BiomeDef) -> BiomeDressing:
 		r.shelter = &"shack"
 	r.crown = s.crown if s.crown != &"" else (&"bare" if cold or burnt else &"full")
 	r.spread = s.spread if s.spread > 0.0 else 1.0
+	r.broadleaf_forms = s.broadleaf_forms
+	r.brine = s.brine
+	r.ruin_form = s.ruin_form
+	r.windows = s.windows if s.windows != &"" else &"floors"
+	r.signage = s.signage if s.signage != &"" else &"lit"
+	r.old_light = s.old_light
 	return r
 
 
@@ -333,6 +381,13 @@ static func problems(d: BiomeDef) -> PackedStringArray:
 			out.append(w + "nobody builds a %s" % s.shelter)
 		if s.crown != &"" and not CROWNS.has(s.crown):
 			out.append(w + "no crown is %s" % s.crown)
+		for f: StringName in s.broadleaf_forms:
+			if not BROADLEAF_FORMS.has(f):
+				out.append(w + "no broadleaf grows as %s" % f)
+		if s.windows != &"" and not WINDOWS.has(s.windows):
+			out.append(w + "no window is lit as %s" % s.windows)
+		if s.signage != &"" and not SIGNAGE.has(s.signage):
+			out.append(w + "no sign is powered as %s" % s.signage)
 		if s.facets != 0 and (s.facets < 4 or s.facets > 9):
 			out.append(w + "rock breaks into %d sides, which is not 4..9" % s.facets)
 	# Tree tints are a dictionary, so a misspelt key is silent the same way.

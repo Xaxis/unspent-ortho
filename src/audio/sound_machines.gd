@@ -170,7 +170,7 @@ static func _harvester() -> PackedFloat32Array:
 	Synth.add(pulse, _burst(303, 0.05, 200.0, 900.0, 0.03), 0, 0.3)
 	_lay(b, pulse, c["engine"], 0.14)
 	var slap := _burst(304, 0.04, 900.0, 3500.0, 0.018)
-	_lay(b, slap, c["reel"], 0.16, LOOP / c["reel"] / 3)
+	_lay(b, slap, c["reel"], 0.16, LOOP / int(c["reel"]) / 3)
 	return b
 
 
@@ -317,7 +317,7 @@ static func _runner() -> PackedFloat32Array:
 	_lay(b, step, c["steps"], 0.3)
 	var sat := _modes(0.12, [310.0, 820.0], [0.5, 0.25], [0.08, 0.05])
 	Synth.add(sat, _burst(1102, 0.03, 1500.0, 4000.0, 0.02), 0, 0.2)
-	_lay(b, sat, c["satchel"], 0.16, LOOP / c["steps"] / 2)
+	_lay(b, sat, c["satchel"], 0.16, LOOP / int(c["steps"]) / 2)
 	return b
 
 

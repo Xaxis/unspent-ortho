@@ -133,6 +133,7 @@ void fragment() {
 	// How fast this water runs: still water is a mirror, running water is not.
 	vec2 flow = kind == 0 ? vec2(0.0) : COLOR.gb * 2.0 - 1.0;
 	vec3 c;
+	vec3 glow = vec3(0.0);
 	if (kind == 0) {
 		// COLOR.g on the sea: 1 where it meets an open coast, 0 where the bank is
 		// a bog (TerrainMesher._surf_at). Foam belongs to a shore that shelves;
@@ -163,6 +164,21 @@ void fragment() {
 		} else if (surf < 0.5 && d < 0.1 && ink_hash(px + 5.0) > 0.94) {
 			// Reeds standing out of the shallows instead.
 			c = ink_hash(px + 9.0) < 0.5 ? SPRUCE2 : SPRUCE3;
+		}
+		// THE SEA'S NIGHT: where an open shore takes the swash, the plankton in it
+		// light as the wave breaks and runs up -- a cold blue along the foam line,
+		// brightest at the run-up, in drifts along the coast and not the whole of
+		// it. Only after dark (sky_view.y); by day it is only foam.
+		// The band is the foam line's own width and never a shelf's: on a long
+		// shallow beach `d` barely moves across tens of tiles, and a band in `d`
+		// alone lit the whole shallows as one neon strip (measured on the glass
+		// desert's shore, the brightest thing in the frame).
+		float band = min(0.02, 3.0 * w);
+		if (sky_view.y > 0.0 && surf > 0.5 && d < lap + band) {
+			float bloom = smoothstep(0.5, 0.72, ink_vnoise(wp * 0.07 + vec2(TIME * 0.01, 0.0)));
+			float edge = 1.0 - smoothstep(lap - 0.004, lap + band, d);
+			glow = vec3(0.04, 0.5, 1.0) * 1.6 * edge * bloom * (0.35 + 0.65 * s) * sky_view.y
+				* (0.6 + 0.4 * ink_hash(floor(px / 2.0) + floor(TIME * 3.0)));
 		}
 		// Wave ticks: short dashes that appear and fade on a slow beat.
 		float beat = floor(TIME * 0.9);
@@ -239,7 +255,16 @@ void fragment() {
 	// thing in the frame.
 	float pale = smoothstep(0.80, 0.96, dot(c, vec3(0.2126, 0.7152, 0.0722)));
 	float deep = clamp(kind == 0 ? d : d * 0.8, 0.0, 1.0);
-	c *= mix(mix(1.0, 0.22, deep), 1.0, pale);
+	// STILL WATER KEEPS A FLOOR. A pool's deep was its darkest chart colour
+	// (blackwater's near black) taken down to a fifth, and from above, where a
+	// pool mirrors almost nothing, it read as a hole cut in the land (the
+	// crags' tarns). Still water with nothing lighting it is dark, not absent:
+	// its deep holds a dark sea-green and loses no more than a fifth to depth.
+	bool pooled = kind == 2 || (kind == 1 && length(flow) < 0.2);
+	if (pooled) {
+		c = max(c, mix(SPRUCE1, BRINE1, 0.5) * mix(1.0, 0.6, pale));
+	}
+	c *= mix(mix(1.0, pooled ? 0.8 : 0.22, deep), 1.0, pale);
 	// THE SUN'S HUE BELONGS IN THE WATER'S REFLECTION, NOT IN ITS BODY. The body
 	// colour is lit by the sun like any albedo, so an amber evening sun turned a
 	// blue sea to ochre from above and dragged the frame brown (canon 12). Water
@@ -263,6 +288,11 @@ void fragment() {
 	float top_down = 1.0 - clamp(sky_focus.w, 0.0, 1.0);
 	float caught = max(sun_path(wp), sea_glints(wp, TIME));
 	SPECULAR = SEA_SPECULAR * mix(1.0, mix(OFF_PATH, 1.0, caught), day * top_down);
+	// Under a colossus's pad coming down there is no sky left to mirror
+	// (sky.gdshaderinc `sky_colossus_pads`): the water goes dark with the land.
+	float under_pad = sky_colossus_pads(world_pos);
+	SPECULAR *= 1.0 - under_pad;
+	ROUGHNESS = mix(ROUGHNESS, 1.0, under_pad);
 	METALLIC = 0.0;
 	// The surface's own chop, small and slow, so the reflection breaks up the
 	// way water does instead of standing as a mirror.
@@ -280,6 +310,7 @@ void fragment() {
 	vec2 slope = chop_slope(wp, t);
 	vec3 bend = vec3(slope.x, 0.0, slope.y) * CHOP_BEND;
 	NORMAL = normalize(NORMAL - clamp((VIEW_MATRIX * vec4(bend, 0.0)).xyz, vec3(-1.0), vec3(1.0)));
+	EMISSION = matter_light(glow);
 }
 
 // There is no light(): the renderer lights the water, and what it finds in it

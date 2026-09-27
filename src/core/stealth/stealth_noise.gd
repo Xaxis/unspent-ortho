@@ -55,6 +55,9 @@ const GROUNDS := {
 	Ground.BLACKWATER: 1.45,
 }
 
+## Water is a stroke, not a step: nothing worn quiets it.
+const WATERS: Array[int] = [Ground.DEEP_WATER, Ground.WATER, Ground.RIVER, Ground.BLACKWATER]
+
 ## Crouched, everything the body itself does is this share as loud. Working a
 ## prop or a blow landing is the tool, not the body: it is only a little quieter.
 const CROUCH_BODY := 0.35
@@ -73,11 +76,16 @@ static func ground_factor(ground: int) -> float:
 
 
 ## Tiles the act carries from where it happened.
-static func radius(act: StringName, ground: int, crouched: bool = false, laden_tier: int = 0) -> float:
+## `hushed` (FightKit.hush, the hush wrap): the body's own acts are heard as on
+## moss wherever it is on land.
+static func radius(act: StringName, ground: int, crouched: bool = false, laden_tier: int = 0, hushed: bool = false) -> float:
 	var base: float = ACTS.get(act, 0.0)
 	if base <= 0.0:
 		return 0.0
-	var r := base * ground_factor(ground) * (1.0 + LADEN * maxi(0, laden_tier))
+	var g := ground_factor(ground)
+	if hushed and BODY_ACTS.has(act) and not WATERS.has(ground):
+		g = minf(g, float(GROUNDS[Ground.MOSS]))
+	var r := base * g * (1.0 + LADEN * maxi(0, laden_tier))
 	if crouched:
 		r *= CROUCH_BODY if BODY_ACTS.has(act) else CROUCH_TOOL
 	return r
@@ -85,11 +93,11 @@ static func radius(act: StringName, ground: int, crouched: bool = false, laden_t
 
 ## The walking noise a body going at `speed` tiles/s makes: almost nothing
 ## standing still, a walk's worth at walking pace, a run's beyond it.
-static func moving(speed: float, ground: int, crouched: bool, laden_tier: int) -> float:
+static func moving(speed: float, ground: int, crouched: bool, laden_tier: int, hushed: bool = false) -> float:
 	if speed < 0.4:
-		return radius(&"walk", ground, crouched, laden_tier) * STILL
+		return radius(&"walk", ground, crouched, laden_tier, hushed) * STILL
 	var act := &"run" if speed > Tuning.WALK_SPEED + 0.4 else &"walk"
-	var r := radius(act, ground, crouched, laden_tier)
+	var r := radius(act, ground, crouched, laden_tier, hushed)
 	return r * clampf(speed / Tuning.WALK_SPEED, 0.5, 1.4)
 
 
@@ -102,5 +110,5 @@ const LOUDEST := 2.5
 ## How loud the player is now, against a walk on plain ground (1.0). This is
 ## the one number that shortens how far a machine hears: crouching, the ground
 ## underfoot, the load and standing still are all in it.
-static func loudness(speed: float, ground: int, crouched: bool, laden_tier: int) -> float:
-	return clampf(moving(speed, ground, crouched, laden_tier) / float(ACTS[&"walk"]), 0.0, LOUDEST)
+static func loudness(speed: float, ground: int, crouched: bool, laden_tier: int, hushed: bool = false) -> float:
+	return clampf(moving(speed, ground, crouched, laden_tier, hushed) / float(ACTS[&"walk"]), 0.0, LOUDEST)

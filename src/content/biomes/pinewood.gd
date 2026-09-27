@@ -77,7 +77,15 @@ static func make() -> BiomeDef:
 	# else on the surface, which is the whole reason a wood is frightening at
 	# night. It is the one landscape whose night is darker than the coast's, and
 	# it earns it by having something overhead rather than by being told to.
+	# Needle-damp moss on the ledges under the canopy, and little ivy in the shade.
+	# (BiomeDef.overgrowth: lighter than the green towers' whole dose.)
+	d.overgrowth = 0.20
+	# Foxfire in the needle litter is the only light under it after dark
+	# (GroundColors.PINE_FLOOR): the wood lit from the floor, faintly, in drifts.
+	d.ground_marks = {Ground.NEEDLES: GroundColors.PINE_FLOOR}
 	d.night_sky = 0.80
+	# Rain comes down through the canopy as drips, and half as many again.
+	d.canopy_drip = 1.5
 	d.wet = 0.2
 	d.props = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS,
 		PropKind.BOULDER, PropKind.STONE_ORE, PropKind.COAL_ORE, PropKind.IRON_ORE, PropKind.SNOW_PINE,
@@ -107,6 +115,18 @@ static func make() -> BiomeDef:
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"leaning_mast", &"firewatch", &"grown_hulk", &"cast_stones"]
+	# Under the works' yard, the saw hall: where the machines TAKE the wood, on a
+	# shift, and dock their haulers asleep at the curfew
+	# (src/content/interiors/saw_hall.gd).
+	d.interiors = {&"works:depot": &"saw_hall", &"house": &"home"}
+	# Who kept them: the tapper, who bleeds the pines the machines have not
+	# squared yet, the collier who burns what they leave, and the trapper.
+	d.home = {"households": {
+		&"tapper": {"wants": [&"resin_pots", &"tallow", &"basket", &"shelf"], "by_hearth": []},
+		&"collier": {"wants": [&"charcoal_sacks", &"charcoal_sacks", &"workbench", &"creel"], "by_hearth": []},
+		&"trapper": {"wants": [&"pelts", &"snares", &"creel", &"tallow"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+	}}
 	d.sound_bed = &"bed_pines"
 	d.surface = _surface
 	d.scatter = _scatter

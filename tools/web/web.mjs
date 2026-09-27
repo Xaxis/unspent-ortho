@@ -31,6 +31,8 @@
 //   --headed         show the browser
 //   --dpr=N          device pixel ratio of the page (default 1; 2 is a Retina screen)
 //   --verbose        print every console line
+//   --trace          with --tour, print the tour's own step lines too (`tour t=... fps=...`), which
+//                    are otherwise only kept in the tour's console.log
 //   --serve[=PORT]   only serve --dir (default port 8060) with those headers until killed, for a
 //                    person to play in their own browser: dev mode's "play it" (src/dev/dev_jobs.gd)
 //   --tour=PATH      play a tour (tours/*.tour) inside the exported build instead of the player's
@@ -342,7 +344,7 @@ page.on('console', (m) => {
   const text = m.text();
   lines.push({ t: Number(since()), type: m.type(), text });
   // A tour's own findings are its evidence; its per-line trace is not.
-  const told = touring && /^tour /.test(text) && !/^tour (t=|score )/.test(text);
+  const told = touring && /^tour /.test(text) && (opt.trace || !/^tour (t=|score )/.test(text));
   if (opt.verbose || m.type() === 'error' || /^(boot|web) /.test(text) || told) console.log(`  [${since()}s ${m.type()}] ${text}`);
   if (touring) fs.appendFileSync(path.join(tourDir, 'console.log'), `[${since()}s ${m.type()}] ${text}\n`);
   // Once a tour has said it reached its end, what the engine says on its way out

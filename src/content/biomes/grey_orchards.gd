@@ -40,13 +40,16 @@ static func make() -> BiomeDef:
 	d.reach_out_high = Vector4(5.0, 0.08, 0.1, 0.32)
 	d.reach_in_low = Vector3(5.0, 0.08, 0.3)
 	d.hatch = Ink.SPARSE
+	# ASHEN, NOT GREEN. The name is the brief: a monoculture gone grey under its
+	# own spray. The sward is olive gone to ash, the moss a dead grey-green, and
+	# the spore dust lies pale over all of it.
 	d.grounds = {
-		Ground.GRASS: P.MOSS[3].lerp(P.LINEN[3], 0.4),
-		Ground.HEATH: P.MOSS[2].lerp(P.ASH[2], 0.35),
-		Ground.MUD: P.EARTH[3].lerp(P.ASH[3], 0.3),
+		Ground.GRASS: P.MOSS[3].lerp(P.LINEN[3], 0.5).lerp(P.ASH[3], 0.2),
+		Ground.HEATH: P.MOSS[1].lerp(P.LINEN[2], 0.45),
+		Ground.MUD: P.EARTH[2].lerp(P.ASH[3], 0.4),
 		Ground.ROAD: P.ASH[3].lerp(P.EARTH[3], 0.4),
 		Ground.GRAVEL: P.STONE[3].lerp(P.LINEN[3], 0.35),
-		Ground.MOSS: P.MOSS[2].lerp(P.SPRUCE[2], 0.4),
+		Ground.MOSS: P.MOSS[1].lerp(P.LINEN[1], 0.4).lerp(P.ASH[2], 0.2),
 		Ground.ROCK: P.STONE[3],
 	}
 	# Grounds this place never lays, named anyway: anything left unnamed falls
@@ -61,25 +64,54 @@ static func make() -> BiomeDef:
 	d.bank_ground = Ground.MUD
 	d.pool_rim_ground = Ground.MUD
 	d.village_ground = Ground.GRAVEL
-	d.decor = {Ground.GRASS: [0.7, Decor.TUFT, 26, Decor.CROTTLE, 10]}
-	d.grass_colors = [P.MOSS[3].lerp(P.LINEN[3], 0.35), P.MOSS[2]]
+	# Nothing flowers here: what comes up in ground the plan sprays every evening
+	# is spore caps and puffballs, grey. Its moss and heath are named too, or the
+	# shared table's bog cotton and meadow flowers come up white through the blight.
+	d.decor = {
+		Ground.GRASS: [0.7, Decor.TUFT, 26, Decor.CROTTLE, 10, Decor.SPORE_CAP, 6],
+		Ground.MOSS: [1.0, Decor.SEDGE, 28, Decor.SPHAGNUM, 16, Decor.TUFT, 8, Decor.SPORE_CAP, 12],
+		Ground.HEATH: [1.0, Decor.HEATHER, 40, Decor.TUFT, 14, Decor.SPORE_CAP, 8, Decor.STONE, 2],
+	}
+	d.grass_colors = [P.MOSS[2].lerp(P.LINEN[3], 0.45), P.LINEN[2].lerp(P.MOSS[2], 0.4)]
 	d.rock_color = P.STONE[3]
 	# What grows is grafted and going over: grey-green rather than green, and the
 	# white on it is not blossom.
-	d.tree_tints = {&"leaf": [P.MOSS[2].lerp(P.LINEN[3], 0.45), P.MOSS[3], P.LINEN[3], P.LINEN[2]]}
-	d.decor_tints = {&"fronds": [P.MOSS[2], P.LINEN[2], P.ASH[2]]}
+	# The bark lichen-grey, the leaf a sick grey-green dusted with spore.
+	d.tree_tints = {&"leaf": [P.MOSS[2].lerp(P.ASH[3], 0.55), P.MOSS[2].lerp(P.LINEN[3], 0.5), P.ASH[3].lerp(P.LINEN[4], 0.4), P.LINEN[3].lerp(P.ASH[3], 0.4)],
+		&"trunk": [P.ASH[2].lerp(P.MOSS[2], 0.25)],
+		# What self-seeded between the rows is dusted the same.
+		&"scrub": [P.MOSS[2].lerp(P.LINEN[2], 0.45), P.MOSS[1].lerp(P.ASH[2], 0.4), P.LINEN[2].lerp(P.MOSS[2], 0.3)]}
+	d.decor_tints = {&"fronds": [P.MOSS[2].lerp(P.ASH[2], 0.5), P.LINEN[2], P.ASH[2]]}
 	var dress := BiomeDressing.new()
 	dress.stone = [P.STONE[3], P.ASH[3], P.LINEN[3]]
 	dress.timber = [P.EARTH[2], P.ASH[2]]
 	dress.walling = [P.STONE[3], P.ASH[2], P.EARTH[2], P.LINEN[3]]
 	dress.crown = &"full"
+	# Every tree in a row is the plan's: grafted, staked and tagged, cut back to a
+	# pollard's head (Trees.pollard) or trained flat on its wire (Trees.trellis):
+	# the rows lay every tree along the bearing (`_works`), so a wire runs
+	# along its row.
+	dress.broadleaf_forms = [&"pollard", &"trellis", &"pollard", &"pollard"]
+	# Its typical ground is in the rows, never the clearing where a block was
+	# taken out.
+	d.typical_among = Vector2i(PropKind.GRAFT_TREE, 40)
+	# Its grass is the plan's sward: mown in alleys between the rows, rutted by
+	# the sprayers, dusted pale along the rows (GroundColors.ORCHARD_SWARD).
+	d.ground_marks = {Ground.GRASS: GroundColors.ORCHARD_SWARD}
 	dress.sink = 0.08
 	dress.lie = Vector2(-0.03, 0.06)
 	d.dressing = dress
-	d.grade = Vector4(-0.03, 0.03, 0.0, 0.02)
+	# Drained, as a thing sprayed every day is drained: most of its colour taken
+	# out and a little of the light.
+	d.grade = Vector4(0.0, 0.3, 0.0, 0.03)
 	d.night_sky = 1.0
-	d.props = [PropKind.BROADLEAF, PropKind.BUSH, PropKind.GROWTH_TANK,
-		PropKind.WATER_TANK, PropKind.FENCE, PropKind.STUMP, PropKind.DEBRIS, PropKind.RELAY]
+	# The plan still runs its grow lights on the schedule, all night, for trees
+	# nobody will pick: every crown lit rose-violet from below, in its rows.
+	d.underlight = Color(0.6, 0.4, 0.86, 0.42)
+	d.props = [PropKind.GRAFT_TREE, PropKind.BROADLEAF, PropKind.BUSH, PropKind.GROWTH_TANK,
+		PropKind.WATER_TANK, PropKind.FENCE, PropKind.STUMP, PropKind.DEBRIS, PropKind.RELAY,
+		# The sprayers that keep the rows, one to a block (`_works`).
+		PropKind.SPRAYER_GANTRY]
 	d.ore = [[PropKind.IRON_ORE, 0.014], [PropKind.COPPER_ORE, 0.012]]
 	d.sites = {"tips": 2}
 	d.beached_wrecks = false
@@ -92,6 +124,10 @@ static func make() -> BiomeDef:
 		[Weather.FOG, 20, 0.0], [Weather.STORM, 6, 0.4],
 	]
 	d.mist = 0.34
+	# The sprayers' evening circuit: a low, sickly spore haze through the rows
+	# that thickens as the light goes (Weather.mist), the colour of the spores.
+	d.mist_dusk = 0.9
+	d.weather_style = {&"fog": {"air": Color(0.70, 0.72, 0.60), "low": 0.8}}
 	# The spores are the sprayers' own doing and the wet is what they are carried
 	# in: declared under BITE so the mist decides, exactly as the Burning's fumes
 	# are declared under it so the ash decides.
@@ -103,6 +139,10 @@ static func make() -> BiomeDef:
 		&"dog.feral": {"weight": 0.8},
 	}
 	d.landmarks = [&"clerks_office", &"poured_pillar", &"sump_pump", &"blinking_stack"]
+	# Behind every grower's door, the house the machines still keep for them:
+	# the table laid, a hot meal through the hatch at every mealtime
+	# (src/content/interiors/laid_table.gd).
+	d.interiors = {&"house": &"laid_table"}
 	d.sound_bed = &"bed_pines"
 	d.surface = _surface
 	d.scatter = _scatter
@@ -139,11 +179,11 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.GRASS:
 		# Strays only: the orchards are planted in rows (`_works`), and a tree
 		# the scatter drops at random between them is one that seeded itself.
+		# No stumps out here: a stump is where a ROW lost a tree (`_works`), and
+		# stumps strewn over open grass read as a felled wood, not a farm.
 		if r < 0.004:
 			return PropKind.BROADLEAF
-		if r < 0.019:
-			return PropKind.BUSH
-		return PropKind.STUMP if r > 0.50 and r < 0.508 else BiomeScatter.NONE
+		return PropKind.BUSH if r < 0.019 else BiomeScatter.NONE
 	if g == Ground.GRAVEL:
 		if r < 0.032:
 			return PropKind.GROWTH_TANK
@@ -153,13 +193,9 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.FENCE
 		return PropKind.RELAY if r > 0.60 and r < 0.6055 else BiomeScatter.NONE
 	if g == Ground.MUD:
-		if r < 0.026:
-			return PropKind.STUMP
-		return PropKind.DEBRIS if r < 0.036 else BiomeScatter.NONE
+		return PropKind.DEBRIS if r < 0.010 else BiomeScatter.NONE
 	if g == Ground.HEATH or g == Ground.MOSS:
-		if r < 0.030:
-			return PropKind.BUSH
-		return PropKind.STUMP if r < 0.040 else BiomeScatter.NONE
+		return PropKind.BUSH if r < 0.030 else BiomeScatter.NONE
 	if g == Ground.ROCK:
 		return PropKind.DEBRIS if r < 0.020 else BiomeScatter.NONE
 	return BiomeScatter.NONE
@@ -174,44 +210,80 @@ const TREE_GAP := 3.0
 ## THE ORCHARDS, IN ROWS. They were scattered like any wood, at random, and read
 ## as one: nothing said a machine had planted them. Each block is ruled on the
 ## survey bearing like everything else the plan laid: rows across it, trees at
-## a fixed step, a stump where one went over and was never replaced, the fence
+## a fixed step (grafted, `PropKind.GRAFT_TREE`: the land's material), a stump
+## where one went over and was never replaced, the fence
 ## along its end and the tank that fed its sprayers at its head.
 static func _works(L: Object) -> void:
-	var c: GenContext = L.c
-	var d: Vector2 = L.d
-	var nrm: Vector2 = L.nrm
 	var tiles := 0.0
 	for size: float in L.sizes:
 		tiles += size
+	var blocks: Array = []
 	for n in maxi(1, roundi(tiles / TILES_PER_BLOCK)):
 		var p := GenWorks._site(L, 5, 2, [Ground.GRASS, Ground.HEATH, Ground.MOSS], 18.0, 600, 0.4)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var rng: RandomNumberGenerator = L.rng
-		var rows := rng.randi_range(5, 7)
-		var per := rng.randi_range(7, 10)
-		var half := Vector2(per * TREE_GAP * 0.5, rows * ROW_GAP * 0.5)
-		var planted := 0
-		# ONE GRID FOR THE WHOLE LANDSCAPE: every block's trees stand on the same
-		# lattice, ruled from the world's origin on the bearing, so blocks that
-		# meet run on into each other instead of laying two grids through one.
-		var i0 := roundi(at.dot(d) / TREE_GAP) - per / 2
-		var j0 := roundi(at.dot(nrm) / ROW_GAP) - rows / 2
-		for k in rows:
-			for j in per:
-				var q := d * float(i0 + j) * TREE_GAP + nrm * float(j0 + k) * ROW_GAP
-				# Only on the orchards' own ground: a block near a border stops at
-				# it (a broadleaf stood in the salt flats on seed 42).
-				if not c.w.in_bounds(floori(q.x), floori(q.y)) or not L.home(floori(q.x), floori(q.y)):
-					continue
-				var gone := rng.randf() < 0.1
-				# Any terrace: the rows run over the land's steps as a machine's
-				# grid would, and a tree is only refused on a lip.
-				if GenWorks._put(L, PropKind.STUMP if gone else PropKind.BROADLEAF, q, rng.randf() * TAU, -99, 0.0, true) != null and not gone:
-					planted += 1
-		if planted < 8:
-			continue
-		GenWorks._record(c, &"orchard_block", at, d, half, GenWorks.CUT)
-		GenWorks._run(L, PropKind.FENCE, at + d * (half.x + 1.2) - nrm * half.y, nrm, ceili(half.y), 2.0, -99, 0.2)
-		GenWorks._put(L, PropKind.WATER_TANK, at - d * (half.x + 1.6), d.angle(), -99, 0.6)
+		if p.x >= 0 and GenWorks._work(L, &"_block", Vector2(p) + Vector2(0.5, 0.5), [blocks.duplicate()]):
+			blocks.append(L.w.landmarks.back())
+
+
+## One block at `at`. Too few trees standing and it is no block: it gives up,
+## and `GenWorks._work` takes back the trees it had planted with it.
+##
+## `a[0]` holds the blocks sited before it ({pos, half}). Blocks that meet
+## share the lattice, and a work composes blind to another work's pieces, so
+## a lattice point inside an earlier block is that block's to plant.
+static func _block(L: Object, at: Vector2, a: Array) -> bool:
+	var c: GenContext = L.c
+	var earlier: Array = a[0]
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	var rng: RandomNumberGenerator = L.rng
+	var rows := rng.randi_range(5, 7)
+	var per := rng.randi_range(7, 10)
+	var half := Vector2(per * TREE_GAP * 0.5, rows * ROW_GAP * 0.5)
+	var planted := 0
+	# ONE GRID FOR THE WHOLE LANDSCAPE: every block's trees stand on the same
+	# lattice, ruled from the world's origin on the bearing, so blocks that
+	# meet run on into each other instead of laying two grids through one.
+	var i0 := roundi(at.dot(d) / TREE_GAP) - per / 2
+	var j0 := roundi(at.dot(nrm) / ROW_GAP) - rows / 2
+	for k in rows:
+		for j in per:
+			var q := d * float(i0 + j) * TREE_GAP + nrm * float(j0 + k) * ROW_GAP
+			# Only on the orchards' own ground: a block near a border stops at
+			# it (a broadleaf stood in the salt flats on seed 42).
+			if not c.w.in_bounds(floori(q.x), floori(q.y)) or not L.home(floori(q.x), floori(q.y)):
+				continue
+			if _in_block(earlier, q, d, nrm):
+				continue
+			var gone := rng.randf() < 0.1
+			# Any terrace: the rows run over the land's steps as a machine's
+			# grid would, and a tree is only refused on a lip. Every tree is
+			# turned to the bearing, a hair off, so a trellis's wire runs
+			# along its row and a pollard's fan faces the next.
+			var turn := d.angle() + (rng.randf() - 0.5) * 0.12
+			if GenWorks._put(L, PropKind.STUMP if gone else PropKind.GRAFT_TREE, q, turn, -99, 0.0, true) != null and not gone:
+				planted += 1
+	if planted < 8:
+		return false
+	GenWorks._record(c, &"orchard_block", at, d, half, GenWorks.CUT)
+	# The sprayer that keeps the block: straddling one row, half way along
+	# it, between two trees (SprayerGantry: its legs either side of the
+	# row, its boom over the crowns).
+	# Berthed: it runs on its rails over the terraces as the rows do. Tried
+	# between the middle trees of its row, then a gap either side.
+	var row := rng.randi_range(0, rows - 1)
+	for step: float in [0.5, -0.5, 1.5, -1.5]:
+		var spot := d * (float(i0 + per / 2) + step) * TREE_GAP + nrm * float(j0 + row) * ROW_GAP
+		if GenWorks._put(L, PropKind.SPRAYER_GANTRY, spot, d.angle(), -99, 0.0, true, true) != null:
+			break
+	GenWorks._run(L, PropKind.FENCE, at + d * (half.x + 1.2) - nrm * half.y, nrm, ceili(half.y), 2.0, -99, 0.2)
+	GenWorks._put(L, PropKind.WATER_TANK, at - d * (half.x + 1.6), d.angle(), -99, 0.6)
+	return true
+
+
+static func _in_block(blocks: Array, q: Vector2, d: Vector2, nrm: Vector2) -> bool:
+	for m: Dictionary in blocks:
+		var rel: Vector2 = q - (m.pos as Vector2)
+		var half: Vector2 = m.half
+		if absf(rel.dot(d)) < half.x + 0.01 and absf(rel.dot(nrm)) < half.y + 0.01:
+			return true
+	return false

@@ -70,6 +70,7 @@ func setup(g: Game) -> void:
 	Events.sentinel_fell.connect(_on_sentinel_fell)
 	Events.settlement_founded.connect(_on_settlement_founded)
 	Events.raid_ended.connect(_on_raid_ended)
+	Events.ring_held.connect(_on_ring_held)
 
 
 func started() -> void:
@@ -156,6 +157,8 @@ func _exit_tree() -> void:
 		Events.settlement_founded.disconnect(_on_settlement_founded)
 	if Events.raid_ended.is_connected(_on_raid_ended):
 		Events.raid_ended.disconnect(_on_raid_ended)
+	if Events.ring_held.is_connected(_on_ring_held):
+		Events.ring_held.disconnect(_on_ring_held)
 
 
 ## The journal's key, read as 46_settlements reads the holding's: it opens the
@@ -426,7 +429,7 @@ var _surface: WorldData = null
 ## The ROOMS row the room the player is in keeps.
 func _room_row(room: InteriorGen.Pocket) -> StringName:
 	var tenant: StringName = StoryRooms.tenants(_surface).get(room.threshold.key, &"")
-	return StoryRooms.room_of(room.kind.id, tenant)
+	return StoryRooms.room_of(room.kind.words if room.kind.words != &"" else room.kind.id, tenant)
 
 
 ## A story slot of the room in reach and in front, as {i, id, _d}, or {}. Two
@@ -450,7 +453,7 @@ func _slot_in_front() -> Dictionary:
 	var l := room.layout
 	var row := _room_row(room)
 	for i in l.slots.size():
-		var id := StoryRooms.held(row, room.threshold.key, l, i)
+		var id := StoryRooms.held(row, room.threshold.key, l, i, room.threshold.land)
 		if id == &"":
 			continue
 		var to: Vector2 = (l.slots[i].at as Vector2) - from
@@ -613,6 +616,12 @@ func _on_took(item: StringName, _count: int) -> void:
 		_witnessed(StoryContent.WITNESS_ON[&"record"])
 
 
+## Watched a machine stop at a crags ring and hold (docs/HUSH.md H1): the first
+## time lands the beat, and says it.
+func _on_ring_held(_kind: StringName) -> void:
+	_witnessed(StoryContent.WITNESS_ON[&"ring_held"])
+
+
 func _on_works_broken(_region: int, land: StringName) -> void:
 	_witnessed(StoryContent.WITNESS_ON[&"works_dark"])
 	Story.note(&"works_dark", land, Story.now)
@@ -632,7 +641,7 @@ func _on_settlement_founded(_id: int) -> void:
 
 
 func _on_raid_ended(_id: int, outcome: StringName) -> void:
-	if outcome == &"held":
+	if outcome == &"held" or outcome == RaidResolve.HELD_AT_COST:
 		_note(&"raid_held")
 	elif outcome == &"razed":
 		_note(&"razed")
@@ -784,10 +793,10 @@ func tour_place(what: String) -> Vector2:
 			# `yard` is the yard itself, `yard_breaker` one of its parts. A part can
 			# stand over the region's border where the yard does not, and the story
 			# answers from the region under the player.
-			if which == "yard":
-				return _beside(w.pos, [0.0, 0.8, 1.2])
-			var part := Works.PART_NAMES.find(StringName(which.trim_prefix("yard_")))
-			return _beside(w.part(maxi(0, part)), [0.0, 0.8, 1.2])
+			# `yard` stands at the first housing, since the next thing a tour does
+			# there is work it.
+			var part := 0 if which == "yard" else Works.PART_NAMES.find(StringName(which.trim_prefix("yard_")))
+			return _at_housing(w.part(maxi(0, part)))
 		return Vector2.INF
 	if not what.begins_with("gate:"):
 		return Vector2.INF
@@ -823,19 +832,60 @@ func _tour_slot(want: String) -> int:
 ## key answers them without the tour having to aim.
 func _beside_folk() -> Vector2:
 	var from: Vector2 = game.player.pos
-	var best := Vector2.INF
-	var best_d := INF
+	var rows: Array = []
 	for row: Dictionary in _folk_rows():
 		if StringName(str(row.get("state", &"out"))) == &"in":
 			continue
 		var at: Vector2 = row.get("pos", Vector2.INF)
-		var d := at.distance_to(from)
-		if d < best_d:
-			best_d = d
-			best = at
-	if best == Vector2.INF:
-		return Vector2.INF
-	return _beside(best, [0.9, 1.2, 1.4])
+		# Somebody a roof stands between and the camera is not somebody a frame
+		# can hold (TourPeople.hidden, what a `folk` claim asks).
+		if at.is_finite() and not TourPeople.hidden(game, at):
+			rows.append(at)
+	rows.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_to(from) < b.distance_to(from))
+	for at: Vector2 in rows:
+		for r: float in [0.9, 1.2, 1.4]:
+			for i in 12:
+				var p := at + Vector2.from_angle(TAU * i / 12.0) * r
+				if not game.query.standable(floori(p.x), floori(p.y)):
+					continue
+				var stand := Vector2(floorf(p.x) + 0.5, floorf(p.y) + 0.5)
+				if stand.distance_to(at) <= CLOSE and not _by_a_house(stand):
+					return stand
+	return Vector2.INF
+
+
+## Whether a house or a ruin is near enough that `use` would take its door
+## before the person beside it.
+func _by_a_house(p: Vector2) -> bool:
+	for q in game.query.props_near(p, 6.0):
+		if TourPeople.TALL.has(q.kind) and q.pos.distance_to(p) < q.solid + 1.5:
+			return true
+	return false
+
+
+## Where a body can stand and work the housing at `at`: within Works.PART_REACH
+## (its footprint can fill the inner rings), and with nothing workable nearer to
+## the hand than the housing, or `use` takes that instead (34_works
+## `_part_wins`) and the tool it wanted goes into the hand. `_beside` when no
+## ring clears.
+func _at_housing(at: Vector2) -> Vector2:
+	for r: float in [0.0, 0.8, 1.2, 1.6, 2.0, 2.4]:
+		for i in 12:
+			var p := at + Vector2.from_angle(TAU * i / 12.0) * r
+			if not game.query.standable(floori(p.x), floori(p.y)):
+				continue
+			var stand := Vector2(floorf(p.x) + 0.5, floorf(p.y) + 0.5)
+			var clear := stand.distance_to(at) <= Works.PART_REACH
+			for q in game.query.props_near(stand, 4.0):
+				if not clear:
+					break
+				if Takes.workable(q.kind) and not game.world.depleted.has(q.id) \
+						and q.pos.distance_to(stand) < at.distance_to(stand):
+					clear = false
+					break
+			if clear:
+				return stand
+	return _beside(at, [0.0, 0.8, 1.2])
 
 
 ## Somewhere a body can stand at `at`, trying each ring out in turn; `at` itself

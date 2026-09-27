@@ -129,12 +129,13 @@ static func batch(size: int, specs: Array) -> Array[PackedFloat32Array]:
 	gens.resize(specs.size())
 	for j in specs.size():
 		var spec: Array = specs[j]
-		if spec[0] == NOISE or spec[0] == FIELD:
+		var what := int(spec[0])
+		if what == NOISE or what == FIELD:
 			var src: FastNoiseLite = spec[1]
-			var step: int = spec[3] if spec[0] == NOISE else spec[2]
+			var step: int = spec[3] if what == NOISE else spec[2]
 			var ox: float = 0.0
 			var oy: float = 0.0
-			var at := 4 if spec[0] == NOISE else 3
+			var at := 4 if what == NOISE else 3
 			if spec.size() > at + 1:
 				ox = spec[at]
 				oy = spec[at + 1]
@@ -167,7 +168,8 @@ static func batch(size: int, specs: Array) -> Array[PackedFloat32Array]:
 			out[j] = smooth(spec[1], size, spec[2])
 	parallel(job, specs.size())
 	for j in specs.size():
-		if specs[j][0] != NOISE and specs[j][0] != FIELD:
+		var what_j := int(specs[j][0])
+		if what_j != NOISE and what_j != FIELD:
 			continue
 		# Bytes truncate: centre each step, then map [0, 1] to [-1, 1]. An
 		# affine map commutes with the bilinear spread.
@@ -231,6 +233,78 @@ static func smooth(v: PackedFloat32Array, size: int, levels: int) -> PackedFloat
 	if p2 != size:
 		img.crop(size, size)
 	return img.get_data().to_float32_array()
+
+
+## `smooth` over the tiles of one rectangle (rx, ry, rw, rh) of the world, the
+## same values tile for tile: the blocks it averages are the world's own
+## 2^levels blocks, one more round the rectangle for the bilinear spread,
+## clipped where the whole-world image ends (its left and top at block 0, its
+## right and bottom at the power of two it is padded to), so every tile is
+## interpolated between the same blocks with the same weights. A tile of the
+## rectangle outside the world takes the nearest world tile's value.
+static func smooth_rect(v: PackedFloat32Array, size: int, levels: int, rx: int, ry: int, rw: int, rh: int) -> PackedFloat32Array:
+	var p2 := 1
+	while p2 < size:
+		p2 *= 2
+	var bs := 1 << levels
+	var nb := p2 / bs
+	var bx0 := maxi(0, floori(float(rx) / bs) - 1)
+	var by0 := maxi(0, floori(float(ry) / bs) - 1)
+	var bx1 := mini(nb, ceili(float(rx + rw) / bs) + 1)
+	var by1 := mini(nb, ceili(float(ry + rh) / bs) + 1)
+	var pw := (bx1 - bx0) * bs
+	var ph := (by1 - by0) * bs
+	var src := PackedFloat32Array()
+	src.resize(pw * ph)
+	for py in ph:
+		var wy := mini(by0 * bs + py, size - 1)
+		for px in pw:
+			src[py * pw + px] = v[wy * size + mini(bx0 * bs + px, size - 1)]
+	var img := Image.create_from_data(pw, ph, false, Image.FORMAT_RF, src.to_byte_array())
+	for i in levels:
+		img.shrink_x2()
+	img.resize(pw, ph, Image.INTERPOLATE_BILINEAR)
+	var got := img.get_data().to_float32_array()
+	var out := PackedFloat32Array()
+	out.resize(rw * rh)
+	for y in rh:
+		var iy := clampi(ry + y, 0, size - 1) - by0 * bs
+		for x in rw:
+			out[y * rw + x] = got[iy * pw + clampi(rx + x, 0, size - 1) - bx0 * bs]
+	return out
+
+
+## `field` (as `batch`'s FIELD spec makes it) over the tiles of one rectangle of
+## the world, the same values tile for tile: the coarse cells it samples are the
+## world's own, one more round the rectangle for the bilinear spread, clipped
+## where the whole-world grid ends, and the noise is asked at the same points.
+## A tile of the rectangle outside the world takes the nearest world tile's.
+static func field_rect(n: FastNoiseLite, size: int, step: int, rx: int, ry: int, rw: int, rh: int) -> PackedFloat32Array:
+	var cw := coarse_width(size, step)
+	var gx0 := maxi(0, floori(float(rx) / step) - 1)
+	var gy0 := maxi(0, floori(float(ry) / step) - 1)
+	var gx1 := mini(cw, ceili(float(rx + rw) / step) + 1)
+	var gy1 := mini(cw, ceili(float(ry + rh) / step) + 1)
+	var gw := gx1 - gx0
+	var gh := gy1 - gy0
+	var m := n.duplicate() as FastNoiseLite
+	var off := step * 0.5 - 0.5
+	m.frequency = n.frequency * step
+	m.offset = Vector3((n.offset.x + off) / step + gx0, (n.offset.y + off) / step + gy0, 0.0)
+	var img := m.get_image(gw, gh, false, false, false)
+	img.convert(Image.FORMAT_RF)
+	if step > 1:
+		img.resize(gw * step, gh * step, Image.INTERPOLATE_BILINEAR)
+	var iw := gw * step
+	var got := img.get_data().to_float32_array()
+	var out := PackedFloat32Array()
+	out.resize(rw * rh)
+	# Mapped to [-1, 1] after the spread, as `batch` maps it.
+	for y in rh:
+		var iy := clampi(ry + y, 0, size - 1) - gy0 * step
+		for x in rw:
+			out[y * rw + x] = got[iy * iw + clampi(rx + x, 0, size - 1) - gx0 * step] * 2.0 - 0.996078
+	return out
 
 
 ## A two-sweep propagation (a distance transform, a carve) run in bands of

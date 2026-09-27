@@ -204,7 +204,7 @@ func _in_frame(p: Vector2, high: float) -> bool:
 	# correct under both projections: under the lens `size` is a number the
 	# projection ignores and would answer 15.0 forever (CameraRig).
 	var px := 1.0 / maxf(CameraRig.units_per_pixel_of(camera, rect.y), 1e-6)
-	var ground := world.height_at(p)
+	var ground := surface(world, p)
 	var seen := false
 	# BEHIND THE EYE IS NOT IN FRAME, and `unproject_position` will not say so:
 	# a perspective projection maps a point behind the camera to a MIRRORED
@@ -226,6 +226,15 @@ func _in_frame(p: Vector2, high: float) -> bool:
 	return seen
 
 
+## What a flier's light meets first and its lane is flown over: the land, or the
+## top of the mass hanging over it (docs/ABOVE.md §2). Over a span the light
+## was laid on the street under the rock and the hull flew through the rock.
+static func surface(w: WorldData, p: Vector2) -> float:
+	var ground := w.height_at(p)
+	var o := w.overhead_at(floori(p.x), floori(p.y))
+	return maxf(ground, o.y * WorldData.STEP) if o.x >= 0 else ground
+
+
 func _hide_from(from: int) -> void:
 	for i in range(from, _live):
 		_pool[i].visible = false
@@ -235,7 +244,7 @@ func _hide_from(from: int) -> void:
 
 func _place(i: int, p: Vector2, high: float, bearing: float) -> void:
 	var node := _slot(i)
-	var ground := world.height_at(p)
+	var ground := surface(world, p)
 	node.global_transform = Transform3D(Basis(Vector3.UP, -bearing), Vector3(p.x, ground + high, p.y))
 	node.visible = true
 	# The shadow lies on the ground under it, not on the machine's own plane, and

@@ -46,13 +46,16 @@ enum {
 	# A flat slab in the crags with rings and a cup pecked into it by hand, older
 	# than anything anybody here remembers.
 	CUP_RING,
+	# What comes up in ground the plan sprays every evening: puffballs and
+	# spore caps, grey, in clusters, the one thing thriving.
+	SPORE_CAP,
 	# A landscape's own grasses: the first, second and third of its
-	# `BiomeDef.grasses` (GrassSpecies), laid through its own d.decor.
+	# `BiomeDef.grasses` (GrassSpecies), laid through its own d.decor. Last.
 	GRASS_A, GRASS_B, GRASS_C,
 }
 ## The enum above, counted. Adding a kind and forgetting this reads off the end
 ## of `_SPECK` on the first chunk built, so a test asserts the two agree.
-const KINDS := 47
+const KINDS := 48
 ## Litter by kind of work (WorksMap channel): cut, scorch, quarry, bores.
 const WORKS_LITTER: Array = [[SCRAP, BOLT, WIRE], [SCRAP, CINDER, CAN], [SPOIL, BOLT, STONE], [SPOIL, BOLT, SCRAP]]
 ## Share of a tile's items that are litter outside any work, and inside one.
@@ -368,6 +371,7 @@ func build_parts(ch: TerrainMesher.Chunk, props: Array = []) -> Array:
 					(cast if tpl.casts else grass).put(tpl, xf, basis, Rng.hash01(wx, wy, i, 0x5eed))
 				else:
 					solid.put(tpl, xf, basis)
+	_lay_span_tops(ch, solid)
 	# Rubble fallen from cliff faces, more of it where the rock is hard.
 	for fi in ch.feet.size():
 		var foot := ch.feet[fi]
@@ -388,6 +392,61 @@ func build_parts(ch: TerrainMesher.Chunk, props: Array = []) -> Array:
 		var basis := Basis(Vector3.UP, rng.randf() * TAU)
 		solid.put(tpl, Transform3D(basis.scaled(Vector3(s, s, s)), p + along * (rng.randf() - 0.5) * 0.4), basis)
 	return [solid.arrays(), grass.arrays(), cast.arrays()]
+
+
+## SPAN TOPS (docs/ABOVE.md): mass hung over the ground carries a little of its
+## landscape's growth on its top, as a hilltop would, SPAN_DECOR of the ground's
+## density: its plain ground's own table (TerrainMesher paints the top that
+## ground), no litter, no drifts, no shore wrack. Only on tiles whose eight
+## neighbours hang at the same top, where the drawn top is level at that
+## height, so nothing floats off a sloping or warped edge. Its own random
+## stream, so the ground's decor is the same with or without it. Laid in the
+## solid part: a baked plant in the grass part is thinned inside the meadow
+## ring by its seed, and the ring grows nothing up here to stand in for it
+## (world.gdshader still sways what sways).
+const SPAN_DECOR := 0.3
+
+
+func _lay_span_tops(ch: TerrainMesher.Chunk, solid: Out) -> void:
+	if not world.has_overhead():
+		return
+	var rng: RandomNumberGenerator = null
+	for ty in ch.h:
+		for tx in ch.w:
+			var wx := ch.x0 + tx
+			var wy := ch.y0 + ty
+			var o := world.overhead_at(wx, wy)
+			if o.x < 0 or not _level_top(wx, wy, o.y):
+				continue
+			if rng == null:
+				rng = Rng.make(world.seed_value, Rng.hash_ints(ch.cx, ch.cy, 0x5BA7))
+			var country := world.country_at(wx, wy)
+			var d := BiomeRegistry.by_index(country)
+			var g := d.plain_ground if d != null else Ground.ROCK
+			var table: Array = _tables.get(g * BiomeRegistry.SLOTS + country + 1000, _tables.get(g, []))
+			if table.is_empty():
+				continue
+			var count := int(float(table[2]) * SPAN_DECOR + rng.randf())
+			var h := float(o.y) * WorldData.STEP - 0.004
+			for i in count:
+				var kind := _pick(table, rng.randf())
+				if _SPECK[kind] == 1 or kind == WRACK_BIT or kind == SHELL or kind == SEA_GLASS:
+					continue
+				var fx := 0.08 + rng.randf() * 0.84
+				var fy := 0.08 + rng.randf() * 0.84
+				var tpl := template(kind, country, rng.randi() % STAGES)
+				var sc := 0.8 + rng.randf() * 0.45
+				var basis := Basis(Vector3.UP, rng.randf() * TAU)
+				solid.put(tpl, Transform3D(basis.scaled(Vector3(sc, sc, sc)), Vector3(wx + fx, h, wy + fy)), basis)
+
+
+## Whether tile (x, y) and its eight neighbours all hang a top at level `top`.
+func _level_top(x: int, y: int, top: int) -> bool:
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if world.overhead_at(x + dx, y + dy).y != top:
+				return false
+	return true
 
 
 ## The drawn key of chunk tile (tx, ty) when it is turf decor may grow on, else
@@ -924,6 +983,20 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 				k.clump(0.03, -0.02, 0.05, 0.07, 0.03, s, P.EARTH[2].lerp(P.SPRUCE[2], 0.45), 5)
 				k.limb(Vector3(0.1, 0.01, -0.02), Vector3(-0.02, 0.015, -0.06), 0.006, 0.003, 3, weed)
 			k.still()
+		SPORE_CAP:
+			# A cluster of three to five: puffballs on no stalk, and one or two
+			# caps on a thin stem, pale grey dusted paler, one split and smoking.
+			var n := 3 + stage % 3
+			for i in n:
+				var a := float(i) * 2.4 + float(stage)
+				var r := 0.03 + float(i % 2) * 0.03
+				var at := Vector3(cos(a) * r, 0.0, sin(a) * r)
+				var size := 0.022 + float((i * 7 + stage) % 3) * 0.008
+				if i % 3 == 2:
+					k.made.prism(at.x, 0.0, at.z, 0.006, 0.05, 0.006, 4, P.ASH[3])
+					k.made.prism(at.x, 0.05, at.z, size * 1.4, 0.07, 0.0, 6, P.ASH[2].lerp(P.LINEN[3], 0.3), P.ASH[3].lerp(P.LINEN[4], 0.5))
+				else:
+					k.clump(at.x, -0.004, at.z, size, size * 1.1, s + i, P.ASH[3].lerp(P.LINEN[4], 0.35), 6)
 		CUP_RING:
 			# A low slab, and on its top the carving: a cup in the middle and two
 			# or three rings round it, pecked, with a channel running out through

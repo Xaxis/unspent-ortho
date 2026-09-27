@@ -59,9 +59,11 @@ func test_a_patrol_route_runs_along_the_survey_the_machines_laid_everything_else
 	near((line[0] as Vector2).distance_to(line[1] as Vector2), Works.ROUTE_LENGTH, 0.01, "and it is a round of its own length")
 
 
-## Finding the depots, in yardsticks (TestCase.yard_lt). Calibrated 2026-09-25:
-## 66 shipped, 133 doubled; the bar between them.
-const SITES_BAR := 94.0
+## Finding the depots, in GRID yardsticks (TestCase.grid_work): a sweep in script
+## over what the world recorded. The interpreted yardstick drifted 1.57x across
+## CI's CPUs for it, the grid 1.22x. Calibrated 2026-09-27 alone on four CI CPUs
+## and this laptop: 2.53-2.81 shipped, 5.04-5.58 doubled; the bar between.
+const SITES_BAR := 3.75
 
 
 ## The start budget is real (docs/ROADMAP.md): finding the depots is a search
@@ -84,7 +86,7 @@ func test_finding_them_costs_nothing_a_player_would_notice() -> void:
 	var twice := func() -> void:
 		find.call()
 		find.call()
-	var got := yard_sample(find, twice, yard_work(), 4, 2)
+	var got := yard_sample(find, twice, grid_work(), 5, 2)
 	var ms := got[0] / 1000.0
 	print("works: %.2f ms to find every depot in a 512 world (%d of them, best of 4)"
 		% [ms, Works.sites(w).size()])

@@ -108,7 +108,7 @@ static func summary(kind: int, variant: int, country: int) -> PackedFloat32Array
 	_sum_lock.lock()
 	var got: Variant = _sums.get(key)
 	_sum_lock.unlock()
-	if got != null:
+	if typeof(got) != TYPE_NIL:
 		return got
 	var t := PropModels.template(kind, variant, country)
 	var top := 0.0
@@ -180,13 +180,21 @@ static func tables() -> Array:
 			w.a = GroundColors.mark(g, c) / 255.0
 			col[g * types + c] = w
 			hand[g * types + c] = def.hatch * 17.0
-	return [col, hand]
+	# The ground a roof's top is painted with, per landscape, as the near
+	# mesher paints it (TerrainMesher._span_key).
+	var plain := PackedInt32Array()
+	plain.resize(types)
+	plain.fill(Ground.ROCK)
+	for c in BiomeRegistry.count():
+		plain[c] = BiomeRegistry.by_index(c).plain_ground
+	return [col, hand, plain]
 
 
 ## One block as mesh arrays: [land, water]. Pure, so a worker may run it.
 static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array) -> Array:
 	var col: PackedColorArray = tabs[0]
 	var hand: PackedFloat32Array = tabs[1]
+	var plain: PackedInt32Array = tabs[2]
 	var types := BiomeRegistry.SLOTS
 	# Straight at the arrays, never through level_at/ground_at/country_at. A
 	# block reads 18,000 tiles and a GDScript call is about ten times an index:
@@ -207,6 +215,15 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array) -> Array:
 	h.resize(side * side)
 	var half := STEP / 2
 	var per := 1.0 / float(STEP * STEP)
+	# A ROOFED TILE IS ITS ROOF from out here: the near chunks draw a cave's lid
+	# and the far world is what they hand over to, so under an open sky past
+	# the near square a roofed cave was open halls. Tops + 1 over the rect the
+	# corners read, 0 where nothing hangs; empty for a block with no roof.
+	var ox := x0 - half
+	var oy := y0 - half
+	var owide := side * STEP
+	var tops := w.overhead_tops(ox, oy, owide, owide)
+	var roofed := not tops.is_empty()
 	for cj in side:
 		var ty := y0 + cj * STEP - half
 		for ci in side:
@@ -229,6 +246,11 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array) -> Array:
 					elif x >= size:
 						x = size - 1
 					var l := lvl[row + x]
+					if roofed:
+						# Clamped to the world, which only pulls a tile into the rect.
+						var o := tops[(y - oy) * owide + x - ox]
+						if o > 0:
+							l = o - 1
 					if l > 0:
 						sum += l
 						if l > most:
@@ -273,11 +295,17 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array) -> Array:
 			var mi := mini(ty + STEP / 2, size - 1) * size + mini(tx + STEP / 2, size - 1)
 			var g := grd[mi]
 			var c := clampi(cty[mi], 0, types - 1)
+			var mid_l := lvl[mi]
+			if roofed:
+				var mo := tops[(mi / size - oy) * owide + mi % size - ox]
+				if mo > 0:
+					g = plain[c]
+					mid_l = mo - 1
 			var slot := g * types + c
 			var wash := col[slot]
 			# Terraces one level apart alternate a hair in value, as the mesher's
 			# own table does, so the contour is felt at this range too.
-			if (lvl[mi] & 1) == 1:
+			if (mid_l & 1) == 1:
 				var a2 := wash.a
 				wash = wash.darkened(0.03)
 				wash.a = a2
@@ -461,7 +489,7 @@ static func _windows(k: MeshKit, t: PropModels.Template, xf: Transform3D, nx: Tr
 				var lift := n * 0.04
 				var sx := along * WINDOW_WIDE * 0.5
 				var sy := Vector3.UP * WINDOW_TALL * 0.5
-				var q := [c - sx - sy + lift, c + sx - sy + lift, c + sx + sy + lift, c - sx + sy + lift]
+				var q := PackedVector3Array([c - sx - sy + lift, c + sx - sy + lift, c + sx + sy + lift, c - sx + sy + lift])
 				# Wound the way the wall it lies on is.
 				var order: Array = [0, 2, 1, 0, 3, 2] if (q[2] - q[0]).cross(q[1] - q[0]).dot(f) > 0.0 else [0, 1, 2, 0, 2, 3]
 				for j: int in order:

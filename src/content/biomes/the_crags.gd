@@ -93,6 +93,9 @@ static func make() -> BiomeDef:
 	# a plate sheet weighted onto its roof (props/crags.gd), never a shack of
 	# boards, because there is no timber that was ever dry.
 	dress.shelter = &"roundhouse"
+	# The old stones' cut rings give off a pale cold light after dark, and nothing
+	# the machines or anyone else runs reaches them.
+	dress.old_light = Color(0.62, 0.84, 0.86, 1.0)
 	d.dressing = dress
 	# What its people BUILT (docs/LANDSCAPES.md PEOPLE): three forms, none of
 	# them lit, so this is the one village with no stolen neon, and the stock's
@@ -104,16 +107,28 @@ static func make() -> BiomeDef:
 	d.built.plan = &"ring"
 	# Only the roundhouse is anyone's home: the broch's lean-to and the byre are
 	# for beasts and weather. Its room is its own (content/interiors/roundhouse.gd).
-	d.interiors = {&"form:roundhouse": &"roundhouse"}
+	d.interiors = {&"form:roundhouse": &"roundhouse", &"house": &"home"}
+	# Behind the other forms, the byre keeper, whose beast sleeps under the same
+	# roof, and the waller who keeps the drystone standing.
+	d.home = {"households": {
+		&"byrer": {"wants": [&"stall", &"hay_rack", &"buckets", &"creel"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+		&"waller": {"wants": [&"mason_rack", &"creel", &"basket", &"shelf"], "by_hearth": []},
+	}}
 	d.grade = Vector4(-0.04, 0.02, 0.04, 0.0)
 	# THE DARKEST NIGHT IN THE GAME, and nothing of the machines' lights it. This
 	# is the one place where a lantern is the only light there is.
+	# Lichen and a little moss on what was built of its stone; the wind keeps ivy off.
+	# (BiomeDef.overgrowth: lighter than the green towers' whole dose.)
+	d.overgrowth = 0.25
 	d.night_sky = 0.55
 	d.props = [PropKind.STANDING_STONE, PropKind.CAIRN, PropKind.RUIN, PropKind.BOULDER,
 		PropKind.CLINTS, PropKind.GRAVE, PropKind.MEMORIAL, PropKind.BUSH,
 		PropKind.DEAD_TREE, PropKind.STONE_ORE]
 	d.ore = [[PropKind.STONE_ORE, 0.028], [PropKind.IRON_ORE, 0.012]]
 	d.sites = {"stone_circles": 3, "ruins": true, "summit": 1}
+	# The force nobody has a file on lives in these circles (docs/HUSH.md).
+	d.hush = true
 	d.beached_wrecks = false
 	d.pools = {"order": 2, "cell": 28, "chance": 0.5, "r_min": 2.0, "r_max": 4.4, "ground": Ground.BLACKWATER}
 	d.villages = 1
@@ -128,6 +143,9 @@ static func make() -> BiomeDef:
 	]
 	# The foggiest place there is: it is what the landscape is FOR.
 	d.mist = 0.55
+	# Its fog is its own wet pale grey, the colour the far land goes to (Air), and it
+	# lies in the ruins' hollows and between the stones rather than over them.
+	d.weather_style = {&"fog": {"air": Color(0.70, 0.74, 0.76), "low": 0.5}}
 	# Wet and dark and nothing else — no machine exhaust, no spores, no glare.
 	# What is dangerous here is not a pressure, which is exactly the point.
 	#

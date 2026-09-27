@@ -97,7 +97,7 @@ const STUTTER: Array[Vector2] = [
 ## ground map itself; the wear map is this package's, so it is taken here.
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	if game != null and game.sky != null and game.world != null:
-		game.sky.set_wear(SkyWear.texture(game.world))
+		game.sky.set_wear(SkyWear.texture(game.world), SkyWear.growth_texture(game.world))
 
 
 func setup(g: Game) -> void:
@@ -109,7 +109,7 @@ func setup(g: Game) -> void:
 	# What the land DOES to a thing standing in it (LANTERN law 1): rust, salt
 	# bloom, soot, frost, by world position. Baked beside the ground map because
 	# it is the same sweep over the same world.
-	g.sky.set_wear(SkyWear.texture(g.world))
+	g.sky.set_wear(SkyWear.texture(g.world), SkyWear.growth_texture(g.world))
 	ground_ms = Time.get_ticks_msec() - t0
 	_cloud_bearing = bearing_of(g.world.seed_value)
 	_last_minutes = g.clock.minutes
@@ -157,7 +157,7 @@ func apply_weather(spec: String) -> bool:
 ## The bearing a world's clouds and wind travel on (a positive wind blows
 ## along it). Fixed per seed; 18_trample reads it to stage a gust front.
 static func bearing_of(seed_value: int) -> Vector2:
-	return Vector2.from_angle(Rng.hash01(seed_value, 0xC10D) * TAU)
+	return Weather.bearing(seed_value)
 
 
 ## Hold one strike for a still, or let the held one go. A held bolt asked for
@@ -258,7 +258,13 @@ func _update(delta: float, snap: bool) -> void:
 	for k: String in FALL_KEYS:
 		target[k] = falls[k]
 	target.mist = target_mist
-	target.wisp = 0.0 if room else wisp_amount(float(WISPS.get(here, 0.0)), Weather.night_fall(hour), float(target.rain) + float(target.drizzle), target_wind)
+	# How much the weather under the focus cuts a machine's sight (Weather's
+	# SIGHT_CUT, the rules' own number): the air of rain, fog and dust is drawn
+	# from it (SkyLight.sight_cut), so what is hidden looks hidden and no more.
+	var fam := Weather.family(wh.kind)
+	target.sight_cut = 0.0 if room or not (fam == &"rain" or fam == &"storm" or fam == &"fog") \
+		else 1.0 - Weather.sight_factor(wh.kind, float(wh.strength))
+	target.wisp = 0.0 if room else wisp_amount(_here_def().wisps, Weather.night_fall(hour), float(target.rain) + float(target.drizzle), target_wind)
 	# What lies on the ground changes over hours: recompute once a world minute.
 	# Each thing is the most any landscape in view has left; the sky_ground mask
 	# lays it only on the land that makes it.
@@ -288,8 +294,11 @@ func _update(delta: float, snap: bool) -> void:
 	var dm := clampf(minutes - _last_minutes, 0.0, 600.0)
 	_scan_lightning(_last_minutes, minutes, seed_value, wh.kind, float(wh.strength))
 	_last_minutes = minutes
-	_cloud_drift += _cloud_bearing * dm * (0.35 + 1.1 * absf(wind))
-	_fog_drift += _cloud_bearing.orthogonal() * dm * (0.08 + 0.3 * absf(wind))
+	# The hush (23_hush) holds the air: the fog and cloud stop drifting, the wind
+	# drops, and what sways hangs still, for as long as the world is silent.
+	var hold := 1.0 - _hush()
+	_cloud_drift += _cloud_bearing * dm * (0.35 + 1.1 * absf(wind)) * hold
+	_fog_drift += _cloud_bearing.orthogonal() * dm * (0.08 + 0.3 * absf(wind)) * hold
 
 	# A forced bolt (shots) holds its strike drawn with no flash on the page;
 	# real strikes flash for a few frames.
@@ -303,9 +312,14 @@ func _update(delta: float, snap: bool) -> void:
 	sky.region_tint = region
 	sky.weather_tint = look.tint
 	sky.season_turn = Weather.season_turn(minutes)
+	sky.moon_phase = Weather.moon_phase(minutes)
 	sky.clouds = Vector4(_cloud_drift.x, _cloud_drift.y, float(look.cover), float(look.cloud))
-	sky.fog = Vector4(_fog_drift.x, _fog_drift.y, clampf(float(look.fog) + float(look.mist), 0.0, 1.0), 0.0)
+	sky.fog = Vector4(_fog_drift.x, _fog_drift.y, clampf(float(look.fog) + float(look.mist), 0.0, 1.0), clampf(float(look.dust), 0.0, 1.0))
 	sky.flash = _flash
+	sky.sight_cut = float(look.get("sight_cut", 0.0))
+	var fog_row: Dictionary = _here_def().weather_style.get(&"fog", {})
+	var fc: Color = fog_row.get("air", Color(0, 0, 0))
+	sky.fog_tint = Color(fc.r, fc.g, fc.b, float(fog_row.get("low", 0.0))) if not fog_row.is_empty() else Color(0, 0, 0, 0)
 	for k: String in settled:
 		settled[k] = lerpf(float(settled[k]), float(_settle_target[k]), kr)
 	sky.settle = Vector4(float(settled.snow), float(settled.ash), float(settled.wet), 0.0)
@@ -324,17 +338,19 @@ func _update(delta: float, snap: bool) -> void:
 			sky.bolt = Vector4(at.x, at.y, float(sheet_now.level) * SHEET_GAIN, 1.0)
 			sky.glow_reach = AFTERGLOW_ROLL * 0.6
 	# Sway advances faster in a strong wind, so reeds never snap to a new speed.
-	_sway_phase = fposmod(_sway_phase + delta * (0.8 + 3.2 * absf(wind)), TAU * 1000.0)
-	var gust := clampf(float(look.storm) + float(look.dust) * 0.6 + float(look.whiteout) * 0.6 + absf(wind) * 0.3, 0.0, 1.0)
-	var along := _cloud_bearing * wind
+	_sway_phase = fposmod(_sway_phase + delta * (0.8 + 3.2 * absf(wind)) * hold, TAU * 1000.0)
+	var gust := clampf(float(look.storm) + float(look.dust) * 0.6 + float(look.whiteout) * 0.6 + absf(wind) * 0.3, 0.0, 1.0) * hold
+	var along := _cloud_bearing * wind * hold
 	sky.wind = Vector4(along.x, along.y, gust, _sway_phase)
 	_gust = WindField.advance(_gust, along, delta)
 	sky.gust = _gust
 	# Tufts and crowns never hang dead still, and a storm bends them hard.
-	sky.sway = clampf(0.15 + absf(wind) * 0.6 + gust * 0.5, 0.0, 1.2)
+	sky.sway = clampf(0.15 + absf(wind) * 0.6 + gust * 0.5, 0.0, 1.2) * hold
 	sky.cast_allowed = float(look.overcast) < 0.6
 	sky.focus = f3
 	sky.set_hour(hour)
+	var dust_row: Dictionary = _here_def().weather_style.get(&"dust", {})
+	view.dust_air = dust_row.get("air", Color(0, 0, 0, 0))
 	view.update(look, wind, f3, delta)
 	_update_ground_marks(focus, minutes, seed_value, delta, snap)
 	_tick_thunder(delta)
@@ -346,7 +362,7 @@ func _update(delta: float, snap: bool) -> void:
 func _update_ground_marks(focus: Vector2, minutes: float, seed_value: int, delta: float, snap: bool) -> void:
 	var drip := Drips.amount(float(look.rain) + float(look.drizzle) * 0.5, float(settled.wet))
 	# Under a canopy the rain comes down as drips.
-	drip = clampf(drip * float(CANOPY_DRIP.get(here, 1.0)), 0.0, 1.0)
+	drip = clampf(drip * _here_def().canopy_drip, 0.0, 1.0)
 	_drip_scan -= delta
 	if drip > 0.01 and (snap or _drip_scan <= 0.0):
 		_drip_scan = 0.5
@@ -364,10 +380,11 @@ func _update_ground_marks(focus: Vector2, minutes: float, seed_value: int, delta
 	view.set_devils(placed)
 
 
-## Landscape types whose canopy turns rain into drips: how much more they drip.
-const CANOPY_DRIP := {&"pinewood": 1.5}
-## Landscape types where cold lights drift low after dark, and how many.
-const WISPS := {&"moss": 1.0}
+## The landscape under the focus, as its own file declares it (canopy drip,
+## wisps): never a table here naming landscapes (CLAUDE.md).
+func _here_def() -> BiomeDef:
+	var d := BiomeRegistry.get_def(here)
+	return d if d != null else BiomeDef.new()
 
 
 ## Wisps: cold lights over the moss after dark, never in rain or a wind.
@@ -510,3 +527,12 @@ func tour_seen(what: StringName) -> bool:
 		_tour_dimmest = now
 		return true
 	return false
+
+
+
+## The hush's quiet (23_hush `quiet`, group `&"hush"`), 0..1.
+func _hush() -> float:
+	var q := 0.0
+	for n: Node in get_tree().get_nodes_in_group(&"hush"):
+		q = maxf(q, float(n.get(&"quiet")))
+	return q

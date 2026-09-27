@@ -486,77 +486,94 @@ const CONTINENT_TILES := 20000
 
 func test_every_country_reachable_on_foot_from_spawn() -> void:
 	for s in WORLD_SEEDS:
-		var w := world(s)
-		var q := WorldQuery.new(w)
-		var reached := _flood(w, q, w.spawn)
-		var total := PackedFloat32Array()
-		total.resize(BiomeRegistry.count())
-		var got := PackedFloat32Array()
-		got.resize(BiomeRegistry.count())
-		for i in w.country.size():
-			if w.level[i] > 0:
-				total[w.country[i]] += 1.0
-				if reached[i] != 0:
-					got[w.country[i]] += 1.0
-		# ON YOUR OWN CONTINENT, AND NOT ACROSS THE OCEAN. This asked that every
-		# landscape in the world be walkable from the spawn, which was the same
-		# question as "is the island connected" while there was one island. There
-		# are five now, so the honest half of the claim is that nothing on the
-		# continent he wakes on is walled off from him — and the other half, which
-		# this could not say before, is that the ocean IS a wall: a continent you
-		# have not sailed to must NOT be reachable on foot, or the sea is
-		# decoration.
-		var home := w.continent_at(floori(w.spawn.x), floori(w.spawn.y))
-		# Which landmasses are CONTINENTS. A skerry off the shore gets a body id of
-		# its own and wading out to one is a thing a player should be able to do —
-		# the claim is about the ocean between continents, not about every scrap of
-		# land that floats.
-		var mass := {}
-		for i in w.continent.size():
-			var cid := int(w.continent[i])
-			if cid > 0:
-				mass[cid] = int(mass.get(cid, 0)) + 1
-		var here_total := PackedFloat32Array()
-		here_total.resize(BiomeRegistry.count())
-		var here_got := PackedFloat32Array()
-		here_got.resize(BiomeRegistry.count())
-		var away := 0
-		for i in w.country.size():
-			if w.level[i] <= 0:
-				continue
-			if int(w.continent[i]) == home:
-				here_total[w.country[i]] += 1.0
-				if reached[i] != 0:
-					here_got[w.country[i]] += 1.0
-			elif reached[i] != 0 and int(mass.get(int(w.continent[i]), 0)) >= CONTINENT_TILES:
-				away += 1
-		for c: int in BiomeRegistry.land_indices_in(w.realm):
-			if here_total[c] < 400.0:
-				continue
-			gt(here_got[c] / maxf(1.0, here_total[c]), 0.85,
-				"seed %d %s on his own continent is walkable" % [s, BiomeRegistry.name_of(c)])
-		# **AND THE OCEAN WAS NEVER THE THING THAT WAS WRONG.** This was red for
-		# 124,626 tiles and the diagnosis written here blamed the depth of the sea.
-		# It is not: 1,025,135 sea tiles are already at level -1 and the deepest
-		# water stands 456 tiles from land. What a walker crossed was the SHELF --
-		# every coast carries about twenty tiles of level-0 water, which is right
-		# for a shore and becomes a dry road where two continents' shelves touch.
-		# The whole fault was nineteen tiles wide, on one seed of three: seed 1
-		# joined continents 4 and 5 across a twelve-tile strait at (955, 454..467)
-		# and seeds 42 and 90210 had no seam at all. `GenBodies.deepen_straits`
-		# cuts the watershed between two shelves and moves 125 tiles on seed 1,
-		# none on the other two, and none at any size that holds one continent --
-		# which is why no parity baseline shifted. Had the written diagnosis been
-		# believed, the answer would have been a deeper ocean or a wider
-		# `SEA_GAP`, either of which moves every tile of every seed to fix
-		# nineteen. Do not answer a red here by letting the test accept wading:
-		# the claim above is the design.
-		eq(away, 0, "seed %d: %d tiles of another continent are reachable on foot" % [s, away])
-		for v in w.villages:
-			var p: Vector2 = v.pos
-			if w.continent_at(floori(p.x), floori(p.y)) != home:
-				continue
-			check(reached[floori(p.y) * w.size + floori(p.x)] != 0, "seed %d village %s unreachable" % [s, v.name])
+		_check_reachable(world(s), s)
+
+
+## Eight seeds at 512, where the access pass is a section's to run (S4e3): the
+## small plateaus joined locally, the big ones by the plan.
+func test_reachable_on_foot_on_eight_seeds_at_512() -> void:
+	for s: int in [1, 2, 3, 4, 7, 42, 1337, 90210]:
+		_check_reachable(WorldGen.generate(s, 512), s)
+
+
+func test_reachable_on_foot_on_eight_seeds_full_size_world_gen_slow() -> void:
+	if not OS.get_cmdline_user_args().has("world_gen_slow"):
+		return
+	for s: int in [1, 2, 3, 4, 7, 42, 1337, 90210]:
+		_check_reachable(WorldGen.generate(s), s)
+
+
+func _check_reachable(w: WorldData, s: int) -> void:
+	var q := WorldQuery.new(w)
+	var reached := _flood(w, q, w.spawn)
+	var total := PackedFloat32Array()
+	total.resize(BiomeRegistry.count())
+	var got := PackedFloat32Array()
+	got.resize(BiomeRegistry.count())
+	for i in w.country.size():
+		if w.level[i] > 0:
+			total[w.country[i]] += 1.0
+			if reached[i] != 0:
+				got[w.country[i]] += 1.0
+	# ON YOUR OWN CONTINENT, AND NOT ACROSS THE OCEAN. This asked that every
+	# landscape in the world be walkable from the spawn, which was the same
+	# question as "is the island connected" while there was one island. There
+	# are five now, so the honest half of the claim is that nothing on the
+	# continent he wakes on is walled off from him — and the other half, which
+	# this could not say before, is that the ocean IS a wall: a continent you
+	# have not sailed to must NOT be reachable on foot, or the sea is
+	# decoration.
+	var home := w.continent_at(floori(w.spawn.x), floori(w.spawn.y))
+	# Which landmasses are CONTINENTS. A skerry off the shore gets a body id of
+	# its own and wading out to one is a thing a player should be able to do —
+	# the claim is about the ocean between continents, not about every scrap of
+	# land that floats.
+	var mass := {}
+	for i in w.continent.size():
+		var cid := int(w.continent[i])
+		if cid > 0:
+			mass[cid] = int(mass.get(cid, 0)) + 1
+	var here_total := PackedFloat32Array()
+	here_total.resize(BiomeRegistry.count())
+	var here_got := PackedFloat32Array()
+	here_got.resize(BiomeRegistry.count())
+	var away := 0
+	for i in w.country.size():
+		if w.level[i] <= 0:
+			continue
+		if int(w.continent[i]) == home:
+			here_total[w.country[i]] += 1.0
+			if reached[i] != 0:
+				here_got[w.country[i]] += 1.0
+		elif reached[i] != 0 and int(mass.get(int(w.continent[i]), 0)) >= CONTINENT_TILES:
+			away += 1
+	for c: int in BiomeRegistry.land_indices_in(w.realm):
+		if here_total[c] < 400.0:
+			continue
+		gt(here_got[c] / maxf(1.0, here_total[c]), 0.85,
+			"seed %d %s on his own continent is walkable" % [s, BiomeRegistry.name_of(c)])
+	# **AND THE OCEAN WAS NEVER THE THING THAT WAS WRONG.** This was red for
+	# 124,626 tiles and the diagnosis written here blamed the depth of the sea.
+	# It is not: 1,025,135 sea tiles are already at level -1 and the deepest
+	# water stands 456 tiles from land. What a walker crossed was the SHELF --
+	# every coast carries about twenty tiles of level-0 water, which is right
+	# for a shore and becomes a dry road where two continents' shelves touch.
+	# The whole fault was nineteen tiles wide, on one seed of three: seed 1
+	# joined continents 4 and 5 across a twelve-tile strait at (955, 454..467)
+	# and seeds 42 and 90210 had no seam at all. `GenBodies.deepen_straits`
+	# cuts the watershed between two shelves and moves 125 tiles on seed 1,
+	# none on the other two, and none at any size that holds one continent --
+	# which is why no parity baseline shifted. Had the written diagnosis been
+	# believed, the answer would have been a deeper ocean or a wider
+	# `SEA_GAP`, either of which moves every tile of every seed to fix
+	# nineteen. Do not answer a red here by letting the test accept wading:
+	# the claim above is the design.
+	eq(away, 0, "seed %d: %d tiles of another continent are reachable on foot" % [s, away])
+	for v in w.villages:
+		var p: Vector2 = v.pos
+		if w.continent_at(floori(p.x), floori(p.y)) != home:
+			continue
+		check(reached[floori(p.y) * w.size + floori(p.x)] != 0, "seed %d village %s unreachable" % [s, v.name])
 
 
 static func _flood(w: WorldData, q: WorldQuery, from: Vector2) -> PackedByteArray:
@@ -883,10 +900,15 @@ func test_every_prop_kind_and_ground_is_placed() -> void:
 	# One list of the kinds no stage lays yet, kept by the works test and read
 	# here at run time: that file preloads this one, so a preload back would be
 	# a cycle. A kind on it is a debt and not a pass; see the list's own header.
-	var not_yet_laid: Array = (load("res://tests/core/test_world_gen_works.gd") as GDScript).get_script_constant_map()["NOT_YET_LAID"]
+	var works_map := (load("res://tests/core/test_world_gen_works.gd") as GDScript).get_script_constant_map()
+	var not_yet_laid: Array = works_map["NOT_YET_LAID"]
+	var elsewhere: Dictionary = works_map["LAID_ELSEWHERE"]
 	for k in PropKind.COUNT:
 		if not_yet_laid.has(k):
 			print("  %s is modelled and not laid yet (NOT_YET_LAID)" % PropKind.NAMES[k])
+			continue
+		if elsewhere.has(k):
+			print("  %s is laid in the %s realm (LAID_ELSEWHERE)" % [PropKind.NAMES[k], elsewhere[k]])
 			continue
 		gt(anywhere[k], 0, "%s is placed on some island, or nothing models it for nothing"
 			% PropKind.NAMES[k])

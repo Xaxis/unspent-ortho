@@ -48,8 +48,17 @@ var _l := 25.0
 var drawn := 0
 
 
+## Held for the view's life so the streak shader is made once, here, as the
+## game comes up: the first ShaderMaterial given it builds it, 26 ms on the
+## frame the first fall of a run lit (a shoulder walk, 2026-09-26), where every
+## later one is 0.01 ms.
+var _made: ShaderMaterial
+
+
 func _ready() -> void:
 	_strip = strip_mesh()
+	_made = ShaderMaterial.new()
+	_made.shader = SHADER
 
 
 ## A strip of STEPS segments, UV.x 0..1 along it and UV.y 0 or 1 across, and one

@@ -43,6 +43,10 @@ global uniform mat4 colossus_legs0;
 global uniform mat4 colossus_legs1;
 global uniform mat4 colossus_legs2;
 global uniform mat4 colossus_legs3;
+// Up to four pads of a colossus's foot coming down near the player, each
+// (x, z, radius, how near it is: 0..1): the shade straight under it (19_colossi
+// `_cast`, DESIGN 5c).
+global uniform mat4 colossus_pads;
 // THE SHOCK OF A LANDING, for what sways (19_colossi writes it): xy the tread's
 // centre in world XZ, z how far out the front has run (metres), w how hard it
 // still pushes, 0..1 -- 0 on every frame no foot has just come down, and then
@@ -53,8 +57,11 @@ global uniform vec4 colossus_shock;
 global uniform vec4 sky_sun;
 // xy: cloud drift in tiles; z: coverage 0..1; w: shadow strength 0..1 (0 at night).
 global uniform vec4 sky_clouds;
-// xy: fog drift in tiles; z: fog density 0..1; w: spare.
+// xy: fog drift in tiles; z: fog density 0..1; w: dust in the air 0..1.
 global uniform vec4 sky_fog;
+// The land's own fog (BiomeDef.weather_style `fog`): rgb its colour, a how low
+// and heavy it lies in the hollows 0..1; a 0 where the land says nothing.
+global uniform vec4 sky_fog_tint;
 // x: world units per screen pixel; y: night fall 0..1; z: 1 / world size (for
 // sky_ground); w: tiles the afterglow of the last strike has rolled out.
 global uniform vec4 sky_view;
@@ -115,6 +122,10 @@ global uniform sampler2D sky_ground;
 // r rust, g salt bloom, b soot, a frost. The same sampling as sky_ground.
 // Read by matter_worn(); LANTERN law 1.
 global uniform sampler2D sky_wear;
+// How far the land's growth has taken what was built in it (SkyWear's growth
+// map, BiomeDef.overgrowth), by world position, the same sampling. Read by
+// matter_grown().
+global uniform sampler2D sky_growth;
 // 1 where the renderer wants ALBEDO in LINEAR light and will encode the frame
 // to sRGB itself (Forward+), 0 where it hands the value straight to the display
 // (Compatibility). Measured, both; matter.gdshaderinc says what it is for.
@@ -360,6 +371,24 @@ vec3 sky_shock(vec3 wp) {
 	return vec3(d.x, 0.0, d.y) / max(r, 1.0) * band * fall * colossus_shock.w;
 }
 
+// A pad coming down: the light it takes off the ground straight under it, which
+// the sun's slant would carry a hundred metres off in the capsule's shadow and
+// the eye still reads as the sky going out overhead. Its edge is soft while it
+// is high and hardens as it comes, and it deepens all the way down.
+float colossus_pad(vec4 d, vec3 p) {
+	if (d.w <= 0.0) {
+		return 0.0;
+	}
+	float soft = 1.5 + d.z * 0.3 * (1.0 - d.w);
+	return d.w * (1.0 - smoothstep(d.z - soft, d.z + soft, length(p.xz - d.xy)));
+}
+
+// 0..1: how much of the sky a pad coming down takes off this place.
+float sky_colossus_pads(vec3 world_pos) {
+	return max(max(colossus_pad(colossus_pads[0], world_pos), colossus_pad(colossus_pads[1], world_pos)),
+		max(colossus_pad(colossus_pads[2], world_pos), colossus_pad(colossus_pads[3], world_pos)));
+}
+
 // 0..1: how much of the sun a colossus's leg takes off this place.
 float sky_colossus(vec3 world_pos) {
 	int n = int(colossus_sun.w + 0.5);
@@ -439,12 +468,18 @@ float sky_fog_at(vec3 world_pos, vec2 px, float band) {
 		return 0.0;
 	}
 	// Furnace haze lies lower and heavier in the hollows than a pale mist.
-	float low = sky_air.z * 0.08;
+	float low = sky_air.z * 0.08 + sky_fog_tint.a * 0.14;
 	vec2 p = world_pos.xz - sky_fog.xy;
 	float n = sky_fbm(p * vec2(0.17, 0.13) + vec2(41.0, 7.0)) * 0.8 + sky_noise(p * 0.45 + vec2(9.0, 2.0)) * 0.2;
 	float hollow = sky_ground_at(world_pos).a * SKY_GROUND_HEIGHT - world_pos.y;
 	n += clamp(hollow, -1.5, 1.0) * (0.14 + low) + (1.0 - step(0.36, world_pos.y)) * 0.06;
-	n += (sky_noise(vec2(px.x * 0.025, px.y * 0.22) + p * 0.02) - 0.5) * 0.07;
+	// The wisps are laid on the top view's axes but CONTINUOUSLY: `px` is
+	// floored to the grain, and a noise read at whole grain cells gave the
+	// bank's edge whole-cell steps. From above a cell is a pixel and nothing
+	// showed; at eye level near the camera a cell is many, and the edge was a
+	// staircase across the floor (the caves, 2026-09-26).
+	vec2 pc = vec2(dot(world_pos, vec3(0.7071, 0.0, -0.7071)), dot(world_pos, vec3(-0.5931, 0.5446, -0.5931))) / SKY_GRAIN;
+	n += (sky_noise(vec2(pc.x * 0.025, pc.y * 0.22) + p * 0.02) - 0.5) * 0.07;
 	float t1 = mix(0.7, 0.585, sky_fog.z);
 	float t2 = t1 + 0.1;
 	float h = sky_hash(px + vec2(61.0, 17.0));
@@ -581,6 +616,25 @@ float sky_wet_cover(vec3 world_pos, float w) {
 	return smoothstep(-SKY_WET_FEATHER, SKY_WET_FEATHER, 1.5 * w + 0.6 * lay - 0.55);
 }
 
+// Rain on standing water: rings spreading and gone, one to a small cell, each
+// on its own beat, more of them the harder it falls (sky_air.x). 0..1, the
+// ring's own line; any water a shader draws may lay it (puddles, the drowned
+// city's pools).
+float sky_rain_rings(vec3 wp) {
+	if (sky_air.x <= 0.02) {
+		return 0.0;
+	}
+	vec2 cell = floor(wp.xz / 0.42);
+	float ph = sky_hash(cell + vec2(3.0, 91.0));
+	float beat = TIME * 1.7 + ph * 9.0;
+	float age = fract(beat);
+	vec2 centre = (cell + 0.25 + 0.5 * vec2(sky_hash(cell + floor(beat)), sky_hash(cell.yx + floor(beat) + 7.0))) * 0.42;
+	vec2 dv = (wp.xz - centre) / max(sky_view.x, 0.001);
+	float rad = 1.0 + age * 5.0;
+	float ring = step(abs(length(vec2(dv.x, dv.y * 1.2)) - rad), 0.55) * step(age, 0.8);
+	return ring * step(sky_hash(cell + floor(beat) + vec2(17.0, 5.0)), sky_air.x * 0.8);
+}
+
 // Snow, ash and wet left on the land. Flat faces take it first, and it lies in
 // patches that join up as it deepens, with a stippled rim. Faces are found from
 // screen derivatives of the world position (every face here is flat). Water and
@@ -610,23 +664,17 @@ vec3 sky_settled(vec3 c, vec3 albedo, vec3 world_pos, vec2 px) {
 		// shrink as it dries; standing water shows the sky in the flat hollows.
 		float w = settle.z;
 		float dark = sky_wet_cover(world_pos, w);
-		c *= mix(vec3(1.0), vec3(0.87, 0.89, 0.94), step(h, dark));
+		// The dapple is a stipple on the play camera's grain. Over the shoulder,
+		// within a few metres of the eye, that grain is a hand across and the
+		// dapple read as a checker printed on a coat and on the rock at its feet
+		// (measured in fog, which settles wet): there it is laid smooth instead.
+		float near_eye = (1.0 - smoothstep(2.5, 7.0, length(world_pos - sky_focus.xyz))) * clamp(sky_focus.w, 0.0, 1.0);
+		c *= mix(vec3(1.0), vec3(0.87, 0.89, 0.94), mix(step(h, dark), dark, near_eye));
 		float puddle_lay = sky_noise(world_pos.xz * 1.3 + vec2(11.0, 47.0)) * 0.6 + broad * 0.4;
 		float pool = smoothstep(0.0, 0.02, puddle_lay - 0.86 + (w - 0.5) * 0.12) * flat_face * step(0.5, w);
 		c = mix(c, SKY_PUDDLE, step(h, pool) * 0.45);
 		if (sky_air.x > 0.02 && pool > 0.5) {
-			// Rain on standing water: rings spreading and gone, one to a small
-			// cell, each on its own beat, more of them the harder it falls.
-			vec2 cell = floor(world_pos.xz / 0.42);
-			float ph = sky_hash(cell + vec2(3.0, 91.0));
-			float beat = TIME * 1.7 + ph * 9.0;
-			float age = fract(beat);
-			vec2 centre = (cell + 0.25 + 0.5 * vec2(sky_hash(cell + floor(beat)), sky_hash(cell.yx + floor(beat) + 7.0))) * 0.42;
-			vec2 dv = (world_pos.xz - centre) / max(sky_view.x, 0.001);
-			float rad = 1.0 + age * 5.0;
-			float ring = step(abs(length(vec2(dv.x, dv.y * 1.2)) - rad), 0.55) * step(age, 0.8);
-			ring *= step(sky_hash(cell + floor(beat) + vec2(17.0, 5.0)), sky_air.x * 0.8);
-			c = mix(c, min(SKY_PUDDLE * 1.35, vec3(1.0)), ring * 0.7);
+			c = mix(c, min(SKY_PUDDLE * 1.35, vec3(1.0)), sky_rain_rings(world_pos) * 0.7);
 		}
 	}
 	if (settle.y > 0.001) {
@@ -802,10 +850,11 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	// ground showing between them.
 	float fog = sky_fog_at(world_pos, px, max(fwidth(world_pos.x) + fwidth(world_pos.z), 0.01) * 0.12);
 	vec3 fog_col = mix(SKY_PAGE, SKY_HAZE * vec3(1.0, 0.7, 0.45), sky_air.z);
+	fog_col = mix(fog_col, sky_fog_tint.rgb, step(0.001, sky_fog_tint.a) * 0.85);
 	vec3 white = SKY_WHITEOUT;
 	fog_col = mix(fog_col, white, sky_air.w);
 	if (fog > 0.0) {
-		c = mix(c, fog_col, fog * (0.34 + 0.12 * sky_air.z));
+		c = mix(c, fog_col, fog * (0.34 + 0.12 * sky_air.z + 0.14 * sky_fog_tint.a));
 	}
 	if (sky_air.w > 0.001) {
 		// A whiteout: the land round the player still reads and the distance
@@ -816,9 +865,10 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 		c = mix(c, white, max(veil, 0.12 * sky_air.w));
 	}
 	if (sky_air.y > 0.001) {
-		// Glare: hard white light bleaches a surface toward a lifted grey.
+		// Glare: hard white light bleaches a surface toward a lifted white, the
+		// darks most of all, so shade goes thin and colour burns out of it.
 		float gl = dot(c, vec3(0.299, 0.587, 0.114));
-		c = mix(c, vec3(gl) * vec3(1.04, 1.03, 0.99) + (1.0 - vec3(gl)) * 0.17, sky_air.y * 0.5);
+		c = mix(c, vec3(gl) * vec3(1.05, 1.04, 0.99) + (1.0 - vec3(gl)) * 0.34, sky_air.y * 0.6);
 	}
 	if (sky_bolt.z > 0.001) {
 		// The strike's afterglow rolling through the cloud, and the land under
@@ -828,6 +878,13 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 		float away = length(world_pos.xz - sky_bolt.xy);
 		float lifted = clamp(sky_bolt.z, 0.0, 1.0) * (1.0 - smoothstep(sky_view.w * 0.2, sky_view.w + 4.0, away));
 		c = mix(c, min(c * vec3(1.10, 1.14, 1.22), vec3(1.0)), lifted * 0.7);
+	}
+	// A pad coming down straight overhead takes the sky as well as the sun, and
+	// the light off the fog and haze lying under it too: the shade is last, so a
+	// bank of fog or a whiteout under a coming foot goes dark with the land.
+	float pad = sky_colossus_pads(world_pos);
+	if (pad > 0.0) {
+		c *= mix(vec3(1.0), COLOSSUS_SHADE, pad);
 	}
 	return c;
 }

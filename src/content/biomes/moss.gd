@@ -46,7 +46,8 @@ static func make() -> BiomeDef:
 		Ground.ROCK: P.SLATE[2].lerp(P.SPRUCE[2], 0.35),
 	}
 	# The mud here is peat that has not dried: it takes the fen's ink, not silt's.
-	d.ground_marks = {Ground.MUD: GroundColors.PEAT}
+	# And its fen's pools burn with their own gas after dark (GroundColors.BOG_FLOOR).
+	d.ground_marks = {Ground.MUD: GroundColors.PEAT, Ground.MOSS: GroundColors.BOG_FLOOR}
 	d.cliff_wash = P.EARTH[1]
 	d.strata = GroundColors.STRATA_MOSS
 	d.plain_ground = Ground.MOSS
@@ -97,7 +98,12 @@ static func make() -> BiomeDef:
 	# surface landscapes and it still comes out the darkest picture. Under the one
 	# global night it was 95.3% below luma 24 at 23:00 against the coast's 81.4%,
 	# which is a bog nobody can cross rather than a bog that is dark.
+	# The bog grows up whatever stands in it: moss on every sill, a little ivy.
+	# (BiomeDef.overgrowth: lighter than the green towers' whole dose.)
+	d.overgrowth = 0.55
 	d.night_sky = 1.45
+	# Cold lights drift low over the bog after dark (10_sky wisps).
+	d.wisps = 1.0
 	# And its DAY is lit brighter than the coast's for the same reason: the ground
 	# is the darkest in the game, so under the one daylight (SkyLight.SUN_NOON) a
 	# bog at noon read as dusk, median luma 52-61 from above. Spent as the day's
@@ -130,6 +136,16 @@ static func make() -> BiomeDef:
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"leaning_mast", &"cast_stones", &"grown_hulk", &"clerks_office"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
+	# Who kept them: the peat cutter, the reed cutter, and the eel catcher on the
+	# drains the machines left running.
+	d.home = {"households": {
+		&"cutter": {"wants": [&"peat_stack", &"turf_spade", &"basket", &"shelf"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+		&"reeder": {"wants": [&"reed_bundles", &"reed_bundles", &"basket", &"jars"], "by_hearth": []},
+		&"eeler": {"wants": [&"eel_traps", &"creel", &"peat_stack", &"shelf"], "by_hearth": []},
+	}}
 	d.sound_bed = &"bed_moss"
 	d.surface = _surface
 	d.scatter = _scatter

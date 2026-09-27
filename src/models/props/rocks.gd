@@ -127,7 +127,7 @@ static func _hull(k: Kit, planes: Array[Plane], xf: Basis, at: Vector3, col: Col
 		for b in range(a + 1, count):
 			for c2 in range(b + 1, count):
 				var hit: Variant = planes[a].intersect_3(planes[b], planes[c2])
-				if hit == null:
+				if typeof(hit) == TYPE_NIL:
 					continue
 				var p: Vector3 = hit
 				var inside := true
@@ -329,24 +329,44 @@ static func iron_ore(k: Kit, v: int, c: int) -> void:
 	k.made.tri(Vector3(0.3, 0.01, 0.3), Vector3(0.1, 0.01, 0.62), Vector3(0.6, 0.01, 0.75), P.EARTH[3])
 
 
-## Copper: a tall jagged spur of dark slate streaked top to bottom in
-## verdigris, bright green running down its faces.
+## Copper: a tall jagged spur of dark slate in weathered beds of its own, cut
+## by two thin veins of verdigris at heights of its own, one bright and one
+## gone back half into the rock, with the green run down its faces from them.
+##
+## IT WAS FIVE EVEN BANDS, rock and green in turn, and under a cave's near light
+## a spur of it read as a post painted in stripes (cave-dark.tour, heading 3).
+## The green is what says copper, so it stays; it is a vein, not a coat.
 static func copper_ore(k: Kit, v: int, c: int) -> void:
 	var g := geology(c)
 	var s := 7700 + v * 41 + c
 	var host := P.SLATE[1].lerp(g[1], 0.3)
+	# The beds: the rock's own three tones, uneven in height.
+	var beds: Array[Color] = [Kit.tone(host, 0.9), host, Kit.tone(host, 1.08)]
+	var lo := 0.16 + Rng.hash01(s, 1) * 0.2
+	var hi := lo + 0.3 + Rng.hash01(s, 2) * 0.28
+	var vein_a := 0.07 + Rng.hash01(s, 3) * 0.04
+	var vein_b := 0.05 + Rng.hash01(s, 4) * 0.03
+	var heights: Array = [-0.06, lo, lo + vein_a, hi, hi + vein_b, 0.95 + Rng.hash01(s, 5) * 0.1, 1.12]
+	var radii: Array = []
+	for h: float in heights:
+		radii.append(0.4 - (h + 0.06) / 1.18 * 0.26 + Kit.j(s, int(h * 100.0), 0.015))
+	var weathered := P.SPRUCE[5].lerp(host, 0.5)
+	var cols: Array = [beds[0], P.SPRUCE[4], beds[1], weathered, beds[2], beds[1]]
 	k.made.push(Transform3D(Basis(Vector3.BACK, -0.14), Vector3.ZERO))
-	banded(k, [0.4, 0.36, 0.3, 0.22, 0.14], [-0.06, 0.3, 0.62, 0.9, 1.12], [host, P.SPRUCE[4], host, P.SPRUCE[5], host], Vector3(0.08, 1.4, -0.04), 5, s)
+	banded(k, radii, heights, cols, Vector3(0.08, 1.4, -0.04), 5, s)
 	k.made.pop()
-	# Verdigris runs down the faces that are seen, bold, two tones.
-	for i in 4:
-		var a := -0.6 + i * 0.45
-		var top := Vector3(cos(a) * 0.3, 1.0 - i * 0.12, sin(a) * 0.3)
+	# The green runs down the seen faces from the veins, thin and toned into the
+	# rock, not bold stripes from the top.
+	for i in 3:
+		var a := -0.5 + i * 0.5 + Kit.j(s, i + 10, 0.15)
+		var from_y: float = lo if i % 2 == 0 else hi
+		var top := Vector3(cos(a) * 0.3, from_y, sin(a) * 0.3)
 		var out := Vector3(cos(a), 0.0, sin(a)) * 0.08
-		var side := Vector3(-sin(a), 0.0, cos(a)) * 0.05
-		k.made.quad(top + out * 0.6 - side, top + out * 0.6 + side, Vector3(top.x * 1.35, 0.02, top.z * 1.35) + out + side * 0.4, Vector3(top.x * 1.35, 0.02, top.z * 1.35) + out - side * 0.4, P.SPRUCE[4] if i % 2 == 0 else P.SPRUCE[5])
+		var side := Vector3(-sin(a), 0.0, cos(a)) * (0.025 + Rng.hash01(s, i + 20) * 0.02)
+		var run := P.SPRUCE[4].lerp(host, 0.35) if i % 2 == 0 else weathered
+		k.made.quad(top + out * 0.6 - side, top + out * 0.6 + side, Vector3(top.x * 1.35, 0.02, top.z * 1.35) + out + side * 0.4, Vector3(top.x * 1.35, 0.02, top.z * 1.35) + out - side * 0.4, run)
 	if v == 1:
-		k.stone(0.42, -0.04, 0.28, 0.2, 0.34, s + 3, host, 5, 0.3, P.SPRUCE[4])
+		k.stone(0.42, -0.04, 0.28, 0.2, 0.34, s + 3, host, 5, 0.3, P.SPRUCE[4].lerp(host, 0.4))
 
 
 ## Coal: a low wide bank of grey beds with thick black seams between, the
@@ -379,7 +399,7 @@ static func tin_ore(k: Kit, v: int, c: int) -> void:
 	for i in spikes.size():
 		if v == 1 and i == 3:
 			continue
-		var sp: Array = spikes[i]
+		var sp := PackedFloat64Array(spikes[i])
 		k.made.push(Transform3D(Basis(Vector3.BACK, float(sp[5])) * Basis(Vector3.RIGHT, float(sp[5]) * 0.6), Vector3(sp[0], sp[1], sp[2])))
 		k.made.prism(0, 0, 0, sp[3], sp[4] * 0.7, float(sp[3]) * 0.85, 5, P.ASH[4] if i % 2 == 0 else P.STONE[4], GroundColors.glint(P.STONE[5]))
 		k.made.prism(0, sp[4] * 0.7, 0, float(sp[3]) * 0.85, sp[4], 0.0, 5, P.STONE[5])
@@ -400,6 +420,9 @@ static func standing_stone(k: Kit, v: int, c: int) -> void:
 			k.slab(0.0, -0.08, 0.0, 0.52, 1.8, 0.3, s, g[0], GroundColors.up(g[0], 0.2), 0.05, 0.35, 0.06)
 			k.made.quad(Vector3(-0.19, 1.05, 0.13), Vector3(0.02, 1.07, 0.12), Vector3(0.04, 1.3, 0.1), Vector3(-0.16, 1.28, 0.11), P.LINEN[3])
 			k.made.quad(Vector3(0.02, 0.44, 0.155), Vector3(0.2, 0.46, 0.155), Vector3(0.2, 0.62, 0.15), Vector3(0.02, 0.6, 0.15), P.MOSS[4])
+			if d.old_light.a > 0.0:
+				_old_ring(k, Vector3(-0.04, 0.9, 0.158), 0.15, s, d.old_light, 1.0)
+				_old_ring(k, Vector3(0.04, 1.0, -0.158), 0.13, s + 1, d.old_light, -1.0)
 			cap_y = 1.7
 		1:
 			# Cast, not quarried: a machine's leg snapped off, tilted in the
@@ -451,6 +474,32 @@ static func standing_stone(k: Kit, v: int, c: int) -> void:
 	k.clump(-0.28, -0.05, -0.1, 0.13, 0.14, s + 31, P.MOSS[3], 5)
 	if d.cold():
 		k.clump(0.0, cap_y, 0.0, 0.2, 0.12, s + 5, d.snow[0], 6)
+
+
+## A ring of marks cut into a stone's face, centred at `at` on a face looking +Z:
+## nine short strokes round a gap and a dot in the middle, one of them missing,
+## and lamp-coded, so by day they are worn grooves and after dark they give off
+## the land's old light (BiomeDressing.old_light). Faint: it is not a lamp. `face` is +1 for the +Z face, -1 for the -Z one.
+static func _old_ring(k: Kit, at: Vector3, r: float, s: int, col: Color, face: float) -> void:
+	var lit := GroundColors.lamp(Color(col.r, col.g, col.b), 0.9 * col.a)
+	var gone := int(Rng.hash01(s, 3, 91) * 9.0)
+	for i in 9:
+		if i == gone:
+			continue
+		var a := float(i) / 9.0 * TAU + Rng.hash01(s, i, 92) * 0.2
+		var dir := Vector3(cos(a), sin(a), 0.0)
+		var side := Vector3(-sin(a), cos(a), 0.0) * 0.016
+		var p0 := at + dir * r * 0.72
+		var p1 := at + dir * r * 1.05
+		if face > 0.0:
+			k.made.quad(p0 - side, p1 - side, p1 + side, p0 + side, lit)
+		else:
+			k.made.quad(p0 + side, p1 + side, p1 - side, p0 - side, lit)
+	var dot := 0.016
+	if face > 0.0:
+		k.made.quad(at + Vector3(-dot, -dot, 0.0), at + Vector3(dot, -dot, 0.0), at + Vector3(dot, dot, 0.0), at + Vector3(-dot, dot, 0.0), lit)
+	else:
+		k.made.quad(at + Vector3(-dot, dot, 0.0), at + Vector3(dot, dot, 0.0), at + Vector3(dot, -dot, 0.0), at + Vector3(-dot, -dot, 0.0), lit)
 
 
 ## A cast member, exact in plan (eight-sided, corners cut), standing from y0 to
@@ -524,7 +573,7 @@ static func clints(k: Kit, v: int, c: int) -> void:
 	for i in slabs.size():
 		if v == 2 and i == 3:
 			continue
-		var b: Array = slabs[i]
+		var b := PackedFloat64Array(slabs[i])
 		var h := 0.1 + Kit.j(s, i, 0.03)
 		var r: float = b[2]
 		var sides := 6 + (i + v) % 2

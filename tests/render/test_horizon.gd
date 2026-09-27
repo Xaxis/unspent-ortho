@@ -298,6 +298,45 @@ func test_silhouettes_come_in_before_the_first_look() -> void:
 	g.free()
 
 
+## A DUST STORM IS THE LAND'S OWN AIR (BiomeDef.weather_style `dust`): the mesas'
+## red and the salt's white are not the shared sand, a land that says nothing
+## blows the shared sand, and a misspelt row is named.
+func test_each_land_blows_its_own_dust() -> void:
+	var mesas: Color = Air.dust_of(&"mesas").air
+	var salt: Color = Air.dust_of(&"salt_flats").air
+	gt(mesas.r - mesas.b, 0.3, "the mesas' dust is red iron")
+	gt(salt.get_luminance(), mesas.get_luminance() + 0.2, "the salt's dust is pale")
+	eq(Air.dust_of(&"coast").air, Air.DUST_AIR, "a land with no row blows the shared sand")
+	eq(Air.at({&"mesas": 1.0}).dust, mesas, "and the air over a frame carries it")
+	var bad := BiomeDef.new()
+	bad.weather_style = {&"dust": {"colour": Color.RED}, &"sleet": {}}
+	var said := "\n".join(PackedStringArray(bad.style_problems()))
+	check(said.contains("no field colour"), "a misspelt field is named: %s" % said)
+	check(said.contains("no row for sleet"), "and a kind with no style")
+
+
+## WHERE A MACHINE CANNOT SEE YOU, YOU CANNOT SEE FAR EITHER: a dust storm's air
+## closes at the distance the rules still let a typical machine see.
+func test_a_dust_storm_closes_the_air_where_sight_ends() -> void:
+	for s: float in [0.5, 1.0]:
+		var r := SkyLight.dust_reach(30.0, s)
+		near(r.y - 30.0, SkyLight.SIGHT_TYPICAL * Weather.sight_factor(&"dust", s), 1e-4, "closed at sight, strength %.1f" % s)
+		lt(r.x, 30.0, "and clear up to the player")
+	gt(SkyLight.dust_reach(30.0, 0.5).y, SkyLight.dust_reach(30.0, 1.0).y, "a thinner storm is seen further through")
+
+
+## The sulphur jungle's fog is its own acid yellow, lying low; a land that says
+## nothing keeps the shared pale mist.
+func test_the_sulphur_jungle_fog_is_its_own() -> void:
+	var row: Dictionary = BiomeRegistry.get_def(&"sulphur_jungle").weather_style.get(&"fog", {})
+	check(not row.is_empty(), "the sulphur jungle styles its fog")
+	var c: Color = row.get("air", Color.BLACK)
+	gt(c.r + c.g - 2.0 * c.b, 0.4, "sulphur-yellow, not pale grey")
+	gt(float(row.get("low", 0.0)), 0.5, "and it lies low")
+	check(BiomeRegistry.get_def(&"coast").weather_style.get(&"fog", {}).is_empty(), "the coast keeps the shared fog")
+	eq(BiomeRegistry.get_def(&"sulphur_jungle").style_problems().size(), 0, "a well-formed row")
+
+
 ## A BLOCK LET GO AND BUILT AGAIN IS THE BLOCK IT WAS. The far view keeps only the
 ## levels its camera can draw and drops the rest (`WorldView._far_evict`), so a
 ## level is built alone, and built again on the way back. Either is only safe if
@@ -331,3 +370,38 @@ func test_a_block_built_again_is_the_block_it_was() -> void:
 	eq(hash(var_to_bytes(close[0])), hash(var_to_bytes(both[0])), "the close level alone is the close level of both")
 	eq(hash(var_to_bytes(coarse[1])), hash(var_to_bytes(both[1])), "the coarse level alone is the coarse level of both")
 	check(var_to_bytes(close[1]).size() < 64, "and a level not asked for is not built")
+
+
+## A ROOFED CAVE IS ITS LID FROM FAR OFF. The near chunks draw a roof's top, and
+## past them the far world stood the floor of the halls under an open sky.
+func test_a_far_roof_keeps_its_lid() -> void:
+	var w := WorldData.new(3, 128)
+	for y in 128:
+		for x in 128:
+			var i := y * 128 + x
+			w.level[i] = 2
+			w.ground[i] = Ground.SAND
+			w.country[i] = Country.COAST
+	for y in range(40, 90):
+		for x in range(40, 90):
+			w.set_overhead(x, y, 6, 10)
+	var land: Array = Far.build_arrays(w, 0, 0, Far.tables())[0]
+	var inside := -INF
+	var outside := -INF
+	var vs: PackedVector3Array = land[Mesh.ARRAY_VERTEX]
+	var cs: PackedColorArray = land[Mesh.ARRAY_COLOR]
+	var tabs: Array = Far.tables()
+	var roof_wash: Color = (tabs[0] as PackedColorArray)[(tabs[2] as PackedInt32Array)[Country.COAST] * BiomeRegistry.SLOTS + Country.COAST]
+	var painted := 0
+	for k in vs.size():
+		var v := vs[k]
+		if v.x > 48.0 and v.x < 80.0 and v.z > 48.0 and v.z < 80.0:
+			inside = maxf(inside, v.y)
+			if cs[k].is_equal_approx(roof_wash) or cs[k].is_equal_approx(roof_wash.darkened(0.03)):
+				painted += 1
+		elif v.x < 30.0:
+			outside = maxf(outside, v.y)
+	print("roof %.2f, far land over it %.2f, beside it %.2f" % [TerrainMesher.level_height(10), inside, outside])
+	gt(inside, TerrainMesher.level_height(10) - 0.1, "the far land over the cave stands at the roof's top")
+	lt(outside, TerrainMesher.level_height(3), "and the open plain beside it stays down")
+	gt(painted, 0, "the lid is painted with the landscape's plain ground, as the near roof is")

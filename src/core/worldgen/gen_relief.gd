@@ -166,6 +166,60 @@ static func run(c: GenContext) -> void:
 ## labyrinth's walls are not a hill; and only on its own tiles, because a maze
 ## leaking over a border cuts the neighbour's ground to pieces. Let down across
 ## the last of its blend to the border, and in the last tiles to the sea.
+## Stage 4c, A CITY'S FLOOR (`BiomeDef.relief.streets`, the street grid's
+## spacing in tiles): where a landscape rules streets on the survey bearing
+## (its works, `_streets`), its ground is laid as the city laid it, one level to
+## a block, and never the organic lips of the terraces cutting across a road.
+## A block here is centred on a street CROSSING, so the streets run level
+## through the middle of their block and the steps between one block's level
+## and the next fall behind the frontages, back to back, where the kerbs and
+## the stairs of a city on a hill are. Each block stands at its own land
+## smoothed over some thirty tiles, so the city still climbs where the land
+## does. After the borders are drawn and only on the landscape's own tiles, let
+## down across the last of its blend and to the sea.
+static func flatten_streets(c: GenContext) -> void:
+	var size := c.size
+	var w := c.w
+	var grid := PackedFloat32Array()
+	grid.resize(c.types)
+	var any := false
+	for cc: int in c.land_types:
+		grid[cc] = c.defs[cc].param(&"streets")
+		any = any or grid[cc] > 0.0
+	if not any:
+		return
+	var elev := c.elev
+	var country := w.country
+	var land := c.land
+	var blend := w.blend
+	var inland := c.inland
+	var broad := GenFields.smooth(elev, size, FLOOR_SMOOTH)
+	var d := Vector2.from_angle(GenWorks.bearing(c.s))
+	var nrm := Vector2(-d.y, d.x)
+	var flat := GenFields.snapshot(elev) as PackedFloat32Array
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			for x in size:
+				var i := y * size + x
+				if land[i] == 0:
+					continue
+				var b := grid[country[i]]
+				if b <= 0.0:
+					continue
+				var p := Vector2(x + 0.5, y + 0.5)
+				# The block's middle: the nearest street crossing.
+				var u := roundf(p.dot(d) / b) * b
+				var v := roundf(p.dot(nrm) / b) * b
+				var mid := d * u + nrm * v
+				var mx := clampi(floori(mid.x), 0, size - 1)
+				var my := clampi(floori(mid.y), 0, size - 1)
+				var level := floorf(broad[my * size + mx]) + 0.5
+				var hold := (1.0 - smoothstep(0.3, 0.5, blend[i])) * smoothstep(2.0, 7.0, inland[i])
+				flat[i] = maxf(1.0, lerpf(elev[i], level, hold))
+	)
+	c.elev = flat
+
+
 ## Halvings the ground under a labyrinth is smoothed by before it is levelled:
 ## 5 is about thirty tiles.
 const FLOOR_SMOOTH := 5

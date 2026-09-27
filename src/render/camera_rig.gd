@@ -191,6 +191,8 @@ var _room := 1.0
 ## How crowded in by a wall behind the eye is (Shoulder.crowd), eased, and which
 ## side of the player it has stepped to for it.
 var _crowd := 0.0
+## How far the eye stands raised over something low behind it (Shoulder.over).
+var _over := 0.0
 var _crowd_left := false
 ## Down a corridor (Shoulder.corridor/along): the axis and how much of one it
 ## is, probed every AXIS_EVERY; the end the view turns to; the eased yaw bias.
@@ -814,8 +816,19 @@ func _apply_lens() -> void:
 		var pivot := head.lerp(focus, clampf(float(sight_room.call(head, focus)), 0.0, 1.0))
 		var span := maxf(0.001, pivot.distance_to(eye))
 		var room := clampf(float(sight_room.call(pivot, eye)), minf(1.0, Shoulder.LEAST_BACK / span), 1.0)
+		# Over something low behind rather than in front of it (Shoulder.over):
+		# risen at once, as a pull-in is, and let down gently.
+		var up := Shoulder.over(pivot, eye, sight_room) if room < 0.999 else 0.0
+		if up > 0.0:
+			room = 1.0
+		up = maxf(up, 0.0)
+		_over = up if up > _over else lerpf(_over, up, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
 		_room = room if room < _room else lerpf(_room, room, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
-		eye = pivot.lerp(eye, _room)
+		eye = pivot.lerp(eye + Vector3(0.0, _over, 0.0), _room)
+		if _over > 0.001:
+			# Looking down at the point it framed, from the height it rose to.
+			var at := focus - eye
+			rotation.x = atan2(at.y, Vector2(at.x, at.z).length())
 	var crowd_want := Shoulder.crowd(eye.distance_to(focus)) if sight_room.is_valid() else 0.0
 	_crowd = lerpf(_crowd, crowd_want, 1.0 - exp(-Shoulder.CROWD_RATE * _dt))
 	# Tipped up past the ordinary limit, the eye comes to the face and the body

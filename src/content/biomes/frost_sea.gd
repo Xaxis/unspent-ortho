@@ -72,7 +72,13 @@ static func make() -> BiomeDef:
 		Ground.BLACKWATER: P.SLATE[1],
 	}
 	d.cliff_wash = P.SLATE[2].lerp(P.RIME[2], 0.45)
-	d.strata = GroundColors.STRATA_ICE
+	# ITS OWN ICE, LOOK only (no seed moves): floes frozen together with black
+	# ice in the leads (GroundColors.SEA_ICE), and every step a floe's edge in
+	# blue and white layers (STRATA_FLOE). It was the frozen river's ice, a pale
+	# sheet under a comb of icicles one every three pixels.
+	# ROCK here is the pressure ridge (`_surface`, rs > 1.2), which is ice too.
+	d.ground_marks = {Ground.ICE: GroundColors.SEA_ICE, Ground.ROCK: GroundColors.SEA_ICE}
+	d.strata = GroundColors.STRATA_FLOE
 	d.plain_ground = Ground.ICE
 	d.bank_ground = Ground.ICE
 	d.pool_rim_ground = Ground.ICE
@@ -158,6 +164,9 @@ static func make() -> BiomeDef:
 		&"icesaw": {"weight": 0.9, "grounds": ["ice"]},
 	}
 	d.landmarks = [&"leaning_mast", &"blinking_stack", &"sump_pump", &"cast_stones"]
+	# The mast leaning out of the ice is a trawler frozen into the floe, and her
+	# hold is a refuge with a stove to relight (src/content/interiors/frozen_hold.gd).
+	d.interiors = {&"landmark:leaning_mast": &"frozen_hold"}
 	# Its keeper listens through the ice (src/core/sentinel/designs/listener.gd).
 	d.sentinel = &"listener"
 	d.sound_bed = &"bed_snowfield"

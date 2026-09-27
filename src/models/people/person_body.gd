@@ -1141,6 +1141,14 @@ static func _extras(r: SkinRig, w: Wear) -> void:
 ## units across its narrow side (2 px at the default view height of 14), stands
 ## clear of the limb it rides on, and is edged one ramp step dark so it reads as a
 ## plate and not a speck of colour.
+## The vane cloak's blades: how many, how long against the torso, how wide a fan
+## (radians, end to end) and how far they lean off the back.
+const VANES := 5
+const VANE_LENGTH := 0.78
+const VANE_FAN := 0.9
+const VANE_LEAN := 0.12
+
+
 static func _salvage(r: SkinRig, w: Wear) -> void:
 	var d := w.d
 	var side: int = w.look.side
@@ -1251,6 +1259,30 @@ static func _salvage(r: SkinRig, w: Wear) -> void:
 				glass.pop()
 				var band := r.kit(r.find(&"head"), &"salvage")
 				Sculpt.loft(band, [[d.head * (EYE_Y - 0.04), d.head_d * 0.56, d.head_w * 0.53, 0.0, 0.0], [d.head * (EYE_Y + 0.08), d.head_d * 0.56, d.head_w * 0.53, -0.004, 0.0]], 7, Palette.INK[2], false, false, 0.0)
+			&"vanes":
+				# The vane cloak: a sweeper's trued vanes, cut to blades and hung
+				# from the shoulders down the back in a fan, standing off the coat
+				# so the wind has them. The outline behind a body is a machine's.
+				var top: float = d.torso - 0.02
+				var bx: float = torso_x(w, top * 0.7, true) - 0.03
+				var k := r.kit(r.find(&"spine"), &"salvage", SkinRig.FOUND)
+				var length: float = top * VANE_LENGTH
+				for i in VANES:
+					var u := float(i) / float(VANES - 1) - 0.5
+					var fan := u * VANE_FAN
+					var at := Vector3(bx - absf(u) * 0.03, top, u * d.chest * 0.95)
+					# Hung from the shoulder line, face to the back, fanned out
+					# round the body's own long axis and leaning off the coat.
+					var hang := Basis(Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(-1, 0, 0))
+					hang = hang.rotated(Vector3(1, 0, 0), fan).rotated(Vector3(0, 0, 1), -VANE_LEAN)
+					k.push(Transform3D(hang, at))
+					var blade := PackedVector2Array([Vector2(-0.045, 0.0), Vector2(0.045, 0.0), Vector2(0.026, -length), Vector2(0.0, -length - 0.04), Vector2(-0.026, -length)])
+					Sculpt.slab(k, blade, 0.008, Palette.PLATE[5] if i % 2 == 0 else face, edge)
+					k.pop()
+				# The bar they hang from, across the shoulders, and its cord.
+				var bar := r.kit(r.find(&"spine"), &"salvage")
+				var cz: float = d.chest * 0.36
+				Sculpt.card(bar, Vector3(bx - 0.012, top + 0.012, -cz), Vector3(bx - 0.012, top + 0.012, cz), Vector3(bx - 0.012, top - 0.018, cz), Vector3(bx - 0.012, top - 0.018, -cz), Palette.SAND[3], Vector3(-1, 0, 0))
 			&"breastplate":
 				# A machine's panel worn over the chest, laced on with cord over both
 				# shoulders; its ruled stencil still says what it was cut from.

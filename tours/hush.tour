@@ -1,0 +1,14 @@
+# THE HUSH'S RINGS (docs/HUSH.md H0): the crags' own stone circles, found by
+# name (`near hush_ring`, HushSites) and never at a coordinate. The tour stands
+# in the nearest one: hand-cut stones round the player from above, and over the
+# shoulder. Later slices add what happens in them.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/hush.tour --seed=7 --hour=11 --weather=clear:0
+place the_crags
+coast calm
+near hush_ring
+wait 0.8
+shot 01-in-a-crags-ring-from-above
+tap shoulder
+await shoulder 3
+wait 0.8
+shot 02-in-a-crags-ring-over-the-shoulder with shoulder

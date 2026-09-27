@@ -41,7 +41,7 @@ var ruined: Array[int] = []
 var took: Array[int] = []
 ## Machines of this party that did not come home.
 var lost := 0
-## &"" until it is over: &"held" &"broken" &"razed" &"left".
+## &"" until it is over: &"held" &"held_at_cost" &"broken" &"razed" &"left".
 var outcome: StringName = &""
 
 

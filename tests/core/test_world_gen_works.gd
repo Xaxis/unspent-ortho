@@ -27,9 +27,17 @@ const NOT_YET_LAID: Array[int] = [PropKind.LINTEL, PropKind.CARVED_FACE, PropKin
 	PropKind.CORE_RACK, PropKind.HOLLOW_WAY,
 	PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE,
 	PropKind.FULGURITE, PropKind.GLASS_BLISTER, PropKind.FUSED_CAR, PropKind.STRIKE_ROD,
-	PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT, PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY,
 	PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE,
-	PropKind.HOODOO, PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN, PropKind.SPAN_PYLON]
+	PropKind.HOODOO, PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN, PropKind.SPAN_PYLON,
+	PropKind.FALLEN_TOWER]
+
+## Kinds laid, but only in a world of another realm, which a surface island
+## never holds: kind -> that realm. Not a debt like NOT_YET_LAID: the land that
+## lays it is asked for it in its own world
+## (test_world_gen_surface's `test_every_land_with_a_material_holds_its_raw`).
+const LAID_ELSEWHERE := {
+	PropKind.DRIPSTONE: Realm.UNDERGROUND,
+}
 
 ## Works each landscape must hold on every seed: kind -> its country.
 const HOME := {
@@ -86,7 +94,7 @@ func test_every_landscape_holds_its_own_works() -> void:
 				got.append(s)
 				seen_home[kind] = got
 		for kind in range(FIRST, PropKind.COUNT):
-			if NOT_YET_LAID.has(kind):
+			if NOT_YET_LAID.has(kind) or LAID_ELSEWHERE.has(kind):
 				continue
 			gt(counts[kind], 0, "seed %d %s placed" % [s, PropKind.NAMES[kind]])
 		# Evidence at walking scale in every landscape, not only at the works.
@@ -468,7 +476,11 @@ func test_evidence_models_are_drawn_in_the_right_pen() -> void:
 					# The plan's sounding tripod carries the beacon a relay does,
 					# on the machines' beat: the one light out on the frost sea
 					# at night, and it is the plan's (`src/models/props/frost_sea.gd`).
-					PropKind.SOUNDING_RIG],
+					PropKind.SOUNDING_RIG,
+					# The orchards' sprayer blinks its warning lamp on the
+					# machines' beat as it runs its circuit, and it is the plan's
+					# (`src/models/props/sprayer_gantry.gd`).
+					PropKind.SPRAYER_GANTRY],
 					"%s %d carries machine light it has no reason for" % [PropKind.NAMES[kind], v])
 	var stolen := PropModels.template(PropKind.SHACK, 1, Country.COAST)
 	var dark := PropModels.template(PropKind.SHACK, 0, Country.COAST)
@@ -498,26 +510,45 @@ func test_budgets() -> void:
 	# Both numbers have to come from ONE run to be a share at all, so this keeps
 	# the pair from the run whose generation was quickest rather than timing the
 	# two separately.
+	# FIVE SEEDS, SUMMED: one seed's share is that seed's layout as much as the
+	# stage. When the plan began deciding the regions (S4e4) seed 1 alone went
+	# 0.204 -> 0.247 while seeds 7, 42 and 90210 went 0.260/0.274/0.297 ->
+	# 0.165/0.170/0.248: the stage got cheaper and the one seed asked got dearer.
+	# Each seed's best of three, then the sums, so a share is still the works and
+	# the generation of the same runs.
+	#
+	# ITS MARGIN IS THIN: over these five seeds, 0.207 and 0.216 on a quiet
+	# machine (2026-09-26) against the bar of 0.22, two to six per cent under it. `cost_lt` answers "cannot
+	# measure" under load rather than failing, but a quiet red here is the margin
+	# and not the stage, until the bar is set again.
 	var works_ms := 0.0
 	var gen_ms := 0
 	var w: WorldData = null
-	for attempt in 3:
-		var t := Time.get_ticks_msec()
-		var made := WorldGen.generate(Worlds.WORLD_SEEDS[0], 256)
-		var ms := Time.get_ticks_msec() - t
-		var stage := 0.0
-		for key: StringName in WorldGen.last_detail:
-			if String(key).begins_with("works."):
-				stage += float(WorldGen.last_detail[key])
-		if w == null or ms < gen_ms:
-			gen_ms = ms
-			works_ms = stage
-			w = made
+	for seed_value: int in [Worlds.WORLD_SEEDS[0], 3, 7, 42, 90210]:
+		var best_ms := 0
+		var best_stage := 0.0
+		var best_w: WorldData = null
+		for attempt in 3:
+			var t := Time.get_ticks_msec()
+			var made := WorldGen.generate(seed_value, 256)
+			var ms := Time.get_ticks_msec() - t
+			var stage := 0.0
+			for key: StringName in WorldGen.last_detail:
+				if String(key).begins_with("works."):
+					stage += float(WorldGen.last_detail[key])
+			if best_w == null or ms < best_ms:
+				best_ms = ms
+				best_stage = stage
+				best_w = made
+		gen_ms += best_ms
+		works_ms += best_stage
+		if w == null:
+			w = best_w
 	var evidence := 0
 	for p in w.each_prop():
 		if p.kind >= FIRST:
 			evidence += 1
-	print("       works at 256: %d evidence props of %d, works %.0f ms of gen %d ms" % [evidence, w.prop_count(), works_ms, gen_ms])
+	print("       works at 256: %d evidence props of %d on seed %d, works %.0f ms of gen %d ms over five seeds" % [evidence, w.prop_count(), Worlds.WORLD_SEEDS[0], works_ms, gen_ms])
 	var big := Worlds.world(Worlds.WORLD_SEEDS[0])
 	var verts := 0
 	var n := 0

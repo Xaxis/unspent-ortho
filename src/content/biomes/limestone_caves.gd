@@ -94,6 +94,10 @@ static func make() -> BiomeDef:
 	# flowstone curtains. They were the bonelands' limestone beds, laid in courses
 	# with ruled joints, and underground that read as brick terraces.
 	d.strata = GroundColors.STRATA_CAVE
+	# Flowstone lips SAG: no terrace edge in a cave runs ruled and level, and a
+	# hall of level lips one step apart read as stacked slabs.
+	d.lip_sag = 0.24
+	d.cave_light = Vector4(0.35, 0.5, 1.4, 8.0)
 	d.plain_ground = Ground.LIMESTONE
 	d.bank_ground = Ground.GRAVEL
 	d.pool_rim_ground = Ground.BONE
@@ -159,6 +163,12 @@ static func make() -> BiomeDef:
 	# Sinkholes to the day above (11_dome): columns of cold daylight standing in
 	# the dark and the damp, the one place in the caves the hour is seen.
 	d.sky_holes = 0.8
+	# THE HALLS ARE ROOFED (GenAbove, docs/ABOVE.md S3): a lid of rock six levels
+	# (three units) at least over the highest floor within three tiles, stepped
+	# in plateaus of four levels, so a hall is a hall and not open terraces under
+	# a dark sky; open only where the dome's tears let the day down and over the
+	# shafts' mouths.
+	d.above = {"roof": {"room": 6, "clear": 3, "step": 4, "thick": 4, "tear": 3.0, "shaft": 3.5}}
 	d.mist = 0.0
 	# Black, and still a chart: the soundings and the swash survive the tint
 	# (tests/render/test_water_wash.gd).
@@ -167,7 +177,7 @@ static func make() -> BiomeDef:
 	# light is a hole in the page, which is the one thing water may never be.
 	d.water_wash = Color(0.31, 0.47, 0.51, 0.70)
 	d.hard_rock = true
-	d.props = [PropKind.BOULDER, PropKind.CLINTS, PropKind.STANDING_STONE,
+	d.props = [PropKind.DRIPSTONE, PropKind.BOULDER, PropKind.CLINTS, PropKind.STANDING_STONE,
 		PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE,
 		PropKind.TIN_ORE, PropKind.BONES, PropKind.DEBRIS]
 	# Deep seams: what the surface only shows at a broken face is everywhere here,
@@ -200,8 +210,11 @@ static func make() -> BiomeDef:
 		# The cave hauler works the dark by ear: it hardly sees and hears
 		# everything, walks the face slower, and winds its bite up longer, which
 		# is what makes it a cave's to fight and not the bonelands' (BiomeDef.roster).
+		# And its knuckle drive is on its BACK, away from the wall it works: a
+		# player who has learned the bonelands hauler's left side goes round to
+		# the wrong one here.
 		&"hauler": {"weight": 0.7, "grounds": ["limestone", "gravel", "bone", "mud"],
-			"over": {"sees": 3, "hears": 13, "pace": 3.4,
+			"over": {"sees": 3, "hears": 13, "pace": 3.4, "part": &"back",
 				"bite": {"swing": [780, 160, 600, 800], "reach": 1.5, "width": 2.0, "dmg": 4, "knock": 9.5, "knock_ms": 320}}},
 	}
 	d.surface = _surface
@@ -258,9 +271,11 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.BONE:
 		# Flowstone standing up: a stalagmite where a drip has been landing for
 		# ten thousand years, and a column where it met the roof.
+		# The stalagmite is its own kind now (PropKind.DRIPSTONE, the caves'
+		# material), ringed and skirted; a standing stone was a cairn's slab.
 		var k := maxf(0.0, t.clump[i])
 		if r < 0.035 + k * 0.16:
-			return PropKind.STANDING_STONE
+			return PropKind.DRIPSTONE
 		if r < 0.055 + k * 0.16:
 			return PropKind.BOULDER
 		return BiomeScatter.NONE

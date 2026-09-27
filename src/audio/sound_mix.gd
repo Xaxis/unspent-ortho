@@ -112,7 +112,7 @@ static func bus_db(bus: StringName) -> float:
 	for guard in 4:
 		var found := false
 		for row: Array in BUSES:
-			if row[0] == at:
+			if StringName(row[0]) == at:
 				total += float(row[2])
 				at = row[1]
 				found = true
@@ -539,6 +539,11 @@ static func bed_levels(world: WorldData, p: Vector2, weather: Dictionary, near_s
 	var clear := 1.0 - s * (0.4 if kind == &"heat" or kind == &"grey" else 0.9)
 	out[&"bed_far_works"] = remote * calm * dark * clear * (1.0 - 0.6 * shore)
 	_dystopia_levels(out, weights, kind, s, wind, g, shore, river, dark_share, remote, extra)
+	# The hush (23_hush): in a ring the world falls silent, every bed with it.
+	var hush := clampf(float(extra.get("hush", 0.0)), 0.0, 1.0)
+	if hush > 0.0:
+		for bed: StringName in out:
+			out[bed] = float(out[bed]) * (1.0 - hush)
 	return out
 
 

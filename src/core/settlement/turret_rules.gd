@@ -5,7 +5,10 @@ class_name TurretRules
 ## meets exactly the rules a swing does — the plate, the hit window, the stall.
 ##
 ## What it shoots is the whole of the design, so it is short and it is said:
-##   a raider             anything the plan sent against a holding, first
+##   a raider at the wall a raider that struck a wall piece in the last
+##                        AT_WALL_MS, before anything else: that is what a
+##                        defence is for
+##   a raider             anything the plan sent against a holding
 ##   a body in a fight    anything pressing an attack (chasing, attacking)
 ##   nothing else         a worker on its round, a watcher on its rise, a gull
 ##
@@ -27,6 +30,9 @@ const EVERY_MS := 1400.0
 ## machines built it to hurt machines), so where the turret stands decides
 ## nothing about sides — where the machine is decides whether it is in reach.
 const DMG := 3
+## How long after a raider's last blow on a wall piece it is still the one at
+## the wall (MobState.struck_wall_at).
+const AT_WALL_MS := 3000.0
 const KNOCK := 3.0
 const KNOCK_MS := 140
 
@@ -50,11 +56,13 @@ static func armed(p: Structure) -> bool:
 	return p != null and p.kind == StructureKind.TURRET and p.working()
 
 
-## How much a turret wants this body: 2 a raider, 1 a body pressing a fight, 0
-## leave it be.
-static func wants(m: MobState) -> int:
+## How much a turret wants this body: 3 a raider at the wall, 2 a raider, 1 a
+## body pressing a fight, 0 leave it be. `now` is the fight's clock.
+static func wants(m: MobState, now: float = -INF) -> int:
 	if m == null or not m.alive or m.removed:
 		return 0
+	if m.raider and now - m.struck_wall_at <= AT_WALL_MS:
+		return 3
 	if m.raider:
 		return 2
 	if m.roused() and not m.indifferent():
@@ -64,13 +72,13 @@ static func wants(m: MobState) -> int:
 
 ## The body it should be shooting at from `from`, or null. Wanted most first,
 ## nearest among those, and only what `clear` (a line of sight) allows.
-static func pick(bodies: Array, from: Vector2, clear: Callable = Callable()) -> MobState:
+static func pick(bodies: Array, from: Vector2, clear: Callable = Callable(), now: float = -INF) -> MobState:
 	var best: MobState = null
 	var best_want := 0
 	var best_d := INF
 	for q: Variant in bodies:
 		var m := q as MobState
-		var want := wants(m)
+		var want := wants(m, now)
 		if want <= 0:
 			continue
 		var d := from.distance_to(m.pos)

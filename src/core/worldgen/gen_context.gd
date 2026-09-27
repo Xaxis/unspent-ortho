@@ -60,6 +60,19 @@ var soft: Array[PackedFloat32Array] = []
 var soft_flat: PackedFloat32Array = PackedFloat32Array()
 ## Type index -> Vector2 heart of its largest site.
 var hearts: Array[Vector2] = []
+## THE PLAN'S LANDSCAPES: the fine landscape at every coarse cell's sample tile
+## (`GenCountries.sample_tile`), taken before enclaves are absorbed, which is
+## what the plan can know without the fine world. Regions are labelled on it
+## (`GenCountries.regions`).
+var coarse_country: PackedByteArray = PackedByteArray()
+## WorldGen.plan's own bookkeeping: whether the world is already as finished as
+## it will be (halted, stopped at `until`, or a realm with nothing to grow), the
+## stage timings so far and the clock they run from, and the surface's rules
+## once sections are begun (`WorldGen.begin_sections`).
+var finished := false
+var stage_marks: Dictionary = {}
+var stage_t := 0
+var surface_rules: Dictionary = {}
 ## WHICH TYPES EACH BODY MAY CARRY, as `GenBodies.deal` decided: `allow[id *
 ## types + cc]` is 1 where body `id` was dealt type `cc`. EMPTY means every type
 ## everywhere, which is what a one-body world is and why it costs nothing there.

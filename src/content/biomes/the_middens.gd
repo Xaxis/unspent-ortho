@@ -92,7 +92,7 @@ static func make() -> BiomeDef:
 	# Down in a slot you see almost no sky at all, which is most of why a lamp
 	# matters here in a way it does not on open ground.
 	d.night_sky = 0.6
-	d.props = [PropKind.DEBRIS, PropKind.WRECKAGE, PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP,
+	d.props = [PropKind.MIDDEN_BALE, PropKind.DEBRIS, PropKind.WRECKAGE, PropKind.SCRAP_TREE, PropKind.MAGNET_HEAP,
 		PropKind.VEHICLE, PropKind.HULL, PropKind.BARRICADE, PropKind.SLAG_HEAP,
 		PropKind.IRON_ORE, PropKind.COPPER_ORE]
 	d.ore = [[PropKind.IRON_ORE, 0.05], [PropKind.COPPER_ORE, 0.042], [PropKind.TIN_ORE, 0.03]]
@@ -108,6 +108,19 @@ static func make() -> BiomeDef:
 		[Weather.RAIN, 16, 0.5], [Weather.FOG, 10, 0.0],
 	]
 	d.mist = 0.18
+	# Its floor leaches phosphor after dark (GroundColors.MIDDEN_FLOOR), and its
+	# fog is refuse-brown and pools in the slots, leaving the rims clear.
+	d.ground_marks = {Ground.SWARF: GroundColors.MIDDEN_FLOOR}
+	# Over the slots, at the walls' own height: cables the tippers strung and
+	# girders left bridging, so the sky from a slot floor is a strip crossed by
+	# wires (ForeKinds).
+	d.fore_rows = {
+		PropKind.DEBRIS: {"shape": "line", "lift": Vector2(2.8, 3.6), "span": Vector2(5.0, 8.0), "chance": 0.45},
+		PropKind.WRECKAGE: {"shape": "girder", "lift": Vector2(2.8, 3.4), "span": Vector2(3.5, 5.5), "chance": 0.55},
+	}
+	# What blows off the heaps: rust and ground-up refuse, brown and dirty.
+	d.weather_style = {&"dust": {"air": Color(0.52, 0.40, 0.30), "thick": 1.1},
+		&"fog": {"air": Color(0.56, 0.50, 0.44), "low": 1.0}}
 	# What a dump of machine parts does to a body: the heaps pull on anything
 	# ferrous, and the walls come down.
 	d.hazards = {&"magnetism": 0.6, &"collapse": 0.45}
@@ -120,6 +133,14 @@ static func make() -> BiomeDef:
 		&"sorter": {"weight": 1.2},
 	}
 	d.landmarks = [&"grown_hulk", &"blinking_stack", &"clerks_office", &"poured_pillar"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
+	# Who kept them: the sorter, who has the refuse into bins by what it is, and
+	# the wirer, who makes it work again.
+	d.home = {"households": {
+		&"sorter": {"wants": [&"sorted_bins", &"sorted_bins", &"shelf_salvage", &"basket"], "by_hearth": []},
+		&"wirer": {"wants": [&"workbench", &"coil", &"machine_lamp", &"sorted_bins"], "by_hearth": []},
+	}}
 	d.sound_bed = &"bed_wreck"
 	d.surface = _surface
 	d.scatter = _scatter
@@ -167,6 +188,10 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.SLAG_HEAP
 		if r < 0.086:
 			return PropKind.SCRAP_TREE
+		# What its people sorted by hand and bound: the land's own material
+		# (PropKind.MIDDEN_BALE).
+		if r < 0.096:
+			return PropKind.MIDDEN_BALE
 		if r > 0.60 and r < 0.604:
 			return PropKind.HULL
 		return PropKind.MAGNET_HEAP if r > 0.40 and r < 0.412 else BiomeScatter.NONE

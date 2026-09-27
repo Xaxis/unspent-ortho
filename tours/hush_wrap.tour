@@ -1,0 +1,9 @@
+# THE HUSH WRAP (GEAR.md §6, G8): a warm wrap lined with hush slate at the hem
+# and soles; the steps are heard as on moss, on any land (StealthNoise). What
+# it does is heard, not seen, so tests/gear/test_hush_wrap.gd measures it; this
+# is what it looks like worn.
+#   tools/tour.sh tours/hush_wrap.tour --seed=1 --hour=11 --weather=clear:0 --fit=wrap_hush
+coast calm
+place spawn
+wait 1.0
+shot 01-the-wrap-worn with worn:wrap_hush

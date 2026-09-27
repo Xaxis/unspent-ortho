@@ -463,9 +463,10 @@ static func _level_here(c: GenContext, tx: int, ty: int) -> int:
 			var l := c.w.level_at(tx + dx, ty + dy)
 			if l < 1:
 				continue
-			hist[l] = int(hist.get(l, 0)) + 1
-			if hist[l] > best_n:
-				best_n = hist[l]
+			var n := int(hist.get(l, 0)) + 1
+			hist[l] = n
+			if n > best_n:
+				best_n = n
 				best = l
 	return maxi(1, best)
 

@@ -126,3 +126,55 @@ func test_found_geometry_does_not_cut_under_the_orthographic_camera() -> void:
 	near(on[0].x, 10.0, 0.001, "under the lens slot 0 carries the player")
 	gt(on[0].w, 0.0, "and a reach the shader will act on")
 	gt(on[1].w, 0.0, "and the body beside them")
+
+
+## sight.gdshaderinc's `sight_cone`, as GDScript: 0 keep, 1 take, for a point
+## `wp` and an eye `eye` against the body in slot `p`. Held to the shader's text
+## below, so the two cannot drift.
+static func _cone(wp: Vector3, eye: Vector3, p: Vector4) -> float:
+	if p.w <= 0.0:
+		return 0.0
+	var own := maxf(0.0, p.w - Crowns.REACH)
+	var s := Vector3(p.x, p.y + 0.95, p.z)
+	var v := s - eye
+	var ln := v.length()
+	var a := v / ln
+	var r := wp - eye
+	var t := r.dot(a)
+	if t <= 0.0 or t > ln - (0.7 + own):
+		return 0.0
+	var d := (r - a * t).length()
+	var rim := (1.15 + own) * t / ln
+	return 1.0 - smoothstep(rim * 0.72, rim * 1.2, d)
+
+
+## A BODY'S OWN SHAPE IS NEVER IN ITS OWN WAY. Over the shoulder the cut opens
+## whatever stands between the eye and a body, keeping only SIGHT_KEEP in front
+## of the body's middle -- a person's depth. A keeper is a machine a gantry
+## across (radius 1.35), so its own front plates lay in the cone toward its own
+## middle and stippled away: the dark curl across the coast reaper's and the
+## plough's flanks at eye level, and gone with no keeper there.
+func test_a_big_body_does_not_cut_its_own_front() -> void:
+	var s := _slots()
+	var keeper := Vector2(0.0, 0.0)
+	var mobs: Array[Vector2] = [keeper]
+	Crowns.fill(s, Vector2(-3.0, 0.0), mobs, func(_p: Vector2) -> float: return 0.0, PackedFloat32Array([1.35]))
+	var eye := Vector3(-6.0, 2.0, 0.6)
+	var mid := Vector3(0.0, 0.95, 0.0)
+	# A plate on the keeper's near side, a little inside its own radius toward the eye.
+	var plate := mid + (eye - mid).normalized() * 1.2
+	eq(_cone(plate, eye, s[1]), 0.0, "the keeper's own near plate is kept (w %.2f)" % s[1].w)
+	# Something truly between the eye and the keeper still goes.
+	var between := mid + (eye - mid).normalized() * 3.0
+	gt(_cone(between, eye, s[1]), 0.5, "a thing between the eye and the keeper is still cut")
+	# A person-sized body is exactly what it was.
+	var small := _slots()
+	Crowns.fill(small, Vector2(-3.0, 0.0), mobs, func(_p: Vector2) -> float: return 0.0, PackedFloat32Array([0.35]))
+	near(small[1].w, Crowns.REACH, 1e-5, "a body no bigger than a person keeps the reach it had")
+	near(s[0].w, Crowns.REACH, 1e-5, "and the player keeps theirs")
+	# The shader says the same as the mirror.
+	var src := FileAccess.get_file_as_string("res://src/render/sight.gdshaderinc")
+	check(src.contains("const float SIGHT_REACH = %.1f;" % Crowns.REACH), "the shader knows the reach a person-sized body is written with")
+	check(src.contains("float own = max(0.0, p.w - SIGHT_REACH);"), "its own size is what the slot carries past that")
+	check(src.contains("t > len - (SIGHT_KEEP + own)"), "the keep grows by it")
+	check(src.contains("(SIGHT_RADIUS + own) * t / len"), "and so does the rim")

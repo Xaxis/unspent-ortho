@@ -1,0 +1,18 @@
+# The salt flats close up: its most characteristic ground from above and over
+# the shoulder at noon, then at the pans the plan ruled across it, and at 19:00.
+#   tools/tour.sh tours/lands_salt_close.tour --seed=7 --weather=clear:0
+coast calm
+hour 12
+place typical_salt_flats
+wait 3.0
+shot salt-above with land:salt_flats
+tap shoulder
+await shoulder 3
+wait 1.0
+shot salt-noon with land:salt_flats
+place pans
+wait 3.0
+shot pans-noon
+hour 19
+wait 2.0
+shot pans-golden

@@ -111,6 +111,8 @@ static func make() -> BiomeDef:
 		[Weather.GREY, 8, 0.0], [Weather.DRY_STORM, 8, 0.5],
 	]
 	d.mist = 0.02
+	# Its dust is glass grit off the broken sheet: grey-green and hard-edged.
+	d.weather_style = {&"dust": {"air": Color(0.56, 0.60, 0.54), "thick": 1.2}}
 	# Three at once and no shade to answer any of them: this is the landscape that
 	# is crossed with gear or not crossed.
 	#
@@ -133,6 +135,15 @@ static func make() -> BiomeDef:
 		&"skater": {"weight": 0.8, "hours": Vector2(9, 19), "grounds": ["rock", "salt"]},
 	}
 	d.landmarks = [&"cast_stones", &"evaporator", &"blinking_stack", &"poured_pillar"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
+	# Who kept them: the knapper, who knaps the fused plate into blades, and the
+	# stiller, who draws water through glass.
+	d.home = {"households": {
+		&"knapper": {"wants": [&"glass_blades", &"basket", &"shelf", &"coil"], "by_hearth": []},
+		&"stiller": {"wants": [&"glass_still", &"jars", &"jars", &"basket"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+	}}
 	# Its keeper: the anvil, the mast the strike fields are called through
 	# (src/core/sentinel/designs/anvil.gd, docs/LANDSCAPES.md).
 	d.sentinel = &"anvil"

@@ -479,16 +479,50 @@ extends TestCase
 ## labyrinth (GenSlots, `relief.slots`) and the salt flats' pans sited deeper in
 ## their own ground, neither among the six; the labyrinth's fields are built only
 ## where a landscape declares `slots`, so a world of the six never makes one.
+## RE-ACCEPTED AT GEN 36 (2026-09-26): the works are rows (`GenWorks._work`),
+## each composed from a stream keyed on the work and its tile, blind to other
+## works' pieces, and every prop's turn and scale hash from its kind, position
+## and work, not its id. Five tile arrays equal on all five seeds; only `props`
+## moves. With this change's seven source files put back to GEN 33, this test
+## passed on the previous hashes in the same session. Seed 7 at eye level (a
+## turf field, a clearcut, a drained fen, slag heaps, an orchard block): the
+## same works, each laid afresh. Solid props standing inside each other at 512
+## over seeds 1, 7, 42, 90210: 22/17/13/13 before, 18/20/16/16 after. Works on
+## one solid then took footing a step off a terrace lip (`_put_footed`), which
+## moved `props` again on seeds 1, 3, 7 and 42: shelters over twelve seeds at 512
+## went 8 (GEN 33) -> 20, of a designed 24.
+## RE-ACCEPTED AT GEN 38 (2026-09-26, provisional): the people's things are rows
+## (villages, ways in, road signs, remains, the spawn's view, survey sections,
+## vignette cells). Five tile arrays equal on all five seeds; only `props`
+## moves. Seed 7's spawn and a moss village at eye level: the same kinds of
+## thing where they were. Solid props inside each other at 512 over seeds 1, 7,
+## 42, 90210: 17/20/16/15 at GEN 36, 14/23/17/14 here.
+## GEN 39 (2026-09-26, the limestone caves roofed, GenAbove) CHANGED NO DIGEST:
+## the roof is laid only on a landscape declaring `BiomeDef.above`, none of the
+## six does, and GenAbove runs after every stage these hash. The caves' own
+## worlds move; tests/biome/test_cave_roofs.gd holds them.
+## RE-ACCEPTED AT GEN 40 (2026-09-26): regions are the plan's
+## (GenCountries.plan_regions on the landscape sampled every STEP tiles).
+## country, country2, level and blend are equal on all five seeds; `ground` and
+## `props` move with the places sited per region. Seed 7's map before and after:
+## the same landscapes; tips, circles and ruins moved, and the second walker's
+## treads stand on the south-east continent (1238,1366) where they stood on the
+## north-east (1414,374). Regions at 1840 (seeds 1, 42, 90210): 42/42/48 ->
+## 44/44/49, land in a region 98.5-98.9% -> 96.8-98.0%.
+## And again for the works' site search keeping what it learned (GenWorks._site):
+## only `props` moves. Works kinds over seeds 1, 7, 42, 90210 at 512 all held or
+## gained one (shelter, cistern, slag, orchard block); seed 7's archive at eye
+## level stands on its ash as before.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 1ad8f3f5 100053b8 4fd7a826 3c010e0d",
-	3: "bd96c6d3 1d22db86 1008c39c a4316902 7e58a668 13a8730e",
-	7: "ba7a972f 55af42cc 0f10d2e3 0f02d42c f555c41d e3913545",
-	42: "e0ad0bb3 b7ca1370 0c07876f 2f4b7f69 1565ed7e 5e53cfc5",
-	90210: "2659ea1f 66925798 c128779c 34b30d32 275c7664 75c0436c",
+	1: "054710a9 3eac3638 1ebd687b 100053b8 4fd7a826 559b79bf",
+	3: "bd96c6d3 1d22db86 d51b4ba3 a4316902 7e58a668 fc1e8e2f",
+	7: "ba7a972f 55af42cc 8eec15a7 0f02d42c f555c41d fe8cc703",
+	42: "e0ad0bb3 b7ca1370 f18fef97 2f4b7f69 1565ed7e 11a954d4",
+	90210: "2659ea1f 66925798 18341e08 34b30d32 275c7664 da85a0b9",
 }
 
 

@@ -126,6 +126,8 @@ static func make() -> BiomeDef:
 	dress.pale = [_w(P.LINEN[5]), _w(P.LINEN[4]), _w(P.LINEN[3])]
 	dress.bleach = _w(P.LINEN[4])
 	dress.facets = 5
+	# Its works pumped the sea in and moved brine: they are crusted with it.
+	dress.brine = true
 	# Nothing grows to build with, so a shelter here is sawn crust under tin.
 	dress.shelter = &"lean_to"
 	dress.sink = 0.1
@@ -159,6 +161,8 @@ static func make() -> BiomeDef:
 	# A white pan under nothing at all. It throws the night sky back harder than
 	# the snow does, and there is not a thing on it to cast a shadow.
 	d.night_sky = 1.40
+	# A dust storm here is the pan's own salt lifted: a white glare wall, not sand.
+	d.weather_style = {&"dust": {"air": Color(0.90, 0.89, 0.84), "thick": 1.2}}
 	# A warm cast taken out of the blue rather than added to the red: a light
 	# tint over 1 is one more gain on a landscape with no headroom left.
 	d.light_tint = Color(1.0, 0.985, 0.95)
@@ -166,6 +170,9 @@ static func make() -> BiomeDef:
 	# and heavy, and it does not break white. A chart-blue pool with a paper-white
 	# swash on a landscape with no headroom is two clipped things at once.
 	d.water_wash = Color(0.112, 0.250, 0.264, 0.92)
+	# Its typical ground is out among the pressure ridges, never an empty patch
+	# of plain crust with two stumps on it.
+	d.typical_among = Vector2i(PropKind.SALT_RIDGE, 16)
 	d.props = [PropKind.SALT_RIDGE, PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.BOULDER,
 		PropKind.BONES, PropKind.DEAD_TREE, PropKind.STONE_ORE, PropKind.TIN_ORE, PropKind.COPPER_ORE,
 		PropKind.DRIFTWOOD, PropKind.GORSE, PropKind.BUSH]
@@ -200,6 +207,15 @@ static func make() -> BiomeDef:
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"cast_stones", &"evaporator", &"clerks_office"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
+	# Who kept them: the raker who works the pans the machines abandoned, and the
+	# boiler who boils what brine is left down to salt.
+	d.home = {"households": {
+		&"raker": {"wants": [&"salt_rake", &"salt_cones", &"basket", &"shelf"], "by_hearth": []},
+		&"boiler": {"wants": [&"salt_cones", &"salt_cones", &"jars", &"creel"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+	}}
 	d.sound_bed = &"bed_bones"
 	d.music_motif = &"bonelands"
 	d.surface = _surface
@@ -245,9 +261,12 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.SALT:
-		var k := maxf(0.0, t.clump[i])
-		if r < 0.012 + k * 0.05:
-			# Pressure ridges run in lines where two plates met.
+		# PRESSURE RIDGES RUN IN LINES, along the cracks where two plates met
+		# (the fissure field's zero-set): a chained run across the plain, never
+		# a scatter of single tents. Off the cracks, only the odd one.
+		if absf(t.fissure[i]) < 0.022 and r < 0.42:
+			return PropKind.SALT_RIDGE
+		if r < 0.004 + maxf(0.0, t.clump[i]) * 0.012:
 			return PropKind.SALT_RIDGE
 		if r > 0.2 and r < 0.203:
 			return PropKind.SALT_HEAP
@@ -273,45 +292,75 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 ## that carried the salt off to somewhere that stopped wanting it.
 static func _works(L: Object) -> void:
 	var c: GenContext = L.c
-	var rng: RandomNumberGenerator = L.rng
-	var d: Vector2 = L.d
-	var nrm: Vector2 = L.nrm
 	var floors: Array = [Ground.SALT, Ground.PAN, Ground.GRAVEL, Ground.SAND]
 	# Pan batteries: two or three pans side by side, each a ruled rectangle,
 	# well inside the flat (blend 0.2): a pan half out in the next landscape is
 	# a gate nobody reads as the flats' own. Seed 1 at GEN 34 laid all five
 	# gates at blend 0.07-0.40 when the search allowed 0.4.
+	var pans: Array = []
 	for n in GenWorks._n(c, 2.0):
 		var p := GenWorks._site(L, 8, 1, floors, 34.0, 700, 0.2)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var half := Vector2(rng.randf_range(8.0, 11.0), rng.randf_range(5.0, 7.0))
-		GenWorks._record(c, &"pans", at, d, half, GenWorks.CUT)
-		# The bund: a gate at the middle of each long wall, survey posts at the
-		# corners, and a line of pipe carrying brine that never comes.
-		for sx: float in [-1.0, 1.0]:
-			GenWorks._put(L, PropKind.PAN_GATE, at + nrm * half.y * sx, nrm.angle(), -99, 0.4, true)
-			for sy: float in [-1.0, 1.0]:
-				GenWorks._put(L, PropKind.SURVEY, at + d * half.x * sy + nrm * half.y * sx, d.angle(), -99, 0.0, true)
-		GenWorks._run(L, PropKind.PIPE, at + d * (half.x + 1.0), d, rng.randi_range(3, 5), 2.0, -99, 0.25)
-		# What the rakes left standing in the pan, in rows along the bearing.
-		for gx in range(-2, 3):
-			if rng.randf() < 0.3:
-				continue
-			GenWorks._put(L, PropKind.SALT_HEAP, at + d * gx * 3.4 + nrm * rng.randf_range(-1.5, 1.5), 0.0, -99, 0.3)
-		GenWorks._put(L, PropKind.SIGN, at - d * (half.x + 1.6), (-d).angle(), -99, 0.2)
-		GenWorks._about(L, PropKind.DEBRIS, at, 2, half.y, half.x)
-	# The intake that drained the sea into all this, standing on the rim with
-	# its pipe run heading out over the crust.
+		if p.x >= 0 and GenWorks._work(L, &"_pans", Vector2(p) + Vector2(0.5, 0.5)):
+			pans.append(L.w.landmarks.back())
+	# The intake that drained the sea into all this, standing on the rim of a
+	# battery with its pipe run heading out along the bund. ON THE RIM, not on a
+	# dart of its own: the rake dens on its brine house and the depot stands at
+	# the busiest pans, and the two are meant to be one place
+	# (test_in_game:test_what_a_broken_depot_spends_is_what_a_keeper_eats). A
+	# brine house thrown anywhere stood sixty tiles and more from any yard.
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
 	for n in GenWorks._n(c, 1.0):
+		var stood := false
+		for m: Dictionary in pans:
+			var half: Vector2 = m.half
+			for side: float in [1.0, -1.0]:
+				if not stood:
+					stood = GenWorks._work(L, &"_brine_house", (m.pos as Vector2) + nrm * side * (half.y + 5.0) - d * half.x * 0.5)
+		if stood:
+			continue
 		var p := GenWorks._site(L, 5, 2, [], 40.0, 500, 0.5)
-		if p.x < 0:
+		if p.x >= 0:
+			GenWorks._work(L, &"_brine_house", Vector2(p) + Vector2(0.5, 0.5))
+
+
+static func _pans(L: Object, at: Vector2, _a: Array) -> bool:
+	var rng: RandomNumberGenerator = L.rng
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	var half := Vector2(rng.randf_range(8.0, 11.0), rng.randf_range(5.0, 7.0))
+	GenWorks._record(L.c, &"pans", at, d, half, GenWorks.CUT)
+	# The brine works that fed this battery: a pump house at the head of the
+	# pans (crusted with it, BiomeDressing.brine) and its pipe run in along
+	# the long wall.
+	var head := at - d * (half.x + 3.0) + nrm * half.y * 0.6
+	if GenWorks._put(L, PropKind.PUMP_HOUSE, head, d.angle(), -99, 0.8) != null:
+		GenWorks._run(L, PropKind.PIPE, head + d * 1.8, d, maxi(2, int(half.x * 0.6)), 2.0, -99, 0.15)
+	# The bund: a gate at the middle of each long wall, survey posts at the
+	# corners, and a line of pipe carrying brine that never comes.
+	for sx: float in [-1.0, 1.0]:
+		GenWorks._put(L, PropKind.PAN_GATE, at + nrm * half.y * sx, nrm.angle(), -99, 0.4, true)
+		for sy: float in [-1.0, 1.0]:
+			GenWorks._put(L, PropKind.SURVEY, at + d * half.x * sy + nrm * half.y * sx, d.angle(), -99, 0.0, true)
+	GenWorks._run(L, PropKind.PIPE, at + d * (half.x + 1.0), d, rng.randi_range(3, 5), 2.0, -99, 0.25)
+	# What the rakes left standing in the pan, in rows along the bearing.
+	for gx in range(-2, 3):
+		if rng.randf() < 0.3:
 			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		if GenWorks._put(L, PropKind.PUMP_HOUSE, at, d.angle(), -99, 1.0) == null:
-			continue
-		GenWorks._record(c, &"brine_house", at, d, Vector2(4.0, 3.0))
-		GenWorks._run(L, PropKind.PIPE, at + d * 2.5, d, rng.randi_range(4, 6), 2.0, -99, 0.2)
-		GenWorks._about(L, PropKind.WATER_TANK, at, 1, 3.0, 5.0)
-		GenWorks._about(L, PropKind.GRAVE, at, 2, 5.0, 8.0)
+		GenWorks._put(L, PropKind.SALT_HEAP, at + d * gx * 3.4 + nrm * rng.randf_range(-1.5, 1.5), 0.0, -99, 0.3)
+	GenWorks._put(L, PropKind.SIGN, at - d * (half.x + 1.6), (-d).angle(), -99, 0.2)
+	GenWorks._about(L, PropKind.DEBRIS, at, 2, half.y, half.x)
+	return true
+
+
+static func _brine_house(L: Object, at: Vector2, _a: Array) -> bool:
+	var d: Vector2 = L.d
+	var house := GenWorks._put_footed(L, PropKind.PUMP_HOUSE, at, d.angle(), 1.0)
+	if house == null:
+		return false
+	at = house.pos
+	GenWorks._record(L.c, &"brine_house", at, d, Vector2(4.0, 3.0))
+	GenWorks._run(L, PropKind.PIPE, at + d * 2.5, d, L.rng.randi_range(4, 6), 2.0, -99, 0.2)
+	GenWorks._about(L, PropKind.WATER_TANK, at, 1, 3.0, 5.0)
+	GenWorks._about(L, PropKind.GRAVE, at, 2, 5.0, 8.0)
+	return true

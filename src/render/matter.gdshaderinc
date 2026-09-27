@@ -74,6 +74,16 @@ const int M_VITRIFIED = 96;
 const int M_TIDEFLAT = 97;
 const int M_CITY_FLOOR = 98;
 const int M_OVERGROWN = 99;
+const int M_CAST_FLOOR = 100;
+const int M_MACHINE_DECK = 101;
+const int M_SULPHUR = 102;
+const int M_DESERT_PAVEMENT = 103;
+const int M_SEA_ICE = 104;
+const int M_PINE_FLOOR = 105;
+const int M_SCRAP_FLOOR = 106;
+const int M_BOG_FLOOR = 107;
+const int M_MIDDEN_FLOOR = 108;
+const int M_ORCHARD_SWARD = 109;
 const int M_STRATA_BONE = 133;
 const int M_STRATA_GLASS = 139;
 const int M_STRATA_TIDE = 140;
@@ -82,6 +92,10 @@ const int M_STRATA_REFUSE = 142;
 const int M_STRATA_CRAG = 143;
 const int M_STRATA_DECK = 145;
 const int M_STRATA_ROOTED = 146;
+const int M_STRATA_CAST = 147;
+const int M_STRATA_MACHINE = 148;
+const int M_STRATA_MESA = 149;
+const int M_STRATA_FLOE = 150;
 
 bool mark_ground(int m) {
 	return (m >= MARK_GROUND_A0 && m <= MARK_GROUND_A1) || (m >= MARK_GROUND_B0 && m <= MARK_GROUND_B1);
@@ -208,6 +222,19 @@ vec4 matter_of(int m) {
 	else if (m == M_CITY_FLOOR) { r = vec4(0.80, 0.40, 0.012, 0.0); }
 	// OVERGROWN: the slab under a damp mat of moss and leaves, softer and matte.
 	else if (m == M_OVERGROWN) { r = vec4(0.88, 0.30, 0.025, 0.0); }
+	// CAST_FLOOR / STRATA_CAST: the machines' own casting, dense and trowelled,
+	// a little glossy: the one floor in the world somebody still maintains.
+	else if (m == M_CAST_FLOOR) { r = vec4(0.52, 0.52, 0.006, 0.0); }
+	else if (m == M_STRATA_CAST) { r = vec4(0.56, 0.50, 0.010, 0.0); }
+	// MACHINE_DECK / STRATA_MACHINE: machined plate, kept: smooth, a little metal.
+	// Wind-scoured, so not a mirror: at 0.3 every terrain facet lit apart.
+	else if (m == M_SEA_ICE) { r = vec4(0.5, 0.7, 0.030, 0.0); }
+	else if (m == M_STRATA_FLOE) { r = vec4(0.22, 0.85, 0.040, 0.0); }
+	else if (m == M_DESERT_PAVEMENT) { r = vec4(0.80, 0.44, 0.015, 0.0); }
+	else if (m == M_STRATA_MESA) { r = vec4(0.84, 0.38, 0.060, 0.0); }
+	else if (m == M_SULPHUR) { r = vec4(0.46, 0.60, 0.050, 0.0); }
+	else if (m == M_MACHINE_DECK) { r = vec4(0.42, 0.58, 0.004, 0.18); }
+	else if (m == M_STRATA_MACHINE) { r = vec4(0.40, 0.60, 0.006, 0.22); }
 	// STRATA_DECK: the broken edge of a cast deck.
 	else if (m == M_STRATA_DECK) { r = vec4(0.78, 0.40, 0.050, 0.0); }
 	else if (mark_strata(m)) { r = vec4(0.82, 0.40, 0.050, 0.0); }  // cliff strata
@@ -352,8 +379,12 @@ float matter_height(int m, vec3 wp, vec2 p) {
 	} else if (m == M_STRATA_CAVE) {
 		// STRATA_CAVE: flowstone curtains, rounded drapes long in height and
 		// narrow across, over the rippled rims of the flow that built them.
-		float drape = matter_fbm(vec2(p.x * 3.2, p.y * 0.35));
-		h = sin(p.x * 9.0 + drape * 6.0) * 0.35 + drape * 0.5 + matter_fbm(p * 2.4) * 0.15;
+		// No sine: a sine laid the drapes at one pitch, and the lamp read an
+		// even rhythm of bands down every wall, which is masonry and not
+		// flowstone. Drapes of every width, wandering, running into each other.
+		float drape = matter_fbm(vec2(p.x * 1.1 + matter_fbm(vec2(p.y * 0.4, p.x * 0.3)) * 2.0, p.y * 0.3));
+		float fine = matter_fbm(vec2(p.x * 3.7, p.y * 0.5));
+		h = drape * 0.65 + fine * 0.25 + matter_fbm(p * 2.4) * 0.1;
 	} else if (m == M_STRATA_REFUSE) {
 		// STRATA_REFUSE: bales pressed into the wall, lumped at the scale of a
 		// crushed cabinet, over the bands they were sorted into.
@@ -384,6 +415,29 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		vec2 q = vec2(p.x * 1.1 + matter_fbm(p * 0.6) * 1.2, p.y * 0.45);
 		vec3 cd = matter_cells(q);
 		h = smoothstep(0.0, 0.45, cd.y - cd.x) + matter_fbm(p * 5.0) * 0.18;
+	} else if (m == M_SEA_ICE) {
+		// SEA_ICE: each floe's rafted edge ridged up where it rode over the next.
+		vec3 cd = matter_cells(p * 0.35 + matter_fbm(p * 0.2) * 1.2);
+		h = (1.0 - smoothstep(0.0, 0.1, cd.y - cd.x)) * 0.9 + matter_fbm(p * 1.6) * 0.2;
+	} else if (m == M_STRATA_FLOE) {
+		// STRATA_FLOE: melt runnels down the face.
+		h = matter_fbm(vec2(p.x * 4.0, p.y * 0.6)) * 0.8 + matter_fbm(p * 2.0) * 0.2;
+	} else if (m == M_DESERT_PAVEMENT) {
+		// DESERT_PAVEMENT: the wind-scoured floor's gentle swell. The stones are
+		// pigment; given relief each, the lit cells read as a floor of craters.
+		h = matter_fbm(p * 0.9) * 0.7 + matter_fbm(p * 3.0) * 0.3;
+	} else if (m == M_STRATA_MESA) {
+		// STRATA_MESA: hard bands stand proud, soft ones weather back; the
+		// caprock (top of the face) proudest of all.
+		float dt = (floor(wp.y / 0.5 - 0.002) + 1.0) * 0.5 - wp.y;
+		// Level bands: the wander here is what swirled them at a low sun.
+		float band = sin((wp.y + (matter_fbm(p * 0.05) - 0.5) * 0.03) * 33.0) * 0.5 + 0.5;
+		h = band * 0.55 + matter_fbm(p * 2.2) * 0.2 + (1.0 - smoothstep(0.03, 0.07, dt)) * 0.6;
+	} else if (m == M_SULPHUR) {
+		// SULPHUR: rimstone -- lobed pools, each rim standing proud of the pool
+		// below it, where the hot water laid its sinter.
+		vec3 cd = matter_cells(p * 0.9 + matter_fbm(p * 0.4) * 1.5);
+		h = smoothstep(0.0, 0.12, cd.y - cd.x) * 0.3 + (1.0 - smoothstep(0.0, 0.08, cd.y - cd.x)) * 0.7;
 	} else if (m == M_CITY_FLOOR || m == M_OVERGROWN) {
 		// CITY_FLOOR: the aggregate of a poured slab, fine and shallow.
 		h = matter_fbm(p * 4.0) * 0.7 + matter_fbm(p * 0.7 + 3.0) * 0.3;
@@ -405,6 +459,12 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		// SALT and PAN: polygon plates lifted at their rims.
 		vec3 cd = matter_cells(p * 0.9);
 		h = smoothstep(0.0, 0.16, cd.y - cd.x);
+		if (m == 55) {
+			// And the salt's pressure ridges (world.gdshader, SALT), standing up
+			// along the great polygons' edges.
+			vec3 big = matter_cells(p * 0.22 + vec2(ink_vnoise(p * 0.05), ink_vnoise(p * 0.05 + 7.0)) * 2.0);
+			h += (1.0 - smoothstep(0.0, 0.09, big.y - big.x)) * 1.2;
+		}
 	} else if (m == 48) {
 		// FEN: hummock and hollow, which is the SHAPE of a bog and the one thing
 		// it had none of -- it shared the generic growth-mat clump below, at a
@@ -541,29 +601,43 @@ float matter_height(int m, vec3 wp, vec2 p) {
 // NORMAL is in VIEW space in fragment(); the two screen derivatives are the
 // view's own x and y, so the gradient goes straight in. The minus on y is
 // because FRAGCOORD counts down the screen and view y counts up.
-vec3 matter_bump(vec3 n, vec3 wp, int m, float relief) {
+// The grain's relief, with the plane chosen from `face`, the face's normal in
+// world space (`matter_bump` below works it out from the derivatives).
+// Near a tie between the face's two strongest axes the two planes' grains are
+// BLENDED. Chosen hard, a face near 45 degrees took one plane or the other quad
+// by quad, the field jumped between the two grains, and the jump's slope,
+// clamped, tipped single pixels right away from a hard light: under a tear's
+// spotlight a lit cave lip came out peppered with black dots (cave-walls.tour
+// frame 02). The blend is only steady if `face` is: from the derivatives it is
+// noisy quad to quad, so world.gdshader hands the interpolated normal.
+vec3 matter_bump_on(vec3 n, vec3 face, vec3 wp, int m, float relief) {
 	if (relief <= 0.0) {
 		return n;
 	}
-	// WHICH PLANE THE GRAIN IS DRAWN IN, and the land never noticed this was
-	// missing because the land is flat. `matter_height` was keyed on `wp.xz`
-	// alone, so on a VERTICAL face the field does not change with height and the
-	// surface gets a smeared vertical streak instead of a grain. Every ground in
-	// the game is near-horizontal, so it never showed — and a village is walls.
-	//
-	// The face's own normal comes back out of the derivatives that are already
-	// being taken two lines down, so this needs no varying, no tangent basis and
-	// no new parameter at any call site. On anything near-horizontal `p` IS
-	// `wp.xz` and nothing about the land moves.
-	vec3 fn = cross(dFdx(wp), dFdy(wp));
-	vec3 a = abs(fn);
-	vec2 p = wp.xz;
-	if (a.y < a.x && a.z < a.x) {
-		p = wp.zy;
-	} else if (a.y < a.z) {
-		p = wp.xy;
+	vec3 a = abs(face);
+	vec2 p1 = wp.xz;
+	vec2 p2 = wp.zy;
+	float a1 = a.y;
+	float a2 = a.x;
+	if (a.x >= a.y && a.x >= a.z) {
+		p1 = wp.zy;
+		a1 = a.x;
+		p2 = a.y >= a.z ? wp.xz : wp.xy;
+		a2 = max(a.y, a.z);
+	} else if (a.z >= a.y) {
+		p1 = wp.xy;
+		a1 = a.z;
+		p2 = a.y >= a.x ? wp.xz : wp.zy;
+		a2 = max(a.y, a.x);
+	} else {
+		p2 = a.x >= a.z ? wp.zy : wp.xy;
+		a2 = max(a.x, a.z);
 	}
-	float h = matter_height(m, wp, p);
+	float lead = smoothstep(0.0, 0.25, (a1 - a2) / max(a1, 1e-6));
+	float h = matter_height(m, wp, p1);
+	if (lead < 1.0) {
+		h = mix(0.5 * (h + matter_height(m, wp, p2)), h, lead);
+	}
 	float wx = max(length(dFdx(wp)), 1e-5);
 	float wy = max(length(dFdy(wp)), 1e-5);
 	vec2 g = vec2(dFdx(h) / wx, -dFdy(h) / wy) * relief;
@@ -572,6 +646,20 @@ vec3 matter_bump(vec3 n, vec3 wp, int m, float relief) {
 	g = clamp(g, vec2(-1.0), vec2(1.0));
 	return normalize(n - vec3(g, 0.0));
 }
+
+vec3 matter_bump(vec3 n, vec3 wp, int m, float relief) {
+	// WHICH PLANE THE GRAIN IS DRAWN IN, and the land never noticed this was
+	// missing because the land is flat. `matter_height` was keyed on `wp.xz`
+	// alone, so on a VERTICAL face the field does not change with height and the
+	// surface gets a smeared vertical streak instead of a grain. Every ground in
+	// the game is near-horizontal, so it never showed — and a village is walls.
+	//
+	// Here the face's own normal comes back out of the derivatives, which needs
+	// no varying and no new parameter; a caller that has the face's world normal
+	// hands it to `matter_bump_on` instead, which is steadier (see there).
+	return matter_bump_on(n, cross(dFdx(wp), dFdy(wp)), wp, m, relief);
+}
+
 
 // --- What has happened to it ------------------------------------------------
 
@@ -615,10 +703,17 @@ vec3 matter_worn(vec3 c, vec4 wear, vec3 n_world, vec3 wp, float amount, out flo
 	// A seam or a lip: where two panels or two plates meet, which is where a
 	// crystal grows and a weld weeps. Only on something BUILT -- the land has no
 	// seams, and giving it any drew a honeycomb of cells over open ground.
+	// NEVER THE WHOLE NET. Every cell edge weeping at once drew a tan honeycomb
+	// over a tower's face at eye level: a pattern laid on the wall, not
+	// something that happened to it. Only a few lengths of seam weep (a noise
+	// much broader than the cells picks which), and on a flank only where a
+	// streak is already running, so what shows is a spall's rim here and a
+	// joint weeping there.
 	float seam = 0.0;
 	if (amount > 0.5) {
 		vec3 cd = matter_cells(vec2(p.x + wp.y * 1.7, p.y - wp.y * 1.3) * 3.3);
-		seam = smoothstep(0.11, 0.0, cd.y - cd.x);
+		float which = smoothstep(0.62, 0.8, ink_vnoise(vec2(p.x + wp.y * 0.9, p.y - wp.y * 0.7) * 0.55 + 31.0));
+		seam = smoothstep(0.08, 0.0, cd.y - cd.x) * which;
 	}
 	// WEATHERING FOLLOWS FORM. On a flank what weeps out of a fixing or a seam
 	// RUNS DOWN: the field is keyed on the face's own horizontal coordinate and
@@ -631,6 +726,7 @@ vec3 matter_worn(vec3 c, vec4 wear, vec3 n_world, vec3 wp, float amount, out flo
 	float along = dot(p, vec2(-fn.y, fn.x));
 	float streak = ink_vnoise(vec2(along * 3.1, wp.y * 0.35 + 5.0)) * 0.7 + ink_vnoise(vec2(along * 9.0, wp.y * 0.8)) * 0.3;
 	float run = mix(ink_vnoise(vec2(p.x * 0.8 + wp.y * 2.6, p.y * 3.4)), streak, flank);
+	seam *= mix(1.0, smoothstep(0.45, 0.7, streak), flank);
 	float grain = ink_vnoise(p * 2.7 + wp.y * 1.9);
 	// 1. RUST: out of the seams and down the flanks, worst where nothing dries.
 	float rust = wear.r * amount
@@ -670,6 +766,58 @@ vec3 matter_worn(vec3 c, vec4 wear, vec3 n_world, vec3 wp, float amount, out flo
 	if (frost > 0.001) {
 		c = mix(c, MATTER_FROST, clamp(frost, 0.0, 0.78));
 		rough_add -= frost * 0.42;
+	}
+	return c;
+}
+
+// THE LAND'S GROWTH ON WHAT PEOPLE BUILT (BiomeDef.overgrowth), keyed on FORM as
+// matter_worn is, never on blobs: moss cushions on what faces the sky (every
+// ledge, sill and parapet), ivy let down in strands from each storey line on a
+// flank, each strand its own length, and a green stain where run-off feeds it.
+// Dense low and thinning upward. `amount` is how much a surface takes at all
+// (the land itself is its own growth and takes none).
+const vec3 MATTER_MOSS = vec3(0.173, 0.267, 0.188);   // MOSS[2]
+const vec3 MATTER_IVY = vec3(0.114, 0.235, 0.255);    // SPRUCE[2]
+const vec3 MATTER_IVY_LIT = vec3(0.275, 0.412, 0.228); // MOSS[3]
+
+vec3 matter_grown(vec3 c, vec3 n_world, vec3 wp, float amount, float storey, inout float rough_add) {
+	if (amount <= 0.001 || sky_view.z <= 0.0) {
+		return c;
+	}
+	float g = texture(sky_growth, wp.xz * sky_view.z).r * amount;
+	if (g <= 0.004) {
+		return c;
+	}
+	float up = n_world.y;
+	float flank = clamp(0.78 - up, 0.0, 1.0);
+	// Thinning upward: the ground's damp feeds it from below.
+	float low = 1.0 - smoothstep(4.0, 22.0, wp.y);
+	// Ledges: moss on anything facing the sky.
+	float ledge = smoothstep(0.55, 0.85, up) * smoothstep(0.35, 0.6, ink_vnoise(wp.xz * 1.9 + 3.0) * 0.7 + 0.3 * ink_vnoise(wp.xz * 6.0));
+	// Ivy: strands hung from each storey line, on the face's own horizontal
+	// coordinate, each let down its own distance. A building raised in storeys
+	// says where its floor lines are (`storey`, 1 + height in storeys, from the
+	// model), so the ivy hangs off its real ledges; anything else is taken in
+	// storeys of 2.4 units of world height.
+	vec2 fn = normalize(n_world.xz + vec2(1e-4, 0.0));
+	float along = dot(wp.xz, vec2(-fn.y, fn.x));
+	float level = storey != 0.0 ? storey - 1.0 : wp.y / 2.4;
+	float below = 1.0 - fract(level);
+	float floor_i = floor(level);
+	// Strands: two octaves across, so they are thin and uneven and never bars;
+	// each ends raggedly, and the leaves break every edge.
+	float strand = ink_vnoise(vec2(along * 7.3, floor_i * 7.1)) * 0.6 + ink_vnoise(vec2(along * 19.0, 3.0)) * 0.4;
+	float reach = 0.15 + 0.85 * ink_vnoise(vec2(along * 1.1, floor_i * 3.3 + 11.0))
+		+ (ink_vnoise(vec2(along * 23.0, wp.y * 4.0)) - 0.5) * 0.18;
+	float leaves = smoothstep(0.2, 0.55, ink_vnoise(vec2(along * 14.0, wp.y * 14.0)));
+	float ivy = flank * smoothstep(0.5, 0.66, strand) * (1.0 - smoothstep(reach * 0.8, reach, below)) * mix(0.45, 1.0, low) * mix(0.35, 1.0, leaves);
+	// Run-off: a green stain down the flank where water feeds it.
+	float stain = flank * smoothstep(0.55, 0.8, ink_vnoise(vec2(along * 2.0, wp.y * 0.3 + 5.0))) * 0.4;
+	float grown = clamp(max(max(ledge * mix(0.6, 1.0, low), ivy), stain) * g, 0.0, 0.9);
+	if (grown > 0.001) {
+		vec3 leaf = mix(MATTER_IVY, MATTER_IVY_LIT, ink_vnoise(wp.xz * 5.0 + wp.y * 3.0));
+		c = mix(c, ledge > ivy ? mix(MATTER_MOSS, MATTER_IVY_LIT, 0.3) : leaf, grown);
+		rough_add += grown * 0.25;
 	}
 	return c;
 }

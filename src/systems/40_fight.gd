@@ -96,6 +96,13 @@ func _read_input(delta: float) -> void:
 			sim.press_heavy(game.camera.aim())
 	if Input.is_action_just_pressed(&"dodge") and not shift:
 		sim.press_dodge()
+	# The unbuilder's hands (FightKit.unbuild): use held at an open machine's part
+	# strips it, gathered through its openings.
+	if sim.hero.kit.unbuild and Input.is_action_pressed(&"use"):
+		for m in sim.mobs:
+			if sim.can_strip(m):
+				sim.strip(m, delta * 1000.0)
+				break
 
 
 func _in_fight() -> bool:
@@ -367,6 +374,54 @@ func _handle(events: Array[Dictionary]) -> void:
 				_on_hit(e)
 			&"struck":
 				_on_struck(e)
+			&"rake":
+				_rake_marks(e)
+			&"locked":
+				# The lock (FightKit.lock): a standing sheet of drowned light across
+				# the way passed, edge to edge of the opening and as tall as a body,
+				# for as long as it is shut to them: ruled lines stacked up it, the
+				# lowest the brightest, and a faint light in the opening itself.
+				_locked_at = Time.get_ticks_msec() / 1000.0
+				var a: Vector2 = e.from
+				var b: Vector2 = e.to
+				for k in 6:
+					var y := 0.15 + k * 0.3
+					MobFx.line(fx, _at3(a, y), _at3(b, y), Palette.BRINE[5 - mini(k, 3)], FightKit.LOCK_SECONDS)
+				MobFx.glow(fx, _at3((a + b) * 0.5, 0.9), Palette.BRINE[4], maxf(1.2, a.distance_to(b)), FightKit.LOCK_SECONDS)
+				Events.sfx.emit(&"hit_plate", _at3(e.at))
+			&"stripped":
+				# Its working part comes away in the hands, and into the creel.
+				var m: MobState = e.mob
+				var item: StringName = e.item
+				_stripped_at = Time.get_ticks_msec() / 1000.0
+				game.inventory.add(item)
+				Events.took.emit(item, 1)
+				Events.sfx.emit(&"hit_plate", _at3(m.pos))
+				MobFx.burst(fx, _part_at(m), 0.9, m.id, Palette.LENS[3])
+				Events.message.emit("Stripped: %s." % UiRules.item_name(item))
+			&"grip_failed":
+				# The anchor held (FightKit.anchor): the grip rang off a body that
+				# would not be taken, and the ground round the feet says why.
+				_grip_failed_at = Time.get_ticks_msec() / 1000.0
+				MobFx.clang(fx, _at3(hero.pos, 0.9), int(sim.now))
+				MobFx.ring(fx, _at3(hero.pos), Palette.STONE[4], hero.radius + 0.5, 0.4)
+				Events.sfx.emit(&"hit_plate", player.position)
+			&"cabled":
+				# The cable brace's line took a working part (FightKit.cable): the
+				# part glints where the hook bit, as the stall goes in.
+				_cabled_at = Time.get_ticks_msec() / 1000.0
+				var cm: MobState = e.mob
+				MobFx.glint(fx, _part_at(cm), Palette.LENS[3], cm.id, 0.8)
+				MobFx.clang(fx, _part_at(cm), int(sim.now))
+			&"turned":
+				# The scale coat turned a blow at the back (FightKit.scale): the
+				# scales ring where it struck and throw a glint, and no hurt.
+				_turned_at = Time.get_ticks_msec() / 1000.0
+				var by: MobState = e.attacker
+				var back := (by.pos - hero.pos).normalized() * hero.radius
+				MobFx.clang(fx, _at3(hero.pos + back, 1.1), int(sim.now))
+				MobFx.glint(fx, _at3(hero.pos + back, 1.2), Palette.RUST[4], int(sim.now), 0.7)
+				Events.sfx.emit(&"hit_plate", player.position)
 			&"hurt":
 				_on_hurt(e)
 			&"killed":
@@ -388,6 +443,9 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"windup":
 				var m: MobState = e.mob
 				Events.sfx.emit(&"windup", _at3(m.pos))
+				# A keeper's come-round (Brains._come_round), for the tour's claim.
+				if bool(e.get("come_round", false)):
+					_came_round_at = Time.get_ticks_msec() / 1000.0
 				if m.blow != null and m.node is Mob:
 					# Over the WORKING PART, flicked down at it. The tell has to
 					# send the eye to the side that opens — the side that hurts
@@ -416,7 +474,8 @@ func _handle(events: Array[Dictionary]) -> void:
 						MobFx.tell_line(fx, _at3(Vector2(lane.x, lane.y)), m.facing, lane.z, lane.w, Palette.LINEN[5], m.blow.windup / 1000.0)
 					else:
 						var ring := FightRules.tell_ring(m.pos, m.facing, m.radius, m.blow)
-						MobFx.tell_ring(fx, _at3(Vector2(ring.x, ring.y)), Palette.LINEN[5], ring.z, m.blow.windup / 1000.0)
+						# Heard through a wall with the listener's ear (FightKit.listen).
+						MobFx.tell_ring(fx, _at3(Vector2(ring.x, ring.y)), Palette.LINEN[5], ring.z, m.blow.windup / 1000.0, hero.kit.listen)
 			&"charge":
 				var m: MobState = e.mob
 				MobFx.puffs(fx, _at3(m.pos - m.bearing * m.radius), -m.bearing, _dust_colour(m.pos), 2, 0.5 + m.radius * 0.4, m.id + int(sim.now))
@@ -428,6 +487,9 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"filed":
 				# Nothing is said: machines seeing further is what the player notices.
 				Snatch.file(game.body)
+			&"holding":
+				if bool(e.get("seen", false)):
+					Events.ring_held.emit((e.mob as MobState).kind)
 			&"outcome":
 				_on_outcome(e)
 
@@ -470,6 +532,76 @@ func _on_hit(e: Dictionary) -> void:
 ## where it landed and nowhere else: no hitstop and no shake, because the
 ## player's hands did nothing, and no `Events.hit`, because every reader of that
 ## signal means the player struck something.
+## A lattice discharge (FightKit.lattice): a crackle from the body struck to the
+## one it jumped to, three kinked strokes of cold light for a fifth of a second,
+## so the player sees why a machine they never touched took the hit. A line
+## (MobFx.line) keeps its pixel width at both cameras.
+func _crackle(from: Vector2, m: MobState, h: float) -> void:
+	var fx := _fx_parent()
+	var y := clampf(h * 0.5, 0.35, 0.7)
+	var a := _at3(from, y)
+	var b := _at3(m.pos, y)
+	var side := Vector3(-(b - a).z, 0.0, (b - a).x).normalized()
+	var pts: Array[Vector3] = [a]
+	for k in 2:
+		var t := (float(k) + 1.0) / 3.0
+		var kink := (Rng.hash01(m.id, int(sim.now), k) - 0.5) * 0.7
+		pts.append(a.lerp(b, t) + side * kink + Vector3(0.0, kink * 0.3, 0.0))
+	pts.append(b)
+	for k in 3:
+		MobFx.line(fx, pts[k], pts[k + 1], Palette.COLD[3], 0.2)
+
+
+## Real second the last rake was drawn, and the last grip failed on an anchored
+## player, for the tour's `raked` and `grip_failed`.
+var _raked_at := -INF
+var _grip_failed_at := -INF
+var _turned_at := -INF
+var _cabled_at := -INF
+var _came_round_at := -INF
+var _locked_at := -INF
+var _stripped_at := -INF
+
+
+## `raked`: a rake's tines are on the ground now (they stand 0.35 s);
+## `grip_failed`: a grip rang off a rooted player just now.
+func tour_seen(what: StringName) -> bool:
+	var now := Time.get_ticks_msec() / 1000.0
+	match what:
+		&"raked":
+			return now - _raked_at < 0.35
+		&"grip_failed":
+			return now - _grip_failed_at < 0.4
+		&"turned":
+			return now - _turned_at < 0.4
+		&"cabled":
+			return now - _cabled_at < 0.6
+		&"came_round":
+			return now - _came_round_at < 0.4
+		&"locked":
+			return now - _locked_at < FightKit.LOCK_SECONDS
+		&"stripped":
+			return now - _stripped_at < 1.0
+	return false
+
+
+## A rake (FightKit.rake): the tines drawn across the ground ahead, five short
+## strokes fanned over the arc, and a glint on the part of every body it holds
+## open, so the player sees what the heavy has opened before it comes down.
+func _rake_marks(e: Dictionary) -> void:
+	_raked_at = Time.get_ticks_msec() / 1000.0
+	var fx := _fx_parent()
+	var from: Vector2 = e.from
+	var facing: float = e.facing
+	for k in 5:
+		var a := facing + FightKit.RAKE_ARC * (float(k) / 2.0 - 1.0)
+		var dir := Vector2.from_angle(a)
+		MobFx.line(fx, _at3(from + dir * 1.0, 0.06), _at3(from + dir * FightKit.RAKE_REACH, 0.06), Palette.LINEN[4], 0.35)
+	for m: MobState in (e.bodies as Array):
+		MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id, 0.7)
+	Events.sfx.emit(&"hit_plate", _at3(from))
+
+
 func _on_struck(e: Dictionary) -> void:
 	var m := e.target as MobState
 	if m == null:
@@ -477,6 +609,8 @@ func _on_struck(e: Dictionary) -> void:
 	var from: Vector2 = e.from
 	var fx := _fx_parent()
 	var h: float = m.row.get("height", 1.0)
+	if bool(e.get("arc", false)):
+		_crackle(from, m, h)
 	var dir := (m.pos - from).normalized()
 	var impact := _at3(m.pos - dir * m.radius, clampf(h * 0.5, 0.35, 0.7))
 	if e.plate:
@@ -577,6 +711,11 @@ func _on_outcome(e: Dictionary) -> void:
 			var taken_at := hero.pos
 			var r := Outcomes.carried(game.body, game.inventory, game.clock, game.world, game.query, hero.pos)
 			var bag := Survival.leave_bag(game, taken_at)
+			var home := Outcomes.home_hearth(_holdings(), taken_at, game.world, game.query)
+			if not home.is_empty():
+				r.pos = home.pos
+				r.facing = home.facing
+				r.line = HOME_LINE
 			hero.pos = r.pos
 			hero.facing = r.facing
 			hero.throw_until = 0.0
@@ -616,6 +755,18 @@ func _last_bag() -> WorldProp:
 		if best < 0 or float(state.bags[id]) >= float(state.bags[best]):
 			best = id
 	return game.world.prop(best) if best >= 0 else null
+
+
+const HOME_LINE := "You wake by your own fire, hands raw. The lamp is out."
+
+
+## The player's holdings in the realm they are in, from whichever system keeps
+## them (46_settlements), found by its `places` rather than its name.
+func _holdings() -> Array:
+	for sys in game.systems:
+		if sys.get(&"places") is Array and sys.has_method(&"realm_here") and sys.has_method(&"all"):
+			return sys.call(&"all", sys.call(&"realm_here"))
+	return []
 
 
 ## Moved while the hours went by: the player, the land about them and the camera all at once.

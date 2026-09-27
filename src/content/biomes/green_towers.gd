@@ -88,6 +88,10 @@ static func make() -> BiomeDef:
 	# ROCK and GRAVEL here are the city's broken floor too, not bedrock.
 	d.ground_marks = {Ground.FLOOR: GroundColors.OVERGROWN, Ground.ROCK: GroundColors.OVERGROWN, Ground.GRAVEL: GroundColors.OVERGROWN}
 	d.strata = GroundColors.STRATA_ROOTED
+	# The forest has the towers too: moss on every ledge, ivy down every storey
+	# (BiomeDef.overgrowth, matter_grown). The whole dose: this is the landscape
+	# named for it.
+	d.overgrowth = 1.0
 	d.plain_ground = Ground.GRASS
 	d.bank_ground = Ground.MUD
 	d.pool_rim_ground = Ground.MUD
@@ -108,6 +112,12 @@ static func make() -> BiomeDef:
 	dress.concrete = P.ASH[3].lerp(P.MOSS[2], 0.35)
 	dress.walling = [P.ASH[2], P.MOSS[2], P.STONE[3], P.SPRUCE[2]]
 	dress.crown = &"full"
+	# Nobody here has the city's power: a lived-in storey is one lamp in a dark
+	# band, and the towers at night are a few warm squares in the canopy.
+	dress.windows = &"gaps"
+	# And the plan's boards here were abandoned with the city: dead faces under
+	# the moss, a letter or two still catching on the last of the power.
+	dress.signage = &"dying"
 	dress.sink = 0.24
 	dress.lie = Vector2(-0.1, 0.16)
 	d.dressing = dress
@@ -133,7 +143,13 @@ static func make() -> BiomeDef:
 	d.built.stock = BiomeForms.RAISED.duplicate()
 	# Of the six, only the shell is anyone's home: a fallen tower's standing
 	# floor with the forest come up through it (content/interiors/rooted_floor.gd).
-	d.interiors = {&"form:shell": &"rooted_floor"}
+	d.interiors = {&"form:shell": &"rooted_floor", &"house": &"home"}
+	# Behind the other forms, people in the gaps: squatters on a tower floor under
+	# the one stolen lamp, and the climber who goes up for what grows there.
+	d.home = {"hearth": &"brazier", "households": {
+		&"squatter": {"wants": [&"hammock", &"machine_lamp", &"basket", &"shelf_salvage"], "by_hearth": []},
+		&"climber": {"wants": [&"rope_coil", &"hammock", &"creel", &"basket"], "by_hearth": []},
+	}}
 	d.built.plan = &"ring"
 	d.built.apart = BiomeForms.RING_APART
 	d.built.buildings = Vector2i(8, 14)
@@ -150,7 +166,7 @@ static func make() -> BiomeDef:
 	# Under a closed canopy at night there is nothing at all, and no machine keeps
 	# a light here.
 	d.night_sky = 0.6
-	d.props = [PropKind.BROADLEAF, PropKind.BUSH, PropKind.RUIN, PropKind.DEBRIS,
+	d.props = [PropKind.MOSS_CORE, PropKind.BROADLEAF, PropKind.BUSH, PropKind.RUIN, PropKind.DEBRIS,
 		PropKind.VEHICLE, PropKind.MURAL, PropKind.STUMP, PropKind.WRECKAGE,
 		PropKind.IRON_ORE, PropKind.COPPER_ORE]
 	d.ore = [[PropKind.IRON_ORE, 0.028], [PropKind.COPPER_ORE, 0.024]]
@@ -216,6 +232,10 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.RUIN
 		if r < 0.054:
 			return PropKind.DEBRIS
+		# A plug of the towers' moss and root, fallen to the floor below: the
+		# land's own material (PropKind.MOSS_CORE), found where the walls shed.
+		if r > 0.70 and r < 0.712:
+			return PropKind.MOSS_CORE
 		return PropKind.MURAL if r > 0.62 and r < 0.6275 else BiomeScatter.NONE
 	if g == Ground.NEEDLES:
 		if r < 0.110:

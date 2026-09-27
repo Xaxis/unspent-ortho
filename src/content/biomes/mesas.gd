@@ -86,7 +86,12 @@ static func make() -> BiomeDef:
 	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SNOW]:
 		d.grounds[g] = d.grounds[Ground.SAND]
 	d.cliff_wash = P.RUST[2].lerp(P.EARTH[2], 0.3)
-	d.strata = GroundColors.STRATA_SAND
+	# ITS OWN WALLS AND FLOOR, LOOK only (no seed moves): banded, cross-bedded
+	# sandstone under a caprock streaked with desert varnish (STRATA_MESA), and a
+	# floor of varnished stones the wind has left (DESERT_PAVEMENT). The walls
+	# were a beach bank's soft layers, and the floor a plain red wash.
+	d.ground_marks = {Ground.SCREE: GroundColors.DESERT_PAVEMENT, Ground.ROCK: GroundColors.DESERT_PAVEMENT}
+	d.strata = GroundColors.STRATA_MESA
 	d.plain_ground = Ground.SCREE
 	d.bank_ground = Ground.SAND
 	d.pool_rim_ground = Ground.GRAVEL
@@ -119,7 +124,14 @@ static func make() -> BiomeDef:
 	d.built.stock = [&"cut_room", &"adobe", &"watch_hut"] as Array[StringName]
 	# The cut room is the home here, dug into the scarp; its room is its own
 	# (content/interiors/cliff_room.gd).
-	d.interiors = {&"form:cut_room": &"cliff_room"}
+	d.interiors = {&"form:cut_room": &"cliff_room", &"house": &"home"}
+	# Behind the other forms, the miller at the quern and the spinner at the loom,
+	# as in the rooms cut into the rock.
+	d.home = {"households": {
+		&"miller": {"wants": [&"quern", &"jars", &"basket", &"shelf"], "by_hearth": []},
+		&"spinner": {"wants": [&"loom", &"basket", &"jars", &"shelf"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+	}}
 	# A frontage along a bench (the spec's), and MEASURED flat enough to hold
 	# one: `row` refuses a spot whose nine neighbours are not level, and on
 	# seeds 1, 7 and 90210 all three buildings stood, every one on one level,
@@ -156,6 +168,9 @@ static func make() -> BiomeDef:
 		[Weather.HEAT, 16, 0.0], [Weather.DRY_STORM, 8, 0.6],
 	]
 	d.mist = 0.04
+	# A dust storm here is the canyon country's own red iron dust, and it lies
+	# thick: the far mesas go to a red wall and the sun to a dull disc.
+	d.weather_style = {&"dust": {"air": Color(0.72, 0.38, 0.24), "thick": 1.4}}
 	# The wind is not in `Hazards.IDS` and is not invented here: what a mesa
 	# actually presses a body with is the sun on bare rock and no water in reach.
 	# The water in reach is the cistern (52_hazards SPRINGS).

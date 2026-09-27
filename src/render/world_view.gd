@@ -88,6 +88,15 @@ var _bg_mesher: TerrainMesher
 var _bg_decor: Decor
 var _task := -1
 var _task_key := Vector2i.ZERO
+## Props rebaked off the main thread (refresh_props_soon): the chunks waiting,
+## the one baking, its own mesher (never the chunk worker's), and its result.
+var _rb_wanted: Dictionary = {}
+var _rb_task := -1
+var _rb_key := Vector2i.ZERO
+var _rb_mesher: TerrainMesher
+var _rb_out: Array = []
+## The longest a rebaked chunk's props took to swap in on the main thread, usec.
+var rebake_swap_usec_max := 0
 var _task_chunk: TerrainMesher.Chunk
 var _task_decor: Array = []
 var _task_props: Array = []
@@ -231,6 +240,12 @@ func reclaim() -> void:
 ## player's figure, the crowns and the swing arc were handed them when the game
 ## started and they outlive the world they first drew.
 func rebind(w: WorldData) -> void:
+	if _rb_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_rb_task)
+		_rb_task = -1
+	_rb_wanted.clear()
+	_rb_out = []
+	_rb_mesher = null
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
@@ -581,6 +596,7 @@ func _process(_delta: float) -> void:
 		_task_chunk = null
 		_task_decor = []
 		_task_props = []
+	_rebake_step()
 	_look_out()
 	var wanted := _wanted(0.0)
 	# Reviving is free, so every parked chunk the view has come back to goes in
@@ -698,6 +714,16 @@ func _look_out() -> void:
 ## twins that share each surface's mesh (nothing is copied), each over the range it
 ## casts, while the drawn surface itself stops casting.
 const SHADOW_FULL := 30.0
+## LEAF CARDS CAST ONLY CLOSE IN. A crown's shadow past this is a soft blot
+## under a tree whose trunk and boughs still cast it to SHADOW_FULL, and each
+## card is alpha-tested into every split it touches: in the scrapwood, at 602
+## crowns within forty tiles, leaves that cast to the last split were 1.35M of
+## the frame's 3.6M shadow primitives and about 3 ms. So past this the crown
+## casts from its SHADE model, whose cards are a share of the full crown's grown
+## to cover the same mass (FarModels.LEAF_KEEP): a pine keeps the dark under each
+## tier, which it lost when far cards cast nothing at all (measured: the pinewood's
+## mid-distance pines went flat and paler).
+const LEAF_SHADOW := 15.0
 
 
 func _lod_apply(node: Node3D) -> void:
@@ -727,12 +753,14 @@ func _lod_apply(node: Node3D) -> void:
 			# Full shadows close in (the tier's `eye_shadow_full`), the shade
 			# models' past that, none past the reach, and never the mid ones.
 			var near_full := float(Quality.current().get("eye_shadow_full", SHADOW_FULL))
-			if near_full > 0.0:
-				_casts(node, full, 0.0, _cut(near_full, reach), true)
+			var leaf := i == 2
+			var own_full := minf(near_full, LEAF_SHADOW) if leaf else near_full
+			if own_full > 0.0:
+				_casts(node, full, 0.0, _cut(own_full, reach), true)
 			else:
 				_no_cast(node, full)
 			_no_cast(node, mid)
-			_casts(node, shade, near_full, reach, true)
+			_casts(node, shade, own_full, reach, true)
 		else:
 			_casts(node, full, 0.0, reach, _lod_on and reach > 0.0)
 			_casts(node, mid, 0.0, 0.0, false)
@@ -849,7 +877,7 @@ func _attach_mid(node: Node3D, baked: Array) -> void:
 		if arrays.is_empty():
 			continue
 		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, prop_flags(arrays))
 		var mi := MeshInstance3D.new()
 		mi.name = names[i]
 		mi.mesh = mesh
@@ -1095,6 +1123,9 @@ func _far_worker(slot: int, key: Vector2i) -> void:
 	var began := Time.get_ticks_usec()
 	if _far_kind[slot] == STANDS:
 		_far_out[slot] = Far.stand_arrays(world, _far_in[slot], _far_mask[slot])
+		# Its props are views, and the slot is this task's until it is collected:
+		# let them go now rather than hold a batch alive until the slot's next.
+		_far_in[slot] = []
 	else:
 		_far_out[slot] = Far.build_arrays(world, key.x, key.y, _far_tables)
 	_far_at[slot] = Time.get_ticks_usec() - began
@@ -1117,6 +1148,9 @@ func finish_tasks() -> void:
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
+	if _rb_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_rb_task)
+		_rb_task = -1
 	if _mid_task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_mid_task)
 		_mid_task = -1
@@ -1330,19 +1364,81 @@ func refresh_props(prop: WorldProp) -> void:
 		return
 	if not _chunks.has(key):
 		return
+	var snap := _snapshot(key)
+	_swap_props(key, bake_props(_data.get(key), mesher, snap[0], snap[1]))
+
+
+## The same, off the main thread: the chunk's props are rebaked on a worker and
+## swapped in when done, the old ones drawn until then. For a change nobody is
+## watching happen (23_hush turns a stone while it is off screen): a chunk's
+## props rebaked on the main thread cost 10 to 20 ms, a dropped frame each.
+func refresh_props_soon(prop: WorldProp) -> void:
+	if not threaded:
+		refresh_props(prop)
+		return
+	var key := _key_of(prop.pos)
+	var row := world.row_of_id(prop.id)
+	if row >= 0 and not (_props_by_chunk.get(key, PackedInt32Array()) as PackedInt32Array).has(row):
+		_add_row(_props_by_chunk, key, row)
+	if _task >= 0 and key == _task_key:
+		_task_dirty = true
+	if _parked.has(key):
+		_let_go(key)
+		return
+	if _chunks.has(key):
+		_rb_wanted[key] = true
+
+
+## One rebake at a time: take a finished one in, start the next.
+func _rebake_step() -> void:
+	if _rb_task >= 0:
+		if not WorkerThreadPool.is_task_completed(_rb_task):
+			return
+		WorkerThreadPool.wait_for_task_completion(_rb_task)
+		_rb_task = -1
+		# Wanted again while it baked: the next bake has the newer props.
+		if _chunks.has(_rb_key) and not _rb_wanted.has(_rb_key):
+			var t0 := Time.get_ticks_usec()
+			_swap_props(_rb_key, _rb_out[0], _rb_out[1])
+			rebake_swap_usec_max = maxi(rebake_swap_usec_max, Time.get_ticks_usec() - t0)
+		_rb_out = []
+	if _rb_wanted.is_empty():
+		return
+	var key: Vector2i = _rb_wanted.keys()[0]
+	_rb_wanted.erase(key)
+	if not _chunks.has(key):
+		return
+	if _rb_mesher == null:
+		_rb_mesher = TerrainMesher.new(world)
+	var snap := _snapshot(key)
+	_rb_key = key
+	_rb_task = WorkerThreadPool.add_task(_rebake_worker.bind(_data.get(key), snap[0], snap[1]), false, "props")
+
+
+func _rebake_worker(ch: TerrainMesher.Chunk, props: Array, spans: Array) -> void:
+	_rb_out = [bake_props(ch, _rb_mesher, props, spans),
+		bake_props(ch, _rb_mesher, props, spans, FarModels.MID) + bake_props(ch, _rb_mesher, props, [], FarModels.SHADE)]
+
+
+## Put `baked` (bake_props) in as chunk `key`'s props, in place of the old; its
+## mid models too, from `mid` when they were baked with it (a worker's), else
+## here on the main thread.
+func _swap_props(key: Vector2i, baked: Array, mid: Array = []) -> void:
 	var node: Node3D = _chunks[key]
 	for part: String in ["props", "props_found", "props_leaf"]:
 		var old := node.get_node_or_null(part)
 		if old != null:
 			node.remove_child(old)
 			old.queue_free()
-	var snap := _snapshot(key)
-	_attach_props(node, bake_props(_data.get(key), mesher, snap[0], snap[1]))
+	_attach_props(node, baked)
 	if node.get_node_or_null("mid_done") != null:
-		var stale := node.get_node("mid_done")
-		node.remove_child(stale)
-		stale.queue_free()
-		_mid_now(key)
+		if mid.is_empty():
+			var stale := node.get_node("mid_done")
+			node.remove_child(stale)
+			stale.queue_free()
+			_mid_now(key)
+		else:
+			_attach_mid(node, mid)
 	_lod_apply(node)
 
 
@@ -1388,6 +1484,10 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 	var mc := PackedColorArray()
 	var muv := PackedVector2Array()
 	var muv2 := PackedVector2Array()
+	# The storey channel (PropModels.Template.made_storey): 0 on anything that
+	# is not raised in storeys, which the shader reads as "no floor lines".
+	var mst := PackedFloat32Array()
+	var any_storey := false
 	var fv := PackedVector3Array()
 	var fn := PackedVector3Array()
 	var fc := PackedColorArray()
@@ -1418,6 +1518,11 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 			mc.append_array(tpl.made_c)
 			muv.append_array(tpl.made_uv)
 			muv2.append_array(tpl.made_uv2)
+			if tpl.made_storey.size() == tpl.made_v.size():
+				mst.append_array(tpl.made_storey)
+				any_storey = true
+			else:
+				mst.resize(mv.size())
 		if not tpl.found_v.is_empty():
 			fv.append_array(xf * tpl.found_v)
 			fn.append_array(nx * tpl.found_n)
@@ -1442,6 +1547,7 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 		mc.append_array(ice.colors)
 		muv.append_array(ice.uvs)
 		muv2.append_array(ice.uv2s)
+	mst.resize(mv.size())
 	var made := []
 	if not mv.is_empty():
 		made.resize(Mesh.ARRAY_MAX)
@@ -1450,6 +1556,8 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 		made[Mesh.ARRAY_COLOR] = mc
 		made[Mesh.ARRAY_TEX_UV] = muv
 		made[Mesh.ARRAY_TEX_UV2] = muv2
+		if any_storey:
+			made[Mesh.ARRAY_CUSTOM1] = mst
 	var found := []
 	if not fv.is_empty():
 		found.resize(Mesh.ARRAY_MAX)
@@ -1465,6 +1573,17 @@ func bake_props(ch: TerrainMesher.Chunk, m: TerrainMesher, props: Array, spans: 
 		leaves[Mesh.ARRAY_TEX_UV] = luv
 		leaves[Mesh.ARRAY_TEX_UV2] = luv2
 	return [made, found, leaves]
+
+
+## The surface format a baked prop array needs: the storey channel is one float
+## a vertex in CUSTOM1 where any building in it carries one.
+static func prop_flags(arrays: Array) -> int:
+	if arrays.size() <= Mesh.ARRAY_CUSTOM1:
+		return 0
+	var storey: Variant = arrays[Mesh.ARRAY_CUSTOM1]
+	if typeof(storey) != TYPE_PACKED_FLOAT32_ARRAY:
+		return 0
+	return Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT
 
 
 ## Where a prop stands and how it is turned and cast, with its foot at height `h`.
@@ -1507,7 +1626,7 @@ func _attach_props(node: Node3D, baked: Array) -> void:
 	var made: Array = baked[0]
 	if not made.is_empty():
 		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, made)
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, made, [], {}, prop_flags(made))
 		var mi := MeshInstance3D.new()
 		mi.name = "props"
 		mi.mesh = mesh

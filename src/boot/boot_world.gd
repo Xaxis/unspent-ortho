@@ -71,14 +71,19 @@ static func clear() -> void:
 
 ## Where a game started with `o` puts the player (the same rule as Game.setup),
 ## so the page can draw the first view round it before the game exists.
+## Both starts ask this before a chunk is drawn, so a span staged with
+## `--above` (AboveStage) is planted here, where the start is known.
 static func start_of(w: WorldData, o: BootOptions) -> Vector2:
+	var at := w.spawn
 	if o.village >= 0 and o.village < w.villages.size():
-		return w.village_stand(w.villages[o.village])
-	if o.at.x >= 0:
-		return o.at
-	if o.place != "" and GenPlaces.find(w, o.place).x >= 0:
-		return GenPlaces.find(w, o.place)
-	return w.spawn
+		at = w.village_stand(w.villages[o.village])
+	elif o.at.x >= 0:
+		at = o.at
+	elif o.place != "" and GenPlaces.find(w, o.place).x >= 0:
+		at = GenPlaces.find(w, o.place)
+	if o.above != "":
+		AboveStage.plant(w, o.above, at)
+	return at
 
 
 ## A field sketch of `w` for the loading page, `px` pixels square, north up: the
