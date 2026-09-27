@@ -56,7 +56,11 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   `TOUR_FIXED_FPS=60 tools/tour.sh tours/come_round.tour` (options in its header).
   A keeper reaches you on its own ground: a charge walks its own field round what stops its move (NavField.for_body:
   its climb, headroom, props but what it breaks), and a lost keeper hunts where it last knew you before it forgets
-  (Brains._hunt, FightSim.hunting): `tools/test.sh test_keeper_reach` (seeds 1 and 4, every lair; ~2 min).
+  (Brains._hunt, FightSim.hunting): `tools/test.sh test_keeper_reach` (seeds 1 and 4, every lair; ~2 min). Its lair
+  is off the ground it founders on and opens Sentinels.OPENS_LEAST tiles of its own move (Sentinels.lair; a region
+  with no such ground has no keeper).
+  A struck keeper turns on you: every keeper on seed 1, put out once at its lair by 44_sentinels, hit on its own level,
+  chases, is roused and faces you within 3 s: `tools/test.sh test_keeper_roused` (~2.5 min).
   A keeper goes through a wood: what its drawn body walks into of the kinds its row `breaks` (every keeper: trees and
   shrubs) is felled for good and thrown over (FightSim._break_through, 40_fight `felled`): `tools/test.sh test_keeper_breaks`.
 - 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.

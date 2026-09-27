@@ -287,6 +287,14 @@ static func lair(world: WorldData, region: Dictionary, def: SentinelDef) -> Vect
 	# deterministic as it was: a boss that moves between runs cannot be walked to
 	# twice.
 	var feed := def.reach * FEED_SHARE
+	# Never on the ground its own FOUNDER way takes it on: stood there, a roused
+	# keeper foundered at home in the time it took to turn round (seed 1's anchor
+	# on the mesas' sand, tests/sentinel/test_keeper_reach.gd).
+	var sink := founders(def)
+	# And never boxed in: its own move (NavField.for_body) must open OPENS_LEAST
+	# tiles round it, or it can only strike what walks up to it (seed 1's glass
+	# keeper, put off its sand, stood in a pocket that opened none).
+	var q := WorldQuery.new(world)
 	for want: StringName in def.stations:
 		var best := Vector2.INF
 		var best_works := -1
@@ -296,8 +304,8 @@ static func lair(world: WorldData, region: Dictionary, def: SentinelDef) -> Vect
 			var p: Vector2 = m.get("pos", Vector2.ZERO)
 			if world.region_at(floori(p.x), floori(p.y)) != id:
 				continue
-			var at := stand_near(world, p)
-			if at.distance_to(home) < CLEAR_OF_HOME:
+			var at := stand_near(world, p, 1.4, sink)
+			if at.distance_to(home) < CLEAR_OF_HOME or opens(world, q, at, def) < OPENS_LEAST:
 				continue
 			var n := 0
 			for w2: Dictionary in world.landmarks:
@@ -311,32 +319,68 @@ static func lair(world: WorldData, region: Dictionary, def: SentinelDef) -> Vect
 		if best.is_finite():
 			return best
 	var centre: Vector2 = region.get("centre", Vector2.ZERO)
-	var heart := stand_near(world, centre)
-	if heart.distance_to(home) >= CLEAR_OF_HOME:
+	var heart := stand_near(world, centre, 1.4, sink)
+	if heart.distance_to(home) >= CLEAR_OF_HOME and opens(world, q, heart, def) >= OPENS_LEAST:
 		return heart
-	# Nothing the plan built stands far enough out: the quietest ground in the
-	# region that is, nearest its heart, so a keeper is still where its own land is.
+	# Else the nearest room to the heart, clear of home, that opens. A region with
+	# none (seed 1's glass sliver: 27 tiles, all the sand it founders on) has no
+	# keeper: one stood there could strike only what walked up to it.
+	return _open_nearest(world, q, region, def, sink, centre)
+
+
+## How many tiles OPEN_FROM..OPEN_TO out of `at` a keeper's own move reaches
+## (NavField.for_body laid from `at`): what `lair` holds a lair to.
+const OPEN_FROM := 8
+const OPEN_TO := 14
+const OPENS_LEAST := 300
+
+
+static func opens(world: WorldData, q: WorldQuery, at: Vector2, def: SentinelDef) -> int:
+	var row := Roster.row(def.kind)
+	var f := NavField.for_body(world, q, row, minf(float(row.get("radius", 0.5)), 0.45))
+	f.update(at)
+	var n := 0
+	for dy in range(-OPEN_TO, OPEN_TO + 1):
+		for dx in range(-OPEN_TO, OPEN_TO + 1):
+			if maxi(absi(dx), absi(dy)) < OPEN_FROM:
+				continue
+			n += int(f.steps(floori(at.x) + dx, floori(at.y) + dy) < NavField.FAR)
+	return n
+
+
+## The nearest room to `centre` in the region, clear of home and off `avoid`,
+## whose ground opens (`opens`); INF when nowhere in it does.
+static func _open_nearest(world: WorldData, q: WorldQuery, region: Dictionary, def: SentinelDef, avoid: Array, centre: Vector2) -> Vector2:
+	var id := int(region.get("id", -1))
 	var bounds: Rect2 = region.get("bounds", Rect2())
-	var best := Vector2.INF
-	var best_d := INF
+	var spots: Array[Vector2] = []
 	var y := floori(bounds.position.y)
 	while y < int(bounds.end.y):
 		var x := floori(bounds.position.x)
 		while x < int(bounds.end.x):
-			if world.region_at(x, y) == id and _room_at(world, x, y, 1.4):
-				var p := Vector2(x + 0.5, y + 0.5)
-				var d := p.distance_to(centre)
-				if p.distance_to(home) >= CLEAR_OF_HOME and d < best_d:
-					best_d = d
-					best = p
+			var p := Vector2(x + 0.5, y + 0.5)
+			if world.region_at(x, y) == id and p.distance_to(world.spawn) >= CLEAR_OF_HOME and _room_at(world, x, y, 1.4, avoid):
+				spots.append(p)
 			x += 3
 		y += 3
-	return best
+	spots.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(centre) < b.distance_squared_to(centre))
+	for p: Vector2 in spots:
+		if opens(world, q, p, def) >= OPENS_LEAST:
+			return p
+	return Vector2.INF
+
+
+## The grounds a design's FOUNDER way takes it on (none when it has no such way).
+static func founders(def: SentinelDef) -> Array:
+	for way: SentinelWay in def.ways:
+		if way.kind == SentinelWay.FOUNDER:
+			return way.grounds
+	return []
 
 
 ## The nearest tile to `p` a body of this size can stand on, searched in rings, so
 ## a station laid on the shore does not put a keeper in the sea.
-static func stand_near(world: WorldData, p: Vector2, radius: float = 1.4) -> Vector2:
+static func stand_near(world: WorldData, p: Vector2, radius: float = 1.4, avoid: Array = []) -> Vector2:
 	var cx := floori(p.x)
 	var cy := floori(p.y)
 	for r in 12:
@@ -346,14 +390,15 @@ static func stand_near(world: WorldData, p: Vector2, radius: float = 1.4) -> Vec
 					continue
 				var x := cx + dx
 				var y := cy + dy
-				if _room_at(world, x, y, radius):
+				if _room_at(world, x, y, radius, avoid):
 					return Vector2(x + 0.5, y + 0.5)
 	return Vector2(cx + 0.5, cy + 0.5)
 
 
-## Room for a body of `radius` tiles: dry, on the map, and the level within a step
-## all round, so a machine three tiles wide is not stood astride a cliff.
-static func _room_at(world: WorldData, x: int, y: int, radius: float) -> bool:
+## Room for a body of `radius` tiles: dry, on the map, the level within a step
+## all round, so a machine three tiles wide is not stood astride a cliff, and none
+## of it on the grounds in `avoid`.
+static func _room_at(world: WorldData, x: int, y: int, radius: float, avoid: Array = []) -> bool:
 	var r := maxi(1, ceili(radius))
 	if not world.in_bounds(x - r, y - r) or not world.in_bounds(x + r, y + r):
 		return false
@@ -363,7 +408,7 @@ static func _room_at(world: WorldData, x: int, y: int, radius: float) -> bool:
 	for dy in range(-r, r + 1):
 		for dx in range(-r, r + 1):
 			var g := world.ground_at(x + dx, y + dy)
-			if Ground.is_water(g) or g == Ground.ROAD:
+			if Ground.is_water(g) or g == Ground.ROAD or avoid.has(g):
 				return false
 			if absi(world.level_at(x + dx, y + dy) - level) > 1:
 				return false

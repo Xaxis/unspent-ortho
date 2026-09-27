@@ -83,21 +83,26 @@ func _adopt() -> void:
 			# the keeper any more. It stands and pays the player no attention.
 			_stand_down(m)
 			continue
-		s.body = m
-		_bodies[m.id] = s
-		Sentinels.own_row(m)
-		m.max_health = s.max_health
-		m.health = s.health
-		m.home = s.lair if s.lair.distance_to(m.pos) < 3.0 else m.pos
-		s.ground_was = -1
-		s.dark_since = INF
-		s.spoof_since = INF
-		_apply_phase(s, def, s.phase, false)
-		_beacon_for(s, def)
-		if not s.woken:
-			s.woken = true
-			Events.sentinel_woke.emit(s.region, s.land)
-		_seen["sentinel_woke"] = true
+		_take(s, def, m)
+
+
+## `m` is `s`'s body from now: its health, its home, its phase, its beacon.
+func _take(s: SentinelState, def: SentinelDef, m: MobState) -> void:
+	s.body = m
+	_bodies[m.id] = s
+	Sentinels.own_row(m)
+	m.max_health = s.max_health
+	m.health = s.health
+	m.home = s.lair if s.lair.distance_to(m.pos) < 3.0 else m.pos
+	s.ground_was = -1
+	s.dark_since = INF
+	s.spoof_since = INF
+	_apply_phase(s, def, s.phase, false)
+	_beacon_for(s, def)
+	if not s.woken:
+		s.woken = true
+		Events.sentinel_woke.emit(s.region, s.land)
+	_seen["sentinel_woke"] = true
 
 
 ## The state a body at `p` belongs to: its region's, or a loose one (region -1,
@@ -140,6 +145,10 @@ func _put_out() -> void:
 		# It stands its ground: a keeper does not walk a beat up and down.
 		m.line_a = s.lair
 		m.line_b = s.lair
+		# Bound to this state here, not found again by the region under it: a lair
+		# stood just over a region's edge was adopted as a stranger, this state
+		# stayed empty, and a fresh body was put out every frame.
+		_take(s, def, m)
 		return
 
 

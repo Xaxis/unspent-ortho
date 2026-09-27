@@ -11,7 +11,8 @@ extends TestCase
 ## A RATCHET, not a promise of every spot: over both seeds REACHED_LEAST of the
 ## spots are reached (86% measured, 2026-09-27), no keeper with REGION_TRIED
 ## spots or more reaches under REGION_LEAST of them, and every keeper's own move
-## opens OPENS_LEAST tiles round its lair (313-606 measured). What is left is a
+## opens Sentinels.OPENS_LEAST tiles round its lair (Sentinels.lair holds a lair to
+## it, and never puts one on the ground its FOUNDER way takes it on). What is left is a
 ## body stalled on a terrace edge where a corner of it hangs over a step its
 ## move will not take; raise the floor when that is fixed.
 
@@ -19,6 +20,9 @@ const F := preload("res://tests/fight/fixture.gd")
 const SEEDS: Array[int] = [1, 4]
 const DIST := 12.0
 const REACH_SECONDS := 40.0
+const REACHED_LEAST := 0.85
+const REGION_LEAST := 0.25
+const REGION_TRIED := 4
 
 
 func _reaches(w: WorldData, lair: Vector2, kind: StringName, player: Vector2) -> Dictionary:
@@ -43,30 +47,6 @@ func _reaches(w: WorldData, lair: Vector2, kind: StringName, player: Vector2) ->
 	return {"counted": true, "reached": false, "left": m.pos.distance_to(sim.hero.pos), "forgot": m.mood == MobState.IDLE or m.mood == MobState.FLEEING}
 
 
-## Tiles OPEN_FROM..OPEN_TO out of a lair that a keeper's own move reaches
-## (NavField.for_body laid from the lair). A keeper whose lair its own move
-## cannot leave can only strike what walks up to it.
-const OPEN_FROM := 8.0
-const OPEN_TO := 14.0
-const OPENS_LEAST := 300
-const REACHED_LEAST := 0.85
-const REGION_LEAST := 0.25
-const REGION_TRIED := 4
-
-
-static func _opens(w: WorldData, q: WorldQuery, kind: StringName, lair: Vector2) -> int:
-	var row := Roster.row(kind)
-	var f := NavField.for_body(w, q, row, minf(float(row.get("radius", 0.5)), 0.45))
-	f.update(lair)
-	var n := 0
-	for dy in range(-int(OPEN_TO), int(OPEN_TO) + 1):
-		for dx in range(-int(OPEN_TO), int(OPEN_TO) + 1):
-			if maxi(absi(dx), absi(dy)) < int(OPEN_FROM):
-				continue
-			n += int(f.steps(floori(lair.x) + dx, floori(lair.y) + dy) < NavField.FAR)
-	return n
-
-
 func test_every_keeper_reaches_a_player_the_ground_leads_to() -> void:
 	var counted := 0
 	var reached := 0
@@ -78,9 +58,14 @@ func test_every_keeper_reaches_a_player_the_ground_leads_to() -> void:
 		for s: SentinelState in Sentinels.states(w):
 			var def := Sentinels.for_land(s.land)
 			var lair: Vector2 = s.lair
-			var opens := _opens(w, q, def.kind, lair)
-			print("  %s seed %d region %d opens %d tiles %.0f-%.0f out" % [s.land, seed_value, s.region, opens, OPEN_FROM, OPEN_TO])
-			check(opens >= OPENS_LEAST, "seed %d %s at %s: its own move opens %d tiles %.0f-%.0f round its lair, not boxed in (%d)" % [seed_value, s.land, lair, OPENS_LEAST, OPEN_FROM, OPEN_TO, opens])
+			# Never stood on the ground its own FOUNDER way takes it on: roused
+			# there, it foundered at home in the time it took to turn round.
+			var sink := Sentinels.founders(def)
+			var under := w.ground_at(floori(lair.x), floori(lair.y))
+			check(not sink.has(under), "seed %d %s at %s: its lair is not on the ground it founders on (%s)" % [seed_value, s.land, lair, Ground.NAMES[under] if under < Ground.NAMES.size() else str(under)])
+			var opens := Sentinels.opens(w, q, lair, def)
+			print("  %s seed %d region %d opens %d tiles %d-%d out" % [s.land, seed_value, s.region, opens, Sentinels.OPEN_FROM, Sentinels.OPEN_TO])
+			check(opens >= Sentinels.OPENS_LEAST, "seed %d %s at %s: its own move opens %d tiles %d-%d round its lair, not boxed in (%d)" % [seed_value, s.land, lair, Sentinels.OPENS_LEAST, Sentinels.OPEN_FROM, Sentinels.OPEN_TO, opens])
 			var got := 0
 			var tried := 0
 			for k in 8:
