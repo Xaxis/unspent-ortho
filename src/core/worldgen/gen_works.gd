@@ -1274,9 +1274,11 @@ static func _stack(L: Lay, at: Vector2, a: Array) -> bool:
 	# THE DEPOT STANDS AT IT. The stack is the snowfield's one marked work, so a
 	# stack with no yard's room round it (`Works.sites` looks there) leaves the
 	# snowfield without a depot or a keeper's larder. Asked of the ground alone,
-	# so it is the row's own answer.
+	# so it is the row's own answer. Asked once, without the yard's facing: a
+	# yard that stands facing the bearing stands at all, so the looser question
+	# answers the same, and a stack with no room was paying for the scan twice.
 	var region := L.w.region_at(floori(at.x), floori(at.y))
-	if not Works.stand_near(L.w, at, true, region, bearing(L.c.s)).is_finite() and not Works.stand_near(L.w, at, true, region).is_finite():
+	if not Works.stand_near(L.w, at, true, region).is_finite():
 		return false
 	# SCORCH: the soot a stack throws on the snow round it. Unmarked, the
 	# snowfield's works were never a place `Works.sites` counts, so it never
