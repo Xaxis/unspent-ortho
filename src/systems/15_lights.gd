@@ -453,6 +453,11 @@ func _cast_shadows(focus: Vector3) -> void:
 
 
 func toggle_lantern() -> void:
+	# Soaked by the veil's falling water (AbilityVeil): it will not take a light.
+	if not game.body.lamp_lit and game.body.doused_until > game.clock.minutes:
+		Events.message.emit("The wick is soaked through. It will not take.")
+		Events.sfx.emit(&"ability_refused", game.player.position)
+		return
 	if not game.body.lamp_lit:
 		# Settle the unlit time first: survival burns oil once a second from its
 		# last settle, so a clock that jumped since (a tour's `hour`) would

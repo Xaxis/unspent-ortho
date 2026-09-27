@@ -504,6 +504,10 @@ static func _throw(m: MobState, sim: FightSim) -> void:
 		return
 	# Too close to throw down a lane, it backs off first, unless backing off has
 	# stopped against something: then it throws from where it is.
+	# It cannot aim across the veil (FightSim.veils): it comes round for a line.
+	if not sim.veils.is_empty() and sim.veiled(m.pos, sim.hero.pos):
+		_seek(m, sim, _target(m, sim), m.pace)
+		return
 	var backing := d < lane * THROW_NEAR
 	if backing and m.want != Vector2.ZERO and m.pos.distance_to(m.last_think_pos) < m.quick * FightRules.THINK_MS / 1000.0 * BLOCKED_SHARE:
 		backing = false
@@ -556,6 +560,16 @@ static func _dart(m: MobState, sim: FightSim) -> void:
 		return
 	var to := sim.hero.pos - m.pos
 	m.aim = to.angle()
+	# Its sight of you cut by the veil (FightSim.veils): it has lost you, breaks
+	# off its dive and wheels away until the water falls. Going on to where it
+	# last saw you would take it through the veil onto a player who never moved;
+	# coming again the moment you step round the water would make the veil a
+	# half-second's delay.
+	if not sim.veils.is_empty():
+		m.broke_off_until = maxf(m.broke_off_until, sim.veiled_until(m.pos, sim.hero.pos))
+	if sim.now < m.broke_off_until:
+		_flee(m, sim)
+		return
 	var reach := float(m.stat("reach", 1))
 	if to.length() <= m.radius + sim.hero.radius + reach * 0.5:
 		sim.snatch(m)

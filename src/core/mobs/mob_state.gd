@@ -111,6 +111,9 @@ var call_ready_at := 0.0
 var heard_told := false
 # dart
 var snatched := false
+## A dart whose dive the veil cut (FightSim.veils) has lost you: it wheels away
+## until that veil falls, even if you step out from behind it.
+var broke_off_until := -INF
 var reported := false
 ## A blow reached the part: it flares, lit, until flare_until, then is dark
 ## (hurt) until dark_until. View reads.

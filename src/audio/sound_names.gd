@@ -63,6 +63,7 @@ const ALIAS := {
 	&"ability_scan": &"ui_slate_ping",
 	&"ability_grapple": &"grip",
 	&"ability_spoof": &"watcher_call",
+	&"ability_veil": &"splash",
 	&"ability_refused": &"ui_slate_deny",
 	# crafts: stepping onto a deck of plate and spars, stepping off it into the
 	# shallows, a hull coming apart under a body, and a wreck taken back for its
@@ -167,7 +168,7 @@ const EMITTED: Array[StringName] = [
 	# hazards and gear (52_hazards.gd, 54_gear.gd)
 	&"hazard_cold", &"hazard_heat", &"hazard_fumes", &"hazard_em", &"hazard_wet",
 	&"hazard_ring", &"hazard_warn", &"hazard_drain", &"ability_dash", &"ability_glide", &"ability_land",
-	&"ability_scan", &"ability_grapple", &"ability_spoof", &"ability_refused",
+	&"ability_scan", &"ability_grapple", &"ability_spoof", &"ability_veil", &"ability_refused",
 	# defences (46_settlements.gd, 47_defences.gd)
 	&"turret_fire", &"turret_aim", &"piece_switch",
 	# the jump (54_gear.gd)

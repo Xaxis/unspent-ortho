@@ -96,6 +96,7 @@ const HINTS := {
 	&"ability_scan": ["%s reads every working part near you, and what each machine makes of you.", [&"ability_scan"]],
 	&"ability_grapple": ["%s throws a line at what you face and pulls you to it, ledges included.", [&"ability_grapple"]],
 	&"ability_spoof": ["%s answers their challenge in their own language. They read you as one of theirs.", [&"ability_spoof"]],
+	&"ability_veil": ["%s lets the drip fall ahead of you: a curtain of water their eyes cannot see through.", [&"ability_veil"]],
 	# The seventh, and the only app the guide never named. Everything found is
 	# already being written down -- pages read, beats landed, answers given -- and
 	# a player who is never told carries the whole story in their head or loses

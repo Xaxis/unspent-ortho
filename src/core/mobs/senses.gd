@@ -113,7 +113,18 @@ static func line_clear(world: WorldData, query: WorldQuery, a: Vector2, b: Vecto
 			tmy += tdy
 		if (x != bx or y != by) and _solid(world, query, x, y, eye, over):
 			return false
-	return not _walled(query, a, b)
+	return not _walled(query, a, b) and not screened(query, a, b)
+
+
+## Whether a sight screen (WorldQuery.sight_screens: the veil) stands across the
+## line from `a` to `b`.
+static func screened(query: WorldQuery, a: Vector2, b: Vector2) -> bool:
+	if query == null:
+		return false
+	for s: Vector4 in query.sight_screens:
+		if Geometry2D.segment_intersects_segment(a, b, Vector2(s.x, s.y), Vector2(s.z, s.w)) != null:
+			return true
+	return false
 
 
 ## Whether a wall stands across the line from `a` to `b`: a block circle the line

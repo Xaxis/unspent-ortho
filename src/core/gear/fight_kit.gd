@@ -61,6 +61,9 @@ extends RefCounted
 ##                            things no wider than LOCK_GAP that the player walks
 ##                            through is shut behind them to machines for
 ##                            LOCK_SECONDS (FightSim.lock_walls), for LOCK_CHARGES
+##   veil     (mod_veil)      "a curtain of water they cannot see through": the
+##                            veil ability (AbilityVeil, FightSim.veils) is
+##                            fitted; the flag is for a reader that presses it
 ##   listen   (mod_listen)    "you hear their tells": a tell is drawn where it
 ##                            cannot be seen, through whatever stands between
 ##                            (40_fight); every noise the player makes is
@@ -168,6 +171,7 @@ var unbuild := false
 var plumb := false
 var listen := false
 var lock := false
+var veil := false
 var ploughshare := false
 var scale := false
 var hush := false
@@ -195,6 +199,7 @@ static func of(ids: Array) -> FightKit:
 	k.plumb = ids.has(&"mod_plumb")
 	k.listen = ids.has(&"mod_listen")
 	k.lock = ids.has(&"mod_lock")
+	k.veil = ids.has(&"mod_veil")
 	k.ploughshare = ids.has(&"mod_ploughshare")
 	k.scale = ids.has(&"coat_scale")
 	k.hush = ids.has(&"wrap_hush")

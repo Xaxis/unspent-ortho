@@ -165,6 +165,8 @@ const PIECES := {
 		"unique": "the only dodge that turns a charge aside"},
 	&"mod_lock": {"grade": &"relic", "family": &"", "from": &"lockkeeper_core",
 		"unique": "the only way to shut a way behind you"},
+	&"mod_veil": {"grade": &"relic", "family": &"", "from": &"drip_core",
+		"unique": "the only way to break a machine's sight"},
 	&"mod_listen": {"grade": &"relic", "family": &"", "from": &"listener_core",
 		"unique": "the only way to hear a tell you cannot see"},
 	&"mod_plumb": {"grade": &"relic", "family": &"", "from": &"plumb_core",

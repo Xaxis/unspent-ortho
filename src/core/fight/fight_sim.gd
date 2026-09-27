@@ -407,6 +407,8 @@ func _beat() -> void:
 	_curtains_beat()
 	if not hangings.is_empty():
 		_falls_beat()
+	if not veils.is_empty():
+		_veils_beat()
 	# A shut way lets go after its seconds (FightKit.lock).
 	for i in range(lock_walls.size() - 1, -1, -1):
 		if lock_walls[i].w <= now / 1000.0:
@@ -1590,6 +1592,68 @@ func _falls_beat() -> void:
 		emit(&"hanging_fell", {"id": h.id, "at": at, "y": h.y, "bodies": hit})
 
 
+## THE VEIL (mod_veil, AbilityVeil: the drip-warden's core, turned): the drip
+## let fall as a curtain of water VEIL_WIDE across, VEIL_AHEAD in front of the
+## player, for VEIL_MS. It is SIGHT and nothing else: machines cannot see through
+## it (WorldQuery.sight_screens, which every look reads through
+## Senses.line_clear), and bodies, blows and sound go through as through air.
+## So a dart that loses its sight of you breaks off to where it last saw you, a
+## thrower cannot aim across it, and a hunter goes to its last sight and
+## searches (FightSim.hunting). Each {id, a, b, until}.
+var veils: Array[Dictionary] = []
+var _veil_ids := 0
+const VEIL_WIDE := 3.0
+const VEIL_AHEAD := 1.0
+const VEIL_MS := 12000.0
+
+
+## Let the veil fall ahead of the player along `dir`. Its id.
+func veil(dir: Vector2) -> int:
+	var d := dir.normalized() if dir.length_squared() > 1e-6 else Vector2.from_angle(hero.facing)
+	var mid := hero.pos + d * VEIL_AHEAD
+	var across := d.orthogonal() * VEIL_WIDE * 0.5
+	_veil_ids += 1
+	veils.append({"id": _veil_ids, "a": mid - across, "b": mid + across, "until": now + VEIL_MS})
+	_screen()
+	emit(&"veil_up", {"id": _veil_ids, "a": mid - across, "b": mid + across, "ms": VEIL_MS})
+	return _veil_ids
+
+
+## Whether a standing veil lies across the line from `p` to `q`.
+func veiled(p: Vector2, q: Vector2) -> bool:
+	return veiled_until(p, q) > now
+
+
+## When the last veil across the line from `p` to `q` falls; -INF when none is.
+func veiled_until(p: Vector2, q: Vector2) -> float:
+	var until := -INF
+	for v: Dictionary in veils:
+		if Geometry2D.segment_intersects_segment(p, q, v.a, v.b) != null:
+			until = maxf(until, float(v.until))
+	return until
+
+
+func _veils_beat() -> void:
+	var gone := false
+	for i in range(veils.size() - 1, -1, -1):
+		if now >= float(veils[i].until):
+			emit(&"veil_down", {"id": veils[i].id, "a": veils[i].a, "b": veils[i].b})
+			veils.remove_at(i)
+			gone = true
+	if gone:
+		_screen()
+
+
+## The query's sight screens are the veils standing, and only those.
+func _screen() -> void:
+	if query == null:
+		return
+	var s: Array[Vector4] = []
+	for v: Dictionary in veils:
+		s.append(Vector4((v.a as Vector2).x, (v.a as Vector2).y, (v.b as Vector2).x, (v.b as Vector2).y))
+	query.sight_screens = s
+
+
 ## FURROWS (a row that `bogs`, the Snowfield's plough): tiles it has ploughed,
 ## (Vector2i) -> the sim second the furrow fills in again.
 var furrows: Dictionary = {}
@@ -2061,6 +2125,8 @@ func clear_mobs() -> void:
 	for c: Dictionary in curtains:
 		emit(&"curtain_down", {"id": c.id, "at": c.at, "broken": false})
 	curtains.clear()
+	veils.clear()
+	_screen()
 
 
 func _purge() -> void:

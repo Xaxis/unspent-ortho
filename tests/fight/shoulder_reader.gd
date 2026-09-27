@@ -36,6 +36,16 @@ var _scan_until := -INF
 var _scan_ready := 0.0
 ## Radians a second a player turns the camera looking for what they lost.
 const LOOK_TURN := 2.5
+## With the veil fitted (FightKit.veil) it lets the veil fall when a body that
+## works by sight from range -- a dart, a thrower -- is known, within VEIL_AT
+## tiles and within VEIL_ARC of the facing, and the veil is ready: its cooldown
+## and its charges, as AbilityVeil and the book keep them. With `veil_any` it
+## lets it fall on any body so, to show what it does to those it is not for.
+const VEIL_AT := 6.0
+const VEIL_ARC := deg_to_rad(50.0)
+var _veil_ready := 0.0
+var veils_let := 0
+var veil_any := false
 
 var _last_known := {}
 
@@ -52,9 +62,29 @@ func act() -> void:
 	var plumbed := _scanning() and hero.kit != null and hero.kit.plumb
 	react_ms = PLUMB_REACT_MS if plumbed else 220.0
 	var known := _live()
+	if hero.kit != null and hero.kit.veil and sim.now >= _veil_ready:
+		_maybe_veil(known)
 	if known.is_empty() and sim.hero.move.length() < 0.1:
 		sim.hero.facing = wrapf(sim.hero.facing + LOOK_TURN * FightRules.SLICE_MS * 2.0 / 1000.0, -PI, PI)
 	super()
+
+
+func _maybe_veil(known: Array[MobState]) -> void:
+	var hero := sim.hero
+	var inv := hero.inventory
+	if inv == null or inv.count(FightRules.CHARGE) < AbilityVeil.CHARGES:
+		return
+	for m in known:
+		if not veil_any and not (m.approach == &"dart" or m.approach == &"throw"):
+			continue
+		var to := m.pos - hero.pos
+		if to.length() > VEIL_AT or absf(wrapf(to.angle() - hero.facing, -PI, PI)) > VEIL_ARC:
+			continue
+		sim.veil(to)
+		inv.remove(FightRules.CHARGE, AbilityVeil.CHARGES)
+		_veil_ready = sim.now + AbilityVeil.COOLDOWN * 1000.0
+		veils_let += 1
+		return
 
 
 func _scanning() -> bool:

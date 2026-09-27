@@ -542,6 +542,20 @@ func _fx(what: StringName, args: Dictionary) -> void:
 			_draw_line(from, to)
 			_travel_at = TRAVEL_BEAT
 			Events.sfx.emit(&"ability_grapple", at)
+		&"veil":
+			# The drip let fall (AbilityVeil, FightSim.veils): a curtain of water
+			# across the way ahead, falling for as long as it stands
+			# (veil.gdshader), and a splash where it first lands.
+			var dir: Vector2 = args.get("dir", Vector2.RIGHT)
+			var secs := float(args.get("seconds", 12.0))
+			var from: Vector2 = args.get("at", game.player.pos)
+			var mid := from + dir.normalized() * FightSim.VEIL_AHEAD
+			var across := dir.normalized().orthogonal() * FightSim.VEIL_WIDE * 0.5
+			_veil_sheet(mid, dir.normalized(), secs)
+			for i in 5:
+				var t := (float(i) + 0.5) / 5.0
+				MobFx.puffs(game, game.world.to_3d(mid - across + across * 2.0 * t) + Vector3(0, 0.1, 0), Vector2.ZERO, Palette.RIME[4], 2, 0.5, seed_value + i)
+			Events.sfx.emit(&"ability_veil", at)
 		&"spoof":
 			# Their own signature going out of you: a clean violet ring and a
 			# lens flare at the head, exact, nothing hatched.
@@ -766,6 +780,61 @@ func _next_piece(slot: StringName, here: StringName) -> StringName:
 		if game.inventory.count(id) > loadout.fitted_count(id):
 			return id
 	return &""
+
+
+## Above the shaft columns and under the marks: water seen through, over the ground.
+const VEIL_PRIORITY := 8
+## How tall the falling water stands, and how long it takes to start and stop.
+const VEIL_TALL := 2.3
+const VEIL_POOL := 0.9
+const VEIL_IN := 0.35
+const VEIL_OUT := 0.9
+
+
+## One upright sheet of falling water across `dir` at `mid` for `secs`, faded in
+## and out (veil.gdshader).
+func _veil_sheet(mid: Vector2, dir: Vector2, secs: float) -> void:
+	var q := QuadMesh.new()
+	q.size = Vector2(FightSim.VEIL_WIDE, VEIL_TALL)
+	var mi := MeshInstance3D.new()
+	mi.name = "veil"
+	mi.mesh = q
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://src/render/veil.gdshader")
+	m.render_priority = VEIL_PRIORITY
+	var w := Palette.BRINE[4]
+	var t := Palette.RIME[5]
+	m.set_shader_parameter(&"water_tint", Vector3(w.r, w.g, w.b))
+	m.set_shader_parameter(&"thread_tint", Vector3(t.r, t.g, t.b))
+	m.set_shader_parameter(&"strength", 0.0)
+	mi.material_override = m
+	game.add_child(mi)
+	# A QuadMesh faces +Z with +X across: turn its across onto the veil's.
+	var across := dir.orthogonal()
+	mi.global_position = game.world.to_3d(mid) + Vector3(0, VEIL_TALL * 0.5, 0)
+	mi.global_basis = Basis(Vector3(across.x, 0, across.y), Vector3.UP, Vector3(dir.x, 0, dir.y))
+	var pool := MeshInstance3D.new()
+	pool.name = "veil_pool"
+	var pq := QuadMesh.new()
+	pq.size = Vector2(FightSim.VEIL_WIDE, VEIL_POOL)
+	pool.mesh = pq
+	pool.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var pm := m.duplicate() as ShaderMaterial
+	pm.set_shader_parameter(&"pool", true)
+	pool.material_override = pm
+	mi.add_child(pool)
+	# Flat on the ground at the sheet's foot: the quad's +Z turned to face up.
+	pool.position = Vector3(0, -VEIL_TALL * 0.5 + 0.04, 0)
+	pool.basis = Basis(Vector3.RIGHT, -PI * 0.5)
+	var tw := mi.create_tween()
+	var both := func(v: float) -> void:
+		m.set_shader_parameter(&"strength", v)
+		pm.set_shader_parameter(&"strength", v)
+	tw.tween_method(both, 0.0, 1.0, VEIL_IN)
+	tw.tween_interval(maxf(0.0, secs - VEIL_IN - VEIL_OUT))
+	tw.tween_method(both, 1.0, 0.0, VEIL_OUT)
+	tw.tween_callback(mi.queue_free)
 
 
 # --- boot, saving, tours -------------------------------------------------------
