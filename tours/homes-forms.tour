@@ -1,0 +1,67 @@
+# HOMES BEHIND THE FORMS (src/content/interiors/home.gd, BiomeDef.home): a
+# clerk's in the slums, kept for the plan as the tenement's flats are; a
+# squatter's on a green towers floor under the one stolen lamp; a stilt family's
+# in the drowned city, the water marked up the wall. Staged by who keeps it.
+#
+#   tools/tour.sh tours/homes-forms.tour --seed=4 --hour=15 --weather=clear:0
+#
+# Odd frames are each home from above; even frames over the shoulder at what
+# the household lives by.
+coast calm
+near door:clerk
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 01-a-clerks-home with room:clerk,land:slums
+hold shoulder_peek
+await shoulder 3
+near thing:ledgers
+wait 1.0
+shot 02-its-ledgers with room:clerk,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:squatter
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 03-a-squatters-home with room:squatter,land:green_towers
+hold shoulder_peek
+await shoulder 3
+near thing:hammock
+wait 1.0
+shot 04-its-hammock with room:squatter,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:stilter
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 05-a-stilters-home with room:stilter,land:drowned_city
+hold shoulder_peek
+await shoulder 3
+near thing:tide_gauge
+wait 1.0
+shot 06-its-tide-gauge with room:stilter,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+

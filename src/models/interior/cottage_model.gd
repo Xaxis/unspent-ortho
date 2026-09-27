@@ -69,7 +69,7 @@ func build(l: InteriorLayout, k: InteriorKind, land: int, mat: Material) -> void
 				_mullions(full, e, frame)
 			_wear(full, e, infill, k.wall_h)
 			_wear(cut, e, infill, k.cut)
-		if l.hearth_wall.is_equal_approx(DIRS[i]):
+		if l.has_hearth and l.hearth_wall.is_equal_approx(DIRS[i]):
 			_breast(full, k.wall_h, stone, stone)
 			_breast(cut, k.cut, stone, cap)
 			_soot(full, k.wall_h)
@@ -104,7 +104,8 @@ func build(l: InteriorLayout, k: InteriorKind, land: int, mat: Material) -> void
 		if not ON_WALL.has(t.kind):
 			furnish.thing(t)
 	lights = furnish.lights
-	_hearth_base(always, stone)
+	if l.has_hearth:
+		_hearth_base(always, stone)
 	_boards(always, l, dress)
 	_mesh(always, mat, "floor")
 	var roof := Kit.new()

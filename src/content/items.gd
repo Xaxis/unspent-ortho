@@ -115,6 +115,11 @@ const DEFS := {
 	&"reeds": {"name": "reeds", "bulk": 2.0, "group": &"material"},
 	&"gorse_cut": {"name": "cut gorse", "bulk": 2.0, "group": &"material"},
 	&"timber": {"name": "timber", "bulk": 6.0, "group": &"material"},
+	# Beams the pinewood's saw hall cut and dried square in its kiln, lighter and
+	# truer than green timber: what a settlement's cellar, tower and shutters are
+	# built from (the fight builder's settlement pieces read it by id). Nobody can
+	# make it yet; the saw hall's store keeps it (Interiors.LOOT `saw_hall`).
+	&"seasoned_timber": {"name": "seasoned timber", "bulk": 1.5, "group": &"material"},
 	&"haft": {"name": "haft", "bulk": 1.0, "group": &"material"},
 	&"resin": {"name": "resin", "bulk": 1.0, "group": &"material"},
 	&"pitch": {"name": "pitch", "bulk": 2.0, "group": &"material"},

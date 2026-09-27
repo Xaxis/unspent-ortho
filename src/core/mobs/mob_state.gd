@@ -101,6 +101,10 @@ var role: StringName = &"hunter"
 ## a noise fills it slowly, and it drains when nothing comes of it. At 1 the
 ## body is sure and the alert pose snaps (drawn on the machine, never as text).
 var suspicion := 0.0
+## DOCKED, ASLEEP: its optics dark (it sees nothing), its hearing still on. It
+## wakes when it is sure (suspicion reaches 1, FightSim) or when whoever docked
+## it says so (21_doors, at the shift).
+var asleep := false
 ## Where the last noise it heard came from, and the sim ms until which its
 ## optics are turned that way.
 var heard_at := Vector2.ZERO

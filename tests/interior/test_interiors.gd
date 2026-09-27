@@ -57,26 +57,37 @@ func test_a_pocket_keeps_its_own_word() -> void:
 		for pr: WorldProp in p.world.each_prop():
 			if pr.kind == PropKind.FIRE:
 				fires += 1
-		eq(fires, 1, "%s: one hearth" % t.key)
+		var laid := 0
+		for pr: Dictionary in l.props:
+			if int(pr.kind) == PropKind.FIRE:
+				laid += 1
+		check(laid <= 1, "%s: one fire at most" % t.key)
+		eq(fires, laid, "%s: the fire it lays, and only that" % t.key)
 		eq(p.world.country_at(floori(inside.x), floori(inside.y)), t.land, "%s: made of the land it stands on" % t.key)
 
 
 ## A landscape that declares nothing to walk into has no doors, whatever stands in
-## it: every door found on the island belongs to a landscape that declared its host.
+## it: every door found on the island belongs to a landscape that declared its
+## host, and a landmark whose landscape does not declare it opens on nothing --
+## asked of the landmarks standing where they are not declared, which the
+## island has (a mast in the moss is not a trawler).
 func test_a_landscape_that_declares_nothing_has_no_doors() -> void:
+	var doors: Array[Threshold] = []
 	for t: Threshold in Interiors.thresholds(_world()):
 		var d := BiomeRegistry.by_index(t.land)
 		check(not d.interiors.is_empty(), "%s: a door in %s, which declares no interiors" % [t.key, d.id])
-	var houses := {}
-	for p: WorldProp in _world().each_prop():
-		if p.kind == PropKind.HOUSE:
-			var d := BiomeRegistry.by_index(_world().country_at(floori(p.pos.x), floori(p.pos.y)))
-			houses[d.id] = not d.interiors.is_empty()
-	var closed := 0
-	for id: Variant in houses:
-		if not houses[id]:
-			closed += 1
-	gt(float(closed), 0.0, "and the island has houses in landscapes with no doors, which this asked of (%s)" % str(houses))
+		doors.append(t)
+	var undeclared := 0
+	for site: LandmarkSite in Landmarks.sites(_world()):
+		var d := BiomeRegistry.by_index(_world().country_at(floori(site.pos.x), floori(site.pos.y)))
+		if d == null or d.interiors.has(StringName("landmark:%s" % site.kind)):
+			continue
+		undeclared += 1
+		var near := false
+		for t: Threshold in doors:
+			near = near or (t.host_code == Threshold.LANDMARK and t.host.distance_to(site.pos) < 4.0)
+		check(not near, "a %s in %s, which does not declare it, has a door" % [site.kind, d.id])
+	gt(float(undeclared), 0.0, "and the island has landmarks where they are not declared, which this asked of")
 
 
 ## Every plan and every household is dealt somewhere on one coast, so walking
@@ -277,6 +288,12 @@ func test_every_house_opens_on_its_own_forms_room() -> void:
 			seen[want] = true
 		if want == &"":
 			check(not doors.has(key), "the %s %s at %s has no door" % [d.id, form, p.pos])
+		elif not d.interiors.has(StringName("form:%s" % form)) and d.home.has("open"):
+			# A landscape that keeps somebody in only some of its houses
+			# (`home.open`, tests/interior/test_squat.gd): where there is a door, it
+			# is the right one.
+			check(not doors.has(key) or (doors[key] as Threshold).kind == want,
+				"the %s %s at %s opens on a %s" % [d.id, form, p.pos, want])
 		else:
 			check(doors.has(key) and (doors[key] as Threshold).kind == want,
 				"the %s %s at %s opens on a %s" % [d.id, form, p.pos, want])

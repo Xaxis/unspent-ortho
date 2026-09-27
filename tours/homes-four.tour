@@ -1,0 +1,85 @@
+# FOUR MORE HOMES (src/content/interiors/home.gd, BiomeDef.home): a vent cook's
+# in the sulphur jungle, a knapper's in the glass desert, a siphoner's in the
+# burning, a wirer's in the middens. Staged by who keeps the room.
+#
+#   tools/tour.sh tours/homes-four.tour --seed=4 --hour=15 --weather=clear:0
+#
+# Odd frames are each home from above; even frames over the shoulder at what
+# the household lives by.
+coast calm
+near door:cook
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 01-a-vent-cooks-home with room:cook,land:sulphur_jungle
+hold shoulder_peek
+await shoulder 3
+near thing:steam_box
+wait 1.0
+shot 02-its-steam-box with room:cook,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:knapper
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 03-a-knappers-home with room:knapper,land:glass_desert
+hold shoulder_peek
+await shoulder 3
+near thing:glass_blades
+wait 1.0
+shot 04-its-glass-blades with room:knapper,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:siphoner
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 05-a-siphoners-home with room:siphoner,land:burning
+hold shoulder_peek
+await shoulder 3
+near thing:oil_drums
+wait 1.0
+shot 06-its-oil-drums with room:siphoner,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:wirer
+await door 5
+press use 0.1
+await inside:home 5
+wait 1.0
+shot 07-a-wirers-home with room:wirer,land:the_middens
+hold shoulder_peek
+await shoulder 3
+near thing:sorted_bins
+wait 1.0
+shot 08-its-sorted-bins with room:wirer,shoulder
+release shoulder_peek
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+

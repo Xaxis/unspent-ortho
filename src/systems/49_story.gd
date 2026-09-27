@@ -426,7 +426,7 @@ var _surface: WorldData = null
 ## The ROOMS row the room the player is in keeps.
 func _room_row(room: InteriorGen.Pocket) -> StringName:
 	var tenant: StringName = StoryRooms.tenants(_surface).get(room.threshold.key, &"")
-	return StoryRooms.room_of(room.kind.id, tenant)
+	return StoryRooms.room_of(room.kind.words if room.kind.words != &"" else room.kind.id, tenant)
 
 
 ## A story slot of the room in reach and in front, as {i, id, _d}, or {}. Two
@@ -450,7 +450,7 @@ func _slot_in_front() -> Dictionary:
 	var l := room.layout
 	var row := _room_row(room)
 	for i in l.slots.size():
-		var id := StoryRooms.held(row, room.threshold.key, l, i)
+		var id := StoryRooms.held(row, room.threshold.key, l, i, room.threshold.land)
 		if id == &"":
 			continue
 		var to: Vector2 = (l.slots[i].at as Vector2) - from
