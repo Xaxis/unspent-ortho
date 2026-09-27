@@ -180,3 +180,18 @@ func test_a_building_raised_in_storeys_carries_its_floor_lines_to_the_shader() -
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, made, [], {}, WorldView.prop_flags(made))
 	check(mesh.surface_get_format(0) & Mesh.ARRAY_FORMAT_CUSTOM1 != 0, "the surface is built with it")
 	view.free()
+
+
+## A WORK ON SALT OR SWARF SHOWS ITS MARKS. The map kept off water by the ground
+## enum's order, and the grounds added after RIVER fell on the water side of it,
+## so a salt pan's cut was never drawn (seed 7: 0 of 61,234 salt tiles marked).
+func test_a_work_on_salt_pan_or_swarf_is_marked() -> void:
+	for g: int in [Ground.SALT, Ground.PAN, Ground.SWARF]:
+		var w := WorldData.new(3, 48)
+		for i in 48 * 48:
+			w.level[i] = 2
+			w.country[i] = Country.COAST
+			w.ground[i] = g
+		w.landmarks.append({"kind": &"pans", "pos": Vector2(24, 24), "dir": Vector2.RIGHT, "half": Vector2(8, 6), "mark": &"cut"})
+		var m := WorksMap.bake(w)
+		gt(m.at(24, 24, 0), 0.9, "a cut on %s is drawn" % Ground.NAMES[g])

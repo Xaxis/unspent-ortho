@@ -450,3 +450,22 @@ func test_the_shoulder_eye_stays_out_of_a_hatch() -> void:
 	check(not inside, "put out, the eye stands outside the housing (%s in its frame, share %.2f)" % [local, share])
 	Sx.end(g)
 	Sx.finish()
+
+
+## A POCKET GROWN AT A DOOR DOES NOT TAKE THE LAND'S MARKS. It shares the
+## outside's world material, and bound its own works map (a room's: empty) from
+## its hidden view, so every work's marks vanished off the land round any door
+## for as long as the pocket stood ready (the salt pans, seed 7).
+func test_a_pocket_standing_ready_leaves_the_outside_works_on_the_land() -> void:
+	Sx.use_root("doors-works")
+	var g := Sx.game(tree, ["--seed=4", "--village=0", "--hour=11", "--weather=clear:0"])
+	var d := _doors(g)
+	var outside_view := g.view
+	var mat: ShaderMaterial = outside_view.world_material()
+	_at_door(g, d)
+	await _frames(90)
+	check(d.get("_grown") != null or d.get("_view") != null, "the pocket was grown while the player stood at the door")
+	var bound := float(mat.get_shader_parameter("works_inv_size"))
+	near(bound, 1.0 / float(g.world.size), 1e-9, "the material still carries the outside's works map, not the room's")
+	Sx.end(g)
+	Sx.finish()
