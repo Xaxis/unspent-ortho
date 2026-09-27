@@ -400,6 +400,16 @@ static func _marks(w: WorldData, from: int, to: int) -> Array:
 	return out
 
 
+## A test's hook: set, the people's things are laid last to first, which must
+## lay the same world (`_order`).
+static var reversing := false
+
+
+## 0..n-1, or n-1..0 while `reversing`.
+static func _order(n: int) -> Array:
+	return range(n - 1, -1, -1) if reversing else range(n)
+
+
 ## How many of a thing a world of this size gets: the landscape's count, and of
 ## that the region being laid gets its share (`_share`).
 static func _n(L: Lay, base: float) -> int:
@@ -1665,17 +1675,40 @@ static func _dugout(L: Lay, at: Vector2, _a: Array) -> bool:
 ## the edge with stolen light in some, fences, a barricade on the way in, debris.
 static func _villages(L: Lay) -> void:
 	var w := L.w
-	for vi in w.villages.size():
+	for vi: int in _order(w.villages.size()):
 		_work(L, &"_village_edge", w.villages[vi].pos as Vector2, [vi])
 	# Barricades on the ways in: beside each road where it nears a village.
-	# Roads into one village share their last stretch, so each way in is told
-	# where the ways in before it stood and keeps off them.
-	var held: Array[Vector2] = []
+	# Roads into one village share their last stretch, so each way in keeps off
+	# the stations of every way in that OUTRANKS it (by its own hash): the plan's
+	# roads decide who yields, not which way in happened to be laid first.
+	var ends: Array = []
 	for ri in w.roads.size():
 		for end in 2:
 			var road := w.roads[ri]
-			if road.size() > 0 and _work(L, &"_way_in", road[0] if end == 0 else road[road.size() - 1], [ri, end, held.duplicate()]):
-				held.append(w.props.back().pos)
+			if road.size() > 0:
+				ends.append([ri, end, _way_in_stations(road, end), Rng.hash01(L.c.s, ri, end, 0x3059)])
+	for ends_i: int in _order(ends.size()):
+		var e: Array = ends[ends_i]
+		var road := w.roads[int(e[0])]
+		var held: Array[Vector2] = []
+		for o: Array in ends:
+			if float(o[3]) < float(e[3]):
+				for q: Vector2 in o[2]:
+					for mine: Vector2 in e[2]:
+						if q.distance_squared_to(mine) < 16.0:
+							held.append(q)
+		_work(L, &"_way_in", road[0] if int(e[1]) == 0 else road[road.size() - 1], [e[0], e[1], held])
+
+
+## Where a way in may put its barricade: road `road`'s stations a way in from
+## end `end` (0 its first point, 1 its last).
+static func _way_in_stations(road: PackedVector2Array, end: int) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for k: int in [12, 15, 18, 22]:
+		var j := k if end == 0 else road.size() - 1 - k
+		if j >= 2 and j < road.size() - 2:
+			out.append(road[j])
+	return out
 
 
 ## Village `a[0]`'s edge: its graves, its shacks, its garden fences, its debris.
@@ -1722,7 +1755,7 @@ static func _village_edge(L: Lay, vp: Vector2, _a: Array) -> bool:
 
 
 ## A barricade beside road `a[0]` where its end `a[1]` nears a village, off
-## the ways in already held (`a[2]`).
+## the stations of the ways in that outrank it (`a[2]`).
 static func _way_in(L: Lay, _at: Vector2, a: Array) -> bool:
 	var road := L.w.roads[int(a[0])]
 	var end: int = a[1]
@@ -1759,26 +1792,34 @@ static func _note_lit_shack(L: Lay, shack: WorldProp) -> void:
 		L.lit.append(shack.pos)
 
 
-## THE STOLEN LIGHT IS THE WORLD'S ONE, AND NO REGION'S. It went to the first lit
-## shack laid, so which region held it hung on every region laid before; it goes
-## to the lit shack with the lowest hash, which no order of laying can move.
+## THE STOLEN LIGHT IS THE WORLD'S ONE, AND IT IS NOT A RACE. It went to the
+## first lit shack laid, so where it stood hung on every region laid before.
+## The regions are ranked by the plan's own hash; the light is the lowest-hashed
+## lit shack of the first region in that rank that lit one. So it hangs on the
+## first region or two of the rank and on nothing laid anywhere else.
 static func _stolen_light(L: Lay) -> void:
-	var best := Vector2(-1.0, -1.0)
-	var low := 2.0
+	var best := {}
 	for p: Vector2 in L.lit:
+		var r := L.w.region_at(floori(p.x), floori(p.y))
 		var h := Rng.hash01(L.c.s, roundi(p.x * 256.0), roundi(p.y * 256.0), 0x5701)
-		if h < low:
-			low = h
-			best = p
-	if best.x >= 0.0:
-		_record(L.c, &"stolen_light", best, Vector2.RIGHT, Vector2(1.5, 1.5))
+		if not best.has(r) or h < float((best[r] as Array)[0]):
+			best[r] = [h, p]
+	var first := -2
+	var rank := 2.0
+	for r: int in best:
+		var k := Rng.hash01(L.c.s, r, 0, 0x5702)
+		if k < rank:
+			rank = k
+			first = r
+	if first != -2:
+		_record(L.c, &"stolen_light", (best[first] as Array)[1] as Vector2, Vector2.RIGHT, Vector2(1.5, 1.5))
 
 
 ## Warnings nobody reads, beside the roads, one every so often away from the
 ## villages.
 static func _roads(L: Lay) -> void:
 	var w := L.w
-	for ri in w.roads.size():
+	for ri: int in _order(w.roads.size()):
 		var road := w.roads[ri]
 		if road.size() < 41:
 			continue
@@ -1809,7 +1850,7 @@ static func _road_sign(L: Lay, q: Vector2, a: Array) -> bool:
 static func _remains(L: Lay) -> void:
 	var w := L.w
 	var count := w.landmarks.size()
-	for li in count:
+	for li: int in _order(count):
 		var m: Dictionary = w.landmarks[li]
 		var k: StringName = m.kind
 		if k == &"tip" or k == &"wreck" or k == &"ruin":
@@ -1898,8 +1939,9 @@ static func _vignettes(L: Lay) -> void:
 	# tried and was not it (memoised, 1155 vs 1098 ms, reverted).
 	c.mark(&"vig.busy")
 	var cell := VIGNETTE_CELL
-	for cy in range(cell, c.size - cell, cell):
-		for cx in range(cell, c.size - cell, cell):
+	var cells := range(cell, c.size - cell, cell)
+	for cy: int in _order(cells.size()).map(func(k: int) -> int: return cells[k]):
+		for cx: int in _order(cells.size()).map(func(k: int) -> int: return cells[k]):
 			# The cell's rolls are its own (hashed from where it is), so a cell
 			# decides the same whichever cells were decided before it.
 			if Rng.hash01(c.s, cx, cy, 0x716, 3) > VIGNETTE_SHARE:
@@ -2105,7 +2147,9 @@ static func survey_sections(seed_value: int, size: int) -> Array:
 ## drawn by world.gdshader.
 static func _survey(L: Lay) -> void:
 	var c := L.c
-	for sec: Array in survey_sections(c.s, c.size):
+	var secs := survey_sections(c.s, c.size)
+	for si: int in _order(secs.size()):
+		var sec: Array = secs[si]
 		var a: Vector2 = sec[0]
 		var b: Vector2 = sec[1]
 		var mid := (a + b) * 0.5

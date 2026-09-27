@@ -234,7 +234,13 @@ const UNKNOWN := "unknown"
 ##     footing off a terrace lip. Works move on every seed; counts hold within
 ##     one per kind over eight seeds, slag rises to its three.
 ##     (Provisional; restamped at landing.)
-const GEN := 44
+## 45. The people's things are laid in no order that matters (streamed worldgen
+##     S4j2): a way in keeps off the ways in that outrank it by hash, not the
+##     ones laid before it, and the stolen light is the lowest-hashed lit shack
+##     of the first region in the plan's rank that lit one. Barricades and the
+##     stolen light move; every kind's count holds within 2%.
+##     (Provisional; restamped at landing.)
+const GEN := 45
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
