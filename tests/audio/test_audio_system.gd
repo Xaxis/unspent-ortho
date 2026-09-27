@@ -62,7 +62,7 @@ func _adopt(sys: AudioSystem, name: StringName) -> void:
 
 func test_setup_is_cheap() -> void:
 	var parts := _make()
-	lt(float(parts[2]), 300.0, "audio setup must stay under 300 ms")
+	cost_lt(float(parts[2]), 300.0, "audio setup must stay under 300 ms")
 	_done(parts)
 
 

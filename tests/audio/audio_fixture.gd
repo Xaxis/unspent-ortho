@@ -120,4 +120,4 @@ static func judge_frames(t: TestCase, run: Callable, what: String) -> void:
 			break
 	t.gt(float(frames), 8.0, "%s: built across many frames, not in one (%d)" % [what, frames])
 	t.check(worst_units <= MAX_UNITS, "%s: no frame advanced more than a slice of the work (worst %d units, %d allowed)" % [what, worst_units, MAX_UNITS])
-	t.lt(float(median), float(budget + SLACK), "%s: the middle frame of %d is %d us (budget %d; the worst on the clock was %d)" % [what, frames, median, budget, worst_usec])
+	t.cost_lt(float(median), float(budget + SLACK), "%s: the middle frame of %d is %d us (budget %d; the worst on the clock was %d)" % [what, frames, median, budget, worst_usec])

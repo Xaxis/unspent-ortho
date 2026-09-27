@@ -7,6 +7,7 @@ Growing a world from a seed.
 ## Sub-features
 
 - worldgen: `src/core/world_gen.gd`, reached by `tools/map.sh --seed=7`.
+- plan and sections (streamed worldgen S4f): `WorldGen.plan` runs every stage up to the surface, `WorldGen.begin_sections` + `WorldGen.section(c, core)` lay one section's surface, `WorldGen.finish` the rest; `generate` = plan + the surface as one window + finish. `tools/test.sh test_surface_sections` lays a 512 world's surface in sixteen sections in any order and on the worker pool and holds it to the whole world's, byte for byte.
 - works as rows (streamed worldgen S4b): `GenWorks._work` composes each machine work from its row alone; `tools/test.sh test_works_rows` composes every standing work twice (in the world, and alone) and compares the pieces.
 
 ## How to reach it

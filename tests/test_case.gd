@@ -144,6 +144,8 @@ func unmeasured(what: String, got: float, bound: float) -> void:
 ## loud. Declining in both directions threw away every valid pass as well, which
 ## is how a red and a green came to look the same in a busy log.
 func cost_lt(got: float, bound: float, what: String) -> void:
+	if _later("%s: %.2f against a bar of %.2f beside the other shards" % [what, got, bound]):
+		return
 	# A bar is a claim about the machine the game is built on. A CI runner is a
 	# DIFFERENT, slower machine that is not loaded, so `can_measure_cost` says
 	# "measure" and a quiet-box bar then fails on raw CPU speed: measured
@@ -328,6 +330,19 @@ static func _figure_work() -> void:
 		d.animate(1.0 / 60.0, 1.5)
 
 
+## The build yardstick: one dog built and freed, out of the tree. Building a
+## figure is mesh and node work in the engine driven from script, which is what
+## building a villager is and what no pass over a grid or pose of a rig is: a
+## cost that builds figures is ruled by building one.
+static func build_work() -> Callable:
+	return _build_work
+
+
+static func _build_work() -> void:
+	var d := FigureModel.create(&"dog")
+	d.free()
+
+
 ## The rig yardstick's work (see bone_yardstick_us), as a Callable.
 static func bone_work() -> Callable:
 	bone_yardstick_us()
@@ -391,21 +406,33 @@ const DOUBLED_SEEN := 1.6
 func yard_lt(us: float, doubled_us: float, yard: float, bar: float, what: String) -> void:
 	var r := us / maxf(yard, 0.001)
 	var r2 := doubled_us / maxf(yard, 0.001)
-	var later := OS.get_environment("UNSPENT_COSTS_LATER") if defer_costs else ""
-	if later != "":
-		var f := FileAccess.open(later, FileAccess.READ_WRITE if FileAccess.file_exists(later) else FileAccess.WRITE)
-		if f != null:
-			f.seek_end()
-			f.store_line(current)
-			f.close()
-			print("  %s: %.2f yardsticks shipped beside the other shards, bar %.2f -- MEASURED AGAIN ALONE after them" % [what, r, bar])
-			return
+	if _later("%s: %.2f yardsticks shipped beside the other shards, bar %.2f" % [what, r, bar]):
+		return
 	print("  %s: %.2f yardsticks shipped, %.2f doubled, bar %.2f (%.0f us, yardstick %.1f us)" % [what, r, r2, bar, us, yard])
 	lt(r, bar, "%s, in yardsticks" % what)
 	if r2 > bar or r2 >= r * DOUBLED_SEEN:
 		gt(r2, bar, "%s: the bar sees the work doubled" % what)
 	else:
 		print("  UNMEASURED %s doubled: read %.2fx the shipped, not twice — the run was disturbed, re-run it alone" % [what, r2 / maxf(r, 0.0001)])
+
+
+## Whether this cost is to be judged later, alone (UNSPENT_COSTS_LATER, set by
+## tools/check.sh for its shards): the test is written to the file, `said` is
+## printed, and the caller judges nothing here. EVERY cost bar goes through it,
+## yardsticked or not: an absolute one judged in a shard is the same contention
+## (a villager's build read 24.24 ms against 24.0 on CI beside two shards).
+func _later(said: String) -> bool:
+	var later := OS.get_environment("UNSPENT_COSTS_LATER") if defer_costs else ""
+	if later == "":
+		return false
+	var f := FileAccess.open(later, FileAccess.READ_WRITE if FileAccess.file_exists(later) else FileAccess.WRITE)
+	if f == null:
+		return false
+	f.seek_end()
+	f.store_line(current)
+	f.close()
+	print("  %s -- MEASURED AGAIN ALONE after them" % said)
+	return true
 
 
 ## The middle of `samples`, which is what to report when a thing is measured

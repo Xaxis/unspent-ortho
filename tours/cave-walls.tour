@@ -10,7 +10,7 @@ near shaft_pool
 wait 1.5
 shot 01-walls-from-above
 tap shoulder
-await shoulder 3
+await shoulder 20
 # Turned to face into the tear's light, the hall's walls lit along the left.
 mouse -1280,0 1.2
 wait 1.0
