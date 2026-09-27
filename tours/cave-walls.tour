@@ -1,13 +1,17 @@
 # THE CAVE'S WALLS (limestone_caves, world.gdshader strata 13): the scraped
 # lips read as fine pale ink lines and the curtains hang, with no bright broken
-# shimmer on the faces. Where the caves' game starts (lands_caves.tour's view), beside the first shaft down, looking
-# over the terraced hall, over the shoulder at eye level and from above.
+# shimmer on the faces. Under an open tear in the roof (GenAbove), where the day
+# comes down onto the walls: under the lid the halls are dark and a frame of them
+# proves nothing. Over the shoulder at eye level and from above.
 #   TOUR_FIXED_FPS=60 tools/tour.sh tours/cave-walls.tour --seed=7 --realm=underground --hour=12
 coast calm
 wait 1.0
+near shaft_pool
 wait 1.5
 shot 01-walls-from-above
 tap shoulder
 await shoulder 3
+# Turned to face into the tear's light, the hall's walls lit along the left.
+mouse -1280,0 1.2
 wait 1.0
 shot 02-walls-at-eye-level with shoulder
