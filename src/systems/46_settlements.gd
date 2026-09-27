@@ -360,11 +360,8 @@ func _spot_for(kind: int) -> Vector2:
 
 func _clear(spot: Vector2, r: float, level: int) -> bool:
 	var w := game.world
-	for c: Vector2 in [spot, spot + Vector2(r, 0), spot - Vector2(r, 0), spot + Vector2(0, r), spot - Vector2(0, r)]:
-		var tx := floori(c.x)
-		var ty := floori(c.y)
-		if not game.query.standable(tx, ty) or Ground.is_water(w.ground_at(tx, ty)) or w.level_at(tx, ty) != level:
-			return false
+	if not game.query.flat_footing(spot, r, level):
+		return false
 	for q in game.query.props_near(spot, 4.0):
 		if w.depleted.has(q.id):
 			continue
