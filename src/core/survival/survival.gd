@@ -629,11 +629,8 @@ static func _build_spot(game: Game, kind: int) -> Vector2:
 
 static func _clear(game: Game, s: Vector2, radius: float, level: int) -> bool:
 	var w := game.world
-	for c: Vector2 in [s, s + Vector2(radius, 0), s - Vector2(radius, 0), s + Vector2(0, radius), s - Vector2(0, radius)]:
-		var tx := floori(c.x)
-		var ty := floori(c.y)
-		if not game.query.standable(tx, ty) or Ground.is_water(w.ground_at(tx, ty)) or w.level_at(tx, ty) != level:
-			return false
+	if not game.query.flat_footing(s, radius, level):
+		return false
 	for q in game.query.props_near(s, 4.0):
 		if w.depleted.has(q.id):
 			continue
