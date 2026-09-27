@@ -219,7 +219,8 @@ const TERRAIN: Array[String] = [
 	"props", "ore", "gravel_ore", "reed_chance", "scorched", "shore_bush", "surface", "scatter", "scatter_ruled",
 	"sites", "tip_ground", "beached_wrecks", "pools", "villages", "village_names", "village_order",
 	"villages_each_region", "village_platform",
-	"spawn_home", "above",
+	"spawn_home",
+	"above",
 ]
 
 ## The BiomeDef fields that decide how a landscape LOOKS, SOUNDS or is LIVED in,
