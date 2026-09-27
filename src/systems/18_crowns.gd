@@ -17,6 +17,11 @@ const SLOTS := 6
 ## Tiles of clear ground round a point: gone inside about 0.7 of it, thinning to
 ## nothing by the whole of it, so the hole is never a hard disc.
 const REACH := 1.6
+## A body up to this radius is person-sized and is written with REACH; a bigger
+## one carries the rest in its slot's reach (`reach_of`), so its clearing is as
+## much wider and the close eye's cone never cuts the body's own front
+## (sight.gdshaderinc `sight_cone`, SIGHT_REACH).
+const BODY := 0.4
 ## A mob this far from the player is part of the same moment and gets its own.
 const NEAR := 14.0
 ## What a body must stand above its own ground before a leaf counts as in the
@@ -31,6 +36,7 @@ var _slots := PackedVector4Array()
 var _pos: Array[Vector2] = []
 var _hostile := PackedByteArray()
 var _aware := PackedByteArray()
+var _radius := PackedFloat32Array()
 
 
 func setup(g: Game) -> void:
@@ -129,6 +135,7 @@ func _process(_delta: float) -> void:
 	_pos.clear()
 	_hostile.clear()
 	_aware.clear()
+	_radius.clear()
 	for m: Node in get_tree().get_nodes_in_group(&"mobs"):
 		# Read as the rest of the game does: a body in the group answers for
 		# `alive`, `pos`, `hostile` and `aware`, and anything that does not is
@@ -145,8 +152,16 @@ func _process(_delta: float) -> void:
 		_pos.append(p)
 		_hostile.append(0 if hostile is bool and not hostile else 1)
 		_aware.append(1 if aware is bool and aware else 0)
-	fill(_slots, here, choose(_pos, _hostile, _aware, here, SLOTS - 1),
-		func(p: Vector2) -> float: return game.view.surface_height(p))
+		# How big the body is: a keeper is a gantry across, and a slot sized for a
+		# person had the close eye cut its own front plates.
+		var st: Variant = m.get(&"state")
+		_radius.append((st as MobState).radius if st is MobState else 0.0)
+	var picked: Array[Vector2] = []
+	var radii := PackedFloat32Array()
+	for i in rank(_pos, _hostile, _aware, here, SLOTS - 1):
+		picked.append(_pos[i])
+		radii.append(_radius[i])
+	fill(_slots, here, picked, func(p: Vector2) -> float: return game.view.surface_height(p), radii)
 	_mat.set_shader_parameter("crown_clear", _slots)
 	if _leaf != null:
 		_leaf.set_shader_parameter("crown_clear", _slots)
@@ -162,6 +177,16 @@ func _process(_delta: float) -> void:
 ## Pure: `pos[i]`, `hostile[i]` and `aware[i]` describe the same body.
 static func choose(pos: Array[Vector2], hostile: PackedByteArray, aware: PackedByteArray,
 		player: Vector2, limit: int) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for i in rank(pos, hostile, aware, player, limit):
+		out.append(pos[i])
+	return out
+
+
+## `choose`'s ranking, as indices into its inputs, so what else is known of each
+## body (its size) follows it into the slots.
+static func rank(pos: Array[Vector2], hostile: PackedByteArray, aware: PackedByteArray,
+		player: Vector2, limit: int) -> Array[int]:
 	var order: Array[int] = []
 	for i in pos.size():
 		order.append(i)
@@ -171,21 +196,25 @@ static func choose(pos: Array[Vector2], hostile: PackedByteArray, aware: PackedB
 		if ra != rb:
 			return ra > rb
 		return pos[a].distance_squared_to(player) < pos[b].distance_squared_to(player))
-	var out: Array[Vector2] = []
-	for i in mini(limit, order.size()):
-		out.append(pos[order[i]])
-	return out
+	order.resize(mini(limit, order.size()))
+	return order
+
+
+## A body's slot reach: REACH, and whatever its radius runs past a person's.
+static func reach_of(radius: float) -> float:
+	return REACH + maxf(0.0, radius - BODY)
 
 
 ## Lay the player and the bodies about them into `slots`, tallest priority first,
 ## and blank the rest. `ground` answers the drawn height under a point. Pure
 ## given its inputs: the player always takes slot 0, so a crowd never crowds the
 ## player out of their own clearing.
-static func fill(slots: PackedVector4Array, player: Vector2, mobs: Array[Vector2], ground: Callable) -> void:
+static func fill(slots: PackedVector4Array, player: Vector2, mobs: Array[Vector2], ground: Callable,
+		radii: PackedFloat32Array = PackedFloat32Array()) -> void:
 	slots[0] = Vector4(player.x, ground.call(player), player.y, REACH)
 	var n := mini(mobs.size(), slots.size() - 1)
 	for i in n:
 		var p: Vector2 = mobs[i]
-		slots[i + 1] = Vector4(p.x, ground.call(p), p.y, REACH)
+		slots[i + 1] = Vector4(p.x, ground.call(p), p.y, reach_of(radii[i] if i < radii.size() else 0.0))
 	for i in range(n + 1, slots.size()):
 		slots[i] = Vector4.ZERO

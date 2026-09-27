@@ -33,6 +33,7 @@ static func make() -> SentinelDef:
 	d.reach = 26.0
 	d.stations = [&"intake", &"sea_wall", &"hulk", &"turf_rows"]
 	d.feeds = [PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.PIPE, PropKind.RELAY]
+	d.come_round = "The gantry slews on its tracks and the reaper's arm sweeps the side you keep to."
 	d.drops = &"sentinel_tide_reaper"
 	d.core = &"reaper_core"
 	d.hulk = PropKind.WRECKAGE

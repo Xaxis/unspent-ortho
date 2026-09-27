@@ -48,6 +48,7 @@ static func make() -> SentinelDef:
 	# until the bench is laid, which closes the way honestly, and four masts plus
 	# a row of racks once it is.
 	d.feeds = [PropKind.THEODOLITE_MAST, PropKind.CORE_RACK]
+	d.come_round = "The tripod pivots and the plumb swings wide across the side you keep to."
 	d.drops = &"sentinel_plumb"
 	d.core = &"plumb_core"
 	d.hulk = PropKind.WRECKAGE
@@ -67,7 +68,7 @@ static func make() -> SentinelDef:
 	# guard is the leg that is planted: a blow into the front of it rings off the
 	# planted leg until a stamp has missed and it is heaving the foot back out.
 	var staking := SentinelPhase.make(&"staking", 0.6, &"front",
-		{"swing": [640, 150, 720, 820], "reach": 1.8, "width": 1.4, "dmg": 4, "knock": 10.0, "knock_ms": 340})
+		{"swing": [640, 150, 720, 820], "reach": 1.8, "width": 1.4, "dmg": 3, "knock": 10.0, "knock_ms": 340})
 	staking.guarded = true
 	staking.pace = 4.2
 	staking.dash = 8.5
