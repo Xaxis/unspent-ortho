@@ -55,6 +55,17 @@ static func model(variant: int, tower: bool) -> Array[Vector3]:
 
 
 ## Every standing ruin's walls in this world, in tile space.
+## The prop ids of every ruin in `w`, standing or fallen.
+static func ids_of(w: WorldData) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	w.sync_table()
+	var t := w.table
+	for row in t.size():
+		if t.kind[row] == PropKind.RUIN:
+			out.append(t.id[row])
+	return out
+
+
 static func of_world(w: WorldData) -> Array[Vector3]:
 	var out: Array[Vector3] = []
 	w.sync_table()
