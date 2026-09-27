@@ -20,11 +20,12 @@ const BOUTS := 24
 ## One gate bout: {won, downed, t, health_lost}. `kit` is what is fitted.
 static func gate(crowd_reader: bool, start: int, kind: StringName = &"runner", count: int = 2,
 		kit: Array[StringName] = [], seconds: float = 120.0, tool: StringName = TOOL, charges: int = 0, ids: int = 1000,
-		shoulder := false) -> Dictionary:
+		shoulder := false, wind := 0.0) -> Dictionary:
 	# A body's id steers its side-steps (Brains); ids count up across a run, so
 	# without this a bout's outcome would hang on how many ran before it.
 	MobState._next_id = ids
 	var sim := F.make_sim(F.flat_world(96), Vector2(48.5, 48.5))
+	sim.moment.wind = wind
 	if charges > 0:
 		sim.hero.inventory.add(FightRules.CHARGE, charges)
 	sim.hero.inventory.add(tool)

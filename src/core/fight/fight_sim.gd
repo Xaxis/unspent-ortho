@@ -346,6 +346,10 @@ func _dodge() -> void:
 	if hero.move.length() > 0.1 and not LockOn.locked(hero.lock):
 		hero.facing = dir.angle()
 	hero.start_dodge(dir, now)
+	# The vane cloak: a dodge the strong wind is behind carries further
+	# (FightKit.vane); any other, as ever.
+	var down := downwind() if hero.kit.vane else Vector2.ZERO
+	hero.dodge_carry = FightKit.VANE_CARRY if down != Vector2.ZERO and absf(hero.dodge_dir.angle_to(down)) <= FightKit.VANE_ARC else 1.0
 	emit(&"dodge", {})
 
 
@@ -723,7 +727,7 @@ func _move_hero(dt: float) -> void:
 	elif hero.stunned(now):
 		v = Vector2.ZERO
 	elif since_dodge < FightRules.DODGE_MS:
-		v = hero.dodge_dir * FightRules.dodge_speed(since_dodge)
+		v = hero.dodge_dir * FightRules.dodge_speed(since_dodge) * hero.dodge_carry
 		hero.facing = LockOn.face(hero.facing, hero.pos, hero.lock, dt)
 	else:
 		var can_run := (not fight_on or hero.wind > FightRules.RUN_WIND_FLOOR) and not hero.crouched
@@ -1482,6 +1486,14 @@ func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: in
 	if hero.committed(now) and not hero.kit.gyro:
 		hero.blow = null
 	emit(&"hurt", {"attacker": by, "target": hero, "damage": dmg, "at": hero.pos})
+
+
+## Downwind, where the wind is stronger than the vane cloak needs
+## (FightKit.VANE_WIND), else ZERO: the world's wind axis times the wind's sign.
+func downwind() -> Vector2:
+	if moment == null or absf(moment.wind) <= FightKit.VANE_WIND:
+		return Vector2.ZERO
+	return Weather.bearing(moment.seed_value) * signf(moment.wind)
 
 
 ## The fight the scale coat last turned a blow in (its `fight_started`).

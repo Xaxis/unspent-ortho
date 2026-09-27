@@ -254,7 +254,13 @@ static func mist(seed_value: int, minutes: float, type_id: StringName, kind: Str
 	return clampf(deep * shape * morning * still * beaten, 0.0, 1.0)
 
 
-## Scalar wind -1..1 (no bearing yet). Continuous in time: the base is a sum of
+## The world's one wind axis: `wind_at` is signed along it, so downwind is this
+## times the wind's sign (the sky drifts its clouds and sways the grass along it).
+static func bearing(seed_value: int) -> Vector2:
+	return Vector2.from_angle(Rng.hash01(seed_value, 0xC10D) * TAU)
+
+
+## Scalar wind -1..1 along `bearing`. Continuous in time: the base is a sum of
 ## slow seeded waves and the kind's push is scaled by strength, which is 0
 ## wherever the kind can change.
 static func wind_at(seed_value: int, minutes: float, kind: StringName, strength: float) -> float:

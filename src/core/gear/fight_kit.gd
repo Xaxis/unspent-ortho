@@ -42,6 +42,10 @@ extends RefCounted
 ##   hush     (wrap_hush)     "your steps are quiet": what the body itself does
 ##                            (StealthNoise.BODY_ACTS) is heard as if on moss,
 ##                            whatever the ground, on land
+##   vane     (cloak_vane)    "the wind carries your dodge": in a wind stronger
+##                            than VANE_WIND, a dodge within VANE_ARC of
+##                            downwind (FightSim.downwind) carries VANE_CARRY as
+##                            far; against or across the wind, as ever
 ##   lock     (mod_lock)      "a way passed is shut": a gap between two solid
 ##                            things no wider than LOCK_GAP that the player walks
 ##                            through is shut behind them to machines for
@@ -112,6 +116,11 @@ const LOCK_SECONDS := 20.0
 const LOCK_CHARGES := 1
 ## Only with a machine coming for the player this near (FightSim._hunted_by_machine).
 const LOCK_HUNTED := 20.0
+## The vane cloak: the least wind (Moment.wind, -1..1) it catches, how far off
+## downwind a dodge may point and still be carried, and how far it carries.
+const VANE_WIND := 0.4
+const VANE_ARC := deg_to_rad(50.0)
+const VANE_CARRY := 2.0
 ## The scale coat: how far round from straight behind a blow still lands on
 ## the scales (either side), radians.
 const SCALE_ARC := deg_to_rad(70.0)
@@ -142,6 +151,7 @@ var listen := false
 var lock := false
 var scale := false
 var hush := false
+var vane := false
 var anchor := false
 
 
@@ -166,6 +176,7 @@ static func of(ids: Array) -> FightKit:
 	k.lock = ids.has(&"mod_lock")
 	k.scale = ids.has(&"coat_scale")
 	k.hush = ids.has(&"wrap_hush")
+	k.vane = ids.has(&"cloak_vane")
 	k.anchor = ids.has(&"mod_anchor")
 	return k
 

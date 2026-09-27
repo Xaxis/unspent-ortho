@@ -281,6 +281,12 @@ const DEFS := {
 		"resist": {}, "ability": &"glide", "wears": {"wing": true}},
 	&"scanner_lens": {"name": "scanner lens", "bulk": 1.0, "group": &"kit", "tier": &"mended",
 		"slot": &"head", "sockets": 2, "resist": {&"dark": 0.5, &"glare": 0.35}, "ability": &"scan", "wears": {"salvage": [&"lens"]}},
+	# A sweeper's trued vane cut into a cloak's shoulders (GEAR.md §6): the
+	# machine that rides the wind along its track, turned; in a strong wind a
+	# dodge the wind is behind carries twice as far (FightKit.vane).
+	&"cloak_vane": {"name": "vane cloak", "bulk": 3.0, "group": &"kit", "tier": &"mended",
+		"slot": &"back", "sockets": 3, "icon": [&"wing", &"plate", &"lens"],
+		"resist": {&"cold": 0.15, &"wet": 0.2}, "wears": {"extras": [&"shawl"], "salvage": [&"aerial"]}},
 	# A machine's own coolant loop, cut short and wound: it gives back what a
 	# body breathes out. The one answer to a land that drinks you.
 	&"condenser": {"name": "drip coil", "bulk": 2.0, "group": &"kit", "tier": &"mended",
