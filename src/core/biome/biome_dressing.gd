@@ -126,6 +126,11 @@ var spread := 0.0
 ## Empty and every broadleaf is `broad`. Render only: which variant a tree is
 ## does not move.
 var broadleaf_forms: Array[StringName] = []
+## The plan's works here move BRINE, and brine leaves itself on everything it
+## goes through (props/works.gd): a pump house crusted white to the waist with
+## crystal where it seeped, a brine outfall green-black and not an oil slick,
+## and a pipe run beaded with salt at every joint. Render only.
+var brine := false
 ## How a storey somebody still lives behind shows after dark (props/towers.gd):
 ##   &"floors"  the whole band lit on the city's stolen power, a floor left on
 ##   &"gaps"    no power: one light of the band, by a lamp or a fire, and the
@@ -285,6 +290,7 @@ static func resolve(d: BiomeDef) -> BiomeDressing:
 	r.crown = s.crown if s.crown != &"" else (&"bare" if cold or burnt else &"full")
 	r.spread = s.spread if s.spread > 0.0 else 1.0
 	r.broadleaf_forms = s.broadleaf_forms
+	r.brine = s.brine
 	r.windows = s.windows if s.windows != &"" else &"floors"
 	r.signage = s.signage if s.signage != &"" else &"lit"
 	r.old_light = s.old_light

@@ -612,4 +612,4 @@ static func dressings() -> Array[int]:
 
 
 ## Kinds of evidence whose model changes with the landscape it stands in.
-const DRESSED: Array[int] = [PropKind.FENCE, PropKind.GRAVE, PropKind.SHACK, PropKind.VEHICLE, PropKind.SIGN, PropKind.CHECKPOINT, PropKind.PIPE, PropKind.WRECKAGE, PropKind.MEMORIAL]
+const DRESSED: Array[int] = [PropKind.FENCE, PropKind.GRAVE, PropKind.SHACK, PropKind.VEHICLE, PropKind.SIGN, PropKind.CHECKPOINT, PropKind.PIPE, PropKind.PUMP_HOUSE, PropKind.WRECKAGE, PropKind.MEMORIAL]

@@ -126,6 +126,8 @@ static func make() -> BiomeDef:
 	dress.pale = [_w(P.LINEN[5]), _w(P.LINEN[4]), _w(P.LINEN[3])]
 	dress.bleach = _w(P.LINEN[4])
 	dress.facets = 5
+	# Its works pumped the sea in and moved brine: they are crusted with it.
+	dress.brine = true
 	# Nothing grows to build with, so a shelter here is sawn crust under tin.
 	dress.shelter = &"lean_to"
 	dress.sink = 0.1

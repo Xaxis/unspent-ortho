@@ -66,6 +66,16 @@ static func ridge(k: Kit, v: int) -> void:
 	var step := run / tents
 	var under := CRUST_DOWN.lerp(STAIN, 0.45).darkened(0.25)
 	var rim := CRUST_UP
+	# FROM ABOVE A RIDGE IS A LINE. Its tents are a hand wide each and their lit
+	# faces are the crust's own value, so seen from the play camera they were a
+	# few dark flecks. Under the whole run lies the crack it grew along: a dark
+	# wet band where the brine comes up, wider on the shaded side, and on the
+	# lit side a pale rim of fresh crystal wicked out of it. Dark line, pale
+	# edge: a ridge reads as a ruled stroke across the plain.
+	var ends := along * (run * 0.5 + 0.12)
+	var wet := STAIN.lerp(CRUST_DOWN, 0.45).darkened(0.3)
+	_flat(k, -ends + across * 0.06, ends + across * 0.06, ends - across * 0.5, -ends - across * 0.42, 0.012, wet)
+	_flat(k, ends + across * 0.06, -ends + across * 0.06, -ends + across * 0.3, ends + across * 0.26, 0.014, CRUST_UP)
 	for i in tents:
 		var t := (float(i) - tents * 0.5 + 0.5) * step
 		# A fallen tent: the plates lie flat and broken where it gave way.
@@ -116,6 +126,21 @@ static func ridge(k: Kit, v: int) -> void:
 			k.made.prism(at.x, at.y - 0.02, at.z, 0.045, at.y + th, 0.0, 5, rim, rim)
 		# The brine seep at the shaded foot: a dark wet line.
 		k.made.quad(a - across * (spread + 0.02), b - across * (spread + 0.02), b - across * (spread + 0.42), a - across * (spread + 0.34), STAIN.lerp(CRUST_DOWN, 0.5).darkened(0.2))
+
+
+## A quad lying on the ground at `y`, wound to face up whatever order its
+## corners come in: a flat piece drawn face-down is not drawn at all.
+static func _flat(k: Kit, a: Vector3, b: Vector3, c: Vector3, d: Vector3, y: float, col: Color) -> void:
+	var lift := Vector3(0, y, 0)
+	a += lift
+	b += lift
+	c += lift
+	d += lift
+	# MeshKit.tri's normal is (c - b) x (a - b); up when that points up.
+	if (c - b).cross(a - b).y < 0.0:
+		k.made.quad(d, c, b, a, col)
+	else:
+		k.made.quad(a, b, c, d, col)
 
 
 ## A heap the pan rakers built and never came back for: a raked cone of salt
