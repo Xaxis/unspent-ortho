@@ -30,6 +30,17 @@ func test_the_plan_holds_every_road_out_of_a_place_it_still_owns() -> void:
 
 
 ## Walk a body straight at something and report how far it got.
+## How far a body walking from `from` along `dir` gets along that line.
+static func _progress(g: Game, from: Vector2, dir: Vector2) -> float:
+	var p := from
+	for i in 40:
+		var q := g.query.move_body(p, dir * 0.25, 0.3, null, false)
+		if q.distance_to(p) < 0.05:
+			break
+		p = q
+	return (p - from).dot(dir)
+
+
 static func _walk(g: Game, from: Vector2, dir: Vector2) -> float:
 	var p := from
 	for i in 40:
@@ -61,7 +72,12 @@ func test_it_holds_the_road_and_not_the_country() -> void:
 	var through := 0
 	for s: Hold.HoldSite in sites:
 		var across := Vector2(-s.along.y, s.along.x)
-		if _walk(g, s.pos - s.along * 4.0, s.along) < 3.5:
+		# Measured ALONG the road, never as the distance walked: a body that meets
+		# the barrier slides along it into the notch between two of its circles,
+		# and on a road down into a gorge that slide is half a tile sideways
+		# (seed 7's drowned-city hold at 342,343: 3.45 along, 0.71 across) with
+		# the line still shut. Stopped is: never reached the barrier's line.
+		if _progress(g, s.pos - s.along * 4.0, s.along) < 4.0 - 0.3:
 			stopped += 1
 		if _walk(g, s.pos + across * 10.0 - s.along * 4.0, s.along) >= 7.0:
 			through += 1

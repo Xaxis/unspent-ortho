@@ -149,6 +149,9 @@ static func window(c: GenContext, rules: Dictionary, core: Rect2i, margin: int) 
 	var convex: PackedFloat32Array = c.convex if whole else _cut_f(c.convex, size, ox, oy, side)
 	var inland: PackedFloat32Array = c.inland if whole else _cut_f(c.inland, size, ox, oy, side)
 	var rim_warp: PackedFloat32Array = c.rim_warp if whole else _cut_f(c.rim_warp, size, ox, oy, side)
+	# The labyrinth's lift, cut to the window like every other array a recipe
+	# reads by the window's index (empty where no landscape declares slots).
+	var lift: PackedFloat32Array = c.slot_lift if whole or c.slot_lift.is_empty() else _cut_f(c.slot_lift, size, ox, oy, side)
 	var elev := c.elev
 	var sea := PackedByteArray()
 	sea.resize(n)
@@ -283,7 +286,7 @@ static func window(c: GenContext, rules: Dictionary, core: Rect2i, margin: int) 
 		t.sea_steps = sea_steps
 		t.marsh = marsh
 		t.levels = level
-		t.lift = c.slot_lift
+		t.lift = lift
 		t.blends = blend
 		for y in range(y0, y1):
 			var wy := oy + y
