@@ -97,6 +97,7 @@ static func make() -> BiomeDef:
 	# Flowstone lips SAG: no terrace edge in a cave runs ruled and level, and a
 	# hall of level lips one step apart read as stacked slabs.
 	d.lip_sag = 0.24
+	d.cave_light = Vector4(0.35, 0.5, 1.4, 8.0)
 	d.plain_ground = Ground.LIMESTONE
 	d.bank_ground = Ground.GRAVEL
 	d.pool_rim_ground = Ground.BONE
