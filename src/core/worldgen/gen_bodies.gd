@@ -529,7 +529,7 @@ static func _grow(bodies: Array[Dictionary], rng: RandomNumberGenerator, small: 
 			if score < best_score:
 				best_score = score
 				best_q = q
-				best = at.duplicate()
+				best = GenFields.snapshot(at)
 			if score <= 0.0:
 				break
 		if not best.is_empty():
@@ -572,7 +572,7 @@ static func _permutations(n: int) -> Array[PackedInt32Array]:
 
 static func _permute(cur: PackedInt32Array, k: int, out: Array[PackedInt32Array]) -> void:
 	if k == cur.size():
-		out.append(cur.duplicate())
+		out.append(GenFields.snapshot(cur))
 		return
 	for i in range(k, cur.size()):
 		var t := cur[k]

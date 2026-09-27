@@ -195,6 +195,13 @@ const UNKNOWN := "unknown"
 ##     that gave up on a lip now stand; a stack stands only where a depot's yard
 ##     can; the salt flats' brine house stands on a battery's rim. The sulphur
 ##     jungle's broadleaf share goes 0.28 -> 0.31. Every seed moves; no tile does.
+## 38. The people's things are rows too (streamed worldgen S4c): each village's
+##     edge, each way in, each road sign, what is left at each tip, wreck and
+##     ruin, the spawn's view, each survey section and each vignette cell is
+##     composed from its own stream against the land as the works left it. A
+##     vignette cell's rolls hash from the cell; a road's signs are spaced by a
+##     stream of the road's own; ways in keep off the ways in before them. Every
+##     seed's props move; no tile does.
 ## 39. The limestone caves are roofed (GenAbove, docs/ABOVE.md S3): a new
 ##     BiomeDef TERRAIN field, `above`, and the caves' overhead mass, laid last
 ##     of all. The surface grows as it did; every world holding the caves moves.

@@ -15,17 +15,35 @@ class_name GenTidy
 
 const MIN_PATCH := 20
 
+## HOW FAR A TILE'S TIDY LOOKS, so a section tidied with this much of the world
+## round it decides its own tiles as the whole world does (streamed worldgen
+## S4d; tests/stream/test_tidy_window.gd). The three mode passes and the two
+## notch passes each read one ring further out. A small patch is decided from
+## its own tiles and the ring round them, and a patch of MIN_PATCH or more is
+## found to be one within MIN_PATCH - 1 steps of any of its tiles, because the
+## patches are 4-connected. So 3 + MIN_PATCH + 1 + 2.
+const MARGIN := 3 + MIN_PATCH + 1 + 2
+
 
 static func run(c: GenContext, fixed: PackedByteArray) -> void:
-	var size := c.size
+	tidy(c.w.ground, c.recipe, fixed, c.size, c)
+
+
+## The tidy over one square of `size` tiles: the whole world, or a section
+## with MARGIN tiles of the world round its own. Its outermost ring is never
+## changed. `c` only marks the stages' times.
+static func tidy(ground: PackedByteArray, recipe: PackedByteArray, fixed: PackedByteArray, size: int, c: GenContext = null) -> void:
 	for pass_i in 3:
-		mode3(c.w.ground, c.recipe, fixed, size)
-	c.mark(&"tidy.mode")
-	merge_small(c.w.ground, c.recipe, fixed, size, MIN_PATCH)
-	c.mark(&"tidy.merge")
+		mode3(ground, recipe, fixed, size)
+	if c != null:
+		c.mark(&"tidy.mode")
+	merge_small(ground, recipe, fixed, size, MIN_PATCH)
+	if c != null:
+		c.mark(&"tidy.merge")
 	for pass_i in 2:
-		unnotch(c.w.ground, c.recipe, fixed, size)
-	c.mark(&"tidy.notch")
+		unnotch(ground, recipe, fixed, size)
+	if c != null:
+		c.mark(&"tidy.notch")
 
 
 ## One 3x3 mode pass over free tiles. Ties keep the tile's own ground.
@@ -123,7 +141,11 @@ static func merge_small(ground: PackedByteArray, recipe: PackedByteArray, fixed:
 	for part in parts:
 		for i in part:
 			var la := label[i]
-			if not winner.has(la):
+			# The outermost columns never change, as in the other passes: a
+			# section's edge is free land (the world's is sea), and a tile there
+			# has no neighbour past it to take a recipe from.
+			var x := i % size
+			if x == 0 or x == size - 1 or not winner.has(la):
 				continue
 			var g: int = winner[la]
 			ground[i] = g
