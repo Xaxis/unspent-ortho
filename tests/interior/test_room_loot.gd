@@ -47,3 +47,45 @@ func test_a_room_nobody_lives_in_keeps_what_it_holds_in_a_strongbox() -> void:
 			for th: Dictionary in lay(k, s).things:
 				boxes += int(th.kind == &"strongbox")
 			gt(float(boxes), 0.0, "%s (%d): a strongbox" % [id, s])
+
+
+## Every lived-in room has its kept-by shelf, one of its own pieces (the
+## recipe's `KEPT_BY`). Stood at it, `use` is the shelf's; stood at any story slot
+## beside it, the slot's, so no words go unread for a shelf.
+func test_a_lived_in_room_has_a_kept_by_shelf_and_every_slot_still_reads() -> void:
+	for id: StringName in LIVED:
+		var k := Interiors.kind(id)
+		check(not k.kept_by.is_empty(), "%s names its shelf" % id)
+		for s in 12:
+			var l := lay(k, s)
+			var i := KeptBy.shelf(l, k)
+			check(i >= 0, "%s (%d): its shelf is in the room" % [id, s])
+			if i < 0:
+				continue
+			var th: Dictionary = l.things[i]
+			check(KeptBy.at_hand(l, k, (th.at as Vector2) + (th.face as Vector2) * 0.7), "%s (%d): stood at its %s, it is at hand" % [id, s, th.kind])
+			for slot: Dictionary in l.slots:
+				var before := (slot.at as Vector2) + (slot.face as Vector2) * 0.6
+				check(not KeptBy.at_hand(l, k, before), "%s (%d): stood at its %s slot, the words are read" % [id, s, slot.slot])
+	for id: StringName in UNLIVED:
+		eq(KeptBy.shelf(lay(Interiors.kind(id), 0), Interiors.kind(id)), -1, "%s keeps nothing for anybody" % id)
+
+
+## On good terms: the region has thanked the player for something it asked and he
+## did (StorySubarc, Story.heard "REGION:goal:said"). Asked is not enough, and one
+## region's thanks are not another's.
+func test_good_terms_are_a_regions_thanks() -> void:
+	Story.forget()
+	check(not KeptBy.on_terms(5), "a stranger")
+	Story.hear(&"5:recover")
+	check(not KeptBy.on_terms(5), "asked is not thanked")
+	Story.hear(&"5:recover:said")
+	check(KeptBy.on_terms(5), "thanked for what he did")
+	check(not KeptBy.on_terms(6), "and only there")
+	check(not KeptBy.on_terms(-1), "nowhere is nobody's")
+	Story.forget()
+
+
+func test_what_a_shelf_says_is_by_line_id() -> void:
+	for line: StringName in [KeptBy.THEIRS, KeptBy.GIVEN, KeptBy.GAVE]:
+		check(str(StoryContent.KEPT_BY.get(line, "")) != "", "%s has words" % line)

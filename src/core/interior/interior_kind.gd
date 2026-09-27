@@ -63,6 +63,9 @@ var model := ""
 ## things are theirs, on its kept-by shelf; any other room's are in a strongbox
 ## (docs/GEAR.md §7).
 var seats: StringName = &""
+## A lived-in room's kept-by shelf: which of its own pieces it is, in the order
+## asked (the first the recipe laid), from the recipe's `const KEPT_BY` (KeptBy).
+var kept_by: Array[StringName] = []
 
 
 func lived() -> bool:

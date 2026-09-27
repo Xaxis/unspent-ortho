@@ -48,6 +48,10 @@ extends GameSystem
 ##                          its health (never raises it), so a tour can be at a phase a
 ##                          boss reaches by damage without feeding a scripted player to
 ##                          it pass after pass; fails when no such body is about
+##   thanked                the region the player is in (a room: the one its door
+##                          stands in, `tour_region`) has thanked him for an ask he
+##                          answered (Story.hear "REGION:recover:said"), so a frame
+##                          about good terms (KeptBy) is staged, not played for
 ##   leap SECS              walk the way the player FACES for SECS on the real move
 ##                          path and press the real jump key at the end of it, so a
 ##                          jump is taken on the move the way a player takes one
@@ -536,6 +540,8 @@ func _run() -> void:
 				ok = await _spawn_over(parts[1])
 			"wound":
 				ok = _wound(parts[1], parts[2].to_float() if parts.size() > 2 else 0.5)
+			"thanked":
+				ok = _thanked()
 			"choose":
 				ok = await _choose(StringName(parts[1]))
 			"coast":
@@ -1309,6 +1315,23 @@ func _tell(token: String) -> bool:
 	best.disturbed = true
 	best.set_mood(MobState.ATTACKING, sim.now)
 	Brains.bite(best, sim)
+	return true
+
+
+## `thanked`: the thanks of the region the player is in, told and said.
+func _thanked() -> bool:
+	var region := game.world.region_at(floori(game.player.pos.x), floori(game.player.pos.y))
+	for s: GameSystem in game.systems:
+		if s != self and s.has_method(&"tour_region"):
+			var r := int(s.call(&"tour_region"))
+			if r >= 0:
+				region = r
+	if region < 0:
+		printerr("tour %s: nowhere to be thanked" % _name)
+		return false
+	Story.hear(StringName("%d:recover" % region))
+	Story.hear(StringName("%d:recover:said" % region))
+	print("tour thanked by region %d" % region)
 	return true
 
 

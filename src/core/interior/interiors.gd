@@ -42,7 +42,9 @@ static func kind(id: StringName) -> InteriorKind:
 			return null
 		var recipe := load(RECIPES[id]) as Script
 		var k: InteriorKind = recipe.call(&"make")
-		k.seats = recipe.get_script_constant_map().get("SEATS", &"")
+		var consts := recipe.get_script_constant_map()
+		k.seats = consts.get("SEATS", &"")
+		k.kept_by.assign(consts.get("KEPT_BY", []))
 		_kinds[id] = k
 	return _kinds[id]
 

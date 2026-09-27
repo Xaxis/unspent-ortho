@@ -251,6 +251,9 @@ func _inside_side(_delta: float) -> void:
 	crawl_near = _crawl_near()
 	if crawl_near and box_near < 0 and hatch_near < 0 and stove_near < 0 and _pressed():
 		go_out(true)
+	shelf_near = _shelf_near()
+	if shelf_near and box_near < 0 and hatch_near < 0 and stove_near < 0 and not crawl_near and _pressed():
+		_at_shelf()
 	_show_trays()
 
 
@@ -271,7 +274,7 @@ var _use_edge := false
 func use_spent() -> bool:
 	if _swapping:
 		return true
-	if pocket != null and (box_near >= 0 or hatch_near >= 0 or stove_near >= 0 or crawl_near):
+	if pocket != null and (box_near >= 0 or hatch_near >= 0 or stove_near >= 0 or crawl_near or shelf_near):
 		return true
 	if door_near == null:
 		return false
@@ -433,6 +436,12 @@ var _box_refused := false
 ## Latched, for a tour: a docked sleeper woke and turned.
 var _woke := false
 var _box_opened := false
+## The kept-by shelf in reach; the doors whose shelf was given (saved); latched
+## for a tour: a stranger told whose it is, a gift given.
+var shelf_near := false
+var _given: Dictionary = {}
+var _shelf_theirs := false
+var _shelf_given := false
 
 
 func _warden_stands() -> bool:
@@ -829,6 +838,51 @@ func _take_meal(i: int) -> void:
 	Events.message.emit("The hatch slides up on a tray: %s, still hot. It was set for four." % " and ".join(got))
 
 
+## Whether the player's hands are at a lived-in room's kept-by shelf (KeptBy).
+func _shelf_near() -> bool:
+	return KeptBy.at_hand(pocket.layout, pocket.kind, game.player.pos)
+
+
+## The kept-by shelf (KeptBy): it is theirs and never taken. A stranger is told
+## so; somebody the region has thanked is given it, once a door, saved (`given`).
+func _at_shelf() -> void:
+	var key := pocket.threshold.key
+	if _given.has(key):
+		Events.message.emit(StoryContent.KEPT_BY[KeptBy.GAVE])
+		return
+	if not KeptBy.on_terms(_room_region()):
+		_shelf_theirs = true
+		Events.message.emit(StoryContent.KEPT_BY[KeptBy.THEIRS])
+		return
+	var land := BiomeRegistry.by_index(pocket.threshold.land).id
+	var got: Array[String] = []
+	for row: Dictionary in Drops.roll(Interiors.loot_source(pocket.kind.id), game.options.seed_value, KeptBy.instance(game.options.seed_value, key), land):
+		var id: StringName = row.item
+		var n := int(row.count)
+		if Items.def(id).is_empty() or n <= 0:
+			continue
+		game.inventory.add(id, n)
+		Events.took.emit(id, n)
+		got.append("%s x%d" % [String(Items.def(id).get("name", id)), n])
+	_given[key] = true
+	_shelf_given = true
+	Events.sfx.emit(&"door", game.player.position)
+	var said := String(StoryContent.KEPT_BY[KeptBy.GIVEN])
+	Events.message.emit("%s %s." % [said, ", ".join(got)] if not got.is_empty() else said)
+
+
+## `thanked` (98_tour): the region of the room the player is in, or -1 outside.
+func tour_region() -> int:
+	return _room_region() if pocket != null else -1
+
+
+## The region the room's door stands in, on the island outside.
+func _room_region() -> int:
+	var w: WorldData = _outside if _outside != null else game.world
+	var at := pocket.threshold.host
+	return w.region_at(floori(at.x), floori(at.y))
+
+
 ## Which strongbox is within reach of the player's hands, or -1.
 func _box_near() -> int:
 	var i := 0
@@ -1014,7 +1068,10 @@ func _save() -> Variant:
 	var lit := {}
 	for k: Variant in _lit:
 		lit[str(k)] = true
-	return {"dead": out, "opened": opened, "served": served, "lit": lit}
+	var given := {}
+	for k: Variant in _given:
+		given[str(k)] = true
+	return {"dead": out, "opened": opened, "served": served, "lit": lit, "given": given}
 
 
 func _load(v: Variant) -> void:
@@ -1041,6 +1098,9 @@ func _load(v: Variant) -> void:
 	_lit.clear()
 	for k: Variant in (v as Dictionary).get("lit", {}):
 		_lit[str(k)] = true
+	_given.clear()
+	for k: Variant in (v as Dictionary).get("given", {}):
+		_given[str(k)] = true
 
 
 ## A save made in a room counts those already broken in it, without leaving.
@@ -1562,6 +1622,10 @@ func tour_forget(what: StringName) -> void:
 			_box_refused = false
 		&"box_opened":
 			_box_opened = false
+		&"shelf_theirs":
+			_shelf_theirs = false
+		&"shelf_given":
+			_shelf_given = false
 		&"meal_taken":
 			_meal_taken = false
 		&"kindled":
@@ -1588,6 +1652,12 @@ func tour_seen(what: StringName) -> bool:
 			return _box_opened
 		&"box_near":
 			return pocket != null and box_near >= 0
+		&"shelf_near":
+			return pocket != null and shelf_near
+		&"shelf_theirs":
+			return _shelf_theirs
+		&"shelf_given":
+			return _shelf_given
 		&"hatch_near":
 			return pocket != null and hatch_near >= 0
 		&"stove_near":
@@ -1640,7 +1710,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "shelf", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
@@ -1672,6 +1742,9 @@ func tour_place(what: String) -> Vector2:
 	if what == "strongbox":
 		var box := _first_box()
 		return (box.at as Vector2) + (box.face as Vector2) * 0.8 if not box.is_empty() else Vector2.INF
+	if what == "shelf":
+		var sh := _shelf_thing()
+		return (sh.at as Vector2) + (sh.face as Vector2) * 0.7 if not sh.is_empty() else Vector2.INF
 	if what == "hatch" or what == "stove" or what == "crawl":
 		var h := _first_with({"hatch": "serves", "stove": "fuel", "crawl": "exit"}[what])
 		return (h.at as Vector2) + (h.face as Vector2) * 0.8 if not h.is_empty() else Vector2.INF
@@ -1690,6 +1763,9 @@ func tour_face(what: String) -> float:
 	if what == "strongbox":
 		var box := _first_box()
 		return (-(box.face as Vector2)).angle() if not box.is_empty() else NAN
+	if what == "shelf":
+		var sh := _shelf_thing()
+		return (-(sh.face as Vector2)).angle() if not sh.is_empty() else NAN
 	if what == "hatch" or what == "stove" or what == "crawl":
 		var h := _first_with({"hatch": "serves", "stove": "fuel", "crawl": "exit"}[what])
 		return (-(h.face as Vector2)).angle() if not h.is_empty() else NAN
@@ -1813,6 +1889,14 @@ func _seen_along(start: Vector2, route: PackedVector2Array, sim: FightSim) -> fl
 					seen += 0.2
 		from = p
 	return seen
+
+
+## `near shelf`: the kept-by shelf of the lived-in room the player is in.
+func _shelf_thing() -> Dictionary:
+	if pocket == null:
+		return {}
+	var i := KeptBy.shelf(pocket.layout, pocket.kind)
+	return pocket.layout.things[i] if i >= 0 else {}
 
 
 ## `near strongbox`: the first strongbox in the room the player is in.

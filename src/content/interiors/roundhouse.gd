@@ -44,6 +44,8 @@ const WANTS: Array[StringName] = [&"bed", &"loom", &"quern", &"store", &"slates"
 
 ## A household lives in it: what is in it is theirs (InteriorKind.seats).
 const SEATS := &"household"
+## Where what they keep is kept, the first of these it laid (KeptBy).
+const KEPT_BY: Array[StringName] = [&"crocks"]
 
 
 static func make() -> InteriorKind:

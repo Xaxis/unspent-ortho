@@ -1,0 +1,195 @@
+# THE KEPT-BY SHELF (docs/GEAR.md §7, G6, KeptBy): a room somebody lives in
+# (InteriorKind.seats) keeps what it holds on one of its own pieces, and it is
+# theirs. A stranger is told so and takes nothing; once the region has thanked
+# the player for an ask he answered (`thanked` stages it), it is given, once.
+#
+#   tools/tour.sh tours/kept_by.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is a coast cottage's shelf to a stranger: nothing taken. 02 is the same
+# shelf once the region has thanked him: what they gave. 03-11 are every other
+# lived-in kind, each at its own shelf as it is given.
+coast calm
+near door:cottage
+await door 5
+press use 0.1
+await inside:cottage 5
+wait 0.6
+near shelf
+wait 0.4
+press use 0.1
+await shelf_theirs 3
+wait 0.6
+shot 01-a-cottage-shelf-is-theirs with inside:cottage,shelf_near
+thanked
+wait 0.3
+press use 0.1
+await shelf_given 3
+wait 0.6
+shot 02-given-for-what-he-did with inside:cottage
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:home
+await door 5
+press use 0.1
+await inside:home 5
+wait 0.6
+near shelf
+wait 0.4
+thanked
+press use 0.1
+await shelf_given 3
+wait 0.6
+shot 03-a-home-gives-its-shelf with inside:home
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:stilt_room
+await door 5
+press use 0.1
+await inside:stilt_room 5
+wait 0.6
+near shelf
+wait 0.4
+thanked
+press use 0.1
+await shelf_given 3
+wait 0.6
+shot 04-a-stilt-house-gives-its-shelf with inside:stilt_room
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:hulk_hold
+await door 5
+press use 0.1
+await inside:hulk_hold 5
+wait 0.6
+near shelf
+wait 0.4
+thanked
+press use 0.1
+await shelf_given 3
+wait 0.6
+shot 05-a-hulk-gives-its-shelf with inside:hulk_hold
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:tower_lobby
+await door 5
+press use 0.1
+await inside:tower_lobby 5
+wait 0.6
+near shelf
+wait 0.4
+thanked
+press use 0.1
+await shelf_given 3
+wait 0.6
+shot 06-a-tower-lobby-gives-its-shelf with inside:tower_lobby
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:cliff_room
+await door 5
+press use 0.1
+await inside:cliff_room 5
+wait 0.6
+near shelf
+wait 0.4
+thanked
+press use 0.1
+await shelf_given 3
+wait 0.6
+shot 07-a-cliff-room-gives-its-shelf with inside:cliff_room
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:rooted_floor
+await door 5
+press use 0.1
+await inside:rooted_floor 5
+wait 0.6
+near shelf
+wait 0.4
+thanked
+press use 0.1
+await shelf_given 3
+wait 0.6
+shot 08-a-rooted-floor-gives-its-shelf with inside:rooted_floor
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:tenement
+await door 5
+press use 0.1
+await inside:tenement 5
+wait 0.6
+near shelf
+wait 0.4
+thanked
+press use 0.1
+await shelf_given 3
+wait 0.6
+shot 09-a-tenement-gives-its-shelf with inside:tenement
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:roundhouse
+await door 5
+press use 0.1
+await inside:roundhouse 5
+wait 0.6
+near shelf
+wait 0.4
+thanked
+press use 0.1
+await shelf_given 3
+wait 0.6
+shot 10-a-roundhouse-gives-its-shelf with inside:roundhouse
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0
+
+near door:squat
+await door 5
+press use 0.1
+await inside:squat 5
+wait 0.6
+near shelf
+wait 0.4
+thanked
+press use 0.1
+await shelf_given 3
+wait 0.6
+shot 11-a-squat-gives-its-shelf with inside:squat
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 1.0

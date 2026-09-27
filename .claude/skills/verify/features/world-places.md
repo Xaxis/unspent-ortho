@@ -13,6 +13,9 @@ Realms and portals, the rooms behind a house's door, landmarks and caches, regio
   InteriorKind.seats); every kind has an Interiors.LOOT row, and every room nobody lives in keeps it in a strongbox:
   `tools/test.sh test_room_loot`; the two newest boxes, opened once: `tools/tour.sh tours/bay_locker.tour --seed=4
   --hour=15 --weather=clear:0` and `tours/larder_safe.tour --seed=4 --hour=12.5 --weather=clear:0`.
+  A lived-in room's kept-by shelf (KeptBy): theirs to a stranger, given once on good terms: `tools/test.sh
+  test_room_loot`, `test_doors:test_the_kept_by`; every lived-in kind at its shelf: `tools/tour.sh tours/kept_by.tour
+  --seed=4 --hour=15 --weather=clear:0` (`near shelf` stands at it, `thanked` stages the region's thanks).
 - 22_landmarks: `src/systems/22_landmarks.gd`, reached by `tools/tour.sh tours/landmarks.tour`.
 - 24_holds: `src/systems/24_holds.gd`, reached by `tools/tour.sh tours/region.tour`.
 

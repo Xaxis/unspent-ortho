@@ -5334,6 +5334,16 @@ const READS_CAUSE := {
 }
 
 
+## What a lived-in room's kept-by shelf says (KeptBy), by line id: to a stranger,
+## whose it is; to somebody the region has thanked, as it is given; and after,
+## that it was. PLACEHOLDER WORDS for the story-wright; the ids are the contract.
+const KEPT_BY := {
+	&"kept_by_theirs": "It is theirs. What they keep here, they need.",
+	&"kept_by_given": "They left it where you would find it. For what you did.",
+	&"kept_by_gave": "They gave you what they could spare.",
+}
+
+
 # --- what was done to the player (channel 4: the player's own state) -----------
 #
 # Beats that land because of something that HAPPENED to the player or that they
