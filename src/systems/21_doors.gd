@@ -1385,7 +1385,7 @@ func _light_windows() -> void:
 			&"sky":
 				lamp.light_energy = 2.4 * day
 			&"seep":
-				lamp.light_energy = 3.6 * (1.0 - SkyLight.day_gone(game.sky.clock_hour))
+				lamp.light_energy = 5.0 * (1.0 - SkyLight.day_gone(game.sky.clock_hour))
 			_:
 				lamp.light_energy = lerpf(1.6, 0.25, day)
 	for i in _windows.size():

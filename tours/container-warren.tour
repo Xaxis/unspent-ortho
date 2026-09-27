@@ -14,7 +14,7 @@ wait 0.6
 shot 01-a-door-in-the-slot-face with door,land:the_middens
 
 press use 0.1
-await inside:container_warren 5
+await inside:container_warren 20
 wait 1.0
 shot 02-the-warren with inside:container_warren
 

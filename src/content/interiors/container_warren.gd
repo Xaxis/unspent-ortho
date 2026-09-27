@@ -221,8 +221,9 @@ static func _fit(l: InteriorLayout, n: int, vault: bool, rng: RandomNumberGenera
 				_put(l, &"crate", Vector2(wall_x + face.x * 0.4, mid_y - 1.2), face, 0.4)
 				_put(l, &"crate", Vector2(wall_x + face.x * 0.4, mid_y + 1.0), face, 0.4)
 			&"kept":
-				if i == 0:
-					_put(l, &"machine_lamp", Vector2(wall_x, mid_y - 1.6), face, 0.0)
+				# A lamp in every container they use: from above, the run reads as
+				# a path of warm pools between the rust holes' grey.
+				_put(l, &"machine_lamp", Vector2(wall_x, mid_y - 1.6), face, 0.0)
 				if i == 1:
 					_put(l, &"bedroll", Vector2(wall_x + face.x * 0.5, mid_y), face, 0.0)
 					var marks := Vector2(wall_x, mid_y + 1.6)

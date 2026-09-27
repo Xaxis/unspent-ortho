@@ -61,15 +61,28 @@ func _edge(k: Kit, e: Dictionary, h: float, cut: bool) -> void:
 			_end_doors(k, e, h, cut, col)
 			return
 		&"inner":
-			# Torch-cut: the steel's edge left ragged, a lip of it bent back.
+			# TORCH-CUT: where one container was cut into the next, the steel's
+			# edge left ragged, and the cut itself bright raw metal, the one pale
+			# line in the dark, so over the shoulder a player sees where one box
+			# ends and the next begins. A lintel of the end wall stays over it.
+			var raw := GroundColors.made(Color(0.52, 0.5, 0.46), GroundColors.ENAMEL)
+			var scorch := GroundColors.made(Color(0.08, 0.06, 0.05), GroundColors.ENAMEL)
+			var head := minf(h, 2.05)
 			for p: Vector2 in [a, b]:
 				var inward := along if p == a else -along
-				var n := 5
+				var n := 7
 				for i in n:
-					var y0 := h * float(i) / float(n)
-					var y1 := h * float(i + 1) / float(n)
-					var j := 0.02 + 0.05 * float(Rng.hash_ints(int(p.x * 7.0), int(p.y * 7.0), i, 0x70C) % 3)
+					var y0 := head * float(i) / float(n)
+					var y1 := head * float(i + 1) / float(n)
+					var j := 0.02 + 0.045 * float(Rng.hash_ints(int(p.x * 7.0), int(p.y * 7.0), i, 0x70C) % 3)
 					k.made.box(_v(p - half, y0), _v(p + inward * j + half, y1), GroundColors.made(dark, made), GroundColors.made(cap if cut else dark, made))
+					# The cut face: bright, a hair proud of the ragged edge.
+					k.made.box(_v(p + inward * j - half * 1.02, y0), _v(p + inward * (j + 0.018) + half * 1.02, y1), raw, raw)
+					# Scorch on the paint a hand back from the cut.
+					k.made.box(_v(p + inward * (j - 0.12) - half * 1.03, y0), _v(p + inward * (j - 0.02) + half * 1.03, y1), scorch, scorch)
+			if not cut and h > head:
+				k.made.box(_v(a - half, head), _v(b + half, h), GroundColors.made(col, made), GroundColors.made(col, made))
+				k.made.box(_v(a - half * 1.02, head - 0.02), _v(b + half * 1.02, head + 0.012), raw, raw)
 			return
 	# A CORRUGATED UNIT: ridges and troughs across it, the trough set back, every
 	# ridge catching the one light the room has. Cut, it stops at `h` with the
@@ -83,6 +96,13 @@ func _edge(k: Kit, e: Dictionary, h: float, cut: bool) -> void:
 		var p0 := a.lerp(b, u0) + inset
 		var p1 := a.lerp(b, u1) + inset
 		k.made.box(_v(p0 - half, 0.0), _v(p1 + half, h), GroundColors.made(shade, made), GroundColors.made(cap if cut else shade, made))
+		# Rust run down a ridge from the top rail, where the water sat: a streak
+		# on some ridges, never a whole wall, so the paint still says the line.
+		var rs := Rng.hash_ints(int(a.x * 5.0 + float(r)), int(a.y * 5.0), 0x7E57)
+		if col != POURED and not trough and (rs % 5) == 0:
+			var streak := GroundColors.made(col.lerp(Color(0.3, 0.12, 0.05), 0.6), made)
+			var down := h - (0.5 + 0.9 * float((rs >> 4) & 3) / 3.0)
+			k.made.box(_v(p0 - half * 1.01 + (p1 - p0) * 0.25, maxf(0.0, down)), _v(p1 + half * 1.01 - (p1 - p0) * 0.25, h - 0.05), streak, streak)
 	# The ridges end under one flat rail, the container's top rail (the cut's
 	# dark on a section), so a wall's top reads as a wall and never as teeth.
 	var rail := GroundColors.made(cap if cut else dark, made)
