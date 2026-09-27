@@ -270,6 +270,7 @@ const LOOK: Array[String] = [
 	"weather",
 	"mist",
 	"hazards",
+	"lip_sag",
 	"roster",
 	"sentinel",
 	"landmarks",
