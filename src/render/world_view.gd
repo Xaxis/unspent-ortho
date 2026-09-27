@@ -223,6 +223,7 @@ func setup_sharing(w: WorldData, from: WorldView) -> void:
 	_world_mat = from._world_mat
 	_water_mat = from._water_mat
 	_leaf_mat = from._leaf_mat
+	_grass_mat = from._grass_mat
 	_bind(w)
 
 
