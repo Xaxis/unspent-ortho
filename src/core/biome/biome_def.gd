@@ -516,6 +516,11 @@ var spawn_home := false
 var weather: Array = []
 ## Dawn mist at its deepest, 0..1 of fog density.
 var mist := 0.0
+## A second mist at DUSK, 0..1 at its deepest: not the weather's but a
+## machine's, laid on a schedule (the orchards' sprayers run their evening
+## circuit), rising through the late afternoon and lying thickest after sunset.
+## Blown and beaten down like the dawn's (Weather.mist).
+var mist_dusk := 0.0
 ## Hazard id -> base strength 0..1 (cold, heat, fumes, toxins, radiation, wet,
 ## dark, glare, thirst, magnetism, collapse, vacuum, pressure, em, resonance,
 ## time_shear). The hazards package reads this.
