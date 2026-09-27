@@ -614,8 +614,13 @@ func _reads(_g: Game) -> Dictionary:
 			continue
 		scans.append({"id": StringName("m%d" % m.id), "kind": m.kind, "name": String(m.kind),
 			"pos": m.pos, "disposition": m.disposition, "note": _note(m)})
+	# What the player keeps feeding the file, named, so a warming region says why
+	# (StoryContent.READS_CAUSE, by cause id).
+	var causes: Array[String] = []
+	if _relics_carried() > 0:
+		causes.append(String(StoryContent.READS_CAUSE[&"carried"]))
 	return {"interference": interference.value(net),
-		"network": _network_name(net), "scans": scans, "asking": _asking}
+		"network": _network_name(net), "scans": scans, "asking": _asking, "causes": causes}
 
 
 ## What the slate calls the network the player is standing in. A region, so two
