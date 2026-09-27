@@ -588,13 +588,15 @@ static func pools_square(seed_value: int, specs: Array, level: PackedInt32Array,
 		var a: Array = props[n]
 		var at := Vector2(a[0], a[1])
 		var home := Vector2i(floori(at.x / 32.0), floori(at.y / 32.0))
+		var cell_a: Vector3i = a[8]
 		var list := PackedInt32Array()
 		for dy in range(-1, 2):
 			for dx in range(-1, 2):
 				for m: int in buckets.get(home + Vector2i(dx, dy), PackedInt32Array()):
 					var b: Array = props[m]
+					var cell_b: Vector3i = b[8]
 					# A cell holds one pool: its own spots are always rivals.
-					if m != n and (b[8] == a[8] or at.distance_to(Vector2(b[0], b[1])) < _crowd(float(a[2]), float(b[2]))):
+					if m != n and (cell_b == cell_a or at.distance_to(Vector2(b[0], b[1])) < _crowd(float(a[2]), float(b[2]))):
 						list.append(m)
 		rivals[n] = list
 	# Round one: the proposals that outrank all their rivals.
