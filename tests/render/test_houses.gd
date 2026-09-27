@@ -562,6 +562,16 @@ func test_a_lit_house_puts_its_glint_on_its_own_tube() -> void:
 	for src: Dictionary in lights.get("sources"):
 		by_prop[(lights.call(&"_prop_of", src) as WorldProp).id] = src
 	check(not (by_prop.get(dark.id, {}) as Dictionary).has("neon_at"), "a house with nothing wired in throws no tube light")
+	# WHERE THE PLAN'S POWER HAS GONE (BiomeDressing.signage "dying": the green
+	# towers, which is what grows at this spawn at size 64) a lit form's tube is a
+	# failing one, which throws no pool by design (props/towers.gd, 15_lights
+	# reads NEON alone). The light's placement is then this land's to NOT have.
+	if BiomeDressing.of(here).signage == &"dying":
+		for p: WorldProp in houses:
+			check(not (by_prop.get(p.id, {}) as Dictionary).has("neon_at"), "a failing tube throws no light (%s)" % BiomeRegistry.name_of(here))
+		g.queue_free()
+		await frames(2)
+		return
 	for p: WorldProp in houses:
 		var src: Dictionary = by_prop.get(p.id, {})
 		check(src.has("neon_at"), "the lit house throws its tube's light")
