@@ -1,5 +1,5 @@
 extends TestCase
-## Works as rows (slice S4b): a landscape's works are sited in order, and each
+## Works as rows (slices S4b, S4c): a landscape's works, and the people's, are sited in order, and each
 ## is composed from its row alone -- a stream keyed on the work and its tile,
 ## the occupancy the works stage began from, and its own pieces. So a section
 ## of a streamed world can lay a work it was handed without laying any other.
@@ -33,7 +33,8 @@ func test_every_work_composed_alone_lays_what_the_world_holds() -> void:
 					check(false, "seed %d: %s at %s in %s lays %d pieces in the world and %d alone%s" % [
 						s, row.work, row.at, row.land, here.size(), alone.size(), _first_difference(here, alone)])
 		eq(bad, 0, "seed %d: works whose pieces hang on something beside their row" % s)
-		for work: StringName in [&"_turf_rows", &"_drained", &"_clearcut", &"_quarry", &"_slag", &"_block", &"_pans", &"_breaking_yard"]:
+		for work: StringName in [&"_turf_rows", &"_drained", &"_clearcut", &"_quarry", &"_slag", &"_block", &"_pans", &"_breaking_yard",
+				&"_village_edge", &"_way_in", &"_road_sign", &"_remains_at", &"_spawn_compositions", &"_survey_section", &"_vignette"]:
 			check(kinds.has(work), "seed %d: some %s was composed" % [s, work])
 
 
