@@ -50,16 +50,20 @@ void fragment() {
 	// In at the tear, out into the pool.
 	float ends = smoothstep(0.0, 0.12, along) * (1.0 - smoothstep(0.82, 1.0, along));
 	float eye = smoothstep(EYE_CLEAR, EYE_FULL, length(VERTEX));
-	// Dust turning in the light: sparse world-pinned specks that drift down, so
-	// the column is air with something in it and not a tube.
-	// A speck is a point in the world, round and a few pixels across wherever
-	// the eye is, never a cell of a grid.
+	float a = COLUMN_MOST * column_strength * ends * eye * body;
+	if (a < 0.002) {
+		discard;
+	}
+	// Dust turning in the light: sparse specks that drift down, so the column is
+	// air with something in it and not a tube. A speck is a point in the world,
+	// round and a few pixels across wherever the eye is, never a cell of a grid.
+	// One hash per fragment: this is drawn over a lot of the screen.
 	vec3 drift = world_pos * 3.0 + vec3(0.0, TIME * 1.1, 0.0);
 	vec3 cell = floor(drift);
-	vec3 at = vec3(ink_hash(cell.xy + cell.z * 7.1), ink_hash(cell.yz + 3.3), ink_hash(cell.zx + 9.7));
-	float lit = step(0.93, ink_hash(cell.xz + cell.y * 1.7 + vec2(7.0, 29.0)));
-	float dust = lit * (1.0 - smoothstep(0.05, 0.12, length(fract(drift) - at))) * 3.0;
-	float a = COLUMN_MOST * column_strength * ends * eye * (body + dust * body);
+	float h = ink_hash(cell.xz + cell.y * 1.7 + vec2(7.0, 29.0));
+	float lit = step(0.93, h);
+	vec3 at = vec3(0.3) + 0.4 * fract(vec3(h * 13.0, h * 29.0, h * 41.0));
+	a *= 1.0 + lit * (1.0 - smoothstep(0.05, 0.12, length(fract(drift) - at))) * 3.0;
 	ALBEDO = matter_light(column_tint);
 	ALPHA = clamp(a, 0.0, 1.0);
 }
