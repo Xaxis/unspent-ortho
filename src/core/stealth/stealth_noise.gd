@@ -29,6 +29,8 @@ const ACTS := {
 ## The ground underfoot, as a share of the act (art and design both: shingle
 ## rattles, snow and moss swallow, a road carries a long way).
 const GROUNDS := {
+	# A container's deck: the loudest floor in the game, heard two containers off.
+	Ground.STEEL_FLOOR: 1.6,
 	Ground.SHINGLE: 1.4,
 	Ground.GRAVEL: 1.3,
 	Ground.SCREE: 1.35,
