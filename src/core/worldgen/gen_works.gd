@@ -266,7 +266,7 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 	if Realm.before_the_plan(c.w.realm):
 		return
 	var lay := Lay.new(c, occ, Vector2.from_angle(bearing(c.s)))
-	lay.base = occ.duplicate()
+	lay.base = GenFields.snapshot(occ)
 	for def in BiomeRegistry.all():
 		var row := evidence(def.id)
 		var fn: StringName = row.works
@@ -294,7 +294,7 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 	lay.host = GenWorks
 	# The people's things are rows too, composed against the land as the works
 	# left it: they keep off the works' pieces, and off nothing else of their own.
-	lay.base = occ.duplicate()
+	lay.base = GenFields.snapshot(occ)
 	_villages(lay)
 	_roads(lay)
 	_remains(lay)
