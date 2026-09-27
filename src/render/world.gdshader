@@ -2609,11 +2609,16 @@ void fragment() {
 	// branch below costs nothing to divergence.
 	vec3 eye = INV_VIEW_MATRIX[3].xyz;
 	bool persp = PROJECTION_MATRIX[3][3] < 0.5;
-	float cut = max(crown_cut(world_pos, sway_w), tall_cut(world_pos, m1, camz, eye, persp));
 	// A CLOSE EYE (the view over the shoulder) cuts whatever lies in the line of
-	// sight to a body, at any height (sight.gdshaderinc). Never the land.
+	// sight to a body, at any height (sight.gdshaderinc), and that cone REPLACES
+	// the ring `crown_cut` opens round a body: the ring is for a camera looking
+	// down, where a crown over a body is in the way whichever side it stands on.
+	// At eye level it took every crown within reach and stood the player in a
+	// ring of stumps, though only the crowns between the eye and a body hide it.
+	float close = persp ? sight_close(eye, crown_clear[0]) : 0.0;
+	float cut = max(crown_cut(world_pos, sway_w) * (1.0 - close), tall_cut(world_pos, m1, camz, eye, persp));
+	// Never the land.
 	if (persp && !mark_land(m1)) {
-		float close = sight_close(eye, crown_clear[0]);
 		if (close > 0.0) {
 			for (int i = 0; i < CROWN_CLEAR; i++) {
 				cut = max(cut, sight_cone(world_pos, eye, crown_clear[i]) * close);

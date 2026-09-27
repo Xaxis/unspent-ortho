@@ -27,6 +27,11 @@ class Ring:
 ## The rings with a stone within `reach` of `at`, in hush landscapes only.
 static func near(w: WorldData, q: WorldQuery, at: Vector2, reach: float) -> Array[Ring]:
 	var out: Array[Ring] = []
+	# 23_hush looks four times a second wherever the player is, and walking every
+	# prop in reach is milliseconds on the web; almost everywhere no landscape in
+	# reach has a hush at all, and that is a scan of the country bytes.
+	if not hush_in(w, at, reach + JOIN * 2.0):
+		return out
 	var stones: Array[WorldProp] = []
 	for p: WorldProp in q.props_near(at, reach + JOIN * 2.0):
 		if p.kind != PropKind.STANDING_STONE or w.depleted.has(p.id):
@@ -114,3 +119,33 @@ static func _ring_of(stones: Array[WorldProp], group: PackedInt32Array) -> Ring:
 		lowest = mini(lowest, id)
 	r.id = lowest
 	return r
+
+
+## The landscapes that declare a hush, by country index.
+static var _hush_countries := PackedByteArray()
+static var _hush_known := false
+
+
+## Whether any tile within `reach` (square, as `WorldQuery.props_near` reads) of
+## `at` is a hush landscape's. Exact: a native search of each row's country
+## bytes, so it can never miss a ring that `near` would have found.
+static func hush_in(w: WorldData, at: Vector2, reach: float) -> bool:
+	if not _hush_known:
+		_hush_known = true
+		for d: BiomeDef in BiomeRegistry.all():
+			if d.hush:
+				_hush_countries.append(d.index)
+	if _hush_countries.is_empty():
+		return false
+	var x0 := maxi(0, floori(at.x - reach))
+	var x1 := mini(w.size - 1, floori(at.x + reach))
+	var y0 := maxi(0, floori(at.y - reach))
+	var y1 := mini(w.size - 1, floori(at.y + reach))
+	if x0 > x1 or y0 > y1:
+		return false
+	for y in range(y0, y1 + 1):
+		var row := w.country.slice(y * w.size + x0, y * w.size + x1 + 1)
+		for c in _hush_countries:
+			if row.has(c):
+				return true
+	return false
