@@ -154,7 +154,7 @@ static var rows: Dictionary = {}
 static func villages(c: GenContext) -> void:
 	if keeping:
 		before = {"level": GenFields.snapshot(c.w.level), "elev": GenFields.snapshot(c.elev), "land": GenFields.snapshot(c.land),
-			"water": GenFields.snapshot(c.water), "pools": c.pools.duplicate()}
+			"water": GenFields.snapshot(c.water), "pools": GenFields.snapshot(c.pools)}
 	c.village_platforms = PackedFloat32Array()
 	var w := c.w
 	var size := c.size
