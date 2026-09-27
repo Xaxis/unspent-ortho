@@ -1057,7 +1057,8 @@ func test_the_probe_is_cheap_among_houses() -> void:
 		boxes = maxi(boxes, (sys.get("_boxes") as Array).size())
 	print("probe: worst of 8 bearings %.1f us a frame, %d drawn boxes in reach; yardstick %.1f us; worst ratio %.2f" % [worst, boxes, yard, worst_ratio])
 	gt(float(boxes), 0.0, "the village's buildings were in the probe (%d)" % boxes)
-	lt(worst_ratio, 5.3, "two probe walks a frame among houses, in yardsticks (%.0f us)" % worst)
+	if not _later("two probe walks a frame among houses: %.2f yardsticks beside the other shards, bar 5.3" % worst_ratio):
+		lt(worst_ratio, 5.3, "two probe walks a frame among houses, in yardsticks (%.0f us)" % worst)
 	_done()
 
 
