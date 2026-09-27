@@ -204,3 +204,22 @@ func test_a_scan_only_stands_down_for_a_throw_and_never_drops_the_aware_tell() -
 	var gate := body.find("if not thrown:")
 	gt(gate, 0, "the brackets stand down for a throw")
 	gt(body.find("mob.aware and tell_due"), gate, "and the aware tell is drawn outside that gate")
+
+
+## A BODY THE LAND HIDES IS STILL DRAWN (render/behind.gdshader): people and
+## machines carry the pass that stipples them through a wall, and it tests the
+## depth the world left, never opening the land.
+func test_bodies_are_drawn_through_the_land_that_hides_them() -> void:
+	var behind := load("res://src/render/behind.gdshader") as Shader
+	var person := PersonModel.material()
+	var found := false
+	var m: Material = person
+	while m != null:
+		if m is ShaderMaterial and (m as ShaderMaterial).shader == behind:
+			found = true
+		m = m.next_pass
+	check(found, "a person's material chain ends in the pass through the land")
+	var machine := MachineModel.found_material(0.0)
+	check(machine.next_pass is ShaderMaterial and (machine.next_pass as ShaderMaterial).shader == behind, "and a machine's")
+	check(behind.code.contains("hint_depth_texture") and behind.code.contains("depth_test_disabled"), "drawn over the land where the depth says it is hidden")
+

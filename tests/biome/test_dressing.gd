@@ -125,6 +125,8 @@ func test_every_resolved_ramp_is_as_long_as_its_readers_index_it() -> void:
 		check(BiomeDressing.COVERS.has(r.covers), "%s is covered in something real: %s" % [d.id, r.covers])
 		check(BiomeDressing.SHELTERS.has(r.shelter), "%s builds a real shelter: %s" % [d.id, r.shelter])
 		check(BiomeDressing.CROWNS.has(r.crown), "%s grows a real crown: %s" % [d.id, r.crown])
+		check(BiomeDressing.WINDOWS.has(r.windows), "%s lights a real window: %s" % [d.id, r.windows])
+		check(BiomeDressing.SIGNAGE.has(r.signage), "%s powers its signs a real way: %s" % [d.id, r.signage])
 		check(r.facets >= 4 and r.facets <= 9, "%s rock breaks into %d sides" % [d.id, r.facets])
 		if r.covers == &"snow":
 			eq(r.snow.size(), 4, "%s says what colour its snow is" % d.id)
@@ -145,6 +147,8 @@ func test_a_dressing_nobody_can_wear_is_caught() -> void:
 	d.dressing.shelter = &"palace"
 	d.dressing.covers = &"glitter"
 	d.dressing.crown = &"topiary"
+	d.dressing.windows = &"chandelier"
+	d.dressing.signage = &"hologram"
 	d.dressing.facets = 40
 	d.dressing.stone = [Palette.INK[1]]
 	d.tree_tints = {&"branches": [Palette.MOSS[2]], &"leaf": [Palette.MOSS[2]]}
@@ -152,6 +156,8 @@ func test_a_dressing_nobody_can_wear_is_caught() -> void:
 	check(said.contains("palace"), "a shelter nobody builds: %s" % said)
 	check(said.contains("glitter"), "a covering nobody has")
 	check(said.contains("topiary"), "a crown nobody grows")
+	check(said.contains("chandelier"), "a window nobody lights")
+	check(said.contains("hologram"), "a sign nobody powers")
 	check(said.contains("40 sides"), "rock that breaks into forty")
 	check(said.contains("stone wants 3"), "a ramp of the wrong length")
 	check(said.contains("branches"), "a tint key nothing grows")
@@ -225,3 +231,19 @@ func _has(kind: int, country: int, col: Color) -> bool:
 			if absf(c.r - col.r) < 0.004 and absf(c.g - col.g) < 0.004 and absf(c.b - col.b) < 0.004:
 				return true
 	return false
+
+
+func test_the_old_light_is_cut_only_where_a_land_declares_it() -> void:
+	# The crags' quarried standing stones carry a lamp-coded ring (props/rocks.gd
+	# `_old_ring`); the same stone anywhere that declares no old light has none.
+	var crags := BiomeRegistry.index_of(&"the_crags")
+	check(BiomeDressing.of(crags).old_light.a > 0.0, "the crags declare an old light")
+	var lit_in := func(c: int) -> int:
+		var n := 0
+		for col: Color in PropModels.template(PropKind.STANDING_STONE, 0, c).made_c:
+			var m := roundi(col.a * 255.0)
+			if m > GroundColors.LAMP and m <= GroundColors.LAMP + 16:
+				n += 1
+		return n
+	gt(float(lit_in.call(crags)), 0.0, "a crags standing stone is cut with a lit ring")
+	eq(lit_in.call(Country.COAST), 0, "the coast's is plain stone")

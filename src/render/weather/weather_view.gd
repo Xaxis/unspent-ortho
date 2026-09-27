@@ -68,6 +68,9 @@ var flurry: CPUParticles3D
 var spindrift: CPUParticles3D
 var ash: CPUParticles3D
 var ember: CPUParticles3D
+## The dust the land under the focus blows (BiomeDef.weather_style `dust`), set
+## by 10_sky; alpha 0 where the land has said nothing and the shared sand blows.
+var dust_air := Color(0, 0, 0, 0)
 ## Blown streaks: sand in a dust storm, snow in a blizzard.
 var drift: CPUParticles3D
 ## Heat: wavering lines rising off hot ground.
@@ -229,6 +232,14 @@ func _age_ramp(p: CPUParticles3D) -> void:
 	p.color_ramp = g
 
 
+## A grain of the land's own dust at `level` of its colour, or the shared sand.
+func _grit(sand: Color, level: float) -> Color:
+	if dust_air.a <= 0.0:
+		return sand
+	var c := Color(dust_air.r, dust_air.g, dust_air.b) * level
+	return Color(minf(c.r, 1.0), minf(c.g, 1.0), minf(c.b, 1.0))
+
+
 ## One dust devil: DEVIL_MARKS quads, each carrying three random numbers in its
 ## colour, spun into a column by precip.gdshader's SWIRL mode about the node.
 func _devil(i: int) -> MeshInstance3D:
@@ -360,8 +371,8 @@ func update(look: Dictionary, wind: float, focus: Vector3, delta: float) -> void
 	var ashy := ash_drift / maxf(0.001, sand + ash_drift)
 	_drive(drift, drift_amount, Vector3(blow, -0.06, 0.1), 5.0 + absf(wind) * 6.0, {
 		"facing": blow,
-		"color_a": Palette.SAND[1].lerp(Palette.ASH[1], ashy),
-		"color_b": Palette.SAND[5].lerp(Palette.INK[2], ashy),
+		"color_a": _grit(Palette.SAND[1], 0.55).lerp(Palette.ASH[1], ashy),
+		"color_b": _grit(Palette.SAND[5], 1.25).lerp(Palette.INK[2], ashy),
 	})
 	# The odd flick once the wind gets up; the flick is drawn with its head
 	# leading, so it flips with the wind.

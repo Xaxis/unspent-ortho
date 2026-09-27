@@ -404,6 +404,16 @@ void fragment() {
 	NORMAL = n;
 	// No sun comes through a lump of snow.
 	BACKLIGHT = THROUGH_TINT * through * (1.0 - snow);
+	// LIT FROM BELOW AFTER DARK where the land says so (BiomeDef.underlight, the
+	// growth map's GBA): the underside of a crown takes it whole, its flanks a
+	// little, its top none, and only once night has fallen (sky_view.y).
+	if (sky_view.y > 0.0 && sky_view.z > 0.0) {
+		vec3 under = texture(sky_growth, world_pos.xz * sky_view.z).gba;
+		if (dot(under, vec3(1.0)) > 0.004) {
+			float below = smoothstep(0.35, -0.55, n_world.y);
+			EMISSION = matter_light(under * c * 6.0 * (0.05 + 0.95 * below * below) * (1.0 - snow) * sky_view.y);
+		}
+	}
 }
 
 // No light(). The renderer lights a leaf against the same sun, sky and lamps as
