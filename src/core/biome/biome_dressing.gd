@@ -157,7 +157,7 @@ const SHELTERS: Array[StringName] = [&"shack", &"stilt", &"blind", &"pod", &"lea
 	# hearth in the mouth of the cut.
 	&"cut_room"]
 const CROWNS: Array[StringName] = [&"full", &"bare", &"low"]
-const BROADLEAF_FORMS: Array[StringName] = [&"broad", &"fern", &"fig", &"palm", &"snag"]
+const BROADLEAF_FORMS: Array[StringName] = [&"broad", &"fern", &"fig", &"palm", &"snag", &"pollard", &"trellis"]
 const WINDOWS: Array[StringName] = [&"floors", &"gaps"]
 const SIGNAGE: Array[StringName] = [&"lit", &"dying"]
 ## Every ramp `BiomeDef.tree_tints` may name, and how many colours each wants.

@@ -542,6 +542,13 @@ var landmarks: Array[StringName] = []
 ## generation, like a shaft, so the island does not move (LOOK).
 var interiors: Dictionary = {}
 var sound_bed: StringName = &"bed_wind"
+## The prop kind this landscape's typical ground must stand among
+## (GenPlaces.typical_sample), -1 for none. The typical tile is the one whose
+## neighbourhood is most like the whole landscape, and in a land whose point is
+## a planting that can be the clearing where it was taken out: the orchards'
+## "typical" was a field of stumps with the rows on the horizon. A LOOK field:
+## it moves where a shot stands, never what a seed makes.
+var typical_among: int = -1
 ## Another type's id whose music motif this one borrows; empty composes its own.
 var music_motif: StringName = &""
 

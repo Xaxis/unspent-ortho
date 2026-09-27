@@ -73,6 +73,13 @@ static func make() -> BiomeDef:
 	dress.timber = [P.EARTH[2], P.ASH[2]]
 	dress.walling = [P.STONE[3], P.ASH[2], P.EARTH[2], P.LINEN[3]]
 	dress.crown = &"full"
+	# Every tree in a row is the plan's: grafted, staked and tagged, cut back to a
+	# pollard's head (Trees.pollard). The trellised form waits for rows that lay
+	# their trees along the bearing: a wire frame at a random turn is no row.
+	dress.broadleaf_forms = [&"pollard"]
+	# Its typical ground is in the rows, never the clearing where a block was
+	# taken out.
+	d.typical_among = PropKind.BROADLEAF
 	dress.sink = 0.08
 	dress.lie = Vector2(-0.03, 0.06)
 	d.dressing = dress
