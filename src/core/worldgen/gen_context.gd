@@ -132,6 +132,9 @@ var rise: PackedFloat32Array
 var recipe: PackedByteArray
 ## Still pools and tarns: x, y centre (tiles) and radius, in the order laid.
 var pools: PackedVector3Array = PackedVector3Array()
+## Each village's levelled platform, by village id (`GenSettle._lay_villages`):
+## what a section needs to lay its villages again from the plan's rows.
+var village_platforms: PackedFloat32Array = PackedFloat32Array()
 ## Ground of each still-water tile (the country of the pool's centre decides,
 ## so one pool is one water).
 var pool_ground: PackedByteArray

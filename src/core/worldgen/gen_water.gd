@@ -755,7 +755,14 @@ static func _largest_piece(tiles: PackedInt32Array, size: int) -> PackedInt32Arr
 ## Drain every pool with a tile inside the circle (whole pools only, so none
 ## is left as a sliver).
 static func drain_pools(c: GenContext, at: Vector2, radius: float) -> void:
-	for q in c.pools:
+	drain_into(c.pools, c.water, c.size, Vector2i.ZERO, c.size, at, radius)
+
+
+## `drain_pools` over a square `side` wide at `origin` in a world `world_size`
+## wide: the whole world, or a section, which drains only its own tiles.
+static func drain_into(pools: PackedVector3Array, water: PackedByteArray, side: int, origin: Vector2i, world_size: int,
+		at: Vector2, radius: float) -> void:
+	for q in pools:
 		if Vector2(q.x, q.y).distance_to(at) >= radius + q.z * 1.3:
 			continue
 		var ri := ceili(q.z * 1.3) + 1
@@ -763,23 +770,33 @@ static func drain_pools(c: GenContext, at: Vector2, radius: float) -> void:
 			for dx in range(-ri, ri + 1):
 				var x := floori(q.x) + dx
 				var y := floori(q.y) + dy
-				if x < 0 or y < 0 or x >= c.size or y >= c.size:
+				if x < 0 or y < 0 or x >= world_size or y >= world_size:
 					continue
-				var i := y * c.size + x
-				if c.water[i] == 2:
-					c.water[i] = 0
+				var i := _at(x, y, origin, side)
+				if i >= 0 and water[i] == 2:
+					water[i] = 0
 
 
 ## Drain every pool a road runs through, whole, so none is left as slivers.
 static func drain_crossed(c: GenContext) -> void:
-	for q in c.pools:
+	drain_crossed_into(c.pools, c.road, c.water, c.size, Vector2i.ZERO, c.size)
+
+
+## `drain_crossed` over a square: a pool is crossed when a road tile lies in its
+## box, which a section sees when the box lies within it.
+static func drain_crossed_into(pools: PackedVector3Array, road: PackedByteArray, water: PackedByteArray, side: int, origin: Vector2i,
+		world_size: int) -> void:
+	for q in pools:
 		var ri := ceili(q.z * 1.3) + 1
 		var crossed := false
 		for dy in range(-ri, ri + 1):
 			for dx in range(-ri, ri + 1):
 				var x := floori(q.x) + dx
 				var y := floori(q.y) + dy
-				if x >= 0 and y >= 0 and x < c.size and y < c.size and c.road[y * c.size + x] != 0:
+				if x < 0 or y < 0 or x >= world_size or y >= world_size:
+					continue
+				var i := _at(x, y, origin, side)
+				if i >= 0 and road[i] != 0:
 					crossed = true
 		if crossed:
-			drain_pools(c, Vector2(q.x, q.y), 0.0)
+			drain_into(pools, water, side, origin, world_size, Vector2(q.x, q.y), 0.0)
