@@ -433,12 +433,20 @@ func test_each_landscape_leans_its_own_way_by_hour_and_noon_stays_day() -> void:
 
 
 func test_the_sky_reads_landscape_types_through_the_registry_not_countries() -> void:
-	# A Salt Flats or Scrapwood row in CLIMATES, MOOD, CAST or CANOPY_DRIP must be
+	# A Salt Flats or Scrapwood row in CLIMATES, MOOD or CAST must be
 	# read the moment BiomeRegistry names that type: the sky never goes through
 	# Country or the legacy at_place.
 	var text := FileAccess.get_file_as_string("res://src/systems/10_sky.gd")
 	for banned: String in ["Country.", "at_place(", "type_of(", "Weather.settled("]:
 		eq(text.find(banned), -1, "10_sky does not use %s" % banned)
+	# And it names no landscape: what drips under a canopy and what drifts over a
+	# bog after dark are the landscape file's to say (BiomeDef.canopy_drip, wisps).
+	# (Its `here` starts on the coast before the first frame has read the world.)
+	var body := text.replace('var here: StringName = &"coast"', "")
+	for d: BiomeDef in BiomeRegistry.all():
+		eq(body.find('&"%s"' % d.id), -1, "10_sky names no landscape (%s)" % d.id)
+	gt(BiomeRegistry.get_def(&"pinewood").canopy_drip, 1.0, "the pinewood drips under its canopy")
+	gt(BiomeRegistry.get_def(&"moss").wisps, 0.0, "and the moss has its wisps")
 	var salt := BiomeDef.new()
 	salt.id = &"salt_flats"
 	salt.light_tint = Color(0.9, 0.8, 0.7)

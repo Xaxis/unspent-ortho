@@ -61,6 +61,17 @@ const BAR_BACK: Array[float] = [0.78, 0.64, 0.22, 0.86, 0.5, 0.3]
 const BAR_OUT: Array[float] = [0.62, 0.9, 0.7, 0.45, 0.83, 0.55]
 
 
+## How deep a BOUGH's crown is built, in card layers (Trees.LAYERS is a lone
+## crown's 2.4). A scrap tree's boughs overlap one another and the top of the
+## crown, so each is seen through the others: at the full 2.4 every bough paid
+## for a skin nobody sees, and this is the commonest tree in the densest wood in
+## the game (602 of them within 40 tiles of the scrapwood's typical spot, 618k
+## triangles, three times the pinewood's whole count there).
+const BOUGH_LAYERS := 1.0
+## And the top of the crown, which the boughs' own cards fill in from below.
+const TOP_LAYERS := 1.8
+
+
 static func tree(k: Kit, v: int, c: int = 0) -> void:
 	var s := 610 + v * 31
 	var lean := Vector2(Kit.j(s, 1, 0.12), Kit.j(s, 2, 0.1))
@@ -159,10 +170,10 @@ static func tree(k: Kit, v: int, c: int = 0) -> void:
 		var to := from + Vector3(cos(a) * arm, 0.3, sin(a) * arm)
 		k.limb(from, to, 0.055, 0.03, 5, bark)
 		var cr := crown * (0.92 + Kit.j(s, 40 + i, 0.22))
-		k.canopy(to.x, to.y - 0.1, to.z, cr, crown * 1.1, s + i * 7, mass, Kit.LEAF_BROAD, Trees.BROAD_CARD, Trees.leaf_cards(cr, crown * 1.1, Trees.BROAD_CARD))
+		k.canopy(to.x, to.y - 0.1, to.z, cr, crown * 1.1, s + i * 7, mass, Kit.LEAF_BROAD, Trees.BROAD_CARD, Trees.leaf_cards(cr, crown * 1.1, Trees.BROAD_CARD, BOUGH_LAYERS))
 	# The top of the crown, pushed off the trunk away from the bare side.
 	var off := Vector3(cos(bare), 0.0, sin(bare)) * (crown * -0.35 if gap else 0.0)
-	k.canopy(lean.x * h + off.x, h * 0.88, lean.y * h + off.z, crown * 1.2, crown * 1.32, s + 99, mass, Kit.LEAF_BROAD, Trees.BROAD_CARD, Trees.leaf_cards(crown * 1.2, crown * 1.32, Trees.BROAD_CARD))
+	k.canopy(lean.x * h + off.x, h * 0.88, lean.y * h + off.z, crown * 1.2, crown * 1.32, s + 99, mass, Kit.LEAF_BROAD, Trees.BROAD_CARD, Trees.leaf_cards(crown * 1.2, crown * 1.32, Trees.BROAD_CARD, TOP_LAYERS))
 	# The sheet the crown grew up round: on the side away from the bar, and never
 	# on the side that did not grow back, where there would be nothing to hold it.
 	var sa := ma + PI + Kit.j(s, 5, 0.5)

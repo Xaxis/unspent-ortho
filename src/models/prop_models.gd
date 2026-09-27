@@ -40,6 +40,7 @@ const Glass := preload("res://src/models/props/glass_desert.gd")
 const Metropolis := preload("res://src/models/props/metropolis.gd")
 const DrownedCity := preload("res://src/models/props/drowned_city.gd")
 const Mesas := preload("res://src/models/props/mesas.gd")
+const FallenTower := preload("res://src/models/props/fallen_tower.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -59,6 +60,11 @@ class Template:
 	var leaf_c := PackedColorArray()
 	var leaf_uv := PackedVector2Array()
 	var leaf_uv2 := PackedVector2Array()
+	## THE STOREY CHANNEL, one float per made vertex: 1 + the vertex's height in
+	## storeys (`Towers.STOREY`) on a building raised in storeys, empty on
+	## anything else. Model space, so an instance's cast cannot move it off its
+	## own floor lines: it is where the ivy hangs from (matter_grown, CUSTOM1).
+	var made_storey := PackedFloat32Array()
 
 
 static var _templates: Dictionary = {}
@@ -127,6 +133,9 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 			return 3
 		PropKind.GLASS_BLISTER, PropKind.FUSED_CAR:
 			return 2
+		# A long fall, a short one broken twice, a top section lying well away.
+		PropKind.FALLEN_TOWER:
+			return 3
 		# The metropolis: a span with its lamp standing or snapped, a lift core
 		# with its cable in or out, a shop with its shutter a third, two thirds or
 		# all the way down, and a bale of each of the three things the plan sorts
@@ -211,6 +220,7 @@ static func template(kind: int, variant: int = 0, country: int = Country.COAST, 
 	var t: Template = _templates.get(key)
 	if t == null:
 		t = _extract(build_kit(kind, variant, country, worked))
+		_storeys(t, kind, variant, country)
 		_templates[key] = t
 	_lock.unlock()
 	return t
@@ -266,6 +276,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			DrownedCity.build(k, kind, variant, country)
 		PropKind.HOODOO, PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN, PropKind.SPAN_PYLON:
 			Mesas.build(k, kind, variant, country)
+		PropKind.FALLEN_TOWER:
+			FallenTower.build(k, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)
@@ -275,6 +287,16 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 		Broken.work_down(k.made, share, kind * 131 + variant)
 		Broken.work_down(k.found, share, kind * 131 + variant + 7)
 	return k
+
+
+## Fill a template's storey channel when it is a building raised in storeys
+## (`BiomeForms.RAISED`, all drawn by props/towers.gd on its STOREY).
+static func _storeys(t: Template, kind: int, variant: int, country: int) -> void:
+	if kind != PropKind.HOUSE or not BiomeForms.RAISED.has(BiomeForms.of(country).form(variant)):
+		return
+	t.made_storey.resize(t.made_v.size())
+	for i in t.made_v.size():
+		t.made_storey[i] = 1.0 + t.made_v[i].y / Houses.Towers.STOREY
 
 
 static func _extract(k: Kit) -> Template:

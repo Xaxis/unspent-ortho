@@ -78,6 +78,9 @@ static func make() -> BiomeDef:
 	d.dressing = dress
 	d.grade = Vector4(-0.03, 0.03, 0.0, 0.02)
 	d.night_sky = 1.0
+	# The plan still runs its grow lights on the schedule, all night, for trees
+	# nobody will pick: every crown lit rose-violet from below, in its rows.
+	d.underlight = Color(0.6, 0.4, 0.86, 0.42)
 	d.props = [PropKind.BROADLEAF, PropKind.BUSH, PropKind.GROWTH_TANK,
 		PropKind.WATER_TANK, PropKind.FENCE, PropKind.STUMP, PropKind.DEBRIS, PropKind.RELAY]
 	d.ore = [[PropKind.IRON_ORE, 0.014], [PropKind.COPPER_ORE, 0.012]]

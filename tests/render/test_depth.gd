@@ -392,3 +392,13 @@ func test_the_foreground_stands_down_for_whatever_camera_sees_the_horizon() -> v
 	var src := FileAccess.get_file_as_string("res://src/systems/13_fore.gd")
 	check(src.contains("view.thin(maxf(sh, SkyLight.horizon_share(get_viewport().get_camera_3d())))"),
 		"13_fore thins by the drawing camera's horizon share as well as the rig's shoulder share")
+
+
+## A landscape may hang its own pieces (BiomeDef.fore_rows): the middens string
+## cables across their slots off debris, which hangs nothing anywhere else.
+func test_a_landscape_hangs_its_own_pieces() -> void:
+	var mid := BiomeRegistry.index_of(&"the_middens")
+	var p := WorldProp.new(1, PropKind.DEBRIS, Vector2(10, 10), 0.0, 1.0)
+	check(ForeKinds.carries(PropKind.DEBRIS), "debris carries a piece somewhere")
+	eq(int(ForeKinds.row_of(p, 7, mid).get("shape", -1)), ForeKinds.LINE, "a cable in the middens")
+	check(ForeKinds.row_of(p, 7, Country.COAST).is_empty(), "and nothing on the coast")
