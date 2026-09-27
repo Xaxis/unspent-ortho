@@ -5327,20 +5327,19 @@ const TESTIMONY_HOLDING := {"says": [
 
 
 ## What the reads app says under a network's trace for a cause the player keeps
-## feeding, by cause id (Interference.CAUSES). The machines' register. PLACEHOLDER
-## WORDS for the story-wright to replace; the ids are the contract.
+## feeding, by cause id (Interference.CAUSES). The machines' register.
 const READS_CAUSE := {
-	&"carried": "WHAT YOU CARRY HUMS",
+	&"carried": "KEEPER CORE OFF STATION. LOCATING.",
 }
 
 
 ## What a lived-in room's kept-by shelf says (KeptBy), by line id: to a stranger,
-## whose it is; to somebody the region has thanked, as it is given; and after,
-## that it was. PLACEHOLDER WORDS for the story-wright; the ids are the contract.
+## whose it is; to somebody the region has thanked, as it is given (what was given
+## follows it); and after, that it was.
 const KEPT_BY := {
-	&"kept_by_theirs": "It is theirs. What they keep here, they need.",
-	&"kept_by_given": "They left it where you would find it. For what you did.",
-	&"kept_by_gave": "They gave you what they could spare.",
+	&"kept_by_theirs": "Theirs. All of it counted, and none of it spare.",
+	&"kept_by_given": "One thing on the shelf is set apart, facing the door. It is for you.",
+	&"kept_by_gave": "Theirs again. The gap where yours stood is already closed up.",
 }
 
 
