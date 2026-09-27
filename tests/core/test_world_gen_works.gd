@@ -498,26 +498,38 @@ func test_budgets() -> void:
 	# Both numbers have to come from ONE run to be a share at all, so this keeps
 	# the pair from the run whose generation was quickest rather than timing the
 	# two separately.
+	# FOUR SEEDS, SUMMED: one seed's share is that seed's layout as much as the
+	# stage. When the plan began deciding the regions (S4e4) seed 1 alone went
+	# 0.204 -> 0.247 while seeds 7, 42 and 90210 went 0.260/0.274/0.297 ->
+	# 0.165/0.170/0.248: the stage got cheaper and the one seed asked got dearer.
 	var works_ms := 0.0
 	var gen_ms := 0
 	var w: WorldData = null
-	for attempt in 3:
-		var t := Time.get_ticks_msec()
-		var made := WorldGen.generate(Worlds.WORLD_SEEDS[0], 256)
-		var ms := Time.get_ticks_msec() - t
-		var stage := 0.0
-		for key: StringName in WorldGen.last_detail:
-			if String(key).begins_with("works."):
-				stage += float(WorldGen.last_detail[key])
-		if w == null or ms < gen_ms:
-			gen_ms = ms
-			works_ms = stage
-			w = made
+	for seed_value: int in [Worlds.WORLD_SEEDS[0], 7, 42, 90210]:
+		var best_ms := 0
+		var best_stage := 0.0
+		var best_w: WorldData = null
+		for attempt in 3:
+			var t := Time.get_ticks_msec()
+			var made := WorldGen.generate(seed_value, 256)
+			var ms := Time.get_ticks_msec() - t
+			var stage := 0.0
+			for key: StringName in WorldGen.last_detail:
+				if String(key).begins_with("works."):
+					stage += float(WorldGen.last_detail[key])
+			if best_w == null or ms < best_ms:
+				best_ms = ms
+				best_stage = stage
+				best_w = made
+		gen_ms += best_ms
+		works_ms += best_stage
+		if w == null:
+			w = best_w
 	var evidence := 0
 	for p in w.each_prop():
 		if p.kind >= FIRST:
 			evidence += 1
-	print("       works at 256: %d evidence props of %d, works %.0f ms of gen %d ms" % [evidence, w.prop_count(), works_ms, gen_ms])
+	print("       works at 256: %d evidence props of %d on seed %d, works %.0f ms of gen %d ms over four seeds" % [evidence, w.prop_count(), Worlds.WORLD_SEEDS[0], works_ms, gen_ms])
 	var big := Worlds.world(Worlds.WORLD_SEEDS[0])
 	var verts := 0
 	var n := 0
