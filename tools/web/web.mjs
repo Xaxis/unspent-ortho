@@ -53,7 +53,9 @@
 //                    frame's cost can be read off its interval (perf scale in a tour)
 //   --programs       with --tour, count the GL programs first drawn after each `echo event NAME` in
 //                    the tour, by .gdshader and variant: a first-use shader compile is a freeze on the
-//                    web, and at an event a player meets (a door, a fire) the count should be zero
+//                    web, and at an event a player meets (a door, a fire) the count should be zero.
+//                    A built-in material is shown with its own uniforms; each program built at an
+//                    event is kept as <out>-program-<event>-pN.{vs,fs}.glsl, to read what it was
 //   --heap-log       print every heap sample (every 2 s, seconds since the sampler started), not only
 //                    the most it held: when the heap grows says what grew it
 import http from 'node:http';
@@ -385,7 +387,7 @@ await context.addInitScript(() => {
         const fs = p.__glSrc[1] || '';
         const ids = [...new Set((p.__glSrc.join('\n').match(/\bm_[a-z][a-z0-9_]*/g) || []))];
         const kind = /canvas_data|batch_flags/.test(fs) ? 'canvas' : /shader_type sky|MODE_QUARTER_RES|MODE_HALF_RES/.test(fs) ? 'sky' : '';
-        if (window.__glReport) window.__glReport({ id: p.__glId, at: performance.now(), head: fs.split('\n').slice(0, 60).join('\n'), ids, kind, src: (window.__glEvents.length > 0 || /MODE_UNSHADED/.test(p.__glSrc[0] || '')) ? p.__glSrc : null });
+        if (window.__glReport) window.__glReport({ id: p.__glId, at: performance.now(), head: fs.split('\n').slice(0, 60).join('\n'), ids, kind, src: window.__glEvents.length > 0 ? p.__glSrc : null });
       }
       if (!p || p.__glChecked >= 3) return draw.apply(this, a);
       this.getError();
