@@ -47,6 +47,10 @@ extends RefCounted
 ##                            each machine will tell its next blow
 ##                            (FightSim.next_tell_at); the scan's cooldown is
 ##                            PLUMB_COOLDOWN as long
+##   unbuild  (mod_unbuild)   "use strips an open machine": held use at the part of
+##                            a machine standing open gathers UNBUILD_MS; done,
+##                            it has no bite and gives up its elite part
+##                            (FightSim.strip)
 ##   undertow (mod_undertow)  "your line hauls them in": the grapple takes hold
 ##                            of a machine ahead and drags it one body-length
 ##                            in (FightSim.undertow), its tell broken and its
@@ -105,6 +109,8 @@ const LOCK_HUNTED := 20.0
 const LISTEN_NOISE := 1.5
 ## How much longer the scan takes to come back with the plumb set.
 const PLUMB_COOLDOWN := 2.0
+## How long use must be held at an open machine's part to strip it.
+const UNBUILD_MS := 1500.0
 ## A haul on a machine costs this many times the grapple's wind.
 const UNDERTOW_WIND := 2.0
 
@@ -120,6 +126,7 @@ var lattice := false
 var icelens := false
 var undertow := false
 var rake := false
+var unbuild := false
 var plumb := false
 var listen := false
 var lock := false
@@ -141,6 +148,7 @@ static func of(ids: Array) -> FightKit:
 	k.icelens = ids.has(&"mod_icelens")
 	k.undertow = ids.has(&"mod_undertow")
 	k.rake = ids.has(&"mod_rake")
+	k.unbuild = ids.has(&"mod_unbuild")
 	k.plumb = ids.has(&"mod_plumb")
 	k.listen = ids.has(&"mod_listen")
 	k.lock = ids.has(&"mod_lock")

@@ -100,6 +100,20 @@ func _act() -> void:
 	var target := _open_target(live)
 	if target != null and _pressed_out(target):
 		target = null
+	# With the unbuilder's hands (FightKit.unbuild): an open body whose part is in
+	# reach is stripped rather than struck -- use held through its openings -- when
+	# it is the only roused body near; in a crowd the openings go on the blade.
+	if target != null and sim.can_strip(target) and hero.swing_refusal(sim.now) == &"" and _alone_with(target, live):
+		hero.move = Vector2.ZERO
+		hero.facing = (target.pos - hero.pos).angle()
+		sim.strip(target, FightRules.SLICE_MS * 2.0)
+		return
+	# Alone with it and out of the hands' reach: in to its part, not a swing.
+	if target != null and hero.kit != null and hero.kit.unbuild and target.machine and not target.stripped \
+			and target.bite != null and _alone_with(target, live):
+		hero.move = _round_to(target, _part_spot(target, 0.0))
+		hero.run = true
+		return
 	if target != null:
 		_strike(target)
 		# A window a walk would miss: sprint to it.
@@ -261,6 +275,13 @@ func _rake_crowd(live: Array[MobState]) -> bool:
 	sim.press_heavy()
 	heavies += 1
 	_rake_ready_at = sim.now + FightRules.STALL_EVERY_MS
+	return true
+
+
+func _alone_with(m: MobState, live: Array[MobState]) -> bool:
+	for o in live:
+		if o != m and o.roused() and not o.stripped and o.pos.distance_to(sim.hero.pos) < HAUL_ALONE:
+			return false
 	return true
 
 

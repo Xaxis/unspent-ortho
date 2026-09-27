@@ -43,6 +43,8 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   (options in its header; `spawn KIND beyond PROP` and `tell KIND` stage a tell behind a house).
   The plumb (plumb_core, head): a scan rings where each roused machine will tell its next blow; the scan cools
   twice as long: `tools/test.sh test_plumb` (its bout prints), `tools/tour.sh tours/plumb.tour` (options in its header).
+  The unbuilder's hands (unbuilder_core, hands): use held at an open machine's part strips it -- disarmed, its elite
+  part into the creel: `tools/test.sh test_unbuild` (its bout prints), `tools/tour.sh tours/unbuild.tour` (options in its header).
   A keeper's core reads on the slate as the choice it is (the holding's cell, the power worn), side by side:
   `tools/test.sh test_rules:test_a_keepers_core`, `tools/tour.sh tours/core_choice.tour` (options in its header).
 - 56_economy: `src/systems/56_economy.gd`, reached by `tools/tour.sh tours/gear-economy.tour`.

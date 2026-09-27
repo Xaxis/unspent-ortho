@@ -1235,6 +1235,37 @@ func next_tell_at(m: MobState) -> Vector2:
 	return hero.pos + to.normalized() * Brains.strike_range(m, self)
 
 
+## Whether the player could strip `m` now (FightKit.unbuild): a machine not yet
+## stripped, standing open (stalled, or spent after a bite), with its working
+## part in reach of their hands.
+func can_strip(m: MobState) -> bool:
+	if not hero.kit.unbuild or m == null or not m.alive or m.removed or not m.machine or m.stripped or m.bite == null:
+		return false
+	if not (m.stunned(now) or m.spent(now)):
+		return false
+	var reach := m.radius + hero.radius + 0.6
+	return m.pos.distance_to(hero.pos) <= reach and reaches_part(m, hero.pos, false, true)
+
+
+## Held use at an open machine gathers `ms` of the strip; at UNBUILD_MS it is
+## stripped: its bite is gone for good, and its elite part is given up
+## (`stripped` carries the item; the game puts it in the creel). True when it
+## was stripped by this call.
+func strip(m: MobState, ms: float) -> bool:
+	if not can_strip(m):
+		return false
+	m.strip_ms += ms
+	if m.strip_ms < FightKit.UNBUILD_MS:
+		return false
+	m.stripped = true
+	m.bite = null
+	m.blow = null
+	m.charging = false
+	var parts := EliteStock.from_kind(m.kind)
+	emit(&"stripped", {"mob": m, "at": m.pos, "item": parts[0] if not parts.is_empty() else &"scrap"})
+	return true
+
+
 ## The undertow's haul (FightKit.undertow): a machine the line has taken hold of
 ## is dragged one body-length toward the player, never nearer than UNDERTOW_GAP,
 ## over ground it could walk; a tell it was winding up is broken and a charge

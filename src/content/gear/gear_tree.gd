@@ -160,6 +160,8 @@ const PIECES := {
 		"unique": "the only way to hear a tell you cannot see"},
 	&"mod_plumb": {"grade": &"relic", "family": &"", "from": &"plumb_core",
 		"unique": "the only read of where a blow will come from before it does"},
+	&"mod_unbuild": {"grade": &"relic", "family": &"", "from": &"unbuilder_core",
+		"unique": "the only hands that take a machine apart while it stands"},
 	&"mod_rake": {"grade": &"relic", "family": &"", "from": &"rake_core",
 		"unique": "the only blow that opens what it does not hit"},
 }

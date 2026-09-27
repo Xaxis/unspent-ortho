@@ -448,6 +448,10 @@ const DEFS := {
 	# read the ground's lean before it moved, turned. `read` (ModifierTable).
 	&"mod_plumb": {"name": "plumb", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"scan_lens", &"stone", &"ink"], "fits": [&"head"], "resist": {&"collapse": 0.2}},
+	# The metropolis unbuilder's core, wired into a glove (GEAR.md §5): the keeper
+	# that took the city apart piece by piece, turned. `read` (ModifierTable).
+	&"mod_unbuild": {"name": "unbuilder's hands", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"plate", &"ink"], "fits": [&"hands"], "resist": {&"em": 0.2}},
 	&"mod_undertow": {"name": "undertow", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"brine", &"earth"], "fits": [&"hands"], "resist": {&"magnetism": 0.3}},
 	# The crags' hush slate, lined into a hat, a coat or a pack: what it decides

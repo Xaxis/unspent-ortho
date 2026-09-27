@@ -115,6 +115,11 @@ const MODS := {
 		"short": "a scan reads their next blow",
 		"costs": "the scan takes twice as long to come back",
 		"gives": [&"read"]},
+	# The metropolis unbuilder's, turned (GEAR.md §5): `read`.
+	&"mod_unbuild": {"decision": "held use at an open machine's working part strips it: disarmed, and its part is yours",
+		"short": "use strips an open machine",
+		"costs": "the strip is a long hold inside its openings",
+		"gives": [&"read"]},
 	# The pan rake's, turned (GEAR.md §5): `loud`, so a damper fights it (PAIRS).
 	&"mod_rake": {"decision": "a heavy blow rakes the ground ahead and holds everything in the arc open, and rings for it",
 		"short": "a heavy rakes the arc",

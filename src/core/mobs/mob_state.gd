@@ -26,6 +26,10 @@ static var _next_id := 1
 ## world minute the hold began, which a dawn ends.
 var hold_at := Vector3.INF
 var hold_since := 0.0
+## The unbuilder's strip gathered on this body (FightKit.unbuild), in ms; and
+## whether it has been stripped (no bite from then on).
+var strip_ms := 0.0
+var stripped := false
 
 var id := 0
 var kind: StringName = &""

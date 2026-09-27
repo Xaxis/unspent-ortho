@@ -96,6 +96,13 @@ func _read_input(delta: float) -> void:
 			sim.press_heavy(game.camera.aim())
 	if Input.is_action_just_pressed(&"dodge") and not shift:
 		sim.press_dodge()
+	# The unbuilder's hands (FightKit.unbuild): use held at an open machine's part
+	# strips it, gathered through its openings.
+	if sim.hero.kit.unbuild and Input.is_action_pressed(&"use"):
+		for m in sim.mobs:
+			if sim.can_strip(m):
+				sim.strip(m, delta * 1000.0)
+				break
 
 
 func _in_fight() -> bool:
@@ -380,6 +387,16 @@ func _handle(events: Array[Dictionary]) -> void:
 					var y := 0.15 + k * 0.3
 					MobFx.line(fx, _at3(a, y), _at3(b, y), Palette.BRINE[5 - mini(k, 3)], FightKit.LOCK_SECONDS)
 				Events.sfx.emit(&"hit_plate", _at3(e.at))
+			&"stripped":
+				# Its working part comes away in the hands, and into the creel.
+				var m: MobState = e.mob
+				var item: StringName = e.item
+				_stripped_at = Time.get_ticks_msec() / 1000.0
+				game.inventory.add(item)
+				Events.took.emit(item, 1)
+				Events.sfx.emit(&"hit_plate", _at3(m.pos))
+				MobFx.burst(fx, _part_at(m), 0.9, m.id, Palette.LENS[3])
+				Events.message.emit("Stripped: %s." % UiRules.item_name(item))
 			&"grip_failed":
 				# The anchor held (FightKit.anchor): the grip rang off a body that
 				# would not be taken, and the ground round the feet says why.
@@ -519,6 +536,7 @@ func _crackle(from: Vector2, m: MobState, h: float) -> void:
 var _raked_at := -INF
 var _grip_failed_at := -INF
 var _locked_at := -INF
+var _stripped_at := -INF
 
 
 ## `raked`: a rake's tines are on the ground now (they stand 0.35 s);
@@ -532,6 +550,8 @@ func tour_seen(what: StringName) -> bool:
 			return now - _grip_failed_at < 0.4
 		&"locked":
 			return now - _locked_at < FightKit.LOCK_SECONDS
+		&"stripped":
+			return now - _stripped_at < 1.0
 	return false
 
 
