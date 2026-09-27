@@ -1063,7 +1063,68 @@ func _room_middle() -> Vector2:
 	return box.get_center()
 
 
+## ONE BUILT-IN MATERIAL OF EACH KIND A ROOM DRAWS WITH, KEPT FOR THE SESSION.
+## Godot shares a built-in material's shader among all materials with its
+## settings and frees it with the last of them. A room builds its materials
+## fresh each time it is entered and frees them when it is left, so its
+## shaders went with it, and on the web every door built them again: the same
+## cottage entered twice built 61 programs the first time and 11 the second,
+## and a program built is a frozen frame there. Keyed by what the shader is made
+## from (every flag, mode and which textures are set, never a colour), so one
+## material holds each shader; a handful per kind of room.
+static var _shader_keep: Dictionary = {}
+
+
+static func _keep_shaders(roots: Array[Node]) -> void:
+	for root: Node in roots:
+		if root == null or not is_instance_valid(root):
+			continue
+		for n: Node in [root] + root.find_children("*", "", true, false):
+			var mats: Array[Material] = []
+			if n is GeometryInstance3D and (n as GeometryInstance3D).material_override != null:
+				mats.append((n as GeometryInstance3D).material_override)
+			var mesh: Mesh = null
+			if n is MeshInstance3D:
+				var mi := n as MeshInstance3D
+				mesh = mi.mesh
+				for i in mi.get_surface_override_material_count():
+					if mi.get_surface_override_material(i) != null:
+						mats.append(mi.get_surface_override_material(i))
+			elif n is CPUParticles3D:
+				mesh = (n as CPUParticles3D).mesh
+			if mesh != null:
+				for i in mesh.get_surface_count():
+					if mesh.surface_get_material(i) != null:
+						mats.append(mesh.surface_get_material(i))
+			for m: Material in mats:
+				if m is BaseMaterial3D:
+					var key := shader_key(m as BaseMaterial3D)
+					if not _shader_keep.has(key):
+						_shader_keep[key] = m
+
+
+## What a built-in material's shader is made from: its flags, modes and which
+## textures it has, never the values the shader is handed.
+static func shader_key(m: BaseMaterial3D) -> String:
+	var parts := PackedStringArray()
+	for p: Dictionary in m.get_property_list():
+		if (int(p.usage) & PROPERTY_USAGE_STORAGE) == 0:
+			continue
+		var v: Variant = m.get(p.name)
+		match typeof(v):
+			TYPE_BOOL, TYPE_INT:
+				parts.append("%s=%s" % [p.name, v])
+			TYPE_OBJECT:
+				if int(p.type) == TYPE_OBJECT and String(p.hint_string).contains("Texture"):
+					parts.append("%s=%s" % [p.name, v != null])
+	return ",".join(parts)
+
+
 func _swap_out() -> void:
+	var leaving: Array[Node] = [game.view]
+	leaving.append_array(_beams)
+	leaving.append_array(_motes)
+	_keep_shaders(leaving)
 	var realms := _realms()
 	_count_the_dead()
 	_turrets.clear()

@@ -83,6 +83,7 @@ const int M_PINE_FLOOR = 105;
 const int M_SCRAP_FLOOR = 106;
 const int M_BOG_FLOOR = 107;
 const int M_MIDDEN_FLOOR = 108;
+const int M_ORCHARD_SWARD = 109;
 const int M_STRATA_BONE = 133;
 const int M_STRATA_GLASS = 139;
 const int M_STRATA_TIDE = 140;
@@ -734,10 +735,17 @@ vec3 matter_worn(vec3 c, vec4 wear, vec3 n_world, vec3 wp, float amount, out flo
 	// A seam or a lip: where two panels or two plates meet, which is where a
 	// crystal grows and a weld weeps. Only on something BUILT -- the land has no
 	// seams, and giving it any drew a honeycomb of cells over open ground.
+	// NEVER THE WHOLE NET. Every cell edge weeping at once drew a tan honeycomb
+	// over a tower's face at eye level: a pattern laid on the wall, not
+	// something that happened to it. Only a few lengths of seam weep (a noise
+	// much broader than the cells picks which), and on a flank only where a
+	// streak is already running, so what shows is a spall's rim here and a
+	// joint weeping there.
 	float seam = 0.0;
 	if (amount > 0.5) {
 		vec3 cd = matter_cells(vec2(p.x + wp.y * 1.7, p.y - wp.y * 1.3) * 3.3);
-		seam = smoothstep(0.11, 0.0, cd.y - cd.x);
+		float which = smoothstep(0.62, 0.8, ink_vnoise(vec2(p.x + wp.y * 0.9, p.y - wp.y * 0.7) * 0.55 + 31.0));
+		seam = smoothstep(0.08, 0.0, cd.y - cd.x) * which;
 	}
 	// WEATHERING FOLLOWS FORM. On a flank what weeps out of a fixing or a seam
 	// RUNS DOWN: the field is keyed on the face's own horizontal coordinate and
@@ -750,6 +758,7 @@ vec3 matter_worn(vec3 c, vec4 wear, vec3 n_world, vec3 wp, float amount, out flo
 	float along = dot(p, vec2(-fn.y, fn.x));
 	float streak = ink_vnoise(vec2(along * 3.1, wp.y * 0.35 + 5.0)) * 0.7 + ink_vnoise(vec2(along * 9.0, wp.y * 0.8)) * 0.3;
 	float run = mix(ink_vnoise(vec2(p.x * 0.8 + wp.y * 2.6, p.y * 3.4)), streak, flank);
+	seam *= mix(1.0, smoothstep(0.45, 0.7, streak), flank);
 	float grain = ink_vnoise(p * 2.7 + wp.y * 1.9);
 	// 1. RUST: out of the seams and down the flanks, worst where nothing dries.
 	float rust = wear.r * amount

@@ -982,7 +982,9 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 	e.fog_light_color = Air.colour(hor, a).lerp(a.dust, dust * DUST_TAKE)
 	# A land's own fog colours the distance it closes, as far as the fog is thick.
 	if fog_tint.a > 0.0:
-		e.fog_light_color = e.fog_light_color.lerp(Color(fog_tint.r, fog_tint.g, fog_tint.b), clampf(fog.z, 0.0, 1.0) * 0.6)
+		# A thin bank of a land's own fog already reads as that fog: the colour
+		# comes in fast, so a dusk mist is the land's and not the sunset's.
+		e.fog_light_color = e.fog_light_color.lerp(Color(fog_tint.r, fog_tint.g, fog_tint.b), clampf(fog.z * 2.2, 0.0, 1.0) * 0.75)
 	e.fog_light_energy = lerpf(1.0, 0.10, nightly)
 	# Where the tier has no volumetric air, the depth fog stands in for its bank
 	# (Quality.ROWS.air_stand_in), so the bog is still thicker than the salt.

@@ -93,6 +93,7 @@ func setup(g: Game) -> void:
 	var cam := g.camera
 	cam.sight_room = room
 	cam.side_room = side_room
+	cam.land_room = land_room
 	cam.shoulder = opens_over
 	if opens_over:
 		cam.snap_view()
@@ -356,6 +357,19 @@ func room(head: Vector3, eye: Vector3) -> float:
 ## How much of the line from the head sideways is clear, with no floor under it
 ## (Shoulder.clear_along): the rig's side room, so the eye stands off a wall at
 ## the player's right rather than hugging it down a corridor.
+## How much of the line from the head is clear of the LAND alone (the rig's
+## corridor probe, `CameraRig.land_room`): a corridor is the shape of the
+## ground, and a prop the player stands against (a hull, a heap) would block
+## every heading at the first step.
+func land_room(head: Vector3, to: Vector3) -> float:
+	if game == null or game.world == null:
+		return 1.0
+	var ground := func(p: Vector2) -> float:
+		return game.view.surface_height(p) if game.view != null else game.world.height_at(p)
+	var none: Array[Vector4] = []
+	return Shoulder.clear_along(head, to, ground, none)
+
+
 func side_room(head: Vector3, to: Vector3) -> float:
 	if game == null or game.world == null or game.query == null:
 		return 1.0

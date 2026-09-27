@@ -98,6 +98,12 @@ var elev: PackedFloat32Array
 ## when no landscape declares one.
 var form_e: PackedFloat32Array = PackedFloat32Array()
 
+## Levels a slot labyrinth's plateau was raised by, per tile; empty when none. A
+## river cuts its bed by the ground under the plateau (GenWater._lay): it runs
+## at the floors' level, through a wall in a gorge, never along a plateau top a
+## level or five above the river it crosses.
+var slot_lift: PackedFloat32Array = PackedFloat32Array()
+
 ## Warp of a caldera's rim, in crater radii / 0.3, shared by the rim's relief
 ## and its rock.
 var rim_warp: PackedFloat32Array

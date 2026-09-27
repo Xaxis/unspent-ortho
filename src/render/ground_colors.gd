@@ -196,6 +196,10 @@ const BOG_FLOOR := 107
 ## The middens' floor: SWARF by day in every respect, and by night the screens
 ## buried in it leach phosphor into the standing wet, a faint green (108).
 const MIDDEN_FLOOR := 108
+## The orchards' sward: TURF in every respect but where the plan works it
+## (world.gdshader works_mark): between its rows the alleys mown short with a
+## sprayer's wheel ruts down them, and on the rows the spray's pale drift (109).
+const ORCHARD_SWARD := 109
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array
