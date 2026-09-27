@@ -55,7 +55,7 @@ static func make() -> SentinelDef:
 	# for most of a second before anything comes down. The winch that pays it is
 	# on the back of the carriage, low, where a hand can reach it.
 	var sorting := SentinelPhase.make(&"sorting", 1.0, &"back",
-		{"swing": [880, 180, 820, 900], "reach": 2.0, "width": 1.8, "dmg": 3, "knock": 9.0, "knock_ms": 320})
+		{"swing": [880, 180, 820, 900], "reach": 2.0, "width": 1.8, "dmg": 4, "knock": 9.0, "knock_ms": 320})
 	sorting.pace = 3.8
 	sorting.dash = 8.0
 	sorting.quick = 280

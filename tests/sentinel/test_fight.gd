@@ -139,7 +139,9 @@ func test_standing_in_front_of_one_and_swinging_never_beats_it() -> void:
 					hurt += 1
 		print("sentinel %s in front: %s at %d of %d, %d rings, %d blows on the player" % [land, "standing" if m.alive else "DOWN", m.health, m.max_health, rings, hurt])
 		check(m.alive, "%s: the keeper is still standing (%d of %d)" % [land, m.health, m.max_health])
-		gt(float(rings), 3.0, "%s: and the blows rang off it (%d)" % [land, rings])
+		# Several, not a count tuned to one keeper: a keeper that hits harder
+		# knocks the swinger back out of reach more often, so it rings fewer times.
+		gt(float(rings), 2.0, "%s: and the blows rang off it (%d)" % [land, rings])
 		gt(float(hurt), 0.0, "%s: while it took the player apart (%d blows landed on them)" % [land, hurt])
 
 

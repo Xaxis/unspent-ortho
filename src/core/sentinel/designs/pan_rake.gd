@@ -41,7 +41,7 @@ static func make() -> SentinelDef:
 	# Phase one: raking. It drags its beam and stamps with a foreleg at whatever
 	# comes in; the gear that drives the rake is behind it and open.
 	var raking := SentinelPhase.make(&"raking", 1.0, &"back",
-		{"swing": [520, 150, 700, 820], "reach": 1.8, "width": 1.6, "dmg": 5, "knock": 8.0, "knock_ms": 300})
+		{"swing": [520, 150, 700, 820], "reach": 1.8, "width": 1.6, "dmg": 6, "knock": 8.0, "knock_ms": 300})
 	raking.pace = 4.6
 	raking.dash = 9.0
 	raking.quick = 310
