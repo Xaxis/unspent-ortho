@@ -82,6 +82,20 @@ func inside() -> Vector2:
 	return door - door_out * 1.6
 
 
+## What each room's floor is made of, by the room's index; a room past the end,
+## or an empty list, is a plain FLOOR. The steel of a container rings where a
+## room's boards do not (StealthNoise).
+var room_ground: Array[int] = []
+
+
+## The ground under a floor tile.
+func ground_at(x: int, y: int) -> int:
+	for i in rooms.size():
+		if rooms[i].has_point(Vector2i(x, y)):
+			return room_ground[i] if i < room_ground.size() else Ground.FLOOR
+	return Ground.FLOOR
+
+
 ## Whether a tile is floor.
 func is_floor(x: int, y: int) -> bool:
 	for r: Rect2i in rooms:

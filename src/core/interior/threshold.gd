@@ -96,6 +96,28 @@ static func of_landmark(site: LandmarkSite, kind: StringName, land: int) -> Thre
 	return t
 
 
+## A door set flush in a sheer face of the land (docs/MIDDENS_ROOMS.md): a slot
+## canyon's wall, where the refuse was poured over what stood there. `host` is
+## just inside the face, `out` points away from it along the floor, and the body
+## stands `FACE_OUT` out on the floor. The key is the face point's own quarter
+## tile, so a door is named by where it is and nothing upstream renumbers it.
+const FACE := 0xFA0CE
+const FACE_OUT := 0.7
+
+
+static func of_face(face: Vector2, out_dir: Vector2, kind: StringName, land: int) -> Threshold:
+	var t := Threshold.new()
+	t.kind = kind
+	t.out = out_dir.normalized()
+	t.rot = t.out.angle()
+	t.host = face - t.out * 0.4
+	t.door = face + t.out * FACE_OUT
+	t.land = land
+	t.key = "face@%d,%d" % [floori(face.x * 4.0), floori(face.y * 4.0)]
+	t.host_code = FACE
+	return t
+
+
 ## The realm key a pocket behind this door is known by (Realm.POCKET).
 func realm_key() -> StringName:
 	return StringName(Realm.POCKET + key)
