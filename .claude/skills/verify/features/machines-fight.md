@@ -49,6 +49,8 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   and night noticing distances and night bouts print in `tools/test.sh test_first_meetings:test_by_night`.
 - 42_target: `src/systems/42_target.gd`, reached by `tools/tour.sh tours/targeting.tour`. A lock holds the body (facing, strafe arc, swing, dodge: `src/core/fight/lock_on.gd`, `tools/test.sh test_lock_on`), proven in both views by `tools/tour.sh tours/lockon_top.tour` and `tours/lockon_shoulder.tour` (each tour's header has its options).
 - 44_sentinels: `src/systems/44_sentinels.gd`, reached by `tools/tour.sh tours/sentinels.tour`.
+  The plough (the Snowfield's keeper; FightSim furrows: fast on its lanes, wallowing and bogging off them): `tools/test.sh test_plough`,
+  `TOUR_FIXED_FPS=60 tools/tour.sh tours/plough.tour` (options in its header).
   Every keeper is a boss to the shoulder reader (won 18+/24, 25-45 s, 2+ health lost; ~50 s to run): `tools/test.sh test_keeper_bouts`.
   The come-round (a keeper sweeps a body kept at its flank; every keeper, its own flavour): `tools/test.sh test_come_round`,
   `TOUR_FIXED_FPS=60 tools/tour.sh tours/come_round.tour` (options in its header).

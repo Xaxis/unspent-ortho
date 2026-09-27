@@ -406,6 +406,18 @@ func _handle(events: Array[Dictionary]) -> void:
 				MobFx.clang(fx, _at3(hero.pos, 0.9), int(sim.now))
 				MobFx.ring(fx, _at3(hero.pos), Palette.STONE[4], hero.radius + 0.5, 0.4)
 				Events.sfx.emit(&"hit_plate", player.position)
+			&"furrowed":
+				# The plough's furrow (FightSim furrows): packed ice down the lane it
+				# cut, pale on the drift for as long as the furrow holds.
+				var fa: Vector2 = e.at
+				var ang: float = e.angle
+				MobFx.tell_line(fx, _at3(fa - Vector2.from_angle(ang) * 0.55), ang, 1.1, 1.8, Palette.RIME[4], FightSim.FURROW_SECONDS)
+			&"bogged":
+				# A run off its lane into the drift: the share buries itself and
+				# throws snow up either side.
+				_bogged_at = Time.get_ticks_msec() / 1000.0
+				var bm: MobState = e.mob
+				MobFx.puffs(fx, _at3(bm.pos + Vector2.from_angle(bm.facing) * bm.radius), Vector2.from_angle(bm.facing), Palette.RIME[5], 4, 0.9, bm.id)
 			&"cabled":
 				# The cable brace's line took a working part (FightKit.cable): the
 				# part glints where the hook bit, as the stall goes in.
@@ -559,6 +571,7 @@ var _grip_failed_at := -INF
 var _turned_at := -INF
 var _cabled_at := -INF
 var _came_round_at := -INF
+var _bogged_at := -INF
 var _locked_at := -INF
 var _stripped_at := -INF
 
@@ -578,6 +591,8 @@ func tour_seen(what: StringName) -> bool:
 			return now - _cabled_at < 0.6
 		&"came_round":
 			return now - _came_round_at < 0.4
+		&"bogged":
+			return now - _bogged_at < 0.6
 		&"locked":
 			return now - _locked_at < FightKit.LOCK_SECONDS
 		&"stripped":

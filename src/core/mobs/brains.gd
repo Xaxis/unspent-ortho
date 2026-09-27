@@ -279,6 +279,20 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 			m.want = Vector2.ZERO
 			m.aim = to.angle()
 			return
+		if sim.bogged(m):
+			# In a drift off its furrows (FightSim furrows) no run starts: it
+			# ploughs its way on at the player, and bites what it reaches.
+			m.bearing = to.normalized()
+			m.want = m.bearing * m.pace
+			m.aim = to.angle()
+			var side := wrapf(to.angle() - m.facing, -PI, PI)
+			if absf(side) > 0.6:
+				# Grinding round in the snow: a body kept at its flank is swept.
+				_come_round(m, sim, to, pause_ms)
+			elif to.length() <= strike_range(m, sim) and can_bite(m, now):
+				m.flank_since = -1.0
+				bite(m, sim)
+			return
 		var off := wrapf(to.angle() - m.facing, -PI, PI)
 		if absf(off) > 0.6:
 			# Not yet round: keep turning -- and a keeper that cannot come round

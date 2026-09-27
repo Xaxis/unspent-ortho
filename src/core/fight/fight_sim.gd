@@ -371,6 +371,9 @@ func _beat() -> void:
 	for i in range(lock_walls.size() - 1, -1, -1):
 		if lock_walls[i].w <= now / 1000.0:
 			lock_walls.remove_at(i)
+	for t: Vector2i in furrows.keys():
+		if float(furrows[t]) <= now / 1000.0:
+			furrows.erase(t)
 	var in_ring := hush_disc(hero.pos)
 	for m in mobs:
 		if not m.alive or m.removed:
@@ -816,9 +819,13 @@ func _move_mob(m: MobState, dt: float) -> void:
 		m.pos = m.drop_from.lerp(m.drop_at, fall)
 		m.speed = was.distance_to(m.pos) / dt
 		return
+	# Furrows (a row that bogs): off its lane in the drift it wallows.
+	var bog := bogged(m)
+	if bog and m.charging:
+		_bog(m)
 	if not m.committed(now) and not m.stunned(now):
 		m.facing = rotate_toward(m.facing, m.aim, m.turn_rate_at(now) * dt)
-	var v := m.want
+	var v := m.want * (BOG_SLIP if bog else 1.0)
 	if m.stunned(now):
 		v = Vector2.ZERO
 	else:
@@ -885,6 +892,10 @@ func _move_mob(m: MobState, dt: float) -> void:
 			next = nx if _ground_in(nx, keeps) else (ny if _ground_in(ny, keeps) else m.pos)
 	m.pos = next
 	m.speed = before.distance_to(m.pos) / dt
+	# A body that bogs leaves its furrow behind it, a tile at a time as it leaves one.
+	if not (m.row.get("bogs", []) as Array).is_empty() and Vector2i(floori(before.x), floori(before.y)) != Vector2i(floori(next.x), floori(next.y)):
+		_furrow(before)
+		emit(&"furrowed", {"at": before, "angle": m.facing})
 
 
 ## Levels a body of this row may step in one move, as a ride, or null for the
@@ -1224,6 +1235,60 @@ func _lock_behind(from: Vector2, to: Vector2) -> void:
 			var across := (b.pos - a.pos).normalized()
 			emit(&"locked", {"at": at, "a": a.pos, "b": b.pos, "from": a.pos + across * a.solid, "to": b.pos - across * b.solid})
 			return
+
+
+## FURROWS (a row that `bogs`, the Snowfield's plough): tiles it has ploughed,
+## (Vector2i) -> the sim second the furrow fills in again.
+var furrows: Dictionary = {}
+
+
+## How long a furrow stays packed before the drift fills it, sim seconds, and
+## what share of its pace a body keeps wallowing off one.
+const FURROW_SECONDS := 60.0
+const BOG_SLIP := 0.5
+
+
+## Plough the strip across `at`, three tiles wide: packed ice a body that bogs
+## runs on. (A body leaves a furrow one tile wide behind it as it goes, `_furrow`.)
+func plough_at(at: Vector2) -> void:
+	var c := Vector2i(floori(at.x), floori(at.y))
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			furrows[c + Vector2i(dx, dy)] = now / 1000.0 + FURROW_SECONDS
+
+
+func _furrow(at: Vector2) -> void:
+	furrows[Vector2i(floori(at.x), floori(at.y))] = now / 1000.0 + FURROW_SECONDS
+
+
+func on_furrow(p: Vector2) -> bool:
+	return float(furrows.get(Vector2i(floori(p.x), floori(p.y)), -INF)) > now / 1000.0
+
+
+## Whether `m` is wallowing: its row bogs in the ground under it, and it is not on
+## one of its furrows.
+func bogged(m: MobState) -> bool:
+	var bogs: Array = m.row.get("bogs", [])
+	if bogs.is_empty() or world == null or on_furrow(m.pos):
+		return false
+	return bogs.has(world.ground_at(floori(m.pos.x), floori(m.pos.y)))
+
+
+## A run carried off its furrow into the drift: it is over, the tell it was
+## winding up is lost, and the body stands stalled with its part lit (once per
+## STALL_EVERY_MS, as every stall). No run starts in a drift (Brains._charge), so
+## a body running bogged has just come off its lane.
+func _bog(m: MobState) -> void:
+	m.charging = false
+	m.run_until = minf(m.run_until, now)
+	_break_tell(m)
+	var stalled := now >= m.stall_ready_at
+	if stalled:
+		m.stall_ready_at = now + FightRules.STALL_EVERY_MS
+		m.stun_until = maxf(m.stun_until, now + FightRules.STALL_MS)
+		m.flare_until = now + FightRules.PART_FLARE_MS
+		m.dark_until = m.flare_until + FightRules.PART_DARK_MS
+	emit(&"bogged", {"mob": m, "at": m.pos, "stalled": stalled})
 
 
 ## Whether a machine is coming for the player within LOCK_HUNTED tiles: the lock

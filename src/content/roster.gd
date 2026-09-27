@@ -408,6 +408,19 @@ const DEFS := {
 		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
 		"where": {"hours": [0, 0]},
 	},
+	# The Snowfield's plough (designs/plough.gd): low, wide and the heaviest
+	# keeper, a tracked hull with a V-share a lane wide. It `bogs` in snow off its
+	# own furrows (FightSim furrows): fast on the ice it packs, wallowing in drifts.
+	&"sentinel.snowfield": {
+		"model": &"sentinel_plough", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 5,
+		"part": &"back", "sentinel": &"plough", "bogs": [Ground.SNOW],
+		"pace": 3.8, "dash": 10.0, "quick": 330, "radius": 1.5, "height": 2.4, "life": 330,
+		"sees": 14, "hears": 12, "racket": 26, "reach": 3, "ready": 3, "forget": 24, "tether": 28, "safe": 14,
+		"nerve": 100, "invuln": 500, "through": true, "disposition": &"wary", "overrun": 1.0,
+		"bite": {"swing": [700, 180, 900, 1000], "reach": 1.8, "width": 2.8, "dmg": 4, "knock": 12.0, "knock_ms": 340},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
+	},
 	# The Crags' plumb (designs/plumb.gd): the slowest keeper and the tallest
 	# body in the game, seven units of tripod over a swinging weight. It sees
 	# further than the reaper because it is a sighting instrument, and hears less

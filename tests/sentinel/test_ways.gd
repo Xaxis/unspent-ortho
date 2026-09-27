@@ -151,8 +151,9 @@ func test_each_design_offers_its_three_and_they_are_reachable_in_its_own_land() 
 			for g: int in founder.grounds:
 				# The ground it founders in is ground its own landscape has, or the
 				# way is a promise the world never keeps.
+				var pool_ground := int(land.pools.get("ground", -1)) if not land.pools.is_empty() else -1
 				var known := land.grounds.has(g) or g == land.plain_ground or g == land.bank_ground \
-					or g == Ground.WATER or g == Ground.RIVER or g == Ground.MUD
+					or g == Ground.WATER or g == Ground.RIVER or g == Ground.MUD or g == pool_ground
 				check(known, "%s founders in %s, which %s has" % [def.id, Ground.NAMES[g], def.land])
 		var starve := def.way_of(SentinelWay.STARVE)
 		if starve != null:

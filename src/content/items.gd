@@ -146,6 +146,7 @@ const DEFS := {
 	&"anvil_core": {"name": "anvil core", "bulk": 3.0, "group": &"material"},
 	&"unbuilder_core": {"name": "unbuilder core", "bulk": 3.0, "group": &"material"},
 	&"lockkeeper_core": {"name": "lockkeeper core", "bulk": 3.0, "group": &"material"},
+	&"plough_core": {"name": "plough core", "bulk": 3.5, "group": &"material"},
 	&"anchor_core": {"name": "anchor core", "bulk": 3.0, "group": &"material"},
 	&"listener_core": {"name": "listener core", "bulk": 3.0, "group": &"material"},
 	&"lime": {"name": "lime", "bulk": 1.0, "group": &"material"},
