@@ -239,6 +239,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Rocks.build(k, kind, variant, country)
 		PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.BONES, PropKind.WRECK, PropKind.TIP, PropKind.VENT:
 			Shore.build(k, kind, variant, country)
+		PropKind.RUIN when BiomeDressing.of(country).ruin_form == &"tower":
+			FallenTower.stump(k, variant, country)
 		PropKind.HOUSE, PropKind.RUIN:
 			Houses.build(k, kind, variant, country)
 		PropKind.LAMP, PropKind.FIRE, PropKind.BENCH, PropKind.KILN, PropKind.PYLON, PropKind.POLE:

@@ -94,6 +94,8 @@ static func make() -> BiomeDef:
 	# salvaged doors (props/remains.gd `_infill`): nobody in a city builds a
 	# hut when there is a frame standing on every block.
 	dress.shelter = &"infill"
+	# A ruin in a city is the stump of a tower, never a crofter's walls.
+	dress.ruin_form = &"tower"
 	d.dressing = dress
 	# The same PLAN the Slums raises, because it IS the same city a century on,
 	# and its own STOCK, because what happened to it is the whole argument: the

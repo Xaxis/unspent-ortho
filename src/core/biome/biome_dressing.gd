@@ -131,6 +131,13 @@ var broadleaf_forms: Array[StringName] = []
 ## crystal where it seeped, a brine outfall green-black and not an oil slick,
 ## and a pipe run beaded with salt at every joint. Render only.
 var brine := false
+## What a RUIN is here (models/props/fallen_tower.gd `stump`):
+##   &""       a drystone house fallen to its walls (Houses.ruin)
+##   &"tower"  the stump of a city tower: two to four storeys of cast frame
+##             standing, snapped above, its floor plates out of the break like
+##             ribs and its rubble round the foot
+## Render only.
+var ruin_form: StringName = &""
 ## How a storey somebody still lives behind shows after dark (props/towers.gd):
 ##   &"floors"  the whole band lit on the city's stolen power, a floor left on
 ##   &"gaps"    no power: one light of the band, by a lamp or a fire, and the
@@ -291,6 +298,7 @@ static func resolve(d: BiomeDef) -> BiomeDressing:
 	r.spread = s.spread if s.spread > 0.0 else 1.0
 	r.broadleaf_forms = s.broadleaf_forms
 	r.brine = s.brine
+	r.ruin_form = s.ruin_form
 	r.windows = s.windows if s.windows != &"" else &"floors"
 	r.signage = s.signage if s.signage != &"" else &"lit"
 	r.old_light = s.old_light
