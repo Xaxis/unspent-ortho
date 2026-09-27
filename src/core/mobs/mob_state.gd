@@ -75,6 +75,10 @@ var removed := false
 # charge
 var bearing := Vector2.RIGHT
 var charging := false
+## A keeper's come-round (Sentinels.come_round_of): the short-told sweep at a body
+## kept at its flank, and since when that body has been there (sim ms; -1 none).
+var come_round: Blow = null
+var flank_since := -1.0
 var run_until := 0.0
 var pause_until := 0.0
 var run_from := Vector2.ZERO
@@ -119,6 +123,10 @@ var role: StringName = &"hunter"
 ## a noise fills it slowly, and it drains when nothing comes of it. At 1 the
 ## body is sure and the alert pose snaps (drawn on the machine, never as text).
 var suspicion := 0.0
+## DOCKED, ASLEEP: its optics dark (it sees nothing), its hearing still on. It
+## wakes when it is sure (suspicion reaches 1, FightSim) or when whoever docked
+## it says so (21_doors, at the shift).
+var asleep := false
 ## Where the last noise it heard came from, and the sim ms until which its
 ## optics are turned that way.
 var heard_at := Vector2.ZERO

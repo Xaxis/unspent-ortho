@@ -317,6 +317,12 @@ var water_wash := Color(0, 0, 0, 0)
 ## A ragged overhang of snow hangs on this landscape's terrace lips, whatever
 ## the ground on top (docs/LOOK.md).
 var lip_snow := false
+## How far this landscape's terrace lips SAG below their level, world units, at
+## most (TerrainMesher.lip_sag): the flat bends down into its lip and the wall
+## top drops with it, by a smooth field along the run, so a lip hangs in swags
+## and a terrace's height varies along it instead of running ruled and level.
+## Drawn only: every rule reads the levels. 0: lips run level.
+var lip_sag := 0.0
 
 # --- what grows, what is buried -------------------------------------------
 
@@ -491,6 +497,14 @@ var landmarks: Array[StringName] = []
 ## door. Doors are derived after
 ## generation, like a shaft, so the island does not move (LOOK).
 var interiors: Dictionary = {}
+## WHO LIVED IN THIS LANDSCAPE'S HOUSES, for the `home` kind behind them
+## (src/content/interiors/home.gd). `households`: {id: {"wants": [piece...],
+## "by_hearth": [{"kind", "off", "solid", "side"}...]}}, where a piece is one
+## Furnish draws (src/models/interior/furnish.gd). Dealt one per door. `hearth`:
+## what keeps its fire (cottage.gd `lay_with`: &"fire", &"issued_stove",
+## &"raised_stove", &"brazier", &"none"). Empty, a home is furnished as the
+## coast's cottages are (cottage.gd COAST), round an open hearth.
+var home: Dictionary = {}
 var sound_bed: StringName = &"bed_wind"
 ## Another type's id whose music motif this one borrows; empty composes its own.
 var music_motif: StringName = &""

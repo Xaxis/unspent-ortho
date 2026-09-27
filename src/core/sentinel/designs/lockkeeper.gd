@@ -63,6 +63,7 @@ static func make() -> SentinelDef:
 	# the lock's own furniture alone the larder is empty until the works row lays
 	# a lock, which closes the way honestly, and full once it does.
 	d.feeds = [PropKind.LOCK_GATE, PropKind.PUMP_HOUSE]
+	d.come_round = "The hull slews on its stilts and the gate blade sweeps the side you keep to."
 	d.drops = &"sentinel_lockkeeper"
 	d.core = &"lockkeeper_core"
 	d.hulk = PropKind.WRECKAGE
@@ -72,7 +73,7 @@ static func make() -> SentinelDef:
 	# out of the water, the longest thing a body can see coming. The ballast
 	# pump is on the back of the hull, low, where a hand reaches from the bank.
 	var wading := SentinelPhase.make(&"wading", 1.0, &"back",
-		{"swing": [840, 170, 800, 900], "reach": 2.0, "width": 2.0, "dmg": 3, "knock": 8.0, "knock_ms": 300})
+		{"swing": [700, 170, 800, 900], "reach": 2.0, "width": 2.0, "dmg": 3, "knock": 8.0, "knock_ms": 300})
 	wading.pace = 3.2
 	wading.dash = 7.0
 	wading.quick = 260
@@ -85,7 +86,7 @@ static func make() -> SentinelDef:
 	# the front rings off the gate, and the opening is the stand while it winds
 	# the blade back up.
 	var gating := SentinelPhase.make(&"gating", 0.6, &"front",
-		{"swing": [760, 200, 820, 940], "reach": 2.2, "width": 3.2, "dmg": 4, "knock": 10.0, "knock_ms": 340})
+		{"swing": [700, 200, 820, 940], "reach": 2.2, "width": 3.2, "dmg": 4, "knock": 10.0, "knock_ms": 340})
 	gating.guarded = true
 	gating.pace = 3.6
 	gating.dash = 7.5
