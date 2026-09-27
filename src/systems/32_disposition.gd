@@ -157,7 +157,8 @@ func _read_player() -> void:
 	var p := hero.pos
 	var ground := game.world.ground_at(floori(p.x), floori(p.y))
 	# The listener's ear is heard as far as it hears, steps and all (FightKit.listen).
-	m.loudness = StealthNoise.loudness(hero.speed, ground, body.crouched, m.laden_tier) * hero.kit.noise_scale()
+	# The hush wrap quiets the steps on any land (FightKit.hush).
+	m.loudness = StealthNoise.loudness(hero.speed, ground, body.crouched, m.laden_tier, hero.kit.hush) * hero.kit.noise_scale()
 	m.cover = _cover_now(p, m)
 	m.interference = interference.value(Interference.network(game.world, p))
 
@@ -388,7 +389,7 @@ func _noise(act: StringName, scale: float = 1.0) -> void:
 	var p := sim.hero.pos
 	var ground := game.world.ground_at(floori(p.x), floori(p.y))
 	# The listener's ear is heard as far as it hears (FightKit.listen).
-	sim.make_noise(p, StealthNoise.radius(act, ground, game.body.crouched, sim.moment.laden_tier) * scale * sim.hero.kit.noise_scale())
+	sim.make_noise(p, StealthNoise.radius(act, ground, game.body.crouched, sim.moment.laden_tier, sim.hero.kit.hush) * scale * sim.hero.kit.noise_scale())
 
 
 ## A job under way is a noise that keeps going, and a job on the plan's own

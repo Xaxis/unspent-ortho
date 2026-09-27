@@ -39,6 +39,9 @@ extends RefCounted
 ##                            blow of a fight that lands from behind
 ##                            (SCALE_ARC off straight back) does no harm; the
 ##                            coat is not spent, it turns one a fight
+##   hush     (wrap_hush)     "your steps are quiet": what the body itself does
+##                            (StealthNoise.BODY_ACTS) is heard as if on moss,
+##                            whatever the ground, on land
 ##   lock     (mod_lock)      "a way passed is shut": a gap between two solid
 ##                            things no wider than LOCK_GAP that the player walks
 ##                            through is shut behind them to machines for
@@ -138,6 +141,7 @@ var plumb := false
 var listen := false
 var lock := false
 var scale := false
+var hush := false
 var anchor := false
 
 
@@ -161,6 +165,7 @@ static func of(ids: Array) -> FightKit:
 	k.listen = ids.has(&"mod_listen")
 	k.lock = ids.has(&"mod_lock")
 	k.scale = ids.has(&"coat_scale")
+	k.hush = ids.has(&"wrap_hush")
 	k.anchor = ids.has(&"mod_anchor")
 	return k
 
