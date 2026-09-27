@@ -1,0 +1,36 @@
+# THE WARDEN SEALS THE WAY BEHIND YOU (a row that `seals`, FightSim.curtains):
+# a gap passed while it hunts is sprayed shut after a tell it stands still for,
+# and the curtain stands across the way, lime like its own knees. Staged as a
+# player plays it: on its side of a way through the stones when it comes for
+# them, out through the way; turned round, the curtain; two heavy blows, and it
+# breaks.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/curtains.tour --seed=7 --realm=underground --hour=12 --held=axe_felling --config=unharmed
+coast calm
+wait 1.0
+# The way found, and the player beyond it: the warden is put down beyond them
+# (a spawn goes screen up), on the same side.
+near gap
+near gap_far
+wait 0.6
+spawn sentinel.limestone_caves
+# Up to it until it has the player, all on its side of the way; then away,
+# out through the way with it coming on behind.
+walkto mob 12
+tap swing
+wait 0.8
+walkto gap 12
+await curtain_tell 3
+tap shoulder
+await shoulder 3
+shot 01-it-sprays-the-way-shut with shoulder,mob:sentinel.limestone_caves
+await curtain_up 3
+near gap_far
+wait 0.8
+shot 02-the-curtain-stands with shoulder
+press swing 0.7
+await curtain_cracked 3
+wait 0.4
+press swing 0.7
+await curtain_down 3
+wait 0.3
+shot 03-broken-through with shoulder

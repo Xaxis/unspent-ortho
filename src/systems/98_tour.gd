@@ -167,6 +167,8 @@ extends GameSystem
 ##                          step would be seen (`tour_safe`) as a patient player does
 ##   walkto guard SECS      steer to beside the nearest guard in the room (not its
 ##                          keeper), to fight what keeps it
+##   walkto gap SECS        through the way `near gap` found and on (40_fight
+##                          `tour_route`): the walk a warden sprays shut behind
 ##   walkto shaft SECS      the same steering toward the nearest shaft, stopping
 ##                          inside its reach: a return BY NAME, where a timed walk
 ##                          back ends wherever the props on the way let it
@@ -994,7 +996,7 @@ func _stand_at(found: WorldProp, said: String) -> bool:
 ## Every `walkto` target, the one list: `tests/tours/test_tour_claims.gd` reads it,
 ## so a new target cannot be written into a tour and refused by a stale copy.
 ## (`prop:KIND` is checked against PropKind.NAMES there instead.)
-const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft", "strongbox", "guard"]
+const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft", "strongbox", "guard", "gap"]
 
 
 ## The nearest prop of `kinds` (PropKind names, _ for space) with work left in
@@ -1142,10 +1144,10 @@ func _stand_off_mob(token: String, dist: float) -> bool:
 
 func _walk_to(what: String, secs: float) -> bool:
 	var sim := game.player.sim
-	if sim == null or not what in ["mob", "part", "plate", "shaft", "strongbox", "guard"]:
+	if sim == null or not what in WALK_TARGETS:
 		return false
 	var until := Time.get_ticks_msec() + int(secs * 1000.0)
-	if what == "strongbox" or what == "guard":
+	if what in ["strongbox", "guard", "gap"]:
 		return await _walk_route(what, until, secs)
 	if what == "shaft":
 		while Time.get_ticks_msec() < until:
@@ -1244,7 +1246,7 @@ func _walk_route(what: String, until: int, secs: float) -> bool:
 		await get_tree().physics_frame
 	game.scripted_seconds = 0.0
 	if i < route.size():
-		printerr("tour %s: walked the way to the %s for %.1f s and reached %d of its %d marks" % [_name, what, secs, i, route.size()])
+		printerr("tour %s: walked the way to the %s for %.1f s and reached %d of its %d marks (at %s, the next %s; stunned %s, committed %s, curtains %d)" % [_name, what, secs, i, route.size(), sim.hero.pos, route[i], sim.hero.stunned(sim.now), sim.hero.committed(sim.now), sim.curtains.size()])
 		return false
 	return true
 

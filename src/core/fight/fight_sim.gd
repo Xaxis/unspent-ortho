@@ -404,6 +404,7 @@ func _try_pull() -> void:
 
 func _beat() -> void:
 	_hush_read()
+	_curtains_beat()
 	# A shut way lets go after its seconds (FightKit.lock).
 	for i in range(lock_walls.size() - 1, -1, -1):
 		if lock_walls[i].w <= now / 1000.0:
@@ -430,7 +431,9 @@ func _beat() -> void:
 			m.lost_at = -1.0
 			m.hunt.clear()
 		else:
-			if m.lost_beats == 0:
+			# Lost only by a body that was after the player: one at its work that
+			# never had them has nothing to hunt (FightSim.hunting).
+			if m.lost_at < 0.0 and (m.mood == MobState.CHASING or m.mood == MobState.ATTACKING):
 				m.lost_at = now
 			m.lost_beats += 1
 		var d := Senses.chebyshev(m.pos, hero.pos)
@@ -648,6 +651,14 @@ func _suspicion(m: MobState, how: StringName) -> void:
 const HUNT_MS := 20000.0
 
 
+## The body with this id, or null when it has gone.
+func mob_by_id(id: int) -> MobState:
+	for m in mobs:
+		if m.id == id:
+			return m
+	return null
+
+
 func hunting(m: MobState) -> bool:
 	if not Sentinels.is_keeper(m.row) or m.lost_at < 0.0:
 		return false
@@ -825,6 +836,9 @@ func _move_hero(dt: float) -> void:
 	var before := hero.pos
 	if v.length_squared() > 0.0:
 		hero.pos = query.move_body(hero.pos, v * dt, hero.radius, hero.ride, hero.swims, HERO_TALL) if query != null else hero.pos + v * dt
+		if not curtains.is_empty():
+			hero.pos = _held_by_curtains(before, hero.pos)
+		_seal_behind(before, hero.pos)
 	hero.speed = before.distance_to(hero.pos) / dt
 	# Wind: spent on dodges, swings and running in a fight; back at 500/s otherwise.
 	if running and fight_on:
@@ -887,10 +901,14 @@ func _move_mob(m: MobState, dt: float) -> void:
 	var bog := bogged(m)
 	if bog and m.charging:
 		_bog(m)
+	# Spraying a curtain (FightSim.curtains): turned on the gap and standing, the tell.
+	var sealing := now < m.seal_until
+	if sealing:
+		m.aim = (m.seal_at - m.pos).angle()
 	if not m.committed(now) and not m.stunned(now):
 		m.facing = rotate_toward(m.facing, m.aim, m.turn_rate_at(now) * dt)
 	var v := m.want * (BOG_SLIP if bog else 1.0)
-	if m.stunned(now):
+	if m.stunned(now) or sealing:
 		v = Vector2.ZERO
 	else:
 		# Close bites read as a tell and a lunge; charges come on through them.
@@ -1040,6 +1058,8 @@ func _land(t0: float, t1: float) -> void:
 			# Read through what covers the part, it is a blow in the part like any
 			# other, stall and all, for FightKit.PHASE_STALL_MS.
 			_hurt_mob(m, b, Vector2.INF, FightKit.PHASE_STALL_MS if phased else FightRules.STALL_MS)
+	if b != null and b.heavy and not curtains.is_empty() and b.live_in(hero.blow_at, t0, t1):
+		_heavy_on_curtains(b)
 	if b != null and not _whiff_checked and t1 >= hero.blow_at + b.windup + b.active:
 		_whiff_checked = true
 		if hero.struck.is_empty():
@@ -1308,31 +1328,166 @@ func _lock_behind(from: Vector2, to: Vector2) -> void:
 	var now_s := now / 1000.0
 	if query == null or not _hunted_by_machine():
 		return
-	var mid := (from + to) * 0.5
+	var g := gap_crossed(from, to, FightKit.LOCK_GAP)
+	if g.is_empty():
+		return
+	var at: Vector2 = g.at
+	for l: Vector4 in lock_walls:
+		if at.distance_to(Vector2(l.x, l.y)) < 0.5:
+			return
+	if not FightRules.spend_charges(hero.inventory, FightKit.LOCK_CHARGES):
+		return
+	lock_walls.append(Vector4(at.x, at.y, g.r, now_s + FightKit.LOCK_SECONDS))
+	emit(&"locked", g)
+
+
+## The gap a step from `from` to `to` passes through: between two solid things
+## no more than `most` apart, edge to edge. {at (its middle), a, b (the two
+## things' middles), from, to (the way's own edges, on the face of each), r (a
+## circle round `at` that shuts it)}, or {} when the step passes through none.
+## The lock (FightKit.lock) and a warden's curtains (FightSim.curtains) both
+## shut what this finds.
+func gap_crossed(from: Vector2, to: Vector2, most: float) -> Dictionary:
+	if query == null:
+		return {}
 	var near: Array[WorldProp] = []
-	for p: WorldProp in query.props_near(mid, FightKit.LOCK_GAP + 2.0):
-		if p.solid > 0.2:
+	for p: WorldProp in query.props_near((from + to) * 0.5, most + 2.0):
+		if p.solid > 0.2 and not world.depleted.has(p.id):
 			near.append(p)
 	for i in near.size():
 		for j in range(i + 1, near.size()):
 			var a := near[i]
 			var b := near[j]
 			var gap := a.pos.distance_to(b.pos) - a.solid - b.solid
-			if gap <= 0.0 or gap > FightKit.LOCK_GAP:
+			if gap <= 0.0 or gap > most:
 				continue
 			if not Geometry2D.segment_intersects_segment(from, to, a.pos, b.pos):
 				continue
-			var at := (a.pos + b.pos) * 0.5
-			for l: Vector4 in lock_walls:
-				if at.distance_to(Vector2(l.x, l.y)) < 0.5:
-					return
-			if not FightRules.spend_charges(hero.inventory, FightKit.LOCK_CHARGES):
-				return
-			lock_walls.append(Vector4(at.x, at.y, gap * 0.5 + 0.3, now_s + FightKit.LOCK_SECONDS))
-			# The way's own edges, on the face of each: what the sheet spans.
 			var across := (b.pos - a.pos).normalized()
-			emit(&"locked", {"at": at, "a": a.pos, "b": b.pos, "from": a.pos + across * a.solid, "to": b.pos - across * b.solid})
+			return {"at": (a.pos + b.pos) * 0.5, "a": a.pos, "b": b.pos,
+				"from": a.pos + across * a.solid, "to": b.pos - across * b.solid, "r": gap * 0.5 + 0.3}
+	return {}
+
+
+## CURTAINS (a row that `seals`, the Limestone Caves' drip-warden): the lock's
+## mirror. A gap the player passes while a sealing body hunts them within
+## `within` tiles is sprayed shut BEHIND them: the body stands still for `tell`
+## ms facing the gap (MobState.seal_until), and then a curtain of lime stands
+## across it for `lasts` s. A curtain stops the PLAYER and nothing else, as the
+## lock stops machines and nothing else; `breaks` heavy blows break one; a body
+## keeps `keep` standing, and the oldest crumbles when it raises one more. A
+## chase is the cave being closed round you, and the answer is choosing where.
+## Each {id, at, from, to, r, by (mob id), up, rise_at, until, hits}.
+var curtains: Array[Dictionary] = []
+var _curtain_ids := 0
+
+
+## What a row's `seals` says, filled in: {} when it does not seal.
+static func seals_of(row: Dictionary) -> Dictionary:
+	var s: Dictionary = row.get("seals", {})
+	if s.is_empty():
+		return {}
+	return {"gap": float(s.get("gap", 2.2)), "within": float(s.get("within", 20.0)),
+		"lasts": float(s.get("lasts", 25.0)), "keep": int(s.get("keep", 2)),
+		"tell": float(s.get("tell", 1400.0)), "breaks": int(s.get("breaks", 2))}
+
+
+## A step of the player's from `from` to `to`: a sealing body that hunts them
+## and is near enough begins its tell at the gap the step passed, if it passed one.
+func _seal_behind(from: Vector2, to: Vector2) -> void:
+	for m in mobs:
+		if not m.alive or m.removed or now < m.seal_until:
+			continue
+		var sealing := seals_of(m.row)
+		if sealing.is_empty() or m.pos.distance_to(to) > float(sealing.within):
+			continue
+		if not (m.mood == MobState.CHASING or m.mood == MobState.ATTACKING or hunting(m)):
+			continue
+		var g := gap_crossed(from, to, float(sealing.gap))
+		if g.is_empty():
 			return
+		for c: Dictionary in curtains:
+			if (c.at as Vector2).distance_to(g.at) < 0.5:
+				return
+		_curtain_ids += 1
+		var c := g.duplicate()
+		c.id = _curtain_ids
+		c.by = m.id
+		c.up = false
+		c.rise_at = now + float(sealing.tell)
+		c.until = INF
+		c.hits = 0
+		curtains.append(c)
+		m.seal_until = c.rise_at
+		m.seal_at = g.at
+		emit(&"curtain_tell", {"id": c.id, "mob": m, "at": g.at, "from": g.from, "to": g.to, "ms": float(sealing.tell)})
+		return
+
+
+## Curtains rise at the end of their tell, fall at the end of their time, and a
+## body keeps no more than its `keep` standing.
+func _curtains_beat() -> void:
+	for i in range(curtains.size() - 1, -1, -1):
+		if i >= curtains.size():
+			continue
+		var c := curtains[i]
+		var m := mob_by_id(int(c.by))
+		if not bool(c.up):
+			if m == null or not m.alive or m.removed:
+				curtains.remove_at(i)
+				continue
+			if now < float(c.rise_at):
+				continue
+			var sealing := seals_of(m.row)
+			c.up = true
+			c.until = now + float(sealing.lasts) * 1000.0
+			emit(&"curtain_up", {"id": c.id, "mob": m, "at": c.at, "from": c.from, "to": c.to, "r": c.r})
+			var standing: Array[Dictionary] = []
+			for o: Dictionary in curtains:
+				if bool(o.up) and int(o.by) == m.id:
+					standing.append(o)
+			while standing.size() > int(sealing.keep):
+				var oldest: Dictionary = standing.pop_front()
+				curtains.erase(oldest)
+				emit(&"curtain_down", {"id": oldest.id, "at": oldest.at, "broken": false})
+			continue
+		if now >= float(c.until):
+			curtains.remove_at(i)
+			emit(&"curtain_down", {"id": c.id, "at": c.at, "broken": false})
+
+
+## The player's step, held out of any standing curtain: the "only closer is
+## refused" rule every wall keeps, so a player a curtain rose round can leave it.
+func _held_by_curtains(from: Vector2, next: Vector2) -> Vector2:
+	for c: Dictionary in curtains:
+		if not bool(c.up):
+			continue
+		var at: Vector2 = c.at
+		var rr := float(c.r) + hero.radius
+		var after := at.distance_squared_to(next)
+		if after < rr * rr and after < at.distance_squared_to(from):
+			return from
+	return next
+
+
+## A heavy blow that meets a standing curtain cracks it; its row's `breaks`th breaks it.
+func _heavy_on_curtains(b: Blow) -> void:
+	for i in range(curtains.size() - 1, -1, -1):
+		var c := curtains[i]
+		var key := "curtain:%d" % int(c.id)
+		if not bool(c.up) or hero.struck.has(key):
+			continue
+		if not FightRules.box_hits(hero.pos, hero.facing, hero.radius, b, c.at, float(c.r) * 0.6):
+			continue
+		hero.struck[key] = true
+		c.hits = int(c.hits) + 1
+		var m := mob_by_id(int(c.by))
+		var breaks := int(seals_of(m.row).breaks) if m != null else 1
+		if int(c.hits) >= breaks:
+			curtains.remove_at(i)
+			emit(&"curtain_down", {"id": c.id, "at": c.at, "broken": true})
+		else:
+			emit(&"curtain_cracked", {"id": c.id, "at": c.at, "hits": c.hits})
 
 
 ## FURROWS (a row that `bogs`, the Snowfield's plough): tiles it has ploughed,
@@ -1801,6 +1956,11 @@ func clear_mobs() -> void:
 	for m in mobs:
 		remove_mob(m)
 	fight_mobs.clear()
+	# What they sprayed goes with them: a curtain belongs to the ground it was
+	# raised on, and this is a new ground or none.
+	for c: Dictionary in curtains:
+		emit(&"curtain_down", {"id": c.id, "at": c.at, "broken": false})
+	curtains.clear()
 
 
 func _purge() -> void:

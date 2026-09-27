@@ -293,6 +293,54 @@ func _fell(e: Dictionary) -> void:
 			old.queue_free()
 
 
+## THE WARDEN'S CURTAINS (FightSim.curtains), drawn. The tell: a jet of lime
+## from its crown to the gap and a ring on the ground there, for as long as it
+## takes, so the player reads which way is about to close and can still get back
+## through. Up: the flowstone curtain standing across the way. A crack: lime
+## knocked off it. Down: broken, a burst of it; its time up, it slumps away.
+const FlowstoneCurtain := preload("res://src/models/machines/sentinels/flowstone_curtain.gd")
+var _curtains := {}
+
+
+var _curtain_seen := {}
+
+
+func _curtain(e: Dictionary) -> void:
+	_curtain_seen[e.type] = sim.now
+	var fx := _fx_parent()
+	var lime := Palette.LINEN[5]
+	var at: Vector2 = e.at
+	match e.type:
+		&"curtain_tell":
+			var m: MobState = e.mob
+			var secs := float(e.ms) / 1000.0
+			var crown := _at3(m.pos, float(m.row.get("height", 4.0)) * 0.95)
+			MobFx.line(fx, crown, _at3(at, 1.6), lime, secs)
+			MobFx.tell_ring(fx, _at3(at), lime, float((e.from as Vector2).distance_to(e.to)) * 0.5 + 0.3, secs)
+			Events.sfx.emit(&"splash", _at3(at))
+		&"curtain_up":
+			var node := MeshInstance3D.new()
+			node.mesh = FlowstoneCurtain.mesh(_at3(e.from), _at3(e.to), int(e.id) * 97 + game.world.seed_value)
+			node.material_override = game.view.world_material()
+			# Round the middle of the way's own edges, where the mesh is built about.
+			node.position = (_at3(e.from) + _at3(e.to)) * 0.5
+			fx.add_child(node)
+			_curtains[int(e.id)] = node
+			MobFx.puffs(fx, _at3(at, 1.0), Vector2.ZERO, lime, 5, 0.8, int(e.id))
+		&"curtain_cracked":
+			MobFx.puffs(fx, _at3(at, 1.1), Vector2.ZERO, lime, 4, 0.6, int(e.id) + int(e.hits) * 7)
+			Events.sfx.emit(&"break", _at3(at))
+		&"curtain_down":
+			var node: Node3D = _curtains.get(int(e.id), null)
+			_curtains.erase(int(e.id))
+			if node != null and is_instance_valid(node):
+				node.queue_free()
+			var broken := bool(e.get("broken", false))
+			MobFx.puffs(fx, _at3(at, 0.9), Vector2.ZERO, lime, 8 if broken else 3, 1.0 if broken else 0.6, int(e.id) + 3)
+			if broken:
+				Events.sfx.emit(&"break", _at3(at))
+
+
 func _at3(p: Vector2, lift: float = 0.0) -> Vector3:
 	return game.world.to_3d(p) + Vector3(0, lift, 0)
 
@@ -487,6 +535,8 @@ func _handle(events: Array[Dictionary]) -> void:
 					MobFx.line(fx, _at3(a, y), _at3(b, y), Palette.BRINE[5 - mini(k, 3)], FightKit.LOCK_SECONDS)
 				MobFx.glow(fx, _at3((a + b) * 0.5, 0.9), Palette.BRINE[4], maxf(1.2, a.distance_to(b)), FightKit.LOCK_SECONDS)
 				Events.sfx.emit(&"hit_plate", _at3(e.at))
+			&"curtain_tell", &"curtain_up", &"curtain_cracked", &"curtain_down":
+				_curtain(e)
 			&"stripped":
 				# Its working part comes away in the hands, and into the creel.
 				var m: MobState = e.mob
@@ -711,6 +761,11 @@ func tour_seen(what: StringName) -> bool:
 			return now - _locked_at < FightKit.LOCK_SECONDS
 		&"stripped":
 			return now - _stripped_at < 1.0
+		# On the fight's own clock: a tell lasts its sim time however slow the frame.
+		&"curtain_tell":
+			return sim.now - float(_curtain_seen.get(what, -INF)) < 1400.0
+		&"curtain_up", &"curtain_cracked", &"curtain_down":
+			return sim.now - float(_curtain_seen.get(what, -INF)) < 1000.0
 	return false
 
 
@@ -859,10 +914,25 @@ func _on_outcome(e: Dictionary) -> void:
 
 ## `near bag`: beside the heap the last bad end left (Survival.leave_bag), a
 ## step off it toward the camera, facing it, in reach of `use`.
-const TOUR_PLACES: Array[String] = ["bag"]
+## `near gap`: GAP_BACK before the nearest way between two solid things a warden
+## seals (the curtains' own gap test, FightSim.gap_crossed), facing through it;
+## `walkto gap` walks through it and on; `near gap_far` stands just beyond it,
+## turned back to face it.
+const TOUR_PLACES: Array[String] = ["bag", "gap", "gap_far"]
+const GAP_BACK := 2.5
+## The way last found for `near gap`: {at, n (from the near side toward the far)}.
+var _gap := {}
 
 
 func tour_place(what: String) -> Vector2:
+	if what == "gap":
+		# The same way again while the player is still by it: stood back to face
+		# the curtain across the gap they came through, not some other gap.
+		if _gap.is_empty() or (_gap.at as Vector2).distance_to(game.player.pos) > 10.0:
+			_gap = _nearest_gap()
+		return (_gap.at as Vector2) - (_gap.n as Vector2) * GAP_BACK if not _gap.is_empty() else Vector2.INF
+	if what == "gap_far":
+		return (_gap.at as Vector2) + (_gap.get("d", _gap.n) as Vector2) * 1.6 if not _gap.is_empty() else Vector2.INF
 	var heap := _last_bag()
 	if what != "bag" or heap == null:
 		return Vector2.INF
@@ -870,10 +940,79 @@ func tour_place(what: String) -> Vector2:
 
 
 func tour_face(what: String) -> float:
+	if what == "gap" and not _gap.is_empty():
+		return (_gap.n as Vector2).angle()
+	if what == "gap_far" and not _gap.is_empty():
+		return (-(_gap.get("d", _gap.n) as Vector2)).angle()
 	var heap := _last_bag()
 	if what != "bag" or heap == null:
 		return NAN
 	return (heap.pos - (heap.pos + Vector2(0.9, 0.5))).angle()
+
+
+## `walkto gap`: through the way `near gap` found and on, away from the side the
+## nearest sealing body is on, as a player runs from it; `near gap_far` then
+## stands on the side they came out on.
+func tour_route(what: String) -> PackedVector2Array:
+	if what != "gap" or _gap.is_empty():
+		return PackedVector2Array()
+	var at: Vector2 = _gap.at
+	var n: Vector2 = _gap.n
+	var d := n
+	var best := INF
+	for m: MobState in sim.mobs:
+		if m.alive and not m.removed and not FightSim.seals_of(m.row).is_empty() and m.pos.distance_to(at) < best:
+			best = m.pos.distance_to(at)
+			d = -n if (m.pos - at).dot(n) > 0.0 else n
+	_gap.d = d
+	# A step or two past it, so the tell is still going when the walk is done.
+	return PackedVector2Array([at, at + d * 1.2])
+
+
+## The nearest way a warden seals, with open ground a walk long on both sides.
+func _nearest_gap() -> Dictionary:
+	var sealing := FightSim.seals_of(Roster.row(&"sentinel.limestone_caves"))
+	var most := float(sealing.get("gap", 2.2))
+	var here := game.player.pos
+	var near: Array[WorldProp] = []
+	for p: WorldProp in game.query.props_near(here, 30.0):
+		if p.solid > 0.2 and not game.world.depleted.has(p.id):
+			near.append(p)
+	var best := {}
+	var best_d := INF
+	for i in near.size():
+		for j in range(i + 1, near.size()):
+			var a := near[i]
+			var b := near[j]
+			var gap := a.pos.distance_to(b.pos) - a.solid - b.solid
+			if gap < 0.9 or gap > most:
+				continue
+			var across := (b.pos - a.pos).normalized()
+			var at := a.pos + across * (a.solid + gap * 0.5)
+			var d := at.distance_to(here)
+			if d >= best_d:
+				continue
+			var n := across.orthogonal()
+			if (here - at).dot(n) > 0.0:
+				n = -n
+			var from := at - n * GAP_BACK
+			var to := at + n * GAP_BACK
+			if not NavField.line_walkable(game.world, from, to, 0.3):
+				continue
+			# One way, not a run of them: no other solid thing near the lane, or
+			# the walk out passes a second gap and the curtain goes up there.
+			var lone := true
+			for o: WorldProp in near:
+				if o == a or o == b:
+					continue
+				if Geometry2D.get_closest_point_to_segment(o.pos, from, to).distance_to(o.pos) < o.solid + 1.2:
+					lone = false
+					break
+			if not lone:
+				continue
+			best = {"at": at, "n": n}
+			best_d = d
+	return best
 
 
 func _last_bag() -> WorldProp:

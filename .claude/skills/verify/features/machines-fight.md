@@ -69,6 +69,10 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   a roof, and no body a roofed landscape fields is taller than 80% of its halls give: `tools/test.sh
   test_keeper_headroom`; whole at eye level under a tear and in a hall by the lamp (`near mob:KIND DIST`, on its
   own level first): `TOUR_FIXED_FPS=60 tools/tour.sh tours/drip_warden.tour` (options in its header).
+  Its curtains (a row that `seals`, FightSim.curtains): a gap passed while it hunts is sprayed shut behind the
+  player after a tell it stands still for; the curtain stops the player, not the warden; two heavy blows break
+  one; it keeps two; each falls after its time: `tools/test.sh test_curtains`; seen, staged by walking through a
+  lone way in the stones (`near gap`, `walkto gap`): `TOUR_FIXED_FPS=60 tools/tour.sh tours/curtains.tour`.
 - 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.
   Freed by a dark yard or a fallen keeper, and back on a standing holding's books
   (`tools/test.sh test_come_home`; `tools/tour.sh tours/taken_home.tour`, options in its header;

@@ -60,6 +60,10 @@ var want := Vector2.ZERO
 ## Facing the brain wants; the sim turns toward it at turn_rate (rad/s) unless committed.
 var aim := 0.0
 var turn_rate := 8.0
+## Spraying a curtain across a gap (a row that `seals`, FightSim.curtains): it
+## stands still facing `seal_at` until `seal_until`, the tell a player reads.
+var seal_until := -INF
+var seal_at := Vector2.INF
 ## A detour around something in the way, until.
 var detour := Vector2.ZERO
 var detour_until := 0.0
