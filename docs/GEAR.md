@@ -250,6 +250,8 @@ Each gets a rung in GearTree, so `GearEconomy.problems()` keeps every one reacha
 1. **One use per core.** The choice must cost: a core in a cell is a core not on your arm.
 2. **A carried relic raises interference while carried.** It is a found-tech signature the
    machines read. State the number and measure it against the settlement signatures (G9).
+   Built: 0.03 a relic an hour (Interference `carried`), a third of a region's own cooling
+   (0.09 an hour). Three hours of one relic is what a stolen cell raised in a holding files once.
 3. **New land materials wait** until streaming's S3 settles, batched with the other GEN
    content (machine_city order, drowned water, density).
 
@@ -293,3 +295,5 @@ G10 is therefore out of this build; G1–G9 go now.
 - G8 hush wrap: a warm wrap lined with hush slate, body, rare; walk, run, dodge, drop and eat are heard as on moss on any land, tools and water unchanged. A walk across shingle past twelve idle runners 12-15 tiles off: 10 come bare, 0 hushed.
 - G8 vane cloak: back, prime; in a wind above 0.4 a dodge within 50° of downwind carries 2x (2.5 tiles, not 1.26). Fleeing a harvester downwind in a 0.8 wind, 16.7 -> 19.7 tiles ahead after 5 s, no bites either way. Its cost, standing to fight with a reader that dodges without reading the wind: 3 runners 1.50 -> 2.38 health lost, 2 cutters 3.19 -> 4.12, bouts won unchanged; the long dodge carries it out of the opening it dodged for. The worn look is a shawl and an aerial for now: a vane cloak model is owed.
 - G8 cable line: brace_cable and brace_ram; the grapple takes a working part that faces it, stalls it (once per STALL_EVERY_MS) and pulls the player in to 0.3 off its body. Crowd reader, 24 bouts: a lone harvester 4.4 -> 3.1 s (a line every bout, its front faces the player between runs); a hauler and 2 cutters unchanged (their parts never face it at range); 3 harvesters 0.38 -> 0.75 health lost (pulled in on the last of them). G8 is done: scale coat, hush wrap, vane cloak, cable line.
+- G9 relic heat: every relic in the loadout, and a relic in the hand, warms the player's region by 0.03 an hour (Interference `carried`, applied after the hour's cooling, never gapped). Through the game on the coast, an hour wearing the lock: 0.000 -> 0.030; in made kit, 0.000. One relic slows a cooling file by a third, three hold it, four warm a calm region to wary in about nine hours.
+- Follow-up owed: a vane cloak model. `cloak_vane` wears a shawl and an aerial until the figure has a cloak of vanes to draw.

@@ -227,6 +227,26 @@ func _cool(delta: float) -> void:
 	var hidden := m.crouched and m.cover > 0.4 and unseen
 	interference.decay(passed / 60.0, hidden, m.spoofed,
 		Interference.network(game.world, sim.hero.pos), sim.hero.pos, unseen)
+	# A relic carried is heat, by the hour and by the relic (Interference
+	# `carried`, GEAR.md G9), on the network the player is in, after it cooled.
+	var relics := _relics_carried()
+	if relics > 0:
+		interference.raise(Interference.network(game.world, sim.hero.pos), &"carried", sim.hero.pos,
+			minutes, 0, float(relics) * passed / 60.0)
+
+
+## Relics in the loadout, and the one in the hand if it is not already there.
+func _relics_carried() -> int:
+	var ids: Array[StringName] = []
+	for s in game.systems:
+		if s.name == "54_gear":
+			var l: Loadout = s.get("loadout")
+			if l != null:
+				ids = l.all_ids()
+	var held: StringName = game.inventory.held if game.inventory != null else &""
+	if held != &"" and not ids.has(held):
+		ids.append(held)
+	return Gear.relics_in(ids)
 
 
 ## A clerk that got its reading away files the player (Body.filed, which is also

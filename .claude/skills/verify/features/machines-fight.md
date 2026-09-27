@@ -8,6 +8,7 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
 
 - 30_mobs: `src/systems/30_mobs.gd`, reached by `tools/tour.sh tours/machines.tour`.
 - 32_disposition: `src/systems/32_disposition.gd`, reached by `tools/tour.sh tours/disposition.tour`.
+  Relic heat (GEAR.md G9): each relic worn warms the player's region by Interference `carried` (0.03) an hour; made kit does not: `tools/test.sh test_relic_heat`.
 - 34_works: `src/systems/34_works.gd`, reached by `tools/tour.sh tours/works.tour`.
 - 36_machine_parade: `src/systems/36_machine_parade.gd`, reached by `tools/tour.sh tours/machines-day.tour`.
 - 40_fight: `src/systems/40_fight.gd`, reached by `tools/tour.sh tours/fight.tour`.
