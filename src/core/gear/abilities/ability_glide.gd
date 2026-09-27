@@ -4,6 +4,10 @@ extends Ability
 ## (docs/LOOK.md). It opens only where there is something to step off, and it
 ## carries the body out over ground a walk could never get down, which is what
 ## makes a mesa or a sea cliff a door instead of a wall.
+##
+## KNOWN LIMIT: a flight lasts SECONDS and falls FALL a second, 3.3 units in all.
+## Off a drop deeper than that it is still in the air when its time runs out,
+## and AbilityMotion then sets the body on the ground under it in one frame.
 
 ## Tiles ahead a drop is looked for, and the levels that count as one.
 const LOOK := 3.5
