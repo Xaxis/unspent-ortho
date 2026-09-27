@@ -390,10 +390,20 @@ func _work(delta: float) -> void:
 ## A part only takes the key while nothing the player could take from is nearer:
 ## standing at a part with a seam beside it, they mean the part.
 func _part_wins(s: WorksSite, i: int) -> bool:
+	var d := s.part(i).distance_to(sim.hero.pos)
+	# A named person of the cast standing nearer than the housing is who the
+	# key means: Sefa waits at the Tether's own works, and a player at her side
+	# with a knife in hand was answered by the housing's ring every time.
+	for sys in game.systems:
+		var people: Variant = sys.get("people") if sys.name == "49_cast" else null
+		if people is Array:
+			for row: Dictionary in people:
+				if row.get("model") != null and (row.pos as Vector2).distance_to(sim.hero.pos) < d:
+					return false
 	var t := Survival.use_target(game)
 	if t == null:
 		return true
-	return s.part(i).distance_to(sim.hero.pos) <= t.pos.distance_to(sim.hero.pos)
+	return d <= t.pos.distance_to(sim.hero.pos)
 
 
 func _drop_job() -> void:

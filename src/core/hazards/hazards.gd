@@ -229,8 +229,17 @@ static func _weather_shift(out: Dictionary, place: Place) -> void:
 				_add(out, &"glare", 0.25 * s)
 		&"fog":
 			_add(out, &"dark", 0.20 * s)
-			_add(out, &"wet", 0.10 * s)
 			_take(out, &"glare", 0.55 * s)
+			if kind == &"haze":
+				# The fog of a hot land: heat and smoke hung in still air, no water.
+				_add(out, &"heat", 0.20 * s)
+				_add(out, &"fumes", 0.20 * s)
+			else:
+				_add(out, &"wet", 0.10 * s)
+			# Still, low air holds down whatever the ground gives off: over land
+			# that breathes fumes, a fog is what makes them bite.
+			if float(place.hazards.get(&"fumes", 0.0)) > 0.0:
+				_add(out, &"fumes", 0.25 * s)
 		&"heat":
 			_add(out, &"heat", 0.45 * s)
 			_add(out, &"thirst", 0.30 * s)

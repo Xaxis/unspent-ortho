@@ -188,7 +188,7 @@ static func _shore(rate: int) -> PackedFloat32Array:
 	var floor_noise := Synth.pink(n, 5101, true)
 	Synth.band(floor_noise, rate, 260.0, 900.0, true)
 	Synth.scale(floor_noise, 0.03 / maxf(1e-6, Synth.rms(floor_noise)))
-	Synth.env_swell(floor_noise, LENGTH[&"bed_shore"] / SHORE_CYCLE, 1.0, 0.4, 0.3)
+	Synth.env_swell(floor_noise, float(LENGTH[&"bed_shore"]) / SHORE_CYCLE, 1.0, 0.4, 0.3)
 	Synth.add(out, floor_noise, 0)
 	# Every wash shares four long noise layers; what differs is the envelope each
 	# wash writes into them (built from a looked-up shape, wrapping round the loop).
@@ -212,7 +212,7 @@ static func _shore(rate: int) -> PackedFloat32Array:
 		arrive.append(pow(sin(PI * pow(u, 0.62)), 3.0))
 		drag.append(pow(sin(PI * clampf((u - 0.35) / 0.65, 0.0, 1.0)), 2.0))
 	var r := Rng.make(5102, 1)
-	var cycles := roundi(LENGTH[&"bed_shore"] / SHORE_CYCLE)
+	var cycles := roundi(float(LENGTH[&"bed_shore"]) / SHORE_CYCLE)
 	for c in cycles:
 		for layer in 4:
 			var m := Synth.samples(rate, r.randf_range(3.0, 5.2))
@@ -902,7 +902,7 @@ static func _gutter(rate: int) -> PackedFloat32Array:
 	_mix_into(out, pipe, 0.04, _curve(n, 5, 9402, 0.5, 1.0))
 	var t := 0.0
 	var k := 0
-	while t < LENGTH[&"bed_gutter"] - 0.2:
+	while t < float(LENGTH[&"bed_gutter"]) - 0.2:
 		t += r.randf_range(0.5, 1.7)
 		var at := Synth.samples(rate, t)
 		if r.randf() < 0.55:

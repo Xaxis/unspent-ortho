@@ -168,6 +168,9 @@ class Lay:
 	## with what `occ` held there before, so a work that gives up is taken back.
 	var key := 0
 	var in_work := false
+	## False while a work is composed a second time for `witness`: it reads the
+	## snapshot and keeps what it takes in `mine`, and writes no grid.
+	var writes := true
 	## Whose works functions compose the works: GenWorks, or the landscape
 	## file that registered its own ("host" in its row).
 	var host: Object = null
@@ -210,7 +213,8 @@ class Lay:
 	func take_tile(i: int) -> void:
 		if in_work and not mine.has(i):
 			mine[i] = occ[i]
-		occ[i] = 1
+		if writes:
+			occ[i] = 1
 
 	func type_at(x: int, y: int) -> StringName:
 		return BiomeRegistry.by_index(_index_at(x, y)).id
@@ -262,7 +266,7 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 	if Realm.before_the_plan(c.w.realm):
 		return
 	var lay := Lay.new(c, occ, Vector2.from_angle(bearing(c.s)))
-	lay.base = occ.duplicate()
+	lay.base = GenFields.snapshot(occ)
 	for def in BiomeRegistry.all():
 		var row := evidence(def.id)
 		var fn: StringName = row.works
@@ -287,6 +291,10 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 	lay.sizes = PackedFloat32Array()
 	lay.rng = Rng.make(c.s, 0x3058)
 	lay.site_rng = lay.rng
+	lay.host = GenWorks
+	# The people's things are rows too, composed against the land as the works
+	# left it: they keep off the works' pieces, and off nothing else of their own.
+	lay.base = GenFields.snapshot(occ)
 	_villages(lay)
 	_roads(lay)
 	_remains(lay)
@@ -390,7 +398,7 @@ static func _work(L: Lay, fn: StringName, at: Vector2, args: Array = []) -> bool
 	var l0 := w.lines.size()
 	L.in_work = true
 	L.mine.clear()
-	L.key = Rng.hash_ints(0x3057, String(L.id).hash(), String(fn).hash(), floori(at.x), floori(at.y))
+	L.key = Rng.hash_ints(0x3057, String(L.id).hash(), String(fn).hash(), floori(at.x), floori(at.y), args.hash())
 	L.rng = Rng.make(L.c.s, L.key)
 	var call := Callable(L.host, fn)
 	var stands: bool = call.call(L, at, args)
@@ -405,8 +413,8 @@ static func _work(L: Lay, fn: StringName, at: Vector2, args: Array = []) -> bool
 	L.key = 0
 	L.rng = L.site_rng
 	if stands and witnessing:
-		var alone := Lay.new(L.c, L.base.duplicate(), L.d)
-		alone.base = L.base
+		var alone := Lay.new(L.c, L.base, L.d)
+		alone.writes = false
 		alone.id = L.id
 		alone.own = L.own
 		alone.site_rng = L.site_rng
@@ -1506,57 +1514,84 @@ static func _dugout(L: Lay, at: Vector2, _a: Array) -> bool:
 ## Round every village: its graves in a row by a memorial, a shack or two at
 ## the edge with stolen light in some, fences, a barricade on the way in, debris.
 static func _villages(L: Lay) -> void:
-	var c := L.c
 	var w := L.w
-	var rng := L.rng
-	for v in w.villages:
-		var vp: Vector2 = v.pos
-		# The graveyard: a row of graves a little way out, off the roads.
-		for attempt in 16:
-			var a := rng.randf() * TAU
-			var at := vp + Vector2.from_angle(a) * rng.randf_range(11.0, 15.0)
-			if _near_road(c, at, 3):
-				continue
-			var row := Vector2.from_angle(a + PI * 0.5)
-			var graves := 0
-			for i in rng.randi_range(3, 6):
-				var q := at + row * (i * 1.25 - 3.0) + Vector2.from_angle(a) * rng.randf_range(-0.15, 0.15)
-				if _put(L, PropKind.GRAVE, q, a + rng.randf_range(-0.12, 0.12), -99, 0.3) != null:
-					graves += 1
-			if graves >= 2:
-				_record(c, &"graves", at, row, Vector2(4.0, 1.0))
-				_put(L, PropKind.MEMORIAL, at + Vector2.from_angle(a) * 1.6, a + PI, -99, 0.3)
-				break
-		# Shacks at the edge, stolen light in some.
-		var shacks := 0
-		for attempt in 40:
-			if shacks >= rng.randi_range(1, 2):
-				break
-			var q := vp + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(12.0, 19.0)
-			if _near_road(c, q, 2):
-				continue
-			var shack := _put(L, PropKind.SHACK, q.floor() + Vector2(0.5, 0.5), (vp - q).angle(), -99, 1.2)
-			if shack != null:
-				shacks += 1
-				_note_lit_shack(L, shack)
-		# Garden fences, crooked, gapped.
-		for f in 2:
-			var q := vp + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(10.0, 13.0)
-			_run(L, PropKind.FENCE, q, (q - vp).normalized().orthogonal(), rng.randi_range(2, 3), 2.0, -99, 0.2)
-		_about(L, PropKind.DEBRIS, vp, 3, 11.0, 18.0)
-		_about(L, PropKind.WRECKAGE, vp, 1, 12.0, 18.0)
+	for vi in w.villages.size():
+		_work(L, &"_village_edge", w.villages[vi].pos as Vector2, [vi])
 	# Barricades on the ways in: beside each road where it nears a village.
-	for road in w.roads:
+	# Roads into one village share their last stretch, so each way in is told
+	# where the ways in before it stood and keeps off them.
+	var held: Array[Vector2] = []
+	for ri in w.roads.size():
 		for end in 2:
-			for k: int in [12, 15, 18, 22]:
-				var j := k if end == 0 else road.size() - 1 - k
-				if j < 2 or j >= road.size() - 2:
-					continue
-				var q := road[j]
-				var along := (road[j + 1] - road[j - 1]).normalized()
-				var across := Vector2(-along.y, along.x) * (1.0 if rng.randf() < 0.5 else -1.0)
-				if _put(L, PropKind.BARRICADE, q + across * 1.8, along.angle(), -99, 0.4) != null or _put(L, PropKind.BARRICADE, q - across * 1.8, along.angle(), -99, 0.4) != null:
-					break
+			var road := w.roads[ri]
+			if road.size() > 0 and _work(L, &"_way_in", road[0] if end == 0 else road[road.size() - 1], [ri, end, held.duplicate()]):
+				held.append(w.props.back().pos)
+
+
+## Village `a[0]`'s edge: its graves, its shacks, its garden fences, its debris.
+static func _village_edge(L: Lay, vp: Vector2, _a: Array) -> bool:
+	var c := L.c
+	var rng := L.rng
+	var n0 := L.w.props.size()
+	# The graveyard: a row of graves a little way out, off the roads.
+	for attempt in 16:
+		var a := rng.randf() * TAU
+		var at := vp + Vector2.from_angle(a) * rng.randf_range(11.0, 15.0)
+		if _near_road(c, at, 3):
+			continue
+		var row := Vector2.from_angle(a + PI * 0.5)
+		var graves := 0
+		for i in rng.randi_range(3, 6):
+			var q := at + row * (i * 1.25 - 3.0) + Vector2.from_angle(a) * rng.randf_range(-0.15, 0.15)
+			if _put(L, PropKind.GRAVE, q, a + rng.randf_range(-0.12, 0.12), -99, 0.3) != null:
+				graves += 1
+		if graves >= 2:
+			_record(c, &"graves", at, row, Vector2(4.0, 1.0))
+			_put(L, PropKind.MEMORIAL, at + Vector2.from_angle(a) * 1.6, a + PI, -99, 0.3)
+			break
+	# Shacks at the edge, stolen light in some.
+	var shacks := 0
+	var want := rng.randi_range(1, 2)
+	for attempt in 40:
+		if shacks >= want:
+			break
+		var q := vp + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(12.0, 19.0)
+		if _near_road(c, q, 2):
+			continue
+		var shack := _put(L, PropKind.SHACK, q.floor() + Vector2(0.5, 0.5), (vp - q).angle(), -99, 1.2)
+		if shack != null:
+			shacks += 1
+			_note_lit_shack(L, shack)
+	# Garden fences, crooked, gapped.
+	for f in 2:
+		var q := vp + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(10.0, 13.0)
+		_run(L, PropKind.FENCE, q, (q - vp).normalized().orthogonal(), rng.randi_range(2, 3), 2.0, -99, 0.2)
+	_about(L, PropKind.DEBRIS, vp, 3, 11.0, 18.0)
+	_about(L, PropKind.WRECKAGE, vp, 1, 12.0, 18.0)
+	return L.w.props.size() > n0
+
+
+## A barricade beside road `a[0]` where its end `a[1]` nears a village, off
+## the ways in already held (`a[2]`).
+static func _way_in(L: Lay, _at: Vector2, a: Array) -> bool:
+	var road := L.w.roads[int(a[0])]
+	var end: int = a[1]
+	var held: Array = a[2]
+	for k: int in [12, 15, 18, 22]:
+		var j := k if end == 0 else road.size() - 1 - k
+		if j < 2 or j >= road.size() - 2:
+			continue
+		var q := road[j]
+		var near := false
+		for h: Vector2 in held:
+			near = near or h.distance_squared_to(q) < 16.0
+		if near:
+			continue
+		var along := (road[j + 1] - road[j - 1]).normalized()
+		var across := Vector2(-along.y, along.x) * (1.0 if L.rng.randf() < 0.5 else -1.0)
+		if _put(L, PropKind.BARRICADE, q + across * 1.8, along.angle(), -99, 0.4) != null or _put(L, PropKind.BARRICADE, q - across * 1.8, along.angle(), -99, 0.4) != null:
+			return true
+	return false
 
 
 ## Record the first shack with stolen machine light wired in (the lit model:
@@ -1579,51 +1614,73 @@ static func _note_lit_shack(L: Lay, shack: WorldProp) -> void:
 ## villages.
 static func _roads(L: Lay) -> void:
 	var w := L.w
-	for road in w.roads:
+	for ri in w.roads.size():
+		var road := w.roads[ri]
+		if road.size() < 41:
+			continue
+		# Where along it the signs stand is the road's own: a stream keyed on
+		# its first point, so a road's signs do not hang on the roads before it.
+		var steps := Rng.make(L.c.s, Rng.hash_ints(0x3058, floori(road[0].x), floori(road[0].y), road.size()))
 		var j := 20
 		while j < road.size() - 20:
-			var q := road[j]
-			if not GenScatter._near_village(w, q, 16.0):
-				var along := (road[mini(j + 2, road.size() - 1)] - road[j - 2]).normalized()
-				var across := Vector2(-along.y, along.x)
-				for sgn: float in [1.0, -1.0]:
-					if _put(L, PropKind.SIGN, q + across * sgn * 1.7, (across * sgn).angle(), -99, 0.2) != null:
-						break
-			j += L.rng.randi_range(34, 52)
+			if not GenScatter._near_village(w, road[j], 16.0):
+				_work(L, &"_road_sign", road[j], [ri, j])
+			j += steps.randi_range(34, 52)
+
+
+## A warning beside road `a[0]` at its point `a[1]`, on whichever side takes it.
+static func _road_sign(L: Lay, q: Vector2, a: Array) -> bool:
+	var road := L.w.roads[int(a[0])]
+	var j: int = a[1]
+	var along := (road[mini(j + 2, road.size() - 1)] - road[j - 2]).normalized()
+	var across := Vector2(-along.y, along.x)
+	for sgn: float in [1.0, -1.0]:
+		if _put(L, PropKind.SIGN, q + across * sgn * 1.7, (across * sgn).angle(), -99, 0.2) != null:
+			return true
+	return false
 
 
 ## What is left where things ended: debris round the tips, ruins and wrecks,
 ## a grave or a sign at some.
 static func _remains(L: Lay) -> void:
 	var w := L.w
-	var rng := L.rng
 	var count := w.landmarks.size()
 	for li in count:
 		var m: Dictionary = w.landmarks[li]
-		var at: Vector2 = m.pos
-		match m.kind:
-			&"tip", &"wreck":
-				_about(L, PropKind.DEBRIS, at, 3, 3.0, 6.5)
-				_about(L, PropKind.WRECKAGE, at, 1, 3.0, 6.5)
-				if rng.randf() < 0.5:
-					_run(L, PropKind.FENCE, at + Vector2(-5.0, 4.0), Vector2.from_angle(rng.randf() * TAU), 3, 2.0, -99, 0.35)
-			&"ruin":
-				_about(L, PropKind.DEBRIS, at, 2, 2.0, 5.0)
-				if rng.randf() < 0.6:
-					_about(L, PropKind.GRAVE, at, 2, 3.5, 6.0)
-				if rng.randf() < 0.4:
-					_about(L, PropKind.VEHICLE, at, 1, 4.0, 7.0)
+		var k: StringName = m.kind
+		if k == &"tip" or k == &"wreck" or k == &"ruin":
+			_work(L, &"_remains_at", m.pos as Vector2, [k])
+
+
+static func _remains_at(L: Lay, at: Vector2, a: Array) -> bool:
+	var rng := L.rng
+	var n0 := L.w.props.size()
+	if a[0] == &"ruin":
+		_about(L, PropKind.DEBRIS, at, 2, 2.0, 5.0)
+		if rng.randf() < 0.6:
+			_about(L, PropKind.GRAVE, at, 2, 3.5, 6.0)
+		if rng.randf() < 0.4:
+			_about(L, PropKind.VEHICLE, at, 1, 4.0, 7.0)
+	else:
+		_about(L, PropKind.DEBRIS, at, 3, 3.0, 6.5)
+		_about(L, PropKind.WRECKAGE, at, 1, 3.0, 6.5)
+		if rng.randf() < 0.5:
+			_run(L, PropKind.FENCE, at + Vector2(-5.0, 4.0), Vector2.from_angle(rng.randf() * TAU), 3, 2.0, -99, 0.35)
+	return L.w.props.size() > n0
 
 
 ## The first frame of a game shows what was lost: in view of the spawn, past
 ## its first steps and the village square it wakes by, a few of its own
 ## landscape's compositions (graves round a memorial first).
 static func _spawn_view(L: Lay) -> void:
+	_work(L, &"_spawn_compositions", L.w.spawn)
+
+
+static func _spawn_compositions(L: Lay, sp: Vector2, _a: Array) -> bool:
 	var w := L.w
-	var sp := w.spawn
 	var face := Vector2.from_angle(w.spawn_facing)
 	var table: Array = evidence(L.type_at(floori(sp.x), floori(sp.y))).vignettes
-	var rng := Rng.make(L.c.s, 0x5B4)
+	var rng := L.rng
 	var placed := 0
 	L.tight = true
 	for attempt in 200:
@@ -1643,6 +1700,7 @@ static func _spawn_view(L: Lay) -> void:
 		if _compose(L, pick, at, turn, a + PI) > 0:
 			placed += 1
 	L.tight = false
+	return placed > 0
 
 
 # --- the walk between places --------------------------------------------------------
@@ -1675,26 +1733,30 @@ static func _vignettes(L: Lay) -> void:
 	# because a single number names no culprit, and `evidence()` was already
 	# tried and was not it (memoised, 1155 vs 1098 ms, reverted).
 	c.mark(&"vig.busy")
-	var rng := Rng.make(c.s, 0x716)
-	L.rng = Rng.make(c.s, 0x717)
 	var cell := VIGNETTE_CELL
 	for cy in range(cell, c.size - cell, cell):
 		for cx in range(cell, c.size - cell, cell):
-			# Every roll is drawn whether it is used or not: a world comes out the same.
-			var tries: Array[Vector2i] = [Vector2i(cx + rng.randi_range(0, cell - 1), cy + rng.randi_range(0, cell - 1)), Vector2i(cx + rng.randi_range(0, cell - 1), cy + rng.randi_range(0, cell - 1))]
-			var roll := rng.randf()
-			var pick := rng.randf()
-			var turn := rng.randf()
-			if roll > VIGNETTE_SHARE:
+			# The cell's rolls are its own (hashed from where it is), so a cell
+			# decides the same whichever cells were decided before it.
+			if Rng.hash01(c.s, cx, cy, 0x716, 3) > VIGNETTE_SHARE:
 				continue
+			var pick := Rng.hash01(c.s, cx, cy, 0x716, 4)
+			var turn := Rng.hash01(c.s, cx, cy, 0x716, 5)
 			# A cell whose first spot is wet or taken tries a second.
-			for p in tries:
+			for k in 2:
+				var p := Vector2i(cx + floori(Rng.hash01(c.s, cx, cy, 0x716, 10 + k * 2) * cell), cy + floori(Rng.hash01(c.s, cx, cy, 0x716, 11 + k * 2) * cell))
 				var i := p.y * c.size + p.x
 				if c.land[i] == 0 or busy[i] != 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0 or Ground.is_water(w.ground[i]):
 					continue
 				var table: Array = evidence(L.type_at(p.x, p.y)).vignettes
-				if _compose(L, _pick(table, pick), Vector2(p) + Vector2(0.5, 0.5), turn, turn * TAU) > 0:
+				if _work(L, &"_vignette", Vector2(p) + Vector2(0.5, 0.5), [_pick(table, pick), turn]):
 					break
+
+
+## One cell's composition `a[0]`, varied by `a[1]`.
+static func _vignette(L: Lay, at: Vector2, a: Array) -> bool:
+	var turn: float = a[1]
+	return _compose(L, a[0], at, turn, turn * TAU) > 0
 
 
 ## The composition a roll (0..1) picks from a [weight, name] table.
@@ -1879,48 +1941,61 @@ static func survey_sections(seed_value: int, size: int) -> Array:
 ## drawn by world.gdshader.
 static func _survey(L: Lay) -> void:
 	var c := L.c
-	var rng := Rng.make(c.s, 0x5A2)
 	for sec: Array in survey_sections(c.s, c.size):
 		var a: Vector2 = sec[0]
 		var b: Vector2 = sec[1]
-		var dir := (b - a).normalized()
-		var side := Vector2(-dir.y, dir.x)
 		var mid := (a + b) * 0.5
 		if mid.x < 0.0 or mid.y < 0.0 or mid.x >= c.size or mid.y >= c.size:
 			continue
-		var roll := rng.randf()
-		var dressing: Array = evidence(L.type_at(floori(mid.x), floori(mid.y))).survey
-		# The lane stays open wherever it runs through a landscape that cuts one.
-		var t := 0.0
-		while t <= SURVEY_SECTION:
-			var q := a + dir * t
-			if q.x >= 1.0 and q.y >= 1.0 and q.x < c.size - 1 and q.y < c.size - 1 and _survey_has(L, floori(q.x), floori(q.y), &"lane"):
-				_clear_rect(L, q, dir, Vector2(0.5, 1.3))
-			t += 1.0
-		# Stations: a post where the survey was read, now and then.
-		var st := 4.0 + rng.randf() * 6.0
-		while st < SURVEY_SECTION:
-			if rng.randf() < 0.45:
-				_put(L, PropKind.SURVEY, a + dir * st, dir.angle(), -99, 0.0, true)
-			st += 8.0 + rng.randf() * 4.0
-		for e: Array in dressing:
-			if roll >= float(e[0]):
-				continue
-			match e[1]:
-				&"snow_fence_line":
-					_run(L, PropKind.FENCE, a + dir * (4.0 + roll * 8.0) + side * 1.2, dir, 4, 2.0, -99, 0.15)
-				&"pipe_line":
-					_run(L, PropKind.PIPE, a + dir * (4.0 + roll * 10.0) + side * 1.0, dir, 3, 2.0, -99, 0.25)
-				&"drill_beside":
-					_put(L, PropKind.DRILL_RIG, mid + side * 1.4, dir.angle(), -99, 0.3, true)
-				&"sign_beside":
-					_put(L, PropKind.SIGN, mid + side * 1.5, dir.angle() + PI * 0.5, -99, 0.2)
+		_work(L, &"_survey_section", a, [b])
+
+
+## One surviving stretch of the survey from `at` to `a[0]`, dressed by the
+## landscape at its middle.
+static func _survey_section(L: Lay, a: Vector2, args: Array) -> bool:
+	var c := L.c
+	var rng := L.rng
+	var n0 := L.w.props.size()
+	var b: Vector2 = args[0]
+	var dir := (b - a).normalized()
+	var side := Vector2(-dir.y, dir.x)
+	var mid := (a + b) * 0.5
+	var roll := rng.randf()
+	var dressing: Array = evidence(L.type_at(floori(mid.x), floori(mid.y))).survey
+	# The lane stays open wherever it runs through a landscape that cuts one.
+	var cut := false
+	var t := 0.0
+	while t <= SURVEY_SECTION:
+		var q := a + dir * t
+		if q.x >= 1.0 and q.y >= 1.0 and q.x < c.size - 1 and q.y < c.size - 1 and _survey_has(L, floori(q.x), floori(q.y), &"lane"):
+			_clear_rect(L, q, dir, Vector2(0.5, 1.3))
+			cut = true
+		t += 1.0
+	# Stations: a post where the survey was read, now and then.
+	var st := 4.0 + rng.randf() * 6.0
+	while st < SURVEY_SECTION:
+		if rng.randf() < 0.45:
+			_put(L, PropKind.SURVEY, a + dir * st, dir.angle(), -99, 0.0, true)
+		st += 8.0 + rng.randf() * 4.0
+	for e: Array in dressing:
+		if roll >= float(e[0]):
+			continue
+		match StringName(e[1]):
+			&"snow_fence_line":
+				_run(L, PropKind.FENCE, a + dir * (4.0 + roll * 8.0) + side * 1.2, dir, 4, 2.0, -99, 0.15)
+			&"pipe_line":
+				_run(L, PropKind.PIPE, a + dir * (4.0 + roll * 10.0) + side * 1.0, dir, 3, 2.0, -99, 0.25)
+			&"drill_beside":
+				_put(L, PropKind.DRILL_RIG, mid + side * 1.4, dir.angle(), -99, 0.3, true)
+			&"sign_beside":
+				_put(L, PropKind.SIGN, mid + side * 1.5, dir.angle() + PI * 0.5, -99, 0.2)
+	return cut or L.w.props.size() > n0
 
 
 ## The landscape at (x, y) dresses the survey with `dressing`.
 static func _survey_has(L: Lay, x: int, y: int, dressing: StringName) -> bool:
 	for e: Array in evidence(L.type_at(x, y)).survey:
-		if e[1] == dressing:
+		if StringName(e[1]) == dressing:
 			return true
 	return false
 

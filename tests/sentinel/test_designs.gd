@@ -105,6 +105,9 @@ func test_what_it_gives_is_on_one_table_and_its_core_comes_from_nowhere_else() -
 	_fresh()
 	for def: SentinelDef in Sentinels.all():
 		check(Drops.can_yield(def.drops).has(def.core), "%s's table holds its core" % def.id)
+		# 44_sentinels gives only what has an Items row and skips the rest in
+		# silence: a core with no row is a keeper that drops nothing (the listener).
+		check(Items.DEFS.has(def.core), "%s's core is a thing a player can carry" % def.id)
 		check(Materials.can_come_from(def.core, &"", def.drops), "%s: the core comes off this keeper" % def.id)
 		check(not Materials.can_come_from(def.core, def.land), "%s: and never off the land itself" % def.id)
 		eq(Materials.where(def.core).get("rarity", -1), Rarity.RELIC, "%s: a keeper gives a relic (VISION §6.1)" % def.id)

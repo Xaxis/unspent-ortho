@@ -156,7 +156,9 @@ func _read_player() -> void:
 	m.spoofed = game.clock.minutes < body.spoof_until
 	var p := hero.pos
 	var ground := game.world.ground_at(floori(p.x), floori(p.y))
-	m.loudness = StealthNoise.loudness(hero.speed, ground, body.crouched, m.laden_tier)
+	# The listener's ear is heard as far as it hears, steps and all (FightKit.listen).
+	# The hush wrap quiets the steps on any land (FightKit.hush).
+	m.loudness = StealthNoise.loudness(hero.speed, ground, body.crouched, m.laden_tier, hero.kit.hush) * hero.kit.noise_scale()
 	# A room's hum over everything swallows a step (21_doors `room_hush`).
 	for sys: GameSystem in game.systems:
 		if sys.has_method(&"room_hush"):
@@ -192,9 +194,14 @@ func _cover_now(p: Vector2, m: Moment) -> float:
 ## it cost given who watched. Each system that puts people on the land answers
 ## `witnesses` for its own (35_folk), so this one goes on knowing nothing about
 ## villagers or crowds and a package that adds people needs no line here.
-func raise(cause: StringName, at: Vector2) -> float:
+func raise(cause: StringName, at: Vector2, scale: float = 1.0) -> float:
+	# The hours already gone by cool the file BEFORE the news lands on it. Left to
+	# the next frame's `_cool`, a clock skipped just before this (the hours a
+	# piece took to build, a night slept) was charged against the news itself,
+	# and a turret built at a cost of two hours was forgotten the frame after.
+	_cool(0.0)
 	var net := Interference.network(game.world, at)
-	var rose := interference.raise(net, cause, at, game.clock.minutes, crowd_witnesses(at))
+	var rose := interference.raise(net, cause, at, game.clock.minutes, crowd_witnesses(at), scale)
 	if rose > 0.0:
 		_seen[&"interference"] = true
 	return rose
@@ -369,7 +376,8 @@ func _on_keeper_fell(region: int, _land: StringName, _how: StringName) -> void:
 ## file you for it and the hunt could never end.
 func _on_hit(attacker: Object, target: Object, _damage: int, plate: bool, at: Vector3) -> void:
 	# The player's own blow is as loud as their kit makes it (FightKit.blow_noise).
-	_noise(&"hit", sim.hero.kit.blow_noise(plate) if attacker == game.player else 1.0)
+	var heavy := sim.hero.blow != null and sim.hero.blow.heavy
+	_noise(&"hit", sim.hero.kit.blow_noise(plate, heavy) if attacker == game.player else 1.0)
 	if attacker != game.player:
 		return
 	var mob := target as Mob
@@ -384,7 +392,8 @@ func _on_hit(attacker: Object, target: Object, _damage: int, plate: bool, at: Ve
 func _noise(act: StringName, scale: float = 1.0) -> void:
 	var p := sim.hero.pos
 	var ground := game.world.ground_at(floori(p.x), floori(p.y))
-	sim.make_noise(p, StealthNoise.radius(act, ground, game.body.crouched, sim.moment.laden_tier) * scale)
+	# The listener's ear is heard as far as it hears (FightKit.listen).
+	sim.make_noise(p, StealthNoise.radius(act, ground, game.body.crouched, sim.moment.laden_tier, sim.hero.kit.hush) * scale * sim.hero.kit.noise_scale())
 
 
 ## A job under way is a noise that keeps going, and a job on the plan's own

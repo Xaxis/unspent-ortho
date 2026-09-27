@@ -129,12 +129,13 @@ static func batch(size: int, specs: Array) -> Array[PackedFloat32Array]:
 	gens.resize(specs.size())
 	for j in specs.size():
 		var spec: Array = specs[j]
-		if spec[0] == NOISE or spec[0] == FIELD:
+		var what := int(spec[0])
+		if what == NOISE or what == FIELD:
 			var src: FastNoiseLite = spec[1]
-			var step: int = spec[3] if spec[0] == NOISE else spec[2]
+			var step: int = spec[3] if what == NOISE else spec[2]
 			var ox: float = 0.0
 			var oy: float = 0.0
-			var at := 4 if spec[0] == NOISE else 3
+			var at := 4 if what == NOISE else 3
 			if spec.size() > at + 1:
 				ox = spec[at]
 				oy = spec[at + 1]
@@ -167,7 +168,8 @@ static func batch(size: int, specs: Array) -> Array[PackedFloat32Array]:
 			out[j] = smooth(spec[1], size, spec[2])
 	parallel(job, specs.size())
 	for j in specs.size():
-		if specs[j][0] != NOISE and specs[j][0] != FIELD:
+		var what_j := int(specs[j][0])
+		if what_j != NOISE and what_j != FIELD:
 			continue
 		# Bytes truncate: centre each step, then map [0, 1] to [-1, 1]. An
 		# affine map commutes with the bilinear spread.

@@ -487,16 +487,26 @@ extends TestCase
 ## one solid then took footing a step off a terrace lip (`_put_footed`), which
 ## moved `props` again on seeds 1, 3, 7 and 42: shelters over twelve seeds at 512
 ## went 8 (GEN 33) -> 20, of a designed 24.
+## RE-ACCEPTED AT GEN 38 (2026-09-26, provisional): the people's things are rows
+## (villages, ways in, road signs, remains, the spawn's view, survey sections,
+## vignette cells). Five tile arrays equal on all five seeds; only `props`
+## moves. Seed 7's spawn and a moss village at eye level: the same kinds of
+## thing where they were. Solid props inside each other at 512 over seeds 1, 7,
+## 42, 90210: 17/20/16/15 at GEN 36, 14/23/17/14 here.
+## GEN 39 (2026-09-26, the limestone caves roofed, GenAbove) CHANGED NO DIGEST:
+## the roof is laid only on a landscape declaring `BiomeDef.above`, none of the
+## six does, and GenAbove runs after every stage these hash. The caves' own
+## worlds move; tests/biome/test_cave_roofs.gd holds them.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 1ad8f3f5 100053b8 4fd7a826 5afa970a",
-	3: "bd96c6d3 1d22db86 1008c39c a4316902 7e58a668 c705af59",
-	7: "ba7a972f 55af42cc 0f10d2e3 0f02d42c f555c41d c0f1ccf0",
-	42: "e0ad0bb3 b7ca1370 0c07876f 2f4b7f69 1565ed7e 6b956434",
-	90210: "2659ea1f 66925798 c128779c 34b30d32 275c7664 87bb3618",
+	1: "054710a9 3eac3638 1ad8f3f5 100053b8 4fd7a826 8d0cf770",
+	3: "bd96c6d3 1d22db86 1008c39c a4316902 7e58a668 652780b0",
+	7: "ba7a972f 55af42cc 0f10d2e3 0f02d42c f555c41d 5b50aac1",
+	42: "e0ad0bb3 b7ca1370 0c07876f 2f4b7f69 1565ed7e 9e2ae116",
+	90210: "2659ea1f 66925798 c128779c 34b30d32 275c7664 26756568",
 }
 
 

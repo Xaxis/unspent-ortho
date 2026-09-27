@@ -112,7 +112,7 @@ static func bus_db(bus: StringName) -> float:
 	for guard in 4:
 		var found := false
 		for row: Array in BUSES:
-			if row[0] == at:
+			if StringName(row[0]) == at:
 				total += float(row[2])
 				at = row[1]
 				found = true

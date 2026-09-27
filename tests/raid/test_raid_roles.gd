@@ -195,3 +195,23 @@ func test_a_razed_holding_is_looted_and_not_killed() -> void:
 	check(not spoils.is_empty(), "there is something in the ruins")
 	eq(spoils, RaidSpoils.razed(3, 1), "and it is the same ruin every time it is looked at")
 	check(not Items.def(RaidSpoils.RECORD_ITEM).is_empty(), "the record is a thing a person can carry")
+
+
+## A HOLDING IS RAIDED BY ITS OWN LAND'S MACHINES. A party is drawn from what
+## the holding's landscape fields (RaidRoles.of_land: the row's own countries or
+## the land's BiomeDef.roster), never the best body for the trade anywhere: a
+## coast yard is not raided by the ruined metropolis's demolishers.
+func test_a_holding_is_raided_by_its_own_lands_machines() -> void:
+	for land: StringName in [&"bonelands", &"coast", &"ruined_metropolis"]:
+		var kinds: Array[StringName] = []
+		for stage: StringName in [RaidStage.PROBE, RaidStage.RAID, RaidStage.SIEGE]:
+			for role: StringName in RaidRoles.roles_for(stage):
+				var k := RaidRoles.kind_for(role, Callable(), land)
+				if k != &"":
+					kinds.append(k)
+		print("  info %s raids with %s" % [land, kinds])
+		gt(float(kinds.size()), 0.0, "%s sends somebody" % land)
+		for k in kinds:
+			check(RaidRoles.of_land(k, Roster.row(k), land), "%s is raided by %s, which is not its own" % [land, k])
+	eq(RaidRoles.kind_for(RaidRoles.BREACHER, Callable(), &"ruined_metropolis"), &"demolisher", "the metropolis breaches with its demolishers")
+	check(RaidRoles.kind_for(RaidRoles.BREACHER, Callable(), &"coast") != &"demolisher", "and the coast does not")

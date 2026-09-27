@@ -1,0 +1,19 @@
+# The unbuilder's hands (GEAR.md G4): the unbuilder's core wired into a glove.
+# A machine stalled by a blow in its part, use held at that part: it comes away,
+# the machine is disarmed, and the part is in the creel.
+#   tools/tour.sh tours/unbuild.tour --seed=1 --hour=11 --weather=clear:0 --fit=boots_magnet,mod_unbuild
+coast calm
+place open_coast
+wait 1.0
+spawn cutter
+wait 0.4
+try 12
+walkto part 1.5
+tap swing
+wait 0.35
+hold use
+await stripped 2.0
+release use
+end
+wait 0.1
+shot 01-its-part-comes-away with mob:cutter

@@ -361,6 +361,10 @@ var sites: Dictionary = {}
 ## explained. Read by HushSites and the systems of the hush; no worldgen
 ## stage reads it.
 var hush := false
+## GROUND ABOVE THE GROUND this landscape grows (docs/ABOVE.md, GenAbove):
+## `{"roof": {room, clear, step, thick, tear, shaft}}` roofs it over, with holes
+## at the dome's tears and the shafts' mouths. A TERRAIN field.
+var above: Dictionary = {}
 ## The ground a scrap tip lies on here.
 var tip_ground := Ground.GRAVEL
 ## Hulls are hauled up on this landscape's beaches.

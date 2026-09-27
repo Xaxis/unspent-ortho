@@ -31,7 +31,9 @@ var height := 1.2
 var material: Material
 
 
-static func create(kind_id: StringName, mat: Material = null) -> FigureModel:
+## `part_side`: where a machine's working part is built, when a landscape's own
+## kind moves it (BiomeDef.roster `over`); &"" builds it where the kind puts it.
+static func create(kind_id: StringName, mat: Material = null, part_side: StringName = &"") -> FigureModel:
 	var m: FigureModel = null
 	# Sentinels are machines drawn the same way in their own directory, so a
 	# landscape's keeper is found by `model` like any other kind (VISION §3).
@@ -44,6 +46,8 @@ static func create(kind_id: StringName, mat: Material = null) -> FigureModel:
 		m = FigureModel.new()
 	m.kind = kind_id
 	m.material = mat if mat != null else _default_material()
+	if part_side != &"" and m is MachineModel:
+		(m as MachineModel).side_asked = part_side
 	m.build()
 	return m
 

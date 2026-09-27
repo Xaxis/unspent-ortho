@@ -157,7 +157,7 @@ func apply_weather(spec: String) -> bool:
 ## The bearing a world's clouds and wind travel on (a positive wind blows
 ## along it). Fixed per seed; 18_trample reads it to stage a gust front.
 static func bearing_of(seed_value: int) -> Vector2:
-	return Vector2.from_angle(Rng.hash01(seed_value, 0xC10D) * TAU)
+	return Weather.bearing(seed_value)
 
 
 ## Hold one strike for a still, or let the held one go. A held bolt asked for

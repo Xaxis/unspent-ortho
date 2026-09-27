@@ -1,0 +1,23 @@
+# THE CAVES ARE ROOFED (GenAbove, docs/ABOVE.md S3): a hall stands under a lid of
+# rock, terraced in plateaus, open only over the shafts and the tears the day
+# comes down through. Under a roof from above the plateau over the player is
+# cut at the section plane (43_above), its outline chalked; over the shoulder the
+# roof is a ceiling overhead, and a tear's column of daylight falls through it.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/cave-roofs.tour --seed=7 --realm=underground --hour=12
+coast calm
+wait 1.0
+near under_roof
+wait 1.0
+await above_cut 4
+shot 01-under-the-roof-from-above-cut
+tap shoulder
+await shoulder 3
+await above_whole 3
+wait 1.0
+shot 02-under-the-roof-over-the-shoulder with shoulder
+mouse 0,-300 0.5
+wait 1.0
+shot 03-up-at-the-roof with shoulder
+near shaft_pool
+wait 1.5
+shot 04-daylight-through-a-tear with shoulder

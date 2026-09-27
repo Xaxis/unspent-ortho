@@ -1,0 +1,15 @@
+# The ear (GEAR.md G4): the listener's core over one ear. Over the shoulder, a
+# machine winds up behind a house the eye cannot see past: bare, its tell ring
+# is hidden by the house; with the ear it is drawn through it.
+#   tools/tour.sh tours/ear.tour --seed=1 --hour=11 --weather=clear:0 --view=shoulder --fit=hat_brim,mod_listen
+#   (and without --fit, for the frame it is set against)
+coast calm
+place spawn
+wait 1.0
+near house
+wait 0.8
+spawn cutter beyond house
+wait 0.6
+tell cutter
+wait 0.2
+shot 01-a-tell-behind-the-house with mob:cutter

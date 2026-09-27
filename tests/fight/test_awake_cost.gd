@@ -26,25 +26,54 @@ func _pose_of(m: MachineModel) -> Array[Transform3D]:
 	return out
 
 
-## In interpreted yardsticks (TestCase.yard_work): a machine's pose, its lights
-## and its routine are script, and the bone writes a third of it. Calibrated
-## 2026-09-25, timed in turn with the ruler: ten standing machines a frame
-## 7.5-8.3 shipped, 15.0-16.5 doubled; the bar between.
-const AWAKE_BAR := 11.5
+## In FIGURE yardsticks: ten dogs walking, each posed once (`_dogs_work`). A
+## frame of awake machines is mostly their figures being posed -- script and
+## bone writes in the same mix -- and a ruler of other work drifts with the CPU
+## under it. Measured on CI's three runner CPUs and this laptop, the frame read
+## (2026-09-27, tests alone):
+##   ruler                  laptop  EPYC 9V74  EPYC 7763  EPYC 9V45  spread
+##   interpreted (yard)       7.6      7.2       10.0       10.9      1.51x
+##   rig (bone)               4.9      4.3        5.6        5.7      1.33x
+##   ten dogs walking         2.7      2.5        2.9        2.6      1.19x
+## The interpreted ruler put a 7763 under gate load at 13-14 against a bar of
+## 11.5 that the laptop's doubling reads 15 on: no bar sat between them on
+## every host. With the dogs, alone on four CI CPUs and this laptop, shipped
+## read 2.38-3.04 and doubled 4.85-6.07; the bar sits between, about 1.25x
+## clear of each. (Beside running shards a cost is not judged at all: it is
+## measured again alone, TestCase.yard_lt.) Dogs are figures too, so a cost
+## shared by every figure moves both and is not seen here; what this bar holds
+## is the machines' own share.
+const AWAKE_BAR := 3.8
+
+
+func _dogs() -> Array[FigureModel]:
+	var out: Array[FigureModel] = []
+	for i in 10:
+		var d := FigureModel.create(&"dog")
+		tree.root.add_child(d)
+		d.set_pose(&"walk")
+		out.append(d)
+	return out
 
 
 func test_ten_awake_machines_are_cheap_to_draw() -> void:
 	var sim := F.make_sim(F.flat_world(64))
 	var mobs := _ten(sim)
+	var dogs := _dogs()
 	var frames_of := func(n: int) -> void:
 		for i in n:
 			for mob in mobs:
 				mob.sync_view(1.0 / 60.0, 0.0)
+	var dogs_work := func() -> void:
+		for d in dogs:
+			d.animate(1.0 / 60.0, 1.5)
 	frames_of.call(30)
-	var got := yard_sample(frames_of.bind(10), frames_of.bind(20), yard_work())
+	var got := yard_sample(frames_of.bind(10), frames_of.bind(20), dogs_work)
 	yard_lt(got[0] / 10.0, got[1] / 10.0, got[2], AWAKE_BAR, "a frame of ten awake machines")
 	for mob in mobs:
 		mob.free()
+	for d in dogs:
+		d.free()
 
 
 func test_a_stepped_machine_is_where_an_unstepped_one_is() -> void:

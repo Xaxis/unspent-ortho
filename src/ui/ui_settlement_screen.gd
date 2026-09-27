@@ -278,6 +278,15 @@ func _gives_words(kind: int, wants: bool) -> String:
 	return ", ".join(parts)
 
 
+## A piece that wants hands, in one line: worked, nobody on it, or -- when
+## nobody could be put on it -- why (46_settlements.why_not_staff), so the page
+## never shows a key that does nothing without saying what stops it.
+static func staff_line(p: Structure, why_not: String) -> String:
+	if p.staffed_by >= 0:
+		return "worked"
+	return why_not if why_not != "" else "nobody on it"
+
+
 func _draw_piece(R: Rect2i, x0: int, y: int, p: Structure) -> int:
 	if p == null:
 		return y
@@ -290,9 +299,10 @@ func _draw_piece(R: Rect2i, x0: int, y: int, p: Structure) -> int:
 	UiDraw.text(self, Vector2i(x0 + 256, y - 6), "%d%%" % roundi(p.condition() * 100.0), UiTheme.TEXT_DIM)
 	y += 26
 	if StructureKind.needs_staff(p.kind):
-		UiDraw.text(self, Vector2i(x0, y), "worked" if p.staffed_by >= 0 else "nobody on it",
-			UiTheme.TEXT if p.staffed_by >= 0 else UiTheme.TEXT_DIM)
-		y += UiTheme.LINE
+		var why := String(holdings.call("why_not_staff", _place())) if holdings != null else ""
+		var line := staff_line(p, why)
+		var col := UiTheme.TEXT if p.staffed_by >= 0 else (UiTheme.WARN if why != "" else UiTheme.TEXT_DIM)
+		y += UiTheme.LINE * UiSlate.wrapped(self, Vector2i(x0, y), R.end.x - x0 - UiSlate.SPARE_INSET, line, col)
 	if p.off:
 		UiDraw.text(self, Vector2i(x0, y), "switched off", UiTheme.TEXT_DIM)
 		y += UiTheme.LINE

@@ -116,6 +116,26 @@ static func lands_at(def: RefCounted, route: RefCounted, k: int, j: int) -> floa
 	return fposmod(t - float(route.offset), float(route.lap_minutes()))
 
 
+## The feet that are not yet within `below` of their tread's floor at `minutes`
+## and will be within `lead` world minutes (`below` 0: down in it): `over`'s rows
+## as they will stand, for the shadow a pad throws before it comes (19_colossi,
+## DESIGN 5c).
+static func landing_soon(def: RefCounted, route: RefCounted, minutes: float, lead: float, below: float = 0.0) -> Array:
+	var low := {}
+	for o: Dictionary in over(def, route, minutes):
+		if _low(o, below):
+			low[int(o.leg)] = true
+	var out: Array = []
+	for o: Dictionary in over(def, route, minutes + lead):
+		if _low(o, below) and not low.has(int(o.leg)):
+			out.append(o)
+	return out
+
+
+static func _low(o: Dictionary, below: float) -> bool:
+	return bool(o.planted) or float(o.height) < below
+
+
 ## WHERE A FOOT IS OVER ITS TREAD NOW: for each leg of this walk whose foot
 ## stands on a tread, or is on its way down to one, {leg, tread (the plant's
 ## Vector4), height (the pads over the crater floor, metres), planted (bool),

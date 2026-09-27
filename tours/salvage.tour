@@ -1,0 +1,14 @@
+# TAKING A PIECE APART AT A BENCH (GEAR.md G7): at a bench the making page lists
+# every carried piece that can be taken apart, and what it gives back.
+#   tools/tour.sh tours/salvage.tour --seed=1 --hour=11 --weather=clear:0 --give=mod_capacitor:1,axe_hand:1
+coast calm
+place spawn
+wait 0.6
+near bench
+wait 0.4
+tap craft
+await app:crafting 4
+wait 0.4
+choose salvage_mod_capacitor
+wait 0.4
+shot 01-take-it-apart-at-the-bench with app:crafting
