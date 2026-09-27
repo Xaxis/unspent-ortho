@@ -378,14 +378,16 @@ func _handle(events: Array[Dictionary]) -> void:
 				_rake_marks(e)
 			&"locked":
 				# The lock (FightKit.lock): a standing sheet of drowned light across
-				# the way passed, as tall as a body, for as long as it is shut to
-				# them: ruled lines stacked up it, the lowest the brightest.
+				# the way passed, edge to edge of the opening and as tall as a body,
+				# for as long as it is shut to them: ruled lines stacked up it, the
+				# lowest the brightest, and a faint light in the opening itself.
 				_locked_at = Time.get_ticks_msec() / 1000.0
-				var a: Vector2 = e.a
-				var b: Vector2 = e.b
+				var a: Vector2 = e.from
+				var b: Vector2 = e.to
 				for k in 6:
 					var y := 0.15 + k * 0.3
 					MobFx.line(fx, _at3(a, y), _at3(b, y), Palette.BRINE[5 - mini(k, 3)], FightKit.LOCK_SECONDS)
+				MobFx.glow(fx, _at3((a + b) * 0.5, 0.9), Palette.BRINE[4], maxf(1.2, a.distance_to(b)), FightKit.LOCK_SECONDS)
 				Events.sfx.emit(&"hit_plate", _at3(e.at))
 			&"stripped":
 				# Its working part comes away in the hands, and into the creel.

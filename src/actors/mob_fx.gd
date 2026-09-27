@@ -1201,6 +1201,25 @@ static func warm(parent: Node, at: Vector3) -> void:
 	_free_after(card, 0.25)
 
 
+## A faint light standing at `at` for `seconds`: what a sheet of found light
+## casts on the ground and the faces either side of it (the world is lit, not
+## drawn, docs/LOOK.md). No shadow, and small: a glow, not a lamp.
+static func glow(parent: Node, at: Vector3, col: Color, reach: float, seconds: float) -> void:
+	if not _ok(parent):
+		return
+	var l := OmniLight3D.new()
+	l.light_color = col
+	l.light_energy = GLOW_ENERGY
+	l.omni_range = reach
+	l.shadow_enabled = false
+	parent.add_child(l)
+	l.global_position = at
+	_free_after(l, seconds)
+
+
+const GLOW_ENERGY := 0.6
+
+
 static func _free_after(n: Node, seconds: float) -> void:
 	var tw := n.create_tween()
 	tw.tween_interval(seconds)

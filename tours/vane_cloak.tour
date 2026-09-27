@@ -1,8 +1,13 @@
 # THE VANE CLOAK (GEAR.md §6, G8): a sweeper's trued vane cut into a cloak's
 # shoulders; in a strong wind a dodge the wind is behind carries twice as far
-# (tests/gear/test_vane_cloak.gd measures it). This is what it looks like worn.
+# (tests/gear/test_vane_cloak.gd measures it). This is what it looks like worn:
+# from above, and over the shoulder, where the fan of vanes hangs at the back.
 #   tools/tour.sh tours/vane_cloak.tour --seed=1 --hour=11 --weather=storm:0.8 --fit=cloak_vane
 coast calm
 place spawn
 wait 1.0
 shot 01-the-cloak-worn with worn:cloak_vane
+tap shoulder
+await shoulder 3
+wait 0.6
+shot 02-the-vanes-at-the-back with shoulder,worn:cloak_vane
