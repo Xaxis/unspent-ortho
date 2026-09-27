@@ -475,6 +475,10 @@ extends TestCase
 ## none of them among the six, and the one shared change (recipe water fixed
 ## against tidying) touches only recipes that lay water, which none of the six
 ## do. The five have tests of their own in tests/core/test_world_gen_surface.gd.
+## GEN 34 (2026-09-26) CHANGED NO DIGEST: its content is the middens' slot
+## labyrinth (GenSlots, `relief.slots`) and the salt flats' pans sited deeper in
+## their own ground, neither among the six; the labyrinth's fields are built only
+## where a landscape declares `slots`, so a world of the six never makes one.
 ## RE-ACCEPTED AT GEN 36 (2026-09-26): the works are rows (`GenWorks._work`),
 ## each composed from a stream keyed on the work and its tile, blind to other
 ## works' pieces, and every prop's turn and scale hash from its kind, position
@@ -509,14 +513,14 @@ extends TestCase
 ## only `props` moves. Works kinds over seeds 1, 7, 42, 90210 at 512 all held or
 ## gained one (shelter, cistern, slag, orchard block); seed 7's archive at eye
 ## level stands on its ash as before.
-## RE-ACCEPTED AT GEN 43 (2026-09-27): a landscape's works are
+## RE-ACCEPTED AT GEN 44 (2026-09-27): a landscape's works are
 ## sited one region at a time (GenWorks.place, streamed worldgen S4j1). The five
 ## tile arrays are equal on all five seeds; only `props` moves. Works kinds over
 ## eight seeds at 1840 held within one, but slag, footed off its terrace lips, went
 ## 17 -> 24 of a designed 24. Seed 7 at eye level: the clearcut in its rows, a
 ## trawler beached on the sand, a line of slag heaps on the burning's terraces;
 ## the coast-pinewood border from above as before, with no bare strip.
-## RE-ACCEPTED AT GEN 44 (2026-09-27): the people's things are
+## RE-ACCEPTED AT GEN 45 (2026-09-27): the people's things are
 ## laid in no order that matters (S4j2): ways in keep off the ways in that
 ## outrank them by hash, and the stolen light is ranked, not raced. Only `props`
 ## moves; every prop kind over four seeds at 1840 within 2%. Seed 7's coast

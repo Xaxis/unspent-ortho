@@ -221,23 +221,31 @@ const UNKNOWN := "unknown"
 ##     MIDDEN_BALE, and the caves' stalagmites are DRIPSTONE (they were standing
 ##     stones). Five kinds appended after the last, so no other kind's number
 ##     moves.
-## 42. Pools are decided where they lie (streamed worldgen S4g4): each cell
+## 42. The middens' slot labyrinth (GenSlots, `relief.slots`, its plateau
+##     stood after the borders, GenRelief.lift_slots) and the first look
+##     batch, one GEN: the grey orchards' rows on the bearing, pollards and
+##     trellis, the sprayers berthed; the salt flats' ridges on the fissures
+##     and pump houses at the battery heads; the ruined metropolis' streets,
+##     its block floors (`relief.streets`, GenRelief.flatten_streets) and
+##     frontages; the orchards' grafts drawn as pollards and trellis, and
+##     SPRAYER_GANTRY appended after the land materials (101).
+## 43. Pools are decided where they lie (streamed worldgen S4g4): each cell
 ##     proposes every spot where a whole pool would lie, and a proposal stands
 ##     in two rounds when it outranks its rivals within crowding reach (its
 ##     landscape's order, then its own roll), not by who was laid first. Pools
 ##     move a little on every seed that holds them; counts hold within 2-4%.
-## 43. A landscape's works are sited one region at a time (streamed worldgen
+## 44. A landscape's works are sited one region at a time (streamed worldgen
 ##     S4j1): each region throws its own darts, takes its share of the
 ##     landscape's counts by size, and sees no other region's works. The stolen
 ##     light is the lowest-hashed lit shack, not the first laid. Slag heaps take
 ##     footing off a terrace lip. Works move on every seed; counts hold within
 ##     one per kind over eight seeds, slag rises to its three.
-## 44. The people's things are laid in no order that matters (streamed worldgen
+## 45. The people's things are laid in no order that matters (streamed worldgen
 ##     S4j2): a way in keeps off the ways in that outrank it by hash, not the
 ##     ones laid before it, and the stolen light is the lowest-hashed lit shack
 ##     of the first region in the plan's rank that lit one. Barricades and the
 ##     stolen light move; every kind's count holds within 2%.
-const GEN := 44
+const GEN := 45
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
@@ -315,6 +323,8 @@ const LOOK: Array[String] = [
 	"weather_style",
 	"fore_rows",
 	"geysers",
+	"mist_dusk",
+	"typical_among",
 ]
 
 

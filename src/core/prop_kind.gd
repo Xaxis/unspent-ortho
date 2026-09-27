@@ -153,9 +153,11 @@ enum {
 	SERVER_BLADE,
 	MIDDEN_BALE,
 	DRIPSTONE,
+	# The orchards' sprayer, which rides its row on rails (grey_orchards `_works`).
+	SPRAYER_GANTRY,
 }
 
-const COUNT := 101
+const COUNT := 102
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -177,6 +179,7 @@ const NAMES: PackedStringArray = [
 	"hoodoo", "arch rib", "fallen span", "cistern", "span pylon",
 	"fallen tower",
 	"graft tree", "moss core", "server blade", "midden bale", "dripstone",
+	"sprayer gantry",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
@@ -264,4 +267,7 @@ const SOLID: PackedFloat32Array = [
 	# lying on its side; a blade is thin and knee-high, walked round, not into;
 	# a bale is a heap of sorted stuff; a dripstone is a spike and its skirt.
 	0.35, 0.5, 0.2, 0.6, 0.3,
+	# A sprayer straddles a row on four legs: the one circle stops a body at its
+	# near bogie, and the row under it is walked along.
+	0.5,
 ]

@@ -46,13 +46,16 @@ enum {
 	# A flat slab in the crags with rings and a cup pecked into it by hand, older
 	# than anything anybody here remembers.
 	CUP_RING,
+	# What comes up in ground the plan sprays every evening: puffballs and
+	# spore caps, grey, in clusters, the one thing thriving.
+	SPORE_CAP,
 	# A landscape's own grasses: the first, second and third of its
-	# `BiomeDef.grasses` (GrassSpecies), laid through its own d.decor.
+	# `BiomeDef.grasses` (GrassSpecies), laid through its own d.decor. Last.
 	GRASS_A, GRASS_B, GRASS_C,
 }
 ## The enum above, counted. Adding a kind and forgetting this reads off the end
 ## of `_SPECK` on the first chunk built, so a test asserts the two agree.
-const KINDS := 47
+const KINDS := 48
 ## Litter by kind of work (WorksMap channel): cut, scorch, quarry, bores.
 const WORKS_LITTER: Array = [[SCRAP, BOLT, WIRE], [SCRAP, CINDER, CAN], [SPOIL, BOLT, STONE], [SPOIL, BOLT, SCRAP]]
 ## Share of a tile's items that are litter outside any work, and inside one.
@@ -980,6 +983,20 @@ static func kit(kind: int, c: int, stage: int) -> Kit:
 				k.clump(0.03, -0.02, 0.05, 0.07, 0.03, s, P.EARTH[2].lerp(P.SPRUCE[2], 0.45), 5)
 				k.limb(Vector3(0.1, 0.01, -0.02), Vector3(-0.02, 0.015, -0.06), 0.006, 0.003, 3, weed)
 			k.still()
+		SPORE_CAP:
+			# A cluster of three to five: puffballs on no stalk, and one or two
+			# caps on a thin stem, pale grey dusted paler, one split and smoking.
+			var n := 3 + stage % 3
+			for i in n:
+				var a := float(i) * 2.4 + float(stage)
+				var r := 0.03 + float(i % 2) * 0.03
+				var at := Vector3(cos(a) * r, 0.0, sin(a) * r)
+				var size := 0.022 + float((i * 7 + stage) % 3) * 0.008
+				if i % 3 == 2:
+					k.made.prism(at.x, 0.0, at.z, 0.006, 0.05, 0.006, 4, P.ASH[3])
+					k.made.prism(at.x, 0.05, at.z, size * 1.4, 0.07, 0.0, 6, P.ASH[2].lerp(P.LINEN[3], 0.3), P.ASH[3].lerp(P.LINEN[4], 0.5))
+				else:
+					k.clump(at.x, -0.004, at.z, size, size * 1.1, s + i, P.ASH[3].lerp(P.LINEN[4], 0.35), 6)
 		CUP_RING:
 			# A low slab, and on its top the carving: a cup in the middle and two
 			# or three rings round it, pecked, with a channel running out through

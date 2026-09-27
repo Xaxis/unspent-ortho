@@ -179,8 +179,33 @@ static func rivers(c: GenContext) -> void:
 		if _lay(c, pts, accs, joined, count):
 			count += 1
 	c.mark(&"rivers.lay")
+	_settle_crossings(c)
 	_carve_valleys(c)
 	c.mark(&"rivers.valleys")
+
+
+## WHERE TWO RIVERS CROSS, the one laid later can take the shared tiles below
+## the other's bed (`_wet` keeps the lower), and the first then climbs back out
+## of the crossing. Each line is walked from its source and its bed held at or
+## under every bed behind it, until nothing moves.
+static func _settle_crossings(c: GenContext) -> void:
+	var size := c.size
+	var river_e := c.river_e
+	var elev := c.elev
+	for pass_n in 4:
+		var moved := false
+		for line in c.rivers:
+			var running := 1e9
+			for p in line:
+				var i := int(p.y) * size + int(p.x)
+				if river_e[i] > running:
+					river_e[i] = running
+					elev[i] = running
+					moved = true
+				else:
+					running = river_e[i]
+		if not moved:
+			return
 
 
 ## Rasterise one river. Returns false if it laid nothing useful.
@@ -190,6 +215,8 @@ static func _lay(c: GenContext, pts: PackedVector2Array, accs: PackedFloat32Arra
 	var water := c.water
 	var elev := c.elev
 	var river_e := c.river_e
+	var lift := c.slot_lift
+	var lifted := not lift.is_empty()
 	# Chaikin twice: corners of the drainage lattice become bends.
 	for it in 2:
 		var sm := PackedVector2Array()
@@ -271,7 +298,7 @@ static func _lay(c: GenContext, pts: PackedVector2Array, accs: PackedFloat32Arra
 		if joined and j > 2 and water[i] == 1:
 			end = j
 			break
-		running = maxf(1.0, minf(running, elev[i] - 0.55))
+		running = maxf(1.0, minf(running, elev[i] - (lift[i] if lifted else 0.0) - 0.55))
 		beds[j] = running
 	if end < 4:
 		return false

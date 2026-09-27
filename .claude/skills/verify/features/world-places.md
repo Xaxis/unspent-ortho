@@ -2,7 +2,7 @@
 
 Realms and portals, the rooms behind a house's door, landmarks and caches, regional holds.
 
-<!-- covers: system:20_realms, system:21_doors, system:22_landmarks, system:23_hush, system:24_holds -->
+<!-- covers: system:20_realms, system:21_doors, system:22_landmarks, system:23_hush, system:23_ruins, system:24_holds -->
 
 ## Sub-features
 
@@ -10,6 +10,7 @@ Realms and portals, the rooms behind a house's door, landmarks and caches, regio
 - 23_hush: `src/systems/23_hush.gd` with `src/core/hush_sites.gd`, the crags' haunting (docs/HUSH.md), on their own stone circles only (`BiomeDef.hush`): `near hush_ring` stands a tour in the nearest, reached by `tools/tour.sh tours/hush.tour --seed=7 --hour=11 --weather=clear:0`; rules in `tools/test.sh test_hush_sites`, which also holds a look with no hush landscape in reach to walking no props (HushSites.hush_in, a yardstick bar). The hush (sound stops, the air holds; `--hush=always` stages it): `tools/tour.sh tours/hush-quiet.tour --seed=7 --hour=11 --weather=fog:0.6:wind=0.9 --hush=always`, rules in `tools/test.sh test_hush`. The stones that stand differently when looked back at (turned only while off screen, their chunk's props rebaked on a worker): `tools/tour.sh tours/hush-stones.tour --seed=7 --hour=11 --weather=clear:0`, frames 01/02 from above and 03/04 over the shoulder; rules in `tools/test.sh test_hush,test_props_rebake`. Nobody's lights (fog nights; `await nobodys_light`, `near nobodys_light` turns toward one): `tools/tour.sh tours/hush-lights.tour --seed=7 --hour=23 --weather=fog:0.7`. The rings answering a light at night (once a night; `await ring_answering`, `near ring_answer`): `tools/tour.sh tours/hush-answer.tour --seed=7 --hour=23 --weather=clear:0`.
 - 21_doors: `src/systems/21_doors.gd`, reached by `tools/tour.sh tours/house.tour --seed=4 --hour=11 --weather=clear:0`: a coast house's door, the room behind it (a pocket world, `src/core/interior/`, `src/models/interior/`), both views, and out again.
 - 22_landmarks: `src/systems/22_landmarks.gd`, reached by `tools/tour.sh tours/landmarks.tour`.
+- 23_ruins: `src/systems/23_ruins.gd`: every standing ruin's walls stop a body (`RuinWalls`, a croft's walls and a city tower's stump), set for the whole island and again when anything is taken. Checked by `tools/test.sh test_ruin_walls`.
 - 24_holds: `src/systems/24_holds.gd`, reached by `tools/tour.sh tours/region.tour`.
 
 ## How to reach it

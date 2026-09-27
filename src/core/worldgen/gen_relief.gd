@@ -18,7 +18,7 @@ static func run(c: GenContext) -> void:
 	var size := c.size
 	var s := c.s
 	var n := c.n
-	var p := GenCountries.params(c, [&"base", &"hills", &"ridge", &"near", &"terrace", &"cliff", &"shelf", &"shelf_var"])
+	var p := GenCountries.params(c, [&"base", &"hills", &"ridge", &"near", &"terrace", &"cliff", &"shelf", &"shelf_var", &"slots"])
 	c.mark(&"relief.params")
 	const F := GenFields.FIELD
 	const U := GenFields.UP
@@ -45,6 +45,7 @@ static func run(c: GenContext) -> void:
 		# How tall a shelf's cliff stands, wandering across a range of crags.
 		[F, GenFields.noise(s, 309, 1.0 / 70.0, 2), 8],
 		[U, p[&"shelf"], cw, step], [U, p[&"shelf_var"], cw, step],
+		[U, _slotted_soft(c), cw, step],
 	])
 	c.mark(&"relief.batch")
 	var base := fl[0]
@@ -68,6 +69,13 @@ static func run(c: GenContext) -> void:
 	var shelfn := fl[16]
 	var shelf_amp := fl[17]
 	var shelf_var := fl[18]
+	# Where a slot labyrinth may stand (`slots`): the plateau itself is stood up
+	# once every tile has its landscape (`lift_slots`); here, only the terraces
+	# are kept off the ground it will stand on.
+	var slot_share := fl[19]
+	var slotted := false
+	for v: float in p[&"slots"]:
+		slotted = slotted or v > 0.01
 	c.rim_warp = rim_warp
 	var land := c.land
 	var inland := c.inland
@@ -99,6 +107,13 @@ static func run(c: GenContext) -> void:
 				# whatever its hills happen to carry (`BiomeDef.relief.near`).
 				e += detail[i] * near_amp[i]
 				var t := terrace[i]
+				# SLOTS: how firmly a slot labyrinth holds this tile. A
+				# neighbour's terraces are kept off it: their two-level risers
+				# would stair its floors into pieces no body can walk between.
+				var hold := 0.0
+				if slotted and slot_share[i] > 0.01:
+					hold = smoothstep(0.04, 0.16, slot_share[i])
+					t *= 1.0 - hold
 				if t > 0.01:
 					# Plateaus in steps of two levels with short steep risers: scarps.
 					# A fixed step climbs tall land as a stair of equal treads, so
@@ -144,6 +159,118 @@ static func run(c: GenContext) -> void:
 	c.elev = elev
 
 
+## Stage 4b, SLOT CANYONS (`BiomeDef.relief.slots`, GenSlots): once every tile has
+## its landscape, the plateau stands its declared height over the labyrinth's
+## floors on the land of a landscape that asks for one, and nowhere else. Laid
+## after the borders, because a border and a climate read height and a
+## labyrinth's walls are not a hill; and only on its own tiles, because a maze
+## leaking over a border cuts the neighbour's ground to pieces. Let down across
+## the last of its blend to the border, and in the last tiles to the sea.
+## Stage 4c, A CITY'S FLOOR (`BiomeDef.relief.streets`, the street grid's
+## spacing in tiles): where a landscape rules streets on the survey bearing
+## (its works, `_streets`), its ground is laid as the city laid it, one level to
+## a block, and never the organic lips of the terraces cutting across a road.
+## A block here is centred on a street CROSSING, so the streets run level
+## through the middle of their block and the steps between one block's level
+## and the next fall behind the frontages, back to back, where the kerbs and
+## the stairs of a city on a hill are. Each block stands at its own land
+## smoothed over some thirty tiles, so the city still climbs where the land
+## does. After the borders are drawn and only on the landscape's own tiles, let
+## down across the last of its blend and to the sea.
+static func flatten_streets(c: GenContext) -> void:
+	var size := c.size
+	var w := c.w
+	var grid := PackedFloat32Array()
+	grid.resize(c.types)
+	var any := false
+	for cc: int in c.land_types:
+		grid[cc] = c.defs[cc].param(&"streets")
+		any = any or grid[cc] > 0.0
+	if not any:
+		return
+	var elev := c.elev
+	var country := w.country
+	var land := c.land
+	var blend := w.blend
+	var inland := c.inland
+	var broad := GenFields.smooth(elev, size, FLOOR_SMOOTH)
+	var d := Vector2.from_angle(GenWorks.bearing(c.s))
+	var nrm := Vector2(-d.y, d.x)
+	var flat := GenFields.snapshot(elev) as PackedFloat32Array
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			for x in size:
+				var i := y * size + x
+				if land[i] == 0:
+					continue
+				var b := grid[country[i]]
+				if b <= 0.0:
+					continue
+				var p := Vector2(x + 0.5, y + 0.5)
+				# The block's middle: the nearest street crossing.
+				var u := roundf(p.dot(d) / b) * b
+				var v := roundf(p.dot(nrm) / b) * b
+				var mid := d * u + nrm * v
+				var mx := clampi(floori(mid.x), 0, size - 1)
+				var my := clampi(floori(mid.y), 0, size - 1)
+				var level := floorf(broad[my * size + mx]) + 0.5
+				var hold := (1.0 - smoothstep(0.3, 0.5, blend[i])) * smoothstep(2.0, 7.0, inland[i])
+				flat[i] = maxf(1.0, lerpf(elev[i], level, hold))
+	)
+	c.elev = flat
+
+
+## Halvings the ground under a labyrinth is smoothed by before it is levelled:
+## 5 is about thirty tiles.
+const FLOOR_SMOOTH := 5
+
+
+static func lift_slots(c: GenContext) -> void:
+	var size := c.size
+	var n := c.n
+	var w := c.w
+	var height := PackedFloat32Array()
+	height.resize(c.types)
+	var any := false
+	for cc: int in c.land_types:
+		height[cc] = c.defs[cc].param(&"slots")
+		any = any or height[cc] > 0.0
+	if not any:
+		return
+	var amp := PackedFloat32Array()
+	amp.resize(n)
+	var country := w.country
+	var land := c.land
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for i in range(y0 * size, y1 * size):
+			if land[i] != 0 and height[country[i]] > 0.0:
+				amp[i] = 1.0
+	)
+	var up := GenSlots.plan(c.s, size).field(c.s, size, amp)
+	var lift := PackedFloat32Array()
+	lift.resize(n)
+	var elev := c.elev
+	var blend := w.blend
+	var inland := c.inland
+	# THE FLOORS LIE LEVEL. Every small rise under a slot is a one-level step,
+	# and seen from above a floor of them is drawn as a survey's contour rings.
+	# The ground under the labyrinth is its own land smoothed over some thirty
+	# tiles and laid on the level it stands at, so a floor runs flat for a long
+	# way and steps where the land really falls.
+	var broad := GenFields.smooth(elev, size, FLOOR_SMOOTH)
+	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		for i in range(y0 * size, y1 * size):
+			if amp[i] <= 0.0:
+				continue
+			var hold := (1.0 - smoothstep(0.3, 0.5, blend[i])) * smoothstep(1.5, 6.0, inland[i])
+			var ground := lerpf(elev[i], floorf(broad[i]) + 0.5, hold)
+			var by := height[country[i]] * up[i] * hold
+			lift[i] = by
+			elev[i] = minf(ground + by, MAX_LEVEL + 0.99)
+	)
+	c.slot_lift = lift
+
+
 ## Radius in tiles of the caldera rim of the type that has one.
 static func crater_radius(c: GenContext) -> float:
 	if c.caldera_type < 0:
@@ -158,6 +285,19 @@ static func _caldera_soft(c: GenContext) -> PackedFloat32Array:
 	var empty := PackedFloat32Array()
 	empty.resize(c.cw * c.cw)
 	return empty
+
+
+## Where a slot labyrinth may stand: every type that asks for one.
+static func _slotted_soft(c: GenContext) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(c.cw * c.cw)
+	for cc: int in c.land_types:
+		if c.defs[cc].param(&"slots") <= 0.0:
+			continue
+		var s := c.soft[cc]
+		for k in out.size():
+			out[k] += s[k]
+	return out
 
 
 ## Where dunes may ridge up behind the bays: every type that makes them.

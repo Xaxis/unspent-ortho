@@ -116,6 +116,91 @@ static func crowd_left(was_left: bool, fit_right: float, fit_left: float) -> boo
 	return fit_left > fit_right + SIDE_SWITCH
 
 
+## DOWN A CORRIDOR THE VIEW LOOKS ALONG IT. In a slot canyon four tiles wide
+## (the middens, GEN 34) a player facing a side wall had the eye jammed against
+## the wall behind them and a frame of coat (slots-floor-1, 2026-09-26): the
+## crowd rule steps the eye aside, but there is no aside to step to. So the
+## space round the head is probed (`AXIS_PROBES` headings, `AXIS_REACH` far):
+## where it is long both ways along one line and narrow across it, the view is
+## turned toward whichever end of that line it is nearer, by `AXIS_SHARE` of the
+## way -- so the mouse still turns it, only less -- and the eye keeps near the
+## middle (`AXIS_SIDE` of the shoulder offset). Past `AXIS_KEEP` degrees off the
+## end it holds, the other end takes over, so it never flips at the square.
+const AXIS_PROBES := 12
+const AXIS_REACH := 12.0
+## A way narrower than this across (metres, wall to wall through the head) is a
+## corridor, fully by AXIS_WIDE - AXIS_EASE; and it must be AXIS_LONG times
+## longer along than across. Held fully to 6 m because the labyrinth's floors
+## are 4.4 to 6.2 wide with a median of 6 (GenSlots); past 7 m is ground to turn
+## about on.
+const AXIS_WIDE := 7.0
+const AXIS_EASE := 1.0
+const AXIS_LONG := 2.2
+const AXIS_SHARE := 0.75
+const AXIS_SIDE := 0.4
+const AXIS_KEEP := 115.0
+## Seconds between probes, and the rate the bias eases at.
+const AXIS_EVERY := 0.15
+const AXIS_RATE := 4.0
+
+
+## The corridor round a point, from the clear distance at each of AXIS_PROBES
+## headings (heading k is Vector2.from_angle(k * TAU / AXIS_PROBES) on the
+## ground): (its axis as a ground direction, how much it is a corridor 0..1).
+static func corridor(clear: PackedFloat32Array) -> Array:
+	var n := clear.size()
+	var half := n / 2
+	var best := 0
+	var best_l := -1.0
+	for k in half:
+		var l := clear[k] + clear[k + half]
+		if l > best_l:
+			best_l = l
+			best = k
+	var across := (best + half / 2) % half
+	var w := clear[across] + clear[across + half]
+	if w <= 0.01:
+		return [Vector2.from_angle(best * TAU / n), 0.0]
+	var narrow := smooth((AXIS_WIDE - w) / AXIS_EASE)
+	var long := smooth((best_l / w - 1.5) / (AXIS_LONG - 1.5))
+	return [Vector2.from_angle(best * TAU / n), narrow * long]
+
+
+## Height over the feet the corridor round a body is probed at: CLEAR over the
+## eye, so what stops the probe (`clear_along` keeps CLEAR off the land) is land
+## taller than the eye. A bench at the waist is furniture, not a corridor's wall;
+## probed at the head, a floor nine wide with 1.3 m benches along it was held.
+const AXIS_AT := EYE_UP + CLEAR
+
+
+## The corridor round a body standing at `feet`: the clear distance at each of
+## AXIS_PROBES headings, AXIS_REACH out at AXIS_AT, asked of `room(from, to)`
+## (0..1 of the way clear), handed to `corridor`.
+static func corridor_round(feet: Vector3, room: Callable) -> Array:
+	var at := feet + Vector3(0.0, AXIS_AT, 0.0)
+	var clear := PackedFloat32Array()
+	for k in AXIS_PROBES:
+		var d := Vector2.from_angle(k * TAU / AXIS_PROBES)
+		clear.append(float(room.call(at, at + Vector3(d.x, 0.0, d.y) * AXIS_REACH)) * AXIS_REACH)
+	return corridor(clear)
+
+
+## The yaw the view is turned by (degrees) for a view at `yaw_deg` in a corridor
+## along `axis` of strength `share`, and which end it turns to (1 along `axis`,
+## -1 against): the end it was turned to, unless the view is past AXIS_KEEP
+## from it.
+static func along(yaw_deg: float, axis: Vector2, share: float, was_end: int) -> Vector2:
+	if share <= 0.0 or axis == Vector2.ZERO:
+		return Vector2(0.0, was_end)
+	var end := was_end
+	if end == 0:
+		# A fresh corridor: the nearer end.
+		end = 1 if absf(turn(yaw_deg, yaw_along(axis))) <= 90.0 else -1
+	elif absf(turn(yaw_deg, yaw_along(axis * end))) > AXIS_KEEP:
+		end = -end
+	return Vector2(turn(yaw_deg, yaw_along(axis * end)) * AXIS_SHARE * share, end)
+
+
 ## Degrees a second the view comes back down to `PITCH_LEAST` once nothing
 ## holds the gaze any more, eased by how far it has to come: never a snap.
 const GAZE_RETURN := 25.0
