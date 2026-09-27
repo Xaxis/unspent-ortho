@@ -264,16 +264,8 @@ static func _streets(L: Object) -> void:
 	# and the bales it sorted the rubble into, in a row along the bearing.
 	for n in GenWorks._n(L, 1.0):
 		var s := GenWorks._site(L, 5, 2, [], 40.0, 700, 0.4)
-		if s.x < 0:
-			continue
-		var at := Vector2(s) + Vector2(0.5, 0.5)
-		if GenWorks._put(L, PropKind.DEMOLITION_GANTRY, at, d.angle(), -99, 1.0) == null:
-			continue
-		GenWorks._record(c, &"demolition_face", at, d, Vector2(6.0, 4.0))
-		# The bales in a row beside it, on whichever side of the cut has room.
-		for side: float in [1.0, -1.0, 2.0, -2.0]:
-			if GenWorks._run(L, PropKind.SORTED_BALE, at + nrm * 3.0 * side - d * 3.0, d, 4, 1.8, -99, 0.1).size() > 0:
-				break
+		if s.x >= 0:
+			GenWorks._work(L, &"_demolition_face", Vector2(s) + Vector2(0.5, 0.5))
 	for rect: Rect2 in L.rects:
 		var corners := [rect.position, rect.position + Vector2(rect.size.x, 0.0), rect.end, rect.position + Vector2(0.0, rect.size.y)]
 		var lo := Vector2(INF, INF)
@@ -326,3 +318,18 @@ static func _streets(L: Object) -> void:
 						continue
 					if c.w.in_bounds(floori(x.x), floori(x.y)) and L.home(floori(x.x), floori(x.y)):
 						GenWorks._put(L, PropKind.DECK_SPAN, x, across.angle(), -99, 0.4)
+
+
+## The plan taking the city down at `at`: a gantry over the cut and the bales it
+## sorted the rubble into, in a row along the bearing on whichever side has room.
+## A row of its own (`GenWorks._work`), so a region lays it alone as in the world.
+static func _demolition_face(L: Object, at: Vector2, _a: Array) -> bool:
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	if GenWorks._put(L, PropKind.DEMOLITION_GANTRY, at, d.angle(), -99, 1.0) == null:
+		return false
+	GenWorks._record(L.c, &"demolition_face", at, d, Vector2(6.0, 4.0))
+	for side: float in [1.0, -1.0, 2.0, -2.0]:
+		if GenWorks._run(L, PropKind.SORTED_BALE, at + nrm * 3.0 * side - d * 3.0, d, 4, 1.8, -99, 0.1).size() > 0:
+			break
+	return true
