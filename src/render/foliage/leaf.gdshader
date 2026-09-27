@@ -303,15 +303,14 @@ void fragment() {
 	}
 	vec2 px = matter_px(world_pos);
 	// A fight is never hidden: stipple, never a fade.
-	float cut = crown_cut(world_pos, sway_w);
-	// And, for a close eye, every card in the line of sight to a body.
-	if (PROJECTION_MATRIX[3][3] < 0.5) {
-		vec3 eye = INV_VIEW_MATRIX[3].xyz;
-		float close = sight_close(eye, crown_clear[0]);
-		if (close > 0.0) {
-			for (int i = 0; i < CROWN_CLEAR; i++) {
-				cut = max(cut, sight_cone(world_pos, eye, crown_clear[i]) * close);
-			}
+	// For a close eye, every card in the line of sight to a body, and that cone
+	// replaces the ring round the body (world.gdshader says why).
+	vec3 eye = INV_VIEW_MATRIX[3].xyz;
+	float close = PROJECTION_MATRIX[3][3] < 0.5 ? sight_close(eye, crown_clear[0]) : 0.0;
+	float cut = crown_cut(world_pos, sway_w) * (1.0 - close);
+	if (close > 0.0) {
+		for (int i = 0; i < CROWN_CLEAR; i++) {
+			cut = max(cut, sight_cone(world_pos, eye, crown_clear[i]) * close);
 		}
 	}
 	if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
