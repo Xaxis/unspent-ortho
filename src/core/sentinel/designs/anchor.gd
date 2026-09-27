@@ -55,6 +55,7 @@ static func make() -> SentinelDef:
 	# closes. When the works row lays a ropeway with its own bolt rigs,
 	# those are the ones to name.
 	d.feeds = [PropKind.SPAN_PYLON]
+	d.come_round = "The tail comes round: the counterweight swings across whichever side you keep to."
 	d.drops = &"sentinel_anchor"
 	d.core = &"anchor_core"
 	d.hulk = PropKind.WRECKAGE

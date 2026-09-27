@@ -75,6 +75,10 @@ var removed := false
 # charge
 var bearing := Vector2.RIGHT
 var charging := false
+## A keeper's come-round (Sentinels.come_round_of): the short-told sweep at a body
+## kept at its flank, and since when that body has been there (sim ms; -1 none).
+var come_round: Blow = null
+var flank_since := -1.0
 var run_until := 0.0
 var pause_until := 0.0
 var run_from := Vector2.ZERO

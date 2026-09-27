@@ -45,6 +45,7 @@ static func make() -> SentinelDef:
 	# What the demolition face puts in its reach: the frame over the cut, the
 	# bales it sorts into, the conveyor run and the kept half's lamps.
 	d.feeds = [PropKind.DEMOLITION_GANTRY, PropKind.SORTED_BALE, PropKind.CONVEYOR, PropKind.LAMP]
+	d.come_round = "The grab swings on its cable across the side you keep to."
 	d.drops = &"sentinel_unbuilder"
 	d.core = &"unbuilder_core"
 	d.hulk = PropKind.WRECKAGE

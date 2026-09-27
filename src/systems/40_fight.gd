@@ -443,6 +443,9 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"windup":
 				var m: MobState = e.mob
 				Events.sfx.emit(&"windup", _at3(m.pos))
+				# A keeper's come-round (Brains._come_round), for the tour's claim.
+				if bool(e.get("come_round", false)):
+					_came_round_at = Time.get_ticks_msec() / 1000.0
 				if m.blow != null and m.node is Mob:
 					# Over the WORKING PART, flicked down at it. The tell has to
 					# send the eye to the side that opens — the side that hurts
@@ -555,6 +558,7 @@ var _raked_at := -INF
 var _grip_failed_at := -INF
 var _turned_at := -INF
 var _cabled_at := -INF
+var _came_round_at := -INF
 var _locked_at := -INF
 var _stripped_at := -INF
 
@@ -572,6 +576,8 @@ func tour_seen(what: StringName) -> bool:
 			return now - _turned_at < 0.4
 		&"cabled":
 			return now - _cabled_at < 0.6
+		&"came_round":
+			return now - _came_round_at < 0.4
 		&"locked":
 			return now - _locked_at < FightKit.LOCK_SECONDS
 		&"stripped":
