@@ -117,6 +117,9 @@ var road: PackedByteArray
 var ramp: PackedByteArray
 ## Ground override + 1 for special sites (tips, stone circles), 0 = none.
 var site_ground: PackedByteArray
+## The plan's rows for `site_ground`: (x, y, radius, ground, country) per patch,
+## in the order laid (`GenScatter.patch_square`). Doubles, as the radius is.
+var site_patches: PackedFloat64Array = PackedFloat64Array()
 
 # --- shore detail ---
 ## Exact 4-neighbour steps from the sea, capped (see GenSurface).

@@ -144,7 +144,12 @@ static func window(c: GenContext, rules: Dictionary, core: Rect2i, margin: int) 
 	var blend: PackedFloat32Array = w.blend if whole else _cut_f(w.blend, size, ox, oy, side)
 	var water: PackedByteArray = c.water if whole else _cut_b(c.water, size, ox, oy, side)
 	var road: PackedByteArray = c.road if whole else _cut_b(c.road, size, ox, oy, side)
-	var site_ground: PackedByteArray = c.site_ground if whole else _cut_b(c.site_ground, size, ox, oy, side)
+	var site_ground: PackedByteArray = c.site_ground
+	if not whole:
+		site_ground = PackedByteArray()
+		site_ground.resize(n)
+		GenScatter.patch_square(c.site_patches, site_ground, country, _cut_b(c.land, size, ox, oy, side), water, road,
+			_cut_b(c.village, size, ox, oy, side), side, Vector2i(ox, oy), size)
 	var pool_ground: PackedByteArray = c.pool_ground if whole else _cut_b(c.pool_ground, size, ox, oy, side)
 	var convex: PackedFloat32Array = c.convex if whole else _cut_f(c.convex, size, ox, oy, side)
 	var inland: PackedFloat32Array = c.inland if whole else _cut_f(c.inland, size, ox, oy, side)
