@@ -89,33 +89,33 @@ func test_a_chunk_with_nothing_over_it_is_unchanged() -> void:
 	eq((far[Mesh.ARRAY_VERTEX] as PackedVector3Array), (bare[Mesh.ARRAY_VERTEX] as PackedVector3Array), "the same vertices")
 
 
-## THE COST: a slab over a third of a chunk, against the same chunk bare. Best
-## of five interleaved. Measured +77% to +101% (13 to 19 ms, on the worker):
-## an underside, a rim and a top are a second land over that third, drawn by
-## the same kind of GDScript. The bound holds it there; a realm roofed over most
-## of its chunks (DESIGN_ABOVE S3) is where it must come down.
+## THE COST: a slab over a third of a chunk, in BARE CHUNKS -- the same chunk
+## built without it is the ruler (TestCase.yard_sample), the same kind of work
+## on any CPU, and yard_lt runs it again alone when a shard meets it (beside two
+## shards on CI it read 2.83 against an alone 1.74-1.90). An underside, a rim
+## and a top are a second land over that third, drawn by the same GDScript.
+## Calibrated 2026-09-27 alone on this laptop (three runs): 1.74-1.90 shipped,
+## 3.48-3.74 doubled; the bar between.
+const SLAB_BAR := 2.6
 func test_a_spanned_chunk_costs_little_more() -> void:
 	var bare_w := F.flat_world(64, Ground.GRASS, Country.COAST, GROUND)
 	var roof_w := _roofed()
 	var bare_m := TerrainMesher.new(bare_w)
 	var roof_m := TerrainMesher.new(roof_w)
-	var bare := 1 << 40
-	var roofed := 1 << 40
-	for i in 5:
-		var t0 := Time.get_ticks_usec()
-		bare_m.build_arrays(0, 0)
-		bare = mini(bare, Time.get_ticks_usec() - t0)
-		t0 = Time.get_ticks_usec()
-		roof_m.build_arrays(0, 0)
-		roofed = mini(roofed, Time.get_ticks_usec() - t0)
-	print("span cost: chunk bare %d us, with a 12x10 slab %d us (+%.0f%%)" % [bare, roofed, 100.0 * (roofed - bare) / bare])
-	lt(float(roofed), float(bare) * 2.2, "a slab costs its chunk no more than a second land")
+	var got := yard_sample(func() -> void: roof_m.build_arrays(0, 0),
+		func() -> void:
+			roof_m.build_arrays(0, 0)
+			roof_m.build_arrays(0, 0),
+		func() -> void: bare_m.build_arrays(0, 0), 5, 2)
+	yard_lt(got[0], got[1], got[2], SLAB_BAR, "a chunk with a 12x10 slab, in bare chunks")
 
 
 ## A HALL'S CHUNK COSTS LITTLE (docs/ABOVE.md S3's target): a chunk wholly under
 ## one level mass is drawn as one top, underside and section, not sampled
-## point by point. Measured +13% (10.1 to 11.5 ms, best of five); it was +204%
-## before, and +35% with only the flat stretches merged.
+## point by point; it was 3x bare before, and 1.35x with only the flat stretches
+## merged. In bare chunks as the slab is, calibrated 2026-09-27 alone on this
+## laptop (three runs): 1.19-1.27 shipped, 2.38-2.83 doubled; the bar between.
+const HALL_BAR := 1.75
 func test_a_chunk_wholly_under_a_roof_costs_little_more() -> void:
 	var bare_w := F.flat_world(96, Ground.GRASS, Country.COAST, GROUND)
 	var roof_w := F.flat_world(96, Ground.GRASS, Country.COAST, GROUND)
@@ -124,17 +124,12 @@ func test_a_chunk_wholly_under_a_roof_costs_little_more() -> void:
 			roof_w.set_overhead(x, y, UNDER, OVER)
 	var bm := TerrainMesher.new(bare_w)
 	var rm := TerrainMesher.new(roof_w)
-	var bare := 1 << 40
-	var roofed := 1 << 40
-	for i in 5:
-		var t0 := Time.get_ticks_usec()
-		bm.build_arrays(1, 1)
-		bare = mini(bare, Time.get_ticks_usec() - t0)
-		t0 = Time.get_ticks_usec()
-		rm.build_arrays(1, 1)
-		roofed = mini(roofed, Time.get_ticks_usec() - t0)
-	print("span cost: a chunk wholly roofed %d us, bare %d us (+%.0f%%)" % [roofed, bare, 100.0 * (roofed - bare) / bare])
-	lt(float(roofed), float(bare) * 1.3, "a roofed hall's chunk costs under a third more than bare")
+	var got := yard_sample(func() -> void: rm.build_arrays(1, 1),
+		func() -> void:
+			rm.build_arrays(1, 1)
+			rm.build_arrays(1, 1),
+		func() -> void: bm.build_arrays(1, 1), 5, 2)
+	yard_lt(got[0], got[1], got[2], HALL_BAR, "a chunk wholly under a roof, in bare chunks")
 
 
 ## THE TOP GROWS A LITTLE (Decor, SPAN_DECOR): pieces of the landscape's own

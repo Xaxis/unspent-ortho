@@ -226,6 +226,13 @@
   },
   {
    "kind": "system",
+   "label": "43_above",
+   "entry": "src/systems/43_above.gd",
+   "reach": "tools/tour.sh tours/cave-roofs.tour --seed=7 --realm=underground --hour=12",
+   "area": "world-look"
+  },
+  {
+   "kind": "system",
    "label": "44_crafts",
    "entry": "src/systems/44_crafts.gd",
    "reach": "tools/tour.sh tours/crafts.tour",
