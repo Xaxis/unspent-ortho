@@ -8,7 +8,7 @@ near deep_under_roof
 wait 1.5
 shot 01-deep-hall-from-above
 tap shoulder
-await shoulder 3
+await shoulder 20
 wait 1.0
 shot 02-heading-0 with shoulder
 mouse 640,0 0.6
