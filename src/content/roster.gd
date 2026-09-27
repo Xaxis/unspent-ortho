@@ -598,6 +598,21 @@ const DEFS := {
 		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
 		"where": {"hours": [0, 0]},
 	},
+	# The Limestone Caves' drip-warden: a riser mast on three short limed legs,
+	# the drip crown at its top. Squat, because it stands under a roof: 4.5 tall,
+	# under most of its halls' headroom (tests/sentinel/test_keeper_headroom.gd).
+	# It works by ear, as the cave's hauler does, and winds up slow. The body
+	# only: its design and its sealing come after.
+	&"sentinel.limestone_caves": {
+		"model": &"sentinel_drip_warden", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
+		"part": &"back", "sentinel": &"drip_warden", "breaks": WOOD,
+		"pace": 2.8, "dash": 2.8, "quick": 280, "radius": 1.5, "height": 4.5, "life": 300,
+		"sees": 5, "hears": 14, "racket": 22, "reach": 3, "ready": 3, "forget": 24, "tether": 28, "safe": 14,
+		"nerve": 100, "invuln": 500, "through": true, "disposition": &"wary",
+		"bite": {"swing": [820, 160, 900, 1000], "reach": 2.2, "width": 2.4, "dmg": 4, "knock": 10.0, "knock_ms": 320},
+		"takes": 150.0, "drops": 0, "linger": 90.0, "chance": 0,
+		"where": {"hours": [0, 0]},
+	},
 	# --- The Mesas' own watcher (docs/LANDSCAPES.md) ------------------------
 	# A wide slow frame flown on a line off a winch beside a span pylon,
 	# circling over the canyon and filing. The body the fight knows is the WINCH

@@ -135,6 +135,10 @@ func test_every_name_a_tour_asks_for_exists() -> void:
 			if parts.is_empty() or parts[0].begins_with("#"):
 				continue
 			match parts[0]:
+				"near" when parts.size() > 1 and parts[1].begins_with("mob:"):
+					# `near mob:KIND DIST`: a roster body, and how far off it.
+					check(parts.size() == 3 and parts[2].is_valid_float(), "%s line %d: `near mob:KIND DIST` takes a body and a distance" % [f, n])
+					check(Roster.DEFS.has(Roster.resolve(parts[1].substr(4))), "%s line %d: no roster body %s" % [f, n, parts[1].substr(4)])
 				"near":
 					check(parts.size() == 2, "%s line %d: `near` takes one comma-joined list; write a space as _" % [f, n])
 					for k: String in parts[1].split(",", false):

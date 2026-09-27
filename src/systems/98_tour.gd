@@ -20,6 +20,11 @@ extends GameSystem
 ##   near KIND[,KIND]       stand beside the nearest prop of a kind, facing it; a
 ##                          name that is no prop kind is asked of the systems'
 ##                          `tour_place` (`near colossus_foot`: under an ankle)
+##   near mob:KIND DIST     stand DIST tiles off the nearest live body of that roster
+##                          kind, on ground its own move reaches (FightSim.route_steps),
+##                          facing it: a frame of a keeper whole at eye level, or
+##                          one it can come for; fails when no such body is about
+##                          or no such ground is
 ##   ground KIND[,KIND]     stand on the nearest tile of a ground (Ground.NAMES, a
 ##                          space written as _), so a tour that needs heather or
 ##                          moss under it says so instead of pinning a coordinate
@@ -354,6 +359,8 @@ func _run() -> void:
 				else:
 					var p := parts[1].split(",")
 					_teleport(Vector2(p[0].to_float(), p[1].to_float()))
+			"near" when parts[1].begins_with("mob:"):
+				ok = await _stand_off_mob(parts[1].substr(4), parts[2].to_float() if parts.size() > 2 else 5.0)
 			"near":
 				# Stand beside the nearest prop of a kind and face it, so a tour
 				# proves work on real props instead of coordinates a new world moves.
@@ -1089,6 +1096,47 @@ func _stand_back(kinds: String, dist: float) -> bool:
 		_backed_from = target
 		return true
 	printerr("tour %s: no open ground %.1f tiles out from the %s at %s" % [_name, dist, kinds, target.pos])
+	return false
+
+
+## `near mob:KIND DIST`: DIST off the nearest live body of KIND, on its level.
+func _stand_off_mob(token: String, dist: float) -> bool:
+	var id := Roster.resolve(token)
+	var sim: FightSim = game.player.sim
+	var best: MobState = null
+	if sim != null:
+		for m: MobState in sim.mobs:
+			if m.alive and not m.removed and m.kind == id:
+				if best == null or m.pos.distance_to(sim.hero.pos) < best.pos.distance_to(sim.hero.pos):
+					best = m
+	if best == null:
+		printerr("tour %s: no %s about to stand off" % [_name, token])
+		return false
+	var away := (game.player.pos - best.pos).normalized()
+	if away.length() < 0.5:
+		away = Vector2(0, 1)
+	# On its own level first, so the frame holds it feet to crown; then any
+	# ground it can come to.
+	var level := game.world.level_at(floori(best.pos.x), floori(best.pos.y))
+	for turn in 50:
+		var dir := away if turn % 25 == 0 else Vector2.from_angle(TAU * (turn % 25 - 1) / 24.0)
+		var spot := best.pos + dir * dist
+		if turn < 25 and absi(game.world.level_at(floori(spot.x), floori(spot.y)) - level) > 1:
+			continue
+		if not game.query.standable(floori(spot.x), floori(spot.y)) or sim.route_steps(best, spot, best.pos) >= NavField.FAR:
+			continue
+		_teleport(spot)
+		var toward := (best.pos - spot).angle()
+		Survival.face(game, toward)
+		# Over the shoulder the view stands behind the body it faces, as `near`
+		# by a system's place does.
+		if game.camera != null:
+			game.camera.shoulder_yaw = (load("res://src/core/view/shoulder.gd") as GDScript).call(&"yaw_behind", toward)
+		await get_tree().physics_frame
+		return true
+	var room := game.world.headroom_at(floori(best.pos.x), floori(best.pos.y))
+	printerr("tour %s: no ground its move reaches %.1f tiles off the %s at %s (%s over it, it stands %.1f)" % [_name, dist, token, best.pos,
+		"open" if room >= WorldData.OPEN_ABOVE else "%.1f" % (room * WorldData.STEP), float(best.row.get("height", 1.0))])
 	return false
 
 
