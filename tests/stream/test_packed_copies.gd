@@ -8,6 +8,11 @@ extends TestCase
 ## main thread writes it is not safe once the stream runs it: in world
 ## generation, and in any file that hands work to a group task, every packed
 ## array this file declares is copied with snapshot.
+##
+## ITS LIMIT: it knows a name is a packed array only when the same file
+## declares it so (`name: PackedXArray`, `name := PackedXArray(`). A packed
+## array that reaches a worker through a field or a parameter typed in another
+## file, and is duplicate()d here under an untyped name, is not seen.
 
 const PARALLEL: Array[String] = ["GenFields.rows(", "GenFields.parallel(", "add_group_task("]
 
