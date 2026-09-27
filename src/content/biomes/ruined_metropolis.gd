@@ -40,6 +40,9 @@ static func make() -> BiomeDef:
 	d.relief = {
 		&"base": 8.5, &"hills": 3.0, &"ridge": 4.5, &"near": 5.5, &"terrace": 1.0, &"valley": 2.0,
 		&"rain": 0.8, &"temp": 0.12, &"moist": 0.3, &"cliff": 0.75,
+		# Its streets' spacing: the ground is laid a level to a block
+		# (GenRelief.flatten_streets), on the grid its works line (`_streets`).
+		&"streets": BLOCK,
 	}
 	d.border_elevation = 1.0
 	d.reach_out_high = Vector4(5.5, 0.09, 0.11, 0.35)

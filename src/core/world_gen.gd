@@ -105,6 +105,7 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 		last_timings = marks
 		return w
 	GenRelief.lift_slots(c)
+	GenRelief.flatten_streets(c)
 	GenWater.rivers(c)
 	t = _mark(c, marks, &"rivers", t)
 	if _halted(w):
