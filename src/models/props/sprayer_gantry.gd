@@ -78,6 +78,29 @@ static func build(k: Kit, v: int, c: int) -> void:
 	for side: float in [-1.0, 1.0]:
 		var at := Vector3(-0.1, 0.34, side * (HALF + 0.095 * side))
 		k.face(at + Vector3(-0.12, 0.0, 0.0), at + Vector3(0.12, 0.0, 0.0), at + Vector3(0.12, 0.08, 0.0), at + Vector3(-0.12, 0.08, 0.0), P.LINEN[3])
+	# WEAR. Rust blooms up every leg from the rail, where the spray runs down
+	# and pools; a spray shroud of tarpaulin hangs off the boom in torn strips
+	# that the evening circuit has bleached; and a warning lamp on the boom
+	# still blinks the circuit's warning, amber, on the machine beat (a FOUND
+	# light under alpha 0.5, found.gdshader).
+	for side: float in [-1.0, 1.0]:
+		for end: float in [-0.5, 0.5]:
+			var foot := Vector3(end, 0.3, side * HALF)
+			for q in 3:
+				var at := foot.lerp(Vector3(end * 0.35, BOOM, side * (HALF - 0.08)), 0.05 + float(q) * 0.13)
+				k.fleck(at + Vector3(0.05, 0, 0.0), at + Vector3(-0.05, 0.12, 0.02), at + Vector3(0.02, -0.1, -0.03), P.RUST[2 + q % 2])
+	var shroud := P.LINEN[2].lerp(P.ASH[3], 0.4)
+	for i in 6:
+		var x := -0.9 + float(i) * 0.36
+		var drop := 0.35 + Rng.hash01(s, i, 31) * 0.55
+		var top_y := bar_y + 0.02
+		var torn := Rng.hash01(s, i, 32) < 0.35
+		var w := 0.12 if torn else 0.2
+		k.made.quad(Vector3(x - w, top_y, 0.05), Vector3(x + w, top_y, 0.05), Vector3(x + w * 0.6, top_y - drop, 0.08), Vector3(x - w, top_y - drop * 0.8, 0.08), shroud)
+		k.made.quad(Vector3(x + w, top_y, 0.05), Vector3(x - w, top_y, 0.05), Vector3(x - w, top_y - drop * 0.8, 0.08), Vector3(x + w * 0.6, top_y - drop, 0.08), GroundColors.down(shroud, 0.2))
+	var lamp := Vector3(0.0, BOOM + 0.1, -HALF + 0.2)
+	k.rod(lamp - Vector3(0, 0.05, 0), lamp + Vector3(0, 0.1, 0), 0.02, 4, P.INK[2])
+	k.found.prism(lamp.x, lamp.y + 0.1, lamp.z, 0.06, lamp.y + 0.2, 0.05, 6, Color(P.EMBER[3].r, P.EMBER[3].g, P.EMBER[3].b, 0.45) if not stopped else P.PLATE[1])
 	if stopped:
 		# Stopped with a leg off its rail: the bogie tipped, weed up round it.
 		k.clump(0.0, -0.05, HALF + 0.2, 0.3, 0.18, s + 20, P.MOSS[2].lerp(P.ASH[2], 0.4), 6)

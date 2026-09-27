@@ -88,9 +88,10 @@ static func make() -> BiomeDef:
 	dress.walling = [P.STONE[3], P.ASH[2], P.EARTH[2], P.LINEN[3]]
 	dress.crown = &"full"
 	# Every tree in a row is the plan's: grafted, staked and tagged, cut back to a
-	# pollard's head (Trees.pollard). The trellised form waits for rows that lay
-	# their trees along the bearing: a wire frame at a random turn is no row.
-	dress.broadleaf_forms = [&"pollard"]
+	# pollard's head (Trees.pollard) or trained flat on its wire (Trees.trellis):
+	# the rows lay every tree along the bearing (`_works`), so a wire runs
+	# along its row.
+	dress.broadleaf_forms = [&"pollard", &"trellis", &"pollard", &"pollard"]
 	# Its typical ground is in the rows, never the clearing where a block was
 	# taken out.
 	d.typical_among = Vector2i(PropKind.BROADLEAF, 40)
@@ -105,7 +106,9 @@ static func make() -> BiomeDef:
 	# nobody will pick: every crown lit rose-violet from below, in its rows.
 	d.underlight = Color(0.6, 0.4, 0.86, 0.42)
 	d.props = [PropKind.BROADLEAF, PropKind.BUSH, PropKind.GROWTH_TANK,
-		PropKind.WATER_TANK, PropKind.FENCE, PropKind.STUMP, PropKind.DEBRIS, PropKind.RELAY]
+		PropKind.WATER_TANK, PropKind.FENCE, PropKind.STUMP, PropKind.DEBRIS, PropKind.RELAY,
+		# The sprayers that keep the rows, one to a block (`_works`).
+		PropKind.SPRAYER_GANTRY]
 	d.ore = [[PropKind.IRON_ORE, 0.014], [PropKind.COPPER_ORE, 0.012]]
 	d.sites = {"tips": 2}
 	d.beached_wrecks = false
@@ -169,11 +172,11 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.GRASS:
 		# Strays only: the orchards are planted in rows (`_works`), and a tree
 		# the scatter drops at random between them is one that seeded itself.
+		# No stumps out here: a stump is where a ROW lost a tree (`_works`), and
+		# stumps strewn over open grass read as a felled wood, not a farm.
 		if r < 0.004:
 			return PropKind.BROADLEAF
-		if r < 0.019:
-			return PropKind.BUSH
-		return PropKind.STUMP if r > 0.50 and r < 0.508 else BiomeScatter.NONE
+		return PropKind.BUSH if r < 0.019 else BiomeScatter.NONE
 	if g == Ground.GRAVEL:
 		if r < 0.032:
 			return PropKind.GROWTH_TANK
@@ -183,13 +186,9 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.FENCE
 		return PropKind.RELAY if r > 0.60 and r < 0.6055 else BiomeScatter.NONE
 	if g == Ground.MUD:
-		if r < 0.026:
-			return PropKind.STUMP
-		return PropKind.DEBRIS if r < 0.036 else BiomeScatter.NONE
+		return PropKind.DEBRIS if r < 0.010 else BiomeScatter.NONE
 	if g == Ground.HEATH or g == Ground.MOSS:
-		if r < 0.030:
-			return PropKind.BUSH
-		return PropKind.STUMP if r < 0.040 else BiomeScatter.NONE
+		return PropKind.BUSH if r < 0.030 else BiomeScatter.NONE
 	if g == Ground.ROCK:
 		return PropKind.DEBRIS if r < 0.020 else BiomeScatter.NONE
 	return BiomeScatter.NONE
@@ -237,11 +236,24 @@ static func _works(L: Object) -> void:
 					continue
 				var gone := rng.randf() < 0.1
 				# Any terrace: the rows run over the land's steps as a machine's
-				# grid would, and a tree is only refused on a lip.
-				if GenWorks._put(L, PropKind.STUMP if gone else PropKind.BROADLEAF, q, rng.randf() * TAU, -99, 0.0, true) != null and not gone:
+				# grid would, and a tree is only refused on a lip. Every tree is
+				# turned to the bearing, a hair off, so a trellis's wire runs
+				# along its row and a pollard's fan faces the next.
+				var turn := d.angle() + (rng.randf() - 0.5) * 0.12
+				if GenWorks._put(L, PropKind.STUMP if gone else PropKind.BROADLEAF, q, turn, -99, 0.0, true) != null and not gone:
 					planted += 1
 		if planted < 8:
 			continue
 		GenWorks._record(c, &"orchard_block", at, d, half, GenWorks.CUT)
+		# The sprayer that keeps the block: straddling one row, half way along
+		# it, between two trees (SprayerGantry: its legs either side of the
+		# row, its boom over the crowns).
+		# Berthed: it runs on its rails over the terraces as the rows do. Tried
+		# between the middle trees of its row, then a gap either side.
+		var row := rng.randi_range(0, rows - 1)
+		for step: float in [0.5, -0.5, 1.5, -1.5]:
+			var spot := d * (float(i0 + per / 2) + step) * TREE_GAP + nrm * float(j0 + row) * ROW_GAP
+			if GenWorks._put(L, PropKind.SPRAYER_GANTRY, spot, d.angle(), -99, 0.0, true, true) != null:
+				break
 		GenWorks._run(L, PropKind.FENCE, at + d * (half.x + 1.2) - nrm * half.y, nrm, ceili(half.y), 2.0, -99, 0.2)
 		GenWorks._put(L, PropKind.WATER_TANK, at - d * (half.x + 1.6), d.angle(), -99, 0.6)

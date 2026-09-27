@@ -104,6 +104,13 @@ static func make() -> BiomeDef:
 	# on a fallen deck, rooms hung inside a lift core, shop fronts re-shuttered
 	# as homes (BiomeForms.FORMS; docs/LANDSCAPES.md). Four forms, so a
 	# settlement here is four buildings: a ward, not a city.
+	# Its streets (`_streets`): the city's grid on the survey bearing, lined with
+	# the stumps of its towers, its shopfronts and lift cores, decks fallen
+	# across the crossings, and the plan's demolition face.
+	GenWorks.register(&"ruined_metropolis", {
+		"host": load("res://src/content/biomes/ruined_metropolis.gd"),
+		"works": &"_streets",
+	})
 	d.built = BiomeForms.new()
 	d.built.stock = [&"infill", &"deck_house", &"shaft_loft", &"stall_row"] as Array[StringName]
 	# The infill is a dead tower's lobby walled in and lived in; its room is its
@@ -223,3 +230,90 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.DEBRIS
 		return PropKind.RUIN if r < 0.034 else BiomeScatter.NONE
 	return BiomeScatter.NONE
+
+
+## Tiles between one street's centre line and the next, both ways.
+const BLOCK := 19.0
+## A street frontage stands this far off the street's centre line.
+const FRONT := 5.2
+## Along a frontage, one building every this many tiles.
+const PLOT := 3.6
+
+## THE CITY'S STREETS (GenWorks.register). The metropolis was terraces with a
+## block on them: nothing at eye level said a street had run here. Its grid is
+## ruled on the survey bearing like everything else the plan measured, a street
+## every BLOCK tiles each way, and each frontage is lined, a plot at a time, with
+## what the city left standing: mostly a tower's stump (BiomeDressing.ruin_form),
+## now and then a shopfront or a lift core; a deck fallen across a crossing;
+## and in each region the plan's demolition face, a gantry and its bales.
+static func _streets(L: Object) -> void:
+	var c: GenContext = L.c
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	# The demolition face first, before the streets take the room: the plan
+	# taking the city down, a gantry over the cut
+	# and the bales it sorted the rubble into, in a row along the bearing.
+	for n in GenWorks._n(c, 1.0):
+		var s := GenWorks._site(L, 5, 2, [], 40.0, 700, 0.4)
+		if s.x < 0:
+			continue
+		var at := Vector2(s) + Vector2(0.5, 0.5)
+		if GenWorks._put(L, PropKind.DEMOLITION_GANTRY, at, d.angle(), -99, 1.0) == null:
+			continue
+		GenWorks._record(c, &"demolition_face", at, d, Vector2(6.0, 4.0))
+		# The bales in a row beside it, on whichever side of the cut has room.
+		for side: float in [1.0, -1.0, 2.0, -2.0]:
+			if GenWorks._run(L, PropKind.SORTED_BALE, at + nrm * 3.0 * side - d * 3.0, d, 4, 1.8, -99, 0.1).size() > 0:
+				break
+	for rect: Rect2 in L.rects:
+		var corners := [rect.position, rect.position + Vector2(rect.size.x, 0.0), rect.end, rect.position + Vector2(0.0, rect.size.y)]
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for q: Vector2 in corners:
+			var uv := Vector2(q.dot(d), q.dot(nrm))
+			lo = lo.min(uv)
+			hi = hi.max(uv)
+		# Streets along the bearing (their centre lines at nrm = m * BLOCK), then
+		# across it (d = m * BLOCK).
+		for axis in 2:
+			var along := d if axis == 0 else nrm
+			var across := nrm if axis == 0 else d
+			var a_lo := lo.x if axis == 0 else lo.y
+			var a_hi := hi.x if axis == 0 else hi.y
+			var c_lo := lo.y if axis == 0 else lo.x
+			var c_hi := hi.y if axis == 0 else hi.x
+			for m in range(ceili(c_lo / BLOCK), floori(c_hi / BLOCK) + 1):
+				for side: float in [-1.0, 1.0]:
+					var off := float(m) * BLOCK + side * FRONT
+					var t := a_lo + PLOT * 0.5
+					while t < a_hi:
+						var p := along * t + across * off
+						t += PLOT
+						var tx := floori(p.x)
+						var ty := floori(p.y)
+						if not c.w.in_bounds(tx, ty) or not L.home(tx, ty):
+							continue
+						# Leave the crossings open, and a gap now and then.
+						var into := fposmod(t, BLOCK)
+						# Each plot's roll is keyed on the plot itself, never on a
+						# shared stream: a street that did not move keeps what
+						# stands along it whatever else the world lays.
+						var key := Vector2i(roundi(p.x * 4.0), roundi(p.y * 4.0))
+						if into < FRONT + 0.6 or into > BLOCK - FRONT - 0.6 or Rng.hash01(c.s, key.x, key.y, 0x57E1) < 0.18:
+							continue
+						var roll := Rng.hash01(c.s, key.x, key.y, 0x57E2)
+						var kind := PropKind.RUIN
+						if roll < 0.14:
+							kind = PropKind.SHOPFRONT
+						elif roll < 0.19:
+							kind = PropKind.LIFT_SHAFT
+						# Its face to the street.
+						var facing := (-across * side).angle()
+						GenWorks._put(L, kind, p, facing, -99, 0.4)
+				# A deck fallen across the street at a crossing, now and then.
+				for n in range(ceili(a_lo / BLOCK), floori(a_hi / BLOCK) + 1):
+					var x := along * (float(n) * BLOCK + BLOCK * 0.5) + across * float(m) * BLOCK
+					if Rng.hash01(c.s, roundi(x.x), roundi(x.y), 0x57E3) > 0.12:
+						continue
+					if c.w.in_bounds(floori(x.x), floori(x.y)) and L.home(floori(x.x), floori(x.y)):
+						GenWorks._put(L, PropKind.DECK_SPAN, x, across.angle(), -99, 0.4)

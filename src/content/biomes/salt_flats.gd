@@ -252,9 +252,12 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.SALT:
-		var k := maxf(0.0, t.clump[i])
-		if r < 0.012 + k * 0.05:
-			# Pressure ridges run in lines where two plates met.
+		# PRESSURE RIDGES RUN IN LINES, along the cracks where two plates met
+		# (the fissure field's zero-set): a chained run across the plain, never
+		# a scatter of single tents. Off the cracks, only the odd one.
+		if absf(t.fissure[i]) < 0.022 and r < 0.42:
+			return PropKind.SALT_RIDGE
+		if r < 0.004 + maxf(0.0, t.clump[i]) * 0.012:
 			return PropKind.SALT_RIDGE
 		if r > 0.2 and r < 0.203:
 			return PropKind.SALT_HEAP
@@ -295,6 +298,12 @@ static func _works(L: Object) -> void:
 		var at := Vector2(p) + Vector2(0.5, 0.5)
 		var half := Vector2(rng.randf_range(8.0, 11.0), rng.randf_range(5.0, 7.0))
 		GenWorks._record(c, &"pans", at, d, half, GenWorks.CUT)
+		# The brine works that fed this battery: a pump house at the head of the
+		# pans (crusted with it, BiomeDressing.brine) and its pipe run in along
+		# the long wall.
+		var head := at - d * (half.x + 3.0) + nrm * half.y * 0.6
+		if GenWorks._put(L, PropKind.PUMP_HOUSE, head, d.angle(), -99, 0.8) != null:
+			GenWorks._run(L, PropKind.PIPE, head + d * 1.8, d, maxi(2, int(half.x * 0.6)), 2.0, -99, 0.15)
 		# The bund: a gate at the middle of each long wall, survey posts at the
 		# corners, and a line of pipe carrying brine that never comes.
 		for sx: float in [-1.0, 1.0]:

@@ -27,10 +27,9 @@ const NOT_YET_LAID: Array[int] = [PropKind.LINTEL, PropKind.CARVED_FACE, PropKin
 	PropKind.CORE_RACK, PropKind.HOLLOW_WAY,
 	PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE,
 	PropKind.FULGURITE, PropKind.GLASS_BLISTER, PropKind.FUSED_CAR, PropKind.STRIKE_ROD,
-	PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT, PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY,
 	PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE,
 	PropKind.HOODOO, PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN, PropKind.SPAN_PYLON,
-	PropKind.FALLEN_TOWER, PropKind.SPRAYER_GANTRY]
+	PropKind.FALLEN_TOWER]
 
 ## Works each landscape must hold on every seed: kind -> its country.
 const HOME := {
@@ -469,7 +468,11 @@ func test_evidence_models_are_drawn_in_the_right_pen() -> void:
 					# The plan's sounding tripod carries the beacon a relay does,
 					# on the machines' beat: the one light out on the frost sea
 					# at night, and it is the plan's (`src/models/props/frost_sea.gd`).
-					PropKind.SOUNDING_RIG],
+					PropKind.SOUNDING_RIG,
+					# The orchards' sprayer blinks its warning lamp on the
+					# machines' beat as it runs its circuit, and it is the plan's
+					# (`src/models/props/sprayer_gantry.gd`).
+					PropKind.SPRAYER_GANTRY],
 					"%s %d carries machine light it has no reason for" % [PropKind.NAMES[kind], v])
 	var stolen := PropModels.template(PropKind.SHACK, 1, Country.COAST)
 	var dark := PropModels.template(PropKind.SHACK, 0, Country.COAST)

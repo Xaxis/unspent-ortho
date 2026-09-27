@@ -16,3 +16,7 @@ shot orchards-noon-turned with land:grey_orchards
 hour 19.2
 wait 2.0
 shot orchards-evening with land:grey_orchards
+hour 11
+near sprayer_gantry
+wait 2.0
+shot orchards-sprayer
