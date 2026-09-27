@@ -46,3 +46,32 @@ func test_an_id_reaches_one_tile_past_its_mass_in_the_picture() -> void:
 	eq(int(round(inside.a * 255.0)), 8, "with its underside's level")
 	var two_past := m.image.get_pixel(17 - m.x0, 11 - m.y0)
 	eq(int(round(two_past.g * 255.0)), 0, "two tiles past, nothing")
+
+
+## THE DAY REACHES IN UNDER THE LID A LITTLE WAY (AboveMap.bounce): full at an
+## open tile, falling off with the way in, gone by BOUNCE_REACH; and the box's
+## own edge is no sky, so a window cut from a roofed world is dark at its rim.
+func test_the_day_reaches_in_under_the_lid_and_is_gone_deep_in() -> void:
+	var w := 40
+	var h := 5
+	var mask := PackedByteArray()
+	mask.resize(w * h)
+	for i in w * h:
+		mask[i] = 1
+	# One open column at x = 0, like a tear's edge.
+	for y in h:
+		mask[y * w] = 0
+	var g := AboveMap.bounce(mask, w, h)
+	eq(g[2 * w], 255, "open sky is full")
+	gt(float(g[2 * w + 1]), 200.0, "the first tile in is nearly so")
+	var last := 256
+	for x in range(1, 16):
+		check(g[2 * w + x] <= last, "it only falls with the way in (x %d)" % x)
+		last = g[2 * w + x]
+	eq(g[2 * w + int(AboveMap.BOUNCE_REACH) + 1], 0, "gone past the reach")
+	# All covered, no sky in the box at all: dark everywhere, edges included.
+	var shut := PackedByteArray()
+	shut.resize(9 * 9)
+	shut.fill(1)
+	var gs := AboveMap.bounce(shut, 9, 9)
+	eq(gs.count(0), 81, "a box with no open tile has no day in it, rim or middle")
