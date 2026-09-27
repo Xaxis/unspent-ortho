@@ -134,7 +134,9 @@ static func make() -> BiomeDef:
 	}
 	d.landmarks = [&"grown_hulk", &"blinking_stack", &"clerks_office", &"poured_pillar"]
 	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
-	d.interiors = {&"house": &"home"}
+	# And a blind alley's end in the slot labyrinth opens on a warren of the
+	# containers the heap was poured over (container_warren.gd).
+	d.interiors = {&"house": &"home", &"slot:alley": &"container_warren"}
 	# Who kept them: the sorter, who has the refuse into bins by what it is, and
 	# the wirer, who makes it work again.
 	d.home = {"households": {

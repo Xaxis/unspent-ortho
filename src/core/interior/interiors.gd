@@ -27,6 +27,7 @@ const RECIPES := {
 	&"frozen_hold": "res://src/content/interiors/frozen_hold.gd",
 	&"home": "res://src/content/interiors/home.gd",
 	&"squat": "res://src/content/interiors/squat.gd",
+	&"container_warren": "res://src/content/interiors/container_warren.gd",
 }
 
 ## Which of a sparse landscape's houses have somebody in them (`home.open`).
@@ -171,6 +172,15 @@ static func by_key(w: WorldData, key: String) -> Threshold:
 ## make a room of that kind -- asked the way the placer asks, never off a list.
 ## A weapons hall keeps what the plan arms and plates its machines with.
 const LOOT := {
+	# What the plan sorted out of the heap and never came back for, kept behind a
+	# vault's door or at a run's end: salvage for a bench, and now and then
+	# something that still has words in it (the middens keep what was written).
+	&"container_warren": [
+		{"item": &"scrap", "count": Vector2i(3, 6)},
+		{"item": &"copper", "count": Vector2i(1, 2), "chance": 0.6},
+		{"item": &"record", "count": Vector2i(1, 2), "chance": 0.5},
+		{"item": &"mod_capacitor", "chance": 0.15, "rarity": Rarity.RARE},
+	],
 	&"weapons_hall": [
 		{"item": &"scrap", "count": Vector2i(4, 8)},
 		{"item": &"kit_plate", "chance": 0.5},

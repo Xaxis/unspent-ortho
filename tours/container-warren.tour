@@ -1,0 +1,29 @@
+# A CONTAINER WARREN IN THE MIDDENS (src/content/interiors/container_warren.gd):
+# a run of shipping containers the heap was poured over, entered by the first
+# one's end doors at a blind alley's end, their ends torch-cut between them,
+# the deck ringing steel, and now and then a vault at the far end.
+#
+#   tools/tour.sh tours/container-warren.tour --seed=1 --hour=11 --weather=clear:0
+#
+# 01 is the door in the face. 02 is the warren from above. 03 is over the
+# shoulder down the run. 04 is at the strongbox.
+coast calm
+near door:container_warren
+await door 5
+wait 0.6
+shot 01-a-door-in-the-slot-face with door,land:the_middens
+
+press use 0.1
+await inside:container_warren 5
+wait 1.0
+shot 02-the-warren with inside:container_warren
+
+walk 0,-1 1.2
+hold shoulder_peek
+await shoulder 3
+wait 1.0
+shot 03-down-the-run with inside:container_warren,shoulder
+near strongbox
+wait 1.0
+shot 04-at-the-strongbox with inside:container_warren,shoulder
+release shoulder_peek
