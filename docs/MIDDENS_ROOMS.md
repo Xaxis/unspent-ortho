@@ -155,6 +155,67 @@ are the walls, shored with doors and signs. The words room is shelves of
 phones, drives and paper, each labelled in chalk. The sort table is lit by a
 hooded lamp (the wirer's `home_wirer_hood`).
 
+## Recipes against the labyrinth as built (gen34-slots-r2 c713f2b7, measured)
+
+Sketched 2026-09-26 so the slices go quickly once GEN 34 lands. Measured on
+seeds 1 and 7 at 1840 with a throwaway probe over `GenSlots.plan` and the
+generated land. Where this and the sections above disagree, this wins.
+
+**The labyrinth moved under the design.** PITCH is 14 (not 12), a block is
+4 x 4 nodes (not 5 x 5), floors are 4.4 to 6.2 wide (HALF_MIN 2.2 + 0.9), a
+junction room's radius is 3.0 to 4.6, a blind alley runs 0.40 to 0.65 of the
+way to the next node (5.6 to 9.1 tiles), and EVERY tree dead end ramps
+(RAMP_SHARE 1.0), so blind alleys are the only dead ends left without a way up.
+A blind alley beside a ramp is cleared. `GenSlots.node(s, size, gx, gy)` exists
+and answers one node windowed (centre, open, degree, dead_end, room, ramp,
+radius); it does not yet answer the blind alleys.
+
+| seed | middens nodes | blocks | rooms | ramps | blind alleys | alley ends with a face of 5+ levels | rooms with a 5+ face in reach |
+|---|---|---|---|---|---|---|---|
+| 1 | 253 | 32 | 105 | 51 | 24 | 9 | 64 |
+| 7 | 254 | 28 | 90 | 47 | 39 | 19 | 56 |
+
+**Warren siting, revised.**
+- EVERY blind alley whose end meets a face of 5+ levels (a container door is
+  2.5 units, five levels) gets a warren, not 1 in 3: at 1 in 3 a world would
+  hold three to six. This gives 9 (seed 1) and 19 (seed 7), about one per two
+  or three blocks, and each is at the end of a way that goes nowhere else.
+- The face is found on the TILES, not the plan: from 3 tiles short of the
+  alley's planned end, walk on along it in quarter tiles to the first step of
+  4+ levels; `host` is that tile, `out` points back down the alley. About half
+  the planned alley ends meet no face within 6 tiles (the warp opens the end
+  or it runs out onto a plateau node). Those get no door.
+- **The tower's crawl exit comes up BESIDE the alley, not behind the door.**
+  Straight behind an alley's end is the next node's floor. 0 of 30 faces had
+  4 plateau tiles behind them. To either side, 3.5 tiles off the alley's axis
+  at the face's top, the plateau runs a median of 9 tiles and 4+ in 24 of 30.
+  The exit is sited at the first such tile on the side with more room. A
+  warren with neither side is `line` or `step`, never `tower`.
+- **An ask to lands:** `node()` should answer its blind alleys (`east_stub`,
+  `south_stub` as fractions, cleared beside a ramp, as `plan` does), so siting
+  stays windowed and never copies GenSlots' salts. Until then slice 1 calls
+  `plan` once per world and caches it (the plan is small: about 17,000 nodes at
+  1840).
+
+**Settlement siting, revised.**
+- Candidates are junction rooms (degree 3+) with a face of 5+ levels in reach:
+  64 of 105 (seed 1), 56 of 90 (seed 7). The mouth goes in the wall on a
+  degree-3 room's CLOSED side (the one way that is wall), and on a degree-4
+  room's diagonal, between two exits, found on the tiles as a warren's face is.
+- One per block would be about 30 settlements, far past any landscape's
+  village count. **At most one per 3 x 3 blocks** (168 tiles apart), at the
+  highest-degree, then widest, candidate, gives an estimated 3 to 6 per world,
+  a village's share. Slice 1 measures the real count.
+- The string's route to the nearest ramp is a BFS over `node()` answers from
+  the settlement's room, bounded at 64 nodes. A ramp's top is its centre plus
+  (centre minus its one open neighbour's centre) x 0.7 (RAMP_RUN), all public.
+
+**Slot facts the rooms read, and what they rely on:**
+- `test_slot_walls_stand_as_one_face` holds 80% of faces to 4+ levels in one
+  step. A door needs 5+ at its own host, checked per door, never assumed.
+- The plateau stands only on the middens' own tiles, so every host tile, and a
+  tower exit's tile, is checked for `country == the_middens`.
+
 ## Slot keys for the story-wright
 
 All `lands: ["the_middens"]`. The households are for the settlement's cells.
