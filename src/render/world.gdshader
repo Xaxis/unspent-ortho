@@ -2649,7 +2649,9 @@ void fragment() {
 				if (above_cut.z > 0.0 && !IN_SHADOW_PASS) {
 					vec4 t = texelFetch(above_map, ivec2(at), 0);
 					float plane = above_cut.y + (1.0 - above_cut.z) * ABOVE_SWEEP;
-					if (t.r > 0.5 && abs(above_id(at) - above_cut.x) < 0.5 && world_pos.y > plane && world_pos.y >= t.a * 255.0 * 0.5 - 0.05) {
+					// What is held in sight stays: a stone hanging cracked from the lid
+					// is the thing to see under it (GroundColors.HELD).
+					if (m1 != M_HELD && t.r > 0.5 && abs(above_id(at) - above_cut.x) < 0.5 && world_pos.y > plane && world_pos.y >= t.a * 255.0 * 0.5 - 0.05) {
 						discard;
 					}
 				}

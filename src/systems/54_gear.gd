@@ -528,6 +528,15 @@ func _fx(what: StringName, args: Dictionary) -> void:
 			# see what they are being pulled to before they get there, and the rope
 			# itself is redrawn as the body travels (`_travel_marks`).
 			var hold_for := maxf(READ_SECONDS, float(args.get("seconds", 0.0)))
+			if args.get("what", &"") == &"hanging":
+				# A stone pulled down: the line runs UP to it and holds for the pull,
+				# the body stays, and the ring on the ground under it is where it lands.
+				var stone := Vector3(to.x, float(args.get("height", 3.0)), to.y)
+				MobFx.bracket(game, stone, Palette.LENS[3], 1.0, hold_for, seed_value)
+				MobFx.ring(game, game.world.to_3d(to), Palette.LENS[2], FightSim.FALL_R, hold_for)
+				MobFx.line(game, _hand(), stone, Palette.COLD[3], float(args.get("seconds", 0.45)))
+				Events.sfx.emit(&"ability_grapple", at)
+				return
 			MobFx.bracket(game, game.world.to_3d(to) + Vector3(0, 0.6, 0), Palette.LENS[3], 1.2, hold_for, seed_value)
 			MobFx.ring(game, game.world.to_3d(to), Palette.LENS[2], 0.8, hold_for)
 			_draw_line(from, to)

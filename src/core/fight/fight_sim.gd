@@ -1522,6 +1522,18 @@ func hang(at: Vector2, y: float) -> int:
 	return _hanging_ids
 
 
+## Take the stone `id` down from the sim without a fall (it is out of the window
+## its roof is read in). False when it is coming down: a falling stone lands.
+func unhang(id: int) -> bool:
+	for i in hangings.size():
+		if int(hangings[i].id) == id:
+			if float(hangings[i].falls_at) >= 0.0:
+				return false
+			hangings.remove_at(i)
+			return true
+	return false
+
+
 ## The line takes the stone `id` and pulls it: it lets go FALL_MS later. False
 ## when there is no such stone standing, or it is already coming down.
 func pull_down(id: int) -> bool:

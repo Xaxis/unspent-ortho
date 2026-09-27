@@ -208,7 +208,7 @@ func on_press(ctx: AbilityCtx) -> bool:
 		# The line takes the stone and the body stays planted: it comes down.
 		if not _sim(ctx).pull_down(int(a.id)):
 			return false
-		ctx.draw(&"grapple", {"at": at, "to": target, "what": a.what, "seconds": FightSim.FALL_MS / 1000.0})
+		ctx.draw(&"grapple", {"at": at, "to": target, "what": a.what, "height": float(a.height), "seconds": FightSim.FALL_MS / 1000.0})
 		return true
 	if a.what == &"machine":
 		# The machine comes; the player stays planted. The book spends one

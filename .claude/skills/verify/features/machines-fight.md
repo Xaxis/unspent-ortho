@@ -2,7 +2,7 @@
 
 Machines on the land, their disposition, depots, keepers, the fight, targeting, defences and raids.
 
-<!-- covers: system:30_mobs, system:32_disposition, system:34_works, system:36_machine_parade, system:40_fight, system:42_target, system:44_sentinels, system:45_taken, system:47_defences, system:48_raids -->
+<!-- covers: system:30_mobs, system:32_disposition, system:34_works, system:36_machine_parade, system:40_fight, system:42_target, system:43_cracked_roof, system:44_sentinels, system:45_taken, system:47_defences, system:48_raids -->
 
 ## Sub-features
 
@@ -77,8 +77,12 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   tours/curtains.tour`.
   The line brings the roof down (FightSim.hangings, AbilityGrapple `hanging`): the grapple takes a cracked
   stone hanging ahead and pulls it down; FALL_MS on, it hurts and stalls a machine under it whatever its plate,
-  and a player under it: `tools/test.sh test_hanging_fall`. Where stones hang, and how they look and fall, is the
-  cracked roof's (next).
+  and a player under it: `tools/test.sh test_hanging_fall`.
+- 43_cracked_roof: `src/systems/43_cracked_roof.gd`. The cracked roof, at play time with no worldgen (CrackedRoof):
+  stones round a cave's tears, over ground a body stands on, the landscape's `collapse` pressure; hung in the fight
+  near the player, drawn held in sight with a glowing split, brought down by the line, lying broken, and down for
+  good through a save: `tools/test.sh test_cracked_roof`; seen: `TOUR_FIXED_FPS=60 tools/tour.sh
+  tours/cracked_roof.tour` (options in its header).
 - 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.
   Freed by a dark yard or a fallen keeper, and back on a standing holding's books
   (`tools/test.sh test_come_home`; `tools/tour.sh tours/taken_home.tour`, options in its header;

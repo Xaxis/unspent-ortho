@@ -1,0 +1,21 @@
+# THE LINE BRINGS THE ROOF DOWN (CrackedRoof, FightSim.hangings, AbilityGrapple):
+# round a cave's tears the lid hangs cracked, a fat stone split near its root and
+# stained down its length. Stood a throw off one and facing it, the grapple's
+# line takes it and it shakes; then it comes down, breaks on the floor and lies.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/cracked_roof.tour --seed=7 --realm=underground --hour=12 --fit=boots_magnet --config=unharmed
+coast calm
+wait 1.0
+tap shoulder
+await shoulder 3
+near cracked_stone
+wait 1.0
+shot 01-a-stone-hangs-cracked with shoulder
+tap lamp
+wait 0.5
+shot 02-by-the-lamp with shoulder,lamp
+tap ability_grapple
+wait 0.2
+shot 03-the-line-takes-it with shoulder,lamp
+await stone_fell 3
+wait 0.6
+shot 04-down-and-broken with shoulder,lamp
