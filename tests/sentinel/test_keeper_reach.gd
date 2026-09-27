@@ -11,7 +11,7 @@ extends TestCase
 ## A RATCHET, not a promise of every spot: over both seeds REACHED_LEAST of the
 ## spots are reached (86% measured, 2026-09-27), no keeper with REGION_TRIED
 ## spots or more reaches under REGION_LEAST of them, and every keeper's own move
-## opens Sentinels.OPENS_LEAST tiles round its lair (Sentinels.lair holds a lair to
+## opens OPENS_LEAST tiles round its lair (Sentinels.lair holds a lair to
 ## it, and never puts one on the ground its FOUNDER way takes it on). What is left is a
 ## body stalled on a terrace edge where a corner of it hangs over a step its
 ## move will not take; raise the floor when that is fixed.
@@ -47,6 +47,58 @@ func _reaches(w: WorldData, lair: Vector2, kind: StringName, player: Vector2) ->
 	return {"counted": true, "reached": false, "left": m.pos.distance_to(sim.hero.pos), "forgot": m.mood == MobState.IDLE or m.mood == MobState.FLEEING}
 
 
+## How many tiles OPEN_FROM..OPEN_TO out of `at` a keeper's own move reaches:
+## a flood over the tiles of that window by the rules its move keeps on the
+## ground (a level step no more than it climbs, the room over it for its height,
+## no deep water): what every lair is held to here.
+## The ground only, and only the window: props are its field's to go round or
+## break when it moves (NavField.for_body).
+const OPEN_FROM := 8
+const OPEN_TO := 14
+const OPENS_LEAST := 300
+static func _opens(world: WorldData, at: Vector2, def: SentinelDef) -> int:
+	var row := Roster.row(def.kind)
+	var step := maxi(1, int(row.get("climbs", 1)))
+	# Its height in levels, as its move asks the room over a tile (FightSim.tall_of).
+	var tall := int(ceil(float(row.get("height", 1.0)) / WorldData.STEP))
+	var cx := floori(at.x)
+	var cy := floori(at.y)
+	if not _ground_for(world, cx, cy, tall):
+		return 0
+	var side := OPEN_TO * 2 + 1
+	var seen := PackedByteArray()
+	seen.resize(side * side)
+	var queue: Array[Vector2i] = [Vector2i(cx, cy)]
+	seen[OPEN_TO * side + OPEN_TO] = 1
+	var n := 0
+	var head := 0
+	while head < queue.size():
+		var t := queue[head]
+		head += 1
+		if maxi(absi(t.x - cx), absi(t.y - cy)) >= OPEN_FROM:
+			n += 1
+		var level := world.level_at(t.x, t.y)
+		for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var u := t + d
+			var lx := u.x - cx + OPEN_TO
+			var ly := u.y - cy + OPEN_TO
+			if lx < 0 or ly < 0 or lx >= side or ly >= side or seen[ly * side + lx] != 0:
+				continue
+			if not _ground_for(world, u.x, u.y, tall) or absi(world.level_at(u.x, u.y) - level) > step:
+				continue
+			seen[ly * side + lx] = 1
+			queue.append(u)
+	return n
+
+
+## Ground a keeper `tall` levels high stands on: on the map, land, not deep
+## water, and room over it.
+static func _ground_for(world: WorldData, x: int, y: int, tall: int) -> bool:
+	if not world.in_bounds(x, y) or world.level_at(x, y) < 0 or world.ground_at(x, y) == Ground.DEEP_WATER:
+		return false
+	return not world.has_overhead() or world.headroom_at(x, y) >= tall
+
+
 func test_every_keeper_reaches_a_player_the_ground_leads_to() -> void:
 	var counted := 0
 	var reached := 0
@@ -63,9 +115,9 @@ func test_every_keeper_reaches_a_player_the_ground_leads_to() -> void:
 			var sink := Sentinels.founders(def)
 			var under := w.ground_at(floori(lair.x), floori(lair.y))
 			check(not sink.has(under), "seed %d %s at %s: its lair is not on the ground it founders on (%s)" % [seed_value, s.land, lair, Ground.NAMES[under] if under < Ground.NAMES.size() else str(under)])
-			var opens := Sentinels.opens(w, q, lair, def)
-			print("  %s seed %d region %d opens %d tiles %d-%d out" % [s.land, seed_value, s.region, opens, Sentinels.OPEN_FROM, Sentinels.OPEN_TO])
-			check(opens >= Sentinels.OPENS_LEAST, "seed %d %s at %s: its own move opens %d tiles %d-%d round its lair, not boxed in (%d)" % [seed_value, s.land, lair, Sentinels.OPENS_LEAST, Sentinels.OPEN_FROM, Sentinels.OPEN_TO, opens])
+			var opens := _opens(w, lair, def)
+			print("  %s seed %d region %d opens %d tiles %d-%d out" % [s.land, seed_value, s.region, opens, OPEN_FROM, OPEN_TO])
+			check(opens >= OPENS_LEAST, "seed %d %s at %s: its own move opens %d tiles %d-%d round its lair, not boxed in (%d)" % [seed_value, s.land, lair, OPENS_LEAST, OPEN_FROM, OPEN_TO, opens])
 			var got := 0
 			var tried := 0
 			for k in 8:

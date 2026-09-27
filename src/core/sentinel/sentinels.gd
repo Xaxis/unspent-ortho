@@ -291,10 +291,13 @@ static func lair(world: WorldData, region: Dictionary, def: SentinelDef) -> Vect
 	# keeper foundered at home in the time it took to turn round (seed 1's anchor
 	# on the mesas' sand, tests/sentinel/test_keeper_reach.gd).
 	var sink := founders(def)
-	# And never boxed in: its own move (NavField.for_body) must open OPENS_LEAST
-	# tiles round it, or it can only strike what walks up to it (seed 1's glass
-	# keeper, put off its sand, stood in a pocket that opened none).
-	var q := WorldQuery.new(world)
+	# And stood on room it can come out of: `stand_near` answers the point it was
+	# asked when it finds none, a region with no room (seed 1's glass sliver: 27
+	# tiles, all the sand it founders on) has no keeper, and a lair in a pocket of
+	# terraces (seed 4's crags) strikes only what walks up to it. Asked of the
+	# ground in rays about the spot (`gets_out`), the cheap test: this runs while
+	# the world is worked out. tests/sentinel/test_keeper_reach.gd floods what
+	# its move truly opens round every lair it gives.
 	for want: StringName in def.stations:
 		var best := Vector2.INF
 		var best_works := -1
@@ -305,7 +308,8 @@ static func lair(world: WorldData, region: Dictionary, def: SentinelDef) -> Vect
 			if world.region_at(floori(p.x), floori(p.y)) != id:
 				continue
 			var at := stand_near(world, p, 1.4, sink)
-			if at.distance_to(home) < CLEAR_OF_HOME or opens(world, q, at, def) < OPENS_LEAST:
+			if at.distance_to(home) < CLEAR_OF_HOME or not _room_at(world, floori(at.x), floori(at.y), 1.4, sink) \
+					or not gets_out(world, at, def):
 				continue
 			var n := 0
 			for w2: Dictionary in world.landmarks:
@@ -320,37 +324,56 @@ static func lair(world: WorldData, region: Dictionary, def: SentinelDef) -> Vect
 			return best
 	var centre: Vector2 = region.get("centre", Vector2.ZERO)
 	var heart := stand_near(world, centre, 1.4, sink)
-	if heart.distance_to(home) >= CLEAR_OF_HOME and opens(world, q, heart, def) >= OPENS_LEAST:
+	if heart.distance_to(home) >= CLEAR_OF_HOME and _room_at(world, floori(heart.x), floori(heart.y), 1.4, sink) \
+			and gets_out(world, heart, def):
 		return heart
-	# Else the nearest room to the heart, clear of home, that opens. A region with
-	# none (seed 1's glass sliver: 27 tiles, all the sand it founders on) has no
-	# keeper: one stood there could strike only what walked up to it.
-	return _open_nearest(world, q, region, def, sink, centre)
+	# Nothing the plan built stands far enough out, or has room: the quietest
+	# ground in the region that is, nearest its heart, so a keeper is still where
+	# its own land is; none at all, and the region has no keeper.
+	return _room_nearest(world, region, def, sink, centre)
 
 
-## How many tiles OPEN_FROM..OPEN_TO out of `at` a keeper's own move reaches
-## (NavField.for_body laid from `at`): what `lair` holds a lair to.
-const OPEN_FROM := 8
-const OPEN_TO := 14
-const OPENS_LEAST := 300
+## Rays a keeper's lair is looked out along, how far, and how many must get
+## that far on the ground its move keeps (a level step no more than it climbs,
+## room over it for its height, no deep water) for it to come out of the lair.
+const RAYS := 16
+const RAY_OUT := 10
+const RAYS_OUT := 6
+## Spots `_room_nearest` looks out from before a region is given up.
+const ROOM_TRIES := 40
 
 
-static func opens(world: WorldData, q: WorldQuery, at: Vector2, def: SentinelDef) -> int:
+static func gets_out(world: WorldData, at: Vector2, def: SentinelDef) -> bool:
 	var row := Roster.row(def.kind)
-	var f := NavField.for_body(world, q, row, minf(float(row.get("radius", 0.5)), 0.45))
-	f.update(at)
-	var n := 0
-	for dy in range(-OPEN_TO, OPEN_TO + 1):
-		for dx in range(-OPEN_TO, OPEN_TO + 1):
-			if maxi(absi(dx), absi(dy)) < OPEN_FROM:
+	var step := maxi(1, int(row.get("climbs", 1)))
+	# Its height in levels, as its move asks the room over a tile (FightSim.tall_of).
+	var tall := int(ceil(float(row.get("height", 1.0)) / WorldData.STEP))
+	var out := 0
+	for i in RAYS:
+		var dir := Vector2.from_angle(TAU * float(i) / float(RAYS))
+		var was := Vector2i(floori(at.x), floori(at.y))
+		var ok := true
+		for k in range(1, RAY_OUT + 1):
+			var p := at + dir * float(k)
+			var t := Vector2i(floori(p.x), floori(p.y))
+			if t == was:
 				continue
-			n += int(f.steps(floori(at.x) + dx, floori(at.y) + dy) < NavField.FAR)
-	return n
+			if not world.in_bounds(t.x, t.y) or world.level_at(t.x, t.y) < 0 or world.ground_at(t.x, t.y) == Ground.DEEP_WATER \
+					or absi(world.level_at(t.x, t.y) - world.level_at(was.x, was.y)) > step \
+					or (world.has_overhead() and world.headroom_at(t.x, t.y) < tall):
+				ok = false
+				break
+			was = t
+		out += int(ok)
+		if out >= RAYS_OUT:
+			return true
+	return false
 
 
 ## The nearest room to `centre` in the region, clear of home and off `avoid`,
-## whose ground opens (`opens`); INF when nowhere in it does.
-static func _open_nearest(world: WorldData, q: WorldQuery, region: Dictionary, def: SentinelDef, avoid: Array, centre: Vector2) -> Vector2:
+## that its keeper gets out of (`gets_out`); INF when none of ROOM_TRIES spread
+## over the region does.
+static func _room_nearest(world: WorldData, region: Dictionary, def: SentinelDef, avoid: Array, centre: Vector2) -> Vector2:
 	var id := int(region.get("id", -1))
 	var bounds: Rect2 = region.get("bounds", Rect2())
 	var spots: Array[Vector2] = []
@@ -364,9 +387,22 @@ static func _open_nearest(world: WorldData, q: WorldQuery, region: Dictionary, d
 			x += 3
 		y += 3
 	spots.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(centre) < b.distance_squared_to(centre))
+	# A spot beside one that failed is in the same pocket: passed over, so the
+	# tries spread across the region instead of one plateau.
+	var failed: Array[Vector2] = []
 	for p: Vector2 in spots:
-		if opens(world, q, p, def) >= OPENS_LEAST:
+		if failed.size() >= ROOM_TRIES:
+			break
+		var near_failed := false
+		for f: Vector2 in failed:
+			if p.distance_to(f) < float(RAY_OUT) * 0.6:
+				near_failed = true
+				break
+		if near_failed:
+			continue
+		if gets_out(world, p, def):
 			return p
+		failed.append(p)
 	return Vector2.INF
 
 
