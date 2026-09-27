@@ -3009,7 +3009,7 @@ void fragment() {
 		NORMAL = normalize(mix(NORMAL, normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz), level));
 	}
 	if (unh < 0.5) {
-		NORMAL = matter_bump(NORMAL, world_pos, m, mr.z * relief);
+		NORMAL = matter_bump_on(NORMAL, n_world, world_pos, m, mr.z * relief);
 	}
 	// What the wet ground mirrors is the sky, and under a colossus's pad coming
 	// down there is none left to mirror (sky.gdshaderinc `sky_colossus_pads`).
