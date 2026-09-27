@@ -609,7 +609,7 @@ const DEFS := {
 		# It seals the way behind you (FightSim.curtains): a gap you pass while
 		# it hunts is sprayed shut with lime after its tell, and two stand at once.
 		"seals": {"gap": 2.2, "within": 20.0, "lasts": 25.0, "keep": 2, "tell": 1400, "breaks": 2},
-		"pace": 2.8, "dash": 2.8, "quick": 280, "radius": 1.5, "height": 4.5, "life": 300,
+		"pace": 3.0, "dash": 5.0, "quick": 280, "radius": 1.5, "height": 4.5, "life": 370,
 		"sees": 5, "hears": 14, "racket": 22, "reach": 3, "ready": 3, "forget": 24, "tether": 28, "safe": 14,
 		"nerve": 100, "invuln": 500, "through": true, "disposition": &"wary",
 		"bite": {"swing": [820, 160, 900, 1000], "reach": 2.2, "width": 2.4, "dmg": 4, "knock": 10.0, "knock_ms": 320},

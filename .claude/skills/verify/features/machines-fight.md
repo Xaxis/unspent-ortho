@@ -65,7 +65,8 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   shrubs) is felled for good and thrown over (FightSim._break_through, 40_fight `felled`): `tools/test.sh test_keeper_breaks`.
   The frame, staged as a player does it (walk up to the snowfield's plough, hit it, run for the pines):
   `TOUR_FIXED_FPS=60 tools/tour.sh tours/plough_wood.tour` (options in its header).
-  The Limestone Caves' drip-warden, its body only (roster `sentinel.limestone_caves`, no design yet): squat under
+  The Limestone Caves' drip-warden (src/core/sentinel/designs/drip_warden.gd: keeping, sealing, dry; force, founder
+  on the sump's silt, starve on its pump houses and pipe; its bout in `test_keeper_bouts`): squat under
   a roof, and no body a roofed landscape fields is taller than 80% of its halls give: `tools/test.sh
   test_keeper_headroom`; whole at eye level under a tear and in a hall by the lamp (`near mob:KIND DIST`, on its
   own level first): `TOUR_FIXED_FPS=60 tools/tour.sh tours/drip_warden.tour` (options in its header).
