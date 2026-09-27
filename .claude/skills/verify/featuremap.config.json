@@ -142,6 +142,13 @@
   },
   {
    "kind": "system",
+   "label": "23_ruins",
+   "entry": "src/systems/23_ruins.gd",
+   "reach": "tools/test.sh test_ruin_walls",
+   "area": "world-places"
+  },
+  {
+   "kind": "system",
    "label": "24_holds",
    "entry": "src/systems/24_holds.gd",
    "reach": "tools/tour.sh tours/region.tour",
