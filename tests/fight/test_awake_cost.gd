@@ -37,13 +37,13 @@ func _pose_of(m: MachineModel) -> Array[Transform3D]:
 ##   ten dogs walking         2.7      2.5        2.9        2.6      1.19x
 ## The interpreted ruler put a 7763 under gate load at 13-14 against a bar of
 ## 11.5 that the laptop's doubling reads 15 on: no bar sat between them on
-## every host. With the dogs, on all four CPUs alone and beside two running
-## shards (54 readings), shipped read 2.27-3.04 and doubled 4.36-6.07 (laptop
-## 2.84 / 5.74); load slows the dogs more than the frame, so it only lowers the
-## reading. The bar sits between, about 1.2x clear of each. Dogs are figures
-## too, so a cost shared by every figure moves both and is not seen here; what
-## this bar holds is the machines' own share.
-const AWAKE_BAR := 3.7
+## every host. With the dogs, alone on four CI CPUs and this laptop, shipped
+## read 2.38-3.04 and doubled 4.85-6.07; the bar sits between, about 1.25x
+## clear of each. (Beside running shards a cost is not judged at all: it is
+## measured again alone, TestCase.yard_lt.) Dogs are figures too, so a cost
+## shared by every figure moves both and is not seen here; what this bar holds
+## is the machines' own share.
+const AWAKE_BAR := 3.8
 
 
 func _dogs() -> Array[FigureModel]:
