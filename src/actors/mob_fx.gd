@@ -928,6 +928,15 @@ static func breath(parent: Node, at: Vector3, col: Color, size: float, seconds: 
 	_run(mi, seconds, Vector3(drift.x, size * 0.6, drift.y))
 
 
+## Steam off a machine's stack: always the soft puff (`_air`), from any camera.
+## The flat vapour mark a breath takes from above reads as dark speckle against
+## snow -- dirt, not steam -- and a plume is a thing to be seen from far off.
+static func plume(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int) -> void:
+	if not _ok(parent):
+		return
+	_air(parent, at, col, size, seconds, drift, seed_value, true)
+
+
 ## Whether the eye `parent` is seen through is close: the perspective lens (the
 ## view over the shoulder). A mark's floor in frame pixels is a legibility
 ## minimum for the camera looking down; under the close eye it is a cloud the
@@ -939,11 +948,14 @@ static func close_eye(parent: Node) -> bool:
 
 ## Breath as the fire's own soft puff (FireModel.smoke_material): lit by what
 ## reaches it, depth-tested so a head in front of it hides it, in world units,
-## swelling and thinning as it rises.
-static func _air(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int) -> void:
+## swelling and thinning as it rises. `unshaded`: the one option on the shared
+## puff, for steam in the cold (`plume`, the vents): the sun cannot grey it.
+static func _air(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int, unshaded := false) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = FireModel.smoke_mesh()
 	var mat := FireModel.smoke_material().duplicate() as StandardMaterial3D
+	if unshaded:
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	var c := col.lightened(0.72)
 	mat.albedo_color = Color(c.r, c.g, c.b, 0.0)
 	mi.material_override = mat
