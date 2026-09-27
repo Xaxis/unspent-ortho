@@ -205,7 +205,14 @@ const UNKNOWN := "unknown"
 ## 39. The limestone caves are roofed (GenAbove, docs/ABOVE.md S3): a new
 ##     BiomeDef TERRAIN field, `above`, and the caves' overhead mass, laid last
 ##     of all. The surface grows as it did; every world holding the caves moves.
-const GEN := 39
+## 40. Regions are the plan's (streamed worldgen S4e4): which runs of a
+##     landscape are places, their size, their order and their bounds are asked
+##     of the landscape sampled every STEP tiles (`WorldData.plan_country`), and
+##     a tile takes its region from those cells and its own landscape. Region
+##     edges and ids move on every seed (ids are save-visible), and with them
+##     the places sited per region and the ground their patches lay; no tile's
+##     landscape or level moves.
+const GEN := 40
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
