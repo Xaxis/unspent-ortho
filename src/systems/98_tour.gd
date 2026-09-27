@@ -1654,11 +1654,7 @@ func _all_ground(want: Array[int], p: Vector2i) -> bool:
 func _teleport(p: Vector2) -> void:
 	# The fight body owns the player's place in a running game; move it too, or
 	# the next step puts the player straight back.
-	if game.player.hero != null:
-		game.player.hero.pos = p
-		game.player.hero.move = Vector2.ZERO
-	game.player.pos = p
-	game.player.position = game.world.to_3d(p)
+	p = game.player.place(p)
 	game.view.ensure_near(p)
 	game.camera.snap_to(game.player.position)
 	# A jump is not a walk: the light of the place arrives at once, not eased

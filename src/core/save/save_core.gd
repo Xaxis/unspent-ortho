@@ -289,15 +289,10 @@ static func save_player(game: Game) -> Dictionary:
 static func load_player(game: Game, v: Variant) -> void:
 	var d := _d(v)
 	var p := game.player
-	p.pos = SaveCodec.to_vec2(d.get("pos"), p.pos)
-	p.facing = SaveCodec.to_num(d.get("facing"), p.facing)
-	if p.hero != null:
-		p.hero.pos = p.pos
-		p.hero.facing = p.facing
-		p.hero.move = Vector2.ZERO
+	# Put down whole: a save made mid-stride on a terrace edge, or on a world a
+	# worldgen change has moved since, lands on ground the body can walk off.
+	p.place(SaveCodec.to_vec2(d.get("pos"), p.pos), SaveCodec.to_num(d.get("facing"), p.facing))
 	p.drive(Vector2.ZERO, false, 0.0)
-	if p.world != null:
-		p.position = p.world.to_3d(p.pos)
 	if game.camera != null:
 		game.camera.snap_to(p.position)
 	if game.view != null:

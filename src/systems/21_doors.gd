@@ -1968,9 +1968,7 @@ func reenter(key: StringName, at: Vector2) -> void:
 	_swap_in()
 	var realms := _realms()
 	# Where the save was made, not the doorway.
-	game.player.pos = at
-	if game.player.hero != null:
-		game.player.hero.pos = at
+	game.player.place(at)
 	game.player.sync_view(0.0)
 	if game.camera != null:
 		game.camera.snap_to(game.player.position)

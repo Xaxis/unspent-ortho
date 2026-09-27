@@ -845,8 +845,7 @@ func _on_outcome(e: Dictionary) -> void:
 				r.pos = home.pos
 				r.facing = home.facing
 				r.line = HOME_LINE
-			hero.pos = r.pos
-			hero.facing = r.facing
+			player.place(r.pos, r.facing)
 			hero.throw_until = 0.0
 			player.sync_view(0.0)
 			game.view.ensure_near(hero.pos)
@@ -900,13 +899,10 @@ func _holdings() -> Array:
 
 ## Moved while the hours went by: the player, the land about them and the camera all at once.
 func _put_hero(at: Vector2, facing: float) -> void:
-	var hero := sim.hero
-	hero.pos = at
-	hero.facing = facing
-	hero.throw_until = 0.0
-	hero.move = Vector2.ZERO
+	game.player.place(at, facing)
+	sim.hero.throw_until = 0.0
 	game.player.sync_view(0.0)
-	game.view.ensure_near(hero.pos)
+	game.view.ensure_near(sim.hero.pos)
 	game.camera.snap_to(game.player.position)
 
 
@@ -1046,7 +1042,7 @@ func _stand_on_part_side(m: MobState) -> void:
 		off = wrapf(cam_side.angle() - m.facing, -PI, PI)
 	var at := m.pos + Vector2.from_angle(m.facing + off) * dist
 	if game.query.standable(floori(at.x), floori(at.y)):
-		hero.pos = at
+		game.player.place(at)
 	hero.facing = (m.pos - hero.pos).angle()
 
 
@@ -1059,7 +1055,7 @@ func _bring_to_bite(m: MobState) -> void:
 	for dir in tries:
 		var at := m.pos + dir * d
 		if game.query.standable(floori(at.x), floori(at.y)):
-			hero.pos = at
+			game.player.place(at)
 			break
 	m.facing = (hero.pos - m.pos).angle()
 	m.aim = m.facing
