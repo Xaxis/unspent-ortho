@@ -10,10 +10,10 @@ shot 01-orchard-from-above with land:grey_orchards
 tap shoulder
 await shoulder 20
 wait 1.2
-shot 02-orchard-over-the-shoulder with shoulder
+shot 02-orchard-over-the-shoulder with shoulder,land:grey_orchards
 mouse 640,0 0.6
 wait 1.0
-shot 03-orchard-turned with shoulder
+shot 03-orchard-turned with shoulder,land:grey_orchards
 tap shoulder
 wait 1.5
 place pinewood
@@ -23,4 +23,4 @@ shot 04-pinewood-from-above with land:pinewood
 tap shoulder
 await shoulder 20
 wait 1.2
-shot 05-pinewood-over-the-shoulder with shoulder
+shot 05-pinewood-over-the-shoulder with shoulder,land:pinewood
