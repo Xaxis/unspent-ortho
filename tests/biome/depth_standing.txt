@@ -120,7 +120,6 @@ snowfield land.landmark
 snowfield land.own_props
 snowfield land.site
 snowfield people.built
-snowfield plan.keeper
 snowfield plan.machine
 sulphur_jungle land.landmark
 sulphur_jungle land.own_props

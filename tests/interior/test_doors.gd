@@ -468,6 +468,7 @@ func test_the_kept_by_shelf_is_given_once_on_good_terms_and_never_taken() -> voi
 	var pocket: InteriorGen.Pocket = d.get("pocket")
 	check(pocket != null and pocket.kind.lived(), "in a cottage, somebody's home")
 	if pocket == null:
+		Sx.end(g)
 		return
 	var i := KeptBy.shelf(pocket.layout, pocket.kind)
 	check(i >= 0, "it has its shelf")
@@ -493,6 +494,7 @@ func test_the_kept_by_shelf_is_given_once_on_good_terms_and_never_taken() -> voi
 	var saved: Dictionary = d.call(&"_save")
 	check(saved.has("given"), "and saved")
 	Story.forget()
+	Sx.end(g)
 
 
 static func _carried(g: Game) -> int:
