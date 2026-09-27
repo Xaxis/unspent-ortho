@@ -244,54 +244,61 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 ## both are being taken back by something that is not in a hurry.
 static func _works(L: Object) -> void:
 	var c: GenContext = L.c
-	var rng: RandomNumberGenerator = L.rng
-	var d: Vector2 = L.d
-	var nrm: Vector2 = L.nrm
 	var floor_g: Array = [Ground.SWARF, Ground.GRASS, Ground.NEEDLES, Ground.GRAVEL, Ground.HEATH]
 	# Breaking yards: a fenced square of wreckage with a conveyor running into
 	# the trees, the ground under it cut and never grown back the same.
 	for n in GenWorks._n(c, 2.0):
 		var p := GenWorks._site(L, 7, 1, floor_g, 32.0, 700, 0.4)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		var half := Vector2(rng.randf_range(6.5, 8.5), rng.randf_range(5.0, 6.5))
-		GenWorks._record(c, &"breaking_yard", at, d, half, GenWorks.CUT)
-		for sy: float in [-1.0, 1.0]:
-			GenWorks._run(L, PropKind.FENCE, at + nrm * half.y * sy - d * half.x, d, 6, 2.6, -99, 0.25)
-		# The gate they weighed loads at: a barricade across the way in, with
-		# the yard's sign still bolted to it.
-		GenWorks._put(L, PropKind.BARRICADE, at - d * (half.x + 0.5), nrm.angle(), -99, 0.6)
-		for gy in range(-1, 2):
-			for gx in range(-2, 3):
-				if rng.randf() < 0.4:
-					continue
-				var q := at + d * gx * 3.2 + nrm * gy * 3.4
-				GenWorks._put(L, PropKind.WRECKAGE, q, rng.randf() * TAU, -99, 0.4)
-		# The belt was lifted for the metal the week after it stopped: what runs
-		# out of the yard is the line of it lying in the leaves.
-		GenWorks._run(L, PropKind.WRECKAGE, at + d * (half.x + 0.5), d, rng.randi_range(4, 6), 2.5, -99, 0.3)
-		GenWorks._about(L, PropKind.DEBRIS, at, 3, 1.0, half.x)
-		GenWorks._about(L, PropKind.MAGNET_HEAP, at, 2, half.y, half.x + 3.0)
-		GenWorks._put(L, PropKind.SIGN, at - d * (half.x + 2.0), (-d).angle(), -99, 0.2)
+		if p.x >= 0:
+			GenWorks._work(L, &"_breaking_yard", Vector2(p) + Vector2(0.5, 0.5))
 	# A relay corridor the wood has nearly closed: masts on the bearing, exact,
 	# with the crowns leaning in over them and a heap under every second one.
 	for n in GenWorks._n(c, 1.0):
 		var p := GenWorks._site(L, 4, 2, [], 36.0, 500, 0.5)
-		if p.x < 0:
-			continue
-		var at := Vector2(p) + Vector2(0.5, 0.5)
-		# Two masts still stand on the line; the rest came down years ago and
-		# the wood grew through where they fell.
-		var masts := GenWorks._run(L, PropKind.RELAY, at, d, 2, 9.0, -99, 0.0)
-		if masts.is_empty():
-			continue
-		GenWorks._record(c, &"closing_corridor", at, d, Vector2(18.0, 3.0), GenWorks.CUT)
-		for i in masts.size():
-			# Clear of the mast's own feet. At 1.6-3.0 tiles the heap stood inside
-			# the pylon's legs, so the one prop that says what this wood IS could
-			# never be the subject of a frame and was never the thing in reach.
-			GenWorks._about(L, PropKind.MAGNET_HEAP, c.w.props[masts[i]].pos, 2, 4.0, 7.0)
-		# Where the fallen ones lie, on the same line.
-		GenWorks._run(L, PropKind.WRECKAGE, at + d * 4.5, d, 4, 9.0, -99, 0.15)
-		GenWorks._about(L, PropKind.SCRAP_TREE, at, 3, 3.0, 7.0)
+		if p.x >= 0:
+			GenWorks._work(L, &"_closing_corridor", Vector2(p) + Vector2(0.5, 0.5))
+
+
+static func _breaking_yard(L: Object, at: Vector2, _a: Array) -> bool:
+	var rng: RandomNumberGenerator = L.rng
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	var half := Vector2(rng.randf_range(6.5, 8.5), rng.randf_range(5.0, 6.5))
+	GenWorks._record(L.c, &"breaking_yard", at, d, half, GenWorks.CUT)
+	for sy: float in [-1.0, 1.0]:
+		GenWorks._run(L, PropKind.FENCE, at + nrm * half.y * sy - d * half.x, d, 6, 2.6, -99, 0.25)
+	# The gate they weighed loads at: a barricade across the way in, with
+	# the yard's sign still bolted to it.
+	GenWorks._put(L, PropKind.BARRICADE, at - d * (half.x + 0.5), nrm.angle(), -99, 0.6)
+	for gy in range(-1, 2):
+		for gx in range(-2, 3):
+			if rng.randf() < 0.4:
+				continue
+			var q := at + d * gx * 3.2 + nrm * gy * 3.4
+			GenWorks._put(L, PropKind.WRECKAGE, q, rng.randf() * TAU, -99, 0.4)
+	# The belt was lifted for the metal the week after it stopped: what runs
+	# out of the yard is the line of it lying in the leaves.
+	GenWorks._run(L, PropKind.WRECKAGE, at + d * (half.x + 0.5), d, rng.randi_range(4, 6), 2.5, -99, 0.3)
+	GenWorks._about(L, PropKind.DEBRIS, at, 3, 1.0, half.x)
+	GenWorks._about(L, PropKind.MAGNET_HEAP, at, 2, half.y, half.x + 3.0)
+	GenWorks._put(L, PropKind.SIGN, at - d * (half.x + 2.0), (-d).angle(), -99, 0.2)
+	return true
+
+
+static func _closing_corridor(L: Object, at: Vector2, _a: Array) -> bool:
+	var d: Vector2 = L.d
+	# Two masts still stand on the line; the rest came down years ago and
+	# the wood grew through where they fell.
+	var masts := GenWorks._run(L, PropKind.RELAY, at, d, 2, 9.0, -99, 0.0)
+	if masts.is_empty():
+		return false
+	GenWorks._record(L.c, &"closing_corridor", at, d, Vector2(18.0, 3.0), GenWorks.CUT)
+	for i in masts.size():
+		# Clear of the mast's own feet. At 1.6-3.0 tiles the heap stood inside
+		# the pylon's legs, so the one prop that says what this wood IS could
+		# never be the subject of a frame and was never the thing in reach.
+		GenWorks._about(L, PropKind.MAGNET_HEAP, L.w.props[masts[i]].pos, 2, 4.0, 7.0)
+	# Where the fallen ones lie, on the same line.
+	GenWorks._run(L, PropKind.WRECKAGE, at + d * 4.5, d, 4, 9.0, -99, 0.15)
+	GenWorks._about(L, PropKind.SCRAP_TREE, at, 3, 3.0, 7.0)
+	return true
