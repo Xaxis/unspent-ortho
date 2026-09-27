@@ -500,6 +500,14 @@
       "tests": []
     },
     {
+      "id": "system:43_cracked_roof",
+      "kind": "system",
+      "entry": "src/systems/43_cracked_roof.gd",
+      "reach": "tools/tour.sh tours/cracked_roof.tour --seed=7 --realm=underground --hour=12 --fit=boots_magnet --config=unharmed",
+      "area": "machines-fight",
+      "tests": []
+    },
+    {
       "id": "system:44_crafts",
       "kind": "system",
       "entry": "src/systems/44_crafts.gd",
