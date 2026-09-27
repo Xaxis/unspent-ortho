@@ -2,7 +2,7 @@
 
 Realms and portals, the rooms behind a house's door, landmarks and caches, regional holds.
 
-<!-- covers: system:20_realms, system:21_doors, system:22_landmarks, system:23_hush, system:24_holds -->
+<!-- covers: system:20_realms, system:21_doors, system:22_landmarks, system:23_hush, system:23_ruins, system:24_holds -->
 
 ## Sub-features
 
@@ -17,6 +17,7 @@ Realms and portals, the rooms behind a house's door, landmarks and caches, regio
   test_room_loot`, `test_doors:test_the_kept_by`; every lived-in kind at its shelf: `tools/tour.sh tours/kept_by.tour
   --seed=4 --hour=15 --weather=clear:0` (`near shelf` stands at it, `thanked` stages the region's thanks).
 - 22_landmarks: `src/systems/22_landmarks.gd`, reached by `tools/tour.sh tours/landmarks.tour`.
+- 23_ruins: `src/systems/23_ruins.gd`: every standing ruin's walls stop a body (`RuinWalls`, a croft's walls and a city tower's stump), set for the whole island and again when anything is taken. Checked by `tools/test.sh test_ruin_walls`.
 - 24_holds: `src/systems/24_holds.gd`, reached by `tools/tour.sh tours/region.tour`.
 
 ## How to reach it

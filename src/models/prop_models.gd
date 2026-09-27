@@ -42,6 +42,7 @@ const DrownedCity := preload("res://src/models/props/drowned_city.gd")
 const Mesas := preload("res://src/models/props/mesas.gd")
 const Materials := preload("res://src/models/props/materials.gd")
 const FallenTower := preload("res://src/models/props/fallen_tower.gd")
+const SprayerGantry := preload("res://src/models/props/sprayer_gantry.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -136,6 +137,9 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 			return 2
 		# A long fall, a short one broken twice, a top section lying well away.
 		PropKind.FALLEN_TOWER:
+			return 3
+		# Running its row, stopped off its rail, and spraying now.
+		PropKind.SPRAYER_GANTRY:
 			return 3
 		# The metropolis: a span with its lamp standing or snapped, a lift core
 		# with its cable in or out, a shop with its shutter a third, two thirds or
@@ -253,6 +257,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Rocks.build(k, kind, variant, country)
 		PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.BONES, PropKind.WRECK, PropKind.TIP, PropKind.VENT:
 			Shore.build(k, kind, variant, country)
+		PropKind.RUIN when BiomeDressing.of(country).ruin_form == &"tower":
+			FallenTower.stump(k, variant, country)
 		PropKind.HOUSE, PropKind.RUIN:
 			Houses.build(k, kind, variant, country)
 		PropKind.LAMP, PropKind.FIRE, PropKind.BENCH, PropKind.KILN, PropKind.PYLON, PropKind.POLE:
@@ -286,8 +292,15 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Mesas.build(k, kind, variant, country)
 		PropKind.FALLEN_TOWER:
 			FallenTower.build(k, variant, country)
+		# A land that dresses its trees in forms (BiomeDressing.broadleaf_forms:
+		# the orchards' pollards and trellis) draws its grafts in them: the rows
+		# are grafted trees, and the form is how the plan keeps them.
+		PropKind.GRAFT_TREE when not BiomeDressing.of(country).broadleaf_forms.is_empty():
+			Trees.broadleaf(k, variant, country)
 		PropKind.GRAFT_TREE, PropKind.MOSS_CORE, PropKind.SERVER_BLADE, PropKind.MIDDEN_BALE, PropKind.DRIPSTONE:
 			Materials.build(k, kind, variant, country)
+		PropKind.SPRAYER_GANTRY:
+			SprayerGantry.build(k, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)
@@ -626,4 +639,4 @@ static func dressings() -> Array[int]:
 
 
 ## Kinds of evidence whose model changes with the landscape it stands in.
-const DRESSED: Array[int] = [PropKind.FENCE, PropKind.GRAVE, PropKind.SHACK, PropKind.VEHICLE, PropKind.SIGN, PropKind.CHECKPOINT, PropKind.PIPE, PropKind.WRECKAGE, PropKind.MEMORIAL]
+const DRESSED: Array[int] = [PropKind.FENCE, PropKind.GRAVE, PropKind.SHACK, PropKind.VEHICLE, PropKind.SIGN, PropKind.CHECKPOINT, PropKind.PIPE, PropKind.PUMP_HOUSE, PropKind.WRECKAGE, PropKind.MEMORIAL]

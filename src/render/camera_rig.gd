@@ -162,6 +162,9 @@ var sight_room := Callable()
 ## How much of a line from the head is clear, with no floor (41_shoulder
 ## `side_room`): asked to the player's right, so the eye stands off a wall there
 ## instead of hugging it. The right the eye actually stands at, eased.
+## How much of a line from the head is clear of the land alone, for the
+## corridor probe (Shoulder.corridor); unset, the probe does not run.
+var land_room := Callable()
 var side_room := Callable()
 var _side := Shoulder.RIGHT
 ## How much room the eye keeps between itself and a wall at the player's right.
@@ -191,6 +194,13 @@ var _crowd := 0.0
 ## How far the eye stands raised over something low behind it (Shoulder.over).
 var _over := 0.0
 var _crowd_left := false
+## Down a corridor (Shoulder.corridor/along): the axis and how much of one it
+## is, probed every AXIS_EVERY; the end the view turns to; the eased yaw bias.
+var _axis := Vector2.ZERO
+var _axis_share := 0.0
+var _axis_end := 0
+var _axis_in := 0.0
+var _axis_bias := 0.0
 var _dt := 0.0
 var _yaw_drawn := 45.0
 ## Who is holding the lens on (a lock, the shoulder), and what the camera had
@@ -704,6 +714,27 @@ func _ease_shoulder(delta: float) -> void:
 ## which is an ORTHOGRAPHIC device -- `size` is world units per screen height and
 ## a perspective frame has no single one, so snapping to it would pin the picture
 ## to a number that no longer means anything.
+## Probe the space round the head for a corridor, and ease the view's bias
+## along it (Shoulder.corridor, Shoulder.along).
+func _corridor_step(w: float) -> void:
+	if not land_room.is_valid() or w <= 0.01:
+		_axis_share = 0.0
+		_axis_end = 0
+		_axis_bias = lerpf(_axis_bias, 0.0, 1.0 - exp(-Shoulder.AXIS_RATE * _dt))
+		return
+	_axis_in -= _dt
+	if _axis_in <= 0.0:
+		_axis_in = Shoulder.AXIS_EVERY
+		var got := Shoulder.corridor_round(_smoothed, land_room)
+		_axis = got[0]
+		_axis_share = float(got[1])
+		if _axis_share <= 0.0:
+			_axis_end = 0
+	var a := Shoulder.along(shoulder_yaw, _axis, _axis_share, _axis_end)
+	_axis_end = int(a.y)
+	_axis_bias = lerpf(_axis_bias, a.x, 1.0 - exp(-Shoulder.AXIS_RATE * _dt))
+
+
 func _apply_lens() -> void:
 	var yaw_a := yaw_deg + _yaw
 	var pitch_a := LENS_PITCH + _pitch
@@ -729,7 +760,11 @@ func _apply_lens() -> void:
 		return
 	# Every number the picture is made of, carried from the lens's pose to the
 	# shoulder's on the one eased clock. The yaw goes the short way round.
-	var yb := deg_to_rad(shoulder_yaw)
+	# Down a corridor the view is turned along it (Shoulder.along); never
+	# under a lock, which frames its target.
+	_corridor_step(w)
+	var yaw_s := shoulder_yaw + _axis_bias * (1.0 - _lock_w)
+	var yb := deg_to_rad(yaw_s)
 	var right := Vector3(cos(yb), 0.0, -sin(yb))
 	# THE EYE DOES NOT HUG A WALL AT THE PLAYER'S RIGHT. Down a corridor it stood
 	# a hand's width off the wall, which filled half the frame, and the lantern in
@@ -740,7 +775,7 @@ func _apply_lens() -> void:
 	# whichever side has the room, and may come nearer the wall there. Never
 	# under a lock, which is framed from the right.
 	var c := _crowd * (1.0 - _lock_w)
-	var want := lerpf(_right_now(), Shoulder.CROWD_SIDE, c)
+	var want := lerpf(_right_now(), Shoulder.CROWD_SIDE, c) * lerpf(1.0, Shoulder.AXIS_SIDE, _axis_share * (1.0 - _lock_w))
 	var clear := lerpf(SIDE_CLEAR, Shoulder.CROWD_SIDE_CLEAR, c)
 	var fit := want
 	if side_room.is_valid() and w > 0.01:
@@ -761,7 +796,7 @@ func _apply_lens() -> void:
 	else:
 		_side = lerpf(_side, fit, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
 	var focus_b := _smoothed + Vector3(0.0, lerpf(Shoulder.FOCUS_UP, Shoulder.CROWD_FOCUS_UP, c), 0.0) + right * _side
-	var yaw := yaw_a + Shoulder.turn(yaw_a, shoulder_yaw) * w
+	var yaw := yaw_a + Shoulder.turn(yaw_a, yaw_s) * w
 	var pitch := lerpf(pitch_a, minf(shoulder_pitch + _clear_tip + Shoulder.CROWD_TIP * c, Shoulder.PITCH_MOST), w)
 	var focus := focus_a.lerp(focus_b, w)
 	var back := lerpf(back_a, shoulder_back, w)

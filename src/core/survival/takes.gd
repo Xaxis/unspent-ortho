@@ -450,7 +450,9 @@ const PLAN_WORKS: Array[int] = [PropKind.RELAY, PropKind.SURVEY, PropKind.CONVEY
 	PropKind.LOCK_GATE,
 	# The mesas' ropeway pylon: the plan's, and what feeds its keeper
 	# (sentinel/designs/anchor.gd). Robbing it is theft.
-	PropKind.SPAN_PYLON]
+	PropKind.SPAN_PYLON,
+	# The orchards' sprayer: the plan's, still doing its job. Robbing it is theft.
+	PropKind.SPRAYER_GANTRY]
 
 
 static func is_plan_work(kind: int) -> bool:

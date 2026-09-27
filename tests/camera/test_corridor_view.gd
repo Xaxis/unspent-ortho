@@ -1,0 +1,95 @@
+extends TestCase
+## DOWN A CORRIDOR THE VIEW LOOKS ALONG IT (Shoulder.corridor, Shoulder.along):
+## a slot is found from the clear distances round the head, open ground and a
+## square room are not, and a view across the slot is turned toward the nearer
+## end, most of the way, holding that end until it is well past square.
+
+const Shoulder := preload("res://src/core/view/shoulder.gd")
+
+
+## Clear distances at the probes' headings for a corridor `width` wide along
+## ground direction `axis`, `reach` long each way, the head in its middle.
+func _slot(axis: Vector2, width: float, reach: float) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	for k in Shoulder.AXIS_PROBES:
+		var d := Vector2.from_angle(k * TAU / Shoulder.AXIS_PROBES)
+		var across := absf(d.dot(axis.orthogonal()))
+		var to_wall := (width * 0.5) / across if across > 1e-4 else INF
+		out.append(minf(to_wall, reach))
+	return out
+
+
+func test_a_slot_is_found_along_its_length() -> void:
+	var axis := Vector2(1, 0)
+	var got: Array = Shoulder.corridor(_slot(axis, 4.5, Shoulder.AXIS_REACH))
+	gt(float(got[1]), 0.9, "a slot four and a half wide is a corridor (%.2f)" % float(got[1]))
+	gt(absf((got[0] as Vector2).dot(axis)), 0.99, "along its length")
+	var diag := Vector2(1, 1).normalized()
+	var probe_axis := Vector2.from_angle(TAU / Shoulder.AXIS_PROBES * 2.0)
+	var got2: Array = Shoulder.corridor(_slot(probe_axis, 4.0, Shoulder.AXIS_REACH))
+	gt(absf((got2[0] as Vector2).dot(probe_axis)), 0.99, "at any heading the probes hold (%s)" % diag)
+
+
+func test_open_ground_and_a_room_are_no_corridor() -> void:
+	var open := PackedFloat32Array()
+	var room := PackedFloat32Array()
+	for k in Shoulder.AXIS_PROBES:
+		open.append(Shoulder.AXIS_REACH)
+		var d := Vector2.from_angle(k * TAU / Shoulder.AXIS_PROBES)
+		room.append(2.5 / maxf(absf(d.x), absf(d.y)))
+	eq(float(Shoulder.corridor(open)[1]), 0.0, "open ground")
+	eq(float(Shoulder.corridor(room)[1]), 0.0, "a square room five across")
+	eq(float(Shoulder.corridor(_slot(Vector2(1, 0), 9.0, Shoulder.AXIS_REACH))[1]), 0.0, "a way nine wide is no corridor")
+
+
+func test_a_view_across_is_turned_to_the_nearer_end_and_holds_it() -> void:
+	var axis := Vector2(1, 0)
+	var east := Shoulder.yaw_along(axis)
+	# Looking straight at the side wall, a little toward the east end.
+	var view := east + 80.0
+	var a := Shoulder.along(view, axis, 1.0, 0)
+	eq(int(a.y), 1, "the nearer end")
+	near(Shoulder.turn(view + a.x, east), -80.0 * (1.0 - Shoulder.AXIS_SHARE), 0.01, "most of the way along")
+	# Turned past square it holds that end, until well past.
+	var held := Shoulder.along(east + 100.0, axis, 1.0, 1)
+	eq(int(held.y), 1, "held past square")
+	var flipped := Shoulder.along(east + 130.0, axis, 1.0, 1)
+	eq(int(flipped.y), -1, "the other end once well past")
+	eq(Shoulder.along(view, axis, 0.0, 1).x, 0.0, "no corridor, no turn")
+	near(Shoulder.along(east, axis, 1.0, 1).x, 0.0, 1e-4, "looking along, left alone")
+
+
+## A CORRIDOR IS A FLOOR UP TO 7 M BETWEEN WALLS, held fully to 6 m: the
+## labyrinth's floors are 4.4 to 6.2 wide with a median of 6 (GenSlots), and
+## the view down one is held along it as down a four-wide slot. Past 7 m it is
+## ground to turn about on.
+func test_the_labyrinth_s_floors_are_corridors_and_wider_ground_is_not() -> void:
+	var axis := Vector2(1, 0)
+	for w: float in [4.0, 6.0]:
+		gt(float(Shoulder.corridor(_slot(axis, w, Shoulder.AXIS_REACH))[1]), 0.99, "a floor %.0f m wide is held fully" % w)
+	for w: float in [7.0, 8.0]:
+		eq(float(Shoulder.corridor(_slot(axis, w, Shoulder.AXIS_REACH))[1]), 0.0, "a floor %.0f m wide is not held" % w)
+
+
+## A WALL IS LAND TALLER THAN THE EYE. A floor nine wide between high walls, with
+## a bench 1.3 m high along each side leaving five between them: probed at the
+## head the benches were walls and a wide floor was held as a slot. At the eye
+## they are furniture, and the floor is nine wide.
+func test_a_waist_high_bench_is_no_corridor_wall() -> void:
+	var ground := func(p: Vector2) -> float:
+		var y := absf(p.y)
+		if y >= 4.5:
+			return 20.0
+		return 1.3 if y >= 2.5 else 0.0
+	var room := func(a: Vector3, b: Vector3) -> float:
+		var none: Array[Vector4] = []
+		return Shoulder.clear_along(a, b, ground, none)
+	var feet := Vector3(0.0, 0.0, 0.0)
+	eq(float(Shoulder.corridor_round(feet, room)[1]), 0.0, "a nine-wide floor with benches along it is not a corridor")
+	# And the high walls alone, five apart, still are.
+	var slot := func(p: Vector2) -> float:
+		return 20.0 if absf(p.y) >= 2.5 else 0.0
+	var room5 := func(a: Vector3, b: Vector3) -> float:
+		var none: Array[Vector4] = []
+		return Shoulder.clear_along(a, b, slot, none)
+	gt(float(Shoulder.corridor_round(feet, room5)[1]), 0.99, "five between walls taller than the eye is")

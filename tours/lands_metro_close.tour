@@ -1,0 +1,25 @@
+# The ruined metropolis close up: its most characteristic floor from above and
+# over the shoulder at noon, and turned.
+#   tools/tour.sh tours/lands_metro_close.tour --seed=7 --weather=clear:0
+coast calm
+hour 12
+place typical_ruined_metropolis
+wait 3.0
+shot metro-above with land:ruined_metropolis
+zoom 40
+wait 1.0
+shot metro-wide with land:ruined_metropolis
+zoom 15
+tap shoulder
+await shoulder 3
+wait 1.0
+shot metro-noon with land:ruined_metropolis
+mouse 900,0 0.8
+wait 1.0
+shot metro-turned with land:ruined_metropolis
+near ruin
+wait 2.0
+shot metro-stump
+mouse 900,0 0.8
+wait 1.0
+shot metro-stump-turned

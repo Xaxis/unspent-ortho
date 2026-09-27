@@ -109,6 +109,25 @@ static func _drop_underside(pen: MeshKit, from: int) -> void:
 	pen.custom0 = custom
 
 
+## A TOWER'S STUMP, standing (BiomeDressing.ruin_form &"tower"): what a city's
+## ruin is, where a house's is its walls. Two to four storeys of the standing
+## towers' own shaft, snapped above the last, the floor plates it tore out of
+## the storey that fell standing out of the break on their columns like ribs,
+## and the rubble of the rest round its foot. Eye height to twice it: at eye
+## level a street's wall of storeys, from above a broken block.
+static func stump(k: Kit, v: int, c: int) -> void:
+	k.hand(Ink.hand_of(c))
+	var dress := BiomeDressing.of(c)
+	var s := 9900 + v * 41 + c * 5
+	var n: int = [2, 3, 4][v % 3]
+	var top := Towers.shaft(k, W, D, n, 0.0, s, c)
+	var slab := GroundColors.made(GroundColors.down(dress.concrete, 0.2), GroundColors.CONCRETE)
+	_end(k, top, s + 1)
+	_ribs(k, top, 1 + v % 2, s + 7, slab)
+	for side: float in [-1.0, 1.0]:
+		_rubble(k, Vector3(side * (W * 0.5 + 0.5), 0.0, Kit.j(s, int(side + 3.0), 0.8)), s + int(side + 5.0) * 11, dress)
+
+
 ## The inside of a snapped length, seen at its broken end: dark, a hair inside
 ## the storey's walls, which are open at both ends.
 static func _end(k: Kit, y: float, s: int) -> void:

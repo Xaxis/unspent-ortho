@@ -221,7 +221,15 @@ const UNKNOWN := "unknown"
 ##     MIDDEN_BALE, and the caves' stalagmites are DRIPSTONE (they were standing
 ##     stones). Five kinds appended after the last, so no other kind's number
 ##     moves.
-const GEN := 41
+## 42. The middens' slot labyrinth (GenSlots, `relief.slots`, its plateau
+##     stood after the borders, GenRelief.lift_slots) and the first look
+##     batch, one GEN: the grey orchards' rows on the bearing, pollards and
+##     trellis, the sprayers berthed; the salt flats' ridges on the fissures
+##     and pump houses at the battery heads; the ruined metropolis' streets,
+##     its block floors (`relief.streets`, GenRelief.flatten_streets) and
+##     frontages; the orchards' grafts drawn as pollards and trellis, and
+##     SPRAYER_GANTRY appended after the land materials (101).
+const GEN := 42
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
@@ -299,6 +307,8 @@ const LOOK: Array[String] = [
 	"weather_style",
 	"fore_rows",
 	"geysers",
+	"mist_dusk",
+	"typical_among",
 ]
 
 

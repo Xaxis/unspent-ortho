@@ -540,6 +540,11 @@ var spawn_home := false
 var weather: Array = []
 ## Dawn mist at its deepest, 0..1 of fog density.
 var mist := 0.0
+## A second mist at DUSK, 0..1 at its deepest: not the weather's but a
+## machine's, laid on a schedule (the orchards' sprayers run their evening
+## circuit), rising through the late afternoon and lying thickest after sunset.
+## Blown and beaten down like the dawn's (Weather.mist).
+var mist_dusk := 0.0
 ## Hazard id -> base strength 0..1 (cold, heat, fumes, toxins, radiation, wet,
 ## dark, glare, thirst, magnetism, collapse, vacuum, pressure, em, resonance,
 ## time_shear). The hazards package reads this.
@@ -574,6 +579,14 @@ var interiors: Dictionary = {}
 ## coast's cottages are (cottage.gd COAST), round an open hearth.
 var home: Dictionary = {}
 var sound_bed: StringName = &"bed_wind"
+## The prop kind this landscape's typical ground must stand among
+## (GenPlaces.typical_sample), and how many of it the 24-tile neighbourhood must
+## hold: Vector2i(kind, least), kind -1 for none. The typical tile is the one whose
+## neighbourhood is most like the whole landscape, and in a land whose point is
+## a planting that can be the clearing where it was taken out: the orchards'
+## "typical" was a field of stumps with the rows on the horizon. A LOOK field:
+## it moves where a shot stands, never what a seed makes.
+var typical_among := Vector2i(-1, 0)
 ## Another type's id whose music motif this one borrows; empty composes its own.
 var music_motif: StringName = &""
 

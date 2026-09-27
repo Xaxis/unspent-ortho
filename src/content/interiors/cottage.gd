@@ -320,7 +320,15 @@ static func _furnish(l: InteriorLayout, rng: RandomNumberGenerator, household: D
 
 ## Whether a thing `solid` across at `at` leaves a body's width of floor between
 ## it and every solid thing already laid.
+## And a body's width clear of every doorway between rooms: a chair drawn up to
+## a hearth by the partition stood in the doorway and shut the far room, and
+## the bed in it, away (house@2806,990, seed 4).
 static func _clear_of(l: InteriorLayout, at: Vector2, solid: float) -> bool:
+	for e: Dictionary in l.edges:
+		if e.kind == &"inner":
+			var mid := ((e.a as Vector2) + (e.b as Vector2)) * 0.5
+			if mid.distance_to(at) < solid + 0.5 + 2.0 * Tuning.PLAYER_RADIUS:
+				return false
 	for t: Dictionary in l.things:
 		var ts := float(t.get("solid", 0.0))
 		if ts > 0.0 and (t.at as Vector2).distance_to(at) < solid + ts + 2.0 * Tuning.PLAYER_RADIUS:

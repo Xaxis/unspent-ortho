@@ -383,8 +383,57 @@ static func pump_house(k: Kit, v: int, c: int) -> void:
 	k.found.prism(0, 0, 0, 0.16, 0.9, 0.16, 8, P.PLATE[3], P.PLATE[2])
 	k.found.prism(0, 0.85, 0, 0.2, 0.93, 0.2, 8, P.PLATE[1], P.INK[0])
 	k.found.pop()
-	_oil(k, Vector3(1.9, 0.0, -0.45), 0.42, s + 5)
+	if BiomeDressing.of(c).brine:
+		_brine_skin(k, alive, s)
+	else:
+		_oil(k, Vector3(1.9, 0.0, -0.45), 0.42, s + 5)
 	Remains.banks(k, [[-0.9, 0.8, 0.45, 0.14], [-1.0, -0.7, 0.4, 0.12]], Remains.drift_of(c)[0], s + 9)
+
+
+## What brine does to a pump house (BiomeDressing.brine): a crust of crystal up
+## the walls to where it seeped, in a ragged tide line; an efflorescence skirt
+## round the foot; stalactites of salt off the outfall's lip; and under it not an
+## oil slick but the outfall's pool, green-black and dense, rimmed white.
+static func _brine_skin(k: Kit, alive: bool, s: int) -> void:
+	var crust := Color(0.80, 0.78, 0.72)
+	var crust_dim := Color(0.66, 0.64, 0.58)
+	# The tide line up each wall: a band of crust, torn along its top.
+	for sz: float in [0.752, -0.752]:
+		var n := 9
+		for i in n:
+			var x0 := -0.85 + float(i) * 1.7 / float(n)
+			var x1 := x0 + 1.7 / float(n)
+			var top0 := 0.18 + Rng.hash01(s, i, int(sz * 10.0)) * 0.34
+			var top1 := 0.18 + Rng.hash01(s, i + 1, int(sz * 10.0)) * 0.34
+			Remains._facing_quad(k.made, Vector3(x0, -0.05, sz), Vector3(x1, -0.05, sz), Vector3(0, (top0 + top1) * 0.5 + 0.05, 0), Vector3(0, 0, signf(sz)), crust if i % 3 != 1 else crust_dim)
+	for sx: float in [0.852, -0.852]:
+		var n := 8
+		for i in n:
+			var z0 := -0.7 + float(i) * 1.4 / float(n)
+			var z1 := z0 + 1.4 / float(n)
+			var top := 0.2 + Rng.hash01(s, i, int(sx * 10.0) + 40) * 0.3
+			Remains._facing_quad(k.made, Vector3(sx, -0.05, z0), Vector3(sx, -0.05, z1), Vector3(0, top, 0), Vector3(signf(sx), 0, 0), crust if i % 3 != 2 else crust_dim)
+	# The skirt of efflorescence round the foot, lumped.
+	for i in 9:
+		var a := float(i) / 9.0 * TAU
+		k.clump(cos(a) * 1.05, -0.05, sin(a) * 0.95, 0.22 + Rng.hash01(s, i, 21) * 0.12, 0.1, s + 30 + i, crust, 6)
+	# Salt stalactites off the outfall lip, where the brine drips as it dries.
+	for i in 4:
+		var at := Vector3(1.72, 0.32 - 0.04 * float(i % 2), -0.62 + float(i) * 0.11)
+		k.made.prism(at.x, at.y - 0.16 - Rng.hash01(s, i, 23) * 0.12, at.z, 0.0, at.y, 0.025, 4, crust_dim, crust)
+	# The outfall pool: dense brine, green-black, a crust rim, still running if alive.
+	var pool := Vector3(1.95, 0.0, -0.45)
+	var ring: Array[Vector3] = []
+	for i in 10:
+		var a := float(i) / 10.0 * TAU
+		var rr := 0.5 * (0.75 + Rng.hash01(s, i, 25) * 0.4)
+		ring.append(pool + Vector3(cos(a) * rr * 1.3, 0.012, sin(a) * rr))
+	var brine := Color(0.112, 0.250, 0.264).lerp(P.INK[2], 0.25 if alive else 0.45)
+	for i in 10:
+		k.made.tri(pool + Vector3(0, 0.012, 0), ring[(i + 1) % 10], ring[i], brine)
+		var o := ring[i] + (ring[i] - pool) * 0.18
+		var o2 := ring[(i + 1) % 10] + (ring[(i + 1) % 10] - pool) * 0.18
+		k.made.quad(ring[i] + Vector3(0, 0.002, 0), ring[(i + 1) % 10] + Vector3(0, 0.002, 0), o2 + Vector3(0, 0.002, 0), o + Vector3(0, 0.002, 0), crust)
 
 
 ## A slick of oily runoff on standing water: black, with the sheen of the sky

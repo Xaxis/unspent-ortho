@@ -404,6 +404,14 @@
       "tests": []
     },
     {
+      "id": "system:23_ruins",
+      "kind": "system",
+      "entry": "src/systems/23_ruins.gd",
+      "reach": "tools/test.sh test_ruin_walls",
+      "area": "world-places",
+      "tests": []
+    },
+    {
       "id": "system:24_holds",
       "kind": "system",
       "entry": "src/systems/24_holds.gd",
