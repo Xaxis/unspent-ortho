@@ -32,7 +32,7 @@ func _raider(g: Game, at: Vector2) -> MobState:
 
 ## The gun at `gun`, the wall a step east of it (whose it is: `wall_home`), the
 ## raider three steps east. Returns the raider's life lost after a few shots.
-func _shot_through(own_wall: bool) -> int:
+func _shot_through(own_wall: bool, piece: int = StructureKind.PALISADE) -> int:
 	var g := _game()
 	await frames(3)
 	var h := Sx.system(g, "46_settlements")
@@ -45,7 +45,7 @@ func _shot_through(own_wall: bool) -> int:
 		wall_home = h.call("found", h.call("realm_here"), gun_at + Vector2(1.2, 6.0))
 	for dy: float in [-1.0, -0.5, 0.0, 0.5, 1.0]:
 		@warning_ignore("return_value_discarded")
-		h.call("place_piece", wall_home, StructureKind.PALISADE, gun_at + Vector2(1.5, dy), PI * 0.5)
+		h.call("place_piece", wall_home, piece, gun_at + Vector2(1.5, dy), PI * 0.5)
 	g.player.pos = s.centre + Vector2(-3, -3)
 	g.player.hero.pos = g.player.pos
 	var m := _raider(g, gun_at + Vector2(3.5, 0))
@@ -65,3 +65,10 @@ func test_a_walled_turret_fires_over_its_own_palisade() -> void:
 func test_another_holdings_wall_still_blinds_it() -> void:
 	var lost: int = await _shot_through(false)
 	eq(lost, 0, "a wall that is not its own stands in its way")
+
+
+## And over its own yard: a hut between the gun and the gate left the gate's
+## outside, where the breach comes, unshot (the salt flats raid, 2026-09-26).
+func test_a_turret_fires_over_its_own_hut() -> void:
+	var lost: int = await _shot_through(true, StructureKind.HUT)
+	gt(lost, 0, "the gun hit the raider over its own hut (%d)" % lost)

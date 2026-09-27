@@ -1358,6 +1358,8 @@ func _strike(p: RaidPlan, s: Settlement, m: MobState, r: Dictionary, piece: Stru
 	if is_finite(pending) and sim.now >= pending:
 		r["strike_at"] = -INF
 		var ruined := s.damage_structure(piece.id, _blow_of(m, s))
+		if StructureKind.is_defence(piece.kind):
+			m.struck_wall_at = sim.now
 		if not p.broke.has(piece.id):
 			p.broke.append(piece.id)
 		if ruined and not p.ruined.has(piece.id):

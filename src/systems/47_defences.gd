@@ -74,8 +74,12 @@ func _work(sim: FightSim, h: Node, s: Settlement, p: Structure, key: String) -> 
 	var over: Dictionary = h.call("walls_of", s)
 	var clear := func(q: MobState) -> bool: return Senses.line_clear(game.world, game.query, p.pos, q.pos, over)
 	var m := _mob(sim, int(st["target"]))
+	# One striking the wall is answered first, whoever the head was on.
+	var first := TurretRules.pick(sim.mobs, p.pos, clear, sim.now)
+	if m != null and first != null and first != m and TurretRules.wants(first, sim.now) > TurretRules.wants(m, sim.now):
+		m = null
 	if m == null or not TurretRules.keeps(m, p.pos) or not bool(clear.call(m)):
-		m = TurretRules.pick(sim.mobs, p.pos, clear)
+		m = first
 		st["target"] = m.id if m != null else -1
 		if m == null:
 			return

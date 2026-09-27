@@ -355,13 +355,13 @@ func wall_in(s: Settlement, radius: float, gate_bearing: float) -> void:
 		place_piece(s, StructureKind.GATE if k == 0 else StructureKind.PALISADE, at, a + PI * 0.5)
 
 
-## The footprint ids of this holding's own walls (palisade, gate, plate wall):
-## what its turrets stand above and see past (Senses.line_clear `over`).
+## The footprint ids of this holding's own pieces -- its walls, its roofs, its
+## stores: what its turrets stand above and see past (Senses.line_clear `over`).
+## A gun is mounted high over the yard it guards; a hut in the yard between it
+## and the gate left the gate's outside, where the breach comes, unshot.
 func walls_of(s: Settlement) -> Dictionary:
 	var out := {}
 	for p in s.pieces:
-		if p.kind != StructureKind.PALISADE and p.kind != StructureKind.GATE and p.kind != StructureKind.PLATE_WALL:
-			continue
 		var ghost: WorldProp = _ghosts.get(_key(s, p))
 		if ghost != null:
 			out[ghost.id] = true

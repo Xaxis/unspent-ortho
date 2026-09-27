@@ -53,7 +53,8 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   (`tools/test.sh test_come_home`; `tools/tour.sh tours/taken_home.tour`, options in its header;
   `tours/escort.tour` walks one to a village).
 - 47_defences: `src/systems/47_defences.gd`, reached by `tools/tour.sh tours/defences.tour`.
-  A gun sees over its own holding's walls, not another's (`tools/test.sh test_turret_sight`).
+  A gun sees over its own holding's walls and roofs, not another's (`tools/test.sh test_turret_sight`), and
+  answers a raider striking a wall piece before anything else (`tools/test.sh test_turret_answers_the_wall`).
 - 48_raids: `src/systems/48_raids.gd`, reached by `tools/tour.sh tours/raids.tour`.
   A probe fought live against a walled yard with covering guns, held (`tools/tour.sh tours/raids_live.tour`,
   options in its header, `--walled`); graded outcomes and the prepared-versus-open bout

@@ -132,6 +132,9 @@ var sent := false
 ## step is over or the player leaves the yard. Without this, the cheapest answer
 ## to any raid was to walk twenty-five tiles and let the culler eat the party.
 var raider := false
+## When a raider last struck a holding's wall piece (48_raids), for the guns
+## (TurretRules.AT_WALL_MS).
+var struck_wall_at := -INF
 ## Where the last blow that hurt it came from, when that was NOT the player's own
 ## swing (FightSim.strike: a turret); INF when it was the player's, or never. A
 ## party body hurt by the yard goes for what shot it and one hurt by the player
