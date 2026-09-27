@@ -30,118 +30,55 @@ const FLOW_BIN := 4.0
 const TENDED := 12.0
 
 
+## How far round its own tiles a section lays the surface to lay them as the
+## whole world does: the step fields reach 9, a cliff's foot 1, and the tidy
+## GenTidy.MARGIN beyond the ground they settle (tests/stream/test_surface_sections.gd).
+const MARGIN := 40
+
+
 static func run(c: GenContext) -> void:
-	var w := c.w
-	var size := c.size
-	var s := c.s
+	var rules := prepare(c)
+	window(c, rules, Rect2i(0, 0, c.size, c.size), 0)
+
+
+## One section's surface: the tiles of `core`, laid from a window MARGIN wider
+## all round, written into the world's ground, recipe, rise, forest and sea
+## steps. `rules` is `prepare`'s, made once for every section.
+static func section(c: GenContext, rules: Dictionary, core: Rect2i) -> void:
+	window(c, rules, core, MARGIN)
+
+
+## What every section's surface shares: the per-type rules flattened for the
+## tile loop, the caldera's flows, and the world's surface arrays to write into.
+static func prepare(c: GenContext) -> Dictionary:
 	var n := c.n
-	var level := w.level
-	var ground := w.ground
-	var country := w.country
-	var country2 := w.country2
-	var blend := w.blend
-	var water := c.water
-	var road := c.road
-	var village := c.village
-	var site_ground := c.site_ground
-	var pool_ground := c.pool_ground
-	var convex := c.convex
-	var inland := c.inland
-	var elev := c.elev
-	var sea := PackedByteArray()
-	sea.resize(n)
-	var estuary := PackedByteArray()
-	estuary.resize(n)
-	var foot := PackedByteArray()
-	foot.resize(n)
-	var river := PackedByteArray()
-	river.resize(n)
-	var still := PackedByteArray()
-	still.resize(n)
-	GenFields.rows(size, func(y0: int, y1: int) -> void:
-		for y in range(y0, y1):
-			for x in size:
-				var i := y * size + x
-				var l := level[i]
-				sea[i] = 1 if l <= 0 else 0
-				var wat := water[i]
-				river[i] = 1 if wat == 1 else 0
-				still[i] = 1 if wat == 2 else 0
-				# Low river water near the sea: salt marsh grows out from it.
-				estuary[i] = 1 if wat == 1 and l <= 2 and inland[i] < 16.0 else 0
-				if l > 0 and x > 0 and y > 0 and x < size - 1 and y < size - 1:
-					# The foot of a tall face (three levels or more): scree lies here.
-					var up := maxi(maxi(level[i - 1], level[i + 1]), maxi(level[i - size], level[i + size])) - l
-					foot[i] = 1 if up >= 3 and wat == 0 else 0
-	)
-	c.mark(&"surface.masks")
-	var steps: Array[PackedByteArray] = [PackedByteArray(), PackedByteArray(), PackedByteArray(), PackedByteArray(), PackedByteArray()]
-	GenFields.together([
-		func() -> void: steps[0] = GenFields.near_steps(sea, size, 8),
-		func() -> void: steps[1] = GenFields.near_steps(estuary, size, 9),
-		func() -> void: steps[2] = GenFields.near_steps(foot, size, 3),
-		func() -> void: steps[3] = GenFields.near_steps(river, size, 2),
-		func() -> void: steps[4] = GenFields.near_steps(still, size, 2),
-	])
-	c.sea_steps = steps[0]
-	var sea_steps := steps[0]
-	var marsh := steps[1]
-	var foot_steps := steps[2]
-	var river_steps := steps[3]
-	var pool_steps := steps[4]
-	c.mark(&"surface.steps")
+	c.recipe = PackedByteArray()
+	c.recipe.resize(n)
+	c.rise = PackedFloat32Array()
+	c.rise.resize(n)
+	c.forest = PackedFloat32Array()
+	c.forest.resize(n)
+	c.sea_steps = PackedByteArray()
+	c.sea_steps.resize(n)
+	# Lava flows run out from the caldera: noise on a polar grid, stretched
+	# along the radius, wrapping round the angle.
+	var flow_noise := GenFields.noise(c.s, 507, 1.0 / 20.0, 1)
+	var flow_img := flow_noise.get_seamless_image(FLOW_ANGLES, FLOW_RADII, false, false, 0.1, false)
+	flow_img.convert(Image.FORMAT_RF)
 	# Ecotone islands: warped, so a neighbour arrives in long tongues and
 	# drifts rather than round blots.
-	var patch_noise := GenFields.noise(s, 503, 1.0 / 22.0, 2)
+	var patch_noise := GenFields.noise(c.s, 503, 1.0 / 22.0, 2)
 	patch_noise.domain_warp_enabled = true
 	patch_noise.domain_warp_amplitude = 18.0
 	patch_noise.domain_warp_frequency = 1.0 / 40.0
-	var fl := GenFields.batch(size, [
-		[GenFields.SMOOTH, elev, 2],
-		[GenFields.SMOOTH, elev, 4],
-		[GenFields.FIELD, GenFields.noise(s, 501, 1.0 / 48.0, 2), 8],
-		[GenFields.FIELD, patch_noise, 2],
-		[GenFields.FIELD, GenFields.noise(s, 504, 1.0 / 30.0, 2), 4],
-	])
-	var elev_s := fl[0]
-	var broad := fl[1]
-	c.rise = PackedFloat32Array()
-	c.rise.resize(n)
-	var rise := c.rise
-	GenFields.rows(size, func(y0: int, y1: int) -> void:
-		for i in range(y0 * size, y1 * size):
-			rise[i] = elev_s[i] - broad[i]
-	)
-	c.mark(&"surface.rise")
-	var big := fl[2]
-	var patch := fl[3]
-	c.forest = fl[4]
-	c.mark(&"surface.noise")
-	# Lava flows run out from the caldera: noise on a polar grid, stretched
-	# along the radius, wrapping round the angle.
-	var flow_noise := GenFields.noise(s, 507, 1.0 / 20.0, 1)
-	var flow_img := flow_noise.get_seamless_image(FLOW_ANGLES, FLOW_RADII, false, false, 0.1, false)
-	flow_img.convert(Image.FORMAT_RF)
-	var flows := flow_img.get_data().to_float32_array()
-	var caldera_type := c.caldera_type
-	var heart := c.hearts[caldera_type] if caldera_type >= 0 else Vector2(-1, -1)
-	var crater := GenRelief.crater_radius(c)
-	var spawn := w.spawn
-	var rim_warp := c.rim_warp
-	var tended := PackedFloat32Array()
-	tended.resize(n)
-	var clearing := _clearings(c, patch, tended)
-	c.recipe = PackedByteArray()
-	c.recipe.resize(n)
-	var recipe := c.recipe
-	# 1 where the ground is fixed by geometry (sea, water, roads, sites, pool
-	# rims): GenTidy never changes these.
-	var fixed := PackedByteArray()
-	fixed.resize(n)
-	c.mark(&"surface.fields")
-	var defs := c.defs
-	# The ecotone rules, flattened so the tile loop never touches a BiomeDef.
 	var types := c.types
+	var r := {
+		"flows": flow_img.get_data().to_float32_array(),
+		"big_noise": GenFields.noise(c.s, 501, 1.0 / 48.0, 2),
+		"patch_noise": patch_noise,
+		"forest_noise": GenFields.noise(c.s, 504, 1.0 / 30.0, 2),
+	}
+	# The ecotone rules, flattened so the tile loop never touches a BiomeDef.
 	var out_thin := PackedFloat32Array()
 	var in_thin := PackedFloat32Array()
 	var out_high := PackedVector4Array()
@@ -164,7 +101,7 @@ static func run(c: GenContext) -> void:
 	frozen.resize(types)
 	var surf: Array[Callable] = []
 	for cc in types:
-		var d := defs[cc]
+		var d := c.defs[cc]
 		out_thin[cc] = d.reach_out_thin
 		in_thin[cc] = d.reach_in_thin
 		out_high[cc] = d.reach_out_high
@@ -175,8 +112,156 @@ static func run(c: GenContext) -> void:
 		rim_g[cc] = d.pool_rim_ground
 		frozen[cc] = 1 if d.rivers_freeze else 0
 		surf.append(d.surface)
-	var forest := c.forest
-	GenFields.rows(size, func(y0: int, y1: int) -> void:
+	r["out_thin"] = out_thin
+	r["in_thin"] = in_thin
+	r["out_high"] = out_high
+	r["in_low"] = in_low
+	r["out_high_cap"] = out_high_cap
+	r["in_low_cap"] = in_low_cap
+	r["plain"] = plain
+	r["rim_g"] = rim_g
+	r["frozen"] = frozen
+	r["surf"] = surf
+	return r
+
+
+## The surface over the square `core` grown by `margin`, its core written into
+## the world. With no margin over the whole world it works on the world's own
+## arrays; a section works on its window's copy of them, where a tile outside
+## the world is open sea as the world's own edge is.
+static func window(c: GenContext, rules: Dictionary, core: Rect2i, margin: int) -> void:
+	var w := c.w
+	var size := c.size
+	var whole := margin == 0 and core == Rect2i(0, 0, size, size)
+	var ox := core.position.x - margin
+	var oy := core.position.y - margin
+	var side := core.size.x + margin * 2
+	var n := side * side
+	var s := c.s
+	var level: PackedInt32Array = w.level if whole else _cut_i(w.level, size, ox, oy, side, -1)
+	var country: PackedByteArray = w.country if whole else _cut_b(w.country, size, ox, oy, side)
+	var country2: PackedByteArray = w.country2 if whole else _cut_b(w.country2, size, ox, oy, side)
+	var blend: PackedFloat32Array = w.blend if whole else _cut_f(w.blend, size, ox, oy, side)
+	var water: PackedByteArray = c.water if whole else _cut_b(c.water, size, ox, oy, side)
+	var road: PackedByteArray = c.road if whole else _cut_b(c.road, size, ox, oy, side)
+	var site_ground: PackedByteArray = c.site_ground if whole else _cut_b(c.site_ground, size, ox, oy, side)
+	var pool_ground: PackedByteArray = c.pool_ground if whole else _cut_b(c.pool_ground, size, ox, oy, side)
+	var convex: PackedFloat32Array = c.convex if whole else _cut_f(c.convex, size, ox, oy, side)
+	var inland: PackedFloat32Array = c.inland if whole else _cut_f(c.inland, size, ox, oy, side)
+	var rim_warp: PackedFloat32Array = c.rim_warp if whole else _cut_f(c.rim_warp, size, ox, oy, side)
+	var elev := c.elev
+	var sea := PackedByteArray()
+	sea.resize(n)
+	var estuary := PackedByteArray()
+	estuary.resize(n)
+	var foot := PackedByteArray()
+	foot.resize(n)
+	var river := PackedByteArray()
+	river.resize(n)
+	var still := PackedByteArray()
+	still.resize(n)
+	GenFields.rows(side, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			var wy := oy + y
+			for x in side:
+				var i := y * side + x
+				var wx := ox + x
+				var l := level[i]
+				sea[i] = 1 if l <= 0 else 0
+				var wat := water[i]
+				river[i] = 1 if wat == 1 else 0
+				still[i] = 1 if wat == 2 else 0
+				# Low river water near the sea: salt marsh grows out from it.
+				estuary[i] = 1 if wat == 1 and l <= 2 and inland[i] < 16.0 else 0
+				if l > 0 and wx > 0 and wy > 0 and wx < size - 1 and wy < size - 1 and x > 0 and y > 0 and x < side - 1 and y < side - 1:
+					# The foot of a tall face (three levels or more): scree lies here.
+					var up := maxi(maxi(level[i - 1], level[i + 1]), maxi(level[i - side], level[i + side])) - l
+					foot[i] = 1 if up >= 3 and wat == 0 else 0
+	)
+	if whole:
+		c.mark(&"surface.masks")
+	var steps: Array[PackedByteArray] = [PackedByteArray(), PackedByteArray(), PackedByteArray(), PackedByteArray(), PackedByteArray()]
+	GenFields.together([
+		func() -> void: steps[0] = GenFields.near_steps(sea, side, 8),
+		func() -> void: steps[1] = GenFields.near_steps(estuary, side, 9),
+		func() -> void: steps[2] = GenFields.near_steps(foot, side, 3),
+		func() -> void: steps[3] = GenFields.near_steps(river, side, 2),
+		func() -> void: steps[4] = GenFields.near_steps(still, side, 2),
+	])
+	var sea_steps := steps[0]
+	var marsh := steps[1]
+	var foot_steps := steps[2]
+	var river_steps := steps[3]
+	var pool_steps := steps[4]
+	if whole:
+		c.sea_steps = sea_steps
+		c.mark(&"surface.steps")
+	var elev_s: PackedFloat32Array
+	var broad: PackedFloat32Array
+	var big: PackedFloat32Array
+	var patch: PackedFloat32Array
+	var forest: PackedFloat32Array
+	if whole:
+		var fl := GenFields.batch(size, [
+			[GenFields.SMOOTH, elev, 2],
+			[GenFields.SMOOTH, elev, 4],
+			[GenFields.FIELD, rules.big_noise, 8],
+			[GenFields.FIELD, rules.patch_noise, 2],
+			[GenFields.FIELD, rules.forest_noise, 4],
+		])
+		elev_s = fl[0]
+		broad = fl[1]
+		big = fl[2]
+		patch = fl[3]
+		forest = fl[4]
+	else:
+		elev_s = GenFields.smooth_rect(elev, size, 2, ox, oy, side, side)
+		broad = GenFields.smooth_rect(elev, size, 4, ox, oy, side, side)
+		big = GenFields.field_rect(rules.big_noise, size, 8, ox, oy, side, side)
+		patch = GenFields.field_rect(rules.patch_noise, size, 2, ox, oy, side, side)
+		forest = GenFields.field_rect(rules.forest_noise, size, 4, ox, oy, side, side)
+	var rise := c.rise if whole else PackedFloat32Array()
+	if not whole:
+		rise.resize(n)
+	GenFields.rows(side, func(y0: int, y1: int) -> void:
+		for i in range(y0 * side, y1 * side):
+			rise[i] = elev_s[i] - broad[i]
+	)
+	if whole:
+		c.forest = forest
+		c.mark(&"surface.rise")
+		c.mark(&"surface.noise")
+	var flows: PackedFloat32Array = rules.flows
+	var caldera_type := c.caldera_type
+	var heart := c.hearts[caldera_type] if caldera_type >= 0 else Vector2(-1, -1)
+	var crater := GenRelief.crater_radius(c)
+	var spawn := w.spawn
+	var tended := PackedFloat32Array()
+	tended.resize(n)
+	var clearing := _clearings(c, patch, tended, ox, oy, side)
+	var recipe := c.recipe if whole else PackedByteArray()
+	var ground := w.ground if whole else PackedByteArray()
+	if not whole:
+		recipe.resize(n)
+		ground.resize(n)
+	# 1 where the ground is fixed by geometry (sea, water, roads, sites, pool
+	# rims): GenTidy never changes these.
+	var fixed := PackedByteArray()
+	fixed.resize(n)
+	if whole:
+		c.mark(&"surface.fields")
+	var defs := c.defs
+	var out_thin: PackedFloat32Array = rules.out_thin
+	var in_thin: PackedFloat32Array = rules.in_thin
+	var out_high: PackedVector4Array = rules.out_high
+	var in_low: PackedVector3Array = rules.in_low
+	var out_high_cap: PackedFloat32Array = rules.out_high_cap
+	var in_low_cap: PackedFloat32Array = rules.in_low_cap
+	var plain: PackedInt32Array = rules.plain
+	var rim_g: PackedInt32Array = rules.rim_g
+	var frozen: PackedByteArray = rules.frozen
+	var surf: Array[Callable] = rules.surf
+	GenFields.rows(side, func(y0: int, y1: int) -> void:
 		var t := BiomeSurface.new()
 		# The two types in play and the recipe change only where the land does,
 		# so they are handed over when they change and not once a tile: an
@@ -186,8 +271,10 @@ static func run(c: GenContext) -> void:
 		var last_recipe := -1
 		var recipe_fn := surf[0]
 		t.crater = crater
-		t.size = size
-		t.seed_value = c.s
+		t.size = side
+		t.x0 = ox
+		t.y0 = oy
+		t.seed_value = s
 		t.elev = elev_s
 		t.rise = rise
 		t.big = big
@@ -198,12 +285,16 @@ static func run(c: GenContext) -> void:
 		t.levels = level
 		t.blends = blend
 		for y in range(y0, y1):
-			for x in size:
-				var i := y * size + x
+			var wy := oy + y
+			for x in side:
+				var i := y * side + x
+				var wx := ox + x
 				var l := level[i]
 				var own := country[i]
 				recipe[i] = own
-				if l <= 0 or x == 0 or y == 0 or x == size - 1 or y == size - 1:
+				# The world's edge is sea; a window's own edge is the margin's, and
+				# never laid for keeps.
+				if l <= 0 or wx <= 0 or wy <= 0 or wx >= size - 1 or wy >= size - 1 or x == 0 or y == 0 or x == side - 1 or y == side - 1:
 					ground[i] = Ground.DEEP_WATER if l < 0 else Ground.WATER
 					fixed[i] = 1
 					continue
@@ -271,10 +362,10 @@ static func run(c: GenContext) -> void:
 					continue
 				var lx := level[i - 1]
 				var rx := level[i + 1]
-				var uy := level[i - size]
-				var dy := level[i + size]
+				var uy := level[i - side]
+				var dy := level[i + side]
 				var down := l - mini(mini(lx, rx), mini(uy, dy))
-				var tame := absf(x + 0.5 - spawn.x) < 4.5 and absf(y + 0.5 - spawn.y) < 4.5
+				var tame := absf(wx + 0.5 - spawn.x) < 4.5 and absf(wy + 0.5 - spawn.y) < 4.5
 				var apron := foot_steps[i] <= (1 if gb < 0.15 else 2) and down < 2 and not tame
 				var bank := river_steps[i] <= 1
 				var rim := pool_steps[i] <= 2
@@ -292,8 +383,8 @@ static func run(c: GenContext) -> void:
 						last_other = c2
 						t.other_def = defs[c2]
 					if cc == caldera_type:
-						var fdx := x + 0.5 - heart.x
-						var fdy := y + 0.5 - heart.y
+						var fdx := wx + 0.5 - heart.x
+						var fdy := wy + 0.5 - heart.y
 						t.heart_dist = sqrt(fdx * fdx + fdy * fdy)
 						t.rim_dist = t.heart_dist + rim_warp[i] * crater * 0.3
 						t.flow = _flow_at(flows, fdx, fdy, t.heart_dist)
@@ -323,12 +414,68 @@ static func run(c: GenContext) -> void:
 				if Ground.is_water(g):
 					fixed[i] = 1
 	)
-	c.mark(&"surface.tiles")
-	GenTidy.run(c, fixed)
-	c.mark(&"surface.tidy")
+	if whole:
+		c.mark(&"surface.tiles")
+	GenTidy.tidy(ground, recipe, fixed, side, c if whole else null)
+	if whole:
+		c.mark(&"surface.tidy")
+		return
+	# The section's own tiles, into the world.
+	for y in core.size.y:
+		var k := (margin + y) * side + margin
+		var j := (core.position.y + y) * size + core.position.x
+		for x in core.size.x:
+			w.ground[j + x] = ground[k + x]
+			c.recipe[j + x] = recipe[k + x]
+			c.rise[j + x] = rise[k + x]
+			c.forest[j + x] = forest[k + x]
+			c.sea_steps[j + x] = sea_steps[k + x]
 
 
-## Bilinear sample of the polar flow grid at an offset from the caldera's heart.
+## A square of the world `side` wide at (ox, oy), `outside` where it leaves the world.
+static func _cut_i(a: PackedInt32Array, size: int, ox: int, oy: int, side: int, outside: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	out.resize(side * side)
+	out.fill(outside)
+	for y in side:
+		var wy := oy + y
+		if wy < 0 or wy >= size:
+			continue
+		for x in side:
+			var wx := ox + x
+			if wx >= 0 and wx < size:
+				out[y * side + x] = a[wy * size + wx]
+	return out
+
+
+static func _cut_b(a: PackedByteArray, size: int, ox: int, oy: int, side: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(side * side)
+	for y in side:
+		var wy := oy + y
+		if wy < 0 or wy >= size:
+			continue
+		for x in side:
+			var wx := ox + x
+			if wx >= 0 and wx < size:
+				out[y * side + x] = a[wy * size + wx]
+	return out
+
+
+static func _cut_f(a: PackedFloat32Array, size: int, ox: int, oy: int, side: int) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(side * side)
+	for y in side:
+		var wy := oy + y
+		if wy < 0 or wy >= size:
+			continue
+		for x in side:
+			var wx := ox + x
+			if wx >= 0 and wx < size:
+				out[y * side + x] = a[wy * size + wx]
+	return out
+
+
 static func _flow_at(flows: PackedFloat32Array, dx: float, dy: float, dist: float) -> float:
 	var fa := (atan2(dy, dx) + PI) / TAU * FLOW_ANGLES
 	var fr := minf(dist / FLOW_BIN, FLOW_RADII - 1.001)
@@ -347,26 +494,31 @@ static func _flow_at(flows: PackedFloat32Array, dx: float, dy: float, dist: floa
 ## Village clearings: 0 outside; otherwise type * 16 plus 0.5 on the cleared
 ## ground (its edge ragged with the patch field) or 1 on the square. Written per
 ## village over a box, so it costs nothing where there are none.
-static func _clearings(c: GenContext, patch: PackedFloat32Array, tended: PackedFloat32Array) -> PackedFloat32Array:
+static func _clearings(c: GenContext, patch: PackedFloat32Array, tended: PackedFloat32Array, ox: int, oy: int, side: int) -> PackedFloat32Array:
 	var w := c.w
 	var size := c.size
 	var out := PackedFloat32Array()
-	out.resize(c.n)
+	out.resize(side * side)
 	var reach := ceili(GenSettle.CORE + TENDED)
 	for v in w.villages:
 		var vp: Vector2 = v.pos
 		var vc: int = v.country
 		var cx := floori(vp.x)
 		var cy := floori(vp.y)
+		if cx + reach < ox or cy + reach < oy or cx - reach >= ox + side or cy - reach >= oy + side:
+			continue
 		for dy in range(-reach, reach + 1):
 			for dx in range(-reach, reach + 1):
 				var x := cx + dx
 				var y := cy + dy
 				if x < 1 or y < 1 or x >= size - 1 or y >= size - 1:
 					continue
-				var i := y * size + x
-				if c.land[i] == 0 or c.water[i] != 0:
+				if x < ox or y < oy or x >= ox + side or y >= oy + side:
 					continue
+				var wi := y * size + x
+				if c.land[wi] == 0 or c.water[wi] != 0:
+					continue
+				var i := (y - oy) * side + (x - ox)
 				var p := Vector2(x + 0.5, y + 0.5) - vp
 				var d := p.length()
 				tended[i] = maxf(tended[i], 1.0 - smoothstep(GenSettle.CORE * 0.8, GenSettle.CORE + TENDED, d))

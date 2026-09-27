@@ -99,7 +99,11 @@ func _take(m: AboveMap, at: Vector2) -> void:
 		_mat.set_shader_parameter("above_cut", Vector4(0.0, 0.0, 0.0, 0.0))
 		return
 	_mat.set_shader_parameter("above_map", ImageTexture.create_from_image(_map.image))
+	_mat.set_shader_parameter("above_glow", ImageTexture.create_from_image(_map.glow))
 	_mat.set_shader_parameter("above_rect", _map.rect())
+	# The hall is seen as its own landscape says (BiomeDef.cave_light).
+	var land := BiomeRegistry.by_index(game.world.country_at(floori(at.x), floori(at.y)))
+	_mat.set_shader_parameter("cave_light", land.cave_light if land != null else Vector4.ZERO)
 
 
 func _exit_tree() -> void:
@@ -108,7 +112,10 @@ func _exit_tree() -> void:
 		_task = -1
 
 
-const TOUR_PLACES: Array[String] = ["under_roof", "glide_under_roof"]
+const TOUR_PLACES: Array[String] = ["under_roof", "glide_under_roof", "deep_under_roof"]
+## Tiles of roof every way round `deep_under_roof`: no tear, shaft or roof's edge
+## nearer, so a frame there is lit by the cave alone.
+const DEEP_UNDER := 16
 ## Tiles of a glide's way out from `glide_under_roof` that must all be under mass.
 const GLIDE_UNDER := 8
 
@@ -121,6 +128,8 @@ func tour_place(what: String) -> Vector2:
 		return Vector2.INF
 	if what == "glide_under_roof":
 		return _glide_under_roof()
+	if what == "deep_under_roof":
+		return _deep_under_roof()
 	if what != "under_roof":
 		return Vector2.INF
 	var w := game.world
@@ -182,6 +191,37 @@ func _glide_under_roof() -> Vector2:
 					best = here
 					_glide_facing = way.angle()
 					break
+	return best
+
+
+## `near deep_under_roof`: the nearest walkable tile within 80 with room for a
+## body under the roof and roof over every tile DEEP_UNDER round it (sampled
+## every two), so a tour measures the cave's own light far from any tear.
+func _deep_under_roof() -> Vector2:
+	var w := game.world
+	var at := game.player.pos
+	var best := Vector2.INF
+	var best_d := INF
+	for dy in range(-80, 81, 2):
+		for dx in range(-80, 81, 2):
+			var d := Vector2(dx, dy).length()
+			if d >= best_d:
+				continue
+			var x := floori(at.x) + dx
+			var y := floori(at.y) + dy
+			if w.overhead_at(x, y).x < 0 or not game.query.standable(x, y) or w.headroom_at(x, y) * WorldData.STEP < Tuning.PLAYER_HEIGHT:
+				continue
+			var shut := true
+			for ey in range(-DEEP_UNDER, DEEP_UNDER + 1, 2):
+				for ex in range(-DEEP_UNDER, DEEP_UNDER + 1, 2):
+					if w.overhead_at(x + ex, y + ey).x < 0:
+						shut = false
+						break
+				if not shut:
+					break
+			if shut:
+				best_d = d
+				best = Vector2(x + 0.5, y + 0.5)
 	return best
 
 

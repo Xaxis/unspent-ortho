@@ -66,6 +66,14 @@ uniform vec4 crown_clear[CROWN_CLEAR];
 // from above, the mass the player is under is drawn cut at the plane with an
 // inked cap, never stippled open; the ground under any mass is in its shade.
 uniform sampler2D above_map : filter_nearest, repeat_disable;
+// The day off the nearest open sky under the mass (AboveMap.glow), and how the
+// hall under it is seen (BiomeDef.cave_light: bounce, seams, near, near radius).
+uniform sampler2D above_glow : filter_linear, repeat_disable;
+uniform vec4 cave_light = vec4(0.0);
+// Cold light the limestone's seams give off, and the cool of the eye's own
+// dark-adapted sight.
+const vec3 CAVE_SEAM = vec3(0.30, 0.78, 0.82);
+const vec3 CAVE_NEAR = vec3(0.55, 0.62, 0.72);
 uniform vec4 above_rect = vec4(0.0);
 uniform vec4 above_cut = vec4(0.0);
 // How far over the plane the cut starts as it eases in (it comes down from
@@ -2961,6 +2969,27 @@ void fragment() {
 	if (above_sec) {
 		float hh = fract(dot(world_pos.xz, vec2(0.7071, 0.7071)) * ABOVE_HATCH);
 		c = hh < 0.38 ? ABOVE_INK : ABOVE_STONE;
+	}
+	// UNDER THE LID THE HALL IS STILL SEEN, never as day (BiomeDef.cave_light):
+	// the day bounces in off the nearest tear or shaft and is gone a dozen tiles
+	// in; the ground and walls near the player read as dark-adapted sight does;
+	// and the limestone's seams glow cold. The far hall stays lost in the dark.
+	if (roofed > 0.0 && cave_light != vec4(0.0)) {
+		vec2 gat = (world_pos.xz - above_rect.xy) / above_rect.zw;
+		float bounce = texture(above_glow, gat).r;
+		float near = 1.0 - smoothstep(cave_light.w * 0.35, cave_light.w, length(world_pos.xz - crown_clear[0].xz));
+		// Weighted to the dark: it lifts what the eye could not read and leaves
+		// pale limestone, which already reads, short of bleached.
+		float dark = 1.0 - 0.75 * clamp(dot(c, vec3(0.3, 0.59, 0.11)) * 1.6, 0.0, 1.0);
+		emit += c * dark * (sky_tint * cave_light.x * bounce + CAVE_NEAR * cave_light.z * near) * roofed;
+		// Seams run IN the face, never along its lip: on walls only, wandering
+		// across the terrace bands, and broken into runs a few tiles long.
+		if (m == M_STRATA_CAVE && n_world.y < 0.45) {
+			float band = abs(fract(world_pos.y * 0.55 + ink_vnoise(world_pos.xz * 0.22) * 2.4 + 0.3) - 0.5);
+			float seam = 1.0 - smoothstep(0.012, 0.012 + max(fwidth(world_pos.y) * 0.9, 0.01), band);
+			seam *= smoothstep(0.66, 0.8, ink_vnoise(vec2(world_pos.x - world_pos.z, world_pos.y * 0.3) * 0.45));
+			emit += CAVE_SEAM * cave_light.y * seam * roofed;
+		}
 	}
 	c *= 1.0 - (1.0 - ABOVE_SHADE) * roofed;
 	// Laid after the shade: chalk on the plan, read on light ground and in the

@@ -31,6 +31,20 @@ static var last_timings: Dictionary = {}
 ## `realm` is which realm's world this is (Realm.SURFACE by default): it decides
 ## which landscape types may be laid, and nothing else here knows about it.
 static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringName = &"", realm: StringName = &"surface") -> WorldData:
+	var c := plan(seed_value, size, until, realm)
+	if c.finished:
+		return c.w
+	GenSurface.run(c)
+	c.stage_t = _mark(c, c.stage_marks, &"surface", c.stage_t)
+	if _halted(c.w):
+		return c.w
+	return finish(c)
+
+
+## THE PLAN: every stage up to the surface, whole-world today (streamed worldgen
+## S4f), and what `section` lays each section's surface from. `finished` on the
+## context says the world is already as done as it will be.
+static func plan(seed_value: int, size: int = DEFAULT_SIZE, until: StringName = &"", realm: StringName = &"surface") -> GenContext:
 	var w := WorldData.new(seed_value, size)
 	w.realm = realm
 	var c := GenContext.new(w)
@@ -66,9 +80,10 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 			push_error("no landscape declares BiomeDef.realms = [&\"%s\"], so that realm has no world to grow" % realm)
 		for i in w.level.size():
 			w.level[i] = -1
-		return w
+		c.finished = true
+		return c
 	var t := Time.get_ticks_usec()
-	var marks := {}
+	var marks := c.stage_marks
 	c.mark(&"start")
 	GenShape.run(c)
 	# WHICH BODY EACH TILE IS ON, BEFORE ANYTHING IS LAID ON IT. It ran at the end
@@ -78,23 +93,28 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	GenBodies.run(c)
 	t = _mark(c, marks, &"shape", t)
 	if _halted(w):
-		return w
+		c.finished = true
+		return c
 	GenCountries.coarse(c)
 	t = _mark(c, marks, &"layout", t)
 	if _halted(w):
-		return w
+		c.finished = true
+		return c
 	GenForm.run(c)
 	t = _mark(c, marks, &"form", t)
 	if _halted(w):
-		return w
+		c.finished = true
+		return c
 	GenRelief.run(c)
 	t = _mark(c, marks, &"relief", t)
 	if _halted(w):
-		return w
+		c.finished = true
+		return c
 	GenCountries.fine(c, until != &"tiles")
 	t = _mark(c, marks, &"tiles", t)
 	if _halted(w):
-		return w
+		c.finished = true
+		return c
 	if until == &"tiles":
 		var level := w.level
 		var land := c.land
@@ -103,25 +123,30 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 				level[i] = 1 if land[i] != 0 else -1
 		)
 		last_timings = marks
-		return w
+		c.finished = true
+		return c
 	GenWater.rivers(c)
 	t = _mark(c, marks, &"rivers", t)
 	if _halted(w):
-		return w
+		c.finished = true
+		return c
 	GenRelief.terrace(c)
 	t = _mark(c, marks, &"terrace", t)
 	if _halted(w):
-		return w
+		c.finished = true
+		return c
 	# Before anything is sited: a strait that goes deep here can never drown a
 	# village, a road or a site that was put on it.
 	GenBodies.deepen_straits(c)
 	t = _mark(c, marks, &"straits", t)
 	if _halted(w):
-		return w
+		c.finished = true
+		return c
 	GenWater.still(c)
 	t = _mark(c, marks, &"still", t)
 	if _halted(w):
-		return w
+		c.finished = true
+		return c
 	GenSettle.villages(c)
 	c.mark(&"settle.villages")
 	GenSettle.roads(c)
@@ -131,17 +156,25 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	GenBodies.mark_home(c)
 	t = _mark(c, marks, &"settle", t)
 	if _halted(w):
-		return w
+		c.finished = true
+		return c
 	GenAccess.run(c)
 	t = _mark(c, marks, &"access", t)
 	if _halted(w):
-		return w
+		c.finished = true
+		return c
 	GenScatter.sites(c)
 	c.mark(&"surface.sites")
-	GenSurface.run(c)
-	t = _mark(c, marks, &"surface", t)
-	if _halted(w):
-		return w
+	c.stage_t = t
+	return c
+
+
+## Everything after the surface, whole-world today: the shafts, the props, the
+## colossi's treads, and the world's digests and ids.
+static func finish(c: GenContext) -> WorldData:
+	var w := c.w
+	var marks := c.stage_marks
+	var t := c.stage_t
 	# The shafts, on the finished ground and before anything stands on it, so
 	# every era of this coast opens them on the same tiles (Portals.site).
 	w.shafts = Portals.site(w)
@@ -178,6 +211,18 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	last_detail = c.timings
 	last_memory = c.memory
 	return w
+
+
+## Ready a plan for its sections' surfaces (`section`): the rules every section
+## shares, and the world's surface arrays, fresh.
+static func begin_sections(c: GenContext) -> void:
+	c.surface_rules = GenSurface.prepare(c)
+
+
+## ONE SECTION'S SURFACE, from its plan: the tiles of `core`, laid as the whole
+## world would lay them (GenSurface.MARGIN; tests/stream/test_surface_sections.gd).
+static func section(c: GenContext, core: Rect2i) -> void:
+	GenSurface.section(c, c.surface_rules, core)
 
 
 ## Finer marks inside stages (GenContext.mark) from the most recent generate().
