@@ -1,0 +1,21 @@
+# THE QUIET WAY, UPRIGHT (InteriorKind.hush, 21_doors `room_hush`): down the
+# hatch and to the tape room at a walk, standing up, not crouched, the patient
+# way waiting out the sentries' sweeps down each aisle's mouth. This frame
+# proves the way goes; it does NOT prove the hum is why -- a watcher only grows
+# unsure from a step heard, and one pass along the cross-aisle does not tip it,
+# hum or none. The hum's own proof is `tools/test.sh
+# test_data_hall:test_the_hum_covers_a_walk_in_a_running_game`, red without it.
+#
+#   tools/tour.sh tours/datahall-hum.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is at the tape room's box, walked to upright: nothing in the hall has the
+# player, and no sentry has fired the whole way.
+coast calm
+near door:data_hall
+await door 5
+press use 0.1
+await inside:data_hall 5
+wait 0.3
+walkto strongbox 60
+wait 0.4
+shot 01-at-the-tapes-walked-upright with inside:data_hall,box_near,unnoticed,unshot

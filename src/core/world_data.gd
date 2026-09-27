@@ -35,6 +35,13 @@ var region: PackedInt32Array
 ## centre: Vector2, bounds: Rect2}. Sentinels, works, subarcs and saves key on
 ## `id` (docs/VISION.md).
 var regions: Array[Dictionary] = []
+## THE PLAN'S PLACES, one coarse cell every `GenContext.STEP` tiles
+## (`GenCountries.plan_regions`): the landscape sampled at each cell, and the
+## region id + 1 each cell holds. A tile's region is asked of these and its own
+## landscape alone (`GenCountries.tile_regions`), which is what a section of a
+## streamed world can do without the rest of it.
+var plan_country: PackedByteArray = PackedByteArray()
+var plan_cells: PackedInt32Array = PackedInt32Array()
 var moisture: PackedFloat32Array
 var temperature: PackedFloat32Array
 var props: Array[WorldProp] = []

@@ -13,6 +13,10 @@ const SEEDS: Array[int] = [7, 42]
 
 
 func test_every_work_composed_alone_lays_what_the_world_holds() -> void:
+	# The kinds are asked of the seeds together: a seed may site no slag, say,
+	# and the test is that every work that stands is pure, not that each seed
+	# holds every work.
+	var kinds := {}
 	for s in SEEDS:
 		GenWorks.witness.clear()
 		GenWorks.witnessing = true
@@ -21,7 +25,6 @@ func test_every_work_composed_alone_lays_what_the_world_holds() -> void:
 		var rows: Array = GenWorks.witness.duplicate()
 		GenWorks.witness.clear()
 		gt(rows.size(), 20, "seed %d: works composed as rows" % s)
-		var kinds := {}
 		var bad := 0
 		for row: Dictionary in rows:
 			kinds[row.work] = true
@@ -33,9 +36,9 @@ func test_every_work_composed_alone_lays_what_the_world_holds() -> void:
 					check(false, "seed %d: %s at %s in %s lays %d pieces in the world and %d alone%s" % [
 						s, row.work, row.at, row.land, here.size(), alone.size(), _first_difference(here, alone)])
 		eq(bad, 0, "seed %d: works whose pieces hang on something beside their row" % s)
-		for work: StringName in [&"_turf_rows", &"_drained", &"_clearcut", &"_quarry", &"_slag", &"_block", &"_pans", &"_breaking_yard",
-				&"_village_edge", &"_way_in", &"_road_sign", &"_remains_at", &"_spawn_compositions", &"_survey_section", &"_vignette"]:
-			check(kinds.has(work), "seed %d: some %s was composed" % [s, work])
+	for work: StringName in [&"_turf_rows", &"_drained", &"_clearcut", &"_quarry", &"_slag", &"_block", &"_pans", &"_breaking_yard",
+			&"_village_edge", &"_way_in", &"_road_sign", &"_remains_at", &"_spawn_compositions", &"_survey_section", &"_vignette"]:
+		check(kinds.has(work), "some %s was composed" % work)
 
 
 static func _same(a: Array, b: Array) -> bool:

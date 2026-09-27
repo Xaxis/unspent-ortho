@@ -168,6 +168,15 @@ static func make() -> BiomeDef:
 	# what a player crosses this landscape FOR. Its own file is the authority;
 	# `Landmarks.problems` fails if a kind here does not name this landscape back.
 	d.landmarks = [&"firewatch", &"grown_hulk", &"clerks_office", &"blinking_stack"]
+	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
+	d.interiors = {&"house": &"home"}
+	# Who kept them: the filer who gathers the iron the dead field combs, and the
+	# wright who works the plate the trees grew through.
+	d.home = {"households": {
+		&"filer": {"wants": [&"filings_trays", &"lodestones", &"jars", &"shelf_salvage"], "by_hearth": []},
+		&"wright": {"wants": [&"workbench", &"coil", &"machine_lamp", &"lodestones"],
+			"by_hearth": [{"kind": &"chair", "off": 1.25, "solid": 0.25, "side": 1.0}]},
+	}}
 	d.sound_bed = &"bed_pines"
 	d.music_motif = &"pinewood"
 	d.surface = _surface
@@ -213,13 +222,15 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 		# tiles on seed 1, half again the pinewood's 106, and the densest 40-tile
 		# square on the island (335 trees) was here: the heaviest frame in the
 		# game and a wall a player could not see into. Six tenths of it stands
-		# about as thick as the pines, still closed overhead.
+		# about as thick as the pines, still closed overhead -- a shade under
+		# them: at 0.066 + 0.156k seed 90210 stood 99.0 against its pinewood's
+		# 93.8 once the plan moved its places (GEN 39), over the 1.05 it is held to.
 		var k := maxf(0.0, t.forest[i] + 0.15)
-		if r < 0.066 + k * 0.156:
+		if r < 0.062 + k * 0.147:
 			return PropKind.SCRAP_TREE
-		if r < 0.09 + k * 0.168:
+		if r < 0.085 + k * 0.158:
 			return PropKind.BROADLEAF
-		if r < 0.102 + k * 0.168:
+		if r < 0.096 + k * 0.158:
 			return PropKind.DEAD_TREE
 		if r > 0.4 and r < 0.418:
 			# Where the field is strongest the filings stand up on their own.

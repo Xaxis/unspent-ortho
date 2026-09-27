@@ -205,7 +205,17 @@ const UNKNOWN := "unknown"
 ## 39. The limestone caves are roofed (GenAbove, docs/ABOVE.md S3): a new
 ##     BiomeDef TERRAIN field, `above`, and the caves' overhead mass, laid last
 ##     of all. The surface grows as it did; every world holding the caves moves.
-const GEN := 39
+## 40. Regions are the plan's (streamed worldgen S4e4): which runs of a
+##     landscape are places, their size, their order and their bounds are asked
+##     of the landscape sampled every STEP tiles (`WorldData.plan_country`), and
+##     a tile takes its region from those cells and its own landscape. Region
+##     edges and ids move on every seed (ids are save-visible), and with them
+##     the places sited per region and the ground their patches lay; no tile's
+##     landscape or level moves. A works site search keeps what it learned
+##     for the next that asks the same (`GenWorks._site`: a strict search that
+##     found nothing is not asked again, a whole one that found nothing is not
+##     searched again), so the darts after it fall differently.
+const GEN := 40
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
@@ -230,12 +240,49 @@ const TERRAIN: Array[String] = [
 ## — a new field on BiomeDef is classified here or the stamp quietly stops
 ## covering it.
 const LOOK: Array[String] = [
-	"display_name", "style_note",
-	"hatch", "grounds", "ground_marks", "cliff_wash", "water_wash", "strata", "bank_ground", "rock_ground",
-	"decor", "grasses", "grass_colors", "rock_color", "decor_tints", "tree_tints", "hard_rock", "dressing",
-	"light_tint", "day_light", "night_sky", "web_contrast", "sky_shut", "grade", "wet", "lip_snow", "street_folk",
-	"weather", "mist", "hazards", "roster", "sentinel", "landmarks", "sound_bed", "music_motif",
-	"fliers", "holograms", "interiors", "sky_holes", "spoken_in", "hush", "decks_grounded",
+	"display_name",
+	"style_note",
+	"hatch",
+	"grounds",
+	"ground_marks",
+	"cliff_wash",
+	"water_wash",
+	"strata",
+	"bank_ground",
+	"rock_ground",
+	"decor",
+	"grasses",
+	"grass_colors",
+	"rock_color",
+	"decor_tints",
+	"tree_tints",
+	"hard_rock",
+	"dressing",
+	"light_tint",
+	"day_light",
+	"night_sky",
+	"web_contrast",
+	"sky_shut",
+	"grade",
+	"wet",
+	"lip_snow",
+	"street_folk",
+	"weather",
+	"mist",
+	"hazards",
+	"roster",
+	"sentinel",
+	"landmarks",
+	"sound_bed",
+	"music_motif",
+	"fliers",
+	"holograms",
+	"interiors",
+	"home",
+	"sky_holes",
+	"spoken_in",
+	"hush",
+	"decks_grounded",
 ]
 
 
