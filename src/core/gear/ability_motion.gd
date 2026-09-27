@@ -21,6 +21,10 @@ const LAUNCH_LIFT := 0.5
 ## body is put back on the shore it left, and a short way back reads as a wing
 ## that did not make it where a long one would read as a teleport.
 const OVERRUN := 2.5
+## A wing stopped by rock too low to fly under stalls: it drops where it is this
+## many world units a second, so it is down well inside the flight's own time
+## rather than set down from a height when that runs out.
+const STALL := 4.0
 ## ...skimming this far above whatever is under it while it looks.
 const SKIM := 0.5
 ## A glide whose SECONDS run out still in the air (off a drop deeper than the
@@ -65,7 +69,12 @@ var t := 0.0
 var lift := 0.0
 ## A glide has actually left the ground: the run-up to the lip is not a landing.
 var flown := false
+## A glide has met rock it cannot fit under and is dropping where it is (STALL).
+var stalled := false
 var finished := false
+## How tall the body in the air is: under a mass (WorldData overhead) a flight
+## keeps all of it below the underside.
+var tall := Tuning.PLAYER_HEIGHT
 ## The last tile the flight passed over that a body can stand on. A wing never
 ## sets anybody down in the sea, so when everything has run out this is where it
 ## puts them.
@@ -147,9 +156,12 @@ static func climb_face(p: Climb.Plan) -> AbilityMotion:
 	return m
 
 
-## A glide run out still in the air, on its way down (FALL_OUT).
+## A glide run out still in the air, on its way down (FALL_OUT): as the last
+## step found it, over what it would come down onto -- a roof's top it skims is
+## not a fall.
+var _out := false
 func falling_out() -> bool:
-	return kind == &"glide" and not finished and t >= seconds and lift > DONE_LIFT
+	return kind == &"glide" and not finished and _out
 
 
 ## Move the body on by `delta`. Returns where it now is (tile space).
@@ -174,29 +186,63 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 			if edge:
 				# Out of world: the flight ends here rather than off the edge.
 				next = pos
-			height -= (fall + FALL_OUT * over) * delta
+			if stalled:
+				next = pos
+			var before := height
+			height -= ((STALL if stalled else fall) + FALL_OUT * over) * delta
 			var ground := world.height_at(next) if world != null else 0.0
-			lift = maxf(0.0, height - ground)
-			flown = flown or lift > LAUNCH_LIFT * 0.5
 			var ok := _standable(query, next)
+			# MASS OVERHEAD (docs/ABOVE.md §2). A wing over it skims its top, which
+			# nothing stands on yet, so that is no landing. A wing under it keeps
+			# its own height below the underside: met higher than that, it is held
+			# at the lip and let down until it fits. Where the room under it is less
+			# than the body the rock is a wall: the wing stops at it and sinks where
+			# it is. `rest` is what the flight comes down onto; `lift` stays the
+			# height over the land, which is where the body is drawn from.
+			var rest := ground
+			var o := world.overhead_at(floori(next.x), floori(next.y)) if world != null else WorldData.NO_OVERHEAD
+			if o.x >= 0 and not edge:
+				var under := o.x * WorldData.STEP
+				var top := o.y * WorldData.STEP
+				if before >= top - 0.01:
+					rest = top
+					ok = false
+				elif ground + tall > under:
+					next = pos
+					stalled = true
+					ground = world.height_at(pos)
+					rest = ground
+					ok = _standable(query, pos)
+				elif height > under - tall:
+					# Too high to pass under yet: the lip is a wall at this height.
+					# Held at it and let down at STALL until the body fits, never
+					# dropped to the cap in one frame.
+					next = pos
+					ground = world.height_at(pos)
+					rest = ground
+					ok = _standable(query, pos)
+					height = maxf(under - tall, minf(height, before - STALL * delta))
+			lift = maxf(0.0, height - ground)
+			flown = flown or height - rest > LAUNCH_LIFT * 0.5
 			if ok:
 				landing = next
 			# A wing sets a body down on ground it can stand on, and nowhere else:
 			# over open water it keeps flying, skimming, until there is something
 			# under it. When even the overrun is spent it puts the body on the
 			# nearest ground, or on the last it passed over. Never in the sea.
-			# Run out still in the air over standable ground: falling out, not down.
-			var falling_out := t >= seconds and ok and lift > DONE_LIFT and not edge
-			if ((flown and lift <= DONE_LIFT) or t >= seconds or edge) and not falling_out:
+			# Run out still in the air over ground it can stand on: falling out,
+			# not set down. Measured from `rest`, what it would come down onto.
+			_out = t >= seconds and ok and height - rest > DONE_LIFT and not edge
+			if ((flown and height - rest <= DONE_LIFT) or t >= seconds or edge) and not _out:
 				if ok:
 					lift = 0.0
 					finished = true
 				elif t >= seconds + OVERRUN or edge:
-					next = _ashore(world, query, next, landing)
+					next = _ashore(world, query, next, landing, height)
 					lift = 0.0
 					finished = true
 				else:
-					height = maxf(height, ground + SKIM)
+					height = maxf(height, rest + SKIM)
 					lift = height - ground
 		&"jump":
 			# Replayed, never re-simulated: the arc was decided whole at the press,
@@ -259,7 +305,9 @@ static func _standable(query: WorldQuery, p: Vector2) -> bool:
 
 ## Ground to be set down on, nearest first, falling back to the last tile the
 ## flight passed over that a body could stand on.
-static func _ashore(world: WorldData, query: WorldQuery, p: Vector2, last: Vector2) -> Vector2:
+## Never a tile under mass whose underside is below `from_height`: the body would
+## have come down through the rock to reach it.
+static func _ashore(world: WorldData, query: WorldQuery, p: Vector2, last: Vector2, from_height: float = -INF) -> Vector2:
 	if world == null or query == null:
 		return p
 	var cx := floori(p.x)
@@ -273,6 +321,9 @@ static func _ashore(world: WorldData, query: WorldQuery, p: Vector2, last: Vecto
 					continue
 				var q := Vector2(cx + dx + 0.5, cy + dy + 0.5)
 				if not _inside(world, q) or not query.standable(cx + dx, cy + dy):
+					continue
+				var o := world.overhead_at(cx + dx, cy + dy)
+				if o.x >= 0 and o.x * WorldData.STEP < from_height:
 					continue
 				var d := q.distance_squared_to(p)
 				if d < best_d:

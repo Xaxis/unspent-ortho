@@ -492,6 +492,14 @@
       "tests": []
     },
     {
+      "id": "system:43_above",
+      "kind": "system",
+      "entry": "src/systems/43_above.gd",
+      "reach": "tools/tour.sh tours/cave-roofs.tour --seed=7 --realm=underground --hour=12",
+      "area": "world-look",
+      "tests": []
+    },
+    {
       "id": "system:44_crafts",
       "kind": "system",
       "entry": "src/systems/44_crafts.gd",

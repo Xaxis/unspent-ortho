@@ -183,7 +183,29 @@ const UNKNOWN := "unknown"
 ##     and its decks laid on the ground (`decks_grounded`). The six parity
 ##     landscapes take none of it, so `test_parity` stands; every world holding
 ##     one of these moves.
-const GEN := 33
+## 36. The machines' works are rows (`GenWorks._work`): each landscape sites its
+##     works in order and composes each from a stream keyed on the work and its
+##     tile, against the occupancy the works stage began from and its own pieces,
+##     so a section can lay a work from its row alone (streamed worldgen S4b). A
+##     work that gives up is taken back whole, which ends the grey orchards'
+##     trees left standing where a block was refused. Every prop's turn and
+##     scale hash from its kind, position and work (`GenScatter._add`), not its
+##     id. A work anchored on one solid finds footing a step off a terrace lip
+##     (`GenWorks._put_footed`), so shelters, stacks, cisterns and brine houses
+##     that gave up on a lip now stand; a stack stands only where a depot's yard
+##     can; the salt flats' brine house stands on a battery's rim. The sulphur
+##     jungle's broadleaf share goes 0.28 -> 0.31. Every seed moves; no tile does.
+## 38. The people's things are rows too (streamed worldgen S4c): each village's
+##     edge, each way in, each road sign, what is left at each tip, wreck and
+##     ruin, the spawn's view, each survey section and each vignette cell is
+##     composed from its own stream against the land as the works left it. A
+##     vignette cell's rolls hash from the cell; a road's signs are spaced by a
+##     stream of the road's own; ways in keep off the ways in before them. Every
+##     seed's props move; no tile does.
+## 39. The limestone caves are roofed (GenAbove, docs/ABOVE.md S3): a new
+##     BiomeDef TERRAIN field, `above`, and the caves' overhead mass, laid last
+##     of all. The surface grows as it did; every world holding the caves moves.
+const GEN := 39
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
@@ -198,6 +220,7 @@ const TERRAIN: Array[String] = [
 	"sites", "tip_ground", "beached_wrecks", "pools", "villages", "village_names", "village_order",
 	"villages_each_region", "village_platform",
 	"spawn_home",
+	"above",
 ]
 
 ## The BiomeDef fields that decide how a landscape LOOKS, SOUNDS or is LIVED in,
