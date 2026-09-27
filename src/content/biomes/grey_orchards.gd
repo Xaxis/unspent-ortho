@@ -44,7 +44,7 @@ static func make() -> BiomeDef:
 	# own spray. The sward is olive gone to ash, the moss a dead grey-green, and
 	# the spore dust lies pale over all of it.
 	d.grounds = {
-		Ground.GRASS: P.MOSS[2].lerp(P.LINEN[2], 0.45).lerp(P.ASH[3], 0.25),
+		Ground.GRASS: P.MOSS[3].lerp(P.LINEN[3], 0.5).lerp(P.ASH[3], 0.2),
 		Ground.HEATH: P.MOSS[1].lerp(P.LINEN[2], 0.45),
 		Ground.MUD: P.EARTH[2].lerp(P.ASH[3], 0.4),
 		Ground.ROAD: P.ASH[3].lerp(P.EARTH[3], 0.4),
