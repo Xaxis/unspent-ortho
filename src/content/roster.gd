@@ -54,6 +54,9 @@ class_name Roster
 ##   sight_only: bool        notices by eye alone
 ##   sentinel: StringName    this body is a landscape's keeper: the design id in
 ##                           src/core/sentinel/designs/ whose phases drive it
+##   breaks: Array           prop kind names its drawn body goes THROUGH, felling them
+##                           for good (FightSim._break_through): a machine's rule, and
+##                           only what it declares. Every keeper breaks WOOD
 ##   climbs: int             levels it may step in one move (default 1: a cliff of
 ##                           two stops it). FightSim.climber turns it into a walker's
 ##                           ride with a longer stride. It is MOVEMENT only: the chase
@@ -67,6 +70,9 @@ const WET := ["water", "blackwater", "river", "mud", "marsh", "shallow", "tarn"]
 ## it can swim. It is never PUT OUT in the deep (`where.grounds` is WET), so the
 ## sea is where it follows you to and not where it comes from.
 const WET_AND_DEEP := ["water", "blackwater", "river", "mud", "marsh", "shallow", "tarn", "deep water"]
+## Trees and shrubs: what a keeper, three tiles wide and moved at the player's
+## radius, goes through rather than draws itself through (Roster `breaks`).
+const WOOD := ["pine", "snow pine", "broadleaf", "dead tree", "bush", "gorse", "reeds"]
 ## The five countries that are not burning.
 const GREEN_COUNTRIES := ["coast", "moss", "pinewood", "snowfield", "bonelands"]
 
@@ -390,7 +396,7 @@ const DEFS := {
 	# same reason: what a keeper gives comes off its table in src/core/loot.
 	&"sentinel.coast": {
 		"model": &"sentinel_reaper", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
-		"part": &"front", "guarded": true, "sentinel": &"tide_reaper",
+		"part": &"front", "guarded": true, "sentinel": &"tide_reaper", "breaks": WOOD,
 		"pace": 4.2, "dash": 8.5, "quick": 300, "radius": 1.35, "height": 2.6, "life": 343,
 		"sees": 15, "hears": 11, "racket": 26, "reach": 3, "ready": 3, "forget": 26, "tether": 26, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
@@ -400,7 +406,7 @@ const DEFS := {
 	},
 	&"sentinel.salt": {
 		"model": &"sentinel_rake", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 4,
-		"part": &"back", "sentinel": &"pan_rake",
+		"part": &"back", "sentinel": &"pan_rake", "breaks": WOOD,
 		"pace": 4.6, "dash": 9.0, "quick": 310, "radius": 1.3, "height": 3.0, "life": 340,
 		"sees": 17, "hears": 8, "racket": 24, "reach": 3, "ready": 3, "forget": 24, "tether": 26, "safe": 14,
 		"nerve": 100, "invuln": 500, "through": true, "disposition": &"wary", "overrun": 0.8,
@@ -413,7 +419,7 @@ const DEFS := {
 	# own furrows (FightSim furrows): fast on the ice it packs, wallowing in drifts.
 	&"sentinel.snowfield": {
 		"model": &"sentinel_plough", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 5,
-		"part": &"back", "sentinel": &"plough", "bogs": [Ground.SNOW],
+		"part": &"back", "sentinel": &"plough", "breaks": WOOD, "bogs": [Ground.SNOW],
 		"pace": 3.8, "dash": 10.0, "quick": 330, "radius": 1.5, "height": 2.4, "life": 330,
 		"sees": 14, "hears": 12, "racket": 26, "reach": 3, "ready": 3, "forget": 24, "tether": 28, "safe": 14,
 		"nerve": 100, "invuln": 500, "through": true, "disposition": &"wary", "overrun": 1.0,
@@ -427,7 +433,7 @@ const DEFS := {
 	# because there is nothing on it that listens.
 	&"sentinel.crags": {
 		"model": &"sentinel_plumb", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
-		"part": &"back", "sentinel": &"plumb",
+		"part": &"back", "sentinel": &"plumb", "breaks": WOOD,
 		"pace": 3.6, "dash": 7.5, "quick": 260, "radius": 1.35, "height": 7.0, "life": 270,
 		"sees": 16, "hears": 9, "racket": 20, "reach": 3, "ready": 4, "forget": 28, "tether": 28, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.6,
@@ -441,7 +447,7 @@ const DEFS := {
 	# a worker, which is what makes crouching the answer to it out on open ice.
 	&"sentinel.frost": {
 		"model": &"sentinel_listener", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
-		"part": &"back", "guarded": true, "sentinel": &"listener",
+		"part": &"back", "guarded": true, "sentinel": &"listener", "breaks": WOOD,
 		"pace": 2.4, "dash": 6.0, "quick": 260, "radius": 1.4, "height": 2.4, "life": 250,
 		"sees": 9, "hears": 20, "racket": 26, "reach": 3, "ready": 3, "forget": 26, "tether": 34, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
@@ -457,7 +463,7 @@ const DEFS := {
 	# slowly, so the sand it founders in is where its own run takes it.
 	&"sentinel.glass": {
 		"model": &"sentinel_anvil", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 5,
-		"part": &"back", "sentinel": &"anvil",
+		"part": &"back", "sentinel": &"anvil", "breaks": WOOD,
 		"pace": 6.0, "dash": 12.0, "quick": 300, "radius": 1.4, "height": 7.6, "life": 380,
 		"sees": 18, "hears": 6, "racket": 24, "reach": 3, "ready": 3, "forget": 24, "tether": 30, "safe": 14,
 		"nerve": 100, "invuln": 500, "through": true, "disposition": &"wary", "overrun": 0.9,
@@ -471,7 +477,7 @@ const DEFS := {
 	# `height` is the bridge, which is what a tell over it has to clear.
 	&"sentinel.metropolis": {
 		"model": &"sentinel_unbuilder", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
-		"part": &"back", "sentinel": &"unbuilder",
+		"part": &"back", "sentinel": &"unbuilder", "breaks": WOOD,
 		"pace": 3.8, "dash": 8.0, "quick": 280, "radius": 1.4, "height": 9.6, "life": 390,
 		"sees": 16, "hears": 10, "racket": 28, "reach": 3, "ready": 3, "forget": 26, "tether": 26, "safe": 14,
 		"nerve": 100, "invuln": 540, "through": true, "disposition": &"wary", "overrun": 0.7,
@@ -487,7 +493,7 @@ const DEFS := {
 	# stilts at either end. `height` is the wheelhouse on its deck.
 	&"sentinel.drowned": {
 		"model": &"sentinel_lockkeeper", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 4,
-		"part": &"back", "sentinel": &"lockkeeper", "crosses": &"swim",
+		"part": &"back", "sentinel": &"lockkeeper", "breaks": WOOD, "crosses": &"swim",
 		"pace": 3.2, "dash": 7.0, "quick": 260, "radius": 1.35, "height": 6.4, "life": 364,
 		"sees": 15, "hears": 12, "racket": 26, "reach": 3, "ready": 3, "forget": 26, "tether": 30, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
@@ -584,7 +590,7 @@ const DEFS := {
 	# a thing on a wall feels a body coming along the rock.
 	&"sentinel.mesas": {
 		"model": &"sentinel_anchor", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
-		"part": &"back", "sentinel": &"anchor", "climbs": 4,
+		"part": &"back", "sentinel": &"anchor", "breaks": WOOD, "climbs": 4,
 		"pace": 3.4, "dash": 7.0, "quick": 260, "radius": 1.4, "height": 4.6, "life": 322,
 		"sees": 14, "hears": 14, "racket": 22, "reach": 3, "ready": 3, "forget": 26, "tether": 30, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,

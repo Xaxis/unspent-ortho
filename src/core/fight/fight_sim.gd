@@ -940,6 +940,7 @@ func _move_mob(m: MobState, dt: float) -> void:
 	if world != null and Swim.swims(m.row) and Swim.deep(world, m.pos):
 		v *= Tuning.SWIM_FACTOR
 	var before := m.pos
+	_break_through(m, v * dt)
 	# Deep water stops a body that cannot take it, which is most of the roster
 	# (Swim): the few that cross carry it on their own row, not here.
 	# A body whose row says it CLIMBS steps that many levels in one move, which is
@@ -1155,6 +1156,32 @@ func hero_level_now() -> int:
 ## Levels of headroom a body needs under a roof (WorldQuery.passable): its
 ## roster height, or the player's.
 const HERO_TALL := int(ceil(Tuning.PLAYER_HEIGHT / WorldData.STEP))
+## A BODY THAT BREAKS (Roster `breaks`) GOES THROUGH A WOOD: what its drawn body
+## is about to walk into, of the kinds it declares, is taken for good
+## (`world.depleted`, saved as any taken prop) and said (`felled`: its id, kind,
+## where it stood and the way it was pushed), so the view throws it over. It is
+## moved at the player's radius and drawn three tiles wide; without this it drew
+## itself straight through the trees it walked among.
+func _break_through(m: MobState, step: Vector2) -> void:
+	if query == null or world == null or not m.row.has("breaks") or step.length_squared() < 1e-8:
+		return
+	var through := NavField.breaks_of(m.row)
+	if through.is_empty():
+		return
+	var ahead := m.pos + step
+	var t := world.table
+	for row in query.rows_near(ahead, m.radius + 1.5):
+		if not through.has(t.kind[row]) or world.depleted.has(t.id[row]):
+			continue
+		var at := t.pos[row]
+		var rr := t.solid[row] + m.radius
+		# Only what it pushes INTO: a tree it is leaving behind is not felled by it.
+		if at.distance_squared_to(ahead) >= rr * rr or at.distance_squared_to(ahead) >= at.distance_squared_to(m.pos):
+			continue
+		world.depleted[t.id[row]] = INF
+		emit(&"felled", {"id": t.id[row], "kind": t.kind[row], "at": at, "dir": step.normalized(), "mob": m})
+
+
 ## The radius a body is moved at (WorldQuery.move_body): no wider than the
 ## player's, however wide it is drawn, so a keeper passes where its fight says
 ## it stands and what it `breaks` goes down round it.

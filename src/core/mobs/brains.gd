@@ -415,8 +415,13 @@ static func _round_the_ground(m: MobState, sim: FightSim, target: Vector2) -> bo
 		# A run was stopped short down a line that looked clear. Only a way round
 		# the ground says is longer than the line proves the ground stopped it;
 		# a run stopped by the player's own body is a fight, and it charges again.
+		# Against the straight way's own cost on the field (octile: a diagonal
+		# step costs DIAGONAL), or every diagonal approach reads as a way round.
 		var steps := sim.route_steps(m, target, m.pos)
-		clear = steps >= NavField.FAR or float(steps) <= NavField.STRAIGHT * Senses.chebyshev(m.pos, target) + 2.0
+		var ax := absf(target.x - m.pos.x)
+		var ay := absf(target.y - m.pos.y)
+		var straight := NavField.STRAIGHT * maxf(ax, ay) + (NavField.DIAGONAL - NavField.STRAIGHT) * minf(ax, ay)
+		clear = steps >= NavField.FAR or float(steps) <= straight + 2.0 * NavField.STRAIGHT
 	if clear:
 		return false
 	var way := sim.route(m, target)

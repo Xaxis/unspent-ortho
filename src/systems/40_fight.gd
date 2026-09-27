@@ -237,6 +237,62 @@ func _stop(seconds: float) -> void:
 	_stop_until = maxf(_stop_until, Time.get_ticks_msec() / 1000.0 + seconds)
 
 
+## A KEEPER GOING THROUGH A WOOD (FightSim._break_through). The standing tree
+## is taken out of its chunk; in its place its own model leans, then comes over
+## away from the machine that pushed it, as a thing that heavy falls, and lies
+## there for the session (the taken tree is what is saved: the scar). The crown
+## shudders its leaves or its snow off as it goes, and it cracks. A shrub is
+## flattened: a burst of its leaves and the same crack, and it is gone.
+const FALLEN_KEPT := 40
+const FALL_LEAN_S := 0.25
+const FALL_S := 0.75
+var _fallen: Array[Node3D] = []
+var _felled_at := -INF
+
+
+func _fell(e: Dictionary) -> void:
+	_felled_at = Time.get_ticks_msec() / 1000.0
+	var w := game.world
+	var p := w.prop(int(e.id))
+	if p == null:
+		return
+	if game.view != null:
+		game.view.refresh_props(p)
+	var fx := _fx_parent()
+	var base := w.to_3d(p.pos)
+	var dir: Vector2 = e.dir
+	var tree := int(e.kind) in [PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE]
+	var leaf := Palette.RIME[5] if int(e.kind) == PropKind.SNOW_PINE else (Palette.MOSS[3] if int(e.kind) == PropKind.BROADLEAF else Palette.SPRUCE[3])
+	Events.sfx.emit(&"break", base)
+	var h := 2.4 * p.scale if tree else 0.5
+	MobFx.puffs(fx, base + Vector3(0, h * 0.8, 0), dir, leaf, 6 if tree else 4, 1.1 if tree else 0.7, int(e.id))
+	if not tree:
+		return
+	var country := w.country_at(floori(p.pos.x), floori(p.pos.y))
+	var node := PropModels.node(p.kind, PropModels.variant_of(p, w.seed_value, country), country)
+	if game.view != null:
+		node.material_override = game.view.world_material()
+	var pivot := Node3D.new()
+	fx.add_child(pivot)
+	pivot.global_position = base
+	pivot.add_child(node)
+	node.rotation.y = p.rot
+	node.scale = Vector3.ONE * p.scale
+	# Over away from the machine: about the axis across the way it was pushed.
+	var across := Vector3(dir.y, 0.0, -dir.x).normalized()
+	var tw := pivot.create_tween()
+	tw.tween_method(func(a: float) -> void: pivot.basis = Basis(across, a), 0.0, -0.12, FALL_LEAN_S).set_ease(Tween.EASE_OUT)
+	tw.tween_method(func(a: float) -> void: pivot.basis = Basis(across, a), -0.12, -1.5, FALL_S).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tw.tween_callback(func() -> void:
+		MobFx.puffs(fx, base + Vector3(-dir.x, 0.2, -dir.y) * -h * 0.7, dir, leaf, 5, 1.0, int(e.id) + 1)
+		Events.sfx.emit(&"fall_boom", base))
+	_fallen.append(pivot)
+	while _fallen.size() > FALLEN_KEPT:
+		var old: Node3D = _fallen.pop_front()
+		if is_instance_valid(old):
+			old.queue_free()
+
+
 func _at3(p: Vector2, lift: float = 0.0) -> Vector3:
 	return game.world.to_3d(p) + Vector3(0, lift, 0)
 
@@ -452,6 +508,8 @@ func _handle(events: Array[Dictionary]) -> void:
 				# The plough's furrow (FightSim furrows): packed ice down the lane it
 				# cut, pale on the drift for as long as the furrow holds.
 				_furrow_segment(e.at, e.angle)
+			&"felled":
+				_fell(e)
 			&"bogged":
 				# A run off its lane into the drift: the share buries itself and
 				# throws snow up either side.
@@ -647,6 +705,8 @@ func tour_seen(what: StringName) -> bool:
 			return now - _came_round_at < 0.4
 		&"bogged":
 			return now - _bogged_at < 0.6
+		&"felled":
+			return now - _felled_at < 2.0
 		&"locked":
 			return now - _locked_at < FightKit.LOCK_SECONDS
 		&"stripped":
