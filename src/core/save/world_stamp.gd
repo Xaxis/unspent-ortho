@@ -221,7 +221,13 @@ const UNKNOWN := "unknown"
 ##     MIDDEN_BALE, and the caves' stalagmites are DRIPSTONE (they were standing
 ##     stones). Five kinds appended after the last, so no other kind's number
 ##     moves.
-const GEN := 41
+## 43. Pools are decided where they lie (streamed worldgen S4g4): each cell
+##     proposes every spot where a whole pool would lie, and a proposal stands
+##     in two rounds when it outranks its rivals within crowding reach (its
+##     landscape's order, then its own roll), not by who was laid first. Pools
+##     move a little on every seed that holds them; counts hold within 2-4%.
+##     (Provisional: 42 is the look batch's; restamped at landing.)
+const GEN := 43
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
