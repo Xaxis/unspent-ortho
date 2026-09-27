@@ -142,9 +142,11 @@ enum {
 	FALLEN_SPAN,
 	CISTERN,
 	SPAN_PYLON,
+	FALLEN_TOWER,
+	SPRAYER_GANTRY,
 }
 
-const COUNT := 95
+const COUNT := 97
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -164,6 +166,8 @@ const NAMES: PackedStringArray = [
 	"deck span", "lift shaft", "shopfront", "sorted bale", "demolition gantry",
 	"stair to water", "drowned tram", "mooring post", "lock gate",
 	"hoodoo", "arch rib", "fallen span", "cistern", "span pylon",
+	"fallen tower",
+	"sprayer gantry",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
@@ -240,4 +244,12 @@ const SOLID: PackedFloat32Array = [
 	# down the scree is walked over. A cistern is a tank a body stops at the rim
 	# of; a pylon's four legs splay about a tile and a half across.
 	0.4, 0.0, 0.35, 0.75, 0.7,
+	# A fallen tower's origin is the stump of its ground floor: the one circle
+	# stops a body there, and the length lying through the trees beyond is
+	# climbed over or walked round (whoever lays it hands the length to
+	# `WorldQuery.set_blocks`).
+	1.4,
+	# A sprayer straddles a row on four legs: the one circle stops a body at its
+	# near bogie, and the row under it is walked along.
+	0.5,
 ]

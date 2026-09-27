@@ -231,17 +231,23 @@ static func squall_gain(seed_value: int, minutes: float, squall: float) -> float
 ## blown away by a wind, beaten down by anything falling hard.
 static func mist(seed_value: int, minutes: float, type_id: StringName, kind: StringName = CLEAR, strength: float = 0.0, wind: float = 0.0) -> float:
 	var d := BiomeRegistry.get_def(type_id)
-	var deep := d.mist if d != null else 0.0
-	if deep <= 0.0:
+	if d == null or (d.mist <= 0.0 and d.mist_dusk <= 0.0):
 		return 0.0
 	var h := fposmod(minutes, 1440.0) / 60.0
-	var shape := smoothstep(2.5, 5.2, h) * (1.0 - smoothstep(6.8, 9.5, h))
-	if shape <= 0.0:
+	var dawn := d.mist * smoothstep(2.5, 5.2, h) * (1.0 - smoothstep(6.8, 9.5, h))
+	# The dusk circuit: from mid-afternoon, deepest after sunset, gone by
+	# midnight.
+	var dusk := d.mist_dusk * smoothstep(15.5, 19.0, h) * (1.0 - smoothstep(21.5, 23.8, h))
+	if dawn <= 0.0 and dusk <= 0.0:
 		return 0.0
 	var morning := lerpf(0.45, 1.0, Rng.hash01(seed_value, day_of(minutes), 0x3157))
 	var still := 1.0 - clampf(absf(wind) * 1.6, 0.0, 1.0)
 	var beaten := 1.0 - clampf(float(WIND_PUSH.get(kind, 0.0)), 0.0, 1.0) * strength
-	return clampf(deep * shape * morning * still * beaten, 0.0, 1.0)
+	# The machines spray whatever the wind: it thins their mist and drags it
+	# along the rows, it never blows it away. Only weather that falls hard beats
+	# it down.
+	var dragged := 1.0 - clampf(absf(wind), 0.0, 1.0) * 0.4
+	return clampf(maxf(dawn * morning * still, dusk * dragged) * beaten, 0.0, 1.0)
 
 
 ## Scalar wind -1..1 (no bearing yet). Continuous in time: the base is a sum of
@@ -367,6 +373,19 @@ static func light_level(hour: float) -> float:
 
 
 ## 0 at the start of the autumn, 1 once the light has fully drained.
+## THE MOON'S MONTH, in game days, and the world minute it is full at: 23:00
+## on the first day, so the first night of every game (and every frame shot on
+## day 1) is the full moon it always was.
+const LUNAR_DAYS := 12.0
+const MOON_FULL_AT := 23.0 * 60.0
+
+
+## Where the moon is in its month at world minute `minutes`: 0 full, 0.5 new,
+## back to full at 1. Time, not worldgen: nothing a seed makes reads it.
+static func moon_phase(minutes: float) -> float:
+	return fposmod((minutes - MOON_FULL_AT) / (LUNAR_DAYS * 1440.0), 1.0)
+
+
 static func season_turn(minutes: float) -> float:
 	return clampf(minutes / 1440.0 / SEASON_DAYS, 0.0, 1.0)
 

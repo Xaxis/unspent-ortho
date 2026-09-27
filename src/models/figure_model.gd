@@ -64,6 +64,8 @@ static func _instance_of(script: GDScript) -> FigureModel:
 static func _default_material() -> Material:
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://src/render/world.gdshader")
+	# A body moves: nothing grows on it (matter_grown).
+	mat.set_shader_parameter(&"grows", 0.0)
 	return mat
 
 

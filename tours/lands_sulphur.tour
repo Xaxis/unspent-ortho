@@ -1,0 +1,18 @@
+# The sulphur jungle over the shoulder: its most characteristic ground at noon,
+# then beside a vent (the steam it breathes, the crust it laid), and the evening.
+# With the frame cost standing at noon.
+#   tools/tour.sh tours/lands_sulphur.tour --seed=7 --weather=clear:0 --view=shoulder --stats
+coast calm
+hour 12
+place typical_sulphur_jungle
+wait 3.0
+shot noon with land:sulphur_jungle
+perf stats begin
+wait 5.0
+perf stats end sulphur-noon
+near vent
+wait 4.0
+shot vent with prop:vent
+hour 18.5
+wait 2.0
+shot vent-evening with prop:vent

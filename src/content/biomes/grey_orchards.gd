@@ -40,13 +40,16 @@ static func make() -> BiomeDef:
 	d.reach_out_high = Vector4(5.0, 0.08, 0.1, 0.32)
 	d.reach_in_low = Vector3(5.0, 0.08, 0.3)
 	d.hatch = Ink.SPARSE
+	# ASHEN, NOT GREEN. The name is the brief: a monoculture gone grey under its
+	# own spray. The sward is olive gone to ash, the moss a dead grey-green, and
+	# the spore dust lies pale over all of it.
 	d.grounds = {
-		Ground.GRASS: P.MOSS[3].lerp(P.LINEN[3], 0.4),
-		Ground.HEATH: P.MOSS[2].lerp(P.ASH[2], 0.35),
-		Ground.MUD: P.EARTH[3].lerp(P.ASH[3], 0.3),
+		Ground.GRASS: P.MOSS[2].lerp(P.LINEN[2], 0.45).lerp(P.ASH[3], 0.25),
+		Ground.HEATH: P.MOSS[1].lerp(P.LINEN[2], 0.45),
+		Ground.MUD: P.EARTH[2].lerp(P.ASH[3], 0.4),
 		Ground.ROAD: P.ASH[3].lerp(P.EARTH[3], 0.4),
 		Ground.GRAVEL: P.STONE[3].lerp(P.LINEN[3], 0.35),
-		Ground.MOSS: P.MOSS[2].lerp(P.SPRUCE[2], 0.4),
+		Ground.MOSS: P.MOSS[1].lerp(P.LINEN[1], 0.4).lerp(P.ASH[2], 0.2),
 		Ground.ROCK: P.STONE[3],
 	}
 	# Grounds this place never lays, named anyway: anything left unnamed falls
@@ -61,23 +64,46 @@ static func make() -> BiomeDef:
 	d.bank_ground = Ground.MUD
 	d.pool_rim_ground = Ground.MUD
 	d.village_ground = Ground.GRAVEL
-	d.decor = {Ground.GRASS: [0.7, Decor.TUFT, 26, Decor.CROTTLE, 10]}
-	d.grass_colors = [P.MOSS[3].lerp(P.LINEN[3], 0.35), P.MOSS[2]]
+	# Nothing flowers here: what comes up in ground the plan sprays every evening
+	# is spore caps and puffballs, grey. Its moss and heath are named too, or the
+	# shared table's bog cotton and meadow flowers come up white through the blight.
+	d.decor = {
+		Ground.GRASS: [0.7, Decor.TUFT, 26, Decor.CROTTLE, 10, Decor.SPORE_CAP, 6],
+		Ground.MOSS: [1.0, Decor.SEDGE, 28, Decor.SPHAGNUM, 16, Decor.TUFT, 8, Decor.SPORE_CAP, 12],
+		Ground.HEATH: [1.0, Decor.HEATHER, 40, Decor.TUFT, 14, Decor.SPORE_CAP, 8, Decor.STONE, 2],
+	}
+	d.grass_colors = [P.MOSS[2].lerp(P.LINEN[3], 0.45), P.LINEN[2].lerp(P.MOSS[2], 0.4)]
 	d.rock_color = P.STONE[3]
 	# What grows is grafted and going over: grey-green rather than green, and the
 	# white on it is not blossom.
-	d.tree_tints = {&"leaf": [P.MOSS[2].lerp(P.LINEN[3], 0.45), P.MOSS[3], P.LINEN[3], P.LINEN[2]]}
-	d.decor_tints = {&"fronds": [P.MOSS[2], P.LINEN[2], P.ASH[2]]}
+	# The bark lichen-grey, the leaf a sick grey-green dusted with spore.
+	d.tree_tints = {&"leaf": [P.MOSS[2].lerp(P.ASH[3], 0.55), P.MOSS[2].lerp(P.LINEN[3], 0.5), P.ASH[3].lerp(P.LINEN[4], 0.4), P.LINEN[3].lerp(P.ASH[3], 0.4)],
+		&"trunk": [P.ASH[2].lerp(P.MOSS[2], 0.25)],
+		# What self-seeded between the rows is dusted the same.
+		&"scrub": [P.MOSS[2].lerp(P.LINEN[2], 0.45), P.MOSS[1].lerp(P.ASH[2], 0.4), P.LINEN[2].lerp(P.MOSS[2], 0.3)]}
+	d.decor_tints = {&"fronds": [P.MOSS[2].lerp(P.ASH[2], 0.5), P.LINEN[2], P.ASH[2]]}
 	var dress := BiomeDressing.new()
 	dress.stone = [P.STONE[3], P.ASH[3], P.LINEN[3]]
 	dress.timber = [P.EARTH[2], P.ASH[2]]
 	dress.walling = [P.STONE[3], P.ASH[2], P.EARTH[2], P.LINEN[3]]
 	dress.crown = &"full"
+	# Every tree in a row is the plan's: grafted, staked and tagged, cut back to a
+	# pollard's head (Trees.pollard). The trellised form waits for rows that lay
+	# their trees along the bearing: a wire frame at a random turn is no row.
+	dress.broadleaf_forms = [&"pollard"]
+	# Its typical ground is in the rows, never the clearing where a block was
+	# taken out.
+	d.typical_among = Vector2i(PropKind.BROADLEAF, 40)
 	dress.sink = 0.08
 	dress.lie = Vector2(-0.03, 0.06)
 	d.dressing = dress
-	d.grade = Vector4(-0.03, 0.03, 0.0, 0.02)
+	# Drained, as a thing sprayed every day is drained: most of its colour taken
+	# out and a little of the light.
+	d.grade = Vector4(0.0, 0.3, 0.0, 0.03)
 	d.night_sky = 1.0
+	# The plan still runs its grow lights on the schedule, all night, for trees
+	# nobody will pick: every crown lit rose-violet from below, in its rows.
+	d.underlight = Color(0.6, 0.4, 0.86, 0.42)
 	d.props = [PropKind.BROADLEAF, PropKind.BUSH, PropKind.GROWTH_TANK,
 		PropKind.WATER_TANK, PropKind.FENCE, PropKind.STUMP, PropKind.DEBRIS, PropKind.RELAY]
 	d.ore = [[PropKind.IRON_ORE, 0.014], [PropKind.COPPER_ORE, 0.012]]
@@ -92,6 +118,10 @@ static func make() -> BiomeDef:
 		[Weather.FOG, 20, 0.0], [Weather.STORM, 6, 0.4],
 	]
 	d.mist = 0.34
+	# The sprayers' evening circuit: a low, sickly spore haze through the rows
+	# that thickens as the light goes (Weather.mist), the colour of the spores.
+	d.mist_dusk = 0.9
+	d.weather_style = {&"fog": {"air": Color(0.70, 0.72, 0.60), "low": 0.8}}
 	# The spores are the sprayers' own doing and the wet is what they are carried
 	# in: declared under BITE so the mist decides, exactly as the Burning's fumes
 	# are declared under it so the ash decides.

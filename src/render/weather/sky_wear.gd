@@ -47,6 +47,9 @@ const OF := {
 	&"scrapwood": Color(0.95, 0.10, 0.32, 0.10),
 	# Cold wet limestone: carbonate bloom and a slow damp rust, never any sun.
 	&"limestone_caves": Color(0.50, 0.38, 0.08, 0.02),
+	# NOTHING WEATHERS IN THE MACHINE CITY: they keep it. No rust, no bloom, no
+	# soot, no frost on anything standing there (the owner's own: clean).
+	&"machine_city": Color(0.0, 0.0, 0.0, 0.0),
 }
 
 
@@ -56,12 +59,23 @@ static func of(type_id: StringName) -> Color:
 
 
 ## One texel per tile, blended across ecotones the way SkyGround's is.
-static func image(w: WorldData) -> Image:
+##
+## THE GROWTH MAP comes out of the SAME pass when `growth` is handed in (one
+## Image appended to it): R how far each landscape's growth has taken what was
+## built in it (`BiomeDef.overgrowth`, matter_grown), and GBA the light its trees
+## are lit by from below after dark (`BiomeDef.underlight`, colour times
+## strength, leaf.gdshader). One sweep of the world for both, because a streamed
+## world is to have fewer whole-world readers, not more
+## (tests/stream/whole_world_readers.txt).
+static func image(w: WorldData, growth: Variant = null) -> Image:
 	var n := w.size
 	# Land ids cover wide regions, so a coarse sweep finds every one of them.
 	var rows: Array[Color] = []
 	rows.resize(256)
 	rows.fill(DEFAULT)
+	var grows: Array[Color] = []
+	grows.resize(256)
+	grows.fill(Color(0, 0, 0, 0))
 	var indoors := w.realm == Realm.INTERIOR
 	var seen := PackedByteArray()
 	seen.resize(256)
@@ -70,20 +84,44 @@ static func image(w: WorldData) -> Image:
 			var c := int(w.country[y * n + x])
 			if seen[c] == 0:
 				seen[c] = 1
-				rows[c] = INDOORS if indoors else of(BiomeRegistry.at(w, Vector2(x, y)).id)
+				var d := BiomeRegistry.at(w, Vector2(x, y))
+				rows[c] = INDOORS if indoors else of(d.id)
+				if not indoors:
+					var u := d.underlight
+					grows[c] = Color(d.overgrowth, u.r * u.a, u.g * u.a, u.b * u.a)
+	var want_growth := growth is Array
 	var rgba := PackedByteArray()
 	rgba.resize(n * n * 4)
+	var gpx := PackedByteArray()
+	if want_growth:
+		gpx.resize(n * n * 4)
 	var has_blend := w.blend.size() == n * n and w.country2.size() == n * n
 	for i in n * n:
 		var r: Color = rows[int(w.country[i])]
+		var g: Color = grows[int(w.country[i])]
 		if has_blend and w.blend[i] > 0.0:
-			r = r.lerp(rows[int(w.country2[i])], clampf(w.blend[i], 0.0, 1.0))
+			var t := clampf(w.blend[i], 0.0, 1.0)
+			r = r.lerp(rows[int(w.country2[i])], t)
+			g = g.lerp(grows[int(w.country2[i])], t)
 		var o := i * 4
 		rgba[o] = int(r.r * 255.0)
 		rgba[o + 1] = int(r.g * 255.0)
 		rgba[o + 2] = int(r.b * 255.0)
 		rgba[o + 3] = int(r.a * 255.0)
+		if want_growth:
+			gpx[o] = int(clampf(g.r, 0.0, 1.0) * 255.0)
+			gpx[o + 1] = int(clampf(g.g, 0.0, 1.0) * 255.0)
+			gpx[o + 2] = int(clampf(g.b, 0.0, 1.0) * 255.0)
+			gpx[o + 3] = int(clampf(g.a, 0.0, 1.0) * 255.0)
+	if want_growth:
+		(growth as Array).append(Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, gpx))
 	return Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, rgba)
+
+
+## The growth map's texture, from the same kept pass as `texture` (see `image`).
+static func growth_texture(w: WorldData) -> ImageTexture:
+	texture(w)
+	return _kept[w.get_instance_id()][2]
 
 
 ## PURE AND DERIVED, SO KEPT: one texture per world OBJECT (never per seed: a
@@ -102,6 +140,7 @@ static func texture(w: WorldData) -> ImageTexture:
 	for k: int in _kept.keys():
 		if (_kept[k][0] as WeakRef).get_ref() == null:
 			_kept.erase(k)
-	var t := ImageTexture.create_from_image(image(w))
-	_kept[id] = [weakref(w), t]
+	var growth: Array = []
+	var t := ImageTexture.create_from_image(image(w, growth))
+	_kept[id] = [weakref(w), t, ImageTexture.create_from_image(growth[0])]
 	return t

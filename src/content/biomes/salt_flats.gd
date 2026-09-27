@@ -126,6 +126,8 @@ static func make() -> BiomeDef:
 	dress.pale = [_w(P.LINEN[5]), _w(P.LINEN[4]), _w(P.LINEN[3])]
 	dress.bleach = _w(P.LINEN[4])
 	dress.facets = 5
+	# Its works pumped the sea in and moved brine: they are crusted with it.
+	dress.brine = true
 	# Nothing grows to build with, so a shelter here is sawn crust under tin.
 	dress.shelter = &"lean_to"
 	dress.sink = 0.1
@@ -159,6 +161,8 @@ static func make() -> BiomeDef:
 	# A white pan under nothing at all. It throws the night sky back harder than
 	# the snow does, and there is not a thing on it to cast a shadow.
 	d.night_sky = 1.40
+	# A dust storm here is the pan's own salt lifted: a white glare wall, not sand.
+	d.weather_style = {&"dust": {"air": Color(0.90, 0.89, 0.84), "thick": 1.2}}
 	# A warm cast taken out of the blue rather than added to the red: a light
 	# tint over 1 is one more gain on a landscape with no headroom left.
 	d.light_tint = Color(1.0, 0.985, 0.95)
@@ -166,6 +170,9 @@ static func make() -> BiomeDef:
 	# and heavy, and it does not break white. A chart-blue pool with a paper-white
 	# swash on a landscape with no headroom is two clipped things at once.
 	d.water_wash = Color(0.112, 0.250, 0.264, 0.92)
+	# Its typical ground is out among the pressure ridges, never an empty patch
+	# of plain crust with two stumps on it.
+	d.typical_among = Vector2i(PropKind.SALT_RIDGE, 16)
 	d.props = [PropKind.SALT_RIDGE, PropKind.SALT_HEAP, PropKind.PAN_GATE, PropKind.BOULDER,
 		PropKind.BONES, PropKind.DEAD_TREE, PropKind.STONE_ORE, PropKind.TIN_ORE, PropKind.COPPER_ORE,
 		PropKind.DRIFTWOOD, PropKind.GORSE, PropKind.BUSH]

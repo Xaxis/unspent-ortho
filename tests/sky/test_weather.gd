@@ -298,3 +298,20 @@ func test_settled_cover_is_continuous_and_lags_the_weather() -> void:
 			fell_after += 1
 	eq(bad, 0, "cover never jumps in a minute")
 	gt(fell_after, 0, "snow lies after it stops")
+
+
+## A machine's mist keeps a machine's hours (BiomeDef.mist_dusk): the orchards'
+## spore haze is laid through the evening and gone by noon, and a land that
+## declares none has no mist at dusk at all.
+func test_the_orchards_spray_their_mist_at_dusk() -> void:
+	var noon := 0.0
+	var dusk := 0.0
+	var coast_dusk := 0.0
+	for day in 6:
+		var m := float(day) * 1440.0
+		noon = maxf(noon, float(Weather.mist(7, m + 12.0 * 60.0, &"grey_orchards")))
+		dusk = maxf(dusk, float(Weather.mist(7, m + 19.5 * 60.0, &"grey_orchards")))
+		coast_dusk = maxf(coast_dusk, float(Weather.mist(7, m + 19.5 * 60.0, &"coast")))
+	eq(noon, 0.0, "no spore mist at noon")
+	gt(dusk, 0.3, "the evening circuit lays it: %.2f" % dusk)
+	eq(coast_dusk, 0.0, "the coast has no mist at dusk")

@@ -297,6 +297,67 @@ var sky_shut := 0.0
 ## only opens holes in a roof a realm already has, and touches nothing else.
 ## Runtime only, so a LOOK field: it moves no island.
 var sky_holes := 0.0
+## How far the growth of this land has taken the things people built in it,
+## 0..1: moss on every ledge, ivy hanging from every storey, green streaks where
+## run-off feeds it, dense low and thinning upward (`matter_grown`, SkyWear's
+## growth map). 1 is a city the forest has; a wet land might take 0.2.
+## Runtime only, so a LOOK field: it moves no island.
+var overgrowth := 0.0
+## What this land's vents breathe (16_vents): the colour of the puff, and in
+## ALPHA how big and how often, as a multiple of the Burning's ash (1). 0 alpha
+## takes the Burning's. Above 1 the machine caps breathe too, leaking round
+## their seals. Runtime only, so a LOOK field.
+var vent_breath := Color(0, 0, 0, 0)
+## What lights this land's trees from below after dark, if anything: the colour,
+## and in ALPHA how strongly (leaf.gdshader, through SkyWear's growth map). The
+## grey orchards' is the plan's grow light, still run on schedule for trees
+## nobody will pick. Runtime only, so a LOOK field.
+var underlight := Color(0, 0, 0, 0)
+## How much more rain comes down as drips here, under a canopy (10_sky, Drips):
+## 1 is open ground. Runtime only, so a LOOK field.
+var canopy_drip := 1.0
+## Cold lights drifting low after dark, how many (10_sky wisps): 0 is none.
+## Never in rain or a wind. Runtime only, so a LOOK field.
+var wisps := 0.0
+## HOW THIS LAND'S WEATHER LOOKS, per weather kind (Weather.KINDS), where it is
+## not the shared look (src/render/weather). A kind with no row here looks as
+## it does everywhere. Rows so far:
+##   &"dust": {"air": Color, "thick": float}  the colour a dust storm carries the
+##            air to here (red iron in the mesas, salt on the flats) and how much
+##            thicker than the shared dust it lies (1 = the shared)
+##   &"fog":  {"air": Color, "low": float}  the colour this land's fog is, and how
+##            low and heavy it lies in the hollows, 0..1
+## Runtime only, so a LOOK field; BiomeRegistry.problems names a bad row.
+var weather_style: Dictionary = {}
+## What props hang over the frame HERE where it is not what they hang anywhere
+## (render/depth/fore_kinds.gd ROWS): PropKind -> {shape, lift, span, chance},
+## shape one of ForeKinds' shape names ("line", "girder"...). The middens string
+## cables and girders across their slots at the walls' own height.
+## Runtime only, so a LOOK field.
+var fore_rows: Dictionary = {}
+## GEYSERS: which of this land's vents erupt on a cycle instead of breathing,
+## and how (16_vents, Geysers). {} and none do. Fields:
+##   share    0..1 of the vents that are geysers
+##   period   world minutes from one eruption to the next (each its own offset)
+##   height   how tall the column stands, in units
+##   colour   the column's steam
+## Runtime only, so a LOOK field.
+var geysers: Dictionary = {}
+## Every field a weather_style row may carry, per kind.
+const WEATHER_STYLE_FIELDS := {&"dust": ["air", "thick"], &"fog": ["air", "low"]}
+
+
+## What is wrong with `weather_style`, one line each (BiomeRegistry.problems).
+func style_problems() -> Array[String]:
+	var out: Array[String] = []
+	for kind: StringName in weather_style:
+		if not WEATHER_STYLE_FIELDS.has(kind):
+			out.append("weather_style has no row for %s" % kind)
+			continue
+		for field: String in (weather_style[kind] as Dictionary):
+			if not (WEATHER_STYLE_FIELDS[kind] as Array).has(field):
+				out.append("weather_style %s has no field %s" % [kind, field])
+	return out
 ## The dystopian grade offset added to SkyLight's own (`SkyLight.neon_row`):
 ## (dark, desat, cool, contrast). `sky.gdshaderinc` scales the graded colour by
 ## (1 - dark), so POSITIVE dark dims and NEGATIVE lifts: every landscape's dark
@@ -455,6 +516,11 @@ var spawn_home := false
 var weather: Array = []
 ## Dawn mist at its deepest, 0..1 of fog density.
 var mist := 0.0
+## A second mist at DUSK, 0..1 at its deepest: not the weather's but a
+## machine's, laid on a schedule (the orchards' sprayers run their evening
+## circuit), rising through the late afternoon and lying thickest after sunset.
+## Blown and beaten down like the dawn's (Weather.mist).
+var mist_dusk := 0.0
 ## Hazard id -> base strength 0..1 (cold, heat, fumes, toxins, radiation, wet,
 ## dark, glare, thirst, magnetism, collapse, vacuum, pressure, em, resonance,
 ## time_shear). The hazards package reads this.
@@ -481,6 +547,14 @@ var landmarks: Array[StringName] = []
 ## generation, like a shaft, so the island does not move (LOOK).
 var interiors: Dictionary = {}
 var sound_bed: StringName = &"bed_wind"
+## The prop kind this landscape's typical ground must stand among
+## (GenPlaces.typical_sample), and how many of it the 24-tile neighbourhood must
+## hold: Vector2i(kind, least), kind -1 for none. The typical tile is the one whose
+## neighbourhood is most like the whole landscape, and in a land whose point is
+## a planting that can be the clearing where it was taken out: the orchards'
+## "typical" was a field of stumps with the rows on the horizon. A LOOK field:
+## it moves where a shot stands, never what a seed makes.
+var typical_among := Vector2i(-1, 0)
 ## Another type's id whose music motif this one borrows; empty composes its own.
 var music_motif: StringName = &""
 

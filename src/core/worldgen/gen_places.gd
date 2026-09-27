@@ -384,6 +384,9 @@ static func typical_sample(w: WorldData, cc: int) -> Vector2:
 	_share(land_ground)
 	_share(land_props)
 
+	var among_row := BiomeRegistry.by_index(cc).typical_among
+	var want_among := among_row.x
+	var least := maxf(1.0, float(among_row.y))
 	var best := Vector2(-1, -1)
 	var best_score := INF
 	for y in range(6, w.size - 6, 2):
@@ -415,9 +418,15 @@ static func typical_sample(w: WorldData, cc: int) -> Vector2:
 					var base := ((by + oy) * bw + bx + ox) * PropKind.COUNT
 					for k in PropKind.COUNT:
 						near_props[k] += bins[base + k]
+			var among := near_props[want_among] if want_among >= 0 else 0.0
 			_share(near_ground)
 			_share(near_props)
 			var score := _apart(near_ground, land_ground) + _apart(near_props, land_props)
+			# Among what the landscape declares it is (`typical_among`): a
+			# neighbourhood holding fewer than its `least` of them is not
+			# typical of it, however average its mix.
+			if want_among >= 0:
+				score += 2.0 * (1.0 - minf(1.0, among / least))
 			# A hair of noise so two identical neighbourhoods do not depend on scan order.
 			score += Rng.hash01(w.seed_value, x, y, 13) * 0.002
 			if score < best_score:

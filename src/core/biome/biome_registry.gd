@@ -223,6 +223,8 @@ static func problems() -> PackedStringArray:
 					out.append(w + "weather has no kind %s" % row[0])
 			if absf(total - 100.0) > 0.01:
 				out.append(w + "weather weights sum to %.1f, not 100" % total)
+		for p: String in d.style_problems():
+			out.append(w + p)
 		if d.music_motif != &"" and not _defs.has(d.music_motif):
 			out.append(w + "music motif names no type: %s" % d.music_motif)
 		for other: StringName in d.adjacency:

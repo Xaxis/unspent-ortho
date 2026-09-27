@@ -94,6 +94,8 @@ static func make() -> BiomeDef:
 	# salvaged doors (props/remains.gd `_infill`): nobody in a city builds a
 	# hut when there is a frame standing on every block.
 	dress.shelter = &"infill"
+	# A ruin in a city is the stump of a tower, never a crofter's walls.
+	dress.ruin_form = &"tower"
 	d.dressing = dress
 	# The same PLAN the Slums raises, because it IS the same city a century on,
 	# and its own STOCK, because what happened to it is the whole argument: the
@@ -137,6 +139,8 @@ static func make() -> BiomeDef:
 		[Weather.DUST, 16, 0.5], [Weather.FOG, 10, 0.0],
 	]
 	d.mist = 0.22
+	# Concrete dust off the demolition: grey, cold and fine.
+	d.weather_style = {&"dust": {"air": Color(0.64, 0.63, 0.60), "thick": 1.1}}
 	# What a dead city does to a body: the dark of it, the drop off a deck that
 	# is not there any more, and the dust off crushed concrete on the skin — a
 	# plain 0.25, felt and never biting on its own, because `_weather_shift`

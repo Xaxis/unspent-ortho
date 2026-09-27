@@ -1,0 +1,18 @@
+# The grey orchards: its most characteristic ground from above at noon, then
+# over the shoulder at noon, at the sprayers' evening circuit, and turned.
+#   tools/tour.sh tours/lands_orchards.tour --seed=7 --weather=clear:0
+coast calm
+hour 11
+place typical_grey_orchards
+wait 3.0
+shot orchards-above with land:grey_orchards
+tap shoulder
+await shoulder 3
+wait 1.0
+shot orchards-noon with land:grey_orchards
+mouse 600,0 0.6
+wait 0.8
+shot orchards-noon-turned with land:grey_orchards
+hour 19.2
+wait 2.0
+shot orchards-evening with land:grey_orchards

@@ -76,6 +76,8 @@ static func make() -> BiomeDef:
 	# so the night is wide and cold rather than dark. What makes it frightening is
 	# that you can be seen in it.
 	d.night_sky = 1.20
+	# Limestone dust: the pale of the clints themselves, carried on the wind.
+	d.weather_style = {&"dust": {"air": Color(0.84, 0.80, 0.70), "thick": 1.0}}
 	d.props = [PropKind.PINE, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS, PropKind.BOULDER,
 		PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.TIN_ORE, PropKind.COAL_ORE,
 		PropKind.BONES, PropKind.GORSE, PropKind.CLINTS, PropKind.STANDING_STONE,

@@ -57,7 +57,13 @@ static func make() -> BiomeDef:
 	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SHINGLE, Ground.SNOW]:
 		d.grounds[g] = d.grounds[Ground.GRAVEL]
 	d.cliff_wash = P.SLATE[2]
-	d.strata = GroundColors.STRATA_SCRAP
+	# BUILT FOR MACHINES, and LOOK only (no seed moves): its floor is a deck laid
+	# for their traffic, lit with their guide lines (GroundColors.MACHINE_DECK),
+	# and its walls machined plate with a cold seam (STRATA_MACHINE). It was the
+	# scrapwood's bank of made ground: soil and rubble, in the one city that has
+	# neither. Nothing weathers here either (SkyWear's row).
+	d.ground_marks = {Ground.FLOOR: GroundColors.MACHINE_DECK, Ground.ROAD: GroundColors.MACHINE_DECK}
+	d.strata = GroundColors.STRATA_MACHINE
 	d.plain_ground = Ground.FLOOR
 	d.bank_ground = Ground.GRAVEL
 	d.pool_rim_ground = Ground.GRAVEL
