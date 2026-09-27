@@ -2001,11 +2001,17 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		// vent slots (and, after dark, one status light still on), a white-goods
 		// door with its handle, a car's nose with a round lamp. Each is a hand
 		// or two across and flush with the wall, rare enough that each is found.
+		// Laid as they were dumped, not racked: each course of the wall has its
+		// own spacing, and the places along it wander (an fbm warp), so no two
+		// courses line up and nothing repeats at a fixed pitch.
+		float course = floor(wp.y / 0.7);
+		float pitch = 0.9 * (0.65 + 0.7 * ink_hash(vec2(course, 3.0)));
 		float along = px.x * SKY_GRAIN;
-		vec2 bc = vec2(floor(along / 0.9), floor(wp.y / 0.7));
+		along += (ink_vnoise(vec2(along * 0.11, course * 1.7)) * 0.7 + ink_vnoise(vec2(along * 0.37, course * 2.3 + 5.0)) * 0.3 - 0.5) * 2.4;
+		vec2 bc = vec2(floor(along / pitch), course);
 		float bh = ink_hash(bc + vec2(29.0, 83.0));
 		if (bh > 0.78) {
-			vec2 lp = vec2(fract(along / 0.9), fract(wp.y / 0.7));
+			vec2 lp = vec2(fract(along / pitch), fract(wp.y / 0.7));
 			vec2 q = abs(lp - 0.5);
 			float kind2 = ink_hash(bc + 7.0);
 			if (max(q.x / 0.36, q.y / 0.32) < 1.0) {
@@ -2390,6 +2396,30 @@ vec3 bog_gas(vec2 wp, vec2 px) {
 // THE MIDDENS' NIGHT. The screens and tubes buried in the floor leach their
 // phosphor into whatever wet stands in the low places, and after dark the
 // puddles glow a faint sick green, steady, in a few of them only.
+// THE MIDDENS' FLOOR by day: the swarf, but not combed. The scrapwood's filings
+// lie in the arcs of the fields still in its iron; down a slot nothing has lain
+// long enough to be combed, and arcs there read as a survey's contours, not
+// refuse. What fell off the walls: plate flecks, cut shavings in drifts, and
+// dark run-off stains where the rain off the walls pooled and went.
+vec3 midden_floor(vec3 c, vec2 wp, vec2 px, inout float unh) {
+	float stain = ink_vnoise(wp * 0.21 + 31.0) * 0.7 + ink_vnoise(wp * 0.8 + 5.0) * 0.3 + rag(wp);
+	c = mix(c, dn(c, 0.8), smoothstep(0.58, 0.72, stain) * 0.7);
+	// The rust the run-off carried, left at a stain's rim.
+	if (abs(stain - 0.6) < 0.02) {
+		c = mix(c, RUST2, 0.45);
+	}
+	c = dn(c, 0.35 * smoothstep(0.7, 0.85, ink_vnoise(wp * 1.3 + 4.0) + rag(wp)));
+	float drift = ink_vnoise(wp * 0.13 + 19.0);
+	float h = ink_hash(px);
+	if (drift > 0.6 && h > 0.98) {
+		c = h > 0.995 ? ASH3 : mix(STONE2, RUST2, 0.35);
+		unh = max(unh, 0.5);
+	} else if (h < 0.04) {
+		c = mix(c, h < 0.015 ? INK2 : RUST1, 0.55);
+	}
+	return c;
+}
+
 vec3 midden_leak(vec2 wp) {
 	if (sky_view.y <= 0.0) {
 		return vec3(0.0);
@@ -2509,7 +2539,7 @@ void fragment() {
 		c *= 1.0 + patchy * (step(0.66, pn) * 0.04 - step(pn, 0.32) * 0.04);
 	}
 	if (mark_ground(m)) {
-		c = ground_mark(m, c, world_pos.xz, px, emit, unh);
+		c = midden ? midden_floor(c, world_pos.xz, px, unh) : ground_mark(m, c, world_pos.xz, px, emit, unh);
 		if (m == M_CITY_FLOOR || m == M_OVERGROWN) {
 			c = city_floor(c, world_pos, px);
 		}
@@ -2547,7 +2577,10 @@ void fragment() {
 			emit += midden_leak(world_pos.xz);
 		}
 		// The fused sheet is not trodden to earth: nothing walks glass to a path.
-		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK && m != M_SULPHUR) {
+		// Nor is a slot's floor walked into paths: the wear's lines are the
+		// contours of a noise, and down a maze they read as a survey's rings
+		// (midden_floor lays its own stains and litter).
+		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK && m != M_SULPHUR && !midden) {
 			c = ground_wear(m, c, world_pos.xz, px);
 		}
 		// Turf, heath and fen are a sward, and a gust crossing one lays it over:
@@ -2733,7 +2766,14 @@ void fragment() {
 	ROUGHNESS = clamp(mr.x + rough_add, 0.04, 1.0);
 	SPECULAR = mr.y;
 	METALLIC = mr.w;
-	if (m == 56) {
+	if (midden) {
+		// The middens' floor is not combed (midden_floor), so it has no arcs to
+		// catch the light: a matte floor of litter. The comb's metal here drew
+		// the arcs back in as pale rings wherever the sky was mirrored.
+		METALLIC = 0.0;
+		ROUGHNESS = clamp(ROUGHNESS + 0.4, 0.04, 1.0);
+		SPECULAR = 0.3;
+	} else if (m == 56) {
 		// SWARF (and the scrapwood's floor, aliased to it above): only the combed filings are metal. Metal over the whole floor
 		// mirrored the sky at eye level and the wood's floor came back a pale
 		// lavender sheet; the mulch between the arcs is the matte of wet leaves.
