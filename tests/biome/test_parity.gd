@@ -493,6 +493,10 @@ extends TestCase
 ## moves. Seed 7's spawn and a moss village at eye level: the same kinds of
 ## thing where they were. Solid props inside each other at 512 over seeds 1, 7,
 ## 42, 90210: 17/20/16/15 at GEN 36, 14/23/17/14 here.
+## GEN 39 (2026-09-26, the limestone caves roofed, GenAbove) CHANGED NO DIGEST:
+## the roof is laid only on a landscape declaring `BiomeDef.above`, none of the
+## six does, and GenAbove runs after every stage these hash. The caves' own
+## worlds move; tests/biome/test_cave_roofs.gd holds them.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
