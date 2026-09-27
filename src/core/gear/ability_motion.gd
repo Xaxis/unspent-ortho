@@ -23,6 +23,12 @@ const LAUNCH_LIFT := 0.5
 const OVERRUN := 2.5
 ## ...skimming this far above whatever is under it while it looks.
 const SKIM := 0.5
+## A glide whose SECONDS run out still in the air (off a drop deeper than the
+## wing falls in them) falls out of it: its sink gathers FALL_OUT units/s every
+## second, and its way on dies over FALL_OUT_CARRY seconds. A body is never set
+## on the ground from a height in one frame.
+const FALL_OUT := 14.0
+const FALL_OUT_CARRY := 0.6
 ## How far out a flight that has run out of everything will look for a tile to
 ## land on before falling back to the last good ground it passed over.
 const LANDING_SEARCH := 8
@@ -141,6 +147,11 @@ static func climb_face(p: Climb.Plan) -> AbilityMotion:
 	return m
 
 
+## A glide run out still in the air, on its way down (FALL_OUT).
+func falling_out() -> bool:
+	return kind == &"glide" and not finished and t >= seconds and lift > DONE_LIFT
+
+
 ## Move the body on by `delta`. Returns where it now is (tile space).
 ## A dash is refused by walls (it slides along them like walking does); a glide
 ## and a grapple pass over ground a walk could not climb, which is the point.
@@ -156,12 +167,14 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 			if t >= seconds or next.distance_to(pos) < speed * delta * 0.15:
 				finished = true
 		&"glide":
-			next = pos + dir * speed * delta
+			var over := maxf(0.0, t - seconds)
+			var carry := clampf(1.0 - over / FALL_OUT_CARRY, 0.0, 1.0)
+			next = pos + dir * speed * carry * delta
 			var edge := world != null and not _inside(world, next)
 			if edge:
 				# Out of world: the flight ends here rather than off the edge.
 				next = pos
-			height -= fall * delta
+			height -= (fall + FALL_OUT * over) * delta
 			var ground := world.height_at(next) if world != null else 0.0
 			lift = maxf(0.0, height - ground)
 			flown = flown or lift > LAUNCH_LIFT * 0.5
@@ -172,7 +185,9 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 			# over open water it keeps flying, skimming, until there is something
 			# under it. When even the overrun is spent it puts the body on the
 			# nearest ground, or on the last it passed over. Never in the sea.
-			if (flown and lift <= DONE_LIFT) or t >= seconds or edge:
+			# Run out still in the air over standable ground: falling out, not down.
+			var falling_out := t >= seconds and ok and lift > DONE_LIFT and not edge
+			if ((flown and lift <= DONE_LIFT) or t >= seconds or edge) and not falling_out:
 				if ok:
 					lift = 0.0
 					finished = true

@@ -141,6 +141,43 @@ func test_a_glide_needs_a_height_and_carries_you_off_it() -> void:
 	Fx.done(g)
 
 
+## Off a drop deeper than the wing's whole span of falling (FALL x SECONDS), the
+## glide runs out in the air: the body falls out of it the rest of the way down,
+## never put on the ground in one frame.
+func test_a_glide_off_a_deep_drop_falls_out_of_the_air() -> void:
+	# Level 24 to the west, level 1 east: 11.5 units down, three times the span.
+	var w := WorldData.new(13, 60)
+	for y in 60:
+		for x in 60:
+			var i := y * 60 + x
+			var rim := x == 0 or y == 0 or x == 59 or y == 59
+			w.level[i] = -1 if rim else (24 if x < 12 else 1)
+			w.ground[i] = Ground.DEEP_WATER if rim else Ground.GRASS
+			w.country[i] = Country.SEA if rim else Country.COAST
+	w.spawn = Vector2(10.5, 30.5)
+	var g := Fx.from_world(w)
+	gt((w.height_at(g.player.pos) - w.height_at(Vector2(40.5, 30.5))), AbilityGlide.FALL * AbilityGlide.SECONDS * 2.0, "deeper than the wing falls")
+	var m := AbilityMotion.glide(g.player.pos, Vector2.RIGHT, AbilityGlide.SPEED, AbilityGlide.FALL,
+		AbilityGlide.SECONDS, w.height_at(g.player.pos))
+	var p := g.player.pos
+	var y := w.height_at(p)
+	var worst := 0.0
+	var dt := 1.0 / 60.0
+	for i in 1200:
+		p = m.step(dt, p, w, g.query, Tuning.PLAYER_RADIUS)
+		var now_y := w.height_at(p) + m.lift
+		worst = maxf(worst, y - now_y)
+		y = now_y
+		if m.finished:
+			break
+	check(m.finished, "it comes down")
+	near(m.lift, 0.0, 1e-6, "onto the ground")
+	eq(w.level_at(floori(p.x), floori(p.y)), 1, "at the foot of the drop")
+	lt(worst, 0.5, "and no frame drops the body more than a fall would (worst %.2f units)" % worst)
+	lt(m.t, AbilityGlide.SECONDS + 2.0, "falling out is quick")
+	Fx.done(g)
+
+
 ## A wing over the sea is the obvious way to drown a player, so it may not end a
 ## flight anywhere a body cannot stand: it skims until there is ground, and when
 ## everything has run out it is set down ashore.
