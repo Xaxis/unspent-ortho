@@ -14,6 +14,10 @@ extends RefCounted
 const Cottage := preload("res://src/content/interiors/cottage.gd")
 
 
+## A household lives in it: what is in it is theirs (InteriorKind.seats).
+const SEATS := &"household"
+
+
 static func make() -> InteriorKind:
 	var k := Cottage.make()
 	k.id = &"home"

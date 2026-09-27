@@ -76,7 +76,7 @@ func test_every_laid_table_can_be_walked_through() -> void:
 		var reach := _reach(q, l.inside())
 		var goals := {}
 		for th: Dictionary in l.things:
-			var off := {&"food_hatch": 0.8, &"schedule_plate": 0.7, &"height_marks": 0.7, &"bed": 0.85}
+			var off := {&"food_hatch": 0.8, &"schedule_plate": 0.7, &"height_marks": 0.7, &"bed": 0.85, &"strongbox": 0.8}
 			if off.has(th.kind):
 				goals["%s@%s" % [th.kind, th.at]] = (th.at as Vector2) + (th.face as Vector2) * float(off[th.kind])
 		for g: String in goals:

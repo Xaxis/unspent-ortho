@@ -38,6 +38,10 @@ const COAST := {
 const OFF_WALL := 0.36
 
 
+## A household lives in it: what is in it is theirs (InteriorKind.seats).
+const SEATS := &"household"
+
+
 static func make() -> InteriorKind:
 	var k := InteriorKind.new()
 	k.id = &"cottage"

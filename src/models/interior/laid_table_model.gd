@@ -62,6 +62,7 @@ func _boards(k: Kit, l: InteriorLayout, dress: BiomeDressing) -> void:
 			&"sink": _sink(k, at, f)
 			&"cot": _cot(k, at, f)
 			&"door_seal": _door_seal(k, at, f)
+			&"strongbox": _larder_safe(k, at, f)
 
 
 func _q(at: Vector2, f: Vector2, u: float, v: float, h: float) -> Vector3:
@@ -161,6 +162,17 @@ func _sink(k: Kit, at: Vector2, f: Vector2) -> void:
 func _cot(k: Kit, at: Vector2, f: Vector2) -> void:
 	_box(k, at, f, -0.4, 0.4, -0.25, 0.25, 0.0, 0.5, table_wood)
 	_box(k, at, f, -0.36, 0.36, -0.22, 0.22, 0.5, 0.56, linen, GroundColors.made(Color(0.6, 0.66, 0.74), GroundColors.CLOTH))
+
+
+## The larder safe: a white enamelled cabinet on legs, the plan's own, its door
+## sealed, its latch lit the seal's green.
+func _larder_safe(k: Kit, at: Vector2, f: Vector2) -> void:
+	for u: float in [-0.44, 0.44]:
+		for v: float in [-0.2, 0.2]:
+			_box(k, at, f, u - 0.03, u + 0.03, v - 0.03, v + 0.03, 0.0, 0.12, steel)
+	_box(k, at, f, -0.5, 0.5, -0.26, 0.26, 0.12, 0.84, china, china)
+	_box(k, at, f, -0.46, 0.46, 0.26, 0.28, 0.16, 0.8, Kit.tone(china, 0.94))
+	_box(k, at, f, 0.34, 0.4, 0.28, 0.31, 0.44, 0.54, GroundColors.glow(Color(0.6, 0.9, 0.75), 0.6))
 
 
 ## The seal round the door that keeps the spore mist out, a thin strip lit along

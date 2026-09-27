@@ -40,7 +40,10 @@ static func kind(id: StringName) -> InteriorKind:
 	if not _kinds.has(id):
 		if not RECIPES.has(id):
 			return null
-		_kinds[id] = (load(RECIPES[id]) as Script).call(&"make")
+		var recipe := load(RECIPES[id]) as Script
+		var k: InteriorKind = recipe.call(&"make")
+		k.seats = recipe.get_script_constant_map().get("SEATS", &"")
+		_kinds[id] = k
 	return _kinds[id]
 
 
@@ -208,6 +211,70 @@ const LOOT := {
 		{"item": &"scrap", "count": Vector2i(1, 3)},
 		{"item": &"kit_lens", "chance": 0.3, "rarity": Rarity.RARE},
 		{"item": &"mod_hush", "chance": 0.25, "rarity": Rarity.RARE},
+	],
+	# What the machine city's bay keeps in its parts niche for the bodies it
+	# services: the scrap of the work, a cell, and now and then a hand tool the
+	# plan issues. (Line is a lineman's own, taken off one, never shelved.)
+	&"maintenance_bay": [
+		{"item": &"scrap", "count": Vector2i(2, 4)},
+		{"item": &"record", "chance": 0.2},
+		{"item": &"mod_capacitor", "chance": 0.4, "rarity": Rarity.RARE},
+		{"item": &"las_hand", "chance": 0.3, "rarity": Rarity.RARE},
+	],
+	# What the orchards' machines keep in the larder of a house they still feed:
+	# the meals nobody came for, put by, and the plan's own record of the four.
+	&"laid_table": [
+		{"item": &"smoked", "count": Vector2i(2, 4)},
+		{"item": &"scrap", "count": Vector2i(1, 2)},
+		{"item": &"record", "chance": 0.25},
+	],
+	# A LIVED-IN ROOM'S KEPT-BY SHELF (InteriorKind.seats): what its people can
+	# spare, given once to somebody they have cause to thank, and never taken. The
+	# land's own material first, then the thing only that land's people keep.
+	&"cottage": [
+		{"item": &"rag", "count": Vector2i(1, 2)},
+		{"item": &"oil", "chance": 0.7},
+		{"item": &"wick", "chance": 0.6},
+		{"item": &"hat_brim", "chance": 0.3},
+	],
+	&"home": [
+		{"item": &"rag", "count": Vector2i(1, 2)},
+		{"item": &"oil", "chance": 0.6},
+		{"item": &"smoked", "chance": 0.5},
+	],
+	&"stilt_room": [
+		{"item": &"brine_copper", "count": Vector2i(1, 2)},
+		{"item": &"mod_seal", "chance": 0.35, "rarity": Rarity.RARE},
+	],
+	&"hulk_hold": [
+		{"item": &"brine_copper", "count": Vector2i(1, 2)},
+		{"item": &"bilge_pump", "chance": 0.5},
+	],
+	&"tower_lobby": [
+		{"item": &"tower_cable", "count": Vector2i(1, 2)},
+		{"item": &"mod_gyro", "chance": 0.35, "rarity": Rarity.RARE},
+	],
+	&"tenement": [
+		{"item": &"scrap", "count": Vector2i(3, 6)},
+		{"item": &"rebreather", "chance": 0.35},
+		{"item": &"mod_filter", "chance": 0.5, "rarity": Rarity.RARE},
+	],
+	&"roundhouse": [
+		{"item": &"hush_slate", "count": Vector2i(1, 2)},
+		{"item": &"mod_hush", "chance": 0.4, "rarity": Rarity.RARE},
+	],
+	&"rooted_floor": [
+		{"item": &"resin", "count": Vector2i(1, 2)},
+		{"item": &"mod_spring", "chance": 0.4, "rarity": Rarity.RARE},
+	],
+	&"cliff_room": [
+		{"item": &"span_wire", "count": Vector2i(1, 2)},
+		{"item": &"glide_wing", "chance": 0.35},
+	],
+	&"squat": [
+		{"item": &"scrap", "count": Vector2i(1, 3)},
+		{"item": &"rag", "count": Vector2i(1, 2)},
+		{"item": &"wick", "chance": 0.4},
 	],
 }
 static var _loot_declared := false
