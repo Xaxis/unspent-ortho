@@ -1992,7 +1992,7 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		// the floor of a slot, the wall is a dated record, not a heap.
 		float dec = wp.y + (ink_vnoise(vec2(px.x * 0.02, 41.0)) - 0.5) * 0.18;
 		float age = floor(dec);
-		c *= mix(0.72, 1.06, clamp((age + 1.0) / 6.0, 0.0, 1.0)) * (0.94 + 0.12 * ink_hash(vec2(age, 17.0)));
+		c *= mix(0.84, 1.12, clamp((age + 1.0) / 6.0, 0.0, 1.0)) * (0.94 + 0.12 * ink_hash(vec2(age, 17.0)));
 		float cap = fract(dec);
 		if (cap < 0.045 && ink_vnoise(vec2(px.x * 0.05, age + 5.0)) > 0.3) {
 			c = mix(mix(ASH3, LINEN2, 0.3), c, smoothstep(0.02, 0.045, cap) * 0.6);
@@ -2004,7 +2004,7 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		float along = px.x * SKY_GRAIN;
 		vec2 bc = vec2(floor(along / 0.9), floor(wp.y / 0.7));
 		float bh = ink_hash(bc + vec2(29.0, 83.0));
-		if (bh > 0.9) {
+		if (bh > 0.78) {
 			vec2 lp = vec2(fract(along / 0.9), fract(wp.y / 0.7));
 			vec2 q = abs(lp - 0.5);
 			float kind2 = ink_hash(bc + 7.0);
@@ -2036,8 +2036,15 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 				}
 			}
 		}
+		// RUN-OFF: every rain washes the rust out of what is buried and down the
+		// face, in seams from a decade's cap to the next, orange where fresh.
+		float seam = ink_vnoise(vec2(px.x * 0.3, 57.0));
+		if (seam > 0.74) {
+			float fresh = ink_vnoise(vec2(px.x * 0.3, dec * 2.0 + 59.0));
+			c = mix(c, mix(RUST2, RUST3, fresh), 0.6 * smoothstep(0.74, 0.86, seam) * (0.5 + 0.5 * cap));
+		}
 		// Seventy years: everything the colour of what it used to be.
-		c = mix(c, vec3(dot(c, vec3(0.3, 0.59, 0.11))), 0.3);
+		c = mix(c, vec3(dot(c, vec3(0.3, 0.59, 0.11))), 0.15);
 		// Cable hung off the lip in loops.
 		float hang = 0.04 + ink_vnoise(vec2(px.x * 0.18, 91.0)) * 0.14;
 		if (dt < hang && abs(fract(px.x * 0.07 + ink_vnoise(vec2(px.x * 0.05, 93.0)) * 3.0) - 0.5) < 0.06) {
@@ -2640,6 +2647,16 @@ void fragment() {
 	// and what the hour does to its colour.
 	c = sky_apply(c, world_pos, TIME);
 
+	// A WALL OF REFUSE IS PRESSED, NOT CRUMPLED. The mesher's wall runs in
+	// facets tipped a little up and down as the terrace edge wanders, and lit
+	// one by one they read as folded paper. What the eye should read is the
+	// bands and what is buried in them, so the tilt is taken most of the way out
+	// of the light and the facing kept.
+	if (m == M_STRATA_REFUSE) {
+		vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+		vec3 flat_n = normalize(vec3(nw.x, nw.y * 0.2, nw.z) + vec3(0.0, 0.001, 0.0));
+		NORMAL = normalize((VIEW_MATRIX * vec4(flat_n, 0.0)).xyz);
+	}
 	// --- Law 1: matter is honest (docs/LOOK.md) --------------------------
 	vec3 n_world = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	vec4 mr = matter_of(m);
