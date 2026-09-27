@@ -203,9 +203,10 @@ radius); it does not yet answer the blind alleys.
   degree-3 room's CLOSED side (the one way that is wall), and on a degree-4
   room's diagonal, between two exits, found on the tiles as a warren's face is.
 - One per block would be about 30 settlements, far past any landscape's
-  village count. **At most one per 3 x 3 blocks** (168 tiles apart), at the
-  highest-degree, then widest, candidate, gives an estimated 3 to 6 per world,
-  a village's share. Slice 1 measures the real count.
+  village count. **At most one per 4 x 4 blocks**, at the highest-degree, then
+  widest, candidate. Measured in slice 1: 5, 5 and 3 on seeds 1, 7 and 42 (one
+  per 3 x 3 gave 8 on seed 1, which outweighed a landscape's villages), a
+  village's share, so each one is a find. Blind-alley warrens: 13, 23 and 15.
 - The string's route to the nearest ramp is a BFS over `node()` answers from
   the settlement's room, bounded at 64 nodes. A ramp's top is its centre plus
   (centre minus its one open neighbour's centre) x 0.7 (RAMP_RUN), all public.
