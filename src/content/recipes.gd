@@ -153,6 +153,7 @@ const LIST: Array[Dictionary] = [
 	{"id": &"hook_varnish", "at": &"bench", "minutes": 90.0, "needs": {&"boathook": 1, &"frost_varnish": 1, &"pitch": 1}, "makes": {&"hook_varnish": 1}},
 	# The grapple brace re-cabled with the city's own rope: a vertical city is
 	# where you climb (GearTree family `brace`).
+	{"id": &"coat_scale", "at": &"bench", "minutes": 140.0, "needs": {&"oilskin": 1, &"tide_iron": 2, &"rag": 2}, "makes": {&"coat_scale": 1}},
 	{"id": &"brace_cable", "at": &"bench", "minutes": 100.0, "needs": {&"boots_magnet": 1, &"tower_cable": 1, &"rag": 1}, "makes": {&"brace_cable": 1}},
 	# The glide wing re-strung with the mesas' span wire (GearTree family
 	# `wing`): the wing that goes into it is the wing that comes out, stiffer.

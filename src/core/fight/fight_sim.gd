@@ -1464,6 +1464,12 @@ func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: in
 		hero.inventory.remove(&"mod_ablative", 1)
 		emit(&"ablated", {"at": hero.pos, "damage": dmg})
 		dmg = 0
+	# The scale coat turns the first blow of a fight that lands at the back
+	# (FightKit.scale), and is not spent doing it: the next fight, another.
+	if dmg > 0 and hero.kit.scale and _scaled_in != fight_started and by != null and _at_back(by.pos):
+		_scaled_in = fight_started
+		emit(&"turned", {"at": hero.pos, "damage": dmg, "attacker": by})
+		dmg = 0
 	hero.health -= dmg
 	hero.invuln_until = now + FightRules.HURT_IFRAMES_MS
 	# A clamp keeps the feet where they stand (FightKit.clamp); rooted by the
@@ -1476,6 +1482,20 @@ func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: in
 	if hero.committed(now) and not hero.kit.gyro:
 		hero.blow = null
 	emit(&"hurt", {"attacker": by, "target": hero, "damage": dmg, "at": hero.pos})
+
+
+## The fight the scale coat last turned a blow in (its `fight_started`).
+var _scaled_in := -INF
+
+
+## Whether `p` stands at the player's back: within FightKit.SCALE_ARC of
+## straight behind the way they face.
+func _at_back(p: Vector2) -> bool:
+	var to := p - hero.pos
+	if to.length_squared() < 1e-6:
+		return false
+	var behind := Vector2.from_angle(hero.facing + PI)
+	return absf(to.angle_to(behind)) <= FightKit.SCALE_ARC
 
 
 ## `by_player`: the player's own blow did it, so the kill is theirs to feel (the

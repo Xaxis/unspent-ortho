@@ -35,6 +35,10 @@ extends RefCounted
 ##                            throw it, a grip does not take it; rooted, and
 ##                            for ANCHOR_LIFT_MS after the first step, it
 ##                            cannot dodge
+##   scale    (coat_scale)    "it turns the first blow at your back": the first
+##                            blow of a fight that lands from behind
+##                            (SCALE_ARC off straight back) does no harm; the
+##                            coat is not spent, it turns one a fight
 ##   lock     (mod_lock)      "a way passed is shut": a gap between two solid
 ##                            things no wider than LOCK_GAP that the player walks
 ##                            through is shut behind them to machines for
@@ -105,6 +109,9 @@ const LOCK_SECONDS := 20.0
 const LOCK_CHARGES := 1
 ## Only with a machine coming for the player this near (FightSim._hunted_by_machine).
 const LOCK_HUNTED := 20.0
+## The scale coat: how far round from straight behind a blow still lands on
+## the scales (either side), radians.
+const SCALE_ARC := deg_to_rad(70.0)
 ## How much further the player's own noise carries with the ear on.
 const LISTEN_NOISE := 1.5
 ## How much longer the scan takes to come back with the plumb set.
@@ -130,6 +137,7 @@ var unbuild := false
 var plumb := false
 var listen := false
 var lock := false
+var scale := false
 var anchor := false
 
 
@@ -152,6 +160,7 @@ static func of(ids: Array) -> FightKit:
 	k.plumb = ids.has(&"mod_plumb")
 	k.listen = ids.has(&"mod_listen")
 	k.lock = ids.has(&"mod_lock")
+	k.scale = ids.has(&"coat_scale")
 	k.anchor = ids.has(&"mod_anchor")
 	return k
 
