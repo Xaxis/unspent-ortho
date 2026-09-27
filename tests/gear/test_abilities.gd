@@ -290,3 +290,97 @@ func test_the_gear_page_reads_the_book() -> void:
 func test_a_scan_says_what_answers_a_dart() -> void:
 	eq(AbilityScan.advice(Roster.row(&"warden")), "It takes and goes. Break its sight.", "a warden's read")
 	eq(AbilityScan.advice(Roster.row(&"cutter")), "", "a machine that fights gets no advice")
+
+
+## A wing under rock (docs/ABOVE.md §2, fliers): a body in the air never has any
+## of its height inside the mass hanging over it.
+func _glide_clear_of_rock(w: WorldData, start: Vector2, dir: Vector2) -> Dictionary:
+	w.spawn = start
+	var g := Fx.from_world(w)
+	var m := AbilityMotion.glide(g.player.pos, dir, AbilityGlide.SPEED, AbilityGlide.FALL,
+		AbilityGlide.SECONDS, w.height_at(g.player.pos))
+	var p := g.player.pos
+	var inside := 0
+	var worst := 0.0
+	var furthest := p.x
+	var drawn := w.height_at(p)
+	var snap := 0.0
+	for i in 4000:
+		p = m.step(1.0 / 60.0, p, w, g.query, Tuning.PLAYER_RADIUS)
+		furthest = maxf(furthest, p.x)
+		# Where the body is drawn (54_gear: the land plus `lift`) never jumps.
+		var now := w.height_at(p) + m.lift
+		# Past the launch, where the wing takes LAUNCH_LIFT on purpose.
+		if i > 0:
+			snap = maxf(snap, absf(now - drawn))
+		drawn = now
+		var o := w.overhead_at(floori(p.x), floori(p.y))
+		if o.x >= 0 and not m.finished:
+			var body := m.height
+			var under := o.x * WorldData.STEP
+			var top := o.y * WorldData.STEP
+			var dig := minf(body + Tuning.PLAYER_HEIGHT, top) - maxf(body, under)
+			if dig > 0.01:
+				inside += 1
+				worst = maxf(worst, dig)
+		if m.finished:
+			break
+	var out := {"inside": inside, "worst": worst, "end": p, "finished": m.finished, "lift": m.lift,
+		"stands": g.query.standable(floori(p.x), floori(p.y)), "furthest": furthest, "snap": snap}
+	Fx.done(g)
+	return out
+
+
+## A ledge at level 12 (x < 12), a hall at level 2 beyond it, all of it under one
+## roof from level `under` up to level 30 (the ledge's own tiles open above).
+static func _hall(under: int, from_x: int = 12) -> WorldData:
+	var w := WorldData.new(12, 60)
+	for y in 60:
+		for x in 60:
+			var i := y * 60 + x
+			w.level[i] = 12 if x < 12 else 2
+			w.ground[i] = Ground.GRASS
+			w.country[i] = Country.COAST
+			if x >= from_x and x < 58 and y > 0 and y < 59:
+				w.set_overhead(x, y, under, 30)
+	return w
+
+
+func test_a_glide_under_a_roof_is_held_under_it() -> void:
+	# The underside at level 10 (5 units): off the ledge at 6 units the wing is
+	# pressed down under it, never carried into it.
+	var r := _glide_clear_of_rock(_hall(10), Vector2(10.5, 30.5), Vector2.RIGHT)
+	eq(int(r.inside), 0, "no frame of the flight has the body in the rock (worst %.2f)" % float(r.worst))
+	check(bool(r.finished) and bool(r.stands), "and it comes down on the hall floor at %s" % r.end)
+	gt(float(r.furthest), 14.0, "having flown out under the roof, not stopped at its edge")
+
+
+func test_a_glide_never_enters_a_gap_too_low_for_the_body() -> void:
+	# The underside at level 4 (2 units) over a floor at 1 unit: 1.0 of room for a
+	# 1.8 body. The wing stops at the rock and puts the body down short of it.
+	var r := _glide_clear_of_rock(_hall(4, 20), Vector2(10.5, 30.5), Vector2.RIGHT)
+	eq(int(r.inside), 0, "never in the rock (worst %.2f)" % float(r.worst))
+	lt(float(r.furthest), 20.0, "never into the crawlway")
+	check(bool(r.finished) and bool(r.stands), "set down on ground short of it, at %s" % r.end)
+	near(float(r.lift), 0.0, 1e-6, "on the ground, not hanging")
+	lt(float(r.snap), 0.3, "sinking there, never dropped to it in a frame")
+
+
+func test_a_glide_over_a_roof_is_not_set_down_on_it_or_under_it() -> void:
+	# A cliff at level 24 (x < 12), a roof from level 4 up to level 20 beyond it
+	# over a floor at level 2: the wing skims the roof's top, which nothing stands
+	# on yet, and never drops through it into the hall.
+	var w := WorldData.new(12, 60)
+	for y in 60:
+		for x in 60:
+			var i := y * 60 + x
+			w.level[i] = 24 if x < 12 else 2
+			w.ground[i] = Ground.GRASS
+			w.country[i] = Country.COAST
+			if x >= 12 and x < 58 and y > 0 and y < 59:
+				w.set_overhead(x, y, 4, 20)
+	var r := _glide_clear_of_rock(w, Vector2(10.5, 30.5), Vector2.RIGHT)
+	eq(int(r.inside), 0, "never in the rock (worst %.2f)" % float(r.worst))
+	check(bool(r.finished), "the flight ends")
+	var end: Vector2 = r.end
+	check(w.overhead_at(floori(end.x), floori(end.y)).x < 0, "not set down on the roof or in the hall under it, at %s" % end)

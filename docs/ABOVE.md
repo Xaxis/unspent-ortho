@@ -146,6 +146,12 @@ crosses its edge exactly as its neighbour does — the streaming invariant holds
   the tile is spanned — the bitset of spanned tiles makes the common case free).
 - **Fliers** are held under a span: their altitude is capped at
   `under * STEP − clearance`; a flier cannot cross a span it cannot fit under.
+  The one body that flies is the glide (AbilityMotion): under mass it is held
+  its own height (`tall`) below the underside; where the room is less than
+  that the rock is a wall and the wing stalls there (STALL); over mass it
+  skims the top, which is no landing, and is never set down under it. The
+  plan's traffic (FlierView) flies its lane over the top and drops its light
+  there (`FlierView.surface`).
 - **Projectiles and sight** (FightSim lines, `Senses.line_clear`, `Shoulder.sees`)
   ask `solid_at` along the line, so a roof between two bodies at different
   heights blocks as a wall does.

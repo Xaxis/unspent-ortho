@@ -108,14 +108,20 @@ func _exit_tree() -> void:
 		_task = -1
 
 
-const TOUR_PLACES: Array[String] = ["under_roof"]
+const TOUR_PLACES: Array[String] = ["under_roof", "glide_under_roof"]
+## Tiles of a glide's way out from `glide_under_roof` that must all be under mass.
+const GLIDE_UNDER := 8
 
 
 ## `near under_roof`: the nearest walkable tile within 40 under the middle of a
 ## plateau (its three by three all one mass), so a tour stands under a roof by
 ## name and never at a coordinate.
 func tour_place(what: String) -> Vector2:
-	if what != "under_roof" or game == null or game.world == null or game.player == null:
+	if game == null or game.world == null or game.player == null:
+		return Vector2.INF
+	if what == "glide_under_roof":
+		return _glide_under_roof()
+	if what != "under_roof":
 		return Vector2.INF
 	var w := game.world
 	var at := game.player.pos
@@ -138,6 +144,49 @@ func tour_place(what: String) -> Vector2:
 				best_d = d
 				best = Vector2(x + 0.5, y + 0.5)
 	return best
+
+
+## `near glide_under_roof`: the nearest tile within 60 with room for a body under
+## a roof, a drop ahead that a wing launches off (AbilityGlide.launch) and mass
+## over the first GLIDE_UNDER tiles of the way out, so a tour flies under the lid
+## by name; `tour_face` then turns the body along that way.
+var _glide_facing := NAN
+func _glide_under_roof() -> Vector2:
+	var w := game.world
+	var at := game.player.pos
+	var best := Vector2.INF
+	var best_d := INF
+	for dy in range(-60, 61):
+		for dx in range(-60, 61):
+			var d := Vector2(dx, dy).length()
+			if d >= best_d:
+				continue
+			var x := floori(at.x) + dx
+			var y := floori(at.y) + dy
+			var o := w.overhead_at(x, y)
+			if o.x < 0 or not game.query.standable(x, y) or w.headroom_at(x, y) * WorldData.STEP < Tuning.PLAYER_HEIGHT:
+				continue
+			var here := Vector2(x + 0.5, y + 0.5)
+			for k in 8:
+				var way := AbilityGlide.launch(w, game.query, here, Vector2.from_angle(k * TAU / 8.0))
+				if way == Vector2.ZERO:
+					continue
+				var covered := true
+				for s in range(1, GLIDE_UNDER + 1):
+					var q := here + way * float(s)
+					if w.overhead_at(floori(q.x), floori(q.y)).x < 0:
+						covered = false
+						break
+				if covered:
+					best_d = d
+					best = here
+					_glide_facing = way.angle()
+					break
+	return best
+
+
+func tour_face(what: String) -> float:
+	return _glide_facing if what == "glide_under_roof" else NAN
 
 
 ## For tours: `await above_cut` once the cut is fully drawn.
