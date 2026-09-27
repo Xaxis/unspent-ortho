@@ -568,7 +568,9 @@ func _over_all(g: Game) -> Vector2i:
 			continue
 		var sm := mi.material_override as ShaderMaterial
 		var st := mi.material_override as StandardMaterial3D
-		if sm != null and sm.get_shader_parameter(&"mode") != null:
+		# A mark (its `mode`), or air: the soft plume (MobFx._air) a cough and a
+		# breath are under the close eye, which carries no mode.
+		if sm != null and (sm.get_shader_parameter(&"mode") != null or sm.shader == MobFx.PLUME_SHADER):
 			n += 1
 			over += int(sm.shader.code.contains("depth_test_disabled"))
 		elif st != null and mi.mesh == FireModel.smoke_mesh():
