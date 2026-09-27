@@ -32,6 +32,13 @@ const SLOTS := 256
 ## A piece of a type cut off inside another and smaller than this (512 world)
 ## joins the type round it: a blot of ash in the limestone is noise, not a place.
 const ENCLAVE_TILES := 400
+## AN ENCLAVE IS SMALL AND NEAR: under its tile count, and no wider or taller
+## than this many tiles. Measured at 1840, the widest absorbed was 91 (seeds 1,
+## 42, 90210). Bounding the reach is what lets a section decide it: a window
+## with ENCLAVE_REACH + 1 tiles round its core absorbs the core's enclaves
+## exactly as the whole world does (streamed worldgen S4e2,
+## tests/stream/test_enclave_window.gd).
+const ENCLAVE_REACH := 128
 ## A run of one type smaller than this (512 world) is not its own region.
 const REGION_TILES := 220
 ## WHAT SHARE OF A TYPICAL LANDSCAPE'S HOLDING A RUN MUST BE TO BE A PLACE
@@ -1002,12 +1009,17 @@ static func _best_two(flat: PackedFloat32Array, n: int, i: int, types: int, c: G
 ## their edge (islets, with no land neighbours, stay). Runs before the ecotones
 ## are measured, so the blend follows the borders that remain.
 static func _absorb_enclaves(c: GenContext, min_tiles: int) -> void:
-	var size := c.size
-	var types := c.types
-	var country := c.w.country
-	var country2 := c.w.country2
+	absorb(c.w.country, c.w.country2, c.size, c.types, min_tiles)
+
+
+## `_absorb_enclaves` over one square of `size` tiles: the whole world, or a
+## section with ENCLAVE_REACH + 1 tiles of the world round its own. A run that
+## reaches the square's edge is never an enclave: in the world the edge is sea,
+## and in a section it is a run the square cannot see the end of.
+static func absorb(country: PackedByteArray, country2: PackedByteArray, size: int, types: int, min_tiles: int) -> void:
+	var n := country.size()
 	var sea := PackedByteArray()
-	sea.resize(c.n)
+	sea.resize(n)
 	GenFields.rows(size, func(y0: int, y1: int) -> void:
 		for i in range(y0 * size, y1 * size):
 			sea[i] = 1 if country[i] == Country.SEA else 0
@@ -1027,10 +1039,28 @@ static func _absorb_enclaves(c: GenContext, min_tiles: int) -> void:
 					found.append(i)
 		parts[y0 / band] = found
 	, band)
+	# Each small run's box (x0, y0, x1, y1), from its own tiles only.
+	var box := {}
+	for part in parts:
+		for i in part:
+			var la := label[i]
+			var x := i % size
+			var y := i / size
+			var r: Vector4i = box.get(la, Vector4i(x, y, x, y))
+			box[la] = Vector4i(mini(r.x, x), mini(r.y, y), maxi(r.z, x), maxi(r.w, y))
+	var far := {}
+	for la: int in box:
+		var r: Vector4i = box[la]
+		# A run touching the square's first or last usable row or column may go
+		# on past it (the passes above never read the outermost ring).
+		if r.z - r.x + 1 > ENCLAVE_REACH or r.w - r.y + 1 > ENCLAVE_REACH or r.x <= 1 or r.y <= 1 or r.z >= size - 2 or r.w >= size - 2:
+			far[la] = true
 	var votes := {}
 	for part in parts:
 		for i in part:
 			var la := label[i]
+			if far.has(la):
+				continue
 			var v: PackedInt32Array = votes.get(la, PackedInt32Array())
 			if v.is_empty():
 				v.resize(types)
