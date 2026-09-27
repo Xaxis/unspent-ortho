@@ -114,6 +114,42 @@ func test_terrace_edges_do_not_follow_the_tile_grid() -> void:
 	lt(corners * 10.0 / length, 0.25, "sharp corners per 10 tiles of edge (%d in %d tiles)" % [corners, length])
 
 
+## A FACE OF MANY LEVELS IS ONE FACE (TerrainMesher.SHEER): a drop of four
+## levels between two tiles stands its four walls at one place, not spread a
+## step apart across the tile as a ziggurat of ledges; and only its lowest wall
+## runs out a talus, so only it leaves rubble at its foot.
+func test_a_sheer_drop_is_one_face() -> void:
+	var w := WorldData.new(6, 32)
+	for y in 32:
+		for x in 32:
+			var i := y * 32 + x
+			w.level[i] = 6 if x < 16 else 2
+			w.country[i] = Country.COAST
+			w.ground[i] = Ground.GRASS
+	var ch := TerrainMesher.new(w).build(0, 0)
+	# Every wall's top, along one stretch of the drop away from the chunk's ends.
+	var lo := INF
+	var hi := -INF
+	var levels := {}
+	for p: Vector3 in ch.edges:
+		if p.z < 8.0 or p.z > 24.0:
+			continue
+		lo = minf(lo, p.x)
+		hi = maxf(hi, p.x)
+		levels[roundi(p.y / WorldData.STEP)] = true
+	eq(levels.size(), 4, "a wall for each of the four levels")
+	lt(hi - lo, 0.35, "the four walls stand at one place (spread %.2f tiles)" % (hi - lo))
+	var feet := 0
+	for f: Vector3 in ch.feet:
+		if f.z >= 8.0 and f.z <= 24.0:
+			feet += 1
+	var tops := 0
+	for p: Vector3 in ch.edges:
+		if p.z >= 8.0 and p.z <= 24.0 and roundi(p.y / WorldData.STEP) == 3:
+			tops += 1
+	lt(feet, tops, "rubble only at the lowest wall's foot (%d feet, %d lowest-wall points)" % [feet, tops])
+
+
 func test_one_tile_spurs_and_notches_are_drawn_at_their_neighbours_level() -> void:
 	var w := WorldData.new(2, 32)
 	for i in 32 * 32:
