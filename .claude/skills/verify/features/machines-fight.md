@@ -54,6 +54,9 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   Every keeper is a boss to the shoulder reader (won 18+/24, 25-45 s, 2+ health lost; ~50 s to run): `tools/test.sh test_keeper_bouts`.
   The come-round (a keeper sweeps a body kept at its flank; every keeper, its own flavour): `tools/test.sh test_come_round`,
   `TOUR_FIXED_FPS=60 tools/tour.sh tours/come_round.tour` (options in its header).
+  A keeper reaches you on its own ground: a charge walks its own field round what stops its move (NavField.for_body:
+  its climb, headroom, props but what it breaks), and a lost keeper hunts where it last knew you before it forgets
+  (Brains._hunt, FightSim.hunting): `tools/test.sh test_keeper_reach` (seeds 1 and 4, every lair; ~2 min).
 - 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.
   Freed by a dark yard or a fallen keeper, and back on a standing holding's books
   (`tools/test.sh test_come_home`; `tools/tour.sh tours/taken_home.tour`, options in its header;

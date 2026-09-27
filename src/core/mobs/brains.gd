@@ -264,8 +264,13 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 		m.want = Vector2.ZERO
 		m.aim = to.angle()
 		return
+	if not m.charging and m.lost_beats > 0 and Sentinels.is_keeper(m.row):
+		_hunt(m, sim)
+		return
 	if m.charging and (now >= m.run_until or _run_blocked(m, speed, now)):
 		# The run is over (or a wall ended it): stand and come round before the next.
+		if now < m.run_until:
+			m.route_until = now + ROUTE_AFTER_BLOCK_MS
 		m.charging = false
 		m.run_until = minf(m.run_until, now)
 		m.pause_until = now + pause_ms
@@ -278,6 +283,14 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 			# and grinds round (slowly, FightSim), and whatever side it bit with is open.
 			m.want = Vector2.ZERO
 			m.aim = to.angle()
+			return
+		# A run is only committed down a line the ground carries. Where the
+		# straight line meets a terrace wall, a cliff or the sea, it walks the
+		# ground's way round (as `_seek` does) and runs once the line is clear:
+		# aimed straight, it ran into the wall, stood, re-aimed and ran into it
+		# again, and a keeper reached as few as 0 of 8 players 14 tiles off
+		# (tests/sentinel/test_keeper_reach.gd).
+		if _round_the_ground(m, sim, hero.pos):
 			return
 		if sim.bogged(m):
 			# In a drift off its furrows (FightSim furrows) no run starts: it
@@ -342,6 +355,87 @@ static func _come_round(m: MobState, sim: FightSim, to: Vector2, pause_ms: float
 	m.aim = m.facing
 	m.start_blow(m.come_round, sim.now)
 	sim.emit(&"windup", {"mob": m, "come_round": true})
+
+
+## A KEEPER THAT HAS LOST THE PLAYER HUNTS WHAT IT KNOWS (FightSim.hunting): it
+## goes to where it last saw or heard them, then to HUNT_POINTS round that point,
+## HUNT_OUT tiles off on ground it can stand on, and at each it stands and looks
+## round (HUNT_LOOK_MS), which is what finds a body hiding behind a step. It is
+## never led to where the player truly is; its senses find them or they do not.
+const HUNT_OUT := 4.0
+const HUNT_POINTS := 4
+const HUNT_LOOK_MS := 700.0
+## How long a body whose run was stopped short goes by its field before trusting
+## a straight line again.
+const ROUTE_AFTER_BLOCK_MS := 3000.0
+
+
+static func _hunt(m: MobState, sim: FightSim) -> void:
+	if m.hunt.is_empty():
+		m.hunt.append(m.last_seen)
+		var from := (m.last_seen - m.pos).angle()
+		for k in HUNT_POINTS:
+			var p := m.last_seen + Vector2.from_angle(from + TAU * k / HUNT_POINTS) * HUNT_OUT
+			if sim.query == null or sim.query.standable(floori(p.x), floori(p.y)):
+				m.hunt.append(p)
+		m.hunt_i = 0
+		m.hunt_look_until = -1.0
+	if m.hunt_i >= m.hunt.size():
+		m.want = Vector2.ZERO
+		return
+	var at := m.hunt[m.hunt_i]
+	var to := at - m.pos
+	if to.length() <= m.radius + 0.8 or m.hunt_look_until >= 0.0:
+		# There: it stands and looks round, a slow turn each way.
+		m.want = Vector2.ZERO
+		if m.hunt_look_until < 0.0:
+			m.hunt_look_until = sim.now + HUNT_LOOK_MS
+		m.aim = m.facing + sin((m.hunt_look_until - sim.now) / HUNT_LOOK_MS * TAU) * 1.2
+		if sim.now >= m.hunt_look_until:
+			m.hunt_i += 1
+			m.hunt_look_until = -1.0
+		return
+	if _round_the_ground(m, sim, at):
+		return
+	m.want = to.normalized() * m.pace
+	m.aim = to.angle()
+
+
+## Where the straight line to `target` is not one its own move takes (the
+## ground, and the props it does not break), walk its own field's way round
+## (FightSim.route) at its own pace and say so; else false, and the caller aims
+## straight.
+static func _round_the_ground(m: MobState, sim: FightSim, target: Vector2) -> bool:
+	if sim.nav == null:
+		return false
+	var r := FightSim.move_radius(m)
+	var clear := NavField.line_walkable(sim.world, m.pos, target, r) \
+			and NavField.props_clear(sim.query, m.pos, target, r, NavField.breaks_of(m.row))
+	if clear and sim.now < m.route_until:
+		# A run was stopped short down a line that looked clear. Only a way round
+		# the ground says is longer than the line proves the ground stopped it;
+		# a run stopped by the player's own body is a fight, and it charges again.
+		var steps := sim.route_steps(m, target, m.pos)
+		clear = steps >= NavField.FAR or float(steps) <= NavField.STRAIGHT * Senses.chebyshev(m.pos, target) + 2.0
+	if clear:
+		return false
+	var way := sim.route(m, target)
+	if way == Vector2.ZERO:
+		return false
+	m.flank_since = -1.0
+	var dir := way
+	# The field goes tile middle to tile middle, and a body's move is refused where
+	# a corner of it hangs over a step it cannot take (WorldQuery._fits). Stopped
+	# off the middle of its tile by a terrace edge, it steps back to that middle,
+	# which its own move always allows, and takes the way on from there.
+	if sim.now < m.detour_until:
+		var mid := Vector2(floorf(m.pos.x) + 0.5, floorf(m.pos.y) + 0.5)
+		dir = (mid - m.pos).normalized() if m.pos.distance_to(mid) > 0.05 else way
+	elif m.want.length() > 0.1 and m.pos.distance_to(m.last_think_pos) < m.pace * 0.064 * BLOCKED_SHARE:
+		m.detour_until = sim.now + 300.0
+	m.want = dir * m.pace
+	m.aim = dir.angle()
+	return true
 
 
 static func _run_blocked(m: MobState, speed: float, now: float) -> bool:

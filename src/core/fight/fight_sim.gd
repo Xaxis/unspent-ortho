@@ -83,6 +83,10 @@ var moment: Moment
 var mobs: Array[MobState] = []
 ## Steps to the player over the ground, for chasers that meet a cliff.
 var nav: NavField
+## A body's own way round (NavField.for_body), by mob id: laid by its own move's
+## rules to wherever that body is going, the player or where it last knew them
+## (`route`).
+var _wide_nav: Dictionary = {}
 ## Simulation milliseconds.
 var now := 0.0
 ## Real seconds that `now` corresponds to (Body stores real-time seconds).
@@ -423,7 +427,11 @@ func _beat() -> void:
 		if noticed:
 			m.lost_beats = 0
 			m.last_seen = hero.pos
+			m.lost_at = -1.0
+			m.hunt.clear()
 		else:
+			if m.lost_beats == 0:
+				m.lost_at = now
 			m.lost_beats += 1
 		var d := Senses.chebyshev(m.pos, hero.pos)
 		var reach := float(m.stat("reach", 1))
@@ -459,7 +467,7 @@ func _beat() -> void:
 					else:
 						m.set_mood(MobState.CHASING, now)
 			MobState.CHASING:
-				if m.lost_beats >= _forget(m):
+				if m.lost_beats >= _forget(m) and not hunting(m):
 					m.disturbed = false
 					m.set_mood(MobState.IDLE, now)
 				elif m.approach != &"dart" and m.pos.distance_to(m.home) > float(m.stat("tether", 30)):
@@ -468,7 +476,7 @@ func _beat() -> void:
 				elif m.approach != &"dart" and d <= reach:
 					m.set_mood(MobState.ATTACKING, now)
 			MobState.ATTACKING:
-				if m.lost_beats >= _forget(m):
+				if m.lost_beats >= _forget(m) and not hunting(m):
 					m.disturbed = false
 					m.set_mood(MobState.IDLE, now)
 				elif d > reach + 4.0 and not m.committed(now):
@@ -632,6 +640,22 @@ func _suspicion(m: MobState, how: StringName) -> void:
 ## Beats of losing the player before a body gives up. One that never left its
 ## work for the player in the first place (a wary keeper that let them inside
 ## its guard) settles back twice as fast as one that came hunting.
+## A roused keeper that has lost the player HUNTS rather than forgets
+## (Brains._hunt): to where it last knew them, then a sweep round that point,
+## HUNT_MS at most. It forgets once the sweep is done or the time is up; past its
+## tether it goes home as any body does. Hiding still buys time: it hunts what it
+## knows, never where the player truly is.
+const HUNT_MS := 20000.0
+
+
+func hunting(m: MobState) -> bool:
+	if not Sentinels.is_keeper(m.row) or m.lost_at < 0.0:
+		return false
+	if now - m.lost_at > HUNT_MS:
+		return false
+	return m.hunt.is_empty() or m.hunt_i < m.hunt.size()
+
+
 func _forget(m: MobState) -> int:
 	var f := int(m.stat("forget", 20))
 	if m.watchful():
@@ -922,7 +946,7 @@ func _move_mob(m: MobState, dt: float) -> void:
 	# a walker's ride with a longer stride (`CraftRide.levels`, the one field
 	# `WorldQuery.passable` already reads for a walker rig). A climber does not
 	# swim: the ride answers deep water as a walker would.
-	var next := query.move_body(m.pos, v * dt, minf(m.radius, 0.45), climber(m.row), Swim.may_cross(m.row), tall_of(m.row)) if query != null else m.pos + v * dt
+	var next := query.move_body(m.pos, v * dt, move_radius(m), climber(m.row), Swim.may_cross(m.row), tall_of(m.row)) if query != null else m.pos + v * dt
 	next = _held_by_walls(m, next)
 	var keeps: Array = m.row.get("keeps_to", [])
 	if not keeps.is_empty() and world != null:
@@ -1131,6 +1155,13 @@ func hero_level_now() -> int:
 ## Levels of headroom a body needs under a roof (WorldQuery.passable): its
 ## roster height, or the player's.
 const HERO_TALL := int(ceil(Tuning.PLAYER_HEIGHT / WorldData.STEP))
+## The radius a body is moved at (WorldQuery.move_body): no wider than the
+## player's, however wide it is drawn, so a keeper passes where its fight says
+## it stands and what it `breaks` goes down round it.
+static func move_radius(m: MobState) -> float:
+	return minf(m.radius, 0.45)
+
+
 static func tall_of(row: Dictionary) -> int:
 	return int(ceil(float(row.get("height", 1.0)) / WorldData.STEP))
 
@@ -1397,7 +1428,7 @@ func undertow(m: MobState) -> bool:
 	var pull := minf(m.radius * 2.0, room)
 	if pull > 0.0:
 		var step := to.normalized() * pull
-		m.pos = query.move_body(m.pos, step, minf(m.radius, 0.45), climber(m.row), Swim.may_cross(m.row)) if query != null else m.pos + step
+		m.pos = query.move_body(m.pos, step, move_radius(m), climber(m.row), Swim.may_cross(m.row)) if query != null else m.pos + step
 	m.charging = false
 	_break_tell(m)
 	if now >= m.stall_ready_at:
@@ -1787,8 +1818,17 @@ func _settle() -> void:
 		_end(&"away")
 		return
 	# Left behind: far off for a while and not closing. Something still coming
-	# round a cliff to you is closing, and is still a fight.
-	if nearest > FightRules.AWAY_DISTANCE:
+	# round a cliff to you is closing, and is still a fight; so is a keeper still
+	# hunting you (`hunting`), however far round the step it is looking.
+	var hunted := false
+	for id: int in fight_mobs:
+		var fm: MobState = fight_mobs[id]
+		hunted = hunted or (fm.alive and not fm.removed and hunting(fm))
+	if hunted:
+		_far_since = -1.0
+		_far_best = INF
+		_best_at = now
+	elif nearest > FightRules.AWAY_DISTANCE:
 		if _far_since < 0.0 or nearest < _far_best - 0.5:
 			_far_since = now
 			_far_best = nearest
@@ -1820,6 +1860,32 @@ func refresh_nav() -> void:
 	nav.update(hero.pos)
 	if nav.builds != before:
 		_nav_at = now
+
+
+## The way a body walks from where it stands toward `target`: the next step of
+## its own field (NavField.for_body), rebuilt when the target changes tile.
+## Vector2.ZERO where there is none within the field.
+func route(m: MobState, target: Vector2) -> Vector2:
+	var field := _field_for(m, target)
+	return field.direction(m.pos) if field != null else Vector2.ZERO
+
+
+## Steps from `from` to `target` over the ground `m`'s own move can take
+## (NavField.FAR where it cannot get there within the field).
+func route_steps(m: MobState, target: Vector2, from: Vector2) -> int:
+	var field := _field_for(m, target)
+	return field.steps_from(from) if field != null else NavField.FAR
+
+
+func _field_for(m: MobState, target: Vector2) -> NavField:
+	if world == null or query == null:
+		return null
+	var field: NavField = _wide_nav.get(m.id)
+	if field == null:
+		field = NavField.for_body(world, query, m.row, move_radius(m))
+		_wide_nav[m.id] = field
+	field.update(target)
+	return field
 
 
 ## Tiles to the player over the ground (the way round a cliff, not through it),

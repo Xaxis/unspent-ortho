@@ -67,6 +67,11 @@ static func by_id(id: StringName) -> SentinelDef:
 
 ## The design the landscape type `land` keeps, read off its own file
 ## (`BiomeDef.sentinel`). Null when that landscape has no keeper yet.
+## Whether a roster row is a landscape's keeper (Roster `sentinel`).
+static func is_keeper(row: Dictionary) -> bool:
+	return StringName(str(row.get("sentinel", &""))) != &""
+
+
 static func for_land(land: StringName) -> SentinelDef:
 	var d := BiomeRegistry.get_def(land)
 	if d == null or d.sentinel == &"":
