@@ -1,0 +1,37 @@
+# What a frame underground costs, on the frames a player gets: over the shoulder
+# in a hall deep under the lid (GenAbove, no tear within 16 tiles) turning a full
+# circle, then the same under an open tear where the day comes down. Each window
+# is the `--stats` block (p50/p95/worst); the web build is the one that matters.
+#   tools/web.sh --tour=tours/cave-cost.tour --uncapped --timeout=600 --trace --args=--seed=7,--realm=underground,--hour=12,--stats
+#   tools/tour.sh tours/cave-cost.tour --seed=7 --realm=underground --hour=12 --stats
+coast calm
+wait 1.0
+near deep_under_roof
+wait 1.5
+tap shoulder
+await shoulder 20
+wait 2.0
+perf stats begin
+wait 2.0
+mouse 640,0 0.6
+wait 1.0
+mouse 640,0 0.6
+wait 1.0
+mouse 640,0 0.6
+wait 1.0
+mouse 640,0 0.6
+wait 1.0
+perf stats end lidded
+shot 01-lidded with shoulder
+near shaft_pool
+wait 1.5
+await shoulder 20
+wait 2.0
+perf stats begin
+wait 2.0
+mouse -1280,0 1.2
+wait 1.0
+mouse 1280,0 1.2
+wait 3.0
+perf stats end tear
+shot 02-tear with shoulder

@@ -75,8 +75,18 @@ func test_a_shard_defers_an_absolute_cost_too() -> void:
 		eq(f.get_as_text().strip_edges(), "test_x:test_z", "by its runner id")
 		f.close()
 	DirAccess.remove_absolute(path)
+	# Judged alone on a QUIET machine, which is what the alone pass is for: this
+	# half is the bar's own rule, not a measurement, and on a busy CI runner
+	# (slack over 2) cost_lt reads an over-bar number as unmeasured and fails
+	# nothing, which is what went red on CI.
+	var kept_slack := TestCase._slack
+	var kept_at := TestCase._slack_at
+	TestCase._slack = 1.0
+	TestCase._slack_at = Time.get_ticks_msec()
 	var alone := TestCase.new()
 	alone.current = "test_x:test_z"
 	alone.defer_costs = false
 	alone.cost_lt(30.0 * (TestCase.CI_SPEED + 1.0), 24.0, "the same build judged alone")
+	TestCase._slack = kept_slack
+	TestCase._slack_at = kept_at
 	eq(alone.failures.size(), 1, "and alone it is judged")
