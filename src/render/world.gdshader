@@ -963,7 +963,36 @@ vec3 works_mark(int m, vec3 c, vec2 wp, vec2 px, vec4 wk, float stump, int hand,
 	float cut = wk.r + torn;
 	// The pines' hand (UPRIGHT) marks a harvester's ground, whatever grows there.
 	bool pines = hand == 3;
-	if (cut > 0.5) {
+	if (cut > 0.5 && m == M_ORCHARD_SWARD) {
+		// THE ORCHARD WORKED. The trees stand in rows every ORCHARD_ROW units on
+		// the bearing, ruled from the world's origin (grey_orchards `_works`):
+		// the alley between two rows is mown short and paler, with the two wheel
+		// ruts of the sprayer that runs it down its middle; along the row the
+		// spray has dried to a pale drift, streaked the way the wind dragged it.
+		const float ORCHARD_ROW = 3.2;
+		float fy = fract(r.y / ORCHARD_ROW) * ORCHARD_ROW;
+		float alley = abs(fy - ORCHARD_ROW * 0.5);
+		float edge = 0.62 + (ink_vnoise(vec2(r.x * 0.21, floor(r.y / ORCHARD_ROW))) - 0.5) * 0.2;
+		if (alley < edge && regrow < 0.78) {
+			// Mown: a pale flat strip, the swathes lying one way then the other.
+			float swathe = step(0.5, fract(r.x / 5.3 + ink_hash(vec2(floor(r.y / ORCHARD_ROW), 3.0))));
+			c = mix(c, up(c, 0.4 + swathe * 0.12), 0.8);
+			// The ruts: two dark lines a wheel apart, broken where it slewed.
+			float rut = abs(alley - 0.4);
+			if (rut < 0.09 && ink_vnoise(vec2(r.x * 0.6, fy)) > 0.2) {
+				c = mix(c, dn(EARTH1, 0.2), rut < 0.045 ? 0.8 : 0.5);
+			}
+		} else if (alley < ORCHARD_ROW * 0.5 - 0.6) {
+			// Between the mown strip and the trees: the sward let go, longer
+			// and darker, what the mower never reached.
+			c = dn(c, 0.22);
+		} else {
+			// The row: the spray's drift dried pale on the ground under the trees,
+			// in streaks along it.
+			float drift = ink_vnoise(vec2(r.x * 0.35, r.y * 3.0)) * 0.7 + ink_vnoise(vec2(r.x * 1.3, r.y * 7.0)) * 0.3;
+			c = mix(dn(c, 0.2), mix(LINEN3, ASH3, 0.4), smoothstep(0.5, 0.8, drift) * 0.5);
+		}
+	} else if (cut > 0.5) {
 		if ((m == 40 || m == 41) && !pines) {
 			// Turf cut in rows: strips of bare peat ruled between strips left
 			// standing, each row stopped where the cutter stopped; sods stacked
@@ -1776,7 +1805,7 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 			if (lx < 2.0) {
 				c = up(c, 0.75);
 			} else if (lx >= jw * 0.6) {
-				c = dn(c, 0.35);
+				c = dn(c, 0.22);
 			}
 			if (abs(fract(y * 1.7 + h * 3.0) - 0.5) < 0.012 && ink_hash(vec2(cx, 4.0)) < 0.35) {
 				c = INK2;
@@ -2185,7 +2214,7 @@ vec3 strata(int id, vec3 c, vec3 wp, vec2 px, inout vec3 emit, inout float unh) 
 		// under the lip on the machines' power. Clean: nothing weathers it.
 		c = mix(SLATE1, STONE1, 0.5);
 		if (fract(px.x / 36.0) < 0.03) {
-			c = dn(c, 0.35);
+			c = dn(c, 0.22);
 		}
 		float vy = abs(dt - 0.26);
 		if (vy < 0.05 && fract(px.x / 6.0) < 0.6) {
@@ -2530,6 +2559,11 @@ void fragment() {
 	if (midden) {
 		m = 56;
 	}
+	// And the orchards' is the turf, but for how the plan works it.
+	bool orchard = m == M_ORCHARD_SWARD;
+	if (orchard) {
+		m = 40;
+	}
 	float s1 = mod(style_packed, 16.0);
 	float s2 = floor(style_packed / 16.0 + 0.01);
 	float unh = 0.0;
@@ -2596,7 +2630,7 @@ void fragment() {
 			vec4 wk = texture(works_map, world_pos.xz * works_inv_size);
 			vec3 wl = texture(works_lines, world_pos.xz * works_inv_size).rgb;
 			if (wk.r + wk.g + wk.b + wk.a > 0.02) {
-				c = works_mark(m, c, world_pos.xz, px, wk, wl.g, int((second ? s2 : s1) + 0.5), emit, unh);
+				c = works_mark(orchard ? M_ORCHARD_SWARD : m, c, world_pos.xz, px, wk, wl.g, int((second ? s2 : s1) + 0.5), emit, unh);
 			}
 			if (wl.r > 0.5) {
 				c = survey_mark(m, c, world_pos.xz, px, wl.b, int((second ? s2 : s1) + 0.5));

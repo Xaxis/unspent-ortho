@@ -95,6 +95,9 @@ static func make() -> BiomeDef:
 	# Its typical ground is in the rows, never the clearing where a block was
 	# taken out.
 	d.typical_among = Vector2i(PropKind.BROADLEAF, 40)
+	# Its grass is the plan's sward: mown in alleys between the rows, rutted by
+	# the sprayers, dusted pale along the rows (GroundColors.ORCHARD_SWARD).
+	d.ground_marks = {Ground.GRASS: GroundColors.ORCHARD_SWARD}
 	dress.sink = 0.08
 	dress.lie = Vector2(-0.03, 0.06)
 	d.dressing = dress
