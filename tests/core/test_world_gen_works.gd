@@ -498,21 +498,21 @@ func test_budgets() -> void:
 	# Both numbers have to come from ONE run to be a share at all, so this keeps
 	# the pair from the run whose generation was quickest rather than timing the
 	# two separately.
-	# FOUR SEEDS, SUMMED: one seed's share is that seed's layout as much as the
+	# FIVE SEEDS, SUMMED: one seed's share is that seed's layout as much as the
 	# stage. When the plan began deciding the regions (S4e4) seed 1 alone went
 	# 0.204 -> 0.247 while seeds 7, 42 and 90210 went 0.260/0.274/0.297 ->
 	# 0.165/0.170/0.248: the stage got cheaper and the one seed asked got dearer.
 	# Each seed's best of three, then the sums, so a share is still the works and
 	# the generation of the same runs.
 	#
-	# ITS MARGIN IS THIN: 0.213 and 0.214 on a quiet machine (2026-09-26) against
-	# the bar of 0.22, three per cent under it. `cost_lt` answers "cannot
+	# ITS MARGIN IS THIN: over these five seeds, 0.207 and 0.216 on a quiet
+	# machine (2026-09-26) against the bar of 0.22, two to six per cent under it. `cost_lt` answers "cannot
 	# measure" under load rather than failing, but a quiet red here is the margin
 	# and not the stage, until the bar is set again.
 	var works_ms := 0.0
 	var gen_ms := 0
 	var w: WorldData = null
-	for seed_value: int in [Worlds.WORLD_SEEDS[0], 7, 42, 90210]:
+	for seed_value: int in [Worlds.WORLD_SEEDS[0], 3, 7, 42, 90210]:
 		var best_ms := 0
 		var best_stage := 0.0
 		var best_w: WorldData = null
@@ -536,7 +536,7 @@ func test_budgets() -> void:
 	for p in w.each_prop():
 		if p.kind >= FIRST:
 			evidence += 1
-	print("       works at 256: %d evidence props of %d on seed %d, works %.0f ms of gen %d ms over four seeds" % [evidence, w.prop_count(), Worlds.WORLD_SEEDS[0], works_ms, gen_ms])
+	print("       works at 256: %d evidence props of %d on seed %d, works %.0f ms of gen %d ms over five seeds" % [evidence, w.prop_count(), Worlds.WORLD_SEEDS[0], works_ms, gen_ms])
 	var big := Worlds.world(Worlds.WORLD_SEEDS[0])
 	var verts := 0
 	var n := 0
