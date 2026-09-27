@@ -46,6 +46,11 @@ extends RefCounted
 ##                            than VANE_WIND, a dodge within VANE_ARC of
 ##                            downwind (FightSim.downwind) carries VANE_CARRY as
 ##                            far; against or across the wind, as ever
+##   cable    (brace_cable,   "your line takes their part": the grapple takes
+##             brace_ram)     hold of a machine ahead whose working part faces
+##                            the line, stalls it (FightSim.cable) and pulls
+##                            the player to it: a pull, not a haul (the
+##                            undertow, fitted too, hauls instead)
 ##   lock     (mod_lock)      "a way passed is shut": a gap between two solid
 ##                            things no wider than LOCK_GAP that the player walks
 ##                            through is shut behind them to machines for
@@ -152,6 +157,7 @@ var lock := false
 var scale := false
 var hush := false
 var vane := false
+var cable := false
 var anchor := false
 
 
@@ -177,6 +183,7 @@ static func of(ids: Array) -> FightKit:
 	k.scale = ids.has(&"coat_scale")
 	k.hush = ids.has(&"wrap_hush")
 	k.vane = ids.has(&"cloak_vane")
+	k.cable = ids.has(&"brace_cable") or ids.has(&"brace_ram")
 	k.anchor = ids.has(&"mod_anchor")
 	return k
 

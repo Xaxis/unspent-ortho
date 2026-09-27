@@ -1294,6 +1294,30 @@ func undertow(m: MobState) -> bool:
 	return true
 
 
+## The cable brace (FightKit.cable): whether the line from `from` would take
+## this machine's working part (it faces the line; a guard does not stop a hook).
+func cable_takes(m: MobState, from: Vector2) -> bool:
+	return m != null and m.alive and not m.removed and m.machine and m.bite != null \
+		and FightRules.reaches(m.part, m.pos, m.facing, from, false)
+
+
+## The line on its working part: a tell it was winding up is broken, a charge
+## stopped, and it stands stalled as a jammed part does (once per
+## STALL_EVERY_MS, as every stall). The pull is the player's (AbilityGrapple).
+func cable(m: MobState) -> bool:
+	if not cable_takes(m, hero.pos):
+		return false
+	m.charging = false
+	_break_tell(m)
+	m.flare_until = now + FightRules.PART_FLARE_MS
+	if now >= m.stall_ready_at:
+		m.stall_ready_at = now + FightRules.STALL_EVERY_MS
+		m.stun_until = maxf(m.stun_until, now + FightRules.STALL_MS)
+	emit(&"cabled", {"mob": m, "at": m.pos})
+	_wake(m)
+	return true
+
+
 ## A heavy blow into a guarded part the machine was not holding open: the
 ## turning blades take it, so it does no harm, but they jam, and the machine
 ## stands stalled as a blow in the part stalls it, its tell lost and its part

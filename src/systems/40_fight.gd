@@ -404,6 +404,13 @@ func _handle(events: Array[Dictionary]) -> void:
 				MobFx.clang(fx, _at3(hero.pos, 0.9), int(sim.now))
 				MobFx.ring(fx, _at3(hero.pos), Palette.STONE[4], hero.radius + 0.5, 0.4)
 				Events.sfx.emit(&"hit_plate", player.position)
+			&"cabled":
+				# The cable brace's line took a working part (FightKit.cable): the
+				# part glints where the hook bit, as the stall goes in.
+				_cabled_at = Time.get_ticks_msec() / 1000.0
+				var cm: MobState = e.mob
+				MobFx.glint(fx, _part_at(cm), Palette.LENS[3], cm.id, 0.8)
+				MobFx.clang(fx, _part_at(cm), int(sim.now))
 			&"turned":
 				# The scale coat turned a blow at the back (FightKit.scale): the
 				# scales ring where it struck and throw a glint, and no hurt.
@@ -545,6 +552,7 @@ func _crackle(from: Vector2, m: MobState, h: float) -> void:
 var _raked_at := -INF
 var _grip_failed_at := -INF
 var _turned_at := -INF
+var _cabled_at := -INF
 var _locked_at := -INF
 var _stripped_at := -INF
 
@@ -560,6 +568,8 @@ func tour_seen(what: StringName) -> bool:
 			return now - _grip_failed_at < 0.4
 		&"turned":
 			return now - _turned_at < 0.4
+		&"cabled":
+			return now - _cabled_at < 0.6
 		&"locked":
 			return now - _locked_at < FightKit.LOCK_SECONDS
 		&"stripped":

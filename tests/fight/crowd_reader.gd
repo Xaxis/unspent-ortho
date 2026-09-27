@@ -92,6 +92,8 @@ func _act() -> void:
 			return
 	if _haul(live):
 		return
+	if _cable(live):
+		return
 	if _rake_crowd(live):
 		return
 	if live.size() > 1 and _flanked(live):
@@ -323,6 +325,47 @@ func _haul(live: Array[MobState]) -> bool:
 			hero.move = Vector2.ZERO
 			return true
 	return false
+var _cable_ready_at := 0.0
+var cables := 0
+
+
+## The cable brace's line (FightKit.cable), as AbilityGrapple throws it: at a
+## machine ahead (turned to it) standing off out of reach and in RANGE whose
+## part faces the line, for the grapple's wind, on its cooldown, alone with it.
+## The pull the game's motion makes is a throw here: the player carried to the
+## edge of its body over the pull's time.
+func _cable(live: Array[MobState]) -> bool:
+	var hero := sim.hero
+	if hero.kit == null or not hero.kit.cable or hero.kit.undertow or sim.now < _cable_ready_at:
+		return false
+	if hero.wind < AbilityGrapple.WIND + FightRules.DODGE_COST:
+		return false
+	var roused := 0
+	for m in live:
+		roused += int(m.roused() and m.pos.distance_to(hero.pos) < HAUL_ALONE)
+	if roused > 1:
+		return false
+	for m in live:
+		if m.stunned(sim.now) or (m.blow != null and m.blow_phase(sim.now) == &"active"):
+			continue
+		var d := m.pos.distance_to(hero.pos)
+		if d < m.radius + hero.radius + _blow().reach + 1.0 or d > AbilityGrapple.RANGE:
+			continue
+		if not sim.cable_takes(m, hero.pos):
+			continue
+		hero.facing = (m.pos - hero.pos).angle()
+		if sim.cable(m):
+			hero.wind -= AbilityGrapple.WIND
+			_cable_ready_at = sim.now + AbilityGrapple.COOLDOWN * 1000.0
+			cables += 1
+			var run := d - (m.radius + hero.radius + AbilityGrapple.CABLE_GAP)
+			var ms := maxi(1, roundi(run / AbilityGrapple.SPEED * 1000.0))
+			hero.throw(m.pos - hero.pos, 2.0 * AbilityGrapple.SPEED, ms, sim.now, false)
+			hero.move = Vector2.ZERO
+			return true
+	return false
+
+
 ## Per body walked in on: [since, its health then, last pressed]; and until
 ## when it is baited.
 var _press := {}

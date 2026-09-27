@@ -12,6 +12,8 @@ const CONE := 0.7
 ## a sign, a mast, a wreck. Tufts and wrack have nothing to hold.
 const SOLID := 0.1
 const SPEED := 14.0
+## The cable brace's pull stops this far off a machine's body, in its reach.
+const CABLE_GAP := 0.3
 const COOLDOWN := 2.6
 const WIND := 200.0
 ## Levels above the body that count as a ledge to be pulled onto.
@@ -59,7 +61,8 @@ static func anchor(world: WorldData, query: WorldQuery, at: Vector2, dir: Vector
 		return up
 	var best: Dictionary = {}
 	var best_d := INF
-	if sim != null and sim.hero != null and sim.hero.kit != null and sim.hero.kit.undertow:
+	var kit: FightKit = sim.hero.kit if sim != null and sim.hero != null else null
+	if kit != null and (kit.undertow or kit.cable):
 		for m in sim.mobs:
 			if not m.alive or m.removed or not m.machine:
 				continue
@@ -67,9 +70,13 @@ static func anchor(world: WorldData, query: WorldQuery, at: Vector2, dir: Vector
 			var away := to.length()
 			if away < 1.2 or away > RANGE or absf(to.angle_to(d)) > CONE:
 				continue
+			# The cable brace alone takes hold only of a working part that faces
+			# the line (FightSim.cable); the undertow takes the body anyhow.
+			if not kit.undertow and not sim.cable_takes(m, at):
+				continue
 			if away < best_d:
 				best_d = away
-				best = {"pos": m.pos, "height": world.height_at(m.pos), "what": &"machine", "mob": m}
+				best = {"pos": m.pos, "height": world.height_at(m.pos), "what": &"machine" if kit.undertow else &"part", "mob": m}
 	if query != null:
 		for p: WorldProp in query.props_near(at, RANGE):
 			if p.solid < SOLID:
@@ -198,6 +205,15 @@ func on_press(ctx: AbilityCtx) -> bool:
 			return false
 		sim.hero.wind = maxf(0.0, sim.hero.wind - wind * (FightKit.UNDERTOW_WIND - 1.0))
 		ctx.draw(&"grapple", {"at": at, "to": (a.mob as MobState).pos, "what": a.what, "seconds": 0.3})
+		return true
+	if a.what == &"part":
+		# The cable brace: the line takes the working part and stalls it, and
+		# pulls the player in to the edge of its body (FightSim.cable).
+		var mob: MobState = a.mob
+		_sim(ctx).cable(mob)
+		var gap := mob.radius + Tuning.PLAYER_RADIUS + CABLE_GAP
+		ctx.motion = AbilityMotion.grapple(at, mob.pos, SPEED, gap, ctx.game.world.height_at(at), ctx.game.world.height_at(mob.pos))
+		ctx.draw(&"grapple", {"at": at, "to": mob.pos, "what": a.what, "seconds": ctx.motion.seconds})
 		return true
 	if a.what == &"face":
 		var m := AbilityMotion.climb_face(a.plan)
