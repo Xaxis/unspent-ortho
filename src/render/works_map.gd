@@ -213,7 +213,10 @@ static func keep(w: WorldData, houses: PackedVector2Array, rect: Rect2i) -> Pack
 			if g == Ground.ROAD:
 				road[gy * gw + gx] = 0.0
 				roads = true
-			elif g <= Ground.WATER or g >= Ground.BLACKWATER and g != Ground.PEAT or w.level[i] <= 0:
+			# By name, never by the enum's order: grounds added after RIVER (salt,
+			# pan, swarf) fell in `>= BLACKWATER` and a whole salt flat counted as
+			# water, so no work on it ever showed its marks.
+			elif Ground.is_water(g) or w.level[i] <= 0:
 				water[gy * gw + gx] = 0.0
 				waters = true
 	if roads:

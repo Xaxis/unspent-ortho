@@ -398,8 +398,13 @@ func world_material() -> ShaderMaterial:
 ## Put this world's works map on the world material. MAIN THREAD ONLY: it makes
 ## textures. Called before anything draws with the material and whenever the
 ## main thread first asks for it.
+## Never from a view that is not drawing: a pocket grown while the player walks
+## up to a door SHARES the outside's material, and binding its own (empty)
+## works map from its hidden `_process` wiped every work's marks off the land
+## round any door for as long as the pocket stood ready (the salt pans, seed 7).
+## It binds when it is shown; the outside takes its map back in `reclaim`.
 func _bind_works() -> void:
-	if _works_bound or works == null:
+	if _works_bound or works == null or not is_visible_in_tree():
 		return
 	works.bind(_world_mat)
 	_works_bound = true
