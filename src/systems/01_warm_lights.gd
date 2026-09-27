@@ -86,11 +86,15 @@ func setup(g: Game) -> void:
 	_dir.name = "warm_dir"
 	_dir.rotation = Vector3(-PI * 0.3, 0.4, 0.0)
 	for l: Light3D in [_omni, _spot, _dir]:
-		l.light_energy = ENERGY
+		l.light_energy = 1.0
+		l.light_color = Color.BLACK
 		l.light_volumetric_fog_energy = 0.0
 		l.shadow_enabled = false
-		l.visible = false
+		l.visible = true
 		g.add_child(l)
+	_omni.omni_range = 100000.0
+	_spot.spot_range = 100000.0
+	_spot.spot_angle = 170.0
 	_keep = _room_materials()
 	for m: Material in _keep:
 		var q := MeshInstance3D.new()
@@ -144,10 +148,8 @@ func setup(g: Game) -> void:
 
 
 func _process(_delta: float) -> void:
-	if _omni == null or game == null or game.player == null:
+	if game == null or game.player == null:
 		return
-	var sun: DirectionalLight3D = game.sky.sun if game.sky != null else null
-	var step := _frame / HOLD
 	if _frame == 0:
 		# Every system is set up by the first frame; not all are at this one's setup.
 		for sys: Node in game.systems:
@@ -156,14 +158,22 @@ func _process(_delta: float) -> void:
 		for n: Node in game.find_children("*", "Light3D", true, false):
 			if (n as Light3D).shadow_enabled:
 				_casting.append(n as Light3D)
+	# The second half of the warm-up: nothing casting, as in a sealed room, so
+	# the programs without an additive pass are built too.
+	for l: Light3D in _casting:
+		if is_instance_valid(l):
+			l.shadow_enabled = _frame < HOLD or _frame >= HOLD * 2
 	_frame += 1
-	if step >= STEPS.size():
-		for l: Light3D in _casting:
-			if is_instance_valid(l):
-				l.shadow_enabled = true
+	# EXPERIMENT (constant light set): the three lights stay for the whole game,
+	# black, riding the camera's focus, so every frame draws in one light state.
+	var focus: Vector3 = game.camera.target if game.camera != null else game.player.position
+	_omni.position = focus + Vector3(0.0, 3.0, 0.0)
+	_spot.position = focus + Vector3(0.0, 40.0, 0.0)
+	_spot.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
+	if _quads.is_empty():
+		return
+	if _frame > HOLD * 2:
 		_casting.clear()
-		for l: Light3D in [_omni, _spot, _dir]:
-			l.queue_free()
 		for q: MeshInstance3D in _quads:
 			q.queue_free()
 		_quads.clear()
@@ -173,25 +183,12 @@ func _process(_delta: float) -> void:
 		for sys: Node in game.systems:
 			if sys.has_method(&"warm"):
 				sys.call(&"warm", false)
-		_omni = null
-		_spot = null
-		_dir = null
 		return
 	var at: Vector3 = game.player.position
-	_omni.position = at + Vector3(0.0, 2.0, 0.0)
-	_spot.position = at + Vector3(0.0, 6.0, 0.0)
-	_spot.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
 	for i in _quads.size():
 		_quads[i].position = at + Vector3(0.1 * float(i), 0.05, 0.0)
 	for n: Node3D in _motes:
 		n.position = at + Vector3(0.0, 0.5, 0.0)
-	var s: Array = STEPS[step]
-	for l: Light3D in _casting:
-		if is_instance_valid(l):
-			l.shadow_enabled = bool(s[0])
-	_dir.visible = bool(s[1])
-	_omni.visible = bool(s[2])
-	_spot.visible = bool(s[3])
 
 
 ## What a room draws that nothing outside does, from the builders the rooms use.
