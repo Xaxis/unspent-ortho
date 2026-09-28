@@ -56,6 +56,8 @@
 //   --dwell=SECS     with --play, stay on the title this long before New game (a player reading it)
 //   --use-after=SECS with --play, press use this long after the game is drawn: with --args=--place=shaft
 //                    that goes down the shaft, and --crossing times it
+//   --raised-before-game=KIND  with --play, fail unless the realm KIND stood (its `realm KIND raised`
+//                    line) before the new game's first frame: the title raised it while it was read
 //   --crossing=SECS  fail unless every shaft crossing the run makes takes -- from the use
 //                    that starts it to the first frame of the realm below, the crossing page's own
 //                    `boot stages crossing ... total` -- is at most SECS (streamed worldgen S5's bar)
@@ -884,6 +886,17 @@ console.log(`web served ${(wire / 1048576).toFixed(1)} MB over the wire (${big.j
 // held, and a browser's heap has a ceiling a desktop build never meets: a world
 // that cannot be grown here is not a world the game can ship. Read off the
 // shell's own `engine`, which a classic script's top-level const leaves in reach.
+if (opt['raised-before-game']) {
+  const kind = String(opt['raised-before-game']);
+  const raised = lines.find((l) => l.text.startsWith(`realm ${kind} raised`));
+  const game = lines.find((l) => /^boot ready game/.test(l.text));
+  if (!game) failures.push('--raised-before-game: no game was drawn (it needs --play)');
+  else if (!raised) failures.push(`--raised-before-game: the ${kind} never stood`);
+  else {
+    console.log(`web ${kind} stood at ${raised.t.toFixed(1)} s, the new game drew at ${game.t.toFixed(1)} s (${raised.text})`);
+    if (raised.t > game.t) failures.push(`the ${kind} stood ${(raised.t - game.t).toFixed(1)} s after the new game drew: a shaft pressed at once would wait`);
+  }
+}
 if (opt.crossing) {
   const bar = Number(opt.crossing);
   const crossings = lines.filter((l) => /^boot stages crossing/.test(l.text));

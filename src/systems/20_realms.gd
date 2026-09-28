@@ -534,6 +534,10 @@ func tour_seen(what: String) -> bool:
 		return crossings > 0
 	if what.begins_with("realm:"):
 		return String(_realm) == what.substr(6)
+	# The world behind a shaft is standing: raised and kept, so going down waits
+	# on nothing but the going (RealmWorlds).
+	if what.begins_with("raised:"):
+		return RealmWorlds.ready(game.options.seed_value, game.world.size, StringName(what.substr(7)))
 	if what == "era_gate":
 		return gate_near != &""
 	if what.begins_with("era_gate:"):
