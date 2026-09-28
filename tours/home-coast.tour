@@ -205,26 +205,20 @@ wait 1.0
 # Fed first, as a player would be: the ring cost him hours and a hungry body's
 # goal is its hunger (Guide), not the steel.
 # Berries off the bushes on the grass round his fire (mussels come only at low
-# tide, and a tour cannot wait on the sea).
-try 3
+# tide, and a tour cannot wait on the sea), one at a time and eaten by it, until
+# his hunger no longer outranks the steel: a berry puts his last meal an hour and
+# a half later, and how far past it the ring has left him is the fight's.
+try 10
   near bush
   walk 0,0 0.05
   press use 0.1
   await took 8
-end
-try 3
-  near bush
-  walk 0,0 0.05
+  at mark:fire
+  wait 0.5
   press use 0.1
-  await took 8
+  wait 1.5
+  await goal:kiln_stones 2
 end
-at mark:fire
-wait 0.5
-# Hungry with food in the creel, `use` eats it (Survival: eating comes first).
-press use 0.1
-wait 1.5
-press use 0.1
-wait 1.5
 shot 14-the-goal-asks-for-steel with beat:reaper_named,goal:kiln_stones
 try 3
   near driftwood
@@ -245,8 +239,9 @@ tap use
 wait 0.3
 tap pause
 wait 0.4
-hour 14
-await made 6
+# Forty minutes on the fire, waited out: how late the ring has left the day is
+# the fight's, and `hour` only moves within the day.
+await made 45
 wait 0.3
 village 36
 wait 1.5
