@@ -18,8 +18,11 @@ Builders: **A** introduction and story (teammate3, words via story-wright) ·
 **B** crafting with a reason, and the fight (fight) · **C** stakes and consequence
 (teammate2). The owner plays a web build at each ★.
 
-1. [ ] **The wake** (A). Staged in the surf: the black site offshore, Maren at the
-   water; the record's first lines; the first sight of the Tether. ★
+1. [ ] **The wake** (A, `world/wake`). A new game starts in the shallows, the black site
+   behind him; he surfaces on the real clock; Maren waits at the water; the record's
+   first lines paced on what happens. The proof tour starts here. ★
+   - [ ] **1b The Tether** (A, `look/tether`). One thread rising at the far shore's
+     bearing to the ring; the first morning's staged look to the horizon.
 2. [ ] **Maren's ask becomes the goal** (A). After the pick, the goal line is her
    lead, not a recipe; the guide names why.
 3. [ ] **The Tide Reaper, named** (A+B). A person names the yard and its keeper;
