@@ -194,3 +194,142 @@ try 8
 end
 wait 0.4
 shot 13-the-knife-rings-off-it with plating
+
+# 5 THE STEEL (Guide.edge_goal, StoryContent.EDGE): back at his fire the goal is
+# the steel edge in Hob's words, then everything it asks, gathered: four charcoal,
+# eight stones, a kiln at Low Scar, the knife tempered over a night there. Low
+# Scar is the Reaper's region's other village, 205 tiles off Oyster Row, where
+# he woke and was seen; a night away is when the plan comes for who saw him.
+at mark:fire
+wait 1.0
+# Fed first, as a player would be: the ring cost him hours and a hungry body's
+# goal is its hunger (Guide), not the steel.
+# Berries off the bushes on the grass round his fire (mussels come only at low
+# tide, and a tour cannot wait on the sea).
+try 3
+  near bush
+  walk 0,0 0.05
+  press use 0.1
+  await took 8
+end
+try 3
+  near bush
+  walk 0,0 0.05
+  press use 0.1
+  await took 8
+end
+at mark:fire
+wait 0.5
+# Hungry with food in the creel, `use` eats it (Survival: eating comes first).
+press use 0.1
+wait 1.5
+press use 0.1
+wait 1.5
+shot 14-the-goal-asks-for-steel with beat:reaper_named,goal:kiln_stones
+try 3
+  near driftwood
+  press use 0.1
+  await took 4
+end
+try 3
+  near driftwood
+  press use 0.1
+  await took 4
+end
+at mark:fire
+wait 0.5
+tap craft
+wait 0.6
+choose charcoal
+tap use
+wait 0.3
+tap pause
+wait 0.4
+hour 14
+await made 6
+wait 0.3
+village 36
+wait 1.5
+try 3
+  near boulder,stone_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took 14
+end
+try 3
+  near boulder,stone_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took 14
+end
+try 3
+  near boulder,stone_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took 14
+end
+try 3
+  near boulder,stone_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took 14
+end
+try 3
+  near boulder,stone_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took 14
+end
+try 3
+  near boulder,stone_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took 14
+end
+try 3
+  near boulder,stone_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took 14
+end
+try 3
+  near boulder,stone_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took 14
+end
+ground grass
+mark kiln
+tap craft
+wait 0.6
+choose kiln
+tap use
+await station:kiln 20
+wait 0.5
+shot 15-a-kiln-at-low-scar with station:kiln
+tap craft
+wait 0.6
+choose knife_cemented
+tap use
+wait 0.3
+tap pause
+wait 0.4
+hour 20
+village 36
+wait 0.5
+press use 0.1
+await slept 10
+at mark:kiln
+wait 0.5
+await made 10
+wait 0.5
+shot 16-steel-in-his-hand with goal:steel_in_hand
+
+# 6 WHO SAW HIM (48_raids, SnatchNight): while he was away at the Reaper and at
+# Low Scar, the plan came in the small hours for somebody out of Oyster Row, and
+# holds them at the Reaper's region's yard.
+await taken 5
+at rescue:yard
+wait 1.0
+await held_here 6
+shot 17-the-yard-holding-somebody-from-oyster-row with works,works_lit,works_yard
