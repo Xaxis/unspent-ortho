@@ -93,7 +93,10 @@ Still to do for all six (on main):
   - sea walls brought back
   - `pressure 0.3` in deep water only
   - `brine_copper` reaching the world
-  - ruled canals
+  - ruled canals: the streets hold standing water on the city's two lowest levels
+    since GEN 33 (`_street`, `_flooded`; 10-14% of the city, 80-86% of its ruins by
+    it), level and never over a drop. Channels a raft can run to the sea are still
+    the shared system below.
 
 ### The Mesas (`mesas.gd`)
 - Plan: a ropeway across the canyons. The keeper is the **anchor**, a climber; ways
@@ -106,6 +109,14 @@ Still to do for all six (on main):
   - `collapse 0.3` at rims
   - `span_wire` reaching the world
   - signature props that act on a body
+
+### A note on the Snowfield (`snowfield.gd`)
+- It grows no grass of its own, and never has: its surface lays snow, rock, gravel,
+  shingle, ice and scree, and the grass colour and snow-tuft decor it declares dress
+  grass that crosses in from a grassy neighbour's ecotone. So whether a snowfield has
+  meadow at all is its neighbours' doing (seed 1's meets the grey orchards: 2,498
+  tiles; seed 12's meets none, and `near snow_meadow` finds nothing there). Intended,
+  as far as the file's history shows; a grass row of its own would be a decision.
 
 ## Shared systems still missing
 
