@@ -141,6 +141,9 @@ static func save_world(game: Game) -> Dictionary:
 	var depleted := {}
 	for id: int in w.depleted:
 		depleted[str(id)] = SaveCodec.num(float(w.depleted[id]))
+	var unlit: Array = []
+	for id: int in w.unlit:
+		unlit.append(id)
 	var state := SurvivalState.of(game)
 	var spent := {}
 	for k: String in state.spent:
@@ -158,7 +161,7 @@ static func save_world(game: Game) -> Dictionary:
 		bags[str(id)] = SaveCodec.num(float(state.bags[id]))
 	return {"seed": game.options.seed_value, "size": w.size, "realm": String(w.realm),
 		"stamp": WorldStamp.current(), "props_base": base,
-		"props": added, "depleted": depleted, "taken": state.taken.duplicate(), "spent": spent, "built": built,
+		"props": added, "depleted": depleted, "unlit": unlit, "taken": state.taken.duplicate(), "spent": spent, "built": built,
 		"left": left, "bags": bags}
 
 
@@ -215,6 +218,13 @@ static func load_world(game: Game, v: Variant) -> void:
 		if q != null:
 			w.depleted[id] = SaveCodec.to_num(depleted[k])
 			touched.append(q)
+	w.unlit.clear()
+	var unlit: Variant = d.get("unlit", [])
+	if unlit is Array:
+		for k: Variant in unlit:
+			var id: int = remap.call(SaveCodec.to_int(k))
+			if w.prop(id) != null:
+				w.unlit[id] = true
 	var state := SurvivalState.of(game)
 	state.taken.clear()
 	var taken := _d(d.get("taken"))

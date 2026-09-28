@@ -606,6 +606,27 @@ static func add_prop(game: Game, kind: int, pos: Vector2, rot: float = NAN, scal
 	return prop
 
 
+## THE LAND TAKING A PLACE BACK: tuft `i` of the ones laid round `centre`, out
+## to `reach`, as a real prop so it is there tomorrow and in every save after
+## (SaveCore keeps props added in play). `key` keeps one place's tufts off
+## another's. False when the spot it drew is water or cannot be stood on; the
+## caller counts the tuft as laid either way, so a place is never asked twice.
+static func tuft(game: Game, centre: Vector2, reach: float, key: int, i: int) -> bool:
+	var w := game.world
+	var a := Rng.hash01(w.seed_value, key, i, 0x67) * TAU
+	var r := reach * (0.35 + Rng.hash01(w.seed_value, key, i, 0x68) * 0.6)
+	var at := centre + Vector2.from_angle(a) * r
+	var tx := floori(at.x)
+	var ty := floori(at.y)
+	if not game.query.standable(tx, ty) or Ground.is_water(w.ground_at(tx, ty)):
+		return false
+	var def := BiomeRegistry.at(w, at)
+	var kind := PropKind.BUSH if def == null or not def.scorched else PropKind.BONES
+	@warning_ignore("return_value_discarded")
+	add_prop(game, kind, at, Rng.hash01(w.seed_value, key, i, 0x69) * TAU, 0.7)
+	return true
+
+
 static func _makeable_build(game: Game, station: StringName) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for r in Crafting.recipes_at(&"hand"):

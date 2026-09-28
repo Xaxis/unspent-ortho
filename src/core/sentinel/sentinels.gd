@@ -31,6 +31,9 @@ const JUDGE_MS := 250.0
 ## A keeper's feeds are counted inside this share of its reach: the works it stands
 ## among, not every mast in the region.
 const FEED_SHARE := 0.8
+## Tiles round where a keeper fell that the land closes over after it, a tuft at
+## a time on the yard's own clock (Works.green_tufts; 44_sentinels).
+const GREEN_REACH := 6.0
 ## No keeper stands within this of where the player wakes. A boss on top of the
 ## village a player opens their eyes in is not a boss, it is a wall — and the
 ## plan's own works keep off villages too (GenWorks). A region with nowhere far
