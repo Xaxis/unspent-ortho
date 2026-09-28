@@ -261,3 +261,7 @@ static func drain_pool() -> void:
 	var realms := load("res://src/core/realm/realm_worlds.gd") as GDScript
 	realms.call("forget")
 	realms.call("settle")
+	# The shared bank's bakes (a game lets go of them as it ends). Low priority,
+	# and CI's four-thread pool runs one of those at a time: a second left queued
+	# at the quit and Godot's pre-exit waits for ever for workers it never wakes.
+	(load("res://src/audio/sound_bank.gd") as GDScript).call("drain")

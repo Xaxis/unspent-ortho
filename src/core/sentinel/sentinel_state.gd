@@ -24,6 +24,10 @@ var fallen := false
 var how: StringName = &""
 ## The hulk it left has been laid in the world (saved with the world; laid once).
 var hulk_laid := false
+## World minutes it fell (INF while it stands), and the tufts the land has put
+## back over where it fell since (44_sentinels, Survival.tuft; each laid once).
+var fell_at := INF
+var tufts := 0
 
 # --- live, not saved --------------------------------------------------------
 
@@ -61,7 +65,7 @@ func save() -> Dictionary:
 		"region": region, "design": String(design), "land": String(land),
 		"lair": SaveCodec.vec2(lair), "health": health, "max_health": max_health,
 		"phase": phase, "woken": woken, "fallen": fallen, "how": String(how),
-		"hulk_laid": hulk_laid,
+		"hulk_laid": hulk_laid, "fell_at": SaveCodec.num(fell_at), "tufts": tufts,
 	}
 
 
@@ -78,4 +82,6 @@ static func from_save(d: Dictionary) -> SentinelState:
 	s.fallen = bool(d.get("fallen", false))
 	s.how = StringName(str(d.get("how", "")))
 	s.hulk_laid = bool(d.get("hulk_laid", false))
+	s.fell_at = SaveCodec.to_num(d.get("fell_at", INF))
+	s.tufts = SaveCodec.to_int(d.get("tufts", 0))
 	return s

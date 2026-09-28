@@ -32,6 +32,12 @@ class Beacon:
 	var land: StringName = &""
 
 
+## Tiles from the player the land is seen closing over a fallen keeper's ground
+## (the yard's own draw distance, 34_works.DRAW); and the tuft key that keeps a
+## lair's greening off its region's yard's (both are keyed by region).
+const GREEN_SEEN := 64.0
+const GREEN_KEY := 0x5E70000
+
 var sim: FightSim
 var _states: Array[SentinelState] = []
 ## Region id -> state, and MobState id -> the state whose body it is.
@@ -53,12 +59,39 @@ func setup(g: Game) -> void:
 	SaveGame.register(&"sentinels", _save, _load)
 
 
+## `--fallen=LAND[:H]`: that landscape's keeper fell H hours before the start,
+## through its own fall, with the clock put back for the moment of it so every
+## system stamps the fall H hours ago (the yard's dark, the memory, the greening).
+func started() -> void:
+	if game.options != null and game.options.fallen != "":
+		_stage_fall(StringName(game.options.fallen), game.options.fallen_hours)
+
+
+var _falling_long_ago := false
+
+
+func _stage_fall(land: StringName, hours: float) -> void:
+	for s in _states:
+		if s.land != land or s.fallen:
+			continue
+		var def := Sentinels.by_id(s.design)
+		var back := hours * 60.0
+		game.clock.minutes -= back
+		_falling_long_ago = true
+		_fell(s, def, def.way_of(SentinelWay.FORCE), s.lair)
+		_falling_long_ago = false
+		game.clock.minutes += back
+		return
+	push_warning("--fallen=%s: no keeper of that landscape stands in this world" % land)
+
+
 func _physics_process(_delta: float) -> void:
 	if sim == null:
 		return
 	_adopt()
 	_put_out()
 	_step()
+	_green()
 
 
 # --- the body ---------------------------------------------------------------
@@ -372,8 +405,10 @@ func _judge() -> void:
 func _fell(s: SentinelState, def: SentinelDef, way: SentinelWay, at: Vector2) -> void:
 	if s.fallen or way == null:
 		return
+	var den := s.lair
 	s.fallen = true
 	s.how = way.id()
+	s.fell_at = game.clock.minutes
 	s.lair = at
 	if s.body != null:
 		if way.kills() and s.body.alive:
@@ -382,7 +417,11 @@ func _fell(s: SentinelState, def: SentinelDef, way: SentinelWay, at: Vector2) ->
 		elif not way.kills():
 			_stand_down(s.body)
 	_take_its_table(s, def)
-	_stage(&"fall", at, FALL_S)
+	_put_out_its_feed(den, def)
+	# A fall staged as long past (`--fallen`) is not watched: the set piece's look
+	# is for the fall the player sees.
+	if not _falling_long_ago:
+		_stage(&"fall", at, FALL_S)
 	Events.sentinel_fell.emit(s.region, s.land, s.how)
 	if way.says != "":
 		Events.message.emit(way.says)
@@ -417,6 +456,34 @@ func _take_its_table(s: SentinelState, def: SentinelDef) -> void:
 			continue
 		game.inventory.add(id, n)
 		Events.took.emit(id, n)
+
+
+## WHAT IT HELD GOES DARK: the stations it fed on at its den stand on with their
+## lights out for good, by whichever way it went (`world.unlit`, saved; 15_lights).
+## Dark, not taken: the intake is still there to be seen dead, where a spent prop
+## would not be drawn at all. The same props its STARVE way counts.
+func _put_out_its_feed(den: Vector2, def: SentinelDef) -> void:
+	var reach := def.reach * Sentinels.FEED_SHARE
+	for q in game.query.props_near(den, reach):
+		if def.feeds.has(q.kind) and q.pos.distance_to(den) <= reach:
+			game.world.unlit[q.id] = true
+
+
+## The land closes over where a keeper fell, on the yard's own clock
+## (Works.green_tufts), a tuft at a time while the player is near enough to see
+## it, never laid twice (SentinelState.tufts, saved).
+func _green() -> void:
+	for s in _states:
+		if not s.fallen or s.fell_at == INF or s.lair.distance_to(sim.hero.pos) > GREEN_SEEN:
+			continue
+		var want := Works.green_tufts(maxf(0.0, (game.clock.minutes - s.fell_at) / 60.0))
+		if s.tufts >= want:
+			continue
+		var i := s.tufts
+		s.tufts += 1
+		@warning_ignore("return_value_discarded")
+		Survival.tuft(game, s.lair, Sentinels.GREEN_REACH, GREEN_KEY + s.region, i)
+		return
 
 
 ## What a killed keeper leaves where it fell: a hulk, salvageable, and saved with
@@ -567,10 +634,13 @@ func tour_seen(what: String) -> bool:
 
 
 ## What `near NAME` may ask of this system (tests/tours/test_tour_claims.gd reads it).
-const TOUR_PLACES := ["keeper"]
+const TOUR_PLACES := ["keeper", "fallen_keeper"]
 ## Tiles off its lair a tour is stood: inside Sentinels.PUT_OUT, so it comes out,
 ## and far enough that the frame holds the whole of it.
 const TOUR_STAND := 9.0
+## Where a keeper fell there is no body to stand clear of: close enough that what
+## it left (its hulk, the ground closing over) fills the frame.
+const TOUR_STAND_FALLEN := 3.0
 var _tour_facing := NAN
 
 
@@ -579,13 +649,16 @@ var _tour_facing := NAN
 ## keeper's own lair (Sentinels.lair), never of a landmark near it: a keeper
 ## dens at the station it can feed from, and at none within CLEAR_OF_HOME of the
 ## spawn, so the nearest station of its kind is often not where it is at all.
+## `keeper`: beside the nearest keeper still standing, where it dens.
+## `fallen_keeper`: beside where the nearest fallen one went down.
 func tour_place(what: String) -> Vector2:
-	if what != "keeper":
+	if what != "keeper" and what != "fallen_keeper":
 		return Vector2.INF
+	var fallen := what == "fallen_keeper"
 	var here: Vector2 = game.player.pos
 	var lair := Vector2.INF
 	for s in _states:
-		if s.fallen or s.region < 0:
+		if s.fallen != fallen or s.region < 0:
 			continue
 		if not lair.is_finite() or s.lair.distance_to(here) < lair.distance_to(here):
 			lair = s.lair
@@ -595,7 +668,7 @@ func tour_place(what: String) -> Vector2:
 	var from := (here - lair).angle() if here.distance_to(lair) > 0.1 else 0.0
 	for i in 16:
 		var a := from + float((i + 1) / 2) * (TAU / 16.0) * (1.0 if i % 2 == 0 else -1.0)
-		var p := lair + Vector2.from_angle(a) * TOUR_STAND
+		var p := lair + Vector2.from_angle(a) * (TOUR_STAND_FALLEN if fallen else TOUR_STAND)
 		if game.query.standable(floori(p.x), floori(p.y)) and game.world.same_body(p, lair) \
 				and game.query.body_fits(p, Tuning.PLAYER_RADIUS, null, true, FightSim.HERO_TALL):
 			_tour_facing = (lair - p).angle()
@@ -604,7 +677,7 @@ func tour_place(what: String) -> Vector2:
 
 
 func tour_face(what: String) -> float:
-	return _tour_facing if what == "keeper" else NAN
+	return _tour_facing if what == "keeper" or what == "fallen_keeper" else NAN
 
 
 ## An await is spent by the tour that asked it (98_tour `_forget`).

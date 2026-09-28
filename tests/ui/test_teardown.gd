@@ -61,6 +61,8 @@ func test_every_door_out_of_the_process_drains_the_bake() -> void:
 			"%s %s() must wait out the sketch bake, or a worker outlives the tree" % [path, fn])
 		check(body.contains("ui_slate.gd") or body.contains("UiSlate.wait()"),
 			"%s %s() must wait out the slate bake too" % [path, fn])
+		check(body.contains("sound_bank.gd") and body.contains("drain"),
+			"%s %s() must claim the shared sound bank's bakes, or CI's pool never exits" % [path, fn])
 
 
 func test_a_bake_left_running_is_waited_out_not_abandoned() -> void:

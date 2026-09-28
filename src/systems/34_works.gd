@@ -93,6 +93,7 @@ func setup(g: Game) -> void:
 		var c: Coast = mobs.get(&"coast")
 		if c != null:
 			c.also_shut = _shut_for_region
+	Events.sentinel_fell.connect(_on_sentinel_fell)
 	SaveGame.register(&"works", _save, _load)
 
 
@@ -198,6 +199,7 @@ func _process(delta: float) -> void:
 func _physics_process(_delta: float) -> void:
 	if sim == null:
 		return
+	_after_keepers()
 	_put_out()
 	_press()
 	_green()
@@ -282,6 +284,8 @@ func _make(s: WorksSite) -> void:
 		_parts["%d:%d" % [s.region, i]] = node
 		if st != null and st.parts[i]:
 			WorksDepot.set_broken(node, true)
+		elif st != null and st.broken():
+			WorksDepot.set_dark(node, true)
 
 
 func _drop(s: WorksSite) -> void:
@@ -362,7 +366,7 @@ func _work(delta: float) -> void:
 		return
 	var i := Works.part_near(s, sim.hero.pos)
 	var st: WorksState = _states.get(s.region, null)
-	if i < 0 or st == null or st.parts[i] or not _part_wins(s, i):
+	if i < 0 or st == null or st.broken() or st.parts[i] or not _part_wins(s, i):
 		_drop_job()
 		return
 	if not Items.hard_enough(game.inventory.held, Works.BREAK_STUFF):
@@ -455,20 +459,63 @@ func _break(s: WorksSite, i: int) -> void:
 		Events.message.emit("The %s is out. %s" % [String(s.part_name(i)), tail])
 
 
-## The last part goes, and the region changes for good (VISION §2). The lights go
-## out and stay out; the works in the yard are spent, which is what leaves this
-## region's keeper standing dark (`Sentinels.feeds`); nothing else is put on the
-## land from here; and the ground begins to close over it.
+## The last part goes, or the region's keeper has fallen, and the region changes
+## for good (VISION §2). The lights go out and stay out; the works in the yard are
+## spent, which is what leaves this region's keeper standing dark
+## (`Sentinels.feeds`); nothing else is put on the land from here; and the ground
+## begins to close over it.
+##
+## A yard its keeper put dark says so and is not `works_broken`: that signal is
+## the player's act on the yard (the story's ledger, the network's file), and the
+## keeper's fall has already told every listener its own way (`sentinel_fell`).
 func _fell(s: WorksSite, st: WorksState) -> void:
 	st.dark_at = game.clock.minutes
 	st.dark_day = float(game.clock.day())
 	var yard: Node3D = _yards.get(s.region, null)
 	if yard != null:
 		WorksDepot.set_dark(yard, true)
+	_parts_dark(s.region)
 	_strip(s, st)
 	Events.sfx.emit(SND_DARK, game.world.to_3d(s.pos))
+	if st.by_keeper:
+		Events.message.emit("Out across the land, the yard's lights go. Nothing there answers the plan now.")
+		return
 	Events.message.emit("The yard goes dark. Nothing here answers the plan now.")
 	Events.works_broken.emit(s.region, s.land)
+
+
+## Every housing's own lamp out: the last one opened already is, and a yard its
+## keeper put dark has three still whole and still lit without this.
+func _parts_dark(region: int) -> void:
+	for i in Works.PART_NAMES.size():
+		WorksDepot.set_dark(_parts.get("%d:%d" % [region, i], null), true)
+
+
+## The region's keeper is down: its yard follows it dark, a moment after, wherever
+## the player is (`_after_keepers`). A yard already dark is left as it was.
+func _on_sentinel_fell(region: int, _land: StringName, _how: StringName) -> void:
+	var st: WorksState = _states.get(region, null)
+	if st == null or st.broken() or st.keeper_fell_at != INF:
+		return
+	st.keeper_fell_at = game.clock.minutes
+
+
+func _after_keepers() -> void:
+	for region: int in _states:
+		var st: WorksState = _states[region]
+		if st.keeper_fell_at == INF or st.broken():
+			continue
+		if game.clock.minutes < st.keeper_fell_at + WorksState.KEEPER_DARK_AFTER:
+			continue
+		var s := _by_region(region)
+		if s == null:
+			continue
+		st.by_keeper = true
+		_fell(s, st)
+		# It went dark when it did, not when this was next asked (a game loaded, or
+		# a fall staged hours back): the land's greening runs from then.
+		st.dark_at = st.keeper_fell_at + WorksState.KEEPER_DARK_AFTER
+		st.dark_day = float(floori(st.dark_at / 1440.0))
 
 
 ## The plan's own works standing in the yard, spent for good. This is the one
@@ -651,9 +698,7 @@ func _press() -> void:
 
 # --- the land taking a dark yard back ------------------------------------------
 
-## Grass over the yard. A tuft at a time, laid as a real prop so it is there
-## tomorrow and in every save after (SaveCore keeps props added in play), and
-## never laid twice.
+## Grass over the yard, a tuft at a time (Survival.tuft), never laid twice.
 func _green() -> void:
 	for s in sites:
 		var st: WorksState = _states.get(s.region, null)
@@ -666,19 +711,9 @@ func _green() -> void:
 			continue
 		var i := st.tufts
 		st.tufts += 1
-		var a := Rng.hash01(game.world.seed_value, s.region, i, 0x67) * TAU
-		var r := Works.YARD * (0.35 + Rng.hash01(game.world.seed_value, s.region, i, 0x68) * 0.6)
-		var at := s.pos + Vector2.from_angle(a) * r
-		var tx := floori(at.x)
-		var ty := floori(at.y)
-		if not game.query.standable(tx, ty) or Ground.is_water(game.world.ground_at(tx, ty)):
-			continue
-		var def := BiomeRegistry.at(game.world, at)
-		var kind := PropKind.BUSH if def == null or not def.scorched else PropKind.BONES
-		@warning_ignore("return_value_discarded")
-		Survival.add_prop(game, kind, at, Rng.hash01(game.world.seed_value, s.region, i, 0x69) * TAU, 0.7)
-		_seen[&"works_greening"] = true
-		return
+		if Survival.tuft(game, s.pos, Works.YARD, s.region, i):
+			_seen[&"works_greening"] = true
+			return
 
 
 # --- what a player is told once ------------------------------------------------
@@ -705,7 +740,7 @@ func _save() -> Variant:
 	var out: Array = []
 	for region: int in _states:
 		var st: WorksState = _states[region]
-		if st.broken_count() > 0 or st.tufts > 0:
+		if st.broken_count() > 0 or st.tufts > 0 or st.keeper_fell_at != INF:
 			out.append(st.save())
 	return out
 
@@ -725,6 +760,43 @@ func _load(v: Variant) -> void:
 		if _yards.has(s.region):
 			_drop(s)
 			_make(s)
+
+
+# --- where a tour may stand ----------------------------------------------------
+
+## `keeper_yard`: at the edge of the nearest yard its keeper's fall put dark (or
+## is about to), facing its mast. None stands where no keeper has fallen.
+func tour_place(what: String) -> Vector2:
+	if what != "keeper_yard" or game.world == null:
+		return Vector2.INF
+	var here: Vector2 = game.player.pos
+	var yard: WorksSite = null
+	for s in sites:
+		var st: WorksState = _states.get(s.region, null)
+		if st == null or st.keeper_fell_at == INF:
+			continue
+		if yard == null or s.pos.distance_to(here) < yard.pos.distance_to(here):
+			yard = s
+	if yard == null:
+		return Vector2.INF
+	var from := (here - yard.pos).angle() if here.distance_to(yard.pos) > 0.1 else 0.0
+	for i in 16:
+		var a := from + float((i + 1) / 2) * (TAU / 16.0) * (1.0 if i % 2 == 0 else -1.0)
+		var p := yard.pos + Vector2.from_angle(a) * (Works.YARD + TOUR_OFF)
+		if game.query.standable(floori(p.x), floori(p.y)) and game.world.same_body(p, yard.pos):
+			_tour_facing = (yard.pos - p).angle()
+			return p
+	return Vector2.INF
+
+
+func tour_face(what: String) -> float:
+	return _tour_facing if what == "keeper_yard" else NAN
+
+
+const TOUR_PLACES := ["keeper_yard"]
+## Tiles past the yard's edge a tour stands to see the whole of it.
+const TOUR_OFF := 1.0
+var _tour_facing := NAN
 
 
 # --- what a tour may await ----------------------------------------------------

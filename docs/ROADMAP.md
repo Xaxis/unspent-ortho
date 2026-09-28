@@ -32,10 +32,34 @@ Builders: **A** introduction and story (teammate3, words via story-wright) ·
    the knife does not bite its plating, so the next make has a reason.
 4. [x] **The Reaper as a set piece** (B). Force and one other way; tells in its
    body; staged reveal and fall. ★
-5. [ ] **Its fall changes the coast** (C). The first memory opens; the land shows it.
+5. [x] **Its fall changes the coast** (C). The first memory opens; the land shows it.
 6. [x] **The taken** (C, words via A). The motive awaits the owner's ruling in STORY.md.
    Rescue on a clock, or a loss heard in Maren's lines.
 7. [ ] **Proof** (all). The proof tour plays the whole slice unassisted. ★
+
+## Slice 2 — the Holdfast (next; planned 2026-09-28)
+
+Maren's lead to the camp; the holding; the Holdfast's price; the lab and Ruth's
+table; the second keeper. Reason to make: the holding's defence (armour, shutters
+and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
+
+1. [ ] **The road to the camp** (A). `marens_lead` → `holdfast_fight` at the camp;
+   `crew_paid` from Rook (his note's hand is held for slice 4).
+2. [ ] **The holding** (A+C). The people the Seeker has met, kept where a yard
+   can't reach them; the taken who are freed go there.
+3. [ ] **Raids answer attention** (C). Where he draws HALCYON's attention (light,
+   broken works) the region's hunters come; `holdfast_price` and Vera's "we break
+   their works, they burn a village". Settlements introduced here.
+4. [ ] **Defend the holding** (B). The slice's make: armour and shutters, with the
+   reason said by the camp.
+5. [ ] **The lab and Ruth's table** (A). `built_halcyon` → `gate_lab`; `was_cia` →
+   `gate_meet` (`ruth_signed`, `ruth_volunteered`, `kerr_money`).
+6. [ ] **The second keeper, the Pan Rake** (B+C). The salt flats keeper holds the
+   kitchen (`mem_kitchen`). Salt flats is guaranteed on the home body (worldgen,
+   GEN at landing).
+7. [ ] **Vera and the way on** (A). `vera_knew` ("filed under weather"); she names
+   the archive across the water: slice 3's lead.
+8. [ ] **Proof** (all). The tour plays the slice unassisted. ★
 
 ## Tools track — the story map and the dev slate (alongside slice 1)
 
@@ -65,8 +89,6 @@ line that made it. Proved by frames read at three zooms on two seeds, and the ow
 
 ## Fixes that serve the slice
 
-- [ ] CI shards 0 and 4 hang at exit after their last test passes, on branches that add
-  test files (land/reaper, land/fall); drain_pool() did not cover it. Blocks step 5.
 - [ ] The white panel on the player's back over the shoulder. Seen once (main
   c330ea47, `--seed=1 --hour=6.5 --view=shoulder --weather=clear:0`): a tall white
   card with a hit-splash on it, the player in a recoil pose. Not reproduced by the

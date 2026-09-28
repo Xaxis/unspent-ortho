@@ -33,6 +33,9 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
 - 42_target `src/systems/42_target.gd`: `tools/tour.sh tours/targeting.tour`.
   - A lock holds the body (docs/CONTROLS.md): `tools/test.sh test_lock_on`, `tools/tour.sh tours/lockon_top.tour` and `tours/lockon_shoulder.tour` (h).
 - 44_sentinels `src/systems/44_sentinels.gd`: `tools/tour.sh tours/sentinels.tour`.
+  Its fall (the yard dark after it, its stations dark, the ground closing over):
+  `tools/tour.sh tours/keeper-fall.tour --seed=1 --hour=22 --weather=clear:0 --fallen=coast:72`
+  and `tools/test.sh test_fall_changes_the_coast`.
   - Plough (snowfield keeper, furrows): `tools/test.sh test_plough`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/plough.tour` (h).
   - Every keeper a boss to the shoulder reader (won 18+/24, 25-45 s, 2+ health lost): `tools/test.sh test_keeper_bouts` (~50 s).
   - Come-round: `tools/test.sh test_come_round`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/come_round.tour` (h).
