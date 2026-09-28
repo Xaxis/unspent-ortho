@@ -1,0 +1,26 @@
+# A WARREN TOWER (src/content/interiors/container_warren.gd, `tower`): the run
+# stacked three floors up the heap, the vault at the top, and a crawl up through
+# its top container's torn roof that comes out on the plateau BESIDE the alley
+# (SlotDoors.exit_beside): the one way up out of the maze besides the ramps.
+#
+#   tools/tour.sh tours/warren-tower.tour --seed=1 --hour=11 --weather=clear:0
+#
+# 01 is the tower from above, three floors stepping up. 02 is at the crawl in
+# the top container (`above`). 03 is out on the plateau over the slot, having
+# crawled out (`out_back`).
+coast calm
+near door:tower
+await door 5
+wait 0.6
+press use 0.1
+await inside:container_warren 20
+wait 1.0
+shot 01-a-tower-from-above with inside:container_warren
+near crawl
+await crawl_near 3
+wait 0.6
+shot 02-at-the-crawl-up with inside:container_warren,above
+press use 0.1
+await out_back 5
+wait 1.2
+shot 03-out-on-the-plateau with land:the_middens

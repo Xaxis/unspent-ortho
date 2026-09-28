@@ -69,7 +69,9 @@ func _grown() -> Array[InteriorGen.Pocket]:
 	var land := BiomeRegistry.index_of(&"the_middens")
 	var out: Array[InteriorGen.Pocket] = []
 	for i in GROWN:
-		var t := Threshold.of_face(Vector2(40.0 + 7.0 * i, 60.0 + 3.0 * (i % 5)), Vector2(0, 1), &"container_warren", land)
+		# Half of them with a way up onto the plateau, so towers are dealt.
+		var exit := Vector2(30.0, 30.0) if i % 2 == 0 else Vector2.INF
+		var t := Threshold.of_face(Vector2(40.0 + 7.0 * i, 60.0 + 3.0 * (i % 5)), Vector2(0, 1), &"container_warren", land, exit)
 		out.append(InteriorGen.grow(1, t))
 	return out
 
@@ -156,6 +158,62 @@ func test_every_rise_has_a_ladder_that_goes_up_and_back_down() -> void:
 	for plan: StringName in [&"line", &"step", &"tower"]:
 		check(plans.has(plan), "a %s warren is among those grown" % plan)
 	gt(float(ladders), 0.0, "ladders were climbed")
+
+
+## A TOWER ONLY WHERE ITS CRAWL COMES OUT, AND THE CRAWL IS REACHED. A tower is
+## dealt only behind a door with a way up onto the plateau; every tower has one
+## crawl up in its top container, on its top floor, walked and climbed to from
+## the door; no other plan has one.
+func test_a_tower_s_crawl_is_reached_and_only_where_it_comes_out() -> void:
+	var towers := 0
+	for p: InteriorGen.Pocket in _grown():
+		var l := p.layout
+		var crawls: Array[Dictionary] = []
+		for th: Dictionary in l.things:
+			if th.kind == &"crawl_up":
+				crawls.append(th)
+		if l.plan != &"tower":
+			eq(crawls.size(), 0, "%s (%s): no crawl" % [p.threshold.key, l.plan])
+			continue
+		towers += 1
+		check(p.threshold.exit_at.is_finite(), "%s: a tower only where its crawl comes out" % p.threshold.key)
+		eq(crawls.size(), 1, "%s: one crawl up" % p.threshold.key)
+		if crawls.is_empty():
+			continue
+		var c := crawls[0]
+		check(bool(c.get("exit", false)), "%s: the crawl is a way out" % p.threshold.key)
+		var at := (c.at as Vector2) + (c.face as Vector2) * 0.8
+		var top := 0
+		for lv: int in l.room_level:
+			top = maxi(top, lv)
+		eq(p.world.level_at(floori(at.x), floori(at.y)), InteriorGen.FLOOR_LEVEL + top, "%s: on the top floor" % p.threshold.key)
+		var q := WorldQuery.new(p.world)
+		q.set_blocks(&"rooms", _doors.call(&"_walls", l) as Array[Vector3])
+		check(_reached(_reach(q, l.inside(), l), at), "%s: walked and climbed to" % p.threshold.key)
+	gt(float(towers), 0.0, "towers were dealt")
+
+
+## THE CRAWL COMES UP BESIDE THE ALLEY, ON THE PLATEAU. Every alley door on seed
+## 1 whose crawl has somewhere to come up has it in the door's landscape, at the
+## face's height or above, EXIT_SIDE off the alley's axis; most doors have one.
+func test_an_alley_door_s_crawl_comes_up_on_the_plateau_beside_it() -> void:
+	var w := BootWorld.world(1, Tuning.WORLD_SIZE)
+	var with := 0
+	var sites := SlotDoors.alleys(w)
+	for s: Array in sites:
+		var face: Vector2 = s[0]
+		var out: Vector2 = s[1]
+		var exit: Vector2 = s[3]
+		if not exit.is_finite():
+			continue
+		with += 1
+		var over := face - out * 0.5
+		var tx := floori(exit.x)
+		var ty := floori(exit.y)
+		eq(w.country_at(tx, ty), int(s[2]), "the crawl at %s is in the door's landscape" % exit)
+		gt(float(w.level_at(tx, ty)), float(w.level_at(floori(over.x), floori(over.y)) - 2), "and up on the plateau, not down in a slot")
+		near(absf((exit - over).dot(Vector2(-out.y, out.x))), SlotDoors.EXIT_SIDE, 0.75, "and beside the alley's axis")
+	gt(float(with), float(sites.size()) * 0.4, "most alley doors have a crawl's way up")
 
 
 ## THE FLOOR RINGS, AND A CAREFUL PLAYER CAN PASS. In a sorted warren at the

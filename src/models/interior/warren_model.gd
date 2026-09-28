@@ -227,9 +227,18 @@ func _roof(k: Kit, h: float, _tears: Array[Vector2]) -> void:
 		# The roof tile by tile, less the one the rust has eaten through, whose
 		# edges hang down ragged; the day comes down it.
 		var hole := _hole(i)
+		var crawl := _crawl_tile(i)
 		for x in range(r.position.x, r.end.x):
 			for z in range(r.position.y, r.end.y):
 				var cc := Vector2(x + 0.5, z + 0.5)
+				if Vector2i(x, z) == crawl:
+					# Torn open for the crawl up into the heap: the steel bent back
+					# up round the hole, bright where it was cut.
+					var raw := GroundColors.made(Color(0.48, 0.46, 0.42), GroundColors.ENAMEL)
+					for n in 4:
+						var e := cc + Vector2(float(n % 2) - 0.5, float(n / 2) - 0.5) * 0.85
+						k.made.box(Vector3(e.x - 0.12, y, e.y - 0.12), Vector3(e.x + 0.12, y + 0.22, e.y + 0.12), raw, c, true)
+					continue
 				if cc.distance_to(hole) < 0.1:
 					var rust := GroundColors.made(Color(0.26, 0.11, 0.06), GroundColors.ENAMEL)
 					for n in 4:
@@ -239,6 +248,15 @@ func _roof(k: Kit, h: float, _tears: Array[Vector2]) -> void:
 					continue
 				k.made.box(Vector3(x, y, z), Vector3(x + 1.0, y + 0.08, z + 1.0), c, c, true)
 		lights.append([Vector3(hole.x, y + 0.3, hole.y), &"seep"])
+
+
+## The roof tile a tower's crawl goes up through in room `i`, or (-1, -1).
+func _crawl_tile(i: int) -> Vector2i:
+	for t: Dictionary in layout.things:
+		if t.kind == &"crawl_up" and _room_at(t.at) == i:
+			var at: Vector2 = t.at
+			return Vector2i(floori(at.x), floori(at.y))
+	return Vector2i(-1, -1)
 
 
 ## Where a container's roof has rusted through: one tile, dealt by where the
@@ -264,6 +282,7 @@ func _thing(k: Kit, t: Dictionary) -> void:
 	_at_room(_room_at(at + f * 0.25) if t.kind == &"ladder" else _room_at(at))
 	match t.kind:
 		&"ladder": _ladder(k, at, -f)
+		&"crawl_up": _crawl_up(k, at, f)
 		&"crate": _crate(k, at, f)
 		&"sorted_bins": _bins(k, at, f)
 		&"bedroll": _bedroll(k, at, f)
@@ -291,6 +310,22 @@ func _ladder(k: Kit, at: Vector2, up: Vector2) -> void:
 	for i in n:
 		var y := 0.3 * float(i + 1)
 		k.rod(_v(off - s * 0.24, y), _v(off + s * 0.24, y), 0.018, 5, rung)
+
+
+## A tower's way out: rungs welded up the wall to the torn roof over them, and
+## worn rope off the top rung, into the dark of the heap.
+func _crawl_up(k: Kit, at: Vector2, f: Vector2) -> void:
+	var s := Vector2(-f.y, f.x)
+	var rail := GroundColors.made(Color(0.1, 0.1, 0.11), GroundColors.ENAMEL)
+	var rung := GroundColors.made(Color(0.42, 0.4, 0.37), GroundColors.ENAMEL)
+	var wall := at - f * 0.3
+	for u: float in [-0.22, 0.22]:
+		k.rod(_v(wall + s * u, 0.0), _v(wall + s * u, kind.wall_h + 0.2), 0.026, 6, rail)
+	for i in int(kind.wall_h / 0.3):
+		var y := 0.3 * float(i + 1)
+		k.rod(_v(wall - s * 0.22, y), _v(wall + s * 0.22, y), 0.018, 5, rung)
+	var rope := GroundColors.made(Color(0.34, 0.29, 0.2), GroundColors.CLOTH)
+	k.rod(_v(wall + f * 0.05, kind.wall_h + 0.2), _v(wall + f * 0.1, kind.wall_h - 0.9), 0.02, 5, rope)
 
 
 ## A crate nobody came back for: boards on a frame.

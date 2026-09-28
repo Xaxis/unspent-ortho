@@ -22,7 +22,10 @@ extends RefCounted
 ##
 ## THE PLAN, by hash: `line` (the run on one level), `step` (the run climbs once,
 ## a container's height, 5 levels, up a ladder) and `tower` (twice, the vault at
-## the top). The heap was poured over boxes at every height, and a stepped run
+## the top). A tower is dealt only behind a door whose crawl can come up onto
+## the plateau (Threshold.exit_at, SlotDoors.exit_beside): its top container has
+## a way up through the heap (`crawl_up`, an `exit`), and a known tower is the
+## one way up out of the maze there is besides the ramps. The heap was poured over boxes at every height, and a stepped run
 ## reads from above as a terraced heap of steel. Each rise is a riser with a
 ## `ladder` thing on it, facing into the lower room (InteriorGen hands the pocket
 ## the ladder, Climb takes it up and down), where the one below meets the one
@@ -76,15 +79,16 @@ static func make() -> InteriorKind:
 	k.door_width = 1.2
 	# Laid for its landscape, so a slot opens only where its words are written.
 	k.by_land = true
+	k.by_exit = true
 	k.recipe = load("res://src/content/interiors/container_warren.gd")
 	k.model = "res://src/models/interior/warren_model.gd"
 	k.hatch = "res://src/models/interior/warren_hatch_model.gd"
 	return k
 
 
-static func lay(rng: RandomNumberGenerator, land: int = -1) -> InteriorLayout:
+static func lay(rng: RandomNumberGenerator, land: int = -1, has_exit: bool = false) -> InteriorLayout:
 	var l := InteriorLayout.new()
-	l.plan = [&"line", &"step", &"tower"][rng.randi_range(0, 2)]
+	l.plan = [&"line", &"step", &"tower"][rng.randi_range(0, 2 if has_exit else 1)]
 	l.dressing = [&"dug", &"kept", &"sorted"][rng.randi_range(0, 2)]
 	l.has_hearth = false
 	var n := rng.randi_range(FEWEST, MOST)
@@ -262,6 +266,14 @@ static func _fit(l: InteriorLayout, n: int, vault: bool, rng: RandomNumberGenera
 				_put(l, &"crate", Vector2(wall_x + face.x * 0.4, mid_y + 1.8), face, 0.4)
 			&"sorted":
 				_put(l, &"sorted_bins", Vector2(wall_x + face.x * 0.35, mid_y), face, 0.35, {"glare": 1.2, "shift": true})
+	# A tower's way up: in its top container, on the wall across from what it
+	# holds, a crawl up through the rusted roof into the heap, and out on the
+	# plateau beside the alley.
+	if l.plan == &"tower":
+		var top := l.rooms[n - 1]
+		var side := -1.0 if ((n - 1) % 2) == 0 else 1.0
+		var wall_x := float(top.end.x) - 0.36 if side < 0.0 else float(top.position.x) + 0.36
+		_put(l, &"crawl_up", Vector2(wall_x, float(top.position.y) + LONG * 0.5), Vector2(side, 0), 0.0, {"exit": true})
 	# The vault: its round door hung in the joint, and the strongbox at its back.
 	if vault:
 		var v := l.rooms[n]

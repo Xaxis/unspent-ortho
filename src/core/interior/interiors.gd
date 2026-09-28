@@ -112,7 +112,7 @@ static func thresholds(w: WorldData) -> Array[Threshold]:
 				var k: StringName = d.interiors.get(pair[0], &"") if d != null else &""
 				if k == &"" or kind(k) == null:
 					continue
-				out.append(Threshold.of_face(site[0], site[1], k, int(site[2])))
+				out.append(Threshold.of_face(site[0], site[1], k, int(site[2]), site[3] if site.size() > 3 else Vector2.INF))
 	_doors[id] = out
 	return out
 

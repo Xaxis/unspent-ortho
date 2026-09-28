@@ -38,6 +38,10 @@ var words: StringName = &""
 ## Its recipe lays it for the landscape it stands in: `lay(rng, land)` rather
 ## than `lay(rng)` (a home, whose household is the landscape's).
 var by_land := false
+## Its recipe is told whether its door has a way out that is not the door
+## (Threshold.exit_at): `lay(rng, land, has_exit)`. A warren only stacks into a
+## tower where its crawl can come up onto a plateau.
+var by_exit := false
 ## THE HOURS IT WORKS, [from, to) on the clock, wrapping past midnight, or
 ## (-1, -1) for a room that never stops. Outside them is the curfew: its `hush`
 ## goes quiet, the glare of the things that run on the shift (`shift`) goes out,
