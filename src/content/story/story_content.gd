@@ -5384,11 +5384,23 @@ const TALKS := {
 # can live without. Said once, on the first morning, and never again — a save
 # remembers having heard it. It says what happened to him and nothing about what
 # it means, because he does not know yet either.
-
-const OPENING: Array[String] = [
-	"You come up out of the water.",
-	"You do not remember the water.",
-]
+#
+# THE WAKE (48_wake): the record's first lines, only what could be seen, one
+# staged moment each. `surface` as his head breaks the water line; `shallows`
+# when the rise ends and he stands in the surf with the black site behind him
+# and Maren at the water's edge, which is also where the staging hands him his
+# legs. No line waits for him to reach the sand: a line for walking onto a tile
+# is the one thing the record never says (docs/STORY.md). "Came up out of the
+# water" is Maren's to say, in her talk, and the black site stays "something"
+# until somebody names it.
+const WAKE := {
+	&"surface": ["You break the surface.", "Your first breath is salt."],
+	&"shallows": [
+		"Behind you, something stands in the sea.",
+		"Someone at the water's edge is watching you.",
+		"You do not remember the water.",
+	],
+}
 
 # --- what a region asks of him (StorySubarc, docs/VISION.md) ------------
 #

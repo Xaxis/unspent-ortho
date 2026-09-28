@@ -289,6 +289,13 @@
   },
   {
    "kind": "system",
+   "label": "48_wake",
+   "entry": "src/systems/48_wake.gd",
+   "reach": "tools/tour.sh tours/home-coast.tour --scene=title --seed=1",
+   "area": "people-story"
+  },
+  {
+   "kind": "system",
    "label": "49_cast",
    "entry": "src/systems/49_cast.gd",
    "reach": "tools/tour.sh tours/cast.tour",

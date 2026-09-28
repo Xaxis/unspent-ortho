@@ -218,6 +218,19 @@ func _watch(row: Dictionary, from: Vector2) -> void:
 	model.rotation.y = -float(row.facing)
 
 
+## Stand a cast person somewhere else for a while (the wake's Maren at the
+## water's edge), facing `facing`. Returns where they stood, so the caller can
+## put them back; Vector2.INF when that person is not cast in this world.
+func stand(id: StringName, pos: Vector2, facing: float) -> Vector2:
+	for row: Dictionary in people:
+		if row.character == id:
+			var was: Vector2 = row.pos
+			row.pos = pos
+			row.facing = facing
+			return was
+	return Vector2.INF
+
+
 ## `at cast:ID` in a tour: a spot beside that person, close enough that the `use`
 ## key reaches them whichever way the player is turned (StoryProps.CLOSE), and
 ## nearer them than any other named person. The key answers the nearest of the

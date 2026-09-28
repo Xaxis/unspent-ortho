@@ -564,6 +564,14 @@
       "tests": []
     },
     {
+      "id": "system:48_wake",
+      "kind": "system",
+      "entry": "src/systems/48_wake.gd",
+      "reach": "tools/tour.sh tours/home-coast.tour --scene=title --seed=1",
+      "area": "people-story",
+      "tests": []
+    },
+    {
       "id": "system:49_cast",
       "kind": "system",
       "entry": "src/systems/49_cast.gd",
