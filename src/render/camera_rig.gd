@@ -828,8 +828,11 @@ func _apply_lens() -> void:
 		# NO ROOM BEHIND AT ALL (Shoulder.fallback): still not clear of the walls
 		# or the roof, it comes over the head instead, at once, never drawn from
 		# inside anything (tests/camera/test_shoulder_in_rooms).
+		# Only an eye pulled in or risen can be short of clear: one standing at its
+		# full distance was walked clear by `room` already, and asking again was
+		# a second probe walk every frame in the open.
 		var tight := eye
-		if side_room.is_valid():
+		if side_room.is_valid() and (_room < 0.999 or _over > 0.001):
 			tight = Shoulder.fallback(head, pivot, eye, sight_room if _over > 0.001 else Callable(), side_room)
 		if _over > 0.001 or tight != eye:
 			eye = tight

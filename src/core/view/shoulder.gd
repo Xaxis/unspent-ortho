@@ -595,7 +595,13 @@ static func _blocked(q: Vector3, ground: Callable, solids: Array[Vector4], thin:
 	for b: PackedFloat32Array in boxes:
 		if _in_box(q, b, 0.0):
 			return true
+	# Under a solid's top first: most of what stands near the line is lower than
+	# the eye, and that one compare spares it the distance (the probe runs twice a
+	# frame, test_the_probe_is_cheap_among_houses).
+	var low := q.y - CLEAR
 	for s: Vector4 in solids:
+		if low >= s.w:
+			continue
 		# A wall handed to the query (`w` INF: a room's walls stand as circles 0.3
 		# across on their line) is a wall, however thin its circles: counted as a
 		# pole, the eye went through every room's walls and stood outside them.
@@ -604,7 +610,7 @@ static func _blocked(q: Vector3, ground: Callable, solids: Array[Vector4], thin:
 		var dx := q.x - s.x
 		var dz := q.z - s.y
 		var r := s.z + CLEAR
-		if dx * dx + dz * dz < r * r and q.y < s.w + CLEAR:
+		if dx * dx + dz * dz < r * r:
 			return true
 	return false
 
