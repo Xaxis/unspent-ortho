@@ -576,9 +576,11 @@ static func found_surface(kind: int) -> int:
 	return 0 if t.made_v.is_empty() else 1
 
 
-## Every part of a model as nodes: the MADE part takes whatever material its
-## parent gives (the gallery and WorldView give world.gdshader), the FOUND part
-## carries found.gdshader, and the leaves (when it has any) leaf.gdshader.
+## Every part of a model as nodes: the MADE part (the returned root) has NO
+## material, and the caller sets its material_override to world.gdshader's (a
+## node inherits none, and without one it draws in the renderer's grey
+## default); the FOUND part carries found.gdshader, and the leaves (when it has
+## any) leaf.gdshader.
 static func node(kind: int, variant: int = 0, country: int = Country.COAST) -> Node3D:
 	var t := template(kind, variant, country)
 	var root := MeshInstance3D.new()

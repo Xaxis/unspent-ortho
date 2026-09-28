@@ -1,0 +1,51 @@
+# THE FIRST LOCAL LIGHTS A PLAYER MEETS, and the shader programs each one draws
+# for the first time. On the web a program first drawn is a compile, and a
+# compile is a freeze (tools/web.sh --programs counts them after each `event`).
+# The fire laid by hand, dusk with its lamps and the lantern, the first door in
+# and back out, and a machines' hall (another kind of room). The count should be
+# zero at every event. The fire and the first door are each timed as a --stats
+# window (`first_fire`, `first_door`: the worst frame is the freeze, if any).
+#   tools/web.sh --tour=tours/first-lights.tour --programs --timeout=600 --args=--seed=4,--hour=11,--weather=clear:0,--stats,--give=driftwood:8,--give=stone:4
+#   tools/tour.sh tours/first-lights.tour --seed=4 --hour=11 --weather=clear:0 --stats --give=driftwood:8,stone:4
+coast calm
+wait 3.0
+echo event noon
+wait 3.0
+echo event fire
+tap craft
+await app:crafting 10
+choose campfire
+perf stats begin
+tap use
+await made 10
+wait 1.0
+perf stats end first_fire
+tap pause
+await app:none 5
+wait 2.0
+echo event dusk
+hour 20.5
+wait 4.0
+echo event door_in
+near door:cottage
+await door 10
+wait 0.5
+perf stats begin
+press use 0.1
+await inside:cottage 30
+wait 3.0
+perf stats end first_door
+echo event door_out
+near door:house
+await door 10
+press use 0.1
+await outside 30
+wait 3.0
+echo event hall_in
+near door:weapons_hall
+await door 10
+wait 0.5
+press use 0.1
+await inside:weapons_hall 30
+wait 3.0
+echo event end

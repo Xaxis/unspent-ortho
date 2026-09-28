@@ -3,7 +3,11 @@
 #   1. every script and shader loads; every test passes (headless)
 #   2. canonical screenshots render with no script errors (real GPU frames)
 # Shots land in shots/check/ — LOOK at the ones your change affects.
-#   tools/check.sh --web   also export both web builds and boot them in a browser (tools/web.sh, ~2 min)
+#   tools/check.sh --web   also export both web builds and boot them in a browser (tools/web.sh, ~2 min),
+#                          and walk every room kind by day and night failing on any shader program
+#                          first built at a door (tours/every-room.tour --programs, ~5 min). Needs a
+#                          GPU: CPU WebGL (SwiftShader) took 34 min here to grow the world alone,
+#                          and CI's runner takes 7 min to reach the title.
 set -uo pipefail
 web=0
 for a in "$@"; do [ "$a" = "--web" ] && web=1; done
@@ -284,9 +288,10 @@ else
 fi
 rm -f "$ran"
 if [ $web -eq 1 ]; then
-  echo "== web (threads, full) and web (no threads, title)"
+  echo "== web (threads, full), web (no threads, title), and every room's programs"
   tools/web.sh || fail=1
   tools/web.sh --nothreads --quick || fail=1
+  tools/web.sh --no-export --tour=tours/every-room.tour --programs --timeout=900 --args=--seed=4,--hour=11,--weather=clear:0 || fail=1
 fi
 echo "== $(( $(date +%s) - t0 ))s total"
 if [ $fail -ne 0 ]; then echo "CHECK FAILED"; exit 1; fi

@@ -51,6 +51,16 @@
 //                    outside the engine (what a player sees while the engine is blocked)
 //   --uncapped       let the page draw as fast as it can (no vsync, no frame-rate limit), so a
 //                    frame's cost can be read off its interval (perf scale in a tour)
+//   --programs       with --tour, count the GL programs first drawn after each `echo event NAME` in
+//                    the tour, by .gdshader and variant: a first-use shader compile is a freeze on the
+//                    web, and at an event a player meets (a door, a fire) the count must be zero: any
+//                    program first drawn after an event FAILS the run (tours/every-room.tour on CI).
+//                    A built-in material is shown with its own uniforms; each program built at an
+//                    event is kept as <out>-program-<event>-pN.{vs,fs}.glsl, to read what it was
+//   --cold           give every vertex shader a run-unique term that is always zero, so each program
+//                    is built as on a first visit: a boot's cold cost (read it off a tour's first
+//                    event), without clearing the machine's shared Metal cache. A measure, not a
+//                    gate: a 2D program has failed one first draw under it, never without it
 //   --heap-log       print every heap sample (every 2 s, seconds since the sampler started), not only
 //                    the most it held: when the heap grows says what grew it
 import http from 'node:http';
@@ -333,6 +343,26 @@ await context.addInitScript(() => {
     if (real) WebAssembly[name] = (...a) => real.apply(WebAssembly, a).then(keep);
   }
 });
+// --cold: every vertex shader gets a term that is always zero, different each
+// run, so no program is found in any cache (the browser's, ANGLE's, the
+// system's machine-wide Metal cache) and a boot pays every build as a first
+// visit does, without clearing a cache other things on the machine rely on.
+if (opt.cold) await context.addInitScript((nonce) => {
+  const P = window.WebGL2RenderingContext && WebGL2RenderingContext.prototype;
+  if (!P) return;
+  const shaderSource = P.shaderSource;
+  P.shaderSource = function (s, src) {
+    // Not the 2D canvas's own: few, and the same in every build.
+    if (this.getShaderParameter(s, this.SHADER_TYPE) === this.VERTEX_SHADER && !/canvas_data|batch_flags|draw_data/.test(src))
+    {
+      // At main's end (it is the source's last function), into gl_Position, so
+      // no translator can drop it as unused and the compiled program changes.
+      const end = src.lastIndexOf('}');
+      if (/void main\(\)/.test(src) && end > 0) src = `${src.slice(0, end)}\tgl_Position.x += float(gl_VertexID == ${-nonce}) * 1e-30;\n${src.slice(end)}`;
+    }
+    return shaderSource.call(this, s, src);
+  };
+}, 1 + Math.floor(Math.random() * 1e9));
 // A GL PROGRAM THE BROWSER CANNOT DRAW WITH IS A FAILED RUN. A shader that
 // compiles and links can still fail to build its pipeline: ANGLE's Metal backend
 // (every browser on a Mac) met an Apple compiler bug in fore.gdshader's depth
@@ -357,6 +387,17 @@ await context.addInitScript(() => {
     p.__glSrc = this.getAttachedShaders(p).map((s) => srcOf.get(s) || '');
     return linkProgram.call(this, p);
   };
+  // First draws, and the tour's events, on the page's own clock (--programs).
+  window.__glEvents = [];
+  const log = console.log;
+  console.log = function (...a) {
+    const m = /^tour: event (\S+)/.exec(String(a[0] || '') + (a.length > 1 ? String(a[1]) : ''));
+    if (m) {
+      window.__glEvents.push({ name: m[1], at: performance.now() });
+      if (window.__glReport) window.__glReport({ event: m[1], at: performance.now() });
+    }
+    return log.apply(this, a);
+  };
   const useProgram = P.useProgram;
   P.useProgram = function (p) { this.__glProgram = p; return useProgram.call(this, p); };
   for (const name of ['drawArrays', 'drawElements', 'drawArraysInstanced', 'drawElementsInstanced', 'drawRangeElements']) {
@@ -368,6 +409,15 @@ await context.addInitScript(() => {
       this.getError();
       const r = draw.apply(this, a);
       const e = this.getError();
+      if (!p.__glFirst) {
+        p.__glFirst = true;
+        // Only what names it: the fragment's variant header and its user names
+        // (Godot keeps them behind an `m_`), never the whole source per program.
+        const fs = p.__glSrc[1] || '';
+        const ids = [...new Set((p.__glSrc.join('\n').match(/\bm_[a-z][a-z0-9_]*/g) || []))];
+        const kind = /canvas_data|batch_flags/.test(fs) ? 'canvas' : /shader_type sky|MODE_QUARTER_RES|MODE_HALF_RES/.test(fs) ? 'sky' : '';
+        if (window.__glReport) window.__glReport({ id: p.__glId, at: performance.now(), head: fs.split('\n').slice(0, 60).join('\n'), ids, kind, src: window.__glEvents.length > 0 ? p.__glSrc : null });
+      }
       p.__glChecked++;
       if (e) {
         const f = failed[p.__glId] || (failed[p.__glId] = { err: e, draws: 0, src: p.__glSrc });
@@ -383,6 +433,9 @@ await context.addInitScript(() => {
 // whose own uniforms and functions all appear in it (Godot keeps a user name
 // behind an `m_`). Includes are shared, so they name nothing.
 function shaderOf(src) {
+  return shaderOfIds(new Set(src.match(/\bm_[a-z][a-z0-9_]*/g) || []));
+}
+function shaderOfIds(ids) {
   const files = [];
   const walk = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -400,7 +453,7 @@ function shaderOf(src) {
     for (const m of text.matchAll(/^\s*uniform\s+[^;]*?\b(\w+)\s*(?:\[[^\]]*\])?\s*(?::[^;=]*)?(?:=[^;]*)?;/gm)) own.add(m[1]);
     for (const m of text.matchAll(/^(?:float|int|bool|void|vec[234]|ivec[234]|mat[34])\s+(\w+)\s*\(/gm)) if (!['vertex', 'fragment', 'light'].includes(m[1])) own.add(m[1]);
     if (own.size === 0) continue;
-    const found = [...own].filter((n) => new RegExp(`\\bm_${n}\\b`).test(src)).length;
+    const found = [...own].filter((n) => ids.has(`m_${n}`)).length;
     if (found === own.size && found > most) { best = f; most = found; }
   }
   return best;
@@ -650,6 +703,12 @@ async function boot(label, from = lines.length) {
 }
 
 t0 = Date.now();
+// First draws and a tour's events, reported by the page as they happen
+// (--programs): asked for at the end, a page whose engine had quit sometimes
+// never answered.
+const glFirst = [];
+const glEvents = [];
+if (opt.programs) await page.exposeFunction('__glReport', (r) => { if (r.event) glEvents.push(r); else glFirst.push(r); });
 await page.goto(url);
 // The shell, while the engine's wasm is held back, then the engine's first page
 // frame once the shell has gone: the same rectangle, the same line, never shorter.
@@ -826,6 +885,31 @@ if (first && !touring && opt['boot-only']) {
 }
 
 phase = 'closing down';
+if (opt.programs && touring) {
+  const got = { first: glFirst, events: glEvents.map((e) => ({ name: e.event, at: e.at })) };
+  if (got) {
+    const flags = (src) => ['MODE_RENDER_DEPTH', 'USE_ADDITIVE_LIGHTING', 'DISABLE_LIGHT_DIRECTIONAL', 'DISABLE_LIGHT_OMNI', 'DISABLE_LIGHT_SPOT', 'USE_INSTANCING', 'BASE_PASS', 'LIGHT_USE_PSSM4', 'USE_SHADOW', 'ADDITIVE_OMNI', 'ADDITIVE_SPOT']
+      .filter((d) => new RegExp(`^#define ${d}$`, 'm').test(src)).map((d) => d.toLowerCase()).join(' ');
+    const windows = [{ name: 'boot', at: -1 }, ...got.events];
+    for (let w = 0; w < windows.length; w++) {
+      const lo = windows[w].at;
+      const hi = w + 1 < windows.length ? windows[w + 1].at : Infinity;
+      const inside = got.first.filter((f) => f.at >= lo && f.at < hi);
+      const kinds = {};
+      for (const f of inside) {
+        const name = shaderOfIds(new Set(f.ids)) || (f.kind ? `(${f.kind})` : '(built-in)');
+        const own = name === '(built-in)' && w > 0 ? ` {${f.ids.filter((i) => !/^m_(sky|colossus|world|matter|glint|neon)/.test(i)).slice(0, 12).join(' ')}}` : '';
+        const key = `${path.basename(name)} [${flags(f.head)}]${own}`;
+        kinds[key] = (kinds[key] || 0) + 1;
+      }
+      console.log(`web programs ${windows[w].name}: ${inside.length} first drawn${inside.length ? ':' : ''}`);
+      for (const f of inside) if (f.src) f.src.forEach((t, i) => fs.writeFileSync(`${opt.out}-program-${windows[w].name}-p${f.id}.${i === 0 ? 'vs' : 'fs'}.glsl`, t));
+      for (const [k, n] of Object.entries(kinds).sort((a, b) => b[1] - a[1])) console.log(`  ${n} x ${k}`);
+      if (w > 0 && inside.length) failures.push(`${inside.length} program(s) first drawn at event ${windows[w].name}, each a freeze a player meets (${Object.keys(kinds).join('; ')}); the boot builds them (src/systems/01_warm_lights.gd)`);
+    }
+    if (windows.length === 1) failures.push(`--programs: the tour named no event (echo event NAME), so nothing was checked`);
+  }
+}
 const glFailed = await bounded(page.evaluate(() => window.__glFailed || {}), 10000).catch(() => ({})) || {};
 for (const [id, f] of Object.entries(glFailed)) {
   const src = f.src.join('\n');
