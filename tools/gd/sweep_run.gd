@@ -21,10 +21,13 @@ const LINES: Array[String] = ["knife", "axe", "pick", "mattock", "hook", "boatho
 
 ## The reader's seed for --reader=human (Reader.human); -1 is the perfect reader.
 static var human := -1
+## --crowd=N: only the Nth of CROWDS (0 three cutters, 1 the mix, 2 the pair).
+static var only_crowd := -1
 
 
 static func run(args: PackedStringArray) -> void:
 	human = -1
+	only_crowd = -1
 	var singles := true
 	var crowds := true
 	var starts := 4
@@ -39,6 +42,8 @@ static func run(args: PackedStringArray) -> void:
 			human = 17
 		elif a.begins_with("--reader=human:"):
 			human = a.trim_prefix("--reader=human:").to_int()
+		elif a.begins_with("--crowd="):
+			only_crowd = a.trim_prefix("--crowd=").to_int()
 		elif a.begins_with("--starts="):
 			starts = maxi(1, a.trim_prefix("--starts=").to_int())
 		elif a.begins_with("--weapons="):
@@ -106,7 +111,10 @@ static func _singles(weapons: Array[StringName], machines: Array[StringName], st
 
 static func _crowds(weapons: Array[StringName]) -> Array[String]:
 	var out: Array[String] = []
-	for c: Array in CROWDS:
+	for ci in CROWDS.size():
+		if only_crowd >= 0 and ci != only_crowd:
+			continue
+		var c: Array = CROWDS[ci]
 		var kinds: Array[StringName] = []
 		kinds.assign(c)
 		var name := "+".join(c)

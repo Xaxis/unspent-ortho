@@ -397,3 +397,38 @@ func test_a_crowd_that_lost_others_first_does_not_break_on_its_biggest() -> void
 	for m in crowd:
 		still += int(after(m))
 	eq(still, 2, "its biggest taken second: the two cutters left fight on")
+
+
+
+## A free slot goes to a kind not already in one (FightSim._slot_pick): a mixed
+## crowd fights as a mix, not as a queue by distance. Three harvesters and two
+## cutters, the harvesters nearer: the slots hold one of each, and a cutter that
+## falls is followed in by the other cutter.
+func test_a_mixed_crowd_fills_its_slots_with_a_mix() -> void:
+	MobState._next_id = 1000
+	var sim := F.make_sim(F.flat_world(64), Vector2(30.5, 30.5))
+	var crowd: Array[MobState] = []
+	for k in 3:
+		crowd.append(sim.add_mob(&"harvester", sim.hero.pos + Vector2(4.0, (float(k) - 1.0) * 2.6)))
+	for k in 2:
+		crowd.append(sim.add_mob(&"cutter", sim.hero.pos + Vector2(8.0, (float(k) - 0.5) * 1.2)))
+	for m in crowd:
+		m.facing = (sim.hero.pos - m.pos).angle()
+		m.aim = m.facing
+		m.disturbed = true
+		m.set_mood(MobState.CHASING, sim.now)
+	F.ms(sim, 200)
+	var kinds := {}
+	for m in crowd:
+		if sim.holds_slot(m):
+			kinds[m.kind] = true
+	eq(sim.attack_slots.size(), 2, "two in")
+	check(kinds.has(&"harvester") and kinds.has(&"cutter"), "one of each kind, though the harvesters stand nearer (%s)" % [kinds.keys()])
+	var cutter: MobState = null
+	for m in crowd:
+		if m.kind == &"cutter" and sim.holds_slot(m):
+			cutter = m
+	sim._kill(cutter)
+	F.ms(sim, 200)
+	var other := crowd[3] if crowd[3] != cutter else crowd[4]
+	check(sim.holds_slot(other), "the cutter that falls is followed in by the other cutter, not a nearer harvester")

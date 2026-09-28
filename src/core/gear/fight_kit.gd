@@ -120,12 +120,16 @@ const ICELENS_REACH := 1.5
 const RAKE_REACH := 3.0
 const RAKE_ARC := deg_to_rad(60.0)
 const RAKE_NOISE := 1.5
+## How long the tines hold what they rake: longer than a struck part's stall
+## (FightRules.STALL_MS), because under attack slots the second of a pair is only
+## ever in the arc for a moment, and a moment's stall bought nothing.
+const RAKE_STALL_MS := 1200.0
 ## How long the player must stand without a step to be rooted by the anchor, and
 ## how long a root holds once they step (no dodge while it does: its cost).
 const ANCHOR_MS := 600.0
 const ANCHOR_LIFT_MS := 300.0
 ## A grip that closes on a rooted body snaps back on its gripper: stalled this long.
-const ANCHOR_SNAP_MS := 1400.0
+const ANCHOR_SNAP_MS := 2500.0
 ## The lock: the widest gap (edge to edge, tiles) it will shut, how long it holds,
 ## and what a lock spends (FightRules.CHARGE).
 const LOCK_GAP := 2.2

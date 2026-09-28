@@ -492,7 +492,7 @@ func begin_bite(m: MobState, b: Blow) -> Blow:
 ## The other presses and feints: a pair is two things to read in turn, never
 ## two blows to take at once.
 const BITE_GAP_MS := 300.0
-const CHARGE_GAP_MS := 1000.0
+const CHARGE_GAP_MS := 700.0
 
 
 func bite_turn(m: MobState) -> bool:
@@ -526,16 +526,40 @@ func slots_bearing() -> float:
 
 
 ## A waiter: after the player, without a slot, and the slots full. One that
-## finds a slot free takes it now rather than wait for the beat to hand it over
-## (so a crowd roused at once never has more than ATTACK_SLOTS in before the
-## first beat), which makes this the one door to a slot between beats.
+## finds a slot free takes it now if it is the one the beat would hand it to
+## (`_slot_pick`), rather than wait for the beat (so a crowd roused at once
+## never has more than ATTACK_SLOTS in before the first beat).
 func waits(m: MobState) -> bool:
 	if not _slot_wanted(m) or holds_slot(m):
 		return false
 	if attack_slots.size() < ATTACK_SLOTS:
-		attack_slots.append(m.id)
-		return false
+		var queue: Array[MobState] = []
+		for o in mobs:
+			if _slot_wanted(o) and not holds_slot(o):
+				queue.append(o)
+		if _slot_pick(queue) == m:
+			attack_slots.append(m.id)
+			return false
 	return true
+
+
+## Who a free slot goes to: a keeper first; then a kind not already in a slot,
+## so a mixed crowd fights as a mix (a cutter pressing while a harvester winds
+## up) and not as a queue by distance; then the nearest.
+func _slot_pick(queue: Array[MobState]) -> MobState:
+	var held := {}
+	for id in attack_slots:
+		var h := mob_by_id(id)
+		if h != null:
+			held[h.kind] = true
+	var best: MobState = null
+	var best_key := Vector3(INF, INF, INF)
+	for m in queue:
+		var key := Vector3(0.0 if Sentinels.is_keeper(m.row) else 1.0, 1.0 if held.has(m.kind) else 0.0, m.pos.distance_squared_to(hero.pos))
+		if key.x < best_key.x or (key.x == best_key.x and (key.y < best_key.y or (key.y == best_key.y and key.z < best_key.z))):
+			best_key = key
+			best = m
+	return best
 
 
 ## A body in a blow or a run: its slot is not taken from it.
@@ -564,19 +588,16 @@ func _slots_beat() -> void:
 	for m in wanted:
 		if _busy(m) and not holds_slot(m):
 			attack_slots.append(m.id)
-	# Free slots to the keeper first, then the nearest.
 	var queue: Array[MobState] = []
 	for m in wanted:
 		if not holds_slot(m):
 			queue.append(m)
-	queue.sort_custom(func(a: MobState, b: MobState) -> bool:
-		var ka := Sentinels.is_keeper(a.row)
-		var kb := Sentinels.is_keeper(b.row)
-		if ka != kb:
-			return ka
-		return a.pos.distance_squared_to(hero.pos) < b.pos.distance_squared_to(hero.pos))
 	while attack_slots.size() < ATTACK_SLOTS and not queue.is_empty():
-		attack_slots.append(queue.pop_front().id)
+		var pick := _slot_pick(queue)
+		queue.erase(pick)
+		attack_slots.append(pick.id)
+	queue.sort_custom(func(a: MobState, b: MobState) -> bool:
+		return a.pos.distance_squared_to(hero.pos) < b.pos.distance_squared_to(hero.pos))
 	# A waiter is chasing, not attacking, whatever put it there.
 	for w in queue:
 		if w.mood == MobState.ATTACKING:
@@ -1539,7 +1560,7 @@ func _rake() -> void:
 		m.flare_until = now + FightRules.PART_FLARE_MS
 		if now >= m.stall_ready_at:
 			m.stall_ready_at = now + FightRules.STALL_EVERY_MS
-			m.stun_until = maxf(m.stun_until, now + FightRules.STALL_MS)
+			m.stun_until = maxf(m.stun_until, now + FightKit.RAKE_STALL_MS)
 		hit.append(m)
 		_wake(m)
 	emit(&"rake", {"from": hero.pos, "facing": hero.facing, "bodies": hit})

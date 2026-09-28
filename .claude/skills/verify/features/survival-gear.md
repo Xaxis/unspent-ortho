@@ -48,7 +48,7 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   Keeper powers (a keeper's core on the jig, a relic module): the undertow (reaper_core, hands) makes the grapple
   haul a machine in, stalled, for double wind: `tools/test.sh test_undertow` (its bout prints),
   `tools/tour.sh tours/undertow.tour` (options in its header).
-  The rake (rake_core, tool): a heavy, drawn, holds the biters in the arc ahead open; chargers ride over it; heavies
+  The rake (rake_core, tool): a heavy, drawn, holds the biters in the arc ahead open for 1.2 s; chargers ride over it; heavies
   ring 1.5x: `tools/test.sh test_rake` (its gate bout prints), `tools/tour.sh tours/rake.tour` (options in its header).
   The anchor (anchor_core, body): stood still, rooted, no throw and no grip (a grip snaps back, stalling its gripper), and no dodge while rooted:
   `tools/test.sh test_anchor` (its bout prints), `tools/tour.sh tours/anchor.tour` (options in its header).

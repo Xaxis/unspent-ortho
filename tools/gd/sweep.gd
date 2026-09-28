@@ -5,7 +5,7 @@ extends SceneTree
 ## shoulder knows). A measurement to re-run after every tuning pass, never a
 ## gate: it is off CI, and tools/sweep.sh bounds it.
 ##
-##   tools/sweep.sh [--singles|--crowds] [--reader=human[:SEED]] [--weapons=a,b] [--machines=a,b] [--starts=N]
+##   tools/sweep.sh [--singles|--crowds] [--crowd=N] [--reader=human[:SEED]] [--weapons=a,b] [--machines=a,b] [--starts=N]
 ##
 ## SINGLES: one machine roused five tiles off (test_crowd_reader.gd `gate`),
 ## 20 wick, 90 s, START starts round the compass. A pairing is TRIVIAL when

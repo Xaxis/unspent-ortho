@@ -365,9 +365,12 @@ func _cable(live: Array[MobState]) -> bool:
 		return false
 	if hero.wind < AbilityGrapple.WIND + FightRules.DODGE_COST:
 		return false
+	# Alone with it: no other body near, and none after the player however far
+	# off. A crowd's waiters stand off at the edge (FightSim.attack_slots) and
+	# are in the fight: a line thrown at one pulls the player off the two on them.
 	var roused := 0
 	for m in live:
-		roused += int(m.roused() and m.pos.distance_to(hero.pos) < HAUL_ALONE)
+		roused += int(m.roused() and (m.pos.distance_to(hero.pos) < HAUL_ALONE or m.mood == MobState.CHASING or m.mood == MobState.ATTACKING))
 	if roused > 1:
 		return false
 	for m in live:
