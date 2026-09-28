@@ -433,7 +433,7 @@ func _crush(pads: Array[Vector3]) -> void:
 		for q: WorldProp in game.query.props_near(at, p.z + 4.0):
 			if w.depleted.has(q.id) and is_inf(float(w.depleted[q.id])):
 				continue
-			if _the_treads_own(q.id):
+			if _treads_own().has(q.id):
 				continue
 			if q.pos.distance_to(at) > p.z + q.solid:
 				continue
@@ -442,16 +442,61 @@ func _crush(pads: Array[Vector3]) -> void:
 				game.view.refresh_props(q)
 
 
-## Whether prop `id` is one the tread stage laid round its own craters (the
-## crushed wreck in the bowl, the spoil, the posts): those are what a landing
-## LEAVES, and a landing does not crush them again.
-func _the_treads_own(id: int) -> bool:
-	for m: Dictionary in game.world.landmarks:
-		if StringName(m.get("kind", &"")) != &"tread" or not m.has("props"):
+## THE TREADS CRUSHED BESIDE THE WORLD (RealmWarm, on the raise's worker): what
+## every tread's pads flatten is taken in the world's own record before any view
+## draws it, so a crossing's `_crush_treads` finds it done. On the press, each
+## prop crushed asked the view to bake its chunk's props again: 1.5 s of the
+## start on the way down a shaft (S5e). The same rule as `_crush`.
+static func prepare_world(w: WorldData) -> void:
+	var q := WorldQuery.new(w)
+	var owned := owned_of(w)
+	for pads: Array[Vector3] in pressed_of(w):
+		for pad: Vector3 in pads:
+			var at := Vector2(pad.x, pad.y)
+			for q2: WorldProp in q.props_near(at, pad.z + 4.0):
+				if owned.has(q2.id) or (w.depleted.has(q2.id) and is_inf(float(w.depleted[q2.id]))):
+					continue
+				if q2.pos.distance_to(at) > pad.z + q2.solid:
+					continue
+				w.depleted[q2.id] = INF
+
+
+## Every tread's pads, each as (x, y, rim radius): what a landing presses.
+static func pressed_of(w: WorldData) -> Array[Array]:
+	var out: Array[Array] = []
+	for m: Dictionary in w.landmarks:
+		if StringName(m.get("kind", &"")) != &"tread":
 			continue
-		if PackedInt32Array(m.props).has(id):
-			return true
-	return false
+		var pressed: Array[Vector3] = []
+		for p: Vector3 in (m.pads as Array):
+			pressed.append(Vector3(p.x, p.y, Treads.rim_r(p)))
+		out.append(pressed)
+	return out
+
+
+## The ids of every prop the tread stage laid round its own craters.
+static func owned_of(w: WorldData) -> Dictionary:
+	var owned := {}
+	for m: Dictionary in w.landmarks:
+		if StringName(m.get("kind", &"")) == &"tread" and m.has("props"):
+			for id: int in PackedInt32Array(m.props):
+				owned[id] = true
+	return owned
+
+
+## The props the tread stage laid round its own craters (the crushed wreck in
+## the bowl, the spoil, the posts): what a landing LEAVES, and a landing does
+## not crush them again. A set, kept per world: asked for every prop near every
+## pad, a walk of every landmark was 2 s of a shaft's start (S5e).
+var _owned: Dictionary = {}
+var _owned_world: WorldData = null
+
+
+func _treads_own() -> Dictionary:
+	if _owned_world != game.world:
+		_owned_world = game.world
+		_owned = owned_of(game.world)
+	return _owned
 
 
 ## A body under a pad is put out at its edge, the nearest way.
@@ -521,12 +566,7 @@ func started() -> void:
 func _crush_treads() -> void:
 	if view == null:
 		return
-	for m: Dictionary in game.world.landmarks:
-		if StringName(m.get("kind", &"")) != &"tread":
-			continue
-		var pressed: Array[Vector3] = []
-		for p: Vector3 in (m.pads as Array):
-			pressed.append(Vector3(p.x, p.y, Treads.rim_r(p)))
+	for pressed: Array[Vector3] in pressed_of(game.world):
 		_crush(pressed)
 
 

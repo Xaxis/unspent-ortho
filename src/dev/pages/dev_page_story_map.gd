@@ -66,6 +66,10 @@ var _widest := 1.0
 var _time := 0.0
 var _drag := false
 var _entered := false
+## Where each station's name was laid, for the view it was laid in: the search
+## clear of every line is the dear part of a frame and the view rarely moves.
+var _spots := {}
+var _spots_key := ""
 ## Marks drawn this frame, for a click to find: [{rect, beat}].
 var _hits: Array[Dictionary] = []
 
@@ -144,6 +148,10 @@ func enter() -> void:
 		all.fill(Color.WHITE)
 		var seen := ImageTexture.create_from_image(all)
 		UiMapScreen.feed(_material, data, seen, r.size)
+	if not map.laid:
+		_show_mode()
+		open_ms = Time.get_ticks_msec() - t
+		return
 	# Uncovered (the arc view backed out of), the view is where it was left.
 	if _entered:
 		_apply()
@@ -211,6 +219,11 @@ func to_screen(p: Vector2) -> Vector2:
 
 func step(delta: float) -> void:
 	_time += delta
+	# A world still being laid is asked again, a second at a time, until it is whole.
+	if map != null and not map.laid and _overlay != null and fmod(_time, 1.0) < delta:
+		map = StoryMap.of(game.world)
+		if map.laid:
+			_fit_story()
 	if _overlay != null:
 		_overlay.queue_redraw()
 
@@ -218,7 +231,7 @@ func step(delta: float) -> void:
 # --- keys -------------------------------------------------------------------------------
 
 func handle(action: StringName) -> bool:
-	if map == null:
+	if map == null or not map.laid:
 		return false
 	match action:
 		&"up", &"down", &"left", &"right":
@@ -482,6 +495,9 @@ func arc_colour(arc: StringName) -> Color:
 func _weight(b: StringName, kept: Dictionary) -> float:
 	if not kept.has(b):
 		return 0.14
+	# With a beat chosen its arc reads alone: every other arc at a quarter.
+	if chosen != &"" and map.beats[b].arc != map.beats[chosen].arc:
+		return 0.25
 	if chosen != &"" and int(map.beats[b].order) > int(map.beats[chosen].order):
 		return 0.5
 	return 1.0
@@ -531,6 +547,12 @@ func _draw_overlay() -> void:
 	_hits.clear()
 	if map == null:
 		return
+	if not map.laid:
+		var r := sheet_rect()
+		UiDraw.rect(ci, r, UiTheme.GLASS)
+		UiDraw.text_centred(ci, r.get_center().x, r.get_center().y - UiFont.SIZE / 2, "the world is still being laid", UiTheme.TEXT)
+		UiSlate.brackets(ci, r.grow(6), UiTheme.TEXT_DIM, 24)
+		return
 	var kept := {}
 	for b: StringName in shown():
 		kept[b] = true
@@ -558,10 +580,36 @@ func _draw_world(ci: CanvasItem, kept: Dictionary) -> void:
 			_dashed(ci, to_screen(sa.from), a, col, 3, 5, clip)
 		if clip.has_point(a):
 			UiDraw.frame(ci, Rect2i(Vector2i(a.round()) - Vector2i(3, 3), Vector2i(7, 7)), col)
-	# The journey: a bold line through the spine's stops, leg by leg.
+	# The journey: the boldest thing on the sheet, one continuous path through the
+	# spine's stops in order, under every arc, so it is never mistaken for one.
+	var segs: Array[Array] = []
 	for i in range(1, map.spine.size()):
-		_thick(ci, to_screen(map.spine[i - 1].pos), to_screen(map.spine[i].pos), Color(UiTheme.PHOSPHOR[1], 0.95), 7.0, clip)
-		_thick(ci, to_screen(map.spine[i - 1].pos), to_screen(map.spine[i].pos), Color(UiTheme.PHOSPHOR[2], 0.95), 3.0, clip)
+		var a := to_screen(map.spine[i - 1].pos)
+		var b := to_screen(map.spine[i].pos)
+		_thick(ci, a, b, Color(UiTheme.RIM, 0.9), 14.0, clip)
+		_thick(ci, a, b, UiTheme.PHOSPHOR[2], 9.0, clip)
+		_thick(ci, a, b, UiTheme.PHOSPHOR[4], 3.0, clip)
+		segs.append([a, b])
+	for i in map.spine.size():
+		var s := to_screen(map.spine[i].pos)
+		if clip.has_point(s):
+			ci.draw_circle(s, 8.0, UiTheme.PHOSPHOR[3])
+	# A leg the world does not grow yet (orbit) leaves the sheet from the last stop.
+	var last_leg: Dictionary = map.legs[-1]
+	if not (last_leg.pos as Vector2).is_finite() and not map.spine.is_empty():
+		var from := to_screen(map.spine[-1].pos)
+		var to := Vector2(from.x, r.position.y + 18)
+		_dashed(ci, from, to, UiTheme.PHOSPHOR[3], 6, 6, clip)
+		var disc := Rect2i(Vector2i(roundi(to.x) - 13, r.position.y + 4), Vector2i(26, 26))
+		UiDraw.rect(ci, disc, UiTheme.PHOSPHOR[2])
+		UiDraw.text_centred(ci, disc.position.x + 13, disc.position.y + 2, str(int(last_leg.leg) + 1), UiTheme.GLASS)
+		var word := "%s, not grown yet" % str(last_leg.name)
+		var wr := Rect2i(disc.end.x + 6, disc.position.y + 2, UiFont.width(word) + 8, UiTheme.LINE)
+		if r.encloses(wr):
+			UiDraw.rect(ci, wr, Color(UiTheme.GLASS, 0.85))
+			UiDraw.text(ci, wr.position + Vector2i(4, 0), word, UiTheme.TEXT)
+			placed.append(wr)
+		placed.append(disc.grow(2))
 	# Every arc's arrows. Where several arcs run between the same two places they
 	# are drawn side by side, each in its own lane of the bundle, so an arc never
 	# hides another and shared ground reads as shared.
@@ -591,7 +639,11 @@ func _draw_world(ci: CanvasItem, kept: Dictionary) -> void:
 		if String(pa).hash() > String(pb).hash():
 			n = -n
 		var off := n * (float(k) - float(lane.size() - 1) * 0.5) * 5.0
+		segs.append([a + off, b + off])
 		var w := minf(_weight(arrow.from, kept), _weight(arrow.to, kept))
+		# Nothing chosen, the arcs give way a little to the journey under them.
+		if chosen == &"":
+			w *= 0.8
 		var col := Color(arc_colour(arrow.arc), w)
 		if chosen != &"" and map.beats[chosen].arc == arrow.arc and w >= 1.0:
 			_thick(ci, a + off, b + off, Color(UiTheme.RIM, 0.8), 6.0, clip)
@@ -640,6 +692,11 @@ func _draw_world(ci: CanvasItem, kept: Dictionary) -> void:
 	# Names last, over nothing already claimed: the spine's always, a station's
 	# once there is room, and close in the beats themselves.
 	names.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return bool(x.spine) and not bool(y.spine))
+	var key := "%s|%s|%s|%s" % [origin_px.round(), scale, chosen, filter]
+	var fresh := key != _spots_key
+	if fresh:
+		_spots.clear()
+		_spots_key = key
 	for nm: Dictionary in names:
 		# Far out, a place with one beat is named only when it is the chosen one's.
 		if not bool(nm.spine) and scale < NAME_FROM and (nm.list as Array).size() < 2 and not (nm.list as Array).has(chosen):
@@ -657,24 +714,12 @@ func _draw_world(ci: CanvasItem, kept: Dictionary) -> void:
 			w = maxi(w, UiFont.width(str(l[0])))
 		var h := lines.size() * UiTheme.LINE
 		var spot := Rect2i()
-		var found := false
-		for cand: Vector2i in [Vector2i(box.end.x + 6, box.position.y - 2), Vector2i(box.position.x - w - 14, box.position.y - 2),
-				Vector2i(box.position.x, box.end.y + 4), Vector2i(box.position.x, box.position.y - h - 4),
-				Vector2i(box.end.x + 6, box.end.y + 2), Vector2i(box.position.x - w - 14, box.end.y + 2),
-				Vector2i(box.end.x + 6, box.position.y - h - 2), Vector2i(box.position.x - w - 14, box.position.y - h - 2)]:
-			var tr := Rect2i(cand, Vector2i(w + 8, h))
-			if not r.encloses(tr):
-				continue
-			var free := true
-			for p: Rect2i in placed:
-				if p.intersects(tr):
-					free = false
-					break
-			if free:
-				spot = tr
-				found = true
-				break
-		if not found:
+		if fresh:
+			spot = _lay_name(box, Vector2i(w + 8, h), r, placed, segs)
+			_spots[nm.place] = spot
+		else:
+			spot = _spots.get(nm.place, Rect2i())
+		if spot.size == Vector2i.ZERO:
 			continue
 		placed.append(spot)
 		UiDraw.rect(ci, spot, Color(UiTheme.GLASS, 0.85))
@@ -687,6 +732,36 @@ func _draw_world(ci: CanvasItem, kept: Dictionary) -> void:
 	UiDraw.rect(ci, Rect2i(r.position.x + 6, by - 20, bw + 110, 28), Color(UiTheme.GLASS, 0.85))
 	UiDraw.rect(ci, Rect2i(r.position.x + 12, by, bw, UiBase.PITCH), UiTheme.TEXT_DIM)
 	UiDraw.text(ci, Vector2i(r.position.x + 20 + bw, by - 16), "%d tiles" % tiles, UiTheme.TEXT_DIM)
+
+
+## Where a station's name goes: the first place round its box clear of every
+## mark, name and line; failing that, clear of marks and names, its glass
+## covering the lines under it; failing that, nowhere (Rect2i()).
+static func _lay_name(box: Rect2i, size: Vector2i, r: Rect2i, placed: Array[Rect2i], segs: Array[Array]) -> Rect2i:
+	var w := size.x - 8
+	var h := size.y
+	var cands: Array[Vector2i] = [Vector2i(box.end.x + 6, box.position.y - 2), Vector2i(box.position.x - w - 14, box.position.y - 2),
+		Vector2i(box.position.x, box.end.y + 4), Vector2i(box.position.x, box.position.y - h - 4),
+		Vector2i(box.end.x + 6, box.end.y + 2), Vector2i(box.position.x - w - 14, box.end.y + 2),
+		Vector2i(box.end.x + 6, box.position.y - h - 2), Vector2i(box.position.x - w - 14, box.position.y - h - 2)]
+	for strict: bool in [true, false]:
+		for cand: Vector2i in cands:
+			var tr := Rect2i(cand, size)
+			if not r.encloses(tr):
+				continue
+			var free := true
+			for p: Rect2i in placed:
+				if p.intersects(tr):
+					free = false
+					break
+			if free and strict:
+				for seg: Array in segs:
+					if not _clip(seg[0], seg[1], Rect2(tr)).is_empty():
+						free = false
+						break
+			if free:
+				return tr
+	return Rect2i()
 
 
 func _draw_order(ci: CanvasItem, kept: Dictionary) -> void:
@@ -733,6 +808,9 @@ func _draw_order(ci: CanvasItem, kept: Dictionary) -> void:
 				var col := Color(arc_colour(arc), minf(_weight(last, kept), _weight(b, kept)))
 				_thick(ci, pos[last], pos[b], col, 2.0, Rect2(r))
 				_heads(ci, pos[last], pos[b], col, Rect2(r))
+				# A step back a leg (StoryMap.steps_back): the warning's own tick on it.
+				if int(map.beats[b].at_leg) < int(map.beats[last].at_leg):
+					_warn_tick(ci, ((pos[last] as Vector2) + (pos[b] as Vector2)) * 0.5 + Vector2(0, -12))
 			last = b
 	for b: StringName in pos:
 		_mark(ci, pos[b], 8 if col_w >= 8.0 else 6, b, _weight(b, kept))
@@ -840,7 +918,7 @@ func _draw_rail(ci: CanvasItem, kept: Dictionary) -> void:
 # --- the panel ---------------------------------------------------------------------------
 
 func _panel(ci: CanvasItem, r: Rect2i) -> void:
-	if map == null:
+	if map == null or not map.laid:
 		return
 	var y := r.position.y + 12
 	y = panel_heading(ci, r, y, "%s · seed %d" % ["world" if MODES[mode] == &"world" else "order", map.seed_value], true)
@@ -851,6 +929,9 @@ func _panel(ci: CanvasItem, r: Rect2i) -> void:
 		&"leg": f = "the leg: %d %s" % [int(filter_value) + 1, StoryMap.LEGS[int(filter_value)]]
 	y = panel_pair(ci, r, y, "showing", f)
 	y = panel_pair(ci, r, y, "beats", "%d, %d placed" % [map.beats.size(), map.beats.size() - map.unplaced.size()])
+	var back := map.arcs_stepping_back()
+	if not back.is_empty():
+		y = panel_pair(ci, r, y, "for the writers", "%d arcs step back a leg" % back.size(), UiTheme.WARN)
 	y += 8
 	if chosen == &"":
 		y = _arcs_panel(ci, r, y)
@@ -906,6 +987,8 @@ func _arcs_panel(ci: CanvasItem, r: Rect2i, y: int) -> int:
 		legs.sort()
 		UiDraw.rect(ci, Rect2i(panel_x(r) + 8, y + 8, 22, 4), col)
 		UiDraw.text(ci, Vector2i(panel_x(r) + 38, y), str(StoryContent.ARCS[arc].title), col)
+		if map.arcs_stepping_back().has(arc):
+			_warn_tick(ci, Vector2(panel_x(r) + 44 + UiFont.width(str(StoryContent.ARCS[arc].title)) + 10, y + 12))
 		UiDraw.text_right(ci, panel_right(r), y, "%d of %d  legs %s" % [got, n, ",".join(legs)], UiTheme.TEXT_DIM)
 		y += UiTheme.LINE
 	y += 6
@@ -950,6 +1033,14 @@ func _legend(ci: CanvasItem, r: Rect2i) -> void:
 	y += UiTheme.LINE + 4
 	UiDraw.frame(ci, Rect2i(panel_x(r) + 12, y + 2, 10, 14), UiTheme.MACHINE[3])
 	UiDraw.text(ci, Vector2i(panel_x(r) + 46, y), "a gate into 2029", UiTheme.TEXT_DIM)
+
+
+## The writers' warning: a small lit triangle in the one warning colour.
+static func _warn_tick(ci: CanvasItem, c: Vector2) -> void:
+	var pts := PackedVector2Array([c + Vector2(0, -7), c + Vector2(7, 5), c + Vector2(-7, 5)])
+	ci.draw_colored_polygon(pts, UiTheme.RIM)
+	ci.draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[0]]), UiTheme.WARN, 2.0)
+	ci.draw_line(c + Vector2(0, -3), c + Vector2(0, 1), UiTheme.WARN, 2.0)
 
 
 # --- lines ---------------------------------------------------------------------------------

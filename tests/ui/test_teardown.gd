@@ -13,10 +13,13 @@ extends TestCase
 ## is already going. What can be checked is that the two doors still say so.
 
 ## Every place a process running this game can end, and what must drain there.
+## Every door out of the process, and the one drain it goes through (main.gd
+## drain_pool): both call it, so the two exits cannot drift apart again.
 const DRAINS := [
 	["res://src/main.gd", "_exit_tree"],
 	["res://tests/run.gd", "_run"],
 ]
+const DRAIN := ["res://src/main.gd", "drain_pool"]
 
 
 func _body(source: String, fn: String) -> String:
@@ -41,6 +44,15 @@ func test_every_door_out_of_the_process_drains_the_bake() -> void:
 		check(source.length() > 0, "read %s" % path)
 		var body := _body(source, fn)
 		check(body.length() > 0, "%s still has %s()" % [path, fn])
+		check(body.contains("drain_pool"), "%s %s() must go through main.gd drain_pool()" % [path, fn])
+	var drain_src := FileAccess.get_file_as_string(DRAIN[0])
+	for row: Array in [DRAIN]:
+		var path: String = row[0]
+		var fn: String = row[1]
+		var body := _body(drain_src, fn)
+		check(body.length() > 0, "%s still has %s()" % [path, fn])
+		check(body.contains("realm_worlds.gd") and body.contains("settle"),
+			"%s %s() must wait out a realm's raise, or a worker outlives the tree" % [path, fn])
 		# By PATH in both, deliberately: naming UiSketch in either file compiles the
 		# UI package before the Events autoload exists and takes game.gd,
 		# crafting.gd and survival.gd down as load errors. Both forms are accepted

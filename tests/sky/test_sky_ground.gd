@@ -25,20 +25,21 @@ func test_the_mask_blends_across_an_ecotone_and_knows_a_hollow() -> void:
 			w.country[i] = Country.SNOWFIELD if x < 16 else Country.BURNING
 			# A ridge with a hollow dug in the middle of the burning half.
 			w.level[i] = 1 if (absi(x - 24) < 2 and absi(y - 16) < 2) else 6
-	var i_blend := 16 * 32 + 15
-	w.blend[i_blend] = 0.5
-	w.country2[i_blend] = Country.BURNING
+	# Half way across the border, over a band a map texel is sure to fall in.
+	for i_blend: int in [16 * 32 + 14, 16 * 32 + 15]:
+		w.blend[i_blend] = 0.5
+		w.country2[i_blend] = Country.BURNING
 	var img := SkyGround.image(w)
-	var snow_side := img.get_pixel(4, 16)
-	var burn_side := img.get_pixel(28, 8)
+	var snow_side := _at(img, 4, 16)
+	var burn_side := _at(img, 28, 8)
 	gt(snow_side.r, 0.99, "snow may lie deep in the snowfield")
 	lt(snow_side.g, 0.01, "ash may not")
 	gt(burn_side.g, 0.99, "ash may lie deep in the burning")
 	lt(burn_side.r, 0.01, "snow may not")
-	near(img.get_pixel(15, 16).r, 0.5, 0.02, "half way across the ecotone, half")
-	var ridge := img.get_pixel(4, 4).a * SkyGround.HEIGHT_RANGE
+	near(_at(img, 15, 16).r, 0.5, 0.02, "half way across the ecotone, half")
+	var ridge := _at(img, 4, 4).a * SkyGround.HEIGHT_RANGE
 	near(ridge, 3.0, 0.2, "flat ground's smoothed height is its height")
-	var around_hollow := img.get_pixel(24, 16).a * SkyGround.HEIGHT_RANGE
+	var around_hollow := _at(img, 24, 16).a * SkyGround.HEIGHT_RANGE
 	gt(around_hollow - 0.5, 1.0, "a hollow sits well below its neighbourhood, so fog lies in it")
 
 
@@ -73,3 +74,9 @@ func test_a_game_at_a_border_falls_one_country_and_lays_each_where_it_belongs() 
 		near(float(sky_sys.look[k]), float(own[k]), 0.05, "%s falls as the focus country's own" % k)
 	g.queue_free()
 	await frames(1)
+
+
+## The map's texel over tile (x, y) (SkyGround.TILE tiles to a texel).
+func _at(img: Image, x: int, y: int) -> Color:
+	var t := SkyGround.texel_of(x, y)
+	return img.get_pixel(t.x, t.y)

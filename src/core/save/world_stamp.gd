@@ -246,7 +246,15 @@ const UNKNOWN := "unknown"
 ##     of the first region in the plan's rank that lit one. Barricades and the
 ##     stolen light move; every kind's count holds within 2%. A tread lays
 ##     nothing in another tread's craters.
-const GEN := 45
+## 46. The props stage's placements are each their own (streamed worldgen
+##     S4j3a): a village's houses draw from a stream keyed on its square, not one
+##     stream through every village, and a region's wrecks are its own -- one to
+##     every `WRECK_BEACH` tiles of its hauling sand, from its own darts, spaced
+##     off its own. Places are furnished in each one's own hash order, not the
+##     order sited, and a village's spur runs to the island's own lines, never to
+##     another village's spur. Houses, wrecks and spurs move; every kind's count holds within 2%.
+##     (Provisional; restamped at landing.)
+const GEN := 46
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

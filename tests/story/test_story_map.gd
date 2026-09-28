@@ -164,3 +164,38 @@ func test_projecting_costs_less_than_a_second() -> void:
 	check(m.beats.size() > 0)
 	cost_lt(float(us), 1000000.0, "projected in %d us" % us)
 	print("story map projection: %d us on seed 1 at 512" % us)
+
+
+## A streamed world still being laid is never projected: a map of part of it
+## would say beats have no place that have one.
+func test_a_world_not_yet_whole_is_not_projected() -> void:
+	var w := WorldGen.generate(1, SIZE)
+	check(StoryMap.whole(w), "a world grown today is whole")
+	var part := GDScript.new()
+	part.source_code = "extends WorldData\nvar whole := false\n"
+	part.reload()
+	var laying: WorldData = part.new(1, SIZE)
+	check(not StoryMap.whole(laying), "one that says it is not whole is not")
+	var m := StoryMap.project(laying)
+	check(not m.laid, "and is not laid")
+	eq(m.beats.size(), 0, "nothing is projected from it")
+	eq(m.places.size(), 0, "and no place is read")
+	check(StoryMap.project(w).laid, "a whole world is")
+
+
+func test_every_step_back_a_leg_is_one() -> void:
+	for s: int in [1, 7]:
+		var m := _map(s)
+		var want := 0
+		for arc: StringName in m.arcs:
+			var list: Array = StoryContent.arc_beats(arc)
+			for i in range(1, list.size()):
+				var a: Dictionary = m.beats[list[i - 1]]
+				var b: Dictionary = m.beats[list[i]]
+				if m.local(a.place) and m.local(b.place):
+					continue
+				if int(b.at_leg) < int(a.at_leg):
+					want += 1
+		eq(m.steps_back.size(), want, "seed %d: every step back, and only those" % s)
+		for st: Dictionary in m.steps_back:
+			check(int(m.beats[st.to].at_leg) < int(m.beats[st.from].at_leg), "%s -> %s steps back" % [st.from, st.to])
