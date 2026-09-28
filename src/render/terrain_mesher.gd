@@ -2364,7 +2364,9 @@ const SPAN_UNDER_SHADE := 0.55
 
 func _spans(ch: Chunk) -> void:
 	var w := world
-	if not w.has_overhead():
+	# A room's mass overhead (a warren's buckled roof) is its model's to draw:
+	# this rock would stand inside the steel.
+	if not w.has_overhead() or w.realm == Realm.INTERIOR:
 		return
 	# Only a chunk with mass over it, or within the warp's reach of it.
 	var any := false

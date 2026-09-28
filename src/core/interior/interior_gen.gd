@@ -22,7 +22,13 @@ static func grow(seed_value: int, t: Threshold) -> Pocket:
 	if k == null:
 		return null
 	var rng := Rng.make(Rng.hash_ints(seed_value, t.host_code, floori(t.host.x * 4.0), floori(t.host.y * 4.0), SALT))
-	var l: InteriorLayout = k.recipe.call(&"lay", rng, t.land) if k.by_land else k.recipe.call(&"lay", rng)
+	var l: InteriorLayout
+	if k.by_exit:
+		l = k.recipe.call(&"lay", rng, t.land, t.exit_at.is_finite())
+	elif k.by_land:
+		l = k.recipe.call(&"lay", rng, t.land)
+	else:
+		l = k.recipe.call(&"lay", rng)
 	_turn(l, _quantize(t.out))
 	var w := WorldData.new(seed_value, l.size)
 	w.realm = Realm.INTERIOR
@@ -30,9 +36,33 @@ static func grow(seed_value: int, t: Threshold) -> Pocket:
 		for x in l.size:
 			var i := y * l.size + x
 			var on_floor := l.is_floor(x, y)
-			w.level[i] = FLOOR_LEVEL if on_floor else 0
+			w.level[i] = FLOOR_LEVEL + l.level_of(x, y) if on_floor else 0
 			w.ground[i] = l.ground_at(x, y)
 			w.country[i] = t.land
+	# A ladder stands on the riser at `at`, facing into the lower room: the tiles
+	# either side of the riser are the pair Climb takes.
+	for th: Dictionary in l.things:
+		if th.kind == &"ladder":
+			var at: Vector2 = th.at
+			var f: Vector2 = th.face
+			var foot := at + f * 0.5
+			var top := at - f * 0.5
+			w.add_ladder(Vector2i(floori(foot.x), floori(foot.y)), Vector2i(floori(top.x), floori(top.y)))
+	# A buckled roof (a warren's bay) hangs over the tiles within `along` / 2 of
+	# its middle along `face` and `across` / 2 across, its underside `low` over
+	# the floor: mass overhead the query stops a standing body under.
+	for th: Dictionary in l.things:
+		if th.kind != &"buckled":
+			continue
+		var mid: Vector2 = th.at
+		var f: Vector2 = th.face
+		var side := Vector2(-f.y, f.x)
+		for y in l.size:
+			for x in l.size:
+				var c := Vector2(x + 0.5, y + 0.5) - mid
+				if absf(c.dot(f)) < float(th.along) * 0.5 and absf(c.dot(side)) < float(th.across) * 0.5 and l.is_floor(x, y):
+					var under := FLOOR_LEVEL + l.level_of(x, y) + int(float(th.low) / WorldData.STEP)
+					w.set_overhead(x, y, under, under + 2)
 	w.spawn = l.inside()
 	for pr: Dictionary in l.props:
 		var prop := WorldProp.new(w.next_id(), int(pr.kind), pr.at, (pr.face as Vector2).angle(), 1.0)

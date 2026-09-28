@@ -20,6 +20,9 @@ var door := Vector2.ZERO
 var out := Vector2.RIGHT
 ## The landscape the host stands in: the pocket is made of it.
 var land := 0
+## Where a way out that is not the door comes up (a warren tower's crawl onto
+## the plateau, SlotDoors.exit_beside), or INF where the door has none.
+var exit_at := Vector2.INF
 
 
 ## A house's door: it faces +X and GenScatter turns houses by `rot`, so the door
@@ -105,8 +108,9 @@ const FACE := 0xFA0CE
 const FACE_OUT := 0.7
 
 
-static func of_face(face: Vector2, out_dir: Vector2, kind: StringName, land: int) -> Threshold:
+static func of_face(face: Vector2, out_dir: Vector2, kind: StringName, land: int, exit := Vector2.INF) -> Threshold:
 	var t := Threshold.new()
+	t.exit_at = exit
 	t.kind = kind
 	t.out = out_dir.normalized()
 	t.rot = t.out.angle()

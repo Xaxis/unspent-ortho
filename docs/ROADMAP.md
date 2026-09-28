@@ -49,6 +49,10 @@ Each area lists its state and its next few points.
   same bar.
 - Missing shared systems: flying bodies, spanning props (cables), ruled canals,
   time-varying ground, a glass ground.
+- The middens' rooms (docs/MIDDENS_ROOMS.md): container warrens (levels,
+  ladders, towers, buckled bays), the face settlement, and a room's hush while a
+  machine outside passes its door (DoorHush: the machines at the door are
+  snapshot at the crossing and walked on along their rounds) are built.
 
 ### 4. Core play
 - State: walk, run, crouch, jump, swim, target, dodge and swing, stealth, taking

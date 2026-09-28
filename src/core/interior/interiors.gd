@@ -28,6 +28,7 @@ const RECIPES := {
 	&"home": "res://src/content/interiors/home.gd",
 	&"squat": "res://src/content/interiors/squat.gd",
 	&"container_warren": "res://src/content/interiors/container_warren.gd",
+	&"face_hold": "res://src/content/interiors/face_hold.gd",
 }
 
 ## Which of a sparse landscape's houses have somebody in them (`home.open`).
@@ -117,7 +118,7 @@ static func thresholds(w: WorldData) -> Array[Threshold]:
 				var k: StringName = d.interiors.get(pair[0], &"") if d != null else &""
 				if k == &"" or kind(k) == null:
 					continue
-				out.append(Threshold.of_face(site[0], site[1], k, int(site[2])))
+				out.append(Threshold.of_face(site[0], site[1], k, int(site[2]), site[3] if site.size() > 3 else Vector2.INF))
 	_doors[id] = out
 	return out
 
@@ -180,6 +181,13 @@ const LOOT := {
 	# What the plan sorted out of the heap and never came back for, kept behind a
 	# vault's door or at a run's end: salvage for a bench, and now and then
 	# something that still has words in it (the middens keep what was written).
+	# What the settlement keeps on its words room's shelves (KeptBy), theirs: what
+	# the sort turned up that was not words. Never a record: the reader's deed asks
+	# for one, and their own shelf is not where it comes from.
+	&"face_hold": [
+		{"item": &"scrap", "count": Vector2i(2, 4)},
+		{"item": &"copper", "count": Vector2i(1, 2), "chance": 0.5},
+	],
 	&"container_warren": [
 		{"item": &"scrap", "count": Vector2i(3, 6)},
 		{"item": &"copper", "count": Vector2i(1, 2), "chance": 0.6},

@@ -11,9 +11,11 @@ extends RefCounted
 ##              of CELL x CELL blocks, the room with most ways in and then the
 ##              widest
 ##
-## Each site is [face point, out direction, landscape index]. A face is found on
-## the TILES, not the plan: the warp moves the land under the plan, and about
-## half of the planned alley ends meet no face within reach.
+## Each site is [face point, out direction, landscape index], and an alley's a
+## fourth: where a crawl up through the heap from behind its door comes out on
+## the plateau (`exit_beside`), or INF where there is no plateau for one. A face
+## is found on the TILES, not the plan: the warp moves the land under the plan,
+## and about half of the planned alley ends meet no face within reach.
 
 ## Levels a face must rise in one step to hold a door: a container's end door is
 ## 2.5 units, five levels.
@@ -26,6 +28,13 @@ const CELL := 4
 ## Tiles past a room's radius a face is looked for.
 const ROOM_REACH := 5.0
 const ROOM_SALT := 0x5E77
+## A crawl exit comes up this far to the side of the alley's axis at the face's
+## top, onto a plateau that runs on at least EXIT_RUN tiles that way: straight
+## behind an alley's end is the next node's floor (measured: 0 of 30 faces had
+## 4 plateau tiles behind them, and 24 of 30 had 4+ to one side).
+const EXIT_SIDE := 3.5
+const EXIT_RUN := 4
+const EXIT_LOOK := 12
 
 ## Per world OBJECT: its plan (GenSlots.node does not answer blind alleys).
 static var _plans: Dictionary = {}
@@ -57,7 +66,7 @@ static func alleys(w: WorldData) -> Array:
 			var face := face_along(w, end - dir * ALLEY_SHORT, dir, ALLEY_REACH)
 			if face.is_finite() and _slot_land(w, face + dir * 0.5) == land \
 					and not _on_ramp(plan, [k, other], face - dir * Threshold.FACE_OUT):
-				out.append([face, -dir, land])
+				out.append([face, -dir, land, exit_beside(w, face, dir, land)])
 	return out
 
 
@@ -117,6 +126,34 @@ static func face_along(w: WorldData, from: Vector2, dir: Vector2, reach: float) 
 		prev = l
 		last = p
 	return Vector2.INF
+
+
+## Where a crawl from behind a face door at `face` (the alley running along
+## `dir` into it) comes up: EXIT_SIDE to the side of the axis just over the
+## face's top, on the side where the plateau runs on further, if it runs at least
+## EXIT_RUN tiles there at the face's height or above, in the same landscape.
+## INF where neither side does.
+static func exit_beside(w: WorldData, face: Vector2, dir: Vector2, land: int) -> Vector2:
+	var over := face + dir * 0.5
+	var top := w.level_at(floori(over.x), floori(over.y))
+	var side := Vector2(-dir.y, dir.x)
+	var best := Vector2.INF
+	var most := EXIT_RUN - 1
+	for s: float in [1.0, -1.0]:
+		var at := over + side * (s * EXIT_SIDE)
+		var run := 0
+		for n in EXIT_LOOK:
+			var p := at + side * (s * float(n))
+			var tx := floori(p.x)
+			var ty := floori(p.y)
+			if not w.in_bounds(tx, ty) or w.country_at(tx, ty) != land or w.level_at(tx, ty) < top - 1 \
+					or Ground.is_water(w.ground_at(tx, ty)):
+				break
+			run += 1
+		if run > most:
+			most = run
+			best = Vector2(floorf(at.x) + 0.5, floorf(at.y) + 0.5)
+	return best
 
 
 ## A room's mouth: toward its one closed side if it has one, else round its

@@ -20,6 +20,23 @@ extends RefCounted
 ##   inside a walked one, so crouching past it is a way and walking is not
 ##   (test_container_warren).
 ##
+## THE PLAN, by hash: `line` (the run on one level), `step` (the run climbs once,
+## a container's height, 5 levels, up a ladder) and `tower` (twice, the vault at
+## the top). A tower is dealt only behind a door whose crawl can come up onto
+## the plateau (Threshold.exit_at, SlotDoors.exit_beside): its top container has
+## a way up through the heap (`crawl_up`, an `exit`), and a known tower is the
+## one way up out of the maze there is besides the ramps. The heap was poured over boxes at every height, and a stepped run
+## reads from above as a terraced heap of steel. Each rise is a riser with a
+## `ladder` thing on it, facing into the lower room (InteriorGen hands the pocket
+## the ladder, Climb takes it up and down), where the one below meets the one
+## above.
+##
+## COLLAPSE (the middens' hazard, `collapse`): in about that share of warrens one
+## container's roof has buckled over a BAY across its middle, down to BUCKLE_H,
+## a `buckled` thing InteriorGen hands the pocket as mass overhead: a crouched
+## body passes under it (Tuning.PLAYER_CROUCH_HEIGHT), a standing one does not.
+## Never the first container (the way in) nor the last (the sorter's floor).
+##
 ## What the vault keeps (Interiors.LOOT `container_warren`): salvage the machines
 ## sort for, and rarely a drive.
 ##
@@ -42,6 +59,12 @@ const MOST := 5
 ## was poured, not laid, never lines up, and the joint is always wide enough to
 ## pass (the end doors are the middle unit of a container's width).
 const JOG := 1
+## A container's height in levels (2.5 units): each step of a stepped run.
+const RISE := 5
+## A buckled bay: this many tiles along the run, the roof down to BUCKLE_H over
+## the floor (three levels, where a stand needs four and a crouch three).
+const BAY := 2
+const BUCKLE_H := 1.5
 ## The sorter's hours, on the clock: the middens' machines sort by day.
 const SHIFT := Vector2(6, 19)
 ## Where the sorter sleeps: in its side container, this far in from the end
@@ -66,19 +89,30 @@ static func make() -> InteriorKind:
 	k.door_width = 1.2
 	# Laid for its landscape, so a slot opens only where its words are written.
 	k.by_land = true
+	k.by_exit = true
 	k.recipe = load("res://src/content/interiors/container_warren.gd")
 	k.model = "res://src/models/interior/warren_model.gd"
 	k.hatch = "res://src/models/interior/warren_hatch_model.gd"
 	return k
 
 
-static func lay(rng: RandomNumberGenerator, land: int = -1) -> InteriorLayout:
+static func lay(rng: RandomNumberGenerator, land: int = -1, has_exit: bool = false) -> InteriorLayout:
 	var l := InteriorLayout.new()
-	l.plan = &"line"
+	l.plan = [&"line", &"step", &"tower"][rng.randi_range(0, 2 if has_exit else 1)]
 	l.dressing = [&"dug", &"kept", &"sorted"][rng.randi_range(0, 2)]
 	l.has_hearth = false
 	var n := rng.randi_range(FEWEST, MOST)
-	var vault := rng.randf() < 0.5
+	# A tower keeps its vault at the top.
+	var vault := l.plan == &"tower" or rng.randf() < 0.5
+	# The containers from which the run stands a RISE higher: none, one, or two.
+	var rises: Array[int] = []
+	match l.plan:
+		&"step":
+			rises.append(rng.randi_range(1, n - 1))
+		&"tower":
+			var r1 := rng.randi_range(1, n - 2)
+			rises.append(r1)
+			rises.append(rng.randi_range(r1 + 1, n - 1))
 	# Laid from the door northward, in negative y, then moved down so the door's
 	# wall is the south edge of the first container.
 	var boxes: Array[Rect2i] = []
@@ -92,12 +126,17 @@ static func lay(rng: RandomNumberGenerator, land: int = -1) -> InteriorLayout:
 	var last := boxes[n - 1]
 	var vault_rect := Rect2i(last.position.x + WIDE / 2 - VAULT / 2, last.position.y - VAULT, VAULT, VAULT)
 	var drop := Vector2i(0, LONG * n + (VAULT if vault else 0))
+	var level := 0
 	for i in n:
+		if rises.has(i):
+			level += RISE
 		l.rooms.append(Rect2i(boxes[i].position + drop, boxes[i].size))
 		l.room_ground.append(Ground.STEEL_FLOOR)
+		l.room_level.append(level)
 	if vault:
 		l.rooms.append(Rect2i(vault_rect.position + drop, vault_rect.size))
 		l.room_ground.append(Ground.FLOOR)
+		l.room_level.append(level)
 	# The sorter's own container, across the side of one in the middle of the
 	# run, lying the other way: the rest of the run never reaches its rows.
 	if l.dressing == &"sorted":
@@ -106,6 +145,7 @@ static func lay(rng: RandomNumberGenerator, land: int = -1) -> InteriorLayout:
 		var sx := host.end.x if east else host.position.x - LONG
 		l.rooms.append(Rect2i(sx, host.position.y + 1, LONG, WIDE))
 		l.room_ground.append(Ground.STEEL_FLOOR)
+		l.room_level.append(l.room_level[n / 2])
 	var first := l.rooms[0]
 	l.door = Vector2(first.position.x + 1.5, first.end.y)
 	l.door_out = Vector2(0, 1)
@@ -200,6 +240,10 @@ static func _fit(l: InteriorLayout, n: int, vault: bool, rng: RandomNumberGenera
 	for i in run_joints:
 		way.append(joints[i] + Vector2(0, 0.8))
 		way.append(joints[i] + Vector2(0, -0.8))
+		# Where the next room stands higher, a ladder up its riser, at the joint,
+		# facing (as every thing does) into the room it stands in, the lower.
+		if l.room_level[i + 1] > l.room_level[i]:
+			_put(l, &"ladder", joints[i], Vector2(0, 1), 0.0)
 	l.walks.append(way)
 	# Each container: its manifest stencilled on a side wall, and what is in it.
 	for i in n:
@@ -232,6 +276,22 @@ static func _fit(l: InteriorLayout, n: int, vault: bool, rng: RandomNumberGenera
 				_put(l, &"crate", Vector2(wall_x + face.x * 0.4, mid_y + 1.8), face, 0.4)
 			&"sorted":
 				_put(l, &"sorted_bins", Vector2(wall_x + face.x * 0.35, mid_y), face, 0.35, {"glare": 1.2, "shift": true})
+	# The buckled bay, by the landscape's collapse share: across the middle of a
+	# container that is neither the way in nor the last.
+	var d := BiomeRegistry.by_index(land)
+	var collapse := float(d.hazards.get(&"collapse", 0.0)) if d != null else 0.0
+	if n >= 3 and rng.randf() < collapse:
+		var r := l.rooms[rng.randi_range(1, n - 2)]
+		var mid := Vector2(float(r.position.x) + WIDE * 0.5, float(r.position.y) + LONG * 0.5)
+		_put(l, &"buckled", mid, Vector2(0, 1), 0.0, {"along": float(BAY), "across": float(WIDE), "low": BUCKLE_H})
+	# A tower's way up: in its top container, on the wall across from what it
+	# holds, a crawl up through the rusted roof into the heap, and out on the
+	# plateau beside the alley.
+	if l.plan == &"tower":
+		var top := l.rooms[n - 1]
+		var side := -1.0 if ((n - 1) % 2) == 0 else 1.0
+		var wall_x := float(top.end.x) - 0.36 if side < 0.0 else float(top.position.x) + 0.36
+		_put(l, &"crawl_up", Vector2(wall_x, float(top.position.y) + LONG * 0.5), Vector2(side, 0), 0.0, {"exit": true})
 	# The vault: its round door hung in the joint, and the strongbox at its back.
 	if vault:
 		var v := l.rooms[n]

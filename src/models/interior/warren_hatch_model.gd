@@ -8,6 +8,8 @@ extends RefCounted
 ## which for a door in a face is just inside the face line.
 
 const Kit := preload("res://src/models/props/kit.gd")
+# Everything here goes in `made`, the one mesh built: Kit.rod draws into `found`,
+# which a hatch never builds, so its bars were never drawn.
 ## What stops a body: the face itself already does; this is the doors' swing.
 const REACH := 0.35
 ## Its drawn box in its own frame and its height (21_doors `sight_boxes`).
@@ -40,7 +42,7 @@ static func node(mat: Material) -> Node3D:
 		var out := 0.0 if (r & 1) == 0 else -0.03
 		k.made.box(Vector3(out, 0.08, z0), Vector3(out + 0.05, HIGH - 0.16, z0 + 0.17), paint, paint)
 	for z: float in [-0.75, -0.35]:
-		k.rod(Vector3(0.08, 0.12, z), Vector3(0.08, HIGH - 0.2, z), 0.025, 6, bar)
+		k.made.strut(Vector3(0.08, 0.12, z), Vector3(0.08, HIGH - 0.2, z), 0.025, 6, bar)
 	# The other leaf hung ajar, swung a third open, the gap the way in.
 	var hinge := Vector3(0.05, 0.08, HALF - 0.14)
 	var swing := Vector3(0.55, 0.0, -0.95).normalized() * 1.06
@@ -48,7 +50,7 @@ static func node(mat: Material) -> Node3D:
 	k.made.box(Vector3(minf(hinge.x, tip.x), 0.08, minf(hinge.z, tip.z)), Vector3(maxf(hinge.x, tip.x) + 0.05, HIGH - 0.16, maxf(hinge.z, tip.z) + 0.03), paint, paint)
 	for u: float in [0.35, 0.75]:
 		var q := hinge + swing * u + Vector3(0.06, 0.0, 0.0)
-		k.rod(Vector3(q.x, 0.12, q.z), Vector3(q.x, HIGH - 0.2, q.z), 0.025, 6, bar)
+		k.made.strut(Vector3(q.x, 0.12, q.z), Vector3(q.x, HIGH - 0.2, q.z), 0.025, 6, bar)
 	var n := Node3D.new()
 	var mi := MeshInstance3D.new()
 	mi.mesh = k.made.build()

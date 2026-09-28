@@ -542,6 +542,10 @@ const DEFS := {
 	# carrying it home. It is proof, and it is the only thing in the game worth
 	# more in a person's hands than where it was (docs/VISION.md).
 	&"record": {"name": "filed record", "bulk": 0.5, "group": &"found", "icon": [&"paper", &"slate", &"lens"]},
+	# The middens' way out, EARNED from a face settlement's reader for a record
+	# (21_doors, docs/MIDDENS_ROOMS.md): while carried, the map draws the route
+	# it was laid along to the nearest ramp. Never made, never sold.
+	&"string": {"name": "ball of string", "bulk": 0.2, "group": &"found", "icon": [&"coil", &"linen", &"earth"]},
 }
 
 

@@ -6,7 +6,7 @@ extends TestCase
 ## Every kind has a row of what it holds (Interiors.LOOT).
 
 const LIVED: Array[StringName] = [&"cottage", &"home", &"stilt_room", &"hulk_hold", &"tower_lobby",
-	&"cliff_room", &"rooted_floor", &"tenement", &"roundhouse", &"squat"]
+	&"cliff_room", &"rooted_floor", &"tenement", &"roundhouse", &"squat", &"face_hold"]
 const UNLIVED: Array[StringName] = [&"weapons_hall", &"foundry", &"data_hall", &"saw_hall",
 	&"maintenance_bay", &"laid_table", &"bunker", &"frozen_hold", &"container_warren"]
 
@@ -28,7 +28,12 @@ func test_a_room_is_lived_in_only_where_its_recipe_seats_people() -> void:
 		if not k.lived():
 			continue
 		for s in 4:
-			eq(lay(k, s).residents.size(), 0, "%s: nobody lives with a machine at its post" % id)
+			# The people who live there (a DWELLER, 21_doors) are no machine.
+			var machines := 0
+			for r: Dictionary in lay(k, s).residents:
+				if r.role != &"dweller":
+					machines += 1
+			eq(machines, 0, "%s: nobody lives with a machine at its post" % id)
 
 
 func test_every_room_has_what_it_holds() -> void:

@@ -136,12 +136,16 @@ static func make() -> BiomeDef:
 	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
 	# And a blind alley's end in the slot labyrinth opens on a warren of the
 	# containers the heap was poured over (container_warren.gd).
-	d.interiors = {&"house": &"home", &"slot:alley": &"container_warren"}
-	# Who kept them: the sorter, who has the refuse into bins by what it is, and
-	# the wirer, who makes it work again.
+	# A junction room's wall opens on the settlement cut back into the heap
+	# (face_hold): the middens has no villages, and this is why.
+	d.interiors = {&"house": &"home", &"slot:alley": &"container_warren", &"slot:room": &"face_hold"}
+	# Who kept them: the sorter, who has the refuse into bins by what it is; the
+	# wirer, who makes it work again; and the reader, who keeps what has words in
+	# it (docs/MIDDENS_ROOMS.md, the rulings).
 	d.home = {"households": {
 		&"sorter": {"wants": [&"sorted_bins", &"sorted_bins", &"shelf_salvage", &"basket"], "by_hearth": []},
 		&"wirer": {"wants": [&"workbench", &"coil", &"machine_lamp", &"sorted_bins"], "by_hearth": []},
+		&"reader": {"wants": [&"ledgers", &"radio", &"shelf_salvage", &"basket"], "by_hearth": []},
 	}}
 	d.sound_bed = &"bed_wreck"
 	d.surface = _surface
