@@ -28,10 +28,13 @@ tools/tour.sh tours/x.tour      # scripted real-input proof; each tour's header 
 tools/canon.sh [--accept]       # canon frames vs the accepted set
 tools/web.sh                    # export and boot the web build in headless Chromium
 tools/deploy.sh [--prod]        # deploy to Vercel and prove it loads there
+tools/heavy.sh CMD...           # run a tour/shot/render/web job only when the box can take it, one at a time
 ```
 
 - **Look at the pictures.** After any visible change, shoot it and Read the PNG. A
   green test says nothing about how it looks.
+- **Every tour, shot, render or web run goes through `tools/heavy.sh`.** Builders
+  running godot at once starved the box and broke the owner's own apps.
 - **Check memory before a full run:** `vm_stat | head -2`. Free pages × 16 KB under
   ~500 MB means a full suite gets killed; use `tools/test.sh FILTER` instead.
 - **A test written to show a bug must fail first.** Put the bug back and watch it

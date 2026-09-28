@@ -18,22 +18,22 @@ Builders: **A** introduction and story (teammate3, words via story-wright) ·
 **B** crafting with a reason, and the fight (fight) · **C** stakes and consequence
 (teammate2). The owner plays a web build at each ★.
 
-1. [ ] **The wake** (A, `world/wake`). A new game starts in the shallows, the black site
+1. [x] **The wake** (A, `world/wake`). A new game starts in the shallows, the black site
    behind him; he surfaces on the real clock; Maren waits at the water; the record's
    first lines paced on what happens. The proof tour starts here. ★
-   - [ ] **1b-i The Tether** (A, `look/tether`). A hair-thin thread from the far shore's
+   - [x] **1b-i The Tether** (A, `look/tether`). A hair-thin thread from the far shore's
      horizon up to the Foundry, a fixed lit point; a climber's light rides it; the ring
      passes near on its own orbit. Seen over the shoulder from the first morning.
-   - [ ] **1b-ii Staging** (A). One CameraRig staging call (look, hold, return, first sight
+   - [x] **1b-ii Staging** (A). One CameraRig staging call (look, hold, return, first sight
      only), used by the wake, the Tether's first sight, and the Reaper's reveal and fall.
-2. [ ] **Maren's ask becomes the goal** (A). After the pick, the goal line is her
+2. [x] **Maren's ask becomes the goal** (A). After the pick, the goal line is her
    lead, not a recipe; the guide names why.
-3. [ ] **The Tide Reaper, named** (A+B). A person names the yard and its keeper;
+3. [x] **The Tide Reaper, named** (A+B). A person names the yard and its keeper;
    the knife does not bite its plating, so the next make has a reason.
-4. [ ] **The Reaper as a set piece** (B). Force and one other way; tells in its
+4. [x] **The Reaper as a set piece** (B). Force and one other way; tells in its
    body; staged reveal and fall. ★
 5. [ ] **Its fall changes the coast** (C). The first memory opens; the land shows it.
-6. [ ] **The taken** (C, words via A). The motive awaits the owner's ruling in STORY.md.
+6. [x] **The taken** (C, words via A). The motive awaits the owner's ruling in STORY.md.
    Rescue on a clock, or a loss heard in Maren's lines.
 7. [ ] **Proof** (all). The proof tour plays the whole slice unassisted. ★
 
@@ -66,8 +66,8 @@ line that made it. Proved by frames read at three zooms on two seeds, and the ow
 ## Fixes that serve the slice
 
 - [ ] Title-time warm: no gain measured; would need `--programs` in `--play` to separate compile from state.
-- [ ] The intermittent test hang after `works/test_in_game`'s depot test (blocks gates).
-- [ ] Land the fight tuning and gear pass (`land/fight4`, `land/sweep`) once the hang is fixed: step 4 builds on it.
+- [ ] CI shards 0 and 4 hang at exit after their last test passes, on branches that add
+  test files (land/reaper, land/fall); drain_pool() did not cover it. Blocks step 5.
 - [ ] The white panel on the player's back over the shoulder. Seen once (main
   c330ea47, `--seed=1 --hour=6.5 --view=shoulder --weather=clear:0`): a tall white
   card with a hit-splash on it, the player in a recoil pose. Not reproduced by the
@@ -79,7 +79,7 @@ line that made it. Proved by frames read at three zooms on two seeds, and the ow
   programs were first drawn there. 01_warm_lights' fourth state draws them at the
   boot: `--programs` 0 at the switch (tours/shoulder-warm.tour). Costs about 1.1 s of
   boot on the web (boot ready game 6.7/6.9 s -> 7.7/8.1 s, A/B on one box).
-- [ ] Web: the 0.8–1.0 s hitch after crowd spawns (main ab92296c) is not on main
+- [x] Web: the 0.8–1.0 s hitch after crowd spawns (main ab92296c) is not on main
   fd9bb4e7: four runs of teammate3's crowd_dusk scene, worst 76–87 ms, 0 programs
   at the spawns or the swing. Leads if it returns: the web heap grows 900 MB -> 1 GB
   around the dusk teleport and spawns (a wasm grow landing in a frame), and
