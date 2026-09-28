@@ -50,6 +50,7 @@ func started() -> void:
 
 
 func _stage(want: int) -> void:
+	var held_for: float = game.options.carried_hours * 60.0
 	var region := -1
 	var home := ""
 	for w: WorksSite in Works.sites(game.world):
@@ -73,11 +74,11 @@ func _stage(want: int) -> void:
 				var who: int = s.people[0]
 				holdings.call("lose_person", s, who)
 				@warning_ignore("return_value_discarded")
-				taken.take(who, "", s.id, s.name, region, game.clock.minutes - 600.0 if game.clock != null else 0.0)
+				taken.take(who, "", s.id, s.name, region, game.clock.minutes - held_for if game.clock != null else 0.0)
 				want -= 1
 	for i in want:
 		@warning_ignore("return_value_discarded")
-		taken.take(-1, "", -1, home, region, game.clock.minutes - 600.0 if game.clock != null else 0.0)
+		taken.take(-1, "", -1, home, region, game.clock.minutes - held_for if game.clock != null else 0.0)
 
 
 ## Somebody has been carried off. Called by the raids package at the moment the
