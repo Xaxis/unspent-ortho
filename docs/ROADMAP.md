@@ -115,6 +115,15 @@ Landscape batch 2+3
 (`land/s4j3`, `world/s5c`) · the crossing programs check and long-walk tour ·
 the vent-tender and G10 · walls follow-ups · web frame budgets.
 
+Latent worldgen bugs no main seed hits yet (each moves seeds, so each gets its own GEN
+and a check that the home coast keeper stays put):
+- `gen_treads._never` marks water HARD but not the tiles beside it, so a gouge or step
+  can hang water over a cut (seed 42 at GEN 47, drowned city (1223,756)). Fix: tiles
+  4-adjacent to land water are HARD too; test_the_drowned_city goes red.
+- `Sentinels.gets_out` passes a lair on 6 clear rays, but test_keeper_reach floods for
+  300 tiles (seed 1's crags lair opened 262 at GEN 47). Fix: gets_out floods, with
+  the test's `_opens` moved into Sentinels.
+
 ## The whole game, as slices
 
 Each slice is one leg of the journey (`STORY.md`), playable end to end, and adds one
