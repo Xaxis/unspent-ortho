@@ -49,7 +49,7 @@ src/core/save/save_core.gd::load_world::list
 src/core/save/save_core.gd::save_world::list
 src/core/sentinel/sentinels.gd::feeds::list
 src/core/sentinel/sentinels.gd::feeds::whole
-src/core/sentinel/sentinels.gd::lair::list
+src/core/sentinel/sentinels.gd::_lair_worked::list
 src/core/sentinel/sentinels.gd::states::list
 src/core/story/story_casting.gd::_candidates::builder Landmarks.sites
 src/core/story/story_casting.gd::_candidates::builder Portals.in_world

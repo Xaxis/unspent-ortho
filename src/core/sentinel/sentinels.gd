@@ -52,6 +52,23 @@ static var _lock := Mutex.new()
 static var _declared := false
 ## Each world's keepers' lairs: [region, def, lair] rows, keyed as `states` asks.
 static var _lairs: Dictionary = {}
+## How many lairs have been worked out (never answered from memory): a test's count.
+static var lairs_worked := 0
+static var _lair_at: Dictionary = {}
+static var _lair_lock := Mutex.new()
+## Several worlds' regions (a surface and its realms, a test's few seeds).
+const LAIRS_MOST := 512
+
+
+## Let go of every remembered lair, so the next ask works it out afresh (a test
+## timing the real search).
+static func forget() -> void:
+	_lair_lock.lock()
+	_lair_at.clear()
+	_lair_lock.unlock()
+	_lairs_lock.lock()
+	_lairs.clear()
+	_lairs_lock.unlock()
 static var _lairs_lock := Mutex.new()
 
 
@@ -268,7 +285,32 @@ static func states(world: WorldData) -> Array[SentinelState]:
 ## same region always put it in the same place, because a boss that moves between
 ## runs cannot be walked to twice.
 ## Vector2.INF when this region has nowhere to keep (see CLEAR_OF_HOME).
+##
+## Worked out once per world, region and design and remembered (`_lair_at`):
+## the search is dear and every caller -- the depot sweep over every region,
+## the keepers' states, the spawner, the tours -- asks the same question.
+## Keyed like Works.sites, by the world's instance and how many marks it holds,
+## so a world still being laid is never handed an old answer.
 static func lair(world: WorldData, region: Dictionary, def: SentinelDef) -> Vector2:
+	var key := "%d:%d:%d:%s" % [world.get_instance_id(), world.landmarks.size(), int(region.get("id", -1)), def.id]
+	_lair_lock.lock()
+	var had: Variant = _lair_at.get(key)
+	_lair_lock.unlock()
+	# Asked by type, never by an operator on the Variant: this runs on the
+	# realm raise's worker (tests/core/test_worker_types.gd).
+	if typeof(had) == TYPE_VECTOR2:
+		return had as Vector2
+	var at := _lair_worked(world, region, def)
+	_lair_lock.lock()
+	if _lair_at.size() >= LAIRS_MOST:
+		_lair_at.clear()
+	_lair_at[key] = at
+	lairs_worked += 1
+	_lair_lock.unlock()
+	return at
+
+
+static func _lair_worked(world: WorldData, region: Dictionary, def: SentinelDef) -> Vector2:
 	var id := int(region.get("id", -1))
 	var home := world.spawn
 	# **AMONG THE STATIONS OF ONE KIND, THE ONE IT CAN EAT AT.** This took the
