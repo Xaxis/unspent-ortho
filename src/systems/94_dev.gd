@@ -329,7 +329,7 @@ func _take_picture() -> void:
 ## the glass's edge), dev_noted (a note kept in the last minute), dev_touched,
 ## dev_clock:N (the running clock's rate is N), dev_picture (a clean picture kept),
 ## dev_job:done and dev_job:ok (the slate's background job has ended, and well),
-## and the story map's own (story_map, story_map:order, :chosen, :narrow).
+## and the story map's own (story_map, story_map:order, :chosen, :narrow, story_arc).
 func tour_seen(what: StringName) -> bool:
 	match what:
 		&"dev_armed":
@@ -345,6 +345,8 @@ func tour_seen(what: StringName) -> bool:
 			return _pictures > 0
 	# The story map: story_map (on the glass, opened inside a second), story_map:order
 	# (in its ORDER view), story_map:chosen (a beat chosen), story_map:narrow (filtered).
+	if what == &"story_arc":
+		return screen != null and screen.is_open and screen.page() is DevPageArcView
 	if String(what).begins_with("story_map"):
 		var m := screen.page() as DevPageStoryMap if screen != null and screen.is_open else null
 		if m == null or m.map == null:

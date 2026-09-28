@@ -339,6 +339,9 @@ func pick(what: StringName) -> bool:
 	if w == "narrow":
 		next_filter()
 		return true
+	if w == "arc" and chosen != &"":
+		screen.push_page(DevPageArcView.new().of(map.beats[chosen].arc, chosen))
+		return true
 	if map.beats.has(what):
 		choose(what)
 		return true
@@ -545,7 +548,8 @@ func draw_wide(ci: CanvasItem) -> void:
 func _draw_overlay() -> void:
 	var ci := _overlay
 	_hits.clear()
-	if map == null:
+	# Left, the layer's last draw may still come before it is freed.
+	if map == null or ci == null:
 		return
 	if not map.laid:
 		var r := sheet_rect()

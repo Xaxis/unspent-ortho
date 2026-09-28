@@ -137,3 +137,33 @@ func test_the_story_map_opens_fast_and_walks_the_story() -> void:
 	s.handle(&"back")
 	check(s.page() is DevPageStory, "esc is the story page again")
 	_end(g)
+
+
+## e on a chosen beat of the map opens its arc as a graph, tab walks its nodes,
+## e puts a node's line of source on the clipboard, and esc is the map again,
+## just as it was left.
+func test_the_arc_view_opens_off_the_map_and_backs_out_to_it() -> void:
+	var g := _make()
+	var s := _open(g, &"story_map")
+	var m := s.page() as DevPageStoryMap
+	s.handle(&"inventory")
+	var beat := m.chosen
+	var at := m.origin_px
+	s.handle(&"confirm")
+	var v := s.page() as DevPageArcView
+	check(v != null, "e opens the chosen beat's arc")
+	if v == null:
+		_end(g)
+		return
+	eq(v.arc, m.map.beats[beat].arc)
+	eq(v.chosen, StringName("beat:%s" % beat), "standing on the beat it was opened from")
+	eq(v.shown.size(), v.graph.nodes.size(), "a graph node for every node")
+	s.handle(&"inventory")
+	check(v.chosen != StringName("beat:%s" % beat), "tab walks on")
+	s.handle(&"confirm")
+	eq(v.copied, str(v.graph.node(v.chosen).source), "e copies its line")
+	s.handle(&"back")
+	check(s.page() == m, "esc is the map again")
+	eq(m.chosen, beat, "with the same beat chosen")
+	eq(m.origin_px, at, "and the view where it was")
+	_end(g)

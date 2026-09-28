@@ -1,7 +1,8 @@
 # The story map (docs/ROADMAP.md, "Tools track"), through the real keys: off the
 # STORY tab, the whole story over this seed; closer in, a station lists its beats;
 # a pan measured; tab walks the story in order and the rest dims; x narrows to
-# the chosen beat's arc; m turns it to ORDER, the arcs as lanes in story order.
+# the chosen beat's arc; m turns it to ORDER, the arcs as lanes in story order;
+# e opens the chosen beat's arc as a graph, and esc comes back to the map.
 #   tools/tour.sh tours/story-map.tour --seed=7 --hour=11 --weather=clear:0 --dev=story --stats
 coast calm
 wait 1.0
@@ -67,6 +68,20 @@ tap zoom_out
 tap map
 wait 0.3
 shot 06-back-to-the-world with app:dev
+
+# --- e: the chosen beat's arc as a graph, walked a node on, and back ------------------------
+tap use
+await story_arc 2
+wait 0.3
+shot 07-the-arc-as-a-graph with app:dev
+tap inventory
+wait 0.1
+tap inventory
+wait 0.3
+shot 08-two-nodes-on with app:dev
+tap pause
+await story_map 2
+wait 0.2
 tap pause
 wait 0.2
 tap dev_toggle

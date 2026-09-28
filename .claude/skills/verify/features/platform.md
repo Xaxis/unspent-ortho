@@ -10,6 +10,7 @@ Saving and loading, dev mode, the tour runner, the web's warm lights.
 - 05_save `src/systems/05_save.gd`: `tools/tour.sh tours/saves.tour`.
 - 94_dev `src/systems/94_dev.gd`: `tools/tour.sh tours/dev.tour` (the app's five tabs, [ and ]).
   - The story map (STORY tab, `DevPageStoryMap` over `StoryMap`): `tools/tour.sh tours/story-map.tour --seed=7 --hour=11 --weather=clear:0 --dev=story --stats`; a frame straight onto it `tools/shot.sh shots/x.png --seed=1 --dev=story_map:order+was_cia` (words after the colon, joined by `+`: world, order, zoomN, a beat id, narrow). Projection tests: `tools/test.sh test_story_map`.
+  - The arc view (e on a chosen beat, `DevPageArcView` over `StoryArcGraph`, Godot's GraphEdit): the same tour's frames 07-08, or `tools/shot.sh shots/x.png --seed=7 --dev=story_map:crew_paid+arc`. Graph tests: `tools/test.sh test_arc_graph`.
 - 98_tour `src/systems/98_tour.gd`: `tools/tour.sh tours/smoke.tour`.
   - `walkto prop:KIND SECS` walks to a prop with the real keys: `TOUR_TIMEOUT=500 tools/tour.sh tours/wild.tour --fail-downed`.
   - `mark NAME` / `at mark:NAME`, `back KIND DIST` + `walkto prop:KIND SECS run through` (the slide round a lone trunk): `TOUR_TIMEOUT=600 tools/tour.sh tours/feel.tour --give=driftwood:6,scrap:1`.
