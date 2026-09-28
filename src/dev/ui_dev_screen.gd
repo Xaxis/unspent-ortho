@@ -87,6 +87,8 @@ func _on_close() -> void:
 func push_page(p: DevPage, sound: bool = true) -> void:
 	if page() != null:
 		page().index = menu.index
+		# A page covered takes its own nodes off the glass until it is uncovered.
+		page().leave()
 	p.screen = self
 	p.game = game
 	p.title = title_scene
@@ -168,6 +170,7 @@ func back() -> void:
 		close()
 		return
 	pages.pop_back().leave()
+	page().enter()
 	menu = UiMenu.new()
 	refresh()
 	menu.index = page().index

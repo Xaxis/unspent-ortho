@@ -72,8 +72,9 @@ func pick(_what: StringName) -> bool:
 	return false
 
 
-## The page is on the glass for the first time, and it has been left for good: a
-## page that lays nodes of its own over the screen lays them and takes them here.
+## The page is on the glass (opened, or uncovered when the page over it backs
+## out), and it is off it (covered by another, or left): a page that lays nodes
+## of its own over the screen lays them and takes them here, as often as asked.
 func enter() -> void:
 	pass
 

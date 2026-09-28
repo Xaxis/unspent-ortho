@@ -65,6 +65,7 @@ var _material: ShaderMaterial
 var _widest := 1.0
 var _time := 0.0
 var _drag := false
+var _entered := false
 ## Marks drawn this frame, for a click to find: [{rect, beat}].
 var _hits: Array[Dictionary] = []
 
@@ -143,7 +144,12 @@ func enter() -> void:
 		all.fill(Color.WHITE)
 		var seen := ImageTexture.create_from_image(all)
 		UiMapScreen.feed(_material, data, seen, r.size)
-	_fit_story()
+	# Uncovered (the arc view backed out of), the view is where it was left.
+	if _entered:
+		_apply()
+	else:
+		_fit_story()
+	_entered = true
 	_show_mode()
 	open_ms = Time.get_ticks_msec() - t
 
@@ -243,6 +249,8 @@ func handle(action: StringName) -> bool:
 		&"confirm":
 			if chosen == &"":
 				scrub(1)
+			else:
+				screen.push_page(DevPageArcView.new().of(map.beats[chosen].arc, chosen))
 			return true
 	return false
 
