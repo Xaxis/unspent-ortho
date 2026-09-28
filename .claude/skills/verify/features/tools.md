@@ -2,7 +2,7 @@
 
 The loop scripts.
 
-<!-- covers: cli:audio, cli:canon, cli:check, cli:deploy, cli:export, cli:map, cli:shot, cli:test, cli:tour, cli:web -->
+<!-- covers: cli:audio, cli:canon, cli:check, cli:deploy, cli:export, cli:map, cli:shot, cli:sweep, cli:test, cli:tour, cli:web -->
 
 ## Sub-features
 
@@ -13,6 +13,11 @@ The loop scripts.
 - export: `tools/export.sh`, reached by `tools/export.sh`.
 - map: `tools/map.sh`, reached by `tools/map.sh`.
 - shot: `tools/shot.sh`, reached by `tools/shot.sh`.
+- sweep: `tools/sweep.sh` (`tools/gd/sweep.gd`, the bouts in `tools/gd/sweep_run.gd`): every weapon against every common
+  machine alone and against the wall crowds, over the shoulder; prints each row and a summary (singles trivial %,
+  3-cutter wins by weapon line, each crowd's wins and mean lost). A measurement after a tuning pass, never a gate and
+  not on CI; about ten minutes whole, killed at `SWEEP_TIMEOUT` (1800 s). A quick check that it runs:
+  `tools/sweep.sh --weapons=knife --machines=cutter` (prints `sweep done`).
 - test: `tools/test.sh`, reached by `tools/test.sh`.
 - tour: `tools/tour.sh`, reached by `tools/tour.sh`.
 - web: `tools/web.sh`, reached by `tools/web.sh`.

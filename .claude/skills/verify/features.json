@@ -76,6 +76,14 @@
       "tests": []
     },
     {
+      "id": "cli:sweep",
+      "kind": "cli",
+      "entry": "tools/sweep.sh",
+      "reach": "tools/sweep.sh --weapons=knife --machines=cutter",
+      "area": "tools",
+      "tests": []
+    },
+    {
       "id": "cli:test",
       "kind": "cli",
       "entry": "tools/test.sh",

@@ -562,6 +562,13 @@
   },
   {
    "kind": "cli",
+   "label": "sweep",
+   "entry": "tools/sweep.sh",
+   "reach": "tools/sweep.sh --weapons=knife --machines=cutter",
+   "area": "tools"
+  },
+  {
+   "kind": "cli",
    "label": "audio",
    "entry": "tools/audio.sh",
    "reach": "tools/audio.sh",
