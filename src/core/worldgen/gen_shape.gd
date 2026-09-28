@@ -157,6 +157,15 @@ static func run(c: GenContext) -> void:
 		for gy in range(g0, g1):
 			var ty := GenFields.cell_centre(gy, hs)
 			var v := ty / size
+			# Only the lobes that can reach this row: one adds nothing where its
+			# q reaches 4, and dv alone takes it there beyond twice its radius. The
+			# same sum over the same lobes, in the same order.
+			var near_lobes := PackedInt32Array()
+			for k in lobes.size():
+				var lb := lobes[k]
+				var dv0 := v - lb.y
+				if dv0 * dv0 < 4.01 * lb.z * lb.z:
+					near_lobes.append(k)
 			for gx in hw:
 				var tx := GenFields.cell_centre(gx, hs)
 				var u := tx / size
@@ -184,7 +193,7 @@ static func run(c: GenContext) -> void:
 				# Bays bite hardest near the rim, where the coast is.
 				var rim := exp(-(r - 1.0) * (r - 1.0) * 14.0)
 				h += continent[i] * 0.26 + bays[i] * (0.08 + 0.36 * rim) + coastline[i] * (0.03 + 0.07 * rim)
-				for k in lobes.size():
+				for k in near_lobes:
 					var lb := lobes[k]
 					var du := u - lb.x
 					var dv := v - lb.y

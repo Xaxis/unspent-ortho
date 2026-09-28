@@ -7,6 +7,7 @@ Realms and portals, the rooms behind a house's door, landmarks and caches, the h
 ## Sub-features
 
 - 20_realms `src/systems/20_realms.gd`: `tools/tour.sh tours/realms.tour`.
+  - A shaft's start is short: the new world is readied on the raise's worker (`src/core/realm/realm_warm.gd`) and only the chunk underfoot is built on arrival: `tools/test.sh test_crossing_start`; web `tools/web.sh --tour=tours/crossing.tour --crossing=20`.
   - Shafts sited on the land alone and held clear (`Portals.site`), so 2029 opens them on the present's tiles: `tools/test.sh test_every_seed_s_shafts`; a still beside one with `--realm=era`.
 - 23_hush `src/systems/23_hush.gd` + `src/core/hush_sites.gd` (docs/HUSH.md): `tools/tour.sh tours/hush.tour --seed=7 --hour=11 --weather=clear:0` (`near hush_ring`); `tools/test.sh test_hush_sites`.
   - The quiet (`--hush=always`): `tools/tour.sh tours/hush-quiet.tour --seed=7 --hour=11 --weather=fog:0.6:wind=0.9 --hush=always`; `tools/test.sh test_hush`.

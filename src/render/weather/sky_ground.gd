@@ -12,8 +12,26 @@ class_name SkyGround
 ## World units of height that A spans (0..1): the highest land, and a unit
 ## over. sky.gdshaderinc's SKY_GROUND_HEIGHT must equal it.
 const HEIGHT_RANGE := 16.0
-## Halvings before the height is spread back out: 3 is an 8-tile neighbourhood.
+## Halvings before the height is spread back out: 3 is an 8-tile neighbourhood
+## (the map's own resolution, TILE, is the first of them).
 const SMOOTH_HALVINGS := 3
+## Tiles per texel, each way, of this map and SkyWear's. What they hold changes
+## over an ecotone's twelve to twenty-four tiles and the height is smoothed over
+## eight, so a texel per four tiles draws the same, and the sweep that makes it,
+## the cost a raise hides (RealmWarm), is a quarter. The shaders read by world
+## position over the world's size (`sky_view.z`), not by texel; a reader on the
+## CPU asks `texel_of`.
+const TILE := 2
+
+
+## The texel of a map of this world that holds tile (x, y).
+static func texel_of(x: int, y: int) -> Vector2i:
+	return Vector2i(x / TILE, y / TILE)
+
+
+## A map's side for a world of side n.
+static func side(n: int) -> int:
+	return maxi(1, (n + TILE - 1) / TILE)
 
 
 ## Per settled thing, 1 if any weather in the landscape type's climate feeds it
@@ -47,33 +65,40 @@ static func image(w: WorldData) -> Image:
 				seen[c] = 1
 				# Nothing the sky lets fall reaches a floor under a roof.
 				caps[c] = Vector3.ZERO if w.realm == Realm.INTERIOR else capable(BiomeRegistry.at(w, Vector2(x, y)).id)
+	var m := side(n)
 	var heights := PackedByteArray()
-	heights.resize(n * n)
+	heights.resize(m * m)
 	var rgba := PackedByteArray()
-	rgba.resize(n * n * 4)
+	rgba.resize(m * m * 4)
 	var has_blend := w.blend.size() == n * n and w.country2.size() == n * n
-	for i in n * n:
-		var cap := caps[int(w.country[i])]
-		if has_blend and w.blend[i] > 0.0:
-			cap = cap.lerp(caps[int(w.country2[i])], clampf(w.blend[i], 0.0, 1.0))
-		var h := maxf(float(w.level[i]) * WorldData.STEP, TerrainMesher.WATER_Y)
-		var o := i * 4
-		rgba[o] = int(cap.x * 255.0)
-		rgba[o + 1] = int(cap.y * 255.0)
-		rgba[o + 2] = int(cap.z * 255.0)
-		heights[i] = clampi(int(h / HEIGHT_RANGE * 255.0 + 0.5), 0, 255)
+	for ty in m:
+		var row := mini(ty * TILE, n - 1) * n
+		for tx in m:
+			var i := row + mini(tx * TILE, n - 1)
+			var cap := caps[int(w.country[i])]
+			if has_blend and w.blend[i] > 0.0:
+				cap = cap.lerp(caps[int(w.country2[i])], clampf(w.blend[i], 0.0, 1.0))
+			var h := maxf(float(w.level[i]) * WorldData.STEP, TerrainMesher.WATER_Y)
+			var t := ty * m + tx
+			var o := t * 4
+			rgba[o] = int(cap.x * 255.0)
+			rgba[o + 1] = int(cap.y * 255.0)
+			rgba[o + 2] = int(cap.z * 255.0)
+			heights[t] = clampi(int(h / HEIGHT_RANGE * 255.0 + 0.5), 0, 255)
 	# Box-average the heights by halving, then spread them back out smoothly:
-	# all native, so a 256-tile world costs a few milliseconds.
-	var hi := Image.create_from_data(n, n, false, Image.FORMAT_L8, heights)
-	var s := n
-	for k in SMOOTH_HALVINGS:
-		s = maxi(1, s / 2)
+	# all native, so a 256-tile world costs a few milliseconds. The map's own
+	# resolution counts among the halvings.
+	var hi := Image.create_from_data(m, m, false, Image.FORMAT_L8, heights)
+	var s := m
+	var least := maxi(1, n >> SMOOTH_HALVINGS)
+	while s > least:
+		s = maxi(least, s / 2)
 		hi.resize(s, s, Image.INTERPOLATE_BILINEAR)
-	hi.resize(n, n, Image.INTERPOLATE_CUBIC)
+	hi.resize(m, m, Image.INTERPOLATE_CUBIC)
 	var smooth := hi.get_data()
-	for i in n * n:
-		rgba[i * 4 + 3] = smooth[i]
-	return Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, rgba)
+	for t in m * m:
+		rgba[t * 4 + 3] = smooth[t]
+	return Image.create_from_data(m, m, false, Image.FORMAT_RGBA8, rgba)
 
 
 ## PURE AND DERIVED, SO KEPT: one texture per world OBJECT (never per seed: a
@@ -84,6 +109,32 @@ static func image(w: WorldData) -> Image:
 static var _kept: Dictionary = {}
 
 
+## THE IMAGE, MADE BESIDE THE WORLD (RealmWarm, on the raise's worker): the sweep
+## is the cost (1.2 s at 1840 on the way down a shaft) and the texture made from
+## it is nothing, so a world raised for a crossing has its image waiting and the
+## press only wraps it. Guarded, because the worker writes and the main reads.
+static var _images: Dictionary = {}
+static var _images_lock := Mutex.new()
+
+
+static func prepare(w: WorldData) -> void:
+	var img := image(w)
+	_images_lock.lock()
+	_images[w.get_instance_id()] = [weakref(w), img]
+	_images_lock.unlock()
+
+
+## The image `prepare` made for this world, taken (it is wanted once), or null.
+static func _prepared(w: WorldData) -> Image:
+	_images_lock.lock()
+	var got: Array = _images.get(w.get_instance_id(), [])
+	_images.erase(w.get_instance_id())
+	_images_lock.unlock()
+	if not got.is_empty() and (got[0] as WeakRef).get_ref() == w:
+		return got[1]
+	return null
+
+
 static func texture(w: WorldData) -> ImageTexture:
 	var id := w.get_instance_id()
 	var got: Array = _kept.get(id, [])
@@ -92,6 +143,7 @@ static func texture(w: WorldData) -> ImageTexture:
 	for k: int in _kept.keys():
 		if (_kept[k][0] as WeakRef).get_ref() == null:
 			_kept.erase(k)
-	var t := ImageTexture.create_from_image(image(w))
+	var made := _prepared(w)
+	var t := ImageTexture.create_from_image(made if made != null else image(w))
 	_kept[id] = [weakref(w), t]
 	return t
