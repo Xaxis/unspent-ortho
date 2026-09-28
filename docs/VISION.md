@@ -11,6 +11,16 @@ What the finished game is. `ROADMAP.md` says where it stands and what is next;
   as nobody interferes with their **ultimate plan**. The plan is the core arc;
   around it grow **generative subarcs**, finished in many different ways.
 
+## How the game pulls the player
+
+Every stretch of play carries three threads at once (owner, 2026-09-28):
+- **Story**: each beat and sub-arc points at the whole arc; nothing stands alone.
+- **A reason**: survival and making are layered in slowly, and always for
+  something the player wants: a weapon for this keeper, armour for this ground,
+  an item an arc asks for.
+- **An introduction**: the record's voice, and staged moments where the world
+  needs explaining (never for a time crossing).
+
 ## Three factions
 
 - **The machines**: each has a role in the plan and a disposition; interfere and

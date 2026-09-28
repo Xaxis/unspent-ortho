@@ -46,6 +46,50 @@ Landscape batch 2+3
 (`land/s4j3`, `world/s5c`) · the crossing programs check and long-walk tour ·
 the vent-tender and G10 · walls follow-ups · web frame budgets.
 
+## The whole game, as slices
+
+Each slice is one leg of the journey (`STORY.md`), playable end to end, and adds one
+new layer of play with a reason. Rough size: two to three weeks each.
+
+1. **Home coast**: survive and make, for a reason; the first keeper; the first lead;
+   the taken. *(now)*
+2. **The Holdfast**: Maren's lead to the camp. The holding is built to keep people from
+   the depots; raids answer your light; a chapter's way on (explored, mined, defended)
+   reads on the land; the next memory gates (the lab at the first works, Ruth's table at
+   the camp); the second keeper.
+3. **Across the water**: the raft; the Covenant's seat and June; the war's archive;
+   mended gear; a third landscape.
+4. **Below**: HALCYON's deep plant; the Seeker and the Echo; the drill crawler; the secret
+   takes shape.
+5. **The far shore**: the Emissary's works at the Tether's foot; the Guest met in play;
+   the climb.
+6. **Orbit**: the dead ring, the Foundry, Oksana, the channel; the endings; the After.
+
+## Groups, and what each does per slice
+
+Every group moves in every slice, and only as far as the slice needs.
+
+| Group | Standing direction |
+|---|---|
+| Story and narration | The slice's beats, leads and lines; the record's voice; wright reviews every line. |
+| Survival, making, gear | One new reason to make per slice; gear tiers follow the journey (made → mended → found). |
+| Fight and keepers | One keeper per slice, built as a set piece; balance judged by the human reader. |
+| Settlements and raids | Introduced in slice 2, for the taken; grows each slice. |
+| World and landscapes | Depth only where the slice walks; the parked batches return for the slice that visits them. |
+| Realms and time | Memory gates in STORY.md's order (his house in slice 1); the underground in slice 4, orbit in slice 6. |
+| Look, light, sound, slate | A quality pass on everything the slice shows: frames read, web budgets held. |
+| Tech: web, streaming, speed | Whatever the slice's playtest shows is slow; the web title under 15 s before slice 3. |
+| Process and tools | Refined at every slice's end; see below. |
+
+## The loop, per slice
+
+1. **Plan** (a day): the steps in this file; only the owner's own calls go to him.
+2. **Build** (about a day per step): one branch per step, preflight, frames read,
+   gated, landed; the proof tour grows with it.
+3. **Play** (★): the owner plays a web build at each milestone.
+4. **Close**: the slice's docs cut to contracts; one retro line on what slowed us,
+   turned into a script, check or rule (CLAUDE.md, memory); then the next plan.
+
 ## Open for the owner
 
 - Rotate the Vercel token (it was visible in process listings).
