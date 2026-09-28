@@ -51,6 +51,9 @@ const CONTENT := "res://src/content/story/story_content.gd"
 const CAST_DIR := "res://src/content/story/cast"
 
 var seed_value := 0
+## Whether the world was whole when this was projected (`whole`); false, the map
+## is empty and `of` projects again the next time it is asked.
+var laid := false
 ## [{leg, name, body, pos}] in journey order; `pos` is the leg's first spine stop.
 var legs: Array[Dictionary] = []
 ## The spine's stops in order: [{id, name, pos, leg}].
@@ -65,6 +68,10 @@ var order: Array[StringName] = []
 var arcs: Array[StringName] = []
 ## [{arc, from, to}]: each arc's placed beats, one to the next, in arc order.
 var arrows: Array[Dictionary] = []
+## [{arc, from, to}]: where an arc's next beat lands on an EARLIER leg of the
+## journey than the one before it. The journey only goes outward (StoryCasting),
+## so each is a question for the writers: the map is a story audit too.
+var steps_back: Array[Dictionary] = []
 ## Beat ids with no place on this world.
 var unplaced: Array[StringName] = []
 ## StoryGates.all(world), as cast.
@@ -85,7 +92,7 @@ static var _cached: StoryMap = null
 static func of(world: WorldData) -> StoryMap:
 	if world == null:
 		return null
-	if world != _cached_world:
+	if world != _cached_world or _cached == null or not _cached.laid:
 		_cached_world = world
 		_cached = project(world)
 	return _cached
@@ -101,11 +108,18 @@ static func project(world: WorldData) -> StoryMap:
 	if world == null:
 		return m
 	m.seed_value = world.seed_value
+	# Every place the story stands is read off the world whole. A streamed world
+	# still being laid holds only some of it, and a map of part of it would say
+	# beats have no place that have one: nothing is projected until it is whole.
+	m.laid = whole(world)
+	if not m.laid:
+		return m
 	m._lines = source_index(_read(CONTENT))
 	m._places(world)
 	m._beats()
 	m._order()
 	m._arrows()
+	m._steps_back()
 	m.gates = StoryGates.all(world)
 	m._subarcs(world)
 	return m
@@ -390,6 +404,36 @@ func _arrows() -> void:
 			if last != &"" and not (local(beats[last].place) and local(beats[b].place)):
 				arrows.append({"arc": arc, "from": last, "to": b})
 			last = b
+
+
+func _steps_back() -> void:
+	for arc: StringName in arcs:
+		var list: Array = StoryContent.arc_beats(arc)
+		for i in range(1, list.size()):
+			var a: StringName = list[i - 1]
+			var b: StringName = list[i]
+			if not beats.has(a) or not beats.has(b):
+				continue
+			if local(beats[a].place) and local(beats[b].place):
+				continue
+			if int(beats[b].at_leg) < int(beats[a].at_leg):
+				steps_back.append({"arc": arc, "from": a, "to": b})
+
+
+## The arcs that step back a leg at least once, in ARCS order.
+func arcs_stepping_back() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for s: Dictionary in steps_back:
+		if not out.has(s.arc):
+			out.append(s.arc)
+	return out
+
+
+## Whether a world is laid whole: every world is today; a streamed one being laid
+## (WorldData.whole, when streaming names it) is not until it is.
+static func whole(world: WorldData) -> bool:
+	var w: Variant = world.get(&"whole")
+	return w == null or bool(w)
 
 
 ## Whether a place is a landscape's local: colour, not a stop.
