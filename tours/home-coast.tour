@@ -382,6 +382,14 @@ shot 18-the-tide-takes-the-reaper with sentinel_fallen
 # placed every tick) it is 28 swings. Routed to fight as a balance finding.
 echo todo: the force fight (7a)
 
+# 7b TODO THE STARVE WAY (roadmap step 4, owed to fight/reaper-reachable): "The
+# intake feeds it. Rob the intake." Robbing a plan work is Takes' kept `turn`, and
+# a kept take spent sets SurvivalState.spent, never world.depleted; the keeper
+# counts its feed off world.depleted (Sentinels.feeds_among), so a robbed intake
+# fed it for ever and the way could not be won by a player. Ruled: robbing a
+# keeper's feed depletes it in the world.
+echo todo: the starve way (7b)
+
 # 8 ITS YARD GOES DARK (34_works): the fall line, then some minutes on, the yard
 # its keeper held puts its lights out for good.
 near keeper_yard
