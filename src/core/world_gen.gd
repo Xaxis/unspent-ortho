@@ -35,6 +35,13 @@ static func generate(seed_value: int, size: int = DEFAULT_SIZE, until: StringNam
 	if c.finished:
 		return c.w
 	GenSurface.run(c)
+	# The whole world's surface is laid: what only the surface read goes. (A
+	# streamed world keeps them until its last section: `section` reads them.)
+	c.elev = PackedFloat32Array()
+	c.rim_warp = PackedFloat32Array()
+	c.slot_lift = PackedFloat32Array()
+	c.pool_ground = PackedByteArray()
+	c.site_ground = PackedByteArray()
 	c.stage_t = _mark(c, c.stage_marks, &"surface", c.stage_t)
 	if _halted(c.w):
 		return c.w
@@ -106,11 +113,18 @@ static func plan(seed_value: int, size: int = DEFAULT_SIZE, until: StringName = 
 		c.finished = true
 		return c
 	GenRelief.run(c)
+	# WHAT NO LATER STAGE READS IS LET GO WHERE ITS LAST READER ENDS, between
+	# stages (a stage's own locals hold an array until it returns). A browser's
+	# heap keeps its high-water for good, and these were held to the end.
+	c.offshore = PackedFloat32Array()
+	c.form_e = PackedFloat32Array()
+	c.soft = []
 	t = _mark(c, marks, &"relief", t)
 	if _halted(w):
 		c.finished = true
 		return c
 	GenCountries.fine(c, until != &"tiles")
+	c.scores = []
 	t = _mark(c, marks, &"tiles", t)
 	if _halted(w):
 		c.finished = true
@@ -128,6 +142,8 @@ static func plan(seed_value: int, size: int = DEFAULT_SIZE, until: StringName = 
 	GenRelief.lift_slots(c)
 	GenRelief.flatten_streets(c)
 	GenWater.rivers(c)
+	c.river_e = PackedFloat32Array()
+	c.soft_flat = PackedFloat32Array()
 	t = _mark(c, marks, &"rivers", t)
 	if _halted(w):
 		c.finished = true
@@ -182,6 +198,12 @@ static func finish(c: GenContext) -> WorldData:
 	w.shafts = Portals.site(w)
 	w.shafts_sited = true
 	GenScatter.props(c)
+	# What only the props read. Rise, forest and sea steps stay: a section's
+	# scatter reads them (GenScatter.scatter_rect).
+	c.inland = PackedFloat32Array()
+	c.convex = PackedFloat32Array()
+	c.islet = PackedByteArray()
+	c.ramp = PackedByteArray()
 	t = _mark(c, marks, &"props", t)
 	if _halted(w):
 		return w

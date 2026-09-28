@@ -81,6 +81,21 @@ func test_standing_below_is_learning_what_grew_him() -> void:
 	Story.forget()
 
 
+func test_somebody_lost_on_the_road_home_is_known() -> void:
+	Story.forget()
+	var g := Sx.game(tree, ["--seed=4", "--size=128", "--hour=11"])
+	await frames(3)
+	var taken: Taken = Sx.system(g, "45_taken").get("taken")
+	var t := taken.take(1, "", -1, "Oyster Row", 0, g.clock.minutes)
+	await frames(45)
+	check(not Story.landed(StoryContent.WITNESS_ON[&"lost"]), "taken is not lost")
+	taken.lose(t, Vector2.ZERO)
+	await frames(45)
+	check(Story.landed(StoryContent.WITNESS_ON[&"lost"]), "lost on the road, it is known")
+	Sx.end(g)
+	Story.forget()
+
+
 func test_a_machine_read_long_enough_tells_what_it_is_for() -> void:
 	Story.forget()
 	var g := Sx.game(tree, ["--seed=4", "--size=128", "--hour=11", "--weather=clear:0"])

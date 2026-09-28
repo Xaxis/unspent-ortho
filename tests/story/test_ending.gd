@@ -4,17 +4,13 @@ extends TestCase
 ## story touched as he left them.
 
 
-func _secret(in_order: bool) -> void:
-	var order: Array[StringName] = StorySecret.KEY.duplicate()
-	if not in_order:
-		order.reverse()
-	var t := 0.0
-	for m: StringName in order:
-		t += 10.0
-		Story.now = t
-		Story.beat(m, t)
-	# In play 49_story lands the version once all three are back.
-	Story.beat(StorySecret.version(), t)
+## All three back (the car first, as the home coast deals it: it commits nothing),
+## held; the version is the reliving at the channel.
+func _secret() -> void:
+	for m: StringName in [&"mem_car", &"mem_kitchen", &"mem_hall"]:
+		Story.beat(m, -INF)
+	# In play 49_story lands this once all three are back.
+	Story.beat(StorySecret.HELD, -INF)
 
 
 func _walk(picks: Array) -> void:
@@ -49,16 +45,14 @@ func test_without_the_secret_he_can_only_give_it_up_or_keep_silent() -> void:
 
 func test_the_same_choice_ends_differently_with_the_secret_whole_or_turned() -> void:
 	Story.forget()
-	_secret(true)
-	Story.now += StoryPacing.SETTLE * 2.0
-	_walk(["Break them."])
+	_secret()
+	_walk(["Break them.", "[the kitchen]", "[the car]"])
 	eq(StoryEnding.choice(), &"broke")
 	var whole := _ending()
 	check(whole.contains("so does the thing at the other end"), "whole: both giants break:\n%s" % whole)
 	Story.forget()
-	_secret(false)
-	Story.now += StoryPacing.SETTLE * 2.0
-	_walk(["Break them."])
+	_secret()
+	_walk(["Break them.", "[the hall]", "[the kitchen]"])
 	var turned := _ending()
 	check(turned.contains("The thing at the other end does not"), "turned: only HALCYON breaks:\n%s" % turned)
 	Story.forget()
@@ -99,7 +93,8 @@ func test_every_ending_fits_the_page() -> void:
 	for c: StringName in StoryEnding.CHOICES:
 		for in_order: bool in [true, false]:
 			Story.forget()
-			_secret(in_order)
+			_secret()
+			Story.beat(&"secret_whole" if in_order else &"secret_misremembered", -INF)
 			Story.choose(&"the_channel.open", c)
 			var lines := StoryEnding.lines()
 			for l: String in lines:

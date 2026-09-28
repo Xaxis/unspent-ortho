@@ -58,6 +58,8 @@ var _continue_slot := -1
 var _avatar: Dictionary = {}
 var _avatar_chosen := false
 var _hour := 12.0
+## The island whose realms `_raise_below` began, or -1.
+var _raised_for := -1
 
 
 func setup(o: BootOptions) -> void:
@@ -163,9 +165,27 @@ func _show(w: WorldData, s: int, v: WorldView = null, open: Array = [], now: boo
 	sky.set_hour(_hour)
 	if now:
 		view.ensure_near(_focus)
+	_raise_below(w, s)
 	camera.snap_to(w.to_3d(_focus))
 	_shown_for = 0.0
 	menu.queue_redraw()
+
+
+## THE REALMS UNDER THE ISLAND SHOWN, RAISED WHILE THE TITLE IS READ. The pool
+## is idle on the title, so the worlds behind this island's shafts are begun
+## on all of it (`RealmWorlds.begin` full); the game that follows keeps them to
+## one worker, and a shaft pressed early in it finds its world standing or
+## nearly. Another island shown lets go of the last one's.
+func _raise_below(w: WorldData, s: int) -> void:
+	if not BootPage.has_threads():
+		return
+	GenFields.lean = false
+	if _raised_for != s:
+		if _raised_for != -1:
+			RealmWorlds.forget()
+		_raised_for = s
+	for p: Portal in w.shafts:
+		RealmWorlds.begin(s, w.size, p.to_realm, true)
 
 
 ## Where the title's drift begins and which way it goes: [focus: Vector2, heading:
@@ -314,6 +334,10 @@ func _start_game() -> void:
 	var o := BootOptions.new()
 	o.seed_value = seed_value
 	o.size = options.size
+	# A place asked for where the page was opened (--place, a tool's or a tester's
+	# address) holds for the game the title starts, as it does for one booted
+	# straight into play.
+	o.place = options.place
 	if _continue_slot >= 0:
 		var slot := _continue_slot
 		var why := SaveSlots.options_for(slot, o)
