@@ -83,6 +83,10 @@ var messages := UiMessages.new()
 ## steps aside for the location ping, for a fight, and for its own words while
 ## they are still on the message line.
 var goal := ""
+## Who holds the glass (90_ui hands this over: 58_guide.holder), and the lines
+## kept back while it did.
+var glass_holder := Callable()
+var _kept: Array[String] = []
 var place := ""
 var charge_shown := false
 var charges := 0
@@ -219,6 +223,13 @@ func place_alpha() -> float:
 ## for the next feed, or PEND_WAIT seconds if nothing is feeding it at all.
 func show_message(text: String) -> void:
 	if not _pages.is_empty():
+		return
+	# WHILE A STAGED MOMENT HOLDS THE GLASS (the wake), only its own lines are
+	# said; the rest are kept, in order, and said when it lets go. The state a
+	# kept line reports (soaked through) applies all along.
+	var h: Node = glass_holder.call() if glass_holder.is_valid() else null
+	if h != null and not (text in (h.call(&"own_lines") as Array)):
+		_kept.append(text)
 		return
 	if UiMessages.gauge_for(text) != &"":
 		_pending.append({"text": text, "feed": _feeds, "age": 0.0, "teach": false})
@@ -382,6 +393,11 @@ func settle() -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
+	if not _kept.is_empty() and (not glass_holder.is_valid() or glass_holder.call() == null):
+		var said := _kept.duplicate()
+		_kept.clear()
+		for t: String in said:
+			show_message(t)
 	settle_pending(delta)
 	messages.step(delta)
 	step_place(delta)

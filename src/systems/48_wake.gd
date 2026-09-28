@@ -94,11 +94,19 @@ func _process(delta: float) -> void:
 
 
 ## THE WAKE HOLDS THE GLASS from the moment he is put in the surf until it is
-## over (he has met Maren, or walked off): no goal line and no key hint over his
-## first breath (58_guide asks, and 90_ui asks the guide). The first thing to
+## over (he has met Maren, or walked off): no goal line, no key hint and no line
+## but the record's over his first breath (58_guide asks, and 90_ui and the Hud
+## ask the guide). The first thing to
 ## want is Maren's to give (ROADMAP step 2).
 func holds_glass() -> bool:
 	return _first and not _staged.is_empty()
+
+
+## What may still be said while it holds the glass: the record's own lines, and
+## nothing else (Hud keeps the rest, survival's "soaked through" among them, and
+## says them once the wake is over).
+func own_lines() -> Array:
+	return StoryContent.WAKE[&"surface"] + StoryContent.WAKE[&"shallows"]
 
 
 func _say(beat: StringName) -> void:

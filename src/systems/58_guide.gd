@@ -179,8 +179,12 @@ func teach_now() -> bool:
 ## Whether the guide may speak: it is on, and nothing staged holds the glass (the
 ## wake, 48_wake.holds_glass). 90_ui asks this before it pins the goal.
 func speaking() -> bool:
-	if _off:
-		return false
+	return not _off and holder() == null
+
+
+## The system holding the glass now (`holds_glass`, answering `own_lines`), or
+## null.
+func holder() -> Node:
 	if _holders.is_empty() and not _holders_found:
 		_holders_found = true
 		for sys: Node in game.systems:
@@ -188,8 +192,8 @@ func speaking() -> bool:
 				_holders.append(sys)
 	for sys: Node in _holders:
 		if is_instance_valid(sys) and bool(sys.call(&"holds_glass")):
-			return false
-	return true
+			return sys
+	return null
 
 
 ## Uses that retire hints without an event of their own.

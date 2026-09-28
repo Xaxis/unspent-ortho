@@ -114,3 +114,18 @@ func test_no_goal_or_key_hint_is_on_the_glass_until_the_wake_is_over() -> void:
 	check(g.hud.goal != "", "the goal once the wake is over")
 	Events.hint.disconnect(on_hint)
 	Sx.end(g)
+
+
+func test_only_the_record_speaks_while_the_wake_holds_the_glass() -> void:
+	var g := Sx.game(tree, ARGS)
+	await _wall(RISE_WAIT + 3.0)
+	var soaked := String(Hazards.LINES[&"wet"])
+	gt(g.body.wet, 0.0, "standing in the sea, he is wet: the state applies")
+	for l: Dictionary in g.hud.messages.lines:
+		check(String(l.text) in (Sx.system(g, "48_wake").call(&"own_lines") as Array), "only the record's lines on the glass, not '%s'" % l.text)
+	check(soaked in g.hud.get("_kept"), "survival's line is kept while the wake holds the glass")
+	@warning_ignore("return_value_discarded")
+	Story.meet(&"maren")
+	await _wall(1.0)
+	eq((g.hud.get("_kept") as Array).size(), 0, "and let go once the wake is over")
+	Sx.end(g)
