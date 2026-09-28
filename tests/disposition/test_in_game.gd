@@ -230,8 +230,8 @@ func test_a_rise_is_felt_in_the_world_and_never_written_on_the_screen() -> void:
 	Events.sfx.connect(func(n: StringName, _at: Vector3) -> void: horns.append(n))
 	var f: Interference = sys.get(&"interference")
 	# **THE WINDOW HAS TO EXCLUDE WHAT THIS IS NOT ASKING ABOUT.** The story says
-	# two lines as the player wakes -- "You come up out of the water", "You do
-	# not remember the water" -- and whether they land before or after the
+	# the first morning's lines as the player wakes (StoryContent.WAKE, all at
+	# once for a game booted straight in), and whether they land before or after the
 	# listener above is a RACE with the frame rate. That is why this went red in
 	# one gate, red twice alone, and green in the next: nothing about it was
 	# intermittent except how long a frame took. The claim here is that a RISE in

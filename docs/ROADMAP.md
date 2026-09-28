@@ -21,8 +21,11 @@ Builders: **A** introduction and story (teammate3, words via story-wright) ·
 1. [ ] **The wake** (A, `world/wake`). A new game starts in the shallows, the black site
    behind him; he surfaces on the real clock; Maren waits at the water; the record's
    first lines paced on what happens. The proof tour starts here. ★
-   - [ ] **1b The Tether** (A, `look/tether`). One thread rising at the far shore's
-     bearing to the ring; the first morning's staged look to the horizon.
+   - [ ] **1b-i The Tether** (A, `look/tether`). A hair-thin thread from the far shore's
+     horizon up to the Foundry, a fixed lit point; a climber's light rides it; the ring
+     passes near on its own orbit. Seen over the shoulder from the first morning.
+   - [ ] **1b-ii Staging** (A). One CameraRig staging call (look, hold, return, first sight
+     only), used by the wake, the Tether's first sight, and the Reaper's reveal and fall.
 2. [ ] **Maren's ask becomes the goal** (A). After the pick, the goal line is her
    lead, not a recipe; the guide names why.
 3. [ ] **The Tide Reaper, named** (A+B). A person names the yard and its keeper;
@@ -69,6 +72,7 @@ line that made it. Proved by frames read at three zooms on two seeds, and the ow
   card with a hit-splash on it, the player in a recoil pose. Not reproduced by the
   same shot three times, by a walk and turn at 06:30, or by a runner's hit over
   the shoulder. Look again if it shows.
+- [ ] A lit machine yard throws a light pool at night (one lamp-pool source per yard, put out with its lamps), so a dark yard reads at a glance. Counts against the web's 7 pool slots. (Step 5 follow-up.)
 - [ ] Web: a 0.8–1.0 s hitch after crowd spawns; a 0.2–0.6 s hitch on the shoulder
   switch in pinewood.
 

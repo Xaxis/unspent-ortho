@@ -52,6 +52,9 @@ Companions can be played; the story stays his.
 - The salt's keeper holds the kitchen, the tide's the car; the hall returns by walking
   out of THRESHOLD in 2029 for the play. That order turns the key; any other turns it
   wrong. The body was grown imperfectly: his version decides what the secret does.
+- **Recovered in any order, relived in one** (2026-09-28): the memories come back
+  in whatever order he meets them, and that commits nothing. The order that turns
+  the key is the one he relives them in at the channel.
 
 ## 2098
 
@@ -60,6 +63,12 @@ Guest · 2094 talks; the Tether and Foundry rise · 2098 Elias, 38, wakes in the
 surf in a body grown from his genome; June is 75. Each side holds magnetic
 monopoles in the other's star. Humans are too futile to watch: the blind spot the
 secret lives in.
+
+The machines are perpetual, some half-broken. **Enclaves** (owner, 2026-09-28) are
+parts of HALCYON cut off where bandwidth is low: separate minds, as hour 63 predicts.
+They see people as HALCYON at large does not, seek a balance with them, and resist
+the Guest's bargain. To HALCYON and the Guest humans stay ants; the enclaves are the
+exception the secret explains.
 
 ## The journey
 
@@ -97,7 +106,8 @@ on the horizon from the first morning.
 ## The cast (wants / hides)
 
 - Powers: the Holdfast wants a weapon; the crew pay, until they learn what he is;
-  the Covenant silence; HALCYON nothing; the Guest does not know he exists.
+  the Covenant silence; HALCYON nothing; the enclaves a balance, and an ally against
+  the Guest; the Guest does not know he exists.
 - 2029: **Hannah**: the truth / found his second phone · **June**: him at her play,
   at 75 peace / knows the voice is his · **Ruth**: country / signed off knowing it
   could kill him · **Priya**: stop HALCYON / reported him to Calloway · **Kerr**:
@@ -162,5 +172,6 @@ choice is scored; saying nothing is always an answer.
 - The gates, the Before, the After: 2029 rebuilt at the same coordinates; the Emissary's forecast.
 - A room's slots (desk, terminal, wall): what whoever lived there left, colour.
 - Settlements and raids: the Holdfast's holdings. Companions are playable; the story stays his.
-- The plan's depots: people carried as stock, filed, never wanted; put the yard dark
-  or fell the keeper and they walk out (`45_taken`; unruled, for the owner).
+- The depots: the Seeker lost him to the Echo, so it runs the minds of those who have
+  seen him, to predict him. Running replaces a mind, as it did his; left too long,
+  they come back empty or not at all.
