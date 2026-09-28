@@ -180,11 +180,72 @@ for f in spawn dusk night gallery; do
 done
 fi
 
+# A HUNG RUNNER SAYS WHAT HOLDS IT, THEN DIES RED. Twice on 2026-09-28 a CI shard
+# printed its last "ok" and sat until the 60-minute job limit, and the only
+# evidence was a frozen line count: nothing named the thread that held the exit.
+# So a runner still alive UNSPENT_EXIT_SECS after its summary line (the runner
+# has nothing left to do but drain and quit), or silent for UNSPENT_HANG_SECS
+# mid-run, has every thread's stack dumped, its log tail printed, and is then
+# signalled 11 so Godot's own crash handler prints its C++ and GDScript
+# backtraces too, and killed. That is evidence and a fast red, not a pass: the
+# death fails the gate below (exit 139/137) and the hang is named in words.
+# The longest single test measured is about 50 s, so ten silent minutes is a hang.
+watch_runner() {
+  local pid="$1" log="$2" name="$3" hang="${UNSPENT_HANG_SECS:-600}" exit_secs="${UNSPENT_EXIT_SECS:-120}"
+  local size=-1 still=0 after=0 what=""
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep 5
+    if grep -qE 'passed,' "$log" 2>/dev/null; then
+      after=$((after + 5)); [ "$after" -ge "$exit_secs" ] && { what="HUNG AT EXIT"; break; }
+    elif [ "$(wc -c <"$log" 2>/dev/null)" = "$size" ]; then
+      still=$((still + 5)); [ "$still" -ge "$hang" ] && { what="HUNG MID-RUN"; break; }
+    else
+      size="$(wc -c <"$log" 2>/dev/null)"; still=0
+    fi
+  done
+  [ -z "$what" ] && return 0
+  kill -0 "$pid" 2>/dev/null || return 0
+  echo "$what" >"$log.hung"
+  {
+    echo "== $what: $name (pid $pid) -- every thread's stack:"
+    if command -v gdb >/dev/null 2>&1; then
+      # Ubuntu's ptrace scope lets only a parent attach, so CI attaches as root.
+      local sudo=""; [ "$(id -u)" != 0 ] && sudo -n true 2>/dev/null && sudo="sudo -n"
+      $sudo gdb -p "$pid" -batch -nx -ex "set pagination off" -ex "info threads" -ex "thread apply all bt 40" 2>&1 | grep -vE '^\[New LWP|^warning: .*debug' | head -1500
+    elif command -v eu-stack >/dev/null 2>&1; then
+      eu-stack -p "$pid" 2>&1 | head -1500
+    elif command -v lldb >/dev/null 2>&1; then
+      lldb -p "$pid" --batch -o "thread backtrace all" 2>&1 | head -1500
+    else
+      echo "   (no gdb, eu-stack or lldb on this machine)"
+    fi
+    echo "== $what: $name -- the runner's last 80 lines:"
+    tail -80 "$log"
+    kill -SEGV "$pid" 2>/dev/null
+    for _ in 1 2 3 4 5 6; do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+    kill -9 "$pid" 2>/dev/null
+    echo "== $what: $name -- what Godot's crash handler printed:"
+    grep -nA80 -E 'handle_crash|Program crashed|signal 11' "$log" | head -120
+    echo "== $what: $name -- killed"
+  } >"$log.stacks" 2>&1
+  return 0
+}
+# Said once a watched runner is done: the dump, and the hang named as a death.
+report_hang() {
+  local log="$1" name="$2"
+  [ -f "$log.hung" ] || return 1
+  cat "$log.stacks" 2>/dev/null
+  echo "$name $(cat "$log.hung") -- killed after dumping its stacks; this run proves nothing"
+  rm -f "$log.hung" "$log.stacks"
+  return 0
+}
+
 if [ -n "$only" ]; then idx=("$only"); else idx=($(seq 0 $((shards - 1)))); fi
 if [ -n "$only" ]; then echo "== tests (shard $only of $shards)"
 elif [ "$serial" = "1" ]; then echo "== tests ($shards shards, one at a time)"; else echo "== tests ($shards shards)"; fi
 logs=()
 tpids=()
+wpids=()
 # COSTS ARE MEASURED ALONE (TestCase.yard_lt): beside its sibling shards a cost
 # reads up to 2.2x what it does by itself, which no bar can tell from a
 # regression. Each shard writes the cost tests it met to its own list, and they
@@ -194,6 +255,7 @@ for k in "${!idx[@]}"; do
   i="${idx[$k]}"
   log="$(mktemp "${TMPDIR:-/tmp}/unspent-test.XXXXXX")"; logs+=("$log")
   UNSPENT_COSTS_LATER="$later/shard-$i" godot --headless --path . -s tests/run.gd -- "--shard=$i/$shards" >"$log" 2>&1 & tpids+=($!)
+  watch_runner "$!" "$log" "shard $i" & wpids+=($!)
   # Serial: wait for this shard before starting the next, so only one Godot
   # holds memory at a time. The shards stay THREE so the sharding itself, and
   # anything order-dependent in it, is exactly what the parallel gate runs.
@@ -206,6 +268,8 @@ unfinished=0
 for k in "${!idx[@]}"; do
   i="${idx[$k]}"
   wait "${tpids[$k]}"; code=$?
+  wait "${wpids[$k]}"
+  report_hang "${logs[$k]}" "shard $i" && { fail=1; unfinished=1; }
   # A SHARD THAT DIED IS NOT A SHARD THAT PASSED, and this used to be `|| true`.
   # A killed or OOM-killed shard writes no FAIL lines, so the diff below saw an
   # empty run, found nothing new, and printed CHECK OK -- then listed every
@@ -251,7 +315,12 @@ rm -rf "$later"
 if [ -n "$costs" ]; then
   echo "== costs, alone ($(echo "$costs" | tr ',' '\n' | wc -l | tr -d ' ') tests)"
   clog="$(mktemp "${TMPDIR:-/tmp}/unspent-test.XXXXXX")"
-  godot --headless --path . -s tests/run.gd -- "$costs" >"$clog" 2>&1; code=$?
+  godot --headless --path . -s tests/run.gd -- "$costs" >"$clog" 2>&1 &
+  cpid=$!
+  watch_runner "$cpid" "$clog" "the cost run" & cwatch=$!
+  wait "$cpid"; code=$?
+  wait "$cwatch"
+  report_hang "$clog" "the cost run" && { fail=1; unfinished=1; }
   if [ "$code" != "0" ] && [ "$code" != "1" ]; then echo "the cost run DIED (exit $code) -- this run proves nothing"; fail=1; unfinished=1; fi
   if ! grep -qE 'passed,' "$clog"; then echo "the cost run wrote no summary -- it did not finish"; fail=1; unfinished=1; fi
   grep -E "yardsticks|UNMEASURED|FAIL|^\s{7}|SCRIPT ERROR" "$clog"
