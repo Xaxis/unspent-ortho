@@ -21,6 +21,12 @@ extends RefCounted
 ## the reader is at home by their desk: a DWELLER (21_doors), a person the use
 ## key talks to.
 ##
+## THE STRING IS EARNED, NEVER SOLD (the rulings). The reader WANTS a filed
+## record, what the warrens' boxes keep (Interiors.LOOT `container_warren`):
+## brought one, they take it and GIVE the string, a ball of it laid from this
+## door to the nearest ramp up out of the slots (SlotRoute), which the map draws
+## while it is carried. Once per settlement (21_doors `dweller_deed`).
+##
 ## STORY SLOTS: the sort table (`desk:the_sort`), the words room's shelves
 ## (`wall:words_room`), the lookout's slit (`wall:lookout`), the reader's desk
 ## (`desk:reader`) and each other household's wall (`wall:sorter`,
@@ -36,6 +42,19 @@ const LOOKOUT := Vector2i(3, 2)
 ## The lookout's floor over the sort's: a person's height and more, to see over
 ## the refuse along the slot.
 const RISE := 5
+## What the reader says: asked before the deed, on it, and after it.
+## story: proposed (awaiting review).
+const ASKS: Array[String] = [
+	"Anything with words in it. The boxes in the walls still have some.",
+	"Bring me one and I will lay you the way out.",
+]
+const THANKS: Array[String] = [
+	"A filed record. Somebody kept this, once.",
+	"Here. It is laid from our door to the nearest way up. Follow it out.",
+]
+const AFTER: Array[String] = [
+	"Keep the string. It knows the way better than the walls do.",
+]
 
 
 static func make() -> InteriorKind:
@@ -213,6 +232,7 @@ static func _fit(l: InteriorLayout, rng: RandomNumberGenerator, land: int, house
 				_slot(l, land, &"desk", &"reader", desk, back)
 				# The reader at home beside the desk, facing into the cell (`back`
 				# is the way the wall's things face, into the room).
-				l.residents.append({"role": &"dweller", "household": hh, "at": desk + along * 0.95 + back * 0.2, "face": back})
+				l.residents.append({"role": &"dweller", "household": hh, "at": desk + along * 0.95 + back * 0.2, "face": back,
+					"wants": &"record", "gives": &"string", "asks": ASKS, "thanks": THANKS, "after": AFTER})
 			_:
 				_slot(l, land, &"wall", hh, wall, back)

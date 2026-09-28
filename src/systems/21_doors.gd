@@ -1002,7 +1002,57 @@ func _wake_dwellers() -> void:
 		model.rotation.y = -facing
 		# In the room's own view, so it goes when the room does.
 		game.view.add_child(model)
-		dwellers.append({"id": i, "pos": r.at, "facing": facing, "trade": trade, "household": household, "state": &"out", "model": model})
+		var row := {"id": i, "pos": r.at, "facing": facing, "trade": trade, "household": household, "state": &"out", "model": model}
+		for k: String in ["wants", "gives", "asks", "thanks", "after"]:
+			if r.has(k):
+				row[k] = r[k]
+		dwellers.append(row)
+
+
+## A DEED: a dweller who `wants` a thing `gives` one for it, once per door. Their
+## words for it are theirs (`asks` before, `thanks` on it, `after`), and what is
+## given is the string (SlotRoute): the route from this door to the nearest ramp
+## is laid then, and kept with the door so the map draws it while the string is
+## carried. The talk it says, as a made page (StoryTalk.of_made), or {} for a
+## dweller who wants nothing.
+var _given: Dictionary = {}
+
+
+func dweller_deed(row: Dictionary) -> Dictionary:
+	if pocket == null or not row.has("wants"):
+		return {}
+	var key := pocket.threshold.key
+	var wants := StringName(str(row.wants))
+	var lines: Array = row.get("asks", [])
+	if _given.has(key):
+		lines = row.get("after", [])
+	elif game.inventory != null and game.inventory.has(wants):
+		game.inventory.remove(wants, 1)
+		var gives := StringName(str(row.get("gives", &"")))
+		if gives != &"":
+			game.inventory.add(gives, 1)
+			Events.took.emit(gives, 1)
+		_given[key] = Array(SlotRoute.to_ramp(_outside, pocket.threshold.door))
+		lines = row.get("thanks", [])
+	var says := PackedStringArray()
+	for l: Variant in lines:
+		says.append(str(l))
+	return {"made": true, "mark": &"", "title": "somebody who lives here", "start": &"open",
+		"nodes": {&"open": {"says": says, "replies": [{"text": "[leave]", "to": &""}]}}}
+
+
+## Whether the deed at this door is done.
+func deed_done(key: String) -> bool:
+	return _given.has(key)
+
+
+## Every string's route laid so far, for the map.
+func string_routes() -> Array:
+	var out: Array = []
+	for k: Variant in _given:
+		if not (_given[k] as Array).is_empty():
+			out.append(_given[k])
+	return out
 
 
 ## The people living in the room the player is in, as talk reads them; none
@@ -1070,7 +1120,15 @@ func _save() -> Variant:
 	var lit := {}
 	for k: Variant in _lit:
 		lit[str(k)] = true
-	return {"dead": out, "opened": opened, "served": served, "lit": lit}
+	# Each route as its points' x, y in turn (SaveCodec.floats).
+	var given := {}
+	for k: Variant in _given:
+		var xy := PackedFloat32Array()
+		for p: Vector2 in _given[k]:
+			xy.append(p.x)
+			xy.append(p.y)
+		given[str(k)] = SaveCodec.floats(xy)
+	return {"dead": out, "opened": opened, "served": served, "lit": lit, "given": given}
 
 
 func _load(v: Variant) -> void:
@@ -1097,6 +1155,14 @@ func _load(v: Variant) -> void:
 	_lit.clear()
 	for k: Variant in (v as Dictionary).get("lit", {}):
 		_lit[str(k)] = true
+	_given.clear()
+	var gv: Dictionary = (v as Dictionary).get("given", {})
+	for k: Variant in gv:
+		var xy := SaveCodec.to_floats(gv[k])
+		var pts: Array = []
+		for i in range(0, xy.size() - 1, 2):
+			pts.append(Vector2(xy[i], xy[i + 1]))
+		_given[str(k)] = pts
 
 
 ## A save made in a room counts those already broken in it, without leaving.

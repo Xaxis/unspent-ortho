@@ -354,6 +354,21 @@ func _readable_in_front() -> WorldProp:
 
 
 func _start_talk(row: Dictionary) -> void:
+	# Somebody living in a room who wants something (21_doors DEED): their own
+	# page, the asking, the giving or the after, before anything of the region's.
+	if row.has("wants"):
+		for sys in game.systems:
+			if sys.has_method(&"dweller_deed"):
+				var page: Dictionary = sys.call(&"dweller_deed", row)
+				if not page.is_empty():
+					talk = StoryTalk.of_made(page)
+					view.talk = talk
+					view.choice = 0
+					game.talking = true
+					_hush(true)
+					Events.sfx.emit(&"ui_slate_switch", Vector3.ZERO)
+					view.refresh()
+					return
 	# Somebody who lives here, and this region has something to ask of him or to
 	# thank him for (StorySubarc): that comes before their trade's own words.
 	if StringName(str(row.get("character", &""))) == &"" and not row.has("talk"):
