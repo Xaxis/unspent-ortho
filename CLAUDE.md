@@ -80,6 +80,19 @@ tools/deploy.sh [--prod]        # deploy to Vercel and prove it loads there
 - Send a peer measurements, not conclusions, and re-derive a peer's claim before
   building on it.
 
+## How a slice lands
+
+- One slice, one branch, named for what it does. Fixes to it go on the same
+  branch, never a new `-2`/`-fix` name.
+- Before saying a branch is ready: `tools/preflight.sh` green on the head with
+  `origin/main` merged in. Then the orchestrator gates it on CI (8 shards, ~30 min)
+  and lands it.
+- When it lands, delete the branch and its worktree the same hour. A worktree
+  exists only while someone is editing in it; a pushed branch needs none.
+- A branch unmerged for 2 days gets a decision from its owner: land it or drop
+  it. Nothing is left standing unexplained.
+- `WorldStamp.GEN` is given at landing, as main + 1, in landing order.
+
 ## Commits and shipping
 
 Every commit is the owner's:
