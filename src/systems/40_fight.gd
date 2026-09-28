@@ -1067,7 +1067,7 @@ func _nearest_gap() -> Dictionary:
 			# the walk out passes a second gap and the curtain goes up there.
 			var lone := true
 			for o: WorldProp in near:
-				if o == a or o == b:
+				if WorldProp.same(o, a) or WorldProp.same(o, b):
 					continue
 				if Geometry2D.get_closest_point_to_segment(o.pos, from, to).distance_to(o.pos) < o.solid + 1.2:
 					lone = false

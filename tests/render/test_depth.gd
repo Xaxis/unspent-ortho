@@ -325,7 +325,14 @@ func test_a_landscape_that_builds_upward_hangs_its_own_pieces() -> void:
 func test_the_tall_cut_can_never_reach_a_village_or_the_land() -> void:
 	var src := FileAccess.get_file_as_string("res://src/render/world.gdshader")
 	check(src.contains("float tall_cut("), "the tall cut exists")
-	check(src.contains("if (mark_land(m)) {"), "and the land (`mark_land`, GroundColors THE LAYOUT) is refused: the land never opens")
+	# The cut refuses whatever is never cut (`mark_uncut`): the land (`mark_land`,
+	# GroundColors THE LAYOUT) and the held plain matter a curtain or a hanging
+	# stone is drawn in (GroundColors.HELD). The land is in it, so it never opens.
+	var body := src.substr(src.find("float tall_cut("), 400)
+	check(body.contains("if (mark_uncut(m)) {"), "the tall cut refuses what is never cut")
+	var inc := FileAccess.get_file_as_string("res://src/render/matter.gdshaderinc")
+	var uncut := inc.substr(inc.find("bool mark_uncut("), 120)
+	check(uncut.contains("mark_land(m)"), "and the land (`mark_land`, GroundColors THE LAYOUT) is among it: the land never opens")
 	# Read out of the shader so the two cannot drift apart. It is a UNIFORM now
 	# rather than a const (18_crowns can put it out of reach to ask what the cut
 	# COSTS), so what is pinned here is the DEFAULT the shipped game draws with.
