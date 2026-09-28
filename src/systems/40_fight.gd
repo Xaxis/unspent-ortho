@@ -709,8 +709,8 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"plating":
 				# An edge rang off a keeper's plating (FightRules.bites): the survival
 				# state remembers the hardness it wants and whose, and the first time
-				# it says why. Words for story-wright: the short form of what the one
-				# who named the keeper told the player.
+				# it says why: the short form of what the one who named the keeper
+				# told the player (Guide.edge_line, StoryContent.EDGE).
 				var m: MobState = e.mob
 				var plate := StringName(e.get("plate", &""))
 				var st := SurvivalState.of(game)
@@ -722,7 +722,7 @@ func _handle(events: Array[Dictionary]) -> void:
 					# Said at once, with the keeper close: the HUD keeps quiet in a
 					# fight, and this is the one line the fight is for.
 					if game.hud != null:
-						game.hud.say_now("It rings. Iron does not bite that plate.")
+						game.hud.say_now(Guide.edge_line(&"rings", Guide.keeper_name(def.land if def != null else &"")))
 			&"unseen_tell":
 				# A bite begun out of the player's sight in a crowd: a call from its
 				# bearing, and a mark at the slate's edge on its side for its tell.

@@ -218,27 +218,58 @@ static func _led(key: StringName, plain: String, at: String = "") -> String:
 const EDGE_KEEPER := {&"coast": "the reaper"}
 const KILN_STONES := 8
 const TEMPER_CHARCOAL := 4
+## THE ONE WHO NAMED IT (ROADMAP slice 1, step 3): once Hob has told him what
+## stands in the yard (the beat `reaper_named`), the lines are the short form of
+## what he said (StoryContent.EDGE) and the keeper has the name he gave it
+## (StoryContent.KEEPER_NAMED). A player who meets it before anyone has told him
+## hears these, plain. `{who}` is the keeper's name, `{at}` the fire's.
+const NAMED_BEAT := &"reaper_named"
+const EDGE_PLAIN := {
+	&"steel_in_hand": "Steel in hand now. Take it to {who}.",
+	&"tempering": "The knife is taking its temper in the kiln. Let it.",
+	&"kiln_stones": "Iron rings off {who}; steel bites. A kiln to temper the knife: eight stones.",
+	&"kiln_lay": "Iron rings off {who}; steel bites. Lay the kiln to temper the knife.",
+	&"fire_for_charcoal": "A fire to burn charcoal: the knife's temper wants four.",
+	&"charcoal_at": "Four charcoal to temper the knife, burnt at {at}.",
+	&"temper": "Temper the knife in the kiln: four charcoal, and the night.",
+	&"rings": "It rings. Iron does not bite that plate.",
+}
+
+
+## The keeper of `land` by the name the player has for it.
+static func keeper_name(land: StringName) -> String:
+	if Story.landed(NAMED_BEAT) and StoryContent.KEEPER_NAMED.has(land):
+		return String(StoryContent.KEEPER_NAMED[land])
+	return String(EDGE_KEEPER.get(land, "the keeper"))
+
+
+## One of the edge's lines: Hob's once he has named the keeper, else plain.
+static func edge_line(key: StringName, who: String = "", at: String = "") -> String:
+	var line := String(EDGE_PLAIN.get(key, ""))
+	if Story.landed(NAMED_BEAT) and StoryContent.EDGE.has(key):
+		line = String(StoryContent.EDGE[key])
+	return line.replace("{who}", who).replace("{at}", at)
 
 
 static func edge_goal(game: Game) -> String:
 	var st := SurvivalState.of(game)
 	for plate: Variant in st.plates:
-		var who: String = EDGE_KEEPER.get(StringName(st.plates[plate]), "the keeper")
+		var who := keeper_name(StringName(st.plates[plate]))
 		if _carries_edge(game, StringName(plate)):
-			return "Steel in hand now. Take it to %s." % who
+			return edge_line(&"steel_in_hand", who)
 		var inv := game.inventory
 		if _cooking_or_has(game, &"knife_shear"):
-			return "The knife is taking its temper in the kiln. Let it."
+			return edge_line(&"tempering", who)
 		if _kiln(game) == null:
 			if inv.count(&"stone") < KILN_STONES:
-				return "Iron rings off %s; steel bites. A kiln to temper the knife: eight stones." % who
-			return "Iron rings off %s; steel bites. Lay the kiln to temper the knife." % who
+				return edge_line(&"kiln_stones", who)
+			return edge_line(&"kiln_lay", who)
 		if not _cooking_or_has(game, &"charcoal") or inv.count(&"charcoal") < TEMPER_CHARCOAL:
 			var fire := _fire(game)
 			if fire == null:
-				return "A fire to burn charcoal: the knife's temper wants four."
-			return "Four charcoal to temper the knife, burnt at %s." % fire_name(game, fire)
-		return "Temper the knife in the kiln: four charcoal, and the night."
+				return edge_line(&"fire_for_charcoal", who)
+			return edge_line(&"charcoal_at", who, fire_name(game, fire))
+		return edge_line(&"temper", who)
 	return ""
 
 
