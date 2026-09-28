@@ -43,14 +43,13 @@ const LOOKOUT := Vector2i(3, 2)
 ## the refuse along the slot.
 const RISE := 5
 ## What the reader says: asked before the deed, on it, and after it.
-## story: proposed (awaiting review).
 const ASKS: Array[String] = [
 	"Anything with words in it. The boxes in the walls still have some.",
 	"Bring me one and I will lay you the way out.",
 ]
 const THANKS: Array[String] = [
-	"A filed record. Somebody kept this, once.",
-	"Here. It is laid from our door to the nearest way up. Follow it out.",
+	"Somebody wrote this down so it would not be lost. Nearly worked.",
+	"Here. We ran one like it from our door to the way up. Follow ours out.",
 ]
 const AFTER: Array[String] = [
 	"Keep the string. It knows the way better than the walls do.",
