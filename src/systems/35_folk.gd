@@ -284,6 +284,8 @@ func pump() -> bool:
 		return false
 	var q: Dictionary = queue.pop_front()
 	_add(q.look, q.home, q.role, q.village, q.h, q.door, q.get("trade", &""), bool(q.get("street", false)))
+	if bool(q.get("silent", false)):
+		folk[folk.size() - 1]["silent"] = true
 	return true
 
 
@@ -298,6 +300,7 @@ func _populate(index: int, centre: Vector2) -> void:
 	var many := maxi(PER_VILLAGE, BiomeRegistry.at(w, centre).street_folk)
 	var street := many > PER_VILLAGE
 	var looks := PersonLook.crowd(w.seed_value * 31 + index * 977, many)
+	var rows: Array[Dictionary] = []
 	for n in looks.size():
 		var h := Rng.hash01(w.seed_value, index, n, 71)
 		var home := centre + Vector2(Rng.hash01(w.seed_value, index, n, 72) - 0.5, Rng.hash01(w.seed_value, index, n, 73) - 0.5) * 8.0
@@ -337,8 +340,47 @@ func _populate(index: int, centre: Vector2) -> void:
 		# argument about itself. The rule it would otherwise take, that a villager
 		# is indoors after dark, is right for a fishing village and was written
 		# when every settlement was one.
-		queue.append({"look": looks[n], "home": home, "door": door, "role": role,
+		rows.append({"look": looks[n], "home": home, "door": door, "role": role,
 			"village": index, "h": h, "trade": trade, "street": n >= PER_VILLAGE and street})
+	# ONE SHORT FOR EACH IT LOST, the only sign he gets that the plan came while he
+	# was away: the village's own people, never the street's, the last of them
+	# first. One got back empty stands among them and never answers.
+	var gone := _taken_from(index)
+	var own := mini(rows.size(), PER_VILLAGE)
+	var drop := mini(gone.x, own)
+	for k in range(own - drop, own):
+		rows[k] = {}
+	var hush := gone.y
+	for k in range(own - drop - 1, -1, -1):
+		if hush <= 0:
+			break
+		rows[k]["silent"] = true
+		hush -= 1
+	for r: Dictionary in rows:
+		if not r.is_empty():
+			queue.append(r)
+
+
+## For village `index`: how many of its people the plan has (held, gone, lost, or
+## still on the road home), and how many came back empty. Read from 45_taken's
+## record, by the village's name, which is how the record knows a village.
+func _taken_from(index: int) -> Vector2i:
+	var record: Taken = null
+	for sys in game.systems:
+		if sys.get("taken") is Taken:
+			record = sys.get("taken")
+	if record == null:
+		return Vector2i.ZERO
+	var name := str(game.world.villages[index].get("name", ""))
+	var out := Vector2i.ZERO
+	for t in record.people:
+		if t.home >= 0 or t.home_name != name:
+			continue
+		if not t.freed or t.lost or t.walking:
+			out.x += 1
+		elif t.empty:
+			out.y += 1
+	return out
 
 
 ## `--folk=N` round the player, for crowd shots. The first RING_FIRST lie on the
