@@ -235,13 +235,12 @@ const TOUR_MARGIN := 0.12
 ## -1 not looked yet, 0 no, 1 yes: whether PropModels says where its lights are.
 
 
-func setup(g: Game) -> void:
-	super.setup(g)
-	if g.options.lamp:
-		g.body.lamp_lit = true
-	_glow_mat = StandardMaterial3D.new()
-	_glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_glow_mat.vertex_color_use_as_albedo = true
+## The glow the lantern, the panes and the door slits are drawn in. Its own
+## builder so the boot can draw it once before any room does (01_warm_lights).
+static func glow_material() -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.vertex_color_use_as_albedo = true
 	# THE ONE COLOUR DOOR, for the one material in this package that is not a
 	# shader and so cannot call `matter_albedo()`. The vertex colours here are
 	# palette sRGB — the player's lantern, every lit window pane, every door slit
@@ -250,8 +249,16 @@ func setup(g: Game) -> void:
 	# build got them right. `unshaded` is not an exemption: render_probe.gd
 	# measured the encode on an unshaded quad, which IS this case. Decided the
 	# same way `sky_linear` is, because it is the same decision.
-	_glow_mat.vertex_color_is_srgb = Quality.forward_plus()
-	_glow_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.vertex_color_is_srgb = Quality.forward_plus()
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return m
+
+
+func setup(g: Game) -> void:
+	super.setup(g)
+	if g.options.lamp:
+		g.body.lamp_lit = true
+	_glow_mat = glow_material()
 	# HOW MANY LOCAL LIGHTS EXIST is the quality tier's business (`Quality.ROWS`
 	# `lamps`), not the shader pool's. This built `SkyLight.MAX_LAMPS - 1` = seven
 	# for the game's whole life, and MAX_LAMPS is 8 only because `sky_lamps` packs

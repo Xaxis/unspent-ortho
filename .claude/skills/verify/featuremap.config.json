@@ -2,6 +2,13 @@
  "manual": [
   {
    "kind": "system",
+   "label": "01_warm_lights",
+   "entry": "src/systems/01_warm_lights.gd",
+   "reach": "tools/web.sh --tour=tours/every-room.tour --programs",
+   "area": "platform"
+  },
+  {
+   "kind": "system",
    "label": "05_save",
    "entry": "src/systems/05_save.gd",
    "reach": "tools/tour.sh tours/saves.tour",

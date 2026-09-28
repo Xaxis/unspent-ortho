@@ -244,6 +244,14 @@
       "tests": []
     },
     {
+      "id": "system:01_warm_lights",
+      "kind": "system",
+      "entry": "src/systems/01_warm_lights.gd",
+      "reach": "tools/web.sh --tour=tours/every-room.tour --programs",
+      "area": "platform",
+      "tests": []
+    },
+    {
       "id": "system:05_save",
       "kind": "system",
       "entry": "src/systems/05_save.gd",
