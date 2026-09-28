@@ -1,6 +1,6 @@
 class_name StoryEnding
 ## How it can end (docs/STORY.md). Not a list: the last thing he chooses at
-## the channel, read against the version of the secret he holds (StorySecret),
+## the channel, read against the order he relived the memories in (StorySecret),
 ## and then everybody the story touched, as he left them. Pure: every line is
 ## worked out from Story at the moment the page is read (`the_end`), the way the
 ## ledger's pages are.

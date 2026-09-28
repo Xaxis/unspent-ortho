@@ -3,7 +3,8 @@ extends TestCase
 const Sx := preload("res://tests/save/save_fixture.gd")
 ## The secret is hidden in the ORDER of three memories (StorySecret, docs/STORY.md
 ## §4): kitchen, car, the hall. Two keepers hold two of them and the Seeker's 2029
-## gives back the third, and the order they come back in is the version he holds.
+## gives back the third, in any order; the order he RELIVES them in at the
+## channel is the version (ruled 2026-09-28).
 
 
 func test_his_own_hand_wrote_the_order_the_secret_keeps() -> void:
@@ -37,25 +38,36 @@ func test_a_keeper_read_says_which_memory_it_keeps() -> void:
 		"a keeper with no memory of his still keeps one not its own")
 
 
-func test_in_order_the_key_turns_and_out_of_order_it_catches() -> void:
-	Story.forget()
-	var t := 0.0
-	for m: StringName in StorySecret.KEY:
-		t += 10.0
-		Story.now = t
-		Story.beat(m)
-	eq(StorySecret.version(), &"secret_whole", "kitchen, car, the hall")
-	Story.forget()
-	var backwards: Array[StringName] = [&"mem_hall", &"mem_kitchen", &"mem_car"]
-	t = 0.0
-	for m: StringName in backwards:
-		t += 10.0
-		Story.now = t
-		Story.beat(m)
-	eq(StorySecret.version(), &"secret_misremembered", "the hall first turns it the wrong way")
-	Story.forget()
-	Story.beat(&"mem_kitchen")
-	eq(StorySecret.version(), &"", "nothing until all three are back")
+## The tide's keeper is on the home coast, so the car comes back first, and that
+## must commit nothing: only the reliving at the channel decides.
+func test_recovered_in_any_order_it_is_relived_in_one() -> void:
+	for got: Array in [[&"mem_car", &"mem_kitchen", &"mem_hall"], [&"mem_hall", &"mem_car", &"mem_kitchen"]]:
+		Story.forget()
+		Story.beat(got[0], -INF)
+		check(not StorySecret.complete(), "nothing until all three are back")
+		for m: StringName in got:
+			Story.beat(m, -INF)
+		check(StorySecret.complete(), "all three back, in any order, he holds it")
+		check(not StorySecret.whole(), "and the order they came back in decides nothing")
+		Story.beat(StorySecret.HELD, -INF)
+		for picks: Array in [["[the kitchen]", "[the car]"], ["[the car]", "[the kitchen]"], ["[the hall]", "[the kitchen]"]]:
+			Story.forget_beat(&"secret_whole")
+			Story.forget_beat(&"secret_misremembered")
+			var t := StoryTalk.start(&"the_channel")
+			for want: String in ["Break them."] + picks:
+				var i := -1
+				var rs := t.replies()
+				for k in rs.size():
+					if str(rs[k].text) == want:
+						i = k
+				check(i >= 0, "the channel offers %s" % want)
+				if i < 0:
+					break
+				@warning_ignore("return_value_discarded")
+				t.pick(i)
+			var in_order: bool = picks[0] == "[the kitchen]" and picks[1] == "[the car]"
+			eq(StorySecret.whole(), in_order, "relived %s: whole only as kitchen, car, the hall" % [picks])
+			eq(Story.landed(&"secret_misremembered"), not in_order, "and turned otherwise")
 	Story.forget()
 
 
