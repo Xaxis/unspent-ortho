@@ -2,7 +2,13 @@
 # played from the title the way a player starts, with nothing given, no folk and
 # no beats pre-landed. Each step of the slice extends it.
 #
-#   tools/tour.sh tours/home-coast.tour --scene=title --seed=1
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/home-coast.tour --scene=title --seed=1
+#
+# At a fixed frame rate: from step 3 on a machine's tells are waited for, and a
+# loaded box's frames let them go by (the keeper's block, as reaper_plating's).
+# It may down him on the way to its plate; that is the fight, and it costs him
+# hours and a meal, which is why the goal after it is his hunger's until step 4
+# stages the fight itself.
 #
 # 1a THE WAKE (48_wake): a new game starts him under the water in the shallows
 # off the spawn beach, the black site in the sea behind him and Maren at the
@@ -151,3 +157,38 @@ wait 0.6
 shot 11-a-pick-of-his-own with app:inventory
 tap inventory
 wait 0.4
+
+# 4 THE TIDE REAPER, NAMED (Guide.edge_line, StoryContent.EDGE, KEEPER_NAMED):
+# Hob, who picks the tide past the point, names the yard and its keeper and says
+# what bites it; then at the keeper the knife rings off its plate, and the goal
+# is the steel edge in Hob's words.
+at cast:hob
+await cast:hob 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+press use
+wait 0.5
+press use
+wait 0.5
+press use
+await beat:reaper_named 3
+wait 0.5
+shot 12-hob-names-it with talking,beat:reaper_named
+press use
+wait 1.0
+near keeper
+wait 0.6
+await sentinel 12
+try 8
+  walkto mob 6
+  await tell 14
+  press dodge 0.12
+  await sentinel_open 6
+  walkto part 2
+  tap swing
+  await plating 5
+end
+wait 0.4
+shot 13-the-knife-rings-off-it with plating

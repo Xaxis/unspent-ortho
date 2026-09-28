@@ -398,6 +398,20 @@ func _try_pull() -> void:
 		emit(&"pull", {"grip": hero.grip, "by": holder})
 		if hero.grip == 0:
 			emit(&"loose", {"by": holder})
+			# Torn loose, a grip that says so (Blow.torn) slews its gripper half round
+			# and jams it there, its back to the player: a body that turns on the
+			# spot as fast as they can circle it, on ground fenced either side, is
+			# otherwise never got round, and the part at its back is its last one.
+			var m := holder as MobState
+			if m != null and m.bite != null and m.bite.torn > 0:
+				var away := (m.pos - hero.pos).angle()
+				m.slew_to = away
+				m.slew_until = now + FightRules.SLEW_MS
+				m.aim = away
+				m.stun_until = maxf(m.stun_until, now + m.bite.torn)
+				m.charging = false
+				_break_tell(m)
+				emit(&"torn", {"by": m, "ms": m.bite.torn})
 
 
 # --- moods (100 ms beats) ----------------------------------------------------
@@ -1141,7 +1155,9 @@ func _move_mob(m: MobState, dt: float) -> void:
 	var sealing := now < m.seal_until
 	if sealing:
 		m.aim = (m.seal_at - m.pos).angle()
-	if not m.committed(now) and not m.stunned(now):
+	if now < m.slew_until:
+		m.facing = rotate_toward(m.facing, m.slew_to, FightRules.SLEW_TURN * dt)
+	elif not m.committed(now) and not m.stunned(now):
 		m.facing = rotate_toward(m.facing, m.aim, m.turn_rate_at(now) * dt)
 	var v := m.want * (BOG_SLIP if bog else 1.0)
 	if m.stunned(now) or sealing:
