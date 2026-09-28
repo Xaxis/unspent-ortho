@@ -261,6 +261,10 @@ func _outside_side() -> void:
 
 
 func _inside_side(delta: float) -> void:
+	# Each machine heard coming within its hearing of the door, once, by its
+	# footfalls through the heap in its weight, at the door.
+	for i in DoorHush.entered(_heard, pocket.threshold.door, _heard_t, _heard_t + delta):
+		Events.sfx.emit(StringName("passing_%s" % _heard[i].weight), game.world.to_3d(pocket.layout.door))
 	_heard_t += delta
 	var want := DoorHush.quiet(_heard, pocket.threshold.door, _heard_t)
 	quiet = move_toward(quiet, want, QUIET_RATE * delta)

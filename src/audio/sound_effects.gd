@@ -73,6 +73,9 @@ static func make(name: StringName, variant: int, rate: int) -> PackedFloat32Arra
 		&"thunder": return _thunder(rate, variant, true)
 		&"thunder_far": return _thunder(rate, variant, false)
 		&"colossus_step": return _colossus_step(rate, variant)
+		&"passing_light": return _passing(rate, 0)
+		&"passing_mid": return _passing(rate, 1)
+		&"passing_heavy": return _passing(rate, 2)
 		&"colossus_boom": return _colossus_boom(rate, variant)
 		&"ui_move": return _ui_move(rate)
 		&"ui_accept": return _ui_accept(rate)
@@ -607,6 +610,39 @@ static func _colossus_step(rate: int, v: int) -> PackedFloat32Array:
 		grit[i] *= smoothstep(0.1, 0.6, t) * exp(-t * 1.1) * (0.5 + 0.5 * swell[i])
 	Synth.normalize(grit, 1.0)
 	Synth.add(out, grit, 0, 0.08)
+	return out
+
+
+## A MACHINE GOING BY OUTSIDE, HEARD THROUGH THE HEAP (DoorHush, a room's
+## hush): a few of its footfalls, muffled by everything between, in its weight.
+## A player in a room learns to hear what is out there by these alone.
+##   0 light   a runner, a clerk: quick, high, ticking, four steps
+##   1 mid     a sorter: a clunk with a ring of plate in it, three steps
+##   2 heavy   a harvester, a keeper: slow thuds that shake, two steps
+static func _passing(rate: int, weight: int) -> PackedFloat32Array:
+	var steps: int = [4, 3, 2][weight]
+	var gap: float = [0.2, 0.42, 0.9][weight]
+	# The heavy's weight is its slow spacing and a body low in the band the mix
+	# gives the world (test_mix: under 120 Hz belongs to thunder alone).
+	var lo: float = [380.0, 150.0, 120.0][weight]
+	var hi: float = [1500.0, 700.0, 330.0][weight]
+	var t60: float = [0.08, 0.22, 0.6][weight]
+	var n := _at(rate, gap * float(steps) + t60 + 0.2)
+	var out := Synth.buffer(n)
+	for s in steps:
+		# Each step a little nearer, then a little further: going past.
+		var near := 1.0 - absf(float(s) - float(steps - 1) * 0.5) / float(steps)
+		var step := _burst(rate, t60 + 0.05, 7400 + weight * 31 + s, lo, hi, t60)
+		Synth.add(out, step, _at(rate, gap * float(s)), 0.5 + 0.5 * near)
+		if weight == 1:
+			# The plate it is made of, ringing once under the foot.
+			var ring := _burst(rate, 0.3, 7470 + s, 520.0, 640.0, 0.25)
+			Synth.add(out, ring, _at(rate, gap * float(s) + 0.01), 0.25 * near)
+		elif weight == 2:
+			var rumble := _burst(rate, 0.9, 7490 + s, 130.0, 210.0, 0.8, 0.02)
+			Synth.add(out, rumble, _at(rate, gap * float(s)), 0.7 * near)
+	# Through the heap: everything bright is gone.
+	Synth.lowpass4(out, rate, [1800.0, 900.0, 360.0][weight])
 	return out
 
 

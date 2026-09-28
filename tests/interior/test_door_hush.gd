@@ -17,6 +17,23 @@ func _lamp(d: Node) -> float:
 
 ## Held at `t` on the room's clock for longer than the hush takes to ease
 ## (1 / QUIET_RATE), in real seconds: headless frames come fast.
+## What the world's beds are asked to play now (70_audio's targets), summed.
+func _beds(g: Game) -> float:
+	var audio := Sx.system(g, "70_audio")
+	var targets: Dictionary = audio.get(&"targets") if audio != null else {}
+	var sum := 0.0
+	for k: Variant in targets:
+		sum += float(targets[k])
+	return sum
+
+
+var _cues: Array[StringName] = []
+
+
+func _heard_cue(name: StringName, _at: Vector3) -> void:
+	_cues.append(name)
+
+
 func _settle(d: Node, t: float) -> void:
 	var until := Time.get_ticks_msec() + 1600
 	while Time.get_ticks_msec() < until:
@@ -61,15 +78,33 @@ func test_a_sorter_passing_the_door_hushes_the_room() -> void:
 	var lamp0 := _lamp(d)
 	lt(q0, 0.05, "far off, the room is not hushed")
 	gt(lamp0, 0.0, "the room has a lamp to dip")
-	# At the door: twelve tiles at its round's pace.
+	var beds0 := _beds(g)
+	gt(beds0, 0.05, "the room has sounds to lose")
+	# ITS FOOTFALLS AS IT COMES: let the room's clock run across the moment it
+	# comes within its hearing of the door, and the one cue is its weight's.
 	var speed := float(heard[0].speed)
+	var comes := 0.0
+	while DoorHush.at(heard[0], comes).distance_to(t.door) > float(heard[0].hears):
+		comes += 0.05
+	_cues.clear()
+	Events.sfx.connect(_heard_cue)
+	d.set(&"_heard_t", comes - 0.4)
+	var until := Time.get_ticks_msec() + 1500
+	while Time.get_ticks_msec() < until:
+		await tree.process_frame
+	Events.sfx.disconnect(_heard_cue)
+	var passing := _cues.filter(func(c: StringName) -> bool: return String(c).begins_with("passing_"))
+	eq(passing, [&"passing_mid"], "a sorter's footfalls, once, as it comes (a sorter is middling)")
+	# At the door: twelve tiles at its round's pace.
 	await _settle(d, 12.0 / speed)
 	gt(float(d.get(&"quiet")), 0.95, "passing, the room holds its breath")
 	lt(_lamp(d), lamp0 * 0.6, "and its lamps dip")
+	lt(_beds(g), beds0 * 0.1 + 0.001, "and the room's sounds fall away")
 	# Past, beyond its hearing and the fade (twenty tiles on, at b's end and back).
 	await _settle(d, 20.0 / speed)
 	lt(float(d.get(&"quiet")), 0.05, "past, the room breathes again")
 	near(_lamp(d), lamp0, lamp0 * 0.1, "and its lamps come back")
+	near(_beds(g), beds0, beds0 * 0.2 + 0.001, "and its sounds")
 	var at := DoorHush.at(heard[0], 20.0 / speed)
 	await d.call(&"go_out")
 	var back := false
@@ -79,3 +114,14 @@ func test_a_sorter_passing_the_door_hushes_the_room() -> void:
 	check(back, "out again, the sorter is where its round took it")
 	eq(float(d.get(&"quiet")), 0.0, "and outside nothing is hushed")
 	Sx.end(g)
+
+
+## A MACHINE'S FOOTFALLS ARE ITS WEIGHT'S. A runner ticks, a sorter clunks, a
+## harvester shakes the heap: by the size its roster row gives it.
+func test_a_machine_is_heard_in_its_own_weight() -> void:
+	eq(DoorHush.weight(Roster.row(&"runner")), &"light", "a runner is light")
+	eq(DoorHush.weight(Roster.row(&"sorter")), &"mid", "a sorter is middling")
+	eq(DoorHush.weight(Roster.row(&"harvester")), &"heavy", "a harvester is heavy")
+	for w: StringName in [&"light", &"mid", &"heavy"]:
+		check(SoundBank.has_sound(StringName("passing_%s" % w)), "passing_%s is on the sheet" % w)
+		eq(SoundNames.resolve(StringName("passing_%s" % w)), StringName("passing_%s" % w), "and an emitter's name for it")
