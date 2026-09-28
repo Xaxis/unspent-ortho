@@ -34,6 +34,32 @@ Builders: **A** introduction and story (teammate3, words via story-wright) ·
    Rescue on a clock, or a loss heard in Maren's lines.
 7. [ ] **Proof** (all). The proof tour plays the whole slice unassisted. ★
 
+## Tools track — the story map and the dev slate (alongside slice 1)
+
+The owner's ask (2026-09-28): see every arc and sub-arc as directional arrows over the
+world, how they interleave across the whole game, and view and edit each in a
+meaningful way. It must be brilliant. Builder **D**.
+
+- [ ] **T1 The dev slate, rebuilt.** One dev app on the slate with pages (world, story,
+  fight, look and speed, saves) in the hacked-slate idiom. Today's rules and toggles
+  move in whole; nothing lost.
+- [ ] **T2 The story map.** On any seed: the journey's legs as the spine; each arc a
+  coloured line of arrows beat to beat, at the places the beats land; interleaving
+  seen where arcs share ground. Filter by arc, cast or leg; scrub through the
+  order; the live save's state shown (landed, open, withheld). ★
+- [ ] **T3 The arc view.** One arc as a graph (Godot's `GraphEdit`): beats, what opens
+  each (gates, witnessed events, memories), sub-arcs and branches, every line with
+  its speaker and place, each node linked to its source. ★
+- [ ] **T4 Editing** (after the owner has used T2–T3): story data moves to a structured
+  file the game loads; edits save through the story tests; the words still pass
+  story-wright.
+
+**Brilliant means:** a stranger reads the whole story's shape in ten seconds; nothing
+overlaps unreadably at any zoom; it opens in under a second and pans at 60 fps; it
+looks like the game (the slate, lit, never a debug grey); every mark leads to the
+line that made it. Proved by frames read at three zooms on two seeds, and the owner's
+★ review.
+
 ## Fixes that serve the slice
 
 - [ ] The intermittent test hang after `works/test_in_game`'s depot test (blocks gates).
