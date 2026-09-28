@@ -138,7 +138,7 @@ func _free(region: int) -> void:
 		elif t.empty:
 			# Out past the run: said alone, never folded into the many, because
 			# whoever walked out is not who was carried in (Taken.RUN_HOURS).
-			Events.message.emit(StoryContent.TAKEN[&"freed_empty"] % Taken.say(t))
+			_say(&"freed_empty", Taken.say(t))
 		else:
 			names.append(Taken.say(t))
 	if names.is_empty():
