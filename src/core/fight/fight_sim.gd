@@ -438,6 +438,7 @@ func holds_slot(m: MobState) -> bool:
 ## The other presses and feints: a pair is two things to read in turn, never
 ## two blows to take at once.
 const BITE_GAP_MS := 300.0
+const CHARGE_GAP_MS := 1000.0
 
 
 func bite_turn(m: MobState) -> bool:
@@ -446,8 +447,12 @@ func bite_turn(m: MobState) -> bool:
 	for o in mobs:
 		if o == m or not o.alive or o.removed or not biter(o):
 			continue
-		# A charger's run is its bite from the moment it commits.
-		if o.charging:
+		# A charger's run is its bite from the moment it commits, and the window
+		# it leaves (spent, standing, coming round: its whole lockout, and
+		# CHARGE_GAP_MS after a run that ended without a bite) is the player's
+		# before anything else strikes. Serial charges with no window between
+		# them were a wall a pair of harvesters never was.
+		if o.approach == &"charge" and (o.charging or o.locked_out(now) or now - o.run_until < CHARGE_GAP_MS):
 			return false
 		if o.blow != null and now - o.blow_at < float(o.blow.windup + o.blow.active) + BITE_GAP_MS:
 			return false

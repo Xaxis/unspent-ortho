@@ -318,6 +318,12 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 			m.aim = to.angle()
 			_come_round(m, sim, to, pause_ms)
 			return
+		# A run is its bite (FightSim.bite_turn): it is not begun while another body
+		# strikes, and it stands facing the player until its turn.
+		if not sim.bite_turn(m):
+			m.want = Vector2.ZERO
+			m.aim = to.angle()
+			return
 		m.flank_since = -1.0
 		# Commit along the way it actually faces, corrected a little toward the player.
 		m.bearing = Vector2.from_angle(m.facing + clampf(off, -0.35, 0.35))

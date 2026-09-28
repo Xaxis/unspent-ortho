@@ -106,3 +106,61 @@ func test_a_waiter_waits_at_the_edge_facing_you() -> void:
 			lt(absf(wrapf((sim.hero.pos - m.pos).angle() - m.facing, -PI, PI)), 0.6, "facing the player")
 	eq(waiters, 1, "one of three waits")
 	lt(float(bites.size()), 2.5, "only the two in their slots told a bite")
+
+
+## A body striking: a charger's run from the moment it commits, or any biter's
+## blow from its tell through its strike.
+static func striking(m: MobState, now: float) -> bool:
+	if not m.alive or m.removed:
+		return false
+	return m.charging or m.blow_phase(now) in [&"windup", &"active"]
+
+
+## A charge is a bite (FightSim.bite_turn): in three harvesters and two cutters,
+## no charge ever runs while another body strikes.
+func test_a_charge_never_overlaps_another_strike() -> void:
+	var kinds: Array[StringName] = [&"harvester", &"harvester", &"harvester", &"cutter", &"cutter"]
+	var overlaps := 0
+	for start in 8:
+		MobState._next_id = 1000
+		var sim := F.make_sim(F.flat_world(96), Vector2(48.5, 48.5))
+		sim.hero.inventory.add(&"knife")
+		sim.hero.inventory.set_held(&"knife")
+		var a := float(start) / 8.0 * TAU
+		var mid := sim.hero.pos + Vector2.from_angle(a) * 5.0
+		var side := Vector2.from_angle(a).orthogonal()
+		var crowd: Array[MobState] = []
+		for k in kinds.size():
+			var m := sim.add_mob(kinds[k], mid + side * (float(k) - 2.0) * 1.1)
+			m.facing = (sim.hero.pos - m.pos).angle()
+			m.aim = m.facing
+			m.disturbed = true
+			m.set_mood(MobState.CHASING, sim.now)
+			crowd.append(m)
+		var player := SR.new(sim)
+		sim.hero.facing = (mid - sim.hero.pos).angle()
+		var t := 0.0
+		while t < 30000.0 and not sim.last_outcome in [&"downed", &"carried"]:
+			player.act()
+			sim.slices(2)
+			t += 16.0
+			for m in crowd:
+				if not m.charging or not striking(m, sim.now):
+					continue
+				for o in crowd:
+					if o != m and striking(o, sim.now):
+						overlaps += 1
+	print("  info three harvesters and two cutters, 8 starts of 30 s: %d slices a charge ran over another strike" % overlaps)
+	eq(overlaps, 0, "no charge runs while another body strikes")
+
+
+## A charge is read at least as long as the cutter's tell: every roster charger's
+## bite winds up no quicker than the cutter's.
+func test_a_charge_is_told_no_quicker_than_a_cutters_bite() -> void:
+	var cutter := int((Roster.row(&"cutter").bite as Dictionary).swing[0])
+	for k in Roster.kinds():
+		var r := Roster.row(k)
+		if r.get("approach", &"") != &"charge" or not r.has("bite"):
+			continue
+		var w := int((r.bite as Dictionary).swing[0])
+		check(w >= cutter, "%s winds up %d ms, the cutter %d" % [k, w, cutter])
