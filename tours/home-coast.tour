@@ -340,7 +340,11 @@ at mark:kiln
 wait 0.5
 await made 10
 wait 0.5
-shot 16-steel-in-his-hand with goal:steel_in_hand
+tap inventory
+wait 0.6
+shot 16-steel-in-his-hand with app:inventory
+tap inventory
+wait 0.4
 
 # 6 WHO SAW HIM (48_raids, SnatchNight): while he was away at the Reaper and at
 # Low Scar, the plan came in the small hours for somebody out of Oyster Row, and
@@ -350,3 +354,38 @@ at rescue:yard
 wait 1.0
 await held_here 6
 shot 17-the-yard-holding-somebody-from-oyster-row with works,works_lit,works_yard
+
+# 7 THE FIGHT AND ITS FALL (44_sentinels, 42_stage): the Reaper taken apart with
+# the steel knife through the openings it gives, the way a player learns it: in
+# front where it will bite, round out of the box as the tell starts, into the
+# working part while the drum is jammed. Each pass starts off its body, so a pass
+# that ends with him downed and carried off starts again from where it stands.
+near keeper
+wait 0.6
+await sentinel 12
+try 80
+  near mob:sentinel.coast 5
+  walkto mob 6
+  await tell 14
+  press dodge 0.12
+  await sentinel_open 6
+  walkto part 2
+  tap swing
+  await sentinel_dead 1
+end
+await sentinel_fallen 5
+wait 1.0
+shot 18-the-reaper-falls with sentinel_fallen,staging:fall
+
+# 8 ITS YARD GOES DARK (34_works): the fall line, then some minutes on, the yard
+# its keeper held puts its lights out for good.
+near keeper_yard
+await works_broken 30
+wait 1.0
+shot 19-its-yard-dark with works_broken,works_dark
+
+# 9 THE RESCUE (45_taken): with the yard dark, whoever it held out of Oyster Row
+# walks out of it.
+await freed 30
+wait 1.0
+shot 20-somebody-from-oyster-row-walks-out-of-the-dark-yard with works_dark,freed
