@@ -6,25 +6,16 @@ Procedural sound and the per-landscape score.
 
 ## Sub-features
 
-- 70_audio: `src/systems/70_audio.gd`, reached by `tools/tour.sh tours/score.tour`.
-- 75_music: `src/systems/75_music.gd`, reached by `tools/tour.sh tours/score-blend.tour`.
+- 70_audio `src/systems/70_audio.gd`: `tools/tour.sh tours/score.tour`.
+- 75_music `src/systems/75_music.gd`: `tools/tour.sh tours/score-blend.tour`.
 
 ## How to reach it
 
-- `tools/audio.sh` (spectrograms), `tools/audio.sh --score --land=ID`, `tools/tour.sh tours/score.tour`.
+- `tools/audio.sh` (spectrograms), `tools/audio.sh --score --land=ID`.
 
 ## How to check it
 
-Static: `godot --headless --path . --import --quit`; tests under `tests/` named for the package.
-
-Runtime:
-
-```sh
-S=<your scratchpad>
-tools/tour.sh tours/score.tour
-```
-
-Proves it when: the command exits 0 and, for a shot or tour, the frames show the thing named (Read them); for a tour, it prints `tour NAME done`.
+`tools/tour.sh tours/score.tour` (proof rules: README).
 
 ## Gotchas
 

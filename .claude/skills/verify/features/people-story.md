@@ -6,29 +6,21 @@ The player's own body, villagers, fauna, named cast, the story's talks and fragm
 
 ## Sub-features
 
-- 33_avatar: `src/systems/33_avatar.gd`, reached by `tools/tour.sh tours/character.tour`.
-- 35_folk: `src/systems/35_folk.gd`, reached by `tools/tour.sh tours/locals.tour`.
-- 37_fauna: `src/systems/37_fauna.gd`, reached by `tools/tour.sh tours/wild.tour`.
-- 49_cast: `src/systems/49_cast.gd`, reached by `tools/tour.sh tours/cast.tour`.
-- 49_story: `src/systems/49_story.gd`, reached by `tools/tour.sh tours/story.tour`.
-- Room words (StoryRooms, `StoryContent.ROOMS`): what a room's story slots hold, read with `use` inside; reached by `tools/tour.sh tours/bunker_words.tour --seed=4 --hour=15 --weather=clear:0`, `tests/story/test_rooms.gd`. His bunker's gated terminal and the tenants dealt per bunker (StoryRooms.tenants): `tools/tour.sh tours/bunker_woken.tour --seed=4 --hour=15 --weather=clear:0 --beats=built_halcyon`, `tests/story/test_under_the_stones.gd`.
+- 33_avatar `src/systems/33_avatar.gd`: `tools/tour.sh tours/character.tour`.
+- 35_folk `src/systems/35_folk.gd`: `tools/tour.sh tours/locals.tour`.
+- 37_fauna `src/systems/37_fauna.gd`: `tools/tour.sh tours/wild.tour`.
+- 49_cast `src/systems/49_cast.gd`: `tools/tour.sh tours/cast.tour`.
+- 49_story `src/systems/49_story.gd`: `tools/tour.sh tours/story.tour`.
+  - Room words (StoryRooms, `StoryContent.ROOMS`, read with `use` inside): `tools/tour.sh tours/bunker_words.tour --seed=4 --hour=15 --weather=clear:0`, `tests/story/test_rooms.gd`.
+  - His bunker's gated terminal and the tenants per bunker (`StoryRooms.tenants`): `tools/tour.sh tours/bunker_woken.tour --seed=4 --hour=15 --weather=clear:0 --beats=built_halcyon`, `tests/story/test_under_the_stones.gd`.
 
 ## How to reach it
 
-- `tools/tour.sh tours/story.tour`, `tours/cast.tour`, `tours/character.tour`, `tours/locals.tour`; `--talk=ID` / `--read=ID` in a shot.
+- The tours above; `--talk=ID` / `--read=ID` in a shot.
 
 ## How to check it
 
-Static: `godot --headless --path . --import --quit`; tests under `tests/` named for the package.
-
-Runtime:
-
-```sh
-S=<your scratchpad>
-tools/tour.sh tours/character.tour
-```
-
-Proves it when: the command exits 0 and, for a shot or tour, the frames show the thing named (Read them); for a tour, it prints `tour NAME done`.
+`tools/tour.sh tours/character.tour` (proof rules: README).
 
 ## Gotchas
 

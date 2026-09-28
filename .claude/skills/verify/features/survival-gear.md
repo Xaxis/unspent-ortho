@@ -4,87 +4,53 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
 
 <!-- covers: system:44_crafts, system:46_settlements, system:50_survival, system:51_harvest, system:52_hazards, system:52_survival_fx, system:53_tracks, system:54_gear, system:56_economy -->
 
+"(h)" means the tour's header has its options. A power's test prints its bout.
+
 ## Sub-features
 
-- 44_crafts: `src/systems/44_crafts.gd`, reached by `tools/tour.sh tours/crafts.tour`.
-- 46_settlements: `src/systems/46_settlements.gd`, reached by `tools/tour.sh tours/settlements.tour`.
-  A piece or a craft station stands on flat ground of its own level within one step of the player's (`WorldQuery.flat_footing`; `tools/test.sh test_system:test_a_piece_goes_up_on_ground`, `test_system:test_nothing_goes_up_astride`); on rugged land `tools/shot.sh shots/x.png --seed=7 --place=bonelands --holding=hearth,hut,plot,palisade,store` stands all five with no "no room" warning.
-  A piece nobody can staff says why on the holding page (`tools/test.sh test_staff_reason`,
-  `tools/tour.sh tours/staff_reason.tour` with settlements.tour's options).
-  Carried off near your holding wakes at its hearth (`tools/tour.sh tours/carried_home.tour`); building
-  raises the region's interference by loudness (`tools/test.sh test_noticed`, `tours/built_noticed.tour`);
-  the gate, walked through and breached first (`tools/test.sh test_gate`,
-  `tools/shot.sh shots/x.png --scene=gallery --filter="holding gate"`); the cellar, whose stores a raid
-  cannot take (`tools/test.sh test_cellar`, gallery `--filter="holding cellar"`); the stolen cell,
-  unlocked by a keeper's core (`tools/test.sh test_unlocks`, gallery `--filter="holding stolen cell"`).
-- 50_survival: `src/systems/50_survival.gd`, reached by `tools/tour.sh tours/survival.tour`.
-  Carried off leaves the bag on a heap where you were taken, under your own rag, marked on the
-  survey ("your things") and standing as the goal until taken back; a bad end is filed against
-  the region: `tools/test.sh test_bag_heap`, `tools/tour.sh tours/bag_heap.tour` (header has its options).
-- 51_harvest: `src/systems/51_harvest.gd`, reached by `tools/tour.sh tours/harvest.tour`.
-- 52_hazards: `src/systems/52_hazards.gd`, reached by `tools/tour.sh tours/hazards.tour`.
-  At eye level no cue draws over the body (ground marks depth-tested, a cough is air out of the
-  mouth): `tools/test.sh test_shoulder:test_no_hazard`, `tools/tour.sh tours/cue_eye.tour` (options in its header).
-- 52_survival_fx: `src/systems/52_survival_fx.gd`, reached by `tools/tour.sh tours/survival.tour`.
-- 53_tracks: `src/systems/53_tracks.gd`, reached by `tools/tour.sh tours/tracks.tour`.
-- 54_gear: `src/systems/54_gear.gd`, reached by `tools/tour.sh tours/gear-economy.tour`.
-  A glide off a drop deeper than the wing falls in its seconds falls out of the air the rest of the way, never
-  set down in one frame: `tools/test.sh test_abilities:test_a_glide_off_a_deep_drop`, `tools/tour.sh tours/glide_fall.tour`
-  (options in its header; `ledge glide` stands on such a lip, and `falling_out` claims the fall).
-  The scale coat (coat_scale, body): the first blow of a fight at the back is turned, one a fight:
-  `tools/test.sh test_scale_coat` (its bout prints), `tools/tour.sh tours/scale_coat.tour` (options in its header).
-  The hush wrap (wrap_hush, body): the body's own noise is as on moss on any land:
-  `tools/test.sh test_hush_wrap` (its walk prints), `tools/tour.sh tours/hush_wrap.tour` (the wrap worn).
-  The vane cloak (cloak_vane, back): in a strong wind a dodge downwind carries twice as far:
-  `tools/test.sh test_vane_cloak` (its bout and escape print), `tools/tour.sh tours/vane_cloak.tour` (the cloak worn, in a storm).
-  The ploughshare (plough_core, hands): a dodge across a charge whose bite is coming turns it on past, spent twice
-  as long; each turn costs half a dodge's breath: `tools/test.sh test_ploughshare` (its bout prints),
-  `tools/tour.sh tours/ploughshare.tour` (options in its header; `share_turned` claims the turn).
-  The cable line (brace_cable / brace_ram, hands): the grapple takes a working part that faces it, stalls it, pulls you in:
-  `tools/test.sh test_cable_brace` (its bout prints), `tools/tour.sh tours/cable_brace.tour` (options in its header).
-  A scan over a dart says its answer at once ("It takes and goes. Break its sight."):
-  `tools/test.sh test_abilities:test_a_scan_says`, `tools/tour.sh tours/scan_dart.tour` (options in its header).
-  The lattice at a gate (nothing against harvesters, strong against cutters): `tools/test.sh test_lattice_icelens:test_the_lattice_at_a_gate`.
-  Keeper powers (a keeper's core on the jig, a relic module): the undertow (reaper_core, hands) makes the grapple
-  haul a machine in, stalled, for double wind: `tools/test.sh test_undertow` (its bout prints),
-  `tools/tour.sh tours/undertow.tour` (options in its header).
-  The rake (rake_core, tool): a heavy, drawn, holds the biters in the arc ahead open; chargers ride over it; heavies
-  ring 1.5x: `tools/test.sh test_rake` (its gate bout prints), `tools/tour.sh tours/rake.tour` (options in its header).
-  The anchor (anchor_core, body): stood still, rooted, no throw and no grip, and no dodge while rooted:
-  `tools/test.sh test_anchor` (its bout prints), `tools/tour.sh tours/anchor.tour` (options in its header).
-  The lock (lockkeeper_core, back): a narrow way passed while hunted is shut behind you to machines, a charge a lock:
-  `tools/test.sh test_lock` (its bout prints), `tools/tour.sh tours/lock.tour` (options in its header).
-  The ear (listener_core, head): a tell's ground ring is drawn through what stands between at eye level; the
-  player's noise and steps carry 1.5x: `tools/test.sh "test_listen,test_shoulder:test_no_hazard"` (its bout, with the
-  shoulder reader, and its walk cost print). The frame: `tools/tour.sh tours/ear.tour` over the shoulder, with and without the ear
-  (options in its header; `spawn KIND beyond PROP` and `tell KIND` stage a tell behind a house).
-  The plumb (plumb_core, head): a scan rings where each roused machine will tell its next blow; the scan cools
-  twice as long: `tools/test.sh test_plumb` (its bout prints), `tools/tour.sh tours/plumb.tour` (options in its header).
-  The unbuilder's hands (unbuilder_core, hands): use held at an open machine's part strips it -- disarmed, its elite
-  part into the creel: `tools/test.sh test_unbuild` (its bout prints), `tools/tour.sh tours/unbuild.tour` (options in its header).
-  A keeper's core reads on the slate as the choice it is (the holding's cell, the power worn), side by side:
-  `tools/test.sh test_rules:test_a_keepers_core`, `tools/tour.sh tours/core_choice.tour` (options in its header).
-- 56_economy: `src/systems/56_economy.gd`, reached by `tools/tour.sh tours/gear-economy.tour`.
-  The salvage key (Reforge.salvage_recipes): any carried piece made from a recipe is offered at a bench as
-  "take apart the X", 15 min, giving back its elite material and half of the rest, listed under GIVES BACK:
-  `tools/test.sh test_salvage_key`, `tools/tour.sh tours/salvage.tour` (options in its header).
+- 44_crafts `src/systems/44_crafts.gd`: `tools/tour.sh tours/crafts.tour`.
+- 46_settlements `src/systems/46_settlements.gd`: `tools/tour.sh tours/settlements.tour`.
+  - Footing (`WorldQuery.flat_footing`): `tools/test.sh test_system:test_a_piece_goes_up_on_ground`, `test_system:test_nothing_goes_up_astride`; on rugged land `tools/shot.sh shots/x.png --seed=7 --place=bonelands --holding=hearth,hut,plot,palisade,store` stands all five, no "no room" warning.
+  - Unstaffed piece says why: `tools/test.sh test_staff_reason`, `tools/tour.sh tours/staff_reason.tour` (settlements.tour's options).
+  - Carried off near your holding wakes at its hearth: `tools/tour.sh tours/carried_home.tour`.
+  - Building raises interference by loudness: `tools/test.sh test_noticed`, `tours/built_noticed.tour`.
+  - Gate (walked through, breached first): `tools/test.sh test_gate`, `tools/shot.sh shots/x.png --scene=gallery --filter="holding gate"`.
+  - Cellar (stores a raid cannot take): `tools/test.sh test_cellar`, gallery `--filter="holding cellar"`.
+  - Stolen cell (unlocked by a keeper's core): `tools/test.sh test_unlocks`, gallery `--filter="holding stolen cell"`.
+- 50_survival `src/systems/50_survival.gd`: `tools/tour.sh tours/survival.tour`.
+  - The bag left on a heap where you were carried off ("your things"): `tools/test.sh test_bag_heap`, `tools/tour.sh tours/bag_heap.tour` (h).
+- 51_harvest `src/systems/51_harvest.gd`: `tools/tour.sh tours/harvest.tour`.
+- 52_hazards `src/systems/52_hazards.gd`: `tools/tour.sh tours/hazards.tour`.
+  - At eye level no cue draws over the body: `tools/test.sh test_shoulder:test_no_hazard`, `tools/tour.sh tours/cue_eye.tour` (h).
+- 52_survival_fx `src/systems/52_survival_fx.gd`: `tools/tour.sh tours/survival.tour`.
+- 53_tracks `src/systems/53_tracks.gd`: `tools/tour.sh tours/tracks.tour`.
+- 54_gear `src/systems/54_gear.gd`: `tools/tour.sh tours/gear-economy.tour`. Each piece's rule: docs/GEAR.md §5-§6.
+  - Glide off a deep drop falls the rest: `tools/test.sh test_abilities:test_a_glide_off_a_deep_drop`, `tools/tour.sh tours/glide_fall.tour` (h; `ledge glide`, claim `falling_out`).
+  - Scale coat: `tools/test.sh test_scale_coat`, `tools/tour.sh tours/scale_coat.tour` (h).
+  - Hush wrap: `tools/test.sh test_hush_wrap`, `tools/tour.sh tours/hush_wrap.tour`.
+  - Vane cloak: `tools/test.sh test_vane_cloak`, `tools/tour.sh tours/vane_cloak.tour` (in a storm).
+  - Ploughshare: `tools/test.sh test_ploughshare`, `tools/tour.sh tours/ploughshare.tour` (h; claim `share_turned`).
+  - Cable line: `tools/test.sh test_cable_brace`, `tools/tour.sh tours/cable_brace.tour` (h).
+  - A scan over a dart says "It takes and goes. Break its sight.": `tools/test.sh test_abilities:test_a_scan_says`, `tools/tour.sh tours/scan_dart.tour` (h).
+  - Lattice at a gate: `tools/test.sh test_lattice_icelens:test_the_lattice_at_a_gate`.
+  - Undertow: `tools/test.sh test_undertow`, `tools/tour.sh tours/undertow.tour` (h).
+  - Rake: `tools/test.sh test_rake`, `tools/tour.sh tours/rake.tour` (h).
+  - Anchor: `tools/test.sh test_anchor`, `tools/tour.sh tours/anchor.tour` (h).
+  - Lock: `tools/test.sh test_lock`, `tools/tour.sh tours/lock.tour` (h).
+  - Ear: `tools/test.sh "test_listen,test_shoulder:test_no_hazard"`, `tools/tour.sh tours/ear.tour` (h; `spawn KIND beyond PROP`, `tell KIND`).
+  - Plumb: `tools/test.sh test_plumb`, `tools/tour.sh tours/plumb.tour` (h).
+  - Unbuilder's hands: `tools/test.sh test_unbuild`, `tools/tour.sh tours/unbuild.tour` (h).
+  - A keeper's core as a choice: `tools/test.sh test_rules:test_a_keepers_core`, `tools/tour.sh tours/core_choice.tour` (h).
+- 56_economy `src/systems/56_economy.gd`: `tools/tour.sh tours/gear-economy.tour`.
+  - Salvage key ("take apart the X"): `tools/test.sh test_salvage_key`, `tools/tour.sh tours/salvage.tour` (h).
 
 ## How to reach it
 
-- `tools/tour.sh tours/survival.tour`, `tours/harvest.tour`, `tours/hazards.tour`, `tours/crafts.tour`, `tours/settlements.tour`; `--give=ID:N --held=ID` in a shot.
+- The tours above; `--give=ID:N --held=ID` in a shot.
 
 ## How to check it
 
-Static: `godot --headless --path . --import --quit`; tests under `tests/` named for the package.
-
-Runtime:
-
-```sh
-S=<your scratchpad>
-tools/tour.sh tours/crafts.tour
-```
-
-Proves it when: the command exits 0 and, for a shot or tour, the frames show the thing named (Read them); for a tour, it prints `tour NAME done`.
+`tools/tour.sh tours/crafts.tour` (proof rules: README).
 
 ## Gotchas
 

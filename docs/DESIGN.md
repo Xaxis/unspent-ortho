@@ -1,7 +1,8 @@
 # UNSPENT — design
 
-How the game plays today. Destination `docs/VISION.md`, fiction `docs/STORY.md`,
-look `docs/LOOK.md`, next steps `docs/ROADMAP.md`. Code wins over this file.
+Contract for how the built game plays, system by system; code wins over this file.
+Destination `docs/VISION.md`, fiction `docs/STORY.md`, look `docs/LOOK.md`, next steps
+`docs/ROADMAP.md`; per-system detail in the other `docs/*.md`.
 
 ## World generation
 
@@ -13,9 +14,7 @@ look `docs/LOOK.md`, next steps `docs/ROADMAP.md`. Code wins over this file.
   home continent first (coast, moss, frost sea).
 - **A landscape is immense**: it lies on ONE continent (`MOST_BODIES`), each
   continent carries four or five, and each landscape has one heart per
-  continent, so it stands there whole. Measure with
-  `tools/gd/probe_regions.gd` (frames, core crossing, ecotone depth, what the
-  eye sees from the shoulder at the core, what there is to walk to).
+  continent, so it stands there whole. Measure with `tools/gd/probe_regions.gd`.
 - A big enough run of one landscape is a REGION (`WorldData.regions`, global
   ids); keepers, depots, chapters and interference key on its id.
 - Borders are ecotones: `country2`/`blend` fade from 0.5 over a share of the
@@ -32,9 +31,7 @@ look `docs/LOOK.md`, next steps `docs/ROADMAP.md`. Code wins over this file.
 - `BiomeDef` is the authority for what a landscape holds: ground recipes
   (`surface`, `scatter`), props and ore, sites, pools, villages, landmarks,
   keeper, roster, hazards, weather, night and sound bed.
-- `BiomeDressing` is what its objects are made of; `BiomeForms` what its people
-  build.
-- Sites scale with region area (`GenScatter.TILES_PER_SITE`).
+- `BiomeDressing` is what its objects are made of; `BiomeForms` what its people build.
 - Each landscape has three or more landmark kinds; a cache opens once.
 - A village green is a haven: hunters keep 14 tiles off it, beasts 10
   (`Haven`, roster `where.green_min`), and the player wakes beside village 0.
@@ -52,8 +49,9 @@ look `docs/LOOK.md`, next steps `docs/ROADMAP.md`. Code wins over this file.
   (`&"swim"`) or fly over (`&"fly"`).
 - **Stealth**: `StealthQuery` is the one door for every sense: crouch, cover,
   dark (a lit lamp undoes it), spoofing, role cones, loudness by ground.
-- **Targeting**: hold Z to lock the nearest threat, A/D cycle, R sweeps the
-  field eight at a time. Read-only on the fight. People and places read too.
+- **Targeting**: hold Z to lock the nearest seen threat, U/O or the scroll cycle,
+  R sweeps the field eight at a time. Read-only on the fight. People and places
+  read too. A lock's rules: `docs/CONTROLS.md` §Lock-on.
 - **Fighting**: `FightSim`, fixed 8 ms slices. Blows have windup, active and
   recovery; a dodge has i-frames. A machine has a working part on one side;
   plate takes nothing. A grip is broken by pulling. Outcomes: won, away, downed
@@ -64,13 +62,13 @@ look `docs/LOOK.md`, next steps `docs/ROADMAP.md`. Code wins over this file.
   found; an edge wears, never breaks.
 - **Survival**: health, wind, hunger, wet, load, lamp oil. A landscape's hazards
   (16 ids) are felt at 0.25, bite the legs at 0.55, harm at 0.75 and drain only
-  to 1 health. Stations: fire, bench, kiln (built); wheel and loom (in houses).
+  to 1 health. Stations: fire, bench, kiln, jig (built); wheel and loom (in houses).
 - **Gear**: slots head, body, hands, back, tool, craft; tiers made, mended, found.
   Abilities dash, glide, grapple, scan, spoof, plus the innate jump. A grade buys
   sockets, not numbers.
 - **Crafts**: B boards, launches, leaves, strips. Raft (by hand, crosses deep
   water), hover sled, walker rig (bench). A craft changes what ground means and
-  the pace, not how the body moves. Worn out it wrecks into salvage (a float
+  the pace, not how the body moves; worn out, it wrecks into salvage (a float
   sinks in deep water).
 - **Tracks**: soft grounds keep prints a while; weather fills them. Not saved.
 
@@ -125,9 +123,8 @@ look `docs/LOOK.md`, next steps `docs/ROADMAP.md`. Code wins over this file.
 
 - Every screen is the slate: carry, make, map, home, gear, reads, saves,
   journal, holding, settings, character.
-- Keys: WASD, Shift run and dodge, Space jump, J swing, K dodge, E use, C make,
-  I carry, M map, F lamp, Ctrl/Q crouch, Z target, B ride, H holding, N journal,
-  X drop, Esc pause. Every key shown is asked of the live `InputMap`.
+- Keys: three schemes (mouse, trackpad, keyboard alone), in `docs/CONTROLS.md`.
+  Every key shown is asked of the live `InputMap`.
 - Settings (sound, picture, playing, keys) are the player's. Dev mode (`` ` ``,
   `src/dev/`) is open, chord (three strikes in 1.5 s) or off per build config.
 

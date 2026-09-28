@@ -5,23 +5,25 @@ description: Verify UNSPENT (Godot 4.7 game, all built in code, plus its tools/*
 
 # Verify UNSPENT
 
+Contract for proving a change to the built game: where each feature lives and the command that proves it.
+
 `FM=~/.claude/claude-core/bin/featuremap`
 
 - **Where does a feature live?** Look it up in `features.json` (`id`, `entry`, `reach`),
   then read `features/<area>.md` for its recipe.
 - **What did my change touch?** `$FM affected` (add `--since origin/main` on a branch).
-- **Keeping it current:** the generator can't see this Godot project on its own, so
-  every system, screen, scene and tool is declared in `featuremap.config.json`. When
-  you add, rename or remove one, edit that file, run `$FM generate --write`, update
-  the area file, and confirm `$FM check` exits 0. Commit it with the feature.
+- **Keeping it current:** every system, screen, scene and tool is declared in
+  `featuremap.config.json` (the generator can't see Godot). On add, rename or remove: edit
+  it, `$FM generate --write`, update the area file, `$FM check` exits 0, commit together.
 
 ## Static checks
 
-| Check | Command | Proves | Baseline (2026-09-23) |
-|---|---|---|---|
-| import | `godot --headless --path . --import --quit` | every script parses, class cache fresh | passes, 3 s, 0 `SCRIPT ERROR` |
-| tests (targeted) | `tools/test.sh FILTER` | the named test files | e.g. `test_world_stamp` 15/15 in 16 s |
-| gate | `tools/check.sh` | all tests in shards + 4 real frames | needs memory, see Gotchas |
+| Check | Command | Proves |
+|---|---|---|
+| import | `godot --headless --path . --import --quit` | every script parses (0 `SCRIPT ERROR`), class cache fresh |
+| tests | `tools/test.sh FILTER` | the named test files |
+| preflight | `tools/preflight.sh` | the whole-tree rules, ~90 s |
+| gate | `tools/check.sh` | all tests in shards + 4 real frames; ~500 MB free, CI runs it |
 
 Known pre-existing failures: `test_world_gen_works:test_budgets` (works stage 0.23-0.25 of
 generation vs a 0.22 bar; the fix is in the GEN 24 branch `m3/standing`).
@@ -43,28 +45,22 @@ Needs: `godot` 4.7 on PATH. After a pull, `tools/_import.sh` first.
 
 ## Doctor
 
-```sh
-godot --version; vm_stat | sed -n 2p; pgrep -ix godot | wc -l
-```
-
-4.7.x, free pages × 16 KB over ~500 MB for a full suite (use a filter below that),
-and how many runs are already in flight (other sessions' runs; never kill them).
+`godot --version; vm_stat | sed -n 2p; pgrep -ix godot | wc -l`: 4.7.x, free pages × 16 KB
+over ~500 MB for a full suite, and how many runs other sessions have in flight (never kill
+them).
 
 ## Drive
 
-- A scene or screen: `tools/shot.sh` with the recipe's options, then Read the PNG. A
-  green test says nothing about how it looks.
+- A scene or screen: `tools/shot.sh` with the recipe's options, then Read the PNG.
 - A system in play: its tour (`reach` in `features.json`). A tour fails on an awaited
   thing that never comes and saves `FAILED-lineN.png`.
-- Rules and data: `tools/test.sh FILTER`, where the filter is a test file or
-  `file:method` substring.
+- Rules and data: `tools/test.sh FILTER` (a test file or `file:method` substring).
 
 ## Evidence
 
-- The command, its exit code and the decisive output line (`N passed, 0 failed`,
-  `tour X done`).
-- For anything visible: the PNG path, and that you looked at it.
-- An unreachable path is reported with what's missing, never as verified.
+The command, its exit code and the decisive line (`N passed, 0 failed`, `tour X done`);
+for anything visible, the PNG path and that you looked. An unreachable path is reported
+with what's missing, never as verified.
 
 ## Cleanup
 

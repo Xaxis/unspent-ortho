@@ -6,26 +6,17 @@ Growing a world from a seed.
 
 ## Sub-features
 
-- worldgen: `src/core/world_gen.gd`, reached by `tools/map.sh --seed=7`.
-- plan and sections (streamed worldgen S4f): `WorldGen.plan` runs every stage up to the surface, `WorldGen.begin_sections` + `WorldGen.section(c, core)` lay one section's surface, `WorldGen.finish` the rest; `generate` = plan + the surface as one window + finish. `tools/test.sh test_surface_sections` lays a 512 world's surface in sixteen sections in any order and on the worker pool and holds it to the whole world's, byte for byte.
-- works as rows (streamed worldgen S4b): `GenWorks._work` composes each machine work from its row alone; `tools/test.sh test_works_rows` composes every standing work twice (in the world, and alone) and compares the pieces.
+- worldgen `src/core/world_gen.gd`: `tools/map.sh --seed=7` (top-down map).
+- Plan and sections: `WorldGen.plan` runs every stage up to the surface, `begin_sections` + `section(c, core)` lay one section's surface, `finish` the rest; `generate` = plan + one window + finish. `tools/test.sh test_surface_sections`: a 512 world in sixteen sections, any order, on the worker pool, byte for byte the whole world's.
+- Works as rows: `GenWorks._work` composes each work from its row alone; `tools/test.sh test_works_rows` compares in-world and alone.
 
 ## How to reach it
 
-- `tools/map.sh --seed=7` (top-down map), `tools/test.sh test_world_gen`, `tools/test.sh test_parity`.
+- `tools/test.sh test_world_gen`, `tools/test.sh test_parity`.
 
 ## How to check it
 
-Static: `godot --headless --path . --import --quit`; tests under `tests/` named for the package.
-
-Runtime:
-
-```sh
-S=<your scratchpad>
-tools/map.sh --seed=7
-```
-
-Proves it when: the command exits 0 and, for a shot or tour, the frames show the thing named (Read them); for a tour, it prints `tour NAME done`.
+`tools/map.sh --seed=7` (proof rules: README).
 
 ## Gotchas
 

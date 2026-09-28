@@ -1,6 +1,6 @@
 # Landscapes, built to depth
 
-The spec a builder follows to give a landscape depth. Decided by the owner's
+Spec for giving a landscape depth (four layers); built rows are held by `test_landscape_depth`. Decided by the owner's
 delegation, 2026-09-22. Change a detail only with a frame or a measurement,
 written back here. The words people say belong to the story-wright.
 
@@ -36,87 +36,62 @@ Still to do for all six (on main):
 - the pressures listed under each landscape below
 - enough frames of land (`land.frames`)
 
+Per landscape, still to do on main:
+
 ### The Crags (`the_crags.gd`)
-- Plan: a survey that never closes. The keeper is the **plumb** (a tripod with a
-  swinging weight); ways FORCE, FOUNDER on peat, STARVE. The machine is the **chainman**.
-- Still to do:
-  - works `&"bench"`, marked `bores`, with theodolite masts, core racks and survey posts
-  - site `&"barrow"`
-  - landmark `&"broch"`
-  - `resonance 0.3` near stones only
-- The only-in material, `hush_slate`, still has to reach the world (`player.only_in`),
-  and a signature prop still does nothing to a body (`player.signature`).
+- Plan: a survey that never closes. Keeper the **plumb** (a tripod with a swinging weight):
+  FORCE, FOUNDER on peat, STARVE. Machine the **chainman**.
+- To do: works `&"bench"` (`bores`: theodolite masts, core racks, survey posts); site
+  `&"barrow"`; landmark `&"broch"`; `resonance 0.3` near stones only; `hush_slate` reaching
+  the world (`player.only_in`); a signature prop acting on a body (`player.signature`).
 
 ### The Frost Sea (`frost_sea.gd`)
-- Plan: sounding the sea floor through the ice. The keeper is the **listener**; ways
-  FORCE, FOUNDER on blackwater, SPOOF. The machine is the **icesaw**.
-- No villages and no built forms, on purpose.
-- Still to do:
-  - works `&"soundings"`, marked `bores`, with sounding rigs, a pipe and a tank
-  - site `&"floe_camp"` with a living ice-fisher
-  - landmark `&"ice_arch"`
-  - pressure ridges laid in lines
-  - collapse caused near leads and fresh cuts
-  - the icesaw's leads and the listener's cut ring (needs time-varying ground)
-  - `deep_ice_lens` reaching the world
-  - signature props that act on a body
+- Plan: sounding the sea floor through the ice. Keeper the **listener**: FORCE, FOUNDER on
+  blackwater, SPOOF. Machine the **icesaw**. No villages and no built forms, on purpose.
+- To do: works `&"soundings"` (`bores`: sounding rigs, a pipe, a tank); site `&"floe_camp"`
+  with a living ice-fisher; landmark `&"ice_arch"`; pressure ridges in lines; collapse near
+  leads and fresh cuts; the icesaw's leads and the listener's cut ring (time-varying ground);
+  `deep_ice_lens` reaching the world; signature props acting on a body.
 
 ### The Glass Desert (`glass_desert.gd`)
-- Plan: strike fields that call lightning into the sand. The keeper is the **anvil**;
-  ways FORCE, FOUNDER on sand, STARVE. The machine is the **skater**, slowed on sand.
-- No villages. Its person is a glass-picker at a camp.
-- Still to do:
-  - works `&"strike_field"`, marked `scorch`, with a grid of strike rods
-  - site `&"crater"` and landmark `&"glass_spire"`
-  - `Ground.GLASS`
-  - `radiation 0.35`, rising to 0.6 in craters and strike fields
-  - `fulgurite_core` reaching the world
+- Plan: strike fields that call lightning into the sand. Keeper the **anvil**: FORCE,
+  FOUNDER on sand, STARVE. Machine the **skater**, slowed on sand. No villages; its person
+  is a glass-picker at a camp.
+- To do: works `&"strike_field"` (`scorch`: a grid of strike rods); site `&"crater"`;
+  landmark `&"glass_spire"`; `Ground.GLASS`; `radiation 0.35`, 0.6 in craters and strike
+  fields; `fulgurite_core` reaching the world.
 
 ### The Ruined Metropolis (`ruined_metropolis.gd`)
-- Plan: taking the city apart district by district. The keeper is the **unbuilder**
-  (a gantry crane); ways FORCE, FOUNDER on grass, SPOOF under a live lamp. The machine
-  is the **demolisher**, which chews ruins.
-- Still to do:
-  - works `&"unbuilding"`, marked `quarry`, with a gantry, sorted bales, a conveyor and a checkpoint
-  - site `&"plaza"` and landmark `&"broken_tower"`
-  - the kept/left line: lamps where swept, grass and stacks where left
-  - vehicles and barricades moved off road ground
-  - `tower_cable` reaching the world
-- `crossing_keeper` is held for L3.
+- Plan: taking the city apart district by district. Keeper the **unbuilder** (a gantry
+  crane): FORCE, FOUNDER on grass, SPOOF under a live lamp. Machine the **demolisher**, which
+  chews ruins. `crossing_keeper` is held for L3.
+- To do: works `&"unbuilding"` (`quarry`: gantry, sorted bales, conveyor, checkpoint); site
+  `&"plaza"`; landmark `&"broken_tower"`; the kept/left line (lamps where swept, grass and
+  stacks where left); vehicles and barricades off road ground; `tower_cable` reaching the
+  world.
 
 ### The Drowned City (`drowned_city.gd`)
-- Plan: the port still runs. The keeper is the **lockkeeper** (a barge on stilts);
-  ways FORCE, STARVE, SPOOF from a raft. The machine is the **ferry**, which rams crafts.
-- Still to do:
-  - works `&"lock"`, marked `cut`, with lock gates, a pump house and tide gauges moved out of scatter
-  - site `&"flooded_hall"` and landmark `&"clock_tower"`
-  - sea walls brought back
-  - `pressure 0.3` in deep water only
-  - `brine_copper` reaching the world
-  - ruled canals: the streets hold standing water on the city's two lowest levels
-    since GEN 33 (`_street`, `_flooded`; 10-14% of the city, 80-86% of its ruins by
-    it), level and never over a drop. Channels a raft can run to the sea are still
-    the shared system below.
+- Plan: the port still runs. Keeper the **lockkeeper** (a barge on stilts): FORCE, STARVE,
+  SPOOF from a raft. Machine the **ferry**, which rams crafts.
+- To do: works `&"lock"` (`cut`: lock gates, a pump house and tide gauges moved out of
+  scatter); site `&"flooded_hall"`; landmark `&"clock_tower"`; sea walls back;
+  `pressure 0.3` in deep water only; `brine_copper` reaching the world; channels a raft can
+  run to the sea (the shared ruled canals below). Built: the streets hold standing water on
+  the city's two lowest levels (GEN 33, `_street`, `_flooded`), level and never over a drop.
 
 ### The Mesas (`mesas.gd`)
-- Plan: a ropeway across the canyons. The keeper is the **anchor**, a climber; ways
-  FORCE, FOUNDER on sand, STARVE by cutting a span. The machine is the **kite**. Its row
-  and model are built, but it is not on the roster until bodies can fly.
-- Still to do:
-  - works `&"ropeway"`, marked `quarry`, with span pylons and the cable span
-  - site `&"cliff_dwelling"` and landmark `&"great_span"`
-  - dead trees and boulders on the canyon sand
-  - `collapse 0.3` at rims
-  - `span_wire` reaching the world
-  - signature props that act on a body
+- Plan: a ropeway across the canyons. Keeper the **anchor**, a climber: FORCE, FOUNDER on
+  sand, STARVE by cutting a span. Machine the **kite** (row and model built; off the roster
+  until bodies can fly).
+- To do: works `&"ropeway"` (`quarry`: span pylons and the cable span); site
+  `&"cliff_dwelling"`; landmark `&"great_span"`; dead trees and boulders on the canyon sand;
+  `collapse 0.3` at rims; `span_wire` reaching the world; signature props acting on a body.
 
 ### A note on the Snowfield (`snowfield.gd`)
-- It grows no grass of its own, and never has: its surface lays snow, rock, gravel,
-  shingle, ice and scree, and the grass colour and snow-tuft decor it declares dress
-  grass that crosses in from a grassy neighbour's ecotone. So whether a snowfield has
-  meadow at all is its neighbours' doing (seed 1's meets the grey orchards: 2,498
-  tiles; seed 12's meets none, and `near snow_meadow` finds nothing there). Intended,
-  as far as the file's history shows; a grass row of its own would be a decision.
+- It grows no grass of its own: its grass colour and snow-tuft decor dress only grass that
+  crosses in from a grassy neighbour's ecotone, so its meadow is its neighbours' doing
+  (seed 12's has none, and `near snow_meadow` finds nothing there). A grass row of its own
+  would be a decision.
 
 ## Shared systems still missing
 

@@ -11,8 +11,9 @@ generated in code: meshes, sounds, music, the UI and the world.
 tools/_import.sh && godot --path .
 ```
 
-WASD move, Shift run, Space jump, J swing, K dodge, E use, C make, I carry, M map,
-F lamp, Ctrl/Q crouch, hold Z to target, Esc pause, ` dev mode.
+WASD move, Shift run, Space jump, J swing, K dodge, E use, I carry, M map, F lamp,
+Ctrl crouch and C make (on a Mac C crouch, Y make), hold Z to target, Esc pause.
+All three schemes: `docs/CONTROLS.md`.
 
 ## Build it
 
@@ -29,7 +30,8 @@ tools/deploy.sh          # deploy to Vercel and prove it runs there
 
 - `docs/VISION.md`: where the game is going.
 - `docs/ROADMAP.md`: where it stands and what's next.
-- `docs/DESIGN.md`: how it plays and the rules of each system.
+- `docs/DESIGN.md`: how it plays and the rules of each system; `docs/GEAR.md`,
+  `CONTROLS.md`, `ABOVE.md`, `HUSH.md`, `MIDDENS_ROOMS.md` go deeper.
 - `docs/LOOK.md`: the look, binding.
 - `docs/STORY.md`: the story, binding.
 - `docs/LANDSCAPES.md`: what each landscape must have.
