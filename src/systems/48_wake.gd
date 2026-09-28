@@ -24,12 +24,25 @@ const RISE := 1.6
 ## Maren goes back to her own place once he is this far from where she waited, or
 ## once he has spoken to her.
 const MAREN_LEAVE := 16.0
+## THE FIRST SIGHT OF THE TETHER: this long after he stands, the view turns to
+## the far horizon (42_stage) and holds there, up the line to the Foundry
+## (19_orbit's Tether), while the record says what is there. How far up the
+## look tips, as a share of the Foundry's elevation, and how wide it opens: the
+## line from its foot to its top in one frame.
+const SIGHT_AFTER := 2.2
+const SIGHT_HOLD := 3.2
+const SIGHT_TIP := 0.5
+## Degrees of view the look widens to, so the horizon and the Foundry (up to
+## Tether.TOP_MOST, 60) are both in the one frame.
+const SIGHT_FOV := 72.0
 
 var _first := false
 var _staged: Dictionary = {}
 var _t := -1.0
 var _said_shallows := false
 var _maren_home := Vector2.INF
+var _sight_at := INF
+var _sighted := false
 
 
 func started() -> void:
@@ -83,13 +96,17 @@ func _process(delta: float) -> void:
 		_said_shallows = true
 		game.player.sunk = 0.0
 		_say(&"shallows")
+		_sight_at = _t + SIGHT_AFTER
+	if _said_shallows and not _sighted and _t >= _sight_at:
+		_sighted = true
+		_first_sight()
 	if _said_shallows and _maren_home != Vector2.INF:
 		if Story.met(&"maren") or game.player.pos.distance_to(_staged.maren) > MAREN_LEAVE:
 			var cast := _cast()
 			if cast != null:
 				cast.call(&"stand", &"maren", _maren_home, 0.0)
 			_maren_home = Vector2.INF
-	if _said_shallows and _maren_home == Vector2.INF:
+	if _said_shallows and _sighted and _maren_home == Vector2.INF and not _stage_looking():
 		_first = false
 
 
@@ -106,7 +123,32 @@ func holds_glass() -> bool:
 ## nothing else (Hud keeps the rest, survival's "soaked through" among them, and
 ## says them once the wake is over).
 func own_lines() -> Array:
-	return StoryContent.WAKE[&"surface"] + StoryContent.WAKE[&"shallows"]
+	var out: Array = []
+	for beat: StringName in StoryContent.WAKE:
+		out.append_array(StoryContent.WAKE[beat])
+	return out
+
+
+## The Tether, seen for the first time: the view turned to it and held, and the
+## record's line. Without a stage or a far sky (`--orbit=off`) there is nothing
+## to turn to, and the wake goes on without it.
+func _first_sight() -> void:
+	var stage := get_tree().get_first_node_in_group(&"stage")
+	var orbit: Node = null
+	for s: Node in game.systems:
+		if s.name == "19_orbit" and s.is_processing():
+			orbit = s
+	if stage == null or orbit == null:
+		return
+	var top := float(orbit.call(&"tether_top"))
+	if bool(stage.call(&"look_bearing", float(orbit.call(&"tether_bearing")), top * SIGHT_TIP, SIGHT_HOLD, &"tether", SIGHT_FOV)) \
+			and StoryContent.WAKE.has(&"tether"):
+		_say(&"tether")
+
+
+func _stage_looking() -> bool:
+	var stage := get_tree().get_first_node_in_group(&"stage")
+	return stage != null and bool(stage.call(&"looking"))
 
 
 func _say(beat: StringName) -> void:

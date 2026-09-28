@@ -353,6 +353,20 @@ func _place_tether() -> void:
 	_tether_top = Tether.top(game.world)
 
 
+## Where the Tether stands, for a look at it (48_wake's first sight, 42_stage):
+## its bearing (radians, 0 east, PI/2 south) and the Foundry's elevation.
+func tether_bearing() -> float:
+	if not _tether_placed:
+		_place_tether()
+	return atan2(_tether_flat.z, _tether_flat.x)
+
+
+func tether_top() -> float:
+	if not _tether_placed:
+		_place_tether()
+	return _tether_top
+
+
 ## Whether the Tether's line is in the frame now: the sky is being seen and the
 ## middle of the line projects inside the viewport.
 func tether_in_frame() -> bool:

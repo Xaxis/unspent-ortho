@@ -2,7 +2,7 @@
 
 The lit world: sky and hour, weather, lights and lamps, landscape grounds, foreground, fliers, holograms, crowns, the view.
 
-<!-- covers: system:08_pointer, system:09_view, system:10_sky, system:11_dome, system:12_landscape, system:13_fore, system:14_fliers, system:15_lights, system:16_vents, system:17_holo, system:18_crowns, system:18_meadow, system:18_trample, system:19_colossi, system:19_orbit, system:21_falls, system:41_shoulder, system:43_above, system:95_flyover, system:96_eye -->
+<!-- covers: system:08_pointer, system:09_view, system:10_sky, system:11_dome, system:12_landscape, system:13_fore, system:14_fliers, system:15_lights, system:16_vents, system:17_holo, system:18_crowns, system:18_meadow, system:18_trample, system:19_colossi, system:19_orbit, system:21_falls, system:41_shoulder, system:42_stage, system:43_above, system:95_flyover, system:96_eye -->
 
 "(h)" means the tour's header has its options.
 
@@ -11,6 +11,7 @@ The lit world: sky and hour, weather, lights and lamps, landscape grounds, foreg
 - 09_view `src/systems/09_view.gd`: `tools/tour.sh tours/zoom.tour`.
 - 08_pointer `src/systems/08_pointer.gd` (scroll, pan, pinch; docs/CONTROLS.md): `tools/test.sh test_pointer`.
 - 41_shoulder `src/systems/41_shoulder.gd` (+ `CameraRig`, `src/core/view/shoulder.gd`): `tools/tour.sh tours/shoulder.tour --seed=4 --hour=12 --weather=clear:0`; a still with `--view=shoulder`; rules and cost `tools/test.sh test_shoulder`.
+- 42_stage `src/systems/42_stage.gd` (+ `CameraRig.stage_weight`/`stage_fov`, `Game.staged`): the one staged look, turn to a point or a sky bearing, hold, turn back, keys held; `tools/test.sh test_stage`, and the Tether's first sight in `tours/home-coast.tour` frame 03 (48_wake).
   - Lock looked over a villager on the line: `tools/tour.sh tours/lockon_crowd.tour --seed=4 --hour=11 --weather=clear:0 --folk=14`.
   - Eye kept out of what is drawn, near plane off the ground: `tools/tour.sh tours/spring_arm.tour --seed=4 --hour=11 --weather=clear:0`.
   - Something lower than the eye behind the player looked over (Shoulder.over): `tools/test.sh test_shoulder:test_a_rock_lower`.

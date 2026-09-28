@@ -5428,13 +5428,18 @@ const TALKS := {
 # legs. No line waits for him to reach the sand: a line for walking onto a tile
 # is the one thing the record never says (docs/STORY.md). "Came up out of the
 # water" is Maren's to say, in her talk, and the black site stays "something"
-# until somebody names it.
+# until somebody names it. `tether` when the view turns once to the far
+# horizon and tips up (48_wake, 42_stage); the line and its light stay unnamed.
 const WAKE := {
 	&"surface": ["You break the surface.", "Your first breath is salt."],
 	&"shallows": [
 		"Behind you, something stands in the sea.",
 		"Someone at the water's edge is watching you.",
 		"You do not remember the water.",
+	],
+	&"tether": [
+		"Far off, a thread climbs from the horizon into the sky.",
+		"Where it ends, one light hangs and does not move.",
 	],
 }
 

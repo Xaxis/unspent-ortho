@@ -500,6 +500,14 @@
       "tests": []
     },
     {
+      "id": "system:42_stage",
+      "kind": "system",
+      "entry": "src/systems/42_stage.gd",
+      "reach": "tools/tour.sh tours/home-coast.tour --scene=title --seed=1",
+      "area": "world-look",
+      "tests": []
+    },
+    {
       "id": "system:42_target",
       "kind": "system",
       "entry": "src/systems/42_target.gd",

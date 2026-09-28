@@ -133,10 +133,13 @@ func _load_systems(files: Array[String]) -> void:
 ## the same way, so every reader that already asked this question keeps working.
 ## 49_story is its only writer.
 var talking := false
+## True while a staged look holds the view (42_stage is its only writer): the keys
+## are held as for a page, so nothing turns the view or swings under it.
+var staged := false
 
 
 func input_blocked() -> bool:
-	return not open_screens.is_empty() or talking
+	return not open_screens.is_empty() or talking or staged
 
 
 func _physics_process(delta: float) -> void:

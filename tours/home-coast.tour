@@ -7,7 +7,8 @@
 # 1a THE WAKE (48_wake): a new game starts him under the water in the shallows
 # off the spawn beach, the black site in the sea behind him and Maren at the
 # water's edge. 01 he breaks the surface; 02 he stands in the surf with his legs,
-# from above; 03 the same over the shoulder, looking to the shore and her.
+# from above; 03 the first sight of the Tether; 04 over the shoulder, looking to
+# the shore and her.
 await title 40
 # New game heads the title's list when there is no save to continue; with one,
 # continue would, and `await character` below fails rather than play a save.
@@ -22,7 +23,13 @@ shot 01-he-breaks-the-surface with waking,wake:staged
 await woken 10
 wait 1.0
 shot 02-in-the-surf-from-above with woken,cast:maren
+# 1b THE FIRST SIGHT (48_wake, 42_stage): a breath after he stands, the view
+# turns once to the far horizon and up the Tether to the Foundry, and holds.
+await staging:tether 6
+wait 1.2
+shot 03-the-first-sight with staging:tether,tether
+wait 4.0
 tap shoulder
 await shoulder 20
 wait 1.0
-shot 03-in-the-surf-over-the-shoulder with woken,cast:maren,shoulder
+shot 04-in-the-surf-over-the-shoulder with woken,cast:maren,shoulder

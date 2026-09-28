@@ -15,6 +15,16 @@ func _wall(secs: float) -> void:
 	await tree.create_timer(secs).timeout
 
 
+## Until the wake lets the glass go (it holds it through the Tether's first
+## sight), or `most` seconds.
+func _until_let_go(g: Game, most: float) -> void:
+	var wake := Sx.system(g, "48_wake")
+	var t := 0.0
+	while t < most and bool(wake.call(&"holds_glass")):
+		await _wall(0.25)
+		t += 0.25
+
+
 ## The record's first lines as they are said, in order. Only those: standing in
 ## the sea, the body is also told it is soaked through.
 func _lines() -> Array[String]:
@@ -110,7 +120,8 @@ func test_no_goal_or_key_hint_is_on_the_glass_until_the_wake_is_over() -> void:
 	# Over when he has spoken to her (48_wake's end, 49_cast.stand undone).
 	@warning_ignore("return_value_discarded")
 	Story.meet(&"maren")
-	await _wall(1.5)
+	await _until_let_go(g, 12.0)
+	await _wall(1.0)
 	check(g.hud.goal != "", "the goal once the wake is over")
 	Events.hint.disconnect(on_hint)
 	Sx.end(g)
@@ -126,6 +137,27 @@ func test_only_the_record_speaks_while_the_wake_holds_the_glass() -> void:
 	check(soaked in g.hud.get("_kept"), "survival's line is kept while the wake holds the glass")
 	@warning_ignore("return_value_discarded")
 	Story.meet(&"maren")
-	await _wall(1.0)
+	await _until_let_go(g, 12.0)
+	await _wall(0.5)
 	eq((g.hud.get("_kept") as Array).size(), 0, "and let go once the wake is over")
+	Sx.end(g)
+
+
+func test_the_first_sight_turns_the_view_to_the_tether_and_back() -> void:
+	var g := Sx.game(tree, ARGS)
+	var stage: Node = tree.get_first_node_in_group(&"stage")
+	var saw: Array[StringName] = []
+	stage.looked.connect(func(w: StringName) -> void: saw.append(w))
+	var looked_at_it := false
+	var t := 0.0
+	while t < 14.0 and saw.is_empty():
+		if bool(stage.call(&"looking")) and stage.call(&"why") == &"tether" and g.camera.stage_weight >= 0.99:
+			var orbit := Sx.system(g, "19_orbit")
+			var b := float(orbit.call(&"tether_bearing"))
+			var fwd := -g.camera.global_basis.z
+			looked_at_it = looked_at_it or absf(angle_difference(atan2(fwd.z, fwd.x), b)) < deg_to_rad(4.0)
+		await _wall(0.2)
+		t += 0.2
+	eq(saw, [&"tether"] as Array[StringName], "the wake turns the view once, to the Tether")
+	check(looked_at_it, "on the Tether's bearing")
 	Sx.end(g)
