@@ -38,7 +38,11 @@ func test_the_keeper_falling_lets_them_out_and_they_are_home_again() -> void:
 	check(not s.people.has(int(d.who)), "taken, they are off the holding's books")
 	eq(taken.held_in(5).size(), 1, "and held at the region's depot")
 	Events.sentinel_fell.emit(5, &"", &"force")
-	eq(taken.held_in(5).size(), 0, "the keeper down, the depot holds nobody")
+	# Freed when its yard follows it dark (34_works, KEEPER_DARK_AFTER on), so the
+	# line that says the yard is dark is true when it is said.
+	eq(taken.held_in(5).size(), 1, "the keeper down, its yard still lit a moment: still held")
+	Events.yard_left_dark.emit(5, &"")
+	eq(taken.held_in(5).size(), 0, "the yard dark after it, the depot holds nobody")
 	check(s.people.has(int(d.who)), "and they are the holding's own again")
 	Sx.end(g)
 	Sx.finish()
