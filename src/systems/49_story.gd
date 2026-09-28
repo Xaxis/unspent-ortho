@@ -611,10 +611,10 @@ func _witness() -> void:
 		_witnessed(StoryContent.WITNESS_ON[&"hunted"])
 	if _lost_one():
 		_witnessed(StoryContent.WITNESS_ON[&"lost"])
-	# The three memories the secret is hidden in, all back: which version he holds.
-	var secret := StorySecret.version()
-	if secret != &"":
-		_witnessed(secret)
+	# The three memories the secret is hidden in, all back, in any order: he holds
+	# it. Which version is decided at the channel, by the order he relives them in.
+	if StorySecret.complete():
+		_witnessed(StorySecret.HELD)
 
 
 func _hunted_here() -> bool:
