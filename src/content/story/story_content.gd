@@ -43,7 +43,7 @@ const ARCS := {
 	&"the_holdfast": {
 		"title": "the Holdfast",
 		"note": "The last people still trying to take the world back.",
-		"beats": [&"holdfast_fight", &"holdfast_price", &"holdfast_hope", &"vera_knew"],
+		"beats": [&"marens_lead", &"holdfast_fight", &"holdfast_price", &"holdfast_hope", &"vera_knew"],
 	},
 	&"the_covenant": {
 		"title": "the Covenant",
@@ -125,6 +125,7 @@ const BEATS := {
 	&"ants": {"reveal": true, "short": "beneath notice", "arc": &"the_machines", "says": "They do not see you. Nothing that size looks down."},
 	&"standoff": {"reveal": true, "short": "a star each", "arc": &"the_machines", "says": "Two things that can kill a star are each holding the other's."},
 	&"the_guest": {"short": "someone else", "arc": &"the_machines", "says": "Something from another star is talking to them, and it is not talking about you."},
+	&"marens_lead": {"short": "iron for the crew", "arc": &"the_holdfast", "says": "The crew camped past the old works pay for iron. The fire-keeper wants them kept from her fire."},
 	&"holdfast_fight": {"short": "still fighting", "arc": &"the_holdfast", "says": "There are people still fighting to take the world back. Not many."},
 	&"holdfast_price": {"short": "what it costs", "arc": &"the_holdfast", "says": "Every works the Holdfast breaks brings the hunters down on a village."},
 	&"holdfast_hope": {"short": "a weapon", "arc": &"the_holdfast", "says": "To the Holdfast, anybody who knows the old machines is a weapon."},
@@ -3998,6 +3999,7 @@ const TALKS := {
 					{"text": "Who pulled me out?", "pick": &"asked_who", "to": &"pulled"},
 					{"text": "Where am I?", "pick": &"asked_where", "to": &"where"},
 					{"text": "Somebody didn't get home.", "when": &"not_home", "pick": &"told_lost", "to": &"lost"},
+					{"text": "What do I do now?", "pick": &"asked_now", "to": &"lead"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
 			},
@@ -4019,6 +4021,16 @@ const TALKS := {
 			&"camp": {
 				"says": ["There's a crew camped out past the old works. Holdfast.", "They pay for anyone who knows the old machines. I'd not tell them you do."],
 				"beats": [&"holdfast_fight"],
+				"replies": [
+					{"text": "Then what would I bring them?", "pick": &"asked_bring", "to": &"lead"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			# Her lead (docs/ROADMAP.md, step 2): the first hour's work and why, and
+			# the camp at the end of it. The guide says it back (StoryContent.LEAD).
+			&"lead": {
+				"says": ["A fire before dark. Charcoal off it for a pick. The pick for the iron in the rock.", "The crew past the old works pay for iron. Take it to them. Not them to me."],
+				"beats": [&"marens_lead"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"where": {
@@ -4043,6 +4055,7 @@ const TALKS := {
 				"says": ["Suit yourself. There's a fire.", "You're not the first to come up saying nothing."],
 				"replies": [
 					{"text": "Who were the others?", "pick": &"asked_others", "to": &"others"},
+					{"text": "[sit by the fire]", "pick": &"sat", "to": &"lead"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
@@ -5441,6 +5454,24 @@ const WAKE := {
 		"Far off, a thread climbs from the horizon into the sky.",
 		"Where it ends, one light hangs and does not move.",
 	],
+}
+
+# --- Maren's lead (Guide.goal, docs/ROADMAP.md step 2) ---------------------
+#
+# The goal line's words once `marens_lead` has landed: the short form of what
+# she told him, carrying her why, so the first hour is her errand and not a
+# recipe. The game's register, terse. Never a key, never a coordinate: `{at}`
+# is the fire's name (Guide.fire_name). Before she has said it, the guide says
+# the plain line. `ore` is where the goal turns toward the crew's camp.
+const LEAD := {
+	&"fire_gather": "A fire before dark, for charcoal: three driftwood and two stones.",
+	&"fire_lay": "A fire before dark, for charcoal: lay it on open ground.",
+	&"charcoal_gather": "Charcoal for the pick: four driftwood or dead wood, at {at}.",
+	&"charcoal_set": "Charcoal for the pick, for the iron: set it going at {at}.",
+	&"haft": "A haft for the pick, whittled from wood.",
+	&"plate": "Plate for the pick's head: turn over the tip.",
+	&"pick": "A pick for the iron, made at {at}.",
+	&"ore": "The crew past the old works pay for iron. Take the pick to the rock.",
 }
 
 # --- what a region asks of him (StorySubarc, docs/VISION.md) ------------

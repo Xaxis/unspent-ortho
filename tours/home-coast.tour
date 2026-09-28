@@ -33,3 +33,28 @@ tap shoulder
 await shoulder 20
 wait 1.0
 shot 04-in-the-surf-over-the-shoulder with woken,cast:maren,shoulder
+
+# 2 MAREN'S ASK BECOMES THE GOAL (Guide._led, StoryContent.LEAD): he goes to her
+# at the water's edge and talks, taking the first reply each time, as a player
+# who just keeps talking does, until she gives his first lead; then the goal
+# line is her lead in her words, and it points on to the crew's camp.
+at cast:maren
+await cast:maren 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+shot 05-maren-at-the-water with talking,cast:maren
+press use
+wait 0.5
+press use
+wait 0.5
+press use
+wait 0.5
+press use
+await beat:marens_lead 3
+wait 0.5
+shot 06-her-lead with talking,beat:marens_lead
+press use
+wait 2.5
+shot 07-the-goal-is-hers with beat:marens_lead

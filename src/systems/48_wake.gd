@@ -21,9 +21,12 @@ extends GameSystem
 ## How far under the ground he starts, and how long the rise takes.
 const DEPTH := 1.7
 const RISE := 1.6
-## Maren goes back to her own place once he is this far from where she waited, or
-## once he has spoken to her.
+## The wake is over once he has spoken to her and the talk is closed, or is this
+## far from where she waited.
 const MAREN_LEAVE := 16.0
+## She goes back to her own place once he is this far from where she waited:
+## past what a frame from above holds, so nobody watches her jump.
+const MAREN_BACK := 18.0
 ## THE FIRST SIGHT OF THE TETHER: this long after he stands, the view turns to
 ## the far horizon (42_stage) and holds there, up the line to the Foundry
 ## (19_orbit's Tether), while the record says what is there. How far up the
@@ -66,6 +69,7 @@ func started() -> void:
 
 
 func _process(delta: float) -> void:
+	_send_maren_home()
 	if not _first:
 		return
 	if _staged.is_empty():
@@ -100,14 +104,24 @@ func _process(delta: float) -> void:
 	if _said_shallows and not _sighted and _t >= _sight_at:
 		_sighted = true
 		_first_sight()
-	if _said_shallows and _maren_home != Vector2.INF:
-		if Story.met(&"maren") or game.player.pos.distance_to(_staged.maren) > MAREN_LEAVE:
-			var cast := _cast()
-			if cast != null:
-				cast.call(&"stand", &"maren", _maren_home, 0.0)
-			_maren_home = Vector2.INF
-	if _said_shallows and _sighted and _maren_home == Vector2.INF and not _stage_looking():
+	var met := Story.met(&"maren") and not game.talking
+	var gone := game.player.pos.distance_to(_staged.maren) > MAREN_LEAVE
+	if _said_shallows and _sighted and not _stage_looking() and (met or gone):
 		_first = false
+
+
+## SHE GOES BACK TO HER FIRE out of his sight: once he is MAREN_BACK from where
+## she waited, never while he stands talking to her (a talk marks them met as it
+## opens, and she stepped off mid-sentence).
+func _send_maren_home() -> void:
+	if _maren_home == Vector2.INF or _staged.is_empty():
+		return
+	if game.player.pos.distance_to(_staged.maren) <= MAREN_BACK:
+		return
+	var cast := _cast()
+	if cast != null:
+		cast.call(&"stand", &"maren", _maren_home, 0.0)
+	_maren_home = Vector2.INF
 
 
 ## THE WAKE HOLDS THE GLASS from the moment he is put in the surf until it is
