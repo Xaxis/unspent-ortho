@@ -299,7 +299,9 @@ const DEFS := {
 	# a body that comes in close, at a pace a walking player gains on.
 	&"sorter": {
 		"model": &"sorter", "role": &"worker", "machine": true, "approach": &"throw", "part": &"back",
-		"pace": 3.5, "dash": 5.0, "quick": 150, "radius": 0.55, "height": 1.5, "life": 48,
+		# A thrower is a fight of reloads: at 48 a sorter died inside its first reload
+		# for most weapons (3.8 s alone, tools/sweep.sh); at 72 it takes two.
+		"pace": 3.5, "dash": 5.0, "quick": 150, "radius": 0.55, "height": 1.5, "life": 72,
 		"sees": 12, "hears": 6, "racket": 14, "reach": 6, "ready": 3, "forget": 18, "tether": 26, "safe": 14,
 		"nerve": 100, "invuln": 420, "disposition": &"indifferent",
 		"bite": {"swing": [850, 100, 900, 1500], "reach": 5.0, "width": 0.5, "dmg": 2, "knock": 5.0, "knock_ms": 220},
