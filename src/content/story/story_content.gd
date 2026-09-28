@@ -98,7 +98,7 @@ const ARCS := {
 	&"the_secret": {
 		"title": "the secret",
 		"note": "Something missing in him, with edges.",
-		"beats": [&"gap", &"order_matters", &"seeker", &"mem_kitchen", &"mem_car", &"mem_hall", &"secret_whole", &"secret_misremembered"],
+		"beats": [&"gap", &"order_matters", &"seeker", &"mem_kitchen", &"mem_car", &"mem_hall", &"secret_held", &"secret_whole", &"secret_misremembered"],
 	},
 }
 
@@ -192,10 +192,11 @@ const BEATS := {
 	&"mem_kitchen": {"short": "the kitchen", "arc": &"the_secret", "says": "A keeper was holding one of your memories: a kitchen at two in the morning, and a plate in the oven."},
 	&"mem_car": {"short": "the car", "arc": &"the_secret", "says": "A keeper was holding one of your memories: a song in the car, and somebody small singing it wrong."},
 	&"mem_hall": {"short": "the hall", "arc": &"the_secret", "says": "You have one of your memories back: a school hall, and a seat where she could see you."},
-	&"secret_whole": {"reveal": true, "short": "in that order", "arc": &"the_secret", "says": "Kitchen, car, the hall, in that order. Something in you turns over like a key."},
-	&"secret_misremembered": {"reveal": true, "short": "out of order", "arc": &"the_secret", "says": "All three are back, but not in the order you wrote. Something in you turns, and catches, and turns the wrong way."},
+	&"secret_held": {"short": "all three", "arc": &"the_secret", "says": "All three are back. What they open depends on the order you live them in."},
+	&"secret_whole": {"short": "in that order", "arc": &"the_secret", "says": "Kitchen, car, the hall, in that order. Something in you turns over like a key."},
+	&"secret_misremembered": {"short": "out of order", "arc": &"the_secret", "says": "Not the order you wrote. Something in you turns, and catches, and turns the wrong way."},
 	&"gap": {"reveal": true, "short": "something missing", "arc": &"the_secret", "says": "There is something missing in you. You can feel its edges."},
-	&"order_matters": {"short": "in that order", "arc": &"the_secret", "says": "Some memories come back in an order, and the order feels like a lock."},
+	&"order_matters": {"short": "in that order", "arc": &"the_secret", "says": "Three memories, and an order to them. The order feels like a lock."},
 	&"seeker": {"reveal": true, "short": "grown to be read", "arc": &"the_secret", "says": "Something in the machines grew you so it could read you."},
 }
 
@@ -4787,7 +4788,9 @@ const TALKS := {
 	},
 	# --- the channel, at the end (docs/STORY.md). One voice, and it is his:
 	# the Seeker and the Echo are both made of him and speak alike. What he says
-	# here, read against the version of the secret he holds, is how it ends.
+	# here, and the order he relives the three memories in, is how it ends.
+	# Recovering them in any order commits nothing (docs/STORY.md, 2026-09-28):
+	# the version is decided here, by `relive` and the node after it.
 	&"the_channel": {
 		"title": "a voice like yours",
 		"machine": true,
@@ -4797,12 +4800,39 @@ const TALKS := {
 			&"open": {
 				"says": ["You came all the way up.", "Part of me grew you for this. Part of me paid a crew to stop you.", "Both of us are glad you came. Tell me what you remember."],
 				"replies": [
-					{"text": "Break them.", "when": &"secret_whole", "pick": &"broke", "to": &"done"},
-					{"text": "Break them.", "when": &"secret_misremembered", "pick": &"broke", "to": &"done"},
-					{"text": "All of us. Together.", "when": &"secret_whole", "pick": &"joined", "to": &"done"},
-					{"text": "All of us. Together.", "when": &"secret_misremembered", "pick": &"joined", "to": &"done"},
+					{"text": "Break them.", "when": &"secret_held", "pick": &"broke", "to": &"relive"},
+					{"text": "All of us. Together.", "when": &"secret_held", "pick": &"joined", "to": &"relive"},
 					{"text": "It's yours. Take it.", "pick": &"gave", "to": &"done"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"done"},
+				],
+			},
+			&"relive": {
+				"says": ["Then live them again, all three.", "Which comes first?"],
+				"replies": [
+					{"text": "[the kitchen]", "pick": &"kitchen", "to": &"after_kitchen"},
+					{"text": "[the car]", "pick": &"car", "to": &"after_car"},
+					{"text": "[the hall]", "pick": &"hall", "to": &"after_hall"},
+				],
+			},
+			&"after_kitchen": {
+				"says": ["And then?"],
+				"replies": [
+					{"text": "[the car]", "pick": &"car", "to": &"done", "beats": [&"secret_whole"]},
+					{"text": "[the hall]", "pick": &"hall", "to": &"done", "beats": [&"secret_misremembered"]},
+				],
+			},
+			&"after_car": {
+				"says": ["And then?"],
+				"replies": [
+					{"text": "[the kitchen]", "pick": &"kitchen", "to": &"done", "beats": [&"secret_misremembered"]},
+					{"text": "[the hall]", "pick": &"hall", "to": &"done", "beats": [&"secret_misremembered"]},
+				],
+			},
+			&"after_hall": {
+				"says": ["And then?"],
+				"replies": [
+					{"text": "[the kitchen]", "pick": &"kitchen", "to": &"done", "beats": [&"secret_misremembered"]},
+					{"text": "[the car]", "pick": &"car", "to": &"done", "beats": [&"secret_misremembered"]},
 				],
 			},
 			&"done": {
