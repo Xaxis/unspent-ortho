@@ -74,8 +74,22 @@ var swap_out_ms := 0.0
 var built_after_out := -1
 
 
+## THE HUSH AT THE DOOR (DoorHush): the machines outside within HEAR_REACH of
+## the door when the player came in, walked on along their rounds while they are
+## in; `quiet` (0..1, the &"hush" group 70_audio and 10_sky read) rises while
+## one is within its hearing of the door and the room's own lamps dip with it,
+## so the people in it are heard to stop. Eased at QUIET_RATE a second.
+const HEAR_REACH := 40.0
+const QUIET_RATE := 1.5
+const LAMP_DIP := 0.6
+var quiet := 0.0
+var _heard: Array[Dictionary] = []
+var _heard_t := 0.0
+
+
 func setup(g: Game) -> void:
 	super.setup(g)
+	add_to_group(&"hush")
 	doors = Interiors.thresholds(g.world)
 	_stand_hatches()
 	SaveGame.register(&"doors", _save, _load)
@@ -246,7 +260,14 @@ func _outside_side() -> void:
 			go_in(meant)
 
 
-func _inside_side(_delta: float) -> void:
+func _inside_side(delta: float) -> void:
+	# Each machine heard coming within its hearing of the door, once, by its
+	# footfalls through the heap in its weight, at the door.
+	for i in DoorHush.entered(_heard, pocket.threshold.door, _heard_t, _heard_t + delta):
+		Events.sfx.emit(StringName("passing_%s" % _heard[i].weight), game.world.to_3d(pocket.layout.door))
+	_heard_t += delta
+	var want := DoorHush.quiet(_heard, pocket.threshold.door, _heard_t)
+	quiet = move_toward(quiet, want, QUIET_RATE * delta)
 	var cam := game.camera
 	var back := Vector2(cam.global_transform.basis.z.x, cam.global_transform.basis.z.z)
 	if back.length() > 0.001:
@@ -394,6 +415,11 @@ func _swap_in() -> void:
 	model = _model
 	_grown = null
 	realms.set("pocket_closed", p.kind.closed)
+	# Before the crossing clears them: the machines that could pass this door.
+	var sim: FightSim = game.player.sim
+	_heard = DoorHush.snapshot(sim.mobs if sim != null else [], p.threshold.door, HEAR_REACH)
+	_heard_t = 0.0
+	quiet = 0.0
 	realms.call(&"enter", p.world, p.threshold.realm_key(), p.layout.inside())
 	game.query.set_blocks(&"rooms", _walls(p.layout))
 	game.camera.view_height = p.kind.zoom
@@ -1373,6 +1399,17 @@ func _swap_out() -> void:
 		_went_out_back = true
 	_out_back = false
 	realms.call(&"enter", _outside, _outside_key, out_at, true, _outside_query)
+	# The machines heard passing stand where their rounds have taken them, going
+	# the way they were, and not where the crossing's respawn would put them.
+	var back_sim: FightSim = game.player.sim
+	if back_sim != null:
+		for h: Dictionary in _heard:
+			var m := back_sim.add_mob(StringName(h.kind), DoorHush.at(h, _heard_t))
+			m.line_a = h.a
+			m.line_b = h.b
+			m.line_to_b = DoorHush.toward_b(h, _heard_t)
+	_heard.clear()
+	quiet = 0.0
 	game.camera.view_height = _outside_height
 	pocket = null
 	model = null
@@ -1652,6 +1689,7 @@ func _light_windows() -> void:
 				lamp.light_energy = 5.0 * (1.0 - SkyLight.day_gone(game.sky.clock_hour))
 			_:
 				lamp.light_energy = lerpf(1.6, 0.25, day)
+		lamp.light_energy *= 1.0 - LAMP_DIP * quiet
 	for i in _windows.size():
 		var at: Vector3 = _windows[i][0]
 		var inward2: Vector2 = _windows[i][1]
@@ -1890,6 +1928,11 @@ func tour_seen(what: StringName) -> bool:
 			return pocket != null and crawl_near
 		&"out_back":
 			return _went_out_back
+		# A machine outside is passing the door (DoorHush): the room is hushed.
+		&"hushed":
+			return pocket != null and quiet > 0.9
+		&"unhushed":
+			return pocket != null and quiet < 0.05
 		# The player's feet are on a floor above the room's lowest: a warren's
 		# ladder climbed (`below` is the other way round).
 		&"above", &"below":
