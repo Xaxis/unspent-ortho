@@ -80,6 +80,9 @@ meaningful way. It must be brilliant. Builder **D**.
 - [ ] **T4 Editing** (after the owner has used T2–T3): story data moves to a structured
   file the game loads; edits save through the story tests; the words still pass
   story-wright.
+- [ ] **Tours walk with a path.** `walkto` holds a straight line and has no pathfinding, so
+  a proof cannot walk a freed person 188 tiles home; home-coast.tour reads "home again"
+  from the record instead.
 
 **Brilliant means:** a stranger reads the whole story's shape in ten seconds; nothing
 overlaps unreadably at any zoom; it opens in under a second and pans at 60 fps; it

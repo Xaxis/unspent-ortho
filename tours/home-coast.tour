@@ -77,27 +77,27 @@ wait 1.0
 try 3
   near driftwood
   press use 0.1
-  await took 4
+  await took:driftwood 4
 end
 try 3
   near driftwood
   press use 0.1
-  await took 4
+  await took:driftwood 4
 end
 try 3
   near driftwood
   press use 0.1
-  await took 4
+  await took:driftwood 4
 end
 try 3
   near driftwood
   press use 0.1
-  await took 4
+  await took:driftwood 4
 end
 try 3
   near driftwood
   press use 0.1
-  await took 4
+  await took:driftwood 4
 end
 wait 0.2
 shot 08-driftwood-off-the-strand
@@ -105,19 +105,19 @@ try 3
   near boulder,stone_ore
   walk 0,0 0.05
   press use 0.1
-  await took 14
+  await took:stone 14
 end
 try 3
   near boulder,stone_ore
   walk 0,0 0.05
   press use 0.1
-  await took 14
+  await took:stone 14
 end
 try 3
   near tip
   walk 0,0 0.05
   press use 0.1
-  await took 20
+  await took:scrap 20
 end
 wait 0.2
 shot 09-a-plate-turned-out-of-the-tip
@@ -128,7 +128,7 @@ await fire_asked 2
 # The ask is a prompt on the glass; the second press answers it once it is up.
 wait 0.6
 press use 0.1
-await made 4
+await made:fire 4
 wait 0.5
 shot 10-his-fire-laid with station:fire
 tap craft
@@ -138,11 +138,11 @@ tap use
 wait 0.3
 choose haft
 tap use
-await made 3
+await made:haft 3
 tap pause
 wait 0.4
 hour 11
-await made 4
+await made:charcoal 4
 wait 0.3
 tap craft
 wait 0.6
@@ -152,7 +152,7 @@ wait 0.3
 tap pause
 wait 0.4
 hour 12
-await made 4
+await made:pick 4
 wait 0.3
 tap inventory
 wait 0.6
@@ -212,7 +212,7 @@ try 10
   near bush
   walk 0,0 0.05
   press use 0.1
-  await took 8
+  await took:berries 8
   at mark:fire
   wait 0.5
   press use 0.1
@@ -224,22 +224,22 @@ shot 14-the-goal-asks-for-steel with beat:reaper_named,goal:kiln_stones
 try 3
   near driftwood
   press use 0.1
-  await took 4
+  await took:driftwood 4
 end
 try 3
   near driftwood
   press use 0.1
-  await took 4
+  await took:driftwood 4
 end
 try 3
   near driftwood
   press use 0.1
-  await took 4
+  await took:driftwood 4
 end
 try 3
   near driftwood
   press use 0.1
-  await took 4
+  await took:driftwood 4
 end
 at mark:fire
 wait 0.5
@@ -252,7 +252,7 @@ tap pause
 wait 0.4
 # Forty minutes on the fire, waited out: how late the ring has left the day is
 # the fight's, and `hour` only moves within the day.
-await made 45
+await made:charcoal 45
 wait 0.5
 tap craft
 wait 0.6
@@ -261,7 +261,7 @@ tap use
 wait 0.3
 tap pause
 wait 0.4
-await made 45
+await made:charcoal 45
 wait 0.3
 village 36
 wait 1.5
@@ -269,49 +269,49 @@ try 3
   near boulder,stone_ore
   walk 0,0 0.05
   press use 0.1
-  await took 14
+  await took:stone 14
 end
 try 3
   near boulder,stone_ore
   walk 0,0 0.05
   press use 0.1
-  await took 14
+  await took:stone 14
 end
 try 3
   near boulder,stone_ore
   walk 0,0 0.05
   press use 0.1
-  await took 14
+  await took:stone 14
 end
 try 3
   near boulder,stone_ore
   walk 0,0 0.05
   press use 0.1
-  await took 14
+  await took:stone 14
 end
 try 3
   near boulder,stone_ore
   walk 0,0 0.05
   press use 0.1
-  await took 14
+  await took:stone 14
 end
 try 3
   near boulder,stone_ore
   walk 0,0 0.05
   press use 0.1
-  await took 14
+  await took:stone 14
 end
 try 3
   near boulder,stone_ore
   walk 0,0 0.05
   press use 0.1
-  await took 14
+  await took:stone 14
 end
 try 3
   near boulder,stone_ore
   walk 0,0 0.05
   press use 0.1
-  await took 14
+  await took:stone 14
 end
 ground grass
 mark kiln
@@ -340,7 +340,7 @@ try 3
 end
 at mark:kiln
 wait 0.5
-await made 10
+await made:knife_shear 10
 wait 0.5
 tap inventory
 wait 0.6
