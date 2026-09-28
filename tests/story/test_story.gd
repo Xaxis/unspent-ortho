@@ -183,7 +183,8 @@ func test_the_first_morning_is_said_once() -> void:
 	var g := Sx.game(tree, ["--seed=1", "--size=128", "--hour=8"])
 	# The first morning is said in a PROCESS frame, so ask for process frames.
 	await process_frames(3)
-	check(said.has("You come up out of the water."), "it says what happened to him: %s" % "\n".join(said))
+	var first: String = StoryContent.WAKE[&"surface"][0]
+	check(said.has(first), "it says what happened to him: %s" % "\n".join(said))
 	check(Story.began, "and remembers having said it")
 	# A game carried on from a save is not told again: the story's own state is
 	# applied before the first morning would be said (05_save starts before 49).
@@ -195,7 +196,7 @@ func test_the_first_morning_is_said_once() -> void:
 	eq(SaveSlots.options_for(2, o), "", "slot 2 boots")
 	var g2 := Sx.game(tree, [], o)
 	await process_frames(3)
-	check(not said.has("You come up out of the water."), "a loaded game is not told again: %s" % "\n".join(said))
+	check(not said.has(first), "a loaded game is not told again: %s" % "\n".join(said))
 	Events.message.disconnect(hear)
 	Sx.end(g2)
 	Story.forget()
