@@ -148,7 +148,22 @@ const ROAD_NEAR := 60.0
 const BAG_GOAL := "Your things lie where it took you. The survey marks them."
 
 
+## WHICH GOAL IT WAS: the key of the line `goal` last returned (StoryContent.LEAD
+## or EDGE's, the same with or without the story's words), or &"" for a line
+## with none. A tour claims it (`goal:KEY`, 90_ui) rather than matching words
+## that change with the story and the fire's name.
+static var last_goal_key := &""
+static var _key := &""
+
+
 static func goal(game: Game) -> String:
+	_key = &""
+	var line := _goal_of(game)
+	last_goal_key = _key
+	return line
+
+
+static func _goal_of(game: Game) -> String:
 	var inv := game.inventory
 	var now := game.clock.minutes
 	if game.body.hunger_level(now) >= 2:
@@ -203,6 +218,7 @@ const LEAD_BEAT := &"marens_lead"
 
 
 static func _led(key: StringName, plain: String, at: String = "") -> String:
+	_key = key
 	var line := plain
 	if Story.landed(LEAD_BEAT) and StoryContent.LEAD.has(key):
 		line = String(StoryContent.LEAD[key])
@@ -245,6 +261,7 @@ static func keeper_name(land: StringName) -> String:
 
 ## One of the edge's lines: Hob's once he has named the keeper, else plain.
 static func edge_line(key: StringName, who: String = "", at: String = "") -> String:
+	_key = key
 	var line := String(EDGE_PLAIN.get(key, ""))
 	if Story.landed(NAMED_BEAT) and StoryContent.EDGE.has(key):
 		line = String(StoryContent.EDGE[key])
