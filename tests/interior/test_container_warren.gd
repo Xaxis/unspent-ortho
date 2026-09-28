@@ -14,9 +14,35 @@ const GROWN := 40
 var _doors := load("res://src/systems/21_doors.gd") as GDScript
 
 
-func _reach(q: WorldQuery, from: Vector2) -> Dictionary:
+## Walked from `from`, and up every ladder whose foot the walk reaches, by the
+## climb the jump key makes there (Climb.plan), as a player would.
+func _reach(q: WorldQuery, from: Vector2, l: InteriorLayout = null) -> Dictionary:
 	var seen := {Vector2i(roundi(from.x / STEP), roundi(from.y / STEP)): true}
 	var todo: Array[Vector2i] = [seen.keys()[0]]
+	var climbed := {}
+	while true:
+		_walk(q, seen, todo)
+		if l == null:
+			break
+		for th: Dictionary in l.things:
+			if th.kind != &"ladder" or climbed.has(th.at):
+				continue
+			var foot: Vector2 = (th.at as Vector2) + (th.face as Vector2) * 0.6
+			if not _reached(seen, foot):
+				continue
+			climbed[th.at] = true
+			var c := Climb.plan(q.world, q, foot, -(th.face as Vector2), FightRules.WIND)
+			if c == null or c.slides:
+				continue
+			var k := Vector2i(roundi(c.top.x / STEP), roundi(c.top.y / STEP))
+			seen[k] = true
+			todo.append(k)
+		if todo.is_empty():
+			break
+	return seen
+
+
+func _walk(q: WorldQuery, seen: Dictionary, todo: Array[Vector2i]) -> void:
 	while not todo.is_empty():
 		var c: Vector2i = todo.pop_back()
 		for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
@@ -28,7 +54,6 @@ func _reach(q: WorldQuery, from: Vector2) -> Dictionary:
 			if q.move_body(a, b - a, Tuning.PLAYER_RADIUS).distance_to(b) < 0.02:
 				seen[n] = true
 				todo.append(n)
-	return seen
 
 
 func _reached(reach: Dictionary, at: Vector2) -> bool:
@@ -44,7 +69,9 @@ func _grown() -> Array[InteriorGen.Pocket]:
 	var land := BiomeRegistry.index_of(&"the_middens")
 	var out: Array[InteriorGen.Pocket] = []
 	for i in GROWN:
-		var t := Threshold.of_face(Vector2(40.0 + 7.0 * i, 60.0 + 3.0 * (i % 5)), Vector2(0, 1), &"container_warren", land)
+		# Half of them with a way up onto the plateau, so towers are dealt.
+		var exit := Vector2(30.0, 30.0) if i % 2 == 0 else Vector2.INF
+		var t := Threshold.of_face(Vector2(40.0 + 7.0 * i, 60.0 + 3.0 * (i % 5)), Vector2(0, 1), &"container_warren", land, exit)
 		out.append(InteriorGen.grow(1, t))
 	return out
 
@@ -74,7 +101,7 @@ func test_every_warren_is_walked_through_from_its_door() -> void:
 				check(not l.rooms[i].intersects(l.rooms[j]), "%s: rooms %d and %d do not overlap" % [p.threshold.key, i, j])
 		var q := WorldQuery.new(p.world)
 		q.set_blocks(&"rooms", _doors.call(&"_walls", l) as Array[Vector3])
-		var reach := _reach(q, l.inside())
+		var reach := _reach(q, l.inside(), l)
 		for i in l.rooms.size():
 			var r := l.rooms[i]
 			var c := Vector2(r.position) + Vector2(r.size) * 0.5
@@ -90,6 +117,131 @@ func test_every_warren_is_walked_through_from_its_door() -> void:
 		eq(boxes, 1, "%s: one strongbox" % p.threshold.key)
 	for d: StringName in [&"dug", &"kept", &"sorted"]:
 		check(dressings.has(d), "a %s warren is among those grown" % d)
+
+
+## EVERY RISE HAS ITS LADDER, AND IT GOES BOTH WAYS. Where a room stands higher
+## than the one it opens off, a ladder stands on the riser between them; the
+## jump key at its foot climbs it (on a ladder's rate, not rock's), and at its top
+## facing the drop comes back down it to the foot. Every plan turns up.
+func test_every_rise_has_a_ladder_that_goes_up_and_back_down() -> void:
+	var plans := {}
+	var ladders := 0
+	for p: InteriorGen.Pocket in _grown():
+		var l := p.layout
+		plans[l.plan] = true
+		var q := WorldQuery.new(p.world)
+		q.set_blocks(&"rooms", _doors.call(&"_walls", l) as Array[Vector3])
+		# The run climbs a RISE at each ladder: its top room stands that many up.
+		var rises := 0
+		for lv: int in l.room_level:
+			rises = maxi(rises, lv / 5)
+		var here := 0
+		for th: Dictionary in l.things:
+			if th.kind != &"ladder":
+				continue
+			here += 1
+			var up: Vector2 = -(th.face as Vector2)
+			var foot: Vector2 = (th.at as Vector2) - up * 0.6
+			var c := Climb.plan(p.world, q, foot, up, FightRules.WIND)
+			check(c != null and not c.slides and not c.down, "%s: the ladder at %s is climbed" % [p.threshold.key, th.at])
+			if c == null:
+				continue
+			eq(c.levels, 5, "%s: a container's height up" % p.threshold.key)
+			eq(c.rate, Climb.LADDER_RATE, "%s: at a ladder's rate" % p.threshold.key)
+			var d := Climb.plan(p.world, q, c.top, -up, FightRules.WIND)
+			check(d != null and d.down, "%s: and at its top, facing the drop, climbed down" % p.threshold.key)
+			if d != null:
+				near(d.top.distance_to(foot), 0.0, 0.9, "%s: to its foot" % p.threshold.key)
+				eq(d.to_level, c.from_level, "%s: at the foot's level" % p.threshold.key)
+		eq(here, rises, "%s (%s): a ladder for every rise" % [p.threshold.key, l.plan])
+		ladders += here
+	for plan: StringName in [&"line", &"step", &"tower"]:
+		check(plans.has(plan), "a %s warren is among those grown" % plan)
+	gt(float(ladders), 0.0, "ladders were climbed")
+
+
+## A TOWER ONLY WHERE ITS CRAWL COMES OUT, AND THE CRAWL IS REACHED. A tower is
+## dealt only behind a door with a way up onto the plateau; every tower has one
+## crawl up in its top container, on its top floor, walked and climbed to from
+## the door; no other plan has one.
+func test_a_tower_s_crawl_is_reached_and_only_where_it_comes_out() -> void:
+	var towers := 0
+	for p: InteriorGen.Pocket in _grown():
+		var l := p.layout
+		var crawls: Array[Dictionary] = []
+		for th: Dictionary in l.things:
+			if th.kind == &"crawl_up":
+				crawls.append(th)
+		if l.plan != &"tower":
+			eq(crawls.size(), 0, "%s (%s): no crawl" % [p.threshold.key, l.plan])
+			continue
+		towers += 1
+		check(p.threshold.exit_at.is_finite(), "%s: a tower only where its crawl comes out" % p.threshold.key)
+		eq(crawls.size(), 1, "%s: one crawl up" % p.threshold.key)
+		if crawls.is_empty():
+			continue
+		var c := crawls[0]
+		check(bool(c.get("exit", false)), "%s: the crawl is a way out" % p.threshold.key)
+		var at := (c.at as Vector2) + (c.face as Vector2) * 0.8
+		var top := 0
+		for lv: int in l.room_level:
+			top = maxi(top, lv)
+		eq(p.world.level_at(floori(at.x), floori(at.y)), InteriorGen.FLOOR_LEVEL + top, "%s: on the top floor" % p.threshold.key)
+		var q := WorldQuery.new(p.world)
+		q.set_blocks(&"rooms", _doors.call(&"_walls", l) as Array[Vector3])
+		check(_reached(_reach(q, l.inside(), l), at), "%s: walked and climbed to" % p.threshold.key)
+	gt(float(towers), 0.0, "towers were dealt")
+
+
+## THE CRAWL COMES UP BESIDE THE ALLEY, ON THE PLATEAU. Every alley door on seed
+## 1 whose crawl has somewhere to come up has it in the door's landscape, at the
+## face's height or above, EXIT_SIDE off the alley's axis; most doors have one.
+func test_an_alley_door_s_crawl_comes_up_on_the_plateau_beside_it() -> void:
+	var w := BootWorld.world(1, Tuning.WORLD_SIZE)
+	var with := 0
+	var sites := SlotDoors.alleys(w)
+	for s: Array in sites:
+		var face: Vector2 = s[0]
+		var out: Vector2 = s[1]
+		var exit: Vector2 = s[3]
+		if not exit.is_finite():
+			continue
+		with += 1
+		var over := face - out * 0.5
+		var tx := floori(exit.x)
+		var ty := floori(exit.y)
+		eq(w.country_at(tx, ty), int(s[2]), "the crawl at %s is in the door's landscape" % exit)
+		gt(float(w.level_at(tx, ty)), float(w.level_at(floori(over.x), floori(over.y)) - 2), "and up on the plateau, not down in a slot")
+		near(absf((exit - over).dot(Vector2(-out.y, out.x))), SlotDoors.EXIT_SIDE, 0.75, "and beside the alley's axis")
+	gt(float(with), float(sites.size()) * 0.4, "most alley doors have a crawl's way up")
+
+
+## A BUCKLED BAY IS PASSED CROUCHED AND NOT STANDING. About the middens'
+## collapse share of warrens has one, never in the first or last container;
+## each of its tiles lets a crouched body in (Tuning.PLAYER_CROUCH_HEIGHT) and not
+## a standing one (Tuning.PLAYER_HEIGHT), from the open deck beside it; tiles
+## off the bay let a standing body in.
+func test_a_buckled_bay_is_passed_crouched_and_not_standing() -> void:
+	var bays := 0
+	var grown := _grown()
+	for p: InteriorGen.Pocket in grown:
+		var l := p.layout
+		var q := WorldQuery.new(p.world)
+		for th: Dictionary in l.things:
+			if th.kind != &"buckled":
+				continue
+			bays += 1
+			var mid: Vector2 = th.at
+			var f: Vector2 = th.face
+			check(not l.rooms[0].has_point(Vector2i(floori(mid.x), floori(mid.y))), "%s: not in the way in" % p.threshold.key)
+			var inside := Vector2i(floori(mid.x), floori(mid.y))
+			var off := Vector2i(floori(mid.x + f.x * 2.5), floori(mid.y + f.y * 2.5))
+			check(not q.passable(off.x, off.y, inside.x, inside.y, null, false, FightSim.HERO_TALL), "%s: a stand is stopped at the bay" % p.threshold.key)
+			check(q.passable(off.x, off.y, inside.x, inside.y, null, false, FightSim.HERO_CROUCH_TALL), "%s: a crouch goes under it" % p.threshold.key)
+			var beside := Vector2i(floori(mid.x + f.x * 1.5), floori(mid.y + f.y * 1.5))
+			check(q.passable(off.x, off.y, beside.x, beside.y, null, false, FightSim.HERO_TALL), "%s: off the bay a stand goes on" % p.threshold.key)
+	gt(float(bays), float(grown.size()) * 0.2, "about the collapse share of warrens have a bay")
+	lt(float(bays), float(grown.size()) * 0.7, "and not most")
 
 
 ## THE FLOOR RINGS, AND A CAREFUL PLAYER CAN PASS. In a sorted warren at the

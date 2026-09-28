@@ -74,8 +74,22 @@ var swap_out_ms := 0.0
 var built_after_out := -1
 
 
+## THE HUSH AT THE DOOR (DoorHush): the machines outside within HEAR_REACH of
+## the door when the player came in, walked on along their rounds while they are
+## in; `quiet` (0..1, the &"hush" group 70_audio and 10_sky read) rises while
+## one is within its hearing of the door and the room's own lamps dip with it,
+## so the people in it are heard to stop. Eased at QUIET_RATE a second.
+const HEAR_REACH := 40.0
+const QUIET_RATE := 1.5
+const LAMP_DIP := 0.6
+var quiet := 0.0
+var _heard: Array[Dictionary] = []
+var _heard_t := 0.0
+
+
 func setup(g: Game) -> void:
 	super.setup(g)
+	add_to_group(&"hush")
 	doors = Interiors.thresholds(g.world)
 	_stand_hatches()
 	SaveGame.register(&"doors", _save, _load)
@@ -170,10 +184,34 @@ func sight_boxes(mid: Vector2, reach: float) -> Array[PackedFloat32Array]:
 		for b: PackedFloat32Array in _room_boxes:
 			if Vector2(b[0], b[1]).distance_to(mid) <= reach + 1.0:
 				out.append(b)
+		for b: PackedFloat32Array in ceiling_boxes(pocket.layout, pocket.kind, mid, reach):
+			out.append(b)
 		return out
 	for b: PackedFloat32Array in _hatch_boxes:
 		if Vector2(b[0], b[1]).distance_to(mid) <= reach + 1.5:
 			out.append(b)
+	return out
+
+
+## THE ROOM'S CEILING, TO THE EYE (Shoulder): over every room within `reach` of
+## `mid`, its roof as one box from its underside (the room's own floor and the
+## kind's `wall_h`) up a little, as wide as the room and a wall's width more.
+## The walls stop the eye as the query's blocks do; without these nothing did
+## overhead, and over the shoulder in a small room the eye stood in the rock of
+## its roof. One box a ROOM, not a tile: a line up exactly on a seam between two
+## tile boxes (a room's middle often is) slipped between them.
+const CEILING_OVER := 0.15
+static func ceiling_boxes(l: InteriorLayout, k: InteriorKind, mid: Vector2, reach: float) -> Array[PackedFloat32Array]:
+	var out: Array[PackedFloat32Array] = []
+	for i in l.rooms.size():
+		var r := Rect2(l.rooms[i])
+		var c := r.get_center()
+		var half := r.size * 0.5 + Vector2.ONE * CEILING_OVER
+		if maxf(absf(mid.x - c.x) - half.x, absf(mid.y - c.y) - half.y) > reach + 1.0:
+			continue
+		var lv := l.room_level[i] if i < l.room_level.size() else 0
+		var under := TerrainMesher.level_height(InteriorGen.FLOOR_LEVEL + lv) + k.wall_h
+		out.append(PackedFloat32Array([c.x, c.y, 1.0, 0.0, under, 0.6, 1.0, under + 0.6, -half.x, -half.y, half.x, half.y]))
 	return out
 
 
@@ -222,7 +260,14 @@ func _outside_side() -> void:
 			go_in(meant)
 
 
-func _inside_side(_delta: float) -> void:
+func _inside_side(delta: float) -> void:
+	# Each machine heard coming within its hearing of the door, once, by its
+	# footfalls through the heap in its weight, at the door.
+	for i in DoorHush.entered(_heard, pocket.threshold.door, _heard_t, _heard_t + delta):
+		Events.sfx.emit(StringName("passing_%s" % _heard[i].weight), game.world.to_3d(pocket.layout.door))
+	_heard_t += delta
+	var want := DoorHush.quiet(_heard, pocket.threshold.door, _heard_t)
+	quiet = move_toward(quiet, want, QUIET_RATE * delta)
 	var cam := game.camera
 	var back := Vector2(cam.global_transform.basis.z.x, cam.global_transform.basis.z.z)
 	if back.length() > 0.001:
@@ -370,6 +415,11 @@ func _swap_in() -> void:
 	model = _model
 	_grown = null
 	realms.set("pocket_closed", p.kind.closed)
+	# Before the crossing clears them: the machines that could pass this door.
+	var sim: FightSim = game.player.sim
+	_heard = DoorHush.snapshot(sim.mobs if sim != null else [], p.threshold.door, HEAR_REACH)
+	_heard_t = 0.0
+	quiet = 0.0
 	realms.call(&"enter", p.world, p.threshold.realm_key(), p.layout.inside())
 	game.query.set_blocks(&"rooms", _walls(p.layout))
 	game.camera.view_height = p.kind.zoom
@@ -378,6 +428,7 @@ func _swap_in() -> void:
 	_box_the_room()
 	_light_stoves()
 	_wake_residents()
+	_wake_dwellers()
 	_stand_turrets()
 	crossings += 1
 
@@ -769,7 +820,9 @@ func _kindle(i: int) -> void:
 ## A thing with `exit` (a squat's hole through the back wall) is a way out that
 ## is not the door: crawled through, it puts the player out BEHIND the house,
 ## as far back from it as the door stands in front, where there is ground to
-## stand on -- else, as a door does, in front.
+## stand on -- else, as a door does, in front. A door that knows where its own
+## way out comes up (Threshold.exit_at: a warren tower's crawl onto the plateau)
+## puts the player there instead.
 var crawl_near := false
 var _out_back := false
 ## Latched, for a tour: the player went out the back way.
@@ -786,6 +839,9 @@ func _crawl_near() -> bool:
 
 
 func _back_of(t: Threshold) -> Vector2:
+	# A door with a way out of its own (a warren tower's crawl onto the plateau).
+	if t.exit_at.is_finite():
+		return t.exit_at
 	var depth := t.door.distance_to(t.host)
 	var q: WorldQuery = _outside_query
 	for extra: float in [0.3, 0.8, 1.4]:
@@ -988,6 +1044,9 @@ func _wake_residents() -> void:
 		if gone.has(i):
 			continue
 		var r: Dictionary = pocket.layout.residents[i]
+		# A person who lives here is no machine (`_wake_dwellers`).
+		if r.role == DWELLER:
+			continue
 		# Its hours (InteriorKind.shift): one "on" the shift is here only while
 		# the room works; one that "docks" comes home at the curfew and sleeps.
 		var at_work := working()
@@ -1011,6 +1070,99 @@ func _wake_residents() -> void:
 		m.line_a = r.at
 		m.line_b = r.at
 		_residents.append([i, m])
+
+
+## PEOPLE WHO LIVE IN A ROOM (a resident whose role is DWELLER): not machines
+## but a person, drawn where the recipe stood them, facing the way it said, and
+## talked to by the use key as a villager is (49_story reads `dweller_rows`).
+## Their look is dealt off the door's key and their place in the recipe, and the
+## room is grown again from the seed at every entry and after every load, so the
+## same person is always home. A row: {id, pos, facing, trade, household, state,
+## model}; `trade` names the words they have (StoryProps.talk_for), and a recipe
+## may name it, else it is their household.
+const DWELLER := &"dweller"
+var dwellers: Array[Dictionary] = []
+
+
+func _wake_dwellers() -> void:
+	dwellers.clear()
+	if game.options.rooms_empty:
+		return
+	var land := pocket.threshold.land
+	var d := BiomeRegistry.by_index(land)
+	var hazards: Dictionary = d.hazards if d != null else {}
+	for i in pocket.layout.residents.size():
+		var r: Dictionary = pocket.layout.residents[i]
+		if r.role != DWELLER:
+			continue
+		var household := StringName(str(r.get("household", &"")))
+		var trade := StringName(str(r.get("trade", household)))
+		var seed_v := Rng.hash_ints(game.options.seed_value, pocket.threshold.key.hash(), i, 0xD3E11)
+		var look := PersonLook.dress(PersonLook.random(seed_v), hazards, trade, seed_v)
+		var model := PersonModel.make(look, &"", game.view.world_material())
+		model.name = "dweller_%d" % i
+		var facing := (r.face as Vector2).angle()
+		model.position = game.world.to_3d(r.at)
+		model.rotation.y = -facing
+		# In the room's own view, so it goes when the room does.
+		game.view.add_child(model)
+		var row := {"id": i, "pos": r.at, "facing": facing, "trade": trade, "household": household, "state": &"out", "model": model}
+		for k: String in ["wants", "gives", "asks", "thanks", "after"]:
+			if r.has(k):
+				row[k] = r[k]
+		dwellers.append(row)
+
+
+## A DEED: a dweller who `wants` a thing `gives` one for it, once per door. Their
+## words for it are theirs (`asks` before, `thanks` on it, `after`), and what is
+## given is the string (SlotRoute): the route from this door to the nearest ramp
+## is laid then, and kept with the door so the map draws it while the string is
+## carried. The talk it says, as a made page (StoryTalk.of_made), or {} for a
+## dweller who wants nothing.
+var _strings: Dictionary = {}
+
+
+func dweller_deed(row: Dictionary) -> Dictionary:
+	if pocket == null or not row.has("wants"):
+		return {}
+	var key := pocket.threshold.key
+	var wants := StringName(str(row.wants))
+	var lines: Array = row.get("asks", [])
+	if _strings.has(key):
+		lines = row.get("after", [])
+	elif game.inventory != null and game.inventory.has(wants):
+		game.inventory.remove(wants, 1)
+		var gives := StringName(str(row.get("gives", &"")))
+		if gives != &"":
+			game.inventory.add(gives, 1)
+			Events.took.emit(gives, 1)
+		_strings[key] = Array(SlotRoute.to_ramp(_outside, pocket.threshold.door))
+		lines = row.get("thanks", [])
+	var says := PackedStringArray()
+	for l: Variant in lines:
+		says.append(str(l))
+	return {"made": true, "mark": &"", "title": "somebody who lives here", "start": &"open",
+		"nodes": {&"open": {"says": says, "replies": [{"text": "[leave]", "to": &""}]}}}
+
+
+## Whether the deed at this door is done.
+func deed_done(key: String) -> bool:
+	return _strings.has(key)
+
+
+## Every string's route laid so far, for the map.
+func string_routes() -> Array:
+	var out: Array = []
+	for k: Variant in _strings:
+		if not (_strings[k] as Array).is_empty():
+			out.append(_strings[k])
+	return out
+
+
+## The people living in the room the player is in, as talk reads them; none
+## outside.
+func dweller_rows() -> Array:
+	return dwellers if pocket != null else []
 
 
 ## Which roster body a role is, in the land the host stands in.
@@ -1075,7 +1227,15 @@ func _save() -> Variant:
 	var given := {}
 	for k: Variant in _given:
 		given[str(k)] = true
-	return {"dead": out, "opened": opened, "served": served, "lit": lit, "given": given}
+	# The strings' routes, each as its points' x, y in turn (SaveCodec.floats).
+	var strings := {}
+	for k: Variant in _strings:
+		var xy := PackedFloat32Array()
+		for p: Vector2 in _strings[k]:
+			xy.append(p.x)
+			xy.append(p.y)
+		strings[str(k)] = SaveCodec.floats(xy)
+	return {"dead": out, "opened": opened, "served": served, "lit": lit, "given": given, "strings": strings}
 
 
 func _load(v: Variant) -> void:
@@ -1105,6 +1265,14 @@ func _load(v: Variant) -> void:
 	_given.clear()
 	for k: Variant in (v as Dictionary).get("given", {}):
 		_given[str(k)] = true
+	_strings.clear()
+	var sv2: Dictionary = (v as Dictionary).get("strings", {})
+	for k: Variant in sv2:
+		var xy := SaveCodec.to_floats(sv2[k])
+		var pts: Array = []
+		for i in range(0, xy.size() - 1, 2):
+			pts.append(Vector2(xy[i], xy[i + 1]))
+		_strings[str(k)] = pts
 
 
 ## A save made in a room counts those already broken in it, without leaving.
@@ -1185,6 +1353,7 @@ static func shader_key(m: BaseMaterial3D) -> String:
 
 
 func _swap_out() -> void:
+	dwellers.clear()
 	var leaving: Array[Node] = [game.view]
 	leaving.append_array(_beams)
 	leaving.append_array(_motes)
@@ -1230,6 +1399,17 @@ func _swap_out() -> void:
 		_went_out_back = true
 	_out_back = false
 	realms.call(&"enter", _outside, _outside_key, out_at, true, _outside_query)
+	# The machines heard passing stand where their rounds have taken them, going
+	# the way they were, and not where the crossing's respawn would put them.
+	var back_sim: FightSim = game.player.sim
+	if back_sim != null:
+		for h: Dictionary in _heard:
+			var m := back_sim.add_mob(StringName(h.kind), DoorHush.at(h, _heard_t))
+			m.line_a = h.a
+			m.line_b = h.b
+			m.line_to_b = DoorHush.toward_b(h, _heard_t)
+	_heard.clear()
+	quiet = 0.0
 	game.camera.view_height = _outside_height
 	pocket = null
 	model = null
@@ -1509,6 +1689,7 @@ func _light_windows() -> void:
 				lamp.light_energy = 5.0 * (1.0 - SkyLight.day_gone(game.sky.clock_hour))
 			_:
 				lamp.light_energy = lerpf(1.6, 0.25, day)
+		lamp.light_energy *= 1.0 - LAMP_DIP * quiet
 	for i in _windows.size():
 		var at: Vector3 = _windows[i][0]
 		var inward2: Vector2 = _windows[i][1]
@@ -1768,6 +1949,18 @@ func tour_seen(what: StringName) -> bool:
 			return pocket != null and crawl_near
 		&"out_back":
 			return _went_out_back
+		# A machine outside is passing the door (DoorHush): the room is hushed.
+		&"hushed":
+			return pocket != null and quiet > 0.9
+		&"unhushed":
+			return pocket != null and quiet < 0.05
+		# The player's feet are on a floor above the room's lowest: a warren's
+		# ladder climbed (`below` is the other way round).
+		&"above", &"below":
+			if pocket == null:
+				return false
+			var lv := game.world.level_at(floori(game.player.pos.x), floori(game.player.pos.y))
+			return (lv > InteriorGen.FLOOR_LEVEL) == (what == &"above")
 		# A fire is warming the player where they stand (Survival.fire_near).
 		&"by_fire":
 			return Survival.fire_near(game) != null
@@ -1810,7 +2003,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "shelf", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table", "door:container_warren"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "shelf", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table", "door:container_warren", "door:face_hold", "dweller", "thing:sort_table", "thing:manifest", "door:tower", "door:buckled", "thing:buckled", "ladder", "ladder_top"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
@@ -1842,6 +2035,18 @@ func tour_place(what: String) -> Vector2:
 	if what == "strongbox":
 		var box := _first_box()
 		return (box.at as Vector2) + (box.face as Vector2) * 0.8 if not box.is_empty() else Vector2.INF
+	# `near dweller`: a step in front of the first person living here, facing them.
+	if what == "dweller":
+		if dwellers.is_empty():
+			return Vector2.INF
+		return (dwellers[0].pos as Vector2) + Vector2.from_angle(float(dwellers[0].facing)) * 1.1
+	# `near ladder`: at the first ladder's foot, facing up it; `near ladder_top`:
+	# on its lip, facing the drop. The jump key climbs it either way (Climb).
+	if what == "ladder" or what == "ladder_top":
+		var ld := _first_kind(&"ladder")
+		if ld.is_empty():
+			return Vector2.INF
+		return (ld.at as Vector2) + (ld.face as Vector2) * (0.6 if what == "ladder" else -0.6)
 	if what == "shelf":
 		var sh := _shelf_thing()
 		return (sh.at as Vector2) + (sh.face as Vector2) * 0.7 if not sh.is_empty() else Vector2.INF
@@ -1863,6 +2068,13 @@ func tour_face(what: String) -> float:
 	if what == "strongbox":
 		var box := _first_box()
 		return (-(box.face as Vector2)).angle() if not box.is_empty() else NAN
+	if what == "dweller":
+		return float(dwellers[0].facing) + PI if not dwellers.is_empty() else NAN
+	if what == "ladder" or what == "ladder_top":
+		var ld := _first_kind(&"ladder")
+		if ld.is_empty():
+			return NAN
+		return (-(ld.face as Vector2)).angle() if what == "ladder" else (ld.face as Vector2).angle()
 	if what == "shelf":
 		var sh := _shelf_thing()
 		return (-(sh.face as Vector2)).angle() if not sh.is_empty() else NAN
@@ -1891,6 +2103,15 @@ func _roomy(p: Vector2) -> bool:
 		if not l.is_floor(floori(q.x), floori(q.y)):
 			return false
 	return true
+
+
+func _first_kind(kind: StringName) -> Dictionary:
+	if pocket == null:
+		return {}
+	for t: Dictionary in pocket.layout.things:
+		if t.kind == kind:
+			return t
+	return {}
 
 
 func _tour_thing(what: String) -> Dictionary:
@@ -2039,6 +2260,10 @@ func _tour_door(what: String) -> Threshold:
 		var l := InteriorGen.grow(game.options.seed_value, t).layout
 		if String(l.plan) == want or String(l.dressing) == want:
 			return t
+		# Or a room with a thing of that kind in it (`door:buckled`).
+		for th: Dictionary in l.things:
+			if String(th.kind) == want:
+				return t
 	return null
 
 

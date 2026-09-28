@@ -253,6 +253,21 @@ static func bags(game: Game) -> Array[Vector2]:
 	return out
 
 
+## THE STRING'S ROUTES (21_doors `string_routes`, SlotRoute): each laid from a
+## face settlement's door to the nearest ramp, drawn while a string is carried
+## and not once it is gone. [PackedVector2Array or Array of Vector2]
+const STRING_WORD := "the way up"
+
+
+static func strings(game: Game) -> Array:
+	if game.inventory == null or not game.inventory.has(&"string"):
+		return []
+	for sys in game.systems:
+		if sys.has_method(&"string_routes"):
+			return sys.call(&"string_routes")
+	return []
+
+
 ## Landmarks the player has seen: the discoveries. [{kind, pos, machine: bool}]
 static func discoveries(w: WorldData, seen: UiExplored) -> Array[Dictionary]:
 	const MACHINE_MADE: Array[StringName] = [&"tip", &"wreck"]
@@ -590,6 +605,23 @@ func _draw_overlay() -> void:
 				placed.append(box)
 				UiMapScreen.clearing(ci, box)
 				UiDraw.text(ci, box.position + Vector2i(4, 0), word, col)
+	# The string, laid along the slots to a ramp's top: a dotted line in the
+	# player's own bright and the ramp's top lettered, so a way out of the maze
+	# is a thing carried and followed, not remembered.
+	for route: Variant in UiMapScreen.strings(game):
+		var pts: Array = Array(route)
+		for i in range(1, pts.size()):
+			_dotted(ci, to_screen(pts[i - 1]), to_screen(pts[i]), UiTheme.BRIGHT, 2 * p, r)
+		if pts.is_empty():
+			continue
+		var top := to_screen(pts[pts.size() - 1])
+		if r.grow(-8).has_point(top):
+			UiDraw.rect(ci, Rect2i(top.x - 2 * p, top.y - 2 * p, 5 * p, 5 * p), UiTheme.BRIGHT)
+			var box := Rect2i(top.x + 12, top.y - UiFont.SIZE / 2, UiFont.width(STRING_WORD) + 8, UiFont.SIZE)
+			if r.grow(-4).encloses(box) and _free_of(placed).call(box):
+				placed.append(box)
+				UiMapScreen.clearing(ci, box)
+				UiDraw.text(ci, box.position + Vector2i(4, 0), STRING_WORD, UiTheme.BRIGHT)
 	# Where the player's things are, after a bad end (Survival.leave_bag): an X in
 	# the player's own bright, lettered, whatever the scale -- the walk back is
 	# the whole of the cost, so where it goes is never a guess.

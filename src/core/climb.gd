@@ -24,6 +24,11 @@ class_name Climb
 ##     (FightSim.hero_level), so a machine below reaches it only while it is
 ##     within a ledge of the ground, as every blow already works (1a)
 ##
+## A LADDER (WorldData.add_ladder) makes its riser a face whatever the ground,
+## climbed at LADDER_RATE for LADDER_WIND a level, and the same key takes a body
+## back DOWN it (`down`): a jump never drops more than Jump.DOWN_LEVELS, so a
+## ladder's top is otherwise a lip nobody leaves.
+##
 ## ASSUMES THE HEIGHTFIELD. A face is the step between two tiles' levels and the
 ## top is the tile past it, one level per tile, nothing overhead. Ground above
 ## ground -- an overhang, a cave roof, a bridge of rock (the design for geometry
@@ -39,6 +44,9 @@ const GROUNDS: Array[int] = [Ground.ROCK, Ground.LIMESTONE]
 const WIND_PER_LEVEL := 180.0
 ## Levels a second up the face.
 const RATE := 1.2
+## Up a ladder: rungs, not holds, so faster and far cheaper than rock.
+const LADDER_RATE := 3.0
+const LADDER_WIND := 30.0
 ## Seconds to get over the lip onto the top, and to come back down a face when
 ## the arms give out.
 const LIP_SECONDS := 0.3
@@ -74,8 +82,11 @@ class Plan:
 	var fall_damage := 0
 	var seconds := 0.0
 	## Levels a second up the face: Climb.RATE by hand, faster on a line
-	## (AbilityGrapple's vertical haul).
+	## (AbilityGrapple's vertical haul) or a ladder.
 	var rate := Climb.RATE
+	## Down a ladder: from the lip (`from`, at `from_level`) to its foot (`top`,
+	## at `to_level`, the lower), stepping off at the bottom.
+	var down := false
 
 	## Seconds from the press until the top (or until the arms give out): the
 	## step in to the rock, then the climb.
@@ -87,6 +98,12 @@ class Plan:
 		if t < Climb.APPROACH_SECONDS:
 			return [from.lerp(on_face, t / Climb.APPROACH_SECONDS), from_height, from_level]
 		var up := up_seconds()
+		if down:
+			if t < up:
+				var dl := (t - Climb.APPROACH_SECONDS) * rate
+				return [on_face, from_height - dl * WorldData.STEP, from_level - floori(dl)]
+			var v := clampf((t - up) / Climb.LIP_SECONDS, 0.0, 1.0)
+			return [on_face.lerp(top, v), lerpf(from_height - float(levels) * WorldData.STEP, top_height, v), to_level]
 		if t < up:
 			var lv := (t - Climb.APPROACH_SECONDS) * rate
 			return [on_face, from_height + lv * WorldData.STEP, from_level + floori(lv)]
@@ -122,7 +139,8 @@ static func face(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector
 		var lv := world.level_at(t.x, t.y)
 		if lv - from_level < FightRules.LEDGE_LEVELS:
 			return {}
-		if not any_ground and not holds(world.ground_at(t.x, t.y)):
+		var ladder := world.ladder_between(here, t)
+		if not any_ground and not ladder and not holds(world.ground_at(t.x, t.y)):
 			return {}
 		# Over the lip onto the shelf, clear of it by a body's width.
 		var top := p + d * (Tuning.PLAYER_RADIUS + 0.2)
@@ -137,15 +155,19 @@ static func face(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector
 			if world.headroom_at(here.x, here.y) < lv - from_level + tall or world.headroom_at(tt.x, tt.y) < tall:
 				return {}
 		return {"foot": from, "top": top, "wall": p - d * PROBE * 0.5, "from_level": from_level, "to_level": lv,
-			"from_height": world.height_at(from), "top_height": world.height_at(top)}
+			"from_height": world.height_at(from), "top_height": world.height_at(top), "ladder": ladder}
 	return {}
 
 
 static func plan(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector2, wind: float, any_ground: bool = false) -> Plan:
 	var f := face(world, query, from, dir, REACH, any_ground)
 	if f.is_empty():
-		return null
+		# By hand only: a line (any_ground) hauls up, never down a ladder.
+		return null if any_ground else down(world, query, from, dir)
+	var per_level := LADDER_WIND if f.ladder else WIND_PER_LEVEL
 	var p := Plan.new()
+	if f.ladder:
+		p.rate = LADDER_RATE
 	p.from = from
 	p.top = f.top
 	p.dir = dir.normalized()
@@ -158,12 +180,55 @@ static func plan(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector
 	p.from_height = f.from_height
 	p.top_height = f.top_height
 	p.levels = p.to_level - p.from_level
-	p.reached = mini(p.levels, floori(maxf(0.0, wind) / WIND_PER_LEVEL))
+	p.reached = mini(p.levels, floori(maxf(0.0, wind) / per_level))
 	p.slides = p.reached < p.levels
-	p.wind = float(p.reached) * WIND_PER_LEVEL
+	p.wind = float(p.reached) * per_level
 	p.fall_damage = fall_damage(p.reached) if p.slides else 0
 	p.seconds = p.up_seconds() + (SLIDE_SECONDS if p.slides else LIP_SECONDS)
 	return p
+
+
+## Down a ladder from its top, facing the drop: the lip within REACH ahead is a
+## riser with a ladder on it, at least a ledge deep. Null anywhere else, so off
+## a plain edge the key is still a jump. Costs no breath and never slides.
+static func down(world: WorldData, query: WorldQuery, from: Vector2, dir: Vector2) -> Plan:
+	if world == null or dir.length() < 0.01:
+		return null
+	var d := dir.normalized()
+	var here := Vector2i(floori(from.x), floori(from.y))
+	var from_level := world.level_at(here.x, here.y)
+	var p := from
+	var travelled := 0.0
+	while travelled <= REACH + Tuning.PLAYER_RADIUS:
+		p += d * PROBE
+		travelled += PROBE
+		var t := Vector2i(floori(p.x), floori(p.y))
+		if t == here:
+			continue
+		var lv := world.level_at(t.x, t.y)
+		if from_level - lv < FightRules.LEDGE_LEVELS or not world.ladder_between(here, t):
+			return null
+		var foot := p + d * (Tuning.PLAYER_RADIUS + 0.2)
+		var ft := Vector2i(floori(foot.x), floori(foot.y))
+		if world.level_at(ft.x, ft.y) != lv or (query != null and not query.standable(ft.x, ft.y)):
+			return null
+		var c := Plan.new()
+		c.down = true
+		c.from = from
+		c.dir = d
+		# Over the lip, a hand's reach out from the riser, and down the rungs.
+		c.on_face = p - d * PROBE * 0.5 + d * ON_FACE
+		c.top = foot
+		c.from_level = from_level
+		c.to_level = lv
+		c.from_height = world.height_at(from)
+		c.top_height = world.height_at(foot)
+		c.levels = from_level - lv
+		c.reached = c.levels
+		c.rate = LADDER_RATE
+		c.seconds = c.up_seconds() + LIP_SECONDS
+		return c
+	return null
 
 
 ## The nearest place to stand at the foot of a rock face at least `min_levels`

@@ -13,6 +13,11 @@ extends "res://src/models/interior/weapons_hall_model.gd"
 ## a thread of the day comes down through the heap onto the deck, as strong as
 ## the hour on the clock (&"seep", 21_doors): the one light a dug warren has,
 ## and what a player finds their way by.
+##
+## A STEPPED RUN (`step`, `tower`) stands each container at its own floor
+## (InteriorLayout.room_level): every wall, deck, roof and thing is drawn from its
+## room's floor, the riser between two is the lower one's end wall, whole, and a
+## ladder is bolted to it, its rails standing on up past the lip as handholds.
 
 ## Faded container paint: oxide red, a shipping line's blue, a green, a rust
 ## orange and a grey, each dulled toward the dark of the heap round it. The
@@ -26,6 +31,19 @@ const RIDGES := 6
 const RIDGE_DEEP := 0.045
 ## The vault's poured concrete.
 const POURED := Color(0.3, 0.29, 0.27)
+
+
+## Draw what follows from room `i`'s own floor.
+func _at_room(i: int) -> void:
+	var lv := layout.room_level[i] if i >= 0 and i < layout.room_level.size() else 0
+	floor_y = TerrainMesher.level_height(InteriorGen.FLOOR_LEVEL + lv)
+
+
+func _room_at(p: Vector2) -> int:
+	for i in layout.rooms.size():
+		if Rect2(layout.rooms[i]).has_point(p):
+			return i
+	return -1
 
 
 func _paint(i: int) -> Color:
@@ -52,6 +70,22 @@ func _edge(k: Kit, e: Dictionary, h: float, cut: bool) -> void:
 	var along := (b - a).normalized()
 	var half := o * THICK * 0.5
 	var room := _room_of(e)
+	_at_room(room)
+	# A RISER: two rooms at different floors meet here. What stands is the lower
+	# one's end wall, whole, up to the upper one's floor, cut or not: it is the
+	# step itself, and the ladder is on it.
+	if e.kind == &"inner":
+		var other := _room_at(((e.a as Vector2) + (e.b as Vector2)) * 0.5 + (e.out as Vector2) * 0.25)
+		var lo := layout.room_level[room] if room >= 0 and room < layout.room_level.size() else 0
+		var hi := layout.room_level[other] if other >= 0 and other < layout.room_level.size() else lo
+		if hi != lo:
+			if hi < lo:
+				room = other
+				_at_room(room)
+			e = e.duplicate()
+			e.kind = &"wall"
+			h = kind.wall_h
+			cut = false
 	var col := _paint(room)
 	var dark := col.darkened(0.45)
 	var cap := Color(0.05, 0.05, 0.06)
@@ -144,6 +178,7 @@ func _end_doors(k: Kit, e: Dictionary, h: float, cut: bool, col: Color) -> void:
 ## Steel deck in the containers, ribbed across; poured concrete in the vault.
 func _floor(k: Kit, _tears: Array[Vector2]) -> void:
 	for i in layout.rooms.size():
+		_at_room(i)
 		var r := layout.rooms[i]
 		var vault := r.size.x == r.size.y
 		for x in range(r.position.x, r.end.x):
@@ -179,8 +214,9 @@ func _floor(k: Kit, _tears: Array[Vector2]) -> void:
 ## A container's roof from inside: the same corrugation, overhead, in its paint
 ## gone dark; the vault's a flat pour.
 func _roof(k: Kit, h: float, _tears: Array[Vector2]) -> void:
-	var y := floor_y + h
 	for i in layout.rooms.size():
+		_at_room(i)
+		var y := floor_y + h
 		var r := layout.rooms[i]
 		var col := _paint(i).darkened(0.55)
 		var made := GroundColors.ENAMEL if _paint(i) != POURED else GroundColors.CONCRETE
@@ -191,9 +227,23 @@ func _roof(k: Kit, h: float, _tears: Array[Vector2]) -> void:
 		# The roof tile by tile, less the one the rust has eaten through, whose
 		# edges hang down ragged; the day comes down it.
 		var hole := _hole(i)
+		var crawl := _crawl_tile(i)
+		var bay := _bay_in(i)
 		for x in range(r.position.x, r.end.x):
 			for z in range(r.position.y, r.end.y):
 				var cc := Vector2(x + 0.5, z + 0.5)
+				# Under a buckle the roof is the fold itself (`_buckle`, drawn with
+				# what the room holds, so it is seen from above too).
+				if not bay.is_empty() and _sag(bay, cc) < 1.0:
+					continue
+				if Vector2i(x, z) == crawl:
+					# Torn open for the crawl up into the heap: the steel bent back
+					# up round the hole, bright where it was cut.
+					var raw := GroundColors.made(Color(0.48, 0.46, 0.42), GroundColors.ENAMEL)
+					for n in 4:
+						var e := cc + Vector2(float(n % 2) - 0.5, float(n / 2) - 0.5) * 0.85
+						k.made.box(Vector3(e.x - 0.12, y, e.y - 0.12), Vector3(e.x + 0.12, y + 0.22, e.y + 0.12), raw, c, true)
+					continue
 				if cc.distance_to(hole) < 0.1:
 					var rust := GroundColors.made(Color(0.26, 0.11, 0.06), GroundColors.ENAMEL)
 					for n in 4:
@@ -203,6 +253,70 @@ func _roof(k: Kit, h: float, _tears: Array[Vector2]) -> void:
 					continue
 				k.made.box(Vector3(x, y, z), Vector3(x + 1.0, y + 0.08, z + 1.0), c, c, true)
 		lights.append([Vector3(hole.x, y + 0.3, hole.y), &"seep"])
+
+
+## The buckled bay over room `i` ({} where there is none).
+func _bay_in(i: int) -> Dictionary:
+	for t: Dictionary in layout.things:
+		if t.kind == &"buckled" and _room_at(t.at) == i:
+			return t
+	return {}
+
+
+## 0 for a tile under the bay, where the roof is down at `low` (drawn where the
+## rule stops a standing body: InteriorGen hangs the same tiles), 1 elsewhere.
+func _sag(bay: Dictionary, cc: Vector2) -> float:
+	var along := absf((cc - (bay.at as Vector2)).dot(bay.face as Vector2))
+	return 0.0 if along < float(bay.along) * 0.5 else 1.0
+
+
+## THE BUCKLE: the container's roof folded down to `low` across the bay, drawn
+## with what the room holds and not with its ceiling, so the low steel is seen
+## from above as well as over the shoulder: a player reads where to crouch. The
+## fold is a crumpled plate in the container's paint gone to rust, and at each
+## edge of the bay the roof's steel creases down to it.
+func _buckle(k: Kit, bay: Dictionary) -> void:
+	var mid: Vector2 = bay.at
+	var f: Vector2 = bay.face
+	var s := Vector2(-f.y, f.x)
+	var half_along := float(bay.along) * 0.5
+	var half_across := float(bay.across) * 0.5
+	var low := float(bay.low)
+	var paint := _paint(_room_at(mid)).darkened(0.35)
+	var fold := GroundColors.made(paint, GroundColors.ENAMEL)
+	var rust := GroundColors.made(Color(0.26, 0.11, 0.06), GroundColors.ENAMEL)
+	# The plate, in crumpled strips across the bay, each a hair off the last.
+	var strips := 6
+	for i in strips:
+		var u0 := -half_along + 2.0 * half_along * float(i) / float(strips)
+		var u1 := -half_along + 2.0 * half_along * float(i + 1) / float(strips)
+		var dip := 0.06 * float(Rng.hash_ints(int(mid.x * 4.0), int(mid.y * 4.0), i, 0xB0C) % 3)
+		var col := rust if (i % 3) == 1 else fold
+		var a := mid + f * u0 - s * half_across
+		var b := mid + f * u1 + s * half_across
+		k.made.box(_v(Vector2(minf(a.x, b.x), minf(a.y, b.y)), low - dip), _v(Vector2(maxf(a.x, b.x), maxf(a.y, b.y)), low - dip + 0.1), col, col, true)
+	# The creases: the roof's steel from its rail down to the plate at each edge.
+	for e: float in [-1.0, 1.0]:
+		var c := mid + f * (half_along * e)
+		var n := 4
+		for j in n:
+			var t0 := float(j) / float(n)
+			var t1 := float(j + 1) / float(n)
+			var y0 := lerpf(low, kind.wall_h, t0)
+			var y1 := lerpf(low, kind.wall_h, t1)
+			var out := f * e * 0.18 * t1
+			var a := c + out - s * half_across
+			var b := c + out + f * e * 0.08 + s * half_across
+			k.made.box(_v(Vector2(minf(a.x, b.x), minf(a.y, b.y)), y0), _v(Vector2(maxf(a.x, b.x), maxf(a.y, b.y)), y1), fold, rust, true)
+
+
+## The roof tile a tower's crawl goes up through in room `i`, or (-1, -1).
+func _crawl_tile(i: int) -> Vector2i:
+	for t: Dictionary in layout.things:
+		if t.kind == &"crawl_up" and _room_at(t.at) == i:
+			var at: Vector2 = t.at
+			return Vector2i(floori(at.x), floori(at.y))
+	return Vector2i(-1, -1)
 
 
 ## Where a container's roof has rusted through: one tile, dealt by where the
@@ -223,7 +337,13 @@ func _hole(i: int) -> Vector2:
 func _thing(k: Kit, t: Dictionary) -> void:
 	var at: Vector2 = t.at
 	var f: Vector2 = t.face
+	# From the floor of the room it stands in; a ladder, on the riser, from the
+	# lower one's, below it.
+	_at_room(_room_at(at + f * 0.25) if t.kind == &"ladder" else _room_at(at))
 	match t.kind:
+		&"ladder": _ladder(k, at, -f)
+		&"crawl_up": _crawl_up(k, at, f)
+		&"buckled": _buckle(k, t)
 		&"crate": _crate(k, at, f)
 		&"sorted_bins": _bins(k, at, f)
 		&"bedroll": _bedroll(k, at, f)
@@ -234,6 +354,39 @@ func _thing(k: Kit, t: Dictionary) -> void:
 		&"machine_lamp": _lamp(k, at, f)
 		&"dock": _dock(k, at, f)
 		_: super._thing(k, t)
+
+
+## A ladder bolted to the riser: two rails from the deck to a hand's height
+## past the lip above, a rung every foot, in the dark of bare steel with the rungs
+## worn bright, so over the shoulder it reads as the way up.
+func _ladder(k: Kit, at: Vector2, up: Vector2) -> void:
+	var s := Vector2(-up.y, up.x)
+	var off := at - up * (THICK * 0.5 + 0.08)
+	var top := kind.wall_h + 0.9
+	var rail := GroundColors.made(Color(0.1, 0.1, 0.11), GroundColors.ENAMEL)
+	var rung := GroundColors.made(Color(0.42, 0.4, 0.37), GroundColors.ENAMEL)
+	for u: float in [-0.24, 0.24]:
+		k.rod(_v(off + s * u, 0.0), _v(off + s * u, top), 0.028, 6, rail)
+	var n := int(kind.wall_h / 0.3)
+	for i in n:
+		var y := 0.3 * float(i + 1)
+		k.rod(_v(off - s * 0.24, y), _v(off + s * 0.24, y), 0.018, 5, rung)
+
+
+## A tower's way out: rungs welded up the wall to the torn roof over them, and
+## worn rope off the top rung, into the dark of the heap.
+func _crawl_up(k: Kit, at: Vector2, f: Vector2) -> void:
+	var s := Vector2(-f.y, f.x)
+	var rail := GroundColors.made(Color(0.1, 0.1, 0.11), GroundColors.ENAMEL)
+	var rung := GroundColors.made(Color(0.42, 0.4, 0.37), GroundColors.ENAMEL)
+	var wall := at - f * 0.3
+	for u: float in [-0.22, 0.22]:
+		k.rod(_v(wall + s * u, 0.0), _v(wall + s * u, kind.wall_h + 0.2), 0.026, 6, rail)
+	for i in int(kind.wall_h / 0.3):
+		var y := 0.3 * float(i + 1)
+		k.rod(_v(wall - s * 0.22, y), _v(wall + s * 0.22, y), 0.018, 5, rung)
+	var rope := GroundColors.made(Color(0.34, 0.29, 0.2), GroundColors.CLOTH)
+	k.rod(_v(wall + f * 0.05, kind.wall_h + 0.2), _v(wall + f * 0.1, kind.wall_h - 0.9), 0.02, 5, rope)
 
 
 ## A crate nobody came back for: boards on a frame.

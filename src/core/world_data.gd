@@ -355,6 +355,24 @@ func clear_overhead() -> void:
 	overhead_box = Rect2i()
 
 
+## LADDERS: risers a ladder stands on, which Climb takes up and down whatever
+## the ground (a container warren's steps, docs/MIDDENS_ROOMS.md). Keyed by the
+## two tiles either side of the riser, either way round. Only pockets have any.
+var _ladders: Dictionary = {}
+
+
+func add_ladder(a: Vector2i, b: Vector2i) -> void:
+	_ladders[_ladder_key(a, b)] = true
+
+
+func ladder_between(a: Vector2i, b: Vector2i) -> bool:
+	return not _ladders.is_empty() and _ladders.has(_ladder_key(a, b))
+
+
+static func _ladder_key(a: Vector2i, b: Vector2i) -> Vector4i:
+	return Vector4i(a.x, a.y, b.x, b.y) if a < b else Vector4i(b.x, b.y, a.x, a.y)
+
+
 ## Levels of room between tile (x, y)'s ground and the underside over it, or
 ## OPEN_ABOVE where nothing hangs over it.
 const OPEN_ABOVE := 1 << 20

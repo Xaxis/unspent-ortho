@@ -281,6 +281,60 @@ static func over(pivot: Vector3, eye: Vector3, room_fn: Callable) -> float:
 			return up
 		up += OVER_STEP
 	return -1.0
+## NO ROOM BEHIND AT ALL: A TIGHT FRAMING OVER THE HEAD. Pulled in to
+## LEAST_BACK and raised as far as it may go, an eye in a cell three tiles
+## across still stood in the rock of its roof or its walls (face_hold.tour frame
+## 05, 2026-09-28). Where the eye, placed, is still not clear of everything from
+## where it looks, it comes up over the player's head instead: as high as
+## `TIGHT_UP` or `CLEAR` under whatever is overhead, and back `TIGHT_BACK` on
+## its own side where there is room, looking down at the player and the floor
+## ahead. Never inside anything, in any room.
+const TIGHT_UP := 1.0
+const TIGHT_BACK := 0.35
+
+
+## Where the eye stands for a wanted `eye` looking at `focus` from a player whose
+## head is at `head`, once the land and everything drawn have been asked:
+## `room_fn(from, to)` is `room` (floored at LEAST_BACK) and `clear_fn(from, to)`
+## is `clear_along` (no floor), both over the same things. The steady state of
+## what `CameraRig` draws, which eases a pull-out and takes a pull-in at once.
+static func settle_eye(head: Vector3, focus: Vector3, eye: Vector3, room_fn: Callable, clear_fn: Callable) -> Vector3:
+	var pivot := head.lerp(focus, clampf(float(room_fn.call(head, focus)), 0.0, 1.0))
+	var span := maxf(0.001, pivot.distance_to(eye))
+	var r := clampf(float(room_fn.call(pivot, eye)), minf(1.0, LEAST_BACK / span), 1.0)
+	var up := over(pivot, eye, room_fn) if r < 0.999 else 0.0
+	if up > 0.0:
+		r = 1.0
+	var placed := pivot.lerp(eye + Vector3(0.0, maxf(up, 0.0), 0.0), r)
+	return fallback(head, pivot, placed, room_fn if up > 0.0 else Callable(), clear_fn)
+
+
+## The eye as placed, or the tight framing over the head where it is not clear
+## of everything between it and the point it looks from. `risen_fn` is `room`,
+## handed only for an eye RISEN to look over something (Shoulder.over), which
+## no pull-in settled and so was never asked for its margin: it stopped a hair
+## under a roof. A pulled-in eye already stands where `room` settled it.
+static func fallback(head: Vector3, pivot: Vector3, eye: Vector3, risen_fn: Callable, clear_fn: Callable) -> Vector3:
+	var clear := float(clear_fn.call(pivot, eye)) >= 0.999
+	if clear and (not risen_fn.is_valid() or float(risen_fn.call(pivot, eye)) >= 0.999):
+		return eye
+	return tight(head, eye, clear_fn)
+
+
+## Over the head, as high as TIGHT_UP or CLEAR under what is over it, and back
+## toward `eye`'s side by as much of TIGHT_BACK as is clear.
+static func tight(head: Vector3, eye: Vector3, clear_fn: Callable) -> Vector3:
+	var up_share := clampf(float(clear_fn.call(head, head + Vector3(0.0, TIGHT_UP + CLEAR, 0.0))), 0.0, 1.0)
+	var rise_by := maxf(0.0, up_share * (TIGHT_UP + CLEAR) - CLEAR)
+	var top := head + Vector3(0.0, rise_by, 0.0)
+	var away := Vector3(eye.x - head.x, 0.0, eye.z - head.z)
+	if away.length() < 0.001:
+		return top
+	var dir := away.normalized()
+	var back_share := clampf(float(clear_fn.call(top, top + dir * (TIGHT_BACK + CLEAR))), 0.0, 1.0)
+	return top + dir * maxf(0.0, back_share * (TIGHT_BACK + CLEAR) - CLEAR)
+
+
 ## Never nearer the shoulder point than this. At 0.8 the head, 0.62 to the left,
 ## is a quarter of the frame's height; nearer, it is the frame.
 const LEAST_BACK := 0.8
@@ -541,13 +595,22 @@ static func _blocked(q: Vector3, ground: Callable, solids: Array[Vector4], thin:
 	for b: PackedFloat32Array in boxes:
 		if _in_box(q, b, 0.0):
 			return true
+	# Under a solid's top first: most of what stands near the line is lower than
+	# the eye, and that one compare spares it the distance (the probe runs twice a
+	# frame, test_the_probe_is_cheap_among_houses).
+	var low := q.y - CLEAR
 	for s: Vector4 in solids:
-		if s.z < THIN and not thin:
+		if low >= s.w:
+			continue
+		# A wall handed to the query (`w` INF: a room's walls stand as circles 0.3
+		# across on their line) is a wall, however thin its circles: counted as a
+		# pole, the eye went through every room's walls and stood outside them.
+		if s.z < THIN and not thin and s.w != INF:
 			continue
 		var dx := q.x - s.x
 		var dz := q.z - s.y
 		var r := s.z + CLEAR
-		if dx * dx + dz * dz < r * r and q.y < s.w + CLEAR:
+		if dx * dx + dz * dz < r * r:
 			return true
 	return false
 
