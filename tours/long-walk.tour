@@ -1,0 +1,36 @@
+# Memory across a long walk (streamed worldgen S5): the heap at its start, then
+# across landscapes, down a shaft and back up, must stay within 10% of where it
+# stood (tools/web --heap-log reads it). Every place is asked for by name; each
+# run is the real walk on the real keys, so the view streams what it would.
+#
+#   tools/tour.sh tours/long-walk.tour --seed=7 --hour=11
+
+hour 11
+wait 10
+place coast
+walk 1,0 12 run
+walk 0,-1 12 run
+place pinewood
+walk -1,0 12 run
+walk 0,1 12 run
+place burning
+walk 1,1 12 run
+place bonelands
+walk -1,-1 12 run
+shot 01-overland with realm:surface
+place shaft
+await raised:underground 400
+await portal 15
+press use
+await realm:underground 60
+walk 1,0 12 run
+walk 0,1 12 run
+walkto shaft 40
+await portal 15
+press use
+await realm:surface 60
+walk -1,0 12 run
+place coast
+walk 0,1 12 run
+wait 10
+shot 02-back-on-the-coast with realm:surface
