@@ -1,5 +1,7 @@
 # UNSPENT — the look: LANTERN
 
+Binding contract for how every built and unbuilt thing looks; read the frames against it.
+
 **The world is lit, not drawn.** No ink, wash, hatch, paper or filter between
 the player and the place: geometry, material and light, in a dark world where
 a light is something a person carries. The owner chose it after rejecting

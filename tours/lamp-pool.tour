@@ -1,0 +1,27 @@
+# THE LAMP POOL GOES TO THE FRAME (15_lights.pool_before): the web tier lights
+# only a few sources, so they go to what is on screen first, then to what only
+# spills in, and by distance within each. `perf lights` prints every candidate,
+# its tier and whether it got a light: a source in frame (tier 0) left dark
+# while one out of frame is POOLED is the failure. Which sources get the slots
+# never changes the light STATE, so on the web no program is first drawn after
+# either event. Frames: 01 the burning at dusk, 02 a village house at night,
+# the pair the web's lamp dimming is judged on against the desktop's.
+#
+#   tools/web.sh --tour=tours/lamp-pool.tour --programs --args=--seed=7,--weather=clear:0
+#   tools/tour.sh tours/lamp-pool.tour --seed=7 --weather=clear:0
+coast calm
+hour 19.5
+place burning
+wait 2.0
+echo event dusk
+wait 1.0
+perf lights
+shot 01-burning-dusk with land:burning
+hour 23
+place coast
+near house
+wait 2.0
+echo event night
+wait 1.0
+perf lights
+shot 02-village-night with land:coast
