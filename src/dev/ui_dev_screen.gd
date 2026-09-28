@@ -93,6 +93,7 @@ func push_page(p: DevPage, sound: bool = true) -> void:
 	pages.append(p)
 	menu = UiMenu.new()
 	scroll = 0
+	p.enter()
 	if sound:
 		Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
 	refresh()
@@ -101,6 +102,8 @@ func push_page(p: DevPage, sound: bool = true) -> void:
 ## Put tab `i` on the glass, at its own first page.
 func to_tab(i: int, sound: bool = true) -> void:
 	tab = posmod(i, DevPageTab.TABS.size())
+	for p: DevPage in pages:
+		p.leave()
 	pages.clear()
 	push_page(DevPageTab.make(tab), false)
 	if sound:
@@ -140,6 +143,17 @@ func open_at(page_id: StringName, row_id: StringName = &"") -> bool:
 	return true
 
 
+## A row by id; on a wide page, whatever that page stages by the word
+## (DevPage.pick), several joined by "+".
+func select(id: StringName) -> void:
+	if page() != null and page().wide():
+		for w: String in String(id).split("+", false):
+			page().pick(StringName(w))
+		queue_redraw()
+		return
+	super(id)
+
+
 ## Another app of the slate over this one (the game's saves, off SAVES).
 func open_app(n: StringName) -> void:
 	if game == null:
@@ -153,7 +167,7 @@ func back() -> void:
 	if pages.size() <= 1:
 		close()
 		return
-	pages.pop_back()
+	pages.pop_back().leave()
 	menu = UiMenu.new()
 	refresh()
 	menu.index = page().index
@@ -187,6 +201,11 @@ func handle(action: StringName) -> bool:
 		&"dev_toggle":
 			close()
 			return true
+	if page() != null and page().handle(action):
+		queue_redraw()
+		return true
+	if page() != null and page().wide():
+		return false
 	var used := super(action)
 	if action == &"up" or action == &"down":
 		keep_in_view(LINES)
@@ -381,6 +400,11 @@ func _draw() -> void:
 	var L := UiSlate.LIST
 	var R := UiSlate.SPARE
 	var at := Vector2i(L.position.x + UiSlate.MARGIN_L, L.position.y + 8)
+	if page() != null and page().wide():
+		_draw_strip(at, UiSlate.BODY.end.x - UiSlate.MARGIN_R)
+		page().draw_wide(self)
+		draw_keys(page().keys({}))
+		return
 	UiSlate.spare(self)
 	_draw_strip(at, L.end.x - UiSlate.MARGIN_R)
 	_draw_rows(L)

@@ -1,0 +1,73 @@
+# The story map (docs/ROADMAP.md, "Tools track"), through the real keys: off the
+# STORY tab, the whole story over this seed; closer in, a station lists its beats;
+# a pan measured; tab walks the story in order and the rest dims; x narrows to
+# the chosen beat's arc; m turns it to ORDER, the arcs as lanes in story order.
+#   tools/tour.sh tours/story-map.tour --seed=7 --hour=11 --weather=clear:0 --dev=story --stats
+coast calm
+wait 1.0
+
+# `--dev=story` stands the app up on the STORY tab; the map is its first row.
+await app:dev 20
+# The same span on the STORY tab's list first: what the world behind the slate
+# costs on this machine now, so the map's pan below is read against it.
+perf stats begin
+wait 2.5
+perf stats end story-tab-baseline
+choose story_map
+tap use
+await story_map 5
+wait 0.4
+shot 01-the-whole-story with app:dev
+
+# --- closer in, and a pan on the real keys, measured ----------------------------------
+tap zoom_in
+wait 0.2
+tap zoom_in
+wait 0.2
+tap zoom_in
+wait 0.3
+shot 02-closer with app:dev
+perf stats begin
+press move_right 1.5
+press move_down 1.0
+perf stats end story-map-pan raw
+
+# --- the scrub: tab walks the story in order ------------------------------------------------
+tap inventory
+wait 0.1
+tap inventory
+wait 0.1
+tap inventory
+wait 0.1
+tap inventory
+wait 0.1
+tap inventory
+await story_map:chosen 2
+wait 0.3
+shot 03-scrubbed-five-in with app:dev
+
+# --- narrowed to the chosen beat's arc ---------------------------------------------------------
+tap drop
+await story_map:narrow 2
+wait 0.3
+shot 04-one-arc with app:dev
+tap drop
+tap drop
+tap drop
+wait 0.2
+
+# --- ORDER: the whole game's interleaving at once ---------------------------------------------
+tap map
+await story_map:order 2
+wait 0.3
+shot 05-order with app:dev
+tap zoom_out
+tap zoom_out
+tap zoom_out
+tap map
+wait 0.3
+shot 06-back-to-the-world with app:dev
+tap pause
+wait 0.2
+tap dev_toggle
+await app:none 5

@@ -101,3 +101,39 @@ func test_the_words_page_puts_a_page_on_the_glass_without_finding_it() -> void:
 	eq(story.get("reading"), &"hale_log", "the page is on the glass")
 	check(not Story.knows(&"hale_log"), "and the playthrough has not found it")
 	_end(g)
+
+
+## The story map opens off the story page inside a second, takes the whole glass,
+## and its keys do what the strip says: tab walks the story in order, x narrows
+## to the chosen beat's arc, m turns to ORDER and back, esc leaves it cleanly.
+func test_the_story_map_opens_fast_and_walks_the_story() -> void:
+	var g := _make()
+	var s := _open(g, &"story_map")
+	var m := s.page() as DevPageStoryMap
+	check(m != null, "the map opens off the story page")
+	if m == null:
+		_end(g)
+		return
+	check(m.wide(), "and takes the whole glass")
+	check(m.map != null and m.map.beats.size() == StoryContent.all_beats().size(), "with every beat on it")
+	cost_lt(float(m.open_ms), 1000.0, "opened in %d ms" % m.open_ms)
+	s.handle(&"inventory")
+	eq(m.chosen, m.map.order[0], "tab chooses the story's first beat")
+	s.handle(&"inventory")
+	eq(m.chosen, m.map.order[1], "and the next")
+	s.handle(&"craft")
+	eq(m.chosen, m.map.order[0], "and back")
+	s.handle(&"drop")
+	eq(m.shown(), m.map.visible(m.map.beats[m.chosen].arc), "x narrows to the chosen beat's arc")
+	s.handle(&"map")
+	eq(DevPageStoryMap.MODES[m.mode], &"order", "m turns it to ORDER")
+	var held := m.chosen
+	s.handle(&"map")
+	eq(DevPageStoryMap.MODES[m.mode], &"world", "and back")
+	eq(m.chosen, held, "holding the chosen beat across")
+	var before := m.origin_px
+	s.handle(&"right")
+	check(m.origin_px.x > before.x, "the arrows look across the world")
+	s.handle(&"back")
+	check(s.page() is DevPageStory, "esc is the story page again")
+	_end(g)
