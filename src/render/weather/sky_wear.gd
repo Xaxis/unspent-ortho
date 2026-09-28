@@ -58,7 +58,8 @@ static func of(type_id: StringName) -> Color:
 	return OF.get(type_id, DEFAULT)
 
 
-## One texel per tile, blended across ecotones the way SkyGround's is.
+## One texel per SkyGround.TILE tiles each way, blended across ecotones the way
+## SkyGround's is.
 ##
 ## THE GROWTH MAP comes out of the SAME pass when `growth` is handed in (one
 ## Image appended to it): R how far each landscape's growth has taken what was
@@ -90,20 +91,23 @@ static func image(w: WorldData, growth: Variant = null) -> Image:
 					var u := d.underlight
 					grows[c] = Color(d.overgrowth, u.r * u.a, u.g * u.a, u.b * u.a)
 	var want_growth := growth is Array
+	# A texel per SkyGround.TILE tiles each way, as the ground map's.
+	var m := SkyGround.side(n)
 	var rgba := PackedByteArray()
-	rgba.resize(n * n * 4)
+	rgba.resize(m * m * 4)
 	var gpx := PackedByteArray()
 	if want_growth:
-		gpx.resize(n * n * 4)
+		gpx.resize(m * m * 4)
 	var has_blend := w.blend.size() == n * n and w.country2.size() == n * n
-	for i in n * n:
+	for t in m * m:
+		var i := mini((t / m) * SkyGround.TILE, n - 1) * n + mini((t % m) * SkyGround.TILE, n - 1)
 		var r: Color = rows[int(w.country[i])]
 		var g: Color = grows[int(w.country[i])]
 		if has_blend and w.blend[i] > 0.0:
-			var t := clampf(w.blend[i], 0.0, 1.0)
-			r = r.lerp(rows[int(w.country2[i])], t)
-			g = g.lerp(grows[int(w.country2[i])], t)
-		var o := i * 4
+			var k := clampf(w.blend[i], 0.0, 1.0)
+			r = r.lerp(rows[int(w.country2[i])], k)
+			g = g.lerp(grows[int(w.country2[i])], k)
+		var o := t * 4
 		rgba[o] = int(r.r * 255.0)
 		rgba[o + 1] = int(r.g * 255.0)
 		rgba[o + 2] = int(r.b * 255.0)
@@ -114,8 +118,8 @@ static func image(w: WorldData, growth: Variant = null) -> Image:
 			gpx[o + 2] = int(clampf(g.b, 0.0, 1.0) * 255.0)
 			gpx[o + 3] = int(clampf(g.a, 0.0, 1.0) * 255.0)
 	if want_growth:
-		(growth as Array).append(Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, gpx))
-	return Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, rgba)
+		(growth as Array).append(Image.create_from_data(m, m, false, Image.FORMAT_RGBA8, gpx))
+	return Image.create_from_data(m, m, false, Image.FORMAT_RGBA8, rgba)
 
 
 ## The growth map's texture, from the same kept pass as `texture` (see `image`).
