@@ -126,8 +126,10 @@ func test_a_discharge_is_shared_by_a_crowd() -> void:
 ## (cutters)". Under attack slots neither holds as written: three harvesters are
 ## a real fight now (15 of 24 bare), and three cutters are won nearly always
 ## bare, so "twice as often" or "five more" is past 24. Measured on two id bases:
-## harvesters 33.0 -> 12.0 s on both, cutters 34% and 29% sooner, won as often.
-## The bars are 15% sooner against each, for the CI runner's arithmetic.
+## cutters 34% and 29% sooner, won as often (bar: 15%).
+## Against three harvesters at their life of 90 it wins more rather than sooner:
+## bare 6 of 24 in 46.9 s, lattice 9 in 48.0 (it was 33.0 -> 12.0 s at 72). The
+## bar is two more won or 15% sooner, under both, for the CI runner.
 func _at_gate(kind: StringName, kit: Array[StringName]) -> Dictionary:
 	var won := 0
 	var t := 0.0
@@ -147,8 +149,8 @@ func test_the_lattice_at_a_gate() -> void:
 	var cl := _at_gate(&"cutter", lat)
 	print("  info 3 harvesters: bare won %d/24 in %.1f s, lattice %d/24 in %.1f s" % [hb.won, hb.t, hl.won, hl.t])
 	print("  info 3 cutters: bare won %d/24 in %.1f s, lattice %d/24 in %.1f s" % [cb.won, cb.t, cl.won, cl.t])
-	gt(float(hl.won), float(hb.won) - 1.5, "harvesters are won as often with it as without")
-	lt(float(hl.t), float(hb.t) * 0.85, "and sooner, by 15% or more")
+	check(hl.won >= hb.won + 2 or (hl.won >= hb.won and float(hl.t) < float(hb.t) * 0.85),
+		"harvesters are won more with it, or as often and sooner (%d/24 in %.1f s against %d in %.1f)" % [hl.won, hl.t, hb.won, hb.t])
 	var cut := 1.0 - float(cl.t) / maxf(float(cb.t), 1e-3)
 	gt(float(cl.won), float(cb.won) - 1.5, "cutters are won as often")
 	gt(cut, 0.15, "and it shortens the fight by 15% or more")

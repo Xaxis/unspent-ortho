@@ -100,7 +100,9 @@ const DEFS := {
 	# at a 300 ms tell) so a player who reads it wins with the start knife.
 	&"harvester": {
 		"model": &"harvester", "role": &"worker", "machine": true, "approach": &"charge", "turns": 1, "part": &"front",
-		"pace": 4.0, "dash": 10.0, "quick": 380, "radius": 1.2, "height": 1.2, "life": 72,
+		# Life 90: at 72 a lone harvester fell in under 5 s to a person, before
+		# its charge had been read twice (tools/sweep.sh --reader=human).
+		"pace": 4.0, "dash": 10.0, "quick": 380, "radius": 1.2, "height": 1.2, "life": 90,
 		"sees": 9, "hears": 6, "racket": 22, "reach": 2, "ready": 3, "forget": 20, "tether": 40, "safe": 18,
 		"nerve": 100, "invuln": 500, "through": true, "disposition": &"indifferent", "guarded": true,
 		"bite": {"swing": [560, 150, 700, 900], "reach": 1.4, "width": 2.2, "dmg": 3, "knock": 8.0, "knock_ms": 300},
