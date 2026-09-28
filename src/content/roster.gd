@@ -324,7 +324,10 @@ const DEFS := {
 		"pace": 4.0, "dash": 6.0, "quick": 280, "radius": 0.5, "height": 1.1, "life": 70,
 		"sees": 10, "hears": 8, "racket": 12, "reach": 5, "ready": 2, "forget": 20, "tether": 24, "safe": 12,
 		"nerve": 100, "invuln": 420, "overrun": 0.6,
-		"bite": {"swing": [380, 110, 380, 620], "reach": 0.9, "width": 1.0, "dmg": 2, "knock": 4.5, "knock_ms": 200},
+		# Its bite's tell at 480 ms: at 380 a person reacting in 250-450 ms read it
+		# late half the time and lost 7 of 12 to a lone tamper (tools/sweep.sh
+		# --reader=human); read in time, it is a fight of 8 s for 2 health.
+		"bite": {"swing": [480, 110, 380, 620], "reach": 0.9, "width": 1.0, "dmg": 2, "knock": 4.5, "knock_ms": 200},
 		"drop": {"swing": [900, 120, 1300, 900], "reach": 0.7, "width": 0.0, "dmg": 3, "knock": 7.0, "knock_ms": 260, "area": true},
 		"takes": 40.0, "drops": 2, "linger": 40.0, "chance": 4,
 		"where": {"countries": ["scrapwood"], "green_min": 14},
