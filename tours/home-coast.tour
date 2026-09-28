@@ -359,15 +359,18 @@ shot 17-the-yard-holding-somebody-from-oyster-row with works,works_lit,works_yar
 
 # 7 ITS FALL, BY THE TIDE (44_sentinels, the FOUNDER way): it keeps the tide line
 # and is far too heavy for the mud and water it works beside. Roused, it follows
-# him off its own shore into the river beside its den (or mud or water), founders there
+# him off its own shore onto the mud beside its den, founders there
 # (held 1.4 s), and the land takes it. Staged by the ground's name.
-near keeper
-await sentinel 12
-wait 2.0
-walkto mob 6
-wait 0.6
+# Every try starts at its den: a try that ends with him downed and carried off
+# would take the next one's `ground` from wherever he came round. The mud is
+# three tiles off its den (208 tiles of it inside its reach, seed 1).
 try 6
-  ground river,mud,water
+  near keeper
+  await sentinel 12
+  wait 1.0
+  walkto mob 4
+  wait 0.4
+  ground mud,water,river
   await sentinel_fallen 20
 end
 wait 1.0
