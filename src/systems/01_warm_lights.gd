@@ -175,6 +175,13 @@ func setup(g: Game) -> void:
 		g.add_child(n)
 
 
+## True once the rack is gone. Until then it stands at the player's feet, so
+## nothing may show the game before this: the boot page holds its cover
+## (BootPage's draw stage) and a shot waits (main._shoot).
+func done() -> bool:
+	return _frame > HOLD * STATES
+
+
 func _process(_delta: float) -> void:
 	if game == null or game.player == null:
 		return
