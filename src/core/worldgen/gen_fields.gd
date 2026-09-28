@@ -315,6 +315,20 @@ static func upsample_rect(part: PackedFloat32Array, pw: int, ph: int, gx0: int, 
 	return out
 
 
+## `upsample` of the world's rows ry..ry+rh-1, whole rows, the same values tile
+## for tile -- `upsample_rect` of the whole grid's width without its per-tile
+## copies: the coarse rows round them are cropped, spread and cropped again as
+## images, which is the difference between a band of a pass costing a copy loop
+## and costing nothing a thread notices.
+static func upsample_rows(g: PackedFloat32Array, cw: int, step: int, size: int, ry: int, rh: int) -> PackedFloat32Array:
+	var sy0 := maxi(0, floori(float(ry) / step) - 1)
+	var sy1 := mini(cw, ceili(float(ry + rh) / step) + 1)
+	var full := Image.create_from_data(cw, cw, false, Image.FORMAT_RF, g.to_byte_array())
+	var sub := full.get_region(Rect2i(0, sy0, cw, sy1 - sy0))
+	sub.resize(cw * step, (sy1 - sy0) * step, Image.INTERPOLATE_BILINEAR)
+	return sub.get_region(Rect2i(0, ry - sy0 * step, size, rh)).get_data().to_float32_array()
+
+
 ## `field` (as `batch`'s FIELD spec makes it) over the tiles of one rectangle of
 ## the world, the same values tile for tile: the coarse cells it samples are the
 ## world's own, one more round the rectangle for the bilinear spread, clipped

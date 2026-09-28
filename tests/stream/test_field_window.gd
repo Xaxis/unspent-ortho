@@ -47,3 +47,24 @@ static func _differs(whole: PackedFloat32Array, part: PackedFloat32Array, r: Rec
 			if part[y * r.size.x + x] != whole[wy * SIZE + wx]:
 				bad += 1
 	return bad
+
+
+## `upsample_rows` is the whole-world upsample's own rows: any band, at the world's
+## top, middle and bottom, on a size that is not a multiple of the step.
+func test_rows_of_an_upsampled_grid_are_the_world_s() -> void:
+	var size := 1839
+	var step := 4
+	var cw := GenFields.coarse_width(size, step)
+	var g := PackedFloat32Array()
+	g.resize(cw * cw)
+	for k in g.size():
+		g[k] = Rng.hash01(7, k, 0, 0x5B1) * 10.0 - 5.0
+	var whole := GenFields.upsample(g, cw, step, size)
+	var bad := 0
+	for band: Vector2i in [Vector2i(0, 14), Vector2i(3, 1), Vector2i(911, 16), Vector2i(1820, 19), Vector2i(1837, 2)]:
+		var got := GenFields.upsample_rows(g, cw, step, size, band.x, band.y)
+		eq(got.size(), band.y * size, "rows %d..: the band's tiles" % band.x)
+		for k in got.size():
+			if got[k] != whole[band.x * size + k]:
+				bad += 1
+	eq(bad, 0, "every band's tiles are the whole-world upsample's")

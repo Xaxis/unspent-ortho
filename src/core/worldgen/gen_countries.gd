@@ -720,10 +720,7 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 	var step := GenContext.STEP
 	var elev := c.elev
 	const F := GenFields.FIELD
-	const U := GenFields.UP
 	var specs := []
-	for cc in range(1, types):
-		specs.append([U, c.scores[cc], cw, step])
 	specs.append_array([
 		[F, GenFields.noise(c.s, 221, 1.0 / 15.0, 3), 2],
 		# Bends at the scale of a walk, so no border runs ruler-straight.
@@ -733,24 +730,17 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 		[GenFields.SMOOTH, elev, 3],
 	])
 	var fl := GenFields.batch(size, specs)
-	# Scores for types 1..types-1, upsampled, end to end: (cc - 1) * n + i.
-	# Each field is let go as soon as it is copied in. Kept, they held a second
-	# 200 MB copy of the scores through the rest of the stage: letting them go is
-	# 280 MB off an 1840 world's counted high-water on the desktop (958 MB to 678,
-	# GenContext.memory), with the same world. In a browser it bought much less
-	# (the renderer's resident peak 1646 MB to 1601, one run each), and the wasm
-	# heap still doubles to 1181 MB: it grows in steps, and generation plus the
-	# engine still passes the 592 MB below it.
-	var flat := PackedFloat32Array()
-	for cc in range(1, types):
-		flat.append_array(fl[cc - 1])
-		fl[cc - 1] = PackedFloat32Array()
-	var last := types - 1
-	var finger := fl[last]
-	var bend := fl[last + 1]
-	var tongue := fl[last + 2]
-	var widen := fl[last + 3]
-	var elev_smooth := fl[last + 4]
+	# THE SCORES ARE NEVER WHOLE. Every type's score upsampled to every tile was
+	# (types - 1) world-sized fields at once -- 270 MB at 1840, the high-water of
+	# the whole generation (GenContext.memory: 675 MB at `tiles.coarse`), and in a
+	# browser the heap keeps its high-water for good. Each band of the tile loop
+	# upsamples the rows it reads (`_band_scores`, the world's own cells and
+	# weights, so the same values tile for tile) and lets them go.
+	var finger := fl[0]
+	var bend := fl[1]
+	var tongue := fl[2]
+	var widen := fl[3]
+	var elev_smooth := fl[4]
 	var land := c.land
 	var country := w.country
 	var country2 := w.country2
@@ -830,12 +820,19 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 		GenFields.rows(size, func(y0: int, y1: int) -> void:
 			var counts := PackedInt32Array()
 			counts.resize(SLOTS * types)
+			# The band's scores, two rows more each way for the margin's gradient:
+			# `flat[(cc - 1) * bn + li]`, li the tile's index in the band.
+			var ra := maxi(y0 - 2, 0)
+			var flat := _band_scores(c, ra, mini(y1 + 2, size))
+			var bn := (mini(y1 + 2, size) - ra) * size
 			for y in range(y0, y1):
 				if y % stride != 0:
 					continue
 				var row := y * size
+				var lrow := (y - ra) * size
 				for x in range(0, size, stride):
 					var i := row + x
+					var li := lrow + x
 					if land[i] == 0:
 						if stride == 1:
 							country[i] = Country.SEA
@@ -851,15 +848,15 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 						continue
 					var a := 1
 					var b := 2
-					var sa := flat[i]
-					var sb := flat[n + i]
+					var sa := flat[li]
+					var sb := flat[bn + li]
 					if sb > sa:
 						a = 2
 						b = 1
-						sa = flat[n + i]
-						sb = flat[i]
+						sa = flat[bn + li]
+						sb = flat[li]
 					for cc in range(3, types):
-						var v := flat[(cc - 1) * n + i]
+						var v := flat[(cc - 1) * bn + li]
 						if v > sa:
 							b = a
 							sb = sa
@@ -872,15 +869,15 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 						# The coarse cells round a thin neck of land can be sea, which
 						# no deal restricts, so the upsampled scores may still offer a
 						# type this body was not dealt. Pick again among those it was.
-						var got := _best_two(flat, n, i, types, c, body[i])
+						var got := _best_two(flat, bn, li, types, c, body[i])
 						a = got.x
 						b = got.y
-						sa = flat[(a - 1) * n + i]
-						sb = flat[(b - 1) * n + i]
+						sa = flat[(a - 1) * bn + li]
+						sb = flat[(b - 1) * bn + li]
 					var lo := mini(a, b)
 					var hi := maxi(a, b)
-					var bl := (lo - 1) * n
-					var bh := (hi - 1) * n
+					var bl := (lo - 1) * bn
+					var bh := (hi - 1) * bn
 					var m := sa - sb if a == lo else sb - sa
 					var win := lo
 					if m > 200.0 or m < -200.0:
@@ -897,8 +894,12 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 						var ib := row + xb
 						var ja := ya * size + x
 						var jb := yb * size + x
-						var gx := (flat[bl + ib] - flat[bh + ib]) - (flat[bl + ia] - flat[bh + ia])
-						var gy := (flat[bl + jb] - flat[bh + jb]) - (flat[bl + ja] - flat[bh + ja])
+						var lia := lrow + xa
+						var lib := lrow + xb
+						var lja := (ya - ra) * size + x
+						var ljb := (yb - ra) * size + x
+						var gx := (flat[bl + lib] - flat[bh + lib]) - (flat[bl + lia] - flat[bh + lia])
+						var gy := (flat[bl + ljb] - flat[bh + ljb]) - (flat[bl + lja] - flat[bh + lja])
 						var pair := lo * types + hi
 						var amp := finger_amp[pair]
 						var tg := tongue_amp[pair]
@@ -979,6 +980,16 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 	c.mark(&"tiles.blend")
 	regions(c)
 	c.mark(&"tiles.regions")
+
+
+## Every type's score upsampled to the world's rows ya..yb, end to end: type cc
+## at (cc - 1) * rows * size. `GenFields.upsample_rows`, so each value is the one
+## the whole-world upsample gives that tile.
+static func _band_scores(c: GenContext, ya: int, yb: int) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	for cc in range(1, c.types):
+		out.append_array(GenFields.upsample_rows(c.scores[cc], c.cw, GenContext.STEP, c.size, ya, yb - ya))
+	return out
 
 
 ## The two best-scoring types body `id` was dealt, at tile `i`, best first. Only
