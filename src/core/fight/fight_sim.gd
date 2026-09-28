@@ -1028,6 +1028,12 @@ func _touching() -> void:
 			continue
 		if m.pos.distance_to(hero.pos) > m.radius + hero.radius:
 			continue
+		# Only where the thing that hurts is: a sweeper's brush is at its front,
+		# its part on its back (roster `touch_arc`, degrees off its front; none is
+		# all round).
+		var arc := float(m.row.get("touch_arc", 180.0))
+		if arc < 180.0 and absf(wrapf((hero.pos - m.pos).angle() - m.facing, -PI, PI)) > deg_to_rad(arc):
+			continue
 		if not meets_hero(m.pos):
 			continue
 		if hero.invulnerable(now):

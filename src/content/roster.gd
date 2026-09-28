@@ -172,7 +172,10 @@ const DEFS := {
 		"model": &"sweeper", "role": &"worker", "machine": true, "approach": &"errand", "stretch": 7, "part": &"back",
 		"pace": 5.0, "dash": 5.0, "radius": 0.5, "height": 1.0, "life": 50,
 		"sees": 0, "hears": 0, "racket": 13, "reach": 3, "ready": 2, "forget": 10, "tether": 12, "safe": 10,
-		"nerve": 100, "invuln": 400, "touch": 2, "through": true, "disposition": &"indifferent",
+		# Its brush is at its front and its part on its back: contact hurts only
+		# within `touch_arc` degrees of its front, so the back is struck, not
+		# brushed (FightSim._touching).
+		"nerve": 100, "invuln": 400, "touch": 2, "touch_arc": 90, "through": true, "disposition": &"indifferent",
 		"takes": 40.0, "drops": 1, "linger": 30.0, "chance": 5,
 		"where": {"countries": ["pinewood"], "grounds": ["needles", "road", "mud", "floor", "grass"], "green_min": 12, "hours": [5, 11]},
 	},
