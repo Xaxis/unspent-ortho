@@ -125,6 +125,8 @@ ground grass
 mark fire
 press use 0.1
 await fire_asked 2
+# The ask is a prompt on the glass; the second press answers it once it is up.
+wait 0.6
 press use 0.1
 await made 4
 wait 0.5
