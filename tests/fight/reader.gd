@@ -12,6 +12,18 @@ extends RefCounted
 ## knife, a person meeting it for the first time cannot either.
 
 var react_ms := 220.0
+## HUMAN (a measuring reader, tools/sweep.sh --reader=human; every test stays on
+## the perfect reader): `human` >= 0 is its seed. Each tell is seen after a
+## reaction drawn from HUMAN_REACT (hash-seeded, never randf); MISREAD of them
+## are misread, half dodged the wrong way and half HUMAN_LATE_MS later again;
+## and WHIFF of its strikes are thrown from the edge of reach, turned off the
+## body, and miss.
+var human := -1
+const HUMAN_REACT := Vector2(250.0, 450.0)
+const MISREAD := 0.10
+const HUMAN_LATE_MS := 200.0
+const WHIFF := 0.125
+const WHIFF_TURN := 0.9
 ## Holds the swing for the heavy blow (FightRules.HEAVY_*) when the opening is
 ## long enough for its tell, there is the wind for it and a dodge after, or the
 ## part is one only a heavy blow goes through; a light swing otherwise.
@@ -71,7 +83,16 @@ func _tell_to_answer(m: MobState) -> bool:
 	var hero := sim.hero
 	if m.blow == null or m.blow_phase(now) != &"windup" or m.blow_at == _answered:
 		return false
-	if now - m.blow_at < react_ms:
+	var misread := &""
+	var react := react_ms
+	if human >= 0:
+		var key := int(m.blow_at)
+		react = lerpf(HUMAN_REACT.x, HUMAN_REACT.y, Rng.hash01(human, m.id, key, 0x4855))
+		if Rng.hash01(human, m.id, key, 0x4D52) < MISREAD:
+			misread = &"wrong" if Rng.hash01(human, m.id, key, 0x5752) < 0.5 else &"late"
+		if misread == &"late":
+			react += HUMAN_LATE_MS
+	if now - m.blow_at < react:
 		return false
 	_answered = m.blow_at
 	if not _in_box(m, hero.pos, 0.5):
@@ -97,6 +118,9 @@ func _tell_to_answer(m: MobState) -> bool:
 	var side_need := b.width * 0.5 + hero.radius - absf(local.y)
 	# Aside is where the spent body can be got round; back is only for a narrow miss.
 	_escape = side if side_need < back_need + 0.6 else fwd
+	if misread == &"wrong":
+		# Read the wrong way: across the blow's side, or in toward it.
+		_escape = -side if _escape == side else -fwd
 	hero.move = _escape
 	sim.press_dodge()
 	dodges += 1
@@ -168,6 +192,9 @@ func _strike(m: MobState) -> void:
 	if reaches:
 		hero.move = Vector2.ZERO
 		hero.facing = to_mob.angle()
+		if human >= 0 and hero.swing_refusal(sim.now) == &"" and Rng.hash01(human, m.id, swings, 0x5746) < WHIFF:
+			# Thrown from the edge of reach and turned off it: the swing is spent on air.
+			hero.facing = to_mob.angle() + WHIFF_TURN
 		if hero.swing_refusal(sim.now) == &"":
 			if go_heavy:
 				sim.press_heavy()

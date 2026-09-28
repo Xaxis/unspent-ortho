@@ -19,7 +19,12 @@ const CROWDS: Array = [
 const LINES: Array[String] = ["knife", "axe", "pick", "mattock", "hook", "boathook", "bill", "stave"]
 
 
+## The reader's seed for --reader=human (Reader.human); -1 is the perfect reader.
+static var human := -1
+
+
 static func run(args: PackedStringArray) -> void:
+	human = -1
 	var singles := true
 	var crowds := true
 	var starts := 4
@@ -30,6 +35,10 @@ static func run(args: PackedStringArray) -> void:
 			crowds = false
 		elif a == "--crowds":
 			singles = false
+		elif a == "--reader=human":
+			human = 17
+		elif a.begins_with("--reader=human:"):
+			human = a.trim_prefix("--reader=human:").to_int()
 		elif a.begins_with("--starts="):
 			starts = maxi(1, a.trim_prefix("--starts=").to_int())
 		elif a.begins_with("--weapons="):
@@ -42,7 +51,7 @@ static func run(args: PackedStringArray) -> void:
 		summary.append_array(_singles(weapons, machines, starts))
 	if crowds:
 		summary.append_array(_crowds(weapons))
-	print("summary")
+	print("summary (%s reader)" % ["human, seed %d" % human if human >= 0 else "perfect"])
 	for line in summary:
 		print("  " + line)
 	print("sweep done in %d s" % ((Time.get_ticks_msec() - t0) / 1000))
@@ -76,7 +85,7 @@ static func _singles(weapons: Array[StringName], machines: Array[StringName], st
 			var secs := 0.0
 			var lost := 0.0
 			for s in starts:
-				var r: Dictionary = G.gate(true, s * 8 / starts, k, 1, [] as Array[StringName], SECONDS, tool, CHARGES, 1000, true)
+				var r: Dictionary = G.gate(true, s * 8 / starts, k, 1, [] as Array[StringName], SECONDS, tool, CHARGES, 1000, true, 0.0, human)
 				won += int(r.won)
 				downed += int(r.downed)
 				secs += float(r.t)
@@ -147,6 +156,7 @@ static func crowd_bout(kinds: Array[StringName], tool: StringName, start: int) -
 		m.set_mood(MobState.CHASING, sim.now)
 		crowd.append(m)
 	var player := SR.new(sim)
+	player.human = human
 	sim.hero.facing = (mid - sim.hero.pos).angle()
 	var t := 0.0
 	var lost := 0

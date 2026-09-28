@@ -18,6 +18,8 @@ The loop scripts.
   3-cutter wins by weapon line, each crowd's wins and mean lost). A measurement after a tuning pass, never a gate and
   not on CI; about ten minutes whole, killed at `SWEEP_TIMEOUT` (1800 s). A quick check that it runs:
   `tools/sweep.sh --weapons=knife --machines=cutter` (prints `sweep done`).
+  `--reader=human[:SEED]` fights with the human reader (tests/fight/reader.gd `human`: a 250-450 ms reaction, 10%
+  of tells misread, 1 in 8 strikes whiffed), the reader balance targets are judged by; every test stays on the perfect one.
 - test: `tools/test.sh`, reached by `tools/test.sh`.
 - tour: `tools/tour.sh`, reached by `tools/tour.sh`.
 - web: `tools/web.sh`, reached by `tools/web.sh`.
