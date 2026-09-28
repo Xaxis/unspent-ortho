@@ -190,6 +190,10 @@ fi
 # backtraces too, and killed. That is evidence and a fast red, not a pass: the
 # death fails the gate below (exit 139/137) and the hang is named in words.
 # The longest single test measured is about 50 s, so ten silent minutes is a hang.
+# CI's Godot is the stripped release binary (no Linux symbols are published), so
+# gdb names threads and libc frames only and every godot frame reads `??`. That
+# was enough: a main thread in a condition wait on the pool's task mutex with
+# every WorkerThread idle is WorkerThreadPool::exit_languages_threads.
 watch_runner() {
   local pid="$1" log="$2" name="$3" hang="${UNSPENT_HANG_SECS:-600}" exit_secs="${UNSPENT_EXIT_SECS:-120}"
   local size=-1 still=0 after=0 what=""

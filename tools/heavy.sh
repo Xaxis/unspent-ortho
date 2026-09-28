@@ -3,16 +3,18 @@
 # box can take it, one at a time box-wide:
 #   tools/heavy.sh tools/tour.sh tours/x.tour ...
 # Waits until more than 32000 pages (500 MB) are free on three readings 10 s apart,
-# no other godot or headless browser is running, and it holds the box lock. Why:
+# no other godot is running, and it holds the box lock. Why:
 # with several builders running godot at once the box fell to ~57 MB free
 # (2026-09-28) and the owner's own apps began failing writes.
-# Browsers' chrome_crashpad_handler (Brave, Slack) always runs and is not a job.
+# Only godot counts as busy: other projects' browsers (soniq's playwright checks,
+# Rider's cef) cycle all day and would hold the gate for ever. Our own browser runs
+# take the lock, and the memory floor covers everyone else's load.
 # Gives up after HEAVY_WAIT seconds (default 10800) with exit 2.
 set -u
 lock=/tmp/unspent-heavy.lock
 end=$(( $(date +%s) + ${HEAVY_WAIT:-10800} ))
 free_pages() { vm_stat | awk '/Pages free/ {gsub("\\.","",$3); print $3}'; }
-busy() { pgrep -fl 'godot|chrom' | grep -v chrome_crashpad_handler | grep -q .; }
+busy() { pgrep -f 'godot' >/dev/null; }
 take() {
   if mkdir "$lock" 2>/dev/null; then echo $$ > "$lock/pid"; return 0; fi
   # A lock whose holder is gone (killed shell) is reclaimed.
@@ -22,11 +24,10 @@ take() {
   fi
   return 1
 }
-# A job up an hour or more with no parent (a probe that errored and never quit) holds
+# A godot up an hour or more with no parent (a probe that errored and never quit) holds
 # every waiter for ever; name it so its owner kills it rather than waits on it.
 stale() {
-  pgrep -f 'godot|chrom' | while read -r p; do
-    ps -o command= -p "$p" | grep -q chrome_crashpad_handler && continue
+  pgrep -f 'godot' | while read -r p; do
     [ "$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')" = 1 ] || continue
     [ "$(ps -o etime= -p "$p" | awk -F'[-:]' '{print (NF>2)?1:0}')" = 1 ] || continue
     ps -o pid=,etime=,command= -p "$p" | cut -c1-140
