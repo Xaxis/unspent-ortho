@@ -170,10 +170,34 @@ func sight_boxes(mid: Vector2, reach: float) -> Array[PackedFloat32Array]:
 		for b: PackedFloat32Array in _room_boxes:
 			if Vector2(b[0], b[1]).distance_to(mid) <= reach + 1.0:
 				out.append(b)
+		for b: PackedFloat32Array in ceiling_boxes(pocket.layout, pocket.kind, mid, reach):
+			out.append(b)
 		return out
 	for b: PackedFloat32Array in _hatch_boxes:
 		if Vector2(b[0], b[1]).distance_to(mid) <= reach + 1.5:
 			out.append(b)
+	return out
+
+
+## THE ROOM'S CEILING, TO THE EYE (Shoulder): over every room within `reach` of
+## `mid`, its roof as one box from its underside (the room's own floor and the
+## kind's `wall_h`) up a little, as wide as the room and a wall's width more.
+## The walls stop the eye as the query's blocks do; without these nothing did
+## overhead, and over the shoulder in a small room the eye stood in the rock of
+## its roof. One box a ROOM, not a tile: a line up exactly on a seam between two
+## tile boxes (a room's middle often is) slipped between them.
+const CEILING_OVER := 0.15
+static func ceiling_boxes(l: InteriorLayout, k: InteriorKind, mid: Vector2, reach: float) -> Array[PackedFloat32Array]:
+	var out: Array[PackedFloat32Array] = []
+	for i in l.rooms.size():
+		var r := Rect2(l.rooms[i])
+		var c := r.get_center()
+		var half := r.size * 0.5 + Vector2.ONE * CEILING_OVER
+		if maxf(absf(mid.x - c.x) - half.x, absf(mid.y - c.y) - half.y) > reach + 1.0:
+			continue
+		var lv := l.room_level[i] if i < l.room_level.size() else 0
+		var under := TerrainMesher.level_height(InteriorGen.FLOOR_LEVEL + lv) + k.wall_h
+		out.append(PackedFloat32Array([c.x, c.y, 1.0, 0.0, under, 0.6, 1.0, under + 0.6, -half.x, -half.y, half.x, half.y]))
 	return out
 
 

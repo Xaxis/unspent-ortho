@@ -825,7 +825,14 @@ func _apply_lens() -> void:
 		_over = up if up > _over else lerpf(_over, up, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
 		_room = room if room < _room else lerpf(_room, room, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
 		eye = pivot.lerp(eye + Vector3(0.0, _over, 0.0), _room)
-		if _over > 0.001:
+		# NO ROOM BEHIND AT ALL (Shoulder.fallback): still not clear of the walls
+		# or the roof, it comes over the head instead, at once, never drawn from
+		# inside anything (tests/camera/test_shoulder_in_rooms).
+		var tight := eye
+		if side_room.is_valid():
+			tight = Shoulder.fallback(head, pivot, eye, sight_room if _over > 0.001 else Callable(), side_room)
+		if _over > 0.001 or tight != eye:
+			eye = tight
 			# Looking down at the point it framed, from the height it rose to.
 			var at := focus - eye
 			rotation.x = atan2(at.y, Vector2(at.x, at.z).length())

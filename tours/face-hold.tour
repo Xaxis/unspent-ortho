@@ -7,8 +7,8 @@
 # sort with its long table and brazier, the cells and the words room cut behind
 # it, the lookout at the front corner. 03 is over the shoulder down the sort. 04
 # is up the lookout's ladder by the jump key, at the slit (`above`). 05 is the
-# reader at home by their desk, from above: a cell is too small for the
-# shoulder's eye (21_doors DWELLER). 06 is the reader taking the record and
+# reader at home by their desk, over the shoulder in a cell three tiles across,
+# where the eye comes over the head (Shoulder.fallback; 21_doors DWELLER). 06 is the reader taking the record and
 # giving the string (the deed), and 07, back out in the slot, the map with
 # the way up the string is laid along.
 coast calm
@@ -37,8 +37,13 @@ press jump 0.1
 wait 2.0
 shot 04-at-the-lookout with inside:face_hold,above
 near dweller
-wait 1.5
-shot 05-the-reader-at-home with inside:face_hold
+wait 1.0
+hold shoulder_peek
+await shoulder 3
+wait 1.0
+shot 05-the-reader-at-home with inside:face_hold,shoulder
+release shoulder_peek
+wait 0.6
 press use
 await talking 3
 wait 0.4
