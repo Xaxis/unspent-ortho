@@ -260,17 +260,16 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 ## they dumped in, and the relay line the wood is closing over. Both are ruled;
 ## both are being taken back by something that is not in a hurry.
 static func _works(L: Object) -> void:
-	var c: GenContext = L.c
 	var floor_g: Array = [Ground.SWARF, Ground.GRASS, Ground.NEEDLES, Ground.GRAVEL, Ground.HEATH]
 	# Breaking yards: a fenced square of wreckage with a conveyor running into
 	# the trees, the ground under it cut and never grown back the same.
-	for n in GenWorks._n(c, 2.0):
+	for n in GenWorks._n(L, 2.0):
 		var p := GenWorks._site(L, 7, 1, floor_g, 32.0, 700, 0.4)
 		if p.x >= 0:
 			GenWorks._work(L, &"_breaking_yard", Vector2(p) + Vector2(0.5, 0.5))
 	# A relay corridor the wood has nearly closed: masts on the bearing, exact,
 	# with the crowns leaning in over them and a heap under every second one.
-	for n in GenWorks._n(c, 1.0):
+	for n in GenWorks._n(L, 1.0):
 		var p := GenWorks._site(L, 4, 2, [], 36.0, 500, 0.5)
 		if p.x >= 0:
 			GenWorks._work(L, &"_closing_corridor", Vector2(p) + Vector2(0.5, 0.5))

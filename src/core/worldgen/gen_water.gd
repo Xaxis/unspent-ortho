@@ -391,45 +391,112 @@ static func _side_tile(c: GenContext, i: int, nrm: Vector2) -> int:
 ## Valley sides: nothing within reach of a river stands higher than the bed
 ## plus a per-country slope times the distance, so banks stay walkable (or
 ## become gorges where the slope cost is high).
+## THE VALLEY FIELD IS CAPPED at one level over the tallest land: nothing at or
+## above it can carve, and capped, a value is decided by paths costing less
+## than the cap, which the cheapest valley (0.4 a half-cell) holds within
+## VALLEY_REACH half-cells. So a section with that much round its own tiles,
+## and its rows on the world's bands with their reach, carves them as the whole
+## world does (streamed worldgen S4g; tests/stream/test_valley_window.gd).
+const VALLEY_CAP := GenRelief.MAX_LEVEL + 1.0
+const VALLEY_REACH := 78
+## The bands the field is swept in, and how far each sweeps past its own rows:
+## a valley side climbs at least 0.6 levels a cell, so this many cells reach
+## past the highest ground.
+const VALLEY_BAND := 24
+const VALLEY_BAND_REACH := ceili((GenRelief.MAX_LEVEL + 1) / 0.6)
+
+## A test's hook: set, `_carve_valleys` keeps what it carves from in `before`.
+static var keeping := false
+static var before: Dictionary = {}
+
+
 static func _carve_valleys(c: GenContext) -> void:
 	# Worked at half resolution: a valley side is smooth over two tiles, and the
 	# bed itself is exact because river tiles keep their own elevation.
-	var size := c.size
-	var hw := GenFields.coarse_width(size, 2)
 	var coarse_cost: PackedFloat32Array = GenCountries.params(c, [&"valley"])[&"valley"]
-	var cost := GenFields.upsample(coarse_cost, c.cw, 2, hw)
-	for k in cost.size():
-		cost[k] *= 2.0
-	var water := c.water
-	var land := c.land
-	var elev := c.elev
-	var river_e := c.river_e
+	if keeping:
+		before = {"elev": GenFields.snapshot(c.elev), "water": GenFields.snapshot(c.water), "river_e": GenFields.snapshot(c.river_e),
+			"land": GenFields.snapshot(c.land), "cost": GenFields.snapshot(coarse_cost), "cw": c.cw, "size": c.size}
+	carve(c.elev, c.water, c.land, c.river_e, coarse_cost, c.cw, c.size, Rect2i(0, 0, c.size, c.size))
+
+
+## Carve the valleys into `elev` over the tiles of `core`, from arrays that are
+## the whole world's: the whole world as one core, or a section, which reads only
+## the tiles within its reach (`valley_window`).
+static func carve(elev: PackedFloat32Array, water: PackedByteArray, land: PackedByteArray, river_e: PackedFloat32Array,
+		coarse_cost: PackedFloat32Array, cw: int, size: int, core: Rect2i) -> void:
+	var hw := GenFields.coarse_width(size, 2)
+	var win := valley_window(core, size)
+	var gx0 := win.position.x
+	var gy0 := win.position.y
+	var ww := win.size.x
+	var wh := win.size.y
+	var cost_all := GenFields.upsample(coarse_cost, cw, 2, hw) if win.size.x == hw and win.size.y == hw else PackedFloat32Array()
+	var cost := PackedFloat32Array()
+	cost.resize(ww * wh)
+	if not cost_all.is_empty():
+		for k in cost.size():
+			cost[k] = cost_all[k] * 2.0
+	else:
+		var part := GenFields.upsample_rect(coarse_cost, cw, cw, 0, 0, cw, 2, hw, gx0, gy0, ww, wh)
+		for k in cost.size():
+			cost[k] = part[k] * 2.0
 	var v := PackedFloat32Array()
-	v.resize(hw * hw)
+	v.resize(ww * wh)
 	v.fill(1e6)
-	GenFields.rows(size, func(y0: int, y1: int) -> void:
-		for y in range(y0, y1):
-			var row := y * size
-			var hrow := (y >> 1) * hw
-			for x in size:
-				var i := row + x
-				if water[i] == 1:
-					var k := hrow + (x >> 1)
-					v[k] = minf(v[k], river_e[i] + 0.9)
+	GenFields.rows(wh, func(h0: int, h1: int) -> void:
+		for hy in range(h0, h1):
+			for hx in ww:
+				# The half-cell's four tiles.
+				for dy in 2:
+					var y := (gy0 + hy) * 2 + dy
+					if y >= size:
+						continue
+					for dx in 2:
+						var x := (gx0 + hx) * 2 + dx
+						if x >= size:
+							continue
+						var i := y * size + x
+						if water[i] == 1:
+							var k := hy * ww + hx
+							v[k] = minf(v[k], river_e[i] + 0.9)
 	)
-	# A valley side climbs at least 0.6 levels a cell, so this many cells reach
-	# past the highest ground.
-	v = GenFields.banded([v, cost], hw, ceili((GenRelief.MAX_LEVEL + 1) / 0.6), func(arrays: Array, width: int) -> Array:
+	v = GenFields.banded([v, cost], ww, VALLEY_BAND_REACH, func(arrays: Array, width: int) -> Array:
 		var vv: PackedFloat32Array = arrays[0]
 		GenFields.propagate_min_field(vv, width, arrays[1])
 		return [vv, arrays[1]]
-	)[0]
-	var up := GenFields.upsample(v, hw, 2, size)
-	GenFields.rows(size, func(y0: int, y1: int) -> void:
-		for i in range(y0 * size, y1 * size):
-			if land[i] != 0 and water[i] == 0 and up[i] < elev[i]:
-				elev[i] = maxf(1.0, up[i])
+	, VALLEY_BAND)[0]
+	GenFields.rows(wh, func(h0: int, h1: int) -> void:
+		for k in range(h0 * ww, h1 * ww):
+			v[k] = minf(v[k], VALLEY_CAP)
 	)
+	var up := GenFields.upsample_rect(v, ww, wh, gx0, gy0, hw, 2, size, core.position.x, core.position.y, core.size.x, core.size.y)
+	GenFields.rows(core.size.y, func(y0: int, y1: int) -> void:
+		for y in range(y0, y1):
+			for x in core.size.x:
+				var i := (core.position.y + y) * size + core.position.x + x
+				var u := up[y * core.size.x + x]
+				if land[i] != 0 and water[i] == 0 and u < elev[i]:
+					elev[i] = maxf(1.0, u)
+	)
+
+
+## The half-resolution cells a section's valleys are swept over: VALLEY_REACH
+## round its own cells across, and down whole bands of the world's, with each
+## band's reach, so every band it holds is swept over the rows the whole world
+## sweeps it over.
+static func valley_window(core: Rect2i, size: int) -> Rect2i:
+	var hw := GenFields.coarse_width(size, 2)
+	if core == Rect2i(0, 0, size, size):
+		return Rect2i(0, 0, hw, hw)
+	var cx0 := maxi(0, floori(core.position.x / 2.0) - VALLEY_REACH - 1)
+	var cx1 := mini(hw, ceili(core.end.x / 2.0) + VALLEY_REACH + 1)
+	var b0 := floori(maxf(0.0, floor(core.position.y / 2.0) - 1.0) / VALLEY_BAND)
+	var b1 := ceili(minf(hw, ceilf(core.end.y / 2.0) + 1.0) / VALLEY_BAND)
+	var cy0 := maxi(0, b0 * VALLEY_BAND - VALLEY_BAND_REACH)
+	cy0 = floori(float(cy0) / VALLEY_BAND) * VALLEY_BAND
+	var cy1 := mini(hw, b1 * VALLEY_BAND + VALLEY_BAND_REACH)
+	return Rect2i(cx0, cy0, cx1 - cx0, cy1 - cy0)
 
 
 ## Pools and tarns, after terracing: round, a dozen tiles or more, on flat
@@ -438,100 +505,254 @@ static func _carve_valleys(c: GenContext) -> void:
 ## flats, the odd tarn lies in the Pinewood and behind the Coast. Each is a
 ## distance field about its centre, lobed so no two are the same shape.
 
+## And with `keeping` set, `still` keeps what it lays pools on here.
+static var before_still: Dictionary = {}
+
+## POOLS ARE DECIDED WHERE THEY LIE (streamed worldgen S4g). Each landscape's
+## cell proposes the first of its spots where a whole pool would lie, from the
+## land alone. In two rounds, a proposal stands when it outranks every other
+## within its crowding reach -- the landscape's `order` first (the wettest land
+## keeps its pools), then a roll of its own -- and in the second round only the
+## proposals no first-round pool crowds out are weighed, so a proposal that lost
+## to one that itself lost can still stand (one round cost the moss a fifth of
+## its pools). Nothing about it hangs on which pools were laid before, so a
+## section with POOL_MARGIN round its own tiles lays their pools as the whole
+## world does (tests/stream/test_pool_window.gd). The reach keeps two standing
+## pools' discs and their dry rims apart.
+const POOL_GAP := 5.0
+const POOL_SPREAD := 1.3
+## A section's pools are judged over its tiles and the crowding reach round
+## them (plus a pool's own reach); the second round weighs proposals a reach
+## further, whose standing hangs on the first round two reaches further again;
+## each proposal comes from a cell up to the largest cell's width beyond, and
+## reads its disc and rim round its spot.
+const POOL_R_MOST := 5.5
+const POOL_CELL_MOST := 52
+const POOL_REACH := ceili(maxf(2.0 * POOL_R_MOST + POOL_GAP, POOL_SPREAD * 2.0 * POOL_R_MOST + 3.0)) + 10
+const POOL_MARGIN := 4 * POOL_REACH + POOL_CELL_MOST + 10
+
+
 static func still(c: GenContext) -> void:
 	var w := c.w
 	var size := c.size
-	var land := c.land
-	var water := c.water
-	var level := w.level
-	var country := w.country
-	var blend := w.blend
-	# Cell size in tiles, chance a cell holds a pool, radius range and the water
-	# itself all come from the landscape (BiomeDef.pools), laid in the order
-	# each declares so the wettest land gets its pools first.
-	var laid := PackedVector3Array()
-	var pooled: Array[int] = []
+	if keeping:
+		before_still = {"level": GenFields.snapshot(w.level), "land": GenFields.snapshot(c.land), "water": GenFields.snapshot(c.water),
+			"country": GenFields.snapshot(w.country), "blend": GenFields.snapshot(w.blend), "inland": GenFields.snapshot(c.inland)}
+	c.pools = pools_square(c.s, pool_specs(c), w.level, c.land, c.water, w.country, w.blend, c.inland, size, Vector2i.ZERO, size,
+		Rect2i(0, 0, size, size), c.pool_ground)
+
+
+## Cell size in tiles, chance a cell holds a pool, radius range and the water
+## itself come from each landscape (BiomeDef.pools): [type, spec], wettest first.
+static func pool_specs(c: GenContext) -> Array:
+	var out: Array = []
 	for cc: int in c.land_types:
 		if not c.defs[cc].pools.is_empty():
-			pooled.append(cc)
-	pooled.sort_custom(func(x: int, y: int) -> bool:
-		return int(c.defs[x].pools.get("order", 50)) < int(c.defs[y].pools.get("order", 50)))
-	for cc: int in pooled:
-		var spec: Dictionary = c.defs[cc].pools
+			out.append([cc, c.defs[cc].pools])
+	out.sort_custom(func(x: Array, y: Array) -> bool:
+		return int(x[1].get("order", 50)) < int(y[1].get("order", 50)))
+	return out
+
+
+## The pools whose water lies in `core`, over a square of the world `side` wide
+## at `origin` (the whole world, or a section with POOL_MARGIN round its core):
+## each one's tiles in the core get water 2 and its ground, and the standing
+## pools touching the core come back as (x, y, r).
+static func pools_square(seed_value: int, specs: Array, level: PackedInt32Array, land: PackedByteArray, water: PackedByteArray,
+		country: PackedByteArray, blend: PackedFloat32Array, inland: PackedFloat32Array, side: int, origin: Vector2i,
+		world_size: int, core: Rect2i, pool_ground: PackedByteArray) -> PackedVector3Array:
+	var judged := core.grow(POOL_REACH)
+	var asked := judged.grow(3 * POOL_REACH)
+	# Proposals: [x, y, r, rank, rank roll, ground, tiles (world indices),
+	# the spot's place among its cell's, the cell]. A cell proposes every spot
+	# where a whole pool would lie: its first may be crowded out where a later
+	# one is not.
+	var props: Array = []
+	for k in specs.size():
+		var cc: int = specs[k][0]
+		var spec: Dictionary = specs[k][1]
 		var cell := int(spec.cell)
-		var cells := size / cell
-		for gy in cells:
-			for gx in cells:
-				var salt := cc * 7919
+		var cells := world_size / cell
+		var salt := cc * 7919
+		for gy in range(maxi(0, floori(float(asked.position.y) / cell)), mini(cells, ceili(float(asked.end.y) / cell))):
+			for gx in range(maxi(0, floori(float(asked.position.x) / cell)), mini(cells, ceili(float(asked.end.x) / cell))):
 				var cx0 := (gx + 0.5) * cell
 				var cy0 := (gy + 0.5) * cell
-				var ci := clampi(floori(cy0), 0, size - 1) * size + clampi(floori(cx0), 0, size - 1)
-				if country[ci] != cc:
+				var ci := _at(clampi(floori(cx0), 0, world_size - 1), clampi(floori(cy0), 0, world_size - 1), origin, side)
+				if ci < 0 or country[ci] != cc:
 					continue
-				if GenFields.h01(c.s, gx, gy, 442 + salt) > float(spec.chance) * (1.0 - blend[ci]):
+				if GenFields.h01(seed_value, gx, gy, 442 + salt) > float(spec.chance) * (1.0 - blend[ci]):
 					continue
-				var r := lerpf(float(spec.r_min), float(spec.r_max), GenFields.h01(c.s, gx, gy, 443 + salt))
+				var r := lerpf(float(spec.r_min), float(spec.r_max), GenFields.h01(seed_value, gx, gy, 443 + salt))
 				# A few spots in the cell: pools need a flat to lie on.
 				for attempt in 5:
-					var px := (gx + 0.2 + GenFields.h01(c.s, gx * 8 + attempt, gy, 440 + salt) * 0.6) * cell
-					var py := (gy + 0.2 + GenFields.h01(c.s, gx * 8 + attempt, gy, 441 + salt) * 0.6) * cell
+					var px := (gx + 0.2 + GenFields.h01(seed_value, gx * 8 + attempt, gy, 440 + salt) * 0.6) * cell
+					var py := (gy + 0.2 + GenFields.h01(seed_value, gx * 8 + attempt, gy, 441 + salt) * 0.6) * cell
 					var tx := floori(px)
 					var ty := floori(py)
-					if tx < 8 or ty < 8 or tx >= size - 8 or ty >= size - 8:
+					if tx < 8 or ty < 8 or tx >= world_size - 8 or ty >= world_size - 8:
 						continue
-					var i0 := ty * size + tx
-					if country[i0] != cc or land[i0] == 0 or c.inland[i0] < 6.0:
+					var i0 := _at(tx, ty, origin, side)
+					if i0 < 0 or country[i0] != cc or land[i0] == 0 or inland[i0] < 6.0:
 						continue
-					var centre := Vector3(px, py, r)
-					var crowded := false
-					for q in laid:
-						if Vector2(q.x, q.y).distance_to(Vector2(px, py)) < q.z + r + 5.0:
-							crowded = true
-							break
-					if not crowded and _lay_pool(c, centre, gx * 31 + gy * 17 + cc, int(spec.ground)):
-						laid.append(centre)
-						break
-	c.pools = laid
+					var tiles := _pool_tiles(seed_value, Vector3(px, py, r), gx * 31 + gy * 17 + cc, level, land, water, origin, side, world_size)
+					if tiles.is_empty():
+						continue
+					props.append([px, py, r, k, GenFields.h01(seed_value, gx, gy, 445 + salt), int(spec.ground), tiles, attempt,
+						Vector3i(cc, gx, gy)])
+	# Proposals by 32-tile bucket: wider than any crowding reach (17.3 tiles), and a
+	# cell's own spots lie within three buckets of each other.
+	var buckets := {}
+	for n in props.size():
+		var key := Vector2i(floori(float(props[n][0]) / 32.0), floori(float(props[n][1]) / 32.0))
+		var list: PackedInt32Array = buckets.get(key, PackedInt32Array())
+		list.append(n)
+		buckets[key] = list
+	# The proposals crowding each: within its reach and the other's.
+	var rivals: Array[PackedInt32Array] = []
+	rivals.resize(props.size())
+	for n in props.size():
+		var a: Array = props[n]
+		var at := Vector2(a[0], a[1])
+		var home := Vector2i(floori(at.x / 32.0), floori(at.y / 32.0))
+		var cell_a: Vector3i = a[8]
+		var list := PackedInt32Array()
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				for m: int in buckets.get(home + Vector2i(dx, dy), PackedInt32Array()):
+					var b: Array = props[m]
+					var cell_b: Vector3i = b[8]
+					# A cell holds one pool: its own spots are always rivals.
+					if m != n and (cell_b == cell_a or at.distance_to(Vector2(b[0], b[1])) < _crowd(float(a[2]), float(b[2]))):
+						list.append(m)
+		rivals[n] = list
+	# Round one: the proposals that outrank all their rivals.
+	var first := PackedByteArray()
+	first.resize(props.size())
+	for n in props.size():
+		var best := true
+		for m in rivals[n]:
+			if _outranks(props[m], props[n]):
+				best = false
+				break
+		first[n] = 1 if best else 0
+	# Round two: of the proposals no round-one pool crowds, those that outrank
+	# every such rival.
+	var open := PackedByteArray()
+	open.resize(props.size())
+	for n in props.size():
+		if first[n] != 0:
+			continue
+		var free := true
+		for m in rivals[n]:
+			if first[m] != 0:
+				free = false
+				break
+		open[n] = 1 if free else 0
+	var out := PackedVector3Array()
+	for n in props.size():
+		var a: Array = props[n]
+		var at := Vector2(a[0], a[1])
+		if not judged.has_point(Vector2i(at.floor())):
+			continue
+		var stands := first[n] != 0
+		if not stands and open[n] != 0:
+			stands = true
+			for m in rivals[n]:
+				if open[m] != 0 and _outranks(props[m], a):
+					stands = false
+					break
+		if not stands:
+			continue
+		var touches := false
+		for i: int in a[6]:
+			var p := Vector2i(i % world_size, i / world_size)
+			if not core.has_point(p):
+				continue
+			var li := _at(p.x, p.y, origin, side)
+			water[li] = 2
+			pool_ground[li] = a[5]
+			touches = true
+		if touches:
+			out.append(Vector3(a[0], a[1], a[2]))
+	return out
 
 
-## Pool tiles for a centre: lobed disc, only where level matches the centre.
-## Writes water = 2 and returns true if the pool is whole enough to keep.
-static func _lay_pool(c: GenContext, p: Vector3, salt: int, g: int) -> bool:
-	var size := c.size
-	var level := c.w.level
-	var l0 := level[floori(p.y) * size + floori(p.x)]
-	var ri := ceili(p.z * 1.3) + 2
-	var ph1 := GenFields.h01(c.s, salt, 0, 444) * TAU
-	var ph2 := GenFields.h01(c.s, salt, 1, 444) * TAU
+## How near two pools of radius ra and rb may stand: the spacing pools have
+## always kept, or, where larger, what keeps one's disc and its two tiles of dry
+## rim off the other's water (a disc reaches POOL_SPREAD times its radius, and a
+## tile is judged at its centre, half a tile either way).
+static func _crowd(ra: float, rb: float) -> float:
+	return maxf(ra + rb + POOL_GAP, POOL_SPREAD * (ra + rb) + 3.0)
+
+
+## Proposal `b` outranks `a`: its landscape pools first, then the lower roll,
+## then its cell's earlier spot, then (never met in practice, but a rank must
+## be total) the earlier place.
+static func _outranks(b: Array, a: Array) -> bool:
+	if int(b[3]) != int(a[3]):
+		return int(b[3]) < int(a[3])
+	if float(b[4]) != float(a[4]):
+		return float(b[4]) < float(a[4])
+	if int(b[7]) != int(a[7]):
+		return int(b[7]) < int(a[7])
+	if float(b[1]) != float(a[1]):
+		return float(b[1]) < float(a[1])
+	return float(b[0]) < float(a[0])
+
+
+## The index of world tile (x, y) in a square `side` wide at `origin`, or -1.
+static func _at(x: int, y: int, origin: Vector2i, side: int) -> int:
+	var lx := x - origin.x
+	var ly := y - origin.y
+	return ly * side + lx if lx >= 0 and ly >= 0 and lx < side and ly < side else -1
+
+
+## Pool tiles for a centre, as world indices: a lobed disc, only where the level
+## matches the centre's, the largest piece of it, or none if it is not whole
+## enough to keep or its ground round it is not dry land.
+static func _pool_tiles(seed_value: int, p: Vector3, salt: int, level: PackedInt32Array, land: PackedByteArray, water: PackedByteArray,
+		origin: Vector2i, side: int, world_size: int) -> PackedInt32Array:
+	var none := PackedInt32Array()
+	var c0 := _at(floori(p.x), floori(p.y), origin, side)
+	if c0 < 0:
+		return none
+	var l0 := level[c0]
+	var ri := ceili(p.z * POOL_SPREAD) + 2
+	var ph1 := GenFields.h01(seed_value, salt, 0, 444) * TAU
+	var ph2 := GenFields.h01(seed_value, salt, 1, 444) * TAU
 	var inside := PackedInt32Array()
 	var total := 0
 	for dy in range(-ri, ri + 1):
 		for dx in range(-ri, ri + 1):
 			var x := floori(p.x) + dx
 			var y := floori(p.y) + dy
-			var i := y * size + x
+			var i := _at(x, y, origin, side)
+			if i < 0:
+				return none
 			var q := Vector2(x + 0.5 - p.x, y + 0.5 - p.y)
 			var ang := q.angle()
 			var edge := p.z * (1.0 + 0.2 * sin(ang * 2.0 + ph1) + 0.1 * sin(ang * 3.0 + ph2))
 			var d := q.length()
 			if d < edge + 2.0:
 				# The pool and the ground round it: dry land, no river.
-				if c.land[i] == 0 or c.water[i] != 0:
-					return false
+				if land[i] == 0 or water[i] != 0:
+					return none
 			if d >= edge:
 				continue
 			total += 1
-			if level[i] == l0 and level[i - 1] >= l0 and level[i + 1] >= l0 and level[i - size] >= l0 and level[i + size] >= l0:
+			if level[i] == l0 and level[i - 1] >= l0 and level[i + 1] >= l0 and level[i - side] >= l0 and level[i + side] >= l0:
 				inside.append(i)
 	# One piece of water: the level test lets a fifth of the disc fall out, and
 	# over a terrace step that split a pool into scraps of one to four tiles.
-	inside = _largest_piece(inside, size)
+	inside = _largest_piece(inside, side)
 	if inside.size() < 12 or inside.size() < total * 0.8:
-		return false
+		return none
+	# Back to the world's indices, so a proposal names the same tiles in any square.
+	var world := PackedInt32Array()
 	for i in inside:
-		c.water[i] = 2
-		c.pool_ground[i] = g
-	return true
+		world.append((origin.y + i / side) * world_size + origin.x + i % side)
+	return world
 
 
 ## The biggest 4-connected run of `tiles` (indices into a `size`-wide grid).
@@ -561,7 +782,14 @@ static func _largest_piece(tiles: PackedInt32Array, size: int) -> PackedInt32Arr
 ## Drain every pool with a tile inside the circle (whole pools only, so none
 ## is left as a sliver).
 static func drain_pools(c: GenContext, at: Vector2, radius: float) -> void:
-	for q in c.pools:
+	drain_into(c.pools, c.water, c.size, Vector2i.ZERO, c.size, at, radius)
+
+
+## `drain_pools` over a square `side` wide at `origin` in a world `world_size`
+## wide: the whole world, or a section, which drains only its own tiles.
+static func drain_into(pools: PackedVector3Array, water: PackedByteArray, side: int, origin: Vector2i, world_size: int,
+		at: Vector2, radius: float) -> void:
+	for q in pools:
 		if Vector2(q.x, q.y).distance_to(at) >= radius + q.z * 1.3:
 			continue
 		var ri := ceili(q.z * 1.3) + 1
@@ -569,23 +797,33 @@ static func drain_pools(c: GenContext, at: Vector2, radius: float) -> void:
 			for dx in range(-ri, ri + 1):
 				var x := floori(q.x) + dx
 				var y := floori(q.y) + dy
-				if x < 0 or y < 0 or x >= c.size or y >= c.size:
+				if x < 0 or y < 0 or x >= world_size or y >= world_size:
 					continue
-				var i := y * c.size + x
-				if c.water[i] == 2:
-					c.water[i] = 0
+				var i := _at(x, y, origin, side)
+				if i >= 0 and water[i] == 2:
+					water[i] = 0
 
 
 ## Drain every pool a road runs through, whole, so none is left as slivers.
 static func drain_crossed(c: GenContext) -> void:
-	for q in c.pools:
+	drain_crossed_into(c.pools, c.road, c.water, c.size, Vector2i.ZERO, c.size)
+
+
+## `drain_crossed` over a square: a pool is crossed when a road tile lies in its
+## box, which a section sees when the box lies within it.
+static func drain_crossed_into(pools: PackedVector3Array, road: PackedByteArray, water: PackedByteArray, side: int, origin: Vector2i,
+		world_size: int) -> void:
+	for q in pools:
 		var ri := ceili(q.z * 1.3) + 1
 		var crossed := false
 		for dy in range(-ri, ri + 1):
 			for dx in range(-ri, ri + 1):
 				var x := floori(q.x) + dx
 				var y := floori(q.y) + dy
-				if x >= 0 and y >= 0 and x < c.size and y < c.size and c.road[y * c.size + x] != 0:
+				if x < 0 or y < 0 or x >= world_size or y >= world_size:
+					continue
+				var i := _at(x, y, origin, side)
+				if i >= 0 and road[i] != 0:
 					crossed = true
 		if crossed:
-			drain_pools(c, Vector2(q.x, q.y), 0.0)
+			drain_into(pools, water, side, origin, world_size, Vector2(q.x, q.y), 0.0)

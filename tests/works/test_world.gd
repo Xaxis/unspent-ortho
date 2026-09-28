@@ -61,9 +61,12 @@ func test_a_patrol_route_runs_along_the_survey_the_machines_laid_everything_else
 
 ## Finding the depots, in GRID yardsticks (TestCase.grid_work): a sweep in script
 ## over what the world recorded. The interpreted yardstick drifted 1.57x across
-## CI's CPUs for it, the grid 1.22x. Calibrated 2026-09-27 alone on four CI CPUs
-## and this laptop: 2.53-2.81 shipped, 5.04-5.58 doubled; the bar between.
-const SITES_BAR := 3.75
+## CI's CPUs for it, the grid 1.22x. The sweep's cost is the world's: it looks
+## for yard room round each region's busiest work, and region-sited works
+## (GEN 44) find it sooner, so seed 1 at 512 costs half what it did. Calibrated
+## 2026-09-27 alone on this laptop: 1.08 shipped, 2.14 doubled; the bar between,
+## at the headroom the CI calibration had (1.8x shipped). Recheck on CI.
+const SITES_BAR := 1.9
 
 
 ## The start budget is real (docs/ROADMAP.md): finding the depots is a search
