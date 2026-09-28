@@ -83,6 +83,10 @@ var moment: Moment
 var mobs: Array[MobState] = []
 ## Steps to the player over the ground, for chasers that meet a cliff.
 var nav: NavField
+## A body's own way round (NavField.for_body), by mob id: laid by its own move's
+## rules to wherever that body is going, the player or where it last knew them
+## (`route`).
+var _wide_nav: Dictionary = {}
 ## Simulation milliseconds.
 var now := 0.0
 ## Real seconds that `now` corresponds to (Body stores real-time seconds).
@@ -351,6 +355,39 @@ func _dodge() -> void:
 	var down := downwind() if hero.kit.vane else Vector2.ZERO
 	hero.dodge_carry = FightKit.VANE_CARRY if down != Vector2.ZERO and absf(hero.dodge_dir.angle_to(down)) <= FightKit.VANE_ARC else 1.0
 	emit(&"dodge", {})
+	if hero.kit.ploughshare:
+		_share_turns()
+
+
+## The ploughshare (FightKit.ploughshare): every charging machine whose bite is
+## winding up or live, and whose line this dodge crosses square, is turned off
+## the share -- carried on along the way it faces for a run as long again, and
+## left spent SHARE_SPENT as long. Each one turned takes SHARE_WIND dodges'
+## breath more: the shove is the body's, not the glove's. A charge's bite is committed on its facing,
+## often after the run itself has ended against the body it reached, so it is
+## the bite that is turned, not the run.
+func _share_turns() -> void:
+	var square := sin(FightKit.SHARE_ARC)
+	for m in mobs:
+		if not m.alive or not m.machine or m.approach != &"charge" or m.pos.distance_to(hero.pos) > FightKit.SHARE_REACH:
+			continue
+		var phase := m.blow_phase(now)
+		if phase != &"windup" and phase != &"active":
+			continue
+		var line := Vector2.from_angle(m.facing)
+		if absf(hero.dodge_dir.dot(line)) > square:
+			continue
+		var turned := m.blow.copy()
+		turned.recovery = int(turned.recovery * FightKit.SHARE_SPENT)
+		turned.cooldown = int(turned.cooldown * FightKit.SHARE_SPENT)
+		m.blow = turned
+		m.bearing = line
+		m.charging = true
+		m.run_from = m.pos
+		m.last_think_pos = m.pos
+		m.run_until = maxf(m.run_until, now) + Brains.RUN_MS
+		hero.wind -= FightRules.DODGE_COST * FightKit.SHARE_WIND
+		emit(&"share_turned", {"mob": m})
 
 
 func _try_pull() -> void:
@@ -371,6 +408,9 @@ func _beat() -> void:
 	for i in range(lock_walls.size() - 1, -1, -1):
 		if lock_walls[i].w <= now / 1000.0:
 			lock_walls.remove_at(i)
+	for t: Vector2i in furrows.keys():
+		if float(furrows[t]) <= now / 1000.0:
+			furrows.erase(t)
 	var in_ring := hush_disc(hero.pos)
 	for m in mobs:
 		if not m.alive or m.removed:
@@ -387,7 +427,11 @@ func _beat() -> void:
 		if noticed:
 			m.lost_beats = 0
 			m.last_seen = hero.pos
+			m.lost_at = -1.0
+			m.hunt.clear()
 		else:
+			if m.lost_beats == 0:
+				m.lost_at = now
 			m.lost_beats += 1
 		var d := Senses.chebyshev(m.pos, hero.pos)
 		var reach := float(m.stat("reach", 1))
@@ -423,7 +467,7 @@ func _beat() -> void:
 					else:
 						m.set_mood(MobState.CHASING, now)
 			MobState.CHASING:
-				if m.lost_beats >= _forget(m):
+				if m.lost_beats >= _forget(m) and not hunting(m):
 					m.disturbed = false
 					m.set_mood(MobState.IDLE, now)
 				elif m.approach != &"dart" and m.pos.distance_to(m.home) > float(m.stat("tether", 30)):
@@ -432,7 +476,7 @@ func _beat() -> void:
 				elif m.approach != &"dart" and d <= reach:
 					m.set_mood(MobState.ATTACKING, now)
 			MobState.ATTACKING:
-				if m.lost_beats >= _forget(m):
+				if m.lost_beats >= _forget(m) and not hunting(m):
 					m.disturbed = false
 					m.set_mood(MobState.IDLE, now)
 				elif d > reach + 4.0 and not m.committed(now):
@@ -596,6 +640,22 @@ func _suspicion(m: MobState, how: StringName) -> void:
 ## Beats of losing the player before a body gives up. One that never left its
 ## work for the player in the first place (a wary keeper that let them inside
 ## its guard) settles back twice as fast as one that came hunting.
+## A roused keeper that has lost the player HUNTS rather than forgets
+## (Brains._hunt): to where it last knew them, then a sweep round that point,
+## HUNT_MS at most. It forgets once the sweep is done or the time is up; past its
+## tether it goes home as any body does. Hiding still buys time: it hunts what it
+## knows, never where the player truly is.
+const HUNT_MS := 20000.0
+
+
+func hunting(m: MobState) -> bool:
+	if not Sentinels.is_keeper(m.row) or m.lost_at < 0.0:
+		return false
+	if now - m.lost_at > HUNT_MS:
+		return false
+	return m.hunt.is_empty() or m.hunt_i < m.hunt.size()
+
+
 func _forget(m: MobState) -> int:
 	var f := int(m.stat("forget", 20))
 	if m.watchful():
@@ -824,9 +884,13 @@ func _move_mob(m: MobState, dt: float) -> void:
 		m.pos = m.drop_from.lerp(m.drop_at, fall)
 		m.speed = was.distance_to(m.pos) / dt
 		return
+	# Furrows (a row that bogs): off its lane in the drift it wallows.
+	var bog := bogged(m)
+	if bog and m.charging:
+		_bog(m)
 	if not m.committed(now) and not m.stunned(now):
 		m.facing = rotate_toward(m.facing, m.aim, m.turn_rate_at(now) * dt)
-	var v := m.want
+	var v := m.want * (BOG_SLIP if bog else 1.0)
 	if m.stunned(now):
 		v = Vector2.ZERO
 	else:
@@ -877,13 +941,14 @@ func _move_mob(m: MobState, dt: float) -> void:
 	if world != null and Swim.swims(m.row) and Swim.deep(world, m.pos):
 		v *= Tuning.SWIM_FACTOR
 	var before := m.pos
+	_break_through(m, v * dt)
 	# Deep water stops a body that cannot take it, which is most of the roster
 	# (Swim): the few that cross carry it on their own row, not here.
 	# A body whose row says it CLIMBS steps that many levels in one move, which is
 	# a walker's ride with a longer stride (`CraftRide.levels`, the one field
 	# `WorldQuery.passable` already reads for a walker rig). A climber does not
 	# swim: the ride answers deep water as a walker would.
-	var next := query.move_body(m.pos, v * dt, minf(m.radius, 0.45), climber(m.row), Swim.may_cross(m.row), tall_of(m.row)) if query != null else m.pos + v * dt
+	var next := query.move_body(m.pos, v * dt, move_radius(m), climber(m.row), Swim.may_cross(m.row), tall_of(m.row)) if query != null else m.pos + v * dt
 	next = _held_by_walls(m, next)
 	var keeps: Array = m.row.get("keeps_to", [])
 	if not keeps.is_empty() and world != null:
@@ -893,6 +958,10 @@ func _move_mob(m: MobState, dt: float) -> void:
 			next = nx if _ground_in(nx, keeps) else (ny if _ground_in(ny, keeps) else m.pos)
 	m.pos = next
 	m.speed = before.distance_to(m.pos) / dt
+	# A body that bogs leaves its furrow behind it, a tile at a time as it leaves one.
+	if not (m.row.get("bogs", []) as Array).is_empty() and Vector2i(floori(before.x), floori(before.y)) != Vector2i(floori(next.x), floori(next.y)):
+		_furrow(before)
+		emit(&"furrowed", {"at": before, "angle": m.facing})
 
 
 ## Levels a body of this row may step in one move, as a ride, or null for the
@@ -1089,6 +1158,39 @@ func hero_level_now() -> int:
 ## roster height, or the player's.
 const HERO_TALL := int(ceil(Tuning.PLAYER_HEIGHT / WorldData.STEP))
 const HERO_CROUCH_TALL := int(ceil(Tuning.PLAYER_CROUCH_HEIGHT / WorldData.STEP))
+## A BODY THAT BREAKS (Roster `breaks`) GOES THROUGH A WOOD: what its drawn body
+## is about to walk into, of the kinds it declares, is taken for good
+## (`world.depleted`, saved as any taken prop) and said (`felled`: its id, kind,
+## where it stood and the way it was pushed), so the view throws it over. It is
+## moved at the player's radius and drawn three tiles wide; without this it drew
+## itself straight through the trees it walked among.
+func _break_through(m: MobState, step: Vector2) -> void:
+	if query == null or world == null or not m.row.has("breaks") or step.length_squared() < 1e-8:
+		return
+	var through := NavField.breaks_of(m.row)
+	if through.is_empty():
+		return
+	var ahead := m.pos + step
+	var t := world.table
+	for row in query.rows_near(ahead, m.radius + 1.5):
+		if not through.has(t.kind[row]) or world.depleted.has(t.id[row]):
+			continue
+		var at := t.pos[row]
+		var rr := t.solid[row] + m.radius
+		# Only what it pushes INTO: a tree it is leaving behind is not felled by it.
+		if at.distance_squared_to(ahead) >= rr * rr or at.distance_squared_to(ahead) >= at.distance_squared_to(m.pos):
+			continue
+		world.depleted[t.id[row]] = INF
+		emit(&"felled", {"id": t.id[row], "kind": t.kind[row], "at": at, "dir": step.normalized(), "mob": m})
+
+
+## The radius a body is moved at (WorldQuery.move_body): no wider than the
+## player's, however wide it is drawn, so a keeper passes where its fight says
+## it stands and what it `breaks` goes down round it.
+static func move_radius(m: MobState) -> float:
+	return minf(m.radius, 0.45)
+
+
 static func tall_of(row: Dictionary) -> int:
 	return int(ceil(float(row.get("height", 1.0)) / WorldData.STEP))
 
@@ -1235,6 +1337,60 @@ func _lock_behind(from: Vector2, to: Vector2) -> void:
 			return
 
 
+## FURROWS (a row that `bogs`, the Snowfield's plough): tiles it has ploughed,
+## (Vector2i) -> the sim second the furrow fills in again.
+var furrows: Dictionary = {}
+
+
+## How long a furrow stays packed before the drift fills it, sim seconds, and
+## what share of its pace a body keeps wallowing off one.
+const FURROW_SECONDS := 60.0
+const BOG_SLIP := 0.5
+
+
+## Plough the strip across `at`, three tiles wide: packed ice a body that bogs
+## runs on. (A body leaves a furrow one tile wide behind it as it goes, `_furrow`.)
+func plough_at(at: Vector2) -> void:
+	var c := Vector2i(floori(at.x), floori(at.y))
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			furrows[c + Vector2i(dx, dy)] = now / 1000.0 + FURROW_SECONDS
+
+
+func _furrow(at: Vector2) -> void:
+	furrows[Vector2i(floori(at.x), floori(at.y))] = now / 1000.0 + FURROW_SECONDS
+
+
+func on_furrow(p: Vector2) -> bool:
+	return float(furrows.get(Vector2i(floori(p.x), floori(p.y)), -INF)) > now / 1000.0
+
+
+## Whether `m` is wallowing: its row bogs in the ground under it, and it is not on
+## one of its furrows.
+func bogged(m: MobState) -> bool:
+	var bogs: Array = m.row.get("bogs", [])
+	if bogs.is_empty() or world == null or on_furrow(m.pos):
+		return false
+	return bogs.has(world.ground_at(floori(m.pos.x), floori(m.pos.y)))
+
+
+## A run carried off its furrow into the drift: it is over, the tell it was
+## winding up is lost, and the body stands stalled with its part lit (once per
+## STALL_EVERY_MS, as every stall). No run starts in a drift (Brains._charge), so
+## a body running bogged has just come off its lane.
+func _bog(m: MobState) -> void:
+	m.charging = false
+	m.run_until = minf(m.run_until, now)
+	_break_tell(m)
+	var stalled := now >= m.stall_ready_at
+	if stalled:
+		m.stall_ready_at = now + FightRules.STALL_EVERY_MS
+		m.stun_until = maxf(m.stun_until, now + FightRules.STALL_MS)
+		m.flare_until = now + FightRules.PART_FLARE_MS
+		m.dark_until = m.flare_until + FightRules.PART_DARK_MS
+	emit(&"bogged", {"mob": m, "at": m.pos, "stalled": stalled})
+
+
 ## Whether a machine is coming for the player within LOCK_HUNTED tiles: the lock
 ## shuts a way only on a player being hunted, or a walk through a wood would
 ## spend every charge on the trees.
@@ -1302,7 +1458,7 @@ func undertow(m: MobState) -> bool:
 	if pull > 0.0:
 		var step := to.normalized() * pull
 		# Over ground it could walk, under roofs it could stand under.
-		m.pos = query.move_body(m.pos, step, minf(m.radius, 0.45), climber(m.row), Swim.may_cross(m.row), tall_of(m.row)) if query != null else m.pos + step
+		m.pos = query.move_body(m.pos, step, move_radius(m), climber(m.row), Swim.may_cross(m.row), tall_of(m.row)) if query != null else m.pos + step
 	m.charging = false
 	_break_tell(m)
 	if now >= m.stall_ready_at:
@@ -1692,8 +1848,17 @@ func _settle() -> void:
 		_end(&"away")
 		return
 	# Left behind: far off for a while and not closing. Something still coming
-	# round a cliff to you is closing, and is still a fight.
-	if nearest > FightRules.AWAY_DISTANCE:
+	# round a cliff to you is closing, and is still a fight; so is a keeper still
+	# hunting you (`hunting`), however far round the step it is looking.
+	var hunted := false
+	for id: int in fight_mobs:
+		var fm: MobState = fight_mobs[id]
+		hunted = hunted or (fm.alive and not fm.removed and hunting(fm))
+	if hunted:
+		_far_since = -1.0
+		_far_best = INF
+		_best_at = now
+	elif nearest > FightRules.AWAY_DISTANCE:
 		if _far_since < 0.0 or nearest < _far_best - 0.5:
 			_far_since = now
 			_far_best = nearest
@@ -1725,6 +1890,32 @@ func refresh_nav() -> void:
 	nav.update(hero.pos)
 	if nav.builds != before:
 		_nav_at = now
+
+
+## The way a body walks from where it stands toward `target`: the next step of
+## its own field (NavField.for_body), rebuilt when the target changes tile.
+## Vector2.ZERO where there is none within the field.
+func route(m: MobState, target: Vector2) -> Vector2:
+	var field := _field_for(m, target)
+	return field.direction(m.pos) if field != null else Vector2.ZERO
+
+
+## Steps from `from` to `target` over the ground `m`'s own move can take
+## (NavField.FAR where it cannot get there within the field).
+func route_steps(m: MobState, target: Vector2, from: Vector2) -> int:
+	var field := _field_for(m, target)
+	return field.steps_from(from) if field != null else NavField.FAR
+
+
+func _field_for(m: MobState, target: Vector2) -> NavField:
+	if world == null or query == null:
+		return null
+	var field: NavField = _wide_nav.get(m.id)
+	if field == null:
+		field = NavField.for_body(world, query, m.row, move_radius(m))
+		_wide_nav[m.id] = field
+	field.update(target)
+	return field
 
 
 ## Tiles to the player over the ground (the way round a cliff, not through it),

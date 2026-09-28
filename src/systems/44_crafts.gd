@@ -295,11 +295,7 @@ func _step_off_state() -> void:
 ## Move the body, the fight body with it (the contract: in a running game the
 ## fight body owns position), and the land about it.
 func _put_body(to: Vector2) -> void:
-	var hero := game.player.hero
-	if hero != null:
-		hero.pos = to
-		hero.move = Vector2.ZERO
-	game.player.pos = to
+	to = game.player.place(to)
 	game.player.sync_view(0.0)
 	if game.view != null:
 		game.view.ensure_near(to)

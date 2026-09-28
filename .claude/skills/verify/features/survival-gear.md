@@ -37,6 +37,9 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   `tools/test.sh test_hush_wrap` (its walk prints), `tools/tour.sh tours/hush_wrap.tour` (the wrap worn).
   The vane cloak (cloak_vane, back): in a strong wind a dodge downwind carries twice as far:
   `tools/test.sh test_vane_cloak` (its bout and escape print), `tools/tour.sh tours/vane_cloak.tour` (the cloak worn, in a storm).
+  The ploughshare (plough_core, hands): a dodge across a charge whose bite is coming turns it on past, spent twice
+  as long; each turn costs half a dodge's breath: `tools/test.sh test_ploughshare` (its bout prints),
+  `tools/tour.sh tours/ploughshare.tour` (options in its header; `share_turned` claims the turn).
   The cable line (brace_cable / brace_ram, hands): the grapple takes a working part that faces it, stalls it, pulls you in:
   `tools/test.sh test_cable_brace` (its bout prints), `tools/tour.sh tours/cable_brace.tour` (options in its header).
   A scan over a dart says its answer at once ("It takes and goes. Break its sight."):

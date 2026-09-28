@@ -123,6 +123,9 @@ var road: PackedByteArray
 var ramp: PackedByteArray
 ## Ground override + 1 for special sites (tips, stone circles), 0 = none.
 var site_ground: PackedByteArray
+## The plan's rows for `site_ground`: (x, y, radius, ground, country) per patch,
+## in the order laid (`GenScatter.patch_square`). Doubles, as the radius is.
+var site_patches: PackedFloat64Array = PackedFloat64Array()
 
 # --- shore detail ---
 ## Exact 4-neighbour steps from the sea, capped (see GenSurface).
@@ -138,6 +141,9 @@ var rise: PackedFloat32Array
 var recipe: PackedByteArray
 ## Still pools and tarns: x, y centre (tiles) and radius, in the order laid.
 var pools: PackedVector3Array = PackedVector3Array()
+## Each village's levelled platform, by village id (`GenSettle._lay_villages`):
+## what a section needs to lay its villages again from the plan's rows.
+var village_platforms: PackedFloat32Array = PackedFloat32Array()
 ## Ground of each still-water tile (the country of the pool's centre decides,
 ## so one pool is one water).
 var pool_ground: PackedByteArray

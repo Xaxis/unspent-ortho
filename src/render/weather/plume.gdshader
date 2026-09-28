@@ -30,6 +30,9 @@ render_mode blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
 global uniform float plume_now;
 
 uniform bool pooled = false;
+// Steam in the cold (MobFx.plume): the puff carries its colour as its own light,
+// so the scene cannot grey it against snow. Off, it is lit by what reaches it.
+uniform bool unshaded = false;
 // Tweened mode: the puff's colour (sRGB) and how opaque it is now, 0..1.
 uniform vec3 tint : source_color = vec3(0.8, 0.8, 0.8);
 uniform float density = 0.0;
@@ -83,6 +86,10 @@ void fragment() {
 	// A little denser and darker in its core, thinner and lighter at its rim.
 	c *= mix(1.08, 0.9, body);
 	ALBEDO = matter_albedo(c);
+	if (unshaded) {
+		EMISSION = ALBEDO;
+		ALBEDO *= 0.1;
+	}
 	ALPHA = clamp(a, 0.0, 1.0);
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;

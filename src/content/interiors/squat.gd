@@ -16,6 +16,12 @@ extends RefCounted
 const ROOM := Rect2i(0, 0, 5, 4)
 
 
+## People sleep rough in it, in the machines' own gaps: what is in it is theirs (InteriorKind.seats).
+const SEATS := &"squatters"
+## Where what they keep is kept, the first of these it laid (KeptBy).
+const KEPT_BY: Array[StringName] = [&"chest"]
+
+
 static func make() -> InteriorKind:
 	var k := InteriorKind.new()
 	k.id = &"squat"

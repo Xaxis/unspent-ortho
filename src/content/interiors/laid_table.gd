@@ -15,6 +15,9 @@ extends RefCounted
 ## `two` a couple and their old one's empty chair, `nursery` a child still small
 ## enough to be fed by hand) -- what is at the places and in the beds.
 ##
+## And the larder safe by the door, its strongbox (Interiors.LOOT): what the
+## hatch put out and nobody ate, put by.
+##
 ## STORY SLOTS: the table (`desk:laid_table`), the schedule plate by the hatch
 ## (`wall:schedule_plate`), and the height marks on the bedroom's door frame
 ## (`wall:height_marks`). Laid in the canonical frame: the way in is in the south
@@ -99,6 +102,9 @@ static func _fit(l: InteriorLayout) -> void:
 	_put(l, &"bed", Vector2(7.3, 3.1), Vector2(-1, 0), 0.5)
 	if l.dressing != &"two":
 		_put(l, &"cot", Vector2(5.7, 0.6), Vector2(0, 1), 0.3)
+	# The larder safe in the corner by the door, the house's strongbox
+	# (Interiors.LOOT): the meals nobody came for, put by in the plan's own tins.
+	_put(l, &"strongbox", Vector2(0.52, 3.2), Vector2(1, 0), 0.36)
 	# The door seal: what keeps the mist out, and hums.
 	_put(l, &"door_seal", l.door, Vector2(0, -1), 0.0)
 	l.walks.append(PackedVector2Array([l.door, l.table + Vector2(0.0, 1.2)]))

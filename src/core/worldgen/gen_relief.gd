@@ -314,12 +314,22 @@ static func _dunes_soft(c: GenContext) -> PackedFloat32Array:
 
 
 ## Float elevation to integer levels; lonely one-tile spikes and pits removed.
+## A test's hook: set, `terrace` keeps what it terraces from in `before`.
+static var keeping := false
+static var before: Dictionary = {}
+
+
 static func terrace(c: GenContext) -> void:
-	var size := c.size
-	var land := c.land
-	var water := c.water
-	var elev := c.elev
-	var level := c.w.level
+	if keeping:
+		before = {"elev": GenFields.snapshot(c.elev), "land": GenFields.snapshot(c.land), "water": GenFields.snapshot(c.water)}
+	terrace_square(c.elev, c.land, c.water, c.w.level, c.size)
+
+
+## Terraces over one square of `size` tiles: the whole world, or a section with
+## one tile of the world round its own (the spike and pit pass reads the four
+## neighbours; tests/stream/test_relief_window.gd). Its outermost ring is levelled
+## but never judged a spike or a pit.
+static func terrace_square(elev: PackedFloat32Array, land: PackedByteArray, water: PackedByteArray, level: PackedInt32Array, size: int) -> void:
 	GenFields.rows(size, func(y0: int, y1: int) -> void:
 		for i in range(y0 * size, y1 * size):
 			if land[i] == 0:
@@ -329,18 +339,18 @@ static func terrace(c: GenContext) -> void:
 	)
 	# Spikes and pits are judged against the undisturbed levels, so bands can
 	# work in parallel.
-	var before: PackedInt32Array = GenFields.snapshot(level)
+	var before_l: PackedInt32Array = GenFields.snapshot(level)
 	GenFields.rows(size - 1, func(y0: int, y1: int) -> void:
 		for y in range(maxi(y0, 1), y1):
 			for x in range(1, size - 1):
 				var i := y * size + x
 				if land[i] == 0 or water[i] != 0:
 					continue
-				var l := before[i]
-				var a := before[i - 1]
-				var b := before[i + 1]
-				var d := before[i - size]
-				var u := before[i + size]
+				var l := before_l[i]
+				var a := before_l[i - 1]
+				var b := before_l[i + 1]
+				var d := before_l[i - size]
+				var u := before_l[i + size]
 				if a > l and b > l and d > l and u > l:
 					level[i] = mini(mini(a, b), mini(d, u))
 				elif a < l and b < l and d < l and u < l:

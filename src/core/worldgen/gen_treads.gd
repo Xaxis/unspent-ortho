@@ -711,11 +711,21 @@ const FRESH := Ground.ROCK
 ## What lies round a tread, appended after every other prop.
 static func dress(c: GenContext) -> void:
 	var w := c.w
+	# Every tread's pads, so each lays nothing in another's craters: a crater is
+	# crushed at load, but never the treads' own pieces (19_colossi), so a post
+	# a second tread stood in the first one's crater stood there for good.
+	var treads: Array[Dictionary] = []
 	for m: Dictionary in w.landmarks:
-		if StringName(m.get("kind", &"")) != &"tread":
-			continue
+		if StringName(m.get("kind", &"")) == &"tread":
+			treads.append(m)
+	for m: Dictionary in treads:
 		var at: Vector2 = m.pos
 		var pads: Array = m.pads
+		var others: Array[Vector3] = []
+		for o: Dictionary in treads:
+			if o != m:
+				for op: Vector3 in (o.pads as Array):
+					others.append(op)
 		var n := 0
 		var first := w.props.size()
 		for p: Vector3 in pads:
@@ -725,7 +735,7 @@ static func dress(c: GenContext) -> void:
 			for s in 5:
 				var a := GenFields.h01(c.s, n, 7013, s) * TAU
 				var r := float(p.z) + 0.6 + GenFields.h01(c.s, n, 7014, s) * 1.2
-				_put(c, PropKind.WRECKAGE if s % 2 == 0 else PropKind.DEBRIS, Vector2(p.x, p.y) + Vector2(cos(a), sin(a)) * r)
+				_put(c, PropKind.WRECKAGE if s % 2 == 0 else PropKind.DEBRIS, Vector2(p.x, p.y) + Vector2(cos(a), sin(a)) * r, others)
 			# Spoil on the rim: what it broke and threw out, and plate off the pad.
 			# Placed kinds only (GenScatter.PLACED): a crater is cut in any
 			# landscape, and a boulder belongs to the ones that grow them.
@@ -733,15 +743,15 @@ static func dress(c: GenContext) -> void:
 				var a := GenFields.h01(c.s, n, 7011, s) * TAU
 				var r := Treads.floor_r(p) + Treads.STEP_W * float(Treads.DEPTH + 2) + GenFields.h01(c.s, n, 7012, s) * 4.0
 				var q := Vector2(p.x, p.y) + Vector2(cos(a), sin(a)) * r
-				_put(c, PropKind.WRECKAGE if s % 3 == 0 else PropKind.DEBRIS, q)
+				_put(c, PropKind.WRECKAGE if s % 3 == 0 else PropKind.DEBRIS, q, others)
 			n += 1
 			# The plan keeps a survey post on the far side of every crater: it
 			# measures its own footprint.
 			var out := (Vector2(p.x, p.y) - at).normalized()
-			_put(c, PropKind.SURVEY, Vector2(p.x, p.y) + out * (Treads.rim_r(p) + 5.0))
+			_put(c, PropKind.SURVEY, Vector2(p.x, p.y) + out * (Treads.rim_r(p) + 5.0), others)
 		# Under the ankle, between the toes, one more post: the only thing in
 		# the arch a person's size.
-		_put(c, PropKind.SURVEY, at + Vector2(3.0, -2.0))
+		_put(c, PropKind.SURVEY, at + Vector2(3.0, -2.0), others)
 		# What this stage laid is the tread's own and is never crushed by it
 		# (19_colossi reads these ids).
 		m["props"] = Vector2i(first, w.props.size())
@@ -749,9 +759,13 @@ static func dress(c: GenContext) -> void:
 
 ## Nothing the foot throws lands in a village's own ground: the crater is sited
 ## clear of the clearings, but its spoil reaches past the rim, and a tread sited
-## near one would drop plate in the square (seed 42, Chalkstone).
-static func _put(c: GenContext, kind: int, p: Vector2) -> void:
+## near one would drop plate in the square (seed 42, Chalkstone). Nor in another
+## tread's craters (`others`, their pads), out to the rim.
+static func _put(c: GenContext, kind: int, p: Vector2, others: Array[Vector3]) -> void:
 	var w := c.w
+	for op: Vector3 in others:
+		if p.distance_to(Vector2(op.x, op.y)) < Treads.rim_r(op):
+			return
 	var i := floori(p.y) * c.size + floori(p.x)
 	if i < 0 or i >= c.n or w.level[i] <= 0 or Ground.is_water(w.ground[i]) or c.road[i] != 0 or c.village[i] != 0:
 		return

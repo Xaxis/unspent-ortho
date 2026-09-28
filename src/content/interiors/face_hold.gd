@@ -34,6 +34,10 @@ extends RefCounted
 ## landscape (StoryRooms.words_for).
 
 const Home := preload("res://src/content/interiors/home.gd")
+## A household lives in it: what is in it is theirs (InteriorKind.seats), kept
+## on the words room's shelves (KeptBy), given once to a stranger on good terms.
+const SEATS := &"household"
+const KEPT_BY: Array[StringName] = [&"words_shelves"]
 ## The sort room, and the rooms cut behind and beside it, in tiles.
 const SORT := Vector2i(9, 5)
 const CELL := Vector2i(3, 3)
@@ -193,8 +197,11 @@ static func _fit(l: InteriorLayout, rng: RandomNumberGenerator, land: int, house
 	_slot(l, land, &"desk", &"the_sort", l.table, Vector2(0, 1))
 	# The words room: shelves on its back wall and both ends.
 	var wb := Vector2(float(words.position.x) + words.size.x * 0.5, float(words.position.y) + 0.35)
-	_put(l, &"words_shelves", wb, Vector2(0, 1), 0.3, {"wide": float(words.size.x) - 0.4})
-	_slot(l, land, &"wall", &"words_room", wb, Vector2(0, 1))
+	var wide := float(words.size.x) - 0.4
+	_put(l, &"words_shelves", wb, Vector2(0, 1), 0.3, {"wide": wide})
+	# The labels' slot at the shelves' end: at their middle a hand is at the
+	# kept-by shelf, at the end the chalk is read (KeptBy.at_hand).
+	_slot(l, land, &"wall", &"words_room", wb + Vector2(wide * 0.5 - 0.3, 0.0), Vector2(0, 1))
 	# The lookout's slit.
 	var slit := Vector2(float(lookout.position.x) + LOOKOUT.x * 0.5, float(lookout.end.y) - 0.3)
 	_slot(l, land, &"wall", &"lookout", slit, Vector2(0, -1))

@@ -237,6 +237,62 @@ func _stop(seconds: float) -> void:
 	_stop_until = maxf(_stop_until, Time.get_ticks_msec() / 1000.0 + seconds)
 
 
+## A KEEPER GOING THROUGH A WOOD (FightSim._break_through). The standing tree
+## is taken out of its chunk; in its place its own model leans, then comes over
+## away from the machine that pushed it, as a thing that heavy falls, and lies
+## there for the session (the taken tree is what is saved: the scar). The crown
+## shudders its leaves or its snow off as it goes, and it cracks. A shrub is
+## flattened: a burst of its leaves and the same crack, and it is gone.
+const FALLEN_KEPT := 40
+const FALL_LEAN_S := 0.25
+const FALL_S := 0.75
+var _fallen: Array[Node3D] = []
+var _felled_at := -INF
+
+
+func _fell(e: Dictionary) -> void:
+	_felled_at = Time.get_ticks_msec() / 1000.0
+	var w := game.world
+	var p := w.prop(int(e.id))
+	if p == null:
+		return
+	if game.view != null:
+		game.view.refresh_props(p)
+	var fx := _fx_parent()
+	var base := w.to_3d(p.pos)
+	var dir: Vector2 = e.dir
+	var tree := int(e.kind) in [PropKind.PINE, PropKind.SNOW_PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE]
+	var leaf := Palette.RIME[5] if int(e.kind) == PropKind.SNOW_PINE else (Palette.MOSS[3] if int(e.kind) == PropKind.BROADLEAF else Palette.SPRUCE[3])
+	Events.sfx.emit(&"break", base)
+	var h := 2.4 * p.scale if tree else 0.5
+	MobFx.puffs(fx, base + Vector3(0, h * 0.8, 0), dir, leaf, 6 if tree else 4, 1.1 if tree else 0.7, int(e.id))
+	if not tree:
+		return
+	var country := w.country_at(floori(p.pos.x), floori(p.pos.y))
+	var node := PropModels.node(p.kind, PropModels.variant_of(p, w.seed_value, country), country)
+	if game.view != null:
+		node.material_override = game.view.world_material()
+	var pivot := Node3D.new()
+	fx.add_child(pivot)
+	pivot.global_position = base
+	pivot.add_child(node)
+	node.rotation.y = p.rot
+	node.scale = Vector3.ONE * p.scale
+	# Over away from the machine: about the axis across the way it was pushed.
+	var across := Vector3(dir.y, 0.0, -dir.x).normalized()
+	var tw := pivot.create_tween()
+	tw.tween_method(func(a: float) -> void: pivot.basis = Basis(across, a), 0.0, -0.12, FALL_LEAN_S).set_ease(Tween.EASE_OUT)
+	tw.tween_method(func(a: float) -> void: pivot.basis = Basis(across, a), -0.12, -1.5, FALL_S).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tw.tween_callback(func() -> void:
+		MobFx.puffs(fx, base + Vector3(-dir.x, 0.2, -dir.y) * -h * 0.7, dir, leaf, 5, 1.0, int(e.id) + 1)
+		Events.sfx.emit(&"fall_boom", base))
+	_fallen.append(pivot)
+	while _fallen.size() > FALLEN_KEPT:
+		var old: Node3D = _fallen.pop_front()
+		if is_instance_valid(old):
+			old.queue_free()
+
+
 func _at3(p: Vector2, lift: float = 0.0) -> Vector3:
 	return game.world.to_3d(p) + Vector3(0, lift, 0)
 
@@ -272,6 +328,48 @@ func _dust_colour(p: Vector2) -> Color:
 
 func _fx_parent() -> Node:
 	return game
+
+
+## One segment of a plough's furrow (FightSim furrows), as ground and not a mark:
+## a floor of packed blue-white ice between two low ridges of the snow it threw
+## aside, on the world's own lit material with no ink. Each segment is a little
+## longer than the tile it stands for, so a lane of them reads as one continuous
+## sunk track. It goes when the furrow fills in.
+func _furrow_segment(at: Vector2, angle: float) -> void:
+	var k := MeshKit.new()
+	k.style = Ink.NONE
+	k.style2 = Ink.NONE
+	k.push(Transform3D(Basis(Vector3.UP, -angle), Vector3.ZERO))
+	var half := FURROW_LEN * 0.5
+	var w := FURROW_WIDTH * 0.5
+	# The ice floor, a hair over the snow; banked ridges make it read as sunk.
+	k.quad(Vector3(-half, 0.015, -w), Vector3(-half, 0.015, w), Vector3(half, 0.015, w), Vector3(half, 0.015, -w), Palette.RIME[4])
+	for sd: float in [-1.0, 1.0]:
+		var z := sd * (w + FURROW_RIDGE * 0.5)
+		k.prism(-half * 0.5, 0.0, z, FURROW_RIDGE * 0.5, FURROW_RIDGE_H, FURROW_RIDGE * 0.3, 5, Palette.RIME[5])
+		k.prism(half * 0.5, 0.0, z, FURROW_RIDGE * 0.5, FURROW_RIDGE_H * 0.8, FURROW_RIDGE * 0.3, 5, Palette.RIME[5])
+	k.pop()
+	var mi := MeshInstance3D.new()
+	mi.mesh = k.build()
+	if _furrow_mat == null:
+		_furrow_mat = ShaderMaterial.new()
+		_furrow_mat.shader = preload("res://src/render/world.gdshader")
+	mi.material_override = _furrow_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_fx_parent().add_child(mi)
+	mi.global_position = _at3(at + Vector2(0.5, 0.5) - (at - at.floor()))
+	var tw := mi.create_tween()
+	tw.tween_interval(FightSim.FURROW_SECONDS)
+	tw.tween_callback(mi.queue_free)
+
+
+## A furrow segment: its length along the lane, the lane's width, and the ridges'
+## width and height either side.
+const FURROW_LEN := 1.3
+const FURROW_WIDTH := 1.5
+const FURROW_RIDGE := 0.35
+const FURROW_RIDGE_H := 0.14
+var _furrow_mat: ShaderMaterial = null
 
 
 ## The working part's place in the world, or the body's middle.
@@ -406,6 +504,18 @@ func _handle(events: Array[Dictionary]) -> void:
 				MobFx.clang(fx, _at3(hero.pos, 0.9), int(sim.now))
 				MobFx.ring(fx, _at3(hero.pos), Palette.STONE[4], hero.radius + 0.5, 0.4)
 				Events.sfx.emit(&"hit_plate", player.position)
+			&"furrowed":
+				# The plough's furrow (FightSim furrows): packed ice down the lane it
+				# cut, pale on the drift for as long as the furrow holds.
+				_furrow_segment(e.at, e.angle)
+			&"felled":
+				_fell(e)
+			&"bogged":
+				# A run off its lane into the drift: the share buries itself and
+				# throws snow up either side.
+				_bogged_at = Time.get_ticks_msec() / 1000.0
+				var bm: MobState = e.mob
+				MobFx.puffs(fx, _at3(bm.pos + Vector2.from_angle(bm.facing) * bm.radius), Vector2.from_angle(bm.facing), Palette.RIME[5], 4, 0.9, bm.id)
 			&"cabled":
 				# The cable brace's line took a working part (FightKit.cable): the
 				# part glints where the hook bit, as the stall goes in.
@@ -421,6 +531,17 @@ func _handle(events: Array[Dictionary]) -> void:
 				var back := (by.pos - hero.pos).normalized() * hero.radius
 				MobFx.clang(fx, _at3(hero.pos + back, 1.1), int(sim.now))
 				MobFx.glint(fx, _at3(hero.pos + back, 1.2), Palette.RUST[4], int(sim.now), 0.7)
+				Events.sfx.emit(&"hit_plate", player.position)
+			&"share_turned":
+				# The ploughshare turned a charge (FightKit.ploughshare): the glove
+				# rings on the machine's flank and rime sprays off along the way it
+				# is carried on.
+				_share_turned_at = Time.get_ticks_msec() / 1000.0
+				var sm: MobState = e.mob
+				var run := Vector2.from_angle(sm.facing)
+				var side := (hero.pos - sm.pos).normalized() * sm.radius
+				MobFx.clang(fx, _at3(sm.pos + side, 0.8), int(sim.now))
+				MobFx.puffs(fx, _at3(sm.pos + side, 0.3), run, Palette.RIME[5], 4, 0.7, sm.id)
 				Events.sfx.emit(&"hit_plate", player.position)
 			&"hurt":
 				_on_hurt(e)
@@ -557,8 +678,10 @@ func _crackle(from: Vector2, m: MobState, h: float) -> void:
 var _raked_at := -INF
 var _grip_failed_at := -INF
 var _turned_at := -INF
+var _share_turned_at := -INF
 var _cabled_at := -INF
 var _came_round_at := -INF
+var _bogged_at := -INF
 var _locked_at := -INF
 var _stripped_at := -INF
 
@@ -574,10 +697,16 @@ func tour_seen(what: StringName) -> bool:
 			return now - _grip_failed_at < 0.4
 		&"turned":
 			return now - _turned_at < 0.4
+		&"share_turned":
+			return now - _share_turned_at < 0.6
 		&"cabled":
 			return now - _cabled_at < 0.6
 		&"came_round":
 			return now - _came_round_at < 0.4
+		&"bogged":
+			return now - _bogged_at < 0.6
+		&"felled":
+			return now - _felled_at < 2.0
 		&"locked":
 			return now - _locked_at < FightKit.LOCK_SECONDS
 		&"stripped":
@@ -716,8 +845,7 @@ func _on_outcome(e: Dictionary) -> void:
 				r.pos = home.pos
 				r.facing = home.facing
 				r.line = HOME_LINE
-			hero.pos = r.pos
-			hero.facing = r.facing
+			player.place(r.pos, r.facing)
 			hero.throw_until = 0.0
 			player.sync_view(0.0)
 			game.view.ensure_near(hero.pos)
@@ -771,13 +899,10 @@ func _holdings() -> Array:
 
 ## Moved while the hours went by: the player, the land about them and the camera all at once.
 func _put_hero(at: Vector2, facing: float) -> void:
-	var hero := sim.hero
-	hero.pos = at
-	hero.facing = facing
-	hero.throw_until = 0.0
-	hero.move = Vector2.ZERO
+	game.player.place(at, facing)
+	sim.hero.throw_until = 0.0
 	game.player.sync_view(0.0)
-	game.view.ensure_near(hero.pos)
+	game.view.ensure_near(sim.hero.pos)
 	game.camera.snap_to(game.player.position)
 
 
@@ -917,7 +1042,7 @@ func _stand_on_part_side(m: MobState) -> void:
 		off = wrapf(cam_side.angle() - m.facing, -PI, PI)
 	var at := m.pos + Vector2.from_angle(m.facing + off) * dist
 	if game.query.standable(floori(at.x), floori(at.y)):
-		hero.pos = at
+		game.player.place(at)
 	hero.facing = (m.pos - hero.pos).angle()
 
 
@@ -930,7 +1055,7 @@ func _bring_to_bite(m: MobState) -> void:
 	for dir in tries:
 		var at := m.pos + dir * d
 		if game.query.standable(floori(at.x), floori(at.y)):
-			hero.pos = at
+			game.player.place(at)
 			break
 	m.facing = (hero.pos - m.pos).angle()
 	m.aim = m.facing

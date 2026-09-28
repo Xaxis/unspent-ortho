@@ -67,6 +67,11 @@ static func by_id(id: StringName) -> SentinelDef:
 
 ## The design the landscape type `land` keeps, read off its own file
 ## (`BiomeDef.sentinel`). Null when that landscape has no keeper yet.
+## Whether a roster row is a landscape's keeper (Roster `sentinel`).
+static func is_keeper(row: Dictionary) -> bool:
+	return StringName(str(row.get("sentinel", &""))) != &""
+
+
 static func for_land(land: StringName) -> SentinelDef:
 	var d := BiomeRegistry.get_def(land)
 	if d == null or d.sentinel == &"":
@@ -282,6 +287,17 @@ static func lair(world: WorldData, region: Dictionary, def: SentinelDef) -> Vect
 	# deterministic as it was: a boss that moves between runs cannot be walked to
 	# twice.
 	var feed := def.reach * FEED_SHARE
+	# Never on the ground its own FOUNDER way takes it on: stood there, a roused
+	# keeper foundered at home in the time it took to turn round (seed 1's anchor
+	# on the mesas' sand, tests/sentinel/test_keeper_reach.gd).
+	var sink := founders(def)
+	# And stood on room it can come out of: `stand_near` answers the point it was
+	# asked when it finds none, a region with no room (seed 1's glass sliver: 27
+	# tiles, all the sand it founders on) has no keeper, and a lair in a pocket of
+	# terraces (seed 4's crags) strikes only what walks up to it. Asked of the
+	# ground in rays about the spot (`gets_out`), the cheap test: this runs while
+	# the world is worked out. tests/sentinel/test_keeper_reach.gd floods what
+	# its move truly opens round every lair it gives.
 	for want: StringName in def.stations:
 		var best := Vector2.INF
 		var best_works := -1
@@ -291,8 +307,9 @@ static func lair(world: WorldData, region: Dictionary, def: SentinelDef) -> Vect
 			var p: Vector2 = m.get("pos", Vector2.ZERO)
 			if world.region_at(floori(p.x), floori(p.y)) != id:
 				continue
-			var at := stand_near(world, p)
-			if at.distance_to(home) < CLEAR_OF_HOME:
+			var at := stand_near(world, p, 1.4, sink)
+			if at.distance_to(home) < CLEAR_OF_HOME or not _room_at(world, floori(at.x), floori(at.y), 1.4, sink) \
+					or not gets_out(world, at, def):
 				continue
 			var n := 0
 			for w2: Dictionary in world.landmarks:
@@ -306,32 +323,100 @@ static func lair(world: WorldData, region: Dictionary, def: SentinelDef) -> Vect
 		if best.is_finite():
 			return best
 	var centre: Vector2 = region.get("centre", Vector2.ZERO)
-	var heart := stand_near(world, centre)
-	if heart.distance_to(home) >= CLEAR_OF_HOME:
+	var heart := stand_near(world, centre, 1.4, sink)
+	if heart.distance_to(home) >= CLEAR_OF_HOME and _room_at(world, floori(heart.x), floori(heart.y), 1.4, sink) \
+			and gets_out(world, heart, def):
 		return heart
-	# Nothing the plan built stands far enough out: the quietest ground in the
-	# region that is, nearest its heart, so a keeper is still where its own land is.
+	# Nothing the plan built stands far enough out, or has room: the quietest
+	# ground in the region that is, nearest its heart, so a keeper is still where
+	# its own land is; none at all, and the region has no keeper.
+	return _room_nearest(world, region, def, sink, centre)
+
+
+## Rays a keeper's lair is looked out along, how far, and how many must get
+## that far on the ground its move keeps (a level step no more than it climbs,
+## room over it for its height, no deep water) for it to come out of the lair.
+const RAYS := 16
+const RAY_OUT := 10
+const RAYS_OUT := 6
+## Spots `_room_nearest` looks out from before a region is given up.
+const ROOM_TRIES := 40
+
+
+static func gets_out(world: WorldData, at: Vector2, def: SentinelDef) -> bool:
+	var row := Roster.row(def.kind)
+	var step := maxi(1, int(row.get("climbs", 1)))
+	# Its height in levels, as its move asks the room over a tile (FightSim.tall_of).
+	var tall := int(ceil(float(row.get("height", 1.0)) / WorldData.STEP))
+	var out := 0
+	for i in RAYS:
+		var dir := Vector2.from_angle(TAU * float(i) / float(RAYS))
+		var was := Vector2i(floori(at.x), floori(at.y))
+		var ok := true
+		for k in range(1, RAY_OUT + 1):
+			var p := at + dir * float(k)
+			var t := Vector2i(floori(p.x), floori(p.y))
+			if t == was:
+				continue
+			if not world.in_bounds(t.x, t.y) or world.level_at(t.x, t.y) < 0 or world.ground_at(t.x, t.y) == Ground.DEEP_WATER \
+					or absi(world.level_at(t.x, t.y) - world.level_at(was.x, was.y)) > step \
+					or (world.has_overhead() and world.headroom_at(t.x, t.y) < tall):
+				ok = false
+				break
+			was = t
+		out += int(ok)
+		if out >= RAYS_OUT:
+			return true
+	return false
+
+
+## The nearest room to `centre` in the region, clear of home and off `avoid`,
+## that its keeper gets out of (`gets_out`); INF when none of ROOM_TRIES spread
+## over the region does.
+static func _room_nearest(world: WorldData, region: Dictionary, def: SentinelDef, avoid: Array, centre: Vector2) -> Vector2:
+	var id := int(region.get("id", -1))
 	var bounds: Rect2 = region.get("bounds", Rect2())
-	var best := Vector2.INF
-	var best_d := INF
+	var spots: Array[Vector2] = []
 	var y := floori(bounds.position.y)
 	while y < int(bounds.end.y):
 		var x := floori(bounds.position.x)
 		while x < int(bounds.end.x):
-			if world.region_at(x, y) == id and _room_at(world, x, y, 1.4):
-				var p := Vector2(x + 0.5, y + 0.5)
-				var d := p.distance_to(centre)
-				if p.distance_to(home) >= CLEAR_OF_HOME and d < best_d:
-					best_d = d
-					best = p
+			var p := Vector2(x + 0.5, y + 0.5)
+			if world.region_at(x, y) == id and p.distance_to(world.spawn) >= CLEAR_OF_HOME and _room_at(world, x, y, 1.4, avoid):
+				spots.append(p)
 			x += 3
 		y += 3
-	return best
+	spots.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(centre) < b.distance_squared_to(centre))
+	# A spot beside one that failed is in the same pocket: passed over, so the
+	# tries spread across the region instead of one plateau.
+	var failed: Array[Vector2] = []
+	for p: Vector2 in spots:
+		if failed.size() >= ROOM_TRIES:
+			break
+		var near_failed := false
+		for f: Vector2 in failed:
+			if p.distance_to(f) < float(RAY_OUT) * 0.6:
+				near_failed = true
+				break
+		if near_failed:
+			continue
+		if gets_out(world, p, def):
+			return p
+		failed.append(p)
+	return Vector2.INF
+
+
+## The grounds a design's FOUNDER way takes it on (none when it has no such way).
+static func founders(def: SentinelDef) -> Array:
+	for way: SentinelWay in def.ways:
+		if way.kind == SentinelWay.FOUNDER:
+			return way.grounds
+	return []
 
 
 ## The nearest tile to `p` a body of this size can stand on, searched in rings, so
 ## a station laid on the shore does not put a keeper in the sea.
-static func stand_near(world: WorldData, p: Vector2, radius: float = 1.4) -> Vector2:
+static func stand_near(world: WorldData, p: Vector2, radius: float = 1.4, avoid: Array = []) -> Vector2:
 	var cx := floori(p.x)
 	var cy := floori(p.y)
 	for r in 12:
@@ -341,14 +426,15 @@ static func stand_near(world: WorldData, p: Vector2, radius: float = 1.4) -> Vec
 					continue
 				var x := cx + dx
 				var y := cy + dy
-				if _room_at(world, x, y, radius):
+				if _room_at(world, x, y, radius, avoid):
 					return Vector2(x + 0.5, y + 0.5)
 	return Vector2(cx + 0.5, cy + 0.5)
 
 
-## Room for a body of `radius` tiles: dry, on the map, and the level within a step
-## all round, so a machine three tiles wide is not stood astride a cliff.
-static func _room_at(world: WorldData, x: int, y: int, radius: float) -> bool:
+## Room for a body of `radius` tiles: dry, on the map, the level within a step
+## all round, so a machine three tiles wide is not stood astride a cliff, and none
+## of it on the grounds in `avoid`.
+static func _room_at(world: WorldData, x: int, y: int, radius: float, avoid: Array = []) -> bool:
 	var r := maxi(1, ceili(radius))
 	if not world.in_bounds(x - r, y - r) or not world.in_bounds(x + r, y + r):
 		return false
@@ -358,7 +444,7 @@ static func _room_at(world: WorldData, x: int, y: int, radius: float) -> bool:
 	for dy in range(-r, r + 1):
 		for dx in range(-r, r + 1):
 			var g := world.ground_at(x + dx, y + dy)
-			if Ground.is_water(g) or g == Ground.ROAD:
+			if Ground.is_water(g) or g == Ground.ROAD or avoid.has(g):
 				return false
 			if absi(world.level_at(x + dx, y + dy) - level) > 1:
 				return false

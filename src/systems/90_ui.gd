@@ -620,7 +620,6 @@ func _stand_by_something(r: float) -> void:
 		var dir := Vector2.from_angle(a * TAU / 8.0)
 		var spot := target.pos - dir * (target.solid + 0.7)
 		if game.query.standable(floori(spot.x), floori(spot.y)):
-			p.pos = spot
-			p.facing = dir.angle()
+			p.place(spot, dir.angle())
 			p.drive(Vector2.ZERO, false, 0.0)
 			return

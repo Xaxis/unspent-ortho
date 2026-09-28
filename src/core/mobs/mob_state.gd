@@ -68,6 +68,18 @@ var flee_home := false
 ## Beats seen or heard in a row / beats since last contact.
 var lost_beats := 0
 var last_seen := Vector2.ZERO
+## A KEEPER'S HUNT (Brains._hunt): it has lost the player, and goes to where it
+## last knew them and sweeps from there. The points it will look from, which of
+## them it is at, when it lost the player, and how long it stands looking at the
+## one it is on (-1 not yet there).
+var hunt: Array[Vector2] = []
+var hunt_i := 0
+var lost_at := -1.0
+var hunt_look_until := -1.0
+## Until when it goes by its own field whatever the straight line looks like: a
+## run down a line the test called clear was stopped (Brains._charge), so the
+## body's own move says the line is not clear for it.
+var route_until := -1.0
 var calm_until := 0.0
 var dead_at := 0.0
 var removed := false

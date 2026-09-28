@@ -14,10 +14,18 @@ const TOUR := preload("res://src/systems/98_tour.gd")
 ## the first thing the merged gate said was that saves-elsewhere.tour was
 ## speaking a word no tour could use. That is the rule working, but it only
 ## works if the list is kept beside the runner.
-const COMMANDS := ["at", "near", "ground", "place", "ledge", "leap", "village", "hour", "zoom", "weather",
-	"walk", "press", "hold", "release", "tap", "wait", "shot", "await", "until", "spawn",
-	"choose", "coast", "walkto", "perf", "echo", "key", "mouse", "same", "try", "end", "stale", "under", "over", "wound",
-	"mark", "back", "tell"]
+## The runner's commands, read off its own dispatch (98_tour's `match cmd` arms)
+## so a command added there is known here without a second list to forget:
+## `thanked` was added to the runner and not to a copy kept here, and CI went red.
+## `try` and `end` are the runner's own block markers, read before the match.
+static func commands() -> PackedStringArray:
+	var out := PackedStringArray(["try", "end"])
+	var re := RegEx.create_from_string("^\\t\\t\\t\"([a-z_]+)\"( when [^:]*)?:")
+	for line: String in FileAccess.get_file_as_string("res://src/systems/98_tour.gd").split("\n"):
+		var m := re.search(line)
+		if m != null and not out.has(m.get_string(1)):
+			out.append(m.get_string(1))
+	return out
 ## Subject prefixes with something to check behind them.
 const BODY_PREFIXES := ["mob:", "down:", "body:"]
 
@@ -46,6 +54,9 @@ func lines_of(f: String) -> PackedStringArray:
 ## A typo is a command the runner does not know, and it already fails a tour at
 ## run time — a minute in. The gate says so in a second instead.
 func test_every_command_is_one_the_runner_knows() -> void:
+	var known := commands()
+	gt(float(known.size()), 30.0, "the runner's commands read off its dispatch (%d)" % known.size())
+	check(known.has("thanked") and known.has("walk") and known.has("try"), "and they are its commands")
 	for f: String in tours():
 		var n := 0
 		for raw: String in lines_of(f):
@@ -54,7 +65,7 @@ func test_every_command_is_one_the_runner_knows() -> void:
 			if line == "" or line.begins_with("#"):
 				continue
 			var cmd := line.split(" ", false)[0]
-			check(COMMANDS.has(cmd), "%s line %d: unknown command '%s'" % [f, n, cmd])
+			check(known.has(cmd), "%s line %d: unknown command '%s'" % [f, n, cmd])
 
 
 ## A shot may only claim a subject in a shape the runner can answer: a roster
@@ -124,6 +135,10 @@ func test_every_name_a_tour_asks_for_exists() -> void:
 			if parts.is_empty() or parts[0].begins_with("#"):
 				continue
 			match parts[0]:
+				"near" when parts.size() > 1 and parts[1].begins_with("mob:"):
+					# `near mob:KIND DIST`: a roster body, and how far off it.
+					check(parts.size() == 3 and parts[2].is_valid_float(), "%s line %d: `near mob:KIND DIST` takes a body and a distance" % [f, n])
+					check(Roster.DEFS.has(Roster.resolve(parts[1].substr(4))), "%s line %d: no roster body %s" % [f, n, parts[1].substr(4)])
 				"near":
 					check(parts.size() == 2, "%s line %d: `near` takes one comma-joined list; write a space as _" % [f, n])
 					for k: String in parts[1].split(",", false):

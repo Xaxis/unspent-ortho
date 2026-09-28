@@ -324,13 +324,17 @@ func place_near_player(kind: StringName, facing: float = NAN) -> MobState:
 	var yaw := deg_to_rad(spawner.yaw_deg)
 	var screen_up := Vector2(-sin(yaw), -cos(yaw))
 	var head_lift := screen_up * float(row.get("height", 1.0)) / tan(deg_to_rad(spawner.pitch_deg))
+	var tall := FightSim.tall_of(row)
 	for ring in range(0, 24):
 		for i in 24:
 			var a := ang + float(i) / 24.0 * TAU
 			var p := hp + Vector2.from_angle(a) * (dist + ring * 0.5)
 			var tx := floori(p.x)
 			var ty := floori(p.y)
-			if not game.query.standable(tx, ty):
+			# Room for the whole of it under whatever hangs over the tile: a cave's
+			# keeper put down under a low lid stood through the rock and could not
+			# take a step (its move asks the same headroom).
+			if not game.query.passable(tx, ty, tx, ty, null, false, tall):
 				continue
 			if not keeps.is_empty() and not Spawner.ground_matches(w.ground_at(tx, ty), keeps):
 				continue

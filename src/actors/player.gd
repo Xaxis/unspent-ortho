@@ -54,13 +54,35 @@ var _flashing := false
 func setup(w: WorldData, q: WorldQuery, at: Vector2, material: Material) -> void:
 	world = w
 	query = q
-	pos = at
-	_z = w.height_at(at)
+	pos = q.stand_at(at, Tuning.PLAYER_RADIUS, ride, true, FightSim.HERO_TALL)
+	_z = w.height_at(pos)
 	model = PersonModel.new()
 	model.name = "model"
 	add_child(model)
 	model.build(material)
 	_sync(0.0)
+
+
+## PUT THE BODY DOWN at `at` (or the nearest spot it stands whole on:
+## WorldQuery.stand_at) and say where. Every path that places the player rather
+## than walks it -- a load, a door, a warp, a respawn, the hours going by, a
+## pad's edge, a tour or dev jump -- comes through here, so none can leave a
+## corner on the step above, where the move refuses every step (tests/core/
+## test_stand_at.gd reads the source for any that do not). The fight body owns
+## the place in a running game, so it moves with the drawn one. `facing` NAN
+## keeps the facing it had.
+func place(at: Vector2, face: float = NAN) -> Vector2:
+	var to := query.stand_at(at, Tuning.PLAYER_RADIUS, ride, true, FightSim.HERO_TALL)
+	pos = to
+	if not is_nan(face):
+		facing = face
+	if hero != null:
+		hero.pos = to
+		hero.move = Vector2.ZERO
+		if not is_nan(face):
+			hero.facing = face
+	position = world.to_3d(to)
+	return to
 
 
 ## move: desired direction in world tile space, length <= 1.

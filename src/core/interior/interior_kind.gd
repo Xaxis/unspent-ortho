@@ -61,6 +61,19 @@ var hatch := ""
 ## answering `build(layout, kind, land, material)`, `show_for(back, over)`,
 ## `windows()`, `daylight(sky, land)` and holding `lights` (21_doors reads them).
 var model := ""
+## WHO LIVES IN IT: &"household" or &"squatters" where its recipe seats people
+## (the recipe's own `const SEATS`, read by Interiors.kind so the two cannot
+## differ), &"" for a room that is the machines' or nobody's. A lived-in room's
+## things are theirs, on its kept-by shelf; any other room's are in a strongbox
+## (docs/GEAR.md §7).
+var seats: StringName = &""
+## A lived-in room's kept-by shelf: which of its own pieces it is, in the order
+## asked (the first the recipe laid), from the recipe's `const KEPT_BY` (KeptBy).
+var kept_by: Array[StringName] = []
+
+
+func lived() -> bool:
+	return seats != &""
 
 
 ## Whether the room is at work at `hour` (0..24).

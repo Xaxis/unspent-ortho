@@ -404,9 +404,7 @@ func enter(w: WorldData, key: StringName, at: Vector2, carry := true, query: Wor
 	var pl := game.player
 	pl.world = w
 	pl.query = game.query
-	pl.pos = land
-	if pl.hero != null:
-		pl.hero.pos = land
+	land = pl.place(land)
 	Events.warped.emit(land)
 	var sim := pl.sim
 	if sim != null:

@@ -1,0 +1,21 @@
+# THE BAY'S PARTS LOCKER (docs/GEAR.md §7, G6): a maintenance bay is nobody's
+# home (InteriorKind.seats), so what it holds is in a strongbox -- the locker at
+# the niche's closed end, shut on what the plan issues its bodies. Opened once.
+#
+#   tools/tour.sh tours/bay_locker.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 is at the locker, by the lantern. 02 is after use: what it gave up.
+coast calm
+near door:maintenance_bay
+await door 5
+press use 0.1
+await inside:maintenance_bay 5
+tap lamp
+wait 0.6
+near strongbox
+wait 0.6
+shot 01-the-parts-locker-in-the-niche with inside:maintenance_bay,box_near,lamp
+press use 0.1
+await box_opened 3
+wait 0.6
+shot 02-what-the-plan-issued with inside:maintenance_bay,lamp

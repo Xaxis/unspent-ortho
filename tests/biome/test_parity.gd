@@ -513,16 +513,29 @@ extends TestCase
 ## only `props` moves. Works kinds over seeds 1, 7, 42, 90210 at 512 all held or
 ## gained one (shelter, cistern, slag, orchard block); seed 7's archive at eye
 ## level stands on its ash as before.
+## RE-ACCEPTED AT GEN 44 (2026-09-27): a landscape's works are
+## sited one region at a time (GenWorks.place, streamed worldgen S4j1). The five
+## tile arrays are equal on all five seeds; only `props` moves. Works kinds over
+## eight seeds at 1840 held within one, but slag, footed off its terrace lips, went
+## 17 -> 24 of a designed 24. Seed 7 at eye level: the clearcut in its rows, a
+## trawler beached on the sand, a line of slag heaps on the burning's terraces;
+## the coast-pinewood border from above as before, with no bare strip.
+## RE-ACCEPTED AT GEN 45 (2026-09-27): the people's things are
+## laid in no order that matters (S4j2): ways in keep off the ways in that
+## outrank them by hash, and the stolen light is ranked, not raced. Only `props`
+## moves; every prop kind over four seeds at 1840 within 2%. Seed 7's coast
+## village at eye level as before; its stolen light now a wired shack at the
+## foot of the green towers, its tube burning at night.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 1ebd687b 100053b8 4fd7a826 559b79bf",
-	3: "bd96c6d3 1d22db86 d51b4ba3 a4316902 7e58a668 fc1e8e2f",
-	7: "ba7a972f 55af42cc 8eec15a7 0f02d42c f555c41d fe8cc703",
-	42: "e0ad0bb3 b7ca1370 f18fef97 2f4b7f69 1565ed7e 11a954d4",
-	90210: "2659ea1f 66925798 18341e08 34b30d32 275c7664 da85a0b9",
+	1: "054710a9 3eac3638 1ebd687b 100053b8 4fd7a826 a185d68e",
+	3: "bd96c6d3 1d22db86 d51b4ba3 a4316902 7e58a668 5bc9795f",
+	7: "ba7a972f 55af42cc 8eec15a7 0f02d42c f555c41d b508056d",
+	42: "e0ad0bb3 b7ca1370 f18fef97 2f4b7f69 1565ed7e 42531235",
+	90210: "2659ea1f 66925798 18341e08 34b30d32 275c7664 a2ae0dd8",
 }
 
 

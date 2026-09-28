@@ -111,19 +111,40 @@ const CHANNEL := 3
 const CONTINENT_SHARE := 0.25
 
 
+## A test's hook: set, `deepen_straits` keeps what it deepens from in `before`.
+static var keeping := false
+static var before: Dictionary = {}
+
+
 static func deepen_straits(c: GenContext) -> void:
 	var w := c.w
-	var size := c.size
-	var level := w.level
 	var most := 0
 	for row: Dictionary in w.continents:
 		most = maxi(most, int(row.get("tiles", 0)))
+	# THE PLAN'S SHARE: which bodies are continents. The rest is the shelf round
+	# them, which a section settles for itself (`deepen_square`).
 	var big := {}
 	for row: Dictionary in w.continents:
 		if float(row.get("tiles", 0)) >= CONTINENT_SHARE * float(most):
 			big[int(row.get("id", 0))] = true
+	if keeping:
+		before = {"level": GenFields.snapshot(w.level), "continent": GenFields.snapshot(w.continent), "big": big.duplicate()}
 	if big.size() < 2:
 		return
+	deepen_square(w.level, w.continent, big, c.size)
+
+
+## How far round its own tiles a section settles the straits: the shelf a
+## strait is cut through is level-0 water no more than about six tiles off any
+## land (GenRelief's `offshore`), the seam is found a tile further, and it is
+## widened CHANNEL more (tests/stream/test_relief_window.gd).
+const STRAIT_MARGIN := 16
+
+
+## The straits over one square of `size` tiles: the whole world, or a section
+## with STRAIT_MARGIN of the world round its own. `big` is the plan's set of
+## continents.
+static func deepen_square(level: PackedInt32Array, continent: PackedByteArray, big: Dictionary, size: int) -> void:
 	# Which shelf each patch of shallow water belongs to: the nearest land you
 	# could wade to from it.
 	var owner := PackedByteArray()
@@ -131,7 +152,7 @@ static func deepen_straits(c: GenContext) -> void:
 	var q := PackedInt32Array()
 	for i in level.size():
 		if level[i] > 0:
-			owner[i] = w.continent[i]
+			owner[i] = continent[i]
 			q.append(i)
 	var head := 0
 	while head < q.size():
