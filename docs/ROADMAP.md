@@ -35,7 +35,9 @@ Builders: **A** introduction and story (teammate3, words via story-wright) ·
 5. [x] **Its fall changes the coast** (C). The first memory opens; the land shows it.
 6. [x] **The taken** (C, words via A). The motive awaits the owner's ruling in STORY.md.
    Rescue on a clock, or a loss heard in Maren's lines.
-7. [ ] **Proof** (all). The proof tour plays the whole slice unassisted. ★
+7. [ ] **Proof** (all). The proof tour plays the whole slice unassisted. ★ On main:
+   01-21 from the title (the Reaper by FOUNDER). Open: 7a force and 7b starve can't be
+   won with real input (fight2, `fight/reaper-reachable`); then the owner's playtest.
 
 ## Slice 2 — the Holdfast (next; planned 2026-09-28)
 
@@ -69,14 +71,14 @@ The owner's ask (2026-09-28): see every arc and sub-arc as directional arrows ov
 world, how they interleave across the whole game, and view and edit each in a
 meaningful way. It must be brilliant. Builder **D**.
 
-- [ ] **T1 The dev slate, rebuilt.** One dev app on the slate with pages (world, story,
+- [x] **T1 The dev slate, rebuilt.** One dev app on the slate with pages (world, story,
   fight, look and speed, saves) in the hacked-slate idiom. Today's rules and toggles
   move in whole; nothing lost.
-- [ ] **T2 The story map.** On any seed: the journey's legs as the spine; each arc a
+- [x] **T2 The story map.** On any seed: the journey's legs as the spine; each arc a
   coloured line of arrows beat to beat, at the places the beats land; interleaving
   seen where arcs share ground. Filter by arc, cast or leg; scrub through the
   order; the live save's state shown (landed, open, withheld). ★
-- [ ] **T3 The arc view.** One arc as a graph (Godot's `GraphEdit`): beats, what opens
+- [x] **T3 The arc view.** One arc as a graph (Godot's `GraphEdit`): beats, what opens
   each (gates, witnessed events, memories), sub-arcs and branches, every line with
   its speaker and place, each node linked to its source. ★
 - [ ] **T4 Editing** (after the owner has used T2–T3): story data moves to a structured
@@ -94,12 +96,10 @@ line that made it. Proved by frames read at three zooms on two seeds, and the ow
 
 ## Fixes that serve the slice
 
-- [ ] Title-time warm: no gain measured; would need `--programs` in `--play` to separate compile from state.
-- [ ] The white panel on the player's back over the shoulder. Seen once (main
-  c330ea47, `--seed=1 --hour=6.5 --view=shoulder --weather=clear:0`): a tall white
-  card with a hit-splash on it, the player in a recoil pose. Not reproduced by the
-  same shot three times, by a walk and turn at 06:30, or by a runner's hit over
-  the shoulder. Look again if it shows.
+- [x] Title-time warm: no gain measured, dropped; separating compile from state would need `--programs` in `--play`.
+- [x] The white panel at the player: the boot warm-up rack, drawn before the cover
+  lifted and caught by early shots. The cover and shots now wait for the warm-up
+  (tests/render/test_warm_in_shots.gd).
 - [ ] A lit machine yard throws a light pool at night (one lamp-pool source per yard, put out with its lamps), so a dark yard reads at a glance. Counts against the web's 7 pool slots. (Step 5 follow-up.)
 - [x] Web: the 0.2–0.6 s hitch on the shoulder switch in pinewood. Looking out puts
   the sun in four blended splits under the seen sky (SkyLight._look_out), and 18
