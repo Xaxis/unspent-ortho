@@ -6,7 +6,9 @@
 # 01 is the mouth in the junction's wall, 01b over the shoulder at it. 02 is the settlement from above: the
 # sort with its long table and brazier, the cells and the words room cut behind
 # it, the lookout at the front corner. 03 is over the shoulder down the sort. 04
-# is up the lookout's ladder by the jump key, at the slit (`above`).
+# is up the lookout's ladder by the jump key, at the slit (`above`). 05 is the
+# reader at home by their desk, from above: a cell is too small for the
+# shoulder's eye (21_doors DWELLER).
 coast calm
 near door:face_hold
 await door 5
@@ -32,3 +34,6 @@ wait 0.6
 press jump 0.1
 wait 2.0
 shot 04-at-the-lookout with inside:face_hold,above
+near dweller
+wait 1.5
+shot 05-the-reader-at-home with inside:face_hold

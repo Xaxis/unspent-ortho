@@ -17,7 +17,9 @@ extends RefCounted
 ##
 ## THE HOUSEHOLDS are the middens' own (BiomeDef.home): each cell is kept by
 ## one, and the READER, who keeps what has words in it, is always among them.
-## Each cell holds its household's wanted pieces (Furnish) and a bedroll.
+## Each cell holds its household's wanted pieces (Furnish) and a bedroll, and
+## the reader is at home by their desk: a DWELLER (21_doors), a person the use
+## key talks to.
 ##
 ## STORY SLOTS: the sort table (`desk:the_sort`), the words room's shelves
 ## (`wall:words_room`), the lookout's slit (`wall:lookout`), the reader's desk
@@ -206,7 +208,11 @@ static func _fit(l: InteriorLayout, rng: RandomNumberGenerator, land: int, house
 		_put(l, &"bedroll", Rect2(c).get_center() + back * 0.5 + along * 0.2, back, 0.0, {"household": hh})
 		match hh:
 			&"reader":
-				_put(l, &"desk", Rect2(c).get_center() - back * 0.2, back, 0.35, {"household": hh})
-				_slot(l, land, &"desk", &"reader", Rect2(c).get_center() - back * 0.2, back)
+				var desk := Rect2(c).get_center() - back * 0.2
+				_put(l, &"desk", desk, back, 0.35, {"household": hh})
+				_slot(l, land, &"desk", &"reader", desk, back)
+				# The reader at home beside the desk, facing into the cell (`back`
+				# is the way the wall's things face, into the room).
+				l.residents.append({"role": &"dweller", "household": hh, "at": desk + along * 0.95 + back * 0.2, "face": back})
 			_:
 				_slot(l, land, &"wall", hh, wall, back)

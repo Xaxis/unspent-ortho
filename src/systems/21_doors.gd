@@ -375,6 +375,7 @@ func _swap_in() -> void:
 	_box_the_room()
 	_light_stoves()
 	_wake_residents()
+	_wake_dwellers()
 	_stand_turrets()
 	crossings += 1
 
@@ -939,6 +940,9 @@ func _wake_residents() -> void:
 		if gone.has(i):
 			continue
 		var r: Dictionary = pocket.layout.residents[i]
+		# A person who lives here is no machine (`_wake_dwellers`).
+		if r.role == DWELLER:
+			continue
 		# Its hours (InteriorKind.shift): one "on" the shift is here only while
 		# the room works; one that "docks" comes home at the curfew and sleeps.
 		var at_work := working()
@@ -962,6 +966,49 @@ func _wake_residents() -> void:
 		m.line_a = r.at
 		m.line_b = r.at
 		_residents.append([i, m])
+
+
+## PEOPLE WHO LIVE IN A ROOM (a resident whose role is DWELLER): not machines
+## but a person, drawn where the recipe stood them, facing the way it said, and
+## talked to by the use key as a villager is (49_story reads `dweller_rows`).
+## Their look is dealt off the door's key and their place in the recipe, and the
+## room is grown again from the seed at every entry and after every load, so the
+## same person is always home. A row: {id, pos, facing, trade, household, state,
+## model}; `trade` names the words they have (StoryProps.talk_for), and a recipe
+## may name it, else it is their household.
+const DWELLER := &"dweller"
+var dwellers: Array[Dictionary] = []
+
+
+func _wake_dwellers() -> void:
+	dwellers.clear()
+	if game.options.rooms_empty:
+		return
+	var land := pocket.threshold.land
+	var d := BiomeRegistry.by_index(land)
+	var hazards: Dictionary = d.hazards if d != null else {}
+	for i in pocket.layout.residents.size():
+		var r: Dictionary = pocket.layout.residents[i]
+		if r.role != DWELLER:
+			continue
+		var household := StringName(str(r.get("household", &"")))
+		var trade := StringName(str(r.get("trade", household)))
+		var seed_v := Rng.hash_ints(game.options.seed_value, pocket.threshold.key.hash(), i, 0xD3E11)
+		var look := PersonLook.dress(PersonLook.random(seed_v), hazards, trade, seed_v)
+		var model := PersonModel.make(look, &"", game.view.world_material())
+		model.name = "dweller_%d" % i
+		var facing := (r.face as Vector2).angle()
+		model.position = game.world.to_3d(r.at)
+		model.rotation.y = -facing
+		# In the room's own view, so it goes when the room does.
+		game.view.add_child(model)
+		dwellers.append({"id": i, "pos": r.at, "facing": facing, "trade": trade, "household": household, "state": &"out", "model": model})
+
+
+## The people living in the room the player is in, as talk reads them; none
+## outside.
+func dweller_rows() -> Array:
+	return dwellers if pocket != null else []
 
 
 ## Which roster body a role is, in the land the host stands in.
@@ -1130,6 +1177,7 @@ static func shader_key(m: BaseMaterial3D) -> String:
 
 
 func _swap_out() -> void:
+	dwellers.clear()
 	var leaving: Array[Node] = [game.view]
 	leaving.append_array(_beams)
 	leaving.append_array(_motes)
@@ -1731,7 +1779,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "door:container_warren", "door:face_hold", "door:tower", "door:buckled", "thing:buckled", "ladder", "ladder_top", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "door:container_warren", "door:face_hold", "dweller", "door:tower", "door:buckled", "thing:buckled", "ladder", "ladder_top", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
@@ -1763,6 +1811,11 @@ func tour_place(what: String) -> Vector2:
 	if what == "strongbox":
 		var box := _first_box()
 		return (box.at as Vector2) + (box.face as Vector2) * 0.8 if not box.is_empty() else Vector2.INF
+	# `near dweller`: a step in front of the first person living here, facing them.
+	if what == "dweller":
+		if dwellers.is_empty():
+			return Vector2.INF
+		return (dwellers[0].pos as Vector2) + Vector2.from_angle(float(dwellers[0].facing)) * 1.1
 	# `near ladder`: at the first ladder's foot, facing up it; `near ladder_top`:
 	# on its lip, facing the drop. The jump key climbs it either way (Climb).
 	if what == "ladder" or what == "ladder_top":
@@ -1788,6 +1841,8 @@ func tour_face(what: String) -> float:
 	if what == "strongbox":
 		var box := _first_box()
 		return (-(box.face as Vector2)).angle() if not box.is_empty() else NAN
+	if what == "dweller":
+		return float(dwellers[0].facing) + PI if not dwellers.is_empty() else NAN
 	if what == "ladder" or what == "ladder_top":
 		var ld := _first_kind(&"ladder")
 		if ld.is_empty():

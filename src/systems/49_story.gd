@@ -278,7 +278,10 @@ func _edge_to(q: WorldProp) -> float:
 
 func _person_in_front() -> Dictionary:
 	# Villagers and named people alike: the one key answers whoever is in front.
-	var folk: Array = _folk_rows() + _cast_rows()
+	# In a room, the people who live in it and nobody else: the village's rows
+	# stand in the world outside, on another grid.
+	var inside: Variant = _dweller_rows()
+	var folk: Array = inside if inside != null else _folk_rows() + _cast_rows()
 	var from: Vector2 = game.player.pos
 	var ahead := Vector2.from_angle(game.player.facing)
 	# THREE RANKS, and distance only ever decides inside one of them. A street of
@@ -734,6 +737,15 @@ func _cast_rows() -> Array:
 				_cast = sys
 				break
 	return _cast.get("people") if _cast != null else []
+
+
+## The rows of the people living in the room the player is in (21_doors), or
+## null outside a room.
+func _dweller_rows() -> Variant:
+	for sys in game.systems:
+		if sys.has_method(&"dweller_rows") and sys.get(&"pocket") != null:
+			return sys.call(&"dweller_rows")
+	return null
 
 
 func _folk_rows() -> Array:
