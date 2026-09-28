@@ -287,6 +287,9 @@ if [ $web -eq 1 ]; then
   echo "== web (threads, full) and web (no threads, title)"
   tools/web.sh || fail=1
   tools/web.sh --nothreads --quick || fail=1
+  # The crossing's bar (streamed worldgen S5): use at a shaft to the first frame
+  # below, on the build the first run exported.
+  tools/web.sh --no-export --tour=tours/realms.tour --args=--seed=7,--hour=10 --crossing=20 --timeout=300 || fail=1
 fi
 echo "== $(( $(date +%s) - t0 ))s total"
 if [ $fail -ne 0 ]; then echo "CHECK FAILED"; exit 1; fi

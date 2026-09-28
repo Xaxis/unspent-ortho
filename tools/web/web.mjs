@@ -51,6 +51,9 @@
 //                    outside the engine (what a player sees while the engine is blocked)
 //   --uncapped       let the page draw as fast as it can (no vsync, no frame-rate limit), so a
 //                    frame's cost can be read off its interval (perf scale in a tour)
+//   --crossing=SECS  with --tour, fail unless every shaft crossing the tour takes -- from the use
+//                    that starts it to the first frame of the realm below, the crossing page's own
+//                    `boot stages crossing ... total` -- is at most SECS (streamed worldgen S5's bar)
 //   --heap-log       print every heap sample (every 2 s, seconds since the sampler started), not only
 //                    the most it held: when the heap grows says what grew it
 import http from 'node:http';
@@ -697,6 +700,16 @@ if (first && touring) {
   if (!end) failures.push(`the tour never reached its end within ${secs} s`);
   else if (!/done ->/.test(end.text)) failures.push(end.text);
   else console.log(`web tour done in ${(end.t - first.t).toFixed(1)} s after the first frame, ${kept.length} frames in ${path.relative(process.cwd(), tourDir)}`);
+  if (opt.crossing) {
+    const bar = Number(opt.crossing);
+    const crossings = lines.filter((l) => /^boot stages crossing/.test(l.text));
+    if (crossings.length === 0) failures.push('--crossing: the tour crossed no shaft');
+    for (const c of crossings) {
+      const total = Number((c.text.match(/total (\d+) ms/) || [])[1]);
+      console.log(`web crossing ${(total / 1000).toFixed(1)} s from use to the realm below, bar ${bar} s (${c.text})`);
+      if (!(total <= bar * 1000)) failures.push(`a crossing took ${(total / 1000).toFixed(1)} s, over the ${bar} s bar`);
+    }
+  }
 } else if (first) {
   // The wasm was held while the shell was shot: that wait is not the build's.
   result.first_frame_s = first.t - wasmHeldMs / 1000;
