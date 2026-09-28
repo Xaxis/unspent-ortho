@@ -174,19 +174,13 @@ func _run() -> void:
 	_load_script_errors()
 	var total := Time.get_ticks_msec() - t0
 	print("\n%d passed, %d failed, %d load errors in %d ms" % [_passed, _failed, _load_errors, total])
-	# A test that started a sketch bake and did not wait for it leaves a worker
-	# inside `_bake` when this quits, and the runner then either deadlocks on
-	# GDScript's own lock or dies on freed memory. It killed a gate shard: shards
-	# 0 and 2 printed their results and shard 1 printed nothing at all, which
-	# reads as a red gate with no failing assertion and nothing to blame. A pool
-	# task cannot be cancelled, so the runner waits out what it started.
-	#
-	# BY PATH, not by class name, for the same reason src/main.gd does it that
-	# way: naming UiSketch in this file compiles the UI package before the Events
-	# autoload exists, and game.gd, crafting.gd and survival.gd all fail to load
-	# behind it. Measured — three load errors, and the gate red for a new reason.
-	(load("res://src/ui/ui_sketch.gd") as GDScript).call("wait")
-	(load("res://src/ui/ui_slate.gd") as GDScript).call("wait")
+	# A worker left in the pool when this quits (a sketch bake, the realm raise
+	# every game lets go of as it ends) deadlocks the runner on GDScript's own lock
+	# or kills it on freed memory, and the shard then prints nothing after its last
+	# "ok": a red or cancelled gate with nothing to blame. The same drain the game's
+	# root runs, so the two cannot drift apart (tools/runner_red.sh proves it).
+	# By path, for the reason src/main.gd gives.
+	(load("res://src/main.gd") as GDScript).call("drain_pool")
 	RunnerHome.remove()
 	quit(0 if _failed == 0 and _load_errors == 0 and _passed > 0 else 1)
 

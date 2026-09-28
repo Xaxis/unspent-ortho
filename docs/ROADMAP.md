@@ -1,106 +1,129 @@
-# Roadmap
+# ROADMAP.md — what we are building now, in order
 
-Draft for the owner to reorder (2026-09-23). Where the game stands, and what each
-area needs next. `docs/VISION.md` is the destination; history lives in git.
+The current slice and its checklist. Updated in the commit that moves a step.
+The destination is `docs/VISION.md`; the story is `docs/STORY.md`.
 
-## Where we are
+## How a step is done
 
-A walkable, lit, generated world: 22 landscapes on five continents, day and night,
-weather, villages, machines with keepers and depots, realms and portals, a slate
-UI, saves, a web build on Vercel. Recent work has been almost all look, world
-generation and world content. The game on top (fighting depth, crafting,
-progression, story guidance) is thin.
+A step is done when the **proof tour** (`tours/home-coast.tour`, from the title,
+no `--give`/`--folk`/`--beats`) plays through it, its frames are read, the gate is
+green and it is on main. Every step carries three threads (owner, 2026-09-28): a
+story beat that points at the whole arc, a craft or survival need with a stated
+reason, and an introduction (the record's voice; staged beats, never for a time
+crossing).
 
-**Next:** settle the look, then regroup the work by the areas below and change how
-it's delegated. That's decided with the owner, not assumed here.
+## Slice 1 — thirty minutes on the home coast
 
-## Decided
+Builders: **A** introduction and story (teammate3, words via story-wright) ·
+**B** crafting with a reason, and the fight (fight) · **C** stakes and consequence
+(teammate2). The owner plays a web build at each ★.
 
-- The look is LANTERN (`docs/LOOK.md`): lit, not drawn. Forward+ on desktop,
-  Compatibility on the web as the degradation path.
-- Keep the held-Z perspective lens. Making it the default is pending a cost
-  re-run.
-- Every landscape follows `docs/LANDSCAPES.md`'s four layers (plan, land, people,
-  player), held by `tests/biome/test_landscape_depth.gd`.
-- Content scales with area; the world grows rather than landscapes shrinking.
+1. [ ] **The wake** (A, `world/wake`). A new game starts in the shallows, the black site
+   behind him; he surfaces on the real clock; Maren waits at the water; the record's
+   first lines paced on what happens. The proof tour starts here. ★
+   - [ ] **1b The Tether** (A, `look/tether`). One thread rising at the far shore's
+     bearing to the ring; the first morning's staged look to the horizon.
+2. [ ] **Maren's ask becomes the goal** (A). After the pick, the goal line is her
+   lead, not a recipe; the guide names why.
+3. [ ] **The Tide Reaper, named** (A+B). A person names the yard and its keeper;
+   the knife does not bite its plating, so the next make has a reason.
+4. [ ] **The Reaper as a set piece** (B). Force and one other way; tells in its
+   body; staged reveal and fall. ★
+5. [ ] **Its fall changes the coast** (C). The first memory opens; the land shows it.
+6. [ ] **The taken** (C, words via A). The motive awaits the owner's ruling in STORY.md.
+   Rescue on a clock, or a loss heard in Maren's lines.
+7. [ ] **Proof** (all). The proof tour plays the whole slice unassisted. ★
 
-## Areas
+## Tools track — the story map and the dev slate (alongside slice 1)
 
-Each area lists its state and its next few points.
+The owner's ask (2026-09-28): see every arc and sub-arc as directional arrows over the
+world, how they interleave across the whole game, and view and edit each in a
+meaningful way. It must be brilliant. Builder **D**.
 
-### 1. Look and rendering
-- State: LANTERN landed. The web's seven lamp lights go to what is on screen
-  first (`look/lamp-pool-cl`, gating; `tours/lamp-pool.tour`). The web's lamp
-  trim of 0.7 was judged on real-browser night frames: its pools read within 7%
-  of the desktop's.
-- Next: land the lamp pool. Owner rulings on the lens default and the sky under
-  the lens (#14).
+- [ ] **T1 The dev slate, rebuilt.** One dev app on the slate with pages (world, story,
+  fight, look and speed, saves) in the hacked-slate idiom. Today's rules and toggles
+  move in whole; nothing lost.
+- [ ] **T2 The story map.** On any seed: the journey's legs as the spine; each arc a
+  coloured line of arrows beat to beat, at the places the beats land; interleaving
+  seen where arcs share ground. Filter by arc, cast or leg; scrub through the
+  order; the live save's state shown (landed, open, withheld). ★
+- [ ] **T3 The arc view.** One arc as a graph (Godot's `GraphEdit`): beats, what opens
+  each (gates, witnessed events, memories), sub-arcs and branches, every line with
+  its speaker and place, each node linked to its source. ★
+- [ ] **T4 Editing** (after the owner has used T2–T3): story data moves to a structured
+  file the game loads; edits save through the story tests; the words still pass
+  story-wright.
 
-### 2. World generation
-- State: GEN 24 (1840 world, five continents, shares, slums spacing,
-  works-search cost) is mostly done on `m3/standing`, not merged.
-- Next: re-measure GEN 24 against current main, the parity re-accept, the canon
-  sheet reviewed, land it.
+**Brilliant means:** a stranger reads the whole story's shape in ten seconds; nothing
+overlaps unreadably at any zoom; it opens in under a second and pans at 60 fps; it
+looks like the game (the slate, lit, never a debug grey); every mark leads to the
+line that made it. Proved by frames read at three zooms on two seeds, and the owner's
+★ review.
 
-### 3. World content
-- State: six new landscapes have keepers, machines, props, materials and
-  buildings on main. Placing them in the world is done for four on
-  `l2/placement`; the drowned city and the mesas are open.
-- Next: finish placement after GEN 24. Then the middens, sulphur jungle, grey
-  orchards, server fields and machine city, then the first seven raised to the
-  same bar.
-- Missing shared systems: flying bodies, spanning props (cables), ruled canals,
-  time-varying ground, a glass ground.
-- The middens' rooms (docs/MIDDENS_ROOMS.md): container warrens (levels,
-  ladders, towers, buckled bays), the face settlement, and a room's hush while a
-  machine outside passes its door (DoorHush: the machines at the door are
-  snapshot at the crossing and walked on along their rounds) are built.
+## Fixes that serve the slice
 
-### 4. Core play
-- State: walk, run, crouch, jump, swim, target, dodge and swing, stealth, taking
-  from the world, survival needs, gear slots and abilities, crafts.
-- Next: to be defined. Fighting depth, crafting that matters, how a first hour
-  plays.
+- [ ] The intermittent test hang after `works/test_in_game`'s depot test (blocks gates).
+- [ ] Land the fight tuning and gear pass (`land/fight4`, `land/sweep`) once the hang is fixed: step 4 builds on it.
+- [ ] The white panel on the player's back over the shoulder. Seen once (main
+  c330ea47, `--seed=1 --hour=6.5 --view=shoulder --weather=clear:0`): a tall white
+  card with a hit-splash on it, the player in a recoil pose. Not reproduced by the
+  same shot three times, by a walk and turn at 06:30, or by a runner's hit over
+  the shoulder. Look again if it shows.
+- [ ] Web: a 0.8–1.0 s hitch after crowd spawns; a 0.2–0.6 s hitch on the shoulder
+  switch in pinewood.
 
-### 5. Progression and world systems
-- State: keepers (three ways to take each), depots, interference and hunting,
-  settlements and raids, realms, the loot economy, all built and mostly untested
-  in real play.
-- Next: to be defined. How regions unlock and how the long game is paced.
+## Parked (decided after slice 1)
 
-### 6. Story and direction
-- State: the spine and words (`docs/STORY.md`), fragments, talks, locals,
-  regional asks, the journal.
-- Next: to be defined. How the story steers play, forks and endings.
+Landscape batch 2+3
+(`look/batch3`) and batch 4 props (`l2/placement`) · streaming S4j3/S5c
+(`land/s4j3`, `world/s5c`) · the crossing programs check and long-walk tour ·
+the vent-tender and G10 · walls follow-ups · web frame budgets.
 
-### 7. Menus and controls
-- State: the slate and its apps, a title, a character page, settings with
-  rebinding, dev mode.
-- Next: to be defined. A pass over every menu against real play, onboarding,
-  gamepad.
+## The whole game, as slices
 
-### 8. Audio and score
-- State: procedural sounds, per-landscape beds and score, crossfades at borders.
-- Next: to be defined.
+Each slice is one leg of the journey (`STORY.md`), playable end to end, and adds one
+new layer of play with a reason. Rough size: two to three weeks each.
 
-### 9. Shipping and technical
-- State: CI gate on every push, web build proven in CI, Vercel deploys, saves
-  with world stamps.
-- Next: a verify skill and feature map, memory-safe test runs on this box,
-  frame-time budgets on the web.
-- Web memory: the tab reserves 1181 MB, because the wasm heap doubles past 592 and an
-  1840 world's generation peaks 678 MB over the engine (`WorldGen.last_memory`). Trims
-  cannot clear the step (props alone reach 448, the kept world is 260). The options are
-  banded tiles, a broader restructure, a smaller web world (owner), or accepting it
-  (current: fine on desktop browsers, a risk on phones).
+1. **Home coast**: survive and make, for a reason; the first keeper; the first lead;
+   the taken. *(now)*
+2. **The Holdfast**: Maren's lead to the camp. The holding is built to keep people from
+   the depots; raids answer your light; a chapter's way on (explored, mined, defended)
+   reads on the land; the next memory gates (the lab at the first works, Ruth's table at
+   the camp); the second keeper.
+3. **Across the water**: the raft; the Covenant's seat and June; the war's archive;
+   mended gear; a third landscape; the first machine enclave that seeks balance
+   with humans.
+4. **Below**: HALCYON's deep plant; the Seeker and the Echo; the drill crawler; the secret
+   takes shape.
+5. **The far shore**: the Emissary's works at the Tether's foot; the Guest met in play;
+   the climb.
+6. **Orbit**: the dead ring, the Foundry, Oksana, the channel; the endings; the After.
 
-### 10. Feel and balance
-- State: nothing systematic.
-- Next: regular playtests of the first hour. A read-only critic that grades frames
-  against VISION and LOOK (with the owner).
+## Groups, and what each does per slice
+
+Every group moves in every slice, and only as far as the slice needs.
+
+| Group | Standing direction |
+|---|---|
+| Story and narration | The slice's beats, leads and lines; the record's voice; wright reviews every line. |
+| Survival, making, gear | One new reason to make per slice; gear tiers follow the journey (made → mended → found). |
+| Fight and keepers | One keeper per slice, built as a set piece; balance judged by the human reader. |
+| Settlements and raids | Introduced in slice 2, for the taken; grows each slice. |
+| World and landscapes | Depth only where the slice walks; the parked batches return for the slice that visits them. |
+| Realms and time | Memory gates in STORY.md's order (his house in slice 1); the underground in slice 4, orbit in slice 6. |
+| Look, light, sound, slate | A quality pass on everything the slice shows: frames read, web budgets held. |
+| Tech: web, streaming, speed | Whatever the slice's playtest shows is slow; the web title under 15 s before slice 3. |
+| Process and tools | Refined at every slice's end; see below. |
+
+## The loop, per slice
+
+1. **Plan** (a day): the steps in this file; only the owner's own calls go to him.
+2. **Build** (about a day per step): one branch per step, preflight, frames read,
+   gated, landed; the proof tour grows with it.
+3. **Play** (★): the owner plays a web build at each milestone.
+4. **Close**: the slice's docs cut to contracts; one retro line on what slowed us,
+   turned into a script, check or rule (CLAUDE.md, memory); then the next plan.
 
 ## Open for the owner
 
-- #14 Lens and look rulings (lens on by default, sky under the lens).
-- #25 Rotate the Vercel token, which was visible in process listings.
-- How work is delegated from here: roles, batch merges, the critic.
+- Rotate the Vercel token (it was visible in process listings).

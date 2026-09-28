@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # Prove the test runner goes red when it should (tests/run.gd). Plants, runs,
-# and takes away four things, one run each:
+# and takes away five things, one run each:
 #   1. a test that passes, alone                 -> the runner must exit 0
 #   2. a test whose code dies of a SCRIPT ERROR  -> it must print FAIL, exit 1
 #   3. a test that boots a game and never ends it -> IT fails, by name, and the
 #      test after it runs in a tree with no game in it
 #   4. a src script that does not parse          -> load error, exit 1
+#   5. a last test that lets go of a realm raise  -> the runner claims it before
+#      it quits, so no worker is left in the pool (no "Pages in use" line)
 # The first is the control: without it a runner that is always red would pass.
-# Usage: tools/runner_red.sh    (exits 0 only if all four behave)
+# Usage: tools/runner_red.sh    (exits 0 only if all five behave)
 set -uo pipefail
 cd "$(dirname "$0")/.."
 probe_dir="tests/zz_runner_red"
@@ -87,6 +89,33 @@ if [ "$code" = 0 ] || ! grep -q "LOAD FAIL res://$broken" "$log"; then
   echo "runner_red: a src script that does not parse was not red (exit $code)"; tail -5 "$log"; fails=1
 else
   echo "runner_red: parse error red (exit $code)"
+fi
+rm -f "$broken" "$broken.uid"
+
+# Every game lets go of its realm raise as it ends (20_realms -> RealmWorlds.forget)
+# and the raise runs on, halted, to the end of its stage. After a shard's last
+# test comes only the quit, and a process torn down with a worker inside GDScript
+# either faults or blocks for ever on the language's own lock: two CI shards sat
+# an hour after their last "ok" until the job was cancelled.
+cat >"$probe" <<'EOF'
+extends TestCase
+## Planted by tools/runner_red.sh; never committed.
+
+
+func test_lets_go_of_a_raise() -> void:
+	RealmWorlds.forget()
+	RealmWorlds.settle()
+	RealmWorlds.begin(90422, 1024, &"underground")
+	OS.delay_msec(300)
+	RealmWorlds.forget()
+	check(RealmWorlds._orphan_running(), "the raise is still running when the test ends")
+EOF
+code=$(run)
+if [ "$code" != 0 ] || ! grep -q "ok   test_zz_runner_probe:test_lets_go_of_a_raise" "$log" \
+    || grep -q "Pages in use exist at exit in PagedAllocator: N16WorkerThreadPool5GroupE" "$log"; then
+  echo "runner_red: the runner quit with a realm raise still in the pool (exit $code)"; grep "test_lets_go\\|PagedAllocator" "$log"; fails=1
+else
+  echo "runner_red: a raise left by the last test is claimed before the quit (exit $code)"
 fi
 rm -f "$log"
 exit $fails

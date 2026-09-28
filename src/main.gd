@@ -228,27 +228,7 @@ func _exit_tree() -> void:
 	# leaves the tree once, at the end, whichever of the six `quit()` doors was
 	# taken. 90_ui drains too, but only while a game is up — a shot that quits
 	# from the title, or a tour between games, goes out past it.
-	#
-	# BY PATH, not by class name, for the reason this file's header gives: naming
-	# UiSketch here pulls the whole UI package into main.gd's compile, and that
-	# lands before the Events autoload exists — measured, it took game.gd,
-	# crafting.gd and survival.gd down with it as load errors.
-	#
-	# A sketch cannot be cancelled (WorkerThreadPool has no such call), so waiting
-	# is the only way to end one, and the cost is the tail of one raster against a
-	# process that is leaving anyway. Without it the main thread tears the
-	# scripting language down with a worker still inside `_bake`, and it is a coin
-	# toss: the worker reads freed memory and takes signal 11 in `_poly_of` — a
-	# line that only reads an array — or the main thread blocks forever on
-	# GDScript's own recursive lock, which the worker holds.
-	(load("res://src/ui/ui_sketch.gd") as GDScript).call("wait")
-	(load("res://src/ui/ui_slate.gd") as GDScript).call("wait")
-	# A realm's raise too (RealmWorlds.begin): a game lets go of it without waiting,
-	# but a process must not come apart with it in the pool. Halted first, so the
-	# wait is one stage of worldgen, not a world.
-	var realms := load("res://src/core/realm/realm_worlds.gd") as GDScript
-	realms.call("forget")
-	realms.call("settle")
+	drain_pool()
 	if FileAccess.file_exists(PLAY_MARK):
 		var f := FileAccess.open(PLAY_MARK, FileAccess.READ)
 		var whose := f.get_as_text().strip_edges() if f != null else ""
@@ -256,3 +236,28 @@ func _exit_tree() -> void:
 			f.close()
 		if whose == str(OS.get_process_id()):
 			DirAccess.remove_absolute(PLAY_MARK)
+
+
+## Claim every task this game's scripts put on the worker pool and did not wait
+## for. EVERY PROCESS THAT RUNS GAME CODE CALLS IT BEFORE IT QUITS: this root as
+## it leaves, and tests/run.gd, which has no root, after its last test. A process
+## torn down with a worker still inside GDScript is a coin toss: the worker reads
+## freed memory and takes signal 11 (in `_poly_of`, a line that only reads an
+## array), or the main thread blocks for ever on GDScript's own recursive lock,
+## which the worker holds. Two CI shards sat an hour after their last "ok" that way.
+##
+## BY PATH, not by class name, for the reason this file's header gives: naming
+## UiSketch here pulls the whole UI package into main.gd's compile, and that
+## lands before the Events autoload exists — measured, it took game.gd,
+## crafting.gd and survival.gd down with it as load errors.
+static func drain_pool() -> void:
+	# A sketch cannot be cancelled (WorkerThreadPool has no such call), so waiting
+	# is the only way to end one: the tail of one raster.
+	(load("res://src/ui/ui_sketch.gd") as GDScript).call("wait")
+	(load("res://src/ui/ui_slate.gd") as GDScript).call("wait")
+	# A realm's raise (RealmWorlds.begin): a game lets go of it as it ends without
+	# waiting, and it runs on. Halted first, so the wait is one stage of worldgen,
+	# not a world.
+	var realms := load("res://src/core/realm/realm_worlds.gd") as GDScript
+	realms.call("forget")
+	realms.call("settle")
