@@ -47,6 +47,10 @@ static func declare(force: bool = false) -> void:
 	# by the time it asked.
 	Landmarks.declare_loot(force)
 	Interiors.declare_loot(force)
+	# And the keepers: every relic's core comes off one, and a question asked of
+	# the economy before 44_sentinels set up (a test run alone) found no core had
+	# any source at all.
+	Sentinels.declare_loot()
 
 
 ## Everything the economy hands a player without a recipe: what a machine gives

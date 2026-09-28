@@ -127,7 +127,7 @@ func test_a_sketch_nobody_warmed_is_never_drawn_on_the_caller() -> void:
 		@warning_ignore("return_value_discarded")
 		UiSketch.item_texture(&"whelk", 199 + i * 2)
 		asking = minf(asking, float(Time.get_ticks_usec() - t0) / 1000.0)
-	lt(asking, 20.0, "and asking does not wait for it")
+	cost_lt(asking, 20.0, "and asking does not wait for it")
 	check(UiSketch.waiting(), "a worker took it")
 	UiSketch.wait()
 	var tex := UiSketch.item_texture(&"whelk", 231)

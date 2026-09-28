@@ -53,6 +53,9 @@ extends GameSystem
 ##                          its health (never raises it), so a tour can be at a phase a
 ##                          boss reaches by damage without feeding a scripted player to
 ##                          it pass after pass; fails when no such body is about
+##   fell KIND              the nearest live body of that kind falls where it stands,
+##                          as its last blow would drop it: for a frame of how a
+##                          body falls, when the fight to it is proved headless
 ##   thanked                the region the player is in (a room: the one its door
 ##                          stands in, `tour_region`) has thanked him for an ask he
 ##                          answered (Story.hear "REGION:recover:said"), so a frame
@@ -167,6 +170,8 @@ extends GameSystem
 ##                          step would be seen (`tour_safe`) as a patient player does
 ##   walkto guard SECS      steer to beside the nearest guard in the room (not its
 ##                          keeper), to fight what keeps it
+##   walkto gap SECS        through the way `near gap` found and on (40_fight
+##                          `tour_route`): the walk a warden sprays shut behind
 ##   walkto shaft SECS      the same steering toward the nearest shaft, stopping
 ##                          inside its reach: a return BY NAME, where a timed walk
 ##                          back ends wherever the props on the way let it
@@ -180,6 +185,9 @@ extends GameSystem
 ##                          turned to them: a machine behind a house, over the
 ##                          shoulder, that the house hides
 ##   tell KIND              the nearest live body of that kind starts its bite's tell
+##   behind KIND            the nearest live body of that kind stands behind the
+##                          player, every one of that kind is roused, and it starts
+##                          its bite out of sight: the unseen tell and its cue
 ##                          where it stands, turned to the player (what the ear hears)
 ##   spawn KIND[@DEG]       put a roster body (e.g. runner, harvester) in view in
 ##                          front of the player, as --spawn does at boot; fails the
@@ -541,12 +549,16 @@ func _run() -> void:
 					ok = await _spawn(parts[1])
 			"tell":
 				ok = _tell(parts[1])
+			"behind":
+				ok = _tell_behind(parts[1])
 			"under":
 				ok = await _spawn_under(parts[1])
 			"over":
 				ok = await _spawn_over(parts[1])
 			"wound":
 				ok = _wound(parts[1], parts[2].to_float() if parts.size() > 2 else 0.5)
+			"fell":
+				ok = _fell(parts[1])
 			"thanked":
 				ok = _thanked()
 			"choose":
@@ -997,7 +1009,7 @@ func _stand_at(found: WorldProp, said: String) -> bool:
 ## Every `walkto` target, the one list: `tests/tours/test_tour_claims.gd` reads it,
 ## so a new target cannot be written into a tour and refused by a stale copy.
 ## (`prop:KIND` is checked against PropKind.NAMES there instead.)
-const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft", "strongbox", "guard"]
+const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft", "strongbox", "guard", "gap"]
 
 
 ## The nearest prop of `kinds` (PropKind names, _ for space) with work left in
@@ -1145,10 +1157,10 @@ func _stand_off_mob(token: String, dist: float) -> bool:
 
 func _walk_to(what: String, secs: float) -> bool:
 	var sim := game.player.sim
-	if sim == null or not what in ["mob", "part", "plate", "shaft", "strongbox", "guard"]:
+	if sim == null or not what in WALK_TARGETS:
 		return false
 	var until := Time.get_ticks_msec() + int(secs * 1000.0)
-	if what == "strongbox" or what == "guard":
+	if what in ["strongbox", "guard", "gap"]:
 		return await _walk_route(what, until, secs)
 	if what == "shaft":
 		while Time.get_ticks_msec() < until:
@@ -1247,7 +1259,7 @@ func _walk_route(what: String, until: int, secs: float) -> bool:
 		await get_tree().physics_frame
 	game.scripted_seconds = 0.0
 	if i < route.size():
-		printerr("tour %s: walked the way to the %s for %.1f s and reached %d of its %d marks" % [_name, what, secs, i, route.size()])
+		printerr("tour %s: walked the way to the %s for %.1f s and reached %d of its %d marks (at %s, the next %s; stunned %s, committed %s, curtains %d)" % [_name, what, secs, i, route.size(), sim.hero.pos, route[i], sim.hero.stunned(sim.now), sim.hero.committed(sim.now), sim.curtains.size()])
 		return false
 	return true
 
@@ -1369,6 +1381,39 @@ func _tell(token: String) -> bool:
 	return true
 
 
+## `behind KIND`: a crowd of that kind roused, and the nearest of it at the
+## player's back, beginning its bite out of sight (FightSim.begin_bite: longer,
+## and cued by a call from its bearing and a mark at the slate's edge).
+func _tell_behind(token: String) -> bool:
+	var id := Roster.resolve(token)
+	var sim: FightSim = game.player.sim
+	if sim == null:
+		return false
+	var best: MobState = null
+	for m: MobState in sim.mobs:
+		if m.alive and not m.removed and m.kind == id and m.bite != null:
+			m.disturbed = true
+			m.set_mood(MobState.CHASING, sim.now)
+			if best == null or m.pos.distance_to(sim.hero.pos) < best.pos.distance_to(sim.hero.pos):
+				best = m
+	if best == null:
+		printerr("tour %s: no %s to come from behind" % [_name, token])
+		return false
+	var back := sim.hero.pos - Vector2.from_angle(sim.hero.facing) * (best.radius + sim.hero.radius + 0.8)
+	best.pos = back
+	best.facing = (sim.hero.pos - best.pos).angle()
+	best.aim = best.facing
+	best.set_mood(MobState.ATTACKING, sim.now)
+	if not sim.out_of_sight(best):
+		printerr("tour %s: the %s behind is in sight" % [_name, token])
+		return false
+	Brains.bite(best, sim)
+	if best.cued_at != best.blow_at:
+		printerr("tour %s: the %s behind was not cued (alone?)" % [_name, token])
+		return false
+	return true
+
+
 ## `thanked`: the thanks of the region the player is in, told and said.
 func _thanked() -> bool:
 	var region := game.world.region_at(floori(game.player.pos.x), floori(game.player.pos.y))
@@ -1402,6 +1447,25 @@ func _wound(token: String, share: float) -> bool:
 		return false
 	best.health = mini(best.health, maxi(1, floori(float(best.max_health) * share)))
 	print("tour wound %s: %d of %d" % [token, best.health, best.max_health])
+	return true
+
+
+## `fell KIND`: the nearest live body of that kind falls where it stands, by the
+## player's hand as its last blow would drop it (FightSim._kill).
+func _fell(token: String) -> bool:
+	var id := Roster.resolve(token)
+	var sim: FightSim = game.player.sim
+	var best: MobState = null
+	if sim == null:
+		return false
+	for m: MobState in sim.mobs:
+		if m.alive and not m.removed and m.kind == id:
+			if best == null or m.pos.distance_to(sim.hero.pos) < best.pos.distance_to(sim.hero.pos):
+				best = m
+	if best == null:
+		printerr("tour %s: no %s about to fall" % [_name, token])
+		return false
+	sim._kill(best, true)
 	return true
 
 

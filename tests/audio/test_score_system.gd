@@ -91,7 +91,7 @@ func _advance(sys: MusicSystem, secs: float, step: float = 0.25) -> void:
 
 func test_setup_does_no_sound_work() -> void:
 	var parts := _make()
-	lt(float(parts[2]), 50.0, "the score's setup costs the start nothing (%.1f ms)" % parts[2])
+	cost_lt(float(parts[2]), 50.0, "the score's setup costs the start nothing (%.1f ms)" % parts[2])
 	var sys: MusicSystem = parts[0]
 	eq(sys.process_mode, Node.PROCESS_MODE_ALWAYS, "the score does not stop on the pause page")
 	check(SaveGame.keys().has(&"score"), "the score saves itself")

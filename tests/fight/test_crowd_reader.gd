@@ -20,7 +20,7 @@ const BOUTS := 24
 ## One gate bout: {won, downed, t, health_lost}. `kit` is what is fitted.
 static func gate(crowd_reader: bool, start: int, kind: StringName = &"runner", count: int = 2,
 		kit: Array[StringName] = [], seconds: float = 120.0, tool: StringName = TOOL, charges: int = 0, ids: int = 1000,
-		shoulder := false, wind := 0.0) -> Dictionary:
+		shoulder := false, wind := 0.0, human := -1) -> Dictionary:
 	# A body's id steers its side-steps (Brains); ids count up across a run, so
 	# without this a bout's outcome would hang on how many ran before it.
 	MobState._next_id = ids
@@ -48,6 +48,8 @@ static func gate(crowd_reader: bool, start: int, kind: StringName = &"runner", c
 	# `shoulder`: the crowd reader as a player over the shoulder knows the fight
 	# (tests/fight/shoulder_reader.gd), facing the crowd as it starts.
 	var player: Variant = ShoulderReader.new(sim) if shoulder else (CrowdReader.new(sim) if crowd_reader else Reader.new(sim))
+	# The measuring reader's human limits (Reader.human; tools/sweep.sh only).
+	player.human = human
 	if shoulder:
 		sim.hero.facing = (mid - sim.hero.pos).angle()
 	var t := 0.0
