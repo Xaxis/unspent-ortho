@@ -183,14 +183,14 @@ wait 1.0
 near keeper
 wait 0.6
 await sentinel 12
+# A blow on its plate is all the ring asks for (tours/sentinels.tour's 03), and
+# each try starts off its body, so a try that ends with him downed and carried
+# off does not walk the rest of them from wherever he came round.
 try 8
-  walkto mob 6
-  await tell 14
-  press dodge 0.12
-  await sentinel_open 6
-  walkto part 2
+  near mob:sentinel.coast 5
+  walkto plate 6
   tap swing
-  await plating 5
+  await plating 4
 end
 wait 0.4
 shot 13-the-knife-rings-off-it with plating
