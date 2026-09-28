@@ -432,22 +432,49 @@ static func _lay_tip(c: GenContext, p: Vector2i, r: float) -> void:
 ## business in the next one.
 static func _lay_patch(c: GenContext, p: Vector2i, r: float, ground: int) -> void:
 	var own: int = c.w.country[p.y * c.size + p.x]
+	c.site_patches.append_array([p.x, p.y, r, ground, own])
+	_patch_into(c.site_ground, c.w.country, c.land, c.water, c.road, c.village, c.size, Vector2i.ZERO, c.size, p, r, ground, own)
+
+
+## The plan's patches (`GenContext.site_patches`, laid in order, later over
+## earlier) stamped into the square of `side` at world `origin`, from that
+## square's own copy of the fields they stop at. A patch reads only the tile it
+## paints, so the square needs no margin: only the rows whose box meets it, and
+## the owning country on the row, because the patch's own tile may lie outside.
+static func patch_square(patches: PackedFloat64Array, out: PackedByteArray, country: PackedByteArray, land: PackedByteArray,
+		water: PackedByteArray, road: PackedByteArray, village: PackedByteArray, side: int, origin: Vector2i, world_size: int) -> void:
+	for k in range(0, patches.size(), 5):
+		var p := Vector2i(int(patches[k]), int(patches[k + 1]))
+		var r := patches[k + 2]
+		var ri := ceili(r) + 2
+		if p.x + ri < origin.x or p.y + ri < origin.y or p.x - ri >= origin.x + side or p.y - ri >= origin.y + side:
+			continue
+		_patch_into(out, country, land, water, road, village, side, origin, world_size, p, r, int(patches[k + 3]), int(patches[k + 4]))
+
+
+static func _patch_into(out: PackedByteArray, country: PackedByteArray, land: PackedByteArray, water: PackedByteArray,
+		road: PackedByteArray, village: PackedByteArray, side: int, origin: Vector2i, world_size: int,
+		p: Vector2i, r: float, ground: int, own: int) -> void:
 	var ri := ceili(r) + 2
 	for dy in range(-ri, ri + 1):
 		for dx in range(-ri, ri + 1):
 			var x := p.x + dx
 			var y := p.y + dy
-			if x < 1 or y < 1 or x >= c.size - 1 or y >= c.size - 1:
+			if x < 1 or y < 1 or x >= world_size - 1 or y >= world_size - 1:
 				continue
-			var i := y * c.size + x
-			if c.w.country[i] != own:
+			var lx := x - origin.x
+			var ly := y - origin.y
+			if lx < 0 or ly < 0 or lx >= side or ly >= side:
 				continue
-			if c.land[i] == 0 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0:
+			var i := ly * side + lx
+			if country[i] != own:
+				continue
+			if land[i] == 0 or water[i] != 0 or road[i] != 0 or village[i] != 0:
 				continue
 			var ang := atan2(dy, dx)
 			var edge := r * (0.8 + 0.25 * sin(ang * 3.0 + p.x) + 0.12 * sin(ang * 5.0 + p.y))
 			if dx * dx + dy * dy <= edge * edge:
-				c.site_ground[i] = ground + 1
+				out[i] = ground + 1
 
 
 static func props(c: GenContext) -> void:

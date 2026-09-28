@@ -142,7 +142,20 @@ const STEEP_RANGE := 8
 
 
 
+## A test's hook: set, the settle stage keeps its world before (`before`, at
+## the start of `villages`) and after (`after`, at the end of `roads`), and the
+## plan's rows it laid (`rows`).
+static var keeping := false
+static var before: Dictionary = {}
+static var after: Dictionary = {}
+static var rows: Dictionary = {}
+
+
 static func villages(c: GenContext) -> void:
+	if keeping:
+		before = {"level": GenFields.snapshot(c.w.level), "elev": GenFields.snapshot(c.elev), "land": GenFields.snapshot(c.land),
+			"water": GenFields.snapshot(c.water), "pools": GenFields.snapshot(c.pools)}
+	c.village_platforms = PackedFloat32Array()
 	var w := c.w
 	var size := c.size
 	var b := 8
@@ -419,6 +432,7 @@ static func _lay_villages(c: GenContext, chosen: Array[Vector3], cut_wide: Dicti
 		var platform := c.defs[cc].village_platform
 		if cut_wide.has(n):
 			platform = maxf(platform, HOUSE_REACH)
+		c.village_platforms.append(platform)
 		_flatten(c, tx, ty, w.villages[id].level, platform)
 
 
@@ -477,34 +491,44 @@ static func _level_here(c: GenContext, tx: int, ty: int) -> int:
 ## along a smoothstep, so terraces open out round the village instead of
 ## stacking at its edge, and the grounds (read from float elevation) follow.
 static func _flatten(c: GenContext, tx: int, ty: int, lv: int, platform := 0.0) -> void:
-	var w := c.w
-	var size := c.size
+	flatten_into(c.s, c.w.level, c.elev, c.land, c.water, c.village, c.size, Vector2i.ZERO, c.size, tx, ty, lv, platform)
+
+
+## `_flatten` over a square `side` wide at `origin` in a world `world_size`
+## wide: the whole world, or a section. Each tile is laid from its own state and
+## the village's alone, so a section lays its own tiles of a village exactly as
+## the whole world does, the villages laid in id order.
+static func flatten_into(seed_value: int, level: PackedInt32Array, elev: PackedFloat32Array, land: PackedByteArray, water: PackedByteArray,
+		village: PackedByteArray, side: int, origin: Vector2i, world_size: int, tx: int, ty: int, lv: int, platform := 0.0) -> void:
 	# The levelled middle is the landscape's to widen (`BiomeDef.village_platform`):
 	# a city cuts a platform as big as its plots. The swept reach grows with it, or
 	# the loop would stop short of the ground it was asked to level.
 	var flat := FLAT if platform <= 0.0 else platform
 	var reach := ceili(maxf(CORE, flat) * 1.2 + APRON)
-	var ph := village_phases(c.s, Vector2(tx, ty))
-	var ph3 := GenFields.h01(c.s, tx, ty, 67) * TAU
-	var elev := c.elev
+	var ph := village_phases(seed_value, Vector2(tx, ty))
+	var ph3 := GenFields.h01(seed_value, tx, ty, 67) * TAU
 	for dy in range(-reach, reach + 1):
 		for dx in range(-reach, reach + 1):
 			var x := tx + dx
 			var y := ty + dy
-			if x < 1 or y < 1 or x >= size - 1 or y >= size - 1:
+			if x < 1 or y < 1 or x >= world_size - 1 or y >= world_size - 1:
 				continue
-			var i := y * size + x
-			if c.land[i] == 0 or c.water[i] == 1:
+			var lx := x - origin.x
+			var ly := y - origin.y
+			if lx < 0 or ly < 0 or lx >= side or ly >= side:
+				continue
+			var i := ly * side + lx
+			if land[i] == 0 or water[i] == 1:
 				continue
 			var d := sqrt(float(dx * dx + dy * dy))
 			var ang := atan2(float(dy), float(dx))
 			var wander := village_wander(ph, ang)
 			if d <= CORE * wander:
-				c.village[i] = 1
-				c.water[i] = 0
+				village[i] = 1
+				water[i] = 0
 			var core := flat * wander
 			if d <= core:
-				w.level[i] = lv
+				level[i] = lv
 				elev[i] = lv + 0.5
 				continue
 			# The apron's reach wanders too.
@@ -515,7 +539,38 @@ static func _flatten(c: GenContext, tx: int, ty: int, lv: int, platform := 0.0) 
 			var e := lerpf(lv + 0.5, elev[i], t)
 			var allow := ceili((d - core) / APRON_RUN)
 			elev[i] = e
-			w.level[i] = clampi(floori(e), maxi(1, lv - allow), lv + allow)
+			level[i] = clampi(floori(e), maxi(1, lv - allow), lv + allow)
+
+
+## A section's settle, laid from the plan's rows (`rows`: the villages in id
+## order as [x, y, level, platform], every road tile with its final level) onto
+## its window's world as it stood before settling, with the pools round it: its
+## villages levelled and their pools drained, its road tiles laid, and the pools
+## its roads cross drained. A crossed pool is seen through its box, which reaches
+## ROAD_POOL_MARGIN tiles past its own.
+const ROAD_POOL_MARGIN := 10
+
+static func settle_square(seed_value: int, settle_rows: Dictionary, pools: PackedVector3Array, level: PackedInt32Array, elev: PackedFloat32Array,
+		land: PackedByteArray, water: PackedByteArray, village: PackedByteArray, road: PackedByteArray, side: int, origin: Vector2i,
+		world_size: int) -> void:
+	for v: Array in settle_rows.villages:
+		var tx: int = v[0]
+		var ty: int = v[1]
+		GenWater.drain_into(pools, water, side, origin, world_size, Vector2(tx + 0.5, ty + 0.5), HOUSE_REACH + 3.0)
+		flatten_into(seed_value, level, elev, land, water, village, side, origin, world_size, tx, ty, v[2], v[3])
+	var tiles: PackedInt32Array = settle_rows.road_tiles
+	var levels: PackedInt32Array = settle_rows.road_levels
+	for k in tiles.size():
+		var t := tiles[k]
+		var lx := t % world_size - origin.x
+		var ly := t / world_size - origin.y
+		if lx < 0 or ly < 0 or lx >= side or ly >= side:
+			continue
+		var i := ly * side + lx
+		level[i] = levels[k]
+		land[i] = 1
+		road[i] = 1
+	GenWater.drain_crossed_into(pools, road, water, side, origin, world_size)
 
 
 ## **THE VILLAGE IS A LOBE AND `radius` IS A CIRCLE, AND THEY ANSWER DIFFERENT
@@ -706,6 +761,20 @@ static func roads(c: GenContext) -> void:
 	c.mark(&"roads.rejoin")
 	GenWater.drain_crossed(c)
 	ease_roads(c)
+	if keeping:
+		var laid: Array = []
+		for v: Dictionary in c.w.villages:
+			var at: Vector2 = v.pos
+			laid.append([floori(at.x), floori(at.y), int(v.level), c.village_platforms[int(v.id)]])
+		var tiles := PackedInt32Array()
+		var levels := PackedInt32Array()
+		for i in c.n:
+			if c.road[i] != 0:
+				tiles.append(i)
+				levels.append(c.w.level[i])
+		rows = {"villages": laid, "road_tiles": tiles, "road_levels": levels}
+		after = {"level": GenFields.snapshot(c.w.level), "elev": GenFields.snapshot(c.elev), "land": GenFields.snapshot(c.land),
+			"water": GenFields.snapshot(c.water), "village": GenFields.snapshot(c.village), "road": GenFields.snapshot(c.road)}
 
 
 ## No road climbs a cliff, whatever laid a tile of it last: a road crossing

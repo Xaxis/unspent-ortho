@@ -8,7 +8,7 @@ extends TestCase
 const LIVED: Array[StringName] = [&"cottage", &"home", &"stilt_room", &"hulk_hold", &"tower_lobby",
 	&"cliff_room", &"rooted_floor", &"tenement", &"roundhouse", &"squat"]
 const UNLIVED: Array[StringName] = [&"weapons_hall", &"foundry", &"data_hall", &"saw_hall",
-	&"maintenance_bay", &"laid_table", &"bunker", &"frozen_hold"]
+	&"maintenance_bay", &"laid_table", &"bunker", &"frozen_hold", &"container_warren"]
 
 
 static func lay(k: InteriorKind, s: int) -> InteriorLayout:
