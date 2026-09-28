@@ -544,10 +544,13 @@ static func neon_point(kind: int, variant: int, country: int) -> Dictionary:
 	# Cached: the lights ask this for every house in the world, and reading a
 	# model's marks means walking a few thousand vertices.
 	var key := _key(kind, variant, country, WHOLE)
+	# Typed: the lights' index asks this on the raise's worker (RealmWarm), and a
+	# worker runs no operator on an untyped value (tests/core/test_worker_types).
 	_lock.lock()
-	var hit: Variant = _neon.get(key)
+	var cached := _neon.has(key)
+	var hit: Dictionary = _neon.get(key, {})
 	_lock.unlock()
-	if hit != null:
+	if cached:
 		return hit
 	var t := template(kind, variant, country)
 	var at := Vector3.ZERO

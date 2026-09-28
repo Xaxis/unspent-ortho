@@ -32,7 +32,8 @@ extends RefCounted
 ##                            is RAKE_NOISE as loud
 ##   anchor   (mod_anchor)    "stood still, rooted": ANCHOR_MS without a step and
 ##                            the body is rooted (Hero.rooted): a blow does not
-##                            throw it, a grip does not take it; rooted, and
+##                            throw it, a grip does not take it (and snaps back,
+##                            stalling the gripper ANCHOR_SNAP_MS); rooted, and
 ##                            for ANCHOR_LIFT_MS after the first step, it
 ##                            cannot dodge
 ##   scale    (coat_scale)    "it turns the first blow at your back": the first
@@ -61,6 +62,9 @@ extends RefCounted
 ##                            things no wider than LOCK_GAP that the player walks
 ##                            through is shut behind them to machines for
 ##                            LOCK_SECONDS (FightSim.lock_walls), for LOCK_CHARGES
+##   veil     (mod_veil)      "a curtain of water they cannot see through": the
+##                            veil ability (AbilityVeil, FightSim.veils) is
+##                            fitted; the flag is for a reader that presses it
 ##   listen   (mod_listen)    "you hear their tells": a tell is drawn where it
 ##                            cannot be seen, through whatever stands between
 ##                            (40_fight); every noise the player makes is
@@ -116,10 +120,16 @@ const ICELENS_REACH := 1.5
 const RAKE_REACH := 3.0
 const RAKE_ARC := deg_to_rad(60.0)
 const RAKE_NOISE := 1.5
+## How long the tines hold what they rake: longer than a struck part's stall
+## (FightRules.STALL_MS), because under attack slots the second of a pair is only
+## ever in the arc for a moment, and a moment's stall bought nothing.
+const RAKE_STALL_MS := 1200.0
 ## How long the player must stand without a step to be rooted by the anchor, and
 ## how long a root holds once they step (no dodge while it does: its cost).
 const ANCHOR_MS := 600.0
 const ANCHOR_LIFT_MS := 300.0
+## A grip that closes on a rooted body snaps back on its gripper: stalled this long.
+const ANCHOR_SNAP_MS := 2500.0
 ## The lock: the widest gap (edge to edge, tiles) it will shut, how long it holds,
 ## and what a lock spends (FightRules.CHARGE).
 const LOCK_GAP := 2.2
@@ -168,6 +178,7 @@ var unbuild := false
 var plumb := false
 var listen := false
 var lock := false
+var veil := false
 var ploughshare := false
 var scale := false
 var hush := false
@@ -195,6 +206,7 @@ static func of(ids: Array) -> FightKit:
 	k.plumb = ids.has(&"mod_plumb")
 	k.listen = ids.has(&"mod_listen")
 	k.lock = ids.has(&"mod_lock")
+	k.veil = ids.has(&"mod_veil")
 	k.ploughshare = ids.has(&"mod_ploughshare")
 	k.scale = ids.has(&"coat_scale")
 	k.hush = ids.has(&"wrap_hush")

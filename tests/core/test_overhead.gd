@@ -140,4 +140,7 @@ func test_the_open_path_costs_nothing_measurable() -> void:
 		bare = mini(bare, run.call(0))
 		asked = mini(asked, run.call(FightSim.HERO_TALL))
 	print("overhead cost: 4000 steps, asking nothing %d us, asking headroom over empty %d us" % [bare, asked])
+	# A cost read beside sibling shards is judged later, alone (TestCase._later).
+	if _later("asking headroom over empty: %d us against %d bare beside the other shards" % [asked, bare]):
+		return
 	lt(float(asked), float(bare) * 1.3 + 1000.0, "asking headroom where nothing hangs is about free")

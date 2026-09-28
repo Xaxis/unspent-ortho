@@ -1,8 +1,10 @@
 class_name UiDevScreen
 extends UiScreen
 ## Dev mode's app: the stolen display module's service mode, hacked open
-## (docs/DESIGN.md). Pages stack like home and its keys page do: e steps into a
-## page, esc backs out one level, ` shuts the whole app from anywhere in it.
+## (docs/DESIGN.md). Five tabs along a strip under DEV (DevPageTab.TABS): WORLD,
+## STORY, FIGHT, LOOK & SPEED, SAVES; [ and ] move along it from anywhere in the
+## app, and so do left and right on a tab's rows that change nothing. Under a tab,
+## pages stack: e steps into one, esc backs out one level, ` shuts the whole app.
 ##
 ## It wears the module's violet, never the player's phosphor, so nothing of it
 ## can be mistaken for the game: a DEV cap on the status bar, a dashed violet
@@ -29,6 +31,8 @@ var title_scene: UiTitle
 ## Reads its own keys (the title); in a game the ui system routes them.
 var standalone := false
 var pages: Array[DevPage] = []
+## Which of DevPageTab.TABS is on the glass; its page is `pages[0]`.
+var tab := -1
 ## The world as it was when the app was opened (full size), or null.
 var picture: Image
 
@@ -47,6 +51,9 @@ var _opened_frame := -1
 
 const KEYS := [[&"move_up", &"up"], [&"move_down", &"down"], [&"move_left", &"left"], [&"move_right", &"right"],
 	[&"use", &"confirm"], [&"swing", &"confirm"], [&"pause", &"back"], [&"dev_toggle", &"dev_toggle"]]
+## The strip's own keys, read here in a game and on the title alike: the ui
+## system routes only the page keys every app shares.
+const TAB_KEYS := [[&"dev_tab_prev", -1], [&"dev_tab_next", 1]]
 
 
 func _init() -> void:
@@ -61,7 +68,7 @@ func page() -> DevPage:
 
 func _on_open() -> void:
 	if pages.is_empty():
-		push_page(DevPageHome.new(), false)
+		to_tab(DevPageTab.FIRST if game != null else DevPageTab.FIRST_ON_TITLE, false)
 	_edit = {}
 	_ask_key = ""
 	if standalone:
@@ -80,39 +87,90 @@ func _on_close() -> void:
 func push_page(p: DevPage, sound: bool = true) -> void:
 	if page() != null:
 		page().index = menu.index
+		# A page covered takes its own nodes off the glass until it is uncovered.
+		page().leave()
 	p.screen = self
 	p.game = game
 	p.title = title_scene
 	pages.append(p)
 	menu = UiMenu.new()
 	scroll = 0
+	p.enter()
 	if sound:
 		Events.sfx.emit(&"ui_slate_confirm", Vector3.ZERO)
 	refresh()
 
 
-## Open straight at a page by its home row id, and a row on it (--dev=PAGE:ROW, keys).
+## Put tab `i` on the glass, at its own first page.
+func to_tab(i: int, sound: bool = true) -> void:
+	tab = posmod(i, DevPageTab.TABS.size())
+	for p: DevPage in pages:
+		p.leave()
+	pages.clear()
+	push_page(DevPageTab.make(tab), false)
+	if sound:
+		Events.sfx.emit(&"ui_slate_click", Vector3.ZERO)
+
+
+## Along the strip by `dir`, from whatever page of a tab is up.
+func step_tab(dir: int) -> void:
+	to_tab(tab + dir)
+
+
+## Open straight at a page by the id it has always had, and a row on it
+## (--dev=PAGE:ROW, keys): the tab that holds it now, and the page stepped
+## into when it is a door. "home" and "" are the first tab.
 func open_at(page_id: StringName, row_id: StringName = &"") -> bool:
-	while pages.size() > 1:
-		pages.pop_back()
-	if pages.is_empty():
-		push_page(DevPageHome.new(), false)
-	refresh()
-	if page_id != &"" and page_id != &"home":
-		var p := DevPageHome.page_for(page_id)
-		if p == null:
+	if page_id == &"" or page_id == &"home":
+		to_tab(DevPageTab.FIRST if game != null else DevPageTab.FIRST_ON_TITLE, false)
+	else:
+		var at := DevPageTab.tab_of(page_id)
+		if at.is_empty():
 			return false
-		push_page(p, false)
+		to_tab(int(at.tab), false)
+		if at.how == &"door" or at.how == &"story":
+			var p := DevPageTab.page_for(page_id)
+			if p == null:
+				return false
+			push_page(p, false)
+		elif at.how == &"inline":
+			# Stand on the page's first row, so a bare --dev=body is at the body.
+			for r: Dictionary in menu.rows:
+				if r.get("page", &"") == page_id and UiMenu.selectable(r):
+					select(r.id)
+					break
 	if row_id != &"":
 		select(row_id)
+	keep_in_view(LINES)
 	return true
+
+
+## A row by id; on a wide page, whatever that page stages by the word
+## (DevPage.pick), several joined by "+".
+func select(id: StringName) -> void:
+	if page() != null and page().wide():
+		for w: String in String(id).split("+", false):
+			page().pick(StringName(w))
+		queue_redraw()
+		return
+	super(id)
+
+
+## Another app of the slate over this one (the game's saves, off SAVES).
+func open_app(n: StringName) -> void:
+	if game == null:
+		return
+	for s in game.systems:
+		if s.name == "90_ui":
+			s.call("open_screen", n)
 
 
 func back() -> void:
 	if pages.size() <= 1:
 		close()
 		return
-	pages.pop_back()
+	pages.pop_back().leave()
+	page().enter()
 	menu = UiMenu.new()
 	refresh()
 	menu.index = page().index
@@ -146,6 +204,11 @@ func handle(action: StringName) -> bool:
 		&"dev_toggle":
 			close()
 			return true
+	if page() != null and page().handle(action):
+		queue_redraw()
+		return true
+	if page() != null and page().wide():
+		return false
 	var used := super(action)
 	if action == &"up" or action == &"down":
 		keep_in_view(LINES)
@@ -164,6 +227,10 @@ func _on_confirm(row: Dictionary) -> void:
 func _on_side(dir: int) -> bool:
 	var row := menu.selected()
 	if row.is_empty():
+		# A tab with nothing to choose on it (a game's tab, on the title) still moves along.
+		if pages.size() == 1:
+			step_tab(dir)
+			return true
 		return false
 	page().side(row, dir)
 	if is_open:
@@ -255,6 +322,7 @@ func _process(delta: float) -> void:
 		return
 	if standalone:
 		_read_keys(delta)
+	_read_tab_keys()
 	if page() != null:
 		page().step(delta)
 	_refresh_in -= delta
@@ -310,6 +378,19 @@ func _step_axis(m: UiMenu, tapped: Dictionary, neg: StringName, pos: StringName,
 		handle(pos if held > 0 else neg)
 
 
+func _read_tab_keys() -> void:
+	for pair: Array in TAB_KEYS:
+		var action: StringName = pair[0]
+		if not InputMap.has_action(action):
+			continue
+		var now := Input.is_action_pressed(action)
+		var went_down: bool = (now and not _was.get(action, false)) or Input.is_action_just_pressed(action)
+		_was[action] = now
+		if went_down and _edit.is_empty() and Engine.get_process_frames() != _opened_frame:
+			step_tab(int(pair[1]))
+			return
+
+
 func _dir(neg: StringName, pos: StringName) -> int:
 	return int(Input.is_action_pressed(pos)) - int(Input.is_action_pressed(neg))
 
@@ -322,14 +403,13 @@ func _draw() -> void:
 	var L := UiSlate.LIST
 	var R := UiSlate.SPARE
 	var at := Vector2i(L.position.x + UiSlate.MARGIN_L, L.position.y + 8)
-	UiDraw.text(self, at, "DEV", VIOLET)
-	var x := at.x + UiFont.width("DEV") + 8
-	UiDraw.px(self, x, at.y + 8, UiTheme.MACHINE[2])
-	x += 8
-	var name := page().heading() if page() != null else ""
-	UiDraw.text(self, Vector2i(x, at.y), name, UiTheme.TEXT)
-	UiDraw.hline(self, x + UiFont.width(name) + 10, L.end.x - UiSlate.MARGIN_R, at.y + UiFont.SIZE / 2, UiTheme.GHOST)
+	if page() != null and page().wide():
+		_draw_strip(at, UiSlate.BODY.end.x - UiSlate.MARGIN_R)
+		page().draw_wide(self)
+		draw_keys(page().keys({}))
+		return
 	UiSlate.spare(self)
+	_draw_strip(at, L.end.x - UiSlate.MARGIN_R)
 	_draw_rows(L)
 	if page() != null:
 		page().detail(self, R)
@@ -338,6 +418,31 @@ func _draw() -> void:
 		draw_keys([["enter", "keep"], ["esc", "drop"]])
 	elif page() != null:
 		draw_keys(page().keys(row))
+
+
+## DEV, the five tabs, and where under the chosen one the glass stands: the
+## chosen tab lit on a violet cap, the rest in the module's dim violet, and past
+## them the pages stepped into, each after a point.
+func _draw_strip(at: Vector2i, right: int) -> void:
+	UiDraw.text(self, at, "DEV", VIOLET)
+	var x := at.x + UiFont.width("DEV") + 16
+	for i in DevPageTab.TABS.size():
+		var name := str(DevPageTab.TABS[i].name)
+		var w := UiFont.width(name)
+		if i == tab:
+			UiDraw.rect(self, Rect2i(x - 6, at.y - 2, w + 12, UiTheme.LINE), UiTheme.RIM)
+			UiDraw.frame(self, Rect2i(x - 6, at.y - 3, w + 12, UiTheme.LINE + 2), VIOLET)
+			UiDraw.text(self, Vector2i(x, at.y), name, UiTheme.BRIGHT)
+		else:
+			UiDraw.text(self, Vector2i(x, at.y), name, UiTheme.MACHINE[3])
+		x += w + 24
+	for i in range(1, pages.size()):
+		UiDraw.px(self, x - 12, at.y + 8, UiTheme.MACHINE[2])
+		var name := pages[i].heading()
+		UiDraw.text(self, Vector2i(x, at.y), name, UiTheme.TEXT)
+		x += UiFont.width(name) + 20
+	if x < right:
+		UiDraw.hline(self, x - 4, right, at.y + UiFont.SIZE / 2, UiTheme.GHOST)
 
 
 ## The service mode's own marks: a DEV cap before the clock and a dashed violet

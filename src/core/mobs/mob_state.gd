@@ -60,6 +60,10 @@ var want := Vector2.ZERO
 ## Facing the brain wants; the sim turns toward it at turn_rate (rad/s) unless committed.
 var aim := 0.0
 var turn_rate := 8.0
+## Spraying a curtain across a gap (a row that `seals`, FightSim.curtains): it
+## stands still facing `seal_at` until `seal_until`, the tell a player reads.
+var seal_until := -INF
+var seal_at := Vector2.INF
 ## A detour around something in the way, until.
 var detour := Vector2.ZERO
 var detour_until := 0.0
@@ -107,6 +111,15 @@ var call_ready_at := 0.0
 var heard_told := false
 # dart
 var snatched := false
+## A dart whose dive the veil cut (FightSim.lose_scent) has lost you for good:
+## it leaves, and is gone past its safe distance, taking nothing.
+var lost_scent := false
+## When its last bite was begun out of the player's sight and cued
+## (FightSim.begin_bite): equal to `blow_at` while that bite is the cued one.
+var cued_at := -INF
+## When it last noticed the player by its own senses (FightSim._notice); what
+## the rest of its crowd goes by (FightSim._mates_see).
+var saw_at := -INF
 var reported := false
 ## A blow reached the part: it flares, lit, until flare_until, then is dark
 ## (hurt) until dark_until. View reads.

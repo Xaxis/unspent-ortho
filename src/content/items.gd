@@ -147,6 +147,7 @@ const DEFS := {
 	&"unbuilder_core": {"name": "unbuilder core", "bulk": 3.0, "group": &"material"},
 	&"lockkeeper_core": {"name": "lockkeeper core", "bulk": 3.0, "group": &"material"},
 	&"plough_core": {"name": "plough core", "bulk": 3.5, "group": &"material"},
+	&"drip_core": {"name": "drip core", "bulk": 3.0, "group": &"material"},
 	&"anchor_core": {"name": "anchor core", "bulk": 3.0, "group": &"material"},
 	&"listener_core": {"name": "listener core", "bulk": 3.0, "group": &"material"},
 	&"lime": {"name": "lime", "bulk": 1.0, "group": &"material"},
@@ -462,6 +463,12 @@ const DEFS := {
 	# that shut the city's water in, turned. `charge` is its tag (ModifierTable).
 	&"mod_lock": {"name": "lock", "bulk": 2.0, "group": &"kit", "tier": &"mended", "module": true,
 		"icon": [&"coil", &"brine", &"ink"], "fits": [&"back"], "resist": {&"wet": 0.2}},
+	# The caves' drip-warden's core, in a pack frame over the shoulders (GEAR.md
+	# §5): the keeper that sealed the galleries with lime, turned. It lets the
+	# drip fall ahead of you as a veil their sight does not pass (AbilityVeil).
+	# `charge` is its tag (ModifierTable).
+	&"mod_veil": {"name": "veil", "bulk": 2.5, "group": &"kit", "tier": &"mended", "module": true,
+		"icon": [&"coil", &"brine", &"stone"], "fits": [&"back"], "resist": {}, "ability": &"veil"},
 	# The frost sea listener's core, bound over one ear (GEAR.md §5): the keeper
 	# that heard the ice, turned. `sight` is its tag (ModifierTable).
 	&"mod_listen": {"name": "the ear", "bulk": 1.5, "group": &"kit", "tier": &"mended", "module": true,

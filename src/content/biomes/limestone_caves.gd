@@ -21,9 +21,10 @@
 ## What the machines did to it: they cut in from above and left. The shafts are
 ## Portals (src/core/realm/portals.gd); the pipes and the debris are theirs.
 ##
-## No sentinel yet, and the machines down here are the bonelands' cutters and
-## haulers working a face: VISION's blind crawlers want a body of their own, and
-## that is M3's.
+## Its keeper is the drip-warden, which seals the way behind you (src/core/sentinel/
+## designs/drip_warden.gd). The other machines down here are the bonelands'
+## cutters and haulers working a face: VISION's blind crawlers want a body of
+## their own, and that is M3's.
 
 const P := preload("res://src/render/palette.gd")
 
@@ -201,6 +202,9 @@ static func make() -> BiomeDef:
 	# roof over a gallery is not sound. Every one of them has gear that answers
 	# (tests/gear), because they are all pressures the surface already declares.
 	d.hazards = {&"dark": 0.9, &"wet": 0.4, &"collapse": 0.35}
+	# Its keeper: the drip-warden, which seals the cave behind you with lime
+	# (src/core/sentinel/designs/drip_warden.gd).
+	d.sentinel = &"drip_warden"
 	# The machines that cut stone and carry it, at the face the surface only shows
 	# the top of. Each says what it walks on HERE, because a row written for the
 	# bonelands pavement is not a row about a cave floor (tests/biome). VISION's

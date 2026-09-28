@@ -67,6 +67,9 @@ func started() -> void:
 		_stage_fall(StringName(game.options.fallen), game.options.fallen_hours)
 
 
+var _falling_long_ago := false
+
+
 func _stage_fall(land: StringName, hours: float) -> void:
 	for s in _states:
 		if s.land != land or s.fallen:
@@ -74,7 +77,9 @@ func _stage_fall(land: StringName, hours: float) -> void:
 		var def := Sentinels.by_id(s.design)
 		var back := hours * 60.0
 		game.clock.minutes -= back
+		_falling_long_ago = true
 		_fell(s, def, def.way_of(SentinelWay.FORCE), s.lair)
+		_falling_long_ago = false
 		game.clock.minutes += back
 		return
 	push_warning("--fallen=%s: no keeper of that landscape stands in this world" % land)
@@ -176,8 +181,66 @@ func _put_out() -> void:
 		# Bound to this state here, not found again by the region under it: a lair
 		# stood just over a region's edge was adopted as a stranger, this state
 		# stayed empty, and a fresh body was put out every frame.
+		var first := not s.woken
 		_take(s, def, m)
+		if first:
+			_begin_reveal(m)
 		return
+
+
+# --- the staged beats ----------------------------------------------------------
+
+## THE REVEAL AND THE FALL (roadmap slice 1, step 4). The first time a keeper is
+## put out it stands at its work for REVEAL_S without noticing the player, so its
+## first sight is the whole machine and never its bite; once a keeper, ever
+## (`woken` is saved, SentinelState). Its fall is the arch folding (the model's
+## own FALL_S). Each is one call to `_stage`: the camera beat, the view turned
+## onto the body and handed back with the keys held only for the hold, is the
+## shared CameraRig staging (teammate3, slice 1b-ii) and is wired in there.
+const REVEAL_S := 2.6
+const FALL_S := 2.0
+## How high on the body a beat looks: the arch's beam, not its feet.
+const STAGE_LIFT := 1.4
+var _reveal_body: MobState = null
+var _reveal_until := -INF
+## Every beat staged, newest last: what a test reads until the camera takes them.
+var _staged: Array[Dictionary] = []
+
+
+func _begin_reveal(m: MobState) -> void:
+	_reveal_body = m
+	_reveal_until = sim.now + REVEAL_S * 1000.0
+	m.calm_until = maxf(m.calm_until, _reveal_until)
+	_seen["sentinel_revealed"] = true
+	_stage(&"reveal", m.pos, REVEAL_S)
+
+
+## Whether a keeper's reveal is standing now (on the fight's clock).
+func revealing() -> bool:
+	return _reveal_body != null and _reveal_body.alive and sim.now < _reveal_until
+
+
+## The one call site for a staged beat: `what` (reveal, fall) looking at `at`
+## for `seconds`, through the shared staging (the "stage" group, 42_stage:
+## `look` turns the view, holds the keys for the hold only, and turns it back).
+## A run without it keeps the fight's side, and the view stays the player's.
+func _stage(what: StringName, at: Vector2, seconds: float) -> void:
+	_seen["staged_%s" % what] = true
+	_staged.append({"what": what, "at": at, "seconds": seconds, "height": STAGE_LIFT})
+	var stage := _stager()
+	if stage != null:
+		@warning_ignore("return_value_discarded")
+		stage.call(&"look", game.world.to_3d(at) + Vector3.UP * STAGE_LIFT, seconds, what)
+
+
+func _stager() -> Node:
+	if not is_inside_tree():
+		return null
+	return get_tree().get_first_node_in_group(&"stage")
+
+
+func staged() -> Array[Dictionary]:
+	return _staged
 
 
 func _step() -> void:
@@ -355,6 +418,10 @@ func _fell(s: SentinelState, def: SentinelDef, way: SentinelWay, at: Vector2) ->
 			_stand_down(s.body)
 	_take_its_table(s, def)
 	_put_out_its_feed(den, def)
+	# A fall staged as long past (`--fallen`) is not watched: the set piece's look
+	# is for the fall the player sees.
+	if not _falling_long_ago:
+		_stage(&"fall", at, FALL_S)
 	Events.sentinel_fell.emit(s.region, s.land, s.how)
 	if way.says != "":
 		Events.message.emit(way.says)
@@ -509,6 +576,11 @@ func tour_seen(what: String) -> bool:
 	match what:
 		"sentinel":
 			return live != null
+		"sentinel_revealing":
+			var stage := _stager()
+			if stage != null:
+				return bool(stage.call(&"looking")) and StringName(stage.call(&"why")) == &"reveal"
+			return revealing()
 		"sentinel_hurt":
 			return live != null and live.health < live.max_health
 		"sentinel_open":

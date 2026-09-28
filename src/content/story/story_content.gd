@@ -38,7 +38,7 @@ const ARCS := {
 	&"the_machines": {
 		"title": "the machines",
 		"note": "What they are now, and how little they see.",
-		"beats": [&"counted", &"noticed", &"ants", &"standoff", &"the_guest"],
+		"beats": [&"counted", &"noticed", &"not_home", &"ants", &"standoff", &"the_guest"],
 	},
 	&"the_holdfast": {
 		"title": "the Holdfast",
@@ -98,7 +98,7 @@ const ARCS := {
 	&"the_secret": {
 		"title": "the secret",
 		"note": "Something missing in him, with edges.",
-		"beats": [&"gap", &"order_matters", &"seeker", &"mem_kitchen", &"mem_car", &"mem_hall", &"secret_whole", &"secret_misremembered"],
+		"beats": [&"gap", &"order_matters", &"seeker", &"mem_kitchen", &"mem_car", &"mem_hall", &"secret_held", &"secret_whole", &"secret_misremembered"],
 	},
 }
 
@@ -121,6 +121,7 @@ const BEATS := {
 	&"war_archive": {"short": "the archive", "arc": &"the_war", "says": "Somebody wrote the war down. It is kept across the water, at the Covenant's seat."},
 	&"counted": {"short": "counted, but not you", "arc": &"the_machines", "says": "The machines count everything on the land. They do not count people."},
 	&"noticed": {"short": "something noticed", "arc": &"the_machines", "says": "Something has noticed you at last. Only a part of it."},
+	&"not_home": {"short": "not home", "arc": &"the_machines", "says": "Somebody you walked out of a yard did not get home."},
 	&"ants": {"reveal": true, "short": "beneath notice", "arc": &"the_machines", "says": "They do not see you. Nothing that size looks down."},
 	&"standoff": {"reveal": true, "short": "a star each", "arc": &"the_machines", "says": "Two things that can kill a star are each holding the other's."},
 	&"the_guest": {"short": "someone else", "arc": &"the_machines", "says": "Something from another star is talking to them, and it is not talking about you."},
@@ -192,10 +193,11 @@ const BEATS := {
 	&"mem_kitchen": {"short": "the kitchen", "arc": &"the_secret", "says": "A keeper was holding one of your memories: a kitchen at two in the morning, and a plate in the oven."},
 	&"mem_car": {"short": "the car", "arc": &"the_secret", "says": "A keeper was holding one of your memories: a song in the car, and somebody small singing it wrong."},
 	&"mem_hall": {"short": "the hall", "arc": &"the_secret", "says": "You have one of your memories back: a school hall, and a seat where she could see you."},
-	&"secret_whole": {"reveal": true, "short": "in that order", "arc": &"the_secret", "says": "Kitchen, car, the hall, in that order. Something in you turns over like a key."},
-	&"secret_misremembered": {"reveal": true, "short": "out of order", "arc": &"the_secret", "says": "All three are back, but not in the order you wrote. Something in you turns, and catches, and turns the wrong way."},
+	&"secret_held": {"short": "all three", "arc": &"the_secret", "says": "All three are back. What they open depends on the order you live them in."},
+	&"secret_whole": {"short": "in that order", "arc": &"the_secret", "says": "Kitchen, car, the hall, in that order. Something in you turns over like a key."},
+	&"secret_misremembered": {"short": "out of order", "arc": &"the_secret", "says": "Not the order you wrote. Something in you turns, and catches, and turns the wrong way."},
 	&"gap": {"reveal": true, "short": "something missing", "arc": &"the_secret", "says": "There is something missing in you. You can feel its edges."},
-	&"order_matters": {"short": "in that order", "arc": &"the_secret", "says": "Some memories come back in an order, and the order feels like a lock."},
+	&"order_matters": {"short": "in that order", "arc": &"the_secret", "says": "Three memories, and an order to them. The order feels like a lock."},
 	&"seeker": {"reveal": true, "short": "grown to be read", "arc": &"the_secret", "says": "Something in the machines grew you so it could read you."},
 }
 
@@ -3995,6 +3997,7 @@ const TALKS := {
 				"replies": [
 					{"text": "Who pulled me out?", "pick": &"asked_who", "to": &"pulled"},
 					{"text": "Where am I?", "pick": &"asked_where", "to": &"where"},
+					{"text": "Somebody didn't get home.", "when": &"not_home", "pick": &"told_lost", "to": &"lost"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
 			},
@@ -4045,6 +4048,10 @@ const TALKS := {
 			},
 			&"others": {
 				"says": ["Two, years back. Both walked out to the point.", "Neither came back."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"lost": {
+				"says": ["I heard. We'll light the lamp for them anyway.", "They never took anybody before you came up out of the water."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
@@ -4787,7 +4794,9 @@ const TALKS := {
 	},
 	# --- the channel, at the end (docs/STORY.md). One voice, and it is his:
 	# the Seeker and the Echo are both made of him and speak alike. What he says
-	# here, read against the version of the secret he holds, is how it ends.
+	# here, and the order he relives the three memories in, is how it ends.
+	# Recovering them in any order commits nothing (docs/STORY.md, 2026-09-28):
+	# the version is decided here, by `relive` and the node after it.
 	&"the_channel": {
 		"title": "a voice like yours",
 		"machine": true,
@@ -4797,12 +4806,39 @@ const TALKS := {
 			&"open": {
 				"says": ["You came all the way up.", "Part of me grew you for this. Part of me paid a crew to stop you.", "Both of us are glad you came. Tell me what you remember."],
 				"replies": [
-					{"text": "Break them.", "when": &"secret_whole", "pick": &"broke", "to": &"done"},
-					{"text": "Break them.", "when": &"secret_misremembered", "pick": &"broke", "to": &"done"},
-					{"text": "All of us. Together.", "when": &"secret_whole", "pick": &"joined", "to": &"done"},
-					{"text": "All of us. Together.", "when": &"secret_misremembered", "pick": &"joined", "to": &"done"},
+					{"text": "Break them.", "when": &"secret_held", "pick": &"broke", "to": &"relive"},
+					{"text": "All of us. Together.", "when": &"secret_held", "pick": &"joined", "to": &"relive"},
 					{"text": "It's yours. Take it.", "pick": &"gave", "to": &"done"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"done"},
+				],
+			},
+			&"relive": {
+				"says": ["Then live them again, all three.", "Which comes first?"],
+				"replies": [
+					{"text": "[the kitchen]", "pick": &"kitchen", "to": &"after_kitchen"},
+					{"text": "[the car]", "pick": &"car", "to": &"after_car"},
+					{"text": "[the hall]", "pick": &"hall", "to": &"after_hall"},
+				],
+			},
+			&"after_kitchen": {
+				"says": ["And then?"],
+				"replies": [
+					{"text": "[the car]", "pick": &"car", "to": &"done", "beats": [&"secret_whole"]},
+					{"text": "[the hall]", "pick": &"hall", "to": &"done", "beats": [&"secret_misremembered"]},
+				],
+			},
+			&"after_car": {
+				"says": ["And then?"],
+				"replies": [
+					{"text": "[the kitchen]", "pick": &"kitchen", "to": &"done", "beats": [&"secret_misremembered"]},
+					{"text": "[the hall]", "pick": &"hall", "to": &"done", "beats": [&"secret_misremembered"]},
+				],
+			},
+			&"after_hall": {
+				"says": ["And then?"],
+				"replies": [
+					{"text": "[the kitchen]", "pick": &"kitchen", "to": &"done", "beats": [&"secret_misremembered"]},
+					{"text": "[the car]", "pick": &"car", "to": &"done", "beats": [&"secret_misremembered"]},
 				],
 			},
 			&"done": {
@@ -5430,7 +5466,7 @@ const SUBARCS := {
 	&"rescue": {
 		"ask": [
 			"They took %s. Out of the door, in the morning, and not one of us moved.",
-			"They're at the yard. Everybody here knows it and nobody says it.",
+			"They asked after you first. Then they took %s.",
 			"A yard that's dark doesn't hold anybody.",
 		],
 		"answer": "Then I'll put it dark.",
@@ -5438,7 +5474,7 @@ const SUBARCS := {
 		# not a name, and a sentence that begins with it begins in lower case.
 		"thanks": [
 			"They say %s came up the road at dusk. Thin. Walking.",
-			"We don't ask what a yard is for any more. We ask who's come back.",
+			"We don't ask what the yard wanted with them. We ask who's come back whole.",
 		],
 		"kept": [
 			"You said you'd put it dark, and they say %s came up the road at dusk.",
@@ -5557,6 +5593,10 @@ const TAKEN := {
 	# frame of that person still standing in the yard, plainly not on any road.
 	"out": "The yard is dark, and %s walked out of it.",
 	"home": "The door is shut behind %s.",
+	# Out of the yard after the run, whole in body and gone in mind. What the glass
+	# can see, and nothing about why: the running is not said before `seeker`.
+	"freed_empty": "The yard is dark, and %s took the road home. Eyes open. Nobody in them.",
+	"out_empty": "The yard is dark, and %s walked out of it, and stopped, and waits to be told.",
 	# The walk that ended badly. Flat, and never a verdict: the glass reports what
 	# happened in the world and has no opinion about who let it. It also says the
 	# only thing that is TRUE in every case — a person left too far behind for too
@@ -5645,6 +5685,7 @@ const WITNESS_ON := {
 	&"signet": &"your_key",
 	&"other_realm": &"seeker",
 	&"hunted": &"noticed",
+	&"lost": &"not_home",
 	&"works_dark": &"holdfast_price",
 	&"ring_held": &"ring_held",
 }
@@ -5657,6 +5698,7 @@ const WITNESSED := {
 	&"your_key": "the signet fires, once his old passwords are known of",
 	&"seeker": "the player stands below the world or above it (not in the Before, which is his own past)",
 	&"noticed": "the region the player stands in is hunting them",
+	&"not_home": "somebody he was walking home from a yard is lost on the road",
 	&"holdfast_price": "a works yard is put dark",
 	&"ring_held": "a machine hunting the player stops at a crags ring's edge and holds there, facing in",
 }

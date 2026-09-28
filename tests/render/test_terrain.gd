@@ -419,7 +419,7 @@ func test_streamed_chunks_are_built_off_the_main_thread_and_match_a_direct_build
 		await tree.process_frame
 	eq(view.pending(), 0, "every wanted chunk streamed in")
 	gt(view.chunk_count(), 1, "chunks built")
-	lt(view.main_ms / maxf(1.0, view.build_count), view.build_ms / maxf(1.0, view.build_count), "the main thread did only part of each build")
+	ratio_lt(view.main_ms / maxf(0.001, view.build_ms), 1.0, "the main thread did only part of each build")
 	var streamed := view.chunk_at(Vector2(40, 40))
 	var direct := TerrainMesher.new(w).build(1, 1)
 	check(streamed != null, "the focus chunk exists")

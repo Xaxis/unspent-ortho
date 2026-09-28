@@ -20,6 +20,11 @@ var _ghosts: Dictionary = {}
 ## only a wall. Owned by whoever set it, so a realm crossing replaces the set
 ## rather than piling a second island's walls on top of the first's.
 var _blocks: Dictionary = {}    # int tile index -> Array[Vector3] (x, z, radius)
+## Lines sight does not pass and nothing else notices: (ax, ay, bx, by) in tile
+## space. The veil's falling water (FightSim.veils), set by the fight as it
+## stands and falls; `Senses.line_clear` reads it, so what cannot see through it
+## is everything that looks, and bodies, blows and sound go through.
+var sight_screens: Array[Vector4] = []
 var _block_by: Dictionary = {}  # owner -> Array[Vector3]
 ## Tiles of slack when a circle is stamped into the grid, so one tile lookup is
 ## enough for any body narrower than this.

@@ -312,3 +312,18 @@ static func spend_charges(inv: Inventory, wick: int) -> bool:
 	if inv == null or not inv.has(CHARGE, wick):
 		return false
 	return inv.remove(CHARGE, wick)
+
+
+## PLATING (roster `plating`, a hardness from Items.STUFF_RANK): whether the edge
+## `held` bites a body with this row. A body plated in steel rings off iron and
+## bare hands wherever the blow lands; an edge of its hardness or harder bites.
+## A body with no plating is bitten by anything. It is the gear ladder made a
+## rule: each keeper names the edge it takes, and the next make has a reason.
+static func bites(row: Dictionary, held: StringName) -> bool:
+	var plate: StringName = row.get("plating", &"")
+	if plate == &"":
+		return true
+	if held == &"":
+		return false
+	return int(Items.STUFF_RANK.get(Items.stuff(held), -1)) >= int(Items.STUFF_RANK.get(plate, 0))
+

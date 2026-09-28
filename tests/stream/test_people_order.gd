@@ -1,7 +1,7 @@
 extends TestCase
 ## The people's things are rows that no other row decides (streamed worldgen
-## S4j2): village edges, ways in, road signs, remains, survey sections and
-## vignette cells. Laid last to first (`GenWorks.reversing`), the world holds the
+## S4j2, S4j3): villages, wrecks, landmarks furnished, kilns, village edges,
+## ways in, road signs, remains, survey sections and vignette cells. Laid last to first (`GenWorks.reversing`), the world holds the
 ## same things in the same places -- only prop ids, which are the order laid,
 ## differ. A way in keeps off the ways in that outrank it by hash, not the ones
 ## laid before it, and each region's stolen light is its own lowest-hashed shack.
@@ -19,6 +19,8 @@ func test_the_people_s_things_laid_backwards_are_the_same_things() -> void:
 		var a := _things(fwd)
 		var b := _things(back)
 		gt(float(a.size()), 1000.0, "seed %d: things to lay" % s)
+		for kind: String in ["m wreck ", "m graves ", "p %d " % PropKind.HOUSE]:
+			gt(float(a.filter(func(t: String) -> bool: return t.begins_with(kind)).size()), 0.0, "seed %d: some %s to lay" % [s, kind.strip_edges()])
 		var only_fwd := _minus(a, b)
 		var only_back := _minus(b, a)
 		eq(only_fwd.size() + only_back.size(), 0, "seed %d: the same things either way (first differing: %s / %s)"

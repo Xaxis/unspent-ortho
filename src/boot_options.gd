@@ -113,7 +113,9 @@ extends RefCounted
 ## --carried=N         N people are already being held at the first depot of the plan,
 ##                     taken out of a village of that same region, so the region has
 ##                     somebody to ask him about (taken, story); with --holding, taken
-##                     off the staged holding's books instead, to walk home to it
+##                     off the staged holding's books instead, to walk home to it.
+##                     `--carried=N:H`: held H hours already (default 10), so past
+##                     Taken.RUN_HOURS they come out empty
 ## --fallen=LAND[:H]   that landscape's keeper (its biggest region's) fell H hours (default 0)
 ##                     before the start, by its own fall: its feed spent, its memory back,
 ##                     its yard dark, the land H hours into closing over it (sentinels)
@@ -239,6 +241,7 @@ var walled := false
 var attention := 0.0
 ## How many people the plan is already holding at boot (taken).
 var carried := 0
+var carried_hours := 10.0
 ## A landscape whose keeper fell before the start, and how many hours before (sentinels).
 var fallen := ""
 var fallen_hours := 0.0
@@ -360,11 +363,15 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"holding": o.holding = v.split(",", false)
 			"walled": o.walled = true
 			"attention": o.attention = clampf(v.to_float(), 0.0, 1.0)
-			"carried": o.carried = maxi(0, v.to_int())
-			"fallen":
+			"carried":
 				var parts := v.split(":")
-				o.fallen = parts[0]
-				o.fallen_hours = maxf(0.0, parts[1].to_float()) if parts.size() > 1 else 0.0
+				o.carried = maxi(0, parts[0].to_int())
+				if parts.size() > 1:
+					o.carried_hours = maxf(0.0, parts[1].to_float())
+			"fallen":
+				var fp := v.split(":")
+				o.fallen = fp[0]
+				o.fallen_hours = maxf(0.0, fp[1].to_float()) if fp.size() > 1 else 0.0
 			"craft": o.craft = v
 			"aboard": o.aboard = v
 			"act": o.act = v

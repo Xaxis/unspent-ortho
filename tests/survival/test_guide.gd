@@ -62,6 +62,9 @@ func test_past_the_pick_the_goal_points_at_an_elite_material() -> void:
 
 
 func test_hints_fit_the_moment_and_stay_retired() -> void:
+	# A journal holding anything asks for itself first: start from one that holds
+	# nothing, whatever an earlier suite wrote down.
+	Story.forget()
 	var g := Fx.flat()
 	var retired := {}
 	eq(Guide.hint_for(g, retired).get("id", &""), &"walk", "at wake: the walking keys")

@@ -48,6 +48,7 @@ func setup(g: Game) -> void:
 	sim = g.player.sim
 	if sim == null:
 		return
+	Events.sentinel_fell.connect(_on_keeper_fell)
 	_mend_from = g.clock.minutes
 	_last_health = g.body.health
 	_keep_texel()
@@ -57,11 +58,27 @@ func setup(g: Game) -> void:
 		_play_act(g.options.act)
 
 
+## Which keys were down at the last read. A press is this system's own edge as
+## well as `is_action_just_pressed`, which answers only in the frame the key
+## went down: a press made later in a frame than this runs (a tour's) was never
+## seen by it (20_realms met it on the climb back up a shaft).
+var _was_down: Dictionary = {}
+
+
+func _went_down(action: StringName) -> bool:
+	var now := Input.is_action_pressed(action)
+	var was: bool = _was_down.get(action, false)
+	_was_down[action] = now
+	return (now and not was) or Input.is_action_just_pressed(action)
+
+
 ## Read by polling the actions, not from input events, so the real bindings,
 ## a tour's pressed actions and a bot all reach the same verbs. Shift's own
 ## edges are watched for DodgeInput; the dodge action pressed without Shift
 ## down (K, or an action pressed by a tour) dodges at once.
 func _read_input(delta: float) -> void:
+	var swing_went := _went_down(&"swing")
+	var dodge_went := _went_down(&"dodge")
 	var shift := Input.is_physical_key_pressed(KEY_SHIFT)
 	var t := Time.get_ticks_msec()
 	var blocked := game.input_blocked() or _held
@@ -80,7 +97,7 @@ func _read_input(delta: float) -> void:
 	# the key comes up, or when the hold is long enough, whichever is first. Over
 	# the shoulder it goes where the camera looks (NAN elsewhere, which keeps the
 	# swing's own rule). Held by something, the key wrenches at once.
-	if Input.is_action_just_pressed(&"swing"):
+	if swing_went:
 		if sim.hero.held():
 			sim.press_swing()
 		else:
@@ -94,7 +111,7 @@ func _read_input(delta: float) -> void:
 		elif _swing_held * 1000.0 >= FightRules.HEAVY_HOLD_MS:
 			_swing_held = -1.0
 			sim.press_heavy(game.camera.aim())
-	if Input.is_action_just_pressed(&"dodge") and not shift:
+	if dodge_went and not shift:
 		sim.press_dodge()
 	# The unbuilder's hands (FightKit.unbuild): use held at an open machine's part
 	# strips it, gathered through its openings.
@@ -142,6 +159,8 @@ func _process(delta: float) -> void:
 		game.camera.snap_to(_focus)
 	var frozen := sim.hold
 	game.player.sync_view(0.0 if frozen else delta, frozen)
+	if not _curtains.is_empty():
+		_age_curtains()
 	game.player.draw_swing(sim.now)
 	if _heavy_let_go >= 0.0 and sim.now >= _heavy_let_go:
 		_let_go()
@@ -172,6 +191,21 @@ func _keep_texel() -> void:
 
 
 ## The camera's up on screen, as a world direction (a tell stands above a body along it).
+## Which way on the screen `at` lies from the player, y down: projected when it
+## is in front of the camera, and read off the camera's own axes when it is
+## behind it (over the shoulder, a body at the player's back is behind the lens).
+func _screen_dir(at: Vector3) -> Vector2:
+	var cam: Camera3D = game.camera
+	var from := _at3(sim.hero.pos)
+	if not cam.is_position_behind(at) and not cam.is_position_behind(from):
+		return cam.unproject_position(at) - cam.unproject_position(from)
+	var b := cam.global_transform.basis
+	var off := at - from
+	var fwd := Vector3(-b.z.x, 0.0, -b.z.z).normalized()
+	var right := Vector3(b.x.x, 0.0, b.x.z).normalized()
+	return Vector2(off.dot(right), -off.dot(fwd))
+
+
 func _screen_up() -> Vector3:
 	return game.camera.global_transform.basis.y if game.camera.is_inside_tree() else Vector3.UP
 
@@ -293,6 +327,103 @@ func _fell(e: Dictionary) -> void:
 			old.queue_free()
 
 
+## THE WARDEN'S CURTAINS (FightSim.curtains), drawn. The tell: a jet of lime
+## from its crown to the gap and a ring on the ground there, for as long as it
+## takes, so the player reads which way is about to close and can still get back
+## through. Up: the flowstone curtain standing across the way, and it ages where
+## the player can read it: FRESH (wet and bright, a cold glisten on it) for the
+## first CURTAIN_FRESH of its time, DRYING to CURTAIN_DRY, then DRY, greyed and
+## cracked. The crumble: it shakes and sheds, a moment before it goes. A crack:
+## lime knocked off it. Down: broken, a burst of it; its time up, it slumps away.
+const FlowstoneCurtain := preload("res://src/models/machines/sentinels/flowstone_curtain.gd")
+const CURTAIN_FRESH := 0.3
+const CURTAIN_DRY := 0.7
+## Each standing curtain: {node, from, to, seed, up (sim ms), ms, stage, crumbling, rest}.
+var _curtains := {}
+
+
+## Its stage at this share of its time.
+static func curtain_stage(share: float) -> int:
+	if share < CURTAIN_FRESH:
+		return FlowstoneCurtain.FRESH
+	if share < CURTAIN_DRY:
+		return FlowstoneCurtain.DRYING
+	return FlowstoneCurtain.DRY
+
+
+## Every standing curtain drawn at the stage its age says, shaking as it crumbles.
+func _age_curtains() -> void:
+	for id: int in _curtains:
+		var c: Dictionary = _curtains[id]
+		var node: MeshInstance3D = c.node
+		if not is_instance_valid(node):
+			continue
+		var stage := curtain_stage((sim.now - float(c.up)) / maxf(1.0, float(c.ms)))
+		if stage != int(c.stage):
+			c.stage = stage
+			node.mesh = FlowstoneCurtain.mesh(c.from, c.to, int(c.seed), stage)
+		var rest: Vector3 = c.rest
+		if bool(c.crumbling):
+			var t := sim.now * 0.05
+			node.position = rest + Vector3(sin(t * 7.3), 0.0, cos(t * 5.9)) * 0.035
+		else:
+			node.position = rest
+
+
+var _curtain_seen := {}
+
+
+func _curtain(e: Dictionary) -> void:
+	_curtain_seen[e.type] = sim.now
+	var fx := _fx_parent()
+	var lime := Palette.LINEN[5]
+	var at: Vector2 = e.at
+	match e.type:
+		&"curtain_tell":
+			var m: MobState = e.mob
+			var secs := float(e.ms) / 1000.0
+			var crown := _at3(m.pos, float(m.row.get("height", 4.0)) * 0.95)
+			MobFx.line(fx, crown, _at3(at, 1.6), lime, secs)
+			MobFx.tell_ring(fx, _at3(at), lime, float((e.from as Vector2).distance_to(e.to)) * 0.5 + 0.3, secs)
+			Events.sfx.emit(&"splash", _at3(at))
+		&"curtain_up":
+			var node := MeshInstance3D.new()
+			var seed_value := int(e.id) * 97 + game.world.seed_value
+			node.mesh = FlowstoneCurtain.mesh(_at3(e.from), _at3(e.to), seed_value, FlowstoneCurtain.FRESH)
+			node.material_override = game.view.world_material()
+			# Round the middle of the way's own edges, where the mesh is built about.
+			var rest := (_at3(e.from) + _at3(e.to)) * 0.5
+			node.position = rest
+			fx.add_child(node)
+			var ms := float(e.get("ms", 25000.0))
+			_curtains[int(e.id)] = {"node": node, "from": _at3(e.from), "to": _at3(e.to), "seed": seed_value, "up": sim.now,
+				"ms": ms, "stage": FlowstoneCurtain.FRESH, "crumbling": false, "rest": rest}
+			MobFx.puffs(fx, _at3(at, 1.0), Vector2.ZERO, lime, 5, 0.8, int(e.id))
+			# Wet: a cold glisten on the fresh lime for as long as it is fresh, so a
+			# new curtain stands out of the old wall round it.
+			MobFx.glow(fx, _at3(at, 1.6) + (_at3(e.to) - _at3(e.from)).cross(Vector3.UP).normalized() * 0.9,
+				Palette.RIME[5], 2.6, ms / 1000.0 * CURTAIN_FRESH)
+		&"curtain_crumbling":
+			var c: Dictionary = _curtains.get(int(e.id), {})
+			if not c.is_empty():
+				c.crumbling = true
+			MobFx.puffs(fx, _at3(at, 1.8), Vector2.ZERO, Palette.LINEN[3], 6, 0.7, int(e.id) + 11)
+			MobFx.puffs(fx, _at3(at, 0.4), Vector2.ZERO, Palette.LINEN[3], 4, 0.9, int(e.id) + 13)
+			Events.sfx.emit(&"break", _at3(at))
+		&"curtain_cracked":
+			MobFx.puffs(fx, _at3(at, 1.1), Vector2.ZERO, lime, 4, 0.6, int(e.id) + int(e.hits) * 7)
+			Events.sfx.emit(&"break", _at3(at))
+		&"curtain_down":
+			var c: Dictionary = _curtains.get(int(e.id), {})
+			_curtains.erase(int(e.id))
+			if not c.is_empty() and is_instance_valid(c.node):
+				(c.node as Node).queue_free()
+			var broken := bool(e.get("broken", false))
+			MobFx.puffs(fx, _at3(at, 0.9), Vector2.ZERO, lime, 8 if broken else 3, 1.0 if broken else 0.6, int(e.id) + 3)
+			if broken:
+				Events.sfx.emit(&"break", _at3(at))
+
+
 func _at3(p: Vector2, lift: float = 0.0) -> Vector3:
 	return game.world.to_3d(p) + Vector3(0, lift, 0)
 
@@ -377,6 +508,18 @@ func _part_at(m: MobState) -> Vector3:
 	if m.node is Mob:
 		return (m.node as Mob).part_position()
 	return _at3(m.pos, float(m.row.get("height", 1.0)) * 0.5)
+
+
+## When an edge last rang off a keeper's plating, fight ms (tour `plating`).
+var _plating_at := -INF
+
+
+## A keeper down: the plating it wore is no longer a reason to want an edge.
+func _on_keeper_fell(_region: int, land: StringName, _how: StringName) -> void:
+	var st := SurvivalState.of(game)
+	for plate: Variant in st.plates.keys():
+		if StringName(st.plates[plate]) == land:
+			st.plates.erase(plate)
 
 
 func _handle(events: Array[Dictionary]) -> void:
@@ -487,6 +630,8 @@ func _handle(events: Array[Dictionary]) -> void:
 					MobFx.line(fx, _at3(a, y), _at3(b, y), Palette.BRINE[5 - mini(k, 3)], FightKit.LOCK_SECONDS)
 				MobFx.glow(fx, _at3((a + b) * 0.5, 0.9), Palette.BRINE[4], maxf(1.2, a.distance_to(b)), FightKit.LOCK_SECONDS)
 				Events.sfx.emit(&"hit_plate", _at3(e.at))
+			&"curtain_tell", &"curtain_up", &"curtain_cracked", &"curtain_crumbling", &"curtain_down":
+				_curtain(e)
 			&"stripped":
 				# Its working part comes away in the hands, and into the creel.
 				var m: MobState = e.mob
@@ -561,6 +706,31 @@ func _handle(events: Array[Dictionary]) -> void:
 				if m.row.get("sight_only", false):
 					# The lens catches the light as it finds you: the only warning it gives by eye.
 					MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id, 0.6)
+			&"plating":
+				# An edge rang off a keeper's plating (FightRules.bites): the survival
+				# state remembers the hardness it wants and whose, and the first time
+				# it says why. Words for story-wright: the short form of what the one
+				# who named the keeper told the player.
+				var m: MobState = e.mob
+				var plate := StringName(e.get("plate", &""))
+				var st := SurvivalState.of(game)
+				var design := Roster.sentinel_of(m.kind)
+				var def := Sentinels.by_id(design) if design != &"" else null
+				_plating_at = sim.now
+				if plate != &"" and not st.plates.has(plate):
+					st.plates[plate] = def.land if def != null else &""
+					# Said at once, with the keeper close: the HUD keeps quiet in a
+					# fight, and this is the one line the fight is for.
+					if game.hud != null:
+						game.hud.say_now("It rings. Iron does not bite that plate.")
+			&"unseen_tell":
+				# A bite begun out of the player's sight in a crowd: a call from its
+				# bearing, and a mark at the slate's edge on its side for its tell.
+				var m: MobState = e.mob
+				Events.sfx.emit(&"unseen_tell", _at3(m.pos))
+				if game.hud != null and game.camera != null:
+					var tell := float(m.bite.windup) * FightSim.UNSEEN_TELL / 1000.0 if m.bite != null else 0.6
+					game.hud.flag_unseen(_screen_dir(_at3(m.pos)), tell)
 			&"windup":
 				var m: MobState = e.mob
 				Events.sfx.emit(&"windup", _at3(m.pos))
@@ -711,6 +881,14 @@ func tour_seen(what: StringName) -> bool:
 			return now - _locked_at < FightKit.LOCK_SECONDS
 		&"stripped":
 			return now - _stripped_at < 1.0
+		# On the fight's own clock: a frame is taken after the ring, however slow.
+		&"plating":
+			return sim.now - _plating_at < 1500.0
+		# On the fight's own clock: a tell lasts its sim time however slow the frame.
+		&"curtain_tell":
+			return sim.now - float(_curtain_seen.get(what, -INF)) < 1400.0
+		&"curtain_up", &"curtain_cracked", &"curtain_crumbling", &"curtain_down":
+			return sim.now - float(_curtain_seen.get(what, -INF)) < 1000.0
 	return false
 
 
@@ -859,10 +1037,27 @@ func _on_outcome(e: Dictionary) -> void:
 
 ## `near bag`: beside the heap the last bad end left (Survival.leave_bag), a
 ## step off it toward the camera, facing it, in reach of `use`.
-const TOUR_PLACES: Array[String] = ["bag"]
+## `near gap`: GAP_BACK before the nearest way between two solid things a warden
+## seals (the curtains' own gap test, FightSim.gap_crossed), facing through it;
+## `walkto gap` walks through it and on; `near gap_far` stands just beyond it,
+## turned back to face it, and `near gap_view` further back, for a frame of it.
+const TOUR_PLACES: Array[String] = ["bag", "gap", "gap_far", "gap_view"]
+## `near gap_view`: back from the far side far enough to hold a curtain whole.
+const GAP_VIEW := 3.4
+const GAP_BACK := 2.5
+## The way last found for `near gap`: {at, n (from the near side toward the far)}.
+var _gap := {}
 
 
 func tour_place(what: String) -> Vector2:
+	if what == "gap":
+		# The same way again while the player is still by it: stood back to face
+		# the curtain across the gap they came through, not some other gap.
+		if _gap.is_empty() or (_gap.at as Vector2).distance_to(game.player.pos) > 10.0:
+			_gap = _nearest_gap()
+		return (_gap.at as Vector2) - (_gap.n as Vector2) * GAP_BACK if not _gap.is_empty() else Vector2.INF
+	if what == "gap_far" or what == "gap_view":
+		return _gap_stand(what) if not _gap.is_empty() else Vector2.INF
 	var heap := _last_bag()
 	if what != "bag" or heap == null:
 		return Vector2.INF
@@ -870,10 +1065,90 @@ func tour_place(what: String) -> Vector2:
 
 
 func tour_face(what: String) -> float:
+	if what == "gap" and not _gap.is_empty():
+		return (_gap.n as Vector2).angle()
+	if (what == "gap_far" or what == "gap_view") and not _gap.is_empty():
+		return ((_gap.at as Vector2) - _gap_stand(what)).angle()
 	var heap := _last_bag()
 	if what != "bag" or heap == null:
 		return NAN
 	return (heap.pos - (heap.pos + Vector2(0.9, 0.5))).angle()
+
+
+## `walkto gap`: through the way `near gap` found and on, away from the side the
+## nearest sealing body is on, as a player runs from it; `near gap_far` then
+## stands on the side they came out on.
+func tour_route(what: String) -> PackedVector2Array:
+	if what != "gap" or _gap.is_empty():
+		return PackedVector2Array()
+	var at: Vector2 = _gap.at
+	var n: Vector2 = _gap.n
+	var d := n
+	var best := INF
+	for m: MobState in sim.mobs:
+		if m.alive and not m.removed and not FightSim.seals_of(m.row).is_empty() and m.pos.distance_to(at) < best:
+			best = m.pos.distance_to(at)
+			d = -n if (m.pos - at).dot(n) > 0.0 else n
+	_gap.d = d
+	# A step or two past it, so the tell is still going when the walk is done.
+	return PackedVector2Array([at, at + d * 1.2])
+
+
+## Where `gap_far` and `gap_view` stand: out on the side the player came through
+## to, and for the view a step to one side too, so the player's own back is not
+## in front of the curtain over the shoulder.
+func _gap_stand(what: String) -> Vector2:
+	var at: Vector2 = _gap.at
+	var d: Vector2 = _gap.get("d", _gap.n)
+	if what == "gap_far":
+		return at + d * 1.6
+	return at + d * GAP_VIEW - d.orthogonal() * 1.6
+
+
+## The nearest way a warden seals, with open ground a walk long on both sides.
+func _nearest_gap() -> Dictionary:
+	var sealing := FightSim.seals_of(Roster.row(&"sentinel.limestone_caves"))
+	var most := float(sealing.get("gap", 2.2))
+	var here := game.player.pos
+	var near: Array[WorldProp] = []
+	for p: WorldProp in game.query.props_near(here, 30.0):
+		if p.solid > 0.2 and not game.world.depleted.has(p.id):
+			near.append(p)
+	var best := {}
+	var best_d := INF
+	for i in near.size():
+		for j in range(i + 1, near.size()):
+			var a := near[i]
+			var b := near[j]
+			var gap := a.pos.distance_to(b.pos) - a.solid - b.solid
+			if gap < 0.9 or gap > most:
+				continue
+			var across := (b.pos - a.pos).normalized()
+			var at := a.pos + across * (a.solid + gap * 0.5)
+			var d := at.distance_to(here)
+			if d >= best_d:
+				continue
+			var n := across.orthogonal()
+			if (here - at).dot(n) > 0.0:
+				n = -n
+			var from := at - n * GAP_BACK
+			var to := at + n * GAP_BACK
+			if not NavField.line_walkable(game.world, from, to, 0.3):
+				continue
+			# One way, not a run of them: no other solid thing near the lane, or
+			# the walk out passes a second gap and the curtain goes up there.
+			var lone := true
+			for o: WorldProp in near:
+				if WorldProp.same(o, a) or WorldProp.same(o, b):
+					continue
+				if Geometry2D.get_closest_point_to_segment(o.pos, from, to).distance_to(o.pos) < o.solid + 1.2:
+					lone = false
+					break
+			if not lone:
+				continue
+			best = {"at": at, "n": n}
+			best_d = d
+	return best
 
 
 func _last_bag() -> WorldProp:

@@ -76,12 +76,20 @@ class TakenPerson extends RefCounted:
 	var at := Vector2.INF
 	var lost_to := &""
 	var home_at := Vector2.INF
+	## THE HOURS (docs/STORY.md: to predict a mind you must run it, and running it
+	## replaces it). The world minute they walked out, INF while they have not;
+	## whether they came out EMPTY, past RUN_HOURS; and whether they are GONE, held
+	## past GONE_HOURS, which is not being held any more and not being freed either.
+	var freed_at := INF
+	var empty := false
+	var gone := false
 
 	func save() -> Dictionary:
 		return {"who": who, "name": name, "home_name": home_name, "home": home,
 			"region": region, "minutes": SaveCodec.num(minutes), "freed": freed,
 			"walking": walking, "arrived": arrived, "lost": lost,
-			"at": _place(at), "lost_to": String(lost_to), "home_at": _place(home_at)}
+			"at": _place(at), "lost_to": String(lost_to), "home_at": _place(home_at),
+			"freed_at": SaveCodec.num(freed_at), "empty": empty, "gone": gone}
 
 	## Not `SaveCodec.vec2`: that writes the two floats raw, and both of these are
 	## Vector2.INF until something happens at a real tile. INF is the one number
@@ -109,8 +117,18 @@ class TakenPerson extends RefCounted:
 		t.at = _to_place(d.get("at"))
 		t.lost_to = StringName(str(d.get("lost_to", "")))
 		t.home_at = _to_place(d.get("home_at"))
+		t.freed_at = SaveCodec.to_num(d.get("freed_at", INF))
+		t.empty = bool(d.get("empty", false))
+		t.gone = bool(d.get("gone", false))
 		return t
 
+
+## Hours the plan runs a held mind before it has replaced it: out after this,
+## a person comes back EMPTY. The same 71 hours HALCYON ran him (docs/STORY.md).
+const RUN_HOURS := 71.0
+## Hours past which nobody comes back at all: twice the run, so the clock is lost
+## twice, once to what they are and once to whether they are.
+const GONE_HOURS := 142.0
 
 ## Everybody the plan has taken this game, in the order it happened. Saved under
 ## key `taken` and deliberately OUTSIDE `WorldStamp`: a person being held is
@@ -136,7 +154,7 @@ func take(who: int, person_name: String, home: int, home_name: String, region: i
 func held_in(region: int) -> Array[TakenPerson]:
 	var out: Array[TakenPerson] = []
 	for t in people:
-		if not t.freed and t.region == region:
+		if not t.freed and not t.gone and t.region == region:
 			out.append(t)
 	return out
 
@@ -156,7 +174,7 @@ func freed_in(region: int) -> Array[TakenPerson]:
 func held() -> Array[TakenPerson]:
 	var out: Array[TakenPerson] = []
 	for t in people:
-		if not t.freed:
+		if not t.freed and not t.gone:
 			out.append(t)
 	return out
 
@@ -166,11 +184,39 @@ func held() -> Array[TakenPerson]:
 ##
 ## A record is never deleted. The story remembers that it happened, and a person
 ## who was taken and came back is a different person to one who never was.
-func free_region(region: int) -> Array[TakenPerson]:
+##
+## `now` is the world minute it happens, which decides whether each comes out
+## whole or empty; a caller with no clock (-INF) frees them whole.
+func free_region(region: int, now := -INF) -> Array[TakenPerson]:
 	var out: Array[TakenPerson] = []
 	for t in people:
-		if not t.freed and t.region == region:
+		if not t.freed and not t.gone and t.region == region:
 			t.freed = true
+			if now != -INF:
+				t.freed_at = now
+				t.empty = hours_held(t, now) > RUN_HOURS
+			out.append(t)
+	return out
+
+
+## Hours `t` has been (or was) held at world minute `now`.
+static func hours_held(t: TakenPerson, now: float) -> float:
+	var until := minf(now, t.freed_at)
+	return maxf(0.0, (until - t.minutes) / 60.0)
+
+
+## Whoever has been held past GONE_HOURS at world minute `now` is gone: not held
+## any more, never freed, and LOST as somebody who went down on the road home is,
+## nowhere and to nobody (`at` INF, `lost_to` &""), because what the people who
+## knew them can say is the same: they did not get home (49_story's `lost`,
+## Maren's lines). Never on the glass: nobody saw it happen. Returns the ones this
+## call found.
+func run_out(now: float) -> Array[TakenPerson]:
+	var out: Array[TakenPerson] = []
+	for t in people:
+		if not t.freed and not t.gone and hours_held(t, now) > GONE_HOURS:
+			t.gone = true
+			t.lost = true
 			out.append(t)
 	return out
 
@@ -228,7 +274,7 @@ func waiting_in(region: int) -> Array[TakenPerson]:
 ## chapter and the story both ask it of every region they look at.
 func holds_anyone(region: int) -> bool:
 	for t in people:
-		if not t.freed and t.region == region:
+		if not t.freed and not t.gone and t.region == region:
 			return true
 	return false
 

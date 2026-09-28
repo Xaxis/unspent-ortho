@@ -402,8 +402,240 @@ func _try_pull() -> void:
 
 # --- moods (100 ms beats) ----------------------------------------------------
 
+## ATTACK SLOTS: a crowd is a fight, not a wall. At most ATTACK_SLOTS biters
+## (a rush or a charge, Brains) are after the player at once; the rest WAIT at
+## the edge, WAIT_GAP beyond their strike, circling, facing the player and
+## feinting (Brains._wait). A slot is never taken from a body in a blow or a
+## run. It frees when its holder falls, flees or loses the player, and it is
+## handed on to the nearest waiter; a keeper is first to one. And a waiter the
+## player turns their back on (BACK_ARC off their facing) takes the slot of the
+## holder farther from them, no oftener than SWAP_MS: ignoring the next one
+## brings it in, and the one being fought is never rotated out to mend.
+const ATTACK_SLOTS := 2
+const WAIT_GAP := 6.0
+const BACK_ARC := deg_to_rad(120.0)
+const SWAP_MS := 8000.0
+var attack_slots: Array[int] = []
+var _swap_ready := 0.0
+
+
+## Whether `m` fights by closing on the player: the bodies slots are for.
+static func biter(m: MobState) -> bool:
+	return m.approach == &"rush" or m.approach == &"charge"
+
+
+## Whether `m` is after the player now and wants a slot for it.
+func _slot_wanted(m: MobState) -> bool:
+	return m.alive and not m.removed and biter(m) and (m.mood == MobState.CHASING or m.mood == MobState.ATTACKING)
+
+
+## Whether another biter than `m` is after the player: the unseen rule is a
+## crowd's; a lone machine keeps its whole timing.
+func _crowded(m: MobState) -> bool:
+	for o in mobs:
+		if o != m and _slot_wanted(o):
+			return true
+	return false
+
+
+## A crowd shares what it sees: a body after the player has them while another
+## of the crowd sees them (a waiter held at the edge, out past its own sight,
+## was forgetting the fight it was waiting on and going back to its work, and
+## the fight stalled; and the last of a crowd, kept by the others, forgot the
+## moment it was alone). A veil or a wall that takes all their sight still loses
+## the player to all of them.
+func _mates_see(m: MobState) -> bool:
+	if not biter(m):
+		return false
+	for o in mobs:
+		# Seen by its own senses this beat or the last, never passed on: two that
+		# have lost the player cannot keep each other on them.
+		if o != m and _slot_wanted(o) and now - o.saw_at <= FightRules.BEAT_MS * 1.5:
+			return true
+	return false
+
+
+func holds_slot(m: MobState) -> bool:
+	return attack_slots.has(m.id)
+
+
+## UNSEEN BITES. Blows from behind are part of the fight (spatial awareness, and
+## the scale coat's whole point), but in a crowd one must be readable: of the
+## bodies after the player, at most ONE may begin a bite from beyond UNSEEN_ARC
+## of where they face, its tell runs UNSEEN_TELL times as long,
+## and it is cued (`unseen_tell` {mob, bearing}): a sound from its bearing and a
+## mark at the slate's edge on that side (40_fight). Never two unseen at once is
+## the one-bite-at-a-time rule's (`bite_turn`), which it rests on. A lone machine is not a
+## crowd and keeps its own timing wherever it stands.
+const UNSEEN_ARC := deg_to_rad(60.0)
+const UNSEEN_TELL := 2.0
+
+
+## Whether `m` stands out of the player's sight, beyond UNSEEN_ARC of their facing.
+func out_of_sight(m: MobState) -> bool:
+	return absf(wrapf((m.pos - hero.pos).angle() - hero.facing, -PI, PI)) > UNSEEN_ARC
+
+
+## Called as a biter begins a bite or a run: in a crowd and out of sight, it is
+## the one unseen bite, and it is cued. The tell a caller throws: stretched when
+## unseen, the blow itself when not.
+func begin_bite(m: MobState, b: Blow) -> Blow:
+	if b == null or not biter(m) or not _crowded(m) or not out_of_sight(m):
+		return b
+	emit(&"unseen_tell", {"mob": m, "bearing": (m.pos - hero.pos).angle()})
+	m.cued_at = now
+	return b.stretched(UNSEEN_TELL)
+
+
+## ONE BITE AT A TIME: of the biters on the player, one tells and lands a bite
+## at once, and the next may start BITE_GAP_MS after that one's strike is over.
+## The other presses and feints: a pair is two things to read in turn, never
+## two blows to take at once.
+const BITE_GAP_MS := 300.0
+const CHARGE_GAP_MS := 700.0
+
+
+func bite_turn(m: MobState) -> bool:
+	if not biter(m):
+		return true
+	for o in mobs:
+		if o == m or not o.alive or o.removed or not biter(o):
+			continue
+		# A charger's run is its bite from the moment it commits, and the window
+		# it leaves (spent, standing, coming round: its whole lockout, and
+		# CHARGE_GAP_MS after a run that ended without a bite) is the player's
+		# before anything else strikes. Serial charges with no window between
+		# them were a wall a pair of harvesters never was.
+		if o.approach == &"charge" and (o.charging or o.locked_out(now) or now - o.run_until < CHARGE_GAP_MS):
+			return false
+		if o.blow != null and now - o.blow_at < float(o.blow.windup + o.blow.active) + BITE_GAP_MS:
+			return false
+	return true
+
+
+## The bearing from the player to the middle of the bodies in the slots; NAN
+## with none.
+func slots_bearing() -> float:
+	var mid := Vector2.ZERO
+	var n := 0
+	for m in mobs:
+		if holds_slot(m) and m.alive and not m.removed:
+			mid += m.pos - hero.pos
+			n += 1
+	return mid.angle() if n > 0 and mid.length_squared() > 1e-6 else NAN
+
+
+## A waiter: after the player, without a slot, and the slots full. One that
+## finds a slot free takes it now if it is the one the beat would hand it to
+## (`_slot_pick`), rather than wait for the beat (so a crowd roused at once
+## never has more than ATTACK_SLOTS in before the first beat).
+func waits(m: MobState) -> bool:
+	if not _slot_wanted(m) or holds_slot(m):
+		return false
+	if attack_slots.size() < ATTACK_SLOTS:
+		var queue: Array[MobState] = []
+		for o in mobs:
+			if _slot_wanted(o) and not holds_slot(o):
+				queue.append(o)
+		if _slot_pick(queue) == m:
+			attack_slots.append(m.id)
+			return false
+	return true
+
+
+## Who a free slot goes to: a keeper first; then a kind not already in a slot,
+## so a mixed crowd fights as a mix (a cutter pressing while a harvester winds
+## up) and not as a queue by distance; then the nearest.
+func _slot_pick(queue: Array[MobState]) -> MobState:
+	var held := {}
+	for id in attack_slots:
+		var h := mob_by_id(id)
+		if h != null:
+			held[h.kind] = true
+	var best: MobState = null
+	var best_key := Vector3(INF, INF, INF)
+	for m in queue:
+		var key := Vector3(0.0 if Sentinels.is_keeper(m.row) else 1.0, 1.0 if held.has(m.kind) else 0.0, m.pos.distance_squared_to(hero.pos))
+		if key.x < best_key.x or (key.x == best_key.x and (key.y < best_key.y or (key.y == best_key.y and key.z < best_key.z))):
+			best_key = key
+			best = m
+	return best
+
+
+## A body in a blow or a run: its slot is not taken from it.
+func _busy(m: MobState) -> bool:
+	return m.charging or (m.blow != null and m.blow_phase(now) != &"")
+
+
+func _slots_beat() -> void:
+	var wanted: Array[MobState] = []
+	for m in mobs:
+		if _slot_wanted(m):
+			wanted.append(m)
+	# A fight over is a crowd's count over.
+	if wanted.is_empty():
+		_crowd_fallen = 0
+		_crowd_peak = 0
+	_crowd_peak = maxi(_crowd_peak, wanted.size())
+	var ids := {}
+	for m in wanted:
+		ids[m.id] = m
+	for i in range(attack_slots.size() - 1, -1, -1):
+		if not ids.has(attack_slots[i]):
+			attack_slots.remove_at(i)
+	# A body in a blow or a run holds whatever it holds, and one that is somehow
+	# busy without a slot is given one first: nothing is cut off mid-blow.
+	for m in wanted:
+		if _busy(m) and not holds_slot(m):
+			attack_slots.append(m.id)
+	var queue: Array[MobState] = []
+	for m in wanted:
+		if not holds_slot(m):
+			queue.append(m)
+	while attack_slots.size() < ATTACK_SLOTS and not queue.is_empty():
+		var pick := _slot_pick(queue)
+		queue.erase(pick)
+		attack_slots.append(pick.id)
+	queue.sort_custom(func(a: MobState, b: MobState) -> bool:
+		return a.pos.distance_squared_to(hero.pos) < b.pos.distance_squared_to(hero.pos))
+	# A waiter is chasing, not attacking, whatever put it there.
+	for w in queue:
+		if w.mood == MobState.ATTACKING:
+			w.set_mood(MobState.CHASING, now)
+	# A back turned on a waiter: it swaps in for a holder the player faces.
+	if queue.is_empty() or now < _swap_ready:
+		return
+	for w in queue:
+		if absf(wrapf((w.pos - hero.pos).angle() - hero.facing, -PI, PI)) < BACK_ARC:
+			continue
+		var out := -1
+		var far := -1.0
+		for i in attack_slots.size():
+			var h := ids.get(attack_slots[i]) as MobState
+			if h == null or _busy(h) or Sentinels.is_keeper(h.row):
+				continue
+			var d := h.pos.distance_to(hero.pos)
+			if d > far:
+				far = d
+				out = i
+		if out < 0:
+			return
+		var h := ids.get(attack_slots[out]) as MobState
+		attack_slots[out] = w.id
+		if h.mood == MobState.ATTACKING:
+			h.set_mood(MobState.CHASING, now)
+		_swap_ready = now + SWAP_MS
+		return
+
+
 func _beat() -> void:
 	_hush_read()
+	_slots_beat()
+	_curtains_beat()
+	if not hangings.is_empty():
+		_falls_beat()
+	if not veils.is_empty():
+		_veils_beat()
 	# A shut way lets go after its seconds (FightKit.lock).
 	for i in range(lock_walls.size() - 1, -1, -1):
 		if lock_walls[i].w <= now / 1000.0:
@@ -425,12 +657,16 @@ func _beat() -> void:
 		var noticed := how != &""
 		_suspicion(m, how)
 		if noticed:
+			m.saw_at = now
+		if noticed or (m.disturbed and _mates_see(m)):
 			m.lost_beats = 0
 			m.last_seen = hero.pos
 			m.lost_at = -1.0
 			m.hunt.clear()
 		else:
-			if m.lost_beats == 0:
+			# Lost only by a body that was after the player: one at its work that
+			# never had them has nothing to hunt (FightSim.hunting).
+			if m.lost_at < 0.0 and (m.mood == MobState.CHASING or m.mood == MobState.ATTACKING):
 				m.lost_at = now
 			m.lost_beats += 1
 		var d := Senses.chebyshev(m.pos, hero.pos)
@@ -473,7 +709,7 @@ func _beat() -> void:
 				elif m.approach != &"dart" and m.pos.distance_to(m.home) > float(m.stat("tether", 30)):
 					m.flee_home = true
 					m.set_mood(MobState.FLEEING, now)
-				elif m.approach != &"dart" and d <= reach:
+				elif m.approach != &"dart" and d <= reach and not waits(m):
 					m.set_mood(MobState.ATTACKING, now)
 			MobState.ATTACKING:
 				if m.lost_beats >= _forget(m) and not hunting(m):
@@ -492,7 +728,9 @@ func _beat() -> void:
 						m.calm_until = now + 3000.0
 						m.set_mood(MobState.IDLE, now)
 				elif d >= float(m.stat("safe", 12)):
-					if m.snatched:
+					if m.lost_scent:
+						remove_mob(m)
+					elif m.snatched:
 						if m.row.get("hits", {}).get("files", false) and not m.reported:
 							m.reported = true
 							emit(&"filed", {"mob": m})
@@ -646,6 +884,14 @@ func _suspicion(m: MobState, how: StringName) -> void:
 ## tether it goes home as any body does. Hiding still buys time: it hunts what it
 ## knows, never where the player truly is.
 const HUNT_MS := 20000.0
+
+
+## The body with this id, or null when it has gone.
+func mob_by_id(id: int) -> MobState:
+	for m in mobs:
+		if m.id == id:
+			return m
+	return null
 
 
 func hunting(m: MobState) -> bool:
@@ -826,6 +1072,9 @@ func _move_hero(dt: float) -> void:
 	if v.length_squared() > 0.0:
 		var tall := HERO_CROUCH_TALL if hero.crouched else HERO_TALL
 		hero.pos = query.move_body(hero.pos, v * dt, hero.radius, hero.ride, hero.swims, tall) if query != null else hero.pos + v * dt
+		if not curtains.is_empty():
+			hero.pos = _held_by_curtains(before, hero.pos)
+		_seal_behind(before, hero.pos)
 	hero.speed = before.distance_to(hero.pos) / dt
 	# Wind: spent on dodges, swings and running in a fight; back at 500/s otherwise.
 	if running and fight_on:
@@ -888,10 +1137,14 @@ func _move_mob(m: MobState, dt: float) -> void:
 	var bog := bogged(m)
 	if bog and m.charging:
 		_bog(m)
+	# Spraying a curtain (FightSim.curtains): turned on the gap and standing, the tell.
+	var sealing := now < m.seal_until
+	if sealing:
+		m.aim = (m.seal_at - m.pos).angle()
 	if not m.committed(now) and not m.stunned(now):
 		m.facing = rotate_toward(m.facing, m.aim, m.turn_rate_at(now) * dt)
 	var v := m.want * (BOG_SLIP if bog else 1.0)
-	if m.stunned(now):
+	if m.stunned(now) or sealing:
 		v = Vector2.ZERO
 	else:
 		# Close bites read as a tell and a lunge; charges come on through them.
@@ -1005,6 +1258,12 @@ func _touching() -> void:
 			continue
 		if m.pos.distance_to(hero.pos) > m.radius + hero.radius:
 			continue
+		# Only where the thing that hurts is: a sweeper's brush is at its front,
+		# its part on its back (roster `touch_arc`, degrees off its front; none is
+		# all round).
+		var arc := float(m.row.get("touch_arc", 180.0))
+		if arc < 180.0 and absf(wrapf((hero.pos - m.pos).angle() - m.facing, -PI, PI)) > deg_to_rad(arc):
+			continue
 		if not meets_hero(m.pos):
 			continue
 		if hero.invulnerable(now):
@@ -1024,6 +1283,13 @@ func _land(t0: float, t1: float) -> void:
 				continue
 			hero.struck[m.id] = true
 			_wear_on_contact()
+			# Plated harder than the edge in hand (roster `plating`): it rings off
+			# wherever it lands, open part and all, and the plating is said.
+			if not FightRules.bites(m.row, hero.inventory.held if hero.inventory != null else &""):
+				hero.throw(hero.pos - m.pos, FightRules.RING_RECOIL, FightRules.RING_RECOIL_MS, now)
+				_ring(m)
+				emit(&"plating", {"mob": m, "plate": m.row.get("plating", &"")})
+				continue
 			# The coil is spent on the first blow that meets the body, needed or not.
 			var phased := false
 			if phase_ready(m):
@@ -1041,6 +1307,8 @@ func _land(t0: float, t1: float) -> void:
 			# Read through what covers the part, it is a blow in the part like any
 			# other, stall and all, for FightKit.PHASE_STALL_MS.
 			_hurt_mob(m, b, Vector2.INF, FightKit.PHASE_STALL_MS if phased else FightRules.STALL_MS)
+	if b != null and b.heavy and not curtains.is_empty() and b.live_in(hero.blow_at, t0, t1):
+		_heavy_on_curtains(b)
 	if b != null and not _whiff_checked and t1 >= hero.blow_at + b.windup + b.active:
 		_whiff_checked = true
 		if hero.struck.is_empty():
@@ -1063,9 +1331,13 @@ func _land(t0: float, t1: float) -> void:
 		if not meets_hero(m.pos):
 			continue
 		m.struck[&"hero"] = true
-		# Rooted by the anchor, a grip closes on nothing (FightKit.anchor): a miss,
-		# and the body stands spent and open as after any bite that missed.
+		# Rooted by the anchor, a grip closes on nothing (FightKit.anchor), and the
+		# line takes the jolt it meant to give: the gripper stands stalled, its
+		# part lit, for ANCHOR_SNAP_MS. A plain miss left it spent for its short
+		# recovery, which in a crowd taking turns (attack slots) was over before a
+		# player could step to it, and the anchor's whole answer was lost.
 		if m.blow.grip > 0 and m.blow.dmg <= 0 and hero.rooted(now) and not hero.invulnerable(now):
+			m.stun_until = maxf(m.stun_until, now + FightKit.ANCHOR_SNAP_MS)
 			emit(&"grip_failed", {"by": m})
 			continue
 		if not hero.invulnerable(now):
@@ -1297,7 +1569,7 @@ func _rake() -> void:
 		m.flare_until = now + FightRules.PART_FLARE_MS
 		if now >= m.stall_ready_at:
 			m.stall_ready_at = now + FightRules.STALL_EVERY_MS
-			m.stun_until = maxf(m.stun_until, now + FightRules.STALL_MS)
+			m.stun_until = maxf(m.stun_until, now + FightKit.RAKE_STALL_MS)
 		hit.append(m)
 		_wake(m)
 	emit(&"rake", {"from": hero.pos, "facing": hero.facing, "bodies": hit})
@@ -1310,31 +1582,336 @@ func _lock_behind(from: Vector2, to: Vector2) -> void:
 	var now_s := now / 1000.0
 	if query == null or not _hunted_by_machine():
 		return
-	var mid := (from + to) * 0.5
+	var g := gap_crossed(from, to, FightKit.LOCK_GAP)
+	if g.is_empty():
+		return
+	var at: Vector2 = g.at
+	for l: Vector4 in lock_walls:
+		if at.distance_to(Vector2(l.x, l.y)) < 0.5:
+			return
+	if not FightRules.spend_charges(hero.inventory, FightKit.LOCK_CHARGES):
+		return
+	lock_walls.append(Vector4(at.x, at.y, g.r, now_s + FightKit.LOCK_SECONDS))
+	emit(&"locked", g)
+
+
+## The gap a step from `from` to `to` passes through: between two solid things
+## no more than `most` apart, edge to edge. {at (its middle), a, b (the two
+## things' middles), from, to (the way's own edges, on the face of each), r (a
+## circle round `at` that shuts it)}, or {} when the step passes through none.
+## The lock (FightKit.lock) and a warden's curtains (FightSim.curtains) both
+## shut what this finds.
+func gap_crossed(from: Vector2, to: Vector2, most: float) -> Dictionary:
+	if query == null:
+		return {}
 	var near: Array[WorldProp] = []
-	for p: WorldProp in query.props_near(mid, FightKit.LOCK_GAP + 2.0):
-		if p.solid > 0.2:
+	for p: WorldProp in query.props_near((from + to) * 0.5, most + 2.0):
+		if p.solid > 0.2 and not world.depleted.has(p.id):
 			near.append(p)
 	for i in near.size():
 		for j in range(i + 1, near.size()):
 			var a := near[i]
 			var b := near[j]
 			var gap := a.pos.distance_to(b.pos) - a.solid - b.solid
-			if gap <= 0.0 or gap > FightKit.LOCK_GAP:
+			if gap <= 0.0 or gap > most:
 				continue
 			if not Geometry2D.segment_intersects_segment(from, to, a.pos, b.pos):
 				continue
-			var at := (a.pos + b.pos) * 0.5
-			for l: Vector4 in lock_walls:
-				if at.distance_to(Vector2(l.x, l.y)) < 0.5:
-					return
-			if not FightRules.spend_charges(hero.inventory, FightKit.LOCK_CHARGES):
-				return
-			lock_walls.append(Vector4(at.x, at.y, gap * 0.5 + 0.3, now_s + FightKit.LOCK_SECONDS))
-			# The way's own edges, on the face of each: what the sheet spans.
 			var across := (b.pos - a.pos).normalized()
-			emit(&"locked", {"at": at, "a": a.pos, "b": b.pos, "from": a.pos + across * a.solid, "to": b.pos - across * b.solid})
+			return {"at": (a.pos + b.pos) * 0.5, "a": a.pos, "b": b.pos,
+				"from": a.pos + across * a.solid, "to": b.pos - across * b.solid, "r": gap * 0.5 + 0.3}
+	return {}
+
+
+## CURTAINS (a row that `seals`, the Limestone Caves' drip-warden): the lock's
+## mirror. A gap the player passes while a sealing body hunts them within
+## `within` tiles is sprayed shut BEHIND them: the body stands still for `tell`
+## ms facing the gap (MobState.seal_until), and then a curtain of lime stands
+## across it for `lasts` s, telling CURTAIN_CRUMBLE_MS before it falls. A curtain stops the PLAYER and nothing else, as the
+## lock stops machines and nothing else; `breaks` heavy blows break one; a body
+## keeps `keep` standing, and the oldest crumbles when it raises one more. A
+## chase is the cave being closed round you, and the answer is choosing where.
+## Each {id, at, from, to, r, by (mob id), up, rise_at, until, hits}.
+var curtains: Array[Dictionary] = []
+var _curtain_ids := 0
+## How long before a curtain falls it tells it: it cracks and sheds, so the
+## player reads the way about to open (`curtain_crumbling`).
+const CURTAIN_CRUMBLE_MS := 1500.0
+
+
+## What a row's `seals` says, filled in: {} when it does not seal.
+static func seals_of(row: Dictionary) -> Dictionary:
+	var s: Dictionary = row.get("seals", {})
+	if s.is_empty():
+		return {}
+	return {"gap": float(s.get("gap", 2.2)), "within": float(s.get("within", 20.0)),
+		"lasts": float(s.get("lasts", 25.0)), "keep": int(s.get("keep", 2)),
+		"tell": float(s.get("tell", 1400.0)), "breaks": int(s.get("breaks", 2))}
+
+
+## A step of the player's from `from` to `to`: a sealing body that hunts them
+## and is near enough begins its tell at the gap the step passed, if it passed one.
+func _seal_behind(from: Vector2, to: Vector2) -> void:
+	for m in mobs:
+		if not m.alive or m.removed or now < m.seal_until:
+			continue
+		var sealing := seals_of(m.row)
+		if sealing.is_empty() or m.pos.distance_to(to) > float(sealing.within):
+			continue
+		if not (m.mood == MobState.CHASING or m.mood == MobState.ATTACKING or hunting(m)):
+			continue
+		var g := gap_crossed(from, to, float(sealing.gap))
+		if g.is_empty():
 			return
+		for c: Dictionary in curtains:
+			if (c.at as Vector2).distance_to(g.at) < 0.5:
+				return
+		_curtain_ids += 1
+		var c := g.duplicate()
+		c.id = _curtain_ids
+		c.by = m.id
+		c.up = false
+		c.rise_at = now + float(sealing.tell)
+		c.until = INF
+		c.hits = 0
+		curtains.append(c)
+		m.seal_until = c.rise_at
+		m.seal_at = g.at
+		emit(&"curtain_tell", {"id": c.id, "mob": m, "at": g.at, "from": g.from, "to": g.to, "ms": float(sealing.tell)})
+		return
+
+
+## Curtains rise at the end of their tell, fall at the end of their time, and a
+## body keeps no more than its `keep` standing.
+func _curtains_beat() -> void:
+	for i in range(curtains.size() - 1, -1, -1):
+		if i >= curtains.size():
+			continue
+		var c := curtains[i]
+		var m := mob_by_id(int(c.by))
+		if not bool(c.up):
+			if m == null or not m.alive or m.removed:
+				curtains.remove_at(i)
+				continue
+			if now < float(c.rise_at):
+				continue
+			var sealing := seals_of(m.row)
+			c.up = true
+			c.until = now + float(sealing.lasts) * 1000.0
+			c.crumbling = false
+			emit(&"curtain_up", {"id": c.id, "mob": m, "at": c.at, "from": c.from, "to": c.to, "r": c.r, "ms": float(sealing.lasts) * 1000.0})
+			var standing: Array[Dictionary] = []
+			for o: Dictionary in curtains:
+				if bool(o.up) and int(o.by) == m.id:
+					standing.append(o)
+			while standing.size() > int(sealing.keep):
+				var oldest: Dictionary = standing.pop_front()
+				curtains.erase(oldest)
+				emit(&"curtain_down", {"id": oldest.id, "at": oldest.at, "broken": false})
+			continue
+		if now >= float(c.until):
+			curtains.remove_at(i)
+			emit(&"curtain_down", {"id": c.id, "at": c.at, "broken": false})
+		elif not bool(c.get("crumbling", false)) and now >= float(c.until) - CURTAIN_CRUMBLE_MS:
+			c.crumbling = true
+			emit(&"curtain_crumbling", {"id": c.id, "at": c.at, "ms": float(c.until) - now})
+
+
+## The player's step, held out of any standing curtain: the "only closer is
+## refused" rule every wall keeps, so a player a curtain rose round can leave it.
+func _held_by_curtains(from: Vector2, next: Vector2) -> Vector2:
+	for c: Dictionary in curtains:
+		if not bool(c.up):
+			continue
+		var at: Vector2 = c.at
+		var rr := float(c.r) + hero.radius
+		var after := at.distance_squared_to(next)
+		if after < rr * rr and after < at.distance_squared_to(from):
+			return from
+	return next
+
+
+## A heavy blow that meets a standing curtain cracks it; its row's `breaks`th breaks it.
+func _heavy_on_curtains(b: Blow) -> void:
+	for i in range(curtains.size() - 1, -1, -1):
+		var c := curtains[i]
+		var key := "curtain:%d" % int(c.id)
+		if not bool(c.up) or hero.struck.has(key):
+			continue
+		if not FightRules.box_hits(hero.pos, hero.facing, hero.radius, b, c.at, float(c.r) * 0.6):
+			continue
+		hero.struck[key] = true
+		c.hits = int(c.hits) + 1
+		var m := mob_by_id(int(c.by))
+		var breaks := int(seals_of(m.row).breaks) if m != null else 1
+		if int(c.hits) >= breaks:
+			curtains.remove_at(i)
+			emit(&"curtain_down", {"id": c.id, "at": c.at, "broken": true})
+		else:
+			emit(&"curtain_cracked", {"id": c.id, "at": c.at, "hits": c.hits})
+
+
+## HANGING STONE (the Limestone Caves' cracked roof, AbilityGrapple): a
+## stalactite hung cracked where the roof is thin. The grapple's line takes one
+## and pulls it down: FALL_MS later it lands on what stands under it, FALL_R
+## round where it hung. From above, it is no side's blow: a machine under it is
+## hurt and STALLS FALL_STALL_MS whatever its plate, its tell lost; a player
+## under it is hurt too. Lure it under, and bring the roof down on it.
+## Each {id, at (tiles), y (its tip's world height), falls_at (sim ms, or -1)}.
+var hangings: Array[Dictionary] = []
+var _hanging_ids := 0
+const FALL_MS := 450.0
+const FALL_R := 0.8
+const FALL_DMG := 24
+const FALL_STALL_MS := 1800.0
+const FALL_HERO_DMG := 3
+
+
+## Hang a cracked stone at `at`, its tip at world height `y`. Its id.
+func hang(at: Vector2, y: float) -> int:
+	_hanging_ids += 1
+	hangings.append({"id": _hanging_ids, "at": at, "y": y, "falls_at": -1.0})
+	return _hanging_ids
+
+
+## Take the stone `id` down from the sim without a fall (it is out of the window
+## its roof is read in). False when it is coming down: a falling stone lands.
+func unhang(id: int) -> bool:
+	for i in hangings.size():
+		if int(hangings[i].id) == id:
+			if float(hangings[i].falls_at) >= 0.0:
+				return false
+			hangings.remove_at(i)
+			return true
+	return false
+
+
+## The line takes the stone `id` and pulls it: it lets go FALL_MS later. False
+## when there is no such stone standing, or it is already coming down.
+func pull_down(id: int) -> bool:
+	for h: Dictionary in hangings:
+		if int(h.id) == id and float(h.falls_at) < 0.0:
+			h.falls_at = now + FALL_MS
+			emit(&"hanging_pulled", {"id": id, "at": h.at, "y": h.y, "ms": FALL_MS})
+			return true
+	return false
+
+
+## The stone a line cast from `from` along `dir` would take: the nearest still
+## hanging within `reach` tiles and `cone` radians of the line. {} when none.
+func hanging_ahead(from: Vector2, dir: Vector2, reach: float, cone: float) -> Dictionary:
+	var best := {}
+	var best_d := INF
+	for h: Dictionary in hangings:
+		if float(h.falls_at) >= 0.0:
+			continue
+		var to: Vector2 = (h.at as Vector2) - from
+		var d := to.length()
+		if d > reach or d < 0.3 or absf(to.angle_to(dir)) > cone:
+			continue
+		if d < best_d:
+			best_d = d
+			best = h
+	return best
+
+
+## Stones let go land: on the bodies under them, and on the player.
+func _falls_beat() -> void:
+	for i in range(hangings.size() - 1, -1, -1):
+		var h := hangings[i]
+		if float(h.falls_at) < 0.0 or now < float(h.falls_at):
+			continue
+		hangings.remove_at(i)
+		var at: Vector2 = h.at
+		var hit: Array[MobState] = []
+		for m in mobs:
+			if not m.alive or m.removed or m.pos.distance_to(at) > FALL_R + m.radius:
+				continue
+			var b := Blow.new()
+			b.dmg = FALL_DMG
+			b.knock = 0.0
+			_hurt_mob(m, b, at, 0)
+			m.stun_until = maxf(m.stun_until, now + FALL_STALL_MS)
+			m.charging = false
+			_break_tell(m)
+			_wake(m, &"damaged", at)
+			hit.append(m)
+			emit(&"fell_on", {"id": h.id, "at": at, "mob": m})
+		if hero.pos.distance_to(at) <= FALL_R + hero.radius and now >= hero.invuln_until:
+			_hurt_hero(null, FALL_HERO_DMG, hero.pos - at, 3.0, 160)
+		emit(&"hanging_fell", {"id": h.id, "at": at, "y": h.y, "bodies": hit})
+
+
+## THE VEIL (mod_veil, AbilityVeil: the drip-warden's core, turned): the drip
+## let fall as a curtain of water VEIL_WIDE across, VEIL_AHEAD in front of the
+## player, for VEIL_MS. It is SIGHT and nothing else: machines cannot see through
+## it (WorldQuery.sight_screens, which every look reads through
+## Senses.line_clear), and bodies, blows and sound go through as through air.
+## So a dart that loses its sight of you leaves with its flock (lose_scent), a
+## thrower cannot aim across it, and a hunter goes to its last sight and
+## searches (FightSim.hunting). Each {id, a, b, until}.
+var veils: Array[Dictionary] = []
+var _veil_ids := 0
+const VEIL_WIDE := 3.0
+const VEIL_AHEAD := 1.0
+const VEIL_MS := 12000.0
+
+
+## Let the veil fall ahead of the player along `dir`. Its id.
+func veil(dir: Vector2) -> int:
+	var d := dir.normalized() if dir.length_squared() > 1e-6 else Vector2.from_angle(hero.facing)
+	var mid := hero.pos + d * VEIL_AHEAD
+	var across := d.orthogonal() * VEIL_WIDE * 0.5
+	_veil_ids += 1
+	veils.append({"id": _veil_ids, "a": mid - across, "b": mid + across, "until": now + VEIL_MS})
+	_screen()
+	emit(&"veil_up", {"id": _veil_ids, "a": mid - across, "b": mid + across, "ms": VEIL_MS})
+	return _veil_ids
+
+
+## Whether a standing veil lies across the line from `p` to `q`.
+func veiled(p: Vector2, q: Vector2) -> bool:
+	for v: Dictionary in veils:
+		if Geometry2D.segment_intersects_segment(p, q, v.a, v.b) != null:
+			return true
+	return false
+
+
+## A dart's dive cut by the veil: it and every dart of its kind within FLOCK_R
+## of it lose the scent and leave for good (MobState.lost_scent), taking nothing.
+const FLOCK_R := 8.0
+
+
+func lose_scent(m: MobState) -> void:
+	for o in mobs:
+		if not o.alive or o.removed or o.snatched or o.lost_scent or o.kind != m.kind or o.approach != &"dart":
+			continue
+		if o != m and o.pos.distance_to(m.pos) > FLOCK_R:
+			continue
+		o.lost_scent = true
+		o.flee_home = false
+		o.set_mood(MobState.FLEEING, now)
+
+
+func _veils_beat() -> void:
+	var gone := false
+	for i in range(veils.size() - 1, -1, -1):
+		if now >= float(veils[i].until):
+			emit(&"veil_down", {"id": veils[i].id, "a": veils[i].a, "b": veils[i].b})
+			veils.remove_at(i)
+			gone = true
+	if gone:
+		_screen()
+
+
+## The query's sight screens are the veils standing, and only those.
+func _screen() -> void:
+	if query == null:
+		return
+	var s: Array[Vector4] = []
+	for v: Dictionary in veils:
+		s.append(Vector4((v.a as Vector2).x, (v.a as Vector2).y, (v.b as Vector2).x, (v.b as Vector2).y))
+	query.sight_screens = s
 
 
 ## FURROWS (a row that `bogs`, the Snowfield's plough): tiles it has ploughed,
@@ -1654,7 +2231,13 @@ func _wake(m: MobState, cause: StringName = &"damaged", from: Vector2 = Vector2.
 		if m.approach == &"errand":
 			m.set_mood(MobState.ALERTED, now)
 		elif m.approach != &"dart":
-			m.set_mood(MobState.ATTACKING, now)
+			# Woken with the slots full, it joins the ones waiting at the edge.
+			if biter(m) and not holds_slot(m) and attack_slots.size() >= ATTACK_SLOTS:
+				m.set_mood(MobState.CHASING, now)
+			else:
+				m.set_mood(MobState.ATTACKING, now)
+				if biter(m) and not holds_slot(m):
+					attack_slots.append(m.id)
 
 
 func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: int) -> void:
@@ -1728,6 +2311,50 @@ func _kill(m: MobState, by_player: bool = true) -> void:
 		hero.release()
 		emit(&"loose", {"by": m})
 	emit(&"killed", {"mob": m, "at": m.pos, "by_player": by_player})
+	_crowd_falls(m)
+
+
+## A CROWD BREAKS. Half-broken machines hold together only so long: a crowd
+## (CROWD_LEAST biters or more after the player, at its biggest this fight) whose
+## last one is left standing, or which loses the one body bigger than all the
+## rest while it is still whole (its leader, taken first), the others
+## lose the fight and go back to their rounds, calm for CROWD_CALM_MS. It
+## rewards a player who focuses a kill. A pair is not a crowd; a keeper never
+## breaks, and never breaks one.
+const CROWD_LEAST := 3
+const CROWD_CALM_MS := 8000.0
+var _crowd_fallen := 0
+var _crowd_peak := 0
+
+
+func _crowd_falls(m: MobState) -> void:
+	if not biter(m) or Sentinels.is_keeper(m.row):
+		return
+	var rest: Array[MobState] = []
+	for o in mobs:
+		if o != m and _slot_wanted(o):
+			rest.append(o)
+	_crowd_peak = maxi(_crowd_peak, rest.size() + 1)
+	if _crowd_peak < CROWD_LEAST:
+		return
+	_crowd_fallen += 1
+	var leader := _crowd_fallen == 1 and rest.size() + 1 == _crowd_peak
+	for o in rest:
+		leader = leader and m.radius > o.radius
+	if rest.size() > 1 and not leader:
+		return
+	for o in rest:
+		if Sentinels.is_keeper(o.row):
+			return
+	_crowd_fallen = 0
+	_crowd_peak = 0
+	for o in rest:
+		o.disturbed = false
+		o.charging = false
+		o.calm_until = now + CROWD_CALM_MS
+		attack_slots.erase(o.id)
+		o.set_mood(MobState.IDLE, now)
+	emit(&"crowd_broke", {"by": m, "left": rest.size()})
 
 
 ## A dart reached the player: it takes what it came for and runs. Inside
@@ -1804,6 +2431,13 @@ func clear_mobs() -> void:
 	for m in mobs:
 		remove_mob(m)
 	fight_mobs.clear()
+	# What they sprayed goes with them: a curtain belongs to the ground it was
+	# raised on, and this is a new ground or none.
+	for c: Dictionary in curtains:
+		emit(&"curtain_down", {"id": c.id, "at": c.at, "broken": false})
+	curtains.clear()
+	veils.clear()
+	_screen()
 
 
 func _purge() -> void:
