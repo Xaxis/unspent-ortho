@@ -48,6 +48,10 @@ var dash := 1.0
 var quick := 1.0
 
 var bite: Blow = null
+## Slewed round (a grip torn loose, Blow.torn): until slew_until it turns on
+## slew_to at FightRules.SLEW_TURN, stalled or not, and nothing else turns it.
+var slew_until := -INF
+var slew_to := 0.0
 ## A body that drops on you (Brains `drop`): the blow it comes down with (the
 ## roster's `drop`), and while one is under way where it left from and where it
 ## lands, set when the tell starts and never after.

@@ -113,6 +113,10 @@ const LANDED_RECOVERY_MS := 160
 ## could move.
 const LANDED_COOLDOWN_MS := 950
 const PAUSE_TURN := 1.0
+## Radians a second a gripper torn loose slews round (Blow.torn): half a turn in
+## about half a second, seen as the gantry swinging and not as a snap.
+const SLEW_TURN := 6.5
+const SLEW_MS := 600.0
 ## A real hit on a machine: the part flares this long, still lit, then goes dark
 ## for PART_DARK_MS. In that order, or the flare is drawn on a part already out.
 const PART_FLARE_MS := 150.0

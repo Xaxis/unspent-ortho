@@ -24,7 +24,7 @@ var part: StringName = &"front"
 ## a bite, stalled, or not yet roused (FightSim.reaches_part).
 var guarded := false
 ## Its bite this phase, in the roster's shape: {swing: [windup, active, recovery,
-## cooldown], reach, width, dmg, knock, knock_ms, grip}.
+## cooldown], reach, width, dmg, knock, knock_ms, grip, torn}.
 var bite: Dictionary = {}
 ## Tiles/s on the source's scale (FightRules.SPEED_SCALE is applied on the body),
 ## and `quick` the close-quarters speed x 100, as a roster row gives them.
