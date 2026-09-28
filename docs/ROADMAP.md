@@ -54,9 +54,11 @@ and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
    reason said by the camp.
 5. [ ] **The lab and Ruth's table** (A). `built_halcyon` → `gate_lab`; `was_cia` →
    `gate_meet` (`ruth_signed`, `ruth_volunteered`, `kerr_money`).
-6. [ ] **The second keeper, the Pan Rake** (B+C). The salt flats keeper holds the
-   kitchen (`mem_kitchen`). Salt flats is guaranteed on the home body (worldgen,
-   GEN at landing).
+6. [ ] **The second keeper** (B+C). Whichever keeper stands nearest home, holding a
+   non-key memory (`TESTIMONY_SENTINEL`, beat `gap`). Salt flats can't be guaranteed
+   on home without moving the coast keeper: measured on seeds 1-40 (salt on home in
+   3/40; every home deal moves the Reaper's lair, 90-500 tiles). The Pan Rake and
+   `mem_kitchen` come where salt flats is reached; nothing gates on the kitchen.
 7. [ ] **Vera and the way on** (A). `vera_knew` ("filed under weather"); she names
    the archive across the water: slice 3's lead.
 8. [ ] **Proof** (all). The tour plays the slice unassisted. ★
