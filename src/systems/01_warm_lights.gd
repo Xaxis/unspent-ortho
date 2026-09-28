@@ -22,9 +22,11 @@ extends GameSystem
 ## does outdoors; a sealed room has nothing that does; a room's own lights cast
 ## too, and the renderer folds the first casting light into the base pass (a
 ## program of its own) and draws what it reaches into its shadow map (another).
-## So the boot draws three states, HOLD frames each: the sun casting alone,
-## NOTHING casting (every casting light held shadowless), and the sun with one
-## black spot casting over the player. Alone, not all at once: with the spot
+## So the boot draws four states, HOLD frames each: the sun casting alone,
+## NOTHING casting (every casting light held shadowless), the sun with one black
+## spot casting over the player, and the sun as it casts when the eye looks out
+## (four blended splits, under the seen sky: SkyLight.warm_look_out), which the
+## shoulder's band switches to and nothing at the start draws. Alone, not all at once: with the spot
 ## over them the particles built only the spot's variant, and a hall's steam
 ## still froze its door (measured).
 ##
@@ -39,8 +41,9 @@ extends GameSystem
 ## (21_doors' iris).
 
 ## Frames each warm-up state is held, so it is drawn at least once whatever the
-## boot's pacing.
+## boot's pacing; and how many states there are.
 const HOLD := 3
+const STATES := 4
 ## Past any world's edge from wherever the camera is, so the lights reach
 ## everything on every frame, the first one back outside a room included (the
 ## camera's focus is still the room's then).
@@ -57,6 +60,13 @@ var _keep: Array[Material] = []
 ## motes, the hearth's smoke and sparks, the weather's grains.
 var _motes: Array[Node3D] = []
 var _frame := 0
+## What only the eye level draws, shown in the look-out state alone and casting
+## into the sun's four splits there: the meadow's instanced grass (its shadow
+## program and its lit one), a colossus on the horizon, and a fall's ribbons.
+var _eye: Array[GeometryInstance3D] = []
+## Microseconds spent in each state's frames, and when the last frame began.
+var _state_usec := PackedInt64Array([0, 0, 0, 0])
+var _last_usec := 0
 ## Every light that cast when the warm-up began, to cast again after it.
 var _casting: Array[Light3D] = []
 
@@ -139,6 +149,24 @@ func setup(g: Game) -> void:
 	devil.mesh = QuadMesh.new()
 	devil.material_override = precip
 	_motes.append(devil)
+	for sh: Shader in [preload("res://src/render/foliage/grass.gdshader"), preload("res://src/render/falls/streak.gdshader")]:
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = QuadMesh.new()
+		mm.instance_count = 1
+		mm.set_instance_transform(0, Transform3D.IDENTITY)
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		_eye.append(mmi)
+		_eye_material(mmi, sh)
+	var colossus := MeshInstance3D.new()
+	colossus.mesh = QuadMesh.new()
+	_eye.append(colossus)
+	_eye_material(colossus, preload("res://src/render/colossus/colossus.gdshader"))
+	for n: GeometryInstance3D in _eye:
+		n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		n.visible = false
+		g.add_child(n)
 	for n: Node3D in _motes:
 		# Alive on the first frame: particles not yet emitted draw nothing, and
 		# the casting state lasts only HOLD frames.
@@ -154,8 +182,12 @@ func _process(_delta: float) -> void:
 	_omni.position = focus + Vector3(0.0, 3.0, 0.0)
 	_spot.position = focus + Vector3(0.0, 40.0, 0.0)
 	_spot.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
-	if _frame > HOLD * 3:
+	if _frame > HOLD * STATES:
 		return
+	var now := Time.get_ticks_usec()
+	if _frame > 0:
+		_state_usec[mini((_frame - 1) / HOLD, STATES - 1)] += now - _last_usec
+	_last_usec = now
 	if _frame == 0:
 		# Every system is set up by the first frame; not all are at this one's setup.
 		for sys: Node in game.systems:
@@ -170,9 +202,18 @@ func _process(_delta: float) -> void:
 	for l: Light3D in _casting:
 		if is_instance_valid(l):
 			l.shadow_enabled = not sealed
-	_caster.visible = _frame >= HOLD * 2
+	_caster.visible = _frame >= HOLD * 2 and _frame < HOLD * 3
+	var looking := _frame >= HOLD * 3
+	if looking and game.sky != null:
+		game.sky.warm_look_out()
+	for n: GeometryInstance3D in _eye:
+		n.visible = looking
 	_frame += 1
-	if _frame > HOLD * 3:
+	if _frame > HOLD * STATES:
+		# What the warm-up costs, per state, measured: the boot is the first thing
+		# a player waits on, so each state has to earn its frames.
+		print("boot warm lights: %s ms (sun, sealed, caster, look out)" % ", ".join(
+			Array(_state_usec).map(func(u: int) -> String: return "%.0f" % (u / 1000.0))))
 		_casting.clear()
 		_caster.queue_free()
 		for q: MeshInstance3D in _quads:
@@ -181,6 +222,9 @@ func _process(_delta: float) -> void:
 		for n: Node3D in _motes:
 			n.queue_free()
 		_motes.clear()
+		for n: GeometryInstance3D in _eye:
+			n.queue_free()
+		_eye.clear()
 		for sys: Node in game.systems:
 			if sys.has_method(&"warm"):
 				sys.call(&"warm", false)
@@ -192,6 +236,17 @@ func _process(_delta: float) -> void:
 		_quads[i].position = at + Vector3(0.1 * float(i), 0.05, 0.0)
 	for n: Node3D in _motes:
 		n.position = at + Vector3(0.0, 0.5, 0.0)
+	for n: GeometryInstance3D in _eye:
+		n.position = at + Vector3(0.0, 0.5, 0.0)
+
+
+## One of the eye level's shaders on `n`, kept past the warm-up (a shader's
+## programs live only while one of its materials does).
+func _eye_material(n: GeometryInstance3D, sh: Shader) -> void:
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	_keep.append(m)
+	n.material_override = m
 
 
 ## What a room draws that nothing outside does, from the builders the rooms use.
