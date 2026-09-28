@@ -357,29 +357,30 @@ wait 1.0
 await held_here 6
 shot 17-the-yard-holding-somebody-from-oyster-row with works,works_lit,works_yard
 
-# 7 THE FIGHT AND ITS FALL (44_sentinels, 42_stage): the Reaper taken apart with
-# the steel knife through the openings it gives, the way a player learns it: in
-# front where it will bite, round out of the box as the tell starts, into the
-# working part while the drum is jammed. In front means at its plate: it only
-# bites, and tells first, at what stands where its guarded side faces. Each pass
-# starts off its body, so a pass that ends with him downed and carried off
-# starts again from where it stands.
+# 7 ITS FALL, BY THE TIDE (44_sentinels, the FOUNDER way): it keeps the tide line
+# and is far too heavy for the mud and water it works beside. Roused, it follows
+# him off its own shore onto the nearest mud or into the water, founders there
+# (held 1.4 s), and the land takes it. Staged by the ground's name.
 near keeper
-wait 0.6
 await sentinel 12
-try 80
-  near mob:sentinel.coast 5
-  walkto plate 6
-  await tell 10
-  press dodge 0.12
-  await sentinel_open 6
-  walkto part 2
-  tap swing
-  await sentinel_dead 1
+wait 2.0
+walkto mob 6
+wait 0.6
+try 6
+  ground mud,water
+  await sentinel_fallen 20
 end
-await sentinel_fallen 5
 wait 1.0
-shot 18-the-reaper-falls with sentinel_fallen,staging:fall
+shot 18-the-tide-takes-the-reaper with sentinel_fallen
+
+# 7a TODO THE FORCE FIGHT (roadmap step 4, owed to the fight's builder): the
+# Reaper taken apart with the steel knife through its openings. Measured with the
+# scripted player (near mob, walkto plate, await tell 10, dodge, await
+# sentinel_open 6, walkto part, swing), 30 passes before its body was gone: no
+# tell at its plate 23 times, a tell but no opening 2, an opening and a swing 4.
+# At that rate a force fall is some 200 passes; headless (test_fight, the hero
+# placed every tick) it is 28 swings. Routed to fight as a balance finding.
+echo todo: the force fight (7a)
 
 # 8 ITS YARD GOES DARK (34_works): the fall line, then some minutes on, the yard
 # its keeper held puts its lights out for good.
