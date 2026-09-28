@@ -1,7 +1,8 @@
 # THE TIDE REAPER AS A SET PIECE (roadmap slice 1, step 4), over the shoulder
 # with the tempered knife (steel bites its plate: tours/reaper_plating.tour).
-# Its first sight is revealed -- it stands at its work, and the staged look
-# (42_stage) hands back inside 3 s -- then its tell stands in its body, and it falls: the
+# Its first sight is revealed -- it stands at its work, the staged look
+# (42_stage) holds the view on it and hands back inside 3 s -- then its tell
+# stands in its body, and it falls, the view held on the fall: the
 # arch breaks and the hulk is left on the shore. The other way, the tide flats,
 # is tours/reaper_tide.tour.
 #   TOUR_FIXED_FPS=60 tools/tour.sh tours/reaper_set_piece.tour --seed=7 --hour=11 --weather=clear:0 --held=knife_shear --config=unharmed
@@ -10,7 +11,7 @@ tap shoulder
 await shoulder 3
 near keeper
 wait 0.8
-shot 01-its-first-sight-at-its-work with shoulder,mob:sentinel.coast,sentinel_revealing
+shot 01-its-first-sight-the-view-held-on-it with shoulder,mob:sentinel.coast,sentinel_revealing
 await sentinel 12
 wait 2.6
 
@@ -29,6 +30,6 @@ shot 02-the-arch-rears-its-tell with shoulder,mob:sentinel.coast
 fell sentinel.coast
 await sentinel_dead 3
 wait 0.6
-shot 03-the-arch-breaks with shoulder,sentinel_dead
+shot 03-the-arch-breaks with shoulder,sentinel_dead,sentinel_falling
 wait 2.4
 shot 04-it-lies-across-the-shore with shoulder,sentinel_dead

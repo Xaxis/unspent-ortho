@@ -569,6 +569,8 @@ func _load(v: Variant) -> void:
 ##   sentinel_phase      it has entered another phase since the last action
 ##   sentinel_phase:ID   the keeper out now is in that phase
 ##   sentinel_open       its working part is open (spent after a bite, or stalled)
+##   sentinel_revealing  the stage (42_stage) is holding the view on a first sight
+##   sentinel_falling    the stage is holding the view on a keeper's fall
 ##   sentinel_hurt       it has lost health
 ##   sentinel_fallen     a region has been taken (asked of the world, not latched:
 ##                       a keeper that has fallen stays fallen, and `_states` says so)
@@ -585,6 +587,9 @@ func tour_seen(what: String) -> bool:
 			if stage != null:
 				return bool(stage.call(&"looking")) and StringName(stage.call(&"why")) == &"reveal"
 			return revealing()
+		"sentinel_falling":
+			var stage := _stager()
+			return stage != null and bool(stage.call(&"looking")) and StringName(stage.call(&"why")) == &"fall"
 		"sentinel_hurt":
 			return live != null and live.health < live.max_health
 		"sentinel_open":

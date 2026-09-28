@@ -28,7 +28,7 @@ tools/tour.sh tours/x.tour      # scripted real-input proof; each tour's header 
 tools/canon.sh [--accept]       # canon frames vs the accepted set
 tools/web.sh                    # export and boot the web build in headless Chromium
 tools/deploy.sh [--prod]        # deploy to Vercel and prove it loads there
-tools/heavy.sh CMD...           # run a tour/shot/render/web job only when the box can take it, one at a time
+tools/heavy.sh CMD...           # run a tour/shot/render/web job only when the box can take it (two at once)
 ```
 
 - **Look at the pictures.** After any visible change, shoot it and Read the PNG. A

@@ -32,7 +32,7 @@ Builders: **A** introduction and story (teammate3, words via story-wright) ·
    the knife does not bite its plating, so the next make has a reason.
 4. [x] **The Reaper as a set piece** (B). Force and one other way; tells in its
    body; staged reveal and fall. ★
-5. [ ] **Its fall changes the coast** (C). The first memory opens; the land shows it.
+5. [x] **Its fall changes the coast** (C). The first memory opens; the land shows it.
 6. [x] **The taken** (C, words via A). The motive awaits the owner's ruling in STORY.md.
    Rescue on a clock, or a loss heard in Maren's lines.
 7. [ ] **Proof** (all). The proof tour plays the whole slice unassisted. ★
@@ -89,8 +89,6 @@ line that made it. Proved by frames read at three zooms on two seeds, and the ow
 
 ## Fixes that serve the slice
 
-- [ ] CI shards 0 and 4 hang at exit after their last test passes, on branches that add
-  test files (land/reaper, land/fall); drain_pool() did not cover it. Blocks step 5.
 - [ ] The white panel on the player's back over the shoulder. Seen once (main
   c330ea47, `--seed=1 --hour=6.5 --view=shoulder --weather=clear:0`): a tall white
   card with a hit-splash on it, the player in a recoil pose. Not reproduced by the
