@@ -58,7 +58,8 @@ new layer of play with a reason. Rough size: two to three weeks each.
    reads on the land; the next memory gates (the lab at the first works, Ruth's table at
    the camp); the second keeper.
 3. **Across the water**: the raft; the Covenant's seat and June; the war's archive;
-   mended gear; a third landscape.
+   mended gear; a third landscape; the first machine enclave that seeks balance
+   with humans.
 4. **Below**: HALCYON's deep plant; the Seeker and the Echo; the drill crawler; the secret
    takes shape.
 5. **The far shore**: the Emissary's works at the Tether's foot; the Guest met in play;

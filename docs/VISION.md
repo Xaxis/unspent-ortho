@@ -5,11 +5,14 @@ What the finished game is. `ROADMAP.md` says where it stands and what is next;
 
 ## Premise
 
-- The few humans left after the machine apocalypse, hunted by half-broken
-  machines. You are Elias Marr, a man out of time who helped cause it (`STORY.md`).
+- The few humans left after the machine apocalypse, hunted by perpetual
+  machines, some of them half-broken. You are Elias Marr, a man out of time who
+  helped cause it (`STORY.md`).
 - The machines still mean to end humankind, but **many are indifferent**, as long
   as nobody interferes with their **ultimate plan**. The plan is the core arc;
   around it grow **generative subarcs**, finished in many different ways.
+- **Some enclaves of machines seek peace and balance with the humans** and want to
+  resist the alien factions (owner).
 
 ## How the game pulls the player
 
@@ -21,13 +24,15 @@ Every stretch of play carries three threads at once (owner, 2026-09-28):
 - **An introduction**: the record's voice, and staged moments where the world
   needs explaining (never for a time crossing).
 
-## Three factions
+## Factions
 
 - **The machines**: each has a role in the plan and a disposition; interfere and
   they turn.
 - **The alien intelligence and its craft**: a "higher" power the machines bargain
   with. To both, humans are "ants".
 - **Humans who side with the machines.**
+- **Machine enclaves that seek balance with humans**: they stand against the
+  aliens, and so against the bargain the plan rests on (owner, 2026-09-28).
 
 ## The plan
 
