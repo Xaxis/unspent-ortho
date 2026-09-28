@@ -508,6 +508,14 @@
       "tests": []
     },
     {
+      "id": "system:42_stage",
+      "kind": "system",
+      "entry": "src/systems/42_stage.gd",
+      "reach": "tools/tour.sh tours/home-coast.tour --scene=title --seed=1",
+      "area": "world-look",
+      "tests": []
+    },
+    {
       "id": "system:42_target",
       "kind": "system",
       "entry": "src/systems/42_target.gd",
@@ -577,6 +585,14 @@
       "entry": "src/systems/48_raids.gd",
       "reach": "tools/tour.sh tours/raids.tour",
       "area": "machines-fight",
+      "tests": []
+    },
+    {
+      "id": "system:48_wake",
+      "kind": "system",
+      "entry": "src/systems/48_wake.gd",
+      "reach": "tools/tour.sh tours/home-coast.tour --scene=title --seed=1",
+      "area": "people-story",
       "tests": []
     },
     {

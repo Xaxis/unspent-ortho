@@ -38,7 +38,7 @@ static var _heard: Array[StringName] = []
 ## What the world has seen him do, for whoever writes it down (StoryLedger):
 ## {act, land, at} in the order it happened.
 static var _ledger: Array[Dictionary] = []
-## Whether the first morning has been said (StoryContent.OPENING). Saved, so a
+## Whether the first morning has been said (StoryContent.WAKE, 48_wake). Saved, so a
 ## game that is loaded does not open by telling him again where he came from.
 static var began := false
 ## The world clock as the story last saw it, in minutes. What "a while ago" is

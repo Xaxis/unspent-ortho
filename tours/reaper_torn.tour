@@ -1,0 +1,48 @@
+# THE REAPER BY FORCE, ITS LAST PHASE, PLAYED WITH THE KEYS (roadmap slice 1,
+# step 4). Stooped, it grips instead of biting and hauls the player off, and it
+# turns on the spot as fast as a player can circle it, on a shore fenced either
+# side; the chute gear at its back is the one open part left. Pulled loose (the
+# swing key, twice with the steel knife) the wrench slews the gantry half round
+# and jams it (Blow.torn): its gear glows toward the player, who steps in and
+# takes it. Again, until it falls. Brought to that phase by `wound`; everything
+# after is the real walk, run and swing. The whole fight from full health is
+# tests/sentinel/test_reaper_force.gd.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/reaper_torn.tour --seed=7 --hour=11 --weather=clear:0 --held=knife_shear --config=unharmed
+coast calm
+tap shoulder
+await shoulder 3
+near keeper
+await sentinel 12
+wait 3.0
+wound sentinel.coast 0.25
+wait 0.3
+try 4
+  walkto mob 6
+  await grip 8
+end
+shot 01-stooped-it-grips-and-hauls with shoulder,mob:sentinel.coast,grip
+tap swing
+wait 0.2
+tap swing
+await free 1
+walkto part 2 run
+tap swing
+await hit 0.8
+shot 02-torn-loose-it-slews-and-jams-the-gear-taken with shoulder,torn
+try 8
+  walkto mob 4
+  await grip 6
+  tap swing
+  wait 0.2
+  tap swing
+  await free 1
+  walkto part 2 run
+  tap swing
+  wait 0.6
+  tap swing
+  wait 0.6
+  tap swing
+  await sentinel_dead 0.6
+end
+wait 1.5
+shot 04-it-falls-to-the-keys with shoulder,sentinel_dead

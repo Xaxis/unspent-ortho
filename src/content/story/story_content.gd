@@ -43,7 +43,7 @@ const ARCS := {
 	&"the_holdfast": {
 		"title": "the Holdfast",
 		"note": "The last people still trying to take the world back.",
-		"beats": [&"holdfast_fight", &"holdfast_price", &"holdfast_hope", &"vera_knew"],
+		"beats": [&"marens_lead", &"holdfast_fight", &"holdfast_price", &"holdfast_hope", &"vera_knew"],
 	},
 	&"the_covenant": {
 		"title": "the Covenant",
@@ -68,7 +68,7 @@ const ARCS := {
 	&"the_lands": {
 		"title": "the lands",
 		"note": "What the people of each land have noticed, and nobody wrote down.",
-		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count", &"same_weight", &"old_timetable", &"harvest_day", &"kerb_moves", &"more_goes_in", &"survey_bends", &"ring_held", &"vents_keep_time", &"under_the_leaves", &"wrack_new", &"sea_froze", &"glassed_nothing", &"fields_tune", &"words_tipped"],
+		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count", &"same_weight", &"old_timetable", &"harvest_day", &"kerb_moves", &"more_goes_in", &"survey_bends", &"ring_held", &"vents_keep_time", &"under_the_leaves", &"wrack_new", &"reaper_named", &"sea_froze", &"glassed_nothing", &"fields_tune", &"words_tipped"],
 	},
 	&"priya": {
 		"title": "Priya",
@@ -125,6 +125,7 @@ const BEATS := {
 	&"ants": {"reveal": true, "short": "beneath notice", "arc": &"the_machines", "says": "They do not see you. Nothing that size looks down."},
 	&"standoff": {"reveal": true, "short": "a star each", "arc": &"the_machines", "says": "Two things that can kill a star are each holding the other's."},
 	&"the_guest": {"short": "someone else", "arc": &"the_machines", "says": "Something from another star is talking to them, and it is not talking about you."},
+	&"marens_lead": {"short": "iron for the crew", "arc": &"the_holdfast", "says": "The crew camped past the old works pay for iron. The fire-keeper wants them kept from her fire."},
 	&"holdfast_fight": {"short": "still fighting", "arc": &"the_holdfast", "says": "There are people still fighting to take the world back. Not many."},
 	&"holdfast_price": {"short": "what it costs", "arc": &"the_holdfast", "says": "Every works the Holdfast breaks brings the hunters down on a village."},
 	&"holdfast_hope": {"short": "a weapon", "arc": &"the_holdfast", "says": "To the Holdfast, anybody who knows the old machines is a weapon."},
@@ -164,6 +165,7 @@ const BEATS := {
 	&"others_before": {"reveal": true, "short": "two before you", "arc": &"the_lands", "says": "Two men came out of the water before you. The city filed them both. They had your face."},
 	&"the_count": {"short": "the number", "arc": &"the_lands", "says": "A number on the wires over the snow gets smaller every winter. It may be how many people are left."},
 	&"wrack_new": {"short": "clean tubing", "arc": &"the_lands", "says": "The tide brings in tubing and tank glass from past the point. Everything else in the sea is seventy years old, and that is new."},
+	&"reaper_named": {"short": "the Tide Reaper", "arc": &"the_lands", "says": "The machines' yard past the point is kept by a gantry the tide-pickers call the Tide Reaper. Iron rings off it. A knife tempered in a kiln bites."},
 	&"sea_froze": {"short": "the sea froze", "arc": &"the_lands", "says": "The frost sea was open water in living memory. It froze the winter the machines' posts went out on it, and has not thawed since."},
 	&"glassed_nothing": {"short": "aimed at nothing", "arc": &"the_lands", "says": "Nothing ever stood where the glass desert is. Whatever fused it was aimed at empty sand."},
 	&"fields_tune": {"short": "a few bars", "arc": &"the_lands", "says": "Some nights the server fields' hum drops into a few bars of a tune, the same few, and stops, like somebody who has lost the rest."},
@@ -3998,6 +4000,7 @@ const TALKS := {
 					{"text": "Who pulled me out?", "pick": &"asked_who", "to": &"pulled"},
 					{"text": "Where am I?", "pick": &"asked_where", "to": &"where"},
 					{"text": "Somebody didn't get home.", "when": &"not_home", "pick": &"told_lost", "to": &"lost"},
+					{"text": "What do I do now?", "pick": &"asked_now", "to": &"lead"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
 			},
@@ -4019,6 +4022,16 @@ const TALKS := {
 			&"camp": {
 				"says": ["There's a crew camped out past the old works. Holdfast.", "They pay for anyone who knows the old machines. I'd not tell them you do."],
 				"beats": [&"holdfast_fight"],
+				"replies": [
+					{"text": "Then what would I bring them?", "pick": &"asked_bring", "to": &"lead"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			# Her lead (docs/ROADMAP.md, step 2): the first hour's work and why, and
+			# the camp at the end of it. The guide says it back (StoryContent.LEAD).
+			&"lead": {
+				"says": ["A fire before dark. Charcoal off it for a pick. The pick for the iron in the rock.", "The crew past the old works pay for iron. Take it to them. Not them to me."],
+				"beats": [&"marens_lead"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"where": {
@@ -4043,6 +4056,7 @@ const TALKS := {
 				"says": ["Suit yourself. There's a fire.", "You're not the first to come up saying nothing."],
 				"replies": [
 					{"text": "Who were the others?", "pick": &"asked_others", "to": &"others"},
+					{"text": "[sit by the fire]", "pick": &"sat", "to": &"lead"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
@@ -5295,6 +5309,7 @@ const TALKS := {
 				"replies": [
 					{"text": "What does it bring?", "pick": &"asked_brings", "to": &"sort"},
 					{"text": "[help him sort]", "pick": &"sorted", "to": &"sort"},
+					{"text": "Maren says the crew pay for iron.", "pick": &"asked_iron", "to": &"reaper", "when": &"marens_lead"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
@@ -5303,11 +5318,20 @@ const TALKS := {
 				"beats": [&"wrack_new"],
 				"replies": [
 					{"text": "Who's using it?", "pick": &"asked_using", "to": &"using"},
+					{"text": "Maren says the crew pay for iron.", "pick": &"asked_iron", "to": &"reaper", "when": &"marens_lead"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
 			&"using": {
 				"says": ["Nobody I know. Nobody rows out that far.", "But something out there still gets through a lot of tubing."],
+				"replies": [
+					{"text": "What's out there?", "pick": &"asked_out_there", "to": &"reaper"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"reaper": {
+				"says": ["Their yard, past the point. A gantry keeps it. The Tide Reaper.", "Pick the tide near its pipes and it picks you.", "Iron rings off it. Temper a knife in a kiln, with charcoal. That bites."],
+				"beats": [&"reaper_named"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
@@ -5420,11 +5444,67 @@ const TALKS := {
 # can live without. Said once, on the first morning, and never again — a save
 # remembers having heard it. It says what happened to him and nothing about what
 # it means, because he does not know yet either.
+#
+# THE WAKE (48_wake): the record's first lines, only what could be seen, one
+# staged moment each. `surface` as his head breaks the water line; `shallows`
+# when the rise ends and he stands in the surf with the black site behind him
+# and Maren at the water's edge, which is also where the staging hands him his
+# legs. No line waits for him to reach the sand: a line for walking onto a tile
+# is the one thing the record never says (docs/STORY.md). "Came up out of the
+# water" is Maren's to say, in her talk, and the black site stays "something"
+# until somebody names it. `tether` when the view turns once to the far
+# horizon and tips up (48_wake, 42_stage); the line and its light stay unnamed.
+const WAKE := {
+	&"surface": ["You break the surface.", "Your first breath is salt."],
+	&"shallows": [
+		"Behind you, something stands in the sea.",
+		"Someone at the water's edge is watching you.",
+		"You do not remember the water.",
+	],
+	&"tether": [
+		"Far off, a thread climbs from the horizon into the sky.",
+		"Where it ends, one light hangs and does not move.",
+	],
+}
 
-const OPENING: Array[String] = [
-	"You come up out of the water.",
-	"You do not remember the water.",
-]
+# --- Maren's lead (Guide.goal, docs/ROADMAP.md step 2) ---------------------
+#
+# The goal line's words once `marens_lead` has landed: the short form of what
+# she told him, carrying her why, so the first hour is her errand and not a
+# recipe. The game's register, terse. Never a key, never a coordinate: `{at}`
+# is the fire's name (Guide.fire_name). Before she has said it, the guide says
+# the plain line. `ore` is where the goal turns toward the crew's camp.
+const LEAD := {
+	&"fire_gather": "A fire before dark, for charcoal: three driftwood and two stones.",
+	&"fire_lay": "A fire before dark, for charcoal: lay it on open ground.",
+	&"charcoal_gather": "Charcoal for the pick: four driftwood or dead wood, at {at}.",
+	&"charcoal_set": "Charcoal for the pick, for the iron: set it going at {at}.",
+	&"haft": "A haft for the pick, whittled from wood.",
+	&"plate": "Plate for the pick's head: turn over the tip.",
+	&"pick": "A pick for the iron, made at {at}.",
+	&"ore": "The crew past the old works pay for iron. Take the pick to the rock.",
+}
+
+# The name the goal lines use for a landscape's keeper once `reaper_named` has
+# landed (Hob, TALKS hob.reaper). Keyed by landscape id; before he has said it,
+# the guide says the plain word. It is what the tide-pickers call it, not its own.
+const KEEPER_NAMED := {&"coast": "the Tide Reaper"}
+
+# The fight's goal lines and the ring, once `reaper_named` has landed: the short
+# form of what Hob said, so the next make has his reason. Guide and 40_fight read
+# them. The game's register, terse; never a key or a coordinate. `{who}` is the
+# keeper's name (KEEPER_NAMED), `{at}` the fire's name. `rings` is said the
+# moment an iron edge rings off the plating, in the fight.
+const EDGE := {
+	&"steel_in_hand": "Steel in hand. Take it to {who}.",
+	&"tempering": "The knife is taking its temper in the kiln. Let it.",
+	&"kiln_stones": "Steel bites {who}. A kiln to temper the knife: eight stones.",
+	&"kiln_lay": "Steel bites {who}. Lay the kiln to temper the knife.",
+	&"fire_for_charcoal": "A fire to burn charcoal: the knife's temper wants four.",
+	&"charcoal_at": "Four charcoal to temper the knife, burnt at {at}.",
+	&"temper": "Temper the knife in the kiln: four charcoal, and the night.",
+	&"rings": "It rings. Iron does not bite that plate.",
+}
 
 # --- what a region asks of him (StorySubarc, docs/VISION.md) ------------
 #

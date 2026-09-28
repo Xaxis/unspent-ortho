@@ -512,6 +512,8 @@ func _part_at(m: MobState) -> Vector3:
 
 ## When an edge last rang off a keeper's plating, fight ms (tour `plating`).
 var _plating_at := -INF
+## Until when a gripper torn loose stands jammed, fight ms (tour `torn`).
+var _torn_until := -INF
 
 
 ## A keeper down: the plating it wore is no longer a reason to want an edge.
@@ -611,6 +613,15 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"loose":
 				Events.sfx.emit(&"loose", player.position)
 				MobFx.puffs(fx, _at3(hero.pos), Vector2.ZERO, _dust_colour(hero.pos), 3, 0.55, int(sim.now) + 7)
+			&"torn":
+				# Torn loose (Blow.torn): the wrench jams what held on. It clangs at the
+				# jaw, and its open part glows for as long as it stands, so where to go
+				# is read in the body and not in a line.
+				var m: MobState = e.by
+				_torn_until = sim.now + float(e.ms)
+				MobFx.clang(fx, _at3(m.pos.lerp(hero.pos, 0.5), 0.9), int(sim.now))
+				MobFx.glow(fx, _part_at(m), Palette.LENS[3], 1.1, float(e.ms) / 1000.0)
+				Events.sfx.emit(&"hit_plate", _at3(m.pos))
 			&"hit":
 				_on_hit(e)
 			&"struck":
@@ -709,8 +720,8 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"plating":
 				# An edge rang off a keeper's plating (FightRules.bites): the survival
 				# state remembers the hardness it wants and whose, and the first time
-				# it says why. Words for story-wright: the short form of what the one
-				# who named the keeper told the player.
+				# it says why: the short form of what the one who named the keeper
+				# told the player (Guide.edge_line, StoryContent.EDGE).
 				var m: MobState = e.mob
 				var plate := StringName(e.get("plate", &""))
 				var st := SurvivalState.of(game)
@@ -722,7 +733,7 @@ func _handle(events: Array[Dictionary]) -> void:
 					# Said at once, with the keeper close: the HUD keeps quiet in a
 					# fight, and this is the one line the fight is for.
 					if game.hud != null:
-						game.hud.say_now("It rings. Iron does not bite that plate.")
+						game.hud.say_now(Guide.edge_line(&"rings", Guide.keeper_name(def.land if def != null else &"")))
 			&"unseen_tell":
 				# A bite begun out of the player's sight in a crowd: a call from its
 				# bearing, and a mark at the slate's edge on its side for its tell.
@@ -884,6 +895,9 @@ func tour_seen(what: StringName) -> bool:
 		# On the fight's own clock: a frame is taken after the ring, however slow.
 		&"plating":
 			return sim.now - _plating_at < 1500.0
+		# A gripper torn loose still stands jammed (Blow.torn), on the fight's clock.
+		&"torn":
+			return sim.now < _torn_until
 		# On the fight's own clock: a tell lasts its sim time however slow the frame.
 		&"curtain_tell":
 			return sim.now - float(_curtain_seen.get(what, -INF)) < 1400.0
