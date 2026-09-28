@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Prove the test runner goes red when it should (tests/run.gd). Plants, runs,
-# and takes away five things, one run each:
+# and takes away six things, one run each:
 #   1. a test that passes, alone                 -> the runner must exit 0
 #   2. a test whose code dies of a SCRIPT ERROR  -> it must print FAIL, exit 1
 #   3. a test that boots a game and never ends it -> IT fails, by name, and the
@@ -8,8 +8,10 @@
 #   4. a src script that does not parse          -> load error, exit 1
 #   5. a last test that lets go of a realm raise  -> the runner claims it before
 #      it quits, so no worker is left in the pool (no "Pages in use" line)
+#   6. a last test that leaves the shared bank baking -> the runner claims the
+#      bakes and EXITS, on a pool shaped like CI's four threads
 # The first is the control: without it a runner that is always red would pass.
-# Usage: tools/runner_red.sh    (exits 0 only if all five behave)
+# Usage: tools/runner_red.sh    (exits 0 only if all six behave)
 set -uo pipefail
 cd "$(dirname "$0")/.."
 probe_dir="tests/zz_runner_red"
@@ -116,6 +118,45 @@ if [ "$code" != 0 ] || ! grep -q "ok   test_zz_runner_probe:test_lets_go_of_a_ra
   echo "runner_red: the runner quit with a realm raise still in the pool (exit $code)"; grep "test_lets_go\\|PagedAllocator" "$log"; fails=1
 else
   echo "runner_red: a raise left by the last test is claimed before the quit (exit $code)"
+fi
+
+# The shared SoundBank outlives every game, and a game that ends leaves its
+# bakes running for the next one (70_audio `_exit_tree`). On CI's four-thread
+# pool only ONE low-priority task runs at a time, so a second bake waits in the
+# pool's low-priority queue, and Godot's pre-exit (WorkerThreadPool::
+# exit_languages_threads) only counts a worker idle when both queues are empty:
+# the workers that looked first sleep uncounted, nobody wakes them, and the main
+# thread waits for ever. Measured on CI 2026-09-28: every hung shard's main
+# thread in a condition wait on the pool's task mutex, all four workers idle.
+# The pool is shaped like CI's here (override.cfg), and the run gets a deadline.
+cat >"$probe" <<'EOF'
+extends TestCase
+## Planted by tools/runner_red.sh; never committed.
+
+
+func test_lets_go_of_bakes() -> void:
+	var bank := SoundBank.shared()
+	bank.threaded = true
+	# Warm, as every bank is after the first game in a shard.
+	bank._warm_world = true
+	bank._warm_score = true
+	bank.request(ScoreStems.key_for(&"coast", &"pad", 0), true)
+	bank.request(&"alert_runner")
+	bank.request(&"ui_move")
+	bank._pumped_frame = -1
+	bank.pump()
+	check(bank._jobs.size() >= 2, "two bakes or more are on the pool when the test ends (%d)" % bank._jobs.size())
+EOF
+printf '[threading]\n\nworker_pool/max_threads=4\n' >override.cfg
+trap 'cleanup; rm -f override.cfg' EXIT
+tools/_import.sh >/dev/null 2>&1
+perl -e 'alarm 120; exec @ARGV' godot --headless --path . -s tests/run.gd -- test_zz_runner_probe >"$log" 2>&1; code=$?
+rm -f override.cfg
+if [ "$code" != 0 ] || ! grep -q "ok   test_zz_runner_probe:test_lets_go_of_bakes" "$log" \
+    || grep -q "Pages in use exist at exit in PagedAllocator: N16WorkerThreadPool4TaskE" "$log"; then
+  echo "runner_red: the runner quit with the shared bank's bakes still in the pool (exit $code; 142 is the deadline)"; grep "test_lets_go\\|PagedAllocator\\|runner:\\|WorkerThreadPool:" "$log"; fails=1
+else
+  echo "runner_red: bakes the shared bank still holds are claimed before the quit (exit $code)"
 fi
 rm -f "$log"
 exit $fails

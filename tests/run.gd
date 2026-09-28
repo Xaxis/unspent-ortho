@@ -180,7 +180,11 @@ func _run() -> void:
 	# "ok": a red or cancelled gate with nothing to blame. The same drain the game's
 	# root runs, so the two cannot drift apart (tools/runner_red.sh proves it).
 	# By path, for the reason src/main.gd gives.
+	# Each phase says it began, so a runner that never exits names where it stopped
+	# in its own log (tools/check.sh prints the tail of a hung one).
+	print("runner: draining the pool")
 	(load("res://src/main.gd") as GDScript).call("drain_pool")
+	print("runner: drained; quitting")
 	RunnerHome.remove()
 	quit(0 if _failed == 0 and _load_errors == 0 and _passed > 0 else 1)
 
