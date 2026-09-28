@@ -2,7 +2,8 @@
 # (dev mode behind the chord): ` three times arms it and the app wakes; a live rule
 # is edited and the clock runs by it; the hour is set; a warp to the snowfield; the
 # readout on the edge; F2 makes a note with the picture from before the slate woke;
-# and home's violet dev row reaches the same app.
+# and home's violet dev row reaches the same app. The app's tabs are walked with
+# their own keys, [ and ].
 #   tools/tour.sh tours/dev.tour --seed=1 --hour=10 --weather=clear:0 --config=playtest
 coast calm
 wait 1.0
@@ -16,9 +17,12 @@ wait 0.15
 tap dev_toggle
 await dev_armed 5
 await app:dev 5
-shot 02-armed-home
+shot 02-armed-world
 
 # --- a live rule: the clock runs ten times as fast (1, 2, 5, 10) --------------------------
+# WORLD is the first tab; the configuration is a page of SAVES, one tab back round.
+tap dev_tab_prev
+wait 0.1
 choose config
 tap use
 choose rules.clock
@@ -36,15 +40,13 @@ await dev_clock:3 2
 tap pause
 wait 0.2
 
-# --- the hour ------------------------------------------------------------------------------
-choose time
-tap use
+# --- the hour: time and sky stand on WORLD itself ----------------------------------------------
+tap dev_tab_next
+wait 0.1
 choose dusk
 tap use
 wait 0.3
 shot 04-time-dusk
-tap pause
-wait 0.2
 
 # --- a warp: the app shuts and the place is what is seen ---------------------------------------
 choose go
