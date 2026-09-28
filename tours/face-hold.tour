@@ -5,7 +5,8 @@
 #
 # 01 is the mouth in the junction's wall, 01b over the shoulder at it. 02 is the settlement from above: the
 # sort with its long table and brazier, the cells and the words room cut behind
-# it, the lookout at the front corner. 03 is over the shoulder down the sort. 04
+# it, the lookout at the front corner. 03 is over the shoulder down the sort, 03b
+# the day's sort read off its table (StoryRooms, desk:the_sort). 04
 # is up the lookout's ladder by the jump key, at the slit (`above`). 05 is the
 # reader at home by their desk, over the shoulder in a cell three tiles across,
 # where the eye comes over the head (Shoulder.fallback; 21_doors DWELLER). 06 is the reader taking the record and
@@ -31,6 +32,14 @@ await shoulder 3
 wait 1.0
 shot 03-down-the-sort with inside:face_hold,shoulder
 release shoulder_peek
+near thing:sort_table
+wait 0.6
+press use
+await reading 3
+wait 0.4
+shot 03b-reading-the-sort-table with reading,inside:face_hold
+press pause
+wait 0.5
 near ladder
 wait 0.6
 press jump 0.1

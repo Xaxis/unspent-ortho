@@ -5,7 +5,8 @@
 #
 #   tools/tour.sh tours/container-warren.tour --seed=1 --hour=11 --weather=clear:0
 #
-# 01 is the door in the face. 02 is the warren from above. 03 is over the
+# 01 is the door in the face. 02 is the warren from above, 02b its first
+# container's manifest read under the paint (StoryRooms, wall:manifest). 03 is over the
 # shoulder down the run. 04 is at the strongbox. Where the run steps up (seed
 # 1's nearest does), 05 is at a ladder's foot over the shoulder, 06 is on the
 # floor above after the jump key climbed it, and 07 back at the foot after the
@@ -20,6 +21,14 @@ press use 0.1
 await inside:container_warren 20
 wait 1.0
 shot 02-the-warren with inside:container_warren
+near thing:manifest
+wait 0.6
+press use
+await reading 3
+wait 0.4
+shot 02b-the-manifest-under-the-paint with reading,inside:container_warren
+press pause
+wait 0.5
 
 walk 0,-1 1.2
 hold shoulder_peek
