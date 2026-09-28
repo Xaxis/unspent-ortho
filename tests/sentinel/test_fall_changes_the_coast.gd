@@ -90,6 +90,23 @@ func test_the_reapers_fall_puts_its_yard_dark_darkens_its_feed_and_greens_its_gr
 	var st: WorksState = works.call(&"state", s.region)
 	check(st.stripped, "and the plan's works in the yard are spent, as a broken yard's are")
 
+	# Seen from its own ground, not one lamp on it is lit: the deck's and every
+	# housing's, though none of the three was ever opened.
+	var site: WorksSite = null
+	for w: WorksSite in works.get(&"sites"):
+		if w.region == s.region:
+			site = w
+	_stand(g, site.pos + Vector2(Works.YARD + 1.0, 0.0))
+	await frames(8)
+	var lit := 0
+	var parts: Dictionary = works.get(&"_parts")
+	for i in Works.PART_NAMES.size():
+		var part: Node3D = parts.get("%d:%d" % [s.region, i], null)
+		check(part != null, "housing %d is drawn once the player is at the yard" % i)
+		if part != null and (part.get_node(^"lamps") as Node3D).visible:
+			lit += 1
+	eq(lit, 0, "and no housing's lamp is lit on a yard its keeper put dark")
+
 	# Dark for good: across a save the yard, and why it went, come back.
 	var back := WorksState.from_save(JSON.parse_string(JSON.stringify(st.save())))
 	check(back.broken(), "a yard its keeper put dark comes back dark")

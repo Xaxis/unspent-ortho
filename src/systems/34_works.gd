@@ -284,6 +284,8 @@ func _make(s: WorksSite) -> void:
 		_parts["%d:%d" % [s.region, i]] = node
 		if st != null and st.parts[i]:
 			WorksDepot.set_broken(node, true)
+		elif st != null and st.broken():
+			WorksDepot.set_dark(node, true)
 
 
 func _drop(s: WorksSite) -> void:
@@ -472,6 +474,7 @@ func _fell(s: WorksSite, st: WorksState) -> void:
 	var yard: Node3D = _yards.get(s.region, null)
 	if yard != null:
 		WorksDepot.set_dark(yard, true)
+	_parts_dark(s.region)
 	_strip(s, st)
 	Events.sfx.emit(SND_DARK, game.world.to_3d(s.pos))
 	if st.by_keeper:
@@ -479,6 +482,13 @@ func _fell(s: WorksSite, st: WorksState) -> void:
 		return
 	Events.message.emit("The yard goes dark. Nothing here answers the plan now.")
 	Events.works_broken.emit(s.region, s.land)
+
+
+## Every housing's own lamp out: the last one opened already is, and a yard its
+## keeper put dark has three still whole and still lit without this.
+func _parts_dark(region: int) -> void:
+	for i in Works.PART_NAMES.size():
+		WorksDepot.set_dark(_parts.get("%d:%d" % [region, i], null), true)
 
 
 ## The region's keeper is down: its yard follows it dark, a moment after, wherever
@@ -785,7 +795,7 @@ func tour_face(what: String) -> float:
 
 const TOUR_PLACES := ["keeper_yard"]
 ## Tiles past the yard's edge a tour stands to see the whole of it.
-const TOUR_OFF := 4.0
+const TOUR_OFF := 1.0
 var _tour_facing := NAN
 
 
