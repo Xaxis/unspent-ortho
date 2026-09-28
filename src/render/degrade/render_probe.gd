@@ -129,7 +129,7 @@ static func lights_report(tour: Node, game: Node) -> bool:
 			var at3: Variant = s.get("at")
 			if not at3 is Vector3:
 				continue
-			var d := (s.prop as WorldProp).pos.distance_to(f2)
+			var d := (sys.call(&"_prop_of", s) as WorldProp).pos.distance_to(f2)
 			if d > float(sys.get("REACH")):
 				continue
 			print("tour perf lights   candidate kind %d%s %5.1f from focus  tier %d  %s" % [int(s.get("kind", -1)),

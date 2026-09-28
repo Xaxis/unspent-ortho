@@ -1436,7 +1436,7 @@ func _frame_tier(s: Dictionary) -> int:
 		foot = game.world.to_3d((s.mob as Node).get("pos") as Vector2)
 	else:
 		var at: Variant = s.get("at")
-		foot = at if at is Vector3 else game.world.to_3d(s.prop.pos)
+		foot = at if at is Vector3 else game.world.to_3d(_prop_of(s).pos)
 	return frame_tier(game.camera, foot, float(s.get("range", 0.0)))
 
 
