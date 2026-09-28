@@ -156,9 +156,10 @@ static func _settled_meadow(w: WorldData, mask: Image, here: Vector2, channel: i
 		for dx in range(-DUNE_REACH, DUNE_REACH + 1, 3):
 			var x := hx + dx
 			var y := hy + dy
-			if x < 0 or y < 0 or x >= mask.get_width() or y >= mask.get_height() or w.ground_at(x, y) != Ground.GRASS:
+			if x < 0 or y < 0 or x >= w.size or y >= w.size or w.ground_at(x, y) != Ground.GRASS:
 				continue
-			var share: float = mask.get_pixel(x, y)[channel]
+			var tx := SkyGround.texel_of(x, y)
+			var share: float = mask.get_pixel(tx.x, tx.y)[channel]
 			if share < 0.5:
 				continue
 			var score := float(_open(w, x, y, Ground.GRASS, w.country_at(x, y))) * share * share

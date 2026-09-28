@@ -789,7 +789,18 @@ func _index_sources() -> void:
 ## (1.5 s at 1840 on the way down a shaft, S5e). Returns where it stopped.
 static func index_of(w: WorldData, from: int, into: Array[Dictionary], cells: Dictionary, glow: Dictionary) -> int:
 	var i := from
-	while i < w.prop_count():
+	var count := w.prop_count()
+	# Most rows are rocks and trees that no model of theirs ever lights. Their
+	# kind is read off the packed table, and they are passed without a view made
+	# of them or a model dealt: that walk was most of a world's index (1.3 s at
+	# 1840 underground).
+	var kinds := w.table.kind if w.packed else PackedByteArray()
+	while i < count:
+		if w.packed:
+			var k := int(kinds[i])
+			if not SOURCES.has(k) and k != PropKind.PYLON and not _may_glow(k, glow):
+				i += 1
+				continue
 		var p: WorldProp = w.prop_at(i)
 		i += 1
 		if not SOURCES.has(p.kind) and p.kind != PropKind.PYLON:
@@ -1161,6 +1172,24 @@ var _glow_cache: Dictionary = {}
 ## to be indexed decided for every other one in the world.
 func _points_for(p: WorldProp) -> Array:
 	return _points_of(game.world, p, _glow_cache)
+
+
+## Whether any model of `kind`, in any variant and landscape, has a light
+## (`glow_points`), asked once per kind and kept in the caller's `glow` under a
+## key no model key takes (they are never negative).
+static func _may_glow(kind: int, glow: Dictionary) -> bool:
+	var key := -1 - kind
+	if not glow.has(key):
+		var any := false
+		for v in PropModels.MAX_VARIANTS:
+			for c in BiomeRegistry.SLOTS:
+				if not glow_points(kind, v, c).is_empty():
+					any = true
+					break
+			if any:
+				break
+		glow[key] = any
+	return bool(glow[key])
 
 
 static func _points_of(w: WorldData, p: WorldProp, glow: Dictionary) -> Array:
