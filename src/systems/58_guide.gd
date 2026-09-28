@@ -48,6 +48,9 @@ var said: Array[String] = []
 var _t := 0.0
 var _next := FIRST_AT
 var _goal := ""
+## The systems that may hold the glass (`holds_glass`), found once.
+var _holders: Array[Node] = []
+var _holders_found := false
 var _goal_at := -INF
 var _from := Vector2.ZERO
 var _rang := false
@@ -83,6 +86,8 @@ func _process(delta: float) -> void:
 		return
 	_t += delta
 	_watch()
+	if not speaking():
+		return
 	if _t < _next or game.input_blocked():
 		return
 	var sim := game.player.sim
@@ -168,6 +173,22 @@ func teach_now() -> bool:
 	retired[h.id] = true
 	var keys: Array = h.get("keys", [])
 	_say('"%s"' % _spell(String(h.line), keys), _first_label(keys))
+	return true
+
+
+## Whether the guide may speak: it is on, and nothing staged holds the glass (the
+## wake, 48_wake.holds_glass). 90_ui asks this before it pins the goal.
+func speaking() -> bool:
+	if _off:
+		return false
+	if _holders.is_empty() and not _holders_found:
+		_holders_found = true
+		for sys: Node in game.systems:
+			if sys.has_method(&"holds_glass"):
+				_holders.append(sys)
+	for sys: Node in _holders:
+		if is_instance_valid(sys) and bool(sys.call(&"holds_glass")):
+			return false
 	return true
 
 

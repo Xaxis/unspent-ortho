@@ -97,3 +97,20 @@ func test_a_game_booted_straight_into_the_world_starts_on_dry_land() -> void:
 	await process_frames(2)
 	eq(said.size(), 5, "and hears the first morning, once")
 	Sx.end(g)
+
+
+func test_no_goal_or_key_hint_is_on_the_glass_until_the_wake_is_over() -> void:
+	var hints: Array[String] = []
+	var on_hint := func(line: String, _key: String = "") -> void: hints.append(line)
+	Events.hint.connect(on_hint)
+	var g := Sx.game(tree, ARGS)
+	await _wall(RISE_WAIT + 2.5)
+	eq(g.hud.goal, "", "no goal pinned over his first breath")
+	eq(hints.size(), 0, "and nothing taught")
+	# Over when he has spoken to her (48_wake's end, 49_cast.stand undone).
+	@warning_ignore("return_value_discarded")
+	Story.meet(&"maren")
+	await _wall(1.5)
+	check(g.hud.goal != "", "the goal once the wake is over")
+	Events.hint.disconnect(on_hint)
+	Sx.end(g)

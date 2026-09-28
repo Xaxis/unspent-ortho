@@ -93,6 +93,14 @@ func _process(delta: float) -> void:
 		_first = false
 
 
+## THE WAKE HOLDS THE GLASS from the moment he is put in the surf until it is
+## over (he has met Maren, or walked off): no goal line and no key hint over his
+## first breath (58_guide asks, and 90_ui asks the guide). The first thing to
+## want is Maren's to give (ROADMAP step 2).
+func holds_glass() -> bool:
+	return _first and not _staged.is_empty()
+
+
 func _say(beat: StringName) -> void:
 	for line: String in StoryContent.WAKE[beat]:
 		Events.message.emit(line)
