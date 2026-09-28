@@ -333,9 +333,11 @@ tap pause
 wait 0.4
 hour 20
 village 36
-wait 0.5
-press use 0.1
-await slept 10
+wait 1.0
+try 3
+  press use 0.1
+  await slept 6
+end
 at mark:kiln
 wait 0.5
 await made 10
