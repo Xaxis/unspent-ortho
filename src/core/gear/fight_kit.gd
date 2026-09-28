@@ -51,6 +51,12 @@ extends RefCounted
 ##                            the line, stalls it (FightSim.cable) and pulls
 ##                            the player to it: a pull, not a haul (the
 ##                            undertow, fitted too, hauls instead)
+##   ploughshare (mod_ploughshare) "a dodge turns a charge aside": a dodge within
+##                            SHARE_ARC of square to a charging machine's run, its
+##                            bite winding up or live and within SHARE_REACH, turns
+##                            it: its run carries on as far again and it stands
+##                            spent SHARE_SPENT as long; each charge turned
+##                            takes SHARE_WIND dodges' breath more
 ##   lock     (mod_lock)      "a way passed is shut": a gap between two solid
 ##                            things no wider than LOCK_GAP that the player walks
 ##                            through is shut behind them to machines for
@@ -129,6 +135,14 @@ const VANE_CARRY := 2.0
 ## The scale coat: how far round from straight behind a blow still lands on
 ## the scales (either side), radians.
 const SCALE_ARC := deg_to_rad(70.0)
+## The ploughshare: how far off square to a run a dodge may be and still turn it,
+## how near the charger must be, how much longer it stands spent, and how many
+## dodges' breath more each charge turned takes (a plain dodge is untouched, so a
+## crowd of biters is fought as bare).
+const SHARE_ARC := deg_to_rad(30.0)
+const SHARE_REACH := 4.5
+const SHARE_SPENT := 2.0
+const SHARE_WIND := 0.5
 ## How much further the player's own noise carries with the ear on.
 const LISTEN_NOISE := 1.5
 ## How much longer the scan takes to come back with the plumb set.
@@ -154,6 +168,7 @@ var unbuild := false
 var plumb := false
 var listen := false
 var lock := false
+var ploughshare := false
 var scale := false
 var hush := false
 var vane := false
@@ -180,6 +195,7 @@ static func of(ids: Array) -> FightKit:
 	k.plumb = ids.has(&"mod_plumb")
 	k.listen = ids.has(&"mod_listen")
 	k.lock = ids.has(&"mod_lock")
+	k.ploughshare = ids.has(&"mod_ploughshare")
 	k.scale = ids.has(&"coat_scale")
 	k.hush = ids.has(&"wrap_hush")
 	k.vane = ids.has(&"cloak_vane")

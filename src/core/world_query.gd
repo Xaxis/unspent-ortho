@@ -246,6 +246,42 @@ func flat_footing(spot: Vector2, r: float, from_level: int) -> bool:
 	return true
 
 
+## Whether a body of radius `r` stands WHOLE at `p`, by its own move's rules: the
+## middle and every corner on ground it can be on, each a step (on's) from the
+## middle's tile with `tall` levels of room over it. A body put down where this
+## is false can be frozen: with one corner on the terrace above, every move that
+## leaves that corner in its tile is refused (`_fits`), and a step a frame never
+## leaves it. Props are not asked: the move always lets a body out of one it
+## overlaps, and a save made standing against a built fire must load as it was.
+func body_fits(p: Vector2, r: float, on: CraftRide = null, swims: bool = false, tall: int = 0) -> bool:
+	var ftx := floori(p.x)
+	var fty := floori(p.y)
+	for c: Vector2 in [p, p + Vector2(-r, -r), p + Vector2(r, -r), p + Vector2(-r, r), p + Vector2(r, r)]:
+		if not passable(ftx, fty, floori(c.x), floori(c.y), on, swims, tall):
+			return false
+	return true
+
+
+## Where a body of radius `r` is put when something puts it at `p` (a start, a
+## load, a door, a respawn, a warp, a tour): `p` itself if it stands whole there
+## (`body_fits`), else the nearest spot within `reach` tiles that does, else `p`
+## as asked. The one door every placement goes through, so no path can leave a
+## body where its own move will not take it out again.
+func stand_at(p: Vector2, r: float, on: CraftRide = null, swims: bool = false, tall: int = 0, reach: float = 6.0) -> Vector2:
+	if body_fits(p, r, on, swims, tall):
+		return p
+	# Rings a quarter tile apart, sixteen ways round each: the nearest first.
+	var ring := 0.25
+	while ring <= reach:
+		var n := maxi(16, int(ring * 16.0))
+		for i in n:
+			var q := p + Vector2.from_angle(TAU * float(i) / float(n)) * ring
+			if body_fits(q, r, on, swims, tall):
+				return q
+		ring += 0.25
+	return p
+
+
 ## A body leaning into a trunk or boulder slides round it at least this share of its pace.
 const SLIDE_MIN := 0.5
 

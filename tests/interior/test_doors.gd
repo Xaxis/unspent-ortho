@@ -129,8 +129,12 @@ func test_in_through_a_cottage_door_and_out_onto_the_same_coast() -> void:
 	cost_lt(float(outs.min()), 50.0, "the way out swaps under 50 ms")
 	# And no trip STALLS: the bar above is a cost, this is the door a player felt
 	# stand for 4.6 s when the view waited on its far rings to leave the tree.
-	lt(float(ins.max()), 250.0, "no way in stalls")
-	lt(float(outs.max()), 250.0, "no way out stalls")
+	# A cost like the others (cost_lt): the worst of three trips is one sample, and
+	# beside the other shards one hitch on a shared runner read as a stall
+	# (2090 ms on land/fight3, 2.6 ms alone and 5.5 ms after the same neighbours
+	# here); alone it is judged against the same bar.
+	cost_lt(float(ins.max()), 250.0, "no way in stalls")
+	cost_lt(float(outs.max()), 250.0, "no way out stalls")
 	Sx.end(g)
 	Sx.finish()
 
@@ -450,6 +454,58 @@ func test_the_shoulder_eye_stays_out_of_a_hatch() -> void:
 	check(not inside, "put out, the eye stands outside the housing (%s in its frame, share %.2f)" % [local, share])
 	Sx.end(g)
 	Sx.finish()
+
+
+## A LIVED-IN ROOM'S SHELF IS THEIRS (KeptBy, docs/GEAR.md §7). A stranger is told
+## whose it is and takes nothing; once the region has thanked him, it is given,
+## once, and never again, and it is saved.
+func test_the_kept_by_shelf_is_given_once_on_good_terms_and_never_taken() -> void:
+	Sx.use_root("doors-kept-by")
+	Story.forget()
+	var g := Sx.game(tree, ["--seed=4", "--hour=11", "--weather=clear:0"])
+	var d := _doors(g)
+	g.player.hero.pos = d.call(&"tour_place", "door:cottage")
+	g.player.hero.facing = float(d.call(&"tour_face", "door:cottage"))
+	g.player.sync_view(0.0)
+	await _frames(20)
+	await d.call(&"go_in", d.get("door_near"))
+	var pocket: InteriorGen.Pocket = d.get("pocket")
+	check(pocket != null and pocket.kind.lived(), "in a cottage, somebody's home")
+	if pocket == null:
+		Sx.end(g)
+		return
+	var i := KeptBy.shelf(pocket.layout, pocket.kind)
+	check(i >= 0, "it has its shelf")
+	var th: Dictionary = pocket.layout.things[i]
+	g.player.hero.pos = (th.at as Vector2) + (th.face as Vector2) * 0.7
+	g.player.sync_view(0.0)
+	await _frames(5)
+	check(bool(d.call(&"tour_seen", &"shelf_near")), "the shelf is in reach")
+	var before := _carried(g)
+	d.call(&"_at_shelf")
+	check(bool(d.call(&"tour_seen", &"shelf_theirs")), "a stranger is told whose it is")
+	eq(_carried(g), before, "and takes nothing")
+	var region := int(d.call(&"_room_region"))
+	check(region >= 0, "the cottage stands in a region")
+	Story.hear(StringName("%d:recover" % region))
+	Story.hear(StringName("%d:recover:said" % region))
+	d.call(&"_at_shelf")
+	check(bool(d.call(&"tour_seen", &"shelf_given")), "thanked, he is given it")
+	gt(float(_carried(g)), float(before), "and it is in his pack")
+	var after := _carried(g)
+	d.call(&"_at_shelf")
+	eq(_carried(g), after, "given once")
+	var saved: Dictionary = d.call(&"_save")
+	check(saved.has("given"), "and saved")
+	Story.forget()
+	Sx.end(g)
+
+
+static func _carried(g: Game) -> int:
+	var n := 0
+	for id: Variant in g.inventory.items:
+		n += int(g.inventory.items[id])
+	return n
 
 
 ## A POCKET GROWN AT A DOOR DOES NOT TAKE THE LAND'S MARKS. It shares the

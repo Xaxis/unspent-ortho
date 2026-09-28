@@ -462,9 +462,7 @@ func _push_out(pads: Array[Vector3]) -> void:
 		if to != pl.pos:
 			# The fight body owns the player's place in a running game: both move,
 			# or the next frame puts them back under the pad.
-			pl.pos = to
-			if pl.hero != null:
-				pl.hero.pos = to
+			pl.place(to)
 	if pl != null and pl.sim != null:
 		for mob: MobState in pl.sim.mobs:
 			mob.pos = _outside(pads, mob.pos)

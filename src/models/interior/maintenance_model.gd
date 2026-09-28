@@ -12,6 +12,7 @@ extends "res://src/models/interior/cottage_model.gd"
 ## the niche is a panel taken out, not a doorway: no jambs, a torn edge.
 
 const P := preload("res://src/render/palette.gd")
+const WorksLook := preload("res://src/models/props/works.gd")
 
 var plate: Color
 var plate_dark: Color
@@ -131,6 +132,7 @@ func _boards(k: Kit, l: InteriorLayout, _dress: BiomeDressing) -> void:
 			&"tally": _tally(k, at, f)
 			&"tin": _tin(k, at)
 			&"bedroll": _bedroll(k, at, f)
+			&"strongbox": _locker(k, at, f)
 
 
 ## Across a thing facing `f`: `u` along its wall, `v` out from it, `h` up.
@@ -271,6 +273,14 @@ func _tally(k: Kit, at: Vector2, f: Vector2) -> void:
 ## A tin, opened with a blade and eaten from.
 func _tin(k: Kit, at: Vector2) -> void:
 	k.made.prism(at.x, floor_y, at.y, 0.05, floor_y + 0.11, 0.05, 10, GroundColors.made(Color(0.62, 0.6, 0.56), GroundColors.ENAMEL), GroundColors.made(Color(0.3, 0.28, 0.26), GroundColors.ENAMEL))
+
+
+## The parts locker: a squat plate case on the deck, its lid seamed, a standby
+## point lit on its latch like everything else the machines still count.
+func _locker(k: Kit, at: Vector2, f: Vector2) -> void:
+	_box(k.found, at, f, -0.52, 0.52, -0.3, 0.3, 0.0, 0.56, plate_dark, plate)
+	_box(k.found, at, f, -0.53, 0.53, 0.29, 0.31, 0.2, 0.24, seam)
+	_box(k.found, at, f, -0.08, 0.08, 0.3, 0.33, 0.34, 0.44, WorksLook.WORKING)
 
 
 ## A bedroll pushed into the gap, a coat rolled for a pillow.

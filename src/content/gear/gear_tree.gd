@@ -161,6 +161,8 @@ const PIECES := {
 		"unique": "the only line that takes hold of a machine"},
 	&"mod_anchor": {"grade": &"relic", "family": &"", "from": &"anchor_core",
 		"unique": "the only footing a blow cannot move and a grip cannot take"},
+	&"mod_ploughshare": {"grade": &"relic", "family": &"", "from": &"plough_core",
+		"unique": "the only dodge that turns a charge aside"},
 	&"mod_lock": {"grade": &"relic", "family": &"", "from": &"lockkeeper_core",
 		"unique": "the only way to shut a way behind you"},
 	&"mod_listen": {"grade": &"relic", "family": &"", "from": &"listener_core",

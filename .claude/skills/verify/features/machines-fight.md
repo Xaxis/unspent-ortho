@@ -49,9 +49,26 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   and night noticing distances and night bouts print in `tools/test.sh test_first_meetings:test_by_night`.
 - 42_target: `src/systems/42_target.gd`, reached by `tools/tour.sh tours/targeting.tour`. A lock holds the body (facing, strafe arc, swing, dodge: `src/core/fight/lock_on.gd`, `tools/test.sh test_lock_on`), proven in both views by `tools/tour.sh tours/lockon_top.tour` and `tours/lockon_shoulder.tour` (each tour's header has its options).
 - 44_sentinels: `src/systems/44_sentinels.gd`, reached by `tools/tour.sh tours/sentinels.tour`.
+  The plough (the Snowfield's keeper; FightSim furrows: fast on its lanes, wallowing and bogging off them): `tools/test.sh test_plough`,
+  `TOUR_FIXED_FPS=60 tools/tour.sh tours/plough.tour` (options in its header).
   Every keeper is a boss to the shoulder reader (won 18+/24, 25-45 s, 2+ health lost; ~50 s to run): `tools/test.sh test_keeper_bouts`.
   The come-round (a keeper sweeps a body kept at its flank; every keeper, its own flavour): `tools/test.sh test_come_round`,
   `TOUR_FIXED_FPS=60 tools/tour.sh tours/come_round.tour` (options in its header).
+  A keeper reaches you on its own ground: a charge walks its own field round what stops its move (NavField.for_body:
+  its climb, headroom, props but what it breaks), and a lost keeper hunts where it last knew you before it forgets
+  (Brains._hunt, FightSim.hunting): `tools/test.sh test_keeper_reach` (seeds 1 and 4, every lair; ~2 min). Its lair
+  is off the ground it founders on and opens Sentinels.OPENS_LEAST tiles of its own move (Sentinels.lair; a region
+  with no such ground has no keeper).
+  A struck keeper turns on you: every keeper on seed 1, put out once at its lair by 44_sentinels, hit on its own level,
+  chases, is roused and faces you within 3 s: `tools/test.sh test_keeper_roused` (~2.5 min).
+  A keeper goes through a wood: what its drawn body walks into of the kinds its row `breaks` (every keeper: trees and
+  shrubs) is felled for good and thrown over (FightSim._break_through, 40_fight `felled`): `tools/test.sh test_keeper_breaks`.
+  The frame, staged as a player does it (walk up to the snowfield's plough, hit it, run for the pines):
+  `TOUR_FIXED_FPS=60 tools/tour.sh tours/plough_wood.tour` (options in its header).
+  The Limestone Caves' drip-warden, its body only (roster `sentinel.limestone_caves`, no design yet): squat under
+  a roof, and no body a roofed landscape fields is taller than 80% of its halls give: `tools/test.sh
+  test_keeper_headroom`; whole at eye level under a tear and in a hall by the lamp (`near mob:KIND DIST`, on its
+  own level first): `TOUR_FIXED_FPS=60 tools/tour.sh tours/drip_warden.tour` (options in its header).
 - 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.
   Freed by a dark yard or a fallen keeper, and back on a standing holding's books
   (`tools/test.sh test_come_home`; `tools/tour.sh tours/taken_home.tour`, options in its header;

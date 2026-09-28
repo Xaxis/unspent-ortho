@@ -20,7 +20,10 @@ const LOST_AT_LEAST := 2.0
 static func keeper_bout(land: StringName, start: int, ids: int, seconds: float = 150.0) -> Dictionary:
 	MobState._next_id = ids
 	var def := Sentinels.for_land(land)
-	var sim := F.make_sim(F.flat_world(96), Vector2(48.5, 48.5))
+	# A keeper that bogs (the plough) is fought on the ground it bogs in, its own.
+	var bogs: Array = Roster.row(def.kind).get("bogs", [])
+	var ground := int(bogs[0]) if not bogs.is_empty() else Ground.GRASS
+	var sim := F.make_sim(F.flat_world(96, ground), Vector2(48.5, 48.5))
 	sim.hero.inventory.add(&"axe_felling")
 	sim.hero.inventory.set_held(&"axe_felling")
 	sim.hero.kit = FightKit.of([])

@@ -267,6 +267,9 @@ func _run_motion(delta: float) -> void:
 	if not _motion.finished:
 		return
 	game.player.lift = 0.0
+	# Down on its feet whole: a leap or a pull that ends with a corner over the
+	# lip it came up leaves a body its walk cannot move (WorldQuery.body_fits).
+	game.player.place(next)
 	_land(_motion)
 	_motion = null
 	_last_pos = Vector2.INF
