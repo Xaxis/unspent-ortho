@@ -57,11 +57,27 @@ func setup(g: Game) -> void:
 		_play_act(g.options.act)
 
 
+## Which keys were down at the last read. A press is this system's own edge as
+## well as `is_action_just_pressed`, which answers only in the frame the key
+## went down: a press made later in a frame than this runs (a tour's) was never
+## seen by it (20_realms met it on the climb back up a shaft).
+var _was_down: Dictionary = {}
+
+
+func _went_down(action: StringName) -> bool:
+	var now := Input.is_action_pressed(action)
+	var was: bool = _was_down.get(action, false)
+	_was_down[action] = now
+	return (now and not was) or Input.is_action_just_pressed(action)
+
+
 ## Read by polling the actions, not from input events, so the real bindings,
 ## a tour's pressed actions and a bot all reach the same verbs. Shift's own
 ## edges are watched for DodgeInput; the dodge action pressed without Shift
 ## down (K, or an action pressed by a tour) dodges at once.
 func _read_input(delta: float) -> void:
+	var swing_went := _went_down(&"swing")
+	var dodge_went := _went_down(&"dodge")
 	var shift := Input.is_physical_key_pressed(KEY_SHIFT)
 	var t := Time.get_ticks_msec()
 	var blocked := game.input_blocked() or _held
@@ -80,7 +96,7 @@ func _read_input(delta: float) -> void:
 	# the key comes up, or when the hold is long enough, whichever is first. Over
 	# the shoulder it goes where the camera looks (NAN elsewhere, which keeps the
 	# swing's own rule). Held by something, the key wrenches at once.
-	if Input.is_action_just_pressed(&"swing"):
+	if swing_went:
 		if sim.hero.held():
 			sim.press_swing()
 		else:
@@ -94,7 +110,7 @@ func _read_input(delta: float) -> void:
 		elif _swing_held * 1000.0 >= FightRules.HEAVY_HOLD_MS:
 			_swing_held = -1.0
 			sim.press_heavy(game.camera.aim())
-	if Input.is_action_just_pressed(&"dodge") and not shift:
+	if dodge_went and not shift:
 		sim.press_dodge()
 	# The unbuilder's hands (FightKit.unbuild): use held at an open machine's part
 	# strips it, gathered through its openings.

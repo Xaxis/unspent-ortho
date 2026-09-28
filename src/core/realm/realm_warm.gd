@@ -21,8 +21,23 @@ const _COLOSSI := preload("res://src/systems/19_colossi.gd")
 static func prepare(w: WorldData) -> void:
 	if w == null:
 		return
+	var ms := {}
+	var t := Time.get_ticks_usec()
 	SkyGround.prepare(w)
+	t = _took(ms, "sky_ground", t)
 	SkyWear.prepare(w)
+	t = _took(ms, "sky_wear", t)
 	_LIGHTS.prepare_world(w)
+	t = _took(ms, "lights", t)
 	_COLOSSI.prepare_world(w)
+	t = _took(ms, "treads", t)
 	WorksMap.prepare(w)
+	_took(ms, "works", t)
+	# Read off a web run's console: this is the raise's time a title has to hide.
+	print("realm warm %s: %s ms" % [w.realm, ms])
+
+
+static func _took(ms: Dictionary, part: String, since: int) -> int:
+	var now := Time.get_ticks_usec()
+	ms[part] = roundi((now - since) / 1000.0)
+	return now
