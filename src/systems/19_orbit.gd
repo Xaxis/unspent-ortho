@@ -53,6 +53,11 @@ var hum := 0.0
 ## How sunlit the ring's centre is this frame (OrbitPass.sunlit), 0..1.
 var lit := 0.0
 var last_pose_usec := 0
+## The Tether's plane (Tether.flat, Tether.top), and whether the sky drew it
+## this frame.
+var _tether_flat := Vector3.RIGHT
+var _tether_top := 0.9
+var tether_shown := false
 
 
 func setup(g: Game) -> void:
@@ -75,6 +80,10 @@ func setup(g: Game) -> void:
 		if tail.contains("/"):
 			head = tail.split("/")[1].to_float() + 180.0
 		_staged = Pass.make_pass(def, 0, peak - Pass.window_min(def) * 0.5, float(def.peak_most) + 1.5, head, 1.0)
+	# The Tether stands in the same far sky, fixed where the ring passes: its plane
+	# is the world's, asked once (Tether, pure).
+	_tether_flat = Tether.flat(g.world)
+	_tether_top = Tether.top(g.world)
 	layer = LayerScript.new()
 	layer.name = "orbit"
 	add_child(layer)
@@ -113,6 +122,7 @@ func _process(_delta: float) -> void:
 		layer.viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_tell_sky(cam, on, air)
 	_wake(cam, sun, air, open and float(air.share) > 0.0 and not wake_off)
+	_tether(cam, air, open and float(air.share) > 0.0)
 	_shine(sun, air, open)
 	_look(cam, open)
 	last_process_usec = Time.get_ticks_usec() - t_all
@@ -304,6 +314,42 @@ func _wake(cam: Camera3D, sun: Vector3, air: Dictionary, seen: bool) -> void:
 	m.set_shader_parameter(&"orbit_px", 2.0 * tan(deg_to_rad(cam.fov) * 0.5) / rows)
 
 
+## THE TETHER in the seen sky (orbit_sky.gdshaderinc `orbit_tether_at`): its
+## plane, its top and how dark the sky is, every frame the horizon is in frame;
+## off where there is no sky to see it in. `--orbit=off` takes the far sky away,
+## the Tether with the ring.
+func _tether(cam: Camera3D, air: Dictionary, seen: bool) -> void:
+	var e: Environment = game.sky.env.environment if game.sky.env != null else null
+	if e == null or e.sky == null or not (e.sky.sky_material is ShaderMaterial):
+		return
+	var m := e.sky.sky_material as ShaderMaterial
+	tether_shown = seen and cam != null
+	m.set_shader_parameter(&"orbit_tether_on", 1.0 if tether_shown else 0.0)
+	if not tether_shown:
+		return
+	var dome: Dictionary = air.get("dome", {})
+	m.set_shader_parameter(&"orbit_tether_flat", _tether_flat)
+	m.set_shader_parameter(&"orbit_tether_top", _tether_top)
+	m.set_shader_parameter(&"orbit_tether_night", float(dome.get(&"dome_night", 0.0)))
+	m.set_shader_parameter(&"orbit_tether_climb", Tether.CLIMB_SECONDS)
+	# The frame's own rows, not the layer's: the layer measures the screen only
+	# while it draws the ring, and with the ring down a "pixel" of a stale or
+	# zero size drew the Foundry as a disc the size of the moon.
+	var rows := maxf(1.0, get_viewport().get_visible_rect().size.y)
+	m.set_shader_parameter(&"orbit_px", 2.0 * tan(deg_to_rad(cam.fov) * 0.5) / rows)
+
+
+## Whether the Tether's line is in the frame now: the sky is being seen and the
+## middle of the line projects inside the viewport.
+func tether_in_frame() -> bool:
+	var cam := get_viewport().get_camera_3d()
+	if not tether_shown or cam == null:
+		return false
+	var mid := _tether_flat * cos(_tether_top * 0.5) + Vector3.UP * sin(_tether_top * 0.5)
+	var p := cam.global_position + mid * 50.0
+	return not cam.is_position_behind(p) and get_viewport().get_visible_rect().has_point(cam.unproject_position(p))
+
+
 const WAKE_POINTS := 17
 const WAKE_BRIGHT := 1.0
 
@@ -429,7 +475,10 @@ func stats_line() -> String:
 	return "\nworld orbit: %s, lod %d, %.0f px across, pose %d us, %s at %.0f deg up bearing %.0f, %.0f km, sunlit %.2f, gaze %.2f, pass %d peaks %.0f deg, rises at minute %.0f (hour %.1f)" % [
 		"drawn" if layer.drawn else "not drawn", layer.lod, layer.px_across, last_pose_usec,
 		"up" if bool(p.up) else "down", float(p.elevation), float(p.bearing), float(p.dist), lit, gaze,
-		int(nxt.k), float(nxt.peak_el), float(nxt.rise), fposmod(float(nxt.rise) / 60.0, 24.0)] + probe
+		int(nxt.k), float(nxt.peak_el), float(nxt.rise), fposmod(float(nxt.rise) / 60.0, 24.0)] + probe \
+		+ "\nworld tether: bearing %.0f deg (0 east, 90 south), Foundry %.0f deg up, %s" % [
+			fposmod(rad_to_deg(atan2(_tether_flat.z, _tether_flat.x)), 360.0), rad_to_deg(_tether_top),
+			"in the frame" if tether_in_frame() else ("drawn" if tether_shown else "not drawn")]
 
 
 ## THE RING BY DAY, read off the live pictures -- the layer's (what the ring IS
@@ -669,4 +718,6 @@ func tour_seen(what: StringName) -> bool:
 			return not p.is_empty() and int(p.n) >= PALE_LEAST and float(p.lift) > PALE_LIFT and float(p.dark) < PALE_DARK_MOST
 		&"ring_hides_stars":
 			return _stars_come_out()
+		&"tether":
+			return tether_in_frame()
 	return false

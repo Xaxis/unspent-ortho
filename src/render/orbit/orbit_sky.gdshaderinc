@@ -156,9 +156,59 @@ vec3 orbit_wake_at(vec3 d) {
 	}
 	return col * lit * orbit_wake_on;
 }
-// (radiance to ADD, coverage) for direction `d`: the ring's layer and the wake.
+// THE TETHER (src/core/orbit/tether.gd): a hair-thin line from the far shore's
+// horizon up to the Foundry, a small steady light fixed in the sky, with the
+// climber's lamp riding it. Drawn here and not in the ring's layer, whose lens
+// holds only the wheel; it stands in one vertical plane, so a direction is on it
+// by its angle off that plane and its elevation, and nothing else is asked.
+uniform float orbit_tether_on = 0.0;
+// The horizontal way to its foot (x east, z south), and the Foundry's elevation.
+uniform vec3 orbit_tether_flat = vec3(1.0, 0.0, 0.0);
+uniform float orbit_tether_top = 0.9;
+// 0 by day, 1 at night: the line is a pale filament against the day and a faint
+// lit one against the dark, and the climber's lamp is a night thing.
+uniform float orbit_tether_night = 0.0;
+// Real seconds for the climber's trip up (Tether.CLIMB_SECONDS).
+uniform float orbit_tether_climb = 240.0;
+
+vec3 orbit_tether_at(vec3 d) {
+	if (orbit_tether_on <= 0.0) {
+		return vec3(0.0);
+	}
+	float fwd = dot(d, orbit_tether_flat);
+	if (fwd <= 0.0) {
+		return vec3(0.0);
+	}
+	// Off the plane (radians, near enough at a pixel) and up it.
+	float off = dot(d, vec3(-orbit_tether_flat.z, 0.0, orbit_tether_flat.x));
+	float el = atan(d.y, fwd);
+	float px = max(orbit_px, 1e-5);
+	if (abs(off) > px * 12.0 || el < -0.02 || el > orbit_tether_top + px * 12.0) {
+		return vec3(0.0);
+	}
+	float night = clamp(orbit_tether_night, 0.0, 1.0);
+	vec3 col = vec3(0.0);
+	// The line: under a pixel wide, so it is a hair and never a bar. At night the
+	// Foundry sits a little over the brightest star (sky_dome's field reaches
+	// about 1.15) and warmer, the climber just under it.
+	float line = (1.0 - smoothstep(0.2, 0.85, abs(off) / px)) * step(el, orbit_tether_top);
+	col += line * mix(vec3(0.90, 0.92, 0.95) * 0.10, vec3(0.55, 0.66, 0.85) * 0.05, night);
+	// The Foundry: steady, small, warm-white, a point that is always there.
+	float r = length(vec2(el - orbit_tether_top, off)) / px;
+	col += (1.0 - smoothstep(0.6, 2.0, r)) * vec3(1.0, 0.93, 0.80) * mix(0.9, 1.4, night);
+	col += (1.0 - smoothstep(2.0, 6.0, r)) * vec3(1.0, 0.85, 0.65) * 0.04 * night;
+	// The climber: a lamp going up it, foot to Foundry, then again.
+	float at_el = orbit_tether_top * fract(TIME / max(orbit_tether_climb, 1.0));
+	float c = length(vec2(el - at_el, off)) / px;
+	col += (1.0 - smoothstep(0.8, 2.6, c)) * vec3(1.0, 0.78, 0.52) * mix(0.15, 1.8, night);
+	col += (1.0 - smoothstep(2.6, 7.0, c)) * vec3(1.0, 0.70, 0.45) * 0.05 * night;
+	return col * orbit_tether_on;
+}
+
+// (radiance to ADD, coverage) for direction `d`: the ring's layer, the wake and
+// the Tether.
 vec4 orbit_at(vec3 d) {
-	vec3 wake = orbit_wake_at(d);
+	vec3 wake = orbit_wake_at(d) + orbit_tether_at(d);
 	vec4 ring = vec4(0.0);
 	if (orbit_on > 0.0) {
 		vec2 uv = orbit_uv(d);

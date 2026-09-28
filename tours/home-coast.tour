@@ -16,9 +16,9 @@ await character 8
 key move_up
 key use
 await game 40
-await wake 5
+await waking 5
 wait 0.4
-shot 01-he-breaks-the-surface with wake,wake:staged
+shot 01-he-breaks-the-surface with waking,wake:staged
 await woken 10
 wait 1.0
 shot 02-in-the-surf-from-above with woken,cast:maren

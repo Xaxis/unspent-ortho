@@ -131,11 +131,12 @@ func _cast() -> Node:
 	return null
 
 
-## `wake`: he is in the surf and has not yet risen. `woken`: the rise is over.
-## `wake:staged`: this game put him in the surf at all.
+## `waking`: he is in the surf and has not yet risen (not `wake`, which is the
+## ring's shards, 19_orbit). `woken`: the rise is over. `wake:staged`: this game
+## put him in the surf at all.
 func tour_seen(what: StringName) -> bool:
 	match what:
-		&"wake":
+		&"waking":
 			return not _staged.is_empty() and not _said_shallows
 		&"woken":
 			return _said_shallows

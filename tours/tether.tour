@@ -1,0 +1,17 @@
+# THE TETHER (src/core/orbit/tether.gd, orbit_sky.gdshaderinc): one hair-thin
+# line off the far shore's horizon up to the Foundry, a small steady light fixed
+# in the sky, a climber's lamp going up it at night; the ring, lower and dead,
+# passing by. Over the shoulder at the eye, turned to the far shore: seed 1's
+# Tether stands at bearing 235 (`--stats`: "world tether"), and the staged pass
+# rises on that bearing and stands 54 degrees up at 23:00, on the line.
+#   tools/tour.sh tours/tether.tour --seed=1 --place=coast --weather=clear:0 --eye=1.7,-30,70 --face=235 --orbit=zenith@1512/235
+hour 6.3
+wait 2
+shot 01-dawn with tether
+hour 12
+wait 2
+shot 02-noon with tether
+hour 23
+wait 2
+await ring 10
+shot 03-a-ring-pass-at-night with tether
