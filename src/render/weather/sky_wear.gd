@@ -132,6 +132,20 @@ static func growth_texture(w: WorldData) -> ImageTexture:
 static var _kept: Dictionary = {}
 
 
+## THE IMAGES, MADE BESIDE THE WORLD (RealmWarm, on the raise's worker), as
+## SkyGround's: the sweep is the cost (1.3 s at 1840), the textures nothing.
+static var _images: Dictionary = {}
+static var _images_lock := Mutex.new()
+
+
+static func prepare(w: WorldData) -> void:
+	var growth: Array = []
+	var img := image(w, growth)
+	_images_lock.lock()
+	_images[w.get_instance_id()] = [weakref(w), img, growth[0]]
+	_images_lock.unlock()
+
+
 static func texture(w: WorldData) -> ImageTexture:
 	var id := w.get_instance_id()
 	var got: Array = _kept.get(id, [])
@@ -140,6 +154,14 @@ static func texture(w: WorldData) -> ImageTexture:
 	for k: int in _kept.keys():
 		if (_kept[k][0] as WeakRef).get_ref() == null:
 			_kept.erase(k)
+	_images_lock.lock()
+	var made: Array = _images.get(id, [])
+	_images.erase(id)
+	_images_lock.unlock()
+	if not made.is_empty() and (made[0] as WeakRef).get_ref() == w:
+		var tp := ImageTexture.create_from_image(made[1])
+		_kept[id] = [weakref(w), tp, ImageTexture.create_from_image(made[2])]
+		return tp
 	var growth: Array = []
 	var t := ImageTexture.create_from_image(image(w, growth))
 	_kept[id] = [weakref(w), t, ImageTexture.create_from_image(growth[0])]

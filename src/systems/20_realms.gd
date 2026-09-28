@@ -390,7 +390,17 @@ func _go(to: StringName, at: Vector2, shaft: int, carry: bool) -> void:
 ## `query`, when given, is the one that world was walked with before: a door hands
 ## the outside's back, so every wall stamped into it (landmarks, works, holdings)
 ## is still there, instead of a new query nobody has stamped.
+## What the last `enter` spent, ms, by step: "view_rebind", "view_near",
+## "sky_ground", and each system's `realm_changed` under its name (S5e: a shaft's
+## START is what a player waits on, and every part of it is named here).
+var enter_ms: Dictionary = {}
+## Chunks built on the press at a crossing's arrival (WorldView.ensure_near).
+const ARRIVE_CHUNKS := 1
+
+
 func enter(w: WorldData, key: StringName, at: Vector2, carry := true, query: WorldQuery = null) -> void:
+	enter_ms.clear()
+	var t0 := Time.get_ticks_usec()
 	var from := _realm
 	if carry:
 		_stood[String(from)] = game.player.pos
@@ -421,16 +431,23 @@ func enter(w: WorldData, key: StringName, at: Vector2, carry := true, query: Wor
 	if game.view != null:
 		# A view already drawing this world (one set aside and put back) is not
 		# grown again: that is the whole cost of coming back out of a pocket.
+		var tv := Time.get_ticks_usec()
 		if game.view.world != w:
 			game.view.rebind(w)
+		enter_ms["view_rebind"] = (Time.get_ticks_usec() - tv) / 1000.0
+		tv = Time.get_ticks_usec()
 		game.view.focus = land
-		game.view.ensure_near(land)
+		# The chunk under the player at once; the ring round it streams in behind.
+		game.view.ensure_near(land, ARRIVE_CHUNKS)
+		enter_ms["view_near"] = (Time.get_ticks_usec() - tv) / 1000.0
 	pl.sync_view(0.0)
 	if game.camera != null:
 		game.camera.snap_to(pl.position)
 	# What the land can hold — snow, ash, wet, fog — is a texture of the world.
 	if game.sky != null:
+		var ts := Time.get_ticks_usec()
 		game.sky.set_ground(SkyGround.texture(w), w.size)
+		enter_ms["sky_ground"] = (Time.get_ticks_usec() - ts) / 1000.0
 	var door := Realm.is_pocket(from) or Realm.is_pocket(to)
 	# A door keeps the outside's shafts as they stood: they are still there when
 	# the player comes back out, and only hidden while they are in.
@@ -451,10 +468,15 @@ func enter(w: WorldData, key: StringName, at: Vector2, carry := true, query: Wor
 	for sys in game.systems:
 		if sys == self:
 			continue
+		var tq := Time.get_ticks_usec()
 		if door and sys.has_method(&"indoors"):
 			sys.call(&"indoors", Realm.is_pocket(to))
 		elif sys.has_method(&"realm_changed"):
 			sys.call(&"realm_changed", from, to)
+		var spent := (Time.get_ticks_usec() - tq) / 1000.0
+		if spent > 0.05:
+			enter_ms[String(sys.name)] = spent
+	enter_ms["total"] = (Time.get_ticks_usec() - t0) / 1000.0
 
 
 ## The shafts of the world the game is in now, and a drawn gate for each.

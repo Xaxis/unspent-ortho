@@ -172,6 +172,9 @@ static func _raise(key: String, seed_value: int, size: int, kind: StringName, ge
 	_mutex.unlock()
 	var t0 := Time.get_ticks_msec()
 	var w := BootWorld.world(Realm.seed_for(seed_value, kind), size, kind)
+	# What a crossing into it would build on the press, built here beside it.
+	if gen == _gen:
+		RealmWarm.prepare(w)
 	# Said, so a run can read when a realm stood (tools/web --play): what a shaft
 	# pressed at any moment would have waited for.
 	print("realm %s raised in %d ms" % [kind, Time.get_ticks_msec() - t0])

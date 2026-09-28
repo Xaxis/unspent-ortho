@@ -84,6 +84,32 @@ static func image(w: WorldData) -> Image:
 static var _kept: Dictionary = {}
 
 
+## THE IMAGE, MADE BESIDE THE WORLD (RealmWarm, on the raise's worker): the sweep
+## is the cost (1.2 s at 1840 on the way down a shaft) and the texture made from
+## it is nothing, so a world raised for a crossing has its image waiting and the
+## press only wraps it. Guarded, because the worker writes and the main reads.
+static var _images: Dictionary = {}
+static var _images_lock := Mutex.new()
+
+
+static func prepare(w: WorldData) -> void:
+	var img := image(w)
+	_images_lock.lock()
+	_images[w.get_instance_id()] = [weakref(w), img]
+	_images_lock.unlock()
+
+
+## The image `prepare` made for this world, taken (it is wanted once), or null.
+static func _prepared(w: WorldData) -> Image:
+	_images_lock.lock()
+	var got: Array = _images.get(w.get_instance_id(), [])
+	_images.erase(w.get_instance_id())
+	_images_lock.unlock()
+	if not got.is_empty() and (got[0] as WeakRef).get_ref() == w:
+		return got[1]
+	return null
+
+
 static func texture(w: WorldData) -> ImageTexture:
 	var id := w.get_instance_id()
 	var got: Array = _kept.get(id, [])
@@ -92,6 +118,7 @@ static func texture(w: WorldData) -> ImageTexture:
 	for k: int in _kept.keys():
 		if (_kept[k][0] as WeakRef).get_ref() == null:
 			_kept.erase(k)
-	var t := ImageTexture.create_from_image(image(w))
+	var made := _prepared(w)
+	var t := ImageTexture.create_from_image(made if made != null else image(w))
 	_kept[id] = [weakref(w), t]
 	return t
