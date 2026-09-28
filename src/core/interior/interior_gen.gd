@@ -48,6 +48,21 @@ static func grow(seed_value: int, t: Threshold) -> Pocket:
 			var foot := at + f * 0.5
 			var top := at - f * 0.5
 			w.add_ladder(Vector2i(floori(foot.x), floori(foot.y)), Vector2i(floori(top.x), floori(top.y)))
+	# A buckled roof (a warren's bay) hangs over the tiles within `along` / 2 of
+	# its middle along `face` and `across` / 2 across, its underside `low` over
+	# the floor: mass overhead the query stops a standing body under.
+	for th: Dictionary in l.things:
+		if th.kind != &"buckled":
+			continue
+		var mid: Vector2 = th.at
+		var f: Vector2 = th.face
+		var side := Vector2(-f.y, f.x)
+		for y in l.size:
+			for x in l.size:
+				var c := Vector2(x + 0.5, y + 0.5) - mid
+				if absf(c.dot(f)) < float(th.along) * 0.5 and absf(c.dot(side)) < float(th.across) * 0.5 and l.is_floor(x, y):
+					var under := FLOOR_LEVEL + l.level_of(x, y) + int(float(th.low) / WorldData.STEP)
+					w.set_overhead(x, y, under, under + 2)
 	w.spawn = l.inside()
 	for pr: Dictionary in l.props:
 		var prop := WorldProp.new(w.next_id(), int(pr.kind), pr.at, (pr.face as Vector2).angle(), 1.0)

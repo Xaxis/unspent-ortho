@@ -764,7 +764,8 @@ func _move_hero(dt: float) -> void:
 		hero.stepped(now)
 	var before := hero.pos
 	if v.length_squared() > 0.0:
-		hero.pos = query.move_body(hero.pos, v * dt, hero.radius, hero.ride, hero.swims, HERO_TALL) if query != null else hero.pos + v * dt
+		var tall := HERO_CROUCH_TALL if hero.crouched else HERO_TALL
+		hero.pos = query.move_body(hero.pos, v * dt, hero.radius, hero.ride, hero.swims, tall) if query != null else hero.pos + v * dt
 	hero.speed = before.distance_to(hero.pos) / dt
 	# Wind: spent on dodges, swings and running in a fight; back at 500/s otherwise.
 	if running and fight_on:
@@ -1087,6 +1088,7 @@ func hero_level_now() -> int:
 ## Levels of headroom a body needs under a roof (WorldQuery.passable): its
 ## roster height, or the player's.
 const HERO_TALL := int(ceil(Tuning.PLAYER_HEIGHT / WorldData.STEP))
+const HERO_CROUCH_TALL := int(ceil(Tuning.PLAYER_CROUCH_HEIGHT / WorldData.STEP))
 static func tall_of(row: Dictionary) -> int:
 	return int(ceil(float(row.get("height", 1.0)) / WorldData.STEP))
 

@@ -228,9 +228,14 @@ func _roof(k: Kit, h: float, _tears: Array[Vector2]) -> void:
 		# edges hang down ragged; the day comes down it.
 		var hole := _hole(i)
 		var crawl := _crawl_tile(i)
+		var bay := _bay_in(i)
 		for x in range(r.position.x, r.end.x):
 			for z in range(r.position.y, r.end.y):
 				var cc := Vector2(x + 0.5, z + 0.5)
+				# Under a buckle the roof is the fold itself (`_buckle`, drawn with
+				# what the room holds, so it is seen from above too).
+				if not bay.is_empty() and _sag(bay, cc) < 1.0:
+					continue
 				if Vector2i(x, z) == crawl:
 					# Torn open for the crawl up into the heap: the steel bent back
 					# up round the hole, bright where it was cut.
@@ -248,6 +253,61 @@ func _roof(k: Kit, h: float, _tears: Array[Vector2]) -> void:
 					continue
 				k.made.box(Vector3(x, y, z), Vector3(x + 1.0, y + 0.08, z + 1.0), c, c, true)
 		lights.append([Vector3(hole.x, y + 0.3, hole.y), &"seep"])
+
+
+## The buckled bay over room `i` ({} where there is none).
+func _bay_in(i: int) -> Dictionary:
+	for t: Dictionary in layout.things:
+		if t.kind == &"buckled" and _room_at(t.at) == i:
+			return t
+	return {}
+
+
+## 0 for a tile under the bay, where the roof is down at `low` (drawn where the
+## rule stops a standing body: InteriorGen hangs the same tiles), 1 elsewhere.
+func _sag(bay: Dictionary, cc: Vector2) -> float:
+	var along := absf((cc - (bay.at as Vector2)).dot(bay.face as Vector2))
+	return 0.0 if along < float(bay.along) * 0.5 else 1.0
+
+
+## THE BUCKLE: the container's roof folded down to `low` across the bay, drawn
+## with what the room holds and not with its ceiling, so the low steel is seen
+## from above as well as over the shoulder: a player reads where to crouch. The
+## fold is a crumpled plate in the container's paint gone to rust, and at each
+## edge of the bay the roof's steel creases down to it.
+func _buckle(k: Kit, bay: Dictionary) -> void:
+	var mid: Vector2 = bay.at
+	var f: Vector2 = bay.face
+	var s := Vector2(-f.y, f.x)
+	var half_along := float(bay.along) * 0.5
+	var half_across := float(bay.across) * 0.5
+	var low := float(bay.low)
+	var paint := _paint(_room_at(mid)).darkened(0.35)
+	var fold := GroundColors.made(paint, GroundColors.ENAMEL)
+	var rust := GroundColors.made(Color(0.26, 0.11, 0.06), GroundColors.ENAMEL)
+	# The plate, in crumpled strips across the bay, each a hair off the last.
+	var strips := 6
+	for i in strips:
+		var u0 := -half_along + 2.0 * half_along * float(i) / float(strips)
+		var u1 := -half_along + 2.0 * half_along * float(i + 1) / float(strips)
+		var dip := 0.06 * float(Rng.hash_ints(int(mid.x * 4.0), int(mid.y * 4.0), i, 0xB0C) % 3)
+		var col := rust if (i % 3) == 1 else fold
+		var a := mid + f * u0 - s * half_across
+		var b := mid + f * u1 + s * half_across
+		k.made.box(_v(Vector2(minf(a.x, b.x), minf(a.y, b.y)), low - dip), _v(Vector2(maxf(a.x, b.x), maxf(a.y, b.y)), low - dip + 0.1), col, col, true)
+	# The creases: the roof's steel from its rail down to the plate at each edge.
+	for e: float in [-1.0, 1.0]:
+		var c := mid + f * (half_along * e)
+		var n := 4
+		for j in n:
+			var t0 := float(j) / float(n)
+			var t1 := float(j + 1) / float(n)
+			var y0 := lerpf(low, kind.wall_h, t0)
+			var y1 := lerpf(low, kind.wall_h, t1)
+			var out := f * e * 0.18 * t1
+			var a := c + out - s * half_across
+			var b := c + out + f * e * 0.08 + s * half_across
+			k.made.box(_v(Vector2(minf(a.x, b.x), minf(a.y, b.y)), y0), _v(Vector2(maxf(a.x, b.x), maxf(a.y, b.y)), y1), fold, rust, true)
 
 
 ## The roof tile a tower's crawl goes up through in room `i`, or (-1, -1).
@@ -283,6 +343,7 @@ func _thing(k: Kit, t: Dictionary) -> void:
 	match t.kind:
 		&"ladder": _ladder(k, at, -f)
 		&"crawl_up": _crawl_up(k, at, f)
+		&"buckled": _buckle(k, t)
 		&"crate": _crate(k, at, f)
 		&"sorted_bins": _bins(k, at, f)
 		&"bedroll": _bedroll(k, at, f)

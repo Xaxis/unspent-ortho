@@ -216,6 +216,34 @@ func test_an_alley_door_s_crawl_comes_up_on_the_plateau_beside_it() -> void:
 	gt(float(with), float(sites.size()) * 0.4, "most alley doors have a crawl's way up")
 
 
+## A BUCKLED BAY IS PASSED CROUCHED AND NOT STANDING. About the middens'
+## collapse share of warrens has one, never in the first or last container;
+## each of its tiles lets a crouched body in (Tuning.PLAYER_CROUCH_HEIGHT) and not
+## a standing one (Tuning.PLAYER_HEIGHT), from the open deck beside it; tiles
+## off the bay let a standing body in.
+func test_a_buckled_bay_is_passed_crouched_and_not_standing() -> void:
+	var bays := 0
+	var grown := _grown()
+	for p: InteriorGen.Pocket in grown:
+		var l := p.layout
+		var q := WorldQuery.new(p.world)
+		for th: Dictionary in l.things:
+			if th.kind != &"buckled":
+				continue
+			bays += 1
+			var mid: Vector2 = th.at
+			var f: Vector2 = th.face
+			check(not l.rooms[0].has_point(Vector2i(floori(mid.x), floori(mid.y))), "%s: not in the way in" % p.threshold.key)
+			var inside := Vector2i(floori(mid.x), floori(mid.y))
+			var off := Vector2i(floori(mid.x + f.x * 2.5), floori(mid.y + f.y * 2.5))
+			check(not q.passable(off.x, off.y, inside.x, inside.y, null, false, FightSim.HERO_TALL), "%s: a stand is stopped at the bay" % p.threshold.key)
+			check(q.passable(off.x, off.y, inside.x, inside.y, null, false, FightSim.HERO_CROUCH_TALL), "%s: a crouch goes under it" % p.threshold.key)
+			var beside := Vector2i(floori(mid.x + f.x * 1.5), floori(mid.y + f.y * 1.5))
+			check(q.passable(off.x, off.y, beside.x, beside.y, null, false, FightSim.HERO_TALL), "%s: off the bay a stand goes on" % p.threshold.key)
+	gt(float(bays), float(grown.size()) * 0.2, "about the collapse share of warrens have a bay")
+	lt(float(bays), float(grown.size()) * 0.7, "and not most")
+
+
 ## THE FLOOR RINGS, AND A CAREFUL PLAYER CAN PASS. In a sorted warren at the
 ## curfew, every step of the way down the run keeps further from the sorter's
 ## dock than a crouched walk on steel is heard, and somewhere on it a standing

@@ -31,6 +31,12 @@ extends RefCounted
 ## the ladder, Climb takes it up and down), where the one below meets the one
 ## above.
 ##
+## COLLAPSE (the middens' hazard, `collapse`): in about that share of warrens one
+## container's roof has buckled over a BAY across its middle, down to BUCKLE_H,
+## a `buckled` thing InteriorGen hands the pocket as mass overhead: a crouched
+## body passes under it (Tuning.PLAYER_CROUCH_HEIGHT), a standing one does not.
+## Never the first container (the way in) nor the last (the sorter's floor).
+##
 ## What the vault keeps (Interiors.LOOT `container_warren`): salvage the machines
 ## sort for, and rarely a drive.
 ##
@@ -55,6 +61,10 @@ const MOST := 5
 const JOG := 1
 ## A container's height in levels (2.5 units): each step of a stepped run.
 const RISE := 5
+## A buckled bay: this many tiles along the run, the roof down to BUCKLE_H over
+## the floor (three levels, where a stand needs four and a crouch three).
+const BAY := 2
+const BUCKLE_H := 1.5
 ## The sorter's hours, on the clock: the middens' machines sort by day.
 const SHIFT := Vector2(6, 19)
 ## Where the sorter sleeps: in its side container, this far in from the end
@@ -266,6 +276,14 @@ static func _fit(l: InteriorLayout, n: int, vault: bool, rng: RandomNumberGenera
 				_put(l, &"crate", Vector2(wall_x + face.x * 0.4, mid_y + 1.8), face, 0.4)
 			&"sorted":
 				_put(l, &"sorted_bins", Vector2(wall_x + face.x * 0.35, mid_y), face, 0.35, {"glare": 1.2, "shift": true})
+	# The buckled bay, by the landscape's collapse share: across the middle of a
+	# container that is neither the way in nor the last.
+	var d := BiomeRegistry.by_index(land)
+	var collapse := float(d.hazards.get(&"collapse", 0.0)) if d != null else 0.0
+	if n >= 3 and rng.randf() < collapse:
+		var r := l.rooms[rng.randi_range(1, n - 2)]
+		var mid := Vector2(float(r.position.x) + WIDE * 0.5, float(r.position.y) + LONG * 0.5)
+		_put(l, &"buckled", mid, Vector2(0, 1), 0.0, {"along": float(BAY), "across": float(WIDE), "low": BUCKLE_H})
 	# A tower's way up: in its top container, on the wall across from what it
 	# holds, a crawl up through the rusted roof into the heap, and out on the
 	# plateau beside the alley.
