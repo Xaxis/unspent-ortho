@@ -25,7 +25,9 @@ on:
 # going and holds only the LATEST pending push behind it (a newer push replaces
 # an older pending one), so main always gets a verdict on a recent commit.
 concurrency:
-  group: gate-${{ github.ref }}
+  # A dispatch is asked for on purpose, often several at once to chase a flake,
+  # so each gets its own group and runs rather than replacing the last.
+  group: gate-${{ github.ref }}${{ github.event_name == 'workflow_dispatch' && format('-{0}', github.run_id) || '' }}
   cancel-in-progress: false
 
 env:
