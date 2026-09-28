@@ -433,6 +433,14 @@ static func shared() -> SoundBank:
 	return _shared
 
 
+## Claim what the shared bank still has on the pool, because the process is
+## ending (main.gd drain_pool). A game that ends leaves its bakes running for the
+## next one, and nothing reaps them but the next game's pump.
+static func drain() -> void:
+	if _shared != null:
+		_shared.cancel()
+
+
 func _init() -> void:
 	threaded = not OS.has_feature("web") or OS.has_feature("threads")
 

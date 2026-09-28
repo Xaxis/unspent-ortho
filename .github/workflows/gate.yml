@@ -10,6 +10,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      shards:
+        description: "JSON list of the shards to run (of 8), to chase one that hangs"
+        required: false
+        default: "[0,1,2,3,4,5,6,7]"
 
 # DON'T CANCEL THE RUN IN PROGRESS. With cancel-in-progress true, every push to
 # main killed the running gate, and several sessions push to main every few
@@ -20,7 +25,9 @@ on:
 # going and holds only the LATEST pending push behind it (a newer push replaces
 # an older pending one), so main always gets a verdict on a recent commit.
 concurrency:
-  group: gate-${{ github.ref }}
+  # A dispatch is asked for on purpose, often several at once to chase a flake,
+  # so each gets its own group and runs rather than replacing the last.
+  group: gate-${{ github.ref }}${{ github.event_name == 'workflow_dispatch' && format('-{0}', github.run_id) || '' }}
   cancel-in-progress: false
 
 env:
@@ -37,7 +44,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+        shard: ${{ fromJSON(inputs.shards || '[0,1,2,3,4,5,6,7]') }}
     name: tests (shard ${{ matrix.shard }} of 8)
     # A hang guard, not a speed bar: a shard of eight runs in about a quarter of
     # the old three-shard time, and a real hang still runs past this.
@@ -65,6 +72,12 @@ jobs:
 
       - name: Put Godot on PATH
         run: echo "$HOME/godot-bin" >> "$GITHUB_PATH"
+
+      # What tools/check.sh reads a hung runner's threads with before it kills it.
+      - name: Install gdb
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq gdb >/dev/null
+          file "$(command -v godot)"
 
       - name: Import
         run: tools/_import.sh
