@@ -58,36 +58,6 @@ Guest · 2094 talks; the Tether and Foundry rise · 2098 Elias, 38, wakes in the
 surf in a body grown from his genome; June is 75. Each side holds magnetic monopoles in the other's
 star. Humans are too futile to watch: the blind spot the secret lives in.
 
-## The walkers (PROPOSAL 2026-09-23, not ruled: build nothing from it)
-
-Three machines whose tops nearly reach orbit walk the world. None is fought: a
-thing that size has a route, not a health.
-
-- **The Drover** (HALCYON): a mast on many legs, crown lit 90 km up; by night a
-  star that moves. Server fields drink a watershed dry, so HALCYON walks on; the
-  Drover carries the link that keeps it one mind: **the bandwidth, walking**. Dead
-  fields and dry rivers behind; beneath it people dream each other's dreams. A
-  stride a world day. His self-model, holding his mistake together. Late, the
-  signet at its foot turns it a degree: which river lives. *Ask:* a woman went to
-  sleep under a leg to hear her husband, nine days ago.
-- **The Heron** (the Guest's craft): two legs too thin to see by day. It inspects
-  where HALCYON least wants it; in its region every machine stands and shows its
-  work: a **still week**, when people travel, raid, marry. Two or three world days
-  a region. It does not see him. Late, he can have what HALCYON hides lie open on
-  its day. *Ask:* an errand only the still week allows; hunted when it ends.
-- **The Harrow** (the bargain, paid): a ridge 40 km high walking the survey
-  bearing, lifting a strip a region wide for the Foundry; behind it the After is
-  already true. Lots numbered in the order the war emptied them; the last is due
-  2198, the Tether board's year. The Covenant sells passes ahead of it. A region
-  whose keeper is taken is struck off and bent round, as the crags are. *Ask:* a
-  village in the next lot, and one who will not leave.
-
-Seen: the slow star the first night; the still week across the water; the furrow
-on the far shore. **Break**: the Drover stops mid-stride (wrong: the Heron stands
-on) · **Join**: the Heron kneels · **Give it up**: the Heron walks into the sea,
-the Harrow stops · **Say nothing**: 2198 keeps. Afterwards reads what it bent round. Words: "VACANT POSSESSION." /
-added: "LOT 0412. OCCUPANTS: —" · "Heron's in. Get your washing out."
-
 ## The journey
 
 Every inhabited continent, outward from where he wakes; the Tether on the farthest,
