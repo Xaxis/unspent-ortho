@@ -223,7 +223,7 @@ func _beats() -> void:
 			if beats.has(b):
 				(beats[b].doors as Array).append(door)
 	# The secret lands where the last of its memories came back.
-	for b: StringName in [&"secret_whole", &"secret_misremembered"]:
+	for b: StringName in [StorySecret.HELD]:
 		if beats.has(b):
 			(beats[b].doors as Array).append({"kind": &"secret", "id": &"StorySecret", "place": &"", "speaker": "",
 				"cast": &"", "why": "the three memories back", "source": "src/core/story/story_secret.gd:1", "beats": [b]})
@@ -236,7 +236,7 @@ func _beats() -> void:
 				d.pos = places[door.place].pos
 				d.leg = int(places[door.place].leg)
 				break
-	for b: StringName in [&"secret_whole", &"secret_misremembered"]:
+	for b: StringName in [StorySecret.HELD]:
 		if beats.has(b) and beats[b].place == &"":
 			for m: StringName in StorySecret.KEY:
 				if beats.has(m) and beats[m].place != &"":
