@@ -352,7 +352,8 @@ wait 0.4
 # Low Scar, the plan came in the small hours for somebody out of Oyster Row, and
 # holds them at the Reaper's region's yard.
 await taken 5
-at rescue:yard
+# At one of its housings, the yard in frame round him (its middle is its mast).
+at rescue:yard_breaker
 wait 1.0
 await held_here 6
 shot 17-the-yard-holding-somebody-from-oyster-row with works,works_lit,works_yard
@@ -405,3 +406,12 @@ shot 19-its-yard-dark with works_broken,works_dark
 await freed 30
 wait 1.0
 shot 20-somebody-from-oyster-row-walks-out-of-the-dark-yard with works_dark,freed
+
+# 10 HOME AGAIN (35_folk, 45_taken): back at Oyster Row, where he woke and was
+# seen, the village is whole: the plan holds nobody of it and one of its people
+# has come back out of the yard. Read off the record, not walked 188 tiles home
+# (a tour's walk has no path yet; ROADMAP tools track).
+village 0
+wait 2.0
+await home_again 10
+shot 21-oyster-row-with-its-own-home-again with home_again
