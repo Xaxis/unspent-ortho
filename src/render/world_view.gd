@@ -297,7 +297,7 @@ func _bind(w: WorldData) -> void:
 	_props_by_chunk.clear()
 	_cables_by_chunk.clear()
 	# The machines' works cut into the ground, for the shader and the decor.
-	works = WorksMap.bake(w)
+	works = WorksMap.of(w)
 	# Bound on the MAIN thread (`_bind_works`): binding makes two textures, and
 	# `_bind` runs on a worker for the boot page and the title, where creating a
 	# texture waits on the main thread (the far textures below learnt it first).
@@ -552,14 +552,21 @@ func _park_reach() -> float:
 
 
 ## Build every chunk near the focus synchronously.
-func ensure_near(p: Vector2) -> void:
+## `most` > 0 builds at most that many chunks here, the nearest first, and leaves
+## the rest to the streaming (a shaft's arrival, 20_realms: the ring round the
+## player was 1 s of the start at 110 ms a chunk, S5e).
+func ensure_near(p: Vector2, most := 0) -> void:
 	focus = p
 	_look_out()
+	var built := 0
 	for key in _wanted(0.0):
 		if _parked.has(key):
 			_revive(key)
 		elif not _chunks.has(key):
+			if most > 0 and built >= most:
+				continue
 			_build(key)
+			built += 1
 		if _mid_wanted:
 			_mid_now(key)
 	_write_mask()

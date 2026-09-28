@@ -10,6 +10,7 @@ extends RefCounted
 ##   15_lights.prepare_world   the index of every light source
 ##   19_colossi.prepare_world  what every tread's pads flatten, in the world's
 ##                             own record, before any view draws it
+##   WorksMap.prepare      the machines' works cut into the ground (WorldView)
 ## Every one of them is pure over the world and worker-safe
 ## (tests/core/test_worker_types): no node, no RID, no texture.
 
@@ -24,3 +25,4 @@ static func prepare(w: WorldData) -> void:
 	SkyWear.prepare(w)
 	_LIGHTS.prepare_world(w)
 	_COLOSSI.prepare_world(w)
+	WorksMap.prepare(w)

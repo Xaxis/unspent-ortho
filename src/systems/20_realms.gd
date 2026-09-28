@@ -391,6 +391,8 @@ func _go(to: StringName, at: Vector2, shaft: int, carry: bool) -> void:
 ## "sky_ground", and each system's `realm_changed` under its name (S5e: a shaft's
 ## START is what a player waits on, and every part of it is named here).
 var enter_ms: Dictionary = {}
+## Chunks built on the press at a crossing's arrival (WorldView.ensure_near).
+const ARRIVE_CHUNKS := 1
 
 
 func enter(w: WorldData, key: StringName, at: Vector2, carry := true, query: WorldQuery = null) -> void:
@@ -432,7 +434,8 @@ func enter(w: WorldData, key: StringName, at: Vector2, carry := true, query: Wor
 		enter_ms["view_rebind"] = (Time.get_ticks_usec() - tv) / 1000.0
 		tv = Time.get_ticks_usec()
 		game.view.focus = land
-		game.view.ensure_near(land)
+		# The chunk under the player at once; the ring round it streams in behind.
+		game.view.ensure_near(land, ARRIVE_CHUNKS)
 		enter_ms["view_near"] = (Time.get_ticks_usec() - tv) / 1000.0
 	pl.sync_view(0.0)
 	if game.camera != null:
