@@ -360,15 +360,17 @@ shot 17-the-yard-holding-somebody-from-oyster-row with works,works_lit,works_yar
 # 7 THE FIGHT AND ITS FALL (44_sentinels, 42_stage): the Reaper taken apart with
 # the steel knife through the openings it gives, the way a player learns it: in
 # front where it will bite, round out of the box as the tell starts, into the
-# working part while the drum is jammed. Each pass starts off its body, so a pass
-# that ends with him downed and carried off starts again from where it stands.
+# working part while the drum is jammed. In front means at its plate: it only
+# bites, and tells first, at what stands where its guarded side faces. Each pass
+# starts off its body, so a pass that ends with him downed and carried off
+# starts again from where it stands.
 near keeper
 wait 0.6
 await sentinel 12
 try 80
   near mob:sentinel.coast 5
-  walkto mob 6
-  await tell 14
+  walkto plate 6
+  await tell 10
   press dodge 0.12
   await sentinel_open 6
   walkto part 2
