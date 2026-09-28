@@ -32,13 +32,22 @@ static func rows(height: int, job: Callable, band: int = 12) -> void:
 	parallel(task, count)
 
 
+## The one group whose passes may still fan out over the pool from inside it
+## (`RealmWorlds.begin` with `full`: a realm raised while the title leaves the
+## pool idle), until `lean` says a game is running and it must keep to its one
+## worker. The world is the same either way; only how many threads build it.
+static var fan_group := -1
+static var lean := false
+
+
 ## job(i) for i in [0, count) on the worker pool, waiting for all of them. Called
 ## from inside another group's element (together() of passes that use rows())
 ## it runs inline: a pool thread waiting on a nested group holds its thread, and
 ## with few threads (4 on the web build, 4-thread machines) every thread ends up
 ## waiting on another and world generation never finishes.
 static func parallel(job: Callable, count: int) -> void:
-	if WorkerThreadPool.get_caller_group_id() >= 0:
+	var gid := WorkerThreadPool.get_caller_group_id()
+	if gid >= 0 and (gid != fan_group or lean):
 		for i in count:
 			job.call(i)
 		return
@@ -306,6 +315,102 @@ static func upsample_rect(part: PackedFloat32Array, pw: int, ph: int, gx0: int, 
 	return out
 
 
+## `upsample` of the world's rows ry..ry+rh-1, whole rows, the same values tile
+## for tile -- `upsample_rect` of the whole grid's width without its per-tile
+## copies: the coarse rows round them are cropped, spread and cropped again as
+## images, which is the difference between a band of a pass costing a copy loop
+## and costing nothing a thread notices.
+static func upsample_rows(g: PackedFloat32Array, cw: int, step: int, size: int, ry: int, rh: int) -> PackedFloat32Array:
+	return upsample_rows_of(grid_image(g, cw), cw, step, size, ry, rh)
+
+
+## A coarse grid as the image `upsample_rows_of` spreads, made once for all the
+## bands of a stage rather than once a band.
+static func grid_image(g: PackedFloat32Array, cw: int) -> Image:
+	return Image.create_from_data(cw, cw, false, Image.FORMAT_RF, g.to_byte_array())
+
+
+## `upsample_rows` of a grid already made an image (`grid_image`).
+static func upsample_rows_of(full: Image, cw: int, step: int, size: int, ry: int, rh: int) -> PackedFloat32Array:
+	var sy0 := maxi(0, floori(float(ry) / step) - 1)
+	var sy1 := mini(cw, ceili(float(ry + rh) / step) + 1)
+	var sub := full.get_region(Rect2i(0, sy0, cw, sy1 - sy0))
+	sub.resize(cw * step, (sy1 - sy0) * step, Image.INTERPOLATE_BILINEAR)
+	return sub.get_region(Rect2i(0, ry - sy0 * step, size, rh)).get_data().to_float32_array()
+
+
+## `batch`'s specs over the world's rows ry..ry+rh-1 only, whole rows: UP, FIELD
+## and NOISE at step 1, each the same values tile for tile as `batch` gives them
+## over the world, by native image work (`upsample_rows`, `field_rows`,
+## `noise_rows`). Results in spec order, `rh * size` each: what a stage that reads
+## its fields a band at a time asks for instead of holding every field whole.
+static func batch_rows(size: int, specs: Array, ry: int, rh: int) -> Array[PackedFloat32Array]:
+	var out: Array[PackedFloat32Array] = []
+	for spec: Array in specs:
+		var what := int(spec[0])
+		if what == UP:
+			# A grid may come as its image already (`grid_image`), made once.
+			var g: Variant = spec[1]
+			if g is Image:
+				out.append(upsample_rows_of(g, int(spec[2]), int(spec[3]), size, ry, rh))
+			else:
+				out.append(upsample_rows(g, int(spec[2]), int(spec[3]), size, ry, rh))
+		elif what == FIELD:
+			out.append(field_rows(spec[1], size, int(spec[2]), ry, rh))
+		elif what == NOISE:
+			assert(int(spec[3]) == 1 and spec.size() == 4, "batch_rows takes NOISE at step 1 and no offset")
+			out.append(noise_rows(spec[1], size, ry, rh))
+		else:
+			assert(false, "batch_rows takes UP, FIELD and NOISE")
+	return out
+
+
+## `batch`'s FIELD over the world's rows ry..ry+rh-1, whole rows: the noise asked
+## at the world's own coarse cells (one more row each side for the spread),
+## spread and cropped as images, mapped as `batch` maps it.
+static func field_rows(n: FastNoiseLite, size: int, step: int, ry: int, rh: int) -> PackedFloat32Array:
+	var cw := coarse_width(size, step)
+	var sy0 := maxi(0, floori(float(ry) / step) - 1)
+	var sy1 := mini(cw, ceili(float(ry + rh) / step) + 1)
+	var m := _copy(n)
+	var off := step * 0.5 - 0.5
+	m.frequency = n.frequency * step
+	m.offset = Vector3((n.offset.x + off) / step, (n.offset.y + off) / step + sy0, 0.0)
+	var img := m.get_image(cw, sy1 - sy0, false, false, false)
+	img.convert(Image.FORMAT_RF)
+	if step > 1:
+		img.resize(cw * step, (sy1 - sy0) * step, Image.INTERPOLATE_BILINEAR)
+	var out := img.get_region(Rect2i(0, ry - sy0 * step, size, rh)).get_data().to_float32_array()
+	for k in out.size():
+		out[k] = out[k] * 2.0 - 0.996078
+	return out
+
+
+## A generator of the caller's own, copied one thread at a time: the bands of a
+## stage share their specs' generators, and no two threads may touch one
+## object (`batch` copies its own before its workers start, for the same reason).
+static var _copying := Mutex.new()
+
+
+static func _copy(n: FastNoiseLite) -> FastNoiseLite:
+	_copying.lock()
+	var m := n.duplicate() as FastNoiseLite
+	_copying.unlock()
+	return m
+
+
+## `batch`'s NOISE at step 1 over the world's rows ry..ry+rh-1, whole rows.
+static func noise_rows(n: FastNoiseLite, size: int, ry: int, rh: int) -> PackedFloat32Array:
+	var m := _copy(n)
+	m.offset = Vector3(n.offset.x, n.offset.y + ry, 0.0)
+	var img := m.get_image(size, rh, false, false, false)
+	img.convert(Image.FORMAT_RF)
+	var out := img.get_data().to_float32_array()
+	for k in out.size():
+		out[k] = out[k] * 2.0 - 0.996078
+	return out
+
+
 ## `field` (as `batch`'s FIELD spec makes it) over the tiles of one rectangle of
 ## the world, the same values tile for tile: the coarse cells it samples are the
 ## world's own, one more round the rectangle for the bilinear spread, clipped
@@ -336,6 +441,20 @@ static func field_rect(n: FastNoiseLite, size: int, step: int, rx: int, ry: int,
 		var iy := clampi(ry + y, 0, size - 1) - gy0 * step
 		for x in rw:
 			out[y * rw + x] = got[iy * iw + clampi(rx + x, 0, size - 1) - gx0 * step] * 2.0 - 0.996078
+	return out
+
+
+## `batch`'s NOISE at step 1 over the tiles of one rectangle of the world, the
+## same values tile for tile: the noise asked at the same points, the rectangle's
+## first tile at (rx, ry).
+static func noise_rect(n: FastNoiseLite, rx: int, ry: int, rw: int, rh: int) -> PackedFloat32Array:
+	var m := n.duplicate() as FastNoiseLite
+	m.offset = Vector3(n.offset.x + rx, n.offset.y + ry, 0.0)
+	var img := m.get_image(rw, rh, false, false, false)
+	img.convert(Image.FORMAT_RF)
+	var out := img.get_data().to_float32_array()
+	for k in out.size():
+		out[k] = out[k] * 2.0 - 0.996078
 	return out
 
 

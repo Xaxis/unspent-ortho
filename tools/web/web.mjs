@@ -51,6 +51,16 @@
 //                    outside the engine (what a player sees while the engine is blocked)
 //   --uncapped       let the page draw as fast as it can (no vsync, no frame-rate limit), so a
 //                    frame's cost can be read off its interval (perf scale in a tour)
+//   --tool-args=A,B  boot options no address may carry (--place, --at, ...), handed to the page by THIS
+//                    server as a tour's are, after the address's own; the build is unchanged
+//   --dwell=SECS     with --play, stay on the title this long before New game (a player reading it)
+//   --use-after=SECS with --play, press use this long after the game is drawn: with --args=--place=shaft
+//                    that goes down the shaft, and --crossing times it
+//   --raised-before-game=KIND  with --play, fail unless the realm KIND stood (its `realm KIND raised`
+//                    line) before the new game's first frame: the title raised it while it was read
+//   --crossing=SECS  fail unless every shaft crossing the run makes takes -- from the use
+//                    that starts it to the first frame of the realm below, the crossing page's own
+//                    `boot stages crossing ... total` -- is at most SECS (streamed worldgen S5's bar)
 //   --programs       with --tour, count the GL programs first drawn after each `echo event NAME` in
 //                    the tour, by .gdshader and variant: a first-use shader compile is a freeze on the
 //                    web, and at an event a player meets (a door, a fire) the count must be zero: any
@@ -85,6 +95,7 @@ fs.mkdirSync(path.dirname(path.resolve(opt.out)), { recursive: true });
 // A tour played inside the build: what it is called, where its frames go, and
 // the arguments the page is started with in place of the address's.
 const touring = typeof opt.tour === 'string' && opt.tour !== '';
+const toolArgs = typeof opt['tool-args'] === 'string' && opt['tool-args'] !== '' ? opt['tool-args'].split(',') : [];
 const tourName = touring ? path.basename(opt.tour, '.tour') : '';
 const tourDir = touring ? path.resolve(opt.frames || path.join('shots/export/tour', tourName)) : '';
 if (touring) {
@@ -108,6 +119,19 @@ const wasmGate = new Promise((r) => { releaseWasm = () => { if (wasmHeldAt) wasm
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const rel = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname);
+  if (toolArgs.length && !touring && rel === '/index.html') {
+    const body = toolShell(fs.readFileSync(path.join(root, 'index.html'), 'utf8'));
+    res.writeHead(200, {
+      'Content-Type': TYPES['.html'],
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Resource-Policy': 'same-origin',
+      'Cache-Control': 'no-store',
+      'Content-Length': Buffer.byteLength(body),
+    });
+    res.end(body);
+    return;
+  }
   if (touring && (rel === '/index.html' || rel === `/__tour/${tourName}.tour`)) {
     // The page a tour runs in: the build's own shell, told what to play. Nothing
     // in the build changes; only what this server says to it.
@@ -157,6 +181,12 @@ function tourShell(html) {
   const extra = opt.args ? String(opt.args).split(',') : [];
   const args = ['--', `--tour=/tour/${tourName}.tour`, ...extra];
   return html.replace(anchor, `  GODOT_CONFIG.args = ${JSON.stringify(args)};\n${anchor}\n  engine.preloadFile('__tour/${tourName}.tour', '/tour/${tourName}.tour');`);
+}
+// The shell with tool arguments added after the address's own (--tool-args).
+function toolShell(html) {
+  const anchor = '  const engine = new Engine(GODOT_CONFIG);';
+  if (!html.includes(anchor)) throw new Error('tools/web/web.mjs cannot find where the shell makes its Engine: src/boot/shell.html moved');
+  return html.replace(anchor, `  GODOT_CONFIG.args = (GODOT_CONFIG.args || ['--']).concat(${JSON.stringify(toolArgs)});\n${anchor}`);
 }
 let port = 0;
 if (!live) {
@@ -756,6 +786,7 @@ if (first && touring) {
   if (!end) failures.push(`the tour never reached its end within ${secs} s`);
   else if (!/done ->/.test(end.text)) failures.push(end.text);
   else console.log(`web tour done in ${(end.t - first.t).toFixed(1)} s after the first frame, ${kept.length} frames in ${path.relative(process.cwd(), tourDir)}`);
+
 } else if (first) {
   // The wasm was held while the shell was shot: that wait is not the build's.
   result.first_frame_s = first.t - wasmHeldMs / 1000;
@@ -800,6 +831,7 @@ if (first && !touring && opt['boot-only']) {
 
   if (opt.play) {
     const from = lines.length;
+    if (opt.dwell) await page.waitForTimeout(Number(opt.dwell) * 1000);
     // New game opens the character page first (who wakes): up from its first row
     // wraps round to "begin", and Enter there starts the game with that body.
     await page.keyboard.press('Enter');
@@ -816,6 +848,13 @@ if (first && !touring && opt['boot-only']) {
       result.new_game_s = (Date.now() - pressed) / 1000;
       console.log(`web new game drawn ${result.new_game_s.toFixed(2)} s after Enter (${game.text})`);
       await shoot('game');
+      if (opt['use-after'] !== undefined) {
+        await page.waitForTimeout(Number(opt['use-after']) * 1000);
+        await page.keyboard.press('KeyE');
+        const crossed = await waitLine(/^boot stages crossing/, Number(opt.timeout) * 3, from);
+        if (!crossed) failures.push('use at the shaft started no crossing');
+        else await shoot('below');
+      }
       // Walk with the real keys: the probe hears this key and listens for the game.
       await page.keyboard.down('KeyD');
       await page.waitForTimeout(1500);
@@ -931,6 +970,27 @@ console.log(`web served ${(wire / 1048576).toFixed(1)} MB over the wire (${big.j
 // held, and a browser's heap has a ceiling a desktop build never meets: a world
 // that cannot be grown here is not a world the game can ship. Read off the
 // shell's own `engine`, which a classic script's top-level const leaves in reach.
+if (opt['raised-before-game']) {
+  const kind = String(opt['raised-before-game']);
+  const raised = lines.find((l) => l.text.startsWith(`realm ${kind} raised`));
+  const game = lines.find((l) => /^boot ready game/.test(l.text));
+  if (!game) failures.push('--raised-before-game: no game was drawn (it needs --play)');
+  else if (!raised) failures.push(`--raised-before-game: the ${kind} never stood`);
+  else {
+    console.log(`web ${kind} stood at ${raised.t.toFixed(1)} s, the new game drew at ${game.t.toFixed(1)} s (${raised.text})`);
+    if (raised.t > game.t) failures.push(`the ${kind} stood ${(raised.t - game.t).toFixed(1)} s after the new game drew: a shaft pressed at once would wait`);
+  }
+}
+if (opt.crossing) {
+  const bar = Number(opt.crossing);
+  const crossings = lines.filter((l) => /^boot stages crossing/.test(l.text));
+  if (crossings.length === 0) failures.push('--crossing: the run crossed no shaft');
+  for (const c of crossings) {
+    const total = Number((c.text.match(/total (\d+) ms/) || [])[1]);
+    console.log(`web crossing ${(total / 1000).toFixed(1)} s from use to the realm below, bar ${bar} s (${c.text})`);
+    if (!(total <= bar * 1000)) failures.push(`a crossing took ${(total / 1000).toFixed(1)} s, over the ${bar} s bar`);
+  }
+}
 clearInterval(heapTimer);
 await bounded(sampleHeap(), 10000);
 console.log(heapMost > 0 ? `web heap ${(heapMost / 1048576).toFixed(0)} MB, the most it held (sampled every 2 s)` : 'web heap: not readable from this page');

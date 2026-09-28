@@ -6,7 +6,7 @@ extends GameSystem
 ## when a snatcher walks out of a yard; the works package's own signal takes them
 ## off it when the depot goes dark or the region's keeper falls, and whoever gets
 ## back to a standing holding is on its books again (SETTLE.md S6, and
-## docs/STORY.md on what the plan does with people it carries). Neither keeps a copy, so there is one answer
+## docs/STORY.md on the depots). Neither keeps a copy, so there is one answer
 ## to "is anybody still being held here" and no two halves of the game can
 ## disagree about it.
 ##
