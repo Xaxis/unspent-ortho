@@ -165,8 +165,10 @@ func falling_out() -> bool:
 
 
 ## Move the body on by `delta`. Returns where it now is (tile space).
-## A dash is refused by walls (it slides along them like walking does); a glide
-## and a grapple pass over ground a walk could not climb, which is the point.
+## A dash is refused by walls (it slides along them like walking does) and by a
+## roof too low for the body upright (`tall`: a crouch gets under, a dash does
+## not); a glide and a grapple pass over ground a walk could not climb, which is
+## the point.
 func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radius: float) -> Vector2:
 	if finished:
 		return pos
@@ -174,7 +176,7 @@ func step(delta: float, pos: Vector2, world: WorldData, query: WorldQuery, radiu
 	var next := pos
 	match kind:
 		&"dash":
-			next = query.move_body(pos, dir * speed * delta, radius) if query != null else pos + dir * speed * delta
+			next = query.move_body(pos, dir * speed * delta, radius, null, false, int(ceil(tall / WorldData.STEP))) if query != null else pos + dir * speed * delta
 			lift = 0.0
 			if t >= seconds or next.distance_to(pos) < speed * delta * 0.15:
 				finished = true

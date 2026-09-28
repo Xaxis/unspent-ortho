@@ -1301,7 +1301,8 @@ func undertow(m: MobState) -> bool:
 	var pull := minf(m.radius * 2.0, room)
 	if pull > 0.0:
 		var step := to.normalized() * pull
-		m.pos = query.move_body(m.pos, step, minf(m.radius, 0.45), climber(m.row), Swim.may_cross(m.row)) if query != null else m.pos + step
+		# Over ground it could walk, under roofs it could stand under.
+		m.pos = query.move_body(m.pos, step, minf(m.radius, 0.45), climber(m.row), Swim.may_cross(m.row), tall_of(m.row)) if query != null else m.pos + step
 	m.charging = false
 	_break_tell(m)
 	if now >= m.stall_ready_at:
