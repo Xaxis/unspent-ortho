@@ -41,6 +41,17 @@ var heavy := false
 var area := false
 
 
+## This blow with its tell `k` times as long (FightSim.UNSEEN_TELL), a copy: the
+## row's own blow is never changed.
+func stretched(k: float) -> Blow:
+	var b := Blow.new()
+	for p: Dictionary in get_property_list():
+		if int(p.usage) & PROPERTY_USAGE_SCRIPT_VARIABLE:
+			b.set(p.name, get(p.name))
+	b.windup = roundi(windup * k)
+	return b
+
+
 func committed() -> int:
 	return windup + active + recovery
 

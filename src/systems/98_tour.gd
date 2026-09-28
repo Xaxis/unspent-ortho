@@ -182,6 +182,9 @@ extends GameSystem
 ##                          turned to them: a machine behind a house, over the
 ##                          shoulder, that the house hides
 ##   tell KIND              the nearest live body of that kind starts its bite's tell
+##   behind KIND            the nearest live body of that kind stands behind the
+##                          player, every one of that kind is roused, and it starts
+##                          its bite out of sight: the unseen tell and its cue
 ##                          where it stands, turned to the player (what the ear hears)
 ##   spawn KIND[@DEG]       put a roster body (e.g. runner, harvester) in view in
 ##                          front of the player, as --spawn does at boot; fails the
@@ -543,6 +546,8 @@ func _run() -> void:
 					ok = await _spawn(parts[1])
 			"tell":
 				ok = _tell(parts[1])
+			"behind":
+				ok = _tell_behind(parts[1])
 			"under":
 				ok = await _spawn_under(parts[1])
 			"over":
@@ -1365,6 +1370,39 @@ func _tell(token: String) -> bool:
 	best.disturbed = true
 	best.set_mood(MobState.ATTACKING, sim.now)
 	Brains.bite(best, sim)
+	return true
+
+
+## `behind KIND`: a crowd of that kind roused, and the nearest of it at the
+## player's back, beginning its bite out of sight (FightSim.begin_bite: longer,
+## and cued by a call from its bearing and a mark at the slate's edge).
+func _tell_behind(token: String) -> bool:
+	var id := Roster.resolve(token)
+	var sim: FightSim = game.player.sim
+	if sim == null:
+		return false
+	var best: MobState = null
+	for m: MobState in sim.mobs:
+		if m.alive and not m.removed and m.kind == id and m.bite != null:
+			m.disturbed = true
+			m.set_mood(MobState.CHASING, sim.now)
+			if best == null or m.pos.distance_to(sim.hero.pos) < best.pos.distance_to(sim.hero.pos):
+				best = m
+	if best == null:
+		printerr("tour %s: no %s to come from behind" % [_name, token])
+		return false
+	var back := sim.hero.pos - Vector2.from_angle(sim.hero.facing) * (best.radius + sim.hero.radius + 0.8)
+	best.pos = back
+	best.facing = (sim.hero.pos - best.pos).angle()
+	best.aim = best.facing
+	best.set_mood(MobState.ATTACKING, sim.now)
+	if not sim.out_of_sight(best):
+		printerr("tour %s: the %s behind is in sight" % [_name, token])
+		return false
+	Brains.bite(best, sim)
+	if best.cued_at != best.blow_at:
+		printerr("tour %s: the %s behind was not cued (alone?)" % [_name, token])
+		return false
 	return true
 
 

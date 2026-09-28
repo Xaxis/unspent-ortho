@@ -24,6 +24,13 @@ const MISREAD := 0.10
 const HUMAN_LATE_MS := 200.0
 const WHIFF := 0.125
 const WHIFF_TURN := 0.9
+## A tell known only by its cue (FightSim.begin_bite: a call from its bearing, a
+## mark at the slate's edge): the human turns to it first, HUMAN_CUE_TURN_MS on
+## top of the reaction, and misreads HUMAN_CUE_MISREAD of them.
+const HUMAN_CUE_TURN_MS := 200.0
+const HUMAN_CUE_MISREAD := 0.25
+## Set by a reader that knows this tell only by its cue, for the answer to it.
+var _by_cue := false
 ## Holds the swing for the heavy blow (FightRules.HEAVY_*) when the opening is
 ## long enough for its tell, there is the wind for it and a dodge after, or the
 ## part is one only a heavy blow goes through; a light swing otherwise.
@@ -88,7 +95,9 @@ func _tell_to_answer(m: MobState) -> bool:
 	if human >= 0:
 		var key := int(m.blow_at)
 		react = lerpf(HUMAN_REACT.x, HUMAN_REACT.y, Rng.hash01(human, m.id, key, 0x4855))
-		if Rng.hash01(human, m.id, key, 0x4D52) < MISREAD:
+		if _by_cue:
+			react += HUMAN_CUE_TURN_MS
+		if Rng.hash01(human, m.id, key, 0x4D52) < (HUMAN_CUE_MISREAD if _by_cue else MISREAD):
 			misread = &"wrong" if Rng.hash01(human, m.id, key, 0x5752) < 0.5 else &"late"
 		if misread == &"late":
 			react += HUMAN_LATE_MS

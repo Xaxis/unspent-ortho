@@ -111,27 +111,31 @@ static func _crowds(weapons: Array[StringName]) -> Array[String]:
 		kinds.assign(c)
 		var name := "+".join(c)
 		var won_all := 0
+		var gone_all := 0
 		var lost_all := 0.0
 		var by_line := {}
 		for tool in weapons:
 			var won := 0
 			var downed := 0
+			var gone := 0
 			var lost := 0.0
 			for s in CROWD_STARTS:
 				var r := crowd_bout(kinds, tool, s)
 				won += int(r.won)
 				downed += int(r.downed)
+				gone += int(r.gone)
 				lost += float(r.lost)
+			gone_all += gone
 			won_all += won
 			lost_all += lost
 			var l := line_of(tool)
 			var row: Array = by_line.get(l, [0, 0])
 			by_line[l] = [int(row[0]) + won, int(row[1]) + CROWD_STARTS]
-			print("crowd %s %s won=%d/%d downed=%d lost=%.1f" % [name, tool, won, CROWD_STARTS, downed, lost / CROWD_STARTS])
+			print("crowd %s %s won=%d/%d downed=%d gone=%d lost=%.1f" % [name, tool, won, CROWD_STARTS, downed, gone, lost / CROWD_STARTS])
 		var lines: Array[String] = []
 		for l: String in by_line:
 			lines.append("%s %d/%d" % [l, by_line[l][0], by_line[l][1]])
-		out.append("%s: won %d/%d, mean lost %.2f; by line: %s" % [name, won_all, weapons.size() * CROWD_STARTS,
+		out.append("%s: won %d/%d (gone %d), mean lost %.2f; by line: %s" % [name, won_all, weapons.size() * CROWD_STARTS, gone_all,
 			lost_all / maxf(weapons.size() * CROWD_STARTS, 1), ", ".join(lines)])
 	return out
 
@@ -160,6 +164,7 @@ static func crowd_bout(kinds: Array[StringName], tool: StringName, start: int) -
 	sim.hero.facing = (mid - sim.hero.pos).angle()
 	var t := 0.0
 	var lost := 0
+	var broke := false
 	while t < SECONDS * 1000.0:
 		player.act()
 		sim.slices(2)
@@ -167,11 +172,20 @@ static func crowd_bout(kinds: Array[StringName], tool: StringName, start: int) -
 		for e in sim.drain():
 			if e.type == &"hurt":
 				lost += int(e.damage)
+			if e.type == &"crowd_broke":
+				broke = true
 			if e.type == &"outcome" and e.outcome in [&"downed", &"carried"]:
-				return {"won": false, "downed": true, "lost": lost}
+				return {"won": false, "downed": true, "lost": lost, "gone": false}
+		# Won when every body is dead or stripped, or the crowd broke and none is
+		# still after the player (FightSim._crowd_falls). A body that went home
+		# past its tether or forgot the fight is not beaten: that bout is "gone".
 		var left := 0
+		var after := 0
 		for m in crowd:
 			left += int(m.alive and not m.stripped)
-		if left == 0:
-			return {"won": true, "downed": false, "lost": lost}
-	return {"won": false, "downed": false, "lost": lost}
+			after += int(m.alive and not m.stripped and (m.mood == MobState.CHASING or m.mood == MobState.ATTACKING or m.mood == MobState.ALERTED))
+		if left == 0 or (broke and after == 0):
+			return {"won": true, "downed": false, "lost": lost, "gone": false}
+		if after == 0:
+			return {"won": false, "downed": false, "lost": lost, "gone": true}
+	return {"won": false, "downed": false, "lost": lost, "gone": false}

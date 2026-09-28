@@ -174,6 +174,21 @@ func _keep_texel() -> void:
 
 
 ## The camera's up on screen, as a world direction (a tell stands above a body along it).
+## Which way on the screen `at` lies from the player, y down: projected when it
+## is in front of the camera, and read off the camera's own axes when it is
+## behind it (over the shoulder, a body at the player's back is behind the lens).
+func _screen_dir(at: Vector3) -> Vector2:
+	var cam: Camera3D = game.camera
+	var from := _at3(sim.hero.pos)
+	if not cam.is_position_behind(at) and not cam.is_position_behind(from):
+		return cam.unproject_position(at) - cam.unproject_position(from)
+	var b := cam.global_transform.basis
+	var off := at - from
+	var fwd := Vector3(-b.z.x, 0.0, -b.z.z).normalized()
+	var right := Vector3(b.x.x, 0.0, b.x.z).normalized()
+	return Vector2(off.dot(right), -off.dot(fwd))
+
+
 func _screen_up() -> Vector3:
 	return game.camera.global_transform.basis.y if game.camera.is_inside_tree() else Vector3.UP
 
@@ -662,6 +677,14 @@ func _handle(events: Array[Dictionary]) -> void:
 				if m.row.get("sight_only", false):
 					# The lens catches the light as it finds you: the only warning it gives by eye.
 					MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id, 0.6)
+			&"unseen_tell":
+				# A bite begun out of the player's sight in a crowd: a call from its
+				# bearing, and a mark at the slate's edge on its side for its tell.
+				var m: MobState = e.mob
+				Events.sfx.emit(&"unseen_tell", _at3(m.pos))
+				if game.hud != null and game.camera != null:
+					var tell := float(m.bite.windup) * FightSim.UNSEEN_TELL / 1000.0 if m.bite != null else 0.6
+					game.hud.flag_unseen(_screen_dir(_at3(m.pos)), tell)
 			&"windup":
 				var m: MobState = e.mob
 				Events.sfx.emit(&"windup", _at3(m.pos))

@@ -114,6 +114,12 @@ var snatched := false
 ## A dart whose dive the veil cut (FightSim.lose_scent) has lost you for good:
 ## it leaves, and is gone past its safe distance, taking nothing.
 var lost_scent := false
+## When its last bite was begun out of the player's sight and cued
+## (FightSim.begin_bite): equal to `blow_at` while that bite is the cued one.
+var cued_at := -INF
+## When it last noticed the player by its own senses (FightSim._notice); what
+## the rest of its crowd goes by (FightSim._mates_see).
+var saw_at := -INF
 var reported := false
 ## A blow reached the part: it flares, lit, until flare_until, then is dark
 ## (hurt) until dark_until. View reads.

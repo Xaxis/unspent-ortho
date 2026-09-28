@@ -429,8 +429,62 @@ func _slot_wanted(m: MobState) -> bool:
 	return m.alive and not m.removed and biter(m) and (m.mood == MobState.CHASING or m.mood == MobState.ATTACKING)
 
 
+## Whether another biter than `m` is after the player: the unseen rule is a
+## crowd's; a lone machine keeps its whole timing.
+func _crowded(m: MobState) -> bool:
+	for o in mobs:
+		if o != m and _slot_wanted(o):
+			return true
+	return false
+
+
+## A crowd shares what it sees: a body after the player has them while another
+## of the crowd sees them (a waiter held at the edge, out past its own sight,
+## was forgetting the fight it was waiting on and going back to its work, and
+## the fight stalled; and the last of a crowd, kept by the others, forgot the
+## moment it was alone). A veil or a wall that takes all their sight still loses
+## the player to all of them.
+func _mates_see(m: MobState) -> bool:
+	if not biter(m):
+		return false
+	for o in mobs:
+		# Seen by its own senses this beat or the last, never passed on: two that
+		# have lost the player cannot keep each other on them.
+		if o != m and _slot_wanted(o) and now - o.saw_at <= FightRules.BEAT_MS * 1.5:
+			return true
+	return false
+
+
 func holds_slot(m: MobState) -> bool:
 	return attack_slots.has(m.id)
+
+
+## UNSEEN BITES. Blows from behind are part of the fight (spatial awareness, and
+## the scale coat's whole point), but in a crowd one must be readable: of the
+## bodies after the player, at most ONE may begin a bite from beyond UNSEEN_ARC
+## of where they face, its tell runs UNSEEN_TELL times as long,
+## and it is cued (`unseen_tell` {mob, bearing}): a sound from its bearing and a
+## mark at the slate's edge on that side (40_fight). Never two unseen at once is
+## the one-bite-at-a-time rule's (`bite_turn`), which it rests on. A lone machine is not a
+## crowd and keeps its own timing wherever it stands.
+const UNSEEN_ARC := deg_to_rad(60.0)
+const UNSEEN_TELL := 2.0
+
+
+## Whether `m` stands out of the player's sight, beyond UNSEEN_ARC of their facing.
+func out_of_sight(m: MobState) -> bool:
+	return absf(wrapf((m.pos - hero.pos).angle() - hero.facing, -PI, PI)) > UNSEEN_ARC
+
+
+## Called as a biter begins a bite or a run: in a crowd and out of sight, it is
+## the one unseen bite, and it is cued. The tell a caller throws: stretched when
+## unseen, the blow itself when not.
+func begin_bite(m: MobState, b: Blow) -> Blow:
+	if b == null or not biter(m) or not _crowded(m) or not out_of_sight(m):
+		return b
+	emit(&"unseen_tell", {"mob": m, "bearing": (m.pos - hero.pos).angle()})
+	m.cued_at = now
+	return b.stretched(UNSEEN_TELL)
 
 
 ## ONE BITE AT A TIME: of the biters on the player, one tells and lands a bite
@@ -494,6 +548,11 @@ func _slots_beat() -> void:
 	for m in mobs:
 		if _slot_wanted(m):
 			wanted.append(m)
+	# A fight over is a crowd's count over.
+	if wanted.is_empty():
+		_crowd_fallen = 0
+		_crowd_peak = 0
+	_crowd_peak = maxi(_crowd_peak, wanted.size())
 	var ids := {}
 	for m in wanted:
 		ids[m.id] = m
@@ -577,6 +636,8 @@ func _beat() -> void:
 		var noticed := how != &""
 		_suspicion(m, how)
 		if noticed:
+			m.saw_at = now
+		if noticed or (m.disturbed and _mates_see(m)):
 			m.lost_beats = 0
 			m.last_seen = hero.pos
 			m.lost_at = -1.0
@@ -2219,6 +2280,50 @@ func _kill(m: MobState, by_player: bool = true) -> void:
 		hero.release()
 		emit(&"loose", {"by": m})
 	emit(&"killed", {"mob": m, "at": m.pos, "by_player": by_player})
+	_crowd_falls(m)
+
+
+## A CROWD BREAKS. Half-broken machines hold together only so long: a crowd
+## (CROWD_LEAST biters or more after the player, at its biggest this fight) whose
+## last one is left standing, or which loses the one body bigger than all the
+## rest while it is still whole (its leader, taken first), the others
+## lose the fight and go back to their rounds, calm for CROWD_CALM_MS. It
+## rewards a player who focuses a kill. A pair is not a crowd; a keeper never
+## breaks, and never breaks one.
+const CROWD_LEAST := 3
+const CROWD_CALM_MS := 8000.0
+var _crowd_fallen := 0
+var _crowd_peak := 0
+
+
+func _crowd_falls(m: MobState) -> void:
+	if not biter(m) or Sentinels.is_keeper(m.row):
+		return
+	var rest: Array[MobState] = []
+	for o in mobs:
+		if o != m and _slot_wanted(o):
+			rest.append(o)
+	_crowd_peak = maxi(_crowd_peak, rest.size() + 1)
+	if _crowd_peak < CROWD_LEAST:
+		return
+	_crowd_fallen += 1
+	var leader := _crowd_fallen == 1 and rest.size() + 1 == _crowd_peak
+	for o in rest:
+		leader = leader and m.radius > o.radius
+	if rest.size() > 1 and not leader:
+		return
+	for o in rest:
+		if Sentinels.is_keeper(o.row):
+			return
+	_crowd_fallen = 0
+	_crowd_peak = 0
+	for o in rest:
+		o.disturbed = false
+		o.charging = false
+		o.calm_until = now + CROWD_CALM_MS
+		attack_slots.erase(o.id)
+		o.set_mood(MobState.IDLE, now)
+	emit(&"crowd_broke", {"by": m, "left": rest.size()})
 
 
 ## A dart reached the player: it takes what it came for and runs. Inside

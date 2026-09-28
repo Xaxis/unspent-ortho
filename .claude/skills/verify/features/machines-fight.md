@@ -26,6 +26,11 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   Attack slots (FightSim.attack_slots): at most two biters on the player at once, one bite at a time
   (`bite_turn`); the rest wait at the edge beside the pair, feinting, and swap in when a slot frees or a back is
   turned on them: `tools/test.sh test_attack_slots`; the crowd numbers: `tools/sweep.sh --crowds`.
+  Unseen bites (FightSim.begin_bite): in a crowd a bite begun beyond 60 deg of the player's facing is told 2x long
+  and cued, a machine's call from its bearing and a rust chevron at the slate's edge on its side (Hud.flag_unseen);
+  a crowd shares what it sees, and breaks when only one is left or its leader is taken first:
+  `tools/test.sh test_attack_slots`; the frame: `TOUR_FIXED_FPS=60 tools/tour.sh tours/unseen.tour` (options in its
+  header; `behind KIND` stages a bite from the player's back). Judge balance under `tools/sweep.sh --reader=human`.
   Contact (roster `touch`, `touch_arc`): a sweeper's brush hurts at its front only, so its back part is
   struck and not brushed; a watcher's skin hurts all round: `tools/test.sh test_touch`.
   Every bite's ground ring (dashed where it lands, an inner ring closing on the strike):

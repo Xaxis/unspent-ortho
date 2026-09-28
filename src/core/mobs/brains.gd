@@ -101,7 +101,8 @@ static func _target(m: MobState, sim: FightSim) -> Vector2:
 
 ## Start the bite's tell. The sim says so, so the view can draw what a player learns to read.
 static func bite(m: MobState, sim: FightSim) -> void:
-	m.start_blow(m.bite, sim.now)
+	# Out of the player's sight in a crowd, the one unseen bite: longer, and cued.
+	m.start_blow(sim.begin_bite(m, m.bite), sim.now)
 	sim.emit(&"windup", {"mob": m})
 
 
@@ -325,6 +326,11 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 			m.aim = to.angle()
 			return
 		m.flank_since = -1.0
+		# A run begun out of the player's sight in a crowd is the one unseen bite,
+		# and cued as it starts (its bite's tell is stretched when it bites).
+		if sim.out_of_sight(m):
+			@warning_ignore("return_value_discarded")
+			sim.begin_bite(m, m.bite)
 		# Commit along the way it actually faces, corrected a little toward the player.
 		m.bearing = Vector2.from_angle(m.facing + clampf(off, -0.35, 0.35))
 		m.charging = true

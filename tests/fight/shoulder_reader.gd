@@ -132,6 +132,12 @@ func _tell_to_answer(m: MobState) -> bool:
 	var to := m.pos - hero.pos
 	var in_cone := absf(wrapf(to.angle() - hero.facing, -PI, PI)) <= SIGHT_CONE * 0.5
 	var ear := hero.kit != null and hero.kit.listen and to.length() <= EAR_REACH
-	if not (in_cone or to.length() <= HEARD_BESIDE or ear):
+	# A bite begun out of sight in a crowd is cued (FightSim.begin_bite): known by
+	# the cue, turned to, and answered at a cost (Reader.human's cue terms).
+	var cued := m.blow != null and m.cued_at == m.blow_at
+	if not (in_cone or to.length() <= HEARD_BESIDE or ear or cued):
 		return false
-	return super(m)
+	_by_cue = cued and not in_cone
+	var answered := super(m)
+	_by_cue = false
+	return answered
