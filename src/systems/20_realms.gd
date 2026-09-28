@@ -81,6 +81,11 @@ var _realm: StringName = Realm.SURFACE
 var _saved_realm: StringName = &""
 var _look := 0.0
 var _settle := 0.0
+## Whether `use` was down last frame. The press is this system's own edge, not
+## `is_action_just_pressed`: that answers only in the frame the key went down, so
+## a press made later in a frame than this system runs is never seen at all
+## (21_doors, 22_landmarks). `tours/arrival.tour`'s climb back up was lost to it.
+var _use_was := false
 var _gates: Node3D
 ## Gate nodes by shaft id, and whether each is standing on the drawn ground yet.
 var _nodes: Dictionary = {}
@@ -103,6 +108,9 @@ func setup(g: Game) -> void:
 	_live += 1
 	_realm = g.world.realm
 	RealmWorlds.keep(g.world)
+	# A realm the title began raising on the whole pool keeps to one worker from
+	# here: the game's frames are the pool's now (RealmWorlds.begin).
+	GenFields.lean = true
 	_gates = Node3D.new()
 	_gates.name = "gates"
 	g.add_child(_gates)
@@ -146,6 +154,9 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
+	var down := Input.is_action_pressed(&"use")
+	var use_edge := down and not _use_was
+	_use_was = down
 	if game == null or game.world == null or game.player == null:
 		return
 	_settle = maxf(0.0, _settle - delta)
@@ -181,10 +192,10 @@ func _process(delta: float) -> void:
 		_watch_gates()
 		_draw_gates()
 	if reachable != null and _settle <= 0.0 and not game.input_blocked() \
-			and Input.is_action_just_pressed(&"use") and _shaft_wins():
+			and use_edge and _shaft_wins():
 		cross(reachable)
 	elif gate_near != &"" and _settle <= 0.0 and not game.input_blocked() \
-			and Input.is_action_just_pressed(&"use"):
+			and use_edge:
 		cross_era()
 
 
@@ -286,8 +297,10 @@ func _arrive(to: StringName, at: Vector2, shaft: int, then: Callable) -> void:
 	var seed_value := game.options.seed_value
 	var size: int = game.world.size
 	if RealmWorlds.ready(seed_value, size, to) or BootPage.headless():
+		var t0 := Time.get_ticks_msec()
 		_go(to, at, shaft, true)
 		then.call()
+		_say_crossing(t0)
 		return
 	var tree := get_tree()
 	var was := tree.paused
@@ -296,6 +309,32 @@ func _arrive(to: StringName, at: Vector2, shaft: int, then: Callable) -> void:
 		_go(to, at, shaft, true)
 		tree.paused = was
 		then.call())
+
+
+## A crossing into a realm already standing has no page to time it, so it says
+## its own stages as the page would (`boot stages crossing`): the enter, then the
+## first two frames drawn below, each frame's cost with it. tools/web --crossing
+## reads it either way.
+func _say_crossing(t0: int) -> void:
+	var entered := Time.get_ticks_msec()
+	var parts: Array[String] = []
+	for k: String in enter_ms:
+		if k != "total" and float(enter_ms[k]) >= 50.0:
+			parts.append("%s %.0f" % [k, float(enter_ms[k])])
+	print("realm enter (ready): %d ms: %s" % [entered - t0, ", ".join(parts)])
+	var drawn := [0, entered]
+	var on_drawn := func() -> void:
+		drawn[0] = int(drawn[0]) + 1
+		var now := Time.get_ticks_msec()
+		print("boot draw crossing frame %d at %d ms: process %.0f ms, %d draw calls, %d objects" % [drawn[0], now - entered,
+			Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)])
+		if int(drawn[0]) == 2:
+			print("boot stages crossing (ready): world 0, start %d, draw %d, total %d ms" % [entered - t0, now - entered, now - t0])
+	for i in 2:
+		await RenderingServer.frame_post_draw
+		on_drawn.call()
 
 
 ## A drawn gate for every gate this world holds, open or shut, rebuilt when its
@@ -387,7 +426,17 @@ func _go(to: StringName, at: Vector2, shaft: int, carry: bool) -> void:
 ## `query`, when given, is the one that world was walked with before: a door hands
 ## the outside's back, so every wall stamped into it (landmarks, works, holdings)
 ## is still there, instead of a new query nobody has stamped.
+## What the last `enter` spent, ms, by step: "view_rebind", "view_near",
+## "sky_ground", and each system's `realm_changed` under its name (S5e: a shaft's
+## START is what a player waits on, and every part of it is named here).
+var enter_ms: Dictionary = {}
+## Chunks built on the press at a crossing's arrival (WorldView.ensure_near).
+const ARRIVE_CHUNKS := 1
+
+
 func enter(w: WorldData, key: StringName, at: Vector2, carry := true, query: WorldQuery = null) -> void:
+	enter_ms.clear()
+	var t0 := Time.get_ticks_usec()
 	var from := _realm
 	if carry:
 		_stood[String(from)] = game.player.pos
@@ -418,16 +467,23 @@ func enter(w: WorldData, key: StringName, at: Vector2, carry := true, query: Wor
 	if game.view != null:
 		# A view already drawing this world (one set aside and put back) is not
 		# grown again: that is the whole cost of coming back out of a pocket.
+		var tv := Time.get_ticks_usec()
 		if game.view.world != w:
 			game.view.rebind(w)
+		enter_ms["view_rebind"] = (Time.get_ticks_usec() - tv) / 1000.0
+		tv = Time.get_ticks_usec()
 		game.view.focus = land
-		game.view.ensure_near(land)
+		# The chunk under the player at once; the ring round it streams in behind.
+		game.view.ensure_near(land, ARRIVE_CHUNKS)
+		enter_ms["view_near"] = (Time.get_ticks_usec() - tv) / 1000.0
 	pl.sync_view(0.0)
 	if game.camera != null:
 		game.camera.snap_to(pl.position)
 	# What the land can hold — snow, ash, wet, fog — is a texture of the world.
 	if game.sky != null:
+		var ts := Time.get_ticks_usec()
 		game.sky.set_ground(SkyGround.texture(w), w.size)
+		enter_ms["sky_ground"] = (Time.get_ticks_usec() - ts) / 1000.0
 	var door := Realm.is_pocket(from) or Realm.is_pocket(to)
 	# A door keeps the outside's shafts as they stood: they are still there when
 	# the player comes back out, and only hidden while they are in.
@@ -448,10 +504,15 @@ func enter(w: WorldData, key: StringName, at: Vector2, carry := true, query: Wor
 	for sys in game.systems:
 		if sys == self:
 			continue
+		var tq := Time.get_ticks_usec()
 		if door and sys.has_method(&"indoors"):
 			sys.call(&"indoors", Realm.is_pocket(to))
 		elif sys.has_method(&"realm_changed"):
 			sys.call(&"realm_changed", from, to)
+		var spent := (Time.get_ticks_usec() - tq) / 1000.0
+		if spent > 0.05:
+			enter_ms[String(sys.name)] = spent
+	enter_ms["total"] = (Time.get_ticks_usec() - t0) / 1000.0
 
 
 ## The shafts of the world the game is in now, and a drawn gate for each.
@@ -509,6 +570,10 @@ func tour_seen(what: String) -> bool:
 		return crossings > 0
 	if what.begins_with("realm:"):
 		return String(_realm) == what.substr(6)
+	# The world behind a shaft is standing: raised and kept, so going down waits
+	# on nothing but the going (RealmWorlds).
+	if what.begins_with("raised:"):
+		return RealmWorlds.ready(game.options.seed_value, game.world.size, StringName(what.substr(7)))
 	if what == "era_gate":
 		return gate_near != &""
 	if what.begins_with("era_gate:"):

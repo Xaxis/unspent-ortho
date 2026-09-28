@@ -356,15 +356,11 @@ func test_a_fresh_lock_needs_the_body_in_sight() -> void:
 		if m.kind == &"runner":
 			runner = m
 	check(runner != null, "a runner to hide")
-	var house: WorldProp = null
-	var best := INF
-	for p: WorldProp in g.world.each_prop():
-		if p.kind == PropKind.HOUSE and p.pos.distance_to(g.player.pos) < best:
-			best = p.pos.distance_to(g.player.pos)
-			house = p
-	check(house != null, "a house to hide it behind")
 	var dir := Vector2.RIGHT.rotated(0.3)
+	var house := _open_house(g, dir)
+	check(house != null, "a house to hide it behind")
 	var near := house.solid + 1.4
+	_park_others(g, runner, house.pos)
 	_stand(g, house.pos + dir * near)
 	runner.pos = house.pos - dir * near
 	runner.calm_until = INF
@@ -387,6 +383,49 @@ func test_a_fresh_lock_needs_the_body_in_sight() -> void:
 	_done()
 
 
+## The house nearest the player with open ground on its `dir` side: nothing else
+## solid within a tile of where the player and the body in the open are stood.
+## Which houses have that is the world's; these tests need one that does.
+func _open_house(g: Game, dir: Vector2) -> WorldProp:
+	var houses: Array = []
+	for p: WorldProp in g.world.each_prop():
+		if p.kind == PropKind.HOUSE:
+			houses.append([p.pos.distance_to(g.player.pos), p])
+	houses.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	for row: Array in houses:
+		var house: WorldProp = row[1]
+		var near := house.solid + 1.4
+		var from := house.pos + dir * near
+		var to := house.pos + dir * (near + 2.5)
+		var clear := true
+		for q: WorldProp in g.world.each_prop():
+			if WorldProp.same(q, house) or q.solid <= 0.0:
+				continue
+			var t := clampf((q.pos - from).dot(to - from) / (to - from).length_squared(), 0.0, 1.0)
+			if q.pos.distance_to(from + (to - from) * t) < q.solid + 1.0:
+				clear = false
+				break
+		if clear:
+			return house
+	return null
+
+
+## Every body and every villager but the one under test, far from where it is
+## staged: who stands by the spawn village's nearest house is the world's (on
+## GEN 46's seed 4 a keeper stands at it), and these tests are about the one
+## behind the house, not about them.
+func _park_others(g: Game, keep: MobState, at: Vector2) -> void:
+	var away := at + Vector2(400.0, 400.0)
+	for m: MobState in g.player.sim.mobs:
+		if m != keep:
+			m.pos = away
+	for sys in g.systems:
+		var script := sys.get_script() as Script
+		if script != null and script.resource_path.ends_with("35_folk.gd"):
+			for row: Dictionary in sys.get("folk"):
+				row["pos"] = away
+
+
 func _stand(g: Game, at: Vector2) -> void:
 	g.player.hero.pos = at
 	g.player.sync_view(0.0)
@@ -403,14 +442,10 @@ func test_a_sweep_reads_only_what_is_seen_or_coming() -> void:
 	for m: MobState in g.player.sim.mobs:
 		if m.kind == &"runner":
 			runner = m
-	var house: WorldProp = null
-	var best := INF
-	for p: WorldProp in g.world.each_prop():
-		if p.kind == PropKind.HOUSE and p.pos.distance_to(g.player.pos) < best:
-			best = p.pos.distance_to(g.player.pos)
-			house = p
 	var dir := Vector2.RIGHT.rotated(0.3)
+	var house := _open_house(g, dir)
 	var near := house.solid + 1.4
+	_park_others(g, runner, house.pos)
 	_stand(g, house.pos + dir * near)
 	runner.pos = house.pos - dir * near
 	runner.calm_until = INF

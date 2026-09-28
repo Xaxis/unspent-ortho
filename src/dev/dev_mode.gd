@@ -43,6 +43,9 @@ const ACCESS: Array[StringName] = [&"off", &"chord", &"open"]
 ## number row, so a digit cannot collide with a verb the player means.
 const ACTIONS := {
 	&"dev_toggle": [KEY_QUOTELEFT],
+	# Along the dev app's strip of tabs (UiDevScreen), from any page of it.
+	&"dev_tab_prev": [KEY_BRACKETLEFT],
+	&"dev_tab_next": [KEY_BRACKETRIGHT],
 	&"dev_note": [KEY_2, KEY_F2],
 	&"dev_readout": [KEY_3, KEY_F3],
 	&"dev_picture": [KEY_4, KEY_F4],

@@ -91,33 +91,21 @@ static func _look(w: WorldData) -> Vector2:
 	return best
 
 
-## Every water tile joined to the edge of the map: the sea, as against a pond
-## inland that happens to be deep. One flood per world, which is why `site` is
-## cached.
-##
-## **READ THE GRIDS, NOT THE ACCESSORS.** This was a Dictionary keyed by tile
-## index and it asked `ground_at` for every neighbour, and at the full world that
-## is 1.69 million hash inserts and as many function calls: measured 3.26 SECONDS,
-## about a quarter of the whole of world generation, for a question about one
-## platform. A `PackedByteArray` the size of the grid and a direct read of
-## `w.ground` answer the same thing, tile for tile -- the site this picks is
-## unchanged, which is the point, because moving it moves every world.
+## Every tile at or under the sea's level joined to the edge of the map: the
+## sea, as against a pond inland that happens to be deep. From the PLAN's levels,
+## not the surface's water grounds: the plan decides where the sea is before any
+## section lays a ground, so a streamed world knows it without the whole surface,
+## and on every seed measured the two agree on every deep tile the site could
+## take (tests/stream/test_black_site_plan.gd). One flood per world, cached.
 static func _sea(w: WorldData) -> PackedByteArray:
 	var size := w.size
 	var seen := PackedByteArray()
 	seen.resize(size * size)
 	var edge := PackedInt32Array()
-	var ground := w.ground
-	# One byte per ground id instead of a call per neighbour: the flood asks this
-	# about four tiles for every tile it pops, so `Ground.is_water` was three
-	# million calls at the full world.
-	var wet := PackedByteArray()
-	wet.resize(Ground.COUNT)
-	for g in Ground.COUNT:
-		wet[g] = 1 if Ground.is_water(g) else 0
+	var level := w.level
 	for i in size:
 		for k: int in [i, (size - 1) * size + i, i * size, i * size + size - 1]:
-			if seen[k] == 0 and wet[ground[k]] != 0:
+			if seen[k] == 0 and level[k] <= 0:
 				seen[k] = 1
 				edge.append(k)
 	while not edge.is_empty():
@@ -125,16 +113,16 @@ static func _sea(w: WorldData) -> PackedByteArray:
 		edge.remove_at(edge.size() - 1)
 		var x := k % size
 		var y := k / size
-		if x > 0 and seen[k - 1] == 0 and wet[ground[k - 1]] != 0:
+		if x > 0 and seen[k - 1] == 0 and level[k - 1] <= 0:
 			seen[k - 1] = 1
 			edge.append(k - 1)
-		if x < size - 1 and seen[k + 1] == 0 and wet[ground[k + 1]] != 0:
+		if x < size - 1 and seen[k + 1] == 0 and level[k + 1] <= 0:
 			seen[k + 1] = 1
 			edge.append(k + 1)
-		if y > 0 and seen[k - size] == 0 and wet[ground[k - size]] != 0:
+		if y > 0 and seen[k - size] == 0 and level[k - size] <= 0:
 			seen[k - size] = 1
 			edge.append(k - size)
-		if y < size - 1 and seen[k + size] == 0 and wet[ground[k + size]] != 0:
+		if y < size - 1 and seen[k + size] == 0 and level[k + size] <= 0:
 			seen[k + size] = 1
 			edge.append(k + size)
 	return seen

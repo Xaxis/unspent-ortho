@@ -609,10 +609,12 @@ func _witness() -> void:
 		_witnessed(StoryContent.WITNESS_ON[&"other_realm"])
 	if _hunted_here():
 		_witnessed(StoryContent.WITNESS_ON[&"hunted"])
-	# The three memories the secret is hidden in, all back: which version he holds.
-	var secret := StorySecret.version()
-	if secret != &"":
-		_witnessed(secret)
+	if _lost_one():
+		_witnessed(StoryContent.WITNESS_ON[&"lost"])
+	# The three memories the secret is hidden in, all back, in any order: he holds
+	# it. Which version is decided at the channel, by the order he relives them in.
+	if StorySecret.complete():
+		_witnessed(StorySecret.HELD)
 
 
 func _hunted_here() -> bool:
@@ -627,6 +629,20 @@ func _hunted_here() -> bool:
 		return false
 	var net := Interference.network(game.world, game.player.pos)
 	return interference.level_name(net) == &"hunted"
+
+
+## Somebody he was walking home from a yard went down on the road (45_taken's
+## record, read, never written).
+func _lost_one() -> bool:
+	for s in game.systems:
+		if s.name == "45_taken":
+			var taken: Taken = s.get("taken")
+			if taken == null:
+				return false
+			for t: Taken.TakenPerson in taken.people:
+				if t.lost:
+					return true
+	return false
 
 
 func _on_took(item: StringName, _count: int) -> void:

@@ -698,11 +698,11 @@ func _prop_of(s: Dictionary) -> WorldProp:
 	return game.world.prop_at(int(s.row))
 
 
-func _bucket(p: WorldProp) -> void:
+static func _bucket_into(p: WorldProp, into: Array[Dictionary], cells: Dictionary) -> void:
 	var key := floori(p.pos.y / float(CELL)) * CELL_STRIDE + floori(p.pos.x / float(CELL))
-	if not _cells.has(key):
-		_cells[key] = []
-	(_cells[key] as Array).append(sources.size() - 1)
+	if not cells.has(key):
+		cells[key] = []
+	(cells[key] as Array).append(into.size() - 1)
 
 
 ## Every source that COULD be within `reach` of `focus`. A cell straddles the
@@ -731,6 +731,30 @@ func _near(focus: Vector2, reach: float) -> Array[Dictionary]:
 ## never read at all while the old world's go on lighting ground they are not
 ## standing on. CLAUDE.md's realms row names "light index" as the example of a
 ## cache keyed on the world; this system never had the method.
+## A world's index made beside it (RealmWarm, on the raise's worker), waiting for
+## the crossing that takes it. Guarded: the worker writes, the main thread reads.
+static var _prepared: Dictionary = {}
+static var _prepared_lock := Mutex.new()
+
+
+static func prepare_world(w: WorldData) -> void:
+	var into: Array[Dictionary] = []
+	var cells: Dictionary = {}
+	var glow: Dictionary = {}
+	var n := index_of(w, 0, into, cells, glow)
+	_prepared_lock.lock()
+	_prepared[w.get_instance_id()] = [weakref(w), into, cells, n]
+	_prepared_lock.unlock()
+
+
+static func _take_prepared(w: WorldData) -> Array:
+	_prepared_lock.lock()
+	var got: Array = _prepared.get(w.get_instance_id(), [])
+	_prepared.erase(w.get_instance_id())
+	_prepared_lock.unlock()
+	return got
+
+
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	# EACH WORLD'S INDEX IS KEPT and handed back when that world comes back: a
 	# door into a house and out again is the same coast, and indexing its every
@@ -742,6 +766,8 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 		if (_index_of[k][0] as WeakRef).get_ref() == null:
 			_index_of.erase(k)
 	var kept: Array = _index_of.get(game.world.get_instance_id(), [])
+	if kept.is_empty():
+		kept = _take_prepared(game.world)
 	if not kept.is_empty() and (kept[0] as WeakRef).get_ref() == game.world:
 		sources = kept[1]
 		_cells = kept[2]
@@ -764,35 +790,55 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 	_refresh = 0.0
 
 
+## Index every light source of the world from where it was left (`_indexed`).
 func _index_sources() -> void:
-	var w := game.world
-	while _indexed < w.prop_count():
-		var p: WorldProp = w.prop_at(_indexed)
-		_indexed += 1
+	_indexed = index_of(game.world, _indexed, sources, _cells, _glow_cache)
+
+
+## THE INDEX OF A WORLD'S LIGHT SOURCES, from prop `from` on, into `into` and its
+## cells: pure over the world, so a world raised for a crossing is indexed beside
+## it on the raise's worker (`prepare_world`, RealmWarm) and the press takes it
+## (1.5 s at 1840 on the way down a shaft, S5e). Returns where it stopped.
+static func index_of(w: WorldData, from: int, into: Array[Dictionary], cells: Dictionary, glow: Dictionary) -> int:
+	var i := from
+	var count := w.prop_count()
+	# Most rows are rocks and trees that no model of theirs ever lights. Their
+	# kind is read off the packed table, and they are passed without a view made
+	# of them or a model dealt: that walk was most of a world's index (1.3 s at
+	# 1840 underground).
+	var kinds := w.table.kind if w.packed else PackedByteArray()
+	while i < count:
+		if w.packed:
+			var k := int(kinds[i])
+			if not SOURCES.has(k) and k != PropKind.PYLON and not _may_glow(k, glow):
+				i += 1
+				continue
+		var p: WorldProp = w.prop_at(i)
+		i += 1
 		if not SOURCES.has(p.kind) and p.kind != PropKind.PYLON:
 			# Any other kind whose model says where its lights are (a relay's
 			# beacon, an array's strip) glints on the machines' power.
-			var pts := _points_for(p)
+			var pts := _points_of(w, p, glow)
 			if not pts.is_empty():
 				var world_pts: Array[Vector3] = []
 				var rgb: Array[Vector3] = []
-				var base := game.world.to_3d(p.pos)
+				var base := w.to_3d(p.pos)
 				for g: Dictionary in pts:
 					world_pts.append(base + Basis(Vector3.UP, -p.rot) * ((g.at as Vector3) * p.scale))
 					var c: Color = g.color
 					rgb.append(Vector3(c.r, c.g, c.b))
-				sources.append({"row": _indexed - 1, "kind": p.kind, "h": Rng.hash01(game.world.seed_value, p.id, 0x11A), "h2": 0.0,
+				into.append({"row": i - 1, "kind": p.kind, "h": Rng.hash01(w.seed_value, p.id, 0x11A), "h2": 0.0,
 					"at": world_pts[0], "range": 0.0, "power": 0.0, "warm": WARM, "machine_points": world_pts, "machine_rgb": rgb, "blink": bool(pts[0].get("blink", false))})
-				_bucket(p)
+				_bucket_into(p, into, cells)
 			continue
 		var s := {
-			"row": _indexed - 1, "kind": p.kind,
-			"h": Rng.hash01(game.world.seed_value, p.id, 0x11A),
-			"h2": Rng.hash01(game.world.seed_value, p.id, 0x11B),
+			"row": i - 1, "kind": p.kind,
+			"h": Rng.hash01(w.seed_value, p.id, 0x11A),
+			"h2": Rng.hash01(w.seed_value, p.id, 0x11B),
 		}
 		if SOURCES.has(p.kind):
 			var spec: Array = SOURCES[p.kind]
-			var base := game.world.to_3d(p.pos)
+			var base := w.to_3d(p.pos)
 			var local := Vector3(0, float(spec[2]), 0)
 			# `variant_of`, never the id's hash: world gen may have DEALT this
 			# prop a model (WorldProp.variant), and a light read off the other one
@@ -803,8 +849,8 @@ func _index_sources() -> void:
 			# needed the same two numbers and could not see them: a hearth was
 			# placed at the front wall of coast variant 0 whatever house the baker
 			# had actually built.
-			var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
-			var variant := PropModels.variant_of(p, game.world.seed_value, country)
+			var country := maxi(Country.COAST, w.country_at(floori(p.pos.x), floori(p.pos.y)))
+			var variant := PropModels.variant_of(p, w.seed_value, country)
 			if PLACED_SOURCES.has(p.kind):
 				var pts := PropModels.glow_points(p.kind, variant, country)
 				if pts.is_empty():
@@ -835,12 +881,13 @@ func _index_sources() -> void:
 				PropKind.INTAKE, PropKind.PUMP_HOUSE, PropKind.CHECKPOINT: s.warm = MACHINE_COLD
 				_: s.warm = WARM
 		else:
-			s.at = game.world.to_3d(p.pos) + Vector3(0, 4.05 * p.scale, 0)
+			s.at = w.to_3d(p.pos) + Vector3(0, 4.05 * p.scale, 0)
 			s.range = 0.0
 			s.power = 0.0
 			s.warm = WARM
-		sources.append(s)
-		_bucket(p)
+		into.append(s)
+		_bucket_into(p, into, cells)
+	return i
 
 
 ## Where this house's stolen tube hangs and what colour it burns, read off the
@@ -1136,12 +1183,34 @@ var _glow_cache: Dictionary = {}
 ## corrected per prop even where the caller knew better: the first prop of a kind
 ## to be indexed decided for every other one in the world.
 func _points_for(p: WorldProp) -> Array:
-	var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
-	var variant := PropModels.variant_of(p, game.world.seed_value, country)
+	return _points_of(game.world, p, _glow_cache)
+
+
+## Whether any model of `kind`, in any variant and landscape, has a light
+## (`glow_points`), asked once per kind and kept in the caller's `glow` under a
+## key no model key takes (they are never negative).
+static func _may_glow(kind: int, glow: Dictionary) -> bool:
+	var key := -1 - kind
+	if not glow.has(key):
+		var any := false
+		for v in PropModels.MAX_VARIANTS:
+			for c in BiomeRegistry.SLOTS:
+				if not glow_points(kind, v, c).is_empty():
+					any = true
+					break
+			if any:
+				break
+		glow[key] = any
+	return bool(glow[key])
+
+
+static func _points_of(w: WorldData, p: WorldProp, glow: Dictionary) -> Array:
+	var country := maxi(Country.COAST, w.country_at(floori(p.pos.x), floori(p.pos.y)))
+	var variant := PropModels.variant_of(p, w.seed_value, country)
 	var key := (p.kind * PropModels.MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country
-	if not _glow_cache.has(key):
-		_glow_cache[key] = glow_points(p.kind, variant, country)
-	return _glow_cache[key]
+	if not glow.has(key):
+		glow[key] = glow_points(p.kind, variant, country)
+	return glow[key]
 
 
 ## The sources and machines that could glint near the focus, nearest first.

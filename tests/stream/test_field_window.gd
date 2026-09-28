@@ -47,3 +47,52 @@ static func _differs(whole: PackedFloat32Array, part: PackedFloat32Array, r: Rec
 			if part[y * r.size.x + x] != whole[wy * SIZE + wx]:
 				bad += 1
 	return bad
+
+
+## `upsample_rows` is the whole-world upsample's own rows: any band, at the world's
+## top, middle and bottom, on a size that is not a multiple of the step.
+func test_rows_of_an_upsampled_grid_are_the_world_s() -> void:
+	var size := 1839
+	var step := 4
+	var cw := GenFields.coarse_width(size, step)
+	var g := PackedFloat32Array()
+	g.resize(cw * cw)
+	for k in g.size():
+		g[k] = Rng.hash01(7, k, 0, 0x5B1) * 10.0 - 5.0
+	var whole := GenFields.upsample(g, cw, step, size)
+	var bad := 0
+	for band: Vector2i in [Vector2i(0, 14), Vector2i(3, 1), Vector2i(911, 16), Vector2i(1820, 19), Vector2i(1837, 2)]:
+		var got := GenFields.upsample_rows(g, cw, step, size, band.x, band.y)
+		eq(got.size(), band.y * size, "rows %d..: the band's tiles" % band.x)
+		for k in got.size():
+			if got[k] != whole[band.x * size + k]:
+				bad += 1
+	eq(bad, 0, "every band's tiles are the whole-world upsample's")
+
+
+## `batch_rows` is `batch`'s own rows, spec for spec: upsampled grids, fields at
+## steps 2, 4 and 8, and per-tile noise, on bands at the top, middle and bottom.
+func test_rows_of_a_batch_are_the_world_s() -> void:
+	var size := 1839
+	var cw := GenFields.coarse_width(size, 4)
+	var g := PackedFloat32Array()
+	g.resize(cw * cw)
+	for k in g.size():
+		g[k] = Rng.hash01(9, k, 0, 0x5B2) * 4.0 - 2.0
+	var specs := [
+		[GenFields.UP, g, cw, 4],
+		[GenFields.FIELD, GenFields.noise(9, 301, 1.0 / 58.0, 4), 2],
+		[GenFields.FIELD, GenFields.noise(9, 304, 1.0 / 44.0, 2), 4],
+		[GenFields.FIELD, GenFields.noise(9, 306, 1.0 / 60.0, 2), 8],
+		[GenFields.NOISE, GenFields.noise(9, 303, 1.0 / 13.0, 2), size, 1],
+	]
+	var whole := GenFields.batch(size, specs)
+	var bad := PackedInt32Array()
+	bad.resize(specs.size())
+	for band: Vector2i in [Vector2i(0, 48), Vector2i(5, 3), Vector2i(900, 48), Vector2i(1829, 10)]:
+		var got := GenFields.batch_rows(size, specs, band.x, band.y)
+		for j in specs.size():
+			for k in got[j].size():
+				if got[j][k] != whole[j][band.x * size + k]:
+					bad[j] += 1
+	eq(Array(bad), [0, 0, 0, 0, 0], "every spec's band is the world's, tile for tile (tiles differing, by spec)")

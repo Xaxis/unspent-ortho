@@ -73,12 +73,13 @@ func test_the_app_opens_beside_a_hostile_and_steps_in_and_out_of_pages() -> void
 	tree.root.add_child(mob)
 	var s := _open(g)
 	check(s != null, "the dev app is on top, a machine close or not")
-	eq(s.page().heading(), "HOME")
+	eq(s.page().heading(), "WORLD", "a game opens on the first tab")
+	s.open_at(&"saves")
 	s.select(&"config")
 	s.handle(&"confirm")
 	eq(s.page().heading(), "CONFIGURATION", "e steps into a page")
 	s.handle(&"back")
-	eq(s.page().heading(), "HOME", "esc backs out one level")
+	eq(s.page().heading(), "SAVES", "esc backs out one level, to the tab")
 	s.handle(&"dev_toggle")
 	check(not s.is_open, "` shuts it from anywhere")
 	mob.free()
@@ -420,10 +421,8 @@ func test_local_pages_say_why_not_where_the_tools_are_not() -> void:
 	_keep()
 	var g := _make(true)
 	var s := _open(g)
-	var rows := DevPageHome.new()
-	rows.screen = s
-	rows.game = g
-	for r: Dictionary in rows.rows():
+	s.open_at(&"saves")
+	for r: Dictionary in s.page().rows():
 		if r.get("id") in [&"builds", &"proofs"]:
 			eq(UiMenu.enabled(r), DevMode.local(), "%s is open only on the machine the game is built on" % r.id)
 	g.free()
@@ -565,5 +564,63 @@ func test_the_land_presses_and_the_autosave_follow_the_configuration() -> void:
 	GameConfig.set_value("rules.hazards", 2.0)
 	dev.call("_process", 0.0)
 	near(float(hazards.get("pressure_scale")), 2.0, 0.001, "or twice as hard")
+	g.free()
+	_restore()
+
+
+## THE REBUILD LOST NOTHING. Every page the app has ever opened by id (a key, a
+## tool's --dev=PAGE, a tour) still opens, and every row that page offers can be
+## stood on through the id it has always had, whether the page now stands inline
+## on a tab or behind a door on one.
+func test_every_page_the_app_ever_had_still_opens_with_every_row() -> void:
+	_keep()
+	var g := _make(true)
+	var s := _open(g)
+	for id: StringName in [&"go", &"time", &"body", &"give", &"spawn", &"view", &"config", &"story", &"notes",
+			&"builds", &"proofs", &"people", &"path", &"ledger", &"words"]:
+		check(s.open_at(id), "%s still opens" % id)
+		var p := DevPageTab.page_for(id)
+		p.screen = s
+		p.game = g
+		var n := 0
+		for r: Dictionary in p.rows():
+			if not UiMenu.selectable(r) or not r.has("id"):
+				continue
+			n += 1
+			s.open_at(id, r.id)
+			eq(s.menu.selected().get("id", &""), r.id, "%s's row %s is on the glass" % [id, r.id])
+			eq(str(s.menu.selected().get("text", "")), str(r.text), "and it is the same row")
+		check(n > 0, "%s has rows to stand on" % id)
+	check(not s.open_at(&"nowhere"), "an id no tab holds is refused")
+	g.free()
+	_restore()
+
+
+func test_the_strip_moves_along_from_anywhere_and_wraps() -> void:
+	_keep()
+	var g := _make(true)
+	var s := _open(g)
+	var names := PackedStringArray()
+	for t: Dictionary in DevPageTab.TABS:
+		names.append(str(t.name))
+	eq(names, PackedStringArray(["WORLD", "STORY", "FIGHT", "LOOK & SPEED", "SAVES"]))
+	eq(s.page().heading(), "WORLD")
+	s.step_tab(1)
+	eq(s.page().heading(), "STORY", "] is the next tab")
+	s.step_tab(-2)
+	eq(s.page().heading(), "SAVES", "and [ wraps round to the last")
+	s.open_at(&"world")
+	s.select(&"go")
+	s.handle(&"right")
+	eq(s.page().heading(), "STORY", "right on a row that changes nothing is the next tab")
+	s.open_at(&"time", &"rate")
+	var was: Variant = GameConfig.value("rules.clock")
+	s.handle(&"right")
+	eq(s.page().heading(), "WORLD", "right on a row that steps changes it, and stays")
+	check(not ConfigSchema.same(GameConfig.value("rules.clock"), was), "the clock's rate moved")
+	s.open_at(&"notes")
+	s.step_tab(1)
+	eq(s.pages.size(), 1, "a tab change from a page stepped into lands on the tab itself")
+	eq(s.page().heading(), "WORLD")
 	g.free()
 	_restore()

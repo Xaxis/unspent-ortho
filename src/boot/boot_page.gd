@@ -481,6 +481,13 @@ func _after_lift() -> bool:
 
 func _on_drawn() -> void:
 	_drawn += 1
+	# What the page's first frames of a world cost, said so a run can read what
+	# the draw stage waited on (tools/web: the crossing's `draw`).
+	print("boot draw %s frame %d at %d ms: process %.0f ms, physics %.0f ms, %d draw calls, %d objects" % [kind, _drawn,
+		Time.get_ticks_msec() - _draw_from, Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+		Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)])
 
 
 func _exit_tree() -> void:

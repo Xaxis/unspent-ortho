@@ -61,6 +61,8 @@ var _wing: GlideWingModel = null
 var _line: MeshInstance3D = null
 ## Ability ids that have fired in this game, for the tour's awaits.
 var _fired: Dictionary = {}
+## Which ability keys were down at the last read (the press's own edge).
+var _was_down: Dictionary = {}
 var _gliding := false
 ## The kind of the last jump that came down (Jump.HOP UP ACROSS DOWN DIVE), and
 ## every kind that has, for a tour to ask after.
@@ -149,15 +151,22 @@ func _physics_process(delta: float) -> void:
 	if game == null or game.player == null:
 		return
 	var ctx := _ctx()
-	if not game.input_blocked():
-		for a in book.all():
-			if a.action == &"" or not InputMap.has_action(a.action):
-				continue
-			if a.hold:
-				if Input.is_action_pressed(a.action):
-					book.hold_down(a.id, ctx, delta)
-			elif Input.is_action_just_pressed(a.action):
-				_fire(a.id)
+	var blocked := game.input_blocked()
+	for a in book.all():
+		if a.action == &"" or not InputMap.has_action(a.action):
+			continue
+		# The press is this system's own edge too (40_fight `_went_down`), read
+		# while a screen is up as well, so a key held through one is not a press.
+		var now := Input.is_action_pressed(a.action)
+		var went := (now and not bool(_was_down.get(a.action, false))) or Input.is_action_just_pressed(a.action)
+		_was_down[a.action] = now
+		if blocked:
+			continue
+		if a.hold:
+			if now:
+				book.hold_down(a.id, ctx, delta)
+		elif went:
+			_fire(a.id)
 	book.step(_ctx(), delta)
 	_run_motion(delta)
 

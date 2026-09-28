@@ -749,7 +749,8 @@ func _forget(what: String) -> void:
 		sys.tour_forget(StringName(what))
 
 
-## Answered when the word has been seen, or is true now — except `game`, which
+## Answered when the word has been seen, or is true now — except `game` (and
+## `realm:`, which a crossing sets under its own page), which
 ## is set the moment the systems are wired and so is already true while the
 ## loading page is still drawn over the whole screen. A tour that awaits a game
 ## means the game a player can SEE, so it waits for the page to lift, the same
@@ -758,7 +759,9 @@ func _forget(what: String) -> void:
 func _answered(what: String) -> bool:
 	if not (_seen.has(what) or _now_true(what)):
 		return false
-	if what == "game":
+	# A crossing names its realm the moment `_go` runs, under its page: a shot
+	# on that alone was the page, not the far side.
+	if what == "game" or what.begins_with("realm:"):
 		return get_tree().get_nodes_in_group(&"boot_page").is_empty()
 	return true
 

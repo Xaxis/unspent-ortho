@@ -149,7 +149,8 @@ faction. **They were the Echo**, the sliver of HALCYON that is still him
 - It could not declare people, because the record has no row for them
   (`counted`: they do not count people). So every hull sailed as cargo: none
   specified. To HALCYON at large, humans stay ants. The Echo is the one ruled
-  exception, and this adds no other.
+  exception, and this adds no other. The Seeker reads people for him and discards
+  them; that is not an exception.
 - The people who came off them stayed aboard, and their grandchildren live in the
   holds. Nobody there knows why the boats came.
 - **A new beat `echo_hulls`** (the Echo, after `echo_voice`; a reveal, leg 1 to

@@ -25,7 +25,15 @@ static func run(c: GenContext) -> void:
 	const N := GenFields.NOISE
 	var cw := c.cw
 	var step := GenContext.STEP
-	var fl := GenFields.batch(size, [
+	# EVERY FIELD A BAND AT A TIME. Twenty world-sized fields at once were the
+	# relief stage's 258 MB, and after the scores (GenCountries.fine) the
+	# high-water of the whole generation; a browser's heap keeps its high-water
+	# for good. Each band of the tile loop asks for its own rows of each
+	# (`GenFields.batch_rows`, the same values tile for tile) and lets them go.
+	# Only the rim's warp is kept past the stage (`c.rim_warp`), so only it is made
+	# whole.
+	var rim_n := GenFields.noise(s, 307, 1.0 / 26.0, 2)
+	var specs := [
 		[U, p[&"base"], cw, step], [U, p[&"hills"], cw, step], [U, p[&"ridge"], cw, step],
 		[U, p[&"near"], cw, step],
 		[U, p[&"terrace"], cw, step], [U, p[&"cliff"], cw, step],
@@ -40,39 +48,23 @@ static func run(c: GenContext) -> void:
 		[F, GenFields.noise(s, 306, 1.0 / 60.0, 2), 8],
 		[F, GenFields.noise(s, 305, 1.0 / 30.0, 2), 4],
 		[N, GenFields.noise(s, 308, 1.0 / 8.0, 2), size, 1],
-		# The rim is a broken ring, never a drawn circle.
-		[F, GenFields.noise(s, 307, 1.0 / 26.0, 2), 2],
+		# The rim is a broken ring, never a drawn circle (`rim_warp`, made whole).
+		[F, rim_n, 2],
 		# How tall a shelf's cliff stands, wandering across a range of crags.
 		[F, GenFields.noise(s, 309, 1.0 / 70.0, 2), 8],
 		[U, p[&"shelf"], cw, step], [U, p[&"shelf_var"], cw, step],
 		[U, _slotted_soft(c), cw, step],
-	])
+	]
+	if not c.form_e.is_empty():
+		specs.append([U, c.form_e, cw, step])
+	# Each coarse grid made its image once, for every band to crop.
+	for spec: Array in specs:
+		if int(spec[0]) == U:
+			spec[1] = GenFields.grid_image(spec[1], cw)
+	var rim_warp: PackedFloat32Array = GenFields.batch(size, [[F, rim_n, 2]])[0]
 	c.mark(&"relief.batch")
-	var base := fl[0]
-	var hills_amp := fl[1]
-	var ridge_amp := fl[2]
-	var near_amp := fl[3]
-	var terrace := fl[4]
-	var cliff_bias := fl[5]
-	var burning := fl[6]
-	var coastal := fl[7]
-	var hills := fl[8]
-	var ridge := fl[9]
-	var detail := fl[10]
-	var cliffn := fl[11]
-	var shoren := fl[12]
-	var shelf := fl[13]
-	var dunes := fl[14]
 	var heart := c.hearts[c.caldera_type] if c.caldera_type >= 0 else Vector2(-1, -1)
 	var crater := crater_radius(c)
-	var rim_warp := fl[15]
-	var shelfn := fl[16]
-	var shelf_amp := fl[17]
-	var shelf_var := fl[18]
-	# Where a slot labyrinth may stand (`slots`): the plateau itself is stood up
-	# once every tile has its landscape (`lift_slots`); here, only the terraces
-	# are kept off the ground it will stand on.
-	var slot_share := fl[19]
 	var slotted := false
 	for v: float in p[&"slots"]:
 		slotted = slotted or v > 0.01
@@ -84,35 +76,60 @@ static func run(c: GenContext) -> void:
 	var islet := c.islet
 	var elev := PackedFloat32Array()
 	elev.resize(n)
-	var form := GenFields.upsample(c.form_e, cw, step, size) if not c.form_e.is_empty() else PackedFloat32Array()
-	var formed := not form.is_empty()
+	var formed := not c.form_e.is_empty()
 	c.mark(&"relief.fields")
 	GenFields.rows(size, func(y0: int, y1: int) -> void:
+		var fl := GenFields.batch_rows(size, specs, y0, y1 - y0)
+		var base := fl[0]
+		var hills_amp := fl[1]
+		var ridge_amp := fl[2]
+		var near_amp := fl[3]
+		var terrace := fl[4]
+		var cliff_bias := fl[5]
+		var burning := fl[6]
+		var coastal := fl[7]
+		var hills := fl[8]
+		var ridge := fl[9]
+		var detail := fl[10]
+		var cliffn := fl[11]
+		var shoren := fl[12]
+		var shelf := fl[13]
+		var dunes := fl[14]
+		var shelfn := fl[16]
+		var shelf_amp := fl[17]
+		var shelf_var := fl[18]
+		# Where a slot labyrinth may stand (`slots`): the plateau itself is stood up
+		# once every tile has its landscape (`lift_slots`); here, only the terraces
+		# are kept off the ground it will stand on.
+		var slot_share := fl[19]
+		var form := fl[20] if formed else PackedFloat32Array()
 		for y in range(y0, y1):
 			var row := y * size
+			var lrow := (y - y0) * size
 			for x in size:
 				var i := row + x
+				var li := lrow + x
 				if land[i] == 0:
-					elev[i] = 0.0 if offshore[i] < 2.2 + shelf[i] * 3.0 else -1.0
+					elev[i] = 0.0 if offshore[i] < 2.2 + shelf[li] * 3.0 else -1.0
 					continue
-				var e := base[i] + hills[i] * hills_amp[i]
+				var e := base[li] + hills[li] * hills_amp[li]
 				if formed:
-					e += form[i]
-				var r := 1.0 - absf(ridge[i])
-				var ha := hills_amp[i]
-				e += r * r * r * ridge_amp[i]
+					e += form[li]
+				var r := 1.0 - absf(ridge[li])
+				var ha := hills_amp[li]
+				e += r * r * r * ridge_amp[li]
 				if ha > 1.0:
-					e += detail[i] * (0.3 + ha * 0.12)
+					e += detail[li] * (0.3 + ha * 0.12)
 				# What this landscape asked for at walking scale, on top of
 				# whatever its hills happen to carry (`BiomeDef.relief.near`).
-				e += detail[i] * near_amp[i]
-				var t := terrace[i]
+				e += detail[li] * near_amp[li]
+				var t := terrace[li]
 				# SLOTS: how firmly a slot labyrinth holds this tile. A
 				# neighbour's terraces are kept off it: their two-level risers
 				# would stair its floors into pieces no body can walk between.
 				var hold := 0.0
-				if slotted and slot_share[i] > 0.01:
-					hold = smoothstep(0.04, 0.16, slot_share[i])
+				if slotted and slot_share[li] > 0.01:
+					hold = smoothstep(0.04, 0.16, slot_share[li])
 					t *= 1.0 - hold
 				if t > 0.01:
 					# Plateaus in steps of two levels with short steep risers: scarps.
@@ -121,12 +138,12 @@ static func run(c: GenContext) -> void:
 					# between broad shelves. The riser keeps the two-level scarp's
 					# height of raw land, so a tall step stands as one face rather
 					# than a ramp; the default step keeps its exact bounds.
-					var h := 2.0 + shelf_amp[i] * (1.0 + shelf_var[i] * shelfn[i])
+					var h := 2.0 + shelf_amp[li] * (1.0 + shelf_var[li] * shelfn[li])
 					var lo := 0.62 if h == 2.0 else 0.88 - 0.52 / h
 					var q := e / h
 					var f := q - floorf(q)
 					e = lerpf(e, (floorf(q) + smoothstep(lo, 0.88, f)) * h, t)
-				var bw := burning[i]
+				var bw := burning[li]
 				if bw > 0.05:
 					var dx := x - heart.x
 					var dy := y - heart.y
@@ -136,26 +153,28 @@ static func run(c: GenContext) -> void:
 					e += bw * (rim + basin)
 				var d_in := inland[i]
 				if d_in < 24.0:
-					var cl := clampf((0.52 - convex[i]) * 5.0 + cliffn[i] * 1.5 + cliff_bias[i], 0.0, 1.0)
+					var cl := clampf((0.52 - convex[i]) * 5.0 + cliffn[li] * 1.5 + cliff_bias[li], 0.0, 1.0)
 					# Beaches vary from wide flats to steep shores.
-					var sh := shoren[i]
+					var sh := shoren[li]
 					var flat := 1.0 + maxf(0.0, sh) * 7.0
 					var slope := 0.3 + maxf(0.0, -sh) * 1.6
 					var beach := minf(e, 0.95 + maxf(0.0, d_in - flat) * slope)
-					if d_in > 1.5 and d_in < 12.0 and coastal[i] > 0.3:
+					if d_in > 1.5 and d_in < 12.0 and coastal[li] > 0.3:
 						# Dunes: ridged hummocks behind the sandy bays.
-						var ridge_v := 1.0 - absf(dunes[i])
-						beach += smoothstep(0.45, 0.95, ridge_v) * 1.15 * smoothstep(1.5, 4.0, d_in) * (1.0 - smoothstep(8.0, 12.0, d_in)) * minf(1.0, (coastal[i] - 0.3) * 2.5)
+						var ridge_v := 1.0 - absf(dunes[li])
+						beach += smoothstep(0.45, 0.95, ridge_v) * 1.15 * smoothstep(1.5, 4.0, d_in) * (1.0 - smoothstep(8.0, 12.0, d_in)) * minf(1.0, (coastal[li] - 0.3) * 2.5)
 					var top := maxf(e, 3.2 + cl * 3.0 + e * 0.1)
 					var headland := lerpf(top, e, smoothstep(5.0, 18.0, d_in))
 					if d_in < 1.3:
 						headland = 1.0
 					e = lerpf(beach, headland, smoothstep(0.4, 0.62, cl))
-				if islet[i] != 0 and cliffn[i] < 0.25:
+				if islet[i] != 0 and cliffn[li] < 0.25:
 					# Most islets are low skerries; the rest stand as stacks.
 					e = 1.0 + minf(1.6, d_in * 0.35)
 				elev[i] = clampf(e, 1.0, MAX_LEVEL + 0.99)
-	)
+	# Broad bands: every band asks each of its twenty fields for its rows, and
+	# a noise field's coarse cells round a narrow band cost as much as the band.
+	, 48)
 	c.elev = elev
 
 
