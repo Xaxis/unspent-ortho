@@ -370,10 +370,11 @@ func _populate(index: int, centre: Vector2) -> void:
 			queue.append(r)
 
 
-## The village the player is standing in, or -1.
+## The village the player is standing in, or -1: one of those streamed in round
+## him (`_spawned`), never a walk of every village in the world.
 func _village_here() -> int:
 	var at: Vector2 = game.player.pos
-	for i in game.world.villages.size():
+	for i: int in _spawned:
 		var vp: Vector2 = game.world.villages[i].get("pos", Vector2.INF)
 		if vp.distance_to(at) < NEAR:
 			return i
