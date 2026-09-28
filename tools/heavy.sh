@@ -7,16 +7,17 @@
 # godot processes are running. Why: with several builders running godot at once the
 # box fell to ~57 MB free (2026-09-28) and the owner's own apps began failing writes;
 # with one slot, one hour-long proof tour stalled every other job behind it.
-# Only godot counts as a running job: other projects' browsers (soniq's playwright
-# checks, Rider's cef) cycle all day. Our own browser runs take a slot, and the
-# memory floor covers everyone else's load.
+# Only a godot binary counts as a running job, matched by process name: a waiter
+# whose own command line mentions godot must not count itself. Other projects'
+# browsers (soniq's playwright checks, Rider's cef) cycle all day; our own browser
+# runs take a slot, and the memory floor covers everyone else's load.
 # Gives up after HEAVY_WAIT seconds (default 10800) with exit 2.
 set -u
 slots=${HEAVY_SLOTS:-2}
 end=$(( $(date +%s) + ${HEAVY_WAIT:-10800} ))
 lock=""
 free_pages() { vm_stat | awk '/Pages free/ {gsub("\\.","",$3); print $3}'; }
-running() { pgrep -f 'godot' | wc -l | tr -d ' '; }
+running() { pgrep -ix godot | wc -l | tr -d ' '; }
 # Slot i is the directory /tmp/unspent-heavy.lock[.i]; a slot whose holder is gone
 # (killed shell) is reclaimed.
 take() {
@@ -34,7 +35,7 @@ take() {
 # A godot up an hour or more with no parent (a probe that errored and never quit)
 # holds a slot for ever; name it so its owner kills it rather than waits on it.
 stale() {
-  pgrep -f 'godot' | while read -r p; do
+  pgrep -ix godot | while read -r p; do
     [ "$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')" = 1 ] || continue
     [ "$(ps -o etime= -p "$p" | awk -F'[-:]' '{print (NF>2)?1:0}')" = 1 ] || continue
     ps -o pid=,etime=,command= -p "$p" | cut -c1-140
