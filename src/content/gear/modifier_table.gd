@@ -98,6 +98,11 @@ const MODS := {
 		"short": "stood still, rooted",
 		"costs": "rooted, you cannot dodge",
 		"gives": [&"steady"]},
+	# The snowfield plough's, turned: `quick`, a thing about how you move.
+	&"mod_ploughshare": {"decision": "a dodge across a charge turns it off your share: it runs on past and stands spent twice as long",
+		"short": "a dodge turns a charge aside",
+		"costs": "every charge it turns takes half a dodge's breath more",
+		"gives": [&"quick"]},
 	# The drowned lockkeeper's, turned (GEAR.md §5): `charge`, so a capacitor or
 	# a leech keeps it fed (PAIRS).
 	&"mod_lock": {"decision": "a narrow way you pass through is shut behind you to machines for a while",

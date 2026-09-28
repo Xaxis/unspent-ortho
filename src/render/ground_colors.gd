@@ -283,6 +283,9 @@ static func _base(g: int) -> Color:
 		# than soil, so a wood floored in it never reads as the bare earth that
 		# borders every other wood.
 		Ground.SWARF: return _m(_m(P.EARTH[1], P.SLATE[2], 0.45), P.RUST[2], 0.28)
+		# A container's deck: dark painted steel, rust coming through the paint
+		# where boots have worn it.
+		Ground.STEEL_FLOOR: return _m(P.SLATE[1], P.RUST[1], 0.25)
 	return P.BLOOM[3]
 
 
@@ -306,6 +309,7 @@ static func _base_mark(g: int) -> int:
 		Ground.SALT: return SALT
 		Ground.PAN: return PAN
 		Ground.SWARF: return SWARF
+		Ground.STEEL_FLOOR: return MACHINE_DECK
 	# Only water reaches here, and water is drawn by the chart rather than by a
 	# ground material. Every WALKABLE ground must have a row above: one with no
 	# row takes PLAIN, and PLAIN is the one code `world.gdshader` dispatches

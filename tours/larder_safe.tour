@@ -1,0 +1,21 @@
+# THE LARDER SAFE (docs/GEAR.md §7, G6): the grower's house the orchards'
+# machines still keep is nobody's home now (InteriorKind.seats), so what it
+# holds is in a strongbox -- the plan's white safe by the door, the meals
+# nobody came for put by in it. Opened once.
+#
+#   tools/tour.sh tours/larder_safe.tour --seed=4 --hour=12.5 --weather=clear:0
+#
+# 01 is at the safe. 02 is after use: what it gave up.
+coast calm
+near door:laid_table
+await door 5
+press use 0.1
+await inside:laid_table 5
+wait 0.6
+near strongbox
+wait 0.6
+shot 01-the-larder-safe-by-the-door with inside:laid_table,box_near
+press use 0.1
+await box_opened 3
+wait 0.6
+shot 02-the-meals-nobody-came-for with inside:laid_table

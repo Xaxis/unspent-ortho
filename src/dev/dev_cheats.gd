@@ -287,12 +287,7 @@ static func _ordinal(n: int) -> String:
 ## Put the player at `p` as the fight body, the view, the camera and the sky
 ## expect (the tour's `at` does the same).
 static func teleport(game: Game, p: Vector2) -> void:
-	p = standable_near(game, p)
-	if game.player.hero != null:
-		game.player.hero.pos = p
-		game.player.hero.move = Vector2.ZERO
-	game.player.pos = p
-	game.player.position = game.world.to_3d(p)
+	p = game.player.place(standable_near(game, p))
 	game.view.ensure_near(p)
 	game.camera.snap_to(game.player.position)
 	var sky := system(game, "10_sky")

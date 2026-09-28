@@ -86,6 +86,9 @@ static func make() -> BiomeDef:
 	]
 	d.mist = 0.12
 	d.hazards = {&"cold": 0.7}
+	# Its keeper: the plough, the machine that keeps the power line's road open
+	# (src/core/sentinel/designs/plough.gd, docs/LANDSCAPES.md).
+	d.sentinel = &"plough"
 	d.roster = {
 		&"lineman": {"weight": 1.0},
 		&"dog.yard": {"weight": 1.0}, &"dog.feral": {"weight": 1.0},

@@ -1,0 +1,37 @@
+# THE DRIP-WARDEN'S BODY (the Limestone Caves' keeper, for review before any of
+# its fight): a riser mast on three raked legs limed past the knees, the drip
+# crown at its top with its own stalactites grown from the rim and dripping, the
+# pump pack and its slurry tank at the hip, the spray lance on the mast. Seen
+# whole at eye level under a tear in the roof, and in a lidded hall by its own
+# light and by the lamp.
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/drip_warden.tour --seed=7 --realm=underground --hour=12
+coast calm
+wait 1.0
+near under_roof
+wait 1.0
+tap shoulder
+await shoulder 3
+# Over the shoulder, put down from the pool's edge: it stands in the column the
+# tear lets down. Then stood off it on its own level, facing it.
+near shaft_pool
+wait 1.0
+spawn sentinel.limestone_caves
+near mob:sentinel.limestone_caves 7.5
+wait 1.2
+shot 01-under-a-tear with shoulder,mob:sentinel.limestone_caves
+# Away from the shaft, under the lid: run off down the hall in the top view,
+# then stand under the nearest roof there.
+tap shoulder
+await top_view 3
+walk 1,0 9 run
+near under_roof
+wait 1.0
+spawn sentinel.limestone_caves
+tap shoulder
+await shoulder 3
+near mob:sentinel.limestone_caves 7.5
+wait 1.2
+shot 02-in-a-lidded-hall with shoulder,mob:sentinel.limestone_caves
+tap lamp
+wait 0.8
+shot 03-in-a-lidded-hall-by-the-lamp with shoulder,lamp,mob:sentinel.limestone_caves

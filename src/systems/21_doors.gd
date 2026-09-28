@@ -122,6 +122,10 @@ func _stand_hatches() -> void:
 		var hm := load(k.hatch) as GDScript
 		var n: Node3D = hm.call(&"node", game.view.world_material())
 		n.position = game.world.to_3d(t.host)
+		# A door in a face (Threshold.of_face) stands on the floor it opens onto:
+		# its host is just inside the face, where the land is the top of the wall.
+		if t.host_code == Threshold.FACE:
+			n.position.y = game.world.to_3d(t.door).y
 		n.rotation.y = -t.rot
 		_hatches.add_child(n)
 		var c := hm.get_script_constant_map()
@@ -251,6 +255,9 @@ func _inside_side(_delta: float) -> void:
 	crawl_near = _crawl_near()
 	if crawl_near and box_near < 0 and hatch_near < 0 and stove_near < 0 and _pressed():
 		go_out(true)
+	shelf_near = _shelf_near()
+	if shelf_near and box_near < 0 and hatch_near < 0 and stove_near < 0 and not crawl_near and _pressed():
+		_at_shelf()
 	_show_trays()
 
 
@@ -271,7 +278,7 @@ var _use_edge := false
 func use_spent() -> bool:
 	if _swapping:
 		return true
-	if pocket != null and (box_near >= 0 or hatch_near >= 0 or stove_near >= 0 or crawl_near):
+	if pocket != null and (box_near >= 0 or hatch_near >= 0 or stove_near >= 0 or crawl_near or shelf_near):
 		return true
 	if door_near == null:
 		return false
@@ -433,6 +440,12 @@ var _box_refused := false
 ## Latched, for a tour: a docked sleeper woke and turned.
 var _woke := false
 var _box_opened := false
+## The kept-by shelf in reach; the doors whose shelf was given (saved); latched
+## for a tour: a stranger told whose it is, a gift given.
+var shelf_near := false
+var _given: Dictionary = {}
+var _shelf_theirs := false
+var _shelf_given := false
 
 
 func _warden_stands() -> bool:
@@ -829,6 +842,51 @@ func _take_meal(i: int) -> void:
 	Events.message.emit("The hatch slides up on a tray: %s, still hot. It was set for four." % " and ".join(got))
 
 
+## Whether the player's hands are at a lived-in room's kept-by shelf (KeptBy).
+func _shelf_near() -> bool:
+	return KeptBy.at_hand(pocket.layout, pocket.kind, game.player.pos)
+
+
+## The kept-by shelf (KeptBy): it is theirs and never taken. A stranger is told
+## so; somebody the region has thanked is given it, once a door, saved (`given`).
+func _at_shelf() -> void:
+	var key := pocket.threshold.key
+	if _given.has(key):
+		Events.message.emit(StoryContent.KEPT_BY[KeptBy.GAVE])
+		return
+	if not KeptBy.on_terms(_room_region()):
+		_shelf_theirs = true
+		Events.message.emit(StoryContent.KEPT_BY[KeptBy.THEIRS])
+		return
+	var land := BiomeRegistry.by_index(pocket.threshold.land).id
+	var got: Array[String] = []
+	for row: Dictionary in Drops.roll(Interiors.loot_source(pocket.kind.id), game.options.seed_value, KeptBy.instance(game.options.seed_value, key), land):
+		var id: StringName = row.item
+		var n := int(row.count)
+		if Items.def(id).is_empty() or n <= 0:
+			continue
+		game.inventory.add(id, n)
+		Events.took.emit(id, n)
+		got.append("%s x%d" % [String(Items.def(id).get("name", id)), n])
+	_given[key] = true
+	_shelf_given = true
+	Events.sfx.emit(&"door", game.player.position)
+	var said := String(StoryContent.KEPT_BY[KeptBy.GIVEN])
+	Events.message.emit("%s %s." % [said, ", ".join(got)] if not got.is_empty() else said)
+
+
+## `thanked` (98_tour): the region of the room the player is in, or -1 outside.
+func tour_region() -> int:
+	return _room_region() if pocket != null else -1
+
+
+## The region the room's door stands in, on the island outside.
+func _room_region() -> int:
+	var w: WorldData = _outside if _outside != null else game.world
+	var at := pocket.threshold.host
+	return w.region_at(floori(at.x), floori(at.y))
+
+
 ## Which strongbox is within reach of the player's hands, or -1.
 func _box_near() -> int:
 	var i := 0
@@ -1014,7 +1072,10 @@ func _save() -> Variant:
 	var lit := {}
 	for k: Variant in _lit:
 		lit[str(k)] = true
-	return {"dead": out, "opened": opened, "served": served, "lit": lit}
+	var given := {}
+	for k: Variant in _given:
+		given[str(k)] = true
+	return {"dead": out, "opened": opened, "served": served, "lit": lit, "given": given}
 
 
 func _load(v: Variant) -> void:
@@ -1041,6 +1102,9 @@ func _load(v: Variant) -> void:
 	_lit.clear()
 	for k: Variant in (v as Dictionary).get("lit", {}):
 		_lit[str(k)] = true
+	_given.clear()
+	for k: Variant in (v as Dictionary).get("given", {}):
+		_given[str(k)] = true
 
 
 ## A save made in a room counts those already broken in it, without leaving.
@@ -1063,7 +1127,68 @@ func _room_middle() -> Vector2:
 	return box.get_center()
 
 
+## ONE BUILT-IN MATERIAL OF EACH KIND A ROOM DRAWS WITH, KEPT FOR THE SESSION.
+## Godot shares a built-in material's shader among all materials with its
+## settings and frees it with the last of them. A room builds its materials
+## fresh each time it is entered and frees them when it is left, so its
+## shaders went with it, and on the web every door built them again: the same
+## cottage entered twice built 61 programs the first time and 11 the second,
+## and a program built is a frozen frame there. Keyed by what the shader is made
+## from (every flag, mode and which textures are set, never a colour), so one
+## material holds each shader; a handful per kind of room.
+static var _shader_keep: Dictionary = {}
+
+
+static func _keep_shaders(roots: Array[Node]) -> void:
+	for root: Node in roots:
+		if root == null or not is_instance_valid(root):
+			continue
+		for n: Node in [root] + root.find_children("*", "", true, false):
+			var mats: Array[Material] = []
+			if n is GeometryInstance3D and (n as GeometryInstance3D).material_override != null:
+				mats.append((n as GeometryInstance3D).material_override)
+			var mesh: Mesh = null
+			if n is MeshInstance3D:
+				var mi := n as MeshInstance3D
+				mesh = mi.mesh
+				for i in mi.get_surface_override_material_count():
+					if mi.get_surface_override_material(i) != null:
+						mats.append(mi.get_surface_override_material(i))
+			elif n is CPUParticles3D:
+				mesh = (n as CPUParticles3D).mesh
+			if mesh != null:
+				for i in mesh.get_surface_count():
+					if mesh.surface_get_material(i) != null:
+						mats.append(mesh.surface_get_material(i))
+			for m: Material in mats:
+				if m is BaseMaterial3D:
+					var key := shader_key(m as BaseMaterial3D)
+					if not _shader_keep.has(key):
+						_shader_keep[key] = m
+
+
+## What a built-in material's shader is made from: its flags, modes and which
+## textures it has, never the values the shader is handed.
+static func shader_key(m: BaseMaterial3D) -> String:
+	var parts := PackedStringArray()
+	for p: Dictionary in m.get_property_list():
+		if (int(p.usage) & PROPERTY_USAGE_STORAGE) == 0:
+			continue
+		var v: Variant = m.get(p.name)
+		match typeof(v):
+			TYPE_BOOL, TYPE_INT:
+				parts.append("%s=%s" % [p.name, v])
+			TYPE_OBJECT:
+				if int(p.type) == TYPE_OBJECT and String(p.hint_string).contains("Texture"):
+					parts.append("%s=%s" % [p.name, v != null])
+	return ",".join(parts)
+
+
 func _swap_out() -> void:
+	var leaving: Array[Node] = [game.view]
+	leaving.append_array(_beams)
+	leaving.append_array(_motes)
+	_keep_shaders(leaving)
 	var realms := _realms()
 	_count_the_dead()
 	_turrets.clear()
@@ -1283,6 +1408,18 @@ static func _room_light(kind: StringName) -> Light3D:
 		sp.spot_attenuation = 0.9
 		sp.spot_angle_attenuation = 1.4
 		l = sp
+	elif kind == &"seep":
+		# The day seeping down through a heap into a sealed room, by a hole
+		# rusted through its roof: a thin grey thread and a small pool, as strong
+		# as the hour on the CLOCK. A room shut from the sky has no sun to read
+		# the hour off (its lid takes the sun's energy to nothing), and the heap
+		# over a warren still lets the day through.
+		var sp := SpotLight3D.new()
+		sp.spot_range = 4.0
+		sp.spot_angle = 24.0
+		sp.spot_attenuation = 0.5
+		sp.spot_angle_attenuation = 1.8
+		l = sp
 	elif kind == &"sky":
 		# The day down a smoke hole: a narrow grey shaft onto the hearth, as
 		# strong as the hour (`_light_windows`), nothing at night.
@@ -1310,7 +1447,7 @@ static func _room_light(kind: StringName) -> Light3D:
 				o.omni_attenuation = 2.0
 		l = o
 	l.light_color = Color(1.0, 0.7, 0.4) if kind == &"lamp" else Color(0.74, 0.72, 0.9)
-	if kind == &"sky":
+	if kind == &"sky" or kind == &"seep":
 		l.light_color = Color(0.8, 0.84, 0.9)
 	if kind == &"working":
 		l.light_color = Color(1.0, 0.66, 0.26)
@@ -1368,6 +1505,8 @@ func _light_windows() -> void:
 				lamp.light_energy = 0.4
 			&"sky":
 				lamp.light_energy = 2.4 * day
+			&"seep":
+				lamp.light_energy = 5.0 * (1.0 - SkyLight.day_gone(game.sky.clock_hour))
 			_:
 				lamp.light_energy = lerpf(1.6, 0.25, day)
 	for i in _windows.size():
@@ -1562,6 +1701,10 @@ func tour_forget(what: StringName) -> void:
 			_box_refused = false
 		&"box_opened":
 			_box_opened = false
+		&"shelf_theirs":
+			_shelf_theirs = false
+		&"shelf_given":
+			_shelf_given = false
 		&"meal_taken":
 			_meal_taken = false
 		&"kindled":
@@ -1588,6 +1731,12 @@ func tour_seen(what: StringName) -> bool:
 			return _box_opened
 		&"box_near":
 			return pocket != null and box_near >= 0
+		&"shelf_near":
+			return pocket != null and shelf_near
+		&"shelf_theirs":
+			return _shelf_theirs
+		&"shelf_given":
+			return _shelf_given
 		&"hatch_near":
 			return pocket != null and hatch_near >= 0
 		&"stove_near":
@@ -1640,7 +1789,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "shelf", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table", "door:container_warren"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
@@ -1672,6 +1821,9 @@ func tour_place(what: String) -> Vector2:
 	if what == "strongbox":
 		var box := _first_box()
 		return (box.at as Vector2) + (box.face as Vector2) * 0.8 if not box.is_empty() else Vector2.INF
+	if what == "shelf":
+		var sh := _shelf_thing()
+		return (sh.at as Vector2) + (sh.face as Vector2) * 0.7 if not sh.is_empty() else Vector2.INF
 	if what == "hatch" or what == "stove" or what == "crawl":
 		var h := _first_with({"hatch": "serves", "stove": "fuel", "crawl": "exit"}[what])
 		return (h.at as Vector2) + (h.face as Vector2) * 0.8 if not h.is_empty() else Vector2.INF
@@ -1690,6 +1842,9 @@ func tour_face(what: String) -> float:
 	if what == "strongbox":
 		var box := _first_box()
 		return (-(box.face as Vector2)).angle() if not box.is_empty() else NAN
+	if what == "shelf":
+		var sh := _shelf_thing()
+		return (-(sh.face as Vector2)).angle() if not sh.is_empty() else NAN
 	if what == "hatch" or what == "stove" or what == "crawl":
 		var h := _first_with({"hatch": "serves", "stove": "fuel", "crawl": "exit"}[what])
 		return (-(h.face as Vector2)).angle() if not h.is_empty() else NAN
@@ -1815,6 +1970,14 @@ func _seen_along(start: Vector2, route: PackedVector2Array, sim: FightSim) -> fl
 	return seen
 
 
+## `near shelf`: the kept-by shelf of the lived-in room the player is in.
+func _shelf_thing() -> Dictionary:
+	if pocket == null:
+		return {}
+	var i := KeptBy.shelf(pocket.layout, pocket.kind)
+	return pocket.layout.things[i] if i >= 0 else {}
+
+
 ## `near strongbox`: the first strongbox in the room the player is in.
 func _first_box() -> Dictionary:
 	if pocket == null:
@@ -1884,9 +2047,7 @@ func reenter(key: StringName, at: Vector2) -> void:
 	_swap_in()
 	var realms := _realms()
 	# Where the save was made, not the doorway.
-	game.player.pos = at
-	if game.player.hero != null:
-		game.player.hero.pos = at
+	game.player.place(at)
 	game.player.sync_view(0.0)
 	if game.camera != null:
 		game.camera.snap_to(game.player.position)

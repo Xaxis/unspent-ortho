@@ -27,24 +27,33 @@ func _title() -> UiTitle:
 	return t
 
 
-## `seconds` is TITLE time, stepped by hand, but what it waits for is a coast
-## built by a WORKER thread in real time -- so the step budget is really a fixed
-## wall-clock budget of about 4 ms a step. That fits on a quiet box (2 s alone)
-## and runs out under load: at load 76-112 the worker was several times slower
-## and the gate failed "a coast is drawn" on code that passed alone. Waiting is
-## exactly what `machine_slack` is for, so the budget stretches with the box.
+## `seconds` is TITLE time, stepped by hand: the fade and the hold are the
+## title's own clock. But the next coast is built by a WORKER thread in REAL time,
+## and while that builds the title's clock is not spent: stepped 4 ms apart, a
+## 20 s budget left the worker well under a real second, which held alone and ran
+## out whenever the shard's neighbours kept the box or the pool busy (the gate
+## failed "a coast is drawn" twice, on code that passed alone, and a 1.5 s stall
+## in the worker reproduces it exactly). So the worker's wait is bounded by a
+## wall-clock deadline instead, WORKER_WAIT stretched by `machine_slack`.
+const WORKER_WAIT := 60.0
+
+
 func _run(t: UiTitle, seconds: float, until: Callable) -> bool:
 	var dt := 0.1
 	var waited := 0.0
 	seconds *= machine_slack()
+	var deadline := Time.get_ticks_msec() + int(WORKER_WAIT * 1000.0 * machine_slack())
 	while waited < seconds:
 		if not is_instance_valid(t) or until.call():
 			return true
+		var building := t._task >= 0
 		t._process(dt)
 		await tree.process_frame
 		# Chunks stream from a worker in real time; a headless frame takes well
 		# under a millisecond, so give the worker a little of it per step.
 		OS.delay_msec(4)
+		if building and Time.get_ticks_msec() < deadline:
+			continue
 		waited += dt
 	return until.call()
 

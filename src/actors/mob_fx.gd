@@ -930,6 +930,15 @@ static func breath(parent: Node, at: Vector3, col: Color, size: float, seconds: 
 	_run(mi, seconds, Vector3(drift.x, size * 0.6, drift.y))
 
 
+## Steam off a machine's stack: always the soft puff (`_air`), from any camera.
+## The flat vapour mark a breath takes from above reads as dark speckle against
+## snow -- dirt, not steam -- and a plume is a thing to be seen from far off.
+static func plume(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int) -> void:
+	if not _ok(parent):
+		return
+	_air(parent, at, col, size, seconds, drift, seed_value, 0.72, true)
+
+
 ## Whether the eye `parent` is seen through is close: the perspective lens (the
 ## view over the shoulder). A mark's floor in frame pixels is a legibility
 ## minimum for the camera looking down; under the close eye it is a cloud the
@@ -941,11 +950,12 @@ static func close_eye(parent: Node) -> bool:
 
 ## Breath as the fire's own soft puff (FireModel.smoke_material): lit by what
 ## reaches it, depth-tested so a head in front of it hides it, in world units,
-## swelling and thinning as it rises.
+## swelling and thinning as it rises. `unshaded`: steam in the cold (`plume`),
+## carried as its own light so the sun cannot grey it (plume.gdshader).
 const PLUME_SHADER := preload("res://src/render/weather/plume.gdshader")
 
 
-static func _air(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int, lighten: float = 0.72) -> void:
+static func _air(parent: Node, at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int, lighten: float = 0.72, unshaded := false) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = FireModel.smoke_mesh()
 	# Soft vapour, not a disc (render/weather/plume.gdshader): the edge torn by
@@ -957,6 +967,7 @@ static func _air(parent: Node, at: Vector3, col: Color, size: float, seconds: fl
 	mat.set_shader_parameter("tint", Color(c.r, c.g, c.b))
 	mat.set_shader_parameter("seed_phase", Rng.hash01(seed_value, 5))
 	mat.set_shader_parameter("density", 0.0)
+	mat.set_shader_parameter("unshaded", unshaded)
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)

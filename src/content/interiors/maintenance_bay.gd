@@ -21,6 +21,9 @@ extends RefCounted
 ## and in every one: the gantry, its tool head parked, the drain, the diagnostic
 ## panel at the height of a machine's sensor and not a person's eye.
 ##
+## In every one, too: the parts locker at the niche's closed end, the bay's
+## strongbox (Interiors.LOOT), which nobody who sleeps there has opened.
+##
 ## STORY SLOTS: the diagnostic panel (`terminal:diag_panel`) and the count in the
 ## niche (`wall:tally`). Laid in the canonical frame: the way in is in the south
 ## wall (+y).
@@ -117,7 +120,10 @@ static func _furnish(l: InteriorLayout, niche: Rect2i, east: bool) -> void:
 	_put(l, &"tally", back, back_face, 0.0)
 	l.slots.append({"slot": &"wall", "at": back, "face": back_face})
 	var n := Vector2(niche.position)
-	_put(l, &"tin", n + Vector2(1.0, 0.5), Vector2(0, 1), 0.0)
+	# At the niche's closed end, the parts locker it was cut for: the bay's
+	# strongbox (Interiors.LOOT), still shut on what the plan issues its bodies.
+	_put(l, &"strongbox", n + Vector2(1.0, 0.38), Vector2(0, 1), 0.34)
+	_put(l, &"tin", back + Vector2(back_face.x * 0.3, -0.55), Vector2(0, 1), 0.0)
 	if l.dressing == &"nest":
 		_put(l, &"bedroll", n + Vector2(1.0, 2.45), Vector2(1, 0), 0.0)
 	l.walks.append(PackedVector2Array([l.door, Vector2(1.5, 2.5)]))

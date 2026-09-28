@@ -28,6 +28,12 @@ const PLANS: Array[StringName] = [&"deep", &"square"]
 const HOUSEHOLDS: Array[StringName] = [&"eeler", &"salvor", &"ferrier"]
 
 
+## A household lives in it: what is in it is theirs (InteriorKind.seats).
+const SEATS := &"household"
+## Where what they keep is kept, the first of these it laid (KeptBy).
+const KEPT_BY: Array[StringName] = [&"shelf", &"chest", &"bucket"]
+
+
 static func make() -> InteriorKind:
 	var k := InteriorKind.new()
 	k.id = &"stilt_room"

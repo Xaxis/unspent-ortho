@@ -1,0 +1,24 @@
+# THE PLOUGHSHARE (the snowfield plough's core on the hands): a dodge taken
+# across a charging machine's line while its bite is coming turns it off the
+# share. The glove rings on its flank, rime sprays along its way, and it is
+# carried on past, spent (tests/gear/test_ploughshare.gd measures it).
+#   tools/tour.sh tours/ploughshare.tour --seed=1 --hour=11 --weather=clear:0 --fit=mitts_corded,mod_ploughshare
+coast calm
+place open_coast
+zoom 11
+wait 1.0
+spawn harvester
+# A worker minds its round until it is struck: rouse it, then step across it.
+walkto mob 1.5
+tap swing
+try 8
+await tell 6
+hold move_up
+tap dodge
+wait 0.05
+release move_up
+await share_turned 1.2
+end
+shot 01-a-charge-turned-off-the-share with mob:harvester
+wait 1.4
+shot 02-carried-on-past-spent with mob:harvester

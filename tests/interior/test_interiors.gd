@@ -388,7 +388,7 @@ func test_every_maintenance_bay_can_be_walked_through() -> void:
 		var reach := _reach(q, l.inside())
 		var goals := {"niche": l.table}
 		for th: Dictionary in l.things:
-			var off := {&"diag_panel": 0.6, &"tally": 0.6, &"cradle": 1.3, &"sort_bench": 0.8}
+			var off := {&"diag_panel": 0.6, &"tally": 0.6, &"cradle": 1.3, &"sort_bench": 0.8, &"strongbox": 0.8}
 			if off.has(th.kind):
 				goals["%s@%s" % [th.kind, th.at]] = (th.at as Vector2) + (th.face as Vector2) * float(off[th.kind])
 		# A rack or a row of bins runs along its wall (`long`): its ends stop a
@@ -400,7 +400,7 @@ func test_every_maintenance_bay_can_be_walked_through() -> void:
 					var tip := (th.at as Vector2) + along * e * (float(th.long) * 0.5 - 0.15)
 					check(not reach.has(Vector2i(roundi(tip.x / STEP), roundi(tip.y / STEP))),
 						"%s: a body stands inside the %s's end at %s" % [t.key, th.kind, tip])
-		eq(goals.size(), 4, "%s: a panel, a count, a cradle or a bench, and the niche" % t.key)
+		eq(goals.size(), 5, "%s: a panel, a count, a cradle or a bench, the niche and its locker" % t.key)
 		for g: String in goals:
 			check(_reached(reach, goals[g]), "%s: the %s at %s cannot be walked to from the hatch" % [t.key, g, goals[g]])
 	gt(float(n), 0.0, "seed 4 has maintenance bays to walk")
