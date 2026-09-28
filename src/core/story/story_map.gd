@@ -17,8 +17,8 @@ extends RefCounted
 ##             story slot, a trade's is said by anybody of the trade, anywhere
 ##   fragment  words read off a thing: a story place's own (PLACED), a kind of
 ##             room's (ROOMS), or dealt to a readable thing in the lands it names
-##   keeper    a landscape's keeper taken gives its memory back (KEEPER_MEMORY),
-##             and any keeper's testimony tells him something is missing
+##   keeper    a landscape's keeper taken gives its memory back (KEEPER_MEMORY)
+##             and is known to be down (KEEPER_DOWN), and any keeper's testimony tells him something is missing
 ##   testimony a machine read on the slate, any of its role, anywhere
 ##   witness   the player's own state (WITNESS_ON), where the world has a place
 ##             for it
@@ -320,6 +320,11 @@ func _all_doors() -> Array[Dictionary]:
 		out.append({"kind": &"keeper", "id": keeper, "node": &"", "speaker": "the %s" % String(keeper).replace("_", " "), "cast": &"",
 			"place": StringName("lair:%s" % keeper), "why": "its keeper stands nowhere on this world",
 			"source": _source("KEEPER_MEMORY", keeper), "beats": [StoryContent.KEEPER_MEMORY[keeper].memory]})
+	# The keeper down is known where it fell (KEEPER_DOWN).
+	for keeper: StringName in StoryContent.KEEPER_DOWN:
+		out.append({"kind": &"keeper", "id": keeper, "node": &"", "speaker": "the %s" % String(keeper).replace("_", " "), "cast": &"",
+			"place": StringName("lair:%s" % keeper), "why": "its keeper stands nowhere on this world",
+			"source": _source("KEEPER_DOWN", keeper), "beats": [StoryContent.KEEPER_DOWN[keeper]]})
 	# Any keeper's testimony: the one nearest where he woke is the first he can read.
 	out.append({"kind": &"keeper", "id": &"TESTIMONY_SENTINEL", "node": &"", "speaker": "any keeper", "cast": &"",
 		"place": _first_lair, "why": "no keeper on this world", "source": _source("TESTIMONY_SENTINEL", &""),

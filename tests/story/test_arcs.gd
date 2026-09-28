@@ -29,6 +29,9 @@ func _doors() -> Dictionary:
 	# A keeper taken gives back the memory it was holding (49_story, sentinel_fell).
 	for keeper: StringName in StoryContent.KEEPER_MEMORY:
 		out[StoryContent.KEEPER_MEMORY[keeper].memory] = "the keeper %s taken" % keeper
+	# A keeper down is known the moment it falls (49_story, sentinel_fell).
+	for keeper: StringName in StoryContent.KEEPER_DOWN:
+		out[StoryContent.KEEPER_DOWN[keeper]] = "the keeper %s down" % keeper
 	# The three memories back, in whatever order: he holds the secret (StorySecret).
 	out[StorySecret.HELD] = "StorySecret"
 	return out
