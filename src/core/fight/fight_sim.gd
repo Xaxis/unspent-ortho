@@ -402,8 +402,150 @@ func _try_pull() -> void:
 
 # --- moods (100 ms beats) ----------------------------------------------------
 
+## ATTACK SLOTS: a crowd is a fight, not a wall. At most ATTACK_SLOTS biters
+## (a rush or a charge, Brains) are after the player at once; the rest WAIT at
+## the edge, WAIT_GAP beyond their strike, circling, facing the player and
+## feinting (Brains._wait). A slot is never taken from a body in a blow or a
+## run. It frees when its holder falls, flees or loses the player, and it is
+## handed on to the nearest waiter; a keeper is first to one. And a waiter the
+## player turns their back on (BACK_ARC off their facing) takes the slot of the
+## holder farther from them, no oftener than SWAP_MS: ignoring the next one
+## brings it in, and the one being fought is never rotated out to mend.
+const ATTACK_SLOTS := 2
+const WAIT_GAP := 6.0
+const BACK_ARC := deg_to_rad(120.0)
+const SWAP_MS := 8000.0
+var attack_slots: Array[int] = []
+var _swap_ready := 0.0
+
+
+## Whether `m` fights by closing on the player: the bodies slots are for.
+static func biter(m: MobState) -> bool:
+	return m.approach == &"rush" or m.approach == &"charge"
+
+
+## Whether `m` is after the player now and wants a slot for it.
+func _slot_wanted(m: MobState) -> bool:
+	return m.alive and not m.removed and biter(m) and (m.mood == MobState.CHASING or m.mood == MobState.ATTACKING)
+
+
+func holds_slot(m: MobState) -> bool:
+	return attack_slots.has(m.id)
+
+
+## ONE BITE AT A TIME: of the biters on the player, one tells and lands a bite
+## at once, and the next may start BITE_GAP_MS after that one's strike is over.
+## The other presses and feints: a pair is two things to read in turn, never
+## two blows to take at once.
+const BITE_GAP_MS := 300.0
+
+
+func bite_turn(m: MobState) -> bool:
+	if not biter(m):
+		return true
+	for o in mobs:
+		if o == m or not o.alive or o.removed or not biter(o):
+			continue
+		# A charger's run is its bite from the moment it commits.
+		if o.charging:
+			return false
+		if o.blow != null and now - o.blow_at < float(o.blow.windup + o.blow.active) + BITE_GAP_MS:
+			return false
+	return true
+
+
+## The bearing from the player to the middle of the bodies in the slots; NAN
+## with none.
+func slots_bearing() -> float:
+	var mid := Vector2.ZERO
+	var n := 0
+	for m in mobs:
+		if holds_slot(m) and m.alive and not m.removed:
+			mid += m.pos - hero.pos
+			n += 1
+	return mid.angle() if n > 0 and mid.length_squared() > 1e-6 else NAN
+
+
+## A waiter: after the player, without a slot, and the slots full. One that
+## finds a slot free takes it now rather than wait for the beat to hand it over
+## (so a crowd roused at once never has more than ATTACK_SLOTS in before the
+## first beat), which makes this the one door to a slot between beats.
+func waits(m: MobState) -> bool:
+	if not _slot_wanted(m) or holds_slot(m):
+		return false
+	if attack_slots.size() < ATTACK_SLOTS:
+		attack_slots.append(m.id)
+		return false
+	return true
+
+
+## A body in a blow or a run: its slot is not taken from it.
+func _busy(m: MobState) -> bool:
+	return m.charging or (m.blow != null and m.blow_phase(now) != &"")
+
+
+func _slots_beat() -> void:
+	var wanted: Array[MobState] = []
+	for m in mobs:
+		if _slot_wanted(m):
+			wanted.append(m)
+	var ids := {}
+	for m in wanted:
+		ids[m.id] = m
+	for i in range(attack_slots.size() - 1, -1, -1):
+		if not ids.has(attack_slots[i]):
+			attack_slots.remove_at(i)
+	# A body in a blow or a run holds whatever it holds, and one that is somehow
+	# busy without a slot is given one first: nothing is cut off mid-blow.
+	for m in wanted:
+		if _busy(m) and not holds_slot(m):
+			attack_slots.append(m.id)
+	# Free slots to the keeper first, then the nearest.
+	var queue: Array[MobState] = []
+	for m in wanted:
+		if not holds_slot(m):
+			queue.append(m)
+	queue.sort_custom(func(a: MobState, b: MobState) -> bool:
+		var ka := Sentinels.is_keeper(a.row)
+		var kb := Sentinels.is_keeper(b.row)
+		if ka != kb:
+			return ka
+		return a.pos.distance_squared_to(hero.pos) < b.pos.distance_squared_to(hero.pos))
+	while attack_slots.size() < ATTACK_SLOTS and not queue.is_empty():
+		attack_slots.append(queue.pop_front().id)
+	# A waiter is chasing, not attacking, whatever put it there.
+	for w in queue:
+		if w.mood == MobState.ATTACKING:
+			w.set_mood(MobState.CHASING, now)
+	# A back turned on a waiter: it swaps in for a holder the player faces.
+	if queue.is_empty() or now < _swap_ready:
+		return
+	for w in queue:
+		if absf(wrapf((w.pos - hero.pos).angle() - hero.facing, -PI, PI)) < BACK_ARC:
+			continue
+		var out := -1
+		var far := -1.0
+		for i in attack_slots.size():
+			var h := ids.get(attack_slots[i]) as MobState
+			if h == null or _busy(h) or Sentinels.is_keeper(h.row):
+				continue
+			var d := h.pos.distance_to(hero.pos)
+			if d > far:
+				far = d
+				out = i
+		if out < 0:
+			return
+		var h := ids.get(attack_slots[out]) as MobState
+		attack_slots[out] = w.id
+		if h.mood == MobState.ATTACKING:
+			h.set_mood(MobState.CHASING, now)
+		_swap_ready = now + SWAP_MS
+		return
+
+
 func _beat() -> void:
 	_hush_read()
+	_slots_beat()
 	_curtains_beat()
 	if not hangings.is_empty():
 		_falls_beat()
@@ -480,7 +622,7 @@ func _beat() -> void:
 				elif m.approach != &"dart" and m.pos.distance_to(m.home) > float(m.stat("tether", 30)):
 					m.flee_home = true
 					m.set_mood(MobState.FLEEING, now)
-				elif m.approach != &"dart" and d <= reach:
+				elif m.approach != &"dart" and d <= reach and not waits(m):
 					m.set_mood(MobState.ATTACKING, now)
 			MobState.ATTACKING:
 				if m.lost_beats >= _forget(m) and not hunting(m):
@@ -1988,7 +2130,13 @@ func _wake(m: MobState, cause: StringName = &"damaged", from: Vector2 = Vector2.
 		if m.approach == &"errand":
 			m.set_mood(MobState.ALERTED, now)
 		elif m.approach != &"dart":
-			m.set_mood(MobState.ATTACKING, now)
+			# Woken with the slots full, it joins the ones waiting at the edge.
+			if biter(m) and not holds_slot(m) and attack_slots.size() >= ATTACK_SLOTS:
+				m.set_mood(MobState.CHASING, now)
+			else:
+				m.set_mood(MobState.ATTACKING, now)
+				if biter(m) and not holds_slot(m):
+					attack_slots.append(m.id)
 
 
 func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: int) -> void:

@@ -127,9 +127,27 @@ func _act() -> void:
 		_wait(near)
 
 
+## A body holding off at the edge: standing off (no blow for STANDOFF_MS, not
+## in one, not charging) and more than a tile beyond its strike. What a player
+## sees of a crowd's waiters (FightSim.attack_slots): the ones circling and not
+## coming. They are watched, not fought, while another is on the player.
+func _holding_off(m: MobState) -> bool:
+	return _standing_off(m) and m.pos.distance_to(sim.hero.pos) > Brains.strike_range(m, sim) + 1.0
+
+
+## The bodies that are on the player: the live ones, less those holding off.
+func _on_me(live: Array[MobState]) -> Array[MobState]:
+	var out: Array[MobState] = []
+	for m in live:
+		if not _holding_off(m):
+			out.append(m)
+	return out
+
+
 ## Bodies on both sides: the widest angle between any two, seen from the player.
-func _flanked(live: Array[MobState]) -> bool:
+func _flanked(all: Array[MobState]) -> bool:
 	var hero := sim.hero
+	var live := _on_me(all)
 	for i in live.size():
 		for j in range(i + 1, live.size()):
 			var a := (live[i].pos - hero.pos).angle()
@@ -140,8 +158,11 @@ func _flanked(live: Array[MobState]) -> bool:
 
 
 ## Away from the middle of the crowd, and a little to the side it is thinner on.
-func _give_ground(live: Array[MobState]) -> Vector2:
+func _give_ground(all: Array[MobState]) -> Vector2:
 	var hero := sim.hero
+	var live := _on_me(all)
+	if live.is_empty():
+		live = all
 	var mid := Vector2.ZERO
 	for m in live:
 		mid += m.pos
@@ -158,8 +179,12 @@ func _open_target(live: Array[MobState]) -> MobState:
 	var best: MobState = null
 	var bd := INF
 	var reach := _blow().reach
+	var pressed := _on_me(live).size() > 0
 	for m in live:
 		if not ((_open(m) and _open_long_enough_running(m)) or sim.phase_ready(m) or _standing_off(m)):
+			continue
+		# Not out to one holding off while another is on the player.
+		if pressed and _holding_off(m) and not _open(m):
 			continue
 		var spot := _part_spot(m, reach)
 		if _covered_by_other(spot, m, live):
