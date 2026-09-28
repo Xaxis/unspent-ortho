@@ -43,6 +43,7 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   - Its curtains (FightSim.curtains: a gap passed while it hunts sprayed shut after a tell; fresh, drying, dry, crumbling): `tools/test.sh test_curtains`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/curtains.tour` (`near gap`, `walkto gap`).
   - The line brings a cracked stone down on what is under it (FightSim.hangings): `tools/test.sh test_hanging_fall`.
   - Plating (roster `plating`, FightRules.bites; the Tide Reaper is steel, so the iron knife rings off and the goal turns to the steel edge until it falls, Guide.edge_goal): `tools/test.sh "test_plating,test_edge_goal"`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/reaper_plating.tour` (h).
+  - Reveal and fall (a keeper's first sight stands at its work for REVEAL_S, once ever; its fall folds the arch; each staged by one `_stage` call to 42_stage's `look`, `staged()`): `tools/test.sh test_reveal`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/reaper_set_piece.tour` (h; `fell KIND`); the Reaper foundered in the shallows: `tours/reaper_tide.tour` (h).
 - 43_cracked_roof `src/systems/43_cracked_roof.gd` (stones round a cave's tears, hung, drawn held, brought down by the line, down for good through a save): `tools/test.sh test_cracked_roof`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/cracked_roof.tour` (h).
 - 45_taken `src/systems/45_taken.gd`: `tools/tour.sh tours/harvest.tour`.
   - Freed, back on a holding's books: `tools/test.sh test_come_home`, `tools/tour.sh tours/taken_home.tour` (h); `tours/escort.tour` walks one to a village.

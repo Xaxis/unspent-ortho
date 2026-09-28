@@ -53,6 +53,9 @@ extends GameSystem
 ##                          its health (never raises it), so a tour can be at a phase a
 ##                          boss reaches by damage without feeding a scripted player to
 ##                          it pass after pass; fails when no such body is about
+##   fell KIND              the nearest live body of that kind falls where it stands,
+##                          as its last blow would drop it: for a frame of how a
+##                          body falls, when the fight to it is proved headless
 ##   thanked                the region the player is in (a room: the one its door
 ##                          stands in, `tour_region`) has thanked him for an ask he
 ##                          answered (Story.hear "REGION:recover:said"), so a frame
@@ -554,6 +557,8 @@ func _run() -> void:
 				ok = await _spawn_over(parts[1])
 			"wound":
 				ok = _wound(parts[1], parts[2].to_float() if parts.size() > 2 else 0.5)
+			"fell":
+				ok = _fell(parts[1])
 			"thanked":
 				ok = _thanked()
 			"choose":
@@ -1439,6 +1444,25 @@ func _wound(token: String, share: float) -> bool:
 		return false
 	best.health = mini(best.health, maxi(1, floori(float(best.max_health) * share)))
 	print("tour wound %s: %d of %d" % [token, best.health, best.max_health])
+	return true
+
+
+## `fell KIND`: the nearest live body of that kind falls where it stands, by the
+## player's hand as its last blow would drop it (FightSim._kill).
+func _fell(token: String) -> bool:
+	var id := Roster.resolve(token)
+	var sim: FightSim = game.player.sim
+	var best: MobState = null
+	if sim == null:
+		return false
+	for m: MobState in sim.mobs:
+		if m.alive and not m.removed and m.kind == id:
+			if best == null or m.pos.distance_to(sim.hero.pos) < best.pos.distance_to(sim.hero.pos):
+				best = m
+	if best == null:
+		printerr("tour %s: no %s about to fall" % [_name, token])
+		return false
+	sim._kill(best, true)
 	return true
 
 
