@@ -27,6 +27,9 @@ const START_HOUR := 8.0
 const PLAYER_RADIUS := 0.28
 ## How tall the player stands: the headroom a roof must leave (WorldQuery.passable).
 const PLAYER_HEIGHT := 1.8
+## How tall the player is crouched: under a roof buckled to 1.5 (a container
+## warren's bay) a crouch passes and a stand does not.
+const PLAYER_CROUCH_HEIGHT := 1.1
 ## Tiles per second.
 const WALK_SPEED := 3.4
 const RUN_SPEED := 5.4

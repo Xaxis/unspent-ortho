@@ -302,6 +302,11 @@ const SHEET := {
 	# A colossus landing: through the ground, then through the air. Thunder's
 	# category, because it is the one sound bigger than thunder.
 	&"colossus_step": [&"thunder", 7.0, 2],
+	# A machine going by a room's door, through the heap (DoorHush): low, never
+	# louder than the player's own steps.
+	&"passing_light": [&"step", -7.5, 1],
+	&"passing_mid": [&"step", -7.5, 1],
+	&"passing_heavy": [&"step", -6.5, 1],
 	&"colossus_boom": [&"thunder", 6.0, 2],
 	# The interface is the quietest thing in the mix.
 	&"ui_move": [&"ui", -12.0, 1],

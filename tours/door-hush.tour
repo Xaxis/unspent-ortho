@@ -1,0 +1,35 @@
+# A ROOM FALLS QUIET WHILE A MACHINE PASSES ITS DOOR (DoorHush, 21_doors):
+# the machines outside are snapshot at the door and walked on along their
+# rounds while the player is in, and while one is within its hearing of the
+# door the room holds its breath: its sound beds go (the &"hush" group) and its
+# lamps dip. tests/interior/test_door_hush walks it past; this is the pair.
+#
+#   tools/tour.sh tours/door-hush.tour --seed=1 --hour=11 --weather=clear:0
+#
+# 01 is a warren with nothing outside (`unhushed`). 02 is a sorter spawned by
+# its door, outside. 03 is the same warren while it goes by on its round
+# (`hushed`): the seep through the roof and any lamp dipped.
+coast calm
+near door:container_warren
+await door 5
+wait 0.6
+press use 0.1
+await inside:container_warren 20
+wait 2.0
+shot 01-the-warren-with-nothing-outside with inside:container_warren,unhushed
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+spawn sorter
+wait 0.5
+shot 02-a-sorter-at-the-door with mob:sorter
+near door:container_warren
+await door 5
+wait 0.3
+press use 0.1
+await inside:container_warren 20
+await hushed 6
+wait 0.5
+shot 03-the-warren-while-it-goes-by with inside:container_warren,hushed
