@@ -69,6 +69,8 @@ const int MARK_GROUND_B0 = 96;
 const int MARK_GROUND_B1 = 127;
 const int MARK_STRATA = 128;
 const int MARK_STRATA_END = 159;
+// Plain matter no cut opens (GroundColors.HELD).
+const int M_HELD = 160;
 // The named codes the shaders branch on (GroundColors' constants).
 const int M_VITRIFIED = 96;
 const int M_TIDEFLAT = 97;
@@ -108,6 +110,11 @@ bool mark_strata(int m) {
 // The LAND: a ground or a wall. What the cuts never open and wear barely takes.
 bool mark_land(int m) {
 	return mark_ground(m) || mark_strata(m);
+}
+
+// What the cuts never open: the land, and what is held in sight.
+bool mark_uncut(int m) {
+	return mark_land(m) || m == M_HELD;
 }
 
 vec3 matter_albedo(vec3 srgb) {

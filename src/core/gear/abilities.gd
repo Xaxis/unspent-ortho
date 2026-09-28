@@ -16,6 +16,7 @@ static func make(id: StringName) -> Ability:
 		&"scan": return AbilityScan.new()
 		&"grapple": return AbilityGrapple.new()
 		&"spoof": return AbilitySpoof.new()
+		&"veil": return AbilityVeil.new()
 		&"jump": return AbilityJump.new()
 	return null
 

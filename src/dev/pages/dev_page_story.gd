@@ -22,6 +22,7 @@ func heading() -> String:
 ## The story's other pages, by their row here.
 static func page_for(id: StringName) -> DevPage:
 	match id:
+		&"story_map": return DevPageStoryMap.new()
 		&"people": return DevPageStoryCast.new()
 		&"path": return DevPageStoryPlan.new()
 		&"ledger": return DevPageStoryLedger.new()
@@ -31,6 +32,8 @@ static func page_for(id: StringName) -> DevPage:
 
 func rows() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	out.append(header("the whole of it"))
+	out.append(item(&"story_map", "the map", "every arc over this world", {"enabled": game != null, "why": "The map is of a world: play one."}))
 	out.append(header("the rest of it"))
 	out.append(item(&"people", "people", "%d named" % StoryCast.all().size()))
 	out.append(item(&"path", "the path", "being felt" if StoryPacing.settling() else ""))

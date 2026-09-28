@@ -161,6 +161,20 @@ func cost_lt(got: float, bound: float, what: String) -> void:
 		unmeasured(what, got, b)
 
 
+## Assert a cost that is a RATIO of two timings taken in the same run (warm
+## against cold, main thread against worker, a share of a bigger job): as
+## `cost_lt`, deferred beside the shards and unjudged only when over its bar on
+## a box too busy to measure, but with no CI_SPEED factor, because a ratio of
+## two readings on one machine is the same on a slower one.
+func ratio_lt(got: float, bound: float, what: String) -> void:
+	if _later("%s: %.4f against a bar of %.4f beside the other shards" % [what, got, bound]):
+		return
+	if got < bound or can_measure_cost():
+		lt(got, bound, what)
+	else:
+		unmeasured(what, got, bound)
+
+
 ## How much slower a CI runner may be than the machine the bars were set on.
 ## Measured on the first sharded CI gate: worst 1.19x. Raise it only with a
 ## measurement beside it.

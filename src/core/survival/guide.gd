@@ -96,6 +96,7 @@ const HINTS := {
 	&"ability_scan": ["%s reads every working part near you, and what each machine makes of you.", [&"ability_scan"]],
 	&"ability_grapple": ["%s throws a line at what you face and pulls you to it, ledges included.", [&"ability_grapple"]],
 	&"ability_spoof": ["%s answers their challenge in their own language. They read you as one of theirs.", [&"ability_spoof"]],
+	&"ability_veil": ["%s lets the drip fall ahead of you: a curtain of water their eyes cannot see through.", [&"ability_veil"]],
 	# The seventh, and the only app the guide never named. Everything found is
 	# already being written down -- pages read, beats landed, answers given -- and
 	# a player who is never told carries the whole story in their head or loses
@@ -156,6 +157,9 @@ static func goal(game: Game) -> String:
 		return BAG_GOAL
 	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and inv.has(&"lamp"):
 		return "Light the lamp against the dark."
+	var edge := edge_goal(game)
+	if edge != "":
+		return edge
 	if inv.has(&"pick"):
 		if not inv.has(&"iron_ore") and not inv.has(&"iron"):
 			return "Take the pick to the ore in the rock."
@@ -188,6 +192,59 @@ static func goal(game: Game) -> String:
 	if inv.count(&"scrap") == 0:
 		return "Plate for a pick: turn over the tip."
 	return "A pick, made at %s." % at
+
+
+## THE EDGE A KEEPER TAKES (SurvivalState.plates, FightRules.bites). Once a
+## keeper's plating has rung the edge in hand off, the goal is the edge that bites
+## it, in the order it is made on the home coast -- a kiln, charcoal, the knife
+## tempered in it -- and then the keeper, until it falls. Said as the reason, not
+## the recipe: the words are the short form of what the one who named the keeper
+## told the player (docs/STORY.md; lines for story-wright).
+const EDGE_KEEPER := {&"coast": "the reaper"}
+const KILN_STONES := 8
+const TEMPER_CHARCOAL := 4
+
+
+static func edge_goal(game: Game) -> String:
+	var st := SurvivalState.of(game)
+	for plate: Variant in st.plates:
+		var who: String = EDGE_KEEPER.get(StringName(st.plates[plate]), "the keeper")
+		if _carries_edge(game, StringName(plate)):
+			return "Steel in hand now. Take it to %s." % who
+		var inv := game.inventory
+		if _cooking_or_has(game, &"knife_shear"):
+			return "The knife is taking its temper in the kiln. Let it."
+		if _kiln(game) == null:
+			if inv.count(&"stone") < KILN_STONES:
+				return "Iron rings off %s; steel bites. A kiln to temper the knife: eight stones." % who
+			return "Iron rings off %s; steel bites. Lay the kiln to temper the knife." % who
+		if not _cooking_or_has(game, &"charcoal") or inv.count(&"charcoal") < TEMPER_CHARCOAL:
+			var fire := _fire(game)
+			if fire == null:
+				return "A fire to burn charcoal: the knife's temper wants four."
+			return "Four charcoal to temper the knife, burnt at %s." % fire_name(game, fire)
+		return "Temper the knife in the kiln: four charcoal, and the night."
+	return ""
+
+
+## Whether the bag holds an edge that bites plating of `plate`.
+static func _carries_edge(game: Game, plate: StringName) -> bool:
+	var row := {"plating": plate}
+	for id: StringName in game.inventory.items:
+		if Items.def(id).has("swing") and FightRules.bites(row, id):
+			return true
+	return false
+
+
+## A kiln near: one laid by the player, or one standing in the world.
+static func _kiln(game: Game) -> WorldProp:
+	var kinds: Array[int] = [PropKind.KILN]
+	var best := game.query.nearest_prop(game.player.pos, FIRE_NEAR + 1.0, kinds)
+	for q in SurvivalState.of(game).built:
+		if q.kind == PropKind.KILN and not game.world.depleted.has(q.id):
+			if best == null or q.pos.distance_to(game.player.pos) < best.pos.distance_to(game.player.pos):
+				best = q
+	return best
 
 
 ## The elite material wanted next (EliteStock): the first the bag holds none of

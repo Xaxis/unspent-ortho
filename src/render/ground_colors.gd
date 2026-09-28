@@ -99,6 +99,11 @@ const MADE_LAST := SLATE
 const FRESH := 58
 ## Cliff strata: STRATA + one of the STRATA_* ids (1..31).
 const STRATA := 128
+## HELD IN SIGHT: plain matter, drawn as any made or found face is, that no cut
+## ever opens (crown, tall or sight: world.gdshader). For the one thing a player
+## must see though it stands between the eye and them: a warden's curtain across
+## the way they came.
+const HELD := 160
 
 ## --- THE LAYOUT, the one place it is stated ---------------------------------
 ## A mark is one byte (a vertex colour's alpha, x255), and the LAND is two runs
@@ -110,6 +115,7 @@ const STRATA := 128
 ##   80..95   what a person MADE
 ##   96..127  grounds, the second run (a landscape's own: VITRIFIED, TIDEFLAT...)
 ##  129..159  terrace walls, STRATA + id
+##  160       held in sight: plain matter no cut opens
 ## tests/render/test_mark_layout.gd holds the constants to these runs, and the
 ## shader's own consts to these numbers.
 const GROUND_A := Vector2i(40, 58)

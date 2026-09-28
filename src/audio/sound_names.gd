@@ -33,6 +33,10 @@ const ALIAS := {
 	# sky (21_falls): a mass fall's boom rolling in, carried from tens of
 	# kilometres as a colossus's is, with the colossi's own falloff.
 	&"fall_boom": &"colossus_boom",
+	# fight: a bite begun out of the player's sight in a crowd is cued by a
+	# machine's call from its bearing (FightSim.begin_bite), the sharp note that
+	# turns a head, not the tell's own wind.
+	&"unseen_tell": &"alert",
 	# survival: the lamp guttering out is the lamp going off.
 	&"lamp_out": &"lamp_off",
 	# survival: a tool breaking in the hand is its own snap, not a gather.
@@ -63,6 +67,7 @@ const ALIAS := {
 	&"ability_scan": &"ui_slate_ping",
 	&"ability_grapple": &"grip",
 	&"ability_spoof": &"watcher_call",
+	&"ability_veil": &"splash",
 	&"ability_refused": &"ui_slate_deny",
 	# crafts: stepping onto a deck of plate and spars, stepping off it into the
 	# shallows, a hull coming apart under a body, and a wreck taken back for its
@@ -146,7 +151,7 @@ const EMITTED: Array[StringName] = [
 	&"ui_back", &"thunder", &"step_sand", &"step_grass", &"step_stone", &"step_snow",
 	# fight (40_fight.gd)
 	&"loose", &"second_act", &"alert", &"windup", &"watcher_call", &"machine_down", &"snatch",
-	&"downed",
+	&"downed", &"unseen_tell",
 	# survival (survival.gd, crafting.gd, takes.gd verbs, recipes.gd actions)
 	&"build_ask", &"ask_fire", &"refuse", &"work_break", &"work_dig", &"work_fell", &"work_cut", &"work_gather",
 	&"work_scrape", &"work_tap", &"work_turn", &"took", &"work_broken", &"sleep", &"build_fire",
@@ -167,7 +172,7 @@ const EMITTED: Array[StringName] = [
 	# hazards and gear (52_hazards.gd, 54_gear.gd)
 	&"hazard_cold", &"hazard_heat", &"hazard_fumes", &"hazard_em", &"hazard_wet",
 	&"hazard_ring", &"hazard_warn", &"hazard_drain", &"ability_dash", &"ability_glide", &"ability_land",
-	&"ability_scan", &"ability_grapple", &"ability_spoof", &"ability_refused",
+	&"ability_scan", &"ability_grapple", &"ability_spoof", &"ability_veil", &"ability_refused",
 	# defences (46_settlements.gd, 47_defences.gd)
 	&"turret_fire", &"turret_aim", &"piece_switch",
 	# the jump (54_gear.gd)

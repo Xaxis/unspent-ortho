@@ -1,0 +1,24 @@
+# The veil (GEAR.md G4): the drip-warden's core on the back. It lets the drip
+# fall ahead: a curtain of water a machine's sight does not pass, twelve
+# seconds. A sorter struck at its round backs off to throw; the veil falls
+# between it and the player. From above, then over the shoulder, through the
+# water at it. Run at a fixed rate, so a frame costs the world no time:
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/veil.tour --seed=7 --hour=11 --weather=clear:0 --fit=cloak_vane,mod_veil --give=wick:6,knife:1 --held=knife --config=unharmed
+place the_middens
+zoom 9
+wait 0.6
+spawn sorter
+try 3
+  walkto part 3
+  tap swing
+  await tell 8
+end
+tap ability_veil
+await ability:veil 5
+wait 0.5
+shot 01-the-water-falls-between with mob:sorter
+
+tap shoulder
+await shoulder 3
+wait 1.2
+shot 02-over-the-shoulder-through-the-water with shoulder,mob:sorter

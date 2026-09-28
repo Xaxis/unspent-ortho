@@ -28,52 +28,69 @@ func test_every_region_of_a_landscape_with_a_keeper_has_one_standing_in_it() -> 
 	# the siting rule can keep has its keeper — plus one that still fails for a
 	# design no seed ever places.
 	var placed := {}
+	# Every realm a keeper's land lies in: a cave's keeper is in the underground
+	# world a seed grows, never in its surface.
+	var realms: Array[StringName] = []
+	for land: StringName in Sentinels.lands():
+		var r := Realm.of(BiomeRegistry.get_def(land))
+		if not realms.has(r):
+			realms.append(r)
 	for s in SEEDS:
-		var w := WorldGen.generate(s, SIZE)
-		var states := Sentinels.states(w)
-		gt(float(states.size()), 1.0, "seed %d holds keepers" % s)
-		var lands := {}
-		for st: SentinelState in states:
-			var def := Sentinels.by_id(st.design)
-			check(def != null, "seed %d: region %d names a design" % [s, st.region])
-			lands[st.land] = true
-			var r := w.region_of(st.region)
-			eq(StringName(str(r.type)), st.land, "seed %d: region %d is the land its keeper keeps" % [s, st.region])
-			# It stands somewhere a body three tiles wide can stand.
-			var x := floori(st.lair.x)
-			var y := floori(st.lair.y)
-			check(w.in_bounds(x, y), "seed %d: region %d's keeper is on the map" % [s, st.region])
-			check(not Ground.is_water(w.ground_at(x, y)), "seed %d: region %d's keeper is not in the sea (%s)"
-				% [s, st.region, Ground.NAMES[w.ground_at(x, y)]])
-			gt(float(w.level_at(x, y)), 0.0, "seed %d: region %d's keeper stands on land" % [s, st.region])
-			eq(st.health, st.max_health, "a keeper nobody has met is whole")
-			check(not st.fallen, "and still keeps its region")
-			print("sentinel seed %d: %s keeps region %d (%d tiles) at %s, ground %s, %d works feeding it"
-				% [s, st.design, st.region, int(r.tiles), st.lair, Ground.NAMES[w.ground_at(x, y)],
-					Sentinels.feeds(w, st.lair, Sentinels.by_id(st.design))])
-		for land: StringName in Sentinels.lands():
-			var biggest := 0
-			var big: Dictionary = {}
-			for r: Dictionary in w.regions:
-				if StringName(str(r.get("type", &""))) == land and int(r.get("tiles", 0)) > biggest:
-					biggest = int(r.get("tiles", 0))
-					big = r
-			var centre: Vector2 = big.get("centre", Vector2.ZERO)
-			if biggest < Sentinels.MIN_TILES:
-				print("sentinel seed %d: %s holds no region big enough to keep (biggest run %d tiles, floor %d)"
-					% [s, land, biggest, Sentinels.MIN_TILES])
-			elif not Sentinels.lair(w, big, Sentinels.for_land(land)).is_finite():
-				# The siting rule refused the whole region: nowhere in it is far
-				# enough from where the player wakes. Said with the numbers, so a
-				# region refused for a new reason reads differently here.
-				print("sentinel seed %d: %s's biggest run (%d tiles, heart %s, %.1f from the spawn %s) is all inside CLEAR_OF_HOME %.0f: no keeper, by the rule"
-					% [s, land, biggest, centre, centre.distance_to(w.spawn), w.spawn, Sentinels.CLEAR_OF_HOME])
-			else:
-				check(lands.has(land), "seed %d: %s has its keeper out there (biggest run %d tiles at %s)" % [s, land, biggest, centre])
-			if lands.has(land):
-				placed[land] = true
+		for realm: StringName in realms:
+			_regions_kept(s, realm, placed)
 	for land: StringName in Sentinels.lands():
 		check(placed.has(land), "%s's keeper is placed on at least one of seeds %s at %d" % [land, SEEDS, SIZE])
+
+
+## One seed's world in one realm: every keeper it places stands on its own
+## land, and every land of this realm that could hold one does.
+func _regions_kept(s: int, realm: StringName, placed: Dictionary) -> void:
+	var w := WorldGen.generate(s, SIZE, &"", realm)
+	var states := Sentinels.states(w)
+	if realm == Realm.SURFACE:
+		gt(float(states.size()), 1.0, "seed %d holds keepers" % s)
+	var lands := {}
+	for st: SentinelState in states:
+		var def := Sentinels.by_id(st.design)
+		check(def != null, "seed %d: region %d names a design" % [s, st.region])
+		lands[st.land] = true
+		var r := w.region_of(st.region)
+		eq(StringName(str(r.type)), st.land, "seed %d: region %d is the land its keeper keeps" % [s, st.region])
+		# It stands somewhere a body three tiles wide can stand.
+		var x := floori(st.lair.x)
+		var y := floori(st.lair.y)
+		check(w.in_bounds(x, y), "seed %d: region %d's keeper is on the map" % [s, st.region])
+		check(not Ground.is_water(w.ground_at(x, y)), "seed %d: region %d's keeper is not in the sea (%s)"
+			% [s, st.region, Ground.NAMES[w.ground_at(x, y)]])
+		gt(float(w.level_at(x, y)), 0.0, "seed %d: region %d's keeper stands on land" % [s, st.region])
+		eq(st.health, st.max_health, "a keeper nobody has met is whole")
+		check(not st.fallen, "and still keeps its region")
+		print("sentinel seed %d: %s keeps region %d (%d tiles) at %s, ground %s, %d works feeding it"
+			% [s, st.design, st.region, int(r.tiles), st.lair, Ground.NAMES[w.ground_at(x, y)],
+				Sentinels.feeds(w, st.lair, Sentinels.by_id(st.design))])
+	for land: StringName in Sentinels.lands():
+		if Realm.of(BiomeRegistry.get_def(land)) != realm:
+			continue
+		var biggest := 0
+		var big: Dictionary = {}
+		for r: Dictionary in w.regions:
+			if StringName(str(r.get("type", &""))) == land and int(r.get("tiles", 0)) > biggest:
+				biggest = int(r.get("tiles", 0))
+				big = r
+		var centre: Vector2 = big.get("centre", Vector2.ZERO)
+		if biggest < Sentinels.MIN_TILES:
+			print("sentinel seed %d: %s holds no region big enough to keep (biggest run %d tiles, floor %d)"
+				% [s, land, biggest, Sentinels.MIN_TILES])
+		elif not Sentinels.lair(w, big, Sentinels.for_land(land)).is_finite():
+			# The siting rule refused the whole region: nowhere in it is far
+			# enough from where the player wakes. Said with the numbers, so a
+			# region refused for a new reason reads differently here.
+			print("sentinel seed %d: %s's biggest run (%d tiles, heart %s, %.1f from the spawn %s) is all inside CLEAR_OF_HOME %.0f: no keeper, by the rule"
+				% [s, land, biggest, centre, centre.distance_to(w.spawn), w.spawn, Sentinels.CLEAR_OF_HOME])
+		else:
+			check(lands.has(land), "seed %d: %s has its keeper out there (biggest run %d tiles at %s)" % [s, land, biggest, centre])
+		if lands.has(land):
+			placed[land] = true
 
 
 func test_where_it_stands_is_the_same_on_every_run_of_the_same_seed() -> void:

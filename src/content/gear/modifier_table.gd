@@ -105,6 +105,12 @@ const MODS := {
 		"gives": [&"quick"]},
 	# The drowned lockkeeper's, turned (GEAR.md §5): `charge`, so a capacitor or
 	# a leech keeps it fed (PAIRS).
+	# The caves' drip-warden's, turned: `charge`, so a capacitor or a leech keeps
+	# it fed (PAIRS).
+	&"mod_veil": {"decision": "you let a curtain of water fall ahead of you that their eyes cannot see through",
+		"short": "a veil they cannot see through",
+		"costs": "two charges a veil, and it soaks you and puts your lamp out while it falls",
+		"gives": [&"charge"]},
 	&"mod_lock": {"decision": "a narrow way you pass through is shut behind you to machines for a while",
 		"short": "a way passed is shut",
 		"costs": "a charge a lock",

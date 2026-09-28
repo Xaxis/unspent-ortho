@@ -42,8 +42,8 @@ func test_the_pool_answers_while_a_realm_is_raised() -> void:
 		t = WorkerThreadPool.add_task(func() -> void: OS.delay_msec(SLEEP_MS), true, "game work")
 		WorkerThreadPool.wait_for_task_completion(t)
 		worst_hi = maxi(worst_hi, Time.get_ticks_msec() - began)
-	lt(worst, 1000, "a low-priority job waits at worst %d ms behind a realm being raised" % worst)
-	lt(worst_hi, 1000, "a high-priority job waits at worst %d ms behind a realm being raised" % worst_hi)
+	cost_lt(float(worst), 1000.0, "a low-priority job waits at worst %d ms behind a realm being raised" % worst)
+	cost_lt(float(worst_hi), 1000.0, "a high-priority job waits at worst %d ms behind a realm being raised" % worst_hi)
 	# And the world raised this way is a world.
 	var w := RealmWorlds.take(seed_value, size, &"underground")
 	check(w != null and w.size == size, "the raise finishes and hands its world over")
@@ -64,7 +64,7 @@ func test_a_game_that_ends_does_not_wait_for_its_realms() -> void:
 	var t := Time.get_ticks_msec()
 	RealmWorlds.forget()
 	var ms := Time.get_ticks_msec() - t
-	lt(float(ms), 200.0, "forget lets go of a raise in flight (%d ms)" % ms)
+	cost_lt(float(ms), 200.0, "forget lets go of a raise in flight (%d ms)" % ms)
 	check(not RealmWorlds.ready(seed_value, size, &"underground"), "and keeps nothing it made")
 	eq(RealmWorlds.begin(seed_value + 1, size, &"underground"), false, "a new raise waits while the old one holds its worker")
 	RealmWorlds.settle()
