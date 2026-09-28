@@ -1362,7 +1362,7 @@ func _make_lights() -> void:
 		beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		game.view.add_child(beam)
 		_beams.append(beam)
-		var motes := _motes_in_air()
+		var motes := motes_in_air()
 		game.view.add_child(motes)
 		_motes.append(motes)
 	for at: Array in model.get(&"lights"):
@@ -1596,20 +1596,38 @@ static func _beam_mesh() -> ArrayMesh:
 ## dust, and before MobFx's hit marks (12), which must stay on top.
 func _beam_material() -> StandardMaterial3D:
 	if _beam_mat == null:
-		_beam_mat = StandardMaterial3D.new()
-		_beam_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		_beam_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		_beam_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-		_beam_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		_beam_mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
-		_beam_mat.vertex_color_use_as_albedo = true
-		_beam_mat.render_priority = 11
+		_beam_mat = beam_template()
 	return _beam_mat.duplicate() as StandardMaterial3D
+
+
+## The beams' material, and the motes' below: their own builders so the boot can
+## draw each once before any door does (01_warm_lights).
+static func beam_template() -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	m.vertex_color_use_as_albedo = true
+	m.render_priority = 11
+	return m
+
+
+static func mote_material() -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.albedo_color = Color(1.0, 0.9, 0.7, 0.55)
+	m.render_priority = 11
+	return m
 
 
 ## Motes: a few dozen specks drifting in the beam's box, lit by nothing but being
 ## in it (additive, at the beam's own priority).
-func _motes_in_air() -> CPUParticles3D:
+static func motes_in_air() -> CPUParticles3D:
 	var p := CPUParticles3D.new()
 	p.amount = 36
 	p.lifetime = 7.0
@@ -1626,14 +1644,7 @@ func _motes_in_air() -> CPUParticles3D:
 	p.scale_amount_max = 1.2
 	var q := QuadMesh.new()
 	q.size = Vector2(0.02, 0.02)
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	m.albedo_color = Color(1.0, 0.9, 0.7, 0.55)
-	m.render_priority = 11
-	q.material = m
+	q.material = mote_material()
 	p.mesh = q
 	return p
 
@@ -1672,6 +1683,16 @@ func _cover_open() -> void:
 	await tw.finished
 	_cover.visible = false
 	_swapping = false
+
+
+## The boot's warm-up (01_warm_lights): the cover is a shader of the door's own,
+## built the first time it draws, and that was at the first door. Shown fully
+## open (so nothing is drawn over the frame) while the boot page covers the game.
+func warm(on: bool) -> void:
+	if _swapping:
+		return
+	_cover_mat.set_shader_parameter(&"radius", 1.6)
+	_cover.visible = on
 
 
 static func _iris() -> Shader:

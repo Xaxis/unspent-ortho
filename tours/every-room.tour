@@ -1,0 +1,301 @@
+# EVERY ROOM, BY DAY AND AT NIGHT, and the shader programs each first draws
+# (tools/web.sh --programs counts them after each `event`). A room lights
+# differently by day (the day through its windows) and at night (its lamps
+# alone), and each kind has materials of its own, so the set a boot must warm
+# is measured here, room by room, and at every event the count must be zero:
+# --programs fails the run on any program first drawn after an event.
+#   tools/web.sh --tour=tours/every-room.tour --programs --timeout=900 --args=--seed=4,--hour=11,--weather=clear:0
+coast calm
+wait 3.0
+echo event cottage_day
+near door:cottage
+await door 10
+wait 0.5
+press use 0.1
+await inside:cottage 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event weapons_hall_day
+near door:weapons_hall
+await door 10
+wait 0.5
+press use 0.1
+await inside:weapons_hall 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event bunker_day
+near door:bunker
+await door 10
+wait 0.5
+press use 0.1
+await inside:bunker 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event foundry_day
+near door:foundry
+await door 10
+wait 0.5
+press use 0.1
+await inside:foundry 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event data_hall_day
+near door:data_hall
+await door 10
+wait 0.5
+press use 0.1
+await inside:data_hall 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event saw_hall_day
+near door:saw_hall
+await door 10
+wait 0.5
+press use 0.1
+await inside:saw_hall 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event maintenance_bay_day
+near door:maintenance_bay
+await door 10
+wait 0.5
+press use 0.1
+await inside:maintenance_bay 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event tenement_day
+near door:tenement
+await door 10
+wait 0.5
+press use 0.1
+await inside:tenement 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event tower_lobby_day
+near door:tower_lobby
+await door 10
+wait 0.5
+press use 0.1
+await inside:tower_lobby 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event roundhouse_day
+near door:roundhouse
+await door 10
+wait 0.5
+press use 0.1
+await inside:roundhouse 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event stilt_room_day
+near door:stilt_room
+await door 10
+wait 0.5
+press use 0.1
+await inside:stilt_room 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event frozen_hold_day
+near door:frozen_hold
+await door 10
+wait 0.5
+press use 0.1
+await inside:frozen_hold 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event dusk
+hour 20.5
+wait 3.0
+echo event cottage_night
+near door:cottage
+await door 10
+wait 0.5
+press use 0.1
+await inside:cottage 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event weapons_hall_night
+near door:weapons_hall
+await door 10
+wait 0.5
+press use 0.1
+await inside:weapons_hall 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event bunker_night
+near door:bunker
+await door 10
+wait 0.5
+press use 0.1
+await inside:bunker 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event foundry_night
+near door:foundry
+await door 10
+wait 0.5
+press use 0.1
+await inside:foundry 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event data_hall_night
+near door:data_hall
+await door 10
+wait 0.5
+press use 0.1
+await inside:data_hall 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event saw_hall_night
+near door:saw_hall
+await door 10
+wait 0.5
+press use 0.1
+await inside:saw_hall 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event maintenance_bay_night
+near door:maintenance_bay
+await door 10
+wait 0.5
+press use 0.1
+await inside:maintenance_bay 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event tenement_night
+near door:tenement
+await door 10
+wait 0.5
+press use 0.1
+await inside:tenement 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event tower_lobby_night
+near door:tower_lobby
+await door 10
+wait 0.5
+press use 0.1
+await inside:tower_lobby 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event roundhouse_night
+near door:roundhouse
+await door 10
+wait 0.5
+press use 0.1
+await inside:roundhouse 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event stilt_room_night
+near door:stilt_room
+await door 10
+wait 0.5
+press use 0.1
+await inside:stilt_room 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event frozen_hold_night
+near door:frozen_hold
+await door 10
+wait 0.5
+press use 0.1
+await inside:frozen_hold 30
+wait 2.5
+near door
+await door 10
+press use 0.1
+await outside 30
+wait 1.0
+echo event end

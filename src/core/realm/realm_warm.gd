@@ -14,8 +14,13 @@ extends RefCounted
 ## Every one of them is pure over the world and worker-safe
 ## (tests/core/test_worker_types): no node, no RID, no texture.
 
-const _LIGHTS := preload("res://src/systems/15_lights.gd")
-const _COLOSSI := preload("res://src/systems/19_colossi.gd")
+## The two systems' builders are LOADED WHEN ASKED FOR, by path, not preloaded:
+## realm_worlds.gd reaches this file, and a core file preloading system scripts
+## that reach back into the realms closes a cycle the engine never frees, so a
+## game made by the loading page left 8-22 more objects behind at exit
+## (tests/export/test_exit.gd). By then the systems are loaded; this is a lookup.
+const _LIGHTS := "res://src/systems/15_lights.gd"
+const _COLOSSI := "res://src/systems/19_colossi.gd"
 
 
 static func prepare(w: WorldData) -> void:
@@ -27,9 +32,9 @@ static func prepare(w: WorldData) -> void:
 	t = _took(ms, "sky_ground", t)
 	SkyWear.prepare(w)
 	t = _took(ms, "sky_wear", t)
-	_LIGHTS.prepare_world(w)
+	(load(_LIGHTS) as GDScript).call(&"prepare_world", w)
 	t = _took(ms, "lights", t)
-	_COLOSSI.prepare_world(w)
+	(load(_COLOSSI) as GDScript).call(&"prepare_world", w)
 	t = _took(ms, "treads", t)
 	WorksMap.prepare(w)
 	_took(ms, "works", t)

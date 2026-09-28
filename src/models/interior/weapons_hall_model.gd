@@ -514,6 +514,14 @@ func _vent(k: Kit, at: Vector2, f: Vector2) -> void:
 	steam.color_ramp = fade
 	var q := QuadMesh.new()
 	q.size = Vector2(0.55, 0.55)
+	q.material = steam_material()
+	steam.mesh = q
+	add_child(steam)
+
+
+## The vapour's material. Its own builder so the boot can draw it once before
+## any door does (01_warm_lights).
+static func steam_material() -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	# Lit, not glowing: the vapour is seen by the light that reaches it. Drawn at
 	# priority 11 with the other lit air (21_doors' beams), after people. Each
@@ -533,9 +541,7 @@ func _vent(k: Kit, at: Vector2, f: Vector2) -> void:
 	m.albedo_color = Color(0.78, 0.8, 0.86, 0.16)
 	m.roughness = 1.0
 	m.render_priority = 11
-	q.material = m
-	steam.mesh = q
-	add_child(steam)
+	return m
 
 
 ## Where the warden stands its watch: a square ruled on the deck.

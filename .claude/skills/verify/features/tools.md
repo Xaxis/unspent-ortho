@@ -15,7 +15,7 @@ The loop scripts.
 - shot: `tools/shot.sh`, reached by `tools/shot.sh`.
 - test: `tools/test.sh`, reached by `tools/test.sh`.
 - tour: `tools/tour.sh`, reached by `tools/tour.sh`.
-- web: `tools/web.sh`, reached by `tools/web.sh`.
+- web: `tools/web.sh`, reached by `tools/web.sh`. `--programs` over a tour fails the run on any GL program first drawn after an `echo event` (a freeze a player meets); `--cold` builds every program as on a first visit.
 
 ## How to reach it
 
