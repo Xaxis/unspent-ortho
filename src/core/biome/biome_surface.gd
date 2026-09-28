@@ -60,6 +60,10 @@ var marsh: PackedByteArray
 ## across the nearest border (0.5 on the border).
 var levels: PackedInt32Array
 var blends: PackedFloat32Array
+## Levels a slot labyrinth's plateau stands this tile up by (GenContext.slot_lift):
+## the declared height on a plateau top, 0 on a floor, between on a ramp. EMPTY
+## where no landscape declares `slots`, so a recipe asks `lift.is_empty()` first.
+var lift: PackedFloat32Array
 
 # --- handed over only where the land changes ------------------------------
 

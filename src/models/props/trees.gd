@@ -239,6 +239,12 @@ static func broadleaf(k: Kit, v: int, c: int) -> void:
 			&"snag":
 				bleached_snag(k, v, c)
 				return
+			&"pollard":
+				pollard(k, v, c)
+				return
+			&"trellis":
+				trellis(k, v, c)
+				return
 	var burnt := BiomeDressing.burnt(c)
 	var s := 2000 + v * 31 + c * 5
 	# A landscape colours its own trees (BiomeDef.tree_tints), so a new one is
@@ -602,3 +608,104 @@ static func bleached_snag(k: Kit, v: int, c: int) -> void:
 		var a := 0.6 + i * 0.4
 		k.clump(cos(a) * 0.12, y, sin(a) * 0.12, 0.1, 0.03, s + 20 + i, P.EMBER[4].lerp(P.LINEN[3], 0.5), 6)
 
+
+## THE ORCHARD'S TREES ARE A MACHINE'S TREES. Nothing in a row grew the way it
+## wanted: every one is a rootstock with a scion grafted on at knee height (the
+## collar where the two barks meet, the scion's paler), kept to a shape a picking
+## arm can reach, staked, and tagged with the plate that says what it is. And the
+## schedule outlived the grafts: some have gone over, their growth bare and
+## furred with the white mildew that is not blossom.
+
+## "pollard": a short thick bole cut back every year to the same knuckled head,
+## and from the head a fan of straight whips, each with its own small crown.
+static func pollard(k: Kit, v: int, c: int) -> void:
+	var s := 6100 + v * 43 + c * 5
+	var d := BiomeDressing.of(c)
+	var stock := BiomeDressing.tint1(c, &"trunk", P.EARTH[2])
+	var scion := stock.lerp(P.ASH[3], 0.35)
+	var leaves := BiomeDressing.tint(c, &"leaf", [P.MOSS[2], P.MOSS[3], P.LINEN[3], P.LINEN[2]])
+	var gone := v % 3 == 2
+	var collar := 0.42 + Kit.j(s, 1, 0.05)
+	var head := Vector3(Kit.j(s, 2, 0.04), 1.05 + Kit.j(s, 3, 0.08), Kit.j(s, 4, 0.04))
+	k.limb(Vector3(0, -0.05, 0), Vector3(0, collar, 0), 0.15, 0.13, 6, stock)
+	# The graft collar: a swollen ring where scion was bound to stock.
+	k.limb(Vector3(0, collar - 0.04, 0), Vector3(0, collar + 0.06, 0), 0.165, 0.155, 6, GroundColors.down(stock, 0.25))
+	k.limb(Vector3(0, collar + 0.06, 0), head, 0.13, 0.15, 6, scion)
+	# The knuckle: the head swollen from being cut back to it every year.
+	k.stone(head.x, head.y - 0.1, head.z, 0.2, 0.2, s + 5, GroundColors.down(scion, 0.12), 6)
+	var start := k.leaf.vertex_count()
+	var n := 6 + v % 3
+	for i in n:
+		var a := float(i) / n * TAU + Kit.j(s, 10 + i, 0.3)
+		var lean := 0.18 + Rng.hash01(s, i, 11) * 0.16
+		var len := 0.75 + Rng.hash01(s, i, 12) * 0.4
+		var foot := head + Vector3(cos(a) * 0.12, 0.05, sin(a) * 0.12)
+		var tip := foot + Vector3(cos(a) * lean * len, len, sin(a) * lean * len)
+		k.limb(foot, tip, 0.03, 0.014, 4, scion)
+		var dead := gone and Rng.hash01(s, i, 13) < 0.6
+		if dead:
+			# Gone over: a bare whip, the mildew on it.
+			k.clump(tip.x, tip.y - 0.12, tip.z, 0.07, 0.05, s + 30 + i, P.LINEN[4], 5)
+			continue
+		var mass: Array[Color] = [leaves[i % 3], leaves[(i + 1) % 3], leaves[3]]
+		k.canopy(tip.x, tip.y - 0.28, tip.z, 0.24, 0.42, s + 40 + i * 7, mass, Kit.LEAF_BROAD, BROAD_CARD, leaf_cards(0.24, 0.42, BROAD_CARD))
+	k.sway_by_height(start, head.y, head.y + 1.4, 0.4, k.leaf)
+	_stake_and_tag(k, s, d)
+
+
+## "trellis": a scion trained flat on the machine's wire, arms tied out level in
+## tiers either side of the leader, a post at each end and the wire between. It
+## reads from above as a line ruled across the row and at eye level as a fence
+## of leaves; the arm a picker broke hangs.
+static func trellis(k: Kit, v: int, c: int) -> void:
+	var s := 6300 + v * 47 + c * 5
+	var d := BiomeDressing.of(c)
+	var stock := BiomeDressing.tint1(c, &"trunk", P.EARTH[2])
+	var scion := stock.lerp(P.ASH[3], 0.35)
+	var leaves := BiomeDressing.tint(c, &"leaf", [P.MOSS[2], P.MOSS[3], P.LINEN[3], P.LINEN[2]])
+	var steel := GroundColors.made(P.PLATE[2], GroundColors.CONCRETE)
+	var half := 1.2
+	var tiers := 3
+	# The posts and the wire, the machine's frame the tree is held to.
+	for sx: float in [-1.0, 1.0]:
+		k.rod(Vector3(sx * half, -0.05, 0), Vector3(sx * half, 1.55, 0), 0.03, 5, steel)
+	for t in tiers:
+		var y := 0.55 + float(t) * 0.42
+		k.rod(Vector3(-half, y, 0), Vector3(half, y, 0), 0.007, 3, P.INK[2])
+	var collar := 0.32
+	k.limb(Vector3(0, -0.05, 0), Vector3(0, collar, 0), 0.12, 0.11, 6, stock)
+	k.limb(Vector3(0, collar - 0.03, 0), Vector3(0, collar + 0.05, 0), 0.14, 0.13, 6, GroundColors.down(stock, 0.25))
+	k.limb(Vector3(0, collar + 0.05, 0), Vector3(0, 1.45, 0), 0.1, 0.05, 5, scion)
+	var start := k.leaf.vertex_count()
+	for t in tiers:
+		var y := 0.55 + float(t) * 0.42
+		for sx: float in [-1.0, 1.0]:
+			var broke := Rng.hash01(s, t, int(sx + 2.0)) < (0.25 if v % 2 == 1 else 0.08)
+			var reach := half * (0.85 + Rng.hash01(s, t, int(sx + 5.0)) * 0.1)
+			var foot := Vector3(0, y, 0)
+			if broke:
+				# Snapped at the tie and hanging.
+				var elbow := Vector3(sx * reach * 0.45, y, 0)
+				k.limb(foot, elbow, 0.035, 0.028, 4, scion)
+				k.limb(elbow, elbow + Vector3(sx * 0.35, -0.42, 0.06), 0.028, 0.012, 4, scion)
+				continue
+			var tip := Vector3(sx * reach, y + 0.02, 0)
+			k.limb(foot, tip, 0.035, 0.018, 4, scion)
+			# Leaves in knots along the arm, where the spurs are.
+			for q in 3:
+				var at := foot.lerp(tip, 0.35 + float(q) * 0.3)
+				var mass: Array[Color] = [leaves[(t + q) % 3], leaves[(t + q + 1) % 3], leaves[3]]
+				k.canopy(at.x, at.y - 0.1, at.z, 0.17, 0.24, s + t * 17 + q * 5 + int(sx * 3.0), mass, Kit.LEAF_BROAD, BROAD_CARD, leaf_cards(0.17, 0.24, BROAD_CARD))
+	k.sway_by_height(start, 0.4, 1.6, 0.25, k.leaf)
+	_stake_and_tag(k, s, d)
+
+
+## The plate the plan tags every grafted tree with, on its own stake: what it
+## was grafted from, a row and a number, in a hand nobody reads now.
+static func _stake_and_tag(k: Kit, s: int, d: BiomeDressing) -> void:
+	var post := GroundColors.made(P.PLATE[2], GroundColors.CONCRETE)
+	var at := Vector3(0.24, 0.0, 0.2 + Kit.j(s, 90, 0.05))
+	k.rod(at + Vector3(0, -0.05, 0), at + Vector3(0, 0.62, 0), 0.012, 4, post)
+	k.made.quad(at + Vector3(-0.07, 0.48, 0.015), at + Vector3(0.07, 0.48, 0.015), at + Vector3(0.07, 0.58, 0.015), at + Vector3(-0.07, 0.58, 0.015), GroundColors.made(P.LINEN[3], GroundColors.ENAMEL))
+	# The tie from stake to bole, gone slack.
+	k.sag(at + Vector3(0, 0.4, 0), Vector3(0.06, 0.36, 0.05), 0.03, 3, 0.006, P.INK[2])

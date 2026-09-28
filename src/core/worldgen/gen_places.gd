@@ -15,6 +15,10 @@ class_name GenPlaces
 ##                             in the one named
 ##   "lit_village"             the square of the village nearest where the player
 ##                             wakes that wired a machine's light into a house
+##   "slot_the_middens"        the floor of a slot canyon (BiomeDef.relief `slots`)
+##                             nearest that landscape's typical ground: the
+##                             middle of a dug floor of the labyrinth, walls on
+##                             both hands
 ##   "typical", "typical_moss" the most CHARACTERISTIC standing ground of a
 ##                             landscape, clear of everything built: what the
 ##                             place looks like, where `open` is where there is
@@ -54,6 +58,9 @@ static func find(w: WorldData, name: String) -> Vector2:
 		return river_sample(w)
 	if key == "cliff":
 		return cliff_sample(w)
+	if key.begins_with("slot_"):
+		var sland := BiomeRegistry.index_of(StringName(key.trim_prefix("slot_")))
+		return slot_sample(w, sland) if sland > 0 else Vector2(-1, -1)
 	if key == "typical" or key.begins_with("typical_"):
 		var tland := key.trim_prefix("typical").trim_prefix("_")
 		var twant := BiomeRegistry.index_of(StringName(tland)) if tland != "" else w.country[int(w.spawn.y) * w.size + int(w.spawn.x)]
@@ -312,6 +319,62 @@ const TYPICAL_OF_LANDMARK := 16.0
 ## landscape's own make-up, over ground types AND prop kinds together, and takes
 ## the nearest. Nothing declares a signature list that could rot -- what counts
 ## as typical is measured off the world every time it is asked.
+## A slot floor of landscape `cc`, nearest its typical ground: the middle of a
+## dug floor between two lattice nodes of the labyrinth (GenSlots.node, read
+## node by node, never the whole world), neither of them a ramp, at the
+## first tile within two of it with the floor level for two all round.
+## Vector2(-1, -1) if none within `SLOT_REACH` nodes.
+static func slot_sample(w: WorldData, cc: int) -> Vector2:
+	var from := typical_sample(w, cc)
+	if from.x < 0.0:
+		return from
+	var p := float(GenSlots.PITCH)
+	var g0 := Vector2i(floori(from.x / p), floori(from.y / p))
+	for r in SLOT_REACH:
+		for gy in range(g0.y - r, g0.y + r + 1):
+			for gx in range(g0.x - r, g0.x + r + 1):
+				if maxi(absi(gx - g0.x), absi(gy - g0.y)) != r:
+					continue
+				var a := GenSlots.node(w.seed_value, w.size, gx, gy)
+				if bool(a.ramp):
+					continue
+				var open: Array = a.open
+				for side in 2:
+					if not bool(open[side]):
+						continue
+					var b := GenSlots.node(w.seed_value, w.size, gx + 1 - side, gy + side)
+					if bool(b.ramp):
+						continue
+					var mid: Vector2 = ((a.centre as Vector2) + (b.centre as Vector2)) * 0.5
+					if BiomeRegistry.at(w, mid).index != cc:
+						continue
+					# A spot with the floor level all round it, so a body stood here
+					# has neither a pit nor a step within two tiles.
+					for oy in range(-2, 3):
+						for ox in range(-2, 3):
+							var tx := int(mid.x) + ox
+							var ty := int(mid.y) + oy
+							if _level_round(w, tx, ty, 2):
+								return Vector2(tx + 0.5, ty + 0.5)
+	return Vector2(-1, -1)
+
+
+## Whether every tile within `r` of (x, y) stands at (x, y)'s own level.
+static func _level_round(w: WorldData, x: int, y: int, r: int) -> bool:
+	var l := w.level_at(x, y)
+	if l <= 0:
+		return false
+	for oy in range(-r, r + 1):
+		for ox in range(-r, r + 1):
+			if w.level_at(x + ox, y + oy) != l:
+				return false
+	return true
+
+
+## How many lattice rings out `slot_sample` looks from the typical ground.
+const SLOT_REACH := 24
+
+
 static func typical_sample(w: WorldData, cc: int) -> Vector2:
 	var solid := solid_mask(w)
 	var yards: Array[Vector2] = []
@@ -352,6 +415,9 @@ static func typical_sample(w: WorldData, cc: int) -> Vector2:
 	_share(land_ground)
 	_share(land_props)
 
+	var among_row := BiomeRegistry.by_index(cc).typical_among
+	var want_among := among_row.x
+	var least := maxf(1.0, float(among_row.y))
 	var best := Vector2(-1, -1)
 	var best_score := INF
 	for y in range(6, w.size - 6, 2):
@@ -383,9 +449,15 @@ static func typical_sample(w: WorldData, cc: int) -> Vector2:
 					var base := ((by + oy) * bw + bx + ox) * PropKind.COUNT
 					for k in PropKind.COUNT:
 						near_props[k] += bins[base + k]
+			var among := near_props[want_among] if want_among >= 0 else 0.0
 			_share(near_ground)
 			_share(near_props)
 			var score := _apart(near_ground, land_ground) + _apart(near_props, land_props)
+			# Among what the landscape declares it is (`typical_among`): a
+			# neighbourhood holding fewer than its `least` of them is not
+			# typical of it, however average its mix.
+			if want_among >= 0:
+				score += 2.0 * (1.0 - minf(1.0, among / least))
 			# A hair of noise so two identical neighbourhoods do not depend on scan order.
 			score += Rng.hash01(w.seed_value, x, y, 13) * 0.002
 			if score < best_score:

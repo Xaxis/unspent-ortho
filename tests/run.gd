@@ -126,6 +126,22 @@ func _run() -> void:
 			# this same frame, before anything queued is gone.
 			if inst.has_method(&"teardown"):
 				await inst.call(&"teardown")
+			# A TEST THAT BOOTS A GAME ENDS IT. One left in the root (`Sx.game`
+			# with no `Sx.end`) keeps running its systems through every test after
+			# it in the shard, and the one that fails is never the one that leaked:
+			# a fight test's keeper and a pocket test have each gone red for a game
+			# some earlier file booted. So the game is ended here and the test that
+			# left it FAILS, by name. One only queued for freeing was ended; it is
+			# freed now, because the next test starts in this same frame. Asked by
+			# the script's name: naming the class here loads game.gd with the
+			# runner, before what it needs is up (a LOAD FAIL on every run).
+			for n: Node in get_root().get_children():
+				var sc: Script = n.get_script()
+				if sc != null and sc.get_global_name() == &"Game":
+					if not n.is_queued_for_deletion():
+						inst.failures.append("%s: left a game running (end it: Sx.end)" % id)
+					get_root().remove_child(n)
+					n.free()
 			# NO TEST INHERITS ANOTHER'S SAVES. `SaveSlots.root` is a static, so a
 			# test that points it at its own folder (`Sx.use_root`) and does not
 			# call `Sx.finish` leaves every later test in the shard reading THAT

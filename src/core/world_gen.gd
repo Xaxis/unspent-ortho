@@ -125,6 +125,8 @@ static func plan(seed_value: int, size: int = DEFAULT_SIZE, until: StringName = 
 		last_timings = marks
 		c.finished = true
 		return c
+	GenRelief.lift_slots(c)
+	GenRelief.flatten_streets(c)
 	GenWater.rivers(c)
 	t = _mark(c, marks, &"rivers", t)
 	if _halted(w):

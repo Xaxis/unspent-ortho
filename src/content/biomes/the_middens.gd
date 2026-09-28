@@ -30,23 +30,28 @@ static func make() -> BiomeDef:
 	d.moist_range = Vector2(0.2, 0.6)
 	d.adjacency = {&"scrapwood": 0.4, &"machine_city": 0.25, &"slums": 0.2}
 	d.coastal = -0.4
-	# THE MAZE IS IN THIS ROW. The highest ridge amplitude anywhere against a low
-	# base and a hard cliff factor, so the land comes out as walls with slots
-	# between them rather than as hills — which is the difference between a place
-	# you cross and a place you get lost in.
+	# THE MAZE IS IN THIS ROW. `slots` stands a plateau six levels (three units)
+	# over a drawn labyrinth of floors (GenSlots): walls on both hands, a strip
+	# of sky, dead ends, rooms where floors cross, and ramps the only ways up.
+	# The rest is kept low so the floors lie nearly flat and the walls stand as
+	# one face each: no terraces to stair them, little swell to tilt them.
 	d.relief = {
-		&"base": 5.5, &"hills": 9.0, &"ridge": 3.0, &"near": 10.0, &"terrace": 0.9, &"valley": 3.0,
-		&"rain": 0.6, &"temp": 0.1, &"moist": 0.25, &"cliff": 1.0,
+		&"base": 5.5, &"hills": 0.0, &"ridge": 0.0, &"near": 0.0, &"terrace": 0.0, &"valley": 3.0,
+		&"rain": 0.6, &"temp": 0.1, &"moist": 0.25, &"cliff": 1.0, &"slots": 6.0,
 	}
 	d.border_elevation = 1.2
 	d.reach_out_high = Vector4(5.0, 0.1, 0.12, 0.35)
 	d.reach_in_low = Vector3(4.5, 0.08, 0.3)
 	d.hatch = Ink.NONE
 	d.grounds = {
-		Ground.SWARF: P.RUST[2].lerp(P.SLATE[2], 0.4),
+		# Filings, a shade under the crust: what makes a slot's floor DARK is the
+		# sky its walls hide (world.gdshader, sky seen), not another ground. A
+		# maze of two grounds is all edges, and the washes rule reads it as salad.
+		Ground.SWARF: P.RUST[1].lerp(P.SLATE[2], 0.45),
 		Ground.GRAVEL: P.STONE[3].lerp(P.RUST[3], 0.35),
 		Ground.SCREE: P.SLATE[2].lerp(P.RUST[2], 0.45),
-		Ground.ROCK: P.SLATE[3].lerp(P.RUST[3], 0.3),
+		# Refuse packed hard where it has stood longest: a pale crust.
+		Ground.ROCK: P.ASH[3].lerp(P.SAND[4], 0.35),
 		Ground.MUD: P.EARTH[2].lerp(P.RUST[2], 0.35),
 		Ground.ROAD: P.ASH[2].lerp(P.SLATE[2], 0.3),
 	}
@@ -68,7 +73,9 @@ static func make() -> BiomeDef:
 	d.village_ground = Ground.GRAVEL
 	# Underfoot, what fell off the walls: plate, cable, cans, shell cases, bolts,
 	# filings combed by the heaps' pull, and a glint of broken screen.
-	d.decor = {Ground.SWARF: [1.0, Decor.SCRAP, 30, Decor.WIRE, 16, Decor.CAN, 8, Decor.BOLT, 10,
+	# A slot floor is where everything that falls off the walls lands, and at
+	# eye level it is half the frame: thick and even, not a drift here and there.
+	d.decor = {Ground.SWARF: [Vector2(1.7, 0.6), Decor.SCRAP, 30, Decor.WIRE, 16, Decor.CAN, 8, Decor.BOLT, 10,
 		Decor.SHELL_CASE, 6, Decor.FILINGS, 8, Decor.SEA_GLASS, 6]}
 	d.grass_colors = [P.RUST[3], P.SLATE[3]]
 	d.rock_color = P.SLATE[3]
@@ -127,7 +134,9 @@ static func make() -> BiomeDef:
 	}
 	d.landmarks = [&"grown_hulk", &"blinking_stack", &"clerks_office", &"poured_pillar"]
 	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
-	d.interiors = {&"house": &"home"}
+	# And a blind alley's end in the slot labyrinth opens on a warren of the
+	# containers the heap was poured over (container_warren.gd).
+	d.interiors = {&"house": &"home", &"slot:alley": &"container_warren"}
 	# Who kept them: the sorter, who has the refuse into bins by what it is, and
 	# the wirer, who makes it work again.
 	d.home = {"households": {
@@ -146,6 +155,16 @@ static func make() -> BiomeDef:
 static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f: int) -> int:
 	if f & BiomeSurface.SHORE != 0:
 		return Ground.GRAVEL
+	# Across a border, into ground a labyrinth does not stand on, the tip
+	# arrives as its filings alone: the scree and rock of a slot's walls have
+	# no walls to come off there.
+	if t.own_def.param(&"slots") <= 0.0:
+		return Ground.SWARF
+	# THE MAZE READS FROM ABOVE AS TWO GROUNDS: every plateau top (the lift's
+	# own mask, GenRelief.lift_slots) is the refuse packed to a pale crust, and
+	# every floor and the lower half of every ramp the dark filings.
+	if not t.lift.is_empty():
+		return Ground.ROCK if t.lift[i] >= t.own_def.param(&"slots") * 0.5 else Ground.SWARF
 	if f & BiomeSurface.APRON != 0:
 		return Ground.SCREE
 	if f & BiomeSurface.BANK != 0:
@@ -175,6 +194,8 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 		# (PropKind.MIDDEN_BALE).
 		if r < 0.096:
 			return PropKind.MIDDEN_BALE
+		if r > 0.60 and r < 0.604:
+			return PropKind.HULL
 		return PropKind.MAGNET_HEAP if r > 0.40 and r < 0.412 else BiomeScatter.NONE
 	if g == Ground.SCREE:
 		if r < 0.036:

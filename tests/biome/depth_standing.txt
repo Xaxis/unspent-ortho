@@ -47,7 +47,6 @@ green_towers plan.machine
 green_towers plan.work_props
 green_towers player.only_in
 grey_orchards land.landmark
-grey_orchards land.own_props
 grey_orchards land.site
 grey_orchards people.built
 grey_orchards plan.keeper
@@ -83,7 +82,6 @@ pinewood plan.keeper
 pinewood plan.machine
 pinewood player.signature
 ruined_metropolis land.landmark
-ruined_metropolis land.own_props
 ruined_metropolis land.site
 ruined_metropolis plan.depot
 ruined_metropolis plan.work_props
