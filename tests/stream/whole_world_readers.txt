@@ -136,12 +136,12 @@ src/systems/10_sky.gd::_update_ground_marks::whole
 src/systems/10_sky.gd::realm_changed::builder SkyWear.texture
 src/systems/10_sky.gd::setup::builder SkyGround.texture
 src/systems/10_sky.gd::setup::builder SkyWear.texture
-src/systems/15_lights.gd::_index_sources::list
 src/systems/18_trample.gd::tour_place::builder SkyGround.texture
-src/systems/19_colossi.gd::_crush_treads::list
 src/systems/19_colossi.gd::_landed::raw
-src/systems/19_colossi.gd::_the_treads_own::list
 src/systems/19_colossi.gd::_tread_minute::list
+src/systems/19_colossi.gd::owned_of::list
+src/systems/19_colossi.gd::prepare_world::builder WorldQuery.new
+src/systems/19_colossi.gd::pressed_of::list
 src/systems/19_colossi.gd::realm_changed::builder Treads.hand_over
 src/systems/19_colossi.gd::realm_changed::whole
 src/systems/19_colossi.gd::setup::builder Treads.hand_over

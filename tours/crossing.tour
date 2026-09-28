@@ -1,0 +1,18 @@
+# The crossing a player waits through (streamed worldgen S5's gate), timed from
+# `use` by the page's own stages (tools/web --crossing). The realm below is
+# already standing, as it is for a player: the title raises it while it is read
+# (RealmWorlds), which tools/web --raised-before-game holds on its own. So this
+# measures the going, not the raising.
+#
+#   tools/tour.sh tours/crossing.tour --seed=7 --hour=10
+
+hour 10
+place shaft
+await raised:underground 400
+await portal 15
+shot 01-at-the-shaft with realm:surface,portal
+press use
+await realm:underground 60
+await crossed 5
+wait 1.0
+shot 02-below with realm:underground
