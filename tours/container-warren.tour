@@ -6,7 +6,10 @@
 #   tools/tour.sh tours/container-warren.tour --seed=1 --hour=11 --weather=clear:0
 #
 # 01 is the door in the face. 02 is the warren from above. 03 is over the
-# shoulder down the run. 04 is at the strongbox.
+# shoulder down the run. 04 is at the strongbox. Where the run steps up (seed
+# 1's nearest does), 05 is at a ladder's foot over the shoulder, 06 is on the
+# floor above after the jump key climbed it, and 07 back at the foot after the
+# same key took the player down.
 coast calm
 near door:container_warren
 await door 5
@@ -27,3 +30,14 @@ near strongbox
 wait 1.0
 shot 04-at-the-strongbox with inside:container_warren,shoulder
 release shoulder_peek
+near ladder
+wait 0.6
+shot 05-at-a-ladder-s-foot with inside:container_warren,below
+press jump 0.1
+wait 2.5
+shot 06-up-the-ladder with inside:container_warren,above
+near ladder_top
+wait 0.6
+press jump 0.1
+wait 2.5
+shot 07-back-down-it with inside:container_warren,below

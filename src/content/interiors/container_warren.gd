@@ -20,6 +20,14 @@ extends RefCounted
 ##   inside a walked one, so crouching past it is a way and walking is not
 ##   (test_container_warren).
 ##
+## THE PLAN, by hash: `line` (the run on one level), `step` (the run climbs once,
+## a container's height, 5 levels, up a ladder) and `tower` (twice, the vault at
+## the top). The heap was poured over boxes at every height, and a stepped run
+## reads from above as a terraced heap of steel. Each rise is a riser with a
+## `ladder` thing on it, facing into the lower room (InteriorGen hands the pocket
+## the ladder, Climb takes it up and down), where the one below meets the one
+## above.
+##
 ## What the vault keeps (Interiors.LOOT `container_warren`): salvage the machines
 ## sort for, and rarely a drive.
 ##
@@ -42,6 +50,8 @@ const MOST := 5
 ## was poured, not laid, never lines up, and the joint is always wide enough to
 ## pass (the end doors are the middle unit of a container's width).
 const JOG := 1
+## A container's height in levels (2.5 units): each step of a stepped run.
+const RISE := 5
 ## The sorter's hours, on the clock: the middens' machines sort by day.
 const SHIFT := Vector2(6, 19)
 ## Where the sorter sleeps: in its side container, this far in from the end
@@ -74,11 +84,21 @@ static func make() -> InteriorKind:
 
 static func lay(rng: RandomNumberGenerator, land: int = -1) -> InteriorLayout:
 	var l := InteriorLayout.new()
-	l.plan = &"line"
+	l.plan = [&"line", &"step", &"tower"][rng.randi_range(0, 2)]
 	l.dressing = [&"dug", &"kept", &"sorted"][rng.randi_range(0, 2)]
 	l.has_hearth = false
 	var n := rng.randi_range(FEWEST, MOST)
-	var vault := rng.randf() < 0.5
+	# A tower keeps its vault at the top.
+	var vault := l.plan == &"tower" or rng.randf() < 0.5
+	# The containers from which the run stands a RISE higher: none, one, or two.
+	var rises: Array[int] = []
+	match l.plan:
+		&"step":
+			rises.append(rng.randi_range(1, n - 1))
+		&"tower":
+			var r1 := rng.randi_range(1, n - 2)
+			rises.append(r1)
+			rises.append(rng.randi_range(r1 + 1, n - 1))
 	# Laid from the door northward, in negative y, then moved down so the door's
 	# wall is the south edge of the first container.
 	var boxes: Array[Rect2i] = []
@@ -92,12 +112,17 @@ static func lay(rng: RandomNumberGenerator, land: int = -1) -> InteriorLayout:
 	var last := boxes[n - 1]
 	var vault_rect := Rect2i(last.position.x + WIDE / 2 - VAULT / 2, last.position.y - VAULT, VAULT, VAULT)
 	var drop := Vector2i(0, LONG * n + (VAULT if vault else 0))
+	var level := 0
 	for i in n:
+		if rises.has(i):
+			level += RISE
 		l.rooms.append(Rect2i(boxes[i].position + drop, boxes[i].size))
 		l.room_ground.append(Ground.STEEL_FLOOR)
+		l.room_level.append(level)
 	if vault:
 		l.rooms.append(Rect2i(vault_rect.position + drop, vault_rect.size))
 		l.room_ground.append(Ground.FLOOR)
+		l.room_level.append(level)
 	# The sorter's own container, across the side of one in the middle of the
 	# run, lying the other way: the rest of the run never reaches its rows.
 	if l.dressing == &"sorted":
@@ -106,6 +131,7 @@ static func lay(rng: RandomNumberGenerator, land: int = -1) -> InteriorLayout:
 		var sx := host.end.x if east else host.position.x - LONG
 		l.rooms.append(Rect2i(sx, host.position.y + 1, LONG, WIDE))
 		l.room_ground.append(Ground.STEEL_FLOOR)
+		l.room_level.append(l.room_level[n / 2])
 	var first := l.rooms[0]
 	l.door = Vector2(first.position.x + 1.5, first.end.y)
 	l.door_out = Vector2(0, 1)
@@ -200,6 +226,10 @@ static func _fit(l: InteriorLayout, n: int, vault: bool, rng: RandomNumberGenera
 	for i in run_joints:
 		way.append(joints[i] + Vector2(0, 0.8))
 		way.append(joints[i] + Vector2(0, -0.8))
+		# Where the next room stands higher, a ladder up its riser, at the joint,
+		# facing (as every thing does) into the room it stands in, the lower.
+		if l.room_level[i + 1] > l.room_level[i]:
+			_put(l, &"ladder", joints[i], Vector2(0, 1), 0.0)
 	l.walks.append(way)
 	# Each container: its manifest stencilled on a side wall, and what is in it.
 	for i in n:

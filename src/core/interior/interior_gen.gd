@@ -30,9 +30,18 @@ static func grow(seed_value: int, t: Threshold) -> Pocket:
 		for x in l.size:
 			var i := y * l.size + x
 			var on_floor := l.is_floor(x, y)
-			w.level[i] = FLOOR_LEVEL if on_floor else 0
+			w.level[i] = FLOOR_LEVEL + l.level_of(x, y) if on_floor else 0
 			w.ground[i] = l.ground_at(x, y)
 			w.country[i] = t.land
+	# A ladder stands on the riser at `at`, facing into the lower room: the tiles
+	# either side of the riser are the pair Climb takes.
+	for th: Dictionary in l.things:
+		if th.kind == &"ladder":
+			var at: Vector2 = th.at
+			var f: Vector2 = th.face
+			var foot := at + f * 0.5
+			var top := at - f * 0.5
+			w.add_ladder(Vector2i(floori(foot.x), floori(foot.y)), Vector2i(floori(top.x), floori(top.y)))
 	w.spawn = l.inside()
 	for pr: Dictionary in l.props:
 		var prop := WorldProp.new(w.next_id(), int(pr.kind), pr.at, (pr.face as Vector2).angle(), 1.0)

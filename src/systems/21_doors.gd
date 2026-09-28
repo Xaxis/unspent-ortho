@@ -1677,6 +1677,13 @@ func tour_seen(what: StringName) -> bool:
 			return pocket != null and crawl_near
 		&"out_back":
 			return _went_out_back
+		# The player's feet are on a floor above the room's lowest: a warren's
+		# ladder climbed (`below` is the other way round).
+		&"above", &"below":
+			if pocket == null:
+				return false
+			var lv := game.world.level_at(floori(game.player.pos.x), floori(game.player.pos.y))
+			return (lv > InteriorGen.FLOOR_LEVEL) == (what == &"above")
 		# A fire is warming the player where they stand (Survival.fire_near).
 		&"by_fire":
 			return Survival.fire_near(game) != null
@@ -1719,7 +1726,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "door:container_warren", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "door:container_warren", "ladder", "ladder_top", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
@@ -1751,6 +1758,13 @@ func tour_place(what: String) -> Vector2:
 	if what == "strongbox":
 		var box := _first_box()
 		return (box.at as Vector2) + (box.face as Vector2) * 0.8 if not box.is_empty() else Vector2.INF
+	# `near ladder`: at the first ladder's foot, facing up it; `near ladder_top`:
+	# on its lip, facing the drop. The jump key climbs it either way (Climb).
+	if what == "ladder" or what == "ladder_top":
+		var ld := _first_kind(&"ladder")
+		if ld.is_empty():
+			return Vector2.INF
+		return (ld.at as Vector2) + (ld.face as Vector2) * (0.6 if what == "ladder" else -0.6)
 	if what == "hatch" or what == "stove" or what == "crawl":
 		var h := _first_with({"hatch": "serves", "stove": "fuel", "crawl": "exit"}[what])
 		return (h.at as Vector2) + (h.face as Vector2) * 0.8 if not h.is_empty() else Vector2.INF
@@ -1769,6 +1783,11 @@ func tour_face(what: String) -> float:
 	if what == "strongbox":
 		var box := _first_box()
 		return (-(box.face as Vector2)).angle() if not box.is_empty() else NAN
+	if what == "ladder" or what == "ladder_top":
+		var ld := _first_kind(&"ladder")
+		if ld.is_empty():
+			return NAN
+		return (-(ld.face as Vector2)).angle() if what == "ladder" else (ld.face as Vector2).angle()
 	if what == "hatch" or what == "stove" or what == "crawl":
 		var h := _first_with({"hatch": "serves", "stove": "fuel", "crawl": "exit"}[what])
 		return (-(h.face as Vector2)).angle() if not h.is_empty() else NAN
@@ -1794,6 +1813,15 @@ func _roomy(p: Vector2) -> bool:
 		if not l.is_floor(floori(q.x), floori(q.y)):
 			return false
 	return true
+
+
+func _first_kind(kind: StringName) -> Dictionary:
+	if pocket == null:
+		return {}
+	for t: Dictionary in pocket.layout.things:
+		if t.kind == kind:
+			return t
+	return {}
 
 
 func _tour_thing(what: String) -> Dictionary:

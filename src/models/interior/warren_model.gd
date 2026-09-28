@@ -13,6 +13,11 @@ extends "res://src/models/interior/weapons_hall_model.gd"
 ## a thread of the day comes down through the heap onto the deck, as strong as
 ## the hour on the clock (&"seep", 21_doors): the one light a dug warren has,
 ## and what a player finds their way by.
+##
+## A STEPPED RUN (`step`, `tower`) stands each container at its own floor
+## (InteriorLayout.room_level): every wall, deck, roof and thing is drawn from its
+## room's floor, the riser between two is the lower one's end wall, whole, and a
+## ladder is bolted to it, its rails standing on up past the lip as handholds.
 
 ## Faded container paint: oxide red, a shipping line's blue, a green, a rust
 ## orange and a grey, each dulled toward the dark of the heap round it. The
@@ -26,6 +31,19 @@ const RIDGES := 6
 const RIDGE_DEEP := 0.045
 ## The vault's poured concrete.
 const POURED := Color(0.3, 0.29, 0.27)
+
+
+## Draw what follows from room `i`'s own floor.
+func _at_room(i: int) -> void:
+	var lv := layout.room_level[i] if i >= 0 and i < layout.room_level.size() else 0
+	floor_y = TerrainMesher.level_height(InteriorGen.FLOOR_LEVEL + lv)
+
+
+func _room_at(p: Vector2) -> int:
+	for i in layout.rooms.size():
+		if Rect2(layout.rooms[i]).has_point(p):
+			return i
+	return -1
 
 
 func _paint(i: int) -> Color:
@@ -52,6 +70,22 @@ func _edge(k: Kit, e: Dictionary, h: float, cut: bool) -> void:
 	var along := (b - a).normalized()
 	var half := o * THICK * 0.5
 	var room := _room_of(e)
+	_at_room(room)
+	# A RISER: two rooms at different floors meet here. What stands is the lower
+	# one's end wall, whole, up to the upper one's floor, cut or not: it is the
+	# step itself, and the ladder is on it.
+	if e.kind == &"inner":
+		var other := _room_at(((e.a as Vector2) + (e.b as Vector2)) * 0.5 + (e.out as Vector2) * 0.25)
+		var lo := layout.room_level[room] if room >= 0 and room < layout.room_level.size() else 0
+		var hi := layout.room_level[other] if other >= 0 and other < layout.room_level.size() else lo
+		if hi != lo:
+			if hi < lo:
+				room = other
+				_at_room(room)
+			e = e.duplicate()
+			e.kind = &"wall"
+			h = kind.wall_h
+			cut = false
 	var col := _paint(room)
 	var dark := col.darkened(0.45)
 	var cap := Color(0.05, 0.05, 0.06)
@@ -144,6 +178,7 @@ func _end_doors(k: Kit, e: Dictionary, h: float, cut: bool, col: Color) -> void:
 ## Steel deck in the containers, ribbed across; poured concrete in the vault.
 func _floor(k: Kit, _tears: Array[Vector2]) -> void:
 	for i in layout.rooms.size():
+		_at_room(i)
 		var r := layout.rooms[i]
 		var vault := r.size.x == r.size.y
 		for x in range(r.position.x, r.end.x):
@@ -179,8 +214,9 @@ func _floor(k: Kit, _tears: Array[Vector2]) -> void:
 ## A container's roof from inside: the same corrugation, overhead, in its paint
 ## gone dark; the vault's a flat pour.
 func _roof(k: Kit, h: float, _tears: Array[Vector2]) -> void:
-	var y := floor_y + h
 	for i in layout.rooms.size():
+		_at_room(i)
+		var y := floor_y + h
 		var r := layout.rooms[i]
 		var col := _paint(i).darkened(0.55)
 		var made := GroundColors.ENAMEL if _paint(i) != POURED else GroundColors.CONCRETE
@@ -223,7 +259,11 @@ func _hole(i: int) -> Vector2:
 func _thing(k: Kit, t: Dictionary) -> void:
 	var at: Vector2 = t.at
 	var f: Vector2 = t.face
+	# From the floor of the room it stands in; a ladder, on the riser, from the
+	# lower one's, below it.
+	_at_room(_room_at(at + f * 0.25) if t.kind == &"ladder" else _room_at(at))
 	match t.kind:
+		&"ladder": _ladder(k, at, -f)
 		&"crate": _crate(k, at, f)
 		&"sorted_bins": _bins(k, at, f)
 		&"bedroll": _bedroll(k, at, f)
@@ -234,6 +274,23 @@ func _thing(k: Kit, t: Dictionary) -> void:
 		&"machine_lamp": _lamp(k, at, f)
 		&"dock": _dock(k, at, f)
 		_: super._thing(k, t)
+
+
+## A ladder bolted to the riser: two rails from the deck to a hand's height
+## past the lip above, a rung every foot, in the dark of bare steel with the rungs
+## worn bright, so over the shoulder it reads as the way up.
+func _ladder(k: Kit, at: Vector2, up: Vector2) -> void:
+	var s := Vector2(-up.y, up.x)
+	var off := at - up * (THICK * 0.5 + 0.08)
+	var top := kind.wall_h + 0.9
+	var rail := GroundColors.made(Color(0.1, 0.1, 0.11), GroundColors.ENAMEL)
+	var rung := GroundColors.made(Color(0.42, 0.4, 0.37), GroundColors.ENAMEL)
+	for u: float in [-0.24, 0.24]:
+		k.rod(_v(off + s * u, 0.0), _v(off + s * u, top), 0.028, 6, rail)
+	var n := int(kind.wall_h / 0.3)
+	for i in n:
+		var y := 0.3 * float(i + 1)
+		k.rod(_v(off - s * 0.24, y), _v(off + s * 0.24, y), 0.018, 5, rung)
 
 
 ## A crate nobody came back for: boards on a frame.
