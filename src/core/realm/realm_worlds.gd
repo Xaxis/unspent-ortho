@@ -49,7 +49,10 @@ static func keep(w: WorldData) -> void:
 
 ## Start raising the world of `kind` if nothing is holding or raising it. True
 ## when it is already up.
-static func begin(seed_value: int, size: int, kind: StringName) -> bool:
+##
+## `full`: raised on the whole pool until a game starts (`GenFields.lean`), for
+## the title, which leaves the pool idle while the player reads it.
+static func begin(seed_value: int, size: int, kind: StringName, full := false) -> bool:
 	var key := key_of(seed_value, size, kind)
 	_mutex.lock()
 	var have: bool = _worlds.has(key)
@@ -87,6 +90,8 @@ static func begin(seed_value: int, size: int, kind: StringName) -> bool:
 	_mutex.unlock()
 	var task := WorkerThreadPool.add_group_task(func(_i: int) -> void: _raise(key, seed_value, size, kind, gen),
 		1, 1, true, "realm %s" % kind)
+	if full:
+		GenFields.fan_group = task
 	_mutex.lock()
 	_tasks[key] = task
 	_mutex.unlock()
@@ -165,7 +170,11 @@ static func _raise(key: String, seed_value: int, size: int, kind: StringName, ge
 	if gen == _gen:
 		WorldGen.unhalt(Realm.seed_for(seed_value, kind), size, kind)
 	_mutex.unlock()
+	var t0 := Time.get_ticks_msec()
 	var w := BootWorld.world(Realm.seed_for(seed_value, kind), size, kind)
+	# Said, so a run can read when a realm stood (tools/web --play): what a shaft
+	# pressed at any moment would have waited for.
+	print("realm %s raised in %d ms" % [kind, Time.get_ticks_msec() - t0])
 	if gen != _gen:
 		# Stopped (or finished) for a game that ended: its stop must not outlive it,
 		# or the next real growing of this world would stop too.

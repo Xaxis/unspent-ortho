@@ -32,13 +32,22 @@ static func rows(height: int, job: Callable, band: int = 12) -> void:
 	parallel(task, count)
 
 
+## The one group whose passes may still fan out over the pool from inside it
+## (`RealmWorlds.begin` with `full`: a realm raised while the title leaves the
+## pool idle), until `lean` says a game is running and it must keep to its one
+## worker. The world is the same either way; only how many threads build it.
+static var fan_group := -1
+static var lean := false
+
+
 ## job(i) for i in [0, count) on the worker pool, waiting for all of them. Called
 ## from inside another group's element (together() of passes that use rows())
 ## it runs inline: a pool thread waiting on a nested group holds its thread, and
 ## with few threads (4 on the web build, 4-thread machines) every thread ends up
 ## waiting on another and world generation never finishes.
 static func parallel(job: Callable, count: int) -> void:
-	if WorkerThreadPool.get_caller_group_id() >= 0:
+	var gid := WorkerThreadPool.get_caller_group_id()
+	if gid >= 0 and (gid != fan_group or lean):
 		for i in count:
 			job.call(i)
 		return

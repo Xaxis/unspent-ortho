@@ -103,6 +103,9 @@ func setup(g: Game) -> void:
 	_live += 1
 	_realm = g.world.realm
 	RealmWorlds.keep(g.world)
+	# A realm the title began raising on the whole pool keeps to one worker from
+	# here: the game's frames are the pool's now (RealmWorlds.begin).
+	GenFields.lean = true
 	_gates = Node3D.new()
 	_gates.name = "gates"
 	g.add_child(_gates)
