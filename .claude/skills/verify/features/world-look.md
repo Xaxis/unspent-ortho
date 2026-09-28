@@ -30,6 +30,7 @@ The lit world: sky and hour, weather, lights and lamps, landscape grounds, foreg
   - Web: `tools/web.sh --tour=tours/depth.tour --args=--seed=1`, no failed GL program; under a tear `tools/web.sh --tour=tours/cave-cost.tour --uncapped --timeout=600 --args=--seed=7,--realm=underground,--hour=12,--stats` frame 02 shows the column, not a white block.
 - 14_fliers `src/systems/14_fliers.gd`: `tools/tour.sh tours/slums_street.tour`.
 - 15_lights `src/systems/15_lights.gd`: `tools/tour.sh tours/nights.tour`.
+  - Web lamp pools rank on-screen lights first (`pool_before`): `tools/web.sh --tour=tours/lamp-pool.tour --programs --args=--seed=7,--weather=clear:0`, 0 new programs.
 - 16_vents `src/systems/16_vents.gd`: `tools/tour.sh tours/hazards.tour`.
 - 17_holo `src/systems/17_holo.gd`: `tools/tour.sh tours/slums_street.tour`.
 - 18_crowns `src/systems/18_crowns.gd`: `tools/tour.sh tours/foliage.tour`.
