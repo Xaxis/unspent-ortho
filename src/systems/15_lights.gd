@@ -1139,13 +1139,18 @@ func _points_for(p: WorldProp) -> Array:
 	return _glow_cache[key]
 
 
+## A prop that gives no light: taken, or standing with its light out for good.
+func _out(p: WorldProp) -> bool:
+	return game.world.depleted.has(p.id) or game.world.unlit.has(p.id)
+
+
 ## The sources and machines that could glint near the focus, nearest first.
 func _gather_glints(focus: Vector2) -> void:
 	_glint_near.clear()
 	var near: Array = []
 	for s in _near(focus, Glints.REACH):
 		var p := _prop_of(s)
-		if game.world.depleted.has(p.id):
+		if _out(p):
 			continue
 		var d := p.pos.distance_squared_to(focus)
 		if d <= Glints.REACH * Glints.REACH:
@@ -1374,7 +1379,7 @@ func _assign(focus: Vector2, hour: float) -> void:
 		if float(s.range) <= 0.0:
 			continue
 		var p := _prop_of(s)
-		if game.world.depleted.has(p.id):
+		if _out(p):
 			continue
 		var d := p.pos.distance_squared_to(focus)
 		if d > REACH * REACH or not source_lit(s, hour):
@@ -1457,7 +1462,7 @@ func _update_glows(focus: Vector2, hour: float) -> void:
 	var keep := {}
 	for s in _near(focus, GLOW_REACH):
 		var p := _prop_of(s)
-		if p.pos.distance_squared_to(focus) > GLOW_REACH * GLOW_REACH or game.world.depleted.has(p.id):
+		if p.pos.distance_squared_to(focus) > GLOW_REACH * GLOW_REACH or _out(p):
 			continue
 		var on := false
 		match int(s.kind):

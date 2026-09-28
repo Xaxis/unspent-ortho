@@ -157,6 +157,10 @@ var shafts_sited := false
 ## Props taken from the world: prop id -> world minute it grows back (INF = never).
 ## Owned by survival rules; WorldView and WorldQuery skip depleted props.
 var depleted: Dictionary = {}
+## Props that still stand but whose light is out for good: prop id -> true. A
+## plan's station its keeper fed on goes dark with it (44_sentinels); 15_lights
+## lights none of these. Saved beside `depleted` (SaveCore).
+var unlit: Dictionary = {}
 ## Region id -> how many of the region's own ore props stand in it, counted by
 ## generation (`GenDigest`) so no reader has to walk every prop to ask.
 ## `ore_counted` is false on a world built by hand, which is counted on first ask.

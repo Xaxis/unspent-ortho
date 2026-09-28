@@ -21,9 +21,22 @@ var tufts := 0
 ## True once the props in the yard have been marked spent: a broken works is
 ## broken for the sentinel that fed on it too, and that is done exactly once.
 var stripped := false
+## World minutes the region's keeper fell, INF while it stands. Its yard goes
+## dark KEEPER_DARK_AFTER later (34_works), and saved here so a game saved in
+## between still wakes to it dark.
+var keeper_fell_at := INF
+## True once the yard went dark because its keeper fell, not by its housings.
+var by_keeper := false
+
+## World minutes between a keeper's fall and its yard going dark: the fall is
+## seen first, and the lights across the land go after it (about four seconds).
+const KEEPER_DARK_AFTER := 6.0
 
 
+## The yard is out: every housing opened, or its keeper fallen and gone dark.
 func broken() -> bool:
+	if by_keeper:
+		return true
 	for p in parts:
 		if not p:
 			return false
@@ -50,7 +63,8 @@ func save() -> Dictionary:
 	for p in parts:
 		flags.append(p)
 	return {"region": region, "parts": flags, "dark_at": SaveCodec.num(dark_at),
-		"dark_day": dark_day, "tufts": tufts, "stripped": stripped}
+		"dark_day": dark_day, "tufts": tufts, "stripped": stripped,
+		"keeper_fell_at": SaveCodec.num(keeper_fell_at), "by_keeper": by_keeper}
 
 
 static func from_save(d: Dictionary) -> WorksState:
@@ -63,4 +77,6 @@ static func from_save(d: Dictionary) -> WorksState:
 	s.dark_day = float(d.get("dark_day", 1.0))
 	s.tufts = SaveCodec.to_int(d.get("tufts", 0))
 	s.stripped = bool(d.get("stripped", false))
+	s.keeper_fell_at = SaveCodec.to_num(d.get("keeper_fell_at", INF))
+	s.by_keeper = bool(d.get("by_keeper", false))
 	return s

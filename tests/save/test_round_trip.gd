@@ -208,6 +208,12 @@ func _play(g: Game) -> void:
 		if q.id < SaveCore.props_base(g) and Takes.workable(q.kind) and not g.world.depleted.has(q.id):
 			g.world.depleted[q.id] = INF
 			break
+	# And one left standing with its light out for good, as a fallen keeper's
+	# stations are (world.unlit).
+	for q in g.world.each_prop():
+		if q.id < SaveCore.props_base(g) and not g.world.depleted.has(q.id):
+			g.world.unlit[q.id] = true
+			break
 	# Build a fire, and make a haft by hand. STOOD WHERE ONE FITS, found rather
 	# than assumed: a fire wants level, clear ground in front of the body, and the
 	# walk above ends wherever the land it crossed happens to put it -- on a
@@ -279,6 +285,7 @@ func _live(g: Game) -> Dictionary:
 	return {
 		"props": g.world.prop_count(),
 		"depleted": depleted,
+		"unlit": g.world.unlit.keys(),
 		"built": built,
 		"minutes": g.clock.minutes,
 		"pos": g.player.pos,

@@ -1,0 +1,25 @@
+# Its fall changes the coast (docs/ROADMAP.md, slice 1 step 5): the home coast's
+# keeper fell three days before the start, by its own fall (`--fallen`), and the
+# coast is walked to see that it stays changed.
+#
+#   tools/tour.sh tours/keeper-fall.tour --seed=1 --hour=22 --weather=clear:0 --fallen=coast:72
+#
+# What it proves: the yard in its region stands dark at night, its lamps and its
+# mast out, as a yard broken by hand does; the intake it fed on still stands where
+# it went down, its light out; and by day the ground there is growing back over,
+# tufts laid on the yard's own clock. What its fall
+# spends and saves, and when, is proved headless in
+# tests/sentinel/test_fall_changes_the_coast.gd.
+
+coast calm
+near keeper_yard
+wait 1.0
+shot 01-the-yard-dark-at-night with works_broken
+
+near fallen_keeper
+wait 1.0
+shot 02-its-intake-dark-where-the-reaper-went-down with sentinel_fallen
+
+hour 11
+wait 1.0
+shot 03-where-the-reaper-went-down-grown-over-by-day with sentinel_fallen

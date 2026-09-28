@@ -114,6 +114,9 @@ extends RefCounted
 ##                     taken out of a village of that same region, so the region has
 ##                     somebody to ask him about (taken, story); with --holding, taken
 ##                     off the staged holding's books instead, to walk home to it
+## --fallen=LAND[:H]   that landscape's keeper (its biggest region's) fell H hours (default 0)
+##                     before the start, by its own fall: its feed spent, its memory back,
+##                     its yard dark, the land H hours into closing over it (sentinels)
 ## --craft=KIND        park a craft (raft | hover_sled | walker_rig) in reach of the player (crafts)
 ## --aboard=KIND      park a craft and stand the player on it, ready to steer (crafts)
 ## --act=NAME[:MS]     play a fight moment and hold it for the shot: swing | grip | hurt | dodge | alert | windup
@@ -236,6 +239,9 @@ var walled := false
 var attention := 0.0
 ## How many people the plan is already holding at boot (taken).
 var carried := 0
+## A landscape whose keeper fell before the start, and how many hours before (sentinels).
+var fallen := ""
+var fallen_hours := 0.0
 ## A craft parked in reach at boot, and one the player starts aboard (crafts).
 var craft := ""
 var aboard := ""
@@ -355,6 +361,10 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"walled": o.walled = true
 			"attention": o.attention = clampf(v.to_float(), 0.0, 1.0)
 			"carried": o.carried = maxi(0, v.to_int())
+			"fallen":
+				var parts := v.split(":")
+				o.fallen = parts[0]
+				o.fallen_hours = maxf(0.0, parts[1].to_float()) if parts.size() > 1 else 0.0
 			"craft": o.craft = v
 			"aboard": o.aboard = v
 			"act": o.act = v
