@@ -24,7 +24,7 @@ func setup(g: Game) -> void:
 	# yard going dark, or the keeper falling. Both are their packages' own signals,
 	# so nothing here has to know what a depot or a keeper is.
 	Events.works_broken.connect(_on_works_broken)
-	Events.sentinel_fell.connect(_on_sentinel_fell)
+	Events.yard_left_dark.connect(_on_yard_left_dark)
 
 
 ## A world where the plan is already holding people (`--carried=N`), so a tour or
@@ -107,9 +107,10 @@ func _on_works_broken(region: int, _land: StringName) -> void:
 	_free(region)
 
 
-## The keeper is down: nothing is left to tell the depot anything, and nothing
-## told it to keep them either.
-func _on_sentinel_fell(region: int, _land: StringName, _how: StringName) -> void:
+## The keeper is down and its yard has followed it dark (34_works): nothing is
+## left to tell the depot anything. Freed when the dark comes, not at the fall,
+## so "the yard is dark" is true when it is said.
+func _on_yard_left_dark(region: int, _land: StringName) -> void:
 	_free(region)
 
 

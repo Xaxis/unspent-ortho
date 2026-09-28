@@ -478,7 +478,8 @@ func _fell(s: WorksSite, st: WorksState) -> void:
 	_strip(s, st)
 	Events.sfx.emit(SND_DARK, game.world.to_3d(s.pos))
 	if st.by_keeper:
-		Events.message.emit("Out across the land, the yard's lights go. Nothing there answers the plan now.")
+		Events.message.emit(StoryContent.YARD_DARK)
+		Events.yard_left_dark.emit(s.region, s.land)
 		return
 	Events.message.emit("The yard goes dark. Nothing here answers the plan now.")
 	Events.works_broken.emit(s.region, s.land)

@@ -651,6 +651,11 @@ func _on_sentinel_fell(_region: int, land: StringName, _how: StringName) -> void
 	var d := BiomeRegistry.get_def(land)
 	if d != null and StoryContent.KEEPER_MEMORY.has(d.sentinel):
 		_witnessed(StoryContent.KEEPER_MEMORY[d.sentinel].memory)
+	# And the keeper is down: the beat the people it kept away from talk about
+	# (StoryContent.KEEPER_DOWN; Maren's village, Hob's tide).
+	if d != null and StoryContent.KEEPER_DOWN.has(d.sentinel):
+		@warning_ignore("return_value_discarded")
+		Story.beat(StoryContent.KEEPER_DOWN[d.sentinel])
 
 
 ## A holding put up is seen from far off; so is one held, or lost.

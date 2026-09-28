@@ -46,6 +46,10 @@ signal saved(slot: int, reason: StringName)
 signal sentinel_woke(region: int, land: StringName)
 signal sentinel_phase(region: int, phase: StringName)
 signal sentinel_fell(region: int, land: StringName, how: StringName)
+## A yard its keeper kept has gone dark after it (34_works, KEEPER_DARK_AFTER on
+## from the fall): not `works_broken`, which is the player's own act on a yard.
+## What the yard held walks out now, when the dark can be seen (45_taken).
+signal yard_left_dark(region: int, land: StringName)
 
 ## Works and landmarks (docs/VISION.md, §3). `works_broken` when a region's
 ## depot has been put out for good — its lights out, its yard's works spent, and

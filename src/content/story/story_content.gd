@@ -43,7 +43,7 @@ const ARCS := {
 	&"the_holdfast": {
 		"title": "the Holdfast",
 		"note": "The last people still trying to take the world back.",
-		"beats": [&"marens_lead", &"holdfast_fight", &"holdfast_price", &"holdfast_hope", &"vera_knew"],
+		"beats": [&"marens_lead", &"reaper_down", &"holdfast_fight", &"holdfast_price", &"holdfast_hope", &"vera_knew"],
 	},
 	&"the_covenant": {
 		"title": "the Covenant",
@@ -126,6 +126,7 @@ const BEATS := {
 	&"standoff": {"reveal": true, "short": "a star each", "arc": &"the_machines", "says": "Two things that can kill a star are each holding the other's."},
 	&"the_guest": {"short": "someone else", "arc": &"the_machines", "says": "Something from another star is talking to them, and it is not talking about you."},
 	&"marens_lead": {"short": "iron for the crew", "arc": &"the_holdfast", "says": "The crew camped past the old works pay for iron. The fire-keeper wants them kept from her fire."},
+	&"reaper_down": {"short": "the yard dark", "arc": &"the_holdfast", "says": "The gantry that kept the yard past the point is down, and the yard is dark."},
 	&"holdfast_fight": {"short": "still fighting", "arc": &"the_holdfast", "says": "There are people still fighting to take the world back. Not many."},
 	&"holdfast_price": {"short": "what it costs", "arc": &"the_holdfast", "says": "Every works the Holdfast breaks brings the hunters down on a village."},
 	&"holdfast_hope": {"short": "a weapon", "arc": &"the_holdfast", "says": "To the Holdfast, anybody who knows the old machines is a weapon."},
@@ -4001,6 +4002,7 @@ const TALKS := {
 					{"text": "Where am I?", "pick": &"asked_where", "to": &"where"},
 					{"text": "Somebody didn't get home.", "when": &"not_home", "pick": &"told_lost", "to": &"lost"},
 					{"text": "What do I do now?", "pick": &"asked_now", "to": &"lead"},
+					{"text": "The yard past the point is dark.", "when": &"reaper_down", "pick": &"told_dark", "to": &"dark"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
 			},
@@ -4062,6 +4064,12 @@ const TALKS := {
 			},
 			&"others": {
 				"says": ["Two, years back. Both walked out to the point.", "Neither came back."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			# The keeper down (`reaper_down`): what a dark yard means for her village.
+			# Left alone, for now; the price is the next yard's (`holdfast_price`).
+			&"dark": {
+				"says": ["Saw it go from the fire. First dark out there since they built it.", "So we're let be. For now. The crew will want the next yard, and that one sends its hunters here."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"lost": {
@@ -5310,6 +5318,7 @@ const TALKS := {
 					{"text": "What does it bring?", "pick": &"asked_brings", "to": &"sort"},
 					{"text": "[help him sort]", "pick": &"sorted", "to": &"sort"},
 					{"text": "Maren says the crew pay for iron.", "pick": &"asked_iron", "to": &"reaper", "when": &"marens_lead"},
+					{"text": "The yard past the point is dark.", "pick": &"told_dark", "to": &"quiet_pipes", "when": &"reaper_down"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
@@ -5319,6 +5328,7 @@ const TALKS := {
 				"replies": [
 					{"text": "Who's using it?", "pick": &"asked_using", "to": &"using"},
 					{"text": "Maren says the crew pay for iron.", "pick": &"asked_iron", "to": &"reaper", "when": &"marens_lead"},
+					{"text": "The yard past the point is dark.", "pick": &"told_dark", "to": &"quiet_pipes", "when": &"reaper_down"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
@@ -5332,6 +5342,11 @@ const TALKS := {
 			&"reaper": {
 				"says": ["Their yard, past the point. A gantry keeps it. The Tide Reaper.", "Pick the tide near its pipes and it picks you.", "Iron rings off it. Temper a knife in a kiln, with charcoal. That bites."],
 				"beats": [&"reaper_named"],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			# The keeper down (`reaper_down`): what the tide shows, and his use of it.
+			&"quiet_pipes": {
+				"says": ["Heard it. The pipes stopped knocking on the turn.", "Tide's coming in clean now. Weed, wood, plastic. No tubing.", "I'll pick the rows by the intake. Best on the coast, and I've not been near them in years."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
@@ -5716,6 +5731,30 @@ const KEEPER_MEMORY := {
 	&"pan_rake": {"says": "keeps a kitchen, at night", "memory": &"mem_kitchen"},
 	&"tide_reaper": {"says": "keeps a song, in a car", "memory": &"mem_car"},
 }
+
+## THE RECORD'S LINE AT A KEEPER'S FALL: said by 44_sentinels the moment it
+## falls, keyed by the keeper's design id and the way it fell (SentinelWay).
+## Only what could be seen of it going down; never how, which was the way's hint
+## and is no use to anyone once it is down. "The gantry", not its name: the
+## player may never have asked what the tide-pickers call it.
+const KEEPER_FELL := {
+	&"tide_reaper": {
+		&"force": "The gantry comes apart, and its drum goes down in its own rows.",
+		&"founder": "The gantry sinks in the flats to its deck. The tide comes over it.",
+		&"starve": "The gantry stops mid-row. Its lamps go out, and the tide comes in.",
+	},
+}
+
+## A keeper down, as a thing known: 49_story lands this beat on `sentinel_fell`,
+## keyed by the keeper's design id, and the people it kept away talk about it
+## (`when` gates: Maren's village, Hob's tide). Not a reveal: it is what he did.
+const KEEPER_DOWN := {
+	&"tide_reaper": &"reaper_down",
+}
+
+## Said by 34_works when a yard its keeper kept goes dark: what could be seen of
+## it from wherever the player stands, and nothing about what it meant.
+const YARD_DARK := "Out across the land, the yard's lights go out, and stay out."
 
 ## A MACHINE THAT PASSES (roster `passes`), in a city whose people accepted the
 ## machines' terms: the Covenant's streets. It keeps no count and lays no ground: it
