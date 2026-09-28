@@ -157,13 +157,13 @@ func leave() -> void:
 	_overlay = null
 
 
-## The survey's textures: the ones the ui system already built for the map app.
+## The survey's textures: the ones the ui system already built for the map app,
+## or none (the story is drawn on bare glass).
 func _survey() -> UiMapData:
 	var ui := DevCheats.system(game, "90_ui")
 	var data: UiMapData = ui.get("map_data") if ui != null else null
-	if data == null:
-		data = UiMapData.new(game.world)
-	data.ensure()
+	if data != null:
+		data.ensure()
 	return data
 
 
