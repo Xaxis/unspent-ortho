@@ -39,6 +39,40 @@ var phase := Vector2.ZERO
 var dir := Vector2.RIGHT
 
 
+## ONE MAP A WORLD, KEPT: read-only once baked, and a world's is the same every
+## time a view binds it, so a view coming back up a shaft onto the coast it left
+## asks for it again and gets it (714 ms baked afresh at 1840, S5e). A world
+## raised for a crossing has its own baked beside it (`prepare`, RealmWarm, on
+## the raise's worker). Guarded: the worker writes, a view reads. Held weakly.
+static var _kept: Dictionary = {}
+static var _kept_lock := Mutex.new()
+
+
+static func of(w: WorldData) -> WorksMap:
+	var id := w.get_instance_id()
+	_kept_lock.lock()
+	var got: Array = _kept.get(id, [])
+	_kept_lock.unlock()
+	if not got.is_empty() and (got[0] as WeakRef).get_ref() == w:
+		return got[1]
+	var m := bake(w)
+	_keep(w, m)
+	return m
+
+
+static func prepare(w: WorldData) -> void:
+	_keep(w, bake(w))
+
+
+static func _keep(w: WorldData, m: WorksMap) -> void:
+	_kept_lock.lock()
+	for k: int in _kept.keys():
+		if ((_kept[k] as Array)[0] as WeakRef).get_ref() == null:
+			_kept.erase(k)
+	_kept[w.get_instance_id()] = [weakref(w), m]
+	_kept_lock.unlock()
+
+
 static func bake(w: WorldData) -> WorksMap:
 	var m := WorksMap.new()
 	m.size = w.size
