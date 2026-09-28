@@ -4096,7 +4096,7 @@ const TALKS := {
 				"says": ["Old coin, left where I'd find it, and a note in a hand I didn't know.", "It said you'd come out of the sea, and when."],
 				"beats": [&"crew_paid"],
 				"replies": [
-					{"text": "Have you still got the note?", "pick": &"asked_note", "to": &"note"},
+					{"text": "Have you still got the note?", "when": &"echo_hulls", "pick": &"asked_note", "to": &"note"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
@@ -5488,7 +5488,7 @@ const WAKE := {
 # she told him, carrying her why, so the first hour is her errand and not a
 # recipe. The game's register, terse. Never a key, never a coordinate: `{at}`
 # is the fire's name (Guide.fire_name). Before she has said it, the guide says
-# the plain line. `ore` is where the goal turns toward the crew's camp.
+# the plain line. `camp` is where the goal turns toward the crew's camp.
 const LEAD := {
 	&"fire_gather": "A fire before dark, for charcoal: three driftwood and two stones.",
 	&"fire_lay": "A fire before dark, for charcoal: lay it on open ground.",
@@ -5498,7 +5498,13 @@ const LEAD := {
 	&"plate": "Plate for the pick's head: turn over the tip.",
 	&"pick": "A pick for the iron, made at {at}.",
 	&"ore": "The crew past the old works pay for iron. Take the pick to the rock.",
+	&"camp": "The crew pay for iron. Take it to them, not them to her. The survey marks the camp.",
 }
+
+# Places a person has told him of, keyed by the beat that tells it: once that
+# beat has landed the survey marks the slot's place and letters it with `word`,
+# lowercase and a few words, like the bag's "your things".
+const TOLD := {&"marens_lead": {"place": &"the_camp", "word": "the crew"}}
 
 # The name the goal lines use for a landscape's keeper once `reaper_named` has
 # landed (Hob, TALKS hob.reaper). Keyed by landscape id; before he has said it,

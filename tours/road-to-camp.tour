@@ -1,0 +1,35 @@
+# The road to the camp (docs/ROADMAP.md slice 2, step 1), through the real keys:
+# Maren has given her lead and the pick has found iron, so the goal is the crew
+# who pay for it and the survey marks their camp; Rook there says he was paid,
+# and keeps the note to himself (its hand is the Echo's, slice 4).
+#
+#   tools/tour.sh tours/road-to-camp.tour --seed=1 --hour=11 --weather=clear:0 --beats=marens_lead --give=pick:1,iron_ore:1
+#
+# `at cast:rook` asks 49_cast where he stands; nothing here is a coordinate.
+coast calm
+wait 1.0
+shot 01-the-iron-goes-to-the-crew with beat:marens_lead
+
+press map 0.2
+await app:map 6
+wait 0.6
+shot 02-the-survey-marks-the-camp with app:map
+press map 0.2
+await app:none 5
+
+at cast:rook
+await cast:rook 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+shot 03-rook-was-paid-to-wait with talking,cast:rook
+press use
+await beat:crew_paid 3
+wait 0.4
+shot 04-and-keeps-the-note with talking,beat:crew_paid
+press pause
+wait 0.5
+await met:rook 2
+wait 0.6
+shot 05-the-crew-met with met:rook

@@ -163,6 +163,9 @@ static func goal(game: Game) -> String:
 	if inv.has(&"pick"):
 		if not inv.has(&"iron_ore") and not inv.has(&"iron"):
 			return _led(&"ore", "Take the pick to the ore in the rock.")
+		var camp := camp_goal()
+		if camp != "":
+			return camp
 		# Past the first tools, the long game: the next elite material, and where
 		# -- and a part a room keeps, once the material it follows is held.
 		var part := next_part(game)
@@ -207,6 +210,20 @@ static func _led(key: StringName, plain: String, at: String = "") -> String:
 	if Story.landed(LEAD_BEAT) and StoryContent.LEAD.has(key):
 		line = String(StoryContent.LEAD[key])
 	return line.replace("{at}", at)
+
+
+## THE ROAD TO THE CAMP (ROADMAP slice 2, step 1): with her lead given and iron
+## in the bag, the want is the crew who pay for it (StoryContent.LEAD `camp`),
+## until he has spoken to Rook there. Only once led: a player she never sent has
+## no reason to go, and the survey marks the camp from her lead on
+## (StoryContent.TOLD).
+const CAMP_MET := &"rook"
+
+
+static func camp_goal() -> String:
+	if Story.landed(LEAD_BEAT) and not Story.met(CAMP_MET) and StoryContent.LEAD.has(&"camp"):
+		return String(StoryContent.LEAD[&"camp"])
+	return ""
 
 
 ## THE EDGE A KEEPER TAKES (SurvivalState.plates, FightRules.bites). Once a
