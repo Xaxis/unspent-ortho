@@ -58,3 +58,96 @@ shot 06-her-lead with talking,beat:marens_lead
 press use
 wait 2.5
 shot 07-the-goal-is-hers with beat:marens_lead
+
+# 3 THE FIRE, THE CHARCOAL, THE PICK (Guide._led: her lead in her words, in the
+# order the way in asks: a fire, charcoal, a haft, plate, a pick). Everything is
+# taken by hand from the coast round the spawn, nothing given: five takes of
+# driftwood (a fire's three, a haft's two, a batch of charcoal's four), two
+# stones, and a plate turned out of a tip. From above, as the making is done: at
+# eye level the meadow's grass stands round him and no tile of it is open ground.
+coast calm
+tap shoulder
+wait 1.0
+try 3
+  near driftwood
+  press use 0.1
+  await took 4
+end
+try 3
+  near driftwood
+  press use 0.1
+  await took 4
+end
+try 3
+  near driftwood
+  press use 0.1
+  await took 4
+end
+try 3
+  near driftwood
+  press use 0.1
+  await took 4
+end
+try 3
+  near driftwood
+  press use 0.1
+  await took 4
+end
+wait 0.2
+shot 08-driftwood-off-the-strand
+try 3
+  near boulder,stone_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took 14
+end
+try 3
+  near boulder,stone_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took 14
+end
+try 3
+  near tip
+  walk 0,0 0.05
+  press use 0.1
+  await took 20
+end
+wait 0.2
+shot 09-a-plate-turned-out-of-the-tip
+ground grass
+mark fire
+press use 0.1
+await fire_asked 2
+press use 0.1
+await made 4
+wait 0.5
+shot 10-his-fire-laid with station:fire
+tap craft
+wait 0.6
+choose charcoal
+tap use
+wait 0.3
+choose haft
+tap use
+await made 3
+tap pause
+wait 0.4
+hour 11
+await made 4
+wait 0.3
+tap craft
+wait 0.6
+choose pick_made
+tap use
+wait 0.3
+tap pause
+wait 0.4
+hour 12
+await made 4
+wait 0.3
+tap inventory
+wait 0.6
+shot 11-a-pick-of-his-own with app:inventory
+tap inventory
+wait 0.4
