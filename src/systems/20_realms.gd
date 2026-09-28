@@ -81,6 +81,11 @@ var _realm: StringName = Realm.SURFACE
 var _saved_realm: StringName = &""
 var _look := 0.0
 var _settle := 0.0
+## Whether `use` was down last frame. The press is this system's own edge, not
+## `is_action_just_pressed`: that answers only in the frame the key went down, so
+## a press made later in a frame than this system runs is never seen at all
+## (21_doors, 22_landmarks). `tours/arrival.tour`'s climb back up was lost to it.
+var _use_was := false
 var _gates: Node3D
 ## Gate nodes by shaft id, and whether each is standing on the drawn ground yet.
 var _nodes: Dictionary = {}
@@ -146,6 +151,9 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
+	var down := Input.is_action_pressed(&"use")
+	var use_edge := down and not _use_was
+	_use_was = down
 	if game == null or game.world == null or game.player == null:
 		return
 	_settle = maxf(0.0, _settle - delta)
@@ -181,10 +189,10 @@ func _process(delta: float) -> void:
 		_watch_gates()
 		_draw_gates()
 	if reachable != null and _settle <= 0.0 and not game.input_blocked() \
-			and Input.is_action_just_pressed(&"use") and _shaft_wins():
+			and use_edge and _shaft_wins():
 		cross(reachable)
 	elif gate_near != &"" and _settle <= 0.0 and not game.input_blocked() \
-			and Input.is_action_just_pressed(&"use"):
+			and use_edge:
 		cross_era()
 
 
