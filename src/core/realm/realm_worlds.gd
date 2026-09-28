@@ -166,6 +166,9 @@ static func _raise(key: String, seed_value: int, size: int, kind: StringName, ge
 		WorldGen.unhalt(Realm.seed_for(seed_value, kind), size, kind)
 	_mutex.unlock()
 	var w := BootWorld.world(Realm.seed_for(seed_value, kind), size, kind)
+	# What a crossing into it would build on the press, built here beside it.
+	if gen == _gen:
+		RealmWarm.prepare(w)
 	if gen != _gen:
 		# Stopped (or finished) for a game that ended: its stop must not outlive it,
 		# or the next real growing of this world would stop too.
