@@ -32,7 +32,8 @@ extends RefCounted
 ##                            is RAKE_NOISE as loud
 ##   anchor   (mod_anchor)    "stood still, rooted": ANCHOR_MS without a step and
 ##                            the body is rooted (Hero.rooted): a blow does not
-##                            throw it, a grip does not take it; rooted, and
+##                            throw it, a grip does not take it (and snaps back,
+##                            stalling the gripper ANCHOR_SNAP_MS); rooted, and
 ##                            for ANCHOR_LIFT_MS after the first step, it
 ##                            cannot dodge
 ##   scale    (coat_scale)    "it turns the first blow at your back": the first
@@ -123,6 +124,8 @@ const RAKE_NOISE := 1.5
 ## how long a root holds once they step (no dodge while it does: its cost).
 const ANCHOR_MS := 600.0
 const ANCHOR_LIFT_MS := 300.0
+## A grip that closes on a rooted body snaps back on its gripper: stalled this long.
+const ANCHOR_SNAP_MS := 1400.0
 ## The lock: the widest gap (edge to edge, tiles) it will shut, how long it holds,
 ## and what a lock spends (FightRules.CHARGE).
 const LOCK_GAP := 2.2

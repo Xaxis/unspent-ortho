@@ -65,6 +65,11 @@ func test_the_rake_makes_a_heavy_louder() -> void:
 ## rakes two or more biters pressing ahead). Its identity, held both ways:
 ## against the biters (two cutters) it wins more of the fight; against the
 ## chargers (three harvesters) it changes nothing.
+##
+## Three more in 24 while two cutters pressed in together. Under attack slots
+## (one bite at a time) two biters press ahead at once less often, so a rake has
+## fewer of them to meet and the bare fight is fairer: on two id bases, bare 19
+## and 19 of 24, raked 21 and 21. Two more, on both.
 func _gate(kind: StringName, n: int, kit: Array[StringName]) -> Dictionary:
 	var won := 0
 	var t := 0.0
@@ -84,6 +89,6 @@ func test_the_rake_at_a_gate() -> void:
 	var hr := _gate(&"harvester", 3, rk)
 	print("  info 2 cutters: bare won %d/24 in %.1f s, rake %d/24 in %.1f s; 3 harvesters: bare %d/24 in %.1f s, rake %d/24 in %.1f s"
 		% [cb.won, cb.t, cr.won, cr.t, hb.won, hb.t, hr.won, hr.t])
-	gt(float(cr.won), float(cb.won) + 2.5, "against the biters the rake wins three more bouts in 24 or better")
+	gt(float(cr.won), float(cb.won) + 1.5, "against the biters the rake wins two more bouts in 24 or better")
 	eq(hr.won, hb.won, "against the chargers it wins as often")
 	near(float(hr.t), float(hb.t), float(hb.t) * 0.1, "and no faster or slower")

@@ -50,7 +50,7 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   `tools/tour.sh tours/undertow.tour` (options in its header).
   The rake (rake_core, tool): a heavy, drawn, holds the biters in the arc ahead open; chargers ride over it; heavies
   ring 1.5x: `tools/test.sh test_rake` (its gate bout prints), `tools/tour.sh tours/rake.tour` (options in its header).
-  The anchor (anchor_core, body): stood still, rooted, no throw and no grip, and no dodge while rooted:
+  The anchor (anchor_core, body): stood still, rooted, no throw and no grip (a grip snaps back, stalling its gripper), and no dodge while rooted:
   `tools/test.sh test_anchor` (its bout prints), `tools/tour.sh tours/anchor.tour` (options in its header).
   The lock (lockkeeper_core, back): a narrow way passed while hunted is shut behind you to machines, a charge a lock:
   `tools/test.sh test_lock` (its bout prints), `tools/tour.sh tours/lock.tour` (options in its header).

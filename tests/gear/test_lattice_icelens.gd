@@ -121,7 +121,12 @@ func test_a_discharge_is_shared_by_a_crowd() -> void:
 ## reader with the knife and six charges, 24 bouts (tests/fight/test_crowd_reader
 ## `gate`). Its identity, held both ways: nothing against a crowd that is already
 ## easy (harvesters: no faster), and strong against the hardest (cutters: won 25
-## to 55% sooner, and at least twice as often).
+## to 55% sooner, and at least five bouts in 24 more often).
+##
+## It was "twice as often" while three cutters pressed in at once. Under attack
+## slots (FightSim.attack_slots: two after the player, one bite at a time) the
+## bare fight is fairer, 15-16 of 24 on two id bases, and doubling that is past
+## 24. Measured on both: bare 15 -> 22 and 16 -> 22, 28% and 39% sooner.
 func _at_gate(kind: StringName, kit: Array[StringName]) -> Dictionary:
 	var won := 0
 	var t := 0.0
@@ -146,4 +151,4 @@ func test_the_lattice_at_a_gate() -> void:
 	var cut := 1.0 - float(cl.t) / maxf(float(cb.t), 1e-3)
 	gt(cut, 0.25, "against cutters it shortens the fight by 25% or more")
 	lt(cut, 0.55, "and by no more than 55%")
-	gt(float(cl.won), float(cb.won) * 2.0 - 0.5, "and wins it at least twice as often")
+	gt(float(cl.won), float(cb.won) + 4.5, "and wins five more bouts in 24 or better")

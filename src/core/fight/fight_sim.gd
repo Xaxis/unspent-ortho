@@ -1241,9 +1241,13 @@ func _land(t0: float, t1: float) -> void:
 		if not meets_hero(m.pos):
 			continue
 		m.struck[&"hero"] = true
-		# Rooted by the anchor, a grip closes on nothing (FightKit.anchor): a miss,
-		# and the body stands spent and open as after any bite that missed.
+		# Rooted by the anchor, a grip closes on nothing (FightKit.anchor), and the
+		# line takes the jolt it meant to give: the gripper stands stalled, its
+		# part lit, for ANCHOR_SNAP_MS. A plain miss left it spent for its short
+		# recovery, which in a crowd taking turns (attack slots) was over before a
+		# player could step to it, and the anchor's whole answer was lost.
 		if m.blow.grip > 0 and m.blow.dmg <= 0 and hero.rooted(now) and not hero.invulnerable(now):
+			m.stun_until = maxf(m.stun_until, now + FightKit.ANCHOR_SNAP_MS)
 			emit(&"grip_failed", {"by": m})
 			continue
 		if not hero.invulnerable(now):
