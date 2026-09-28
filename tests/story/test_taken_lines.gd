@@ -11,7 +11,7 @@ extends TestCase
 ## ever become one, the second one stops being worth walking back for.
 
 ## Every moment the record can reach, and what the system calls it.
-const KEYS := ["took", "freed", "freed_many", "out", "home", "lost", "lost_to"]
+const KEYS := ["took", "freed", "freed_many", "out", "home", "lost", "lost_to", "freed_empty", "out_empty"]
 
 
 func test_every_moment_a_record_can_reach_has_a_line() -> void:

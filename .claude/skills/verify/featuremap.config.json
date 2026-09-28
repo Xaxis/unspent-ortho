@@ -261,6 +261,13 @@
   },
   {
    "kind": "system",
+   "label": "43_cracked_roof",
+   "entry": "src/systems/43_cracked_roof.gd",
+   "reach": "tools/tour.sh tours/cracked_roof.tour --seed=7 --realm=underground --hour=12 --fit=boots_magnet --config=unharmed",
+   "area": "machines-fight"
+  },
+  {
+   "kind": "system",
    "label": "44_sentinels",
    "entry": "src/systems/44_sentinels.gd",
    "reach": "tools/tour.sh tours/sentinels.tour",
@@ -572,6 +579,13 @@
    "label": "map",
    "entry": "tools/map.sh",
    "reach": "tools/map.sh",
+   "area": "tools"
+  },
+  {
+   "kind": "cli",
+   "label": "sweep",
+   "entry": "tools/sweep.sh",
+   "reach": "tools/sweep.sh --weapons=knife --machines=cutter",
    "area": "tools"
   },
   {

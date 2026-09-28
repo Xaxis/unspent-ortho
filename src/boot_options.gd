@@ -115,7 +115,9 @@ extends RefCounted
 ## --carried=N         N people are already being held at the first depot of the plan,
 ##                     taken out of a village of that same region, so the region has
 ##                     somebody to ask him about (taken, story); with --holding, taken
-##                     off the staged holding's books instead, to walk home to it
+##                     off the staged holding's books instead, to walk home to it.
+##                     `--carried=N:H`: held H hours already (default 10), so past
+##                     Taken.RUN_HOURS they come out empty
 ## --craft=KIND        park a craft (raft | hover_sled | walker_rig) in reach of the player (crafts)
 ## --aboard=KIND      park a craft and stand the player on it, ready to steer (crafts)
 ## --act=NAME[:MS]     play a fight moment and hold it for the shot: swing | grip | hurt | dodge | alert | windup
@@ -239,6 +241,7 @@ var walled := false
 var attention := 0.0
 ## How many people the plan is already holding at boot (taken).
 var carried := 0
+var carried_hours := 10.0
 ## A craft parked in reach at boot, and one the player starts aboard (crafts).
 var craft := ""
 var aboard := ""
@@ -358,7 +361,11 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"holding": o.holding = v.split(",", false)
 			"walled": o.walled = true
 			"attention": o.attention = clampf(v.to_float(), 0.0, 1.0)
-			"carried": o.carried = maxi(0, v.to_int())
+			"carried":
+				var parts := v.split(":")
+				o.carried = maxi(0, parts[0].to_int())
+				if parts.size() > 1:
+					o.carried_hours = maxf(0.0, parts[1].to_float())
 			"craft": o.craft = v
 			"aboard": o.aboard = v
 			"act": o.act = v

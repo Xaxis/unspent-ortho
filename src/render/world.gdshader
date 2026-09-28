@@ -2446,7 +2446,7 @@ float crown_cut(vec3 wp, float sway) {
 // INV_VIEW_MATRIX exists only inside the stage function, so a user function
 // cannot see the camera at all (the shader simply refuses to compile).
 float tall_cut(vec3 wp, int m, vec3 camz, vec3 eye, bool persp) {
-	if (mark_land(m)) {
+	if (mark_uncut(m)) {
 		return 0.0;
 	}
 	float cut = 0.0;
@@ -2616,9 +2616,9 @@ void fragment() {
 	// At eye level it took every crown within reach and stood the player in a
 	// ring of stumps, though only the crowns between the eye and a body hide it.
 	float close = persp ? sight_close(eye, crown_clear[0]) : 0.0;
-	float cut = max(crown_cut(world_pos, sway_w) * (1.0 - close), tall_cut(world_pos, m1, camz, eye, persp));
-	// Never the land.
-	if (persp && !mark_land(m1)) {
+	float cut = mark_uncut(m1) ? 0.0 : max(crown_cut(world_pos, sway_w) * (1.0 - close), tall_cut(world_pos, m1, camz, eye, persp));
+	// Never the land, nor what is held in sight.
+	if (persp && !mark_uncut(m1)) {
 		if (close > 0.0) {
 			for (int i = 0; i < CROWN_CLEAR; i++) {
 				cut = max(cut, sight_cone(world_pos, eye, crown_clear[i]) * close);
@@ -2678,7 +2678,9 @@ void fragment() {
 				if (above_cut.z > 0.0 && !IN_SHADOW_PASS) {
 					vec4 t = texelFetch(above_map, ivec2(at), 0);
 					float plane = above_cut.y + (1.0 - above_cut.z) * ABOVE_SWEEP;
-					if (t.r > 0.5 && abs(above_id(at) - above_cut.x) < 0.5 && world_pos.y > plane && world_pos.y >= t.a * 255.0 * 0.5 - 0.05) {
+					// What is held in sight stays: a stone hanging cracked from the lid
+					// is the thing to see under it (GroundColors.HELD).
+					if (m1 != M_HELD && t.r > 0.5 && abs(above_id(at) - above_cut.x) < 0.5 && world_pos.y > plane && world_pos.y >= t.a * 255.0 * 0.5 - 0.05) {
 						discard;
 					}
 				}

@@ -352,7 +352,7 @@ func test_a_holding_settled_after_a_week_away_does_not_stall_the_load() -> void:
 	# fit under it, and a quadratic settle is nowhere near.
 	var capped := float(SettlementRules.MAX_SLICES) / slices_a_day
 	gt(one_day, 0.0, "a day of settling costs something measurable")
-	lt(one_month, one_day * capped * 2.2,
+	ratio_lt(one_month / maxf(one_day, 0.001), capped * 2.2,
 		"a month costs a week of slices, not a month of them (%.0f us against %.0f)" % [one_month, one_day])
 
 	var s := _a_worked_place()

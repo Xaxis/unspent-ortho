@@ -100,6 +100,10 @@ var _charge_alpha := 0.0
 var _hint_alpha := 0.0
 var _hint_target := 0.0
 var _hurt_flash := 0.0
+## Unseen bites (FightSim.UNSEEN_ARC): a mark at the slate's edge on the side one
+## comes from, for its tell. Each {dir: screen direction from the centre, up is
+## -y, left: seconds}.
+var _unseen: Array[Dictionary] = []
 var _lost_from := 0
 var _gauge_alpha := {}
 ## Gauges answering for a line the glass did not say, id -> seconds left.
@@ -402,6 +406,10 @@ func _process(delta: float) -> void:
 	messages.step(delta)
 	step_place(delta)
 	_hurt_flash = maxf(0.0, _hurt_flash - delta)
+	for i in range(_unseen.size() - 1, -1, -1):
+		_unseen[i].left = float(_unseen[i].left) - delta
+		if float(_unseen[i].left) <= 0.0:
+			_unseen.remove_at(i)
 	var wind_target := 1.0 if UiRules.wind_shown(wind, max_wind) else 0.0
 	_wind_alpha = move_toward(_wind_alpha, wind_target, delta * (4.0 if wind_target > 0.0 else 1.2))
 	_charge_alpha = move_toward(_charge_alpha, 1.0 if charge_shown else 0.0, delta * 4.0)
@@ -432,8 +440,60 @@ func _process(delta: float) -> void:
 		_canvas.queue_redraw()
 
 
+## A bite begun out of sight, from screen direction `dir` (from the centre, y
+## down), told for `seconds`: its mark at the slate's edge.
+func flag_unseen(dir: Vector2, seconds: float) -> void:
+	if dir.length_squared() < 1e-6:
+		return
+	_unseen.append({"dir": dir.normalized(), "left": seconds, "of": seconds})
+
+
+## Where the edge mark for screen direction `dir` sits: on the slate's edge,
+## UNSEEN_INSET in from it, along the ray from the centre.
+const UNSEEN_INSET := 70.0
+## The chevrons' pen, their spacing and the dots along each arm.
+const UNSEEN_W := 6
+const UNSEEN_STEP := 22.0
+const UNSEEN_ARM := 15
+
+
+static func unseen_at(dir: Vector2) -> Vector2:
+	var half := Vector2(UiBase.SIZE) * 0.5 - Vector2(UNSEEN_INSET, UNSEEN_INSET)
+	var d := dir.normalized()
+	var k := minf(half.x / maxf(absf(d.x), 1e-4), half.y / maxf(absf(d.y), 1e-4))
+	return Vector2(UiBase.SIZE) * 0.5 + d * k
+
+
+## The mark: a salvaged lens's warning, three ticks nested into a chevron that
+## points back in toward the fight, lit rust-red and pulsing as the tell runs
+## out. Drawn on the slate's own pixels, like every readout.
+func _draw_unseen(ci: Control) -> void:
+	for u: Dictionary in _unseen:
+		var d: Vector2 = u.dir
+		var at := unseen_at(d)
+		var k := 1.0 - float(u.left) / maxf(float(u.of), 1e-3)
+		var pulse := 0.6 + 0.4 * absf(sin(k * PI * 3.0))
+		var col := Palette.RUST[5]
+		col.a = pulse
+		var rim := UiTheme.RIM
+		rim.a = pulse
+		var inward := -d
+		var across := Vector2(-inward.y, inward.x)
+		# Rim first, then the light over it, so it reads on snow and on grass.
+		for pass_i in 2:
+			var w := UNSEEN_W + (4 if pass_i == 0 else 0)
+			var c := rim if pass_i == 0 else col
+			for n in 3:
+				var tip := at + inward * (float(n) * UNSEEN_STEP - UNSEEN_STEP)
+				for s in UNSEEN_ARM:
+					var f := float(s) - float(UNSEEN_ARM - 1) * 0.5
+					var p := tip - inward * absf(f) * 1.2 + across * f * 2.0
+					UiDraw.rect(ci, Rect2i(roundi(p.x) - w / 2, roundi(p.y) - w / 2, w, w), c)
+
+
 func _draw_hud() -> void:
 	var ci := _canvas
+	_draw_unseen(ci)
 	_draw_wrist(ci)
 	_draw_clock(ci)
 	_draw_held(ci)

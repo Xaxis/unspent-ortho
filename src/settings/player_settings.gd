@@ -149,6 +149,7 @@ const BINDABLE: Array[Dictionary] = [
 	{"action": &"ability_grapple", "label": "grapple"},
 	{"action": &"ability_glide", "label": "glide"},
 	{"action": &"ability_spoof", "label": "spoof"},
+	{"action": &"ability_veil", "label": "veil"},
 	{"action": &"inventory", "label": "carrying"},
 	{"action": &"craft", "label": "making"},
 	{"action": &"holding", "label": "your holding"},

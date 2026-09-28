@@ -98,6 +98,7 @@ static func events(scheme: StringName, mac: bool) -> Dictionary:
 		&"ability_grapple": [_k(KEY_T)],
 		&"ability_glide": [_k(KEY_G)],
 		&"ability_spoof": [_k(KEY_V)],
+		&"ability_veil": [_k(KEY_1)],
 	}
 	return m
 

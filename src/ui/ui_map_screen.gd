@@ -68,11 +68,7 @@ func _init() -> void:
 	super()
 	screen_name = &"map"
 	own_action = &"map"
-	_material = ShaderMaterial.new()
-	_material.shader = preload("res://src/ui/map.gdshader")
-	for pair: Array in [["glass", UiTheme.GLASS], ["ph0", UiTheme.PHOSPHOR[0]], ["ph1", UiTheme.PHOSPHOR[1]], ["ph2", UiTheme.PHOSPHOR[2]], ["ph3", UiTheme.PHOSPHOR[3]], ["ph4", UiTheme.PHOSPHOR[4]], ["violet", UiTheme.MACHINE[2]]]:
-		var c: Color = pair[1]
-		_material.set_shader_parameter(pair[0], Vector3(c.r, c.g, c.b))
+	_material = UiMapScreen.survey_material()
 	_viewport = SubViewport.new()
 	_viewport.name = "sheet"
 	_viewport.size = MAP_RECT.size
@@ -121,23 +117,39 @@ func _on_open() -> void:
 	if DevMode.reachable() and not explored.revealed:
 		explored.reveal_all(game.world)
 	_seen_tex = ImageTexture.create_from_image(Image.create_from_data(explored.size, explored.size, false, Image.FORMAT_L8, explored.shown_mask()))
-	_material.set_shader_parameter("ground_tex", data.ground)
-	_material.set_shader_parameter("level_tex", data.level)
-	_material.set_shader_parameter("coast_tex", data.coast)
-	_material.set_shader_parameter("marks_tex", data.marks)
-	_material.set_shader_parameter("palette_tex", data.palette)
-	_material.set_shader_parameter("country_tex", data.country)
-	_material.set_shader_parameter("seen_tex", _seen_tex)
-	_material.set_shader_parameter("rect_size", Vector2(MAP_RECT.size))
-	_material.set_shader_parameter("world_size", float(game.world.size))
-	# World tiles to one texel: the survey is built at a capped size so its cost
-	# does not follow the world's (UiMapData.MOST).
-	_material.set_shader_parameter("tex_step", float(data.step))
+	UiMapScreen.feed(_material, data, _seen_tex, MAP_RECT.size)
 	_regions = UiMapScreen.region_labels(game.world, explored)
 	_seen_share = explored.fraction()
 	var f := UiMapScreen.fit(explored.shown_bounds(), game.player.pos, MAP_RECT.size, SCALES)
 	map_scale = f.scale
 	centre_on(f.centre)
+
+
+## The survey's sheet, in the slate's own tones (UiTheme), for any window that
+## draws the world as the survey does (this app, dev mode's story map).
+static func survey_material() -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://src/ui/map.gdshader")
+	for pair: Array in [["glass", UiTheme.GLASS], ["ph0", UiTheme.PHOSPHOR[0]], ["ph1", UiTheme.PHOSPHOR[1]], ["ph2", UiTheme.PHOSPHOR[2]], ["ph3", UiTheme.PHOSPHOR[3]], ["ph4", UiTheme.PHOSPHOR[4]], ["violet", UiTheme.MACHINE[2]]]:
+		var c: Color = pair[1]
+		m.set_shader_parameter(pair[0], Vector3(c.r, c.g, c.b))
+	return m
+
+
+## Hand the sheet a world's textures, what of it is seen, and its window.
+static func feed(m: ShaderMaterial, data: UiMapData, seen: Texture2D, window: Vector2i) -> void:
+	m.set_shader_parameter("ground_tex", data.ground)
+	m.set_shader_parameter("level_tex", data.level)
+	m.set_shader_parameter("coast_tex", data.coast)
+	m.set_shader_parameter("marks_tex", data.marks)
+	m.set_shader_parameter("palette_tex", data.palette)
+	m.set_shader_parameter("country_tex", data.country)
+	m.set_shader_parameter("seen_tex", seen)
+	m.set_shader_parameter("rect_size", Vector2(window))
+	m.set_shader_parameter("world_size", float(data.world.size))
+	# World tiles to one texel: the survey is built at a capped size so its cost
+	# does not follow the world's (UiMapData.MOST).
+	m.set_shader_parameter("tex_step", float(data.step))
 
 
 ## The scale and centre that show the land seen so far: the largest scale at

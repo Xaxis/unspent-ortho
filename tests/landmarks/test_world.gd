@@ -155,16 +155,13 @@ func test_siting_them_costs_nothing_a_player_would_notice() -> void:
 	var share := site_us / maxf(gen_us, 1.0)
 	print("landmarks: %.2f ms to site every landmark in a 512 world, %.0f ms to grow it: %.4f of it (best of 5 and 3)" % [site_us / 1000.0, gen_us / 1000.0, share])
 	var what := "siting them is a small share of growing the world (%.4f)" % share
-	# As `cost_lt` does: a share under the bar is a pass on any machine, and only
-	# one over it on a box too busy to measure goes unjudged.
-	if share < SITING_SHARE or can_measure_cost():
-		lt(share, SITING_SHARE, what)
-	else:
-		unmeasured(what, share, SITING_SHARE)
+	# A share of two timings from this run (`ratio_lt`): under the bar is a pass
+	# on any machine; over it on a box too busy to measure goes unjudged.
+	ratio_lt(share, SITING_SHARE, what)
 	# And a second ask costs nothing, which is what lets the system, the map and a
 	# shot's --place all want the list without paying for it three times.
 	# Against the cold sweep it saves, measured in the same run, not a clock.
 	var again_us := best_of(20, func() -> void:
 		@warning_ignore("return_value_discarded")
 		Landmarks.sites(w))
-	lt(again_us, site_us * 0.01, "asking again is free (%.1f us against %.0f us cold)" % [again_us, site_us])
+	ratio_lt(again_us / maxf(site_us, 0.001), 0.01, "asking again is free (%.1f us against %.0f us cold)" % [again_us, site_us])

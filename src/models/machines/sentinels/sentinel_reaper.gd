@@ -343,15 +343,37 @@ func _pose_deltas(p: StringName) -> Dictionary:
 			d[&"head"] = r(Vector3(0, 0, 0.1))
 		&"dead":
 			# One leg folds and the beam comes down across the ground: the arch is
-			# broken, and the gap that named the machine is gone.
-			d[&"frame"] = pr(Vector3(-0.1, -0.24, 0.2), Vector3(0.34, 0.06, 0.4))
-			d[&"arm"] = pr(Vector3(0.1, -0.3, 0), Vector3(-0.1, 0, -0.5))
+			# broken, and the gap that named the machine is gone. The beam comes to
+			# rest LEANING across the shore, where the eye over the shoulder still
+			# finds it: sunk flat behind the tracks, the fallen keeper read as a
+			# box of wreck like any other.
+			d[&"frame"] = pr(Vector3(-0.03, -0.06, 0.05), Vector3(0.08, 0.02, 0.1))
+			d[&"arm"] = pr(Vector3(0.06, -0.2, 0), Vector3(-0.06, 0, -0.32))
 			d[&"drum"] = pr(Vector3(0.1, -0.16, 0.14), Vector3(0.2, 0.3, 0.2))
 			d[&"chute"] = pr(Vector3(0, -0.1, 0), Vector3(-0.3, 0.9, 0.2))
 			d[&"mast_l"] = r(Vector3(-0.8, 0, 0.3))
 			d[&"mast_r"] = r(Vector3(0.5, 0, -0.4))
 			d[&"head"] = r(Vector3(0, 0, 0.5))
 	return d
+
+
+## THE FALL IS SLOW. A keeper does not drop like a worker: its lamps go first,
+## then the leg folds and the beam comes down over FALL_S, and the arm last,
+## so the fall is a thing a player watches happen and not a cut to the wreck.
+const FALL_S := 1.6
+
+
+func _timing(p: StringName, joint: StringName) -> Vector2:
+	if p != &"dead":
+		return super(p, joint)
+	match joint:
+		&"mast_l", &"mast_r", &"head":
+			return Vector2(0.1, 0.6)
+		&"frame", &"drum", &"chute":
+			return Vector2(0.35, FALL_S)
+		&"arm":
+			return Vector2(0.9, FALL_S * 0.8)
+	return super(p, joint)
 
 
 func _gait_deltas(phase: float) -> Dictionary:

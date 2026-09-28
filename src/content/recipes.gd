@@ -218,6 +218,7 @@ const LIST: Array[Dictionary] = [
 	{"id": &"mod_anchor", "at": &"bench", "minutes": 180.0, "needs": {&"anchor_core": 1, &"scrap": 3, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_anchor": 1}},
 	{"id": &"mod_ploughshare", "at": &"bench", "minutes": 180.0, "needs": {&"plough_core": 1, &"scrap": 3, &"copper": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_ploughshare": 1}},
 	{"id": &"mod_lock", "at": &"bench", "minutes": 180.0, "needs": {&"lockkeeper_core": 1, &"scrap": 2, &"copper": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_lock": 1}},
+	{"id": &"mod_veil", "at": &"bench", "minutes": 180.0, "needs": {&"drip_core": 1, &"scrap": 2, &"copper": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_veil": 1}},
 	{"id": &"mod_listen", "at": &"bench", "minutes": 180.0, "needs": {&"listener_core": 1, &"copper": 2, &"rag": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_listen": 1}},
 	{"id": &"mod_plumb", "at": &"bench", "minutes": 180.0, "needs": {&"plumb_core": 1, &"copper": 2, &"scrap": 1}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_plumb": 1}},
 	{"id": &"mod_unbuild", "at": &"bench", "minutes": 180.0, "needs": {&"unbuilder_core": 1, &"copper": 2, &"scrap": 2}, "keeps": {&"fab_jig": 1}, "makes": {&"mod_unbuild": 1}},

@@ -35,7 +35,8 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   - Lattice at a gate: `tools/test.sh test_lattice_icelens:test_the_lattice_at_a_gate`.
   - Undertow: `tools/test.sh test_undertow`, `tools/tour.sh tours/undertow.tour` (h).
   - Rake: `tools/test.sh test_rake`, `tools/tour.sh tours/rake.tour` (h).
-  - Anchor: `tools/test.sh test_anchor`, `tools/tour.sh tours/anchor.tour` (h).
+  - Anchor (a grip on a rooted body snaps back, stalling its gripper): `tools/test.sh test_anchor`, `tools/tour.sh tours/anchor.tour` (h).
+  - Veil (drip_core, back; a curtain of water sight does not pass for 12 s; a dart it cuts off leaves with its flock; soaks you, lamp out): `tools/test.sh test_veil` (bout prints), `TOUR_FIXED_FPS=60 tools/tour.sh tours/veil.tour` (h).
   - Lock: `tools/test.sh test_lock`, `tools/tour.sh tours/lock.tour` (h).
   - Ear: `tools/test.sh "test_listen,test_shoulder:test_no_hazard"`, `tools/tour.sh tours/ear.tour` (h; `spawn KIND beyond PROP`, `tell KIND`).
   - Plumb: `tools/test.sh test_plumb`, `tools/tour.sh tours/plumb.tour` (h).

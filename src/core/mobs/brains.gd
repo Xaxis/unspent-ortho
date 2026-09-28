@@ -54,6 +54,10 @@ static func think(m: MobState, sim: FightSim) -> void:
 		return
 	if m.machine and (m.mood == MobState.IDLE or m.mood == MobState.WORKING) and _listening(m, sim):
 		return
+	if (m.mood == MobState.CHASING or m.mood == MobState.ATTACKING) and sim.waits(m):
+		_wait(m, sim)
+		m.last_think_pos = m.pos
+		return
 	match m.mood:
 		MobState.IDLE:
 			_idle(m, sim)
@@ -97,7 +101,8 @@ static func _target(m: MobState, sim: FightSim) -> Vector2:
 
 ## Start the bite's tell. The sim says so, so the view can draw what a player learns to read.
 static func bite(m: MobState, sim: FightSim) -> void:
-	m.start_blow(m.bite, sim.now)
+	# Out of the player's sight in a crowd, the one unseen bite: longer, and cued.
+	m.start_blow(sim.begin_bite(m, m.bite), sim.now)
 	sim.emit(&"windup", {"mob": m})
 
 
@@ -314,7 +319,18 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 			m.aim = to.angle()
 			_come_round(m, sim, to, pause_ms)
 			return
+		# A run is its bite (FightSim.bite_turn): it is not begun while another body
+		# strikes, and it stands facing the player until its turn.
+		if not sim.bite_turn(m):
+			m.want = Vector2.ZERO
+			m.aim = to.angle()
+			return
 		m.flank_since = -1.0
+		# A run begun out of the player's sight in a crowd is the one unseen bite,
+		# and cued as it starts (its bite's tell is stretched when it bites).
+		if sim.out_of_sight(m):
+			@warning_ignore("return_value_discarded")
+			sim.begin_bite(m, m.bite)
 		# Commit along the way it actually faces, corrected a little toward the player.
 		m.bearing = Vector2.from_angle(m.facing + clampf(off, -0.35, 0.35))
 		m.charging = true
@@ -475,7 +491,7 @@ static func _lunge(m: MobState, sim: FightSim) -> void:
 		# Only a bite it faces: a machine turning slowly with the player at its back
 		# does not snap at the air in front of it.
 		var off := absf(wrapf(to.angle() - m.facing, -PI, PI))
-		if d <= strike and (off < FACING_BITE or not m.machine) and can_bite(m, now):
+		if d <= strike and (off < FACING_BITE or not m.machine) and can_bite(m, now) and sim.bite_turn(m):
 			bite(m, sim)
 	else:
 		var side := 1.0 if m.id % 2 == 0 else -1.0
@@ -483,6 +499,49 @@ static func _lunge(m: MobState, sim: FightSim) -> void:
 		var want_d := strike + 0.4
 		var radial := clampf(d - want_d, -1.0, 1.0)
 		m.want = (dir.orthogonal() * side * 0.8 + dir * (radial * 0.6 - inout)).normalized() * m.quick * 0.6
+
+
+## Waiting for a slot (FightSim.attack_slots): at the edge, FightSim.WAIT_GAP
+## beyond its strike, facing the player, and working round to stand WAIT_BESIDE
+## to its own side of the bodies in the slots: the next one coming, seen beside
+## the ones on the player. Off the player's front it drew their eye and gave the
+## pair their back; in line behind the pair it stood on the backs a player goes
+## round to strike; circling, it pulled the crowd round them. A back turned on
+## it is what swaps it in.
+## Every FEINT_MS it steps in FEINT_IN tiles and back, never into its strike:
+## the tell a player reads as the next one coming.
+const FEINT_MS := 1800.0
+const FEINT_STEP_MS := 450.0
+const FEINT_IN := 1.0
+const WAIT_BESIDE := 0.35
+
+
+static func _wait(m: MobState, sim: FightSim) -> void:
+	var hero := sim.hero
+	var to := hero.pos - m.pos
+	var d := to.length()
+	var dir := to / maxf(d, 1e-5)
+	m.aim = to.angle()
+	var edge := strike_range(m, sim) + FightSim.WAIT_GAP
+	var cyc := fposmod(sim.now + m.phase_ms, FEINT_MS)
+	if cyc < FEINT_STEP_MS:
+		edge -= FEINT_IN * sin(cyc / FEINT_STEP_MS * PI)
+	edge = maxf(edge, strike_range(m, sim) + 0.3)
+	var radial := clampf(d - edge, -1.0, 1.0)
+	# Round toward its place off the player's front, the shorter way.
+	var at := (m.pos - hero.pos).angle()
+	var line := sim.slots_bearing()
+	if is_nan(line):
+		line = hero.facing
+	var side := 1.0 if wrapf(at - line, -PI, PI) >= 0.0 else -1.0
+	var round := clampf(wrapf(line + side * WAIT_BESIDE - at, -PI, PI), -1.0, 1.0)
+	var tangent := -dir.orthogonal() * round
+	var move := dir * radial + tangent
+	if move.length() < 0.15:
+		m.want = Vector2.ZERO
+		return
+	var speed := m.pace if absf(d - edge) < 1.5 else m.dash
+	m.want = move.normalized() * speed * minf(1.0, move.length())
 
 
 ## Throw: come on to a lane's length, turn square on and throw down the lane.
@@ -504,6 +563,10 @@ static func _throw(m: MobState, sim: FightSim) -> void:
 		return
 	# Too close to throw down a lane, it backs off first, unless backing off has
 	# stopped against something: then it throws from where it is.
+	# It cannot aim across the veil (FightSim.veils): it comes round for a line.
+	if not sim.veils.is_empty() and sim.veiled(m.pos, sim.hero.pos):
+		_seek(m, sim, _target(m, sim), m.pace)
+		return
 	var backing := d < lane * THROW_NEAR
 	if backing and m.want != Vector2.ZERO and m.pos.distance_to(m.last_think_pos) < m.quick * FightRules.THINK_MS / 1000.0 * BLOCKED_SHARE:
 		backing = false
@@ -556,6 +619,13 @@ static func _dart(m: MobState, sim: FightSim) -> void:
 		return
 	var to := sim.hero.pos - m.pos
 	m.aim = to.angle()
+	# Its sight of you cut by the veil (FightSim.veils): it and its flock lose the
+	# scent and leave. The veil is the answer to darts; one that only put the
+	# dive off would be a delay, not an answer.
+	if not sim.veils.is_empty() and sim.veiled(m.pos, sim.hero.pos):
+		sim.lose_scent(m)
+		_flee(m, sim)
+		return
 	var reach := float(m.stat("reach", 1))
 	if to.length() <= m.radius + sim.hero.radius + reach * 0.5:
 		sim.snatch(m)

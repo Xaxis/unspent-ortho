@@ -301,7 +301,9 @@ func _person_in_front() -> Dictionary:
 				named["_d"] = d
 				named_d = d
 			continue
-		if StoryProps.talk_for(row, game) == &"":
+		# One the plan ran past the 71 hours (35_folk `silent`) is somebody with
+		# nothing to say, whatever their trade had once.
+		if bool(row.get("silent", false)) or StoryProps.talk_for(row, game) == &"":
 			if d < mute_d:
 				mute = row.duplicate()
 				mute["_d"] = d

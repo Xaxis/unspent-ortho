@@ -137,7 +137,7 @@ func test_a_stage_that_waits_for_ever_is_given_up_on_at_its_deadline() -> void:
 		check(s.done(), "the line reaches its end even though a stage never finished")
 		gt(float(tries[0]), 1.0, "and it really was asked more than once first")
 	gt(quickest, deadline - 5.0, "it waited out its deadline")
-	lt(quickest, deadline + 20.0, "and not much past it")
+	cost_lt(quickest, deadline + 20.0, "and not much past it")
 	eq(Array(s.gave_up()), ["never"], "which stage was given up on is on the record")
 	check(s.timings().has(&"after"), "and the stages after it still ran")
 
