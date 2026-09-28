@@ -1,0 +1,60 @@
+# THIRTY MINUTES ON THE HOME COAST (docs/ROADMAP.md, slice 1): the slice's proof,
+# played from the title the way a player starts, with nothing given, no folk and
+# no beats pre-landed. Each step of the slice extends it.
+#
+#   tools/tour.sh tours/home-coast.tour --scene=title --seed=1
+#
+# 1a THE WAKE (48_wake): a new game starts him under the water in the shallows
+# off the spawn beach, the black site in the sea behind him and Maren at the
+# water's edge. 01 he breaks the surface; 02 he stands in the surf with his legs,
+# from above; 03 the first sight of the Tether; 04 over the shoulder, looking to
+# the shore and her.
+await title 40
+# New game heads the title's list when there is no save to continue; with one,
+# continue would, and `await character` below fails rather than play a save.
+tap use
+await character 8
+key move_up
+key use
+await game 40
+await waking 5
+wait 0.4
+shot 01-he-breaks-the-surface with waking,wake:staged
+await woken 10
+wait 1.0
+shot 02-in-the-surf-from-above with woken,cast:maren
+# 1b THE FIRST SIGHT (48_wake, 42_stage): a breath after he stands, the view
+# turns once to the far horizon and up the Tether to the Foundry, and holds.
+await staging:tether 6
+wait 1.2
+shot 03-the-first-sight with staging:tether,tether
+wait 4.0
+tap shoulder
+await shoulder 20
+wait 1.0
+shot 04-in-the-surf-over-the-shoulder with woken,cast:maren,shoulder
+
+# 2 MAREN'S ASK BECOMES THE GOAL (Guide._led, StoryContent.LEAD): he goes to her
+# at the water's edge and talks, taking the first reply each time, as a player
+# who just keeps talking does, until she gives his first lead; then the goal
+# line is her lead in her words, and it points on to the crew's camp.
+at cast:maren
+await cast:maren 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+shot 05-maren-at-the-water with talking,cast:maren
+press use
+wait 0.5
+press use
+wait 0.5
+press use
+wait 0.5
+press use
+await beat:marens_lead 3
+wait 0.5
+shot 06-her-lead with talking,beat:marens_lead
+press use
+wait 2.5
+shot 07-the-goal-is-hers with beat:marens_lead

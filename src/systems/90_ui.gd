@@ -51,6 +51,7 @@ const APPS: Array[StringName] = [&"inventory", &"crafting", &"map", &"loadout", 
 func setup(g: Game) -> void:
 	super(g)
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	g.hud.glass_holder = _glass_holder
 	explored = UiExplored.new(g.world.size)
 	explored.visit(g.player.pos)
 	_last_pos = g.player.pos
@@ -495,15 +496,24 @@ func _step_guide(delta: float) -> void:
 	_teach = _guide_hint()
 
 
+## Who holds the glass now (58_guide.holder), for the Hud to ask as each line
+## arrives: asked then, not fed once a frame, because a system numbered before
+## this one speaks before this one runs.
+func _glass_holder() -> Node:
+	_guided()
+	return _guide.call(&"holder") if _guide != null else null
+
+
 ## The guide system, while the game has one that is speaking (it is off in
-## single-frame shots, so a canon frame stays as it was).
+## single-frame shots, so a canon frame stays as it was, and quiet while the wake
+## holds the glass).
 func _guided() -> bool:
 	if _guide == null or not is_instance_valid(_guide):
 		_guide = null
 		for sys in game.systems:
 			if sys.name == "58_guide":
 				_guide = sys
-	return _guide != null and not bool(_guide.get("_off"))
+	return _guide != null and bool(_guide.call(&"speaking"))
 
 
 ## The first hint the guide would teach that names a key, said in the player's

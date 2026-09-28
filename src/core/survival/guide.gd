@@ -162,7 +162,7 @@ static func goal(game: Game) -> String:
 		return edge
 	if inv.has(&"pick"):
 		if not inv.has(&"iron_ore") and not inv.has(&"iron"):
-			return "Take the pick to the ore in the rock."
+			return _led(&"ore", "Take the pick to the ore in the rock.")
 		# Past the first tools, the long game: the next elite material, and where
 		# -- and a part a room keeps, once the material it follows is held.
 		var part := next_part(game)
@@ -171,27 +171,42 @@ static func goal(game: Game) -> String:
 		var want := next_elite(game)
 		if want != &"":
 			return elite_goal(game, want)
-		return "Take the pick to the ore in the rock."
+		return _led(&"ore", "Take the pick to the ore in the rock.")
 	var fire := _fire(game)
 	if fire == null:
 		if Survival._makeable_build(game, &"fire").is_empty():
-			return "A fire before dark: three driftwood and two stones."
-		return "A fire before dark: lay it on open ground."
+			return _led(&"fire_gather", "A fire before dark: three driftwood and two stones.")
+		return _led(&"fire_lay", "A fire before dark: lay it on open ground.")
 	var at := fire_name(game, fire)
 	if not _cooking_or_has(game, &"charcoal"):
 		if inv.count(&"driftwood") < 4 and inv.count(&"deadwood") < 4:
-			return "Charcoal for a pick: four driftwood or dead wood, burnt at %s." % at
+			return _led(&"charcoal_gather", "Charcoal for a pick: four driftwood or dead wood, burnt at {at}.", at)
 		# **NO KEY IN A GOAL LINE.** This said "(c)" -- a letter typed into CORE,
 		# which this file states two screens down may not read a key at all, and
 		# which is wrong for anybody who rebinds `craft`. The goal says what to
 		# WANT; the `make` lesson says which key, in the player's own keys, and
 		# it is offered at exactly this moment.
-		return "Charcoal for a pick: set it going at %s." % at
+		return _led(&"charcoal_set", "Charcoal for a pick: set it going at {at}.", at)
 	if not inv.has(&"haft"):
-		return "A haft, whittled from wood."
+		return _led(&"haft", "A haft, whittled from wood.")
 	if inv.count(&"scrap") == 0:
-		return "Plate for a pick: turn over the tip."
-	return "A pick, made at %s." % at
+		return _led(&"plate", "Plate for a pick: turn over the tip.")
+	return _led(&"pick", "A pick, made at {at}.", at)
+
+
+## MAREN'S LEAD (ROADMAP slice 1, step 2): once she has given it (the beat
+## `marens_lead`, her talk), the first hour's goals are said in her words, the
+## short form of what she told him and why (StoryContent.LEAD), and the one after
+## the pick points at the Holdfast's camp. Before she has, or for a player who
+## never asks, the plain line: what to want, not why. `{at}` is the fire's name.
+const LEAD_BEAT := &"marens_lead"
+
+
+static func _led(key: StringName, plain: String, at: String = "") -> String:
+	var line := plain
+	if Story.landed(LEAD_BEAT) and StoryContent.LEAD.has(key):
+		line = String(StoryContent.LEAD[key])
+	return line.replace("{at}", at)
 
 
 ## THE EDGE A KEEPER TAKES (SurvivalState.plates, FightRules.bites). Once a

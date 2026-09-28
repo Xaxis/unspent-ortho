@@ -356,6 +356,8 @@ func _start_game() -> void:
 		# body made on the character page.
 		GameConfig.fill_new_game(o)
 		o.avatar = _avatar.duplicate(true)
+		# A player's new game wakes in the surf (48_wake).
+		o.wake = true
 	var parent := get_parent()
 	menu.close(true)
 	# The coast on show is the new game's world (not a continued save's elsewhere):
