@@ -35,7 +35,11 @@ Builders: **A** introduction and story (teammate3, words via story-wright) ·
 
 - [ ] The intermittent test hang after `works/test_in_game`'s depot test (blocks gates).
 - [ ] Land the fight tuning and gear pass (`land/fight4`, `land/sweep`) once the hang is fixed: step 4 builds on it.
-- [ ] The white panel on the player's back over the shoulder.
+- [ ] The white panel on the player's back over the shoulder. Seen once (main
+  c330ea47, `--seed=1 --hour=6.5 --view=shoulder --weather=clear:0`): a tall white
+  card with a hit-splash on it, the player in a recoil pose. Not reproduced by the
+  same shot three times, by a walk and turn at 06:30, or by a runner's hit over
+  the shoulder. Look again if it shows.
 - [ ] Web: a 0.8–1.0 s hitch after crowd spawns; a 0.2–0.6 s hitch on the shoulder
   switch in pinewood.
 
