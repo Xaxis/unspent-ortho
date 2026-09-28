@@ -84,11 +84,14 @@ func _stage(want: int) -> void:
 ## snatcher leaves, with the region whose network took them — which is the region
 ## the holding stands in, because a plan network IS a region
 ## (`Interference.network`).
-func took(who: int, person_name: String, home: int, home_name: String, region: int) -> void:
+##
+## `at` is the world minute it happened when that was not now: a village come for
+## while he was away was come for at its own hour, and the 71 hours run from then.
+func took(who: int, person_name: String, home: int, home_name: String, region: int, at := NAN) -> void:
 	if region < 0:
 		return
-	var t := taken.take(who, person_name, home, home_name, region,
-		game.clock.minutes if game.clock != null else 0.0)
+	var when := at if not is_nan(at) else (game.clock.minutes if game.clock != null else 0.0)
+	var t := taken.take(who, person_name, home, home_name, region, when)
 	# Said once, here, so a raid does not have to know how to phrase it and the
 	# line cannot drift from the record. The words are the story's
 	# (`StoryContent.TAKEN`) and they are the only place a player is ever told

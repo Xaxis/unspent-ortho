@@ -34,6 +34,12 @@ const PER_VILLAGE := 6
 ## leaves a staged ring of eight (`--folk=8`) looking up, which is right: a ring
 ## of people standing round you is a gathering AT you, not a street.
 const NOTICE_REACH := 5.0
+## WHO HAS SEEN HIM (docs/STORY.md: the plan runs the minds of people who have
+## seen him, to predict him). A village's people have seen him once one of them,
+## out and awake, has stood within SEEN_REACH of him; `seen_by` keeps the world
+## minute it first happened, per village, saved. 48_raids reads it
+## (`SnatchNight`): nobody who has not seen him is ever taken.
+const SEEN_REACH := 12.0
 const CROWD_NEAR := 7.0
 const CROWD_BLIND := 8
 ## Where a city's people past the first six stand, from the village centre. The
@@ -64,6 +70,8 @@ var _ids := 0
 var _act := &""
 var _act_at := -1.0
 var _check := 0.0
+## Village index -> the world minute its people first saw him.
+var seen_by: Dictionary = {}
 
 
 func setup(g: Game) -> void:
@@ -74,6 +82,7 @@ func setup(g: Game) -> void:
 	if ring > 0:
 		_ring(ring)
 	_stream(true)
+	SaveGame.register(&"seen_by", _save_seen, _load_seen)
 	# Before the first frame, so a shot of a street is already indifferent to the
 	# player rather than turning to look at them for the first half second.
 	_count_crowd()
@@ -166,11 +175,44 @@ func _process(delta: float) -> void:
 		_check = 0.5
 		_stream(false)
 		_count_crowd()
+		_note_seen()
 	if not queue.is_empty() and Engine.get_process_frames() % 2 == 0:
 		pump()
 	var night := is_night(_hour())
 	for f in folk:
 		_step(f, delta, night)
+
+
+func _note_seen() -> void:
+	if game.clock == null:
+		return
+	var at: Vector2 = game.player.pos
+	for f in folk:
+		var v: int = f.village
+		if v < 0 or seen_by.has(v) or f.state == &"in":
+			continue
+		if (f.pos as Vector2).distance_to(at) <= SEEN_REACH:
+			seen_by[v] = game.clock.minutes
+
+
+## The world minute village `v`'s people first saw him, INF if they never have.
+func seen_at(v: int) -> float:
+	return float(seen_by.get(v, INF))
+
+
+func _save_seen() -> Variant:
+	var out := {}
+	for v: int in seen_by:
+		out[str(v)] = SaveCodec.num(float(seen_by[v]))
+	return out
+
+
+func _load_seen(v: Variant) -> void:
+	seen_by.clear()
+	if not v is Dictionary:
+		return
+	for k: String in v:
+		seen_by[k.to_int()] = SaveCodec.to_num(v[k])
 
 
 ## How many others each person stands among. Counted on the streaming tick and
