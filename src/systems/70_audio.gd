@@ -160,12 +160,6 @@ func _exit_tree() -> void:
 		bank.drop_queue()
 
 
-func _notification(what: int) -> void:
-	# Quitting: let running bakes finish before the engine takes the scripts away.
-	if what == NOTIFICATION_WM_CLOSE_REQUEST and bank != null:
-		bank.cancel()
-
-
 func _process(delta: float) -> void:
 	if game == null or game.world == null:
 		return
