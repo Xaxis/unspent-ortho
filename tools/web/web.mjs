@@ -61,6 +61,9 @@
 //   --crossing=SECS  fail unless every shaft crossing the run makes takes -- from the use
 //                    that starts it to the first frame of the realm below, the crossing page's own
 //                    `boot stages crossing ... total` -- is at most SECS (streamed worldgen S5's bar)
+//   --programs       print each GL program's link and first draw (both synchronous, so their cost
+//                    is real), and after a crossing the programs first drawn in the 10 s from its
+//                    use, named by their .gdshader: first-use compiles a crossing stalls on
 //   --heap-log       print every heap sample (every 2 s, seconds since the sampler started), not only
 //                    the most it held: when the heap grows says what grew it
 import http from 'node:http';
@@ -405,6 +408,37 @@ await context.addInitScript(() => {
         // Keep checking a program that failed, so the count says every draw.
         p.__glChecked = 0;
       }
+      return r;
+    };
+  }
+});
+// A FIRST DRAW IS WHERE A PROGRAM'S PIPELINE IS BUILT (ANGLE on Metal compiles
+// then), so with --programs each program says, on its first draw, how long its
+// link and that draw held the page. Wraps the checker above, whose getError after
+// a program's first draws makes the draw's cost synchronous and so readable.
+if (opt.programs) await context.addInitScript(() => {
+  const P = window.WebGL2RenderingContext && WebGL2RenderingContext.prototype;
+  if (!P) return;
+  window.__glSrcs = {};
+  const linkProgram = P.linkProgram;
+  P.linkProgram = function (p) {
+    const t = performance.now();
+    const r = linkProgram.call(this, p);
+    this.getProgramParameter(p, this.LINK_STATUS);
+    p.__linkMs = performance.now() - t;
+    window.__glSrcs[p.__glId] = p.__glSrc;
+    return r;
+  };
+  for (const name of ['drawArrays', 'drawElements', 'drawArraysInstanced', 'drawElementsInstanced', 'drawRangeElements']) {
+    const draw = P[name];
+    if (!draw) continue;
+    P[name] = function (...a) {
+      const p = this.__glProgram;
+      if (!p || p.__drawn) return draw.apply(this, a);
+      p.__drawn = true;
+      const t = performance.now();
+      const r = draw.apply(this, a);
+      console.log(`glprog ${p.__glId} link ${(p.__linkMs || 0).toFixed(1)} ms, first draw ${(performance.now() - t).toFixed(1)} ms`);
       return r;
     };
   }
@@ -872,6 +906,39 @@ for (const [id, f] of Object.entries(glFailed)) {
   const keep = `${opt.out}-glfail-p${id}`;
   f.src.forEach((t, i) => fs.writeFileSync(`${keep}.${i === 0 ? 'vs' : 'fs'}.glsl`, t));
   failures.push(`GL program ${id} (${file || 'a shader this could not name'}) failed ${f.draws} draw(s), error ${f.err}${glReason ? `: ${glReason}` : ''}; its GLSL is in ${keep}.*.glsl`);
+}
+if (opt.programs) {
+  const srcs = await bounded(page.evaluate(() => window.__glSrcs || {}), 10000).catch(() => ({})) || {};
+  const progs = lines.filter((l) => /^glprog /.test(l.text));
+  const uses = lines.filter((l) => /^tour t=.*: press use$/.test(l.text));
+  console.log(`web programs: ${progs.length} linked and drawn`);
+  // What makes each program its own variant: its defines, less those every program has.
+  const defsOf = (id) => new Set(srcs[id] ? srcs[id].join('\n').match(/^#define\s+[A-Z_][A-Z0-9_]*/gm)?.map((d) => d.slice(8)) || [] : []);
+  const all = progs.map((l) => l.text.match(/^glprog (\d+)/)[1]);
+  const common = all.length ? [...defsOf(all[0])].filter((d) => all.every((id) => defsOf(id).has(d))) : [];
+  const own = (id) => [...defsOf(id)].filter((d) => !common.includes(d)).join(' ');
+  if (opt.programs === 'all') for (const l of progs) {
+    const id = l.text.match(/^glprog (\d+)/)[1];
+    const f = srcs[id] ? shaderOf(srcs[id].join('\n')) : null;
+    console.log(`  ${l.t.toFixed(1)} s p${id} ${f ? path.basename(f) : '?'}: ${own(id)}`);
+  }
+  for (const u of uses) {
+    const near = progs.filter((l) => l.t >= u.t && l.t <= u.t + 10);
+    let ms = 0;
+    const named = near.map((l) => {
+      const m = l.text.match(/^glprog (\d+) link ([\d.]+) ms, first draw ([\d.]+) ms/);
+      const cost = m ? Number(m[2]) + Number(m[3]) : 0;
+      ms += cost;
+      const file = m && srcs[m[1]] ? shaderOf(srcs[m[1]].join('\n')) : null;
+      const defs = m ? own(m[1]) : '';
+      return { t: l.t - u.t, cost, file: file ? path.basename(file) : '?', text: l.text, defs };
+    });
+    for (const n of named) console.log(`  +${n.t.toFixed(1)} s ${n.file} ${n.cost.toFixed(0)} ms: ${n.defs}`);
+    console.log(`web programs after the use at ${u.t.toFixed(1)} s: ${near.length} new, ${(ms / 1000).toFixed(2)} s held in link and first draw`);
+    const by = {};
+    for (const n of named) { const b = by[n.file] || (by[n.file] = { n: 0, ms: 0 }); b.n++; b.ms += n.cost; }
+    for (const [f, b] of Object.entries(by).sort((x, y) => y[1].ms - x[1].ms)) console.log(`  ${f}: ${b.n} program(s), ${b.ms.toFixed(0)} ms`);
+  }
 }
 for (const [u, why] of aborted) if (!answered.has(u)) failures.push(`request never answered: ${u} (${why})`);
 let wire = 0;
