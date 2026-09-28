@@ -73,8 +73,16 @@ line that made it. Proved by frames read at three zooms on two seeds, and the ow
   same shot three times, by a walk and turn at 06:30, or by a runner's hit over
   the shoulder. Look again if it shows.
 - [ ] A lit machine yard throws a light pool at night (one lamp-pool source per yard, put out with its lamps), so a dark yard reads at a glance. Counts against the web's 7 pool slots. (Step 5 follow-up.)
-- [ ] Web: a 0.8–1.0 s hitch after crowd spawns; a 0.2–0.6 s hitch on the shoulder
-  switch in pinewood.
+- [x] Web: the 0.2–0.6 s hitch on the shoulder switch in pinewood. Looking out puts
+  the sun in four blended splits under the seen sky (SkyLight._look_out), and 18
+  programs were first drawn there. 01_warm_lights' fourth state draws them at the
+  boot: `--programs` 0 at the switch (tours/shoulder-warm.tour). Costs about 1.1 s of
+  boot on the web (boot ready game 6.7/6.9 s -> 7.7/8.1 s, A/B on one box).
+- [ ] Web: the 0.8–1.0 s hitch after crowd spawns (main ab92296c) is not on main
+  fd9bb4e7: four runs of teammate3's crowd_dusk scene, worst 76–87 ms, 0 programs
+  at the spawns or the swing. Leads if it returns: the web heap grows 900 MB -> 1 GB
+  around the dusk teleport and spawns (a wasm grow landing in a frame), and
+  21_doors takes 60 ms in one frame of the walk past a house.
 
 ## Parked (decided after slice 1)
 

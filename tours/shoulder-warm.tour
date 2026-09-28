@@ -1,0 +1,16 @@
+# THE FIRST SHOULDER BUILDS NOTHING (ROADMAP fixes: a 0.2-0.6 s web hitch on the
+# shoulder switch in pinewood). Looking out at eye level puts the sun in four
+# blended shadow splits under the seen sky (SkyLight._look_out); every lit
+# material's program for that is built at the boot now (01_warm_lights'
+# fourth state), so `web.mjs --programs` must count 0 at the switch.
+#
+#   tools/web.sh --tour=tours/shoulder-warm.tour --programs --uncapped --args=--seed=7,--hour=11,--weather=clear:0
+
+coast calm
+place pinewood
+wait 2.0
+echo event shoulder
+tap shoulder
+await shoulder 3
+wait 2.0
+shot 01-over-the-shoulder-in-pinewood with shoulder,land:pinewood
