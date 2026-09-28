@@ -110,7 +110,7 @@ func _on_sentinel_fell(region: int, _land: StringName, _how: StringName) -> void
 
 
 func _free(region: int) -> void:
-	var out := taken.free_region(region)
+	var out := taken.free_region(region, game.clock.minutes if game.clock != null else -INF)
 	if out.is_empty():
 		return
 	# THE WALK IS CHOSEN BEFORE ANYTHING IS SAID, and that order is the whole of
@@ -134,13 +134,33 @@ func _free(region: int) -> void:
 			# in frame not doing it. So they are still announced — suppressing the
 			# line entirely was the first fix and it was worse, because coming out
 			# of a yard is the thing the player just earned.
-			_say(&"out", Taken.say(t))
+			_say(&"out_empty" if t.empty else &"out", Taken.say(t))
+		elif t.empty:
+			# Out past the run: said alone, never folded into the many, because
+			# whoever walked out is not who was carried in (Taken.RUN_HOURS).
+			Events.message.emit(StoryContent.TAKEN[&"freed_empty"] % Taken.say(t))
 		else:
 			names.append(Taken.say(t))
 	if names.is_empty():
 		return
 	var line: String = StoryContent.TAKEN.freed if names.size() == 1 else StoryContent.TAKEN.freed_many
 	Events.message.emit(line % ", ".join(names))
+
+
+## THE LAST OF THE HOURS. Whoever the plan has held past `Taken.GONE_HOURS` is
+## gone, and nobody saw it: the glass says nothing. The record says they are lost,
+## which is what the story reads (49_story's `lost`; Maren's lines).
+const RUN_OUT_EVERY := 2.0
+var _run_out_in := 0.0
+
+
+func _run_out(delta: float) -> void:
+	_run_out_in -= delta
+	if _run_out_in > 0.0 or game.clock == null:
+		return
+	_run_out_in = RUN_OUT_EVERY
+	@warning_ignore("return_value_discarded")
+	taken.run_out(game.clock.minutes)
 
 
 # --- walking one of them home (`Escort`) ---------------------------------------
@@ -182,6 +202,8 @@ func _start_walk(out: Array) -> void:
 
 
 func _process(delta: float) -> void:
+	if game != null:
+		_run_out(delta)
 	if _led < 0 or _led_who == null or game == null or game.player == null:
 		return
 	var folk := _folk()
