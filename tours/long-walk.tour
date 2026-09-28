@@ -33,4 +33,4 @@ walk -1,0 12 run
 place coast
 walk 0,1 12 run
 wait 10
-shot 02-back-on-the-coast with realm:surface
+shot 02-after-the-walk with realm:surface
