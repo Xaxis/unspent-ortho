@@ -38,7 +38,7 @@ const ARCS := {
 	&"the_machines": {
 		"title": "the machines",
 		"note": "What they are now, and how little they see.",
-		"beats": [&"counted", &"noticed", &"ants", &"standoff", &"the_guest"],
+		"beats": [&"counted", &"noticed", &"not_home", &"ants", &"standoff", &"the_guest"],
 	},
 	&"the_holdfast": {
 		"title": "the Holdfast",
@@ -121,6 +121,7 @@ const BEATS := {
 	&"war_archive": {"short": "the archive", "arc": &"the_war", "says": "Somebody wrote the war down. It is kept across the water, at the Covenant's seat."},
 	&"counted": {"short": "counted, but not you", "arc": &"the_machines", "says": "The machines count everything on the land. They do not count people."},
 	&"noticed": {"short": "something noticed", "arc": &"the_machines", "says": "Something has noticed you at last. Only a part of it."},
+	&"not_home": {"short": "not home", "arc": &"the_machines", "says": "Somebody you walked out of a yard did not get home."},
 	&"ants": {"reveal": true, "short": "beneath notice", "arc": &"the_machines", "says": "They do not see you. Nothing that size looks down."},
 	&"standoff": {"reveal": true, "short": "a star each", "arc": &"the_machines", "says": "Two things that can kill a star are each holding the other's."},
 	&"the_guest": {"short": "someone else", "arc": &"the_machines", "says": "Something from another star is talking to them, and it is not talking about you."},
@@ -3995,6 +3996,7 @@ const TALKS := {
 				"replies": [
 					{"text": "Who pulled me out?", "pick": &"asked_who", "to": &"pulled"},
 					{"text": "Where am I?", "pick": &"asked_where", "to": &"where"},
+					{"text": "Somebody didn't get home.", "when": &"not_home", "pick": &"told_lost", "to": &"lost"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
 			},
@@ -4045,6 +4047,10 @@ const TALKS := {
 			},
 			&"others": {
 				"says": ["Two, years back. Both walked out to the point.", "Neither came back."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"lost": {
+				"says": ["I heard. We'll light the lamp for them anyway.", "They never took anybody before you came up out of the water."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
@@ -5430,7 +5436,7 @@ const SUBARCS := {
 	&"rescue": {
 		"ask": [
 			"They took %s. Out of the door, in the morning, and not one of us moved.",
-			"They're at the yard. Everybody here knows it and nobody says it.",
+			"They asked after you first. Then they took %s.",
 			"A yard that's dark doesn't hold anybody.",
 		],
 		"answer": "Then I'll put it dark.",
@@ -5438,7 +5444,7 @@ const SUBARCS := {
 		# not a name, and a sentence that begins with it begins in lower case.
 		"thanks": [
 			"They say %s came up the road at dusk. Thin. Walking.",
-			"We don't ask what a yard is for any more. We ask who's come back.",
+			"We don't ask what the yard wanted with them. We ask who's come back whole.",
 		],
 		"kept": [
 			"You said you'd put it dark, and they say %s came up the road at dusk.",
@@ -5645,6 +5651,7 @@ const WITNESS_ON := {
 	&"signet": &"your_key",
 	&"other_realm": &"seeker",
 	&"hunted": &"noticed",
+	&"lost": &"not_home",
 	&"works_dark": &"holdfast_price",
 	&"ring_held": &"ring_held",
 }
@@ -5657,6 +5664,7 @@ const WITNESSED := {
 	&"your_key": "the signet fires, once his old passwords are known of",
 	&"seeker": "the player stands below the world or above it (not in the Before, which is his own past)",
 	&"noticed": "the region the player stands in is hunting them",
+	&"not_home": "somebody he was walking home from a yard is lost on the road",
 	&"holdfast_price": "a works yard is put dark",
 	&"ring_held": "a machine hunting the player stops at a crags ring's edge and holds there, facing in",
 }

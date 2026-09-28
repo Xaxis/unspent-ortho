@@ -162,5 +162,6 @@ choice is scored; saying nothing is always an answer.
 - The gates, the Before, the After: 2029 rebuilt at the same coordinates; the Emissary's forecast.
 - A room's slots (desk, terminal, wall): what whoever lived there left, colour.
 - Settlements and raids: the Holdfast's holdings. Companions are playable; the story stays his.
-- The plan's depots: people carried as stock, filed, never wanted; put the yard dark
-  or fell the keeper and they walk out (`45_taken`; unruled, for the owner).
+- The depots: the Seeker lost him to the Echo, so it runs the minds of those who have
+  seen him, to predict him. Running replaces a mind, as it did his; left too long,
+  they come back empty or not at all.
