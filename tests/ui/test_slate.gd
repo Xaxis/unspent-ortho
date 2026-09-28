@@ -164,7 +164,7 @@ func test_the_slate_bakes_ahead_off_the_main_thread() -> void:
 		@warning_ignore("return_value_discarded")
 		UiSlate.device_texture(Vector2i(303 + i * 2, 189 + i))
 		asking = minf(asking, float(Time.get_ticks_usec() - t0) / 1000.0)
-	lt(asking, 20.0, "and asking does not wait for it")
+	cost_lt(asking, 20.0, "and asking does not wait for it")
 	var s := UiPauseScreen.new()
 	s.device_rect = Rect2i(10, 10, odd.x, odd.y)
 	tree.root.add_child(s)

@@ -109,7 +109,7 @@ func test_finding_them_costs_nothing_a_player_would_notice() -> void:
 	var again := Works.sites(w)
 	var warm := Time.get_ticks_usec() - t
 	eq(again.size(), Works.sites(w).size(), "the remembered answer is the answer")
-	lt(float(warm), got[0] / 10.0, "asked again it costs %d us against %.0f cold" % [warm, got[0]])
+	ratio_lt(float(warm) / maxf(got[0], 0.001), 0.1, "asked again it costs %d us against %.0f cold" % [warm, got[0]])
 
 
 ## **AND THE SPEEDUP IS HELD TO BEING ONE, TILE FOR TILE.** `Works._room_at` reads

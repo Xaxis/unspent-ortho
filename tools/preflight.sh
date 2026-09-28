@@ -23,7 +23,7 @@ fi
 fm=~/.claude/claude-core/bin/featuremap
 if [ -x "$fm" ]; then "$fm" check || fail=1; fi
 
-rules="test_prop_identity,test_whole_world_readers,test_feature_map,test_tour_claims,test_worker_types,test_no_unique_names,test_stand_at,test_room_loot,test_rooms,test_names"
+rules="test_prop_identity,test_whole_world_readers,test_feature_map,test_tour_claims,test_worker_types,test_no_unique_names,test_stand_at,test_room_loot,test_rooms,test_names,test_cost_bars"
 [ -n "${1:-}" ] && rules="$rules,$1"
 log="$(mktemp "${TMPDIR:-/tmp}/unspent-preflight.XXXXXX")"
 tools/test.sh "$rules" >"$log" 2>&1; code=$?

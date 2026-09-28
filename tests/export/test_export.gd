@@ -168,7 +168,7 @@ func test_a_headless_export_packs_the_game_and_nothing_else() -> void:
 	# and the engine's own wasm dwarfs the pack either way. When this trips again,
 	# list the pack by size against main before raising it.
 	lt(float(size), 10.0 * 1024 * 1024, "the pack stays small (%d KB)" % (size / 1024))
-	lt(float(ms), 60000.0, "and exports in well under a minute (%d ms)" % ms)
+	cost_lt(float(ms), 60000.0, "and exports in well under a minute (%d ms)" % ms)
 	for f in DirAccess.get_files_at(dir):
 		DirAccess.remove_absolute(dir.path_join(f))
 	DirAccess.remove_absolute(dir)
