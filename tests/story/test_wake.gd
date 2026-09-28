@@ -6,7 +6,7 @@ extends TestCase
 ## put in the surf.
 
 const Sx := preload("res://tests/save/save_fixture.gd")
-const ARGS := ["--seed=1", "--hour=10", "--weather=clear:0"]
+const ARGS := ["--seed=1", "--hour=10", "--weather=clear:0", "--wake"]
 ## Past the rise (48_wake.RISE), on the wall clock the rise runs on.
 const RISE_WAIT := 2.0
 
@@ -85,4 +85,15 @@ func test_a_start_by_name_is_not_staged_in_the_surf() -> void:
 	eq(g.player.sunk, 0.0, "not sunk")
 	await process_frames(2)
 	eq(said.size(), 5, "and still hears the first morning, once")
+	Sx.end(g)
+
+
+func test_a_game_booted_straight_into_the_world_starts_on_dry_land() -> void:
+	var said := _lines()
+	var g := Sx.game(tree, ["--seed=1", "--hour=10", "--weather=clear:0"])
+	var ground := g.world.ground_at(floori(g.player.pos.x), floori(g.player.pos.y))
+	check(not Ground.is_water(ground), "a test, a shot or a tour stands at the spawn, dry")
+	eq(g.player.sunk, 0.0, "not sunk")
+	await process_frames(2)
+	eq(said.size(), 5, "and hears the first morning, once")
 	Sx.end(g)

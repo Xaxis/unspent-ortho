@@ -29,6 +29,7 @@ static func config(scene: Node) -> void:
 	var o := BootOptions.new()
 	GameConfig.fill_boot(o)
 	GameConfig.fill_new_game(o)
+	o.wake = true
 	start(scene, o, GameConfig.active if GameConfig.active != "" else "none")
 
 

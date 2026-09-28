@@ -9,7 +9,7 @@ The player's own body, villagers, fauna, named cast, the story's talks and fragm
 - 33_avatar `src/systems/33_avatar.gd`: `tools/tour.sh tours/character.tour`.
 - 35_folk `src/systems/35_folk.gd`: `tools/tour.sh tours/locals.tour`.
 - 37_fauna `src/systems/37_fauna.gd`: `tools/tour.sh tours/wild.tour`.
-- 48_wake `src/systems/48_wake.gd` (the first morning in the surf, `src/core/story/wake_spot.gd`): `tools/tour.sh tours/home-coast.tour --scene=title --seed=1`, the slice's proof tour from the title (frames 01-03), and `tools/test.sh test_wake`.
+- 48_wake `src/systems/48_wake.gd` (the first morning in the surf, `src/core/story/wake_spot.gd`): `tools/tour.sh tours/home-coast.tour --scene=title --seed=1`, the slice's proof tour from the title (frames 01-03), and `tools/test.sh test_wake`. Only a player's new game wakes (the title's, dev play, or `--wake`); a game booted straight into the world starts dry at the spawn.
 - 49_cast `src/systems/49_cast.gd`: `tools/tour.sh tours/cast.tour`.
 - 49_story `src/systems/49_story.gd`: `tools/tour.sh tours/story.tour`.
   - Room words (StoryRooms, `StoryContent.ROOMS`, read with `use` inside): `tools/tour.sh tours/bunker_words.tour --seed=4 --hour=15 --weather=clear:0`, `tests/story/test_rooms.gd`.

@@ -8,9 +8,11 @@ extends GameSystem
 ## `shallows` as he stands. Then he has his legs, and nothing waits for him to
 ## reach the sand.
 ##
-## A LOADED GAME HAS WOKEN (Story.began, saved), and a run that starts him
-## somewhere by name (`--at`, `--place`, `--village`) is staging something else:
-## neither is put in the surf. Such a first morning still hears the lines, all at
+## ONLY A PLAYER'S NEW GAME WAKES: the title's New game and dev mode's play set
+## `BootOptions.wake` (`--wake` on a command line). A game booted straight into
+## a world is a test, a shot or a tour standing where it means to. A LOADED GAME
+## HAS WOKEN (Story.began, saved), and a start named by `--at`, `--place` or
+## `--village` is staging something else: none is put in the surf. Such a first morning still hears the lines, all at
 ## once on the first frame, as the old opening was.
 ##
 ## Numbered before 49_story, which reads the story after the first morning is
@@ -35,8 +37,10 @@ func started() -> void:
 	Story.began = true
 	if not _first or game.player == null or game.world == null:
 		return
+	# Only a player's new game (the title's, `--wake`): a run booted straight
+	# into a world is a test, a shot or a tour standing somewhere on purpose.
 	var o := game.options
-	if o != null and (o.village >= 0 or o.at.x >= 0 or o.place != ""):
+	if o == null or not o.wake or o.village >= 0 or o.at.x >= 0 or o.place != "":
 		return
 	_staged = WakeSpot.find(game.world)
 	if _staged.is_empty():
