@@ -30,6 +30,8 @@ var _pending_place: StringName = &""
 ## what it last said to want and to teach.
 var _guide: Node
 var _goal := ""
+## The key of the pinned goal (Guide.last_goal_key), for `goal:KEY`.
+var _goal_key := &""
 var _teach: Dictionary = {}
 var _guide_in := 0.0
 ## Real seconds between two readings of the guide.
@@ -493,6 +495,7 @@ func _step_guide(delta: float) -> void:
 		return
 	_guide_in = GUIDE_EVERY
 	_goal = Guide.goal(game) if _guided() else ""
+	_goal_key = Guide.last_goal_key if _goal != "" else &""
 	_teach = _guide_hint()
 
 
@@ -555,6 +558,10 @@ func _hostile_near() -> bool:
 ## of glass, a badge that has just answered for a line the glass did not say in
 ## words, and whether the bottom middle is clear of text at all.
 func tour_seen(what: StringName) -> bool:
+	# `goal:KEY`: the goal pinned on the glass is the line keyed KEY (Guide's keys:
+	# fire_gather, haft, ore, kiln_stones, steel_in_hand, ...), in whoever's words.
+	if String(what).begins_with("goal:"):
+		return _goal != "" and String(_goal_key) == String(what).substr(5)
 	match what:
 		&"ping":
 			return game.hud.place_alpha() > 0.0 and game.hud.place != ""
