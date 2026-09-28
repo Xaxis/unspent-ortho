@@ -49,6 +49,11 @@ Each area lists its state and its next few points.
   same bar.
 - Missing shared systems: flying bodies, spanning props (cables), ruled canals,
   time-varying ground, a glass ground.
+- The middens' rooms (docs/MIDDENS_ROOMS.md): container warrens (levels,
+  ladders, towers, buckled bays) and the face settlement are built. Follow-up:
+  the settlement falls quiet when a sorter passes in the slot outside, which
+  needs an outside machine a room can hear while the player is in the pocket
+  (the outside view leaves the tree then); dropped from slice 3.
 
 ### 4. Core play
 - State: walk, run, crouch, jump, swim, target, dodge and swing, stealth, taking

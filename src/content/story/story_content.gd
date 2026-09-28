@@ -2203,6 +2203,15 @@ const FRAGMENTS := {
 			"numbers. It is left on for the company.",
 		],
 	},
+	&"home_reader_last": {
+		"kind": &"mark", "title": "the shelf", "lands": ["the_middens"], "households": [&"reader"],
+		"lines": [
+			"Phones along the shelf, face down, in a row.",
+			"A strip of tape under each, a word in pencil.",
+			"",
+			"Not whose it was. What it said last.",
+		],
+	},
 	&"home_wirer_hood": {
 		"kind": &"mark", "title": "the bench", "lands": ["the_middens"], "households": [&"wirer"],
 		"lines": [
@@ -3343,7 +3352,7 @@ const ROOMS := {
 			&"home_gath_gloves", &"home_grow_green", &"home_grow_one", &"home_knap_cloth",
 			&"home_knap_bubble", &"home_still_cups", &"home_still_rain", &"home_pick_blue",
 			&"home_pick_tongs", &"home_siph_tar", &"home_siph_tube", &"home_sort_teeth", &"home_sort_dunno",
-			&"home_wirer_tin", &"home_wirer_hood", &"home_clerk_balance", &"home_clerk_pencil",
+			&"home_wirer_tin", &"home_wirer_hood", &"home_reader_last", &"home_clerk_balance", &"home_clerk_pencil",
 			&"home_shift_nine", &"home_shift_radio", &"home_keep_hooks", &"home_keep_ins",
 			&"home_squat_mug", &"home_squat_lamp", &"home_climb_knots", &"home_climb_gloves",
 			&"home_stilt_once", &"home_stilt_beds", &"home_bail_things", &"home_bail_oar",

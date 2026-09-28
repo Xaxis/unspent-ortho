@@ -28,6 +28,7 @@ const RECIPES := {
 	&"home": "res://src/content/interiors/home.gd",
 	&"squat": "res://src/content/interiors/squat.gd",
 	&"container_warren": "res://src/content/interiors/container_warren.gd",
+	&"face_hold": "res://src/content/interiors/face_hold.gd",
 }
 
 ## Which of a sparse landscape's houses have somebody in them (`home.open`).
