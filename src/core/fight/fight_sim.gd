@@ -1283,6 +1283,13 @@ func _land(t0: float, t1: float) -> void:
 				continue
 			hero.struck[m.id] = true
 			_wear_on_contact()
+			# Plated harder than the edge in hand (roster `plating`): it rings off
+			# wherever it lands, open part and all, and the plating is said.
+			if not FightRules.bites(m.row, hero.inventory.held if hero.inventory != null else &""):
+				hero.throw(hero.pos - m.pos, FightRules.RING_RECOIL, FightRules.RING_RECOIL_MS, now)
+				_ring(m)
+				emit(&"plating", {"mob": m, "plate": m.row.get("plating", &"")})
+				continue
 			# The coil is spent on the first blow that meets the body, needed or not.
 			var phased := false
 			if phase_ready(m):

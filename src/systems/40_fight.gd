@@ -48,6 +48,7 @@ func setup(g: Game) -> void:
 	sim = g.player.sim
 	if sim == null:
 		return
+	Events.sentinel_fell.connect(_on_keeper_fell)
 	_mend_from = g.clock.minutes
 	_last_health = g.body.health
 	_keep_texel()
@@ -493,6 +494,18 @@ func _part_at(m: MobState) -> Vector3:
 	return _at3(m.pos, float(m.row.get("height", 1.0)) * 0.5)
 
 
+## When an edge last rang off a keeper's plating, fight ms (tour `plating`).
+var _plating_at := -INF
+
+
+## A keeper down: the plating it wore is no longer a reason to want an edge.
+func _on_keeper_fell(_region: int, land: StringName, _how: StringName) -> void:
+	var st := SurvivalState.of(game)
+	for plate: Variant in st.plates.keys():
+		if StringName(st.plates[plate]) == land:
+			st.plates.erase(plate)
+
+
 func _handle(events: Array[Dictionary]) -> void:
 	var player := game.player
 	var hero := sim.hero
@@ -677,6 +690,23 @@ func _handle(events: Array[Dictionary]) -> void:
 				if m.row.get("sight_only", false):
 					# The lens catches the light as it finds you: the only warning it gives by eye.
 					MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id, 0.6)
+			&"plating":
+				# An edge rang off a keeper's plating (FightRules.bites): the survival
+				# state remembers the hardness it wants and whose, and the first time
+				# it says why. Words for story-wright: the short form of what the one
+				# who named the keeper told the player.
+				var m: MobState = e.mob
+				var plate := StringName(e.get("plate", &""))
+				var st := SurvivalState.of(game)
+				var design := Roster.sentinel_of(m.kind)
+				var def := Sentinels.by_id(design) if design != &"" else null
+				_plating_at = sim.now
+				if plate != &"" and not st.plates.has(plate):
+					st.plates[plate] = def.land if def != null else &""
+					# Said at once, with the keeper close: the HUD keeps quiet in a
+					# fight, and this is the one line the fight is for.
+					if game.hud != null:
+						game.hud.say_now("It rings. Iron does not bite that plate.")
 			&"unseen_tell":
 				# A bite begun out of the player's sight in a crowd: a call from its
 				# bearing, and a mark at the slate's edge on its side for its tell.
@@ -835,6 +865,9 @@ func tour_seen(what: StringName) -> bool:
 			return now - _locked_at < FightKit.LOCK_SECONDS
 		&"stripped":
 			return now - _stripped_at < 1.0
+		# On the fight's own clock: a frame is taken after the ring, however slow.
+		&"plating":
+			return sim.now - _plating_at < 1500.0
 		# On the fight's own clock: a tell lasts its sim time however slow the frame.
 		&"curtain_tell":
 			return sim.now - float(_curtain_seen.get(what, -INF)) < 1400.0
