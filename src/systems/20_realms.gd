@@ -289,8 +289,10 @@ func _arrive(to: StringName, at: Vector2, shaft: int, then: Callable) -> void:
 	var seed_value := game.options.seed_value
 	var size: int = game.world.size
 	if RealmWorlds.ready(seed_value, size, to) or BootPage.headless():
+		var t0 := Time.get_ticks_msec()
 		_go(to, at, shaft, true)
 		then.call()
+		_say_crossing(t0)
 		return
 	var tree := get_tree()
 	var was := tree.paused
@@ -299,6 +301,32 @@ func _arrive(to: StringName, at: Vector2, shaft: int, then: Callable) -> void:
 		_go(to, at, shaft, true)
 		tree.paused = was
 		then.call())
+
+
+## A crossing into a realm already standing has no page to time it, so it says
+## its own stages as the page would (`boot stages crossing`): the enter, then the
+## first two frames drawn below, each frame's cost with it. tools/web --crossing
+## reads it either way.
+func _say_crossing(t0: int) -> void:
+	var entered := Time.get_ticks_msec()
+	var parts: Array[String] = []
+	for k: String in enter_ms:
+		if k != "total" and float(enter_ms[k]) >= 50.0:
+			parts.append("%s %.0f" % [k, float(enter_ms[k])])
+	print("realm enter (ready): %d ms: %s" % [entered - t0, ", ".join(parts)])
+	var drawn := [0, entered]
+	var on_drawn := func() -> void:
+		drawn[0] = int(drawn[0]) + 1
+		var now := Time.get_ticks_msec()
+		print("boot draw crossing frame %d at %d ms: process %.0f ms, %d draw calls, %d objects" % [drawn[0], now - entered,
+			Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)])
+		if int(drawn[0]) == 2:
+			print("boot stages crossing (ready): world 0, start %d, draw %d, total %d ms" % [entered - t0, now - entered, now - t0])
+	for i in 2:
+		await RenderingServer.frame_post_draw
+		on_drawn.call()
 
 
 ## A drawn gate for every gate this world holds, open or shut, rebuilt when its
