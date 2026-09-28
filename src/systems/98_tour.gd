@@ -159,7 +159,7 @@ extends GameSystem
 ##   perf features NAME     every expensive thing the frame has, off and on, world held
 ##                          still: which ones this renderer really draws (render_probe.gd)
 ##   perf scale LIST SECS   frame cost at each render scale in LIST (render_probe.gd)
-##   walkto mob|part|plate SECS  steer the real walk for up to SECS toward the
+##   walkto mob|part|plate SECS [run]  steer the real walk (run: the run key held) for up to SECS toward the
 ##                          nearest body (mob), round it to its working part (part)
 ##                          or to the plated side opposite (plate), re-aimed every
 ##                          step the way a player steers, ending turned to face it
@@ -572,7 +572,7 @@ func _run() -> void:
 				elif parts[1] in ["folk", "refuse", "dog"]:
 					ok = await TourPeople.walk(self, game, parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
 				else:
-					ok = await _walk_to(parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
+					ok = await _walk_to(parts[1], parts[2].to_float() if parts.size() > 2 else 1.0, parts.has("run"))
 			"perf":
 				if parts.size() > 1 and parts[1] == "fore":
 					ok = await ForePerf.perf(self, game, parts)
@@ -1155,7 +1155,7 @@ func _stand_off_mob(token: String, dist: float) -> bool:
 	return false
 
 
-func _walk_to(what: String, secs: float) -> bool:
+func _walk_to(what: String, secs: float, run: bool = false) -> bool:
 	var sim := game.player.sim
 	if sim == null or not what in WALK_TARGETS:
 		return false
@@ -1208,10 +1208,11 @@ func _walk_to(what: String, secs: float) -> bool:
 			break
 		var dir := d.normalized()
 		game.scripted_move = _keys_toward(dir)
-		game.scripted_run = false
+		game.scripted_run = run
 		game.scripted_seconds = 0.05
 		await get_tree().physics_frame
 	game.scripted_seconds = 0.0
+	game.scripted_run = false
 	if facing_mob != null:
 		# Turned to it the way a player does: a touch of the key toward it.
 		var dir := (facing_mob.pos - sim.hero.pos).normalized()

@@ -512,6 +512,8 @@ func _part_at(m: MobState) -> Vector3:
 
 ## When an edge last rang off a keeper's plating, fight ms (tour `plating`).
 var _plating_at := -INF
+## Until when a gripper torn loose stands jammed, fight ms (tour `torn`).
+var _torn_until := -INF
 
 
 ## A keeper down: the plating it wore is no longer a reason to want an edge.
@@ -611,6 +613,15 @@ func _handle(events: Array[Dictionary]) -> void:
 			&"loose":
 				Events.sfx.emit(&"loose", player.position)
 				MobFx.puffs(fx, _at3(hero.pos), Vector2.ZERO, _dust_colour(hero.pos), 3, 0.55, int(sim.now) + 7)
+			&"torn":
+				# Torn loose (Blow.torn): the wrench jams what held on. It clangs at the
+				# jaw, and its open part glows for as long as it stands, so where to go
+				# is read in the body and not in a line.
+				var m: MobState = e.by
+				_torn_until = sim.now + float(e.ms)
+				MobFx.clang(fx, _at3(m.pos.lerp(hero.pos, 0.5), 0.9), int(sim.now))
+				MobFx.glow(fx, _part_at(m), Palette.LENS[3], 1.1, float(e.ms) / 1000.0)
+				Events.sfx.emit(&"hit_plate", _at3(m.pos))
 			&"hit":
 				_on_hit(e)
 			&"struck":
@@ -884,6 +895,9 @@ func tour_seen(what: StringName) -> bool:
 		# On the fight's own clock: a frame is taken after the ring, however slow.
 		&"plating":
 			return sim.now - _plating_at < 1500.0
+		# A gripper torn loose still stands jammed (Blow.torn), on the fight's clock.
+		&"torn":
+			return sim.now < _torn_until
 		# On the fight's own clock: a tell lasts its sim time however slow the frame.
 		&"curtain_tell":
 			return sim.now - float(_curtain_seen.get(what, -INF)) < 1400.0
