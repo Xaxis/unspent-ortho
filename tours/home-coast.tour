@@ -220,6 +220,17 @@ try 10
   await goal:kiln_stones 2
 end
 shot 14-the-goal-asks-for-steel with beat:reaper_named,goal:kiln_stones
+# Four charcoal for the temper, from two batches: the pick took one of the first.
+try 3
+  near driftwood
+  press use 0.1
+  await took 4
+end
+try 3
+  near driftwood
+  press use 0.1
+  await took 4
+end
 try 3
   near driftwood
   press use 0.1
@@ -241,6 +252,15 @@ tap pause
 wait 0.4
 # Forty minutes on the fire, waited out: how late the ring has left the day is
 # the fight's, and `hour` only moves within the day.
+await made 45
+wait 0.5
+tap craft
+wait 0.6
+choose charcoal
+tap use
+wait 0.3
+tap pause
+wait 0.4
 await made 45
 wait 0.3
 village 36
@@ -300,7 +320,9 @@ wait 0.6
 choose kiln
 tap use
 await station:kiln 20
-wait 0.5
+# The making page stays open after a build; shut, so the frame is the kiln.
+tap pause
+wait 0.6
 shot 15-a-kiln-at-low-scar with station:kiln
 tap craft
 wait 0.6
