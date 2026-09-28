@@ -65,6 +65,7 @@ line that made it. Proved by frames read at three zooms on two seeds, and the ow
 
 ## Fixes that serve the slice
 
+- [ ] Title-time warm: no gain measured; would need `--programs` in `--play` to separate compile from state.
 - [ ] The intermittent test hang after `works/test_in_game`'s depot test (blocks gates).
 - [ ] Land the fight tuning and gear pass (`land/fight4`, `land/sweep`) once the hang is fixed: step 4 builds on it.
 - [ ] The white panel on the player's back over the shoulder. Seen once (main
