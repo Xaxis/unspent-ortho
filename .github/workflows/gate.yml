@@ -29,12 +29,19 @@ env:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    # A hang guard, not a speed bar. The suite ran about 25 min after the camera
-    # work; with interiors, foliage and the sky it outgrew 45 (2026-09-25: killed
-    # with shards at 793, 608 and about 800 of roughly 850 each), then 80 (2026-09-26,
-    # the homes and landscapes assembly: killed at shard 801, none red). A real hang
-    # still runs past 120.
-    timeout-minutes: 120
+    # ONE JOB PER SHARD, SIDE BY SIDE. Three shards on one four-core runner took
+    # about 110 min by 2026-09-28, and every landing waited that long. The runners
+    # are free here and run in parallel, so the gate now takes its slowest shard.
+    # Each job runs its shard and then that shard's costs alone
+    # (tools/check.sh --only), so the costs keep their quiet box.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    name: tests (shard ${{ matrix.shard }} of 8)
+    # A hang guard, not a speed bar: a shard of eight runs in about a quarter of
+    # the old three-shard time, and a real hang still runs past this.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -74,4 +81,4 @@ jobs:
                 [ -f "$f" ] && echo "== progress $(basename "$f"): $(grep -cE '^\s+(ok|FAIL) ' "$f") done, last: $(grep -E '^\s+(ok|FAIL) ' "$f" | tail -1)"
               done
             done ) &
-          tools/check.sh --no-shots
+          tools/check.sh --no-shots --shards=8 --only=${{ matrix.shard }}

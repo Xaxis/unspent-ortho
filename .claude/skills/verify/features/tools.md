@@ -44,6 +44,7 @@ Proves it when: the command exits 0 and, for a shot or tour, the frames show the
 ## Gotchas
 
 - `tools/check.sh` runs three shards at once and dies on a box with under ~500 MB free.
+- `tools/preflight.sh` runs the whole-tree rule tests (prop identity, whole-world readers, feature map, tour claims, worker types, room kinds) plus the .uid and feature-map checks in one process, about 90 s; it goes red on a `WorldProp == WorldProp` added anywhere. CI runs the gate as eight shard jobs (`tools/check.sh --no-shots --shards=8 --only=I`).
 - Cost tests (`TestCase.yard_lt` and the absolute `TestCase.cost_lt`; a timing bar is never a bare `lt`) are not judged inside the shards: each shard lists the ones it met and check.sh runs them again alone after (`== costs, alone`), because beside sibling shards a cost reads up to 2.2x. A cost that fails there is a real miss; its log is kept at `shots/check/costs.log`.
 - Frame cost in play: `tools/tour.sh tours/stutters.tour --stats --seed=7 --hour=12 --weather=clear:0`
 - Every web run fails on a GL program the browser refuses to draw with (`web FAILED: GL program N (src/…gdshader) failed …`, its GLSL kept as `shots/export/<out>-glfail-pN.{vs,fs}.glsl`): each program's first three draws are checked with getError (tools/web/web.mjs).
