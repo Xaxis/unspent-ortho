@@ -47,10 +47,14 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   - The Reaper by force (from full health with the steel knife, 20+ blows in its open part over 20+ s on its seed-7 shore; stooped, a grip torn loose slews it half round and jams it, Blow.torn, its chute gear to the player): `tools/test.sh test_reaper_force` (~1.5 min), `TOUR_FIXED_FPS=60 tools/tour.sh tours/reaper_torn.tour` (h; the keys only after `wound`; `walkto part N run`, claim `torn`).
 - 43_cracked_roof `src/systems/43_cracked_roof.gd` (stones round a cave's tears, hung, drawn held, brought down by the line, down for good through a save): `tools/test.sh test_cracked_roof`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/cracked_roof.tour` (h).
 - 45_taken `src/systems/45_taken.gd`: `tools/tour.sh tours/harvest.tour`.
+  The 71 hours (whole, empty, gone): `tools/test.sh test_clock` and
+  `tools/tour.sh tours/rescue-late.tour --seed=1 --hour=11 --weather=clear:0 --held=axe_felling --carried=1:80`.
   - Freed, back on a holding's books: `tools/test.sh test_come_home`, `tools/tour.sh tours/taken_home.tour` (h); `tours/escort.tour` walks one to a village.
 - 47_defences `src/systems/47_defences.gd`: `tools/tour.sh tours/defences.tour`.
   - A gun sees over its own holding's walls, not another's: `tools/test.sh test_turret_sight`; answers a raider at a wall first: `tools/test.sh test_turret_answers_the_wall`.
 - 48_raids `src/systems/48_raids.gd`: `tools/tour.sh tours/raids.tour`.
+  The villages that have seen him (35_folk `seen_by`, `SnatchNight`):
+  `tools/test.sh test_seen_taken,test_snatch_night`.
   - A live probe against a walled yard, held: `tools/tour.sh tours/raids_live.tour --walled` (h); graded outcomes, prepared vs open: `tools/test.sh test_raid_live`; hits from several sources in one window: `tools/test.sh test_hits_stack`.
 
 ## How to reach it

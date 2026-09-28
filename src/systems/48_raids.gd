@@ -1726,12 +1726,67 @@ func _physics_process(delta: float) -> void:
 ## holding's own timestamp, so calling it every second, once an hour or twice in
 ## a row all leave the same holding.
 func sweep() -> void:
+	_come_for_the_seen()
 	_settle_attention()
 	_felt_interference()
 	_stake_pulled()
 	_escalate()
 	_sync_marks()
 	_forget_old_reads()
+
+
+# --- the villages that have seen him (`SnatchNight`) ---------------------------
+
+## Village index -> the world minute the plan came for somebody there, or -INF
+## when it never will (no working yard in its region to hold them). Once each.
+var came_for: Dictionary = {}
+## Village index -> when it is due again, set when he was there at its hour.
+var _due_again: Dictionary = {}
+
+
+## THE PLAN COMES FOR WHO HAS SEEN HIM (docs/STORY.md). A village whose people
+## have seen him (35_folk `seen_by`) loses one of them to its region's yard, on
+## its own small hours, never while he is there. Traced, as every raid here is, to
+## something he did: being seen. Taken on paper at that hour, since it is never
+## in front of him; the 71 hours run from it (45_taken.took `at`).
+func _come_for_the_seen() -> void:
+	if game.clock == null:
+		return
+	var folk := _folk()
+	if folk == null:
+		return
+	var seen: Dictionary = folk.get("seen_by")
+	var now := game.clock.minutes
+	for v: int in seen:
+		if came_for.has(v) or v >= game.world.villages.size():
+			continue
+		var village: Dictionary = game.world.villages[v]
+		var at: Vector2 = village.get("pos", Vector2.INF)
+		var due: float = _due_again.get(v, SnatchNight.due(float(seen[v]), game.world.seed_value, v))
+		var there := game.player.pos.distance_to(at) <= SnatchNight.AWAY
+		if now < due:
+			continue
+		if there:
+			_due_again[v] = SnatchNight.after_him(now, game.world.seed_value, v)
+			continue
+		var region := game.world.region_at(floori(at.x), floori(at.y))
+		var works := game.get_node_or_null(^"34_works")
+		if works == null or works.call(&"state", region) == null or works.call(&"broken", region):
+			came_for[v] = -INF
+			continue
+		came_for[v] = due
+		_seen["snatched"] = true
+		for sys in game.systems:
+			if sys.has_method("took") and sys.get("taken") is Taken:
+				sys.call("took", -1, "", -1, str(village.get("name", "")), region, due)
+				break
+
+
+func _folk() -> Node:
+	for sys in game.systems:
+		if sys.has_method(&"seen_at"):
+			return sys
+	return null
 
 
 ## A body only reads a holding once in READ_AGAIN world minutes, and the line
@@ -1966,8 +2021,15 @@ func _save() -> Variant:
 		var m: Dictionary = _regions[key]
 		out_regions[str(key)] = {"razed": int(m.get("razed", 0)), "lost": int(m.get("lost", 0)),
 			"taken": bool(m.get("taken", false))}
+	var out_came := {}
+	for v: int in came_for:
+		out_came[str(v)] = SaveCodec.num(float(came_for[v]))
+	var out_due := {}
+	for v: int in _due_again:
+		out_due[str(v)] = SaveCodec.num(float(_due_again[v]))
 	return {"notices": out_notices, "plans": out_plans, "books": out_books,
-		"regions": out_regions, "next_notice": _next_notice, "next_plan": _next_plan}
+		"regions": out_regions, "next_notice": _next_notice, "next_plan": _next_plan,
+		"came_for": out_came, "due_again": out_due}
 
 
 func _load(v: Variant) -> void:
@@ -2005,5 +2067,13 @@ func _load(v: Variant) -> void:
 			id = region_key(Realm.SURFACE, SaveCodec.to_int(key))
 		_regions[id] = {"razed": SaveCodec.to_int(m.get("razed", 0)),
 			"lost": SaveCodec.to_int(m.get("lost", 0)), "taken": bool(m.get("taken", false))}
+	came_for.clear()
+	var came := d.get("came_for", {}) as Dictionary
+	for k: String in came:
+		came_for[k.to_int()] = SaveCodec.to_num(came[k])
+	_due_again.clear()
+	var due := d.get("due_again", {}) as Dictionary
+	for k: String in due:
+		_due_again[k.to_int()] = SaveCodec.to_num(due[k])
 	_next_notice = SaveCodec.to_int(d.get("next_notice", notices.size() + 1), notices.size() + 1)
 	_next_plan = SaveCodec.to_int(d.get("next_plan", plans.size() + 1), plans.size() + 1)

@@ -328,7 +328,8 @@ func _take_picture() -> void:
 ## What a tour may await of dev mode: dev_armed (the chord took), dev_readout (on
 ## the glass's edge), dev_noted (a note kept in the last minute), dev_touched,
 ## dev_clock:N (the running clock's rate is N), dev_picture (a clean picture kept),
-## dev_job:done and dev_job:ok (the slate's background job has ended, and well).
+## dev_job:done and dev_job:ok (the slate's background job has ended, and well),
+## and the story map's own (story_map, story_map:order, :chosen, :narrow, story_arc).
 func tour_seen(what: StringName) -> bool:
 	match what:
 		&"dev_armed":
@@ -342,6 +343,24 @@ func tour_seen(what: StringName) -> bool:
 			return DevMode.touched
 		&"dev_picture":
 			return _pictures > 0
+	# The story map: story_map (on the glass, opened inside a second), story_map:order
+	# (in its ORDER view), story_map:chosen (a beat chosen), story_map:narrow (filtered).
+	if what == &"story_arc":
+		return screen != null and screen.is_open and screen.page() is DevPageArcView
+	if String(what).begins_with("story_map"):
+		var m := screen.page() as DevPageStoryMap if screen != null and screen.is_open else null
+		if m == null or m.map == null:
+			return false
+		match what:
+			&"story_map":
+				return m.open_ms < 1000
+			&"story_map:order":
+				return m.mode == DevPageStoryMap.MODES.find(&"order")
+			&"story_map:chosen":
+				return m.chosen != &""
+			&"story_map:narrow":
+				return m.filter != 0
+		return false
 	if what == &"dev_job:ok" or what == &"dev_job:done":
 		DevJobs.poll()
 		return not DevJobs.job.is_empty() and not DevJobs.running() and (what == &"dev_job:done" or int(DevJobs.job.code) == 0)

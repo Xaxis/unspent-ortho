@@ -5593,6 +5593,10 @@ const TAKEN := {
 	# frame of that person still standing in the yard, plainly not on any road.
 	"out": "The yard is dark, and %s walked out of it.",
 	"home": "The door is shut behind %s.",
+	# Out of the yard after the run, whole in body and gone in mind. What the glass
+	# can see, and nothing about why: the running is not said before `seeker`.
+	"freed_empty": "The yard is dark, and %s took the road home. Eyes open. Nobody in them.",
+	"out_empty": "The yard is dark, and %s walked out of it, and stopped, and waits to be told.",
 	# The walk that ended badly. Flat, and never a verdict: the glass reports what
 	# happened in the world and has no opinion about who let it. It also says the
 	# only thing that is TRUE in every case — a person left too far behind for too
