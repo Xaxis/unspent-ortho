@@ -93,8 +93,14 @@ func _ctx_at(g: Game, now: float) -> AbilityCtx:
 ## (tests/fight/test_crowd_reader `gate`), 24 bouts, bare and with the undertow
 ## (the reader hauls a machine it faces alone that stands out of reach). The
 ## decision it makes: a harvester that charges from afar is hauled onto the
-## knife and falls a fifth sooner or more; a hauler, which comes on anyway, is
-## hauled for nothing and the breath is gone, so it is slower. A tool, not a win.
+## knife and falls sooner; a hauler, which comes on anyway, is hauled for
+## nothing and the breath is gone, so it is slower. A tool, not a win.
+##
+## "A fifth sooner" while a harvester was 72: the haul saves its approach, a
+## fixed stretch, and at 90 (a person's fight of 6 s, tools/sweep.sh
+## --reader=human) the approach is less of the fight while the breath the haul
+## spends is missed in more exchanges. Measured: 6.4 s bare, 5.9 hauled, 8%
+## sooner. The bar is 4%, half that, for the CI runner's arithmetic.
 func _bout(kind: StringName, kit: Array[StringName]) -> Dictionary:
 	var won := 0
 	var t := 0.0
@@ -114,5 +120,5 @@ func test_the_undertow_bout() -> void:
 	var au := _bout(&"hauler", u)
 	print("  info harvester: bare %.1f s, undertow %.1f s; hauler: bare %.1f s, undertow %.1f s (won %d %d %d %d of 24)"
 		% [hb.t, hu.t, ab.t, au.t, hb.won, hu.won, ab.won, au.won])
-	lt(float(hu.t), float(hb.t) * 0.8, "a harvester hauled onto the knife falls a fifth sooner or more")
+	lt(float(hu.t), float(hb.t) * 0.96, "a harvester hauled onto the knife falls sooner")
 	gt(float(au.t), float(ab.t), "a hauler hauled for nothing is slower: the haul is a choice")

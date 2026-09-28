@@ -100,7 +100,9 @@ const DEFS := {
 	# at a 300 ms tell) so a player who reads it wins with the start knife.
 	&"harvester": {
 		"model": &"harvester", "role": &"worker", "machine": true, "approach": &"charge", "turns": 1, "part": &"front",
-		"pace": 4.0, "dash": 10.0, "quick": 380, "radius": 1.2, "height": 1.2, "life": 72,
+		# Life 90: at 72 a lone harvester fell in under 5 s to a person, before
+		# its charge had been read twice (tools/sweep.sh --reader=human).
+		"pace": 4.0, "dash": 10.0, "quick": 380, "radius": 1.2, "height": 1.2, "life": 90,
 		"sees": 9, "hears": 6, "racket": 22, "reach": 2, "ready": 3, "forget": 20, "tether": 40, "safe": 18,
 		"nerve": 100, "invuln": 500, "through": true, "disposition": &"indifferent", "guarded": true,
 		"bite": {"swing": [560, 150, 700, 900], "reach": 1.4, "width": 2.2, "dmg": 3, "knock": 8.0, "knock_ms": 300},
@@ -172,7 +174,10 @@ const DEFS := {
 		"model": &"sweeper", "role": &"worker", "machine": true, "approach": &"errand", "stretch": 7, "part": &"back",
 		"pace": 5.0, "dash": 5.0, "radius": 0.5, "height": 1.0, "life": 50,
 		"sees": 0, "hears": 0, "racket": 13, "reach": 3, "ready": 2, "forget": 10, "tether": 12, "safe": 10,
-		"nerve": 100, "invuln": 400, "touch": 2, "through": true, "disposition": &"indifferent",
+		# Its brush is at its front and its part on its back: contact hurts only
+		# within `touch_arc` degrees of its front, so the back is struck, not
+		# brushed (FightSim._touching).
+		"nerve": 100, "invuln": 400, "touch": 2, "touch_arc": 90, "through": true, "disposition": &"indifferent",
 		"takes": 40.0, "drops": 1, "linger": 30.0, "chance": 5,
 		"where": {"countries": ["pinewood"], "grounds": ["needles", "road", "mud", "floor", "grass"], "green_min": 12, "hours": [5, 11]},
 	},
@@ -321,7 +326,10 @@ const DEFS := {
 		"pace": 4.0, "dash": 6.0, "quick": 280, "radius": 0.5, "height": 1.1, "life": 70,
 		"sees": 10, "hears": 8, "racket": 12, "reach": 5, "ready": 2, "forget": 20, "tether": 24, "safe": 12,
 		"nerve": 100, "invuln": 420, "overrun": 0.6,
-		"bite": {"swing": [380, 110, 380, 620], "reach": 0.9, "width": 1.0, "dmg": 2, "knock": 4.5, "knock_ms": 200},
+		# Its bite's tell at 480 ms: at 380 a person reacting in 250-450 ms read it
+		# late half the time and lost 7 of 12 to a lone tamper (tools/sweep.sh
+		# --reader=human); read in time, it is a fight of 8 s for 2 health.
+		"bite": {"swing": [480, 110, 380, 620], "reach": 0.9, "width": 1.0, "dmg": 2, "knock": 4.5, "knock_ms": 200},
 		"drop": {"swing": [900, 120, 1300, 900], "reach": 0.7, "width": 0.0, "dmg": 3, "knock": 7.0, "knock_ms": 260, "area": true},
 		"takes": 40.0, "drops": 2, "linger": 40.0, "chance": 4,
 		"where": {"countries": ["scrapwood"], "green_min": 14},
@@ -396,7 +404,9 @@ const DEFS := {
 	# same reason: what a keeper gives comes off its table in src/core/loot.
 	&"sentinel.coast": {
 		"model": &"sentinel_reaper", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
-		"part": &"front", "guarded": true, "sentinel": &"tide_reaper", "breaks": WOOD,
+		# Plated in steel (FightRules.bites): the iron knife the player wakes with
+		# rings off it, open part and all. The reason the next make is a steel edge.
+		"part": &"front", "guarded": true, "sentinel": &"tide_reaper", "breaks": WOOD, "plating": &"steel",
 		"pace": 4.2, "dash": 8.5, "quick": 300, "radius": 1.35, "height": 2.6, "life": 343,
 		"sees": 15, "hears": 11, "racket": 26, "reach": 3, "ready": 3, "forget": 26, "tether": 26, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
@@ -606,7 +616,10 @@ const DEFS := {
 	&"sentinel.limestone_caves": {
 		"model": &"sentinel_drip_warden", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
 		"part": &"back", "sentinel": &"drip_warden", "breaks": WOOD,
-		"pace": 2.8, "dash": 2.8, "quick": 280, "radius": 1.5, "height": 4.5, "life": 300,
+		# It seals the way behind you (FightSim.curtains): a gap you pass while
+		# it hunts is sprayed shut with lime after its tell, and two stand at once.
+		"seals": {"gap": 2.2, "within": 20.0, "lasts": 25.0, "keep": 2, "tell": 1400, "breaks": 2},
+		"pace": 3.0, "dash": 5.0, "quick": 280, "radius": 1.5, "height": 4.5, "life": 370,
 		"sees": 5, "hears": 14, "racket": 22, "reach": 3, "ready": 3, "forget": 24, "tether": 28, "safe": 14,
 		"nerve": 100, "invuln": 500, "through": true, "disposition": &"wary",
 		"bite": {"swing": [820, 160, 900, 1000], "reach": 2.2, "width": 2.4, "dmg": 4, "knock": 10.0, "knock_ms": 320},

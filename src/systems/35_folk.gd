@@ -34,6 +34,12 @@ const PER_VILLAGE := 6
 ## leaves a staged ring of eight (`--folk=8`) looking up, which is right: a ring
 ## of people standing round you is a gathering AT you, not a street.
 const NOTICE_REACH := 5.0
+## WHO HAS SEEN HIM (docs/STORY.md: the plan runs the minds of people who have
+## seen him, to predict him). A village's people have seen him once one of them,
+## out and awake, has stood within SEEN_REACH of him; `seen_by` keeps the world
+## minute it first happened, per village, saved. 48_raids reads it
+## (`SnatchNight`): nobody who has not seen him is ever taken.
+const SEEN_REACH := 12.0
 const CROWD_NEAR := 7.0
 const CROWD_BLIND := 8
 ## Where a city's people past the first six stand, from the village centre. The
@@ -64,6 +70,8 @@ var _ids := 0
 var _act := &""
 var _act_at := -1.0
 var _check := 0.0
+## Village index -> the world minute its people first saw him.
+var seen_by: Dictionary = {}
 
 
 func setup(g: Game) -> void:
@@ -74,6 +82,7 @@ func setup(g: Game) -> void:
 	if ring > 0:
 		_ring(ring)
 	_stream(true)
+	SaveGame.register(&"seen_by", _save_seen, _load_seen)
 	# Before the first frame, so a shot of a street is already indifferent to the
 	# player rather than turning to look at them for the first half second.
 	_count_crowd()
@@ -166,11 +175,44 @@ func _process(delta: float) -> void:
 		_check = 0.5
 		_stream(false)
 		_count_crowd()
+		_note_seen()
 	if not queue.is_empty() and Engine.get_process_frames() % 2 == 0:
 		pump()
 	var night := is_night(_hour())
 	for f in folk:
 		_step(f, delta, night)
+
+
+func _note_seen() -> void:
+	if game.clock == null:
+		return
+	var at: Vector2 = game.player.pos
+	for f in folk:
+		var v: int = f.village
+		if v < 0 or seen_by.has(v) or f.state == &"in":
+			continue
+		if (f.pos as Vector2).distance_to(at) <= SEEN_REACH:
+			seen_by[v] = game.clock.minutes
+
+
+## The world minute village `v`'s people first saw him, INF if they never have.
+func seen_at(v: int) -> float:
+	return float(seen_by.get(v, INF))
+
+
+func _save_seen() -> Variant:
+	var out := {}
+	for v: int in seen_by:
+		out[str(v)] = SaveCodec.num(float(seen_by[v]))
+	return out
+
+
+func _load_seen(v: Variant) -> void:
+	seen_by.clear()
+	if not v is Dictionary:
+		return
+	for k: String in v:
+		seen_by[k.to_int()] = SaveCodec.to_num(v[k])
 
 
 ## How many others each person stands among. Counted on the streaming tick and
@@ -242,6 +284,8 @@ func pump() -> bool:
 		return false
 	var q: Dictionary = queue.pop_front()
 	_add(q.look, q.home, q.role, q.village, q.h, q.door, q.get("trade", &""), bool(q.get("street", false)))
+	if bool(q.get("silent", false)):
+		folk[folk.size() - 1]["silent"] = true
 	return true
 
 
@@ -256,6 +300,7 @@ func _populate(index: int, centre: Vector2) -> void:
 	var many := maxi(PER_VILLAGE, BiomeRegistry.at(w, centre).street_folk)
 	var street := many > PER_VILLAGE
 	var looks := PersonLook.crowd(w.seed_value * 31 + index * 977, many)
+	var rows: Array[Dictionary] = []
 	for n in looks.size():
 		var h := Rng.hash01(w.seed_value, index, n, 71)
 		var home := centre + Vector2(Rng.hash01(w.seed_value, index, n, 72) - 0.5, Rng.hash01(w.seed_value, index, n, 73) - 0.5) * 8.0
@@ -295,8 +340,47 @@ func _populate(index: int, centre: Vector2) -> void:
 		# argument about itself. The rule it would otherwise take, that a villager
 		# is indoors after dark, is right for a fishing village and was written
 		# when every settlement was one.
-		queue.append({"look": looks[n], "home": home, "door": door, "role": role,
+		rows.append({"look": looks[n], "home": home, "door": door, "role": role,
 			"village": index, "h": h, "trade": trade, "street": n >= PER_VILLAGE and street})
+	# ONE SHORT FOR EACH IT LOST, the only sign he gets that the plan came while he
+	# was away: the village's own people, never the street's, the last of them
+	# first. One got back empty stands among them and never answers.
+	var gone := _taken_from(index)
+	var own := mini(rows.size(), PER_VILLAGE)
+	var drop := mini(gone.x, own)
+	for k in range(own - drop, own):
+		rows[k] = {}
+	var hush := gone.y
+	for k in range(own - drop - 1, -1, -1):
+		if hush <= 0:
+			break
+		rows[k]["silent"] = true
+		hush -= 1
+	for r: Dictionary in rows:
+		if not r.is_empty():
+			queue.append(r)
+
+
+## For village `index`: how many of its people the plan has (held, gone, lost, or
+## still on the road home), and how many came back empty. Read from 45_taken's
+## record, by the village's name, which is how the record knows a village.
+func _taken_from(index: int) -> Vector2i:
+	var record: Taken = null
+	for sys in game.systems:
+		if sys.get("taken") is Taken:
+			record = sys.get("taken")
+	if record == null:
+		return Vector2i.ZERO
+	var name := str(game.world.villages[index].get("name", ""))
+	var out := Vector2i.ZERO
+	for t in record.people:
+		if t.home >= 0 or t.home_name != name:
+			continue
+		if not t.freed or t.lost or t.walking:
+			out.x += 1
+		elif t.empty:
+			out.y += 1
+	return out
 
 
 ## `--folk=N` round the player, for crowd shots. The first RING_FIRST lie on the

@@ -50,6 +50,7 @@ func started() -> void:
 
 
 func _stage(want: int) -> void:
+	var held_for: float = game.options.carried_hours * 60.0
 	var region := -1
 	var home := ""
 	for w: WorksSite in Works.sites(game.world):
@@ -73,22 +74,25 @@ func _stage(want: int) -> void:
 				var who: int = s.people[0]
 				holdings.call("lose_person", s, who)
 				@warning_ignore("return_value_discarded")
-				taken.take(who, "", s.id, s.name, region, game.clock.minutes - 600.0 if game.clock != null else 0.0)
+				taken.take(who, "", s.id, s.name, region, game.clock.minutes - held_for if game.clock != null else 0.0)
 				want -= 1
 	for i in want:
 		@warning_ignore("return_value_discarded")
-		taken.take(-1, "", -1, home, region, game.clock.minutes - 600.0 if game.clock != null else 0.0)
+		taken.take(-1, "", -1, home, region, game.clock.minutes - held_for if game.clock != null else 0.0)
 
 
 ## Somebody has been carried off. Called by the raids package at the moment the
 ## snatcher leaves, with the region whose network took them — which is the region
 ## the holding stands in, because a plan network IS a region
 ## (`Interference.network`).
-func took(who: int, person_name: String, home: int, home_name: String, region: int) -> void:
+##
+## `at` is the world minute it happened when that was not now: a village come for
+## while he was away was come for at its own hour, and the 71 hours run from then.
+func took(who: int, person_name: String, home: int, home_name: String, region: int, at := NAN) -> void:
 	if region < 0:
 		return
-	var t := taken.take(who, person_name, home, home_name, region,
-		game.clock.minutes if game.clock != null else 0.0)
+	var when := at if not is_nan(at) else (game.clock.minutes if game.clock != null else 0.0)
+	var t := taken.take(who, person_name, home, home_name, region, when)
 	# Said once, here, so a raid does not have to know how to phrase it and the
 	# line cannot drift from the record. The words are the story's
 	# (`StoryContent.TAKEN`) and they are the only place a player is ever told
@@ -110,7 +114,7 @@ func _on_sentinel_fell(region: int, _land: StringName, _how: StringName) -> void
 
 
 func _free(region: int) -> void:
-	var out := taken.free_region(region)
+	var out := taken.free_region(region, game.clock.minutes if game.clock != null else -INF)
 	if out.is_empty():
 		return
 	# THE WALK IS CHOSEN BEFORE ANYTHING IS SAID, and that order is the whole of
@@ -134,13 +138,33 @@ func _free(region: int) -> void:
 			# in frame not doing it. So they are still announced — suppressing the
 			# line entirely was the first fix and it was worse, because coming out
 			# of a yard is the thing the player just earned.
-			_say(&"out", Taken.say(t))
+			_say(&"out_empty" if t.empty else &"out", Taken.say(t))
+		elif t.empty:
+			# Out past the run: said alone, never folded into the many, because
+			# whoever walked out is not who was carried in (Taken.RUN_HOURS).
+			_say(&"freed_empty", Taken.say(t))
 		else:
 			names.append(Taken.say(t))
 	if names.is_empty():
 		return
 	var line: String = StoryContent.TAKEN.freed if names.size() == 1 else StoryContent.TAKEN.freed_many
 	Events.message.emit(line % ", ".join(names))
+
+
+## THE LAST OF THE HOURS. Whoever the plan has held past `Taken.GONE_HOURS` is
+## gone, and nobody saw it: the glass says nothing. The record says they are lost,
+## which is what the story reads (49_story's `lost`; Maren's lines).
+const RUN_OUT_EVERY := 2.0
+var _run_out_in := 0.0
+
+
+func _run_out(delta: float) -> void:
+	_run_out_in -= delta
+	if _run_out_in > 0.0 or game.clock == null:
+		return
+	_run_out_in = RUN_OUT_EVERY
+	@warning_ignore("return_value_discarded")
+	taken.run_out(game.clock.minutes)
 
 
 # --- walking one of them home (`Escort`) ---------------------------------------
@@ -182,6 +206,8 @@ func _start_walk(out: Array) -> void:
 
 
 func _process(delta: float) -> void:
+	if game != null:
+		_run_out(delta)
 	if _led < 0 or _led_who == null or game == null or game.player == null:
 		return
 	var folk := _folk()

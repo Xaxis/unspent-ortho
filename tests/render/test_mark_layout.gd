@@ -42,7 +42,8 @@ func test_every_wall_is_in_the_strata_run() -> void:
 
 func test_the_runs_do_not_touch_each_other_or_the_other_codes() -> void:
 	var runs: Array[Vector2i] = [Vector2i(1, GroundColors.FAILING), GroundColors.GROUND_A,
-		Vector2i(GroundColors.MADE_FIRST, 95), GroundColors.GROUND_B, GroundColors.STRATA_RUN]
+		Vector2i(GroundColors.MADE_FIRST, 95), GroundColors.GROUND_B, GroundColors.STRATA_RUN,
+		Vector2i(GroundColors.HELD, GroundColors.HELD)]
 	for i in runs.size():
 		lt(float(runs[i].y), 256.0, "a mark is one byte")
 		for j in range(i + 1, runs.size()):
@@ -54,7 +55,7 @@ func test_the_shader_states_the_same_layout() -> void:
 	var src := FileAccess.get_file_as_string(MATTER)
 	for pair: Array in [["MARK_GROUND_A0", GroundColors.GROUND_A.x], ["MARK_GROUND_A1", GroundColors.GROUND_A.y],
 			["MARK_GROUND_B0", GroundColors.GROUND_B.x], ["MARK_GROUND_B1", GroundColors.GROUND_B.y],
-			["MARK_STRATA", GroundColors.STRATA], ["MARK_STRATA_END", GroundColors.STRATA_RUN.y],
+			["MARK_STRATA", GroundColors.STRATA], ["MARK_STRATA_END", GroundColors.STRATA_RUN.y], ["M_HELD", GroundColors.HELD],
 			["M_VITRIFIED", GroundColors.VITRIFIED], ["M_TIDEFLAT", GroundColors.TIDEFLAT],
 			["M_CITY_FLOOR", GroundColors.CITY_FLOOR], ["M_OVERGROWN", GroundColors.OVERGROWN],
 			["M_CAST_FLOOR", GroundColors.CAST_FLOOR], ["M_MACHINE_DECK", GroundColors.MACHINE_DECK], ["M_SULPHUR", GroundColors.SULPHUR], ["M_DESERT_PAVEMENT", GroundColors.DESERT_PAVEMENT], ["M_SEA_ICE", GroundColors.SEA_ICE], ["M_PINE_FLOOR", GroundColors.PINE_FLOOR], ["M_SCRAP_FLOOR", GroundColors.SCRAP_FLOOR], ["M_BOG_FLOOR", GroundColors.BOG_FLOOR], ["M_MIDDEN_FLOOR", GroundColors.MIDDEN_FLOOR], ["M_ORCHARD_SWARD", GroundColors.ORCHARD_SWARD],

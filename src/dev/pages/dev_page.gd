@@ -51,6 +51,38 @@ func step(_delta: float) -> void:
 	pass
 
 
+## A page that takes the whole body of the glass (the story map) answers true: the
+## screen then draws no rows and no spare panel, hands it the keys first
+## (`handle`), and asks it to draw (`draw_wide`).
+func wide() -> bool:
+	return false
+
+
+## A key, before the rows see it: true when the page used it.
+func handle(_action: StringName) -> bool:
+	return false
+
+
+func draw_wide(_ci: CanvasItem) -> void:
+	pass
+
+
+## A wide page's own staging (--dev=PAGE:WHAT): true when it knew the word.
+func pick(_what: StringName) -> bool:
+	return false
+
+
+## The page is on the glass (opened, or uncovered when the page over it backs
+## out), and it is off it (covered by another, or left): a page that lays nodes
+## of its own over the screen lays them and takes them here, as often as asked.
+func enter() -> void:
+	pass
+
+
+func leave() -> void:
+	pass
+
+
 # --- rows -------------------------------------------------------------------------------
 
 static func item(id: StringName, text: String, value: String = "", extra: Dictionary = {}) -> Dictionary:

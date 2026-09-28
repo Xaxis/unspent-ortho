@@ -119,9 +119,17 @@ func test_a_discharge_is_shared_by_a_crowd() -> void:
 
 ## THE LATTICE AT A GATE: three of a kind roused shoulder to shoulder, the crowd
 ## reader with the knife and six charges, 24 bouts (tests/fight/test_crowd_reader
-## `gate`). Its identity, held both ways: nothing against a crowd that is already
-## easy (harvesters: no faster), and strong against the hardest (cutters: won 25
-## to 55% sooner, and at least twice as often).
+## `gate`). Its identity: a discharge shared through the bodies packed round the
+## one struck, so a crowd falls sooner, and never at the cost of a bout.
+##
+## It was "nothing against an easy crowd (harvesters), strong against the hardest
+## (cutters)". Under attack slots neither holds as written: three harvesters are
+## a real fight now (15 of 24 bare), and three cutters are won nearly always
+## bare, so "twice as often" or "five more" is past 24. Measured on two id bases:
+## cutters 34% and 29% sooner, won as often (bar: 15%).
+## Against three harvesters at their life of 90 it wins more rather than sooner:
+## bare 6 of 24 in 46.9 s, lattice 9 in 48.0 (it was 33.0 -> 12.0 s at 72). The
+## bar is two more won or 15% sooner, under both, for the CI runner.
 func _at_gate(kind: StringName, kit: Array[StringName]) -> Dictionary:
 	var won := 0
 	var t := 0.0
@@ -141,9 +149,9 @@ func test_the_lattice_at_a_gate() -> void:
 	var cl := _at_gate(&"cutter", lat)
 	print("  info 3 harvesters: bare won %d/24 in %.1f s, lattice %d/24 in %.1f s" % [hb.won, hb.t, hl.won, hl.t])
 	print("  info 3 cutters: bare won %d/24 in %.1f s, lattice %d/24 in %.1f s" % [cb.won, cb.t, cl.won, cl.t])
-	eq(hl.won, hb.won, "harvesters are won as often with it as without")
-	gt(float(hl.t), float(hb.t) * 0.9, "and no faster: a lattice is nothing against an easy crowd")
+	check(hl.won >= hb.won + 2 or (hl.won >= hb.won and float(hl.t) < float(hb.t) * 0.85),
+		"harvesters are won more with it, or as often and sooner (%d/24 in %.1f s against %d in %.1f)" % [hl.won, hl.t, hb.won, hb.t])
 	var cut := 1.0 - float(cl.t) / maxf(float(cb.t), 1e-3)
-	gt(cut, 0.25, "against cutters it shortens the fight by 25% or more")
+	gt(float(cl.won), float(cb.won) - 1.5, "cutters are won as often")
+	gt(cut, 0.15, "and it shortens the fight by 15% or more")
 	lt(cut, 0.55, "and by no more than 55%")
-	gt(float(cl.won), float(cb.won) * 2.0 - 0.5, "and wins it at least twice as often")

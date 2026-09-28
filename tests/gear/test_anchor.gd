@@ -73,7 +73,7 @@ func test_rooted_a_blow_does_not_throw_and_a_grip_fails() -> void:
 ## `gate`), bare and with the anchor (it lets the root take against grippers and
 ## stands through their bites; against anything whose bite hurts it keeps a
 ## step going and dodges as ever). Its identity: two linemen, whose whole blow
-## is a grip, fall in half the time or less; two cutters, which bite, go as they
+## is a grip, fall sooner; two cutters, which bite, go as they
 ## did bare.
 func _gate(kind: StringName, n: int, kit: Array[StringName]) -> Dictionary:
 	var won := 0
@@ -86,6 +86,12 @@ func _gate(kind: StringName, n: int, kit: Array[StringName]) -> Dictionary:
 	return {"won": won, "t": t / maxf(won, 1)}
 
 
+## It was "in half the time" while two linemen gripped at once and a bare player
+## was held half the fight (30 s). Under attack slots their grips come in turn and
+## a bare player dodges each (15 s), so the anchor's grip that snaps back on its
+## gripper (FightKit.ANCHOR_SNAP_MS) buys less: measured on two id bases, 24% and
+## 23% sooner. The bar is 12%, for the CI runner's arithmetic (FightSim is chaotic
+## enough that another CPU moves a bout).
 func test_the_anchor_bout() -> void:
 	var a: Array[StringName] = [&"mod_anchor"]
 	var lb := _gate(&"lineman", 2, [])
@@ -95,5 +101,5 @@ func test_the_anchor_bout() -> void:
 	print("  info 2 linemen: bare %d/24 in %.1f s, anchored %d/24 in %.1f s; 2 cutters: bare %d/24 in %.1f s, anchor %d/24 in %.1f s"
 		% [lb.won, lb.t, la.won, la.t, cb.won, cb.t, ca.won, ca.t])
 	eq(la.won, lb.won, "the linemen are beaten as often")
-	lt(float(la.t), float(lb.t) * 0.5, "in half the time or less: their grip closes on nothing")
+	lt(float(la.t), float(lb.t) * 0.88, "sooner by an eighth or more: their grip closes on nothing")
 	gt(float(ca.won), float(cb.won) - 2.5, "and two cutters are no harder with it than without")

@@ -33,6 +33,9 @@ var tired := 0.0 # 0..1
 var move_factor := 1.0
 ## The player's lamp is lit: undoes the dark for machine sight, lights the ground.
 var lamp_lit := false
+## Game minutes a carried flame will not light until: the veil's falling water
+## put it out (AbilityVeil).
+var doused_until := 0.0
 ## Times a machine has filed the player (manipulate): machine sight grows with it.
 var filed := 0
 

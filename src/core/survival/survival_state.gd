@@ -34,6 +34,10 @@ var lamp_at := -INF
 ## Work left at stations to finish in world time: station prop id -> {prop,
 ## station, recipe, makes, done (world minute), pos}. Survival.set_going / collect.
 var cooking: Dictionary = {}
+## Plating that has rung an edge off (FightRules.bites): hardness -> the land of
+## the keeper that wears it. Saved. The goal line asks for an edge that hardness
+## until one is carried, then sends it to that keeper until it falls.
+var plates: Dictionary = {}
 ## Real seconds a nudge line was last said (line -> seconds).
 var nudged: Dictionary = {}
 ## The hunger level last announced (2 hungry, 3 starving), and since when starving.

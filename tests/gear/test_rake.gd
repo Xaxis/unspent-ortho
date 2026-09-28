@@ -63,8 +63,16 @@ func test_the_rake_makes_a_heavy_louder() -> void:
 ## THE BOUT: roused crowds at a gate, the crowd reader with the knife, 24 bouts
 ## (tests/fight/test_crowd_reader `gate`), bare and with the rake (the reader
 ## rakes two or more biters pressing ahead). Its identity, held both ways:
-## against the biters (two cutters) it wins more of the fight; against the
+## against the biters (two cutters) it wins the fight sooner; against the
 ## chargers (three harvesters) it changes nothing.
+##
+## It won three more in 24 while two cutters pressed in together. Under attack
+## slots (one bite at a time) the bare fight is won 24 of 24, and the second of a
+## pair is in the arc only for a moment: a struck part's short stall bought
+## nothing (2 cutters: 26% sooner on one id base, no sooner on the other). So the
+## tines hold what they rake longer (FightKit.RAKE_STALL_MS), and the promise is
+## time: on two id bases, 33% and 18% sooner, won as often. The bar is 10%, for
+## the CI runner's arithmetic.
 func _gate(kind: StringName, n: int, kit: Array[StringName]) -> Dictionary:
 	var won := 0
 	var t := 0.0
@@ -84,6 +92,7 @@ func test_the_rake_at_a_gate() -> void:
 	var hr := _gate(&"harvester", 3, rk)
 	print("  info 2 cutters: bare won %d/24 in %.1f s, rake %d/24 in %.1f s; 3 harvesters: bare %d/24 in %.1f s, rake %d/24 in %.1f s"
 		% [cb.won, cb.t, cr.won, cr.t, hb.won, hb.t, hr.won, hr.t])
-	gt(float(cr.won), float(cb.won) + 2.5, "against the biters the rake wins three more bouts in 24 or better")
+	gt(float(cr.won), float(cb.won) - 1.5, "against the biters the rake wins as often")
+	lt(float(cr.t), float(cb.t) * 0.9, "and sooner, by 10% or more")
 	eq(hr.won, hb.won, "against the chargers it wins as often")
 	near(float(hr.t), float(hb.t), float(hb.t) * 0.1, "and no faster or slower")
