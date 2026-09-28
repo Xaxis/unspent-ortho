@@ -13,10 +13,10 @@ extends RefCounted
 ## off at most, and the line climbs thousands, so from anywhere on the coast it
 ## stands in one vertical plane: the far shore's BEARING is all that places it.
 ##
-##   Tether.bearing(world) -> float    radians, 0 east, PI/2 south
-##   Tether.top(world) -> float        the Foundry's elevation, radians
-##   Tether.flat(world) -> Vector3     the horizontal way to the foot
-##   Tether.foundry(world) -> Vector3  the direction of the Foundry
+##   Tether.bearing(world, foot) -> float    radians, 0 east, PI/2 south
+##   Tether.top(world) -> float              the Foundry's elevation, radians
+##   Tether.flat(world, foot) -> Vector3     the horizontal way to the foot
+##   Tether.foundry(world, foot) -> Vector3  the direction of the Foundry
 
 ## Where the Foundry stands in the sky: high enough that the line reads as
 ## climbing out of the world, low enough that a view over the shoulder turned
@@ -28,10 +28,12 @@ const TOP_MOST := deg_to_rad(60.0)
 const CLIMB_SECONDS := 240.0
 
 
-static func bearing(w: WorldData) -> float:
-	var foot := _foot(w)
+## `foot`: where the far shore's works stand (StoryPlan's `the_far_works`, which
+## 49_cast keeps), or Vector2.INF where the story places none; then a bearing
+## of the world's own.
+static func bearing(w: WorldData, foot: Vector2) -> float:
 	var to := foot - w.spawn
-	if to.length() < 1.0:
+	if foot == Vector2.INF or to.length() < 1.0:
 		return Rng.hash01(w.seed_value, 0, 0, 0x7E7) * TAU
 	return atan2(to.y, to.x)
 
@@ -40,22 +42,11 @@ static func top(w: WorldData) -> float:
 	return lerpf(TOP_LEAST, TOP_MOST, Rng.hash01(w.seed_value, 1, 0, 0x7E7))
 
 
-static func flat(w: WorldData) -> Vector3:
-	var b := bearing(w)
+static func flat(w: WorldData, foot: Vector2) -> Vector3:
+	var b := bearing(w, foot)
 	return Vector3(cos(b), 0.0, sin(b))
 
 
-static func foundry(w: WorldData) -> Vector3:
-	var h := flat(w)
+static func foundry(w: WorldData, foot: Vector2) -> Vector3:
 	var e := top(w)
-	return h * cos(e) + Vector3.UP * sin(e)
-
-
-## Where the far shore's works stand in this world (StoryPlan's `the_far_works`),
-## or the far side of the island from the spawn where the story places none.
-static func _foot(w: WorldData) -> Vector2:
-	var placed := StoryPlan.cast(w)
-	if placed.has(&"the_far_works"):
-		return placed[&"the_far_works"].pos
-	var c := Vector2(w.size, w.size) * 0.5
-	return c + (c - w.spawn)
+	return flat(w, foot) * cos(e) + Vector3.UP * sin(e)

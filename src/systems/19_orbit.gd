@@ -58,6 +58,7 @@ var last_pose_usec := 0
 var _tether_flat := Vector3.RIGHT
 var _tether_top := 0.9
 var tether_shown := false
+var _tether_placed := false
 
 
 func setup(g: Game) -> void:
@@ -80,10 +81,6 @@ func setup(g: Game) -> void:
 		if tail.contains("/"):
 			head = tail.split("/")[1].to_float() + 180.0
 		_staged = Pass.make_pass(def, 0, peak - Pass.window_min(def) * 0.5, float(def.peak_most) + 1.5, head, 1.0)
-	# The Tether stands in the same far sky, fixed where the ring passes: its plane
-	# is the world's, asked once (Tether, pure).
-	_tether_flat = Tether.flat(g.world)
-	_tether_top = Tether.top(g.world)
 	layer = LayerScript.new()
 	layer.name = "orbit"
 	add_child(layer)
@@ -323,6 +320,8 @@ func _tether(cam: Camera3D, air: Dictionary, seen: bool) -> void:
 	if e == null or e.sky == null or not (e.sky.sky_material is ShaderMaterial):
 		return
 	var m := e.sky.sky_material as ShaderMaterial
+	if not _tether_placed:
+		_place_tether()
 	tether_shown = seen and cam != null
 	m.set_shader_parameter(&"orbit_tether_on", 1.0 if tether_shown else 0.0)
 	if not tether_shown:
@@ -337,6 +336,21 @@ func _tether(cam: Camera3D, air: Dictionary, seen: bool) -> void:
 	# zero size drew the Foundry as a disc the size of the moon.
 	var rows := maxf(1.0, get_viewport().get_visible_rect().size.y)
 	m.set_shader_parameter(&"orbit_px", 2.0 * tan(deg_to_rad(cam.fov) * 0.5) / rows)
+
+
+## The Tether's plane, asked once of the world (Tether, pure) with its foot
+## where the story cast the far shore's works (49_cast keeps them; it starts
+## before any frame is drawn).
+func _place_tether() -> void:
+	_tether_placed = true
+	var foot := Vector2.INF
+	for sys: Node in game.systems:
+		if sys.name == "49_cast":
+			var placed: Dictionary = sys.get("placed")
+			if placed.has(&"the_far_works"):
+				foot = placed[&"the_far_works"].pos
+	_tether_flat = Tether.flat(game.world, foot)
+	_tether_top = Tether.top(game.world)
 
 
 ## Whether the Tether's line is in the frame now: the sky is being seen and the

@@ -26,6 +26,10 @@ const RECHECK := 0.5
 ## `model` is the figure while it stands in the world (null while they are away),
 ## `made` the figure itself, built once when they are cast.
 var people: Array[Dictionary] = []
+## Where the story's slots stand in this world (StoryPlan.cast), kept as cast:
+## the sky reads the far shore's from here (19_orbit, the Tether's foot) rather
+## than casting the world a second time.
+var placed: Dictionary = {}
 
 var _since := 0.0
 
@@ -93,7 +97,7 @@ func _cast() -> void:
 	_clear()
 	if game == null or game.world == null:
 		return
-	var placed := StoryPlan.cast(game.world)
+	placed = StoryPlan.cast(game.world)
 	for c: StoryCharacter in StoryCast.all():
 		if not placed.has(c.at):
 			continue
