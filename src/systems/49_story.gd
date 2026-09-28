@@ -278,7 +278,10 @@ func _edge_to(q: WorldProp) -> float:
 
 func _person_in_front() -> Dictionary:
 	# Villagers and named people alike: the one key answers whoever is in front.
-	var folk: Array = _folk_rows() + _cast_rows()
+	# In a room, the people who live in it and nobody else: the village's rows
+	# stand in the world outside, on another grid.
+	var inside: Variant = _dweller_rows()
+	var folk: Array = inside if inside != null else _folk_rows() + _cast_rows()
 	var from: Vector2 = game.player.pos
 	var ahead := Vector2.from_angle(game.player.facing)
 	# THREE RANKS, and distance only ever decides inside one of them. A street of
@@ -351,6 +354,21 @@ func _readable_in_front() -> WorldProp:
 
 
 func _start_talk(row: Dictionary) -> void:
+	# Somebody living in a room who wants something (21_doors DEED): their own
+	# page, the asking, the giving or the after, before anything of the region's.
+	if row.has("wants"):
+		for sys in game.systems:
+			if sys.has_method(&"dweller_deed"):
+				var page: Dictionary = sys.call(&"dweller_deed", row)
+				if not page.is_empty():
+					talk = StoryTalk.of_made(page)
+					view.talk = talk
+					view.choice = 0
+					game.talking = true
+					_hush(true)
+					Events.sfx.emit(&"ui_slate_switch", Vector3.ZERO)
+					view.refresh()
+					return
 	# Somebody who lives here, and this region has something to ask of him or to
 	# thank him for (StorySubarc): that comes before their trade's own words.
 	if StringName(str(row.get("character", &""))) == &"" and not row.has("talk"):
@@ -734,6 +752,15 @@ func _cast_rows() -> Array:
 				_cast = sys
 				break
 	return _cast.get("people") if _cast != null else []
+
+
+## The rows of the people living in the room the player is in (21_doors), or
+## null outside a room.
+func _dweller_rows() -> Variant:
+	for sys in game.systems:
+		if sys.has_method(&"dweller_rows") and sys.get(&"pocket") != null:
+			return sys.call(&"dweller_rows")
+	return null
 
 
 func _folk_rows() -> Array:

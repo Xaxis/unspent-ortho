@@ -824,7 +824,8 @@ func _move_hero(dt: float) -> void:
 		hero.stepped(now)
 	var before := hero.pos
 	if v.length_squared() > 0.0:
-		hero.pos = query.move_body(hero.pos, v * dt, hero.radius, hero.ride, hero.swims, HERO_TALL) if query != null else hero.pos + v * dt
+		var tall := HERO_CROUCH_TALL if hero.crouched else HERO_TALL
+		hero.pos = query.move_body(hero.pos, v * dt, hero.radius, hero.ride, hero.swims, tall) if query != null else hero.pos + v * dt
 	hero.speed = before.distance_to(hero.pos) / dt
 	# Wind: spent on dodges, swings and running in a fight; back at 500/s otherwise.
 	if running and fight_on:
@@ -1156,6 +1157,7 @@ func hero_level_now() -> int:
 ## Levels of headroom a body needs under a roof (WorldQuery.passable): its
 ## roster height, or the player's.
 const HERO_TALL := int(ceil(Tuning.PLAYER_HEIGHT / WorldData.STEP))
+const HERO_CROUCH_TALL := int(ceil(Tuning.PLAYER_CROUCH_HEIGHT / WorldData.STEP))
 ## A BODY THAT BREAKS (Roster `breaks`) GOES THROUGH A WOOD: what its drawn body
 ## is about to walk into, of the kinds it declares, is taken for good
 ## (`world.depleted`, saved as any taken prop) and said (`felled`: its id, kind,
@@ -1455,7 +1457,8 @@ func undertow(m: MobState) -> bool:
 	var pull := minf(m.radius * 2.0, room)
 	if pull > 0.0:
 		var step := to.normalized() * pull
-		m.pos = query.move_body(m.pos, step, move_radius(m), climber(m.row), Swim.may_cross(m.row)) if query != null else m.pos + step
+		# Over ground it could walk, under roofs it could stand under.
+		m.pos = query.move_body(m.pos, step, move_radius(m), climber(m.row), Swim.may_cross(m.row), tall_of(m.row)) if query != null else m.pos + step
 	m.charging = false
 	_break_tell(m)
 	if now >= m.stall_ready_at:

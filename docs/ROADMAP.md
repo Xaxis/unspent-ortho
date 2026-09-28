@@ -29,10 +29,12 @@ it's delegated. That's decided with the owner, not assumed here.
 Each area lists its state and its next few points.
 
 ### 1. Look and rendering
-- State: LANTERN landed. Web night lamps: a fix to choose lamps by what's on
-  screen is done on `cb/lamp-pool-frame`, not merged.
-- Next: merge the lamp fix. Re-judge the web lamp dimming (0.40) on real-browser
-  frames. Owner rulings on the lens default and the sky under the lens (#14).
+- State: LANTERN landed. The web's seven lamp lights go to what is on screen
+  first (`look/lamp-pool-cl`, gating; `tours/lamp-pool.tour`). The web's lamp
+  trim of 0.7 was judged on real-browser night frames: its pools read within 7%
+  of the desktop's.
+- Next: land the lamp pool. Owner rulings on the lens default and the sky under
+  the lens (#14).
 
 ### 2. World generation
 - State: GEN 24 (1840 world, five continents, shares, slums spacing,
@@ -49,6 +51,10 @@ Each area lists its state and its next few points.
   same bar.
 - Missing shared systems: flying bodies, spanning props (cables), ruled canals,
   time-varying ground, a glass ground.
+- The middens' rooms (docs/MIDDENS_ROOMS.md): container warrens (levels,
+  ladders, towers, buckled bays), the face settlement, and a room's hush while a
+  machine outside passes its door (DoorHush: the machines at the door are
+  snapshot at the crossing and walked on along their rounds) are built.
 
 ### 4. Core play
 - State: walk, run, crouch, jump, swim, target, dodge and swing, stealth, taking

@@ -55,6 +55,11 @@ var _was_blocked := false
 var _tops: Dictionary = {}
 var _solids: Array[Vector4] = []
 var _boxes: Array[PackedFloat32Array] = []
+## The systems that draw boxes the eye must keep out of (`sight_boxes`), read
+## once: asked of every system on every probe, the asking was a third of the
+## probe's cost among houses (test_the_probe_is_cheap_among_houses).
+var _box_systems: Array[Node] = []
+var _box_systems_read := false
 ## Each template's DRAWN footprint, keyed as `_tops`: [lo (x, z), hi (x, z)] in
 ## the model's own units, what the camera must stand clear of.
 var _shapes: Dictionary = {}
@@ -399,10 +404,14 @@ func _gather(head: Vector3, eye: Vector3) -> void:
 			_boxes.append(probe)
 	# Drawn things that are no prop but have a shape a circle cannot hold (a
 	# depot's hatch housing, 21_doors): a system that draws one says where.
-	for sys in game.systems:
-		if sys.has_method(&"sight_boxes"):
-			for b: PackedFloat32Array in sys.call(&"sight_boxes", mid, reach):
-				_boxes.append(b)
+	if _box_systems.is_empty() and not _box_systems_read:
+		_box_systems_read = true
+		for sys in game.systems:
+			if sys.has_method(&"sight_boxes"):
+				_box_systems.append(sys)
+	for sys: Node in _box_systems:
+		for b: PackedFloat32Array in sys.call(&"sight_boxes", mid, reach):
+			_boxes.append(b)
 	# Mass hanging over the ground near the line (WorldData.overhead): a roof is
 	# a wall to the eye, pulled in under it as against a wall.
 	var w := game.world

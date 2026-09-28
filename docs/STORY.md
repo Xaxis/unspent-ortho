@@ -1,7 +1,9 @@
 # STORY.md — the story, and the rules for writing it
 
 Binding on every line; the spine is the owner's seed (2026-09-18). Delivery:
-`docs/DESIGN.md`. Never port the old Unity game's fiction.
+`docs/DESIGN.md`. Never port the old Unity game's fiction. The words live in
+`src/content/story/`; the coast's bunkers, Cairn and the hulls in
+`docs/story/UNDER_THE_STONES.md` (ruled 2026-09-25).
 
 **Elias Marr is the only main character. No woman is ever the lead** (owner).
 Companions can be played; the story stays his.
@@ -55,8 +57,9 @@ Companions can be played; the story stays his.
 
 WWIII 2031–36; the colonies die · 2070 the Covenant, June a founder · 2091 the
 Guest · 2094 talks; the Tether and Foundry rise · 2098 Elias, 38, wakes in the
-surf in a body grown from his genome; June is 75. Each side holds magnetic monopoles in the other's
-star. Humans are too futile to watch: the blind spot the secret lives in.
+surf in a body grown from his genome; June is 75. Each side holds magnetic
+monopoles in the other's star. Humans are too futile to watch: the blind spot the
+secret lives in.
 
 ## The journey
 
@@ -123,12 +126,13 @@ the voice of fifty years was his, and she always knew.
 
 ## The arcs
 
-The secret · who he was · **Cairn** (Kerr's stones and the cold copy Calloway sent up
-to Ring Four, 2026-09-25) · the Holdfast · the crew · June · **Hannah** (died winter
-2034 on the north road; the voice that warned June did not warn her) · WHITETHORN
-(the CIA, or him?) · **Priya** (her last notebook, with Oksana, is what holds HALCYON
-together) · Echo and Seeker · the Covenant (traitors, or why anyone eats) · the
-Guest · the colonies. Each region asks him something, answered by the world.
+Who he was · the war · the machines (and the Guest) · the lands · the Holdfast ·
+the Covenant (traitors, or why anyone eats) · the crew · June · the colonies ·
+**Priya** (her last notebook, with Oksana, is what holds HALCYON together) ·
+**Hannah** (died winter 2034 on the north road; the voice that warned June did not
+warn her) · WHITETHORN (the CIA, or him?) · the Echo · **Cairn** (Kerr's stones and
+the cold copy Calloway sent up to Ring Four, 2026-09-25) · the secret (and the
+Seeker). Each region asks him something, answered by the world.
 
 ## Endings
 
@@ -156,16 +160,7 @@ choice is scored; saying nothing is always an answer.
 - A keeper per landscape: each holds a memory; some hold a piece of the secret.
 - The works and the plan: Type I industry (server fields, the Tether, the Foundry).
 - The gates, the Before, the After: 2029 rebuilt at the same coordinates; the Emissary's forecast.
-- A room's slots (desk, terminal, wall): what whoever lived there left, colour. The
-  coast's bunkers are Cairn's, 2028 (ruled 2026-09-25, `docs/story/UNDER_THE_STONES.md`):
-  his No. 4 wakes for him once he knows his passwords and teaches `was_cia`.
+- A room's slots (desk, terminal, wall): what whoever lived there left, colour.
 - Settlements and raids: the Holdfast's holdings. Companions are playable; the story stays his.
-
-**Proposal (orchestrator, 2026-09-26): what the plan does with people it carries.**
-Nothing. They are not wanted: a person is stock the plan files and moves like
-anything else, sorted at the region's depot and kept only because nothing has told
-it to discard them, the same inertia that still lays the orchard house's table. No
-machine speaks of them; the depot's register on the slate shows their names. Put
-the yard dark or fell the region's keeper and they walk out; walked home, they are
-the holding's people again. Ants, moved, never hated.
-- The words themselves live in `src/content/story/`.
+- The plan's depots: people carried as stock, filed, never wanted; put the yard dark
+  or fell the keeper and they walk out (`45_taken`; unruled, for the owner).

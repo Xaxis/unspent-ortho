@@ -2203,6 +2203,15 @@ const FRAGMENTS := {
 			"numbers. It is left on for the company.",
 		],
 	},
+	&"home_reader_last": {
+		"kind": &"mark", "title": "the shelf", "lands": ["the_middens"], "households": [&"reader"],
+		"lines": [
+			"Phones along the shelf, face down, in a row.",
+			"A strip of tape under each, a word in pencil.",
+			"",
+			"Not whose it was. What it said last.",
+		],
+	},
 	&"home_wirer_hood": {
 		"kind": &"mark", "title": "the bench", "lands": ["the_middens"], "households": [&"wirer"],
 		"lines": [
@@ -2211,6 +2220,273 @@ const FRAGMENTS := {
 			"the bench and nowhere else.",
 			"",
 			"The card is cut to the shape of the work.",
+		],
+	},
+	# --- the middens' container warren (ROOMS: container_warren). Buried things:
+	# what was in the steel when it was poured over, and who came after. No beats.
+	&"warren_manifest_paper": {
+		"kind": &"mark", "title": "the manifest", "lands": ["the_middens"],
+		"lines": [
+			"A sheet in a sleeve bolted to the steel,",
+			"under the paint:",
+			"",
+			"CONTENTS: PAPER, OFFICE, A4, 80 GSM.",
+			"22 PALLETS. KEEP DRY.",
+			"",
+			"It was kept dry. Somebody has written on",
+			"it since, one side and then the other.",
+		],
+	},
+	&"warren_manifest_return": {
+		"kind": &"mark", "title": "the manifest", "lands": ["the_middens"],
+		"lines": [
+			"Stencilled under the paint: RETURNS.",
+			"On the sleeve by the door, a printed slip:",
+			"ADDRESSEE NO LONGER AT THIS ADDRESS.",
+			"PLEASE ALLOW 5-7 WORKING DAYS.",
+			"",
+			"Parcels to the roof, each still addressed.",
+			"Some have been opened, read, and taped",
+			"shut again.",
+		],
+	},
+	&"warren_manifest_shoes": {
+		"kind": &"mark", "title": "the manifest", "lands": ["the_middens"],
+		"lines": [
+			"Under the paint, a number, a port, and:",
+			"CHILDREN'S FOOTWEAR, ASSORTED. 400 CARTONS.",
+			"",
+			"The cartons are here. Every one has been",
+			"opened, and every one closed again with",
+			"its pair inside.",
+		],
+	},
+	&"warren_tally_fives": {
+		"kind": &"mark", "title": "the marks", "lands": ["the_middens"], "households": [&"kept"],
+		"lines": [
+			"Scratches on the steel by the bedroll, in",
+			"fives, most of a wall of them.",
+			"",
+			"Then the fives stop, and there are single",
+			"marks, far apart, as if counting something",
+			"else.",
+		],
+	},
+	&"warren_tally_taken": {
+		"kind": &"mark", "title": "the marks", "lands": ["the_middens"], "households": [&"kept"],
+		"lines": [
+			"A mark by the ladder for each thing carried",
+			"up it, and beside each, what it was:",
+			"",
+			"WIRE. WIRE. A COAT. WIRE. A BOOK. WIRE.",
+			"",
+			"The book has been rubbed out, and put back.",
+		],
+	},
+	&"warren_tally_quiet": {
+		"kind": &"mark", "title": "the marks", "lands": ["the_middens"], "households": [&"kept"],
+		"lines": [
+			"Marks by the door, in fives. Here and there",
+			"one is a ring instead of a line.",
+			"",
+			"The rings are all low down, where somebody",
+			"lying very still on the floor could reach.",
+		],
+	},
+	&"vault_ledger_hands": {
+		"kind": &"notebook", "title": "the ledger", "lands": ["the_middens"],
+		"lines": [
+			"A ledger bound in cloth. The first pages",
+			"are typed: box numbers, sums, signatures.",
+			"",
+			"Then biro, a new hand: the same boxes, and",
+			"what was in each when it was cut open.",
+			"",
+			"Then pencil, smaller: what was taken out,",
+			"by whom, and whether it came back.",
+		],
+	},
+	&"vault_ledger_margin": {
+		"kind": &"notebook", "title": "the ledger", "lands": ["the_middens"],
+		"lines": [
+			"The first hand writes sums in ink, a line",
+			"to each box, and rules them off.",
+			"",
+			"The last writes in pencil, in the margin",
+			"only, as if the page were not its to use:",
+			"photographs. A ring. Milk teeth, in an",
+			"envelope.",
+		],
+	},
+	&"vault_ledger_back": {
+		"kind": &"notebook", "title": "the ledger", "lands": ["the_middens"],
+		"lines": [
+			"The ledger's last entry in the bank's hand:",
+			"BOX 31. ACCESS DENIED. COME BACK MONDAY.",
+			"",
+			"Under it, in pencil, years on:",
+			"box 31 opened. letters. put back.",
+		],
+	},
+	# --- the middens' face hold (ROOMS: face_hold). Words, kept: the people
+	# who live in the walls and read what the heap brings in. Its dressing is
+	# always the reader's, so none of these names a household. No beats.
+	&"sort_today_phones": {
+		"kind": &"notebook", "title": "the sort", "lands": ["the_middens"],
+		"lines": [
+			"The long table under the hooded lamp. Today",
+			"it is phones: a heap at one end, a row",
+			"down the middle, lit one at a time off",
+			"a battery.",
+			"",
+			"At the far end, two heaps. One is small.",
+		],
+	},
+	&"sort_today_paper": {
+		"kind": &"notebook", "title": "the sort", "lands": ["the_middens"],
+		"lines": [
+			"Today the table is paper, wet, laid out a",
+			"sheet at a time, bolts on the corners.",
+			"",
+			"Nobody has read any of it yet. Nobody",
+			"reads it wet. The words come off.",
+		],
+	},
+	&"sort_today_drive": {
+		"kind": &"notebook", "title": "the sort", "lands": ["the_middens"],
+		"lines": [
+			"One drive on the table, on a folded cloth.",
+			"Chalk beside it: NOT YET.",
+			"",
+			"The rest of the table has been cleared",
+			"round it.",
+		],
+	},
+	&"words_room_lists": {
+		"kind": &"mark", "title": "the shelves", "lands": ["the_middens"],
+		"lines": [
+			"Shelves cut back into the heap, each one",
+			"chalked: LETTERS. LISTS. BILLS. SONGS.",
+			"SORRY. DON'T KNOW.",
+			"",
+			"The fullest is LISTS.",
+		],
+	},
+	&"words_room_card": {
+		"kind": &"mark", "title": "the shelves", "lands": ["the_middens"],
+		"lines": [
+			"A card at the end of the shelves, in a",
+			"careful hand:",
+			"",
+			"If it has words in it, it stays.",
+			"If you don't know, it stays.",
+		],
+	},
+	&"words_room_nothing": {
+		"kind": &"mark", "title": "the shelves", "lands": ["the_middens"],
+		"lines": [
+			"One shelf is chalked NOTHING. It is full of",
+			"phones never switched on, still sealed, not",
+			"a word in any of them.",
+			"",
+			"They are kept as well.",
+		],
+	},
+	&"lookout_passed": {
+		"kind": &"mark", "title": "the slit", "lands": ["the_middens"],
+		"lines": [
+			"Beside the slit, a mark for each machine",
+			"gone by below, in fives, a row a day.",
+			"",
+			"One mark is cut deeper than the rest. That",
+			"day one went by the other way.",
+		],
+	},
+	&"lookout_bend": {
+		"kind": &"mark", "title": "the slit", "lands": ["the_middens"],
+		"lines": [
+			"Cut into the face by the slit:",
+			"NOTHING SAID TILL IT'S PAST THE BEND.",
+			"",
+			"Under it, the bend's distance in paces,",
+			"crossed out, and a longer one.",
+		],
+	},
+	&"reader_desk_rules": {
+		"kind": &"notebook", "title": "the reader's desk", "lands": ["the_middens"],
+		"lines": [
+			"A list pinned over the desk:",
+			"",
+			"Read it all before you sort it.",
+			"Read it out if nobody ever read it.",
+			"Don't finish what somebody stopped",
+			"writing.",
+		],
+	},
+	&"reader_desk_six": {
+		"kind": &"notebook", "title": "the reader's desk", "lands": ["the_middens"],
+		"lines": [
+			"Under the glass on the desk, one line",
+			"copied out in pencil from something long",
+			"gone to the bins:",
+			"",
+			"feed the cat. key under the pot x",
+			"",
+			"It has been gone over as it faded.",
+		],
+	},
+	&"reader_desk_piles": {
+		"kind": &"notebook", "title": "the reader's desk", "lands": ["the_middens"],
+		"lines": [
+			"Two piles on the desk. READ, tall. TO READ,",
+			"taller.",
+			"",
+			"Chalked on TO READ, a year to be done by,",
+			"crossed out, and a later one, crossed out.",
+		],
+	},
+	&"hold_sorter_hands": {
+		"kind": &"mark", "title": "the bins", "lands": ["the_middens"],
+		"lines": [
+			"Bins cut into the cell's wall like drawers,",
+			"one chalked for each thing the heap gives.",
+			"",
+			"One is chalked HANDS. It is gloves, one of",
+			"each. Not a pair among them.",
+		],
+	},
+	&"hold_sorter_bands": {
+		"kind": &"mark", "title": "the stick", "lands": ["the_middens"],
+		"lines": [
+			"A stick up the wall, floor to roof, notched",
+			"at each band of the heap, and chalked:",
+			"GLASS. PAPER. PHONES. PAPER. BOARDS.",
+			"",
+			"A child's height is marked in the phones.",
+		],
+	},
+	&"hold_wirer_lamps": {
+		"kind": &"mark", "title": "the lamps", "lands": ["the_middens"],
+		"lines": [
+			"The wall is strung with bulbs, each on a",
+			"battery dug out of the heap, each with a",
+			"card.",
+			"",
+			"They are lit in turn and put out again.",
+			"It is how you tell a battery still holds.",
+		],
+	},
+	&"hold_wirer_welcome": {
+		"kind": &"mark", "title": "the speaker", "lands": ["the_middens"],
+		"lines": [
+			"A speaker the size of a thumbnail, wired",
+			"to a battery on the wall. Pressed, it says",
+			"one word in a warm voice, and stops:",
+			"",
+			"Welcome.",
+			"",
+			"The wire is wrapped in cloth where it is",
+			"held.",
 		],
 	},
 	# --- homes, batch D (ROOMS: home). Colour; no beats. ---
@@ -3343,7 +3619,7 @@ const ROOMS := {
 			&"home_gath_gloves", &"home_grow_green", &"home_grow_one", &"home_knap_cloth",
 			&"home_knap_bubble", &"home_still_cups", &"home_still_rain", &"home_pick_blue",
 			&"home_pick_tongs", &"home_siph_tar", &"home_siph_tube", &"home_sort_teeth", &"home_sort_dunno",
-			&"home_wirer_tin", &"home_wirer_hood", &"home_clerk_balance", &"home_clerk_pencil",
+			&"home_wirer_tin", &"home_wirer_hood", &"home_reader_last", &"home_clerk_balance", &"home_clerk_pencil",
 			&"home_shift_nine", &"home_shift_radio", &"home_keep_hooks", &"home_keep_ins",
 			&"home_squat_mug", &"home_squat_lamp", &"home_climb_knots", &"home_climb_gloves",
 			&"home_stilt_once", &"home_stilt_beds", &"home_bail_things", &"home_bail_oar",
@@ -3356,6 +3632,19 @@ const ROOMS := {
 	},
 	&"squat": {
 		&"wall:squat": [&"squat_sheet", &"squat_edges", &"squat_bag"],
+	},
+	&"container_warren": {
+		&"wall:manifest": [&"warren_manifest_paper", &"warren_manifest_return", &"warren_manifest_shoes"],
+		&"wall:tally_marks": [&"warren_tally_fives", &"warren_tally_taken", &"warren_tally_quiet"],
+		&"desk:vault_ledger": [&"vault_ledger_hands", &"vault_ledger_margin", &"vault_ledger_back"],
+	},
+	&"face_hold": {
+		&"desk:the_sort": [&"sort_today_phones", &"sort_today_paper", &"sort_today_drive"],
+		&"wall:words_room": [&"words_room_lists", &"words_room_card", &"words_room_nothing"],
+		&"wall:lookout": [&"lookout_passed", &"lookout_bend"],
+		&"desk:reader": [&"reader_desk_rules", &"reader_desk_six", &"reader_desk_piles"],
+		&"wall:sorter": [&"hold_sorter_hands", &"hold_sorter_bands"],
+		&"wall:wirer": [&"hold_wirer_lamps", &"hold_wirer_welcome"],
 	},
 }
 

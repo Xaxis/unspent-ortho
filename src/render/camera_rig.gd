@@ -510,6 +510,23 @@ static func sees_ground(cam: Camera3D, foot: Vector3, margin: float, head := SEE
 	return false
 
 
+## Whether a POINT lands inside the frame, widened by `margin` world units -- a
+## light's own door. `sees_ground` also asks a point `SEEN_HEAD` above the foot,
+## because a BODY standing just below the frame's edge still shows its head; a
+## lamp is not a body, and handed through that door it counted as on screen by a
+## point two units above it (the lamp pool, 2026-09-23). Same guards: nothing
+## behind the near plane counts, and the margin is taken at the frame's own scale.
+static func sees_point(cam: Camera3D, at: Vector3, margin: float) -> bool:
+	if cam == null or not cam.is_inside_tree():
+		return false
+	var rect: Vector2 = cam.get_viewport().get_visible_rect().size
+	var out := margin / maxf(units_per_pixel_of(cam, rect.y), 1e-6)
+	if (cam.global_transform.affine_inverse() * at).z > -cam.near:
+		return false
+	var s := cam.unproject_position(at)
+	return s.x >= -out and s.x <= rect.x + out and s.y >= -out and s.y <= rect.y + out
+
+
 ## The rig's own, for the viewport it is drawing into.
 func units_per_pixel() -> float:
 	var rows := float(get_viewport().get_visible_rect().size.y) if is_inside_tree() else float(UiBase.SIZE.y)
@@ -825,7 +842,17 @@ func _apply_lens() -> void:
 		_over = up if up > _over else lerpf(_over, up, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
 		_room = room if room < _room else lerpf(_room, room, 1.0 - exp(-Shoulder.ROOM_OUT * _dt))
 		eye = pivot.lerp(eye + Vector3(0.0, _over, 0.0), _room)
-		if _over > 0.001:
+		# NO ROOM BEHIND AT ALL (Shoulder.fallback): still not clear of the walls
+		# or the roof, it comes over the head instead, at once, never drawn from
+		# inside anything (tests/camera/test_shoulder_in_rooms).
+		# Only an eye pulled in or risen can be short of clear: one standing at its
+		# full distance was walked clear by `room` already, and asking again was
+		# a second probe walk every frame in the open.
+		var tight := eye
+		if side_room.is_valid() and (_room < 0.999 or _over > 0.001):
+			tight = Shoulder.fallback(head, pivot, eye, sight_room if _over > 0.001 else Callable(), side_room)
+		if _over > 0.001 or tight != eye:
+			eye = tight
 			# Looking down at the point it framed, from the height it rose to.
 			var at := focus - eye
 			rotation.x = atan2(at.y, Vector2(at.x, at.z).length())

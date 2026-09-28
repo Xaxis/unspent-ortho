@@ -4,99 +4,53 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
 
 <!-- covers: system:30_mobs, system:32_disposition, system:34_works, system:36_machine_parade, system:40_fight, system:42_target, system:44_sentinels, system:45_taken, system:47_defences, system:48_raids -->
 
+"(h)" means the tour's header has its options.
+
 ## Sub-features
 
-- 30_mobs: `src/systems/30_mobs.gd`, reached by `tools/tour.sh tours/machines.tour`.
-- 32_disposition: `src/systems/32_disposition.gd`, reached by `tools/tour.sh tours/disposition.tour`.
-  Relic heat (GEAR.md G9): each relic worn warms the player's region by Interference `carried` (0.03) an hour; made kit does not, and the reads app names it under the trace (StoryContent.READS_CAUSE `carried`): `tools/test.sh test_relic_heat`, `tools/tour.sh tours/relic_heat.tour` (options in its header).
-- 34_works: `src/systems/34_works.gd`, reached by `tools/tour.sh tours/works.tour`.
-- 36_machine_parade: `src/systems/36_machine_parade.gd`, reached by `tools/tour.sh tours/machines-day.tour`.
-- 40_fight: `src/systems/40_fight.gd`, reached by `tools/tour.sh tours/fight.tour`.
-  Height: a ledge (2 levels) stands bodies out of each other's blows (`tools/test.sh test_height`).
-  Climbing (the jump key at a rock face too tall to jump; a route ruled up a face you face; breath a
-  level, fall damage when it runs out; the climber's level on the face for blows):
-  `tools/test.sh test_climb`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/climb.tour` (header has its options).
-  The vertical line (the grapple at the foot of a face up to 8 levels, hauled up to a post, pylon or
-  trunk at the top): `tools/test.sh test_vertical_grapple`,
-  `TOUR_FIXED_FPS=60 tools/tour.sh tours/vertical_grapple.tour` (header has its options).
-  The drop strike, a jump's landing off a ledge as a plate-opening blow: `tools/test.sh test_drop_strike`,
-  `tools/tour.sh tours/drop_strike.tour` (header has its options).
-  The heavy blow, swing held 300 ms: `tools/test.sh "test_heavy,test_bouts"` (the reader's time-to-kill
-  metric prints there), `TOUR_FIXED_FPS=60 tools/tour.sh tours/heavy_blow.tour`.
-  Every bite's ground ring (dashed where it lands, an inner ring closing on the strike):
-  `tools/test.sh test_tell_ring`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/bite_ring.tour`.
-  The thrower (the middens' sorter, Brains `throw`): a lane-long bite told by its lane on the
-  ground, a reload that is the opening; `tools/test.sh test_throw` (the reader's bout numbers print
-  there), `TOUR_FIXED_FPS=60 tools/tour.sh tours/thrower.tour` (header has its options).
-  The dropper (the tamper, the scrapwood's own, Brains `drop`): waits on a ledge and comes down on where the player
-  stood, told by its shadow growing on the ground; `tools/test.sh test_dropper`,
-  `TOUR_FIXED_FPS=60 tools/tour.sh tours/dropper.tour` (top view and over the shoulder; the tour
-  command `over KIND` stages a body on a lip with the player below).
-  Ten awake machines' draw cost: `tools/test.sh test_awake_cost`.
-  The crags rings (docs/HUSH.md H1): a machine will not follow into one; it holds at the edge facing in, goes home at
-  dawn or past its forget, and a feral comes in: `tools/test.sh test_hush_hold` (its bout prints),
-  `TOUR_FIXED_FPS=60 tools/tour.sh tours/hush_hold.tour --seed=7 --hour=11 --weather=clear:0`.
-  No hopeless matchup: every weapon beats every common machine (not a keeper, not a dart) at
-  least 1 start of 4 with the crowd reader (`tests/fight/crowd_reader.gd`, which sprints, heavies,
-  walks in on a stand-off and baits a thrower): `tools/test.sh test_matchups` (~35 s, prints any
-  hopeless pairing). The crowd reader against the one-machine reader: `tools/test.sh test_crowd_reader`.
-  The shoulder reader (`tests/fight/shoulder_reader.gd`: what a player over the shoulder knows -- the eye's cone,
-  what is heard, what was seen a second ago) runs the matchup sweep as its second column.
-  Part sides (a landscape's `over` part moves the working part; the model builds it there):
-  `tools/test.sh test_part_sides`, `tools/shot.sh shots/x.png --scene=gallery --filter=sides_hauler --zoom=4`,
-  `tools/tour.sh tours/part_sides.tour` and `tours/part_sides_cave.tour` (headers have their options).
-  Night hearing (a machine hears further and makes up its mind faster by ear at night): the day
-  and night noticing distances and night bouts print in `tools/test.sh test_first_meetings:test_by_night`.
-- 42_target: `src/systems/42_target.gd`, reached by `tools/tour.sh tours/targeting.tour`. A lock holds the body (facing, strafe arc, swing, dodge: `src/core/fight/lock_on.gd`, `tools/test.sh test_lock_on`), proven in both views by `tools/tour.sh tours/lockon_top.tour` and `tours/lockon_shoulder.tour` (each tour's header has its options).
-- 44_sentinels: `src/systems/44_sentinels.gd`, reached by `tools/tour.sh tours/sentinels.tour`.
-  The plough (the Snowfield's keeper; FightSim furrows: fast on its lanes, wallowing and bogging off them): `tools/test.sh test_plough`,
-  `TOUR_FIXED_FPS=60 tools/tour.sh tours/plough.tour` (options in its header).
-  Every keeper is a boss to the shoulder reader (won 18+/24, 25-45 s, 2+ health lost; ~50 s to run): `tools/test.sh test_keeper_bouts`.
-  The come-round (a keeper sweeps a body kept at its flank; every keeper, its own flavour): `tools/test.sh test_come_round`,
-  `TOUR_FIXED_FPS=60 tools/tour.sh tours/come_round.tour` (options in its header).
-  A keeper reaches you on its own ground: a charge walks its own field round what stops its move (NavField.for_body:
-  its climb, headroom, props but what it breaks), and a lost keeper hunts where it last knew you before it forgets
-  (Brains._hunt, FightSim.hunting): `tools/test.sh test_keeper_reach` (seeds 1 and 4, every lair; ~2 min). Its lair
-  is off the ground it founders on and opens Sentinels.OPENS_LEAST tiles of its own move (Sentinels.lair; a region
-  with no such ground has no keeper).
-  A struck keeper turns on you: every keeper on seed 1, put out once at its lair by 44_sentinels, hit on its own level,
-  chases, is roused and faces you within 3 s: `tools/test.sh test_keeper_roused` (~2.5 min).
-  A keeper goes through a wood: what its drawn body walks into of the kinds its row `breaks` (every keeper: trees and
-  shrubs) is felled for good and thrown over (FightSim._break_through, 40_fight `felled`): `tools/test.sh test_keeper_breaks`.
-  The frame, staged as a player does it (walk up to the snowfield's plough, hit it, run for the pines):
-  `TOUR_FIXED_FPS=60 tools/tour.sh tours/plough_wood.tour` (options in its header).
-  The Limestone Caves' drip-warden, its body only (roster `sentinel.limestone_caves`, no design yet): squat under
-  a roof, and no body a roofed landscape fields is taller than 80% of its halls give: `tools/test.sh
-  test_keeper_headroom`; whole at eye level under a tear and in a hall by the lamp (`near mob:KIND DIST`, on its
-  own level first): `TOUR_FIXED_FPS=60 tools/tour.sh tours/drip_warden.tour` (options in its header).
-- 45_taken: `src/systems/45_taken.gd`, reached by `tools/tour.sh tours/harvest.tour`.
-  Freed by a dark yard or a fallen keeper, and back on a standing holding's books
-  (`tools/test.sh test_come_home`; `tools/tour.sh tours/taken_home.tour`, options in its header;
-  `tours/escort.tour` walks one to a village).
-- 47_defences: `src/systems/47_defences.gd`, reached by `tools/tour.sh tours/defences.tour`.
-  A gun sees over its own holding's walls and roofs, not another's (`tools/test.sh test_turret_sight`), and
-  answers a raider striking a wall piece before anything else (`tools/test.sh test_turret_answers_the_wall`).
-- 48_raids: `src/systems/48_raids.gd`, reached by `tools/tour.sh tours/raids.tour`.
-  A probe fought live against a walled yard with covering guns, held (`tools/tour.sh tours/raids_live.tour`,
-  options in its header, `--walled`); graded outcomes and the prepared-versus-open bout
-  (`tools/test.sh test_raid_live`); hits from several sources land in one window (`tools/test.sh test_hits_stack`).
+- 30_mobs `src/systems/30_mobs.gd`: `tools/tour.sh tours/machines.tour`.
+- 32_disposition `src/systems/32_disposition.gd`: `tools/tour.sh tours/disposition.tour`.
+  - Relic heat (GEAR.md G9): `tools/test.sh test_relic_heat`, `tools/tour.sh tours/relic_heat.tour` (h).
+- 34_works `src/systems/34_works.gd`: `tools/tour.sh tours/works.tour`.
+- 36_machine_parade `src/systems/36_machine_parade.gd`: `tools/tour.sh tours/machines-day.tour`.
+- 40_fight `src/systems/40_fight.gd`: `tools/tour.sh tours/fight.tour`.
+  - Height (a 2-level ledge stands bodies out of each other's blows): `tools/test.sh test_height`.
+  - Climbing: `tools/test.sh test_climb`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/climb.tour` (h).
+  - Vertical grapple (a face up to 8 levels): `tools/test.sh test_vertical_grapple`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/vertical_grapple.tour` (h).
+  - Drop strike: `tools/test.sh test_drop_strike`, `tools/tour.sh tours/drop_strike.tour` (h).
+  - Heavy blow (swing held 300 ms; time-to-kill prints): `tools/test.sh "test_heavy,test_bouts"`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/heavy_blow.tour`.
+  - Bite ground ring: `tools/test.sh test_tell_ring`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/bite_ring.tour`.
+  - Thrower (Brains `throw`): `tools/test.sh test_throw`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/thrower.tour` (h).
+  - Dropper (Brains `drop`, told by its shadow): `tools/test.sh test_dropper`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/dropper.tour` (both views; `over KIND` stages a body on a lip).
+  - Ten awake machines' draw cost: `tools/test.sh test_awake_cost`.
+  - Crags rings (HUSH.md H1): `tools/test.sh test_hush_hold`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/hush_hold.tour --seed=7 --hour=11 --weather=clear:0`.
+  - No hopeless matchup (GEAR.md §9; crowd and shoulder readers in `tests/fight/`): `tools/test.sh test_matchups` (~35 s); crowd vs one-machine reader: `tools/test.sh test_crowd_reader`.
+  - Part sides (a landscape's `over` part): `tools/test.sh test_part_sides`, `tools/shot.sh shots/x.png --scene=gallery --filter=sides_hauler --zoom=4`, `tools/tour.sh tours/part_sides.tour` and `tours/part_sides_cave.tour` (h).
+  - Night hearing: `tools/test.sh test_first_meetings:test_by_night` prints day and night distances.
+- 42_target `src/systems/42_target.gd`: `tools/tour.sh tours/targeting.tour`.
+  - A lock holds the body (docs/CONTROLS.md): `tools/test.sh test_lock_on`, `tools/tour.sh tours/lockon_top.tour` and `tours/lockon_shoulder.tour` (h).
+- 44_sentinels `src/systems/44_sentinels.gd`: `tools/tour.sh tours/sentinels.tour`.
+  - Plough (snowfield keeper, furrows): `tools/test.sh test_plough`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/plough.tour` (h).
+  - Every keeper a boss to the shoulder reader (won 18+/24, 25-45 s, 2+ health lost): `tools/test.sh test_keeper_bouts` (~50 s).
+  - Come-round: `tools/test.sh test_come_round`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/come_round.tour` (h).
+  - Reach (`NavField.for_body`, `Brains._hunt`, `Sentinels.lair`): `tools/test.sh test_keeper_reach` (~2 min).
+  - Roused (faces you within 3 s of a hit): `tools/test.sh test_keeper_roused` (~2.5 min).
+  - Breaks through a wood (`FightSim._break_through`): `tools/test.sh test_keeper_breaks`; as a player: `TOUR_FIXED_FPS=60 tools/tour.sh tours/plough_wood.tour` (h).
+  - Drip-warden and headroom (no roofed landscape's body over 80% of its halls): `tools/test.sh test_keeper_headroom`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/drip_warden.tour` (h; `near mob:KIND DIST`).
+- 45_taken `src/systems/45_taken.gd`: `tools/tour.sh tours/harvest.tour`.
+  - Freed, back on a holding's books: `tools/test.sh test_come_home`, `tools/tour.sh tours/taken_home.tour` (h); `tours/escort.tour` walks one to a village.
+- 47_defences `src/systems/47_defences.gd`: `tools/tour.sh tours/defences.tour`.
+  - A gun sees over its own holding's walls, not another's: `tools/test.sh test_turret_sight`; answers a raider at a wall first: `tools/test.sh test_turret_answers_the_wall`.
+- 48_raids `src/systems/48_raids.gd`: `tools/tour.sh tours/raids.tour`.
+  - A live probe against a walled yard, held: `tools/tour.sh tours/raids_live.tour --walled` (h); graded outcomes, prepared vs open: `tools/test.sh test_raid_live`; hits from several sources in one window: `tools/test.sh test_hits_stack`.
 
 ## How to reach it
 
-- `tools/tour.sh tours/fight.tour`, `tours/targeting.tour`, `tours/sentinels.tour`, `tours/raids.tour`; `--spawn=KIND@DEG` in a shot.
+- The tours above; `--spawn=KIND@DEG` in a shot.
 
 ## How to check it
 
-Static: `godot --headless --path . --import --quit`; tests under `tests/` named for the package.
-
-Runtime:
-
-```sh
-S=<your scratchpad>
-tools/tour.sh tours/machines.tour
-```
-
-Proves it when: the command exits 0 and, for a shot or tour, the frames show the thing named (Read them); for a tour, it prints `tour NAME done`.
+`tools/tour.sh tours/machines.tour` (proof rules: README).
 
 ## Gotchas
 

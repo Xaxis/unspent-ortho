@@ -1,9 +1,6 @@
-# THE MIDDENS' ROOMS: doors in the slot faces (design, cb, 2026-09-26)
+# THE MIDDENS' ROOMS: doors in the slot faces
 
-Two interiors for the middens, cut into the walls of the GEN 34 slot labyrinth
-(the lands builder's `GenSlots`, branch world/gen34-slots). Designed now against
-the prototype; built once GEN 34 lands. Nothing here moves a seed: both are
-derived from the finished world, as every door is.
+Contract for the two built middens interiors, the container warren and the face settlement, cut into the slot labyrinth's walls. Nothing here moves a seed: both are derived from the finished world, as every door is.
 
 ## Rulings (teammate1, 2026-09-26, the design approved)
 
@@ -20,250 +17,104 @@ derived from the finished world, as every door is.
 - The `GenSlots.node` read is asked of the lands builder through teammate1.
 - Built after GEN 34 lands, in the slices below.
 
-## What the middens are, and what their rooms must say
+## What the rooms must say
 
-"Miles of cyber refuse cut into slot canyons, so narrow in places that the sky
-is a line" (the_middens.gd). The walls you walk between ARE the refuse: seventy
-years of what the machines tip, sorted by the plan before it dumped it and
-banded by what it is (`STRATA_REFUSE`). What they tip here is ours, never
-theirs: "phones, drives, paper. Anything that ever had words in it"
-(`words_tipped`). It is the one place that is a maze, and the danger is not
-knowing the way out.
+The walls are what the machines tip, and what they tip is ours: "phones, drives, paper.
+Anything that ever had words in it" (the_middens.gd `words_tipped`). The danger is not
+knowing the way out. The rooms speak in two registers the rest of the game does not:
+**buried things** (containers, vaults, lockers the heaps were poured over) and **words,
+kept** (the people here are the ones who read it).
 
-So the middens' rooms speak in two registers the rest of the game does not:
-- **Buried things.** The plan poured the heaps over what stood here: shipping
-  containers, vaults, a sorting office's own lockers. People dug into the faces
-  and found rooms already there.
-- **Words, kept.** Everything that ever had words in it ends up here. The people
-  who live here are the ones who read it.
+Nothing here answers anything the story gates (STORY.md). The middens are colour, never
+load. Words keep to the two registers, never name what the story gates, and no machine
+speaks here except by what it tipped.
 
-Nothing here answers anything the story gates (STORY.md). The middens are
-colour, never load.
+## The door in the face
 
-## The door in the face (shared with the mesas)
+`Threshold.of_face(at, out, kind, land)`: a door flush in a sheer riser, `door = host + out *
+0.4`, keyed `face@x,y` to a quarter tile. Its model is a frame set INTO the face (a
+container's end, a timbered mouth), so the land's strata stand round it.
 
-A slot face is a sheer one-tile riser of six levels (three units) between a
-floor and the plateau (`test_slot_walls_stand_as_one_face`). No door today sits
-on one: every Threshold is a house prop, a depot hatch or a landmark hatch, and
-the mesas' cliff room is a HOUSE that draws its own cliff (`cut_room`).
+## Recipes against the labyrinth as built
 
-**`Threshold.of_face(at, out, kind, land)`**: a door set flush in a riser. It
-has `host` on the face line, `out` along the floor away from the wall, and
-`door = host + out * 0.4`. Its key is `face@x,y` to a quarter tile. The door
-model is part of the room's own model, drawn as a frame set INTO the face: a
-container's end doors for the warren, a cut and timbered mouth for the
-settlement. So the land's strata stand round it, not a house front.
-
-**Siting, from the plan, not the tiles.** `GenSlots.plan(seed, size)` is
-deterministic and its lattice regular (PITCH 12), so the sites are re-derived,
-never stored:
-- **Warren doors** stand at BLIND-ALLEY ENDS (the `east_stub`/`south_stub` dead
-  ends): the alley runs into the heap and stops at a door. That is the
-  labyrinth's own logic, since a dead end is where you find what someone buried.
-  Share: 1 in 3 stubs, by `Rng.hash01(seed, node, STUB_SALT)`.
-- **Settlements** stand in a JUNCTION ROOM (`degree >= 3`, the widest floors),
-  in the wall between its two nearest exits. At most one per 5x5 maze block,
-  at the block's highest-degree room.
-- **Windowed.** `GenSlots` needs a `node(seed, size, i, j)` read that works out
-  one node and its edges without the whole plan (the lattice is regular and the
-  block maze is per block), so `Interiors.thresholds` asks only the nodes near
-  a section. **An ask to the lands builder:** expose that, or tell me the
-  plan's cost per block and I will cache per block.
-- **The mesas** could move `cut_room` onto `of_face` against their own
-  scarps, where the land has them. Proposed, not in this slice.
+Siting is `SlotDoors` (`src/core/interior/slot_doors.gd`), from the seed's slot plan and the
+finished land:
+- **A face is found on the TILES, not the plan:** the warp moves the land under the plan.
+  A door needs a face of `FACE_LEVELS` 5+ at its own host (a container door is 2.5 units),
+  checked per door, never assumed, and every host tile is checked for
+  `country == the_middens`.
+- **Warrens:** EVERY blind alley whose end meets a face of 5+ levels gets one. From 3 tiles
+  short of the alley's planned end, walk on along it to the first step of 4+ levels; `host`
+  is that tile, `out` points back down the alley. An alley end with no face gets no door.
+- **A tower's crawl exit comes up BESIDE the alley** (`exit_beside`: `EXIT_SIDE` 3.5 tiles
+  off the axis at the face's top, onto plateau running `EXIT_RUN` 4+ tiles), never straight
+  behind the door, where the next node's floor is. A warren with neither side is `line` or
+  `step`, never `tower`.
+- **Settlements:** in junction rooms (degree 3+) with a 5+ face in reach, the mouth on a
+  degree-3 room's closed side or a degree-4 room's diagonal. **At most one per 4 x 4 blocks**
+  (`CELL`), at the highest-degree, then widest, candidate: a village's share, so each is a
+  find (one per 3 x 3 outweighed a landscape's villages).
+- `SlotDoors` caches `GenSlots.plan` per world because `GenSlots.node` does not answer
+  blind alleys; the ask to lands is for `node()` to answer them so siting stays windowed.
+- **The string's route** (`src/core/interior/slot_route.gd`) is a BFS over `node()` answers
+  from the settlement's room, bounded at 64 nodes, to the nearest ramp's top (centre plus
+  centre minus its one open neighbour's centre, x 0.7).
 
 ## 1. THE CONTAINER WARREN (`container_warren`)
 
-**What it is.** Shipping containers and a vault or two, poured over when the
-heap was raised, found by diggers and joined: a stack of steel rooms inside
-the wall, entered by a container's own end doors at a dead end.
-
-**Plan.** Three to six containers (each 2.4 x 6 tiles) and at most one vault
-(4 x 4, poured concrete, a round door hung open or shut). The pocket world is a
-heightfield, and the top camera sees down, so a STACK is drawn STEPPED:
-- each container a floor at its own level, 2, 7 or 12 (a container's height,
-  2.5 units, is five levels);
-- a higher one set back over the lower one's far end;
-- joined by LADDERS at each step (a `ladder` thing on the riser; `Climb.face`
-  already climbs a rock face one level a second, and a ladder is a face that
-  says so: `Climb` learns a thing kind that makes any riser climbable, with a
-  faster rate).
-- From above it reads as a terraced heap of steel boxes, each cut at its own
-  wall height (`cut` per floor). Over the shoulder the ladders read as the way.
-
-**Plans, by hash:** `line` (end to end, one level), `step` (two levels, one
-ladder), `tower` (three levels, two ladders, the vault at the top). `dressing`
-follows who lives here now: `dug` (nobody: sealed ones, the doors cut with a
-torch), `kept` (a scavenger's store), `sorted` (the plan's own: see hooks).
-
-**Stealth and reward.**
-- **The floor rings.** Container steel is the loudest floor in the game:
-  `Ground.STEEL_FLOOR`, loudness 1.6 against the room floor's 1.15 (StealthNoise).
-  Walking is heard two containers away. Crouch, or pay.
-- **A sorter on shift** (`sorted` dressing): the middens' own machine works the
-  warren as a store on SHIFT hours (`InteriorKind.shift`), docked and ASLEEP
-  off shift (the saw hall's rule). Take from a `sorted` warren at night on
-  soft feet, or by day under the noise of its work.
-- **The vault's strongbox:** `LOOT[container_warren]` holds salvage the machines
-  sort for (cells, boards, copper) and, rarely, a DRIVE (an item whose words the
-  story-wright may write; it is only ever colour).
-- **Collapse** (the middens' 0.45 hazard): a container's roof is buckled. A
-  `buckled` thing lowers the headroom over one bay (S0's `headroom_at` works
-  indoors), so a person crawls through it: crouch-only.
-- **The way out is not the way in.** A `tower` warren's top container opens on
-  the PLATEAU (a crawl exit up through the heap, `exit` → `_back_of`, onto the
-  plateau over the door): the one way up out of the maze there is, besides the
-  ramps. A known warren is a shortcut, and that is its reward.
-
-**Look.** Corrugated walls lit by one lamp; stencilled numbers under paint;
-the heap's strata pressing in where a wall has rusted through (the land's own
-`STRATA_REFUSE`, drawn on the hole's edge); a bedroll in a `kept` warren; in a
-`sorted` one, bins in rows and a conveyor.
+`src/content/interiors/container_warren.gd`, `src/models/interior/warren_model.gd`.
+- **What:** containers (and a vault) poured over and joined by diggers: a run of steel boxes
+  inside the wall, entered by the first one's own end doors.
+- **Plans, by hash:** `line` (one level), `step` (climbs once, a container's 5 levels, up a
+  ladder), `tower` (twice, the vault at the top, a crawl up through the heap onto the
+  plateau: a known tower is the one way up out of the maze besides the ramps). A stepped run
+  reads from above as a terraced heap of steel. Each rise has a `ladder` thing that Climb
+  takes up and down at a ladder's rate.
+- **Dressing, by hash:** `dug` (nobody; sealed, doors torch-cut), `kept` (a scavenger's
+  store, bedroll and lamp), `sorted` (the plan's own: the middens' sorter works it on the
+  shift, `InteriorKind.shift`, and at the curfew docks ASLEEP, blind but hearing).
+- **The floor rings:** `Ground.STEEL_FLOOR`, loudness 1.6 (`StealthNoise`), the loudest in the
+  game. The sorter's dock is further from the way than a crouched step on steel is heard and
+  well inside a walked one, so crouching past it is a way and walking is not.
+- **Collapse** (the middens' `collapse` share): one container's roof buckled over a bay, a
+  `buckled` thing handed to the pocket as mass overhead; a crouched body passes, a standing
+  one does not, nor a machine taller than the room. Never the first container nor the last.
+- **The vault's strongbox:** `Interiors.LOOT` `container_warren`, salvage the machines sort
+  for and rarely a drive (its words only ever colour).
+- **Look:** corrugated walls by one lamp, stencils under paint, the heap's strata through
+  rust holes, grey day down each (`&"seep"` lights).
 
 ## 2. THE FACE SETTLEMENT (`face_hold`)
 
-**What it is.** The people of the middens live IN the walls at a junction:
-rooms cut back into the refuse, their mouths along the face, joined inside.
-Cliff-dwelling logic: the face is the street, the wall is the town. It is the
-middens' village (the middens have `villages = 0`: this is why).
+`src/content/interiors/face_hold.gd`, `src/models/interior/face_hold_model.gd`, the mouth
+`face_hold_hatch_model.gd`. The middens' village, and the only one (`villages = 0`).
+- **Plan:** a timbered mouth in a junction's wall; behind it the SORT (a long table where
+  what is dug out is read, a brazier at its back, smoke out through the plateau); a back row
+  of two family CELLS and the WORDS ROOM between them; by hash, more cells (`two` to `four`);
+  the LOOKOUT up a ladder with one slit in the face along the slot.
+- **Households** are the middens' own (`BiomeDef.home`: sorter, wirer, reader); the READER
+  is always among them, at home by their desk as a DWELLER (21_doors) the use key talks to.
+- **The string:** the reader wants a filed record (what the warrens' boxes keep); brought
+  one, they take it and give a ball of string once per settlement (21_doors `dweller_deed`).
+  While carried, the map draws its route to the nearest ramp; a save keeps it. Never sold.
+- **No stealth against them.** From the lookout a passing sorter is watched go by, and the
+  settlement stops talking when one passes (`src/core/interior/door_hush.gd`): the room's
+  beds fall away, its lamps dip, and each machine is heard by its own weight's footfalls.
+- **What it keeps** is theirs (`InteriorKind.seats`), on the words room's shelves (KeptBy),
+  given once to a stranger on good terms (GEAR.md §7).
+- **Look:** mouths hung with cloth and cable; strata shored with doors and signs; shelves
+  of phones, drives and paper, chalk-labelled; the sort under a hooded lamp.
 
-**Plan.** One way in at floor level: a timbered mouth in the junction's wall.
-Behind it a SHARED ROOM, the sort, with a long table where what is dug out is
-read and sorted. Off it:
-- two to four family CELLS (the world/homes middens households: sorter,
-  wirer, and a proposed third, the READER, who keeps what has words in it);
-- a WORDS ROOM: the settlement's store of everything with writing on it,
-  shelved;
-- a LOOKOUT a level up by a ladder, with a slit in the face looking along the
-  slot (a window, `closed` low there).
+## Story slots
 
-**Hooks.** Friendly, not a heist:
-- **Rest and trade.** A hearth (a `brazier`, smoke let out through the plateau
-  above) and a keeper who trades (56_economy), the middens' goods at the
-  middens' prices.
-- **The string.** A household gives the way out, EARNED by a deed (help
-  them, or bring back a buried thing they want): a `string` item that marks
-  the route from here to the nearest ramp on the survey (the map app). It is
-  the maze's own answer to the maze, and never for sale.
-- **Stealth:** none against them. From the lookout, the slot below is seen
-  a long way both ways, and a `sorter` passing on its round is watched go by.
-  The settlement stops talking when one passes (a hush here that is a
-  people's own, not the crags').
+All `lands: ["the_middens"]`, each opened only where words are written for it
+(`StoryRooms.words_for`).
+- **container_warren:** `wall:manifest`, `desk:vault_ledger` (the last entries in another
+  hand), `wall:tally_marks`, `wall:do_not` (a container never opened), `terminal:vault_panel`
+  (still asking for a code).
+- **face_hold:** `desk:the_sort`, `wall:words_room`, `wall:the_string` (the way-out map),
+  `wall:lookout`, `desk:reader`, `wall:sorter` / `wall:wirer`.
 
-**Look.** Mouths hung with cloth and cable. Inside, the strata of the heap
-are the walls, shored with doors and signs. The words room is shelves of
-phones, drives and paper, each labelled in chalk. The sort table is lit by a
-hooded lamp (the wirer's `home_wirer_hood`).
+## Proof
 
-## Recipes against the labyrinth as built (gen34-slots-r2 c713f2b7, measured)
-
-Sketched 2026-09-26 so the slices go quickly once GEN 34 lands. Measured on
-seeds 1 and 7 at 1840 with a throwaway probe over `GenSlots.plan` and the
-generated land. Where this and the sections above disagree, this wins.
-
-**The labyrinth moved under the design.** PITCH is 14 (not 12), a block is
-4 x 4 nodes (not 5 x 5), floors are 4.4 to 6.2 wide (HALF_MIN 2.2 + 0.9), a
-junction room's radius is 3.0 to 4.6, a blind alley runs 0.40 to 0.65 of the
-way to the next node (5.6 to 9.1 tiles), and EVERY tree dead end ramps
-(RAMP_SHARE 1.0), so blind alleys are the only dead ends left without a way up.
-A blind alley beside a ramp is cleared. `GenSlots.node(s, size, gx, gy)` exists
-and answers one node windowed (centre, open, degree, dead_end, room, ramp,
-radius); it does not yet answer the blind alleys.
-
-| seed | middens nodes | blocks | rooms | ramps | blind alleys | alley ends with a face of 5+ levels | rooms with a 5+ face in reach |
-|---|---|---|---|---|---|---|---|
-| 1 | 253 | 32 | 105 | 51 | 24 | 9 | 64 |
-| 7 | 254 | 28 | 90 | 47 | 39 | 19 | 56 |
-
-**Warren siting, revised.**
-- EVERY blind alley whose end meets a face of 5+ levels (a container door is
-  2.5 units, five levels) gets a warren, not 1 in 3: at 1 in 3 a world would
-  hold three to six. This gives 9 (seed 1) and 19 (seed 7), about one per two
-  or three blocks, and each is at the end of a way that goes nowhere else.
-- The face is found on the TILES, not the plan: from 3 tiles short of the
-  alley's planned end, walk on along it in quarter tiles to the first step of
-  4+ levels; `host` is that tile, `out` points back down the alley. About half
-  the planned alley ends meet no face within 6 tiles (the warp opens the end
-  or it runs out onto a plateau node). Those get no door.
-- **The tower's crawl exit comes up BESIDE the alley, not behind the door.**
-  Straight behind an alley's end is the next node's floor. 0 of 30 faces had
-  4 plateau tiles behind them. To either side, 3.5 tiles off the alley's axis
-  at the face's top, the plateau runs a median of 9 tiles and 4+ in 24 of 30.
-  The exit is sited at the first such tile on the side with more room. A
-  warren with neither side is `line` or `step`, never `tower`.
-- **An ask to lands:** `node()` should answer its blind alleys (`east_stub`,
-  `south_stub` as fractions, cleared beside a ramp, as `plan` does), so siting
-  stays windowed and never copies GenSlots' salts. Until then slice 1 calls
-  `plan` once per world and caches it (the plan is small: about 17,000 nodes at
-  1840).
-
-**Settlement siting, revised.**
-- Candidates are junction rooms (degree 3+) with a face of 5+ levels in reach:
-  64 of 105 (seed 1), 56 of 90 (seed 7). The mouth goes in the wall on a
-  degree-3 room's CLOSED side (the one way that is wall), and on a degree-4
-  room's diagonal, between two exits, found on the tiles as a warren's face is.
-- One per block would be about 30 settlements, far past any landscape's
-  village count. **At most one per 4 x 4 blocks**, at the highest-degree, then
-  widest, candidate. Measured in slice 1: 5, 5 and 3 on seeds 1, 7 and 42 (one
-  per 3 x 3 gave 8 on seed 1, which outweighed a landscape's villages), a
-  village's share, so each one is a find. Blind-alley warrens: 13, 23 and 15.
-- The string's route to the nearest ramp is a BFS over `node()` answers from
-  the settlement's room, bounded at 64 nodes. A ramp's top is its centre plus
-  (centre minus its one open neighbour's centre) x 0.7 (RAMP_RUN), all public.
-
-**Slot facts the rooms read, and what they rely on:**
-- `test_slot_walls_stand_as_one_face` holds 80% of faces to 4+ levels in one
-  step. A door needs 5+ at its own host, checked per door, never assumed.
-- The plateau stands only on the middens' own tiles, so every host tile, and a
-  tower exit's tile, is checked for `country == the_middens`.
-
-## Slot keys for the story-wright
-
-All `lands: ["the_middens"]`. The households are for the settlement's cells.
-
-**container_warren**
-- `wall:manifest`: a container's stencilled manifest, under paint, about what
-  it held when it was sealed.
-- `desk:vault_ledger`: a ledger in the vault, the last entries in a different
-  hand from the first.
-- `wall:tally_marks`: marks scratched inside a container, by whoever lived in it.
-- `wall:do_not`: a container never opened, and what is chalked on its doors.
-- `terminal:vault_panel` (if a terminal slot is wanted): the vault's panel, still
-  asking for a code.
-
-**face_hold**
-- `desk:the_sort`: the sort table, and what is on it today.
-- `wall:words_room`: the words room's labels, what they keep and why they keep it.
-- `wall:the_string`: the way-out map, a string route pinned to a wall.
-- `wall:lookout`: what is scratched beside the lookout slit.
-- `desk:reader` (household `reader`): the reader's desk.
-- `wall:sorter` / `wall:wirer` (households): each family's piece, as homes have.
-
-Words must keep to the middens' two registers (buried things, words kept),
-never name what the story gates, and never have a machine speak here except
-by what it tipped.
-
-## Slices (after GEN 34 lands)
-
-1. **`of_face` and the siting** (mine), plus the `GenSlots.node` read (the
-   lands builder, or me with their say). Test: every door stands on a sheer
-   riser, opens onto a floor tile the walk reaches from a ramp, and none sits on
-   a ramp or in a junction's middle; the keys are stable.
-2. **The warren** (mine): plans, containers, ladders (`Climb` learns
-   `ladder`), steel floor loudness, the sorter on shift and asleep, the vault
-   strongbox and LOOT, the buckled bay, the top crawl exit. Tests like the saw
-   hall's and the squat's, and the steel test above (crouched unnoticed,
-   standing wakes the sorter); tours from above and over the shoulder, up a
-   ladder.
-3. **The settlement** (mine): plan, households (the reader added to
-   world/homes' middens row), brazier, keeper and trade, the string item, the
-   lookout. Tests: rooms reachable, trade stocked, the string given only
-   after its deed, and its route leads to a ramp.
-4. **Words** (the story-wright) against the keys above, any time after slice 2.
-
-Neither room changes what a seed makes, so no GEN bump past 34. test_rooms
-grows for both kinds.
-
-## Open questions
-
-None left: see the rulings.
+Recipes: `.claude/skills/verify/features/world-places.md`, 21_doors.

@@ -1,0 +1,26 @@
+# A WARREN'S BUCKLED BAY (src/content/interiors/container_warren.gd, COLLAPSE):
+# a container's roof folded down to 1.5 over the deck across its middle, where a
+# standing body is stopped and a crouched one goes under
+# (tests/interior/test_warren_bay_in_game proves the walk).
+#
+#   tools/tour.sh tours/warren-bay.tour --seed=1 --hour=11 --weather=clear:0
+#
+# 01 is the bay from above, the roof folded down in one container. 02 is beside
+# it over the shoulder, crouched.
+coast calm
+near door:buckled
+await door 5
+wait 0.6
+press use 0.1
+await inside:container_warren 20
+near thing:buckled
+wait 1.0
+shot 01-the-bay-from-above with inside:container_warren
+hold crouch
+await crouched 3
+hold shoulder_peek
+await shoulder 3
+wait 1.0
+shot 02-beside-it-crouched with inside:container_warren,shoulder,crouched
+release shoulder_peek
+release crouch

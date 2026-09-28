@@ -88,6 +88,21 @@ func inside() -> Vector2:
 var room_ground: Array[int] = []
 
 
+## Each room's floor, in levels above the pocket's floor (InteriorGen.FLOOR_LEVEL),
+## by the room's index; a room past the end is at 0. A warren's containers step
+## up through the heap, joined by `ladder` things on the risers (InteriorGen
+## gives them to the pocket, and Climb takes them).
+var room_level: Array[int] = []
+
+
+## The level a floor tile stands at, above the pocket's floor.
+func level_of(x: int, y: int) -> int:
+	for i in rooms.size():
+		if rooms[i].has_point(Vector2i(x, y)):
+			return room_level[i] if i < room_level.size() else 0
+	return 0
+
+
 ## The ground under a floor tile.
 func ground_at(x: int, y: int) -> int:
 	for i in rooms.size():

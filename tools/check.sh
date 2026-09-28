@@ -31,6 +31,20 @@ for a in "$@"; do [ "$a" = "--serial" ] && serial=1; done
 # built, on a real GPU; skipping them is said out loud below, never silent.
 noshots=0
 for a in "$@"; do [ "$a" = "--no-shots" ] && noshots=1; done
+# --shards=N --only=I: run shard I of N and its own costs, alone, and nothing
+# else. The CI gate runs one job per shard side by side on separate runners
+# (.github/workflows/gate.yml), so a gate takes the time of its slowest shard
+# instead of the whole suite on one four-core box (about 110 min on 2026-09-28).
+# A single shard can only say NEW failures: a standing one it did not run is not
+# "now passing", so that half of the diff is left to a whole run.
+shards=3
+only=""
+for a in "$@"; do
+  case "$a" in
+    --shards=*) shards="${a#--shards=}" ;;
+    --only=*) only="${a#--only=}" ;;
+  esac
+done
 cd "$(dirname "$0")/.."
 
 # A MACHINE-WIDE limit on how many gates run at once, because the gate measures
@@ -166,7 +180,9 @@ for f in spawn dusk night gallery; do
 done
 fi
 
-if [ "$serial" = "1" ]; then echo "== tests (3 shards, one at a time)"; else echo "== tests (3 shards)"; fi
+if [ -n "$only" ]; then idx=("$only"); else idx=($(seq 0 $((shards - 1)))); fi
+if [ -n "$only" ]; then echo "== tests (shard $only of $shards)"
+elif [ "$serial" = "1" ]; then echo "== tests ($shards shards, one at a time)"; else echo "== tests ($shards shards)"; fi
 logs=()
 tpids=()
 # COSTS ARE MEASURED ALONE (TestCase.yard_lt): beside its sibling shards a cost
@@ -174,20 +190,22 @@ tpids=()
 # regression. Each shard writes the cost tests it met to its own list, and they
 # are run again by themselves once the shards are done.
 later="$(mktemp -d "${TMPDIR:-/tmp}/unspent-costs.XXXXXX")"
-for i in 0 1 2; do
+for k in "${!idx[@]}"; do
+  i="${idx[$k]}"
   log="$(mktemp "${TMPDIR:-/tmp}/unspent-test.XXXXXX")"; logs+=("$log")
-  UNSPENT_COSTS_LATER="$later/shard-$i" godot --headless --path . -s tests/run.gd -- "--shard=$i/3" >"$log" 2>&1 & tpids+=($!)
+  UNSPENT_COSTS_LATER="$later/shard-$i" godot --headless --path . -s tests/run.gd -- "--shard=$i/$shards" >"$log" 2>&1 & tpids+=($!)
   # Serial: wait for this shard before starting the next, so only one Godot
   # holds memory at a time. The shards stay THREE so the sharding itself, and
   # anything order-dependent in it, is exactly what the parallel gate runs.
-  [ "$serial" = "1" ] && wait "${tpids[$i]}"
+  [ "$serial" = "1" ] && wait "${tpids[$k]}"
 done
 # The shards' own failures, gathered before they are judged, so the run can be
 # compared against what this tree is KNOWN to carry (tests/standing.txt).
 ran="$(mktemp "${TMPDIR:-/tmp}/unspent-ran.XXXXXX")"
 unfinished=0
-for i in 0 1 2; do
-  wait "${tpids[$i]}"; code=$?
+for k in "${!idx[@]}"; do
+  i="${idx[$k]}"
+  wait "${tpids[$k]}"; code=$?
   # A SHARD THAT DIED IS NOT A SHARD THAT PASSED, and this used to be `|| true`.
   # A killed or OOM-killed shard writes no FAIL lines, so the diff below saw an
   # empty run, found nothing new, and printed CHECK OK -- then listed every
@@ -203,13 +221,13 @@ for i in 0 1 2; do
   # against a killed shard and a truncated one and never against the ordinary
   # case of a run that finished with failures.
   if [ "$code" != "0" ] && [ "$code" != "1" ]; then echo "shard $i DIED (exit $code) -- this run proves nothing"; fail=1; unfinished=1; fi
-  if ! grep -qE 'passed,' "${logs[$i]}"; then echo "shard $i wrote no summary -- it did not finish"; fail=1; unfinished=1; fi
-  grep -E "FAIL|^\s{7}|LOAD FAIL|SCRIPT ERROR|at: " "${logs[$i]}"
-  grep -E 'passed,' "${logs[$i]}"
-  grep -E '^\s*FAIL ' "${logs[$i]}" | sed -E 's/^ *FAIL //; s/ \([0-9]+ ms\)$//' >>"$ran"
+  if ! grep -qE 'passed,' "${logs[$k]}"; then echo "shard $i wrote no summary -- it did not finish"; fail=1; unfinished=1; fi
+  grep -E "FAIL|^\s{7}|LOAD FAIL|SCRIPT ERROR|at: " "${logs[$k]}"
+  grep -E 'passed,' "${logs[$k]}"
+  grep -E '^\s*FAIL ' "${logs[$k]}" | sed -E 's/^ *FAIL //; s/ \([0-9]+ ms\)$//' >>"$ran"
   # A test that hits a script error stops where it was and the runner counts
   # it passed if it had recorded no failed check: the error itself fails the gate.
-  if grep -qE "SCRIPT ERROR" "${logs[$i]}"; then echo "script error in shard $i"; fail=1; fi
+  if grep -qE "SCRIPT ERROR" "${logs[$k]}"; then echo "script error in shard $i"; fail=1; fi
   # A FAILING SHARD KEEPS ITS WHOLE LOG. The print above is a filter -- lines with
   # FAIL or seven leading spaces -- so a message that runs onto a second line
   # arrives as a bare colon (test_plan's list of slots is joined with two spaces
@@ -220,10 +238,10 @@ for i in 0 1 2; do
   # to a green run and be read as this one.
   keep="shots/check/shard-$i.log"
   rm -f "$keep"
-  if [ "$code" != "0" ] || ! grep -qE 'passed,' "${logs[$i]}" || grep -qE "SCRIPT ERROR" "${logs[$i]}"; then
-    mkdir -p shots/check && mv "${logs[$i]}" "$keep" && echo "   full log of shard $i: $keep"
+  if [ "$code" != "0" ] || ! grep -qE 'passed,' "${logs[$k]}" || grep -qE "SCRIPT ERROR" "${logs[$k]}"; then
+    mkdir -p shots/check && mv "${logs[$k]}" "$keep" && echo "   full log of shard $i: $keep"
   else
-    rm -f "${logs[$i]}"
+    rm -f "${logs[$k]}"
   fi
 done
 # The costs, alone. Judged like a shard: its FAIL lines join the run's, a death
@@ -270,7 +288,9 @@ if [ -f "$standing" ]; then
   # deleted -- after the verdict was already fixed to say FAILED, which is why the
   # first real run of that fix (a gate stopped by hand, 2026-09-22) still printed
   # the advice. Following it would empty the list that lets the next gate go red.
-  if [ -n "$fixed" ] && [ "$unfinished" = "1" ]; then
+  if [ -n "$fixed" ] && [ -n "$only" ]; then
+    echo "   (one shard of $shards: standing lines from the others did not run here)"
+  elif [ -n "$fixed" ] && [ "$unfinished" = "1" ]; then
     echo "NOT JUDGED: a shard did not finish, so these standing lines did not run --"
     echo "  keep them in tests/standing.txt and run the gate again:"
     echo "$fixed" | sed 's/^/  /'
@@ -278,7 +298,7 @@ if [ -f "$standing" ]; then
     echo "NOW PASSING (take these OUT of tests/standing.txt in this commit):"
     echo "$fixed" | sed 's/^/  /'
   fi
-  [ -z "$new" ] && [ -z "$fixed" ] && echo "   no change against the standing set"
+  [ -z "$new" ] && { [ -z "$fixed" ] || [ -n "$only" ]; } && echo "   no new failure against the standing set"
   rm -f "$ran.s" "$ran.k"
 else
   # No list is not the same as nothing to say: without it the gate is back to an

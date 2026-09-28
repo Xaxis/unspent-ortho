@@ -21,6 +21,7 @@ hauntingly beautiful and specific.
 ```sh
 tools/test.sh [filter]          # headless tests; filter is a "file:method" substring
 tools/check.sh                  # the gate: test shards + real frames (needs memory, see below)
+tools/preflight.sh [filter]     # before calling a branch ready: the whole-tree rules CI keeps catching (~2 min)
 tools/shot.sh shots/x.png [...] # one rendered frame; options in src/boot_options.gd header
 tools/shot.sh shots/g.png --scene=gallery [--filter=NAME]
 tools/tour.sh tours/x.tour      # scripted real-input proof; each tour's header has its options
@@ -78,6 +79,19 @@ tools/deploy.sh [--prod]        # deploy to Vercel and prove it loads there
   `/tmp/claude-501`.
 - Send a peer measurements, not conclusions, and re-derive a peer's claim before
   building on it.
+
+## How a slice lands
+
+- One slice, one branch, named for what it does. Fixes to it go on the same
+  branch, never a new `-2`/`-fix` name.
+- Before saying a branch is ready: `tools/preflight.sh` green on the head with
+  `origin/main` merged in. Then the orchestrator gates it on CI (8 shards, ~30 min)
+  and lands it.
+- When it lands, delete the branch and its worktree the same hour. A worktree
+  exists only while someone is editing in it; a pushed branch needs none.
+- A branch unmerged for 2 days gets a decision from its owner: land it or drop
+  it. Nothing is left standing unexplained.
+- `WorldStamp.GEN` is given at landing, as main + 1, in landing order.
 
 ## Commits and shipping
 
