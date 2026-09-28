@@ -22,9 +22,21 @@ take() {
   fi
   return 1
 }
-ok=0
+# A job up an hour or more with no parent (a probe that errored and never quit) holds
+# every waiter for ever; name it so its owner kills it rather than waits on it.
+stale() {
+  pgrep -f 'godot|chrom' | while read -r p; do
+    ps -o command= -p "$p" | grep -q chrome_crashpad_handler && continue
+    [ "$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')" = 1 ] || continue
+    [ "$(ps -o etime= -p "$p" | awk -F'[-:]' '{print (NF>2)?1:0}')" = 1 ] || continue
+    ps -o pid=,etime=,command= -p "$p" | cut -c1-140
+  done
+}
+ok=0; n=0
 while :; do
   if [ "$(date +%s)" -ge "$end" ]; then echo "heavy: never clear (pages $(free_pages))" >&2; exit 2; fi
+  n=$((n+1))
+  if [ $((n % 30)) = 1 ] && busy; then s=$(stale); [ -n "$s" ] && echo "heavy: waiting on an orphan idle 1 h+ (kill it if it is yours): $s" >&2; fi
   if [ "$(free_pages)" -gt 32000 ] && ! busy; then ok=$((ok+1)); else ok=0; fi
   if [ "$ok" -ge 3 ] && take; then break; fi
   sleep 10
