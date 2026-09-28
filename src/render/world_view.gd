@@ -223,6 +223,7 @@ func setup_sharing(w: WorldData, from: WorldView) -> void:
 	_world_mat = from._world_mat
 	_water_mat = from._water_mat
 	_leaf_mat = from._leaf_mat
+	_grass_mat = from._grass_mat
 	_bind(w)
 
 
@@ -1755,16 +1756,22 @@ func _add_void() -> void:
 	var y := TerrainMesher.level_height(InteriorGen.FLOOR_LEVEL) - 0.03
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(s + 2.0 * m, s + 2.0 * m)
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(0.028, 0.026, 0.03)
 	var dark := MeshInstance3D.new()
 	dark.name = "open_sea"
 	dark.mesh = plane
-	dark.material_override = mat
+	dark.material_override = void_material()
 	dark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	dark.position = Vector3(s * 0.5, y, s * 0.5)
 	add_child(dark)
+
+
+## The dark under a pocket. Its own builder so the boot can draw it once
+## before any door does (01_warm_lights).
+static func void_material() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.028, 0.026, 0.03)
+	return mat
 
 
 func _add_open_sea() -> void:

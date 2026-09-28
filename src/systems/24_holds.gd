@@ -241,6 +241,9 @@ func _stand() -> void:
 			var node := PropModels.node(PropKind.BARRICADE, j % kinds, country)
 			if node == null:
 				continue
+			# The made part carries no material and a node inherits none, so a
+			# barricade without the world's drew in the renderer's grey default.
+			(node as MeshInstance3D).material_override = game.view.world_material() if game.view != null else null
 			node.position = game.world.to_3d(p)
 			# **ACROSS THE ROAD, NOT ALONG IT.** A model faces +X at rotation 0 and
 			# turns by -rot, so facing a panel down the road's own heading laid it
