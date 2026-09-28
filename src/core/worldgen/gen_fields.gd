@@ -321,12 +321,94 @@ static func upsample_rect(part: PackedFloat32Array, pw: int, ph: int, gx0: int, 
 ## images, which is the difference between a band of a pass costing a copy loop
 ## and costing nothing a thread notices.
 static func upsample_rows(g: PackedFloat32Array, cw: int, step: int, size: int, ry: int, rh: int) -> PackedFloat32Array:
+	return upsample_rows_of(grid_image(g, cw), cw, step, size, ry, rh)
+
+
+## A coarse grid as the image `upsample_rows_of` spreads, made once for all the
+## bands of a stage rather than once a band.
+static func grid_image(g: PackedFloat32Array, cw: int) -> Image:
+	return Image.create_from_data(cw, cw, false, Image.FORMAT_RF, g.to_byte_array())
+
+
+## `upsample_rows` of a grid already made an image (`grid_image`).
+static func upsample_rows_of(full: Image, cw: int, step: int, size: int, ry: int, rh: int) -> PackedFloat32Array:
 	var sy0 := maxi(0, floori(float(ry) / step) - 1)
 	var sy1 := mini(cw, ceili(float(ry + rh) / step) + 1)
-	var full := Image.create_from_data(cw, cw, false, Image.FORMAT_RF, g.to_byte_array())
 	var sub := full.get_region(Rect2i(0, sy0, cw, sy1 - sy0))
 	sub.resize(cw * step, (sy1 - sy0) * step, Image.INTERPOLATE_BILINEAR)
 	return sub.get_region(Rect2i(0, ry - sy0 * step, size, rh)).get_data().to_float32_array()
+
+
+## `batch`'s specs over the world's rows ry..ry+rh-1 only, whole rows: UP, FIELD
+## and NOISE at step 1, each the same values tile for tile as `batch` gives them
+## over the world, by native image work (`upsample_rows`, `field_rows`,
+## `noise_rows`). Results in spec order, `rh * size` each: what a stage that reads
+## its fields a band at a time asks for instead of holding every field whole.
+static func batch_rows(size: int, specs: Array, ry: int, rh: int) -> Array[PackedFloat32Array]:
+	var out: Array[PackedFloat32Array] = []
+	for spec: Array in specs:
+		var what := int(spec[0])
+		if what == UP:
+			# A grid may come as its image already (`grid_image`), made once.
+			var g: Variant = spec[1]
+			if g is Image:
+				out.append(upsample_rows_of(g, int(spec[2]), int(spec[3]), size, ry, rh))
+			else:
+				out.append(upsample_rows(g, int(spec[2]), int(spec[3]), size, ry, rh))
+		elif what == FIELD:
+			out.append(field_rows(spec[1], size, int(spec[2]), ry, rh))
+		elif what == NOISE:
+			assert(int(spec[3]) == 1 and spec.size() == 4, "batch_rows takes NOISE at step 1 and no offset")
+			out.append(noise_rows(spec[1], size, ry, rh))
+		else:
+			assert(false, "batch_rows takes UP, FIELD and NOISE")
+	return out
+
+
+## `batch`'s FIELD over the world's rows ry..ry+rh-1, whole rows: the noise asked
+## at the world's own coarse cells (one more row each side for the spread),
+## spread and cropped as images, mapped as `batch` maps it.
+static func field_rows(n: FastNoiseLite, size: int, step: int, ry: int, rh: int) -> PackedFloat32Array:
+	var cw := coarse_width(size, step)
+	var sy0 := maxi(0, floori(float(ry) / step) - 1)
+	var sy1 := mini(cw, ceili(float(ry + rh) / step) + 1)
+	var m := _copy(n)
+	var off := step * 0.5 - 0.5
+	m.frequency = n.frequency * step
+	m.offset = Vector3((n.offset.x + off) / step, (n.offset.y + off) / step + sy0, 0.0)
+	var img := m.get_image(cw, sy1 - sy0, false, false, false)
+	img.convert(Image.FORMAT_RF)
+	if step > 1:
+		img.resize(cw * step, (sy1 - sy0) * step, Image.INTERPOLATE_BILINEAR)
+	var out := img.get_region(Rect2i(0, ry - sy0 * step, size, rh)).get_data().to_float32_array()
+	for k in out.size():
+		out[k] = out[k] * 2.0 - 0.996078
+	return out
+
+
+## A generator of the caller's own, copied one thread at a time: the bands of a
+## stage share their specs' generators, and no two threads may touch one
+## object (`batch` copies its own before its workers start, for the same reason).
+static var _copying := Mutex.new()
+
+
+static func _copy(n: FastNoiseLite) -> FastNoiseLite:
+	_copying.lock()
+	var m := n.duplicate() as FastNoiseLite
+	_copying.unlock()
+	return m
+
+
+## `batch`'s NOISE at step 1 over the world's rows ry..ry+rh-1, whole rows.
+static func noise_rows(n: FastNoiseLite, size: int, ry: int, rh: int) -> PackedFloat32Array:
+	var m := _copy(n)
+	m.offset = Vector3(n.offset.x, n.offset.y + ry, 0.0)
+	var img := m.get_image(size, rh, false, false, false)
+	img.convert(Image.FORMAT_RF)
+	var out := img.get_data().to_float32_array()
+	for k in out.size():
+		out[k] = out[k] * 2.0 - 0.996078
+	return out
 
 
 ## `field` (as `batch`'s FIELD spec makes it) over the tiles of one rectangle of

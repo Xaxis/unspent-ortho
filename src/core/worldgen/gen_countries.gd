@@ -816,6 +816,10 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 				if c.may_stand(cc, id):
 					one = cc if one == 0 else -1
 			only[id] = maxi(one, 0)
+	# Every type's scores as the image its bands crop, made once.
+	var score_images: Array[Image] = [null]
+	for cc in range(1, types):
+		score_images.append(GenFields.grid_image(c.scores[cc], cw))
 	var assign := func(stride: int, parts: Array[PackedInt32Array]) -> void:
 		GenFields.rows(size, func(y0: int, y1: int) -> void:
 			var counts := PackedInt32Array()
@@ -823,7 +827,7 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 			# The band's scores, two rows more each way for the margin's gradient:
 			# `flat[(cc - 1) * bn + li]`, li the tile's index in the band.
 			var ra := maxi(y0 - 2, 0)
-			var flat := _band_scores(c, ra, mini(y1 + 2, size))
+			var flat := _band_scores(c, score_images, ra, mini(y1 + 2, size))
 			var bn := (mini(y1 + 2, size) - ra) * size
 			for y in range(y0, y1):
 				if y % stride != 0:
@@ -985,10 +989,10 @@ static func fine(c: GenContext, with_blend: bool = true) -> void:
 ## Every type's score upsampled to the world's rows ya..yb, end to end: type cc
 ## at (cc - 1) * rows * size. `GenFields.upsample_rows`, so each value is the one
 ## the whole-world upsample gives that tile.
-static func _band_scores(c: GenContext, ya: int, yb: int) -> PackedFloat32Array:
+static func _band_scores(c: GenContext, images: Array[Image], ya: int, yb: int) -> PackedFloat32Array:
 	var out := PackedFloat32Array()
 	for cc in range(1, c.types):
-		out.append_array(GenFields.upsample_rows(c.scores[cc], c.cw, GenContext.STEP, c.size, ya, yb - ya))
+		out.append_array(GenFields.upsample_rows_of(images[cc], c.cw, GenContext.STEP, c.size, ya, yb - ya))
 	return out
 
 
