@@ -54,9 +54,11 @@ and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
    reason said by the camp.
 5. [ ] **The lab and Ruth's table** (A). `built_halcyon` → `gate_lab`; `was_cia` →
    `gate_meet` (`ruth_signed`, `ruth_volunteered`, `kerr_money`).
-6. [ ] **The second keeper, the Pan Rake** (B+C). The salt flats keeper holds the
-   kitchen (`mem_kitchen`). Salt flats is guaranteed on the home body (worldgen,
-   GEN at landing).
+6. [ ] **The second keeper** (B+C). Whichever keeper stands nearest home, holding a
+   non-key memory (`TESTIMONY_SENTINEL`, beat `gap`). Salt flats can't be guaranteed
+   on home without moving the coast keeper: measured on seeds 1-40 (salt on home in
+   3/40; every home deal moves the Reaper's lair, 90-500 tiles). The Pan Rake and
+   `mem_kitchen` come where salt flats is reached; nothing gates on the kitchen.
 7. [ ] **Vera and the way on** (A). `vera_knew` ("filed under weather"); she names
    the archive across the water: slice 3's lead.
 8. [ ] **Proof** (all). The tour plays the slice unassisted. ★
@@ -116,6 +118,15 @@ Landscape batch 2+3
 (`look/batch3`) and batch 4 props (`l2/placement`) · streaming S4j3/S5c
 (`land/s4j3`, `world/s5c`) · the crossing programs check and long-walk tour ·
 the vent-tender and G10 · walls follow-ups · web frame budgets.
+
+Latent worldgen bugs no main seed hits yet (each moves seeds, so each gets its own GEN
+and a check that the home coast keeper stays put):
+- `gen_treads._never` marks water HARD but not the tiles beside it, so a gouge or step
+  can hang water over a cut (seed 42 at GEN 47, drowned city (1223,756)). Fix: tiles
+  4-adjacent to land water are HARD too; test_the_drowned_city goes red.
+- `Sentinels.gets_out` passes a lair on 6 clear rays, but test_keeper_reach floods for
+  300 tiles (seed 1's crags lair opened 262 at GEN 47). Fix: gets_out floods, with
+  the test's `_opens` moved into Sentinels.
 
 ## The whole game, as slices
 
