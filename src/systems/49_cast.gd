@@ -26,6 +26,10 @@ const RECHECK := 0.5
 ## `model` is the figure while it stands in the world (null while they are away),
 ## `made` the figure itself, built once when they are cast.
 var people: Array[Dictionary] = []
+## Where the story's slots stand in this world (StoryPlan.cast), kept as cast:
+## the sky reads the far shore's from here (19_orbit, the Tether's foot) rather
+## than casting the world a second time.
+var placed: Dictionary = {}
 
 var _since := 0.0
 
@@ -93,7 +97,7 @@ func _cast() -> void:
 	_clear()
 	if game == null or game.world == null:
 		return
-	var placed := StoryPlan.cast(game.world)
+	placed = StoryPlan.cast(game.world)
 	for c: StoryCharacter in StoryCast.all():
 		if not placed.has(c.at):
 			continue
@@ -216,6 +220,19 @@ func _watch(row: Dictionary, from: Vector2) -> void:
 		row.facing = to.angle()
 	model.position = game.world.to_3d(row.pos)
 	model.rotation.y = -float(row.facing)
+
+
+## Stand a cast person somewhere else for a while (the wake's Maren at the
+## water's edge), facing `facing`. Returns where they stood, so the caller can
+## put them back; Vector2.INF when that person is not cast in this world.
+func stand(id: StringName, pos: Vector2, facing: float) -> Vector2:
+	for row: Dictionary in people:
+		if row.character == id:
+			var was: Vector2 = row.pos
+			row.pos = pos
+			row.facing = facing
+			return was
+	return Vector2.INF
 
 
 ## `at cast:ID` in a tour: a spot beside that person, close enough that the `use`

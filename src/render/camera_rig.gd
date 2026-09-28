@@ -680,6 +680,38 @@ func _process(delta: float) -> void:
 	_ease_shoulder(delta)
 	_dt = delta
 	_apply()
+	_look_staged()
+
+
+## A STAGED LOOK (42_stage, its only writer): the view turned from wherever it is
+## toward a world point, or a direction in the sky, by `stage_weight` (0..1,
+## eased there). The eye stays where the lens put it and only turns, and it
+## turns LAST, over everything else that posed it: the shoulder's own settle and
+## the target's lean are each rewritten every frame by their owners, and a look
+## written into them was pulled back as it was made.
+var stage_weight := 0.0
+var stage_point := Vector3.INF
+var stage_dir := Vector3.ZERO
+## A field of view (degrees) the look widens the lens to, eased in with it; 0
+## keeps the lens's own. A thing taller than the lens (the Tether, horizon to
+## Foundry) is framed whole this way, not cut off at one end.
+var stage_fov := 0.0
+
+
+func _look_staged() -> void:
+	if stage_weight <= 0.0:
+		return
+	var want := stage_dir if stage_point == Vector3.INF else stage_point - global_position
+	if want.length() < 1e-4:
+		return
+	want = want.normalized()
+	# Straight up has no "up" to turn about; a look never needs the exact zenith.
+	var up := Vector3.UP if absf(want.y) < 0.999 else Vector3.FORWARD
+	var to := Basis.looking_at(want, up).get_rotation_quaternion()
+	var from := global_basis.get_rotation_quaternion()
+	global_basis = Basis(from.slerp(to, clampf(stage_weight, 0.0, 1.0)))
+	if stage_fov > 0.0 and projection == PROJECTION_PERSPECTIVE:
+		fov = lerpf(fov, stage_fov, clampf(stage_weight, 0.0, 1.0))
 
 
 ## One frame of the glide. Entering from the top takes the yaw the screen is at,

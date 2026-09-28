@@ -65,9 +65,12 @@ static func make() -> SentinelDef:
 
 	# Phase three: stooped on one track, hauling. Its bite takes hold instead of
 	# hurting: it means to put the player under the arch, and the chute's gear at
-	# its back is the last thing left open.
+	# its back is the last thing left open. Pulled loose, the wrench slews the
+	# gantry half round on its tracks and jams it for `torn`, the chute gear
+	# toward the player: it otherwise turns on the spot as fast as they can
+	# circle it, and its lair is fenced either side.
 	var stooped := SentinelPhase.make(&"stooped", 0.28, &"back",
-		{"swing": [520, 170, 560, 900], "reach": 1.8, "width": 2.0, "dmg": 0, "knock": 0.0, "knock_ms": 0, "grip": 4})
+		{"swing": [520, 170, 560, 900], "reach": 1.8, "width": 2.0, "dmg": 0, "knock": 0.0, "knock_ms": 0, "grip": 4, "torn": 2200})
 	stooped.pace = 3.4
 	stooped.dash = 7.0
 	stooped.quick = 260

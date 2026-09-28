@@ -233,6 +233,13 @@
   },
   {
    "kind": "system",
+   "label": "42_stage",
+   "entry": "src/systems/42_stage.gd",
+   "reach": "tools/tour.sh tours/home-coast.tour --scene=title --seed=1",
+   "area": "world-look"
+  },
+  {
+   "kind": "system",
    "label": "42_target",
    "entry": "src/systems/42_target.gd",
    "reach": "tools/tour.sh tours/lockon_top.tour --seed=4 --hour=11 --weather=clear:0 --give=axe_felling:1 --held=axe_felling",
@@ -293,6 +300,13 @@
    "entry": "src/systems/48_raids.gd",
    "reach": "tools/tour.sh tours/raids.tour",
    "area": "machines-fight"
+  },
+  {
+   "kind": "system",
+   "label": "48_wake",
+   "entry": "src/systems/48_wake.gd",
+   "reach": "tools/tour.sh tours/home-coast.tour --scene=title --seed=1",
+   "area": "people-story"
   },
   {
    "kind": "system",

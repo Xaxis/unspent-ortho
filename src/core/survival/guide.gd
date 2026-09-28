@@ -162,7 +162,7 @@ static func goal(game: Game) -> String:
 		return edge
 	if inv.has(&"pick"):
 		if not inv.has(&"iron_ore") and not inv.has(&"iron"):
-			return "Take the pick to the ore in the rock."
+			return _led(&"ore", "Take the pick to the ore in the rock.")
 		# Past the first tools, the long game: the next elite material, and where
 		# -- and a part a room keeps, once the material it follows is held.
 		var part := next_part(game)
@@ -171,27 +171,42 @@ static func goal(game: Game) -> String:
 		var want := next_elite(game)
 		if want != &"":
 			return elite_goal(game, want)
-		return "Take the pick to the ore in the rock."
+		return _led(&"ore", "Take the pick to the ore in the rock.")
 	var fire := _fire(game)
 	if fire == null:
 		if Survival._makeable_build(game, &"fire").is_empty():
-			return "A fire before dark: three driftwood and two stones."
-		return "A fire before dark: lay it on open ground."
+			return _led(&"fire_gather", "A fire before dark: three driftwood and two stones.")
+		return _led(&"fire_lay", "A fire before dark: lay it on open ground.")
 	var at := fire_name(game, fire)
 	if not _cooking_or_has(game, &"charcoal"):
 		if inv.count(&"driftwood") < 4 and inv.count(&"deadwood") < 4:
-			return "Charcoal for a pick: four driftwood or dead wood, burnt at %s." % at
+			return _led(&"charcoal_gather", "Charcoal for a pick: four driftwood or dead wood, burnt at {at}.", at)
 		# **NO KEY IN A GOAL LINE.** This said "(c)" -- a letter typed into CORE,
 		# which this file states two screens down may not read a key at all, and
 		# which is wrong for anybody who rebinds `craft`. The goal says what to
 		# WANT; the `make` lesson says which key, in the player's own keys, and
 		# it is offered at exactly this moment.
-		return "Charcoal for a pick: set it going at %s." % at
+		return _led(&"charcoal_set", "Charcoal for a pick: set it going at {at}.", at)
 	if not inv.has(&"haft"):
-		return "A haft, whittled from wood."
+		return _led(&"haft", "A haft, whittled from wood.")
 	if inv.count(&"scrap") == 0:
-		return "Plate for a pick: turn over the tip."
-	return "A pick, made at %s." % at
+		return _led(&"plate", "Plate for a pick: turn over the tip.")
+	return _led(&"pick", "A pick, made at {at}.", at)
+
+
+## MAREN'S LEAD (ROADMAP slice 1, step 2): once she has given it (the beat
+## `marens_lead`, her talk), the first hour's goals are said in her words, the
+## short form of what she told him and why (StoryContent.LEAD), and the one after
+## the pick points at the Holdfast's camp. Before she has, or for a player who
+## never asks, the plain line: what to want, not why. `{at}` is the fire's name.
+const LEAD_BEAT := &"marens_lead"
+
+
+static func _led(key: StringName, plain: String, at: String = "") -> String:
+	var line := plain
+	if Story.landed(LEAD_BEAT) and StoryContent.LEAD.has(key):
+		line = String(StoryContent.LEAD[key])
+	return line.replace("{at}", at)
 
 
 ## THE EDGE A KEEPER TAKES (SurvivalState.plates, FightRules.bites). Once a
@@ -203,27 +218,58 @@ static func goal(game: Game) -> String:
 const EDGE_KEEPER := {&"coast": "the reaper"}
 const KILN_STONES := 8
 const TEMPER_CHARCOAL := 4
+## THE ONE WHO NAMED IT (ROADMAP slice 1, step 3): once Hob has told him what
+## stands in the yard (the beat `reaper_named`), the lines are the short form of
+## what he said (StoryContent.EDGE) and the keeper has the name he gave it
+## (StoryContent.KEEPER_NAMED). A player who meets it before anyone has told him
+## hears these, plain. `{who}` is the keeper's name, `{at}` the fire's.
+const NAMED_BEAT := &"reaper_named"
+const EDGE_PLAIN := {
+	&"steel_in_hand": "Steel in hand now. Take it to {who}.",
+	&"tempering": "The knife is taking its temper in the kiln. Let it.",
+	&"kiln_stones": "Iron rings off {who}; steel bites. A kiln to temper the knife: eight stones.",
+	&"kiln_lay": "Iron rings off {who}; steel bites. Lay the kiln to temper the knife.",
+	&"fire_for_charcoal": "A fire to burn charcoal: the knife's temper wants four.",
+	&"charcoal_at": "Four charcoal to temper the knife, burnt at {at}.",
+	&"temper": "Temper the knife in the kiln: four charcoal, and the night.",
+	&"rings": "It rings. Iron does not bite that plate.",
+}
+
+
+## The keeper of `land` by the name the player has for it.
+static func keeper_name(land: StringName) -> String:
+	if Story.landed(NAMED_BEAT) and StoryContent.KEEPER_NAMED.has(land):
+		return String(StoryContent.KEEPER_NAMED[land])
+	return String(EDGE_KEEPER.get(land, "the keeper"))
+
+
+## One of the edge's lines: Hob's once he has named the keeper, else plain.
+static func edge_line(key: StringName, who: String = "", at: String = "") -> String:
+	var line := String(EDGE_PLAIN.get(key, ""))
+	if Story.landed(NAMED_BEAT) and StoryContent.EDGE.has(key):
+		line = String(StoryContent.EDGE[key])
+	return line.replace("{who}", who).replace("{at}", at)
 
 
 static func edge_goal(game: Game) -> String:
 	var st := SurvivalState.of(game)
 	for plate: Variant in st.plates:
-		var who: String = EDGE_KEEPER.get(StringName(st.plates[plate]), "the keeper")
+		var who := keeper_name(StringName(st.plates[plate]))
 		if _carries_edge(game, StringName(plate)):
-			return "Steel in hand now. Take it to %s." % who
+			return edge_line(&"steel_in_hand", who)
 		var inv := game.inventory
 		if _cooking_or_has(game, &"knife_shear"):
-			return "The knife is taking its temper in the kiln. Let it."
+			return edge_line(&"tempering", who)
 		if _kiln(game) == null:
 			if inv.count(&"stone") < KILN_STONES:
-				return "Iron rings off %s; steel bites. A kiln to temper the knife: eight stones." % who
-			return "Iron rings off %s; steel bites. Lay the kiln to temper the knife." % who
+				return edge_line(&"kiln_stones", who)
+			return edge_line(&"kiln_lay", who)
 		if not _cooking_or_has(game, &"charcoal") or inv.count(&"charcoal") < TEMPER_CHARCOAL:
 			var fire := _fire(game)
 			if fire == null:
-				return "A fire to burn charcoal: the knife's temper wants four."
-			return "Four charcoal to temper the knife, burnt at %s." % fire_name(game, fire)
-		return "Temper the knife in the kiln: four charcoal, and the night."
+				return edge_line(&"fire_for_charcoal", who)
+			return edge_line(&"charcoal_at", who, fire_name(game, fire))
+		return edge_line(&"temper", who)
 	return ""
 
 

@@ -1215,16 +1215,35 @@ func seen_air() -> Dictionary:
 	return out
 
 
-## The sky that is seen, filled from the same colours the reflected one was.
-func _see_sky(e: Environment, sm: ProceduralSkyMaterial, hour: float, nightly: float, seen := 1.0) -> void:
-	if e.sky == null:
-		return
+## The seen sky on the environment, made the first time it is asked for.
+func _seen_sky_on(e: Environment) -> void:
 	if _seen_sky == null:
 		_seen_sky = ShaderMaterial.new()
 		_seen_sky.shader = preload("res://src/render/sky_eye.gdshader")
 		_plain_sky = e.sky.sky_material
 	if e.sky.sky_material != _seen_sky:
 		e.sky.sky_material = _seen_sky
+
+
+## THE LOOK OUT, FOR ONE FRAME OF THE WARM-UP (01_warm_lights): the sun as the eye
+## level's band casts it (four splits, blended) and the seen sky, so every lit
+## material's program for them is built at the boot and not at the first shoulder
+## (web: 18 programs, a 0.2-0.6 s freeze in pinewood). The next `_look_out` puts
+## back whatever the camera wants.
+func warm_look_out() -> void:
+	var e: Environment = env.environment if env != null else null
+	if e != null and e.sky != null:
+		_seen_sky_on(e)
+	if sun != null:
+		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+		sun.directional_shadow_blend_splits = true
+
+
+## The sky that is seen, filled from the same colours the reflected one was.
+func _see_sky(e: Environment, sm: ProceduralSkyMaterial, hour: float, nightly: float, seen := 1.0) -> void:
+	if e.sky == null:
+		return
+	_seen_sky_on(e)
 	var s := sun_at(hour)
 	var dir := sky_sun(hour, float(s.azimuth))
 	_dome_set(&"dome_seen", clampf(seen, 0.0, 1.0))
