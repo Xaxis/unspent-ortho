@@ -5,12 +5,15 @@
 # measures the going, not the raising.
 #
 #   tools/tour.sh tours/crossing.tour --seed=7 --hour=10
+#   tools/web.sh --tour=tours/crossing.tour --args=--seed=7,--hour=10 --crossing=20 --programs
 
 hour 10
 place shaft
 await raised:underground 400
 await portal 15
 shot 01-at-the-shaft with realm:surface,portal
+# From here --programs counts: the way down must build no program (01_warm_lights).
+echo event crossing
 press use
 await realm:underground 60
 await crossed 5
