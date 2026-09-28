@@ -62,8 +62,10 @@ func test_a_patrol_route_runs_along_the_survey_the_machines_laid_everything_else
 ## Finding the depots, in GRID yardsticks (TestCase.grid_work): a sweep in script
 ## over what the world recorded. The interpreted yardstick drifted 1.57x across
 ## CI's CPUs for it, the grid 1.22x. Calibrated 2026-09-27 alone on four CI CPUs
-## and this laptop: 2.53-2.81 shipped, 5.04-5.58 doubled; the bar between.
-const SITES_BAR := 3.75
+## and this laptop: 2.53-2.81 shipped, 5.04-5.58 doubled. CI alone since then
+## read 1.81-2.09 shipped, 3.60-4.15 doubled, so 3.75 sat inside the doubled
+## spread. The bar is between the highest shipped and the lowest doubled seen.
+const SITES_BAR := 3.2
 
 
 ## The start budget is real (docs/ROADMAP.md): finding the depots is a search

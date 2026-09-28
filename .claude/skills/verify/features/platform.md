@@ -2,10 +2,11 @@
 
 Saving and loading, dev mode, the tour runner.
 
-<!-- covers: system:05_save, system:94_dev, system:98_tour -->
+<!-- covers: system:01_warm_lights, system:05_save, system:94_dev, system:98_tour -->
 
 ## Sub-features
 
+- 01_warm_lights: `src/systems/01_warm_lights.gd`, the constant black light set that keeps every material's light state fixed on the web. Proof: `tools/web.sh --tour=tours/every-room.tour --programs` exits 0 with 0 programs first drawn at any event.
 - 05_save: `src/systems/05_save.gd`, reached by `tools/tour.sh tours/saves.tour`.
 - 94_dev: `src/systems/94_dev.gd`, reached by `tools/tour.sh tours/dev.tour`.
 - 98_tour: `src/systems/98_tour.gd`, reached by `tools/tour.sh tours/smoke.tour`.
