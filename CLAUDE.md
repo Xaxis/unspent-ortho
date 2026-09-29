@@ -30,6 +30,7 @@ tools/web.sh                    # export and boot the web build in headless Chro
 tools/deploy.sh [--prod]        # deploy to Vercel and prove it loads there
 tools/heavy.sh CMD...           # run a tour/shot/render/web job only when the box can take it (two at once)
 tools/tour-sweep.sh [--since REF] # run tours on this checkout, PASS/FAIL each (CI has no GPU: tours run here)
+tools/play.sh [coast|reaper|holdfast|gallery] # play from this checkout, into a named moment (list: tools/play.sh list)
 ```
 
 - **Look at the pictures.** After any visible change, shoot it and Read the PNG. A
