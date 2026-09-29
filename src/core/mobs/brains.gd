@@ -295,7 +295,13 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 		# aimed straight, it ran into the wall, stood, re-aimed and ran into it
 		# again, and a keeper reached as few as 0 of 8 players 14 tiles off
 		# (tests/sentinel/test_keeper_reach.gd).
-		if _round_the_ground(m, sim, hero.pos):
+		# Never with the player already in its strike on a level a blow meets:
+		# there is no way round to a body it is touching, and walking one kept
+		# the Tide Reaper turning on the spot with a player pressed to its plate,
+		# neither biting nor coming round, for a minute and more (a prop beside
+		# the line at seed 1's lair; tests/sentinel/test_reaper_force.gd).
+		var struck := to.length() <= strike_range(m, sim) and sim.meets_hero(m.pos)
+		if not struck and _round_the_ground(m, sim, hero.pos):
 			return
 		if sim.bogged(m):
 			# In a drift off its furrows (FightSim furrows) no run starts: it

@@ -5,6 +5,7 @@ extends TestCase
 ## READING it rather than by standing in front of it — without a person at the keys.
 
 const F := preload("res://tests/fight/fixture.gd")
+const SR := preload("res://tests/fight/shoulder_reader.gd")
 
 
 ## A keeper out on flat ground with the player beside it, as 44_sentinels puts one
@@ -27,34 +28,15 @@ func _fight(land: StringName, kit: Array[StringName] = []) -> Dictionary:
 	return {"sim": sim, "mob": m, "def": def}
 
 
-## Where the working part can be reached from: the side a player has to walk to,
-## `gap` off the body's skin.
-func _at_part(m: MobState, gap: float) -> Vector2:
-	var side := {&"front": 0.0, &"right": PI * 0.5, &"back": PI, &"left": -PI * 0.5}
-	var off: float = side.get(m.part, 0.0)
-	return m.pos + Vector2.from_angle(m.facing + off) * (m.radius + gap)
-
-
-## One pass of the fight a player learns: stand in front of it where it will bite,
-## step round out of the box as the tell starts, and go into the working part while
-## the drum is jammed. Nothing here is a special case for a sentinel — it is the
-## plate rule and the opening every machine has had since M1.
-func _play(sim: FightSim, m: MobState) -> void:
-	var hero := sim.hero
-	var bp := m.blow_phase(sim.now)
-	if bp == &"windup" or bp == &"active":
-		hero.pos = _at_part(m, hero.radius + m.bite.reach + 1.0)
-		hero.facing = (m.pos - hero.pos).angle()
-		return
-	if m.spent(sim.now) or m.stunned(sim.now) or not m.roused() or sim.phase_ready(m):
-		hero.pos = _at_part(m, hero.radius + 0.4)
-		hero.facing = (m.pos - hero.pos).angle()
-		if (sim.reaches_part(m, hero.pos) or sim.phase_ready(m)) and not hero.committed(sim.now):
-			sim.press_swing()
-		return
-	# In front of it, inside its reach: what makes it throw a bite at all.
-	hero.pos = m.pos + Vector2.from_angle(m.facing) * (m.radius + hero.radius + m.bite.reach * 0.5)
-	hero.facing = (m.pos - hero.pos).angle()
+## One pass of the fight a player learns, played by the shoulder reader
+## (tests/fight/shoulder_reader.gd): stand where it will bite, dodge out of the
+## box as the tell is seen, and go into the working part while it stands spent.
+## It moves by the walk and is hurt for real: it is never put anywhere, and its
+## health is never handed back. Downed, the player comes back for another try
+## (up to TRIES) and the keeper keeps what the last one cost it, as SentinelState
+## does. Nothing here is a special case for a sentinel -- it is the plate rule
+## and the opening every machine has had since M1.
+const TRIES := 3
 
 
 ## Fight it down, taking only the openings it gives.
@@ -68,6 +50,9 @@ func _beat(land: StringName, slices: int = 12000, kit: Array[StringName] = []) -
 	var swings := 0
 	var rings := 0
 	var openings := 0
+	var tries := 1
+	var fight_ms := 0.0
+	var reader: Variant = SR.new(sim)
 	for i in slices:
 		sim.slices(1)
 		# What the system does every frame: the phase is the body.
@@ -78,7 +63,8 @@ func _beat(land: StringName, slices: int = 12000, kit: Array[StringName] = []) -
 			parts.append(m.part)
 		if not m.alive:
 			break
-		_play(sim, m)
+		reader.act()
+		var downed := false
 		for e in sim.drain():
 			if e.type == &"swing":
 				swings += 1
@@ -87,11 +73,25 @@ func _beat(land: StringName, slices: int = 12000, kit: Array[StringName] = []) -
 			elif e.type == &"opened":
 				# The machine says so itself: a bite went past and its part is open.
 				openings += 1
-		# The player is never hurt in this fight: it is about the machine.
-		sim.hero.health = FightRules.HEALTH
-		sim.hero.wind = FightRules.WIND
+			elif e.type == &"outcome" and e.outcome in [&"downed", &"carried"]:
+				downed = true
+		if downed:
+			if tries >= TRIES:
+				break
+			# Another try, from the start, at the keeper as the last one left it.
+			tries += 1
+			fight_ms += sim.now
+			var health := m.health
+			f = _fight(land, kit)
+			sim = f.sim
+			m = f.mob
+			m.health = health
+			phase = def.phase_at(m.health_fraction())
+			Sentinels.wear_phase(m, def, phase)
+			reader = SR.new(sim)
+	fight_ms += sim.now
 	return {"mob": m, "def": def, "phases": phase, "parts": parts, "swings": swings,
-		"rings": rings, "openings": openings, "sim": sim}
+		"rings": rings, "openings": openings, "sim": sim, "tries": tries, "seconds": fight_ms / 1000.0}
 
 
 func test_a_keeper_can_be_taken_apart_through_the_openings_it_gives() -> void:
@@ -106,8 +106,9 @@ func test_a_keeper_can_be_taken_apart_through_the_openings_it_gives() -> void:
 		eq(r.phases, def.phases.size() - 1, "%s: through every phase on the way" % land)
 		gt(float(r.openings), 2.0, "%s: it gave %d openings on the way down" % [land, int(r.openings)])
 		lt(float(r.swings), 60.0, "%s: and took %d swings, not a hundred" % [land, int(r.swings)])
-		print("sentinel %s: down in %d swings, %d openings, %d rings, %.1f s of fight"
-			% [land, int(r.swings), int(r.openings), int(r.rings), float((r.sim as FightSim).now) / 1000.0])
+		lt(float(r.tries), TRIES + 0.5, "%s: in %d tries" % [land, int(r.tries)])
+		print("sentinel %s: down in %d swings, %d openings, %d rings, %.1f s of fight over %d tries"
+			% [land, int(r.swings), int(r.openings), int(r.rings), float(r.seconds), int(r.tries)])
 		# The side that is open moved as it came apart: the lesson a boss teaches.
 		var seen := {}
 		for p: StringName in (r.parts as Array[StringName]):
@@ -189,9 +190,10 @@ func test_a_phase_coil_opens_a_keeper_and_does_not_take_it() -> void:
 	for land: StringName in [&"coast", &"salt_flats"]:
 		var bare := _beat(land)
 		var coil := _beat(land, 12000, [&"mod_phase"] as Array[StringName])
-		var tb := float((bare.sim as FightSim).now) / 1000.0
-		var tc := float((coil.sim as FightSim).now) / 1000.0
+		var tb := float(bare.seconds)
+		var tc := float(coil.seconds)
 		print("sentinel %s: bare %.1f s, phase coil %.1f s (%.0f%% less)" % [land, tb, tc, (1.0 - tc / tb) * 100.0])
 		check(not (coil.mob as MobState).alive, "%s: the coil's reader takes it" % land)
 		eq(coil.phases, (coil.def as SentinelDef).phases.size() - 1, "%s: through every phase" % land)
 		check(tc <= tb + 0.02, "%s: never slower with it" % land)
+
