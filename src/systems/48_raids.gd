@@ -171,6 +171,9 @@ func setup(g: Game) -> void:
 	Events.sentinel_fell.connect(_on_sentinel_fell)
 	Events.settlement_founded.connect(_on_founded)
 	Events.fight_ended.connect(_on_fight_ended)
+	Events.works_part_broken.connect(_on_works_part_broken)
+	Events.works_broken.connect(func(region: int, _land: StringName) -> void: _called_back(region))
+	Events.yard_left_dark.connect(func(region: int, _land: StringName) -> void: _called_back(region))
 	if g.options != null and g.options.attention > 0.0:
 		attention_out = clampf(g.options.attention, 0.0, 1.0)
 
@@ -1727,12 +1730,59 @@ func _physics_process(delta: float) -> void:
 ## a row all leave the same holding.
 func sweep() -> void:
 	_come_for_the_seen()
+	_burn_what_is_due()
 	_settle_attention()
 	_felt_interference()
 	_stake_pulled()
 	_escalate()
 	_sync_marks()
 	_forget_old_reads()
+
+
+# --- the roofs a broken housing answers with (`Reprisal`) ----------------------
+
+## WE BREAK THEIR WORKS, THEY BURN A VILLAGE (Vera). The march of each yard's
+## hunters, and every house that has burned: prop id -> the world minute it went.
+var reprisal := Reprisal.new()
+var burned: Dictionary = {}
+## Houses round the roof the hunters were sent for that burn with it.
+const BURN_REACH := 10.0
+
+
+## A housing opened on a live yard: its hunters take the road to the nearest roof.
+func _on_works_part_broken(region: int, yard: Vector2) -> void:
+	if game.clock == null:
+		return
+	var roof := Reprisal.nearest_roof(game.query.props_near(yard, Reprisal.REACH), yard)
+	if reprisal.send(region, roof, game.clock.minutes):
+		_seen["reprisal_sent"] = true
+		Events.sfx.emit(&"alert", game.world.to_3d(yard))
+		Events.message.emit(StoryContent.REPRISAL[&"sent"])
+
+
+## The yard has gone dark, by its housings or its keeper: whoever it sent comes back.
+func _called_back(region: int) -> void:
+	if not reprisal.marching.has(region):
+		return
+	reprisal.call_off(region)
+	Events.message.emit(StoryContent.REPRISAL[&"called_back"])
+
+
+func _burn_what_is_due() -> void:
+	if game.clock == null:
+		return
+	for roof: Vector2 in reprisal.burning_now(game.clock.minutes):
+		var n := 0
+		for q in game.query.props_near(roof, BURN_REACH):
+			# `props_near` answers by the index's rows, a little past `r`: the roof's
+			# own houses are the ones inside it.
+			if q.kind == PropKind.HOUSE and not burned.has(q.id) and q.pos.distance_to(roof) <= BURN_REACH:
+				burned[q.id] = game.clock.minutes
+				n += 1
+		if n > 0:
+			_seen["burned"] = true
+			Events.village_burned.emit(roof)
+			Events.message.emit(StoryContent.REPRISAL[&"burned"])
 
 
 # --- the villages that have seen him (`SnatchNight`) ---------------------------
@@ -2029,7 +2079,8 @@ func _save() -> Variant:
 		out_due[str(v)] = SaveCodec.num(float(_due_again[v]))
 	return {"notices": out_notices, "plans": out_plans, "books": out_books,
 		"regions": out_regions, "next_notice": _next_notice, "next_plan": _next_plan,
-		"came_for": out_came, "due_again": out_due}
+		"came_for": out_came, "due_again": out_due,
+		"reprisal": reprisal.save(), "burned": burned.keys().map(func(id: int) -> Array: return [id, SaveCodec.num(float(burned[id]))])}
 
 
 func _load(v: Variant) -> void:
@@ -2067,6 +2118,11 @@ func _load(v: Variant) -> void:
 			id = region_key(Realm.SURFACE, SaveCodec.to_int(key))
 		_regions[id] = {"razed": SaveCodec.to_int(m.get("razed", 0)),
 			"lost": SaveCodec.to_int(m.get("lost", 0)), "taken": bool(m.get("taken", false))}
+	reprisal.load_from(d.get("reprisal", {}) as Dictionary)
+	burned.clear()
+	for row: Variant in d.get("burned", []):
+		if row is Array and (row as Array).size() >= 2:
+			burned[SaveCodec.to_int(row[0])] = SaveCodec.to_num(row[1])
 	came_for.clear()
 	var came := d.get("came_for", {}) as Dictionary
 	for k: String in came:

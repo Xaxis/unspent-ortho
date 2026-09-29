@@ -5701,6 +5701,19 @@ const TAKEN := {
 	"lost_to": "They took %s back.",
 }
 
+# --- what a broken housing costs (Vera: "We break their works. They burn a village.")
+#
+# Said on the glass as it happens (48_raids, Reprisal). DRAFT, for the story's
+# own writer: flat, and never why (the plan's reasons are the `seeker` beat's).
+const REPRISAL := {
+	# A housing is open and the yard still stands: its hunters are on the road.
+	"sent": "A horn in the yard. Something leaves it, toward the roofs.",
+	# The yard went dark before they got there.
+	"called_back": "The yard is dark. Whatever it sent has nothing to answer to.",
+	# They got there.
+	"burned": "Smoke over the roofs. The hunters got there first.",
+}
+
 # --- what a machine is for (channel 3: machines, by being watched) -------------
 #
 # The slate's read of a machine is already testimony (docs/STORY.md): what it
