@@ -621,10 +621,15 @@ func _witness() -> void:
 	if _lost_one():
 		_witnessed(StoryContent.WITNESS_ON[&"lost"])
 	var price: StringName = StoryContent.WITNESS_ON[&"burned_seen"]
-	if not Story.landed(price) and _burned_in_sight() and Story.beat(price):
+	# SEEING the roofs is its own fact (Holding.wanted reads it): the price can
+	# land from a talk too, where he has only been told of a burning.
+	if not Story.heard(Holding.SEEN_BURNED) and _burned_in_sight():
+		@warning_ignore("return_value_discarded")
+		Story.hear(Holding.SEEN_BURNED)
 		# What he sees first, then what it means; once, as `_witnessed` says.
 		Events.message.emit(StoryContent.REPRISAL[&"seen"])
-		Events.message.emit(StoryContent.beat_says(price))
+		if Story.beat(price):
+			Events.message.emit(StoryContent.beat_says(price))
 	# The three memories the secret is hidden in, all back, in any order: he holds
 	# it. Which version is decided at the channel, by the order he relives them in.
 	if StorySecret.complete():

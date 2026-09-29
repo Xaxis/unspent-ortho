@@ -10,10 +10,16 @@ extends RefCounted
 ## What the goal line asks of (Guide.way_goal) and what the offer is sized by.
 ## Reads the systems by name at call time: core never preloads a system.
 
+## Marked (Story.hear) the first time he comes in sight of roofs a broken yard's
+## hunters burned (49_story). Not the beat `holdfast_price`, which a talk can
+## land too, where he has only been told.
+const SEEN_BURNED := &"seen:burned_roofs"
+
+
 ## Once the holding matters: the plan has taken somebody out of a village that
-## had seen him, or he has seen what a broken yard's hunters leave (the price).
+## had seen him, or he has seen roofs a broken yard's hunters burned.
 static func wanted(game: Game) -> bool:
-	return Story.landed(&"holdfast_price") or taken_from_seen(game)
+	return Story.heard(SEEN_BURNED) or taken_from_seen(game)
 
 
 ## Somebody out of a village that saw him is, or was, in a yard. A village he has
