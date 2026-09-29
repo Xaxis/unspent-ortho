@@ -84,7 +84,7 @@ enum {
 	DECOY_MAST,       # (built)
 	SPOOFER,          # (built)
 	NETTING,          # (built)
-	SHUTTERS,         # (planned) declares SIGNS mask 0.15: the cheapest mask there is.
+	SHUTTERS,         # (built) boards over the beds: the 0.15 mask, and a bar a snatcher must break.
 	## Living: beds for the rescued, who staff the rest.
 	BUNK,             # (built)
 	COUNT,
@@ -270,6 +270,17 @@ const ROWS := {
 		"cost": {&"reeds": 2, &"rag": 2}, "minutes": 35.0, "wear": 0.06,
 		"defence": 0.4,
 	},
+	# BOARDS OVER THE BEDS (slice 2 step 4): wood, scrap and rag, never iron (the
+	# home coast's six ore are spent on the crew and the plate). Shut, they keep a
+	# holding's light in (SIGNS mask) and stand between whoever sleeps behind them
+	# and a snatcher, which has to break them first (48_raids, Settlement.barred).
+	# No wall defence: they bar the beds, not the yard.
+	SHUTTERS: {
+		"name": "shutters", "idiom": Idiom.MADE, "health": 8.0, "solid": 0.4,
+		"cost": {&"timber": 2, &"scrap": 1, &"rag": 1}, "minutes": 45.0, "wear": 0.03,
+		"bars": 4,
+		"card": "Boards over a bed, lashed from inside. No light gets out, and it's hard to take anyone through.",
+	},
 	# The answer that sends the machines' eyes somewhere else. A lashed pole with
 	# plate shards that catch the light and rag that moves, stood out past the
 	# yard: it says what the holding says, louder, from where nobody lives. It is
@@ -329,7 +340,7 @@ const ROWS := {
 ## the moment a player wants one is the moment a piece asks for hands they have
 ## not got. The array stands beside the spinner it is the alternative to.
 const BUILDABLE: Array[int] = [LEAN_TO, HEARTH, HUT, BUNK, STORE, CELLAR, PLOT, CATCHMENT,
-	PALISADE, PLATE_WALL, GATE, NETTING, WIND_SPINNER, SOLAR_ARRAY, BATTERY_STACK, STOLEN_CELL, RADIO_MAST,
+	PALISADE, PLATE_WALL, GATE, NETTING, SHUTTERS, WIND_SPINNER, SOLAR_ARRAY, BATTERY_STACK, STOLEN_CELL, RADIO_MAST,
 	DECOY_MAST, SPOOFER, TURRET]
 
 
@@ -451,6 +462,16 @@ static func store_room(kind: int) -> float:
 
 static func banks(kind: int) -> float:
 	return float(row(kind).get("banks", 0.0))
+
+
+## A piece's own line on the holding app's card, under its idiom, or "".
+static func card(kind: int) -> String:
+	return str(row(kind).get("card", ""))
+
+
+## How many sleepers a piece bars a snatcher from (SHUTTERS): see Settlement.barred.
+static func bars(kind: int) -> int:
+	return int(row(kind).get("bars", 0))
 
 
 static func sleeps(kind: int) -> int:

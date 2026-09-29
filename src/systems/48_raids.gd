@@ -719,6 +719,12 @@ func _warn(s: Settlement, stage: StringName) -> void:
 	p.party = _party_for(s, stage)
 	plans.append(p)
 	Events.raid_warned.emit(s.id, stage)
+	# COVER (slice 2 step 4): warned of anything past a survey, a holding with its
+	# beds shuttered sends its people in behind the boards until it is over.
+	if stage != RaidStage.SURVEY and s.shuttered() and not s.inside:
+		s.inside = true
+		_seen["went_in"] = true
+		Events.message.emit(StoryContent.DEFEND["in"] % s.name)
 	var w := RaidStage.warning(stage)
 	if not w.is_empty():
 		Events.sfx.emit(StringName(w.get("sfx", &"raid_horizon")), game.world.to_3d(_warn_from(s)))
@@ -1392,6 +1398,21 @@ func _blow_of(m: MobState, s: Settlement) -> float:
 ## Somebody is carried off (docs/VISION.md). The snatcher has to stand in
 ## the yard unanswered to do it, so being there is a real answer to it.
 func _drive_snatcher(p: RaidPlan, s: Settlement, m: MobState, r: Dictionary, sim: FightSim) -> void:
+	# Everybody behind the shutters: the boards first, blow by blow, as a breacher
+	# takes a wall (Settlement.all_barred). The wait in the yard starts after.
+	if s.all_barred():
+		var boards := s.shutter_to_break()
+		var bd := m.pos.distance_to(boards.pos)
+		r["tore"] = true
+		r["since"] = sim.now
+		if bd > STRIKE_REACH + m.radius + StructureKind.solid(boards.kind):
+			_march(m, r, boards.pos, bd, sim)
+			return
+		m.line_a = m.pos
+		m.line_b = m.pos
+		m.aim = (boards.pos - m.pos).angle()
+		_strike(p, s, m, r, boards, sim)
+		return
 	var d := m.pos.distance_to(s.centre)
 	if d > 2.0:
 		_march(m, r, s.centre, d, sim)
@@ -1504,6 +1525,18 @@ func _end(p: RaidPlan, s: Settlement, outcome: StringName) -> void:
 		if id >= 0:
 			@warning_ignore("return_value_discarded")
 			_raiders.erase(id)
+	if s != null and s.inside:
+		# Over: whoever went in behind the shutters comes out. Said only when it
+		# cost nobody, since the losing of somebody has its own words.
+		if p.took.is_empty():
+			var tore := false
+			for row: Dictionary in p.party:
+				tore = tore or row.get("role", &"") == RaidRoles.SNATCHER
+			if tore:
+				Events.message.emit(StoryContent.DEFEND["held_snatch"])
+			Events.message.emit(StoryContent.DEFEND["held_raid"] % s.name)
+			_seen["kept_in"] = true
+		s.inside = false
 	if s != null:
 		if outcome != &"left":
 			var was := s.attention

@@ -127,6 +127,55 @@ static func plate_wall_found(k: MeshKit, v: int, ruined: bool) -> void:
 ## Netting strung on leaning poles, weighted with stones, rag tied in it. It hides
 ## what a holding gives off (it is a `mask` in StructureKind.SIGNS), and it looks
 ## like what it is: the last thing anybody had time to do.
+## Boards over a bed, lashed from inside (StructureKind.SHUTTERS): a screen of
+## rough boards on two uprights, leaned in against the bed it shuts, crossed by
+## two lashed bars, one board gone and a cut plate tied over the gap. Wrecked, it
+## is three boards still standing and the rest torn off on the ground.
+static func shutters(k: MeshKit, v: int, ruined: bool) -> void:
+	Parts.hand(k)
+	var half := 0.72
+	var h := 1.15 + Parts.wob(v, 1) * 0.12
+	var back := 0.2 + Parts.wob(v, 2) * 0.08
+	for side: float in [-1.0, 1.0]:
+		var z := side * half
+		Parts.post(k, Vector3(0.0, 0.0, z), Vector3(-back, h + 0.08, z + Parts.lean(v, 3 + int(side), 0.05)), 0.06,
+			Parts.pick(Parts.TIMBER, v, 4 + int(side)))
+	var n := 7
+	var gap := int(Parts.wob(v, 6) * float(n))
+	for i in n:
+		var z0 := lerpf(-half, half, float(i) / float(n)) + 0.015
+		var z1 := lerpf(-half, half, float(i + 1) / float(n)) - 0.015
+		var top := h - Parts.wob(v, 10 + i) * 0.14
+		var col := Parts.pick(Parts.TIMBER, v, 20 + i)
+		var standing := not ruined or i % 3 == 0
+		if i == gap and not ruined:
+			continue
+		if standing:
+			var t := back * top / h
+			Parts.flag(k, Vector3(0.02, 0.04, z0), Vector3(0.02, 0.04, z1), Vector3(0.02 - t, top, z1), Vector3(0.02 - t, top, z0),
+				col, GroundColors.down(col, 0.1))
+		else:
+			# Torn off and thrown down in front of it.
+			var at := Vector3(0.3 + Parts.wob(v, 30 + i) * 0.5, 0.03, lerpf(z0, z1, 0.5) + Parts.lean(v, 40 + i, 0.2))
+			var turn := Parts.wob(v, 50 + i) * PI
+			var along := Vector3(cos(turn), 0.0, sin(turn))
+			k.strut(at - along * top * 0.45, at + along * top * 0.45, 0.035, 4, col)
+	if ruined:
+		return
+	# The crossbars, lashed at each upright.
+	for y: float in [0.32, 0.86]:
+		var t := back * y / h
+		k.strut(Vector3(0.05 - t, y, -half - 0.05), Vector3(0.05 - t, y + Parts.lean(v, 60 + int(y * 10.0), 0.04), half + 0.05), 0.035, 4,
+			Parts.pick(Parts.TIMBER, v, 61 + int(y * 10.0)))
+		Parts.lash(k, Vector3(0.07 - t, y - 0.06, -half), Vector3(0.07 - t, y + 0.06, -half), v, 70 + int(y * 10.0))
+		Parts.lash(k, Vector3(0.07 - t, y - 0.06, half), Vector3(0.07 - t, y + 0.06, half), v, 71 + int(y * 10.0))
+	# The board that went for something else, and a cut plate tied over its gap.
+	var gz := lerpf(-half, half, (float(gap) + 0.5) / float(n))
+	k.push(Transform3D(Basis(Vector3.UP, PI * 0.5) * Basis(Vector3.RIGHT, -atan2(back, h)), Vector3(0.04, 0.12, gz)))
+	Parts.plate(k, 0.13, h * 0.8, v, 80)
+	k.pop()
+
+
 static func netting(k: MeshKit, v: int, ruined: bool) -> void:
 	Parts.hand(k)
 	var n := 3
