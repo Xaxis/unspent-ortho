@@ -6,6 +6,8 @@ class_name RealmWorlds
 ##   RealmWorlds.begin(seed, size, kind)   start raising it, on a worker
 ##   RealmWorlds.ready(seed, size, kind)   is it up yet
 ##   RealmWorlds.take(seed, size, kind)    the world, raised now if it is not
+##   RealmWorlds.going(seed, size, kind)   is a raise of it in flight
+##   RealmWorlds.failed(seed, size, kind)  did its raise end with no world
 ##   RealmWorlds.keep(world)               hand it the world a game already has
 ##
 ## A shaft is visible from a long way off, so the realm behind it is begun while
@@ -31,6 +33,12 @@ static var _gen := 0
 ## key -> [grown seed, size, kind] of each raise in flight, so `forget` can ask
 ## the generation itself to stop (WorldGen.halt) instead of running on for minutes.
 static var _grow: Dictionary = {}
+## key -> true for a raise of this game that ended without a world: whoever
+## waits on it says so instead of waiting for ever (the loading page).
+static var _failed: Dictionary = {}
+## What a raise grows the world with: BootWorld.world unless a test stands in a
+## grower that fails.
+static var grower := Callable()
 
 
 static func key_of(seed_value: int, size: int, kind: StringName) -> String:
@@ -98,6 +106,22 @@ static func begin(seed_value: int, size: int, kind: StringName, full := false) -
 	return false
 
 
+static func going(seed_value: int, size: int, kind: StringName) -> bool:
+	var key := key_of(seed_value, size, kind)
+	_mutex.lock()
+	var task: Variant = _tasks.get(key)
+	_mutex.unlock()
+	return task != null and not WorkerThreadPool.is_group_task_completed(int(task))
+
+
+static func failed(seed_value: int, size: int, kind: StringName) -> bool:
+	var key := key_of(seed_value, size, kind)
+	_mutex.lock()
+	var yes: bool = _failed.has(key)
+	_mutex.unlock()
+	return yes
+
+
 static func ready(seed_value: int, size: int, kind: StringName) -> bool:
 	var key := key_of(seed_value, size, kind)
 	_mutex.lock()
@@ -159,6 +183,7 @@ static func forget() -> void:
 	_grow.clear()
 	_tasks.clear()
 	_worlds.clear()
+	_failed.clear()
 	_mutex.unlock()
 	Portals.forget()
 
@@ -171,9 +196,10 @@ static func _raise(key: String, seed_value: int, size: int, kind: StringName, ge
 		WorldGen.unhalt(Realm.seed_for(seed_value, kind), size, kind)
 	_mutex.unlock()
 	var t0 := Time.get_ticks_msec()
-	var w := BootWorld.world(Realm.seed_for(seed_value, kind), size, kind)
+	var w: WorldData = grower.call(Realm.seed_for(seed_value, kind), size, kind) if grower.is_valid() \
+		else BootWorld.world(Realm.seed_for(seed_value, kind), size, kind)
 	# What a crossing into it would build on the press, built here beside it.
-	if gen == _gen:
+	if gen == _gen and w != null:
 		RealmWarm.prepare(w)
 	# Said, so a run can read when a realm stood (tools/web --play): what a shaft
 	# pressed at any moment would have waited for.
@@ -186,7 +212,10 @@ static func _raise(key: String, seed_value: int, size: int, kind: StringName, ge
 	# A raise begun for a game that has since ended is not this game's world.
 	# Whoever got here first wins: `take` may have raised it while a task ran.
 	if gen == _gen and not _worlds.has(key):
-		_worlds[key] = w
+		if w != null:
+			_worlds[key] = w
+		else:
+			_failed[key] = true
 	_mutex.unlock()
 
 
