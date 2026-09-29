@@ -136,7 +136,7 @@ extends RefCounted
 ## --load=N            boot the save in slot N (0 autosave, 1-3 the player's): its seed,
 ##                     size, clock and place, then everything it holds (saves)
 ## --saves=DIR         keep saves in user://DIR (default user://saves; shots use
-##                     user://tool-saves and each tour user://tool-saves/<tour name>, so
+##                     user://tool-saves and each tour user://tool-saves/<tour name>-<checkout>, emptied as it starts, so
 ##                     they never touch the player's nor each other's) (saves)
 ## --progress=F        --scene=loading: hold the loading page's line at F (0..1) (export)
 ## --probe             after the first frame, check audio, focus and saves and print `web ...` lines (export, tools/web.sh)

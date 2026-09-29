@@ -67,11 +67,13 @@ func test_a_village_is_drawn_one_short_for_each_it_lost_and_whole_again_for_each
 	sys.call(&"took", -1, "", -1, name, region)
 	await _visit(g, v)
 	eq(_drawn(g, v).size(), full - 1, "one taken: one fewer at their doors")
+	check(not g.get_node("folk").call(&"tour_seen", &"home_again"), "not home again while the plan still has them")
 
 	@warning_ignore("return_value_discarded")
 	taken.free_region(region, g.clock.minutes)
 	await _visit(g, v)
 	eq(_drawn(g, v).size(), full, "got back whole: the village is whole again")
+	check(g.get_node("folk").call(&"tour_seen", &"home_again"), "and a tour standing in it can say they are home again")
 	eq(_silent(_drawn(g, v)), 0, "and everybody in it answers")
 
 	var t: Taken.TakenPerson = taken.take(-1, "", -1, name, region, g.clock.minutes - (Taken.RUN_HOURS + 5.0) * 60.0)

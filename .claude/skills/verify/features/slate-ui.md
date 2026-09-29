@@ -19,7 +19,7 @@ The hacked tablet and every app on it: map, carrying, making, gear, reads, journ
 - settlement `src/ui/ui_settlement_screen.gd`: `tools/shot.sh shots/settlement.png --screen=holding`.
 - sheet `src/ui/ui_sheet_screen.gd`: `tools/shot.sh shots/sheet.png --screen=sheet`.
 - 58_guide `src/systems/58_guide.gd` (goal line and key row at wake, then each hint in its moment, retired once used; off in every shot): `tools/tour.sh tours/guide.tour --seed=1 --hour=9 --weather=clear:0 --fit=glide_wing`, `tours/feel.tour` frame `01-wake-the-goal`; `tools/test.sh test_hud,test_slate_says`.
-- 90_ui `src/systems/90_ui.gd`: `tools/tour.sh tours/slate.tour`.
+- 90_ui `src/systems/90_ui.gd`: `tools/tour.sh tours/slate.tour`. Tour claim `goal:KEY`: the pinned goal is Guide's line keyed KEY (`Guide.last_goal_key`), in whoever's words: `tools/test.sh test_goal_claim`.
 
 ## How to reach it
 

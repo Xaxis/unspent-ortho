@@ -33,6 +33,16 @@ static var TEST_ROOT := RunnerHome.path().path_join("saves")
 static var root := TEST_ROOT if OS.get_cmdline_args().has("-s") else PLAYER_ROOT
 
 
+## Every save in `dir`, gone (a tour's own folder, at its start).
+static func _empty(dir: String) -> void:
+	var d := DirAccess.open(dir)
+	if d == null:
+		return
+	for f in d.get_files():
+		@warning_ignore("return_value_discarded")
+		d.remove(f)
+
+
 ## At boot: where saves live (--saves, or the tools' own place), and for --load=N
 ## the save's seed, size, clock and place. A save that cannot be read boots a
 ## new game and says why in the log.
@@ -40,7 +50,18 @@ static func use_options(o: BootOptions) -> void:
 	if o.saves != "":
 		root = "user://".path_join(o.saves)
 	elif o.tour != "":
-		root = TOOL_ROOT.path_join(o.tour.get_file().get_basename())
+		# One folder per tour AND per checkout: user:// is the machine's, and two
+		# worktrees running one tour at once wrote one autosave, which the other
+		# then continued from its title (home-coast.tour played a save three days
+		# in instead of a new game). And a tour starts where its header says, never
+		# from its last run's save: the folder is this run's alone, so emptying it
+		# touches nothing else.
+		# The checkout is the directory tour.sh starts the engine in (empty on the
+		# web, where a tour runs alone anyway).
+		root = TOOL_ROOT.path_join("%s-%08x" % [o.tour.get_file().get_basename(),
+			hash(OS.get_environment("PWD")) & 0xffffffff])
+		if o.load_slot < 0:
+			_empty(root)
 	elif o.shot != "":
 		root = TOOL_ROOT
 	if o.load_slot >= 0:
