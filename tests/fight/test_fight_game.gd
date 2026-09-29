@@ -81,7 +81,7 @@ func test_a_running_game_has_mobs_that_keep_the_contract() -> void:
 	check(ended.has(&"downed"), "downed through the running game: %s" % [ended])
 	gt(game.clock.minutes - before, FightRules.DOWNED_MINUTES, "the clock lost the hours")
 	eq(game.body.health, FightRules.DOWNED_WAKE_HEALTH, "woke hurt")
-	gt(game.body.busy_until, Time.get_ticks_msec() / 1000.0, "and lies a moment before walking")
+	gt(game.body.busy_until, Survival.now_real(), "and lies a moment before walking")
 	eq(sim.living(), 0, "the coast was cleared")
 	check(lines.has(Outcomes.DOWNED_LINE), "and was told so, plainly")
 	# A warden's arrest leaves the player at the side of the track, camera and all.
