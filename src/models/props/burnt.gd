@@ -19,7 +19,9 @@ const WALL := 0.35
 ## Beams that fell in when the roof went, lying from a wall's top to the floor.
 ## A share of the roof's own faces kept instead reads as confetti in the air.
 const BEAMS := 3
-const SOOT := Color(0.055, 0.047, 0.042)
+## Soot is the pen's own darkest ink and never under it (tests/render/
+## test_dark_floor): a char darker than the ink floor is a hole, not a wall.
+static var SOOT: Color = Palette.INK[0]
 
 
 static func burn(k: Kit, seed_value: int) -> void:
@@ -92,7 +94,8 @@ static func _char(kit: MeshKit) -> void:
 			var c := kit.colors[i]
 			# Soot climbs: the foot of a wall keeps a trace of its stone or timber.
 			var burnt := Color(c.r * 0.5, c.g * 0.46, c.b * 0.42).lerp(SOOT, 0.25 + 0.65 * up)
-			burnt.a = c.a
+			# Never under the pen, channel by channel, whatever the wall was.
+			burnt = Color(maxf(burnt.r, SOOT.r), maxf(burnt.g, SOOT.g), maxf(burnt.b, SOOT.b), c.a)
 			verts.append(v)
 			normals.append(kit.normals[i])
 			colors.append(burnt)

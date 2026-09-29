@@ -401,6 +401,7 @@ const GIVES_NOTHING := {
 	PropKind.KILN: "A station, worked at with `c`.",
 	PropKind.HOUSE: "Somebody lives in it, and its bench, wheel and loom are stations (Survival.STATION_KINDS).",
 	PropKind.SIGN: "What a sign gives is its words (StoryProps.READABLE).",
+	PropKind.HOUSE_BURNT: "A neighbour's house the hunters burned: what is left is theirs to come back to, and picking it over is not his to do.",
 	PropKind.CONSOLE: "The screens on the tank a man was grown in are read, never stripped (prop_kind.gd), and one kind cannot tell the threshold site's console from a server field's.",
 	PropKind.GROWTH_TANK: "The tank he was grown in stands at the threshold site; the same kind on the orchards is the same tank, and nothing in it is a material.",
 	PropKind.PLATFORM: "A deck is walked on: its mass is BlackSite.blocks, and there is nothing at hand height to take.",
