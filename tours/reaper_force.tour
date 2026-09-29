@@ -8,18 +8,18 @@
 # stand between it and the body as they do for a player. It walks in from where
 # `near keeper` stands it, reads each tell and dodges out of it, strikes the part
 # while the machine stands spent, and pulls loose when the stooped Reaper grips.
+# From above: over the shoulder a swing goes where the camera looks, and a
+# reader has no hand on the camera.
 # Downed, it comes to at the edge of the keeper's ground and walks back (the
 # next try); the keeper keeps its wounds. The run logs its tries and seconds.
 #   TOUR_FIXED_FPS=60 tools/tour.sh tours/reaper_force.tour --seed=1 --hour=11 --weather=clear:0 --held=knife_shear
 coast calm
-tap shoulder
-await shoulder 3
 near keeper
 await sentinel 12
 wait 4.0
-shot 01-its-first-sight with shoulder,mob:sentinel.coast
+shot 01-its-first-sight with mob:sentinel.coast
 drive res://tests/fight/plate_reader.gd 240 sentinel_dead
 wait 0.8
-shot 02-it-falls-to-the-keys with shoulder,sentinel_dead,sentinel_way:force
+shot 02-it-falls-to-the-keys with sentinel_dead,sentinel_way:force
 wait 2.4
-shot 03-its-hulk-on-the-shore with shoulder,sentinel_dead
+shot 03-its-hulk-on-the-shore with sentinel_dead

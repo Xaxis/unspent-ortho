@@ -75,7 +75,7 @@ func _act() -> void:
 	if hero.held():
 		if now - _last_pull >= 160.0:
 			_last_pull = now
-			sim.press_swing()
+			_hand(&"swing")
 		return
 	var live := _live()
 	if live.is_empty():
@@ -299,7 +299,7 @@ func _rake_crowd(live: Array[MobState]) -> bool:
 		return false
 	hero.move = Vector2.ZERO
 	hero.facing = face
-	sim.press_heavy()
+	_hand(&"heavy")
 	heavies += 1
 	_rake_ready_at = sim.now + FightRules.STALL_EVERY_MS
 	return true

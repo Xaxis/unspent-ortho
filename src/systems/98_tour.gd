@@ -73,7 +73,7 @@ extends GameSystem
 ##                          a player-like driver with `act()` over the fight) for
 ##                          up to SECS or until UNTIL is seen: its walk goes in as
 ##                          the move keys (LockOn.keys_for), its swing and dodge as
-##                          the presses the keys make; a down it comes to from walks
+##                          taps of the actions (TourHands); a down it comes to from walks
 ##                          back to where it began. Logs its tries and seconds.
 ##   dodge DX,DY [SECS]     hold a SCREEN direction and press the dodge key while it
 ##                          is down (the dodge goes that way), walking on for SECS (0.6)
@@ -1860,6 +1860,10 @@ func _drive(path: String, secs: float, until: String) -> bool:
 		printerr("tour %s: no reader at %s" % [_name, path])
 		return false
 	var reader: Object = script.new(sim)
+	var hands := TourHands.new()
+	hands.lock()
+	if "hands" in reader:
+		reader.set("hands", hands)
 	if "human" in reader:
 		reader.set("human", 1)
 	if "home" in reader:
@@ -1877,6 +1881,7 @@ func _drive(path: String, secs: float, until: String) -> bool:
 		if until != "" and _answered(until):
 			ok = true
 			break
+		hands.step()
 		reader.call(&"act")
 		var hero := sim.hero
 		var dir := hero.move
@@ -1885,6 +1890,7 @@ func _drive(path: String, secs: float, until: String) -> bool:
 		game.scripted_seconds = 0.05
 		await get_tree().physics_frame
 	game.scripted_seconds = 0.0
+	hands.release_all()
 	Events.fight_ended.disconnect(on_end)
 	if until != "":
 		_forget(until)
