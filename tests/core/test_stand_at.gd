@@ -1,11 +1,14 @@
 extends TestCase
 ## A BODY IS NEVER PUT WHERE IT CANNOT MOVE. The move (WorldQuery._fits) asks
 ## every corner of a body to be a step from the tile under its middle; a body
-## put down with one corner on the terrace above is refused every step that
-## leaves that corner in its tile, and at a walk no frame's step does: it stands
+## put down with one corner on the terrace above used to be refused every step
+## that left that corner in its tile, and at a walk no frame's step did: it stood
 ## frozen. So every path that PLACES the player (not walks it) goes through
 ## Player.place -> WorldQuery.stand_at, which puts it down whole (body_fits).
 ## Found by a tour: `near keeper` stood the player so on seed 1's snowfield.
+## A walk reached the same spot (tests/core/test_movement.gd, the stair corner),
+## so the move now lets a corner go on over ground it already overhangs: a body
+## stood there steps off it, and placing it whole is still the rule.
 
 const F := preload("res://tests/fight/fixture.gd")
 const Sx := preload("res://tests/save/save_fixture.gd")
@@ -32,13 +35,13 @@ static func _stepped() -> WorldData:
 	return w
 
 
-func test_a_corner_on_the_step_above_freezes_a_body_and_stand_at_puts_it_down_whole() -> void:
+func test_a_body_with_a_corner_on_the_step_above_is_put_down_whole() -> void:
 	var w := _stepped()
 	var q := WorldQuery.new(w)
 	# Its middle below the step, its east corners on it.
 	var bad := Vector2(20.0 - 0.1, 24.5)
 	check(not q.body_fits(bad, R, null, true, FightSim.HERO_TALL), "a body with a corner on the step does not fit")
-	eq(_ways_out(q, bad), 0, "and stood there it cannot take a step any way (the freeze)")
+	gt(float(_ways_out(q, bad)), 0.0, "and stood there it still steps off (no freeze: %d ways of 8)" % _ways_out(q, bad))
 	var put := q.stand_at(bad, R, null, true, FightSim.HERO_TALL)
 	check(q.body_fits(put, R, null, true, FightSim.HERO_TALL), "stand_at puts it down whole (%s)" % put)
 	lt(put.distance_to(bad), 0.6, "a step from where it was asked for (%.2f)" % put.distance_to(bad))
@@ -118,7 +121,7 @@ func test_each_path_puts_the_player_down_where_it_can_walk_off() -> void:
 	if not bad.is_finite():
 		Sx.end(g)
 		return
-	eq(_ways_out(q, bad), 0, "the edge spot freezes a body stood on it")
+	gt(float(_ways_out(q, bad)), 0.0, "a body stood on the edge spot still steps off it (%d ways of 8)" % _ways_out(q, bad))
 	var paths := {
 		"load": func() -> void: SaveCore.load_player(g, {"pos": [bad.x, bad.y], "facing": 0.0}),
 		"dev jump": func() -> void: DevCheats.teleport(g, bad),
