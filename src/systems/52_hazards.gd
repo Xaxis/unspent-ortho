@@ -98,7 +98,10 @@ func started() -> void:
 	_sweep(0.0)
 
 
-func _process(delta: float) -> void:
+## Swept on the fight's step: the pressure slows the legs the next step reads
+## (Survival.update_body), so a sweep per drawn frame fell on another step at
+## every frame rate.
+func _physics_process(delta: float) -> void:
 	if game == null or game.world == null:
 		return
 	_since += delta

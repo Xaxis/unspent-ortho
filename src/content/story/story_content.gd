@@ -356,6 +356,14 @@ const FRAGMENTS := {
 			"",
 			"The next line is only a date. 14 March.",
 		],
+		# THRESHOLD is slice 4's gate: the log reads once the relay below is known.
+		"until": &"war_relay",
+		"locked": [
+			"A researcher's log: hours, and numbers",
+			"beside them in milliseconds.",
+			"",
+			"None of it means anything to you yet.",
+		],
 		"beats": [&"threshold"],
 	},
 	# --- the war ---------------------------------------------------------------

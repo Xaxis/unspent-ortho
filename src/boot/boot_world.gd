@@ -65,6 +65,14 @@ static func offered() -> bool:
 	return yes
 
 
+## True while the world on offer is the one for (seed, size, realm).
+static func offered_for(seed_value: int, size: int, realm: StringName = &"surface") -> bool:
+	_mutex.lock()
+	var yes := _world != null and _world.seed_value == seed_value and _world.size == size and _world.realm == realm
+	_mutex.unlock()
+	return yes
+
+
 static func clear() -> void:
 	offer(null, null)
 

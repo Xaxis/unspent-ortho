@@ -1,8 +1,15 @@
 class_name UiTitle
 extends Node3D
 ## The title: the slate waking over a live coast that drifts slowly past.
-## New game starts on the coast being shown. Built like Game (world, view, sky,
-## camera) but with no player.
+## Built like Game (world, view, sky, camera) but with no player.
+##
+## THE COAST IS A STAND-IN. It is a small island of the chosen seed's own
+## (BootPage.TITLE_COAST tiles), up in a second; the island a new game plays is
+## raised on the pool behind it from the moment it shows (RealmWorlds, surface),
+## and the realms under that island once it stands. New game waits on the loading
+## page for whatever of the raise is left (BootPage._wait_for_island). Where the
+## game's island is no bigger than the coast (a small test world) the coast IS
+## the island, and it is handed over as it is.
 ##
 ## ONE COAST until the player turns the island row. It used to draw a new one
 ## every 36 s, and each is a whole world: 39 s of generation on the web, so the
@@ -58,8 +65,10 @@ var _continue_slot := -1
 var _avatar: Dictionary = {}
 var _avatar_chosen := false
 var _hour := 12.0
-## The island whose realms `_raise_below` began, or -1.
+## The island whose raise `_raise_island` began, or -1.
 var _raised_for := -1
+## Whether the realms under that island have been begun (once it stands).
+var _below_begun := false
 
 
 func setup(o: BootOptions) -> void:
@@ -105,8 +114,15 @@ func setup(o: BootOptions) -> void:
 	character.begun.connect(_on_character_begun)
 	if o.shot != "":
 		# A shot has a few frames, not a second: draw the coast now and show it.
-		_show(WorldGen.generate(seed_value, o.size), seed_value, null, [], true)
+		_show(WorldGen.generate(seed_value, coast_size()), seed_value, null, [], true)
 		_fade = 0.0
+	elif BootWorld.offered_for(seed_value, coast_size()):
+		# The loading page made this coast and its first view: shown now, it fades
+		# straight up, where through the worker it went dark again first (1.5 s).
+		var w := BootWorld.world(seed_value, coast_size())
+		var v := BootWorld.view(w)
+		v.name = "world"
+		_show(w, seed_value, v)
 	else:
 		_begin(seed_value)
 	menu.open()
@@ -129,16 +145,18 @@ func _begin(s: int) -> void:
 	_next_seed = s
 	_next_world = null
 	_next_view = null
-	var size := options.size
+	var size := coast_size()
 	# World, view set-up (the mesher's fields) and the opening are all slow; none of
 	# them touch the tree, so they are made on a worker. Chunks stream in later.
+	# At high priority: Godot keeps low-priority work to a share of the pool, and
+	# behind the slate's two bakes this waited 3 s on the web before it began.
 	_task = WorkerThreadPool.add_task(func() -> void:
 		var w := BootWorld.world(s, size)
 		var v := BootWorld.view(w)
 		v.name = "world"
 		_next_opening = UiTitle.opening(w)
 		_next_view = v
-		_next_world = w)
+		_next_world = w, true)
 
 
 ## Show world `w`. `v` is its view, already set up (or null to set one up now).
@@ -165,18 +183,23 @@ func _show(w: WorldData, s: int, v: WorldView = null, open: Array = [], now: boo
 	sky.set_hour(_hour)
 	if now:
 		view.ensure_near(_focus)
-	_raise_below(w, s)
+	_raise_island(w, s)
 	camera.snap_to(w.to_3d(_focus))
 	_shown_for = 0.0
 	menu.queue_redraw()
 
 
-## THE REALMS UNDER THE ISLAND SHOWN, RAISED WHILE THE TITLE IS READ. The pool
-## is idle on the title, so the worlds behind this island's shafts are begun
-## on all of it (`RealmWorlds.begin` full); the game that follows keeps them to
-## one worker, and a shaft pressed early in it finds its world standing or
-## nearly. Another island shown lets go of the last one's.
-func _raise_below(w: WorldData, s: int) -> void:
+## How many tiles across the title's coast is: the stand-in's size, or the
+## game's own where that is smaller.
+func coast_size() -> int:
+	return mini(options.size, BootPage.TITLE_COAST)
+
+
+## THE ISLAND BEHIND THE COAST, RAISED WHILE THE TITLE IS READ. The pool is idle
+## on the title, so the island's raise has all of it (`RealmWorlds.begin` full);
+## the realms under it follow once it stands (`_step_island`), and the game that
+## follows keeps them to one worker. Another island chosen lets go of the last.
+func _raise_island(w: WorldData, s: int) -> void:
 	if not BootPage.has_threads():
 		return
 	GenFields.lean = false
@@ -184,8 +207,33 @@ func _raise_below(w: WorldData, s: int) -> void:
 		if _raised_for != -1:
 			RealmWorlds.forget()
 		_raised_for = s
-	for p: Portal in w.shafts:
-		RealmWorlds.begin(s, w.size, p.to_realm, true)
+		_below_begun = false
+	_step_island()
+
+
+## Keep the island's raise going (a begin refused while the last island's halted
+## raise finishes is asked again), and the realm under it beside it: every shaft
+## of a world goes to the realm beyond its own (Portals), so which realm that is
+## does not wait on the island. It takes one worker, and the island the rest; begun
+## only once the island stood, it was still raising 95 s into a game started at once.
+func _step_island() -> void:
+	if _raised_for < 0 or _below_begun:
+		return
+	var n := options.size
+	@warning_ignore("return_value_discarded")
+	RealmWorlds.begin(_raised_for, n, Realm.beyond(Realm.SURFACE))
+	# Where the coast is the whole island (a small world) there is nothing to raise.
+	var island: WorldData = world if world != null and world.size == n and world.seed_value == _raised_for else null
+	if island == null:
+		if not RealmWorlds.ready(_raised_for, n, Realm.SURFACE):
+			@warning_ignore("return_value_discarded")
+			RealmWorlds.begin(_raised_for, n, Realm.SURFACE, true)
+			return
+		island = RealmWorlds.take(_raised_for, n, Realm.SURFACE)
+	_below_begun = true
+	for p: Portal in island.shafts:
+		@warning_ignore("return_value_discarded")
+		RealmWorlds.begin(_raised_for, n, p.to_realm, true)
 
 
 ## Where the title's drift begins and which way it goes: [focus: Vector2, heading:
@@ -263,6 +311,7 @@ func _process(delta: float) -> void:
 	if _starting and _fade >= 1.0:
 		_start_game()
 		return
+	_step_island()
 	_fade = move_toward(_fade, _fade_to, delta / FADE_SECONDS)
 	menu.fade = _fade
 	if world == null:
@@ -358,6 +407,10 @@ func _start_game() -> void:
 		o.avatar = _avatar.duplicate(true)
 		# A player's new game wakes in the surf (48_wake).
 		o.wake = true
+	if o.seed_value != _raised_for and _raised_for != -1:
+		# A save from another island: what was raised behind the title is not its world.
+		RealmWorlds.forget()
+		_raised_for = -1
 	var parent := get_parent()
 	menu.close(true)
 	# The coast on show is the new game's world (not a continued save's elsewhere):

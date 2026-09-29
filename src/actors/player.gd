@@ -106,12 +106,19 @@ func drive(move: Vector2, run: bool, delta: float) -> void:
 	_sync(delta)
 
 
-## After the simulation stepped: take the hero's place and draw it. `frozen` holds the pose (hitstop).
-func sync_view(delta: float, frozen: bool = false) -> void:
+## After the simulation stepped: take the hero's place, so what reads `pos` on
+## the next step (the ground under it, the weather on it, a take in front of
+## it) reads where the body is and not where it was last drawn.
+func take_place() -> void:
 	if hero != null:
 		pos = hero.pos
 		facing = hero.facing
 		speed = hero.speed
+
+
+## Take the hero's place and draw it. `frozen` holds the pose (hitstop).
+func sync_view(delta: float, frozen: bool = false) -> void:
+	take_place()
 	_sync(0.0 if frozen else delta)
 
 
