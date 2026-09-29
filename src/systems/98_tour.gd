@@ -1881,7 +1881,6 @@ func _drive(path: String, secs: float, until: String) -> bool:
 		return false
 	var reader: Object = script.new(sim)
 	var hands := TourHands.new()
-	hands.lock()
 	if "hands" in reader:
 		reader.set("hands", hands)
 	if "human" in reader:

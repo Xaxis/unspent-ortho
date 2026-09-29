@@ -5,19 +5,14 @@ extends RefCounted
 ## real actions the fight reads (40_fight `_read_input`): a swing is a tap of
 ## `swing` (thrown on the key coming up), a heavy blow is `swing` held past
 ## FightRules.HEAVY_HOLD_MS, a dodge a tap of `dodge`. Nothing is pressed into
-## the simulation directly. `lock()` holds the target key (42_target), as a player
-## fighting one body does: it faces what is locked and a swing goes at it.
+## the simulation directly. The target key is not held: a lock bends the walk
+## round the body (LockOn.step), and the readers were written for a free walk
+## (a played force fight took 360 s and two tries locked, 44.6 s and one free).
 
 var _down := {}
 ## Actions just let go: kept up for a frame, so the fight sees the key come up
 ## (a swing is thrown on the key coming up; pressed again at once it is a hold).
 var _up := {}
-var _locked := false
-
-
-func lock() -> void:
-	Input.action_press(&"target")
-	_locked = true
 
 
 func press(verb: StringName) -> void:
@@ -49,6 +44,3 @@ func release_all() -> void:
 	for action: StringName in _down.keys():
 		Input.action_release(action)
 	_down.clear()
-	if _locked:
-		Input.action_release(&"target")
-		_locked = false

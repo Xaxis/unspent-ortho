@@ -120,14 +120,22 @@ const STATION_KINDS := {PropKind.FIRE: [&"fire"], PropKind.BENCH: [&"bench"], Pr
 const BUILD_KINDS := {&"fire": PropKind.FIRE, &"bench": PropKind.BENCH, &"kiln": PropKind.KILN}
 
 
-## Real seconds, unless a shot runs survival on fixed frames (BootOptions --hold):
-## then the system advances `fixed_now` by `fixed_step` each frame and stops.
+## The body's own seconds (a take, a meal, coming to, the jump's and the dash's
+## lock), unless a shot runs survival on fixed frames (BootOptions --hold): then
+## the system advances `fixed_now` by `fixed_step` each frame and stops.
+## Counted in physics steps, the step the fight and the held keys run on: the
+## same as the wall's seconds while the game keeps up, and the same number of
+## steps on any box when it does not (a played test on a fixed step, TestCase
+## stepped_now; on the wall's clock a take ended after a different number of
+## the fight's steps on every run).
 static var fixed_now := -1.0
 static var fixed_step := 0.0
 
 
 static func now_real() -> float:
-	return fixed_now if fixed_now >= 0.0 else Time.get_ticks_msec() / 1000.0
+	if fixed_now >= 0.0:
+		return fixed_now
+	return float(Engine.get_physics_frames()) / float(Engine.physics_ticks_per_second)
 
 
 # --- Stations -------------------------------------------------------------

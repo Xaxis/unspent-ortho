@@ -78,22 +78,29 @@ func _begin(point: Vector3, dir: Vector3, hold: float, reason: StringName) -> bo
 	return true
 
 
-func _process(delta: float) -> void:
+## The look's time runs on the physics step, the step the fight and the held
+## keys run on: on the frame's own clock a loaded box held the keys for a
+## different number of fight steps than an idle one (tests/sentinel/test_ways).
+func _physics_process(delta: float) -> void:
 	if not looking() or game == null or game.camera == null:
 		return
 	_t += delta
 	# The body is held for the look: the move it is driven by is none.
 	game.scripted_move = Vector2.ZERO
 	game.scripted_seconds = maxf(game.scripted_seconds, 0.1)
-	var total := TURN * 2.0 + _hold
+	if _t >= TURN * 2.0 + _hold:
+		_end()
+
+
+func _process(_delta: float) -> void:
+	if not looking() or game == null or game.camera == null:
+		return
 	var w := 1.0
 	if _t < TURN:
 		w = smoothstep(0.0, 1.0, _t / TURN)
 	elif _t > TURN + _hold:
 		w = smoothstep(0.0, 1.0, 1.0 - (_t - TURN - _hold) / TURN)
 	game.camera.stage_weight = w
-	if _t >= total:
-		_end()
 
 
 func _end() -> void:

@@ -164,7 +164,7 @@ func _physics_process(delta: float) -> void:
 			input = Vector2(_walk_apart(&"move_right") - _walk_apart(&"move_left"),
 				_walk_apart(&"move_down") - _walk_apart(&"move_up")).limit_length(1.0)
 		run = Input.is_action_pressed("run")
-	if Time.get_ticks_msec() / 1000.0 < body.busy_until:
+	if Survival.now_real() < body.busy_until:
 		input = Vector2.ZERO
 	# The camera's yaw as it is now, lean and all (CameraRig.yaw_now): the keys
 	# must go on matching the screen while a target lock leans the frame. Over the

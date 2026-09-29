@@ -20,7 +20,6 @@ func _init(g: Game, r: Variant) -> void:
 	game = g
 	reader = r
 	reader.hands = hands
-	hands.lock()
 
 
 func step() -> void:

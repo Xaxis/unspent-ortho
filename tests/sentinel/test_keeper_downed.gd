@@ -46,6 +46,7 @@ func test_a_player_the_reaper_downs_comes_to_at_the_edge_of_its_ground() -> void
 	var before := g.clock.minutes
 	# Its bite takes the last of the player's health.
 	sim.hero.last_hit_by = m
+	sim.hero.last_hit_at = sim.now
 	sim.hero.health = 0
 	sim._end(&"downed")
 	await _frames(4)
@@ -58,4 +59,38 @@ func test_a_player_the_reaper_downs_comes_to_at_the_edge_of_its_ground() -> void
 	await _frames(10)
 	check(reaper.body == null, "and it is not put out on top of them")
 	eq(reaper.health, wounds, "it keeps what the try cost it")
+	Sx.end(g)
+
+
+## Downed by something else (hunger, the cold) long after the keeper's last
+## blow, the player is not the keeper's: they come to where they fell, and its
+## toll is not charged. The last blow the body took was read as the down's cause
+## however old it was, so a player starving at the far end of a pipe woke at the
+## Reaper's edge (test_ways, starving it by hand).
+func test_a_down_long_after_its_blow_is_not_the_keepers() -> void:
+	Sx.use_root("keeper-downed-late")
+	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0"])
+	var sim: FightSim = g.player.sim
+	var reaper: SentinelState = null
+	for s: SentinelState in Sx.system(g, "44_sentinels").call(&"states"):
+		if s.land == &"coast" and not s.fallen and s.region >= 0:
+			reaper = s
+			break
+	var at := reaper.lair + Vector2(Sentinels.PUT_OUT + 6.0, 0.0)
+	for k in 16:
+		var p := reaper.lair + Vector2.from_angle(TAU * k / 16.0) * (Sentinels.PUT_OUT + 6.0)
+		if g.query.standable(floori(p.x), floori(p.y)):
+			at = p
+			break
+	var m := sim.add_mob(Sentinels.for_land(&"coast").kind, reaper.lair)
+	g.player.place(at)
+	await frames(3)
+	var here := g.player.pos
+	# Its blow, a minute of the fight ago; then the body gives out.
+	sim.hero.last_hit_by = m
+	sim.hero.last_hit_at = sim.now - 60000.0
+	sim.hero.health = 0
+	sim._end(&"downed")
+	await frames(4)
+	lt(g.player.pos.distance_to(here), 2.0, "they come to where they fell (%.1f tiles off)" % g.player.pos.distance_to(here))
 	Sx.end(g)

@@ -191,8 +191,15 @@ func _reaper(g: Game) -> SentinelState:
 ## in along its pipe would, then wait on the dark. STARVE's words: "The intake
 ## feeds it. Rob the intake."
 func test_robbing_its_feeds_by_hand_starves_it() -> void:
+	if not stepped_now():
+		return
 	Sx.use_root("ways-starve")
-	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear"])
+	# Robbing eight works is hours of the clock: a player going to do it carries
+	# something to eat, and eats when the body says so.
+	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear", "--give=fish:6"])
+	# Bodies numbered from the same place whatever ran before in this process:
+	# the reader's hands are hashed on a body's id (Reader.human).
+	MobState._next_id = 900000
 	var s := _reaper(g)
 	check(s != null, "seed 1 holds a reaper")
 	if s == null:
@@ -218,31 +225,66 @@ func test_robbing_its_feeds_by_hand_starves_it() -> void:
 	var thefts := 0
 	for q in works:
 		var away := (q.pos - s.lair).normalized() if q.pos.distance_to(s.lair) > 0.1 else Vector2.RIGHT
-		for take in 4:
+		for take in 8:
 			if g.world.depleted.has(q.id):
 				break
-			# A theft stirs it (34_works: a plan work opened tells its machines).
+			# A theft stirs it (34_works: a plan work opened tells its machines),
+			# and a fight still on refuses a long take ("Not with that so close").
 			# A player goes off out of its ground until it has settled, and back.
 			var m: MobState = s.body
-			if m != null and (m.disturbed or m.roused()):
+			if (m != null and (m.disturbed or m.roused() or m.mood == MobState.ALERTED)) or g.player.sim.fight_on or Survival.threat_near(g):
+				# Off out of its ground until it has settled, and back.
 				g.player.place(s.lair + away * Sentinels.PUT_OUT * 2.0)
-				var w0 := Time.get_ticks_msec()
-				while s.body != null and Time.get_ticks_msec() - w0 < 60000:
-					await frames(5)
-				waited += (Time.get_ticks_msec() - w0) / 1000.0
-			g.player.place(q.pos + away * (q.solid + 0.7), (-away).angle())
+				var w0 := g.player.sim.now
+				while (s.body != null or g.player.sim.fight_on) and g.player.sim.now - w0 < 60000.0:
+					await tree.physics_frame
+				waited += (g.player.sim.now - w0) / 1000.0
+			# Back in on the far side of its lair from the work: it comes out
+			# facing that way, and the work is taken behind its back.
+			if s.body == null and q.pos.distance_to(s.lair) < 8.0:
+				g.player.place(_off_its_guard(g, s, -away))
+				for f in 30:
+					await tree.physics_frame
+			# Beside the work, and out of the keeper's eye where there is a side of
+			# it that is: a player robbing its intake keeps behind its back.
+			if Condition.hours_to_full(g.body.fed_until, g.clock.minutes) >= 4.0 and Survival.best_food(g) != &"":
+				@warning_ignore("return_value_discarded")
+				Survival.eat(g, Survival.best_food(g))
+			# Coming to after a down, the body is busy a moment (40_fight _wake).
+			for f in 2000:
+				if not Survival.busy(g):
+					break
+				await tree.physics_frame
+			var spot := _unseen_beside(g, q, s.body)
+			g.player.place(spot, (q.pos - spot).angle())
 			await frames(2)
-			if not Survival.use(g):
+			var used := Survival.use(g)
+			if not used:
 				var t := Survival.use_target(g)
-				for mm: MobState in g.player.sim.mobs:
-					if mm.alive and not mm.removed and Senses.chebyshev(mm.pos, g.player.pos) <= Survival.THREAT_RADIUS:
-						print("  threat? %s mood=%s disturbed=%s disp=%s at_work=%s roused=%s fight_on=%s" % [mm.kind, mm.mood, mm.disturbed, mm.disposition, mm.at_work(), mm.roused(), g.player.sim.fight_on])
-				refused[PropKind.NAMES[q.kind]] = "%s (aimed at %s, said %s)" % [q.pos.distance_to(s.lair), PropKind.NAMES[t.kind] if t != null else "nothing", said.back() if not said.is_empty() else ""]
+				var line: String = said.back() if not said.is_empty() else ""
+				refused[PropKind.NAMES[q.kind]] = "%s (aimed at %s, said %s)" % [q.pos.distance_to(s.lair), PropKind.NAMES[t.kind] if t != null else "nothing", line]
+				if line == Survival.DARK_LINE and not g.body.lamp_lit:
+					# Hours gone after a down and night come on: the lamp, lit with its key.
+					Input.action_press(&"lamp")
+					await tree.physics_frame
+					await tree.process_frame
+					Input.action_release(&"lamp")
+					await tree.physics_frame
+					said.clear()
+					continue
+				if line == Survival.THREAT_LINE or line == Outcomes.KEEPER_DOWNED_LINE:
+					# Seen and turned on (or downed by it): off again until it
+					# settles, and another go.
+					said.clear()
+					continue
 				break
 			thefts += 1
-			var t0 := Time.get_ticks_msec()
-			while not SurvivalState.of(g).job.is_empty() and Time.get_ticks_msec() - t0 < 4000:
-				await frames(1)
+			# The take itself is a real second and a bit (Survival.WORK_SECONDS):
+			# waited out in frames, however many that is on this box.
+			for f in 20000:
+				if SurvivalState.of(g).job.is_empty():
+					break
+				await tree.physics_frame
 	Events.message.disconnect(hear)
 	var robbed := 0
 	for q in works:
@@ -251,11 +293,37 @@ func test_robbing_its_feeds_by_hand_starves_it() -> void:
 	eq(robbed, works.size(), "every work that fed it is robbed out, in the world")
 	# Away from it, and the dark counted.
 	g.player.place(s.lair + Vector2(Sentinels.PUT_OUT * 2.0, 0.0))
-	var t0 := Time.get_ticks_msec()
-	while not s.fallen and Time.get_ticks_msec() - t0 < 12000:
-		await frames(5)
+	var t0 := g.player.sim.now
+	while not s.fallen and g.player.sim.now - t0 < 12000.0:
+		await tree.physics_frame
 	check(s.fallen and s.how == def.way_of(SentinelWay.STARVE).id(), "and it stands dark and keeps nothing (%s)" % s.how)
 	Sx.end(g)
+
+
+## Standable ground 12 tiles off its lair on the `away` side (or round from it):
+## outside the guard it turns on a player inside, inside the ground it is put out on.
+func _off_its_guard(g: Game, s: SentinelState, away: Vector2) -> Vector2:
+	for k in 16:
+		var p := s.lair + away.rotated(float((k + 1) / 2) * (TAU / 16.0) * (1.0 if k % 2 == 0 else -1.0)) * 12.0
+		if g.query.standable(floori(p.x), floori(p.y)) and g.world.same_body(p, s.lair):
+			return p
+	return s.lair + away * 12.0
+
+
+## A spot to stand beside `q` and take from it, as far out of `m`'s view (the
+## angle off its facing) as the ground allows.
+func _unseen_beside(g: Game, q: WorldProp, m: MobState) -> Vector2:
+	var best := Vector2.INF
+	var best_off := -1.0
+	for k in 16:
+		var p := q.pos + Vector2.from_angle(TAU * k / 16.0) * (q.solid + 0.7)
+		if not g.query.standable(floori(p.x), floori(p.y)) or not g.query.body_fits(p, Tuning.PLAYER_RADIUS, null, true, FightSim.HERO_TALL):
+			continue
+		var off := 0.0 if m == null else absf(wrapf((p - m.pos).angle() - m.facing, -PI, PI))
+		if off > best_off:
+			best_off = off
+			best = p
+	return best if best.is_finite() else q.pos + Vector2.RIGHT * (q.solid + 0.7)
 
 
 const PR := preload("res://tests/fight/plate_reader.gd")
@@ -300,8 +368,11 @@ func _fight_it(g: Game, s: SentinelState, at: Vector2, reader: Variant, seconds:
 			downs[0] += 1
 	Events.fight_ended.connect(on_end)
 	var t0 := sim.now
-	var until := Time.get_ticks_msec() + int(seconds * 1000.0 * 4.0)
-	while not s.fallen and sim.now - t0 < seconds * 1000.0 and Time.get_ticks_msec() < until:
+	# On the fight's own clock, never the wall's: the same steps on any box. A
+	# frame cap stands in for a hang guard (the hitstop holds the clock a while).
+	var frames_left := int(seconds * 60.0 * 3.0)
+	while not s.fallen and sim.now - t0 < seconds * 1000.0 and frames_left > 0:
+		frames_left -= 1
 		d.step()
 		await tree.physics_frame
 	Events.fight_ended.disconnect(on_end)
@@ -314,8 +385,13 @@ func _calm(g: Game) -> void:
 
 
 func test_by_force_from_firm_ground_it_falls_to_blows_and_never_founders() -> void:
+	if not stepped_now():
+		return
 	Sx.use_root("ways-force")
 	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear"])
+	# Bodies numbered from the same place whatever ran before in this process:
+	# the reader's hands are hashed on a body's id (Reader.human).
+	MobState._next_id = 900000
 	var s := _reaper(g)
 	check(s != null, "seed 1 holds a reaper")
 	if s == null:
@@ -341,8 +417,13 @@ func test_by_force_from_firm_ground_it_falls_to_blows_and_never_founders() -> vo
 
 
 func test_held_out_on_the_flats_it_founders() -> void:
+	if not stepped_now():
+		return
 	Sx.use_root("ways-founder")
 	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear"])
+	# Bodies numbered from the same place whatever ran before in this process:
+	# the reader's hands are hashed on a body's id (Reader.human).
+	MobState._next_id = 900000
 	var s := _reaper(g)
 	check(s != null, "seed 1 holds a reaper")
 	if s == null:

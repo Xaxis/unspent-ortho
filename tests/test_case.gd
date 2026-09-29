@@ -430,6 +430,31 @@ func yard_lt(us: float, doubled_us: float, yard: float, bar: float, what: String
 		print("  UNMEASURED %s doubled: read %.2fx the shipped, not twice — the run was disturbed, re-run it alone" % [what, r2 / maxf(r, 0.0001)])
 
 
+## **A TEST PLAYED IN A RUNNING GAME RUNS ON A FIXED STEP.** Headless, the game
+## steps by the wall's clock: a loaded box runs more physics steps to a frame than
+## an idle one, the camera and the held keys fall out of step with the fight, and
+## the same play comes out differently (a lure that founders in 21 s idle took
+## 28 s loaded and none at all on CI). So a played test asks this first:
+## tools/check.sh sets UNSPENT_STEPPED_LATER for its shards, the test is written
+## there and returns, and it is run again after the shards with --fixed-fps and
+## UNSPENT_STEPPED set. A plain local run plays it at once (TEST_FIXED_FPS=60
+## tools/test.sh plays it stepped).
+func stepped_now() -> bool:
+	if OS.get_environment("UNSPENT_STEPPED") != "":
+		return true
+	var later := OS.get_environment("UNSPENT_STEPPED_LATER")
+	if later == "":
+		return true
+	var f := FileAccess.open(later, FileAccess.READ_WRITE if FileAccess.file_exists(later) else FileAccess.WRITE)
+	if f == null:
+		return true
+	f.seek_end()
+	f.store_line(current)
+	f.close()
+	print("  %s -- PLAYED AGAIN ON A FIXED STEP after them" % current)
+	return false
+
+
 ## Whether this cost is to be judged later, alone (UNSPENT_COSTS_LATER, set by
 ## tools/check.sh for its shards): the test is written to the file, `said` is
 ## printed, and the caller judges nothing here. EVERY cost bar goes through it,

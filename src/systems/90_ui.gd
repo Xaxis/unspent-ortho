@@ -463,7 +463,7 @@ func _feed_hud() -> void:
 	if game.talking and not hud.talking:
 		hud.messages.clear()
 	hud.talking = game.talking
-	var busy := Time.get_ticks_msec() / 1000.0 < b.busy_until
+	var busy := Survival.now_real() < b.busy_until
 	if not UiRules.hint_allowed(busy, game.input_blocked(), get_tree().get_nodes_in_group(&"mobs"), game.player.pos):
 		hud.set_hint("")
 		return
