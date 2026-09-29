@@ -4,7 +4,10 @@
 # morning. Nothing here is a coordinate: `at gate:ID` asks the story where the
 # gate stands, and `at cast:NAME` where a person stands in whichever year he is in.
 #
-#   tools/tour.sh tours/before.tour --seed=1 --hour=2 --weather=clear:0 --beats=body_new
+#   tools/tour.sh tours/before.tour --seed=1 --hour=2 --weather=clear:0 --beats=body_new,built_halcyon,was_cia
+#
+# Kerr and Priya stand in the Before only once he has felt that he built HALCYON,
+# and Ruth once he has felt who he reported to (their `appears_when`).
 coast calm
 wait 0.6
 

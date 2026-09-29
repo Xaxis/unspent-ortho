@@ -43,6 +43,7 @@ const Mesas := preload("res://src/models/props/mesas.gd")
 const Materials := preload("res://src/models/props/materials.gd")
 const FallenTower := preload("res://src/models/props/fallen_tower.gd")
 const SprayerGantry := preload("res://src/models/props/sprayer_gantry.gd")
+const DocBox := preload("res://src/models/props/doc_box.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -301,6 +302,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Materials.build(k, kind, variant, country)
 		PropKind.SPRAYER_GANTRY:
 			SprayerGantry.build(k, variant, country)
+		PropKind.DOC_BOX:
+			DocBox.build(k, variant, country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)

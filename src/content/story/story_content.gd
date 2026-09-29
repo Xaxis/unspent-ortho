@@ -309,7 +309,14 @@ const FRAGMENTS := {
 		"beats": [&"built_halcyon", &"priya_warned"],
 	},
 	&"handler_note": {
-		"kind": &"notebook", "title": "a typed page, folded small", "lands": [],
+		"kind": &"notebook", "title": "a steel document box, used as a table", "lands": [],
+		# Shut until the lab has been felt: he reaches the camp before the yard, and
+		# STORY's gates go house, lab, then Ruth's table.
+		"until": &"built_halcyon",
+		"locked": [
+			"A typed page, folded small: names and a code word.",
+			"None of it means anything to you yet.",
+		],
 		"lines": [
 			"WHITETHORN  /  ASSET CAIRN-1",
 			"",
@@ -320,6 +327,24 @@ const FRAGMENTS := {
 			"he always volunteers",
 		],
 		"beats": [&"was_cia"],
+	},
+	&"yard_commits": {
+		"kind": &"terminal", "title": "the yard's oldest screen", "lands": [],
+		# The same last changes as `commits`, where he made them: dark to him until
+		# the Reaper is down and the yard stops running on it.
+		"until": &"reaper_down",
+		"locked": [
+			"A screen in the yard, busy with its work.",
+			"IN USE. OPERATOR NOT REQUIRED.",
+		],
+		"lines": [
+			"7f3a  memory module, first pass (emarr)",
+			"7f3b  self-model, do not merge (pnand)",
+			"7f3c  merged anyway (emarr)",
+			"",
+			"Nothing after that. Nothing ever again.",
+		],
+		"beats": [&"built_halcyon", &"priya_warned"],
 	},
 	&"hale_log": {
 		"kind": &"notebook", "title": "a researcher's log", "lands": [],
@@ -3485,10 +3510,24 @@ const FRAGMENTS := {
 
 const PLACED := {
 	&"black_site": [&"growth_bay", &"volunteers", &"release_order"],
+	# The first works, where Cairn's lab stood (then_lab mirrors it): his last
+	# merge, on the screen the yard still runs. And the crew's camp, where his
+	# handler met him (then_meet): the page nobody ever opened the box for.
+	&"the_yard": [&"yard_commits"],
+	&"the_camp": [&"handler_note"],
 	# At the channel, when the orbital realm is grown: until then it stands nowhere.
 	&"the_channel": [&"channel_console"],
 	# Ring Four, when the orbital realm is grown: the case Calloway sent up.
 	&"the_ring": [&"cold_case"],
+}
+
+# The places whose readable thing the story stands itself, and what kind of prop
+# it is (49_cast `_stand_things`): nothing the world grows there is sure to be a
+# screen or a box. Both are read and never robbed: a CONSOLE as a terminal, a
+# DOC_BOX as a notebook (an ARCHIVE is the plan's, and a `use` takes from it).
+const STOOD := {
+	&"the_yard": PropKind.CONSOLE,
+	&"the_camp": PropKind.DOC_BOX,
 }
 
 # --- words that belong to a kind of room ---------------------------------------
