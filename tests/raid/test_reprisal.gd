@@ -46,3 +46,18 @@ func test_the_march_survives_a_save() -> void:
 	var back := Reprisal.new()
 	back.load_from(JSON.parse_string(JSON.stringify(r.save())))
 	eq(back.burning_now(1000.0 + Reprisal.MARCH_MINUTES).size(), 1, "the march comes back with the game")
+
+
+## Out on the road, where a player can meet them: from the yard at the start,
+## halfway at half the march, at the roof when it is due; and the save keeps it.
+func test_the_party_walks_the_road_from_the_yard_to_the_roof() -> void:
+	var r := Reprisal.new()
+	eq(r.on_road(7, 1000.0), Vector2.INF, "nobody on the road before a housing is broken")
+	check(r.send(7, Vector2(200, 100), 1000.0, Vector2(100, 100)), "sent")
+	eq(r.on_road(7, 1000.0), Vector2(100, 100), "they set out from the yard")
+	var half := r.on_road(7, 1000.0 + Reprisal.MARCH_MINUTES * 0.5)
+	lt(half.distance_to(Vector2(150, 100)), 0.01, "halfway at half the march")
+	eq(r.on_road(7, 1000.0 + Reprisal.MARCH_MINUTES), Vector2(200, 100), "at the roof when it is due")
+	var back := Reprisal.new()
+	back.load_from(JSON.parse_string(JSON.stringify(r.save())))
+	lt(back.on_road(7, 1000.0 + Reprisal.MARCH_MINUTES * 0.5).distance_to(Vector2(150, 100)), 0.01, "and the road comes back with the game")

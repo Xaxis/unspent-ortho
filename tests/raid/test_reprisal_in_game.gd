@@ -192,3 +192,97 @@ func test_a_yard_put_dark_in_time_burns_nothing() -> void:
 	eq((raids.get("burned") as Dictionary).size(), 0, "and nothing burns")
 	g.queue_free()
 	await frames(1)
+
+
+## The machines of the road party near where the march is now: raiders out on
+## their errand, alive.
+func _on_the_road(g: Game, at: Vector2) -> Array[MobState]:
+	var out: Array[MobState] = []
+	for m in g.player.sim.mobs:
+		if m.alive and not m.removed and m.raider and m.pos.distance_to(at) < 12.0:
+			out.append(m)
+	return out
+
+
+## OUT ON THE ROAD, where he can meet them: near where the march has got to, the
+## yard's hunters are there to be seen walking to the roof; met and put down, the
+## march is over and nothing burns. Walked away from, they go back on paper and
+## the roof burns when it was due.
+func test_the_hunters_are_on_the_road_and_met_there_nothing_burns() -> void:
+	var g := _game()
+	await frames(4)
+	var site: WorksSite = g.get_node("34_works").call(&"here")
+	if site == null:
+		g.queue_free()
+		await frames(1)
+		return
+	check(await _open(g, site, 0), "a housing opened")
+	var raids := _raids(g)
+	var r: Reprisal = raids.get("reprisal")
+	g.clock.skip(Reprisal.MARCH_MINUTES * 0.4)
+	var at := r.on_road(site.region, g.clock.minutes)
+	_stand(g, at + Vector2(6, 0))
+	await frames(2)
+	raids.call(&"sweep")
+	await frames(2)
+	var party := _on_the_road(g, r.on_road(site.region, g.clock.minutes))
+	gt(float(party.size()), 0.0, "the yard's hunters are on the road where he stands")
+	for m in party:
+		check(m.line_b.distance_to(r.on_road(site.region, g.clock.minutes)) < 1.0 or m.line_b.distance_to(r.marching[site.region].roof) < 1.0,
+			"walking the road to the roof")
+		var hits := 0
+		while m.alive and hits < 200:
+			# From behind, a frame apart: a body's hurt frames take one blow at a time.
+			@warning_ignore("return_value_discarded")
+			g.player.sim.strike(m, Blow.for_item(&"axe_felling"), m.pos + Vector2.from_angle(m.facing + PI) * 1.2)
+			hits += 1
+			await frames(2)
+		check(not m.alive, "put down on the road")
+	await frames(2)
+	for m in party:
+		var wreck := false
+		for q in g.query.props_near(m.pos, 2.0):
+			if q.kind == PropKind.WRECKAGE and q.pos.distance_to(m.pos) < 0.5:
+				wreck = true
+		check(wreck, "and what he put down lies on the road where it fell")
+	raids.call(&"sweep")
+	check(not r.marching.has(site.region), "met on the road, the march is over")
+	g.clock.skip(Reprisal.MARCH_MINUTES)
+	raids.call(&"sweep")
+	eq((raids.get("burned") as Dictionary).size(), 0, "and nothing burns")
+	g.queue_free()
+	await frames(1)
+
+
+func test_walked_away_from_they_go_on_paper_and_the_roof_burns() -> void:
+	var g := _game()
+	await frames(4)
+	var site: WorksSite = g.get_node("34_works").call(&"here")
+	if site == null:
+		g.queue_free()
+		await frames(1)
+		return
+	check(await _open(g, site, 0), "a housing opened")
+	var raids := _raids(g)
+	var r: Reprisal = raids.get("reprisal")
+	g.clock.skip(Reprisal.MARCH_MINUTES * 0.4)
+	var at := r.on_road(site.region, g.clock.minutes)
+	_stand(g, at + Vector2(6, 0))
+	await frames(2)
+	raids.call(&"sweep")
+	gt(float(_on_the_road(g, at).size()), 0.0, "on the road while he is by")
+	# Off to the far side of the coast from them.
+	var size := float(g.world.size)
+	var away := Vector2(size - at.x, size - at.y)
+	gt(away.distance_to(at), float(raids.get("ROAD_SEEN")) * 1.5, "somewhere well away from the road")
+	_stand(g, away)
+	g.clock.skip(1.0)
+	await frames(2)
+	raids.call(&"sweep")
+	eq(_on_the_road(g, r.on_road(site.region, g.clock.minutes)).size(), 0, "gone from the land once he is far from them")
+	check(r.marching.has(site.region), "but still marching")
+	g.clock.skip(Reprisal.MARCH_MINUTES)
+	raids.call(&"sweep")
+	gt(float((raids.get("burned") as Dictionary).size()), 0.0, "and the roof burns when it was due")
+	g.queue_free()
+	await frames(1)

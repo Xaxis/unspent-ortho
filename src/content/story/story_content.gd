@@ -5711,6 +5711,8 @@ const REPRISAL := {
 	"sent": "Something in the yard wakes. Its hunters take the road to the roofs.",
 	"called_back": "Out on the road, the hunters stop where they stand.",
 	"burned": "Smoke stands over the roofs. The road is empty again.",
+	# Every one of them put down on the road: nobody reaches the roof.
+	"met": "The hunters lie on the road. Nothing reaches the roofs.",
 	# He comes to the roofs a broken yard's hunters burned (holdfast_price).
 	"seen": "The houses are black to the ground. Somebody left a pot on the fire.",
 }

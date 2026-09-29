@@ -53,7 +53,8 @@ extends GameSystem
 ##                          its health (never raises it), so a tour can be at a phase a
 ##                          boss reaches by damage without feeding a scripted player to
 ##                          it pass after pass; fails when no such body is about
-##   fell KIND              the nearest live body of that kind falls where it stands,
+##   fell KIND              the nearest live body of that kind (`raider`: of any kind,
+##                          out on the plan's errand) falls where it stands,
 ##                          as its last blow would drop it: for a frame of how a
 ##                          body falls, when the fight to it is proved headless
 ##   thanked                the region the player is in (a room: the one its door
@@ -1471,7 +1472,7 @@ func _fell(token: String) -> bool:
 	if sim == null:
 		return false
 	for m: MobState in sim.mobs:
-		if m.alive and not m.removed and m.kind == id:
+		if m.alive and not m.removed and (m.raider if token == "raider" else m.kind == id):
 			if best == null or m.pos.distance_to(sim.hero.pos) < best.pos.distance_to(sim.hero.pos):
 				best = m
 	if best == null:
