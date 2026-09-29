@@ -334,7 +334,10 @@ wait 0.4
 hour 20
 village 36
 wait 1.0
+# Sleep is asked for: the first press asks, the second sleeps.
 try 3
+  press use 0.1
+  wait 0.4
   press use 0.1
   await slept 6
 end

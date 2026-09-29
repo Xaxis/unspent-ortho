@@ -162,12 +162,14 @@ walk -1,-1 1.2
 shot 15-lamp-lit with lamp
 walk 1,1 1.2
 at prop:fire
-# Lie down: the press is held long enough to land on a slow frame, and the
+# Lie down: asked for, so two presses, the first asking; each held long enough to land on a slow frame, and the
 # night is AWAITED. This frame was a picture of 22:05 with the footer still
 # offering `e fire - sleep`, called "slept to morning" for a year.
 # A press made while the hands are still busy is buffered and then dropped, so
 # a player presses again: the tour does what the player does.
 try 6
+press use 0.4
+wait 0.4
 press use 0.4
 await slept 3
 end

@@ -18,7 +18,7 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
   - Gate (walked through, breached first): `tools/test.sh test_gate`, `tools/shot.sh shots/x.png --scene=gallery --filter="holding gate"`.
   - Cellar (stores a raid cannot take): `tools/test.sh test_cellar`, gallery `--filter="holding cellar"`.
   - Stolen cell (unlocked by a keeper's core): `tools/test.sh test_unlocks`, gallery `--filter="holding stolen cell"`.
-- 50_survival `src/systems/50_survival.gd`: `tools/tour.sh tours/survival.tour`.
+- 50_survival `src/systems/50_survival.gd`: `tools/tour.sh tours/survival.tour`. Sleep is asked for, never one press: an idle `use` at rest asks ("Again, and you sleep till morning.", the target reads `fire - sleep?`) and a second within BUILD_ASK_SECONDS sleeps; eating stays the fallback when hungry: `tools/test.sh test_first_hour:test_one_stray,test_taking,test_condition`, and the two-press sleep in `tours/core_loop.tour` and `tours/home-coast.tour`.
   - The bag left on a heap where you were carried off ("your things"): `tools/test.sh test_bag_heap`, `tools/tour.sh tours/bag_heap.tour` (h).
 - 51_harvest `src/systems/51_harvest.gd`: `tools/tour.sh tours/harvest.tour`.
 - 52_hazards `src/systems/52_hazards.gd`: `tools/tour.sh tours/hazards.tour`.

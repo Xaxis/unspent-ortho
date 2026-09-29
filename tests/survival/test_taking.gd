@@ -309,12 +309,14 @@ func test_use_on_nothing_builds_a_fire_then_eats_before_it_sleeps_by_it() -> voi
 	check(g.world.prop_count() > 0 and g.world.prop_at(g.world.prop_count() - 1).kind == PropKind.FIRE, "a fire stands")
 	g.clock.skip(3.0 * 60.0)
 	SurvivalState.of(g).woke_at = g.clock.minutes - 20.0 * 60.0
-	eq(Survival.describe_target(g), "fire - sleep", "fed, at night by a fire: sleep")
+	eq(Survival.describe_target(g), "fire - sleep?", "fed, at night by a fire: sleep, if pressed twice")
 	g.body.fed_until = g.clock.minutes - 60.0
 	eq(Survival.describe_target(g), "mussels - eat", "hungry at night: eat first, or wake starving")
 	check(Survival.use(g), "ate")
 	g.body.busy_until = 0.0
-	eq(Survival.describe_target(g), "fire - sleep", "then sleep")
+	eq(Survival.describe_target(g), "fire - sleep?", "then sleep, if pressed twice")
+	check(Survival.use(g), "the first press asks")
+	eq(Survival.describe_target(g), "fire - sleep", "a second press will sleep")
 	check(Survival.use(g), "slept")
 	eq(g.clock.hour(), 8.0, "woke at eight by a fire")
 	g.body.fed_until = g.clock.minutes - 60.0
