@@ -108,11 +108,8 @@ static func make() -> SentinelDef:
 	d.phases = [wading, gating, flooding]
 
 	var force := SentinelWay.make(SentinelWay.FORCE)
-	force.says = "The pump on its stern, then the winch behind the blade, then the sea-cocks on its left once it floods."
 	var starve := SentinelWay.make(SentinelWay.STARVE, 4000.0)
-	starve.says = "It keeps the locks' timetable. Break the lock's pump and its gates and it has nothing to keep."
 	var spoof := SentinelWay.make(SentinelWay.SPOOF, 2500.0)
 	spoof.aboard = &"raft"
-	spoof.says = "It reads a ferry's call. Ride a raft into its lane wearing their signature and it stands aside."
 	d.ways = [force, starve, spoof]
 	return d

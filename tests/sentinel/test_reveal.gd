@@ -8,9 +8,12 @@ extends TestCase
 const Sx := preload("res://tests/save/save_fixture.gd")
 
 
+## Physics frames: 44_sentinels puts a keeper out on its physics step, and a
+## fast box runs several process frames to one of those, so "3 frames" could pass
+## with nothing stepped ("it is out again" failed on one box and not another).
 func _frames(n: int) -> void:
 	for i in n:
-		await tree.process_frame
+		await tree.physics_frame
 
 
 func _put(g: Game, p: Vector2) -> void:

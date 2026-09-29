@@ -255,10 +255,13 @@ wpids=()
 # regression. Each shard writes the cost tests it met to its own list, and they
 # are run again by themselves once the shards are done.
 later="$(mktemp -d "${TMPDIR:-/tmp}/unspent-costs.XXXXXX")"
+# Played tests (TestCase.stepped_now) are run again after the shards on a fixed
+# step, like the costs: in a shard the game steps by the wall's clock.
+stepped_later="$(mktemp -d "${TMPDIR:-/tmp}/unspent-stepped.XXXXXX")"
 for k in "${!idx[@]}"; do
   i="${idx[$k]}"
   log="$(mktemp "${TMPDIR:-/tmp}/unspent-test.XXXXXX")"; logs+=("$log")
-  UNSPENT_COSTS_LATER="$later/shard-$i" godot --headless --path . -s tests/run.gd -- "--shard=$i/$shards" >"$log" 2>&1 & tpids+=($!)
+  UNSPENT_COSTS_LATER="$later/shard-$i" UNSPENT_STEPPED_LATER="$stepped_later/shard-$i" godot --headless --path . -s tests/run.gd -- "--shard=$i/$shards" >"$log" 2>&1 & tpids+=($!)
   watch_runner "$!" "$log" "shard $i" & wpids+=($!)
   # Serial: wait for this shard before starting the next, so only one Godot
   # holds memory at a time. The shards stay THREE so the sharding itself, and
@@ -336,6 +339,33 @@ if [ -n "$costs" ]; then
     mkdir -p shots/check && mv "$clog" shots/check/costs.log && echo "   full log of the cost run: shots/check/costs.log"
   else
     rm -f "$clog"
+  fi
+fi
+# The played tests, on a fixed step: every frame one physics step of the same
+# delta (--fixed-fps), so a fight plays the same steps on any box. Judged like
+# the costs.
+stepped="$(cat "$stepped_later"/shard-* 2>/dev/null | sort -u | paste -sd, -)"
+rm -rf "$stepped_later"
+if [ -n "$stepped" ]; then
+  echo "== played, on a fixed step ($(echo "$stepped" | tr ',' '\n' | wc -l | tr -d ' ') tests)"
+  slog="$(mktemp "${TMPDIR:-/tmp}/unspent-test.XXXXXX")"
+  UNSPENT_STEPPED=1 godot --headless --fixed-fps 60 --path . -s tests/run.gd -- "$stepped" >"$slog" 2>&1 &
+  spid=$!
+  watch_runner "$spid" "$slog" "the stepped run" & swatch=$!
+  wait "$spid"; code=$?
+  wait "$swatch"
+  report_hang "$slog" "the stepped run" && { fail=1; unfinished=1; }
+  if [ "$code" != "0" ] && [ "$code" != "1" ]; then echo "the stepped run DIED (exit $code) -- this run proves nothing"; fail=1; unfinished=1; fi
+  if ! grep -qE 'passed,' "$slog"; then echo "the stepped run wrote no summary -- it did not finish"; fail=1; unfinished=1; fi
+  grep -E "info |FAIL|^\s{7}|SCRIPT ERROR" "$slog"
+  grep -E 'passed,' "$slog"
+  grep -E '^\s*FAIL ' "$slog" | sed -E 's/^ *FAIL //; s/ \([0-9]+ ms\)$//' >>"$ran"
+  if grep -qE "SCRIPT ERROR" "$slog"; then echo "script error in the stepped run"; fail=1; fi
+  rm -f shots/check/stepped.log
+  if [ "$code" != "0" ] || ! grep -qE 'passed,' "$slog" || grep -qE "SCRIPT ERROR" "$slog"; then
+    mkdir -p shots/check && mv "$slog" shots/check/stepped.log && echo "   full log of the stepped run: shots/check/stepped.log"
+  else
+    rm -f "$slog"
   fi
 fi
 # WHICH OF THESE ARE YOURS. A gate that has been red for weeks has an exit code

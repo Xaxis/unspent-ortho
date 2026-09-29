@@ -43,6 +43,10 @@ var take_hits := 0
 const ESCAPE_HOLD_MS := 60.0
 
 var sim: FightSim
+## Where its presses go: null, straight to the simulation (a bare fight);
+## an object with `press(verb)` for a running game, which presses the keys
+## (tests/fight/game_driver.gd, 98_tour `drive`). Verbs: swing, dodge, heavy.
+var hands: Object = null
 var swings := 0
 var dodges := 0
 var _answered := -1.0
@@ -55,6 +59,16 @@ func _init(s: FightSim) -> void:
 	sim = s
 
 
+func _hand(verb: StringName) -> void:
+	if hands != null:
+		hands.call(&"press", verb)
+		return
+	match verb:
+		&"swing": sim.press_swing()
+		&"dodge": sim.press_dodge()
+		&"heavy": sim.press_heavy()
+
+
 func act() -> void:
 	var hero := sim.hero
 	var now := sim.now
@@ -62,7 +76,7 @@ func act() -> void:
 	if hero.held():
 		if now - _last_pull >= 160.0:
 			_last_pull = now
-			sim.press_swing()
+			_hand(&"swing")
 		return
 	var m := _nearest()
 	if m == null:
@@ -116,7 +130,7 @@ func _tell_to_answer(m: MobState) -> bool:
 		var off := hero.pos - m.drop_at
 		_escape = off.normalized() if off.length() > 0.05 else Vector2.from_angle(m.facing + PI * 0.5)
 		hero.move = _escape
-		sim.press_dodge()
+		_hand(&"dodge")
 		dodges += 1
 		_escape_until = m.blow_at + b.windup + b.active + ESCAPE_HOLD_MS
 		return true
@@ -131,7 +145,7 @@ func _tell_to_answer(m: MobState) -> bool:
 		# Read the wrong way: across the blow's side, or in toward it.
 		_escape = -side if _escape == side else -fwd
 	hero.move = _escape
-	sim.press_dodge()
+	_hand(&"dodge")
 	dodges += 1
 	_escape_until = m.blow_at + b.windup + b.active + ESCAPE_HOLD_MS
 	return true
@@ -206,10 +220,10 @@ func _strike(m: MobState) -> void:
 			hero.facing = to_mob.angle() + WHIFF_TURN
 		if hero.swing_refusal(sim.now) == &"":
 			if go_heavy:
-				sim.press_heavy()
+				_hand(&"heavy")
 				heavies += 1
 			else:
-				sim.press_swing()
+				_hand(&"swing")
 			swings += 1
 		return
 	if from_spot < 0.08:

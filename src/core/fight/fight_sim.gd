@@ -2618,13 +2618,21 @@ func _begin() -> void:
 	emit(&"fight_started", {})
 
 
+## How long a blow stays the cause of a down (sim ms).
+const DOWN_BY_MS := 3000.0
+
+
 func _end(outcome: StringName) -> void:
 	fight_on = false
 	last_outcome = outcome
 	last_fight_end_at = now
 	if outcome == &"downed" or outcome == &"carried":
 		last_downed_at = now
-	var by := hero.last_hit_by as MobState
+	# What put the player down: the last blow's body, while that blow is recent.
+	# A down long after it (hunger, the cold) is nobody's: the stale blow was read
+	# as the cause, and a player starving far off woke at a keeper's edge with its
+	# toll charged (test_keeper_downed).
+	var by := hero.last_hit_by as MobState if now - hero.last_hit_at <= DOWN_BY_MS else null
 	if outcome == &"carried":
 		by = hero.holder as MobState
 	match outcome:

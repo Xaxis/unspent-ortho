@@ -1,8 +1,7 @@
 extends TestCase
-## The three ways a landscape is taken from its keeper (docs/VISION.md). They
-## are pure rules over a `SentinelLook`, which is the whole reason they can be
-## proved here: the fight is full of nodes and none of them is needed to say
-## whether the land has taken a machine or the plan has stopped feeding it.
+## The three ways a landscape is taken from its keeper (docs/VISION.md): first
+## as pure rules over a `SentinelLook`, then each played in a running game on
+## seed 1's Tide Reaper by what a player does, nothing set by hand (below).
 
 
 func _look() -> SentinelLook:
@@ -169,3 +168,286 @@ func test_each_design_offers_its_three_and_they_are_reachable_in_its_own_land() 
 				if Items.def(id).get("ability", &"") == &"spoof":
 					granted = true
 			check(granted, "%s: a module grants the signature it reads" % def.id)
+
+
+# --- each way won by what a player does -------------------------------------
+# The rules above are the ways' own. What follows plays them in a running game
+# with nothing set by hand: the feeds robbed with the take a player makes, the
+# flats reached by walking, the fight fought by a player-like driver
+# (tests/sentinel/test_reaper_force.gd, the plate player). On seed 1's Tide
+# Reaper, the owner's.
+
+const Sx := preload("res://tests/save/save_fixture.gd")
+
+
+func _reaper(g: Game) -> SentinelState:
+	for s: SentinelState in Sx.system(g, "44_sentinels").call(&"states"):
+		if s.land == &"coast" and not s.fallen and s.region >= 0:
+			return s
+	return null
+
+
+## Rob every work that feeds it with `use`, farthest first, as a player walking
+## in along its pipe would, then wait on the dark. STARVE's words: "The intake
+## feeds it. Rob the intake."
+func test_robbing_its_feeds_by_hand_starves_it() -> void:
+	if not stepped_now():
+		return
+	Sx.use_root("ways-starve")
+	# Robbing eight works is hours of the clock: a player going to do it carries
+	# something to eat, and eats when the body says so.
+	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear", "--give=fish:6"])
+	# Bodies numbered from the same place whatever ran before in this process:
+	# the reader's hands are hashed on a body's id (Reader.human).
+	MobState._next_id = 900000
+	var s := _reaper(g)
+	check(s != null, "seed 1 holds a reaper")
+	if s == null:
+		Sx.end(g)
+		return
+	var def := Sentinels.by_id(s.design)
+	# The coast's own comings and goings held off, as a tour's `coast calm`:
+	# this is the keeper's way, not a crowd's.
+	(Sx.system(g, "30_mobs").get("coast") as Object).set("spawning", false)
+	g.player.sim.clear_mobs()
+	var reach := def.reach * Sentinels.FEED_SHARE
+	var works: Array[WorldProp] = []
+	for q: WorldProp in g.query.props_near(s.lair, reach):
+		if def.feeds.has(q.kind) and q.pos.distance_to(s.lair) <= reach:
+			works.append(q)
+	works.sort_custom(func(a: WorldProp, b: WorldProp) -> bool: return a.pos.distance_to(s.lair) > b.pos.distance_to(s.lair))
+	gt(float(works.size()), float(SentinelWay.FEEDS_LEAST) - 0.5, "it is fed by %d works" % works.size())
+	var refused := {}
+	var said: Array[String] = []
+	var hear := func(line: String) -> void: said.append(line)
+	Events.message.connect(hear)
+	var waited := 0.0
+	var thefts := 0
+	for q in works:
+		var away := (q.pos - s.lair).normalized() if q.pos.distance_to(s.lair) > 0.1 else Vector2.RIGHT
+		for take in 8:
+			if g.world.depleted.has(q.id):
+				break
+			# A theft stirs it (34_works: a plan work opened tells its machines),
+			# and a fight still on refuses a long take ("Not with that so close").
+			# A player goes off out of its ground until it has settled, and back.
+			var m: MobState = s.body
+			if (m != null and (m.disturbed or m.roused() or m.mood == MobState.ALERTED)) or g.player.sim.fight_on or Survival.threat_near(g):
+				# Off out of its ground until it has settled, and back.
+				g.player.place(s.lair + away * Sentinels.PUT_OUT * 2.0)
+				var w0 := g.player.sim.now
+				while (s.body != null or g.player.sim.fight_on) and g.player.sim.now - w0 < 60000.0:
+					await tree.physics_frame
+				waited += (g.player.sim.now - w0) / 1000.0
+			# Back in on the far side of its lair from the work: it comes out
+			# facing that way, and the work is taken behind its back.
+			if s.body == null and q.pos.distance_to(s.lair) < 8.0:
+				g.player.place(_off_its_guard(g, s, -away))
+				for f in 30:
+					await tree.physics_frame
+			# Beside the work, and out of the keeper's eye where there is a side of
+			# it that is: a player robbing its intake keeps behind its back.
+			if Condition.hours_to_full(g.body.fed_until, g.clock.minutes) >= 4.0 and Survival.best_food(g) != &"":
+				@warning_ignore("return_value_discarded")
+				Survival.eat(g, Survival.best_food(g))
+			# Coming to after a down, the body is busy a moment (40_fight _wake).
+			for f in 2000:
+				if not Survival.busy(g):
+					break
+				await tree.physics_frame
+			var spot := _unseen_beside(g, q, s.body)
+			g.player.place(spot, (q.pos - spot).angle())
+			await frames(2)
+			var used := Survival.use(g)
+			if not used:
+				var t := Survival.use_target(g)
+				var line: String = said.back() if not said.is_empty() else ""
+				refused[PropKind.NAMES[q.kind]] = "%s (aimed at %s, said %s)" % [q.pos.distance_to(s.lair), PropKind.NAMES[t.kind] if t != null else "nothing", line]
+				if line == Survival.DARK_LINE and not g.body.lamp_lit:
+					# Hours gone after a down and night come on: the lamp, lit with its key.
+					Input.action_press(&"lamp")
+					await tree.physics_frame
+					await tree.process_frame
+					Input.action_release(&"lamp")
+					await tree.physics_frame
+					said.clear()
+					continue
+				if line == Survival.THREAT_LINE or line == Outcomes.KEEPER_DOWNED_LINE:
+					# Seen and turned on (or downed by it): off again until it
+					# settles, and another go.
+					said.clear()
+					continue
+				break
+			thefts += 1
+			# The take itself is a real second and a bit (Survival.WORK_SECONDS):
+			# waited out in frames, however many that is on this box.
+			for f in 20000:
+				if SurvivalState.of(g).job.is_empty():
+					break
+				await tree.physics_frame
+	Events.message.disconnect(hear)
+	var robbed := 0
+	for q in works:
+		robbed += int(g.world.depleted.has(q.id))
+	print("  info starve: robbed %d of %d in %d takes, %.0f s waited off its ground, refused %s" % [robbed, works.size(), thefts, waited, refused])
+	eq(robbed, works.size(), "every work that fed it is robbed out, in the world")
+	# Away from it, and the dark counted.
+	g.player.place(s.lair + Vector2(Sentinels.PUT_OUT * 2.0, 0.0))
+	var t0 := g.player.sim.now
+	while not s.fallen and g.player.sim.now - t0 < 12000.0:
+		await tree.physics_frame
+	check(s.fallen and s.how == def.way_of(SentinelWay.STARVE).id(), "and it stands dark and keeps nothing (%s)" % s.how)
+	Sx.end(g)
+
+
+## Standable ground 12 tiles off its lair on the `away` side (or round from it):
+## outside the guard it turns on a player inside, inside the ground it is put out on.
+func _off_its_guard(g: Game, s: SentinelState, away: Vector2) -> Vector2:
+	for k in 16:
+		var p := s.lair + away.rotated(float((k + 1) / 2) * (TAU / 16.0) * (1.0 if k % 2 == 0 else -1.0)) * 12.0
+		if g.query.standable(floori(p.x), floori(p.y)) and g.world.same_body(p, s.lair):
+			return p
+	return s.lair + away * 12.0
+
+
+## A spot to stand beside `q` and take from it, as far out of `m`'s view (the
+## angle off its facing) as the ground allows.
+func _unseen_beside(g: Game, q: WorldProp, m: MobState) -> Vector2:
+	var best := Vector2.INF
+	var best_off := -1.0
+	for k in 16:
+		var p := q.pos + Vector2.from_angle(TAU * k / 16.0) * (q.solid + 0.7)
+		if not g.query.standable(floori(p.x), floori(p.y)) or not g.query.body_fits(p, Tuning.PLAYER_RADIUS, null, true, FightSim.HERO_TALL):
+			continue
+		var off := 0.0 if m == null else absf(wrapf((p - m.pos).angle() - m.facing, -PI, PI))
+		if off > best_off:
+			best_off = off
+			best = p
+	return best if best.is_finite() else q.pos + Vector2.RIGHT * (q.solid + 0.7)
+
+
+const PR := preload("res://tests/fight/plate_reader.gd")
+const GD := preload("res://tests/fight/game_driver.gd")
+
+
+## A spot `dist` off its lair on its own level, down a line its run can take,
+## with the most (or least) of the ground `grounds` round it.
+func _stand(g: Game, s: SentinelState, dist: float, grounds: Array, most: bool) -> Vector2:
+	var best := Vector2.INF
+	var score := -INF
+	var level := g.world.level_at(floori(s.lair.x), floori(s.lair.y))
+	for i in 32:
+		var p := s.lair + Vector2.from_angle(TAU * i / 32.0) * dist
+		var tx := floori(p.x)
+		var ty := floori(p.y)
+		if not g.query.standable(tx, ty) or not g.world.same_body(p, s.lair) \
+				or (not most and not FightRules.levels_meet(g.world.level_at(tx, ty), level)) \
+				or not NavField.line_walkable(g.world, s.lair, p, 0.45):
+			continue
+		var n := 0.0
+		for dy in range(-5, 6):
+			for dx in range(-5, 6):
+				n += float(grounds.has(g.world.ground_at(tx + dx, ty + dy)))
+		var sc := n if most else -n
+		if sc > score and (not most or grounds.has(g.world.ground_at(tx, ty))):
+			score = sc
+			best = p
+	return best
+
+
+## Fought by the plate player through the game's input (GameDriver): the coast
+## held off, knife_shear in hand, from firm ground it keeps to. Downed, it comes
+## to at the edge of the keeper's ground and walks back. Returns the tally.
+func _fight_it(g: Game, s: SentinelState, at: Vector2, reader: Variant, seconds: float) -> Dictionary:
+	var sim: FightSim = g.player.sim
+	g.player.place(at, (s.lair - at).angle())
+	var d: Variant = GD.new(g, reader)
+	var downs := [0]
+	var on_end := func(o: StringName) -> void:
+		if o == &"downed" or o == &"carried":
+			downs[0] += 1
+	Events.fight_ended.connect(on_end)
+	var t0 := sim.now
+	# On the fight's own clock, never the wall's: the same steps on any box. A
+	# frame cap stands in for a hang guard (the hitstop holds the clock a while).
+	var frames_left := int(seconds * 60.0 * 3.0)
+	while not s.fallen and sim.now - t0 < seconds * 1000.0 and frames_left > 0:
+		frames_left -= 1
+		d.step()
+		await tree.physics_frame
+	Events.fight_ended.disconnect(on_end)
+	return {"fallen": s.fallen, "how": s.how, "tries": downs[0] + 1, "downs": downs[0], "s": (sim.now - t0) / 1000.0, "health": s.health}
+
+
+func _calm(g: Game) -> void:
+	(Sx.system(g, "30_mobs").get("coast") as Object).set("spawning", false)
+	g.player.sim.clear_mobs()
+
+
+func test_by_force_from_firm_ground_it_falls_to_blows_and_never_founders() -> void:
+	if not stepped_now():
+		return
+	Sx.use_root("ways-force")
+	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear"])
+	# Bodies numbered from the same place whatever ran before in this process:
+	# the reader's hands are hashed on a body's id (Reader.human).
+	MobState._next_id = 900000
+	var s := _reaper(g)
+	check(s != null, "seed 1 holds a reaper")
+	if s == null:
+		Sx.end(g)
+		return
+	_calm(g)
+	var flats: Array = Sentinels.by_id(s.design).way_of(SentinelWay.FOUNDER).grounds
+	var at := _stand(g, s, 6.0, flats, false)
+	check(at.is_finite(), "firm ground to come at it from")
+	if not at.is_finite():
+		Sx.end(g)
+		return
+	var r: Variant = PR.new(g.player.sim)
+	r.human = 1
+	r.keep_off = flats
+	r.home = at
+	var out: Dictionary = await _fight_it(g, s, at, r, 360.0)
+	print("  info force by hand: %s" % out)
+	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FORCE).id(), "it falls to blows (%s)" % out)
+	check(out.how != SentinelWay.make(SentinelWay.FOUNDER).id(), "and never founders under a fight kept on firm ground")
+	lt(float(out.tries), 4.5, "in a few tries (%d)" % out.tries)
+	Sx.end(g)
+
+
+func test_held_out_on_the_flats_it_founders() -> void:
+	if not stepped_now():
+		return
+	Sx.use_root("ways-founder")
+	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear"])
+	# Bodies numbered from the same place whatever ran before in this process:
+	# the reader's hands are hashed on a body's id (Reader.human).
+	MobState._next_id = 900000
+	var s := _reaper(g)
+	check(s != null, "seed 1 holds a reaper")
+	if s == null:
+		Sx.end(g)
+		return
+	_calm(g)
+	var flats: Array = Sentinels.by_id(s.design).way_of(SentinelWay.FOUNDER).grounds
+	var flat := Vector2.INF
+	for dist: float in [6.0, 8.0, 10.0, 12.0, 4.0]:
+		flat = _stand(g, s, dist, flats, true)
+		if flat.is_finite():
+			break
+	check(flat.is_finite(), "flats to draw it onto")
+	if not flat.is_finite():
+		Sx.end(g)
+		return
+	# Stirred from inside its guard, on the firm ground short of the flats.
+	var start := s.lair + (flat - s.lair).normalized() * 5.0
+	var r: Variant = PR.new(g.player.sim)
+	r.human = 2
+	r.keep_on = flats
+	r.lure = flat
+	r.home = start
+	var out: Dictionary = await _fight_it(g, s, start, r, 180.0)
+	print("  info founder by hand: %s" % out)
+	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FOUNDER).id(), "drawn out onto the flats and held there, it founders (%s)" % out)
+	Sx.end(g)

@@ -461,6 +461,34 @@ static func founders(def: SentinelDef) -> Array:
 
 ## The nearest tile to `p` a body of this size can stand on, searched in rings, so
 ## a station laid on the shore does not put a keeper in the sea.
+## Where a player a keeper has downed comes to: the edge of the ground round its
+## lair that puts it out (PUT_OUT), EDGE_OUT tiles past it on the side they
+## fell, or round from there until a body stands whole on ground joined to the
+## lair's. Woken where they fell, it was put out again on top of a player at
+## DOWNED_WAKE_HEALTH, and every try after the first was one bite long.
+## INF where no such ground is (the caller leaves them where they fell).
+const EDGE_OUT := 2.0
+
+
+static func arena_edge(world: WorldData, query: WorldQuery, lair: Vector2, from: Vector2, radius: float, tall: int) -> Vector2:
+	var toward := (from - lair).angle() if from.distance_to(lair) > 0.1 else 0.0
+	for i in 24:
+		var a := toward + float((i + 1) / 2) * (TAU / 24.0) * (1.0 if i % 2 == 0 else -1.0)
+		var dir := Vector2.from_angle(a)
+		# Out along the bearing until it is past the put-out square.
+		var d := PUT_OUT + EDGE_OUT
+		while Senses.chebyshev(lair + dir * d, lair) <= PUT_OUT + EDGE_OUT * 0.5:
+			d += 1.0
+		for k in 4:
+			var p := lair + dir * (d + k)
+			var tx := floori(p.x)
+			var ty := floori(p.y)
+			if query.standable(tx, ty) and not Ground.is_water(world.ground_at(tx, ty)) \
+					and world.same_body(p, lair) and query.body_fits(p, radius, null, true, tall):
+				return p
+	return Vector2.INF
+
+
 static func stand_near(world: WorldData, p: Vector2, radius: float = 1.4, avoid: Array = []) -> Vector2:
 	var cx := floori(p.x)
 	var cy := floori(p.y)
@@ -507,6 +535,18 @@ static func feeds(world: WorldData, at: Vector2, def: SentinelDef) -> int:
 
 ## The same over a list of props already gathered (`WorldQuery.props_near`), so a
 ## running game asks the spatial index instead of walking every prop in the world.
+## Whether `prop` is a work a keeper of `world` feeds on (its design's `feeds`,
+## within FEED_SHARE of its reach of its lair). Robbed out, such a work is gone
+## from the world (Survival.finish_work: world.depleted), which is what the
+## keeper's hunger counts; a kept take would leave it feeding it for ever.
+static func feeds_a_keeper(world: WorldData, prop: WorldProp) -> bool:
+	for s in states(world):
+		var def := by_id(s.design)
+		if def != null and def.feeds.has(prop.kind) and prop.pos.distance_to(s.lair) <= def.reach * FEED_SHARE:
+			return true
+	return false
+
+
 static func feeds_among(props: Array, at: Vector2, def: SentinelDef, depleted: Dictionary, reach: float) -> int:
 	if def.feeds.is_empty():
 		return 0

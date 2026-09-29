@@ -25,7 +25,7 @@ func refusal(ctx: AbilityCtx) -> StringName:
 		return &"nothing"
 	if b.grip > 0:
 		return &"held"
-	if Time.get_ticks_msec() / 1000.0 < b.busy_until:
+	if Survival.now_real() < b.busy_until:
 		return &"busy"
 	return &""
 

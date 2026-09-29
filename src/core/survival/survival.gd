@@ -120,14 +120,22 @@ const STATION_KINDS := {PropKind.FIRE: [&"fire"], PropKind.BENCH: [&"bench"], Pr
 const BUILD_KINDS := {&"fire": PropKind.FIRE, &"bench": PropKind.BENCH, &"kiln": PropKind.KILN}
 
 
-## Real seconds, unless a shot runs survival on fixed frames (BootOptions --hold):
-## then the system advances `fixed_now` by `fixed_step` each frame and stops.
+## The body's own seconds (a take, a meal, coming to, the jump's and the dash's
+## lock), unless a shot runs survival on fixed frames (BootOptions --hold): then
+## the system advances `fixed_now` by `fixed_step` each frame and stops.
+## Counted in physics steps, the step the fight and the held keys run on: the
+## same as the wall's seconds while the game keeps up, and the same number of
+## steps on any box when it does not (a played test on a fixed step, TestCase
+## stepped_now; on the wall's clock a take ended after a different number of
+## the fight's steps on every run).
 static var fixed_now := -1.0
 static var fixed_step := 0.0
 
 
 static func now_real() -> float:
-	return fixed_now if fixed_now >= 0.0 else Time.get_ticks_msec() / 1000.0
+	if fixed_now >= 0.0:
+		return fixed_now
+	return float(Engine.get_physics_frames()) / float(Engine.physics_ticks_per_second)
 
 
 # --- Stations -------------------------------------------------------------
@@ -195,7 +203,10 @@ static func threat_near(game: Game) -> bool:
 	for m in sim.mobs:
 		if not m.alive or m.removed or not bool(m.row.get("hostile", true)):
 			continue
-		if m.indifferent() and not m.roused():
+		# At its work (indifferent, or wary and not stirred): not a threat yet.
+		# A wary keeper standing over its own intake read as one, and no take
+		# of its feed was ever let start (test_ways, starving it by hand).
+		if m.at_work() and not m.roused():
 			continue
 		if m.approach == &"dart" and not m.roused():
 			continue
@@ -290,6 +301,40 @@ static func _tool_for(game: Game, state: SurvivalState, prop: WorldProp) -> Stri
 	return best
 
 
+## What to hold for what the pinned goal wants (Guide.goal_wants), when the take
+## the held tool makes gives something else and another take on the same thing
+## gives the wanted item: " (hold the knife for rag)", " (put the pick away for
+## rag)". Empty when the take already serves the goal, or the goal wants nothing.
+static func _hold_hint(game: Game, t: WorldProp, c: Dictionary) -> String:
+	if Takes.options(t.kind).size() < 2:
+		return ""
+	var wants := Guide.goal_wants(game)
+	if wants.is_empty() or wants.has(StringName(c.option.item)):
+		return ""
+	var state := SurvivalState.of(game)
+	# What each way of holding would take here: nothing in hand, then each tool.
+	var ways: Array[StringName] = [&""]
+	for id: StringName in game.inventory.items:
+		if Items.verb(id) != &"" and not ways.has(id):
+			ways.append(id)
+	for way: StringName in ways:
+		if way == game.inventory.held:
+			continue
+		var o := _choose(game, state, t, way)
+		if o.ok and wants.has(StringName(o.option.item)):
+			var item := Items.many_name(StringName(o.option.item))
+			if way == &"":
+				return HOLD_HINT_BARE % [Items.display_name(game.inventory.held), item]
+			return HOLD_HINT % [Items.display_name(way), item]
+	return ""
+
+
+## The hint's words (wright's): what to hold, and what for; the item named as
+## many (Items.many_name), never "for piece of plate".
+const HOLD_HINT := " (hold the %s for %s)"
+const HOLD_HINT_BARE := " (put the %s away for %s)"
+
+
 static func describe_target(game: Game) -> String:
 	var t := use_target(game)
 	if t != null and SurvivalState.of(game).left.has(t.id):
@@ -298,7 +343,7 @@ static func describe_target(game: Game) -> String:
 		var c := _choose(game, SurvivalState.of(game), t)
 		var name := PropKind.NAMES[t.kind]
 		if c.ok:
-			return "%s - %s" % [name, c.option.verb]
+			return "%s - %s%s" % [name, c.option.verb, _hold_hint(game, t, c)]
 		var alt := _tool_for(game, SurvivalState.of(game), t)
 		if alt != &"":
 			return "%s - %s" % [name, Items.verb(alt)]
@@ -483,9 +528,11 @@ static func finish_work(game: Game) -> bool:
 	var now := game.clock.minutes
 	if takes >= int(o.uses):
 		var back := INF if float(o.regrow) < 0.0 else now + float(o.regrow) * 60.0
-		if o.keep:
+		if o.keep and not Sentinels.feeds_a_keeper(game.world, prop):
 			state.spent[k] = back
 		else:
+			# Taken away, or a keeper's own feed robbed out: gone from the world,
+			# where the keeper's hunger reads it (44_sentinels look_at).
 			game.world.depleted[prop.id] = back
 			if game.view != null:
 				game.view.refresh_props(prop)

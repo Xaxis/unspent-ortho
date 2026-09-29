@@ -6,10 +6,20 @@ extends "res://tests/fight/shoulder_reader.gd"
 ## dodge out of the box, the strike only from where it reaches the part -- is the
 ## reader's. It moves by `hero.move` at the walk and is never put anywhere.
 ## Where the plate side is ground a blow does not pass to (a bank two levels up,
-## the sea), it waits as the reader does.
+## the sea), it waits as the reader does. `keep_off` / `keep_on` hold its walk
+## to firm ground or out on the flats; `home` is where it walks back to.
 
 ## Tiles off the skin it stands, as `walkto plate` stops (98_tour).
 const PLATE_GAP := 0.45
+## Grounds it never walks onto (a player keeping off the flats), grounds it
+## never walks off (one holding out on them), and where it walks back to when
+## nothing is out (come to after a down at the edge of its ground).
+var keep_off: Array = []
+var keep_on: Array = []
+var home := Vector2.INF
+## A lure: once it has the keeper after it, it walks out to here (onto the
+## `keep_on` ground) and holds there, dodging, as a player drawing it out does.
+var lure := Vector2.INF
 
 
 func _wait(m: MobState) -> void:
@@ -42,6 +52,7 @@ func act() -> void:
 	var hero := sim.hero
 	var m := _nearest()
 	if m == null:
+		hero.move = (home - hero.pos).normalized() if home.is_finite() and hero.pos.distance_to(home) > 1.0 else Vector2.ZERO
 		return
 	if not sim.meets_hero(m.pos):
 		# Up on the bank beside it (a dodge can carry them there): down again,
@@ -54,11 +65,24 @@ func act() -> void:
 				hero.move = dir
 				return
 		return
+	var here_g := sim.world.ground_at(floori(hero.pos.x), floori(hero.pos.y))
+	if lure.is_finite() and m.roused() and not keep_on.has(here_g) and sim.now >= _escape_until:
+		hero.move = (lure - hero.pos).normalized() if hero.pos.distance_to(lure) > 0.3 else Vector2.ZERO
+		return
 	if hero.move.length() < 0.05:
 		return
-	for turn: float in [0.0, 0.6, -0.6, 1.2, -1.2]:
+	# Held to a ground, it will turn further to stay on it (a dodge included,
+	# which goes the way the keys point: FightSim reads hero.move at the press).
+	var turns: Array[float] = [0.0, 0.6, -0.6, 1.2, -1.2]
+	if not keep_off.is_empty() or not keep_on.is_empty():
+		turns.append_array([1.8, -1.8, 2.4, -2.4, PI])
+	for turn: float in turns:
 		var step := hero.move.rotated(turn)
-		if sim.meets(hero.pos + step.normalized() * 0.6, m.pos):
+		var at := hero.pos + step.normalized() * 0.6
+		var g := sim.world.ground_at(floori(at.x), floori(at.y))
+		if keep_off.has(g) or (not keep_on.is_empty() and not keep_on.has(g)):
+			continue
+		if sim.meets(at, m.pos):
 			hero.move = step
 			return
 	hero.move = Vector2.ZERO

@@ -87,11 +87,8 @@ static func make() -> SentinelDef:
 	d.phases = [sorting, sweeping, dropping]
 
 	var force := SentinelWay.make(SentinelWay.FORCE)
-	force.says = "The winch behind, then the side it swings from, then the drive on the front sill."
 	var founder := SentinelWay.make(SentinelWay.FOUNDER, 1600.0, [Ground.GRASS])
-	founder.says = "The green districts are hollow underneath. Lure it off the swept streets."
 	var spoof := SentinelWay.make(SentinelWay.SPOOF, 2200.0)
 	spoof.beside = [PropKind.LAMP]
-	spoof.says = "It takes its orders from the district's lamps. Stand under a live one wearing their signature."
 	d.ways = [force, founder, spoof]
 	return d

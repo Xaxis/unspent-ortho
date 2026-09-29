@@ -47,7 +47,7 @@ func refusal(ctx: AbilityCtx) -> StringName:
 		var now := player.sim.now if player.sim != null else 0.0
 		if hero.committed(now) or hero.stunned(now):
 			return &"swinging"
-	if Time.get_ticks_msec() / 1000.0 < b.busy_until:
+	if Survival.now_real() < b.busy_until:
 		return &"busy"
 	return &""
 

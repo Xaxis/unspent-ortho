@@ -23,7 +23,11 @@ const CROWD_LINE := "It will not go round you. Step out of its path."
 var sim: FightSim
 var dodge_input := DodgeInput.new()
 var _shift_down := false
+## The hitstop's end, on the fight's frame clock (`_clock`: the physics steps'
+## own seconds, summed). On a wall clock a slow box held the fight for fewer
+## steps than a fast one, and the same fight played differently on each.
 var _stop_until := 0.0
+var _clock := 0.0
 var _struggle_t := 0.0
 var _mend_from := 0.0
 var _last_health := 0
@@ -149,13 +153,14 @@ func _physics_process(delta: float) -> void:
 		return
 	_read_input(delta)
 	var now_s := Time.get_ticks_msec() / 1000.0
+	_clock += delta
 	var hero := sim.hero
 	var player := game.player
 	hero.move = player.intent_move
 	hero.run = player.intent_run
 	hero.walk_speed = Hero.ground_speed(game.world, hero.pos, false, game.body.move_factor, hero.ride)
 	hero.run_speed = Hero.ground_speed(game.world, hero.pos, true, game.body.move_factor, hero.ride)
-	sim.hold = _held or now_s < _stop_until
+	sim.hold = _held or _clock < _stop_until
 	if not sim.hold:
 		sim.real_s = now_s
 		sim.step(delta)
@@ -281,7 +286,7 @@ func _mend() -> void:
 
 
 func _stop(seconds: float) -> void:
-	_stop_until = maxf(_stop_until, Time.get_ticks_msec() / 1000.0 + seconds)
+	_stop_until = maxf(_stop_until, _clock + seconds)
 
 
 ## A KEEPER GOING THROUGH A WOOD (FightSim._break_through). The standing tree
@@ -1052,6 +1057,14 @@ func _on_outcome(e: Dictionary) -> void:
 		&"downed":
 			var r := Outcomes.downed(game.body, game.clock, by.kind if by != null else &"")
 			hero.health = game.body.health
+			if by != null and Sentinels.is_keeper(by.row):
+				var edge := Sentinels.arena_edge(game.world, game.query, by.home, hero.pos, Tuning.PLAYER_RADIUS, FightSim.HERO_TALL)
+				if edge.is_finite():
+					player.place(edge, (by.home - edge).angle())
+					player.sync_view(0.0)
+					game.view.ensure_near(hero.pos)
+					game.camera.snap_to(player.position)
+					r.line = Outcomes.KEEPER_DOWNED_LINE
 			_wake()
 			Events.sfx.emit(&"downed", player.position)
 			Events.time_skipped.emit(float(r.minutes), &"downed")
@@ -1230,7 +1243,7 @@ func _wake() -> void:
 	_mend_from = game.clock.minutes
 	_last_health = game.body.health
 	game.player.model.play_action(&"downed", WAKE_SECONDS)
-	game.body.busy_until = maxf(game.body.busy_until, Time.get_ticks_msec() / 1000.0 + WAKE_SECONDS)
+	game.body.busy_until = maxf(game.body.busy_until, Survival.now_real() + WAKE_SECONDS)
 
 
 # --- held moments for shots (--act) -------------------------------------------

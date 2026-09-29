@@ -99,13 +99,10 @@ static func make() -> SentinelDef:
 	d.phases = [listening, cutting, breaching]
 
 	var force := SentinelWay.make(SentinelWay.FORCE)
-	force.says = "The receiver at its back, then its saw flank, then its face as it charges."
 	# About 1200 ms in the water: shorter than the reaper's mud, because a lead is
 	# narrow and a charge crosses one fast — the hold is the width of a lead at a
 	# run, not a stand in it.
 	var founder := SentinelWay.make(SentinelWay.FOUNDER, 1200.0, [Ground.BLACKWATER])
-	founder.says = "It is too heavy for a lead. Bring it across black water, or across its own cut."
 	var spoof := SentinelWay.make(SentinelWay.SPOOF, 2400.0)
-	spoof.says = "Its orders come as pings. Stand on a sounding hole wearing the signet and it files you as a rig."
 	d.ways = [force, founder, spoof]
 	return d

@@ -7,6 +7,10 @@ extends TestCase
 
 
 func test_the_second_ask_for_a_lair_does_no_new_work() -> void:
+	# From an empty memory: it holds LAIRS_MOST and then starts again, and the
+	# games of the tests before this one in the same process can bring it to
+	# the edge, so a clear mid-sweep reads as work done twice.
+	Sentinels.forget()
 	var w := WorldGen.generate(1, 512)
 	var asked := 0
 	var before := Sentinels.lairs_worked

@@ -11,13 +11,16 @@ const SR := preload("res://tests/fight/shoulder_reader.gd")
 const PR := preload("res://tests/fight/plate_reader.gd")
 
 
-static func bout(w: WorldData, lair: Vector2, start: Vector2, ids: int, seconds: float = 150.0, human: int = -1, at_plate: bool = false, health: int = -1) -> Dictionary:
+static func bout(w: WorldData, lair: Vector2, start: Vector2, ids: int, seconds: float = 150.0, human: int = -1, at_plate: bool = false, health: int = -1, hero_health: int = -1) -> Dictionary:
 	MobState._next_id = ids
 	var def := Sentinels.for_land(&"coast")
 	var sim := F.make_sim(w, start)
 	sim.hero.inventory.add(&"knife_shear")
 	sim.hero.inventory.set_held(&"knife_shear")
 	sim.hero.kit = FightKit.of([])
+	if hero_health > 0:
+		# Come to after a down, as the last try left them (Outcomes.downed).
+		sim.hero.health = hero_health
 	var m := sim.add_mob(def.kind, lair)
 	Sentinels.own_row(m)
 	if health >= 0:
@@ -239,13 +242,14 @@ const TELL_WAIT_MOST := 6.0
 const TRIES_MOST := 4
 
 
-## Tries, one after another from the same start, the keeper carrying its wounds,
-## until it falls or TRIES_MOST are spent.
+## Tries, one after another from the same start, the keeper carrying its wounds
+## and the player coming to at DOWNED_WAKE_HEALTH after a down, until it falls
+## or TRIES_MOST are spent.
 static func tries(w: WorldData, lair: Vector2, start: Vector2, ids: int, human: int) -> Dictionary:
 	var health := -1
 	var out := {"tries": 0, "won": false, "t": 0.0, "blows": 0, "gap": 0.0, "last_t": 0.0}
 	for i in TRIES_MOST:
-		var r := bout(w, lair, start, ids + i * 100, 90.0, human + i * 17, true, health)
+		var r := bout(w, lair, start, ids + i * 100, 90.0, human + i * 17, true, health, FightRules.DOWNED_WAKE_HEALTH if i > 0 else -1)
 		out.tries = i + 1
 		out.t = float(out.t) + float(r.t)
 		out.last_t = float(r.t)

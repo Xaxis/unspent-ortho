@@ -311,6 +311,8 @@ func _apply_phase(s: SentinelState, def: SentinelDef, i: int, announce: bool) ->
 ## Its body has gone from the coast (culled, or its wreck has lain its time). The
 ## state keeps everything: come back and it is as hurt as it was.
 func _leave(s: SentinelState, def: SentinelDef, m: MobState) -> void:
+	# Taken off in the frame it was struck (a down clears the coast), the blow is still its.
+	s.health = m.health
 	if s.fallen and not s.hulk_laid and def.hulk >= 0:
 		s.lair = m.pos
 	_bodies.erase(m.id)
@@ -340,6 +342,12 @@ func _stand_down(m: MobState) -> void:
 
 ## What each way has to read, taken off the running game. Pure rules judge it
 ## (SentinelWay), so every way is provable headless.
+## How long after the player leaves the flats a keeper out on them is still
+## theirs to founder: a lure crossed and stepped off counts, a fight that only
+## spilled there does not.
+const DRAWN_MS := 3000.0
+
+
 func look_at(s: SentinelState, def: SentinelDef) -> SentinelLook:
 	var look := SentinelLook.new()
 	look.health = 0.0 if (s.body != null and not s.body.alive) else s.health_fraction()
@@ -347,7 +355,17 @@ func look_at(s: SentinelState, def: SentinelDef) -> SentinelLook:
 	var at := m.pos if m != null else s.lair
 	if m != null and m.alive:
 		var g := game.world.ground_at(floori(m.pos.x), floori(m.pos.y))
-		if g != s.ground_was:
+		# The flats take a keeper the player draws out onto them, never one a
+		# fight spills onto (test_founder_lured, test_ways): its hold counts only
+		# while the player is out there or has just been (DRAWN_MS), and not
+		# while it stands spent after a bite or stopped by a blow.
+		var founder := def.way_of(SentinelWay.FOUNDER)
+		var hg := game.world.ground_at(floori(sim.hero.pos.x), floori(sim.hero.pos.y))
+		# Out on that ground, or past it in the water beyond (a lure swims off).
+		if founder != null and (founder.grounds.has(hg) or Ground.is_water(hg)):
+			s.drawn_at = sim.now
+		var drawn := sim.now - s.drawn_at <= DRAWN_MS
+		if g != s.ground_was or m.spent(sim.now) or m.stunned(sim.now) or not drawn:
 			s.ground_was = g
 			s.ground_since = sim.now
 		look.ground = g
@@ -437,9 +455,7 @@ func _fell(s: SentinelState, def: SentinelDef, way: SentinelWay, at: Vector2) ->
 	if not _falling_long_ago:
 		_stage(&"fall", at, FALL_S)
 	Events.sentinel_fell.emit(s.region, s.land, s.how)
-	# THE RECORD'S LINE, NOT THE WAY'S HINT: what could be seen of it falling
-	# (StoryContent.KEEPER_FELL). `way.says` is how to bring it down, and said after
-	# it was down it read as advice to a player who no longer needed it.
+	# THE RECORD'S LINE: what could be seen of it falling (StoryContent.KEEPER_FELL).
 	var fell: Dictionary = StoryContent.KEEPER_FELL.get(def.id, {})
 	if fell.has(way.id()):
 		Events.message.emit(String(fell[way.id()]))
