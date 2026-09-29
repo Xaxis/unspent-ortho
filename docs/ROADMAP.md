@@ -35,7 +35,9 @@ Builders: **A** introduction and story (teammate3, words via story-wright) ·
 5. [x] **Its fall changes the coast** (C). The first memory opens; the land shows it.
 6. [x] **The taken** (C, words via A). The motive awaits the owner's ruling in STORY.md.
    Rescue on a clock, or a loss heard in Maren's lines.
-7. [ ] **Proof** (all). The proof tour plays the whole slice unassisted. ★
+7. [ ] **Proof** (all). The proof tour plays the whole slice unassisted. ★ On main:
+   01-21 from the title (the Reaper by FOUNDER). Open: 7a force and 7b starve can't be
+   won with real input (fight2, `fight/reaper-reachable`); then the owner's playtest.
 
 ## Slice 2 — the Holdfast (next; planned 2026-09-28)
 
@@ -43,8 +45,9 @@ Maren's lead to the camp; the holding; the Holdfast's price; the lab and Ruth's
 table; the second keeper. Reason to make: the holding's defence (armour, shutters
 and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
 
-1. [ ] **The road to the camp** (A). `marens_lead` → `holdfast_fight` at the camp;
-   `crew_paid` from Rook (his note's hand is held for slice 4).
+1. [x] **The road to the camp** (A). `marens_lead` → `holdfast_fight` at the camp;
+   `crew_paid` from Rook (his note's hand is held for slice 4). The survey marks the
+   camp; Rook pays for iron in plate, and the want turns to armour.
 2. [ ] **The holding** (A+C). The people the Seeker has met, kept where a yard
    can't reach them; the taken who are freed go there.
 3. [ ] **Raids answer attention** (C). Where he draws HALCYON's attention (light,
@@ -54,9 +57,11 @@ and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
    reason said by the camp.
 5. [ ] **The lab and Ruth's table** (A). `built_halcyon` → `gate_lab`; `was_cia` →
    `gate_meet` (`ruth_signed`, `ruth_volunteered`, `kerr_money`).
-6. [ ] **The second keeper, the Pan Rake** (B+C). The salt flats keeper holds the
-   kitchen (`mem_kitchen`). Salt flats is guaranteed on the home body (worldgen,
-   GEN at landing).
+6. [ ] **The second keeper** (B+C). Whichever keeper stands nearest home, holding a
+   non-key memory (`TESTIMONY_SENTINEL`, beat `gap`). Salt flats can't be guaranteed
+   on home without moving the coast keeper: measured on seeds 1-40 (salt on home in
+   3/40; every home deal moves the Reaper's lair, 90-500 tiles). The Pan Rake and
+   `mem_kitchen` come where salt flats is reached; nothing gates on the kitchen.
 7. [ ] **Vera and the way on** (A). `vera_knew` ("filed under weather"); she names
    the archive across the water: slice 3's lead.
 8. [ ] **Proof** (all). The tour plays the slice unassisted. ★
@@ -67,19 +72,22 @@ The owner's ask (2026-09-28): see every arc and sub-arc as directional arrows ov
 world, how they interleave across the whole game, and view and edit each in a
 meaningful way. It must be brilliant. Builder **D**.
 
-- [ ] **T1 The dev slate, rebuilt.** One dev app on the slate with pages (world, story,
+- [x] **T1 The dev slate, rebuilt.** One dev app on the slate with pages (world, story,
   fight, look and speed, saves) in the hacked-slate idiom. Today's rules and toggles
   move in whole; nothing lost.
-- [ ] **T2 The story map.** On any seed: the journey's legs as the spine; each arc a
+- [x] **T2 The story map.** On any seed: the journey's legs as the spine; each arc a
   coloured line of arrows beat to beat, at the places the beats land; interleaving
   seen where arcs share ground. Filter by arc, cast or leg; scrub through the
   order; the live save's state shown (landed, open, withheld). ★
-- [ ] **T3 The arc view.** One arc as a graph (Godot's `GraphEdit`): beats, what opens
+- [x] **T3 The arc view.** One arc as a graph (Godot's `GraphEdit`): beats, what opens
   each (gates, witnessed events, memories), sub-arcs and branches, every line with
   its speaker and place, each node linked to its source. ★
 - [ ] **T4 Editing** (after the owner has used T2–T3): story data moves to a structured
   file the game loads; edits save through the story tests; the words still pass
   story-wright.
+- [ ] **Tours walk with a path.** `walkto` holds a straight line and has no pathfinding, so
+  a proof cannot walk a freed person 188 tiles home; home-coast.tour reads "home again"
+  from the record instead.
 
 **Brilliant means:** a stranger reads the whole story's shape in ten seconds; nothing
 overlaps unreadably at any zoom; it opens in under a second and pans at 60 fps; it
@@ -89,11 +97,10 @@ line that made it. Proved by frames read at three zooms on two seeds, and the ow
 
 ## Fixes that serve the slice
 
-- [ ] The white panel on the player's back over the shoulder. Seen once (main
-  c330ea47, `--seed=1 --hour=6.5 --view=shoulder --weather=clear:0`): a tall white
-  card with a hit-splash on it, the player in a recoil pose. Not reproduced by the
-  same shot three times, by a walk and turn at 06:30, or by a runner's hit over
-  the shoulder. Look again if it shows.
+- [x] Title-time warm: no gain measured, dropped; separating compile from state would need `--programs` in `--play`.
+- [x] The white panel at the player: the boot warm-up rack, drawn before the cover
+  lifted and caught by early shots. The cover and shots now wait for the warm-up
+  (tests/render/test_warm_in_shots.gd).
 - [ ] A lit machine yard throws a light pool at night (one lamp-pool source per yard, put out with its lamps), so a dark yard reads at a glance. Counts against the web's 7 pool slots. (Step 5 follow-up.)
 - [x] Web: the 0.2–0.6 s hitch on the shoulder switch in pinewood. Looking out puts
   the sun in four blended splits under the seen sky (SkyLight._look_out), and 18
@@ -112,6 +119,15 @@ Landscape batch 2+3
 (`look/batch3`) and batch 4 props (`l2/placement`) · streaming S4j3/S5c
 (`land/s4j3`, `world/s5c`) · the crossing programs check and long-walk tour ·
 the vent-tender and G10 · walls follow-ups · web frame budgets.
+
+Latent worldgen bugs no main seed hits yet (each moves seeds, so each gets its own GEN
+and a check that the home coast keeper stays put):
+- `gen_treads._never` marks water HARD but not the tiles beside it, so a gouge or step
+  can hang water over a cut (seed 42 at GEN 47, drowned city (1223,756)). Fix: tiles
+  4-adjacent to land water are HARD too; test_the_drowned_city goes red.
+- `Sentinels.gets_out` passes a lair on 6 clear rays, but test_keeper_reach floods for
+  300 tiles (seed 1's crags lair opened 262 at GEN 47). Fix: gets_out floods, with
+  the test's `_opens` moved into Sentinels.
 
 ## The whole game, as slices
 

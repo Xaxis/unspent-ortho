@@ -353,7 +353,7 @@ func _add_draw_stage() -> void:
 			_drawn = 0
 			_draw_from = Time.get_ticks_msec()
 			RenderingServer.frame_post_draw.connect(_on_drawn)
-		if _drawn >= 2 or BootPage.headless():
+		if (_drawn >= 2 and _warmed()) or BootPage.headless():
 			return true
 		# NOTHING has been drawn at all. The page itself is being drawn every
 		# frame while this waits, so one frame would have arrived by now if the
@@ -361,6 +361,14 @@ func _add_draw_stage() -> void:
 		# deadline buys a stall nobody can see instead of the world's first frame.
 		return Time.get_ticks_msec() - _draw_from > int(DRAW_SILENT_MS) and _drawn == 0,
 		false, DRAW_DEADLINE_MS)
+
+
+## Whether the scene's boot warm-up (01_warm_lights) is over: its rack stands at
+## the player's feet until then, and the lift took 0.35 s where the warm-up's
+## twelve frames take as long as their programs take to build.
+func _warmed() -> bool:
+	var w: Node = scene.find_child("01_warm_lights", true, false) if scene != null else null
+	return w == null or bool(w.call("done"))
 
 
 ## Every system script the game loads (Game._system_files), as res:// paths.

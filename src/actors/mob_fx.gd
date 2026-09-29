@@ -1196,14 +1196,17 @@ static func aim_line(mi: MeshInstance3D, from: Vector3, to: Vector3) -> void:
 
 
 ## Compile every mark's shader before the first blow needs it, so the first hit
-## of a game is not also its first hitch. Each draws nothing and frees itself.
-static func warm(parent: Node, at: Vector3) -> void:
+## of a game is not also its first hitch. Returns what it drew, for the caller to
+## free when the boot's warm-up ends (40_fight.warm): a clock of its own let the
+## marks outlive the rack by as many frames as a quarter second held.
+static func warm(parent: Node, at: Vector3) -> Array[Node3D]:
+	var out: Array[Node3D] = []
 	if not _ok(parent):
-		return
+		return out
 	for key: StringName in [&"over", &"flat"]:
 		var mi := _mark(parent, at, 0.5, BURST, key, 0, Palette.INK[0], Palette.INK[0])
 		(mi.material_override as ShaderMaterial).set_shader_parameter(&"progress", 1.0)
-		_free_after(mi, 0.25)
+		out.append(mi)
 	var arc := MeshInstance3D.new()
 	arc.mesh = swing_mesh(1.0, 1.0)
 	var sm := swing_material()
@@ -1212,7 +1215,7 @@ static func warm(parent: Node, at: Vector3) -> void:
 	arc.material_override = sm
 	parent.add_child(arc)
 	arc.global_position = at
-	_free_after(arc, 0.25)
+	out.append(arc)
 	var card := MeshInstance3D.new()
 	var q := QuadMesh.new()
 	q.size = Vector2(0.01, 0.01)
@@ -1220,7 +1223,8 @@ static func warm(parent: Node, at: Vector3) -> void:
 	card.material_override = _flash_material()
 	parent.add_child(card)
 	card.global_position = at - Vector3(0, 0.5, 0)
-	_free_after(card, 0.25)
+	out.append(card)
+	return out
 
 
 ## A faint light standing at `at` for `seconds`: what a sheet of found light

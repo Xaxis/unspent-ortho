@@ -100,7 +100,9 @@ extends GameSystem
 ##                          free (no longer held), ring (a blow rang off plate),
 ##                          hit (a blow hurt a body), hurt (the player was struck),
 ##                          killed (a body went down), made (something was made),
-##                          took (something was taken), strike (lightning flashed);
+##                          took (something was taken), made:ITEM / took:ITEM (that
+##                          item came in; neither answers on a count of nothing),
+##                          strike (lightning flashed);
 ##                          slept (a night went by at a fire), skipped (any jump in
 ##                          world time: sleeping, eating, being carried off);
 ##                          mob (a live body in frame), mob:KIND (one of that kind:
@@ -673,8 +675,17 @@ func _listen() -> void:
 		elif damage > 0:
 			_seen["hit"] = true)
 	Events.killed.connect(func(_k: StringName, _at: Vector3) -> void: _seen["killed"] = true)
-	Events.made.connect(func(_i: StringName, _n: int) -> void: _seen["made"] = true)
-	Events.took.connect(func(_i: StringName, _n: int) -> void: _seen["took"] = true)
+	# WHAT CAME IN, and only when something did: `near mussel_rock; press use;
+	# await took` passed on the driftwood lying beside the rock, and the frame after
+	# it claimed a meal nobody had eaten. `took:ITEM` / `made:ITEM` name the thing.
+	Events.made.connect(func(i: StringName, n: int) -> void:
+		if n > 0:
+			_seen["made"] = true
+			_seen["made:%s" % i] = true)
+	Events.took.connect(func(i: StringName, n: int) -> void:
+		if n > 0:
+			_seen["took"] = true
+			_seen["took:%s" % i] = true)
 	# A frame named for a night gone by is the one thing the picture cannot show
 	# on its own: dawn looks like dusk. core_loop's "16-slept-to-morning" was a
 	# picture of 22:05 with the footer still offering `e fire - sleep`.

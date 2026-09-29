@@ -202,6 +202,11 @@ func _shoot() -> void:
 		var player: Node3D = game.get("player")
 		game.get("view").call("ensure_near", player.get("pos"))
 		game.get("camera").call("snap_to", player.position)
+		# The boot's warm-up stands a rack at the player's feet (01_warm_lights),
+		# under the boot page in play; the default eight frames came before it went.
+		var warm: Node = game.get_node_or_null("01_warm_lights")
+		while warm != null and not bool(warm.call("done")):
+			await get_tree().process_frame
 	for i in options.frames:
 		await get_tree().process_frame
 	# A shot is of a moment settled, not of how fast its first frames ran: the

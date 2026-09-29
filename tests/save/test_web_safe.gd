@@ -49,7 +49,21 @@ func test_every_slot_lives_under_user() -> void:
 	eq(SaveSlots.root, "user://elsewhere", "--saves picks a folder under user://")
 	SaveSlots.use_options(BootOptions.parse(PackedStringArray(["--shot=x.png"])))
 	eq(SaveSlots.root, SaveSlots.TOOL_ROOT, "a shot keeps clear of the player's saves")
-	SaveSlots.use_options(BootOptions.parse(PackedStringArray(["--tour=tours/saves.tour"])))
-	eq(SaveSlots.root, SaveSlots.TOOL_ROOT.path_join("saves"), "a tour keeps its own, clear of other tours run beside it")
+	# A tour's own folder, and this checkout's: no other tour's and no other
+	# worktree's run of it ever shares a save with it. A name no tour has, since
+	# the folder is emptied as the tour starts.
+	var tour := BootOptions.parse(PackedStringArray(["--tour=tours/zz-web-safe-probe.tour"]))
+	SaveSlots.use_options(tour)
+	var mine := SaveSlots.root
+	check(mine.begins_with(SaveSlots.TOOL_ROOT.path_join("zz-web-safe-probe-")), "a tour keeps its own, clear of other tours run beside it: %s" % mine)
+	# And it starts empty: whatever its last run left is not this run's to continue.
+	DirAccess.make_dir_recursive_absolute(mine)
+	var left := FileAccess.open(mine.path_join("slot_0.save"), FileAccess.WRITE)
+	left.store_string("a save left by the last run")
+	left.close()
+	SaveSlots.use_options(tour)
+	eq(SaveSlots.root, mine, "the same tour in the same checkout keeps the same folder")
+	check(not FileAccess.file_exists(mine.path_join("slot_0.save")), "and a tour starts with it empty")
+	DirAccess.remove_absolute(mine)
 	SaveSlots.root = was
 	check(SaveSlots.root.begins_with(SaveSlots.TEST_ROOT), "tests run clear of the player's saves too: %s" % SaveSlots.root)

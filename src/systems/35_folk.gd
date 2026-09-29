@@ -229,7 +229,16 @@ func _count_crowd() -> void:
 
 ## Computed from the live world and never latched: this is a STATE a player can
 ## stand and look at, not an event, so an `await` on it can always say no.
+## `crowd_indifferent`: a crowd stands round the player and not one head turned.
+## `home_again`: the village he stands in has had somebody back from a yard and
+## the plan holds nobody of it now: read off the record (45_taken), not walked.
 func tour_seen(what: StringName) -> bool:
+	if what == &"home_again":
+		var v := _village_here()
+		if v < 0:
+			return false
+		var gone := _taken_from(v)
+		return gone.x == 0 and _freed_from(v) > 0
 	if what != &"crowd_indifferent":
 		return false
 	# A crowd stands round the player and not one head has turned.
@@ -359,6 +368,29 @@ func _populate(index: int, centre: Vector2) -> void:
 	for r: Dictionary in rows:
 		if not r.is_empty():
 			queue.append(r)
+
+
+## The village the player is standing in, or -1: one of those streamed in round
+## him (`_spawned`), never a walk of every village in the world.
+func _village_here() -> int:
+	var at: Vector2 = game.player.pos
+	for i: int in _spawned:
+		var vp: Vector2 = game.world.villages[i].get("pos", Vector2.INF)
+		if vp.distance_to(at) < NEAR:
+			return i
+	return -1
+
+
+## How many of village `index`'s people have been got back out of a yard.
+func _freed_from(index: int) -> int:
+	var name := str(game.world.villages[index].get("name", ""))
+	var n := 0
+	for sys in game.systems:
+		if sys.get("taken") is Taken:
+			for t: Taken.TakenPerson in (sys.get("taken") as Taken).people:
+				if t.home < 0 and t.home_name == name and t.freed and not t.lost:
+					n += 1
+	return n
 
 
 ## For village `index`: how many of its people the plan has (held, gone, lost, or

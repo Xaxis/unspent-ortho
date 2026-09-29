@@ -265,6 +265,41 @@ static func bags(game: Game) -> Array[Vector2]:
 	return out
 
 
+## PLACES HE HAS BEEN TOLD OF (StoryContent.TOLD): once the beat that told him
+## has landed, the slot the story cast is marked and lettered with the teller's
+## word for it, since a lead with nowhere to walk is no lead. [{at, word}]
+static func told(game: Game) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var placed: Dictionary = {}
+	for sys: Node in game.systems:
+		if sys.name == "49_cast":
+			placed = sys.get("placed")
+	for beat: StringName in StoryContent.TOLD:
+		var row: Dictionary = StoryContent.TOLD[beat]
+		if Story.landed(beat) and placed.has(row.place):
+			out.append({"at": placed[row.place].pos, "word": String(row.word)})
+	return out
+
+
+## Where a mark at `to` stands on the glass `r`: there, when it is on it; else at
+## the glass's edge on the line from `from` (the player) toward it, so a place
+## hundreds of tiles off (the camp is ~480 on a full world) still reads as a
+## bearing at whatever scale the survey opens.
+static func pin(from: Vector2i, to: Vector2i, r: Rect2i) -> Vector2i:
+	if r.has_point(to):
+		return to
+	var d := Vector2(to - from)
+	var t := 1.0
+	var lo := Vector2(r.position)
+	var hi := Vector2(r.end - Vector2i.ONE)
+	for axis in 2:
+		if d[axis] > 0.0:
+			t = minf(t, (hi[axis] - from[axis]) / d[axis])
+		elif d[axis] < 0.0:
+			t = minf(t, (lo[axis] - from[axis]) / d[axis])
+	return Vector2i((Vector2(from) + d * maxf(t, 0.0)).round())
+
+
 ## THE STRING'S ROUTES (21_doors `string_routes`, SlotRoute): each laid from a
 ## face settlement's door to the nearest ramp, drawn while a string is carried
 ## and not once it is gone. [PackedVector2Array or Array of Vector2]
@@ -648,6 +683,23 @@ func _draw_overlay() -> void:
 		var word := BAG_WORD
 		var box := Rect2i(s.x + 14, s.y - UiFont.SIZE / 2, UiFont.width(word) + 8, UiFont.SIZE)
 		if r.grow(-4).encloses(box):
+			placed.append(box)
+			UiMapScreen.clearing(ci, box)
+			UiDraw.text(ci, box.position + Vector2i(4, 0), word, UiTheme.BRIGHT)
+	# Where somebody has sent him: a hollow square in the player's bright, the
+	# village's mark without its glass, lettered with the teller's word.
+	for t: Dictionary in UiMapScreen.told(game):
+		var s := UiMapScreen.pin(to_screen(game.player.pos), to_screen(t.at), r.grow(-24))
+		UiDraw.rect(ci, Rect2i(s.x - 4 * p, s.y - 4 * p, 9 * p, 9 * p), Color(UiTheme.GLASS, 0.85))
+		UiDraw.rect(ci, Rect2i(s.x - 3 * p, s.y - 3 * p, 7 * p, 7 * p), UiTheme.BRIGHT)
+		UiDraw.rect(ci, Rect2i(s.x - 2 * p, s.y - 2 * p, 5 * p, 5 * p), UiTheme.GLASS)
+		UiDraw.px(ci, s.x, s.y, UiTheme.BRIGHT)
+		var word: String = t.word
+		var box := Rect2i(s.x + 14, s.y - UiFont.SIZE / 2, UiFont.width(word) + 8, UiFont.SIZE)
+		if not r.grow(-4).encloses(box):
+			# Pinned at the right edge, the word goes on the mark's left.
+			box.position.x = s.x - 14 - box.size.x
+		if r.grow(-4).encloses(box) and _free_of(placed).call(box):
 			placed.append(box)
 			UiMapScreen.clearing(ci, box)
 			UiDraw.text(ci, box.position + Vector2i(4, 0), word, UiTheme.BRIGHT)

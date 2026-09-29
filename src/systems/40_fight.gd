@@ -52,10 +52,23 @@ func setup(g: Game) -> void:
 	_mend_from = g.clock.minutes
 	_last_health = g.body.health
 	_keep_texel()
-	MobFx.warm(g, g.player.position)
 	g.player.model.set_held(g.inventory.held)
 	if g.options.act != "":
 		_play_act(g.options.act)
+
+
+## The marks' warm-up (MobFx.warm), drawn for the boot's warm-up frames
+## (01_warm_lights) and gone on the same frame as its rack.
+var _warm_marks: Array[Node3D] = []
+
+
+func warm(on: bool) -> void:
+	for n: Node3D in _warm_marks:
+		if is_instance_valid(n):
+			n.queue_free()
+	_warm_marks.clear()
+	if on and sim != null:
+		_warm_marks = MobFx.warm(game, game.player.position)
 
 
 ## Which keys were down at the last read. A press is this system's own edge as
