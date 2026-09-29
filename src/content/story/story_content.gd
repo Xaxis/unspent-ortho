@@ -5802,6 +5802,12 @@ const REPRISAL := {
 # the raid going off without them. Rook's reason is his talk's `raided` node, and
 # the goal hop is LEAD.shutters.
 const DEFEND := {
+	# Rook, the first time he is spoken to after a raid has been warned on the
+	# holding (48_raids `cast_word`): why shutters, and why the plate.
+	"reason": [
+		"They come at night for whoever's asleep. Shutter the beds: wood, scrap, rag.",
+		"Keep the plate on your own back. I didn't pay you in it for show.",
+	],
 	# The warning puts them in (%s: the holding's name).
 	"in": "In %s they put down their work and go in behind the shutters.",
 	# A snatcher that broke off at the boards.

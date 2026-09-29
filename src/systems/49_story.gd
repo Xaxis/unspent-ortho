@@ -360,6 +360,21 @@ func _start_talk(row: Dictionary) -> void:
 					Events.sfx.emit(&"ui_slate_switch", Vector3.ZERO)
 					view.refresh()
 					return
+	# A named person with something to say about what has happened to him, before
+	# their own talk (48_raids `cast_word`: Rook, once a raid is warned on his holding).
+	if StringName(str(row.get("character", &""))) != &"":
+		for sys in game.systems:
+			if sys.has_method(&"cast_word"):
+				var word: Dictionary = sys.call(&"cast_word", row)
+				if not word.is_empty():
+					talk = StoryTalk.of_made(word)
+					view.talk = talk
+					view.choice = 0
+					game.talking = true
+					_hush(true)
+					Events.sfx.emit(&"ui_slate_switch", Vector3.ZERO)
+					view.refresh()
+					return
 	# Somebody of a village that has seen him, with a holding of his standing:
 	# he can ask them to come where a yard cannot reach them (46_settlements
 	# `holding_offer`, Holding). Before the region's own asks, since what he asks

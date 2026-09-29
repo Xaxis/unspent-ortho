@@ -719,6 +719,9 @@ func _warn(s: Settlement, stage: StringName) -> void:
 	p.party = _party_for(s, stage)
 	plans.append(p)
 	Events.raid_warned.emit(s.id, stage)
+	if stage != RaidStage.SURVEY:
+		@warning_ignore("return_value_discarded")
+		Story.hear(Holding.RAIDED)
 	# COVER (slice 2 step 4): warned of anything past a survey, a holding with its
 	# beds shuttered sends its people in behind the boards until it is over.
 	if stage != RaidStage.SURVEY and s.shuttered() and not s.inside:
@@ -735,6 +738,24 @@ func _warn(s: Settlement, stage: StringName) -> void:
 	_sync_marks()
 	_seen["warned"] = true
 	_seen["warned:%s" % String(stage)] = true
+
+
+## ROOK'S REASON (slice 2 step 4): the first time he talks to Rook after a raid
+## has been warned on his holding, Rook says why shutters and why the plate,
+## once (the page's mark). A made page for 49_story, which asks every system
+## before a named person's own talk, or {}.
+func cast_word(row: Dictionary) -> Dictionary:
+	if StringName(str(row.get("character", &""))) != &"rook":
+		return {}
+	if not Story.heard(Holding.RAIDED) or Story.heard(REASON_SAID):
+		return {}
+	return {
+		"made": true, "mark": REASON_SAID, "title": "Rook", "start": &"open",
+		"nodes": {&"open": {"says": PackedStringArray(StoryContent.DEFEND["reason"]), "replies": [{"text": "[leave]", "to": &""}]}},
+	}
+
+
+const REASON_SAID := &"said:rook_shutters"
 
 
 ## Where a warning comes from: off along the bearing the machines surveyed this
