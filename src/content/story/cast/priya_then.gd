@@ -4,6 +4,7 @@ static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"priya_then", "name": "Priya", "title": "the alignment lead",
 		"at": &"then_lab", "talk": &"priya_then", "trade": &"keeper",
+		"appears_when": &"built_halcyon",
 		"look": {"build": &"woman", "hair": &"black", "hair_style": &"long", "beard": &"none"},
 		"wants": "To stop HALCYON.",
 		"fears": "That she is the only one who sees it.",
