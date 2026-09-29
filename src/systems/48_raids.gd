@@ -1767,7 +1767,13 @@ var _road: Dictionary = {}
 func _on_works_part_broken(region: int, yard: Vector2) -> void:
 	if game.clock == null:
 		return
-	var roof := Reprisal.nearest_roof(game.query.props_near(yard, Reprisal.REACH), yard, game.world.depleted)
+	var near := game.query.props_near(yard, Reprisal.REACH)
+	# Which of those have burned already, asked of each, never the whole table.
+	var gone := {}
+	for q in near:
+		if game.world.depleted.has(q.id):
+			gone[q.id] = true
+	var roof := Reprisal.nearest_roof(near, yard, gone)
 	if reprisal.send(region, roof, game.clock.minutes, yard):
 		_seen["reprisal_sent"] = true
 		Events.sfx.emit(&"alert", game.world.to_3d(yard))
