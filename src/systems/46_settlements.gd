@@ -1104,12 +1104,16 @@ func _walk_in() -> void:
 
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims.gd reads this).
-const TOUR_PLACES: Array[String] = ["holding_ask"]
+const TOUR_PLACES: Array[String] = ["holding_ask", "shutters"]
 
 
 ## `holding_ask`: beside one of the people of the village he is in, out on the
 ## land and clear of any door (a door takes the key, 21_doors), facing them.
+## `shutters`: out in front of the boards of the holding he is at, on the side
+## away from the bed they bar, facing them: what a machine in the yard would see.
 func tour_place(what: String) -> Vector2:
+	if what == "shutters":
+		return _tour_before_shutters()
 	if what != "holding_ask":
 		return Vector2.INF
 	var v := _tour_village()
@@ -1135,6 +1139,35 @@ func tour_place(what: String) -> Vector2:
 
 
 var _tour_face := NAN
+
+
+func _tour_before_shutters() -> Vector2:
+	var s := here()
+	if s == null:
+		return Vector2.INF
+	var boards: Structure = null
+	for p in s.pieces:
+		if p.kind == StructureKind.SHUTTERS and p.standing() and (boards == null or p.pos.distance_to(game.player.pos) < boards.pos.distance_to(game.player.pos)):
+			boards = p
+	if boards == null:
+		return Vector2.INF
+	var bed := s.centre
+	var best := INF
+	for p in s.pieces:
+		if p != boards and StructureKind.sleeps(p.kind) > 0 and p.pos.distance_to(boards.pos) < best:
+			best = p.pos.distance_to(boards.pos)
+			bed = p.pos
+	var out := (boards.pos - bed).normalized()
+	if out == Vector2.ZERO:
+		out = Vector2.RIGHT
+	# Straight out first, then swung either way, until the ground there takes a body.
+	for swing: float in [0.0, 0.5, -0.5, 1.0, -1.0]:
+		for reach: float in [2.4, 3.0, 1.8]:
+			var at := boards.pos + out.rotated(swing) * reach
+			if game.query.standable(int(floor(at.x)), int(floor(at.y))):
+				_tour_face = (boards.pos - at).angle()
+				return at
+	return Vector2.INF
 
 
 func tour_face(_what: String) -> float:
