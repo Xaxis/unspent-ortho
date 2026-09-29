@@ -4089,8 +4089,14 @@ const TALKS := {
 					{"text": "Who paid you?", "pick": &"asked_payer", "to": &"payer"},
 					{"text": "What do you want?", "pick": &"asked_want", "to": &"want"},
 					{"text": "Teague sells our roads to the Covenant.", "when": &"teague_sold", "pick": &"told_rook_teague", "to": &"teague"},
+					{"text": "[hold out the iron]", "has": [&"iron_ore", &"iron"], "to": &"iron"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
+			},
+			# Maren's lead kept (ROADMAP slice 2 step 1): the crew pay for the iron in plate, for armour (StoryContent.PAID).
+			&"iron": {
+				"says": ["Iron. She sent it and not us to her. She's right. We bring the hunters.", "Three plate for it. Beat it into armour at a bench.", "I pay in plate. Coin never turned a blade."],
+				"replies": [{"text": "[take the plate]", "pick": &"paid", "to": &""}],
 			},
 			&"payer": {
 				"says": ["Old coin, left where I'd find it, and a note in a hand I didn't know.", "It said you'd come out of the sea, and when."],
@@ -5499,6 +5505,16 @@ const LEAD := {
 	&"pick": "A pick for the iron, made at {at}.",
 	&"ore": "The crew past the old works pay for iron. Take the pick to the rock.",
 	&"camp": "The crew pay for iron. Take it to them, not them to her. The survey marks the camp.",
+	&"armour": "Armour against the hunters' blades: plate armour at a bench, scrap and iron.",
+}
+
+# A talk that pays, keyed by the talk's node where the deal is closed
+# ("talk.node", as Story.choose names it): `pick` closes it, `takes` is one of the
+# first of these held, `gives` goes in the bag, and `makes` is what the pay is
+# for (Guide.armour_goal wants it until it is made). The crew pay for iron in
+# plate, three to a piece of plate armour (Recipes `kit_plate`).
+const PAID := {
+	&"rook.iron": {"pick": &"paid", "takes": [&"iron_ore", &"iron"], "gives": {&"scrap": 3}, "makes": &"kit_plate"},
 }
 
 # Places a person has told him of, keyed by the beat that tells it: once that

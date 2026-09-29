@@ -161,6 +161,9 @@ static func goal(game: Game) -> String:
 	if edge != "":
 		return edge
 	if inv.has(&"pick"):
+		var armour := armour_goal(game)
+		if armour != "":
+			return armour
 		if not inv.has(&"iron_ore") and not inv.has(&"iron"):
 			return _led(&"ore", "Take the pick to the ore in the rock.")
 		var camp := camp_goal()
@@ -223,6 +226,17 @@ const CAMP_MET := &"rook"
 static func camp_goal() -> String:
 	if Story.landed(LEAD_BEAT) and not Story.met(CAMP_MET) and StoryContent.LEAD.has(&"camp"):
 		return String(StoryContent.LEAD[&"camp"])
+	return ""
+
+
+## PAID IN PLATE: once the crew have paid for the iron (StoryContent.PAID, Rook's
+## `iron`), the want is the plate armour the pay is for (LEAD `armour`), until
+## it is made.
+static func armour_goal(game: Game) -> String:
+	for at: StringName in StoryContent.PAID:
+		var row: Dictionary = StoryContent.PAID[at]
+		if Story.chose(at) == row.pick and not game.inventory.has(row.makes) and StoryContent.LEAD.has(&"armour"):
+			return String(StoryContent.LEAD[&"armour"])
 	return ""
 
 
