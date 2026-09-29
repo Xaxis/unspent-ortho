@@ -22,8 +22,17 @@ free_pages() { vm_stat | awk '/Pages free/ {gsub("\\.","",$3); print $3}'; }
 running() { pgrep -ix godot | wc -l | tr -d ' '; }
 # Slot i is the directory /tmp/unspent-heavy.lock[.i]; a slot whose holder is gone
 # (killed shell) is reclaimed.
+reserve=/tmp/unspent-heavy.reserve
+reserved_by_other() {
+  local holder; holder=$(cat "$reserve" 2>/dev/null || echo 0)
+  [ "$holder" -gt 0 ] 2>/dev/null || return 1
+  [ "$holder" = $$ ] && return 1
+  kill -0 "$holder" 2>/dev/null && return 0
+  rm -f "$reserve"; return 1
+}
 take() {
   local i d holder
+  reserved_by_other && return 1
   for i in $(seq 0 $((slots - 1))); do
     d=/tmp/unspent-heavy.lock; [ "$i" = 0 ] || d="$d.$i"
     if mkdir "$d" 2>/dev/null; then echo $$ > "$d/pid"; lock=$d; return 0; fi
@@ -57,6 +66,11 @@ stale() {
   done
 }
 ok=0; n=0
+# A HEAVY_ALONE job claims the box while it waits, so ordinary jobs stop starting and
+# the running ones drain; without it, a steady stream of short jobs starves it.
+if [ "${HEAVY_ALONE:-0}" = 1 ]; then
+  if ! reserved_by_other; then echo $$ > "$reserve"; fi
+fi
 while :; do
   if [ "$(date +%s)" -ge "$end" ]; then echo "heavy: never clear (pages $(free_pages), $(running) godot)" >&2; exit 2; fi
   n=$((n+1))
@@ -70,6 +84,6 @@ while :; do
   fi
   sleep 10
 done
-trap 'rm -rf $lock' EXIT
+trap 'rm -rf $lock; [ "$(cat "$reserve" 2>/dev/null)" = $$ ] && rm -f "$reserve"' EXIT
 echo "heavy: clear in $lock, $(free_pages) pages free at $(date +%T)" >&2
 "$@"
