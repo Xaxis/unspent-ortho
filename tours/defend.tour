@@ -33,6 +33,15 @@ await warned 30
 await went_in 5
 wait 1.0
 shot 04-they-go-in-behind-the-shutters with holding
+# From the yard at a body's height, the way a machine would come at it: boards
+# over the bed, and the people who went in behind them.
+near shutters
+tap shoulder
+await shoulder 20
+wait 1.0
+shot 05-the-boards-from-the-yard with piece:shutters, shoulder
+tap shoulder
+wait 0.8
 # They come at dusk, and the night is let go by (a raid stands for RaidStage
 # MINUTES): whatever came tore at the boards and went.
 hour 19.4
@@ -47,10 +56,10 @@ try 25
   await ring 1.4
 end
 await plated 20
-shot 05-the-plate-takes-its-share with mob, plated
+shot 06-the-plate-takes-its-share with mob, plated
 hour 23
 wait 1.5
 await raid_ended 60
 await kept_in 5
 wait 1.0
-shot 06-everybody-comes-out with holding
+shot 07-everybody-comes-out with holding
