@@ -264,6 +264,8 @@ static func _meshes(piece_kind: int, v: int, broken: bool, on: bool) -> Array:
 			Defence.plate_wall_found(found, v, broken)
 		StructureKind.NETTING:
 			Defence.netting(made, v, broken)
+		StructureKind.SHUTTERS:
+			Defence.shutters(made, v, broken)
 		StructureKind.DECOY_MAST:
 			Defence.decoy_made(made, v, broken)
 			Defence.decoy_found(found, v, broken)

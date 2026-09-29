@@ -216,6 +216,9 @@ static func _wire(s: Settlement, weather: Dictionary, hour: float) -> void:
 
 ## How well the holding works this slice: hungry people do a third of it.
 static func _works_factor(s: Settlement) -> float:
+	# Gone in behind the shutters for a raid: nobody is out working (48_raids).
+	if s.inside:
+		return 0.0
 	return lerpf(1.0, HUNGRY_WORKS, clampf(s.hunger, 0.0, 1.0))
 
 

@@ -289,6 +289,10 @@ static func way_goal(game: Game) -> String:
 		if not Holding.taken_from_seen(game):
 			return String(StoryContent.HOLDING_MOVE["lead_burned"])
 		return String(StoryContent.LEAD[&"holding"])
+	# Then the beds there, once a raid has been warned on it (Holding.RAIDED).
+	if Holding.shutters_wanted(game) and StoryContent.LEAD.has(&"shutters"):
+		_key = &"shutters"
+		return String(StoryContent.LEAD[&"shutters"])
 	for hop: Dictionary in WAY:
 		if not Story.landed(hop.after):
 			continue
