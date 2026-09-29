@@ -181,8 +181,9 @@ extends GameSystem
 ##                          inside its reach: a return BY NAME, where a timed walk
 ##                          back ends wherever the props on the way let it
 ##                          (realms.tour's did, once the scatter laid new props)
-##   choose ID              on an open page, tap move_down (the real key) until the
-##                          row ID is chosen; fails if it never comes round
+##   choose ID              on an open page, tap move_up to its top and then move_down
+##                          (the real keys) until the row ID is chosen; fails if it
+##                          never comes round
 ##   coast calm|wild        calm: clear the bodies about and stop new ones coming
 ##                          (so a scripted stretch is not a random fight); wild: resume
 ##   spawn KIND beyond PROP put a roster body on the far side of the nearest prop of
@@ -1305,7 +1306,26 @@ func _choose(id: StringName) -> bool:
 	var ui := _system("90_ui")
 	if ui == null:
 		return false
-	for i in 40:
+	# To the top first, by the same real key: a page that reopens on the row last
+	# chosen (the making page) would otherwise never come round to a row above it.
+	var was := &"#"
+	for i in 80:
+		var top: UiScreen = ui.call("top")
+		if top == null:
+			return false
+		var at := StringName(str(top.menu.selected().get("id", &"")))
+		if at == id:
+			return true
+		if at == was:
+			break
+		was = at
+		Input.action_press("move_up")
+		for f in 3:
+			await get_tree().process_frame
+		Input.action_release("move_up")
+		for f in 3:
+			await get_tree().process_frame
+	for i in 80:
 		var page: UiScreen = ui.call("top")
 		if page == null:
 			return false
