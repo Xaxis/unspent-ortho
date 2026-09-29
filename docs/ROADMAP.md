@@ -87,7 +87,8 @@ meaningful way. It must be brilliant. Builder **D**.
   story-wright.
 - [ ] **Tours run on main.** CI has no GPU, so tours rot unseen: three failed on main
   (raids_live, raids-dark, score) until a sweep found them. A daily local run of every
-  tour on main through tools/heavy.sh, with failures routed, same day.
+  tour on main (`tools/tour-sweep.sh --since <yesterday>`, the proofs always), with
+  failures routed the same day; the whole set weekly.
 - [ ] **Tours walk with a path.** `walkto` holds a straight line and has no pathfinding, so
   a proof cannot walk a freed person 188 tiles home; home-coast.tour reads "home again"
   from the record instead.
