@@ -26,7 +26,7 @@ const ROOF_FROM := 0.3
 ## dealt cell by cell along them (CELL units): a flat cut reads as a box.
 const WALL_LOW := 0.28
 const WALL_RISE := 0.42
-const CELL := 0.55
+const CELL := 0.7
 ## A face is a wall when its normal is this near level.
 const WALL := 0.35
 ## Beams that fell in, lying from a wall's top to the floor, and rafters still
@@ -35,6 +35,15 @@ const BEAMS := 3
 const RAFTERS := 2
 ## What a fire takes whole: made marks of the soft stuff (GroundColors).
 static var SOFT: Array[int] = [GroundColors.THATCH, GroundColors.CLOTH, GroundColors.ROPE]
+## Wall triangles are split to this edge (units) before the wall line cuts them:
+## a form whose wall is one great triangle would otherwise stand whole or go.
+const SPLIT := 0.22
+## How far over the ground the charcoal floor lies, and how far over it a
+## ruled piece has to reach to be seen above the ash (`_found_pieces`).
+const ASH_TOP := 0.07
+const BURIED := 0.07
+## Outside the walls, what is left stands no higher than this share.
+const OUTSIDE_TO := 0.2
 ## How far up the wall the soot licks from a window head.
 const TONGUE := 0.75
 ## Soot is the pen's own darkest ink and never under it (tests/render/
@@ -69,8 +78,14 @@ static func burn(k: Kit, seed_value: int) -> void:
 				fa = fa.min(Vector2(v.x, v.z))
 				fb = fb.max(Vector2(v.x, v.z))
 	var windows := _windows(m)
-	_char(m, seed_value, base, span, false)
-	_char(k.found, seed_value, base, span, true)
+	# Only the made pen's walls are torn fine: a ruled sheet split small leaves
+	# slivers behind the made wall in front of it that nothing ever sees
+	# (tests/render/test_found_drawn); whole, it stands or goes as one.
+	_split_walls(m, SPLIT)
+	# The footprint's walls, and a hair round them for their own thickness.
+	var inside := Rect2(fa - Vector2(0.12, 0.12), fb - fa + Vector2(0.24, 0.24)) if fa.is_finite() else Rect2()
+	_char(m, seed_value, base, span, false, inside)
+	_char(k.found, seed_value, base, span, true, inside)
 	# Thatch, turf and the green on a roof burn first and leave nothing.
 	k.leaf = MeshKit.new()
 	if not fa.is_finite():
@@ -79,7 +94,7 @@ static func burn(k: Kit, seed_value: int) -> void:
 	_scorch(m, seed_value, (fa + fb) * 0.5, (fb - fa) * 0.5, floor_y + 0.03)
 	# The floor inside is its boards burned to charcoal.
 	var ash := GroundColors.made(SOOT, GroundColors.TIMBER)
-	var a := Vector3(lerpf(fa.x, fb.x, 0.04), floor_y + 0.07, lerpf(fa.y, fb.y, 0.04))
+	var a := Vector3(lerpf(fa.x, fb.x, 0.04), floor_y + ASH_TOP, lerpf(fa.y, fb.y, 0.04))
 	var b := Vector3(lerpf(fa.x, fb.x, 0.96), a.y, lerpf(fa.y, fb.y, 0.96))
 	m.quad(a, Vector3(a.x, a.y, b.z), b, Vector3(b.x, a.y, a.z), ash)
 	for w: Dictionary in windows:
@@ -113,9 +128,19 @@ static func burn(k: Kit, seed_value: int) -> void:
 	k.found.strut(head, head + Vector3(0.18, 0.1, 0.0).rotated(Vector3.UP, TAU * Rng.hash01(seed_value, 0xBE, 1)), 0.06, 6, IRON)
 
 
-## How high the wall stands at `p`: a ragged line dealt by the cell it is in.
+## How high the wall stands at `p`: a ragged line, dealt at the corners of
+## CELL squares and eased between them, so what hung off a wall (a hook, a
+## lamp bracket) is cut where the wall beside it was, not by a cell of its own.
 static func _cut_at(seed_value: int, base: float, span: float, p: Vector3) -> float:
-	var h := Rng.hash01(seed_value, floori(p.x / CELL), floori(p.z / CELL), 0xB5)
+	var gx := p.x / CELL
+	var gz := p.z / CELL
+	var ix := floori(gx)
+	var iz := floori(gz)
+	var fx := smoothstep(0.0, 1.0, gx - float(ix))
+	var fz := smoothstep(0.0, 1.0, gz - float(iz))
+	var h := lerpf(
+		lerpf(Rng.hash01(seed_value, ix, iz, 0xB5), Rng.hash01(seed_value, ix + 1, iz, 0xB5), fx),
+		lerpf(Rng.hash01(seed_value, ix, iz + 1, 0xB5), Rng.hash01(seed_value, ix + 1, iz + 1, 0xB5), fx), fz)
 	return base + span * (WALL_LOW + WALL_RISE * h * h)
 
 
@@ -194,11 +219,13 @@ static func _scorch(m: MeshKit, seed_value: int, centre: Vector2, half: Vector2,
 
 ## `found`: the ruled pen, whose alpha under 0.5 is a beacon (kit.gd) rather than
 ## the made pen's mark codes.
-static func _char(kit: MeshKit, seed_value: int, base: float, span: float, found: bool) -> void:
+## `inside`: the walls' footprint; out past it (an eave's hooks, a gutter, a
+## fence) nothing stands above OUTSIDE_TO of the house's height, since what it
+## hung from or leaned on is gone.
+static func _char(kit: MeshKit, seed_value: int, base: float, span: float, found: bool, inside: Rect2) -> void:
 	var n := kit.verts.size()
 	if n < 3:
 		return
-	var roof := base + span * ROOF_FROM
 	var per_vertex_custom := kit.custom0.size() == n * 4
 	var verts := PackedVector3Array()
 	var normals := PackedVector3Array()
@@ -206,20 +233,16 @@ static func _char(kit: MeshKit, seed_value: int, base: float, span: float, found
 	var uvs := PackedVector2Array()
 	var uv2s := PackedVector2Array()
 	var custom := PackedFloat32Array()
+	# The ruled pen's fittings are whole pieces (a bracket, a mast, a plate): each
+	# stands whole or goes whole, since one cut part-way leaves a stub that hangs
+	# in the air or hides behind the wall's stump where nothing ever sees it
+	# (tests/render/test_found_drawn).
+	var whole := _found_pieces(kit, seed_value, base, span, inside) if found else PackedByteArray()
 	for t in range(0, n - 2, 3):
-		var cen := (kit.verts[t] + kit.verts[t + 1] + kit.verts[t + 2]) / 3.0
-		# The ruled pen's fittings (a bracket, a mast, a gutter) hung off what
-		# burned and came down with it: left to the ragged wall line they float.
-		if found and cen.y > roof:
-			continue
-		# Thatch, cloth and rope burn first and leave nothing, wherever they hung.
-		if not found and SOFT.has(roundi(kit.colors[t].a * 255.0)):
-			continue
-		# Nothing stands above the wall line where it is (a hook off an eave that
-		# fell hangs in the air), and nothing that faced the sky above the roof.
-		if cen.y > _cut_at(seed_value, base, span, cen):
-			continue
-		if cen.y > roof and not _is_wall(kit.verts[t], kit.verts[t + 1], kit.verts[t + 2]):
+		if found:
+			if whole[t / 3] == 0:
+				continue
+		elif not _stands(kit, t, seed_value, base, span, inside):
 			continue
 		for j in 3:
 			var i := t + j
@@ -235,7 +258,8 @@ static func _char(kit: MeshKit, seed_value: int, base: float, span: float, found
 				burnt = GroundColors.made(SOOT, GroundColors.TIMBER)
 			else:
 				# Soot climbs: the foot of a wall keeps a trace of its stone or timber.
-				burnt = Color(c.r * 0.5, c.g * 0.46, c.b * 0.42).lerp(SOOT, 0.25 + 0.65 * up)
+				# Scorched, not painted black: the lower wall still reads as what it was.
+				burnt = Color(c.r * 0.62, c.g * 0.56, c.b * 0.5).lerp(SOOT, 0.12 + 0.88 * pow(up / 0.7, 1.6) if up < 0.7 else 1.0)
 				burnt.a = c.a
 			# Never under the pen, channel by channel, whatever the wall was.
 			burnt = Color(maxf(burnt.r, SOOT.r), maxf(burnt.g, SOOT.g), maxf(burnt.b, SOOT.b), burnt.a)
@@ -254,6 +278,148 @@ static func _char(kit: MeshKit, seed_value: int, base: float, span: float, found
 	kit.uv2s = uv2s
 	if per_vertex_custom:
 		kit.custom0 = custom
+
+
+## Whether triangle `t` still stands after the fire, by where it is.
+static func _stands(kit: MeshKit, t: int, seed_value: int, base: float, span: float, inside: Rect2) -> bool:
+	var cen := (kit.verts[t] + kit.verts[t + 1] + kit.verts[t + 2]) / 3.0
+	# Thatch, cloth and rope burn first and leave nothing, wherever they hung.
+	if SOFT.has(roundi(kit.colors[t].a * 255.0)):
+		return false
+	# Nothing stands above the wall line where it is (a hook off an eave that
+	# fell hangs in the air), and nothing that faced the sky above the roof.
+	if cen.y > _cut_at(seed_value, base, span, cen):
+		return false
+	if cen.y > base + span * ROOF_FROM and not _is_wall(kit.verts[t], kit.verts[t + 1], kit.verts[t + 2]):
+		return false
+	if inside.has_area() and not inside.has_point(Vector2(cen.x, cen.z)) and cen.y > base + span * OUTSIDE_TO:
+		return false
+	return true
+
+
+## Per triangle, 1 where its connected piece of the ruled pen stands whole: none
+## of it above the roof or the wall line, and some of it above the charcoal.
+static func _found_pieces(kit: MeshKit, seed_value: int, base: float, span: float, inside: Rect2) -> PackedByteArray:
+	var tris := kit.verts.size() / 3
+	var parent := PackedInt32Array()
+	parent.resize(tris)
+	for i in tris:
+		parent[i] = i
+	var first := {}
+	for t in tris:
+		for j in 3:
+			var v := kit.verts[t * 3 + j]
+			var key := Vector3i(roundi(v.x * 1000.0), roundi(v.y * 1000.0), roundi(v.z * 1000.0))
+			if first.has(key):
+				var a := _root(parent, t)
+				var b := _root(parent, int(first[key]))
+				if a != b:
+					parent[a] = b
+			else:
+				first[key] = t
+	var fails := {}
+	var top := {}
+	var roof := base + span * ROOF_FROM
+	for t in tris:
+		var r := _root(parent, t)
+		var hi := maxf(kit.verts[t * 3].y, maxf(kit.verts[t * 3 + 1].y, kit.verts[t * 3 + 2].y))
+		top[r] = maxf(float(top.get(r, -INF)), hi)
+		var cen := (kit.verts[t * 3] + kit.verts[t * 3 + 1] + kit.verts[t * 3 + 2]) / 3.0
+		if cen.y > roof or not _stands(kit, t * 3, seed_value, base, span, inside):
+			fails[r] = true
+	var ash := maxf(base, 0.0) + ASH_TOP + BURIED
+	var out := PackedByteArray()
+	out.resize(tris)
+	for t in tris:
+		var r := _root(parent, t)
+		out[t] = 0 if fails.has(r) or float(top[r]) < ash else 1
+	return out
+
+
+static func _root(parent: PackedInt32Array, i: int) -> int:
+	while parent[i] != i:
+		parent[i] = parent[parent[i]]
+		i = parent[i]
+	return i
+
+
+## Split every upright triangle with an edge longer than `edge` into four, over
+## and over, carrying each vertex's attributes across, so the ragged wall line
+## has pieces small enough to tear along.
+static func _split_walls(kit: MeshKit, edge: float) -> void:
+	var n := kit.verts.size()
+	if n < 3:
+		return
+	var custom := kit.custom0.size() == n * 4
+	var out := MeshKit.new()
+	var e2 := edge * edge
+	var stack: Array[Array] = []
+	for t in range(0, n - 2, 3):
+		var tri: Array = []
+		for j in 3:
+			tri.append(_vertex(kit, t + j, custom))
+		if not _is_wall(kit.verts[t], kit.verts[t + 1], kit.verts[t + 2]):
+			_put(out, tri, custom)
+			continue
+		stack.append(tri)
+		while not stack.is_empty():
+			var cur: Array = stack.pop_back()
+			var a: Dictionary = cur[0]
+			var b: Dictionary = cur[1]
+			var c: Dictionary = cur[2]
+			var pa: Vector3 = a.v
+			var pb: Vector3 = b.v
+			var pc: Vector3 = c.v
+			if pa.distance_squared_to(pb) <= e2 and pb.distance_squared_to(pc) <= e2 and pc.distance_squared_to(pa) <= e2:
+				_put(out, cur, custom)
+				continue
+			var ab := _mid(a, b)
+			var bc := _mid(b, c)
+			var ca := _mid(c, a)
+			stack.append([a, ab, ca])
+			stack.append([ab, b, bc])
+			stack.append([ca, bc, c])
+			stack.append([ab, bc, ca])
+	kit.verts = out.verts
+	kit.normals = out.normals
+	kit.colors = out.colors
+	kit.uvs = out.uvs
+	kit.uv2s = out.uv2s
+	if custom:
+		kit.custom0 = out.custom0
+
+
+static func _vertex(kit: MeshKit, i: int, custom: bool) -> Dictionary:
+	var d := {"v": kit.verts[i], "n": kit.normals[i], "c": kit.colors[i], "uv": kit.uvs[i], "uv2": kit.uv2s[i]}
+	if custom:
+		d["x"] = Color(kit.custom0[i * 4], kit.custom0[i * 4 + 1], kit.custom0[i * 4 + 2], kit.custom0[i * 4 + 3])
+	return d
+
+
+## Halfway between two vertices; a colour's mark (alpha) is the first's, never
+## blended, since a mark between two codes is a third thing.
+static func _mid(a: Dictionary, b: Dictionary) -> Dictionary:
+	var ca: Color = a.c
+	var cb: Color = b.c
+	var c := ca.lerp(cb, 0.5)
+	c.a = ca.a
+	var d := {"v": (a.v as Vector3).lerp(b.v, 0.5), "n": ((a.n as Vector3) + (b.n as Vector3)).normalized(), "c": c,
+		"uv": a.uv, "uv2": a.uv2}
+	if a.has("x"):
+		d["x"] = a.x
+	return d
+
+
+static func _put(out: MeshKit, tri: Array, custom: bool) -> void:
+	for d: Dictionary in tri:
+		out.verts.append(d.v)
+		out.normals.append(d.n)
+		out.colors.append(d.c)
+		out.uvs.append(d.uv)
+		out.uv2s.append(d.uv2)
+		if custom:
+			var x: Color = d.x
+			out.custom0.append_array(PackedFloat32Array([x.r, x.g, x.b, x.a]))
 
 
 ## A face that stands upright: a wall, a chimney's side, a post.
