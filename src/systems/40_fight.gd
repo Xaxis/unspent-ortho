@@ -97,7 +97,9 @@ func _read_input(delta: float) -> void:
 	var swing_went := _went_down(&"swing")
 	var dodge_went := _went_down(&"dodge")
 	var shift := Input.is_physical_key_pressed(KEY_SHIFT)
-	var t := Time.get_ticks_msec()
+	# Shift's tap and hold are timed on the fight's frame clock, as the hitstop
+	# is: a tap is the same number of steps at any frame rate.
+	var t := _clock * 1000.0
 	var blocked := game.input_blocked() or _held
 	if shift != _shift_down:
 		_shift_down = shift
@@ -164,6 +166,7 @@ func _physics_process(delta: float) -> void:
 	if not sim.hold:
 		sim.real_s = now_s
 		sim.step(delta)
+	player.take_place()
 	_handle(sim.drain())
 	_landing()
 	_mend()
