@@ -126,6 +126,27 @@ func test_use_on_nothing_out_on_the_land_never_eats_or_sleeps() -> void:
 	check(Survival.eat(g, &"mussels"), "chosen from the carrying page, it eats")
 
 
+## Sleep is asked for, never the fallback of one press: a stray E beside a fire
+## took the whole night. The first idle press asks; a second in time sleeps.
+func test_one_stray_press_by_a_fire_never_sleeps_the_night_away() -> void:
+	var g := Fx.flat(40, 22.0)
+	@warning_ignore("return_value_discarded")
+	Fx.put(g, PropKind.FIRE, Vector2(-1.5, 0.0))
+	g.body.fed_until = g.clock.minutes + 6.0 * 60.0
+	SurvivalState.of(g).woke_at = g.clock.minutes - 16.0 * 60.0
+	check(Survival.at_rest(g) and Survival.sleep_refusal(g) == "", "fed, tired, at a fire: he could sleep")
+	var said: Array[String] = []
+	var f := _listen(said)
+	@warning_ignore("return_value_discarded")
+	Survival.use(g)
+	near(g.clock.hour(), 22.0, 0.01, "one press: the night is not slept away")
+	check(said.size() > 0, "it asks, in words")
+	@warning_ignore("return_value_discarded")
+	Survival.use(g)
+	check(g.clock.hour() < 12.0, "asked, a second press in time sleeps to morning: %.2f" % g.clock.hour())
+	Events.message.disconnect(f)
+
+
 func test_night_without_a_light_hides_what_a_hand_does_not_touch() -> void:
 	var g := Fx.flat(40, 23.0)
 	var said: Array[String] = []
