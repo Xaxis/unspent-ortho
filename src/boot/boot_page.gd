@@ -319,6 +319,15 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 			if not left.is_empty():
 				load(str(left.pop_front()))
 			return left.is_empty(), false, WAIT_DEADLINE_MS)
+	if what == "title" and threaded and o.size > TITLE_COAST:
+		# The island a new game plays is begun now, before the title's coast: a
+		# player who presses New game at once waits on the rest of it, and every
+		# second of the page and the title is a second of it done (UiTitle finds it
+		# already going).
+		stages.add(&"island", "waking", 10.0, func() -> void:
+			GenFields.lean = false
+			@warning_ignore("return_value_discarded")
+			RealmWorlds.begin(o.seed_value, o.size, Realm.SURFACE, true), false)
 	if what == "title":
 		stages.add(&"world", "raising the land", 1600.0, func() -> void:
 			_world = _bw.call("world", o.seed_value, mini(o.size, TITLE_COAST)))
