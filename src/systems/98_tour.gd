@@ -64,7 +64,7 @@ extends GameSystem
 ##   leap SECS              walk the way the player FACES for SECS on the real move
 ##                          path and press the real jump key at the end of it, so a
 ##                          jump is taken on the move the way a player takes one
-##   hour H                 set the world clock hour (same day)
+##   hour H [+D]            set the world clock hour (same day, or D days on)
 ##   weather KIND:S[:bolt][:wind=W]  force the sky as --weather does (`weather rules`
 ##                          hands it back); wind=W holds the wind at W, -1..1
 ##   zoom F                 camera view height
@@ -144,6 +144,7 @@ extends GameSystem
 ##                          does, instead of stopping at reach (a slide round it)
 ##   walkto folk|dog|refuse SECS  walk to a villager the camera can see, a village dog,
 ##                          or within sight of a tip's gulls (tour_people.gd)
+##   walkto holding SECS    walk the real keys to the edge of his nearest holding
 ##   perf stats begin|end LABEL [raw]  the --stats block over just the lines between
 ##                          (tour/stats_perf.gd); needs --stats
 ##   perf folk N SECS DRAWS MS  rendered cost of N villagers in view (tour_people.gd)
@@ -481,7 +482,10 @@ func _run() -> void:
 					else:
 						ok = false
 			"hour":
+				# `hour H +D`: D days on, at H (a night the plan comes, a day later).
 				var day := floorf(game.clock.minutes / 1440.0)
+				if parts.size() > 2 and parts[2].begins_with("+"):
+					day += float(parts[2].substr(1).to_int())
 				game.clock.minutes = day * 1440.0 + parts[1].to_float() * 60.0
 			"zoom":
 				# Through the view system, which owns the height and puts its own
@@ -1038,7 +1042,7 @@ func _stand_at(found: WorldProp, said: String) -> bool:
 ## Every `walkto` target, the one list: `tests/tours/test_tour_claims.gd` reads it,
 ## so a new target cannot be written into a tour and refused by a stale copy.
 ## (`prop:KIND` is checked against PropKind.NAMES there instead.)
-const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft", "strongbox", "guard", "gap"]
+const WALK_TARGETS: Array[String] = ["folk", "dog", "refuse", "mob", "part", "plate", "shaft", "strongbox", "guard", "gap", "holding"]
 
 
 ## The nearest prop of `kinds` (PropKind names, _ for space) with work left in
@@ -1191,6 +1195,25 @@ func _walk_to(what: String, secs: float, run: bool = false) -> bool:
 	var until := Time.get_ticks_msec() + int(secs * 1000.0)
 	if what in ["strongbox", "guard", "gap"]:
 		return await _walk_route(what, until, secs)
+	if what == "holding":
+		# His own holding nearest him, on the real move keys, to its edge: the
+		# walk the people he asked there go with him on (46_settlements).
+		var holdings := _system("46_settlements")
+		while Time.get_ticks_msec() < until:
+			var s: Settlement = holdings.call(&"_holding_for", sim.hero.pos) if holdings != null else null
+			if s == null:
+				return false
+			var d := s.centre - sim.hero.pos
+			if d.length() <= 3.0:
+				game.scripted_seconds = 0.0
+				return true
+			game.scripted_move = _keys_toward(d.normalized())
+			game.scripted_run = false
+			game.scripted_seconds = 0.05
+			await get_tree().physics_frame
+		game.scripted_seconds = 0.0
+		printerr("tour %s: walked toward the holding for %.1f s and never reached it" % [_name, secs])
+		return false
 	if what == "shaft":
 		while Time.get_ticks_msec() < until:
 			var shaft := Portals.nearest(game.world, sim.hero.pos)
