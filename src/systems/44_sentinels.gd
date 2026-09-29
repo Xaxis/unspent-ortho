@@ -342,6 +342,12 @@ func _stand_down(m: MobState) -> void:
 
 ## What each way has to read, taken off the running game. Pure rules judge it
 ## (SentinelWay), so every way is provable headless.
+## How long after the player leaves the flats a keeper out on them is still
+## theirs to founder: a lure crossed and stepped off counts, a fight that only
+## spilled there does not.
+const DRAWN_MS := 3000.0
+
+
 func look_at(s: SentinelState, def: SentinelDef) -> SentinelLook:
 	var look := SentinelLook.new()
 	look.health = 0.0 if (s.body != null and not s.body.alive) else s.health_fraction()
@@ -349,10 +355,17 @@ func look_at(s: SentinelState, def: SentinelDef) -> SentinelLook:
 	var at := m.pos if m != null else s.lair
 	if m != null and m.alive:
 		var g := game.world.ground_at(floori(m.pos.x), floori(m.pos.y))
-		# Standing spent after a bite, or stopped by a blow, is a fight spilling
-		# onto the ground, not a lure: its hold there counts from when it could
-		# walk off (test_founder_lured).
-		if g != s.ground_was or m.spent(sim.now) or m.stunned(sim.now):
+		# The flats take a keeper the player draws out onto them, never one a
+		# fight spills onto (test_founder_lured, test_ways): its hold counts only
+		# while the player is out there or has just been (DRAWN_MS), and not
+		# while it stands spent after a bite or stopped by a blow.
+		var founder := def.way_of(SentinelWay.FOUNDER)
+		var hg := game.world.ground_at(floori(sim.hero.pos.x), floori(sim.hero.pos.y))
+		# Out on that ground, or past it in the water beyond (a lure swims off).
+		if founder != null and (founder.grounds.has(hg) or Ground.is_water(hg)):
+			s.drawn_at = sim.now
+		var drawn := sim.now - s.drawn_at <= DRAWN_MS
+		if g != s.ground_was or m.spent(sim.now) or m.stunned(sim.now) or not drawn:
 			s.ground_was = g
 			s.ground_since = sim.now
 		look.ground = g

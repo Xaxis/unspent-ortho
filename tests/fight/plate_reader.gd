@@ -71,7 +71,12 @@ func act() -> void:
 		return
 	if hero.move.length() < 0.05:
 		return
-	for turn: float in [0.0, 0.6, -0.6, 1.2, -1.2, 1.8, -1.8]:
+	# Held to a ground, it will turn further to stay on it (a dodge included,
+	# which goes the way the keys point: FightSim reads hero.move at the press).
+	var turns: Array[float] = [0.0, 0.6, -0.6, 1.2, -1.2]
+	if not keep_off.is_empty() or not keep_on.is_empty():
+		turns.append_array([1.8, -1.8, 2.4, -2.4, PI])
+	for turn: float in turns:
 		var step := hero.move.rotated(turn)
 		var at := hero.pos + step.normalized() * 0.6
 		var g := sim.world.ground_at(floori(at.x), floori(at.y))

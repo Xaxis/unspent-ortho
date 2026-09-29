@@ -61,15 +61,25 @@ func test_a_struck_keeper_turns_on_you() -> void:
 		sim.strike(m, b, g.player.hero.pos)
 		var until := Time.get_ticks_msec() + int(TURN_SECONDS * 1000.0 * TestCase.machine_slack())
 		var t0 := sim.now
-		while sim.now - t0 < TURN_SECONDS * 1000.0 and Time.get_ticks_msec() < until:
+		# Its bite can down a player held beside it, who then comes to at the edge
+		# of its ground (Sentinels.arena_edge): turned on, past doubt. The window
+		# ends there, and the facing is read where they fell, not twenty tiles off.
+		var downed := [false]
+		var on_end := func(o: StringName) -> void: downed[0] = downed[0] or o == &"downed" or o == &"carried"
+		Events.fight_ended.connect(on_end)
+		var to := 0.0
+		while sim.now - t0 < TURN_SECONDS * 1000.0 and Time.get_ticks_msec() < until and not downed[0]:
+			to = (at - m.pos).angle()
 			_put(g, at)
 			await _frames(1)
-		var to := (g.player.hero.pos - m.pos).angle()
+		Events.fight_ended.disconnect(on_end)
+		if not downed[0]:
+			to = (g.player.hero.pos - m.pos).angle()
 		var facing_off := absf(wrapf(to - m.facing, -PI, PI))
-		check(m.mood == MobState.CHASING or m.mood == MobState.ATTACKING,
+		check(downed[0] or m.mood == MobState.CHASING or m.mood == MobState.ATTACKING,
 			"%s: struck, it hunts (%s after %.1f s)" % [s.land, m.mood, (sim.now - t0) / 1000.0])
 		check(m.disturbed, "%s: and is roused, not at its work" % s.land)
-		lt(facing_off, 0.8, "%s: and faces the player (%.2f rad off)" % [s.land, facing_off])
+		lt(facing_off, 0.8, "%s: and faces the player (%.2f rad off%s)" % [s.land, facing_off, ", downed by it" if downed[0] else ""])
 		# Leave it be before the next: the player goes back to the spawn.
 		_put(g, g.world.spawn)
 		await _frames(30)

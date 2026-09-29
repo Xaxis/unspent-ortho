@@ -204,19 +204,19 @@ func test_robbing_its_feeds_by_hand_starves_it() -> void:
 	(Sx.system(g, "30_mobs").get("coast") as Object).set("spawning", false)
 	g.player.sim.clear_mobs()
 	var reach := def.reach * Sentinels.FEED_SHARE
-	var feeds: Array[WorldProp] = []
+	var works: Array[WorldProp] = []
 	for q: WorldProp in g.query.props_near(s.lair, reach):
 		if def.feeds.has(q.kind) and q.pos.distance_to(s.lair) <= reach:
-			feeds.append(q)
-	feeds.sort_custom(func(a: WorldProp, b: WorldProp) -> bool: return a.pos.distance_to(s.lair) > b.pos.distance_to(s.lair))
-	gt(float(feeds.size()), float(SentinelWay.FEEDS_LEAST) - 0.5, "it is fed by %d works" % feeds.size())
+			works.append(q)
+	works.sort_custom(func(a: WorldProp, b: WorldProp) -> bool: return a.pos.distance_to(s.lair) > b.pos.distance_to(s.lair))
+	gt(float(works.size()), float(SentinelWay.FEEDS_LEAST) - 0.5, "it is fed by %d works" % works.size())
 	var refused := {}
 	var said: Array[String] = []
 	var hear := func(line: String) -> void: said.append(line)
 	Events.message.connect(hear)
 	var waited := 0.0
 	var thefts := 0
-	for q in feeds:
+	for q in works:
 		var away := (q.pos - s.lair).normalized() if q.pos.distance_to(s.lair) > 0.1 else Vector2.RIGHT
 		for take in 4:
 			if g.world.depleted.has(q.id):
@@ -245,10 +245,10 @@ func test_robbing_its_feeds_by_hand_starves_it() -> void:
 				await frames(1)
 	Events.message.disconnect(hear)
 	var robbed := 0
-	for q in feeds:
+	for q in works:
 		robbed += int(g.world.depleted.has(q.id))
-	print("  info starve: robbed %d of %d in %d takes, %.0f s waited off its ground, refused %s" % [robbed, feeds.size(), thefts, waited, refused])
-	eq(robbed, feeds.size(), "every work that fed it is robbed out, in the world")
+	print("  info starve: robbed %d of %d in %d takes, %.0f s waited off its ground, refused %s" % [robbed, works.size(), thefts, waited, refused])
+	eq(robbed, works.size(), "every work that fed it is robbed out, in the world")
 	# Away from it, and the dark counted.
 	g.player.place(s.lair + Vector2(Sentinels.PUT_OUT * 2.0, 0.0))
 	var t0 := Time.get_ticks_msec()

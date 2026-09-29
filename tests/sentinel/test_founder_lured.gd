@@ -1,11 +1,10 @@
 extends TestCase
 ## THE FLATS TAKE A KEEPER THAT IS LURED ONTO THEM, NOT ONE A FIGHT SPILLS ONTO
-## (44_sentinels look_at, SentinelWay FOUNDER). Standing spent after a bite (its
-## recovery and cooldown, MobState.spent) or stopped by a blow, its hold on the
-## ground it founders in does not count: on seed 1's shore a fight by force
-## overran into the shallows and stood there its 1.7 s, and the Reaper foundered
-## about 20 s into a fight nobody meant as a lure. Standing there with the stand
-## over, it founders as it always did.
+## (44_sentinels look_at, SentinelWay FOUNDER). Its hold on the ground it
+## founders in counts only while the player is out there drawing it (or was, a
+## moment ago) and it is not standing spent after a bite or stopped by a blow: on
+## seed 1's shore a fight by force overran into the shallows and the Reaper
+## foundered about 20 s into a fight nobody meant as a lure.
 
 const Sx := preload("res://tests/save/save_fixture.gd")
 
@@ -45,24 +44,44 @@ func test_it_founders_where_it_stands_not_where_its_bite_spent_it() -> void:
 	if m == null or not flat.is_finite():
 		Sx.end(g)
 		return
-	# Stood spent on the flats, well past its hold, the stand renewed each frame.
+	# A second tile of it, where a player drawing it out stands.
+	var out_there := Vector2.INF
+	for k in 24:
+		var p := flat + Vector2.from_angle(TAU * k / 24.0) * 3.0
+		if way.grounds.has(g.world.ground_at(floori(p.x), floori(p.y))) and g.query.standable(floori(p.x), floori(p.y)):
+			out_there = p
+			break
+	check(out_there.is_finite(), "room out on the flats for the player")
 	var b: Blow = m.bite
+	# 1. A fight that spilled there: the player on firm ground, it stands on the
+	# flats, its stand over. It does not founder.
 	var t0 := sim.now
 	while sim.now - t0 < way.hold_ms * 2.5:
+		g.player.hero.pos = near
 		m.pos = flat
 		m.want = Vector2.ZERO
 		m.calm_until = INF
+		m.blow = null
+		await tree.physics_frame
+	check(not reaper.fallen, "spilled onto the flats with the player on firm ground, it does not founder")
+	# 2. Drawn out, but standing spent after a bite: not yet.
+	t0 = sim.now
+	while sim.now - t0 < way.hold_ms * 2.5:
+		g.player.hero.pos = out_there
+		m.pos = flat
+		m.want = Vector2.ZERO
 		m.blow = b
 		m.blow_at = sim.now - float(b.windup + b.active) - 16.0
 		m.landed_at = -INF
 		await tree.physics_frame
-	check(not reaper.fallen, "spent on the flats after a bite, it does not founder (%.1f s there)" % ((sim.now - t0) / 1000.0))
-	# Its stand over, still stood there: the flats take it.
+	check(not reaper.fallen, "drawn out but spent after a bite, it does not founder yet")
+	# 3. Drawn out, its stand over, held there: the flats take it.
 	m.blow = null
 	t0 = sim.now
 	while sim.now - t0 < way.hold_ms * 2.5 and not reaper.fallen:
+		g.player.hero.pos = out_there
 		m.pos = flat
 		m.want = Vector2.ZERO
 		await tree.physics_frame
-	check(reaper.fallen and reaper.how == way.id(), "stood there with its stand over, it founders (%s)" % reaper.how)
+	check(reaper.fallen and reaper.how == way.id(), "drawn out and held there with its stand over, it founders (%s)" % reaper.how)
 	Sx.end(g)

@@ -36,6 +36,8 @@ var body: MobState = null
 ## The ground it last stood on and the sim ms it stepped onto it.
 var ground_was := -1
 var ground_since := 0.0
+## Sim ms the player was last out on the ground its FOUNDER way takes (never saved).
+var drawn_at := -INF
 ## The sim ms its feeds went out (INF while it still has one), how many stand now,
 ## and how many stood the first time it was looked at.
 var dark_since := INF
