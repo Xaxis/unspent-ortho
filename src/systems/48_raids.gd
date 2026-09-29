@@ -1034,6 +1034,7 @@ func _step_raid(p: RaidPlan, s: Settlement, now: float) -> void:
 	var live := 0
 	var working := 0
 	var came_to_work := false
+	var unreported := false
 	for row: Dictionary in p.party:
 		if p.over():
 			# One of them bought the whole party off with what was lying in the
@@ -1042,13 +1043,19 @@ func _step_raid(p: RaidPlan, s: Settlement, now: float) -> void:
 		var scout: bool = row.get("role", &"") == RaidRoles.SCOUT
 		came_to_work = came_to_work or not scout
 		var m := _mob(sim, int(row.get("mob", -1)))
+		if m != null and not m.alive and not m.removed and _raiders.has(m.id):
+			# Down in the sim, but the fight has not said so yet (`_on_killed`
+			# comes a frame later). Settled now, the kill would read as a body
+			# gone off the land, and the plan would never count its loss.
+			unreported = true
+			continue
 		if m == null or not m.alive or m.removed:
 			continue
 		live += 1
 		if not scout:
 			working += 1
 		_drive(p, s, m, sim)
-	if p.over():
+	if p.over() or unreported:
 		return
 	if live > 0 and working == 0 and came_to_work:
 		# The working party is down or gone: the scout has nothing left to watch
