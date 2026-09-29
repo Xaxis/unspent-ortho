@@ -720,12 +720,14 @@ static func _spike(img: Image, p: Vector2i) -> bool:
 	return img.get_pixelv(p).get_luminance() - around * 0.25 > 0.035
 
 
-## A tour asks the LIVE layer, never a latch.
+## A tour asks the LIVE layer, never a latch. `ring_drawn`, never bare `ring`:
+## that is the runner's word for a blow ringing off plate, and a shoulder fight's
+## `await ring` passed on the hull in the sky with no blow landed.
 func tour_seen(what: StringName) -> bool:
 	if layer == null:
 		return false
 	match what:
-		&"ring":
+		&"ring_drawn":
 			return layer.drawn
 		&"ring_up":
 			return bool(pose.get("up", false))
