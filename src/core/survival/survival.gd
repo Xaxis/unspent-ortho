@@ -81,6 +81,8 @@ const VILLAGE_RADIUS := WorldData.VILLAGE_LEAST_REACH
 const BUILD_DISTANCE := 1.25
 ## Real seconds a first press on open ground waits for the second that builds.
 const BUILD_ASK_SECONDS := 2.0
+## Said on the first idle press where the second would sleep.
+const SLEEP_ASK := "Again, and you sleep till morning."
 ## No instant jump of the clock from taking or making is longer than this: the
 ## day is lived in the world, not on a page. Longer station work is set going.
 const MAX_JUMP_MINUTES := 30.0
@@ -312,7 +314,8 @@ static func describe_target(game: Game) -> String:
 		&"eat":
 			return "%s - eat" % Items.display_name(best_food(game))
 		&"sleep":
-			return "%s - sleep" % ("fire" if fire_near(game) != null else "village")
+			var place := "fire" if fire_near(game) != null else "village"
+			return "%s - sleep" % place if now_real() < SurvivalState.of(game).sleep_ask_until else "%s - sleep?" % place
 		&"build":
 			return "campfire - build" if build_asked(game).is_finite() else "campfire - build?"
 	return ""
@@ -333,7 +336,7 @@ static func use(game: Game) -> bool:
 		&"eat":
 			return eat(game, best_food(game))
 		&"sleep":
-			return sleep(game)
+			return _ask_or_sleep(game)
 		&"build":
 			return _ask_or_build(game)
 	# Nothing to do here: say so, so a press is never swallowed without a word.
@@ -351,6 +354,19 @@ static func _nudge(game: Game, line: String) -> void:
 		return
 	state.nudged[line] = now_real()
 	Events.message.emit(line)
+
+
+## SLEEP IS ASKED FOR, NEVER ONE PRESS: a stray `use` beside a fire slept the
+## whole night away. The first idle press asks; a second within BUILD_ASK_SECONDS
+## sleeps, as a fire is laid.
+static func _ask_or_sleep(game: Game) -> bool:
+	var state := SurvivalState.of(game)
+	if now_real() < state.sleep_ask_until:
+		state.sleep_ask_until = -1.0
+		return sleep(game)
+	state.sleep_ask_until = now_real() + BUILD_ASK_SECONDS
+	Events.message.emit(SLEEP_ASK)
+	return true
 
 
 ## The first press asks and marks the spot; a second press in time on the same spot builds.
