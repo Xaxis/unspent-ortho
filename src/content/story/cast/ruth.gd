@@ -4,6 +4,7 @@ static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"ruth", "name": "Ruth", "title": "a woman who faces the door",
 		"at": &"then_meet", "talk": &"ruth", "trade": &"keeper",
+		"appears_when": &"was_cia",
 		"look": {"build": &"woman", "hair": &"grey", "hair_style": &"crop", "beard": &"none", "coat": &"long"},
 		"wants": "Her country first.",
 		"fears": "Losing the asset before the program pays.",

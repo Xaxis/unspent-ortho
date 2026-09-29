@@ -98,6 +98,7 @@ func _cast() -> void:
 	if game == null or game.world == null:
 		return
 	placed = StoryPlan.cast(game.world)
+	_stand_things()
 	for c: StoryCharacter in StoryCast.all():
 		if not placed.has(c.at):
 			continue
@@ -113,6 +114,65 @@ func _cast() -> void:
 		# 2026-09-26). Walking up now only puts the made figure in the tree.
 		_dress(row, c)
 		people.append(row)
+
+
+## THE STORY'S OWN READABLE THINGS (StoryContent.STOOD): where nothing the world
+## grows is sure to be a screen or a box, one is set down in play beside the
+## slot, once (Survival.add_prop: a save keeps it, a stream keeps it filed in its
+## section). A load, a crossing back or another boot finds it among the props set
+## down and leaves it be, so there is never a second.
+func _stand_things() -> void:
+	if game.world.realm != Realm.SURFACE:
+		return
+	for slot: StringName in StoryContent.STOOD:
+		if not placed.has(slot):
+			continue
+		var kind := int(StoryContent.STOOD[slot])
+		var at: Vector2 = placed[slot].pos
+		if _set_down(kind, at):
+			continue
+		var spot := _thing_spot(at, absi(int(slot.hash())))
+		if spot.is_finite():
+			@warning_ignore("return_value_discarded")
+			Survival.add_prop(game, kind, spot)
+
+
+func _set_down(kind: int, at: Vector2) -> bool:
+	var w := game.world
+	for i in range(w.generated(), w.prop_count()):
+		var q := w.prop_at(i)
+		if q.kind == kind and q.pos.distance_to(at) <= StoryWorld.STOOD_REACH:
+			return true
+	return false
+
+
+## Dry ground a body fits on, a few paces off the slot at a bearing of its own:
+## never in the sea, inside a building's footprint, or on a keeper's ground
+## (its lair out to its reach, standing or fallen), where reading it would be
+## walking into the fight. Vector2.INF where there is none within STOOD_REACH.
+func _thing_spot(at: Vector2, salt: int) -> Vector2:
+	var w := game.world
+	var grounds: Array[Vector3] = []
+	for st: SentinelState in Sentinels.states(w):
+		var def := Sentinels.by_id(st.design)
+		if def != null:
+			grounds.append(Vector3(st.lair.x, st.lair.y, def.reach))
+	var turn := Rng.hash01(w.seed_value, salt, 0, 0x57D) * TAU
+	for r: float in [2.0, 3.0, 4.0, 5.5, 7.0, 8.5]:
+		for i in 12:
+			var p := at + Vector2.from_angle(turn + TAU * i / 12.0) * r
+			var t := Vector2i(p.floor())
+			if not game.query.standable(t.x, t.y) or Ground.is_water(w.ground_at(t.x, t.y)):
+				continue
+			var spot := Vector2(t) + Vector2(0.5, 0.5)
+			if not game.query.body_fits(spot, 0.6):
+				continue
+			var clear := true
+			for gr: Vector3 in grounds:
+				clear = clear and spot.distance_to(Vector2(gr.x, gr.y)) > gr.z
+			if clear:
+				return spot
+	return Vector2.INF
 
 
 func _clear() -> void:

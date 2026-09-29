@@ -61,4 +61,15 @@ static func place_of(world: WorldData, p: Vector2) -> StringName:
 	var at := black_site(world)
 	if at != Vector2.INF and p.distance_to(at) <= PLACE_REACH:
 		return StorySlot.BLACK_SITE
+	if world == null or world.realm != Realm.SURFACE:
+		return &""
+	var cast := StoryPlan.cast(world)
+	for slot: StringName in StoryContent.STOOD:
+		if cast.has(slot) and p.distance_to(cast[slot].pos) <= STOOD_REACH:
+			return slot
 	return &""
+
+
+## How far off its slot the story stands a place's readable thing (49_cast), and
+## so how near a thing must be to hold that place's words (StoryContent.STOOD).
+const STOOD_REACH := 10.0
