@@ -176,4 +176,5 @@ choice is scored; saying nothing is always an answer.
 - The depots: the Seeker lost him to the Echo, so it runs the minds of those who have
   seen him against its region's piece, to predict him. Running replaces a mind, as
   it did his; left too long, they come back empty or not at all. Fell the keeper and
-  there is nothing to run them against: they walk out.
+  there is nothing to run them against: they walk out. Where a land has no keeper, its
+  depot only holds them, and moves them on to the nearest region whose keeper has a piece.
