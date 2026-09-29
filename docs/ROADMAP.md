@@ -50,12 +50,12 @@ and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
    camp; Rook pays for iron in plate, and the want turns to armour.
 2. [ ] **The holding** (A+C). The people the Seeker has met, kept where a yard
    can't reach them; the taken who are freed go there.
-3. [ ] **Raids answer attention** (C). Where he draws HALCYON's attention (light,
+3. [x] **Raids answer attention** (C). Where he draws HALCYON's attention (light,
    broken works) the region's hunters come; `holdfast_price` and Vera's "we break
    their works, they burn a village". Settlements introduced here.
 4. [ ] **Defend the holding** (B). The slice's make: armour and shutters, with the
    reason said by the camp.
-5. [ ] **The lab and Ruth's table** (A). `built_halcyon` → `gate_lab`; `was_cia` →
+5. [x] **The lab and Ruth's table** (A). `built_halcyon` → `gate_lab`; `was_cia` →
    `gate_meet` (`ruth_signed`, `ruth_volunteered`, `kerr_money`).
 6. [ ] **The second keeper** (B+C). Whichever keeper stands nearest home, holding a
    non-key memory (`TESTIMONY_SENTINEL`, beat `gap`). Salt flats can't be guaranteed

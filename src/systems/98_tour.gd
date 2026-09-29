@@ -69,6 +69,8 @@ extends GameSystem
 ##                          hands it back); wind=W holds the wind at W, -1..1
 ##   zoom F                 camera view height
 ##   walk DX,DY SECS [run]  hold a SCREEN direction for SECS (real input path)
+##   dodge DX,DY [SECS]     hold a SCREEN direction and press the dodge key while it
+##                          is down (the dodge goes that way), walking on for SECS (0.6)
 ##   press ACTION [SECS]    hold an input action (use, swing, dodge, inventory, craft, lamp, pause, map...)
 ##   hold ACTION            hold it down across the lines that follow (a stance: crouch)
 ##   release ACTION         let it go again
@@ -500,6 +502,21 @@ func _run() -> void:
 				game.scripted_move = Vector2(d[0].to_float(), d[1].to_float())
 				game.scripted_run = parts.size() > 3 and parts[3] == "run"
 				game.scripted_seconds = parts[2].to_float()
+				while game.scripted_seconds > 0.0:
+					await get_tree().physics_frame
+			"dodge":
+				# The move keys held a SCREEN direction and the dodge key pressed while
+				# they are down, as a player dodges aside: the dodge goes the keys' way
+				# (LockOn.dodge_way) and the walk goes on that way for the rest of SECS.
+				var d := parts[1].split(",")
+				game.scripted_move = Vector2(d[0].to_float(), d[1].to_float())
+				game.scripted_run = false
+				game.scripted_seconds = parts[2].to_float() if parts.size() > 2 else 0.6
+				await get_tree().physics_frame
+				Input.action_press(&"dodge")
+				await get_tree().physics_frame
+				await get_tree().physics_frame
+				Input.action_release(&"dodge")
 				while game.scripted_seconds > 0.0:
 					await get_tree().physics_frame
 			"press":

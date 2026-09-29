@@ -215,6 +215,19 @@ func _begin_reveal(m: MobState) -> void:
 	_stage(&"reveal", m.pos, REVEAL_S)
 
 
+## The reveal's look holds the player's keys for its turn in and out as well as
+## REVEAL_S (42_stage, on the frame's clock): the keeper holds off for as long as
+## the keys are held, or it runs its first bite at a player who cannot move.
+## Struck all the same (FightSim._wake: disturbed), it is awake: a blow is not
+## held off by a camera.
+func _hold_off_while_staged() -> void:
+	if _reveal_body == null or not _reveal_body.alive or _reveal_body.disturbed:
+		return
+	var stage := _stager()
+	if stage != null and bool(stage.call(&"looking")) and StringName(stage.call(&"why")) == &"reveal":
+		_reveal_body.calm_until = maxf(_reveal_body.calm_until, sim.now + FightRules.BEAT_MS)
+
+
 ## Whether a keeper's reveal is standing now (on the fight's clock).
 func revealing() -> bool:
 	return _reveal_body != null and _reveal_body.alive and sim.now < _reveal_until
@@ -244,6 +257,7 @@ func staged() -> Array[Dictionary]:
 
 
 func _step() -> void:
+	_hold_off_while_staged()
 	for s in _states:
 		var def := Sentinels.by_id(s.design)
 		if def == null:
