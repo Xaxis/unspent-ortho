@@ -28,10 +28,11 @@ await plate_on 3
 # A clerk reads the place, and the warning comes.
 spawn clerk
 await noticed 10
+shot 03-a-clerk-reads-the-holding with mob:clerk, holding
 await warned 30
 await went_in 5
 wait 1.0
-shot 03-they-go-in-behind-the-shutters with holding
+shot 04-they-go-in-behind-the-shutters with holding
 # They come at dusk, and the night is let go by (a raid stands for RaidStage
 # MINUTES): whatever came tore at the boards and went.
 hour 19.4
@@ -46,10 +47,10 @@ try 25
   await ring 1.4
 end
 await plated 20
-shot 04-the-plate-takes-its-share with mob, plated
+shot 05-the-plate-takes-its-share with mob, plated
 hour 23
 wait 1.5
 await raid_ended 60
 await kept_in 5
 wait 1.0
-shot 05-everybody-comes-out with holding
+shot 06-everybody-comes-out with holding
