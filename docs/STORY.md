@@ -167,11 +167,13 @@ choice is scored; saying nothing is always an answer.
 - Reading a machine: its code at first, its memories later.
 - The signet: his 2029 credentials, still valid on the oldest machines.
 - Interference: HALCYON's rare attention.
-- A keeper per landscape: each holds a memory; some hold a piece of the secret.
+- A keeper per landscape: each holds one piece of the Seeker's reading of him at
+  THRESHOLD, parcelled one to a region (owner, 2026-09-28); two are the secret's.
 - The works and the plan: Type I industry (server fields, the Tether, the Foundry).
 - The gates, the Before, the After: 2029 rebuilt at the same coordinates; the Emissary's forecast.
 - A room's slots (desk, terminal, wall): what whoever lived there left, colour.
 - Settlements and raids: the Holdfast's holdings. Companions are playable; the story stays his.
 - The depots: the Seeker lost him to the Echo, so it runs the minds of those who have
-  seen him, to predict him. Running replaces a mind, as it did his; left too long,
-  they come back empty or not at all.
+  seen him against its region's piece, to predict him. Running replaces a mind, as
+  it did his; left too long, they come back empty or not at all. Fell the keeper and
+  there is nothing to run them against: they walk out.
