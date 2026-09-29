@@ -66,6 +66,30 @@ and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
    the archive across the water: slice 3's lead.
 8. [ ] **Proof** (all). The tour plays the slice unassisted. ★
 
+## Slice 3 — across the water (planned 2026-09-29; not started)
+
+The raft to the Covenant's seat and the war's archive (one body, 704 and 1006 tiles
+from the spawn on seed 1; the narrowest water is 130 tiles, from near the camp).
+Reason to make: the raft, then gear mended from what the machines leave. Beats from
+STORY.md (wright's map); June's reveals land here, echo_hand stays held for slice 4.
+Proof tour: `tours/across.tour`, from slice 2's end.
+
+1. [ ] **The crossing** (A+B). After `war_archive` the goal points at a raft and the
+   shore nearest the far body; a 130-tile crossing proved by play (time, hull).
+2. [ ] **The Covenant's seat** (A). A guaranteed `covenant_speaker` door at
+   the_covenant; `covenant_fed`, `covenant_price`; Solis: `teague_sold`, `solis_made`.
+3. [ ] **June** (A). `june_named`, `june_met`, `june_knew`, `echo_kept`, `hannah_died`.
+4. [ ] **The archive** (A). Otto: `forged_order`, `tradecraft`; `war_relay` is slice
+   4's lead (the relay below, a shaft down), with a survey pin and a goal.
+5. [ ] **Mended gear** (B). The slice's make, with its reason said at the Covenant.
+6. [ ] **The drowned city** (C). The third landscape, on the leg-1 body. Worldgen: prove
+   the home coast and its keeper don't move (the salt flats lesson).
+7. [ ] **The first enclave** (A+C). `enclave_met`, a machine talk at a drowned-city
+   landmark and one fragment; it speaks in his cadence, faintly (STORY.md).
+8. [ ] **Back at the camp** (A). `crew_war` / `dace_left`, `rook_told`.
+9. [ ] **Fix** (A). `hale_log` locked until `war_relay` (branch `story/hale-lock`).
+10. [ ] **Proof** (all). The tour plays the slice by the goal line alone. ★
+
 ## Tools track — the story map and the dev slate (alongside slice 1)
 
 The owner's ask (2026-09-28): see every arc and sub-arc as directional arrows over the

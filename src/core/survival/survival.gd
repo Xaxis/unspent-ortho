@@ -301,6 +301,40 @@ static func _tool_for(game: Game, state: SurvivalState, prop: WorldProp) -> Stri
 	return best
 
 
+## What to hold for what the pinned goal wants (Guide.goal_wants), when the take
+## the held tool makes gives something else and another take on the same thing
+## gives the wanted item: " (hold the knife for rag)", " (put the pick away for
+## rag)". Empty when the take already serves the goal, or the goal wants nothing.
+static func _hold_hint(game: Game, t: WorldProp, c: Dictionary) -> String:
+	if Takes.options(t.kind).size() < 2:
+		return ""
+	var wants := Guide.goal_wants(game)
+	if wants.is_empty() or wants.has(StringName(c.option.item)):
+		return ""
+	var state := SurvivalState.of(game)
+	# What each way of holding would take here: nothing in hand, then each tool.
+	var ways: Array[StringName] = [&""]
+	for id: StringName in game.inventory.items:
+		if Items.verb(id) != &"" and not ways.has(id):
+			ways.append(id)
+	for way: StringName in ways:
+		if way == game.inventory.held:
+			continue
+		var o := _choose(game, state, t, way)
+		if o.ok and wants.has(StringName(o.option.item)):
+			var item := Items.many_name(StringName(o.option.item))
+			if way == &"":
+				return HOLD_HINT_BARE % [Items.display_name(game.inventory.held), item]
+			return HOLD_HINT % [Items.display_name(way), item]
+	return ""
+
+
+## The hint's words (wright's): what to hold, and what for; the item named as
+## many (Items.many_name), never "for piece of plate".
+const HOLD_HINT := " (hold the %s for %s)"
+const HOLD_HINT_BARE := " (put the %s away for %s)"
+
+
 static func describe_target(game: Game) -> String:
 	var t := use_target(game)
 	if t != null and SurvivalState.of(game).left.has(t.id):
@@ -309,7 +343,7 @@ static func describe_target(game: Game) -> String:
 		var c := _choose(game, SurvivalState.of(game), t)
 		var name := PropKind.NAMES[t.kind]
 		if c.ok:
-			return "%s - %s" % [name, c.option.verb]
+			return "%s - %s%s" % [name, c.option.verb, _hold_hint(game, t, c)]
 		var alt := _tool_for(game, SurvivalState.of(game), t)
 		if alt != &"":
 			return "%s - %s" % [name, Items.verb(alt)]

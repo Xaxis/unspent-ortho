@@ -1,7 +1,6 @@
 # The score from a normal game start (seed 1, the south coast village): it wakes
 # with the coast's drone and air, the arrival phrase plays, the pad and then the
-# calm pulse come in; a run east from the village to the first pylon of the
-# machines' line (fifty tiles off) brings in the installation's grid under it;
+# calm pulse come in; the machines' works yard brings in the installation's grid under it;
 # there a runner that has seen the player quickens that pulse and raises the
 # dissonance, and the score resolves once the runner is gone. A layer counts
 # once it plays at 75_music's HEARD share of its level. Stems bake while it
@@ -16,18 +15,17 @@ await score_pad 300
 shot 02-the-pad-has-come
 await score_pulse 300
 shot 03-the-pulse-plays
-# From the village square, run east along the coast (around the trees at the
-# village's edge and a wreck past them) to the pylon.
-# The square the player wakes in, by name. This was `at 201,432.5`, which is
-# 1.1 tiles from the spawn — and the three run legs below are hand-timed from it
-# to reach the pylon fifty tiles east, so a coordinate that drifts takes the
-# whole walk with it. `prop:pylon` on frame 04 is what catches that.
-place spawn
-walk 0.71,0.71 4.7 run
-walk 0.88,0.47 1.26 run
-walk 0.71,0.71 3.5 run
+# To the machines' works, by name, and under the nearest thing of theirs that
+# hums: the walk here was three hand-timed run legs from the spawn to a pylon
+# fifty tiles east, on a world long since regrown; they ended at the village's
+# shore, and the nearest installation is now the first works yard's (the story's
+# `the_yard`, where the Tide Reaper keeps its rows), 276 tiles off.
+at stood:the_yard
+wait 0.6
+near pylon,relay,intake,pump_house,conveyor,stack
+wait 0.5
 await score_grid 60
-shot 04-under-the-pylon with prop:pylon
+shot 04-under-the-works with score_grid
 spawn runner
 await score_tense 90
 await score_dissonance 60

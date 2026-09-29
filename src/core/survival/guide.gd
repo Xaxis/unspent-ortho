@@ -303,6 +303,34 @@ static func way_goal(game: Game) -> String:
 	return ""
 
 
+## WHAT THE PINNED GOAL IS SHORT OF: the items the thing it asks him to make still
+## wants, beyond what he carries, keyed by the goal (last_goal_key). The action
+## prompt reads it to say what to hold for them (Survival.describe_target). A
+## goal that makes nothing wants nothing here.
+const GOAL_MAKES := {
+	&"holding": {"piece": StructureKind.LEAN_TO},
+	&"armour": {"recipe": &"kit_plate"},
+}
+
+
+## Reads the goal last pinned (last_goal_key, which 90_ui refreshes a few times a
+## second), never the goal afresh: the action prompt asks every frame.
+static func goal_wants(game: Game) -> Array[StringName]:
+	var out: Array[StringName] = []
+	if not GOAL_MAKES.has(last_goal_key):
+		return out
+	var makes: Dictionary = GOAL_MAKES[last_goal_key]
+	var needs: Dictionary = {}
+	if makes.has("piece"):
+		needs = StructureKind.ROWS[int(makes.piece)].get("cost", {})
+	elif makes.has("recipe"):
+		needs = Crafting.recipe(StringName(makes.recipe)).get("needs", {})
+	for item: StringName in needs:
+		if game.inventory.count(item) < int(needs[item]):
+			out.append(item)
+	return out
+
+
 ## THE EDGE A KEEPER TAKES (SurvivalState.plates, FightRules.bites). Once a
 ## keeper's plating has rung the edge in hand off, the goal is the edge that bites
 ## it, in the order it is made on the home coast -- a kiln, charcoal, the knife
