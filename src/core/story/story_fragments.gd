@@ -101,15 +101,17 @@ static func held_by(world: WorldData, query: WorldQuery, prop: WorldProp) -> Str
 	var kind := StoryProps.kind_of(prop.kind)
 	if kind == &"":
 		return &""
+	# A thing the story stood holds its place's one page (StoryContent.STOOD).
+	var stood := StoryWorld.stood_place(world, prop)
+	if stood != &"":
+		var its := pick_at(stood, 0, kind)
+		if its != &"":
+			return its
 	var place := StoryWorld.place_of(world, prop.pos)
-	# At a place whose thing the story stands (StoryContent.STOOD), only that
-	# thing holds its words: a survey post in the same yard deals as it always did.
-	if StoryContent.STOOD.has(place) and prop.kind != int(StoryContent.STOOD[place]):
-		place = &""
 	if place != &"":
 		var n := 0
 		for q: WorldProp in query.props_near(prop.pos, 2.0 * StoryWorld.PLACE_REACH):
-			if q.id < prop.id and StoryProps.kind_of(q.kind) == kind and (q.kind == prop.kind or not StoryContent.STOOD.has(place)) and StoryWorld.place_of(world, q.pos) == place:
+			if q.id < prop.id and StoryProps.kind_of(q.kind) == kind and StoryWorld.place_of(world, q.pos) == place:
 				n += 1
 		var own := pick_at(place, n, kind)
 		if own != &"":

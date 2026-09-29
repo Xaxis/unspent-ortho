@@ -36,6 +36,18 @@ var _since := 0.0
 
 func setup(g: Game) -> void:
 	game = g
+	SaveGame.register(&"stood", _save_stood, _load_stood)
+
+
+func _save_stood() -> Variant:
+	return _stood.keys().map(func(k: StringName) -> String: return String(k))
+
+
+func _load_stood(v: Variant) -> void:
+	_stood.clear()
+	if v is Array:
+		for k: Variant in v:
+			_stood[StringName(str(k))] = true
 
 
 func started() -> void:
@@ -126,6 +138,9 @@ func _cast() -> void:
 ## check: only then are the props round it streamed in, and the spot is chosen
 ## clear of them (a sign beside the screen takes the `use` meant for it).
 const STAND_NEAR := 40.0
+## The slots whose thing has been set down, kept in the save beside the thing
+## itself (SaveCore keeps props set down in play), so a load never sets a second.
+var _stood: Dictionary = {}
 
 
 func _stand_things(from: Vector2) -> void:
@@ -136,12 +151,13 @@ func _stand_things(from: Vector2) -> void:
 			continue
 		var kind := int(StoryContent.STOOD[slot])
 		var at: Vector2 = placed[slot].pos
-		if at.distance_to(from) > STAND_NEAR or _stood_at(slot) != null:
+		if at.distance_to(from) > STAND_NEAR or _stood.has(slot):
 			continue
 		var spot := _thing_spot(at, absi(int(slot.hash())))
 		if spot.is_finite():
 			@warning_ignore("return_value_discarded")
 			Survival.add_prop(game, kind, spot)
+			_stood[slot] = true
 
 
 ## How far a stood thing keeps from any era gate: past 20_realms' GATE_REACH (1.5)
@@ -161,13 +177,19 @@ const GATE_CLEAR := 4.0
 func _thing_spot(at: Vector2, salt: int) -> Vector2:
 	var w := game.world
 	var grounds: Array[Vector3] = []
-	for st: SentinelState in Sentinels.states(w):
-		var def := Sentinels.by_id(st.design)
-		if def != null:
-			grounds.append(Vector3(st.lair.x, st.lair.y, def.reach))
-	for gate: Dictionary in StoryGates.all(w):
-		var gp: Vector2 = gate.pos
-		grounds.append(Vector3(gp.x, gp.y, GATE_CLEAR))
+	# The keepers as 44_sentinels holds them (loaded before this), not cast anew.
+	for sys: Node in game.systems:
+		if sys.name == "44_sentinels":
+			for st: SentinelState in sys.call("states"):
+				var def := Sentinels.by_id(st.design)
+				if def != null:
+					grounds.append(Vector3(st.lair.x, st.lair.y, def.reach))
+	# The gates stand on 2098's slots, which this system already cast (`placed`):
+	# StoryGates.all would cast the whole world again.
+	for gate: Dictionary in StoryGates.GATES:
+		if placed.has(gate.at):
+			var gp: Vector2 = placed[gate.at].pos
+			grounds.append(Vector3(gp.x, gp.y, GATE_CLEAR))
 	# The people cast at the same slot stand first: `use` beside one of them
 	# speaks to them, so the thing keeps out of their reach.
 	for row: Dictionary in people:
@@ -367,12 +389,12 @@ func _beside_stood(slot: StringName) -> Vector2:
 	return q.pos
 
 
+## The thing stood at `slot`, asked of the streamed window round it: null
+## while its ground is not in (whether it was ever stood is `_stood`).
 func _stood_at(slot: StringName) -> WorldProp:
-	var w := game.world
 	var at: Vector2 = placed[slot].pos
-	for i in range(w.generated(), w.prop_count()):
-		var q := w.prop_at(i)
-		if q.kind == int(StoryContent.STOOD[slot]) and q.pos.distance_to(at) <= StoryWorld.STOOD_REACH:
+	for q: WorldProp in game.query.props_near(at, StoryWorld.STOOD_REACH):
+		if StoryWorld.stood_place(game.world, q) == slot:
 			return q
 	return null
 
