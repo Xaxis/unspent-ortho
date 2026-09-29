@@ -2176,10 +2176,10 @@ func _stage() -> void:
 ##   raider_down     one of the party did not come home
 ##   quieted         a region's keeper fell and its network went quiet
 ##   attention       a holding is on the plan's books at all
-##   unfiled         nothing has ever got home about any holding, and nothing is
+##   unfiled         a holding stands, nothing has ever got home about any, and nothing is
 ##                   carrying one now: what running dark buys, said as a state
 ##                   rather than as a thing that failed to happen
-##   nothing_coming  no step is warned or under way anywhere, and no holding is
+##   nothing_coming  a holding stands, no step is warned or under way anywhere, and none is
 ##                   at a line that would start one
 func tour_seen(what: String) -> bool:
 	match what:
@@ -2250,12 +2250,19 @@ func tour_seen(what: String) -> bool:
 			# Nothing has ever got home about any holding, and nothing is on its
 			# way with one. It is the state a place that runs dark stays in, and
 			# the only way a tour can prove a raid never came: by naming the
-			# world the player is standing in rather than waiting for nothing.
+			# world the player is standing in rather than waiting for nothing. With
+			# no holding on the books at all it is no answer: dark and unregistered
+			# would read the same.
+			if places().is_empty():
+				return false
 			for s in places():
 				if s.attention > Attention.NOTHING:
 					return false
 			return _carriers.is_empty()
 		"nothing_coming":
+			# A world with no holding is not a quiet one to prove.
+			if places().is_empty():
+				return false
 			for p in plans:
 				if not p.over():
 					return false
