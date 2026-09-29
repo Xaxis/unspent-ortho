@@ -29,6 +29,7 @@ tools/canon.sh [--accept]       # canon frames vs the accepted set
 tools/web.sh                    # export and boot the web build in headless Chromium
 tools/deploy.sh [--prod]        # deploy to Vercel and prove it loads there
 tools/heavy.sh CMD...           # run a tour/shot/render/web job only when the box can take it (two at once)
+tools/tour-sweep.sh [--since REF] # run tours on this checkout, PASS/FAIL each (CI has no GPU: tours run here)
 ```
 
 - **Look at the pictures.** After any visible change, shoot it and Read the PNG. A
