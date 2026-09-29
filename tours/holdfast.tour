@@ -3,7 +3,7 @@
 # is booted, not played again: its beats (her lead, the keeper named and down) and
 # its kit (the pick, the steel knife). Nothing is given past that point.
 #
-#   TOUR_TIMEOUT=1800 tools/tour.sh tours/holdfast.tour --seed=1 --hour=9 --weather=clear:0 --beats=body_new,holdfast_fight,marens_lead,reaper_named,reaper_down --give=pick:1,knife_shear:1
+#   TOUR_TIMEOUT=3000 tools/tour.sh tours/holdfast.tour --seed=1 --hour=9 --weather=clear:0 --beats=body_new,holdfast_fight,marens_lead,reaper_named,reaper_down --give=pick:1,knife_shear:1
 #
 # Every stage is staged by name (a person, a place the story stood, a gate, a
 # prop kind), never a coordinate; each frame carries one claim of what it shows.
