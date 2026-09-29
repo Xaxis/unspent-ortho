@@ -371,6 +371,10 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 ## The island's raise: true once it stands (in `_world`) or the page has failed.
 ## Past RAISE_DEADLINE_MS the stage is given up on and `_process` says so.
 func _wait_for_island(o: BootOptions) -> bool:
+	if bool(_bw.call("offered_for", o.seed_value, o.size)):
+		# The title's coast was the whole island, and it handed it over.
+		_world = _bw.call("world", o.seed_value, o.size)
+		return true
 	if RealmWorlds.failed(o.seed_value, o.size, Realm.SURFACE):
 		_fail("the land did not come up")
 		return true

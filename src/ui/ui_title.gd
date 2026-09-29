@@ -208,8 +208,6 @@ func _raise_island(w: WorldData, s: int) -> void:
 			RealmWorlds.forget()
 		_raised_for = s
 		_below_begun = false
-	if w.size == options.size:
-		RealmWorlds.keep(w)
 	_step_island()
 
 
@@ -219,12 +217,16 @@ func _step_island() -> void:
 	if _raised_for < 0 or _below_begun:
 		return
 	var n := options.size
-	if not RealmWorlds.ready(_raised_for, n, Realm.SURFACE):
-		@warning_ignore("return_value_discarded")
-		RealmWorlds.begin(_raised_for, n, Realm.SURFACE, true)
-		return
+	# Where the coast is the whole island (a small world) there is nothing to raise.
+	var island: WorldData = world if world != null and world.size == n and world.seed_value == _raised_for else null
+	if island == null:
+		if not RealmWorlds.ready(_raised_for, n, Realm.SURFACE):
+			@warning_ignore("return_value_discarded")
+			RealmWorlds.begin(_raised_for, n, Realm.SURFACE, true)
+			return
+		island = RealmWorlds.take(_raised_for, n, Realm.SURFACE)
 	_below_begun = true
-	for p: Portal in RealmWorlds.take(_raised_for, n, Realm.SURFACE).shafts:
+	for p: Portal in island.shafts:
 		@warning_ignore("return_value_discarded")
 		RealmWorlds.begin(_raised_for, n, p.to_realm, true)
 

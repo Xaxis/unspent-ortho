@@ -109,9 +109,9 @@ static func begin(seed_value: int, size: int, kind: StringName, full := false) -
 static func going(seed_value: int, size: int, kind: StringName) -> bool:
 	var key := key_of(seed_value, size, kind)
 	_mutex.lock()
-	var task: Variant = _tasks.get(key)
+	var task: int = _tasks.get(key, -1)
 	_mutex.unlock()
-	return task != null and not WorkerThreadPool.is_group_task_completed(int(task))
+	return task >= 0 and not WorkerThreadPool.is_group_task_completed(task)
 
 
 static func failed(seed_value: int, size: int, kind: StringName) -> bool:
@@ -136,12 +136,12 @@ static func take(seed_value: int, size: int, kind: StringName) -> WorldData:
 	var key := key_of(seed_value, size, kind)
 	_mutex.lock()
 	var w: WorldData = _worlds.get(key)
-	var task: Variant = _tasks.get(key)
+	var task: int = _tasks.get(key, -1)
 	_mutex.unlock()
 	if w != null:
 		return w
-	if task != null:
-		WorkerThreadPool.wait_for_group_task_completion(int(task))
+	if task >= 0:
+		WorkerThreadPool.wait_for_group_task_completion(task)
 		_mutex.lock()
 		w = _worlds.get(key)
 		_tasks.erase(key)
