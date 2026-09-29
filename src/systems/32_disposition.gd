@@ -27,6 +27,10 @@ const COVER_EVERY := 0.3
 ## Dispositions are written this often (s): a region heating is felt in a
 ## breath, not on the frame.
 const APPLY_EVERY := 0.25
+## How far into the night a light has to be before the plant marks it (0..1,
+## Moment.nightfall), and how near a fire he must stand for it to be his.
+const NIGHT_SEEN := 0.6
+const FIRE_SEEN := 3.0
 ## A job on a prop makes its noise this often (s): a player hammering a mast is
 ## heard, and keeps being heard.
 const WORK_NOISE_EVERY := 0.7
@@ -133,6 +137,7 @@ func _physics_process(delta: float) -> void:
 		_filed()
 		_curfew()
 		_trespass()
+		_seen_light()
 		_turned()
 		_apply_dispositions()
 		_felt(sim.now)
@@ -281,6 +286,29 @@ func _curfew() -> void:
 			# that takes it amiss also makes are one file and not two.
 			raise(&"curfew", m.home)
 			return
+
+
+## A LIGHT AFTER DARK is seen from the region's plant (`seen_light`): his lamp,
+## or a lit fire he stands at, once night has fallen, in a region whose plant
+## still runs. Interference.RARE_GAP keeps it rare; the file's own level is how
+## it ever reaches him (`_dispatch`).
+func _seen_light() -> void:
+	var m := sim.moment
+	if m.nightfall() < NIGHT_SEEN or game.world.realm != Realm.SURFACE:
+		return
+	var p := sim.hero.pos
+	var net := Interference.network(game.world, p)
+	if net == Interference.REGIONLESS or interference.is_lost(net):
+		return
+	var lit := m.lamp_lit
+	if not lit:
+		for q in game.query.props_near(p, FIRE_SEEN):
+			if q.kind == PropKind.FIRE and q.pos.distance_to(p) <= FIRE_SEEN \
+					and not game.world.depleted.has(q.id) and not game.world.unlit.has(q.id):
+				lit = true
+				break
+	if lit:
+		raise(&"seen_light", p)
 
 
 ## Standing on the site a keeper holds, where it can see you. The keeper turns
