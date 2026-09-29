@@ -15,6 +15,10 @@ extends RefCounted
 var id: StringName = &""
 var node: StringName = &""
 var over := false
+## Whether the bag holds an item (`func(id: StringName) -> bool`), asked of a reply
+## with `has` (item ids: offered while any one of them is carried). 49_story sets
+## it on the talks it opens; a talk nobody set it on offers no such reply.
+var holds: Callable = Callable()
 ## A conversation built at the moment it is had, in the shape TALKS uses: what a
 ## region asks of him is about THAT region, so its words cannot be written down
 ## in advance (StorySubarc). `mark` is what Story remembers having been told.
@@ -76,10 +80,23 @@ func replies() -> Array[Dictionary]:
 		var when := StringName(str(r.get("when", &"")))
 		if when != &"" and not (Story.knows(when) or Story.landed(when)):
 			continue
+		if not _carries(r.get("has", [])):
+			continue
 		if StoryPacing.withheld(id, r):
 			continue
 		out.append(r)
 	return out
+
+
+func _carries(ids: Array) -> bool:
+	if ids.is_empty():
+		return true
+	if not holds.is_valid():
+		return false
+	for item: StringName in ids:
+		if bool(holds.call(item)):
+			return true
+	return false
 
 
 ## Say the i'th reply. Returns false when the conversation is over.

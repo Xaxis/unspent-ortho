@@ -176,8 +176,14 @@ static func _goal_of(game: Game) -> String:
 	if edge != "":
 		return edge
 	if inv.has(&"pick"):
+		var armour := armour_goal(game)
+		if armour != "":
+			return armour
 		if not inv.has(&"iron_ore") and not inv.has(&"iron"):
 			return _led(&"ore", "Take the pick to the ore in the rock.")
+		var camp := camp_goal()
+		if camp != "":
+			return camp
 		# Past the first tools, the long game: the next elite material, and where
 		# -- and a part a room keeps, once the material it follows is held.
 		var part := next_part(game)
@@ -223,6 +229,33 @@ static func _led(key: StringName, plain: String, at: String = "") -> String:
 	if Story.landed(LEAD_BEAT) and StoryContent.LEAD.has(key):
 		line = String(StoryContent.LEAD[key])
 	return line.replace("{at}", at)
+
+
+## THE ROAD TO THE CAMP (ROADMAP slice 2, step 1): with her lead given and iron
+## in the bag, the want is the crew who pay for it (StoryContent.LEAD `camp`),
+## until they have paid (CAMP_PAID in StoryContent.PAID): meeting Rook is not the
+## promise kept, the pay is. Only once led: a player she never sent has no
+## reason to go, and the survey marks the camp from her lead on
+## (StoryContent.TOLD).
+const CAMP_PAID := &"rook.iron"
+
+
+static func camp_goal() -> String:
+	var paid := Story.chose(CAMP_PAID) == StringName(StoryContent.PAID[CAMP_PAID].pick)
+	if Story.landed(LEAD_BEAT) and not paid and StoryContent.LEAD.has(&"camp"):
+		return String(StoryContent.LEAD[&"camp"])
+	return ""
+
+
+## PAID IN PLATE: once the crew have paid for the iron (StoryContent.PAID, Rook's
+## `iron`), the want is the plate armour the pay is for (LEAD `armour`), until
+## it is made.
+static func armour_goal(game: Game) -> String:
+	for at: StringName in StoryContent.PAID:
+		var row: Dictionary = StoryContent.PAID[at]
+		if Story.chose(at) == row.pick and not game.inventory.has(row.makes) and StoryContent.LEAD.has(&"armour"):
+			return String(StoryContent.LEAD[&"armour"])
+	return ""
 
 
 ## THE EDGE A KEEPER TAKES (SurvivalState.plates, FightRules.bites). Once a
