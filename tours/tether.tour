@@ -13,5 +13,5 @@ wait 2
 shot 02-noon with tether
 hour 23
 wait 2
-await ring 10
+await ring_drawn 10
 shot 03-a-ring-pass-at-night with tether

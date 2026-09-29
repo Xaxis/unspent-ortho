@@ -1468,6 +1468,13 @@ func tour_seen(what: StringName) -> bool:
 
 # --- saving ------------------------------------------------------------------
 
+
+## A settle's produce is an EVENT (GameSystem.tour_forget): spent when a tour's
+## await is answered, so `await produced` after eight hours is those hours'.
+func tour_forget(what: StringName) -> void:
+	if what == &"produced":
+		_produced = false
+
 func _save() -> Variant:
 	var out := []
 	for s in places:

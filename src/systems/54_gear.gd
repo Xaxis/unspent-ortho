@@ -890,6 +890,22 @@ func tour_seen(what: StringName) -> bool:
 
 ## `id` is fitted AND the figure walking the coast has every piece of it on: the
 ## gear page draws that same look, so this is what a frame of the page is of.
+## A fired ability or a jump is an EVENT (GameSystem.tour_forget): spent when a
+## tour's await for it is answered, or a re-press refused by its cooldown passes.
+func tour_forget(what: StringName) -> void:
+	var s := String(what)
+	if s == "ability":
+		_fired.clear()
+	elif s.begins_with("ability:"):
+		_fired.erase(StringName(s.substr(8)))
+	elif s == "jumped":
+		_jumped.clear()
+	elif s.begins_with("jumped:"):
+		_jumped.erase(StringName(s.substr(7)))
+		if _jumped.get(&"", &"") == StringName(s.substr(7)):
+			_jumped.erase(&"")
+
+
 func _worn(id: StringName) -> bool:
 	if loadout.fitted_count(id) <= 0 or game.player == null or game.player.model == null:
 		return false

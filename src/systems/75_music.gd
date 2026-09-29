@@ -98,6 +98,9 @@ var seconds := 0.0
 var players: Dictionary = {}
 ## Keys of cues started, newest last (tests and tours).
 var cues_played: Array[StringName] = []
+## Where a tour's cue claims read `cues_played` from: an answered await spends the
+## cues before it (tour_forget), and the list itself stays whole.
+var _cues_from := 0
 
 ## Landscapes the player is walking toward (id -> 0..1): baked, never heard.
 var soon: Dictionary = {}
@@ -567,7 +570,7 @@ func tour_seen(what: String) -> bool:
 	for cue: String in ["phrase", "resolve", "motif"]:
 		if what == "score_" + cue:
 			var suffix := "_melody" if cue == "phrase" else "_" + cue
-			return cues_played.any(func(k: StringName) -> bool: return String(k).get_slice(":", 0).ends_with(suffix))
+			return cues_played.slice(_cues_from).any(func(k: StringName) -> bool: return String(k).get_slice(":", 0).ends_with(suffix))
 	var layer := StringName(what.trim_prefix("score_")) if what != "score" else &""
 	for key: StringName in players:
 		var p: AudioStreamPlayer = players[key]
@@ -577,6 +580,13 @@ func tour_seen(what: String) -> bool:
 
 
 ## The landscapes actually sounding now: a stem of theirs playing at HEARD.
+
+## A cue is an EVENT (GameSystem.tour_forget): an answered `score_resolve`,
+## `score_phrase` or `score_motif` spends every cue played before it.
+func tour_forget(what: StringName) -> void:
+	if what in [&"score_phrase", &"score_resolve", &"score_motif"]:
+		_cues_from = cues_played.size()
+
 func heard_lands() -> Array[StringName]:
 	var out: Array[StringName] = []
 	for key: StringName in players:
