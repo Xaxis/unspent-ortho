@@ -72,6 +72,7 @@ func setup(g: Game) -> void:
 	Events.settlement_founded.connect(_on_settlement_founded)
 	Events.raid_ended.connect(_on_raid_ended)
 	Events.ring_held.connect(_on_ring_held)
+	Events.story_chose.connect(_on_chose)
 
 
 func started() -> void:
@@ -104,6 +105,7 @@ func _stage() -> void:
 	elif o.talk != "":
 		var parts := o.talk.split(":")
 		talk = StoryTalk.start(StringName(parts[0]))
+		talk.holds = game.inventory.has
 		if talk.over:
 			talk = null
 			return
@@ -146,6 +148,8 @@ func _exit_tree() -> void:
 		Events.raid_ended.disconnect(_on_raid_ended)
 	if Events.ring_held.is_connected(_on_ring_held):
 		Events.ring_held.disconnect(_on_ring_held)
+	if Events.story_chose.is_connected(_on_chose):
+		Events.story_chose.disconnect(_on_chose)
 
 
 ## The journal's key, read as 46_settlements reads the holding's: it opens the
@@ -394,6 +398,7 @@ func _start_talk(row: Dictionary) -> void:
 		Events.hint.emit("They have nothing to say to you.", "")
 		return
 	talk = StoryTalk.start(id)
+	talk.holds = game.inventory.has
 	if talk.over:
 		talk = null
 		return
@@ -646,6 +651,19 @@ func _lost_one() -> bool:
 				if t.lost:
 					return true
 	return false
+
+
+## A talk that pays (StoryContent.PAID): the pick that closes the deal takes one
+## of the first item held in `takes` and puts `gives` in the bag.
+func _on_chose(at: StringName, pick: StringName) -> void:
+	var row: Dictionary = StoryContent.PAID.get(at, {})
+	if row.is_empty() or pick != row.pick:
+		return
+	for item: StringName in row.takes:
+		if game.inventory.remove(item, 1):
+			break
+	for item: StringName in row.gives:
+		game.inventory.add(item, int(row.gives[item]))
 
 
 func _on_took(item: StringName, _count: int) -> void:

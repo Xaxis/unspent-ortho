@@ -232,6 +232,19 @@ func test_the_fire_keeper_sees_what_he_is_before_he_does() -> void:
 	Story.forget()
 
 
+## Rook at the camp says he was paid (`crew_paid`), and that is all the camp
+## gives: the note in the Seeker's own hand is the Echo's, and waits until the
+## hulls have shown something writing in the war (slice 4, docs/ROADMAP.md).
+func test_rook_says_he_was_paid_and_keeps_the_note_until_the_echo() -> void:
+	Story.forget()
+	var t := _walk(&"rook", ["Who paid you?"])
+	check(Story.landed(&"crew_paid"), "paid to wait for him on the shore")
+	for r: Dictionary in t.replies():
+		check(str(r.text) != "Have you still got the note?", "the note is not asked after before the hulls")
+	check(not Story.landed(&"echo_hand"), "and his own hand is not on it yet")
+	Story.forget()
+
+
 func test_june_is_named_before_she_is_met() -> void:
 	Story.forget()
 	var t := _walk(&"imre", ["Why did you leave?"])
@@ -386,6 +399,7 @@ func test_the_echo_is_found_in_his_own_hand_and_his_daughter_s_luck() -> void:
 	check(Story.read(&"note_to_self"), "a works log with one line out of place")
 	check(Story.landed(&"echo_voice"), "something still writes notes to itself in his voice")
 	Story.forget()
+	Story.beat(&"echo_hulls", -INF)
 	@warning_ignore("return_value_discarded")
 	_walk(&"rook", ["Who paid you?", "Have you still got the note?", "That's my handwriting."])
 	check(Story.landed(&"echo_hand"), "the note that paid Rook is his own")

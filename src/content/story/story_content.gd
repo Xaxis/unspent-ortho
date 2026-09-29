@@ -4089,14 +4089,20 @@ const TALKS := {
 					{"text": "Who paid you?", "pick": &"asked_payer", "to": &"payer"},
 					{"text": "What do you want?", "pick": &"asked_want", "to": &"want"},
 					{"text": "Teague sells our roads to the Covenant.", "when": &"teague_sold", "pick": &"told_rook_teague", "to": &"teague"},
+					{"text": "[hold out the iron]", "has": [&"iron_ore", &"iron"], "to": &"iron"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
+			},
+			# Maren's lead kept (ROADMAP slice 2 step 1): the crew pay for the iron in plate, for armour (StoryContent.PAID).
+			&"iron": {
+				"says": ["Iron. She sent you so we'd keep off her fire. She's right. We bring the hunters.", "Three plate for it. Beat it into armour at a bench.", "I pay in plate. Coin's for people paid to wait."],
+				"replies": [{"text": "[take the plate]", "pick": &"paid", "to": &""}],
 			},
 			&"payer": {
 				"says": ["Old coin, left where I'd find it, and a note in a hand I didn't know.", "It said you'd come out of the sea, and when."],
 				"beats": [&"crew_paid"],
 				"replies": [
-					{"text": "Have you still got the note?", "pick": &"asked_note", "to": &"note"},
+					{"text": "Have you still got the note?", "when": &"echo_hulls", "pick": &"asked_note", "to": &"note"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
@@ -5488,7 +5494,7 @@ const WAKE := {
 # she told him, carrying her why, so the first hour is her errand and not a
 # recipe. The game's register, terse. Never a key, never a coordinate: `{at}`
 # is the fire's name (Guide.fire_name). Before she has said it, the guide says
-# the plain line. `ore` is where the goal turns toward the crew's camp.
+# the plain line. `camp` is where the goal turns toward the crew's camp.
 const LEAD := {
 	&"fire_gather": "A fire before dark, for charcoal: three driftwood and two stones.",
 	&"fire_lay": "A fire before dark, for charcoal: lay it on open ground.",
@@ -5498,7 +5504,23 @@ const LEAD := {
 	&"plate": "Plate for the pick's head: turn over the tip.",
 	&"pick": "A pick for the iron, made at {at}.",
 	&"ore": "The crew past the old works pay for iron. Take the pick to the rock.",
+	&"camp": "Iron for the crew, so they stay away from her fire: the survey marks the camp.",
+	&"armour": "Armour against the hunters: beat the plate at a bench, with scrap and iron.",
 }
+
+# A talk that pays, keyed by the talk's node where the deal is closed
+# ("talk.node", as Story.choose names it): `pick` closes it, `takes` is one of the
+# first of these held, `gives` goes in the bag, and `makes` is what the pay is
+# for (Guide.armour_goal wants it until it is made). The crew pay for iron in
+# plate, three to a piece of plate armour (Recipes `kit_plate`).
+const PAID := {
+	&"rook.iron": {"pick": &"paid", "takes": [&"iron_ore", &"iron"], "gives": {&"scrap": 3}, "makes": &"kit_plate"},
+}
+
+# Places a person has told him of, keyed by the beat that tells it: once that
+# beat has landed the survey marks the slot's place and letters it with `word`,
+# lowercase and a few words, like the bag's "your things".
+const TOLD := {&"marens_lead": {"place": &"the_camp", "word": "the crew"}}
 
 # The name the goal lines use for a landscape's keeper once `reaper_named` has
 # landed (Hob, TALKS hob.reaper). Keyed by landscape id; before he has said it,
