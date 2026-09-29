@@ -121,7 +121,7 @@ func test_sleep_by_a_fire_at_night_wakes_at_eight() -> void:
 	eq(Survival.sleep_refusal(g), "It is too light to sleep.")
 	g.clock.skip(8.0 * 60.0) # 22:00
 	eq(Survival.sleep_refusal(g), "")
-	eq(Survival.describe_target(g), "fire - sleep")
+	eq(Survival.describe_target(g), "fire - sleep?", "offered, and asked for before it is done")
 	g.clock.skip(0.0)
 	check(Survival.sleep(g))
 	near(g.clock.hour(), 8.0, 0.001, "wake at eight without a roof")

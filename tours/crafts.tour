@@ -13,9 +13,9 @@ coast calm
 # in, so a shore that moves fails the tour loudly instead of quietly lying.
 place spawn
 wait 0.3
-try 5
+try 8
 walk -1,1 1.6
-await ride_ready 0.5
+await launch_ready:raft 0.5
 end
 wait 0.4
 shot 01-at-the-tideline

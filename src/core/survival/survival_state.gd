@@ -23,6 +23,8 @@ var wet_until := -INF
 ## A campfire asked for by `use` on open ground, waiting for the second press:
 ## {at: Vector2 where it would go, until: real seconds}. Empty when not asked.
 var build_ask: Dictionary = {}
+## Until when (Survival.now_real) a second idle `use` sleeps: the first only asks.
+var sleep_ask_until := -1.0
 ## Stations the player put in the world, in order.
 var built: Array[WorldProp] = []
 ## Real-seconds accumulator for the regrowth sweep.
