@@ -2,7 +2,7 @@
 # played from the title the way a player starts, with nothing given, no folk and
 # no beats pre-landed. Each step of the slice extends it.
 #
-#   TOUR_FIXED_FPS=60 tools/tour.sh tours/home-coast.tour --scene=title --seed=1
+#   TOUR_TIMEOUT=600 TOUR_FIXED_FPS=60 tools/tour.sh tours/home-coast.tour --scene=title --seed=1
 #
 # At a fixed frame rate: from step 3 on a machine's tells are waited for, and a
 # loaded box's frames let them go by (the keeper's block, as reaper_plating's).
