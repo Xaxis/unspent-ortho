@@ -16,6 +16,8 @@ func test_the_hunters_go_for_the_nearest_roof() -> void:
 	eq(Reprisal.nearest_roof(props, yard), Vector2(130, 90), "the nearest house, not a boulder")
 	var none: Array[WorldProp] = [WorldProp.new(4, PropKind.BOULDER, Vector2(105, 100), 0.0, 1.0)]
 	eq(Reprisal.nearest_roof(none, yard), Vector2.INF, "and nobody to burn where there is no roof")
+	var gone := {2: INF}
+	eq(Reprisal.nearest_roof(props, yard, gone), Vector2(160, 100), "a roof already burned is passed over for the next")
 
 
 func test_a_roof_burns_after_the_march_unless_the_yard_is_dark() -> void:

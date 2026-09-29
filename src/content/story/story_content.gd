@@ -5703,15 +5703,16 @@ const TAKEN := {
 
 # --- what a broken housing costs (Vera: "We break their works. They burn a village.")
 #
-# Said on the glass as it happens (48_raids, Reprisal). DRAFT, for the story's
-# own writer: flat, and never why (the plan's reasons are the `seeker` beat's).
+# Said on the glass as it happens (48_raids, Reprisal). Across the hour the three
+# read road out, road stopped, road empty; never why (the plan's reasons are the
+# `seeker` beat's). `called_back` follows YARD_DARK when a keeper's yard goes out,
+# and "Out on the road" answers its "Out across the land".
 const REPRISAL := {
-	# A housing is open and the yard still stands: its hunters are on the road.
-	"sent": "A horn in the yard. Something leaves it, toward the roofs.",
-	# The yard went dark before they got there.
-	"called_back": "The yard is dark. Whatever it sent has nothing to answer to.",
-	# They got there.
-	"burned": "Smoke over the roofs. The hunters got there first.",
+	"sent": "Something in the yard wakes. Its hunters take the road to the roofs.",
+	"called_back": "Out on the road, the hunters stop where they stand.",
+	"burned": "Smoke stands over the roofs. The road is empty again.",
+	# He comes to the roofs a broken yard's hunters burned (holdfast_price).
+	"seen": "The houses are black to the ground. Somebody left a pot on the fire.",
 }
 
 # --- what a machine is for (channel 3: machines, by being watched) -------------

@@ -1753,7 +1753,7 @@ const BURN_REACH := 10.0
 func _on_works_part_broken(region: int, yard: Vector2) -> void:
 	if game.clock == null:
 		return
-	var roof := Reprisal.nearest_roof(game.query.props_near(yard, Reprisal.REACH), yard)
+	var roof := Reprisal.nearest_roof(game.query.props_near(yard, Reprisal.REACH), yard, game.world.depleted)
 	if reprisal.send(region, roof, game.clock.minutes):
 		_seen["reprisal_sent"] = true
 		Events.sfx.emit(&"alert", game.world.to_3d(yard))
@@ -1778,11 +1778,26 @@ func _burn_what_is_due() -> void:
 			# own houses are the ones inside it.
 			if q.kind == PropKind.HOUSE and not burned.has(q.id) and q.pos.distance_to(roof) <= BURN_REACH:
 				burned[q.id] = game.clock.minutes
+				_burn(q)
 				n += 1
 		if n > 0:
 			_seen["burned"] = true
 			Events.village_burned.emit(roof)
 			Events.message.emit(StoryContent.REPRISAL[&"burned"])
+
+
+## The house goes and its burnt shell stands in its place, the same form of the
+## same landscape's stock turned the same way: the village still reads as itself.
+## Both are world rows, so the save keeps the gap and the shell (SaveCore).
+func _burn(house: WorldProp) -> void:
+	var w := game.world
+	var c := maxi(Country.COAST, w.country_at(floori(house.pos.x), floori(house.pos.y)))
+	var form := PropModels.variant_of(house, w.seed_value, c)
+	w.depleted[house.id] = INF
+	if game.view != null:
+		game.view.refresh_props(house)
+	@warning_ignore("return_value_discarded")
+	Survival.add_prop(game, PropKind.HOUSE_BURNT, house.pos, house.rot, house.scale, form)
 
 
 # --- the villages that have seen him (`SnatchNight`) ---------------------------

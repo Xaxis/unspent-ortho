@@ -155,9 +155,12 @@ enum {
 	DRIPSTONE,
 	# The orchards' sprayer, which rides its row on rails (grey_orchards `_works`).
 	SPRAYER_GANTRY,
+	# A house the yard's hunters burned (48_raids, Reprisal): laid in play in its
+	# house's place and saved with the world; never dealt by worldgen.
+	HOUSE_BURNT,
 }
 
-const COUNT := 102
+const COUNT := 103
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -180,6 +183,7 @@ const NAMES: PackedStringArray = [
 	"fallen tower",
 	"graft tree", "moss core", "server blade", "midden bale", "dripstone",
 	"sprayer gantry",
+	"burnt house",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
@@ -270,4 +274,6 @@ const SOLID: PackedFloat32Array = [
 	# A sprayer straddles a row on four legs: the one circle stops a body at its
 	# near bogie, and the row under it is walked along.
 	0.5,
+	# A burnt house stands on the walls it had: a house's circle.
+	1.6,
 ]

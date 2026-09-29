@@ -20,11 +20,12 @@ var marching: Dictionary = {}
 
 
 ## The nearest house to `yard` among `props` (a windowed query round the yard),
-## or Vector2.INF where there is no roof to burn.
-static func nearest_roof(props: Array[WorldProp], yard: Vector2) -> Vector2:
+## or Vector2.INF where there is no roof to burn. `gone` is the world's depleted
+## ids: a house already burned is a shell, and the hunters go past it.
+static func nearest_roof(props: Array[WorldProp], yard: Vector2, gone: Dictionary = {}) -> Vector2:
 	var best := Vector2.INF
 	for q in props:
-		if q.kind != PropKind.HOUSE:
+		if q.kind != PropKind.HOUSE or gone.has(q.id):
 			continue
 		if not best.is_finite() or q.pos.distance_to(yard) < best.distance_to(yard):
 			best = q.pos

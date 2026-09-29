@@ -85,7 +85,92 @@ func test_a_housing_opened_burns_the_nearest_roof_ninety_minutes_on() -> void:
 	var burned: Dictionary = raids.get("burned")
 	gt(float(burned.size()), 0.0, "ninety minutes on, the houses at the nearest roof have burned")
 	for id: int in burned:
-		lt(g.world.prop(id).pos.distance_to(roof), raids.get("BURN_REACH") + 0.01, "each of them at that roof")
+		var house := g.world.prop(id)
+		lt(house.pos.distance_to(roof), raids.get("BURN_REACH") + 0.01, "each of them at that roof")
+		check(g.world.depleted.has(id), "the house is gone")
+		var shell := false
+		for q in g.query.props_near(house.pos, 0.5):
+			if q.kind == PropKind.HOUSE_BURNT and q.pos == house.pos and is_equal_approx(q.rot, house.rot):
+				shell = true
+		check(shell, "and its burnt shell stands in its place, turned as it was")
+	g.queue_free()
+	await frames(1)
+
+
+## THE VILLAGE COUNTS ONE SHORT: the roofs the hunters burned stand in it as
+## shells, and its people come out one fewer than they did the day before, the
+## count 35_folk keeps for each it lost (step 6), not a house's worth each.
+func test_a_burned_village_comes_out_one_short() -> void:
+	var g := _game()
+	await frames(4)
+	var site: WorksSite = g.get_node("34_works").call(&"here")
+	if site == null:
+		g.queue_free()
+		await frames(1)
+		return
+	var roof := Reprisal.nearest_roof(g.query.props_near(site.pos, Reprisal.REACH), site.pos)
+	var village := -1
+	for i in g.world.villages.size():
+		var vp: Vector2 = g.world.villages[i].get("pos", Vector2.INF)
+		if vp.distance_to(roof) < 12.0 and (village < 0 or vp.distance_to(roof) < (g.world.villages[village].pos as Vector2).distance_to(roof)):
+			village = i
+	check(village >= 0, "the roof is a village's")
+	if village < 0:
+		g.queue_free()
+		await frames(1)
+		return
+	var folk := g.get_node("folk")
+	var centre: Vector2 = g.world.villages[village].pos
+	var queue: Array = folk.get("queue")
+	queue.clear()
+	folk.call(&"_populate", village, centre)
+	var before := queue.size()
+	var doors_before: Array[Vector2] = []
+	for r: Dictionary in queue:
+		doors_before.append(r.door)
+	check(await _open(g, site, 0), "a housing opened")
+	g.clock.skip(Reprisal.MARCH_MINUTES + 1.0)
+	_raids(g).call(&"sweep")
+	gt(float((_raids(g).get("burned") as Dictionary).size()), 0.0, "the roofs burned")
+	queue.clear()
+	folk.call(&"_populate", village, centre)
+	eq(queue.size(), before - 1, "and the village comes out one short")
+	# Burn the rest of it: every door the village used the day before is gone,
+	# and nobody goes in at a shell.
+	var houses: Array[WorldProp] = []
+	for q in g.query.props_near(centre, 12.0):
+		if q.kind == PropKind.HOUSE and not g.world.depleted.has(q.id):
+			houses.append(q)
+	var rooms_before := 0
+	for t: Threshold in g.get_node("21_doors").get("doors"):
+		for h in houses:
+			if t.host_code == PropKind.HOUSE and t.host == h.pos:
+				rooms_before += 1
+	gt(float(rooms_before), 0.0, "the day before, its houses had rooms to go into")
+	for h in houses:
+		_raids(g).call(&"_burn", h)
+	var rooms := g.get_node("21_doors")
+	var ways_in := func() -> int:
+		var n := 0
+		for t: Threshold in rooms.get("doors"):
+			for h in houses:
+				if t.host_code == PropKind.HOUSE and t.host == h.pos:
+					n += 1
+		return n
+	# The burning is the raid's, so the doors hear of it as they would.
+	Events.village_burned.emit(centre)
+	eq(ways_in.call(), 0, "and no burned house has a way into its rooms")
+	var went_in := 0
+	for d in doors_before:
+		for h in houses:
+			if d.distance_to(h.pos) <= h.solid + 0.35:
+				went_in += 1
+	gt(float(went_in), 0.0, "the day before, people went in at those doors")
+	queue.clear()
+	folk.call(&"_populate", village, centre)
+	for r: Dictionary in queue:
+		for h in houses:
+			check((r.door as Vector2).distance_to(h.pos) > h.solid + 0.35, "nobody goes in at a burned door")
 	g.queue_free()
 	await frames(1)
 
