@@ -1,0 +1,303 @@
+# THE HOLDFAST (docs/ROADMAP.md, slice 2): the slice's proof, played by the keys
+# from slice 1's end with the goal line as the only guide. What slice 1 leaves him
+# is booted, not played again: its beats (her lead, the keeper named and down) and
+# its kit (the pick, the steel knife). Nothing is given past that point.
+#
+#   TOUR_TIMEOUT=1800 tools/tour.sh tours/holdfast.tour --seed=1 --hour=9 --weather=clear:0 --beats=body_new,holdfast_fight,marens_lead,reaper_named,reaper_down --give=pick:1,knife_shear:1
+#
+# Every stage is staged by name (a person, a place the story stood, a gate, a
+# prop kind), never a coordinate; each frame carries one claim of what it shows.
+
+# 1 IRON FOR THE CREW (Guide.camp_goal): four ore off the two rocks near home
+# (three takes each), one for the crew
+# and three for the smelt the armour will want; with iron in the bag her lead
+# turns the goal to the crew's camp.
+coast calm
+wait 0.6
+try 4
+  at prop:iron_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took:iron_ore 14
+end
+try 4
+  at prop:iron_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took:iron_ore 14
+end
+try 4
+  at prop:iron_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took:iron_ore 14
+end
+try 4
+  at prop:iron_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took:iron_ore 14
+end
+wait 1.0
+shot 01-iron-for-the-crew with goal:camp
+
+# 2 PAID IN PLATE (StoryContent.PAID, Rook's `iron`): at the crew's camp he holds
+# out the iron (the third reply while he carries it), and Rook pays in plate for
+# armour; the goal turns to the armour the plate is for.
+at cast:rook
+await cast:rook 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+tap move_down
+tap move_down
+wait 0.3
+press use
+wait 0.5
+shot 02-rook-takes-the-iron with talking,met:rook
+press use
+wait 1.5
+shot 03-the-want-is-armour with goal:armour
+
+# 3 THE ARMOUR (Guide.armour_goal, Recipes kit_plate): back at the strand he woke
+# on, a fire of driftwood and stone; charcoal off it; the other three ore smelted
+# to iron there; then the plate beaten into armour at a bench in Oyster Row. The
+# clock is moved past each making (`hour`), as home-coast does.
+place spawn
+wait 1.0
+try 3
+  near driftwood
+  press use 0.1
+  await took:driftwood 4
+end
+try 3
+  near driftwood
+  press use 0.1
+  await took:driftwood 4
+end
+try 3
+  near driftwood
+  press use 0.1
+  await took:driftwood 4
+end
+try 3
+  near driftwood
+  press use 0.1
+  await took:driftwood 4
+end
+try 3
+  near boulder,stone_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took:stone 14
+end
+try 3
+  near boulder,stone_ore
+  walk 0,0 0.05
+  press use 0.1
+  await took:stone 14
+end
+ground grass
+mark fire
+press use 0.1
+await fire_asked 2
+wait 0.6
+press use 0.1
+await made:fire 4
+wait 0.5
+tap craft
+wait 0.6
+choose charcoal
+tap use
+wait 0.3
+tap pause
+wait 0.4
+hour 13
+await made:charcoal 10
+wait 0.3
+tap craft
+wait 0.6
+choose iron
+tap use
+wait 0.3
+tap pause
+wait 0.4
+hour 15
+await made:iron 10
+wait 0.3
+village 0
+wait 1.0
+at prop:house
+wait 0.4
+tap craft
+wait 0.6
+choose kit_plate
+tap use
+wait 0.3
+tap pause
+wait 0.4
+hour 17
+await made:kit_plate 10
+wait 1.0
+# 3a FED: the ore, the smelt and the bench have taken the day, and a hungry body's
+# goal is its hunger (Guide), not the yard. Berries off Oyster Row's bushes, each
+# eaten off the carry page (E on food), until the goal is the yard's again.
+try 10
+  near bush
+  walk 0,0 0.05
+  press use 0.1
+  await took:berries 8
+  tap inventory
+  wait 0.5
+  choose berries
+  tap use
+  wait 0.4
+  tap inventory
+  wait 1.0
+  await goal:yard 2
+end
+wait 1.0
+shot 04-armour-and-the-yard-next with goal:yard
+
+# 4 THE YARD'S OLDEST SCREEN (StoryContent.STOOD, yard_commits): the yard dark,
+# the screen that was busy shows his last merge; built_halcyon.
+at stood:the_yard
+await stood:the_yard 4
+at stood:the_yard
+near console
+wait 0.6
+press use
+await reading 3
+wait 0.4
+shot 05-his-last-merge with reading,knows:yard_commits
+press pause
+wait 0.8
+shot 06-back-to-the-crew with goal:rook_again
+
+# 5 THE LAB (StoryGates gate_lab, Kerr): once what he read has settled, the gate
+# in the yard stands open onto Cairn in 2029; Kerr says who paid for it.
+hour 23
+# Night: the lamp he carries, lit by its key, or the goal is the dark's.
+tap lamp
+wait 0.5
+at gate:gate_lab
+wait 0.8
+await era_gate:gate_lab 3
+press use
+await before 300
+wait 1.5
+at cast:kerr
+await cast:kerr 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+press use
+await beat:kerr_money 3
+wait 0.4
+shot 07-kerr-and-the-money with talking,beat:kerr_money
+press pause
+wait 0.5
+at gate:gate_lab
+wait 0.8
+await era_gate:gate_lab 3
+press use
+await realm:surface 300
+wait 1.5
+
+# 6 ROOK, AGAIN (Guide.way_goal rook_again, holdfast_hope): he tells Rook he
+# knows the old machines, and the crew's hope in him brings their leader. Fed
+# first off the camp's bushes: the lab's night has made him hungry again.
+at cast:rook
+await cast:rook 8
+try 10
+  near bush
+  walk 0,0 0.05
+  press use 0.1
+  await took:berries 8
+  tap inventory
+  wait 0.5
+  choose berries
+  tap use
+  wait 0.4
+  tap inventory
+  wait 1.0
+  await goal:rook_again 2
+end
+at cast:rook
+await cast:rook 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+tap move_down
+wait 0.3
+press use
+wait 0.5
+press use
+await beat:holdfast_hope 3
+wait 0.4
+shot 08-a-man-who-knows-the-machines with talking,beat:holdfast_hope
+press pause
+wait 1.5
+shot 09-the-holdfasts-leader-waits with goal:vera
+
+# 7 VERA (her talk): what the Holdfast is and what it costs (holdfast_price);
+# what he saw of the village, filed under weather (vera_knew); and where he would
+# start: the war's archive across the water (war_archive), on the survey.
+at cast:vera
+await cast:vera 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+press use
+await beat:holdfast_price 3
+wait 0.4
+shot 10-what-the-holdfast-costs with talking,beat:holdfast_price
+press pause
+wait 0.5
+press use
+await talking 3
+wait 0.4
+tap move_down
+tap move_down
+wait 0.3
+press use
+await beat:vera_knew 3
+wait 0.4
+shot 11-filed-under-weather with talking,beat:vera_knew
+press pause
+wait 0.5
+press use
+await talking 3
+wait 0.4
+tap move_down
+wait 0.3
+press use
+wait 0.4
+press use
+await beat:war_archive 3
+wait 0.4
+shot 12-the-archive-across-the-water with talking,beat:war_archive
+press pause
+wait 1.5
+shot 13-the-way-on with goal:archive
+press map 0.2
+await app:map 6
+wait 0.6
+shot 14-the-survey-marks-the-archive with app:map
+press map 0.2
+await app:none 5
+
+# 8 TODO THE HOLDING (roadmap step 2, teammate2 on world/holding): a seen village
+# asked to move, the escort walk to his holding's beds, and the goal hop that
+# sends him there (Guide.way_goal `holding`, Holding.wanted / Holding.stands).
+echo todo: the holding (step 2)
+# 9 TODO DEFEND THE HOLDING (roadmap step 4, fight): the slice's make against a
+# raid, armour and shutters, said by the camp.
+echo todo: defend the holding (step 4)
+# 10 TODO THE SECOND KEEPER, THE PAN RAKE (roadmap step 6, fight and teammate2):
+# the salt flats' keeper, and the memory it holds (mem_kitchen).
+echo todo: the second keeper (step 6)
