@@ -1037,6 +1037,14 @@ func _on_outcome(e: Dictionary) -> void:
 		&"downed":
 			var r := Outcomes.downed(game.body, game.clock, by.kind if by != null else &"")
 			hero.health = game.body.health
+			if by != null and Sentinels.is_keeper(by.row):
+				var edge := Sentinels.arena_edge(game.world, game.query, by.home, hero.pos, Tuning.PLAYER_RADIUS, FightSim.HERO_TALL)
+				if edge.is_finite():
+					player.place(edge, (by.home - edge).angle())
+					player.sync_view(0.0)
+					game.view.ensure_near(hero.pos)
+					game.camera.snap_to(player.position)
+					r.line = Outcomes.KEEPER_DOWNED_LINE
 			_wake()
 			Events.sfx.emit(&"downed", player.position)
 			Events.time_skipped.emit(float(r.minutes), &"downed")

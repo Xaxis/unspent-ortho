@@ -1,7 +1,8 @@
 class_name Outcomes
 ## What a bad end costs, applied to the body, the bag and the one clock
 ## (design-extract §6.5). No death and no respawn: time is what you lose.
-##   downed   +180 minutes (and the threat's own toll) where you fell; wake hurt at 3
+##   downed   +180 minutes (and the threat's own toll) where you fell; wake hurt at 3;
+##            downed by a keeper, at the edge of its ground (Sentinels.arena_edge)
 ##   carried  +480 minutes, a shift of work: wake at the nearest rock face within
 ##            300 tiles, facing it, lamp burnt out, hurt; and the bag stays where
 ##            you were taken (Survival.leave_bag, which 40_fight calls); near a
@@ -23,6 +24,7 @@ const OFF_TRACK_RANGE := 8
 const CARRIED_HOME := 60.0
 
 const DOWNED_LINE := "You come to where you fell. Hours have gone."
+const KEEPER_DOWNED_LINE := "You come to at the edge of the ground it keeps. Hours have gone."
 const CARRIED_LINE := "You wake at a rock face, hands raw, far from where you were. The lamp is out."
 
 

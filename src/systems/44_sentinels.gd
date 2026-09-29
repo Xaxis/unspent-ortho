@@ -311,6 +311,8 @@ func _apply_phase(s: SentinelState, def: SentinelDef, i: int, announce: bool) ->
 ## Its body has gone from the coast (culled, or its wreck has lain its time). The
 ## state keeps everything: come back and it is as hurt as it was.
 func _leave(s: SentinelState, def: SentinelDef, m: MobState) -> void:
+	# Taken off in the frame it was struck (a down clears the coast), the blow is still its.
+	s.health = m.health
 	if s.fallen and not s.hulk_laid and def.hulk >= 0:
 		s.lair = m.pos
 	_bodies.erase(m.id)
@@ -347,7 +349,10 @@ func look_at(s: SentinelState, def: SentinelDef) -> SentinelLook:
 	var at := m.pos if m != null else s.lair
 	if m != null and m.alive:
 		var g := game.world.ground_at(floori(m.pos.x), floori(m.pos.y))
-		if g != s.ground_was:
+		# Standing spent after a bite, or stopped by a blow, is a fight spilling
+		# onto the ground, not a lure: its hold there counts from when it could
+		# walk off (test_founder_lured).
+		if g != s.ground_was or m.spent(sim.now) or m.stunned(sim.now):
 			s.ground_was = g
 			s.ground_since = sim.now
 		look.ground = g
