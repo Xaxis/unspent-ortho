@@ -210,6 +210,15 @@ func _use_spent() -> bool:
 	return false
 
 
+## The body ticks on the fight's step: what it writes (the take that ends, the
+## legs a hurt or a soaking slows, a collapse) is read by the next step of the
+## fight, so ticked per drawn frame the same fight came out another way at 20
+## and 60 fps.
+func _physics_process(delta: float) -> void:
+	if game != null and game.options.hold < 0.0:
+		Survival.tick(game, delta)
+
+
 func _process(delta: float) -> void:
 	if game == null:
 		return
@@ -233,8 +242,7 @@ func _process(delta: float) -> void:
 		# A held shot: every frame is 1/60 s however long it took to draw, until the moment.
 		Survival.fixed_step = minf(1.0 / 60.0, maxf(0.0, hold - Survival.fixed_now))
 		Survival.fixed_now += Survival.fixed_step
-		delta = Survival.fixed_step
-	Survival.tick(game, delta)
+		Survival.tick(game, Survival.fixed_step)
 	_again((scripted_use_held or Input.is_action_pressed("use")) and not game.input_blocked())
 
 
