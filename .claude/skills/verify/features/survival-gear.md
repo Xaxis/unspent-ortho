@@ -10,6 +10,7 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
 
 - 44_crafts `src/systems/44_crafts.gd`: `tools/tour.sh tours/crafts.tour`.
 - 46_settlements `src/systems/46_settlements.gd`: `tools/tour.sh tours/settlements.tour`.
+  - The holding (Holding): a village that saw him asked once, as many as there are free beds walk there with him, and a snatch night finds them gone; the goal line asks for a holding once the plan has taken one of them or the price is seen: `tools/tour.sh tours/holding.tour`; `tools/test.sh test_holding_move,test_vera_way_on`.
   - Footing (`WorldQuery.flat_footing`): `tools/test.sh test_system:test_a_piece_goes_up_on_ground`, `test_system:test_nothing_goes_up_astride`; on rugged land `tools/shot.sh shots/x.png --seed=7 --place=bonelands --holding=hearth,hut,plot,palisade,store` stands all five, no "no room" warning.
   - Unstaffed piece says why: `tools/test.sh test_staff_reason`, `tools/tour.sh tours/staff_reason.tour` (settlements.tour's options).
   - Carried off near your holding wakes at its hearth: `tools/tour.sh tours/carried_home.tour`.
