@@ -150,6 +150,19 @@ func tour_seen(what: StringName) -> bool:
 	return false
 
 
+
+## A shot, a hit and a kill are EVENTS (GameSystem.tour_forget): spent when a
+## tour's await is answered, or a gun's shot at a roused machine hours before a
+## raid answers `await turret_hit` for the raid.
+func tour_forget(what: StringName) -> void:
+	match what:
+		&"turret_fired":
+			_fired = false
+		&"turret_hit":
+			_hit = false
+		&"turret_kill":
+			_killed = false
+
 func _armed_here() -> bool:
 	var h := holdings()
 	if h == null:
