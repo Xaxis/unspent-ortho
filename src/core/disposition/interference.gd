@@ -58,7 +58,14 @@ const CAUSES := {
 	# on their own in about nine hours. Three hours of one relic is what a stolen
 	# cell raised in a holding files once (`built` x its loudness, about 0.09).
 	&"carried": 0.03,
+	# A LIGHT SEEN AT NIGHT (slice 2, step 3): his lamp, or a fire he stands at,
+	# after dark inside a region whose plant still runs. Small and rare
+	# (RARE_GAP): alone it never outruns the file's cooling; on top of a stirred
+	# region it is what tips hostile into hunted, and the hunters come the usual way.
+	&"seen_light": 0.04,
 }
+## Causes that count at most this often (world minutes) instead of SAME_CAUSE_GAP.
+const RARE_GAP := {&"seen_light": 120.0}
 ## Causes every instance of which counts, however close the last: a second
 ## piece built within SAME_CAUSE_GAP is a second piece, not the same news.
 const UNGAPPED: Array[StringName] = [&"built", &"carried"]
@@ -207,7 +214,8 @@ func raise(net: int, cause: StringName, at: Vector2, minutes: float, witnesses: 
 	if witnesses > 0 and WITNESSED.has(cause):
 		add *= witness_scale(witnesses)
 	var key := "%d|%s" % [net, cause]
-	if not UNGAPPED.has(cause) and counted.has(key) and minutes - float(counted[key]) < SAME_CAUSE_GAP:
+	var gap: float = RARE_GAP.get(cause, SAME_CAUSE_GAP)
+	if not UNGAPPED.has(cause) and counted.has(key) and minutes - float(counted[key]) < gap:
 		return 0.0
 	counted[key] = minutes
 	var before := value(net)

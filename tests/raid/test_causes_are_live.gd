@@ -11,6 +11,7 @@ extends TestCase
 ## This reads the shipped source and fails on a row nothing applies.
 
 const CAUSE_HOME := "res://src/core/raid/attention.gd"
+const INTERFERENCE_HOME := "res://src/core/disposition/interference.gd"
 
 
 static func _gd_under(dir: String, out: PackedStringArray) -> PackedStringArray:
@@ -40,6 +41,23 @@ func test_every_cause_the_table_declares_is_applied_by_something() -> void:
 		check(text.contains('&"%s"' % cause),
 			"Attention.CAUSES declares %s at %+.3f and nothing outside %s ever applies it: either wire it or take the row out"
 			% [cause, Attention.of(cause), CAUSE_HOME.get_file()])
+
+
+## The region's file on the player keeps the same promise: a row in
+## `Interference.CAUSES` that nothing raises is a number describing nothing.
+func test_every_cause_a_network_files_is_raised_by_something() -> void:
+	var files := _gd_under("res://src", PackedStringArray())
+	var text := ""
+	for path: String in files:
+		if path == INTERFERENCE_HOME:
+			continue
+		var f := FileAccess.open(path, FileAccess.READ)
+		if f != null:
+			text += f.get_as_text()
+	for cause: StringName in Interference.CAUSES:
+		check(text.contains('&"%s"' % cause),
+			"Interference.CAUSES declares %s at %+.3f and nothing outside %s ever raises it: either wire it or take the row out"
+			% [cause, float(Interference.CAUSES[cause]), INTERFERENCE_HOME.get_file()])
 
 
 ## And the other half of the same promise: what a step spends lives in one place,

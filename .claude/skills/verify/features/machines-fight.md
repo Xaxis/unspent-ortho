@@ -62,6 +62,10 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
 - 48_raids `src/systems/48_raids.gd`: `tools/tour.sh tours/raids.tour`.
   The villages that have seen him (35_folk `seen_by`, `SnatchNight`):
   `tools/test.sh test_seen_taken,test_snatch_night`.
+  - A housing broken on a live yard sends its hunters to burn the nearest roof
+    (`Reprisal`): on the road, the burned shells, holdfast_price, met on the road:
+    `TOUR_FIXED_FPS=60 tools/tour.sh tours/reprisal.tour --seed=1 --hour=9 --weather=clear:0 --held=axe_felling`;
+    `tools/test.sh test_reprisal`. A light after dark filed (`seen_light`): `tools/test.sh test_seen_light`.
   - A live probe against a walled yard, held: `tools/tour.sh tours/raids_live.tour --walled` (h); graded outcomes, prepared vs open: `tools/test.sh test_raid_live`; hits from several sources in one window: `tools/test.sh test_hits_stack`.
 
 ## How to reach it

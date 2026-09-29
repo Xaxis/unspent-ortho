@@ -24,6 +24,10 @@ fm=~/.claude/claude-core/bin/featuremap
 if [ -x "$fm" ]; then "$fm" check || fail=1; fi
 
 rules="test_found_drawn,test_seam,test_prop_identity,test_whole_world_readers,test_feature_map,test_tour_claims,test_worker_types,test_no_unique_names,test_stand_at,test_room_loot,test_rooms,test_names,test_cost_bars"
+# Every PropKind at once: a kind appended must be grown somewhere (or listed as
+# set down in play), give something or say why not, and be drawn above the pen.
+# land/raids went red on all four with one new kind; about 100 s of the run.
+rules="$rules,test_world_gen:test_every_prop_kind_and_ground_is_placed,test_world_gen_works:test_every_landscape_holds_its_own_works,test_signature_takes,test_dark_floor:test_no_prop_is_drawn_below_the_ink_floor"
 [ -n "${1:-}" ] && rules="$rules,$1"
 log="$(mktemp "${TMPDIR:-/tmp}/unspent-preflight.XXXXXX")"
 tools/test.sh "$rules" >"$log" 2>&1; code=$?

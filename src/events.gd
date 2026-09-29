@@ -57,6 +57,11 @@ signal yard_left_dark(region: int, land: StringName)
 ## every other package's own business). `landmark_found` the first time a player
 ## gets close enough to a place worth the walk for it to go on their map.
 signal works_broken(region: int, land: StringName)
+## One of a depot's housings opened while the yard still stands (34_works), at the
+## yard `yard`: the plan answers it with its hunters on the road (48_raids, Reprisal).
+signal works_part_broken(region: int, yard: Vector2)
+## The houses round `roof` have burned: a yard's hunters got there (48_raids).
+signal village_burned(roof: Vector2)
 signal landmark_found(id: StringName, land: StringName, at: Vector2)
 
 ## Settlements (docs/VISION.md). The settlement package emits the first four;

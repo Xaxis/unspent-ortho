@@ -91,9 +91,11 @@ func setup(g: Game) -> void:
 	super.setup(g)
 	add_to_group(&"hush")
 	doors = Interiors.thresholds(g.world)
+	_shut_burned()
 	_stand_hatches()
 	SaveGame.register(&"doors", _save, _load)
 	Events.time_skipped.connect(_on_time_skipped)
+	Events.village_burned.connect(func(_roof: Vector2) -> void: _shut_burned())
 	var layer := CanvasLayer.new()
 	layer.layer = 90
 	layer.name = "door_cover"
@@ -1238,7 +1240,25 @@ func _save() -> Variant:
 	return {"dead": out, "opened": opened, "served": served, "lit": lit, "given": given, "strings": strings}
 
 
+## A house the yard's hunters burned (48_raids) is a shell standing in its place:
+## no way in, and nobody's rooms behind it. `Interiors.thresholds` is derived
+## from the world as dealt and kept, so the shells are struck from it here, and
+## again whenever the list is made afresh or a save brings them back.
+func _shut_burned() -> void:
+	var open: Array[Threshold] = []
+	for t: Threshold in doors:
+		var burned := false
+		if t.host_code == PropKind.HOUSE:
+			for q in game.query.props_near(t.host, 0.5):
+				if q.kind == PropKind.HOUSE_BURNT and q.pos == t.host:
+					burned = true
+		if not burned:
+			open.append(t)
+	doors = open
+
+
 func _load(v: Variant) -> void:
+	_shut_burned()
 	_dead.clear()
 	if not (v is Dictionary):
 		return
@@ -2274,6 +2294,7 @@ func realm_changed(from: StringName, to: StringName) -> void:
 		return
 	_drop_grown()
 	doors = Interiors.thresholds(game.world)
+	_shut_burned()
 	_stand_hatches()
 
 

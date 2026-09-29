@@ -30,6 +30,9 @@ var reading: StringName = &""
 ## Seconds between looks at the player's own state (channel 4). What is watched
 ## changes on the scale of a fight or a crossing, never a frame.
 const WITNESS_EVERY := 0.5
+## How near a burned house must stand for him to have seen it: a village's
+## width, so walking through or past the roofs counts and a shell far off does not.
+const BURNED_SIGHT := 16.0
 
 ## What the last look saw, so a beat lands on the change and not on the state:
 ## being filed once is news; having been filed is not, every half second.
@@ -600,10 +603,26 @@ func _witness() -> void:
 		_witnessed(StoryContent.WITNESS_ON[&"hunted"])
 	if _lost_one():
 		_witnessed(StoryContent.WITNESS_ON[&"lost"])
+	var price: StringName = StoryContent.WITNESS_ON[&"burned_seen"]
+	if not Story.landed(price) and _burned_in_sight() and Story.beat(price):
+		# What he sees first, then what it means; once, as `_witnessed` says.
+		Events.message.emit(StoryContent.REPRISAL[&"seen"])
+		Events.message.emit(StoryContent.beat_says(price))
 	# The three memories the secret is hidden in, all back, in any order: he holds
 	# it. Which version is decided at the channel, by the order he relives them in.
 	if StorySecret.complete():
 		_witnessed(StorySecret.HELD)
+
+
+## A house a broken yard's hunters burned (48_raids, a HOUSE_BURNT in its place)
+## stands within BURNED_SIGHT of him: a windowed ask, never a list of the burned.
+func _burned_in_sight() -> bool:
+	if game.world == null or game.query == null or game.world.realm != Realm.SURFACE:
+		return false
+	for q in game.query.props_near(game.player.pos, BURNED_SIGHT):
+		if q.kind == PropKind.HOUSE_BURNT and q.pos.distance_to(game.player.pos) <= BURNED_SIGHT:
+			return true
+	return false
 
 
 func _hunted_here() -> bool:
@@ -658,8 +677,8 @@ func _on_ring_held(_kind: StringName) -> void:
 	_witnessed(StoryContent.WITNESS_ON[&"ring_held"])
 
 
+## Seen from far off. What it costs is learned at the roofs (`_burned_in_sight`).
 func _on_works_broken(_region: int, land: StringName) -> void:
-	_witnessed(StoryContent.WITNESS_ON[&"works_dark"])
 	Story.note(&"works_dark", land, Story.now)
 
 

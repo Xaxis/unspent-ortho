@@ -41,8 +41,36 @@ func test_a_record_in_the_hand_and_a_yard_put_dark_are_each_known() -> void:
 	check(not Story.landed(StoryContent.WITNESS_ON[&"record"]), "driftwood is not a record")
 	Events.took.emit(&"record", 1)
 	check(Story.landed(StoryContent.WITNESS_ON[&"record"]), "a record is")
+	Sx.end(g)
+	Story.forget()
+
+
+## WHAT THE HOLDFAST COSTS is learned at the roofs, not at the yard: a works put
+## dark lands nothing of it, and coming in sight of a house its hunters burned
+## (48_raids) lands it, with what he sees there said on the glass.
+func test_the_price_is_seen_at_the_burned_roofs_not_the_yard() -> void:
+	Story.forget()
+	var g := Sx.game(tree, ["--seed=4", "--size=128", "--hour=11"])
+	await frames(3)
+	var said: Array[String] = []
+	var hear := func(t: String) -> void: said.append(t)
+	Events.message.connect(hear)
+	var price: StringName = StoryContent.WITNESS_ON[&"burned_seen"]
+	eq(price, &"holdfast_price", "the burned roofs are the Holdfast's price")
 	Events.works_broken.emit(0, &"coast")
-	check(Story.landed(StoryContent.WITNESS_ON[&"works_dark"]), "and a works put dark")
+	await frames(45)
+	check(not Story.landed(price), "a yard put dark is not yet what it costs")
+	var far := g.player.pos + Vector2(60, 0)
+	@warning_ignore("return_value_discarded")
+	Survival.add_prop(g, PropKind.HOUSE_BURNT, far)
+	await frames(45)
+	check(not Story.landed(price), "a burned house out of his sight is not seen")
+	@warning_ignore("return_value_discarded")
+	Survival.add_prop(g, PropKind.HOUSE_BURNT, g.player.pos + Vector2(6, 0))
+	await frames(45)
+	check(Story.landed(price), "come in sight of the roofs they burned, it is known")
+	check(said.has(StoryContent.REPRISAL[&"seen"]), "and what he sees there is said")
+	Events.message.disconnect(hear)
 	Sx.end(g)
 	Story.forget()
 

@@ -42,7 +42,6 @@ const RANK: Array[StringName] = [&"talk", &"fragment_placed", &"room", &"keeper"
 ## Where a witnessed event happens, when the world has one place for it: a
 ## story slot. An event with none happens wherever the player is.
 const WITNESS_AT := {
-	&"works_dark": &"the_yard",
 	&"other_realm": &"the_shaft",
 	&"ring_held": &"local_the_crags",
 }

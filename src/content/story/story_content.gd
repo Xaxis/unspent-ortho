@@ -5762,6 +5762,22 @@ const TAKEN := {
 	"lost_to": "They took %s back.",
 }
 
+# --- what a broken housing costs (Vera: "We break their works. They burn a village.")
+#
+# Said on the glass as it happens (48_raids, Reprisal). Across the hour the three
+# read road out, road stopped, road empty; never why (the plan's reasons are the
+# `seeker` beat's). `called_back` follows YARD_DARK when a keeper's yard goes out,
+# and "Out on the road" answers its "Out across the land".
+const REPRISAL := {
+	"sent": "Something in the yard wakes. Its hunters take the road to the roofs.",
+	"called_back": "Out on the road, the hunters stop where they stand.",
+	"burned": "Smoke stands over the roofs. The road is empty again.",
+	# Every one of them put down on the road: nobody reaches the roof.
+	"met": "The hunters lie on the road. Nothing reaches the roofs.",
+	# He comes to the roofs a broken yard's hunters burned (holdfast_price).
+	"seen": "The houses are black to the ground. Somebody left a pot on the fire.",
+}
+
 # --- what a machine is for (channel 3: machines, by being watched) -------------
 #
 # The slate's read of a machine is already testimony (docs/STORY.md): what it
@@ -5866,7 +5882,7 @@ const WITNESS_ON := {
 	&"other_realm": &"seeker",
 	&"hunted": &"noticed",
 	&"lost": &"not_home",
-	&"works_dark": &"holdfast_price",
+	&"burned_seen": &"holdfast_price",
 	&"ring_held": &"ring_held",
 }
 ## The signet only means his own old password once he knows he had one.
@@ -5879,7 +5895,7 @@ const WITNESSED := {
 	&"seeker": "the player stands below the world or above it (not in the Before, which is his own past)",
 	&"noticed": "the region the player stands in is hunting them",
 	&"not_home": "somebody he was walking home from a yard is lost on the road",
-	&"holdfast_price": "a works yard is put dark",
+	&"holdfast_price": "the player comes to the roofs a broken yard's hunters burned",
 	&"ring_held": "a machine hunting the player stops at a crags ring's edge and holds there, facing in",
 }
 

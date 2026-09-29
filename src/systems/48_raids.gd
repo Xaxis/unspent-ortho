@@ -171,6 +171,9 @@ func setup(g: Game) -> void:
 	Events.sentinel_fell.connect(_on_sentinel_fell)
 	Events.settlement_founded.connect(_on_founded)
 	Events.fight_ended.connect(_on_fight_ended)
+	Events.works_part_broken.connect(_on_works_part_broken)
+	Events.works_broken.connect(func(region: int, _land: StringName) -> void: _called_back(region))
+	Events.yard_left_dark.connect(func(region: int, _land: StringName) -> void: _called_back(region))
 	if g.options != null and g.options.attention > 0.0:
 		attention_out = clampf(g.options.attention, 0.0, 1.0)
 
@@ -1555,6 +1558,12 @@ func _on_killed(kind: StringName, at: Vector3) -> void:
 	var carried: Notice = _carriers.get(body.id, null)
 	if carried != null and carried.carried():
 		_lost_carrier(carried, p2, &"killed")
+	for region: int in _road:
+		if (_road[region] as Array).has(body.id):
+			# Put down on the road, it lies on the road (`_show_the_road` ends the march).
+			@warning_ignore("return_value_discarded")
+			Survival.add_prop(game, PropKind.WRECKAGE, p2, Rng.hash01(game.world.seed_value, body.id, 0x77) * TAU, 0.8)
+			return
 	var r: Dictionary = _raiders.get(body.id, {})
 	if r.is_empty():
 		return
@@ -1727,12 +1736,205 @@ func _physics_process(delta: float) -> void:
 ## a row all leave the same holding.
 func sweep() -> void:
 	_come_for_the_seen()
+	_show_the_road()
+	_burn_what_is_due()
 	_settle_attention()
 	_felt_interference()
 	_stake_pulled()
 	_escalate()
 	_sync_marks()
 	_forget_old_reads()
+
+
+# --- the roofs a broken housing answers with (`Reprisal`) ----------------------
+
+## WE BREAK THEIR WORKS, THEY BURN A VILLAGE (Vera). The march of each yard's
+## hunters, and every house that has burned: prop id -> the world minute it went.
+var reprisal := Reprisal.new()
+var burned: Dictionary = {}
+## Houses round the roof the hunters were sent for that burn with it.
+const BURN_REACH := 10.0
+## How near where the march has got to he must be for its party to be walking
+## there in the flesh, and how many of them walk it. Past ROAD_SEEN they go back
+## to paper: the march is a clock, and the bodies are only how it looks up close.
+const ROAD_SEEN := 40.0
+const ROAD_PARTY := 2
+## Region id -> the ids of its road party on the land.
+var _road: Dictionary = {}
+
+
+## A housing opened on a live yard: its hunters take the road to the nearest roof.
+func _on_works_part_broken(region: int, yard: Vector2) -> void:
+	if game.clock == null:
+		return
+	var near := game.query.props_near(yard, Reprisal.REACH)
+	# Which of those have burned already, asked of each, never the whole table.
+	var gone := {}
+	for q in near:
+		if game.world.depleted.has(q.id):
+			gone[q.id] = true
+	var roof := Reprisal.nearest_roof(near, yard, gone)
+	if reprisal.send(region, roof, game.clock.minutes, yard):
+		_seen["reprisal_sent"] = true
+		Events.sfx.emit(&"alert", game.world.to_3d(yard))
+		Events.message.emit(StoryContent.REPRISAL[&"sent"])
+
+
+## OUT ON THE ROAD (Reprisal.on_road): a march he is near walks there as bodies,
+## raiders to the roof, stepping after where the march has got to. Put them all
+## down and the march is over (`met`); walk off and they go back on paper; a
+## march called back or arrived takes its party off the land.
+func _show_the_road() -> void:
+	var sim: FightSim = game.player.sim
+	if sim == null or game.clock == null:
+		return
+	var now := game.clock.minutes
+	for region: int in _road.keys():
+		var ids: Array = _road[region]
+		var standing := 0
+		for id: int in ids:
+			var m := _mob(sim, id)
+			if m != null and m.alive and not m.removed:
+				standing += 1
+		if not reprisal.marching.has(region):
+			_off_the_road(region)
+		elif standing == 0:
+			# Every one of them down on the road: nobody reaches the roof.
+			reprisal.call_off(region)
+			@warning_ignore("return_value_discarded")
+			_road.erase(region)
+			_seen["reprisal_met"] = true
+			Events.message.emit(StoryContent.REPRISAL[&"met"])
+		else:
+			var at := reprisal.on_road(region, now)
+			if at.distance_to(game.player.pos) > ROAD_SEEN * 1.5:
+				_off_the_road(region)
+				continue
+			var behind := false
+			for id: int in ids:
+				var m := _mob(sim, id)
+				if m != null and m.alive and not m.removed:
+					behind = behind or m.pos.distance_to(at) > ROAD_SEEN
+					m.line_a = m.pos
+					m.line_b = at
+					m.line_to_b = true
+			# Hours gone by at once (a sleep, a skip) put the march out ahead of its
+			# bodies: they are taken up and put down again where it has got to.
+			if behind:
+				_off_the_road(region)
+	if game.world.realm != Realm.SURFACE:
+		return
+	for region: int in reprisal.marching:
+		if _road.has(region):
+			continue
+		var at := reprisal.on_road(region, now)
+		if at.distance_to(game.player.pos) > ROAD_SEEN:
+			continue
+		var roof: Vector2 = reprisal.marching[region].roof
+		var here := BiomeRegistry.at(game.world, at)
+		var fits := func(_kind: StringName, row: Dictionary) -> bool: return Spawner.moment_fits(row, sim.moment)
+		var kind := RaidRoles.kind_for(RaidRoles.BREACHER, fits, here.id if here != null else &"")
+		if kind == &"":
+			continue
+		var ids: Array = []
+		for i in ROAD_PARTY:
+			var side := (roof - at).normalized().orthogonal() * (float(i) - float(ROAD_PARTY - 1) * 0.5) * 1.6
+			var spot := _standable(at + side, roof)
+			var m := sim.add_mob(kind, spot)
+			# On the plan's errand, not after him (as `_put_out`): hostile, filed,
+			# never culled by the coast, taken off the land by this system.
+			m.disturbed = true
+			m.disturbed_by = &""
+			m.turn_filed = true
+			m.sent = true
+			m.raider = true
+			m.home = roof
+			m.facing = (roof - spot).angle()
+			m.aim = m.facing
+			m.bearing = Vector2.from_angle(m.facing)
+			m.pace *= MARCH
+			m.line_a = spot
+			m.line_b = at
+			m.line_to_b = true
+			ids.append(m.id)
+		_road[region] = ids
+		_seen["reprisal_road"] = true
+
+
+## The names `tour_place` answers (tests/tours/test_tour_claims.gd reads this).
+const TOUR_PLACES: Array[String] = ["reprisal_road", "reprisal_roof"]
+
+
+## `reprisal_road`: a few tiles on down the road from where a march has got to,
+## so its party walks at him. `reprisal_roof`: beside the last house that burned.
+func tour_place(what: String) -> Vector2:
+	if what == "reprisal_road" and game.clock != null:
+		for region: int in reprisal.marching:
+			var at := reprisal.on_road(region, game.clock.minutes)
+			var roof: Vector2 = reprisal.marching[region].roof
+			var ahead := at + (roof - at).normalized() * minf(4.0, at.distance_to(roof))
+			return _standable(ahead, at)
+	if what == "reprisal_roof":
+		var last := -1
+		for id: int in burned:
+			if last < 0 or float(burned[id]) >= float(burned[last]):
+				last = id
+		if last >= 0:
+			var house := game.world.prop(last)
+			return _standable(house.pos + Vector2.from_angle(house.rot) * (house.solid + 2.5), house.pos)
+	return Vector2.INF
+
+
+## Take region `region`'s road party off the land; the march itself goes on.
+func _off_the_road(region: int) -> void:
+	var sim: FightSim = game.player.sim
+	for id: int in _road.get(region, []):
+		var m := _mob(sim, id)
+		if m != null and m.alive and not m.removed:
+			m.raider = false
+			sim.remove_mob(m)
+	@warning_ignore("return_value_discarded")
+	_road.erase(region)
+
+
+## The yard has gone dark, by its housings or its keeper: whoever it sent comes back.
+func _called_back(region: int) -> void:
+	if not reprisal.marching.has(region):
+		return
+	reprisal.call_off(region)
+	Events.message.emit(StoryContent.REPRISAL[&"called_back"])
+
+
+func _burn_what_is_due() -> void:
+	if game.clock == null:
+		return
+	for roof: Vector2 in reprisal.burning_now(game.clock.minutes):
+		var n := 0
+		for q in game.query.props_near(roof, BURN_REACH):
+			# `props_near` answers by the index's rows, a little past `r`: the roof's
+			# own houses are the ones inside it.
+			if q.kind == PropKind.HOUSE and not burned.has(q.id) and q.pos.distance_to(roof) <= BURN_REACH:
+				burned[q.id] = game.clock.minutes
+				_burn(q)
+				n += 1
+		if n > 0:
+			_seen["burned"] = true
+			Events.village_burned.emit(roof)
+			Events.message.emit(StoryContent.REPRISAL[&"burned"])
+
+
+## The house goes and its burnt shell stands in its place, the same form of the
+## same landscape's stock turned the same way: the village still reads as itself.
+## Both are world rows, so the save keeps the gap and the shell (SaveCore).
+func _burn(house: WorldProp) -> void:
+	var w := game.world
+	var c := maxi(Country.COAST, w.country_at(floori(house.pos.x), floori(house.pos.y)))
+	var form := PropModels.variant_of(house, w.seed_value, c)
+	w.depleted[house.id] = INF
+	if game.view != null:
+		game.view.refresh_props(house)
+	@warning_ignore("return_value_discarded")
+	Survival.add_prop(game, PropKind.HOUSE_BURNT, house.pos, house.rot, house.scale, form)
 
 
 # --- the villages that have seen him (`SnatchNight`) ---------------------------
@@ -1849,6 +2051,8 @@ func realm_changed(_from: StringName, _to: StringName) -> void:
 	_read_at.clear()
 	_raiders.clear()
 	_carriers.clear()
+	# A crossing leaves the coast's machines behind; the march goes on on paper.
+	_road.clear()
 	for n in notices:
 		if n.carried():
 			n.mob_id = -1
@@ -2029,7 +2233,8 @@ func _save() -> Variant:
 		out_due[str(v)] = SaveCodec.num(float(_due_again[v]))
 	return {"notices": out_notices, "plans": out_plans, "books": out_books,
 		"regions": out_regions, "next_notice": _next_notice, "next_plan": _next_plan,
-		"came_for": out_came, "due_again": out_due}
+		"came_for": out_came, "due_again": out_due,
+		"reprisal": reprisal.save(), "burned": burned.keys().map(func(id: int) -> Array: return [id, SaveCodec.num(float(burned[id]))])}
 
 
 func _load(v: Variant) -> void:
@@ -2067,6 +2272,11 @@ func _load(v: Variant) -> void:
 			id = region_key(Realm.SURFACE, SaveCodec.to_int(key))
 		_regions[id] = {"razed": SaveCodec.to_int(m.get("razed", 0)),
 			"lost": SaveCodec.to_int(m.get("lost", 0)), "taken": bool(m.get("taken", false))}
+	reprisal.load_from(d.get("reprisal", {}) as Dictionary)
+	burned.clear()
+	for row: Variant in d.get("burned", []):
+		if row is Array and (row as Array).size() >= 2:
+			burned[SaveCodec.to_int(row[0])] = SaveCodec.to_num(row[1])
 	came_for.clear()
 	var came := d.get("came_for", {}) as Dictionary
 	for k: String in came:

@@ -32,9 +32,10 @@ const NOT_YET_LAID: Array[int] = [PropKind.LINTEL, PropKind.CARVED_FACE, PropKin
 	PropKind.FALLEN_TOWER]
 
 ## Kinds no world ever lays: only play sets them down (the story's own readable
-## things, 49_cast `_stand_things`, StoryContent.STOOD). Not a debt: a grown world
-## that held one would be the bug.
-const SET_DOWN_IN_PLAY: Array[int] = [PropKind.DOC_BOX]
+## things, 49_cast `_stand_things`, StoryContent.STOOD; a house the yard's hunters
+## burned, 48_raids `_burn`). Not a debt: a grown world that held one would be
+## the bug.
+const SET_DOWN_IN_PLAY: Array[int] = [PropKind.DOC_BOX, PropKind.HOUSE_BURNT]
 
 ## Kinds laid, but only in a world of another realm, which a surface island
 ## never holds: kind -> that realm. Not a debt like NOT_YET_LAID: the land that

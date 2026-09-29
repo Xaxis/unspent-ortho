@@ -454,6 +454,7 @@ func _break(s: WorksSite, i: int) -> void:
 	if st.broken():
 		_fell(s, st)
 	else:
+		Events.works_part_broken.emit(s.region, s.pos)
 		var left := Works.PART_NAMES.size() - st.broken_count()
 		var tail := "Two more hold this yard up." if left > 1 else "One more."
 		Events.message.emit("The %s is out. %s" % [String(s.part_name(i)), tail])

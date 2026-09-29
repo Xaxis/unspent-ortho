@@ -1,0 +1,67 @@
+# WE BREAK THEIR WORKS, THEY BURN A VILLAGE (slice 2, step 3; 48_raids Reprisal),
+# through real keys: a housing opened under a steel edge on a yard that still
+# stands puts the yard's hunters on the road to the nearest roof.
+#
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/reprisal.tour --seed=1 --hour=9 --weather=clear:0 --held=axe_felling
+#
+# What it proves, in order: the housing opens and the yard answers by sending;
+# out on the road the hunters walk to the roof where he can meet them; left to
+# it, the roofs burn and stand as shells, and coming to them is what the
+# Holdfast costs (holdfast_price); and a second housing sends again, to the next
+# roof, and that party put down on the road burns nothing.
+#
+# The party's fall is staged (`fell raider`): the fight on the road is the
+# game's own, proved headless in tests/raid/test_reprisal_in_game.gd, and a
+# scripted player swinging at two machines is a flaky frame, not a proof.
+
+coast calm
+place works
+wait 0.8
+await works 12
+press use 5.5
+await works_part 14
+await reprisal_sent 3
+shot 01-a-housing-open-and-the-yard-answers with works,works_open:1
+
+# ON THE ROAD. Forty minutes on they are well out from the yard; he stands a
+# little down the road from them and they come walking at him.
+hour 9.8
+near reprisal_road
+wait 1.5
+await reprisal_road 5
+wait 1.0
+shot 02-the-hunters-on-the-road with mob
+
+# LEFT TO IT. Back at the yard while the march runs out, the roofs burn.
+place works
+hour 11
+await burned 5
+near reprisal_roof
+wait 1.5
+await beat:holdfast_price 5
+shot 03-the-roofs-they-burned
+tap shoulder
+await shoulder 20
+wait 1.0
+shot 04-the-shells-over-the-shoulder with shoulder
+tap shoulder
+wait 0.8
+
+# AGAIN, AND MET. The second housing sends again, to the next roof: the shells
+# are passed over. Its party is put down on the road, and nothing burns.
+place works_breaker
+wait 0.5
+press use 5.5
+await works_open:2 14
+await reprisal_sent 3
+hour 11.7
+near reprisal_road
+wait 1.5
+await reprisal_road 5
+fell raider
+fell raider
+wait 1.2
+await reprisal_met 5
+near wreckage
+wait 0.8
+shot 05-met-on-the-road with prop:wreckage

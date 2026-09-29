@@ -89,7 +89,7 @@ static var _leaf_mat: ShaderMaterial
 ## landscape does not build.
 static func variants(kind: int, country: int = Country.COAST) -> int:
 	match kind:
-		PropKind.HOUSE:
+		PropKind.HOUSE, PropKind.HOUSE_BURNT:
 			return BiomeForms.of(country).stock.size()
 		PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.BOULDER:
 			return 4
@@ -304,6 +304,10 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			SprayerGantry.build(k, variant, country)
 		PropKind.DOC_BOX:
 			DocBox.build(k, variant, country)
+		# The house it was, in its landscape's form, burned (props/burnt.gd).
+		PropKind.HOUSE_BURNT:
+			Houses.build(k, PropKind.HOUSE, variant, country)
+			Burnt.burn(k, variant * 131 + country)
 	if k.made.vertex_count() == 0 and k.found.vertex_count() == 0 and k.leaf.vertex_count() == 0:
 		# Loud on purpose: an unmodelled kind must be seen and fixed.
 		k.made.rock(0, 0, 0, 0.35, 0.5, kind * 31 + 7, Palette.BLOOM[3], 5)

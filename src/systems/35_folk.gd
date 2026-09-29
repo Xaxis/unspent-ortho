@@ -301,9 +301,14 @@ func pump() -> bool:
 func _populate(index: int, centre: Vector2) -> void:
 	var w := game.world
 	var houses: Array[WorldProp] = []
+	# A roof the yard's hunters burned (48_raids) is a shell nobody goes in at,
+	# and the village it stood in comes out one short for it.
+	var burned := false
 	for p in game.query.props_near(centre, 12.0):
-		if p.kind == PropKind.HOUSE:
+		if p.kind == PropKind.HOUSE and not w.depleted.has(p.id):
 			houses.append(p)
+		elif p.kind == PropKind.HOUSE_BURNT:
+			burned = true
 	# A city puts a street's worth of people out where a village puts six, and
 	# its people sell what a street sells rather than cutting and digging.
 	var many := maxi(PER_VILLAGE, BiomeRegistry.at(w, centre).street_folk)
@@ -353,10 +358,10 @@ func _populate(index: int, centre: Vector2) -> void:
 			"village": index, "h": h, "trade": trade, "street": n >= PER_VILLAGE and street})
 	# ONE SHORT FOR EACH IT LOST, the only sign he gets that the plan came while he
 	# was away: the village's own people, never the street's, the last of them
-	# first. One got back empty stands among them and never answers.
+	# first. A burned village has lost one more, whatever the plan took. One got back empty stands among them and never answers.
 	var gone := _taken_from(index)
 	var own := mini(rows.size(), PER_VILLAGE)
-	var drop := mini(gone.x, own)
+	var drop := mini(gone.x + (1 if burned else 0), own)
 	for k in range(own - drop, own):
 		rows[k] = {}
 	var hush := gone.y
