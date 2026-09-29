@@ -53,7 +53,7 @@ and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
 3. [x] **Raids answer attention** (C). Where he draws HALCYON's attention (light,
    broken works) the region's hunters come; `holdfast_price` and Vera's "we break
    their works, they burn a village". Settlements introduced here.
-4. [ ] **Defend the holding** (B). The slice's make: armour and shutters, with the
+4. [x] **Defend the holding** (B). The slice's make: armour and shutters, with the
    reason said by the camp.
 5. [x] **The lab and Ruth's table** (A). `built_halcyon` → `gate_lab`; `was_cia` →
    `gate_meet` (`ruth_signed`, `ruth_volunteered`, `kerr_money`).
@@ -85,6 +85,10 @@ meaningful way. It must be brilliant. Builder **D**.
 - [ ] **T4 Editing** (after the owner has used T2–T3): story data moves to a structured
   file the game loads; edits save through the story tests; the words still pass
   story-wright.
+- [ ] **Tours run on main.** CI has no GPU, so tours rot unseen: three failed on main
+  (raids_live, raids-dark, score) until a sweep found them. A daily local run of every
+  tour on main (`tools/tour-sweep.sh --since <yesterday>`, the proofs always), with
+  failures routed the same day; the whole set weekly.
 - [ ] **Tours walk with a path.** `walkto` holds a straight line and has no pathfinding, so
   a proof cannot walk a freed person 188 tiles home; home-coast.tour reads "home again"
   from the record instead.

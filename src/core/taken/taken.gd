@@ -137,6 +137,35 @@ var people: Array[TakenPerson] = []
 
 
 ## Somebody has been carried off. Returns the record, so the caller can say it.
+## How far from a place in no region the plan looks for the depot that holds
+## whoever it took from there, and how fine the rings it looks along are.
+const DEPOT_SEARCH := 400.0
+const DEPOT_RING := 6.0
+
+
+## The region nearest `at`, by rings out from it (never a walk of the whole map),
+## or -1 when none lies within DEPOT_SEARCH. A holding can stand on ground no
+## region's plan was ever laid over; whoever is carried off it is still carried to
+## a yard, and the nearest region's is the one.
+static func nearest_region(world: WorldData, at: Vector2) -> int:
+	var here := world.region_at(floori(at.x), floori(at.y))
+	if here >= 0:
+		return here
+	var r := DEPOT_RING
+	while r <= DEPOT_SEARCH:
+		var steps := maxi(8, ceili(TAU * r / DEPOT_RING))
+		for i in steps:
+			var p := at + Vector2.from_angle(TAU * float(i) / float(steps)) * r
+			var x := floori(p.x)
+			var y := floori(p.y)
+			if world.in_bounds(x, y):
+				var reg := world.region_at(x, y)
+				if reg >= 0:
+					return reg
+		r += DEPOT_RING
+	return -1
+
+
 func take(who: int, person_name: String, home: int, home_name: String, region: int, minutes: float) -> TakenPerson:
 	var t := TakenPerson.new()
 	t.who = who

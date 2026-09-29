@@ -689,6 +689,11 @@ func _seen(p: Vector2) -> bool:
 
 func _step(f: Dictionary, delta: float, night: bool) -> void:
 	var model: PersonModel = f.model
+	# Gone in behind a holding's shutters for a raid (46_settlements `_keep_in`):
+	# indoors whatever the hour, until the holding lets them out.
+	if bool(f.get("kept_in", false)):
+		model.visible = false
+		return
 	if f.village < 0 or bool(f.get("street", false)):
 		night = false
 	if night and f.state == &"out":

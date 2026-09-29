@@ -954,6 +954,7 @@ func _sync_people() -> void:
 	var folk := _folk()
 	if folk == null or game.player == null:
 		return
+	_keep_in()
 	for s in places:
 		if s.realm != realm_here() or s.centre.distance_to(game.player.pos) > DRAW_REACH:
 			continue
@@ -1154,6 +1155,22 @@ func _tour_village() -> int:
 			best_d = d
 			best = i
 	return best
+
+
+## Whoever the shutters bar is indoors while the holding is in (Settlement.inside,
+## 48_raids): out of sight and off the land, and out again when it is over. The
+## rest, if the boards bar fewer than live there, stay out as they were.
+func _keep_in() -> void:
+	for s in places:
+		var barred := s.barred()
+		for i in s.people.size():
+			var row: Dictionary = _bodies.get("%d:%d" % [s.id, s.people[i]], {})
+			if row.is_empty() or not is_instance_valid(row.get("model") as Node):
+				continue
+			var hide := i < barred
+			if bool(row.get("kept_in", false)) and not hide:
+				(row.model as Node3D).visible = true
+			row["kept_in"] = hide
 
 
 # --- drawing -----------------------------------------------------------------

@@ -719,6 +719,15 @@ func _warn(s: Settlement, stage: StringName) -> void:
 	p.party = _party_for(s, stage)
 	plans.append(p)
 	Events.raid_warned.emit(s.id, stage)
+	if stage != RaidStage.SURVEY:
+		@warning_ignore("return_value_discarded")
+		Story.hear(Holding.RAIDED)
+	# COVER (slice 2 step 4): warned of anything past a survey, a holding with its
+	# beds shuttered sends its people in behind the boards until it is over.
+	if stage != RaidStage.SURVEY and s.shuttered() and not s.inside:
+		s.inside = true
+		_seen["went_in"] = true
+		Events.message.emit(StoryContent.DEFEND["in"] % s.name)
 	var w := RaidStage.warning(stage)
 	if not w.is_empty():
 		Events.sfx.emit(StringName(w.get("sfx", &"raid_horizon")), game.world.to_3d(_warn_from(s)))
@@ -729,6 +738,24 @@ func _warn(s: Settlement, stage: StringName) -> void:
 	_sync_marks()
 	_seen["warned"] = true
 	_seen["warned:%s" % String(stage)] = true
+
+
+## ROOK'S REASON (slice 2 step 4): the first time he talks to Rook after a raid
+## has been warned on his holding, Rook says why shutters and why the plate,
+## once (the page's mark). A made page for 49_story, which asks every system
+## before a named person's own talk, or {}.
+func cast_word(row: Dictionary) -> Dictionary:
+	if StringName(str(row.get("character", &""))) != &"rook":
+		return {}
+	if not Story.heard(Holding.RAIDED) or Story.heard(REASON_SAID):
+		return {}
+	return {
+		"made": true, "mark": REASON_SAID, "title": "Rook", "start": &"open",
+		"nodes": {&"open": {"says": PackedStringArray(StoryContent.DEFEND["reason"]), "replies": [{"text": "[leave]", "to": &""}]}},
+	}
+
+
+const REASON_SAID := &"said:rook_shutters"
 
 
 ## Where a warning comes from: off along the bearing the machines surveyed this
@@ -1392,6 +1419,21 @@ func _blow_of(m: MobState, s: Settlement) -> float:
 ## Somebody is carried off (docs/VISION.md). The snatcher has to stand in
 ## the yard unanswered to do it, so being there is a real answer to it.
 func _drive_snatcher(p: RaidPlan, s: Settlement, m: MobState, r: Dictionary, sim: FightSim) -> void:
+	# Everybody behind the shutters: the boards first, blow by blow, as a breacher
+	# takes a wall (Settlement.all_barred). The wait in the yard starts after.
+	if s.all_barred():
+		var boards := s.shutter_to_break()
+		var bd := m.pos.distance_to(boards.pos)
+		r["tore"] = true
+		r["since"] = sim.now
+		if bd > STRIKE_REACH + m.radius + StructureKind.solid(boards.kind):
+			_march(m, r, boards.pos, bd, sim)
+			return
+		m.line_a = m.pos
+		m.line_b = m.pos
+		m.aim = (boards.pos - m.pos).angle()
+		_strike(p, s, m, r, boards, sim)
+		return
 	var d := m.pos.distance_to(s.centre)
 	if d > 2.0:
 		_march(m, r, s.centre, d, sim)
@@ -1443,6 +1485,10 @@ func _take_person(s: Settlement, who: int) -> void:
 	# the player could already walk to, and breaking it is already half of a
 	# chapter's DEFENDED.
 	var region := Interference.network(game.world, s.centre)
+	# A holding on ground no region covers is still raided from a yard: they are
+	# held at the nearest one's (Taken.nearest_region), not forgotten.
+	if region < 0:
+		region = Taken.nearest_region(game.world, s.centre)
 	for sys in game.systems:
 		if sys.has_method("took") and sys.get("taken") is Taken:
 			sys.call("took", who, "", s.id, home_name, region)
@@ -1500,6 +1546,18 @@ func _end(p: RaidPlan, s: Settlement, outcome: StringName) -> void:
 		if id >= 0:
 			@warning_ignore("return_value_discarded")
 			_raiders.erase(id)
+	if s != null and s.inside:
+		# Over: whoever went in behind the shutters comes out. Said only when it
+		# cost nobody, since the losing of somebody has its own words.
+		if p.took.is_empty():
+			var tore := false
+			for row: Dictionary in p.party:
+				tore = tore or row.get("role", &"") == RaidRoles.SNATCHER
+			if tore:
+				Events.message.emit(StoryContent.DEFEND["held_snatch"])
+			Events.message.emit(StoryContent.DEFEND["held_raid"] % s.name)
+			_seen["kept_in"] = true
+		s.inside = false
 	if s != null:
 		if outcome != &"left":
 			var was := s.attention

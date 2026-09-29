@@ -5557,6 +5557,9 @@ const LEAD := {
 	# Where only the price has landed, HOLDING_MOVE.lead_burned says it instead,
 	# since nothing may explain the taking before `seeker`.
 	&"holding": "Beds at the holding, for the people a yard would take: set down its first piece.",
+	# Once a raid has been warned on his holding or has struck it, until a
+	# shutters stands there: Guide.way_goal, after the holding's own.
+	&"shutters": "Shutters on the beds, to keep the light in and the hunters out: wood, scrap and rag.",
 }
 
 # A talk that pays, keyed by the talk's node where the deal is closed
@@ -5792,6 +5795,25 @@ const REPRISAL := {
 	"met": "The hunters lie on the road. Nothing reaches the roofs.",
 	# He comes to the roofs a broken yard's hunters burned (holdfast_price).
 	"seen": "The houses are black to the ground. Somebody left a pot on the fire.",
+}
+
+# DEFEND THE HOLDING (slice 2 step 4; 48_raids, Settlement.inside/barred): the
+# glass lines for the warning sending his people in behind the shutters and for
+# the raid going off without them. Rook's reason is his talk's `raided` node, and
+# the goal hop is LEAD.shutters.
+const DEFEND := {
+	# Rook, the first time he is spoken to after a raid has been warned on the
+	# holding (48_raids `cast_word`): why shutters, and why the plate.
+	"reason": [
+		"They come at night for whoever's asleep. Shutter the beds: wood, scrap, rag.",
+		"Keep the plate on your own back. I didn't pay you in it for show.",
+	],
+	# The warning puts them in (%s: the holding's name).
+	"in": "In %s they put down their work and go in behind the shutters.",
+	# A snatcher that broke off at the boards.
+	"held_snatch": "It tears at the shutters a while, and goes without anybody.",
+	# The raid over and everybody still in (%s: the holding's name).
+	"held_raid": "The shutters come open in %s. Everybody who went in comes out.",
 }
 
 # THE HOLDING (slice 2 step 2; 46_settlements, Holding): a village that has seen
