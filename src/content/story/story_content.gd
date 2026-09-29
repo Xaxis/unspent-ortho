@@ -4334,7 +4334,9 @@ const TALKS := {
 				"replies": [
 					{"text": "What is the Holdfast?", "pick": &"asked_holdfast", "to": &"holdfast"},
 					{"text": "What do you want from me?", "pick": &"asked_want", "to": &"want"},
-					{"text": "They don't even see you, do they?", "when": &"ants", "pick": &"asked_ants", "to": &"weather"},
+					# Asked once he has seen what a broken yard costs a village (holdfast_price):
+					# her answer is that nothing about it was anger (vera_knew).
+					{"text": "That village. They weren't angry, were they?", "when": &"holdfast_price", "pick": &"asked_ants", "to": &"weather"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
 			},
@@ -5545,6 +5547,11 @@ const LEAD := {
 	&"ore": "The crew past the old works pay for iron. Take the pick to the rock.",
 	&"camp": "Iron for the crew, so they stay away from her fire: the survey marks the camp.",
 	&"armour": "Armour against the hunters: beat the plate at a bench, with scrap and iron.",
+	# The way on (Guide.way_goal), each said until the beat that ends it lands.
+	&"yard": "The yard's oldest screen, for what it was too busy to show you: the yard is dark now.",
+	&"rook_again": "Back to the crew, with what the yard told you: they want someone who knows the old machines.",
+	&"vera": "The Holdfast's leader, for what she wants of you: she is waiting at the camp.",
+	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
 }
 
 # A talk that pays, keyed by the talk's node where the deal is closed
@@ -5559,7 +5566,11 @@ const PAID := {
 # Places a person has told him of, keyed by the beat that tells it: once that
 # beat has landed the survey marks the slot's place and letters it with `word`,
 # lowercase and a few words, like the bag's "your things".
-const TOLD := {&"marens_lead": {"place": &"the_camp", "word": "the crew"}}
+const TOLD := {
+	&"marens_lead": {"place": &"the_camp", "word": "the crew"},
+	# Vera's lead, the next leg's (slice 3): across the water, pinned on its bearing.
+	&"war_archive": {"place": &"the_archive", "word": "the archive"},
+}
 
 # The name the goal lines use for a landscape's keeper once `reaper_named` has
 # landed (Hob, TALKS hob.reaper). Keyed by landscape id; before he has said it,

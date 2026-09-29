@@ -120,7 +120,10 @@ func _on_open() -> void:
 	UiMapScreen.feed(_material, data, _seen_tex, MAP_RECT.size)
 	_regions = UiMapScreen.region_labels(game.world, explored)
 	_seen_share = explored.fraction()
-	var f := UiMapScreen.fit(explored.shown_bounds(), game.player.pos, MAP_RECT.size, SCALES)
+	var told: Array[Vector2] = []
+	for t: Dictionary in UiMapScreen.told(game):
+		told.append(t.at)
+	var f := UiMapScreen.opening(explored.shown_bounds(), game.player.pos, told, MAP_RECT.size, SCALES)
 	map_scale = f.scale
 	centre_on(f.centre)
 
@@ -170,6 +173,32 @@ static func fit(seen: Rect2i, player: Vector2, window: Vector2i, scales: Array[i
 	var reach := (Vector2(window) * 0.5 - Vector2(MARGIN, MARGIN)) / s
 	centre = centre.clamp(player - reach, player + reach)
 	return {"scale": s, "centre": centre}
+
+
+## How far in from the glass's edge a pinned mark stands (the draw's `r.grow`).
+const PIN_INSET := 24
+
+
+## Where the survey opens: fitted to the land seen, as `fit` says; but when a
+## place he has been told of lies off that glass, centred on him instead. A pin
+## is a bearing (`pin`), and fitted to the land he may stand at the glass's very
+## edge, where a pin a few pixels off his own mark reads as "here".
+static func opening(seen: Rect2i, player: Vector2, told: Array[Vector2], window: Vector2i, scales: Array[int]) -> Dictionary:
+	var f := fit(seen, player, window, scales)
+	var half := Vector2(window) * 0.5 - Vector2(PIN_INSET, PIN_INSET)
+	for t: Vector2 in told:
+		var off := (t - (f.centre as Vector2)) * float(f.scale)
+		if absf(off.x) > half.x or absf(off.y) > half.y:
+			f.centre = player
+			break
+	return f
+
+
+## Where tile `p` lands on the glass when the survey is centred on `centre` at
+## `scale` (centre_on, to_screen), for a reader with no survey open.
+static func glass_at(centre: Vector2, scale: float, p: Vector2) -> Vector2i:
+	var origin := Vector2i(roundi(centre.x * scale), roundi(centre.y * scale)) - MAP_RECT.size / 2
+	return MAP_RECT.position + Vector2i(floori(p.x * scale), floori(p.y * scale)) - origin
 
 
 ## Where to letter each region the player has seen enough of: the seen tile of
@@ -689,7 +718,7 @@ func _draw_overlay() -> void:
 	# Where somebody has sent him: a hollow square in the player's bright, the
 	# village's mark without its glass, lettered with the teller's word.
 	for t: Dictionary in UiMapScreen.told(game):
-		var s := UiMapScreen.pin(to_screen(game.player.pos), to_screen(t.at), r.grow(-24))
+		var s := UiMapScreen.pin(to_screen(game.player.pos), to_screen(t.at), r.grow(-PIN_INSET))
 		UiDraw.rect(ci, Rect2i(s.x - 4 * p, s.y - 4 * p, 9 * p, 9 * p), Color(UiTheme.GLASS, 0.85))
 		UiDraw.rect(ci, Rect2i(s.x - 3 * p, s.y - 3 * p, 7 * p, 7 * p), UiTheme.BRIGHT)
 		UiDraw.rect(ci, Rect2i(s.x - 2 * p, s.y - 2 * p, 5 * p, 5 * p), UiTheme.GLASS)
