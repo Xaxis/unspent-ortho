@@ -31,6 +31,11 @@ const NOT_YET_LAID: Array[int] = [PropKind.LINTEL, PropKind.CARVED_FACE, PropKin
 	PropKind.HOODOO, PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN, PropKind.SPAN_PYLON,
 	PropKind.FALLEN_TOWER]
 
+## Kinds no world ever lays: only play sets them down (the story's own readable
+## things, 49_cast `_stand_things`, StoryContent.STOOD). Not a debt: a grown world
+## that held one would be the bug.
+const SET_DOWN_IN_PLAY: Array[int] = [PropKind.DOC_BOX]
+
 ## Kinds laid, but only in a world of another realm, which a surface island
 ## never holds: kind -> that realm. Not a debt like NOT_YET_LAID: the land that
 ## lays it is asked for it in its own world
@@ -95,6 +100,9 @@ func test_every_landscape_holds_its_own_works() -> void:
 				seen_home[kind] = got
 		for kind in range(FIRST, PropKind.COUNT):
 			if NOT_YET_LAID.has(kind) or LAID_ELSEWHERE.has(kind):
+				continue
+			if SET_DOWN_IN_PLAY.has(kind):
+				eq(counts[kind], 0, "seed %d grows no %s: only play sets one down" % [s, PropKind.NAMES[kind]])
 				continue
 			gt(counts[kind], 0, "seed %d %s placed" % [s, PropKind.NAMES[kind]])
 		# Evidence at walking scale in every landscape, not only at the works.

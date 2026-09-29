@@ -62,3 +62,21 @@ static func place_of(world: WorldData, p: Vector2) -> StringName:
 	if at != Vector2.INF and p.distance_to(at) <= PLACE_REACH:
 		return StorySlot.BLACK_SITE
 	return &""
+
+
+## How far off its slot the story stands a place's readable thing (49_cast).
+const STOOD_REACH := 10.0
+
+
+## The things the story stood (StoryContent.STOOD), by prop id -> slot: kept by
+## 49_cast (in its save) and published here, so a readable prop is known as the
+## story's by its id alone, never by casting the world again, and never by its
+## kind (anything may set a screen down in play).
+static var stood_ids: Dictionary = {}
+
+
+## The place whose readable thing this is, when the story stood it, else &"".
+static func stood_place(prop: WorldProp) -> StringName:
+	if prop == null:
+		return &""
+	return stood_ids.get(prop.id, &"")

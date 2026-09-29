@@ -903,7 +903,11 @@ func test_every_prop_kind_and_ground_is_placed() -> void:
 	var works_map := (load("res://tests/core/test_world_gen_works.gd") as GDScript).get_script_constant_map()
 	var not_yet_laid: Array = works_map["NOT_YET_LAID"]
 	var elsewhere: Dictionary = works_map["LAID_ELSEWHERE"]
+	var in_play: Array = works_map["SET_DOWN_IN_PLAY"]
 	for k in PropKind.COUNT:
+		if in_play.has(k):
+			eq(anywhere[k], 0, "%s is set down only in play, never grown" % PropKind.NAMES[k])
+			continue
 		if not_yet_laid.has(k):
 			print("  %s is modelled and not laid yet (NOT_YET_LAID)" % PropKind.NAMES[k])
 			continue

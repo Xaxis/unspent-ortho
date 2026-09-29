@@ -23,6 +23,7 @@ const CLOSE := 1.6
 const READABLE := {
 	PropKind.SIGN: StoryFragments.SIGN,
 	PropKind.ARCHIVE: StoryFragments.NOTEBOOK,
+	PropKind.DOC_BOX: StoryFragments.NOTEBOOK,
 	PropKind.RELAY: StoryFragments.TERMINAL,
 	PropKind.SURVEY: StoryFragments.TERMINAL,
 	# The THRESHOLD site's screens. A kind of its own rather than a RELAY or a

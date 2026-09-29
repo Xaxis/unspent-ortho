@@ -36,6 +36,28 @@ var _since := 0.0
 
 func setup(g: Game) -> void:
 	game = g
+	StoryWorld.stood_ids.clear()
+	SaveGame.register(&"stood", _save_stood, _load_stood)
+
+
+func _save_stood() -> Variant:
+	var out := {}
+	for slot: StringName in _stood:
+		out[String(slot)] = int(_stood[slot])
+	return out
+
+
+func _load_stood(v: Variant) -> void:
+	_stood.clear()
+	StoryWorld.stood_ids.clear()
+	if v is Dictionary:
+		for k: Variant in v:
+			_mark_stood(StringName(str(k)), int(v[k]))
+
+
+func _mark_stood(slot: StringName, id: int) -> void:
+	_stood[slot] = id
+	StoryWorld.stood_ids[id] = slot
 
 
 func started() -> void:
@@ -79,6 +101,7 @@ func _process(delta: float) -> void:
 				_watch(row, from)
 		return
 	_since = 0.0
+	_stand_things(from)
 	for row: Dictionary in people:
 		var c := StoryCast.get_def(row.character)
 		var here: bool = (row.pos as Vector2).distance_to(from) <= STREAM and (c == null or c.present())
@@ -113,6 +136,99 @@ func _cast() -> void:
 		# 2026-09-26). Walking up now only puts the made figure in the tree.
 		_dress(row, c)
 		people.append(row)
+
+
+## THE STORY'S OWN READABLE THINGS (StoryContent.STOOD): where nothing the world
+## grows is sure to be a screen or a box, one is set down in play beside the
+## slot, once (Survival.add_prop: a save keeps it, a stream keeps it filed in its
+## section). A load, a crossing back or another boot finds it among the props set
+## down and leaves it be, so there is never a second.
+##
+## Set down only once he comes within STAND_NEAR of the slot, on the twice-a-second
+## check: only then are the props round it streamed in, and the spot is chosen
+## clear of them (a sign beside the screen takes the `use` meant for it).
+const STAND_NEAR := 40.0
+## The slots whose thing has been set down, slot -> its prop id, kept in the save
+## beside the thing itself (SaveCore keeps props set down in play), so a load
+## never sets a second and the words find the same prop (StoryWorld.stood_ids).
+var _stood: Dictionary = {}
+
+
+func _stand_things(from: Vector2) -> void:
+	if game.world.realm != Realm.SURFACE:
+		return
+	for slot: StringName in StoryContent.STOOD:
+		if not placed.has(slot):
+			continue
+		var kind := int(StoryContent.STOOD[slot])
+		var at: Vector2 = placed[slot].pos
+		if at.distance_to(from) > STAND_NEAR or _stood.has(slot):
+			continue
+		var spot := _thing_spot(at, absi(int(slot.hash())))
+		if spot.is_finite():
+			_mark_stood(slot, Survival.add_prop(game, kind, spot).id)
+
+
+## How far a stood thing keeps from any era gate: past 20_realms' GATE_REACH (1.5)
+## by more than a body standing beside the thing (StoryProps.CLOSE and its own
+## solid), or `use` there crosses into 2029 instead of reading it. The gates
+## stand on the very slots the things are stood at (StoryGates).
+const GATE_CLEAR := 4.0
+
+
+## Dry ground a body fits on, a few paces off the slot at a bearing of its own:
+## never in the sea, inside a building's footprint, or on a keeper's ground
+## (its lair out to its reach, standing or fallen), where reading it would be
+## walking into the fight; clear of every era gate (GATE_CLEAR) and of every cast
+## person; and out of reach of any other thing with words or that the hand takes
+## from, else the clearest.
+## Vector2.INF where there is none within STOOD_REACH.
+func _thing_spot(at: Vector2, salt: int) -> Vector2:
+	var w := game.world
+	var grounds: Array[Vector3] = []
+	# The keepers as 44_sentinels holds them (loaded before this), not cast anew.
+	for sys: Node in game.systems:
+		if sys.name == "44_sentinels":
+			for st: SentinelState in sys.call("states"):
+				var def := Sentinels.by_id(st.design)
+				if def != null:
+					grounds.append(Vector3(st.lair.x, st.lair.y, def.reach))
+	# The gates stand on 2098's slots, which this system already cast (`placed`):
+	# StoryGates.all would cast the whole world again.
+	for gate: Dictionary in StoryGates.GATES:
+		if placed.has(gate.at):
+			var gp: Vector2 = placed[gate.at].pos
+			grounds.append(Vector3(gp.x, gp.y, GATE_CLEAR))
+	# The people cast at the same slot stand first: `use` beside one of them
+	# speaks to them, so the thing keeps out of their reach.
+	for row: Dictionary in people:
+		var rp: Vector2 = row.pos
+		grounds.append(Vector3(rp.x, rp.y, StoryProps.REACH + StoryProps.CLOSE))
+	var turn := Rng.hash01(w.seed_value, salt, 0, 0x57D) * TAU
+	# Where every spot is near words or a thing the hand takes from, the clearest.
+	var fallback := Vector2.INF
+	var fallback_clear := -INF
+	for r: float in [4.5, 5.5, 6.5, 7.5, 8.5, 9.5]:
+		for i in 12:
+			var p := at + Vector2.from_angle(turn + TAU * i / 12.0) * r
+			var t := Vector2i(p.floor())
+			if not game.query.standable(t.x, t.y) or Ground.is_water(w.ground_at(t.x, t.y)):
+				continue
+			var spot := Vector2(t) + Vector2(0.5, 0.5)
+			if not game.query.body_fits(spot, 0.6):
+				continue
+			var clear := true
+			for gr: Vector3 in grounds:
+				clear = clear and spot.distance_to(Vector2(gr.x, gr.y)) > gr.z
+			if not clear:
+				continue
+			if not _near_words(spot):
+				return spot
+			var room := _clearance(spot)
+			if room > fallback_clear:
+				fallback_clear = room
+				fallback = spot
+	return fallback
 
 
 func _clear() -> void:
@@ -242,6 +358,8 @@ func stand(id: StringName, pos: Vector2, facing: float) -> Vector2:
 ## them in one yard: a spot on Vera's far side was nearer Sabine, so `use` opened
 ## the medic's words and `met:vera` never came.
 func tour_place(what: String) -> Vector2:
+	if what.begins_with("stood:"):
+		return _beside_stood(StringName(what.substr(6)))
 	if not what.begins_with("cast:"):
 		return Vector2.INF
 	var id := StringName(what.substr(5))
@@ -262,6 +380,34 @@ func tour_place(what: String) -> Vector2:
 		return fallback if fallback != Vector2.INF else pos
 	return Vector2.INF
 
+
+## `stood:SLOT`: ground a step off the thing the story stood at SLOT, for a tour
+## to read it by name (`at stood:the_camp`, `await stood:the_camp`, then `near
+## document_box` to face it). Before he has come near, nothing stands there yet:
+## the slot itself, so the warp brings him near and the thing is set down.
+func _beside_stood(slot: StringName) -> Vector2:
+	if not placed.has(slot) or not StoryContent.STOOD.has(slot):
+		return Vector2.INF
+	var q := _stood_at(slot)
+	if q == null:
+		return placed[slot].pos
+	for k in 12:
+		var p := q.pos + Vector2.from_angle(TAU * k / 12.0) * 1.3
+		if game.query.standable(floori(p.x), floori(p.y)):
+			return p
+	return q.pos
+
+
+## The thing stood at `slot`, asked of the streamed window round it: null
+## while its ground is not in (whether it was ever stood is `_stood`).
+func _stood_at(slot: StringName) -> WorldProp:
+	if not _stood.has(slot):
+		return null
+	var at: Vector2 = placed[slot].pos
+	for q: WorldProp in game.query.props_near(at, StoryWorld.STOOD_REACH):
+		if q.id == int(_stood[slot]):
+			return q
+	return null
 
 ## Whether something the hand takes from (Survival.use_target: a scrap tree, a
 ## log) stands nearer `p` than the person at `them`, so `use` there works it
@@ -289,6 +435,9 @@ func _nearest_named(p: Vector2) -> StringName:
 ## `cast:ID`: that person is there and drawn. `met:ID`: he has spoken to them.
 func tour_seen(what: StringName) -> bool:
 	var s := String(what)
+	if s.begins_with("stood:"):
+		var slot := StringName(s.substr(6))
+		return placed.has(slot) and StoryContent.STOOD.has(slot) and _stood_at(slot) != null
 	if s.begins_with("met:"):
 		return Story.met(StringName(s.substr(4)))
 	if s.begins_with("cast:"):
