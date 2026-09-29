@@ -39,8 +39,10 @@ func test_her_lead_marks_the_camp_and_the_iron_goes_there() -> void:
 	g.inventory.add(&"iron", 1)
 	eq(Guide.goal(g), line, "worked iron does as well")
 	@warning_ignore("return_value_discarded")
-	Story.meet(Guide.CAMP_MET)
-	check(Guide.goal(g) != line, "and once he has spoken to Rook at the camp, that want is met")
+	Story.meet(&"rook")
+	eq(Guide.goal(g), line, "met, not yet paid: the promise still stands")
+	Story.choose(&"rook.iron", StringName(StoryContent.PAID[&"rook.iron"].pick))
+	check(Guide.goal(g) != line, "and once the crew have paid for the iron, that want is met")
 	Sx.end(g)
 	Story.forget()
 

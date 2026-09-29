@@ -233,14 +233,16 @@ static func _led(key: StringName, plain: String, at: String = "") -> String:
 
 ## THE ROAD TO THE CAMP (ROADMAP slice 2, step 1): with her lead given and iron
 ## in the bag, the want is the crew who pay for it (StoryContent.LEAD `camp`),
-## until he has spoken to Rook there. Only once led: a player she never sent has
-## no reason to go, and the survey marks the camp from her lead on
+## until they have paid (CAMP_PAID in StoryContent.PAID): meeting Rook is not the
+## promise kept, the pay is. Only once led: a player she never sent has no
+## reason to go, and the survey marks the camp from her lead on
 ## (StoryContent.TOLD).
-const CAMP_MET := &"rook"
+const CAMP_PAID := &"rook.iron"
 
 
 static func camp_goal() -> String:
-	if Story.landed(LEAD_BEAT) and not Story.met(CAMP_MET) and StoryContent.LEAD.has(&"camp"):
+	var paid := Story.chose(CAMP_PAID) == StringName(StoryContent.PAID[CAMP_PAID].pick)
+	if Story.landed(LEAD_BEAT) and not paid and StoryContent.LEAD.has(&"camp"):
 		return String(StoryContent.LEAD[&"camp"])
 	return ""
 

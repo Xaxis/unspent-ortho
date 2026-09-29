@@ -4095,7 +4095,7 @@ const TALKS := {
 			},
 			# Maren's lead kept (ROADMAP slice 2 step 1): the crew pay for the iron in plate, for armour (StoryContent.PAID).
 			&"iron": {
-				"says": ["Iron. She sent it and not us to her. She's right. We bring the hunters.", "Three plate for it. Beat it into armour at a bench.", "I pay in plate. Coin never turned a blade."],
+				"says": ["Iron. She sent you so we'd keep off her fire. She's right. We bring the hunters.", "Three plate for it. Beat it into armour at a bench.", "I pay in plate. Coin's for people paid to wait."],
 				"replies": [{"text": "[take the plate]", "pick": &"paid", "to": &""}],
 			},
 			&"payer": {
@@ -5504,8 +5504,8 @@ const LEAD := {
 	&"plate": "Plate for the pick's head: turn over the tip.",
 	&"pick": "A pick for the iron, made at {at}.",
 	&"ore": "The crew past the old works pay for iron. Take the pick to the rock.",
-	&"camp": "The crew pay for iron. Take it to them, not them to her. The survey marks the camp.",
-	&"armour": "Armour against the hunters' blades: plate armour at a bench, scrap and iron.",
+	&"camp": "Iron for the crew, so they stay away from her fire: the survey marks the camp.",
+	&"armour": "Armour against the hunters: beat the plate at a bench, with scrap and iron.",
 }
 
 # A talk that pays, keyed by the talk's node where the deal is closed
