@@ -62,10 +62,10 @@ static func build(map: StoryMap, arc_id: StringName) -> StoryArcGraph:
 					"col": i, "row": -1, "beat": b, "arc": arc_id})
 				g.edges.append({"from": StringName("beat:%s" % b), "to": gid, "kind": &"opens"})
 		for door: Dictionary in d.doors:
-			if door.kind == &"witness" and door.id == &"works_dark":
+			if door.kind == &"witness" and door.id == &"burned_seen":
 				var sid := StringName("subarc:%s" % b)
 				g._add({"id": sid, "kind": &"subarc", "title": "a region asks", "lines": [
-					["", "rescue, the walk home, sabotage: every one is a yard put dark"],
+					["", "rescue, the walk home, sabotage: a yard broken and not put dark burns a village"],
 					["", "(StorySubarc, one per region)"]], "place": &"", "source": "src/core/story/story_subarc.gd:1",
 					"col": i, "row": -1, "beat": b, "arc": arc_id})
 				g.edges.append({"from": sid, "to": StringName("beat:%s" % b), "kind": &"asks"})

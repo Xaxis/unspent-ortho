@@ -5819,7 +5819,7 @@ const WITNESS_ON := {
 	&"other_realm": &"seeker",
 	&"hunted": &"noticed",
 	&"lost": &"not_home",
-	&"works_dark": &"holdfast_price",
+	&"burned_seen": &"holdfast_price",
 	&"ring_held": &"ring_held",
 }
 ## The signet only means his own old password once he knows he had one.
@@ -5832,7 +5832,7 @@ const WITNESSED := {
 	&"seeker": "the player stands below the world or above it (not in the Before, which is his own past)",
 	&"noticed": "the region the player stands in is hunting them",
 	&"not_home": "somebody he was walking home from a yard is lost on the road",
-	&"holdfast_price": "a works yard is put dark",
+	&"holdfast_price": "the player comes to the roofs a broken yard's hunters burned",
 	&"ring_held": "a machine hunting the player stops at a crags ring's edge and holds there, facing in",
 }
 
