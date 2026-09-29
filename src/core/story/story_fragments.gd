@@ -102,7 +102,7 @@ static func held_by(world: WorldData, query: WorldQuery, prop: WorldProp) -> Str
 	if kind == &"":
 		return &""
 	# A thing the story stood holds its place's one page (StoryContent.STOOD).
-	var stood := StoryWorld.stood_place(world, prop)
+	var stood := StoryWorld.stood_place(prop)
 	if stood != &"":
 		var its := pick_at(stood, 0, kind)
 		if its != &"":

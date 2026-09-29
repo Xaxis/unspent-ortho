@@ -68,15 +68,15 @@ static func place_of(world: WorldData, p: Vector2) -> StringName:
 const STOOD_REACH := 10.0
 
 
-## The place whose readable thing this is, when the story stood it
-## (StoryContent.STOOD), else &"". Known from the prop alone, never by casting
-## the world again: each place's thing is of a kind of its own, and it was set
-## down in play (its id past what generation laid), where a grown one of the
-## same kind (the black site's consoles) never was.
-static func stood_place(world: WorldData, prop: WorldProp) -> StringName:
-	if world == null or prop == null or world.position_of(prop.id) < world.generated():
+## The things the story stood (StoryContent.STOOD), by prop id -> slot: kept by
+## 49_cast (in its save) and published here, so a readable prop is known as the
+## story's by its id alone, never by casting the world again, and never by its
+## kind (anything may set a screen down in play).
+static var stood_ids: Dictionary = {}
+
+
+## The place whose readable thing this is, when the story stood it, else &"".
+static func stood_place(prop: WorldProp) -> StringName:
+	if prop == null:
 		return &""
-	for slot: StringName in StoryContent.STOOD:
-		if int(StoryContent.STOOD[slot]) == prop.kind:
-			return slot
-	return &""
+	return stood_ids.get(prop.id, &"")

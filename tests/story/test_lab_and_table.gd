@@ -175,13 +175,3 @@ func test_the_lab_and_the_table_wait_on_their_reveals() -> void:
 	check(StoryCast.get_def(&"ruth").present(), "Ruth, once he has felt who he reported to")
 	Story.forget()
 
-
-## StoryWorld.stood_place knows a stood thing by its kind alone, so no two places
-## may stand the same kind, and none may be a kind play also sets down elsewhere.
-func test_each_stood_place_has_a_kind_of_its_own() -> void:
-	var seen := {}
-	for slot: StringName in StoryContent.STOOD:
-		var kind := int(StoryContent.STOOD[slot])
-		check(not seen.has(kind), "%s stands a %s no other place does" % [slot, PropKind.NAMES[kind]])
-		seen[kind] = slot
-		eq((StoryContent.PLACED.get(slot, []) as Array).size(), 1, "and holds one page")
