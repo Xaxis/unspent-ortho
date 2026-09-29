@@ -357,7 +357,16 @@ func _blocker(from: Vector2, to: Vector2, r: float) -> Vector2:
 func _fits(from: Vector2, to: Vector2, r: float, on: CraftRide = null, swims: bool = false, tall: int = 0) -> bool:
 	var ftx := floori(from.x)
 	var fty := floori(from.y)
-	for c: Vector2 in [to, to + Vector2(-r, -r), to + Vector2(r, -r), to + Vector2(-r, r), to + Vector2(r, r)]:
+	for o: Vector2 in [Vector2.ZERO, Vector2(-r, -r), Vector2(r, -r), Vector2(-r, r), Vector2(r, r)]:
+		var c := to + o
+		var was := from + o
+		# Ground this corner already hangs over it may go on hanging over, as a
+		# body may always leave a prop it overlaps: judged from the tile the
+		# middle is on now, a corner it came in with from the step above could be
+		# two levels off, and every step short of clearing it in one was refused
+		# (a body trapped for good; tests/core/test_movement.gd, the stair corner).
+		if o != Vector2.ZERO and floori(c.x) == floori(was.x) and floori(c.y) == floori(was.y):
+			continue
 		if not passable(ftx, fty, floori(c.x), floori(c.y), on, swims, tall):
 			return false
 	var t := world.table
