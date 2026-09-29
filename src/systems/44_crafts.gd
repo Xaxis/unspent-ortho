@@ -447,6 +447,9 @@ func _from_options() -> void:
 ##   ride_climbed             it has stridden a step no body could
 ##   craft:KIND, parked:KIND   one of those stands in the frame
 ##   ride_ready               a craft in reach, or one in the pack with room for it
+##   launch_ready:KIND        a KIND, carried or not yet made, could be put down here and stood on (a
+##                            raft wants water under it): what a walk to the shore
+##                            waits for, where ride_ready is true anywhere a pack is
 ##   step_off_ready           there is ground to step off onto from here
 ##   craft_wrecked, craft_salvaged
 func tour_seen(what: StringName) -> bool:
@@ -465,6 +468,9 @@ func tour_seen(what: StringName) -> bool:
 		return _wrecked_one
 	if s == "craft_salvaged":
 		return _salvaged_one
+	if s.begins_with("launch_ready:"):
+		var kind := StringName(s.substr(13))
+		return Crafts.launch_spot(game.world, game.query, kind, _at(), game.player.facing) != Vector2.INF
 	if s == "ride_ready":
 		return Crafts.nearest(crafts, _at(), Crafts.BOARD_REACH) != null or _carried_kind() != &""
 	if s == "step_off_ready":
