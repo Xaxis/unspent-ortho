@@ -2272,6 +2272,14 @@ func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: in
 		_scaled_in = fight_started
 		emit(&"turned", {"at": hero.pos, "damage": dmg, "attacker": by})
 		dmg = 0
+	# The bench plate turns a share of a hunter's or a raider's blow (never a
+	# keeper's), the part short of a whole point carried to the next blow.
+	if dmg > 0 and hero.plated and by != null and not Sentinels.is_keeper(by.row) \
+			and (by.role == Roles.HUNTER or by.raider or by.sent):
+		var turned := float(dmg) * FightRules.PLATE_TURNS + hero.plate_owed
+		var off := mini(floori(turned), dmg)
+		hero.plate_owed = turned - float(off)
+		dmg -= off
 	hero.health -= dmg
 	hero.invuln_until = now + FightRules.HURT_IFRAMES_MS
 	# A clamp keeps the feet where they stand (FightKit.clamp); rooted by the
