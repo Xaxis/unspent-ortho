@@ -2280,6 +2280,7 @@ func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: in
 		var off := mini(floori(turned), dmg)
 		hero.plate_owed = turned - float(off)
 		dmg -= off
+		emit(&"plated", {"at": hero.pos, "attacker": by, "turned": off, "damage": dmg})
 	hero.health -= dmg
 	hero.invuln_until = now + FightRules.HURT_IFRAMES_MS
 	# A clamp keeps the feet where they stand (FightKit.clamp); rooted by the
