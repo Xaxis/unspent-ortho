@@ -8,7 +8,7 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
 
 ## Sub-features
 
-- 44_crafts `src/systems/44_crafts.gd`: `tools/tour.sh tours/crafts.tour`.
+- 44_crafts `src/systems/44_crafts.gd`: `tools/tour.sh tours/crafts.tour --seed=1 --hour=11 --weather=clear:0 --give=driftwood:6,scrap:1,rag:2,hover_sled:1,walker_rig:1` (all nine frames; the shore walk waits on `launch_ready:raft`, never `ride_ready`, which is true anywhere a craft is carried).
 - 46_settlements `src/systems/46_settlements.gd`: `tools/tour.sh tours/settlements.tour`.
   - The holding (Holding): a village that saw him asked once, as many as there are free beds walk there with him, and a snatch night finds them gone; the goal line asks for a holding once the plan has taken one of them or the price is seen: `tools/tour.sh tours/holding.tour`; `tools/test.sh test_holding_move,test_vera_way_on`.
   - Footing (`WorldQuery.flat_footing`): `tools/test.sh test_system:test_a_piece_goes_up_on_ground`, `test_system:test_nothing_goes_up_astride`; on rugged land `tools/shot.sh shots/x.png --seed=7 --place=bonelands --holding=hearth,hut,plot,palisade,store` stands all five, no "no room" warning.
