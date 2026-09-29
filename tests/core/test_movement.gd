@@ -165,3 +165,38 @@ func test_clock_runs_on_real_time_not_on_walking() -> void:
 	# day. What it is actually for is the name: the clock moves on real seconds
 	# and a walk buys none of it.
 	near(c.hour(), 8.0 + Tuning.MINUTES_PER_SECOND, 1e-6, "sixty real seconds of world time")
+
+
+## THE STAIR CORNER (seed 1's Reaper lair, 2026-09-28): a body whose middle
+## crossed from a tile one level up onto one a level down, with a corner still
+## over a tile a level above the first, overhung ground two levels from where it
+## now stood. Every corner was judged from the new tile, so every step that did
+## not clear that corner in one move was refused: the player and the Reaper were
+## each found stood there for the rest of the fight. A body may always stay over
+## ground it already overhangs; only the tiles a move newly reaches are judged.
+func test_a_body_is_never_trapped_by_a_corner_it_already_overhangs() -> void:
+	var w := WorldData.new(7, 20)
+	for i in 20 * 20:
+		w.level[i] = 1
+		w.ground[i] = Ground.GRASS
+		w.country[i] = Country.COAST
+	w.level[10 * 20 + 9] = 3
+	w.level[9 * 20 + 10] = 2
+	var q := WorldQuery.new(w)
+	var r := 0.45
+	# On the level-2 tile, a corner over the level-3 one: fits, as it always did.
+	var p := Vector2(10.2, 9.9)
+	check(q.body_fits(p, r, null, false, 0), "on the middle step, overhanging the top one")
+	# Its middle steps down onto the level-1 tile; the corner over the top stays.
+	var down := q.move_body(p, Vector2(0.0, 0.2), r)
+	eq(floori(down.y), 10, "it steps down onto the bottom tile")
+	# And from there it walks on, a step at a time, as any walk does.
+	var at := down
+	for i in 20:
+		at = q.move_body(at, Vector2(0.07, 0.0), r)
+	gt(at.x - down.x, 1.0, "it walks away from the corner (%.2f tiles)" % (at.x - down.x))
+	# Nothing it did not overhang already is let in: the top is still a cliff.
+	var up := down
+	for i in 40:
+		up = q.move_body(up, Vector2(-0.07, 0.0), r)
+	eq(w.level_at(floori(up.x), floori(up.y)), 1, "and never climbs onto the top tile")
