@@ -45,8 +45,9 @@ Maren's lead to the camp; the holding; the Holdfast's price; the lab and Ruth's
 table; the second keeper. Reason to make: the holding's defence (armour, shutters
 and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
 
-1. [ ] **The road to the camp** (A). `marens_lead` → `holdfast_fight` at the camp;
-   `crew_paid` from Rook (his note's hand is held for slice 4).
+1. [x] **The road to the camp** (A). `marens_lead` → `holdfast_fight` at the camp;
+   `crew_paid` from Rook (his note's hand is held for slice 4). The survey marks the
+   camp; Rook pays for iron in plate, and the want turns to armour.
 2. [ ] **The holding** (A+C). The people the Seeker has met, kept where a yard
    can't reach them; the taken who are freed go there.
 3. [ ] **Raids answer attention** (C). Where he draws HALCYON's attention (light,
