@@ -65,6 +65,26 @@ func test_the_goal_line_walks_slice_two_end_to_end() -> void:
 	var built: String = g.get_node("46_settlements").call(&"build_here", StructureKind.LEAN_TO)
 	check(not built.begins_with("!"), "the first piece goes down: %s" % built)
 	check(Guide.goal(g) != _lead(&"holding") and Guide.last_goal_key != &"holding", "a holding stands: that want is met")
+	# SHUTTERS: a raid warned on the holding (48_raids, as its horizon does) and
+	# the goal is the beds there; Rook says why, once.
+	var raids := g.get_node("48_raids")
+	var hold: Settlement = g.get_node("46_settlements").call("here")
+	raids.call("_warn", hold, RaidStage.RAID)
+	eq(Guide.goal(g), _lead(&"shutters"), "a raid warned: shutters on the beds")
+	eq(Guide.last_goal_key, &"shutters", "keyed, so a tour can claim it")
+	var rook_word: Dictionary = raids.call("cast_word", {"character": &"rook"})
+	check(not rook_word.is_empty(), "Rook has a word about it")
+	@warning_ignore("return_value_discarded")
+	StoryTalk.of_made(rook_word)
+	check((raids.call("cast_word", {"character": &"rook"}) as Dictionary).is_empty(), "and says it once")
+	g.inventory.add(&"timber", 2)
+	g.inventory.add(&"scrap", 1)
+	g.inventory.add(&"rag", 1)
+	var boarded: String = g.get_node("46_settlements").call(&"build_here", StructureKind.SHUTTERS)
+	check(not boarded.begins_with("!"), "the shutters go up: %s" % boarded)
+	check(Guide.goal(g) != _lead(&"shutters") and Guide.last_goal_key != &"shutters", "the beds shuttered: that want is met")
+	# The raid itself is over before the story goes on.
+	hold.inside = false
 	Story.beat(&"reaper_down")
 	eq(Guide.goal(g), _lead(&"yard"), "the yard dark: its oldest screen")
 	Story.beat(&"built_halcyon")

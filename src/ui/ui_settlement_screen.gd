@@ -215,6 +215,8 @@ func _draw_kind(R: Rect2i, x0: int, y: int, kind: int) -> int:
 	y += 24
 	UiDraw.text(self, Vector2i(x0, y), _idiom_words(kind), UiTheme.TEXT_DIM)
 	y += UiTheme.LINE
+	if StructureKind.card(kind) != "":
+		y += UiSlate.wrapped(self, Vector2i(x0, y), R.end.x - UiSlate.MARGIN_R - x0, StructureKind.card(kind), UiTheme.TEXT) * UiTheme.LINE
 	var gives := _gives_words(kind, true)
 	if gives != "":
 		UiDraw.text(self, Vector2i(x0, y), gives, UiTheme.TEXT)
@@ -265,6 +267,8 @@ func _gives_words(kind: int, wants: bool) -> String:
 		parts.append("holds a line")
 	if StructureKind.masks(kind):
 		parts.append("hides what the place gives off")
+	if StructureKind.bars(kind) > 0:
+		parts.append("bars %d beds" % StructureKind.bars(kind))
 	if StructureKind.lure(kind) > 0.0:
 		parts.append("read in the place's stead")
 	if StructureKind.gives_water(kind):

@@ -13,6 +13,11 @@ const BEAT_MS := 100
 # --- hero ---
 const HEALTH := 12
 const PLATE_HEALTH := 3
+## The share of a hunter's or a raider's blow the bench plate turns (never a
+## keeper's: its bite is the keeper's own fight). A quarter: a hunter's three
+## lands as two and a quarter, so plated he stands seven of them where bare he
+## stands four (tests/gear/test_bench_plate.gd).
+const PLATE_TURNS := 0.25
 ## After any hit, even one that does no damage.
 const HURT_IFRAMES_MS := 700
 const WIND := 2400.0

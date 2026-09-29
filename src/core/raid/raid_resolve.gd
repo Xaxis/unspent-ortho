@@ -27,6 +27,9 @@ const WALL := 9.0
 const MOST_TURNED := 0.8
 ## Force a snatcher needs before it gets somebody out of the place.
 const SNATCH_NEEDS := 6.0
+## What the shutters ask of a snatcher's share on paper when every one of a
+## holding's people has gone in behind them.
+const SHUTTERED := 2.0
 ## Wear is the raid's, not the weather's: a piece struck loses at least this, so
 ## nothing is ever "raided" and unmarked.
 const LEAST := 1.0
@@ -89,7 +92,9 @@ static func resolve(s: Settlement, stage: StringName, seed_value: int, instance:
 		if mine <= 0.0:
 			continue
 		if role == RaidRoles.SNATCHER:
-			if mine < SNATCH_NEEDS:
+			# Everybody gone in behind the shutters: the boards have to be broken
+			# first, and that is twice the force (Settlement.all_barred).
+			if mine < SNATCH_NEEDS * (SHUTTERED if s.all_barred() else 1.0):
 				continue
 			var who := RaidRoles.snatch_target(s)
 			if who >= 0 and not (out["took"] as Array[int]).has(who):
