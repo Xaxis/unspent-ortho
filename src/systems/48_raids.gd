@@ -719,6 +719,15 @@ func _warn(s: Settlement, stage: StringName) -> void:
 	p.party = _party_for(s, stage)
 	plans.append(p)
 	Events.raid_warned.emit(s.id, stage)
+	if stage != RaidStage.SURVEY:
+		@warning_ignore("return_value_discarded")
+		Story.hear(Holding.RAIDED)
+	# COVER (slice 2 step 4): warned of anything past a survey, a holding with its
+	# beds shuttered sends its people in behind the boards until it is over.
+	if stage != RaidStage.SURVEY and s.shuttered() and not s.inside:
+		s.inside = true
+		_seen["went_in"] = true
+		Events.message.emit(StoryContent.DEFEND["in"] % s.name)
 	var w := RaidStage.warning(stage)
 	if not w.is_empty():
 		Events.sfx.emit(StringName(w.get("sfx", &"raid_horizon")), game.world.to_3d(_warn_from(s)))
@@ -729,6 +738,24 @@ func _warn(s: Settlement, stage: StringName) -> void:
 	_sync_marks()
 	_seen["warned"] = true
 	_seen["warned:%s" % String(stage)] = true
+
+
+## ROOK'S REASON (slice 2 step 4): the first time he talks to Rook after a raid
+## has been warned on his holding, Rook says why shutters and why the plate,
+## once (the page's mark). A made page for 49_story, which asks every system
+## before a named person's own talk, or {}.
+func cast_word(row: Dictionary) -> Dictionary:
+	if StringName(str(row.get("character", &""))) != &"rook":
+		return {}
+	if not Story.heard(Holding.RAIDED) or Story.heard(REASON_SAID):
+		return {}
+	return {
+		"made": true, "mark": REASON_SAID, "title": "Rook", "start": &"open",
+		"nodes": {&"open": {"says": PackedStringArray(StoryContent.DEFEND["reason"]), "replies": [{"text": "[leave]", "to": &""}]}},
+	}
+
+
+const REASON_SAID := &"said:rook_shutters"
 
 
 ## Where a warning comes from: off along the bearing the machines surveyed this
@@ -1034,6 +1061,7 @@ func _step_raid(p: RaidPlan, s: Settlement, now: float) -> void:
 	var live := 0
 	var working := 0
 	var came_to_work := false
+	var unreported := false
 	for row: Dictionary in p.party:
 		if p.over():
 			# One of them bought the whole party off with what was lying in the
@@ -1042,13 +1070,19 @@ func _step_raid(p: RaidPlan, s: Settlement, now: float) -> void:
 		var scout: bool = row.get("role", &"") == RaidRoles.SCOUT
 		came_to_work = came_to_work or not scout
 		var m := _mob(sim, int(row.get("mob", -1)))
+		if m != null and not m.alive and not m.removed and _raiders.has(m.id):
+			# Down in the sim, but the fight has not said so yet (`_on_killed`
+			# comes a frame later). Settled now, the kill would read as a body
+			# gone off the land, and the plan would never count its loss.
+			unreported = true
+			continue
 		if m == null or not m.alive or m.removed:
 			continue
 		live += 1
 		if not scout:
 			working += 1
 		_drive(p, s, m, sim)
-	if p.over():
+	if p.over() or unreported:
 		return
 	if live > 0 and working == 0 and came_to_work:
 		# The working party is down or gone: the scout has nothing left to watch
@@ -1392,6 +1426,21 @@ func _blow_of(m: MobState, s: Settlement) -> float:
 ## Somebody is carried off (docs/VISION.md). The snatcher has to stand in
 ## the yard unanswered to do it, so being there is a real answer to it.
 func _drive_snatcher(p: RaidPlan, s: Settlement, m: MobState, r: Dictionary, sim: FightSim) -> void:
+	# Everybody behind the shutters: the boards first, blow by blow, as a breacher
+	# takes a wall (Settlement.all_barred). The wait in the yard starts after.
+	if s.all_barred():
+		var boards := s.shutter_to_break()
+		var bd := m.pos.distance_to(boards.pos)
+		r["tore"] = true
+		r["since"] = sim.now
+		if bd > STRIKE_REACH + m.radius + StructureKind.solid(boards.kind):
+			_march(m, r, boards.pos, bd, sim)
+			return
+		m.line_a = m.pos
+		m.line_b = m.pos
+		m.aim = (boards.pos - m.pos).angle()
+		_strike(p, s, m, r, boards, sim)
+		return
 	var d := m.pos.distance_to(s.centre)
 	if d > 2.0:
 		_march(m, r, s.centre, d, sim)
@@ -1443,6 +1492,10 @@ func _take_person(s: Settlement, who: int) -> void:
 	# the player could already walk to, and breaking it is already half of a
 	# chapter's DEFENDED.
 	var region := Interference.network(game.world, s.centre)
+	# A holding on ground no region covers is still raided from a yard: they are
+	# held at the nearest one's (Taken.nearest_region), not forgotten.
+	if region < 0:
+		region = Taken.nearest_region(game.world, s.centre)
 	for sys in game.systems:
 		if sys.has_method("took") and sys.get("taken") is Taken:
 			sys.call("took", who, "", s.id, home_name, region)
@@ -1500,6 +1553,18 @@ func _end(p: RaidPlan, s: Settlement, outcome: StringName) -> void:
 		if id >= 0:
 			@warning_ignore("return_value_discarded")
 			_raiders.erase(id)
+	if s != null and s.inside:
+		# Over: whoever went in behind the shutters comes out. Said only when it
+		# cost nobody, since the losing of somebody has its own words.
+		if p.took.is_empty():
+			var tore := false
+			for row: Dictionary in p.party:
+				tore = tore or row.get("role", &"") == RaidRoles.SNATCHER
+			if tore:
+				Events.message.emit(StoryContent.DEFEND["held_snatch"])
+			Events.message.emit(StoryContent.DEFEND["held_raid"] % s.name)
+			_seen["kept_in"] = true
+		s.inside = false
 	if s != null:
 		if outcome != &"left":
 			var was := s.attention
@@ -2111,10 +2176,10 @@ func _stage() -> void:
 ##   raider_down     one of the party did not come home
 ##   quieted         a region's keeper fell and its network went quiet
 ##   attention       a holding is on the plan's books at all
-##   unfiled         nothing has ever got home about any holding, and nothing is
+##   unfiled         a holding stands, nothing has ever got home about any, and nothing is
 ##                   carrying one now: what running dark buys, said as a state
 ##                   rather than as a thing that failed to happen
-##   nothing_coming  no step is warned or under way anywhere, and no holding is
+##   nothing_coming  a holding stands, no step is warned or under way anywhere, and none is
 ##                   at a line that would start one
 func tour_seen(what: String) -> bool:
 	match what:
@@ -2185,12 +2250,19 @@ func tour_seen(what: String) -> bool:
 			# Nothing has ever got home about any holding, and nothing is on its
 			# way with one. It is the state a place that runs dark stays in, and
 			# the only way a tour can prove a raid never came: by naming the
-			# world the player is standing in rather than waiting for nothing.
+			# world the player is standing in rather than waiting for nothing. With
+			# no holding on the books at all it is no answer: dark and unregistered
+			# would read the same.
+			if places().is_empty():
+				return false
 			for s in places():
 				if s.attention > Attention.NOTHING:
 					return false
 			return _carriers.is_empty()
 		"nothing_coming":
+			# A world with no holding is not a quiet one to prove.
+			if places().is_empty():
+				return false
 			for p in plans:
 				if not p.over():
 					return false

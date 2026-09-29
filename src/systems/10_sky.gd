@@ -180,6 +180,7 @@ func _hold_bolt(hold: bool) -> void:
 
 func _process(delta: float) -> void:
 	_update(delta, false)
+	_note_jump()
 
 
 func _focus() -> Vector3:
@@ -500,6 +501,22 @@ func _tick_thunder(delta: float) -> void:
 ## the evening in two places without carrying the first one's floor into the second.
 var _tour_dimmest := INF
 var _tour_hour := -1.0
+## The composed level before the clock last JUMPED (a tour's `hour`, a sleep): a
+## first `darker` compares against it, never against nothing. Kept only on a tour.
+var _level_was := INF
+var _hour_was := -1.0
+var _before_jump := INF
+
+
+## A clock that moves more than a few minutes between two frames was set, not run.
+func _note_jump() -> void:
+	if game.options == null or game.options.tour == "" or game.sky == null:
+		return
+	var sky: SkyLight = game.sky
+	if _hour_was >= 0.0 and absf(sky.clock_hour - _hour_was) > 0.05:
+		_before_jump = _level_was
+	_hour_was = sky.clock_hour
+	_level_was = SkyLight.frame_level(sky.clock_hour, region, sky.weather_tint)
 
 
 ## What a tour can be shown of the sky: `darker`, true once THE COMPOSED PICTURE
@@ -523,6 +540,9 @@ func tour_seen(what: StringName) -> bool:
 		_tour_dimmest = INF
 	_tour_hour = sky.clock_hour
 	var now := SkyLight.frame_level(sky.clock_hour, region, sky.weather_tint)
+	# The first ask of a walk: against the light before the clock was set.
+	if _tour_dimmest == INF:
+		_tour_dimmest = _before_jump
 	if now < _tour_dimmest - 1e-5:
 		_tour_dimmest = now
 		return true

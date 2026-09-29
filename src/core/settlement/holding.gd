@@ -45,6 +45,29 @@ static func taken_from_seen(game: Game) -> bool:
 	return false
 
 
+## Marked the first time a raid past a survey is warned on a holding of his
+## (48_raids `_warn`): from then the goal asks for shutters, and Rook says why.
+const RAIDED := &"seen:raid_on_holding"
+
+
+## Once a raid has been warned on his holding and until the beds there are
+## shuttered: the goal line's shutters hop (Guide.way_goal).
+static func shutters_wanted(game: Game) -> bool:
+	return Story.heard(RAIDED) and stands(game) and not shuttered(game)
+
+
+## A holding of his in the realm he is in has shutters standing over its beds.
+static func shuttered(game: Game) -> bool:
+	var holdings := game.get_node_or_null(^"46_settlements") if game != null else null
+	if holdings == null:
+		return false
+	var realm: StringName = game.world.realm if game.world != null else &""
+	for s: Settlement in holdings.get("places"):
+		if s.realm == realm and s.shutter_to_break() != null:
+			return true
+	return false
+
+
 ## A holding of his stands in the realm he is in.
 static func stands(game: Game) -> bool:
 	var holdings := game.get_node_or_null(^"46_settlements") if game != null else null

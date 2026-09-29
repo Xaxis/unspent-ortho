@@ -697,6 +697,14 @@ func _handle(events: Array[Dictionary]) -> void:
 				var cm: MobState = e.mob
 				MobFx.glint(fx, _part_at(cm), Palette.LENS[3], cm.id, 0.8)
 				MobFx.clang(fx, _part_at(cm), int(sim.now))
+			&"plated":
+				# The bench plate took its share of a hunter's or a raider's blow
+				# (FightRules.PLATE_TURNS): a glint off his back where it struck.
+				_plated_at = Time.get_ticks_msec() / 1000.0
+				var pb: MobState = e.attacker
+				var face := (pb.pos - hero.pos).normalized() * hero.radius if pb != null else Vector2.ZERO
+				MobFx.glint(fx, _at3(hero.pos + face, 1.1), Palette.PLATE[4], int(sim.now), 0.6)
+				Events.sfx.emit(&"hit_plate", player.position)
 			&"turned":
 				# The scale coat turned a blow at the back (FightKit.scale): the
 				# scales ring where it struck and throw a glint, and no hurt.
@@ -877,6 +885,7 @@ func _crackle(from: Vector2, m: MobState, h: float) -> void:
 var _raked_at := -INF
 var _grip_failed_at := -INF
 var _turned_at := -INF
+var _plated_at := -INF
 var _share_turned_at := -INF
 var _cabled_at := -INF
 var _came_round_at := -INF
@@ -896,6 +905,12 @@ func tour_seen(what: StringName) -> bool:
 			return now - _grip_failed_at < 0.4
 		&"turned":
 			return now - _turned_at < 0.4
+		# The plate has just taken its share of a blow landing on him.
+		&"plated":
+			return now - _plated_at < 2.0
+		# The bench plate is on his back.
+		&"plate_on":
+			return FightRules.wears(game.inventory, &"plate")
 		&"share_turned":
 			return now - _share_turned_at < 0.6
 		&"cabled":

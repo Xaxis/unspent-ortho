@@ -48,6 +48,10 @@ var charge := 0.0
 var worked_at := -INF
 ## 0..1 how hungry its people are. Nobody works on an empty holding for long.
 var hunger := 0.0
+## Its people have gone in behind the shutters for a raid warned on the place
+## (48_raids, slice 2 step 4): nobody works, and a snatcher must break the boards
+## to reach whoever they bar (`barred`). Out again when the raid is over.
+var inside := false
 var _next_piece := 1
 var _next_person := 1
 
@@ -160,6 +164,36 @@ func stored() -> float:
 ## to it. For a long time it held nothing — it was written, documented, and called
 ## by nobody, so a holding took in one resident per job it had and housed them in
 ## the open, while the slate went on printing "sleeps 2" on the hut's build card.
+## How many of its people the shutters bar a snatcher from, while they are in:
+## each standing SHUTTERS bars StructureKind.bars sleepers.
+func barred() -> int:
+	if not inside:
+		return 0
+	var n := 0
+	for p in pieces:
+		if p.standing():
+			n += StructureKind.bars(p.kind)
+	return mini(n, people.size())
+
+
+## Every one of its people is behind boards a snatcher has to break.
+func all_barred() -> bool:
+	return not people.is_empty() and barred() >= people.size()
+
+
+## The shutters a snatcher breaks to get at them, or null.
+func shutter_to_break() -> Structure:
+	for p in pieces:
+		if p.standing() and StructureKind.bars(p.kind) > 0:
+			return p
+	return null
+
+
+## Standing shutters that would bar anybody at all: whether a warning sends them in.
+func shuttered() -> bool:
+	return shutter_to_break() != null and not people.is_empty()
+
+
 func beds() -> int:
 	var n := 0
 	for s in pieces:
@@ -270,7 +304,7 @@ func as_dict() -> Dictionary:
 		"pieces": out_pieces, "people": people, "looks": _looks_out(),
 		"stores": SaveCodec.counts(stores), "tally": tally,
 		"attention": attention, "night": night, "charge": charge,
-		"worked_at": SaveCodec.num(worked_at), "hunger": hunger,
+		"worked_at": SaveCodec.num(worked_at), "hunger": hunger, "inside": inside,
 		"next_piece": _next_piece, "next_person": _next_person,
 	}
 
@@ -302,6 +336,7 @@ static func from_dict(d: Dictionary) -> Settlement:
 	s.charge = float(d.get("charge", 0.0))
 	s.worked_at = SaveCodec.to_num(d.get("worked_at", -INF), -INF)
 	s.hunger = float(d.get("hunger", 0.0))
+	s.inside = bool(d.get("inside", false))
 	s._next_piece = SaveCodec.to_int(d.get("next_piece", s.pieces.size() + 1), s.pieces.size() + 1)
 	s._next_person = SaveCodec.to_int(d.get("next_person", s.people.size() + 1), s.people.size() + 1)
 	return s

@@ -53,7 +53,7 @@ and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
 3. [x] **Raids answer attention** (C). Where he draws HALCYON's attention (light,
    broken works) the region's hunters come; `holdfast_price` and Vera's "we break
    their works, they burn a village". Settlements introduced here.
-4. [ ] **Defend the holding** (B). The slice's make: armour and shutters, with the
+4. [x] **Defend the holding** (B). The slice's make: armour and shutters, with the
    reason said by the camp.
 5. [x] **The lab and Ruth's table** (A). `built_halcyon` → `gate_lab`; `was_cia` →
    `gate_meet` (`ruth_signed`, `ruth_volunteered`, `kerr_money`).
@@ -123,6 +123,8 @@ Landscape batch 2+3
 (`look/batch3`) and batch 4 props (`l2/placement`) · streaming S4j3/S5c
 (`land/s4j3`, `world/s5c`) · the crossing programs check and long-walk tour ·
 the vent-tender and G10 · walls follow-ups · web frame budgets.
+Ground above ground (S1: overhangs, cut-rock roofs; 8 commits, parked for slice 4 "Below"):
+`~/Projects/unspent-ortho-archive/above-cost-2026-09-29.bundle`, branch `world/above-cost`.
 
 Latent worldgen bugs no main seed hits yet (each moves seeds, so each gets its own GEN
 and a check that the home coast keeper stays put):

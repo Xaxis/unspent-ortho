@@ -7,6 +7,12 @@ extends Fighter
 
 var body: Body
 var inventory: Inventory
+## Wearing the bench plate (kit_plate), read with the body: it adds health and
+## turns a share of hunters' and raiders' blows (FightSim._hurt_hero).
+var plated := false
+## The part of a blow the plate has turned that did not yet make a whole point:
+## carried to the next, so small blows are turned as surely as large ones.
+var plate_owed := 0.0
 
 var wind := FightRules.WIND
 var max_wind := FightRules.WIND
@@ -97,7 +103,7 @@ func read_body() -> void:
 		return
 	health = body.health
 	crouched = body.crouched
-	var plated := FightRules.wears(inventory, &"plate")
+	plated = FightRules.wears(inventory, &"plate")
 	max_health = FightRules.max_health(plated)
 	max_wind = FightRules.max_wind(FightRules.wears(inventory, &"brace"), body.move_factor)
 	wind = minf(wind, max_wind)
