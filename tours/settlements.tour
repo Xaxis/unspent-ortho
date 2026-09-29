@@ -69,8 +69,10 @@ shot 06-somebody-on-the-plot with staffed, holding_people
 # standing is that much the worse for eight hours of weather.
 hour 18
 wait 1.6
+# `produced` is an event, spent by the await that saw it; the frame claims what
+# it left standing: a store with something in it.
 await produced 6
-shot 07-eight-hours-on with produced, stores, holding
+shot 07-eight-hours-on with stores, holding
 await worn 4
 shot 08-and-that-much-the-worse with worn, holding
 # What it laid by, carried off the page and into the creel.

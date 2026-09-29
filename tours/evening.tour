@@ -117,7 +117,10 @@ wait 0.5
 # moss is where the measured rise was worst. Same half hours, same rule.
 place moss
 hour 17
-wait 2.0
+# The clock set BACK three and a half hours: the landscape's light eases to it
+# (10_sky REGION_EASE, 2.5 s), so the frame and the walk's first `darker` wait
+# for the settled 17:00, not a picture still coming back from the night.
+wait 8.0
 shot 20-the-moss-at-1700 with land:moss
 hour 17.5
 wait 3.0
