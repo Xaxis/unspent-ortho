@@ -123,6 +123,8 @@ Landscape batch 2+3
 (`look/batch3`) and batch 4 props (`l2/placement`) · streaming S4j3/S5c
 (`land/s4j3`, `world/s5c`) · the crossing programs check and long-walk tour ·
 the vent-tender and G10 · walls follow-ups · web frame budgets.
+Ground above ground (S1: overhangs, cut-rock roofs; 8 commits, parked for slice 4 "Below"):
+`~/Projects/unspent-ortho-archive/above-cost-2026-09-29.bundle`, branch `world/above-cost`.
 
 Latent worldgen bugs no main seed hits yet (each moves seeds, so each gets its own GEN
 and a check that the home coast keeper stays put):
