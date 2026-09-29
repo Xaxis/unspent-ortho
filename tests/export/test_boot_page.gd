@@ -153,7 +153,8 @@ func test_new_game_after_the_title_plays_the_island_raised_behind_it() -> void:
 	var grown: Array[WorldData] = []
 	RealmWorlds.grower = func(s: int, n: int, k: StringName) -> WorldData:
 		var w := BootWorld.world(s, n, k)
-		grown.append(w)
+		if k == Realm.SURFACE:
+			grown.append(w)
 		return w
 	var holder := _holder()
 	var title := BootPage.open_title(holder, BootOptions.parse(["--seed=9", "--size=%d" % ISLAND])) as UiTitle

@@ -212,11 +212,16 @@ func _raise_island(w: WorldData, s: int) -> void:
 
 
 ## Keep the island's raise going (a begin refused while the last island's halted
-## raise finishes is asked again), then begin the realms under it.
+## raise finishes is asked again), and the realm under it beside it: every shaft
+## of a world goes to the realm beyond its own (Portals), so which realm that is
+## does not wait on the island. It takes one worker, and the island the rest; begun
+## only once the island stood, it was still raising 95 s into a game started at once.
 func _step_island() -> void:
 	if _raised_for < 0 or _below_begun:
 		return
 	var n := options.size
+	@warning_ignore("return_value_discarded")
+	RealmWorlds.begin(_raised_for, n, Realm.beyond(Realm.SURFACE))
 	# Where the coast is the whole island (a small world) there is nothing to raise.
 	var island: WorldData = world if world != null and world.size == n and world.seed_value == _raised_for else null
 	if island == null:

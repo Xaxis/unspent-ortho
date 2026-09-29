@@ -22,7 +22,9 @@ tap use
 await character 8
 key move_up
 key use
-await game 40
+# The island is raised behind the title (UiTitle._raise_island): a new game
+# pressed at once waits on the loading page for the rest of that raise.
+await game 120
 await waking 5
 wait 0.4
 shot 01-he-breaks-the-surface with waking,wake:staged
