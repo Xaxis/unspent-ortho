@@ -8,23 +8,36 @@ const Sx := preload("res://tests/save/save_fixture.gd")
 
 
 func test_the_narrows_lie_between_the_camp_and_the_archive_and_a_raft_crosses_them() -> void:
-	var w := WorldGen.generate(1, 1840)
+	for world_seed: int in [1, 7]:
+		_narrows(world_seed)
+
+
+func _narrows(world_seed: int) -> void:
+	var w := WorldGen.generate(world_seed, 1840)
 	var cast := StoryPlan.cast(w)
 	var camp: Vector2 = cast[&"the_camp"].pos
 	var arc: Vector2 = cast[&"the_archive"].pos
 	var c := StoryCrossing.find(w, camp, arc)
-	check(not c.is_empty(), "seed 1 has a crossing from the camp toward the archive")
+	print("  seed %d: camp %s archive %s -> %s" % [world_seed, camp, arc, c])
+	check(not c.is_empty(), "seed %d has a crossing from the camp toward the archive" % world_seed)
 	if c.is_empty():
 		return
 	check(w.same_body(c.launch, camp), "it puts in from the home body")
 	check(w.same_body(c.land, arc), "and lands on the archive's")
-	lt(float(c.water), 200.0, "narrow water, as measured (130 tiles on seed 1): %.0f" % float(c.water))
-	# The raft's hull is spent a share a tile (CraftKinds wear); it must outlast
-	# the crossing with the worst water all the way.
-	var worst: float = 0.0
-	for g: int in CraftKinds.row(&"raft").get("wear", {}):
-		worst = maxf(worst, float(CraftKinds.row(&"raft")["wear"][g]))
-	lt(float(c.water) * worst, float(CraftKinds.row(&"raft").get("hull", 0.0)), "a raft outlasts the crossing in its worst water")
+	if world_seed == 1:
+		check(absf(float(c.water) - 130.0) < 6.0, "seed 1: the narrows, measured at 130 tiles: %.0f" % float(c.water))
+	lt(Geometry2D.get_closest_point_to_segment(c.launch, camp, arc).distance_to(c.launch), StoryCrossing.REACH + 1.0, "a short walk off his road")
+	# The raft's hull is spent a share a tile by the water under it (CraftKinds
+	# wear), so the run is walked tile by tile: open water is kind to it, the
+	# shallows are not. Half the hull is the most a crossing may take, so a
+	# raft that drifts or turns back still makes the far shore.
+	var row := CraftKinds.row(&"raft")
+	var wear := 0.0
+	var n := ceili(float(c.water))
+	for i in n:
+		var p: Vector2 = c.launch + (c.land - c.launch) * (float(i) / float(n))
+		wear += float(row.get("wear", {}).get(w.ground_at(floori(p.x), floori(p.y)), 0.0))
+	lt(wear, float(row.get("hull", 0.0)) * 0.5, "seed %d: a raft crosses on half its hull (%.0f water tiles)" % [world_seed, float(c.water)])
 
 
 func _lead(key: StringName) -> String:
