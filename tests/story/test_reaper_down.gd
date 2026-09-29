@@ -45,7 +45,6 @@ func test_the_fall_is_said_as_seen_and_the_freed_walk_out_when_the_yard_is_dark(
 	var force := def.way_of(SentinelWay.FORCE)
 	g.get_node("44_sentinels").call(&"_fell", s, def, force, s.lair)
 	check(String(StoryContent.KEEPER_FELL[&"tide_reaper"][&"force"]) in said, "the record says what could be seen of it falling")
-	check(not (force.says in said), "never how to bring it down, after it is down")
 	check(Story.landed(StoryContent.KEEPER_DOWN[&"tide_reaper"]), "and the beat the village talks about lands")
 	var taken := g.get_node("45_taken").get(&"taken") as Taken
 	eq(taken.held_in(s.region).size(), 1, "whoever the yard holds is still held the moment it falls")

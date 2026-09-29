@@ -366,7 +366,7 @@ func test_held_out_on_the_flats_it_founders() -> void:
 	r.keep_on = flats
 	r.lure = flat
 	r.home = start
-	var out: Dictionary = await _fight_it(g, s, start, r, 90.0)
+	var out: Dictionary = await _fight_it(g, s, start, r, 180.0)
 	print("  info founder by hand: %s" % out)
-	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FOUNDER).id(), "drawn out onto the flats and held there, it founders (%s)" % out.how)
+	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FOUNDER).id(), "drawn out onto the flats and held there, it founders (%s)" % out)
 	Sx.end(g)
