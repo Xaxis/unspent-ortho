@@ -1443,6 +1443,10 @@ func _take_person(s: Settlement, who: int) -> void:
 	# the player could already walk to, and breaking it is already half of a
 	# chapter's DEFENDED.
 	var region := Interference.network(game.world, s.centre)
+	# A holding on ground no region covers is still raided from a yard: they are
+	# held at the nearest one's (Taken.nearest_region), not forgotten.
+	if region < 0:
+		region = Taken.nearest_region(game.world, s.centre)
 	for sys in game.systems:
 		if sys.has_method("took") and sys.get("taken") is Taken:
 			sys.call("took", who, "", s.id, home_name, region)
