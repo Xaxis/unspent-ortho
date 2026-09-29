@@ -31,20 +31,35 @@ static func build(k: Kit, v: int, c: int) -> void:
 	# The two blocks it stands on, one under each end: cinder, chipped.
 	for side: float in [-1.0, 1.0]:
 		k.slab(side * LONG * 0.34, -0.02, 0.0, 0.3, RAISE + 0.02, DEEP * 0.8, s + int(side + 2.0), P.ASH[2].lerp(P.EARTH[3], 0.3), P.ASH[3], 0.07, 0.08)
-	# The box: body, and a lid a finger proud of it all round.
-	k.chamfer(0.0, RAISE, 0.0, LONG, TALL - 0.05, DEEP, 0.03, paint, worn)
-	k.chamfer(0.0, top - 0.05, 0.0, LONG + 0.04, 0.05, DEEP + 0.04, 0.015, worn, paint.lerp(P.LINEN[3], 0.2))
-	# Rust where the paint went first: the corners and the seam under the lid.
+	# The box, its lid the top of it, and the lid's lip a finger proud all round:
+	# a band of four faces, never a second box over the first, whose top the lid
+	# would hide from every bearing (tests/render/test_found_drawn.gd).
+	k.chamfer(0.0, RAISE, 0.0, LONG, TALL, DEEP, 0.03, paint, worn)
+	var lip := paint.lerp(P.LINEN[3], 0.2)
+	var hx := LONG * 0.5 + 0.02
+	var hz := DEEP * 0.5 + 0.02
+	var y0 := top - 0.06
+	var y1 := top - 0.01
+	var corners: Array[Vector3] = [Vector3(-hx, 0, hz), Vector3(hx, 0, hz), Vector3(hx, 0, -hz), Vector3(-hx, 0, -hz)]
+	for i in 4:
+		var a := corners[i]
+		var b := corners[(i + 1) % 4]
+		k.found.quad(Vector3(a.x, y0, a.z), Vector3(b.x, y0, b.z), Vector3(b.x, y1, b.z), Vector3(a.x, y1, a.z), lip)
+	# Rust where the paint went first: the ends.
+	# Each end's quad wound to face out of its own end (z runs the other way on +X).
 	for side: float in [-1.0, 1.0]:
-		k.found.quad(Vector3(side * LONG * 0.5 + side * 0.001, RAISE + 0.02, -DEEP * 0.5), Vector3(side * LONG * 0.5 + side * 0.001, RAISE + 0.02, DEEP * 0.5),
-			Vector3(side * LONG * 0.5 + side * 0.001, RAISE + 0.12, DEEP * 0.5), Vector3(side * LONG * 0.5 + side * 0.001, RAISE + 0.12, -DEEP * 0.5), rust)
-	k.found.quad(Vector3(-LONG * 0.5, top - 0.07, DEEP * 0.5 + 0.002), Vector3(LONG * 0.5, top - 0.07, DEEP * 0.5 + 0.002),
-		Vector3(LONG * 0.5, top - 0.05, DEEP * 0.5 + 0.002), Vector3(-LONG * 0.5, top - 0.05, DEEP * 0.5 + 0.002), rust)
+		var ex := side * (LONG * 0.5 + 0.001)
+		var z0 := side * DEEP * 0.5
+		k.found.quad(Vector3(ex, RAISE + 0.02, z0), Vector3(ex, RAISE + 0.02, -z0),
+			Vector3(ex, RAISE + 0.12, -z0), Vector3(ex, RAISE + 0.12, z0), rust)
 	# Carry handles at the ends, and the hasp on the front, rusted shut.
 	for side: float in [-1.0, 1.0]:
 		var x := side * (LONG * 0.5 + 0.03)
 		k.rod(Vector3(x, top - 0.13, -0.12), Vector3(x, top - 0.13, 0.12), 0.012, 5, P.PLATE[4])
-	k.chamfer(0.0, top - 0.16, DEEP * 0.5 + 0.015, 0.08, 0.11, 0.03, 0.005, rust, P.RUST[3])
+	# The hasp: a plate on the face, under the lip (a block here had a top the lip
+	# hid from every bearing).
+	var fz := DEEP * 0.5 + 0.004
+	k.found.quad(Vector3(-0.04, top - 0.17, fz), Vector3(0.04, top - 0.17, fz), Vector3(0.04, top - 0.07, fz), Vector3(-0.04, top - 0.07, fz), rust)
 	# A stencilled stripe the paint still holds: somebody's inventory, once.
 	k.found.quad(Vector3(-0.3, RAISE + 0.12, DEEP * 0.5 + 0.003), Vector3(-0.08, RAISE + 0.12, DEEP * 0.5 + 0.003),
 		Vector3(-0.08, RAISE + 0.17, DEEP * 0.5 + 0.003), Vector3(-0.3, RAISE + 0.17, DEEP * 0.5 + 0.003), P.LINEN[3])
