@@ -53,7 +53,7 @@ and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
 3. [x] **Raids answer attention** (C). Where he draws HALCYON's attention (light,
    broken works) the region's hunters come; `holdfast_price` and Vera's "we break
    their works, they burn a village". Settlements introduced here.
-4. [ ] **Defend the holding** (B). The slice's make: armour and shutters, with the
+4. [x] **Defend the holding** (B). The slice's make: armour and shutters, with the
    reason said by the camp.
 5. [x] **The lab and Ruth's table** (A). `built_halcyon` → `gate_lab`; `was_cia` →
    `gate_meet` (`ruth_signed`, `ruth_volunteered`, `kerr_money`).
