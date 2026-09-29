@@ -62,4 +62,6 @@ fell raider
 fell raider
 wait 1.2
 await reprisal_met 5
-shot 05-met-on-the-road
+near wreckage
+wait 0.8
+shot 05-met-on-the-road with prop:wreckage
