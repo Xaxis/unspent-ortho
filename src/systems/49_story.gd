@@ -360,6 +360,23 @@ func _start_talk(row: Dictionary) -> void:
 					Events.sfx.emit(&"ui_slate_switch", Vector3.ZERO)
 					view.refresh()
 					return
+	# Somebody of a village that has seen him, with a holding of his standing:
+	# he can ask them to come where a yard cannot reach them (46_settlements
+	# `holding_offer`, Holding). Before the region's own asks, since what he asks
+	# of them is the more pressing thing.
+	if StringName(str(row.get("character", &""))) == &"" and not row.has("talk"):
+		for sys in game.systems:
+			if sys.has_method(&"holding_offer"):
+				var offer: Dictionary = sys.call(&"holding_offer", row)
+				if not offer.is_empty():
+					talk = StoryTalk.of_made(offer)
+					view.talk = talk
+					view.choice = 0
+					game.talking = true
+					_hush(true)
+					Events.sfx.emit(&"ui_slate_switch", Vector3.ZERO)
+					view.refresh()
+					return
 	# Somebody who lives here, and this region has something to ask of him or to
 	# thank him for (StorySubarc): that comes before their trade's own words.
 	if StringName(str(row.get("character", &""))) == &"" and not row.has("talk"):
@@ -604,10 +621,15 @@ func _witness() -> void:
 	if _lost_one():
 		_witnessed(StoryContent.WITNESS_ON[&"lost"])
 	var price: StringName = StoryContent.WITNESS_ON[&"burned_seen"]
-	if not Story.landed(price) and _burned_in_sight() and Story.beat(price):
+	# SEEING the roofs is its own fact (Holding.wanted reads it): the price can
+	# land from a talk too, where he has only been told of a burning.
+	if not Story.heard(Holding.SEEN_BURNED) and _burned_in_sight():
+		@warning_ignore("return_value_discarded")
+		Story.hear(Holding.SEEN_BURNED)
 		# What he sees first, then what it means; once, as `_witnessed` says.
 		Events.message.emit(StoryContent.REPRISAL[&"seen"])
-		Events.message.emit(StoryContent.beat_says(price))
+		if Story.beat(price):
+			Events.message.emit(StoryContent.beat_says(price))
 	# The three memories the secret is hidden in, all back, in any order: he holds
 	# it. Which version is decided at the channel, by the order he relives them in.
 	if StorySecret.complete():

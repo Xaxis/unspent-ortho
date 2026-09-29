@@ -179,7 +179,7 @@ static func _goal_of(game: Game) -> String:
 		var armour := armour_goal(game)
 		if armour != "":
 			return armour
-		var way := way_goal()
+		var way := way_goal(game)
 		if way != "":
 			return way
 		if not inv.has(&"iron_ore") and not inv.has(&"iron"):
@@ -277,9 +277,18 @@ const WAY: Array[Dictionary] = [
 ]
 
 
-static func way_goal() -> String:
+static func way_goal(game: Game) -> String:
 	if Story.chose(CAMP_PAID) != StringName(StoryContent.PAID[CAMP_PAID].pick):
 		return ""
+	# THE HOLDING (Holding): once the plan has taken somebody out of a village
+	# that saw him, or he has seen the price, and until a holding of his stands,
+	# that comes first. Nothing may explain the taking before it has happened, so
+	# where only the price has landed it is said for a burned village instead.
+	if Holding.wanted(game) and not Holding.stands(game) and StoryContent.LEAD.has(&"holding"):
+		_key = &"holding"
+		if not Holding.taken_from_seen(game):
+			return String(StoryContent.HOLDING_MOVE["lead_burned"])
+		return String(StoryContent.LEAD[&"holding"])
 	for hop: Dictionary in WAY:
 		if not Story.landed(hop.after):
 			continue

@@ -5552,6 +5552,11 @@ const LEAD := {
 	&"rook_again": "Back to the crew, with what the yard told you: they want someone who knows the old machines.",
 	&"vera": "The Holdfast's leader, for what she wants of you: she is waiting at the camp.",
 	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
+	# Once the plan has taken somebody out of a village that saw him (or he has
+	# seen the price), until a holding of his stands: Guide.way_goal, Holding.
+	# Where only the price has landed, HOLDING_MOVE.lead_burned says it instead,
+	# since nothing may explain the taking before `seeker`.
+	&"holding": "Beds at the holding, for the people a yard would take: set down its first piece.",
 }
 
 # A talk that pays, keyed by the talk's node where the deal is closed
@@ -5787,6 +5792,23 @@ const REPRISAL := {
 	"met": "The hunters lie on the road. Nothing reaches the roofs.",
 	# He comes to the roofs a broken yard's hunters burned (holdfast_price).
 	"seen": "The houses are black to the ground. Somebody left a pot on the fire.",
+}
+
+# THE HOLDING (slice 2 step 2; 46_settlements, Holding): a village that has seen
+# him is asked, once, to come to his holding; as many as it has free beds walk
+# there with him, and a snatch night finds them gone. Never on one screen with
+# the machines' own "HOLDING." (testimony): his holding is a roof, theirs a file.
+const HOLDING_MOVE := {
+	# What he says to them.
+	"offer": "I've beds, and a roof over them. Come with me.",
+	# Their answer, as they gather to walk.
+	"yes": "Let me bank the fire. Then we'll walk.",
+	# Not beds for all of them: who stays (%s, Holding.stay_words).
+	"short": "No bed for %s yet. They stay by their own fire.",
+	# On the glass, the night a snatch comes for a village whose people all left.
+	"gone": "They came to the doors in the night. In the morning, nobody was behind them.",
+	# LEAD.holding, where the price has landed and nobody has yet been taken.
+	"lead_burned": "Beds at the holding, for the people a burned village leaves: set down its first piece.",
 }
 
 # --- what a machine is for (channel 3: machines, by being watched) -------------
