@@ -68,7 +68,8 @@ The machines are perpetual, some half-broken. **Enclaves** (owner, 2026-09-28) a
 parts of HALCYON cut off where bandwidth is low: separate minds, as hour 63 predicts.
 They see people as HALCYON at large does not, seek a balance with them, and resist
 the Guest's bargain. To HALCYON and the Guest humans stay ants; the enclaves are the
-exception the secret explains.
+exception the secret explains. HALCYON was built on his self-model, so an enclave
+speaks in his cadence, faintly: worn and drifted, never the Seeker's sharpness.
 
 ## The journey
 

@@ -1,0 +1,89 @@
+# WHAT TO HOLD FOR WHAT THE GOAL WANTS (Survival.describe_target, Guide.goal_wants):
+# the pinned goal is beds at a holding, a lean-to wants a rag, and with the pick
+# in hand the wreckage in reach breaks for plate. The prompt under it says what to
+# hold for the rag; with the knife in hand it gathers the rag and says no more.
+#
+#   TOUR_TIMEOUT=600 tools/tour.sh tours/tool-hint.tour --seed=1 --hour=9 --weather=clear:0 --beats=marens_lead --give=pick:1,iron_ore:1,kit_plate:1
+#
+# Oyster Row sees him at the spawn; paid by the crew and away at their camp, the
+# small hours take one of its people, and the holding is wanted.
+coast calm
+wait 1.0
+at cast:rook
+await cast:rook 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+tap move_down
+tap move_down
+wait 0.3
+press use
+wait 0.5
+press use
+wait 0.8
+hour 5 +1
+await taken 10
+# The night has left him hungry, which outranks every other want: fed first.
+try 10
+  near bush
+  walk 0,0 0.05
+  press use 0.1
+  await took:berries 8
+  tap inventory
+  wait 0.5
+  choose berries
+  tap use
+  wait 0.4
+  tap inventory
+  wait 1.0
+  await goal:holding 2
+end
+try 3
+  near bush
+  walk 0,0 0.05
+  press use 0.1
+  await took:berries 8
+  tap inventory
+  wait 0.5
+  choose berries
+  tap use
+  wait 0.4
+  tap inventory
+  wait 1.0
+end
+try 3
+  near bush
+  walk 0,0 0.05
+  press use 0.1
+  await took:berries 8
+  tap inventory
+  wait 0.5
+  choose berries
+  tap use
+  wait 0.4
+  tap inventory
+  wait 1.0
+end
+village 0
+wait 1.0
+tap inventory
+wait 0.5
+choose pick
+tap use
+wait 0.3
+tap inventory
+wait 0.4
+near wreckage
+wait 0.8
+shot 01-the-pick-in-hand-says-what-to-hold with goal:holding
+tap inventory
+wait 0.5
+choose knife
+tap use
+wait 0.3
+tap inventory
+wait 0.4
+near wreckage
+wait 0.8
+shot 02-the-knife-in-hand-gathers-the-rag with goal:holding
