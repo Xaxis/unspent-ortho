@@ -72,6 +72,10 @@ var _act_at := -1.0
 var _check := 0.0
 ## Village index -> the world minute its people first saw him.
 var seen_by: Dictionary = {}
+## Village index -> how many of its own people went to live at his holding
+## (46_settlements `holding_offer`, Holding). They are out of the village for
+## good: its people come out that many short, and a snatch night finds them gone.
+var moved: Dictionary = {}
 
 
 func setup(g: Game) -> void:
@@ -83,6 +87,7 @@ func setup(g: Game) -> void:
 		_ring(ring)
 	_stream(true)
 	SaveGame.register(&"seen_by", _save_seen, _load_seen)
+	SaveGame.register(&"moved_to_holding", _save_moved, _load_moved)
 	# Before the first frame, so a shot of a street is already indifferent to the
 	# player rather than turning to look at them for the first half second.
 	_count_crowd()
@@ -198,6 +203,50 @@ func _note_seen() -> void:
 ## The world minute village `v`'s people first saw him, INF if they never have.
 func seen_at(v: int) -> float:
 	return float(seen_by.get(v, INF))
+
+
+## How many of village `v`'s own people still live there: the six it keeps,
+## less those in a yard, one a burned roof cost it, and those gone to his
+## holding. What 48_raids asks before it sends for anybody.
+func people_of(v: int) -> int:
+	if v < 0 or v >= game.world.villages.size():
+		return 0
+	var centre: Vector2 = game.world.villages[v].get("pos", Vector2.INF)
+	return maxi(0, PER_VILLAGE - _taken_from(v).x - (1 if _burned_near(centre) else 0) - int(moved.get(v, 0)))
+
+
+## A burned roof (48_raids) stands in the village round `centre`.
+func _burned_near(centre: Vector2) -> bool:
+	for p in game.query.props_near(centre, 12.0):
+		if p.kind == PropKind.HOUSE_BURNT:
+			return true
+	return false
+
+
+## The village's own people standing out on the land now, nearest `at` first.
+func out_of(v: int, at: Vector2) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for f: Dictionary in folk:
+		if int(f.get("village", -1)) == v and f.get("state", &"out") == &"out" and not bool(f.get("street", false)):
+			out.append(f)
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return (a.pos as Vector2).distance_squared_to(at) < (b.pos as Vector2).distance_squared_to(at))
+	return out
+
+
+func _save_moved() -> Variant:
+	var out := {}
+	for v: int in moved:
+		out[str(v)] = int(moved[v])
+	return out
+
+
+func _load_moved(v: Variant) -> void:
+	moved.clear()
+	if not v is Dictionary:
+		return
+	for k: String in v:
+		moved[k.to_int()] = SaveCodec.to_int(v[k])
 
 
 func _save_seen() -> Variant:
@@ -361,7 +410,7 @@ func _populate(index: int, centre: Vector2) -> void:
 	# first. A burned village has lost one more, whatever the plan took. One got back empty stands among them and never answers.
 	var gone := _taken_from(index)
 	var own := mini(rows.size(), PER_VILLAGE)
-	var drop := mini(gone.x + (1 if burned else 0), own)
+	var drop := mini(gone.x + (1 if burned else 0) + int(moved.get(index, 0)), own)
 	for k in range(own - drop, own):
 		rows[k] = {}
 	var hush := gone.y
@@ -735,6 +784,11 @@ func _walk_to(f: Dictionary, target: Vector2, pace: float, delta: float) -> floa
 	f.pos = (f.pos as Vector2) + step
 	f.facing = lerp_angle(float(f.facing), step.angle(), 1.0 - exp(-10.0 * delta))
 	return step.length() / maxf(delta, 1e-5)
+
+
+## Put `f`'s figure where its row now says it is (a body moved, not walked).
+func place_row(f: Dictionary) -> void:
+	_place(f)
 
 
 func _place(f: Dictionary) -> void:

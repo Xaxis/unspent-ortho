@@ -106,6 +106,7 @@ var _produced := false
 func setup(g: Game) -> void:
 	super.setup(g)
 	SaveGame.register(&"settlements", _save, _load)
+	Events.story_chose.connect(_on_story_chose)
 
 
 func started() -> void:
@@ -977,6 +978,184 @@ func _sync_people() -> void:
 					_put_to_work(s, who, p)
 
 
+# --- the people who saw him, kept (Holding; ROADMAP slice 2 step 2) -----------
+
+## How near their place a body walking in has to be to be home.
+const ARRIVED := 1.5
+const AMONG := 4.0
+## Bodies walking from their village to the holding: body key -> true.
+var _walking: Dictionary = {}
+
+
+## THE ASK, once per village that has seen him, while any of its own people live
+## there and a holding of his stands: his offer, and their answer sized by the
+## beds. A made page for 49_story (`_start_talk` asks every system), or {}.
+func holding_offer(row: Dictionary) -> Dictionary:
+	var v := int(row.get("village", -1))
+	var folk := _folk()
+	if v < 0 or folk == null or not (folk.get("seen_by") as Dictionary).has(v):
+		return {}
+	var s := _holding_for(row.get("pos", game.player.pos) as Vector2)
+	if s == null:
+		return {}
+	var n: int = folk.call(&"people_of", v)
+	if n <= 0:
+		return {}
+	# Asked once already: asked again only when a bed has come free since, so
+	# their own words are not buried under an offer he cannot keep.
+	if Story.chose(StringName("holding.%d" % v)) != &"" and Holding.free_beds(s) == 0:
+		return {}
+	var sp := Holding.split(n, Holding.free_beds(s))
+	var village := str(game.world.villages[v].get("name", ""))
+	var answer := PackedStringArray()
+	if sp.x > 0:
+		answer.append(StoryContent.HOLDING_MOVE["yes"])
+	if sp.y > 0:
+		answer.append(StoryContent.HOLDING_MOVE["short"] % Holding.stay_words(sp.y, village))
+	return {
+		"made": true, "mark": StringName("holding.%d" % v), "title": "somebody who lives here", "start": &"open",
+		"nodes": {
+			&"open": {"says": PackedStringArray(), "pick_at": StringName("holding.%d" % v), "replies": [
+				{"text": StoryContent.HOLDING_MOVE["offer"], "pick": &"come", "to": &"answer"},
+				{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+			]},
+			&"answer": {"says": answer, "replies": [{"text": "[leave]", "to": &""}]},
+		},
+	}
+
+
+## His holding nearest `at` in the realm he is in, or null.
+func _holding_for(at: Vector2) -> Settlement:
+	var best: Settlement = null
+	for s in places:
+		if s.realm != realm_here():
+			continue
+		if best == null or s.centre.distance_to(at) < best.centre.distance_to(at):
+			best = s
+	return best
+
+
+func _on_story_chose(at: StringName, pick: StringName) -> void:
+	if pick != &"come" or not String(at).begins_with("holding."):
+		return
+	@warning_ignore("return_value_discarded")
+	move_in(String(at).trim_prefix("holding.").to_int())
+
+
+## As many of village `v`'s people as the holding has free beds come to live
+## there: on its books at once (a save mid-walk keeps them kept), and walking
+## there with him (the Escort's walk: they go while he is near) from where they
+## stood. Returns how many came.
+func move_in(v: int) -> int:
+	var folk := _folk()
+	if folk == null or game.player == null:
+		return 0
+	var s := _holding_for(game.player.pos)
+	if s == null:
+		return 0
+	var n: int = folk.call(&"people_of", v)
+	var go := Holding.split(n, Holding.free_beds(s)).x
+	var bodies: Array = folk.call(&"out_of", v, game.player.pos)
+	for i in go:
+		var who := s.take_person_id()
+		s.people.append(who)
+		s.looks[who] = s.id * 1013 + who
+		if i >= bodies.size():
+			continue
+		var row: Dictionary = bodies[i]
+		var spot := s.centre + Vector2.from_angle(float(who) * 2.39) * 1.6
+		row["village"] = RESIDENT
+		row["role"] = &"led"
+		row["target"] = spot
+		row["home"] = spot
+		row["door"] = spot
+		var key := "%d:%d" % [s.id, who]
+		_bodies[key] = row
+		_walking[key] = true
+	var moved: Dictionary = folk.get("moved")
+	moved[v] = int(moved.get(v, 0)) + go
+	return go
+
+
+## Whoever has walked in off the road is home: they stand about like the rest.
+## Left behind by him, they find the way on their own: they were never at risk
+## on it (unlike the taken, 45_taken), only company for the walk.
+func _walk_in() -> void:
+	var folk := _folk()
+	for key: String in _walking.keys():
+		var row: Dictionary = _bodies.get(key, {})
+		if row.is_empty() or not is_instance_valid(row.get("model") as Node):
+			_walking.erase(key)
+			continue
+		var far := game.player != null and (row.pos as Vector2).distance_to(game.player.pos) > Escort.LOSE_TILES
+		if far and folk != null:
+			row["pos"] = row.target
+			folk.call(&"place_row", row)
+		# Within a step or two of their place, or in among the holding's pieces: a
+		# piece may stand on the spot itself, and among them is home.
+		var inside := false
+		for s in places:
+			if s.id == key.get_slice(":", 0).to_int():
+				inside = (row.pos as Vector2).distance_to(s.centre) < AMONG
+		if inside or (row.pos as Vector2).distance_to(row.target as Vector2) < ARRIVED:
+			row["role"] = &"idle"
+			_walking.erase(key)
+
+
+## The names `tour_place` answers (tests/tours/test_tour_claims.gd reads this).
+const TOUR_PLACES: Array[String] = ["holding_ask"]
+
+
+## `holding_ask`: beside one of the people of the village he is in, out on the
+## land and clear of any door (a door takes the key, 21_doors), facing them.
+func tour_place(what: String) -> Vector2:
+	if what != "holding_ask":
+		return Vector2.INF
+	var v := _tour_village()
+	if v < 0:
+		return Vector2.INF
+	var centre: Vector2 = game.world.villages[v].get("pos", Vector2.INF)
+	var folk := _folk()
+	var doors := game.get_node_or_null(^"21_doors")
+	for row: Dictionary in folk.call(&"out_of", v, centre):
+		var p: Vector2 = (row.pos as Vector2) + Vector2(1.0, 0.0)
+		var clear := true
+		if doors != null:
+			for t: Threshold in doors.get("doors"):
+				if t.door.distance_to(p) < 2.5:
+					clear = false
+					break
+		if clear:
+			row["role"] = &"idle"
+			row["wait"] = 99.0
+			_tour_face = PI
+			return p
+	return Vector2.INF
+
+
+var _tour_face := NAN
+
+
+func tour_face(_what: String) -> float:
+	return _tour_face
+
+
+## The streamed-in village nearest him (35_folk `_spawned`), or -1.
+func _tour_village() -> int:
+	var folk := _folk()
+	if folk == null:
+		return -1
+	var best := -1
+	var best_d := INF
+	for i: int in (folk.get("_spawned") as Dictionary):
+		var at: Vector2 = game.world.villages[i].get("pos", Vector2.INF)
+		var d := at.distance_to(game.player.pos)
+		if d < best_d:
+			best_d = d
+			best = i
+	return best
+
+
 # --- drawing -----------------------------------------------------------------
 
 func _node_for(s: Settlement, p: Structure) -> StructureModel:
@@ -1082,6 +1261,7 @@ func _process(delta: float) -> void:
 	settle_up()
 	_sync_nodes()
 	_sync_people()
+	_walk_in()
 
 
 ## A blow from any hand at all has to be felt at once: the raids package holds a
@@ -1220,6 +1400,14 @@ static func _kind_named(word: String) -> int:
 func tour_seen(what: StringName) -> bool:
 	var s := here()
 	match what:
+		# A village that saw him has sent its people to the holding (Holding).
+		&"moved":
+			var folk := _folk()
+			return folk != null and not (folk.get("moved") as Dictionary).is_empty()
+		# And they have walked in: none of them still on the road.
+		&"walked_in":
+			var folk2 := _folk()
+			return folk2 != null and not (folk2.get("moved") as Dictionary).is_empty() and _walking.is_empty()
 		&"holding":
 			return s != null and not s.pieces.is_empty()
 		&"built":

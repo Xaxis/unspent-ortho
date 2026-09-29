@@ -360,6 +360,23 @@ func _start_talk(row: Dictionary) -> void:
 					Events.sfx.emit(&"ui_slate_switch", Vector3.ZERO)
 					view.refresh()
 					return
+	# Somebody of a village that has seen him, with a holding of his standing:
+	# he can ask them to come where a yard cannot reach them (46_settlements
+	# `holding_offer`, Holding). Before the region's own asks, since what he asks
+	# of them is the more pressing thing.
+	if StringName(str(row.get("character", &""))) == &"" and not row.has("talk"):
+		for sys in game.systems:
+			if sys.has_method(&"holding_offer"):
+				var offer: Dictionary = sys.call(&"holding_offer", row)
+				if not offer.is_empty():
+					talk = StoryTalk.of_made(offer)
+					view.talk = talk
+					view.choice = 0
+					game.talking = true
+					_hush(true)
+					Events.sfx.emit(&"ui_slate_switch", Vector3.ZERO)
+					view.refresh()
+					return
 	# Somebody who lives here, and this region has something to ask of him or to
 	# thank him for (StorySubarc): that comes before their trade's own words.
 	if StringName(str(row.get("character", &""))) == &"" and not row.has("talk"):

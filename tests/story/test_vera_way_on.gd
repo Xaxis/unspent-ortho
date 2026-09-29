@@ -28,6 +28,25 @@ func test_the_goal_line_walks_slice_two_end_to_end() -> void:
 	eq(Guide.goal(g), _lead(&"armour"), "paid: the armour the plate is for")
 	g.inventory.add(&"kit_plate", 1)
 	check(Guide.goal(g) != _lead(&"armour"), "the armour made, that want is met")
+	# THE HOLDING (Holding): he has seen what a broken yard's hunters leave, and
+	# before anybody he knows has been taken the goal says it for the burned roofs.
+	Story.beat(&"holdfast_price")
+	eq(Guide.goal(g), String(StoryContent.HOLDING_MOVE["lead_burned"]), "the price seen: beds, for the people a burned village leaves")
+	eq(Guide.last_goal_key, &"holding", "keyed, so a tour can claim it")
+	# The plan takes somebody out of a village that saw him, as a snatch night does.
+	var folk := g.get_node("folk")
+	var v := 0
+	var at: Vector2 = g.world.villages[v].get("pos", Vector2.INF)
+	(folk.get("seen_by") as Dictionary)[v] = g.clock.minutes
+	g.get_node("45_taken").call(&"took", -1, "", -1, str(g.world.villages[v].get("name", "")),
+		g.world.region_at(floori(at.x), floori(at.y)))
+	eq(Guide.goal(g), _lead(&"holding"), "one of them taken: beds, for the people a yard would take")
+	# He founds a holding the way a player does: its first piece, set down.
+	g.inventory.add(&"driftwood", 6)
+	g.inventory.add(&"rag", 2)
+	var built: String = g.get_node("46_settlements").call(&"build_here", StructureKind.LEAN_TO)
+	check(not built.begins_with("!"), "the first piece goes down: %s" % built)
+	check(Guide.goal(g) != _lead(&"holding") and Guide.last_goal_key != &"holding", "a holding stands: that want is met")
 	Story.beat(&"reaper_down")
 	eq(Guide.goal(g), _lead(&"yard"), "the yard dark: its oldest screen")
 	Story.beat(&"built_halcyon")

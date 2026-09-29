@@ -1977,6 +1977,12 @@ func _come_for_the_seen() -> void:
 			came_for[v] = -INF
 			continue
 		came_for[v] = due
+		# KEPT (Holding): every one of them went to his holding. The night comes
+		# for the village and finds nobody behind the doors.
+		if int(folk.call(&"people_of", v)) <= 0:
+			_seen["kept"] = true
+			Events.message.emit(StoryContent.HOLDING_MOVE["gone"])
+			continue
 		_seen["snatched"] = true
 		for sys in game.systems:
 			if sys.has_method("took") and sys.get("taken") is Taken:
