@@ -4,7 +4,7 @@
 # reading taken off the body — and then nothing comes, because nothing was ever
 # filed.
 #
-#   tools/tour.sh tours/raids-dark.tour --seed=7 --hour=15 --weather=clear:0 \
+#   TOUR_FIXED_FPS=60 tools/tour.sh tours/raids-dark.tour --seed=7 --hour=15 --weather=clear:0 \
 #     --held=axe_felling \
 #     --give=driftwood:8,rag:6,deadwood:8,stone:8,timber:6,reeds:8
 #
@@ -41,16 +41,13 @@ wait 0.6
 shot 02-the-hearth-is-the-mistake with app:holding, holding
 tap pause
 wait 0.8
-# The hearth goes up on flat ground a step off his own tile (WorldQuery.flat_footing),
-# so stand at it: the watcher reads the fire he is sitting by.
-near fire
-wait 0.4
 # A watcher on the ground beside it reads what the page just said. From here the
 # reading is a thing in the world, and the player has until it gets clear of the
 # yard — which for a watcher is a long, slow walk.
 spawn watcher
 await noticed 12
-shot 03-a-watcher-reads-the-hearth with mob:watcher, holding, station:fire
+# The hearth is a piece of the holding, a step off his own tile (WorldQuery.flat_footing).
+shot 03-a-watcher-reads-the-hearth with mob:watcher, holding, piece:hearth
 # Take it off the body before it travels. Its working part is its lens, which is
 # the side it is reading you with.
 try 25
@@ -58,7 +55,8 @@ walkto part 1.4
 tap swing
 await hit 1.4
 end
-try 25
+# Sixty of life behind half a second of guard: about two dozen swings, one a try.
+try 40
 walkto part 1.2
 tap swing
 await killed 1.6
