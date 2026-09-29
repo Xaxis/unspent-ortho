@@ -3523,11 +3523,11 @@ const PLACED := {
 
 # The places whose readable thing the story stands itself, and what kind of prop
 # it is (49_cast `_stand_things`): nothing the world grows there is sure to be a
-# screen or a box. A CONSOLE reads as a terminal and is never robbed for parts;
-# an ARCHIVE reads as a notebook.
+# screen or a box. Both are read and never robbed: a CONSOLE as a terminal, a
+# DOC_BOX as a notebook (an ARCHIVE is the plan's, and a `use` takes from it).
 const STOOD := {
 	&"the_yard": PropKind.CONSOLE,
-	&"the_camp": PropKind.ARCHIVE,
+	&"the_camp": PropKind.DOC_BOX,
 }
 
 # --- words that belong to a kind of room ---------------------------------------

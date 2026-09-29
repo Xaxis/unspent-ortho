@@ -9,7 +9,7 @@ extends TestCase
 
 const Sx := preload("res://tests/save/save_fixture.gd")
 ## What stands at each place, and how far off its slot it may stand.
-const THINGS := {&"the_yard": PropKind.CONSOLE, &"the_camp": PropKind.ARCHIVE}
+const THINGS := {&"the_yard": PropKind.CONSOLE, &"the_camp": PropKind.DOC_BOX}
 const NEAR := 10.0
 
 
@@ -22,6 +22,19 @@ func _args(s: int) -> Array:
 func _slot(g: Game, slot: StringName) -> Vector2:
 	var placed := StoryPlan.cast(g.world)
 	return placed[slot].pos if placed.has(slot) else Vector2.INF
+
+
+## Walk up to a slot: the story stands its thing once he is near and the ground
+## round it is streamed in (49_cast STAND_NEAR, on its twice-a-second check).
+func _visit(g: Game, slot: StringName) -> void:
+	var at := _slot(g, slot)
+	# `place`, as a tour's warp does: the fight body owns where he stands.
+	var p := g.player.place(at + Vector2(3.0, 0.0))
+	g.view.ensure_near(p)
+	for i in 120:
+		await process_frames(1)
+		if not _stood(g, int(THINGS[slot]), at).is_empty():
+			break
 
 
 ## The things set down in play of `kind` near `at` (a save keeps these).
@@ -42,6 +55,8 @@ func test_the_yard_and_the_camp_each_stand_a_thing_with_their_own_words() -> voi
 		for slot: StringName in THINGS:
 			var at := _slot(g, slot)
 			check(at.is_finite(), "seed %d casts %s" % [s, slot])
+			eq(_stood(g, int(THINGS[slot]), at).size(), 0, "nothing stood there before he comes near")
+			await _visit(g, slot)
 			var got := _stood(g, int(THINGS[slot]), at)
 			eq(got.size(), 1, "seed %d: one thing stands at %s" % [s, slot])
 			if got.size() != 1:
@@ -50,6 +65,13 @@ func test_the_yard_and_the_camp_each_stand_a_thing_with_their_own_words() -> voi
 			var t := Vector2i(p.pos.floor())
 			check(g.query.standable(t.x, t.y) and not Ground.is_water(g.world.ground_at(t.x, t.y)), "on dry ground you can stand at")
 			check(g.query.body_fits(p.pos, 0.6), "and not inside a building's footprint")
+			for q: WorldProp in g.query.props_near(p.pos, StoryProps.REACH + 2.0):
+				if q.id != p.id and StoryProps.readable(q.kind):
+					check(q.pos.distance_to(p.pos) - q.solid > StoryProps.REACH, "no other words in reach of it to take its `use`")
+			for row: Dictionary in Sx.system(g, "49_cast").get("people"):
+				check((row.pos as Vector2).distance_to(p.pos) > StoryProps.REACH, "no one cast stands where its `use` would speak to them (%s)" % row.character)
+			for gate: Dictionary in StoryGates.all(g.world):
+				check(p.pos.distance_to(gate.pos as Vector2) > 1.5 + StoryProps.CLOSE + PropKind.SOLID[p.kind], "far enough from %s that reading it never crosses" % gate.id)
 			for st: SentinelState in Sentinels.states(g.world):
 				var def := Sentinels.by_id(st.design)
 				check(p.pos.distance_to(st.lair) > def.reach, "clear of %s's ground" % st.design)
@@ -68,6 +90,7 @@ func test_they_stand_where_they_stood_after_a_save_and_a_stream() -> void:
 	await process_frames(2)
 	var was := {}
 	for slot: StringName in THINGS:
+		await _visit(a, slot)
 		var got := _stood(a, int(THINGS[slot]), _slot(a, slot))
 		if got.size() == 1:
 			was[slot] = got[0].pos
@@ -75,15 +98,13 @@ func test_they_stand_where_they_stood_after_a_save_and_a_stream() -> void:
 	# Out to the camp and back: the sections round both stream in and out.
 	var home: Vector2 = a.player.pos
 	for slot: StringName in THINGS:
-		a.player.pos = _slot(a, slot)
-		a.view.ensure_near(a.player.pos)
+		a.view.ensure_near(a.player.place(_slot(a, slot)))
 		await process_frames(20)
 		var seen := false
 		for q: WorldProp in a.query.props_near(_slot(a, slot), NEAR):
 			seen = seen or (q.kind == int(THINGS[slot]) and was.has(slot) and q.pos == was[slot])
 		check(seen, "walked up to, %s's thing is there in the streamed world" % slot)
-	a.player.pos = home
-	a.view.ensure_near(home)
+	a.view.ensure_near(a.player.place(home))
 	await process_frames(20)
 	eq(Sx.system(a, "05_save").call("save_to", 3), "", "saved")
 	Sx.end(a)
@@ -92,6 +113,7 @@ func test_they_stand_where_they_stood_after_a_save_and_a_stream() -> void:
 	var b := Sx.game(tree, [], o)
 	await process_frames(2)
 	for slot: StringName in THINGS:
+		await _visit(b, slot)
 		var got := _stood(b, int(THINGS[slot]), _slot(b, slot))
 		eq(got.size(), 1, "one thing at %s after the load, not a second set down beside it" % slot)
 		if got.size() == 1 and was.has(slot):
@@ -118,6 +140,8 @@ func test_the_order_holds_house_then_lab_then_table() -> void:
 	Story.forget()
 	var g := Sx.game(tree, _args(1))
 	await process_frames(2)
+	for slot: StringName in THINGS:
+		await _visit(g, slot)
 	var box := _read_at(g, &"the_camp")
 	check(box.size() > 0 and box[0].begins_with("A typed page, folded small"), "the box's page, read before the lab, is shut")
 	check(not Story.landed(&"was_cia"), "and lands nothing")
