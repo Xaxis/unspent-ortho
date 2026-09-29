@@ -9,7 +9,7 @@ await ring_up 5
 shot 00-level
 mouse 0,-2400 1.5
 wait 0.5
-await ring 5
+await ring_drawn 5
 shot 01-looking-up-at-it
 wait 2
 shot 02-still-looking

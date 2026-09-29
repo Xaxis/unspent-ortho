@@ -20,8 +20,10 @@ shot 02-something-comes-for-the-yard with mob:runner
 await turret_target 8
 wait 0.35
 shot 03-the-gun-comes-round with mob:runner, turret_target
+# The hit is an event, spent by the await that saw it: the frame claims the gun
+# has fired, which a hit is the proof of.
 await turret_hit 10
-shot 04-the-yard-answers-back with turret_hit
+shot 04-the-yard-answers-back with turret_fired
 until turret_kill 20
 wait 0.6
 shot 05-after with turret_fired
