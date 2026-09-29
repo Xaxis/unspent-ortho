@@ -36,18 +36,28 @@ var _since := 0.0
 
 func setup(g: Game) -> void:
 	game = g
+	StoryWorld.stood_ids.clear()
 	SaveGame.register(&"stood", _save_stood, _load_stood)
 
 
 func _save_stood() -> Variant:
-	return _stood.keys().map(func(k: StringName) -> String: return String(k))
+	var out := {}
+	for slot: StringName in _stood:
+		out[String(slot)] = int(_stood[slot])
+	return out
 
 
 func _load_stood(v: Variant) -> void:
 	_stood.clear()
-	if v is Array:
+	StoryWorld.stood_ids.clear()
+	if v is Dictionary:
 		for k: Variant in v:
-			_stood[StringName(str(k))] = true
+			_mark_stood(StringName(str(k)), int(v[k]))
+
+
+func _mark_stood(slot: StringName, id: int) -> void:
+	_stood[slot] = id
+	StoryWorld.stood_ids[id] = slot
 
 
 func started() -> void:
@@ -138,8 +148,9 @@ func _cast() -> void:
 ## check: only then are the props round it streamed in, and the spot is chosen
 ## clear of them (a sign beside the screen takes the `use` meant for it).
 const STAND_NEAR := 40.0
-## The slots whose thing has been set down, kept in the save beside the thing
-## itself (SaveCore keeps props set down in play), so a load never sets a second.
+## The slots whose thing has been set down, slot -> its prop id, kept in the save
+## beside the thing itself (SaveCore keeps props set down in play), so a load
+## never sets a second and the words find the same prop (StoryWorld.stood_ids).
 var _stood: Dictionary = {}
 
 
@@ -155,9 +166,7 @@ func _stand_things(from: Vector2) -> void:
 			continue
 		var spot := _thing_spot(at, absi(int(slot.hash())))
 		if spot.is_finite():
-			@warning_ignore("return_value_discarded")
-			Survival.add_prop(game, kind, spot)
-			_stood[slot] = true
+			_mark_stood(slot, Survival.add_prop(game, kind, spot).id)
 
 
 ## How far a stood thing keeps from any era gate: past 20_realms' GATE_REACH (1.5)
@@ -392,9 +401,11 @@ func _beside_stood(slot: StringName) -> Vector2:
 ## The thing stood at `slot`, asked of the streamed window round it: null
 ## while its ground is not in (whether it was ever stood is `_stood`).
 func _stood_at(slot: StringName) -> WorldProp:
+	if not _stood.has(slot):
+		return null
 	var at: Vector2 = placed[slot].pos
 	for q: WorldProp in game.query.props_near(at, StoryWorld.STOOD_REACH):
-		if StoryWorld.stood_place(game.world, q) == slot:
+		if q.id == int(_stood[slot]):
 			return q
 	return null
 
