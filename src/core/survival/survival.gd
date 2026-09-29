@@ -193,7 +193,10 @@ static func threat_near(game: Game) -> bool:
 	for m in sim.mobs:
 		if not m.alive or m.removed or not bool(m.row.get("hostile", true)):
 			continue
-		if m.indifferent() and not m.roused():
+		# At its work (indifferent, or wary and not stirred): not a threat yet.
+		# A wary keeper standing over its own intake read as one, and no take
+		# of its feed was ever let start (test_ways, starving it by hand).
+		if m.at_work() and not m.roused():
 			continue
 		if m.approach == &"dart" and not m.roused():
 			continue
@@ -467,9 +470,11 @@ static func finish_work(game: Game) -> bool:
 	var now := game.clock.minutes
 	if takes >= int(o.uses):
 		var back := INF if float(o.regrow) < 0.0 else now + float(o.regrow) * 60.0
-		if o.keep:
+		if o.keep and not Sentinels.feeds_a_keeper(game.world, prop):
 			state.spent[k] = back
 		else:
+			# Taken away, or a keeper's own feed robbed out: gone from the world,
+			# where the keeper's hunger reads it (44_sentinels look_at).
 			game.world.depleted[prop.id] = back
 			if game.view != null:
 				game.view.refresh_props(prop)

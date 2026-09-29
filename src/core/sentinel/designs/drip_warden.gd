@@ -80,10 +80,7 @@ static func make() -> SentinelDef:
 	d.phases = [keeping, sealing, dry]
 
 	var force := SentinelWay.make(SentinelWay.FORCE)
-	force.says = "The pump on its back, then the lance feed on its spray side, then its front once it runs dry. A stone off the roof stalls it."
 	var founder := SentinelWay.make(SentinelWay.FOUNDER, 1500.0, [Ground.SAND])
-	founder.says = "The silt at the sump's edge will not carry it. Bring it onto the silt and hold it there."
 	var starve := SentinelWay.make(SentinelWay.STARVE, 4000.0)
-	starve.says = "The pump houses and the pipe run feed it. Rob them and the galleries flood round it."
 	d.ways = [force, founder, starve]
 	return d

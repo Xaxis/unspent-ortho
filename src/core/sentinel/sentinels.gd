@@ -535,6 +535,18 @@ static func feeds(world: WorldData, at: Vector2, def: SentinelDef) -> int:
 
 ## The same over a list of props already gathered (`WorldQuery.props_near`), so a
 ## running game asks the spatial index instead of walking every prop in the world.
+## Whether `prop` is a work a keeper of `world` feeds on (its design's `feeds`,
+## within FEED_SHARE of its reach of its lair). Robbed out, such a work is gone
+## from the world (Survival.finish_work: world.depleted), which is what the
+## keeper's hunger counts; a kept take would leave it feeding it for ever.
+static func feeds_a_keeper(world: WorldData, prop: WorldProp) -> bool:
+	for s in states(world):
+		var def := by_id(s.design)
+		if def != null and def.feeds.has(prop.kind) and prop.pos.distance_to(s.lair) <= def.reach * FEED_SHARE:
+			return true
+	return false
+
+
 static func feeds_among(props: Array, at: Vector2, def: SentinelDef, depleted: Dictionary, reach: float) -> int:
 	if def.feeds.is_empty():
 		return 0

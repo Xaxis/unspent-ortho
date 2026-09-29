@@ -442,9 +442,7 @@ func _fell(s: SentinelState, def: SentinelDef, way: SentinelWay, at: Vector2) ->
 	if not _falling_long_ago:
 		_stage(&"fall", at, FALL_S)
 	Events.sentinel_fell.emit(s.region, s.land, s.how)
-	# THE RECORD'S LINE, NOT THE WAY'S HINT: what could be seen of it falling
-	# (StoryContent.KEEPER_FELL). `way.says` is how to bring it down, and said after
-	# it was down it read as advice to a player who no longer needed it.
+	# THE RECORD'S LINE: what could be seen of it falling (StoryContent.KEEPER_FELL).
 	var fell: Dictionary = StoryContent.KEEPER_FELL.get(def.id, {})
 	if fell.has(way.id()):
 		Events.message.emit(String(fell[way.id()]))

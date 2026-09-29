@@ -69,6 +69,12 @@ extends GameSystem
 ##                          hands it back); wind=W holds the wind at W, -1..1
 ##   zoom F                 camera view height
 ##   walk DX,DY SECS [run]  hold a SCREEN direction for SECS (real input path)
+##   drive READER SECS [UNTIL]  hand the keys to a reader script (res://tests/fight/,
+##                          a player-like driver with `act()` over the fight) for
+##                          up to SECS or until UNTIL is seen: its walk goes in as
+##                          the move keys (LockOn.keys_for), its swing and dodge as
+##                          the presses the keys make; a down it comes to from walks
+##                          back to where it began. Logs its tries and seconds.
 ##   dodge DX,DY [SECS]     hold a SCREEN direction and press the dodge key while it
 ##                          is down (the dodge goes that way), walking on for SECS (0.6)
 ##   press ACTION [SECS]    hold an input action (use, swing, dodge, inventory, craft, lamp, pause, map...)
@@ -504,6 +510,8 @@ func _run() -> void:
 				game.scripted_seconds = parts[2].to_float()
 				while game.scripted_seconds > 0.0:
 					await get_tree().physics_frame
+			"drive":
+				ok = await _drive(parts[1], parts[2].to_float() if parts.size() > 2 else 60.0, parts[3] if parts.size() > 3 else "")
 			"dodge":
 				# The move keys held a SCREEN direction and the dodge key pressed while
 				# they are down, as a player dodges aside: the dodge goes the keys' way
@@ -1819,6 +1827,46 @@ func _say_state(when: String) -> void:
 func _keys_toward(dir: Vector2) -> Vector2:
 	var lock: Vector2 = game.player.hero.lock if game.player.hero != null else Vector2.INF
 	return LockOn.keys_for(dir, game.camera.yaw_now(), game.player.pos, lock, game.camera.shoulder)
+
+
+## `drive`: a reader plays the fight through the keys (see the command list).
+func _drive(path: String, secs: float, until: String) -> bool:
+	var sim: FightSim = game.player.sim
+	var script := load(path) as GDScript
+	if script == null or sim == null:
+		printerr("tour %s: no reader at %s" % [_name, path])
+		return false
+	var reader: Object = script.new(sim)
+	if "human" in reader:
+		reader.set("human", 1)
+	if "home" in reader:
+		reader.set("home", sim.hero.pos)
+	var downs := [0]
+	var t0_ms := [sim.now]
+	var on_end := func(o: StringName) -> void:
+		if o == &"downed" or o == &"carried":
+			downs[0] += 1
+			print("tour %s: drive: downed, try %d at %.1f s" % [_name, downs[0] + 1, (sim.now - t0_ms[0]) / 1000.0])
+	Events.fight_ended.connect(on_end)
+	var stop := Time.get_ticks_msec() + int(secs * 1000.0 * machine_slack())
+	var ok := until == ""
+	while sim.now - t0_ms[0] < secs * 1000.0 and Time.get_ticks_msec() < stop:
+		if until != "" and _answered(until):
+			ok = true
+			break
+		reader.call(&"act")
+		var hero := sim.hero
+		var dir := hero.move
+		game.scripted_move = _keys_toward(dir.normalized()) * minf(1.0, dir.length()) if dir.length() > 0.01 else Vector2.ZERO
+		game.scripted_run = hero.run
+		game.scripted_seconds = 0.05
+		await get_tree().physics_frame
+	game.scripted_seconds = 0.0
+	Events.fight_ended.disconnect(on_end)
+	if until != "":
+		_forget(until)
+	print("tour %s: drive: %s after %d tries, %.1f s of fight" % [_name, "done" if ok else "not done", downs[0] + 1, (sim.now - t0_ms[0]) / 1000.0])
+	return ok
 
 
 func _key(action: String) -> bool:

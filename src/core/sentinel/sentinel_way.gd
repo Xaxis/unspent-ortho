@@ -51,8 +51,7 @@ var beside: Array[int] = []
 var aboard: StringName = &""
 ## How long the condition must hold (sim ms). 0 for FORCE.
 var hold_ms := 0.0
-## One line a player could be told, and one for whoever reads the design.
-var says := ""
+## A line for whoever reads the design.
 var note := ""
 
 

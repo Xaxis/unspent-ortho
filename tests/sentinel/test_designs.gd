@@ -37,7 +37,6 @@ func test_each_one_can_be_beaten_three_ways_and_none_of_them_is_trading_hits() -
 		var kinds := {}
 		for w in def.ways:
 			kinds[w.kind] = true
-			check(w.says != "", "%s: the %s way can be said in a line" % [def.id, w.id()])
 		eq(kinds.size(), 3, "%s: three DIFFERENT ways" % def.id)
 		check(def.has_way(SentinelWay.FORCE), "%s can be taken apart" % def.id)
 		# Its body is guarded somewhere, or spent-only, so force is never standing
