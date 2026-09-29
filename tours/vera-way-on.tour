@@ -1,0 +1,80 @@
+# Vera and the way on (docs/ROADMAP.md slice 2, step 7), through the real keys:
+# the crew paid for the iron and the armour made, the yard read and Rook told, so
+# the goal is the Holdfast's leader at the camp. She says what the Holdfast is
+# (holdfast_price), then answers what he saw of the village (vera_knew, "filed
+# under weather"), then names the war's archive across the water (war_archive):
+# the goal line and the survey carry him on to the next leg.
+#
+#   tools/tour.sh tours/vera-way-on.tour --seed=1 --hour=11 --weather=clear:0 --beats=marens_lead,reaper_down,built_halcyon,holdfast_hope --give=pick:1,iron_ore:1,kit_plate:1
+#
+# `at cast:NAME` asks 49_cast where a person stands; nothing is a coordinate.
+coast calm
+wait 0.6
+
+# --- the crew pay for the iron --------------------------------------------------------------
+at cast:rook
+await cast:rook 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+tap move_down
+tap move_down
+wait 0.3
+press use
+wait 0.4
+press use
+wait 0.8
+wait 1.0
+shot 01-the-goal-is-the-holdfasts-leader with met:rook,goal:vera
+
+# --- what the Holdfast is, and what it costs --------------------------------------------------
+at cast:vera
+await cast:vera 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+press use
+await beat:holdfast_price 3
+wait 0.4
+shot 02-what-the-holdfast-costs with talking,beat:holdfast_price
+press pause
+wait 0.5
+
+# --- filed under weather ----------------------------------------------------------------------
+press use
+await talking 3
+wait 0.4
+tap move_down
+tap move_down
+wait 0.3
+press use
+await beat:vera_knew 3
+wait 0.4
+shot 03-filed-under-weather with talking,beat:vera_knew
+press pause
+wait 0.5
+
+# --- where he would start -----------------------------------------------------------------------
+press use
+await talking 3
+wait 0.4
+tap move_down
+wait 0.3
+press use
+wait 0.4
+press use
+await beat:war_archive 3
+wait 0.4
+shot 04-the-archive-across-the-water with talking,beat:war_archive
+press pause
+wait 0.8
+shot 05-the-goal-is-the-archive with beat:war_archive,goal:archive
+
+press map 0.2
+await app:map 6
+wait 0.6
+shot 06-the-survey-marks-the-archive with app:map
+press map 0.2
+await app:none 5

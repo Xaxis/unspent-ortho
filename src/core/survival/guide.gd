@@ -179,6 +179,9 @@ static func _goal_of(game: Game) -> String:
 		var armour := armour_goal(game)
 		if armour != "":
 			return armour
+		var way := way_goal()
+		if way != "":
+			return way
 		if not inv.has(&"iron_ore") and not inv.has(&"iron"):
 			return _led(&"ore", "Take the pick to the ore in the rock.")
 		var camp := camp_goal()
@@ -243,6 +246,7 @@ const CAMP_PAID := &"rook.iron"
 static func camp_goal() -> String:
 	var paid := Story.chose(CAMP_PAID) == StringName(StoryContent.PAID[CAMP_PAID].pick)
 	if Story.landed(LEAD_BEAT) and not paid and StoryContent.LEAD.has(&"camp"):
+		_key = &"camp"
 		return String(StoryContent.LEAD[&"camp"])
 	return ""
 
@@ -254,7 +258,35 @@ static func armour_goal(game: Game) -> String:
 	for at: StringName in StoryContent.PAID:
 		var row: Dictionary = StoryContent.PAID[at]
 		if Story.chose(at) == row.pick and not game.inventory.has(row.makes) and StoryContent.LEAD.has(&"armour"):
+			_key = &"armour"
 			return String(StoryContent.LEAD[&"armour"])
+	return ""
+
+
+## THE WAY ON (ROADMAP slice 2): once the crew have paid, each hop of the
+## Holdfast's chain is the want until the beat that ends it lands, so every beat
+## of the slice is reached by the goal line alone. In order: the dark yard's
+## screen (built_halcyon), back to Rook (holdfast_hope), Vera (war_archive), and
+## the archive across the water until he has met the man there. Each hop's line
+## is StoryContent.LEAD[key].
+const WAY: Array[Dictionary] = [
+	{"key": &"yard", "after": &"reaper_down", "until": &"built_halcyon"},
+	{"key": &"rook_again", "after": &"built_halcyon", "until": &"holdfast_hope"},
+	{"key": &"vera", "after": &"holdfast_hope", "until": &"war_archive"},
+	{"key": &"archive", "after": &"war_archive", "met": &"otto"},
+]
+
+
+static func way_goal() -> String:
+	if Story.chose(CAMP_PAID) != StringName(StoryContent.PAID[CAMP_PAID].pick):
+		return ""
+	for hop: Dictionary in WAY:
+		if not Story.landed(hop.after):
+			continue
+		var done := Story.met(hop.met) if hop.has("met") else Story.landed(hop.until)
+		if not done and StoryContent.LEAD.has(hop.key):
+			_key = hop.key
+			return String(StoryContent.LEAD[hop.key])
 	return ""
 
 
