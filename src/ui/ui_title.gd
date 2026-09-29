@@ -116,6 +116,13 @@ func setup(o: BootOptions) -> void:
 		# A shot has a few frames, not a second: draw the coast now and show it.
 		_show(WorldGen.generate(seed_value, coast_size()), seed_value, null, [], true)
 		_fade = 0.0
+	elif BootWorld.offered_for(seed_value, coast_size()):
+		# The loading page made this coast and its first view: shown now, it fades
+		# straight up, where through the worker it went dark again first (1.5 s).
+		var w := BootWorld.world(seed_value, coast_size())
+		var v := BootWorld.view(w)
+		v.name = "world"
+		_show(w, seed_value, v)
 	else:
 		_begin(seed_value)
 	menu.open()
@@ -141,13 +148,15 @@ func _begin(s: int) -> void:
 	var size := coast_size()
 	# World, view set-up (the mesher's fields) and the opening are all slow; none of
 	# them touch the tree, so they are made on a worker. Chunks stream in later.
+	# At high priority: Godot keeps low-priority work to a share of the pool, and
+	# behind the slate's two bakes this waited 3 s on the web before it began.
 	_task = WorkerThreadPool.add_task(func() -> void:
 		var w := BootWorld.world(s, size)
 		var v := BootWorld.view(w)
 		v.name = "world"
 		_next_opening = UiTitle.opening(w)
 		_next_view = v
-		_next_world = w)
+		_next_world = w, true)
 
 
 ## Show world `w`. `v` is its view, already set up (or null to set one up now).
