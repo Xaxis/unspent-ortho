@@ -418,3 +418,25 @@ village 0
 wait 2.0
 await home_again 10
 shot 21-oyster-row-with-its-own-home-again with home_again
+
+# 11 WHAT HE OWES THE CREW (Guide._goal_of, LEAD.crew): the Reaper down and Oyster
+# Row whole, the goal is the crew's iron again, said for the dark yard, never "go
+# mine" out of nowhere. The day's fights have left him hungry, and hunger outranks
+# any lead: berries off Oyster Row's bushes, each eaten off the carry page, until
+# the goal is the crew's.
+try 10
+  near bush
+  walk 0,0 0.05
+  press use 0.1
+  await took:berries 8
+  tap inventory
+  wait 0.5
+  choose berries
+  tap use
+  wait 0.4
+  tap inventory
+  wait 1.0
+  await goal:crew 2
+end
+wait 1.0
+shot 22-fed-the-goal-is-the-crews-iron with goal:crew

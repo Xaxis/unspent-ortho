@@ -4,7 +4,7 @@
 # before noon, the first meeting won by reading the runner's tell and
 # striking its working side, a slide round a tree, and something put down and
 # taken back. tours/wild.tour is the same first minutes with nothing scripted.
-#   TOUR_TIMEOUT=420 tools/tour.sh tours/feel.tour --give=driftwood:6,scrap:1
+#   TOUR_TIMEOUT=420 tools/tour.sh tours/feel.tour --give=driftwood:6,scrap:1 --beats=marens_lead
 # (--give brings the tip's plate and tops the wood up, as core_loop does.)
 #
 # Wake: the guide says what to want first.

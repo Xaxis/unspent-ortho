@@ -1,10 +1,16 @@
-# The goal past the first tools (mechanics pass 2c; Guide.next_elite): with a
-# pick in the bag and ore off the rock, the standing goal stops asking for the
-# first hour's things and names the next elite material the player lacks, how
-# it is had, and where: the coast's own first, the machine that walks here.
-# A tour, because `58_guide` is off in every tools/shot.sh run (tours/guide.tour).
+# The long game past the first tools (mechanics pass 2c; Guide.within_reach):
+# with a pick in the bag and ore off the rock, the making page's "within reach"
+# row names the next elite material the player lacks, how it is had, and where:
+# the coast's own first, the machine that walks here. The goal line never says
+# it: nobody pointed him at it, so up there it read as a recipe out of nowhere.
+# With no lead given the goal line is empty (frame 01).
 #   tools/tour.sh tours/late_goal.tour --seed=7 --hour=11 --weather=clear:0 --give=pick:1,iron_ore:1
 coast calm
 place spawn
 wait 3.0
-shot 01-the-goal-names-an-elite-material-and-where
+shot 01-no-lead-no-goal-line
+tap craft
+await app:crafting 8
+shot 02-the-making-page-names-an-elite-material-and-where with app:crafting
+tap craft
+await app:none 6

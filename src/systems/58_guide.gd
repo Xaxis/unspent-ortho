@@ -106,8 +106,10 @@ func _process(delta: float) -> void:
 	if goal != _goal and (_goal == "" or _t - _goal_at >= SPACING):
 		_goal = goal
 		_goal_at = _t
-		_say(goal)
-		return
+		# An emptied goal is remembered, not said: the line keeps what was heard.
+		if goal != "":
+			_say(goal)
+			return
 	if _t < _hints_after:
 		return
 	var h := Guide.hint_for(game, retired)

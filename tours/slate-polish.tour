@@ -3,7 +3,7 @@
 # a fire the player lays and watched from the page, a thing put down from the
 # carrying page, and a location caption that is right the instant the player is
 # somewhere else.
-#   tools/tour.sh tours/slate-polish.tour --seed=7 --hour=10 --weather=clear:0 --give=driftwood:8,stone:4
+#   tools/tour.sh tours/slate-polish.tour --seed=7 --hour=10 --weather=clear:0 --give=driftwood:8,stone:4 --beats=marens_lead
 coast calm
 wait 1.6
 shot 01-woken-the-ping-has-the-top
