@@ -218,8 +218,10 @@ func _begin_reveal(m: MobState) -> void:
 ## The reveal's look holds the player's keys for its turn in and out as well as
 ## REVEAL_S (42_stage, on the frame's clock): the keeper holds off for as long as
 ## the keys are held, or it runs its first bite at a player who cannot move.
+## Struck all the same (FightSim._wake: disturbed), it is awake: a blow is not
+## held off by a camera.
 func _hold_off_while_staged() -> void:
-	if _reveal_body == null or not _reveal_body.alive:
+	if _reveal_body == null or not _reveal_body.alive or _reveal_body.disturbed:
 		return
 	var stage := _stager()
 	if stage != null and bool(stage.call(&"looking")) and StringName(stage.call(&"why")) == &"reveal":
