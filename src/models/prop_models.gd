@@ -43,6 +43,7 @@ const Mesas := preload("res://src/models/props/mesas.gd")
 const Materials := preload("res://src/models/props/materials.gd")
 const FallenTower := preload("res://src/models/props/fallen_tower.gd")
 const SprayerGantry := preload("res://src/models/props/sprayer_gantry.gd")
+const DocBox := preload("res://src/models/props/doc_box.gd")
 
 
 ## Raw, bake-ready arrays of one model.
@@ -301,6 +302,8 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Materials.build(k, kind, variant, country)
 		PropKind.SPRAYER_GANTRY:
 			SprayerGantry.build(k, variant, country)
+		PropKind.DOC_BOX:
+			DocBox.build(k, variant, country)
 		# The house it was, in its landscape's form, burned (props/burnt.gd).
 		PropKind.HOUSE_BURNT:
 			Houses.build(k, PropKind.HOUSE, variant, country)

@@ -4,6 +4,7 @@ static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"kerr", "name": "Kerr", "title": "Cairn's founder",
 		"at": &"then_lab", "talk": &"kerr", "trade": &"keeper",
+		"appears_when": &"built_halcyon",
 		"look": {"build": &"man", "hair": &"fair", "hair_style": &"crop", "beard": &"none"},
 		"wants": "To be first.",
 		"fears": "Second place.",

@@ -1,0 +1,43 @@
+# The lab and Ruth's table, shut (docs/ROADMAP.md slice 2, step 5): on the first
+# leg, before the Reaper is down and before he has felt that he built HALCYON,
+# the story's two doors stand and give nothing. The steel box at the crew's camp
+# shows a page that means nothing to him yet; the yard's oldest screen is busy.
+# Its partner, tours/lab-and-table-open.tour, walks both gates once they open.
+#
+#   tools/tour.sh tours/lab-and-table.tour --seed=1 --hour=11 --weather=clear:0 --beats=body_new
+#
+# `at stood:SLOT` asks 49_cast where the story stood that place's thing; `near
+# KIND` then faces it. Nothing here is a coordinate.
+coast calm
+wait 0.6
+
+# --- the box at the crew's camp ------------------------------------------------------------
+at stood:the_camp
+await stood:the_camp 4
+at stood:the_camp
+near document_box
+wait 0.8
+zoom 7
+wait 0.6
+shot 00-the-box-at-the-camp
+zoom 14
+wait 0.6
+press use
+await reading 3
+wait 0.4
+shot 01-the-box-page-means-nothing-yet with reading
+press pause
+wait 0.5
+
+# --- the yard's oldest screen, while the Reaper keeps the yard ----------------------------
+at stood:the_yard
+await stood:the_yard 4
+at stood:the_yard
+near console
+wait 0.6
+press use
+await reading 3
+wait 0.4
+shot 02-the-screen-is-busy with reading
+press pause
+wait 0.5
