@@ -311,14 +311,15 @@ static func _hold_hint(game: Game, t: WorldProp, c: Dictionary) -> String:
 			continue
 		var o := _choose(game, state, t, way)
 		if o.ok and wants.has(StringName(o.option.item)):
-			var item := Items.display_name(StringName(o.option.item))
+			var item := Items.many_name(StringName(o.option.item))
 			if way == &"":
 				return HOLD_HINT_BARE % [Items.display_name(game.inventory.held), item]
 			return HOLD_HINT % [Items.display_name(way), item]
 	return ""
 
 
-## The hint's words (for wright): what to hold, and what for.
+## The hint's words (wright's): what to hold, and what for; the item named as
+## many (Items.many_name), never "for piece of plate".
 const HOLD_HINT := " (hold the %s for %s)"
 const HOLD_HINT_BARE := " (put the %s away for %s)"
 

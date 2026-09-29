@@ -40,3 +40,20 @@ func test_the_prompt_says_what_to_hold_for_what_the_goal_wants() -> void:
 	check(not Survival.describe_target(g).contains("rag"), "with a rag in the bag, no hint")
 	Story.forget()
 	Fx.done(g)
+
+
+## The hint names an item as a plural or a mass ("for rags", "for iron"), never a
+## count noun ("for piece of plate"). Every item a GOAL_MAKES goal can want is
+## named here, so a goal that comes to want a new one is read before it ships.
+const HINT_WORD := {&"driftwood": "driftwood", &"rag": "rags", &"scrap": "plate", &"iron": "iron"}
+
+
+func test_every_item_a_goal_can_want_is_named_as_many() -> void:
+	for key: StringName in Guide.GOAL_MAKES:
+		var makes: Dictionary = Guide.GOAL_MAKES[key]
+		var needs: Dictionary = StructureKind.ROWS[int(makes.piece)].get("cost", {}) if makes.has("piece") \
+			else Crafting.recipe(StringName(makes.recipe)).get("needs", {})
+		for item: StringName in needs:
+			check(HINT_WORD.has(item), "%s wants %s: its hint word is decided here" % [key, item])
+			if HINT_WORD.has(item):
+				eq(Items.many_name(item), String(HINT_WORD[item]), "the hint says: for %s" % HINT_WORD[item])

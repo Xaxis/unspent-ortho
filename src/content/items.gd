@@ -165,7 +165,7 @@ const DEFS := {
 	# Cut out of a pressure block on the frost sea with a steel edge (Takes): the
 	# clear heart of a slab of sea ice, the raw the deep ice lens is ground from.
 	&"lens_ice": {"name": "lens ice", "bulk": 1.0, "group": &"material", "icon": [&"lens_ice", &"rime", &"slate"]},
-	&"scrap": {"name": "piece of plate", "bulk": 2.0, "group": &"material"},
+	&"scrap": {"name": "piece of plate", "many": "plate", "bulk": 2.0, "group": &"material"},
 	# Steel wire rope cut out of a lift core in the Ruined Metropolis: the raw
 	# its elite material is drawn from (EliteStock: tower_cable). Machine-made,
 	# so it is drawn in the module's violet like plate is.
@@ -555,6 +555,13 @@ static func def(id: StringName) -> Dictionary:
 
 static func display_name(id: StringName) -> String:
 	return def(id).get("name", String(id))
+
+
+## The item named as many or as a mass ("for rags", "for plate"), where its name
+## is a count noun: `many` when the row gives one, else its name.
+static func many_name(id: StringName) -> String:
+	var d := def(id)
+	return String(d.get("many", d.get("name", String(id))))
 
 
 static func has_edge(id: StringName) -> bool:
