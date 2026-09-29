@@ -49,3 +49,33 @@ tour_header_args() {
     END { if (joining) flush(acc) }
   ' "$file"
 }
+
+# The run's own clock from the same first line: its TOUR_TIMEOUT and
+# TOUR_FIXED_FPS prefix, one KEY=VALUE per line. tour.sh takes each the shell has
+# not set, so a long tour is not cut off at the default 180 s by whoever runs it
+# bare (home-coast.tour was, at frame 14).
+#
+#   tour_header_env tours/x.tour    -> TOUR_TIMEOUT=600 / TOUR_FIXED_FPS=60
+tour_header_env() {
+  local file="$1"
+  local base
+  base="$(basename "$file")"
+  awk -v base="$base" '
+    /^#/ {
+      line = $0
+      sub(/^#[ \t]*/, "", line)
+      at = index(line, "tools/tour.sh")
+      if (at == 0) next
+      rest = substr(line, at + length("tools/tour.sh"))
+      split(rest, words, /[ \t]+/)
+      path = ""
+      for (w in words) if (words[w] ~ /\.tour$/) path = words[w]
+      n = split(path, bits, "/")
+      if (n == 0 || bits[n] != base) next
+      m = split(substr(line, 1, at - 1), pre, /[ \t]+/)
+      for (i = 1; i <= m; i++) if (pre[i] ~ /^TOUR_(TIMEOUT|FIXED_FPS)=[0-9]+$/) print pre[i]
+      exit
+    }
+    !/^#/ { exit }
+  ' "$file"
+}

@@ -21,6 +21,14 @@ if [ $# -eq 0 ]; then
 else
   echo "tour options: $* (from the command line)"
 fi
+# The header's clock, where the shell gave none (tour_header_env).
+while IFS= read -r kv; do
+  key="${kv%%=*}"
+  if [ -n "$kv" ] && [ -z "${!key:-}" ]; then
+    export "$kv"
+    echo "tour env: $kv (from its header)"
+  fi
+done < <(tour_header_env "$tour")
 # One run of a tour at a time per checkout. shots/tour/<name>/ is a single
 # directory: two runs overwrite each other's frames and both come out worthless
 # with a green exit, which is the worst failure this project has, because the
