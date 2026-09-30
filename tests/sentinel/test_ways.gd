@@ -196,7 +196,7 @@ func test_robbing_its_feeds_by_hand_starves_it() -> void:
 	Sx.use_root("ways-starve")
 	# Robbing eight works is hours of the clock: a player going to do it carries
 	# something to eat, and eats when the body says so.
-	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear", "--give=fish:6"])
+	var g := await Sx.played(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear", "--give=fish:6"])
 	# Bodies numbered from the same place whatever ran before in this process:
 	# the reader's hands are hashed on a body's id (Reader.human).
 	MobState._next_id = 900000
@@ -391,7 +391,7 @@ const NONE := {"fallen": false, "how": &"", "tries": 99, "downs": 0, "s": INF, "
 ## held throughout when `locked`, from above or over the shoulder. Returns the tally, NONE when there was no fight.
 func _by_force(locked: bool, shoulder := false, human := 1) -> Dictionary:
 	Sx.use_root("ways-force")
-	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear",
+	var g := await Sx.played(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear",
 		"--view=shoulder" if shoulder else "--view=top"])
 	# Bodies numbered from the same place whatever ran before in this process:
 	# the reader's hands are hashed on a body's id (Reader.human).
@@ -421,7 +421,7 @@ func test_held_out_on_the_flats_it_founders() -> void:
 	if not stepped_now():
 		return
 	Sx.use_root("ways-founder")
-	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear"])
+	var g := await Sx.played(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear"])
 	# Bodies numbered from the same place whatever ran before in this process:
 	# the reader's hands are hashed on a body's id (Reader.human).
 	MobState._next_id = 900000

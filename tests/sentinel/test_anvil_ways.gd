@@ -28,7 +28,7 @@ func _anvil(g: Game) -> SentinelState:
 ## with the reason checked.
 func _take(seed_value: int, way: int) -> Dictionary:
 	Sx.use_root("anvil-%d" % seed_value)
-	var g := Sx.game(tree, ["--seed=%d" % seed_value, "--hour=11", "--weather=clear:0", "--held=knife_shear"])
+	var g := await Sx.played(tree, ["--seed=%d" % seed_value, "--hour=11", "--weather=clear:0", "--held=knife_shear"])
 	# Bodies numbered from the same place whatever ran before in this process:
 	# the reader's hands are hashed on a body's id (Reader.human).
 	MobState._next_id = 900000
