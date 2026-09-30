@@ -66,9 +66,11 @@ static func make() -> BiomeDef:
 	d.dressing = dress
 	d.grade = Vector4(-0.04, 0.08, 0.08, -0.03)
 	# Open ground under an open sky, and snow throws back most of what lands on
-	# it: the one landscape where a lantern is a convenience rather than a
-	# necessity, and where the moon alone is enough to walk by.
-	d.night_sky = 1.35
+	# it: the moon alone is enough to walk by. Because it throws back so much it
+	# keeps far less night sky than the coast: at 1.35 its midnight measured a
+	# median luma of 81 against the coast's 21, a day with a blue filter on it
+	# (2026-09-30); at 0.40 it is 45, pale and walkable and still a night.
+	d.night_sky = 0.40
 	d.lip_snow = true
 	d.props = [PropKind.SNOW_PINE, PropKind.DEAD_TREE, PropKind.BOULDER, PropKind.STONE_ORE,
 		PropKind.IRON_ORE, PropKind.TIN_ORE, PropKind.DRIFTWOOD, PropKind.WRACK, PropKind.MUSSEL_ROCK]
