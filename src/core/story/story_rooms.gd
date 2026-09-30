@@ -125,6 +125,10 @@ const NEVER := &"never"
 ## place is hers, and her set is in it: where the voice every landscape hears on
 ## a stray relay comes from (StoryContent.ROOMS home:speaker).
 const SPEAKER := &"speaker"
+## Who keeps a tenant's house, by StoryCast id: `furnish` lays them in it, and
+## they are met there and never stood outside (49_cast). Ids and not the cast
+## itself, which would pull the story's state into everything that grows a room.
+const KEEPERS := {SPEAKER: &"june"}
 ## The house kinds a Speaker's house can be (the cottage's plans: `furnish`).
 const SPEAKER_KINDS: Array[StringName] = [&"home", &"cottage"]
 const TENANTS: Array[StringName] = [HIS, KERR, PRIYA, HOLDFAST, CAME, NEVER]
@@ -217,6 +221,9 @@ static func _deal(world: WorldData) -> Dictionary:
 ## Speaker's: her set stands where the house put its first shelf, chest or patch
 ## (a wall spot already clear of the bed and the way in), and her three slots are
 ## the only words in the room: the set, the card on the table, the wall by it.
+## Whoever keeps the house (KEEPERS) is laid in it as its one dweller, at the
+## table (`_by_table`); 21_doors wakes them only while they are there by the story
+## (StoryCharacter.present), so until then the room is only her things.
 static func furnish(l: InteriorLayout, tenant: StringName) -> void:
 	if tenant != SPEAKER:
 		return
@@ -229,7 +236,113 @@ static func furnish(l: InteriorLayout, tenant: StringName) -> void:
 			l.slots.append({"slot": &"terminal", "thing": &"radio", "at": th.at, "face": th.face})
 			l.slots.append({"slot": &"wall", "thing": &"home", "at": th.at, "face": th.face})
 			l.slots.append({"slot": &"desk", "thing": &"home", "at": l.table, "face": Vector2(0, 1)})
-			return
+			break
+	if not KEEPERS.has(tenant):
+		return
+	var spot := _by_table(l)
+	if not spot.is_empty():
+		l.residents.append({"role": &"dweller", "character": KEEPERS[tenant], "at": spot.at, "face": spot.face})
+
+
+## Whether this named person keeps a house of their own (KEEPERS).
+static func keeps_house(id: StringName) -> bool:
+	return KEEPERS.values().has(id)
+
+
+## How far in front of the keeper a body stands to speak to them (21_doors'
+## `dweller` tour place), and how clear of everything they and that spot keep.
+const KEEPER_STEP := 1.1
+const BODY := 0.45
+## Past a bench or a hearth's fire at the prop's own tile: a bench top is 1.54 long.
+const PROP_CLEAR := 1.0
+## What answers `use` in a room before anybody standing in it (21_doors
+## `use_spent`) does so within 1.4 (its REACH, KeptBy.REACH): the door, a box, a
+## hatch, a stove, a crawl out and the kept-by shelf. Past that by a stride.
+const TAKES_CLEAR := 1.7
+
+
+## Where the keeper stands at the table, and which way they face: a step off it,
+## on floor clear of every solid thing, prop and doorway, with the spot a body
+## speaks to them from (KEEPER_STEP in front) clear too, nearer them than any of
+## the room's words (or `use` there reads the card instead of greeting them) and
+## out of reach of everything the room answers the key for first (TAKES_CLEAR: a
+## keeper facing the way in stood so near it that the key walked him out of the
+## door). Round the table first, the far side from the door first; facing the way
+## in where that is clear, else the room. A plan too crowded for that (a back
+## plan's six-by-four front room) has them on the nearest floor that is, in any
+## of its rooms. {at, face}, or {} where no such floor is.
+static func _by_table(l: InteriorLayout) -> Dictionary:
+	if l.rooms.is_empty():
+		return {}
+	var main := Rect2(l.rooms[0])
+	var ring: Array[Vector2] = []
+	var away := (l.table - l.door).angle()
+	for r: float in [1.25, 1.5, 1.75, 2.0]:
+		for i in 16:
+			# 0, +1, -1, +2, -2 ... sixteenths round from the far side.
+			var turn := TAU / 16.0 * float((i + 1) >> 1) * (1.0 if i % 2 == 0 else -1.0)
+			ring.append(l.table + Vector2.from_angle(away + turn) * r)
+	var found := _spot_in(l, main, ring)
+	if not found.is_empty():
+		return found
+	for ri in l.rooms.size():
+		var room := Rect2(l.rooms[ri])
+		var grid: Array[Vector2] = []
+		for y in range(ceili(room.size.y * 2.0)):
+			for x in range(ceili(room.size.x * 2.0)):
+				grid.append(room.position + Vector2(x + 0.5, y + 0.5) * 0.5)
+		grid.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(l.table) < b.distance_squared_to(l.table))
+		found = _spot_in(l, room, grid)
+		if not found.is_empty():
+			return found
+	return {}
+
+
+## The first of `spots` in `room` a keeper can stand at (`_by_table`), and a face.
+static func _spot_in(l: InteriorLayout, room: Rect2, spots: Array[Vector2]) -> Dictionary:
+	for at: Vector2 in spots:
+		if at.distance_to(l.door) < 1.6 or not _floor(l, room, at, BODY + 0.15):
+			continue
+		var faces: Array[Vector2] = [(l.door - at).normalized(), (room.get_center() - at).normalized()]
+		for k in 8:
+			faces.append(Vector2.from_angle(TAU * k / 8.0))
+		for face: Vector2 in faces:
+			var front := at + face * KEEPER_STEP
+			if not _floor(l, room, front, BODY) or not _clear_of_takers(l, front):
+				continue
+			var heard := true
+			for s: Dictionary in l.slots:
+				heard = heard and (s.at as Vector2).distance_to(front) - SOLID > KEEPER_STEP + 0.15
+			if heard:
+				return {"at": at, "face": face}
+	return {}
+
+
+static func _clear_of_takers(l: InteriorLayout, p: Vector2) -> bool:
+	if l.door.distance_to(p) < TAKES_CLEAR:
+		return false
+	for t: Dictionary in l.things:
+		var takes: bool = t.kind == &"strongbox" or t.kind == &"shelf" or t.has("serves") or t.has("fuel") or bool(t.get("exit", false))
+		if takes and (t.at as Vector2).distance_to(p) < TAKES_CLEAR:
+			return false
+	return true
+
+
+static func _floor(l: InteriorLayout, room: Rect2, p: Vector2, clear: float) -> bool:
+	if not room.grow(-clear).has_point(p):
+		return false
+	for t: Dictionary in l.things:
+		var ts := float(t.get("solid", 0.0))
+		if ts > 0.0 and (t.at as Vector2).distance_to(p) < ts + clear:
+			return false
+	for q: Dictionary in l.props:
+		if (q.at as Vector2).distance_to(p) < PROP_CLEAR + clear * 0.5:
+			return false
+	for e: Dictionary in l.edges:
+		var mid := ((e.a as Vector2) + (e.b as Vector2)) * 0.5
+		if e.kind == &"inner" and mid.distance_to(p) < clear + 0.5:
+			return false
+	return true
 
 
 ## Only the tests want this.

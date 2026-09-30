@@ -5671,6 +5671,12 @@ const LEAD := {
 	&"raft": "A raft, for water no road crosses: driftwood, a piece of plate, rags and an edge.",
 	&"crossing": "Across at the narrows, for the archive on the far shore: put the raft in there.",
 	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
+	# June (slice 3 step 3): the Covenant's seat once the archive's man is met,
+	# her name, June once it has been felt, then back to her for the voice.
+	&"covenant": "The Covenant's seat, for whoever keeps its peace: the survey marks it.",
+	&"speaker": "The Speaker's name, for the voice on the radio: ask somebody who left the Covenant.",
+	&"june": "June, who has sent for you: her house is the one nearest the Covenant.",
+	&"june_voice": "Back to June, for what the voice has told her all these years.",
 	# Slice 3 step 5, after covenant_fed, until the mended plate is carried.
 	&"mend": "Mended plate, for the plate you've spent: a harvester's iron, at a bench.",
 	# Once the plan has taken somebody out of a village that saw him (or he has
@@ -5706,6 +5712,11 @@ const TOLD := {
 # the crossing (StoryCrossing, placed by 49_cast).
 const TOLD_WHILE := {
 	&"crossing": {"place": &"the_crossing", "word": "the narrows"},
+	# June (slice 3 step 3): her house is the one nearest the Covenant's own place.
+	&"covenant": {"place": &"the_covenant", "word": "the Covenant"},
+	&"speaker": {"place": &"the_covenant", "word": "the Covenant"},
+	&"june": {"place": &"the_covenant", "word": "June's house"},
+	&"june_voice": {"place": &"the_covenant", "word": "June's house"},
 }
 
 # The name the goal lines use for a landscape's keeper once `reaper_named` has

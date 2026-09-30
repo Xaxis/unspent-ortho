@@ -143,3 +143,33 @@ func test_the_key_reaches_someone_with_words_before_a_nearer_stranger_without() 
 	rows.erase(stranger)
 	Sx.end(g)
 	Story.forget()
+
+
+## Somebody the story has not brought in yet, or has taken away, is not there to
+## be spoken to: `use` where they would stand answers nobody. Dace stood at the
+## camp after he had left it, and a named person's row is cast whether or not
+## they are present (49_cast draws them only while they are).
+func test_somebody_who_is_not_there_does_not_answer_the_key() -> void:
+	Story.forget()
+	var g := Sx.game(tree, ["--seed=1", "--size=%d" % SIZE, "--hour=11"])
+	await frames(3)
+	var cast: Node = Sx.system(g, "49_cast")
+	var story: Node = Sx.system(g, "49_story")
+	for id: StringName in [&"vera", &"dace"]:
+		if id == &"dace":
+			Story.beat(&"dace_left", -INF)
+		check(not StoryCast.get_def(id).present(), "%s is not at the camp" % id)
+		var spot: Vector2 = cast.call("tour_place", "cast:%s" % id)
+		check(spot != Vector2.INF, "%s is cast in this world" % id)
+		var at := Vector2.INF
+		for row: Dictionary in cast.get("people"):
+			if row.character == id:
+				at = row.pos
+		g.player.pos = spot
+		g.player.hero.pos = spot
+		g.player.facing = (at - spot).angle()
+		await frames(2)
+		var picked: Dictionary = story.call("_person_in_front")
+		check(StringName(str(picked.get("character", &""))) != id, "the key does not open %s's words where %s is not" % [id, id])
+	Sx.end(g)
+	Story.forget()
