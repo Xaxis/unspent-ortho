@@ -139,6 +139,11 @@ extends GameSystem
 ##                          score_dissonance, score_grid, score_texture, score_phrase,
 ##                          score_resolve; and of the blend score_blend, score_here,
 ##                          score_in:LAND, score_full, score_unbroken)
+##   walkto at:KIND:NAME SECS [run] [till:CLAIM]  steer the real keys, afoot or aboard,
+##                          toward a place a system names (`slot:the_landing`,
+##                          `cast:otto`) until within 3 tiles, or until CLAIM holds
+##                          (`till:launch_ready:raft`: at the water's edge on the way);
+##                          says how far and how long it took, and the hull aboard
 ##   walkto prop:KIND[,KIND] SECS [run] [through]  steer the real walk to the nearest
 ##                          prop of those kinds that still has work in it, as `near`
 ##                          picks one, and stop within reach of it: the walk a tour
@@ -602,6 +607,12 @@ func _run() -> void:
 				if parts[1].begins_with("prop:"):
 					ok = await _walk_to_prop(parts[1].substr(5), parts[2].to_float() if parts.size() > 2 else 1.0,
 						parts.has("run"), parts.has("through"))
+				elif parts[1].begins_with("at:"):
+					var till := ""
+					for q: String in parts:
+						if q.begins_with("till:"):
+							till = q.substr(5)
+					ok = await _walk_to_named(parts[1].substr(3), parts[2].to_float() if parts.size() > 2 else 1.0, parts.has("run"), till)
 				elif parts[1] in ["folk", "refuse", "dog"]:
 					ok = await TourPeople.walk(self, game, parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
 				else:
@@ -1084,6 +1095,49 @@ func _alone(lone: WorldProp, gap: float) -> bool:
 	return true
 
 
+## `walkto at:KIND:NAME SECS [run]`: steer by the real keys toward a place a
+## system names (tour_place: `slot:the_landing`, `cast:otto`), afoot or aboard,
+## until within WALK_NAMED_NEAR of it; fails if SECS run out first.
+const WALK_NAMED_NEAR := 3.0
+
+
+func _walk_to_named(what: String, secs: float, run: bool = false, till: String = "") -> bool:
+	var target := Vector2.INF
+	for sys in game.systems:
+		if sys.has_method(&"tour_place"):
+			var p: Vector2 = sys.call(&"tour_place", what)
+			if p != Vector2.INF:
+				target = p
+				break
+	if target == Vector2.INF:
+		printerr("tour %s: nothing answers at %s" % [_name, what])
+		return false
+	var until := Time.get_ticks_msec() + int(secs * 1000.0 * machine_slack())
+	var from: Vector2 = game.player.pos
+	var t0 := game.clock.minutes
+	while Time.get_ticks_msec() < until:
+		var d := target - game.player.pos
+		if d.length() <= WALK_NAMED_NEAR or (till != "" and _answered(till)):
+			game.scripted_seconds = 0.0
+			game.scripted_run = false
+			# And, aboard, what is left of the hull (44_crafts), so a crossing logs its cost.
+			var hull := ""
+			var crafts := _system("44_crafts")
+			var aboard: Variant = crafts.get("aboard") if crafts != null else null
+			if aboard != null:
+				hull = ", hull %.0f" % float((aboard as Object).get("hull"))
+			print("tour %s: came to %s, %.0f tiles in %.0f world minutes%s" % [_name, what, from.distance_to(game.player.pos), game.clock.minutes - t0, hull])
+			return true
+		game.scripted_move = _keys_toward(d.normalized())
+		game.scripted_run = run
+		game.scripted_seconds = 0.05
+		await get_tree().physics_frame
+	game.scripted_seconds = 0.0
+	game.scripted_run = false
+	printerr("tour %s: steered toward %s at %s for %.1f s and stopped %.1f tiles off" % [_name, what, target, secs, target.distance_to(game.player.pos)])
+	return false
+
+
 func _walk_to_prop(kinds: String, secs: float, run: bool = false, through: bool = false) -> bool:
 	var target: WorldProp = _backed_from if through and _backed_from != null else _nearest_prop(kinds)
 	if target == null:
@@ -1326,7 +1380,11 @@ func _walk_route(what: String, until: int, secs: float) -> bool:
 	return true
 
 
+## Null on the title, where the tour runs with no game: a shot there asks for
+## 90_ui's goal line too.
 func _system(n: String) -> GameSystem:
+	if game == null:
+		return null
 	for sys in game.systems:
 		if sys.name == n:
 			return sys

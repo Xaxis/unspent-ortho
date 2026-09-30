@@ -314,6 +314,9 @@ static func told(game: Game) -> Array[Dictionary]:
 				out.append({"at": next.lair, "word": String(row.word)})
 		elif placed.has(row.place):
 			out.append({"at": placed[row.place].pos, "word": String(row.word)})
+	var pinned: Dictionary = StoryContent.TOLD_WHILE.get(Guide.last_goal_key, {})
+	if not pinned.is_empty() and placed.has(pinned.place):
+		out.append({"at": placed[pinned.place].pos, "word": String(pinned.word)})
 	return out
 
 

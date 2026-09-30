@@ -92,7 +92,13 @@ func test_the_goal_line_walks_slice_two_end_to_end() -> void:
 	Story.beat(&"holdfast_hope")
 	eq(Guide.goal(g), _lead(&"vera"), "the crew's hope in him: their leader, come to the camp")
 	Story.beat(&"war_archive")
-	eq(Guide.goal(g), _lead(&"archive"), "she has named the archive: across the water")
+	# Across the water, so the next leg starts with a raft (slice 3,
+	# test_crossing walks raft and narrows); once he has stood on the far body,
+	# the archive.
+	eq(Guide.goal(g), _lead(&"raft"), "she has named the archive across the water: a raft first")
+	@warning_ignore("return_value_discarded")
+	Story.hear(StoryCrossing.CROSSED)
+	eq(Guide.goal(g), _lead(&"archive"), "across: the archive")
 	eq(Guide.last_goal_key, &"archive", "keyed, so a tour can claim it")
 	var told: Dictionary = StoryContent.TOLD
 	var word := String((told.get(&"war_archive", {}) as Dictionary).get("word", "<no archive word>"))
