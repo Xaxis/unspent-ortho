@@ -70,6 +70,9 @@ var seal_until := -INF
 var seal_at := Vector2.INF
 ## A detour around something in the way, until.
 var detour := Vector2.ZERO
+## Where a fleeing body caught against the land is making for by its own ground
+## (Brains._flee), until `detour_until`; INF while it flees straight.
+var flee_to := Vector2.INF
 var detour_until := 0.0
 var last_think_pos := Vector2.ZERO
 var flee_home := false
