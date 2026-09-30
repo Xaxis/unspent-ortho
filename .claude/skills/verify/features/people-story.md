@@ -14,6 +14,7 @@ The player's own body, villagers, fauna, named cast, the story's talks and fragm
 - 49_story `src/systems/49_story.gd`: `tools/tour.sh tours/story.tour`.
   - Room words (StoryRooms, `StoryContent.ROOMS`, read with `use` inside): `tools/tour.sh tours/bunker_words.tour --seed=4 --hour=15 --weather=clear:0`, `tests/story/test_rooms.gd`.
   - His bunker's gated terminal and the tenants per bunker (`StoryRooms.tenants`): `tools/tour.sh tours/bunker_woken.tour --seed=4 --hour=15 --weather=clear:0 --beats=built_halcyon`, `tests/story/test_under_the_stones.gd`.
+  - The Speaker's house, nearest the Covenant (`StoryRooms.SPEAKER`, `furnish`; her set lands covenant_speaker once, relay or no): `tools/tour.sh tours/speaker.tour --seed=4 --hour=15 --weather=clear:0`, `tests/story/test_covenant_seat.gd`.
 
 ## How to reach it
 
