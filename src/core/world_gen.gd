@@ -277,6 +277,14 @@ static func unhalt(seed_value: int, size: int, realm: StringName) -> void:
 	_halt_lock.unlock()
 
 
+## Every stop standing, as "seed:size:realm" (the test runner asks after each test).
+static func halted() -> PackedStringArray:
+	_halt_lock.lock()
+	var out := PackedStringArray(_halts.keys())
+	_halt_lock.unlock()
+	return out
+
+
 ## Whether a generation of this seed, size and realm has been asked to stop.
 static func is_halted(seed_value: int, size: int, realm: StringName) -> bool:
 	_halt_lock.lock()
