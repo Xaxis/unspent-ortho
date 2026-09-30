@@ -14,8 +14,8 @@ at slot:the_camp
 wait 1.0
 await goal:raft 3
 # Past the place's name, so the goal has its window.
-wait 3.5
-shot 01-the-goal-asks-for-a-raft with goal:raft
+await goal_shown 20
+shot 01-the-goal-asks-for-a-raft with goal:raft,goal_shown
 tap craft
 await app:crafting 3
 choose raft
@@ -56,6 +56,7 @@ wait 1.0
 # 5 THE FAR SHORE: stepped off into the shallows, he wades up the beach; his
 # first step on the archive's dry ground is heard, and the goal is the archive.
 walkto at:slot:the_archive 30 till:goal:archive
-# The goal said on the record first, then pinned under the health bar.
-wait 5.0
-shot 04-the-far-shore-the-goal-is-the-archive with goal:archive
+# The goal said on the record first, then pinned under the health bar once the
+# far body's name has pinged.
+await goal_shown 30
+shot 04-the-far-shore-the-goal-is-the-archive with goal:archive,goal_shown
