@@ -149,6 +149,8 @@ extends RefCounted
 ##                     on one is there, and a reply that wants one is offered (story, the same)
 ## --chose=AT=PICK,..  answers given at boot, long since (`rook.iron=paid`): a deal a story
 ##                     leg waits on is closed (story, the same)
+## --met=ID,ID         named people he has spoken to at boot, long since: a hop that ends on
+##                     meeting somebody is behind him (story, the same)
 ## --fail-downed       a bad end (downed or carried off) quits the game with exit 1: a tour that
 ##                     must be survived through real play fails if it is not (fight)
 ## --rooms=empty      rooms come in without their residents (21_doors): a frame or
@@ -283,6 +285,8 @@ var talk := ""
 var beats := ""
 ## Answers given before the first frame, "AT=PICK" comma-separated (49_story).
 var chose := ""
+## Named people met before the first frame, by cast id (49_story).
+var met := ""
 ## Which realm to start in (Realm.KINDS). The world a game opens with is always
 ## the surface's; the realms system crosses before the first frame.
 var realm: StringName = &"surface"
@@ -396,6 +400,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"talk": o.talk = v
 			"beats": o.beats = v
 			"chose": o.chose = v
+			"met": o.met = v
 			"target":
 				o.target = true
 				o.target_sweep = v == "sweep"

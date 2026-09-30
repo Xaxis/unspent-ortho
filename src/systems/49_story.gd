@@ -89,7 +89,8 @@ func started() -> void:
 
 ## `--read=ID` and `--talk=ID[:NODE]`: the words on the glass for a writer to look
 ## at, without walking to the one sign in the world that happens to carry them;
-## `--beats=ID,ID`, what he already knows. Staging only — a normal start names none.
+## `--beats=ID,ID`, what he already knows; `--met=ID,ID`, who he has already spoken
+## to. Staging only — a normal start names none.
 func _stage() -> void:
 	var o := game.options
 	if o == null:
@@ -107,6 +108,13 @@ func _stage() -> void:
 			Story.choose(StringName(kv[0]), StringName(kv[1]))
 		else:
 			push_warning("--chose: %s is not AT=PICK" % c)
+	# `--met`: somebody spoken to long ago, so a hop that ends on meeting them is done.
+	for m: String in o.met.split(",", false):
+		if StoryCast.get_def(StringName(m)) != null:
+			@warning_ignore("return_value_discarded")
+			Story.meet(StringName(m))
+		else:
+			push_warning("--met: %s is nobody in the cast" % m)
 	if o.read != "" and StoryContent.FRAGMENTS.has(StringName(o.read)):
 		open_reading(StringName(o.read), false)
 	elif o.talk != "":
