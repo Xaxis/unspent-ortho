@@ -78,8 +78,11 @@ is asked of the live map.
 In both views:
 - **Facing.** The body faces what is locked, turning onto a new lock quickly (`LockOn.TURN`),
   never snapping.
-- **Strafing.** Motion across the line to the target is spent as arc at the current distance
-  (`LockOn.step`), exactly: a hundred laps end at the starting distance.
+- **Strafing.** Over the shoulder, motion across the line to the target is spent as arc at
+  the current distance (`LockOn.step`), exactly: a hundred laps end at the starting distance.
+  From above a sideways key goes straight, as the screen says, so a sidestep out of a blow
+  leaves its reach as it does unlocked (spent as arc it never left: a locked force fight on
+  the Reaper took 360 s and a down, against 44.6 s free).
 - **Swing** goes at the lock; the aim assist cannot turn it onto a nearer body.
 - **Dodge** goes where the keys point, the body still facing the lock. With no key held it
   goes straight back from the target (unlocked, back from the facing).

@@ -201,7 +201,7 @@ func _publish() -> void:
 	var at := Vector2.INF
 	if locked != null and not sweeping and locked.alive():
 		at = locked.here()
-	hero.set_lock(at, _now())
+	hero.set_lock(at, _now(), game.camera.shoulder)
 	if at.is_finite() and (hero.pos - at).length() > LockOn.NEAR:
 		var a := (hero.pos - at).angle()
 		if not is_nan(_circle_was):

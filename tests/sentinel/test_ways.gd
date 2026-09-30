@@ -357,11 +357,13 @@ func _stand(g: Game, s: SentinelState, dist: float, grounds: Array, most: bool) 
 
 ## Fought by the plate player through the game's input (GameDriver): the coast
 ## held off, knife_shear in hand, from firm ground it keeps to. Downed, it comes
-## to at the edge of the keeper's ground and walks back. Returns the tally.
-func _fight_it(g: Game, s: SentinelState, at: Vector2, reader: Variant, seconds: float) -> Dictionary:
+## to at the edge of the keeper's ground and walks back. The target key is held
+## throughout when `locked`. Returns the tally.
+func _fight_it(g: Game, s: SentinelState, at: Vector2, reader: Variant, seconds: float, locked := false) -> Dictionary:
 	var sim: FightSim = g.player.sim
 	g.player.place(at, (s.lair - at).angle())
 	var d: Variant = GD.new(g, reader)
+	d.locked = locked
 	var downs := [0]
 	var on_end := func(o: StringName) -> void:
 		if o == &"downed" or o == &"carried":
@@ -375,6 +377,7 @@ func _fight_it(g: Game, s: SentinelState, at: Vector2, reader: Variant, seconds:
 		frames_left -= 1
 		d.step()
 		await tree.physics_frame
+	d.release()
 	Events.fight_ended.disconnect(on_end)
 	return {"fallen": s.fallen, "how": s.how, "tries": downs[0] + 1, "downs": downs[0], "s": (sim.now - t0) / 1000.0, "health": s.health}
 
@@ -387,6 +390,26 @@ func _calm(g: Game) -> void:
 func test_by_force_from_firm_ground_it_falls_to_blows_and_never_founders() -> void:
 	if not stepped_now():
 		return
+	var out: Dictionary = await _by_force(false)
+	print("  info force by hand: %s" % out)
+	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FORCE).id(), "it falls to blows (%s)" % out)
+	check(out.how != SentinelWay.make(SentinelWay.FOUNDER).id(), "and never founders under a fight kept on firm ground")
+	lt(float(out.tries), 4.5, "in a few tries (%d)" % out.tries)
+	# Holding target is what a player does at a boss, so the lock must not cost
+	# the fight: the same player locked falls it as surely and about as fast.
+	var held: Dictionary = await _by_force(true)
+	print("  info force by hand, locked: %s" % held)
+	check(held.fallen and held.how == SentinelWay.make(SentinelWay.FORCE).id(), "locked, it still falls to blows (%s)" % held)
+	lt(float(held.tries), float(out.tries) + 0.5, "in no more tries locked (%d) than free (%d)" % [held.tries, out.tries])
+	lt(float(held.s), float(out.s) * 1.2, "and within a fifth of the time: %.1f s locked, %.1f s free" % [held.s, out.s])
+
+
+const NONE := {"fallen": false, "how": &"", "tries": 99, "downs": 0, "s": INF, "health": -1}
+
+
+## The Reaper fought by the plate player from firm ground, the target key held
+## throughout when `locked`. Returns the tally, NONE when there was no fight.
+func _by_force(locked: bool) -> Dictionary:
 	Sx.use_root("ways-force")
 	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear"])
 	# Bodies numbered from the same place whatever ran before in this process:
@@ -396,24 +419,21 @@ func test_by_force_from_firm_ground_it_falls_to_blows_and_never_founders() -> vo
 	check(s != null, "seed 1 holds a reaper")
 	if s == null:
 		Sx.end(g)
-		return
+		return NONE
 	_calm(g)
 	var flats: Array = Sentinels.by_id(s.design).way_of(SentinelWay.FOUNDER).grounds
 	var at := _stand(g, s, 6.0, flats, false)
 	check(at.is_finite(), "firm ground to come at it from")
 	if not at.is_finite():
 		Sx.end(g)
-		return
+		return NONE
 	var r: Variant = PR.new(g.player.sim)
 	r.human = 1
 	r.keep_off = flats
 	r.home = at
-	var out: Dictionary = await _fight_it(g, s, at, r, 360.0)
-	print("  info force by hand: %s" % out)
-	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FORCE).id(), "it falls to blows (%s)" % out)
-	check(out.how != SentinelWay.make(SentinelWay.FOUNDER).id(), "and never founders under a fight kept on firm ground")
-	lt(float(out.tries), 4.5, "in a few tries (%d)" % out.tries)
+	var out: Dictionary = await _fight_it(g, s, at, r, 360.0, locked)
 	Sx.end(g)
+	return out
 
 
 func test_held_out_on_the_flats_it_founders() -> void:

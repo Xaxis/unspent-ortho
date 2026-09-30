@@ -1064,7 +1064,9 @@ func _move_hero(dt: float) -> void:
 			s *= Hero.CROUCH_SPEED
 		if hero.committed(now):
 			s *= hero.blow.creep
-		v = LockOn.step(hero.move.limit_length(1.0) * s, hero.pos, hero.lock, dt)
+		v = hero.move.limit_length(1.0) * s
+		if hero.lock_circles:
+			v = LockOn.step(v, hero.pos, hero.lock, dt)
 		if hero.committed(now):
 			pass
 		elif LockOn.locked(hero.lock):

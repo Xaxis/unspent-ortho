@@ -14,6 +14,9 @@ var reader: Variant
 
 
 var hands := TourHands.new()
+## Holds the target key throughout, as a player in a boss fight does: the lock
+## is 42_target's, taken from the key like any other.
+var locked := false
 
 
 func _init(g: Game, r: Variant) -> void:
@@ -25,9 +28,18 @@ func _init(g: Game, r: Variant) -> void:
 func step() -> void:
 	var hero := game.player.sim.hero
 	hands.step()
+	if locked and not Input.is_action_pressed(&"target"):
+		Input.action_press(&"target")
 	reader.act()
 	var dir := hero.move
 	game.scripted_move = LockOn.keys_for(dir.normalized() if dir.length() > 0.01 else Vector2.ZERO,
 		game.camera.yaw_now(), game.player.pos, hero.lock, game.camera.shoulder) * minf(1.0, dir.length())
 	game.scripted_run = hero.run
 	game.scripted_seconds = 0.05
+
+
+## Lets go of every key the driver holds.
+func release() -> void:
+	hands.release_all()
+	if locked:
+		Input.action_release(&"target")

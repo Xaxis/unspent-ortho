@@ -6,8 +6,8 @@ class_name LockOn
 ##
 ##   intent(...)   the keys as a direction in the world: over the shoulder the
 ##                 line to the target is forward; from above the screen is
-##   step(...)     a velocity bent round the target, so a strafe circles it at
-##                 the distance it started and never drifts past it
+##   step(...)     a velocity bent round the target, so a strafe over the
+##                 shoulder circles it at the distance it started (Hero.lock_circles)
 ##   face(...)     the body turned toward the target at TURN a second
 ##   dodge_way(...) where a dodge goes: the keys, else straight back from it
 ##

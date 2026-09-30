@@ -6,8 +6,8 @@
 # machine turns the body onto that one; the view over the shoulder is taken and
 # left again with the lock still held; the machine is broken and the lock is
 # handed on; letting go turns the body back onto its walk.
-# From above the keys stay the screen's; a held key sideways arcs round the lock
-# at the distance it started instead of leaving on a tangent.
+# From above the keys stay the screen's: a held key sideways goes straight past
+# the lock, still facing it, and a full circle is steered round.
 #   tools/tour.sh tours/lockon_top.tour --seed=4 --hour=11 --weather=clear:0 --give=axe_felling:1 --held=axe_felling
 coast calm
 wait 0.8
