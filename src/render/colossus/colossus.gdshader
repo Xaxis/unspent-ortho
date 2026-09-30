@@ -93,12 +93,9 @@ uniform float beta_high = 1.1e-5;
 // length toward the body, and takes a walker on the skyline half into the blue.
 // At 3e-6 the looming walkers' shins, 55 and 72 km off, came out as dark as the
 // towers on the near skyline and read as something standing a few hundred
-// metres away: grey bars hanging over every shot (2026-09-29). PRESENCE GOES
-// WITH DISTANCE: at this much a walker a few kilometres off keeps nine tenths of
-// itself and is sharp and terrible, one at 55 km a third, one at 72 km a fifth
-// -- a faint giant at the edge of seeing, sitting back into the sky -- and the
-// skyline walker at 180 km is air, but for its lights (`LAMP_THROUGH`).
-uniform float beta_far = 2.2e-5;
+// metres away: grey bars hanging over every shot (2026-09-29). At this much a
+// shin 70 km off keeps under half its contrast before `presence` takes more.
+uniform float beta_far = 1.2e-5;
 // A lamp is far brighter than the plate it sits on, so it is still seen through
 // air that has taken the plate: its share of the air is this power of the
 // plate's transmittance (a half: at 180 km a beacon keeps a seventh of itself
@@ -110,6 +107,26 @@ uniform float spire_y = 41000.0;
 // How much of the lens's own light the hour leaves (0 at noon, 1 at night):
 // a lamp in daylight shows the colour it is made of, not white.
 uniform float lens_glow = 1.0;
+// A LEG NEVER ENDS IN MID-AIR ON THE GLASS. Over the shoulder the walkers' hubs
+// stand 35-85 degrees up, far above the frame, and all it held of one was shins:
+// bars coming down out of the top edge, read as ladders hanging in the sky (the
+// owner, 2026-09-29). So unless the frame holds the hub (`hub_seen`, 0..1, from
+// ColossusView.hub_seen), the machine gives itself to the air going up the
+// glass: whole at the skyline, gone before the top edge, a thing rising out of
+// the land into the sky and never a thing cut off by a frame. Measured from the
+// horizon's own line on the glass (`horizon_v`, SCREEN_UV's y), so it holds at
+// any pitch the view is tipped to.
+uniform float hub_seen = 1.0;
+uniform float horizon_v = 0.35;
+// Where, between the horizon (0) and the top edge (1), a leg starts to go and is
+// gone.
+const float RISE_FROM = 0.30;
+const float RISE_GONE = 0.80;
+const float SEEN_BACK = 0.5;
+// And PRESENCE BY DISTANCE (ColossusView.presence): the share of itself a walker
+// keeps for how far off its hub is, over what the air takes -- a few km off it
+// is all there, the skyline walker is a ghost. A lamp keeps the root of it.
+uniform float presence = 1.0;
 
 // The sun's disc in the procedural sky (see the fragment).
 uniform bool l0_on = false;
@@ -317,9 +334,17 @@ void fragment() {
 	float air = 1.0 - (1.0 - low) * exp(-high - beta_far * distance(eye, true_world));
 	// A part drawn wider than it is gives the rest back to the air.
 	air = 1.0 - (1.0 - air) * clamp(thin, 0.0, 1.0);
-	if (COLOR.a < 0.98) {
+	bool lit_part = COLOR.a < 0.98;
+	if (lit_part) {
 		air = 1.0 - pow(1.0 - air, LAMP_THROUGH);
 	}
+	float up_glass = (horizon_v - SCREEN_UV.y) / max(horizon_v, 0.05);
+	float rise = 1.0 - smoothstep(RISE_FROM, RISE_GONE, up_glass);
+	// Looked up at whole, a far walker is given back half of what its distance
+	// took: the one frame it is the subject of, it stands there.
+	float own = lit_part ? sqrt(presence) : presence;
+	float keep = mix(rise * own, mix(own, 1.0, SEEN_BACK), clamp(hub_seen, 0.0, 1.0));
+	air = 1.0 - (1.0 - air) * keep;
 	// The procedural sky with the sun's disc on it, as the sky shader lays it
 	// (LIGHT0, handed over by SkyLight.seen_air), so across the band where the
 	// seen sky comes in the air near the sun is the sky's own there too.
