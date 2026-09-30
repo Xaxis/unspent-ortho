@@ -411,19 +411,14 @@ func test_a_landscape_hangs_its_own_pieces() -> void:
 	check(ForeKinds.row_of(p, 7, Country.COAST).is_empty(), "and nothing on the coast")
 
 
-## A GIRDER IS A FALLEN MEMBER, NEVER A LADDER IN THE AIR. Hung level at a fixed
-## lift it floated two to six units over a knee-high ruin or wreck, and from
-## above it was a grey ladder hanging over the land with nothing under either end
-## (the owner, 2026-09-29: "ladder structure things just floating in space").
-## So its root is no higher than what it hangs on stands, and its far end comes
-## down to the ground: leaning from its prop, it is held at both ends.
-func test_a_girder_leans_from_what_it_hangs_on_down_to_the_ground() -> void:
-	var kinds: Array[int] = []
+## NOTHING IN THE FOREGROUND IS HUNG ON NOTHING. Hung at a fixed lift, girders
+## floated two to six units over ruins and wrecks half a unit tall, and from above
+## they were grey ladders hanging over the land with nothing under either end (the
+## owner, 2026-09-29: "ladder structure things just floating in space"). So no
+## piece leaves its prop higher than the prop stands; a girder hangs only off a
+## host tall enough to hold it, and off anything lower it lies fallen beside it.
+func test_no_piece_is_hung_higher_than_what_it_hangs_on() -> void:
 	for kind: int in ForeKinds.ROWS:
-		if int(ForeKinds.ROWS[kind].shape) == ForeKinds.GIRDER:
-			kinds.append(kind)
-	gt(float(kinds.size()), 3.0, "several kinds carry a girder")
-	for kind in kinds:
 		for id: int in [11, 212, 4031, 9907]:
 			var p := WorldProp.new(id, kind, Vector2(40.0 + id % 7, 40.0), 0.3, 1.0)
 			var t := PropModels.template(kind, PropModels.variant_of(p, 7, Country.COAST), Country.COAST)
@@ -431,12 +426,26 @@ func test_a_girder_leans_from_what_it_hangs_on_down_to_the_ground() -> void:
 			for v: Vector3 in t.made_v + t.found_v + t.leaf_v:
 				top = maxf(top, v.y)
 			var hang := ForeKinds.hang(p, 7, Country.COAST)
+			var name := "%s %d" % [PropKind.NAMES[kind], id]
 			lt(float(hang.lift), top * p.scale + 0.05,
-				"%s %d: the girder leaves it no higher than it stands (%.2f of %.2f)" % [PropKind.NAMES[kind], id, float(hang.lift), top])
-	# Placed, the far end is on the ground and the ties stay level across it.
+				"%s: its piece leaves it no higher than it stands (%.2f of %.2f)" % [name, float(hang.lift), top])
+			if int(hang.shape) == ForeKinds.GIRDER:
+				gt(top, ForeKinds.GIRDER_HOST_LEAST - 0.01, "%s: a girder hangs only off a host tall enough (%.2f)" % [name, top])
+	for kind: int in [PropKind.RUIN, PropKind.WRECKAGE, PropKind.CONVEYOR]:
+		eq(int(ForeKinds.ROWS[kind].shape), ForeKinds.FALLEN, "%s: a low host has its girder lying fallen" % PropKind.NAMES[kind])
+
+
+func test_a_girder_leans_down_to_the_ground_and_a_fallen_one_lies_on_it() -> void:
 	var dir := Vector2(0.6, -0.8)
 	var b: Basis = ForeKinds.lean_basis(dir, 5.0, 2.4)
 	var tip: Vector3 = b * Vector3(1.0, 0.0, 0.0)
 	near(tip.y, -2.4, 1e-4, "the far end comes down the whole fall")
 	near(Vector2(tip.x, tip.z).length(), 5.0, 1e-4, "and reaches the whole span along the ground")
 	near((b * Vector3(0.0, 0.0, 1.0)).y, 0.0, 1e-4, "a tie across the rails stays level")
+	gt(b.determinant(), 0.0, "and it is not mirrored, so its faces still face out")
+	ForeKinds.forget()
+	for v in ForeKinds.VARIANTS:
+		var box := ForeKinds.template(ForeKinds.FALLEN, v, Color(0.2, 0.35, 0.3)).get_aabb()
+		lt(box.position.y, 0.0, "fallen variant %d: its lower rail is in the ground" % v)
+		lt(box.position.y + box.size.y, 0.3, "and it stands no higher than a girder on its side")
+	ForeKinds.forget()

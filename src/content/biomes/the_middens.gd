@@ -112,11 +112,12 @@ static func make() -> BiomeDef:
 	# fog is refuse-brown and pools in the slots, leaving the rims clear.
 	d.ground_marks = {Ground.SWARF: GroundColors.MIDDEN_FLOOR}
 	# Over the slots, at the walls' own height: cables the tippers strung, so the
-	# sky from a slot floor is a strip crossed by wires, and girders tipped off
-	# the wrecks, leaning down to the ground they fell on (ForeKinds).
+	# sky from a slot floor is a strip crossed by wires, and girders lying fallen
+	# beside the wrecks, half in the floor (ForeKinds: a wreck is too low to hang
+	# one off).
 	d.fore_rows = {
 		PropKind.DEBRIS: {"shape": "line", "lift": Vector2(2.8, 3.6), "span": Vector2(5.0, 8.0), "chance": 0.45},
-		PropKind.WRECKAGE: {"shape": "girder", "lift": Vector2(2.8, 3.4), "span": Vector2(3.5, 5.5), "chance": 0.55},
+		PropKind.WRECKAGE: {"shape": "fallen", "lift": Vector2.ZERO, "span": Vector2(2.2, 3.4), "chance": 0.55},
 	}
 	# What blows off the heaps: rust and ground-up refuse, brown and dirty.
 	d.weather_style = {&"dust": {"air": Color(0.52, 0.40, 0.30), "thick": 1.1},

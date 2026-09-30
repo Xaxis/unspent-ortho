@@ -199,3 +199,27 @@ func test_the_tell_and_the_run_are_announced() -> void:
 				charge = e
 	check(not charge.is_empty() and charge.mob == h, "a run is announced")
 	check(not windup.is_empty() and windup.mob == h, "and so is a bite")
+
+
+## A FLEEING BODY CAUGHT IN A FOLD OF THE LAND GETS OUT OF IT. Straight away from
+## the player into a hollow in a cliff, it used to push the wall and step to the
+## same side for half a second, over and over: a clerk carrying a record stood
+## "fleeing" 16 tiles out of a yard until the record filed on its clock
+## (raids.tour, main, 2 runs in 3).
+func test_a_fleeing_body_in_a_fold_of_the_land_gets_out() -> void:
+	var w := F.flat_world(96)
+	for x in range(44, 53):
+		w.level[50 * w.size + x] = 8
+	for y in range(50, 57):
+		w.level[y * w.size + 44] = 8
+		w.level[y * w.size + 52] = 8
+	var sim := F.make_sim(w, Vector2(48.5, 60.5))
+	var c := sim.add_mob(&"clerk", Vector2(48.5, 53.5))
+	c.set_mood(MobState.FLEEING, sim.now)
+	var t := 0
+	while t < 15000 and c.mood == MobState.FLEEING and c.alive and not c.removed:
+		F.ms(sim, 250)
+		t += 250
+	check(c.removed or c.mood != MobState.FLEEING or c.pos.distance_to(sim.hero.pos) >= float(c.stat("safe", 12)),
+		"out of the fold and clear within 15 s (at %s, %.1f from the player, %s)" % [c.pos, c.pos.distance_to(sim.hero.pos), c.mood])
+
