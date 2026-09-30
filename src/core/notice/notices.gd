@@ -95,20 +95,28 @@ static func read(sig: Signature, to: Vector2, from: Vector2, row: Dictionary, bl
 			continue
 		# Linear along the channel's own reach: at the edge it is nothing, and
 		# under the holding's nose it is the whole of what the place gives off.
-		var v := sig.get_channel(c) * (1.0 - d / r) * sees * (1.0 - clampf(blind, 0.0, 1.0))
+		var v := sig.get_channel(c) * (1.0 - d / r) * (1.0 - clampf(blind, 0.0, 1.0))
 		if v > top:
 			top = v
 			best = c
+	# Whether it is noticed at all is the place's and the range's: a worker on its
+	# round notices a light the way anyone does. The role is how good a reading it
+	# takes. Gated after the role, a hauler working 15-19 tiles off a lit hearth
+	# all day never noticed it (a raw 0.11-0.19 read 0.06-0.09).
 	if best == &"" or top < FLOOR:
 		return {}
-	return {"channel": best, "strength": clampf(top, 0.0, 1.0)}
+	return {"channel": best, "strength": clampf(top * sees, 0.0, 1.0)}
 
 
 ## The attention a reading files when it gets home. A clerk's record is worth
-## more than a worker's passing remark, because a clerk went and looked.
+## more than a worker's passing remark, because a clerk went and looked. How
+## strong the reading was decided whether there is a record at all (FLOOR); what
+## the plan learns from one is that the place is there and lived in. Weighed by
+## its strength as well, a hauler's record of a lit hearth filed 0.007, a tenth
+## of a notice, and the plan never looked at a place read three times a day.
 static func worth(n: Notice) -> float:
 	var by: float = READS.get(Roles.of(n.carrier), 0.5) if n.carrier != &"" else 0.6
-	return Attention.NOTICE_FULL * clampf(n.strength, 0.0, 1.0) * clampf(0.5 + by * 0.5, 0.0, 1.0)
+	return Attention.NOTICE_FULL * clampf(0.5 + by * 0.5, 0.0, 1.0)
 
 
 ## It is clear of the holding it read: far enough that the player cannot catch it

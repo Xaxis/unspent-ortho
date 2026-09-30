@@ -94,6 +94,35 @@ func test_rolls_land_in_the_ring_out_of_view() -> void:
 	eq(s.roll(1, w, q, m, centre, Spawner.MAX_LIVING), {}, "six living is the most")
 
 
+## A still player's yard dogs and field bulls stayed about them for good, and
+## counted like machines they held every place: no machine came out again, so
+## a holding in a village was never read (tests/raid/test_raid_pacing.gd).
+func test_creatures_never_take_the_places_a_machine_needs() -> void:
+	var beast := {"machine": false}
+	var machine := {"machine": true}
+	check(Spawner.room_for(beast, 2, Spawner.MAX_CREATURES - 1), "a creature comes out while there is room for one")
+	check(not Spawner.room_for(beast, Spawner.MAX_CREATURES, Spawner.MAX_CREATURES), "not past MAX_CREATURES")
+	check(Spawner.room_for(machine, Spawner.MAX_CREATURES, Spawner.MAX_CREATURES), "and a machine still has its place")
+	check(not Spawner.room_for(machine, Spawner.MAX_LIVING, 0), "six living is still the most")
+	var w := F.flat_world(96, Ground.GRASS, Country.COAST)
+	var q := WorldQuery.new(w)
+	var s := Spawner.new()
+	s.rate = 200.0
+	var centre := Vector2(48.5, 48.5)
+	var m := _moment(12.0, 3)
+	var beasts := 0
+	var full_beasts := 0
+	for i in 400:
+		var open := s.roll(i, w, q, m, centre, 0, {}, 0)
+		if not open.is_empty() and not bool(Roster.row(open.kind).get("machine", false)):
+			beasts += 1
+		var full := s.roll(i, w, q, m, centre, Spawner.MAX_CREATURES, {}, Spawner.MAX_CREATURES)
+		if not full.is_empty() and not bool(Roster.row(full.kind).get("machine", false)):
+			full_beasts += 1
+	gt(float(beasts), 0.0, "creatures do come out on this ground while there is room")
+	eq(full_beasts, 0, "and none once the creature places are full")
+
+
 func test_the_source_rate_is_rare() -> void:
 	var w := F.flat_world(96, Ground.GRASS, Country.COAST)
 	var q := WorldQuery.new(w)

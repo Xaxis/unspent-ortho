@@ -165,6 +165,10 @@ static func near_share(d: float) -> float:
 func _dress(mat: ShaderMaterial, i: int, p: Dictionary, cam: Camera3D, ortho: bool, fog: Vector4,
 		thick: float, night: float, px_angle: float, air: Dictionary, dome: Dictionary, share: float) -> void:
 	mat.set_shader_parameter("lod_cut", share)
+	var hub: Vector3 = (p.hub as Transform3D).origin
+	mat.set_shader_parameter("hub_seen", hub_seen(cam, hub))
+	mat.set_shader_parameter("horizon_v", horizon_v(cam))
+	mat.set_shader_parameter("presence", presence(cam.global_position.distance_to(hub)))
 	mat.set_shader_parameter("bone_rows", rows_of(p.bones))
 	mat.set_shader_parameter("comp_d0", cam.far * KNEE)
 	mat.set_shader_parameter("comp_max", cam.far * CEILING)
@@ -184,6 +188,50 @@ func _dress(mat: ShaderMaterial, i: int, p: Dictionary, cam: Camera3D, ortho: bo
 		mat.set_shader_parameter("l0_energy", air["l0_energy"])
 	for k: StringName in dome:
 		mat.set_shader_parameter(k, dome[k])
+
+
+## PRESENCE GOES WITH DISTANCE (colossus.gdshader `presence`): all of a walker
+## inside `PRESENT_FULL` of its hub, and falling to `PRESENT_LEAST` by
+## `PRESENT_FAINT` and beyond, on top of what the air takes. A walker a few
+## kilometres off is sharp and terrible; one at 55 km is a faint giant; the
+## skyline walker is its lights.
+const PRESENT_FULL := 15000.0
+const PRESENT_FAINT := 80000.0
+const PRESENT_LEAST := 0.3
+
+
+static func presence(d: float) -> float:
+	return lerpf(1.0, PRESENT_LEAST, smoothstep(PRESENT_FULL, PRESENT_FAINT, d))
+
+
+## How much the glass holds the hub at `hub` (true world): 1 with it a tenth of
+## the frame's height inside every edge, 0 on or past an edge or behind the eye.
+## Direction alone decides it, so a point a few units along the ray is asked.
+static func hub_seen(cam: Camera3D, hub: Vector3) -> float:
+	if cam == null or not cam.is_inside_tree():
+		return 1.0
+	var eye := cam.global_position
+	var at := eye + (hub - eye).normalized() * 8.0
+	if not cam.is_position_in_frustum(at):
+		return 0.0
+	var size := cam.get_viewport().get_visible_rect().size
+	var px := cam.unproject_position(at)
+	var margin := minf(minf(px.x, size.x - px.x), minf(px.y, size.y - px.y)) / maxf(1.0, size.y)
+	return smoothstep(0.0, 0.1, margin)
+
+
+## Where the horizon's line is on the glass, as SCREEN_UV's y (0 the top): the
+## level straight ahead, far off. Off the glass it runs on past 0 or 1.
+static func horizon_v(cam: Camera3D) -> float:
+	if cam == null or not cam.is_inside_tree():
+		return 0.35
+	var fwd := -cam.global_transform.basis.z
+	var level := Vector3(fwd.x, 0.0, fwd.z)
+	if level.length() < 1e-4:
+		return 0.35 if fwd.y < 0.0 else 1.5
+	var at := cam.global_position + level.normalized() * 8.0
+	var size := cam.get_viewport().get_visible_rect().size
+	return cam.unproject_position(at).y / maxf(1.0, size.y)
 
 
 ## Whether a walker whose hub stands at `hub` can be on the glass of a lens at

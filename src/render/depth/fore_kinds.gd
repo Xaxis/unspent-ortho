@@ -38,7 +38,7 @@ const M_SWARF := 56
 const M_NEON := 34
 
 ## Piece shapes.
-enum { BOUGH, LINE, EAVE, GIRDER, TANGLE, WALKWAY, SIGN_ARM }
+enum { BOUGH, LINE, EAVE, GIRDER, TANGLE, WALKWAY, SIGN_ARM, FALLEN }
 
 ## Variants per shape. Four is enough that a wood does not repeat within a
 ## frame, and few enough that the cache is a handful of meshes.
@@ -71,10 +71,14 @@ const ROWS := {
 	PropKind.HOUSE: {"shape": EAVE, "lift": Vector2(2.1, 2.7), "span": Vector2(1.3, 1.8), "chance": 0.40},
 	PropKind.SHACK: {"shape": EAVE, "lift": Vector2(1.9, 2.4), "span": Vector2(1.2, 1.6), "chance": 0.45},
 	PropKind.PUMP_HOUSE: {"shape": EAVE, "lift": Vector2(2.2, 2.8), "span": Vector2(1.3, 1.7), "chance": 0.45},
-	PropKind.RUIN: {"shape": GIRDER, "lift": Vector2(2.4, 3.4), "span": Vector2(3.4, 5.4), "chance": 0.45},
-	PropKind.WRECKAGE: {"shape": GIRDER, "lift": Vector2(2.2, 3.2), "span": Vector2(3.2, 5.0), "chance": 0.50},
+	# NOTHING LOW CARRIES A GIRDER. A ruin, a wreck or a conveyor stands one or
+	# two units, and a girder hung off one floated over the land as a ladder with
+	# nothing under either end (the owner, 2026-09-29). What they have is one
+	# lying beside them, half in the ground, where it came down.
+	PropKind.RUIN: {"shape": FALLEN, "lift": Vector2.ZERO, "span": Vector2(2.2, 3.4), "chance": 0.45},
+	PropKind.WRECKAGE: {"shape": FALLEN, "lift": Vector2.ZERO, "span": Vector2(2.0, 3.2), "chance": 0.50},
 	PropKind.STACK: {"shape": GIRDER, "lift": Vector2(4.0, 5.6), "span": Vector2(4.0, 6.4), "chance": 0.65},
-	PropKind.CONVEYOR: {"shape": GIRDER, "lift": Vector2(3.0, 4.2), "span": Vector2(5.0, 7.5), "chance": 0.70},
+	PropKind.CONVEYOR: {"shape": FALLEN, "lift": Vector2.ZERO, "span": Vector2(2.4, 3.4), "chance": 0.70},
 	PropKind.DRILL_RIG: {"shape": GIRDER, "lift": Vector2(4.0, 5.8), "span": Vector2(4.5, 7.0), "chance": 0.70},
 	PropKind.FIRE_TOWER: {"shape": GIRDER, "lift": Vector2(4.2, 6.0), "span": Vector2(4.0, 6.0), "chance": 0.75},
 }
@@ -140,7 +144,7 @@ static func land_row(row: Dictionary) -> Dictionary:
 
 
 ## The shapes by the name a landscape file gives them.
-const SHAPE_NAMES: Array[String] = ["bough", "line", "eave", "girder", "tangle", "walkway", "sign_arm"]
+const SHAPE_NAMES: Array[String] = ["bough", "line", "eave", "girder", "tangle", "walkway", "sign_arm", "fallen"]
 
 ## Salts, so no two decisions about one prop share a stream.
 const S_TAKE := 0xF0
@@ -178,25 +182,43 @@ static func hung_on(p: WorldProp, seed_value: int, country: int = -1) -> bool:
 
 ## How the piece on `p` stands: {shape, lift, span, turn, variant}. Pure.
 ##
-## A GIRDER LEAVES ITS PROP NO HIGHER THAN THE PROP STANDS, and the view leans it
-## down to the ground (`lean_basis`). Hung level at the row's lift it floated two
-## to six units over a ruin or a wreck half a unit tall: from above, a grey
-## ladder in the air with nothing under either end (the owner, 2026-09-29). The
-## row's lift is still the most it may hang at, off something tall enough.
+## NO PIECE LEAVES ITS PROP HIGHER THAN THE PROP STANDS (`top_of`): the row's
+## lift is the most it may hang at, off something tall enough. Hung at the row's
+## lift regardless, girders floated two to six units over ruins and wrecks half
+## a unit tall -- from above, grey ladders in the air with nothing under either
+## end (the owner, 2026-09-29) -- and a bough could stand over a sapling's crown.
+##
+## A GIRDER hangs only off a host `GIRDER_HOST_LEAST` tall or more, off its top,
+## and the view leans it down to the ground (`lean_basis`) on the hook it still
+## hangs by. Off anything lower it is FALLEN: lying beside it, half buried.
 static func hang(p: WorldProp, seed_value: int, country: int = -1) -> Dictionary:
 	var row := row_of(p, seed_value, country)
 	var lift: Vector2 = row.lift
 	var span: Vector2 = row.span
-	var at := lerpf(lift.x, lift.y, Rng.hash01(seed_value, p.id, S_LIFT)) * maxf(0.6, p.scale)
-	if int(row.shape) == GIRDER:
-		at = minf(at, top_of(p, seed_value, country))
+	var shape := int(row.shape)
+	var top := top_of(p, seed_value, country)
+	var at := minf(lerpf(lift.x, lift.y, Rng.hash01(seed_value, p.id, S_LIFT)) * maxf(0.6, p.scale), top)
+	var reach := lerpf(span.x, span.y, Rng.hash01(seed_value, p.id, S_SPAN)) * maxf(0.7, p.scale)
+	if shape == GIRDER and top < GIRDER_HOST_LEAST:
+		shape = FALLEN
+	if shape == FALLEN:
+		at = 0.0
+		reach = minf(reach, FALLEN_MOST)
 	return {
-		"shape": int(row.shape),
+		"shape": shape,
 		"lift": at,
-		"span": lerpf(span.x, span.y, Rng.hash01(seed_value, p.id, S_SPAN)) * maxf(0.7, p.scale),
+		"span": reach,
 		"turn": Rng.hash01(seed_value, p.id, S_TURN),
 		"variant": int(Rng.hash01(seed_value, p.id, S_VARIANT) * VARIANTS) % VARIANTS,
 	}
+
+
+## The least a host stands for a girder to hang off it, in units: a fire tower,
+## a stack, a standing rig, a city shell. Anything lower gets a FALLEN one.
+const GIRDER_HOST_LEAST := 2.0
+## The longest a fallen girder lies, in tiles: longer and the terraces under it
+## lift one end off the ground (ForeView hides one that would).
+const FALLEN_MOST := 3.4
 
 
 ## How tall `p` stands over its own ground, in units: the top of its drawn model.
@@ -249,6 +271,7 @@ static func template(shape: int, variant: int, tint: Color, dying: bool = false)
 		TANGLE: _tangle(k, seed_value, tint)
 		WALKWAY: _walkway(k, seed_value, tint)
 		SIGN_ARM: _sign_arm(k, seed_value, tint, dying)
+		FALLEN: _fallen(k, seed_value, tint)
 	var mesh := k.build()
 	_cache[key] = mesh
 	return mesh
@@ -441,10 +464,40 @@ static func _girder(k: MeshKit, seed_value: int, tint: Color) -> void:
 		k.strut(Vector3(t, y, -zz), Vector3(t, y, zz), 0.030, 3, steel)
 	# One diagonal brace, and a broken end where it was cut.
 	k.strut(Vector3(0.05, 0.0, -z), Vector3(0.62, -drop * 0.6, z * 0.9), 0.024, 3, steel)
+	var frayed := Palette.RUST[2].lerp(tint, 0.2)
+	frayed.a = M_SWARF / 255.0
 	if Rng.hash01(seed_value, 3) < 0.6:
-		var frayed := Palette.RUST[2].lerp(tint, 0.2)
-		frayed.a = M_SWARF / 255.0
 		k.prism(1.0, -drop - 0.05, 0.0, 0.10, -drop + 0.05, 0.02, 5, frayed)
+	# WHAT IT STILL HANGS BY. Leaned from its host's top (ForeView), the root end
+	# is bent back up over the edge it caught on, a rail each side, and a cable
+	# runs from the middle of the end up onto the host: the joint is the drawing.
+	for s in 2:
+		var zz := z * (1.0 if s == 0 else -1.0)
+		k.strut(Vector3(0.0, 0.0, zz), Vector3(-0.05, 0.07, zz * 1.05), 0.046, 4, frayed)
+	k.strut(Vector3(0.02, 0.0, 0.0), Vector3(-0.07, 0.16, 0.02), 0.012, 3, steel)
+
+
+## A FALLEN GIRDER: one that came down, lying on its side beside what it fell
+## off, its lower rail in the ground and rust coming up it. The same two rails
+## and ties as a standing one (FOUND is ruled), stood on edge, so from above it
+## is a length of wreckage and never a ladder.
+static func _fallen(k: MeshKit, seed_value: int, tint: Color) -> void:
+	var steel := Palette.PLATE[1].lerp(Palette.RUST[2], 0.35).lerp(tint, 0.2)
+	steel.a = M_SWARF / 255.0
+	var rust := Palette.RUST[2].lerp(tint, 0.15)
+	rust.a = M_SWARF / 255.0
+	var h := 0.2
+	# A little out of true: it hit the ground and bent.
+	var bend := (Rng.hash01(seed_value, 1) - 0.5) * 0.08
+	k.strut(Vector3(0.0, -0.02, 0.0), Vector3(1.0, -0.03, bend), 0.048, 4, rust)
+	k.strut(Vector3(0.0, h, 0.02), Vector3(1.0, h * 0.9, bend + 0.02), 0.048, 4, steel)
+	var ties := 4 + int(Rng.hash01(seed_value, 2) * 3.0)
+	for i in ties:
+		var t := (float(i) + 0.5) / ties
+		k.strut(Vector3(t, -0.02, bend * t), Vector3(t, h * lerpf(1.0, 0.9, t), bend * t + 0.02), 0.030, 3, steel)
+	k.strut(Vector3(0.05, -0.02, 0.0), Vector3(0.62, h * 0.94, bend * 0.62 + 0.02), 0.024, 3, steel)
+	if Rng.hash01(seed_value, 3) < 0.6:
+		k.prism(1.0, h * 0.4, bend, 0.10, h * 0.5, 0.03, 5, rust)
 
 
 ## A tangle: dead limbs and caught wire, for a dead tree or a scrapwood trunk.

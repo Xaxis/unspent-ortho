@@ -11,6 +11,11 @@ class_name Spawner
 
 const ROLL_MS := 200
 const MAX_LIVING := 6
+## Of those, the most that may be creatures (a village's yard dogs, a field's
+## bulls, gulls). They never leave a player who stays put, and counted like
+## machines they held all six places: at a holding in a village no machine came
+## out again for 36 hours of play, so nothing ever read the place.
+const MAX_CREATURES := 3
 const RING_MIN := 11
 const RING_MAX := 18
 const CULL := 24.0
@@ -226,16 +231,25 @@ func in_view(centre: Vector2, p: Vector2, margin: float = 2.0) -> bool:
 	return sx <= half_w + margin and sy <= half_h + margin
 
 
+## Whether a body of `row` may come out with `living` bodies about, `creatures`
+## of them creatures (MAX_LIVING, MAX_CREATURES).
+static func room_for(row: Dictionary, living: int, creatures: int) -> bool:
+	if living >= MAX_LIVING:
+		return false
+	return bool(row.get("machine", false)) or creatures < MAX_CREATURES
+
+
 ## One roll. Returns {kind, pos} or {} for nothing this time. `shut`: kinds
-## that may not come out now (Coast's cooldowns), as keys.
-func roll(roll_index: int, world: WorldData, query: WorldQuery, m: Moment, centre: Vector2, living: int, shut: Dictionary = {}) -> Dictionary:
+## that may not come out now (Coast's cooldowns), as keys. `creatures`: how many
+## of the `living` are creatures.
+func roll(roll_index: int, world: WorldData, query: WorldQuery, m: Moment, centre: Vector2, living: int, shut: Dictionary = {}, creatures: int = 0) -> Dictionary:
 	if living >= MAX_LIVING:
 		return {}
 	var fitting: Array[StringName] = []
 	var sum := 0.0
 	for k: StringName in Roster.DEFS:
 		var row := Roster.row(k)
-		if not shut.has(k) and moment_fits(row, m):
+		if not shut.has(k) and moment_fits(row, m) and room_for(row, living, creatures):
 			fitting.append(k)
 			sum += weight_at(row, m)
 	if sum <= 0.0:
