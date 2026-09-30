@@ -152,6 +152,10 @@ func launch(kind: StringName) -> StringName:
 	_put_body(spot)
 	_aboard_state(c)
 	Events.sfx.emit(&"craft_board", game.player.position)
+	# Heard for the goal line (StoryCrossing): a raft is in the water.
+	if CraftKinds.afloat(kind):
+		@warning_ignore("return_value_discarded")
+		Story.hear(StoryCrossing.PUT_IN)
 	# A float goes IN; anything with feet or a skirt is set DOWN.
 	Events.message.emit(("You put the %s in and step on." if CraftKinds.afloat(kind)
 		else "You set the %s down and step on.") % c.display_name())
