@@ -1,6 +1,6 @@
 extends TestCase
-## MAREN'S LEAD (Guide._led, ROADMAP slice 1 step 2): before she has given it the
-## first hour's goals are the plain recipe; once her lead has landed
+## MAREN'S LEAD (Guide._led, ROADMAP slice 1 step 2): before she has given it
+## nothing is wanted of him (no recipe out of nowhere); once her lead has landed
 ## (`marens_lead`) the same moment is said in her words (StoryContent.LEAD), the
 ## fire's name filled in; and her talk reaches the lead on its obvious replies.
 
@@ -14,7 +14,7 @@ func test_the_goal_is_her_lead_once_she_has_given_it() -> void:
 	# Charcoal in hand by the village fire: the want is the haft, a line her lead
 	# words differently (her charcoal lines already said why, and are the same).
 	g.inventory.add(&"charcoal", 2)
-	eq(Guide.goal(g), "A haft, whittled from wood.", "before her lead, the plain want")
+	eq(Guide.goal(g), "", "before her lead, no line")
 	@warning_ignore("return_value_discarded")
 	Story.beat(Guide.LEAD_BEAT)
 	eq(Guide.goal(g), String(StoryContent.LEAD[&"haft"]), "once she has given it, the same want in her words")

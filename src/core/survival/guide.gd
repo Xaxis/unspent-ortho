@@ -8,10 +8,11 @@ class_name Guide
 ## until it lifts. The slate shows `goal` standing on the HUD and the hint on
 ## its key row (90_ui).
 ##
-##   goal(game) -> String                     the want now: your things back after a bad end; a fire,
-##                                            charcoal, a haft, plate, a pick,
-##                                            food, light; or the ore once there is a pick;
-##                                            then the next elite material and where it is
+##   goal(game) -> String                     the want now: food, his things back, light; the
+##                                            edge a keeper rang off; the open story lead's
+##                                            next step; else "" (see _goal_of)
+##   within_reach(game) -> String             the long game's next material or part and where,
+##                                            for the making page's "within reach" row; "" for none
 ##   hint_for(game, retired) -> Dictionary    the first hint that applies and is not retired:
 ##                                            {id: StringName, line: String, keys: Array} or {}
 ##   HINTS                                    id -> [line template, action names] for every hint
@@ -163,6 +164,17 @@ static func goal(game: Game) -> String:
 	return line
 
 
+## THE LINE IS HIS PURPOSE, NEVER A RECIPE FROM NOWHERE (owner: "the messages
+## under the health bar don't make sense and are completely disconnected from
+## the rest of the game"). In order: a real need while it is real (hunger, his
+## things lying where he fell, the dark with a lamp unlit); the edge a keeper
+## has rung off, since that fight is what he is doing; then the next step of the
+## open story lead, keyed on story state and never on what the bag holds;
+## otherwise nothing. A pick held only decides where Maren's errand stands, and
+## any make of it will do: every better pick consumes the plain one, and the whole
+## story used to vanish behind "a fire before dark" once one was made. The long
+## game's recipe ladder (next_elite, next_part) is the making page's "within
+## reach" row, not a goal.
 static func _goal_of(game: Game) -> String:
 	var inv := game.inventory
 	var now := game.clock.minutes
@@ -175,27 +187,41 @@ static func _goal_of(game: Game) -> String:
 	var edge := edge_goal(game)
 	if edge != "":
 		return edge
-	if inv.has(&"pick"):
-		var armour := armour_goal(game)
-		if armour != "":
-			return armour
-		var way := way_goal(game)
-		if way != "":
-			return way
+	if not Story.landed(LEAD_BEAT):
+		return ""
+	if not has_pick(inv):
+		return _first_hour(game)
+	var reaper := reaper_goal()
+	if reaper != "":
+		return reaper
+	var paid := Story.chose(CAMP_PAID) == StringName(StoryContent.PAID[CAMP_PAID].pick)
+	if not paid:
+		if Story.landed(REAPER_DOWN) and StoryContent.LEAD.has(&"crew"):
+			_key = &"crew"
+			return String(StoryContent.LEAD[&"crew"])
 		if not inv.has(&"iron_ore") and not inv.has(&"iron"):
 			return _led(&"ore", "Take the pick to the ore in the rock.")
-		var camp := camp_goal()
-		if camp != "":
-			return camp
-		# Past the first tools, the long game: the next elite material, and where
-		# -- and a part a room keeps, once the material it follows is held.
-		var part := next_part(game)
-		if part != &"":
-			return part_goal(part)
-		var want := next_elite(game)
-		if want != &"":
-			return elite_goal(game, want)
-		return _led(&"ore", "Take the pick to the ore in the rock.")
+		return camp_goal()
+	var armour := armour_goal(game)
+	if armour != "":
+		return armour
+	return way_goal(game)
+
+
+## The picks that answer Maren's errand: the plain one and what it is made into.
+const PICKS: Array[StringName] = [&"pick", &"pick_steel", &"pick_spar", &"pick_glass"]
+
+
+static func has_pick(inv: Inventory) -> bool:
+	for id in PICKS:
+		if inv.has(id):
+			return true
+	return false
+
+
+## Maren's errand, step by step: a fire, charcoal, a haft, plate, the pick.
+static func _first_hour(game: Game) -> String:
+	var inv := game.inventory
 	var fire := _fire(game)
 	if fire == null:
 		if Survival._makeable_build(game, &"fire").is_empty():
@@ -205,17 +231,27 @@ static func _goal_of(game: Game) -> String:
 	if not _cooking_or_has(game, &"charcoal"):
 		if inv.count(&"driftwood") < 4 and inv.count(&"deadwood") < 4:
 			return _led(&"charcoal_gather", "Charcoal for a pick: four driftwood or dead wood, burnt at {at}.", at)
-		# **NO KEY IN A GOAL LINE.** This said "(c)" -- a letter typed into CORE,
-		# which this file states two screens down may not read a key at all, and
-		# which is wrong for anybody who rebinds `craft`. The goal says what to
-		# WANT; the `make` lesson says which key, in the player's own keys, and
-		# it is offered at exactly this moment.
+		# **NO KEY IN A GOAL LINE.** The goal says what to WANT; the `make`
+		# lesson says which key, in the player's own keys, at this moment.
 		return _led(&"charcoal_set", "Charcoal for a pick: set it going at {at}.", at)
 	if not inv.has(&"haft"):
 		return _led(&"haft", "A haft, whittled from wood.")
 	if inv.count(&"scrap") == 0:
 		return _led(&"plate", "Plate for a pick: turn over the tip.")
 	return _led(&"pick", "A pick, made at {at}.", at)
+
+
+## HOB'S ERRAND: once he has named the keeper (`reaper_named`) and until it
+## falls, ending it is the want (LEAD `reaper`); once its plating has rung his
+## edge off, edge_goal's steps say how.
+const REAPER_DOWN := &"reaper_down"
+
+
+static func reaper_goal() -> String:
+	if Story.landed(NAMED_BEAT) and not Story.landed(REAPER_DOWN) and StoryContent.LEAD.has(&"reaper"):
+		_key = &"reaper"
+		return String(StoryContent.LEAD[&"reaper"])
+	return ""
 
 
 ## MAREN'S LEAD (ROADMAP slice 1, step 2): once she has given it (the beat
@@ -414,6 +450,18 @@ static func _kiln(game: Game) -> WorldProp:
 			if best == null or q.pos.distance_to(game.player.pos) < best.pos.distance_to(game.player.pos):
 				best = q
 	return best
+
+
+## THE LONG GAME, ON THE MAKING PAGE: the next part a room keeps once its
+## material is held, else the next elite material and where it is. Never the goal
+## line: nobody pointed him at these, so pinned there they read as a recipe out
+## of nowhere.
+static func within_reach(game: Game) -> String:
+	var part := next_part(game)
+	if part != &"":
+		return part_goal(part)
+	var want := next_elite(game)
+	return elite_goal(game, want) if want != &"" else ""
 
 
 ## The elite material wanted next (EliteStock): the first the bag holds none of
