@@ -19,6 +19,10 @@ const ERRAND_CLOSE_MS := 3000
 const ERRAND_REST_MS := 4000
 ## A run that covers less than this share of its expected distance hit something.
 const BLOCKED_SHARE := 0.35
+## How far off a fleeing body caught against the land looks for ground to make
+## for, and how long it keeps to that way before it flees straight again.
+const FLEE_REACH := 16.0
+const FLEE_WAY_MS := 3000.0
 ## Radians off its facing a machine's close bite may be thrown at.
 const FACING_BITE := 0.6
 ## A worker goes round someone standing on its round this far ahead (tiles),
@@ -661,13 +665,35 @@ static func _flee(m: MobState, sim: FightSim) -> void:
 	if away.length() < 1e-4:
 		away = Vector2.from_angle(m.facing)
 	var dir := away.normalized()
+	# Caught against the land: out by its own ground to somewhere away, round
+	# the fold rather than into its wall again (FLEE_WAY_MS at a time).
+	if is_finite(m.flee_to.x) and sim.now < m.detour_until:
+		var way := sim.route(m, m.flee_to)
+		if way != Vector2.ZERO:
+			m.want = way * m.dash
+			m.aim = way.angle()
+			return
+		m.flee_to = Vector2.INF
 	if sim.now < m.detour_until:
 		dir = (dir + m.detour).normalized()
 	elif m.pos.distance_to(m.last_think_pos) < m.dash * 0.064 * BLOCKED_SHARE and m.speed < m.dash * 0.3:
+		m.flee_to = _flee_point(m, sim, dir)
 		m.detour = dir.orthogonal() * (1.0 if m.id % 2 == 0 else -1.0) * 1.5
-		m.detour_until = sim.now + 500.0
+		m.detour_until = sim.now + (FLEE_WAY_MS if is_finite(m.flee_to.x) else 500.0)
 	m.want = dir * m.dash
 	m.aim = dir.angle()
+
+
+## A point FLEE_REACH out along `dir`, or swung off it either side, that this
+## body's own ground reaches; INF where none does. Straight away from the player
+## into a hollow in a cliff, a sidestep to the same side for half a second never
+## got out: a clerk carrying a record stood "fleeing" 16 tiles out of a yard.
+static func _flee_point(m: MobState, sim: FightSim, dir: Vector2) -> Vector2:
+	for off: float in [0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5]:
+		var p := m.pos + dir.rotated(off) * FLEE_REACH
+		if sim.route_steps(m, p, m.pos) < NavField.FAR:
+			return p
+	return Vector2.INF
 
 
 ## Straight at a point, stepping round whatever stops it for half a second.
