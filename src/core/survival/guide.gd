@@ -184,6 +184,12 @@ static func _goal_of(game: Game) -> String:
 		return BAG_GOAL
 	if FightRules.nightfall(game.clock.hour()) >= LAMP_NIGHTFALL and not game.body.lamp_lit and inv.has(&"lamp"):
 		return "Light the lamp against the dark."
+	# PEOPLE AT RISK BEFORE HIS OWN KIT: a raid warned on his holding
+	# (Holding.RAIDED) puts shutters on its beds ahead of the pick, the plate and
+	# the crew. Behind them, a player warned early heard only "coming for".
+	if Holding.shutters_wanted(game) and StoryContent.LEAD.has(&"shutters"):
+		_key = &"shutters"
+		return String(StoryContent.LEAD[&"shutters"])
 	var edge := edge_goal(game)
 	if edge != "":
 		return edge
@@ -340,10 +346,6 @@ static func way_goal(game: Game) -> String:
 		if not Holding.taken_from_seen(game):
 			return String(StoryContent.HOLDING_MOVE["lead_burned"])
 		return String(StoryContent.LEAD[&"holding"])
-	# Then the beds there, once a raid has been warned on it (Holding.RAIDED).
-	if Holding.shutters_wanted(game) and StoryContent.LEAD.has(&"shutters"):
-		_key = &"shutters"
-		return String(StoryContent.LEAD[&"shutters"])
 	# Then Rook's pointer, while the chain waits on a keeper nobody has named.
 	var hob := hob_goal()
 	if hob != "":
