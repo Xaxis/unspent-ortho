@@ -14,6 +14,9 @@ const Sx := preload("res://tests/save/save_fixture.gd")
 ## In-game minutes the bars allow: a day and a bit, two days and a bit.
 const SURVEY_BY := 30.0 * 60.0
 const WARNED_BY := 54.0 * 60.0
+## The owner's floor: a working day before anything past a look (48_raids
+## FIRST_WARNING_AFTER).
+const WARNED_NOT_BEFORE := 12.0 * 60.0
 
 
 func test_a_lit_staffed_holding_on_a_wild_coast_is_surveyed_then_warned() -> void:
@@ -24,6 +27,9 @@ func test_a_lit_staffed_holding_on_a_wild_coast_is_surveyed_then_warned() -> voi
 		"surveyed within a day and a bit (%s)" % _when(first, "survey"))
 	check(first.has("past") and float(first["past"]) <= WARNED_BY,
 		"warned of more than a look within two days and a bit (%s)" % _when(first, "past"))
+	# And not before a working day: the time to hear why and put the shutters up.
+	check(first.has("past") and float(first["past"]) >= WARNED_NOT_BEFORE,
+		"but no sooner than a working day (%s)" % _when(first, "past"))
 
 
 ## The defence, seen from the plan's side: a holding with its hearth out and its
