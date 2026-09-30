@@ -21,7 +21,10 @@
 ##            plates: a charge commits to its bearing, so the sand is the answer
 ##            and the dodge is how you spend it.
 ##   starve   the field's rods feed it. Break them and the crown has nothing to
-##            call through.
+##            call through. CLOSED while no world lays a strike field (works
+##            phase B): a keeper the plan never fed cannot be starved. Force and
+##            founder are taken by play (tests/sentinel/test_anvil_ways.gd: one
+##            try each on seeds 1 and 7).
 ##   SPOOF is left out. Its orders do not come by relay: it answers the SKY, and
 ##            a storm cannot be worn. A signature the flats' rake would file the
 ##            player under means nothing to a machine that only listens for

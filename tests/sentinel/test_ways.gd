@@ -196,7 +196,7 @@ func test_robbing_its_feeds_by_hand_starves_it() -> void:
 	Sx.use_root("ways-starve")
 	# Robbing eight works is hours of the clock: a player going to do it carries
 	# something to eat, and eats when the body says so.
-	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear", "--give=fish:6"])
+	var g := await Sx.played(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear", "--give=fish:6"])
 	# Bodies numbered from the same place whatever ran before in this process:
 	# the reader's hands are hashed on a body's id (Reader.human).
 	MobState._next_id = 900000
@@ -327,64 +327,7 @@ func _unseen_beside(g: Game, q: WorldProp, m: MobState) -> Vector2:
 
 
 const PR := preload("res://tests/fight/plate_reader.gd")
-const GD := preload("res://tests/fight/game_driver.gd")
-
-
-## A spot `dist` off its lair on its own level, down a line its run can take,
-## with the most (or least) of the ground `grounds` round it.
-func _stand(g: Game, s: SentinelState, dist: float, grounds: Array, most: bool) -> Vector2:
-	var best := Vector2.INF
-	var score := -INF
-	var level := g.world.level_at(floori(s.lair.x), floori(s.lair.y))
-	for i in 32:
-		var p := s.lair + Vector2.from_angle(TAU * i / 32.0) * dist
-		var tx := floori(p.x)
-		var ty := floori(p.y)
-		if not g.query.standable(tx, ty) or not g.world.same_body(p, s.lair) \
-				or (not most and not FightRules.levels_meet(g.world.level_at(tx, ty), level)) \
-				or not NavField.line_walkable(g.world, s.lair, p, 0.45):
-			continue
-		var n := 0.0
-		for dy in range(-5, 6):
-			for dx in range(-5, 6):
-				n += float(grounds.has(g.world.ground_at(tx + dx, ty + dy)))
-		var sc := n if most else -n
-		if sc > score and (not most or grounds.has(g.world.ground_at(tx, ty))):
-			score = sc
-			best = p
-	return best
-
-
-## Fought by the plate player through the game's input (GameDriver): the coast
-## held off, knife_shear in hand, from firm ground it keeps to. Downed, it comes
-## to at the edge of the keeper's ground and walks back. The target key is held
-## throughout when `locked`. Returns the tally.
-func _fight_it(g: Game, s: SentinelState, at: Vector2, reader: Variant, seconds: float, locked := false) -> Dictionary:
-	var sim: FightSim = g.player.sim
-	g.player.place(at, (s.lair - at).angle())
-	var d: Variant = GD.new(g, reader)
-	d.locked = locked
-	var downs := [0]
-	var on_end := func(o: StringName) -> void:
-		if o == &"downed" or o == &"carried":
-			downs[0] += 1
-	Events.fight_ended.connect(on_end)
-	var t0 := sim.now
-	# On the fight's own clock, never the wall's: the same steps on any box. A
-	# frame cap stands in for a hang guard (the hitstop holds the clock a while).
-	var frames_left := int(seconds * 60.0 * 3.0)
-	while not s.fallen and sim.now - t0 < seconds * 1000.0 and frames_left > 0:
-		frames_left -= 1
-		d.step()
-		await tree.physics_frame
-	d.release()
-	Events.fight_ended.disconnect(on_end)
-	return {"fallen": s.fallen, "how": s.how, "tries": downs[0] + 1, "downs": downs[0], "s": (sim.now - t0) / 1000.0, "health": s.health}
-
-
-func _calm(g: Game) -> void:
-	(Sx.system(g, "30_mobs").get("coast") as Object).set("spawning", false)
-	g.player.sim.clear_mobs()
+const KF := preload("res://tests/sentinel/keeper_fight.gd")
 
 
 func test_by_force_from_firm_ground_it_falls_to_blows_and_never_founders() -> void:
@@ -395,39 +338,60 @@ func test_by_force_from_firm_ground_it_falls_to_blows_and_never_founders() -> vo
 	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FORCE).id(), "it falls to blows (%s)" % out)
 	check(out.how != SentinelWay.make(SentinelWay.FOUNDER).id(), "and never founders under a fight kept on firm ground")
 	lt(float(out.tries), 4.5, "in a few tries (%d)" % out.tries)
-	# Holding target is what a player does at a boss, so the lock must not cost
-	# the fight: the same player locked falls it as surely and about as fast.
-	var held: Dictionary = await _by_force(true)
-	print("  info force by hand, locked: %s" % held)
-	check(held.fallen and held.how == SentinelWay.make(SentinelWay.FORCE).id(), "locked, it still falls to blows (%s)" % held)
-	lt(float(held.tries), float(out.tries) + 0.5, "in no more tries locked (%d) than free (%d)" % [held.tries, out.tries])
-	lt(float(held.s), float(out.s) * LOCKED_MOST, "and about as fast: %.1f s locked, %.1f s free" % [held.s, out.s])
+
+
+## Holding target is what a player does at a boss, so the lock must not cost the
+## fight: the same players locked fall it as surely and about as fast. Summed
+## over LOCK_READERS, because one reader is one draw of a fight a hair's change
+## sends another way (one draw gave 49 s locked to 113 s free, the next 79 to 43,
+## with nothing about the lock changed between them).
+func test_from_above_the_lock_costs_the_fight_nothing() -> void:
+	if not stepped_now():
+		return
+	await _lock_costs_nothing(false)
 
 
 func test_over_the_shoulder_the_lock_costs_the_fight_nothing() -> void:
 	if not stepped_now():
 		return
-	var out: Dictionary = await _by_force(false, true)
-	print("  info force over the shoulder: %s" % out)
-	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FORCE).id(), "over the shoulder it falls to blows (%s)" % out)
-	var held: Dictionary = await _by_force(true, true)
-	print("  info force over the shoulder, locked: %s" % held)
-	check(held.fallen and held.how == SentinelWay.make(SentinelWay.FORCE).id(), "locked over the shoulder, it still falls to blows (%s)" % held)
-	lt(float(held.tries), float(out.tries) + 0.5, "in no more tries locked (%d) than free (%d)" % [held.tries, out.tries])
-	lt(float(held.s), float(out.s) * LOCKED_MOST, "and about as fast: %.1f s locked, %.1f s free" % [held.s, out.s])
+	await _lock_costs_nothing(true)
 
 
-## How much longer a locked fight may take than the same player's free one.
+func _lock_costs_nothing(shoulder: bool) -> void:
+	var free := {"tries": 0, "s": 0.0, "fell": 0}
+	var held := {"tries": 0, "s": 0.0, "fell": 0}
+	for human: int in LOCK_READERS:
+		for locked: bool in [false, true]:
+			var out: Dictionary = await _by_force(locked, shoulder, human)
+			print("  info   reader %d %s: %s" % [human, "locked" if locked else "free", out])
+			var sum: Dictionary = held if locked else free
+			sum.tries += int(out.tries)
+			sum.s += float(out.s)
+			sum.fell += int(out.fallen)
+	var view := "over the shoulder" if shoulder else "from above"
+	print("  info force %s, readers %s: free %s, locked %s" % [view, LOCK_READERS, free, held])
+	check(held.fell >= free.fell, "%s, locked it falls as often (%d) as free (%d)" % [view, held.fell, free.fell])
+	# Tries per fall: a fight never won within the budget spends fewer tries than
+	# one won on the last of them, and must not count as the better.
+	var per_free := float(free.tries) / maxf(1.0, float(free.fell))
+	var per_held := float(held.tries) / maxf(1.0, float(held.fell))
+	lt(per_held, per_free + 0.25, "in no more tries a fall locked (%.2f) than free (%.2f)" % [per_held, per_free])
+	lt(float(held.s), float(free.s) * LOCKED_MOST, "and about as fast: %.1f s locked, %.1f s free" % [held.s, free.s])
+
+
+## How much longer the locked fights may take than the same players' free ones.
 const LOCKED_MOST := 1.2
+## The players both are fought by (Reader.human).
+const LOCK_READERS: Array[int] = [1, 2, 3]
 
 const NONE := {"fallen": false, "how": &"", "tries": 99, "downs": 0, "s": INF, "health": -1}
 
 
-## The Reaper fought by the plate player from firm ground, the target key held
-## throughout when `locked`, from above or over the shoulder. Returns the tally, NONE when there was no fight.
-func _by_force(locked: bool, shoulder := false) -> Dictionary:
+## The Reaper fought by plate player `human` from firm ground, the target key
+## held throughout when `locked`, from above or over the shoulder. Returns the tally, NONE when there was no fight.
+func _by_force(locked: bool, shoulder := false, human := 1) -> Dictionary:
 	Sx.use_root("ways-force")
-	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear",
+	var g := await Sx.played(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear",
 		"--view=shoulder" if shoulder else "--view=top"])
 	# Bodies numbered from the same place whatever ran before in this process:
 	# the reader's hands are hashed on a body's id (Reader.human).
@@ -437,18 +401,18 @@ func _by_force(locked: bool, shoulder := false) -> Dictionary:
 	if s == null:
 		Sx.end(g)
 		return NONE
-	_calm(g)
+	KF.calm(g)
 	var flats: Array = Sentinels.by_id(s.design).way_of(SentinelWay.FOUNDER).grounds
-	var at := _stand(g, s, 6.0, flats, false)
+	var at := KF.stand(g, s, 6.0, flats, false)
 	check(at.is_finite(), "firm ground to come at it from")
 	if not at.is_finite():
 		Sx.end(g)
 		return NONE
 	var r: Variant = PR.new(g.player.sim)
-	r.human = 1
+	r.human = human
 	r.keep_off = flats
 	r.home = at
-	var out: Dictionary = await _fight_it(g, s, at, r, 240.0, locked)
+	var out: Dictionary = await KF.fight(tree, g, s, at, r, 240.0, locked)
 	Sx.end(g)
 	return out
 
@@ -457,7 +421,7 @@ func test_held_out_on_the_flats_it_founders() -> void:
 	if not stepped_now():
 		return
 	Sx.use_root("ways-founder")
-	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear"])
+	var g := await Sx.played(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear"])
 	# Bodies numbered from the same place whatever ran before in this process:
 	# the reader's hands are hashed on a body's id (Reader.human).
 	MobState._next_id = 900000
@@ -466,11 +430,11 @@ func test_held_out_on_the_flats_it_founders() -> void:
 	if s == null:
 		Sx.end(g)
 		return
-	_calm(g)
+	KF.calm(g)
 	var flats: Array = Sentinels.by_id(s.design).way_of(SentinelWay.FOUNDER).grounds
 	var flat := Vector2.INF
 	for dist: float in [6.0, 8.0, 10.0, 12.0, 4.0]:
-		flat = _stand(g, s, dist, flats, true)
+		flat = KF.stand(g, s, dist, flats, true)
 		if flat.is_finite():
 			break
 	check(flat.is_finite(), "flats to draw it onto")
@@ -484,7 +448,7 @@ func test_held_out_on_the_flats_it_founders() -> void:
 	r.keep_on = flats
 	r.lure = flat
 	r.home = start
-	var out: Dictionary = await _fight_it(g, s, start, r, 90.0)
+	var out: Dictionary = await KF.fight(tree, g, s, start, r, 90.0)
 	print("  info founder by hand: %s" % out)
 	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FOUNDER).id(), "drawn out onto the flats and held there, it founders (%s)" % out)
 	Sx.end(g)

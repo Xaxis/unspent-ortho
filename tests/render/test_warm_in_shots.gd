@@ -21,12 +21,15 @@ func test_when_the_warm_up_is_done_no_rack_stands_at_the_player() -> void:
 	tree.root.add_child(g)
 	g.setup(BootOptions.parse(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0"])))
 	var w := g.get_node("01_warm_lights")
-	await frames(2)
+	# The rack is placed in the warm-up's _process, and after a long setup the first
+	# main-loop turn runs several physics steps before one process frame, so two
+	# physics frames can hold no _process at all (CI shard 4, 2026-09-30).
+	await process_frames(2)
 	check(not bool(w.call("done")), "two frames in, the warm-up is still on")
 	gt(_at_player(g), 0, "and its rack stands at the player's feet, where a shot or a lifted page would show it")
 	var waited := 0
 	while not bool(w.call("done")) and waited < 60:
-		await frames(1)
+		await process_frames(1)
 		waited += 1
 	check(bool(w.call("done")), "the warm-up ends")
 	eq(_at_player(g), 0, "and on that frame nothing of any rack is left at the player")

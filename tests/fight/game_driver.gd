@@ -30,6 +30,8 @@ func _init(g: Game, r: Variant) -> void:
 func step() -> void:
 	var hero := game.player.sim.hero
 	hands.step()
+	if "from_above" in reader:
+		reader.from_above = not game.camera.shoulder
 	if locked and not Input.is_action_pressed(&"target"):
 		Input.action_press(&"target")
 	reader.act()
