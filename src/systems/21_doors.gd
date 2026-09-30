@@ -360,7 +360,7 @@ func _begin(t: Threshold) -> void:
 	if _grown != null and _grown.threshold.key == t.key:
 		return
 	_drop_grown()
-	_grown = InteriorGen.grow(game.options.seed_value, t)
+	_grown = InteriorGen.grow(game.options.seed_value, t, StoryRooms.tenants(game.world).get(t.key, &""))
 	if _grown == null:
 		return
 	_view = WorldView.new()
@@ -2277,7 +2277,7 @@ func _tour_door(what: String) -> Threshold:
 			return t
 		if Interiors.RECIPES.has(StringName(want)):
 			continue
-		var l := InteriorGen.grow(game.options.seed_value, t).layout
+		var l := InteriorGen.grow(game.options.seed_value, t, StoryRooms.tenants(game.world).get(t.key, &"")).layout
 		if String(l.plan) == want or String(l.dressing) == want:
 			return t
 		# Or a room with a thing of that kind in it (`door:buckled`).
