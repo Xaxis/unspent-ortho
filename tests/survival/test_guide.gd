@@ -1,63 +1,76 @@
 extends TestCase
-## The first hour guide: a goal that follows what the player has and lacks, key
-## hints that fit the moment and retire once used, and a running game that says
-## the goal at wake and the keys after it, a few seconds apart.
+## The first hour guide: a goal that follows her errand through what the player
+## has and lacks, key hints that fit the moment and retire once used, and a
+## running game that says the goal once her lead is given and the keys after it,
+## a few seconds apart.
 
 const Fx := preload("res://tests/survival/fixture.gd")
 
 
+func _key(g: Game) -> StringName:
+	return Guide.last_goal_key if Guide.goal(g) != "" else &""
+
+
 func test_the_goal_walks_the_way_in() -> void:
+	Story.forget()
 	var g := Fx.flat()
 	g.inventory.remove(&"knife")
 	g.inventory.add(&"knife")
-	check(Guide.goal(g).contains("three driftwood and two stones"), "first a fire, and what it takes: %s" % Guide.goal(g))
+	eq(Guide.goal(g), "", "before her lead, nothing is wanted of him")
+	@warning_ignore("return_value_discarded")
+	Story.beat(Guide.LEAD_BEAT)
+	eq(_key(g), &"fire_gather", "first a fire, and what it takes")
 	g.inventory.add(&"driftwood", 3)
 	g.inventory.add(&"stone", 2)
-	check(Guide.goal(g).contains("lay it"), "with the makings, lay it: %s" % Guide.goal(g))
+	eq(_key(g), &"fire_lay", "with the makings, lay it")
 	Survival.build(g, &"fire", true)
-	check(Guide.goal(g).contains("Charcoal"), "a fire: charcoal next: %s" % Guide.goal(g))
+	check([&"charcoal_gather", &"charcoal_set"].has(_key(g)), "a fire: charcoal next: %s" % Guide.goal(g))
 	g.inventory.add(&"charcoal", 1)
-	check(Guide.goal(g).contains("haft"), "then a haft: %s" % Guide.goal(g))
+	eq(_key(g), &"haft", "then a haft")
 	g.inventory.add(&"haft", 1)
-	check(Guide.goal(g).contains("tip"), "then plate: %s" % Guide.goal(g))
+	eq(_key(g), &"plate", "then plate")
 	g.inventory.add(&"scrap", 1)
-	check(Guide.goal(g).contains("pick"), "then the pick: %s" % Guide.goal(g))
+	eq(_key(g), &"pick", "then the pick")
 	g.inventory.add(&"pick", 1)
-	check(Guide.goal(g).contains("ore"), "then the ore: %s" % Guide.goal(g))
+	eq(_key(g), &"ore", "then the crew's ore")
+	g.inventory.remove(&"pick")
+	g.inventory.add(&"pick_spar", 1)
+	eq(_key(g), &"ore", "a pick made into a better one is still a pick")
 	g.body.fed_until = g.clock.minutes - 8.0 * 60.0
 	check(Guide.goal(g).contains("Eat"), "hunger comes first: %s" % Guide.goal(g))
 	Fx.done(g)
+	Story.forget()
 
 
-## Past the first tools the goal points outward (mechanics pass 2c): the next
-## elite material the player lacks, what it is, and where in the world it comes
-## from, off the same walk the economy proves every material by
-## (Sources.path_to). The one the land underfoot gives comes first.
-func test_past_the_pick_the_goal_points_at_an_elite_material() -> void:
+## Past the first tools the making page points outward (mechanics pass 2c; its
+## "within reach" row, never the goal line): the next elite material the player
+## lacks, what it is, and where in the world it comes from, off the same walk the
+## economy proves every material by (Sources.path_to). The one the land
+## underfoot gives comes first.
+func test_past_the_pick_the_making_page_points_at_an_elite_material() -> void:
 	var g := Fx.flat()
 	Survival.build(g, &"fire", true)
 	g.inventory.add(&"pick", 1)
-	check(Guide.goal(g).contains("ore"), "with a pick and no ore, the ore: %s" % Guide.goal(g))
 	g.inventory.add(&"iron_ore", 1)
 	var want := Guide.next_elite(g)
 	check(EliteStock.is_elite(want), "an elite material is wanted next: %s" % want)
 	check(Sources.reachable(want), "and there is a way to it")
-	var line := Guide.goal(g)
-	print("  late goal: %s" % line)
+	var line := Guide.within_reach(g)
+	print("  within reach: %s" % line)
 	var name := String(Items.def(want).get("name", String(want)))
 	check(line.to_lower().contains(name.to_lower()), "the goal names it (%s): %s" % [name, line])
 	check(line.contains("harvester") and line.contains("here on the coast"), "on the coast, the coast's own: cut out of a harvester, here on the coast: %s" % line)
-	# One line on the goal window, left of the place name, whatever it names.
+	# One line across the making list, whatever it names.
 	for id: Variant in EliteStock.ids():
 		var said := Guide.elite_goal(g, StringName(id))
-		lt(float(Hud.goal_clip(said).end.x), float(UiBase.mid_x() - 120), "fits its window: %s" % said)
+		lt(float(UiFont.width(said)), float(UiSlate.LIST.size.x - UiSlate.MARGIN_L - 28), "fits the list: %s" % said)
 	g.inventory.add(want, 1)
 	var after := Guide.next_elite(g)
-	print("  then: %s" % Guide.goal(g))
+	print("  then: %s" % Guide.within_reach(g))
 	check(after != want and EliteStock.is_elite(after), "held, the next one is asked for: %s" % after)
 	var where := String(EliteStock.land_of(after))
 	if where != "":
-		check(Guide.goal(g).contains(BiomeRegistry.get_def(StringName(where)).spoken_in), "and where it lies, in its own words: %s" % Guide.goal(g))
+		check(Guide.within_reach(g).contains(BiomeRegistry.get_def(StringName(where)).spoken_in), "and where it lies, in its own words: %s" % Guide.within_reach(g))
 	Fx.done(g)
 
 
@@ -85,6 +98,9 @@ func test_a_running_game_says_the_goal_at_wake_then_the_keys() -> void:
 	var g := Game.new()
 	tree.root.add_child(g)
 	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	# Her lead given, so there is a goal to say at all.
+	@warning_ignore("return_value_discarded")
+	Story.beat(Guide.LEAD_BEAT)
 	var guide: Node = g.get_node("58_guide")
 	check(guide != null, "the guide system loads")
 	if guide == null:
@@ -111,6 +127,7 @@ func test_a_running_game_says_the_goal_at_wake_then_the_keys() -> void:
 	Events.hint.disconnect(listen)
 	g.queue_free()
 	await frames(1)
+	Story.forget()
 
 
 func test_the_first_kill_of_a_game_is_said_once() -> void:
@@ -134,6 +151,9 @@ func test_the_first_kill_of_a_game_is_said_once() -> void:
 ## The goal says where: a fire in a village is the village fire, the one the
 ## player laid is theirs.
 func test_the_goal_names_the_fire_it_sends_the_player_to() -> void:
+	Story.forget()
+	@warning_ignore("return_value_discarded")
+	Story.beat(Guide.LEAD_BEAT)
 	var g := Fx.flat()
 	g.world.villages.append({"pos": g.player.pos + Vector2(4, 0), "country": Country.COAST, "name": "v"})
 	var village_fire := Fx.put(g, PropKind.FIRE, Vector2(5, 0))
@@ -147,6 +167,7 @@ func test_the_goal_names_the_fire_it_sends_the_player_to() -> void:
 	eq(Guide.fire_name(g, mine), "your fire")
 	check(Guide.HINTS[&"worker"][0].contains("out of its path"), "the worker hint says what disturbs one")
 	Fx.done(g)
+	Story.forget()
 
 
 ## After a fight the goal comes back; after coming round from a downing, the
@@ -155,6 +176,8 @@ func test_the_goal_is_said_again_after_a_fight_and_keys_wait_after_a_downing() -
 	var g := Game.new()
 	tree.root.add_child(g)
 	g.setup(BootOptions.parse(PackedStringArray(["--seed=4", "--size=64"])))
+	@warning_ignore("return_value_discarded")
+	Story.beat(Guide.LEAD_BEAT)
 	var guide: Node = g.get_node("58_guide")
 	var said: Array[String] = []
 	var listen := func(t: String, _key: String) -> void: said.append(t)
@@ -187,6 +210,7 @@ func test_the_goal_is_said_again_after_a_fight_and_keys_wait_after_a_downing() -
 	Events.hint.disconnect(listen)
 	g.queue_free()
 	await frames(1)
+	Story.forget()
 
 
 func test_a_lesson_names_the_key_that_actually_does_it() -> void:

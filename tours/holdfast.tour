@@ -39,7 +39,7 @@ try 4
   await took:iron_ore 14
 end
 wait 1.0
-shot 01-iron-for-the-crew with goal:camp
+shot 01-iron-for-the-crew with goal:crew
 
 # 2 PAID IN PLATE (StoryContent.PAID, Rook's `iron`): at the crew's camp he holds
 # out the iron (the third reply while he carries it), and Rook pays in plate for

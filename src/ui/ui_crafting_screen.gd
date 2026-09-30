@@ -23,6 +23,9 @@ const COOK_ROWS := 3
 ## The "on now" block's heading and the clear row under it.
 const COOK_HEAD := UiTheme.LINE + 4
 
+## The heading over the long game's next want (Guide.within_reach).
+const REACH_HEAD := "within reach"
+
 ## Stations in reach, nearest first, &"hand" last; set by whoever opens the app.
 var stations: Array[StringName] = [&"fire"]
 var inventory: Inventory
@@ -113,6 +116,12 @@ func refresh() -> void:
 		rows.append_array(ready)
 		rows.append_array(group.filter(func(row: Dictionary) -> bool: return not row.enabled))
 		group.clear()
+	# The long game's next want, said where making is planned (Guide.within_reach):
+	# a heading and a line that is read, not chosen.
+	var reach := Guide.within_reach(game) if game != null and recipes_override.is_empty() else ""
+	if reach != "":
+		rows.append({"header": REACH_HEAD})
+		rows.append({"header": reach, "note": true})
 	menu.set_rows(rows)
 	queue_redraw()
 
@@ -160,6 +169,9 @@ func _draw() -> void:
 		var i := scroll + n
 		var row := menu.rows[i]
 		var top := UiSlate.line_top(LIST_TOP, n)
+		if row.has("note"):
+			UiDraw.text(self, Vector2i(x0 + 12, top), String(row.header), UiTheme.TEXT_DIM)
+			continue
 		if row.has("header"):
 			UiSlate.heading(self, Vector2i(x0, top), String(row.header), right)
 			continue
