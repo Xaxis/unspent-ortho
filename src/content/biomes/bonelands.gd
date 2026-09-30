@@ -73,9 +73,11 @@ static func make() -> BiomeDef:
 	}
 	d.grade = Vector4(-0.03, 0.14, -0.02, 0.12)
 	# Nothing stands here and the ground is bone: an open sky over a pale floor,
-	# so the night is wide and cold rather than dark. What makes it frightening is
-	# that you can be seen in it.
-	d.night_sky = 1.20
+	# so the night is wide and cold rather than black. What makes it frightening
+	# is that you can be seen in it. A pale floor throws the sky back, so it
+	# keeps less of it: at 1.20 the midnight measured a median luma of 77 against
+	# the coast's 21 (2026-09-30), at 0.45 it is 41.
+	d.night_sky = 0.45
 	# Limestone dust: the pale of the clints themselves, carried on the wind.
 	d.weather_style = {&"dust": {"air": Color(0.84, 0.80, 0.70), "thick": 1.0}}
 	d.props = [PropKind.PINE, PropKind.DEAD_TREE, PropKind.BUSH, PropKind.REEDS, PropKind.BOULDER,
