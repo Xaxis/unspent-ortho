@@ -48,6 +48,7 @@ func setup(g: Game) -> void:
 	# The way in within a walk of the spawn, where the generator has not put it.
 	Strand.lay(g)
 	Crafting.bind(g)
+	Survival.epoch_frames = Engine.get_physics_frames()
 	Survival.fixed_now = 0.0 if g.options.hold >= 0.0 else -1.0
 	Survival.fixed_step = 0.0
 	var state := SurvivalState.of(g)
