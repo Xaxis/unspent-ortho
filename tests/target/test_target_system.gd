@@ -111,10 +111,35 @@ func test_a_lock_waits_for_a_body_that_steps_out_of_reach() -> void:
 	sys.call("_process", 0.1)
 	var still: TargetSubject = sys.get("locked")
 	check(still != null and still.id == first.id, "the lock waits for what left the list")
-	sys.set("_lost_at", _game.player.sim.now - Targeting.LOST_GRACE - 0.5)
+	sys.set("_lost_at", _game.player.sim.now - (Targeting.LOST_GRACE + 0.5) * 1000.0)
 	sys.call("_process", 0.1)
 	var after: TargetSubject = sys.get("locked")
 	check(after != null and after.id != first.id, "past the grace it takes what is there")
+	body.pos = kept
+	_done()
+
+
+## THE GRACE IS SECONDS OF THE FIGHT'S CLOCK, which counts milliseconds: read raw
+## it was 1.5 ms, and a lock let go of anything that stepped out of the list for
+## a frame. Half the grace on it still waits; past it, it lets go.
+func test_the_grace_is_seconds_of_the_fights_clock() -> void:
+	var sys := await _make(PackedStringArray(["--spawn=runner,cutter", "--target"]))
+	var sim := _game.player.sim
+	sys.call("_process", 0.1)
+	var first: TargetSubject = sys.get("locked")
+	check(first != null)
+	var body: MobState = first.body
+	var kept := body.pos
+	body.pos = kept + Vector2(Targeting.LENS_REACH * 2.0, 0.0)
+	sys.call("_process", 0.1)
+	sim.now += Targeting.LOST_GRACE * 1000.0 * 0.5
+	sys.call("_process", 0.1)
+	var still: TargetSubject = sys.get("locked")
+	check(still != null and still.id == first.id, "half the grace on, the lock still waits for it")
+	sim.now += Targeting.LOST_GRACE * 1000.0
+	sys.call("_process", 0.1)
+	var after: TargetSubject = sys.get("locked")
+	check(after == null or after.id != first.id, "and past the grace it lets go")
 	body.pos = kept
 	_done()
 
@@ -365,12 +390,12 @@ func test_a_fresh_lock_needs_the_body_in_sight() -> void:
 	runner.pos = house.pos - dir * near
 	runner.calm_until = INF
 	sys.set("_forced", true)
-	sys.set("_sight_next", 0.0)
+	sys.set("_sight_in", 0.0)
 	sys.call("_process", 0.1)
 	var locked: TargetSubject = sys.get("locked")
 	check(locked == null or locked.kind != &"runner", "not through the house: %s" % (locked.kind if locked != null else &"nothing"))
 	runner.pos = house.pos + dir * (near + 2.5)
-	sys.set("_sight_next", 0.0)
+	sys.set("_sight_in", 0.0)
 	sys.set("locked", null)
 	sys.call("_process", 0.1)
 	locked = sys.get("locked")
@@ -381,6 +406,48 @@ func test_a_fresh_lock_needs_the_body_in_sight() -> void:
 	locked = sys.get("locked")
 	check(locked != null and locked.kind == &"runner", "a lock already held is kept behind cover")
 	_done()
+
+
+## A MISS IS ASKED AGAIN ON THE FRAMES' CLOCK, NEVER THE WALL'S (SIGHT_EVERY): on a
+## fixed step the wall's tenth of a second is more frames on a fast box than on a
+## slow one, so a played fight took its lock on different frames on two machines.
+## The same frames, one run straight through and one with the wall held back
+## between them, lock the runner stepped out from behind the house on the same one.
+func test_a_miss_is_asked_again_on_the_frames_clock_not_the_walls() -> void:
+	var step := 1.0 / 60.0
+	var took: Array[int] = []
+	for pause_ms: int in [0, 120]:
+		var sys := await _make(PackedStringArray(["--spawn=runner"]))
+		var g := _game
+		var runner: MobState = null
+		for m: MobState in g.player.sim.mobs:
+			if m.kind == &"runner":
+				runner = m
+		var dir := Vector2.RIGHT.rotated(0.3)
+		var house := _open_house(g, dir)
+		check(runner != null and house != null, "a runner and a house to hide it behind")
+		if runner == null or house == null:
+			_done()
+			return
+		var near := house.solid + 1.4
+		_park_others(g, runner, house.pos)
+		_stand(g, house.pos + dir * near)
+		runner.pos = house.pos - dir * near
+		runner.calm_until = INF
+		sys.set("_forced", true)
+		sys.call("_process", step)
+		check(sys.get("locked") == null, "nothing locked through the house")
+		runner.pos = house.pos + dir * (near + 2.5)
+		var n := 0
+		while n < 30 and sys.get("locked") == null:
+			if pause_ms > 0:
+				OS.delay_msec(pause_ms)
+			sys.call("_process", step)
+			n += 1
+		took.append(n)
+		_done()
+	eq(took[0], took[1], "locked on the same frame whatever the wall did between them (frames %s)" % [took])
+	check(took[0] >= 5 and took[0] <= 7, "a SIGHT_EVERY of frames after the miss (%d)" % took[0])
 
 
 ## The house nearest the player with open ground on its `dir` side: nothing else
