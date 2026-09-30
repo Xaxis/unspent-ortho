@@ -59,14 +59,10 @@ var harm := 1.0
 var ride: CraftRide = null
 ## What a lock holds, in tile space, or INF (LockOn, docs/CONTROLS.md §Lock-on):
 ## the body faces it, a swing goes at it and a dodge with no key held goes
-## straight back from it. Written through `set_lock` by 42_target, the only
-## writer, from where the locked body stands this frame.
+## straight back from it. The walk is never bent round it (docs/CONTROLS.md).
+## Written through `set_lock` by 42_target, the only writer, from where the
+## locked body stands this frame.
 var lock := Vector2.INF
-## Whether a strafe circles the lock (LockOn.step): over the shoulder, where left
-## and right are the keys' way round it. From above the keys are the screen's and
-## a sideways step goes straight, so a sidestep out of a blow leaves its reach as
-## it does unlocked; spent as arc at the same distance it never did.
-var lock_circles := false
 ## When the last lock was let go, on the fight's clock, so the body turns back
 ## onto the way it is walking instead of snapping there (LockOn.RELEASE_MS).
 var unlocked_at := -INF
@@ -218,11 +214,10 @@ func start_dodge(dir: Vector2, now: float) -> void:
 
 ## Take a lock on `at`, move it, or let it go (INF). Letting go starts the turn
 ## back, so the facing is handed back and not dropped.
-func set_lock(at: Vector2, now: float, circles: bool = false) -> void:
+func set_lock(at: Vector2, now: float) -> void:
 	if lock.is_finite() and not at.is_finite():
 		unlocked_at = now
 	lock = at
-	lock_circles = circles
 
 
 ## One wrench against a grip. Returns true if it counted. A cutting tool takes two.

@@ -1,7 +1,7 @@
 # LOCK-ON FROM ABOVE (owner, 2026-09-24: "it needs to lock the player's movement
 # so they are facing the target they are locked onto"; docs/CONTROLS.md
 # §Lock-on). Through the real keys: Z locks a machine and the body turns onto it;
-# a strafe bends round it and the body keeps facing it; a dodge goes where the
+# a sidestep goes straight past it and the body keeps facing it; a dodge goes where the
 # keys point and still faces it; a swing goes at it; the lock cycled to another
 # machine turns the body onto that one; the view over the shoulder is taken and
 # left again with the lock still held; the machine is broken and the lock is
@@ -23,7 +23,7 @@ shot 02-locked-and-facing-it with target:runner,lock_facing
 
 walk 1,0 1.4
 await lock_circled 2
-shot 03-strafed-round-it-still-facing with mob:runner,lock_facing
+shot 03-sidestepped-past-it-still-facing with mob:runner,lock_facing
 
 tap dodge
 wait 0.25

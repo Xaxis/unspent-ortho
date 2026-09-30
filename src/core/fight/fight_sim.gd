@@ -1065,8 +1065,6 @@ func _move_hero(dt: float) -> void:
 		if hero.committed(now):
 			s *= hero.blow.creep
 		v = hero.move.limit_length(1.0) * s
-		if hero.lock_circles:
-			v = LockOn.step(v, hero.pos, hero.lock, dt)
 		if hero.committed(now):
 			pass
 		elif LockOn.locked(hero.lock):

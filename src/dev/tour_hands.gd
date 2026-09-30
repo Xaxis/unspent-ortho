@@ -5,9 +5,7 @@ extends RefCounted
 ## real actions the fight reads (40_fight `_read_input`): a swing is a tap of
 ## `swing` (thrown on the key coming up), a heavy blow is `swing` held past
 ## FightRules.HEAVY_HOLD_MS, a dodge a tap of `dodge`. Nothing is pressed into
-## the simulation directly. The target key is not held: a lock bends the walk
-## round the body (LockOn.step), and the readers were written for a free walk
-## (a played force fight took 360 s and two tries locked, 44.6 s and one free).
+## the simulation directly. The target key is GameDriver's to hold (`locked`).
 
 var _down := {}
 ## Actions just let go: kept up for a frame, so the fight sees the key come up

@@ -401,17 +401,34 @@ func test_by_force_from_firm_ground_it_falls_to_blows_and_never_founders() -> vo
 	print("  info force by hand, locked: %s" % held)
 	check(held.fallen and held.how == SentinelWay.make(SentinelWay.FORCE).id(), "locked, it still falls to blows (%s)" % held)
 	lt(float(held.tries), float(out.tries) + 0.5, "in no more tries locked (%d) than free (%d)" % [held.tries, out.tries])
-	lt(float(held.s), float(out.s) * 1.2, "and within a fifth of the time: %.1f s locked, %.1f s free" % [held.s, out.s])
+	lt(float(held.s), float(out.s) * LOCKED_MOST, "and about as fast: %.1f s locked, %.1f s free" % [held.s, out.s])
 
+
+func test_over_the_shoulder_the_lock_costs_the_fight_nothing() -> void:
+	if not stepped_now():
+		return
+	var out: Dictionary = await _by_force(false, true)
+	print("  info force over the shoulder: %s" % out)
+	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FORCE).id(), "over the shoulder it falls to blows (%s)" % out)
+	var held: Dictionary = await _by_force(true, true)
+	print("  info force over the shoulder, locked: %s" % held)
+	check(held.fallen and held.how == SentinelWay.make(SentinelWay.FORCE).id(), "locked over the shoulder, it still falls to blows (%s)" % held)
+	lt(float(held.tries), float(out.tries) + 0.5, "in no more tries locked (%d) than free (%d)" % [held.tries, out.tries])
+	lt(float(held.s), float(out.s) * LOCKED_MOST, "and about as fast: %.1f s locked, %.1f s free" % [held.s, out.s])
+
+
+## How much longer a locked fight may take than the same player's free one.
+const LOCKED_MOST := 1.2
 
 const NONE := {"fallen": false, "how": &"", "tries": 99, "downs": 0, "s": INF, "health": -1}
 
 
 ## The Reaper fought by the plate player from firm ground, the target key held
-## throughout when `locked`. Returns the tally, NONE when there was no fight.
-func _by_force(locked: bool) -> Dictionary:
+## throughout when `locked`, from above or over the shoulder. Returns the tally, NONE when there was no fight.
+func _by_force(locked: bool, shoulder := false) -> Dictionary:
 	Sx.use_root("ways-force")
-	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear"])
+	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear",
+		"--view=shoulder" if shoulder else "--view=top"])
 	# Bodies numbered from the same place whatever ran before in this process:
 	# the reader's hands are hashed on a body's id (Reader.human).
 	MobState._next_id = 900000
