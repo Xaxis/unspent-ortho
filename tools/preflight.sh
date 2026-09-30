@@ -28,6 +28,11 @@ rules="test_found_drawn,test_seam,test_prop_identity,test_whole_world_readers,te
 # set down in play), give something or say why not, and be drawn above the pen.
 # land/raids went red on all four with one new kind; about 100 s of the run.
 rules="$rules,test_world_gen:test_every_prop_kind_and_ground_is_placed,test_world_gen_works:test_every_landscape_holds_its_own_works,test_signature_takes,test_dark_floor:test_no_prop_is_drawn_below_the_ink_floor"
+# Every carried thing and every word at once: a new item needs its sketch, its
+# mark and its plural hint word, a new line must fit its box, and a new talk must
+# keep something to say that isn't a revelation. land/mended and land/enclave
+# went red on these (2026-09-30) after green filtered runs.
+rules="$rules,test_marks,test_sketch,test_tool_hint,test_arcs:test_every_word_fits,test_pacing"
 [ -n "${1:-}" ] && rules="$rules,$1"
 log="$(mktemp "${TMPDIR:-/tmp}/unspent-preflight.XXXXXX")"
 tools/test.sh "$rules" >"$log" 2>&1; code=$?
