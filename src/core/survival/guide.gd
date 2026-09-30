@@ -327,9 +327,10 @@ const WAY: Array[Dictionary] = [
 	{"key": &"rook_again", "after": &"built_halcyon", "until": &"holdfast_hope"},
 	{"key": &"vera", "after": &"holdfast_hope", "until": &"war_archive"},
 	# Across the water (slice 3): a raft until one is carried or put in, the
-	# narrows until he has stood on the far body, then the archive.
-	{"key": &"raft", "after": &"war_archive", "has": &"raft", "heard": [StoryCrossing.PUT_IN, StoryCrossing.CROSSED]},
-	{"key": &"crossing", "after": &"war_archive", "heard": [StoryCrossing.CROSSED]},
+	# narrows until he has stood on the far body, then the archive. Having met the
+	# archive's man he has crossed, however he did, so that ends both as well.
+	{"key": &"raft", "after": &"war_archive", "has": &"raft", "heard": [StoryCrossing.PUT_IN, StoryCrossing.CROSSED], "met": &"otto"},
+	{"key": &"crossing", "after": &"war_archive", "heard": [StoryCrossing.CROSSED], "met": &"otto"},
 	{"key": &"archive", "after": &"war_archive", "met": &"otto"},
 ]
 
