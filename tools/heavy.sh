@@ -2,9 +2,10 @@
 # Run a heavy job (a tour, shot, render, web export or browser run) only when the
 # box can take it:
 #   tools/heavy.sh tools/tour.sh tours/x.tour ...
-# At most HEAVY_SLOTS (default 2) run box-wide. A slot opens when more than 32000
-# pages (500 MB) are free on three readings 10 s apart and fewer than HEAVY_SLOTS
-# of this game's godot processes are running. Why: with several builders running godot at once the
+# At most HEAVY_SLOTS run box-wide (default one per six cores, at least 2: two on
+# the 14-core laptop, four on the 24-core Linux box). A slot opens when more than
+# 500 MB is free on three readings 10 s apart and fewer than HEAVY_SLOTS of this
+# game's godot processes are running. Why: with several builders running godot at once the
 # box fell to ~57 MB free (2026-09-28) and the owner's own apps began failing writes;
 # with one slot, one hour-long proof tour stalled every other job behind it.
 # Only a godot binary counts as a running job, matched by process name: a waiter
@@ -15,17 +16,27 @@
 # timings that other jobs would spoil (web A/B, perf).
 # Gives up after HEAVY_WAIT seconds (default 10800) with exit 2.
 set -u
-slots=${HEAVY_SLOTS:-2}
+cores=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 12)
+slots=${HEAVY_SLOTS:-$(( cores / 6 > 2 ? cores / 6 : 2 ))}
 end=$(( $(date +%s) + ${HEAVY_WAIT:-10800} ))
 lock=""
-free_pages() { vm_stat | awk '/Pages free/ {gsub("\\.","",$3); print $3}'; }
+# Free memory in MB: what Linux can hand out without swapping, or macOS's free pages.
+free_mb() {
+  if [ -r /proc/meminfo ]; then awk '/^MemAvailable:/ {print int($2 / 1024)}' /proc/meminfo
+  else vm_stat | awk '/page size of/ {ps = $8} /Pages free/ {gsub("\\.", "", $3); print int($3 * ps / 1048576)}'; fi
+}
+# The working directory of a process, on Linux and on macOS.
+cwd_of() {
+  if [ -e "/proc/$1/cwd" ]; then readlink "/proc/$1/cwd" 2>/dev/null
+  else lsof -a -d cwd -p "$1" -Fn 2>/dev/null | sed -n 's/^n//p'; fi
+}
 # Ours: a godot whose working directory is a checkout of this game (every tool
 # runs it with --path . from the tree's root). Another project's editor and
 # imports (Reelwright's cycled all day, 2026-09-30) held six of our jobs 40 min
 # with no slot taken; their memory is the floor's business, not a slot's.
 ours() {
   pgrep -ix godot | while read -r p; do
-    c=$(lsof -a -d cwd -p "$p" -Fn 2>/dev/null | sed -n 's/^n//p')
+    c=$(cwd_of "$p")
     [ -n "$c" ] && [ -f "$c/tools/heavy.sh" ] && [ -f "$c/src/main.tscn" ] && echo "$p"
   done
 }
@@ -82,18 +93,18 @@ if [ "${HEAVY_ALONE:-0}" = 1 ]; then
   if ! reserved_by_other; then echo $$ > "$reserve"; fi
 fi
 while :; do
-  if [ "$(date +%s)" -ge "$end" ]; then echo "heavy: never clear (pages $(free_pages), $(running) godot)" >&2; exit 2; fi
+  if [ "$(date +%s)" -ge "$end" ]; then echo "heavy: never clear ($(free_mb) MB free, $(running) godot)" >&2; exit 2; fi
   n=$((n+1))
   if [ $((n % 30)) = 1 ]; then s=$(stale); [ -n "$s" ] && echo "heavy: an orphan godot up 1 h+ holds a slot (kill it if it is yours): $s" >&2; fi
   if [ "${HEAVY_ALONE:-0}" = 1 ]; then
-    if [ "$(free_pages)" -gt 32000 ] && [ "$(running)" -eq 0 ]; then ok=$((ok+1)); else ok=0; fi
+    if [ "$(free_mb)" -gt 500 ] && [ "$(running)" -eq 0 ]; then ok=$((ok+1)); else ok=0; fi
     if [ "$ok" -ge 3 ] && take_all; then break; fi
   else
-    if [ "$(free_pages)" -gt 32000 ] && [ "$(running)" -lt "$slots" ]; then ok=$((ok+1)); else ok=0; fi
+    if [ "$(free_mb)" -gt 500 ] && [ "$(running)" -lt "$slots" ]; then ok=$((ok+1)); else ok=0; fi
     if [ "$ok" -ge 3 ] && take; then break; fi
   fi
   sleep 10
 done
 trap 'rm -rf $lock; [ "$(cat "$reserve" 2>/dev/null)" = $$ ] && rm -f "$reserve"' EXIT
-echo "heavy: clear in $lock, $(free_pages) pages free at $(date +%T)" >&2
+echo "heavy: clear in $lock, $(free_mb) MB free at $(date +%T)" >&2
 "$@"
