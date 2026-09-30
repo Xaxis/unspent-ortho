@@ -130,6 +130,8 @@ func act() -> void:
 var _route_tiles: Array[Vector2i] = []
 var _route_best := INF
 var _route_since := 0.0
+## Tiles a walk stuck on (a prop's edge the tile grid does not know): laid round.
+var _stuck_on := {}
 
 
 func _walk_back() -> Vector2:
@@ -143,6 +145,7 @@ func _walk_back() -> Vector2:
 			_route_best = d
 			_route_since = sim.now
 		elif sim.now - _route_since > 1000.0:
+			_stuck_on[_route_tiles[0]] = true
 			_route_tiles.clear()
 	if _route_tiles.is_empty():
 		_route_tiles = _route(home, true)
@@ -188,7 +191,7 @@ func _route(to: Vector2, keeping: bool) -> Array[Vector2i]:
 		head += 1
 		for d: Vector2i in dirs:
 			var n := at + d
-			if came.has(n) or absi(n.x - from.x) > 40 or absi(n.y - from.y) > 40:
+			if came.has(n) or _stuck_on.has(n) or absi(n.x - from.x) > 40 or absi(n.y - from.y) > 40:
 				continue
 			if keeping and _keeps(at) and not _keeps(n):
 				continue
