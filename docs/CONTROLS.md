@@ -78,11 +78,16 @@ is asked of the live map.
 In both views:
 - **Facing.** The body faces what is locked, turning onto a new lock quickly (`LockOn.TURN`),
   never snapping.
-- **Strafing.** Motion across the line to the target is spent as arc at the current distance
-  (`LockOn.step`), exactly: a hundred laps end at the starting distance.
+- **Walking** goes where the keys point, never bent round the target, so a sidestep out of a
+  blow leaves its reach as it does unlocked. (Bent into an arc at the same distance, it never
+  left: a locked force fight on the Reaper failed in both views where a free player won in
+  one try.) Over the shoulder the keys are the line to the target, so left and right still
+  circle it: re-aimed every step, a held key drifts out about a tenth of a tile in four
+  seconds at a run.
 - **Swing** goes at the lock; the aim assist cannot turn it onto a nearer body.
-- **Dodge** goes where the keys point, the body still facing the lock. With no key held it
-  goes straight back from the target (unlocked, back from the facing).
+- **Dodge** goes straight along its direction, in both views, locked or not: the escape must
+  gain distance, so it is never arced. It goes where the keys point, the body still facing
+  the lock; with no key held, straight back from the target (unlocked, back from the facing).
 - **Losing the lock** (let go, target dead or out of reach) hands the facing back as a turn
   onto the walk (`LockOn.RELEASE_MS`). The lock survives switching views.
 - **Only what is seen is locked fresh.** A machine or person is picked or cycled onto only

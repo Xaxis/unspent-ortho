@@ -111,9 +111,9 @@ static func make() -> BiomeDef:
 	# Its floor leaches phosphor after dark (GroundColors.MIDDEN_FLOOR), and its
 	# fog is refuse-brown and pools in the slots, leaving the rims clear.
 	d.ground_marks = {Ground.SWARF: GroundColors.MIDDEN_FLOOR}
-	# Over the slots, at the walls' own height: cables the tippers strung and
-	# girders left bridging, so the sky from a slot floor is a strip crossed by
-	# wires (ForeKinds).
+	# Over the slots, at the walls' own height: cables the tippers strung, so the
+	# sky from a slot floor is a strip crossed by wires, and girders tipped off
+	# the wrecks, leaning down to the ground they fell on (ForeKinds).
 	d.fore_rows = {
 		PropKind.DEBRIS: {"shape": "line", "lift": Vector2(2.8, 3.6), "span": Vector2(5.0, 8.0), "chance": 0.45},
 		PropKind.WRECKAGE: {"shape": "girder", "lift": Vector2(2.8, 3.4), "span": Vector2(3.5, 5.5), "chance": 0.55},

@@ -76,6 +76,13 @@ uniform float thick = 0.0;
 // floated (measured, seed 7 coast noon). At 40 it is 2.5: the feet stand in the
 // haze and the legs come up out of it.
 uniform float h_low = 40.0;
+// AND THE LOW LAYER NEVER CLOSES ALL THE WAY. At 40 metres a walker 70 km off
+// still lost the bottom 2.5 degrees of every leg, so the legs stopped short in
+// open sky over the skyline and hung there (the owner's "ladders floating in
+// space", 2026-09-29: seed 1 coast, and over the sea, where nothing stands in
+// front of the gap). Held under this the foot stays a pale ghost in the haze
+// down to the skyline, which is what cuts it.
+const float LOW_MOST = 0.75;
 uniform float h_high = 8000.0;
 uniform float beta_high = 1.1e-5;
 // AND A THIRD, BY DISTANCE ALONE: the air between the eye and a thing kilometres
@@ -84,7 +91,12 @@ uniform float beta_high = 1.1e-5;
 // at noon, as a flat dark cut-out: nothing said the hub was eighty kilometres
 // off and the knee sixty. This much gives a leg a gradient of air up its whole
 // length toward the body, and takes a walker on the skyline half into the blue.
-uniform float beta_far = 3.0e-6;
+// At 3e-6 the looming walkers' shins, 55 and 72 km off, came out as dark as the
+// towers on the near skyline and read as something standing a few hundred
+// metres away: grey bars hanging over every shot (2026-09-29). At this much a
+// shin 70 km off keeps under half its contrast, so it stands behind
+// everything else in the view.
+uniform float beta_far = 1.2e-5;
 // The top of the spire, over the hub's origin (the hip height), metres: the
 // one light the machine keeps burning by day.
 uniform float spire_y = 41000.0;
@@ -158,6 +170,8 @@ uniform vec2 leg_len = vec2(34000.0, 36000.0);
 // How often a pulse leaves each ankle (per second), and how far behind its front
 // it still lights, as a share of the whole leg.
 const float PULSE_RATE = 0.12;
+// How lit a cold strip is with no pulse on it, over its albedo.
+const float STRIP_REST = 0.3;
 const float PULSE_TRAIL = 0.22;
 
 varying float thin;
@@ -190,15 +204,19 @@ void vertex() {
 			// RING_PX past it on every side, so the ring reads as a ring round a
 			// leg however far off the leg is -- a bold line of light and never a
 			// crawl of dashes. `lamp_c.x` is the ring's own outer radius.
+			// ONLY AS THE LIGHT GOES (`lens_glow`): by day a ring is unlit plate,
+			// and held a bold line on every leg it made each one a ladder of
+			// dark rungs hanging in the sky (the owner, 2026-09-29). By day it
+			// is the size it is, which on a leg tens of kilometres off is none.
 			float outer = lamp_c.x;
 			bool rim = outer > 0.0 && r > outer * 0.995;
 			float plate_want = MIN_PX * px;
-			float want = rim ? max(plate_want, outer / STRIP_PROUD) + RING_PX * px : plate_want;
+			float want = rim ? max(plate_want, outer / STRIP_PROUD) + RING_PX * lens_glow * px : plate_want;
 			if (r > 1e-3 && r < want) {
 				local.xz *= want / r;
 			}
 			float dy = local.y - lamp_c.y;
-			float half_px = RING_TALL_PX * px * 0.5;
+			float half_px = RING_TALL_PX * lens_glow * px * 0.5;
 			if (abs(dy) > 1e-3 && abs(dy) < half_px) {
 				local.y = lamp_c.y + sign(dy) * half_px;
 			}
@@ -287,7 +305,7 @@ void fragment() {
 	vec3 dir = normalize(true_world - eye);
 	float thicken = 1.0 + thick * 2.0;
 	float low_len = layer_len(eye, true_world, h_low * thicken);
-	float low = clamp(pow(smoothstep(land_fog.x, land_fog.y, low_len), land_fog.z) * land_fog.w, 0.0, 1.0);
+	float low = clamp(pow(smoothstep(land_fog.x, land_fog.y, low_len), land_fog.z) * land_fog.w, 0.0, LOW_MOST);
 	float high = beta_high * thicken * layer_len(eye, true_world, h_high);
 	float air = 1.0 - (1.0 - low) * exp(-high - beta_far * distance(eye, true_world));
 	// A part drawn wider than it is gives the rest back to the air.
@@ -368,7 +386,11 @@ void fragment() {
 			float behind = front - up / (leg_len.x + leg_len.y);
 			pulse = smoothstep(-0.015, 0.0, behind) * (1.0 - smoothstep(0.0, PULSE_TRAIL, behind));
 		}
-		glow = (2.4 + 9.0 * pulse) * lens_glow;
+		// THE PULSE IS THE LIGHT; a ring it has passed is only just lit. Every
+		// ring held bright at once stood a leg up as a ladder of white rungs
+		// in the night sky (the owner, 2026-09-29), where one light climbing
+		// in the dark is a machine alive up there.
+		glow = (STRIP_REST + 9.0 * pulse) * lens_glow;
 	} else if (lamp && int(bone_phase + 0.5) == 0 && body_local.y > spire_y - 1200.0) {
 		// THE SPIRE'S OWN LIGHT, day and night: a hard strobe at the top of the
 		// air, the way anything that tall carries one -- and at noon the only

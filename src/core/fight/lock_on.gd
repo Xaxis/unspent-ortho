@@ -6,8 +6,6 @@ class_name LockOn
 ##
 ##   intent(...)   the keys as a direction in the world: over the shoulder the
 ##                 line to the target is forward; from above the screen is
-##   step(...)     a velocity bent round the target, so a strafe circles it at
-##                 the distance it started and never drifts past it
 ##   face(...)     the body turned toward the target at TURN a second
 ##   dodge_way(...) where a dodge goes: the keys, else straight back from it
 ##
@@ -60,28 +58,6 @@ static func keys_for(dir: Vector2, yaw_deg: float, from: Vector2, target: Vector
 		fwd = Vector2(-sin(yaw), -cos(yaw))
 	var right := Vector2(-fwd.y, fwd.x)
 	return Vector2(dir.dot(right), -dir.dot(fwd))
-
-
-## A velocity `v` over `dt` seconds, bent round the target. What it carries along
-## the line to the target changes the distance and nothing else; what it carries
-## across the line is spent as ARC at that distance, so held left circles the
-## target instead of leaving it on a tangent. Exact rather than corrected, so a
-## hundred laps come back to the distance they started at.
-static func step(v: Vector2, from: Vector2, target: Vector2, dt: float) -> Vector2:
-	if not locked(target) or dt <= 0.0 or v.length_squared() == 0.0:
-		return v
-	var off := from - target
-	var r := off.length()
-	if r < NEAR:
-		return v
-	var out := off / r
-	var across := Vector2(-out.y, out.x)
-	var radial := v.dot(out)
-	var tangent := v.dot(across)
-	var r2 := maxf(NEAR, r + radial * dt)
-	var angle := off.angle() + tangent * dt / r
-	var to := target + Vector2.from_angle(angle) * r2
-	return (to - from) / dt
 
 
 ## The facing turned toward the target, at most `TURN * dt`.
