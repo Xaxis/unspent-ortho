@@ -1408,6 +1408,7 @@ func _spawn(token: String) -> bool:
 	if m == null:
 		printerr("tour %s: nothing placed a %s near %s" % [_name, kind, game.player.pos])
 		return false
+	_into_sight(m)
 	# The node and its model are made on the next frames; the frustum test needs them.
 	for i in 3:
 		await get_tree().process_frame
@@ -1644,6 +1645,36 @@ func _spawn_over(token: String) -> bool:
 
 ## Whether a tile-space spot, `lift` metres up, falls inside the frame the camera
 ## is drawing. The camera is the only authority on what a shot will contain.
+## 42_target's HEAD_UP: where a lock's line of sight starts.
+const TARGET_HEAD_UP := 1.45
+
+
+## In frame is not seen: over the shoulder a body placed behind a gantry is in
+## the frustum and out of sight, and a lock takes only what is seen (42_target,
+## docs/CONTROLS.md), so a tour cycling onto it never could. Moved round the
+## player at the distance it was put, to the first standing spot the head sees.
+func _into_sight(m: MobState) -> void:
+	var sight: Node = null
+	for sys in game.systems:
+		if sys.has_method(&"sight_clear"):
+			sight = sys
+	if sight == null or game.camera == null or not game.camera.shoulder:
+		return
+	var head := game.player.position + Vector3(0.0, TARGET_HEAD_UP, 0.0)
+	var from := game.player.pos
+	var off := m.pos - from
+	for k in 25:
+		var turn := float((k + 1) / 2) * 0.2 * (1.0 if k % 2 == 0 else -1.0)
+		var at := from + off.rotated(turn)
+		if k > 0 and not game.query.body_fits(at, m.radius):
+			continue
+		# Asked as 42_target asks it: the head to the middle of the body.
+		var mid := game.world.height_at(at) + float(m.row.get("height", 1.0)) * 0.5
+		if bool(sight.call(&"sight_clear", head, Vector3(at.x, mid, at.y))):
+			m.pos = at
+			return
+
+
 func _in_frame(p: Vector2, lift: float) -> bool:
 	var cam := get_viewport().get_camera_3d()
 	if cam == null or not is_instance_valid(game):
