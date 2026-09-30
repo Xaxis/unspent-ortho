@@ -51,15 +51,32 @@ reserved_by_other() {
   kill -0 "$holder" 2>/dev/null && return 0
   rm -f "$reserve"; return 1
 }
+# One tree may hold at most HEAVY_PER_TREE slots (default half of them), so one
+# builder's batch of probes can't queue every other builder behind it: on
+# 2026-09-30 one worktree held three of four slots for half an hour, twice, after
+# being asked to hold two. A tree is the checkout a job was started from.
+per_tree=${HEAVY_PER_TREE:-$(( slots / 2 > 1 ? slots / 2 : 1 ))}
+tree=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
+held_by_tree() {
+  local d holder n=0
+  for d in /tmp/unspent-heavy.lock /tmp/unspent-heavy.lock.*; do
+    [ -f "$d/tree" ] || continue
+    holder=$(cat "$d/pid" 2>/dev/null || echo 0)
+    kill -0 "$holder" 2>/dev/null || continue
+    [ "$(cat "$d/tree")" = "$tree" ] && n=$((n + 1))
+  done
+  echo "$n"
+}
 take() {
   local i d holder
   reserved_by_other && return 1
+  [ "$(held_by_tree)" -ge "$per_tree" ] && return 1
   for i in $(seq 0 $((slots - 1))); do
     d=/tmp/unspent-heavy.lock; [ "$i" = 0 ] || d="$d.$i"
-    if mkdir "$d" 2>/dev/null; then echo $$ > "$d/pid"; lock=$d; return 0; fi
+    if mkdir "$d" 2>/dev/null; then echo $$ > "$d/pid"; echo "$tree" > "$d/tree"; lock=$d; return 0; fi
     holder=$(cat "$d/pid" 2>/dev/null || echo 0)
     if [ "$holder" -gt 0 ] 2>/dev/null && ! kill -0 "$holder" 2>/dev/null; then
-      rm -rf "$d"; mkdir "$d" 2>/dev/null && echo $$ > "$d/pid" && lock=$d && return 0
+      rm -rf "$d"; mkdir "$d" 2>/dev/null && echo $$ > "$d/pid" && echo "$tree" > "$d/tree" && lock=$d && return 0
     fi
   done
   return 1

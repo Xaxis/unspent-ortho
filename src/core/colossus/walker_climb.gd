@@ -18,6 +18,7 @@ extends RefCounted
 ##       under him), fell (shaken off: caught at the pitch's foot, `wound` and
 ##       `lost_minutes` set), at_hub (the climb is over)
 ##   world_pos(def, pose) -> Vector3    where the body is, in world metres
+##   surface_at(def, pitch, up_m, theta, lift) -> Vector3   a point on a pitch, bone-local
 ##
 ## Breath is the grip (FightRules.WIND): a move up costs Climb.WIND_PER_LEVEL a
 ## level at Climb.RATE; hanging on an ordinary hold drains HANG_DRAIN a second,
@@ -182,24 +183,37 @@ func _fall(out: Array[StringName]) -> void:
 
 ## Where the body is, in world metres, on the posed bone.
 func world_pos(def: RefCounted, pose: Dictionary) -> Vector3:
-	var row: Dictionary = PITCHES[mini(pitch, PITCHES.size() - 1)]
-	var h := hold_at(pitch, hold)
-	var up_m := h.x * LEVEL
-	var bones: Array = pose.bones
+	var p := mini(pitch, PITCHES.size() - 1)
+	var h := hold_at(p, hold)
+	var t: Transform3D = (pose.bones as Array)[bone_index(p)]
+	return t * surface_at(def, p, h.x * LEVEL, h.y, 0.0)
+
+
+## Which of pose.bones pitch `p` is climbed on (0 the hub, then thigh, shin,
+## foot per leg).
+func bone_index(p: int) -> int:
+	var b := int(PITCHES[p].bone)
+	return 0 if b == HUB else 1 + 3 * leg + (b - 1)
+
+
+## A point on pitch `p`'s surface in its bone's own frame: `up_m` metres up the
+## pitch from its foot, `theta` round the bone, `lift` metres proud of the
+## surface. The one place the climb's geometry is decided, so what the leg is
+## drawn with (colossus_leg_model.gd) and where the body hangs cannot part.
+func surface_at(def: RefCounted, p: int, up_m: float, theta: float, lift: float) -> Vector3:
+	var row: Dictionary = PITCHES[p]
 	var b := int(row.bone)
 	if b == HUB:
-		var hub: Transform3D = bones[0]
 		var under := float(def.hub_low) - float(def.hip_height)
-		return hub * Vector3(cos(h.y) * HATCH_R, under + up_m, sin(h.y) * HATCH_R)
-	var t: Transform3D = bones[1 + 3 * leg + (b - 1)]
+		return Vector3(cos(theta) * (HATCH_R + lift), under + up_m, sin(theta) * (HATCH_R + lift))
 	if b == FOOT:
-		return t * Vector3(cos(h.y) * DRUM_R, -float(def.ankle_up) + up_m, sin(h.y) * DRUM_R)
+		return Vector3(cos(theta) * (DRUM_R + lift), -float(def.ankle_up) + up_m, sin(theta) * (DRUM_R + lift))
 	# A thigh runs hip to knee and a shin knee to ankle, each with its Y down the
 	# leg: climbing is toward the bone's root, up its -Y.
 	var length := float(def.thigh) if b == THIGH else float(def.shin)
 	var along := clampf(float(row.get("at", 0.0)) * length - up_m, 0.0, length)
-	var r := _radius(row, along / length)
-	return t * Vector3(cos(h.y) * r, along, sin(h.y) * r)
+	var r := _radius(row, along / length) + lift
+	return Vector3(cos(theta) * r, along, sin(theta) * r)
 
 
 func _radius(row: Dictionary, share: float) -> float:
