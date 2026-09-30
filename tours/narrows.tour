@@ -1,0 +1,62 @@
+# THE NARROWS (ROADMAP slice 3, step 1): Vera has named the archive across the
+# water. The goal line asks for a raft; one is lashed by hand; the goal turns to
+# the narrows, which the survey marks on the home body's shore (StoryCrossing,
+# the narrowest water within reach of the camp-to-archive line: 129 tiles on
+# seed 1); the raft goes in there on the real key and is steered across; the
+# first step onto the far body is heard, and the goal is the archive.
+#   TOUR_TIMEOUT=900 tools/tour.sh tours/narrows.tour --seed=1 --hour=9 --weather=clear:0 --beats=marens_lead,reaper_down,built_halcyon,holdfast_hope,war_archive --chose=rook.iron=paid --give=pick:1,kit_plate:1,driftwood:6,scrap:1,rag:2
+# (--chose closes Rook's deal and --give brings the armour it paid for, so the
+# goal is past the Holdfast's leg; driftwood, plate and rags are the raft's.)
+coast calm
+
+# 1 A RAFT: Vera's lead is across water, and nothing is carried to cross it.
+at slot:the_camp
+wait 1.0
+await goal:raft 3
+# Past the place's name, so the goal has its window.
+await goal_shown 20
+shot 01-the-goal-asks-for-a-raft with goal:raft,goal_shown
+tap craft
+await app:crafting 3
+choose raft
+tap use
+await made 5
+wait 0.4
+tap craft
+await app:none 3
+
+# 2 THE NARROWS: a raft in the creel, the goal is where to put it in, and the
+# survey marks it.
+await goal:crossing 3
+tap map
+await app:map 3
+wait 0.8
+shot 02-the-survey-marks-the-narrows with app:map,goal:crossing
+tap map
+await app:none 3
+
+# 3 PUT IN: at the narrows, the raft goes in on the real key.
+at slot:the_crossing
+wait 0.5
+walkto at:slot:the_landing 20 till:launch_ready:raft
+tap ride
+await riding:raft 3
+wait 0.5
+shot 03-the-raft-in-at-the-narrows with riding:raft
+
+# 4 ACROSS: steered by the keys to the far shore; the log says how far, how long
+# and what is left of the hull.
+walkto at:slot:the_landing 240
+wait 0.3
+walkto at:slot:the_archive 20 till:step_off_ready
+tap ride
+await parked:raft 3
+wait 1.0
+
+# 5 THE FAR SHORE: stepped off into the shallows, he wades up the beach; his
+# first step on the archive's dry ground is heard, and the goal is the archive.
+walkto at:slot:the_archive 30 till:goal:archive
+# The goal said on the record first, then pinned under the health bar once the
+# far body's name has pinged.
+await goal_shown 30
+shot 04-the-far-shore-the-goal-is-the-archive with goal:archive,goal_shown

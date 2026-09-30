@@ -100,6 +100,13 @@ func _stage() -> void:
 			Story.beat(StringName(b), -INF)
 		else:
 			push_warning("--beats: %s is not a beat" % b)
+	# `--chose`: an answer given long ago, as a deal already closed.
+	for c: String in o.chose.split(",", false):
+		var kv := c.split("=")
+		if kv.size() == 2:
+			Story.choose(StringName(kv[0]), StringName(kv[1]))
+		else:
+			push_warning("--chose: %s is not AT=PICK" % c)
 	if o.read != "" and StoryContent.FRAGMENTS.has(StringName(o.read)):
 		open_reading(StringName(o.read), false)
 	elif o.talk != "":
