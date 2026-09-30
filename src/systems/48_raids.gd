@@ -102,6 +102,11 @@ const PARTY_AT_GATE := 5.0
 ## World minutes after a step is over before the same holding is warned again:
 ## the plan does not send two parties at one place in an afternoon.
 const COOL_OFF := 240.0
+## World minutes a holding stands before anything more than a survey is warned on
+## it. Found at once (a mast-loud yard read by a clerk), a raid could be warned
+## within hours of the first beam going up, before Rook had said a word about
+## shutters; the owner's floor is a working day's grace.
+const FIRST_WARNING_AFTER := 12.0 * 60.0
 ## Sim ms a snatcher has to stand in the yard before it gets somebody out.
 const SNATCH_MS := 5000.0
 ## Sim ms of getting no nearer to what it came for before a raider steps aside
@@ -608,7 +613,7 @@ func _settle_attention() -> void:
 			var hours := SLICE / 60.0
 			if found > 0.0 and quiet:
 				s.attention = Attention.from_found_tech(s.attention, found, hours * pace())
-			if at - float(b["last_read"]) >= QUIET_AFTER:
+			if at - float(b["last_read"]) >= QUIET_AFTER and Attention.quiet(dark, spoofed, masked):
 				var night := SettlementRules.night_at(at) > 0.5
 				s.attention = Attention.cooled(s.attention, hours, dark and night, spoofed, masked)
 			if absf(s.attention - was) > 1e-5:
@@ -676,6 +681,10 @@ func _escalate() -> void:
 			continue
 		if _plan_for(s.id) != null:
 			continue
+		if RaidStage.name_of(i) != RaidStage.SURVEY and now - s.founded_at < FIRST_WARNING_AFTER:
+			# A working day to hear why and put the shutters up: a look may come,
+			# but nothing more until the place has stood FIRST_WARNING_AFTER.
+			continue
 		if RaidStage.name_of(i) == RaidStage.SURVEY and bool(b["surveyed"]):
 			# They have already been and looked. Nothing comes again until the
 			# place has earned more than a look, or until the stake is pulled up.
@@ -733,6 +742,10 @@ func _warn(s: Settlement, stage: StringName) -> void:
 		Events.sfx.emit(StringName(w.get("sfx", &"raid_horizon")), game.world.to_3d(_warn_from(s)))
 		if _near(s):
 			Events.message.emit(String(w.get("says", "")))
+	# And what to do about it, where the beds lie open: said with the warning,
+	# so a player who never speaks to Rook still hears it (Rook says it fuller).
+	if stage != RaidStage.SURVEY and not s.shuttered() and _near(s):
+		Events.message.emit(StoryContent.DEFEND["warned"] % s.name)
 	if _near(s):
 		Events.hint.emit(RaidStage.says_coming(stage) % s.name, PlayerSettings.cap_of(&"holding"))
 	_sync_marks()
@@ -854,6 +867,10 @@ func _reaim(p: RaidPlan, s: Settlement, stage: StringName) -> void:
 		Events.sfx.emit(StringName(w.get("sfx", &"raid_horizon")), game.world.to_3d(_warn_from(s)))
 		if _near(s):
 			Events.message.emit(String(w.get("says", "")))
+	# And what to do about it, where the beds lie open: said with the warning,
+	# so a player who never speaks to Rook still hears it (Rook says it fuller).
+	if stage != RaidStage.SURVEY and not s.shuttered() and _near(s):
+		Events.message.emit(StoryContent.DEFEND["warned"] % s.name)
 	if _near(s):
 		Events.hint.emit(RaidStage.says_coming(stage) % s.name, PlayerSettings.cap_of(&"holding"))
 	_sync_marks()
@@ -1712,6 +1729,8 @@ func _on_founded(id: int) -> void:
 	# has to be able to start it somewhere other than the beginning.
 	if attention_out > 0.0:
 		s.attention = attention_out
+		# Staged as read that far, it has stood that long too (as `_stage`).
+		s.founded_at = minf(s.founded_at, game.clock.minutes - FIRST_WARNING_AFTER)
 	var razed := int(_memory(s).get("razed", 0))
 	if razed > 0:
 		s.attention = clampf(s.attention + Attention.NOTICE_FULL * float(razed), 0.0, 1.0)
@@ -2141,6 +2160,9 @@ func _stage() -> void:
 	for s in places():
 		var was := s.attention
 		s.attention = attention_out
+		# Staged as read that far, it has stood that long too.
+		if game.clock != null:
+			s.founded_at = minf(s.founded_at, game.clock.minutes - FIRST_WARNING_AFTER)
 		Events.attention_changed.emit(s.id, was, s.attention)
 
 

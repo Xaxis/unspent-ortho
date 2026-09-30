@@ -472,3 +472,21 @@ func test_the_near_body_is_handed_over_on_a_stipple() -> void:
 	eq(shown, 1, "far off, one")
 	cam.free()
 	view.free()
+
+
+## A LEG NEVER ENDS IN MID-AIR ON THE GLASS, and a walker's presence goes with
+## its distance (colossus.gdshader `hub_seen`, `presence`). Over the shoulder the
+## hubs stood far above the frame and all it held were shins cut off by the top
+## edge: ladders in the sky (the owner, 2026-09-29).
+func test_a_walker_is_sharp_near_faint_far_and_never_cut_off_by_the_frame() -> void:
+	near(View.presence(3000.0), 1.0, 1e-6, "a walker a few km off is all there")
+	lt(View.presence(72000.0), 0.4, "one 72 km off is a faint giant")
+	check(View.presence(180000.0) > 0.0, "and the skyline one is not deleted: its lights still read")
+	var last := 2.0
+	for d: float in [0.0, 10000.0, 30000.0, 55000.0, 72000.0, 120000.0]:
+		check(View.presence(d) <= last, "presence never rises with distance (%.0f m)" % d)
+		last = View.presence(d)
+	var src := FileAccess.get_file_as_string("res://src/render/colossus/colossus.gdshader")
+	check(src.contains("mix(rise * own, mix(own, 1.0, SEEN_BACK), clamp(hub_seen"), "unless the hub is on the glass, a leg gives itself to the air going up it")
+	var view := FileAccess.get_file_as_string("res://src/render/colossus/colossus_view.gd")
+	check(view.contains("\"hub_seen\", hub_seen(cam, hub)"), "and the view says every frame whether it is")
