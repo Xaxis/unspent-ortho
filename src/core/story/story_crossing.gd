@@ -11,6 +11,10 @@ class_name StoryCrossing
 ## Two things he does are heard for the goal line (Guide.WAY): putting a craft
 ## afloat (44_crafts) and first standing on the far body (49_cast).
 
+## The two places 49_cast adds to the cast for it: where he puts in, where he lands.
+const LAUNCH := &"the_crossing"
+const LANDING := &"the_landing"
+
 const PUT_IN := &"seen:raft_put_in"
 const CROSSED := &"seen:far_shore"
 

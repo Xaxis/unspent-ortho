@@ -160,8 +160,8 @@ func _place_crossing() -> void:
 	var c := StoryCrossing.find(game.world, placed[&"the_camp"].pos, placed[&"the_archive"].pos)
 	if c.is_empty():
 		return
-	placed[&"the_crossing"] = {"pos": c.launch}
-	placed[&"the_landing"] = {"pos": c.land}
+	placed[StoryCrossing.LAUNCH] = {"pos": c.launch}
+	placed[StoryCrossing.LANDING] = {"pos": c.land}
 
 
 ## THE STORY'S OWN READABLE THINGS (StoryContent.STOOD): where nothing the world
