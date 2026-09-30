@@ -68,7 +68,7 @@ const ARCS := {
 	&"the_lands": {
 		"title": "the lands",
 		"note": "What the people of each land have noticed, and nobody wrote down.",
-		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count", &"same_weight", &"old_timetable", &"harvest_day", &"kerb_moves", &"more_goes_in", &"survey_bends", &"ring_held", &"vents_keep_time", &"under_the_leaves", &"wrack_new", &"reaper_named", &"sea_froze", &"glassed_nothing", &"fields_tune", &"words_tipped"],
+		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count", &"same_weight", &"old_timetable", &"harvest_day", &"kerb_moves", &"more_goes_in", &"survey_bends", &"ring_held", &"vents_keep_time", &"under_the_leaves", &"wrack_new", &"reaper_named", &"anvil_named", &"sea_froze", &"glassed_nothing", &"fields_tune", &"words_tipped"],
 	},
 	&"priya": {
 		"title": "Priya",
@@ -168,6 +168,7 @@ const BEATS := {
 	&"wrack_new": {"short": "clean tubing", "arc": &"the_lands", "says": "The tide brings in tubing and tank glass from past the point. Everything else in the sea is seventy years old, and that is new."},
 	&"reaper_named": {"short": "the Tide Reaper", "arc": &"the_lands", "says": "The machines' yard past the point is kept by a gantry the tide-pickers call the Tide Reaper. Iron rings off it. A knife tempered in a kiln bites."},
 	&"sea_froze": {"short": "the sea froze", "arc": &"the_lands", "says": "The frost sea was open water in living memory. It froze the winter the machines' posts went out on it, and has not thawed since."},
+	&"anvil_named": {"short": "the Candlestick", "arc": &"the_lands", "says": "The glass desert's strike field is kept by a mast on skates the glass-pickers call the Candlestick. It calls the storm down on the plates."},
 	&"glassed_nothing": {"short": "aimed at nothing", "arc": &"the_lands", "says": "Nothing ever stood where the glass desert is. Whatever fused it was aimed at empty sand."},
 	&"fields_tune": {"short": "a few bars", "arc": &"the_lands", "says": "Some nights the server fields' hum drops into a few bars of a tune, the same few, and stops, like somebody who has lost the rest."},
 	&"words_tipped": {"short": "anything with words", "arc": &"the_lands", "says": "What the machines tip in the Middens is ours, never theirs: phones, drives, paper. Anything that ever had words in it."},
@@ -5446,6 +5447,7 @@ const TALKS := {
 				"replies": [
 					{"text": "What made the glass?", "pick": &"asked_glass", "to": &"made"},
 					{"text": "[sift with her]", "pick": &"sifted", "to": &"made"},
+					{"text": "What keeps the strike field?", "pick": &"asked_field", "to": &"candlestick", "when": &"reaper_down"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
@@ -5459,6 +5461,12 @@ const TALKS := {
 			},
 			&"why": {
 				"says": ["You try a thing where it can't matter.", "Before you use it where it does."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			# The second keeper named (`anvil_named`), as Hob names the Reaper.
+			&"candlestick": {
+				"says": ["That's the Candlestick. It skates the plates calling the storm down, and we pick up what the strike leaves."],
+				"beats": [&"anvil_named"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
@@ -5575,6 +5583,9 @@ const LEAD := {
 	&"rook_again": "Back to the crew, with what the yard told you: they want someone who knows the old machines.",
 	&"vera": "The Holdfast's leader, for what she wants of you: she is waiting at the camp.",
 	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
+	# The second keeper (Guide.keeper_goal, Sentinels.next_keeper): from the
+	# Reaper's fall until it falls. Never gating the way on: no key memory.
+	&"strike_field": "The strike field, for the storms it calls on the glass-pickers: the survey marks it.",
 	# Once the plan has taken somebody out of a village that saw him (or he has
 	# seen the price), until a holding of his stands: Guide.way_goal, Holding.
 	# Where only the price has landed, HOLDING_MOVE.lead_burned says it instead,
@@ -5601,12 +5612,18 @@ const TOLD := {
 	&"marens_lead": {"place": &"the_camp", "word": "the crew"},
 	# Vera's lead, the next leg's (slice 3): across the water, pinned on its bearing.
 	&"war_archive": {"place": &"the_archive", "word": "the archive"},
+	# The second keeper's ground once the first is down: not a cast slot but the
+	# nearest keeper of a design not yet taken (Sentinels.next_keeper), marked
+	# only when it is this design, whose words these are.
+	&"reaper_down": {"keeper": &"anvil", "word": "the strike field"},
 }
 
 # The name the goal lines use for a landscape's keeper once `reaper_named` has
 # landed (Hob, TALKS hob.reaper). Keyed by landscape id; before he has said it,
 # the guide says the plain word. It is what the tide-pickers call it, not its own.
-const KEEPER_NAMED := {&"coast": "the Tide Reaper"}
+const KEEPER_NAMED := {&"coast": "the Tide Reaper", &"glass_desert": "the Candlestick"}
+## The beat that gives each landscape's keeper its name (Guide.keeper_name).
+const KEEPER_NAMED_BY := {&"coast": &"reaper_named", &"glass_desert": &"anvil_named"}
 
 # The fight's goal lines and the ring, once `reaper_named` has landed: the short
 # form of what Hob said, so the next make has his reason. Guide and 40_fight read
@@ -5901,6 +5918,12 @@ const KEEPER_FELL := {
 		&"force": "The gantry comes apart, and its drum goes down in its own rows.",
 		&"founder": "The gantry sinks in the flats to its deck. The tide comes over it.",
 		&"starve": "The gantry stops mid-row. Its lamps go out, and the tide comes in.",
+	},
+	&"anvil": {
+		&"force": "The mast comes apart, and its crown rings down onto the glass.",
+		&"founder": "The mast skates into the drift and stops. The sand closes over its core.",
+		# Kept though the way waits on a strike field no world lays yet.
+		&"starve": "The crown calls and nothing answers. The mast stands on its skates, and goes quiet.",
 	},
 }
 

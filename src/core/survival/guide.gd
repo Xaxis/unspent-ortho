@@ -353,7 +353,25 @@ static func way_goal(game: Game) -> String:
 		if not done and StoryContent.LEAD.has(hop.key):
 			_key = hop.key
 			return String(StoryContent.LEAD[hop.key])
-	return ""
+	return keeper_goal(game)
+
+
+## THE NEXT KEEPER (ROADMAP slice 2, step 6): once the Reaper is down and the way
+## has nothing to ask, the nearest keeper of a design not yet taken
+## (Sentinels.next_keeper), said in its own words while it stands. It holds no
+## key memory, so it never stands in the way's path, only after it.
+const KEEPER_LEAD := {&"anvil": &"strike_field"}
+
+
+static func keeper_goal(game: Game) -> String:
+	if not Story.landed(REAPER_DOWN):
+		return ""
+	var next := Sentinels.next_keeper(Sentinels.live(game), game.world.spawn)
+	var key: StringName = KEEPER_LEAD.get(next.design, &"") if next != null else &""
+	if key == &"" or not StoryContent.LEAD.has(key):
+		return ""
+	_key = key
+	return String(StoryContent.LEAD[key])
 
 
 ## WHAT THE PINNED GOAL IS SHORT OF: the items the thing it asks him to make still
@@ -413,7 +431,7 @@ const EDGE_PLAIN := {
 
 ## The keeper of `land` by the name the player has for it.
 static func keeper_name(land: StringName) -> String:
-	if Story.landed(NAMED_BEAT) and StoryContent.KEEPER_NAMED.has(land):
+	if Story.landed(StringName(str(StoryContent.KEEPER_NAMED_BY.get(land, &"")))) and StoryContent.KEEPER_NAMED.has(land):
 		return String(StoryContent.KEEPER_NAMED[land])
 	return String(EDGE_KEEPER.get(land, "the keeper"))
 

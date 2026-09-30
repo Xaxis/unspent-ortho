@@ -305,7 +305,14 @@ static func told(game: Game) -> Array[Dictionary]:
 			placed = sys.get("placed")
 	for beat: StringName in StoryContent.TOLD:
 		var row: Dictionary = StoryContent.TOLD[beat]
-		if Story.landed(beat) and placed.has(row.place):
+		if not Story.landed(beat):
+			continue
+		if row.has("keeper"):
+			# The next keeper's ground, while it is this design (Sentinels.next_keeper).
+			var next := Sentinels.next_keeper(Sentinels.live(game), game.world.spawn)
+			if next != null and next.design == row.keeper:
+				out.append({"at": next.lair, "word": String(row.word)})
+		elif placed.has(row.place):
 			out.append({"at": placed[row.place].pos, "word": String(row.word)})
 	return out
 
