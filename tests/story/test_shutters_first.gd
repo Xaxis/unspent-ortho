@@ -19,7 +19,12 @@ func test_a_raid_warned_on_his_holding_asks_for_shutters_before_anything_of_his(
 	var hold: Settlement = g.get_node("46_settlements").call("here")
 	check(hold != null, "his holding stands")
 	check(Guide.goal(g) != String(StoryContent.LEAD[&"shutters"]), "nothing warned yet: no shutters asked for")
+	var said: Array[String] = []
+	var hear := func(text: String) -> void: said.append(text)
+	Events.message.connect(hear)
 	raids.call("_warn", hold, RaidStage.RAID)
+	Events.message.disconnect(hear)
+	check(said.has(StoryContent.DEFEND["warned"] % hold.name), "the warning says what to do: %s" % [said])
 	eq(Guide.goal(g), String(StoryContent.LEAD[&"shutters"]), "warned: the shutters, ahead of the pick")
 	eq(Guide.last_goal_key, &"shutters", "keyed, so a tour can claim it")
 	Sx.end(g)

@@ -742,6 +742,10 @@ func _warn(s: Settlement, stage: StringName) -> void:
 		Events.sfx.emit(StringName(w.get("sfx", &"raid_horizon")), game.world.to_3d(_warn_from(s)))
 		if _near(s):
 			Events.message.emit(String(w.get("says", "")))
+	# And what to do about it, where the beds lie open: said with the warning,
+	# so a player who never speaks to Rook still hears it (Rook says it fuller).
+	if stage != RaidStage.SURVEY and not s.shuttered() and _near(s):
+		Events.message.emit(StoryContent.DEFEND["warned"] % s.name)
 	if _near(s):
 		Events.hint.emit(RaidStage.says_coming(stage) % s.name, PlayerSettings.cap_of(&"holding"))
 	_sync_marks()
@@ -863,6 +867,10 @@ func _reaim(p: RaidPlan, s: Settlement, stage: StringName) -> void:
 		Events.sfx.emit(StringName(w.get("sfx", &"raid_horizon")), game.world.to_3d(_warn_from(s)))
 		if _near(s):
 			Events.message.emit(String(w.get("says", "")))
+	# And what to do about it, where the beds lie open: said with the warning,
+	# so a player who never speaks to Rook still hears it (Rook says it fuller).
+	if stage != RaidStage.SURVEY and not s.shuttered() and _near(s):
+		Events.message.emit(StoryContent.DEFEND["warned"] % s.name)
 	if _near(s):
 		Events.hint.emit(RaidStage.says_coming(stage) % s.name, PlayerSettings.cap_of(&"holding"))
 	_sync_marks()
