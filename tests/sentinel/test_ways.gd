@@ -338,37 +338,58 @@ func test_by_force_from_firm_ground_it_falls_to_blows_and_never_founders() -> vo
 	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FORCE).id(), "it falls to blows (%s)" % out)
 	check(out.how != SentinelWay.make(SentinelWay.FOUNDER).id(), "and never founders under a fight kept on firm ground")
 	lt(float(out.tries), 4.5, "in a few tries (%d)" % out.tries)
-	# Holding target is what a player does at a boss, so the lock must not cost
-	# the fight: the same player locked falls it as surely and about as fast.
-	var held: Dictionary = await _by_force(true)
-	print("  info force by hand, locked: %s" % held)
-	check(held.fallen and held.how == SentinelWay.make(SentinelWay.FORCE).id(), "locked, it still falls to blows (%s)" % held)
-	lt(float(held.tries), float(out.tries) + 0.5, "in no more tries locked (%d) than free (%d)" % [held.tries, out.tries])
-	lt(float(held.s), float(out.s) * LOCKED_MOST, "and about as fast: %.1f s locked, %.1f s free" % [held.s, out.s])
+
+
+## Holding target is what a player does at a boss, so the lock must not cost the
+## fight: the same players locked fall it as surely and about as fast. Summed
+## over LOCK_READERS, because one reader is one draw of a fight a hair's change
+## sends another way (one draw gave 49 s locked to 113 s free, the next 79 to 43,
+## with nothing about the lock changed between them).
+func test_from_above_the_lock_costs_the_fight_nothing() -> void:
+	if not stepped_now():
+		return
+	await _lock_costs_nothing(false)
 
 
 func test_over_the_shoulder_the_lock_costs_the_fight_nothing() -> void:
 	if not stepped_now():
 		return
-	var out: Dictionary = await _by_force(false, true)
-	print("  info force over the shoulder: %s" % out)
-	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FORCE).id(), "over the shoulder it falls to blows (%s)" % out)
-	var held: Dictionary = await _by_force(true, true)
-	print("  info force over the shoulder, locked: %s" % held)
-	check(held.fallen and held.how == SentinelWay.make(SentinelWay.FORCE).id(), "locked over the shoulder, it still falls to blows (%s)" % held)
-	lt(float(held.tries), float(out.tries) + 0.5, "in no more tries locked (%d) than free (%d)" % [held.tries, out.tries])
-	lt(float(held.s), float(out.s) * LOCKED_MOST, "and about as fast: %.1f s locked, %.1f s free" % [held.s, out.s])
+	await _lock_costs_nothing(true)
 
 
-## How much longer a locked fight may take than the same player's free one.
+func _lock_costs_nothing(shoulder: bool) -> void:
+	var free := {"tries": 0, "s": 0.0, "fell": 0}
+	var held := {"tries": 0, "s": 0.0, "fell": 0}
+	for human: int in LOCK_READERS:
+		for locked: bool in [false, true]:
+			var out: Dictionary = await _by_force(locked, shoulder, human)
+			print("  info   reader %d %s: %s" % [human, "locked" if locked else "free", out])
+			var sum: Dictionary = held if locked else free
+			sum.tries += int(out.tries)
+			sum.s += float(out.s)
+			sum.fell += int(out.fallen)
+	var view := "over the shoulder" if shoulder else "from above"
+	print("  info force %s, readers %s: free %s, locked %s" % [view, LOCK_READERS, free, held])
+	check(held.fell >= free.fell, "%s, locked it falls as often (%d) as free (%d)" % [view, held.fell, free.fell])
+	# Tries per fall: a fight never won within the budget spends fewer tries than
+	# one won on the last of them, and must not count as the better.
+	var per_free := float(free.tries) / maxf(1.0, float(free.fell))
+	var per_held := float(held.tries) / maxf(1.0, float(held.fell))
+	lt(per_held, per_free + 0.25, "in no more tries a fall locked (%.2f) than free (%.2f)" % [per_held, per_free])
+	lt(float(held.s), float(free.s) * LOCKED_MOST, "and about as fast: %.1f s locked, %.1f s free" % [held.s, free.s])
+
+
+## How much longer the locked fights may take than the same players' free ones.
 const LOCKED_MOST := 1.2
+## The players both are fought by (Reader.human).
+const LOCK_READERS: Array[int] = [1, 2, 3]
 
 const NONE := {"fallen": false, "how": &"", "tries": 99, "downs": 0, "s": INF, "health": -1}
 
 
-## The Reaper fought by the plate player from firm ground, the target key held
-## throughout when `locked`, from above or over the shoulder. Returns the tally, NONE when there was no fight.
-func _by_force(locked: bool, shoulder := false) -> Dictionary:
+## The Reaper fought by plate player `human` from firm ground, the target key
+## held throughout when `locked`, from above or over the shoulder. Returns the tally, NONE when there was no fight.
+func _by_force(locked: bool, shoulder := false, human := 1) -> Dictionary:
 	Sx.use_root("ways-force")
 	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0", "--held=knife_shear",
 		"--view=shoulder" if shoulder else "--view=top"])
@@ -388,7 +409,7 @@ func _by_force(locked: bool, shoulder := false) -> Dictionary:
 		Sx.end(g)
 		return NONE
 	var r: Variant = PR.new(g.player.sim)
-	r.human = 1
+	r.human = human
 	r.keep_off = flats
 	r.home = at
 	var out: Dictionary = await KF.fight(tree, g, s, at, r, 240.0, locked)
