@@ -604,6 +604,7 @@ func _load(v: Variant) -> void:
 ##   sentinel_hurt       it has lost health
 ##   sentinel_fallen     a region has been taken (asked of the world, not latched:
 ##                       a keeper that has fallen stays fallen, and `_states` says so)
+##   sentinel_fallen:ID  a keeper of that design has
 ##   sentinel_dead       a keeper's hulk is lying in the world
 func tour_seen(what: String) -> bool:
 	if _seen.has(what):
@@ -658,6 +659,12 @@ func tour_seen(what: String) -> bool:
 			if def != null and def.phase(s.phase).id == want:
 				return true
 		return false
+	if what.begins_with("sentinel_fallen:"):
+		var design := StringName(what.substr(16))
+		for s in _states:
+			if s.fallen and s.design == design:
+				return true
+		return false
 	if what.begins_with("sentinel_way:"):
 		var want := StringName(what.substr(13))
 		for s in _states:
@@ -668,7 +675,7 @@ func tour_seen(what: String) -> bool:
 
 
 ## What `near NAME` may ask of this system (tests/tours/test_tour_claims.gd reads it).
-const TOUR_PLACES := ["keeper", "fallen_keeper"]
+const TOUR_PLACES := ["keeper", "fallen_keeper", "next_keeper"]
 ## Tiles off its lair a tour is stood: inside Sentinels.PUT_OUT, so it comes out,
 ## and far enough that the frame holds the whole of it.
 const TOUR_STAND := 9.0
@@ -685,17 +692,22 @@ var _tour_facing := NAN
 ## spawn, so the nearest station of its kind is often not where it is at all.
 ## `keeper`: beside the nearest keeper still standing, where it dens.
 ## `fallen_keeper`: beside where the nearest fallen one went down.
+## `next_keeper`: beside the one the lead is for (Sentinels.next_keeper).
 func tour_place(what: String) -> Vector2:
-	if what != "keeper" and what != "fallen_keeper":
+	if not TOUR_PLACES.has(what):
 		return Vector2.INF
 	var fallen := what == "fallen_keeper"
 	var here: Vector2 = game.player.pos
 	var lair := Vector2.INF
-	for s in _states:
-		if s.fallen != fallen or s.region < 0:
-			continue
-		if not lair.is_finite() or s.lair.distance_to(here) < lair.distance_to(here):
-			lair = s.lair
+	if what == "next_keeper":
+		var next := Sentinels.next_keeper(_states, game.world.spawn)
+		lair = next.lair if next != null else Vector2.INF
+	else:
+		for s in _states:
+			if s.fallen != fallen or s.region < 0:
+				continue
+			if not lair.is_finite() or s.lair.distance_to(here) < lair.distance_to(here):
+				lair = s.lair
 	if not lair.is_finite():
 		return Vector2.INF
 	# From the side the player comes from, round until the ground will stand.
@@ -711,7 +723,7 @@ func tour_place(what: String) -> Vector2:
 
 
 func tour_face(what: String) -> float:
-	return _tour_facing if what == "keeper" or what == "fallen_keeper" else NAN
+	return _tour_facing if TOUR_PLACES.has(what) else NAN
 
 
 ## An await is spent by the tour that asked it (98_tour `_forget`).

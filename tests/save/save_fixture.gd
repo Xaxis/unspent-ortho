@@ -48,6 +48,17 @@ static func game(tree: SceneTree, args: Array, o: BootOptions = null) -> Game:
 	return g
 
 
+## A game for a PLAYED test (TestCase.stepped_now), booted at the top of a
+## fresh frame. The runner starts each test wherever in a frame the last one left
+## off (the first of a process before any frame at all), and a game booted at
+## another point of a frame takes its first step a frame apart from the hands
+## that drive it, so the same played fight goes another way depending on what ran
+## before it (tests/sentinel/test_played_boot.gd).
+static func played(tree: SceneTree, args: Array) -> Game:
+	await tree.process_frame
+	return game(tree, args)
+
+
 static func system(g: Game, n: String) -> Node:
 	for s in g.systems:
 		if s.name == n:

@@ -125,6 +125,8 @@ func _process(delta: float) -> void:
 	if not game.open_screens.is_empty():
 		down = false
 		HoldToggle.forget()
+	_sight_in -= delta
+	_sweep_in -= delta
 	var cycle := signi(int(_went_down(NEXT_ACTION)) - int(_went_down(PREV_ACTION)) + _scrolled)
 	_scrolled = 0
 	var sweep_pressed := _went_down(SWEEP_ACTION)
@@ -242,6 +244,9 @@ func owns_zoom() -> bool:
 ##
 ## While nothing is in sight it is asked again at most every SIGHT_EVERY: with
 ## nobody in view and the key held, every candidate's line was walked every frame.
+## Counted in the frames' own time (`_process`'s delta), never the wall's: on a
+## fixed step a wall's tenth of a second is a different number of frames on every
+## box, and a played fight must take its lock on the same frame on all of them.
 func _seen(held: TargetSubject) -> Array[TargetSubject]:
 	var sight: Node = null
 	for s in game.systems:
@@ -249,8 +254,7 @@ func _seen(held: TargetSubject) -> Array[TargetSubject]:
 			sight = s
 	if sight == null:
 		return _list
-	var now := Time.get_ticks_msec() / 1000.0
-	if held == null and now < _sight_next:
+	if held == null and _sight_in > 0.0:
 		return [] as Array[TargetSubject]
 	var out: Array[TargetSubject] = []
 	for s: TargetSubject in _list:
@@ -262,7 +266,7 @@ func _seen(held: TargetSubject) -> Array[TargetSubject]:
 	# Nothing in sight: the lines are not walked again for SIGHT_EVERY. Only
 	# after a miss -- a pick that found something is never held back.
 	if held == null and out.is_empty() and not _list.is_empty():
-		_sight_next = now + SIGHT_EVERY
+		_sight_in = SIGHT_EVERY
 	return out
 
 
@@ -281,8 +285,8 @@ func _in_sight(s: TargetSubject, sight: Node) -> bool:
 ## the fresh-pick rule closes: what the field reads is what is seen, and a body
 ## that has come for the player (alerted, chasing, striking), which is on its way
 ## and would be heard whatever stands between. Which ones pass is worked out every
-## SIGHT_EVERY and kept by id, because the list is rebuilt every frame and the
-## sweep reads it every frame.
+## SIGHT_EVERY (of the frames' time, as `_seen`) and kept by id, because the list
+## is rebuilt every frame and the sweep reads it every frame.
 func _sweep_seen() -> Array[TargetSubject]:
 	var sight: Node = null
 	for s in game.systems:
@@ -290,9 +294,8 @@ func _sweep_seen() -> Array[TargetSubject]:
 			sight = s
 	if sight == null:
 		return _list
-	var now := Time.get_ticks_msec() / 1000.0
-	if now >= _sweep_next:
-		_sweep_next = now + SIGHT_EVERY
+	if _sweep_in <= 0.0:
+		_sweep_in = SIGHT_EVERY
 		_sweep_ids.clear()
 		for s: TargetSubject in _list:
 			if (s.body != null and _coming(s.body)) or _in_sight(s, sight):
@@ -309,7 +312,8 @@ static func _coming(m: MobState) -> bool:
 	return m.alive and (m.mood == MobState.ALERTED or m.mood == MobState.CHASING or m.mood == MobState.ATTACKING)
 
 
-var _sweep_next := 0.0
+## Seconds of frames until the sweep's sight is asked again.
+var _sweep_in := 0.0
 var _sweep_ids: Dictionary = {}
 
 
@@ -317,18 +321,22 @@ var _sweep_ids: Dictionary = {}
 ## with nothing in sight asks again.
 const HEAD_UP := 1.45
 const SIGHT_EVERY := 0.1
-var _sight_next := 0.0
+## Seconds of frames until a fresh pick that saw nothing asks again.
+var _sight_in := 0.0
 
 
-## How long the lock has been waiting for a subject that left the list.
+## How long the lock has been waiting for a subject that left the list, in
+## seconds as LOST_GRACE is (the fight's clock counts milliseconds).
 func _waited() -> float:
-	return 0.0 if is_inf(_lost_at) else _now() - _lost_at
+	return 0.0 if is_inf(_lost_at) else (_now() - _lost_at) / 1000.0
 
 
-## The fight's own clock, so the grace is the one the simulation keeps.
+## The fight's own clock (ms), so the grace is the one the simulation keeps and
+## the body's turn back after a let-go (Hero.set_lock) is timed on it. With no
+## fight, the body's clock, never the wall's.
 func _now() -> float:
 	var sim := game.player.sim
-	return sim.now if sim != null else Time.get_ticks_msec() / 1000.0
+	return sim.now if sim != null else Survival.now_real() * 1000.0
 
 
 ## The villagers about: 35_folk keeps them as rows, not bodies, so a person can be

@@ -406,9 +406,20 @@ func tour_place(what: String) -> Vector2:
 				if fallback == Vector2.INF:
 					fallback = p
 				if _nearest_named(p) == id and not _hands_full(p, pos):
+					_tour_facing = (pos - p).angle()
 					return p
+		_tour_facing = (pos - fallback).angle() if fallback != Vector2.INF else NAN
 		return fallback if fallback != Vector2.INF else pos
 	return Vector2.INF
+
+
+## `at cast:NAME` turns the player to the person it stood them by, so `use`
+## speaks to them: 49_story answers only what is in front.
+func tour_face(what: String) -> float:
+	return _tour_facing if what.begins_with("cast:") else NAN
+
+
+var _tour_facing := NAN
 
 
 ## `stood:SLOT`: ground a step off the thing the story stood at SLOT, for a tour
