@@ -25,6 +25,7 @@ extends RefCounted
 ## as found.gdshader reads it (0.5..0.98 a steady strip, under 0.5 a beacon).
 
 const Model := preload("res://src/models/colossus_model.gd")
+const Def := preload("res://src/core/colossus/colossus_def.gd")
 
 ## How far up the shin the near body reaches, metres over the ankle.
 const SEAM := 400.0
@@ -101,18 +102,10 @@ static func _lathe(k: MeshKit, c: Vector3, prof: Array, sides: int, cols: Array,
 ## person between the toes looks up at -- a stepped underside hung with a
 ## bearing boss, a ring of vents and a ring of cold light.
 static func _ankle(k: MeshKit, def: RefCounted) -> void:
-	var sr: Vector2 = def.shin_r
-	var prof := [
-		Vector2(0.0, -80.0), Vector2(18.0, -80.0), Vector2(26.0, -77.0), Vector2(30.0, -72.0),
-		Vector2(44.0, -70.0), Vector2(62.0, -68.0), Vector2(64.0, -66.0), Vector2(96.0, -65.0),
-		Vector2(98.0, -63.0), Vector2(128.0, -61.0), Vector2(150.0, -56.0), Vector2(157.0, -52.0),
-		Vector2(157.0, -41.0), Vector2(151.0, -37.0), Vector2(148.0, -30.0), Vector2(146.0, -10.0),
-		Vector2(152.0, -6.0), Vector2(152.0, 0.0), Vector2(138.0, 7.0), Vector2(sr.y * 1.03, 13.0),
-		Vector2(sr.y * 1.0, 16.0),
-	]
+	var prof: Array = def.drum_profile()
 	var cols := [DARK, DARK, RIM, DARK, PLATE, RIM, DARK, RIM, PLATE, BODY, BODY, RIM, PLATE,
 		BODY, BODY, RIM, PLATE, BODY, BODY, BODY]
-	_lathe(k, Vector3.ZERO, prof, 40, cols, PI / 40.0)
+	_lathe(k, Vector3.ZERO, prof, Def.DRUM_SIDES, cols, PI / float(Def.DRUM_SIDES))
 	# The vents under it, a ring of twelve turned bosses hung from the stepped
 	# underside, each with a lip: what the ceiling is read by from below, and
 	# where the steam comes out when the weight comes onto the foot.
