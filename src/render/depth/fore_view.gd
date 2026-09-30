@@ -47,6 +47,9 @@ const CLEAR_REACH := 2.1
 ## driftwood they are standing on is a thing that can be taken and the promise
 ## covers it. Two and a half tiles is the whole of a `use` reach and more.
 const PLAYER_REACH := 2.6
+## The least a girder's far end comes down from its root, in units, or it is
+## not hung (`_place`).
+const GIRDER_FALL_LEAST := 0.25
 ## A body further than this from the player is not part of this moment.
 const NEAR := 14.0
 
@@ -76,7 +79,8 @@ var _slots := PackedVector4Array()
 ## What was hung, so a gather that finds the same props does no work.
 var _keys: PackedInt64Array = PackedInt64Array()
 
-## How many pieces are drawn this frame. `--stats` and the tests read it.
+## How many pieces are placed this frame, in the first slots; a girder with
+## nowhere to come down is among them, hidden. `--stats` and the tests read it.
 var drawn := 0
 
 
@@ -244,6 +248,16 @@ func _place(i: int, p: WorldProp, focus: Vector2) -> void:
 	var dir := away.rotated(jitter)
 	var t := Transform3D(Basis(Vector3.UP, atan2(-dir.y, dir.x)).scaled(Vector3(span, span, span)),
 		base + Vector3(0.0, float(hang.lift), 0.0))
+	if int(hang.shape) == ForeKinds.GIRDER:
+		# A girder is down: from the top of what it hangs on to the ground at its
+		# far end (ForeKinds.hang), so it is held at both ends.
+		# Where the ground there stands above its root it would run into the
+		# hill and come out cut by the terrace wall, so it is not hung at all.
+		var fall := t.origin.y - world.height_at(p.pos + dir.normalized() * span)
+		if fall < GIRDER_FALL_LEAST:
+			node.visible = false
+			return
+		t.basis = ForeKinds.lean_basis(dir, span, fall)
 	node.global_transform = t
 	# Nothing pops at the edge of the band and nothing is faded to hide it: REACH
 	# is 22 tiles and the frame's own furthest corner is about 13, so a piece is
