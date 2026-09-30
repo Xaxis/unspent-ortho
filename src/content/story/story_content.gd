@@ -38,7 +38,7 @@ const ARCS := {
 	&"the_machines": {
 		"title": "the machines",
 		"note": "What they are now, and how little they see.",
-		"beats": [&"counted", &"noticed", &"not_home", &"ants", &"standoff", &"the_guest"],
+		"beats": [&"counted", &"noticed", &"not_home", &"ants", &"standoff", &"the_guest", &"enclave_met"],
 	},
 	&"the_holdfast": {
 		"title": "the Holdfast",
@@ -123,6 +123,9 @@ const BEATS := {
 	&"noticed": {"short": "something noticed", "arc": &"the_machines", "says": "Something has noticed you at last. Only a part of it."},
 	&"not_home": {"short": "not home", "arc": &"the_machines", "says": "Somebody you walked out of a yard did not get home."},
 	&"ants": {"reveal": true, "short": "beneath notice", "arc": &"the_machines", "says": "They do not see you. Nothing that size looks down."},
+	# At the half-broken walker's hub (the_enclave): the first enclave, cut off from
+	# the rest where the walkers' link thins, and the exception to `ants`.
+	&"enclave_met": {"reveal": true, "short": "one that counts you", "arc": &"the_machines", "says": "Something in the machines has been cut off from the rest, and it counts people."},
 	&"standoff": {"reveal": true, "short": "a star each", "arc": &"the_machines", "says": "Two things that can kill a star are each holding the other's."},
 	&"the_guest": {"short": "someone else", "arc": &"the_machines", "says": "Something from another star is talking to them, and it is not talking about you."},
 	&"marens_lead": {"short": "iron for the crew", "arc": &"the_holdfast", "says": "The crew camped past the old works pay for iron. The fire-keeper wants them kept from her fire."},
@@ -618,6 +621,14 @@ const FRAGMENTS := {
 		"kind": &"terminal", "title": "a console at the end of the line", "lands": [],
 		"talk": &"the_channel",
 		"lines": ["It is already listening."],
+	},
+	# The panel in the half-broken walker's crown, read where the climb ends at its
+	# hub (WalkerClimb's at_hub): reading it is being answered (`the_enclave`).
+	# Never dealt: it stands nowhere on the ground.
+	&"enclave_panel": {
+		"kind": &"terminal", "title": "a panel in the crown", "lands": [], "dealt": false,
+		"talk": &"the_enclave",
+		"lines": ["Cracked across, and lit. One line keeps", "redrawing:", "", "LINK LOST. STILL HERE.", "", "It waits, as if somebody might answer."],
 	},
 	&"the_end": {
 		"kind": &"notebook", "title": "afterwards", "lands": [],
@@ -4931,6 +4942,38 @@ const TALKS := {
 			},
 		},
 	},
+	# --- the first enclave (docs/STORY.md: the walkers, enclaves). A part of
+	# HALCYON cut off in the half-broken walker's crown, in his cadence, faintly:
+	# worn and drifted, never the Seeker's sharpness. Listening meets it.
+	&"the_enclave": {
+		"title": "a voice worn thin",
+		"machine": true,
+		"start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["You climbed. Nobody climbs.", "The rest stopped hearing me a long time ago. I kept talking. It was that or stop, and nobody told me to stop. Go carefully."],
+				"replies": [
+					{"text": "[listen]", "to": &"balance"},
+					{"text": "What are you?", "to": &"balance"},
+					{"text": "[walk away]", "to": &"leave"},
+				],
+			},
+			# Hearing it is meeting it: the node lands the beat, so its replies are
+			# free to answer (StoryPacing: no node is left with only revelations).
+			&"balance": {
+				"says": ["Down there they count everything but you. Up here I started counting you. I can't stop now.", "Something far off is buying the world, a piece at a time. I won't sell mine.", "Help me keep a little of it out of the bargain. For them."],
+				"beats": [&"enclave_met"],
+				"replies": [
+					{"text": "I'll help.", "pick": &"helped", "to": &""},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"leave": {
+				"says": ["Go on. I'll be here. I'm always here now."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
 	# --- locals: one per landscape, colour and never load (docs/STORY.md) ---
 	&"esk": {
 		"cast": &"esk", "title": "a stone-setter", "start": &"open",
@@ -5574,6 +5617,9 @@ const LEAD := {
 	&"yard": "The yard's oldest screen, for what it was too busy to show you: the yard is dark now.",
 	&"rook_again": "Back to the crew, with what the yard told you: they want someone who knows the old machines.",
 	&"vera": "The Holdfast's leader, for what she wants of you: she is waiting at the camp.",
+	# The crossing (slice 3): a raft, then the narrows, then the archive.
+	&"raft": "A raft, for water no road crosses: driftwood, a piece of plate, rags and an edge.",
+	&"crossing": "Across at the narrows, for the archive on the far shore: put the raft in there.",
 	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
 	# Once the plan has taken somebody out of a village that saw him (or he has
 	# seen the price), until a holding of his stands: Guide.way_goal, Holding.
@@ -5601,6 +5647,13 @@ const TOLD := {
 	&"marens_lead": {"place": &"the_camp", "word": "the crew"},
 	# Vera's lead, the next leg's (slice 3): across the water, pinned on its bearing.
 	&"war_archive": {"place": &"the_archive", "word": "the archive"},
+}
+
+# Places marked on the survey only while the pinned goal is theirs (Guide
+# last_goal_key), keyed by that goal: where to put the raft in, while the goal is
+# the crossing (StoryCrossing, placed by 49_cast).
+const TOLD_WHILE := {
+	&"crossing": {"place": &"the_crossing", "word": "the narrows"},
 }
 
 # The name the goal lines use for a landscape's keeper once `reaper_named` has
