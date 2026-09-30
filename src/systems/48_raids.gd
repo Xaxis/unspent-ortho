@@ -1729,6 +1729,8 @@ func _on_founded(id: int) -> void:
 	# has to be able to start it somewhere other than the beginning.
 	if attention_out > 0.0:
 		s.attention = attention_out
+		# Staged as read that far, it has stood that long too (as `_stage`).
+		s.founded_at = minf(s.founded_at, game.clock.minutes - FIRST_WARNING_AFTER)
 	var razed := int(_memory(s).get("razed", 0))
 	if razed > 0:
 		s.attention = clampf(s.attention + Attention.NOTICE_FULL * float(razed), 0.0, 1.0)
