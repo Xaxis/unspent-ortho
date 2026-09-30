@@ -252,6 +252,9 @@ func _draw_detail(R: Rect2i) -> void:
 		UiDraw.text(self, Vector2i(tx, R.position.y + 46 + i * UiTheme.LINE), facts[i], UiTheme.MACHINE[2] if found else UiTheme.TEXT_DIM)
 	if d.get("tool", false) and int(d.get("bite", 1)) > 0 and not d.get("stuff", &"") == &"found":
 		_draw_edge(Vector2i(tx, R.position.y + 46 + facts.size() * UiTheme.LINE), inventory.edge(id))
+	elif d.has("worn_by"):
+		# Plate spent by the blows it meets: how much it has left, before it is gone.
+		_draw_edge(Vector2i(tx, R.position.y + 46 + facts.size() * UiTheme.LINE), inventory.edge(id), "wear")
 	var y := R.position.y + 286
 	# A tool: what it works on in the world, by its verb.
 	var verb := String(d.get("verb", ""))
@@ -379,10 +382,11 @@ func _draw_ladder(at: Vector2i, stuff: StringName) -> void:
 			x += 48
 
 
-## The edge as notches: ten of them, worn ones hollow, the last two in the warning.
-func _draw_edge(at: Vector2i, edge: int) -> void:
-	UiDraw.text(self, at, "edge", UiTheme.TEXT_DIM)
-	var x := at.x + UiFont.width("edge") + 10
+## The edge (or a plate's wear) as notches: ten of them, worn ones hollow, the
+## last two in the warning.
+func _draw_edge(at: Vector2i, edge: int, word: String = "edge") -> void:
+	UiDraw.text(self, at, word, UiTheme.TEXT_DIM)
+	var x := at.x + UiFont.width(word) + 10
 	var full := roundi(edge / 1000.0)
 	for i in 10:
 		# A notch and the clear pixel after it: at a pitch of 8 they touched, and

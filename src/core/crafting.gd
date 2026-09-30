@@ -90,6 +90,8 @@ static func can_make(inv: Inventory, r: Dictionary) -> bool:
 			return _mendable(inv) and inv.edge(inv.held) < HONE_CAP
 		&"reedge":
 			return _mendable(inv) and inv.edge(inv.held) < 10000
+		&"mend_kit":
+			return _kit_to_mend(inv, r.get("kit", &"")) != &""
 	return true
 
 
@@ -109,6 +111,8 @@ static func make(inv: Inventory, r: Dictionary) -> bool:
 			inv.set_edge(inv.held, mini(inv.edge(inv.held) + HONE_STEP, HONE_CAP))
 		&"reedge":
 			inv.set_edge(inv.held, 10000)
+		&"mend_kit":
+			inv.set_edge(_kit_to_mend(inv, r.get("kit", &"")), 10000)
 	receive(inv, r.get("makes", {}))
 	return true
 
@@ -226,6 +230,20 @@ static func _carries_verb(inv: Inventory, verb: StringName) -> bool:
 		if Items.verb(id) == verb:
 			return true
 	return false
+
+
+## The carried piece of kit for `slot` that most wants mending (worn first), or
+## &"" when none is short of whole.
+static func _kit_to_mend(inv: Inventory, slot: StringName) -> StringName:
+	var best := &""
+	for id: StringName in inv.items:
+		if Items.def(id).get("kit", &"") != slot or not Items.def(id).has("worn_by") or inv.edge(id) >= 10000:
+			continue
+		if best == &"" or id == inv.worn or inv.edge(id) < inv.edge(best):
+			best = id
+			if id == inv.worn:
+				break
+	return best
 
 
 static func _mendable(inv: Inventory) -> bool:
