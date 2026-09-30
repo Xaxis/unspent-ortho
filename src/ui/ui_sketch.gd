@@ -349,6 +349,15 @@ const SHAPES := {
 		["dot", 9.0, 19.0], ["dot", 23.0, 19.0],
 		["glow", 16.0, 21.0, 2.0],
 	],
+	# The bench plate mended (plate_mended): the plate, a band of cord lashed
+	# across it, and a square of a harvester's iron let into its foot.
+	&"kit_patched": [
+		["poly", "a3", [4.0, 12.0, 12.0, 5.0, 20.0, 5.0, 28.0, 12.0, 26.0, 24.0, 16.0, 29.0, 6.0, 24.0]],
+		["poly", "a4", [8.0, 11.0, 12.0, 8.0, 20.0, 8.0, 24.0, 11.0, 23.0, 15.0, 9.0, 15.0]],
+		["poly", "a2", [12.0, 20.0, 20.0, 20.0, 19.5, 26.0, 12.5, 26.0]],
+		["bar", "b4", 4.0, 17.0, 28.0, 17.5, 2.4, 2.4],
+		["dot", 9.0, 22.0], ["dot", 23.0, 22.0],
+	],
 	&"dram": [
 		# A found cell, ruled: a squat case on the diagonal, a terminal at the
 		# foot, a stepped shoulder, and the charge showing through a slot.

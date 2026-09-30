@@ -45,7 +45,8 @@ func test_the_prompt_says_what_to_hold_for_what_the_goal_wants() -> void:
 ## The hint names an item as a plural or a mass ("for rags", "for iron"), never a
 ## count noun ("for piece of plate"). Every item a GOAL_MAKES goal can want is
 ## named here, so a goal that comes to want a new one is read before it ships.
-const HINT_WORD := {&"driftwood": "driftwood", &"rag": "rags", &"scrap": "plate", &"iron": "iron"}
+const HINT_WORD := {&"driftwood": "driftwood", &"rag": "rags", &"scrap": "plate", &"iron": "iron",
+	&"kit_plate": "plate armour", &"tide_iron": "tide iron"}
 
 
 func test_every_item_a_goal_can_want_is_named_as_many() -> void:
