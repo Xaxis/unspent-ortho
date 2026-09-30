@@ -177,17 +177,60 @@ static func hung_on(p: WorldProp, seed_value: int, country: int = -1) -> bool:
 
 
 ## How the piece on `p` stands: {shape, lift, span, turn, variant}. Pure.
+##
+## A GIRDER LEAVES ITS PROP NO HIGHER THAN THE PROP STANDS, and the view leans it
+## down to the ground (`lean_basis`). Hung level at the row's lift it floated two
+## to six units over a ruin or a wreck half a unit tall: from above, a grey
+## ladder in the air with nothing under either end (the owner, 2026-09-29). The
+## row's lift is still the most it may hang at, off something tall enough.
 static func hang(p: WorldProp, seed_value: int, country: int = -1) -> Dictionary:
 	var row := row_of(p, seed_value, country)
 	var lift: Vector2 = row.lift
 	var span: Vector2 = row.span
+	var at := lerpf(lift.x, lift.y, Rng.hash01(seed_value, p.id, S_LIFT)) * maxf(0.6, p.scale)
+	if int(row.shape) == GIRDER:
+		at = minf(at, top_of(p, seed_value, country))
 	return {
 		"shape": int(row.shape),
-		"lift": lerpf(lift.x, lift.y, Rng.hash01(seed_value, p.id, S_LIFT)) * maxf(0.6, p.scale),
+		"lift": at,
 		"span": lerpf(span.x, span.y, Rng.hash01(seed_value, p.id, S_SPAN)) * maxf(0.7, p.scale),
 		"turn": Rng.hash01(seed_value, p.id, S_TURN),
 		"variant": int(Rng.hash01(seed_value, p.id, S_VARIANT) * VARIANTS) % VARIANTS,
 	}
+
+
+## How tall `p` stands over its own ground, in units: the top of its drawn model.
+static func top_of(p: WorldProp, seed_value: int, country: int = -1) -> float:
+	var c := maxi(Country.COAST, country)
+	var v := PropModels.variant_of(p, seed_value, c)
+	var key := Vector3i(p.kind, v, c)
+	_tops_lock.lock()
+	var known: Variant = _tops.get(key)
+	_tops_lock.unlock()
+	if known == null:
+		var t := PropModels.template(p.kind, v, c)
+		var top := 0.0
+		for part: PackedVector3Array in [t.made_v, t.found_v, t.leaf_v]:
+			for q: Vector3 in part:
+				top = maxf(top, q.y)
+		_tops_lock.lock()
+		_tops[key] = top
+		_tops_lock.unlock()
+		known = top
+	return float(known) * p.scale
+
+
+static var _tops: Dictionary = {}
+static var _tops_lock := Mutex.new()
+
+
+## A girder's placing, less its yaw: the template's +X (unit span, level) taken
+## `span` along `dir` and `fall` down, so its far end is on the ground; its ties
+## (+Z) stay level and it keeps its own depth (+Y), both at the span's scale.
+static func lean_basis(dir: Vector2, span: float, fall: float) -> Basis:
+	var d := dir.normalized()
+	return Basis(Vector3(d.x * span, -fall, d.y * span), Vector3.UP * span,
+		Vector3(-d.y, 0.0, d.x) * span)
 
 
 ## The mesh for one (shape, variant), built once and shared by every piece that
