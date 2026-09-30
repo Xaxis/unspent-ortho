@@ -112,8 +112,15 @@ func _system_files() -> Array[String]:
 	return files
 
 
+## Setting up a system slower than this is named on the `boot systems` line: the
+## loading page's `start` stage is all of them, and on the web it is seconds.
+const SLOW_SYSTEM_MS := 50
+
+
 func _load_systems(files: Array[String]) -> void:
+	var slow := PackedStringArray()
 	for f in files:
+		var t := Time.get_ticks_usec()
 		var path := "res://src/systems/" + f
 		var script := ResourceLoader.load_threaded_get(path) as GDScript
 		if script == null:
@@ -123,8 +130,17 @@ func _load_systems(files: Array[String]) -> void:
 		add_child(sys)
 		sys.setup(self)
 		systems.append(sys)
+		var ms := (Time.get_ticks_usec() - t) / 1000
+		if ms >= SLOW_SYSTEM_MS:
+			slow.append("%s %d" % [sys.name, ms])
 	for sys in systems:
+		var t := Time.get_ticks_usec()
 		sys.started()
+		var ms := (Time.get_ticks_usec() - t) / 1000
+		if ms >= SLOW_SYSTEM_MS:
+			slow.append("%s started %d" % [sys.name, ms])
+	if not slow.is_empty():
+		print("boot systems slow (ms): %s" % ", ".join(slow))
 
 
 ## True while gameplay input should be ignored (a screen is open, or the body is busy).

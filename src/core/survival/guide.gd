@@ -247,6 +247,17 @@ static func _first_hour(game: Game) -> String:
 const REAPER_DOWN := &"reaper_down"
 
 
+## ROOK'S POINTER: paid and armoured while nobody has named what keeps the yard,
+## and the yard's hop waits on its fall, the want is the tide-pickers who know it
+## (LEAD `hob`, Rook's talk node `keeper`), until Hob has named it. Asked by
+## way_goal after a holding's needs, which are people's and come first.
+static func hob_goal() -> String:
+	if not Story.landed(NAMED_BEAT) and not Story.landed(REAPER_DOWN) and StoryContent.LEAD.has(&"hob"):
+		_key = &"hob"
+		return String(StoryContent.LEAD[&"hob"])
+	return ""
+
+
 static func reaper_goal() -> String:
 	if Story.landed(NAMED_BEAT) and not Story.landed(REAPER_DOWN) and StoryContent.LEAD.has(&"reaper"):
 		_key = &"reaper"
@@ -329,6 +340,10 @@ static func way_goal(game: Game) -> String:
 	if Holding.shutters_wanted(game) and StoryContent.LEAD.has(&"shutters"):
 		_key = &"shutters"
 		return String(StoryContent.LEAD[&"shutters"])
+	# Then Rook's pointer, while the chain waits on a keeper nobody has named.
+	var hob := hob_goal()
+	if hob != "":
+		return hob
 	for hop: Dictionary in WAY:
 		if not Story.landed(hop.after):
 			continue

@@ -553,9 +553,16 @@ const bounded = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => 
 // The same rule as a console error: once a tour has said it reached its end, the
 // engine is tearing itself down after quit() (a wasm fault there was seen once in
 // three dev.tour runs), which no player reaches and is not the tour's evidence.
+// Headless Chromium grants no pointer lock at all: it rejects every request with
+// this, even straight after a real click (measured on a bare canvas). The game
+// asks for one whenever the view goes over the shoulder, which the browser-
+// defaults step's right click and Alt can do, so whether the run failed was a
+// race. A headed browser grants it, so there it still fails a run.
+const NO_LOCK_HEADLESS = /not valid for pointer lock/;
 page.on('pageerror', (e) => {
-  if (!tourEnded) failures.push(`page error: ${e.message}`);
-  console.log(`  [${since()}s pageerror${tourEnded ? ' after the tour ended' : ''}] ${e.message}`);
+  const headlessLock = !opt.headed && NO_LOCK_HEADLESS.test(e.message);
+  if (!tourEnded && !headlessLock) failures.push(`page error: ${e.message}`);
+  console.log(`  [${since()}s pageerror${tourEnded ? ' after the tour ended' : ''}${headlessLock ? ' (headless has no pointer lock)' : ''}] ${e.message}`);
 });
 // The engine's loader cancels its first fetch of the wasm once it has the bytes
 // streaming: a cancelled request only fails the run if that URL never answered.

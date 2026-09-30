@@ -2663,7 +2663,7 @@ const FRAGMENTS := {
 			"A machine lamp hung from a vine, a rag over",
 			"it to turn it down.",
 			"",
-			"It came off a walker that went into the",
+			"It came off a hunter that went into the",
 			"canopy and did not come out.",
 		],
 	},
@@ -4137,6 +4137,9 @@ const TALKS := {
 					{"text": "What do you want?", "pick": &"asked_want", "to": &"want"},
 					{"text": "Teague sells our roads to the Covenant.", "when": &"teague_sold", "pick": &"told_rook_teague", "to": &"teague"},
 					{"text": "[hold out the iron]", "has": [&"iron_ore", &"iron"], "to": &"iron"},
+					# Armoured before anyone has named what keeps the yard: he points
+					# at the tide-pickers (Guide.hob_goal says it after).
+					{"text": "[show him the armour]", "has": [&"kit_plate"], "unless": &"reaper_named", "to": &"keeper"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &"quiet"},
 				],
 			},
@@ -4144,6 +4147,10 @@ const TALKS := {
 			&"iron": {
 				"says": ["Iron. She sent you so we'd keep off her fire. She's right. We bring the hunters.", "Three plate for it. Beat it into armour at a bench.", "I pay in plate. Coin's for people paid to wait."],
 				"replies": [{"text": "[take the plate]", "pick": &"paid", "to": &""}],
+			},
+			&"keeper": {
+				"says": ["Plate on your back now. Good. Something keeps the yard past the point.", "Ask the tide-pickers what they call it. They've watched it longer than we have."],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"payer": {
 				"says": ["Old coin, left where I'd find it, and a note in a hand I didn't know.", "It said you'd come out of the sea, and when."],
@@ -5559,6 +5566,9 @@ const LEAD := {
 	# The crew's errand once the yard is dark and until they have paid, in place
 	# of `ore` and `camp`: what he just did, then what he owes.
 	&"crew": "Iron for the crew, now the yard is dark: the survey marks their camp.",
+	# Paid and armoured before anyone has named what keeps the yard, until Hob has
+	# (Guide.hob_goal): the tide-pickers, as Rook points him.
+	&"hob": "The tide-pickers, for what keeps the yard past the point: ask them along the shore.",
 	&"armour": "Armour against the hunters: beat the plate at a bench, with scrap and iron.",
 	# The way on (Guide.way_goal), each said until the beat that ends it lands.
 	&"yard": "The yard's oldest screen, for what it was too busy to show you: the yard is dark now.",
