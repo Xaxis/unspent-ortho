@@ -2,11 +2,10 @@ extends RefCounted
 ## ONE WALKING MEGASTRUCTURE, AS DATA (docs: the colossi design, 2026-09-23).
 ##
 ## The owner asked for two or three machines "so big the tops of them are almost
-## in orbit", walking slowly over and around the world. What they ARE -- whose
-## they are, what they carry, what their names are -- is still the owner's to
-## rule on (the story is under his ruling), so nothing here names one: a body is
-## a set of numbers, a circuit is where it walks, and the engine draws whatever
-## it is handed. A named design is a new `static func` beside `tripod()`.
+## in orbit", walking slowly over and around the world. What they ARE is ruled
+## in docs/STORY.md (HALCYON's bandwidth, walking; one half-broken, the first
+## enclave in its crown). Nothing here names one: a body is a set of numbers, a
+## circuit is where it walks, and the engine draws whatever it is handed. A named design is a new `static func` beside `tripod()`.
 ##
 ## Everything is in world units, which are METRES (a tile is one), and world
 ## minutes. These are honest heights: the hub really stands 52 to 70 km up, and
