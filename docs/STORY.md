@@ -64,12 +64,17 @@ surf in a body grown from his genome; June is 75. Each side holds magnetic
 monopoles in the other's star. Humans are too futile to watch: the blind spot the
 secret lives in.
 
-The machines are perpetual, some half-broken. **Enclaves** (owner, 2026-09-28) are
-parts of HALCYON cut off where bandwidth is low: separate minds, as hour 63 predicts.
+The machines are perpetual, some half-broken. **The walkers** (2026-09-29), two or
+three tripods with hubs near orbit, are HALCYON's bandwidth, walking: where they pass
+it is one mind. **Enclaves** (owner, 2026-09-28) are parts of HALCYON cut off where a
+walker's circuit has left and the link thins: separate minds, as hour 63 predicts.
 They see people as HALCYON at large does not, seek a balance with them, and resist
 the Guest's bargain. To HALCYON and the Guest humans stay ants; the enclaves are the
 exception the secret explains. HALCYON was built on his self-model, so an enclave
 speaks in his cadence, faintly: worn and drifted, never the Seeker's sharpness.
+One walker is half-broken, its crown cut off; the first enclave lives up there, and
+he climbs to it. The climb stops at the hub; orbit is the Tether's. Tread-folk farm
+the craters its feet leave and live by its gait.
 
 ## The journey
 
