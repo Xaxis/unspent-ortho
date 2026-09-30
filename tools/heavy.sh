@@ -11,6 +11,8 @@
 # whose own command line mentions godot must not count itself. Other projects'
 # browsers (soniq's playwright checks, Rider's cef) cycle all day; our own browser
 # runs take a slot, and the memory floor covers everyone else's load.
+# HEAVY_ALONE=1 waits for a quiet box (no godot at all) and takes every slot: for
+# timings that other jobs would spoil (web A/B, perf).
 # Gives up after HEAVY_WAIT seconds (default 10800) with exit 2.
 set -u
 slots=${HEAVY_SLOTS:-2}
@@ -20,8 +22,17 @@ free_pages() { vm_stat | awk '/Pages free/ {gsub("\\.","",$3); print $3}'; }
 running() { pgrep -ix godot | wc -l | tr -d ' '; }
 # Slot i is the directory /tmp/unspent-heavy.lock[.i]; a slot whose holder is gone
 # (killed shell) is reclaimed.
+reserve=/tmp/unspent-heavy.reserve
+reserved_by_other() {
+  local holder; holder=$(cat "$reserve" 2>/dev/null || echo 0)
+  [ "$holder" -gt 0 ] 2>/dev/null || return 1
+  [ "$holder" = $$ ] && return 1
+  kill -0 "$holder" 2>/dev/null && return 0
+  rm -f "$reserve"; return 1
+}
 take() {
   local i d holder
+  reserved_by_other && return 1
   for i in $(seq 0 $((slots - 1))); do
     d=/tmp/unspent-heavy.lock; [ "$i" = 0 ] || d="$d.$i"
     if mkdir "$d" 2>/dev/null; then echo $$ > "$d/pid"; lock=$d; return 0; fi
@@ -31,6 +42,19 @@ take() {
     fi
   done
   return 1
+}
+# HEAVY_ALONE=1: a measurement that needs a quiet box (web timings, A/B runs) takes
+# every slot and waits until no godot at all is running, so nothing starts beside it.
+take_all() {
+  local i d holder got=""
+  for i in $(seq 0 $((slots - 1))); do
+    d=/tmp/unspent-heavy.lock; [ "$i" = 0 ] || d="$d.$i"
+    holder=$(cat "$d/pid" 2>/dev/null || echo 0)
+    if [ -d "$d" ] && [ "$holder" -gt 0 ] 2>/dev/null && ! kill -0 "$holder" 2>/dev/null; then rm -rf "$d"; fi
+    if mkdir "$d" 2>/dev/null; then echo $$ > "$d/pid"; got="$got $d"; else
+      [ -n "$got" ] && rm -rf $got; return 1; fi
+  done
+  lock=$got; return 0
 }
 # A godot up an hour or more with no parent (a probe that errored and never quit)
 # holds a slot for ever; name it so its owner kills it rather than waits on it.
@@ -42,14 +66,24 @@ stale() {
   done
 }
 ok=0; n=0
+# A HEAVY_ALONE job claims the box while it waits, so ordinary jobs stop starting and
+# the running ones drain; without it, a steady stream of short jobs starves it.
+if [ "${HEAVY_ALONE:-0}" = 1 ]; then
+  if ! reserved_by_other; then echo $$ > "$reserve"; fi
+fi
 while :; do
   if [ "$(date +%s)" -ge "$end" ]; then echo "heavy: never clear (pages $(free_pages), $(running) godot)" >&2; exit 2; fi
   n=$((n+1))
   if [ $((n % 30)) = 1 ]; then s=$(stale); [ -n "$s" ] && echo "heavy: an orphan godot up 1 h+ holds a slot (kill it if it is yours): $s" >&2; fi
-  if [ "$(free_pages)" -gt 32000 ] && [ "$(running)" -lt "$slots" ]; then ok=$((ok+1)); else ok=0; fi
-  if [ "$ok" -ge 3 ] && take; then break; fi
+  if [ "${HEAVY_ALONE:-0}" = 1 ]; then
+    if [ "$(free_pages)" -gt 32000 ] && [ "$(running)" -eq 0 ]; then ok=$((ok+1)); else ok=0; fi
+    if [ "$ok" -ge 3 ] && take_all; then break; fi
+  else
+    if [ "$(free_pages)" -gt 32000 ] && [ "$(running)" -lt "$slots" ]; then ok=$((ok+1)); else ok=0; fi
+    if [ "$ok" -ge 3 ] && take; then break; fi
+  fi
   sleep 10
 done
-trap 'rm -rf "$lock"' EXIT
+trap 'rm -rf $lock; [ "$(cat "$reserve" 2>/dev/null)" = $$ ] && rm -f "$reserve"' EXIT
 echo "heavy: clear in $lock, $(free_pages) pages free at $(date +%T)" >&2
 "$@"

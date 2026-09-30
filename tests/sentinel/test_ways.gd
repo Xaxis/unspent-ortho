@@ -431,7 +431,7 @@ func _by_force(locked: bool) -> Dictionary:
 	r.human = 1
 	r.keep_off = flats
 	r.home = at
-	var out: Dictionary = await _fight_it(g, s, at, r, 360.0, locked)
+	var out: Dictionary = await _fight_it(g, s, at, r, 240.0, locked)
 	Sx.end(g)
 	return out
 
@@ -467,7 +467,7 @@ func test_held_out_on_the_flats_it_founders() -> void:
 	r.keep_on = flats
 	r.lure = flat
 	r.home = start
-	var out: Dictionary = await _fight_it(g, s, start, r, 180.0)
+	var out: Dictionary = await _fight_it(g, s, start, r, 90.0)
 	print("  info founder by hand: %s" % out)
 	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FOUNDER).id(), "drawn out onto the flats and held there, it founders (%s)" % out)
 	Sx.end(g)

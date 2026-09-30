@@ -107,6 +107,99 @@ func test_new_game_from_the_title_keeps_the_coast_it_was_showing() -> void:
 	holder.free()
 
 
+## Bigger than BootPage.TITLE_COAST, so the title shows a stand-in and raises this.
+const ISLAND := 300
+const Parity := preload("res://tests/biome/test_parity.gd")
+
+
+func _fresh_raises() -> void:
+	BootWorld.clear()
+	RealmWorlds.grower = Callable()
+	RealmWorlds.forget()
+	RealmWorlds.settle()
+
+
+## The title's own raise of the island, waited on the clock (it is on a worker).
+func _until_raised(title: UiTitle, seed_value: int) -> void:
+	var deadline := Time.get_ticks_msec() + int(60000.0 * machine_slack())
+	while not RealmWorlds.ready(seed_value, ISLAND, Realm.SURFACE) and Time.get_ticks_msec() < deadline:
+		title._process(0.05)
+		await tree.process_frame
+		OS.delay_msec(5)
+
+
+func test_the_title_shows_a_stand_in_and_raises_the_island_behind_it() -> void:
+	_fresh_raises()
+	var holder := _holder()
+	var title := BootPage.open_title(holder, BootOptions.parse(["--seed=8", "--size=%d" % ISLAND])) as UiTitle
+	await _until_shown(title)
+	check(title.world != null and title.world.size == BootPage.TITLE_COAST and title.world.seed_value == 8,
+		"the title shows a small coast of the island's own seed")
+	check(RealmWorlds.going(8, ISLAND, Realm.SURFACE) or RealmWorlds.ready(8, ISLAND, Realm.SURFACE),
+		"and the island itself is being raised behind it")
+	await _until_raised(title, 8)
+	check(RealmWorlds.ready(8, ISLAND, Realm.SURFACE), "the island stands while the title is read")
+	if RealmWorlds.ready(8, ISLAND, Realm.SURFACE):
+		eq(Parity.digest(RealmWorlds.take(8, ISLAND, Realm.SURFACE)), Parity.digest(WorldGen.generate(8, ISLAND)),
+			"it is the very island a game grows for itself")
+	holder.free()
+	_fresh_raises()
+
+
+func test_new_game_after_the_title_plays_the_island_raised_behind_it() -> void:
+	_fresh_raises()
+	# What the raise itself grew, caught as it is made: a game keeps whatever world
+	# it has in RealmWorlds, so asking RealmWorlds afterwards proves nothing.
+	var grown: Array[WorldData] = []
+	RealmWorlds.grower = func(s: int, n: int, k: StringName) -> WorldData:
+		var w := BootWorld.world(s, n, k)
+		if k == Realm.SURFACE:
+			grown.append(w)
+		return w
+	var holder := _holder()
+	var title := BootPage.open_title(holder, BootOptions.parse(["--seed=9", "--size=%d" % ISLAND])) as UiTitle
+	await _until_shown(title)
+	check(RealmWorlds.going(9, ISLAND, Realm.SURFACE) or RealmWorlds.ready(9, ISLAND, Realm.SURFACE),
+		"the title began the island")
+	# New game at once, as the title opens it off headless: the page waits on the raise.
+	title.queue_free()
+	var page := BootPage.new()
+	page._plan(holder, BootOptions.parse(["--seed=9", "--size=%d" % ISLAND]), "game", true)
+	holder.add_child(page)
+	var deadline := Time.get_ticks_msec() + int(90000.0 * machine_slack())
+	while not (page.scene != null and page.stages.done()) and page.failure == "" and Time.get_ticks_msec() < deadline:
+		await tree.process_frame
+		OS.delay_msec(2)
+	var game := holder.get_node_or_null("game") as Game
+	check(game != null, "the game starts once the island stands (%s)" % page.failure)
+	if game != null:
+		check(grown.size() == 1 and game.world == grown[0], "on the island that was raised, not a second one")
+		eq(game.world.size, ISLAND, "the whole island, not the title's coast")
+	holder.free()
+	_fresh_raises()
+
+
+func test_a_raise_that_ends_with_no_world_is_said_on_the_page() -> void:
+	_fresh_raises()
+	RealmWorlds.grower = func(_s: int, _n: int, _k: StringName) -> WorldData: return null
+	var holder := _holder()
+	var page := BootPage.new()
+	page._plan(holder, BootOptions.parse(["--seed=10", "--size=%d" % SIZE]), "game", true)
+	holder.add_child(page)
+	var deadline := Time.get_ticks_msec() + int(20000.0 * machine_slack())
+	while page.failure == "" and Time.get_ticks_msec() < deadline:
+		await tree.process_frame
+		OS.delay_msec(2)
+	check(page.failure != "", "the page says the land did not come up, instead of waiting for ever")
+	check(holder.get_node_or_null("game") == null, "and makes no game on nothing")
+	var t := page._t
+	for i in 5:
+		await tree.process_frame
+	check(page._t > t, "and it is still drawing, not stuck")
+	holder.free()
+	_fresh_raises()
+
+
 func test_headless_opens_the_scene_at_once() -> void:
 	var holder := _holder()
 	var game := BootPage.open_game(holder, BootOptions.parse(["--seed=2", "--size=%d" % SIZE]))

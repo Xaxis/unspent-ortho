@@ -82,3 +82,21 @@ func test_a_bake_left_running_is_waited_out_not_abandoned() -> void:
 	for id in ids:
 		check(UiSketch.item_texture(id, 234) != null, "%s finished rather than being dropped" % id)
 	UiSketch.wait()
+
+
+## The island a title raises behind its coast (RealmWorlds, a whole 1840 world on
+## the pool) is the longest job a process can be quitting under. drain_pool halts
+## it and waits for it: nothing of it is still running once the drain returns.
+func test_the_island_raised_behind_the_title_is_claimed_at_the_drain() -> void:
+	RealmWorlds.forget()
+	RealmWorlds.settle()
+	@warning_ignore("return_value_discarded")
+	RealmWorlds.begin(12, Tuning.WORLD_SIZE, Realm.SURFACE, true)
+	check(RealmWorlds.going(12, Tuning.WORLD_SIZE, Realm.SURFACE), "the island is being raised")
+	OS.delay_msec(300)
+	var t0 := Time.get_ticks_msec()
+	(load(DRAIN[0]) as GDScript).call(DRAIN[1])
+	var took := Time.get_ticks_msec() - t0
+	check(not RealmWorlds.going(12, Tuning.WORLD_SIZE, Realm.SURFACE), "the drain claimed it")
+	cost_lt(took, 15000.0, "halted, not waited out whole (%d ms)" % took)
+
