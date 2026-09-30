@@ -77,6 +77,11 @@ const LIST: Array[Dictionary] = [
 	{"id": &"oilcloth", "at": &"bench", "minutes": 40.0, "needs": {&"yarn": 2, &"pitch": 1}, "makes": {&"oilcloth": 1}},
 	{"id": &"lamp", "at": &"bench", "minutes": 60.0, "needs": {&"tin": 1, &"copper": 1}, "makes": {&"lamp": 1}},
 	{"id": &"kit_plate", "at": &"bench", "minutes": 80.0, "needs": {&"scrap": 3, &"iron": 1}, "makes": {&"kit_plate": 1}},
+	# MENDED GEAR (slice 3 step 5): living on what the machines leave. A spent
+	# plate is mended from scrap; patched with a harvester's iron it is the mended
+	# plate, which turns more and wears slower (Items kit_plate, plate_mended).
+	{"id": &"mend_plate", "at": &"bench", "minutes": 30.0, "needs": {&"scrap": 2, &"rag": 1}, "makes": {}, "action": &"mend_kit", "kit": &"plate"},
+	{"id": &"plate_mended", "at": &"bench", "minutes": 60.0, "needs": {&"kit_plate": 1, &"tide_iron": 1, &"scrap": 2}, "makes": {&"plate_mended": 1}},
 	{"id": &"kit_brace", "at": &"bench", "minutes": 60.0, "needs": {&"scrap": 2, &"timber": 1, &"iron": 1}, "makes": {&"kit_brace": 1}},
 	{"id": &"kit_rig", "at": &"bench", "minutes": 50.0, "needs": {&"scrap": 1, &"yarn": 3, &"oilcloth": 1}, "makes": {&"kit_rig": 1}},
 	{"id": &"kit_lens", "at": &"bench", "minutes": 70.0, "needs": {&"scrap": 1, &"tin": 1, &"resin": 1}, "makes": {&"kit_lens": 1}},

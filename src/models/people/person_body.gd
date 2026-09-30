@@ -1149,6 +1149,28 @@ const VANE_FAN := 0.9
 const VANE_LEAN := 0.12
 
 
+## A bent pauldron of machine plate over one shoulder, riding up past the
+## shoulder line so the outline itself changes, strapped across the back. Returns
+## the arm's kit, for what a mend lays over it.
+static func _pauldron(r: SkinRig, w: Wear, sfx: String, face: Color, dim: Color, edge: Color) -> MeshKit:
+	var d := w.d
+	var side: int = w.look.side
+	var k := r.kit(r.find(StringName("arm" + sfx)), &"salvage", SkinRig.FOUND)
+	var t: float = d.arm_t
+	# The top plate rides above the collar line; the side plate hangs just off the sleeve.
+	k.push(Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, 0, side), Vector3(0, -side, 0)).rotated(Vector3(1, 0, 0), side * 0.75), Vector3(0, 0.1, side * 0.0)))
+	Sculpt.slab(k, PackedVector2Array([Vector2(-0.12, 0.13), Vector2(-0.12, 0.0), Vector2(-0.08, -0.07), Vector2(0.08, -0.07), Vector2(0.12, 0.0), Vector2(0.12, 0.13)]), 0.014, face, edge)
+	k.pop()
+	k.push(Transform3D(Basis(Vector3(1, 0, 0), side * 0.1), Vector3(0, 0, side * (t * 0.56 + 0.028))))
+	Sculpt.slab(k, PackedVector2Array([Vector2(-0.11, 0.07), Vector2(-0.11, -0.07), Vector2(-0.06, -0.14), Vector2(0.06, -0.14), Vector2(0.11, -0.07), Vector2(0.11, 0.07)]), 0.013, dim, edge)
+	k.pop()
+	var strap := r.kit(r.find(&"spine"), &"salvage")
+	var fx: float = d.depth * 0.56 + 0.006
+	var sz: float = side * d.chest * 0.44
+	Sculpt.card(strap, Vector3(fx, d.torso - 0.05, sz), Vector3(fx, d.torso - 0.1, sz - side * 0.04), Vector3(fx, d.torso * 0.3, -sz * 0.4), Vector3(fx, d.torso * 0.36, -sz * 0.3), Palette.EARTH[1], Vector3.RIGHT)
+	return k
+
+
 static func _salvage(r: SkinRig, w: Wear) -> void:
 	var d := w.d
 	var side: int = w.look.side
@@ -1159,21 +1181,23 @@ static func _salvage(r: SkinRig, w: Wear) -> void:
 	for part: StringName in w.salvage:
 		match part:
 			&"plate":
-				# A bent pauldron of machine plate over one shoulder, riding up past
-				# the shoulder line so the outline itself changes.
-				var k := r.kit(r.find(StringName("arm" + sfx)), &"salvage", SkinRig.FOUND)
+				_pauldron(r, w, sfx, face, dim, edge)
+			&"plate_mended":
+				# The bench plate mended from what the machines leave: the same
+				# pauldron, a band of cord lashed round it, and a square of a
+				# harvester's rust-red iron let in over the side plate's split.
+				@warning_ignore("return_value_discarded")
+				_pauldron(r, w, sfx, face, dim, edge)
+				# The mend is made, not machine: its own kit on the arm, out of the
+				# FOUND material, so the cord reads as cord and the iron as rust.
+				var mk := r.kit(r.find(StringName("arm" + sfx)), &"salvage")
 				var t: float = d.arm_t
-				# The top plate rides above the collar line; the side plate hangs just off the sleeve.
-				k.push(Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, 0, side), Vector3(0, -side, 0)).rotated(Vector3(1, 0, 0), side * 0.75), Vector3(0, 0.1, side * 0.0)))
-				Sculpt.slab(k, PackedVector2Array([Vector2(-0.12, 0.13), Vector2(-0.12, 0.0), Vector2(-0.08, -0.07), Vector2(0.08, -0.07), Vector2(0.12, 0.0), Vector2(0.12, 0.13)]), 0.014, face, edge)
-				k.pop()
-				k.push(Transform3D(Basis(Vector3(1, 0, 0), side * 0.1), Vector3(0, 0, side * (t * 0.56 + 0.028))))
-				Sculpt.slab(k, PackedVector2Array([Vector2(-0.11, 0.07), Vector2(-0.11, -0.07), Vector2(-0.06, -0.14), Vector2(0.06, -0.14), Vector2(0.11, -0.07), Vector2(0.11, 0.07)]), 0.013, dim, edge)
-				k.pop()
-				var strap := r.kit(r.find(&"spine"), &"salvage")
-				var fx: float = d.depth * 0.56 + 0.006
-				var sz: float = side * d.chest * 0.44
-				Sculpt.card(strap, Vector3(fx, d.torso - 0.05, sz), Vector3(fx, d.torso - 0.1, sz - side * 0.04), Vector3(fx, d.torso * 0.3, -sz * 0.4), Vector3(fx, d.torso * 0.36, -sz * 0.3), Palette.EARTH[1], Vector3.RIGHT)
+				mk.push(Transform3D(Basis(Vector3(1, 0, 0), side * 0.1), Vector3(0, 0, side * (t * 0.56 + 0.042))))
+				Sculpt.slab(mk, PackedVector2Array([Vector2(-0.06, 0.03), Vector2(-0.06, -0.08), Vector2(0.05, -0.09), Vector2(0.06, 0.02)]), 0.01, Palette.RUST[4], Palette.RUST[2])
+				mk.pop()
+				mk.push(Transform3D(Basis(Vector3(1, 0, 0), side * 0.1), Vector3(0, 0, side * (t * 0.56 + 0.05))))
+				Sculpt.slab(mk, PackedVector2Array([Vector2(-0.125, 0.02), Vector2(-0.125, -0.014), Vector2(0.125, -0.022), Vector2(0.125, 0.012)]), 0.007, Palette.LINEN[4], Palette.LINEN[2])
+				mk.pop()
 			&"brace":
 				# A machine strut down the outside of one leg, hinged at the knee,
 				# standing off the leg so the leg's outline thickens.
@@ -1345,7 +1369,7 @@ static func _patches(r: SkinRig, w: Wear) -> void:
 			spots.append([StringName("thigh" + sfx), Vector3(kx, ky, 0.0), Vector3.RIGHT, Vector2(0.045, 0.05)])
 		# The elbow: the outside of the upper sleeve.
 		var t: float = d.arm_t
-		if not (w.salvage.has(&"plate") and sd == side):
+		if not ((w.salvage.has(&"plate") or w.salvage.has(&"plate_mended")) and sd == side):
 			spots.append([StringName("arm" + sfx), Vector3(0.0, -float(d.upper) * 0.72, sd * (t * 0.48 + 0.01)), Vector3(0, 0, sd), Vector2(0.04, 0.045)])
 	if w.long_coat:
 		var hy: float = -d.thigh * 0.5
