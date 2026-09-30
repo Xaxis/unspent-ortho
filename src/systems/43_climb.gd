@@ -245,12 +245,13 @@ func _on(e: StringName) -> void:
 				_go = false
 				_latch(&"ledge")
 		&"rode":
-			_say(&"ride")
+			# At the top of the pitch just climbed: the pitch moves on when the ride ends.
+			Events.message.emit(String((StoryContent.CLIMB[&"climb_ride"] as Dictionary)[WalkerClimb.PITCHES[climb.pitch].id]))
 			if model != null:
 				model.visible = false
 		&"slipped":
 			_go = false
-			_say(&"slipped")
+			Events.message.emit(String(StoryContent.CLIMB[&"climb_slipped"]))
 		&"fell":
 			_go = false
 			_fell()
@@ -274,7 +275,7 @@ func _fell() -> void:
 	if minutes > 0.0:
 		game.clock.skip(minutes)
 		Events.time_skipped.emit(minutes, &"fell")
-	_say(&"fell")
+	Events.message.emit(String(StoryContent.CLIMB[&"climb_fell"]))
 
 
 ## The climb is over at the hub: the panel in the crown is read, and reading it
@@ -290,15 +291,16 @@ func _at_hub() -> void:
 func _say_swing(pose: Dictionary) -> void:
 	var swing := climb.state == WalkerClimb.CLIMB and climb.swinging(pose)
 	if swing and not _swing_said:
-		_say(&"swing")
+		_hint(&"climb_swing")
 	_swing_said = swing
 
 
-## A line of the climb's, if the story has one for it (StoryContent.CLIMB).
-func _say(key: StringName) -> void:
-	var line := String(StoryContent.CLIMB.get(key, ""))
-	if line != "":
-		Events.message.emit(line)
+## One of the climb's two hints ([line, actions], as Guide.HINTS) on the teaching
+## channel: the line in the player's own keys, and the first of them on the cap.
+static func _hint(key: StringName) -> void:
+	var h: Array = StoryContent.CLIMB[key]
+	var keys: Array = h[1]
+	Events.hint.emit(PlayerSettings.spell(String(h[0]), keys), PlayerSettings.cap_of(keys[0]) if not keys.is_empty() else "")
 
 
 ## Where a climb can begin, and the press that begins it.
@@ -313,9 +315,7 @@ func _watch_rim(use_edge: bool) -> void:
 		return
 	if not _hinted:
 		_hinted = true
-		var line := String(StoryContent.CLIMB.get(&"begin", ""))
-		if line != "":
-			Events.hint.emit(PlayerSettings.spell(line, [&"use"]), PlayerSettings.cap_of(&"use"))
+		_hint(&"climb_begin")
 	if use_edge and not game.input_blocked() and not _spent_elsewhere():
 		walker = int(_rim.walker)
 		_begin(WalkerClimb.begin(int(_rim.leg), game.world.seed_value))
@@ -429,7 +429,6 @@ func _end() -> void:
 	game.clock.skip(minutes)
 	Events.time_skipped.emit(minutes, &"climbed")
 	_climbed = true
-	_say(&"down")
 	_latch(&"down")
 
 

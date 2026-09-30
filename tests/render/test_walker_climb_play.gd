@@ -9,6 +9,7 @@ extends TestCase
 const Walk := preload("res://src/core/colossus/colossus_walk.gd")
 const Route := preload("res://src/core/colossus/colossus_route.gd")
 const Def := preload("res://src/core/colossus/colossus_def.gd")
+const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 
 const SEED := 1
 const SIZE := 48
@@ -48,6 +49,13 @@ static func _system(g: Game, named: String) -> Node:
 	return null
 
 
+## Put him at `at`, the fight's body with him (it is what the ground's systems
+## move, and he follows it).
+static func _stand(g: Game, at: Vector2) -> void:
+	g.player.pos = at
+	g.player.hero.pos = at
+
+
 ## Real seconds, while the game runs.
 func _run(secs: float) -> void:
 	await tree.create_timer(secs).timeout
@@ -84,6 +92,81 @@ func test_on_the_leg_the_keys_and_the_eye_are_the_climbs() -> void:
 	gt(float(climb.hold), float(ledge), "and pressed again, he sets off from it")
 	g.queue_free()
 	await process_frames(2)
+
+
+## THE CLIMB'S TWO HINTS NAME HIS OWN KEY, IN THEIR MOMENT: nothing is hinted
+## away from every rim; at the rim of a planted foot's tread the hint names the
+## key `use` is on, puts it on the cap, and follows it when it is rebound; and as
+## his leg goes up under him the swing's hint is said once a swing, naming none.
+func test_the_climbs_hints_name_his_own_key_in_their_moment() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=7", "--place=tread0", "--colossus=2@tread0+30",
+		"--hour=12", "--weather=clear:0"])))
+	g.player.sim.clear_mobs()
+	var sys := _system(g, "43_climb")
+	var said: Array = []
+	var listen := func(t: String, key: String) -> void: said.append([t, key])
+	Events.hint.connect(listen)
+	await process_frames(4)
+	var rim: Dictionary = {}
+	for f: Dictionary in sys.call(&"_feet_in_treads"):
+		if bool(f.planted):
+			rim = f
+			break
+	check(not rim.is_empty(), "a foot stands in a tread")
+	if not rim.is_empty():
+		var pad: Vector3 = (rim.pads as Array)[0]
+		var on := Vector2(pad.x, pad.y)
+		var off := on + Vector2(Treads.rim_r(pad) * 4.0, 0.0)
+		_stand(g, off)
+		await process_frames(3)
+		check(not bool(sys.call(&"tour_seen", &"climb_rim")) and said.is_empty(), "away from the rim nothing is hinted: %s" % [said])
+		_stand(g, on)
+		await process_frames(3)
+		check(bool(sys.call(&"tour_seen", &"climb_rim")), "on the crater's floor he is at a rim")
+		eq(said.size(), 1, "and the climb's hint is said, once: %s" % [said])
+		if said.size() == 1:
+			check(String(said[0][0]).contains(PlayerSettings.label_of(&"use")), "naming the key `use` is on: %s" % said[0][0])
+			eq(String(said[0][1]), PlayerSettings.cap_of(&"use"), "on its cap")
+			check(not String(said[0][0]).contains("%s"), "spelled, not a template")
+		@warning_ignore("return_value_discarded")
+		PlayerSettings.bind_key(&"use", KEY_Q)
+		_stand(g, off)
+		await process_frames(3)
+		_stand(g, on)
+		await process_frames(3)
+		PlayerSettings.reset_keys()
+		eq(said.size(), 2, "walked off and back, it is said again")
+		if said.size() == 2:
+			check(String(said[1][0]).contains("Q") and String(said[1][1]) == "q", "in the key it was moved to: %s [%s]" % [said[1][0], said[1][1]])
+	said.clear()
+	sys.set("walker", int(rim.get("walker", 0)))
+	sys.call(&"_begin", WalkerClimb.begin(int(rim.get("leg", 0)), 7))
+	await process_frames(2)
+	var standing := {"swinging": -1}
+	var swinging := {"swinging": int(rim.get("leg", 0))}
+	for pose: Dictionary in [standing, swinging, swinging, standing, swinging]:
+		sys.call(&"_say_swing", pose)
+	eq(said.size(), 2, "the swing's hint is said as each swing begins: %s" % [said])
+	for s: Array in said:
+		eq(String(s[1]), "", "and names no key")
+	Events.hint.disconnect(listen)
+	g.queue_free()
+	await process_frames(2)
+
+
+## EVERY RIDE UP INSIDE THE BONE IS SAID, keyed by the pitch just climbed, and
+## the hub's own pitch, which ends at the panel, has none.
+func test_every_ride_is_said_and_the_hub_is_not() -> void:
+	var rides: Dictionary = StoryContent.CLIMB.get(&"climb_ride", {})
+	for i in WalkerClimb.PITCHES.size():
+		var id: StringName = WalkerClimb.PITCHES[i].id
+		if i < WalkerClimb.PITCHES.size() - 1:
+			check(String(rides.get(id, "")) != "", "the ride up from %s is said" % id)
+		else:
+			check(not rides.has(id), "the hub's pitch has no ride line")
+	eq(rides.size(), WalkerClimb.PITCHES.size() - 1, "and no line waits for a pitch that is not climbed")
 
 
 func test_a_fall_wounds_him_and_the_minutes_pass_but_never_kills() -> void:
