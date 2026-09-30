@@ -5,6 +5,7 @@ extends TestCase
 ## mended plate, which turns more and wears slower.
 
 const F := preload("res://tests/fight/fixture.gd")
+const Sx := preload("res://tests/save/save_fixture.gd")
 
 
 ## A sim with the hero wearing `plate` (as a player does, in the bag and worn).
@@ -91,3 +92,57 @@ func test_the_mended_plate_turns_more_and_lasts_longer() -> void:
 	var base := _until_spent(_plated(&"kit_plate"))
 	var mended := _until_spent(_plated(&"plate_mended"))
 	gt(float(mended[1]), float(base[1]) * 2.0, "it turns more, for longer (%d against %d points)" % [mended[1], base[1]])
+
+
+## THE HOP: fed at the Covenant, the goal line asks for the mended plate until he
+## carries one (Guide.WAY `mend`, StoryContent.LEAD mend).
+func test_the_covenant_sends_him_to_mend_the_plate() -> void:
+	Story.forget()
+	var g := Sx.game(tree, ["--seed=1", "--size=128", "--hour=10", "--weather=clear:0"])
+	await process_frames(2)
+	@warning_ignore("return_value_discarded")
+	Story.beat(Guide.LEAD_BEAT)
+	g.inventory.add(&"pick", 1)
+	Story.choose(Guide.CAMP_PAID, &"paid")
+	g.inventory.add(&"kit_plate", 1)
+	g.body.fed_until = g.clock.minutes + 600.0
+	# Where the story stands by the Covenant: slice 1 and 2 done, the archive's man met.
+	for b: StringName in [&"reaper_named", &"reaper_down", &"built_halcyon", &"holdfast_hope", &"war_archive"]:
+		@warning_ignore("return_value_discarded")
+		Story.beat(b)
+	@warning_ignore("return_value_discarded")
+	Story.meet(&"otto")
+	var mend := String(StoryContent.LEAD[&"mend"])
+	check(Guide.goal(g) != mend, "not before the Covenant")
+	@warning_ignore("return_value_discarded")
+	Story.beat(&"covenant_fed")
+	eq(Guide.goal(g), mend, "fed at the Covenant: the mended plate")
+	eq(Guide.last_goal_key, &"mend", "keyed, so the prompt can list what it wants")
+	g.inventory.add(&"plate_mended", 1)
+	check(Guide.goal(g) != mend, "carried: that want is met")
+	Sx.end(g)
+	Story.forget()
+
+
+## THE REASON, SAID AT THE COVENANT: the hawker's "What's that iron?", once the
+## Covenant has fed him, and the line about harvester iron behind it.
+func test_the_hawker_says_why_harvester_iron() -> void:
+	Story.forget()
+	var ask := "What's that iron?"
+	var t := StoryTalk.start(&"the_hawker")
+	check(not _texts(t).has(ask), "not asked before the Covenant has fed him")
+	@warning_ignore("return_value_discarded")
+	Story.beat(&"covenant_fed")
+	t = StoryTalk.start(&"the_hawker")
+	check(_texts(t).has(ask), "asked once it has")
+	var said: Array = StoryContent.TALKS[&"the_hawker"]["nodes"][&"iron"]["says"]
+	check(String(said[0]).begins_with("Harvester iron."), "and it says what the iron is for")
+	Story.forget()
+
+
+func _texts(t: StoryTalk) -> Array[String]:
+	var out: Array[String] = []
+	for r: Dictionary in t.replies():
+		out.append(str(r.text))
+	return out
+

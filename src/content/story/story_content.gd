@@ -3921,8 +3921,14 @@ const TALKS := {
 				"says": ["Ration tins, stamped this week. Batteries that hold. Nothing you need, all of it cheap.", "You're not from the city. You walk like something's behind you."],
 				"replies": [
 					{"text": "Is anything behind me?", "pick": &"asked_behind", "to": &"behind"},
+					# MENDED GEAR (slice 3 step 5): the reason, said at the Covenant.
+					{"text": "What's that iron?", "when": &"covenant_fed", "pick": &"asked_iron", "to": &"iron"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
 				],
+			},
+			&"iron": {
+				"says": ["Harvester iron. Off the ones that stop in the fields and don't get up. Patch a plate with it and it holds."],
+				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"behind": {
 				"says": ["Not here. Nothing's behind anybody here.", "That's what we pay for."],
@@ -5575,6 +5581,8 @@ const LEAD := {
 	&"rook_again": "Back to the crew, with what the yard told you: they want someone who knows the old machines.",
 	&"vera": "The Holdfast's leader, for what she wants of you: she is waiting at the camp.",
 	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
+	# Slice 3 step 5, after covenant_fed, until the mended plate is carried.
+	&"mend": "Mended plate, for the plate you've spent: a harvester's iron, at a bench.",
 	# Once the plan has taken somebody out of a village that saw him (or he has
 	# seen the price), until a holding of his stands: Guide.way_goal, Holding.
 	# Where only the price has landed, HOLDING_MOVE.lead_burned says it instead,
@@ -5824,6 +5832,13 @@ const REPRISAL := {
 # glass lines for the warning sending his people in behind the shutters and for
 # the raid going off without them. Rook's reason is his talk's `raided` node, and
 # the goal hop is LEAD.shutters.
+## MENDED GEAR (slice 3 step 5): the plate on his back spent by the blows it
+## turned (40_fight on the sim's `plate_spent`).
+const MENDED := {
+	"spent": "The plate on your back is spent. Scrap and a bench would patch it.",
+}
+
+
 const DEFEND := {
 	# Rook, the first time he is spoken to after a raid has been warned on the
 	# holding (48_raids `cast_word`): why shutters, and why the plate.

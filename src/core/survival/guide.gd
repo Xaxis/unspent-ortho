@@ -327,6 +327,7 @@ const WAY: Array[Dictionary] = [
 	{"key": &"rook_again", "after": &"built_halcyon", "until": &"holdfast_hope"},
 	{"key": &"vera", "after": &"holdfast_hope", "until": &"war_archive"},
 	{"key": &"archive", "after": &"war_archive", "met": &"otto"},
+	{"key": &"mend", "after": &"covenant_fed", "has": &"plate_mended"},
 ]
 
 
@@ -349,7 +350,13 @@ static func way_goal(game: Game) -> String:
 	for hop: Dictionary in WAY:
 		if not Story.landed(hop.after):
 			continue
-		var done := Story.met(hop.met) if hop.has("met") else Story.landed(hop.until)
+		var done := false
+		if hop.has("met"):
+			done = Story.met(hop.met)
+		elif hop.has("has"):
+			done = game.inventory != null and game.inventory.has(hop.has)
+		else:
+			done = Story.landed(hop.until)
 		if not done and StoryContent.LEAD.has(hop.key):
 			_key = hop.key
 			return String(StoryContent.LEAD[hop.key])
@@ -363,6 +370,7 @@ static func way_goal(game: Game) -> String:
 const GOAL_MAKES := {
 	&"holding": {"piece": StructureKind.LEAN_TO},
 	&"armour": {"recipe": &"kit_plate"},
+	&"mend": {"recipe": &"plate_mended"},
 }
 
 
