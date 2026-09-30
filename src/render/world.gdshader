@@ -2623,6 +2623,7 @@ void fragment() {
 			for (int i = 0; i < CROWN_CLEAR; i++) {
 				cut = max(cut, sight_cone(world_pos, eye, crown_clear[i]) * close);
 			}
+			cut = max(cut, sight_near(world_pos, eye, crown_clear[0]) * close);
 		}
 	}
 	if (cut > 0.0 && ink_hash(px + vec2(53.0, 11.0)) < cut) {
