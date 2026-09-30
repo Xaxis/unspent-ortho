@@ -65,6 +65,21 @@ static func _at(def: RefCounted, climb: WalkerClimb, p: int, up: float, across: 
 	return climb.surface_at(def, p, up, across / _radius(def, climb, p, up), lift)
 
 
+## A quad wound to face `toward`, whichever way its corners came: "up the
+## pitch" is +Y on the drum and -Y on a thigh or shin, so the same corner order
+## winds the two opposite ways (MeshKit's front is (c - b) x (a - b)).
+static func _face(k: MeshKit, a: Vector3, b: Vector3, c: Vector3, d: Vector3, col: Color, toward: Vector3) -> void:
+	if (c - b).cross(a - b).dot(toward) < 0.0:
+		k.quad(a, d, c, b, col)
+	else:
+		k.quad(a, b, c, d, col)
+
+
+## Out of the leg at `v`, in the bone's frame (its axis is local Y).
+static func _out(v: Vector3) -> Vector3:
+	return Vector3(v.x, 0.0, v.z).normalized()
+
+
 static func _skin(k: MeshKit, def: RefCounted, climb: WalkerClimb, p: int, lo: float, hi: float, half_w: float) -> void:
 	var up := lo
 	while up < hi:
@@ -72,8 +87,8 @@ static func _skin(k: MeshKit, def: RefCounted, climb: WalkerClimb, p: int, lo: f
 		var s := -half_w
 		while s < half_w:
 			var s1 := minf(half_w, s + CELL)
-			k.quad(_at(def, climb, p, up, s, 0.0), _at(def, climb, p, up, s1, 0.0),
-				_at(def, climb, p, u1, s1, 0.0), _at(def, climb, p, u1, s, 0.0), Model.DARK)
+			var a := _at(def, climb, p, up, s, 0.0)
+			_face(k, a, _at(def, climb, p, up, s1, 0.0), _at(def, climb, p, u1, s1, 0.0), _at(def, climb, p, u1, s, 0.0), Model.DARK, _out(a))
 			s = s1
 		up = u1
 
@@ -102,17 +117,20 @@ static func _plates(k: MeshKit, def: RefCounted, climb: WalkerClimb, p: int, lo:
 				var b := _at(def, climb, p, u0, s1, PROUD)
 				var c := _at(def, climb, p, u1, s1, PROUD)
 				var d := _at(def, climb, p, u1, s0, PROUD)
-				k.quad(a, b, c, d, tint)
+				var out := _out(a)
+				_face(k, a, b, c, d, tint, out)
 				# Its edges, down to the skin: a plate's lip is what catches the
 				# light, and the seams read by it rather than by colour alone.
 				var a0 := _at(def, climb, p, u0, s0, 0.0)
 				var b0 := _at(def, climb, p, u0, s1, 0.0)
 				var c0 := _at(def, climb, p, u1, s1, 0.0)
 				var d0 := _at(def, climb, p, u1, s0, 0.0)
-				k.quad(a0, b0, b, a, tint.darkened(0.2))
-				k.quad(b0, c0, c, b, tint.darkened(0.2))
-				k.quad(c0, d0, d, c, tint.darkened(0.2))
-				k.quad(d0, a0, a, d, tint.darkened(0.2))
+				var mid := (a + b + c + d) * 0.25
+				var lip := tint.darkened(0.2)
+				_face(k, a0, b0, b, a, lip, (a + b) * 0.5 - mid)
+				_face(k, b0, c0, c, b, lip, (b + c) * 0.5 - mid)
+				_face(k, c0, d0, d, c, lip, (c + d) * 0.5 - mid)
+				_face(k, d0, a0, a, d, lip, (d + a) * 0.5 - mid)
 			s += PANEL.x
 			col += 1
 		up += PANEL.y
