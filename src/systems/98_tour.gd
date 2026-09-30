@@ -139,9 +139,11 @@ extends GameSystem
 ##                          score_dissonance, score_grid, score_texture, score_phrase,
 ##                          score_resolve; and of the blend score_blend, score_here,
 ##                          score_in:LAND, score_full, score_unbroken)
-##   walkto at:KIND:NAME SECS [run]  steer the real keys, afoot or aboard, toward a
-##                          place a system names (`slot:the_landing`, `cast:otto`)
-##                          until within 3 tiles; says how far and how long it took
+##   walkto at:KIND:NAME SECS [run] [till:CLAIM]  steer the real keys, afoot or aboard,
+##                          toward a place a system names (`slot:the_landing`,
+##                          `cast:otto`) until within 3 tiles, or until CLAIM holds
+##                          (`till:launch_ready:raft`: at the water's edge on the way);
+##                          says how far and how long it took, and the hull aboard
 ##   walkto prop:KIND[,KIND] SECS [run] [through]  steer the real walk to the nearest
 ##                          prop of those kinds that still has work in it, as `near`
 ##                          picks one, and stop within reach of it: the walk a tour
@@ -606,7 +608,11 @@ func _run() -> void:
 					ok = await _walk_to_prop(parts[1].substr(5), parts[2].to_float() if parts.size() > 2 else 1.0,
 						parts.has("run"), parts.has("through"))
 				elif parts[1].begins_with("at:"):
-					ok = await _walk_to_named(parts[1].substr(3), parts[2].to_float() if parts.size() > 2 else 1.0, parts.has("run"))
+					var till := ""
+					for q: String in parts:
+						if q.begins_with("till:"):
+							till = q.substr(5)
+					ok = await _walk_to_named(parts[1].substr(3), parts[2].to_float() if parts.size() > 2 else 1.0, parts.has("run"), till)
 				elif parts[1] in ["folk", "refuse", "dog"]:
 					ok = await TourPeople.walk(self, game, parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
 				else:
@@ -1095,7 +1101,7 @@ func _alone(lone: WorldProp, gap: float) -> bool:
 const WALK_NAMED_NEAR := 3.0
 
 
-func _walk_to_named(what: String, secs: float, run: bool = false) -> bool:
+func _walk_to_named(what: String, secs: float, run: bool = false, till: String = "") -> bool:
 	var target := Vector2.INF
 	for sys in game.systems:
 		if sys.has_method(&"tour_place"):
@@ -1111,10 +1117,16 @@ func _walk_to_named(what: String, secs: float, run: bool = false) -> bool:
 	var t0 := game.clock.minutes
 	while Time.get_ticks_msec() < until:
 		var d := target - game.player.pos
-		if d.length() <= WALK_NAMED_NEAR:
+		if d.length() <= WALK_NAMED_NEAR or (till != "" and _answered(till)):
 			game.scripted_seconds = 0.0
 			game.scripted_run = false
-			print("tour %s: came to %s, %.0f tiles in %.0f world minutes" % [_name, what, from.distance_to(game.player.pos), game.clock.minutes - t0])
+			# And, aboard, what is left of the hull (44_crafts), so a crossing logs its cost.
+			var hull := ""
+			var crafts := _system("44_crafts")
+			var aboard: Variant = crafts.get("aboard") if crafts != null else null
+			if aboard != null:
+				hull = ", hull %.0f" % float((aboard as Object).get("hull"))
+			print("tour %s: came to %s, %.0f tiles in %.0f world minutes%s" % [_name, what, from.distance_to(game.player.pos), game.clock.minutes - t0, hull])
 			return true
 		game.scripted_move = _keys_toward(d.normalized())
 		game.scripted_run = run
