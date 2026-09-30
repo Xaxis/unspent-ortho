@@ -226,6 +226,7 @@ void fragment() {
 			for (int i = 0; i < 4; i++) {
 				cut = max(cut, sight_cone(world_pos, eye, found_clear[i]) * close);
 			}
+			cut = max(cut, sight_near(world_pos, eye, found_clear[0]) * close);
 		}
 	}
 	if (cut > 0.0 && found_stipple(world_pos) < cut) {
