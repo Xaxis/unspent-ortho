@@ -446,6 +446,20 @@ static func _hazard(hazards: Dictionary, id: String) -> float:
 	return float(hazards.get(StringName(id), hazards.get(id, 0.0)))
 
 
+## A NAMED person (StoryCharacter), dressed the same wherever they are met: a look
+## dealt off their id, dressed for the land and their trade, and what the writer
+## said about how they look (`look`) laid over both, before and after.
+static func named(id: StringName, look: Dictionary, trade: StringName, hazards: Dictionary) -> Dictionary:
+	var seed_v := absi(int(id.hash()))
+	var s := random(seed_v)
+	for k: Variant in look:
+		s[k] = look[k]
+	s = dress(s, hazards, trade, seed_v)
+	for k: Variant in look:
+		s[k] = look[k]
+	return s
+
+
 ## A person dressed for the land they live on and the trade they live by.
 ## `hazards` is a landscape type's hazard table (BiomeDef.hazards: wet, cold,
 ## heat, fumes, toxins, dark, radiation...); `trade` one of TRADES or &"".

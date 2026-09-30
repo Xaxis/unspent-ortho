@@ -5675,6 +5675,11 @@ const LEAD := {
 	&"raft": "A raft, for water no road crosses: driftwood, a piece of plate, rags and an edge.",
 	&"crossing": "Across at the narrows, for the archive on the far shore: put the raft in there.",
 	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
+	# June (slice 3 step 3), each said until the beat that ends it lands.
+	&"covenant": "The Covenant's seat, for whoever speaks for it: ask its people, or listen.",
+	&"speaker": "The Speaker's name, which nobody inside will say: ask someone who left.",
+	&"june": "June Marr, for what she remembers: her house by the Covenant's seat.",
+	&"june_voice": "Back to June, for what the voice says at night: she keeps to her table.",
 	# The second keeper, keyed by its design (Guide.keeper_goal, Sentinels.next_keeper):
 	# once Teague has named it (`anvil_named`) until it falls. Never gating the way
 	# on: no key memory.
@@ -5717,6 +5722,11 @@ const TOLD := {
 # the crossing (StoryCrossing, placed by 49_cast).
 const TOLD_WHILE := {
 	&"crossing": {"place": &"the_crossing", "word": "the narrows"},
+	# June (slice 3 step 3): her house is the one nearest the Covenant's own place.
+	&"covenant": {"place": &"the_covenant", "word": "the covenant"},
+	&"speaker": {"place": &"the_covenant", "word": "the covenant"},
+	&"june": {"place": &"the_covenant", "word": "her house"},
+	&"june_voice": {"place": &"the_covenant", "word": "her house"},
 }
 
 # The name the goal lines use for a landscape's keeper once `reaper_named` has

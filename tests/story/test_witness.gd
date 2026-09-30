@@ -95,6 +95,18 @@ func test_standing_below_is_learning_what_grew_him() -> void:
 	await frames(3)
 	await frames(40)
 	check(not Story.landed(StoryContent.WITNESS_ON[&"other_realm"]), "the surface is only here")
+	# A room behind a door is only indoors. Every village door opens, and the
+	# first one walked through landed what grew him, a leg before the plant, and
+	# held back every other revelation for a settle (June's name, at the Covenant).
+	var doors := Sx.system(g, "21_doors")
+	var rooms := Interiors.thresholds(g.world)
+	check(not rooms.is_empty(), "this world has a door to walk through")
+	if not rooms.is_empty():
+		await doors.call(&"go_in", rooms[0])
+		check(g.world.realm == Realm.INTERIOR, "and he is indoors")
+		await frames(45)
+		check(not Story.landed(StoryContent.WITNESS_ON[&"other_realm"]), "a room is not below the world")
+		await doors.call(&"go_out")
 	var was := g.world.realm
 	# The Before is his own past, not the Seeker's plant: it lands nothing here,
 	# or the crossing's revelation holds back the one Hannah's scene is for.

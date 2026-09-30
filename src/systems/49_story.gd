@@ -316,7 +316,13 @@ func _person_in_front() -> Dictionary:
 			continue
 		if d > CLOSE and ahead.dot(to / d) < AHEAD:
 			continue
-		if StringName(str(row.get("character", &""))) != &"":
+		var character := StringName(str(row.get("character", &"")))
+		if character != &"":
+			# 49_cast casts every named person, there or not, and draws only who is:
+			# Dace, gone from the camp, still took the key where he had stood.
+			var c := StoryCast.get_def(character)
+			if c != null and not c.present():
+				continue
 			if d < named_d:
 				named = row.duplicate()
 				named["_d"] = d
@@ -643,9 +649,11 @@ func _witness() -> void:
 		# knows he had one.
 		if game.clock != null and game.clock.minutes < body.spoof_until and Story.landed(StoryContent.SIGNET_AFTER):
 			_witnessed(StoryContent.WITNESS_ON[&"signet"])
-	# Below the world or above it, not the Before: 2029 is his own past, and
-	# landing a revelation on the crossing held back the one Hannah's scene is for.
-	if game.world != null and game.world.realm != Realm.SURFACE and game.world.realm != Realm.ERA:
+	# Below the world or above it, and nowhere else: not the Before, which is his
+	# own past (landing a revelation on the crossing held back the one Hannah's
+	# scene is for), and not a room, which is only indoors (the first door walked
+	# through held back June's name at the Covenant).
+	if game.world != null and (game.world.realm == Realm.UNDERGROUND or game.world.realm == Realm.ORBITAL):
 		_witnessed(StoryContent.WITNESS_ON[&"other_realm"])
 	if _hunted_here():
 		_witnessed(StoryContent.WITNESS_ON[&"hunted"])
