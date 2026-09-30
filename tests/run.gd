@@ -160,6 +160,19 @@ func _run() -> void:
 			SaveSlots.root = SaveSlots.TEST_ROOT
 			SaveSlots.turned_away.clear()
 			SaveSlots.handed_back = -1
+			# NO TEST LEAVES A WORLD HALTED. A game that ends asks the raises it
+			# began to stop (RealmWorlds.forget, WorldGen.halt), and a stop left
+			# standing makes every later generation of that seed and size stop at
+			# its first stage: a half-made world, the player at the map's middle
+			# in the sea, and five tests in another file red while passing alone
+			# (CI shard 1/8, 2026-09-30). An ended game's raises are waited out
+			# here (they stop at their next stage); any stop still standing is the
+			# test's, named, and lifted so the next test grows whole worlds.
+			RealmWorlds.settle()
+			for k: String in WorldGen.halted():
+				inst.failures.append("%s: left a world halted (%s)" % [id, k])
+				var parts := k.split(":")
+				WorldGen.unhalt(parts[0].to_int(), parts[1].to_int(), StringName(parts[2]))
 			var ms := Time.get_ticks_msec() - t
 			for e: String in _script_errors.call(&"take"):
 				inst.failures.append("%s: %s" % [id, e])
