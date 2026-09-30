@@ -327,64 +327,7 @@ func _unseen_beside(g: Game, q: WorldProp, m: MobState) -> Vector2:
 
 
 const PR := preload("res://tests/fight/plate_reader.gd")
-const GD := preload("res://tests/fight/game_driver.gd")
-
-
-## A spot `dist` off its lair on its own level, down a line its run can take,
-## with the most (or least) of the ground `grounds` round it.
-func _stand(g: Game, s: SentinelState, dist: float, grounds: Array, most: bool) -> Vector2:
-	var best := Vector2.INF
-	var score := -INF
-	var level := g.world.level_at(floori(s.lair.x), floori(s.lair.y))
-	for i in 32:
-		var p := s.lair + Vector2.from_angle(TAU * i / 32.0) * dist
-		var tx := floori(p.x)
-		var ty := floori(p.y)
-		if not g.query.standable(tx, ty) or not g.world.same_body(p, s.lair) \
-				or (not most and not FightRules.levels_meet(g.world.level_at(tx, ty), level)) \
-				or not NavField.line_walkable(g.world, s.lair, p, 0.45):
-			continue
-		var n := 0.0
-		for dy in range(-5, 6):
-			for dx in range(-5, 6):
-				n += float(grounds.has(g.world.ground_at(tx + dx, ty + dy)))
-		var sc := n if most else -n
-		if sc > score and (not most or grounds.has(g.world.ground_at(tx, ty))):
-			score = sc
-			best = p
-	return best
-
-
-## Fought by the plate player through the game's input (GameDriver): the coast
-## held off, knife_shear in hand, from firm ground it keeps to. Downed, it comes
-## to at the edge of the keeper's ground and walks back. The target key is held
-## throughout when `locked`. Returns the tally.
-func _fight_it(g: Game, s: SentinelState, at: Vector2, reader: Variant, seconds: float, locked := false) -> Dictionary:
-	var sim: FightSim = g.player.sim
-	g.player.place(at, (s.lair - at).angle())
-	var d: Variant = GD.new(g, reader)
-	d.locked = locked
-	var downs := [0]
-	var on_end := func(o: StringName) -> void:
-		if o == &"downed" or o == &"carried":
-			downs[0] += 1
-	Events.fight_ended.connect(on_end)
-	var t0 := sim.now
-	# On the fight's own clock, never the wall's: the same steps on any box. A
-	# frame cap stands in for a hang guard (the hitstop holds the clock a while).
-	var frames_left := int(seconds * 60.0 * 3.0)
-	while not s.fallen and sim.now - t0 < seconds * 1000.0 and frames_left > 0:
-		frames_left -= 1
-		d.step()
-		await tree.physics_frame
-	d.release()
-	Events.fight_ended.disconnect(on_end)
-	return {"fallen": s.fallen, "how": s.how, "tries": downs[0] + 1, "downs": downs[0], "s": (sim.now - t0) / 1000.0, "health": s.health}
-
-
-func _calm(g: Game) -> void:
-	(Sx.system(g, "30_mobs").get("coast") as Object).set("spawning", false)
-	g.player.sim.clear_mobs()
+const KF := preload("res://tests/sentinel/keeper_fight.gd")
 
 
 func test_by_force_from_firm_ground_it_falls_to_blows_and_never_founders() -> void:
@@ -437,9 +380,9 @@ func _by_force(locked: bool, shoulder := false) -> Dictionary:
 	if s == null:
 		Sx.end(g)
 		return NONE
-	_calm(g)
+	KF.calm(g)
 	var flats: Array = Sentinels.by_id(s.design).way_of(SentinelWay.FOUNDER).grounds
-	var at := _stand(g, s, 6.0, flats, false)
+	var at := KF.stand(g, s, 6.0, flats, false)
 	check(at.is_finite(), "firm ground to come at it from")
 	if not at.is_finite():
 		Sx.end(g)
@@ -448,7 +391,7 @@ func _by_force(locked: bool, shoulder := false) -> Dictionary:
 	r.human = 1
 	r.keep_off = flats
 	r.home = at
-	var out: Dictionary = await _fight_it(g, s, at, r, 240.0, locked)
+	var out: Dictionary = await KF.fight(tree, g, s, at, r, 240.0, locked)
 	Sx.end(g)
 	return out
 
@@ -466,11 +409,11 @@ func test_held_out_on_the_flats_it_founders() -> void:
 	if s == null:
 		Sx.end(g)
 		return
-	_calm(g)
+	KF.calm(g)
 	var flats: Array = Sentinels.by_id(s.design).way_of(SentinelWay.FOUNDER).grounds
 	var flat := Vector2.INF
 	for dist: float in [6.0, 8.0, 10.0, 12.0, 4.0]:
-		flat = _stand(g, s, dist, flats, true)
+		flat = KF.stand(g, s, dist, flats, true)
 		if flat.is_finite():
 			break
 	check(flat.is_finite(), "flats to draw it onto")
@@ -484,7 +427,7 @@ func test_held_out_on_the_flats_it_founders() -> void:
 	r.keep_on = flats
 	r.lure = flat
 	r.home = start
-	var out: Dictionary = await _fight_it(g, s, start, r, 90.0)
+	var out: Dictionary = await KF.fight(tree, g, s, start, r, 90.0)
 	print("  info founder by hand: %s" % out)
 	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FOUNDER).id(), "drawn out onto the flats and held there, it founders (%s)" % out)
 	Sx.end(g)

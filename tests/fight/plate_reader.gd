@@ -11,6 +11,12 @@ extends "res://tests/fight/shoulder_reader.gd"
 
 ## Tiles off the skin it stands, as `walkto plate` stops (98_tour).
 const PLATE_GAP := 0.45
+## How far outside a guarded keeper's bite it waits (tiles).
+const GUARD_MARGIN := 0.6
+## Further than this from `home` it has been carried off (a down), not stood.
+const STRANDED := 10.0
+## Closer than this to a keeper, a lure goes back out to its spot to draw it.
+const LURE_OFF := 4.0
 ## Grounds it never walks onto (a player keeping off the flats), grounds it
 ## never walks off (one holding out on them), and where it walks back to when
 ## nothing is out (come to after a down at the edge of its ground).
@@ -30,6 +36,15 @@ func _wait(m: MobState) -> void:
 		&"left": off = -PI * 0.5
 		&"right": off = PI * 0.5
 	var spot := m.pos + Vector2.from_angle(m.facing + off + PI) * (m.radius + hero.radius + PLATE_GAP)
+	# A guarded part is shut until its bite has come down on nothing (FightSim
+	# reaches_part), and the bite comes after a long tell over a pale ring: the
+	# player stands off the ring, as its phase says, and closes in when it is open.
+	if bool(m.row.get("guarded", false)) and m.bite != null:
+		var out := Vector2.from_angle(m.facing + off + PI)
+		var far := m.radius + hero.radius + PLATE_GAP
+		while far < 6.0 and _in_box_of(m.bite, m, m.pos + out * far, GUARD_MARGIN):
+			far += 0.25
+		spot = m.pos + out * far
 	if not sim.meets(spot, m.pos) or not sim.query.standable(floori(spot.x), floori(spot.y)):
 		# Its plate is up a bank or in the sea: no blow passes there, and a player
 		# sees that. They keep their distance and let it come, as the reader does.
@@ -41,6 +56,15 @@ func _wait(m: MobState) -> void:
 		hero.move = Vector2.ZERO
 		return
 	hero.move = _round_to(m, spot)
+
+
+## A guarded part is no opening until its bite has come down on nothing
+## (FightSim reaches_part): the charger's rule (turns badly between runs) read a
+## planted keeper calling a strike as open, and walked the player into the ring.
+func _open(m: MobState) -> bool:
+	if bool(m.row.get("guarded", false)) and m.roused() and not m.spent(sim.now) and not m.stunned(sim.now):
+		return false
+	return super(m)
 
 
 ## A player sees a bank two levels up for what it is: no blow passes between it
@@ -66,9 +90,17 @@ func act() -> void:
 			if sim.meets(at, m.pos) and sim.query.standable(floori(at.x), floori(at.y)):
 				hero.move = dir
 				return
+		# No step near onto its level (come to on a rise off its ground after a
+		# down): back the way it came at it, round what stands between.
+		if home.is_finite() and not _holding_out():
+			hero.move = _walk_back()
 		return
 	var here_g := sim.world.ground_at(floori(hero.pos.x), floori(hero.pos.y))
-	if lure.is_finite() and m.roused() and not keep_on.has(here_g) and sim.now >= _escape_until:
+	# Off the ground it holds out on, or near enough a keeper that stands its own
+	# ground to be struck from it (the anvil plants at the edge of its plates and
+	# bites from there; only a charge, from further off, carries it onto the sand).
+	var drawing := not keep_on.has(here_g) or m.pos.distance_to(hero.pos) < LURE_OFF
+	if lure.is_finite() and m.roused() and drawing and hero.pos.distance_to(lure) > 0.3 and sim.now >= _escape_until:
 		hero.move = (lure - hero.pos).normalized() if hero.pos.distance_to(lure) > 0.3 else Vector2.ZERO
 		return
 	if hero.move.length() < 0.05:
@@ -89,8 +121,8 @@ func act() -> void:
 			return
 	# Every way on is ground it keeps off (come to up a bank past the flats):
 	# a player walks round, back to where they came at it from. One holding out
-	# on ground (`keep_on`) holds there instead.
-	hero.move = _walk_back() if home.is_finite() and keep_on.is_empty() else Vector2.ZERO
+	# on ground (`keep_on`) holds there instead, once it is on it.
+	hero.move = _walk_back() if home.is_finite() and not _holding_out() else Vector2.ZERO
 
 
 ## The walk back to `home`: tiles laid once by `_route` and followed, laid again
@@ -125,6 +157,12 @@ func _walk_back() -> Vector2:
 
 static func _centre(t: Vector2i) -> Vector2:
 	return Vector2(t) + Vector2(0.5, 0.5)
+
+
+## Holding out (`keep_on`) where the fight is: it stays put rather than walk
+## off. Come to far from it after a down, it walks back like anyone.
+func _holding_out() -> bool:
+	return not keep_on.is_empty() and sim.hero.pos.distance_to(home) < STRANDED
 
 
 ## Whether tile `t` is ground it walks on (keep_off / keep_on).
