@@ -59,6 +59,13 @@ func test_no_lead_open_no_line() -> void:
 	g.inventory.add(&"kit_plate", 1)
 	g.inventory.add(&"cinder_glass", 1)
 	Story.choose(Guide.CAMP_PAID, StringName(StoryContent.PAID[Guide.CAMP_PAID].pick))
+	# The whole Holdfast leg behind him: the keeper named and down, every hop's
+	# beat landed and the archive's man met.
+	for b: StringName in [Guide.NAMED_BEAT, Guide.REAPER_DOWN, &"built_halcyon", &"holdfast_hope", &"war_archive"]:
+		@warning_ignore("return_value_discarded")
+		Story.beat(b, -INF)
+	@warning_ignore("return_value_discarded")
+	Story.meet(&"otto")
 	var line := Guide.goal(g)
 	eq(line, "", "paid and armoured with no hop open: the line is empty, not the ladder (%s)" % line)
 	check(Guide.within_reach(g) != "", "and the long game's next want is on the making page: %s" % Guide.within_reach(g))
@@ -100,4 +107,32 @@ func test_an_emptied_goal_is_not_said() -> void:
 	Events.hint.disconnect(listen)
 	g.queue_free()
 	await frames(1)
+	Story.forget()
+
+
+## PAID AND ARMOURED BEFORE ANYONE NAMED THE REAPER: the yard waits on its fall,
+## so without a word from someone the line would be empty. Rook points him at the
+## tide-pickers (his talk's `keeper` node, offered while the armour is carried and
+## until reaper_named), and the goal is Hob's shore until Hob has named it.
+func test_armoured_before_the_reaper_is_named_the_goal_is_the_tide_pickers() -> void:
+	var g := _game()
+	await process_frames(2)
+	@warning_ignore("return_value_discarded")
+	Story.beat(Guide.LEAD_BEAT)
+	g.inventory.add(&"pick", 1)
+	g.inventory.add(&"kit_plate", 1)
+	Story.choose(Guide.CAMP_PAID, StringName(StoryContent.PAID[Guide.CAMP_PAID].pick))
+	var line := Guide.goal(g)
+	check(line != "", "paid and armoured, nobody has named the Reaper: still a line")
+	eq(Guide.last_goal_key, &"hob", "the tide-pickers: %s" % line)
+	var talk := StoryTalk.start(&"rook")
+	talk.holds = g.inventory.has
+	check(talk.replies().any(func(r: Dictionary) -> bool: return r.get("to", &"") == &"keeper"), "and Rook has the word to give")
+	@warning_ignore("return_value_discarded")
+	Story.beat(Guide.NAMED_BEAT)
+	eq(Guide.last_goal_key if Guide.goal(g) != "" else &"", &"reaper", "named: end it")
+	talk = StoryTalk.start(&"rook")
+	talk.holds = g.inventory.has
+	check(not talk.replies().any(func(r: Dictionary) -> bool: return r.get("to", &"") == &"keeper"), "and Rook has nothing more to point at")
+	Sx.end(g)
 	Story.forget()

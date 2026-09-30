@@ -93,10 +93,17 @@ uniform float beta_high = 1.1e-5;
 // length toward the body, and takes a walker on the skyline half into the blue.
 // At 3e-6 the looming walkers' shins, 55 and 72 km off, came out as dark as the
 // towers on the near skyline and read as something standing a few hundred
-// metres away: grey bars hanging over every shot (2026-09-29). At this much a
-// shin 70 km off keeps under half its contrast, so it stands behind
-// everything else in the view.
-uniform float beta_far = 1.2e-5;
+// metres away: grey bars hanging over every shot (2026-09-29). PRESENCE GOES
+// WITH DISTANCE: at this much a walker a few kilometres off keeps nine tenths of
+// itself and is sharp and terrible, one at 55 km a third, one at 72 km a fifth
+// -- a faint giant at the edge of seeing, sitting back into the sky -- and the
+// skyline walker at 180 km is air, but for its lights (`LAMP_THROUGH`).
+uniform float beta_far = 2.2e-5;
+// A lamp is far brighter than the plate it sits on, so it is still seen through
+// air that has taken the plate: its share of the air is this power of the
+// plate's transmittance (a half: at 180 km a beacon keeps a seventh of itself
+// where the leg under it keeps a fiftieth).
+const float LAMP_THROUGH = 0.5;
 // The top of the spire, over the hub's origin (the hip height), metres: the
 // one light the machine keeps burning by day.
 uniform float spire_y = 41000.0;
@@ -310,6 +317,9 @@ void fragment() {
 	float air = 1.0 - (1.0 - low) * exp(-high - beta_far * distance(eye, true_world));
 	// A part drawn wider than it is gives the rest back to the air.
 	air = 1.0 - (1.0 - air) * clamp(thin, 0.0, 1.0);
+	if (COLOR.a < 0.98) {
+		air = 1.0 - pow(1.0 - air, LAMP_THROUGH);
+	}
 	// The procedural sky with the sun's disc on it, as the sky shader lays it
 	// (LIGHT0, handed over by SkyLight.seen_air), so across the band where the
 	// seen sky comes in the air near the sun is the sky's own there too.

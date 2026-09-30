@@ -85,6 +85,15 @@ func _process(_delta: float) -> void:
 	view.clear_for(here, _pos, _hostile, _aware, _height)
 
 
+## What the layer put on the glass, for `--stats`: pieces in view, and how many
+## of them are hung on nothing (ForeView.floating_on_glass; the answer is 0).
+func stats_line() -> String:
+	if view == null or view.budget <= 0:
+		return ""
+	var seen := view.floating_on_glass(get_viewport().get_camera_3d())
+	return "\nworld fore: %d pieces placed, %d on the glass, %d of them floating" % [view.drawn, seen.x, seen.y]
+
+
 ## What a tour can be shown of this layer. `fore` is the honest one: there really
 ## is something hung over the frame right now. `fore_clear` is the promise: a
 ## body is near enough to matter and a hole is open for it.
