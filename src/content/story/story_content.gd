@@ -5833,6 +5833,10 @@ const DEFEND := {
 	],
 	# The warning puts them in (%s: the holding's name).
 	"in": "In %s they put down their work and go in behind the shutters.",
+	# A raid warned on a holding with its beds unshuttered, said beside the
+	# warning, so a player who never speaks to Rook still learns what to do
+	# (%s: the holding's name).
+	"warned": "The beds in %s lie open to the night. Shutter them before dark.",
 	# A snatcher that broke off at the boards.
 	"held_snatch": "It tears at the shutters a while, and goes without anybody.",
 	# The raid over and everybody still in (%s: the holding's name).

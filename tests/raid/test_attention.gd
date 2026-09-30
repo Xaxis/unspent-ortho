@@ -21,8 +21,12 @@ func test_hours_alone_never_raise_attention() -> void:
 	# of world time may not put a single point on it.
 	var quiet := Attention.cooled(0.0, 24.0 * 7.0, false, false)
 	eq(quiet, 0.0, "a week of nothing is still nothing")
-	# And a place that IS loud, but with nothing running that the player stole:
-	# the hours still take attention off rather than putting it on.
+	# A place that IS loud, but that nothing happened to pass: it is not quiet, so
+	# the hours neither put attention on nor take it off. What it had, it keeps.
+	check(not Attention.quiet(false, false, 0.0), "a lit, unmasked place is not quiet")
+	# Quiet (dark, masked or answered for by the signet), the hours cool it.
+	check(Attention.quiet(true, false, 0.0) and Attention.quiet(false, true, 0.0) and Attention.quiet(false, false, 0.15),
+		"dark, spoofed or masked is quiet")
 	var was := 0.5
 	var after := Attention.cooled(was, 12.0, false, false)
 	lt(after, was, "twelve quiet hours cool a holding")
