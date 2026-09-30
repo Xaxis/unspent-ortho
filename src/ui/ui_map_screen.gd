@@ -308,7 +308,8 @@ static func told(game: Game) -> Array[Dictionary]:
 		var row: Dictionary = StoryContent.TOLD[beat]
 		if not Story.landed(beat):
 			continue
-		var at: Vector2 = placed[row.place].pos if placed.has(row.place) else StoryMap.lair_pos(game.world, row.place)
+		var at: Vector2 = placed[row.place].pos if placed.has(row.place) \
+			else StoryMap.lair_pos(Sentinels.live(game), game.world.spawn, row.place)
 		if at.is_finite():
 			out.append({"at": at, "word": String(row.word)})
 	var pinned: Dictionary = StoryContent.TOLD_WHILE.get(Guide.last_goal_key, {})

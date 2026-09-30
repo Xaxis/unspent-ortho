@@ -64,7 +64,7 @@ func test_once_teague_has_named_it_the_survey_and_the_lead_point_at_the_strike_f
 	@warning_ignore("return_value_discarded")
 	Story.beat(Guide.REAPER_DOWN)
 	var anvil := Sentinels.next_keeper(states, g.world.spawn)
-	eq(StoryMap.lair_pos(g.world, &"lair:anvil"), anvil.lair, "the place Teague names is the second keeper's lair")
+	eq(StoryMap.lair_pos(states, g.world.spawn, &"lair:anvil"), anvil.lair, "the place Teague names is the second keeper's lair")
 	eq(Guide.keeper_goal(g), "", "down, but nobody has named the next: no lead in words not yet said")
 	check(not _marked(g, anvil.lair), "and nothing marked")
 	@warning_ignore("return_value_discarded")
