@@ -52,7 +52,9 @@ func act() -> void:
 	var hero := sim.hero
 	var m := _nearest()
 	if m == null:
-		hero.move = (home - hero.pos).normalized() if home.is_finite() and hero.pos.distance_to(home) > 1.0 else Vector2.ZERO
+		# Nothing in sight (come to at the edge of its ground after a down): back
+		# the way a player walks it, round what stands between.
+		hero.move = _walk_back() if home.is_finite() and hero.pos.distance_to(home) > 1.0 else Vector2.ZERO
 		return
 	if not sim.meets_hero(m.pos):
 		# Up on the bank beside it (a dodge can carry them there): down again,
@@ -85,4 +87,83 @@ func act() -> void:
 		if sim.meets(at, m.pos):
 			hero.move = step
 			return
-	hero.move = Vector2.ZERO
+	# Every way on is ground it keeps off (come to up a bank past the flats):
+	# a player walks round, back to where they came at it from. One holding out
+	# on ground (`keep_on`) holds there instead.
+	hero.move = _walk_back() if home.is_finite() and keep_on.is_empty() else Vector2.ZERO
+
+
+## The walk back to `home`: tiles laid once by `_route` and followed, laid again
+## when the body stops getting nearer the next one.
+var _route_tiles: Array[Vector2i] = []
+var _route_best := INF
+var _route_since := 0.0
+
+
+func _walk_back() -> Vector2:
+	var hero := sim.hero
+	while not _route_tiles.is_empty() and hero.pos.distance_to(_centre(_route_tiles[0])) < 0.45:
+		_route_tiles.pop_front()
+		_route_best = INF
+	if not _route_tiles.is_empty():
+		var d := hero.pos.distance_to(_centre(_route_tiles[0]))
+		if d < _route_best - 0.05:
+			_route_best = d
+			_route_since = sim.now
+		elif sim.now - _route_since > 1000.0:
+			_route_tiles.clear()
+	if _route_tiles.is_empty():
+		_route_tiles = _route(home, true)
+		if _route_tiles.is_empty():
+			_route_tiles = _route(home, false)
+		_route_best = INF
+		_route_since = sim.now
+	if _route_tiles.is_empty():
+		return (home - hero.pos).normalized()
+	return (_centre(_route_tiles[0]) - hero.pos).normalized()
+
+
+static func _centre(t: Vector2i) -> Vector2:
+	return Vector2(t) + Vector2(0.5, 0.5)
+
+
+## Whether tile `t` is ground it walks on (keep_off / keep_on).
+func _keeps(t: Vector2i) -> bool:
+	var g := sim.world.ground_at(t.x, t.y)
+	return not keep_off.has(g) and (keep_on.is_empty() or keep_on.has(g))
+
+
+## The shortest tile path to `to` a body fits along, first tile after the one it
+## stands on to the goal. `keeping`: never onto ground it keeps off from ground it
+## walks on (stranded on it, the way off first). Empty when there is none near.
+func _route(to: Vector2, keeping: bool) -> Array[Vector2i]:
+	var hero := sim.hero
+	var from := Vector2i(floori(hero.pos.x), floori(hero.pos.y))
+	var goal := Vector2i(floori(to.x), floori(to.y))
+	var came := {from: from}
+	var edge: Array[Vector2i] = [from]
+	var head := 0
+	var dirs: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+		Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)]
+	while head < edge.size() and not came.has(goal) and came.size() < 6000:
+		var at: Vector2i = edge[head]
+		head += 1
+		for d: Vector2i in dirs:
+			var n := at + d
+			if came.has(n) or absi(n.x - from.x) > 40 or absi(n.y - from.y) > 40:
+				continue
+			if keeping and _keeps(at) and not _keeps(n):
+				continue
+			if not sim.query.passable(at.x, at.y, n.x, n.y, null, false, FightSim.HERO_TALL) \
+					or not sim.query.body_fits(_centre(n), hero.radius, null, false, FightSim.HERO_TALL):
+				continue
+			came[n] = at
+			edge.append(n)
+	var out: Array[Vector2i] = []
+	if not came.has(goal):
+		return out
+	var t := goal
+	while t != from:
+		out.push_front(t)
+		t = came[t]
+	return out

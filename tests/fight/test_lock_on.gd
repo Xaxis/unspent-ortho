@@ -1,6 +1,7 @@
 extends TestCase
 ## A lock holds the body (owner, 2026-09-24; docs/CONTROLS.md §Lock-on): it faces
-## what is locked, a strafe circles it at the distance it started, a swing goes
+## what is locked, a walk goes where the keys point and is never bent round it
+## (over the shoulder the keys circle it; from above a sidestep leaves), a swing goes
 ## at it whatever else is near, a dodge with no key held goes straight back from
 ## it, and letting go hands the facing back as a turn, not a snap. Each is asked
 ## of the real simulation on flat ground, so what is measured is the rule.
@@ -25,14 +26,14 @@ func test_a_locked_body_faces_what_it_holds_while_walking_away_across_it() -> vo
 		"facing %.2f, the target is at %.2f" % [sim.hero.facing, want])
 
 
-func test_a_strafe_circles_the_target_at_the_distance_it_started() -> void:
+func test_over_the_shoulder_a_strafe_circles_the_target_by_the_keys() -> void:
 	var target := Vector2(24.5, 20.5)
 	var sim := _locked_sim(target)
 	var start := sim.hero.pos.distance_to(target)
 	var a0 := (sim.hero.pos - target).angle()
 	# Right held at a run for four seconds over the shoulder, read afresh every
-	# slice as the game reads it. Even re-aimed every slice a straight step drifts
-	# outward (about 0.12 tiles here); an arc does not drift at all.
+	# slice as the game reads it: the keys are the line to the target, so the walk
+	# goes round it, drifting out only as far as a straight step does.
 	sim.hero.run = true
 	var went := 0.0
 	var was := a0
@@ -43,7 +44,7 @@ func test_a_strafe_circles_the_target_at_the_distance_it_started() -> void:
 		went += wrapf(a - was, -PI, PI)
 		was = a
 	var now := sim.hero.pos.distance_to(target)
-	lt(absf(now - start), 0.01, "still %.3f from it, started %.3f" % [now, start])
+	lt(absf(now - start), 0.2, "still %.3f from it, started %.3f" % [now, start])
 	gt(absf(went), PI, "and it went more than half way round (%.2f rad)" % went)
 
 

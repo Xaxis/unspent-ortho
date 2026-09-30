@@ -58,9 +58,10 @@ var harm := 1.0
 ## land. The crafts package (src/systems/44_crafts.gd) is the only writer.
 var ride: CraftRide = null
 ## What a lock holds, in tile space, or INF (LockOn, docs/CONTROLS.md §Lock-on):
-## the body faces it, a strafe circles it, a swing goes at it and a dodge with no
-## key held goes straight back from it. Written through `set_lock` by 42_target,
-## the only writer, from where the locked body stands this frame.
+## the body faces it, a swing goes at it and a dodge with no key held goes
+## straight back from it. The walk is never bent round it (docs/CONTROLS.md).
+## Written through `set_lock` by 42_target, the only writer, from where the
+## locked body stands this frame.
 var lock := Vector2.INF
 ## When the last lock was let go, on the fight's clock, so the body turns back
 ## onto the way it is walking instead of snapping there (LockOn.RELEASE_MS).

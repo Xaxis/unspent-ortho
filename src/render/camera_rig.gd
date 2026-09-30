@@ -572,8 +572,12 @@ func over_shoulder() -> bool:
 
 ## The facing a swing takes: where the camera looks, once the view is more over
 ## the shoulder than not; NAN otherwise, which leaves the swing's own rule alone.
+## Read from the yaw the pointer has turned it to, not the last drawn frame's: a
+## swing thrown on the fight's step goes where the hand put the view, and the
+## same at 20 fps as at 60 (off the drawn yaw a played fight took 80.8 s at 20
+## and 40.1 s at 60).
 func aim() -> float:
-	return Shoulder.aim_of(_yaw_drawn) if _sh_t > 0.5 else NAN
+	return Shoulder.aim_of(shoulder_yaw + _axis_bias * (1.0 - _lock_w)) if _sh_t > 0.5 else NAN
 
 
 ## Put the view where it is asked for with no glide: a game that opens over the

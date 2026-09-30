@@ -31,7 +31,7 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   - Attack slots (two after the player, one bite at a time, a charge counts; waiters feint at the edge; a free slot to a kind not in one; a crowd shares its sight and breaks when one is left or its leader falls first): `tools/test.sh test_attack_slots`; numbers: `tools/sweep.sh --crowds [--reader=human]`.
   - Unseen bites (in a crowd, one begun beyond 60 deg of the facing is told 2x long and cued: a call from its bearing, a rust chevron at the slate's edge): `tools/test.sh test_attack_slots`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/unseen.tour` (h; `behind KIND`).
 - 42_target `src/systems/42_target.gd`: `tools/tour.sh tours/targeting.tour`.
-  - A lock holds the body (docs/CONTROLS.md): `tools/test.sh test_lock_on`, `tools/tour.sh tours/lockon_top.tour` and `tours/lockon_shoulder.tour` (h).
+  - A lock holds the body (docs/CONTROLS.md): `tools/test.sh test_lock_on`, `tools/tour.sh tours/lockon_top.tour` and `tours/lockon_shoulder.tour` (h). The lock costs a fight nothing: `tools/heavy.sh tools/test.sh test_ways` fights the Reaper free and then with the target key held, from above (`test_by_force`) and over the shoulder (`test_over_the_shoulder`, the view turned by pointer motion), and holds each locked fight to the free one's tries and LOCKED_MOST of its time. The walk is never bent round the lock; the dodge goes straight.
 - 44_sentinels `src/systems/44_sentinels.gd`: `tools/tour.sh tours/sentinels.tour`.
   Its fall (the yard dark after it, its stations dark, the ground closing over):
   `tools/tour.sh tours/keeper-fall.tour --seed=1 --hour=22 --weather=clear:0 --fallen=coast:72`
