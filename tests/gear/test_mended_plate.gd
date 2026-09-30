@@ -146,3 +146,28 @@ func _texts(t: StoryTalk) -> Array[String]:
 		out.append(str(r.text))
 	return out
 
+
+## IN THE RUNNING GAME: the blow that spends the plate is said, once, by the
+## fight (40_fight on the sim's `plate_spent`), in the wright's words.
+func test_the_game_says_the_plate_is_spent() -> void:
+	var g := Sx.game(tree, ["--seed=4", "--size=64", "--hour=10", "--give=kit_plate:1"])
+	await frames(3)
+	var inv := g.inventory
+	eq(inv.worn, &"kit_plate", "worn as it came into the bag")
+	inv.set_edge(&"kit_plate", 100)
+	var said: Array[String] = []
+	var hear := func(text: String) -> void: said.append(text)
+	Events.message.connect(hear)
+	var sim: FightSim = g.player.sim
+	sim.clear_mobs()
+	var m := F.still(sim, &"longlegs", sim.hero.pos + Vector2(3.0, 0.0), PI)
+	for i in 3:
+		sim._hurt_hero(m, 3, Vector2.RIGHT, 0.0, 0)
+		sim.now += 2000.0
+	await frames(3)
+	Events.message.disconnect(hear)
+	eq(inv.edge(&"kit_plate"), 0, "spent")
+	eq(said.count(StoryContent.MENDED["spent"]), 1, "and said, once: %s" % [said])
+	Sx.end(g)
+	Sx.finish()
+

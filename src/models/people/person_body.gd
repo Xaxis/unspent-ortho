@@ -1186,14 +1186,18 @@ static func _salvage(r: SkinRig, w: Wear) -> void:
 				# The bench plate mended from what the machines leave: the same
 				# pauldron, a band of cord lashed round it, and a square of a
 				# harvester's rust-red iron let in over the side plate's split.
-				var k := _pauldron(r, w, sfx, face, dim, edge)
+				@warning_ignore("return_value_discarded")
+				_pauldron(r, w, sfx, face, dim, edge)
+				# The mend is made, not machine: its own kit on the arm, out of the
+				# FOUND material, so the cord reads as cord and the iron as rust.
+				var mk := r.kit(r.find(StringName("arm" + sfx)), &"salvage")
 				var t: float = d.arm_t
-				k.push(Transform3D(Basis(Vector3(1, 0, 0), side * 0.1), Vector3(0, 0, side * (t * 0.56 + 0.042))))
-				Sculpt.slab(k, PackedVector2Array([Vector2(-0.06, 0.03), Vector2(-0.06, -0.07), Vector2(0.05, -0.08), Vector2(0.06, 0.02)]), 0.01, Palette.RUST[3], Palette.RUST[1])
-				k.pop()
-				k.push(Transform3D(Basis(Vector3(1, 0, 0), side * 0.1), Vector3(0, 0, side * (t * 0.56 + 0.05))))
-				Sculpt.slab(k, PackedVector2Array([Vector2(-0.125, 0.015), Vector2(-0.125, -0.012), Vector2(0.125, -0.02), Vector2(0.125, 0.007)]), 0.006, Palette.LINEN[3], Palette.LINEN[1])
-				k.pop()
+				mk.push(Transform3D(Basis(Vector3(1, 0, 0), side * 0.1), Vector3(0, 0, side * (t * 0.56 + 0.042))))
+				Sculpt.slab(mk, PackedVector2Array([Vector2(-0.06, 0.03), Vector2(-0.06, -0.08), Vector2(0.05, -0.09), Vector2(0.06, 0.02)]), 0.01, Palette.RUST[4], Palette.RUST[2])
+				mk.pop()
+				mk.push(Transform3D(Basis(Vector3(1, 0, 0), side * 0.1), Vector3(0, 0, side * (t * 0.56 + 0.05))))
+				Sculpt.slab(mk, PackedVector2Array([Vector2(-0.125, 0.02), Vector2(-0.125, -0.014), Vector2(0.125, -0.022), Vector2(0.125, 0.012)]), 0.007, Palette.LINEN[4], Palette.LINEN[2])
+				mk.pop()
 			&"brace":
 				# A machine strut down the outside of one leg, hinged at the knee,
 				# standing off the leg so the leg's outline thickens.
