@@ -184,6 +184,7 @@ func found(realm: StringName, at: Vector2, called: String = "") -> Settlement:
 	if game != null and game.clock != null:
 		s.worked_at = floorf(game.clock.minutes / SettlementRules.SLICE) * SettlementRules.SLICE
 		s.night = SettlementRules.night_at(game.clock.minutes)
+		s.founded_at = game.clock.minutes
 	Events.settlement_founded.emit(s.id)
 	return s
 
