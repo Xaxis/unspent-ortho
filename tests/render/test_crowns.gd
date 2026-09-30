@@ -178,3 +178,35 @@ func test_a_big_body_does_not_cut_its_own_front() -> void:
 	check(src.contains("float own = max(0.0, p.w - SIGHT_REACH);"), "its own size is what the slot carries past that")
 	check(src.contains("t > len - (SIGHT_KEEP + own)"), "the keep grows by it")
 	check(src.contains("(SIGHT_RADIUS + own) * t / len"), "and so does the rim")
+
+
+## NOTHING STANDS AGAINST THE LENS (sight.gdshaderinc `sight_near`). Over the
+## shoulder a pine's crown a pace from the eye filled a third of the frame with
+## one flat face (pinewood at dusk, 2026-09-30). Every shader that cuts the line
+## of sight for a close eye also takes what is nearer the eye than the player,
+## scaled by how far the player is, so a crowded eye never takes what the player
+## is reading.
+func test_what_stands_against_a_close_eye_is_taken_and_the_player_is_not() -> void:
+	var src := FileAccess.get_file_as_string("res://src/render/sight.gdshaderinc")
+	var gone := _const(src, "NEAR_GONE")
+	var keep := _const(src, "NEAR_KEEP")
+	gt(gone, 0.0, "something is taken")
+	lt(keep, 1.0, "and all of it comes back before the player's own distance")
+	lt(gone, keep, "stippling back in between")
+	# In the open the eye stands Shoulder.BACK from its focus: a crown a pace off
+	# is gone, the ground round the player's feet is not asked at all.
+	const Shoulder := preload("res://src/core/view/shoulder.gd")
+	gt(Shoulder.BACK * gone, 1.2, "a crown a pace from the eye is inside the cut")
+	lt(Shoulder.BACK * keep, Shoulder.BACK - 0.6, "and what stands beside the player is outside it")
+	for path: String in ["res://src/render/world.gdshader", "res://src/render/foliage/leaf.gdshader",
+			"res://src/render/found.gdshader", "res://src/render/depth/fore.gdshader"]:
+		var s := FileAccess.get_file_as_string(path)
+		check(s.contains("sight_near(world_pos, eye,"), "%s takes what stands against the lens" % path.get_file())
+
+
+func _const(src: String, key: String) -> float:
+	var at := src.find("const float %s = " % key)
+	if at < 0:
+		return -1.0
+	var from := at + ("const float %s = " % key).length()
+	return src.substr(from, src.find(";", from) - from).to_float()

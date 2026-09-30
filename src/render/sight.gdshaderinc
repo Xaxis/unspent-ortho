@@ -73,6 +73,26 @@ float sight_cone(vec3 wp, vec3 eye, vec4 p) {
 	return 1.0 - smoothstep(rim * 0.72, rim * 1.2, d);
 }
 
+// NOTHING STANDS AGAINST THE LENS. Over the shoulder the eye is two units up
+// among the land's own things, and one a pace from it -- a pine's crown, a
+// wall's corner, a sign -- filled a third of the frame with one flat unlit face
+// (the owner's audit, 2026-09-30: pinewood and metropolis at dusk). So with a
+// close eye (`sight_close`), everything nearer the eye than NEAR_GONE is taken,
+// stippling back in by NEAR_KEEP. The player's own body is not drawn by the
+// shaders that ask this, and the land never is. Both are shares of how far the
+// eye stands from the player's middle (Shoulder.BACK, 4.2, in the open), so an
+// eye crowded in close to the player (Shoulder.crowd, a room) takes only what is
+// nearer it than the player, and never the panel the player is reading.
+const float NEAR_GONE = 0.38;
+const float NEAR_KEEP = 0.76;
+
+// 0 keep, 1 take: how much of `wp` stands against the lens at `eye`, with the
+// player in slot `player`.
+float sight_near(vec3 wp, vec3 eye, vec4 player) {
+	float to = distance(eye, vec3(player.x, player.y + SIGHT_MID, player.z));
+	return 1.0 - smoothstep(NEAR_GONE * to, NEAR_KEEP * to, distance(wp, eye));
+}
+
 // THE PLAYER'S OWN BODY GETS OUT OF THE WAY OF THE EYE. Over the shoulder and
 // tipped up past Shoulder.PITCH_LEAST (the gaze, looking up at a colossus), the
 // eye comes forward to the head (Shoulder.rise) and the figure it passes through

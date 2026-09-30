@@ -107,6 +107,7 @@ void fragment() {
 			for (int i = 0; i < FORE_CLEAR; i++) {
 				cut = max(cut, sight_cone(world_pos, eye, fore_clear[i]) * close);
 			}
+			cut = max(cut, sight_near(world_pos, eye, fore_clear[0]) * close);
 		}
 	}
 	// Gone outright over the body, stipple at the edge of the hole. Stipple,
