@@ -65,7 +65,7 @@ holder="$(focus_holder)"
 # a fight, a raid arriving, anything measured in seconds a player would feel --
 # should keep running against the real clock, and a tour that merely has to be
 # comparable with ITSELF should not. tools/canon.sh turns it on.
-godot --path . --position "$(focus_position)" --audio-driver "$(focus_audio_driver)" \
+godot --path . --position "$(focus_position)" --audio-driver "$(focus_audio_driver)" $(focus_frame_flags "${TOUR_FIXED_FPS:-}") \
   ${TOUR_FIXED_FPS:+--fixed-fps "$TOUR_FIXED_FPS"} -- --tour="$tour" "$@" >"$log" 2>&1 &
 pid=$!
 focus_return "$holder" "$pid"
