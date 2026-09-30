@@ -71,7 +71,8 @@ func says() -> PackedStringArray:
 
 ## What the player may say, in order. A reply with `when` is hidden until the
 ## player knows that fragment or has landed that beat: a conversation should not
-## offer a question the player has no reason to ask. A reply that would land a
+## offer a question the player has no reason to ask. One with `unless` is hidden
+## once he knows or has landed that: a pointer at something he has since found. A reply that would land a
 ## revelation is hidden while another is still being felt (StoryPacing), and is
 ## there to be asked the next time.
 func replies() -> Array[Dictionary]:
@@ -79,6 +80,9 @@ func replies() -> Array[Dictionary]:
 	for r: Dictionary in _node().get("replies", []):
 		var when := StringName(str(r.get("when", &"")))
 		if when != &"" and not (Story.knows(when) or Story.landed(when)):
+			continue
+		var unless := StringName(str(r.get("unless", &"")))
+		if unless != &"" and (Story.knows(unless) or Story.landed(unless)):
 			continue
 		if not _carries(r.get("has", [])):
 			continue
