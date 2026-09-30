@@ -408,7 +408,7 @@ func test_by_force_from_firm_ground_it_falls_to_blows_and_never_founders() -> vo
 	r.human = 1
 	r.keep_off = flats
 	r.home = at
-	var out: Dictionary = await _fight_it(g, s, at, r, 360.0)
+	var out: Dictionary = await _fight_it(g, s, at, r, 240.0)
 	print("  info force by hand: %s" % out)
 	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FORCE).id(), "it falls to blows (%s)" % out)
 	check(out.how != SentinelWay.make(SentinelWay.FOUNDER).id(), "and never founders under a fight kept on firm ground")
@@ -447,7 +447,7 @@ func test_held_out_on_the_flats_it_founders() -> void:
 	r.keep_on = flats
 	r.lure = flat
 	r.home = start
-	var out: Dictionary = await _fight_it(g, s, start, r, 180.0)
+	var out: Dictionary = await _fight_it(g, s, start, r, 90.0)
 	print("  info founder by hand: %s" % out)
 	check(out.fallen and out.how == SentinelWay.make(SentinelWay.FOUNDER).id(), "drawn out onto the flats and held there, it founders (%s)" % out)
 	Sx.end(g)

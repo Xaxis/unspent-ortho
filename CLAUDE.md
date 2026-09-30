@@ -30,12 +30,14 @@ tools/web.sh                    # export and boot the web build in headless Chro
 tools/deploy.sh [--prod]        # deploy to Vercel and prove it loads there
 tools/heavy.sh CMD...           # run a tour/shot/render/web job only when the box can take it (two at once)
 tools/tour-sweep.sh [--since REF] # run tours on this checkout, PASS/FAIL each (CI has no GPU: tours run here)
+tools/play.sh [coast|reaper|holdfast|gallery] # play from this checkout, into a named moment (list: tools/play.sh list)
 ```
 
 - **Look at the pictures.** After any visible change, shoot it and Read the PNG. A
   green test says nothing about how it looks.
-- **Every tour, shot, render or web run goes through `tools/heavy.sh`.** Builders
-  running godot at once starved the box and broke the owner's own apps.
+- **Every tour, shot, render, web run or played test (`TEST_FIXED_FPS`, whole suites)
+  goes through `tools/heavy.sh`.** Builders running godot at once starved the box and
+  broke the owner's own apps. Timings: `HEAVY_ALONE=1 tools/heavy.sh …` for a quiet box.
 - **Check memory before a full run:** `vm_stat | head -2`. Free pages × 16 KB under
   ~500 MB means a full suite gets killed; use `tools/test.sh FILTER` instead.
 - **A test written to show a bug must fail first.** Put the bug back and watch it

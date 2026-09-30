@@ -29,7 +29,9 @@ wait 0.3
 shot 04b-who-wakes
 key move_up
 key use
-await game 40
+# The island is raised behind the title (UiTitle._raise_island): a new game
+# pressed at once waits on the loading page for the rest of that raise.
+await game 120
 wait 2.5
 shot 05-hud-in-the-world
 walk 1,0 1.2

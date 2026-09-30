@@ -110,6 +110,17 @@ const DRAW_DEADLINE_MS := 10000.0
 ## same wait under a page that has stopped moving.
 const CROSSING_DEADLINE_MS := 120000.0
 const WAIT_DEADLINE_MS := 5000.0
+## How long a new game's page waits on its island's raise before it says the land
+## did not come up. Far past a slow machine's 1840 raise (~40 s on the threaded
+## web), because a raise still running is not a failure; a raise that ended with
+## no world is said at once (RealmWorlds.failed).
+const RAISE_DEADLINE_MS := 300000.0
+## THE TITLE'S COAST. The title draws on a small island of the chosen seed's own,
+## this many tiles across, and the island a new game plays is raised on the pool
+## behind it (RealmWorlds). Measured on the threaded web: a whole 1840 island is
+## 35 s of generation, 21 s of it before the surface, so nothing drawn from the
+## island itself could put the title up in seconds; 256 tiles is ~0.7 s here.
+const TITLE_COAST := 256
 ## ...and how long `draw` waits for its FIRST frame before it concludes that no
 ## frames are coming at all. The page is drawing itself while that stage waits,
 ## so one would have arrived long before this: measured over six boots, `draw`
@@ -155,6 +166,8 @@ var _lifted := false
 var _handed := false
 ## Frames drawn since the scene was made (-1 before).
 var _drawn := -1
+## What stopped the page, said on it in place of the stage; empty while it runs.
+var failure := ""
 ## When the `draw` stage began waiting (msec), for DRAW_SILENT_MS.
 var _draw_from := 0
 
@@ -306,8 +319,18 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 			if not left.is_empty():
 				load(str(left.pop_front()))
 			return left.is_empty(), false, WAIT_DEADLINE_MS)
-	stages.add(&"world", "raising the land", 1600.0, func() -> void:
-		_world = _bw.call("world", o.seed_value, o.size))
+	if what == "title":
+		stages.add(&"world", "raising the land", 1600.0, func() -> void:
+			_world = _bw.call("world", o.seed_value, mini(o.size, TITLE_COAST)))
+	elif threaded:
+		# The island is raised on the pool, the same world BootWorld would grow
+		# here: begun by the title while it was read, or begun now. Waited on a
+		# frame at a time, so the page keeps drawing.
+		stages.add(&"world", "raising the land", 1600.0, func() -> bool:
+			return _wait_for_island(o), false, RAISE_DEADLINE_MS)
+	else:
+		stages.add(&"world", "raising the land", 1600.0, func() -> void:
+			_world = _bw.call("world", o.seed_value, o.size))
 	stages.add(&"view", "laying out the ground", 500.0, func() -> void:
 		_view = _bw.call("view", _world)
 		# Where the first view is: the player's start, or where the title's drift begins.
@@ -343,6 +366,33 @@ func _plan(parent: Node, o: BootOptions, what: String, threads: bool = BootPage.
 		_view = null
 		scene = BootPage.make_game(_parent, o) if what == "game" else BootPage.make_title(_parent, o), false)
 	_add_draw_stage()
+
+
+## The island's raise: true once it stands (in `_world`) or the page has failed.
+## Past RAISE_DEADLINE_MS the stage is given up on and `_process` says so.
+func _wait_for_island(o: BootOptions) -> bool:
+	if bool(_bw.call("offered_for", o.seed_value, o.size)):
+		# The title's coast was the whole island, and it handed it over.
+		_world = _bw.call("world", o.seed_value, o.size)
+		return true
+	if RealmWorlds.failed(o.seed_value, o.size, Realm.SURFACE):
+		_fail("the land did not come up")
+		return true
+	if not RealmWorlds.ready(o.seed_value, o.size, Realm.SURFACE):
+		# No game is running while this page stands: the raise may have the pool.
+		GenFields.lean = false
+		@warning_ignore("return_value_discarded")
+		RealmWorlds.begin(o.seed_value, o.size, Realm.SURFACE, true)
+		return false
+	_world = RealmWorlds.take(o.seed_value, o.size, Realm.SURFACE)
+	return true
+
+
+## Stop the page and say why on it. It stays up and keeps drawing: a page that
+## says what went wrong, not one that never ends.
+func _fail(why: String) -> void:
+	failure = why
+	print("boot %s failed: %s" % [kind, why])
 
 
 ## A world's first frame compiles its shaders and stalls (seconds on the web):
@@ -448,7 +498,13 @@ func _process(delta: float) -> void:
 	_shown += 1
 	if _shown < 2:
 		return
-	if not stages.step(threaded):
+	if failure != "":
+		return
+	var done := stages.step(threaded)
+	if failure == "" and kind == "game" and threaded and _world == null and stages.gave_up().has("world"):
+		# Given up on: the island never stood, and nothing after it has a world.
+		_fail("the land is not coming up")
+	if failure != "" or not done:
 		return
 	_handed = true
 	var parts := PackedStringArray()
@@ -683,7 +739,9 @@ func _draw_page() -> void:
 	var words := cur.label if cur != null else "looking up"
 	if held_progress >= 0.0:
 		words = _label_at(p)
-	UiDraw.text_legacy(ci, Vector2i(x0, LINE_Y - 16), words, WORDS)
+	if failure != "":
+		words = failure
+	UiDraw.text_legacy(ci, Vector2i(x0, LINE_Y - 16), words, HEAD if failure != "" else WORDS)
 
 
 ## The slate's status bar and its key strip, the two things every app on this
