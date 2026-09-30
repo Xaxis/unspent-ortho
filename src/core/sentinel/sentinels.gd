@@ -294,6 +294,33 @@ static func states(world: WorldData) -> Array[SentinelState]:
 ## the keepers' states, the spawner, the tours -- asks the same question.
 ## Keyed like Works.sites, by the world's instance and how many marks it holds,
 ## so a world still being laid is never handed an old answer.
+## THE NEXT KEEPER (ROADMAP slice 2, step 6): the nearest to `from` still
+## standing whose design none that fell had. A design taken once is not sent
+## again: nearest alone gave seed 7 a second Tide Reaper at 354 tiles, where the
+## anvil stands at 506. Null when every design standing has been taken.
+static func next_keeper(states: Array, from: Vector2) -> SentinelState:
+	var taken: Dictionary = {}
+	for s: SentinelState in states:
+		if s.fallen:
+			taken[s.design] = true
+	var best: SentinelState = null
+	for s: SentinelState in states:
+		if s.fallen or taken.has(s.design) or s.region < 0:
+			continue
+		if best == null or s.lair.distance_to(from) < best.lair.distance_to(from):
+			best = s
+	return best
+
+
+## The keepers as a game holds them (44_sentinels), worn and fallen; [] with none.
+## Untyped as a Node: this file is loaded by world generation, before Game is.
+static func live(game: Node) -> Array:
+	for sys: Node in game.get(&"systems"):
+		if sys.name == "44_sentinels":
+			return sys.call(&"states")
+	return []
+
+
 static func lair(world: WorldData, region: Dictionary, def: SentinelDef) -> Vector2:
 	var key := "%d:%d:%d:%s" % [world.get_instance_id(), world.landmarks.size(), int(region.get("id", -1)), def.id]
 	_lair_lock.lock()

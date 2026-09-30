@@ -31,6 +31,12 @@ const RECALL_MS := 1000.0
 ## and a tell met where it was marked is answered PLUMB_REACT_MS after it
 ## starts instead of react_ms.
 var scan := false
+## Played from above (GameDriver, 98_tour `drive` set it every step): the view
+## shows the whole field round the body, so what is on it is seen whichever way
+## the body faces. The cone is the shoulder view's. Walking round a keeper to
+## its burnt side, back turned, the cone missed its tell and every bite landed
+## (the anvil on seed 7: five downs, not fallen; one try locked).
+var from_above := false
 const PLUMB_REACT_MS := 80.0
 var _scan_until := -INF
 var _scan_ready := 0.0
@@ -96,7 +102,7 @@ func _knows(m: MobState) -> bool:
 	var hero := sim.hero
 	var to := m.pos - hero.pos
 	var d := to.length()
-	var seen := d <= SIGHT_REACH and absf(wrapf(to.angle() - hero.facing, -PI, PI)) <= SIGHT_CONE * 0.5
+	var seen := d <= SIGHT_REACH and (from_above or absf(wrapf(to.angle() - hero.facing, -PI, PI)) <= SIGHT_CONE * 0.5)
 	var heard := d <= HEARD_BESIDE or (_scanning() and m.machine and d <= AbilityScan.reach_of(hero.kit))
 	if not heard and hero.kit != null and hero.kit.listen and d <= EAR_REACH:
 		heard = m.blow != null and m.blow_phase(sim.now) == &"windup"
@@ -130,7 +136,7 @@ func _nearest() -> MobState:
 func _tell_to_answer(m: MobState) -> bool:
 	var hero := sim.hero
 	var to := m.pos - hero.pos
-	var in_cone := absf(wrapf(to.angle() - hero.facing, -PI, PI)) <= SIGHT_CONE * 0.5
+	var in_cone := from_above or absf(wrapf(to.angle() - hero.facing, -PI, PI)) <= SIGHT_CONE * 0.5
 	var ear := hero.kit != null and hero.kit.listen and to.length() <= EAR_REACH
 	# A bite begun out of sight in a crowd is cued (FightSim.begin_bite): known by
 	# the cue, turned to, and answered at a cost (Reader.human's cue terms).

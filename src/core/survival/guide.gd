@@ -369,7 +369,24 @@ static func way_goal(game: Game) -> String:
 		if not _hop_done(game, hop) and StoryContent.LEAD.has(hop.key):
 			_key = hop.key
 			return String(StoryContent.LEAD[hop.key])
-	return ""
+	return keeper_goal(game)
+
+
+## THE NEXT KEEPER (ROADMAP slice 2, step 6): once the Reaper is down and the way
+## has nothing to ask, the nearest keeper of a design not yet taken
+## (Sentinels.next_keeper), in the words of whoever named it (StoryContent.LEAD,
+## keyed by its design), from the naming (KEEPER_NAMED_BY) until it falls. The
+## words are the namer's reasons, so nothing says them before he has. It holds no
+## key memory, so it never stands in the way's path, only after it.
+static func keeper_goal(game: Game) -> String:
+	if not Story.landed(REAPER_DOWN):
+		return ""
+	var next := Sentinels.next_keeper(Sentinels.live(game), game.world.spawn)
+	if next == null or not StoryContent.LEAD.has(next.design) \
+			or not Story.landed(StringName(str(StoryContent.KEEPER_NAMED_BY.get(next.land, &"")))):
+		return ""
+	_key = next.design
+	return String(StoryContent.LEAD[next.design])
 
 
 ## Whether a WAY hop has opened: its `after` beat has landed, and been felt where
@@ -454,7 +471,7 @@ const EDGE_PLAIN := {
 
 ## The keeper of `land` by the name the player has for it.
 static func keeper_name(land: StringName) -> String:
-	if Story.landed(NAMED_BEAT) and StoryContent.KEEPER_NAMED.has(land):
+	if Story.landed(StringName(str(StoryContent.KEEPER_NAMED_BY.get(land, &"")))) and StoryContent.KEEPER_NAMED.has(land):
 		return String(StoryContent.KEEPER_NAMED[land])
 	return String(EDGE_KEEPER.get(land, "the keeper"))
 

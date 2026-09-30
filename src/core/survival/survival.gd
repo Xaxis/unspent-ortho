@@ -130,12 +130,18 @@ const BUILD_KINDS := {&"fire": PropKind.FIRE, &"bench": PropKind.BENCH, &"kiln":
 ## the fight's steps on every run).
 static var fixed_now := -1.0
 static var fixed_step := 0.0
+## The physics step this game's clock counts from (50_survival setup). Counted
+## from the process's first step, a window ending exactly on a step (a body
+## coming to after a down) fell either side of it with how many steps an
+## earlier game in the process had run: the float sum rounds by the size of the
+## count, and the same fight came out another way after another test.
+static var epoch_frames := 0
 
 
 static func now_real() -> float:
 	if fixed_now >= 0.0:
 		return fixed_now
-	return float(Engine.get_physics_frames()) / float(Engine.physics_ticks_per_second)
+	return float(Engine.get_physics_frames() - epoch_frames) / float(Engine.physics_ticks_per_second)
 
 
 # --- Stations -------------------------------------------------------------
