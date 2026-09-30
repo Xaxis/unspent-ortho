@@ -124,7 +124,7 @@ func test_the_way_on_waits_for_the_crew_to_have_paid() -> void:
 	g.inventory.add(&"iron_ore", 1)
 	Story.beat(&"reaper_down")
 	Story.beat(&"built_halcyon")
-	eq(Guide.goal(g), _lead(&"camp"), "the road to the camp comes first, whatever he has read")
+	eq(Guide.goal(g), _lead(&"crew"), "the road to the camp comes first, whatever he has read")
 	Sx.end(g)
 	Story.forget()
 

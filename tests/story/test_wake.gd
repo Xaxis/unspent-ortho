@@ -122,9 +122,17 @@ func test_no_goal_or_key_hint_is_on_the_glass_until_the_wake_is_over() -> void:
 	Story.meet(&"maren")
 	await _until_let_go(g, 12.0)
 	await _wall(1.0)
-	check(g.hud.goal != "", "the goal once the wake is over")
+	# The goal is her errand (Guide._goal_of): met but not yet led, nothing is
+	# wanted of him; her talk gives the lead on its obvious replies
+	# (test_guide_lead), and then the goal stands.
+	eq(g.hud.goal, "", "the wake over, but no lead given yet: no goal")
+	@warning_ignore("return_value_discarded")
+	Story.beat(Guide.LEAD_BEAT)
+	await _wall(1.0)
+	check(g.hud.goal != "", "the goal once the wake is over and she has given her lead")
 	Events.hint.disconnect(on_hint)
 	Sx.end(g)
+	Story.forget()
 
 
 func test_only_the_record_speaks_while_the_wake_holds_the_glass() -> void:

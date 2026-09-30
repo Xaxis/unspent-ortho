@@ -84,8 +84,11 @@ Proof tour: `tours/across.tour`, from slice 2's end.
 5. [ ] **Mended gear** (B). The slice's make, with its reason said at the Covenant.
 6. [ ] **The drowned city** (C). The third landscape, on the leg-1 body. Worldgen: prove
    the home coast and its keeper don't move (the salt flats lesson).
-7. [ ] **The first enclave** (A+C). `enclave_met`, a machine talk at a drowned-city
-   landmark and one fragment; it speaks in his cadence, faintly (STORY.md).
+7. [ ] **The climb and the first enclave** (A+B+C). The slice's set piece: a foot of the
+   half-broken walker comes down in the region; he climbs it (grips, stamina, falls,
+   the gait moving under him) to its cut-off crown, where the first enclave lives
+   (`enclave_met`, a machine talk, one fragment; his cadence, faintly). Tread-folk in
+   its craters. The climb stops at the hub.
 8. [ ] **Back at the camp** (A). `crew_war` / `dace_left`, `rook_told`.
 9. [ ] **Fix** (A). `hale_log` locked until `war_relay` (branch `story/hale-lock`).
 10. [ ] **Proof** (all). The tour plays the slice by the goal line alone. ★
