@@ -1,0 +1,43 @@
+# THE SPEAKER'S HOUSE (slice 3 step 2): the house nearest the Covenant is hers
+# (StoryRooms.SPEAKER). Her set stands where the house kept a shelf; the card is
+# on the table; the photograph by the set is turned to the wall. Each page is a
+# press of `use` in front of the thing, and the set lands covenant_speaker.
+#
+#   tools/tour.sh tours/speaker.tour --seed=4 --hour=15 --weather=clear:0
+#
+# 01 her set, 02 the photograph, 03 the card, 04 the room once the glass is down.
+coast calm
+near door:speaker
+await door 5
+press use
+await inside 5
+wait 1.0
+tap lamp
+wait 0.4
+
+at slot:terminal
+wait 0.4
+press use
+await knows:speaker_set 4
+await beat:covenant_speaker 2
+wait 0.5
+shot 01-her-set with tenant:speaker,reading
+press use
+wait 0.4
+
+press use
+await knows:home_speaker_photo 4
+wait 0.5
+shot 02-the-photograph with tenant:speaker,reading
+press use
+wait 0.4
+
+at slot:desk
+wait 0.4
+press use
+await knows:home_speaker_card 4
+wait 0.5
+shot 03-the-card with tenant:speaker,reading
+press use
+wait 0.5
+shot 04-her-room with tenant:speaker

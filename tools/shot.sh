@@ -18,7 +18,7 @@ tools/_import.sh
 log="$(mktemp "${TMPDIR:-/tmp}/unspent-shot.XXXXXX")"
 focus_guard_start
 holder="$(focus_holder)"
-godot --path . --position "$(focus_position)" --audio-driver "$(focus_audio_driver)" -- --shot="$out" "$@" >"$log" 2>&1 &
+godot --path . --position "$(focus_position)" --audio-driver "$(focus_audio_driver)" $(focus_frame_flags) -- --shot="$out" "$@" >"$log" 2>&1 &
 pid=$!
 focus_return "$holder" "$pid"
 budget=$(slack_secs "${SHOT_TIMEOUT:-150}")

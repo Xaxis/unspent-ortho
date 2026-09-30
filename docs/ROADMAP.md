@@ -74,23 +74,25 @@ Reason to make: the raft, then gear mended from what the machines leave. Beats f
 STORY.md (wright's map); June's reveals land here, echo_hand stays held for slice 4.
 Proof tour: `tours/across.tour`, from slice 2's end.
 
-1. [ ] **The crossing** (A+B). After `war_archive` the goal points at a raft and the
+1. [x] **The crossing** (A+B). After `war_archive` the goal points at a raft and the
    shore nearest the far body; a 130-tile crossing proved by play (time, hull).
-2. [ ] **The Covenant's seat** (A). A guaranteed `covenant_speaker` door at
+2. [x] **The Covenant's seat** (A). A guaranteed `covenant_speaker` door at
    the_covenant; `covenant_fed`, `covenant_price`; Solis: `teague_sold`, `solis_made`.
 3. [ ] **June** (A). `june_named`, `june_met`, `june_knew`, `echo_kept`, `hannah_died`.
 4. [ ] **The archive** (A). Otto: `forged_order`, `tradecraft`; `war_relay` is slice
    4's lead (the relay below, a shaft down), with a survey pin and a goal.
-5. [ ] **Mended gear** (B). The slice's make, with its reason said at the Covenant.
+5. [x] **Mended gear** (B). The slice's make, with its reason said at the Covenant.
 6. [ ] **The drowned city** (C). The third landscape, on the leg-1 body. Worldgen: prove
    the home coast and its keeper don't move (the salt flats lesson).
 7. [ ] **The climb and the first enclave** (A+B+C). The slice's set piece: a foot of the
    half-broken walker comes down in the region; he climbs it (grips, stamina, falls,
    the gait moving under him) to its cut-off crown, where the first enclave lives
    (`enclave_met`, a machine talk, one fragment; his cadence, faintly). Tread-folk in
-   its craters. The climb stops at the hub.
+   its craters. The climb stops at the hub. On main: the climb core (a), the leg model
+   and the enclave's talk (e). Open: the pitches set on the body, the render node (b), the
+   climb system to `enclave_met` (d), getting on from the tread (c), the limp gait (f, a GEN).
 8. [ ] **Back at the camp** (A). `crew_war` / `dace_left`, `rook_told`.
-9. [ ] **Fix** (A). `hale_log` locked until `war_relay` (branch `story/hale-lock`).
+9. [x] **Fix** (A). `hale_log` locked until `war_relay`.
 10. [ ] **Proof** (all). The tour plays the slice by the goal line alone. ★
 
 ## Tools track — the story map and the dev slate (alongside slice 1)
