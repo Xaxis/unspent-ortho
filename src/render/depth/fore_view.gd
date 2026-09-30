@@ -50,6 +50,12 @@ const PLAYER_REACH := 2.6
 ## The least a girder's far end comes down from its root, in units, or it is
 ## not hung (`_place`).
 const GIRDER_FALL_LEAST := 0.25
+## A fallen girder: how far out from its host it starts (tiles), how far into the
+## ground it is sunk (units), and how far off one straight line the ground under
+## it may be before it is not laid (units).
+const FALLEN_OFF := 0.7
+const FALLEN_SINK := 0.06
+const FALLEN_TRUE := 0.22
 ## A body further than this from the player is not part of this moment.
 const NEAR := 14.0
 
@@ -82,6 +88,9 @@ var _keys: PackedInt64Array = PackedInt64Array()
 ## How many pieces are placed this frame, in the first slots; a girder with
 ## nowhere to come down is among them, hidden. `--stats` and the tests read it.
 var drawn := 0
+## Per slot, 1 where the piece placed there stands over its host's top: hung on
+## nothing (`floating_on_glass`).
+var _floats := PackedByteArray()
 
 
 func setup(w: WorldData, q: WorldQuery, cam: CameraRig) -> void:
@@ -248,7 +257,23 @@ func _place(i: int, p: WorldProp, focus: Vector2) -> void:
 	var dir := away.rotated(jitter)
 	var t := Transform3D(Basis(Vector3.UP, atan2(-dir.y, dir.x)).scaled(Vector3(span, span, span)),
 		base + Vector3(0.0, float(hang.lift), 0.0))
-	if int(hang.shape) == ForeKinds.GIRDER:
+	var shape := int(hang.shape)
+	_floats[i] = 0
+	if shape == ForeKinds.FALLEN:
+		# Lying beside its host, not through it: from a tile out, along the
+		# ground to its far end, sunk a little. Where the ground under it is not
+		# near one straight line (a terrace step) one end would stand in the air,
+		# so it is not laid.
+		var a := p.pos + dir.normalized() * FALLEN_OFF
+		var b := a + dir.normalized() * span
+		var ya := world.height_at(a)
+		var yb := world.height_at(b)
+		if absf(world.height_at((a + b) * 0.5) - (ya + yb) * 0.5) > FALLEN_TRUE or absf(ya - yb) > FALLEN_TRUE * 2.0:
+			node.visible = false
+			return
+		t.origin = Vector3(a.x, ya - FALLEN_SINK, a.y)
+		t.basis = ForeKinds.lean_basis(dir, span, ya - yb)
+	elif shape == ForeKinds.GIRDER:
 		# A girder is down: from the top of what it hangs on to the ground at its
 		# far end (ForeKinds.hang), so it is held at both ends.
 		# Where the ground there stands above its root it would run into the
@@ -259,6 +284,15 @@ func _place(i: int, p: WorldProp, focus: Vector2) -> void:
 			return
 		t.basis = ForeKinds.lean_basis(dir, span, fall)
 	node.global_transform = t
+	# THE AUDIT (`floating`, --stats): a piece whose root stands over its host's
+	# own top is hung on nothing. Measured off the transform placed, not off the
+	# rule that placed it.
+	# A fallen one is measured against the ground it lies on.
+	if shape == ForeKinds.FALLEN:
+		if t.origin.y - world.height_at(Vector2(t.origin.x, t.origin.z)) > 0.05:
+			_floats[i] = 1
+	elif t.origin.y - base.y > ForeKinds.top_of(p, world.seed_value, _country(p)) + 0.05:
+		_floats[i] = 1
 	# Nothing pops at the edge of the band and nothing is faded to hide it: REACH
 	# is 22 tiles and the frame's own furthest corner is about 13, so a piece is
 	# hung and unhung well outside the picture and the player never sees either.
@@ -292,6 +326,8 @@ func _tint(p: WorldProp) -> Color:
 
 
 func _slot(i: int) -> MeshInstance3D:
+	if _floats.size() <= i:
+		_floats.resize(i + 1)
 	while _pool.size() <= i:
 		var m := MeshInstance3D.new()
 		m.name = "fore_%d" % _pool.size()
@@ -309,3 +345,22 @@ func _slot(i: int) -> MeshInstance3D:
 		add_child(m)
 		_pool.append(m)
 	return _pool[i]
+
+
+## How many pieces are on the glass of `cam` now, and how many of those are hung
+## on nothing, as Vector2i(on glass, floating): a piece is on the glass when its
+## root or its far end is in the frustum.
+func floating_on_glass(cam: Camera3D) -> Vector2i:
+	var out := Vector2i.ZERO
+	if cam == null:
+		return out
+	for i in drawn:
+		var m := _pool[i]
+		if not m.visible:
+			continue
+		var tip := m.global_transform * Vector3(1.0, 0.0, 0.0)
+		if cam.is_position_in_frustum(m.global_position) or cam.is_position_in_frustum(tip):
+			out.x += 1
+			if i < _floats.size() and _floats[i] == 1:
+				out.y += 1
+	return out
