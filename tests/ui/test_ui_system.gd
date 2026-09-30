@@ -442,20 +442,27 @@ func _stand(g: Game, at: Vector2) -> void:
 ## The first hour's guide speaks through the slate as well as the message line:
 ## what to want stands on the HUD, and the key it is teaching sits on the hint row.
 func test_the_goal_and_the_key_the_guide_teaches_reach_the_hud() -> void:
+	Story.forget()
 	var g := _make()
 	var ui := _ui(g)
 	_calm(g)
 	for i in 3:
 		await tree.process_frame
 	ui.call("_feed_hud")
-	eq(g.hud.goal, Guide.goal(g), "the goal stands on the glass")
-	check(g.hud.goal != "", "and there is always something to want")
+	eq(g.hud.goal, "", "no lead given and no need: nothing stands there, rather than a recipe out of nowhere")
+	@warning_ignore("return_value_discarded")
+	Story.beat(Guide.LEAD_BEAT)
+	ui.call("_step_guide", 1.0)
+	ui.call("_feed_hud")
+	eq(g.hud.goal, Guide.goal(g), "her lead given, its step stands on the glass")
+	check(g.hud.goal != "", "and it is there")
 	var teach: Dictionary = ui.call("_guide_hint")
 	check(not teach.is_empty() and String(teach.get("key", "")) != "", "the guide has a key to teach: %s" % str(teach))
 	if UiLink.use_hint(g) == "" and UiLink.stations_here(g).is_empty():
 		eq(g.hud.hint, String(teach.line), "and the row teaches it where there is nothing else to do")
 		eq(g.hud.hint_key, String(teach.key), "with the key it is about")
 	g.free()
+	Story.forget()
 
 
 ## The drop verb is reachable the way a player reaches it: open carrying, choose

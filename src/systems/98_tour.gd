@@ -2093,6 +2093,11 @@ const PIXEL_WASH := 0.4
 ## walk out of the frame between the await and the picture.
 func _shot_checked(parts: PackedStringArray) -> bool:
 	var label := parts[1]
+	# WHAT THE GOAL LINE SAID in this frame (90_ui's pinned goal, and its key), so
+	# every tour log reads the line under the health bar against what was played.
+	var ui := _system("90_ui")
+	if ui != null:
+		print("tour goal %s [%s] %s" % [label, String(ui.get("_goal_key")), String(ui.get("_goal"))])
 	var subjects: Array[String] = []
 	if parts.size() > 2:
 		if parts[2] != "with" or parts.size() < 4:

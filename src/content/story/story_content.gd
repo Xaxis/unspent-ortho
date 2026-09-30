@@ -5554,6 +5554,11 @@ const LEAD := {
 	&"pick": "A pick for the iron, made at {at}.",
 	&"ore": "The crew past the old works pay for iron. Take the pick to the rock.",
 	&"camp": "Iron for the crew, so they stay away from her fire: the survey marks the camp.",
+	# Hob's errand, from `reaper_named` until the keeper falls (Guide.reaper_goal).
+	&"reaper": "The Tide Reaper, for the tide-pickers' shore: end it at its yard past the point.",
+	# The crew's errand once the yard is dark and until they have paid, in place
+	# of `ore` and `camp`: what he just did, then what he owes.
+	&"crew": "Iron for the crew, now the yard is dark: the survey marks their camp.",
 	&"armour": "Armour against the hunters: beat the plate at a bench, with scrap and iron.",
 	# The way on (Guide.way_goal), each said until the beat that ends it lands.
 	&"yard": "The yard's oldest screen, for what it was too busy to show you: the yard is dark now.",
