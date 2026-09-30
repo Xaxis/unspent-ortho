@@ -1380,7 +1380,11 @@ func _walk_route(what: String, until: int, secs: float) -> bool:
 	return true
 
 
+## Null on the title, where the tour runs with no game: a shot there asks for
+## 90_ui's goal line too.
 func _system(n: String) -> GameSystem:
+	if game == null:
+		return null
 	for sys in game.systems:
 		if sys.name == n:
 			return sys
