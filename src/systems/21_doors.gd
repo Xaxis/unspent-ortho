@@ -2023,7 +2023,7 @@ func tour_seen(what: StringName) -> bool:
 
 ## The names `tour_place` answers (tests/tours/test_tour_claims reads this).
 const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:side", "door:back",
-	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "shelf", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table", "door:container_warren", "door:face_hold", "dweller", "thing:sort_table", "thing:manifest", "door:tower", "door:buckled", "thing:buckled", "ladder", "ladder_top"]
+	"door:fisher", "door:tinker", "door:keeper", "door:cottage", "door:weapons_hall", "door:bunker", "door:roundhouse", "door:stilt_room", "door:tower_lobby", "door:cliff_room", "door:hulk_hold", "door:rooted_floor", "door:tenement", "door:maintenance_bay", "door:foundry", "strongbox", "shelf", "thing:turnstile", "thing:diag_panel", "thing:tally", "thing:line_panel", "thing:cast_rack", "behind:cast_rack", "door:data_hall", "thing:console", "thing:restore_bay", "door:laid_table", "thing:food_hatch", "hatch", "door:saw_hall", "thing:gang_saw", "thing:dock", "thing:beam_stack", "door:frozen_hold", "thing:stove", "thing:sounding_well", "thing:bunk_board", "stove", "door:home", "door:wireman", "door:trapper", "door:corer", "door:mason", "door:tapper", "door:collier", "thing:wire_coils", "thing:core_samples", "thing:resin_pots", "door:cutter", "door:reeder", "door:eeler", "door:raker", "door:boiler", "door:filer", "door:wright", "thing:peat_stack", "thing:salt_cones", "thing:filings_trays", "door:cook", "door:gatherer", "door:grower", "door:knapper", "door:stiller", "door:picker", "door:siphoner", "door:sorter", "door:wirer", "thing:steam_box", "thing:glass_blades", "thing:oil_drums", "thing:sorted_bins", "door:clerk", "door:shift", "door:squatter", "door:climber", "door:stilter", "door:bailer", "thing:ledgers", "thing:hammock", "thing:tide_gauge", "door:byrer", "door:stallholder", "door:spinner", "thing:stall", "thing:counter", "thing:loom", "door:squat", "crawl", "thing:crawl_hole", "thing:rug", "thing:laid_table", "door:container_warren", "door:face_hold", "dweller", "thing:sort_table", "thing:manifest", "door:tower", "door:buckled", "door:speaker", "thing:buckled", "ladder", "ladder_top"]
 
 
 ## `at door:house`: just outside the nearest door of that host, facing it -- or,
@@ -2031,7 +2031,8 @@ const TOUR_PLACES: Array[String] = ["door:house", "door", "door:hall", "door:sid
 ## `door:HOUSEHOLD` (cottage.gd's deals) ask for the nearest door whose room is
 ## laid to that plan or kept by that household -- or, `door:KIND`, the nearest
 ## door into that kind at all -- so a tour stages a room by what is in it rather
-## than by where some house happens to stand.
+## than by where some house happens to stand. `door:TENANT` is the door the
+## story deals to that tenant (StoryRooms.tenants: `door:speaker`).
 func tour_place(what: String) -> Vector2:
 	var th := _tour_thing(what)
 	if not th.is_empty():
@@ -2274,6 +2275,9 @@ func _tour_door(what: String) -> Threshold:
 		return a.door.distance_squared_to(from) < b.door.distance_squared_to(from))
 	for t: Threshold in order:
 		if any or String(t.kind) == want:
+			return t
+		# Or the door the story deals to a tenant (`door:speaker`, StoryRooms).
+		if String(StoryRooms.tenants(game.world).get(t.key, &"")) == want:
 			return t
 		if Interiors.RECIPES.has(StringName(want)):
 			continue

@@ -113,7 +113,9 @@ func test_the_bunker_says_no_more_than_the_first_leg_allows() -> void:
 	eq(landed, [&"was_cia"], "the bunker lands one thing")
 	# What else a room may teach, and only through a page shut until it is earned
 	# (docs/story/UNDER_THE_STONES.md): Kerr's binder, and the hulls' manifests.
-	var may := {&"bunker:kerr": [&"cairn_knew"], &"hulk_hold": [&"echo_hulls"]}
+	# And the Speaker's own set (slice 3 step 2): the voice every stray relay
+	# carries, heard where it comes from.
+	var may := {&"bunker:kerr": [&"cairn_knew"], &"hulk_hold": [&"echo_hulls"], &"home:speaker": [&"covenant_speaker"]}
 	for room: StringName in StoryContent.ROOMS:
 		if room == &"bunker":
 			continue
