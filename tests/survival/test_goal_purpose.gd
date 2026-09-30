@@ -59,13 +59,16 @@ func test_no_lead_open_no_line() -> void:
 	g.inventory.add(&"kit_plate", 1)
 	g.inventory.add(&"cinder_glass", 1)
 	Story.choose(Guide.CAMP_PAID, StringName(StoryContent.PAID[Guide.CAMP_PAID].pick))
-	# The whole Holdfast leg behind him: the keeper named and down, every hop's
-	# beat landed and the archive's man met.
-	for b: StringName in [Guide.NAMED_BEAT, Guide.REAPER_DOWN, &"built_halcyon", &"holdfast_hope", &"war_archive"]:
+	# The whole Holdfast leg behind him, and across the water as far as the way
+	# goes: the keeper named and down, every hop's beat landed, the archive's man
+	# and June met.
+	for b: StringName in [Guide.NAMED_BEAT, Guide.REAPER_DOWN, &"built_halcyon", &"holdfast_hope", &"war_archive",
+			&"covenant_speaker", &"june_named", &"june_knew", &"echo_kept"]:
 		@warning_ignore("return_value_discarded")
 		Story.beat(b, -INF)
-	@warning_ignore("return_value_discarded")
-	Story.meet(&"otto")
+	for who: StringName in [&"otto", &"june"]:
+		@warning_ignore("return_value_discarded")
+		Story.meet(who)
 	var line := Guide.goal(g)
 	eq(line, "", "paid and armoured with no hop open: the line is empty, not the ladder (%s)" % line)
 	check(Guide.within_reach(g) != "", "and the long game's next want is on the making page: %s" % Guide.within_reach(g))
