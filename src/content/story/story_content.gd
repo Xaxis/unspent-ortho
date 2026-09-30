@@ -68,7 +68,7 @@ const ARCS := {
 	&"the_lands": {
 		"title": "the lands",
 		"note": "What the people of each land have noticed, and nobody wrote down.",
-		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count", &"same_weight", &"old_timetable", &"harvest_day", &"kerb_moves", &"more_goes_in", &"survey_bends", &"ring_held", &"vents_keep_time", &"under_the_leaves", &"wrack_new", &"reaper_named", &"sea_froze", &"glassed_nothing", &"fields_tune", &"words_tipped"],
+		"beats": [&"stones_counted", &"burning_feeds", &"plant_below", &"dam_order", &"server_fields", &"keeper_waits", &"scrap_war", &"others_before", &"the_count", &"same_weight", &"old_timetable", &"harvest_day", &"kerb_moves", &"more_goes_in", &"survey_bends", &"ring_held", &"vents_keep_time", &"under_the_leaves", &"wrack_new", &"reaper_named", &"anvil_named", &"sea_froze", &"glassed_nothing", &"fields_tune", &"words_tipped"],
 	},
 	&"priya": {
 		"title": "Priya",
@@ -171,6 +171,7 @@ const BEATS := {
 	&"wrack_new": {"short": "clean tubing", "arc": &"the_lands", "says": "The tide brings in tubing and tank glass from past the point. Everything else in the sea is seventy years old, and that is new."},
 	&"reaper_named": {"short": "the Tide Reaper", "arc": &"the_lands", "says": "The machines' yard past the point is kept by a gantry the tide-pickers call the Tide Reaper. Iron rings off it. A knife tempered in a kiln bites."},
 	&"sea_froze": {"short": "the sea froze", "arc": &"the_lands", "says": "The frost sea was open water in living memory. It froze the winter the machines' posts went out on it, and has not thawed since."},
+	&"anvil_named": {"short": "the Candlestick", "arc": &"the_lands", "says": "Out on the glass a mast calls the storm down. The glass-pickers call it the Candlestick."},
 	&"glassed_nothing": {"short": "aimed at nothing", "arc": &"the_lands", "says": "Nothing ever stood where the glass desert is. Whatever fused it was aimed at empty sand."},
 	&"fields_tune": {"short": "a few bars", "arc": &"the_lands", "says": "Some nights the server fields' hum drops into a few bars of a tune, the same few, and stops, like somebody who has lost the rest."},
 	&"words_tipped": {"short": "anything with words", "arc": &"the_lands", "says": "What the machines tip in the Middens is ours, never theirs: phones, drives, paper. Anything that ever had words in it."},
@@ -4483,6 +4484,7 @@ const TALKS := {
 				"replies": [
 					{"text": "What's in them?", "pick": &"asked_crates", "to": &"crates"},
 					{"text": "Why do you fight?", "pick": &"asked_why", "to": &"kids"},
+					{"text": "What else keeps a yard like that?", "when": &"reaper_down", "pick": &"asked_next", "to": &"mast"},
 					{"text": "The Covenant knows our roads.", "when": &"teague_sold", "pick": &"faced_him", "to": &"sold"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
 				],
@@ -4491,6 +4493,8 @@ const TALKS := {
 				"says": ["Mining charge, from before. Enough for a works yard,", "if you put it in the right place. I always do."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
+			# The second keeper named (`anvil_named`), as Hob names the Reaper.
+			&"mast": {"says": ["Out on the glass there's a mast that calls the storm down into the sand. The pickers call it the Candlestick.", "Its core would keep a holding's cell charged a year. Stand where it's looking and the sky comes down on you."], "beats": [&"anvil_named"], "replies": [{"text": "[leave]", "to": &""}]},
 			&"kids": {
 				"says": ["I had two. Lise and Tam.", "The hunters came for our village after somebody broke a works up the valley."],
 				"replies": [
@@ -5671,6 +5675,10 @@ const LEAD := {
 	&"raft": "A raft, for water no road crosses: driftwood, a piece of plate, rags and an edge.",
 	&"crossing": "Across at the narrows, for the archive on the far shore: put the raft in there.",
 	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
+	# The second keeper, keyed by its design (Guide.keeper_goal, Sentinels.next_keeper):
+	# once Teague has named it (`anvil_named`) until it falls. Never gating the way
+	# on: no key memory.
+	&"anvil": "The Candlestick, for its core and the holding's cell: end it at the strike field.",
 	# Slice 3 step 5, after covenant_fed, until the mended plate is carried.
 	&"mend": "Mended plate, for the plate you've spent: a harvester's iron, at a bench.",
 	# Once the plan has taken somebody out of a village that saw him (or he has
@@ -5699,6 +5707,9 @@ const TOLD := {
 	&"marens_lead": {"place": &"the_camp", "word": "the crew"},
 	# Vera's lead, the next leg's (slice 3): across the water, pinned on its bearing.
 	&"war_archive": {"place": &"the_archive", "word": "the archive"},
+	# Teague's word for the second keeper's ground: a StoryMap place (the anvil's
+	# lair nearest home), not a cast slot.
+	&"anvil_named": {"place": &"lair:anvil", "word": "the strike field"},
 }
 
 # Places marked on the survey only while the pinned goal is theirs (Guide
@@ -5711,7 +5722,9 @@ const TOLD_WHILE := {
 # The name the goal lines use for a landscape's keeper once `reaper_named` has
 # landed (Hob, TALKS hob.reaper). Keyed by landscape id; before he has said it,
 # the guide says the plain word. It is what the tide-pickers call it, not its own.
-const KEEPER_NAMED := {&"coast": "the Tide Reaper"}
+const KEEPER_NAMED := {&"coast": "the Tide Reaper", &"glass_desert": "the Candlestick"}
+## The beat that gives each landscape's keeper its name (Guide.keeper_name).
+const KEEPER_NAMED_BY := {&"coast": &"reaper_named", &"glass_desert": &"anvil_named"}
 
 # The fight's goal lines and the ring, once `reaper_named` has landed: the short
 # form of what Hob said, so the next make has his reason. Guide and 40_fight read
@@ -6013,6 +6026,12 @@ const KEEPER_FELL := {
 		&"force": "The gantry comes apart, and its drum goes down in its own rows.",
 		&"founder": "The gantry sinks in the flats to its deck. The tide comes over it.",
 		&"starve": "The gantry stops mid-row. Its lamps go out, and the tide comes in.",
+	},
+	&"anvil": {
+		&"force": "The mast comes apart, and its crown rings down onto the glass.",
+		&"founder": "The mast skates into the drift and stops. The sand closes over its core.",
+		# Kept though the way waits on a strike field no world lays yet.
+		&"starve": "The crown calls and nothing answers. The mast stands on its skates, and goes quiet.",
 	},
 }
 

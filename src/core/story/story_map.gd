@@ -162,14 +162,16 @@ func _places(world: WorldData) -> void:
 				leg.pos = stop.pos
 				break
 		legs.append(leg)
-	# The keepers: each design's lair nearest where he woke.
-	for st: SentinelState in Sentinels.states(world):
+	# The keepers: each design's lair nearest where he woke (`lair_pos`).
+	var keepers := Sentinels.states(world)
+	for st: SentinelState in keepers:
 		var id := StringName("lair:%s" % st.design)
-		if places.has(id) and (places[id].pos as Vector2).distance_to(world.spawn) <= st.lair.distance_to(world.spawn):
+		if places.has(id):
 			continue
-		places[id] = {"id": id, "name": "the %s keeper" % String(st.land).replace("_", " "), "pos": st.lair,
-			"leg": _leg_at(world, bodies, st.lair), "kind": &"lair"}
-		if _first_lair == &"" or st.lair.distance_to(world.spawn) < (places[_first_lair].pos as Vector2).distance_to(world.spawn):
+		var at := lair_pos(keepers, world.spawn, id)
+		places[id] = {"id": id, "name": "the %s keeper" % String(st.land).replace("_", " "), "pos": at,
+			"leg": _leg_at(world, bodies, at), "kind": &"lair"}
+		if _first_lair == &"" or at.distance_to(world.spawn) < (places[_first_lair].pos as Vector2).distance_to(world.spawn):
 			_first_lair = id
 	# Rooms: the bunkers by whose they are, every other kind at its door nearest home.
 	var tenants := StoryRooms.tenants(world)
@@ -181,6 +183,22 @@ func _places(world: WorldData) -> void:
 		if places.has(id) and (places[id].pos as Vector2).distance_to(world.spawn) <= t.host.distance_to(world.spawn):
 			continue
 		places[id] = {"id": id, "name": _room_name(room), "pos": t.host, "leg": _leg_at(world, bodies, t.host), "kind": &"room"}
+
+
+## Where the place `lair:DESIGN` stands among `states` (the keepers a world or a
+## game holds): that design's lair nearest `spawn`, where he woke, the first of
+## them on a tie. INF for any other place, or a design none of them is. Asked of
+## the states and never of the world, so the survey can mark it (UiMapScreen.told)
+## from the game's own keepers without projecting the map.
+static func lair_pos(states: Array, spawn: Vector2, place: StringName) -> Vector2:
+	var best := Vector2.INF
+	if not String(place).begins_with("lair:"):
+		return best
+	var design := StringName(String(place).trim_prefix("lair:"))
+	for st: SentinelState in states:
+		if st.design == design and (not best.is_finite() or st.lair.distance_to(spawn) < best.distance_to(spawn)):
+			best = st.lair
+	return best
 
 
 static func _leg_at(world: WorldData, bodies: Array[int], p: Vector2) -> int:
