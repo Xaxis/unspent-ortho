@@ -5892,6 +5892,14 @@ const MENDED := {
 }
 
 
+## THE CLIMB UP A WALKER'S LEG (43_climb), said as it happens: `begin` the hint
+## at the rim of a tread a foot stands in (`%s` the use key), `swing` as his leg
+## goes up under him, `slipped` out of breath down to the ledge below, `fell`
+## shaken off and caught on the cable, `ride` into the bone at a pitch's top, and
+## `down` the lifts back to the rim once the crown is left. A line not here is
+## not said.
+const CLIMB := {}
+
 const DEFEND := {
 	# Rook, the first time he is spoken to after a raid has been warned on the
 	# holding (48_raids `cast_word`): why shutters, and why the plate.
