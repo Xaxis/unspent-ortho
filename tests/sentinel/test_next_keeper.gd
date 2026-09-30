@@ -2,8 +2,9 @@ extends TestCase
 ## THE SECOND KEEPER (ROADMAP slice 2, step 6; Sentinels.next_keeper): the
 ## nearest keeper of a design not yet taken. On seeds 1 and 7 that is the Tide
 ## Reaper first and the anvil once it is down (seed 7's second Tide Reaper, the
-## nearer, is passed over). Once named by Nell it is the Candlestick; the survey
-## marks its strike field and the lead says it, while it stands.
+## nearer, is passed over). Teague names it the Candlestick (`anvil_named`), and
+## from then the survey marks its strike field and the lead says it in his words,
+## while it stands.
 
 const Sx := preload("res://tests/save/save_fixture.gd")
 
@@ -43,7 +44,15 @@ func test_on_seeds_1_and_7_the_second_keeper_is_the_anvil() -> void:
 		Sx.end(g)
 
 
-func test_once_the_reaper_is_down_the_survey_and_the_lead_point_at_the_strike_field() -> void:
+## Marked on the survey with Teague's word for its ground, at the anvil's lair.
+static func _marked(g: Game, at: Vector2) -> bool:
+	for m: Dictionary in UiMapScreen.told(g):
+		if m.word == StoryContent.TOLD[&"anvil_named"].word and (m.at as Vector2).distance_to(at) < 0.5:
+			return true
+	return false
+
+
+func test_once_teague_has_named_it_the_survey_and_the_lead_point_at_the_strike_field() -> void:
 	Story.forget()
 	Sx.use_root("next-keeper-lead")
 	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0"])
@@ -55,36 +64,47 @@ func test_once_the_reaper_is_down_the_survey_and_the_lead_point_at_the_strike_fi
 	@warning_ignore("return_value_discarded")
 	Story.beat(Guide.REAPER_DOWN)
 	var anvil := Sentinels.next_keeper(states, g.world.spawn)
-	eq(Guide.keeper_goal(g), String(StoryContent.LEAD[&"strike_field"]), "the strike field's lead")
-	var marks := UiMapScreen.told(g)
-	var marked := false
-	for m: Dictionary in marks:
-		marked = marked or (m.word == "the strike field" and (m.at as Vector2).distance_to(anvil.lair) < 0.5)
-	check(marked, "and the survey marks it at the anvil's lair (%s)" % [marks])
+	eq(StoryMap.lair_pos(g.world, &"lair:anvil"), anvil.lair, "the place Teague names is the second keeper's lair")
+	eq(Guide.keeper_goal(g), "", "down, but nobody has named the next: no lead in words not yet said")
+	check(not _marked(g, anvil.lair), "and nothing marked")
+	@warning_ignore("return_value_discarded")
+	Story.beat(&"anvil_named")
+	eq(Guide.keeper_goal(g), String(StoryContent.LEAD[&"anvil"]), "named, the lead in his words")
+	check(_marked(g, anvil.lair), "and the survey marks the strike field at its lair (%s)" % [UiMapScreen.told(g)])
 	anvil.fallen = true
 	eq(Guide.keeper_goal(g), "", "until it falls")
 	Sx.end(g)
 	Story.forget()
 
 
-func test_nell_names_it_the_candlestick() -> void:
+## Teague's reply to "Why do you fight?" is the only door the naming has: Nell,
+## who once had one, talks as she always did.
+func test_teague_names_it_the_candlestick() -> void:
 	Story.forget()
 	eq(Guide.keeper_name(&"glass_desert"), "the keeper", "before anyone has named it")
+	eq(_reply_to(StoryTalk.start(&"teague"), &"mast"), -1, "with the Reaper standing, nothing to ask")
 	@warning_ignore("return_value_discarded")
 	Story.beat(&"reaper_down")
-	var talk := StoryTalk.start(&"nell")
-	var asked := false
-	for r: Dictionary in talk.replies():
-		asked = asked or r.get("to", &"") == &"candlestick"
-	check(asked, "once the Reaper is down, Nell can be asked what keeps the strike field")
-	var at := -1
-	var i := 0
-	for r: Dictionary in talk.replies():
-		if r.get("to", &"") == &"candlestick":
-			at = i
-		i += 1
-	talk.pick(at)
-	check(Story.landed(&"anvil_named"), "and naming it lands anvil_named")
+	var talk := StoryTalk.start(&"teague")
+	var at := _reply_to(talk, &"mast")
+	check(at >= 0, "once the Reaper is down, Teague can be asked what else keeps a yard like that")
+	eq(at, _reply_to(talk, &"kids") + 1, "right after why he fights")
+	check(talk.pick(at), "and he answers")
+	check(Story.landed(&"anvil_named"), "which lands anvil_named")
 	eq(Guide.keeper_name(&"glass_desert"), "the Candlestick", "after which it is the Candlestick")
 	eq(Guide.keeper_name(&"coast"), "the reaper", "and the coast's keeper keeps its own naming")
+	for talk_id: StringName in StoryContent.TALKS:
+		var nodes: Dictionary = StoryContent.TALKS[talk_id].nodes
+		for n: StringName in nodes:
+			if (nodes[n].get("beats", []) as Array).has(&"anvil_named"):
+				eq("%s.%s" % [talk_id, n], "teague.mast", "the naming is Teague's alone")
 	Story.forget()
+
+
+## Where in `talk`'s replies the one going to `node` stands, -1 when not offered.
+static func _reply_to(talk: StoryTalk, node: StringName) -> int:
+	var rs := talk.replies()
+	for i in rs.size():
+		if rs[i].get("to", &"") == node:
+			return i
+	return -1

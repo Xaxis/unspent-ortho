@@ -171,7 +171,7 @@ const BEATS := {
 	&"wrack_new": {"short": "clean tubing", "arc": &"the_lands", "says": "The tide brings in tubing and tank glass from past the point. Everything else in the sea is seventy years old, and that is new."},
 	&"reaper_named": {"short": "the Tide Reaper", "arc": &"the_lands", "says": "The machines' yard past the point is kept by a gantry the tide-pickers call the Tide Reaper. Iron rings off it. A knife tempered in a kiln bites."},
 	&"sea_froze": {"short": "the sea froze", "arc": &"the_lands", "says": "The frost sea was open water in living memory. It froze the winter the machines' posts went out on it, and has not thawed since."},
-	&"anvil_named": {"short": "the Candlestick", "arc": &"the_lands", "says": "The glass desert's strike field is kept by a mast on skates the glass-pickers call the Candlestick. It calls the storm down on the plates."},
+	&"anvil_named": {"short": "the Candlestick", "arc": &"the_lands", "says": "Out on the glass a mast calls the storm down. The glass-pickers call it the Candlestick."},
 	&"glassed_nothing": {"short": "aimed at nothing", "arc": &"the_lands", "says": "Nothing ever stood where the glass desert is. Whatever fused it was aimed at empty sand."},
 	&"fields_tune": {"short": "a few bars", "arc": &"the_lands", "says": "Some nights the server fields' hum drops into a few bars of a tune, the same few, and stops, like somebody who has lost the rest."},
 	&"words_tipped": {"short": "anything with words", "arc": &"the_lands", "says": "What the machines tip in the Middens is ours, never theirs: phones, drives, paper. Anything that ever had words in it."},
@@ -4440,6 +4440,7 @@ const TALKS := {
 				"replies": [
 					{"text": "What's in them?", "pick": &"asked_crates", "to": &"crates"},
 					{"text": "Why do you fight?", "pick": &"asked_why", "to": &"kids"},
+					{"text": "What else keeps a yard like that?", "when": &"reaper_down", "pick": &"asked_next", "to": &"mast"},
 					{"text": "The Covenant knows our roads.", "when": &"teague_sold", "pick": &"faced_him", "to": &"sold"},
 					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
 				],
@@ -4448,6 +4449,8 @@ const TALKS := {
 				"says": ["Mining charge, from before. Enough for a works yard,", "if you put it in the right place. I always do."],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
+			# The second keeper named (`anvil_named`), as Hob names the Reaper.
+			&"mast": {"says": ["Out on the glass there's a mast that calls the storm down into the sand. The pickers call it the Candlestick.", "Its core would keep a holding's cell charged a year. Stand where it's looking and the sky comes down on you."], "beats": [&"anvil_named"], "replies": [{"text": "[leave]", "to": &""}]},
 			&"kids": {
 				"says": ["I had two. Lise and Tam.", "The hunters came for our village after somebody broke a works up the valley."],
 				"replies": [
@@ -5496,7 +5499,6 @@ const TALKS := {
 				"replies": [
 					{"text": "What made the glass?", "pick": &"asked_glass", "to": &"made"},
 					{"text": "[sift with her]", "pick": &"sifted", "to": &"made"},
-					{"text": "What keeps the strike field?", "pick": &"asked_field", "to": &"candlestick", "when": &"reaper_down"},
 					{"text": "[leave]", "to": &""},
 				],
 			},
@@ -5510,12 +5512,6 @@ const TALKS := {
 			},
 			&"why": {
 				"says": ["You try a thing where it can't matter.", "Before you use it where it does."],
-				"replies": [{"text": "[leave]", "to": &""}],
-			},
-			# The second keeper named (`anvil_named`), as Hob names the Reaper.
-			&"candlestick": {
-				"says": ["That's the Candlestick. It skates the plates calling the storm down, and we pick up what the strike leaves."],
-				"beats": [&"anvil_named"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 		},
@@ -5635,9 +5631,10 @@ const LEAD := {
 	&"raft": "A raft, for water no road crosses: driftwood, a piece of plate, rags and an edge.",
 	&"crossing": "Across at the narrows, for the archive on the far shore: put the raft in there.",
 	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
-	# The second keeper (Guide.keeper_goal, Sentinels.next_keeper): from the
-	# Reaper's fall until it falls. Never gating the way on: no key memory.
-	&"strike_field": "The strike field, for the storms it calls on the glass-pickers: the survey marks it.",
+	# The second keeper, keyed by its design (Guide.keeper_goal, Sentinels.next_keeper):
+	# once Teague has named it (`anvil_named`) until it falls. Never gating the way
+	# on: no key memory.
+	&"anvil": "The Candlestick, for its core and the holding's cell: end it at the strike field.",
 	# Slice 3 step 5, after covenant_fed, until the mended plate is carried.
 	&"mend": "Mended plate, for the plate you've spent: a harvester's iron, at a bench.",
 	# Once the plan has taken somebody out of a village that saw him (or he has
@@ -5666,10 +5663,9 @@ const TOLD := {
 	&"marens_lead": {"place": &"the_camp", "word": "the crew"},
 	# Vera's lead, the next leg's (slice 3): across the water, pinned on its bearing.
 	&"war_archive": {"place": &"the_archive", "word": "the archive"},
-	# The second keeper's ground once the first is down: not a cast slot but the
-	# nearest keeper of a design not yet taken (Sentinels.next_keeper), marked
-	# only when it is this design, whose words these are.
-	&"reaper_down": {"keeper": &"anvil", "word": "the strike field"},
+	# Teague's word for the second keeper's ground: a StoryMap place (the anvil's
+	# lair nearest home), not a cast slot.
+	&"anvil_named": {"place": &"lair:anvil", "word": "the strike field"},
 }
 
 # Places marked on the survey only while the pinned goal is theirs (Guide
