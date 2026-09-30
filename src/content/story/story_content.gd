@@ -4958,11 +4958,14 @@ const TALKS := {
 					{"text": "[walk away]", "to": &"leave"},
 				],
 			},
+			# Hearing it is meeting it: the node lands the beat, so its replies are
+			# free to answer (StoryPacing: no node is left with only revelations).
 			&"balance": {
 				"says": ["Down there they count everything but you. Up here I started counting you. I can't stop now.", "Something far off is buying the world, a piece at a time. I won't sell mine.", "Help me keep a little of it out of the bargain. For them."],
+				"beats": [&"enclave_met"],
 				"replies": [
-					{"text": "I'll help.", "pick": &"helped", "beats": [&"enclave_met"], "to": &""},
-					{"text": "[say nothing]", "pick": &"nothing", "beats": [&"enclave_met"], "to": &""},
+					{"text": "I'll help.", "pick": &"helped", "to": &""},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
 				],
 			},
 			&"leave": {
