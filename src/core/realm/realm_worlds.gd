@@ -204,18 +204,23 @@ static func _raise(key: String, seed_value: int, size: int, kind: StringName, ge
 	# Said, so a run can read when a realm stood (tools/web --play): what a shaft
 	# pressed at any moment would have waited for.
 	print("realm %s raised in %d ms" % [kind, Time.get_ticks_msec() - t0])
-	if gen != _gen:
-		# Stopped (or finished) for a game that ended: its stop must not outlive it,
-		# or the next real growing of this world would stop too.
-		WorldGen.unhalt(Realm.seed_for(seed_value, kind), size, kind)
+	# ONE LOCKED STEP, the lock `forget` moves `_gen` and sets its stops under.
+	# Stopped (or finished) for a game that ended: its stop must not outlive it, or
+	# the next real growing of this world would stop too. Finished for this game:
+	# it is no longer growing, so a `forget` from here on has nothing to stop, and
+	# a stop set on it would never be lifted (nothing is left running to lift it).
 	_mutex.lock()
-	# A raise begun for a game that has since ended is not this game's world.
-	# Whoever got here first wins: `take` may have raised it while a task ran.
-	if gen == _gen and not _worlds.has(key):
-		if w != null:
-			_worlds[key] = w
-		else:
-			_failed[key] = true
+	if gen != _gen:
+		WorldGen.unhalt(Realm.seed_for(seed_value, kind), size, kind)
+	else:
+		_grow.erase(key)
+		# A raise begun for a game that has since ended is not this game's world.
+		# Whoever got here first wins: `take` may have raised it while a task ran.
+		if not _worlds.has(key):
+			if w != null:
+				_worlds[key] = w
+			else:
+				_failed[key] = true
 	_mutex.unlock()
 
 

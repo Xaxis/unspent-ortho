@@ -52,8 +52,10 @@ await warned 10
 await marked 8
 wait 0.8
 shot 05-the-tag-on-what-gave-them-away with marked, holding
-# Let the clerk go. What it is carrying gets home, and the holding wears that too.
-await filed 25
+# Let the clerk go. What it is carrying gets home, and the holding wears that too:
+# clear of the yard, or on its own clock (Notices.HOME_MINUTES, ~32 s here) when
+# it is caught against the land short of GOT_AWAY.
+await filed 45
 # The warning is long enough to answer. A plate wall, put up out of what is
 # carried, between the yard and the way they come in.
 tap holding

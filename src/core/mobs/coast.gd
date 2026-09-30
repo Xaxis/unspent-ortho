@@ -91,7 +91,7 @@ func tick() -> void:
 		_rolls_done += 1
 		if not spawning:
 			continue
-		var s := spawner.roll(_rolls_done, sim.world, sim.query, sim.moment, sim.hero.pos, sim.living(), shut())
+		var s := spawner.roll(_rolls_done, sim.world, sim.query, sim.moment, sim.hero.pos, sim.living(), shut(), _creatures())
 		if not s.is_empty():
 			sim.add_mob(s.kind, s.pos)
 			if Roster.row(s.kind).get("approach", &"") == &"dart":
@@ -135,6 +135,15 @@ func tick() -> void:
 	elif first_meeting == 0 and _first_mob.roused() and _first_mob.row.get("on_round", false):
 		# Roused: off its round, and a runner's eyes and ears again.
 		_first_mob.row = Roster.row(_first_mob.kind)
+
+
+## Living bodies that are not machines (Spawner.MAX_CREATURES).
+func _creatures() -> int:
+	var n := 0
+	for m in sim.mobs:
+		if m.alive and not m.removed and not m.machine:
+			n += 1
+	return n
 
 
 ## The kinds that may not come out right now: darts on their gaps, and every

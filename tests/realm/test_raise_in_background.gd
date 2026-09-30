@@ -103,6 +103,31 @@ func test_an_abandoned_raise_stops_early() -> void:
 	RealmWorlds.settle()
 
 
+## A RAISE THAT FINISHED IS NOT STOPPED BY THE GAME ENDING. `forget` halted every
+## world its game had ever begun to raise, finished or not, and a finished raise
+## is past the point that lifts its stop: the halt outlived the game, and the next
+## `WorldGen.generate` of that seed, size and realm stopped at its first stage. A
+## test booting a threaded loading page on seed 4 (it raises its own surface)
+## left every later seed-4 game in the process on a half-made world: the player
+## at the map's middle, in the sea (test_ui_system, test_guide, CI shard 1/8).
+func test_a_finished_raise_leaves_no_stop_behind() -> void:
+	RealmWorlds.forget()
+	RealmWorlds.settle()
+	var seed_value := 90422
+	var size := 64
+	var grown := Realm.seed_for(seed_value, &"underground")
+	RealmWorlds.begin(seed_value, size, &"underground")
+	var deadline := Time.get_ticks_msec() + int(60000.0 * machine_slack())
+	while not RealmWorlds.ready(seed_value, size, &"underground") and Time.get_ticks_msec() < deadline:
+		await tree.process_frame
+	check(RealmWorlds.ready(seed_value, size, &"underground"), "the raise finished")
+	RealmWorlds.forget()
+	RealmWorlds.settle()
+	check(not WorldGen.is_halted(grown, size, &"underground"), "the game ending leaves no stop on a world it finished")
+	var again := WorldGen.generate(grown, size, &"", &"underground")
+	gt(float(again.prop_count()), 0.0, "and the same world grown again is whole")
+
+
 ## A PROCESS THAT ENDS CLAIMS ITS REALMS. A game lets go of its raise (above),
 ## but the process then came apart with that group task still in the pool, never
 ## claimed: `Pages in use exist at exit in PagedAllocator: WorkerThreadPool::Group`
