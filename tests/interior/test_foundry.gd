@@ -154,18 +154,19 @@ func test_a_cast_lance_is_built_on_the_casting() -> void:
 	Fx.done(g)
 
 
-## THE LONG GAME POINTS AT IT: once the burning's glass is held, the goal is the
-## casting, and where it is kept, in the land's own words.
-func test_the_goal_points_at_the_foundry_once_the_glass_is_held() -> void:
+## THE LONG GAME POINTS AT IT: once the burning's glass is held, the making
+## page's "within reach" row is the casting, and where it is kept, in the land's
+## own words.
+func test_the_making_page_points_at_the_foundry_once_the_glass_is_held() -> void:
 	var g := Fx.flat()
 	Survival.build(g, &"fire", true)
 	g.inventory.add(&"pick", 1)
 	g.inventory.add(&"iron_ore", 1)
-	check(not Guide.goal(g).contains("foundry"), "not before the glass: %s" % Guide.goal(g))
+	check(not Guide.within_reach(g).contains("foundry"), "not before the glass: %s" % Guide.within_reach(g))
 	g.inventory.add(&"cinder_glass", 1)
-	var line := Guide.goal(g)
+	var line := Guide.within_reach(g)
 	eq(line, "Lance casting: kept in the foundry, %s." % BiomeRegistry.get_def(&"burning").spoken_in, "the casting and where")
-	lt(float(Hud.goal_clip(line).end.x), float(UiBase.mid_x() - 120), "fits its window: %s" % line)
+	lt(float(UiFont.width(line)), float(UiSlate.LIST.size.x - UiSlate.MARGIN_L - 28), "fits the list: %s" % line)
 	g.inventory.add(&"lance_casting", 1)
-	check(not Guide.goal(g).contains("foundry"), "held, it is not asked for again: %s" % Guide.goal(g))
+	check(not Guide.within_reach(g).contains("foundry"), "held, it is not asked for again: %s" % Guide.within_reach(g))
 	Fx.done(g)

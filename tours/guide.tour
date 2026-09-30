@@ -1,6 +1,6 @@
 # The guided opening, as a player meets it: the standing goal, the key row under
 # it, and what happens to that row when something is in front of you.
-#   tools/tour.sh tours/guide.tour --seed=1 --hour=9 --weather=clear:0 --fit=glide_wing
+#   tools/tour.sh tours/guide.tour --seed=1 --hour=9 --weather=clear:0 --fit=glide_wing --beats=marens_lead
 #
 # THIS TOUR EXISTS BECAUSE A SHOT CANNOT TAKE IT. `58_guide` sets
 # `_off = options.shot != ""`, so the goal and the key row are switched off in
