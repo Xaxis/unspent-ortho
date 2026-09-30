@@ -608,7 +608,7 @@ func _settle_attention() -> void:
 			var hours := SLICE / 60.0
 			if found > 0.0 and quiet:
 				s.attention = Attention.from_found_tech(s.attention, found, hours * pace())
-			if at - float(b["last_read"]) >= QUIET_AFTER:
+			if at - float(b["last_read"]) >= QUIET_AFTER and Attention.quiet(dark, spoofed, masked):
 				var night := SettlementRules.night_at(at) > 0.5
 				s.attention = Attention.cooled(s.attention, hours, dark and night, spoofed, masked)
 			if absf(s.attention - was) > 1e-5:
