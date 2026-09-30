@@ -102,6 +102,7 @@ func _process(delta: float) -> void:
 		return
 	_since = 0.0
 	_stand_things(from)
+	_heard_the_far_shore(from)
 	for row: Dictionary in people:
 		var c := StoryCast.get_def(row.character)
 		var here: bool = (row.pos as Vector2).distance_to(from) <= STREAM and (c == null or c.present())
@@ -120,7 +121,8 @@ func _cast() -> void:
 	_clear()
 	if game == null or game.world == null:
 		return
-	placed = StoryPlan.cast(game.world)
+	placed = StoryPlan.cast(game.world).duplicate()
+	_place_crossing()
 	for c: StoryCharacter in StoryCast.all():
 		if not placed.has(c.at):
 			continue
@@ -136,6 +138,30 @@ func _cast() -> void:
 		# 2026-09-26). Walking up now only puts the made figure in the tree.
 		_dress(row, c)
 		people.append(row)
+
+
+## The first time he stands on the next leg's body (the archive's), it is heard
+## (StoryCrossing.CROSSED): the goal line's crossing is behind him.
+func _heard_the_far_shore(from: Vector2) -> void:
+	if Story.heard(StoryCrossing.CROSSED) or game.world.realm != Realm.SURFACE or not placed.has(&"the_archive"):
+		return
+	var t := Vector2i(from.floor())
+	if not Ground.is_water(game.world.ground_at(t.x, t.y)) and game.world.same_body(from, placed[&"the_archive"].pos):
+		@warning_ignore("return_value_discarded")
+		Story.hear(StoryCrossing.CROSSED)
+
+
+## Where a raft puts in from the home body and lands on the next leg's
+## (StoryCrossing), as two more places: the survey marks the one while the goal is
+## the crossing. A copy of the cast is extended, never StoryPlan's own.
+func _place_crossing() -> void:
+	if game.world.realm != Realm.SURFACE or not placed.has(&"the_camp") or not placed.has(&"the_archive"):
+		return
+	var c := StoryCrossing.find(game.world, placed[&"the_camp"].pos, placed[&"the_archive"].pos)
+	if c.is_empty():
+		return
+	placed[StoryCrossing.LAUNCH] = {"pos": c.launch}
+	placed[StoryCrossing.LANDING] = {"pos": c.land}
 
 
 ## THE STORY'S OWN READABLE THINGS (StoryContent.STOOD): where nothing the world
@@ -358,6 +384,10 @@ func stand(id: StringName, pos: Vector2, facing: float) -> Vector2:
 ## them in one yard: a spot on Vera's far side was nearer Sabine, so `use` opened
 ## the medic's words and `met:vera` never came.
 func tour_place(what: String) -> Vector2:
+	# `slot:NAME`: a place the story cast (or the crossing's), itself.
+	if what.begins_with("slot:"):
+		var slot := StringName(what.substr(5))
+		return placed[slot].pos if placed.has(slot) else Vector2.INF
 	if what.begins_with("stood:"):
 		return _beside_stood(StringName(what.substr(6)))
 	if not what.begins_with("cast:"):

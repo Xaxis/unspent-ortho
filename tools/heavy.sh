@@ -4,7 +4,7 @@
 #   tools/heavy.sh tools/tour.sh tours/x.tour ...
 # At most HEAVY_SLOTS (default 2) run box-wide. A slot opens when more than 32000
 # pages (500 MB) are free on three readings 10 s apart and fewer than HEAVY_SLOTS
-# godot processes are running. Why: with several builders running godot at once the
+# of this game's godot processes are running. Why: with several builders running godot at once the
 # box fell to ~57 MB free (2026-09-28) and the owner's own apps began failing writes;
 # with one slot, one hour-long proof tour stalled every other job behind it.
 # Only a godot binary counts as a running job, matched by process name: a waiter
@@ -19,7 +19,17 @@ slots=${HEAVY_SLOTS:-2}
 end=$(( $(date +%s) + ${HEAVY_WAIT:-10800} ))
 lock=""
 free_pages() { vm_stat | awk '/Pages free/ {gsub("\\.","",$3); print $3}'; }
-running() { pgrep -ix godot | wc -l | tr -d ' '; }
+# Ours: a godot whose working directory is a checkout of this game (every tool
+# runs it with --path . from the tree's root). Another project's editor and
+# imports (Reelwright's cycled all day, 2026-09-30) held six of our jobs 40 min
+# with no slot taken; their memory is the floor's business, not a slot's.
+ours() {
+  pgrep -ix godot | while read -r p; do
+    c=$(lsof -a -d cwd -p "$p" -Fn 2>/dev/null | sed -n 's/^n//p')
+    [ -n "$c" ] && [ -f "$c/tools/heavy.sh" ] && [ -f "$c/src/main.tscn" ] && echo "$p"
+  done
+}
+running() { ours | wc -l | tr -d ' '; }
 # Slot i is the directory /tmp/unspent-heavy.lock[.i]; a slot whose holder is gone
 # (killed shell) is reclaimed.
 reserve=/tmp/unspent-heavy.reserve
@@ -59,7 +69,7 @@ take_all() {
 # A godot up an hour or more with no parent (a probe that errored and never quit)
 # holds a slot for ever; name it so its owner kills it rather than waits on it.
 stale() {
-  pgrep -ix godot | while read -r p; do
+  ours | while read -r p; do
     [ "$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')" = 1 ] || continue
     [ "$(ps -o etime= -p "$p" | awk -F'[-:]' '{print (NF>2)?1:0}')" = 1 ] || continue
     ps -o pid=,etime=,command= -p "$p" | cut -c1-140
