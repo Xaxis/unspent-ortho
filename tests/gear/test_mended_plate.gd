@@ -106,12 +106,16 @@ func test_the_covenant_sends_him_to_mend_the_plate() -> void:
 	Story.choose(Guide.CAMP_PAID, &"paid")
 	g.inventory.add(&"kit_plate", 1)
 	g.body.fed_until = g.clock.minutes + 600.0
-	# Where the story stands by the Covenant: slice 1 and 2 done, the archive's man met.
-	for b: StringName in [&"reaper_named", &"reaper_down", &"built_halcyon", &"holdfast_hope", &"war_archive"]:
+	# Where the story stands by the Covenant: slice 1 and 2 done, the archive's man
+	# and June met, and what the voice kept her from said. The way's hops before
+	# this one are behind him, long since felt.
+	for b: StringName in [&"reaper_named", &"reaper_down", &"built_halcyon", &"holdfast_hope", &"war_archive",
+			&"covenant_speaker", &"june_named", &"june_knew", &"echo_kept"]:
 		@warning_ignore("return_value_discarded")
-		Story.beat(b)
-	@warning_ignore("return_value_discarded")
-	Story.meet(&"otto")
+		Story.beat(b, -INF)
+	for who: StringName in [&"otto", &"june"]:
+		@warning_ignore("return_value_discarded")
+		Story.meet(who)
 	var mend := String(StoryContent.LEAD[&"mend"])
 	check(Guide.goal(g) != mend, "not before the Covenant")
 	@warning_ignore("return_value_discarded")
