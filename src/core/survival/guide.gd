@@ -332,6 +332,7 @@ const WAY: Array[Dictionary] = [
 	{"key": &"raft", "after": &"war_archive", "has": &"raft", "heard": [StoryCrossing.PUT_IN, StoryCrossing.CROSSED], "met": &"otto"},
 	{"key": &"crossing", "after": &"war_archive", "heard": [StoryCrossing.CROSSED], "met": &"otto"},
 	{"key": &"archive", "after": &"war_archive", "met": &"otto"},
+	{"key": &"mend", "after": &"covenant_fed", "has": &"plate_mended"},
 ]
 
 
@@ -382,6 +383,7 @@ static func _hop_done(game: Game, hop: Dictionary) -> bool:
 const GOAL_MAKES := {
 	&"holding": {"piece": StructureKind.LEAN_TO},
 	&"armour": {"recipe": &"kit_plate"},
+	&"mend": {"recipe": &"plate_mended"},
 }
 
 

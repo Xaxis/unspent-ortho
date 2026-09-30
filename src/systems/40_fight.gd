@@ -708,6 +708,11 @@ func _handle(events: Array[Dictionary]) -> void:
 				var face := (pb.pos - hero.pos).normalized() * hero.radius if pb != null else Vector2.ZERO
 				MobFx.glint(fx, _at3(hero.pos + face, 1.1), Palette.PLATE[4], int(sim.now), 0.6)
 				Events.sfx.emit(&"hit_plate", player.position)
+			&"plate_spent":
+				# Spent by the blows it turned: it turns nothing now, and what mends
+				# it is said once, where he is (Items `worn_by`, Crafting `mend_kit`).
+				_seen_spent = true
+				Events.message.emit(StoryContent.MENDED["spent"])
 			&"turned":
 				# The scale coat turned a blow at the back (FightKit.scale): the
 				# scales ring where it struck and throw a glint, and no hurt.
@@ -889,6 +894,8 @@ var _raked_at := -INF
 var _grip_failed_at := -INF
 var _turned_at := -INF
 var _plated_at := -INF
+## The worn plate was spent in a fight (tour_seen `plate_spent`).
+var _seen_spent := false
 var _share_turned_at := -INF
 var _cabled_at := -INF
 var _came_round_at := -INF
@@ -911,6 +918,8 @@ func tour_seen(what: StringName) -> bool:
 		# The plate has just taken its share of a blow landing on him.
 		&"plated":
 			return now - _plated_at < 2.0
+		&"plate_spent":
+			return _seen_spent
 		# The bench plate is on his back.
 		&"plate_on":
 			return FightRules.wears(game.inventory, &"plate")
