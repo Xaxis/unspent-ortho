@@ -326,6 +326,11 @@ const WAY: Array[Dictionary] = [
 	{"key": &"yard", "after": &"reaper_down", "until": &"built_halcyon"},
 	{"key": &"rook_again", "after": &"built_halcyon", "until": &"holdfast_hope"},
 	{"key": &"vera", "after": &"holdfast_hope", "until": &"war_archive"},
+	# Across the water (slice 3): a raft until one is carried or put in, the
+	# narrows until he has stood on the far body, then the archive. Having met the
+	# archive's man he has crossed, however he did, so that ends both as well.
+	{"key": &"raft", "after": &"war_archive", "has": &"raft", "heard": [StoryCrossing.PUT_IN, StoryCrossing.CROSSED], "met": &"otto"},
+	{"key": &"crossing", "after": &"war_archive", "heard": [StoryCrossing.CROSSED], "met": &"otto"},
 	{"key": &"archive", "after": &"war_archive", "met": &"otto"},
 	{"key": &"mend", "after": &"covenant_fed", "has": &"plate_mended"},
 ]
@@ -350,17 +355,25 @@ static func way_goal(game: Game) -> String:
 	for hop: Dictionary in WAY:
 		if not Story.landed(hop.after):
 			continue
-		var done := false
-		if hop.has("met"):
-			done = Story.met(hop.met)
-		elif hop.has("has"):
-			done = game.inventory != null and game.inventory.has(hop.has)
-		else:
-			done = Story.landed(hop.until)
-		if not done and StoryContent.LEAD.has(hop.key):
+		if not _hop_done(game, hop) and StoryContent.LEAD.has(hop.key):
 			_key = hop.key
 			return String(StoryContent.LEAD[hop.key])
 	return ""
+
+
+## Whether a WAY hop is behind him: a beat landed (`until`), a person met (`met`),
+## or, for the crossing, a thing carried (`has`) or something he did heard (`heard`).
+static func _hop_done(game: Game, hop: Dictionary) -> bool:
+	if hop.has("until") and Story.landed(hop.until):
+		return true
+	if hop.has("met") and Story.met(hop.met):
+		return true
+	if hop.has("has") and game.inventory.has(hop.has):
+		return true
+	for key: StringName in hop.get("heard", []):
+		if Story.heard(key):
+			return true
+	return false
 
 
 ## WHAT THE PINNED GOAL IS SHORT OF: the items the thing it asks him to make still

@@ -563,6 +563,10 @@ func tour_seen(what: StringName) -> bool:
 	if String(what).begins_with("goal:"):
 		return _goal != "" and String(_goal_key) == String(what).substr(5)
 	match what:
+		# The goal drawn under the health bar: not waiting on a place's ping or on
+		# its own line still standing on the record (Hud.goal_shown).
+		&"goal_shown":
+			return game.hud.goal_shown()
 		&"ping":
 			return game.hud.place_alpha() > 0.0 and game.hud.place != ""
 		&"badge_answered":

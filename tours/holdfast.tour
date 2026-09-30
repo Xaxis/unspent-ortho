@@ -283,7 +283,7 @@ wait 0.4
 shot 12-the-archive-across-the-water with talking,beat:war_archive
 press pause
 wait 1.5
-shot 13-the-way-on with goal:archive
+shot 13-the-way-on with goal:raft
 press map 0.2
 await app:map 6
 wait 0.6
@@ -405,7 +405,7 @@ tap use
 await made 8
 tap pause
 wait 1.0
-shot 16-a-holding-founded with holding,goal:archive
+shot 16-a-holding-founded with holding,goal:raft
 village 0
 wait 1.5
 near holding_ask

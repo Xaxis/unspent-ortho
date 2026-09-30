@@ -70,7 +70,7 @@ wait 0.4
 shot 04-the-archive-across-the-water with talking,beat:war_archive
 press pause
 wait 0.8
-shot 05-the-goal-is-the-archive with beat:war_archive,goal:archive
+shot 05-the-goal-is-a-raft-for-the-archive with beat:war_archive,goal:raft
 
 press map 0.2
 await app:map 6
