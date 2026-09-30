@@ -67,6 +67,21 @@ focus_audio_driver() {
 }
 
 
+## Frame pacing for a run nobody watches. On Linux the far-corner window is never
+## presented by the compositor except about once a second, and vsync makes every
+## frame wait for that present: a tour ran at 1 fps (2026-09-30, `wait 3.0` took
+## 180 s wall, 1.3 s without vsync). Off macOS, unless the run is watched, vsync is
+## off; a run on the wall clock is held at 60 fps, the rate the Mac's vsync gave
+## it, and a run on a fixed step (pass its rate) goes as fast as it can.
+##   godot ... $(focus_frame_flags "$TOUR_FIXED_FPS") ...
+focus_frame_flags() {
+	[ "$(uname)" = "Darwin" ] && return 0
+	[ "${UNSPENT_KEEP_FOCUS:-0}" = "1" ] && return 0
+	printf '%s' "--disable-vsync"
+	[ -n "${1:-}" ] || printf ' %s' "--max-fps 60"
+}
+
+
 ## Where to put the window: far outside any screen, unless a person means to watch.
 focus_position() {
 	if [ "${UNSPENT_KEEP_FOCUS:-0}" = "1" ]; then
