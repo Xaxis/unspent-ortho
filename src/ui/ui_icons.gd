@@ -66,6 +66,9 @@ const SHAPES := {
 	&"flask": ["...kkk...", "...k3k...", "...k2k...", "..k3552k.", ".k355441k", ".k554441k", ".k444411k", "..kkkkkk.", "........."],
 	&"hone": [".........", ".........", "....kkkkk", "..kk3w32k", "kk33322kk", "k22221kk.", "kkkkkk...", ".........", "........."],
 	&"kit": [".........", "..kkkkk..", ".k33332k.", "k3w22w21k", "k2222221k", ".k22221k.", "..k2221k.", "...kkkk..", "........."],
+	# The bench plate mended: a band of cord lashed across it and a patch of a
+	# harvester's iron let into its foot (plate_mended).
+	&"kit_patched": [".........", "..kkkkk..", ".k33352k.", "k3w25w21k", "k5555551k", ".k23321k.", "..k3351k.", "...kkkk..", "........."],
 	&"dram": [".......k.", "......k2k", ".....k33k", "....k3l2k", "...k3l2k.", "..k3l2k..", ".k322k...", "k1kkk....", "kk......."],
 	&"paper": [".........", ".kkkkkk..", ".k3333kk.", ".k3kk33k.", ".k33333k.", ".k3kkk3k.", ".k33333k.", ".kkkkkkk.", "........."],
 	&"berries": [".....kk..", "....k5k..", "..kkkkkk.", ".k3wk3wk.", ".k21k21k.", "..kk3wkk.", "...k21k..", "....kk...", "........."],
@@ -135,6 +138,7 @@ const ITEMS := {
 	&"stun_hand": [&"hammer", &"plate", &"lens"],
 	&"plasma_torch": [&"torch", &"found", &"lens"],
 	&"kit_plate": [&"kit", &"plate", &"plate"],
+	&"plate_mended": [&"kit_patched", &"plate", &"plate"],
 	&"kit_brace": [&"brace", &"plate", &"plate"],
 	&"kit_rig": [&"rig", &"plate", &"plate"],
 	&"kit_lens": [&"lens", &"plate", &"lens"],
@@ -279,6 +283,10 @@ static func style_of(id: StringName) -> Array:
 ## slate reads it in the stolen module's violet.
 static func is_found(id: StringName) -> bool:
 	if id == &"":
+		return false
+	# Mended is read before salvage kit: the mended plate is machine plate on a
+	# made mend, not a thing cut whole off a machine.
+	if Gear.is_mended(id):
 		return false
 	var d := Items.def(id)
 	if d.get("stuff", &"") == &"found" or d.get("group", &"") == &"found" or d.has("kit"):

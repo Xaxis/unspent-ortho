@@ -95,6 +95,21 @@ func wear(id: StringName, uses: int = 1) -> bool:
 	return false
 
 
+## Spend a piece of kit that meets blows (Items `worn_by`) by `uses` of them. Its
+## condition is kept where a tool's edge is. True the moment it is spent, so the
+## caller can say so once.
+func spend_kit(id: StringName, uses: int = 1) -> bool:
+	var by := int(Items.def(id).get("worn_by", 0))
+	if by <= 0 or not has(id):
+		return false
+	var before := edge(id)
+	if before <= 0:
+		return false
+	edges[id] = maxi(0, before - roundi(uses * 10000.0 / by))
+	changed.emit()
+	return edges[id] == 0
+
+
 ## True if the worn piece of kit is for `slot` (plate brace rig lens aerial).
 func wears(slot: StringName) -> bool:
 	return worn != &"" and Items.def(worn).get("kit", &"") == slot

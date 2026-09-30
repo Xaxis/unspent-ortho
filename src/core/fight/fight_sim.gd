@@ -2274,13 +2274,20 @@ func _hurt_hero(by: MobState, dmg: int, dir: Vector2, knock: float, knock_ms: in
 		dmg = 0
 	# The bench plate turns a share of a hunter's or a raider's blow (never a
 	# keeper's), the part short of a whole point carried to the next blow.
+	# A worn plate is spent by the blows it meets, and spent it turns nothing
+	# until it is mended (Items `worn_by`, Crafting `mend_kit`).
+	var plate: StringName = hero.inventory.worn if hero.inventory != null and hero.plated else &""
 	if dmg > 0 and hero.plated and by != null and not Sentinels.is_keeper(by.row) \
-			and (by.role == Roles.HUNTER or by.raider or by.sent):
-		var turned := float(dmg) * FightRules.PLATE_TURNS + hero.plate_owed
+			and (by.role == Roles.HUNTER or by.raider or by.sent) \
+			and (plate == &"" or hero.inventory.edge(plate) > 0):
+		var share := float(Items.def(plate).get("turns", FightRules.PLATE_TURNS)) if plate != &"" else FightRules.PLATE_TURNS
+		var turned := float(dmg) * share + hero.plate_owed
 		var off := mini(floori(turned), dmg)
 		hero.plate_owed = turned - float(off)
 		dmg -= off
 		emit(&"plated", {"at": hero.pos, "attacker": by, "turned": off, "damage": dmg})
+		if plate != &"" and hero.inventory.spend_kit(plate):
+			emit(&"plate_spent", {"at": hero.pos, "item": plate})
 	hero.health -= dmg
 	hero.invuln_until = now + FightRules.HURT_IFRAMES_MS
 	# A clamp keeps the feet where they stand (FightKit.clamp); rooted by the

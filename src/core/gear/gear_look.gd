@@ -21,26 +21,31 @@ const NAMED: Array[String] = ["hat", "coat"]
 const LISTED: Array[String] = ["extras", "salvage", "gear"]
 
 
-static func compose(bare: Dictionary, loadout: Loadout) -> Dictionary:
+## `kit`: the piece of salvage kit worn (Inventory.worn), which is on the body
+## too though no slot holds it: the plate over the shoulder.
+static func compose(bare: Dictionary, loadout: Loadout, kit: StringName = &"") -> Dictionary:
 	var out := bare.duplicate(true)
 	out["kit"] = true
-	if loadout == null:
-		return out
-	for slot in Gear.SLOTS:
-		for id in loadout.ids_in(slot):
-			var wears: Dictionary = Items.def(id).get("wears", {})
-			for k: String in NAMED:
-				if wears.has(k):
-					out[k] = StringName(str(wears[k]))
-			for k: String in LISTED:
-				if not wears.has(k):
-					continue
-				var have: Array = (out.get(k, []) as Array).duplicate()
-				for v: Variant in wears[k]:
-					var name := StringName(str(v))
-					if not have.has(name):
-						have.append(name)
-				out[k] = have
+	var ids: Array[StringName] = []
+	if loadout != null:
+		for slot in Gear.SLOTS:
+			ids.append_array(loadout.ids_in(slot))
+	if kit != &"":
+		ids.append(kit)
+	for id in ids:
+		var wears: Dictionary = Items.def(id).get("wears", {})
+		for k: String in NAMED:
+			if wears.has(k):
+				out[k] = StringName(str(wears[k]))
+		for k: String in LISTED:
+			if not wears.has(k):
+				continue
+			var have: Array = (out.get(k, []) as Array).duplicate()
+			for v: Variant in wears[k]:
+				var name := StringName(str(v))
+				if not have.has(name):
+					have.append(name)
+			out[k] = have
 	return out
 
 
