@@ -67,6 +67,9 @@ var _avatar_chosen := false
 var _hour := 12.0
 ## The island whose raise `_raise_island` began, or -1.
 var _raised_for := -1
+## Workers a pool must have beyond this before the realm below is raised beside
+## the island rather than after it (`_step_island`).
+const SPARE_BELOW := 4
 ## Whether the realms under that island have been begun (once it stands).
 var _below_begun := false
 
@@ -214,14 +217,18 @@ func _raise_island(w: WorldData, s: int) -> void:
 ## Keep the island's raise going (a begin refused while the last island's halted
 ## raise finishes is asked again), and the realm under it beside it: every shaft
 ## of a world goes to the realm beyond its own (Portals), so which realm that is
-## does not wait on the island. It takes one worker, and the island the rest; begun
-## only once the island stood, it was still raising 95 s into a game started at once.
+## does not wait on the island. Beside it, it takes one worker and the island the
+## rest; begun only once the island stood, it was still raising 95 s into a game
+## started at once (desktop). Where the pool has only SPARE_BELOW workers or fewer
+## (the web's four) that one worker is a quarter of the island's pool, which made
+## the island 48-52 s instead of ~37 (web, measured), so there it waits.
 func _step_island() -> void:
 	if _raised_for < 0 or _below_begun:
 		return
 	var n := options.size
-	@warning_ignore("return_value_discarded")
-	RealmWorlds.begin(_raised_for, n, Realm.beyond(Realm.SURFACE))
+	if OS.get_processor_count() > SPARE_BELOW and not OS.has_feature("web"):
+		@warning_ignore("return_value_discarded")
+		RealmWorlds.begin(_raised_for, n, Realm.beyond(Realm.SURFACE))
 	# Where the coast is the whole island (a small world) there is nothing to raise.
 	var island: WorldData = world if world != null and world.size == n and world.seed_value == _raised_for else null
 	if island == null:

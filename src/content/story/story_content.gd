@@ -2663,7 +2663,7 @@ const FRAGMENTS := {
 			"A machine lamp hung from a vine, a rag over",
 			"it to turn it down.",
 			"",
-			"It came off a walker that went into the",
+			"It came off a hunter that went into the",
 			"canopy and did not come out.",
 		],
 	},
