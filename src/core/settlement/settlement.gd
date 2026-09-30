@@ -52,6 +52,10 @@ var hunger := 0.0
 ## (48_raids, slice 2 step 4): nobody works, and a snatcher must break the boards
 ## to reach whoever they bar (`barred`). Out again when the raid is over.
 var inside := false
+## The world minute it went up (-INF: before anything kept count, an old save).
+## The plan gives a new holding a working day before it warns of more than a look
+## (48_raids FIRST_WARNING_AFTER).
+var founded_at := -INF
 var _next_piece := 1
 var _next_person := 1
 
@@ -304,7 +308,7 @@ func as_dict() -> Dictionary:
 		"pieces": out_pieces, "people": people, "looks": _looks_out(),
 		"stores": SaveCodec.counts(stores), "tally": tally,
 		"attention": attention, "night": night, "charge": charge,
-		"worked_at": SaveCodec.num(worked_at), "hunger": hunger, "inside": inside,
+		"worked_at": SaveCodec.num(worked_at), "hunger": hunger, "inside": inside, "founded_at": SaveCodec.num(founded_at),
 		"next_piece": _next_piece, "next_person": _next_person,
 	}
 
@@ -337,6 +341,7 @@ static func from_dict(d: Dictionary) -> Settlement:
 	s.worked_at = SaveCodec.to_num(d.get("worked_at", -INF), -INF)
 	s.hunger = float(d.get("hunger", 0.0))
 	s.inside = bool(d.get("inside", false))
+	s.founded_at = SaveCodec.to_num(d.get("founded_at", -INF), -INF)
 	s._next_piece = SaveCodec.to_int(d.get("next_piece", s.pieces.size() + 1), s.pieces.size() + 1)
 	s._next_person = SaveCodec.to_int(d.get("next_person", s.people.size() + 1), s.people.size() + 1)
 	return s

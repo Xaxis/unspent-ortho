@@ -102,6 +102,11 @@ const PARTY_AT_GATE := 5.0
 ## World minutes after a step is over before the same holding is warned again:
 ## the plan does not send two parties at one place in an afternoon.
 const COOL_OFF := 240.0
+## World minutes a holding stands before anything more than a survey is warned on
+## it. Found at once (a mast-loud yard read by a clerk), a raid could be warned
+## within hours of the first beam going up, before Rook had said a word about
+## shutters; the owner's floor is a working day's grace.
+const FIRST_WARNING_AFTER := 12.0 * 60.0
 ## Sim ms a snatcher has to stand in the yard before it gets somebody out.
 const SNATCH_MS := 5000.0
 ## Sim ms of getting no nearer to what it came for before a raider steps aside
@@ -675,6 +680,10 @@ func _escalate() -> void:
 		if i < 0:
 			continue
 		if _plan_for(s.id) != null:
+			continue
+		if RaidStage.name_of(i) != RaidStage.SURVEY and now - s.founded_at < FIRST_WARNING_AFTER:
+			# A working day to hear why and put the shutters up: a look may come,
+			# but nothing more until the place has stood FIRST_WARNING_AFTER.
 			continue
 		if RaidStage.name_of(i) == RaidStage.SURVEY and bool(b["surveyed"]):
 			# They have already been and looked. Nothing comes again until the
@@ -2141,6 +2150,9 @@ func _stage() -> void:
 	for s in places():
 		var was := s.attention
 		s.attention = attention_out
+		# Staged as read that far, it has stood that long too.
+		if game.clock != null:
+			s.founded_at = minf(s.founded_at, game.clock.minutes - FIRST_WARNING_AFTER)
 		Events.attention_changed.emit(s.id, was, s.attention)
 
 
