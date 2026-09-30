@@ -218,10 +218,11 @@ const DEFS := {
 	# `worn_by`: blows it meets before it is spent (Inventory.spend_kit); spent, it
 	# turns nothing until mended at the bench (Crafting `mend_kit`). `turns`: the
 	# share of a blow it turns while it holds (FightRules.PLATE_TURNS when unsaid).
-	&"kit_plate": {"name": "plate armour", "bulk": 3.0, "group": &"kit", "kit": &"plate", "health": 3, "worn_by": 60},
+	&"kit_plate": {"name": "plate armour", "bulk": 3.0, "group": &"kit", "kit": &"plate", "health": 3, "worn_by": 60,
+		"wears": {"salvage": [&"plate"]}},
 	# The bench plate patched with a harvester's iron: the mended tier of it.
 	&"plate_mended": {"name": "mended plate", "bulk": 3.0, "group": &"kit", "kit": &"plate", "health": 3,
-		"tier": &"mended", "turns": 0.35, "worn_by": 120},
+		"tier": &"mended", "turns": 0.35, "worn_by": 120, "wears": {"salvage": [&"plate_mended"]}},
 	&"kit_brace": {"name": "brace", "bulk": 2.0, "group": &"kit", "kit": &"brace", "wind": 700.0},
 	&"kit_rig": {"name": "rig", "bulk": 2.0, "group": &"kit", "kit": &"rig", "creel": 20.0},
 	&"kit_lens": {"name": "lens", "bulk": 1.0, "group": &"kit", "kit": &"lens", "sight": 3.0},

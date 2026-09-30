@@ -49,7 +49,7 @@ const EXTRAS: Array[StringName] = [&"rolled", &"apron", &"buckle", &"shawl", &"n
 const KIT_EXTRAS: Array[StringName] = [&"mitts"]
 ## Salvage only a player's fitted kit wears, never dealt to a villager: the vane
 ## cloak's blades (Items `cloak_vane`).
-const KIT_SALVAGE: Array[StringName] = [&"vanes"]
+const KIT_SALVAGE: Array[StringName] = [&"vanes", &"plate_mended"]
 const SALVAGE: Array[StringName] = [&"plate", &"brace", &"rig", &"gauntlet", &"tally", &"aerial", &"lens", &"mask", &"breastplate"]
 ## Mended tech and scavenging kit (PersonGear):
 ##   respirator  a machine filter on a rag mask      goggles  two machine lenses on a strap
