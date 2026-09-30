@@ -185,9 +185,9 @@ const NIGHT_AMBIENT := 0.21
 ## night sky stands over it (`BiomeDef.night_sky`) and the coast stays 1.0.
 ##
 ## It is an amount of light and the ground throws back its albedo of it, so a
-## pale landscape asks for LESS than the coast, not more: salt, snow and bone at
-## 1.2-1.4 measured a midnight median luma of 77-86 against the coast's 21, which
-## is day under a blue filter (docs/LOOK.md law 2: night is really dark).
+## pale landscape asks for LESS than the coast, not more: salt, snow, bone and sea
+## ice at 1.2-1.4 measured a midnight median luma of 76-122 against the coast's
+## 20, which is day under a blue filter (docs/LOOK.md law 2: night is really dark).
 ##
 ## These two are the floor and the ceiling on what a content file may ask for,
 ## and they are not negotiable from the content layer: a landscape that could set
@@ -195,9 +195,9 @@ const NIGHT_AMBIENT := 0.21
 ## which is the `noir` direction that was rejected as unplayable. MOST is the
 ## other end — a landscape bright enough at midnight to make a lantern pointless
 ## is not a night either.
-## The floor is for dark ground, which is where luma 24 is a risk; pale ground
-## at the floor still measures a median near 40.
-const NIGHT_SKY_LEAST := 0.3
+## The floor is for dark ground, which is where luma 24 is a risk; the palest
+## ground there is, snow, asks for the floor and measures a median of 45.
+const NIGHT_SKY_LEAST := 0.2
 const NIGHT_SKY_MOST := 1.80
 
 ## --- A LID OVER A LANDSCAPE (`BiomeDef.sky_shut`) ---
