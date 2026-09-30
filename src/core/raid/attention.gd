@@ -55,7 +55,8 @@ const LURED := 0.25
 ##                 it (SETTLE.md S5); `tests/settlement/test_what_can_be_built.gd`
 ##                 fails if that changes without this line changing with it.
 ##   stopped       a record destroyed before it travelled
-##   quiet         a quiet world hour: nothing read the place and nothing came
+##   quiet         a quiet world hour: nothing read the place, nothing came, and it
+##                 is running dark, masked or spoofed (`quiet`)
 ##   keeper_fell   the region's keeper is gone; its network is quiet for good
 ##
 ## What a step SPENDS when it has been paid is not here: it is per stage, in
@@ -100,6 +101,15 @@ static func of(cause: StringName) -> float:
 ## What `cause` does to `attention`, clamped to the scale. Returns the new value.
 static func raised(attention: float, cause: StringName, scale: float = 1.0) -> float:
 	return clampf(attention + of(cause) * maxf(0.0, scale), 0.0, 1.0)
+
+
+## Whether a holding nobody is reading is QUIET, and so forgets: running dark,
+## masked, or answered for by the player's signet. A lit, lived-in place that no
+## machine happened to pass is not quiet; it is still giving itself away, and the
+## plan keeps what it has on it. Cooling every unread lit hour took 0.29 a day
+## off a hearth read three times a day, more than a survey is worth.
+static func quiet(dark: bool, spoofed: bool, masked: float) -> bool:
+	return dark or spoofed or masked > 0.0
 
 
 ## What a quiet stretch takes off. `hours` world hours; `dark` the place is under
