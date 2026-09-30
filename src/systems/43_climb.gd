@@ -72,7 +72,8 @@ var leg_view: LegScript
 ## The colossi's walker being climbed, as its index in their view's defs.
 var walker := -1
 var _cam: Camera3D
-## The tread a climb can begin from where he stands now, or {} (`_watch_rim`).
+## The foot a climb can begin on from where he stands now, or {} (`_watch_rim`,
+## one of `_feet_in_treads`).
 var _rim: Dictionary = {}
 var _hinted := false
 var _settle := 0.0
@@ -106,19 +107,20 @@ func started() -> void:
 		_stage(game.options.climb)
 
 
-## `--climb=PITCH[:HOLD]`: hung at that hold, up the leg of the tread nearest the
-## start.
+## `--climb=PITCH[:HOLD]`: hung at that hold, up the leg standing in (or over)
+## the tread nearest the start.
 func _stage(spec: String) -> void:
 	var parts := spec.split(":")
 	var p := -1
 	for i in WalkerClimb.PITCHES.size():
 		if String(WalkerClimb.PITCHES[i].id) == parts[0] or str(i) == parts[0]:
 			p = i
-	var m := _nearest_tread()
-	if p < 0 or m.is_empty() or not _walker_of(m):
-		push_warning("--climb: no pitch %s, or no tread here with its walker drawn" % parts[0])
+	var feet := _feet_in_treads()
+	if p < 0 or feet.is_empty():
+		push_warning("--climb: no pitch %s, or no foot in a tread here with its walker drawn" % parts[0])
 		return
-	var c := WalkerClimb.begin(int(m.leg), game.world.seed_value)
+	walker = int(feet[0].walker)
+	var c := WalkerClimb.begin(int(feet[0].leg), game.world.seed_value)
 	c.pitch = p
 	c.hold = clampi(parts[1].to_int() if parts.size() > 1 else 0, 0, c.holds_in(p) - 1)
 	_begin(c)
@@ -157,29 +159,25 @@ func _colossi() -> Node:
 	return get_tree().get_first_node_in_group(&"colossi")
 
 
-## The tread nearest the player: where the walker's foot comes down in this world.
-func _nearest_tread() -> Dictionary:
-	var best := {}
-	for m: Dictionary in game.world.landmarks:
-		if StringName(m.get("kind", &"")) != &"tread":
-			continue
-		if best.is_empty() or (m.pos as Vector2).distance_to(game.player.pos) < (best.pos as Vector2).distance_to(game.player.pos):
-			best = m
-	return best
-
-
-## Take tread `m`'s walker as the one climbed; false when the colossi are not
-## drawing it this run.
-func _walker_of(m: Dictionary) -> bool:
+## Every foot standing in a tread, or over one, now, nearest the player first:
+## {walker (its index in the colossi's view), leg, pads (Array[Vector3], tile
+## space), planted}. Asked of the walks the treads were handed to
+## (Treads.over), never of the world's whole list of landmarks.
+func _feet_in_treads() -> Array:
+	var out: Array = []
 	var c := _colossi()
-	if c == null or c.get("view") == null:
-		return false
-	var defs: Array = c.view.defs
-	for i in defs.size():
-		if defs[i].id == StringName(m.walker):
-			walker = i
-			return true
-	return false
+	if c == null or c.get("view") == null or game.player == null:
+		return out
+	var m: float = c.call(&"minutes")
+	for i in (c.view.defs as Array).size():
+		var d: RefCounted = c.view.defs[i]
+		for o: Dictionary in Treads.over(d, c.view.routes[i], m):
+			var t: Vector4 = o.tread
+			var centre := Vector2(t.x, t.z)
+			out.append({"walker": i, "leg": int(o.leg), "planted": bool(o.planted),
+				"pads": Treads.pads(d, centre, t.w), "d": centre.distance_to(game.player.pos)})
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.d) < float(b.d))
+	return out
 
 
 func _process(delta: float) -> void:
@@ -191,7 +189,7 @@ func _process(delta: float) -> void:
 	var c := _colossi()
 	if climb == null:
 		leg_view.update(null, null, {}, 0.0)
-		_watch_rim(c, use_edge)
+		_watch_rim(use_edge)
 		_cost_us = Time.get_ticks_usec() - t0
 		return
 	if c == null or walker < 0:
@@ -304,14 +302,12 @@ func _say(key: StringName) -> void:
 
 
 ## Where a climb can begin, and the press that begins it.
-func _watch_rim(c: Node, use_edge: bool) -> void:
+func _watch_rim(use_edge: bool) -> void:
 	_rim = {}
-	if c == null or c.get("view") == null or game.player == null:
-		return
-	var here: Vector2 = game.player.pos
-	var m := _nearest_tread()
-	if not m.is_empty() and _at_rim(m, here) and _walker_of(m) and _planted(c, m):
-		_rim = m
+	for f: Dictionary in _feet_in_treads():
+		if bool(f.planted) and _at_rim(f.pads, game.player.pos):
+			_rim = f
+			break
 	if _rim.is_empty():
 		_hinted = false
 		return
@@ -321,21 +317,14 @@ func _watch_rim(c: Node, use_edge: bool) -> void:
 		if line != "":
 			Events.hint.emit(PlayerSettings.spell(line, [&"use"]), PlayerSettings.cap_of(&"use"))
 	if use_edge and not game.input_blocked() and not _spent_elsewhere():
+		walker = int(_rim.walker)
 		_begin(WalkerClimb.begin(int(_rim.leg), game.world.seed_value))
 
 
-static func _at_rim(m: Dictionary, here: Vector2) -> bool:
-	for p: Vector3 in (m.pads as Array):
+## Whether `here` is on or inside the rim of a crater a pad of `pads` stands in.
+static func _at_rim(pads: Array, here: Vector2) -> bool:
+	for p: Vector3 in pads:
 		if Vector2(p.x, p.y).distance_to(here) <= Treads.rim_r(p) + RIM_REACH:
-			return true
-	return false
-
-
-## Whether tread `m`'s leg is standing in it now.
-func _planted(c: Node, m: Dictionary) -> bool:
-	for o: Dictionary in Treads.over(c.view.defs[walker], c.view.routes[walker], float(c.call(&"minutes"))):
-		var t: Vector4 = o.tread
-		if int(o.leg) == int(m.leg) and bool(o.planted) and Vector2(t.x, t.z).distance_to(m.pos as Vector2) < 1.0:
 			return true
 	return false
 

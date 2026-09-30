@@ -122,6 +122,9 @@ func test_the_hub_reads_the_panel_and_its_talk_let_go_puts_him_down() -> void:
 	Input.action_release(&"move_up")
 	eq(c.state, WalkerClimb.DONE, "the last hold is the hub")
 	check(g.talking and story.get("talk") != null and (story.get("talk") as StoryTalk).id == &"the_enclave", "and the panel there answers")
+	# The key that took him up the last hold is still down as it opens, and is
+	# not a press on its replies (measured: the first reply offered was the last).
+	eq(int((story.get("view") as UiTalkView).choice), 0, "the climb's key is not a reply")
 	check(Story.knows(&"enclave_panel"), "which is read")
 	var minutes := g.clock.minutes
 	story.call(&"_close")

@@ -195,6 +195,13 @@ func _process(delta: float) -> void:
 	if view.showing():
 		_read_talk_keys(use_pressed)
 		return
+	# A KEY ALREADY DOWN AS THE WORDS OPEN IS NOT A PRESS ON THEM. The talk's own
+	# keys are read for their edges, so they are followed while nothing is up
+	# too: the move up key that took him up a walker's last hold opened the
+	# enclave with its cursor wrapped round onto the last reply (43_climb).
+	_up_down = InputMap.has_action(&"move_up") and Input.is_action_pressed(&"move_up")
+	_down_down = InputMap.has_action(&"move_down") and Input.is_action_pressed(&"move_down")
+	_back_down = InputMap.has_action(&"pause") and Input.is_action_pressed(&"pause")
 	if game.input_blocked():
 		return
 	if use_pressed and not _use_already_spent():

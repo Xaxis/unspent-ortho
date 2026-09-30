@@ -80,7 +80,6 @@ const LOOK_FROM := 3000.0
 
 func test_the_patch_lies_on_the_body() -> void:
 	var def: RefCounted = Def.tripod(&"C")
-	var climb := WalkerClimb.begin(0, 1)
 	var far := Model.build(def, true).surface_get_arrays(0)
 	var drum := PackedVector3Array()
 	# The stub's cage rides the shin, not the foot, so where it stands against the
@@ -88,25 +87,33 @@ func test_the_patch_lies_on_the_body() -> void:
 	for part: StringName in FootModel.PARTS:
 		if part != &"stub":
 			drum.append_array(FootModel.build(def, part).verts)
-	for p in WalkerClimb.PITCHES.size():
-		var foot := int(WalkerClimb.PITCHES[p].bone) == WalkerClimb.FOOT
-		var top := float(WalkerClimb.PITCHES[p].levels) * WalkerClimb.LEVEL
-		var box := AABB(climb.surface_at(def, p, 0.0, 0.0, 0.0), Vector3.ZERO)
-		var samples: Array[Vector3] = []
-		for up: float in [-Leg.MARGIN, 0.0, top * 0.5, top, top + Leg.MARGIN]:
-			for across: float in [-Leg.HALF_W, -Leg.HALF_W * 0.5, 0.0, Leg.HALF_W * 0.5, Leg.HALF_W]:
-				samples.append(Vector3(up, across, 0.0))
-				var at := Leg._at(def, climb, p, up, across, 0.0)
-				box = box.expand(at).expand(at + Vector3(at.x, 0.0, at.z).normalized() * LOOK_FROM)
-		box = box.grow(1.0)
-		var tris := _tris_in(drum if foot else _bone_tris(far, climb.bone_index(p)), box)
-		for s: Vector3 in samples:
-			var at := Leg._at(def, climb, p, s.x, s.y, 0.0)
-			var out := Vector3(at.x, 0.0, at.z).normalized()
-			var hit := _first_hit(tris, at + out * LOOK_FROM, -out)
-			var proud := LOOK_FROM - hit
-			check(proud <= 0.02 and proud >= -LIES_WITHIN, "pitch %s at %.0f m up, %.0f across: the body is %s the patch's skin" % [
-				WalkerClimb.PITCHES[p].id, s.x, s.y, "nowhere behind" if is_inf(hit) else "%+.2f m out of" % proud])
+	# Every leg's: a leg's own pitches are the same in its bone's frame, but the
+	# hatch is on the hub a flat round from that leg's own hip.
+	for leg in 3:
+		for p in WalkerClimb.PITCHES.size():
+			if leg == 0 or int(WalkerClimb.PITCHES[p].bone) == WalkerClimb.HUB:
+				_lies_on(def, far, drum, WalkerClimb.begin(leg, 1), p)
+
+
+func _lies_on(def: RefCounted, far: Array, drum: PackedVector3Array, climb: WalkerClimb, p: int) -> void:
+	var foot := int(WalkerClimb.PITCHES[p].bone) == WalkerClimb.FOOT
+	var top := float(WalkerClimb.PITCHES[p].levels) * WalkerClimb.LEVEL
+	var box := AABB(climb.surface_at(def, p, 0.0, 0.0, 0.0), Vector3.ZERO)
+	var samples: Array[Vector3] = []
+	for up: float in [-Leg.MARGIN, 0.0, top * 0.5, top, top + Leg.MARGIN]:
+		for across: float in [-Leg.HALF_W, -Leg.HALF_W * 0.5, 0.0, Leg.HALF_W * 0.5, Leg.HALF_W]:
+			samples.append(Vector3(up, across, 0.0))
+			var at := Leg._at(def, climb, p, up, across, 0.0)
+			box = box.expand(at).expand(at + Vector3(at.x, 0.0, at.z).normalized() * LOOK_FROM)
+	box = box.grow(1.0)
+	var tris := _tris_in(drum if foot else _bone_tris(far, climb.bone_index(p)), box)
+	for s: Vector3 in samples:
+		var at := Leg._at(def, climb, p, s.x, s.y, 0.0)
+		var out := Vector3(at.x, 0.0, at.z).normalized()
+		var hit := _first_hit(tris, at + out * LOOK_FROM, -out)
+		var proud := LOOK_FROM - hit
+		check(proud <= 0.02 and proud >= -LIES_WITHIN, "leg %d pitch %s at %.0f m up, %.0f across: the body is %s the patch's skin" % [
+			climb.leg, WalkerClimb.PITCHES[p].id, s.x, s.y, "nowhere behind" if is_inf(hit) else "%+.2f m out of" % proud])
 
 
 ## The triangles of the far body skinned to `bone`.
