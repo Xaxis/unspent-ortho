@@ -470,15 +470,36 @@ const FRAGMENTS := {
 	},
 	&"broadcast": {
 		"kind": &"terminal", "title": "a radio, still on", "lands": [],
-		"lines": [
-			"...and we are grateful. We are fed, we are dry,",
-			"and nobody has come for us in forty years.",
-			"That is not nothing. Goodnight.",
-			"",
-			"An old woman's voice. You stand there a while",
-			"after it ends.",
-		],
+		"lines": BROADCAST,
 		"beats": [&"covenant_speaker"],
+	},
+	# THE SPEAKER'S HOUSE (slice 3 step 2, ROOMS home:speaker): her own set, where
+	# the voice on every stray relay comes from. The same words; its own read, so
+	# the house pays covenant_speaker off whether or not a relay has already.
+	&"speaker_set": {
+		"kind": &"terminal", "title": "a radio, still on",
+		"lines": BROADCAST,
+		"beats": [&"covenant_speaker"],
+	},
+	&"home_speaker_photo": {
+		"kind": &"mark", "title": "the wall",
+		"lines": [
+			"A photograph pinned beside the set, turned",
+			"to face the wall.",
+			"",
+			"The pin has been taken out and put back",
+			"many times.",
+		],
+	},
+	&"home_speaker_card": {
+		"kind": &"mark", "title": "the card",
+		"lines": [
+			"Tonight's words on a card by the set, in",
+			"a steady hand. The last is crossed out and",
+			"written again:",
+			"",
+			"goodnight.",
+		],
 	},
 	# --- Priya Nand's pages ---------------------------------------------------
 	# After the war the Holdfast copied her notes by hand and passed them round
@@ -3528,6 +3549,18 @@ const FRAGMENTS := {
 # the tank he came out of is not a notice in somebody's village. The key is the
 # place's own name (StorySlot.NEEDS), which is what a placer knows it by.
 
+## The Speaker's broadcast: heard on a stray relay anywhere (`broadcast`) and
+## from her own set in her house (`speaker_set`).
+const BROADCAST: Array[String] = [
+	"...and we are grateful. We are fed, we are dry,",
+	"and nobody has come for us in forty years.",
+	"That is not nothing. Goodnight.",
+	"",
+	"An old woman's voice. You stand there a while",
+	"after it ends.",
+]
+
+
 const PLACED := {
 	&"black_site": [&"growth_bay", &"volunteers", &"release_order"],
 	# The first works, where Cairn's lab stood (then_lab mirrors it): his last
@@ -3535,6 +3568,9 @@ const PLACED := {
 	# handler met him (then_meet): the page nobody ever opened the box for.
 	&"the_yard": [&"yard_commits"],
 	&"the_camp": [&"handler_note"],
+	# The Covenant's own notice, at its seat (slice 3 step 2): read where it is
+	# posted, not on any sign in any landscape.
+	&"the_covenant": [&"covenant_notice"],
 	# At the channel, when the orbital realm is grown: until then it stands nowhere.
 	&"the_channel": [&"channel_console"],
 	# Ring Four, when the orbital realm is grown: the case Calloway sent up.
@@ -3548,6 +3584,7 @@ const PLACED := {
 const STOOD := {
 	&"the_yard": PropKind.CONSOLE,
 	&"the_camp": PropKind.DOC_BOX,
+	&"the_covenant": PropKind.SIGN,
 }
 
 # --- words that belong to a kind of room ---------------------------------------
@@ -3566,6 +3603,13 @@ const ROOMS := {
 		&"wall:whiteboard": [&"bunker_board"],
 		&"wall:cot": [&"bunker_drawing"],
 		&"desk:vault_door": [&"bunker_files"],
+	},
+	# The Speaker's house (StoryRooms.SPEAKER, `furnish`): her set, the card by
+	# it, the photograph turned to the wall.
+	&"home:speaker": {
+		&"terminal:radio": [&"speaker_set"],
+		&"desk:home": [&"home_speaker_card"],
+		&"wall:home": [&"home_speaker_photo"],
 	},
 	&"bunker:kerr": {
 		&"terminal:desk": [&"kerr_count"],

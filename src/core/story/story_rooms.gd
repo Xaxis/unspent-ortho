@@ -121,6 +121,12 @@ const PRIYA := &"priya"
 const HOLDFAST := &"holdfast"
 const CAME := &"came"
 const NEVER := &"never"
+## THE SPEAKER'S HOUSE (slice 3 step 2): the house nearest the Covenant's own
+## place is hers, and her set is in it: where the voice every landscape hears on
+## a stray relay comes from (StoryContent.ROOMS home:speaker).
+const SPEAKER := &"speaker"
+## The house kinds a Speaker's house can be (the cottage's plans: `furnish`).
+const SPEAKER_KINDS: Array[StringName] = [&"home", &"cottage"]
 const TENANTS: Array[StringName] = [HIS, KERR, PRIYA, HOLDFAST, CAME, NEVER]
 ## Past his and Kerr's, the order the rest are dealt in; any left over waited
 ## for a family that never came.
@@ -160,13 +166,23 @@ static func tenants(world: WorldData) -> Dictionary:
 
 static func _deal(world: WorldData) -> Dictionary:
 	var bunkers: Array[Threshold] = []
+	var houses: Array[Threshold] = []
 	for t: Threshold in Interiors.thresholds(world):
 		if t.kind == &"bunker":
 			bunkers.append(t)
+		elif SPEAKER_KINDS.has(t.kind):
+			houses.append(t)
 	var out := {}
+	var cast := StoryPlan.cast(world)
+	if cast.has(&"the_covenant") and not houses.is_empty():
+		var seat: Vector2 = cast[&"the_covenant"].pos
+		var hers := houses[0]
+		for t: Threshold in houses:
+			if t.host.distance_squared_to(seat) < hers.host.distance_squared_to(seat):
+				hers = t
+		out[hers.key] = SPEAKER
 	if bunkers.is_empty():
 		return out
-	var cast := StoryPlan.cast(world)
 	var home := world.spawn
 	bunkers.sort_custom(func(a: Threshold, b: Threshold) -> bool:
 		return a.host.distance_squared_to(home) < b.host.distance_squared_to(home))
@@ -195,6 +211,25 @@ static func _deal(world: WorldData) -> Dictionary:
 	for t: Threshold in rest:
 		out[t.key] = NEVER
 	return out
+
+
+## Lay the tenant's own room over what the recipe laid (InteriorGen.grow). The
+## Speaker's: her set stands where the house put its first shelf, chest or patch
+## (a wall spot already clear of the bed and the way in), and her three slots are
+## the only words in the room: the set, the card on the table, the wall by it.
+static func furnish(l: InteriorLayout, tenant: StringName) -> void:
+	if tenant != SPEAKER:
+		return
+	for th: Dictionary in l.things:
+		if th.kind in [&"shelf", &"chest", &"patch"]:
+			th.kind = &"radio"
+			# Cottage._solid's radio: a wireless on its stand.
+			th.solid = 0.3
+			l.slots.clear()
+			l.slots.append({"slot": &"terminal", "thing": &"radio", "at": th.at, "face": th.face})
+			l.slots.append({"slot": &"wall", "thing": &"home", "at": th.at, "face": th.face})
+			l.slots.append({"slot": &"desk", "thing": &"home", "at": l.table, "face": Vector2(0, 1)})
+			return
 
 
 ## Only the tests want this.

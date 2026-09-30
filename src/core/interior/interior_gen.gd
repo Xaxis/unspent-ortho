@@ -17,7 +17,9 @@ class Pocket:
 	var threshold: Threshold
 
 
-static func grow(seed_value: int, t: Threshold) -> Pocket:
+## `tenant`: who the story says keeps this door (StoryRooms.tenants), whose room
+## is laid over the recipe's (StoryRooms.furnish).
+static func grow(seed_value: int, t: Threshold, tenant: StringName = &"") -> Pocket:
 	var k := Interiors.kind(t.kind)
 	if k == null:
 		return null
@@ -29,6 +31,8 @@ static func grow(seed_value: int, t: Threshold) -> Pocket:
 		l = k.recipe.call(&"lay", rng, t.land)
 	else:
 		l = k.recipe.call(&"lay", rng)
+	if tenant != &"":
+		StoryRooms.furnish(l, tenant)
 	_turn(l, _quantize(t.out))
 	var w := WorldData.new(seed_value, l.size)
 	w.realm = Realm.INTERIOR
