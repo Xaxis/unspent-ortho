@@ -5574,6 +5574,9 @@ const LEAD := {
 	&"yard": "The yard's oldest screen, for what it was too busy to show you: the yard is dark now.",
 	&"rook_again": "Back to the crew, with what the yard told you: they want someone who knows the old machines.",
 	&"vera": "The Holdfast's leader, for what she wants of you: she is waiting at the camp.",
+	# The crossing (slice 3): a raft, then the narrows, then the archive.
+	&"raft": "A raft, for water no road crosses: driftwood, a piece of plate, rags and an edge.",
+	&"crossing": "Across at the narrows, for the archive on the far shore: put the raft in there.",
 	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
 	# Once the plan has taken somebody out of a village that saw him (or he has
 	# seen the price), until a holding of his stands: Guide.way_goal, Holding.
@@ -5601,6 +5604,13 @@ const TOLD := {
 	&"marens_lead": {"place": &"the_camp", "word": "the crew"},
 	# Vera's lead, the next leg's (slice 3): across the water, pinned on its bearing.
 	&"war_archive": {"place": &"the_archive", "word": "the archive"},
+}
+
+# Places marked on the survey only while the pinned goal is theirs (Guide
+# last_goal_key), keyed by that goal: where to put the raft in, while the goal is
+# the crossing (StoryCrossing, placed by 49_cast).
+const TOLD_WHILE := {
+	&"crossing": {"place": &"the_crossing", "word": "the narrows"},
 }
 
 # The name the goal lines use for a landscape's keeper once `reaper_named` has

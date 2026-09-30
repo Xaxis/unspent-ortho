@@ -63,9 +63,12 @@ func test_a_pair_of_stones_and_a_circle_elsewhere_are_no_ring() -> void:
 ## Where no landscape in reach has a hush, a look walks no props: 23_hush looks
 ## four times a second everywhere, and on a web build under a cave lid the walk
 ## was a 6-8 ms frame every quarter second (tours/cave-cost.tour, 23_hush the
-## top driven cost of the slow frames). A dense coast field against the
-## interpreted yardstick; walking its props read tens of yardsticks.
-const LOOK_BAR := 1.0
+## top driven cost of the slow frames). A dense coast field against the grid
+## ruler, since the look is a scan of country bytes: sixteen looks read 0.5 and
+## walking the props reads tens of yardsticks. The interpreted yardstick drifted
+## 1.8x across CI's CPUs against it, past the space to its doubling.
+const LOOK_BAR := 0.7
+const LOOKS := 16
 
 
 func test_a_look_where_no_landscape_has_a_hush_walks_no_props() -> void:
@@ -77,11 +80,14 @@ func test_a_look_where_no_landscape_has_a_hush_walks_no_props() -> void:
 	var q := WorldQuery.new(w)
 	var at := Vector2(80.0, 80.0)
 	check(not HushSites.hush_in(w, at, 50.0), "no hush landscape in reach")
-	var look := func() -> void: HushSites.near(w, q, at, 40.0)
+	# One look is a few microseconds; sixteen are timed so the ruler reads them.
+	var look := func() -> void:
+		for i in LOOKS:
+			HushSites.near(w, q, at, 40.0)
 	var twice := func() -> void:
-		HushSites.near(w, q, at, 40.0)
-		HushSites.near(w, q, at, 40.0)
-	var got := yard_sample(look, twice, yard_work())
+		for i in LOOKS * 2:
+			HushSites.near(w, q, at, 40.0)
+	var got := yard_sample(look, twice, grid_work())
 	yard_lt(got[0], got[1], got[2], LOOK_BAR, "a hush look over a coast full of props")
 
 
