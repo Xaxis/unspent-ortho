@@ -76,7 +76,7 @@ func _pick(t: StoryTalk, text: String) -> bool:
 
 
 ## Slice 2 done, the far shore's threads behind him long ago, and Solis has just
-## said whose roads he is sold and the road up.
+## said whose roads he is sold; let go with [leave], he has said the road up.
 func _told(seed_value: int) -> Game:
 	Story.forget()
 	Sx.use_root("walker-lead-%d" % seed_value)
@@ -96,8 +96,9 @@ func _told(seed_value: int) -> Game:
 	for who: StringName in [&"otto", &"june"]:
 		@warning_ignore("return_value_discarded")
 		Story.meet(who)
-	Story.beat(&"teague_sold")
-	Story.beat(&"walker_told")
+	var t := StoryTalk.start(&"solis")
+	check(_pick(t, "How do you know where I came from?") and _pick(t, "[leave]"), "Solis asked, then let go")
+	check(Story.landed(&"teague_sold") and Story.landed(&"walker_told"), "his word, and the road up as he lets him go")
 	return g
 
 
