@@ -148,9 +148,9 @@ func test_every_name_a_tour_asks_for_exists() -> void:
 					check(parts.size() == 2, "%s line %d: `ground` takes one comma-joined list; write a space as _" % [f, n])
 					for k: String in parts[1].split(",", false):
 						check(Ground.NAMES.has(k.replace("_", " ")), "%s line %d: no ground %s" % [f, n, k])
-				"back" when parts.size() > 1 and parts[1].begins_with("place:"):
-					# `back place:NAME DIST`: a named place, found on the world as `place` finds it.
-					check(parts.size() == 3 and parts[2].is_valid_float(), "%s line %d: `back place:NAME DIST` takes a place and a distance" % [f, n])
+				"back" when parts.size() > 1 and parts[1] == "here":
+					# `back here DIST`: out from where he stands, so a distance and nothing else.
+					check(parts.size() == 3 and parts[2].is_valid_float(), "%s line %d: `back here DIST` takes a distance" % [f, n])
 				"back":
 					for k: String in parts[1].split(",", false):
 						check(PropKind.NAMES.has(k.replace("_", " ")), "%s line %d: no prop kind %s to stand back from" % [f, n, k])

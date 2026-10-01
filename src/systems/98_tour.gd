@@ -17,9 +17,10 @@ extends GameSystem
 ##   back KIND DIST         stand DIST tiles out from the nearest prop of a kind, on
 ##                          open ground with open ground between, facing it (for a
 ##                          run held INTO it: `walkto prop:KIND SECS run through`)
-##   back place:NAME DIST   stand DIST tiles out from a named place (as `place`), on dry
-##                          ground the whole way, facing it: up the screen where its
-##                          land runs that way, else the nearest way round that is dry
+##   back here DIST         stand DIST tiles out from where he stands (a `place` just
+##                          stood at), on dry ground the whole way, facing back at it:
+##                          up the screen where the land runs that way, else the
+##                          nearest way round that is dry
 ##   near KIND[,KIND]       stand beside the nearest prop of a kind, facing it; a
 ##                          name that is no prop kind is asked of the systems'
 ##                          `tour_place` (`near colossus_foot`: under an ankle)
@@ -376,8 +377,8 @@ func _run() -> void:
 				_marks[parts[1]] = game.player.pos
 			"back":
 				var dist := parts[2].to_float() if parts.size() > 2 else 2.0
-				if parts[1].begins_with("place:"):
-					ok = await _stand_off_place(parts[1].substr(6), dist)
+				if parts[1] == "here":
+					ok = await _stand_off_here(dist)
 				else:
 					ok = await _stand_back(parts[1], dist)
 			"at":
@@ -1208,17 +1209,14 @@ func _walk_to_prop(kinds: String, secs: float, run: bool = false, through: bool 
 	return false
 
 
-## Stand `dist` tiles out from a named place (GenPlaces), on dry ground with
-## every tile of the way dry, facing it. Up the screen first, away from the
-## camera, so a tall thing stands on the near side of the frame; else the way
+## Stand `dist` tiles out from where he stands, on dry ground with every tile of
+## the way dry, facing back at it. Up the screen first, away from the camera, so
+## a tall thing he stood at stands on the near side of the frame; else the way
 ## nearest to that which stays dry. Which way the land runs from a place is the
 ## world's business: a walk up the screen from seed 1's lighthouse ended in the
 ## surf, and the frame's `land:coast` failed on the sea.
-func _stand_off_place(name: String, dist: float) -> bool:
-	var at := GenPlaces.find(game.world, name)
-	if at.x < 0.0:
-		printerr("tour %s: no place %s" % [_name, name])
-		return false
+func _stand_off_here(dist: float) -> bool:
+	var at := game.player.pos
 	# Up the screen as the keys mean it (`walk 0,-1`), the camera's yaw and all.
 	var up := Player.screen_to_world(Vector2(0, -1), game.camera.yaw_now()).angle()
 	for turn in 25:
@@ -1238,7 +1236,7 @@ func _stand_off_place(name: String, dist: float) -> bool:
 		Survival.face(game, (at - spot).angle())
 		await get_tree().physics_frame
 		return true
-	printerr("tour %s: no dry ground %.1f tiles out from %s at %s" % [_name, dist, name, at])
+	printerr("tour %s: no dry ground %.1f tiles out from %s" % [_name, dist, at])
 	return false
 
 
