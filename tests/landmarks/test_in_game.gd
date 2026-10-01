@@ -135,10 +135,11 @@ func test_the_island_carries_the_mass_of_every_landmark_it_holds() -> void:
 	await frames(1)
 
 
-## THE PRESS THAT OPENS A CACHE IS THE CACHE'S (22_landmarks `use_spent`). One
-## press at seed 1's nearest cache opened it and read the terminal beside it;
-## facing nothing with words, it opened it and, by a fire and peckish, ate the
-## stew too. The words and the ground wait for the next press.
+## A CACHE TAKES THE PRESS FROM THE GROUND, NEVER FROM WHAT HE FACES (22_landmarks
+## `use_spent`, `_cache_wins`). One press at seed 1's nearest cache opened it and
+## read the terminal beside it; facing nothing with words, it opened it and, by a
+## fire and peckish, ate the stew too. Facing the words, the press is theirs and
+## the cache waits; facing nothing, the cache's, and nothing else answers it.
 func test_the_press_that_opens_a_cache_answers_nothing_else() -> void:
 	var g := _game(PackedStringArray(["--seed=1", "--size=256", "--hour=11", "--weather=clear:0"]))
 	await frames(4)
@@ -151,8 +152,8 @@ func test_the_press_that_opens_a_cache_answers_nothing_else() -> void:
 	sites.sort_custom(func(a: LandmarkSite, b: LandmarkSite) -> bool: return a.pos.distance_to(g.player.pos) < b.pos.distance_to(g.player.pos))
 	check(sites.size() >= 2, "two caches to open")
 	g.inventory.add(&"stew", 2)
-	# Facing words, then facing none: the first cache read as it opened, the
-	# second ate as it opened.
+	# The first cache has a terminal beside it: faced, then turned from. The
+	# second is opened facing nothing.
 	for i in 2:
 		var site := sites[i]
 		var at := Landmarks.cache_of(site)
@@ -160,22 +161,22 @@ func test_the_press_that_opens_a_cache_answers_nothing_else() -> void:
 		g.player.pos = at
 		check(Survival.add_prop(g, PropKind.FIRE, at + Vector2(-1.5, 0.0), 0.0, 0.3) != null, "a fire by %s" % site.id)
 		await frames(30)
-		var faced := false
-		for k in 16:
-			g.player.facing = TAU * k / 16.0
-			g.player.hero.facing = g.player.facing
-			var words: bool = story.call("_readable_in_front") != null or not (story.call("_person_in_front") as Dictionary).is_empty()
-			if words == (i == 0):
-				faced = true
-				break
-		check(faced, "%s: a way to face %s" % [site.id, "words" if i == 0 else "nothing"])
 		g.body.fed_until = g.clock.minutes - 120.0
 		var stew := g.inventory.count(&"stew")
 		await frames(2)
 		check(sys.get("reachable") != null and Survival.at_rest(g) and g.body.hunger_level(g.clock.minutes) == 1,
 			"%s: in reach of the cache, by a fire, peckish" % site.id)
+		if i == 0:
+			check(_face(g, story, true), "%s: a way to face the words beside it" % site.id)
+			await _press_use()
+			check(story.view.showing(), "%s: facing the words, the press reads them" % site.id)
+			check(not sys.state.is_opened(site.id), "%s: and the cache waits" % site.id)
+			eq(g.inventory.count(&"stew"), stew, "%s: and nothing is eaten" % site.id)
+			story.call("_close")
+			await frames(2)
+		check(_face(g, story, false), "%s: a way to face nothing with words" % site.id)
 		await _press_use()
-		check(sys.state.is_opened(site.id), "%s: the press opens the cache" % site.id)
+		check(sys.state.is_opened(site.id), "%s: facing nothing, the press opens the cache" % site.id)
 		check(not story.view.showing(), "%s: and reads nothing" % site.id)
 		eq(g.inventory.count(&"stew"), stew, "%s: and eats nothing" % site.id)
 		if story.view.showing():
@@ -183,6 +184,17 @@ func test_the_press_that_opens_a_cache_answers_nothing_else() -> void:
 		await frames(2)
 	g.queue_free()
 	await frames(1)
+
+
+## Turn him, round the compass, until the story would (or would not) answer what
+## he faces with words.
+func _face(g: Game, story: Node, words: bool) -> bool:
+	for k in 16:
+		g.player.facing = TAU * k / 16.0
+		g.player.hero.facing = g.player.facing
+		if bool(story.call("faces_words")) == words:
+			return true
+	return false
 
 
 ## The real key, as a player presses it.

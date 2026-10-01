@@ -240,10 +240,16 @@ func _watch() -> void:
 ## half a tile nearer than it was enough to send the key to the bush — every
 ## time, for good, because the player has no way to see which of the two won.
 ##
-## So a cache that has never been opened takes the key whenever it is in reach.
-## Nothing is lost by it: the instant it is open it stops being reachable, and
-## the bush is under the hand again on the next press.
+## So a cache that has never been opened takes the key whenever it is in reach,
+## over the ground; but never over what he faces. A person or words in front of
+## him (49_story `faces_words`) take the press, and the cache waits for the next:
+## the archive's man stands beside the archive's cache, and the key that meant
+## "talk to Otto" opened the locker. Nothing is lost by it: the instant the cache
+## is open it stops being reachable, and the bush is under the hand again.
 func _cache_wins() -> bool:
+	for s in game.systems:
+		if s != self and s.has_method(&"faces_words") and bool(s.call(&"faces_words")):
+			return false
 	return true
 
 
