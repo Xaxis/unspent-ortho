@@ -29,6 +29,8 @@ extends RefCounted
 ## thing on it (docs/LOOK.md: a machine is a dark mass by day). Vertex alpha
 ## under 0.98 marks light, as it does on every FOUND model.
 
+const Def := preload("res://src/core/colossus/colossus_def.gd")
+
 ## How many rigid parts the mesh is skinned to: the hub, then three per leg.
 const BONES := 10
 const LEGS := 3
@@ -168,14 +170,8 @@ func _hub(d: RefCounted) -> void:
 	var top: float = d.spire_top - base
 	var r: float = d.hub_radius
 	# Keel, belly, belt and rims: the hull the legs hang from.
-	var hull := [
-		Vector2(0.0, lo - 400.0), Vector2(260.0, lo - 380.0), Vector2(420.0, lo),
-		Vector2(r * 0.42, lo + 500.0), Vector2(r * 0.66, lo + 1200.0), Vector2(r * 0.86, lo + 2000.0),
-		Vector2(r * 0.97, -350.0), Vector2(r * 1.04, 0.0), Vector2(r * 1.04, 380.0),
-		Vector2(r * 0.95, 520.0), Vector2(r * 0.98, 900.0), Vector2(r * 1.08, 1050.0),
-		Vector2(r * 0.90, 1350.0), Vector2(r * 0.78, 1700.0),
-	]
-	_lathe(Vector3.ZERO, hull, 16, [DARK, DARK, DARK, BODY, BODY, BODY, BODY, RIM, PLATE, BODY, RIM, PLATE, BODY], PI / 16.0)
+	var hull: Array = d.hull_profile()
+	_lathe(Vector3.ZERO, hull, Def.HULL_SIDES, [DARK, DARK, DARK, BODY, BODY, BODY, BODY, RIM, PLATE, BODY, RIM, PLATE, BODY], PI / float(Def.HULL_SIDES))
 	# The hub ring: a cold strip round the belt, under the rim.
 	_strip(r * 0.97, -420.0, 16, 1.07, 360.0)
 	# The tower: plated courses narrowing up to the crown, a collar between each.
@@ -391,19 +387,12 @@ func _leg(d: RefCounted, k: int) -> void:
 	# THIGH (bone 1 + 3k): tapered, with a sleeve at the hip and one mid-way, and
 	# a tendon strut along its inner face (local -X is toward the body).
 	_bone = 1 + 3 * k
-	var thigh: Array = []
-	var bands := [0.0, 0.04, 0.07, 0.10, 0.22, 0.36, 0.46, 0.49, 0.53, 0.56, 0.70, 0.84, 0.94, 1.0]
+	# Sleeves stand proud where two courses of plate meet (ColossusDef).
+	var thigh: Array = d.thigh_profile()
 	var cols: Array = []
-	for i in bands.size():
-		var t: float = bands[i]
-		var w := lerpf(t_r.x, t_r.y, t)
-		# Sleeves: a band stands proud where two courses of plate meet.
-		if i == 2 or i == 8:
-			w *= 1.14
-		thigh.append(Vector2(w, t * l1))
+	for i in thigh.size():
 		cols.append(RIM if i == 1 or i == 7 else (PLATE if i % 3 == 0 else BODY))
-	thigh[0] = Vector2(t_r.x * 0.8, 0.0)
-	var sides := 12 if _detail else 8
+	var sides := Def.LEG_SIDES if _detail else 8
 	_lathe(Vector3.ZERO, thigh, sides, cols, PI / float(sides))
 	if _detail:
 		_thigh_works(d)
@@ -420,15 +409,9 @@ func _leg(d: RefCounted, k: int) -> void:
 	# SHIN (bone 2 + 3k): long, narrowing to the ankle, ringed densest near the
 	# ground where the air thickens fastest.
 	_bone = 2 + 3 * k
-	var shin: Array = []
+	var shin: Array = d.shin_profile()
 	var sc: Array = []
-	var n := 18
-	for i in n + 1:
-		var t := 1.0 - pow(1.0 - float(i) / float(n), 1.6)
-		var w := lerpf(s_r.x, s_r.y, pow(t, 0.8))
-		if i == 3 or i == 9:
-			w *= 1.18
-		shin.append(Vector2(w, t * l2))
+	for i in shin.size():
 		sc.append(RIM if i == 2 or i == 8 else (PLATE if i % 4 == 0 else BODY))
 	_lathe(Vector3.ZERO, shin, sides, sc, PI / float(sides))
 	if _detail:

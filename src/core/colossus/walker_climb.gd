@@ -28,6 +28,8 @@ extends RefCounted
 ## kills: a fall is caught by a cable at the pitch's foot, wounded, and time
 ## passes (owner ruling 2026-09-30).
 
+const Def := preload("res://src/core/colossus/colossus_def.gd")
+
 enum { CLIMB, RIDE, DONE }
 
 ## Which bone of a leg (pose.bones: 0 the hub, then thigh, shin, foot per leg).
@@ -36,15 +38,25 @@ const SHIN := 2
 const FOOT := 3
 const HUB := 0
 
-## The route up, foot to hub. `at` is where on the bone the pitch starts (the
-## share of its length from its root), `levels` how high it climbs, `ride` the
-## real seconds inside the bone to the next pitch's foot.
+## The route up, foot to hub. On the thigh and the shin `at` is where the pitch
+## starts as a share of the bone from its root, and it climbs toward the root; on
+## the drum and the hub `from` is the height up the bone's own Y it starts at.
+## `levels` is how high it climbs and `ride` the real seconds inside the bone to
+## the next pitch's foot.
+##
+## EACH IS ON A CLEAN RUN OF PLATE, with the patch drawn round it
+## (colossus_leg_model.gd, HALF_W either side and MARGIN past each end): clear of
+## the sleeves, the knee's flange and ball, the hip's drive ring and its struts
+## and the thigh's beacons (colossus_model.gd); on the drum between the belt's
+## top edge and the lip's, whose sharp creases a flat plate would cut; on the hub,
+## on the rim's upright band under its top edge. tests/render/test_walker_leg.gd
+## holds every one of them to the body it is drawn on.
 const PITCHES: Array[Dictionary] = [
-	{"id": &"drum", "bone": FOOT, "levels": 40, "ride": 60.0},
-	{"id": &"knee", "bone": SHIN, "at": 0.02, "levels": 30, "ride": 30.0},
-	{"id": &"thigh", "bone": THIGH, "at": 0.5, "levels": 60, "ride": 40.0},
-	{"id": &"hip", "bone": THIGH, "at": 0.03, "levels": 40, "ride": 30.0},
-	{"id": &"hatch", "bone": HUB, "levels": 30, "ride": 0.0},
+	{"id": &"drum", "bone": FOOT, "from": -29.0, "levels": 30, "ride": 60.0},
+	{"id": &"knee", "bone": SHIN, "at": 0.05, "levels": 30, "ride": 30.0},
+	{"id": &"thigh", "bone": THIGH, "at": 0.40, "levels": 60, "ride": 40.0},
+	{"id": &"hip", "bone": THIGH, "at": 0.12, "levels": 40, "ride": 30.0},
+	{"id": &"hatch", "bone": HUB, "from": 356.0, "levels": 30, "ride": 0.0},
 ]
 
 const LEVEL := 0.5
@@ -61,9 +73,13 @@ const SWING_DRAIN_TIMES := 3.0
 const STANCE_REGEN := 150.0
 ## Under this breath when his leg sets down, the quake shakes him off.
 const SLIP_BELOW := 400.0
-## The ankle drum's radius, and how far out from the hub's centre the hatch is.
-const DRUM_R := 150.0
-const HATCH_R := 1800.0
+## A pitch's surface stands this far proud of the flat of the body under it, so
+## the two never fight for a pixel.
+const SKIN := 0.1
+## The hatch is on the hub's rim this many degrees round from the leg's own hip,
+## on the middle of the nearest flat of the hull: clear of the outrigger the hip
+## hangs on and of the lens that faces the way it walks.
+const HATCH_TURN := -22.5
 ## A fall's cost: a wound per FALL_LEVELS levels fallen, at most WOUND_MOST, and
 ## the world minutes spent hanging on the cable before he climbs on.
 const FALL_LEVELS := 10
@@ -82,7 +98,7 @@ var busy := 0.0
 var wound := 0
 var lost_minutes := 0.0
 var _was_swinging := false
-## The one body design's leg taper, for a hold's wander round the bone.
+## The one body design, for a hold's wander round the bone.
 static var _tripod: RefCounted = null
 
 
@@ -95,7 +111,9 @@ static func begin(leg_index: int, world_seed: int) -> WalkerClimb:
 
 ## Hold `i` of pitch `p`: Vector2(level up the pitch, angle round the bone).
 func hold_at(p: int, i: int) -> Vector2:
-	var r := _radius(PITCHES[p], 0.0)
+	if _tripod == null:
+		_tripod = Def.tripod(&"C")
+	var r := _radius(_tripod, PITCHES[p], _height(_tripod, p, 0.0), 0.0)
 	var drift := (Rng.hash01(seed_value, SALT, leg, p, i) - 0.5) * 2.0 * WANDER / maxf(1.0, r)
 	return Vector2(float(i * HOLD_EVERY), drift)
 
@@ -197,32 +215,46 @@ func bone_index(p: int) -> int:
 
 
 ## A point on pitch `p`'s surface in its bone's own frame: `up_m` metres up the
-## pitch from its foot, `theta` round the bone, `lift` metres proud of the
-## surface. The one place the climb's geometry is decided, so what the leg is
-## drawn with (colossus_leg_model.gd) and where the body hangs cannot part.
+## pitch from its foot, `theta` round the bone from its line, `lift` metres proud
+## of the surface. The one place the climb's geometry is decided, so what the leg
+## is drawn with (colossus_leg_model.gd) and where the body hangs cannot part; and
+## the surface is the body's own turned profile (ColossusDef), SKIN proud of the
+## flat it is on, so neither can part from the machine either.
 func surface_at(def: RefCounted, p: int, up_m: float, theta: float, lift: float) -> Vector3:
+	var y := _height(def, p, up_m)
+	var a := theta + _bearing(def, p)
+	var r := _radius(def, PITCHES[p], y, a) + SKIN + lift
+	return Vector3(cos(a) * r, y, sin(a) * r)
+
+
+## Where `up_m` up pitch `p` is on its bone's Y. A thigh runs hip to knee and a
+## shin knee to ankle, each with its Y down the leg, so climbing them is toward
+## the root, up -Y.
+func _height(def: RefCounted, p: int, up_m: float) -> float:
 	var row: Dictionary = PITCHES[p]
-	var b := int(row.bone)
-	if b == HUB:
-		var under := float(def.hub_low) - float(def.hip_height)
-		return Vector3(cos(theta) * (HATCH_R + lift), under + up_m, sin(theta) * (HATCH_R + lift))
-	if b == FOOT:
-		return Vector3(cos(theta) * (DRUM_R + lift), -float(def.ankle_up) + up_m, sin(theta) * (DRUM_R + lift))
-	# A thigh runs hip to knee and a shin knee to ankle, each with its Y down the
-	# leg: climbing is toward the bone's root, up its -Y.
-	var length := float(def.thigh) if b == THIGH else float(def.shin)
-	var along := clampf(float(row.get("at", 0.0)) * length - up_m, 0.0, length)
-	var r := _radius(row, along / length) + lift
-	return Vector3(cos(theta) * r, along, sin(theta) * r)
+	match int(row.bone):
+		FOOT, HUB:
+			return float(row.from) + up_m
+	var length := float(def.thigh) if int(row.bone) == THIGH else float(def.shin)
+	return clampf(float(row.at) * length - up_m, 0.0, length)
 
 
-func _radius(row: Dictionary, share: float) -> float:
+## Which way round its bone pitch `p`'s line runs: out along the leg's own +X,
+## and on the hub a flat round from the leg's hip (HATCH_TURN).
+func _bearing(def: RefCounted, p: int) -> float:
+	if int(PITCHES[p].bone) != HUB:
+		return 0.0
+	var flat := TAU / float(Def.HULL_SIDES)
+	return roundf(deg_to_rad(float(def.slots[leg]) + HATCH_TURN) / flat) * flat
+
+
+## How far out of its bone's axis the body is at height `y` and bearing `a`.
+static func _radius(def: RefCounted, row: Dictionary, y: float, a: float) -> float:
 	match int(row.bone):
 		FOOT:
-			return DRUM_R
+			return Def.turned_radius(def.drum_profile(), Def.DRUM_SIDES, y, a)
 		HUB:
-			return HATCH_R
-	if _tripod == null:
-		_tripod = (load("res://src/core/colossus/colossus_def.gd") as GDScript).call(&"tripod", &"C")
-	var taper: Vector2 = _tripod.thigh_r if int(row.bone) == THIGH else _tripod.shin_r
-	return lerpf(taper.x, taper.y, share)
+			return Def.turned_radius(def.hull_profile(), Def.HULL_SIDES, y, a)
+		THIGH:
+			return Def.turned_radius(def.thigh_profile(), Def.LEG_SIDES, y, a)
+	return Def.turned_radius(def.shin_profile(), Def.LEG_SIDES, y, a)

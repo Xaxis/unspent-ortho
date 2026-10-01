@@ -6009,6 +6009,24 @@ const HOLDING_MOVE := {
 	"lead_burned": "Beds at the holding, for the people a burned village leaves: set down its first piece.",
 }
 
+# --- the climb up a walker (43_climb, WalkerClimb) ---------------------------
+# The game's register only: nothing on the way up names what waits at the crown
+# (the_enclave does). The two hints are [line, actions] as Guide.HINTS; the rest
+# are said on the glass as they happen. `climb_ride` is keyed by the pitch just
+# climbed (WalkerClimb.PITCHES); the hub's own pitch ends at the panel, and has none.
+const CLIMB := {
+	&"climb_begin": ["The foot is down, for now. %s climbs it.", [&"use"]],
+	&"climb_swing": ["The leg swings. Hold on until it sets down.", []],
+	&"climb_slipped": "Your arms give out. You slide to the ledge below.",
+	&"climb_fell": "The leg sets down, and your arms give out. You come to on a cable.",
+	&"climb_ride": {
+		&"drum": "Inside the shin, a lift. It runs only while the foot is down.",
+		&"knee": "Up through the knee on rungs. You feel each step in your hands.",
+		&"thigh": "The thigh is hollow. A lift climbs it in the dark, between strides.",
+		&"hip": "Through the hip, on rungs. It is warm in here, and something hums.",
+	},
+}
+
 # --- what a machine is for (channel 3: machines, by being watched) -------------
 #
 # The slate's read of a machine is already testimony (docs/STORY.md): what it
