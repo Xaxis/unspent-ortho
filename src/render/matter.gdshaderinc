@@ -197,6 +197,8 @@ vec4 matter_of(int m) {
 	// so the shine is bought back as relief that can catch it rather than as a
 	// wash over the whole bog.
 	else if (m == 48) { r = vec4(0.80, 0.38, 0.045, 0.0); }   // FEN
+	// The moss's fen: FEN's matter, its relief its own hummocks (bog_hummock).
+	else if (m == M_BOG_FLOOR) { r = vec4(0.80, 0.38, 0.06, 0.0); }
 	// PEAT: hags are cut banks with a real lip, so it gets relief to match.
 	else if (m == 49) { r = vec4(0.84, 0.34, 0.030, 0.0); }   // PEAT
 	else if (m == 50) { r = vec4(0.94, 0.20, 0.014, 0.0); }   // NEEDLES
@@ -343,6 +345,69 @@ float matter_fbm(vec2 p) {
 	return v;
 }
 
+// VALUE NOISE ON AN INTEGER LATTICE, the same numbers as LatticeNoise
+// (src/render/lattice_noise.gd) computes on the CPU, for a field the ground
+// draws that something placed on the CPU has to agree with (the coast's heather
+// drifts, the moss's wet hollows): a float `sin` hash (ink_hash) is a different
+// number on each. tests/render/test_shore_sward.gd holds the constants equal.
+float lattice_hash(vec2 c) {
+	uvec2 q = uvec2(ivec2(c));
+	uint h = (q.x * 2654435761u) ^ (q.y * 2246822519u);
+	h ^= h >> 15u;
+	h *= 2246822507u;
+	h ^= h >> 13u;
+	return float(h & 16777215u) / 16777215.0;
+}
+
+float lattice_noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = p - i;
+	vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(lattice_hash(i), lattice_hash(i + vec2(1.0, 0.0)), u.x),
+		mix(lattice_hash(i + vec2(0.0, 1.0)), lattice_hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+
+float lattice_fbm(vec2 p) {
+	mat2 rot = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8));
+	float v = lattice_noise(p) * 0.5;
+	p = rot * p * 2.07 + 19.0;
+	v += lattice_noise(p) * 0.28;
+	p = rot * p * 2.13 + 41.0;
+	return v + lattice_noise(p) * 0.15;
+}
+
+// THE MOSS'S FEN, how wet it lies (BogFen.wet, src/render/bog_fen.gd, whose
+// numbers these are): under BOG_MARGIN the sphagnum's hummocks and lawns, from
+// there to BOG_WATER the sodden margin, past it standing water in a hollow. Slow,
+// with two finer octaves that break each shore into bays and seed small pools
+// beside the big ones, and wetter in the low ground (`y`).
+const float BOG_MARGIN = 0.56;
+const float BOG_WATER = 0.605;
+
+float bog_wet(vec2 p, float y) {
+	vec2 w = vec2(lattice_noise(p * 0.025 + 5.0), lattice_noise(p * 0.025 + 23.0)) - 0.5;
+	float d = lattice_fbm(p * 0.065 + w * 3.0);
+	return d + clamp((1.5 - y) / 3.0, -1.0, 1.0) * 0.04;
+}
+
+// The fen's sphagnum as a height in 0..1: mounds about a stride across on the
+// dry, crowding into one hummocked lawn, lower and fewer toward the margin, and
+// in the water nothing: water lies flat.
+float bog_hummock(vec2 p, float wet) {
+	float dry = 1.0 - smoothstep(BOG_MARGIN - 0.06, BOG_WATER, wet);
+	// Two sizes of mound, a stride and two, each warped hard off its cells, so
+	// crowded together they never settle into a honeycomb.
+	vec2 bend = vec2(matter_fbm(p * 0.3), matter_fbm(p * 0.3 + 7.0)) * 2.6;
+	vec3 small = matter_cells(p * 1.2 + bend);
+	vec3 big = matter_cells(p * 0.55 + bend * 0.6 + 31.0);
+	float tear = (matter_fbm(p * 3.0) - 0.5) * 0.45;
+	float ms = 1.0 - smoothstep(0.08, mix(0.28, 0.6, dry), small.x + tear);
+	float mb = 1.0 - smoothstep(0.1, mix(0.3, 0.7, dry), big.x + tear * 0.7);
+	float mound = max(ms * step(ink_hash(vec2(small.z, 3.0)), 0.25 + dry * 0.6), mb * step(ink_hash(vec2(big.z, 5.0)), 0.2 + dry * 0.5));
+	float above = 1.0 - smoothstep(BOG_WATER - 0.015, BOG_WATER, wet);
+	return sqrt(max(mound, 0.0)) * mix(0.3, 1.0, dry) * above;
+}
+
 // THE COAST'S SWARD, as a height in 0..1: 0 the cropped grass between, 1 a crown.
 //
 // Heather on a sea cliff grows in DRIFTS: wind-pruned masses several strides
@@ -362,46 +427,16 @@ float matter_fbm(vec2 p) {
 // a hand across.
 const vec2 SHORE_WIND = vec2(0.5, -0.866);
 
-// The heath's drift field on an integer lattice, the same numbers as ShoreSward
-// (src/render/shore_sward.gd), so the decor's heather stands in the drifts drawn
-// here: a float `sin` hash (ink_hash) is a different number on a CPU. Every
-// constant below is ShoreSward's; tests/render/test_shore_sward.gd holds them.
-float shore_lattice(vec2 c) {
-	uvec2 q = uvec2(ivec2(c));
-	uint h = (q.x * 2654435761u) ^ (q.y * 2246822519u);
-	h ^= h >> 15u;
-	h *= 2246822507u;
-	h ^= h >> 13u;
-	return float(h & 16777215u) / 16777215.0;
-}
-
-float shore_noise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = p - i;
-	vec2 u = f * f * (3.0 - 2.0 * f);
-	return mix(mix(shore_lattice(i), shore_lattice(i + vec2(1.0, 0.0)), u.x),
-		mix(shore_lattice(i + vec2(0.0, 1.0)), shore_lattice(i + vec2(1.0, 1.0)), u.x), u.y);
-}
-
-float shore_fbm(vec2 p) {
-	mat2 rot = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8));
-	float v = shore_noise(p) * 0.5;
-	p = rot * p * 2.07 + 19.0;
-	v += shore_noise(p) * 0.28;
-	p = rot * p * 2.13 + 41.0;
-	return v + shore_noise(p) * 0.15;
-}
-
 // The slower field that bends the drifts, so no two lie quite parallel.
 vec2 shore_bend(vec2 p) {
-	return vec2(shore_noise(p * 0.03 + 3.0), shore_noise(p * 0.03 + 17.0)) - 0.5;
+	return vec2(lattice_noise(p * 0.03 + 3.0), lattice_noise(p * 0.03 + 17.0)) - 0.5;
 }
 
 // How thick the heather grows, 0..1 (ShoreSward.thick): a slow field stretched
 // along the wind and bent by `w` (shore_bend), and raised on the high ground.
 float shore_thick(vec2 p, float y, vec2 w) {
 	vec2 a = vec2(dot(p, SHORE_WIND), dot(p, vec2(-SHORE_WIND.y, SHORE_WIND.x)));
-	float d = shore_fbm(vec2(a.x * 0.04, a.y * 0.1) + w * 2.4);
+	float d = lattice_fbm(vec2(a.x * 0.04, a.y * 0.1) + w * 2.4);
 	d += clamp((y - 1.5) / 8.0, 0.0, 1.0) * 0.1 - 0.04;
 	return smoothstep(0.44, 0.58, d);
 }
@@ -580,6 +615,10 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		// of them, rather than the whole bog undulating like cloth.
 		float mound = matter_fbm(p * 0.8) * 0.72 + matter_fbm(p * 2.4 + 31.0) * 0.28;
 		h = mound * mound;
+	} else if (m == M_BOG_FLOOR) {
+		// The same field the fen's colour is laid from (world.gdshader
+		// bog_floor), so the dark between the mounds is their own shade.
+		h = bog_hummock(p, bog_wet(p, wp.y));
 	} else if (m == M_SHORE_HEATH || m == M_SHORE_TURF) {
 		// The same field the sward's colour is laid from (world.gdshader
 		// shore_sward), so the dark is the cushion's own shade.
