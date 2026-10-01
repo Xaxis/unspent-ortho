@@ -62,6 +62,36 @@ func test_otto_at_the_archive_answers_the_key_with_each_of_his_three() -> void:
 	Story.forget()
 
 
+## THE PRESS GOES TO WHAT HE FACES. On the full-size island Otto stands within
+## reach of the archive's landmark cache, and a cache in reach took the key though
+## he faced Otto: the locker opened and the archive's man said nothing
+## (tours/archive.tour line 24). A person in front is the press's first.
+func test_facing_otto_beside_a_cache_the_press_is_his() -> void:
+	Story.forget()
+	Sx.use_root("archive-cache")
+	var g := Sx.game(tree, ["--seed=1", "--size=%d" % Tuning.WORLD_SIZE, "--hour=10", "--weather=clear:0"])
+	await frames(3)
+	var cast := Sx.system(g, "49_cast")
+	var story := Sx.system(g, "49_story")
+	var marks := Sx.system(g, "22_landmarks")
+	_past_the_holdfast(g)
+	Story.beat(&"war_archive", -INF)
+	@warning_ignore("return_value_discarded")
+	Story.hear(StoryCrossing.CROSSED)
+	var otto := _stand_at_cast(g, cast, &"otto")
+	check(not otto.is_empty(), "Otto is cast at the archive")
+	await frames(40)
+	var cache: LandmarkSite = marks.get("reachable")
+	check(cache != null, "and a cache is in reach where he stands")
+	await _press_use()
+	var t: StoryTalk = story.get("talk")
+	eq(t.id if t != null else &"", &"otto", "facing Otto, the key opens his words")
+	if cache != null:
+		check(not marks.state.is_opened(cache.id), "and the cache beside him waits")
+	Sx.end(g)
+	Story.forget()
+
+
 ## The whole way from Vera's lead to the slice's end, each hop in order, until
 ## what ends it, each keyed and pinned: the raft, the narrows, the archive, the
 ## order, the Covenant's seat, her name, June, the voice, the mended plate, and
