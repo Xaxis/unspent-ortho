@@ -20,7 +20,7 @@ class_name HazardCues
 
 const CUES := {
 	&"cold": {"mark": &"breath", "sound": &"hazard_cold", "shiver": true, "colour": &"rime", "tone": 3},
-	&"heat": {"mark": &"shimmer", "sound": &"hazard_heat", "shiver": false, "colour": &"ember", "tone": 4},
+	&"heat": {"mark": &"shimmer", "sound": &"hazard_heat", "shiver": false, "colour": &"ember", "tone": 3},
 	&"fumes": {"mark": &"cough", "sound": &"hazard_fumes", "shiver": true, "colour": &"ash", "tone": 3},
 	&"toxins": {"mark": &"cough", "sound": &"hazard_fumes", "shiver": true, "colour": &"moss", "tone": 5},
 	&"radiation": {"mark": &"tick", "sound": &"hazard_em", "shiver": false, "colour": &"lens", "tone": 3},
