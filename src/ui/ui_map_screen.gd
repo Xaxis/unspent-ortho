@@ -198,6 +198,19 @@ static func clear_of(s: Vector2i, boxes: Array[Rect2i], half: int, mid_y: int) -
 	return out
 
 
+## Where a pin's word goes beside its mark at `s` on glass `r`: on the right, or
+## on the left where the right runs off the glass (a pin at the right edge) or onto
+## a word already placed (`free`), as when two places on nearly one bearing pin
+## side by side (from the Covenant, the narrows he landed at and the crew's camp
+## beyond them). An empty Rect2i where neither side is free. [Rect2i]
+static func word_box(s: Vector2i, word: String, r: Rect2i, free: Callable) -> Rect2i:
+	var right := Rect2i(s.x + 14, s.y - UiFont.SIZE / 2, UiFont.width(word) + 8, UiFont.SIZE)
+	for box: Rect2i in [right, Rect2i(s.x - 14 - right.size.x, right.position.y, right.size.x, right.size.y)]:
+		if r.grow(-4).encloses(box) and bool(free.call(box)):
+			return box
+	return Rect2i()
+
+
 ## Where the survey opens: fitted to the land seen, as `fit` says; but when a
 ## place he has been told of lies off that glass, centred on him instead. A pin
 ## is a bearing (`pin`), and fitted to the land he may stand at the glass's very
@@ -756,11 +769,8 @@ func _draw_overlay() -> void:
 		UiDraw.rect(ci, Rect2i(s.x - 2 * p, s.y - 2 * p, 5 * p, 5 * p), UiTheme.GLASS)
 		UiDraw.px(ci, s.x, s.y, UiTheme.BRIGHT)
 		var word: String = t.word
-		var box := Rect2i(s.x + 14, s.y - UiFont.SIZE / 2, UiFont.width(word) + 8, UiFont.SIZE)
-		if not r.grow(-4).encloses(box):
-			# Pinned at the right edge, the word goes on the mark's left.
-			box.position.x = s.x - 14 - box.size.x
-		if r.grow(-4).encloses(box) and _free_of(placed).call(box):
+		var box := UiMapScreen.word_box(s, word, r, _free_of(placed))
+		if box.has_area():
 			placed.append(box)
 			UiMapScreen.clearing(ci, box)
 			UiDraw.text(ci, box.position + Vector2i(4, 0), word, UiTheme.BRIGHT)

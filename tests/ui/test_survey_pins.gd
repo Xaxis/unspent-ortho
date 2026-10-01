@@ -57,3 +57,22 @@ func test_a_pin_points_the_way_and_is_never_here() -> void:
 			var arc: Vector2 = cast[&"the_archive"].pos
 			_check(w, Rect2i(Vector2i(arc) - Vector2i(20, 20), Vector2i(40, 40)), arc, cast[&"the_shaft"].pos, "the shaft from the archive")
 	StoryPlan.forget()
+
+
+## Two places on nearly one bearing pin side by side at the glass's edge (from the
+## Covenant, the narrows he landed at and the crew's camp beyond them): the second
+## word goes on its mark's left rather than being dropped (UiMapScreen.word_box).
+func test_two_pins_side_by_side_both_keep_their_words() -> void:
+	var glass := UiMapScreen.MAP_RECT
+	var placed: Array[Rect2i] = []
+	var free := func(box: Rect2i) -> bool: return not placed.any(func(o: Rect2i) -> bool: return o.intersects(box))
+	var crew := Vector2i(glass.get_center().x + 20, glass.end.y - UiMapScreen.PIN_INSET)
+	var a := UiMapScreen.word_box(crew, "the crew", glass, free)
+	check(a.has_area(), "the first pin's word is placed")
+	check(a.position.x > crew.x, "on its mark's right")
+	placed.append(a)
+	var narrows := crew - Vector2i(46, 0)
+	var b := UiMapScreen.word_box(narrows, "the narrows", glass, free)
+	check(b.has_area(), "the pin beside it keeps its word")
+	check(b.end.x < narrows.x, "on its mark's left")
+	check(not b.intersects(a), "clear of the first word")
