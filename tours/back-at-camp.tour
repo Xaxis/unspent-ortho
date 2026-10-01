@@ -15,7 +15,7 @@
 # is a place a system names. Otto's replies: "How the war started.", then "Show
 # me one." second; Solis's first is "How do you know where I came from?"; Dace's
 # first at the war, once the order is known, is "The order was mine."; Rook's
-# third is Teague's roads.)
+# third is Teague's roads; Solis's last word is left at [leave].)
 coast calm
 
 # --- over: the raft in at the narrows, and across ------------------------------------------
@@ -66,6 +66,10 @@ press use
 await beat:teague_sold 3
 wait 0.4
 shot 03-solis-says-whose-roads with talking,beat:teague_sold
+# [leave], not "Every road?": the road up the walker would hold the way home until
+# its climb is done (Guide.WAY `walker`), and the climb is across.tour's.
+tap move_down
+wait 0.3
 press use
 wait 0.6
 
