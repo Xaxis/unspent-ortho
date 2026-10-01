@@ -152,10 +152,13 @@ var talking := false
 ## True while a staged look holds the view (42_stage is its only writer): the keys
 ## are held as for a page, so nothing turns the view or swings under it.
 var staged := false
+## True while he is up a walker's leg (43_climb is its only writer): the move and
+## use keys are the climb's, and nothing on the ground below reads them.
+var aloft := false
 
 
 func input_blocked() -> bool:
-	return not open_screens.is_empty() or talking or staged
+	return not open_screens.is_empty() or talking or staged or aloft
 
 
 func _physics_process(delta: float) -> void:
