@@ -8,6 +8,7 @@ const Def := preload("res://src/core/colossus/colossus_def.gd")
 const Leg := preload("res://src/models/colossus_leg_model.gd")
 const Model := preload("res://src/models/colossus_model.gd")
 const FootModel := preload("res://src/models/colossus_foot_model.gd")
+const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 
 ## Triangles one pitch's patch may cost.
 const BUDGET := 6000
@@ -27,26 +28,33 @@ func _nearest(k: MeshKit, p: Vector3, only := Color(0, 0, 0, 0)) -> float:
 func test_every_hold_has_something_to_hold() -> void:
 	var def: RefCounted = Def.tripod(&"C")
 	var climb := WalkerClimb.begin(0, 1)
-	# The thigh, the shin at the knee, and the drum: the pitches climbed on a leg.
-	for p: int in [0, 1, 2, 3]:
+	# Every pitch on a leg: the cable, the drum, the shin at the knee, the thigh.
+	for p in WalkerClimb.PITCHES.size():
+		if int(WalkerClimb.PITCHES[p].bone) == WalkerClimb.HUB:
+			continue
+		var hangs := WalkerClimb.PITCHES[p].has("hang")
 		var k := Leg.build(def, climb, p)
 		for i in climb.holds_in(p):
 			var h := climb.hold_at(p, i)
 			var at := climb.surface_at(def, p, h.x * WalkerClimb.LEVEL, h.y, Leg.PROUD)
-			# Within the part's own half-diagonal: a rung's, or a ledge's shelf's.
+			# Within the part's own half-diagonal: a rung's or a clamp's, or a
+			# ledge's shelf's or a cable's seat's.
 			var part := Vector3(Leg.SHELF.x, 0.12, Leg.SHELF.y) if climb.is_stance(i) else Vector3(Leg.RUNG.x, 0.06, Leg.RUNG.y)
+			if hangs:
+				part = Vector3(Leg.SEAT.x, 0.08, Leg.SEAT.y) if climb.is_stance(i) else Vector3(Leg.CLAMP.x, 0.08, Leg.CLAMP.y)
 			lt(_nearest(k, at, Leg.Model.RIM), part.length() + 0.05, "pitch %d hold %d: a rung or a shelf where he hangs" % [p, i])
 		lt(float(k.verts.size() / 3), float(BUDGET), "pitch %d: %d triangles" % [p, k.verts.size() / 3])
 
 
 func test_the_patch_covers_the_pitch_and_is_the_seeds() -> void:
 	var def: RefCounted = Def.tripod(&"C")
-	var a := Leg.build(def, WalkerClimb.begin(0, 1), 2)
-	var b := Leg.build(def, WalkerClimb.begin(0, 1), 2)
+	var thigh := WalkerClimb.pitch_of(&"thigh")
+	var a := Leg.build(def, WalkerClimb.begin(0, 1), thigh)
+	var b := Leg.build(def, WalkerClimb.begin(0, 1), thigh)
 	eq(a.verts, b.verts, "one seed, one patch")
 	var climb := WalkerClimb.begin(0, 1)
-	var foot := climb.surface_at(def, 2, -Leg.MARGIN, 0.0, 0.0)
-	var head := climb.surface_at(def, 2, float(WalkerClimb.PITCHES[2].levels) * WalkerClimb.LEVEL + Leg.MARGIN, 0.0, 0.0)
+	var foot := climb.surface_at(def, thigh, -Leg.MARGIN, 0.0, 0.0)
+	var head := climb.surface_at(def, thigh, float(WalkerClimb.PITCHES[thigh].levels) * WalkerClimb.LEVEL + Leg.MARGIN, 0.0, 0.0)
 	lt(_nearest(a, foot), 0.5, "it reaches below the pitch's foot")
 	lt(_nearest(a, head), 0.5, "and above its head")
 
@@ -56,7 +64,7 @@ func test_the_patch_covers_the_pitch_and_is_the_seeds() -> void:
 func test_the_skin_faces_out_of_the_leg() -> void:
 	var def: RefCounted = Def.tripod(&"C")
 	var climb := WalkerClimb.begin(0, 1)
-	for p: int in [0, 2]:
+	for p: int in [WalkerClimb.pitch_of(&"drum"), WalkerClimb.pitch_of(&"thigh")]:
 		var k := Leg.build(def, climb, p)
 		var outward := 0
 		var n := mini(k.verts.size(), 300)
@@ -89,10 +97,66 @@ func test_the_patch_lies_on_the_body() -> void:
 			drum.append_array(FootModel.build(def, part).verts)
 	# Every leg's: a leg's own pitches are the same in its bone's frame, but the
 	# hatch is on the hub a flat round from that leg's own hip.
+	# The cable hangs free of it below the belt: test_the_cable_hangs_clear.
 	for leg in 3:
 		for p in WalkerClimb.PITCHES.size():
+			if WalkerClimb.PITCHES[p].has("hang"):
+				continue
 			if leg == 0 or int(WalkerClimb.PITCHES[p].bone) == WalkerClimb.HUB:
 				_lies_on(def, far, drum, WalkerClimb.begin(leg, 1), p)
+
+
+## THE CABLE HANGS CLEAR OF THE FOOT (WalkerClimb FOOT_TURN): from the belt's foot
+## down to the tread, everything a body on it reaches stays CLEAR off the near
+## foot's every part (the toe under it, its heel joint, its pad, the pad's
+## claws), and its foot is in the crater the middle toe stands in, beside the
+## pad and short of its rim.
+const CLEAR := 1.5
+
+
+func test_the_cable_hangs_clear_of_the_foot() -> void:
+	var def: RefCounted = Def.tripod(&"C")
+	var climb := WalkerClimb.begin(0, 1)
+	var cable := WalkerClimb.pitch_of(&"cable")
+	var foot := PackedVector3Array()
+	for part: StringName in FootModel.PARTS:
+		if part != &"stub":
+			foot.append_array(FootModel.build(def, part).verts)
+	var hang := WalkerClimb.BELT_Y - float(WalkerClimb.PITCHES[cable].from)
+	var nearest := INF
+	var up := 0.0
+	while up < hang - 1.0:
+		var at := climb.surface_at(def, cable, up, 0.0, Leg.PROUD)
+		var tris := _tris_in(foot, AABB(at, Vector3.ZERO).grow(CLEAR * 4.0))
+		for i in range(0, tris.size(), 3):
+			var on := Geometry3D.get_closest_point_to_segment(at, tris[i], tris[i + 1])
+			nearest = minf(nearest, minf(at.distance_to(_closest_on_tri(at, tris[i], tris[i + 1], tris[i + 2])), at.distance_to(on)))
+		up += 1.0
+	gt(nearest, CLEAR, "hanging, the cable keeps clear of the foot (nearest %.2f m)" % nearest)
+	var base := climb.surface_at(def, cable, 0.0, 0.0, 0.0)
+	var pad: Vector3 = def.toe(1)
+	var centre := Vector2(cos(pad.x), sin(pad.x)) * pad.y
+	var off := Vector2(base.x, base.z).distance_to(centre)
+	gt(off, Treads.floor_r(Vector3(0.0, 0.0, pad.z)), "its foot is out past the crater's floor, beside the pad (%.1f m from its middle)" % off)
+	lt(off, Treads.rim_r(Vector3(0.0, 0.0, pad.z)), "and inside the crater's rim")
+
+
+## The nearest point to `p` on triangle a, b, c.
+static func _closest_on_tri(p: Vector3, a: Vector3, b: Vector3, c: Vector3) -> Vector3:
+	var n := (b - a).cross(c - a)
+	if n.length() < 1e-6:
+		return a
+	n = n.normalized()
+	var q := p - n * (p - a).dot(n)
+	var inside := (b - a).cross(q - a).dot(n) >= 0.0 and (c - b).cross(q - b).dot(n) >= 0.0 and (a - c).cross(q - c).dot(n) >= 0.0
+	if inside:
+		return q
+	var best := Geometry3D.get_closest_point_to_segment(p, a, b)
+	for e: Array in [[b, c], [c, a]]:
+		var o := Geometry3D.get_closest_point_to_segment(p, e[0], e[1])
+		if p.distance_to(o) < p.distance_to(best):
+			best = o
+	return best
 
 
 func _lies_on(def: RefCounted, far: Array, drum: PackedVector3Array, climb: WalkerClimb, p: int) -> void:
@@ -153,7 +217,7 @@ static func _first_hit(tris: PackedVector3Array, from: Vector3, dir: Vector3) ->
 func test_every_plate_carries_its_own_frame() -> void:
 	var def: RefCounted = Def.tripod(&"C")
 	var climb := WalkerClimb.begin(0, 1)
-	var k := Leg.build(def, climb, 2)
+	var k := Leg.build(def, climb, WalkerClimb.pitch_of(&"thigh"))
 	var parts := {}
 	var off := 0
 	for i in k.verts.size():
@@ -183,7 +247,7 @@ func test_the_near_plate_is_lifted_only_up_close() -> void:
 	eq(float(mat.get_shader_parameter("near_fill")), Leg.NEAR_FILL, "and its fill")
 	var def: RefCounted = Def.tripod(&"C")
 	var climb := WalkerClimb.begin(0, 1)
-	var foot := climb.surface_at(def, 0, 0.0, 0.0, 0.0)
+	var foot := climb.surface_at(def, WalkerClimb.pitch_of(&"drum"), 0.0, 0.0, 0.0)
 	gt(float(def.ankle_up) + foot.y, Leg.NEAR_LIFT.z * 1.5, "the drum's foot stands well past the lift from the ground")
 	var view: Node3D = load("res://src/render/colossus/colossus_view.gd").new()
 	tree.root.add_child(view)

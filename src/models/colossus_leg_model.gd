@@ -79,6 +79,9 @@ static func build_span(def: RefCounted, climb: WalkerClimb, p: int, lo: float, h
 	var k := MeshKit.new()
 	k.style = Ink.NONE
 	k.style2 = Ink.NONE
+	if WalkerClimb.PITCHES[p].has("hang"):
+		_cable(k, def, climb, p, lo, hi)
+		return k
 	_skin(k, def, climb, p, lo, hi, half_w)
 	_plates(k, def, climb, p, lo, hi, half_w)
 	_holds(k, def, climb, p, lo, hi)
@@ -285,6 +288,43 @@ static func _holds(k: MeshKit, def: RefCounted, climb: WalkerClimb, p: int, lo: 
 		last = c
 
 
+## THE CABLE A CLIMB BEGINS ON (WalkerClimb's hanging pitch): no plate of its
+## own, the belt and the toe under it are the near foot's. The cable itself up
+## the line, a clamp at every hold and a seat at every ledge, and at its top a
+## run across to where the drum's own cable hangs beside its line.
+static func _cable(k: MeshKit, def: RefCounted, climb: WalkerClimb, p: int, lo: float, hi: float) -> void:
+	var top := float(WalkerClimb.PITCHES[p].levels) * WalkerClimb.LEVEL
+	var last := _at(def, climb, p, maxf(lo, 0.0), 0.0, PROUD)
+	var up := maxf(lo, 0.0) + CELL
+	while up <= minf(hi, top) + 1e-3:
+		var c := _at(def, climb, p, up, 0.0, PROUD)
+		k.strut(last, c, HAWSER, 6, Model.DARK)
+		last = c
+		up += CELL
+	for i in climb.holds_in(p):
+		var at := climb.hold_at(p, i).x * WalkerClimb.LEVEL
+		if at < lo or at > hi:
+			continue
+		k.push(hold_frame(def, climb, p, i))
+		if climb.is_stance(i):
+			k.box(Vector3(-SEAT.x, -0.08, 0.0), Vector3(SEAT.x, 0.0, SEAT.y), Model.RIM)
+			k.box(Vector3(-SEAT.x, 0.0, SEAT.y - 0.06), Vector3(SEAT.x, 0.05, SEAT.y), Model.STRIP)
+		else:
+			k.box(Vector3(-CLAMP.x, -0.08, -0.05), Vector3(CLAMP.x, 0.08, CLAMP.y), Model.RIM)
+		k.pop()
+	# Over to the drum's own cable, beside its line, where this one ends.
+	if hi >= top:
+		var drum := p + 1
+		k.strut(_at(def, climb, p, top, 0.0, PROUD), _at(def, climb, drum, 0.0, CABLE_OFF * 2.0, PROUD + 0.15), HAWSER, 6, Model.DARK)
+
+
+## The hanging cable's thickness, and a clamp's and a seat's half-width across
+## and depth off it.
+const HAWSER := 0.07
+const CLAMP := Vector2(0.3, 0.22)
+const SEAT := Vector2(0.9, 0.7)
+
+
 ## FOUND as the patch wears it, a copy of its own: the patch lays its plates in
 ## geometry, seams and lips and all, so the world's ruled panels would only cut
 ## across them, and its wear is each plate's own (found.gdshader
@@ -319,7 +359,7 @@ static func daylight(mat: ShaderMaterial, dome: Dictionary) -> void:
 static func gallery() -> Array:
 	var def: RefCounted = Def.tripod(&"C")
 	var climb := WalkerClimb.begin(0, 1)
-	var p := 2
+	var p := WalkerClimb.pitch_of(&"thigh")
 	# The middle ledge of the thigh pitch, and the whole pitch around it.
 	var ledge := climb.holds_in(p) / 2
 	while not climb.is_stance(ledge):
