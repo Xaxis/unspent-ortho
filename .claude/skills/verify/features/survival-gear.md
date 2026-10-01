@@ -25,7 +25,7 @@ Taking from the world, hunger and weather, hazards, tracks, gear and abilities, 
 - 51_harvest `src/systems/51_harvest.gd`: `tools/tour.sh tours/harvest.tour`.
 - 52_hazards `src/systems/52_hazards.gd`: `tools/tour.sh tours/hazards.tour`.
   - At eye level no cue draws over the body: `tools/test.sh test_shoulder:test_no_hazard`, `tools/tour.sh tours/cue_eye.tour` (h).
-  - Heat's cue is ember lines rising either side of the body, never breath's white vapour (MobFx.shimmer): `tools/test.sh test_shoulder:test_heat_off`, `tools/tour.sh tours/heat-shimmer.tour` (h; frames 01-04, noon and dusk from both cameras).
+  - Heat's cue is lit, never drawn: ember motes rising round the feet, a heat haze over the ground, an under-glow from a light (HeatFx, src/render/heat_haze.gdshader): `tools/test.sh test_shoulder:test_heat_off`, `tools/tour.sh tours/heat-shimmer.tour` (h; frames 01-04, noon and dusk from both cameras).
 - 52_survival_fx `src/systems/52_survival_fx.gd`: `tools/tour.sh tours/survival.tour`.
 - 53_tracks `src/systems/53_tracks.gd`: `tools/tour.sh tours/tracks.tour`.
 - 54_gear `src/systems/54_gear.gd`: `tools/tour.sh tours/gear-economy.tour`. Each piece's rule: docs/GEAR.md §5-§6.

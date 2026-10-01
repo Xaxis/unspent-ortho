@@ -1,9 +1,9 @@
-# Heat off the Burning's ground, read at a glance from both cameras: ember lines
-# lifting either side of the body, never the white vapour breath is drawn in
-# (MobFx.shimmer, HazardCues `heat`). At noon, where it bites, and at 18:30,
-# where it is only felt, each from above and over the shoulder, each frame half
-# a second into a mark's life (`await shimmer` is its first moment; a mark is too
-# short-lived for a shot to claim it).
+# Heat off the Burning's ground, read at a glance from both cameras and lit, not
+# drawn: ember motes rising round the feet, the air over the ground wavering, the
+# ground and boots warmed from under (HeatFx, HazardCues `heat`). At noon, where
+# it bites, and at 18:30, where it is only felt, each from above and over the
+# shoulder, each frame half a second into a lift (`await shimmer` is its first
+# moment; a lift is too short-lived for a shot to claim it).
 #   tools/tour.sh tours/heat-shimmer.tour --seed=1 --weather=clear:0
 coast calm
 place burning
