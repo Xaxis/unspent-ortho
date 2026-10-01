@@ -48,7 +48,7 @@ jobs:
     name: tests (shard ${{ matrix.shard }} of 8)
     # A hang guard, not a speed bar: a shard of eight runs in about a quarter of
     # the old three-shard time, and a real hang still runs past this.
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -101,8 +101,15 @@ jobs:
         # A job's log needs a signed-in reader, and on 2026-09-30 main went red on
         # shard 4 three pushes running with nobody able to say which test. An
         # annotation is public, so each new failure is said as one, with its line.
-        if: failure()
+        # Also on a cancel: a shard cut off at the time limit (shard 7, 2026-10-01) said
+        # nothing about where it was, so the last test each runner reached is named.
+        if: failure() || cancelled()
         run: |
+          for p in "${TMPDIR:-/tmp}"/unspent-test.*; do
+            [ -f "$p" ] || continue
+            last=$(grep -E '^\s+(ok|FAIL) ' "$p" | tail -1 | sed 's/%/%25/g; s/^ *//')
+            echo "::error title=shard ${{ matrix.shard }} reached::$(grep -cE '^\s+(ok|FAIL) ' "$p") tests, last: ${last:-none}"
+          done
           f="$RUNNER_TEMP/check.log"
           [ -f "$f" ] || exit 0
           { grep -E 'DIED|wrote no summary|did not finish|script error in' "$f" || true
