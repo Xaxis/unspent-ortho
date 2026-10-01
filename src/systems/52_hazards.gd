@@ -309,9 +309,7 @@ func _draw_cue(id: StringName, cue: Dictionary, v: float) -> void:
 			if bool(cue.get("shiver", false)) and v >= Hazards.BITE:
 				game.player.shudder(0.22)
 		&"shimmer":
-			for k in 3:
-				var away := Vector3(cos(k * 2.1) * 0.5, 0.05, sin(k * 2.1) * 0.5)
-				MobFx.breath(_fx_parent(), at + away, col, 0.22, 1.4, Vector2.ZERO, seed_value + k * 7)
+			HeatFx.lift(_fx_parent(), at, col, HEAT_SECONDS, seed_value)
 		&"cough":
 			# Under the close eye a puff at the head is a rimmed cloud hanging by
 			# the back of it, which from behind reads as a dashed ring round the
@@ -336,6 +334,9 @@ func _draw_cue(id: StringName, cue: Dictionary, v: float) -> void:
 ## How big a puff is at eye level against from above: a puff near the lens is
 ## big on screen, and breath is faint.
 const BREATH_EYE_SIZE := 0.6
+## How long one lift of heat off the ground lasts: as long as the fastest beat,
+## so where heat bites hardest it never stops rising.
+const HEAT_SECONDS := HazardCues.FAST_BEAT
 
 
 func _fx_parent() -> Node:

@@ -1,0 +1,32 @@
+# Heat off the Burning's ground, read at a glance from both cameras and lit, not
+# drawn: ember motes rising round the feet, the air over the ground wavering, the
+# ground and boots warmed from under (HeatFx, HazardCues `heat`). At noon, where
+# it bites, and at 18:30, where it is only felt, each from above and over the
+# shoulder, each frame half a second into a lift (`await shimmer` is its first
+# moment; a lift is too short-lived for a shot to claim it).
+#   tools/tour.sh tours/heat-shimmer.tour --seed=1 --weather=clear:0
+coast calm
+place burning
+hour 13
+await bites:heat 40
+await shimmer 12
+wait 0.5
+shot 01-heat-from-above-noon with land:burning
+hold shoulder_peek
+await shoulder 5
+await shimmer 12
+wait 0.5
+shot 02-heat-over-the-shoulder-noon with shoulder
+release shoulder_peek
+await top_view 5
+hour 18.5
+await heat 20
+await shimmer 20
+wait 0.5
+shot 03-heat-from-above-dusk with land:burning
+hold shoulder_peek
+await shoulder 5
+await shimmer 20
+wait 0.5
+shot 04-heat-over-the-shoulder-dusk with shoulder
+release shoulder_peek

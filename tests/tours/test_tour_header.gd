@@ -69,3 +69,18 @@ func test_a_header_says_how_long_and_at_what_rate() -> void:
 	var home := _env("tours/home-coast.tour")
 	check(home.has("TOUR_FIXED_FPS=60") and home.has("TOUR_TIMEOUT=600"), "home-coast runs at 60 fixed and gets ten minutes (%s)" % [home])
 	eq(_env("tours/bunker.tour"), PackedStringArray(), "a header with no prefix says nothing")
+
+
+## EVERY TOUR'S HEADER BOOTS. main.gd refuses options it cannot read
+## (BootOptions.problems), so a header naming what is not there fails the run
+## instead of staging half of it: carried_home's `--holding=hearth,lean_to` stood
+## its hearth and dropped the lean-to (`lean-to` is the piece's name) with only
+## a warning in the log.
+func test_every_tour_header_boots() -> void:
+	eq(BootOptions.parse(PackedStringArray(["--holding=hearth,lean_to"])).problems.size(), 1, "a piece nobody can build is a problem")
+	eq(BootOptions.parse(PackedStringArray(["--holding=lean-to,radio_mast"])).problems.size(), 0, "a piece's own name, underscores for spaces, is not")
+	for f: String in DirAccess.get_files_at("res://tours"):
+		if not f.ends_with(".tour"):
+			continue
+		var problems := BootOptions.parse(_args("tours/" + f)).problems
+		check(problems.is_empty(), "tours/%s boots its header: %s" % [f, "; ".join(problems)])

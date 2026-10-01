@@ -107,7 +107,7 @@ func _watch() -> void:
 			if float((s as Dictionary).falls_at) >= 0.0:
 				if not bool(h.pulled):
 					h.pulled = true
-					MobFx.puffs(game, node.position, Vector2.ZERO, Palette.LINEN[3], 4, 0.5, int(h.id))
+					MobFx.puffs(game, node.position, Vector2.ZERO, Palette.LINEN[4], 4, 0.5, int(h.id))
 					Events.sfx.emit(&"break", node.position)
 				var t := Time.get_ticks_msec() * 0.06
 				var rest := Vector3((h.at as Vector2).x, float(h.top), (h.at as Vector2).y)
@@ -140,7 +140,7 @@ func _drop(delta: float) -> void:
 		rubble.material_override = game.view.world_material()
 		rubble.position = at3
 		game.add_child(rubble)
-		MobFx.puffs(game, at3 + Vector3(0, 0.3, 0), Vector2.ZERO, Palette.LINEN[3], 8, 1.1, int(d.id) + 3)
+		MobFx.puffs(game, at3 + Vector3(0, 0.3, 0), Vector2.ZERO, Palette.LINEN[4], 8, 1.1, int(d.id) + 3)
 		Events.sfx.emit(&"fall_boom", at3)
 		_fell_at = Time.get_ticks_msec() / 1000.0
 

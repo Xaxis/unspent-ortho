@@ -8,6 +8,10 @@ coast calm
 near keeper
 wait 0.6
 await sentinel 12
+# Its first sight is staged (44_sentinels, the reveal): the look holds the keys,
+# and a key tapped under it is never pressed. The view is taken once they are back.
+await staging:reveal 4
+await unstaged 10
 tap shoulder
 await shoulder 3
 try 8

@@ -1374,7 +1374,7 @@ func _from_options() -> void:
 		return
 	var kinds: Array[int] = []
 	for word: String in game.options.holding:
-		var kind := _kind_named(word)
+		var kind := StructureKind.named(word)
 		if kind < 0:
 			push_warning("--holding: no piece called %s" % word)
 			continue
@@ -1435,14 +1435,6 @@ func _room_near(kind: int, want_angle: float, want_far: float) -> Vector2:
 			if _clear(spot, r, level):
 				return spot
 	return Vector2(INF, INF)
-
-
-static func _kind_named(word: String) -> int:
-	var want := word.strip_edges().to_lower().replace("_", " ")
-	for kind: int in StructureKind.BUILDABLE:
-		if StructureKind.display_name(kind) == want:
-			return kind
-	return -1
 
 
 # --- tours -------------------------------------------------------------------
@@ -1508,7 +1500,7 @@ func tour_seen(what: StringName) -> bool:
 	if what == &"holding_remote":
 		return s != null and _village_within(s, RECRUIT_REACH) < 0
 	if String(what).begins_with("piece:"):
-		var kind := _kind_named(String(what).substr(6))
+		var kind := StructureKind.named(String(what).substr(6))
 		if kind < 0 or s == null:
 			return false
 		for p in s.pieces:

@@ -79,6 +79,8 @@ const EXCUSED := {
 	# in whatever space this renderer keeps. The palette colour it mixes IN goes
 	# through the door at the mix, which is where the two spaces meet.
 	"res://src/render/shafts.gdshader": "screen",
+	# Heat haze: the frame behind a disc on the ground, read a few pixels off.
+	"res://src/render/heat_haze.gdshader": "screen",
 	# The whole of ALBEDO is one `: source_color` uniform.
 	"res://src/render/weather/rays.gdshader": "source_color",
 	# A sum of light at several hues and energies: every term goes through the
@@ -130,6 +132,58 @@ func test_every_shader_in_the_repo_writes_albedo_through_the_one_door() -> void:
 				or EXCUSED.has(path)
 			check(ok, "%s: %s\n      (wrap it in matter_albedo() for a surface or matter_light() for a light, or excuse it in EXCUSED with a reason)" % [path, bare])
 			at = src.find("ALBEDO = ", at + 1)
+
+
+## **A SHADER BUILT IN A SCRIPT IS STILL A SHADER.** The sweep above read only
+## .gdshader and .gdshaderinc files, and every hit mark, flash and magnet line
+## in the game (MobFx) is shader code held in a .gd string. All three wrote
+## ALBEDO raw for as long as the lit renderer has existed: on Forward+ every
+## burst, tell, glint and breath came out about a stop and a half paler than its
+## palette value (INK[0] at about 0.19 instead of 0.03; the heat cue's ember as
+## cream). Any .gd under src that writes ALBEDO in a shader string answers to
+## the same door.
+const SCRIPT_EXCUSED := {
+	# The probe that MEASURES what a raw ALBEDO becomes on each renderer
+	# (test_the_door_is_the_identity_on_compatibility_and_decodes_on_forward_plus
+	# is its finding); wrapping it would measure the door instead.
+	"res://src/render/degrade/render_probe.gd": "measures raw ALBEDO",
+}
+
+
+func _scripts(at: String, out: Array[String]) -> Array[String]:
+	var d := DirAccess.open(at)
+	if d == null:
+		return out
+	d.list_dir_begin()
+	var name := d.get_next()
+	while name != "":
+		var path := at.path_join(name)
+		if d.current_is_dir():
+			_scripts(path, out)
+		elif name.ends_with(".gd"):
+			out.append(path)
+		name = d.get_next()
+	d.list_dir_end()
+	return out
+
+
+func test_every_shader_built_in_a_script_writes_albedo_through_the_one_door() -> void:
+	var all: Array[String] = []
+	_scripts("res://src", all)
+	gt(float(all.size()), 100.0, "the sweep found the scripts at all")
+	var found := 0
+	for path in all:
+		if SCRIPT_EXCUSED.has(path):
+			continue
+		var src := FileAccess.get_file_as_string(path)
+		var at := src.find("ALBEDO = ")
+		while at >= 0:
+			found += 1
+			var bare := src.substr(at, 160).get_slice("\n", 0).strip_edges()
+			var ok := bare.contains("vec3(0.0)") or bare.contains("matter_albedo(") or bare.contains("matter_light(")
+			check(ok, "%s: %s\n      (a shader built in a script goes through matter_albedo() or matter_light() too)" % [path, bare])
+			at = src.find("ALBEDO = ", at + 1)
+	gt(float(found), 0.0, "and the scripts that build shaders were read")
 
 
 func test_the_door_is_the_identity_on_compatibility_and_decodes_on_forward_plus() -> void:
