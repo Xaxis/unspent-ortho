@@ -1,0 +1,144 @@
+# BACK AT THE CAMP (docs/ROADMAP.md slice 3, step 8), through the real keys. He
+# crosses at the narrows and steps off at the landing, and the raft stays where he
+# left it. At the archive Otto shows him one of the war's orders; once that has
+# settled the Covenant's warden says whose roads are sold. Once both have been
+# felt, the goal is the old soldier back at the crew's camp, and the survey pins
+# the narrows where he landed. Back across on the raft he left: Dace, told the
+# order was his, is done with the crew; then Rook, told of Teague's roads.
+#
+#   TOUR_TIMEOUT=900 tools/tour.sh tours/back-at-camp.tour --seed=1 --hour=9 --weather=clear:0 --beats=marens_lead,reaper_named,reaper_down,built_halcyon,holdfast_hope,war_archive,covenant_speaker,june_named,june_knew,echo_kept --met=june --chose=rook.iron=paid --give=pick:1,kit_plate:1,raft:1,stew:1,bread:1 --holding=lean-to
+#
+# (June's leg is staged behind him: tours/june.tour plays it. A holding of his
+# stands (`--holding`), as slice 2 has him build one: without it, the night's
+# taking out of the Covenant puts the holding's beds ahead of every lead.
+# `mark the_raft` is where he stepped off, the tour's own doing; everything else
+# is a place a system names. Otto's replies: "How the war started.", then "Show
+# me one." second; Solis's first is "How do you know where I came from?"; Dace's
+# first at the war, once the order is known, is "The order was mine."; Rook's
+# third is Teague's roads.)
+coast calm
+
+# --- over: the raft in at the narrows, and across ------------------------------------------
+at slot:the_crossing
+wait 0.5
+walkto at:slot:the_landing 20 till:launch_ready:raft
+tap ride
+await riding:raft 3
+walkto at:slot:the_landing 240
+wait 0.3
+walkto at:slot:the_archive 20 till:step_off_ready
+tap ride
+await parked:raft 3
+mark the_raft
+wait 1.0
+shot 01-the-raft-left-at-the-landing with parked:raft
+
+# --- the archive's order -------------------------------------------------------------------
+at cast:otto
+await cast:otto 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+press use
+wait 0.4
+tap move_down
+wait 0.3
+press use
+await beat:tradecraft 3
+wait 0.4
+shot 02-the-order-reads-like-him with talking,beat:tradecraft
+press use
+wait 0.6
+
+# --- settled: the warden's word on Teague ---------------------------------------------------
+# The order lands about noon (the crossing is some 180 world minutes); the
+# warden's reply waits until it has settled (StoryPacing.SETTLE, 240).
+hour 17
+wait 1.0
+at cast:solis
+await cast:solis 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+press use
+await beat:teague_sold 3
+wait 0.4
+shot 03-solis-says-whose-roads with talking,beat:teague_sold
+press use
+wait 0.6
+
+# --- felt, the next morning: the old soldier, and the narrows -------------------------------
+# Eighteen hours past the boot's meal he is starving, and six berries (1.5 h each)
+# cannot bring that under hungry; stew and bread (24 h) keep him fed past Rook.
+hour 9 +1
+wait 1.0
+tap inventory
+wait 0.5
+choose stew
+tap use
+wait 1.2
+choose bread
+tap use
+wait 1.2
+tap inventory
+wait 0.6
+await goal:camp_back 5
+await goal_shown 20
+shot 04-the-goal-is-the-old-soldier with goal:camp_back,goal_shown
+press map 0.2
+await app:map 6
+wait 0.6
+shot 05-the-survey-pins-the-narrows with app:map,goal:camp_back
+press map 0.2
+await app:none 5
+
+# --- back across on the raft he left -------------------------------------------------------
+at mark:the_raft
+wait 0.8
+shot 06-the-raft-where-he-left-it with parked:raft,goal:camp_back
+tap ride
+await riding:raft 3
+walkto at:slot:the_crossing 240
+wait 0.3
+walkto at:slot:the_camp 20 till:step_off_ready
+tap ride
+await parked:raft 3
+wait 0.6
+
+# --- the old soldier, told ------------------------------------------------------------------
+at cast:dace
+await cast:dace 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+press use
+await beat:crew_war 3
+wait 0.4
+press use
+await beat:dace_left 3
+wait 0.4
+shot 07-the-order-was-mine with talking,beat:dace_left
+press use
+wait 1.5
+shot 08-the-goal-is-rook with goal:rook_teague,goal_shown
+
+# --- Rook, told of Teague's roads --------------------------------------------------------------
+at cast:rook
+await cast:rook 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+tap move_down
+wait 0.3
+tap move_down
+wait 0.3
+press use
+await beat:rook_told 3
+wait 0.4
+shot 09-rook-will-see-to-it with talking,beat:rook_told
+press use
+wait 0.6
