@@ -487,7 +487,10 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 	# a world came to hold no landmarks at all without one line of it erroring.
 	var greens: Array[Vector2] = []
 	var built: Array[Vector2] = []
-	var placed_at: Array[Vector2] = []
+	# Kept far from the landmarks on its own BODY only: across a strait two
+	# silhouettes are two shores, and spacing them across it made a continent's
+	# places hang on what stood on the next (tests/biome/test_body_independence.gd).
+	var placed_at := {}
 	for v: Dictionary in world.villages:
 		greens.append(v.get("pos", Vector2.ZERO))
 	var works_in := {}
@@ -522,6 +525,7 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 	var by_region := {}
 	var pools := {}
 	var left := {}
+	var body_of := {}
 	for region: Dictionary in order:
 		var id := int(region.get("id", -1))
 		var kinds := for_land(StringName(str(region.get("type", &""))))
@@ -547,6 +551,8 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 		if pool.size() < FINE_BELOW:
 			pool = _candidates(world, region, greens, built, solid, wanted, clear, STRIDE)
 		pools[id] = pool
+		var at: Vector2 = (pool[0] as Dictionary).p if not pool.is_empty() else region.get("centre", Vector2.ZERO)
+		body_of[id] = world.continent_at(floori(at.x), floori(at.y))
 	# LEAST ROOM FIRST — AND ROOM IS THE POOL, not the tile count. Sorting on tiles
 	# stands in for room only while a region's places are spread evenly through it,
 	# and villages, works and solid ground are not spread evenly. The biggest
@@ -559,7 +565,8 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 			return pa < pb
 		var ta := int(a.get("tiles", 0))
 		var tb := int(b.get("tiles", 0))
-		return ta < tb if ta != tb else int(a.get("id", -1)) < int(b.get("id", -1)))
+		# Ties by the region's own key, never its rank in the world.
+		return ta < tb if ta != tb else GenCountries.region_key(world, int(a.get("id", -1))) < GenCountries.region_key(world, int(b.get("id", -1))))
 	var rounds := PER_REGION
 	for region: Dictionary in order:
 		rounds = maxi(rounds, wanted_in(int(region.get("tiles", 0))))
@@ -570,10 +577,14 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 				continue
 			if (left[id] as Array).is_empty() and round_index >= PER_REGION:
 				left[id] = for_land(StringName(str(region.get("type", &""))))
-			var row := _pick_one(pools[id], placed_at, left[id], apart_scale)
+			if not placed_at.has(body_of[id]):
+				var none: Array[Vector2] = []
+				placed_at[body_of[id]] = none
+			var mine: Array[Vector2] = placed_at[body_of[id]]
+			var row := _pick_one(pools[id], mine, left[id], apart_scale)
 			if row.is_empty():
 				continue
-			placed_at.append(row.at)
+			mine.append(row.at)
 			(by_region[id] as Array).append(row)
 	for region: Dictionary in world.regions:
 		var id := int(region.get("id", -1))

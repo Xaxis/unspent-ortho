@@ -424,7 +424,11 @@ static func _random_tile_in(c: GenContext, rng: RandomNumberGenerator, r: Rect2)
 static func _clear_site(c: GenContext, p: Vector2i, r: int, max_rise: int) -> bool:
 	var w := c.w
 	var i0 := p.y * c.size + p.x
-	if c.land[i0] == 0:
+	# The site's own tile first: the sweep below steps by two from -r, so on an
+	# odd r it never reads the middle, and a works stood its site on a road
+	# (seed 90210's demolition face, which `_put` then refused, and the
+	# metropolis lost its only one).
+	if c.land[i0] == 0 or c.water[i0] != 0 or c.road[i0] != 0 or c.village[i0] != 0 or c.ramp[i0] != 0:
 		return false
 	var l0 := w.level[i0]
 	for dy in range(-r, r + 1, 2):
