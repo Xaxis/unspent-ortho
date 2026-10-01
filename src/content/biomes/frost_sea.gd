@@ -103,9 +103,11 @@ static func make() -> BiomeDef:
 	dress.shelter = &"shack"
 	d.dressing = dress
 	d.grade = Vector4(-0.06, 0.04, 0.12, -0.04)
-	# White under a clear sky throws back nearly everything: the brightest night
-	# in the game, and the emptiest.
-	d.night_sky = 1.4
+	# White under a clear sky throws back nearly everything, so it keeps far less
+	# of the night sky than the coast, as the snow does: at 1.4 its midnight from
+	# above on seed 1 measured a median luma of 108 against the coast's 20, day
+	# under a blue filter (2026-09-30). The emptiest night in the game, and a night.
+	d.night_sky = 0.25
 	# NO LIP SNOW, and this was the last of it. Between the bank, the village
 	# ground, the decor and a snowy terrace lip, this landscape was quietly laying
 	# SNOW — which belongs to the snowfield — over 4.7% of itself. Every one of
