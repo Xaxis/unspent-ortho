@@ -5,7 +5,7 @@
 # straight up out of the haze, be carried, and set down slowly. The walk is the
 # world clock itself (colossus_walk.gd), so this is the real pace and not a
 # sped-up one.
-#   tools/tour.sh tours/colossi_stride.tour --seed=7 --place=coast --hour=12 --colossus=1@725 --face=353 --eye=1.7,-8 --weather=clear:0
+#   TOUR_TIMEOUT=400 tools/tour.sh tours/colossi_stride.tour --seed=7 --place=coast --hour=12 --colossus=1@725 --face=353 --eye=1.7,-8 --weather=clear:0
 wait 8
 shot stride-00
 wait 15

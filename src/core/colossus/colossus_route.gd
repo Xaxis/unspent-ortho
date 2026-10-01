@@ -31,8 +31,13 @@ var _cycle_minutes := 1.0
 ## holes every lap. Empty on a walk nobody handed any, which is every walk that
 ## never reaches land.
 var treads: Dictionary = {}
+## THE LAME LEG of a walker that limps (ColossusDef.limp), or -1: the leg whose
+## plant comes down nearest the island's middle in the lap, so the leg of the
+## first tread (ColossusTreads.wanted) and the one the climb goes up.
+var lame := -1
 
 const SALT := 0x0C0105
+const Walk := preload("res://src/core/colossus/colossus_walk.gd")
 
 
 static func make(def: RefCounted, seed_value: int, world_size: int) -> RefCounted:
@@ -54,6 +59,15 @@ static func make(def: RefCounted, seed_value: int, world_size: int) -> RefCounte
 	r.offset = rng.randf() * float(def.cycle_minutes)
 	r._cycles = maxi(1, roundi(TAU * r.radius / float(def.stride)))
 	r._cycle_minutes = float(def.cycle_minutes)
+	if float(def.limp) > 1.0:
+		var best := INF
+		for k in 3:
+			for j: int in r._cycles:
+				var p: Vector3 = Walk.natural_plant(def, r, k, j)
+				var d := Vector2(p.x, p.z).distance_to(mid)
+				if d < best:
+					best = d
+					r.lame = k
 	return r
 
 
