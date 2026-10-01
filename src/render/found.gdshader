@@ -370,8 +370,8 @@ void fragment() {
 	// are powered and the land is not. A walker's plate takes none of it: the
 	// cloud shade, the legs' shade and the banks of fog are laid on the land,
 	// kilometres under most of a leg, and the far body it goes on into takes
-	// none either, so on the drum, in its own shin's shade band, the patch came
-	// out a third as bright as the body round it.
+	// none either. On the drum, in its own shin's shade band, the patch read at
+	// luma 36 with it and 68 without (13:00).
 	vec3 tinted = near_lift.x > 0.0 ? c : sky_apply(c, world_pos, TIME);
 	c = mix(tinted, c, night_keep * (1.0 - clamp(dot(tinted, vec3(0.333)) / max(dot(c, vec3(0.333)), 1e-3), 0.0, 1.0)));
 
