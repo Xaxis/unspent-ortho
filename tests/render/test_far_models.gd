@@ -136,6 +136,35 @@ func test_leaf_cards_cast_close_in_and_the_shade_crowns_past_it() -> void:
 	cam.queue_free()
 
 
+## ON THE DESKTOP'S OWN TIER THE LAND STOPS CASTING AT THE TIER'S REACH: past it
+## a chunk's ground and its shade models cast nothing at eye level, and only the
+## dearest tier casts to the last split. Casting to 140 there, the land past 80
+## tiles was up to half an eye-level frame's shadow primitives, for nothing a
+## split that far out could resolve.
+func test_the_desktop_tier_holds_eye_level_shadows_to_its_reach() -> void:
+	gt(float(Quality.row(&"high").get("eye_shadow_reach", 0)), 0.0, "high holds the eye's shadows to a reach")
+	eq(int(Quality.row(&"ultra").get("eye_shadow_reach", -1)), 0, "and only ultra casts to the last split")
+	Quality._now = &"high"
+	var w := _plain()
+	var cam := _eye(Vector3(76, 4.0, 64), Vector3(200, 3.8, 64))
+	var view := WorldView.new()
+	view.setup(w)
+	tree.root.add_child(view)
+	view.ensure_near(Vector2(76, 64))
+	await process_frames(2)
+	var reach := float(Quality.row(&"high").eye_shadow_reach)
+	var node: Node3D = view._chunks[Vector2i(3, 2)]
+	var land := node.get_node_or_null("terrain_casts") as GeometryInstance3D
+	var shade := node.get_node_or_null("shade_casts") as GeometryInstance3D
+	check(land != null and shade != null, "the ground and the shade models cast by twins")
+	if land != null and shade != null:
+		near(land.visibility_range_end, reach, 1e-3, "the ground casts out to the tier's reach and no further")
+		near(shade.visibility_range_end, reach, 1e-3, "and so do the shade models")
+	Quality._now = &""
+	view.queue_free()
+	cam.queue_free()
+
+
 ## Past MID_FROM a chunk's props are drawn as their mid models, at eye level only:
 ## the top-down game keeps every chunk whole at any range and casting for itself.
 func test_the_hand_over_is_the_eyes_and_never_the_top_down_games() -> void:
