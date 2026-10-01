@@ -29,7 +29,7 @@ tools/canon.sh [--accept]       # canon frames vs the accepted set
 tools/web.sh                    # export and boot the web build in headless Chromium
 tools/deploy.sh [--prod]        # deploy to Vercel and prove it loads there
 tools/heavy.sh CMD...           # run a tour/shot/render/web job only when the box can take it (one slot per 6 cores)
-tools/tour-sweep.sh [--since REF] # run tours on this checkout, PASS/FAIL each (CI has no GPU: tours run here)
+tools/tour-sweep.sh [--since REF|--smoke] # run tours on this checkout, PASS/FAIL each (CI has no GPU: tours run here)
 tools/play.sh [coast|reaper|holdfast|gallery] # play from this checkout, into a named moment (list: tools/play.sh list)
 ```
 
@@ -91,7 +91,9 @@ tools/play.sh [coast|reaper|holdfast|gallery] # play from this checkout, into a 
 - One slice, one branch, named for what it does. Fixes to it go on the same
   branch, never a new `-2`/`-fix` name.
 - Before saying a branch is ready: `tools/preflight.sh` green on the head with
-  `origin/main` merged in. Then the orchestrator gates it on CI (8 shards, ~30 min)
+  `origin/main` merged in, and, if it touches `src/systems` or `src/core`,
+  `tools/tour-sweep.sh --smoke` green too (tours/SMOKE: the run-time paths no unit
+  test sees, like one key answered by two systems). Then the orchestrator gates it on CI (8 shards, ~30 min)
   and lands it.
 - When it lands, delete the branch and its worktree the same hour. A worktree
   exists only while someone is editing in it; a pushed branch needs none.

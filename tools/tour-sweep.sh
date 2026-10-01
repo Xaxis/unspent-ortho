@@ -4,6 +4,8 @@
 #   tools/tour-sweep.sh                       every tours/*.tour
 #   tools/tour-sweep.sh tours/home-coast.tour tours/holdfast.tour
 #   tools/tour-sweep.sh --since REF           tours changed since REF, plus the proofs
+#   tools/tour-sweep.sh --smoke               tours/SMOKE, two at a time: before a branch
+#                                             touching src/systems or src/core is ready
 # Why: CI has no GPU, so tours never run there, and three were found failing on
 # main (2026-09-29) that nobody had run in days. A tour that fails on main is a
 # proof that lies.
@@ -11,7 +13,17 @@
 set -u
 cd "$(dirname "$0")/.."
 PROOFS="tours/home-coast.tour tours/holdfast.tour"
-if [ "${1:-}" = "--since" ]; then
+if [ "${1:-}" = "--smoke" ]; then
+  # A renamed tour must not drop out of the set unseen.
+  missing=$(grep -oE '^[a-z0-9_-]+' tours/SMOKE | while read -r t; do [ -f "tours/$t.tour" ] || echo "$t"; done)
+  if [ -n "$missing" ]; then echo "tour-sweep --smoke: tours/SMOKE names tours that don't exist: $missing"; exit 1; fi
+  # Two at a time (a tree's share of heavy.sh): each prints its own line.
+  grep -oE '^[a-z0-9_-]+' tours/SMOKE | sed 's|^|tours/|; s|$|.tour|' \
+    | xargs -P 2 -I{} "$0" {} | grep -E '^(PASS|FAIL)' | tee /dev/stderr | grep -c '^FAIL' > /tmp/unspent-smoke.$$ || true
+  f=$(cat /tmp/unspent-smoke.$$); rm -f /tmp/unspent-smoke.$$
+  echo "tour-sweep --smoke: $f failed"
+  exit "$f"
+elif [ "${1:-}" = "--since" ]; then
   tours=$( { git diff --name-only "$2"...HEAD -- 'tours/*.tour'; echo "$PROOFS" | tr ' ' '\n'; } | sort -u)
 elif [ $# -gt 0 ]; then
   tours="$*"
