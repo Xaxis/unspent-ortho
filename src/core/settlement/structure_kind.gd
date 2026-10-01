@@ -402,6 +402,16 @@ static func display_name(kind: int) -> String:
 	return "piece %d" % kind
 
 
+## The buildable piece a staging word names (`--holding`, a tour's `piece:`): its
+## display name, underscores for spaces (`radio_mast`), or -1. [int]
+static func named(word: String) -> int:
+	var want := word.strip_edges().to_lower().replace("_", " ")
+	for kind: int in BUILDABLE:
+		if display_name(kind) == want:
+			return kind
+	return -1
+
+
 static func idiom(kind: int) -> Idiom:
 	return row(kind).get("idiom", Idiom.MADE) as Idiom
 
