@@ -108,6 +108,9 @@ func test_the_goal_line_walks_from_the_archive_to_the_relay() -> void:
 	await _next_day(g)
 	_hop(g, &"june_voice", "what she knew felt: back to her")
 	Story.beat(&"echo_kept")
+	# What the archive showed him felt, the old soldier (test_back_at_camp walks it).
+	@warning_ignore("return_value_discarded")
+	Story.meet(&"dace")
 	Story.beat(&"covenant_fed")
 	_hop(g, &"mend", "fed at the Covenant: the mended plate")
 	g.inventory.add(&"plate_mended", 1)
@@ -129,7 +132,7 @@ func test_the_relay_waits_behind_a_named_keeper_still_standing() -> void:
 	for b: StringName in [&"war_archive", &"tradecraft", &"war_relay", &"covenant_speaker", &"june_named",
 			&"june_knew", &"echo_kept"]:
 		Story.beat(b, -INF)
-	for who: StringName in [&"otto", &"june"]:
+	for who: StringName in [&"otto", &"june", &"dace"]:
 		@warning_ignore("return_value_discarded")
 		Story.meet(who)
 	_hop(g, &"relay", "nothing else open: the relay below")
