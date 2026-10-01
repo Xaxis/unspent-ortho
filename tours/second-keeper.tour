@@ -1,0 +1,57 @@
+# THE SECOND KEEPER (docs/ROADMAP.md slice 2, step 6), by the keys on the
+# owner's seed: the Tide Reaper taken by force (the plate player's hands, as
+# tours/reaper_force.tour), then Teague asked what else keeps a yard like that.
+# He names the Candlestick (anvil_named), the survey marks its strike field,
+# and the anvil there is taken by the same hands. Nothing is booted past the
+# steel knife the Reaper's plate asks for.
+#
+#   TOUR_TIMEOUT=1500 TOUR_FIXED_FPS=60 tools/tour.sh tours/second-keeper.tour --seed=1 --hour=11 --weather=clear:0 --held=knife_shear
+#
+# Staged by name: `near keeper`, `at cast:teague`, `near next_keeper` (the keeper
+# the lead is for, Sentinels.next_keeper); never a coordinate.
+
+# --- the first keeper down -------------------------------------------------------------
+coast calm
+near keeper
+await sentinel 12
+wait 4.0
+shot 01-the-first-keeper with mob:sentinel.coast
+drive res://tests/fight/plate_reader.gd 240 sentinel_dead
+wait 0.8
+shot 02-the-first-keeper-down with sentinel_dead,beat:reaper_down
+
+# --- Teague names the next -------------------------------------------------------------
+at cast:teague
+await cast:teague 8
+wait 0.6
+# The fall's look holds the keys a while; the talk waits for them back.
+await unstaged 12
+press use
+await talking 3
+wait 0.4
+tap move_down
+tap move_down
+wait 0.3
+press use
+await beat:anvil_named 3
+wait 0.4
+shot 03-teague-names-the-candlestick with talking,beat:anvil_named
+press use
+wait 0.8
+
+# --- the survey marks its ground -------------------------------------------------------
+press map 0.2
+await app:map 6
+wait 0.6
+shot 04-the-survey-marks-the-strike-field with app:map,beat:anvil_named
+press map 0.2
+await app:none 5
+
+# --- the second keeper taken -----------------------------------------------------------
+near next_keeper
+await sentinel:glass_desert 12
+wait 4.0
+shot 05-the-second-keeper with mob:sentinel.glass
+drive res://tests/fight/plate_reader.gd 240 sentinel_fallen:anvil
+wait 0.8
+shot 06-the-second-keeper-down with sentinel_fallen:anvil

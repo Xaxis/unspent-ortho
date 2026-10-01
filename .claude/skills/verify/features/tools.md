@@ -7,7 +7,7 @@ The loop scripts.
 ## Sub-features
 
 - audio, canon, check, deploy, export, map, shot, test, tour: `tools/NAME.sh`.
-- tour `tools/tour.sh`, run bare, boots with its header's options and takes the header's `TOUR_TIMEOUT` and `TOUR_FIXED_FPS` where the shell set none (`tools/_tour_args.sh`): `tools/test.sh test_tour_header`; `tools/tour.sh tours/home-coast.tour` prints `tour env: TOUR_TIMEOUT=600 (from its header)`.
+- tour `tools/tour.sh`, run bare, boots with its header's options and takes the header's `TOUR_TIMEOUT` and `TOUR_FIXED_FPS` where the shell set none (`tools/_tour_args.sh`): `tools/test.sh test_tour_header`; `tools/tour.sh tours/home-coast.tour` prints `tour env: TOUR_TIMEOUT=600 (from its header)`. Off macOS its hidden window, and shot.sh's, run with vsync off (`focus_frame_flags`, tools/_focus.sh). With it on, the compositor presented the one-pixel window about once a second, and a fixed-step `wait 3.0` took 180 s against about 2 s now: its log's `fps=` reads near 90, not 1.
 - web `tools/web.sh`: exports and boots the web build in headless Chromium.
 - sweep `tools/sweep.sh` (`tools/gd/sweep.gd`): every weapon against every common machine and the wall crowds, over the shoulder; `--reader=human[:SEED]` judges balance, `--crowd=N`, `--singles|--crowds`; a measurement, never a gate, ~10 min, killed at `SWEEP_TIMEOUT`. Quick: `tools/sweep.sh --weapons=knife --machines=cutter`.
   - `--programs` over a tour fails on any GL program first drawn after an `echo event` (a freeze a player meets); `--cold` builds every program as on a first visit.

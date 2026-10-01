@@ -1990,6 +1990,8 @@ func _drive(path: String, secs: float, until: String) -> bool:
 			ok = true
 			break
 		hands.step()
+		if "from_above" in reader:
+			reader.set("from_above", not game.camera.shoulder)
 		reader.call(&"act")
 		var hero := sim.hero
 		var dir := hero.move
