@@ -23,6 +23,9 @@ static func make() -> BiomeDef:
 	d.order = 15
 	d.style_note = "Green-black water between concrete, tide lines up every wall, nothing dry at ground level."
 	d.share = Vector2(0.05, 0.09)
+	# The first place across the water: the raft from home comes ashore in it,
+	# and the story's second leg is cast here (docs/ROADMAP.md slice 3 step 6).
+	d.spread = BiomeDef.LANDFALL
 	d.anchors = [{"seq": 15, "u": 0.62, "v": 0.66}]
 	d.temp_range = Vector2(0.35, 0.75)
 	d.moist_range = Vector2(0.65, 1.0)

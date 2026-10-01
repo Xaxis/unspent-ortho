@@ -199,5 +199,11 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 			return PropKind.BROADLEAF
 		return PropKind.BUSH if r < 0.37 else BiomeScatter.NONE
 	if g == Ground.MUD:
-		return PropKind.REEDS if r < 0.05 else BiomeScatter.NONE
+		# The canopy stands in the jungle's mud too, on its roots. On grass alone
+		# it hung on how much of the jungle lay high: seed 42's, pushed down onto
+		# its low ground by where the scrapwood's heart fell, stood at 82 trees
+		# per 1000 tiles against the pines' 112.
+		if r < 0.12:
+			return PropKind.BROADLEAF
+		return PropKind.REEDS if r < 0.17 else BiomeScatter.NONE
 	return BiomeScatter.NONE
