@@ -7,8 +7,8 @@
 # the drum, below the knee, the thigh, near the hip, and the hub's rim. He climbs
 # as a climber reads the gait: on each ledge he rests to a full breath and sets
 # off only when his leg will stand for the next section (`climb_ready`), and
-# between pitches he rides up inside the bone while the eye swings out off the
-# leg to the island under the walker, and back. At the rim the panel in the crown is read, and listening to it he
+# between pitches he rides up inside the bone while the eye goes up the outside
+# of the leg. At the rim the panel in the crown is read, and listening to it he
 # meets the enclave. The whole of it is about a world day, some twenty real
 # minutes, dawn to the next night.
 #   TOUR_TIMEOUT=2400 tools/tour.sh tours/colossi_climb.tour --seed=1 --place=tread0 --colossus=2@tread0+5 --hour=6 --weather=clear:0 --stats
@@ -48,8 +48,7 @@ await climb:ledge 60
 release move_up
 await climb:rode 0.1
 end
-# Near the middle of the ride, the eye out on the island.
-wait 24
+wait 8
 shot 02-riding-up-the-shin with climb_riding
 until climb_ready 240
 shot 03-below-the-knee with climbing,climb_patch
@@ -61,7 +60,7 @@ await climb:ledge 60
 release move_up
 await climb:rode 0.1
 end
-wait 12
+wait 8
 shot 04-riding-up-the-thigh with climb_riding
 until climb_ready 240
 shot 05-on-the-thigh with climbing,climb_patch

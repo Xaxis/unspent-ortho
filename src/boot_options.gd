@@ -34,9 +34,7 @@ extends RefCounted
 ##                     the tread nearest the start (43_climb): the body hung at
 ##                     hold HOLD (default 0) of PITCH (a WalkerClimb.PITCHES id, or
 ##                     its index) and the climb's own camera on it, climbing on
-##                     from there; with --colossus=2@treadN for the moment (render).
-##                     --climb=PITCH:ride[:SHARE] rides up from PITCH's top, SHARE
-##                     (0-1) of the ride gone
+##                     from there; with --colossus=2@treadN for the moment (render)
 ## --orbit=off         no ring in the sky this run (19_orbit): the only way to
 ##                     take one moment with and without it and measure its cost
 ## --orbit=zenith@H     stage a pass of the ring whose peak stands overhead at hour
