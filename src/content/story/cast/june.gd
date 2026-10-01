@@ -1,5 +1,6 @@
 ## June Marr, his daughter, the Covenant's Speaker. Never the lead (docs/STORY.md).
-## She is there only once her name has been said to him.
+## She is there only once her name has been said to him, and she is met in her
+## own house, the one nearest the Covenant, at her table (StoryRooms.KEEPERS).
 static func make() -> StoryCharacter:
 	return StoryCharacter.make({
 		"id": &"june", "name": "June", "title": "the Speaker",

@@ -48,7 +48,7 @@ func test_a_dark_shuttered_holding_on_the_same_coast_is_left_alone() -> void:
 ## `until_warned`: stop at the first warning past a survey.
 func _play(holding: String, until_warned: bool) -> Dictionary:
 	Sx.use_root("raid_pacing")
-	var g := Sx.game(tree, ["--seed=1", "--hour=10", "--weather=clear:0", "--holding=" + holding])
+	var g := await Sx.played(tree, ["--seed=1", "--hour=10", "--weather=clear:0", "--holding=" + holding])
 	await frames(3)
 	var raids := Sx.system(g, "48_raids")
 	var s: Settlement = Sx.system(g, "46_settlements").call("here")

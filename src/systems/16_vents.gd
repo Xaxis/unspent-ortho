@@ -112,37 +112,13 @@ func _process(delta: float) -> void:
 		var size := (0.5 + 0.25 * h) * much
 		var seconds := (2.2 + h) * sqrt(much)
 		var lighten := 0.0 if own.a > 0.0 else 0.15
-		if MobFx.close_eye(_layer):
-			_plume_pooled(at, col.lightened(lighten), size, seconds, wind * (0.6 + h), v.id * 31 + int(_t))
-		else:
-			_plume(at, col, size, seconds, wind * (0.6 + h), v.id * 31 + int(_t), lighten)
+		_plume_pooled(at, col.lightened(lighten), size, seconds, wind * (0.6 + h), v.id * 31 + int(_t))
 
 
 ## How many puffs one breath is laid as, from the vent's mouth up.
 ## Enough, and wide enough against their spacing, that neighbours overlap and
 ## the soft puffs read as one column.
 const PLUME := 8
-
-
-## A breath as a PLUME, not a ball: a column of puffs laid at once from a
-## narrow mouth up, each higher one wider, fainter-lived and further
-## downwind, so the whole leans and shears with the wind and breaks up at
-## its top into wisps set off to either side. One soft ball per breath read as
-## a string of cotton wool over every vent. `size` is the breath's width at
-## its widest.
-func _plume(at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int, lighten: float) -> void:
-	for i in PLUME:
-		var f := float(i) / float(PLUME - 1)
-		var rise := size * (0.15 + f * 1.6)
-		var shear := drift * f * f * 1.4
-		# The top breaks into wisps: offset across the wind, one side or the other.
-		var side := (Rng.hash01(seed_value, i, 3) - 0.5) * size * 0.9 * f
-		var across := Vector2(-drift.y, drift.x).normalized() * side
-		var p := at + Vector3(shear.x + across.x, rise, shear.y + across.y)
-		var w := size * lerpf(0.45, 1.25, f)
-		# A land's own colour is passed through unwhitened: a white plume lit red
-		# from below and blue from the night sky came out pink.
-		MobFx.breath(_layer, p, col, w, seconds * lerpf(0.55, 1.1, f), drift * lerpf(0.5, 1.6, f), seed_value * 11 + i, lighten)
 
 
 ## The ring of puffs every vent in reach shares: at most this many alive at once.
@@ -152,7 +128,19 @@ func _plume(at: Vector3, col: Color, size: float, seconds: float, drift: Vector2
 const PUFFS := 1024
 
 
-## The same plume as `_plume`, laid on the shared puffs.
+## A breath as a PLUME, not a ball: a column of puffs laid at once from a
+## narrow mouth up, each higher one wider, fainter-lived and further
+## downwind, so the whole leans and shears with the wind and breaks up at
+## its top into wisps set off to either side. One soft ball per breath read as
+## a string of cotton wool over every vent. `size` is the breath's width at
+## its widest. A land's own colour is passed through unwhitened: a white plume
+## lit red from below and blue from the night sky came out pink.
+##
+## THE SAME SOFT VAPOUR FROM ANY CAMERA. From above a breath used to be the
+## flat vapour MARK, whose colours are the breath's lightened 0.86 and 0.34 of
+## the way to white, so the sulphur jungle's yellow steam and the Burning's grey
+## ash both came out as rows of white cotton over every vent (2026-09-30). The
+## pooled puffs are one draw whatever the camera, lit by what reaches them.
 func _plume_pooled(at: Vector3, col: Color, size: float, seconds: float, drift: Vector2, seed_value: int) -> void:
 	if _puffs == null:
 		_make_puffs()
@@ -222,10 +210,7 @@ func _geyser(v: WorldProp, row: Dictionary, delta: float) -> void:
 		# The skirt: wide low puffs round the mouth, hugging the ground.
 		var a := Rng.hash01(seed_value, 1) * TAU
 		var p := at + Vector3(cos(a) * 0.5, -0.1, sin(a) * 0.5)
-		if eye:
-			_plume_pooled(p, col, 0.5, 1.6, Vector2(cos(a), sin(a)) * 0.8, seed_value)
-		else:
-			_plume(p, col, 0.4, 1.4, Vector2(cos(a), sin(a)) * 0.6, seed_value, 0.0)
+		_plume_pooled(p, col, 0.5, 1.6, Vector2(cos(a), sin(a)) * 0.8, seed_value)
 		return
 	_geyser_gap[key] = 0.12
 	var hold := Geysers.column(float(st.k))
@@ -236,7 +221,7 @@ func _geyser(v: WorldProp, row: Dictionary, delta: float) -> void:
 		_column_pooled(at, col, height, seed_value)
 	else:
 		# From above, a column is its foot: a burst of wide puffs.
-		_plume(at, col, 1.2 * hold, 1.6, Vector2(0.3, -0.2), seed_value, 0.0)
+		_plume_pooled(at, col, 1.2 * hold, 1.6, Vector2(0.3, -0.2), seed_value)
 
 
 ## One beat of a standing column: puffs stacked from the mouth to `height`, each

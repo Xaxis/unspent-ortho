@@ -2532,12 +2532,18 @@ vec3 pine_foxfire(vec2 wp, vec2 px) {
 // and after dark a few of them burn with it: a faint cold flame lying on the
 // water, low, flickering and going out and catching again somewhere else. A
 // few pools in a stretch and never all of them; never a lamp, never a dot.
+//
+// FAINT MEANS UNDER THE BLOOM. At 3.2 times its colour the flame's core was
+// (1.09, 1.98, 2.30): the tonemap took every channel to the top and the glow
+// spread it, so a burning pool read as a white-cyan splotch with no hue and no
+// edge. At 1.6 its brightest channel stays near 1, so the core keeps its teal,
+// and it is brightest over the deepest water and thins to nothing at the rim.
 vec3 bog_gas(vec2 wp, vec2 px) {
 	if (sky_view.y <= 0.0) {
 		return vec3(0.0);
 	}
 	float n = ink_vnoise(wp * 0.95) * 0.7 + ink_vnoise(wp * 2.3 + 4.0) * 0.3 + rag(wp);
-	float pool = 1.0 - smoothstep(0.16, 0.3, n);
+	float pool = 1.0 - smoothstep(0.04, 0.3, n);
 	if (pool <= 0.0) {
 		return vec3(0.0);
 	}
@@ -2545,7 +2551,7 @@ vec3 bog_gas(vec2 wp, vec2 px) {
 	float lit = smoothstep(0.42, 0.66, ink_vnoise(wp * 0.11 + vec2(TIME * 0.02, -TIME * 0.015)));
 	float lick = 0.55 + 0.45 * flicker(vec3(floor(wp.x * 2.0), 3.0, floor(wp.y * 2.0)), 2.4);
 	float tongue = smoothstep(0.25, 0.65, ink_vnoise(wp * 3.1 + vec2(0.0, TIME * 0.6)));
-	return vec3(0.34, 0.62, 0.72) * 3.2 * pool * lit * lick * tongue * sky_view.y;
+	return vec3(0.34, 0.62, 0.72) * 1.6 * pool * lit * lick * tongue * sky_view.y;
 }
 
 // THE MIDDENS' NIGHT. The screens and tubes buried in the floor leach their

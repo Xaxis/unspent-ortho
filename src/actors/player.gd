@@ -38,6 +38,15 @@ var ride: CraftRide = null
 ## the surf (48_wake), eased to 0. The one writer is the wake; nothing else
 ## sinks a body.
 var sunk := 0.0
+## OFF THE LAND ALTOGETHER, up a walker's leg (43_climb, the only writer): the
+## figure is drawn where the climb hangs it, in world space, placed by the climb
+## the same frame as the leg it hangs from, and this node leaves its transform
+## alone. `pos` and the fight body stay where it left the ground.
+var hanging := false:
+	set(v):
+		hanging = v
+		if model != null:
+			model.top_level = v
 var _z := 0.0
 ## Real-time msec until which a hit flash shows (real time, so a held shot still lets it go).
 var _flash_until := 0
@@ -217,7 +226,7 @@ func _sync(delta: float) -> void:
 	var target := world.height_at(pos)
 	_z = target if delta == 0.0 else lerpf(_z, target, 1.0 - exp(-14.0 * delta))
 	position = Vector3(pos.x, _z + lift - sunk, pos.y)
-	if model:
+	if model and not hanging:
 		model.swimming = swimming
 		model.rotation.y = -facing
 		model.position = Vector3.ZERO
@@ -230,9 +239,9 @@ func _sync(delta: float) -> void:
 			var t := Time.get_ticks_msec() * 0.001
 			var k := 0.05 if _shudder_left > 0.0 else 0.02
 			model.position += Vector3(sin(t * 91.0) * k, 0.0, cos(t * 77.0) * k)
-		_shudder_left = maxf(0.0, _shudder_left - delta)
-		if delta > 0.0:
-			model.animate(speed, delta)
+	_shudder_left = maxf(0.0, _shudder_left - delta)
+	if model and delta > 0.0:
+		model.animate(0.0 if hanging else speed, delta)
 	var flashing := Time.get_ticks_msec() < _flash_until
 	if flashing != _flashing and model != null:
 		_flashing = flashing

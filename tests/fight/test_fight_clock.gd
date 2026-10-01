@@ -11,7 +11,7 @@ const Sx := preload("res://tests/save/save_fixture.gd")
 
 func _game() -> Game:
 	Sx.use_root("fight-clock")
-	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0"])
+	var g := await Sx.played(tree, ["--seed=1", "--hour=11", "--weather=clear:0"])
 	(Sx.system(g, "30_mobs").get("coast") as Object).set("spawning", false)
 	g.player.sim.clear_mobs()
 	return g
@@ -57,7 +57,7 @@ func _tap_dodges(g: Game, steps: int) -> bool:
 func test_the_hitstop_and_the_tap_are_counted_in_steps() -> void:
 	if not stepped_now():
 		return
-	var g := _game()
+	var g: Game = await _game()
 	var tick := float(Engine.physics_ticks_per_second)
 	for s: float in [0.04, 0.05, 0.06, 0.08]:
 		var n: int = await _held_steps(g, s)

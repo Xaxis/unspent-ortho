@@ -46,6 +46,11 @@ uniform float glow_scale = 1.0;
 uniform float wear_take = 1.0;
 // How deep its panel relief runs. A pylon's plate is heavier than a salvage kit.
 uniform float relief = 1.0;
+// How much of the world's ruled panels (`found_panels`) it wears: 0 for plate
+// whose panels are laid in its geometry (the leg a climber is on,
+// colossus_leg.gd), which the world's upright grid would cut across in a
+// lattice of seams on a leg leaning over.
+uniform float ruled = 1.0;
 
 // Written once a frame by 18_crowns. Four (x, the ground's own height there,
 // z, reach in tiles); reach 0 is an unused slot. Zero = the cut is off.
@@ -253,7 +258,7 @@ void fragment() {
 	}
 	bool lit_part = emission_strength > 0.0 || COLOR.a < 0.98;
 
-	vec2 pan = found_panels(world_pos);
+	vec2 pan = found_panels(world_pos) * ruled;
 	// Every panel is finished a shade differently, and its seams are darker and
 	// rougher than its face: that is what makes a machine read as ASSEMBLED
 	// rather than moulded, and it is the FOUND half of law 1.

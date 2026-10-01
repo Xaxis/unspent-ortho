@@ -532,6 +532,14 @@
       "tests": []
     },
     {
+      "id": "system:43_climb",
+      "kind": "system",
+      "entry": "src/systems/43_climb.gd",
+      "reach": "tools/tour.sh tours/colossi_climb.tour",
+      "area": "world-look",
+      "tests": []
+    },
+    {
       "id": "system:43_cracked_roof",
       "kind": "system",
       "entry": "src/systems/43_cracked_roof.gd",

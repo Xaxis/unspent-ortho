@@ -143,7 +143,7 @@ static func hold_frame(def: RefCounted, climb: WalkerClimb, p: int, i: int) -> T
 	var up := h.x * WalkerClimb.LEVEL
 	var at := climb.surface_at(def, p, up, h.y, PROUD)
 	var ahead := (climb.surface_at(def, p, up + 0.5, h.y, PROUD) - at).normalized()
-	var out := Vector3(cos(h.y), 0.0, sin(h.y))
+	var out := climb.surface_at(def, p, up, h.y, PROUD + 1.0) - at
 	out = (out - ahead * out.dot(ahead)).normalized()
 	var across := ahead.cross(out).normalized()
 	return Transform3D(Basis(across, ahead, out), at)

@@ -419,23 +419,22 @@ static func billboard(k: Kit, f: Array, v0: float, v1: float, col: Color, s: int
 	# carrying blocks that read as type at the distance a player sees this from,
 	# and the whole thing is set in a dark surround that is what the gantry holds.
 	var g := out * 0.015
-	var lit := GroundColors.neon(col)
-	var dim := GroundColors.neon(col.darkened(0.45))
+	var hot := _face_peak(col)
 	# Where the plan no longer feeds its boards (BiomeDressing.signage) the faces
 	# are dead enamel under the land's grime, and only a letter or two still
 	# catches, on its last power.
 	var grime := BiomeDressing.of(c).growth
-	if dying:
-		lit = col.darkened(0.72).lerp(grime, 0.35)
-		dim = col.darkened(0.8).lerp(grime, 0.45)
 	k.made.quad(a + g, b + g, cc + g, dd + g, P.INK[0])
 	var rows: Array[Vector2] = [Vector2(0.06, 0.3), Vector2(0.37, 0.72), Vector2(0.79, 0.95)]
 	for r in rows.size():
 		var lo: float = rows[r].x
 		var hi: float = rows[r].y
-		var face := lit if r == 1 else dim
 		var q := out * 0.03
-		k.made.quad(a.lerp(dd, lo) + q, b.lerp(cc, lo) + q, b.lerp(cc, hi) + q, a.lerp(dd, hi) + q, face)
+		if dying:
+			var dead := col.darkened(0.72).lerp(grime, 0.35) if r == 1 else col.darkened(0.8).lerp(grime, 0.45)
+			k.made.quad(a.lerp(dd, lo) + q, b.lerp(cc, lo) + q, b.lerp(cc, hi) + q, a.lerp(dd, hi) + q, dead)
+		else:
+			_lit_register(k, a + q, b + q, cc + q, dd + q, lo, hi, hot if r == 1 else hot * FACE_DIM)
 		if r != 1:
 			continue
 		# Type across the middle register: five blocks, each its own width, with
@@ -457,13 +456,64 @@ static func billboard(k: Kit, f: Array, v0: float, v1: float, col: Color, s: int
 	k.rod(Houses.on_wall(bl, br, tr, tl, u0 + 0.05, v0, 0.0) + out * 0.04, foot + out * 0.04, 0.018, 4, P.PLATE[1])
 
 
+## HOW BRIGHT A BOARD BURNS, as its brightest channel. world.gdshader lays a
+## NEON face's colour twice over as light, which a tube a hand wide needs to read
+## at all; a FIELD of it four storeys tall at full value went past 1 in every
+## channel under the tonemap and the glow, and the metropolis's mercury-green
+## board read as one flat sheet of glare with white type and no hue. At this
+## peak the hottest point of a face comes out near 1, still its own colour.
+const FACE_PEAK := 0.5
+## The upper and lower registers, against the middle one.
+const FACE_DIM := 0.55
+## How much of its light a face keeps at its frame: the tubes behind the sheet
+## light its middle, so it falls off toward the gantry and is never one value.
+const FACE_FALL := 0.45
+## The type is the sign's own colour paled, a little hotter than the face it is
+## set on: white type on a coloured face was the one pixel in it with no hue.
+const LETTER_PALE := 0.25
+const LETTER_PEAK := 0.62
+## The grid a lit register is laid on, for its fall-off.
+const REGISTER_ACROSS := 6
+const REGISTER_UP := 3
+
+
+## `col` scaled so its brightest channel is FACE_PEAK, opaque.
+static func _face_peak(col: Color) -> Color:
+	var top := maxf(col.r, maxf(col.g, col.b))
+	var k := FACE_PEAK / maxf(top, 0.001)
+	return Color(col.r * k, col.g * k, col.b * k)
+
+
+## One lit register of a board, from `lo` to `hi` of the way up the face a-b-cc-dd
+## (a to dd its left edge, b to cc its right), laid as a grid whose corners carry
+## the light: `hot` in its middle, FACE_FALL less at its rim.
+static func _lit_register(k: Kit, a: Vector3, b: Vector3, cc: Vector3, dd: Vector3, lo: float, hi: float, hot: Color) -> void:
+	var pts: Array[Vector3] = []
+	var cols: Array[Color] = []
+	for j in REGISTER_UP + 1:
+		var t := float(j) / REGISTER_UP
+		var v := lerpf(lo, hi, t)
+		for i in REGISTER_ACROSS + 1:
+			var u := float(i) / REGISTER_ACROSS
+			pts.append(a.lerp(dd, v).lerp(b.lerp(cc, v), u))
+			var e := maxf(absf(2.0 * u - 1.0), absf(2.0 * t - 1.0))
+			var f := 1.0 - FACE_FALL * e * e
+			cols.append(GroundColors.neon(Color(hot.r * f, hot.g * f, hot.b * f)))
+	var row := REGISTER_ACROSS + 1
+	for j in REGISTER_UP:
+		for i in REGISTER_ACROSS:
+			var n := j * row + i
+			k.made.quad_shaded(pts[n], pts[n + 1], pts[n + row + 1], pts[n + row], cols[n], cols[n + 1], cols[n + row + 1], cols[n + row])
+
+
 ## One letter of a board's type: burning on the plan's power, or, where the
 ## plan has stopped feeding it, dead grey but for one or two still catching.
 ## Always at least one: a lit form (BiomeForms.LIT) draws a tube of some kind,
 ## which is how tests/biome/test_forms.gd holds the table to the geometry.
 static func _letter(dying: bool, col: Color, s: int, i: int) -> Color:
 	if not dying:
-		return GroundColors.neon(Color(1, 1, 1))
+		var pale := _face_peak(col.lerp(Color(1, 1, 1), LETTER_PALE)) * (LETTER_PEAK / FACE_PEAK)
+		return GroundColors.neon(Color(pale.r, pale.g, pale.b))
 	var pick: int = [0, 1, 3, 4][int(Rng.hash01(s, 0, 48) * 4.0)]
 	if i == pick or Rng.hash01(s, i, 47) < 0.2:
 		return GroundColors.failing(Color(1, 1, 1).lerp(col, 0.3))
