@@ -72,7 +72,9 @@ func test_breath_is_the_grip() -> void:
 	c.step(0.1, pose, true)
 	var wind := float(WalkerClimb.PITCHES[c.pitch].get("wind", 1.0))
 	eq(c.breath, FightRules.WIND - Climb.WIND_PER_LEVEL * WalkerClimb.HOLD_EVERY * wind, "a move up costs its levels, at the pitch's own wind")
-	var moved := false
+	var leaving := c.breath
+	var moved := c.step(0.1, pose, false).has(&"moved")
+	eq(c.breath, leaving, "leaving the ledge, its breath stops: none comes back between holds")
 	for i in 30:
 		moved = moved or c.step(0.1, pose, false).has(&"moved")
 	check(moved and c.hold == 1, "and he reaches the next hold")
@@ -119,10 +121,11 @@ func test_a_set_down_shakes_a_spent_climber_off_and_the_cable_catches_him() -> v
 
 ## A climber who rests to a full breath on each ledge and sets off only when his
 ## leg will stand for the next section reaches the hub, in the 15-20 minutes the
-## set piece is ruled at, less a human's looking about (owner ruling 2026-09-30).
+## set piece is ruled at (owner ruling 2026-09-30).
 ## Up the lame leg, the one the climb goes up and the longest in the air, and on
 ## the mean of twelve starts through a cycle: he takes the cable whenever he
-## comes to it, and when that is in the cycle moves the time by minutes.
+## comes to it, and when that is in the cycle moves the time by minutes, so the
+## worst start is held to 21 (orchestrator ruling 2026-10-01).
 func test_a_climber_who_reads_the_gait_reaches_the_hub_in_the_set_piece_time() -> void:
 	var d := _def()
 	var r := _route(d)
@@ -136,7 +139,8 @@ func test_a_climber_who_reads_the_gait_reaches_the_hub_in_the_set_piece_time() -
 		most = maxf(most, t)
 	var mean := sum / 12.0
 	print("  the climb: %.1f real minutes on the mean, %.1f at the most" % [mean / 60.0, most / 60.0])
-	check(mean >= 10.0 * 60.0 and mean <= 20.0 * 60.0, "inside the set piece's time: %.1f min" % (mean / 60.0))
+	check(mean >= 15.0 * 60.0 and mean <= 20.0 * 60.0, "inside the set piece's time: %.1f min" % (mean / 60.0))
+	lt(most, 21.0 * 60.0, "and from the worst start, near it: %.1f min" % (most / 60.0))
 
 
 ## Real seconds from coming to the cable at world minute `m` (he takes it once
