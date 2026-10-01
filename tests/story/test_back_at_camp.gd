@@ -41,8 +41,10 @@ func test_dace_hears_it_through_the_key_and_is_gone() -> void:
 	check(Story.landed(&"crew_war"), "he turned a key on an order that checked out")
 	check(not _offers(t, "The order was mine."), "and there is nothing to confess before the archive")
 	story.call("_close")
-	# Across and back: June's leg behind him, and the archive's order shown him.
+	# Across and back: June's leg and the warden's word behind him, and the
+	# archive's order shown him.
 	_across()
+	Story.beat(&"teague_sold", -INF)
 	Story.beat(&"tradecraft")
 	await _next_day(g)
 	eq(Guide.goal(g), _lead(&"camp_back"), "felt: the old soldier, with what the archive showed")
@@ -101,6 +103,85 @@ func test_rook_is_told_of_teagues_roads_through_the_key() -> void:
 	check(Story.landed(&"rook_told"), "he will see to it; the north road")
 	story.call("_close")
 	check(not StoryCast.get_def(&"teague").present(), "and Teague is gone")
+	Sx.end(g)
+	Story.forget()
+
+
+## THE WARDEN (Guide.WAY `warden`). Nothing else leads to him, and his word on
+## Teague's roads is what opens the way back to Rook; asked while a revelation is
+## still settling he holds it back. So once June's thread is done and has settled,
+## the goal is the warden, pinned at the Covenant, until he has said it, and once
+## that has settled, home. Found by tours/across.tour, where the goal line alone
+## never reached him.
+func test_once_june_is_done_the_goal_is_the_warden() -> void:
+	Story.forget()
+	Sx.use_root("camp-warden")
+	var g := Sx.game(tree, ["--seed=1", "--size=%d" % SIZE, "--hour=10", "--weather=clear:0"])
+	await frames(3)
+	var cast := Sx.system(g, "49_cast")
+	var story := Sx.system(g, "49_story")
+	_past_the_holdfast(g)
+	g.body.fed_until = g.clock.minutes + 100000.0
+	for b: StringName in [&"war_archive", &"tradecraft", &"covenant_speaker", &"june_named", &"june_knew"]:
+		Story.beat(b, -INF)
+	for who: StringName in [&"otto", &"june"]:
+		@warning_ignore("return_value_discarded")
+		Story.meet(who)
+	Story.beat(&"echo_kept")
+	await _next_day(g)
+	_hop(g, &"warden", "settled: the warden")
+	_pinned(g, &"warden", &"the_covenant")
+	check(not _stand_at_cast(g, cast, &"solis").is_empty(), "the warden is cast at the Covenant")
+	await _until(func() -> bool: return bool(cast.call("tour_seen", &"cast:solis")))
+	await _press_use(g)
+	var t: StoryTalk = story.get("talk")
+	eq(t.id if t != null else &"", &"solis", "the key opens the warden's words")
+	_say(t, ["How do you know where I came from?"])
+	check(Story.landed(&"teague_sold"), "he says whose roads he is sold")
+	story.call("_close")
+	await _next_day(g)
+	_hop(g, &"camp_back", "said and settled: the goal moves on, back across")
+	Sx.end(g)
+	Story.forget()
+
+
+## WHILE THE FAR SHORE SETTLES (Guide.WAY `camp_back`). June's hops and the
+## warden's each wait on a revelation's settle. In between the goal is the mend
+## (the Covenant's village has a bench by its fire), else the relay, and never the
+## old soldier: sent home across the water mid-thread, he would only come back.
+## The old soldier waits until the warden's word is felt. Found by
+## tours/across.tour, which stood the settles out on the far shore.
+func test_while_the_far_shore_settles_the_goal_never_sends_him_home() -> void:
+	Story.forget()
+	Sx.use_root("camp-settles")
+	var g := Sx.game(tree, ["--seed=1", "--size=%d" % SIZE, "--hour=10", "--weather=clear:0"])
+	await frames(3)
+	_past_the_holdfast(g)
+	g.body.fed_until = g.clock.minutes + 100000.0
+	for b: StringName in [&"war_archive", &"war_relay", &"tradecraft", &"covenant_fed", &"covenant_speaker"]:
+		Story.beat(b, -INF)
+	@warning_ignore("return_value_discarded")
+	Story.meet(&"otto")
+	Story.beat(&"june_named")
+	_hop(g, &"mend", "her name, still settling: the mend, not home")
+	await _next_day(g)
+	_hop(g, &"june", "felt: June")
+	@warning_ignore("return_value_discarded")
+	Story.meet(&"june")
+	Story.beat(&"june_knew")
+	_hop(g, &"mend", "what she always knew, still settling: the mend, not home")
+	await _next_day(g)
+	_hop(g, &"june_voice", "felt: back to her")
+	Story.beat(&"echo_kept")
+	_hop(g, &"mend", "what the voice kept her from, still settling: the mend, not home")
+	g.inventory.add(&"plate_mended", 1)
+	_hop(g, &"relay", "the plate mended: the relay below, still not home")
+	await _next_day(g)
+	_hop(g, &"warden", "felt: the warden")
+	Story.beat(&"teague_sold")
+	_hop(g, &"relay", "his word, still settling: still not home")
+	await _next_day(g)
+	_hop(g, &"camp_back", "the far shore done and felt: the old soldier")
 	Sx.end(g)
 	Story.forget()
 
