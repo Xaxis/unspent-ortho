@@ -143,3 +143,61 @@ static func _first_hit(tris: PackedVector3Array, from: Vector3, dir: Vector3) ->
 		if h != null:
 			best = minf(best, from.distance_to(h as Vector3))
 	return best
+
+
+## EVERY PLATE CARRIES ITS OWN FRAME, so its wear (found.gdshader `plate_detail`)
+## is laid on its lines and walks with the leg: each face of a plate says its
+## width, the height of it that shows, and which part of it the face is, and
+## every vertex of it is somewhere on that plate. The skin and the hardware carry
+## none, and the patch's material asks for plate wear.
+func test_every_plate_carries_its_own_frame() -> void:
+	var def: RefCounted = Def.tripod(&"C")
+	var climb := WalkerClimb.begin(0, 1)
+	var k := Leg.build(def, climb, 2)
+	var parts := {}
+	var off := 0
+	for i in k.verts.size():
+		var part := int(k.custom0[i * 4 + 3] + 0.5)
+		parts[part] = int(parts.get(part, 0)) + 1
+		if part == 0:
+			continue
+		var w := k.custom0[i * 4]
+		var uv := k.uv2s[i]
+		if w <= 0.0 or uv.x < -0.01 or uv.x > w + 0.01 or uv.y < -0.01 or uv.y > Leg.PANEL.y + Leg.LAP + 0.01:
+			off += 1
+	for part: int in [int(Leg.FACE), int(Leg.BEVEL), int(Leg.LIP)]:
+		gt(float(parts.get(part, 0)), 0.0, "part %d is laid" % part)
+	gt(float(parts.get(0, 0)), 0.0, "and the skin and the hardware carry no plate")
+	eq(off, 0, "every plate vertex is on its own plate")
+	eq(float(Leg.material().get_shader_parameter("plate_detail")), 1.0, "and the patch wears its plates' own wear")
+
+
+## UP CLOSE THE PLATE IS LIT AS FORM, AND ONLY UP CLOSE (Leg.NEAR_LIFT): the
+## patch wears the lift and its fill; the far body takes the same rule only while
+## a climb is live (ColossusView.lift_near) and gives it back after; and the
+## lift is gone well short of the nearest any eye on the ground comes to the
+## drum, so from the ground the walker is the dark mass it always was.
+func test_the_near_plate_is_lifted_only_up_close() -> void:
+	var mat := Leg.material()
+	eq(mat.get_shader_parameter("near_lift"), Leg.NEAR_LIFT, "the patch wears the lift")
+	eq(float(mat.get_shader_parameter("near_fill")), Leg.NEAR_FILL, "and its fill")
+	var def: RefCounted = Def.tripod(&"C")
+	var climb := WalkerClimb.begin(0, 1)
+	var foot := climb.surface_at(def, 0, 0.0, 0.0, 0.0)
+	gt(float(def.ankle_up) + foot.y, Leg.NEAR_LIFT.z * 1.5, "the drum's foot stands well past the lift from the ground")
+	var view: Node3D = load("res://src/render/colossus/colossus_view.gd").new()
+	tree.root.add_child(view)
+	view.setup([def], 7, 1300)
+	var lifted := func(want: float) -> int:
+		var n := 0
+		for c: Node in view.get_children():
+			var v: Variant = ((c as MeshInstance3D).material_override as ShaderMaterial).get_shader_parameter("near_lift")
+			if v != null and is_equal_approx((v as Vector4).x, want):
+				n += 1
+		return n
+	eq(lifted.call(Leg.NEAR_LIFT.x), 0, "the far body is not lifted before a climb")
+	view.call(&"lift_near", true)
+	eq(lifted.call(Leg.NEAR_LIFT.x), view.get_child_count(), "while one is live both its bodies are")
+	view.call(&"lift_near", false)
+	eq(lifted.call(0.0), view.get_child_count(), "and after it, neither is")
+	view.free()

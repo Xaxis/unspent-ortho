@@ -679,12 +679,14 @@ const VIEW_ROUND := 24.0
 
 ## Whether a chunk is inside the eye's wedge, `slack_deg` wider than the lens, or
 ## close enough to the camera that it is always in. Always true unless the camera
-## sees the horizon.
+## sees the horizon, and for an eye out in the air (SkyLight.LOOKS_OUT): the wedge
+## is an eye at a man's height, and from up a walker's leg the land under the eye
+## and behind it is in the frame too, where a parked chunk was a hole.
 func _in_view(key: Vector2i, slack_deg: float) -> bool:
 	if not _lod_on:
 		return true
 	var cam := get_viewport().get_camera_3d()
-	if cam == null or cam.projection != Camera3D.PROJECTION_PERSPECTIVE:
+	if cam == null or cam.projection != Camera3D.PROJECTION_PERSPECTIVE or cam.has_meta(SkyLight.LOOKS_OUT):
 		return true
 	var fwd3 := -cam.global_transform.basis.z
 	var fwd := Vector2(fwd3.x, fwd3.z)
@@ -1791,10 +1793,10 @@ static func void_material() -> StandardMaterial3D:
 
 func _add_open_sea() -> void:
 	var s := float(world.size)
-	# Past everything the eye can see from anywhere on the island (SkyLight.SEE):
+	# Past everything any eye can see (SkyLight.HIGHEST_SEE, from up a walker):
 	# at eye level the sea runs to the horizon, and where it stopped the sky's
 	# ground half showed through as a band of nothing under the air.
-	var m := SkyLight.SEE + 200.0
+	var m := SkyLight.HIGHEST_SEE
 	var y := TerrainMesher.WATER_Y - 0.02
 	var v := PackedVector3Array()
 	var c := PackedColorArray()
