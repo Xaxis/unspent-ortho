@@ -114,6 +114,18 @@ func test_the_goal_stands_until_something_louder_needs_the_space() -> void:
 	hud.free()
 
 
+## A ping has the space from the moment it is raised, not from its first fade
+## step. The ui system raises it after the HUD has stepped for the frame, so the
+## plate sits at age 0, alpha 0, until the next frame's step.
+func test_the_goal_gives_way_the_instant_a_place_is_pinged() -> void:
+	var hud := _hud()
+	hud.set_goal("The war's archive, for how it started.")
+	check(hud.goal_shown(), "it stands")
+	hud.show_place("machine city")
+	check(not hud.goal_shown(), "the ping has the space before it has risen at all")
+	hud.free()
+
+
 func test_a_teaching_line_is_said_now_or_not_at_all() -> void:
 	var hud := _hud()
 	Events.hint.emit("WASD walks, Shift runs.", "wasd")
