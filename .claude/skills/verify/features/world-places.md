@@ -24,9 +24,9 @@ Realms and portals, the rooms behind a house's door, landmarks and caches, the h
   - Container warren (docs/MIDDENS_ROOMS.md §1): `tools/tour.sh tours/container-warren.tour --seed=1 --hour=11 --weather=clear:0`; 01 the end in the face, 02 the run from above, 02b the manifest (`wall:manifest`), 03 down the run, 05-07 up a ladder and back (`below`, `above`, `below`; `near ladder`, `near ladder_top`). Rules `tools/test.sh test_container_warren,test_slot_doors`.
   - Buckled bay (crouch under, stand stopped; real keys both ways): `tools/test.sh test_warren_bay_in_game`; a machine taller than the room held at its lip: `tools/test.sh test_machines_under_roofs`; `tools/tour.sh tours/warren-bay.tour --seed=1 --hour=11 --weather=clear:0`.
   - Tower crawl out onto the plateau (`SlotDoors.exit_beside`, `out_back`): `tools/tour.sh tours/warren-tower.tour --seed=1 --hour=11 --weather=clear:0`.
-- 22_landmarks `src/systems/22_landmarks.gd`: `tools/tour.sh tours/landmarks.tour`.
+- 22_landmarks `src/systems/22_landmarks.gd`: `tools/tour.sh tours/landmarks.tour`; the press that opens a cache reads and eats nothing else (`use_spent`): `tools/test.sh test_in_game:test_the_press_that_opens_a_cache`.
 - 23_ruins `src/systems/23_ruins.gd` (ruin walls stop a body, `RuinWalls`): `tools/test.sh test_ruin_walls`.
-- 24_holds `src/systems/24_holds.gd`: `tools/tour.sh tours/region.tour`; barricades in the world's material: `tools/test.sh test_hold_drawn`.
+- 24_holds `src/systems/24_holds.gd`: `tools/tour.sh tours/region.tour`; barricades in the world's material: `tools/test.sh test_hold_drawn`; cut off the road by hand with steel held on `use`, the press the barrier's (`use_spent`): `tools/test.sh test_holds:test_held_on_a_barrier`.
 
 ## How to reach it
 
