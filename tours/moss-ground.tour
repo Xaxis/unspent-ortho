@@ -23,7 +23,7 @@ wait 0.6
 hold shoulder_peek
 await shoulder 5
 wait 1.0
-shot 04-the-moss-over-the-shoulder with shoulder
+shot 04-the-moss-over-the-shoulder with shoulder,land:moss
 release shoulder_peek
 place moss
 near boulder
