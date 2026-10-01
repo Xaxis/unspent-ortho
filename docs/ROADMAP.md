@@ -57,11 +57,17 @@ and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
    reason said by the camp.
 5. [x] **The lab and Ruth's table** (A). `built_halcyon` → `gate_lab`; `was_cia` →
    `gate_meet` (`ruth_signed`, `ruth_volunteered`, `kerr_money`).
-6. [ ] **The second keeper** (B+C). Whichever keeper stands nearest home, holding a
-   non-key memory (`TESTIMONY_SENTINEL`, beat `gap`). Salt flats can't be guaranteed
-   on home without moving the coast keeper: measured on seeds 1-40 (salt on home in
-   3/40; every home deal moves the Reaper's lair, 90-500 tiles). The Pan Rake and
-   `mem_kitchen` come where salt flats is reached; nothing gates on the kitchen.
+6. [ ] **The second keeper** (B+C). The nearest keeper of another design on a leg he
+   can reach (`Sentinels.next_keeper`, `Guide.bodies_reached`), holding a non-key
+   memory (`TESTIMONY_SENTINEL`, beat `gap`). Never across water before the raft,
+   never on an islet off the journey. Where home's body holds a second design,
+   slice 2 keeps it. Where it holds only the Reaper (seeds 1, 7 and 42), slice 2 has
+   no second keeper and Teague's lead waits: the second keeper is the first across
+   the water, met in slice 3, and `gap` moves with it; nothing gates on it. Salt
+   flats can't be guaranteed on home without moving the coast keeper: measured on
+   seeds 1-40 (salt on home in 3/40; every home deal moves the Reaper's lair, 90-500
+   tiles). The Pan Rake and `mem_kitchen` come where salt flats is reached; nothing
+   gates on the kitchen.
 7. [x] **Vera and the way on** (A). `vera_knew` ("filed under weather"); she names
    the archive across the water: slice 3's lead.
 8. [ ] **Proof** (all). The tour plays the slice unassisted. ★
@@ -72,6 +78,8 @@ The raft to the Covenant's seat and the war's archive (one body, 704 and 1006 ti
 from the spawn on seed 1; the narrowest water is 130 tiles, from near the camp).
 Reason to make: the raft, then gear mended from what the machines leave. Beats from
 STORY.md (wright's map); June's reveals land here, echo_hand stays held for slice 4.
+From the crossing on, the next keeper may be the far shore's (slice 2 step 6): on
+seed 1 Teague's Candlestick, on 7 the listener, on 42 the pan rake.
 Proof tour: `tours/across.tour`, from slice 2's end.
 
 1. [x] **The crossing** (A+B). After `war_archive` the goal points at a raft and the

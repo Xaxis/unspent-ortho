@@ -187,15 +187,19 @@ func _places(world: WorldData) -> void:
 
 ## Where the place `lair:DESIGN` stands among `states` (the keepers a world or a
 ## game holds): that design's lair nearest `spawn`, where he woke, the first of
-## them on a tie. INF for any other place, or a design none of them is. Asked of
-## the states and never of the world, so the survey can mark it (UiMapScreen.told)
-## from the game's own keepers without projecting the map.
-static func lair_pos(states: Array, spawn: Vector2, place: StringName) -> Vector2:
+## them on a tie; given `world` and `bodies`, only among those on them (the legs
+## he can reach, Guide.bodies_reached), as the survey marks it. INF for any other
+## place, or a design none of them is. Asked of the states and never of the world,
+## so the survey can mark it (UiMapScreen.told) from the game's own keepers
+## without projecting the map.
+static func lair_pos(states: Array, spawn: Vector2, place: StringName, world: WorldData = null, bodies: Array[int] = []) -> Vector2:
 	var best := Vector2.INF
 	if not String(place).begins_with("lair:"):
 		return best
 	var design := StringName(String(place).trim_prefix("lair:"))
 	for st: SentinelState in states:
+		if world != null and not bodies.has(Sentinels.body_of(world, st.lair)):
+			continue
 		if st.design == design and (not best.is_finite() or st.lair.distance_to(spawn) < best.distance_to(spawn)):
 			best = st.lair
 	return best

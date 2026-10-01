@@ -1,10 +1,11 @@
 extends TestCase
-## THE SECOND KEEPER (ROADMAP slice 2, step 6; Sentinels.next_keeper): the
-## nearest keeper of a design not yet taken. On seeds 1 and 7 that is the Tide
-## Reaper first and the anvil once it is down (seed 7's second Tide Reaper, the
-## nearer, is passed over). Teague names it the Candlestick (`anvil_named`), and
-## from then the survey marks its strike field and the lead says it in his words,
-## while it stands.
+## THE NEXT KEEPER (ROADMAP slice 2, step 6; Sentinels.next_keeper): the
+## nearest keeper of a design not yet taken, on a leg of the journey he can reach
+## (Guide.bodies_reached). Home holds only the Reaper on seeds 1, 7 and 42, so the
+## second keeper is the first across the water, from the crossing on. Teague
+## names the Candlestick (`anvil_named`), and once it is one he can reach the
+## survey marks its strike field and the lead says it in his words, while it
+## stands.
 
 const Sx := preload("res://tests/save/save_fixture.gd")
 
@@ -18,30 +19,78 @@ func _state(design: StringName, at: Vector2, fallen := false) -> SentinelState:
 	return s
 
 
+## A world of two bodies: tiles x < 600 are body 1, x >= 640 body 2, between
+## them water.
+func _two_bodies() -> WorldData:
+	var w := WorldData.new(0, 800)
+	for y in w.size:
+		for x in w.size:
+			w.continent[y * w.size + x] = 1 if x < 600 else (2 if x >= 640 else 0)
+	return w
+
+
 func test_a_design_once_taken_is_passed_over_for_the_nearest_other() -> void:
+	var w := _two_bodies()
 	var home := Vector2(0, 0)
 	var near_reaper := _state(&"tide_reaper", Vector2(170, 0))
 	var far_reaper := _state(&"tide_reaper", Vector2(350, 0))
 	var anvil := _state(&"anvil", Vector2(500, 0))
 	var states := [far_reaper, anvil, near_reaper]
-	eq(Sentinels.next_keeper(states, home), near_reaper, "before any falls, the nearest")
+	var home_only: Array[int] = [1]
+	eq(Sentinels.next_keeper(states, home, w, home_only), near_reaper, "before any falls, the nearest")
 	near_reaper.fallen = true
-	eq(Sentinels.next_keeper(states, home), anvil, "its design taken, the nearest of another, past the second of its kind")
+	eq(Sentinels.next_keeper(states, home, w, home_only), anvil, "its design taken, the nearest of another, past the second of its kind")
 	anvil.fallen = true
-	check(Sentinels.next_keeper(states, home) == null, "and none once every design standing is taken")
+	check(Sentinels.next_keeper(states, home, w, home_only) == null, "and none once every design standing is taken")
 
 
-func test_on_seeds_1_and_7_the_second_keeper_is_the_anvil() -> void:
-	for seed_value: int in [1, 7]:
+## ONLY WHERE HE CAN GO: a keeper on a body he cannot reach is passed over
+## however near it stands; once he can reach it, it is the next. A lair out in
+## the shallows off a shore is on that shore's body.
+func test_a_keeper_across_the_water_waits_until_he_can_cross() -> void:
+	var w := _two_bodies()
+	var home := Vector2(560, 10)
+	var lockkeeper := _state(&"lockkeeper", Vector2(660, 10))
+	var anvil := _state(&"anvil", Vector2(20, 10))
+	var states := [lockkeeper, anvil]
+	var home_only: Array[int] = [1]
+	var both: Array[int] = [1, 2]
+	check(lockkeeper.lair.distance_to(home) < anvil.lair.distance_to(home), "the one across the water is the nearer")
+	eq(Sentinels.next_keeper(states, home, w, home_only), anvil, "before he can cross: his own body's, the farther")
+	eq(Sentinels.next_keeper(states, home, w, both), lockkeeper, "once he can: the nearer, across it")
+	anvil.fallen = true
+	check(Sentinels.next_keeper(states, home, w, home_only) == null, "with his own body's down, nothing across the water before he can cross")
+	eq(Sentinels.body_of(w, Vector2(602, 10)), 1, "a lair in the shallows two tiles off a shore is on that shore's body")
+
+
+## On whole worlds: before the crossing only home's keepers are next, and where
+## home holds one design (the Reaper) there is none after it; from the crossing
+## on, the nearest on the far shore's body (leg 1). Seed 1's anvil at 523 stands
+## on an islet off the journey and is never the next.
+func test_on_whole_worlds_the_next_keeper_is_one_he_can_reach() -> void:
+	var leg_one := {1: &"anvil", 7: &"listener", 42: &"pan_rake"}
+	for seed_value: int in leg_one:
+		Story.forget()
 		Sx.use_root("next-keeper-%d" % seed_value)
 		var g := Sx.game(tree, ["--seed=%d" % seed_value, "--hour=11", "--weather=clear:0"])
 		var states := Sentinels.live(g)
-		var first := Sentinels.next_keeper(states, g.world.spawn)
-		eq(first.design, &"tide_reaper", "seed %d: the Tide Reaper first" % seed_value)
-		first.fallen = true
-		var second := Sentinels.next_keeper(states, g.world.spawn)
-		eq(second.design, &"anvil", "seed %d: the anvil second (%.0f tiles)" % [seed_value, second.lair.distance_to(g.world.spawn)])
+		var home := StoryJourney.body_for(g.world, 0)
+		var first := Sentinels.next_keeper(states, g.world.spawn, g.world, Guide.bodies_reached(g))
+		eq(first.design if first != null else &"", &"tide_reaper", "seed %d: the Tide Reaper first" % seed_value)
+		for s: SentinelState in states:
+			if s.design == &"tide_reaper":
+				s.fallen = true
+		var none := Sentinels.next_keeper(states, g.world.spawn, g.world, Guide.bodies_reached(g))
+		check(none == null, "seed %d: before the crossing, home holds no other design (%s)" % [seed_value, none.design if none != null else &""])
+		@warning_ignore("return_value_discarded")
+		Story.hear(StoryCrossing.CROSSED)
+		var next := Sentinels.next_keeper(states, g.world.spawn, g.world, Guide.bodies_reached(g))
+		eq(next.design if next != null else &"", leg_one[seed_value], "seed %d: from the crossing on, the far shore's nearest" % seed_value)
+		if next != null:
+			eq(Sentinels.body_of(g.world, next.lair), StoryJourney.body_for(g.world, 1), "seed %d: on leg 1's body (%.0f tiles)" % [seed_value, next.lair.distance_to(g.world.spawn)])
+			check(Sentinels.body_of(g.world, next.lair) != home, "seed %d: not home's" % seed_value)
 		Sx.end(g)
+	Story.forget()
 
 
 ## Marked on the survey with Teague's word for its ground, at the anvil's lair.
@@ -58,14 +107,28 @@ func test_once_teague_has_named_it_the_survey_and_the_lead_point_at_the_strike_f
 	var g := Sx.game(tree, ["--seed=1", "--hour=11", "--weather=clear:0"])
 	await process_frames(2)
 	var states := Sentinels.live(g)
-	var reaper := Sentinels.next_keeper(states, g.world.spawn)
+	var reaper := Sentinels.next_keeper(states, g.world.spawn, g.world, Guide.bodies_reached(g))
 	eq(Guide.keeper_goal(g), "", "no lead before the Reaper is down")
 	reaper.fallen = true
 	@warning_ignore("return_value_discarded")
 	Story.beat(Guide.REAPER_DOWN)
-	var anvil := Sentinels.next_keeper(states, g.world.spawn)
-	eq(StoryMap.lair_pos(states, g.world.spawn, &"lair:anvil"), anvil.lair, "the place Teague names is the second keeper's lair")
-	eq(Guide.keeper_goal(g), "", "down, but nobody has named the next: no lead in words not yet said")
+	@warning_ignore("return_value_discarded")
+	Story.beat(&"anvil_named")
+	eq(Guide.keeper_goal(g), "", "named, but across the water before the raft: Teague's lead waits")
+	check(not _marked(g, StoryMap.lair_pos(states, g.world.spawn, &"lair:anvil")), "and the survey marks no strike field he cannot reach")
+	Story.forget()
+	@warning_ignore("return_value_discarded")
+	Story.beat(Guide.REAPER_DOWN)
+	@warning_ignore("return_value_discarded")
+	Story.hear(StoryCrossing.CROSSED)
+	var anvil := Sentinels.next_keeper(states, g.world.spawn, g.world, Guide.bodies_reached(g))
+	eq(anvil.design if anvil != null else &"", &"anvil", "across: the far shore's anvil is the next")
+	if anvil == null:
+		Sx.end(g)
+		Story.forget()
+		return
+	eq(StoryMap.lair_pos(states, g.world.spawn, &"lair:anvil", g.world, Guide.bodies_reached(g)), anvil.lair, "the place Teague names is the next keeper's lair")
+	eq(Guide.keeper_goal(g), "", "nobody has named the next: no lead in words not yet said")
 	check(not _marked(g, anvil.lair), "and nothing marked")
 	@warning_ignore("return_value_discarded")
 	Story.beat(&"anvil_named")
