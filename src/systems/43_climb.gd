@@ -140,7 +140,7 @@ func started() -> void:
 
 ## `--climb=PITCH[:HOLD]`: hung at that hold, up the leg standing in (or over)
 ## the tread nearest the start. `--climb=PITCH:ride[:SHARE]`: riding up from that
-## pitch's top, SHARE of the ride gone.
+## pitch's top, SHARE of the ride gone. Either way with the far land built.
 func _stage(spec: String) -> void:
 	var parts := spec.split(":")
 	var p := -1
@@ -161,6 +161,10 @@ func _stage(spec: String) -> void:
 	else:
 		c.hold = clampi(parts[1].to_int() if parts.size() > 1 else 0, 0, c.holds_in(p) - 1)
 	_begin(c)
+	# A staged hold is a moment deep in the climb, when the workers have long
+	# built the far land under it: built now, so its first frames are not holes.
+	if game.view != null:
+		game.view.ensure_far()
 
 
 func _begin(c: WalkerClimb) -> void:
@@ -192,12 +196,16 @@ func _begin(c: WalkerClimb) -> void:
 
 
 ## Up the leg the plate near the eye is lit as form, on the far body and the
-## near foot as on the patch (colossus_leg_model.gd NEAR_LIFT).
+## near foot as on the patch (colossus_leg_model.gd NEAR_LIFT), and the walker
+## he is on is drawn all there, never given to the air by its hub's distance
+## (ColossusView.climbed).
 func _lift_near(on: bool) -> void:
 	var c := _colossi()
 	for part: StringName in [&"view", &"foot"]:
 		if c != null and c.get(part) != null:
 			(c.get(part) as Object).call(&"lift_near", on)
+	if c != null and c.get(&"view") != null:
+		(c.get(&"view") as Object).set(&"climbed", walker if on else -1)
 
 
 ## The level the fight is told the body is at while he is up a leg: far past any

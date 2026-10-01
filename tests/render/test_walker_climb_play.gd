@@ -72,6 +72,7 @@ func test_on_the_leg_the_keys_and_the_eye_are_the_climbs() -> void:
 	var climb: WalkerClimb = sys.get("climb")
 	check(g.aloft and g.player.hanging, "up the leg, the ground's keys are not his")
 	check(tree.root.get_viewport().get_camera_3d() == sys.get("_cam"), "and the climb's eye is the one drawing")
+	eq(int(colossi.view.climbed), 0, "and the walker he is on is drawn all there, never given to the air by its hub's distance")
 	var def: RefCounted = colossi.view.defs[0]
 	var at := climb.world_pos(def, colossi.view.poses[0])
 	lt(g.player.model.global_position.distance_to(at), 2.0, "the body hangs at the hold on this frame's pose (%.2f m off)" % g.player.model.global_position.distance_to(at))
@@ -255,6 +256,8 @@ func test_the_hub_reads_the_panel_and_its_talk_let_go_puts_him_down() -> void:
 	await process_frames(3)
 	check(sys.get("climb") == null and not g.aloft and not g.player.hanging, "the talk put down, he is back on the ground")
 	check(tree.root.get_viewport().get_camera_3d() == g.camera, "and the play camera is drawing again")
+	var colossi := tree.get_first_node_in_group(&"colossi")
+	eq(int(colossi.view.climbed), -1, "and no walker is drawn as the one he is on")
 	gt(g.clock.minutes - minutes, 1.0, "and the way down took its time")
 	g.queue_free()
 	await process_frames(2)
