@@ -289,6 +289,7 @@ func build_parts(ch: TerrainMesher.Chunk, props: Array = []) -> Array:
 			var wx := ch.x0 + tx
 			var wy := ch.y0 + ty
 			var heather := _heather(g, country, wx, wy, h)
+			var fen := _fen_wet(g, country, wx, wy, h)
 			# In the lee of something standing: the drift a species with a `lee`
 			# lays against it, as extra plants of that species on this tile.
 			var lee_kind := -1
@@ -333,6 +334,8 @@ func build_parts(ch: TerrainMesher.Chunk, props: Array = []) -> Array:
 					fx = on.x - wx
 					fy = on.y - wy
 				if kind == HEATHER and rng.randf() >= heather:
+					continue
+				if not is_nan(fen) and rng.randf() >= fen_share(kind, fen):
 					continue
 				# Litter: a stray piece anywhere, thick where the machines worked.
 				var lr := rng.randf()
@@ -483,6 +486,30 @@ func _heather(g: int, country: int, wx: int, wy: int, y: float) -> float:
 	return smoothstep(0.35, 0.85, ShoreSward.thick(wx + 0.5, wy + 0.5, y))
 
 
+## How wet a tile lies where its ground is drawn as the moss's fen (BogFen), and
+## NAN on any other ground.
+static func _fen_wet(g: int, country: int, wx: int, wy: int, y: float) -> float:
+	if GroundColors.mark(g, country) != GroundColors.BOG_FLOOR:
+		return NAN
+	return BogFen.wet(wx + 0.5, wy + 0.5, y)
+
+
+## How much of a plant of `kind` a fen tile keeps where it lies `wet`: the sedge
+## rings the pools and stands into their shallows and is scarce out on the lawn,
+## the bog cotton drifts on the sodden margin and nowhere else, and everything
+## else keeps to the drier moss and never stands in the water. Laid evenly, the
+## sedge and the cotton were an even print of tufts and white specks over all of
+## it (review, 2026-09-30).
+static func fen_share(kind: int, wet: float) -> float:
+	var shallows := 1.0 - smoothstep(BogFen.WATER + 0.01, BogFen.WATER + 0.03, wet)
+	match kind:
+		GRASS_A:
+			return maxf(smoothstep(BogFen.MARGIN - 0.06, BogFen.MARGIN, wet), 0.04) * shallows
+		GRASS_B:
+			return smoothstep(BogFen.MARGIN - 0.02, BogFen.MARGIN + 0.02, wet) * (1.0 - smoothstep(BogFen.WATER - 0.005, BogFen.WATER, wet))
+	return 1.0 - smoothstep(BogFen.MARGIN, BogFen.WATER, wet)
+
+
 ## THE MEADOW: what the meadow ring (MeadowView) stands on chunk tiles
 ## [tx0, tx0 + w) x [ty0, ty0 + h): the same plants the baked decor lays there,
 ## `thick` times as many of them and none of its stones or litter. Each tile is
@@ -546,12 +573,15 @@ func meadow(ch: TerrainMesher.Chunk, tx0: int, ty0: int, w: int, h: int, thick: 
 			var flat := TerrainMesher.level_height(t) - 0.004
 			var soft := g == Ground.MOSS or g == Ground.PEAT or g == Ground.SNOW or g == Ground.HEATH
 			var heather := _heather(g, country, wx, wy, flat)
+			var fen := _fen_wet(g, country, wx, wy, flat)
 			for i in count:
 				var kind := _pick(sway, rng.randf())
 				var fx := 0.04 + rng.randf() * 0.92
 				var fy := 0.04 + rng.randf() * 0.92
 				var stage := rng.randi() % STAGES
 				if kind == HEATHER and rng.randf() >= heather:
+					continue
+				if not is_nan(fen) and rng.randf() >= fen_share(kind, fen):
 					continue
 				if kind == FLOWER:
 					var bl := _bloom.get_noise_2d(wx + fx, wy + fy) * 0.5 + 0.5
