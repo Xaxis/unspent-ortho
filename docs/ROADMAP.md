@@ -93,7 +93,9 @@ Proof tour: `tours/across.tour`, from slice 2's end.
    climb system to `enclave_met` (d), getting on from the tread (c), the limp gait (f, a GEN).
 8. [x] **Back at the camp** (A). `crew_war` / `dace_left`, `rook_told`.
 9. [x] **Fix** (A). `hale_log` locked until `war_relay`.
-10. [ ] **Proof** (all). The tour plays the slice by the goal line alone. ★
+10. [ ] **Proof** (all). The tour plays the slice by the goal line alone. ★ On main:
+    `tours/across.tour` plays steps 1-5 and 8 by the goal line, frames 01-29. Open: 6 and 7
+    (TODO stages in it), then the owner's playtest.
 
 ## Tools track — the story map and the dev slate (alongside slice 1)
 

@@ -1459,8 +1459,14 @@ func _choose(id: StringName) -> bool:
 		return false
 	# To the top first, by the same real key: a page that reopens on the row last
 	# chosen (the making page) would otherwise never come round to a row above it.
+	# As many steps as the page has rows: the making page at a bench holds over a
+	# hundred, and a bound of 80 left the mended plate out of reach from the raft.
+	var first: UiScreen = ui.call("top")
+	if first == null:
+		return false
+	var steps := first.menu.rows.size() + 1
 	var was := &"#"
-	for i in 80:
+	for i in steps:
 		var top: UiScreen = ui.call("top")
 		if top == null:
 			return false
@@ -1476,7 +1482,7 @@ func _choose(id: StringName) -> bool:
 		Input.action_release("move_up")
 		for f in 3:
 			await get_tree().process_frame
-	for i in 80:
+	for i in steps:
 		var page: UiScreen = ui.call("top")
 		if page == null:
 			return false
