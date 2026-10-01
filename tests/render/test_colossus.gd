@@ -43,8 +43,9 @@ func test_a_planted_foot_stays_where_it_landed() -> void:
 		for k in 3:
 			# The middle of leg k's rest in cycle 3.
 			var cyc: float = d.cycle_minutes
-			var rest_from: float = (3.0 + k / 3.0 + d.swing_share()) * cyc - r.offset
-			var rest_to: float = (4.0 + k / 3.0) * cyc - r.offset
+			var w: Vector2 = Walk.window(d, r, k)
+			var rest_from: float = (3.0 + w.x + w.y) * cyc - r.offset
+			var rest_to: float = (4.0 + w.x) * cyc - r.offset
 			var a: Vector3 = Walk.pose(d, r, rest_from + 1.0).feet[k]
 			var b: Vector3 = Walk.pose(d, r, rest_to - 1.0).feet[k]
 			near(a.distance_to(b), 0.0, 1e-3, "%s: foot %d still while planted" % [d.id, k])

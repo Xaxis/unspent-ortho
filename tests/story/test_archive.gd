@@ -160,9 +160,9 @@ func test_the_relay_waits_behind_a_named_keeper_still_standing() -> void:
 	await frames(3)
 	_past_the_holdfast(g)
 	for b: StringName in [&"war_archive", &"tradecraft", &"war_relay", &"covenant_speaker", &"june_named",
-			&"june_knew", &"echo_kept"]:
+			&"june_knew", &"echo_kept", &"teague_sold"]:
 		Story.beat(b, -INF)
-	for who: StringName in [&"otto", &"june", &"dace"]:
+	for who: StringName in [&"otto", &"june", &"dace", &"rook"]:
 		@warning_ignore("return_value_discarded")
 		Story.meet(who)
 	_hop(g, &"relay", "nothing else open: the relay below")

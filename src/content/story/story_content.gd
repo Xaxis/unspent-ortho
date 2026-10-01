@@ -5684,6 +5684,9 @@ const LEAD := {
 	&"speaker": "The Speaker's name, which nobody inside will say: ask someone who left.",
 	&"june": "June Marr, for what she remembers: her house by the Covenant's seat.",
 	&"june_voice": "Back to June, for what the voice says at night: she keeps to her table.",
+	# The Covenant's warden, once June's thread has settled, until he says whose
+	# roads he is sold (teague_sold): what opens the way back to Rook.
+	&"warden": "The warden, for how he knows where you came from: at the Covenant.",
 	# The second keeper, keyed by its design (Guide.keeper_goal, Sentinels.next_keeper):
 	# once Teague has named it (`anvil_named`) until it falls. Never gating the way
 	# on: no key memory.
@@ -5736,6 +5739,7 @@ const TOLD_WHILE := {
 	&"speaker": {"place": &"the_covenant", "word": "the covenant"},
 	&"june": {"place": &"the_covenant", "word": "her house"},
 	&"june_voice": {"place": &"the_covenant", "word": "her house"},
+	&"warden": {"place": &"the_covenant", "word": "the covenant"},
 	# Back at the camp (slice 3 step 8): the way back is where he landed, and the
 	# landing keeps the crossing's name: one water, one name. Home again, the
 	# crew's own mark (TOLD marens_lead) is the way.

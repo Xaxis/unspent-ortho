@@ -61,12 +61,12 @@ func test_no_lead_open_no_line() -> void:
 	Story.choose(Guide.CAMP_PAID, StringName(StoryContent.PAID[Guide.CAMP_PAID].pick))
 	# The whole Holdfast leg behind him, and across the water as far as the way
 	# goes: the keeper named and down, every hop's beat landed, the archive's man
-	# and June met, and the old soldier spoken to since.
+	# and June met, the warden's word, and the old soldier and Rook spoken to since.
 	for b: StringName in [Guide.NAMED_BEAT, Guide.REAPER_DOWN, &"built_halcyon", &"holdfast_hope", &"war_archive",
-			&"tradecraft", &"covenant_speaker", &"june_named", &"june_knew", &"echo_kept"]:
+			&"tradecraft", &"covenant_speaker", &"june_named", &"june_knew", &"echo_kept", &"teague_sold"]:
 		@warning_ignore("return_value_discarded")
 		Story.beat(b, -INF)
-	for who: StringName in [&"otto", &"june", &"dace"]:
+	for who: StringName in [&"otto", &"june", &"dace", &"rook"]:
 		@warning_ignore("return_value_discarded")
 		Story.meet(who)
 	var line := Guide.goal(g)

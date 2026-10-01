@@ -69,7 +69,7 @@ func test_the_foot_stands_in_its_own_tread() -> void:
 	gt(float(before[1]), 0.9, "a minute before, it is at the end of its swing")
 	lt(float(after[1]), 0.0, "a minute after, it is down")
 	# Through its whole rest: still, facing one way, pads on the crater's.
-	var rest: float = float(d.cycle_minutes) * (1.0 - d.swing_share()) - 2.0
+	var rest: float = float(d.cycle_minutes) * (1.0 - Walk.window(d, r, k).y) - 2.0
 	var want_pads := Treads.pads(d, at, yaw)
 	var worst := 0.0
 	var t := down + 1.0

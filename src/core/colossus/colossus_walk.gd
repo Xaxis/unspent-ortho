@@ -21,6 +21,12 @@ extends RefCounted
 ## set-down: the foot is slowest in the last few hundred metres, which is where
 ## a thing that size is most dangerous and where a player will be looking.
 ##
+## THE LIMP (ColossusDef.limp) is timing alone: a lame leg's swing is longer,
+## and it hangs still over its plant before it sets down (`window`, HITCH_AT);
+## the sound legs step quicker to cover it, inside the same cycle. A plant is
+## where the sound gait sets it, whatever the timing, so the treads, the craters
+## cut for them and the folk living in them are where they were.
+##
 ## Knees are two-bone IK on rigid bones, bent outward and up away from the hub,
 ## so the legs arch like a spider's rather than folding under the body.
 ##
@@ -35,6 +41,9 @@ const LOWER_FROM := 0.74
 ## The carry's own span (it overlaps both ends, so the foot leaves on a diagonal
 ## and arrives on one rather than turning a right angle in the sky).
 const CARRY := Vector2(0.10, 0.90)
+## Where through its swing a lame foot stops (ColossusDef.hitch): carried all
+## the way over its plant and a few hundred metres above it.
+const HITCH_AT := 0.9
 
 
 ## Plant `j` of leg `k`: where that foot stands after its j-th swing -- on the
@@ -79,17 +88,38 @@ static func plant_yaw(def: RefCounted, route: RefCounted, k: int, j: int) -> flo
 	return natural_yaw(def, route, k, j)
 
 
+## WHEN LEG `k` IS IN THE AIR: its j-th swing begins `x` past cycle j and lasts
+## `y` of a cycle. A sound walker's legs go a third of a cycle apart, each in the
+## air for its swing share. A limping one's lame leg is up `limp` times as long,
+## and the sound legs share what is left, the moment all three stand between
+## each two swings kept as the sound walk has it.
+static func window(def: RefCounted, route: RefCounted, k: int) -> Vector2:
+	var f: float = def.swing_share()
+	var lame: int = route.lame
+	if lame < 0:
+		return Vector2(float(k) / 3.0, f)
+	var all_down := 1.0 / 3.0 - f
+	var slow := f * float(def.limp)
+	var quick := (1.0 - 3.0 * all_down - slow) * 0.5
+	var start := 0.0
+	for i in k:
+		start += (slow if i == lame else quick) + all_down
+	return Vector2(start, slow if k == lame else quick)
+
+
 ## Where foot `k` is at `minutes` (its pad, on the ground or in the air), how far
 ## through a swing it is (-1 when it is planted), which way it faces, and the
 ## plant it stands on or is on its way to.
 static func foot(def: RefCounted, route: RefCounted, k: int, minutes: float) -> Array:
-	var f: float = def.swing_share()
+	var w := window(def, route, k)
 	var u := minutes / float(def.cycle_minutes)
-	var v := u - float(k) / 3.0
+	var v := u - w.x
 	var j := floori(v)
-	var s := (v - float(j)) / f
+	var s := (v - float(j)) / w.y
 	if s >= 1.0:
 		return [plant(def, route, k, j), -1.0, plant_yaw(def, route, k, j), j]
+	if k == route.lame:
+		s = _hitched(def, s)
 	var from := plant(def, route, k, j - 1)
 	var to := plant(def, route, k, j)
 	var carry := smoothstep(CARRY.x, CARRY.y, s)
@@ -104,6 +134,19 @@ static func foot(def: RefCounted, route: RefCounted, k: int, minutes: float) -> 
 	p.y = high + lerpf(from.y, to.y, down)
 	var yaw := lerp_angle(plant_yaw(def, route, k, j - 1), plant_yaw(def, route, k, j), carry)
 	return [p, s, yaw, j]
+
+
+## How far through its swing's course a lame foot is, `s` of the way through
+## its time: the sound swing's own course, run slower, stopped at HITCH_AT for
+## `hitch` of the time.
+static func _hitched(def: RefCounted, s: float) -> float:
+	var h: float = def.hitch
+	var before := HITCH_AT * (1.0 - h)
+	if s < before:
+		return s / (1.0 - h)
+	if s < before + h:
+		return HITCH_AT
+	return (s - h) / (1.0 - h)
 
 
 ## The whole body at `minutes`.
@@ -194,11 +237,11 @@ static func steps_between(def: RefCounted, route: RefCounted, m0: float, m1: flo
 	if m1 <= m0 or m1 - m0 > STEP_SKIP:
 		return out
 	var cyc := float(def.cycle_minutes)
-	var f: float = def.swing_share()
 	var off := float(route.offset)
 	for k in 3:
-		# Swing j of leg k ends at cycle j + k/3 + f of the walk's own clock.
-		var base := float(k) / 3.0 + f
+		# Swing j of leg k ends at cycle j + its window's end, on the walk's own clock.
+		var w := window(def, route, k)
+		var base := w.x + w.y
 		var j0 := ceili((m0 + off) / cyc - base)
 		var j1 := floori((m1 + off) / cyc - base)
 		for j in range(j0, j1 + 1):

@@ -3,10 +3,11 @@
 # of the war's orders. He says every order checked out (forged_order) and that
 # every one passed through one relay below (war_relay): the survey marks its shaft,
 # far off on its bearing. Shown one, it reads like Elias (tradecraft). With June's
-# leg staged behind him (--beats, --met; tours/june.tour plays it), the goal is then
-# the relay below, the slice's last lead.
+# leg, the warden's word and Rook told staged behind him (--beats, --met;
+# tours/june.tour and tours/across.tour play them), the goal is then the relay
+# below, the slice's last lead.
 #
-#   tools/tour.sh tours/archive.tour --seed=1 --hour=11 --weather=clear:0 --beats=marens_lead,reaper_down,built_halcyon,holdfast_hope,war_archive,covenant_speaker,june_named,june_knew,echo_kept --met=june --chose=rook.iron=paid --give=pick:1,kit_plate:1
+#   tools/tour.sh tours/archive.tour --seed=1 --hour=11 --weather=clear:0 --beats=marens_lead,reaper_down,built_halcyon,holdfast_hope,war_archive,covenant_speaker,june_named,june_knew,echo_kept,teague_sold --met=june,rook --chose=rook.iron=paid --give=pick:1,kit_plate:1
 #
 # `at cast:otto` asks 49_cast where he stands; nothing is a coordinate. His replies
 # in order: open "How the war started." first; at the orders "Where is it?", then
