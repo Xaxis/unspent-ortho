@@ -276,7 +276,15 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 	if not m.charging and m.lost_beats > 0 and Sentinels.is_keeper(m.row):
 		_hunt(m, sim)
 		return
-	if m.charging and (now >= m.run_until or _run_blocked(m, speed, now)):
+	# A run carries its bite in: the tell is timed on the run going on through
+	# it (below), so a run whose time is up while its bite winds up goes on until
+	# the bite is live. Stopped on its clock, it stood out the rest of the tell
+	# and bit the air short of a player standing still (the Tide Reaper's went
+	# live 3.7 to 4.5 tiles off from a run begun 9 or more away, its reach 3.25),
+	# and on the home coast's flats each miss spent it before it had stood the
+	# 1.4 s it founders in (tests/fight/test_brains.gd, the charge that reaches).
+	var carrying := m.blow_phase(now) == &"windup"
+	if m.charging and ((now >= m.run_until and not carrying) or _run_blocked(m, speed, now)):
 		# The run is over (or a wall ended it): stand and come round before the next.
 		if now < m.run_until:
 			m.route_until = now + ROUTE_AFTER_BLOCK_MS

@@ -363,7 +363,7 @@ func test_the_near_foot_never_leaves_its_build_unclaimed() -> void:
 	while id >= 0 and not WorkerThreadPool.is_task_completed(id) and Time.get_ticks_msec() < until:
 		await tree.process_frame
 	check(id >= 0 and WorkerThreadPool.is_task_completed(id), "the build finished inside the wait")
-	again.call(&"update", cam, [], [], 0.0)
+	again.call(&"update", cam, [], [], {})
 	eq(int(again.get(&"_task")), -1, "a build nobody came near is claimed when it is done")
 	cam.free()
 	again.free()

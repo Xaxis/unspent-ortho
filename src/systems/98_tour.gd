@@ -17,6 +17,10 @@ extends GameSystem
 ##   back KIND DIST         stand DIST tiles out from the nearest prop of a kind, on
 ##                          open ground with open ground between, facing it (for a
 ##                          run held INTO it: `walkto prop:KIND SECS run through`)
+##   back here DIST         stand DIST tiles out from where he stands (a `place` just
+##                          stood at), on dry ground the whole way, facing back at it:
+##                          up the screen where the land runs that way, else the
+##                          nearest way round that is dry
 ##   near KIND[,KIND]       stand beside the nearest prop of a kind, facing it; a
 ##                          name that is no prop kind is asked of the systems'
 ##                          `tour_place` (`near colossus_foot`: under an ankle)
@@ -176,11 +180,15 @@ extends GameSystem
 ##   perf features NAME     every expensive thing the frame has, off and on, world held
 ##                          still: which ones this renderer really draws (render_probe.gd)
 ##   perf scale LIST SECS   frame cost at each render scale in LIST (render_probe.gd)
-##   walkto mob|part|plate SECS [run]  steer the real walk (run: the run key held) for up to SECS toward the
+##   walkto mob|part|plate SECS [run] [till:CLAIM]  steer the real walk (run: the run key held) for up to SECS toward the
 ##                          nearest body (mob), round it to its working part (part)
 ##                          or to the plated side opposite (plate), re-aimed every
 ##                          step the way a player steers, ending turned to face it
-##                          (nothing happens when no body is left)
+##                          (nothing happens when no body is left), or as soon
+##                          as CLAIM holds (`till:tell`: it has started a bite at him)
+##   walkto ground:KIND[,KIND] SECS [run]  steer the real walk onto the spot `ground`
+##                          would stand him on: a lure walked with the body after
+##                          him, where a jump leaves it nobody to follow
 ##   walkto strongbox SECS  steer the way a quiet player goes to a strongbox in the
 ##                          room (21_doors `tour_route`): by its bay's doorway,
 ##                          out of the residents' sight, waiting where the next
@@ -368,7 +376,11 @@ func _run() -> void:
 			"mark":
 				_marks[parts[1]] = game.player.pos
 			"back":
-				ok = await _stand_back(parts[1], parts[2].to_float() if parts.size() > 2 else 2.0)
+				var dist := parts[2].to_float() if parts.size() > 2 else 2.0
+				if parts[1] == "here":
+					ok = await _stand_off_here(dist)
+				else:
+					ok = await _stand_back(parts[1], dist)
 			"at":
 				if parts[1].begins_with("mark:"):
 					ok = _marks.has(parts[1].substr(5))
@@ -427,12 +439,7 @@ func _run() -> void:
 						_near_used[found.id] = true
 						ok = await _stand_at(found, parts[1])
 			"ground":
-				var want: Array[int] = []
-				for gname: String in parts[1].split(",", false):
-					var gi := Ground.NAMES.find(gname.replace("_", " "))
-					if gi >= 0:
-						want.append(gi)
-				var gp := _ground_near(want)
+				var gp := _ground_near(_ground_ids(parts[1]))
 				if gp == Vector2.INF:
 					printerr("tour: no %s ground within reach of %s" % [parts[1], game.player.pos])
 					ok = false
@@ -604,19 +611,21 @@ func _run() -> void:
 			"coast":
 				ok = _coast(parts[1] == "calm")
 			"walkto":
+				var till := ""
+				for q: String in parts:
+					if q.begins_with("till:"):
+						till = q.substr(5)
 				if parts[1].begins_with("prop:"):
 					ok = await _walk_to_prop(parts[1].substr(5), parts[2].to_float() if parts.size() > 2 else 1.0,
 						parts.has("run"), parts.has("through"))
 				elif parts[1].begins_with("at:"):
-					var till := ""
-					for q: String in parts:
-						if q.begins_with("till:"):
-							till = q.substr(5)
 					ok = await _walk_to_named(parts[1].substr(3), parts[2].to_float() if parts.size() > 2 else 1.0, parts.has("run"), till)
+				elif parts[1].begins_with("ground:"):
+					ok = await _walk_to_ground(parts[1].substr(7), parts[2].to_float() if parts.size() > 2 else 1.0, parts.has("run"))
 				elif parts[1] in ["folk", "refuse", "dog"]:
 					ok = await TourPeople.walk(self, game, parts[1], parts[2].to_float() if parts.size() > 2 else 1.0)
 				else:
-					ok = await _walk_to(parts[1], parts[2].to_float() if parts.size() > 2 else 1.0, parts.has("run"))
+					ok = await _walk_to(parts[1], parts[2].to_float() if parts.size() > 2 else 1.0, parts.has("run"), till)
 			"perf":
 				if parts.size() > 1 and parts[1] == "fore":
 					ok = await ForePerf.perf(self, game, parts)
@@ -1112,12 +1121,32 @@ func _walk_to_named(what: String, secs: float, run: bool = false, till: String =
 	if target == Vector2.INF:
 		printerr("tour %s: nothing answers at %s" % [_name, what])
 		return false
+	return await _steer_to(target, what, secs, run, till, WALK_NAMED_NEAR)
+
+
+## `walkto ground:NAME[,NAME] SECS [run]`: steer by the real keys onto the spot
+## `ground` would stand him on, to within WALK_GROUND_NEAR of it. A lure is
+## walked, not jumped: a keeper after him follows him there, where one he
+## vanished from 9 tiles off behind a rise lost him in two seconds and never
+## came (tours/home-coast.tour, stage 7).
+const WALK_GROUND_NEAR := 0.5
+
+
+func _walk_to_ground(names: String, secs: float, run: bool) -> bool:
+	var gp := _ground_near(_ground_ids(names))
+	if gp == Vector2.INF:
+		printerr("tour %s: no %s ground within reach of %s" % [_name, names, game.player.pos])
+		return false
+	return await _steer_to(gp, names, secs, run, "", WALK_GROUND_NEAR)
+
+
+func _steer_to(target: Vector2, what: String, secs: float, run: bool, till: String, near: float) -> bool:
 	var until := Time.get_ticks_msec() + int(secs * 1000.0 * machine_slack())
 	var from: Vector2 = game.player.pos
 	var t0 := game.clock.minutes
 	while Time.get_ticks_msec() < until:
 		var d := target - game.player.pos
-		if d.length() <= WALK_NAMED_NEAR or (till != "" and _answered(till)):
+		if d.length() <= near or (till != "" and _answered(till)):
 			game.scripted_seconds = 0.0
 			game.scripted_run = false
 			# And, aboard, what is left of the hull (44_crafts), so a crossing logs its cost.
@@ -1177,6 +1206,37 @@ func _walk_to_prop(kinds: String, secs: float, run: bool = false, through: bool 
 			kinds, target.pos, absf(past), "past" if past > 0.0 else "short of"])
 		return true
 	printerr("tour %s: walked toward the %s at %s for %.1f s and never came within reach" % [_name, kinds, target.pos, secs])
+	return false
+
+
+## Stand `dist` tiles out from where he stands, on dry ground with every tile of
+## the way dry, facing back at it. Up the screen first, away from the camera, so
+## a tall thing he stood at stands on the near side of the frame; else the way
+## nearest to that which stays dry. Which way the land runs from a place is the
+## world's business: a walk up the screen from seed 1's lighthouse ended in the
+## surf, and the frame's `land:coast` failed on the sea.
+func _stand_off_here(dist: float) -> bool:
+	var at := game.player.pos
+	# Up the screen as the keys mean it (`walk 0,-1`), the camera's yaw and all.
+	var up := Player.screen_to_world(Vector2(0, -1), game.camera.yaw_now()).angle()
+	for turn in 25:
+		var off := deg_to_rad(15.0 * ceilf(turn / 2.0) * (1.0 if turn % 2 == 1 else -1.0))
+		var dir := Vector2.from_angle(up + off)
+		var dry := true
+		var k := 0.5
+		while k <= dist and dry:
+			var p := at + dir * k
+			dry = game.query.standable(floori(p.x), floori(p.y)) \
+				and not Ground.is_water(game.world.ground_at(floori(p.x), floori(p.y)))
+			k += 0.4
+		if not dry:
+			continue
+		var spot := at + dir * dist
+		_teleport(spot)
+		Survival.face(game, (at - spot).angle())
+		await get_tree().physics_frame
+		return true
+	printerr("tour %s: no dry ground %.1f tiles out from %s" % [_name, dist, at])
 	return false
 
 
@@ -1251,7 +1311,7 @@ func _stand_off_mob(token: String, dist: float) -> bool:
 	return false
 
 
-func _walk_to(what: String, secs: float, run: bool = false) -> bool:
+func _walk_to(what: String, secs: float, run: bool = false, till: String = "") -> bool:
 	var sim := game.player.sim
 	if sim == null or not what in WALK_TARGETS:
 		return false
@@ -1297,6 +1357,8 @@ func _walk_to(what: String, secs: float, run: bool = false) -> bool:
 		return false
 	var facing_mob: MobState = null
 	while Time.get_ticks_msec() < until:
+		if till != "" and _answered(till):
+			break
 		var hero := sim.hero
 		var best: MobState = null
 		for m in sim.mobs:
@@ -1823,6 +1885,17 @@ const PROP_SIGHT := 90.0
 ## take a few steps in any direction and still be in it, or the frame it shoots
 ## proves the ground it happened to land on and nothing else.
 const PATCH := 3
+
+
+## Ground ids for `mud,water,river` (Ground.NAMES, _ for space); unknown names are dropped.
+func _ground_ids(names: String) -> Array[int]:
+	var want: Array[int] = []
+	for gname: String in names.split(",", false):
+		var gi := Ground.NAMES.find(gname.replace("_", " "))
+		if gi >= 0:
+			want.append(gi)
+	return want
+
 
 ## Ground of one of `want`, nearest first — and by preference with nothing on it
 ## that the hand would rather take.

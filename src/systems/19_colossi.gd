@@ -141,7 +141,7 @@ func _process(delta: float) -> void:
 	# foot standing in the region is on the land and not in the sky.
 	var dome: Dictionary = air.get("dome", {})
 	var t0 := Time.get_ticks_usec()
-	foot.update(cam, view.defs, view.poses, float(dome.get(&"dome_night", 0.0)))
+	foot.update(cam, view.defs, view.poses, dome)
 	for i in view.defs.size():
 		view.set_l0(i, foot.shares.get(i, Vector3.ZERO))
 	var t1 := Time.get_ticks_usec()
@@ -378,7 +378,7 @@ func _warn(m: float) -> void:
 				var at := Vector2(p.x, p.y)
 				if at.distance_to(game.player.pos) > WARN_REACH + p.z:
 					continue
-				MobFx.tell_shade(game, game.world.to_3d(at), Palette.INK[1], p.z, seconds)
+				MobFx.tell_shade(game, game.world.to_3d(at), MobFx.RING_INK, p.z, seconds)
 				near.append(p)
 				warnings += 1
 				_marked = true

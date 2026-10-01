@@ -366,6 +366,33 @@ vec3 ground_wear(int m, vec3 c, vec2 wp, vec2 px) {
 	return c;
 }
 
+// THE COAST'S SWARD, coloured from the height the sun lights (shore_cushion).
+// On the heath the open ground is grass, cropped short and paler than any
+// heather, and the heather lies on it in drifts, darker, with the odd cushion
+// in bloom along the fringe; the turf's tussocks are a little paler on their
+// crowns where the grazing leaves the dead tips. No stroke is drawn on either:
+// the sun draws the cushion, and the colour only says what it is made of.
+// SHORE_GRASS is the coast's grass wash (GroundColors.wash, Ground.GRASS), so
+// the heath's open ground is the turf it meets at its edge.
+const vec3 SHORE_GRASS = vec3(0.2849, 0.4092, 0.2827);
+
+vec3 shore_sward(vec3 c, vec3 wp, vec2 px, int grown) {
+	float h = shore_cushion(wp.xz, wp.y, grown);
+	if (grown == M_SHORE_HEATH) {
+		vec3 grass = up(mix(c, SHORE_GRASS, 0.7), 0.12);
+		// Deep in the gaps between cushions, paler on their crowns, and through it
+		// the sprigs the sun catches, so a drift has a grain and not a stain.
+		vec3 heather = mix(dn(c, 0.9), dn(c, 0.15), smoothstep(0.3, 1.0, h));
+		heather = mix(heather, up(heather, 0.35), step(ink_hash(px + 5.1), 0.18 * h));
+		c = mix(grass, heather, smoothstep(0.02, 0.14, h));
+		if (h > 0.05 && h < 0.3 && ink_hash(px) < 0.3 && ink_vnoise(wp.xz * 0.07 + 3.0) > 0.7) {
+			c = ink_hash(px + 1.3) < 0.5 ? BLOOM2 : BLOOM3;
+		}
+		return c;
+	}
+	return mix(dn(c, 0.06), up(c, 0.12), smoothstep(0.15, 0.9, h));
+}
+
 // The ground's own marks. wp: world xz. Marks are sparse: a wash stays a wash,
 // and interest lives at edges and in rare features (docs/LOOK.md). Nothing
 // tessellates. Returns the colour; may add emission and lift the hatching.
@@ -2763,6 +2790,16 @@ void fragment() {
 	if (orchard) {
 		m = 40;
 	}
+	// And the coast's heath and turf are HEATH and TURF, grown in cushions and
+	// tussocks the sun stands on (shore_sward). `grown` is what the matter and
+	// the relief are read as.
+	int sward = m == M_SHORE_HEATH ? 1 : (m == M_SHORE_TURF ? 2 : 0);
+	int grown = m;
+	if (sward == 1) {
+		m = 41;
+	} else if (sward == 2) {
+		m = 40;
+	}
 	float s1 = mod(style_packed, 16.0);
 	float s2 = floor(style_packed / 16.0 + 0.01);
 	float unh = 0.0;
@@ -2772,7 +2809,8 @@ void fragment() {
 		c *= 1.0 + patchy * (step(0.66, pn) * 0.04 - step(pn, 0.32) * 0.04);
 	}
 	if (mark_ground(m)) {
-		c = midden ? midden_floor(c, world_pos.xz, px, unh) : ground_mark(m, c, world_pos.xz, px, emit, unh);
+		c = midden ? midden_floor(c, world_pos.xz, px, unh)
+			: (sward > 0 ? shore_sward(c, world_pos, px, grown) : ground_mark(m, c, world_pos.xz, px, emit, unh));
 		if (m == M_CITY_FLOOR || m == M_OVERGROWN) {
 			c = city_floor(c, world_pos, px);
 		}
@@ -2948,7 +2986,7 @@ void fragment() {
 	}
 	// --- Law 1: matter is honest (docs/LOOK.md) --------------------------
 	vec3 n_world = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
-	vec4 mr = matter_of(m);
+	vec4 mr = matter_of(grown);
 	float rough_add = 0.0;
 	// The land itself takes only a little: it IS the bog, it does not rust in
 	// it. Anything STANDING in the land takes it nearly whole, which is the law
@@ -3100,7 +3138,7 @@ void fragment() {
 		NORMAL = normalize(mix(NORMAL, normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz), level));
 	}
 	if (unh < 0.5) {
-		NORMAL = matter_bump_on(NORMAL, n_world, world_pos, m, mr.z * relief);
+		NORMAL = matter_bump_on(NORMAL, n_world, world_pos, grown, mr.z * relief);
 	}
 	// What the wet ground mirrors is the sky, and under a colossus's pad coming
 	// down there is none left to mirror (sky.gdshaderinc `sky_colossus_pads`).

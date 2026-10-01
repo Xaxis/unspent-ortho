@@ -31,6 +31,21 @@ func test_only_an_eye_level_camera_sees_the_horizon() -> void:
 		c.queue_free()
 
 
+## AN EYE OUT IN THE AIR (SkyLight.LOOKS_OUT, the climb's) keeps the eye-level
+## rules looking straight down a walker's leg, where a lens on the ground would
+## have gone over to the play camera's; and only the eye that says so.
+func test_an_eye_out_in_the_air_sees_by_the_horizon_at_any_pitch() -> void:
+	var down := _camera(true, 80.0, 60.0)
+	eq(SkyLight.horizon_share(down), 0.0, "a lens on the ground looking 80 degrees down has no horizon")
+	down.set_meta(SkyLight.LOOKS_OUT, true)
+	eq(SkyLight.horizon_share(down), 1.0, "the same lens out in the air is wholly under the eye-level rules")
+	var ortho := _camera(false, CameraRig.PITCH_DEG, CameraRig.LENS_FOV)
+	ortho.set_meta(SkyLight.LOOKS_OUT, true)
+	eq(SkyLight.horizon_share(ortho), 0.0, "and the orthographic camera never is")
+	for c: Camera3D in [down, ortho]:
+		c.queue_free()
+
+
 ## A flat plain at level 2 with a ridge three tiles wide at level 12 running
 ## north-south through it.
 static func _ridge() -> WorldData:
@@ -174,6 +189,22 @@ func test_the_open_sea_reaches_past_what_the_eye_sees() -> void:
 	lt(box.position.x, -SkyLight.SEE, "west past the eye's reach")
 	gt(box.end.z, float(w.size) + SkyLight.SEE, "south past the eye's reach")
 	view.free()
+
+
+## HIGH OVER THE LAND THE AIR IS SEEN THROUGH (SkyLight.aloft_reach): an eye a
+## man's height up, or over the tallest thing on the land, keeps the eye-level
+## air exactly; from a walker's thigh, forty kilometres up, the ground under it
+## is well inside the air instead of behind it, and from the hub the air still
+## closes inside the far plane the climb's eye is given.
+func test_high_over_the_land_the_air_is_seen_through() -> void:
+	var eye := Vector2(SkyLight.HORIZON_BEGIN, SkyLight.SEE)
+	eq(SkyLight.aloft_reach(eye, 1.7), eye, "at a man's height the air is the eye level's")
+	eq(SkyLight.aloft_reach(eye, 150.0), eye, "and over the tallest thing on the land")
+	var h := 46000.0
+	var r := SkyLight.aloft_reach(eye, h)
+	gt(r.y, h * 2.0, "from the thigh the ground under him is well inside the air (closed at %.0f m)" % r.y)
+	lt(r.x, h, "and the air has begun before the ground")
+	lt(SkyLight.aloft_reach(eye, 55000.0).y, SkyLight.HIGHEST_SEE, "from the hub it closes inside the farthest eye's far plane")
 
 
 ## LOOKING OUT TO THE HORIZON LEAVES NOTHING BEHIND. The air, the sky, the
@@ -405,3 +436,38 @@ func test_a_far_roof_keeps_its_lid() -> void:
 	gt(inside, TerrainMesher.level_height(10) - 0.1, "the far land over the cave stands at the roof's top")
 	lt(outside, TerrainMesher.level_height(3), "and the open plain beside it stays down")
 	gt(painted, 0, "the lid is painted with the landscape's plain ground, as the near roof is")
+
+
+## A CHUNK LET GO FOR THE PARK'S BUDGET IS NOT BUILT AGAIN UNTIL IT IS SEEN. At eye
+## level the wanted square is bigger than the scene and the park together, and
+## every chunk left over was built, parked, let go for the budget and built again,
+## one every few frames, standing still: 258 builds in 1200 frames over the
+## shoulder on seed 1's coast, and the far land starved behind them (2026-09-30).
+func test_a_still_eye_stops_building() -> void:
+	var w := WorldData.new(3, 256)
+	for y in 256:
+		for x in 256:
+			var i := y * 256 + x
+			w.level[i] = 2
+			w.ground[i] = Ground.GRASS
+			w.country[i] = Country.COAST
+	var view := WorldView.new()
+	view.threaded = false
+	view.setup(w)
+	tree.root.add_child(view)
+	var cam := _camera(true, 5.0, 60.0)
+	cam.global_position = Vector3(128.0, 3.0, 128.0)
+	cam.make_current()
+	view.near_limit = 96.0
+	view.ensure_near(Vector2(128, 128))
+	# The park holds about one chunk: everything built out of view is let go.
+	view.park_budget = 1
+	for i in 40:
+		view._process(0.016)
+	var settled := view.build_count
+	for i in 60:
+		view._process(0.016)
+	eq(view.build_count, settled, "a still eye builds nothing more once what it sees is built (%d then %d)" % [settled, view.build_count])
+	check(view.parked_count() <= 1, "and the park stays inside its budget")
+	view.queue_free()
+	cam.queue_free()

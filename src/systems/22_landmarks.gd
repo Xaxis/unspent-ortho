@@ -51,6 +51,8 @@ var _seen: Dictionary = {}
 ## it would have cost a player every press that landed on the wrong half of a
 ## frame.
 var _use_was := false
+## The frame a press opened a cache on (`use_spent`).
+var _spent_frame := -10
 
 
 func setup(g: Game) -> void:
@@ -143,6 +145,7 @@ func _process(delta: float) -> void:
 		_draw()
 		_watch()
 	if reachable != null and _settle <= 0.0 and _use_pressed() and _cache_wins():
+		_spent_frame = Engine.get_process_frames()
 		_open(reachable)
 
 
@@ -242,6 +245,14 @@ func _watch() -> void:
 ## the bush is under the hand again on the next press.
 func _cache_wins() -> bool:
 	return true
+
+
+## Whether this frame's press opened a cache: the key was the cache's, so the
+## words in front (49_story) and the ground under the hands (50_survival) wait for
+## the next press. Without it one press opened the cache and read the terminal
+## beside it, or opened it and ate the stew by a fire.
+func use_spent() -> bool:
+	return _spent_frame == Engine.get_process_frames()
 
 
 ## The press, on its rising edge, whoever else is polling the same key.

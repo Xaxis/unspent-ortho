@@ -107,6 +107,13 @@ var _chunks: Dictionary = {} # Vector2i -> Node3D
 ## Chunks built, then taken out of the scene when the view left them. They cost
 ## no draw and no cull here, and putting one back is free.
 var _parked: Dictionary = {} # Vector2i -> Node3D
+## Chunks let go for the park's budget (`_park`), which are not built again until
+## the view comes round to them. At eye level the wanted square is ~56 chunks,
+## the scene holds ~36 and the park ~15: every chunk left over was built, parked,
+## let go for the budget and built again, one every few frames forever, standing
+## still (seed 1 coast over the shoulder: 258 builds in 1200 frames, a 60 ms
+## worker build and ~6 ms on the main thread each, 2026-09-30).
+var _shed: Dictionary = {} # Vector2i -> true
 var _park_seen: Dictionary = {} # Vector2i -> int, for evicting the least recently wanted
 var _park_clock := 0
 ## What each built chunk's arrays came to, for `park_budget`.
@@ -267,6 +274,7 @@ func rebind(w: WorldData) -> void:
 	_chunks.clear()
 	for key: Vector2i in _parked.keys():
 		_let_go(key)
+	_shed.clear()
 	_chunk_bytes.clear()
 	_data.clear()
 	if far != null:
@@ -533,6 +541,7 @@ func _park(key: Vector2i) -> void:
 				oldest_at = at
 				oldest = k
 		_let_go(oldest)
+		_shed[oldest] = true
 
 
 ## Free a parked chunk; it is built again if it is wanted again.
@@ -623,6 +632,12 @@ func _process(_delta: float) -> void:
 	for key in wanted:
 		if _have(key) or (_task >= 0 and key == _task_key):
 			continue
+		# Shed for the budget and still out of view: building it would only shed
+		# it again. It is built when the view turns to it.
+		if _shed.has(key):
+			if not _in_view(key, VIEW_SLACK):
+				continue
+			_shed.erase(key)
 		near_busy = true
 		if threaded:
 			if _task < 0 and _mid_task < 0:
@@ -664,12 +679,14 @@ const VIEW_ROUND := 24.0
 
 ## Whether a chunk is inside the eye's wedge, `slack_deg` wider than the lens, or
 ## close enough to the camera that it is always in. Always true unless the camera
-## sees the horizon.
+## sees the horizon, and for an eye out in the air (SkyLight.LOOKS_OUT): the wedge
+## is an eye at a man's height, and from up a walker's leg the land under the eye
+## and behind it is in the frame too, where a parked chunk was a hole.
 func _in_view(key: Vector2i, slack_deg: float) -> bool:
 	if not _lod_on:
 		return true
 	var cam := get_viewport().get_camera_3d()
-	if cam == null or cam.projection != Camera3D.PROJECTION_PERSPECTIVE:
+	if cam == null or cam.projection != Camera3D.PROJECTION_PERSPECTIVE or cam.has_meta(SkyLight.LOOKS_OUT):
 		return true
 	var fwd3 := -cam.global_transform.basis.z
 	var fwd := Vector2(fwd3.x, fwd3.z)
@@ -1776,10 +1793,10 @@ static func void_material() -> StandardMaterial3D:
 
 func _add_open_sea() -> void:
 	var s := float(world.size)
-	# Past everything the eye can see from anywhere on the island (SkyLight.SEE):
+	# Past everything any eye can see (SkyLight.HIGHEST_SEE, from up a walker):
 	# at eye level the sea runs to the horizon, and where it stopped the sky's
 	# ground half showed through as a band of nothing under the air.
-	var m := SkyLight.SEE + 200.0
+	var m := SkyLight.HIGHEST_SEE
 	var y := TerrainMesher.WATER_Y - 0.02
 	var v := PackedVector3Array()
 	var c := PackedColorArray()
