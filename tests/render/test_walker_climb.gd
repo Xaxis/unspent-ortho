@@ -120,19 +120,40 @@ func test_a_set_down_shakes_a_spent_climber_off_and_the_cable_catches_him() -> v
 ## A climber who rests to a full breath on each ledge and sets off only when his
 ## leg will stand for the next section reaches the hub, in the 15-20 minutes the
 ## set piece is ruled at, less a human's looking about (owner ruling 2026-09-30).
+## Up the lame leg, the one the climb goes up and the longest in the air, and on
+## the mean of twelve starts through a cycle: he takes the cable whenever he
+## comes to it, and when that is in the cycle moves the time by minutes.
 func test_a_climber_who_reads_the_gait_reaches_the_hub_in_the_set_piece_time() -> void:
 	var d := _def()
 	var r := _route(d)
-	var c := WalkerClimb.begin(0, SEED)
-	var m := _minute(d, r, 0, false)
+	var leg: int = r.lame
+	check(leg >= 0, "the straddling walker limps")
+	var sum := 0.0
+	var most := 0.0
+	for i in 12:
+		var t := _climb_from(d, r, leg, float(d.cycle_minutes) * float(i) / 12.0)
+		sum += t
+		most = maxf(most, t)
+	var mean := sum / 12.0
+	print("  the climb: %.1f real minutes on the mean, %.1f at the most" % [mean / 60.0, most / 60.0])
+	check(mean >= 10.0 * 60.0 and mean <= 20.0 * 60.0, "inside the set piece's time: %.1f min" % (mean / 60.0))
+
+
+## Real seconds from coming to the cable at world minute `m` (he takes it once
+## the foot stands) to the hub, reading the gait; never a fall on the way.
+func _climb_from(d: RefCounted, r: RefCounted, leg: int, m: float) -> float:
 	var t := 0.0
+	while int(Walk.pose(d, r, m).swinging) == leg and t < 600.0:
+		m += Tuning.MINUTES_PER_SECOND
+		t += 1.0
+	var c := WalkerClimb.begin(leg, SEED)
 	var dt := 0.25
 	var section := float(WalkerClimb.STANCE_EVERY) / Climb.RATE + 2.0
 	var falls := 0
 	while c.state != WalkerClimb.DONE and t < 3600.0:
 		var pose: Dictionary = Walk.pose(d, r, m)
 		var soon: Dictionary = Walk.pose(d, r, m + section * Tuning.MINUTES_PER_SECOND)
-		var go := not c.is_stance(c.hold) or (c.breath >= FightRules.WIND - 1.0 and int(soon.swinging) != 0)
+		var go := not c.is_stance(c.hold) or (c.breath >= FightRules.WIND - 1.0 and int(soon.swinging) != leg)
 		var out := c.step(dt, pose, go)
 		if out.has(&"fell"):
 			falls += 1
@@ -140,5 +161,4 @@ func test_a_climber_who_reads_the_gait_reaches_the_hub_in_the_set_piece_time() -
 		m += dt * Tuning.MINUTES_PER_SECOND
 	eq(c.state, WalkerClimb.DONE, "he reaches the hub")
 	eq(falls, 0, "reading the gait, he never falls")
-	print("  the climb: %.1f real minutes" % (t / 60.0))
-	check(t >= 10.0 * 60.0 and t <= 20.0 * 60.0, "inside the set piece's time: %.1f min" % (t / 60.0))
+	return t

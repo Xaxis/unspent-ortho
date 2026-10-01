@@ -111,8 +111,8 @@ static func hand_over(defs: Array, routes: Array, landmarks: Array) -> void:
 ## The first world minute, 0 or later, at which plant `j` of leg `k` is set down:
 ## the end of that leg's j-th swing on the walk's own clock, less its offset.
 static func lands_at(def: RefCounted, route: RefCounted, k: int, j: int) -> float:
-	var f: float = def.swing_share()
-	var t := (float(j) + float(k) / 3.0 + f) * float(def.cycle_minutes)
+	var w: Vector2 = Walk.window(def, route, k)
+	var t := (float(j) + w.x + w.y) * float(def.cycle_minutes)
 	return fposmod(t - float(route.offset), float(route.lap_minutes()))
 
 
