@@ -97,6 +97,17 @@ float sea_glints(vec2 wp, float t) {
 // normals tilted further than the lobe is wide can break that into a path of
 // glints; at 0.035 (about 6 degrees) the whole sea at 08:00 was one white slab.
 const float CHOP_BEND = 0.12;
+// THE SEA FROM FAR ABOVE (up a walker's leg): a lens this high over the water
+// (metres, between the two) lets the chop, the wave ticks and the glints go,
+// and what they did to the light is left as roughness. They are drawn in the
+// world's grain, a pixel of the play camera (SKY_GRAIN, 1.4 cm); from the drum,
+// a hundred metres up, a pixel of sea holds hundreds of grains, each landed on
+// one tick or one glint at random, and the whole sea was static. The play
+// camera (orthographic) and an eye at a man's height or over a shoulder are
+// under the first and keep the sea exactly as it was.
+const float SEA_FAR_FROM = 40.0;
+const float SEA_FAR_GONE = 150.0;
+const float SEA_FAR_ROUGH = 0.32;
 // The chop at `wp`: two octaves of the ink noise, each on axes turned off the
 // lattice (37 and 71 degrees) so neither lays a grid.
 float chop_at(vec2 wp, float t) {
@@ -130,6 +141,8 @@ void fragment() {
 	// negative on the bank, 1 about 2.5 field units in.
 	float d = kind == 0 ? COLOR.a : (COLOR.a * 3.5 - 1.0) / 2.5;
 	float w = max(fwidth(d), 1e-4) * 1.2;
+	bool persp = PROJECTION_MATRIX[3][3] < 0.5;
+	float far = persp ? smoothstep(SEA_FAR_FROM, SEA_FAR_GONE, CAMERA_POSITION_WORLD.y - world_pos.y) : 0.0;
 	// How fast this water runs: still water is a mirror, running water is not.
 	vec2 flow = kind == 0 ? vec2(0.0) : COLOR.gb * 2.0 - 1.0;
 	vec3 c;
@@ -185,7 +198,7 @@ void fragment() {
 		vec2 cell = floor(px / vec2(11.0, 7.0));
 		float h = ink_hash(cell + vec2(beat * 7.0, beat * 3.0));
 		vec2 local = px - cell * vec2(11.0, 7.0);
-		if (d > 0.18 && h < 0.08 && local.y == 3.0 && local.x >= 3.0 && local.x < 6.0 + floor(h * 20.0)) {
+		if (far < 0.5 && d > 0.18 && h < 0.08 && local.y == 3.0 && local.x >= 3.0 && local.x < 6.0 + floor(h * 20.0)) {
 			c = mix(c, FOAM, (d > 0.45 ? 0.35 : 0.5) * max(surf, 0.35));
 		}
 	} else if (kind == 2) {
@@ -287,12 +300,12 @@ void fragment() {
 	float day = 1.0 - sky_gloom();
 	float top_down = 1.0 - clamp(sky_focus.w, 0.0, 1.0);
 	float caught = max(sun_path(wp), sea_glints(wp, TIME));
-	SPECULAR = SEA_SPECULAR * mix(1.0, mix(OFF_PATH, 1.0, caught), day * top_down);
+	SPECULAR = SEA_SPECULAR * mix(1.0, mix(OFF_PATH, 1.0, caught * (1.0 - far)), day * top_down);
 	// Under a colossus's pad coming down there is no sky left to mirror
 	// (sky.gdshaderinc `sky_colossus_pads`): the water goes dark with the land.
 	float under_pad = sky_colossus_pads(world_pos);
 	SPECULAR *= 1.0 - under_pad;
-	ROUGHNESS = mix(ROUGHNESS, 1.0, under_pad);
+	ROUGHNESS = mix(max(ROUGHNESS, SEA_FAR_ROUGH * far), 1.0, under_pad);
 	METALLIC = 0.0;
 	// The surface's own chop, small and slow, so the reflection breaks up the
 	// way water does instead of standing as a mirror.
@@ -308,7 +321,7 @@ void fragment() {
 	// axes so no two share a lattice.
 	float t = TIME * 0.35;
 	vec2 slope = chop_slope(wp, t);
-	vec3 bend = vec3(slope.x, 0.0, slope.y) * CHOP_BEND;
+	vec3 bend = vec3(slope.x, 0.0, slope.y) * CHOP_BEND * (1.0 - far);
 	NORMAL = normalize(NORMAL - clamp((VIEW_MATRIX * vec4(bend, 0.0)).xyz, vec3(-1.0), vec3(1.0)));
 	EMISSION = matter_light(glow);
 }

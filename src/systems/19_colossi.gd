@@ -141,7 +141,7 @@ func _process(delta: float) -> void:
 	# foot standing in the region is on the land and not in the sky.
 	var dome: Dictionary = air.get("dome", {})
 	var t0 := Time.get_ticks_usec()
-	foot.update(cam, view.defs, view.poses, float(dome.get(&"dome_night", 0.0)))
+	foot.update(cam, view.defs, view.poses, dome)
 	for i in view.defs.size():
 		view.set_l0(i, foot.shares.get(i, Vector3.ZERO))
 	var t1 := Time.get_ticks_usec()

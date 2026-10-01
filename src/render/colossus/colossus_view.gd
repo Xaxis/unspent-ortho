@@ -18,6 +18,7 @@ extends Node3D
 ##  - SHADOWS. It casts none: the sun's shadow map covers 140 units.
 
 const Model := preload("res://src/models/colossus_model.gd")
+const LegModel := preload("res://src/models/colossus_leg_model.gd")
 const Walk := preload("res://src/core/colossus/colossus_walk.gd")
 const Route := preload("res://src/core/colossus/colossus_route.gd")
 const SHADER := preload("res://src/render/colossus/colossus.gdshader")
@@ -154,6 +155,15 @@ func set_l0(i: int, share: Vector3) -> void:
 
 
 var _l0_said: Dictionary = {}
+
+
+## While a climb is live the plate near the eye is lit as form, by the rule the
+## patch under his hands keeps (colossus_leg_model.gd NEAR_LIFT), so where the
+## patch ends the body goes on in the same light.
+func lift_near(on: bool) -> void:
+	for mats: Array in _mats:
+		for mat: ShaderMaterial in mats:
+			LegModel.lift(mat, on)
 
 
 ## How much of a walker `d` metres off is drawn with its near body: 0 past the
