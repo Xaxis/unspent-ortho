@@ -190,7 +190,7 @@ func _process(delta: float) -> void:
 		_struggle_t -= delta
 		if _struggle_t <= 0.0:
 			_struggle_t = STRUGGLE_BEAT
-			MobFx.ring(_fx_parent(), _at3(sim.hero.pos), Palette.INK[1], 0.55, 0.28)
+			MobFx.ring(_fx_parent(), _at3(sim.hero.pos), MobFx.RING_INK, 0.55, 0.28)
 	else:
 		_struggle_t = 0.0
 	if game.player.model.held != game.inventory.held:
@@ -428,8 +428,8 @@ func _curtain(e: Dictionary) -> void:
 			var c: Dictionary = _curtains.get(int(e.id), {})
 			if not c.is_empty():
 				c.crumbling = true
-			MobFx.puffs(fx, _at3(at, 1.8), Vector2.ZERO, Palette.LINEN[3], 6, 0.7, int(e.id) + 11)
-			MobFx.puffs(fx, _at3(at, 0.4), Vector2.ZERO, Palette.LINEN[3], 4, 0.9, int(e.id) + 13)
+			MobFx.puffs(fx, _at3(at, 1.8), Vector2.ZERO, Palette.LINEN[4], 6, 0.7, int(e.id) + 11)
+			MobFx.puffs(fx, _at3(at, 0.4), Vector2.ZERO, Palette.LINEN[4], 4, 0.9, int(e.id) + 13)
 			Events.sfx.emit(&"break", _at3(at))
 		&"curtain_cracked":
 			MobFx.puffs(fx, _at3(at, 1.1), Vector2.ZERO, lime, 4, 0.6, int(e.id) + int(e.hits) * 7)
@@ -468,14 +468,14 @@ func _dust_colour(p: Vector2) -> Color:
 		Ground.SAND, Ground.SHINGLE:
 			return Palette.SAND[5]
 		Ground.ASH, Ground.CLINKER:
-			return Palette.ASH[3]
+			return Palette.ASH[4]
 		Ground.LIMESTONE, Ground.BONE:
 			return Palette.LINEN[5]
 		Ground.MUD, Ground.PEAT, Ground.NEEDLES, Ground.ROAD:
-			return Palette.EARTH[4]
+			return Palette.EARTH[5]
 		Ground.GRASS, Ground.MOSS, Ground.HEATH:
-			return Palette.SAND[4]
-	return Palette.STONE[4]
+			return Palette.SAND[5]
+	return Palette.STONE[5]
 
 
 func _fx_parent() -> Node:
@@ -589,7 +589,7 @@ func _handle(events: Array[Dictionary]) -> void:
 				var m: MobState = e.mob
 				Events.sfx.emit(&"alert", _at3(m.pos))
 				MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id + int(sim.now), 0.7)
-				MobFx.ring(fx, _at3(m.pos), Palette.INK[1], m.radius + 0.9, 0.4)
+				MobFx.ring(fx, _at3(m.pos), MobFx.RING_INK, m.radius + 0.9, 0.4)
 				if m.node is Mob:
 					(m.node as Mob).flash(0.08)
 			&"disturbed":
@@ -616,7 +616,7 @@ func _handle(events: Array[Dictionary]) -> void:
 				player.shudder(0.2)
 				game.camera.shake(0.08, 0.14)
 				_stop(0.04)
-				MobFx.ring(fx, _at3(hero.pos), Palette.INK[1], 0.8, 0.3)
+				MobFx.ring(fx, _at3(hero.pos), MobFx.RING_INK, 0.8, 0.3)
 				if by != null:
 					# The jaw closing is drawn like a blow, though it does no harm.
 					var jaw := by.pos + Vector2.from_angle(by.facing) * by.radius
@@ -706,7 +706,7 @@ func _handle(events: Array[Dictionary]) -> void:
 				_plated_at = Time.get_ticks_msec() / 1000.0
 				var pb: MobState = e.attacker
 				var face := (pb.pos - hero.pos).normalized() * hero.radius if pb != null else Vector2.ZERO
-				MobFx.glint(fx, _at3(hero.pos + face, 1.1), Palette.PLATE[4], int(sim.now), 0.6)
+				MobFx.glint(fx, _at3(hero.pos + face, 1.1), Palette.PLATE[5], int(sim.now), 0.6)
 				Events.sfx.emit(&"hit_plate", player.position)
 			&"plate_spent":
 				# Spent by the blows it turned: it turns nothing now, and what mends
@@ -720,7 +720,7 @@ func _handle(events: Array[Dictionary]) -> void:
 				var by: MobState = e.attacker
 				var back := (by.pos - hero.pos).normalized() * hero.radius
 				MobFx.clang(fx, _at3(hero.pos + back, 1.1), int(sim.now))
-				MobFx.glint(fx, _at3(hero.pos + back, 1.2), Palette.RUST[4], int(sim.now), 0.7)
+				MobFx.glint(fx, _at3(hero.pos + back, 1.2), Palette.RUST[5], int(sim.now), 0.7)
 				Events.sfx.emit(&"hit_plate", player.position)
 			&"share_turned":
 				# The ploughshare turned a charge (FightKit.ploughshare): the glove
@@ -743,7 +743,7 @@ func _handle(events: Array[Dictionary]) -> void:
 				if m.node is Mob:
 					(m.node as Mob).flash(0.12)
 				MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id, 0.8)
-				MobFx.ring(fx, _at3(m.pos), Palette.INK[1], m.radius + 1.2, 0.45)
+				MobFx.ring(fx, _at3(m.pos), MobFx.RING_INK, m.radius + 1.2, 0.45)
 				game.camera.shake(0.06, 0.2)
 			&"alerted":
 				var m: MobState = e.mob
@@ -962,7 +962,7 @@ func _rake_marks(e: Dictionary) -> void:
 	for k in 5:
 		var a := facing + FightKit.RAKE_ARC * (float(k) / 2.0 - 1.0)
 		var dir := Vector2.from_angle(a)
-		MobFx.line(fx, _at3(from + dir * 1.0, 0.06), _at3(from + dir * FightKit.RAKE_REACH, 0.06), Palette.LINEN[4], 0.35)
+		MobFx.line(fx, _at3(from + dir * 1.0, 0.06), _at3(from + dir * FightKit.RAKE_REACH, 0.06), Palette.LINEN[5], 0.35)
 	for m: MobState in (e.bodies as Array):
 		MobFx.glint(fx, _part_at(m), Palette.LENS[3], m.id, 0.7)
 	Events.sfx.emit(&"hit_plate", _at3(from))
@@ -1020,13 +1020,13 @@ func _on_killed(e: Dictionary) -> void:
 		# Its light goes out with a click and a puff of its own smoke off the part:
 		# heard and seen apart from the blow that did it.
 		Events.sfx.emit(&"lamp_off", _part_at(m))
-		MobFx.puff(fx, _part_at(m), Vector2.ZERO, Palette.STONE[3], 0.7, m.id + 11)
+		MobFx.puff(fx, _part_at(m), Vector2.ZERO, Palette.STONE[4], 0.7, m.id + 11)
 	var by_player := bool(e.get("by_player", true))
 	if by_player:
 		_stop(HITSTOP_KILL)
 		game.camera.shake(0.1, 0.22)
 	MobFx.puffs(fx, at, Vector2.ZERO, _dust_colour(m.pos), 5, 0.5 + m.radius * 0.6, m.id)
-	MobFx.ring(fx, at, Palette.INK[1], m.radius + 1.0, 0.4)
+	MobFx.ring(fx, at, MobFx.RING_INK, m.radius + 1.0, 0.4)
 	var drops: int = m.row.get("drops", 0)
 	# A kill somebody else made (a turret in the yard) puts nothing in the
 	# player's hands: what is left of it lies where it fell.
@@ -1324,12 +1324,12 @@ func _play_act(spec: String) -> void:
 			MobFx.burst(game, p3 + Vector3(-2.0, 0.6, -2.0), 0.8, 4)
 			MobFx.puff(game, p3 + Vector3(2.0, 0, 0), Vector2.RIGHT, dust, 0.6, 5)
 			MobFx.puffs(game, p3 + Vector3(0, 0, -2.5), Vector2.ZERO, dust, 4, 0.55, 6)
-			MobFx.ring(game, p3 + Vector3(-2.0, 0, 0), Palette.INK[1], 1.0, 0.3)
+			MobFx.ring(game, p3 + Vector3(-2.0, 0, 0), MobFx.RING_INK, 1.0, 0.3)
 			MobFx.clang(game, p3 + Vector3(0, 0.6, 2.0), 7)
 			MobFx.glint(game, p3 + Vector3(-2.0, 0.6, 2.0), Palette.LENS[3], 9, 0.6)
 			MobFx.streak(game, p3 + Vector3(2.0, 0.6, 2.0), Vector2(1, -1), game.camera.yaw_now(), game.camera.pitch_deg, 10)
 			MobFx.tell(game, p3 + Vector3(0, 0.3, 0) + Vector3(-1.2, 0, 1.2) * 2.0, _screen_up(), 0.4, 11)
-			MobFx.breath(game, p3 + Vector3(-2.0, 1.3, -2.0), Palette.RIME[2], 0.4, 1.6, Vector2.ZERO, 12)
+			MobFx.breath(game, p3 + Vector3(-2.0, 1.3, -2.0), Palette.RIME[3], 0.4, 1.6, Vector2.ZERO, 12)
 			# And one burst on the BODY, at that body's own width, because the rule
 			# that sizes it (MobFx.on_body) cannot be seen in marks laid on grass:
 			# every mark above is drawn with no body under it and takes the plain

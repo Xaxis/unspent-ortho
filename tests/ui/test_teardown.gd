@@ -86,17 +86,30 @@ func test_a_bake_left_running_is_waited_out_not_abandoned() -> void:
 
 ## The island a title raises behind its coast (RealmWorlds, a whole 1840 world on
 ## the pool) is the longest job a process can be quitting under. drain_pool halts
-## it and waits for it: nothing of it is still running once the drain returns.
+## it and waits for it: once the drain returns the raise has handed back what it
+## grew, and that stopped at the stage the halt reached, short of the roads. Read
+## off the raise's own work, not the clock: a 15 s bar read 16.8 s at load 36 for
+## a drain that had halted (6.9 s alone), and a whole world is 30 s or more.
 func test_the_island_raised_behind_the_title_is_claimed_at_the_drain() -> void:
 	RealmWorlds.forget()
 	RealmWorlds.settle()
+	# What the raise grew, caught as it hands it back (RealmWorlds throws away a
+	# world raised for a game that has ended).
+	var grown: Array[WorldData] = []
+	RealmWorlds.grower = func(s: int, n: int, k: StringName) -> WorldData:
+		var w := BootWorld.world(s, n, k)
+		grown.append(w)
+		return w
 	@warning_ignore("return_value_discarded")
 	RealmWorlds.begin(12, Tuning.WORLD_SIZE, Realm.SURFACE, true)
 	check(RealmWorlds.going(12, Tuning.WORLD_SIZE, Realm.SURFACE), "the island is being raised")
 	OS.delay_msec(300)
 	var t0 := Time.get_ticks_msec()
 	(load(DRAIN[0]) as GDScript).call(DRAIN[1])
-	var took := Time.get_ticks_msec() - t0
-	check(not RealmWorlds.going(12, Tuning.WORLD_SIZE, Realm.SURFACE), "the drain claimed it")
-	cost_lt(took, 15000.0, "halted, not waited out whole (%d ms)" % took)
-
+	print("  the drain took %d ms" % (Time.get_ticks_msec() - t0))
+	RealmWorlds.grower = Callable()
+	eq(grown.size(), 1, "the drain waited for the raise to hand back what it grew")
+	if grown.size() == 1:
+		check(grown[0] != null and grown[0].road.is_empty(),
+			"halted at a stage, not waited out whole: it never reached worldgen's end, where the roads are laid")
+	check(WorldGen.halted().is_empty(), "and the stop it was asked to make is lifted")

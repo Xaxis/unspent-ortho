@@ -380,7 +380,11 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"taken": o.taken = true
 			"fit": o.fit = v.split(",", false)
 			"spawn": o.spawn = v.split(",", false)
-			"holding": o.holding = v.split(",", false)
+			"holding":
+				o.holding = v.split(",", false)
+				for word: String in o.holding:
+					if StructureKind.named(word) < 0:
+						o.problems.append("--holding: no piece called '%s' (a piece's own name, underscores for spaces: lean-to, radio_mast)" % word)
 			"walled": o.walled = true
 			"attention": o.attention = clampf(v.to_float(), 0.0, 1.0)
 			"carried":

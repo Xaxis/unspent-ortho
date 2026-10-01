@@ -13,6 +13,7 @@ const _COMMON := """
 render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled, fog_disabled%s;
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 
 uniform int mode = 0;
 uniform float progress = 0.0;
@@ -478,7 +479,9 @@ void fragment() {
 	if (o.a < 0.5) {
 		discard;
 	}
-	ALBEDO = o.rgb;
+	// Through the one colour door: written raw, Forward+ read every mark as
+	// linear light and drew it a stop and a half paler than its palette value.
+	ALBEDO = matter_albedo(o.rgb);
 	// In the transparent pass, after the ink outline has been laid over the
 	// frame, so a mark sits on top of the page and is never drawn over by it.
 	ALPHA = 1.0;
@@ -547,9 +550,12 @@ void fragment() {
 const _FLASH := """
 shader_type spatial;
 render_mode unshaded, cull_back, shadows_disabled, fog_disabled;
+#include "res://src/render/sky.gdshaderinc"
+#include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 uniform vec3 col = vec3(0.91, 0.86, 0.75);
 void fragment() {
-	ALBEDO = col;
+	ALBEDO = matter_albedo(col);
 }
 """
 
@@ -562,6 +568,8 @@ const _LINE := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, depth_test_disabled, shadows_disabled, fog_disabled;
 #include "res://src/render/sky.gdshaderinc"
+#include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 
 uniform vec3 core = vec3(0.70, 0.77, 0.80);
 uniform vec3 edge = vec3(0.17, 0.20, 0.25);
@@ -581,7 +589,7 @@ void fragment() {
 	if (UV.x > 1.0 - progress) {
 		discard;
 	}
-	ALBEDO = sky_apply(v < 0.34 ? core : edge, wp, TIME);
+	ALBEDO = matter_albedo(sky_apply(v < 0.34 ? core : edge, wp, TIME));
 	ALPHA = 1.0;
 }
 """
@@ -690,6 +698,15 @@ const VAPOUR_DARK := 0.6
 const FLICK_UP := Vector2(0.0, -1.0)
 const FLICK_DOWN := Vector2(0.0, 1.0)
 const MARK_PRIORITY := 12
+## The ink a mark is drawn in. Written raw, Forward+ read INK[0] as linear light
+## and every burst, tell and speed line came out INK[3] on screen, and that is
+## the ink they were reviewed in; through the colour door INK[0] is near-black,
+## the dead black docs/LOOK.md hunts for. The web, which never lifted, drew them
+## near-black all along, and now draws them as the desktop does.
+const INK_PEN: Color = Palette.INK[3]
+## And the darker ink a ring or a shade on the ground is drawn in, by the same
+## measure: INK[1] came out INK[4].
+const RING_INK: Color = Palette.INK[4]
 ## A shot's held moment: marks are advanced a little and then stop where they are.
 static var hold := false
 ## How far into its life a held mark is stopped (0..1).
@@ -750,7 +767,7 @@ static func _mark(parent: Node, at: Vector3, size: float, mode: int, shader: Str
 	mat.set_shader_parameter(&"seed", float(posmod(seed_value, 997)) * 0.731)
 	mat.set_shader_parameter(&"col_a", _v3(a))
 	mat.set_shader_parameter(&"col_b", _v3(b))
-	mat.set_shader_parameter(&"ink_col", _v3(Palette.INK[0]))
+	mat.set_shader_parameter(&"ink_col", _v3(INK_PEN))
 	mat.set_shader_parameter(&"paper_col", _v3(Palette.LINEN[5]))
 	mat.set_shader_parameter(&"progress", 0.0)
 	# Marks draw after the land, the bodies and a part's light (priority 10): a
@@ -1093,7 +1110,7 @@ static func tell(parent: Node, anchor: Vector3, up: Vector3, seconds: float, see
 	# aimed down it hangs a clear three pixels above the thing it points at: a
 	# tell must send the eye to the part, never stand in front of it.
 	var clear := (0.72 if flick == FLICK_DOWN else 0.45) * size * 0.5 + pen_px(3.0)
-	var mi := _mark(parent, anchor + up.normalized() * clear, size, TELL, &"over", seed_value, Palette.INK[0], Palette.INK[0])
+	var mi := _mark(parent, anchor + up.normalized() * clear, size, TELL, &"over", seed_value, INK_PEN, INK_PEN)
 	var mat := mi.material_override as ShaderMaterial
 	mat.set_shader_parameter(&"dir", flick)
 	# A tell hangs on the machine it warns about, and a machine is the darkest
@@ -1118,7 +1135,7 @@ static func streak(parent: Node, at: Vector3, dir: Vector2, yaw_deg: float, pitc
 	# The quad sits back along dir so the heads -- drawn (1 - OPEN) of the way
 	# ahead in it, clear of the open heart -- land on `at`.
 	var back := (1.0 - BURST_OPEN) * 0.5 * size / maxf(0.2, screen.length())
-	var mi := _mark(parent, at - Vector3(d.x, 0.0, d.y) * back, size, STREAK, &"over", seed_value, Palette.INK[0], Palette.INK[0])
+	var mi := _mark(parent, at - Vector3(d.x, 0.0, d.y) * back, size, STREAK, &"over", seed_value, INK_PEN, INK_PEN)
 	var mat := mi.material_override as ShaderMaterial
 	mat.set_shader_parameter(&"dir", screen.normalized())
 	# A step down the page's own ramp. Every other mark is edged in the full linen,
@@ -1204,7 +1221,7 @@ static func warm(parent: Node, at: Vector3) -> Array[Node3D]:
 	if not _ok(parent):
 		return out
 	for key: StringName in [&"over", &"flat"]:
-		var mi := _mark(parent, at, 0.5, BURST, key, 0, Palette.INK[0], Palette.INK[0])
+		var mi := _mark(parent, at, 0.5, BURST, key, 0, INK_PEN, INK_PEN)
 		(mi.material_override as ShaderMaterial).set_shader_parameter(&"progress", 1.0)
 		out.append(mi)
 	var arc := MeshInstance3D.new()
