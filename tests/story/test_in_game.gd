@@ -84,3 +84,40 @@ func test_a_thing_that_is_both_words_and_works_is_read_once_then_robbed() -> voi
 	check(Story.knows(was), "and what was read is remembered")
 	g.queue_free()
 	await frames(1)
+
+
+## THE PRESS THAT PUTS THE WORDS DOWN IS THE STORY'S. Survival is numbered after
+## 49_story, so the press that closed a page or a conversation reached it too: by
+## a fire or in a village, hungry, it ate the best food carried, and with
+## something under the hands it gathered that. `tours/back-at-camp.tour` lost its
+## stew leaving the warden's words at the Covenant (49_story `use_spent`).
+func test_the_press_that_puts_the_words_down_eats_nothing() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=128", "--hour=11", "--weather=clear:0"]))
+	await frames(4)
+	var story := _story(g)
+	Story.forget()
+	var at := g.player.pos
+	g.player.facing = 0.0
+	g.player.hero.facing = 0.0
+	check(Survival.add_prop(g, PropKind.SIGN, at + Vector2(2.2, 0.0), 0.0, 0.3) != null, "a notice stands ahead")
+	check(Survival.add_prop(g, PropKind.FIRE, at + Vector2(-1.5, 0.0), 0.0, 0.3) != null, "and a fire behind")
+	g.inventory.add(&"stew", 1)
+	g.body.fed_until = g.clock.minutes - 120.0
+	await frames(2)
+	check(Survival.at_rest(g), "by the fire, where a press on nothing eats")
+	eq(g.body.hunger_level(g.clock.minutes), 1, "and peckish, so it would")
+	await _press_use()
+	check(story.view.showing(), "the key reads the notice")
+	await _press_use()
+	check(not story.view.showing(), "and puts it down")
+	eq(g.inventory.count(&"stew"), 1, "and the press that put it down ate nothing")
+	g.queue_free()
+	await frames(1)
+
+
+## The real key, as a player presses it.
+func _press_use() -> void:
+	Input.action_press(&"use")
+	await process_frames(3)
+	Input.action_release(&"use")
+	await process_frames(3)

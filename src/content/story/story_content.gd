@@ -5675,8 +5675,10 @@ const LEAD := {
 	&"raft": "A raft, for water no road crosses: driftwood, a piece of plate, rags and an edge.",
 	&"crossing": "Across at the narrows, for the archive on the far shore: put the raft in there.",
 	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
-	# The archive (slice 3 step 4): the archive's man met, until he has shown one.
+	# The archive (slice 3 step 4) and back at the camp (step 8).
 	&"orders": "The war's orders, for who sent them: ask the archivist to show you one.",
+	&"camp_back": "The old soldier, with what the archive showed you: at the crew's camp.",
+	&"rook_teague": "Rook, for what the warden said of Teague: back at the camp.",
 	# June (slice 3 step 3), each said until the beat that ends it lands.
 	&"covenant": "The Covenant's seat, for whoever speaks for it: ask its people, or listen.",
 	&"speaker": "The Speaker's name, which nobody inside will say: ask someone who left.",
@@ -5725,7 +5727,8 @@ const TOLD := {
 
 # Places marked on the survey only while the pinned goal is theirs (Guide
 # last_goal_key), keyed by that goal: where to put the raft in, while the goal is
-# the crossing (StoryCrossing, placed by 49_cast).
+# the crossing (StoryCrossing, placed by 49_cast). `on_body`: only while he stands
+# on the place's own body, for a way back that is no way once he is back.
 const TOLD_WHILE := {
 	&"crossing": {"place": &"the_crossing", "word": "the narrows"},
 	# June (slice 3 step 3): her house is the one nearest the Covenant's own place.
@@ -5733,6 +5736,11 @@ const TOLD_WHILE := {
 	&"speaker": {"place": &"the_covenant", "word": "the covenant"},
 	&"june": {"place": &"the_covenant", "word": "her house"},
 	&"june_voice": {"place": &"the_covenant", "word": "her house"},
+	# Back at the camp (slice 3 step 8): the way back is where he landed, and the
+	# landing keeps the crossing's name: one water, one name. Home again, the
+	# crew's own mark (TOLD marens_lead) is the way.
+	&"camp_back": {"place": &"the_landing", "word": "the narrows", "on_body": true},
+	&"rook_teague": {"place": &"the_landing", "word": "the narrows", "on_body": true},
 }
 
 # The name the goal lines use for a landscape's keeper once `reaper_named` has
