@@ -1082,6 +1082,11 @@ func _wake_residents() -> void:
 ## same person is always home. A row: {id, pos, facing, trade, household, state,
 ## model}; `trade` names the words they have (StoryProps.talk_for), and a recipe
 ## may name it, else it is their household.
+##
+## A resident with a `character` is a NAMED person at home (StoryRooms.furnish,
+## the Speaker at her table): dressed as they are everywhere (PersonLook.named),
+## their own words and nobody else's, and home only while the story has them
+## there (StoryCharacter.present), asked as he comes in.
 const DWELLER := &"dweller"
 var dwellers: Array[Dictionary] = []
 
@@ -1097,10 +1102,15 @@ func _wake_dwellers() -> void:
 		var r: Dictionary = pocket.layout.residents[i]
 		if r.role != DWELLER:
 			continue
+		var character := StoryCast.get_def(StringName(str(r.get("character", &""))))
+		if r.has("character") and (character == null or not character.present()):
+			continue
 		var household := StringName(str(r.get("household", &"")))
-		var trade := StringName(str(r.get("trade", household)))
+		var trade := StringName(str(r.get("trade", character.trade if character != null else household)))
 		var seed_v := Rng.hash_ints(game.options.seed_value, pocket.threshold.key.hash(), i, 0xD3E11)
 		var look := PersonLook.dress(PersonLook.random(seed_v), hazards, trade, seed_v)
+		if character != null:
+			look = PersonLook.named(character.id, character.look, character.trade, hazards)
 		var model := PersonModel.make(look, &"", game.view.world_material())
 		model.name = "dweller_%d" % i
 		var facing := (r.face as Vector2).angle()
@@ -1109,7 +1119,7 @@ func _wake_dwellers() -> void:
 		# In the room's own view, so it goes when the room does.
 		game.view.add_child(model)
 		var row := {"id": i, "pos": r.at, "facing": facing, "trade": trade, "household": household, "state": &"out", "model": model}
-		for k: String in ["wants", "gives", "asks", "thanks", "after"]:
+		for k: String in ["character", "wants", "gives", "asks", "thanks", "after"]:
 			if r.has(k):
 				row[k] = r[k]
 		dwellers.append(row)

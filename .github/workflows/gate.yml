@@ -94,4 +94,21 @@ jobs:
                 [ -f "$f" ] && echo "== progress $(basename "$f"): $(grep -cE '^\s+(ok|FAIL) ' "$f") done, last: $(grep -E '^\s+(ok|FAIL) ' "$f" | tail -1)"
               done
             done ) &
-          tools/check.sh --no-shots --shards=8 --only=${{ matrix.shard }}
+          set -o pipefail
+          tools/check.sh --no-shots --shards=8 --only=${{ matrix.shard }} 2>&1 | tee "$RUNNER_TEMP/check.log"
+
+      - name: Name the failure where anyone can read it
+        # A job's log needs a signed-in reader, and on 2026-09-30 main went red on
+        # shard 4 three pushes running with nobody able to say which test. An
+        # annotation is public, so each new failure is said as one, with its line.
+        if: failure()
+        run: |
+          f="$RUNNER_TEMP/check.log"
+          [ -f "$f" ] || exit 0
+          { grep -E 'DIED|wrote no summary|did not finish|script error in' "$f" || true
+            sed -n '/^NEW FAILURES/,/^[^ ]/p' "$f" | grep -E '^  [^ ]' | sed 's/^ *//' | while IFS= read -r t; do
+              grep -m1 -F "      $t:" "$f" || echo "$t"
+            done
+          } | sed 's/%/%25/g; s/^ *//' | head -10 | while IFS= read -r l; do
+            echo "::error title=shard ${{ matrix.shard }}::$l"
+          done

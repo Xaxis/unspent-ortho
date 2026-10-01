@@ -321,7 +321,8 @@ static func armour_goal(game: Game) -> String:
 ## of the slice is reached by the goal line alone. In order: the dark yard's
 ## screen (built_halcyon), back to Rook (holdfast_hope), Vera (war_archive), and
 ## the archive across the water until he has met the man there. Each hop's line
-## is StoryContent.LEAD[key].
+## is StoryContent.LEAD[key]. A hop opens on its `after` beat (`_hop_open`), and
+## the first open hop not yet behind him is the goal: the order is the priority.
 const WAY: Array[Dictionary] = [
 	{"key": &"yard", "after": &"reaper_down", "until": &"built_halcyon"},
 	{"key": &"rook_again", "after": &"built_halcyon", "until": &"holdfast_hope"},
@@ -332,6 +333,16 @@ const WAY: Array[Dictionary] = [
 	{"key": &"raft", "after": &"war_archive", "has": &"raft", "heard": [StoryCrossing.PUT_IN, StoryCrossing.CROSSED], "met": &"otto"},
 	{"key": &"crossing", "after": &"war_archive", "heard": [StoryCrossing.CROSSED], "met": &"otto"},
 	{"key": &"archive", "after": &"war_archive", "met": &"otto"},
+	# JUNE (slice 3 step 3). The archive's man met, the Covenant's seat, until the
+	# Speaker is heard of (her own set is in the house nearest it); then her name,
+	# which only somebody who left the Covenant will say (Imre); then June herself,
+	# once her name has been felt and she is home to be found
+	# (StoryCharacter.present), until he has met her; then back to her, once what
+	# she always knew has been felt, for what the voice says.
+	{"key": &"covenant", "after": &"war_archive", "until": &"covenant_speaker"},
+	{"key": &"speaker", "after": &"covenant_speaker", "until": &"june_named"},
+	{"key": &"june", "after": &"june_named", "felt": true, "met": &"june"},
+	{"key": &"june_voice", "after": &"june_knew", "felt": true, "until": &"echo_kept"},
 	{"key": &"mend", "after": &"covenant_fed", "has": &"plate_mended"},
 ]
 
@@ -353,12 +364,38 @@ static func way_goal(game: Game) -> String:
 	if hob != "":
 		return hob
 	for hop: Dictionary in WAY:
-		if not Story.landed(hop.after):
+		if not _hop_open(hop):
 			continue
 		if not _hop_done(game, hop) and StoryContent.LEAD.has(hop.key):
 			_key = hop.key
 			return String(StoryContent.LEAD[hop.key])
-	return ""
+	return keeper_goal(game)
+
+
+## THE NEXT KEEPER (ROADMAP slice 2, step 6): once the Reaper is down and the way
+## has nothing to ask, the nearest keeper of a design not yet taken
+## (Sentinels.next_keeper), in the words of whoever named it (StoryContent.LEAD,
+## keyed by its design), from the naming (KEEPER_NAMED_BY) until it falls. The
+## words are the namer's reasons, so nothing says them before he has. It holds no
+## key memory, so it never stands in the way's path, only after it.
+static func keeper_goal(game: Game) -> String:
+	if not Story.landed(REAPER_DOWN):
+		return ""
+	var next := Sentinels.next_keeper(Sentinels.live(game), game.world.spawn)
+	if next == null or not StoryContent.LEAD.has(next.design) \
+			or not Story.landed(StringName(str(StoryContent.KEEPER_NAMED_BY.get(next.land, &"")))):
+		return ""
+	_key = next.design
+	return String(StoryContent.LEAD[next.design])
+
+
+## Whether a WAY hop has opened: its `after` beat has landed, and been felt where
+## the hop says `felt` (a person who waits on a revelation is not there to be sent
+## to until it has settled).
+static func _hop_open(hop: Dictionary) -> bool:
+	if not Story.landed(hop.after):
+		return false
+	return not bool(hop.get("felt", false)) or StoryPacing.felt(hop.after)
 
 
 ## Whether a WAY hop is behind him: a beat landed (`until`), a person met (`met`),
@@ -434,7 +471,7 @@ const EDGE_PLAIN := {
 
 ## The keeper of `land` by the name the player has for it.
 static func keeper_name(land: StringName) -> String:
-	if Story.landed(NAMED_BEAT) and StoryContent.KEEPER_NAMED.has(land):
+	if Story.landed(StringName(str(StoryContent.KEEPER_NAMED_BY.get(land, &"")))) and StoryContent.KEEPER_NAMED.has(land):
 		return String(StoryContent.KEEPER_NAMED[land])
 	return String(EDGE_KEEPER.get(land, "the keeper"))
 

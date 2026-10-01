@@ -120,11 +120,14 @@ func _exit_tree() -> void:
 		_end()
 
 
-## `staging`: a look is on. `staging:WHY`: that look.
+## `staging`: a look is on. `staging:WHY`: that look. `unstaged`: none is, so the
+## keys are the player's again (a tour waits on it before it presses one).
 func tour_seen(what: StringName) -> bool:
 	var s := String(what)
 	if s == "staging":
 		return looking()
+	if s == "unstaged":
+		return not looking()
 	if s.begins_with("staging:"):
 		return looking() and String(_why) == s.substr(8)
 	return false

@@ -51,6 +51,9 @@ static func problems() -> Array[String]:
 		for b: StringName in [c.appears_when, c.gone_when]:
 			if b != &"" and not StoryContent.BEATS.has(b):
 				out.append("%s waits on %s, which is not a beat" % [c.id, b])
+	for tenant: StringName in StoryRooms.KEEPERS:
+		if get_def(StoryRooms.KEEPERS[tenant]) == null:
+			out.append("the %s house is kept by %s, who is not in the cast" % [tenant, StoryRooms.KEEPERS[tenant]])
 	for talk: StringName in StoryContent.TALKS:
 		var who := StringName(str(StoryContent.TALKS[talk].get("cast", &"")))
 		if who != &"" and get_def(who) == null:

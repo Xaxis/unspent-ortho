@@ -235,3 +235,13 @@ func test_the_fen_has_a_height_field_of_its_own_and_it_does_not_rule_a_lattice()
 	check(branch.contains("matter_fbm"), "the fen's relief is not built out of matter_fbm")
 	check(not branch.contains("ink_vnoise("),
 		"the fen's relief uses a raw ink_vnoise: its gradient rules a lattice on open ground")
+
+
+## A PALE FLOOR KEEPS LESS OF THE NIGHT SKY, NOT MORE. It throws back its albedo
+## of the light, and salt, snow, bone and sea ice asking for 1.2-1.4 measured a
+## midnight median luma of 76-122 against the coast's 20: day under a blue
+## filter (2026-09-30). Their night is the palest there is and still a night.
+func test_a_pale_floor_asks_for_less_night_sky_than_the_coast() -> void:
+	var coast := SkyLight.night_sky_at(_shares(&"coast"))
+	for id: StringName in [&"salt_flats", &"snowfield", &"bonelands", &"frost_sea"]:
+		lt(SkyLight.night_sky_at(_shares(id)), coast * 0.6, "%s keeps well under the coast's night sky" % id)

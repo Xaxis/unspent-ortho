@@ -124,7 +124,8 @@ func _cast() -> void:
 	placed = StoryPlan.cast(game.world).duplicate()
 	_place_crossing()
 	for c: StoryCharacter in StoryCast.all():
-		if not placed.has(c.at):
+		# Someone with a house of their own is met in it (21_doors wakes them there).
+		if not placed.has(c.at) or StoryRooms.keeps_house(c.id):
 			continue
 		var at: Vector2 = placed[c.at].pos
 		var pos := _stand_near(at, c.id)
@@ -337,15 +338,7 @@ func _near_words(p: Vector2) -> bool:
 func _dress(row: Dictionary, c: StoryCharacter) -> void:
 	if c == null:
 		return
-	var seed_v := absi(int(c.id.hash()))
-	var look := PersonLook.random(seed_v)
-	for k: Variant in c.look:
-		look[k] = c.look[k]
-	var hazards := BiomeRegistry.at(game.world, row.pos).hazards
-	look = PersonLook.dress(look, hazards, c.trade, seed_v)
-	# What the writer said about how they look outlasts what their trade dressed.
-	for k: Variant in c.look:
-		look[k] = c.look[k]
+	var look := PersonLook.named(c.id, c.look, c.trade, BiomeRegistry.at(game.world, row.pos).hazards)
 	var model := PersonModel.make(look, &"", game.view.world_material() if game.view != null else null)
 	model.pose_hz = PersonModel.CROWD_HZ
 	model.sun = game.sky.sun if game.sky != null else null
@@ -406,9 +399,20 @@ func tour_place(what: String) -> Vector2:
 				if fallback == Vector2.INF:
 					fallback = p
 				if _nearest_named(p) == id and not _hands_full(p, pos):
+					_tour_facing = (pos - p).angle()
 					return p
+		_tour_facing = (pos - fallback).angle() if fallback != Vector2.INF else NAN
 		return fallback if fallback != Vector2.INF else pos
 	return Vector2.INF
+
+
+## `at cast:NAME` turns the player to the person it stood them by, so `use`
+## speaks to them: 49_story answers only what is in front.
+func tour_face(what: String) -> float:
+	return _tour_facing if what.begins_with("cast:") else NAN
+
+
+var _tour_facing := NAN
 
 
 ## `stood:SLOT`: ground a step off the thing the story stood at SLOT, for a tour

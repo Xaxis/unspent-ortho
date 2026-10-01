@@ -158,9 +158,12 @@ static func make() -> BiomeDef:
 	# already measures 194.7 against the snowfield's 191.6, so it may not be
 	# needed at all. Left for whoever owns that seam.
 	d.grade = Vector4(-0.58, 0.08, -0.06, 0.2)
-	# A white pan under nothing at all. It throws the night sky back harder than
-	# the snow does, and there is not a thing on it to cast a shadow.
-	d.night_sky = 1.40
+	# A white pan under nothing at all: it throws back more of the night sky than
+	# anything else does, so it keeps far less of it. At 1.40 its midnight
+	# measured a median luma of 86 against the coast's 21 -- day under a blue
+	# filter, and a lamp on it was pointless (2026-09-30). At 0.40 it is 41:
+	# still the palest night there is, and the lamps are pools again.
+	d.night_sky = 0.40
 	# A dust storm here is the pan's own salt lifted: a white glare wall, not sand.
 	d.weather_style = {&"dust": {"air": Color(0.90, 0.89, 0.84), "thick": 1.2}}
 	# A warm cast taken out of the blue rather than added to the red: a light

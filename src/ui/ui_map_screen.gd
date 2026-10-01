@@ -295,8 +295,9 @@ static func bags(game: Game) -> Array[Vector2]:
 
 
 ## PLACES HE HAS BEEN TOLD OF (StoryContent.TOLD): once the beat that told him
-## has landed, the slot the story cast is marked and lettered with the teller's
-## word for it, since a lead with nowhere to walk is no lead. [{at, word}]
+## has landed, the place is marked and lettered with the teller's word for it,
+## since a lead with nowhere to walk is no lead: a slot the story cast, or a
+## StoryMap place (a keeper's lair, `lair:DESIGN`). [{at, word}]
 static func told(game: Game) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var placed: Dictionary = {}
@@ -305,8 +306,12 @@ static func told(game: Game) -> Array[Dictionary]:
 			placed = sys.get("placed")
 	for beat: StringName in StoryContent.TOLD:
 		var row: Dictionary = StoryContent.TOLD[beat]
-		if Story.landed(beat) and placed.has(row.place):
-			out.append({"at": placed[row.place].pos, "word": String(row.word)})
+		if not Story.landed(beat):
+			continue
+		var at: Vector2 = placed[row.place].pos if placed.has(row.place) \
+			else StoryMap.lair_pos(Sentinels.live(game), game.world.spawn, row.place)
+		if at.is_finite():
+			out.append({"at": at, "word": String(row.word)})
 	var pinned: Dictionary = StoryContent.TOLD_WHILE.get(Guide.last_goal_key, {})
 	if not pinned.is_empty() and placed.has(pinned.place):
 		out.append({"at": placed[pinned.place].pos, "word": String(pinned.word)})
