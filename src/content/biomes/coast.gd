@@ -92,6 +92,10 @@ static func make() -> BiomeDef:
 		&"reed_head": [P.SAND[2]],
 	}
 	d.grade = Vector4(-0.55, 0.16, 0.05, 0.02)
+	# Its heather in drifts on cropped grass and its grass grazed into tussocks,
+	# both deep enough for the sun to stand on (GroundColors.SHORE_HEATH,
+	# SHORE_TURF).
+	d.ground_marks = {Ground.HEATH: GroundColors.SHORE_HEATH, Ground.GRASS: GroundColors.SHORE_TURF}
 	# 1.0 is the coast, and the coast is where the night was measured. Every other
 	# landscape's night is stated against this one, so this line is a fixed point
 	# and not a setting: moving it moves all nine.

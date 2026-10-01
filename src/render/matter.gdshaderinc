@@ -86,6 +86,8 @@ const int M_SCRAP_FLOOR = 106;
 const int M_BOG_FLOOR = 107;
 const int M_MIDDEN_FLOOR = 108;
 const int M_ORCHARD_SWARD = 109;
+const int M_SHORE_HEATH = 110;
+const int M_SHORE_TURF = 111;
 const int M_STRATA_BONE = 133;
 const int M_STRATA_GLASS = 139;
 const int M_STRATA_TIDE = 140;
@@ -172,6 +174,10 @@ vec4 matter_of(int m) {
 	vec4 r = vec4(0.88, 0.32, 0.010, 0.0);
 	if (m == 40) { r = vec4(0.93, 0.26, 0.012, 0.0); }        // TURF
 	else if (m == 41) { r = vec4(0.95, 0.22, 0.020, 0.0); }   // HEATH
+	// The coast's sward: the same matter, with cushions and tussocks deep enough
+	// for the sun to stand on (shore_cushion).
+	else if (m == 110) { r = vec4(0.95, 0.22, 0.100, 0.0); }  // SHORE_HEATH
+	else if (m == 111) { r = vec4(0.93, 0.26, 0.050, 0.0); }  // SHORE_TURF
 	else if (m == 42) { r = vec4(0.86, 0.36, 0.006, 0.0); }   // SAND
 	else if (m == 43) { r = vec4(0.62, 0.60, 0.034, 0.0); }   // SHINGLE: sea-polished
 	else if (m == 44) { r = vec4(0.74, 0.50, 0.014, 0.0); }   // SNOW
@@ -337,6 +343,95 @@ float matter_fbm(vec2 p) {
 	return v;
 }
 
+// THE COAST'S SWARD, as a height in 0..1: 0 the cropped grass between, 1 a crown.
+//
+// Heather on a sea cliff grows in DRIFTS: wind-pruned masses several strides
+// across, combed out along the wind off the sea, whose heart is one mat of
+// cushions grown into each other and whose fringe breaks up into single
+// cushions and then into lone tufts out in the grass. So three octaves (a tuft
+// a third of a stride, a cushion a stride, a drift eight or more), and the
+// pale grass is the ground: about a third of the heath is under heather. And
+// the heather holds the HIGH ground: the coast's heath runs from level 3 to 22
+// and its grass from 1 to 4 (seeds 1 and 7), so the drifts thin down the slope
+// toward the grass and gather on the crest. `y` is the world height.
+//
+// One octave of stride-wide cushions kept at random, with the decor's clumps laid
+// evenly over them, was an even field of round dark spots from above, a
+// polka-dot print (review, 2026-09-30); the decor's clumps now stand only in
+// these drifts (ShoreSward, Decor._heather). The turf keeps its grazed tussocks
+// a hand across.
+const vec2 SHORE_WIND = vec2(0.5, -0.866);
+
+// The heath's drift field on an integer lattice, the same numbers as ShoreSward
+// (src/render/shore_sward.gd), so the decor's heather stands in the drifts drawn
+// here: a float `sin` hash (ink_hash) is a different number on a CPU. Every
+// constant below is ShoreSward's; tests/render/test_shore_sward.gd holds them.
+float shore_lattice(vec2 c) {
+	uvec2 q = uvec2(ivec2(c));
+	uint h = (q.x * 2654435761u) ^ (q.y * 2246822519u);
+	h ^= h >> 15u;
+	h *= 2246822507u;
+	h ^= h >> 13u;
+	return float(h & 16777215u) / 16777215.0;
+}
+
+float shore_noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = p - i;
+	vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(shore_lattice(i), shore_lattice(i + vec2(1.0, 0.0)), u.x),
+		mix(shore_lattice(i + vec2(0.0, 1.0)), shore_lattice(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+
+float shore_fbm(vec2 p) {
+	mat2 rot = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8));
+	float v = shore_noise(p) * 0.5;
+	p = rot * p * 2.07 + 19.0;
+	v += shore_noise(p) * 0.28;
+	p = rot * p * 2.13 + 41.0;
+	return v + shore_noise(p) * 0.15;
+}
+
+// The slower field that bends the drifts, so no two lie quite parallel.
+vec2 shore_bend(vec2 p) {
+	return vec2(shore_noise(p * 0.03 + 3.0), shore_noise(p * 0.03 + 17.0)) - 0.5;
+}
+
+// How thick the heather grows, 0..1 (ShoreSward.thick): a slow field stretched
+// along the wind and bent by `w` (shore_bend), and raised on the high ground.
+float shore_thick(vec2 p, float y, vec2 w) {
+	vec2 a = vec2(dot(p, SHORE_WIND), dot(p, vec2(-SHORE_WIND.y, SHORE_WIND.x)));
+	float d = shore_fbm(vec2(a.x * 0.04, a.y * 0.1) + w * 2.4);
+	d += clamp((y - 1.5) / 8.0, 0.0, 1.0) * 0.1 - 0.04;
+	return smoothstep(0.44, 0.58, d);
+}
+
+float shore_cushion(vec2 p, float y, int m) {
+	if (m != M_SHORE_HEATH) {
+		vec2 q = p * 2.6 + vec2(matter_fbm(p * 0.35), matter_fbm(p * 0.35 + 5.0)) * 1.6;
+		vec3 cl = matter_cells(q);
+		float keep = step(ink_hash(vec2(cl.z, 7.0)), 0.1 + matter_fbm(p * 0.12 + 3.0) * 0.3);
+		float r = cl.x + (matter_fbm(p * 3.4) - 0.5) * 0.22;
+		return sqrt(max(1.0 - smoothstep(0.08, 0.42, r), 0.0)) * keep;
+	}
+	vec2 w = shore_bend(p);
+	float thick = shore_thick(p, y, w);
+	// A drift is made of its cushions: each grows where the heather is thick
+	// enough for it, fewer and smaller out on the fringe, and in a drift's heart
+	// they crowd into one mat whose creases lie low and dark between them. So its
+	// outline is theirs, lobed and broken, and its inside has a grain the sun finds.
+	vec3 cu = matter_cells(p * 0.9 + w * 3.0);
+	float kept = step(ink_hash(vec2(cu.z, 7.0)), thick * thick * 1.3);
+	float reach = mix(0.3, 0.6, thick);
+	float r = cu.x + (matter_fbm(p * 2.6) - 0.5) * 0.4;
+	float cushion = kept * (1.0 - smoothstep(reach * 0.4, reach, r));
+	float h = max(sqrt(cushion), smoothstep(0.75, 1.0, thick) * 0.3);
+	// And now and then a lone tuft seeded past the fringe, never out in the open.
+	vec3 tu = matter_cells(p * 2.9 + 41.0);
+	float lone = step(ink_hash(vec2(tu.z, 13.0)), thick * (1.0 - thick) * 0.15);
+	return max(h, (1.0 - smoothstep(0.06, 0.32, tu.x + (matter_fbm(p * 7.0) - 0.5) * 0.2)) * lone * 0.55);
+}
+
 // A material's own relief as a height in 0..1, in WORLD space, at the scale its
 // marks are drawn at. Smooth on purpose: the fine speckle in the wash is
 // pigment, not geometry, and differentiating it would give the light noise to
@@ -485,6 +580,10 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		// of them, rather than the whole bog undulating like cloth.
 		float mound = matter_fbm(p * 0.8) * 0.72 + matter_fbm(p * 2.4 + 31.0) * 0.28;
 		h = mound * mound;
+	} else if (m == M_SHORE_HEATH || m == M_SHORE_TURF) {
+		// The same field the sward's colour is laid from (world.gdshader
+		// shore_sward), so the dark is the cushion's own shade.
+		h = shore_cushion(p, wp.y, m);
 	} else if (m == 41 || m == 40 || m == 50) {
 		// Anything with a mat of growth on it: clumps.
 		h = matter_fbm(p * 1.7);
