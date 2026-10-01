@@ -90,6 +90,37 @@ func test_a_mural_lights_only_where_something_was_bolted_over_it() -> void:
 			check(not pts.is_empty(), "mural %d carries a hoarding and lights the street" % v)
 
 
+## A LIT BOARD KEEPS ITS HUE AND FALLS OFF. world.gdshader lays a NEON face's
+## colour twice over as light, and a board's face at its colour's full value with
+## white type on it went past 1 in every channel: the metropolis's mercury-green
+## board read as one flat sheet of glare with no hue and no edge. So no vertex of
+## a lit hoarding burns past the type's peak, the type is the sign's own colour
+## and not white, and the face is brighter in its middle than at its frame.
+func test_a_lit_board_keeps_its_hue_and_falls_off() -> void:
+	var boards := 0
+	for v in PropModels.variants(PropKind.MURAL):
+		if v % 4 < 2:
+			continue
+		var t := PropModels.template(PropKind.MURAL, v, Country.COAST)
+		var lit: Array[Color] = []
+		for i in t.made_c.size():
+			if roundi(t.made_c[i].a * 255.0) == GroundColors.NEON:
+				lit.append(t.made_c[i])
+		if lit.is_empty():
+			continue
+		boards += 1
+		var hottest := 0.0
+		var coolest := INF
+		for col: Color in lit:
+			var top := maxf(col.r, maxf(col.g, col.b))
+			hottest = maxf(hottest, top)
+			coolest = minf(coolest, top)
+			check((top - minf(col.r, minf(col.g, col.b))) / maxf(top, 0.001) > 0.1,
+				"mural %d burns a grey or white neon vertex %s: it has lost its hue" % [v, col])
+		lt(hottest, Towers.LETTER_PEAK + 0.01, "mural %d burns at %.2f, past the type's peak" % [v, hottest])
+		lt(coolest, hottest * 0.7, "mural %d's face is one flat value (%.2f to %.2f)" % [v, coolest, hottest])
+	gt(float(boards), 0.0, "some mural carries a lit board")
+
 ## WHERE THE PLAN'S POWER HAS GONE NOTHING BURNS AT FULL STRENGTH. A landscape
 ## whose signage is dying (BiomeDressing.signage) may draw no NEON face on any
 ## model it deals: its boards are dead enamel, its stolen tubes are failing ones,
