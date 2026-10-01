@@ -413,6 +413,16 @@ static func eye_at(f: Transform3D) -> Transform3D:
 	return Transform3D(Basis.looking_at(to - at, up), at)
 
 
+## Where the land is: the middle of the island, at the sea. --stats says where
+## it lies from the eye: the walker straddles it, and from the pitches measured
+## (seed 1) it lay into the face he is on, behind the leg, or behind the eye.
+func _land() -> Vector3:
+	if game == null or game.world == null:
+		return Vector3.INF
+	var half := float(game.world.size) * 0.5
+	return Vector3(half, TerrainMesher.WATER_Y, half)
+
+
 ## Up inside the bone: the eye goes from where it stood on this pitch's top to
 ## where it will stand on the next one's foot, bowed out from the leg, as the ride
 ## goes, and looks all the way at where he is in it; the ride runs only while his
@@ -549,4 +559,12 @@ func stats_line() -> String:
 		var rows := maxf(1.0, get_viewport().get_visible_rect().size.y)
 		var px := 2.0 * at.distance_to(model.global_position) * tan(deg_to_rad(_cam.fov) * 0.5) / rows
 		out += "\nworld climb precision: a float's step at the eye %.2f mm, a pixel on him %.2f mm, %.2f px" % [ulp * 1000.0, px * 1000.0, ulp / px]
+	var land := _land()
+	if _cam != null and land.is_finite() and climb.state == WalkerClimb.CLIMB:
+		var c := _colossi()
+		var f := body_frame(c.view.defs[walker], c.view.poses[walker]) if c != null and walker >= 0 else Transform3D()
+		var glass := "behind the eye" if _cam.is_position_behind(land) else "at %s of the glass" % [(_cam.unproject_position(land) / get_viewport().get_visible_rect().size).snapped(Vector2(0.01, 0.01))]
+		var out_of := rad_to_deg(asin(clampf((land - at).normalized().dot(f.basis.orthonormalized().z), -1.0, 1.0)))
+		out += "\nworld climb land: %.0f km off, %s, its way %.0f degrees out of the face he is on (under 0, into it)" % [
+			at.distance_to(land) / 1000.0, glass, out_of]
 	return out
