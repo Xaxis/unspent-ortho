@@ -205,6 +205,33 @@ static func lair_pos(states: Array, spawn: Vector2, place: StringName, world: Wo
 	return best
 
 
+## Where the place `crater:SLOT` stands: the crater a lame walker's foot comes
+## back to on the body SLOT was cast on, the one nearest it. Asked of whoever keeps
+## them, found by what they keep (the idiom Guide and Chapters use): the craters
+## the walks were handed (19_colossi `craters`), and where the story cast SLOT
+## (49_cast `placed`). INF for any other place, or where that body has none: the
+## walk sets the craters, and on some worlds (seeds 42 and 3) neither is on leg 1's.
+static func crater_pos(game: Game, place: StringName) -> Vector2:
+	var best := Vector2.INF
+	if game == null or game.world == null or not String(place).begins_with("crater:"):
+		return best
+	var slot := StringName(String(place).trim_prefix("crater:"))
+	var at := Vector2.INF
+	var craters: Array[Vector2] = []
+	for sys: GameSystem in game.systems:
+		var placed: Variant = sys.get(&"placed")
+		if placed is Dictionary and (placed as Dictionary).has(slot):
+			at = (placed as Dictionary)[slot].pos
+		if sys.has_method(&"craters"):
+			craters = sys.call(&"craters")
+	if not at.is_finite():
+		return best
+	for c: Vector2 in craters:
+		if game.world.same_body(c, at) and (not best.is_finite() or c.distance_to(at) < best.distance_to(at)):
+			best = c
+	return best
+
+
 static func _leg_at(world: WorldData, bodies: Array[int], p: Vector2) -> int:
 	var at := bodies.find(world.continent_at(floori(p.x), floori(p.y)))
 	return clampi(at, 0, LEGS.size() - 1) if at >= 0 else 0

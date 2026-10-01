@@ -211,6 +211,27 @@ static func word_box(s: Vector2i, word: String, r: Rect2i, free: Callable) -> Re
 	return Rect2i()
 
 
+## Where a told pin's mark and word go, its bearing `s` given: moved off the
+## furniture and off every told pin laid before it (`pins`), then lettered beside
+## it clear of everything `placed` (word_box). Two places on nearly one bearing
+## otherwise put the second mark on the first one's word, and neither side was
+## free for its own: from the walker's crater on seed 1 the narrows lost its word
+## to the crew's. The mark and word are appended to `pins` and `placed`.
+## {at: Vector2i, box: Rect2i, empty where the word found no room}
+static func pin_place(s: Vector2i, word: String, r: Rect2i, fixed: Array[Rect2i], pins: Array[Rect2i], placed: Array[Rect2i]) -> Dictionary:
+	var p := UiBase.PITCH
+	var blocked: Array[Rect2i] = fixed.duplicate()
+	blocked.append_array(pins)
+	var at := clear_of(s, blocked, 5 * p, r.get_center().y)
+	var mark := Rect2i(at.x - 4 * p, at.y - 4 * p, 9 * p, 9 * p)
+	var box := word_box(at, word, r, func(b: Rect2i) -> bool: return not placed.any(func(o: Rect2i) -> bool: return o.intersects(b)))
+	pins.append(mark)
+	if box.has_area():
+		pins.append(box)
+		placed.append(box)
+	return {"at": at, "box": box}
+
+
 ## Where the survey opens: fitted to the land seen, as `fit` says; but when a
 ## place he has been told of lies off that glass, centred on him instead. A pin
 ## is a bearing (`pin`), and fitted to the land he may stand at the glass's very
@@ -330,7 +351,8 @@ static func bags(game: Game) -> Array[Vector2]:
 ## has landed, the place is marked and lettered with the teller's word for it,
 ## since a lead with nowhere to walk is no lead: a slot the story cast, or a
 ## StoryMap place (a keeper's lair, `lair:DESIGN`, on a leg he can reach, and
-## unmarked until he can). [{at, word}]
+## unmarked until he can). The goal's own place (TOLD_WHILE) is a slot, or a
+## walker's crater (`crater:SLOT`). [{at, word}]
 static func told(game: Game) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var placed: Dictionary = {}
@@ -346,10 +368,11 @@ static func told(game: Game) -> Array[Dictionary]:
 		if at.is_finite():
 			out.append({"at": at, "word": String(row.word)})
 	var pinned: Dictionary = StoryContent.TOLD_WHILE.get(Guide.last_goal_key, {})
-	if not pinned.is_empty() and placed.has(pinned.place):
-		var at: Vector2 = placed[pinned.place].pos
+	if not pinned.is_empty():
+		var at: Vector2 = placed[pinned.place].pos if placed.has(pinned.place) \
+			else StoryMap.crater_pos(game, pinned.place)
 		# A way back (`on_body`) is pinned only from the shore it leaves.
-		if not bool(pinned.get("on_body", false)) or game.world.same_body(game.player.pos, at):
+		if at.is_finite() and (not bool(pinned.get("on_body", false)) or game.world.same_body(game.player.pos, at)):
 			out.append({"at": at, "word": String(pinned.word)})
 	return out
 
@@ -763,16 +786,17 @@ func _draw_overlay() -> void:
 			UiDraw.text(ci, box.position + Vector2i(4, 0), word, UiTheme.BRIGHT)
 	# Where somebody has sent him: a hollow square in the player's bright, the
 	# village's mark without its glass, lettered with the teller's word.
+	var pins: Array[Rect2i] = []
 	for t: Dictionary in UiMapScreen.told(game):
-		var s := UiMapScreen.clear_of(UiMapScreen.pin(to_screen(game.player.pos), to_screen(t.at), r.grow(-PIN_INSET)), fixed, 5 * p, r.get_center().y)
+		var word: String = t.word
+		var spot := UiMapScreen.pin_place(UiMapScreen.pin(to_screen(game.player.pos), to_screen(t.at), r.grow(-PIN_INSET)), word, r, fixed, pins, placed)
+		var s: Vector2i = spot.at
 		UiDraw.rect(ci, Rect2i(s.x - 4 * p, s.y - 4 * p, 9 * p, 9 * p), Color(UiTheme.GLASS, 0.85))
 		UiDraw.rect(ci, Rect2i(s.x - 3 * p, s.y - 3 * p, 7 * p, 7 * p), UiTheme.BRIGHT)
 		UiDraw.rect(ci, Rect2i(s.x - 2 * p, s.y - 2 * p, 5 * p, 5 * p), UiTheme.GLASS)
 		UiDraw.px(ci, s.x, s.y, UiTheme.BRIGHT)
-		var word: String = t.word
-		var box := UiMapScreen.word_box(s, word, r, _free_of(placed))
+		var box: Rect2i = spot.box
 		if box.has_area():
-			placed.append(box)
 			UiMapScreen.clearing(ci, box)
 			UiDraw.text(ci, box.position + Vector2i(4, 0), word, UiTheme.BRIGHT)
 	for v: Dictionary in villages:
