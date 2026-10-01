@@ -236,6 +236,18 @@ static func _build() -> void:
 	sump.guarded = true
 	out.append(sump)
 
+	# THE CITY'S CLOCK, the one tall line in a landscape four floors high: what a
+	# raft steers by from the landing, and the city's square, now the sea's.
+	var clock := LandmarkDef.make(&"clock_tower", "the clock tower")
+	clock.lands = [&"drowned_city"]
+	clock.wants = &"water"
+	clock.sees = 13.0
+	clock.far = "A clock standing in the water, and its hands have stopped."
+	clock.near = "The water came up the tower and stopped it at ten past four. The stair is dry above the weed."
+	clock.mark = &"clock"
+	clock.guarded = true
+	out.append(clock)
+
 	for d in out:
 		_defs[d.id] = d
 	_order = out
@@ -378,6 +390,15 @@ static func declare_loot(force: bool = false) -> void:
 		{"item": &"mod_clamp", "chance": 0.35, "rarity": Rarity.RARE},
 		{"item": &"mod_spring", "chance": 0.3, "rarity": Rarity.RARE},
 	], lands_of(&"poured_pillar"))
+	# What the stair keeps above the weed: the clock's own brass and iron, and
+	# the keeper's tackle somebody hung up out of the wet.
+	Drops.declare_place(&"landmark_clock_tower", [
+		{"item": &"scrap", "count": Vector2i(2, 5)},
+		{"item": &"iron", "count": Vector2i(1, 3), "chance": 0.7},
+		{"item": &"oil", "count": Vector2i(1, 2), "chance": 0.5},
+		{"item": &"mod_clamp", "chance": 0.4, "rarity": Rarity.RARE},
+		{"item": &"mod_signet", "chance": 0.3, "rarity": Rarity.RARE},
+	], lands_of(&"clock_tower"))
 	Drops.declare_place(&"landmark_sump_pump", [
 		{"item": &"scrap", "count": Vector2i(3, 6)},
 		{"item": &"iron", "count": Vector2i(1, 2), "chance": 0.6},

@@ -74,10 +74,17 @@ Per landscape, still to do on main:
 - Plan: the port still runs. Keeper the **lockkeeper** (a barge on stilts): FORCE, STARVE,
   SPOOF from a raft. Machine the **ferry**, which rams crafts.
 - To do: works `&"lock"` (`cut`: lock gates, a pump house and tide gauges moved out of
-  scatter); site `&"flooded_hall"`; landmark `&"clock_tower"`; sea walls back;
-  `pressure 0.3` in deep water only; `brine_copper` reaching the world; channels a raft can
-  run to the sea (the shared ruled canals below). Built: the streets hold standing water on
-  the city's two lowest levels (GEN 33, `_street`, `_flooded`), level and never over a drop.
+  scatter); site `&"flooded_hall"`; sea walls back; trams in the silt (`brine_copper`
+  reaching the world); a slip at the landing; `pressure 0.3` in deep water only; channels a
+  raft can run to the sea (the shared ruled canals below).
+- Built: it is the LANDFALL (`BiomeDef.LANDFALL`): dealt to the body the shortest water
+  from home reaches, its heart where that water comes ashore, so the raft lands in it and it
+  is the story's leg 1. Its streets are ruled on the survey bearing, a level to a block
+  (`relief.streets`), and hold standing water on its two lowest levels (`_street`,
+  `_flooded`), level and never over a drop. Every block keeps its frontage of drowned blocks
+  (`DROWNED_SHELL`, eight profiles, sunk to their first floor's sills), the grid goes on into
+  the shallows as roofs (`DROWNED_ROOF`), its shore is quays (`relief.quays`), and its
+  landmark `&"clock_tower"` stands over it all, stopped at ten past four.
 
 ### The Mesas (`mesas.gd`)
 - Plan: a ropeway across the canyons. Keeper the **anchor**, a climber: FORCE, FOUNDER on

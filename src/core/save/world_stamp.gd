@@ -260,14 +260,15 @@ const UNKNOWN := "unknown"
 ##     nearest continent was dealt; each body's weights settle on their own
 ##     schedule; a body's ecotones spread over its own cells; a climate
 ##     landscape's site weighs its own body's sites and is jittered from its own
-##     cell; each body's roads are its own tree; each body keeps its own rivers,
-##     as many as the one island always had. Sites, works and wrecks move on
-##     every seed; on worlds of several bodies the borders, climate, roads and
-##     rivers move too (four seeds at 1840: river tiles on home +37%, in the
-##     world x3.8). And the drowned city is the LANDFALL (`BiomeDef.LANDFALL`):
-##     dealt to the body the shortest water from home reaches, its heart where
-##     that water comes ashore, so the raft from home lands in it.
-##     (Provisional; restamped at landing.)
+##     cell; each body's roads are its own tree; a landmark keeps apart from its
+##     own body's only; each body lays every river rising from RIVER_HEAD up,
+##     eleven at most (river tiles over four seeds at 1840: world +7%, home
+##     +6.5%). A site's own tile is clear of roads and water. And the drowned
+##     city is the LANDFALL (`BiomeDef.LANDFALL`), dealt to the body the
+##     shortest water from home reaches with its heart where that water comes
+##     ashore; its streets are ruled a level to a block, its shore is quays, and
+##     its blocks (DROWNED_SHELL), roofs in the shallows (DROWNED_ROOF) and clock
+##     tower stand in the water. (Provisional; restamped at landing.)
 const GEN := 47
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a

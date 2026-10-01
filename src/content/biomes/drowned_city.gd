@@ -37,6 +37,13 @@ static func make() -> BiomeDef:
 	d.relief = {
 		&"base": 2.2, &"hills": 0.7, &"ridge": 1.2, &"near": 2.5, &"terrace": 0.3, &"valley": 1.8,
 		&"rain": 1.2, &"temp": 0.1, &"moist": 0.9, &"cliff": 0.35,
+		# Its streets' spacing: the ground is laid a level to a block
+		# (GenRelief.flatten_streets), so a canal runs level from crossing to
+		# crossing and the steps fall behind the frontages, back to back.
+		&"streets": STREET_PITCH,
+		# And it meets the sea as the port it was: flat at the lowest land's level
+		# to the water's edge, a quay wall down to a raft, never a terraced hill.
+		&"quays": 1.0,
 	}
 	d.border_elevation = -0.8
 	d.reach_out_high = Vector4(3.5, 0.05, 0.07, 0.25)
@@ -49,8 +56,10 @@ static func make() -> BiomeDef:
 		Ground.FLOOR: P.SPRUCE[2].lerp(P.MOSS[2], 0.3).lerp(P.ASH[2], 0.35),
 		Ground.ROAD: P.ASH[2].lerp(P.SLATE[2], 0.4),
 		Ground.MUD: P.EARTH[2].lerp(P.SPRUCE[2], 0.45),
-		Ground.SHINGLE: P.STONE[3].lerp(P.SPRUCE[2], 0.3),
-		Ground.GRAVEL: P.STONE[3].lerp(P.ASH[3], 0.4),
+		# The quay's edge and its apron are wet stone, under the floor in value:
+		# at the STONE's third step they read as snow from the raft.
+		Ground.SHINGLE: P.STONE[2].lerp(P.SPRUCE[1], 0.35),
+		Ground.GRAVEL: P.STONE[2].lerp(P.ASH[2], 0.4),
 		Ground.MOSS: P.MOSS[2].lerp(P.SPRUCE[2], 0.5),
 		Ground.BLACKWATER: P.SPRUCE[1],
 	}
@@ -178,7 +187,15 @@ static func make() -> BiomeDef:
 		# water and to its hours.
 		&"ferry": {"weight": 1.2},
 	}
-	d.landmarks = [&"sump_pump", &"poured_pillar", &"leaning_mast", &"clerks_office"]
+	# Its own blocks, standing in the water (`_works`): the city's frontages
+	# along its canals, and its roofs out in the shallows.
+	d.props.append_array([PropKind.DROWNED_SHELL, PropKind.DROWNED_ROOF])
+	GenWorks.register(&"drowned_city", {
+		"host": load("res://src/content/biomes/drowned_city.gd"),
+		"works": &"_works",
+	})
+	# The clock tower first: each of its regions puts it down before anything else.
+	d.landmarks = [&"clock_tower", &"sump_pump", &"poured_pillar", &"leaning_mast", &"clerks_office"]
 	# Its keeper: the barge on stilts that keeps the locks (src/core/sentinel/
 	# designs/lockkeeper.gd). The one door by which a landscape claims one.
 	d.sentinel = &"lockkeeper"
@@ -208,8 +225,11 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 ## cell grid, and the city between them read as a dry plaza with ponds in it.
 ## A city has streets, and the sea came in along them: a grid of them, as wide
 ## as a street and as far apart as the blocks it held (`built.buildings` is 14 to
-## 22), turned to its own seed's angle, is shallow standing water wherever the
-## land lies low, and the blocks between keep their slabs and their ruins.
+## 22), ruled on the survey bearing as the metropolis's are, because it is the
+## same city drowned, is shallow standing water wherever the land lies low, and
+## the blocks between keep their frontages (`_works`). Each street's middle line
+## stands on a multiple of the pitch, so a crossing is where GenRelief.
+## flatten_streets centres a block's floor.
 ##
 ## STANDING WATER IS LEVEL. Flooded by elevation, a street ran up the terraces
 ## and its water stood in steps, a stair of dark tiles (seed 1, 518,414). So it
@@ -236,12 +256,14 @@ static func _flooded(t: BiomeSurface, i: int) -> bool:
 
 
 static func _street(t: BiomeSurface, i: int) -> bool:
-	var a := Rng.hash01(t.seed_value, 0xD120) * PI * 0.5
-	var x := float(t.x0 + i % t.size)
-	var y := float(t.y0 + i / t.size)
-	var u := x * cos(a) + y * sin(a)
-	var v := y * cos(a) - x * sin(a)
-	return fposmod(u, STREET_PITCH) < STREET_WIDTH or fposmod(v, STREET_PITCH) < STREET_WIDTH
+	var d := Vector2.from_angle(GenWorks.bearing(t.seed_value))
+	var p := Vector2(t.x0 + i % t.size + 0.5, t.y0 + i / t.size + 0.5)
+	return _off_street(p.dot(d)) < STREET_WIDTH * 0.5 or _off_street(p.dot(Vector2(-d.y, d.x))) < STREET_WIDTH * 0.5
+
+
+## How far a coordinate across the grid lies from its nearest street's middle.
+static func _off_street(u: float) -> float:
+	return absf(u - roundf(u / STREET_PITCH) * STREET_PITCH)
 
 
 ## THE WATER IS STILL IN IT, and that is the whole landscape: a city at the
@@ -274,3 +296,99 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.ROAD:
 		return PropKind.DEBRIS if r < 0.020 else BiomeScatter.NONE
 	return BiomeScatter.NONE
+
+
+## THE CITY STILL STANDS IN ITS WATER (GenWorks.register). Its streets are the
+## surface's (`_street`): a grid STREET_PITCH apart on the survey bearing,
+## STREET_WIDTH wide, and water on the low town. Every block between them keeps
+## its frontage, a drowned block to each plot along each side with its face to
+## the street, so from above the city is its plan and from a raft its streets are
+## canals between walls. Past its shore the grid goes on into the sea, as roofs.
+static func _works(L: Object) -> void:
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	for rect: Rect2 in L.rects:
+		# The blocks over the region's bounds, and a pitch past them for the
+		# roofs off its shore.
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for q: Vector2 in [rect.position, rect.position + Vector2(rect.size.x, 0.0), rect.end, rect.position + Vector2(0.0, rect.size.y)]:
+			var uv := Vector2(q.dot(d), q.dot(nrm))
+			lo = lo.min(uv)
+			hi = hi.max(uv)
+		for m in range(floori(lo.x / STREET_PITCH) - 1, ceili(hi.x / STREET_PITCH) + 1):
+			for n in range(floori(lo.y / STREET_PITCH) - 1, ceili(hi.y / STREET_PITCH) + 1):
+				_block(L, d, nrm, m, n)
+
+
+## How deep a drowned block stands from its street, and how much of the street's
+## length it takes (models/props/drowned_city.gd BLOCK_DEEP, BLOCK_ALONG).
+const BLOCK_DEEP := 2.4
+const BLOCK_ALONG := 3.0
+
+
+## Block (m, n) of the grid: the land between the streets m and m + 1 along `d`
+## and n and n + 1 along `nrm`. Its two sides facing along `d` take the corners.
+static func _block(L: Object, d: Vector2, nrm: Vector2, m: int, n: int) -> void:
+	var kerb := STREET_WIDTH * 0.5
+	var u0 := float(m) * STREET_PITCH + kerb
+	var u1 := float(m + 1) * STREET_PITCH - kerb
+	var v0 := float(n) * STREET_PITCH + kerb
+	var v1 := float(n + 1) * STREET_PITCH - kerb
+	for side in 2:
+		var u := u0 + BLOCK_DEEP * 0.5 if side == 0 else u1 - BLOCK_DEEP * 0.5
+		var t := v0 + BLOCK_ALONG * 0.5
+		while t <= v1 - BLOCK_ALONG * 0.5 + 0.01:
+			_plot(L, d * u + nrm * t, -d if side == 0 else d)
+			t += BLOCK_ALONG
+	for side in 2:
+		var v := v0 + BLOCK_DEEP * 0.5 if side == 0 else v1 - BLOCK_DEEP * 0.5
+		var t := u0 + BLOCK_DEEP + BLOCK_ALONG * 0.5
+		while t <= u1 - BLOCK_DEEP - BLOCK_ALONG * 0.5 + 0.01:
+			_plot(L, d * t + nrm * v, -nrm if side == 0 else nrm)
+			t += BLOCK_ALONG
+
+
+## One plot of a frontage at `p`, its face to `face`: a drowned block where the
+## city's own ground holds it, a roof where the shallows off this region's shore
+## do and the city leads that sea (`WorldData.dress_country`, what a prop there
+## is dressed as),
+## and now and then nothing, a block the water had down altogether. Each
+## plot's roll is its own, keyed on the plot.
+static func _plot(L: Object, p: Vector2, face: Vector2) -> void:
+	var c: GenContext = L.c
+	var tx := floori(p.x)
+	var ty := floori(p.y)
+	if not c.w.in_bounds(tx, ty):
+		return
+	var key := Vector2i(roundi(p.x * 4.0), roundi(p.y * 4.0))
+	if Rng.hash01(c.s, key.x, key.y, 0xD121) < 0.14:
+		return
+	if L.here(tx, ty):
+		GenWorks._put(L, PropKind.DROWNED_SHELL, p, face.angle(), -99, 0.0, true)
+	elif c.land[ty * c.size + tx] == 0 and c.w.dress_country(tx, ty) == int(L.own) and Rng.hash01(c.s, key.x, key.y, 0xD122) < 0.55 and _off_here(L, p):
+		GenWorks._put_awash(L, PropKind.DROWNED_ROOF, p, face.angle(), 0.0)
+
+
+## How far out a roof stands from the region's shore.
+const ROOFS_OUT := 9
+
+
+## The nearest land to `p`, along the four ways, lies within ROOFS_OUT and is
+## the region being laid: the sea there is this part of the city's.
+static func _off_here(L: Object, p: Vector2) -> bool:
+	var c: GenContext = L.c
+	var best := ROOFS_OUT + 1
+	var mine := false
+	for o: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		for r in range(1, ROOFS_OUT + 1):
+			var x := floori(p.x) + o.x * r
+			var y := floori(p.y) + o.y * r
+			if not c.w.in_bounds(x, y):
+				break
+			if c.land[y * c.size + x] != 0:
+				if r < best:
+					best = r
+					mine = L.here(x, y)
+				break
+	return mine

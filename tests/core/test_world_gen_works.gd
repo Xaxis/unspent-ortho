@@ -293,10 +293,17 @@ func test_evidence_keeps_off_roads_water_and_village_squares() -> void:
 		# rather than by its kinds, because `ARCHIVE` and `CONSOLE` stand elsewhere
 		# too and exempting the kinds would blind the rule to the bug it exists for.
 		var threshold := BlackSite.site(w)
+		# AND THE DROWNED CITY'S ROOFS, which stand in its shallows on purpose: the
+		# blocks the sea took to their last floor (drowned_city.gd `_plot`). Named
+		# by where they stand too, the shallows the city leads (level 0, dressed
+		# as the city), never the deep, another landscape's sea, or a road.
+		var city := BiomeRegistry.get_def(&"drowned_city").index
 		for p in w.each_prop():
 			if not is_evidence(p.kind):
 				continue
 			if threshold != Vector2.INF and p.pos.distance_to(threshold) < 6.0:
+				continue
+			if p.kind == PropKind.DROWNED_ROOF and w.level_at(floori(p.pos.x), floori(p.pos.y)) == 0 and w.dress_country(floori(p.pos.x), floori(p.pos.y)) == city:
 				continue
 			var px := floori(p.pos.x)
 			var py := floori(p.pos.y)

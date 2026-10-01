@@ -282,6 +282,22 @@ func country_at(x: int, y: int) -> int:
 	return country[y * size + x]
 
 
+## The landscape a prop standing on this tile is dressed for: the tile's own,
+## and in the shallows off a shore (level 0) the landscape that leads there
+## (`country2`), so a drowned city's roofs in its sea wear the city's concrete.
+## Out in the deep, and wherever no land leads, the coast's, as it always was.
+func dress_country(x: int, y: int) -> int:
+	if not in_bounds(x, y):
+		return Country.COAST
+	var i := y * size + x
+	var c := int(country[i])
+	if c != Country.SEA:
+		return c
+	if level[i] == 0 and int(country2[i]) != Country.SEA:
+		return int(country2[i])
+	return Country.COAST
+
+
 ## The region holding a tile, or -1 out at sea and on ground too small to be a
 ## place.
 func region_at(x: int, y: int) -> int:

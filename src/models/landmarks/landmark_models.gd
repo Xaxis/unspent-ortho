@@ -93,6 +93,7 @@ static func node(kind: StringName, seed_value: int, made_material: Material) -> 
 		&"grown_hulk": _grown_hulk(found, made, lamps, seed_value)
 		&"poured_pillar": _poured_pillar(found, made, lamps, seed_value)
 		&"sump_pump": _sump_pump(found, made, lamps, seed_value)
+		&"clock_tower": _clock_tower(found, made, lamps, seed_value)
 		_: _clerks_office(found, made, lamps, seed_value)
 	root.add_child(_mesh("found", found, PropModels.found_material()))
 	root.add_child(_mesh("lamps", lamps, PropModels.found_material()))
@@ -142,6 +143,7 @@ const BLOCKS := {
 	&"poured_pillar": [Vector3(0.0, 0.0, 0.85)],
 	&"sump_pump": [Vector3(-1.25, -1.05, 0.28), Vector3(1.25, -1.05, 0.28),
 		Vector3(1.25, 1.05, 0.28), Vector3(-1.25, 1.05, 0.28), Vector3(-0.6, 0.0, 0.85)],
+	&"clock_tower": [Vector3(-0.15, 0.0, 1.3)],
 }
 
 
@@ -893,3 +895,80 @@ static func gallery() -> Array:
 	set_opened(opened, true)
 	out.append({"name": "landmark_cache_opened", "node": opened})
 	return out
+
+
+## THE CLOCK TOWER. The city's clock on its square, and the square is the sea
+## now: a stone tower standing out of the water on its plinth, weed up it to
+## where the tide comes and a white line of salt over that, a face on each side
+## under its belfry with the hands stopped at the hour the water came in, and
+## its cap gone from the top of the spire. Everything else in the drowned city
+## stands four floors at most; this is the line a raft steers by from the
+## landing. MADE, the city's stone, with the clock's iron FOUND.
+static func _clock_tower(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: int) -> void:
+	var sq := PI * 0.25
+	var r2 := sqrt(2.0)
+	# The plinth, stepping down into the water, the tide's weed on its lower course.
+	made.prism(-0.15, -0.9, 0.0, 1.45 * r2, 0.1, 1.4 * r2, 4, P.SPRUCE[1], P.MOSS[1], sq)
+	made.prism(-0.15, 0.1, 0.0, 1.3 * r2, 0.45, 1.28 * r2, 4, STONE, STONE_TOP, sq)
+	# The shaft, a little in from the plinth and tapering, string courses on it
+	# where each stage began.
+	var top := 7.6
+	made.prism(-0.15, 0.45, 0.0, 1.0 * r2, top, 0.9 * r2, 4, STONE, STONE_TOP, sq)
+	made.prism(-0.15, 0.45, 0.0, 1.02 * r2, 1.35, 1.0 * r2, 4, P.SPRUCE[1].lerp(P.MOSS[2], 0.3), P.MOSS[1], sq)
+	made.prism(-0.15, 1.35, 0.0, 1.0 * r2, 1.43, 1.0 * r2, 4, SALT, SALT, sq)
+	for y: float in [2.9, 5.2]:
+		var r := lerpf(1.0, 0.9, (y - 0.45) / (top - 0.45)) + 0.06
+		made.prism(-0.15, y, 0.0, r * r2, y + 0.14, r * r2, 4, STONE_TOP, STONE_TOP, sq)
+	# Slit windows up the stair, dark, so it is a building and not a post.
+	for i in 5:
+		var y := 1.8 + i * 1.15
+		var r := lerpf(1.0, 0.9, (y - 0.45) / (top - 0.45))
+		var side := i % 4
+		var out := Vector2.from_angle(side * PI * 0.5)
+		made.block(-0.15 + out.x * (r + 0.01), y, out.y * (r + 0.01), 0.16 if out.x == 0.0 else 0.06, 0.55, 0.06 if out.x == 0.0 else 0.16, P.INK[1])
+	# The clock stage: a cornice, the four faces, a cornice over them.
+	made.prism(-0.15, top, 0.0, 1.08 * r2, top + 0.16, 1.08 * r2, 4, STONE_TOP, STONE_TOP, sq)
+	made.prism(-0.15, top + 0.16, 0.0, 1.0 * r2, top + 1.6, 1.0 * r2, 4, STONE, STONE_TOP, sq)
+	made.prism(-0.15, top + 1.6, 0.0, 1.1 * r2, top + 1.76, 1.1 * r2, 4, STONE_TOP, STONE_TOP, sq)
+	# Stopped at ten past four: the hour hand just past four, the minute hand on
+	# the two. Clock angles, from twelve, clockwise.
+	var hour := (4.0 + 10.0 / 60.0) / 12.0 * TAU
+	var minute := 10.0 / 60.0 * TAU
+	for side in 4:
+		var yaw := side * PI * 0.5
+		var face := Transform3D(Basis(Vector3.UP, -yaw), Vector3(-0.15, 0.0, 0.0)) * Transform3D(Basis.IDENTITY, Vector3(1.01, top + 0.88, 0.0))
+		k.push(face * Transform3D(Basis(Vector3.BACK, -PI * 0.5), Vector3.ZERO))
+		k.prism(0.0, 0.0, 0.0, 0.6, 0.05, 0.6, 16, PLATE_DARK, PLATE_DARK)
+		k.prism(0.0, 0.05, 0.0, 0.52, 0.07, 0.52, 16, PAPER_DARK, PAPER)
+		k.pop()
+		# The hands, iron, in the face's own plane (+X out of it, Z across, Y up).
+		k.push(face)
+		for hand: Array in [[hour, 0.3, 0.06], [minute, 0.45, 0.04]]:
+			var a: float = hand[0]
+			var len: float = hand[1]
+			var wide: float = hand[2]
+			var dir := Vector3(0.0, cos(a), sin(a))
+			var mid := Vector3(0.09, 0.0, 0.0) + dir * len * 0.5
+			k.push(Transform3D(Basis(Vector3.RIGHT, -a), mid))
+			k.block(0.0, -len * 0.5, 0.0, 0.03, len, wide, PLATE_DARK)
+			k.pop()
+		k.pop()
+	# The belfry: four piers open between them, the bell still hung, and the
+	# spire over it with its cap gone and the rods out of the break.
+	var bel := top + 1.76
+	for i in 4:
+		var a := sq + i * PI * 0.5
+		made.block(-0.15 + cos(a) * 0.8, bel, sin(a) * 0.8, 0.32, 1.2, 0.32, STONE, STONE_TOP)
+	made.prism(-0.15, bel + 1.2, 0.0, 1.05 * r2, bel + 1.34, 1.05 * r2, 4, STONE_TOP, STONE_TOP, sq)
+	k.prism(-0.15, bel + 0.35, 0.0, 0.34, bel + 0.95, 0.16, 10, RUST, RUST)
+	k.block(-0.15, bel + 0.95, 0.0, 0.08, 0.25, 0.08, PLATE_DARK)
+	made.prism(-0.15, bel + 1.34, 0.0, 0.95 * r2, bel + 2.5, 0.32 * r2, 4, P.SLATE[1], P.SLATE[2], sq)
+	for i in 4:
+		var a := Rng.hash01(seed_value, i, 0x71) * TAU
+		var at := Vector3(-0.15 + cos(a) * 0.2, bel + 2.5, sin(a) * 0.2)
+		k.block(at.x, at.y, at.z, 0.03, 0.3 + Rng.hash01(seed_value, i, 0x72) * 0.3, 0.03, RUST)
+	# What the water left round its foot.
+	for i in 5:
+		var a := Rng.hash01(seed_value, i, 0x73) * TAU
+		made.rock(-0.15 + cos(a) * 1.9, -0.1, sin(a) * 1.9, 0.25 + Rng.hash01(seed_value, i, 0x74) * 0.2, 0.18, seed_value + 40 + i, P.SLATE[1], 5)
+

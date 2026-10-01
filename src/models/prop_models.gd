@@ -157,6 +157,13 @@ static func variants(kind: int, country: int = Country.COAST) -> int:
 			return 2
 		PropKind.MOORING_POST:
 			return 3
+		# A drowned block in eight profiles (DrownedCity.SHELLS), so a row along
+		# a canal is never one box twice; a roof in the shallows snapped under
+		# the water, awash, and a floor and a half out.
+		PropKind.DROWNED_SHELL:
+			return 8
+		PropKind.DROWNED_ROOF:
+			return 3
 		# The mesas: a tall hoodoo, a squat one and a pair; an arch round and one
 		# worn thin at its crown; a span with its buckets on it and one with two
 		# lying off it; a cistern open and one planked against the sun.
@@ -287,7 +294,7 @@ static func build_kit(kind: int, variant: int, country: int, worked: int = WHOLE
 			Glass.build(k, kind, variant, country)
 		PropKind.DECK_SPAN, PropKind.LIFT_SHAFT, PropKind.SHOPFRONT, PropKind.SORTED_BALE, PropKind.DEMOLITION_GANTRY:
 			Metropolis.build(k, kind, variant, country)
-		PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE:
+		PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE, PropKind.DROWNED_SHELL, PropKind.DROWNED_ROOF:
 			DrownedCity.build(k, kind, variant, country)
 		PropKind.HOODOO, PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN, PropKind.SPAN_PYLON:
 			Mesas.build(k, kind, variant, country)

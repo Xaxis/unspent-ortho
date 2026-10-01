@@ -1480,7 +1480,7 @@ func prop_country(p: WorldProp, ch: TerrainMesher.Chunk) -> int:
 		var c := ch.country_at(p.pos.x, p.pos.y)
 		if c != Country.SEA:
 			return c
-	return maxi(Country.COAST, world.country_at(floori(p.pos.x), floori(p.pos.y)))
+	return world.dress_country(floori(p.pos.x), floori(p.pos.y))
 
 
 ## What a chunk's props bake from, taken on the main thread: [standing props,

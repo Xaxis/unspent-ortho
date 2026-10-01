@@ -672,6 +672,34 @@ static func _put(L: Lay, kind: int, p: Vector2, rot: float, level: int = -99, cl
 	return prop
 
 
+## Put one prop standing in the SHALLOW SEA at p: what the sea took and left
+## standing in it (a drowned city's roofs). Shallow water only, never the deep a
+## raft is the only way across; nothing else within `clear`, at scale 1, and
+## never in the spawn's first steps. It stands on the sea floor's level, under
+## the sheet. Laid outside a work: it reads and takes the stage's grid itself.
+static func _put_awash(L: Lay, kind: int, p: Vector2, rot: float, clear: float) -> WorldProp:
+	var c := L.c
+	var tx := floori(p.x)
+	var ty := floori(p.y)
+	if tx < 3 or ty < 3 or tx >= c.size - 3 or ty >= c.size - 3:
+		return null
+	var i := ty * c.size + tx
+	if c.land[i] != 0 or L.w.ground[i] != Ground.WATER:
+		return null
+	var ri := ceili(clear)
+	for dy in range(-ri, ri + 1):
+		for dx in range(-ri, ri + 1):
+			if L.occ[(ty + dy) * c.size + tx + dx] != 0:
+				return null
+	if (p - L.w.spawn).length_squared() < 100.0:
+		return null
+	var prop := GenScatter._add(c, kind, p, fposmod(rot, TAU), L.key)
+	prop.scale = 1.0
+	prop.solid = PropKind.SOLID[kind]
+	L.take(p, PropKind.SOLID[kind])
+	return prop
+
+
 ## A solid a work stands on: at `p` or, where `p` is on a terrace lip, the
 ## nearest tile round it that takes one. `_site` allows its site a rise of a
 ## level, so the site's own middle can be the lip, and a work that asked only
