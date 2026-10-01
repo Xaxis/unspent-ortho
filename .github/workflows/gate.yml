@@ -88,6 +88,9 @@ jobs:
         # Each shard prints only when it ends, so a run cancelled at the limit
         # said nothing about where it was. Every three minutes this prints the
         # last test each shard reached, which names a hang or a slow test.
+        # Its own limit sits under the job's: a job cut off at ITS limit runs no
+        # further step, so three hung shards (2026-10-01) named nothing.
+        timeout-minutes: 80
         run: |
           ( while sleep 180; do
               for f in "${TMPDIR:-/tmp}"/unspent-test.*; do
