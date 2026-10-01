@@ -371,8 +371,11 @@ const WAY: Array[Dictionary] = [
 	# felt, the old soldier, until he has spoken to him since, whatever he said, so
 	# the confession is never forced, or Dace is gone; once what the warden said of
 	# Teague has been felt, Rook, until he has spoken to him since. Each leads him
-	# to the person, never to the line.
-	{"key": &"camp_back", "after": &"tradecraft", "felt": true, "spoke": &"dace", "until": &"dace_left"},
+	# to the person, never to the line. Neither opens before the warden's word is
+	# felt (`once`): sent home across the water while the far shore's threads
+	# settle, he would only come back. In those hours the mend is the goal, else
+	# the relay.
+	{"key": &"camp_back", "after": &"tradecraft", "felt": true, "once": &"teague_sold", "spoke": &"dace", "until": &"dace_left"},
 	{"key": &"rook_teague", "after": &"teague_sold", "felt": true, "spoke": &"rook", "until": &"rook_told"},
 	{"key": &"mend", "after": &"covenant_fed", "has": &"plate_mended"},
 	# The relay below, once Otto has said where the orders went (war_relay): slice
@@ -433,9 +436,12 @@ static func keeper_goal(game: Game) -> String:
 
 ## Whether a WAY hop has opened: its `after` beat has landed, and been felt where
 ## the hop says `felt` (a person who waits on a revelation is not there to be sent
-## to until it has settled).
+## to until it has settled), and its `once` beat, where it names one, has landed
+## and been felt as well.
 static func _hop_open(hop: Dictionary) -> bool:
 	if not Story.landed(hop.after):
+		return false
+	if hop.has("once") and not StoryPacing.felt(hop.once):
 		return false
 	return not bool(hop.get("felt", false)) or StoryPacing.felt(hop.after)
 
