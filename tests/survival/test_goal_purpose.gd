@@ -63,7 +63,7 @@ func test_no_lead_open_no_line() -> void:
 	# goes: the keeper named and down, every hop's beat landed, the archive's man
 	# and June met.
 	for b: StringName in [Guide.NAMED_BEAT, Guide.REAPER_DOWN, &"built_halcyon", &"holdfast_hope", &"war_archive",
-			&"covenant_speaker", &"june_named", &"june_knew", &"echo_kept"]:
+			&"tradecraft", &"covenant_speaker", &"june_named", &"june_knew", &"echo_kept"]:
 		@warning_ignore("return_value_discarded")
 		Story.beat(b, -INF)
 	for who: StringName in [&"otto", &"june"]:

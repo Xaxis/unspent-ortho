@@ -179,6 +179,25 @@ static func fit(seen: Rect2i, player: Vector2, window: Vector2i, scales: Array[i
 const PIN_INSET := 24
 
 
+## The survey's fixed furniture on glass `r` at `scale`: the compass at the top
+## right and the scale bar at the bottom left, drawn over every mark. [Rect2i]
+static func furniture(r: Rect2i, scale: float) -> Array[Rect2i]:
+	return [Rect2i(r.end.x - 38, r.position.y + 4, 36, 60),
+		Rect2i(r.position.x + 2, r.end.y - 42, roundi(bar_tiles(scale) * scale) + 108, 40)]
+
+
+## A pin moved off the furniture it would stand under, `half` (the mark's own half)
+## clear of it: up off the scale bar, down off the compass, toward the glass's
+## middle row `mid_y`. A bearing pinned into a corner lands on its furniture (seed
+## 1's shaft from the archive sat under the scale bar, its word dropped).
+static func clear_of(s: Vector2i, boxes: Array[Rect2i], half: int, mid_y: int) -> Vector2i:
+	var out := s
+	for b: Rect2i in boxes:
+		if b.grow(half).has_point(out):
+			out.y = b.position.y - half - 1 if b.get_center().y > mid_y else b.end.y + half
+	return out
+
+
 ## Where the survey opens: fitted to the land seen, as `fit` says; but when a
 ## place he has been told of lies off that glass, centred on him instead. A pin
 ## is a bearing (`pin`), and fitted to the land he may stand at the glass's very
@@ -613,7 +632,9 @@ func _draw_overlay() -> void:
 	# when a name can find nowhere clear of the marks as well, it takes the best
 	# place clear of the other words and its clearing covers the mark under it.
 	# A name that gives way to a diamond is a name nobody reads.
-	var placed: Array[Rect2i] = [Rect2i(me.x - 32, me.y - 32, 66, 66), Rect2i(r.end.x - 38, r.position.y + 4, 36, 60), Rect2i(r.position.x + 2, r.end.y - 42, roundi(bar_tiles(map_scale) * map_scale) + 108, 40)]
+	var fixed := UiMapScreen.furniture(r, map_scale)
+	var placed: Array[Rect2i] = [Rect2i(me.x - 32, me.y - 32, 66, 66)]
+	placed.append_array(fixed)
 	var words: Array[Rect2i] = placed.duplicate()
 	var villages: Array[Dictionary] = []
 	for v in game.world.villages:
@@ -726,7 +747,7 @@ func _draw_overlay() -> void:
 	# Where somebody has sent him: a hollow square in the player's bright, the
 	# village's mark without its glass, lettered with the teller's word.
 	for t: Dictionary in UiMapScreen.told(game):
-		var s := UiMapScreen.pin(to_screen(game.player.pos), to_screen(t.at), r.grow(-PIN_INSET))
+		var s := UiMapScreen.clear_of(UiMapScreen.pin(to_screen(game.player.pos), to_screen(t.at), r.grow(-PIN_INSET)), fixed, 5 * p, r.get_center().y)
 		UiDraw.rect(ci, Rect2i(s.x - 4 * p, s.y - 4 * p, 9 * p, 9 * p), Color(UiTheme.GLASS, 0.85))
 		UiDraw.rect(ci, Rect2i(s.x - 3 * p, s.y - 3 * p, 7 * p, 7 * p), UiTheme.BRIGHT)
 		UiDraw.rect(ci, Rect2i(s.x - 2 * p, s.y - 2 * p, 5 * p, 5 * p), UiTheme.GLASS)

@@ -7,8 +7,10 @@
 # what the voice kept her from; the Before told him of the play, so he asks
 # after her mother.
 #
-#   tools/tour.sh tours/june.tour --seed=1 --hour=11 --weather=clear:0 --beats=marens_lead,reaper_down,built_halcyon,holdfast_hope,war_archive,hannah_play --chose=rook.iron=paid --give=pick:1,kit_plate:1,berries:6
+#   tools/tour.sh tours/june.tour --seed=1 --hour=11 --weather=clear:0 --beats=marens_lead,reaper_down,built_halcyon,holdfast_hope,war_archive,tradecraft,hannah_play --chose=rook.iron=paid --give=pick:1,kit_plate:1,berries:6
 #
+# (`tradecraft` in --beats: the archive's own hop, an order shown him, is
+# tours/archive.tour's to play.)
 # `at cast:NAME` asks 49_cast where a person stands, `near door:speaker` 21_doors
 # which door the story dealt her, `near dweller` who is home: nothing is a coordinate.
 # The hours between are a day's hunger: berries off the carry page before each
