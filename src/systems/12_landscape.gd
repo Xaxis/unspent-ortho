@@ -9,11 +9,6 @@ var _frames := 0
 ## AVERAGE cannot see a hitch and a hitch is what a player calls jumpy: 72 fps
 ## with one frame in twenty at 40 ms reads as stutter and averages as fine.
 var _ms := PackedFloat32Array()
-## And, inside a tour's window, what the renderer measured for each of them: the
-## GPU's milliseconds and its own CPU's. A busy box stretches the frame and
-## leaves these alone, so a window on a loaded machine is judged by them.
-var _gpu_ms := PackedFloat32Array()
-var _rcpu_ms := PackedFloat32Array()
 
 ## Every system whose own script defines `_physics_process`, driven from here
 ## under `--stats` so each one can be timed separately. See `_driven_line`.
@@ -65,6 +60,13 @@ var _wall_at := 0
 ## specialization), read at each frame's head: a slow frame that compiled some
 ## says so, because nothing a script does can be the cause of that kind.
 var _pipes_at := 0
+## A window's own chunk builds and render times (`stats_begin`): a build count
+## read off the whole run cannot say whether standing still keeps building, and
+## wall-clock frames under vsync come in refreshes, so the GPU's and the render
+## CPU's own times say how near the edge each frame was.
+var _builds_at := 0
+var _gpu := PackedFloat32Array()
+var _cpu := PackedFloat32Array()
 
 
 func setup(g: Game) -> void:
@@ -296,9 +298,9 @@ func _process(_delta: float) -> void:
 			ms = float(now - _wall_at) / 1000.0
 		_ms.append(ms)
 		if _windowed:
-			var at := get_viewport().get_viewport_rid()
-			_gpu_ms.append(RenderingServer.viewport_get_measured_render_time_gpu(at))
-			_rcpu_ms.append(RenderingServer.viewport_get_measured_render_time_cpu(at))
+			var rid := get_viewport().get_viewport_rid()
+			_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(rid))
+			_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(rid))
 		var pipes := _pipelines()
 		if ms > P99_MS:
 			var vp := get_viewport()
@@ -367,8 +369,9 @@ func stats_begin() -> void:
 	_pipes_at = _pipelines()
 	_wall_at = Time.get_ticks_usec()
 	_ms = PackedFloat32Array()
-	_gpu_ms = PackedFloat32Array()
-	_rcpu_ms = PackedFloat32Array()
+	_gpu = PackedFloat32Array()
+	_cpu = PackedFloat32Array()
+	_builds_at = game.view.build_count if game.view != null else 0
 	_slow_why = PackedStringArray()
 	_driven_worst.fill(0.0)
 	_driven_total.fill(0.0)
@@ -387,10 +390,8 @@ func stats_begin() -> void:
 ## The whole stats block for the window, under LABEL; `raw` adds every frame.
 ## Every line starts `tour ` because tools/tour.sh forwards only those.
 func stats_end(label: String, raw: bool) -> void:
-	# What the window's last frame drew, too: a slow window is read against it.
-	var block := frame_line(_ms, false) + "\n" + render_line(_gpu_ms, _rcpu_ms) \
-		+ "\nworld slow frames by cost: " + " ".join(_slow_why) \
-		+ "\n" + stats_line(game.view) + _driven_line() + _proc_line() + _mean_line() + _own_lines()
+	var block := frame_line(_ms, false) + "\nworld slow frames by cost: " + " ".join(_slow_why) \
+		+ _window_line() + _driven_line() + _proc_line() + _mean_line() + _own_lines()
 	if raw:
 		var out := PackedStringArray()
 		for v: float in _ms:
@@ -503,6 +504,25 @@ static func _render_cpu(view: WorldView) -> String:
 	return "%.2f ms" % ms if ms > 0.0 else "unmeasured"
 
 
+## What the window drew and built: chunk builds inside it, the last frame's draws
+## and primitives, and the renderer's own GPU and CPU times at p50 and p95.
+func _window_line() -> String:
+	var v: WorldView = game.view
+	if v == null:
+		return ""
+	var gpu := Array(_gpu)
+	var cpu := Array(_cpu)
+	gpu.sort()
+	cpu.sort()
+	var at := func(a: Array, q: float) -> float: return float(a[clampi(int(q * (a.size() - 1)), 0, a.size() - 1)]) if not a.is_empty() else 0.0
+	return "\nworld window: chunk builds %d, chunks %d (parked %d), draw calls %d, primitives %d (shadow %d), gpu p50 %.1f p95 %.1f ms, render cpu p50 %.1f p95 %.1f ms" % [
+		v.build_count - _builds_at, v.chunk_count(), v.parked_count(),
+		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+		v.get_viewport().get_render_info(Viewport.RENDER_INFO_TYPE_SHADOW, Viewport.RENDER_INFO_PRIMITIVES_IN_FRAME),
+		at.call(gpu, 0.5), at.call(gpu, 0.95), at.call(cpu, 0.5), at.call(cpu, 0.95)]
+
+
 ## The frame budgets, and docs/DESIGN.md is why each one is the number it is. The
 ## headline: BotW targets a 33.3 ms frame, so OUR WORST MAY NOT EXCEED THEIR
 ## TARGET -- our worst frame no worse than their best.
@@ -575,20 +595,6 @@ static func warm_frames(ms: PackedFloat32Array) -> int:
 ## STEADY PLAY IS JUDGED AGAINST THE BUDGETS AND WARM-UP AGAINST ITS OWN BOUND,
 ## because they are different promises and a player meets them differently: the
 ## warm-up frames are seen once, the rest are lived with.
-## The renderer's own milliseconds over a window, GPU and render CPU: p50, p95,
-## worst. The GPU half answers zero where the driver cannot time it (Metal), and
-## a clock that is not running says so rather than print a nought.
-static func render_line(gpu: PackedFloat32Array, cpu: PackedFloat32Array) -> String:
-	var spread := func(v: PackedFloat32Array) -> String:
-		var a := Array(v)
-		a.sort()
-		if a.is_empty() or float(a[a.size() - 1]) <= 0.0:
-			return "unmeasured"
-		var pick := func(q: float) -> float: return float(a[clampi(int(q * (a.size() - 1)), 0, a.size() - 1)])
-		return "p50 %.1f p95 %.1f worst %.1f ms" % [pick.call(0.5), pick.call(0.95), float(a[a.size() - 1])]
-	return "world renderer: gpu %s, render cpu %s, over %d frames" % [spread.call(gpu), spread.call(cpu), gpu.size()]
-
-
 static func frame_line(ms: PackedFloat32Array, forgive_warm := true) -> String:
 	if ms.size() < 4:
 		return "world frames: too few to say (%d)" % ms.size()

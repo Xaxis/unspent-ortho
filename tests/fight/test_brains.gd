@@ -39,12 +39,46 @@ func test_charge_stands_and_comes_round_after_a_run() -> void:
 	while not h.charging and guard < 200:
 		sim.slices(1)
 		guard += 1
-	F.ms(sim, Brains.RUN_MS + 80)
+	# Over on its clock, or once the bite it carries in goes live if that is later.
+	var set_off := sim.now
+	while h.charging and sim.now - set_off < Brains.RUN_MS + h.bite.windup + 200.0:
+		sim.slices(1)
 	check(not h.charging, "the run is over")
+	gt(sim.now - set_off, Brains.RUN_MS - 80.0, "after its whole run (%.0f ms)" % (sim.now - set_off))
 	gt(h.pause_until - sim.now, 420.0 * 5 - 200.0, "a hauler stands about 2100 ms (turns 5)")
 	var at := h.pos
 	F.ms(sim, 1000)
 	lt(h.pos.distance_to(at), 0.05, "and does not move while it comes round")
+
+
+## THE CHARGE THAT REACHES. A charge's tell starts a windup's run away, so the
+## blow is live as its front gets there: a run set off at a player standing
+## still in its row, from 4.5 to 10 tiles, bites him, never short of him. The
+## run used to stop on its clock with the tell still winding, so from 9 tiles
+## and more the Tide Reaper bit the air a tile short (live at 3.7 to 4.5 tiles,
+## its reach 3.25): on the home coast's flats every one of those misses spent
+## it, and it never stood the 1.4 s it founders in (tours/home-coast.tour).
+func test_a_charge_bites_a_player_standing_in_its_row_from_any_start() -> void:
+	for kind: StringName in [&"sentinel.coast", &"harvester", &"bull.field"]:
+		var short: Array[String] = []
+		for i in 12:
+			var dist := 4.5 + i * 0.5
+			var sim := F.make_sim(F.flat_world(96), Vector2(40.5, 40.5))
+			var m := sim.add_mob(kind, Vector2(40.5 + dist, 40.5))
+			m.facing = PI
+			m.aim = PI
+			m.calm_until = 0.0
+			m.set_mood(MobState.CHASING, sim.now)
+			var hit := false
+			for k in 400:
+				F.ms(sim, 16)
+				sim.hero.health = FightRules.HEALTH
+				hit = hit or F.count(sim.drain(), &"hurt") > 0
+				if m.blow_phase(sim.now) == &"recovery":
+					break
+			if not hit:
+				short.append("%.1f" % dist)
+		check(short.is_empty(), "%s's first bite reaches him from every start (short from %s)" % [kind, short])
 
 
 func test_lunge_presses_in_and_bites() -> void:

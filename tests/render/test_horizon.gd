@@ -436,3 +436,38 @@ func test_a_far_roof_keeps_its_lid() -> void:
 	gt(inside, TerrainMesher.level_height(10) - 0.1, "the far land over the cave stands at the roof's top")
 	lt(outside, TerrainMesher.level_height(3), "and the open plain beside it stays down")
 	gt(painted, 0, "the lid is painted with the landscape's plain ground, as the near roof is")
+
+
+## A CHUNK LET GO FOR THE PARK'S BUDGET IS NOT BUILT AGAIN UNTIL IT IS SEEN. At eye
+## level the wanted square is bigger than the scene and the park together, and
+## every chunk left over was built, parked, let go for the budget and built again,
+## one every few frames, standing still: 258 builds in 1200 frames over the
+## shoulder on seed 1's coast, and the far land starved behind them (2026-09-30).
+func test_a_still_eye_stops_building() -> void:
+	var w := WorldData.new(3, 256)
+	for y in 256:
+		for x in 256:
+			var i := y * 256 + x
+			w.level[i] = 2
+			w.ground[i] = Ground.GRASS
+			w.country[i] = Country.COAST
+	var view := WorldView.new()
+	view.threaded = false
+	view.setup(w)
+	tree.root.add_child(view)
+	var cam := _camera(true, 5.0, 60.0)
+	cam.global_position = Vector3(128.0, 3.0, 128.0)
+	cam.make_current()
+	view.near_limit = 96.0
+	view.ensure_near(Vector2(128, 128))
+	# The park holds about one chunk: everything built out of view is let go.
+	view.park_budget = 1
+	for i in 40:
+		view._process(0.016)
+	var settled := view.build_count
+	for i in 60:
+		view._process(0.016)
+	eq(view.build_count, settled, "a still eye builds nothing more once what it sees is built (%d then %d)" % [settled, view.build_count])
+	check(view.parked_count() <= 1, "and the park stays inside its budget")
+	view.queue_free()
+	cam.queue_free()
