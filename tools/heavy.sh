@@ -14,7 +14,8 @@
 # runs take a slot, and the memory floor covers everyone else's load.
 # HEAVY_ALONE=1 waits for a quiet box (no godot at all) and takes every slot: for
 # timings that other jobs would spoil (web A/B, perf).
-# Gives up after HEAVY_WAIT seconds (default 10800) with exit 2.
+# Gives up after HEAVY_WAIT seconds (default 10800) with exit 2; a HEAVY_ALONE claim
+# after HEAVY_ALONE_WAIT (default 600) with exit 3.
 set -u
 cores=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 12)
 slots=${HEAVY_SLOTS:-$(( cores / 6 > 2 ? cores / 6 : 2 ))}
@@ -106,6 +107,11 @@ stale() {
 ok=0; n=0
 # A HEAVY_ALONE job claims the box while it waits, so ordinary jobs stop starting and
 # the running ones drain; without it, a steady stream of short jobs starves it.
+# A claim is held at most HEAVY_ALONE_WAIT seconds (default 600). Waiting for a quiet
+# box stops every other job from starting, so a long wait wastes the whole box: on
+# 2026-09-30 a timing run held it 33 minutes, at load 11, behind one long suite.
+# Past the limit it lets go and exits 3; a timing run then waits for a quiet window.
+alone_end=$(( $(date +%s) + ${HEAVY_ALONE_WAIT:-600} ))
 if [ "${HEAVY_ALONE:-0}" = 1 ]; then
   if ! reserved_by_other; then echo $$ > "$reserve"; fi
 fi
@@ -114,6 +120,11 @@ while :; do
   n=$((n+1))
   if [ $((n % 30)) = 1 ]; then s=$(stale); [ -n "$s" ] && echo "heavy: an orphan godot up 1 h+ holds a slot (kill it if it is yours): $s" >&2; fi
   if [ "${HEAVY_ALONE:-0}" = 1 ]; then
+    if [ "$(date +%s)" -ge "$alone_end" ]; then
+      [ "$(cat "$reserve" 2>/dev/null)" = $$ ] && rm -f "$reserve"
+      echo "heavy: the box was not quiet within ${HEAVY_ALONE_WAIT:-600} s ($(running) godot); run this timing in a quiet window" >&2
+      exit 3
+    fi
     if [ "$(free_mb)" -gt 500 ] && [ "$(running)" -eq 0 ]; then ok=$((ok+1)); else ok=0; fi
     if [ "$ok" -ge 3 ] && take_all; then break; fi
   else

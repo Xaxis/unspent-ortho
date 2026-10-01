@@ -78,13 +78,26 @@ void fragment() {
 	vec2 p = q * 3.2 + vec2(v_phase * 7.3, v_phase * 3.1 - TIME * 0.25);
 	float n = ink_vnoise(p) * 0.65 + ink_vnoise(p * 2.3 + 11.0) * 0.35;
 	float body = 1.0 - smoothstep(0.15, 1.0, r + (n - 0.5) * 0.7);
-	float a = body * body * v_density;
+	// THE RIM THINS TO NOTHING, IN WISPS. A radial falloff alone left every puff
+	// a soft disc of one density, and a column of them a stack of cotton (the
+	// sulphur jungle at dusk, 2026-09-30): out past the core the noise takes
+	// the vapour away in tongues, so the edge is torn and the light comes through.
+	// A finer octave at the rim alone, so the tongues end in threads and not in
+	// a blur the width of the puff.
+	float torn = n * 0.7 + ink_vnoise(p * 4.7 + 23.0) * 0.3;
+	float wisp = mix(1.0, smoothstep(0.35, 0.75, torn), smoothstep(0.25, 0.85, r));
+	float a = body * body * wisp * v_density;
 	if (a < 0.004) {
 		discard;
 	}
 	vec3 c = mix(v_tint, sky_fog_tint.rgb, step(0.001, sky_fog_tint.a) * 0.45);
 	// A little denser and darker in its core, thinner and lighter at its rim.
 	c *= mix(1.08, 0.9, body);
+	// A PUFF IS A BALL OF VAPOUR, NOT A CARD. Facing the eye, every pixel of the
+	// card took one light and the plume had no form at all; bulged out of the card
+	// the side toward the sun is lit and the underside falls into its own shade,
+	// gently, because vapour lets light through.
+	NORMAL = normalize(vec3(q.x * 1.4, -q.y * 1.4, 1.0));
 	ALBEDO = matter_albedo(c);
 	if (unshaded) {
 		EMISSION = ALBEDO;

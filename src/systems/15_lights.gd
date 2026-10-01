@@ -43,9 +43,10 @@ const FIRE_WARM := Vector3(0.92, 0.58, 0.32)
 ## A house's door and window: hearth light, between a lamp and an open fire.
 const HEARTH_WARM := Vector3(0.95, 0.66, 0.42)
 const VENT_WARM := Vector3(0.80, 0.42, 0.24)
-## What the ground round a vent looks like in FULL DAYLIGHT: over 1, because the
-## crust round a hole into fire is brighter than the daylight beside it and a
-## target under the sun asks for no light at all (burning_warm).
+## What the ground round a vent looks like by day, as a lift over the daylight
+## beside it: over 1, because the crust round a hole into fire is brighter than
+## the ground next to it and a target under the sun asks for no light at all, and
+## warmer, because it is fire (burning_warm).
 const VENT_DAY_WARM := Vector3(1.16, 1.05, 0.86)
 ## And how much of its reach it keeps in full daylight. By day the glow only
 ## beats the sun on the crust round the mouth; opened to its night radius it is
@@ -569,10 +570,18 @@ static func burning_level(kind: int, power: float, dark: float) -> float:
 ## daylight beside it, so by day its target sits ABOVE 1 and compensate has
 ## something to solve for whatever the sun is doing. It eases back to the ochre
 ## wash as the dark comes on, where the fix was never needed.
-static func burning_warm(kind: int, dark: float) -> Vector3:
+##
+## THE DAYLIGHT BESIDE IT IS THE SKY'S `tint`, so the day target is a lift OVER
+## the tint and never a colour of its own. compensate() divides by the tint per
+## channel: a near-white target over a dusk sky of (0.85, 0.70, 0.60) came back
+## as a light of (0.87, 1.11, 0.90) at 18:30, green over red, and the Burning's
+## vents laid cyan-white discs that flooded the player cold at dusk. A lift over
+## the tint divides back out to itself, so the light is VENT_DAY_WARM's own warm
+## hue at every hour of daylight.
+static func burning_warm(kind: int, dark: float, tint := Vector3.ONE) -> Vector3:
 	if kind != PropKind.VENT:
 		return FIRE_WARM
-	return VENT_DAY_WARM.lerp(VENT_WARM, clampf(dark, 0.0, 1.0))
+	return (VENT_DAY_WARM * tint).lerp(VENT_WARM, clampf(dark, 0.0, 1.0))
 
 
 ## Does this source lay a wash on the ground at this darkness? A pool of light
@@ -859,6 +868,11 @@ static func index_of(w: WorldData, from: int, into: Array[Dictionary], cells: Di
 				local = pts[0].at
 				var c: Color = pts[0].color
 				s.neon = Vector3(c.r, c.g, c.b)
+				if p.kind == PropKind.MURAL:
+					# A board's face burns below its colour's full value and falls
+					# off to its frame (Towers.FACE_PEAK), so the middle of its
+					# geometry reads dim: the street takes the colour at full value.
+					s.neon = Vector3(c.r, c.g, c.b) / maxf(maxf(c.r, c.g), maxf(c.b, 0.001))
 			if p.kind == PropKind.HOUSE:
 				# Just outside the front wall, before the window and door.
 				var front := _front_of(p.kind, variant, country)
@@ -1001,7 +1015,7 @@ func _update(delta: float, snap: bool) -> void:
 		var reach: float = s.range
 		if kind == PropKind.VENT:
 			level = burning_level(kind, float(s.power), hour_dark) * flash
-			warm = burning_warm(kind, hour_dark)
+			warm = burning_warm(kind, hour_dark, tint)
 			reach = s.range * lerpf(VENT_DAY_REACH, 1.0, hour_dark)
 		elif kind == PropKind.FIRE or kind == PropKind.KILN:
 			level = burning_level(kind, float(s.power), dark)
