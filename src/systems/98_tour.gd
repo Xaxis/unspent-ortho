@@ -2278,7 +2278,7 @@ func _shot_checked(parts: PackedStringArray) -> bool:
 			# No frame that proves the opposite of its name is left on disk to be
 			# read as evidence by whoever comes next.
 			DirAccess.remove_absolute(_out.path_join(label + ".png"))
-			printerr("tour %s: %s.png claims %s and does not hold it; the frame was thrown away" % [_name, label, w])
+			printerr("tour %s: %s.png claims %s and does not hold it; the frame was thrown away%s" % [_name, label, w, _instead(w)])
 			return false
 	if not subjects.is_empty():
 		print("tour shot %s holds %s" % [label, ", ".join(subjects)])
@@ -2309,6 +2309,12 @@ func _instead(what: String) -> String:
 		for n: Node in get_tree().get_nodes_in_group(&"mobs"):
 			seen.append("%s%s" % [n.get("kind"), "" if bool(n.get("alive")) else " (down)"])
 		return " (bodies about: %s)" % (", ".join(seen) if seen.size() > 0 else "none")
+	if what == "goal_shown":
+		var hud := game.hud
+		var lines := PackedStringArray()
+		for l in hud.messages.visible():
+			lines.append(String(l.text))
+		return " (goal '%s', quiet %s, place ping %.2f '%s', lines on the glass: %s)" % [hud.goal, hud.messages.quiet, hud.place_alpha(), hud.place, " | ".join(lines)]
 	if what.begins_with("station:"):
 		return " (in reach: %s)" % ", ".join(Survival.stations_near(game))
 	if what.begins_with("prop:"):
