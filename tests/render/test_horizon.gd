@@ -31,6 +31,21 @@ func test_only_an_eye_level_camera_sees_the_horizon() -> void:
 		c.queue_free()
 
 
+## AN EYE OUT IN THE AIR (SkyLight.LOOKS_OUT, the climb's) keeps the eye-level
+## rules looking straight down a walker's leg, where a lens on the ground would
+## have gone over to the play camera's; and only the eye that says so.
+func test_an_eye_out_in_the_air_sees_by_the_horizon_at_any_pitch() -> void:
+	var down := _camera(true, 80.0, 60.0)
+	eq(SkyLight.horizon_share(down), 0.0, "a lens on the ground looking 80 degrees down has no horizon")
+	down.set_meta(SkyLight.LOOKS_OUT, true)
+	eq(SkyLight.horizon_share(down), 1.0, "the same lens out in the air is wholly under the eye-level rules")
+	var ortho := _camera(false, CameraRig.PITCH_DEG, CameraRig.LENS_FOV)
+	ortho.set_meta(SkyLight.LOOKS_OUT, true)
+	eq(SkyLight.horizon_share(ortho), 0.0, "and the orthographic camera never is")
+	for c: Camera3D in [down, ortho]:
+		c.queue_free()
+
+
 ## A flat plain at level 2 with a ridge three tiles wide at level 12 running
 ## north-south through it.
 static func _ridge() -> WorldData:
@@ -174,6 +189,22 @@ func test_the_open_sea_reaches_past_what_the_eye_sees() -> void:
 	lt(box.position.x, -SkyLight.SEE, "west past the eye's reach")
 	gt(box.end.z, float(w.size) + SkyLight.SEE, "south past the eye's reach")
 	view.free()
+
+
+## HIGH OVER THE LAND THE AIR IS SEEN THROUGH (SkyLight.aloft_reach): an eye a
+## man's height up, or over the tallest thing on the land, keeps the eye-level
+## air exactly; from a walker's thigh, forty kilometres up, the ground under it
+## is well inside the air instead of behind it, and from the hub the air still
+## closes inside the far plane the climb's eye is given.
+func test_high_over_the_land_the_air_is_seen_through() -> void:
+	var eye := Vector2(SkyLight.HORIZON_BEGIN, SkyLight.SEE)
+	eq(SkyLight.aloft_reach(eye, 1.7), eye, "at a man's height the air is the eye level's")
+	eq(SkyLight.aloft_reach(eye, 150.0), eye, "and over the tallest thing on the land")
+	var h := 46000.0
+	var r := SkyLight.aloft_reach(eye, h)
+	gt(r.y, h * 2.0, "from the thigh the ground under him is well inside the air (closed at %.0f m)" % r.y)
+	lt(r.x, h, "and the air has begun before the ground")
+	lt(SkyLight.aloft_reach(eye, 55000.0).y, SkyLight.HIGHEST_SEE, "from the hub it closes inside the farthest eye's far plane")
 
 
 ## LOOKING OUT TO THE HORIZON LEAVES NOTHING BEHIND. The air, the sky, the

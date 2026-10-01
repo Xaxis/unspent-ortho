@@ -1031,6 +1031,7 @@ func _drive_environment(e: Environment, hour: float, night: float, ns: float, sh
 		sun.directional_shadow_max_distance = _cam_distance() \
 			+ Air.frame_depth(_cam_size(), _cam_pitch()) + SHADOW_ROOM
 	_look_out(e, sm, a, horizon, nightly)
+	_aloft(e)
 	_dust_air(e, dust)
 	_weather_air(e)
 	e.volumetric_fog_albedo = Air.colour(hor, a).lerp(a.dust, dust * DUST_TAKE).lerp(Color(1, 1, 1), 0.35 * (1.0 - dust))
@@ -1088,9 +1089,22 @@ static func sees_horizon(cam: Camera3D) -> bool:
 ##
 ## The band ends short of the pitched lens and of a lock's lean on it (12.5 and 8
 ## degrees of margin), so neither ever takes any of it.
+##
+## AN EYE OUT IN THE AIR (a camera with the LOOKS_OUT meta: the climb's, up a
+## walker's leg) is under the eye-level rules at any pitch. The play camera's
+## rules are for a lens looking down on the ground the player stands on; looking
+## down from a leg, the ground is kilometres off and is seen through the air
+## like any horizon. Under them the walker it hangs on was not drawn, the air
+## was the play camera's and nothing was laid behind the land, so whatever lay
+## below the climber came out black.
+const LOOKS_OUT := &"looks_out"
+
+
 static func horizon_share(cam: Camera3D) -> float:
 	if cam == null or cam.projection != Camera3D.PROJECTION_PERSPECTIVE:
 		return 0.0
+	if cam.has_meta(LOOKS_OUT):
+		return 1.0
 	# `basis.z` points back out of the lens, so its `y` is the sine of the pitch
 	# DOWN; the top edge stands `fov/2` above the view axis (KEEP_HEIGHT).
 	var down := rad_to_deg(asin(clampf(cam.global_transform.basis.z.y, -1.0, 1.0)))
@@ -1350,6 +1364,45 @@ func _look_out(e: Environment, sm: ProceduralSkyMaterial, a: Dictionary, share: 
 		sun.directional_shadow_max_distance = lerpf(sun.directional_shadow_max_distance, HORIZON_SHADOW, w)
 		sun.directional_shadow_blend_splits = true
 		sun.directional_shadow_fade_start = lerpf(0.8, 0.75, w)
+
+
+## HIGH OVER THE LAND THE AIR IS SEEN THROUGH, NOT INTO. The eye-level air
+## closes by SEE, which is right for an eye a man's height off the ground and a
+## wall for one up a walker's leg: from the thigh the ground is forty kilometres
+## down and all of it lay behind that wall, so nothing in the frame said how far
+## down it was. From ALOFT_FROM up, the air's reach grows with the eye's height
+## (ALOFT_BEGIN and ALOFT_END of it), so the sea straight under a high eye keeps
+## four fifths of its light, the sea forty-five degrees down two thirds, and the
+## horizon still closes into the sky's colour. At 0.1 and 2.5 of it the thigh's
+## view past the leg, fifteen to thirty-five degrees down, met the sea eighty
+## to a hundred and eighty kilometres off and showed only the air's grey. An eye
+## under ALOFT_FROM (over the tallest thing on the land, and on the drum, a
+## hundred metres up) is left exactly as it was.
+const ALOFT_FROM := 200.0
+const ALOFT_FULL := 1000.0
+const ALOFT_BEGIN := 0.3
+const ALOFT_END := 4.0
+## The farthest any eye sees: the climb's (43_climb), from a walker's hub
+## fifty-five kilometres up, where its air closes at ALOFT_END of that height.
+## Its far plane and the open sea (world_view) reach this far, so the sea's own
+## edge is always inside air that has closed.
+const HIGHEST_SEE := 250000.0
+
+
+func _aloft(e: Environment) -> void:
+	var c := _cam()
+	if c == null or c.projection != Camera3D.PROJECTION_PERSPECTIVE:
+		return
+	var r := aloft_reach(Vector2(e.fog_depth_begin, e.fog_depth_end), c.global_position.y)
+	e.fog_depth_begin = r.x
+	e.fog_depth_end = r.y
+
+
+## Where the air begins and closes (depth from the eye) for an eye `h` up, from
+## where it would at eye level.
+static func aloft_reach(reach: Vector2, h: float) -> Vector2:
+	var k := smoothstep(ALOFT_FROM, ALOFT_FULL, h)
+	return reach.lerp(Vector2(maxf(reach.x, h * ALOFT_BEGIN), maxf(reach.y, h * ALOFT_END)), k)
 
 
 ## WHERE A MACHINE CANNOT SEE YOU, YOU CANNOT SEE FAR EITHER. A dust storm cuts

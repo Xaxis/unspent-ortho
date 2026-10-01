@@ -22,6 +22,7 @@ extends Node3D
 ## drum lighting the ground.
 
 const FootModel := preload("res://src/models/colossus_foot_model.gd")
+const LegModel := preload("res://src/models/colossus_leg_model.gd")
 const DUST := preload("res://src/render/colossus/colossus_dust.gdshader")
 
 ## Metres from the camera to the ankle: the near foot is drawn inside NEAR, all
@@ -47,11 +48,15 @@ var shares: Dictionary = {}
 ## What the last frame drew, for --stats: feet drawn, surfaces uploaded.
 var drawn := 0
 var uploaded := 0
+## While a climb is live a foot near the eye takes the near rule the patch on
+## the drum above it does (colossus_leg_model.gd NEAR_LIFT, `lift_near`).
+var _near := false
 
 
 ## Place and draw the near feet for this frame. `poses` and `defs` are the
-## walkers' (colossus_view.gd), `night` 0..1 how much of the dark there is.
-func update(cam: Camera3D, defs: Array, poses: Array, night: float) -> void:
+## walkers' (colossus_view.gd), `dome` the sky's (SkyLight.seen_air).
+func update(cam: Camera3D, defs: Array, poses: Array, dome: Dictionary) -> void:
+	var night := float(dome.get(&"dome_night", 0.0))
 	shares.clear()
 	drawn = 0
 	if cam == null:
@@ -94,6 +99,8 @@ func update(cam: Camera3D, defs: Array, poses: Array, night: float) -> void:
 				for l: OmniLight3D in n.lights:
 					l.visible = said.y > 0.05
 					l.light_energy = said.y * LIGHT_ENERGY
+			if _near:
+				LegModel.daylight(mat, dome)
 			legs[k] = share
 			drawn += 1
 		if legs != Vector3.ZERO:
@@ -173,6 +180,7 @@ func _node(key: int, d: RefCounted) -> Dictionary:
 	# Worn by the land it stands in, but lightly: at this size the wear's own
 	# blotches are metres across and read as rock, not as plate.
 	mat.set_shader_parameter("wear_take", 0.3)
+	LegModel.lift(mat, _near)
 	var foot := MeshInstance3D.new()
 	foot.name = "foot_%d" % key
 	foot.mesh = _meshes[d.id][0]
@@ -201,6 +209,13 @@ func _node(key: int, d: RefCounted) -> Dictionary:
 	var n := {"foot": foot, "stub": stub, "mat": mat, "lights": lights, "said": Vector2(-1.0, -1.0)}
 	_nodes[key] = n
 	return n
+
+
+## The near rule on every foot while a climb is live, and off after it.
+func lift_near(on: bool) -> void:
+	_near = on
+	for key: int in _nodes:
+		LegModel.lift(_nodes[key].mat, on)
 
 
 func _show(n: Dictionary, on: bool) -> void:

@@ -22,6 +22,7 @@ render_mode cull_back;
 #include "res://src/render/matter.gdshaderinc"
 #include "res://src/render/near_mask.gdshaderinc"
 #include "res://src/render/sight.gdshaderinc"
+#include "res://src/render/colossus/walker_plate.gdshaderinc"
 
 uniform float emission_strength = 0.0;
 // A share of the pixels this draw keeps, on a screen-pinned stipple: 1 keeps
@@ -52,6 +53,29 @@ uniform float relief = 1.0;
 // lattice of seams on a leg leaning over.
 uniform float ruled = 1.0;
 
+// PLATE A HAND IS ON (the leg a climber is on; colossus_leg_model.gd sets 1):
+// its wear is laid on each plate's own frame, which rides in its vertices (UV2
+// the metres across and up the plate from its lower corner; CUSTOM0 its width,
+// the height that shows below the row lapped over it, its pick, and which part
+// of it a face is: 1 the face, 2 the chamfer, 3 a lip, 0 none). The world's
+// wear is keyed on world space, and on a leg that walks it slid across the
+// plates with every stride. 0 everywhere else, where nothing reads those
+// vertices.
+uniform float plate_detail = 0.0;
+
+// A WALKER UP CLOSE IS LIT AS FORM (colossus_leg_model.gd NEAR_LIFT): the
+// patch under a climber's hands is the far body's plate, in the far body's
+// daylight (walker_plate.gdshaderinc), raised near the eye, so it reads by its
+// faces, lips and seams while the same body a few hundred metres off is the
+// dark mass the ground sees. x 0 (every other draw) leaves FOUND as it is.
+// The patch and, while a climb is live, the near foot are handed the dome's
+// sun and zenith every frame (colossus_leg_model.gd `daylight`).
+uniform vec4 near_lift = vec4(0.0, 1.0, 2.0, 0.0);
+uniform float near_fill = 0.0;
+uniform vec3 near_sun_dir = vec3(0.0, 1.0, 0.0);
+uniform vec3 near_sun_color : source_color = vec3(1.0);
+uniform vec3 near_top_color : source_color = vec3(0.29, 0.42, 0.66);
+
 // Written once a frame by 18_crowns. Four (x, the ground's own height there,
 // z, reach in tiles); reach 0 is an unused slot. Zero = the cut is off.
 global uniform mat4 found_clear;
@@ -68,6 +92,8 @@ uniform float flash_r = 0.0;
 uniform vec3 flash_col = vec3(0.9098, 0.8627, 0.7529);
 
 varying vec3 world_pos;
+varying vec2 plate_uv;
+varying vec4 plate_of;
 
 // How metal a machine reads. Not 1.0: a fully metallic surface has no diffuse
 // at all, and in a dark game lit by two lamps that is a machine you cannot see
@@ -130,6 +156,107 @@ vec2 found_panels(vec3 wp) {
 
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	plate_uv = UV2;
+	plate_of = CUSTOM0;
+}
+
+// THE WEAR OF ONE PLATE, on its own lines (`plate_detail`), and the relief it
+// leaves in `bump` (metres, for the normal). Rivets along its lapped lower edge,
+// two rows, which fasten it through the plate it laps, and up its sides; scores
+// where grit and boots have run, mostly up and down the pitch; grime in its
+// lips, in the lap under the row above and streaked down its face from there;
+// and a broad stain of its own. Every term only takes value AWAY (the ramp's
+// value is the law's, above): a rubbed rivet head or a score is told by the
+// light, as a smoother finish, never as a lighter paint.
+const float RIVET_IN = 0.12;
+const float RIVET_EVERY = 0.22;
+const float RIVET_R = 0.03;
+const float RIVET_ROW = 0.14;
+
+// How near the nearest rivet is, across a plate `w` wide and `h` showing.
+float plate_rivet(vec2 q, float w, float h) {
+	float n = max(1.0, floor((w - 2.0 * RIVET_IN) / RIVET_EVERY));
+	float sx = (w - 2.0 * RIVET_IN) / n;
+	float ix = clamp(floor((q.x - RIVET_IN) / sx + 0.5), 0.0, n);
+	// The second row is staggered half a pitch, as a lap joint is.
+	float ix2 = clamp(floor((q.x - RIVET_IN) / sx), 0.0, n - 1.0);
+	float d = length(q - vec2(RIVET_IN + ix * sx, RIVET_IN));
+	d = min(d, length(q - vec2(RIVET_IN + (ix2 + 0.5) * sx, RIVET_IN + RIVET_ROW)));
+	float m = max(1.0, floor((h - 2.0 * RIVET_IN) / RIVET_EVERY));
+	float sy = (h - 2.0 * RIVET_IN) / m;
+	float iy = clamp(floor((q.y - RIVET_IN) / sy + 0.5), 0.0, m);
+	d = min(d, length(q - vec2(RIVET_IN, RIVET_IN + iy * sy)));
+	d = min(d, length(q - vec2(w - RIVET_IN, RIVET_IN + iy * sy)));
+	return d;
+}
+
+// A score across the plate: lanes a few centimetres apart, a few of them cut,
+// each for a length and then not.
+float plate_score(vec2 q, float id, float h) {
+	float a = (id - 0.5) * 0.7;
+	vec2 r = vec2(cos(a) * q.x - sin(a) * q.y, sin(a) * q.x + cos(a) * q.y);
+	float lane = r.x * 17.0;
+	float li = floor(lane);
+	float on = step(0.7, ink_hash(vec2(li, id * 91.0 + 1.0)));
+	float s0 = ink_hash(vec2(li + 3.0, id * 57.0)) * h;
+	float len = 0.5 + ink_hash(vec2(li, id * 13.0 + 7.0)) * 2.4;
+	float along = smoothstep(s0, s0 + 0.15, r.y) * (1.0 - smoothstep(s0 + len - 0.4, s0 + len, r.y));
+	float fw = fwidth(lane);
+	float cut = 1.0 - smoothstep(0.04, 0.1 + fw, abs(fract(lane) - 0.5));
+	// Finer than a pixel it is let go, not drawn as a crawl.
+	return on * along * cut * (1.0 - smoothstep(0.35, 0.8, fw));
+}
+
+vec3 plate_worn(vec3 c, vec2 q, vec4 of, inout float rough, out float bump) {
+	float w = of.x;
+	float h = of.y;
+	float id = of.z;
+	int part = int(of.w + 0.5);
+	bump = 0.0;
+	float fw = length(fwidth(q));
+	// The plate's own finish and a broad stain across it.
+	c *= 1.0 - id * 0.07;
+	float stain = ink_vnoise(q * 0.55 + vec2(id * 31.0, id * 17.0));
+	c *= 1.0 - smoothstep(0.45, 0.85, stain) * 0.14;
+	if (part == 3) {
+		// Down in a lip, where nothing reaches to clean it.
+		rough = min(1.0, rough + 0.2);
+		return c * 0.72;
+	}
+	if (part == 2) {
+		// The chamfer is the edge that catches: rubbed bright by the light, and
+		// only by the light.
+		rough = mix(rough, 0.24, 0.8);
+		return c;
+	}
+	// The lap: grime gathers under the row above, and runs from it down the
+	// face in streaks, each as long as its own weather made it.
+	float lap = smoothstep(h - 0.7, h, q.y);
+	float sx = q.x * 2.6 + id * 11.0;
+	float col = floor(sx);
+	float run = step(0.5, ink_hash(vec2(col, id * 7.0 + 2.0)));
+	float reach = 0.8 + ink_hash(vec2(col + 5.0, id * 3.0)) * 3.6;
+	float streak = run * (1.0 - smoothstep(0.0, reach, h - q.y))
+		* (1.0 - smoothstep(0.1, 0.45, abs(fract(sx) - 0.5)));
+	// Along its lower edge and sides, grime where it meets the seam.
+	float edge = min(min(q.x, w - q.x), q.y);
+	float seam = 1.0 - smoothstep(0.0, 0.3, edge);
+	c *= 1.0 - max(lap * 0.3, max(streak * 0.18, seam * 0.2));
+	// The scores: a smoother line in a filthy face, and a groove.
+	float score = plate_score(q, id, h);
+	rough = mix(rough, 0.3, score * 0.7);
+	c *= 1.0 - score * 0.05;
+	bump -= score * 0.002;
+	// The rivets: a head, rubbed, in a ring of dirt; let go once it is under a
+	// pixel and a half.
+	float d = plate_rivet(q, w, h);
+	float seen = 1.0 - smoothstep(RIVET_R * 0.5, RIVET_R * 1.5, fw);
+	float head = (1.0 - smoothstep(RIVET_R - fw, RIVET_R + fw, d)) * seen;
+	float ring = (1.0 - smoothstep(RIVET_R, RIVET_R + 0.03 + fw, d)) * (1.0 - head) * seen;
+	c *= 1.0 - ring * 0.35 - head * 0.04;
+	rough = mix(rough, 0.34, head);
+	bump += sqrt(max(0.0, RIVET_R * RIVET_R - d * d)) * seen;
+	return c;
 }
 
 // A FIGHT IS NEVER HIDDEN (docs/LOOK.md law 5), and until now that was only true
@@ -240,8 +367,12 @@ void fragment() {
 	vec3 c = COLOR.rgb;
 	// The hour, the weather and what has settled in the air. Nothing LIES on a
 	// machine (SKY_FOUND), and its wash is dimmed less than the land's: they
-	// are powered and the land is not.
-	vec3 tinted = sky_apply(c, world_pos, TIME);
+	// are powered and the land is not. A walker's plate takes none of it: the
+	// cloud shade, the legs' shade and the banks of fog are laid on the land,
+	// kilometres under most of a leg, and the far body it goes on into takes
+	// none either, so on the drum, in its own shin's shade band, the patch came
+	// out a third as bright as the body round it.
+	vec3 tinted = near_lift.x > 0.0 ? c : sky_apply(c, world_pos, TIME);
 	c = mix(tinted, c, night_keep * (1.0 - clamp(dot(tinted, vec3(0.333)) / max(dot(c, vec3(0.333)), 1e-3), 0.0, 1.0)));
 
 	// A light built into the machine: vertex alpha below 1. 0.5..0.98 a steady
@@ -276,15 +407,27 @@ void fragment() {
 	// Burning, because the land it stands in says so and nothing else does.
 	vec3 n_world = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	float rough_add = 0.0;
-	if (!lit_part) {
+	float plate_bump = 0.0;
+	bool plated = plate_detail > 0.0;
+	if (plated && plate_of.x > 0.0 && !lit_part) {
+		c = plate_worn(c, plate_uv, plate_of, rough, plate_bump);
+	} else if (!lit_part && !plated) {
 		c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, wear_take, rough_add);
 	}
 
-	ALBEDO = matter_albedo(lit_part ? c : c * FOUND_MASS);
+	float near = walker_near(near_lift, distance(world_pos, eye));
+	ALBEDO = matter_albedo(lit_part ? c : walker_near_albedo(c * FOUND_MASS, near_lift, near));
 	METALLIC = lit_part ? 0.0 : FOUND_METAL;
 	ROUGHNESS = clamp(rough + rough_add, 0.05, 1.0);
 	SPECULAR = 0.48;
-	if (!lit_part) {
+	if (plated) {
+		// A plate's relief is its own too: the slope of its rivets and scores,
+		// per metre of it under this pixel.
+		float wx = max(length(dFdx(plate_uv)), 1e-5);
+		float wy = max(length(dFdy(plate_uv)), 1e-5);
+		vec2 g = clamp(vec2(dFdx(plate_bump) / wx, -dFdy(plate_bump) / wy), vec2(-1.0), vec2(1.0));
+		NORMAL = normalize(NORMAL - vec3(g, 0.0));
+	} else if (!lit_part) {
 		// The seams themselves, as relief: a ruled bevel, not a torn one.
 		NORMAL = matter_bump(NORMAL, world_pos, -1, 0.006 * relief);
 		vec3 bevel = vec3(dFdx(pan.x), -dFdy(pan.x), 0.0) * 0.5 * relief;
@@ -293,6 +436,11 @@ void fragment() {
 	// The machines' own light runs on their power: a lightning strike stutters it.
 	EMISSION = matter_light((c * emission_strength + c * glow * glow_scale) * sky_power())
 		+ matter_light(neon_skyglow(c));
+	// A walker's plate takes the far body's daylight (walker_plate.gdshaderinc).
+	if (near_lift.x > 0.0 && !lit_part) {
+		vec3 n_day = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+		EMISSION += ALBEDO * walker_day(n_day, normalize(eye - world_pos), near_sun_dir, near_sun_color, near_top_color, near, near_fill);
+	}
 	// The blow's white, hard-edged because FOUND is made to a rule. Laid as
 	// EMISSION over a black albedo so it lands on exactly that value whatever
 	// the light is doing. It whitens PLATE and never LIGHT: a machine's own
