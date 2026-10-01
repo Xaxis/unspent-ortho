@@ -61,6 +61,10 @@ var drop_at := Vector2.INF
 var second_act := false
 ## Desired velocity from the brain (tiles/s), applied by the sim each slice.
 var want := Vector2.ZERO
+## The speed the sim last moved it at of its own will (tiles/s): `want`, eased
+## through a charge's windup (FightSim._move_mob). A run is held to this when it
+## is asked whether something stopped it or whether it has arrived (Brains._charge).
+var commanded := 0.0
 ## Facing the brain wants; the sim turns toward it at turn_rate (rad/s) unless committed.
 var aim := 0.0
 var turn_rate := 8.0

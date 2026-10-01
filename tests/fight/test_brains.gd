@@ -81,6 +81,72 @@ func test_a_charge_bites_a_player_standing_in_its_row_from_any_start() -> void:
 		check(short.is_empty(), "%s's first bite reaches him from every start (short from %s)" % [kind, short])
 
 
+## AND FROM CLOSE IN. A run told from close in eases so its front arrives as the
+## bite goes live (FightSim), and its first think found it had moved less than
+## a full-speed run is held to: ruled blocked, it stood out its windup where it
+## was and bit the air short (a harvester from a 1.69 gap, 0.2 short of a still
+## player). Every charger, from every close start, on ground it moves on.
+func test_a_charge_bites_a_player_standing_close_in_its_row() -> void:
+	for kind: StringName in Roster.kinds():
+		var row := Roster.row(kind)
+		if row.get("approach", &"") != &"charge":
+			continue
+		var keeps: Array = row.get("keeps_to", [])
+		var ground := Ground.GRASS if keeps.is_empty() else Ground.NAMES.find(String(keeps[0]))
+		var short: Array[String] = []
+		for i in 18:
+			var sim := F.make_sim(F.flat_world(96, ground), Vector2(40.5, 40.5))
+			var m := sim.add_mob(kind, Vector2(40.5, 40.5))
+			var gap := 0.2 + i * 0.25
+			m.pos = Vector2(40.5 + m.radius + sim.hero.radius + gap, 40.5)
+			m.facing = PI
+			m.aim = PI
+			m.calm_until = 0.0
+			m.disturbed = true
+			m.set_mood(MobState.CHASING, sim.now)
+			var hit := false
+			var bit := false
+			for k in 400:
+				F.ms(sim, 16)
+				sim.hero.health = FightRules.HEALTH
+				hit = hit or F.count(sim.drain(), &"hurt") > 0
+				bit = bit or m.blow != null
+				if m.blow != null and m.blow_phase(sim.now) == &"recovery":
+					break
+			if bit and not hit:
+				short.append("%.2f" % gap)
+		check(short.is_empty(), "%s's first bite reaches a still player from every close start (air from gaps %s)" % [kind, short])
+
+
+## A TOLD RUN STILL STOPS AT A WALL. Held to the speed it was asked for, not
+## excused while its bite winds up: a run whose player is suddenly past a
+## terrace wall (a dodge over a step, a shove) is ruled blocked against the rock
+## and stands, rather than pressing into it to the end of its windup.
+func test_a_told_run_that_meets_a_wall_stands_at_it() -> void:
+	var w := F.flat_world(96)
+	for y in 96:
+		w.level[y * w.size + 42] = 8
+	var sim := F.make_sim(w, Vector2(40.8, 40.5))
+	var h := sim.add_mob(&"harvester", Vector2(38.5, 40.5))
+	h.facing = 0.0
+	h.aim = 0.0
+	h.calm_until = 0.0
+	h.disturbed = true
+	h.set_mood(MobState.CHASING, sim.now)
+	var guard := 0
+	while not (h.charging and h.blow != null) and guard < 200:
+		sim.slices(1)
+		guard += 1
+	check(h.charging and h.blow_phase(sim.now) == &"windup", "it set off with its bite told")
+	sim.hero.pos = Vector2(50.5, 40.5)
+	var set_off := sim.now
+	while h.charging and h.blow_phase(sim.now) == &"windup":
+		sim.slices(1)
+	check(not h.charging, "the wall ended the run")
+	lt(sim.now - set_off, float(h.blow.windup), "before its windup was out (%.0f ms)" % (sim.now - set_off))
+	lt(h.pos.x + FightSim.move_radius(h), 42.05, "and it stands at the rock")
+
+
 func test_lunge_presses_in_and_bites() -> void:
 	var sim := F.make_sim()
 	var dog := F.still(sim, &"dog.yard", Vector2(23.5, 20.5), PI)
