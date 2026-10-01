@@ -30,6 +30,11 @@ extends RefCounted
 ##                     the island passes under), posed MINUTE world minutes into
 ##                     its walk and walking on from there; `--stats` prints where
 ##                     each one stands, for --face (render)
+## --climb=PITCH[:HOLD] stage a climb up the straddling walker's leg that stands in
+##                     the tread nearest the start (43_climb): the body hung at
+##                     hold HOLD (default 0) of PITCH (a WalkerClimb.PITCHES id, or
+##                     its index) and the climb's own camera on it, climbing on
+##                     from there; with --colossus=2@treadN for the moment (render)
 ## --orbit=off         no ring in the sky this run (19_orbit): the only way to
 ##                     take one moment with and without it and measure its cost
 ## --orbit=zenith@H     stage a pass of the ring whose peak stands overhead at hour
@@ -149,6 +154,8 @@ extends RefCounted
 ##                     on one is there, and a reply that wants one is offered (story, the same)
 ## --chose=AT=PICK,..  answers given at boot, long since (`rook.iron=paid`): a deal a story
 ##                     leg waits on is closed (story, the same)
+## --met=ID,ID         named people he has spoken to at boot, long since: a hop that ends on
+##                     meeting somebody is behind him (story, the same)
 ## --fail-downed       a bad end (downed or carried off) quits the game with exit 1: a tour that
 ##                     must be survived through real play fails if it is not (fight)
 ## --rooms=empty      rooms come in without their residents (21_doors): a frame or
@@ -190,6 +197,8 @@ var eye_turn := 0.0
 var colossi: StringName = &""
 ## "W@MINUTE": one walker alone at a staged minute of its walk, or "" (19_colossi).
 var colossus := ""
+## "PITCH[:HOLD]": a climb staged up a walker's leg, or "" (43_climb).
+var climb := ""
 ## "off", "zenith@H" (19_orbit), or "" for the ring's own schedule.
 var orbit := ""
 ## "off", "CLASS@AT[/B][,...][:bench]" (21_falls), or "" for the falls' own schedule.
@@ -283,6 +292,8 @@ var talk := ""
 var beats := ""
 ## Answers given before the first frame, "AT=PICK" comma-separated (49_story).
 var chose := ""
+## Named people met before the first frame, by cast id (49_story).
+var met := ""
 ## Which realm to start in (Realm.KINDS). The world a game opens with is always
 ## the surface's; the realms system crosses before the first frame.
 var realm: StringName = &"surface"
@@ -325,6 +336,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"eye-turn": o.eye_turn = v.to_float()
 			"colossi": o.colossi = StringName(v)
 			"colossus": o.colossus = v
+			"climb": o.climb = v
 			"orbit": o.orbit = v
 			"fall": o.fall = v
 			"eye-round": o.eye_round = v.to_float()
@@ -396,6 +408,7 @@ static func parse(args: PackedStringArray) -> BootOptions:
 			"talk": o.talk = v
 			"beats": o.beats = v
 			"chose": o.chose = v
+			"met": o.met = v
 			"target":
 				o.target = true
 				o.target_sweep = v == "sweep"

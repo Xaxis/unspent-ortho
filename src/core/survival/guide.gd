@@ -323,6 +323,9 @@ static func armour_goal(game: Game) -> String:
 ## the archive across the water until he has met the man there. Each hop's line
 ## is StoryContent.LEAD[key]. A hop opens on its `after` beat (`_hop_open`), and
 ## the first open hop not yet behind him is the goal: the order is the priority.
+## A hop marked `last` is a leg's standing lead with nothing in this leg to end
+## it: it waits behind the next keeper's lead (keeper_goal) as well, or a
+## standing keeper named to him would never be said again.
 const WAY: Array[Dictionary] = [
 	{"key": &"yard", "after": &"reaper_down", "until": &"built_halcyon"},
 	{"key": &"rook_again", "after": &"built_halcyon", "until": &"holdfast_hope"},
@@ -333,6 +336,9 @@ const WAY: Array[Dictionary] = [
 	{"key": &"raft", "after": &"war_archive", "has": &"raft", "heard": [StoryCrossing.PUT_IN, StoryCrossing.CROSSED], "met": &"otto"},
 	{"key": &"crossing", "after": &"war_archive", "heard": [StoryCrossing.CROSSED], "met": &"otto"},
 	{"key": &"archive", "after": &"war_archive", "met": &"otto"},
+	# THE ARCHIVE (slice 3 step 4). The man there met, one of the war's orders,
+	# until he has been shown one (tradecraft), however it came.
+	{"key": &"orders", "after": &"war_archive", "until": &"tradecraft"},
 	# JUNE (slice 3 step 3). The archive's man met, the Covenant's seat, until the
 	# Speaker is heard of (her own set is in the house nearest it); then her name,
 	# which only somebody who left the Covenant will say (Imre); then June herself,
@@ -344,6 +350,9 @@ const WAY: Array[Dictionary] = [
 	{"key": &"june", "after": &"june_named", "felt": true, "met": &"june"},
 	{"key": &"june_voice", "after": &"june_knew", "felt": true, "until": &"echo_kept"},
 	{"key": &"mend", "after": &"covenant_fed", "has": &"plate_mended"},
+	# The relay below, once Otto has said where the orders went (war_relay): slice
+	# 4's lead, so nothing in this slice ends it.
+	{"key": &"relay", "after": &"war_relay", "last": true},
 ]
 
 
@@ -363,13 +372,21 @@ static func way_goal(game: Game) -> String:
 	var hob := hob_goal()
 	if hob != "":
 		return hob
+	var last := &""
 	for hop: Dictionary in WAY:
-		if not _hop_open(hop):
+		if not _hop_open(hop) or _hop_done(game, hop) or not StoryContent.LEAD.has(hop.key):
 			continue
-		if not _hop_done(game, hop) and StoryContent.LEAD.has(hop.key):
-			_key = hop.key
-			return String(StoryContent.LEAD[hop.key])
-	return keeper_goal(game)
+		if bool(hop.get("last", false)):
+			if last == &"":
+				last = hop.key
+			continue
+		_key = hop.key
+		return String(StoryContent.LEAD[hop.key])
+	var keeper := keeper_goal(game)
+	if keeper != "" or last == &"":
+		return keeper
+	_key = last
+	return String(StoryContent.LEAD[last])
 
 
 ## THE NEXT KEEPER (ROADMAP slice 2, step 6): once the Reaper is down and the way
