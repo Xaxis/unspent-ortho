@@ -222,6 +222,17 @@ static func coarse(c: GenContext) -> void:
 	# one slot, 0, and the arithmetic below is the arithmetic it always had.
 	var wslot := _weight_slots(c, landc, cell_body)
 	c.weight_slot = wslot
+	# A SEA CELL IS ITS NEAREST BODY'S, and a landscape not dealt that body is out
+	# of its reach too. Otherwise the sea between two continents blended the far
+	# shore's landscapes into this one's climate and ecotones: a landscape moved
+	# across the strait re-blended home's facing shore (seed 1: 3,868 tiles).
+	if not c.allow.is_empty():
+		for k in cn:
+			if landc[k] != 0:
+				continue
+			for cc in range(1, types):
+				if not c.may_stand(cc, wslot[k]):
+					dist[cc * cn + k] = OUT_OF_REACH
 	var slot_target := _slot_targets(c, target)
 	var weight := PackedFloat32Array()
 	weight.resize(SLOTS * types)
@@ -238,20 +249,45 @@ static func coarse(c: GenContext) -> void:
 	var last_err := PackedFloat32Array()
 	last_err.resize(SLOTS * types)
 	var damped := not c.allow.is_empty()
-	var full_passes := 0
-	var it := 0
-	while it < 40:
-		var sparse := it < 30
-		var gain := size * (0.5 if sparse else 0.3)
-		var counts := _assign_counts(dist, weight, wslot, landc, cw, types, sparse)
-		var worst := 0.0
-		for sl: int in slot_target:
+	# EACH BODY SETTLES ON ITS OWN SCHEDULE. One loop for the world ran every body
+	# until the slowest had settled, so how many steps home's weights took -- and
+	# so home's climate and borders -- hung on what lay on the other continents.
+	# A body's slot is sampled sparse until it is close, then in full until it
+	# holds, then left alone. One body: the schedule it always had.
+	var slots := slot_target.keys()
+	var phase := {}
+	var steps := {}
+	var full := {}
+	for sl: int in slots:
+		phase[sl] = 0
+		steps[sl] = 0
+		full[sl] = 0
+	var guard := 0
+	while guard < 80:
+		guard += 1
+		var need_sparse := false
+		var need_full := false
+		for sl: int in slots:
+			need_sparse = need_sparse or int(phase[sl]) == 0
+			need_full = need_full or int(phase[sl]) == 1
+		if not need_sparse and not need_full:
+			break
+		var counts_sparse := _assign_counts(dist, weight, wslot, landc, cw, types, true) if need_sparse else PackedInt32Array()
+		var counts_full := _assign_counts(dist, weight, wslot, landc, cw, types, false) if need_full else PackedInt32Array()
+		for sl: int in slots:
+			var ph := int(phase[sl])
+			if ph == 2:
+				continue
+			var sparse := ph == 0
+			var counts := counts_sparse if sparse else counts_full
+			var gain := size * (0.5 if sparse else 0.3)
 			var want: PackedFloat32Array = slot_target[sl]
 			var at := sl * types
 			var total := 0.0
 			for cc in types:
 				total += counts[at + cc]
 			total = maxf(1.0, total)
+			var worst := 0.0
 			for cc: int in c.land_types:
 				var err := want[cc] - counts[at + cc] / total
 				worst = maxf(worst, absf(err))
@@ -262,15 +298,19 @@ static func coarse(c: GenContext) -> void:
 					weight[at + cc] += err * gain * damp[at + cc]
 				else:
 					weight[at + cc] += err * gain
-		# Close enough on the sample: go on to every cell. The tiles are
-		# balanced again after their borders wander (fine()).
-		if sparse and worst < 0.006 and it >= 8:
-			it = 29
-		if not sparse:
-			full_passes += 1
-			if worst < 0.004 and full_passes >= 3:
-				break
-		it += 1
+			var it := int(steps[sl])
+			# Close enough on the sample: go on to every cell. The tiles are
+			# balanced again after their borders wander (fine()).
+			if sparse and worst < 0.006 and it >= 8:
+				it = 29
+			if not sparse:
+				full[sl] = int(full[sl]) + 1
+				if worst < 0.004 and int(full[sl]) >= 3:
+					phase[sl] = 2
+			it += 1
+			steps[sl] = it
+			if int(phase[sl]) != 2:
+				phase[sl] = 2 if it >= 40 else (0 if it < 30 else 1)
 	c.layout_weight = weight
 	c.scores.clear()
 	c.soft.clear()
@@ -1150,6 +1190,21 @@ static func regions(c: GenContext) -> void:
 	w.region.resize(c.n)
 	w.region.fill(0)
 	tile_regions(w.country, c.size, Vector2i.ZERO, plan.cells, c.coarse_country, c.cw, GenContext.STEP, c.size, w.region)
+
+
+## REGION `id`'S OWN KEY, for whatever is thrown in it: its landscape and the
+## plan cell its centre lies in, which only its own land decides. Never its id:
+## ids rank every region of the world biggest-first, so a landscape moved on
+## another continent renumbered home's regions and laid home's tips and works
+## again (seed 1: the camp 190 tiles, the yard 32). Keyed on itself, a body's
+## places depend on that body alone (tests/biome/test_body_independence.gd).
+## No region (-1) keys as itself.
+static func region_key(w: WorldData, id: int) -> int:
+	if id < 0 or id >= w.regions.size():
+		return id
+	var r: Dictionary = w.regions[id]
+	var at: Vector2 = r.get("centre", Vector2.ZERO)
+	return Rng.hash_ints(int(r.get("index", 0)), floori(at.x / GenContext.STEP), floori(at.y / GenContext.STEP))
 
 
 ## The plan's regions: {"regions": the records, ids biggest first, "cells": per

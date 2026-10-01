@@ -386,7 +386,8 @@ static func _enter(L: Lay, def: BiomeDef, k: int) -> void:
 	if L.region >= 0:
 		L.rects.append(r.bounds as Rect2)
 		L.sizes.append(float(r.tiles))
-	L.site_rng = Rng.make(L.c.s, Rng.hash_ints(0x3057, String(def.id).hash(), L.region))
+	# Thrown from the region's own key, never its id (GenCountries.region_key).
+	L.site_rng = Rng.make(L.c.s, Rng.hash_ints(0x3057, String(def.id).hash(), GenCountries.region_key(L.w, L.region)))
 	L.site_memo.clear()
 	L.rng = L.site_rng
 	L.m_region = L.w.landmarks.size()
@@ -1794,7 +1795,7 @@ static func _note_lit_shack(L: Lay, shack: WorldProp) -> void:
 
 ## THE STOLEN LIGHT IS THE WORLD'S ONE, AND IT IS NOT A RACE. It went to the
 ## first lit shack laid, so where it stood hung on every region laid before.
-## The regions are ranked by the plan's own hash; the light is the lowest-hashed
+## The regions are ranked by a hash of each one's own key; the light is the lowest-hashed
 ## lit shack of the first region in that rank that lit one. So it hangs on the
 ## first region or two of the rank and on nothing laid anywhere else.
 static func _stolen_light(L: Lay) -> void:
@@ -1807,7 +1808,7 @@ static func _stolen_light(L: Lay) -> void:
 	var first := -2
 	var rank := 2.0
 	for r: int in best:
-		var k := Rng.hash01(L.c.s, r, 0, 0x5702)
+		var k := Rng.hash01(L.c.s, GenCountries.region_key(L.w, r), 0, 0x5702)
 		if k < rank:
 			rank = k
 			first = r

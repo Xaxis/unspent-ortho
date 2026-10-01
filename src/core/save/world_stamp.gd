@@ -253,8 +253,17 @@ const UNKNOWN := "unknown"
 ##     off its own. Places are furnished in each one's own hash order, not the
 ##     order sited, and a village's spur runs to the island's own lines, never to
 ##     another village's spur. Houses, wrecks and spurs move; every kind's count holds within 2%.
-##     (Provisional; restamped at landing.)
-const GEN := 46
+## 47. A continent's places are its own (slice 3 step 6): a region's sites,
+##     works and wrecks, and the stolen light's rank, are thrown from its own
+##     key, its landscape and the plan cell its centre lies in, never its rank
+##     in the world; a sea cell takes only the
+##     landscapes its nearest body was dealt; each body's weights settle on
+##     their own schedule; each body keeps its own rivers, as many as the one
+##     island always had. A landscape moved on another body moves nothing on
+##     this one. Sites, works and wrecks move on every seed; on worlds of several bodies
+##     the borders, climate and rivers move too (four seeds at 1840: river tiles
+##     on home +37%, in the world x3.8). (Provisional; restamped at landing.)
+const GEN := 47
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

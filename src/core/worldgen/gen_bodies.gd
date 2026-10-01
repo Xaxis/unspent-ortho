@@ -762,6 +762,7 @@ static func deal(c: GenContext) -> void:
 		order.append_array(rest)
 		for r in mini(want, order.size()):
 			got[order[r]].append(cc)
+	_trade(c, got, planned)
 	# Nothing may be left barren.
 	for i in planned:
 		if got[i].is_empty() and not c.land_types.is_empty():
@@ -778,6 +779,37 @@ static func deal(c: GenContext) -> void:
 	# Everything that decides whose land a tile is asks `GenContext.may_stand`.
 	# It cannot draw a new line across open ground: a continent's edge is water.
 	fill_allow(c)
+
+
+## A test's hook: two continent ids, each giving the other its first landscape
+## the deal may move, after the deal (tests/biome/test_body_independence.gd: a
+## change on later bodies leaves every earlier one as it was). (-1, -1) is off.
+static var trade := Vector2i(-1, -1)
+
+
+static func _trade(c: GenContext, got: Array[PackedInt32Array], planned: int) -> void:
+	if trade.x < 0:
+		return
+	var at := PackedInt32Array([-1, -1])
+	for i in planned:
+		var id := int(c.w.continents[i].get("id", -1))
+		if id == trade.x:
+			at[0] = i
+		elif id == trade.y:
+			at[1] = i
+	if at[0] < 0 or at[1] < 0:
+		return
+	var give := PackedInt32Array([-1, -1])
+	for k in 2:
+		for t: int in got[at[k]]:
+			if c.defs[t].spread.x < 1 and not got[at[1 - k]].has(t):
+				give[k] = t
+				break
+	if give[0] < 0 or give[1] < 0:
+		return
+	for k in 2:
+		got[at[k]].remove_at(got[at[k]].find(give[k]))
+		got[at[1 - k]].append(give[k])
 
 
 ## Fill `GenContext.allow` from what `w.continents` records was dealt. The one

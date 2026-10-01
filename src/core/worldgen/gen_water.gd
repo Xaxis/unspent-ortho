@@ -148,10 +148,20 @@ static func rivers(c: GenContext) -> void:
 	traced.resize(cn)
 	c.river_e = PackedFloat32Array()
 	c.river_e.resize(c.n)
+	# EACH CONTINENT KEEPS ITS OWN RIVERS, as many as the one island always had:
+	# a body is grown to be a whole island (GenBodies `_share_for`). One budget for
+	# the world went to whichever body's sources stood highest, so home took most
+	# of it (seed 1: 7 of 11), the far continents one or none, and a landscape
+	# raised on another continent took home's rivers away.
+	var bodies := maxi(1, c.bodies.size())
 	var count := 0
+	var laid := {}
 	for src in sources:
-		if count >= MAX_RIVERS:
+		if bodies <= 1 and count >= MAX_RIVERS:
 			break
+		var body := c.w.continent_at(roundi(GenFields.cell_centre(src.y % cw, step)), roundi(GenFields.cell_centre(src.y / cw, step)))
+		if int(laid.get(body, 0)) >= MAX_RIVERS:
+			continue
 		var cells := PackedInt32Array()
 		var k := src.y
 		var joined := false
@@ -176,8 +186,10 @@ static func rivers(c: GenContext) -> void:
 		var accs := PackedFloat32Array()
 		for kk in cells:
 			accs.append(acc[kk] / threshold)
-		if _lay(c, pts, accs, joined, count):
+		# Meandered from its own source cell, not its place in the world's count.
+		if _lay(c, pts, accs, joined, count if bodies <= 1 else Rng.hash_ints(src.y, body) & 0xFFFF):
 			count += 1
+			laid[body] = int(laid.get(body, 0)) + 1
 	c.mark(&"rivers.lay")
 	_settle_crossings(c)
 	_carve_valleys(c)
