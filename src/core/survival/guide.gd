@@ -363,6 +363,10 @@ const WAY: Array[Dictionary] = [
 	{"key": &"speaker", "after": &"covenant_speaker", "until": &"june_named"},
 	{"key": &"june", "after": &"june_named", "felt": true, "met": &"june"},
 	{"key": &"june_voice", "after": &"june_knew", "felt": true, "until": &"echo_kept"},
+	# THE WARDEN. Once what the voice kept her from has settled (the Covenant's
+	# revelations with it, so his reply is never held back), the warden, until he
+	# says whose roads he is sold: nothing else leads to him, and Rook waits on it.
+	{"key": &"warden", "after": &"echo_kept", "felt": true, "until": &"teague_sold"},
 	# BACK AT THE CAMP (slice 3 step 8). Once what the archive showed him has been
 	# felt, the old soldier, until he has spoken to him since, whatever he said, so
 	# the confession is never forced, or Dace is gone; once what the warden said of

@@ -107,14 +107,14 @@ func test_the_covenant_sends_him_to_mend_the_plate() -> void:
 	g.inventory.add(&"kit_plate", 1)
 	g.body.fed_until = g.clock.minutes + 600.0
 	# Where the story stands by the Covenant: slice 1 and 2 done, the archive's man
-	# met and an order shown, June met, what the voice kept her from said, and the
-	# old soldier spoken to since. The way's hops before this one are behind him,
-	# long since felt.
+	# met and an order shown, June met, what the voice kept her from said, the
+	# warden's word, and the old soldier and Rook spoken to since. The way's hops
+	# before this one are behind him, long since felt.
 	for b: StringName in [&"reaper_named", &"reaper_down", &"built_halcyon", &"holdfast_hope", &"war_archive",
-			&"tradecraft", &"covenant_speaker", &"june_named", &"june_knew", &"echo_kept"]:
+			&"tradecraft", &"covenant_speaker", &"june_named", &"june_knew", &"echo_kept", &"teague_sold"]:
 		@warning_ignore("return_value_discarded")
 		Story.beat(b, -INF)
-	for who: StringName in [&"otto", &"june", &"dace"]:
+	for who: StringName in [&"otto", &"june", &"dace", &"rook"]:
 		@warning_ignore("return_value_discarded")
 		Story.meet(who)
 	var mend := String(StoryContent.LEAD[&"mend"])
