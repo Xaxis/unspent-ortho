@@ -206,6 +206,13 @@ const MIDDEN_FLOOR := 108
 ## (world.gdshader works_mark): between its rows the alleys mown short with a
 ## sprayer's wheel ruts down them, and on the rows the spray's pale drift (109).
 const ORCHARD_SWARD := 109
+## The coast's heath: HEATH in every respect but its form. The heather stands in
+## cushions about a stride across with grass between, a height the sun lights
+## (matter.gdshaderinc shore_cushion) and the colour is laid from, so from above
+## at noon it is a sward and not a two-value camouflage (110).
+const SHORE_HEATH := 110
+## The coast's turf: TURF, grazed into tussocks a hand across the same way (111).
+const SHORE_TURF := 111
 
 static var _wash: PackedColorArray
 static var _marks: PackedInt32Array

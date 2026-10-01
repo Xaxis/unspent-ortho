@@ -86,6 +86,8 @@ const int M_SCRAP_FLOOR = 106;
 const int M_BOG_FLOOR = 107;
 const int M_MIDDEN_FLOOR = 108;
 const int M_ORCHARD_SWARD = 109;
+const int M_SHORE_HEATH = 110;
+const int M_SHORE_TURF = 111;
 const int M_STRATA_BONE = 133;
 const int M_STRATA_GLASS = 139;
 const int M_STRATA_TIDE = 140;
@@ -172,6 +174,10 @@ vec4 matter_of(int m) {
 	vec4 r = vec4(0.88, 0.32, 0.010, 0.0);
 	if (m == 40) { r = vec4(0.93, 0.26, 0.012, 0.0); }        // TURF
 	else if (m == 41) { r = vec4(0.95, 0.22, 0.020, 0.0); }   // HEATH
+	// The coast's sward: the same matter, with cushions and tussocks deep enough
+	// for the sun to stand on (shore_cushion).
+	else if (m == 110) { r = vec4(0.95, 0.22, 0.100, 0.0); }  // SHORE_HEATH
+	else if (m == 111) { r = vec4(0.93, 0.26, 0.050, 0.0); }  // SHORE_TURF
 	else if (m == 42) { r = vec4(0.86, 0.36, 0.006, 0.0); }   // SAND
 	else if (m == 43) { r = vec4(0.62, 0.60, 0.034, 0.0); }   // SHINGLE: sea-polished
 	else if (m == 44) { r = vec4(0.74, 0.50, 0.014, 0.0); }   // SNOW
@@ -337,6 +343,23 @@ float matter_fbm(vec2 p) {
 	return v;
 }
 
+// THE COAST'S SWARD, as a height in 0..1: 0 the ground between, 1 a crown. The
+// heather grows in cushions about a stride across and the grazed turf in
+// tussocks a hand across, and not every cell grows one, by a slow drift of how
+// thick. From above at noon the heath read as a two-value camouflage and the
+// turf as one flat green, because at relief 0.020 and 0.012 of a field with no
+// shape neither had anything the sun could find (2026-09-30).
+float shore_cushion(vec2 p, int m) {
+	bool heath = m == M_SHORE_HEATH;
+	vec2 q = p * (heath ? 1.15 : 2.6) + vec2(matter_fbm(p * 0.35), matter_fbm(p * 0.35 + 5.0)) * 1.6;
+	vec3 cl = matter_cells(q);
+	float thick = matter_fbm(p * 0.12 + 3.0);
+	float keep = step(ink_hash(vec2(cl.z, 7.0)), heath ? 0.25 + thick * 0.7 : 0.2 + thick * 0.5);
+	float r = cl.x + (matter_fbm(p * 3.4) - 0.5) * 0.22;
+	float dome = 1.0 - smoothstep(0.08, heath ? 0.5 : 0.42, r);
+	return sqrt(max(dome, 0.0)) * keep;
+}
+
 // A material's own relief as a height in 0..1, in WORLD space, at the scale its
 // marks are drawn at. Smooth on purpose: the fine speckle in the wash is
 // pigment, not geometry, and differentiating it would give the light noise to
@@ -485,6 +508,10 @@ float matter_height(int m, vec3 wp, vec2 p) {
 		// of them, rather than the whole bog undulating like cloth.
 		float mound = matter_fbm(p * 0.8) * 0.72 + matter_fbm(p * 2.4 + 31.0) * 0.28;
 		h = mound * mound;
+	} else if (m == M_SHORE_HEATH || m == M_SHORE_TURF) {
+		// The same field the sward's colour is laid from (world.gdshader
+		// shore_sward), so the dark is the cushion's own shade.
+		h = shore_cushion(p, m);
 	} else if (m == 41 || m == 40 || m == 50) {
 		// Anything with a mat of growth on it: clumps.
 		h = matter_fbm(p * 1.7);
