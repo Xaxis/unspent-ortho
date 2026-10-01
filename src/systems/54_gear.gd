@@ -296,7 +296,7 @@ func _travel_marks(delta: float) -> void:
 		return
 	_travel_at = TRAVEL_BEAT
 	if _motion.kind == &"glide":
-		MobFx.glint(game, game.player.position + Vector3(0, 0.9, 0), Palette.PLATE[3], int(Time.get_ticks_msec()), 0.22)
+		MobFx.glint(game, game.player.position + Vector3(0, 0.9, 0), Palette.PLATE[5], int(Time.get_ticks_msec()), 0.22)
 
 
 ## The line itself: one ruled line of the machines' own cold, hand to anchor. It
@@ -352,11 +352,11 @@ func _land(m: AbilityMotion) -> void:
 		_gliding = false
 		if _wing != null:
 			_wing.set_open(false)
-		MobFx.puffs(game, game.player.position, m.dir, Palette.STONE[4], 3, 0.55, int(Time.get_ticks_msec()))
+		MobFx.puffs(game, game.player.position, m.dir, Palette.STONE[5], 3, 0.55, int(Time.get_ticks_msec()))
 		Events.sfx.emit(&"ability_land", game.player.position)
 	elif m.kind == &"grapple":
 		_drop_line()
-		MobFx.puff(game, game.player.position, -m.dir, Palette.STONE[4], 0.5, int(Time.get_ticks_msec()))
+		MobFx.puff(game, game.player.position, -m.dir, Palette.STONE[5], 0.5, int(Time.get_ticks_msec()))
 
 
 func _process(delta: float) -> void:
@@ -396,7 +396,7 @@ func _land_jump(m: AbilityMotion) -> void:
 		MobFx.ring(game, at, Palette.BRINE[5], 1.4, 0.5)
 	else:
 		Events.sfx.emit(&"jump_land", at)
-		MobFx.puffs(game, at, Vector2.ZERO, Palette.STONE[4], 2, 0.35, seed_value)
+		MobFx.puffs(game, at, Vector2.ZERO, Palette.STONE[5], 2, 0.35, seed_value)
 	var sim: FightSim = game.player.sim
 	if sim != null and p != null:
 		var fell := maxi(0, p.from_level - p.to_level)
@@ -426,10 +426,10 @@ func _land_climb(m: AbilityMotion) -> void:
 		game.player.model.play_action(&"", 0.0)
 	if p == null or not p.slides:
 		Events.sfx.emit(&"jump_land", at)
-		MobFx.puff(game, at, Vector2.ZERO, Palette.STONE[4], 0.3, int(Time.get_ticks_msec()))
+		MobFx.puff(game, at, Vector2.ZERO, Palette.STONE[5], 0.3, int(Time.get_ticks_msec()))
 		return
 	Events.sfx.emit(&"jump_land", at)
-	MobFx.puffs(game, at, Vector2.ZERO, Palette.STONE[4], 3, 0.5, int(Time.get_ticks_msec()))
+	MobFx.puffs(game, at, Vector2.ZERO, Palette.STONE[5], 3, 0.5, int(Time.get_ticks_msec()))
 	if p.fall_damage > 0:
 		game.body.health = maxi(0, game.body.health - p.fall_damage)
 		if hero != null:
@@ -516,7 +516,7 @@ func _fx(what: StringName, args: Dictionary) -> void:
 			Events.sfx.emit(&"ability_dash", at)
 		&"jump":
 			Events.sfx.emit(&"jump", at)
-			MobFx.puff(game, at, -game.player.intent_move, Palette.STONE[4], 0.22, seed_value)
+			MobFx.puff(game, at, -game.player.intent_move, Palette.STONE[5], 0.22, seed_value)
 		&"climb":
 			Events.sfx.emit(&"jump", at)
 		&"glide":
@@ -563,7 +563,7 @@ func _fx(what: StringName, args: Dictionary) -> void:
 			_veil_sheet(mid, dir.normalized(), secs)
 			for i in 5:
 				var t := (float(i) + 0.5) / 5.0
-				MobFx.puffs(game, game.world.to_3d(mid - across + across * 2.0 * t) + Vector3(0, 0.1, 0), Vector2.ZERO, Palette.RIME[4], 2, 0.5, seed_value + i)
+				MobFx.puffs(game, game.world.to_3d(mid - across + across * 2.0 * t) + Vector3(0, 0.1, 0), Vector2.ZERO, Palette.RIME[5], 2, 0.5, seed_value + i)
 			Events.sfx.emit(&"ability_veil", at)
 		&"spoof":
 			# Their own signature going out of you: a clean violet ring and a
@@ -573,7 +573,7 @@ func _fx(what: StringName, args: Dictionary) -> void:
 			MobFx.glint(game, at + Vector3(0, 1.35, 0), Palette.LENS[3], seed_value, 0.6)
 			for i in 3:
 				var a := i * TAU / 3.0
-				MobFx.glint(game, at + Vector3(cos(a) * 0.6, 0.8, sin(a) * 0.6), Palette.FOUND[4], seed_value + i * 3, 0.3)
+				MobFx.glint(game, at + Vector3(cos(a) * 0.6, 0.8, sin(a) * 0.6), Palette.FOUND[5], seed_value + i * 3, 0.3)
 			_spoof_at = Time.get_ticks_msec() / 1000.0 + SPOOF_BEAT
 		&"spoof_beat":
 			# While it stands, one glint on a slow beat: you are still wearing
@@ -581,7 +581,7 @@ func _fx(what: StringName, args: Dictionary) -> void:
 			var now := Time.get_ticks_msec() / 1000.0
 			if now >= _spoof_at:
 				_spoof_at = now + SPOOF_BEAT
-				MobFx.glint(game, at + Vector3(0, 1.35, 0), Palette.FOUND[4], seed_value, 0.26)
+				MobFx.glint(game, at + Vector3(0, 1.35, 0), Palette.FOUND[5], seed_value, 0.26)
 		&"spoof_ended":
 			Events.message.emit("They can read you again.")
 			MobFx.ring(game, at, Palette.FOUND[1], 1.0, 0.35)
