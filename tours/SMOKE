@@ -1,0 +1,17 @@
+# The smoke set: tools/tour-sweep.sh --smoke runs these before a branch that touches
+# src/systems or src/core is called ready. Each guards a shared path that unit tests
+# can't see, because the systems only meet at run time through one key, one frame or
+# one goal line. Two landings on 2026-09-30 broke tours nobody ran: a cache's press fix
+# stole the talk at Otto (archive, back-at-camp), and a charger fix erased a gear's edge.
+archive        # a talk beside a cache: the press goes to who he faces; two talks; the survey pin
+june           # a door, a room's dweller, a talk indoors, the goal line's felt gate
+back-at-camp   # the raft both ways, the crossing, talks that end goal hops
+speaker        # reading a terminal in a room; the read page's closing press
+landmarks      # opening caches; place and back-off staging; the survey's marks
+region         # working a barrier by hand
+carried_home   # a holding staged, sleep, waking by his own fire
+slate          # every slate page from the title, keys and screens
+reaper_force   # a keeper fought by force, the lock, played on a fixed step
+sentinels      # dodge then swing passes, tells and openings
+second-keeper  # the keeper chain: a fall, a naming, the survey mark, a second fight
+colossi_climb  # the climb from tread to enclave, its staged views and hints

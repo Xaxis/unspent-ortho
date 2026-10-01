@@ -556,6 +556,82 @@ func test_breath_is_depth_tested_air_at_every_angle() -> void:
 	_done()
 
 
+## HEAT IS LIT, IN ITS OWN EMBER, from either camera. Drawn as breath's vapour
+## it was a white cloud at the feet, breath in the cold on the one landscape that
+## is never cold; drawn as ink lines it was a drawing laid on the world. The heat
+## cue lifts ember motes off the ground, warms the ground from under with a light
+## and sets the air over it wavering (HeatFx): no mark, nothing paled, nothing
+## drawn without a depth test, and no mote on the eye's side of the body.
+func test_heat_off_the_ground_is_lit_in_its_own_ember_from_either_camera() -> void:
+	var g := await _make()
+	var cam := g.camera
+	cam.sight_room = Callable()
+	var hz: Node = null
+	for s in g.systems:
+		if s.name == "52_hazards":
+			hz = s
+	check(hz != null, "the hazards system runs")
+	_over_all(g)
+	var ember := HazardCues.colour(&"heat")
+	gt(ember.s, 0.6, "the heat cue's own colour is a saturated ember, not a pale")
+	for close: bool in [false, true]:
+		if close:
+			cam.shoulder = true
+			cam.snap_view()
+			cam.shoulder_yaw = Shoulder.yaw_behind(g.player.facing)
+			_step(cam, 2)
+		var where := "over the shoulder" if close else "from above"
+		var body := g.player.global_position
+		var eye := cam.global_position - body
+		var to_eye := Vector2(eye.x, eye.z).normalized()
+		var had := {}
+		for c: Node in g.get_children():
+			had[c] = true
+		hz.call("_draw_cue", &"heat", HazardCues.cue(&"heat"), 0.7)
+		var motes := 0
+		var lights := 0
+		var hazes := 0
+		var marks := 0
+		var toward := 0
+		for c: Node in g.get_children():
+			if had.has(c) or c.is_queued_for_deletion():
+				continue
+			if c is OmniLight3D:
+				lights += 1
+				near((c as OmniLight3D).light_color.h, ember.h, 0.01, "%s the heat's light is its own ember" % where)
+				c.queue_free()
+				continue
+			var mi := c as MeshInstance3D
+			if mi == null:
+				continue
+			var sm := mi.material_override as ShaderMaterial
+			if sm != null and sm.get_shader_parameter(&"mode") != null:
+				marks += 1
+			elif sm != null and sm.shader == HeatFx.HAZE_SHADER:
+				hazes += 1
+				check(not sm.shader.code.contains("depth_test_disabled"), "%s the haze is depth-tested" % where)
+			elif mi.material_override is StandardMaterial3D:
+				var st := mi.material_override as StandardMaterial3D
+				motes += 1
+				check(not st.no_depth_test, "%s a mote is depth-tested" % where)
+				eq(st.shading_mode, BaseMaterial3D.SHADING_MODE_UNSHADED, "%s a mote is its own light" % where)
+				var tint := st.albedo_color
+				near(Vector3(tint.r, tint.g, tint.b).distance_to(Vector3(ember.r, ember.g, ember.b)), 0.0, 1e-4,
+					"%s a mote is the cue's ember, never paled" % where)
+				var off := mi.global_position - body
+				if Vector2(off.x, off.z).dot(to_eye) > 0.05:
+					toward += 1
+			else:
+				continue
+			mi.queue_free()
+		eq(marks, 0, "%s heat puts out no drawn mark" % where)
+		eq(motes, HeatFx.MOTES, "%s ember motes rise off the ground" % where)
+		eq(lights, 1, "%s and one light warms the ground from under" % where)
+		eq(hazes, 1, "%s and the air over it wavers" % where)
+		eq(toward, 0, "%s and no mote rises on the eye's side of the body" % where)
+	_done()
+
+
 ## Marks and air put out since the last count, freed as counted: how many, and
 ## how many of them draw over everything (a mark whose shader has no depth test,
 ## or air with its depth test off).

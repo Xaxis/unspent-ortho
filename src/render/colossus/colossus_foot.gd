@@ -180,6 +180,9 @@ func _node(key: int, d: RefCounted) -> Dictionary:
 	# Worn by the land it stands in, but lightly: at this size the wear's own
 	# blotches are metres across and read as rock, not as plate.
 	mat.set_shader_parameter("wear_take", 0.3)
+	# Under a climber the near rule lays its plates as the pitches' are laid
+	# (found.gdshader `plate_virtual`); from the ground it is off with the rule.
+	mat.set_shader_parameter("plate_virtual", 1.0)
 	LegModel.lift(mat, _near)
 	var foot := MeshInstance3D.new()
 	foot.name = "foot_%d" % key
