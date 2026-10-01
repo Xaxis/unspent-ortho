@@ -75,6 +75,11 @@ uniform float near_fill = 0.0;
 uniform vec3 near_sun_dir = vec3(0.0, 1.0, 0.0);
 uniform vec3 near_sun_color : source_color = vec3(1.0);
 uniform vec3 near_top_color : source_color = vec3(0.29, 0.42, 0.66);
+// AND WHERE A WALKER'S PART HAS NO PLATES OF ITS OWN (the near foot sets 1), the
+// near rule lays them in the shader as the pitches lay them in geometry
+// (`virtual_plate`), taking over from the ruled panels as it comes in: from the
+// drum the foot's top was house-size panels, flat, under a riveted pitch.
+uniform float plate_virtual = 0.0;
 
 // Written once a frame by 18_crowns. Four (x, the ground's own height there,
 // z, reach in tiles); reach 0 is an unused slot. Zero = the cut is off.
@@ -94,6 +99,8 @@ uniform vec3 flash_col = vec3(0.9098, 0.8627, 0.7529);
 varying vec3 world_pos;
 varying vec2 plate_uv;
 varying vec4 plate_of;
+varying vec3 model_pos;
+varying vec3 model_n;
 
 // How metal a machine reads. Not 1.0: a fully metallic surface has no diffuse
 // at all, and in a dark game lit by two lamps that is a machine you cannot see
@@ -158,6 +165,30 @@ void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	plate_uv = UV2;
 	plate_of = CUSTOM0;
+	model_pos = VERTEX;
+	model_n = NORMAL;
+}
+
+// THE PLATES OF A SURFACE THAT HAS NONE (`plate_virtual`): PLATE_W by PLATE_H,
+// as colossus_leg_model.gd lays the pitches' (PANEL), each row half a plate
+// over, on the surface's own lines in the model's frame so they ride with it. A
+// face that stands up is laid with its rows up it; one that looks up or down, on
+// the model's x and z. Returns where on its plate `p` is, metres from its lower
+// corner, and writes that plate's frame for `plate_worn` into `of`.
+const float PLATE_W = 4.0;
+const float PLATE_H = 6.0;
+
+vec2 virtual_plate(vec3 p, vec3 n, out vec4 of) {
+	vec2 s = p.xz;
+	if (abs(n.y) < 0.7) {
+		vec3 t = normalize(cross(vec3(0.0, 1.0, 0.0), n));
+		s = vec2(dot(p, t), p.y);
+	}
+	float row = floor(s.y / PLATE_H);
+	float x = s.x + mod(row, 2.0) * PLATE_W * 0.5;
+	float col = floor(x / PLATE_W);
+	of = vec4(PLATE_W, PLATE_H, ink_hash(vec2(col, row) + vec2(17.0, 3.0)), 1.0);
+	return vec2(x - col * PLATE_W, s.y - row * PLATE_H);
 }
 
 // THE WEAR OF ONE PLATE, on its own lines (`plate_detail`), and the relief it
@@ -389,7 +420,10 @@ void fragment() {
 	}
 	bool lit_part = emission_strength > 0.0 || COLOR.a < 0.98;
 
-	vec2 pan = found_panels(world_pos) * ruled;
+	float near = walker_near(near_lift, distance(world_pos, eye));
+	// Laid plates come in over the ruled panels as the near rule does.
+	float laid = lit_part ? 0.0 : plate_virtual * near;
+	vec2 pan = found_panels(world_pos) * ruled * (1.0 - laid);
 	// Every panel is finished a shade differently, and its seams are darker and
 	// rougher than its face: that is what makes a machine read as ASSEMBLED
 	// rather than moulded, and it is the FOUND half of law 1.
@@ -408,23 +442,39 @@ void fragment() {
 	vec3 n_world = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	float rough_add = 0.0;
 	float plate_bump = 0.0;
+	vec2 bump_uv = plate_uv;
 	bool plated = plate_detail > 0.0;
 	if (plated && plate_of.x > 0.0 && !lit_part) {
 		c = plate_worn(c, plate_uv, plate_of, rough, plate_bump);
 	} else if (!lit_part && !plated) {
-		c = matter_worn(c, matter_wear(world_pos), n_world, world_pos, wear_take, rough_add);
+		vec3 land = matter_worn(c, matter_wear(world_pos), n_world, world_pos, wear_take, rough_add);
+		if (laid > 0.0) {
+			vec4 of;
+			bump_uv = virtual_plate(model_pos, normalize(model_n), of);
+			float laid_rough = rough;
+			vec3 v = plate_worn(c, bump_uv, of, laid_rough, plate_bump);
+			// The seam between two plates: the dark skin, a few centimetres
+			// wide, let go once it is under a pixel.
+			float e = min(min(bump_uv.x, of.x - bump_uv.x), min(bump_uv.y, of.y - bump_uv.y));
+			float fq = length(fwidth(bump_uv));
+			v *= 1.0 - (1.0 - smoothstep(0.05, 0.05 + fq, e)) * (1.0 - smoothstep(0.2, 0.5, fq)) * 0.6;
+			land = mix(land, v, laid);
+			rough = mix(rough, laid_rough, laid);
+			rough_add *= 1.0 - laid;
+			plate_bump *= laid;
+		}
+		c = land;
 	}
 
-	float near = walker_near(near_lift, distance(world_pos, eye));
 	ALBEDO = matter_albedo(lit_part ? c : walker_near_albedo(c * FOUND_MASS, near_lift, near));
 	METALLIC = lit_part ? 0.0 : FOUND_METAL;
 	ROUGHNESS = clamp(rough + rough_add, 0.05, 1.0);
 	SPECULAR = 0.48;
-	if (plated) {
+	if (plated || laid > 0.0) {
 		// A plate's relief is its own too: the slope of its rivets and scores,
 		// per metre of it under this pixel.
-		float wx = max(length(dFdx(plate_uv)), 1e-5);
-		float wy = max(length(dFdy(plate_uv)), 1e-5);
+		float wx = max(length(dFdx(bump_uv)), 1e-5);
+		float wy = max(length(dFdy(bump_uv)), 1e-5);
 		vec2 g = clamp(vec2(dFdx(plate_bump) / wx, -dFdy(plate_bump) / wy), vec2(-1.0), vec2(1.0));
 		NORMAL = normalize(NORMAL - vec3(g, 0.0));
 	} else if (!lit_part) {
