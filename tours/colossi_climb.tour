@@ -50,7 +50,9 @@ await climb:rode 0.1
 end
 # Near the middle of the ride, the eye out on the island.
 wait 24
+perf stats begin
 shot 02-riding-up-the-shin with climb_riding
+perf stats end ride_shin
 until climb_ready 240
 shot 03-below-the-knee with climbing,climb_patch
 try 12
@@ -62,7 +64,9 @@ release move_up
 await climb:rode 0.1
 end
 wait 12
+perf stats begin
 shot 04-riding-up-the-thigh with climb_riding
+perf stats end ride_thigh
 until climb_ready 240
 shot 05-on-the-thigh with climbing,climb_patch
 perf stats begin thigh
