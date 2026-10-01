@@ -367,35 +367,51 @@ vec3 ground_wear(int m, vec3 c, vec2 wp, vec2 px) {
 }
 
 // Where the fen holds standing water, 0..1: past BOG_WATER, its shore broken into
-// bays by a finer field than the decor's, and on the sodden margin the low
-// places between the hummocks, so the water also lies in puddles a stride
-// across and not only in pools.
+// bays by a finer field than the decor's and coming in over a short grade, and
+// on the sodden margin the low places between the hummocks, so the water also
+// lies in puddles a stride across and not only in pools.
 float bog_water(vec3 wp, float w, float hum) {
 	float shore = w + (matter_fbm(wp.xz * 0.9 + 13.0) - 0.5) * 0.04;
-	float pool = smoothstep(BOG_WATER, BOG_WATER + 0.008, shore);
+	float pool = smoothstep(BOG_WATER - 0.004, BOG_WATER + 0.014, shore);
 	float puddle = smoothstep(BOG_MARGIN + 0.02, BOG_WATER - 0.005, w) * (1.0 - smoothstep(0.02, 0.08, hum));
 	return max(pool, puddle);
 }
 
 // THE MOSS'S FEN by day, laid from how wet it lies (bog_wet) and the sphagnum's
-// own height (bog_hummock). What makes a bog read as one from above at noon: a
-// living lawn of sphagnum, yellow-green, rusting red on the hummock crowns in
-// patches; a sodden margin round every hollow, dark and saturated; and in the
-// hollows standing water, peat-black and holding the sky (its roughness in
-// fragment()). The water comes in three sizes, gathers in the low ground and
-// is fewer than the moss, so the lawn is the ground and the pools are in it.
+// own height (bog_hummock). What makes a bog read as one from above: the
+// sphagnum lawn in the fen's own muted wash, its hummocks rusting red on the
+// crowns in patches; a sodden margin round every hollow, dark and saturated;
+// and in the hollows standing water. The water is peat-stained in its shallows
+// and black where it is deep, ringed by a dark wet line where it meets the moss,
+// and it carries the sky's light in a few ripples that catch at play zoom: what
+// says water and not bare peat. It gathers in the low ground and is fewer than
+// the moss, so the lawn is the ground and the pools are in it.
 vec3 bog_floor(vec3 c, vec3 wp, vec2 px) {
 	float w = bog_wet(wp.xz, wp.y);
 	float hum = bog_hummock(wp.xz, w);
-	vec3 lawn = mix(c, mix(MOSS3, MOSS4, 0.25), 0.55);
+	vec3 lawn = mix(c, MOSS2, 0.2);
 	float red = smoothstep(0.5, 0.64, ink_vnoise(wp.xz * 0.11 + 40.0) * 0.7 + ink_vnoise(wp.xz * 0.45 + 9.0) * 0.3);
-	vec3 crown = mix(up(lawn, 0.15), mix(RUST1, RUST2, 0.6), red * 0.7 * smoothstep(0.3, 0.9, hum));
+	vec3 crown = mix(up(lawn, 0.12), mix(RUST1, RUST2, 0.6), red * 0.6 * smoothstep(0.3, 0.9, hum));
 	c = mix(dn(lawn, 0.3), crown, smoothstep(0.05, 0.75, hum));
 	float sod = smoothstep(BOG_MARGIN, BOG_WATER, w);
 	c = mix(c, dn(mix(c, SPRUCE2, 0.3), 0.5), sod * 0.6);
 	float water = bog_water(wp, w, hum);
-	c = mix(c, mix(EARTH0, INK1, 0.5), water);
-	return c;
+	if (water > 0.0) {
+		float depth = smoothstep(BOG_WATER, BOG_WATER + 0.06, w);
+		vec3 wet = mix(mix(dn(c, 1.0), mix(SPRUCE1, EARTH1, 0.5), 0.5), mix(EARTH0, INK1, 0.5), depth);
+		// The ripples: a slow field's contours drifting with the hour, broken
+		// into runs, and only out from the shore. They take the light's own
+		// colour, so at noon they are pale and at dusk they are the dusk.
+		float rf = matter_fbm(wp.xz * vec2(0.2, 1.8) + vec2(TIME * 0.02, 0.0));
+		float line = smoothstep(0.44, 0.48, abs(fract(rf * 6.0) - 0.5));
+		float glint = line * smoothstep(0.62, 0.74, ink_vnoise(wp.xz * vec2(0.12, 0.4) + 3.0)) * smoothstep(0.15, 0.5, depth);
+		wet = mix(wet, mix(RIME4, sky_tint, 0.5), glint * 0.5);
+		c = mix(c, wet, water);
+	}
+	// The wet line where water meets the moss: where the water would lie were it
+	// a little higher, the moss is soaked dark.
+	float rim = bog_water(wp, w + 0.012, 0.0) * (1.0 - water);
+	return mix(c, dn(c, 0.8), rim * 0.8);
 }
 
 // THE COAST'S SWARD, coloured from the height the sun lights (shore_cushion).
@@ -2592,7 +2608,9 @@ vec3 bog_gas(vec3 wp3, vec2 px) {
 	}
 	// Which pools burn, and when: a slow field drifting over the bog.
 	float lit = smoothstep(0.42, 0.66, ink_vnoise(wp * 0.11 + vec2(TIME * 0.02, -TIME * 0.015)));
-	float lick = 0.55 + 0.45 * flicker(vec3(floor(wp.x * 2.0), 3.0, floor(wp.y * 2.0)), 2.4);
+	// Each tongue flickers on its own, in cells with no square in them: on the
+	// whole pools the moss has now, half-tile squares read as a chequer.
+	float lick = 0.55 + 0.45 * flicker(vec3(matter_cells(wp * 1.6).z * 97.0, 3.0, 0.0), 2.4);
 	float tongue = smoothstep(0.25, 0.65, ink_vnoise(wp * 3.1 + vec2(0.0, TIME * 0.6)));
 	return vec3(0.34, 0.62, 0.72) * 1.6 * pool * lit * lick * tongue * sky_view.y;
 }
@@ -3066,15 +3084,14 @@ void fragment() {
 		// Window glass lying in drifts on the city floor catches the light.
 		rough_add -= city_glass(world_pos.xz) * 0.35;
 	}
+	// The fen's standing water: see SPECULAR below. Its roughness is the moss's:
+	// smoothed toward a mirror it caught the low sun at dusk as a chequer of the
+	// ground's own triangles, and the noon sky from above as a grey sheet. The
+	// sky it holds is in its ripples (bog_floor).
 	float bog_pool = 0.0;
 	if (bog) {
-		// The fen's standing water holds a sheen of the sky; the moss round it does
-		// not, and rain on it breaks it. A sheen and not a mirror: peat water is
-		// black, and at a mirror's roughness the noon sky laid a white sheet over
-		// every pool seen from above.
 		float bw = bog_wet(world_pos.xz, world_pos.y);
 		bog_pool = bog_water(world_pos, bw, bog_hummock(world_pos.xz, bw));
-		rough_add -= bog_pool * (0.2 - 0.1 * clamp(sky_air.x, 0.0, 1.0));
 	}
 	if (m == M_TIDEFLAT) {
 		// Standing water on the drowned floor is a mirror; the silt round it is not.
