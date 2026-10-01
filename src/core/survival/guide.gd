@@ -349,6 +349,13 @@ const WAY: Array[Dictionary] = [
 	{"key": &"speaker", "after": &"covenant_speaker", "until": &"june_named"},
 	{"key": &"june", "after": &"june_named", "felt": true, "met": &"june"},
 	{"key": &"june_voice", "after": &"june_knew", "felt": true, "until": &"echo_kept"},
+	# BACK AT THE CAMP (slice 3 step 8). Once what the archive showed him has been
+	# felt, the old soldier, until he has spoken to him since, whatever he said, so
+	# the confession is never forced, or Dace is gone; once what the warden said of
+	# Teague has been felt, Rook, until he has spoken to him since. Each leads him
+	# to the person, never to the line.
+	{"key": &"camp_back", "after": &"tradecraft", "felt": true, "spoke": &"dace", "until": &"dace_left"},
+	{"key": &"rook_teague", "after": &"teague_sold", "felt": true, "spoke": &"rook", "until": &"rook_told"},
 	{"key": &"mend", "after": &"covenant_fed", "has": &"plate_mended"},
 	# The relay below, once Otto has said where the orders went (war_relay): slice
 	# 4's lead, so nothing in this slice ends it.
@@ -416,11 +423,14 @@ static func _hop_open(hop: Dictionary) -> bool:
 
 
 ## Whether a WAY hop is behind him: a beat landed (`until`), a person met (`met`),
-## or, for the crossing, a thing carried (`has`) or something he did heard (`heard`).
+## a person spoken to since its `after` beat landed (`spoke`), or, for the
+## crossing, a thing carried (`has`) or something he did heard (`heard`).
 static func _hop_done(game: Game, hop: Dictionary) -> bool:
 	if hop.has("until") and Story.landed(hop.until):
 		return true
 	if hop.has("met") and Story.met(hop.met):
+		return true
+	if hop.has("spoke") and Story.spoke_since(hop.spoke, Story.landed_at(hop.after)):
 		return true
 	if hop.has("has") and game.inventory.has(hop.has):
 		return true

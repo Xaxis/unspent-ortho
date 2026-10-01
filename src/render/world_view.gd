@@ -107,6 +107,13 @@ var _chunks: Dictionary = {} # Vector2i -> Node3D
 ## Chunks built, then taken out of the scene when the view left them. They cost
 ## no draw and no cull here, and putting one back is free.
 var _parked: Dictionary = {} # Vector2i -> Node3D
+## Chunks let go for the park's budget (`_park`), which are not built again until
+## the view comes round to them. At eye level the wanted square is ~56 chunks,
+## the scene holds ~36 and the park ~15: every chunk left over was built, parked,
+## let go for the budget and built again, one every few frames forever, standing
+## still (seed 1 coast over the shoulder: 258 builds in 1200 frames, a 60 ms
+## worker build and ~6 ms on the main thread each, 2026-09-30).
+var _shed: Dictionary = {} # Vector2i -> true
 var _park_seen: Dictionary = {} # Vector2i -> int, for evicting the least recently wanted
 var _park_clock := 0
 ## What each built chunk's arrays came to, for `park_budget`.
@@ -267,6 +274,7 @@ func rebind(w: WorldData) -> void:
 	_chunks.clear()
 	for key: Vector2i in _parked.keys():
 		_let_go(key)
+	_shed.clear()
 	_chunk_bytes.clear()
 	_data.clear()
 	if far != null:
@@ -533,6 +541,7 @@ func _park(key: Vector2i) -> void:
 				oldest_at = at
 				oldest = k
 		_let_go(oldest)
+		_shed[oldest] = true
 
 
 ## Free a parked chunk; it is built again if it is wanted again.
@@ -623,6 +632,12 @@ func _process(_delta: float) -> void:
 	for key in wanted:
 		if _have(key) or (_task >= 0 and key == _task_key):
 			continue
+		# Shed for the budget and still out of view: building it would only shed
+		# it again. It is built when the view turns to it.
+		if _shed.has(key):
+			if not _in_view(key, VIEW_SLACK):
+				continue
+			_shed.erase(key)
 		near_busy = true
 		if threaded:
 			if _task < 0 and _mid_task < 0:

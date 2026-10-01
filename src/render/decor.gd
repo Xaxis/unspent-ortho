@@ -288,6 +288,7 @@ func build_parts(ch: TerrainMesher.Chunk, props: Array = []) -> Array:
 			var shore := ch.shore[ty * ch.w + tx]
 			var wx := ch.x0 + tx
 			var wy := ch.y0 + ty
+			var heather := _heather(g, country, wx, wy, h)
 			# In the lee of something standing: the drift a species with a `lee`
 			# lays against it, as extra plants of that species on this tile.
 			var lee_kind := -1
@@ -331,6 +332,8 @@ func build_parts(ch: TerrainMesher.Chunk, props: Array = []) -> Array:
 						continue
 					fx = on.x - wx
 					fy = on.y - wy
+				if kind == HEATHER and rng.randf() >= heather:
+					continue
 				# Litter: a stray piece anywhere, thick where the machines worked.
 				var lr := rng.randf()
 				if works != null:
@@ -468,6 +471,18 @@ static func turf(ch: TerrainMesher.Chunk, tx: int, ty: int) -> int:
 	return k
 
 
+## How much of the heather a tile keeps, 0..1: all of it, except on ground drawn
+## as the coast's heath, where the heather grows in the drifts the ground draws
+## (ShoreSward, matter.gdshaderinc shore_thick) and the grass between is open.
+## Laid evenly there, its clumps were an even field of dark dots from above.
+func _heather(g: int, country: int, wx: int, wy: int, y: float) -> float:
+	if GroundColors.mark(g, country) != GroundColors.SHORE_HEATH:
+		return 1.0
+	# Only where the ground draws the mat: out on the fringe its cushions are
+	# few, and a clump standing there is a dot again.
+	return smoothstep(0.35, 0.85, ShoreSward.thick(wx + 0.5, wy + 0.5, y))
+
+
 ## THE MEADOW: what the meadow ring (MeadowView) stands on chunk tiles
 ## [tx0, tx0 + w) x [ty0, ty0 + h): the same plants the baked decor lays there,
 ## `thick` times as many of them and none of its stones or litter. Each tile is
@@ -530,11 +545,14 @@ func meadow(ch: TerrainMesher.Chunk, tx0: int, ty0: int, w: int, h: int, thick: 
 			var t := ch.t[ty * 2 * np + tx * 2 + np + 1]
 			var flat := TerrainMesher.level_height(t) - 0.004
 			var soft := g == Ground.MOSS or g == Ground.PEAT or g == Ground.SNOW or g == Ground.HEATH
+			var heather := _heather(g, country, wx, wy, flat)
 			for i in count:
 				var kind := _pick(sway, rng.randf())
 				var fx := 0.04 + rng.randf() * 0.92
 				var fy := 0.04 + rng.randf() * 0.92
 				var stage := rng.randi() % STAGES
+				if kind == HEATHER and rng.randf() >= heather:
+					continue
 				if kind == FLOWER:
 					var bl := _bloom.get_noise_2d(wx + fx, wy + fy) * 0.5 + 0.5
 					if bl < 0.4:

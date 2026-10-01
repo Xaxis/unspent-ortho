@@ -31,6 +31,8 @@ static var _beats: Dictionary = {}
 static var _choices: Dictionary = {}
 ## Named people he has spoken to, in the order he met them (StoryCast).
 static var _met: Array[StringName] = []
+## Named person -> the world minute he last spoke to them (`spoke_since`).
+static var _spoke: Dictionary = {}
 ## What a region has already asked him, and what it has already thanked him for
 ## (StorySubarc): ids of the form "REGION:goal". Whether a thing is DONE is read
 ## off the world, so only the telling is remembered.
@@ -51,6 +53,7 @@ static func forget() -> void:
 	_beats.clear()
 	_choices.clear()
 	_met.clear()
+	_spoke.clear()
 	_heard.clear()
 	_ledger.clear()
 	began = false
@@ -96,9 +99,13 @@ static func choose(id: StringName, pick: StringName) -> void:
 	_land_beats_for(id)
 
 
-## He has spoken to this named person. True the first time only.
+## He has spoken to this named person, now. True the first time only; every
+## time is remembered as the last (`spoke_since`).
 static func meet(id: StringName) -> bool:
-	if id == &"" or _met.has(id):
+	if id == &"":
+		return false
+	_spoke[id] = now
+	if _met.has(id):
 		return false
 	_met.append(id)
 	return true
@@ -106,6 +113,12 @@ static func meet(id: StringName) -> bool:
 
 static func met(id: StringName) -> bool:
 	return _met.has(id)
+
+
+## Whether he has spoken to this named person at or after the world minute `at`:
+## somebody to go back to with something new wants a talk since he learned it.
+static func spoke_since(id: StringName, at: float) -> bool:
+	return _spoke.has(id) and float(_spoke[id]) >= at
 
 
 ## Somebody has said this to him. True the first time only.
@@ -250,13 +263,16 @@ static func save_state() -> Dictionary:
 	var met := PackedStringArray()
 	for id: StringName in _met:
 		met.append(String(id))
+	var spoke := {}
+	for id: StringName in _spoke:
+		spoke[String(id)] = maxf(float(_spoke[id]), -1.0e9)
 	var heard := PackedStringArray()
 	for id: StringName in _heard:
 		heard.append(String(id))
 	var seen: Array = []
 	for e: Dictionary in _ledger:
 		seen.append({"act": String(e.act), "land": String(e.land), "at": float(e.at)})
-	return {"read": read, "beats": beats, "beat_at": beat_at, "choices": choices, "met": met, "heard": heard, "ledger": seen, "began": began}
+	return {"read": read, "beats": beats, "beat_at": beat_at, "choices": choices, "met": met, "spoke": spoke, "heard": heard, "ledger": seen, "began": began}
 
 
 static func load_state(d: Dictionary) -> void:
@@ -273,6 +289,11 @@ static func load_state(d: Dictionary) -> void:
 		_choices[StringName(str(k))] = StringName(str(choices[k]))
 	for s: String in d.get("met", []):
 		_met.append(StringName(s))
+	# A save from before this knows only who was met, not when: nobody has been
+	# spoken to since anything.
+	var spoke: Dictionary = d.get("spoke", {})
+	for k: Variant in spoke:
+		_spoke[StringName(str(k))] = float(spoke[k])
 	for s: String in d.get("heard", []):
 		_heard.append(StringName(s))
 	began = bool(d.get("began", false))
