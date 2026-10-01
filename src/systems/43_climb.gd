@@ -26,11 +26,12 @@ extends GameSystem
 ## hundreds of metres a second, and a frame late is metres off his holds.
 ##
 ## THE EYE is a Camera3D of its own, made current while a climb is live, as the
-## staged eye is (96_eye): out from the plate a little below him and to his
-## right, looking at him and up the pitch. Riding up inside the bone he is not
-## seen; the eye goes up the outside of the leg to the next pitch, bowed out
-## from it, so the whole leg goes by. Everything that asks the viewport which
-## camera is drawing (the colossi, the near foot, the air) asks it.
+## staged eye is (96_eye): out from the plate above him and to his side, looking
+## past him down the face to what is under it (EYE_OUT). Riding up inside the
+## bone he is not seen; the eye goes up the outside of the leg to the next
+## pitch, bowed out from it, so the whole leg goes by. Everything that asks the
+## viewport which camera is drawing (the colossi, the near foot, the air) asks
+## it.
 ##
 ## `--climb=PITCH[:HOLD]` stages a climb at a hold (BootOptions), for a frame of
 ## any pitch without climbing to it.
@@ -40,22 +41,36 @@ const LegModel := preload("res://src/models/colossus_leg_model.gd")
 const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 const Walk := preload("res://src/core/colossus/colossus_walk.gd")
 
-## Where the eye stands in the frame of the hold he is at (+X across the leg, +Y
-## up the pitch, +Z out of the plate), metres: back from the plate, down the
-## pitch, to his right; and how far up the pitch past his hands it looks.
-const EYE_OUT := 7.0
-const EYE_DOWN := 2.5
-const EYE_SIDE := 2.0
-const LOOK_UP := 1.0
+## WHERE THE EYE STANDS, in the frame of the face he is on, metres: out from
+## the plate, up the face from him (against the way down it: the world's down
+## laid on the plate) and across it; and how far down the face past him it
+## looks. It keeps the world's up, so beside him the face falls away down the
+## frame and what is under it fills the far side: the drum's crater a hundred
+## metres down, the haze forty kilometres under the thigh. Measured on the five
+## pitches, a quarter to a third of the frame looks past the walker and down.
+const EYE_OUT := 5.0
+const EYE_UP := 4.0
+const EYE_SIDE := 10.0
+const LOOK_DOWN := 6.0
 const EYE_FOV := 60.0
-## THE EYE SEES FAR ENOUGH THAT THE LEG IT IS ON IS DRAWN TRUE. The colossi are
-## drawn in compressed space, each VERTEX moved in along its ray past 0.82 of the
-## far plane (colossus.gdshader). A facet of the far body is kilometres long, and
-## seen from seven metres with its corners compressed, the flat between them came
-## in nearer than the patch and the body on it and hid both (measured: a frame of
-## nothing but the thigh's plate). Every triangle of a leg is inside a few
-## kilometres of any point on it, so past this nothing near him moves.
-const EYE_FAR := 20000.0
+## Riding up inside the bone the eye looks this far up the pitch past where he is.
+const LOOK_UP := 1.0
+## THE EYE SEES AS FAR AS ANY EYE DOES (SkyLight.HIGHEST_SEE): the ground under
+## him, forty kilometres down from the thigh, and the leg he is on drawn true.
+## The colossi are drawn in compressed space, each VERTEX moved in along its ray
+## past 0.82 of the far plane (colossus.gdshader). A facet of the far body is
+## kilometres long, and seen from seven metres with its corners compressed, the
+## flat between them came in nearer than the patch and the body on it and hid
+## both (measured at a 1400 m far: a frame of nothing but the thigh's plate).
+## Every triangle of a walker is well inside this of any point on it, so nothing
+## of one is moved at all.
+## AND IT STARTS NO NEARER THAN IT HAS TO. Under Compatibility (the web) depth is
+## not reversed, so a 24-bit step at a distance d is d^2 / (near 2^24): at the
+## 0.05 this eye had, 1.9 km at the thigh's forty kilometres down, where a
+## coast's shallows and a foot's waterline lie a few metres apart. Nothing comes
+## nearer the eye than the plate it stands EYE_OUT off, so a metre costs nothing
+## up here and is twenty times the depth below.
+const EYE_NEAR := 1.0
 ## How far out from the leg the eye's way up a ride bows, as a share of the way.
 const RIDE_BOW := 0.25
 ## Where the body hangs from a hold: his feet this far down the pitch from the
@@ -143,11 +158,24 @@ func _begin(c: WalkerClimb) -> void:
 		_cam.projection = Camera3D.PROJECTION_PERSPECTIVE
 		_cam.keep_aspect = Camera3D.KEEP_HEIGHT
 		_cam.fov = EYE_FOV
-		_cam.near = 0.05
-		_cam.far = EYE_FAR
+		_cam.near = EYE_NEAR
+		_cam.far = SkyLight.HIGHEST_SEE
+		# Looking down the leg it is still an eye out in the air, not the play
+		# camera looking down on the ground (SkyLight.horizon_share).
+		_cam.set_meta(SkyLight.LOOKS_OUT, true)
 		add_child(_cam)
 	_cam.make_current()
+	_lift_near(true)
 	_latch(&"began")
+
+
+## Up the leg the plate near the eye is lit as form, on the far body and the
+## near foot as on the patch (colossus_leg_model.gd NEAR_LIFT).
+func _lift_near(on: bool) -> void:
+	var c := _colossi()
+	for part: StringName in [&"view", &"foot"]:
+		if c != null and c.get(part) != null:
+			(c.get(part) as Object).call(&"lift_near", on)
 
 
 ## The level the fight is told the body is at while he is up a leg: far past any
@@ -188,7 +216,7 @@ func _process(delta: float) -> void:
 	_use_was = use_down
 	var c := _colossi()
 	if climb == null:
-		leg_view.update(null, null, {}, 0.0)
+		leg_view.update(null, null, {}, {})
 		_watch_rim(use_edge)
 		_cost_us = Time.get_ticks_usec() - t0
 		return
@@ -210,7 +238,7 @@ func _process(delta: float) -> void:
 		_cost_us = Time.get_ticks_usec() - t0
 		return
 	var dome: Dictionary = game.sky.seen_air().get("dome", {}) if game.sky != null else {}
-	leg_view.update(def, climb, pose, float(dome.get(&"dome_night", 0.0)))
+	leg_view.update(def, climb, pose, dome)
 	_say_swing(pose)
 	if climb.state == WalkerClimb.RIDE:
 		_ride(def, pose)
@@ -375,9 +403,13 @@ func _hang(f: Transform3D) -> void:
 ## The eye on a body hung at frame `f` (world space).
 static func eye_at(f: Transform3D) -> Transform3D:
 	var b := f.basis.orthonormalized()
-	var at := f.origin + b.x * EYE_SIDE - b.y * EYE_DOWN + b.z * EYE_OUT
-	var to := f.origin + b.y * LOOK_UP
-	var up := Vector3.UP if absf((to - at).normalized().y) < 0.98 else b.y
+	var n := b.z
+	# Down the face; down the pitch where the face is level and has none.
+	var down := Vector3.DOWN - n * Vector3.DOWN.dot(n)
+	down = down.normalized() if down.length() > 0.1 else -b.y
+	var at := f.origin + n * EYE_OUT - down * EYE_UP + down.cross(n) * EYE_SIDE
+	var to := f.origin + down * LOOK_DOWN
+	var up := Vector3.UP if absf((to - at).normalized().y) < 0.98 else -down
 	return Transform3D(Basis.looking_at(to - at, up), at)
 
 
@@ -425,6 +457,7 @@ func _end() -> void:
 		game.player.sim.hero_level = -1
 	if game.camera != null:
 		game.camera.make_current()
+	_lift_near(false)
 	var minutes := down * (game.clock.rate if game.clock != null else Tuning.MINUTES_PER_SECOND)
 	game.clock.skip(minutes)
 	Events.time_skipped.emit(minutes, &"climbed")

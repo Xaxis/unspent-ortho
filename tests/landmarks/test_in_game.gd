@@ -133,3 +133,61 @@ func test_the_island_carries_the_mass_of_every_landmark_it_holds() -> void:
 	print("landmarks in play: %d places, all of them with mass" % sites.size())
 	g.queue_free()
 	await frames(1)
+
+
+## THE PRESS THAT OPENS A CACHE IS THE CACHE'S (22_landmarks `use_spent`). One
+## press at seed 1's nearest cache opened it and read the terminal beside it;
+## facing nothing with words, it opened it and, by a fire and peckish, ate the
+## stew too. The words and the ground wait for the next press.
+func test_the_press_that_opens_a_cache_answers_nothing_else() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=256", "--hour=11", "--weather=clear:0"]))
+	await frames(4)
+	var sys := g.get_node("22_landmarks")
+	var story := g.get_node("49_story")
+	Story.forget()
+	var sites: Array[LandmarkSite] = []
+	for s: LandmarkSite in sys.all():
+		sites.append(s)
+	sites.sort_custom(func(a: LandmarkSite, b: LandmarkSite) -> bool: return a.pos.distance_to(g.player.pos) < b.pos.distance_to(g.player.pos))
+	check(sites.size() >= 2, "two caches to open")
+	g.inventory.add(&"stew", 2)
+	# Facing words, then facing none: the first cache read as it opened, the
+	# second ate as it opened.
+	for i in 2:
+		var site := sites[i]
+		var at := Landmarks.cache_of(site)
+		g.player.hero.pos = at
+		g.player.pos = at
+		check(Survival.add_prop(g, PropKind.FIRE, at + Vector2(-1.5, 0.0), 0.0, 0.3) != null, "a fire by %s" % site.id)
+		await frames(30)
+		var faced := false
+		for k in 16:
+			g.player.facing = TAU * k / 16.0
+			g.player.hero.facing = g.player.facing
+			var words: bool = story.call("_readable_in_front") != null or not (story.call("_person_in_front") as Dictionary).is_empty()
+			if words == (i == 0):
+				faced = true
+				break
+		check(faced, "%s: a way to face %s" % [site.id, "words" if i == 0 else "nothing"])
+		g.body.fed_until = g.clock.minutes - 120.0
+		var stew := g.inventory.count(&"stew")
+		await frames(2)
+		check(sys.get("reachable") != null and Survival.at_rest(g) and g.body.hunger_level(g.clock.minutes) == 1,
+			"%s: in reach of the cache, by a fire, peckish" % site.id)
+		await _press_use()
+		check(sys.state.is_opened(site.id), "%s: the press opens the cache" % site.id)
+		check(not story.view.showing(), "%s: and reads nothing" % site.id)
+		eq(g.inventory.count(&"stew"), stew, "%s: and eats nothing" % site.id)
+		if story.view.showing():
+			story.call("_close")
+		await frames(2)
+	g.queue_free()
+	await frames(1)
+
+
+## The real key, as a player presses it.
+func _press_use() -> void:
+	Input.action_press(&"use")
+	await process_frames(3)
+	Input.action_release(&"use")
+	await process_frames(3)
