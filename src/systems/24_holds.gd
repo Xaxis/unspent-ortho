@@ -83,7 +83,6 @@ func _watched() -> Array[Signal]:
 
 func setup(g: Game) -> void:
 	super.setup(g)
-	sim = g.player.sim
 	_layer = Node3D.new()
 	_layer.name = "holds"
 	g.add_child(_layer)
@@ -282,6 +281,10 @@ func stats_reset() -> void:
 func _process(delta: float) -> void:
 	if game == null or game.world == null:
 		return
+	# The simulation is made by 30_mobs, which sorts after this system: taken in
+	# setup it was null for the whole game, and no barrier could be worked by hand.
+	if sim == null:
+		sim = game.player.sim
 	if not game.options.stats:
 		if _dirty:
 			_dirty = false
@@ -357,6 +360,13 @@ func _work(delta: float) -> void:
 	if int(_job.ticks) >= TICKS:
 		_break(h)
 		_job = {}
+
+
+## Whether `use` is the barrier's: while his hands are on one (even refused, the
+## press was its), nothing else answers it (49_story and 50_survival ask), or the
+## press that set to cutting also laid a fire or ate by one.
+func use_spent() -> bool:
+	return not _job.is_empty()
 
 
 func _near() -> Hold.HoldSite:

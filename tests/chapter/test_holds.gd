@@ -163,3 +163,39 @@ func test_a_chapter_is_asked_again_only_when_something_could_have_moved_it() -> 
 	Events.works_broken.emit(0, &"coast")
 	eq(holds.get("_dirty"), true, "a yard put dark asks again")
 	g.free()
+
+
+## HANDS ON A BARRIER CUT IT, AND THE PRESS IS THE BARRIER'S (24_holds). The
+## system took its sim in setup, before 30_mobs had made it, so no barrier was
+## ever in reach of a hand; and the press meant for one asked to lay a fire
+## (`use_spent`, as a works housing holds the key).
+func test_held_on_a_barrier_the_key_cuts_it_and_answers_nothing_else() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=256", "--hour=11", "--weather=clear:0",
+		"--give=knife_shear:1,driftwood:6,stone:4", "--held=knife_shear"]))
+	await frames(4)
+	var h := _holds(g)
+	var sites: Array = h.get(&"sites")
+	check(not sites.is_empty(), "a road is held")
+	if sites.is_empty():
+		g.queue_free()
+		await frames(1)
+		return
+	var one: Hold.HoldSite = sites[0]
+	var at: Vector2 = one.pos + Vector2(0.3, 0.0)
+	g.player.pos = at
+	g.player.sim.hero.pos = at
+	await frames(30)
+	check(bool(h.call(&"closed", one)), "the barrier stands")
+	Input.action_press(&"use")
+	await process_frames(3)
+	check(SurvivalState.of(g).build_ask.is_empty(), "the press that set his hands on it asked to lay no fire")
+	await tree.create_timer(TICKS_HELD).timeout
+	Input.action_release(&"use")
+	await process_frames(3)
+	check(not bool(h.call(&"closed", one)), "held on, the steel cuts it off the road")
+	g.queue_free()
+	await frames(1)
+
+
+## Long enough held for every cut (24_holds TICK x TICKS, 2.7 s), and a second over.
+const TICKS_HELD := 3.7
