@@ -333,7 +333,10 @@ static func told(game: Game) -> Array[Dictionary]:
 			out.append({"at": at, "word": String(row.word)})
 	var pinned: Dictionary = StoryContent.TOLD_WHILE.get(Guide.last_goal_key, {})
 	if not pinned.is_empty() and placed.has(pinned.place):
-		out.append({"at": placed[pinned.place].pos, "word": String(pinned.word)})
+		var at: Vector2 = placed[pinned.place].pos
+		# A way back (`on_body`) is pinned only from the shore it leaves.
+		if not bool(pinned.get("on_body", false)) or game.world.same_body(game.player.pos, at):
+			out.append({"at": at, "word": String(pinned.word)})
 	return out
 
 
