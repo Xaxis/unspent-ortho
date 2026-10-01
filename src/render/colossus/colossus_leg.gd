@@ -18,7 +18,8 @@ extends Node3D
 ## pitch is two kilometres down the bone, and a float that far out holds a
 ## millimetre where the plate needs a tenth of one.
 ##
-##   update(def, climb, pose, night)   draw `climb`'s pitch on `pose`; a null
+##   update(def, climb, pose, dome)    draw `climb`'s pitch on `pose` in the
+##                                      sky's `dome` (SkyLight.seen_air); a null
 ##                                      climb hides it
 
 const LegModel := preload("res://src/models/colossus_leg_model.gd")
@@ -46,12 +47,7 @@ var triangles := 0
 
 
 func _ready() -> void:
-	_mat = PropModels.found_material().duplicate() as ShaderMaterial
-	# The patch lays its plates in geometry, four by six metres, seams and lips
-	# and all; the world's ruled panels would only cut across them.
-	_mat.set_shader_parameter("ruled", 0.0)
-	_mat.set_shader_parameter("relief", 0.4)
-	_mat.set_shader_parameter("wear_take", 0.3)
+	_mat = LegModel.material()
 	_mi = MeshInstance3D.new()
 	_mi.name = "patch"
 	_mi.material_override = _mat
@@ -59,7 +55,7 @@ func _ready() -> void:
 	add_child(_mi)
 
 
-func update(def: RefCounted, climb: WalkerClimb, pose: Dictionary, night: float) -> void:
+func update(def: RefCounted, climb: WalkerClimb, pose: Dictionary, dome: Dictionary) -> void:
 	_claim(false)
 	_upload_one()
 	drawn = false
@@ -88,10 +84,12 @@ func update(def: RefCounted, climb: WalkerClimb, pose: Dictionary, night: float)
 	_mi.global_transform = bone * Transform3D(Basis.IDENTITY, b.origin)
 	_mi.visible = true
 	drawn = true
-	var n := snappedf(night, 0.01)
+	var n := snappedf(float(dome.get(&"dome_night", 0.0)), 0.01)
 	if n != _said:
 		_said = n
 		_mat.set_shader_parameter("glow_scale", lerpf(0.2, 1.0, n))
+	# The far body's daylight, from the same sky (walker_plate.gdshaderinc).
+	LegModel.daylight(_mat, dome)
 
 
 ## Which built patch covers `up` metres up pitch `p`: the pitch, and which SPAN

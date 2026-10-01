@@ -51,6 +51,7 @@ render_mode cull_back, skip_vertex_transform, shadows_disabled;
 #include "res://src/render/matter.gdshaderinc"
 #include "res://src/render/sky_dome.gdshaderinc"
 #include "res://src/render/far.gdshaderinc"
+#include "res://src/render/colossus/walker_plate.gdshaderinc"
 
 // The rigid frames the mesh is skinned to (colossus_model.gd): three rows per
 // bone, each (basis row, origin), so bone b maps a local point p to
@@ -127,6 +128,12 @@ const float SEEN_BACK = 0.5;
 // keeps for how far off its hub is, over what the air takes -- a few km off it
 // is all there, the skyline walker is a ghost. A lamp keeps the root of it.
 uniform float presence = 1.0;
+// And UP CLOSE, LIT AS FORM: while a climb is live (ColossusView.lift_near) the
+// plate within a few tens of metres of the eye is raised as the patch under his
+// hands is, by the one rule (walker_plate.gdshaderinc), so the two meet on no
+// line. x 0 everywhere else: from the ground the machine is a dark mass.
+uniform vec4 near_lift = vec4(0.0, 1.0, 2.0, 0.0);
+uniform float near_fill = 0.0;
 
 // The sun's disc in the procedural sky (see the fragment).
 uniform bool l0_on = false;
@@ -149,9 +156,6 @@ const float EMBER = 5.0;
 // And a floor under it that is not the albedo's: the plate is dark on purpose, and
 // times a dark albedo the last sun came out a smear nobody saw (coast, 21:30).
 const float EMBER_FLOOR = 0.35;
-// How much of the sky's light and the sun's a face takes, over the renderer's own.
-const float SKY_FILL = 0.55;
-const float SUN_TOP = 1.1;
 // How far over a fragment's own horizon (radians) the sun must stand to light it
 // fully, and the colour of the last of it, as a share of the glow: the sun
 // through the whole low air is red and a fifth as bright.
@@ -387,7 +391,9 @@ void fragment() {
 	if (!lamp) {
 		c *= 1.0 - panel * 0.10 - seam_y * 0.28 - plate * 0.07 - seam2 * 0.16;
 	}
-	ALBEDO = matter_albedo(lamp ? c * 0.3 : c * FOUND_MASS);
+	float near = walker_near(near_lift, distance(true_world, CAMERA_POSITION_WORLD));
+	vec3 plate_c = walker_near_albedo(c * FOUND_MASS, near_lift, near);
+	ALBEDO = matter_albedo(lamp ? c * 0.3 : plate_c);
 	METALLIC = lamp ? 0.0 : FOUND_METAL;
 	ROUGHNESS = lamp ? 0.3 : clamp(FOUND_ROUGH + seam_y * 0.3 + seam2 * 0.15 - plate * 0.12, 0.05, 1.0);
 	SPECULAR = 0.48;
@@ -437,19 +443,10 @@ void fragment() {
 		glow = (step(beat, 0.18) * 5.0 + 0.2) * lens_glow;
 	}
 	EMISSION = lamp ? matter_light(c * glow * sky_power()) : vec3(0.0);
-	// DAYLIGHT ON A THING THIS SIZE. The renderer's sun is the one the land is
-	// lit by at eye level; over a body kilometres across it leaves the whole
-	// machine one dark value. So the plate takes the sky's own light too: the
-	// zenith's blue on every face by how far it looks up (the fill a thing in
-	// open air stands in), and the real sun on the faces turned to it -- tops
-	// of the hub and the thighs lit, undersides in their own shade.
+	// DAYLIGHT ON A THING THIS SIZE (walker_plate.gdshaderinc).
 	if (!lamp) {
-		vec3 sun_w = normalize(dome_sun_dir);
 		vec3 n_day = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
-		float day = clamp(sun_w.y * 4.0, 0.0, 1.0);
-		vec3 fill = dome_top_color * (0.35 + 0.65 * (n_day.y * 0.5 + 0.5)) * SKY_FILL;
-		vec3 lit = dome_sun_color * max(dot(n_day, sun_w), 0.0) * SUN_TOP;
-		EMISSION += matter_albedo(c * FOUND_MASS) * (fill + lit) * day;
+		EMISSION += matter_albedo(plate_c) * walker_day(n_day, -dir, dome_sun_dir, dome_sun_color, dome_top_color, near, near_fill);
 	}
 	// THE TOP KEEPS THE SUN AFTER THE LAND HAS LOST IT. From `h` metres up the sun
 	// is still over the horizon until it is sqrt(2h / R) below the ground's, and
