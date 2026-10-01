@@ -11,9 +11,10 @@ extends RefCounted
 ## by RIDES inside the bone (service ladders and lifts, seconds, not kilometres)
 ## that run only while his leg is planted.
 ##
-##   begin(leg, seed) -> WalkerClimb    on the heel of leg `leg`, at the drum's foot
+##   begin(leg, seed) -> WalkerClimb    at the foot of leg `leg`'s cable, in the tread
 ##   step(dt, pose, up) -> Array[StringName]   dt real seconds; `up` asks for the next hold.
 ##       Events: moved (reached a hold), rested (a pitch's top), rode (a ride began),
+##       onto (straight on up the next pitch, where there is no ride),
 ##       slipped (out of breath, down to the stance below), quake (his leg set down
 ##       under him), fell (shaken off: caught at the pitch's foot, `wound` and
 ##       `lost_minutes` set), at_hub (the climb is over)
@@ -21,10 +22,10 @@ extends RefCounted
 ##   surface_at(def, pitch, up_m, theta, lift) -> Vector3   a point on a pitch, bone-local
 ##
 ## Breath is the grip (FightRules.WIND): a move up costs Climb.WIND_PER_LEVEL a
-## level at Climb.RATE; hanging on an ordinary hold drains HANG_DRAIN a second,
-## SWING_DRAIN_TIMES that while his leg swings, when no move is allowed; a
-## STANCE (a ledge, every STANCE_EVERY levels, and every pitch's foot) gives
-## breath back. Out of breath he slides to the stance below. Nothing up here
+## level at Climb.RATE (times a pitch's own `wind` and `pace`); hanging on an
+## ordinary hold drains HANG_DRAIN a second, SWING_DRAIN_TIMES that while his
+## leg swings, when no move is allowed; a STANCE (a ledge, every STANCE_EVERY
+## levels, and every pitch's foot) gives breath back. Out of breath he slides to the stance below. Nothing up here
 ## kills: a fall is caught by a cable at the pitch's foot, wounded, and time
 ## passes (owner ruling 2026-09-30).
 
@@ -38,11 +39,22 @@ const SHIN := 2
 const FOOT := 3
 const HUB := 0
 
-## The route up, foot to hub. On the thigh and the shin `at` is where the pitch
+## The route up, ground to hub. On the thigh and the shin `at` is where the pitch
 ## starts as a share of the bone from its root, and it climbs toward the root; on
-## the drum and the hub `from` is the height up the bone's own Y it starts at.
+## the foot and the hub `from` is the height up the bone's own Y it starts at.
 ## `levels` is how high it climbs and `ride` the real seconds inside the bone to
-## the next pitch's foot.
+## the next pitch's foot; 0 goes straight on up the next one from its foot.
+##
+## IT BEGINS ON THE GROUND. The line's cable hangs from the drum's foot, down the
+## belt and free to the tread the middle toe stands in (HANG_FOOT), a man's reach
+## over its floor beside the pad: he walks to it and takes it (43_climb), climbs
+## it hold to hold as any pitch, its ledges seats clamped to it, and at its top is
+## at the drum's foot. The drum and the cable are turned FOOT_TURN off the middle
+## toe, so the cable hangs clear of the toe, its heel joint and its pad's claws.
+## The cable is knotted, with a loop for a foot at every level, so it is climbed
+## at `pace` times the plate's rate for `wind` of its breath: at the plate's own
+## it was ninety metres more and the whole climb 23 minutes, past the set
+## piece's twenty.
 ##
 ## EACH IS ON A CLEAN RUN OF PLATE, with the patch drawn round it
 ## (colossus_leg_model.gd, HALF_W either side and MARGIN past each end): clear of
@@ -52,6 +64,7 @@ const HUB := 0
 ## on the rim's upright band under its top edge. tests/render/test_walker_leg.gd
 ## holds every one of them to the body it is drawn on.
 const PITCHES: Array[Dictionary] = [
+	{"id": &"cable", "bone": FOOT, "from": -119.0, "levels": 180, "ride": 0.0, "hang": true, "pace": 2.0, "wind": 0.5},
 	{"id": &"drum", "bone": FOOT, "from": -29.0, "levels": 30, "ride": 60.0},
 	{"id": &"knee", "bone": SHIN, "at": 0.05, "levels": 30, "ride": 30.0},
 	{"id": &"thigh", "bone": THIGH, "at": 0.40, "levels": 60, "ride": 40.0},
@@ -80,6 +93,12 @@ const SKIN := 0.1
 ## on the middle of the nearest flat of the hull: clear of the outrigger the hip
 ## hangs on and of the lens that faces the way it walks.
 const HATCH_TURN := -22.5
+## The foot's pitches run this many degrees round from the middle toe (bearing 0
+## of the foot's frame), and the cable hangs from the belt's foot (BELT_Y) out to
+## its own foot, HANG_FOOT_R from the ankle's axis at the height its pitch starts.
+const FOOT_TURN := 7.0
+const BELT_Y := -52.0
+const HANG_FOOT_R := 190.0
 ## A fall's cost: a wound per FALL_LEVELS levels fallen, at most WOUND_MOST, and
 ## the world minutes spent hanging on the cable before he climbs on.
 const FALL_LEVELS := 10
@@ -109,13 +128,24 @@ static func begin(leg_index: int, world_seed: int) -> WalkerClimb:
 	return c
 
 
-## Hold `i` of pitch `p`: Vector2(level up the pitch, angle round the bone).
+## Hold `i` of pitch `p`: Vector2(level up the pitch, angle round the bone). A
+## hanging cable's holds are on it, and so is the hold a cable hands him on to.
 func hold_at(p: int, i: int) -> Vector2:
 	if _tripod == null:
 		_tripod = Def.tripod(&"C")
+	if PITCHES[p].has("hang") or (i == 0 and p > 0 and float(PITCHES[p - 1].ride) <= 0.0):
+		return Vector2(float(i * HOLD_EVERY), 0.0)
 	var r := _radius(_tripod, PITCHES[p], _height(_tripod, p, 0.0), 0.0)
 	var drift := (Rng.hash01(seed_value, SALT, leg, p, i) - 0.5) * 2.0 * WANDER / maxf(1.0, r)
 	return Vector2(float(i * HOLD_EVERY), drift)
+
+
+## Which pitch is called `id` (-1 for none).
+static func pitch_of(id: StringName) -> int:
+	for i in PITCHES.size():
+		if PITCHES[i].id == id:
+			return i
+	return -1
 
 
 func holds_in(p: int) -> int:
@@ -171,11 +201,16 @@ func step(dt: float, pose: Dictionary, up: bool) -> Array[StringName]:
 				hold -= 1
 			out.append(&"slipped")
 			return out
-	var cost := Climb.WIND_PER_LEVEL * HOLD_EVERY
+	var cost := Climb.WIND_PER_LEVEL * HOLD_EVERY * float(PITCHES[pitch].get("wind", 1.0))
 	if up and not swing and breath >= cost:
 		breath -= cost
-		busy = float(HOLD_EVERY) / Climb.RATE
+		busy = move_secs(pitch)
 	return out
+
+
+## Real seconds a move from one hold to the next takes on pitch `p`.
+static func move_secs(p: int) -> float:
+	return float(HOLD_EVERY) / (Climb.RATE * float(PITCHES[p].get("pace", 1.0)))
 
 
 func _top(out: Array[StringName]) -> void:
@@ -183,6 +218,11 @@ func _top(out: Array[StringName]) -> void:
 	if pitch >= PITCHES.size() - 1:
 		state = DONE
 		out.append(&"at_hub")
+		return
+	if float(PITCHES[pitch].ride) <= 0.0:
+		pitch += 1
+		hold = 0
+		out.append(&"onto")
 		return
 	state = RIDE
 	busy = float(PITCHES[pitch].ride)
@@ -240,18 +280,25 @@ func _height(def: RefCounted, p: int, up_m: float) -> float:
 
 
 ## Which way round its bone pitch `p`'s line runs: out along the leg's own +X,
-## and on the hub a flat round from the leg's hip (HATCH_TURN).
+## on the foot FOOT_TURN round from it, and on the hub a flat round from the
+## leg's hip (HATCH_TURN).
 func _bearing(def: RefCounted, p: int) -> float:
+	if int(PITCHES[p].bone) == FOOT:
+		return deg_to_rad(FOOT_TURN)
 	if int(PITCHES[p].bone) != HUB:
 		return 0.0
 	var flat := TAU / float(Def.HULL_SIDES)
 	return roundf(deg_to_rad(float(def.slots[leg]) + HATCH_TURN) / flat) * flat
 
 
-## How far out of its bone's axis the body is at height `y` and bearing `a`.
+## How far out of its bone's axis the body is at height `y` and bearing `a`. A
+## hanging cable runs straight from the belt's foot out to its own.
 static func _radius(def: RefCounted, row: Dictionary, y: float, a: float) -> float:
 	match int(row.bone):
 		FOOT:
+			if row.has("hang") and y < BELT_Y:
+				var belt := Def.turned_radius(def.drum_profile(), Def.DRUM_SIDES, BELT_Y, a)
+				return lerpf(belt, HANG_FOOT_R, (BELT_Y - y) / (BELT_Y - float(row.from)))
 			return Def.turned_radius(def.drum_profile(), Def.DRUM_SIDES, y, a)
 		HUB:
 			return Def.turned_radius(def.hull_profile(), Def.HULL_SIDES, y, a)
