@@ -1,0 +1,39 @@
+# The moss at noon: its fen from above at the play camera and wider, close on its
+# most characteristic ground, over the shoulder, and a stone standing in it close
+# (BogFen, world.gdshader bog_floor; a stone's moss cap is BiomeDressing.mossy), and
+# from above again at dusk.
+#   tools/tour.sh tours/moss-ground.tour --seed=1 --weather=clear:0
+coast calm
+hour 12
+place moss
+await top_view 4
+wait 2.0
+shot 01-the-moss-from-above with land:moss
+zoom 30
+wait 1.5
+shot 02-the-moss-from-higher with land:moss
+zoom 15
+place typical_moss
+wait 1.5
+zoom 7
+wait 1.0
+shot 03-close-on-the-moss with land:moss
+zoom 15
+wait 0.6
+hold shoulder_peek
+await shoulder 5
+wait 1.0
+shot 04-the-moss-over-the-shoulder with shoulder,land:moss
+release shoulder_peek
+place moss
+near boulder
+wait 1.5
+zoom 6
+wait 1.0
+shot 05-a-stone-in-the-moss with land:moss
+zoom 15
+hour 18.5
+place moss
+await top_view 4
+wait 2.0
+shot 06-the-moss-from-above-at-dusk with land:moss

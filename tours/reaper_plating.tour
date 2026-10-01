@@ -17,7 +17,7 @@ await shoulder 3
 try 8
   walkto mob 6
   await tell 14
-  press dodge 0.12
+  dodge aside 0.5
   await sentinel_open 6
   walkto part 2
   tap swing

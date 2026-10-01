@@ -65,16 +65,16 @@ func test_the_shader_draws_the_drifts_from_shore_swards_own_numbers() -> void:
 	var src := FileAccess.get_file_as_string(MATTER)
 	for want: String in [
 			"const vec2 SHORE_WIND = vec2(%.1f, %.3f);" % [ShoreSward.WIND.x, ShoreSward.WIND.y],
-			"uint h = (q.x * %du) ^ (q.y * %du);" % [ShoreSward._K1, ShoreSward._K2],
-			"h ^= h >> 15u;", "h *= %du;" % ShoreSward._K3, "h ^= h >> 13u;",
+			"uint h = (q.x * %du) ^ (q.y * %du);" % [LatticeNoise._K1, LatticeNoise._K2],
+			"h ^= h >> 15u;", "h *= %du;" % LatticeNoise._K3, "h ^= h >> 13u;",
 			"return float(h & 16777215u) / 16777215.0;",
-			"shore_noise(p * %s + 3.0), shore_noise(p * %s + 17.0)) - 0.5;" % [ShoreSward.BEND, ShoreSward.BEND],
-			"p = rot * p * %s + %s;" % [ShoreSward._SCALE[0], ShoreSward._OFFSET[0]],
-			"p = rot * p * %s + %s;" % [ShoreSward._SCALE[1], ShoreSward._OFFSET[1]],
-			"float v = shore_noise(p) * %s;" % ShoreSward._WEIGHT[0],
-			"v += shore_noise(p) * %s;" % ShoreSward._WEIGHT[1],
-			"return v + shore_noise(p) * %s;" % ShoreSward._WEIGHT[2],
-			"shore_fbm(vec2(a.x * %s, a.y * %s) + w * %s);" % [ShoreSward.ALONG, ShoreSward.ACROSS, ShoreSward.BEND_REACH],
+			"lattice_noise(p * %s + 3.0), lattice_noise(p * %s + 17.0)) - 0.5;" % [ShoreSward.BEND, ShoreSward.BEND],
+			"p = rot * p * %s + %s;" % [LatticeNoise._SCALE[0], LatticeNoise._OFFSET[0]],
+			"p = rot * p * %s + %s;" % [LatticeNoise._SCALE[1], LatticeNoise._OFFSET[1]],
+			"float v = lattice_noise(p) * %s;" % LatticeNoise._WEIGHT[0],
+			"v += lattice_noise(p) * %s;" % LatticeNoise._WEIGHT[1],
+			"return v + lattice_noise(p) * %s;" % LatticeNoise._WEIGHT[2],
+			"lattice_fbm(vec2(a.x * %s, a.y * %s) + w * %s);" % [ShoreSward.ALONG, ShoreSward.ACROSS, ShoreSward.BEND_REACH],
 			"d += clamp((y - %s) / %s, 0.0, 1.0) * %s - %s;" % [ShoreSward.LOW, ShoreSward.EXPOSED, ShoreSward.RISE, ShoreSward.SINK],
 			"return smoothstep(%s, %s, d);" % [ShoreSward.THIN, ShoreSward.THICK]]:
 		check(src.contains(want), "matter.gdshaderinc's drift field says `%s`, as ShoreSward does" % want)
@@ -83,14 +83,14 @@ func test_the_shader_draws_the_drifts_from_shore_swards_own_numbers() -> void:
 func test_the_lattice_is_the_32_bit_hash_the_shader_computes() -> void:
 	# Worked outside the game in exact unsigned 32-bit arithmetic, the shader's
 	# own steps: a negative point wraps as uint(int) does.
-	near(ShoreSward.lattice(7, -3), 0.6302261132136651, 1e-12)
-	near(ShoreSward.lattice(-1, 5), 0.2915139968105553, 1e-12)
-	near(ShoreSward.lattice(123456, -98765), 0.0999510943860468, 1e-12)
+	near(LatticeNoise.lattice(7, -3), 0.6302261132136651, 1e-12)
+	near(LatticeNoise.lattice(-1, 5), 0.2915139968105553, 1e-12)
+	near(LatticeNoise.lattice(123456, -98765), 0.0999510943860468, 1e-12)
 	var lo := 1.0
 	var hi := 0.0
 	var sum := 0.0
 	for i in 400:
-		var v := ShoreSward.lattice(i * 37 - 5000, i * 91 + 13)
+		var v := LatticeNoise.lattice(i * 37 - 5000, i * 91 + 13)
 		lo = minf(lo, v)
 		hi = maxf(hi, v)
 		sum += v

@@ -14,6 +14,7 @@ Saving and loading, dev mode, the tour runner, the web's warm lights.
 - 98_tour `src/systems/98_tour.gd`: `tools/tour.sh tours/smoke.tour`.
   - `walkto prop:KIND SECS` walks to a prop with the real keys: `TOUR_TIMEOUT=500 tools/tour.sh tours/wild.tour --fail-downed`.
   - `walkto ground:KIND SECS [run]` walks onto the spot `ground` would jump to, and `walkto mob SECS till:CLAIM` stops a walk at a body once CLAIM holds: home-coast's stage 7 (`TOUR_TIMEOUT=600 TOUR_FIXED_FPS=60 tools/tour.sh tours/home-coast.tour --scene=title --seed=1`, frame 18); an unknown ground name fails `tools/test.sh test_tour_claims`.
+  - `dodge aside [SECS]` dodges out of the nearest body's bite across its facing, and `walkto plate` rounds to a plated flank when the back stands in deep water: `TOUR_FIXED_FPS=60 tools/tour.sh tours/sentinels.tour --seed=7 --hour=11 --weather=clear:0 --held=axe_felling --config=unharmed` (frames 03 and 05), and `tours/reaper_plating.tour`.
   - `mark NAME` / `at mark:NAME`, `back KIND DIST` + `walkto prop:KIND SECS run through` (the slide round a lone trunk): `TOUR_TIMEOUT=600 tools/tour.sh tours/feel.tour --give=driftwood:6,scrap:1`.
   - A coordinate in `at` fails `tools/test.sh test_tour_claims`.
   - `await fire_asked` is the fire's first press, `await asked` the region's ask: `tools/tour.sh tours/region.tour` (options in its header).

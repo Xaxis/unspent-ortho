@@ -81,6 +81,8 @@ extends GameSystem
 ##                          back to where it began. Logs its tries and seconds.
 ##   dodge DX,DY [SECS]     hold a SCREEN direction and press the dodge key while it
 ##                          is down (the dodge goes that way), walking on for SECS (0.6)
+##   dodge aside [SECS]     the same, across the nearest body's facing on the side he
+##                          stands: out of its bite, where straight back stays in it
 ##   press ACTION [SECS]    hold an input action (use, swing, dodge, inventory, craft, lamp, pause, map...)
 ##   hold ACTION            hold it down across the lines that follow (a stance: crouch)
 ##   release ACTION         let it go again
@@ -533,8 +535,11 @@ func _run() -> void:
 				# The move keys held a SCREEN direction and the dodge key pressed while
 				# they are down, as a player dodges aside: the dodge goes the keys' way
 				# (LockOn.dodge_way) and the walk goes on that way for the rest of SECS.
-				var d := parts[1].split(",")
-				game.scripted_move = Vector2(d[0].to_float(), d[1].to_float())
+				if parts[1] == "aside":
+					game.scripted_move = _keys_toward(_aside())
+				else:
+					var d := parts[1].split(",")
+					game.scripted_move = Vector2(d[0].to_float(), d[1].to_float())
 				game.scripted_run = false
 				game.scripted_seconds = parts[2].to_float() if parts.size() > 2 else 0.6
 				await get_tree().physics_frame
@@ -1376,7 +1381,7 @@ func _walk_to(what: String, secs: float, run: bool = false, till: String = "") -
 				&"left": off = -PI * 0.5
 				&"right": off = PI * 0.5
 			if what == "plate":
-				off += PI
+				off = _plate_side(best, off)
 			target = best.pos + Vector2.from_angle(best.facing + off) * (best.radius + hero.radius + 0.45)
 			close = 0.2
 		facing_mob = best
@@ -2026,9 +2031,44 @@ func _say_state(when: String) -> void:
 	for s in game.systems:
 		if s.name == "42_target" and s.get("locked") != null:
 			lock = String((s.get("locked") as TargetSubject).kind)
-	print("tour %s state %s: game #%d booted seed %d hour %.2f weather '%s' held '%s' give %s | now %s held '%s' sky '%s' lock %s bodies %d" % [
+	# Hunger as minutes past the last meal's reach (Body.fed_until): a tour that
+	# eats until a goal turns hangs on it, and the clock alone does not say it.
+	var past_fed := game.clock.minutes - game.body.fed_until if game.clock != null and game.body != null else 0.0
+	print("tour %s state %s: game #%d booted seed %d hour %.2f weather '%s' held '%s' give %s | now %s held '%s' sky '%s' lock %s bodies %d hunger %+.0f min past fed" % [
 		_name, when, game.get_instance_id(), o.seed_value, o.hour, o.weather, o.held, str(o.give),
-		game.clock.label() if game.clock != null else "?", held, String(Weather.forced_kind), lock, alive])
+		game.clock.label() if game.clock != null else "?", held, String(Weather.forced_kind), lock, alive, past_fed])
+
+
+## The plated side `walkto plate` rounds to, as an angle off the body's facing:
+## opposite the working part (`part_off`), or, where that stands in water too
+## deep to swing from, a flank that does not. A keeper at the tide line turns to
+## face him, its back to the sea, and the walk to its back ended swimming, where
+## no blow is thrown (tours/sentinels.tour, its plate's ring). Any plated side
+## rings.
+func _plate_side(m: MobState, part_off: float) -> float:
+	var hero := game.player.sim.hero
+	for side: float in [part_off + PI, part_off + PI * 0.5, part_off - PI * 0.5]:
+		var p := m.pos + Vector2.from_angle(m.facing + side) * (m.radius + hero.radius + 0.45)
+		if game.query.standable(floori(p.x), floori(p.y)) and not Swim.deep(game.world, p):
+			return side
+	return part_off + PI
+
+
+## The way out of the nearest live body's bite across its facing, on the side of
+## its line he stands: the dodge a player makes on a tell (tests/fight/reader.gd's
+## escape, aside). A dodge with no keys goes straight back, and from a keeper two
+## tiles off that is still inside a bite that reaches three and a half
+## (tours/sentinels.tour lost its opening that way in half its runs).
+func _aside() -> Vector2:
+	var sim := game.player.sim
+	var best: MobState = null
+	for m in sim.mobs:
+		if m.alive and not m.removed and (best == null or m.pos.distance_to(sim.hero.pos) < best.pos.distance_to(sim.hero.pos)):
+			best = m
+	if best == null:
+		return Vector2.ZERO
+	var local := (sim.hero.pos - best.pos).rotated(-best.facing)
+	return Vector2.from_angle(best.facing + PI * 0.5 * (1.0 if local.y >= 0.0 else -1.0))
 
 
 ## The keys a player would hold to walk `dir` in the world, read the way the game
