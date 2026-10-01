@@ -306,14 +306,28 @@ static func camp_goal() -> String:
 
 ## PAID IN PLATE: once the crew have paid for the iron (StoryContent.PAID, Rook's
 ## `iron`), the want is the plate armour the pay is for (LEAD `armour`), until
-## it is made.
+## it is made, or a better piece of that kit is carried: the mended plate is made
+## out of the plate it replaces (Recipes `plate_mended`).
 static func armour_goal(game: Game) -> String:
 	for at: StringName in StoryContent.PAID:
 		var row: Dictionary = StoryContent.PAID[at]
-		if Story.chose(at) == row.pick and not game.inventory.has(row.makes) and StoryContent.LEAD.has(&"armour"):
+		if Story.chose(at) == row.pick and not _carries_kit_of(game.inventory, row.makes) and StoryContent.LEAD.has(&"armour"):
 			_key = &"armour"
 			return String(StoryContent.LEAD[&"armour"])
 	return ""
+
+
+## Whether `inv` carries `id`, or any piece of the same kit (Items `kit`).
+static func _carries_kit_of(inv: Inventory, id: StringName) -> bool:
+	if inv.has(id):
+		return true
+	var kit: StringName = Items.def(id).get("kit", &"")
+	if kit == &"":
+		return false
+	for other: StringName in inv.ids_in(Items.group(id)):
+		if Items.def(other).get("kit", &"") == kit:
+			return true
+	return false
 
 
 ## THE WAY ON (ROADMAP slice 2): once the crew have paid, each hop of the

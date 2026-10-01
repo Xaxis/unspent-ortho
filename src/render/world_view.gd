@@ -772,13 +772,14 @@ func _lod_apply(node: Node3D) -> void:
 		var shade := (["shade", "shade_found", "shade_leaf"] as Array[String])[i]
 		var fm := node.get_node_or_null(full) as GeometryInstance3D
 		if fm != null:
-			fm.visibility_range_end = MID_FROM if lod else 0.0
+			fm.visibility_range_end = MID_FROM if lod else (Far.STANDS_SEEN if _lod_on else 0.0)
 			fm.visibility_range_end_margin = LOD_MARGIN if lod else 0.0
 		var mm := node.get_node_or_null(mid) as GeometryInstance3D
 		if mm != null:
 			mm.visible = lod
 			mm.visibility_range_begin = MID_FROM
 			mm.visibility_range_begin_margin = LOD_MARGIN
+			mm.visibility_range_end = Far.STANDS_SEEN
 		if lod:
 			# Full shadows close in (the tier's `eye_shadow_full`), the shade
 			# models' past that, none past the reach, and never the mid ones.

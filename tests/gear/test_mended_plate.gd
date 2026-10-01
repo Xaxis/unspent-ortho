@@ -123,8 +123,15 @@ func test_the_covenant_sends_him_to_mend_the_plate() -> void:
 	Story.beat(&"covenant_fed")
 	eq(Guide.goal(g), mend, "fed at the Covenant: the mended plate")
 	eq(Guide.last_goal_key, &"mend", "keyed, so the prompt can list what it wants")
-	g.inventory.add(&"plate_mended", 1)
-	check(Guide.goal(g) != mend, "carried: that want is met")
+	# Made as a player makes it, from the plate it replaces: the plate armour Rook
+	# paid for goes into it, and the want for that plate must not come back.
+	g.inventory.add(&"tide_iron", 1)
+	g.inventory.add(&"scrap", 2)
+	check(Crafting.make(g.inventory, Crafting.recipe(&"plate_mended")), "mended at the bench")
+	check(not g.inventory.has(&"kit_plate"), "out of the plate he wore")
+	var made := Guide.goal(g)
+	check(made != mend, "carried: that want is met")
+	check(Guide.last_goal_key != &"armour", "and the plate it was made from is not wanted again (%s)" % made)
 	Sx.end(g)
 	Story.forget()
 

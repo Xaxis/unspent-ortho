@@ -74,6 +74,13 @@ const STANDS := 1.1
 ## across, so its near edge can be ninety tiles closer than that: the coarse level
 ## is two pixels coarse at 170 tiles, which is where it can first be seen.
 const FAR_AT := 260.0
+## AND NOTHING STANDING IS DRAWN PAST WHERE IT IS A PIXEL: a ten-metre roof is
+## about one at eight kilometres. No eye on the ground sees that far (its air
+## closes by SkyLight.SEE); from a walker's thigh it was every stand and every
+## chunk's props on the island drawn into some forty pixels behind the leg: of
+## the climb tour's thigh window, 1.48 of its 3.03 million primitives and 333 of
+## its 1504 draws.
+const STANDS_SEEN := 8000.0
 ## 0 for the reason world_view's LOD_MARGIN is: a margin on both halves of a
 ## hand-over leaves a band where neither is drawn.
 const FAR_MARGIN := 0.0
@@ -735,7 +742,7 @@ func set_shown(on: bool) -> void:
 func _range(mi: GeometryInstance3D) -> void:
 	var close := int(mi.get_meta(&"far_level")) == 0
 	mi.visible = _shown and (_eye or not close)
-	mi.visibility_range_end = FAR_AT if _eye and close else 0.0
+	mi.visibility_range_end = (FAR_AT if close else STANDS_SEEN) if _eye else 0.0
 	mi.visibility_range_end_margin = FAR_MARGIN if _eye and close else 0.0
 	mi.visibility_range_begin = FAR_AT if _eye and not close else 0.0
 	mi.visibility_range_begin_margin = FAR_MARGIN if _eye and not close else 0.0
