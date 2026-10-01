@@ -63,32 +63,40 @@ func test_a_keeper_across_the_water_waits_until_he_can_cross() -> void:
 	eq(Sentinels.body_of(w, Vector2(602, 10)), 1, "a lair in the shallows two tiles off a shore is on that shore's body")
 
 
-## On whole worlds: before the crossing only home's keepers are next, and where
-## home holds one design (the Reaper) there is none after it; from the crossing
-## on, the nearest on the far shore's body (leg 1). Seed 1's anvil at 523 stands
-## on an islet off the journey and is never the next.
+## On whole worlds, the rule and not the world: before the crossing every next
+## keeper is on home's body, and with home's designs taken there is none; from
+## the crossing on, the next is on home's body or the far shore's (leg 1), never
+## on a body off the journey. On main, home holds only the Reaper on all three
+## seeds, and seed 1's nearest anvil (523 tiles) stands on an islet off it.
 func test_on_whole_worlds_the_next_keeper_is_one_he_can_reach() -> void:
-	var leg_one := {1: &"anvil", 7: &"listener", 42: &"pan_rake"}
-	for seed_value: int in leg_one:
+	for seed_value: int in [1, 7, 42]:
 		Story.forget()
 		Sx.use_root("next-keeper-%d" % seed_value)
 		var g := Sx.game(tree, ["--seed=%d" % seed_value, "--hour=11", "--weather=clear:0"])
 		var states := Sentinels.live(g)
 		var home := StoryJourney.body_for(g.world, 0)
-		var first := Sentinels.next_keeper(states, g.world.spawn, g.world, Guide.bodies_reached(g))
-		eq(first.design if first != null else &"", &"tide_reaper", "seed %d: the Tide Reaper first" % seed_value)
+		var far := StoryJourney.body_for(g.world, 1)
+		var journey := StoryJourney.bodies(g.world)
+		var home_designs := {}
 		for s: SentinelState in states:
-			if s.design == &"tide_reaper":
-				s.fallen = true
-		var none := Sentinels.next_keeper(states, g.world.spawn, g.world, Guide.bodies_reached(g))
-		check(none == null, "seed %d: before the crossing, home holds no other design (%s)" % [seed_value, none.design if none != null else &""])
+			if s.region >= 0 and Sentinels.body_of(g.world, s.lair) == home:
+				home_designs[s.design] = true
+		var n := 0
+		var next := Sentinels.next_keeper(states, g.world.spawn, g.world, Guide.bodies_reached(g))
+		while next != null and n < 32:
+			eq(Sentinels.body_of(g.world, next.lair), home, "seed %d, before the crossing: %s at %.0f tiles on home's body" % [seed_value, next.design, next.lair.distance_to(g.world.spawn)])
+			next.fallen = true
+			n += 1
+			next = Sentinels.next_keeper(states, g.world.spawn, g.world, Guide.bodies_reached(g))
+		eq(n, home_designs.size(), "seed %d: one for each design home holds (%s), then none" % [seed_value, home_designs.keys()])
 		@warning_ignore("return_value_discarded")
 		Story.hear(StoryCrossing.CROSSED)
-		var next := Sentinels.next_keeper(states, g.world.spawn, g.world, Guide.bodies_reached(g))
-		eq(next.design if next != null else &"", leg_one[seed_value], "seed %d: from the crossing on, the far shore's nearest" % seed_value)
+		next = Sentinels.next_keeper(states, g.world.spawn, g.world, Guide.bodies_reached(g))
+		check(next != null, "seed %d: from the crossing on, a keeper across the water" % seed_value)
 		if next != null:
-			eq(Sentinels.body_of(g.world, next.lair), StoryJourney.body_for(g.world, 1), "seed %d: on leg 1's body (%.0f tiles)" % [seed_value, next.lair.distance_to(g.world.spawn)])
-			check(Sentinels.body_of(g.world, next.lair) != home, "seed %d: not home's" % seed_value)
+			var body := Sentinels.body_of(g.world, next.lair)
+			eq(body, far, "seed %d: %s at %.0f tiles, on the far shore's body" % [seed_value, next.design, next.lair.distance_to(g.world.spawn)])
+			check(journey.has(body), "seed %d: on the journey" % seed_value)
 		Sx.end(g)
 	Story.forget()
 
