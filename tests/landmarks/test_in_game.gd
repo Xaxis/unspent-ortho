@@ -136,54 +136,84 @@ func test_the_island_carries_the_mass_of_every_landmark_it_holds() -> void:
 
 
 ## A CACHE TAKES THE PRESS FROM THE GROUND, NEVER FROM WHAT HE FACES (22_landmarks
-## `use_spent`, `_cache_wins`). One press at seed 1's nearest cache opened it and
-## read the terminal beside it; facing nothing with words, it opened it and, by a
-## fire and peckish, ate the stew too. Facing the words, the press is theirs and
-## the cache waits; facing nothing, the cache's, and nothing else answers it.
+## `use_spent`, `_cache_wins`): one press, one answer. Staged by name, whatever
+## the world laid there: the nearest unguarded cache moved to Maren's side
+## (cast:maren, who stands apart), a fire laid, peckish, stew carried. Facing her,
+## the press is hers and the cache waits; facing away, the cache's and nothing
+## else's; and the press after, with the cache open, eats. That last went to the
+## open cache instead, until its next look, and did nothing at all.
 func test_the_press_that_opens_a_cache_answers_nothing_else() -> void:
 	var g := _game(PackedStringArray(["--seed=1", "--size=256", "--hour=11", "--weather=clear:0"]))
 	await frames(4)
 	var sys := g.get_node("22_landmarks")
 	var story := g.get_node("49_story")
+	var cast := g.get_node("49_cast")
 	Story.forget()
-	var sites: Array[LandmarkSite] = []
+	var beside: Vector2 = cast.call("tour_place", "cast:maren")
+	var maren := Vector2.INF
+	for row: Dictionary in cast.get("people"):
+		if row.character == &"maren":
+			maren = row.pos
+	check(beside.is_finite() and maren.is_finite(), "Maren is cast, with somewhere to stand at her side")
+	# Past CLOSE (49_story: nearer, she answers whichever way he faces) and in
+	# REACH, so turning away from her is facing nothing.
+	var spot := maren + (beside - maren).normalized() * (StoryProps.CLOSE + StoryProps.REACH) * 0.5
+	check(g.query.standable(floori(spot.x), floori(spot.y)), "ground to stand on there")
+	# Unguarded: a guarded one sends a machine out behind him, and nobody eats
+	# with a hunter that close (Survival.eat).
+	var site: LandmarkSite = null
 	for s: LandmarkSite in sys.all():
-		sites.append(s)
-	sites.sort_custom(func(a: LandmarkSite, b: LandmarkSite) -> bool: return a.pos.distance_to(g.player.pos) < b.pos.distance_to(g.player.pos))
-	check(sites.size() >= 2, "two caches to open")
+		if s.def() != null and not s.def().guarded and (site == null or s.pos.distance_to(spot) < site.pos.distance_to(spot)):
+			site = s
+	check(site != null, "an unguarded cache to move")
+	if site == null or not spot.is_finite():
+		g.queue_free()
+		await frames(1)
+		return
+	site.pos += spot - Landmarks.cache_of(site)
+	g.player.hero.pos = spot
+	g.player.pos = spot
+	check(Survival.add_prop(g, PropKind.FIRE, spot + (spot - maren).normalized() * 1.5, 0.0, 0.3) != null, "a fire at his back")
 	g.inventory.add(&"stew", 2)
-	# The first cache has a terminal beside it: faced, then turned from. The
-	# second is opened facing nothing.
-	for i in 2:
-		var site := sites[i]
-		var at := Landmarks.cache_of(site)
-		g.player.hero.pos = at
-		g.player.pos = at
-		check(Survival.add_prop(g, PropKind.FIRE, at + Vector2(-1.5, 0.0), 0.0, 0.3) != null, "a fire by %s" % site.id)
-		await frames(30)
-		g.body.fed_until = g.clock.minutes - 120.0
-		var stew := g.inventory.count(&"stew")
-		await frames(2)
-		check(sys.get("reachable") != null and Survival.at_rest(g) and g.body.hunger_level(g.clock.minutes) == 1,
-			"%s: in reach of the cache, by a fire, peckish" % site.id)
-		if i == 0:
-			check(_face(g, story, true), "%s: a way to face the words beside it" % site.id)
-			await _press_use()
-			check(story.view.showing(), "%s: facing the words, the press reads them" % site.id)
-			check(not sys.state.is_opened(site.id), "%s: and the cache waits" % site.id)
-			eq(g.inventory.count(&"stew"), stew, "%s: and nothing is eaten" % site.id)
-			story.call("_close")
-			await frames(2)
-		check(_face(g, story, false), "%s: a way to face nothing with words" % site.id)
-		await _press_use()
-		check(sys.state.is_opened(site.id), "%s: facing nothing, the press opens the cache" % site.id)
-		check(not story.view.showing(), "%s: and reads nothing" % site.id)
-		eq(g.inventory.count(&"stew"), stew, "%s: and eats nothing" % site.id)
-		if story.view.showing():
-			story.call("_close")
-		await frames(2)
+	await frames(30)
+	g.body.fed_until = g.clock.minutes - 120.0
+	var stew := g.inventory.count(&"stew")
+	await frames(2)
+	check(sys.get("reachable") == site and Survival.at_rest(g) and g.body.hunger_level(g.clock.minutes) == 1,
+		"in reach of the cache, by a fire, peckish")
+	_turn(g, (maren - spot).angle())
+	check(bool(story.call("faces_words")), "facing Maren")
+	await _free(g)
+	await _press_use()
+	check(story.get("talk") != null, "facing Maren, the press is hers")
+	check(not sys.state.is_opened(site.id), "and the cache waits")
+	eq(g.inventory.count(&"stew"), stew, "and nothing is eaten")
+	story.call("_close")
+	await frames(2)
+	check(_face(g, story, false), "a way to face nothing with words")
+	await _free(g)
+	await _press_use()
+	check(sys.state.is_opened(site.id), "facing away, the press opens the cache")
+	check(story.get("talk") == null and not story.view.showing(), "and says nothing")
+	eq(g.inventory.count(&"stew"), stew, "and eats nothing")
+	await _free(g)
+	await _press_use()
+	eq(g.inventory.count(&"stew"), stew - 1, "the cache open, the next press eats")
 	g.queue_free()
 	await frames(1)
+
+
+func _turn(g: Game, facing: float) -> void:
+	g.player.facing = facing
+	g.player.hero.facing = facing
+
+
+## Until the keys are his again (a staged view may hold them), or ten seconds.
+func _free(g: Game) -> void:
+	var end := Time.get_ticks_msec() + 10000
+	while Time.get_ticks_msec() < end and g.input_blocked():
+		await process_frames(1)
+	check(not g.input_blocked(), "the keys are his")
 
 
 ## Turn him, round the compass, until the story would (or would not) answer what
