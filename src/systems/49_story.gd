@@ -195,6 +195,13 @@ func _process(delta: float) -> void:
 	if view.showing():
 		_read_talk_keys(use_pressed)
 		return
+	# A KEY ALREADY DOWN AS THE WORDS OPEN IS NOT A PRESS ON THEM. The talk's own
+	# keys are read for their edges, so they are followed while nothing is up
+	# too: the move up key that took him up a walker's last hold opened the
+	# enclave with its cursor wrapped round onto the last reply (43_climb).
+	_up_down = InputMap.has_action(&"move_up") and Input.is_action_pressed(&"move_up")
+	_down_down = InputMap.has_action(&"move_down") and Input.is_action_pressed(&"move_down")
+	_back_down = InputMap.has_action(&"pause") and Input.is_action_pressed(&"pause")
 	if game.input_blocked():
 		return
 	if use_pressed and not _use_already_spent():
@@ -232,7 +239,7 @@ func _open_what_is_in_front() -> void:
 	if slot_d < person_d and slot_d < prop_d:
 		var take_first := Survival.use_target(game)
 		if take_first == null or _edge_to(take_first) >= slot_d:
-			_read(StringName(str(slot.id)))
+			read(StringName(str(slot.id)))
 			return
 	# THE GROUND UNDER YOUR HANDS WINS WHEN IT IS NEARER. This system's reach is
 	# generous on purpose, so a notice five tiles off was outranking the driftwood
@@ -537,12 +544,14 @@ func _start_reading(prop: WorldProp) -> void:
 	if id == &"":
 		Events.hint.emit("Nothing on it that can still be read.", "")
 		return
-	_read(id)
+	read(id)
 
 
 ## A fragment's words on the glass, read off whatever held them. A page still
-## shut (`until`) shows what it shows while shut, and is not yet found.
-func _read(id: StringName) -> void:
+## shut (`until`) shows what it shows while shut, and is not yet found. Also the
+## door for a thing read where no prop stands: the panel in a walker's crown,
+## read where the climb ends (43_climb).
+func read(id: StringName) -> void:
 	if StoryFragments.locked(id):
 		reading = id
 		view.reading = StoryFragments.lines(id)
