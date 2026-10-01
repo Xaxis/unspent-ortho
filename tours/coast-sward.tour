@@ -1,0 +1,26 @@
+# The coast's sward at one in the afternoon: heather in drifts on pale grass, from
+# above at the play camera and wider, close on the heath, and over the shoulder
+# (world.gdshader shore_sward, matter.gdshaderinc shore_cushion).
+#   tools/tour.sh tours/coast-sward.tour --seed=1 --weather=clear:0
+coast calm
+hour 13
+place coast
+await top_view 4
+wait 2.0
+shot 01-the-coast-from-above with land:coast
+zoom 30
+wait 1.5
+shot 02-the-coast-from-higher with land:coast
+zoom 15
+near gorse
+wait 1.5
+zoom 7
+wait 1.0
+shot 03-close-on-the-heath with land:coast
+zoom 15
+wait 0.6
+hold shoulder_peek
+await shoulder 5
+wait 1.0
+shot 04-the-heath-over-the-shoulder with shoulder
+release shoulder_peek

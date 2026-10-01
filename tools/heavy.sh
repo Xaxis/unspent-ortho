@@ -68,6 +68,24 @@ held_by_tree() {
   done
   echo "$n"
 }
+# Waiters take a ticket and are served first come, first served. Without it a
+# slot went to whichever waiter happened to look the moment it freed: on
+# 2026-09-30 one tour waited an hour at load 57 while later jobs kept winning.
+# A waiter whose tree already holds its share does not hold up those behind it.
+queue=/tmp/unspent-heavy.queue
+ticket=""
+ahead() {
+  local f pid t n=0
+  for f in $(ls "$queue" 2>/dev/null | sort); do
+    [ "$queue/$f" = "$ticket" ] && break
+    pid=${f##*-}
+    if ! kill -0 "$pid" 2>/dev/null; then rm -f "$queue/$f"; continue; fi
+    t=$(cat "$queue/$f" 2>/dev/null)
+    [ "$(tree="$t" held_by_tree)" -ge "$per_tree" ] && continue
+    n=$((n + 1))
+  done
+  echo "$n"
+}
 take() {
   local i d holder
   reserved_by_other && return 1
@@ -105,6 +123,10 @@ stale() {
   done
 }
 ok=0; n=0
+if [ "${HEAVY_ALONE:-0}" != 1 ]; then
+  mkdir -p "$queue"; ticket="$queue/$(date +%s%N)-$$"; echo "$tree" > "$ticket"
+fi
+trap 'rm -f "$ticket"' EXIT
 # A HEAVY_ALONE job claims the box while it waits, so ordinary jobs stop starting and
 # the running ones drain; without it, a steady stream of short jobs starves it.
 # A claim is held at most HEAVY_ALONE_WAIT seconds (default 600). Waiting for a quiet
@@ -128,11 +150,13 @@ while :; do
     if [ "$(free_mb)" -gt 500 ] && [ "$(running)" -eq 0 ]; then ok=$((ok+1)); else ok=0; fi
     if [ "$ok" -ge 3 ] && take_all; then break; fi
   else
-    if [ "$(free_mb)" -gt 500 ] && [ "$(running)" -lt "$slots" ]; then ok=$((ok+1)); else ok=0; fi
+    r=$(running)
+    if [ "$(free_mb)" -gt 500 ] && [ "$r" -lt "$slots" ] && [ "$(ahead)" -lt $((slots - r)) ]; then ok=$((ok+1)); else ok=0; fi
     if [ "$ok" -ge 3 ] && take; then break; fi
   fi
   sleep 10
 done
+rm -f "$ticket"
 trap 'rm -rf $lock; [ "$(cat "$reserve" 2>/dev/null)" = $$ ] && rm -f "$reserve"' EXIT
 echo "heavy: clear in $lock, $(free_mb) MB free at $(date +%T)" >&2
 "$@"
