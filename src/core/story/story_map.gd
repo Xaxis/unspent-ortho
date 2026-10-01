@@ -201,6 +201,34 @@ static func lair_pos(states: Array, spawn: Vector2, place: StringName) -> Vector
 	return best
 
 
+## Where the place `crater:SLOT` stands: the crater a lame walker's foot comes back
+## to (WorldData.landmarks kind `tread`, GenTreads) on the body the story casts SLOT
+## on (its StoryPlan leg, StoryJourney.body_for), the one nearest `near` where that
+## is given. INF for any other place, or where that body has no crater: the walk
+## sets the treads, and on some worlds (seeds 42 and 3) neither is on leg 1's body.
+static func crater_pos(world: WorldData, place: StringName, near: Vector2 = Vector2.INF) -> Vector2:
+	var best := Vector2.INF
+	if world == null or not String(place).begins_with("crater:"):
+		return best
+	var slot := StringName(String(place).trim_prefix("crater:"))
+	var leg := -1
+	for row: Dictionary in StoryPlan.SPINE:
+		if row.id == slot:
+			leg = int(row.leg)
+	var body := StoryJourney.body_for(world, leg) if leg >= 0 else 0
+	if body == 0:
+		return best
+	for m: Dictionary in world.landmarks:
+		if StringName(m.get("kind", &"")) != &"tread":
+			continue
+		var at: Vector2 = m.pos
+		if world.continent_at(floori(at.x), floori(at.y)) != body:
+			continue
+		if not best.is_finite() or (near.is_finite() and at.distance_to(near) < best.distance_to(near)):
+			best = at
+	return best
+
+
 static func _leg_at(world: WorldData, bodies: Array[int], p: Vector2) -> int:
 	var at := bodies.find(world.continent_at(floori(p.x), floori(p.y)))
 	return clampi(at, 0, LEGS.size() - 1) if at >= 0 else 0
