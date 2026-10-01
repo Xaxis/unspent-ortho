@@ -23,7 +23,8 @@ extends RefCounted
 ##   lattice  (mod_lattice)   "every blow shocks": a blow that lands in a part
 ##                            discharges LATTICE_DAMAGE, shared nearest first
 ##                            among the other bodies within LATTICE_REACH, for
-##                            LATTICE_CHARGES (hot: it wants a cool)
+##                            LATTICE_CHARGES, spent only when one is in reach
+##                            (hot: it wants a cool)
 ##   icelens  (mod_icelens)   "sight": the scan reads ICELENS_REACH as far
 ##   rake     (mod_rake)      "a heavy rakes the arc": as a heavy blow is drawn,
 ##                            every body within RAKE_REACH and RAKE_ARC of the

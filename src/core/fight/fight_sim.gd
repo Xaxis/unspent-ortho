@@ -2142,7 +2142,13 @@ func _lattice(struck: MobState) -> void:
 		if o.hurt_by_now(&"lattice", now):
 			continue
 		near.append(o)
-	if near.is_empty():
+	# A discharge is a charge spent, as a charged weapon's swing is: dry, the
+	# blow lands and nothing jumps (the capacitor and the leech pair with it).
+	# Only one that has somewhere to jump spends it. Spent on every landed blow,
+	# the charges went on the opening blows at a body standing alone: against
+	# three harvesters, whose runs carry them out of each other's reach, it never
+	# arced once in 24 bouts (tests/gear/test_lattice_icelens.gd, at a gate).
+	if near.is_empty() or not FightRules.spend_charges(hero.inventory, FightKit.LATTICE_CHARGES):
 		return
 	# One discharge carries LATTICE_DAMAGE in all, shared nearest first: an even
 	# share each and the remainder a point at a time from the nearest, so a
@@ -2189,9 +2195,7 @@ func _hurt_mob(m: MobState, b: Blow, from: Vector2 = Vector2.INF, stall_ms: int 
 		_break_tell(m)
 	if player_swing:
 		emit(&"hit", {"attacker": hero, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})
-		# A discharge is a charge spent, as a charged weapon's swing is: dry, the
-		# blow lands and nothing jumps (the capacitor and the leech pair with it).
-		if hero.kit.lattice and FightRules.spend_charges(hero.inventory, FightKit.LATTICE_CHARGES):
+		if hero.kit.lattice:
 			_lattice(m)
 	else:
 		emit(&"struck", {"from": from, "target": m, "damage": b.dmg, "plate": false, "at": m.pos})

@@ -145,6 +145,25 @@ func test_the_far_world_stands_down_only_under_near_chunks() -> void:
 	view.queue_free()
 
 
+## NOTHING STANDING IS DRAWN PAST WHERE IT IS A PIXEL (Far.STANDS_SEEN): at eye
+## level a far silhouette's coarse level ends there, as a near chunk's mid models
+## do, and both still reach far past where any eye on the ground sees (SEE), so
+## only an eye up a walker's leg loses them; from above nothing has an end.
+func test_nothing_standing_is_drawn_past_a_pixel() -> void:
+	gt(Far.STANDS_SEEN, SkyLight.SEE * 4.0, "the end is far past where an eye on the ground sees")
+	var far: Node3D = Far.new()
+	var block := Node3D.new()
+	far.add_child(block)
+	var coarse := MeshInstance3D.new()
+	coarse.set_meta(&"far_level", 1)
+	block.add_child(coarse)
+	far.call(&"set_eye", true)
+	eq(coarse.visibility_range_end, Far.STANDS_SEEN, "at eye level a coarse silhouette ends where it is a pixel")
+	far.call(&"set_eye", false)
+	eq(coarse.visibility_range_end, 0.0, "from above it has no end")
+	far.free()
+
+
 ## A VIEW NOBODY CAN LOOK OUT FROM NEVER PAYS FOR THE SILHOUETTES. They cost most
 ## of the world's models built once, and nothing but a camera that sees the
 ## horizon shows them; a view that has never had one, and was not told the

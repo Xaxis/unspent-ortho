@@ -105,7 +105,7 @@ this list.
 | vane cloak (`cloak_vane`) | back | prime | vane_true (sweeper) | in wind above 0.4 a dodge within 50° of downwind carries twice as far (`FightSim._dodge`, `Weather.bearing`); worn where the wing goes; its vanes (PersonBody `vanes`) are fitted kit only, never a villager's |
 | lens visor (scanner_lens + mod_icelens) | head | rare | deep_ice_lens | scan reach x1.5, and glare no longer cuts your sight (`ability_scan.gd`) |
 | cable gauntlets (brace_cable, brace_ram) | hands | rare | tower_cable | the grapple takes a working part that faces the line, stalls it (once per STALL_EVERY_MS) and pulls the player in to 0.3 off it (`AbilityGrapple.anchor`, `FightSim.cable`); with the undertow fitted, it hauls instead |
-| lattice (mod_lattice) | tool | prime | fulgurite_core | a landed blow discharges `LATTICE_DAMAGE` 2, shared nearest first among bodies within `LATTICE_REACH` 2.0, `LATTICE_CHARGES` 1, a visible arc; hot, so it wants a cool. Its identity: no gain on harvesters, strong against cutters |
+| lattice (mod_lattice) | tool | prime | fulgurite_core | a landed blow discharges `LATTICE_DAMAGE` 2, shared nearest first among bodies within `LATTICE_REACH` 2.0, for `LATTICE_CHARGES` 1 spent only when a body is in reach, a visible arc; hot, so it wants a cool. Its identity: a packed crowd falls sooner (three cutters 29-45% sooner, three harvesters, which a charge spreads, 12%) |
 
 ## 7. Where things are found (loot per interior)
 

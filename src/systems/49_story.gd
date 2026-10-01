@@ -247,6 +247,26 @@ func use_spent() -> bool:
 ## Nothing is offered that the player is not facing, unless they are pressed
 ## against it, exactly as `Survival.use_target` treats a thing at the boot.
 func _open_what_is_in_front() -> void:
+	var it := _what_is_in_front()
+	if it.has("slot"):
+		read(StringName(str(it.slot)))
+	elif it.has("person"):
+		_start_talk(it.person as Dictionary)
+	elif it.has("prop"):
+		_start_reading(it.prop as WorldProp)
+
+
+## Whether a press now would be the words': a person, or a thing with words on
+## it, in front of him and not behind the ground under his hands. A cache in
+## reach asks before it takes the key (22_landmarks `_cache_wins`): the press
+## goes to what he faces.
+func faces_words() -> bool:
+	return not _what_is_in_front().is_empty()
+
+
+## What the key would open: {slot: ID}, {person: ROW} or {prop: PROP}, or {}
+## when it is the ground's or nobody's.
+func _what_is_in_front() -> Dictionary:
 	var person := _person_in_front()
 	var prop := _readable_in_front()
 	var person_d: float = person.get("_d", INF) if not person.is_empty() else INF
@@ -258,8 +278,7 @@ func _open_what_is_in_front() -> void:
 	if slot_d < person_d and slot_d < prop_d:
 		var take_first := Survival.use_target(game)
 		if take_first == null or _edge_to(take_first) >= slot_d:
-			read(StringName(str(slot.id)))
-			return
+			return {"slot": slot.id}
 	# THE GROUND UNDER YOUR HANDS WINS WHEN IT IS NEARER. This system's reach is
 	# generous on purpose, so a notice five tiles off was outranking the driftwood
 	# the player was standing on and facing: the key meant "pick this up" and the
@@ -270,7 +289,7 @@ func _open_what_is_in_front() -> void:
 	if take != null:
 		var take_d := _edge_to(take)
 		if take_d < person_d and take_d < prop_d:
-			return
+			return {}
 		# ONE THING THAT IS BOTH. A relay and a survey post have words on them AND
 		# are the plan's works, so the same prop answers both readers at exactly
 		# the same distance and the read was winning every time — which made two
@@ -278,11 +297,12 @@ func _open_what_is_in_front() -> void:
 		# the wick that feeds the lamp comes off a relay. So: the words the FIRST
 		# time, because a thing is only read once, and the parts every time after.
 		if WorldProp.same(take, prop) and _already_read(prop):
-			return
+			return {}
 	if person_d <= prop_d and not person.is_empty():
-		_start_talk(person)
-	elif prop != null:
-		_start_reading(prop)
+		return {"person": person}
+	if prop != null:
+		return {"prop": prop}
+	return {}
 
 
 ## Whether the words on this thing have already been read. A fragment is picked

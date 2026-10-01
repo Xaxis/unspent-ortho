@@ -79,6 +79,8 @@ const EXCUSED := {
 	# in whatever space this renderer keeps. The palette colour it mixes IN goes
 	# through the door at the mix, which is where the two spaces meet.
 	"res://src/render/shafts.gdshader": "screen",
+	# Heat haze: the frame behind a disc on the ground, read a few pixels off.
+	"res://src/render/heat_haze.gdshader": "screen",
 	# The whole of ALBEDO is one `: source_color` uniform.
 	"res://src/render/weather/rays.gdshader": "source_color",
 	# A sum of light at several hues and energies: every term goes through the

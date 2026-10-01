@@ -129,7 +129,13 @@ extends RefCounted
 ## `eye_shadow_reach` is how far out, in tiles from an eye-level camera, the near
 ## chunks still cast into the sun's shadow (WorldView `_shadow_reach`); 0 is
 ## everything the splits reach. It exists because the shadow passes were most of
-## an eye-level frame's primitives on the web path. `eye_shadow_full` is how far
+## an eye-level frame's primitives on the web path, and on the desktop's own
+## tier too: over the shoulder at 18:30 the land past 80 tiles was a fifth to a
+## half of every frame's shadow primitives (seed 1: 22% of the coast's, 31% of
+## the sulphur jungle's, 34% of the scrapwood's, 54% of the mesas') and cast
+## nothing a split that far out could resolve. Held to 80 the frames are the same
+## and the GPU's median is up to 0.9 ms lower. Only `ultra` casts to the last
+## split. `eye_shadow_full` is how far
 ## a chunk's props cast from their full models before they cast from their SHADE
 ## ones (FarModels.SHADE); at 0 even the chunk underfoot does, which on the web's
 ## 2048 shadow atlas is a texel the thinned crown cannot be told apart in. The
@@ -147,7 +153,7 @@ const ROWS: Array[Dictionary] = [
 		"volumetric": true, "air_stand_in": 0.0, "ssao": true, "ssil": true, "forward_only": true,
 	},
 	{
-		"id": &"high", "label": "high", "grass_reach": 24, "grass_density": 0.8, "orbit": 2, "horizon_near": 110, "eye_shadow_reach": 0, "eye_shadow_full": 30,
+		"id": &"high", "label": "high", "grass_reach": 24, "grass_density": 0.8, "orbit": 2, "horizon_near": 110, "eye_shadow_reach": 80, "eye_shadow_full": 30,
 		"note": "Native, the lights that matter cast, volumetric air.",
 		"render_scale": 1.0, "upscale": 0, "msaa": 2,
 		"shadow_size": 4096, "shadow_filter": 2, "shadow_lights": 8, "lamps": 24,
