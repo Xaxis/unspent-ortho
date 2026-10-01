@@ -1,26 +1,41 @@
 # THE CLIMB UP THE HALF-BROKEN WALKER (ROADMAP slice 3 step 7, 43_climb), by
 # real keys, from the tread to the enclave. The straddling walker is staged five
-# world minutes after its foot came down in this world's first tread; on a
-# crater's lip `use` puts him on the ankle's drum, and the move up key takes him
-# up, ledge to ledge, five pitches: the drum, below the knee, the thigh, near the
-# hip, and the hub's rim. He climbs as a climber reads the gait: on each ledge he
-# rests to a full breath and sets off only when his leg will stand for the next
-# section (`climb_ready`), and between pitches he rides up inside the bone while
-# the eye goes up the outside of the leg. At the rim the panel in the crown is
-# read, and listening to it he meets the enclave. The whole of it is about a
-# world day, some fifteen real minutes, dawn to the next night.
+# world minutes after its foot came down in this world's first tread. He stands
+# on the lip of the crater its middle toe made and walks down into it to the foot
+# of the cable that hangs from the drum; `use` there has him on it, and the move
+# up key takes him up, ledge to ledge, six pitches: the cable to the drum's foot,
+# the drum, below the knee, the thigh, near the hip, and the hub's rim. He climbs
+# as a climber reads the gait: on each ledge he rests to a full breath and sets
+# off only when his leg will stand for the next section (`climb_ready`), and
+# between pitches he rides up inside the bone while the eye goes up the outside
+# of the leg. At the rim the panel in the crown is read, and listening to it he
+# meets the enclave. The whole of it is about a world day, some twenty real
+# minutes, dawn to the next night.
 #   TOUR_TIMEOUT=2400 tools/tour.sh tours/colossi_climb.tour --seed=1 --place=tread0 --colossus=2@tread0+5 --hour=6 --weather=clear:0 --stats
 coast calm
 await colossus_tread 30
-near colossus_rim
-await climb_rim 5
+at climb:lip
+walkto at:climb:cable 60 till:climb_cable
+await climb_cable 5
 wait 2
-shot 00-at-the-rim with colossus_tread,climb_rim
+shot 00-at-the-cable with colossus_tread,climb_cable
 tap use
 await climbing 3
 await climb_patch 10
 wait 1
-shot 01-on-the-drum with climbing,climb_patch
+shot 01-on-the-cable with climbing,climb_patch
+# The cable, ledge to ledge, until its top hands him on to the drum.
+try 20
+release move_up
+until climb_ready 240
+hold move_up
+await climb:ledge 60
+release move_up
+await climb:onto 0.1
+end
+await climb_patch 10
+wait 1
+shot 01b-on-the-drum with climbing,climb_patch
 perf stats begin drum
 wait 2
 perf stats end drum
