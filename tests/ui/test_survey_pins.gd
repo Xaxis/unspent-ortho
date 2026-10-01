@@ -4,7 +4,10 @@ extends TestCase
 ## framed so that pin stands well clear of his own mark and points the way the
 ## world does (UiMapScreen.opening). Measured on real worlds, seeds 1 and 7, at
 ## the two moments a pin matters: at the spawn, told of the crew's camp; at the
-## camp, having walked there, told of the archive across the water.
+## camp, having walked there, told of the archive across the water; and at the
+## archive, told of the shaft on another body, which seed 1 pins into the scale
+## bar's corner: a pin never stands under the survey's compass or scale bar
+## (UiMapScreen.clear_of).
 
 ## The least distance, in survey pixels, between his mark and a pin.
 const APART := 200.0
@@ -26,6 +29,13 @@ func _check(world: WorldData, seen: Rect2i, player: Vector2, target: Vector2, wh
 	var want := rad_to_deg((target - player).angle())
 	var got := rad_to_deg(Vector2(pin - me).angle())
 	lt(absf(wrapf(got - want, -180.0, 180.0)), WITHIN, "seed %d %s: and points the way the world does" % [world.seed_value, what])
+	var fixed := UiMapScreen.furniture(UiMapScreen.MAP_RECT, scale)
+	var half := 5 * UiBase.PITCH
+	var clear := UiMapScreen.clear_of(pin, fixed, half, UiMapScreen.MAP_RECT.get_center().y)
+	print("  seed %d %s: pinned at %s, clear of the furniture at %s" % [world.seed_value, what, pin, clear])
+	for b: Rect2i in fixed:
+		check(not b.grow(half).has_point(clear), "seed %d %s: and it stands under neither the compass nor the scale bar" % [world.seed_value, what])
+	lt(absf(wrapf(rad_to_deg(Vector2(clear - me).angle()) - want, -180.0, 180.0)), WITHIN, "seed %d %s: still on its bearing" % [world.seed_value, what])
 
 
 func test_a_pin_points_the_way_and_is_never_here() -> void:
@@ -42,4 +52,8 @@ func test_a_pin_points_the_way_and_is_never_here() -> void:
 			var camp: Vector2 = cast[&"the_camp"].pos
 			var walked := woke.expand(Vector2i(camp)).grow(10)
 			_check(w, walked, camp, cast[&"the_archive"].pos, "the archive from the camp")
+		if cast.has(&"the_archive") and cast.has(&"the_shaft"):
+			# Across at the archive, told of the relay below by the man there.
+			var arc: Vector2 = cast[&"the_archive"].pos
+			_check(w, Rect2i(Vector2i(arc) - Vector2i(20, 20), Vector2i(40, 40)), arc, cast[&"the_shaft"].pos, "the shaft from the archive")
 	StoryPlan.forget()
