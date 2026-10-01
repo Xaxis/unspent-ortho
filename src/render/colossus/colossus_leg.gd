@@ -29,6 +29,9 @@ const LegModel := preload("res://src/models/colossus_leg_model.gd")
 ## as the body nears an end of what is built.
 const SPAN := 60.0
 
+## How many holds short of the top of a pitch with no ride the next is built.
+const AHEAD := 6
+
 ## Patches on the renderer by key (`_key`): {pitch, lo, hi, origin, mesh}.
 var _built: Dictionary = {}
 ## The task building one, the key it is for, and what it hands back.
@@ -66,8 +69,10 @@ func update(def: RefCounted, climb: WalkerClimb, pose: Dictionary, dome: Diction
 	var up := climb.hold_at(p, climb.hold).x * WalkerClimb.LEVEL
 	var key := _key(p, up)
 	_want(def, climb, p, up, key)
-	# Riding up inside the bone, the next pitch is built before he gets there.
-	if climb.state == WalkerClimb.RIDE and p + 1 < WalkerClimb.PITCHES.size():
+	# Riding up inside the bone, or nearing the top of a pitch that goes straight
+	# on, the next pitch is built before he gets there.
+	var on := float(WalkerClimb.PITCHES[p].ride) <= 0.0 and climb.hold >= climb.holds_in(p) - AHEAD
+	if (climb.state == WalkerClimb.RIDE or on) and p + 1 < WalkerClimb.PITCHES.size():
 		_want(def, climb, p + 1, 0.0, _key(p + 1, 0.0))
 	# He never climbs back down to a pitch he has ridden up from.
 	for k: String in _built.keys():

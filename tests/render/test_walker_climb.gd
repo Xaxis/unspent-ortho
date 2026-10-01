@@ -70,7 +70,8 @@ func test_breath_is_the_grip() -> void:
 	var c := WalkerClimb.begin(0, SEED)
 	@warning_ignore("return_value_discarded")
 	c.step(0.1, pose, true)
-	eq(c.breath, FightRules.WIND - Climb.WIND_PER_LEVEL * WalkerClimb.HOLD_EVERY, "a move up costs its levels")
+	var wind := float(WalkerClimb.PITCHES[c.pitch].get("wind", 1.0))
+	eq(c.breath, FightRules.WIND - Climb.WIND_PER_LEVEL * WalkerClimb.HOLD_EVERY * wind, "a move up costs its levels, at the pitch's own wind")
 	var moved := false
 	for i in 30:
 		moved = moved or c.step(0.1, pose, false).has(&"moved")

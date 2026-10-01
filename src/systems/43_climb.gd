@@ -4,10 +4,10 @@ extends GameSystem
 ## walker, the leg drawn under his hands (src/render/colossus/colossus_leg.gd),
 ## the body hung on it, and the climb's own eye on him.
 ##
-## IT STARTS ON A PLANTED FOOT, FROM THE TREAD'S RIM: `use` at the lip of one of
-## the craters a foot stands in, while it stands there, and he is on the drum.
-## (How the body gets from the crater floor to the drum's first hold is step
-## 7c; until then the press puts him on it.)
+## IT STARTS ON THE GROUND, IN THE TREAD: the line's cable hangs from a planted
+## foot's drum down into the crater its middle toe stands in (WalkerClimb's first
+## pitch). He walks down to its foot, and `use` within START_REACH of it, while
+## the foot stands, has him on it; he climbs it to the drum as any pitch.
 ##
 ## THE KEYS ARE THE CLIMB'S while he is up (`Game.aloft`): the move up key takes
 ## him hold to hold. On a ledge he stops, and goes on only on a fresh press, so a
@@ -77,8 +77,9 @@ const RIDE_BOW := 0.25
 ## rung his hands are on, and his middle this far out from the plate.
 const BODY_DROP := 1.35
 const BODY_OUT := 0.45
-## How near a crater's rim (Treads.rim_r) he may stand and still set off, tiles.
-const RIM_REACH := 6.0
+## How near the foot of a planted foot's cable he may stand and take it, tiles:
+## the crater's floor ring and the step above it, where the pad leaves room.
+const START_REACH := 6.0
 ## Real seconds after the press that began a climb during which `use` is spent.
 const SETTLE := 0.4
 
@@ -87,7 +88,7 @@ var leg_view: LegScript
 ## The colossi's walker being climbed, as its index in their view's defs.
 var walker := -1
 var _cam: Camera3D
-## The foot a climb can begin on from where he stands now, or {} (`_watch_rim`,
+## The foot whose cable he can take from where he stands now, or {} (`_watch_cable`,
 ## one of `_feet_in_treads`).
 var _rim: Dictionary = {}
 var _hinted := false
@@ -217,7 +218,7 @@ func _process(delta: float) -> void:
 	var c := _colossi()
 	if climb == null:
 		leg_view.update(null, null, {}, {})
-		_watch_rim(use_edge)
+		_watch_cable(use_edge)
 		_cost_us = Time.get_ticks_usec() - t0
 		return
 	if c == null or walker < 0:
@@ -332,10 +333,10 @@ static func _hint(key: StringName) -> void:
 
 
 ## Where a climb can begin, and the press that begins it.
-func _watch_rim(use_edge: bool) -> void:
+func _watch_cable(use_edge: bool) -> void:
 	_rim = {}
 	for f: Dictionary in _feet_in_treads():
-		if bool(f.planted) and _at_rim(f.pads, game.player.pos):
+		if bool(f.planted) and _cable_foot(f).distance_to(game.player.pos) <= START_REACH:
 			_rim = f
 			break
 	if _rim.is_empty():
@@ -349,12 +350,43 @@ func _watch_rim(use_edge: bool) -> void:
 		_begin(WalkerClimb.begin(int(_rim.leg), game.world.seed_value))
 
 
-## Whether `here` is on or inside the rim of a crater a pad of `pads` stands in.
-static func _at_rim(pads: Array, here: Vector2) -> bool:
-	for p: Vector3 in pads:
-		if Vector2(p.x, p.y).distance_to(here) <= Treads.rim_r(p) + RIM_REACH:
-			return true
-	return false
+## Where the cable of foot `f` (one of `_feet_in_treads`) comes down, on this
+## frame's pose: the ground under its first hold, tile space.
+func _cable_foot(f: Dictionary) -> Vector2:
+	var c := _colossi()
+	var pose: Dictionary = c.view.poses[int(f.walker)]
+	if pose.is_empty():
+		return Vector2.INF
+	var line := WalkerClimb.begin(int(f.leg), game.world.seed_value)
+	var bone: Transform3D = (pose.bones as Array)[line.bone_index(0)]
+	var at := bone * line.surface_at(c.view.defs[int(f.walker)], 0, 0.0, 0.0, 0.0)
+	return Vector2(at.x, at.z)
+
+
+const TOUR_PLACES: Array[String] = ["climb:cable", "climb:lip"]
+
+
+## `walkto at:climb:cable`: the foot of the nearest planted foot's cable; and
+## `at climb:lip`: on the lip of the crater it hangs into, above it, so the walk
+## down to it is his own.
+func tour_place(what: String) -> Vector2:
+	var lip := what == "climb:lip"
+	if not what in TOUR_PLACES:
+		return Vector2.INF
+	for f: Dictionary in _feet_in_treads():
+		if not bool(f.planted):
+			continue
+		var at := _cable_foot(f)
+		if not lip:
+			return at
+		var pad: Vector3 = (f.pads as Array)[1]
+		var centre := Vector2(pad.x, pad.y)
+		return centre + (at - centre).normalized() * (Treads.rim_r(pad) - LIP_IN)
+	return Vector2.INF
+
+
+## How far in from a crater's rim (Treads.rim_r) `at climb:lip` stands.
+const LIP_IN := 2.0
 
 
 func _spent_elsewhere() -> bool:
@@ -377,7 +409,7 @@ func body_frame(def: RefCounted, pose: Dictionary) -> Transform3D:
 	var bone: Transform3D = (pose.bones as Array)[climb.bone_index(climb.pitch)]
 	var f := LegModel.hold_frame(def, climb, climb.pitch, climb.hold)
 	if climb.state == WalkerClimb.CLIMB and climb.busy > 0.0 and climb.hold + 1 < climb.holds_in(climb.pitch):
-		var t := 1.0 - climb.busy / (float(WalkerClimb.HOLD_EVERY) / Climb.RATE)
+		var t := 1.0 - climb.busy / WalkerClimb.move_secs(climb.pitch)
 		f = f.interpolate_with(LegModel.hold_frame(def, climb, climb.pitch, climb.hold + 1), smoothstep(0.0, 1.0, t))
 	return bone * f
 
@@ -394,7 +426,7 @@ func _hang(f: Transform3D) -> void:
 	model.global_transform = Transform3D(Basis(-b.z, b.y, b.x), f.origin - b.y * BODY_DROP + b.z * BODY_OUT)
 	var moving := climb.busy > 0.0 and climb.state == WalkerClimb.CLIMB
 	if moving and not _moving:
-		model.play_action(&"climb", float(WalkerClimb.HOLD_EVERY) / Climb.RATE)
+		model.play_action(&"climb", WalkerClimb.move_secs(climb.pitch))
 	elif not moving and (_moving or not model.busy()):
 		model.pose_at(&"climb", 0.2)
 	_moving = moving
@@ -496,7 +528,8 @@ func tour_forget(what: StringName) -> void:
 
 
 ## What a tour asks the climb. Live: `climbing`, `climb_patch` (the leg under
-## him is drawn), `climb_rim` (he stands where a climb begins), `climb_ready` (on
+## him is drawn), `climb_cable` (he stands at a cable's foot, where a climb
+## begins), `climb_ready` (on
 ## a ledge, breath full, and his leg will stand for the next section: the gait
 ## read as a climber reads it), `climb_riding`, `climbed` (a climb this run is
 ## over and he is on the ground); latched until asked, `climb:EVENT`
@@ -510,7 +543,7 @@ func tour_seen(what: StringName) -> bool:
 			return climb != null
 		&"climb_patch":
 			return leg_view.drawn
-		&"climb_rim":
+		&"climb_cable":
 			return not _rim.is_empty()
 		&"climb_ready":
 			return _ready_to_go()
@@ -531,7 +564,7 @@ func _ready_to_go() -> bool:
 	var c := _colossi()
 	if c == null or walker < 0:
 		return false
-	var section := float(WalkerClimb.STANCE_EVERY) / Climb.RATE + 2.0
+	var section := WalkerClimb.move_secs(climb.pitch) * float(WalkerClimb.STANCE_EVERY / WalkerClimb.HOLD_EVERY) + 2.0
 	var rate: float = game.clock.rate if game.clock != null else Tuning.MINUTES_PER_SECOND
 	var m: float = c.call(&"minutes")
 	for ahead: float in [0.0, section * 0.5, section]:
@@ -543,7 +576,7 @@ func _ready_to_go() -> bool:
 
 func stats_line() -> String:
 	if climb == null:
-		return "\nworld climb: none%s" % (", at a planted foot's rim" if not _rim.is_empty() else "")
+		return "\nworld climb: none%s" % (", at a planted foot's cable" if not _rim.is_empty() else "")
 	var at := _cam.global_position if _cam != null else Vector3.ZERO
 	var out := "\nworld climb: pitch %s hold %d of %d, %s, breath %.0f, patch %d tris (%s), %d uploaded, eye %.0f m up at %.0f,%.0f, %d us" % [
 		WalkerClimb.PITCHES[climb.pitch].id, climb.hold, climb.holds_in(climb.pitch),
