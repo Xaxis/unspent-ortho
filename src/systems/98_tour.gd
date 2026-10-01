@@ -1981,9 +1981,12 @@ func _say_state(when: String) -> void:
 	for s in game.systems:
 		if s.name == "42_target" and s.get("locked") != null:
 			lock = String((s.get("locked") as TargetSubject).kind)
-	print("tour %s state %s: game #%d booted seed %d hour %.2f weather '%s' held '%s' give %s | now %s held '%s' sky '%s' lock %s bodies %d" % [
+	# Hunger as minutes past the last meal's reach (Body.fed_until): a tour that
+	# eats until a goal turns hangs on it, and the clock alone does not say it.
+	var past_fed := game.clock.minutes - game.body.fed_until if game.clock != null and game.body != null else 0.0
+	print("tour %s state %s: game #%d booted seed %d hour %.2f weather '%s' held '%s' give %s | now %s held '%s' sky '%s' lock %s bodies %d hunger %+.0f min past fed" % [
 		_name, when, game.get_instance_id(), o.seed_value, o.hour, o.weather, o.held, str(o.give),
-		game.clock.label() if game.clock != null else "?", held, String(Weather.forced_kind), lock, alive])
+		game.clock.label() if game.clock != null else "?", held, String(Weather.forced_kind), lock, alive, past_fed])
 
 
 ## The keys a player would hold to walk `dir` in the world, read the way the game
