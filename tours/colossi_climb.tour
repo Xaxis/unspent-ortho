@@ -1,0 +1,96 @@
+# THE CLIMB UP THE HALF-BROKEN WALKER (ROADMAP slice 3 step 7, 43_climb), by
+# real keys, from the tread to the enclave. The straddling walker is staged five
+# world minutes after its foot came down in this world's first tread; on a
+# crater's lip `use` puts him on the ankle's drum, and the move up key takes him
+# up, ledge to ledge, five pitches: the drum, below the knee, the thigh, near the
+# hip, and the hub's rim. He climbs as a climber reads the gait: on each ledge he
+# rests to a full breath and sets off only when his leg will stand for the next
+# section (`climb_ready`), and between pitches he rides up inside the bone while
+# the eye goes up the outside of the leg. At the rim the panel in the crown is
+# read, and listening to it he meets the enclave. The whole of it is about a
+# world day, some fifteen real minutes, dawn to the next night.
+#   TOUR_TIMEOUT=2400 tools/tour.sh tours/colossi_climb.tour --seed=1 --place=tread0 --colossus=2@tread0+5 --hour=6 --weather=clear:0 --stats
+coast calm
+await colossus_tread 30
+near colossus_rim
+await climb_rim 5
+wait 2
+shot 00-at-the-rim with colossus_tread,climb_rim
+tap use
+await climbing 3
+await climb_patch 10
+wait 1
+shot 01-on-the-drum with climbing,climb_patch
+perf stats begin drum
+wait 2
+perf stats end drum
+# The drum, ledge to ledge, until its top takes him into the bone.
+try 12
+release move_up
+until climb_ready 240
+hold move_up
+await climb:ledge 60
+release move_up
+await climb:rode 0.1
+end
+wait 8
+shot 02-riding-up-the-shin with climb_riding
+until climb_ready 240
+shot 03-below-the-knee with climbing,climb_patch
+try 12
+release move_up
+until climb_ready 240
+hold move_up
+await climb:ledge 60
+release move_up
+await climb:rode 0.1
+end
+wait 8
+shot 04-riding-up-the-thigh with climb_riding
+until climb_ready 240
+shot 05-on-the-thigh with climbing,climb_patch
+perf stats begin thigh
+wait 2
+perf stats end thigh
+try 16
+release move_up
+until climb_ready 240
+hold move_up
+await climb:ledge 60
+release move_up
+await climb:rode 0.1
+end
+until climb_ready 240
+shot 06-near-the-hip with climbing,climb_patch
+try 12
+release move_up
+until climb_ready 240
+hold move_up
+await climb:ledge 60
+release move_up
+await climb:rode 0.1
+end
+until climb_ready 240
+shot 07-under-the-hubs-rim with climbing,climb_patch
+perf stats begin hatch
+wait 2
+perf stats end hatch
+try 12
+release move_up
+until climb_ready 240
+hold move_up
+await climb:ledge 60
+release move_up
+await climb:at_hub 0.1
+end
+await talking 5
+wait 1
+shot 08-the-panel-in-the-crown with talking
+tap use
+await beat:enclave_met 5
+wait 1
+shot 09-it-counts-him with talking
+tap use
+await climb:down 10
+wait 2
+shot 10-back-at-the-rim with climbed

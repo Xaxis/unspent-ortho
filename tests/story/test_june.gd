@@ -206,6 +206,8 @@ func test_the_goal_line_walks_from_the_archive_to_june() -> void:
 	Story.hear(StoryCrossing.CROSSED)
 	@warning_ignore("return_value_discarded")
 	Story.meet(&"otto")
+	# The archive's own hop (test_archive walks it): shown an order, long since felt.
+	Story.beat(&"tradecraft", -INF)
 	_hop(g, &"covenant", "the archive's man met: the Covenant's seat")
 	Story.beat(&"covenant_speaker")
 	_hop(g, &"speaker", "the Speaker heard of: her name")

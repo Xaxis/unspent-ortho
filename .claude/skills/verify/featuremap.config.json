@@ -261,6 +261,13 @@
   },
   {
    "kind": "system",
+   "label": "43_climb",
+   "entry": "src/systems/43_climb.gd",
+   "reach": "tools/tour.sh tours/colossi_climb.tour",
+   "area": "world-look"
+  },
+  {
+   "kind": "system",
    "label": "43_cracked_roof",
    "entry": "src/systems/43_cracked_roof.gd",
    "reach": "tools/tour.sh tours/cracked_roof.tour --seed=7 --realm=underground --hour=12 --fit=boots_magnet --config=unharmed",

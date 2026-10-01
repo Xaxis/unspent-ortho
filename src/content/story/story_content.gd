@@ -5675,6 +5675,8 @@ const LEAD := {
 	&"raft": "A raft, for water no road crosses: driftwood, a piece of plate, rags and an edge.",
 	&"crossing": "Across at the narrows, for the archive on the far shore: put the raft in there.",
 	&"archive": "The war's archive, for how it started: the survey marks it across the water.",
+	# The archive (slice 3 step 4): the archive's man met, until he has shown one.
+	&"orders": "The war's orders, for who sent them: ask the archivist to show you one.",
 	# June (slice 3 step 3), each said until the beat that ends it lands.
 	&"covenant": "The Covenant's seat, for whoever speaks for it: ask its people, or listen.",
 	&"speaker": "The Speaker's name, which nobody inside will say: ask someone who left.",
@@ -5686,6 +5688,8 @@ const LEAD := {
 	&"anvil": "The Candlestick, for its core and the holding's cell: end it at the strike field.",
 	# Slice 3 step 5, after covenant_fed, until the mended plate is carried.
 	&"mend": "Mended plate, for the plate you've spent: a harvester's iron, at a bench.",
+	# The slice's last hop, held into slice 4: said only while no keeper has a lead.
+	&"relay": "The relay below, for what is down there: its shaft is across the water.",
 	# Once the plan has taken somebody out of a village that saw him (or he has
 	# seen the price), until a holding of his stands: Guide.way_goal, Holding.
 	# Where only the price has landed, HOLDING_MOVE.lead_burned says it instead,
@@ -5715,6 +5719,8 @@ const TOLD := {
 	# Teague's word for the second keeper's ground: a StoryMap place (the anvil's
 	# lair nearest home), not a cast slot.
 	&"anvil_named": {"place": &"lair:anvil", "word": "the strike field"},
+	# Otto's lead, the leg after (slice 4): the shaft down to the relay, on another body.
+	&"war_relay": {"place": &"the_shaft", "word": "the shaft"},
 }
 
 # Places marked on the survey only while the pinned goal is theirs (Guide
@@ -5993,6 +5999,24 @@ const HOLDING_MOVE := {
 	"gone": "They came to the doors in the night. In the morning, nobody was behind them.",
 	# LEAD.holding, where the price has landed and nobody has yet been taken.
 	"lead_burned": "Beds at the holding, for the people a burned village leaves: set down its first piece.",
+}
+
+# --- the climb up a walker (43_climb, WalkerClimb) ---------------------------
+# The game's register only: nothing on the way up names what waits at the crown
+# (the_enclave does). The two hints are [line, actions] as Guide.HINTS; the rest
+# are said on the glass as they happen. `climb_ride` is keyed by the pitch just
+# climbed (WalkerClimb.PITCHES); the hub's own pitch ends at the panel, and has none.
+const CLIMB := {
+	&"climb_begin": ["The foot is down, for now. %s climbs it.", [&"use"]],
+	&"climb_swing": ["The leg swings. Hold on until it sets down.", []],
+	&"climb_slipped": "Your arms give out. You slide to the ledge below.",
+	&"climb_fell": "The leg sets down, and your arms give out. You come to on a cable.",
+	&"climb_ride": {
+		&"drum": "Inside the shin, a lift. It runs only while the foot is down.",
+		&"knee": "Up through the knee on rungs. You feel each step in your hands.",
+		&"thigh": "The thigh is hollow. A lift climbs it in the dark, between strides.",
+		&"hip": "Through the hip, on rungs. It is warm in here, and something hums.",
+	},
 }
 
 # --- what a machine is for (channel 3: machines, by being watched) -------------
