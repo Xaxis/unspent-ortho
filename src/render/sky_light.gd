@@ -501,7 +501,7 @@ func _ready() -> void:
 	figure_light.light_color = FIGURE_FILL_COLOR
 	# From over the camera's shoulder and a little from the key's side, so every
 	# face the camera sees takes it and the figure still shows two values.
-	figure_light.rotation_degrees = Vector3(-42.0, 20.0, 0.0)
+	figure_light.rotation_degrees = FIGURE_TURN
 	figure_light.light_energy = 0.0
 	# It lights FIGURES and nothing else -- including nothing in the air. A
 	# directional light injects into volumetric fog whatever its cull mask says,
@@ -831,9 +831,31 @@ func compose() -> void:
 		# A lid counts as low light for this, whatever the clock says: under one
 		# the street IS as dark as a night, and the player has to read at any hour.
 		figure_light.light_energy = FIGURE_FILL * maxf(low_light(hour), maxf(closed, shut))
+		_figure_aloft()
 		figure_light.visible = figure_light.light_energy > 0.01
 	if env != null:
 		_drive_environment(env.environment, hour, night, ns, shut)
+
+
+## UP A WALKER'S LEG HE IS HUNG IN ITS SHADE. The plate round him is lit as form
+## up close (colossus_leg_model.gd NEAR_LIFT) and he is not part of it, so on a
+## face turned from the sun he came out a black cut-out on a lit wall (the drum
+## at 13:00). While the eye looks out (LOOKS_OUT) his fill is at least
+## FIGURE_ALOFT and comes from over the eye's own shoulder, as it does from over
+## the play camera's.
+const FIGURE_ALOFT := 0.6
+const FIGURE_TURN := Vector3(-42.0, 20.0, 0.0)
+
+
+func _figure_aloft() -> void:
+	var c := _cam()
+	if c == null or not c.has_meta(LOOKS_OUT):
+		figure_light.rotation_degrees = FIGURE_TURN
+		return
+	figure_light.light_energy = maxf(figure_light.light_energy, FIGURE_FILL * FIGURE_ALOFT)
+	var f := -c.global_transform.basis.z
+	var to := (f + Vector3.DOWN * 0.4).normalized()
+	figure_light.global_basis = Basis.looking_at(to, Vector3.UP if absf(to.y) < 0.98 else c.global_transform.basis.y)
 
 
 ## The camera that is really drawing, or null (headless, or before the rig is in
