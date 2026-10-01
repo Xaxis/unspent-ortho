@@ -366,21 +366,31 @@ vec3 ground_wear(int m, vec3 c, vec2 wp, vec2 px) {
 	return c;
 }
 
-// THE COAST'S SWARD, coloured from the height the sun lights (shore_cushion):
-// the heather's cushions darker than the grass between them and the odd one in
-// bloom along its rim, the turf's tussocks a little paler on their crowns where
-// the grazing leaves the dead tips. No stroke is drawn on either: the sun
-// draws the cushion, and the colour only says what it is made of.
-vec3 shore_sward(vec3 c, vec2 wp, vec2 px, int grown) {
-	float h = shore_cushion(wp, grown);
+// THE COAST'S SWARD, coloured from the height the sun lights (shore_cushion).
+// On the heath the open ground is grass, cropped short and paler than any
+// heather, and the heather lies on it in drifts, darker, with the odd cushion
+// in bloom along the fringe; the turf's tussocks are a little paler on their
+// crowns where the grazing leaves the dead tips. No stroke is drawn on either:
+// the sun draws the cushion, and the colour only says what it is made of.
+// SHORE_GRASS is the coast's grass wash (GroundColors.wash, Ground.GRASS), so
+// the heath's open ground is the turf it meets at its edge.
+const vec3 SHORE_GRASS = vec3(0.2849, 0.4092, 0.2827);
+
+vec3 shore_sward(vec3 c, vec3 wp, vec2 px, int grown) {
+	float h = shore_cushion(wp.xz, wp.y, grown);
 	if (grown == M_SHORE_HEATH) {
-		c = mix(up(c, 0.22), dn(c, 0.5), smoothstep(0.0, 0.6, h));
-		if (h > 0.05 && h < 0.3 && ink_hash(px) < 0.3 && ink_vnoise(wp * 0.07 + 3.0) > 0.7) {
+		vec3 grass = up(mix(c, SHORE_GRASS, 0.7), 0.12);
+		// Deep in the gaps between cushions, paler on their crowns, and through it
+		// the sprigs the sun catches, so a drift has a grain and not a stain.
+		vec3 heather = mix(dn(c, 0.9), dn(c, 0.15), smoothstep(0.3, 1.0, h));
+		heather = mix(heather, up(heather, 0.35), step(ink_hash(px + 5.1), 0.18 * h));
+		c = mix(grass, heather, smoothstep(0.02, 0.14, h));
+		if (h > 0.05 && h < 0.3 && ink_hash(px) < 0.3 && ink_vnoise(wp.xz * 0.07 + 3.0) > 0.7) {
 			c = ink_hash(px + 1.3) < 0.5 ? BLOOM2 : BLOOM3;
 		}
 		return c;
 	}
-	return mix(dn(c, 0.14), up(c, 0.2), smoothstep(0.15, 0.9, h));
+	return mix(dn(c, 0.06), up(c, 0.12), smoothstep(0.15, 0.9, h));
 }
 
 // The ground's own marks. wp: world xz. Marks are sparse: a wash stays a wash,
@@ -2800,7 +2810,7 @@ void fragment() {
 	}
 	if (mark_ground(m)) {
 		c = midden ? midden_floor(c, world_pos.xz, px, unh)
-			: (sward > 0 ? shore_sward(c, world_pos.xz, px, grown) : ground_mark(m, c, world_pos.xz, px, emit, unh));
+			: (sward > 0 ? shore_sward(c, world_pos, px, grown) : ground_mark(m, c, world_pos.xz, px, emit, unh));
 		if (m == M_CITY_FLOOR || m == M_OVERGROWN) {
 			c = city_floor(c, world_pos, px);
 		}
