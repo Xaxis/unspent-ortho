@@ -66,7 +66,7 @@ and cover against raids). Proof tour: `tours/holdfast.tour`, from slice 1's end.
    the archive across the water: slice 3's lead.
 8. [ ] **Proof** (all). The tour plays the slice unassisted. ★
 
-## Slice 3 — across the water (planned 2026-09-29; not started)
+## Slice 3 — across the water (planned 2026-09-29)
 
 The raft to the Covenant's seat and the war's archive (one body, 704 and 1006 tiles
 from the spawn on seed 1; the narrowest water is 130 tiles, from near the camp).
@@ -78,8 +78,8 @@ Proof tour: `tours/across.tour`, from slice 2's end.
    shore nearest the far body; a 130-tile crossing proved by play (time, hull).
 2. [x] **The Covenant's seat** (A). A guaranteed `covenant_speaker` door at
    the_covenant; `covenant_fed`, `covenant_price`; Solis: `teague_sold`, `solis_made`.
-3. [ ] **June** (A). `june_named`, `june_met`, `june_knew`, `echo_kept`, `hannah_died`.
-4. [ ] **The archive** (A). Otto: `forged_order`, `tradecraft`; `war_relay` is slice
+3. [x] **June** (A). `june_named`, `june_met`, `june_knew`, `echo_kept`, `hannah_died`.
+4. [x] **The archive** (A). Otto: `forged_order`, `tradecraft`; `war_relay` is slice
    4's lead (the relay below, a shaft down), with a survey pin and a goal.
 5. [x] **Mended gear** (B). The slice's make, with its reason said at the Covenant.
 6. [ ] **The drowned city** (C). The third landscape, on the leg-1 body. Worldgen: prove
@@ -91,7 +91,7 @@ Proof tour: `tours/across.tour`, from slice 2's end.
    its craters. The climb stops at the hub. On main: the climb core (a), the leg model
    and the enclave's talk (e). Open: the pitches set on the body, the render node (b), the
    climb system to `enclave_met` (d), getting on from the tread (c), the limp gait (f, a GEN).
-8. [ ] **Back at the camp** (A). `crew_war` / `dace_left`, `rook_told`.
+8. [x] **Back at the camp** (A). `crew_war` / `dace_left`, `rook_told`.
 9. [x] **Fix** (A). `hale_log` locked until `war_relay`.
 10. [ ] **Proof** (all). The tour plays the slice by the goal line alone. ★
 

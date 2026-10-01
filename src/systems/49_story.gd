@@ -45,6 +45,8 @@ var _testified := false
 var _target: Node
 
 var _use_down := false
+## The frame whose press of `use` the words on the glass took (`use_spent`).
+var _spent_frame := -10
 var _up_down := false
 var _down_down := false
 var _back_down := false
@@ -201,6 +203,8 @@ func _process(delta: float) -> void:
 	var use_pressed := use_down and not _use_down
 	_use_down = use_down
 	if view.showing():
+		if use_pressed:
+			_spent_frame = Engine.get_process_frames()
 		_read_talk_keys(use_pressed)
 		return
 	# A KEY ALREADY DOWN AS THE WORDS OPEN IS NOT A PRESS ON THEM. The talk's own
@@ -223,9 +227,16 @@ func _process(delta: float) -> void:
 ## no line here.
 func _use_already_spent() -> bool:
 	for sys in game.systems:
-		if sys.has_method(&"use_spent") and bool(sys.call(&"use_spent")):
+		if sys != self and sys.has_method(&"use_spent") and bool(sys.call(&"use_spent")):
 			return true
 	return false
+
+
+## Whether this frame's press of `use` was the words': the press that picks a
+## reply or puts a page or a conversation down closes the glass before survival,
+## numbered after, reads the key, and was eating the best food carried by a fire.
+func use_spent() -> bool:
+	return _spent_frame == Engine.get_process_frames()
 
 
 # --- starting ------------------------------------------------------------------
