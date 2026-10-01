@@ -67,6 +67,12 @@ func at(x: float, y: float, z: float, rot_y: float = 0.0, s: Vector3 = Vector3.O
 
 ## One triangle, counter-clockwise seen from the front. Flat normal.
 func tri(a: Vector3, b: Vector3, c: Vector3, col: Color) -> MeshKit:
+	return tri_shaded(a, b, c, col, col, col)
+
+
+## The same with a colour at each corner, which the face blends between: a lit
+## face that falls off toward its frame instead of burning at one flat value.
+func tri_shaded(a: Vector3, b: Vector3, c: Vector3, ca: Color, cb: Color, cc: Color) -> MeshKit:
 	if _has_xf:
 		a = _xf * a
 		b = _xf * b
@@ -76,11 +82,13 @@ func tri(a: Vector3, b: Vector3, c: Vector3, col: Color) -> MeshKit:
 	verts.append(a)
 	verts.append(c)
 	verts.append(b)
+	colors.append(ca)
+	colors.append(cc)
+	colors.append(cb)
 	var uv := Vector2(style + style2 * 16, style_blend)
 	var uv2 := Vector2(sway, sway_phase)
 	for i in 3:
 		normals.append(n)
-		colors.append(col)
 		uvs.append(uv)
 		uv2s.append(uv2)
 		custom0.append(wash2.r)
@@ -93,6 +101,12 @@ func tri(a: Vector3, b: Vector3, c: Vector3, col: Color) -> MeshKit:
 func quad(a: Vector3, b: Vector3, c: Vector3, d: Vector3, col: Color) -> MeshKit:
 	tri(a, b, c, col)
 	tri(a, c, d, col)
+	return self
+
+
+func quad_shaded(a: Vector3, b: Vector3, c: Vector3, d: Vector3, ca: Color, cb: Color, cc: Color, cd: Color) -> MeshKit:
+	tri_shaded(a, b, c, ca, cb, cc)
+	tri_shaded(a, c, d, ca, cc, cd)
 	return self
 
 

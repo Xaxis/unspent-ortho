@@ -169,3 +169,25 @@ func test_a_flash_never_makes_a_vent_burn_harder() -> void:
 		lt(as_flash, as_daylight, "and dims it instead of reading it as noon (%.2f vs %.2f)" % [as_flash, as_daylight])
 	gt(Lights.burning_level(PropKind.VENT, 1.0, 0.1), calm,
 		"the bug had teeth: a flash read as daylight burns brighter than the night")
+
+
+## A vent is fire at every hour, and fire is never cold.
+##
+## Its daylight target was a colour of its own, (1.16, 1.05, 0.86), which
+## compensate() divides by the sky's tint per channel. Under the warm dusk sky
+## that division turned it round: at 18:30 the light came out (0.87, 1.11, 0.90),
+## green over red, and the Burning's vents laid cyan-white discs and lit the
+## player cold. Walked across the evening on the real sky, red leads, green
+## follows it, blue is least, at every step.
+func test_a_vents_light_stays_warm_through_the_dusk() -> void:
+	var sky := SkyLight.new()
+	for i in 21:
+		var h := 16.0 + i * 0.25
+		sky.set_hour(h)
+		var dark := Lights.pool_dark(h)
+		var c := Lights.compensate(Lights.burning_warm(PropKind.VENT, dark, sky.last_tint),
+			sky.last_tint, sky.last_energy) * Lights.burning_level(PropKind.VENT, 0.6, dark)
+		if c.length() < 1e-3:
+			continue
+		check(c.x >= c.y and c.y >= c.z, "the vent's light at %.2f is not warm: %s" % [h, c])
+	sky.free()
