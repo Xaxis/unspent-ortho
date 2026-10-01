@@ -13,6 +13,7 @@ const _COMMON := """
 render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled, fog_disabled%s;
 #include "res://src/render/sky.gdshaderinc"
 #include "res://src/render/ink.gdshaderinc"
+#include "res://src/render/matter.gdshaderinc"
 
 uniform int mode = 0;
 uniform float progress = 0.0;
@@ -404,9 +405,9 @@ vec3 vapour_lit(vec3 c) {
 	return min(c, sky_apply(c, wp, TIME) * (1.0 + mix(VAPOUR_DARK, VAPOUR_SUN, day)));
 }
 
-// Breath in the cold, steam off hot ground: the one mark that is neither ink nor
-// paper. It has to read on snow AND on wet rock, so it is held by its own rim
-// the way a person is (docs/LOOK.md): a pale core of loose pixels inside a
+// Breath in the cold: one of the two marks that are neither ink nor paper. It
+// has to read on snow AND on wet rock, so it is held by its own rim the way a
+// person is (docs/LOOK.md): a pale core of loose pixels inside a
 // one-pixel contour in the cue's own mid tone. Drawn in ink on the shaded side,
 // as dust is, three specks of breath on a white snowfield read as soot.
 vec4 vapour(vec2 p, vec2 px, float pw, float pr) {
@@ -431,6 +432,53 @@ vec4 vapour(vec2 p, vec2 px, float pw, float pr) {
 		return vec4(0.0);
 	}
 	return vec4(vapour_lit(col_a), 1.0);
+}
+
+// Heat off hot ground: two wavering lines rising, the sign every hand draws for
+// heat, in the cue's own ember. Drawn as breath's vapour it was paled to white,
+// and a white cloud at the feet reads as breath in the cold, on the one
+// landscape that never is. Held by a rim one pen wide in the ember's dark step,
+// so the lines read on pale ash and on black clinker alike, and lit as breath is
+// (vapour_lit): at noon it lands on its own paint, and at night it is no lamp.
+// It goes out through matter_albedo, so the ember on screen is the palette's:
+// written raw, Forward+ reads it as linear light and the ember came out cream.
+// The waves travel up the line as it lifts, and its foot breaks off in dashes as
+// it thins: heat leaving the ground, not a squiggle lying on it.
+vec4 heat(vec2 p, float pw, float pr) {
+	// How far a line sways off its own upright, and how tight its waves are, in
+	// quad units: a little over one wave the height of the mark.
+	const float SWAY = 0.15;
+	const float WAVE = 4.2;
+	float e = 1e5;
+	for (int i = 0; i < 2; i++) {
+		float fi = float(i);
+		float h = ink_hash(vec2(seed * 5.3 + fi, 11.0));
+		float bx = (fi - 0.5) * 0.8 + (h - 0.5) * 0.1;
+		// Head and foot in quad units (+1 is the bottom): a stub on the ground
+		// that lifts away from it.
+		float lift = clamp(pr + (h - 0.5) * 0.2, 0.0, 1.0);
+		float top = mix(0.25, -0.92, sqrt(lift));
+		float foot = mix(0.97, 0.4, lift);
+		float ph = seed * 2.0 + h * TAU + pr * 7.0;
+		float y = clamp(p.y, top, foot);
+		float off = p.x - (bx + SWAY * sin(y * WAVE + ph));
+		float slope = SWAY * WAVE * cos(y * WAVE + ph);
+		float dx = abs(off) / sqrt(1.0 + slope * slope) / pw;
+		float dy = abs(p.y - y) / pw;
+		float t = clamp((p.y - top) / max(foot - top, 1e-3), 0.0, 1.0);
+		if (pr > 0.55 && ink_hash(vec2(floor(p.y / pw / 3.0), seed + fi * 7.0)) < (pr - 0.55) * 2.0 * t) {
+			continue;
+		}
+		// Heaviest at the foot, where the heat leaves the ground.
+		e = min(e, length(vec2(dx, dy)) - mix(0.4, 1.0, t));
+	}
+	if (e < 0.0) {
+		return vec4(matter_albedo(vapour_lit(col_a)), 1.0);
+	}
+	if (e < 1.0) {
+		return vec4(matter_albedo(vapour_lit(col_b)), 1.0);
+	}
+	return vec4(0.0);
 }
 
 // A reading held on something: four ruled corner ticks framing it, drawn in
@@ -475,6 +523,7 @@ void fragment() {
 	else if (mode == 10) { o = tell_line(p, pr); }
 	else if (mode == 11) { o = tell_drop(p, px, pr); }
 	else if (mode == 12) { o = tell_shade(p, px, pr); }
+	else if (mode == 13) { o = heat(p, pw, pr); }
 	if (o.a < 0.5) {
 		discard;
 	}
@@ -599,6 +648,7 @@ const TELL_RING := 9
 const TELL_LINE := 10
 const TELL_DROP := 11
 const TELL_SHADE := 12
+const HEAT := 13
 
 ## World units per screen pixel of the BASE (1920x1080; the fight system keeps it
 ## to the camera's own, `40_fight._keep_texel`). Marks are never smaller on screen
@@ -928,6 +978,41 @@ static func breath(parent: Node, at: Vector3, col: Color, size: float, seconds: 
 	size = at_least(size, VAPOUR_PX)
 	var mi := _mark(parent, at, size, VAPOUR, &"over", seed_value, col.lightened(0.86), col.lightened(0.34))
 	_run(mi, seconds, Vector3(drift.x, size * 0.6, drift.y))
+
+
+## Heat lifting off the ground about the feet: a pair of wavering ember lines
+## either side of the body (`heat` in the shader), across the view so neither
+## lies on the figure. `col` is drawn as it is, never paled: paled, heat was a
+## white cloud at the feet and read as breath. Its rim is the colour's own dark
+## step. Under the close eye the lines face the lens depth-tested and keep their
+## world size, so the body hides what stands behind it; from above they are held
+## to the frame's floor, as breath is.
+static func shimmer(parent: Node, at: Vector3, col: Color, size: float, seconds: float, seed_value: int) -> void:
+	if not _ok(parent):
+		return
+	var close := close_eye(parent)
+	var cam := parent.get_viewport().get_camera_3d()
+	var across := Vector3.RIGHT
+	if cam != null:
+		var x := cam.global_transform.basis.x
+		if Vector2(x.x, x.z).length() > 0.01:
+			across = Vector3(x.x, 0.0, x.z).normalized()
+	if not close:
+		size = at_least(size, VAPOUR_PX)
+	for k in 2:
+		var side := across * (SHIMMER_CLEAR + size * 0.3) * (1.0 if k == 0 else -1.0)
+		var mi := _mark(parent, at + side + Vector3(0.0, size * 0.5 * SHIMMER_TALL, 0.0), size, HEAT,
+			&"among" if close else &"over", seed_value + k * 7, col, col.darkened(0.55))
+		# Taller than it is wide: heat rises.
+		mi.scale.y *= SHIMMER_TALL
+		_run(mi, seconds, Vector3(0.0, size * 0.1, 0.0))
+
+
+## How far either pair of heat lines stands off the body's centre before its
+## own width: a person is about 0.6 across.
+const SHIMMER_CLEAR := 0.42
+## How much taller than wide a pair of heat lines stands.
+const SHIMMER_TALL := 1.6
 
 
 ## Steam off a machine's stack: always the soft puff (`_air`), from any camera.

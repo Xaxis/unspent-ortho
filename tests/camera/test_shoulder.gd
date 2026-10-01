@@ -556,6 +556,53 @@ func test_breath_is_depth_tested_air_at_every_angle() -> void:
 	_done()
 
 
+## HEAT IS EMBER, NOT STEAM, from either camera. Drawn as breath's vapour it was
+## paled to white, and a white cloud at the feet reads as breath in the cold on
+## the one landscape that is never cold. The heat cue's marks are the heat mark,
+## in the cue's own colour untouched, with a darker rim, either side of the body.
+func test_heat_off_the_ground_is_its_own_ember_from_either_camera() -> void:
+	var g := await _make()
+	var cam := g.camera
+	cam.sight_room = Callable()
+	var hz: Node = null
+	for s in g.systems:
+		if s.name == "52_hazards":
+			hz = s
+	check(hz != null, "the hazards system runs")
+	_over_all(g)
+	var ember := HazardCues.colour(&"heat")
+	gt(ember.s, 0.6, "the heat cue's own colour is a saturated ember, not a pale")
+	for close: bool in [false, true]:
+		if close:
+			cam.shoulder = true
+			cam.snap_view()
+			cam.shoulder_yaw = Shoulder.yaw_behind(g.player.facing)
+			_step(cam, 2)
+		hz.call("_draw_cue", &"heat", HazardCues.cue(&"heat"), 0.7)
+		var where := "over the shoulder" if close else "from above"
+		var n := 0
+		var sides := PackedFloat32Array()
+		var right := cam.global_transform.basis.x
+		for c: Node in g.get_children():
+			var mi := c as MeshInstance3D
+			if mi == null or mi.is_queued_for_deletion() or not (mi.material_override is ShaderMaterial):
+				continue
+			var sm := mi.material_override as ShaderMaterial
+			if sm.get_shader_parameter(&"mode") == null and sm.shader != MobFx.PLUME_SHADER:
+				continue
+			n += 1
+			eq(sm.get_shader_parameter(&"mode"), MobFx.HEAT, "%s every heat mark is the heat mark, not breath's vapour or air" % where)
+			var core: Vector3 = sm.get_shader_parameter(&"col_a")
+			var rim: Vector3 = sm.get_shader_parameter(&"col_b")
+			near(core.distance_to(Vector3(ember.r, ember.g, ember.b)), 0.0, 1e-4, "%s its lines are the cue's ember, never paled" % where)
+			lt(Color(rim.x, rim.y, rim.z).get_luminance(), ember.get_luminance(), "%s held by a darker rim" % where)
+			sides.append((mi.global_position - g.player.global_position).dot(right))
+			mi.queue_free()
+		gt(n, 0, "%s the heat cue puts its marks out" % where)
+		check(sides.size() == 2 and sides[0] * sides[1] < 0.0, "%s one pair either side of the body across the view" % where)
+	_done()
+
+
 ## Marks and air put out since the last count, freed as counted: how many, and
 ## how many of them draw over everything (a mark whose shader has no depth test,
 ## or air with its depth test off).
@@ -602,7 +649,7 @@ func test_no_hazard_cue_draws_over_the_body_at_eye_level() -> void:
 	cam.shoulder_yaw = Shoulder.yaw_behind(g.player.facing)
 	_step(cam, 2)
 	_over_all(g)
-	for id: StringName in [&"fumes", &"resonance", &"wet"]:
+	for id: StringName in [&"fumes", &"resonance", &"wet", &"heat"]:
 		hz.call("_draw_cue", id, HazardCues.cue(id), 0.7)
 		var c := _over_all(g)
 		gt(c.x, 0, "%s puts a cue out" % id)
