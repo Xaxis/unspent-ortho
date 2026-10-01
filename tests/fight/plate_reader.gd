@@ -116,13 +116,29 @@ func act() -> void:
 		var g := sim.world.ground_at(floori(at.x), floori(at.y))
 		if keep_off.has(g) or (not keep_on.is_empty() and not keep_on.has(g)):
 			continue
-		if sim.meets(at, m.pos):
+		if sim.meets(at, m.pos) and _gets_on(step):
 			hero.move = step
 			return
 	# Every way on is ground it keeps off (come to up a bank past the flats):
 	# a player walks round, back to where they came at it from. One holding out
 	# on ground (`keep_on`) holds there instead, once it is on it.
 	hero.move = _walk_back() if home.is_finite() and not _holding_out() else Vector2.ZERO
+
+
+## Whether a step `dir` way takes the body on at least half a step's worth: a
+## player sees a bank too high to step, a rock or a wall and turns along it.
+## The level check above looks 0.6 ahead of the middle and passed a step whose
+## corner caught a bank two levels up beside the Reaper's den (seed 1): pressed
+## into it 1.3 s with the run held, its wind sat at the run's floor under a
+## dodge's cost, and every dodge was refused while three bites landed and downed
+## it (test_ways, reader 2: the same frames free and locked, on main too).
+func _gets_on(dir: Vector2) -> bool:
+	var hero := sim.hero
+	var step := dir.normalized() * GETS_ON_STEP
+	var moved := sim.query.move_body(hero.pos, step, hero.radius, null, false, FightSim.HERO_TALL) - hero.pos
+	return moved.dot(dir.normalized()) > GETS_ON_STEP * 0.5
+
+const GETS_ON_STEP := 0.3
 
 
 ## The walk back to `home`: tiles laid once by `_route` and followed, laid again

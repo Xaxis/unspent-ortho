@@ -60,6 +60,13 @@ var _wall_at := 0
 ## specialization), read at each frame's head: a slow frame that compiled some
 ## says so, because nothing a script does can be the cause of that kind.
 var _pipes_at := 0
+## A window's own chunk builds and render times (`stats_begin`): a build count
+## read off the whole run cannot say whether standing still keeps building, and
+## wall-clock frames under vsync come in refreshes, so the GPU's and the render
+## CPU's own times say how near the edge each frame was.
+var _builds_at := 0
+var _gpu := PackedFloat32Array()
+var _cpu := PackedFloat32Array()
 
 
 func setup(g: Game) -> void:
@@ -290,6 +297,10 @@ func _process(_delta: float) -> void:
 		if _windowed:
 			ms = float(now - _wall_at) / 1000.0
 		_ms.append(ms)
+		if _windowed:
+			var rid := get_viewport().get_viewport_rid()
+			_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(rid))
+			_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(rid))
 		var pipes := _pipelines()
 		if ms > P99_MS:
 			var vp := get_viewport()
@@ -358,6 +369,9 @@ func stats_begin() -> void:
 	_pipes_at = _pipelines()
 	_wall_at = Time.get_ticks_usec()
 	_ms = PackedFloat32Array()
+	_gpu = PackedFloat32Array()
+	_cpu = PackedFloat32Array()
+	_builds_at = game.view.build_count if game.view != null else 0
 	_slow_why = PackedStringArray()
 	_driven_worst.fill(0.0)
 	_driven_total.fill(0.0)
@@ -377,7 +391,7 @@ func stats_begin() -> void:
 ## Every line starts `tour ` because tools/tour.sh forwards only those.
 func stats_end(label: String, raw: bool) -> void:
 	var block := frame_line(_ms, false) + "\nworld slow frames by cost: " + " ".join(_slow_why) \
-		+ _driven_line() + _proc_line() + _mean_line() + _own_lines()
+		+ _window_line() + _driven_line() + _proc_line() + _mean_line() + _own_lines()
 	if raw:
 		var out := PackedStringArray()
 		for v: float in _ms:
@@ -488,6 +502,25 @@ static func _render_cpu(view: WorldView) -> String:
 		return "unmeasured"
 	var ms := RenderingServer.viewport_get_measured_render_time_cpu(vp.get_viewport_rid())
 	return "%.2f ms" % ms if ms > 0.0 else "unmeasured"
+
+
+## What the window drew and built: chunk builds inside it, the last frame's draws
+## and primitives, and the renderer's own GPU and CPU times at p50 and p95.
+func _window_line() -> String:
+	var v: WorldView = game.view
+	if v == null:
+		return ""
+	var gpu := Array(_gpu)
+	var cpu := Array(_cpu)
+	gpu.sort()
+	cpu.sort()
+	var at := func(a: Array, q: float) -> float: return float(a[clampi(int(q * (a.size() - 1)), 0, a.size() - 1)]) if not a.is_empty() else 0.0
+	return "\nworld window: chunk builds %d, chunks %d (parked %d), draw calls %d, primitives %d (shadow %d), gpu p50 %.1f p95 %.1f ms, render cpu p50 %.1f p95 %.1f ms" % [
+		v.build_count - _builds_at, v.chunk_count(), v.parked_count(),
+		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+		v.get_viewport().get_render_info(Viewport.RENDER_INFO_TYPE_SHADOW, Viewport.RENDER_INFO_PRIMITIVES_IN_FRAME),
+		at.call(gpu, 0.5), at.call(gpu, 0.95), at.call(cpu, 0.5), at.call(cpu, 0.95)]
 
 
 ## The frame budgets, and docs/DESIGN.md is why each one is the number it is. The

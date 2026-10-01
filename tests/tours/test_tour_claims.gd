@@ -178,6 +178,10 @@ func test_every_name_a_tour_asks_for_exists() -> void:
 						for k: String in parts[1].substr(5).split(",", false):
 							check(PropKind.NAMES.has(k.replace("_", " ")), "%s line %d: no prop kind %s to walk to" % [f, n, k])
 						continue
+					if parts[1].begins_with("ground:"):
+						for k: String in parts[1].substr(7).split(",", false):
+							check(Ground.NAMES.has(k.replace("_", " ")), "%s line %d: no ground %s to walk onto" % [f, n, k])
+						continue
 					check(parts[1] in (load("res://src/systems/98_tour.gd") as GDScript).get("WALK_TARGETS"),
 						"%s line %d: cannot walk to '%s'" % [f, n, parts[1]])
 
