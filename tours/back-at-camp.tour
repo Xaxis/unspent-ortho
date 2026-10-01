@@ -6,16 +6,17 @@
 # the narrows where he landed. Back across on the raft he left: Dace, told the
 # order was his, is done with the crew; then Rook, told of Teague's roads.
 #
-#   TOUR_TIMEOUT=900 tools/tour.sh tours/back-at-camp.tour --seed=1 --hour=9 --weather=clear:0 --beats=marens_lead,reaper_named,reaper_down,built_halcyon,holdfast_hope,war_archive,covenant_speaker,june_named,june_knew,echo_kept --met=june --chose=rook.iron=paid --give=pick:1,kit_plate:1,raft:1,stew:1,bread:1 --holding=lean-to
+#   TOUR_TIMEOUT=900 tools/tour.sh tours/back-at-camp.tour --seed=1 --hour=9 --weather=clear:0 --beats=marens_lead,reaper_named,reaper_down,built_halcyon,holdfast_hope,war_archive,covenant_speaker,june_named,june_knew,echo_kept,enclave_met --met=june --chose=rook.iron=paid --give=pick:1,kit_plate:1,raft:1,stew:1,bread:1 --holding=lean-to
 #
-# (June's leg is staged behind him: tours/june.tour plays it. A holding of his
-# stands (`--holding`), as slice 2 has him build one: without it, the night's
-# taking out of the Covenant puts the holding's beds ahead of every lead.
+# (June's leg is staged behind him: tours/june.tour plays it. So is the climb
+# Solis's road up leads to (enclave_met): tours/across.tour plays it. A holding
+# of his stands (`--holding`), as slice 2 has him build one: without it, the
+# night's taking out of the Covenant puts the holding's beds ahead of every lead.
 # `mark the_raft` is where he stepped off, the tour's own doing; everything else
 # is a place a system names. Otto's replies: "How the war started.", then "Show
 # me one." second; Solis's first is "How do you know where I came from?"; Dace's
 # first at the war, once the order is known, is "The order was mine."; Rook's
-# third is Teague's roads; Solis's last word is left at [leave].)
+# third is Teague's roads; Solis, asked or let go, says the road up.)
 coast calm
 
 # --- over: the raft in at the narrows, and across ------------------------------------------
@@ -66,10 +67,9 @@ press use
 await beat:teague_sold 3
 wait 0.4
 shot 03-solis-says-whose-roads with talking,beat:teague_sold
-# [leave], not "Every road?": the road up the walker would hold the way home until
-# its climb is done (Guide.WAY `walker`), and the climb is across.tour's.
-tap move_down
-wait 0.3
+press use
+await beat:walker_told 3
+wait 0.4
 press use
 wait 0.6
 

@@ -49,6 +49,32 @@ func test_no_crater_on_the_covenants_body_and_the_goal_goes_home() -> void:
 	Story.forget()
 
 
+## SAYING NOTHING IS ALWAYS AN ANSWER (docs/STORY.md), and one press of [leave]
+## must not cost the slice its set piece: asked "Every road?" or let go, Solis
+## says the road up, and walker_told lands either way.
+func test_solis_says_the_road_up_whether_asked_or_left() -> void:
+	for pick: String in ["Every road?", "[leave]"]:
+		Story.forget()
+		var t := StoryTalk.start(&"solis")
+		check(_pick(t, "How do you know where I came from?"), "Solis is asked how he knows")
+		check(Story.landed(&"teague_sold"), "and says whose roads he is sold")
+		check(_pick(t, pick), "then: %s" % pick)
+		check(Story.landed(&"walker_told"), "%s: the road up is said" % pick)
+		check(_pick(t, "[leave]") and t.over, "%s: and he can go" % pick)
+	Story.forget()
+
+
+## Picks the reply that reads `text`; false when none does.
+func _pick(t: StoryTalk, text: String) -> bool:
+	var rs := t.replies()
+	for i in rs.size():
+		if str(rs[i].text) == text:
+			@warning_ignore("return_value_discarded")
+			t.pick(i)
+			return true
+	return false
+
+
 ## Slice 2 done, the far shore's threads behind him long ago, and Solis has just
 ## said whose roads he is sold and the road up.
 func _told(seed_value: int) -> Game:

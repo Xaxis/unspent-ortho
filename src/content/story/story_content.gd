@@ -4597,9 +4597,12 @@ const TALKS := {
 			&"roads": {
 				"says": ["Your demolitions man sells us your roads.", "A village cleared for every works you break. He thinks it's fair."],
 				"beats": [&"teague_sold"],
+				# Asked, or let go, he says the road up (walker_told): saying
+				# nothing is an answer, and it must not cost the slice its climb.
+				# Let go, it is his parting word, amending his own boast.
 				"replies": [
 					{"text": "Every road?", "pick": &"asked_every", "to": &"up"},
-					{"text": "[leave]", "to": &""},
+					{"text": "[leave]", "to": &"up"},
 				],
 			},
 			&"up": {
