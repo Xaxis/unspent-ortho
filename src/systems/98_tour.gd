@@ -69,6 +69,8 @@ extends GameSystem
 ##                          path and press the real jump key at the end of it, so a
 ##                          jump is taken on the move the way a player takes one
 ##   hour H [+D]            set the world clock hour (same day, or D days on)
+##   hour treadN[+M]        on to M world minutes after the walker's foot next comes
+##                          down in tread N (as --colossus=W@treadN counts them)
 ##   weather KIND:S[:bolt][:wind=W]  force the sky as --weather does (`weather rules`
 ##                          hands it back); wind=W holds the wind at W, -1..1
 ##   zoom F                 camera view height
@@ -504,10 +506,19 @@ func _run() -> void:
 						ok = false
 			"hour":
 				# `hour H +D`: D days on, at H (a night the plan comes, a day later).
-				var day := floorf(game.clock.minutes / 1440.0)
-				if parts.size() > 2 and parts[2].begins_with("+"):
-					day += float(parts[2].substr(1).to_int())
-				game.clock.minutes = day * 1440.0 + parts[1].to_float() * 60.0
+				# `hour treadN[+M]`: on to when the walker's foot next comes down
+				# there (19_colossi tour_hour).
+				if parts[1].begins_with("tread"):
+					var colossi := _system("19_colossi")
+					var at: float = float(colossi.call(&"tour_hour", parts[1])) if colossi != null else NAN
+					ok = not is_nan(at)
+					if ok:
+						game.clock.minutes = at
+				else:
+					var day := floorf(game.clock.minutes / 1440.0)
+					if parts.size() > 2 and parts[2].begins_with("+"):
+						day += float(parts[2].substr(1).to_int())
+					game.clock.minutes = day * 1440.0 + parts[1].to_float() * 60.0
 			"zoom":
 				# Through the view system, which owns the height and puts its own
 				# value back every frame; writing the camera directly lasted one
