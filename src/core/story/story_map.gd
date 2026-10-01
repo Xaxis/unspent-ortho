@@ -201,31 +201,30 @@ static func lair_pos(states: Array, spawn: Vector2, place: StringName) -> Vector
 	return best
 
 
-## Where the place `crater:SLOT` stands: the crater a lame walker's foot comes back
-## to (WorldData.landmarks kind `tread`, GenTreads) on the body the story casts SLOT
-## on (its StoryPlan leg, StoryJourney.body_for), the one nearest `near` where that
-## is given. INF for any other place, or where that body has no crater: the walk
-## sets the treads, and on some worlds (seeds 42 and 3) neither is on leg 1's body.
-static func crater_pos(world: WorldData, place: StringName, near: Vector2 = Vector2.INF) -> Vector2:
+## Where the place `crater:SLOT` stands: the crater a lame walker's foot comes
+## back to on the body SLOT was cast on, the one nearest it. Asked of whoever keeps
+## them, found by what they keep (the idiom Guide and Chapters use): the craters
+## the walks were handed (19_colossi `craters`), and where the story cast SLOT
+## (49_cast `placed`). INF for any other place, or where that body has none: the
+## walk sets the craters, and on some worlds (seeds 42 and 3) neither is on leg 1's.
+static func crater_pos(game: Game, place: StringName) -> Vector2:
 	var best := Vector2.INF
-	if world == null or not String(place).begins_with("crater:"):
+	if game == null or game.world == null or not String(place).begins_with("crater:"):
 		return best
 	var slot := StringName(String(place).trim_prefix("crater:"))
-	var leg := -1
-	for row: Dictionary in StoryPlan.SPINE:
-		if row.id == slot:
-			leg = int(row.leg)
-	var body := StoryJourney.body_for(world, leg) if leg >= 0 else 0
-	if body == 0:
+	var at := Vector2.INF
+	var craters: Array[Vector2] = []
+	for sys: GameSystem in game.systems:
+		var placed: Variant = sys.get(&"placed")
+		if placed is Dictionary and (placed as Dictionary).has(slot):
+			at = (placed as Dictionary)[slot].pos
+		if sys.has_method(&"craters"):
+			craters = sys.call(&"craters")
+	if not at.is_finite():
 		return best
-	for m: Dictionary in world.landmarks:
-		if StringName(m.get("kind", &"")) != &"tread":
-			continue
-		var at: Vector2 = m.pos
-		if world.continent_at(floori(at.x), floori(at.y)) != body:
-			continue
-		if not best.is_finite() or (near.is_finite() and at.distance_to(near) < best.distance_to(near)):
-			best = at
+	for c: Vector2 in craters:
+		if game.world.same_body(c, at) and (not best.is_finite() or c.distance_to(at) < best.distance_to(at)):
+			best = c
 	return best
 
 

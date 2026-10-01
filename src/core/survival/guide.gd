@@ -456,7 +456,7 @@ static func _hop_open(game: Game, hop: Dictionary) -> bool:
 		for other: Dictionary in WAY:
 			if other.key == hop.behind and _hop_open(game, other) and not _hop_done(game, other):
 				return false
-	return not hop.has("where") or StoryMap.crater_pos(game.world, hop.where).is_finite()
+	return not hop.has("where") or StoryMap.crater_pos(game, hop.where).is_finite()
 
 
 ## Whether a WAY hop is behind him: a beat landed (`until`), a person met (`met`),

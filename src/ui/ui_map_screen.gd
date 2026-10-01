@@ -347,10 +347,8 @@ static func told(game: Game) -> Array[Dictionary]:
 			out.append({"at": at, "word": String(row.word)})
 	var pinned: Dictionary = StoryContent.TOLD_WHILE.get(Guide.last_goal_key, {})
 	if not pinned.is_empty():
-		var slot := StringName(String(pinned.place).trim_prefix("crater:"))
-		var near: Vector2 = placed[slot].pos if placed.has(slot) else Vector2.INF
 		var at: Vector2 = placed[pinned.place].pos if placed.has(pinned.place) \
-			else StoryMap.crater_pos(game.world, pinned.place, near)
+			else StoryMap.crater_pos(game, pinned.place)
 		# A way back (`on_body`) is pinned only from the shore it leaves.
 		if at.is_finite() and (not bool(pinned.get("on_body", false)) or game.world.same_body(game.player.pos, at)):
 			out.append({"at": at, "word": String(pinned.word)})

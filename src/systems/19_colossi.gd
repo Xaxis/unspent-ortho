@@ -97,24 +97,6 @@ func setup(g: Game) -> void:
 ## this world's Nth tread, offset by M world minutes. NAN when this
 ## world has no such tread, which stages nothing.
 func _tread_minute(spec: String) -> float:
-	return _tread_landing(spec).x
-
-
-## `hour treadN[+M|-M]` in a tour (98_tour): the world minute M after the foot next
-## comes down in this world's Nth tread, from the clock now on, so a tour waits
-## for a landing by name and never by an hour a gait could move. NAN when this
-## world has no such tread.
-func tour_hour(spec: String) -> float:
-	var at := _tread_landing(spec)
-	if is_nan(at.x) or game.clock == null:
-		return NAN
-	return at.x + ceilf(maxf(0.0, game.clock.minutes - at.x) / at.y) * at.y
-
-
-## When the foot comes down in the tread `treadN[+M|-M]` names: (the walk minute of
-## its first landing, offset by M; the lap it comes back every). NAN when this
-## world has no such tread.
-func _tread_landing(spec: String) -> Vector2:
 	var s := spec.trim_prefix("tread")
 	var off := 0.0
 	for sign: String in ["+", "-"]:
@@ -132,10 +114,38 @@ func _tread_landing(spec: String) -> Vector2:
 		if seen == n:
 			for i in view.defs.size():
 				if view.defs[i].id == StringName(m.walker):
-					return Vector2(Treads.lands_at(view.defs[i], view.routes[i], int(m.leg), int(m.j)) + off, view.routes[i].lap_minutes())
+					return Treads.lands_at(view.defs[i], view.routes[i], int(m.leg), int(m.j)) + off
 		seen += 1
 	push_warning("--colossus: this world has no %s" % spec)
-	return Vector2(NAN, NAN)
+	return NAN
+
+
+## `hour treadN[+M|-M]` in a tour (98_tour): the world minute M after the foot next
+## comes down in this world's Nth tread, from the clock now on, so a tour waits
+## for a landing by name and never by an hour a gait could move. NAN when this
+## world has no such tread.
+func tour_hour(spec: String) -> float:
+	var first := _tread_minute(spec)
+	if is_nan(first) or game.clock == null:
+		return NAN
+	for r: RefCounted in view.routes:
+		if not (r.treads as Dictionary).is_empty():
+			var lap: float = r.lap_minutes()
+			return first + ceilf(maxf(0.0, game.clock.minutes - first) / lap) * lap
+	return NAN
+
+
+## Where this world's craters are: the ones the walks were handed
+## (Treads.hand_over), each where a foot comes back to it, for whoever leads a
+## player there (StoryMap.crater_pos). Read from the walks, not the world's list.
+func craters() -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	if view == null:
+		return out
+	for r: RefCounted in view.routes:
+		for t: Vector4 in (r.treads as Dictionary).values():
+			out.append(Vector2(t.x, t.z))
+	return out
 
 
 ## The walk's own minute: the world clock, or the staged minute and however long
