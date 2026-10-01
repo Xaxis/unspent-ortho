@@ -76,3 +76,22 @@ func test_two_pins_side_by_side_both_keep_their_words() -> void:
 	check(b.has_area(), "the pin beside it keeps its word")
 	check(b.end.x < narrows.x, "on its mark's left")
 	check(not b.intersects(a), "clear of the first word")
+
+
+## A pin whose bearing falls on the word of a pin laid before it (from the walker's
+## crater on seed 1, the narrows on the crew's) moves off it, and keeps its own
+## word (UiMapScreen.pin_place).
+func test_a_pin_on_another_pins_word_moves_off_it_and_keeps_its_own() -> void:
+	var glass := UiMapScreen.MAP_RECT
+	var fixed := UiMapScreen.furniture(glass, 1.0)
+	var pins: Array[Rect2i] = []
+	var placed: Array[Rect2i] = fixed.duplicate()
+	var crew := Vector2i(glass.get_center().x + 20, glass.end.y - UiMapScreen.PIN_INSET)
+	var a := UiMapScreen.pin_place(crew, "the crew", glass, fixed, pins, placed)
+	check((a.box as Rect2i).has_area(), "the first pin's word is placed")
+	var b := UiMapScreen.pin_place(crew + Vector2i(30, 0), "the narrows", glass, fixed, pins, placed)
+	var p := UiBase.PITCH
+	var mark := Rect2i((b.at as Vector2i).x - 4 * p, (b.at as Vector2i).y - 4 * p, 9 * p, 9 * p)
+	check(not mark.intersects(a.box), "its mark is off the first word (%s on %s)" % [b.at, a.box])
+	check((b.box as Rect2i).has_area(), "and it keeps its own word")
+	check(not (b.box as Rect2i).intersects(a.box), "clear of the first")
