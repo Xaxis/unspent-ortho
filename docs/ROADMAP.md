@@ -88,9 +88,13 @@ Proof tour: `tours/across.tour`, from slice 2's end.
    half-broken walker comes down in the region; he climbs it (grips, stamina, falls,
    the gait moving under him) to its cut-off crown, where the first enclave lives
    (`enclave_met`, a machine talk, one fragment; his cadence, faintly). Tread-folk in
-   its craters. The climb stops at the hub. On main: the climb core (a), the leg model
-   and the enclave's talk (e). Open: the pitches set on the body, the render node (b), the
-   climb system to `enclave_met` (d), getting on from the tread (c), the limp gait (f, a GEN).
+   its craters. The climb stops at the hub. On main: the climb core (a), the pitches set
+   on the body, the leg drawn under his hands (b), getting on by the cable from the
+   crater (c), the climb to `enclave_met` at the hub (d), the leg model, the enclave's
+   talk and panel, and the climb's words (e); `tours/colossi_climb.tour` plays it by real
+   keys from a staged landing. Open: the limp gait (f, a GEN); tread-folk in its craters;
+   a lead to it, since nothing names the walker or points at a crater, and the treads
+   miss the leg-1 body on some worlds (seeds 42 and 3 of 1, 3, 7, 12, 42).
 8. [x] **Back at the camp** (A). `crew_war` / `dace_left`, `rook_told`.
 9. [x] **Fix** (A). `hale_log` locked until `war_relay`.
 10. [ ] **Proof** (all). The tour plays the slice by the goal line alone. ★ On main:
