@@ -2,7 +2,7 @@
 # With a holding of your own and its hearth near, a lineman that takes hold and
 # is not pulled free carries you off, and you wake beside your own fire, not at
 # a rock face; the bag still lies where it took you.
-#   tools/tour.sh tours/carried_home.tour --seed=1 --hour=11 --weather=clear:0 --give=knife:1,driftwood:6,stone:4 --held=knife --holding=hearth,lean_to
+#   tools/tour.sh tours/carried_home.tour --seed=1 --hour=11 --weather=clear:0 --give=knife:1,driftwood:6,stone:4 --held=knife --holding=hearth,lean-to
 coast calm
 zoom 8
 walk 0,1 1.6
