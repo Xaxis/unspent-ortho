@@ -262,3 +262,44 @@ func test_the_hub_reads_the_panel_and_its_talk_let_go_puts_him_down() -> void:
 	g.queue_free()
 	await process_frames(2)
 	Story.forget()
+
+
+## STAGED AT TREAD0 AT THE HOUR ITS FOOT IS DOWN, THE CLIMB IS TREAD0'S, on any
+## world: the natural walker (no --colossus) brought round to tread0 (19_colossi
+## tour_hour), the cable `walkto at:climb:cable` heads for hangs from tread0's
+## own foot into its middle crater, clear of the pad that stops bodies, and the
+## walk down to it from `at climb:lip` never steps more than a body can. On seed
+## 1 at GEN 47 the lip stood behind a two-level wall and the walk stopped 8.7
+## tiles short (across.tour).
+func test_staged_at_tread0_the_climb_is_tread0s() -> void:
+	for seed_value: int in [1, 7]:
+		var g := Game.new()
+		tree.root.add_child(g)
+		g.setup(BootOptions.parse(PackedStringArray(["--seed=%d" % seed_value, "--place=tread0", "--hour=9", "--weather=clear:0"])))
+		await process_frames(4)
+		var colossi := tree.get_first_node_in_group(&"colossi")
+		g.clock.minutes = colossi.call(&"tour_hour", "tread0+5")
+		await process_frames(4)
+		var tread: Dictionary = {}
+		for m: Dictionary in g.world.landmarks:
+			if StringName(m.get("kind", &"")) == &"tread":
+				tread = m
+				break
+		var sys := _system(g, "43_climb")
+		var feet: Array = sys.call(&"_feet_in_treads")
+		var first: Dictionary = {}
+		for f: Dictionary in feet:
+			if bool(f.planted):
+				first = f
+				break
+		check(not first.is_empty() and int(first.leg) == int(tread.leg) and StringName(colossi.view.defs[int(first.walker)].id) == StringName(tread.walker),
+			"seed %d: the planted foot nearest is tread0's own" % seed_value)
+		var pad: Vector3 = (tread.pads as Array)[1]
+		var cable: Vector2 = sys.call(&"tour_place", "climb:cable")
+		var from_pad := cable.distance_to(Vector2(pad.x, pad.y))
+		lt(from_pad, Treads.rim_r(pad), "seed %d: its cable hangs into the middle toe's crater (%.1f m from the pad)" % [seed_value, from_pad])
+		gt(from_pad, pad.z + 1.0, "seed %d: clear of the pad that stops bodies" % seed_value)
+		var lip: Vector2 = sys.call(&"tour_place", "climb:lip")
+		check(bool(sys.call(&"_walk_clear", lip, cable)), "seed %d: and the walk from the lip down to it is a body's own" % seed_value)
+		g.queue_free()
+		await process_frames(2)
