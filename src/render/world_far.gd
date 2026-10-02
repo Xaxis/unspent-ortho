@@ -194,7 +194,13 @@ static func tables() -> Array:
 	plain.fill(Ground.ROCK)
 	for c in BiomeRegistry.count():
 		plain[c] = BiomeRegistry.by_index(c).plain_ground
-	return [col, hand, plain]
+	# Which grounds are water, so a cell's mean leaves its water out without a
+	# call per tile.
+	var wet := PackedByteArray()
+	wet.resize(Ground.COUNT)
+	for g in Ground.COUNT:
+		wet[g] = 1 if Ground.is_water(g) else 0
+	return [col, hand, plain, wet]
 
 
 ## One block as mesh arrays: [land, water]. Pure, so a worker may run it.
@@ -202,6 +208,7 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array) -> Array:
 	var col: PackedColorArray = tabs[0]
 	var hand: PackedFloat32Array = tabs[1]
 	var plain: PackedInt32Array = tabs[2]
+	var wet: PackedByteArray = tabs[3]
 	var types := BiomeRegistry.SLOTS
 	# Straight at the arrays, never through level_at/ground_at/country_at. A
 	# block reads 18,000 tiles and a GDScript call is about ten times an index:
@@ -310,6 +317,31 @@ static func build_arrays(w: WorldData, bx: int, by: int, tabs: Array) -> Array:
 					mid_l = mo - 1
 			var slot := g * types + c
 			var wash := col[slot]
+			# A LAND CELL IS THE MEAN OF ITS LAND TILES, its mark the middle's. From
+			# a walker's leg a pixel holds a cell or two, and a cell coloured by
+			# its middle tile set grass beside rock beside sand across the whole
+			# island: per-tile speckle where the eye sees one field.
+			if wet[g] == 0:
+				var sr := 0.0
+				var sg := 0.0
+				var sb := 0.0
+				var n := 0
+				for dy in STEP:
+					var y := mini(ty + dy, size - 1)
+					for dx in STEP:
+						var i := y * size + mini(tx + dx, size - 1)
+						var tg := grd[i]
+						var tc := clampi(cty[i], 0, types - 1)
+						if roofed and tops[(y - oy) * owide + i % size - ox] > 0:
+							tg = plain[tc]
+						if wet[tg] == 1:
+							continue
+						var tw := col[tg * types + tc]
+						sr += tw.r
+						sg += tw.g
+						sb += tw.b
+						n += 1
+				wash = Color(sr / n, sg / n, sb / n, wash.a)
 			# Terraces one level apart alternate a hair in value, as the mesher's
 			# own table does, so the contour is felt at this range too.
 			if (mid_l & 1) == 1:
