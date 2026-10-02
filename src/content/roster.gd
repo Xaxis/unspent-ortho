@@ -204,13 +204,18 @@ const DEFS := {
 	# 10 is the roster's own floor and says the one thing the gate was for: no
 	# machine works the line inside a village. Measured, tiles at green_min
 	# 0/10/34 — seed 1: 188/170/6, seed 4: 431/424/41, seed 7: 197/194/35.
+	# Its `chance` is 5, not the workers' 3: the door is narrow enough that a
+	# world change moves it by half. Stood forty minutes at the best place on
+	# seeds 1, 4 and 7 (test_line_coil_door), GEN 46 rolled 4+8+6 and GEN 47
+	# 1+7+2 at 3, and 5+14+4 at 5. It does no harm, so more of it costs a player
+	# nothing.
 	&"lineman": {
 		"model": &"lineman", "role": &"worker", "machine": true, "approach": &"rush", "part": &"front",
 		"pace": 4.0, "dash": 9.0, "quick": 320, "radius": 0.35, "height": 1.4, "life": 60,
 		"sees": 12, "hears": 9, "racket": 11, "reach": 3, "ready": 3, "forget": 14, "tether": 24, "safe": 12,
 		"nerve": 100, "invuln": 440, "disposition": &"indifferent",
 		"bite": {"swing": [400, 120, 280, 520], "reach": 1.9, "width": 1.0, "dmg": 0, "knock": 0.0, "knock_ms": 0, "grip": 3},
-		"takes": 45.0, "drops": 2, "linger": 25.0, "chance": 3,
+		"takes": 45.0, "drops": 2, "linger": 25.0, "chance": 5,
 		"where": {"countries": ["snowfield"], "grounds": ["snow", "ice", "rock", "gravel", "grass"], "green_min": 10, "near_props": ["pylon", "pole"]},
 	},
 	&"clerk": {

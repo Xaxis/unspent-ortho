@@ -166,6 +166,18 @@ func test_boarding_is_refused_out_of_reach() -> void:
 	check(Crafts.nearest(list, Vector2(30, 30)) == null)
 
 
+## A body boards a craft from as far as that craft sets a body down. A raft
+## stepped him off three tiles from itself and then would not take him back from
+## there: at a landing among the drowned city's roofs, it was stranded.
+func test_a_body_boards_from_where_it_stepped_off() -> void:
+	var c := Craft.make(1, &"raft", Vector2(10, 10))
+	var off := Vector2(10, 10) + Vector2(CraftKinds.launch_reach(&"raft") - 0.05, 0.0)
+	gt(CraftKinds.launch_reach(&"raft"), Crafts.BOARD_REACH, "a raft sets a body down further than the least reach")
+	eq(Crafts.board_refusal(c, off), &"", "and boards him again from there")
+	check(Crafts.nearest([c], off) == c, "and `ride` finds it from there")
+	eq(Crafts.board_refusal(c, off + Vector2(0.2, 0.0)), &"far", "and no further")
+
+
 func test_a_craft_comes_back_through_a_save() -> void:
 	var c := Craft.make(4, &"walker_rig", Vector2(12.25, 8.5), 1.25)
 	c.damage(30.0)

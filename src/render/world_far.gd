@@ -459,7 +459,7 @@ static func stand_arrays(w: WorldData, props: Array, want: int = BOTH) -> Array:
 		outs.append([MeshKit.new(), MeshKit.new(), MeshKit.new()])
 	var any := false
 	for p: WorldProp in props:
-		var country := maxi(Country.COAST, w.country[mini(floori(p.pos.y), w.size - 1) * w.size + mini(floori(p.pos.x), w.size - 1)])
+		var country := w.dress_country(mini(floori(p.pos.x), w.size - 1), mini(floori(p.pos.y), w.size - 1))
 		var variant := PropModels.variant_of(p, w.seed_value, country)
 		if summary(p.kind, variant, country)[0] * p.scale < STANDS:
 			continue

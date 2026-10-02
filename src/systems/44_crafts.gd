@@ -118,7 +118,7 @@ func _read_keys() -> void:
 func press_ride() -> StringName:
 	if aboard != null:
 		return leave()
-	var near := Crafts.nearest(crafts, _at(), Crafts.BOARD_REACH)
+	var near := Crafts.nearest(crafts, _at())
 	if near != null:
 		return salvage(near) if near.wrecked else board(near)
 	var carried := _carried_kind()
@@ -476,7 +476,7 @@ func tour_seen(what: StringName) -> bool:
 		var kind := StringName(s.substr(13))
 		return Crafts.launch_spot(game.world, game.query, kind, _at(), game.player.facing) != Vector2.INF
 	if s == "ride_ready":
-		return Crafts.nearest(crafts, _at(), Crafts.BOARD_REACH) != null or _carried_kind() != &""
+		return Crafts.nearest(crafts, _at()) != null or _carried_kind() != &""
 	if s == "step_off_ready":
 		return aboard != null and Crafts.step_off_spot(game.world, game.query, aboard.kind, _at()) != Vector2.INF
 	if s == "craft" or s.begins_with("craft:"):

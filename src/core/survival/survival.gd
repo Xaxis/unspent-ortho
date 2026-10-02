@@ -91,7 +91,7 @@ const SET_GOING_MINUTES := 5.0
 ## A take this long or longer is refused with a hostile close.
 const LONG_TAKE_MINUTES := 10.0
 ## A hostile this close (Chebyshev tiles) stops anything long being started.
-const THREAT_RADIUS := 8.0
+const THREAT_RADIUS := Senses.THREAT_RADIUS
 const THREAT_LINE := "Not with that so close."
 ## In the dark without a light a prop must be this close (edge, tiles) to be found.
 const DARK_REACH := 0.6

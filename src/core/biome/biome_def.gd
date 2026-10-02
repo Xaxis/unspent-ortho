@@ -70,12 +70,19 @@ var site_count := Vector2i(1, 2)
 ##   (0, 1)  at most one continent, and a world may not have it. The rare thing
 ##           you cross an ocean for.
 ##   (1, 1)  exactly one, guaranteed and exclusive.
+##   LANDFALL (1, -1)  exactly one, and THE FIRST ACROSS THE WATER: the body the
+##           shortest water from home reaches, with the type's heart where that
+##           water comes ashore, so a raft from home lands in it and the story's
+##           leg 1 is cast there (GenBodies `_landfall`, GenCountries
+##           `_landfall_site`, StoryJourney). Guaranteed, as `least` says. At
+##           most one type may say it; a world of one body has no water to cross.
 ##
 ## KEEP THE GUARANTEED SET SMALL. Every type given `least >= 1` is one that can
 ## never be made rare, so a long guaranteed list quietly spends the variety
 ## continents exist to buy. A spine resting on one landscape that always exists is
 ## more robust than one resting on eight that usually do.
 var spread := Vector2i(0, 0)
+const LANDFALL := Vector2i(1, -1)
 ## Placement bias by neighbour: other type id -> weight (+ likes to lie beside
 ## it, - keeps away). Read against the sites already placed.
 var adjacency: Dictionary = {}

@@ -15,6 +15,10 @@ class_name GenWater
 ## Catchment in coarse cells x rain before a cell carries a river (512 world).
 const RIVER_CATCHMENT := 120.0
 const MAX_RIVERS := 11
+## On a world of several bodies, the height a river's source rises from at least
+## (`rivers`): what the eleventh highest source in the world stood at when one
+## budget served every body.
+const RIVER_HEAD := 11.0
 ## A river's head is where its catchment falls to this share of RIVER_CATCHMENT.
 const HEAD_SHARE := 0.06
 
@@ -148,10 +152,24 @@ static func rivers(c: GenContext) -> void:
 	traced.resize(cn)
 	c.river_e = PackedFloat32Array()
 	c.river_e.resize(c.n)
+	# EACH CONTINENT KEEPS ITS OWN RIVERS: every source that rises from RIVER_HEAD
+	# or higher, up to MAX_RIVERS a body, which asks nothing of any other body.
+	# One budget for the world took its eleven highest sources wherever they
+	# stood, so a landscape raised on another continent took home's rivers away;
+	# shared by size instead, home lost two thirds of its own. Asked of the
+	# source, a world lays about the rivers it did (seeds 1, 7, 42, 90210: 12,
+	# 9, 14 and 7 against 11) and home the ones its own high ground carries.
+	var bodies := maxi(1, c.bodies.size())
 	var count := 0
+	var laid := {}
 	for src in sources:
-		if count >= MAX_RIVERS:
+		if bodies <= 1 and count >= MAX_RIVERS:
 			break
+		if bodies > 1 and src.x < roundi(RIVER_HEAD * 100.0):
+			break
+		var body := c.w.continent_at(roundi(GenFields.cell_centre(src.y % cw, step)), roundi(GenFields.cell_centre(src.y / cw, step)))
+		if bodies > 1 and int(laid.get(body, 0)) >= MAX_RIVERS:
+			continue
 		var cells := PackedInt32Array()
 		var k := src.y
 		var joined := false
@@ -176,8 +194,10 @@ static func rivers(c: GenContext) -> void:
 		var accs := PackedFloat32Array()
 		for kk in cells:
 			accs.append(acc[kk] / threshold)
-		if _lay(c, pts, accs, joined, count):
+		# Meandered from its own source cell, not its place in the world's count.
+		if _lay(c, pts, accs, joined, count if bodies <= 1 else Rng.hash_ints(src.y, body) & 0xFFFF):
 			count += 1
+			laid[body] = int(laid.get(body, 0)) + 1
 	c.mark(&"rivers.lay")
 	_settle_crossings(c)
 	_carve_valleys(c)

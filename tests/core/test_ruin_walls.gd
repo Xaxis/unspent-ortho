@@ -59,3 +59,26 @@ func test_a_body_stops_at_a_croft_ruins_wall() -> void:
 
 func test_a_body_stops_at_a_tower_stumps_wall() -> void:
 	_check(true)
+
+
+## A drowned block's whole plan stops a body, the corners its own circle cannot
+## reach included: a body stood inside the box, and the shoulder camera with it.
+func test_a_body_stops_at_a_drowned_blocks_corner() -> void:
+	var w := _world()
+	var r: WorldProp = null
+	for p in w.each_prop():
+		if p.kind == PropKind.DROWNED_SHELL and PropModels.variant_of(p, w.seed_value, w.dress_country(floori(p.pos.x), floori(p.pos.y))) % RuinWalls.DrownedCity.SHELLS.size() != 3:
+			r = p
+			break
+	check(r != null, "seed 7 has a drowned block")
+	if r == null:
+		return
+	var q := WorldQuery.new(w)
+	q.set_blocks(&"ruins", RuinWalls.of_world(w))
+	var shape: Dictionary = RuinWalls.DrownedCity.SHELLS[PropModels.variant_of(r, w.seed_value, w.dress_country(floori(r.pos.x), floori(r.pos.y))) % RuinWalls.DrownedCity.SHELLS.size()]
+	# Its canal face's corner, in the world: aim at it from out past it.
+	var corner := Vector2(RuinWalls.DrownedCity.BLOCK_DEEP * 0.5, float(shape.d) * 0.5)
+	var target := r.pos + corner.rotated(r.rot) * r.scale
+	var out := (target - r.pos).normalized()
+	var end := _walk(q, target + out * 2.5, target)
+	gt(end.distance_to(target), 0.15, "a body walking at a drowned block's corner stops short (%.2f from it)" % end.distance_to(target))

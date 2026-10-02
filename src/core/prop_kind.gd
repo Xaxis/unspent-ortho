@@ -161,9 +161,14 @@ enum {
 	# A house the yard's hunters burned (48_raids, Reprisal): laid in play in its
 	# house's place and saved with the world; never dealt by worldgen.
 	HOUSE_BURNT,
+	# The drowned city's own: a block standing in the canal to its first floor's
+	# sills, and one out in the shallows that only its roof breaks the surface of
+	# (drowned_city.gd, laid by its works).
+	DROWNED_SHELL,
+	DROWNED_ROOF,
 }
 
-const COUNT := 104
+const COUNT := 106
 
 const NAMES: PackedStringArray = [
 	"pine", "broadleaf", "dead tree", "bush", "reeds", "boulder", "stone ore",
@@ -188,6 +193,7 @@ const NAMES: PackedStringArray = [
 	"sprayer gantry",
 	"document box",
 	"burnt house",
+	"drowned shell", "drowned roof",
 ]
 
 ## Kinds past FENCE that are a landscape's own NATURE, not evidence somebody
@@ -282,4 +288,8 @@ const SOLID: PackedFloat32Array = [
 	0.45,
 	# A burnt house stands on the walls it had: a house's circle.
 	1.6,
+	# A drowned block is two and a half deep and three along its canal: the
+	# circle that fits inside it. A roof in the shallows is the same block, and a
+	# raft goes round it.
+	1.2, 1.2,
 ]

@@ -220,8 +220,27 @@ static func coarse(c: GenContext) -> void:
 	# weight sat 250-500 under glass_desert's and drowned_city's and it lost its
 	# OWN heart on the home continent of seeds 1 and 42. A world of one body has
 	# one slot, 0, and the arithmetic below is the arithmetic it always had.
-	var wslot := _weight_slots(c, landc, cell_body)
+	# The continents the deal reached, by id; a body it did not is a skerry.
+	var dealt := PackedByteArray()
+	dealt.resize(256)
+	for row: Dictionary in c.w.continents:
+		if row.has("types"):
+			dealt[int(row.get("id", 0))] = 1
+	var wslot := _weight_slots(c, landc, cell_body, dealt)
 	c.weight_slot = wslot
+	# A SEA CELL IS ITS NEAREST BODY'S, AND SO IS A SKERRY: a landscape not dealt
+	# that body is out of its reach too. Otherwise the sea between two continents,
+	# and the islets off a shore that nobody dealt, blended the far shore's
+	# landscapes into this one's climate and relief: a landscape moved across the
+	# strait moved home's facing shore (seed 1: its skerries took the drowned
+	# city's heart on the far side as their nearest).
+	if not c.allow.is_empty():
+		for k in cn:
+			if landc[k] != 0 and dealt[cell_body[k]] != 0:
+				continue
+			for cc in range(1, types):
+				if not c.may_stand(cc, wslot[k]):
+					dist[cc * cn + k] = OUT_OF_REACH
 	var slot_target := _slot_targets(c, target)
 	var weight := PackedFloat32Array()
 	weight.resize(SLOTS * types)
@@ -238,20 +257,45 @@ static func coarse(c: GenContext) -> void:
 	var last_err := PackedFloat32Array()
 	last_err.resize(SLOTS * types)
 	var damped := not c.allow.is_empty()
-	var full_passes := 0
-	var it := 0
-	while it < 40:
-		var sparse := it < 30
-		var gain := size * (0.5 if sparse else 0.3)
-		var counts := _assign_counts(dist, weight, wslot, landc, cw, types, sparse)
-		var worst := 0.0
-		for sl: int in slot_target:
+	# EACH BODY SETTLES ON ITS OWN SCHEDULE. One loop for the world ran every body
+	# until the slowest had settled, so how many steps home's weights took -- and
+	# so home's climate and borders -- hung on what lay on the other continents.
+	# A body's slot is sampled sparse until it is close, then in full until it
+	# holds, then left alone. One body: the schedule it always had.
+	var slots := slot_target.keys()
+	var phase := {}
+	var steps := {}
+	var full := {}
+	for sl: int in slots:
+		phase[sl] = 0
+		steps[sl] = 0
+		full[sl] = 0
+	var guard := 0
+	while guard < 80:
+		guard += 1
+		var need_sparse := false
+		var need_full := false
+		for sl: int in slots:
+			need_sparse = need_sparse or int(phase[sl]) == 0
+			need_full = need_full or int(phase[sl]) == 1
+		if not need_sparse and not need_full:
+			break
+		var counts_sparse := _assign_counts(dist, weight, wslot, landc, cw, types, true) if need_sparse else PackedInt32Array()
+		var counts_full := _assign_counts(dist, weight, wslot, landc, cw, types, false) if need_full else PackedInt32Array()
+		for sl: int in slots:
+			var ph := int(phase[sl])
+			if ph == 2:
+				continue
+			var sparse := ph == 0
+			var counts := counts_sparse if sparse else counts_full
+			var gain := size * (0.5 if sparse else 0.3)
 			var want: PackedFloat32Array = slot_target[sl]
 			var at := sl * types
 			var total := 0.0
 			for cc in types:
 				total += counts[at + cc]
 			total = maxf(1.0, total)
+			var worst := 0.0
 			for cc: int in c.land_types:
 				var err := want[cc] - counts[at + cc] / total
 				worst = maxf(worst, absf(err))
@@ -262,15 +306,19 @@ static func coarse(c: GenContext) -> void:
 					weight[at + cc] += err * gain * damp[at + cc]
 				else:
 					weight[at + cc] += err * gain
-		# Close enough on the sample: go on to every cell. The tiles are
-		# balanced again after their borders wander (fine()).
-		if sparse and worst < 0.006 and it >= 8:
-			it = 29
-		if not sparse:
-			full_passes += 1
-			if worst < 0.004 and full_passes >= 3:
-				break
-		it += 1
+			var it := int(steps[sl])
+			# Close enough on the sample: go on to every cell. The tiles are
+			# balanced again after their borders wander (fine()).
+			if sparse and worst < 0.006 and it >= 8:
+				it = 29
+			if not sparse:
+				full[sl] = int(full[sl]) + 1
+				if worst < 0.004 and int(full[sl]) >= 3:
+					phase[sl] = 2
+			it += 1
+			steps[sl] = it
+			if int(phase[sl]) != 2:
+				phase[sl] = 2 if it >= 40 else (0 if it < 30 else 1)
 	c.layout_weight = weight
 	c.scores.clear()
 	c.soft.clear()
@@ -347,9 +395,10 @@ static func _assign_counts(dist: PackedFloat32Array, weight: PackedFloat32Array,
 
 
 ## Which weight slot each coarse cell balances in: its body's id, and for a sea
-## cell the body of the nearest land cell, so a shore's upsampled scores mix one
-## body's weights and never a body's with nothing's. All 0 on a world of one body.
-static func _weight_slots(c: GenContext, landc: PackedByteArray, cell_body: PackedByteArray) -> PackedByteArray:
+## cell or a skerry nobody dealt the nearest dealt body's, so a shore's upsampled
+## scores mix one body's weights and never a body's with nothing's. All 0 on a
+## world of one body.
+static func _weight_slots(c: GenContext, landc: PackedByteArray, cell_body: PackedByteArray, dealt: PackedByteArray) -> PackedByteArray:
 	var cw := c.cw
 	var slot := PackedByteArray()
 	slot.resize(cw * cw)
@@ -359,7 +408,7 @@ static func _weight_slots(c: GenContext, landc: PackedByteArray, cell_body: Pack
 	seen.resize(cw * cw)
 	var q := PackedInt32Array()
 	for k in cw * cw:
-		if landc[k] != 0:
+		if landc[k] != 0 and dealt[cell_body[k]] != 0:
 			slot[k] = cell_body[k]
 			seen[k] = 1
 			q.append(k)
@@ -478,9 +527,45 @@ static func _sites(c: GenContext, rng: RandomNumberGenerator) -> Array[Vector3]:
 		seen_of[cc] = nth + 1
 		var r := _rect_for(c, cc, nth)
 		out.append(Vector3(r.position.x + u * r.size.x, r.position.y + v * r.size.y, cc))
+	_landfall_site(c, out)
 	_envelope_sites(c, rng, out)
 	_site_every_dealt_body(c, mirror, out)
 	return _one_heart_per_body(c, out)
+
+
+## How far inland of where the water comes ashore the landfall's heart stands:
+## far enough that its territory takes the shore, near enough that a raft from
+## home lands in it.
+const LANDFALL_INLAND := 60.0
+
+
+## THE LANDFALL'S HEART (`BiomeDef.LANDFALL`) stands on the body GenBodies marked,
+## LANDFALL_INLAND tiles in from where the shortest water from home comes ashore
+## (the row's `from`), toward the body's centre. It goes first and replaces any
+## site the type was given on that body. No random draws, so nothing after it
+## shifts.
+static func _landfall_site(c: GenContext, out: Array[Vector3]) -> void:
+	if c.bodies.size() <= 1:
+		return
+	var row: Dictionary = {}
+	for r: Dictionary in c.w.continents:
+		if bool(r.get("landfall", false)):
+			row = r
+	if row.is_empty():
+		return
+	var id := int(row.get("id", 0))
+	var shore: Vector2 = row.get("from", row.centre)
+	var centre: Vector2 = row.centre
+	var heart := shore + (centre - shore).normalized() * minf(LANDFALL_INLAND, shore.distance_to(centre))
+	if c.w.continent_at(floori(heart.x), floori(heart.y)) != id:
+		heart = shore
+	for cc: int in c.land_types:
+		if c.defs[cc].spread != BiomeDef.LANDFALL:
+			continue
+		for i in range(out.size() - 1, -1, -1):
+			if int(out[i].z) == cc and c.w.continent_at(floori(out[i].x), floori(out[i].y)) == id:
+				out.remove_at(i)
+		out.insert(0, Vector3(heart.x, heart.y, cc))
 
 
 ## One heart per landscape per continent: territory is distance to a type's
@@ -592,7 +677,17 @@ static func _dealt_here(c: GenContext, cc: int, p: Vector2) -> bool:
 	return c.may_stand(cc, id)
 
 
+## A climate type's sites, where its envelope fits best.
+##
+## ON A WORLD OF BODIES, A SITE ANSWERS TO ITS OWN BODY. It weighed every site in
+## the world for its neighbours and its room, and drew its jitter from one stream
+## through every type and every candidate cell, so a landscape moved between two
+## bodies moved a third's: on seed 42 the landfall traded the salt flats off one
+## body, the stream after them shifted, and the scrapwood's heart on another
+## body moved 200 tiles. So a site reads only the sites on its own body, and its
+## jitter is a hash of its type and its cell. One body: as it always was.
 static func _envelope_sites(c: GenContext, rng: RandomNumberGenerator, out: Array[Vector3]) -> void:
+	var several := c.bodies.size() > 1
 	var wanted: Array[int] = []
 	for cc: int in c.land_types:
 		if c.defs[cc].anchors.is_empty():
@@ -630,7 +725,10 @@ static func _envelope_sites(c: GenContext, rng: RandomNumberGenerator, out: Arra
 				var score := _fit(c, d, p, r)
 				if score <= 0.0:
 					continue
+				var body := c.w.continent_at(floori(p.x), floori(p.y)) if several else 0
 				for s: Vector3 in out:
+					if several and c.w.continent_at(floori(s.x), floori(s.y)) != body:
+						continue
 					var dist := p.distance_to(Vector2(s.x, s.y))
 					var other := c.defs[int(s.z)]
 					# Never on top of another site; drawn toward the neighbours
@@ -641,7 +739,7 @@ static func _envelope_sites(c: GenContext, rng: RandomNumberGenerator, out: Arra
 					score += like * clampf(1.0 - dist / (140.0 * maxf(0.5, c.body_k)), 0.0, 1.0)
 					if int(s.z) == cc:
 						score -= clampf(1.0 - dist / (200.0 * maxf(0.5, c.body_k)), 0.0, 1.0) * 2.0
-				score += rng.randf() * 0.25
+				score += (Rng.hash01(c.s, floori(p.x), floori(p.y), 0x5E70 + cc) if several else rng.randf()) * 0.25
 				if score > best_score:
 					best_score = score
 					best = j
@@ -1152,6 +1250,21 @@ static func regions(c: GenContext) -> void:
 	tile_regions(w.country, c.size, Vector2i.ZERO, plan.cells, c.coarse_country, c.cw, GenContext.STEP, c.size, w.region)
 
 
+## REGION `id`'S OWN KEY, for whatever is thrown in it: its landscape and the
+## plan cell its centre lies in, which only its own land decides. Never its id:
+## ids rank every region of the world biggest-first, so a landscape moved on
+## another continent renumbered home's regions and laid home's tips and works
+## again (seed 1: the camp 190 tiles, the yard 32). Keyed on itself, a body's
+## places depend on that body alone (tests/biome/test_body_independence.gd).
+## No region (-1) keys as itself.
+static func region_key(w: WorldData, id: int) -> int:
+	if id < 0 or id >= w.regions.size():
+		return id
+	var r: Dictionary = w.regions[id]
+	var at: Vector2 = r.get("centre", Vector2.ZERO)
+	return Rng.hash_ints(int(r.get("index", 0)), floori(at.x / GenContext.STEP), floori(at.y / GenContext.STEP))
+
+
 ## The plan's regions: {"regions": the records, ids biggest first, "cells": per
 ## coarse cell its region id + 1, 0 where the cell holds none}. Tiles, centre
 ## and bounds are the cells' (a cell stands for STEP x STEP tiles); the bounds
@@ -1331,13 +1444,32 @@ static func _blend(c: GenContext, widen: PackedFloat32Array) -> void:
 				dist[hrow + (x >> 1)] = 0.0
 				pair[hrow + (x >> 1)] = pk
 	, 12)
+	# A BODY'S ECOTONES ARE ITS OWN. The nearest border was spread over the sea
+	# too, so a shore took its blend from a border on the far side of a strait,
+	# and a landscape moved there re-blended home's facing shore (seed 1: 3,877
+	# tiles). Each cell is its body's, a sea cell its nearest body's (the coarse
+	# weight slot), and a border spreads only over its own body's cells. One body:
+	# every cell is one owner's, as it always was.
+	var owner := PackedInt32Array()
+	owner.resize(hn)
+	if not c.allow.is_empty():
+		var cw := c.cw
+		GenFields.rows(hw, func(g0: int, g1: int) -> void:
+			for gy in range(g0, g1):
+				var ty := mini(gy * 2, size - 1)
+				for gx in hw:
+					var tx := mini(gx * 2, size - 1)
+					var id := w.continent_at(tx, ty)
+					owner[gy * hw + gx] = id if id != GenBodies.VOID else c.weight_slot[clampi(ty / GenContext.STEP, 0, cw - 1) * cw + clampi(tx / GenContext.STEP, 0, cw - 1)]
+		)
 	# How wide an ecotone runs on each body, and exact past the widest of them.
 	var reach := GenBodies.by_tile(w, _ecotone_reach(c))
-	var spread := GenFields.banded([dist, pair], hw, ceili(ECOTONE_MOST * 0.5) + 2, func(arrays: Array, width: int) -> Array:
+	var spread := GenFields.banded([dist, pair, owner], hw, ceili(ECOTONE_MOST * 0.5) + 2, func(arrays: Array, width: int) -> Array:
 		var dd: PackedFloat32Array = arrays[0]
 		var pp: PackedInt32Array = arrays[1]
-		_spread_labelled(dd, pp, width, 2.0)
-		return [dd, pp]
+		var oo: PackedInt32Array = arrays[2]
+		_spread_labelled(dd, pp, oo, width, 2.0)
+		return [dd, pp, oo]
 	)
 	dist = spread[0]
 	pair = spread[1]
@@ -1464,8 +1596,9 @@ static func _ecotone_reach(c: GenContext) -> PackedFloat32Array:
 
 
 ## Two-sweep 8-neighbour chamfer distance (cell = `unit` tiles) that also
-## carries each source's label to the cells it is nearest.
-static func _spread_labelled(d: PackedFloat32Array, label: PackedInt32Array, width: int, unit: float) -> void:
+## carries each source's label to the cells it is nearest, never from a cell of
+## one `owner` to another's.
+static func _spread_labelled(d: PackedFloat32Array, label: PackedInt32Array, owner: PackedInt32Array, width: int, unit: float) -> void:
 	var height := d.size() / width
 	var dc := unit * 1.4142
 	for y in height:
@@ -1474,18 +1607,19 @@ static func _spread_labelled(d: PackedFloat32Array, label: PackedInt32Array, wid
 			var i := row + x
 			var m := d[i]
 			var lb := label[i]
-			if x > 0 and d[i - 1] + unit < m:
+			var o := owner[i]
+			if x > 0 and owner[i - 1] == o and d[i - 1] + unit < m:
 				m = d[i - 1] + unit
 				lb = label[i - 1]
 			if y > 0:
 				var j := i - width
-				if d[j] + unit < m:
+				if owner[j] == o and d[j] + unit < m:
 					m = d[j] + unit
 					lb = label[j]
-				if x > 0 and d[j - 1] + dc < m:
+				if x > 0 and owner[j - 1] == o and d[j - 1] + dc < m:
 					m = d[j - 1] + dc
 					lb = label[j - 1]
-				if x < width - 1 and d[j + 1] + dc < m:
+				if x < width - 1 and owner[j + 1] == o and d[j + 1] + dc < m:
 					m = d[j + 1] + dc
 					lb = label[j + 1]
 			d[i] = m
@@ -1496,18 +1630,19 @@ static func _spread_labelled(d: PackedFloat32Array, label: PackedInt32Array, wid
 			var i := row + x
 			var m := d[i]
 			var lb := label[i]
-			if x < width - 1 and d[i + 1] + unit < m:
+			var o := owner[i]
+			if x < width - 1 and owner[i + 1] == o and d[i + 1] + unit < m:
 				m = d[i + 1] + unit
 				lb = label[i + 1]
 			if y < height - 1:
 				var j := i + width
-				if d[j] + unit < m:
+				if owner[j] == o and d[j] + unit < m:
 					m = d[j] + unit
 					lb = label[j]
-				if x < width - 1 and d[j + 1] + dc < m:
+				if x < width - 1 and owner[j + 1] == o and d[j + 1] + dc < m:
 					m = d[j + 1] + dc
 					lb = label[j + 1]
-				if x > 0 and d[j - 1] + dc < m:
+				if x > 0 and owner[j - 1] == o and d[j - 1] + dc < m:
 					m = d[j - 1] + dc
 					lb = label[j - 1]
 			d[i] = m

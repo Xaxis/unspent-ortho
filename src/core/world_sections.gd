@@ -36,7 +36,9 @@ static func props_in(w: WorldData, s: Vector2i) -> Array[WorldProp]:
 static func rows_in(w: WorldData, s: Vector2i) -> PackedInt32Array:
 	_index(w)
 	var got: Variant = w.section_rows.get(s)
-	return got as PackedInt32Array if got != null else PackedInt32Array()
+	# Asked by type, never by an operator on the Variant: a keeper's lair reads
+	# its feeds through here on the realm raise's worker (test_worker_types).
+	return got as PackedInt32Array if typeof(got) == TYPE_PACKED_INT32_ARRAY else PackedInt32Array()
 
 
 ## The grid's cable spans leaving a mast in section `s`: (from, to) prop ids.
@@ -74,11 +76,15 @@ static func _index(w: WorldData) -> void:
 		if not line.has("props"):
 			continue
 		var ids := PackedInt32Array(line["props"])
+		# Read off the table's rows, never as props: a view made per mast was
+		# hundreds of props made for nothing whenever a keeper's lair first asked
+		# for its feeds (test_prop_table).
 		for j in ids.size() - 1:
-			var a := w.prop(ids[j])
-			if a == null or w.prop(ids[j + 1]) == null:
+			var ra := w.position_of(ids[j])
+			var rb := w.position_of(ids[j + 1])
+			if ra < 0 or ra >= w.table.size() or rb < 0 or rb >= w.table.size():
 				continue
-			var s := of(a.pos)
+			var s := of(w.table.pos[ra])
 			if not w.section_spans.has(s):
 				w.section_spans[s] = [] as Array[Vector2i]
 			(w.section_spans[s] as Array[Vector2i]).append(Vector2i(ids[j], ids[j + 1]))

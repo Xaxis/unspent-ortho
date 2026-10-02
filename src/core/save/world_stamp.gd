@@ -253,8 +253,29 @@ const UNKNOWN := "unknown"
 ##     off its own. Places are furnished in each one's own hash order, not the
 ##     order sited, and a village's spur runs to the island's own lines, never to
 ##     another village's spur. Houses, wrecks and spurs move; every kind's count holds within 2%.
-##     (Provisional; restamped at landing.)
-const GEN := 46
+## 47. A continent's places are its own (slice 3 step 6). A region's sites,
+##     works and wrecks, and the stolen light's rank, are thrown from its own
+##     key (its landscape and the plan cell its centre lies in), never its rank
+##     in the world. A sea cell or a skerry takes only the landscapes its
+##     nearest continent was dealt; each body's weights settle on their own
+##     schedule; a body's ecotones spread over its own cells; a climate
+##     landscape's site weighs its own body's sites and is jittered from its own
+##     cell; each body's roads are its own tree; a landmark keeps apart from its
+##     own body's only; each body lays every river rising from RIVER_HEAD up,
+##     eleven at most (river tiles over four seeds at 1840: world +7%, home
+##     +6.5%). A site's own tile is clear of roads and water. And the drowned
+##     city is the LANDFALL (`BiomeDef.LANDFALL`), dealt to the body the
+##     shortest water from home reaches with its heart where that water comes
+##     ashore; its streets are ruled a level to a block, its shore is quays, and
+##     its blocks (DROWNED_SHELL), roofs in the shallows (DROWNED_ROOF) and clock
+##     tower stand in the water. Its port is works: a lock of four leaves with
+##     its pump house and gauges, slips and sea walls off its quays, a flooded
+##     hall's walls round its black water; trams stand in a wider band of silt.
+##     Every region big enough to keep a keeper gets its keeper's first station
+##     (an intake, a lock), laid only where the ground keeps the design's ways
+##     and never within its keeper's reach of where the raft comes ashore
+##     (GenWorks.station_holds). (Provisional; restamped at landing.)
+const GEN := 47
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

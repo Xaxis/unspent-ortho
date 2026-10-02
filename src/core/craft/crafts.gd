@@ -11,7 +11,7 @@ class_name Crafts
 ##   * A body steps off only onto ground it could have stood on anyway. Getting
 ##     off is never how a channel is crossed; the craft is.
 
-## Tiles from a parked craft that `ride` reaches it at.
+## Tiles from a parked craft that `ride` reaches it at, at the least (`board_reach`).
 const BOARD_REACH := 2.2
 ## Tiles travelled over ground a body could not cross that count as a crossing
 ## (a tour's `ride_crossed`): far enough that no launch alone can claim it.
@@ -20,15 +20,26 @@ const CROSSED_TILES := 2.0
 const LINE_STEP := 0.45
 
 
-static func nearest(list: Array, at: Vector2, reach: float = BOARD_REACH) -> Craft:
+## The nearest craft in `list` within `reach` of `at`, or each within its own
+## `board_reach` when `reach` is not given; null when none is.
+static func nearest(list: Array, at: Vector2, reach: float = -1.0) -> Craft:
 	var best: Craft = null
-	var best_d := reach * reach
+	var best_d := INF
 	for c: Craft in list:
 		var d := c.pos.distance_squared_to(at)
-		if d <= best_d:
+		var r := reach if reach >= 0.0 else board_reach(c.kind)
+		if d <= r * r and d < best_d:
 			best_d = d
 			best = c
 	return best
+
+
+## How far from a parked craft of `kind` a body boards it: BOARD_REACH, or as far
+## as that craft lets a body step off it (`launch`), whichever is further. A raft
+## set a body down three tiles off and then would not take him back from there,
+## so a landing among the drowned city's roofs stranded it (back-at-camp.tour).
+static func board_reach(kind: StringName) -> float:
+	return maxf(BOARD_REACH, CraftKinds.launch_reach(kind)) if CraftKinds.known(kind) else BOARD_REACH
 
 
 ## True where a craft of this kind can be: the ground it travels over, inside the
@@ -149,7 +160,7 @@ static func wear_per_step(kind: StringName) -> float:
 static func board_refusal(craft: Craft, from: Vector2) -> StringName:
 	if craft == null:
 		return &"none"
-	if craft.pos.distance_to(from) > BOARD_REACH:
+	if craft.pos.distance_to(from) > board_reach(craft.kind):
 		return &"far"
 	if craft.wrecked:
 		return &"wrecked"
