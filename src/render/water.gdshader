@@ -108,6 +108,7 @@ const float CHOP_BEND = 0.12;
 const float SEA_FAR_FROM = 40.0;
 const float SEA_FAR_GONE = 150.0;
 const float SEA_FAR_ROUGH = 0.32;
+const vec3 SEA_FAR_BODY = vec3(0.078, 0.175, 0.25);
 // The chop at `wp`: two octaves of the ink noise, each on axes turned off the
 // lattice (37 and 71 degrees) so neither lays a grid.
 float chop_at(vec2 wp, float t) {
@@ -278,6 +279,14 @@ void fragment() {
 		c = max(c, mix(SPRUCE1, BRINE1, 0.5) * mix(1.0, 0.6, pale));
 	}
 	c *= mix(mix(1.0, pooled ? 0.8 : 0.22, deep), 1.0, pale);
+	// THE SEA FROM FAR ABOVE KEEPS ITS BODY. At a man's height deep water is near
+	// black, and what lights it is what it mirrors; from up a walker's leg nothing
+	// near is mirrored in it, and a black sea under the air came out as the air's
+	// own colour, the same as the sky. So far up (`far`) the open sea's deep takes
+	// its own colour back, a deep blue a little green, lit like any surface.
+	if (kind == 0) {
+		c = mix(c, SEA_FAR_BODY, far * deep * (1.0 - pale));
+	}
 	// THE SUN'S HUE BELONGS IN THE WATER'S REFLECTION, NOT IN ITS BODY. The body
 	// colour is lit by the sun like any albedo, so an amber evening sun turned a
 	// blue sea to ochre from above and dragged the frame brown (canon 12). Water

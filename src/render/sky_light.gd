@@ -1378,6 +1378,17 @@ func _look_out(e: Environment, sm: ProceduralSkyMaterial, a: Dictionary, share: 
 		var bent := Air.colour(sm.sky_horizon_color, a)
 		sm.ground_horizon_color = sm.ground_horizon_color.lerp(bent, w)
 		sm.sky_horizon_color = sm.sky_horizon_color.lerp(bent, w)
+		# FROM HIGH UP THE GROUND HALF OF THE DOME IS AIR. At eye level it is the
+		# land's bounce, dark and brown; kilometres up, every ray under the
+		# horizon crosses the whole air before it reaches anything, and that air
+		# is lit: the sky's blue, paler toward the horizon. The depth fog takes
+		# its colour from here (HORIZON_AERIAL), so from the thigh the air over
+		# the sea was the dark bounce and the sea a black floor under it.
+		var c := _cam()
+		var up := aloft_share(c.global_position.y) if c != null else 0.0
+		if up > 0.0:
+			var below := bent.lerp(sm.sky_top_color, ALOFT_BELOW_TOP) * ALOFT_BELOW_LEVEL
+			sm.ground_bottom_color = sm.ground_bottom_color.lerp(below, up * w)
 		# Under a lid (`BiomeDef.sky_shut`) there are no stars and no moon to
 		# see: the slums at midnight showed a starfield through their smog.
 		_see_sky(e, sm, clock_hour, nightly * (1.0 - last_lid()), w)
@@ -1391,40 +1402,58 @@ func _look_out(e: Environment, sm: ProceduralSkyMaterial, a: Dictionary, share: 
 ## HIGH OVER THE LAND THE AIR IS SEEN THROUGH, NOT INTO. The eye-level air
 ## closes by SEE, which is right for an eye a man's height off the ground and a
 ## wall for one up a walker's leg: from the thigh the ground is forty kilometres
-## down and all of it lay behind that wall, so nothing in the frame said how far
-## down it was. From ALOFT_FROM up, the air's reach grows with the eye's height
-## (ALOFT_BEGIN and ALOFT_END of it), so the sea straight under a high eye keeps
-## four fifths of its light, the sea forty-five degrees down two thirds, and the
-## horizon still closes into the sky's colour. At 0.1 and 2.5 of it the thigh's
-## view past the leg, fifteen to thirty-five degrees down, met the sea eighty
-## to a hundred and eighty kilometres off and showed only the air's grey. An eye
-## under ALOFT_FROM (over the tallest thing on the land, and on the drum, a
-## hundred metres up) is left exactly as it was.
+## down and all of it lay behind that wall. From ALOFT_FROM up the air begins at
+## the eye and closes only by ALOFT_EDGE of the farthest any eye sees, on the
+## engine's own smoothstep (`aloft_air`): from the thigh the sea straight under
+## him keeps nine tenths of its light, the island fifty kilometres off nearly as
+## much, the sea a hundred kilometres off three fifths, and the horizon closes
+## into the sky. Closed at four times the eye's height, or as a column of air
+## thickening with it, the island was a smudge in the air and the sea the air's
+## own colour. An eye under ALOFT_FROM (over the tallest thing on the land, and
+## on the drum, a hundred metres up) is left exactly as it was.
 const ALOFT_FROM := 200.0
 const ALOFT_FULL := 1000.0
-const ALOFT_BEGIN := 0.3
-const ALOFT_END := 4.0
+const ALOFT_CURVE := 1.0
+## The air under a high eye, as the dome's ground half (`_look_out`): the
+## horizon's colour this share of the way to the zenith's, at this level. Deep,
+## so the sea under it is still the sea: at the horizon's own pale blue the
+## sea was the air's colour from the thigh down, and only the land was seen.
+const ALOFT_BELOW_TOP := 0.8
+const ALOFT_BELOW_LEVEL := 0.6
 ## The farthest any eye sees: the climb's (43_climb), from a walker's hub
-## fifty-five kilometres up, where its air closes at ALOFT_END of that height.
-## Its far plane and the open sea (world_view) reach this far, so the sea's own
-## edge is always inside air that has closed.
+## fifty-five kilometres up. Its far plane and the open sea (world_view) reach
+## this far, and the air closes by ALOFT_EDGE of it, so the sea's own edge is
+## always inside air that has closed.
 const HIGHEST_SEE := 250000.0
+const ALOFT_EDGE := 0.9
 
 
 func _aloft(e: Environment) -> void:
 	var c := _cam()
 	if c == null or c.projection != Camera3D.PROJECTION_PERSPECTIVE:
 		return
-	var r := aloft_reach(Vector2(e.fog_depth_begin, e.fog_depth_end), c.global_position.y)
+	var h := c.global_position.y
+	var r := aloft_reach(Vector2(e.fog_depth_begin, e.fog_depth_end), h)
 	e.fog_depth_begin = r.x
 	e.fog_depth_end = r.y
+	e.fog_depth_curve = lerpf(e.fog_depth_curve, ALOFT_CURVE, aloft_share(h))
+
+
+## How far an eye `h` up is under the high air's rules, 0 to 1.
+static func aloft_share(h: float) -> float:
+	return smoothstep(ALOFT_FROM, ALOFT_FULL, h)
 
 
 ## Where the air begins and closes (depth from the eye) for an eye `h` up, from
 ## where it would at eye level.
 static func aloft_reach(reach: Vector2, h: float) -> Vector2:
-	var k := smoothstep(ALOFT_FROM, ALOFT_FULL, h)
-	return reach.lerp(Vector2(maxf(reach.x, h * ALOFT_BEGIN), maxf(reach.y, h * ALOFT_END)), k)
+	return reach.lerp(Vector2(0.0, maxf(reach.y, HIGHEST_SEE * ALOFT_EDGE)), aloft_share(h))
+
+
+## The share of the light from `d` metres off that the air takes, for an eye
+## wholly under the high air's rules: the engine's depth fog as `_aloft` sets it.
+static func aloft_air(d: float) -> float:
+	return pow(smoothstep(0.0, HIGHEST_SEE * ALOFT_EDGE, d), ALOFT_CURVE)
 
 
 ## WHERE A MACHINE CANNOT SEE YOU, YOU CANNOT SEE FAR EITHER. A dust storm cuts
