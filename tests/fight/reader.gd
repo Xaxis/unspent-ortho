@@ -353,4 +353,14 @@ func _in_box_of(b: Blow, m: MobState, p: Vector2, margin: float) -> bool:
 	if b.area:
 		# A drop is read by its shadow: where it will come down (MobState.drop_at).
 		return m.drop_at.is_finite() and FightRules.drop_hits(m.drop_at, m.radius, b, p, sim.hero.radius + margin)
-	return FightRules.box_hits(m.pos, m.facing, m.radius, b, p, sim.hero.radius + margin)
+	return FightRules.box_hits(_carried_to(b, m), m.facing, m.radius, b, p, sim.hero.radius + margin)
+
+
+## A run carries its bite in (Brains._charge): its tell is read where the run
+## will have brought it when the blow goes live, the way a drop is read by its
+## shadow, not where the body stands as the tell starts.
+func _carried_to(b: Blow, m: MobState) -> Vector2:
+	if not m.charging or m.blow != b or m.blow_phase(sim.now) != &"windup":
+		return m.pos
+	var left := (m.blow_at + b.windup - sim.now) / 1000.0
+	return m.pos + m.bearing * m.speed * left

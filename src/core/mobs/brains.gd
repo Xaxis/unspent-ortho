@@ -284,9 +284,16 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 	# and on the home coast's flats each miss spent it before it had stood the
 	# 1.4 s it founders in (tests/fight/test_brains.gd, the charge that reaches).
 	var carrying := m.blow_phase(now) == &"windup"
-	if m.charging and ((now >= m.run_until and not carrying) or _run_blocked(m, speed, now)):
+	# A run told from close in is eased to a creep or a stand (FightSim). Once the
+	# player is inside its bite's reach, it has arrived: it stands and bites from
+	# there. Run on, it would go at full dash the moment the bite went live, a
+	# lunge no tell shows.
+	var arrived := carrying and m.commanded < speed * BLOCKED_SHARE and to.length() <= m.radius + hero.radius + m.blow.reach \
+			and now - (m.run_until - RUN_MS) >= FightRules.THINK_MS
+	var blocked := _run_blocked(m, now)
+	if m.charging and ((now >= m.run_until and not carrying) or arrived or blocked):
 		# The run is over (or a wall ended it): stand and come round before the next.
-		if now < m.run_until:
+		if blocked and now < m.run_until:
 			m.route_until = now + ROUTE_AFTER_BLOCK_MS
 		m.charging = false
 		m.run_until = minf(m.run_until, now)
@@ -477,10 +484,14 @@ static func _round_the_ground(m: MobState, sim: FightSim, target: Vector2) -> bo
 	return true
 
 
-static func _run_blocked(m: MobState, speed: float, now: float) -> bool:
+## Held to the speed the run was asked for (MobState.commanded), not its pace:
+## a run told from close in eases so its front arrives as the bite goes live
+## (FightSim), and against its full pace that easing reads as a wall, which
+## stands the run out of reach and has it bite the air short of a still player.
+static func _run_blocked(m: MobState, now: float) -> bool:
 	if now - (m.run_until - RUN_MS) < FightRules.THINK_MS:
 		return false
-	var expected := speed * FightRules.THINK_MS / 1000.0
+	var expected := m.commanded * FightRules.THINK_MS / 1000.0
 	return m.pos.distance_to(m.last_think_pos) < expected * BLOCKED_SHARE
 
 

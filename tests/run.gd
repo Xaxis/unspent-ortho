@@ -2,9 +2,12 @@ extends SceneTree
 ## Headless test runner.
 ##   godot --headless --path . -s tests/run.gd [-- filter] [--shard=I/N]
 ##
-## --shard=I/N runs every Nth test file starting at the Ith (0-based), so the
-## gate can run N processes side by side. Whole files stay together, so a file's
-## cached worlds are built once. Scripts under src are loaded in each.
+## --shard=I/N runs shard I (0-based) of N, so the gate can run N processes side
+## by side. Whole files stay together, so a file's cached worlds are built once,
+## and each shard keeps the runner's own order. Which shard a file is in goes by
+## its measured time (`shard_of`, tests/shard_times.txt); with no table, every
+## Nth file from the Ith. Each file's time is printed as `file-time PATH MS`.
+## Scripts under src are loaded in each.
 ##
 ## 1. Loads every script under res://src so a parse error anywhere fails the run,
 ##    even in a file no test touches.
@@ -53,6 +56,12 @@ func _run() -> void:
 			filter = a
 	var index := -1
 	OS.add_logger(_script_errors)
+	var tests: PackedStringArray = []
+	for path in _find("res://tests", ".gd"):
+		if path.get_file().begins_with("test_") and path.get_file() != "test_case.gd":
+			tests.append(path)
+	var times := read_times(TIMES)
+	var shard_at := shard_of(tests, shards, times) if shards > 1 and not times.is_empty() else {}
 
 	for path in _find("res://src", ".gd"):
 		var s: Script = load(path)
@@ -64,12 +73,12 @@ func _run() -> void:
 			_load_errors += 1
 			printerr("LOAD FAIL ", path)
 
-	for path in _find("res://tests", ".gd"):
-		if not path.get_file().begins_with("test_") or path.get_file() == "test_case.gd":
-			continue
+	for path in tests:
 		_load_script_errors()
 		index += 1
-		if index % shards != shard:
+		if shard_at.is_empty() and index % shards != shard:
+			continue
+		if not shard_at.is_empty() and int(shard_at[path]) != shard:
 			continue
 		var script: GDScript = load(path)
 		if script == null:
@@ -81,6 +90,8 @@ func _run() -> void:
 			var name: String = m.name
 			if name.begins_with("test_") and not methods.has(name):
 				methods.append(name)
+		var file_t := Time.get_ticks_msec()
+		var file_ran := 0
 		for name in methods:
 			var id := "%s:%s" % [path.get_file().get_basename(), name]
 			# **A COMMA MEANS "ANY OF THESE", AND IT IS HOW AN ORDER-DEPENDENCE IS
@@ -109,6 +120,7 @@ func _run() -> void:
 			# filtered count as a file count.
 			if filter != "" and not _wanted(id, path, filter):
 				continue
+			file_ran += 1
 			var inst: TestCase = script.new()
 			inst.tree = self
 			inst.current = id
@@ -184,6 +196,8 @@ func _run() -> void:
 				print("  FAIL %s (%d ms)" % [id, ms])
 				for f in inst.failures:
 					print("       ", f)
+		if file_ran > 0:
+			print("file-time %s %d" % [path.trim_prefix("res://"), Time.get_ticks_msec() - file_t])
 	_load_script_errors()
 	var total := Time.get_ticks_msec() - t0
 	print("\n%d passed, %d failed, %d load errors in %d ms" % [_passed, _failed, _load_errors, total])
@@ -200,6 +214,62 @@ func _run() -> void:
 	print("runner: drained; quitting")
 	RunnerHome.remove()
 	quit(0 if _failed == 0 and _load_errors == 0 and _passed > 0 else 1)
+
+
+## Each test file's measured seconds in the gate, all of it: its run in a shard,
+## and its costs and played tests run again after the shard (tools/check.sh).
+## `PATH SECONDS` lines, PATH from the project root; tools/shard-times.sh writes
+## it from a gate's own log.
+const TIMES := "res://tests/shard_times.txt"
+
+
+## {path (res://): seconds} from a table of `PATH SECONDS` lines; {} with none.
+static func read_times(file: String) -> Dictionary:
+	var out := {}
+	var f := FileAccess.open(file, FileAccess.READ)
+	if f == null:
+		return out
+	while not f.eof_reached():
+		var line := f.get_line().strip_edges()
+		if line == "" or line.begins_with("#"):
+			continue
+		var parts := line.split(" ", false)
+		if parts.size() == 2:
+			out["res://" + parts[0]] = parts[1].to_float()
+	return out
+
+
+## WHICH SHARD EACH FILE RUNS IN: longest first onto the lightest shard (ties to
+## the lowest), by `times`, a file not in it at the table's median. By index alone
+## one added file reshuffled every shard and the slow played files clustered: on
+## 1430cd50 the shards took 14 to 75 minutes against a step limit of 80.
+## {path: shard}
+static func shard_of(paths: PackedStringArray, shards: int, times: Dictionary) -> Dictionary:
+	var known: Array[float] = []
+	for p: String in paths:
+		if times.has(p):
+			known.append(float(times[p]))
+	known.sort()
+	var median := known[known.size() / 2] if not known.is_empty() else 1.0
+	var weight := func(p: String) -> float: return float(times.get(p, median))
+	var order: Array[String] = []
+	order.assign(paths)
+	order.sort_custom(func(a: String, b: String) -> bool:
+		var wa: float = weight.call(a)
+		var wb: float = weight.call(b)
+		return wa > wb or (wa == wb and a < b))
+	var loads: Array[float] = []
+	loads.resize(shards)
+	loads.fill(0.0)
+	var out := {}
+	for p: String in order:
+		var best := 0
+		for i in shards:
+			if loads[i] < loads[best]:
+				best = i
+		out[p] = best
+		loads[best] += weight.call(p)
+	return out
 
 
 ## Script errors raised outside any test (loading scripts, making a test's
