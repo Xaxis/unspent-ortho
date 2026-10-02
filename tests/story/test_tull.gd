@@ -1,9 +1,9 @@
 extends TestCase
 ## THE TREAD-FOLK (docs/STORY.md, the walkers; ROADMAP slice 3 step 7). Tull farms
-## the lame walker's craters from the ground between them, at the tread the
-## walker lead pins: the slot `the_tread` and the survey's pin are one rule
-## (StoryCasting.crater_near), and he stands on the lip of its middle toe's crater,
-## where the line comes down (49_cast). Colour: his words never land walker_told, the line he
+## the lame walker's craters from the ground between them, at the crater the
+## walker lead pins, its middle toe's, where the line comes down: the slot
+## `the_tread` and the survey's pin are one rule (StoryCasting.crater_near), and he
+## stands on the arch-side lip of it (49_cast). Colour: his words never land walker_told, the line he
 ## has seen comes down only once the warden has said the road up, and his bowl of
 ## soup is a deal of its own, never the crew's armour (Guide.armour_goal).
 
@@ -56,9 +56,8 @@ func test_he_speaks_of_the_line_only_after_the_warden() -> void:
 	Story.forget()
 
 
-## The slot is where the survey pins the crater (the ankle, on the Covenant's
-## body); Tull stands on the arch-side lip of the middle toe's crater, where the
-## cable comes down. Staged with the foot down: on the far side of the arch from
+## The slot is where the survey pins the crater (a tread's middle toe's, on the
+## Covenant's body, where the cable comes down); Tull stands on its arch-side lip. Staged with the foot down: on the far side of the arch from
 ## the cable, and clear of the walk from the climb's lip down to it. A world with
 ## no crater on that body has nobody there, and the lead pins nothing either.
 ## Which seeds have one moves with worldgen, so each is asked.
@@ -78,23 +77,27 @@ func test_he_stands_on_the_middle_toe_s_lip_clear_of_the_climb() -> void:
 			Sx.end(g)
 			continue
 		pinned += 1
-		check(placed.has(&"the_tread") and placed[&"the_tread"].pos == pin, "seed %d: the slot is where the survey pins the crater" % seed_value)
+		# The pin is read off the walks, the slot off the world's list: one yaw
+		# kept in single precision, so they agree to a hair, not to the bit.
+		check(placed.has(&"the_tread") and (placed[&"the_tread"].pos as Vector2).distance_to(pin) < 0.01, "seed %d: the slot is where the survey pins the crater" % seed_value)
 		check(not tull.is_empty(), "seed %d: Tull is cast" % seed_value)
 		var tread := {}
 		var n := 0
 		for m: Dictionary in g.world.landmarks:
 			if StringName(m.get("kind", &"")) == &"tread":
 				n += 1
-				if (m.pos as Vector2) == pin:
+				var toe: Vector3 = (m.pads as Array)[Treads.MIDDLE_TOE]
+				if Vector2(toe.x, toe.y).distance_to(pin) < 0.01:
 					tread = m
 					break
+		check(not tread.is_empty(), "seed %d: the pin is a tread's middle toe's crater" % seed_value)
 		if tull.is_empty() or tread.is_empty():
 			Sx.end(g)
 			continue
-		var pad: Vector3 = (tread.pads as Array)[1]
+		var pad: Vector3 = (tread.pads as Array)[Treads.MIDDLE_TOE]
 		var centre := Vector2(pad.x, pad.y)
 		var at: Vector2 = tull.pos
-		var arch := (pin - centre).normalized()
+		var arch := ((tread.pos as Vector2) - centre).normalized()
 		var off := absf(arch.angle_to(at - centre))
 		lt(absf(at.distance_to(centre) - Treads.rim_r(pad)), 6.0, "seed %d: on the middle toe's lip (%.1f m from the pad, rim %.0f)" % [seed_value, at.distance_to(centre), Treads.rim_r(pad)])
 		lt(off, 0.4, "seed %d: on its arch side (%.2f rad off it)" % [seed_value, off])
