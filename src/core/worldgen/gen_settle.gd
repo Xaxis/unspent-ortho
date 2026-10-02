@@ -738,26 +738,38 @@ static func roads(c: GenContext) -> void:
 	# it. Everything else was one number, which names no culprit: choosing the
 	# edges is arithmetic over villages, connecting them is A* over the half-grid,
 	# and they want opposite fixes.
-	var edges := _edges(vs, c.body_k)
+	# EACH BODY'S ROADS ARE ITS OWN: its own tree and loops, and its own villages
+	# to rejoin. One tree over the world's villages took home's loops from how
+	# far the villages across the sea stood, and a road between two continents
+	# is never laid anyway.
+	var groups := _road_groups(c, vs)
+	var edges: Array[Vector2i] = []
+	for g: PackedInt32Array in groups:
+		var sub: Array[Dictionary] = []
+		for j in g:
+			sub.append(vs[j])
+		for e in _edges(sub, c.body_k):
+			edges.append(Vector2i(g[e.x], g[e.y]))
 	c.mark(&"roads.edges")
 	for e in edges:
 		if _connect(c, grid, hw, e.x, e.y, comp):
 			root[GenAccess.find_root(root, e.x)] = GenAccess.find_root(root, e.y)
 	c.mark(&"roads.connect")
 	# A tree edge can fail (a loch in the way, no footing): join any village
-	# still cut off to its nearest neighbour that the road can reach.
-	for j in vs.size():
-		if GenAccess.find_root(root, j) == GenAccess.find_root(root, 0):
-			continue
-		var others: Array[Vector2] = []
-		for k in vs.size():
-			if GenAccess.find_root(root, k) != GenAccess.find_root(root, j):
-				others.append(Vector2((vs[k].pos as Vector2).distance_to(vs[j].pos), k))
-		others.sort()
-		for o in others:
-			if _connect(c, grid, hw, j, int(o.y), comp):
-				root[GenAccess.find_root(root, j)] = GenAccess.find_root(root, int(o.y))
-				break
+	# still cut off to its nearest neighbour on its body that the road can reach.
+	for g: PackedInt32Array in groups:
+		for j in g:
+			if GenAccess.find_root(root, j) == GenAccess.find_root(root, g[0]):
+				continue
+			var others: Array[Vector2] = []
+			for k in g:
+				if GenAccess.find_root(root, k) != GenAccess.find_root(root, j):
+					others.append(Vector2((vs[k].pos as Vector2).distance_to(vs[j].pos), k))
+			others.sort()
+			for o in others:
+				if _connect(c, grid, hw, j, int(o.y), comp):
+					root[GenAccess.find_root(root, j)] = GenAccess.find_root(root, int(o.y))
+					break
 	c.mark(&"roads.rejoin")
 	GenWater.drain_crossed(c)
 	ease_roads(c)
@@ -826,6 +838,30 @@ static func _connect(c: GenContext, grid: AStarGrid2D, hw: int, from: int, to: i
 		grid.set_point_weight_scale(hp, minf(grid.get_point_weight_scale(hp), 0.45))
 	_lay_road(c, path, a, b)
 	return true
+
+
+## The villages each body's roads join, as indices into `vs`, each body's in the
+## order they stand there. One body: every village, in order.
+static func _road_groups(c: GenContext, vs: Array[Dictionary]) -> Array[PackedInt32Array]:
+	var out: Array[PackedInt32Array] = []
+	if c.allow.is_empty():
+		var all := PackedInt32Array()
+		for j in vs.size():
+			all.append(j)
+		out.append(all)
+		return out
+	var at := {}
+	for j in vs.size():
+		var p: Vector2 = vs[j].pos
+		var id := c.w.continent_at(floori(p.x), floori(p.y))
+		if not at.has(id):
+			at[id] = out.size()
+			out.append(PackedInt32Array())
+		# A packed array is a value: read out, grown, written back.
+		var g: PackedInt32Array = out[int(at[id])]
+		g.append(j)
+		out[int(at[id])] = g
+	return out
 
 
 ## A spanning tree over village squares plus a few short loops, as index pairs.

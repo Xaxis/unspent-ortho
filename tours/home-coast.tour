@@ -371,11 +371,16 @@ shot 17-the-yard-holding-somebody-from-oyster-row with works,works_lit,works_yar
 # with it behind him. Jumped onto the flats, he was gone from it behind the rise
 # 9 tiles off, and it lost him and never came.
 # Every try starts at its den: a try that ends with him downed and carried off
-# would take the next one's walk from wherever he came round. The mud is
-# three tiles off its den (208 tiles of it inside its reach, seed 1).
+# would take the next one's walk from wherever he came round. He goes in from
+# its flats and runs back the way he came (`near keeper_flats`, the nearest
+# patch of them its move reaches from its den): stood off its den on the side
+# he arrived from, terraces and the intake's fence stood between him and the
+# water. The shallows run four tiles off its den (336 tiles of mud, wash and
+# river inside its reach, seed 1; Sentinels.ways_closed holds every den to them).
 try 6
   near keeper
   await sentinel 12
+  near keeper_flats
   wait 1.0
   walkto mob 4 till:tell
   walkto ground:mud,water,river 6 run

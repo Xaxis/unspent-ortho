@@ -4,7 +4,9 @@ extends RefCounted
 ## down off a quay into it, a crowd of piles a boat was tied to before the jetty
 ## went — or what the water took and left standing in it: a tram half sunk in
 ## the silt with a net somebody hung over its windows. And the plan's own: a
-## gate leaf in a lock, ruled steel in a stone recess.
+## gate leaf in a lock, ruled steel in a stone recess. And the city itself: its
+## blocks standing in the canals to their sills, and out in the shallows the
+## roofs of the ones the sea took further.
 ##
 ## Two pens, by what a thing IS. Stone somebody cut is MADE and tagged CUTSTONE
 ## (matter row 91): a quay's steps and a lock's recess were dressed by hand. The
@@ -29,6 +31,8 @@ const Kit := preload("res://src/models/props/kit.gd")
 const P := preload("res://src/render/palette.gd")
 const Remains := preload("res://src/models/props/remains.gd")
 const Houses := preload("res://src/models/props/houses.gd")
+## The towers' own shaft, which the city's drowned blocks are cast in.
+const Towers := preload("res://src/models/props/towers.gd")
 ## The stolen tube a lit form carries: one door, the city's, so the light and
 ## the thing casting it come from one place (`PropModels.neon_point`).
 const Metropolis := preload("res://src/models/props/metropolis.gd")
@@ -51,6 +55,8 @@ static func build(k: Kit, kind: int, v: int, c: int) -> void:
 		PropKind.DROWNED_TRAM: drowned_tram(k, v, c)
 		PropKind.MOORING_POST: mooring_post(k, v, c)
 		PropKind.LOCK_GATE: lock_gate(k, v, c)
+		PropKind.DROWNED_SHELL: drowned_shell(k, v, c)
+		PropKind.DROWNED_ROOF: drowned_roof(k, v, c)
 
 
 ## The landscape's stone, dressed: what a quay and a lock's recess are cut from.
@@ -289,6 +295,191 @@ static func lock_gate(k: Kit, v: int, c: int) -> void:
 		Remains.streak(k, Vector3(0.126, 1.1 - j * 0.5, -0.6 - j * 0.7), 0.05, 0.3, Vector3.RIGHT, P.RUST[2])
 
 
+# --- what the sea left standing ---------------------------------------------------
+
+## How far a canal stands up a drowned block: its ground floor is under the water,
+## and the first floor's sills sit a hand over the canal's sheet (which stands
+## `TerrainMesher.WADE`, 0.3, over its bank).
+const SILL_DEEP := 1.15
+## A drowned block's plan at its widest: deep from its canal face (+X), and
+## along the canal. What GenWorks plots one to (drowned_city.gd BLOCK_DEEP and
+## BLOCK_ALONG in the landscape's file).
+const BLOCK_DEEP := 2.4
+const BLOCK_ALONG := 3.0
+
+## THE BLOCKS ALONG A CANAL ARE NEVER ONE BOX TWICE. A row of one profile read
+## from above as a shelf of identical boxes, which a city is not (docs/LOOK.md:
+## never a box read as a building block). Each variant is its own profile:
+## storeys, plan (`w` deep from the canal, `d` along it), how its top ended, and
+## how far it has leant on the silt, toward the canal (+) or back off it (-).
+##   snapped  two walls of the floor above to their broken heights, the rest sky
+##   roofed   its parapet and what stood on the roof
+##   stepped  the top floor set back off the canal, a terrace before it
+##   cut      the canal corner gone from the second floor up, open to the sky
+##   front    only its face to the canal: the block behind it came down
+const SHELLS: Array[Dictionary] = [
+	{"n": 3, "w": 2.4, "d": 3.0, "top": &"snapped", "lean": 0.0},
+	{"n": 2, "w": 2.2, "d": 2.7, "top": &"roofed", "lean": 0.0},
+	{"n": 4, "w": 2.4, "d": 2.8, "top": &"snapped", "lean": 0.05},
+	{"n": 3, "w": 0.34, "d": 3.0, "top": &"front", "lean": 0.0},
+	{"n": 5, "w": 2.4, "d": 3.0, "top": &"stepped", "lean": 0.0},
+	{"n": 3, "w": 2.3, "d": 2.9, "top": &"cut", "lean": -0.035},
+	{"n": 2, "w": 2.0, "d": 2.6, "top": &"snapped", "lean": 0.075},
+	{"n": 4, "w": 2.3, "d": 3.0, "top": &"roofed", "lean": -0.02},
+]
+
+## How deep a sea roof's block stands below the ground it is laid on, by how
+## much of it breaks the sea's sheet (`TerrainMesher.WATER_Y`, 0.3): its last
+## floor's deck just under the water with its broken walls standing out of it,
+## its deck just out of the water, and a floor and a half out, its windows' heads
+## clear of the sea.
+const ROOFS: Array[Dictionary] = [
+	{"n": 3, "w": 2.4, "d": 3.0, "top": &"snapped", "out": 0.1},
+	{"n": 2, "w": 2.2, "d": 2.8, "top": &"awash", "out": 0.42},
+	{"n": 4, "w": 2.3, "d": 2.9, "top": &"snapped", "out": 1.55},
+]
+
+
+## A DROWNED BLOCK, lining a street that is a canal now: the metropolis's own
+## towers with the sea in them. Its ground floor is under the water, so what
+## stands out of the canal begins at the first floor's sills, the weed and a
+## white salt line up its canal face to where the tide comes, and every floor
+## above dark and empty. A row of them along a canal is a city's frontage, and
+## the water between two rows is the street. Faces +X, its canal (SHELLS).
+static func drowned_shell(k: Kit, v: int, c: int) -> void:
+	var shape: Dictionary = SHELLS[v % SHELLS.size()]
+	var w: float = shape.w
+	# A front stands on the canal face; the rest stand back from it by their depth.
+	var off := Vector3(BLOCK_DEEP * 0.5 - w * 0.5, -SILL_DEEP, 0.0)
+	_drowned_block(k, 52100 + v * 37 + c * 5, c, shape, off, true)
+
+
+## A DROWNED ROOF, out in the shallows off the city where the sea took the blocks
+## further: all that breaks the surface is the top of its last floor, snapped or
+## awash. Seen from a raft coming in, the city starts here, in the sea (ROOFS).
+static func drowned_roof(k: Kit, v: int, c: int) -> void:
+	var shape: Dictionary = ROOFS[v % ROOFS.size()]
+	var up := float(shape.n) * Towers.STOREY - float(shape.out)
+	_drowned_block(k, 52300 + v * 37 + c * 5, c, shape, Vector3(0.0, -up, 0.0), false)
+
+
+## A block of `shape`'s storeys of the towers' own shaft, moved by `off` (its
+## foot sunk below the ground it is laid on) and leant on the silt about its own
+## foot, with the top its shape names; with the `tide` up its canal face.
+static func _drowned_block(k: Kit, s: int, c: int, shape: Dictionary, off: Vector3, tide: bool) -> void:
+	var dress := BiomeDressing.of(c)
+	var n: int = shape.n
+	var w: float = shape.w
+	var d: float = shape.d
+	var top_kind: StringName = shape.top
+	var lean: float = shape.get("lean", 0.0)
+	# Leant about the foot's canal edge, so the face stays on its plot.
+	var foot := Vector3(w * 0.5, 0.0, 0.0)
+	var xf := Transform3D(Basis.IDENTITY, off) * Transform3D(Basis.IDENTITY, foot) * Transform3D(Basis(Vector3(0, 0, 1), -lean), -foot)
+	k.made.push(xf)
+	k.found.push(xf)
+	k.leaf.push(xf)
+	var body := GroundColors.down(dress.concrete, 0.34)
+	var hw := w * 0.5
+	var hd := d * 0.5
+	match top_kind:
+		&"cut":
+			# One floor whole, then the floors over it on the back half only: the
+			# canal corner came away and the rooms behind it stand open.
+			var y := Towers.shaft(k, w, d, 1, 0.0, s, c, false)
+			var back := w * 0.55
+			k.made.push(Transform3D(Basis.IDENTITY, Vector3(-(w - back) * 0.5, y, 0.0)))
+			k.found.push(Transform3D(Basis.IDENTITY, Vector3(-(w - back) * 0.5, y, 0.0)))
+			var top := Towers.shaft(k, back, d, n - 1, 0.0, s + 5, c, false)
+			_snapped(k, back, d, top, s, body)
+			k.found.pop()
+			k.made.pop()
+			# What came away, lying on the floor it fell to.
+			for i in 4:
+				k.slab(hw - 0.5 + Kit.j(s, i + 40, 0.3), y + 0.06, -hd + 0.5 + i * (d - 1.0) / 3.0, 0.5 + Kit.j(s, i + 44, 0.15), 0.18, 0.4, s + 90 + i,
+					GroundColors.down(body, 0.15), GroundColors.up(body, 0.1), 0.05, 0.1, Kit.j(s, i + 48, 0.4))
+		&"stepped":
+			var y := Towers.shaft(k, w, d, n - 1, 0.0, s, c, false)
+			Towers.parapet(k, w, d, y, s + 60, c)
+			var back := w * 0.6
+			var lift := Transform3D(Basis.IDENTITY, Vector3(-(w - back) * 0.5, y, 0.0))
+			k.made.push(lift)
+			k.found.push(lift)
+			var top := Towers.shaft(k, back, d * 0.8, 1, 0.0, s + 7, c, false)
+			var r := Towers.parapet(k, back, d * 0.8, top, s + 61, c)
+			Towers.plant(k, back, d * 0.8, r[0], s + 70, c)
+			k.found.pop()
+			k.made.pop()
+		_:
+			var top := Towers.shaft(k, w, d, n, 0.0, s, c, false)
+			match top_kind:
+				&"roofed":
+					var r := Towers.parapet(k, w, d, top, s + 60, c)
+					Towers.plant(k, w, d, r[0], s + 70, c)
+				&"awash":
+					_awash(k, w, d, top, s, dress)
+				_:
+					_snapped(k, w, d, top, s, body)
+	if tide:
+		_tide(k, c, Vector3(hw + 0.012, -off.y, 0.0), d)
+	k.leaf.pop()
+	k.found.pop()
+	k.made.pop()
+
+
+## The floor above a snapped block: two walls of it to their own broken heights,
+## the others sky, and the bars standing out of the tops of the walls that held.
+static func _snapped(k: Kit, w: float, d: float, top: float, s: int, body: Color) -> void:
+	var hw := w * 0.5
+	var hd := d * 0.5
+	for i in 5:
+		var z := -hd + (i + 0.5) * d / 5.0
+		var h := maxf(0.15, 0.95 - i * 0.16 + Kit.j(s, i + 60, 0.18))
+		k.slab(hw - 0.09, top, z, 0.18, h, d / 5.0 + 0.02, s + i * 5, body, GroundColors.up(body, 0.2), 0.02)
+		if i % 2 == 0:
+			var at := Vector3(hw - 0.09, top + h, z)
+			k.rod(at, at + Vector3(0.12 + Kit.j(s, i + 20, 0.1), 0.25 + Rng.hash01(s, i, 73) * 0.25, Kit.j(s, i + 26, 0.15)), 0.014, 3, P.RUST[2])
+	if w > 1.0:
+		for i in 3:
+			var x := -hw + (i + 0.5) * w / 3.0
+			var h := maxf(0.15, 0.25 + i * 0.22 + Kit.j(s, i + 70, 0.12))
+			k.slab(x, top, -hd + 0.09, w / 3.0 + 0.02, h, 0.18, s + i * 7 + 3, GroundColors.down(body, 0.12), GroundColors.up(body, 0.15), 0.02)
+			var at := Vector3(x, top + h, -hd + 0.09)
+			k.rod(at, at + Vector3(Kit.j(s, i + 30, 0.15), 0.3, -0.12), 0.014, 3, P.RUST[2])
+
+
+## A roof the sea comes over at high water: its deck dark and wet, weed in its
+## low corner, its parapet down to stubs on the seaward side, and its tank gone
+## over, lying on the deck.
+static func _awash(k: Kit, w: float, d: float, top: float, s: int, dress: BiomeDressing) -> void:
+	var hw := w * 0.5
+	var hd := d * 0.5
+	var wet := GroundColors.made(GroundColors.down(dress.concrete, 0.6), GroundColors.CONCRETE)
+	k.slab(0.0, top, 0.0, w + 0.06, 0.06, d + 0.06, s + 1, wet, GroundColors.down(wet, 0.1), 0.01)
+	for i in 3:
+		k.slab(-hw + 0.4 + i * 0.5, top + 0.06, hd - 0.45 - i * 0.3, 0.6, 0.012, 0.5, s + 10 + i, WEED, WEED_LIT, 0.01)
+	for i in 4:
+		var h := 0.08 + Rng.hash01(s, i, 12) * (0.3 if i < 2 else 0.08)
+		var z := -hd + (i + 0.5) * d / 4.0
+		k.slab(-hw + 0.06, top + 0.06, z, 0.14, h, d / 4.0 + 0.02, s + 20 + i, GroundColors.down(wet, 0.05), GroundColors.up(wet, 0.15), 0.015)
+	k.limb(Vector3(hw * 0.2, top + 0.3, -hd * 0.3), Vector3(hw * 0.75, top + 0.18, hd * 0.2), 0.3, 0.28, 8, P.RUST[2])
+
+
+## The tide up a drowned block's canal face: weed up from under the canal's
+## sheet to where the water comes, its top ragged, and a pale salt line over it.
+## The face only: the block's other sides stand on its own dry floor.
+static func _tide(k: Kit, c: int, face: Vector3, d: float) -> void:
+	var dress := BiomeDressing.of(c)
+	var side := Vector3(1, 0, 0)
+	var along := Vector3(0, 0, 1)
+	var n := 6
+	for i in n:
+		var z0 := -d * 0.5 + d * float(i) / float(n)
+		var h := 0.42 + Kit.j(52900, i, 0.08)
+		Remains._facing_quad(k.made, face + along * z0 + Vector3(0, -0.2, 0), face + along * (z0 + d / float(n)) + Vector3(0, -0.2, 0), Vector3(0, h + 0.2, 0), side, WEED_LIT)
+	Remains._facing_quad(k.made, face + side * 0.002 - along * d * 0.5 + Vector3(0, 0.52, 0), face + side * 0.002 + along * d * 0.5 + Vector3(0, 0.52, 0), Vector3(0, 0.04, 0), side, dress.pale[0])
+
+
 # --- what people live in where the street is water (BiomeForms.FORMS) -------------
 
 ## The one door for the city's three built forms, reached from `Towers.build`
@@ -496,7 +687,7 @@ static func gallery() -> Array:
 	for d: BiomeDef in BiomeRegistry.land():
 		if d.props.has(PropKind.DROWNED_TRAM):
 			c = d.index
-	for kind: int in [PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE]:
+	for kind: int in [PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE, PropKind.DROWNED_SHELL, PropKind.DROWNED_ROOF]:
 		for v in PropModels.variants(kind, c):
 			out.append({"name": "drowned %s %d" % [PropKind.NAMES[kind], v], "node": PropModels.node(kind, v, c)})
 	# What its people live in: a house here is dealt one of the stock's forms.

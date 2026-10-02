@@ -5,6 +5,7 @@ extends TestCase
 
 const SEEDS: Array[int] = [1, 7]
 const SIZE := 256
+const Worlds := preload("res://tests/core/test_world_gen.gd")
 
 
 func test_every_landscape_declares_three_kinds_or_more_and_they_all_hold_up() -> void:
@@ -99,6 +100,31 @@ func test_no_two_landmarks_are_on_top_of_each_other_or_on_a_village() -> void:
 			for v: Dictionary in w.villages:
 				gt(sites[i].pos.distance_to(v.get("pos", Vector2.ZERO)), Landmarks.CLEAR_VILLAGE - 0.01,
 					"seed %d: %s is standing in a village" % [s, sites[i].id])
+
+
+## ONE PRESS, ONE ANSWER: no cache stands where a thing with words takes the
+## press from it (22_landmarks `_cache_wins`: facing the words, or within
+## StoryProps.CLOSE whichever way he faces, the press is theirs). Seed 1's
+## lighthouse cache stood beside a memorial at GEN 47, and E read the boots and
+## opened nothing. Landmarks keeps its own copy of what has words, which world
+## generation can load; it is held to the story's here.
+func test_no_cache_stands_where_words_take_its_press() -> void:
+	var words: Array = StoryProps.READABLE.keys()
+	words.sort()
+	var mine: Array = Landmarks.WORDS.duplicate()
+	mine.sort()
+	eq(mine, words, "landmarks knows every kind the story reads, and only those")
+	near(Landmarks.WORDS_REACH, StoryProps.REACH, 1e-6, "and reads them as far")
+	# Full size, as the game has them: at 256 no cache happened to stand by words.
+	for s: int in Worlds.WORLD_SEEDS:
+		var w := Worlds.world(s)
+		for site: LandmarkSite in Landmarks.sites(w):
+			var at := Landmarks.cache_of(site)
+			for i in w.prop_count():
+				var q := w.prop_at(i)
+				if StoryProps.READABLE.has(q.kind):
+					gt(q.pos.distance_to(at), StoryProps.REACH, "seed %d: %s's cache stands by a %s with words"
+						% [s, site.id, PropKind.NAMES[q.kind]])
 
 
 ## A landmark is READ before it is reached: the distance a kind claims to be

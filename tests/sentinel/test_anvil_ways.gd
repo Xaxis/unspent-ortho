@@ -12,8 +12,14 @@ const KF := preload("res://tests/sentinel/keeper_fight.gd")
 const PR := preload("res://tests/fight/plate_reader.gd")
 
 ## Tiles off its lair the lure stands, nearest first: close in, it bites from
-## the edge of its plates and never steps off them.
-const LURE_AT: Array[float] = [10.0, 12.0, 8.0, 14.0]
+## the edge of its plates and never steps off them; out to where it still sees
+## him from its den (Sentinels.lure_reach, 18 for the anvil).
+const LURE_AT: Array[float] = [10.0, 12.0, 8.0, 14.0, 16.0, 18.0]
+## How far into the sand the lure stands: where its run stops to bite him (its
+## front a bite's reach off, its middle about three tiles) is sand too. Stood at
+## the sand's edge, its charge stopped on its own rock and it never foundered
+## (the drowned city's world, seeds 1 and 7).
+const LURE_DEPTH := 3.0
 
 
 func _anvil(g: Game) -> SentinelState:
@@ -49,7 +55,7 @@ func _take(seed_value: int, way: int) -> Dictionary:
 	else:
 		var lure := Vector2.INF
 		for dist: float in LURE_AT:
-			lure = KF.stand(g, s, dist, sand, true)
+			lure = KF.stand(g, s, dist, sand, true, LURE_DEPTH)
 			if lure.is_finite():
 				break
 		check(lure.is_finite(), "sand to draw it onto on seed %d" % seed_value)

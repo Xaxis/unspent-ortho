@@ -237,19 +237,11 @@ func _thing_spot(at: Vector2, salt: int) -> Vector2:
 	# Where every spot is near words or a thing the hand takes from, the clearest.
 	var fallback := Vector2.INF
 	var fallback_clear := -INF
-	for r: float in [4.5, 5.5, 6.5, 7.5, 8.5, 9.5]:
+	for r: float in THING_RINGS:
 		for i in 12:
 			var p := at + Vector2.from_angle(turn + TAU * i / 12.0) * r
-			var t := Vector2i(p.floor())
-			if not game.query.standable(t.x, t.y) or Ground.is_water(w.ground_at(t.x, t.y)):
-				continue
-			var spot := Vector2(t) + Vector2(0.5, 0.5)
-			if not game.query.body_fits(spot, 0.6):
-				continue
-			var clear := true
-			for gr: Vector3 in grounds:
-				clear = clear and spot.distance_to(Vector2(gr.x, gr.y)) > gr.z
-			if not clear:
+			var spot := Vector2(Vector2i(p.floor())) + Vector2(0.5, 0.5)
+			if not _thing_fits(spot, grounds):
 				continue
 			if not _near_words(spot):
 				return spot
@@ -257,7 +249,47 @@ func _thing_spot(at: Vector2, salt: int) -> Vector2:
 			if room > fallback_clear:
 				fallback_clear = room
 				fallback = spot
+	# TWELVE BEARINGS A RING SEE A THIRD OF ITS TILES. In the drowned city's
+	# camp on seed 1 every one of them was near words or ruled out, and the
+	# clearest stood the camp's box 2.3 m from a survey post, whose words then
+	# took its press. So, before the clearest, every tile between the first ring
+	# and the last, nearest the slot first.
+	var tiles: Array[Vector2] = []
+	var far: float = THING_RINGS[THING_RINGS.size() - 1]
+	var near: float = THING_RINGS[0]
+	for y in range(floori(at.y - far), ceili(at.y + far) + 1):
+		for x in range(floori(at.x - far), ceili(at.x + far) + 1):
+			var spot := Vector2(x, y) + Vector2(0.5, 0.5)
+			var d := spot.distance_to(at)
+			if d >= near and d <= far:
+				tiles.append(spot)
+	tiles.sort_custom(func(a: Vector2, b: Vector2) -> bool:
+		var da := a.distance_squared_to(at)
+		var db := b.distance_squared_to(at)
+		return da < db if da != db else (a.y < b.y if a.y != b.y else a.x < b.x))
+	for spot: Vector2 in tiles:
+		if _thing_fits(spot, grounds) and not _near_words(spot):
+			return spot
 	return fallback
+
+
+## How far off its slot a stood thing is sought, ring by ring.
+const THING_RINGS: Array[float] = [4.5, 5.5, 6.5, 7.5, 8.5, 9.5]
+
+
+## Whether a stood thing may go on the tile centred at `spot`: dry ground a body
+## stands on and fits, outside every keeper's ground, gate's clearance and cast
+## person's reach (`grounds`: x, y, radius).
+func _thing_fits(spot: Vector2, grounds: Array[Vector3]) -> bool:
+	var t := Vector2i(spot.floor())
+	if not game.query.standable(t.x, t.y) or Ground.is_water(game.world.ground_at(t.x, t.y)):
+		return false
+	if not game.query.body_fits(spot, 0.6):
+		return false
+	for gr: Vector3 in grounds:
+		if spot.distance_to(Vector2(gr.x, gr.y)) <= gr.z:
+			return false
+	return true
 
 
 func _clear() -> void:

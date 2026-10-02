@@ -426,7 +426,7 @@ const TOUR_PLACES: Array[String] = ["climb:cable", "climb:lip"]
 
 ## `walkto at:climb:cable`: the foot of the nearest planted foot's cable; and
 ## `at climb:lip`: on the lip of the crater it hangs into, above it, so the walk
-## down to it is his own.
+## down to it is his own (`_lip_over`).
 func tour_place(what: String) -> Vector2:
 	var lip := what == "climb:lip"
 	if not what in TOUR_PLACES:
@@ -442,13 +442,65 @@ func tour_place(what: String) -> Vector2:
 			best_f = f
 	if not lip or best_f.is_empty():
 		return best
-	var pad: Vector3 = (best_f.pads as Array)[1]
-	var centre := Vector2(pad.x, pad.y)
-	return centre + (best - centre).normalized() * (Treads.rim_r(pad) - LIP_IN)
+	return _lip_over(best, (best_f.pads as Array)[1])
 
 
 ## How far in from a crater's rim (Treads.rim_r) `at climb:lip` stands.
 const LIP_IN := 2.0
+## How far round the crater from the cable's own bearing, either way (radians),
+## the lip may be sought, in steps of LIP_TURN; and how far in toward the cable
+## it may come, in steps of LIP_STEP metres, short of LIP_NEAREST of it.
+const LIP_SWING := 1.2
+const LIP_TURN := 0.1
+const LIP_STEP := 2.0
+const LIP_NEAREST := 6.0
+
+
+## THE LIP IS WHERE THE WALK DOWN IS HIS OWN, on any world. Straight out from the
+## pad's middle through the cable, at the rim, the walk down met a wall on seed
+## 1 at GEN 47: twelve metres in the line rose two levels onto the spoil, a body
+## steps one, and the walk stopped 8.7 tiles short of the cable. So the
+## lip is the spot nearest that one, round the rim and in from it, from which
+## the straight walk to the cable never steps more than a body can
+## (WorldQuery.passable), on dry ground.
+func _lip_over(cable: Vector2, pad: Vector3) -> Vector2:
+	var centre := Vector2(pad.x, pad.y)
+	var out := (cable - centre).normalized()
+	var rim := Treads.rim_r(pad) - LIP_IN
+	var first := centre + out * rim
+	var r := rim
+	while r >= cable.distance_to(centre) + LIP_NEAREST:
+		var turn := 0.0
+		while turn <= LIP_SWING:
+			for side: float in ([1.0] if turn == 0.0 else [1.0, -1.0]):
+				var at := centre + out.rotated(turn * side) * r
+				if _walk_clear(at, cable):
+					return at
+			turn += LIP_TURN
+		r -= LIP_STEP
+	return first
+
+
+## Whether a body walks straight from `a` to `b` on its own feet: every tile on
+## the way dry and a body's one level (WorldQuery.passable) from the one before.
+## Read from a window round the line, never the whole world.
+func _walk_clear(a: Vector2, b: Vector2) -> bool:
+	var win := TileWindow.of(game.world, floori(minf(a.x, b.x)) - 1, floori(minf(a.y, b.y)) - 1,
+		floori(maxf(a.x, b.x)) + 2, floori(maxf(a.y, b.y)) + 2)
+	var n := ceili(a.distance_to(b) / 0.25)
+	var prev := -1
+	for i in n + 1:
+		var p := a.lerp(b, float(i) / float(maxi(n, 1)))
+		var t := Vector2i(floori(p.x), floori(p.y))
+		if not game.world.in_bounds(t.x, t.y) or not win.has(t.x, t.y):
+			return false
+		var at := win.at(t.x, t.y)
+		if Ground.is_water(win.ground[at]):
+			return false
+		if prev >= 0 and absi(win.level[at] - win.level[prev]) > 1:
+			return false
+		prev = at
+	return true
 
 
 func _spent_elsewhere() -> bool:

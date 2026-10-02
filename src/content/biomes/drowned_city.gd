@@ -23,6 +23,9 @@ static func make() -> BiomeDef:
 	d.order = 15
 	d.style_note = "Green-black water between concrete, tide lines up every wall, nothing dry at ground level."
 	d.share = Vector2(0.05, 0.09)
+	# The first place across the water: the raft from home comes ashore in it,
+	# and the story's second leg is cast here (docs/ROADMAP.md slice 3 step 6).
+	d.spread = BiomeDef.LANDFALL
 	d.anchors = [{"seq": 15, "u": 0.62, "v": 0.66}]
 	d.temp_range = Vector2(0.35, 0.75)
 	d.moist_range = Vector2(0.65, 1.0)
@@ -34,6 +37,13 @@ static func make() -> BiomeDef:
 	d.relief = {
 		&"base": 2.2, &"hills": 0.7, &"ridge": 1.2, &"near": 2.5, &"terrace": 0.3, &"valley": 1.8,
 		&"rain": 1.2, &"temp": 0.1, &"moist": 0.9, &"cliff": 0.35,
+		# Its streets' spacing: the ground is laid a level to a block
+		# (GenRelief.flatten_streets), so a canal runs level from crossing to
+		# crossing and the steps fall behind the frontages, back to back.
+		&"streets": STREET_PITCH,
+		# And it meets the sea as the port it was: flat at the lowest land's level
+		# to the water's edge, a quay wall down to a raft, never a terraced hill.
+		&"quays": 1.0,
 	}
 	d.border_elevation = -0.8
 	d.reach_out_high = Vector4(3.5, 0.05, 0.07, 0.25)
@@ -46,17 +56,25 @@ static func make() -> BiomeDef:
 		Ground.FLOOR: P.SPRUCE[2].lerp(P.MOSS[2], 0.3).lerp(P.ASH[2], 0.35),
 		Ground.ROAD: P.ASH[2].lerp(P.SLATE[2], 0.4),
 		Ground.MUD: P.EARTH[2].lerp(P.SPRUCE[2], 0.45),
-		Ground.SHINGLE: P.STONE[3].lerp(P.SPRUCE[2], 0.3),
-		Ground.GRAVEL: P.STONE[3].lerp(P.ASH[3], 0.4),
+		# The quay's edge and its apron are wet stone, under the floor in value:
+		# at the STONE's third step they read as snow from the raft.
+		Ground.SHINGLE: P.STONE[2].lerp(P.SPRUCE[1], 0.35),
+		Ground.GRAVEL: P.STONE[2].lerp(P.ASH[2], 0.4),
 		Ground.MOSS: P.MOSS[2].lerp(P.SPRUCE[2], 0.5),
 		Ground.BLACKWATER: P.SPRUCE[1],
 	}
-	# Grounds this place never lays, named anyway: anything left unnamed falls
+	# Every ground it does not name, named anyway: anything left unnamed falls
 	# through to the shared table, which is the COAST's and is far brighter than
-	# here, so it would arrive as the loudest object in the frame. Each takes this
-	# landscape's own gravel, because they only have to be in key.
-	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SNOW]:
-		d.grounds[g] = d.grounds[Ground.GRAVEL]
+	# here, so it would arrive as the loudest object in the frame. A list of the
+	# missing ones let grass through. The green ones take this landscape's weed,
+	# the rest its gravel, because they only have to be in key. Not steel floor:
+	# that is an interior's, no world lays it, and a wash for it is dead paint
+	# (test_registry).
+	for g: int in Ground.COUNT:
+		if d.grounds.has(g) or Ground.is_water(g) or g == Ground.STEEL_FLOOR:
+			continue
+		var green := g in [Ground.GRASS, Ground.HEATH, Ground.NEEDLES, Ground.PEAT]
+		d.grounds[g] = d.grounds[Ground.MOSS if green else Ground.GRAVEL]
 	d.cliff_wash = P.ASH[2].lerp(P.SPRUCE[2], 0.35)
 	# THE TIDE IS DRAWN ON EVERYTHING, and it is a LOOK choice only: the floor
 	# stays FLOOR to worldgen and no seed moves. Its floor is silted under one
@@ -151,7 +169,8 @@ static func make() -> BiomeDef:
 		# wave's; declaring a kind places nothing until a recipe returns it.
 		PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE]
 	d.ore = [[PropKind.IRON_ORE, 0.02], [PropKind.COPPER_ORE, 0.018]]
-	d.sites = {"tips": 2, "ruins": true}
+	# The flooded hall (SiteKinds), a rate per 1,000 tiles of each region.
+	d.sites = {"tips": 2, "ruins": true, "flooded_hall": 0.05}
 	d.beached_wrecks = true
 	d.pools = {"order": 2, "cell": 22, "chance": 0.7, "r_min": 2.4, "r_max": 5.5, "ground": Ground.BLACKWATER}
 	d.villages = 1
@@ -175,7 +194,15 @@ static func make() -> BiomeDef:
 		# water and to its hours.
 		&"ferry": {"weight": 1.2},
 	}
-	d.landmarks = [&"sump_pump", &"poured_pillar", &"leaning_mast", &"clerks_office"]
+	# Its own blocks, standing in the water (`_works`): the city's frontages
+	# along its canals, and its roofs out in the shallows.
+	d.props.append_array([PropKind.DROWNED_SHELL, PropKind.DROWNED_ROOF])
+	GenWorks.register(&"drowned_city", {
+		"host": load("res://src/content/biomes/drowned_city.gd"),
+		"works": &"_works",
+	})
+	# The clock tower first: each of its regions puts it down before anything else.
+	d.landmarks = [&"clock_tower", &"sump_pump", &"poured_pillar", &"leaning_mast", &"clerks_office"]
 	# Its keeper: the barge on stilts that keeps the locks (src/core/sentinel/
 	# designs/lockkeeper.gd). The one door by which a landscape claims one.
 	d.sentinel = &"lockkeeper"
@@ -205,8 +232,11 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 ## cell grid, and the city between them read as a dry plaza with ponds in it.
 ## A city has streets, and the sea came in along them: a grid of them, as wide
 ## as a street and as far apart as the blocks it held (`built.buildings` is 14 to
-## 22), turned to its own seed's angle, is shallow standing water wherever the
-## land lies low, and the blocks between keep their slabs and their ruins.
+## 22), ruled on the survey bearing as the metropolis's are, because it is the
+## same city drowned, is shallow standing water wherever the land lies low, and
+## the blocks between keep their frontages (`_works`). Each street's middle line
+## stands on a multiple of the pitch, so a crossing is where GenRelief.
+## flatten_streets centres a block's floor.
 ##
 ## STANDING WATER IS LEVEL. Flooded by elevation, a street ran up the terraces
 ## and its water stood in steps, a stair of dark tiles (seed 1, 518,414). So it
@@ -233,33 +263,38 @@ static func _flooded(t: BiomeSurface, i: int) -> bool:
 
 
 static func _street(t: BiomeSurface, i: int) -> bool:
-	var a := Rng.hash01(t.seed_value, 0xD120) * PI * 0.5
-	var x := float(t.x0 + i % t.size)
-	var y := float(t.y0 + i / t.size)
-	var u := x * cos(a) + y * sin(a)
-	var v := y * cos(a) - x * sin(a)
-	return fposmod(u, STREET_PITCH) < STREET_WIDTH or fposmod(v, STREET_PITCH) < STREET_WIDTH
+	var d := Vector2.from_angle(GenWorks.bearing(t.seed_value))
+	var p := Vector2(t.x0 + i % t.size + 0.5, t.y0 + i / t.size + 0.5)
+	return _off_street(p.dot(d)) < STREET_WIDTH * 0.5 or _off_street(p.dot(Vector2(-d.y, d.x))) < STREET_WIDTH * 0.5
+
+
+## How far a coordinate across the grid lies from its nearest street's middle.
+static func _off_street(u: float) -> float:
+	return absf(u - roundf(u / STREET_PITCH) * STREET_PITCH)
 
 
 ## THE WATER IS STILL IN IT, and that is the whole landscape: a city at the
 ## waterline rather than a city with a lake in it. So the MUD -- where the tide
-## still reaches -- carries the reeds and the poles and the gauge somebody set to
-## watch it, the FLOOR slabs that are still dry carry what came down when it came
-## in, and the SEA WALL that failed stands on the dry ground it was built to
-## keep. Nothing here deals PIPE or CONVEYOR: the plan lays its runs at scale.
+## still reaches -- carries the reeds and the poles and the trams sunk where
+## their lines ran, and the FLOOR slabs that are still dry carry what came down
+## when it came in. The sea walls and the tide gauges are the port's, laid with
+## it (`_works`). Nothing here deals PIPE or CONVEYOR: the plan lays its runs at
+## scale.
+## The silt's tram band: r from 0.70 to this.
+const TRAM_BAND := 0.703
 static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.FLOOR:
 		if r < 0.034:
 			return PropKind.DEBRIS
-		if r < 0.048:
-			return PropKind.RUIN
-		return PropKind.SEA_WALL if r > 0.60 and r < 0.6065 else BiomeScatter.NONE
+		return PropKind.RUIN if r < 0.048 else BiomeScatter.NONE
 	if g == Ground.MUD:
 		if r < 0.055:
 			return PropKind.REEDS
 		if r < 0.070:
 			return PropKind.POLE
-		return PropKind.TIDE_GAUGE if r > 0.50 and r < 0.5045 else BiomeScatter.NONE
+		# A tram half sunk in the silt where its line ran, the city's copper in
+		# its cables (Takes: sea_copper, MUD only).
+		return PropKind.DROWNED_TRAM if r > 0.70 and r < TRAM_BAND else BiomeScatter.NONE
 	if g == Ground.SHINGLE:
 		if r < 0.030:
 			return PropKind.DEBRIS
@@ -271,3 +306,276 @@ static func _scatter(t: BiomeScatter, i: int, g: int, r: float) -> int:
 	if g == Ground.ROAD:
 		return PropKind.DEBRIS if r < 0.020 else BiomeScatter.NONE
 	return BiomeScatter.NONE
+
+
+## THE CITY STILL STANDS IN ITS WATER (GenWorks.register). Its streets are the
+## surface's (`_street`): a grid STREET_PITCH apart on the survey bearing,
+## STREET_WIDTH wide, and water on the low town. Every block between them keeps
+## its frontage, a drowned block to each plot along each side with its face to
+## the street, so from above the city is its plan and from a raft its streets are
+## canals between walls. Past its shore the grid goes on into the sea, as roofs.
+static func _works(L: Object) -> void:
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	# The port first, sited where the region's canals are: its lock, the stairs
+	# down off its quays, and the sea walls along them that keep off the stairs.
+	for n in GenWorks._n_station(L, 1.0):
+		var at := _lock_site(L)
+		if at.z >= 0.0:
+			GenWorks._work(L, &"_lock", Vector2(at.x, at.y), [int(at.z)])
+	for n in GenWorks._n(L, 6.0):
+		var p := GenWorks._shore(L, QUAY_GROUNDS, 18.0)
+		if p.x >= 0:
+			GenWorks._work(L, &"_slip", Vector2(p) + Vector2(0.5, 0.5))
+	for n in GenWorks._n(L, 3.0):
+		var p := GenWorks._shore(L, QUAY_GROUNDS, 30.0)
+		if p.x >= 0:
+			GenWorks._work(L, &"_sea_wall", Vector2(p) + Vector2(0.5, 0.5))
+	# The walls of each flooded hall the region's places claimed (SiteKinds lays
+	# the black water of its floor; the hall's walls are the city's own fronts).
+	var w: WorldData = L.w
+	for j in range(L.m_start):
+		var m: Dictionary = w.landmarks[j]
+		if m.kind == &"flooded_hall" and int(m.get("region", -1)) == int(L.region):
+			GenWorks._work(L, &"_hall", m.pos as Vector2)
+	for rect: Rect2 in L.rects:
+		# The blocks over the region's bounds, and a pitch past them for the
+		# roofs off its shore.
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for q: Vector2 in [rect.position, rect.position + Vector2(rect.size.x, 0.0), rect.end, rect.position + Vector2(0.0, rect.size.y)]:
+			var uv := Vector2(q.dot(d), q.dot(nrm))
+			lo = lo.min(uv)
+			hi = hi.max(uv)
+		for m in range(floori(lo.x / STREET_PITCH) - 1, ceili(hi.x / STREET_PITCH) + 1):
+			for n in range(floori(lo.y / STREET_PITCH) - 1, ceili(hi.y / STREET_PITCH) + 1):
+				_block(L, d, nrm, m, n)
+
+
+## How deep a drowned block stands from its street, and how much of the street's
+## length it takes (models/props/drowned_city.gd BLOCK_DEEP, BLOCK_ALONG).
+const BLOCK_DEEP := 2.4
+const BLOCK_ALONG := 3.0
+
+
+## Block (m, n) of the grid: the land between the streets m and m + 1 along `d`
+## and n and n + 1 along `nrm`. Its two sides facing along `d` take the corners.
+static func _block(L: Object, d: Vector2, nrm: Vector2, m: int, n: int) -> void:
+	var kerb := STREET_WIDTH * 0.5
+	var u0 := float(m) * STREET_PITCH + kerb
+	var u1 := float(m + 1) * STREET_PITCH - kerb
+	var v0 := float(n) * STREET_PITCH + kerb
+	var v1 := float(n + 1) * STREET_PITCH - kerb
+	for side in 2:
+		var u := u0 + BLOCK_DEEP * 0.5 if side == 0 else u1 - BLOCK_DEEP * 0.5
+		var t := v0 + BLOCK_ALONG * 0.5
+		while t <= v1 - BLOCK_ALONG * 0.5 + 0.01:
+			_plot(L, d * u + nrm * t, -d if side == 0 else d)
+			t += BLOCK_ALONG
+	for side in 2:
+		var v := v0 + BLOCK_DEEP * 0.5 if side == 0 else v1 - BLOCK_DEEP * 0.5
+		var t := u0 + BLOCK_DEEP + BLOCK_ALONG * 0.5
+		while t <= u1 - BLOCK_DEEP - BLOCK_ALONG * 0.5 + 0.01:
+			_plot(L, d * t + nrm * v, -nrm if side == 0 else nrm)
+			t += BLOCK_ALONG
+
+
+## One plot of a frontage at `p`, its face to `face`: a drowned block where the
+## city's own ground holds it, a roof where the shallows off this region's shore
+## do and the city leads that sea (`WorldData.dress_country`, what a prop there
+## is dressed as),
+## and now and then nothing, a block the water had down altogether. Each
+## plot's roll is its own, keyed on the plot.
+static func _plot(L: Object, p: Vector2, face: Vector2) -> void:
+	var c: GenContext = L.c
+	var tx := floori(p.x)
+	var ty := floori(p.y)
+	if not c.w.in_bounds(tx, ty):
+		return
+	var key := Vector2i(roundi(p.x * 4.0), roundi(p.y * 4.0))
+	if Rng.hash01(c.s, key.x, key.y, 0xD121) < 0.14:
+		return
+	if L.here(tx, ty):
+		GenWorks._put(L, PropKind.DROWNED_SHELL, p, face.angle(), -99, 0.0, true)
+	elif c.land[ty * c.size + tx] == 0 and c.w.dress_country(tx, ty) == int(L.own) and Rng.hash01(c.s, key.x, key.y, 0xD122) < 0.55 and _off_here(L, p):
+		GenWorks._put_awash(L, PropKind.DROWNED_ROOF, p, face.angle(), 0.0)
+
+
+## How far out a roof stands from the region's shore.
+const ROOFS_OUT := 9
+
+
+## The nearest land to `p`, along the four ways, lies within ROOFS_OUT and is
+## the region being laid: the sea there is this part of the city's.
+static func _off_here(L: Object, p: Vector2) -> bool:
+	var c: GenContext = L.c
+	var best := ROOFS_OUT + 1
+	var mine := false
+	for o: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		for r in range(1, ROOFS_OUT + 1):
+			var x := floori(p.x) + o.x * r
+			var y := floori(p.y) + o.y * r
+			if not c.w.in_bounds(x, y):
+				break
+			if c.land[y * c.size + x] != 0:
+				if r < best:
+					best = r
+					mine = L.here(x, y)
+				break
+	return mine
+
+
+# --- the port ------------------------------------------------------------------
+
+## The grounds a quay's edge is laid in (`_surface`: SHORE and APRON), and the
+## floor and silt behind them.
+const QUAY_GROUNDS: Array = [Ground.SHINGLE, Ground.GRAVEL, Ground.FLOOR, Ground.MUD]
+
+## THE LOCK (docs/LANDSCAPES.md: the port still runs). Across a canal, on the
+## street's own line: a flight of two chambers, so four gate leaves in recesses
+## of cut stone, the pump house that dries the basin on the bank, and the tide
+## gauges logging a sea that keeps rising, which stand here now and not loose in
+## the silt. The lockkeeper dens at it and feeds on its leaves and its pump house
+## (sentinel/designs/lockkeeper.gd), so a lock that cannot stand LOCK_LEAVES
+## leaves is taken back whole: a keeper on a larder of fewer is a starve way won
+## by one theft (SentinelWay.FEEDS_LEAST).
+const LOCK_LEAVES := 4
+## Where along the canal each leaf stands, off the lock's middle (each takes the
+## tiles round its own, so two stand at least two apart), and how far that
+## middle stands from its crossing: the flight keeps inside one block's
+## floor (GenRelief.flatten_streets centres a floor on a crossing and steps it
+## halfway to the next), so its canal holds water the whole way along.
+const LOCK_GATES: Array[float] = [-3.2, -1.1, 1.1, 3.2]
+const LOCK_OFF := 4.8
+
+
+## The middle of a canal reach to lock in the region being laid: a flooded street
+## LOCK_OFF along from a crossing, water under every leaf and dry banks of this
+## region on both sides, off the villages and the spawn; of those, the nearest
+## the region's heart.
+## (x, y, axis), axis 0 a street running along `nrm` and 1 along `d`; z -1 for
+## none.
+static func _lock_site(L: Object) -> Vector3:
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	var heart := Vector2(GenWorks._heart(L))
+	var best := Vector3(-1, -1, -1)
+	var best_d := INF
+	for rect: Rect2 in L.rects:
+		if heart.x < 0.0:
+			heart = rect.get_center()
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for q: Vector2 in [rect.position, rect.position + Vector2(rect.size.x, 0.0), rect.end, rect.position + Vector2(0.0, rect.size.y)]:
+			lo = lo.min(Vector2(q.dot(d), q.dot(nrm)))
+			hi = hi.max(Vector2(q.dot(d), q.dot(nrm)))
+		for m in range(ceili(lo.x / STREET_PITCH), floori(hi.x / STREET_PITCH) + 1):
+			for n in range(floori(lo.y / STREET_PITCH), ceili(hi.y / STREET_PITCH) + 1):
+				for axis in 2:
+					# A street along `nrm` lies on u = m * pitch; along `d`, on v.
+					var along := nrm if axis == 0 else d
+					var across := d if axis == 0 else nrm
+					var crossing := d * float(m) * STREET_PITCH + nrm * float(n) * STREET_PITCH if axis == 0 else d * float(n) * STREET_PITCH + nrm * float(m) * STREET_PITCH
+					for off: float in [LOCK_OFF, -LOCK_OFF]:
+						var p := crossing + along * off
+						var dist := p.distance_to(heart)
+						if dist >= best_d or not _canal_reach(L, p, along, across):
+							continue
+						best_d = dist
+						best = Vector3(p.x, p.y, axis)
+	return best
+
+
+## A canal at `p` running `along`: water under every leaf, and dry ground of
+## the region being laid on both banks, clear of villages and the spawn.
+static func _canal_reach(L: Object, p: Vector2, along: Vector2, across: Vector2) -> bool:
+	var c: GenContext = L.c
+	var w := c.w
+	for k: float in LOCK_GATES:
+		var q := p + along * k
+		if w.ground_at(floori(q.x), floori(q.y)) != Ground.BLACKWATER:
+			return false
+	for side: float in [-1.0, 1.0]:
+		var b := p + across * side * (STREET_WIDTH * 0.5 + 1.5)
+		var x := floori(b.x)
+		var y := floori(b.y)
+		if not w.in_bounds(x, y) or not L.here(x, y) or Ground.is_water(w.ground_at(x, y)) or c.road[y * c.size + x] != 0:
+			return false
+	if p.distance_to(w.spawn) < Sentinels.CLEAR_OF_HOME + 2.0 or GenScatter._near_village(w, p, 18.0):
+		return false
+	return true
+
+
+## One lock at `at` (`GenWorks._work`): a[0] the street's axis, as `_lock_site`.
+static func _lock(L: Object, at: Vector2, a: Array) -> bool:
+	var along: Vector2 = L.nrm if int(a[0]) == 0 else L.d
+	var across := Vector2(-along.y, along.x)
+	var leaves := 0
+	for k: float in LOCK_GATES:
+		if GenWorks._put_awash(L, PropKind.LOCK_GATE, at + along * k, along.angle(), 0.0, Ground.BLACKWATER) != null:
+			leaves += 1
+	if leaves < LOCK_LEAVES:
+		return false
+	# The pump house on whichever bank has room, its door to the canal.
+	var pump: WorldProp = null
+	for side: float in [1.0, -1.0]:
+		if pump == null:
+			pump = GenWorks._put_footed(L, PropKind.PUMP_HOUSE, at + across * side * (STREET_WIDTH * 0.5 + 2.6), (-across * side).angle(), 0.6)
+	if pump == null or not GenWorks.station_holds(L, at):
+		return false
+	# A gauge on each bank by the lower gate, reading the sea off the canal.
+	for side: float in [1.0, -1.0]:
+		GenWorks._put(L, PropKind.TIDE_GAUGE, at + along * 3.4 + across * side * (STREET_WIDTH * 0.5 + 0.8), (-across * side).angle(), -99, 0.2)
+	GenWorks._record(L.c, &"lock", at, along, Vector2(7.0, 2.5), GenWorks.CUT)
+	return true
+
+
+## A STAIR down off a quay into the sea (`GenWorks._work`): where a raft is
+## landed and a body steps off it, and a sea wall keeps off it (its mark, and
+## `GenWorks._shore`'s room round the marks). Its +X is the water.
+static func _slip(L: Object, at: Vector2, _a: Array) -> bool:
+	var c: GenContext = L.c
+	var sea := GenWorks._sea_dir(c, Vector2i(at.floor()))
+	if sea.length() < 0.5:
+		return false
+	var step := at + sea * 0.6
+	if GenWorks._put(L, PropKind.STAIR_TO_WATER, step, sea.angle(), -99, 0.0) == null:
+		return false
+	GenWorks._record(c, &"slip", step, sea, Vector2(1.0, 0.6))
+	return true
+
+
+## A FLOODED HALL's walls (`GenWorks._work`): fronts of the city's drowned blocks
+## (`DROWNED_SHELL`'s front-only profile) standing round the black water of its
+## floor, their faces in to it, two to a side and the corners gone: a hall whose
+## roof came down and whose floor the sea took. Standing in the water where the
+## floor is water, on its edge where it is not.
+const HALL_WALL := 4.2
+
+
+static func _hall(L: Object, at: Vector2, _a: Array) -> bool:
+	var d: Vector2 = L.d
+	var nrm: Vector2 = L.nrm
+	var stood := 0
+	for out: Vector2 in [d, -d, nrm, -nrm]:
+		var side := Vector2(-out.y, out.x)
+		for k: float in [-1.6, 1.6]:
+			# The front stands BLOCK_DEEP / 2 - 0.17 in front of its prop's origin.
+			var p := at + out * (HALL_WALL + BLOCK_DEEP * 0.5 - 0.17) + side * k
+			var wall: WorldProp = GenWorks._put_awash(L, PropKind.DROWNED_SHELL, p, (-out).angle(), 0.0, Ground.BLACKWATER)
+			if wall == null:
+				wall = GenWorks._put(L, PropKind.DROWNED_SHELL, p, (-out).angle(), -99, 0.0, true)
+			if wall != null:
+				wall.variant = HALL_FRONT
+				stood += 1
+	return stood >= 4
+
+
+## DROWNED_SHELL's front-only profile (models/props/drowned_city.gd SHELLS).
+const HALL_FRONT := 3
+
+
+## A run of sea wall along a quay (`GenWorks._work`): the coast's own, the city's
+## quays being a coast the plan walled.
+static func _sea_wall(L: Object, at: Vector2, a: Array) -> bool:
+	return GenWorks._sea_wall(L, at, a)

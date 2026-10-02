@@ -91,7 +91,7 @@ func _on_took(item: StringName, count: int) -> void:
 ## (how wide it is on the ground).
 static func place(game: Game, p: WorldProp) -> Dictionary:
 	var base := game.world.to_3d(p.pos)
-	var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
+	var country := game.world.dress_country(floori(p.pos.x), floori(p.pos.y))
 	var variant := PropModels.variant_of(p, game.world.seed_value, country)
 	var tall := _model_height(p.kind, variant, country, Broken.bucket(p.shown)) * p.scale
 	var radius := maxf(p.solid, 0.35 * p.scale)

@@ -12,8 +12,11 @@ class_name RuinWalls
 ##
 ## Contract:
 ##   RuinWalls.model(variant, tower) -> Array[Vector3]   (x, z, radius), model space
+##   RuinWalls.drowned(kind, variant) -> Array[Vector3]  the same, a drowned block or roof
 ##   RuinWalls.of_world(world) -> Array[Vector3]        (x, y, radius), tile space
 
+## The drowned city's block and roof plans (models/props/drowned_city.gd).
+const DrownedCity := preload("res://src/models/props/drowned_city.gd")
 ## The circles along a wall stand this far apart (less than a body's width).
 const STEP := 0.22
 ## A croft wall's half thickness, and a little for its rough face.
@@ -36,14 +39,7 @@ const CROFT: Array = [
 static func model(variant: int, tower: bool) -> Array[Vector3]:
 	var out: Array[Vector3] = []
 	if tower:
-		var nx := ceili(STUMP_HALF.x * 2.0 / (STUMP_R * 1.3))
-		var nz := ceili(STUMP_HALF.y * 2.0 / (STUMP_R * 1.3))
-		for i in nx + 1:
-			for j in nz + 1:
-				var x := -STUMP_HALF.x + STUMP_R * 0.6 + (STUMP_HALF.x * 2.0 - STUMP_R * 1.2) * float(i) / float(nx)
-				var z := -STUMP_HALF.y + STUMP_R * 0.6 + (STUMP_HALF.y * 2.0 - STUMP_R * 1.2) * float(j) / float(nz)
-				out.append(Vector3(x, z, STUMP_R))
-		return out
+		return _filled(Vector2.ZERO, STUMP_HALF, STUMP_R)
 	for wall: Array in CROFT[variant % CROFT.size()]:
 		var a: Vector2 = wall[0]
 		var b: Vector2 = wall[1]
@@ -54,6 +50,37 @@ static func model(variant: int, tower: bool) -> Array[Vector3]:
 	return out
 
 
+## The drowned city's blocks (DrownedCity.SHELLS) and its roofs in the shallows
+## (DrownedCity.ROOFS) are the same case as a stump: a box nearly three tiles
+## across answered by one circle, and a body (the shoulder camera with it)
+## walked into the box. Each is filled to its own plan, a front standing on its
+## block's canal face.
+static func drowned(kind: int, variant: int) -> Array[Vector3]:
+	var shell := kind == PropKind.DROWNED_SHELL
+	var shapes: Array[Dictionary] = DrownedCity.SHELLS if shell else DrownedCity.ROOFS
+	var shape: Dictionary = shapes[variant % shapes.size()]
+	var half := Vector2(float(shape.w) * 0.5, float(shape.d) * 0.5)
+	var at := Vector2(DrownedCity.BLOCK_DEEP * 0.5 - half.x if shell else 0.0, 0.0)
+	return _filled(at, half, minf(STUMP_R, half.x))
+
+
+## Circles of radius r filling the rectangle of half extents `half` round `at`.
+static func _filled(at: Vector2, half: Vector2, r: float) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	var nx := maxi(1, ceili(half.x * 2.0 / (r * 1.3)))
+	var nz := maxi(1, ceili(half.y * 2.0 / (r * 1.3)))
+	for i in nx + 1:
+		for j in nz + 1:
+			var x := -half.x + r * 0.6 + (half.x * 2.0 - r * 1.2) * float(i) / float(nx)
+			var z := -half.y + r * 0.6 + (half.y * 2.0 - r * 1.2) * float(j) / float(nz)
+			out.append(Vector3(at.x + x, at.y + z, r))
+	return out
+
+
+## The kinds whose walls this file hands WorldQuery.
+const KINDS: Array[int] = [PropKind.RUIN, PropKind.DROWNED_SHELL, PropKind.DROWNED_ROOF]
+
+
 ## Every standing ruin's walls in this world, in tile space.
 ## The prop ids of every ruin in `w`, standing or fallen.
 static func ids_of(w: WorldData) -> PackedInt32Array:
@@ -61,7 +88,7 @@ static func ids_of(w: WorldData) -> PackedInt32Array:
 	w.sync_table()
 	var t := w.table
 	for row in t.size():
-		if t.kind[row] == PropKind.RUIN:
+		if KINDS.has(int(t.kind[row])):
 			out.append(t.id[row])
 	return out
 
@@ -71,15 +98,16 @@ static func of_world(w: WorldData) -> Array[Vector3]:
 	w.sync_table()
 	var t := w.table
 	for row in t.size():
-		if t.kind[row] != PropKind.RUIN or w.depleted.has(t.id[row]):
+		var kind := int(t.kind[row])
+		if not KINDS.has(kind) or w.depleted.has(t.id[row]):
 			continue
 		var pos: Vector2 = t.pos[row]
-		var c := maxi(Country.COAST, w.country_at(floori(pos.x), floori(pos.y)))
-		var tower := BiomeDressing.of(c).ruin_form == &"tower"
+		var c := w.dress_country(floori(pos.x), floori(pos.y))
 		var p := w.prop_at(row)
 		var v := PropModels.variant_of(p, w.seed_value, c)
 		var s := float(t.scale[row])
-		for m: Vector3 in model(v, tower):
+		var walls := model(v, BiomeDressing.of(c).ruin_form == &"tower") if kind == PropKind.RUIN else drowned(kind, v)
+		for m: Vector3 in walls:
 			var at := pos + Vector2(m.x, m.y).rotated(float(t.rot[row])) * s
 			out.append(Vector3(at.x, at.y, m.z * s))
 	return out

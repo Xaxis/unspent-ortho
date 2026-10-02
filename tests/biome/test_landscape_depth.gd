@@ -38,6 +38,9 @@ const FRAMES_WANTED := 40
 const OWN_AT_MOST := 2
 ## A landmark kind of its own stands in this land and at most two others.
 const LANDMARK_AT_MOST := 3
+## A signature prop acts on a body when it covers, shelters, gives (a take) or is
+## a CROSSING: it changes where a body can go (docs/LANDSCAPES.md, the PLAYER row).
+const CROSSINGS: Array[int] = [PropKind.STAIR_TO_WATER]
 ## Frames sampled per landscape per seed for the density report.
 const DENSITY_FRAMES := 20
 
@@ -174,7 +177,7 @@ func _judge(d: BiomeDef, worlds: Array[WorldData]) -> Dictionary:
 		if placed.is_empty():
 			return false
 		for k: int in placed:
-			if not Takes.table().has(k) and PropKind.SOLID[k] <= 0.0:
+			if not Takes.table().has(k) and PropKind.SOLID[k] <= 0.0 and not CROSSINGS.has(k):
 				return false
 		return true)
 	return out

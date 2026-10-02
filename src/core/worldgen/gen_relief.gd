@@ -195,15 +195,21 @@ static func run(c: GenContext) -> void:
 ## the stairs of a city on a hill are. Each block stands at its own land
 ## smoothed over some thirty tiles, so the city still climbs where the land
 ## does. After the borders are drawn and only on the landscape's own tiles, let
-## down across the last of its blend and to the sea.
+## down across the last of its blend and to the sea; or, where the landscape
+## asks for QUAYS (`relief.quays`), held flat to the water's edge at the lowest
+## land's level for QUAY_BAND tiles in, so it meets the sea as a port does, a
+## wall straight down to a boat, and climbs behind that.
 static func flatten_streets(c: GenContext) -> void:
 	var size := c.size
 	var w := c.w
 	var grid := PackedFloat32Array()
 	grid.resize(c.types)
+	var quay := PackedByteArray()
+	quay.resize(c.types)
 	var any := false
 	for cc: int in c.land_types:
 		grid[cc] = c.defs[cc].param(&"streets")
+		quay[cc] = 1 if c.defs[cc].param(&"quays") > 0.0 else 0
 		any = any or grid[cc] > 0.0
 	if not any:
 		return
@@ -234,9 +240,18 @@ static func flatten_streets(c: GenContext) -> void:
 				var my := clampi(floori(mid.y), 0, size - 1)
 				var level := floorf(broad[my * size + mx]) + 0.5
 				var hold := (1.0 - smoothstep(0.3, 0.5, blend[i])) * smoothstep(2.0, 7.0, inland[i])
+				if quay[country[i]] != 0:
+					hold = 1.0 - smoothstep(0.3, 0.5, blend[i])
+					if inland[i] < QUAY_BAND:
+						level = 1.5
 				flat[i] = maxf(1.0, lerpf(elev[i], level, hold))
 	)
 	c.elev = flat
+
+
+## How far in from the sea a landscape's quays run at the lowest land's level
+## (`relief.quays`, flatten_streets), in tiles.
+const QUAY_BAND := 6.0
 
 
 ## Halvings the ground under a labyrinth is smoothed by before it is levelled:

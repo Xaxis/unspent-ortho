@@ -149,7 +149,11 @@ func test_it_stands_at_its_regions_works_where_there_is_one() -> void:
 					% [s, st.design, st.region, barred])
 				continue
 			at_works += 1
-			lt(station.distance_to(st.lair), 13.0,
+			# At it is inside its feeding reach of it: the works it keeps are its
+			# larder. Not a fixed few tiles, because a den with its larder under
+			# its feet stands off past the take-refusal radius
+			# (Sentinels.larder_robbable): seed 1's Reaper here, 18 tiles off.
+			lt(station.distance_to(st.lair), def.reach * Sentinels.FEED_SHARE,
 				"seed %d: %s stands at the %s it keeps (%s, works at %s)" % [s, st.design, kind, st.lair, station])
 			print("sentinel seed %d: %s stands at a %s" % [s, st.design, kind])
 	gt(float(at_works), 3.0, "keepers were found standing at real works on both seeds (%d)" % at_works)

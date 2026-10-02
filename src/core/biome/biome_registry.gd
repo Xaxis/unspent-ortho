@@ -242,14 +242,19 @@ static func problems() -> PackedStringArray:
 	# fit on one: their least shares summed cannot fill the land.
 	var floor_share := 0.0
 	var promised := PackedStringArray()
+	var landfalls := PackedStringArray()
 	for d: BiomeDef in land():
-		if d.spread.x < 0 or d.spread.y < 0:
+		if d.spread == BiomeDef.LANDFALL:
+			landfalls.append(String(d.id))
+		elif d.spread.x < 0 or d.spread.y < 0:
 			out.append("%s: spread is (least, most) and neither may be negative" % d.id)
 		if d.spread.y > 0 and d.spread.x > d.spread.y:
 			out.append("%s: spread wants at least %d bodies and at most %d" % [d.id, d.spread.x, d.spread.y])
 		if d.spread.x >= 1:
 			floor_share += maxf(d.share.x, 0.0)
 			promised.append(String(d.id))
+	if landfalls.size() > 1:
+		out.append("only one landscape can be the first across the water: %s" % ", ".join(landfalls))
 	if floor_share > 0.9:
 		out.append("%d landscapes are guaranteed and their least shares come to %.2f of the land, which one body cannot carry: %s"
 			% [promised.size(), floor_share, ", ".join(promised)])
