@@ -2,7 +2,7 @@
 # Before a branch is called ready: the cheap rules the CI gate keeps catching.
 # Usage: tools/preflight.sh [extra test filter, comma-separated]
 #
-# One process, a few minutes, safe on a busy laptop. It is not the gate: it runs
+# A few minutes, safe on a busy laptop. It is not the gate: it runs
 # the tests that read the WHOLE TREE for a rule (a prop compared as an object, a
 # whole-world reader missing from its list, a system with no feature map entry,
 # a tour naming a frame it cannot hold, an untyped worker read, a room kind a
@@ -39,6 +39,12 @@ tools/test.sh "$rules" >"$log" 2>&1; code=$?
 grep -E "FAIL|^\s{7}|SCRIPT ERROR|LOAD FAIL|passed," "$log"
 if [ "$code" != "0" ] || grep -qE "SCRIPT ERROR|LOAD FAIL" "$log" || ! grep -qE "passed," "$log"; then fail=1; fi
 rm -f "$log"
+
+# Every shader compiled and drawn by the real renderer. The gate's tests run on
+# the dummy renderer, which compiles none: an include that broke every sky_apply
+# shader passed every gate and showed only in the frames (2026-10-01). It draws,
+# so it waits for a heavy slot.
+tools/heavy.sh tools/shaders.sh || fail=1
 
 if [ $fail -ne 0 ]; then echo "PREFLIGHT FAILED"; exit 1; fi
 echo "PREFLIGHT OK"

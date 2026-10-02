@@ -295,21 +295,42 @@ static func states(world: WorldData) -> Array[SentinelState]:
 ## Keyed like Works.sites, by the world's instance and how many marks it holds,
 ## so a world still being laid is never handed an old answer.
 ## THE NEXT KEEPER (ROADMAP slice 2, step 6): the nearest to `from` still
-## standing whose design none that fell had. A design taken once is not sent
-## again: nearest alone gave seed 7 a second Tide Reaper at 354 tiles, where the
-## anvil stands at 506. Null when every design standing has been taken.
-static func next_keeper(states: Array, from: Vector2) -> SentinelState:
+## standing whose design none that fell had, among those on `bodies` (body ids of
+## `world`: the journey's legs he can reach, Guide.bodies_reached). A design taken
+## once is not sent again: nearest alone gave seed 7 a second Tide Reaper at 354
+## tiles, where the anvil stands at 506. Never where he cannot go: on seeds 1 and
+## 7 that anvil stands on an islet off the journey, across deep water from home,
+## and the lead pointed there in slice 2, before the raft. Null when every design
+## standing on those bodies has been taken.
+static func next_keeper(states: Array, from: Vector2, world: WorldData, bodies: Array[int]) -> SentinelState:
 	var taken: Dictionary = {}
 	for s: SentinelState in states:
 		if s.fallen:
 			taken[s.design] = true
 	var best: SentinelState = null
 	for s: SentinelState in states:
-		if s.fallen or taken.has(s.design) or s.region < 0:
+		if s.fallen or taken.has(s.design) or s.region < 0 or not bodies.has(body_of(world, s.lair)):
 			continue
 		if best == null or s.lair.distance_to(from) < best.lair.distance_to(from):
 			best = s
 	return best
+
+
+## The body a lair stands on: its own tile's, or, for a lair out in the shallows
+## off a shore, the nearest land's within SHORE tiles. 0 where there is none.
+const SHORE := 4
+static func body_of(world: WorldData, at: Vector2) -> int:
+	var x := floori(at.x)
+	var y := floori(at.y)
+	for r in SHORE + 1:
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var id := world.continent_at(x + dx, y + dy)
+				if id != 0:
+					return id
+	return 0
 
 
 ## The keepers as a game holds them (44_sentinels), worn and fallen; [] with none.
