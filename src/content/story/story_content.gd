@@ -38,7 +38,7 @@ const ARCS := {
 	&"the_machines": {
 		"title": "the machines",
 		"note": "What they are now, and how little they see.",
-		"beats": [&"counted", &"noticed", &"not_home", &"ants", &"standoff", &"the_guest", &"walker_told", &"enclave_met"],
+		"beats": [&"counted", &"noticed", &"not_home", &"ants", &"standoff", &"the_guest", &"walker_told", &"line_let_down", &"enclave_met"],
 	},
 	&"the_holdfast": {
 		"title": "the Holdfast",
@@ -126,6 +126,9 @@ const BEATS := {
 	# Solis, asked about every road (talk solis, `up`): the road up the half-broken
 	# walker, the one nobody has sold. What leads to the climb (Guide.WAY `walker`).
 	&"walker_told": {"short": "the road up", "arc": &"the_machines", "says": "The lame walker puts a foot down in the same crater every third day. Nobody has ever climbed it."},
+	# Tull, at the lame walker's tread (talk tull, `line`): what the people under
+	# it have seen of the cable. Colour: it says nothing of what lets it down.
+	&"line_let_down": {"short": "a line let down", "arc": &"the_machines", "says": "Every time the lame walker stands, a cable comes down into its crater. Nothing has ever come down it."},
 	# At the half-broken walker's hub (the_enclave): the first enclave, cut off from
 	# the rest where the walkers' link thins, and the exception to `ants`.
 	&"enclave_met": {"reveal": true, "short": "one that counts you", "arc": &"the_machines", "says": "Something in the machines has been cut off from the rest, and it counts people."},
@@ -5042,6 +5045,71 @@ const TALKS := {
 			},
 		},
 	},
+	# --- the tread-folk (docs/STORY.md: the walkers). Tull farms the lame
+	# walker's craters from the ground between them. Colour, never load: he
+	# never lands walker_told, and says how the line comes down only once the
+	# warden has said the road up.
+	&"tull": {
+		"cast": &"tull", "title": "a tread-farmer", "start": &"open",
+		"nodes": {
+			&"open": {
+				"says": ["Between the bowls is the only ground it never presses. Stand here.", "I'm cutting before it's due. Hold the basket if you're staying."],
+				"replies": [
+					{"text": "Why live here?", "pick": &"asked_why", "to": &"why"},
+					{"text": "[hold the basket]", "pick": &"helped", "to": &"crop"},
+					{"text": "The warden says nobody's climbed it.", "when": &"walker_told", "pick": &"asked_climb", "to": &"line"},
+					{"text": "[tell him what is up there]", "when": &"enclave_met", "pick": &"told_tull", "to": &"told"},
+					{"text": "[say nothing]", "pick": &"nothing", "to": &""},
+				],
+			},
+			&"why": {
+				"says": ["The Covenant's peace costs not asking. This costs a crop every third day.", "Nothing of theirs gets built where the foot comes down. That's all the peace we want."],
+				"replies": [
+					{"text": "What grows in it?", "pick": &"asked_grows", "to": &"crop"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"crop": {
+				"says": ["It comes up under the plate, two days after the foot. In the warm.", "We cut it the third morning, and get out of the bowl.", "Don't ask what it is. It's what grows."],
+				"replies": [
+					{"text": "[trade for a bowl of it]", "has": [&"salt", &"fish"], "to": &"deal"},
+					{"text": "When does the foot come?", "pick": &"asked_when", "to": &"gait"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			# Tull's bowl (StoryContent.PAID `tull.deal`).
+			&"deal": {
+				"says": ["Anything the bowl can't grow buys a bowl of what it can.", "Eat it hot. It tastes of the ground."],
+				"replies": [{"text": "[take the soup]", "pick": &"paid", "to": &""}],
+			},
+			# The lap is 69.3 h: each landing near three hours earlier in the day.
+			&"gait": {
+				"says": ["Every third day, and near three hours sooner than the last.", "It stands five hours, near enough.", "You learn to sleep in the day. Then in the night. Then the day again.", "When the ground in the bowl goes dark, that's its shadow. Get out from under."],
+				"replies": [
+					{"text": "What if it stopped limping?", "pick": &"asked_whole", "to": &"whole"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			# Reached only once the warden has said the road up: the line and the
+			# lift, as heard from the ground. Never the road itself.
+			&"line": {
+				"says": ["He's right. Nobody has.", "Every time it stands it lets a line down into that one. Since my father's time. Nothing's bitten.", "You can hear a lift in the shin while it stands. It stops when the foot goes up."],
+				"beats": [&"line_let_down"],
+				"replies": [
+					{"text": "What if it stopped limping?", "pick": &"asked_whole", "to": &"whole"},
+					{"text": "[leave]", "to": &""},
+				],
+			},
+			&"whole": {
+				"says": ["Then it walks straight, and puts its feet down somewhere else.", "And we're people standing in a hole."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+			&"told": {
+				"says": ["Don't.", "I grow under it. I'd rather it wasn't looking."],
+				"replies": [{"text": "[leave]", "to": &""}],
+			},
+		},
+	},
 	# --- locals: one per landscape, colour and never load (docs/STORY.md) ---
 	&"esk": {
 		"cast": &"esk", "title": "a stone-setter", "start": &"open",
@@ -5724,11 +5792,14 @@ const LEAD := {
 
 # A talk that pays, keyed by the talk's node where the deal is closed
 # ("talk.node", as Story.choose names it): `pick` closes it, `takes` is one of the
-# first of these held, `gives` goes in the bag, and `makes` is what the pay is
-# for (Guide.armour_goal wants it until it is made). The crew pay for iron in
-# plate, three to a piece of plate armour (Recipes `kit_plate`).
+# first of these held, `gives` goes in the bag, and `makes`, where there is one,
+# is what the pay is for (Guide.armour_goal wants Rook's until it is made). The
+# crew pay for iron in plate, three to a piece of plate armour (Recipes
+# `kit_plate`).
 const PAID := {
 	&"rook.iron": {"pick": &"paid", "takes": [&"iron_ore", &"iron"], "gives": {&"scrap": 3}, "makes": &"kit_plate"},
+	# Tull's bowl (talk tull, `deal`): what the crater grows, for anything it can't.
+	&"tull.deal": {"pick": &"paid", "takes": [&"salt", &"fish"], "gives": {&"soup": 1}},
 }
 
 # Places a person has told him of, keyed by the beat that tells it: once that

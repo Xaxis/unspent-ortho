@@ -1694,7 +1694,8 @@ const vec3 GUIDE_WHITE = vec3(0.70, 0.82, 0.95);
 // course is offset half a plate), each plate a hair different in its temper,
 // fastened in exact rows at its ends; and guide lines for the traffic: a lane
 // edge every eight units, and down the middle of each lane a row of arrows
-// pointing the way it runs, lit cold on the machines' power when the light goes.
+// pointing the way it runs, worn paint by day, lit cold on the machines' power
+// as the light goes.
 // Nothing weathers here and nothing is left lying: no wear, no litter.
 vec3 machine_deck(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
 	vec2 q = mat2(vec2(0.97, 0.26), vec2(-0.26, 0.97)) * wp.xz;
@@ -1723,13 +1724,16 @@ vec3 machine_deck(vec3 c, vec3 wp, vec2 px, inout vec3 emit) {
 	float arrow = (ax < 1.2 && mid < 0.5 - ax * 0.4 && mid > 0.3 - ax * 0.4) ? 1.0 : 0.0;
 	float guide = max(line, arrow);
 	if (guide > 0.0) {
-		// Held low: a guide for a machine's sensor, not a lamp for anybody's
-		// eyes. At full strength the lines ruled bright scratches across the
-		// slums' dusk next door (canon 08).
-		c = mix(c, mix(mix(c, GUIDE_WHITE, 0.25), mix(c, GUIDE_WHITE, 0.7), on), guide);
-		// Held low by day and dusk, and full only once night has fallen
+		// A guide for a machine's sensor, not a lamp for anybody's eyes. By day
+		// and at dusk it is old paint: matte, a little lighter than the plate.
+		// `on` alone is full by half past six, and lit by it the lines were the
+		// brightest thing in a dusk frame, road paint laid that morning. So they
+		// come on as the lamps do, as the light goes (sky_gloom, from where a
+		// lamp's pool starts to tell), and full only once night has fallen
 		// (sky_view.y): then the ruled lines are the city, to the horizon.
-		emit += GUIDE_WHITE * mix(0.45, 4.0, sky_view.y) * on * guide;
+		float lit = on * smoothstep(0.25, 1.0, sky_gloom());
+		c = mix(c, mix(mix(c, GUIDE_WHITE, 0.14), mix(c, GUIDE_WHITE, 0.7), lit), guide);
+		emit += GUIDE_WHITE * mix(0.45, 4.0, sky_view.y) * lit * guide;
 	}
 	return c;
 }

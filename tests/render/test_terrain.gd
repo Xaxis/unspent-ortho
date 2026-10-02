@@ -282,6 +282,55 @@ func test_an_ecotone_turns_gradually_and_heartlands_stay_clean() -> void:
 	eq(bands[4], 0.0, "a heartland is its own country")
 
 
+## A deck is the floor of the landscape that laid it, never the neighbour's
+## dressing. Across an ecotone the ground drawn at a deck's foot can be the
+## neighbour's, and dressed for a landscape whose decks stand in the sea it grew
+## legs, a rail and a ladder in the street (WorldView.prop_country). Anything else
+## there still takes the ground drawn at its foot.
+func test_a_deck_across_an_ecotone_is_its_own_landscapes_floor() -> void:
+	var grounded := -1
+	var afloat := -1
+	for d: BiomeDef in BiomeRegistry.land():
+		if d.decks_grounded and grounded < 0:
+			grounded = d.index
+		elif not d.decks_grounded and afloat < 0:
+			afloat = d.index
+	check(grounded >= 0 and afloat >= 0, "a landscape that grounds its decks and one that doesn't")
+	if grounded < 0 or afloat < 0:
+		return
+	var w := WorldData.new(21, 128)
+	for y in 128:
+		for x in 128:
+			var i := y * 128 + x
+			w.level[i] = 2
+			w.country[i] = grounded if x < 64 else afloat
+			w.ground[i] = Ground.FLOOR
+			w.country2[i] = afloat if x < 64 else grounded
+			w.blend[i] = maxf(0.0, 0.5 - 0.5 * absf(x + 0.5 - 64.0) / 18.0)
+	var m := TerrainMesher.new(w)
+	var view := WorldView.new()
+	view.setup(w)
+	# A spot on the grounded side where the neighbour is drawn at the foot.
+	var at := Vector2.INF
+	var ch: TerrainMesher.Chunk = null
+	for cy in range(1, 3):
+		for cx in range(1, 3):
+			var c := m.build(cx, cy)
+			for j in c.h * 4:
+				for i in c.w * 4:
+					var p := Vector2(c.x0 + (i + 0.5) * 0.25, c.y0 + (j + 0.5) * 0.25)
+					if not at.is_finite() and p.x < 64.0 and c.country_at(p.x, p.y) == afloat:
+						at = p
+						ch = c
+	check(at.is_finite(), "the neighbour is drawn on the grounded side of the border")
+	if at.is_finite():
+		var deck := WorldProp.new(0, PropKind.PLATFORM, at, 0.0, 1.0)
+		var post := WorldProp.new(1, PropKind.FENCE, at, 0.0, 1.0)
+		eq(view.prop_country(deck, ch), grounded, "the deck is dressed as its own landscape's floor")
+		eq(view.prop_country(post, ch), afloat, "a fence there still takes the ground drawn at its foot")
+	view.free()
+
+
 func test_decor_of_the_neighbour_arrives_before_its_wash() -> void:
 	for b: float in [0.05, 0.15, 0.25, 0.35]:
 		gt(Decor.lead_share(b), TerrainMesher.eco_cover(b), "decor leads the wash at blend %s" % b)

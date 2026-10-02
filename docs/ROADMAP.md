@@ -99,10 +99,12 @@ Proof tour: `tours/across.tour`, from slice 2's end.
    its craters. The climb stops at the hub. On main: the climb core (a), the pitches set
    on the body, the leg drawn under his hands (b), getting on by the cable from the
    crater (c), the climb to `enclave_met` at the hub (d), the leg model, the enclave's
-   talk and panel, and the climb's words (e); `tours/colossi_climb.tour` plays it by real
-   keys from a staged landing. Open: the limp gait (f, a GEN); tread-folk in its craters;
-   a lead to it, since nothing names the walker or points at a crater, and the treads
-   miss the leg-1 body on some worlds (seeds 42 and 3 of 1, 3, 7, 12, 42).
+   talk and panel, and the climb's words (e); the limp gait (f); the warden's lead to it
+   (`walker_told`, the survey pinning the crater); Tull, who farms its craters (colour,
+   never load). `tours/colossi_climb.tour` plays it by real keys from a staged landing,
+   `tours/across.tour` by the goal line. Open: the tread-folk's holding drawn in the
+   craters (a GEN), and the treads miss the leg-1 body on some worlds (seeds 42 and 3 of
+   1, 3, 7, 12, 42).
 8. [x] **Back at the camp** (A). `crew_war` / `dace_left`, `rook_told`.
 9. [x] **Fix** (A). `hale_log` locked until `war_relay`.
 10. [ ] **Proof** (all). The tour plays the slice by the goal line alone. ★ On main:
