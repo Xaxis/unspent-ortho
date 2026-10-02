@@ -110,9 +110,11 @@ func test_rook_is_told_of_teagues_roads_through_the_key() -> void:
 ## THE WARDEN (Guide.WAY `warden`). Nothing else leads to him, and his word on
 ## Teague's roads is what opens the way back to Rook; asked while a revelation is
 ## still settling he holds it back. So once June's thread is done and has settled,
-## the goal is the warden, pinned at the Covenant, until he has said it, and once
-## that has settled, home. Found by tours/across.tour, where the goal line alone
-## never reached him.
+## the goal is the warden, pinned at the Covenant, until he has said it. Asked
+## about every road he names the road up the lame walker (walker_told); on a world
+## with no crater of it on the Covenant's body (none at this size) that leads
+## nowhere, and once his word has settled the goal is home. Found by
+## tours/across.tour, where the goal line alone never reached him.
 func test_once_june_is_done_the_goal_is_the_warden() -> void:
 	Story.forget()
 	Sx.use_root("camp-warden")
@@ -138,9 +140,11 @@ func test_once_june_is_done_the_goal_is_the_warden() -> void:
 	eq(t.id if t != null else &"", &"solis", "the key opens the warden's words")
 	_say(t, ["How do you know where I came from?"])
 	check(Story.landed(&"teague_sold"), "he says whose roads he is sold")
+	_say(t, ["Every road?"])
+	check(Story.landed(&"walker_told"), "and the one road nobody has sold: up the lame walker")
 	story.call("_close")
 	await _next_day(g)
-	_hop(g, &"camp_back", "said and settled: the goal moves on, back across")
+	_hop(g, &"camp_back", "said and settled, and no crater on this shore: the goal moves on, back across")
 	Sx.end(g)
 	Story.forget()
 

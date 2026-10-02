@@ -411,16 +411,20 @@ func tour_place(what: String) -> Vector2:
 	var lip := what == "climb:lip"
 	if not what in TOUR_PLACES:
 		return Vector2.INF
+	var best := Vector2.INF
+	var best_f: Dictionary = {}
 	for f: Dictionary in _feet_in_treads():
 		if not bool(f.planted):
 			continue
 		var at := _cable_foot(f)
-		if not lip:
-			return at
-		var pad: Vector3 = (f.pads as Array)[1]
-		var centre := Vector2(pad.x, pad.y)
-		return centre + (at - centre).normalized() * (Treads.rim_r(pad) - LIP_IN)
-	return Vector2.INF
+		if not best.is_finite() or at.distance_to(game.player.pos) < best.distance_to(game.player.pos):
+			best = at
+			best_f = f
+	if not lip or best_f.is_empty():
+		return best
+	var pad: Vector3 = (best_f.pads as Array)[1]
+	var centre := Vector2(pad.x, pad.y)
+	return centre + (best - centre).normalized() * (Treads.rim_r(pad) - LIP_IN)
 
 
 ## How far in from a crater's rim (Treads.rim_r) `at climb:lip` stands.
