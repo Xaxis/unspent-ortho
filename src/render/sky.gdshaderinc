@@ -80,6 +80,10 @@ global uniform vec4 sky_air;
 // the eye-level rules are in force (SkyLight.horizon_share: 0 top-down, 1 over
 // the shoulder). A whiteout closes in from the distance toward it.
 global uniform vec4 sky_focus;
+// How far the lens drawing this frame is under the high air's rules, 0 to 1
+// (SkyLight.aloft_share of its height; 0 for the orthographic play camera,
+// which stands hundreds of units off when drawn out).
+global uniform float sky_aloft;
 // Lightning after a strike: xy the strike's world x/z, z the afterglow rolling
 // through the clouds 0..1 (stepped), w the machines' power 0..1 (1 = steady).
 global uniform vec4 sky_bolt;
@@ -413,12 +417,10 @@ float sky_cloud(vec3 world_pos) {
 // THE CLOUDS SEEN FROM FAR ABOVE. The ground's cloud shadows are a few tiles
 // across, made for the play camera; from up a walker's leg a pixel holds a
 // dozen of them and they came out as dust. So an eye high over the land
-// (SKY_CLOUD_FAR_FROM up, `sky_apply`) sees the same weather's cover laid
+// (`sky_aloft`, in `sky_apply`) sees the same weather's cover laid
 // SKY_CLOUD_FAR times as wide, drifting over sea and island alike at the same
 // speed, with the cover's own share of the land in shade.
 const float SKY_CLOUD_FAR = 350.0;
-const float SKY_CLOUD_FAR_FROM = 200.0;
-const float SKY_CLOUD_FAR_FULL = 1000.0;
 float sky_cloud_far(vec3 world_pos) {
 	if (sky_clouds.w < 0.001) {
 		return 0.0;
@@ -851,14 +853,7 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	vec3 soak = mix(vec3(0.78, 0.81, 0.87), vec3(0.66, 0.70, 0.78), 1.0 - sky_gloom());
 	c = mix(c, c * soak, step(sky_hash(px + vec2(7.0, 61.0)), sky_wet_cover(world_pos, wet)));
 #endif
-#ifdef SKY_NO_EYE
-	float cloud = sky_cloud(world_pos);
-#else
-	// Only a lens (PROJECTION_MATRIX[3][3] 0): the play camera stands hundreds of
-	// units off when it is drawn out, and its clouds are the ground's own.
-	float cloud = mix(sky_cloud(world_pos), sky_cloud_far(world_pos), PROJECTION_MATRIX[3][3] < 0.5
-		? smoothstep(SKY_CLOUD_FAR_FROM, SKY_CLOUD_FAR_FULL, CAMERA_POSITION_WORLD.y - world_pos.y) : 0.0);
-#endif
+	float cloud = mix(sky_cloud(world_pos), sky_cloud_far(world_pos), sky_aloft);
 	if (cloud > 0.0) {
 		// A cloud over the sun. Nothing in the engine casts these, so it is a
 		// shade on the surface: soft-edged now rather than stippled, because
