@@ -14,6 +14,8 @@ extends GameSystem
 ##   mark NAME              remember where the player stands, by a name
 ##   at mark:NAME           stand there again (a fire the player laid: the place is
 ##                          the tour's own doing, so it is named, never written down)
+##   face mark:NAME         turn where he stands to face a remembered place (a
+##                          landmark seen from far off, over the shoulder)
 ##   back KIND DIST         stand DIST tiles out from the nearest prop of a kind, on
 ##                          open ground with open ground between, facing it (for a
 ##                          run held INTO it: `walkto prop:KIND SECS run through`)
@@ -375,6 +377,13 @@ func _run() -> void:
 		match cmd:
 			"mark":
 				_marks[parts[1]] = game.player.pos
+			"face":
+				ok = parts.size() > 1 and parts[1].begins_with("mark:") and _marks.has(parts[1].substr(5))
+				if ok:
+					var face := ((_marks[parts[1].substr(5)] as Vector2) - game.player.pos).angle()
+					game.player.facing = face
+					if game.player.hero != null:
+						game.player.hero.facing = face
 			"back":
 				var dist := parts[2].to_float() if parts.size() > 2 else 2.0
 				if parts[1] == "here":

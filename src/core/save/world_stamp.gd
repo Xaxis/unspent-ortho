@@ -268,7 +268,12 @@ const UNKNOWN := "unknown"
 ##     shortest water from home reaches with its heart where that water comes
 ##     ashore; its streets are ruled a level to a block, its shore is quays, and
 ##     its blocks (DROWNED_SHELL), roofs in the shallows (DROWNED_ROOF) and clock
-##     tower stand in the water. (Provisional; restamped at landing.)
+##     tower stand in the water. Its port is works: a lock of four leaves with
+##     its pump house and gauges, slips and sea walls off its quays, a flooded
+##     hall's walls round its black water; trams stand in a wider band of silt.
+##     Every region big enough to keep a keeper gets its keeper's first station
+##     (an intake, a lock), laid only where the ground keeps the design's ways
+##     (GenWorks.station_holds). (Provisional; restamped at landing.)
 const GEN := 47
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a

@@ -384,7 +384,7 @@ func look_at(s: SentinelState, def: SentinelDef) -> SentinelLook:
 	look.spoofed = game.clock.minutes < game.body.spoof_until
 	# Inside its guard: nearer than a keeper lets anybody come (the fight's own
 	# number, so the read and the behaviour can never disagree).
-	var guard := float(Roster.row(def.kind).get("sees", 12)) * FightSim.WARY_INSIDE
+	var guard := Sentinels.guard(def)
 	look.inside = at.distance_to(sim.hero.pos) <= guard
 	# What stands beside the player, for a way that only reads a signature
 	# under something (SentinelWay.beside). Asked only while it could matter:

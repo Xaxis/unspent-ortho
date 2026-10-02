@@ -73,6 +73,9 @@ const PRESSURE := &"pressure"
 ##            worker on its round, a keeper's own picket
 ##   clear    tiles it keeps from a village, so a place is a walk and not a
 ##            doorstep
+##   level    (optional) true when its patch is water: it is laid only on ground
+##            of one level across its reach, so the water stands level and never
+##            in steps down a terrace
 const ROWS := {
 	# --- what the machines left ------------------------------------------------
 	&"tip": {
@@ -95,6 +98,17 @@ const ROWS := {
 		"ground": Ground.MUD, "radius": 8.0, "wants": ANY,
 		"props": [[PropKind.PUMP_HOUSE, 1, 2.0], [PropKind.PIPE, 3, 6.0],
 			[PropKind.DEBRIS, 4, 7.0], [PropKind.REEDS, 6, 8.0]],
+		"holds": &"copper", "behind": WATER, "guard": 0.1, "clear": 24.0,
+	},
+	&"flooded_hall": {
+		# The drowned city: a hall whose roof went and whose floor the sea took,
+		# its walls standing out of the black water to their broken heights, what
+		# it held under the water, and the reeds that came up through the floor.
+		# The raft's second reason to exist after a crossing.
+		"ground": Ground.BLACKWATER, "radius": 4.0, "wants": ANY, "level": true,
+		# Its walls are the city's own fronts, stood round it by the city's works
+		# (drowned_city.gd `_hall`); the reeds are the floor's now.
+		"props": [[PropKind.REEDS, 6, 4.0]],
 		"holds": &"copper", "behind": WATER, "guard": 0.1, "clear": 24.0,
 	},
 	&"picket": {

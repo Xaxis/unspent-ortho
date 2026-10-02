@@ -220,6 +220,9 @@ static func _site_kinds(c: GenContext) -> void:
 			var patch := int(row.get("ground", SiteKinds.KEEP))
 			var radius := float(row.get("radius", 4.0))
 			var clear := float(row.get("clear", 24.0))
+			# A water patch stands level: one level under its whole reach.
+			var rise := 0 if bool(row.get("level", false)) else 2
+			var reach := ceili(radius) if rise == 0 else ceili(radius * 0.6)
 			var wants: Variant = row.get("wants", SiteKinds.ANY)
 			for region: Dictionary in _regions_of(w, cc):
 				var want := maxi(1, roundi(rate * float(region.get("tiles", 0)) / 1000.0))
@@ -235,7 +238,7 @@ static func _site_kinds(c: GenContext) -> void:
 						continue
 					if wants is int and w.ground[i] != int(wants):
 						continue
-					if not _clear_site(c, p, ceili(radius * 0.6), 2) or _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), clear):
+					if not _clear_site(c, p, reach, rise) or _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), clear):
 						continue
 					if patch != SiteKinds.KEEP:
 						_lay_patch(c, p, radius, patch)

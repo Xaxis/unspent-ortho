@@ -240,7 +240,7 @@ static func _build() -> void:
 	# raft steers by from the landing, and the city's square, now the sea's.
 	var clock := LandmarkDef.make(&"clock_tower", "the clock tower")
 	clock.lands = [&"drowned_city"]
-	clock.wants = &"water"
+	clock.wants = &"landfall"
 	clock.sees = 13.0
 	clock.far = "A clock standing in the water, and its hands have stopped."
 	clock.near = "The water came up the tower and stopped it at ten past four. The stair is dry above the weed."
@@ -523,6 +523,13 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 		var r := world.region_at(floori(p.x), floori(p.y))
 		works_in[r] = int(works_in.get(r, 0)) + 1
 	var solid := _solid_tiles(world)
+	# Where the shortest water from home comes ashore on the LANDFALL body
+	# (GenBodies marks `landfall` and `from` on its row): a &"landfall" kind
+	# stands as near it as it can (`_wants`).
+	var ashore_on := {}
+	for row: Dictionary in world.continents:
+		if bool(row.get("landfall", false)) and row.has("from"):
+			ashore_on[int(row.get("id", -1))] = row["from"]
 	var apart_scale := clampf(float(world.size) / 512.0, 0.4, 1.0)
 	# EVERY REGION GETS ITS FIRST BEFORE ANY GETS ITS SECOND, and the smallest
 	# region chooses first inside each round.
@@ -557,7 +564,9 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 		left[id] = kinds
 		by_region[id] = []
 		var clear := works_clear(int(region.get("tiles", 0)), int(works_in.get(id, 0)))
-		var pool := _candidates(world, region, greens, built, solid, wanted, clear, COARSE)
+		var centre: Vector2 = region.get("centre", Vector2.ZERO)
+		var ashore: Vector2 = ashore_on.get(world.continent_at(floori(centre.x), floori(centre.y)), Vector2.INF)
+		var pool := _candidates(world, region, greens, built, solid, wanted, clear, COARSE, ashore)
 		# A THIN POOL IS SWEPT AGAIN BEFORE ANYBODY CHOOSES, never after everybody
 		# has. Eleven tiles between candidates is most of a small region's whole
 		# width, and on a big region that villages and works have eaten it can come
@@ -570,7 +579,7 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 		# Only a thin pool is swept again, so the cost is what it was: doing it
 		# everywhere took the siting of a 512-tile world from 55 ms to 159.
 		if pool.size() < FINE_BELOW:
-			pool = _candidates(world, region, greens, built, solid, wanted, clear, STRIDE)
+			pool = _candidates(world, region, greens, built, solid, wanted, clear, STRIDE, ashore)
 		pools[id] = pool
 		var at: Vector2 = (pool[0] as Dictionary).p if not pool.is_empty() else region.get("centre", Vector2.ZERO)
 		body_of[id] = world.continent_at(floori(at.x), floori(at.y))
@@ -650,7 +659,7 @@ static func works_clear(region_tiles: int, works_in_region: int) -> float:
 
 ## Every tile in a region a landmark could stand on, scored for each thing this
 ## region's kinds want: `{p: Vector2, s: {want -> float}}`.
-static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vector2], built: Array[Vector2], solid: Dictionary, wanted: Array[StringName], off_works: float, stride: int) -> Array:
+static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vector2], built: Array[Vector2], solid: Dictionary, wanted: Array[StringName], off_works: float, stride: int, ashore: Vector2 = Vector2.INF) -> Array:
 	var out: Array = []
 	var id := int(region.get("id", -1))
 	var bounds: Rect2 = region.get("bounds", Rect2())
@@ -683,7 +692,7 @@ static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vect
 			var jitter := Rng.hash01(world.seed_value, x, y, 0x1AD) * 0.4
 			var scores := {}
 			for want: StringName in wanted:
-				var v := _wants(world, x, y, want)
+				var v := _wants(world, x, y, want, ashore)
 				scores[want] = -INF if v <= -1000.0 else v + jitter
 			out.append({"p": p, "s": scores})
 			x += stride
@@ -772,7 +781,9 @@ static func _too_near(p: Vector2, taken: Array[Vector2], apart: float) -> bool:
 
 
 ## How well a tile answers what a kind wants. -1000 means it does not at all.
-static func _wants(world: WorldData, x: int, y: int, wants: StringName) -> float:
+## `ashore`: where the raft from home comes ashore on this region's body, INF
+## off the LANDFALL body (`sites`).
+static func _wants(world: WorldData, x: int, y: int, wants: StringName, ashore: Vector2 = Vector2.INF) -> float:
 	match wants:
 		&"shore":
 			var d := _water_within(world, x, y, 5, true)
@@ -780,6 +791,16 @@ static func _wants(world: WorldData, x: int, y: int, wants: StringName) -> float
 		&"water":
 			var d := _water_within(world, x, y, 4, false)
 			return -1000.0 if d < 0 else 3.0 - float(d) * 0.4
+		&"landfall":
+			# Water's score, and up to LANDFALL_PULL more the nearer it stands to
+			# where the raft from home comes ashore (GenBodies' `from` on the
+			# LANDFALL body's row), so the one tall line is the first thing seen
+			# from the landing. Off that body it is water's alone.
+			var d := _water_within(world, x, y, 4, false)
+			if d < 0:
+				return -1000.0
+			var near := 0.0 if not ashore.is_finite() else clampf(1.0 - ashore.distance_to(Vector2(x, y)) / LANDFALL_SEEN, 0.0, 1.0)
+			return 3.0 - float(d) * 0.4 + near * LANDFALL_PULL
 		&"high":
 			var lift := _lift(world, x, y, 5)
 			return -1000.0 if lift < 1 else float(lift)
@@ -789,6 +810,12 @@ static func _wants(world: WorldData, x: int, y: int, wants: StringName) -> float
 			# Open: the flattest, emptiest ground it can find, which is what makes
 			# a silhouette stand alone against the sky instead of in a thicket.
 			return 4.0 - float(_relief(world, x, y, 4))
+
+
+## How far from where the raft comes ashore a &"landfall" kind still feels the
+## pull toward it, and how much that pull outweighs its water (`_wants`).
+const LANDFALL_SEEN := 90.0
+const LANDFALL_PULL := 8.0
 
 
 ## Chebyshev tiles to the nearest water within `r`, or -1. `salt` asks for the

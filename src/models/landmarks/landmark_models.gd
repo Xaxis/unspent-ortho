@@ -902,8 +902,10 @@ static func gallery() -> Array:
 ## where the tide comes and a white line of salt over that, a face on each side
 ## under its belfry with the hands stopped at the hour the water came in, and
 ## its cap gone from the top of the spire. Everything else in the drowned city
-## stands four floors at most; this is the line a raft steers by from the
-## landing. MADE, the city's stone, with the clock's iron FOUND.
+## stands four floors at most, and this stands three times that: the line a raft
+## steers by from the landing, its four faces white enamel, which is what holds
+## the light when the stone round them has gone dark. MADE, the city's stone,
+## with the clock's iron and enamel FOUND.
 static func _clock_tower(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: int) -> void:
 	var sq := PI * 0.25
 	var r2 := sqrt(2.0)
@@ -912,11 +914,11 @@ static func _clock_tower(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: 
 	made.prism(-0.15, 0.1, 0.0, 1.3 * r2, 0.45, 1.28 * r2, 4, STONE, STONE_TOP, sq)
 	# The shaft, a little in from the plinth and tapering, string courses on it
 	# where each stage began.
-	var top := 7.6
+	var top := 8.4
 	made.prism(-0.15, 0.45, 0.0, 1.0 * r2, top, 0.9 * r2, 4, STONE, STONE_TOP, sq)
 	made.prism(-0.15, 0.45, 0.0, 1.02 * r2, 1.35, 1.0 * r2, 4, P.SPRUCE[1].lerp(P.MOSS[2], 0.3), P.MOSS[1], sq)
 	made.prism(-0.15, 1.35, 0.0, 1.0 * r2, 1.43, 1.0 * r2, 4, SALT, SALT, sq)
-	for y: float in [2.9, 5.2]:
+	for y: float in [3.1, 5.8]:
 		var r := lerpf(1.0, 0.9, (y - 0.45) / (top - 0.45)) + 0.06
 		made.prism(-0.15, y, 0.0, r * r2, y + 0.14, r * r2, 4, STONE_TOP, STONE_TOP, sq)
 	# Slit windows up the stair, dark, so it is a building and not a post.
@@ -937,13 +939,18 @@ static func _clock_tower(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: 
 	for side in 4:
 		var yaw := side * PI * 0.5
 		var face := Transform3D(Basis(Vector3.UP, -yaw), Vector3(-0.15, 0.0, 0.0)) * Transform3D(Basis.IDENTITY, Vector3(1.01, top + 0.88, 0.0))
-		k.push(face * Transform3D(Basis(Vector3.BACK, -PI * 0.5), Vector3.ZERO))
-		k.prism(0.0, 0.0, 0.0, 0.6, 0.05, 0.6, 16, PLATE_DARK, PLATE_DARK)
-		k.prism(0.0, 0.05, 0.0, 0.52, 0.07, 0.52, 16, PAPER_DARK, PAPER)
+		# The bezel is the clock's iron; the dial is enamel somebody fired white,
+		# drawn on the made pen so it keeps its white where the iron goes dark.
+		var dial := face * Transform3D(Basis(Vector3.BACK, -PI * 0.5), Vector3.ZERO)
+		k.push(dial)
+		k.prism(0.0, 0.0, 0.0, 0.72, 0.05, 0.72, 16, PLATE_DARK, PLATE_DARK)
 		k.pop()
+		made.push(dial)
+		made.prism(0.0, 0.05, 0.0, 0.64, 0.07, 0.64, 16, PAPER, SALT)
+		made.pop()
 		# The hands, iron, in the face's own plane (+X out of it, Z across, Y up).
 		k.push(face)
-		for hand: Array in [[hour, 0.3, 0.06], [minute, 0.45, 0.04]]:
+		for hand: Array in [[hour, 0.36, 0.07], [minute, 0.55, 0.05]]:
 			var a: float = hand[0]
 			var len: float = hand[1]
 			var wide: float = hand[2]

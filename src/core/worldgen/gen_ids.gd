@@ -40,6 +40,12 @@ static func run(w: WorldData) -> void:
 	w.props = out
 	w.section_start = start
 	w.table = PropTable.of(out)
+	# A section index made while the world was being laid holds the old rows
+	# (the treads ask Works.sites, which asks each keeper's lair, which reads its
+	# feeds by section): it is made again from these rows on its next ask.
+	w.sectioned = false
+	w.section_rows.clear()
+	w.section_spans.clear()
 	# The table is the truth from here: the objects go (WorldData.packed).
 	w.props = [] as Array[WorldProp]
 	w.packed = true

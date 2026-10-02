@@ -27,7 +27,7 @@ const NOT_YET_LAID: Array[int] = [PropKind.LINTEL, PropKind.CARVED_FACE, PropKin
 	PropKind.CORE_RACK, PropKind.HOLLOW_WAY,
 	PropKind.PRESSURE_BLOCK, PropKind.FROZEN_HULL, PropKind.SOUNDING_RIG, PropKind.SEAL_HOLE,
 	PropKind.FULGURITE, PropKind.GLASS_BLISTER, PropKind.FUSED_CAR, PropKind.STRIKE_ROD,
-	PropKind.STAIR_TO_WATER, PropKind.DROWNED_TRAM, PropKind.MOORING_POST, PropKind.LOCK_GATE,
+	PropKind.MOORING_POST,
 	PropKind.HOODOO, PropKind.ARCH_RIB, PropKind.FALLEN_SPAN, PropKind.CISTERN, PropKind.SPAN_PYLON,
 	PropKind.FALLEN_TOWER]
 
@@ -298,12 +298,28 @@ func test_evidence_keeps_off_roads_water_and_village_squares() -> void:
 		# by where they stand too, the shallows the city leads (level 0, dressed
 		# as the city), never the deep, another landscape's sea, or a road.
 		var city := BiomeRegistry.get_def(&"drowned_city").index
+		# And a lock's gate leaves, which stand across its canal: within the
+		# lock's own mark (drowned_city.gd `_lock`), never loose in the water.
+		var locks: Array[Vector2] = []
+		# And a flooded hall's walls, which stand in the black water of its floor
+		# (drowned_city.gd `_hall`): round its own mark, never in the sea.
+		var halls: Array[Vector2] = []
+		for m: Dictionary in w.landmarks:
+			if m.kind == &"lock":
+				locks.append(m.pos)
+			elif m.kind == &"flooded_hall":
+				halls.append(m.pos)
 		for p in w.each_prop():
 			if not is_evidence(p.kind):
 				continue
 			if threshold != Vector2.INF and p.pos.distance_to(threshold) < 6.0:
 				continue
 			if p.kind == PropKind.DROWNED_ROOF and w.level_at(floori(p.pos.x), floori(p.pos.y)) == 0 and w.dress_country(floori(p.pos.x), floori(p.pos.y)) == city:
+				continue
+			if p.kind == PropKind.LOCK_GATE and locks.any(func(q: Vector2) -> bool: return q.distance_to(p.pos) < 4.0):
+				continue
+			if p.kind == PropKind.DROWNED_SHELL and w.ground_at(floori(p.pos.x), floori(p.pos.y)) == Ground.BLACKWATER \
+					and halls.any(func(q: Vector2) -> bool: return q.distance_to(p.pos) < 6.5):
 				continue
 			var px := floori(p.pos.x)
 			var py := floori(p.pos.y)

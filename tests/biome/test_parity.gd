@@ -548,12 +548,17 @@ extends TestCase
 ## keys. Over the five seeds tips 84 -> 75, wreckage 414 -> 378, pipe 238 -> 268,
 ## standing stones 17 -> 34 (two stone circles where there were none), sea walls
 ## 12 -> 6; the rest within 7% or a few apiece.
+## And for the station rule (Sentinels.ways_closed): a region big enough to keep
+## a keeper gets its keeper's first station, laid only where the ground keeps the
+## design's ways (GenWorks._n_station, station_holds). Only seed 1's `props`
+## move: its one intake stands across the island, (227, 166) -> (48, 170), where
+## a den by it keeps the Reaper's ways, with its pipe (49 -> 48 lengths).
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
 ## seed -> "country country2 ground level blend props", md5 prefixes.
 const M1 := {
-	1: "054710a9 3eac3638 064bae18 100053b8 4fd7a826 792f28fc",
+	1: "054710a9 3eac3638 064bae18 100053b8 4fd7a826 cfce90f5",
 	3: "bd96c6d3 1d22db86 5948aded a4316902 7e58a668 64d16217",
 	7: "ba7a972f 55af42cc 135a5304 0f02d42c f555c41d 8e555621",
 	42: "e0ad0bb3 b7ca1370 8dac8b33 2f4b7f69 1565ed7e bc74411a",

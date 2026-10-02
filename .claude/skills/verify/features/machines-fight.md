@@ -40,6 +40,7 @@ Machines on the land, their disposition, depots, keepers, the fight, targeting, 
   - Every keeper a boss to the shoulder reader (won 18+/24, 25-45 s, 2+ health lost): `tools/test.sh test_keeper_bouts` (~50 s).
   - Come-round: `tools/test.sh test_come_round`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/come_round.tour` (h).
   - Reach (`NavField.for_body`, `Brains._hunt`, `Sentinels.lair`): `tools/test.sh test_keeper_reach` (~2 min).
+  - Where it dens (`Sentinels.ways_closed`, `GenWorks.station_holds`): every placed keeper can be taken every way its design declares at its den, on seeds 1, 7, 42 and 90210 at full size, designs whose stations nobody lays yet listed as STANDING: `tools/test.sh test_station_ways` (~4 min).
   - Roused (faces you within 3 s of a hit): `tools/test.sh test_keeper_roused` (~2.5 min).
   - Breaks through a wood (`FightSim._break_through`): `tools/test.sh test_keeper_breaks`; as a player: `TOUR_FIXED_FPS=60 tools/tour.sh tours/plough_wood.tour` (h).
   - Drip-warden and headroom (no roofed landscape's body over 80% of its halls): `tools/test.sh test_keeper_headroom`, `TOUR_FIXED_FPS=60 tools/tour.sh tours/drip_warden.tour` (h; `near mob:KIND DIST`).

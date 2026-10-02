@@ -73,7 +73,7 @@ const LOOK_MS := 3500.0
 ## the beats a hunter would wait.
 const WARY_GLANCE := 0.22
 const WARY_FLOOR := 0.3
-const WARY_INSIDE := 0.45
+const WARY_INSIDE := Senses.WARY_INSIDE
 const WARY_FORGET := 0.5
 
 var world: WorldData

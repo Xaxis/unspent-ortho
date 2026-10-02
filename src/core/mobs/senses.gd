@@ -31,6 +31,11 @@ const BLOCKING_SOLID := 0.42
 ## ground and props were asked, so in every room a machine saw straight through
 ## its walls: a warden looked through a bay's wall at whoever hid in it.
 const BLOCKING_WALL := 0.25
+## A wary body lets nobody inside this share of what it sees (FightSim.WARY_INSIDE),
+## and a keeper's guard is the same share (Sentinels.guard). Here because the
+## station rule asks it while the world is worked out, where the fight's code
+## cannot be loaded.
+const WARY_INSIDE := 0.45
 
 
 static func sight_range(row: Dictionary, m: Moment) -> float:
