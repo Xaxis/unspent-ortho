@@ -71,6 +71,8 @@ extends GameSystem
 ##                          path and press the real jump key at the end of it, so a
 ##                          jump is taken on the move the way a player takes one
 ##   hour H [+D]            set the world clock hour (same day, or D days on)
+##   hour treadN[+M]        on to M world minutes after the walker's foot next comes
+##                          down in tread N (as --colossus=W@treadN counts them)
 ##   weather KIND:S[:bolt][:wind=W]  force the sky as --weather does (`weather rules`
 ##                          hands it back); wind=W holds the wind at W, -1..1
 ##   zoom F                 camera view height
@@ -83,6 +85,8 @@ extends GameSystem
 ##                          back to where it began. Logs its tries and seconds.
 ##   dodge DX,DY [SECS]     hold a SCREEN direction and press the dodge key while it
 ##                          is down (the dodge goes that way), walking on for SECS (0.6)
+##   dodge aside [SECS]     the same, across the nearest body's facing on the side he
+##                          stands: out of its bite, where straight back stays in it
 ##   press ACTION [SECS]    hold an input action (use, swing, dodge, inventory, craft, lamp, pause, map...)
 ##   hold ACTION            hold it down across the lines that follow (a stance: crouch)
 ##   release ACTION         let it go again
@@ -513,10 +517,19 @@ func _run() -> void:
 						ok = false
 			"hour":
 				# `hour H +D`: D days on, at H (a night the plan comes, a day later).
-				var day := floorf(game.clock.minutes / 1440.0)
-				if parts.size() > 2 and parts[2].begins_with("+"):
-					day += float(parts[2].substr(1).to_int())
-				game.clock.minutes = day * 1440.0 + parts[1].to_float() * 60.0
+				# `hour treadN[+M]`: on to when the walker's foot next comes down
+				# there (19_colossi tour_hour).
+				if parts[1].begins_with("tread"):
+					var colossi := _system("19_colossi")
+					var at: float = float(colossi.call(&"tour_hour", parts[1])) if colossi != null else NAN
+					ok = not is_nan(at)
+					if ok:
+						game.clock.minutes = at
+				else:
+					var day := floorf(game.clock.minutes / 1440.0)
+					if parts.size() > 2 and parts[2].begins_with("+"):
+						day += float(parts[2].substr(1).to_int())
+					game.clock.minutes = day * 1440.0 + parts[1].to_float() * 60.0
 			"zoom":
 				# Through the view system, which owns the height and puts its own
 				# value back every frame; writing the camera directly lasted one
@@ -544,8 +557,11 @@ func _run() -> void:
 				# The move keys held a SCREEN direction and the dodge key pressed while
 				# they are down, as a player dodges aside: the dodge goes the keys' way
 				# (LockOn.dodge_way) and the walk goes on that way for the rest of SECS.
-				var d := parts[1].split(",")
-				game.scripted_move = Vector2(d[0].to_float(), d[1].to_float())
+				if parts[1] == "aside":
+					game.scripted_move = _keys_toward(_aside())
+				else:
+					var d := parts[1].split(",")
+					game.scripted_move = Vector2(d[0].to_float(), d[1].to_float())
 				game.scripted_run = false
 				game.scripted_seconds = parts[2].to_float() if parts.size() > 2 else 0.6
 				await get_tree().physics_frame
@@ -1391,7 +1407,7 @@ func _walk_to(what: String, secs: float, run: bool = false, till: String = "") -
 				&"left": off = -PI * 0.5
 				&"right": off = PI * 0.5
 			if what == "plate":
-				off += PI
+				off = _plate_side(best, off)
 			target = best.pos + Vector2.from_angle(best.facing + off) * (best.radius + hero.radius + 0.45)
 			close = 0.2
 		facing_mob = best
@@ -1474,8 +1490,14 @@ func _choose(id: StringName) -> bool:
 		return false
 	# To the top first, by the same real key: a page that reopens on the row last
 	# chosen (the making page) would otherwise never come round to a row above it.
+	# As many steps as the page has rows: the making page at a bench holds over a
+	# hundred, and a bound of 80 left the mended plate out of reach from the raft.
+	var first: UiScreen = ui.call("top")
+	if first == null:
+		return false
+	var steps := first.menu.rows.size() + 1
 	var was := &"#"
-	for i in 80:
+	for i in steps:
 		var top: UiScreen = ui.call("top")
 		if top == null:
 			return false
@@ -1491,7 +1513,7 @@ func _choose(id: StringName) -> bool:
 		Input.action_release("move_up")
 		for f in 3:
 			await get_tree().process_frame
-	for i in 80:
+	for i in steps:
 		var page: UiScreen = ui.call("top")
 		if page == null:
 			return false
@@ -2043,6 +2065,38 @@ func _say_state(when: String) -> void:
 		game.clock.label() if game.clock != null else "?", held, String(Weather.forced_kind), lock, alive, past_fed])
 
 
+## The plated side `walkto plate` rounds to, as an angle off the body's facing:
+## opposite the working part (`part_off`), or, where that stands in water too
+## deep to swing from, a flank that does not. A keeper at the tide line turns to
+## face him, its back to the sea, and the walk to its back ended swimming, where
+## no blow is thrown (tours/sentinels.tour, its plate's ring). Any plated side
+## rings.
+func _plate_side(m: MobState, part_off: float) -> float:
+	var hero := game.player.sim.hero
+	for side: float in [part_off + PI, part_off + PI * 0.5, part_off - PI * 0.5]:
+		var p := m.pos + Vector2.from_angle(m.facing + side) * (m.radius + hero.radius + 0.45)
+		if game.query.standable(floori(p.x), floori(p.y)) and not Swim.deep(game.world, p):
+			return side
+	return part_off + PI
+
+
+## The way out of the nearest live body's bite across its facing, on the side of
+## its line he stands: the dodge a player makes on a tell (tests/fight/reader.gd's
+## escape, aside). A dodge with no keys goes straight back, and from a keeper two
+## tiles off that is still inside a bite that reaches three and a half
+## (tours/sentinels.tour lost its opening that way in half its runs).
+func _aside() -> Vector2:
+	var sim := game.player.sim
+	var best: MobState = null
+	for m in sim.mobs:
+		if m.alive and not m.removed and (best == null or m.pos.distance_to(sim.hero.pos) < best.pos.distance_to(sim.hero.pos)):
+			best = m
+	if best == null:
+		return Vector2.ZERO
+	var local := (sim.hero.pos - best.pos).rotated(-best.facing)
+	return Vector2.from_angle(best.facing + PI * 0.5 * (1.0 if local.y >= 0.0 else -1.0))
+
+
 ## The keys a player would hold to walk `dir` in the world, read the way the game
 ## reads them now (LockOn.keys_for): the screen's own yaw, or the line to a held
 ## lock over the shoulder. The walk used to assume the top view's fixed yaw, so
@@ -2250,7 +2304,7 @@ func _shot_checked(parts: PackedStringArray) -> bool:
 			# No frame that proves the opposite of its name is left on disk to be
 			# read as evidence by whoever comes next.
 			DirAccess.remove_absolute(_out.path_join(label + ".png"))
-			printerr("tour %s: %s.png claims %s and does not hold it; the frame was thrown away" % [_name, label, w])
+			printerr("tour %s: %s.png claims %s and does not hold it; the frame was thrown away%s" % [_name, label, w, _instead(w)])
 			return false
 	if not subjects.is_empty():
 		print("tour shot %s holds %s" % [label, ", ".join(subjects)])
@@ -2281,6 +2335,12 @@ func _instead(what: String) -> String:
 		for n: Node in get_tree().get_nodes_in_group(&"mobs"):
 			seen.append("%s%s" % [n.get("kind"), "" if bool(n.get("alive")) else " (down)"])
 		return " (bodies about: %s)" % (", ".join(seen) if seen.size() > 0 else "none")
+	if what == "goal_shown":
+		var hud := game.hud
+		var lines := PackedStringArray()
+		for l in hud.messages.visible():
+			lines.append(String(l.text))
+		return " (goal '%s', quiet %s, place ping %.2f '%s', lines on the glass: %s)" % [hud.goal, hud.messages.quiet, hud.place_alpha(), hud.place, " | ".join(lines)]
 	if what.begins_with("station:"):
 		return " (in reach: %s)" % ", ".join(Survival.stations_near(game))
 	if what.begins_with("prop:"):

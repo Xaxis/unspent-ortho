@@ -120,6 +120,34 @@ func _tread_minute(spec: String) -> float:
 	return NAN
 
 
+## `hour treadN[+M|-M]` in a tour (98_tour): the world minute M after the foot next
+## comes down in this world's Nth tread, from the clock now on, so a tour waits
+## for a landing by name and never by an hour a gait could move. NAN when this
+## world has no such tread.
+func tour_hour(spec: String) -> float:
+	var first := _tread_minute(spec)
+	if is_nan(first) or game.clock == null:
+		return NAN
+	for r: RefCounted in view.routes:
+		if not (r.treads as Dictionary).is_empty():
+			var lap: float = r.lap_minutes()
+			return first + ceilf(maxf(0.0, game.clock.minutes - first) / lap) * lap
+	return NAN
+
+
+## Where this world's craters are: the ones the walks were handed
+## (Treads.hand_over), each where a foot comes back to it, for whoever leads a
+## player there (StoryMap.crater_pos). Read from the walks, not the world's list.
+func craters() -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	if view == null:
+		return out
+	for r: RefCounted in view.routes:
+		for t: Vector4 in (r.treads as Dictionary).values():
+			out.append(Vector2(t.x, t.z))
+	return out
+
+
 ## The walk's own minute: the world clock, or the staged minute and however long
 ## has passed since the game began.
 func minutes() -> float:
@@ -665,9 +693,10 @@ const TOUR_PLACES := ["colossus_foot", "colossus_pad", "colossus_rim", "colossus
 
 
 ## `near colossus_foot` (or `at colossus:foot`): under the ankle of the nearest
-## tread, between its toes. `near colossus_pad`: outside the nearest crater,
-## beyond its pad, facing it and the ankle behind it. `near colossus_rim`: on a
-## crater's lip, looking in. `near colossus_crater`: on its floor, in the middle.
+## tread, between its toes. `near colossus_pad`: outside the nearest crater of
+## the nearest tread, beyond its pad, facing it and the ankle behind it. `near
+## colossus_rim`: on that crater's lip, looking in. `near colossus_crater`: on
+## its floor, in the middle.
 func tour_place(what: String) -> Vector2:
 	var pad := what == "colossus_pad" or what == "colossus:pad"
 	var rim := what == "colossus_rim" or what == "colossus:rim"
@@ -677,9 +706,19 @@ func tour_place(what: String) -> Vector2:
 	var here: Vector2 = game.player.pos
 	var best := Vector2.INF
 	_facing = NAN
+	# THE NEAREST TREAD FIRST, and only then the nearest place in it. One walk's
+	# treads lie a stride apart, and on seed 7 a crater of the second tread lay
+	# nearer the first tread's middle than any of the first's own (54 m against
+	# 127): placed in the first tread, a tour was stood in the next one's crater,
+	# under a foot already down, and the pad coming down never marked his ground.
+	var nearest: Dictionary = {}
 	for m: Dictionary in game.world.landmarks:
-		if StringName(m.get("kind", &"")) != &"tread":
-			continue
+		if StringName(m.get("kind", &"")) == &"tread" and (nearest.is_empty()
+				or (m.pos as Vector2).distance_to(here) < (nearest.pos as Vector2).distance_to(here)):
+			nearest = m
+	if nearest.is_empty():
+		return best
+	for m: Dictionary in [nearest]:
 		# Under the ankle: out in the gap between two toes, looking back in under
 		# the drum, so the arch and a toe on each side are in the frame.
 		var gap := float(m.yaw) + TAU / 6.0

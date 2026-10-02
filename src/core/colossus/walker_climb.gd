@@ -54,7 +54,8 @@ const HUB := 0
 ## The cable is knotted, with a loop for a foot at every level, so it is climbed
 ## at `pace` times the plate's rate for `wind` of its breath: at the plate's own
 ## it was ninety metres more and the whole climb 23 minutes, past the set
-## piece's twenty.
+## piece's twenty. The walker's limp (ColossusDef.limp) took it from twice to
+## three times.
 ##
 ## EACH IS ON A CLEAN RUN OF PLATE, with the patch drawn round it
 ## (colossus_leg_model.gd, HALF_W either side and MARGIN past each end): clear of
@@ -64,7 +65,7 @@ const HUB := 0
 ## on the rim's upright band under its top edge. tests/render/test_walker_leg.gd
 ## holds every one of them to the body it is drawn on.
 const PITCHES: Array[Dictionary] = [
-	{"id": &"cable", "bone": FOOT, "from": -119.0, "levels": 180, "ride": 0.0, "hang": true, "pace": 2.0, "wind": 0.5},
+	{"id": &"cable", "bone": FOOT, "from": -119.0, "levels": 180, "ride": 0.0, "hang": true, "pace": 3.0, "wind": 0.5},
 	{"id": &"drum", "bone": FOOT, "from": -29.0, "levels": 30, "ride": 60.0},
 	{"id": &"knee", "bone": SHIN, "at": 0.05, "levels": 30, "ride": 30.0},
 	{"id": &"thigh", "bone": THIGH, "at": 0.40, "levels": 60, "ride": 40.0},
@@ -78,12 +79,18 @@ const HOLD_EVERY := 2
 const STANCE_EVERY := 10
 ## How far round the bone a hold may wander from the line, in metres of surface.
 const WANDER := 3.0
-## A swing lasts about 107 real seconds: at these a whole one costs about 1,900
-## breath, so a climber caught between ledges with half a breath slips and one
-## who set off on a full breath hangs on. Reading the gait is the skill.
+## A sound leg's swing lasts about 107 real seconds and the lame one's, the leg
+## the climb goes up (ColossusDef.limp), about 139: at these a whole lame one
+## costs about 2,000 breath, so a climber caught between ledges with half a
+## breath slips and one who set off on a full breath hangs on. Reading the gait
+## is the skill.
 const HANG_DRAIN := 6.0
-const SWING_DRAIN_TIMES := 3.0
-const STANCE_REGEN := 150.0
+const SWING_DRAIN_TIMES := 2.4
+## On a ledge the breath comes back this fast. The lame leg stands a fifth less
+## of each cycle than a sound one, and at 150 the waiting for breath on ledges
+## put the set piece at 23 minutes; the swings and the rides are its drama, and
+## the waiting is not.
+const STANCE_REGEN := 250.0
 ## Under this breath when his leg sets down, the quake shakes him off.
 const SLIP_BELOW := 400.0
 ## A pitch's surface stands this far proud of the flat of the body under it, so

@@ -1,0 +1,485 @@
+# ACROSS THE WATER (docs/ROADMAP.md slice 3, step 10): the slice's proof. From slice
+# 2's end, played by the goal line alone: each leg goes where the goal pinned under
+# the health bar says, and every goal frame claims the line it is of (goal:KEY).
+# Vera has named the archive; a raft, the narrows, the archive and its man; one of
+# the war's orders; the Covenant's seat and its notice; the Speaker, her name,
+# June, and what the voice kept her from; the warden, whose roads he is sold, and
+# the one road nobody has sold; the mended plate, at the Covenant's bench while
+# the far shore settles; the lame walker, climbed from its crater to the enclave
+# in its crown; back across to the old soldier and to Rook; and the relay below,
+# the slice's last lead.
+#
+#   TOUR_TIMEOUT=3600 tools/tour.sh tours/across.tour --seed=1 --hour=9 --weather=clear:0 --beats=marens_lead,reaper_named,reaper_down,built_halcyon,holdfast_hope,war_archive --chose=rook.iron=paid --give=pick:1,kit_plate:1,driftwood:6,scrap:3,rag:2,tide_iron:1,stew:4,bread:4 --holding=lean-to
+#
+# (Slice 2's end is staged: its beats, Rook's deal closed and the plate it paid
+# for, a holding of his standing. The raft's driftwood, scrap and rags, and the
+# coast's tide iron the mend wants, are given rather than gathered: their getting
+# is slice 1 and 2's, tours/narrows.tour and tours/crafts.tour. Stew and bread are
+# the days between. Everything else is a place or a person a system names:
+# `at slot:`, `at cast:`, `at stood:`, `near door:speaker`, `near dweller`,
+# `near bench`, `place tread0`, `at climb:lip`, and `mark the_raft`, the tour's own
+# doing. The climb is played as tours/colossi_climb.tour plays it.)
+#
+# The hours: one revelation at a time. A revelation is felt once it has settled
+# (StoryPacing.SETTLE, 240 world minutes), and until then the next is held back,
+# so the clock moves on where the next lead waits on one: the order at one, her
+# name at six, what June always knew the next morning, what the voice kept her
+# from that afternoon, the warden's word that evening; the walker's foot the next
+# afternoon, when it comes back to its crater (`hour tread0+5`); home after the
+# climb. Where the next lead waits on a revelation, the goal is the mend, else the
+# relay, and never home across the water until the warden's word is felt and the
+# climb is behind him (Guide.WAY `camp_back`): he mends the plate at the
+# Covenant's bench through those hours.
+coast calm
+
+# --- 1 A RAFT: Vera's lead is across water, and nothing is carried to cross it -------------
+at slot:the_camp
+wait 1.0
+await goal:raft 5
+await goal_shown 20
+shot 01-the-goal-asks-for-a-raft with goal:raft,goal_shown
+tap craft
+await app:crafting 3
+choose raft
+tap use
+await made 5
+wait 0.4
+tap craft
+await app:none 3
+
+# --- 2 THE NARROWS: where to put it in, marked on the survey --------------------------------
+await goal:crossing 5
+tap map
+await app:map 3
+wait 0.8
+shot 02-the-survey-marks-the-narrows with app:map,goal:crossing
+tap map
+await app:none 3
+at slot:the_crossing
+wait 0.5
+walkto at:slot:the_landing 20 till:launch_ready:raft
+tap ride
+await riding:raft 3
+walkto at:slot:the_landing 240
+wait 0.3
+walkto at:slot:the_archive 20 till:step_off_ready
+tap ride
+await parked:raft 3
+mark the_raft
+wait 1.0
+shot 03-the-raft-left-at-the-landing with parked:raft
+
+# --- 3 THE ARCHIVE: the far shore heard, the goal is the archive and the man who keeps it ---
+walkto at:slot:the_archive 30 till:goal:archive
+# The far body's name pings over the goal first; the goal is pinned once it has.
+until ping 6
+await goal_shown 30
+wait 0.3
+shot 04-the-goal-is-the-archive with goal:archive,goal_shown
+at cast:otto
+await cast:otto 8
+wait 0.6
+press use
+await talking 3
+await met:otto 2
+wait 0.4
+press use
+await beat:forged_order 3
+wait 0.4
+press use
+await beat:war_relay 3
+wait 0.4
+shot 05-one-relay-below with talking,beat:war_relay
+press use
+wait 0.8
+shot 06-the-goal-is-one-of-the-orders with goal:orders,goal_shown
+press use
+await talking 3
+wait 0.4
+press use
+wait 0.4
+tap move_down
+wait 0.3
+press use
+await beat:tradecraft 3
+wait 0.4
+shot 07-it-reads-like-him with talking,beat:tradecraft
+press use
+wait 0.8
+
+# --- 4 THE COVENANT'S SEAT: ask its people, or listen ----------------------------------------
+await goal:covenant 5
+shot 08-the-goal-is-the-covenants-seat with goal:covenant,goal_shown
+press map 0.2
+await app:map 6
+wait 0.6
+shot 09-the-survey-marks-the-covenant with app:map,goal:covenant
+press map 0.2
+await app:none 5
+# Its notice, posted at its seat: what it gives.
+at stood:the_covenant
+await stood:the_covenant 5
+near sign
+wait 0.6
+press use
+await beat:covenant_fed 4
+wait 0.5
+shot 10-the-covenant-provides with reading,beat:covenant_fed
+press use
+wait 0.6
+# The house nearest it: her set, and nobody home.
+near door:speaker
+await door 5
+press use
+await inside 5
+wait 1.0
+at slot:terminal
+wait 0.4
+press use
+await beat:covenant_speaker 4
+wait 0.5
+shot 11-her-set-in-an-empty-house with tenant:speaker,reading
+press use
+wait 0.4
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 0.8
+
+# --- 5 HER NAME, which nobody inside will say ------------------------------------------------
+shot 12-the-goal-is-her-name with goal:speaker,goal_shown
+# Imre holds her name back while the order is still settling (StoryPacing: one
+# revelation at a time), so the afternoon goes by first.
+hour 18
+wait 1.0
+at cast:imre
+await cast:imre 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+press use
+wait 0.4
+press use
+await beat:june_named 3
+wait 0.4
+shot 13-imre-says-her-name with talking,beat:june_named
+press pause
+wait 0.5
+
+# --- 6 THE NEXT MORNING: her name felt, she is home ------------------------------------------
+hour 9 +1
+wait 1.0
+tap inventory
+wait 0.5
+choose stew
+tap use
+wait 1.2
+choose bread
+tap use
+wait 1.2
+tap inventory
+wait 0.6
+await goal:june 5
+await goal_shown 20
+shot 14-the-goal-is-june with goal:june,goal_shown
+near door:speaker
+await door 5
+press use
+await inside 5
+wait 1.0
+near dweller
+wait 0.6
+press use
+await talking 3
+await met:june 2
+await beat:june_met 2
+wait 0.4
+shot 15-june-at-her-table with talking,met:june
+press use
+await beat:june_knew 3
+wait 0.4
+shot 16-she-always-knew with talking,beat:june_knew
+press pause
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 0.6
+
+# --- 7 THE AFTERNOON: what she always knew, felt; back to her ----------------------------------
+hour 14
+wait 1.0
+await goal:june_voice 5
+await goal_shown 20
+shot 17-the-goal-is-back-to-her with goal:june_voice,goal_shown
+near door:speaker
+await door 5
+press use
+await inside 5
+wait 1.0
+near dweller
+wait 0.4
+press use
+await talking 3
+wait 0.4
+press use
+wait 0.4
+press use
+await beat:echo_kept 3
+wait 0.4
+shot 18-where-not-to-be with talking,beat:echo_kept
+press pause
+wait 0.5
+near door
+wait 0.3
+press use 0.1
+await outside 5
+wait 0.6
+
+# --- 8 MENDED GEAR, while it settles: what the Covenant lives on, for the plate he has spent ---
+# The warden waits on what the voice kept her from, and home waits on the warden,
+# so the goal is the mend. The Covenant's square has a bench by its fire; the mend
+# is an hour's work left going at it (Crafting.sets_going).
+await goal:mend 5
+await goal_shown 20
+shot 19-the-goal-is-the-mended-plate with goal:mend,goal_shown
+at stood:the_covenant
+await stood:the_covenant 5
+near bench
+wait 0.6
+tap craft
+await app:crafting 3
+choose plate_mended
+tap use
+wait 0.4
+tap craft
+await app:none 3
+await made:plate_mended 90
+wait 0.6
+shot 20-the-plate-mended-at-the-covenants-bench with station:bench
+# Mended, and still settling: the relay below, still not home.
+await goal:relay 5
+
+# --- 9 THE WARDEN: once what the voice kept her from has settled, the Covenant's warden ---
+hour 19
+wait 1.0
+tap lamp
+wait 0.4
+await goal:warden 5
+await goal_shown 20
+shot 21-the-goal-is-solis with goal:warden,goal_shown
+at cast:solis
+await cast:solis 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+press use
+await beat:teague_sold 3
+wait 0.4
+shot 22-solis-says-whose-roads with talking,beat:teague_sold
+# Every road but one.
+press use
+await beat:walker_told 3
+wait 0.4
+shot 23-every-road-but-up with talking,beat:walker_told
+press use
+wait 0.6
+
+# --- 10 THE ROAD UP: the next morning, the lame walker, from the crater its foot comes back to --
+hour 9 +1
+wait 1.0
+tap inventory
+wait 0.5
+choose stew
+tap use
+wait 1.2
+choose bread
+tap use
+wait 1.2
+tap inventory
+wait 0.6
+await goal:walker 5
+await goal_shown 20
+shot 24-the-goal-is-the-lame-walker with goal:walker,goal_shown
+press map 0.2
+await app:map 6
+wait 0.6
+shot 25-the-survey-marks-the-crater with app:map,goal:walker
+press map 0.2
+await app:none 5
+# At the crater, and on to when the foot comes back to it, that afternoon.
+place tread0
+wait 0.5
+hour tread0+5
+await colossus_tread 30
+at climb:lip
+walkto at:climb:cable 60 till:climb_cable
+await climb_cable 5
+wait 2
+shot 26-at-the-cable with colossus_tread,climb_cable,goal:walker
+tap use
+await climbing 3
+await climb_patch 10
+wait 1
+shot 27-on-the-cable with climbing,climb_patch
+# The cable, ledge to ledge, until its top hands him on to the drum.
+try 20
+release move_up
+until climb_ready 240
+hold move_up
+await climb:ledge 60
+release move_up
+await climb:onto 0.1
+end
+# The drum, ledge to ledge, until its top takes him into the bone.
+try 12
+release move_up
+until climb_ready 240
+hold move_up
+await climb:ledge 60
+release move_up
+await climb:rode 0.1
+end
+until climb_ready 240
+try 12
+release move_up
+until climb_ready 240
+hold move_up
+await climb:ledge 60
+release move_up
+await climb:rode 0.1
+end
+until climb_ready 240
+shot 28-on-the-thigh with climbing,climb_patch
+try 16
+release move_up
+until climb_ready 240
+hold move_up
+await climb:ledge 60
+release move_up
+await climb:rode 0.1
+end
+until climb_ready 240
+try 12
+release move_up
+until climb_ready 240
+hold move_up
+await climb:ledge 60
+release move_up
+await climb:rode 0.1
+end
+until climb_ready 240
+shot 29-under-the-hubs-rim with climbing,climb_patch
+try 12
+release move_up
+until climb_ready 240
+hold move_up
+await climb:ledge 60
+release move_up
+await climb:at_hub 0.1
+end
+await talking 5
+wait 1
+shot 30-the-panel-in-the-crown with talking
+tap use
+await beat:enclave_met 5
+wait 1
+shot 31-it-counts-him with talking,beat:enclave_met
+tap use
+await climb:down 10
+wait 2
+# A day on the walker, and nothing eaten since the morning before: a meal now,
+# and another in the morning (no meal is eaten ahead).
+tap inventory
+wait 0.5
+choose stew
+tap use
+wait 1.2
+choose bread
+tap use
+wait 1.2
+tap inventory
+wait 0.6
+
+# --- 11 BACK AT THE CAMP: the next morning, the old soldier, with what the archive showed him --
+# The far shore's last thread behind him, the way home is the goal.
+hour 9 +1
+wait 1.0
+tap inventory
+wait 0.5
+choose stew
+tap use
+wait 1.2
+choose bread
+tap use
+wait 1.2
+tap inventory
+wait 0.6
+await goal:camp_back 5
+await goal_shown 20
+shot 32-the-goal-is-the-old-soldier with goal:camp_back,goal_shown
+press map 0.2
+await app:map 6
+wait 0.6
+shot 33-the-survey-pins-the-narrows with app:map,goal:camp_back
+press map 0.2
+await app:none 5
+at mark:the_raft
+wait 0.8
+tap ride
+await riding:raft 3
+walkto at:slot:the_crossing 240
+wait 0.3
+walkto at:slot:the_camp 20 till:step_off_ready
+tap ride
+await parked:raft 3
+wait 0.6
+at cast:dace
+await cast:dace 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+press use
+await beat:crew_war 3
+wait 0.4
+press use
+await beat:dace_left 3
+wait 0.4
+shot 34-the-order-was-mine with talking,beat:dace_left
+press use
+wait 1.5
+await goal:rook_teague 5
+shot 35-the-goal-is-rook with goal:rook_teague,goal_shown
+at cast:rook
+await cast:rook 8
+wait 0.6
+press use
+await talking 3
+wait 0.4
+tap move_down
+wait 0.3
+tap move_down
+wait 0.3
+press use
+await beat:rook_told 3
+wait 0.4
+shot 36-rook-will-see-to-it with talking,beat:rook_told
+press use
+wait 0.8
+
+# --- TODO 12 THE DROWNED CITY (step 6): the third landscape, on the leg-1 body. Still building.
+
+# --- 13 THE RELAY BELOW: the slice's last lead, held into slice 4 -----------------------------
+await goal:relay 5
+shot 37-the-goal-is-the-relay-below with goal:relay,goal_shown
+press map 0.2
+await app:map 6
+wait 0.6
+shot 38-the-survey-marks-the-shaft with app:map,goal:relay
+press map 0.2
+await app:none 5

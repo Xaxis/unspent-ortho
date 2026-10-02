@@ -344,8 +344,11 @@ func can_teach() -> bool:
 
 
 ## True while the goal line is on the glass: nothing louder is using the space.
+## A ping has the space from the moment it is raised (age 0, alpha 0), not from
+## its first fade step: the ui system raises it after the HUD has stepped, so for
+## a frame its alpha says nothing is there while the plate is about to rise.
 func goal_shown() -> bool:
-	if goal == "" or messages.quiet or place_alpha() > 0.0:
+	if goal == "" or messages.quiet or _place_age < PLACE_IN + PLACE_HOLD + PLACE_OUT:
 		return false
 	for l in messages.visible():
 		if String(l.text).begins_with(goal):

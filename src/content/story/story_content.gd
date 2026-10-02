@@ -38,7 +38,7 @@ const ARCS := {
 	&"the_machines": {
 		"title": "the machines",
 		"note": "What they are now, and how little they see.",
-		"beats": [&"counted", &"noticed", &"not_home", &"ants", &"standoff", &"the_guest", &"enclave_met"],
+		"beats": [&"counted", &"noticed", &"not_home", &"ants", &"standoff", &"the_guest", &"walker_told", &"enclave_met"],
 	},
 	&"the_holdfast": {
 		"title": "the Holdfast",
@@ -123,6 +123,9 @@ const BEATS := {
 	&"noticed": {"short": "something noticed", "arc": &"the_machines", "says": "Something has noticed you at last. Only a part of it."},
 	&"not_home": {"short": "not home", "arc": &"the_machines", "says": "Somebody you walked out of a yard did not get home."},
 	&"ants": {"reveal": true, "short": "beneath notice", "arc": &"the_machines", "says": "They do not see you. Nothing that size looks down."},
+	# Solis, asked about every road (talk solis, `up`): the road up the half-broken
+	# walker, the one nobody has sold. What leads to the climb (Guide.WAY `walker`).
+	&"walker_told": {"short": "the road up", "arc": &"the_machines", "says": "The lame walker puts a foot down in the same crater every third day. Nobody has ever climbed it."},
 	# At the half-broken walker's hub (the_enclave): the first enclave, cut off from
 	# the rest where the walkers' link thins, and the exception to `ants`.
 	&"enclave_met": {"reveal": true, "short": "one that counts you", "arc": &"the_machines", "says": "Something in the machines has been cut off from the rest, and it counts people."},
@@ -4594,6 +4597,17 @@ const TALKS := {
 			&"roads": {
 				"says": ["Your demolitions man sells us your roads.", "A village cleared for every works you break. He thinks it's fair."],
 				"beats": [&"teague_sold"],
+				# Asked, or let go, he says the road up (walker_told): saying
+				# nothing is an answer, and it must not cost the slice its climb.
+				# Let go, it is his parting word, amending his own boast.
+				"replies": [
+					{"text": "Every road?", "pick": &"asked_every", "to": &"up"},
+					{"text": "[leave]", "to": &"up"},
+				],
+			},
+			&"up": {
+				"says": ["Every road but up.", "The lame walker puts a foot down in the same crater every third day.", "Nobody's ever climbed it, so nobody's sold it."],
+				"beats": [&"walker_told"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
 			&"peace": {
@@ -5684,6 +5698,12 @@ const LEAD := {
 	&"speaker": "The Speaker's name, which nobody inside will say: ask someone who left.",
 	&"june": "June Marr, for what she remembers: her house by the Covenant's seat.",
 	&"june_voice": "Back to June, for what the voice says at night: she keeps to her table.",
+	# The Covenant's warden, once June's thread has settled, until he says whose
+	# roads he is sold (teague_sold): what opens the way back to Rook.
+	&"warden": "The warden, for how he knows where you came from: at the Covenant.",
+	# The half-broken walker, once Solis has said the road up (walker_told), until
+	# the enclave in its crown has been met: the far shore's last thread.
+	&"walker": "The lame walker, for the one road nobody has sold: its foot comes back to the same crater.",
 	# The second keeper, keyed by its design (Guide.keeper_goal, Sentinels.next_keeper):
 	# once Teague has named it (`anvil_named`) until it falls. Never gating the way
 	# on: no key memory.
@@ -5727,8 +5747,9 @@ const TOLD := {
 
 # Places marked on the survey only while the pinned goal is theirs (Guide
 # last_goal_key), keyed by that goal: where to put the raft in, while the goal is
-# the crossing (StoryCrossing, placed by 49_cast). `on_body`: only while he stands
-# on the place's own body, for a way back that is no way once he is back.
+# the crossing (StoryCrossing, placed by 49_cast). A place is a cast slot, or a
+# walker's crater (`crater:SLOT`, StoryMap.crater_pos). `on_body`: only while he
+# stands on the place's own body, for a way back that is no way once he is back.
 const TOLD_WHILE := {
 	&"crossing": {"place": &"the_crossing", "word": "the narrows"},
 	# June (slice 3 step 3): her house is the one nearest the Covenant's own place.
@@ -5736,6 +5757,10 @@ const TOLD_WHILE := {
 	&"speaker": {"place": &"the_covenant", "word": "the covenant"},
 	&"june": {"place": &"the_covenant", "word": "her house"},
 	&"june_voice": {"place": &"the_covenant", "word": "her house"},
+	&"warden": {"place": &"the_covenant", "word": "the covenant"},
+	# The walker's crater on the Covenant's body, nearest it (`crater:SLOT`,
+	# StoryMap.crater_pos): a place of the world, not of the cast.
+	&"walker": {"place": &"crater:the_covenant", "word": "the crater"},
 	# Back at the camp (slice 3 step 8): the way back is where he landed, and the
 	# landing keeps the crossing's name: one water, one name. Home again, the
 	# crew's own mark (TOLD marens_lead) is the way.

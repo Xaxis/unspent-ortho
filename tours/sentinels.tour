@@ -45,6 +45,7 @@ shot 02-inside-the-keepers-guard with mob:sentinel.coast,sentinel_reach
 
 # The plated side: a blow anywhere but the working part rings off it.
 try 4
+  near keeper
   walkto plate 6
   tap swing
   await ring 4
@@ -62,11 +63,16 @@ shot 04-the-tell-over-its-drum with mob:sentinel.coast
 # The pass a player learns: in front of it where it will bite, out of the bite as
 # the tell starts, and into the drum while it is jammed and grinding round. Its
 # working side in this phase is its FRONT, so there is nowhere safe to stand and
-# swing: the dodge is the whole of the opening.
+# swing: the dodge is the whole of the opening. Out of the bite is across it, not
+# back from it: a dodge straight back from two tiles off is still inside a bite
+# that reaches three and a half. Each pass starts at its den, on land: a bite
+# that lands knocks him toward the sea, and from the deep water past its shore no
+# tell ever comes.
 try 8
+  near keeper
   walkto mob 6
   await tell 14
-  press dodge 0.12
+  dodge aside 0.5
   await sentinel_open 6
   walkto part 2
   tap swing

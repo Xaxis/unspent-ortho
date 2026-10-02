@@ -67,6 +67,12 @@ var swing_minutes := 2.5 * 60.0
 ## How far a foot is carried in one step, and how high it is lifted.
 var stride := 40000.0
 var lift := 3000.0
+## THE LIMP: a walker whose `limp` is over 1 swings its lame leg (its route's
+## `lame`) that many times as long as a sound leg swings, and stops it short of
+## the ground for `hitch` of that swing before it plants (colossus_walk.gd
+## `window`). 1 is a sound walker.
+var limp := 1.0
+var hitch := 0.15
 ## The hub's own slow roll over the stride, in metres.
 var sway := 350.0
 
@@ -184,6 +190,8 @@ static func tripod(circuit_id: StringName) -> RefCounted:
 			# A ring through the island's centre: the hub passes overhead once a lap.
 			d.route_radius = 60000.0
 			d.route_offset = 60000.0
+			# The half-broken one (docs/STORY.md): the walker the climb goes up.
+			d.limp = 1.3
 	return d
 
 

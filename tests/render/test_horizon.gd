@@ -210,6 +210,77 @@ func test_the_open_sea_reaches_past_what_the_eye_sees() -> void:
 	view.free()
 
 
+## FROM HIGH UP THE SEA RUNS UNDER THE ISLAND TOO: a far block not built yet is
+## sea, not a hole onto the sky's ground half. The sheet under the map's square
+## lies below the far water, as that lies below the near water, and is drawn
+## only for an eye high over it.
+func test_from_high_up_the_sea_runs_under_the_island() -> void:
+	var w := _ridge()
+	var view := WorldView.new()
+	tree.root.add_child(view)
+	view.setup(w)
+	var under := view.get_node_or_null("open_sea/sea_under") as MeshInstance3D
+	check(under != null, "a sheet under the map's square")
+	if under == null:
+		view.queue_free()
+		return
+	var box := under.mesh.get_aabb()
+	near(box.position.x, 0.0, 0.01, "from the west edge")
+	near(box.end.z, float(w.size), 0.01, "to the south edge")
+	lt(box.position.y, TerrainMesher.WATER_Y - Far.DROP, "under the far water")
+	var cam := Camera3D.new()
+	tree.root.add_child(cam)
+	cam.make_current()
+	cam.position = Vector3(64.0, 1.7, 64.0)
+	await process_frames(2)
+	check(not under.visible, "not drawn for an eye at a man's height")
+	cam.position = Vector3(64.0, 46000.0, 64.0)
+	await process_frames(2)
+	check(under.visible, "drawn for one up a walker's thigh")
+	view.queue_free()
+	cam.queue_free()
+	await process_frames(1)
+
+
+## A FAR CELL IS ITS TILES' MEAN: from up a leg a pixel holds a cell or two, and
+## a cell coloured by its middle tile set grass beside rock across the island.
+func test_a_far_cell_is_the_mean_of_its_land() -> void:
+	var w := WorldData.new(3, 128)
+	for y in 128:
+		for x in 128:
+			var i := y * 128 + x
+			w.level[i] = 2
+			# Every other column rock, the rest grass: no cell is one ground.
+			w.ground[i] = Ground.ROCK if x % 2 == 0 else Ground.GRASS
+			w.country[i] = Country.COAST
+	var tabs: Array = Far.tables()
+	var col: PackedColorArray = tabs[0]
+	var rock := col[Ground.ROCK * BiomeRegistry.SLOTS + Country.COAST]
+	var grass := col[Ground.GRASS * BiomeRegistry.SLOTS + Country.COAST]
+	var mean := Vector3(rock.r + grass.r, rock.g + grass.g, rock.b + grass.b) * 0.5
+	var cs: PackedColorArray = (Far.build_arrays(w, 0, 0, tabs)[0] as Array)[Mesh.ARRAY_COLOR]
+	var off := 0
+	for c: Color in cs:
+		if Vector3(c.r, c.g, c.b).distance_to(mean) > 0.001:
+			off += 1
+	eq(off, 0, "every cell is the mean of its rock and grass (%d of %d vertices off it)" % [off, cs.size()])
+
+
+## FROM HIGH UP THE AIR VEILS THE LAND AND CLOSES AT THE HORIZON: from the thigh
+## the island fifty kilometres off keeps most of its light, the sea three times
+## as far off far less, and the sea's own edge is in air that has closed; an eye
+## on the drum or lower is under the eye level's air exactly.
+func test_from_high_up_the_air_veils_the_land_and_closes_at_the_horizon() -> void:
+	var island := SkyLight.aloft_air(50000.0)
+	lt(island, 0.2, "the island from the thigh keeps most of its light (the air takes %.2f)" % island)
+	gt(SkyLight.aloft_air(150000.0), 0.6, "the sea at three times that is mostly the air")
+	eq(SkyLight.aloft_air(SkyLight.HIGHEST_SEE), 1.0, "and the sea's own edge is all air")
+	var r := SkyLight.aloft_reach(Vector2(SkyLight.HORIZON_BEGIN, SkyLight.SEE), 46000.0)
+	eq(r, Vector2(0.0, SkyLight.HIGHEST_SEE * SkyLight.ALOFT_EDGE), "which is the air _aloft gives the thigh's eye")
+	eq(SkyLight.aloft_share(150.0), 0.0, "over the tallest thing on the land, the eye level's air")
+	eq(SkyLight.aloft_share(46000.0), 1.0, "up a leg, the high air's")
+
+
 ## HIGH OVER THE LAND THE AIR IS SEEN THROUGH (SkyLight.aloft_reach): an eye a
 ## man's height up, or over the tallest thing on the land, keeps the eye-level
 ## air exactly; from a walker's thigh, forty kilometres up, the ground under it
