@@ -74,7 +74,10 @@ exception the secret explains. HALCYON was built on his self-model, so an enclav
 speaks in his cadence, faintly: worn and drifted, never the Seeker's sharpness.
 One walker is half-broken, its crown cut off; the first enclave lives up there, and
 he climbs to it. The climb stops at the hub; orbit is the Tether's. Tread-folk farm
-the craters its feet leave and live by its gait.
+the craters its feet leave and live by its gait. **Tull** speaks for them, from the
+ground between the craters that the foot never presses: one lap where nobody runs /
+his father is under the middle toe. Colour, never load; the warden says the road
+up, never Tull.
 
 ## The journey
 
