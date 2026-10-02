@@ -109,6 +109,7 @@ const float SEA_FAR_FROM = 40.0;
 const float SEA_FAR_GONE = 150.0;
 const float SEA_FAR_ROUGH = 0.32;
 const vec3 SEA_FAR_BODY = vec3(0.078, 0.175, 0.25);
+const float SEA_FAR_SPECULAR = 0.5;
 // THE SEA FROM FAR ABOVE HAS WEATHER ON IT. From up a walker's leg the chop is
 // gone into the roughness, and one roughness over the whole sea was one flat
 // colour to the horizon. So it has LANES, streaks kilometres long down the wind
@@ -342,6 +343,10 @@ void fragment() {
 	float top_down = 1.0 - clamp(sky_focus.w, 0.0, 1.0);
 	float caught = max(sun_path(wp), sea_glints(wp, TIME));
 	SPECULAR = SEA_SPECULAR * mix(1.0, mix(OFF_PATH, 1.0, caught * (1.0 - far)), day * top_down);
+	// From far above the sun's path on a sea that rough was the whole sea toward
+	// the sun, white, and the sea read as the air (the climb's shin ride at
+	// 10:26). Real water's own two per cent keeps it a band of broken light.
+	SPECULAR *= mix(1.0, SEA_FAR_SPECULAR, far * float(kind == 0));
 	// Under a colossus's pad coming down there is no sky left to mirror
 	// (sky.gdshaderinc `sky_colossus_pads`): the water goes dark with the land.
 	float under_pad = sky_colossus_pads(world_pos);
