@@ -1389,6 +1389,7 @@ func _look_out(e: Environment, sm: ProceduralSkyMaterial, a: Dictionary, share: 
 		if up > 0.0:
 			var below := bent.lerp(sm.sky_top_color, ALOFT_BELOW_TOP) * ALOFT_BELOW_LEVEL
 			sm.ground_bottom_color = sm.ground_bottom_color.lerp(below, up * w)
+			_air_below = below
 		# Under a lid (`BiomeDef.sky_shut`) there are no stars and no moon to
 		# see: the slums at midnight showed a starfield through their smog.
 		_see_sky(e, sm, clock_hour, nightly * (1.0 - last_lid()), w)
@@ -1420,6 +1421,11 @@ const ALOFT_CURVE := 1.0
 ## sea was the air's colour from the thigh down, and only the land was seen.
 const ALOFT_BELOW_TOP := 0.8
 const ALOFT_BELOW_LEVEL := 0.6
+## How much of the air's colour from up there is the sky's in the ray's
+## direction (the eye level's HORIZON_AERIAL) rather than the air's own.
+const ALOFT_AERIAL := 0.0
+## The air under a high eye this frame, as `_look_out` worked it out.
+var _air_below := DAY_SKY_TOP * ALOFT_BELOW_LEVEL
 ## The farthest any eye sees: the climb's (43_climb), from a walker's hub
 ## fifty-five kilometres up. Its far plane and the open sea (world_view) reach
 ## this far, and the air closes by ALOFT_EDGE of it, so the sea's own edge is
@@ -1433,10 +1439,21 @@ func _aloft(e: Environment) -> void:
 	if c == null or c.projection != Camera3D.PROJECTION_PERSPECTIVE:
 		return
 	var h := c.global_position.y
+	var k := aloft_share(h)
 	var r := aloft_reach(Vector2(e.fog_depth_begin, e.fog_depth_end), h)
 	e.fog_depth_begin = r.x
 	e.fog_depth_end = r.y
-	e.fog_depth_curve = lerpf(e.fog_depth_curve, ALOFT_CURVE, aloft_share(h))
+	e.fog_depth_curve = lerpf(e.fog_depth_curve, ALOFT_CURVE, k)
+	# AND ITS COLOUR IS THE AIR UNDER HIM, NOT THE SKY'S BLUR. The engine takes the
+	# air's colour from the sky's radiance at a blur that grows the nearer a thing
+	# is against the far plane, and the far plane is HIGHEST_SEE: everything on
+	# the island sampled the blurriest of it, a whole hemisphere with the sun in
+	# it, and toward the sun the sea washed out to white. From up here the air
+	# is its own colour (`_air_below`, the dome's ground half), and the sea's
+	# edge against the sky's horizon above it is the horizon's line.
+	if k > 0.0:
+		e.fog_aerial_perspective = lerpf(e.fog_aerial_perspective, ALOFT_AERIAL, k)
+		e.fog_light_color = e.fog_light_color.lerp(_air_below, k)
 
 
 ## How far an eye `h` up is under the high air's rules, 0 to 1.

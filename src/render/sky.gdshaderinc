@@ -410,6 +410,26 @@ float sky_cloud(vec3 world_pos) {
 	return sky_cloud_field(world_pos);
 }
 
+// THE CLOUDS SEEN FROM FAR ABOVE. The ground's cloud shadows are a few tiles
+// across, made for the play camera; from up a walker's leg a pixel holds a
+// dozen of them and they came out as dust. So an eye high over the land
+// (SKY_CLOUD_FAR_FROM up, `sky_apply`) sees the same weather's cover laid
+// SKY_CLOUD_FAR times as wide, drifting over sea and island alike at the same
+// speed, with the cover's own share of the land in shade.
+const float SKY_CLOUD_FAR = 350.0;
+const float SKY_CLOUD_FAR_FROM = 200.0;
+const float SKY_CLOUD_FAR_FULL = 1000.0;
+float sky_cloud_far(vec3 world_pos) {
+	if (sky_clouds.w < 0.001) {
+		return 0.0;
+	}
+	vec2 q = (world_pos.xz - sky_clouds.xy) / SKY_CLOUD_FAR;
+	float n = sky_fbm(q * 0.12) * 0.7 + sky_noise(q * 0.33 + vec2(17.0, 3.0)) * 0.3;
+	float c = sky_clouds.z;
+	float t = 0.5 - 0.32 * (c - 0.5) - smoothstep(0.85, 1.0, c) * 0.3 + (1.0 - smoothstep(0.0, 0.1, c)) * 0.3;
+	return smoothstep(t - 0.02, t + 0.02, n);
+}
+
 // The afterglow of a strike: the clouds it lit, catching and letting go as the
 // light rolls out from where it struck. 0/1 per pixel. Drawn as light IN the
 // cloud, not a bank on the ground: the lit edges of the cloud's own shapes as
@@ -831,7 +851,14 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	vec3 soak = mix(vec3(0.78, 0.81, 0.87), vec3(0.66, 0.70, 0.78), 1.0 - sky_gloom());
 	c = mix(c, c * soak, step(sky_hash(px + vec2(7.0, 61.0)), sky_wet_cover(world_pos, wet)));
 #endif
+#ifdef SKY_NO_EYE
 	float cloud = sky_cloud(world_pos);
+#else
+	// Only a lens (PROJECTION_MATRIX[3][3] 0): the play camera stands hundreds of
+	// units off when it is drawn out, and its clouds are the ground's own.
+	float cloud = mix(sky_cloud(world_pos), sky_cloud_far(world_pos), PROJECTION_MATRIX[3][3] < 0.5
+		? smoothstep(SKY_CLOUD_FAR_FROM, SKY_CLOUD_FAR_FULL, CAMERA_POSITION_WORLD.y - world_pos.y) : 0.0);
+#endif
 	if (cloud > 0.0) {
 		// A cloud over the sun. Nothing in the engine casts these, so it is a
 		// shade on the surface: soft-edged now rather than stippled, because

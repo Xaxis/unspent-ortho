@@ -27,6 +27,8 @@ shader_type sky;
 // The ring in the sky (src/render/orbit/orbit_sky.gdshaderinc), sampled from its
 // own layer; only this shader draws it.
 #define DOME_ORBIT
+// A sky shader has no eye standing over the land (sky.gdshaderinc `sky_apply`).
+#define SKY_NO_EYE
 #include "res://src/render/sky_dome.gdshaderinc"
 
 vec3 procedural(vec3 d) {
