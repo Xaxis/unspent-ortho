@@ -59,9 +59,11 @@ func test_he_speaks_of_the_line_only_after_the_warden() -> void:
 ## The slot is where the survey pins the crater (the ankle, on the Covenant's
 ## body); Tull stands on the arch-side lip of the middle toe's crater, where the
 ## cable comes down. Staged with the foot down: on the far side of the arch from
-## the cable, and clear of the walk from the climb's lip down to it. Seed 42 has
-## no crater on that body, so nobody is there, and the lead pins nothing either.
+## the cable, and clear of the walk from the climb's lip down to it. A world with
+## no crater on that body has nobody there, and the lead pins nothing either.
+## Which seeds have one moves with worldgen, so each is asked.
 func test_he_stands_on_the_middle_toe_s_lip_clear_of_the_climb() -> void:
+	var pinned := 0
 	for seed_value: int in [1, 7, 42]:
 		Story.forget()
 		Sx.use_root("tull-%d" % seed_value)
@@ -70,12 +72,12 @@ func test_he_stands_on_the_middle_toe_s_lip_clear_of_the_climb() -> void:
 		var placed: Dictionary = Sx.system(g, "49_cast").get("placed")
 		var pin := StoryMap.crater_pos(g, &"crater:the_covenant")
 		var tull := _row(g, &"tull")
-		if seed_value == 42:
-			check(not pin.is_finite(), "seed 42: no crater on the Covenant's body to pin")
-			check(not placed.has(&"the_tread"), "seed 42: and no tread cast")
-			check(tull.is_empty(), "seed 42: and no Tull")
+		if not pin.is_finite():
+			check(not placed.has(&"the_tread"), "seed %d: no crater pinned, and no tread cast" % seed_value)
+			check(tull.is_empty(), "seed %d: and no Tull" % seed_value)
 			Sx.end(g)
 			continue
+		pinned += 1
 		check(placed.has(&"the_tread") and placed[&"the_tread"].pos == pin, "seed %d: the slot is where the survey pins the crater" % seed_value)
 		check(not tull.is_empty(), "seed %d: Tull is cast" % seed_value)
 		var tread := {}
@@ -116,6 +118,7 @@ func test_he_stands_on_the_middle_toe_s_lip_clear_of_the_climb() -> void:
 			var walk := Geometry2D.get_closest_point_to_segment(at, lip, cable).distance_to(at)
 			gt(walk, 8.0, "seed %d: clear of the walk from the lip down to the cable (%.1f m)" % [seed_value, walk])
 		Sx.end(g)
+	gt(float(pinned), 0.0, "some seed has a crater pinned, or nothing above was asked")
 	Story.forget()
 
 
