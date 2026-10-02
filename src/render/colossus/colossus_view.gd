@@ -178,7 +178,7 @@ func _dress(mat: ShaderMaterial, i: int, p: Dictionary, cam: Camera3D, ortho: bo
 	var hub: Vector3 = (p.hub as Transform3D).origin
 	mat.set_shader_parameter("hub_seen", hub_seen(cam, hub))
 	mat.set_shader_parameter("horizon_v", horizon_v(cam))
-	mat.set_shader_parameter("presence", presence(cam.global_position.distance_to(hub)))
+	mat.set_shader_parameter("presence", 1.0 if i == climbed else presence(cam.global_position.distance_to(hub)))
 	mat.set_shader_parameter("bone_rows", rows_of(p.bones))
 	mat.set_shader_parameter("comp_d0", cam.far * KNEE)
 	mat.set_shader_parameter("comp_max", cam.far * CEILING)
@@ -208,6 +208,11 @@ func _dress(mat: ShaderMaterial, i: int, p: Dictionary, cam: Camera3D, ortho: bo
 const PRESENT_FULL := 15000.0
 const PRESENT_FAINT := 80000.0
 const PRESENT_LEAST := 0.3
+## AND THE WALKER HE IS ON IS ALL THERE (43_climb sets it, -1 when no climb is
+## live). Its hub is tens of kilometres up the leg from him, and by the hub's
+## distance the leg a few hundred metres off him gave up to half of itself to
+## the air.
+var climbed := -1
 
 
 static func presence(d: float) -> float:

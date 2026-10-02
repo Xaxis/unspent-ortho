@@ -68,6 +68,14 @@
       "tests": []
     },
     {
+      "id": "cli:shaders",
+      "kind": "cli",
+      "entry": "tools/shaders.sh",
+      "reach": "tools/heavy.sh tools/shaders.sh",
+      "area": "tools",
+      "tests": []
+    },
+    {
       "id": "cli:shot",
       "kind": "cli",
       "entry": "tools/shot.sh",

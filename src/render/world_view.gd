@@ -620,6 +620,7 @@ func _process(_delta: float) -> void:
 		_task_props = []
 	_rebake_step()
 	_look_out()
+	_sea_under_seen()
 	var wanted := _wanted(0.0)
 	# Reviving is free, so every parked chunk the view has come back to goes in
 	# at once; only building is one at a time.
@@ -1762,7 +1763,8 @@ static func _ranked(points: PackedVector3Array, axis: Vector3, rank: int) -> Vec
 
 
 ## A flat deep-sea sheet around the whole map, so the edge of the world is the
-## sea and not the void. Four strips, so it never lies under the map's own water.
+## sea and not the void: four strips round it at the sea's own height, and, for
+## an eye high over it, the map's square under its own water (`_add_open_sea`).
 ## UNDER A POCKET, NOTHING: the rooms stand in the dark the way a drawn section
 ## stands on the page, instead of on an ocean that is not there. Just under the
 ## floor's own height (InteriorGen.FLOOR_LEVEL), over the tile of lower ground a
@@ -1798,13 +1800,53 @@ func _add_open_sea() -> void:
 	# at eye level the sea runs to the horizon, and where it stopped the sky's
 	# ground half showed through as a band of nothing under the air.
 	var m := SkyLight.HIGHEST_SEE
-	var y := TerrainMesher.WATER_Y - 0.02
+	var sea := MeshInstance3D.new()
+	sea.name = "open_sea"
+	sea.mesh = _sea_sheet([Rect2(-m, -m, s + 2.0 * m, m), Rect2(-m, s, s + 2.0 * m, m), Rect2(-m, 0, m, s), Rect2(s, 0, m, s)],
+		TerrainMesher.WATER_Y - 0.02)
+	sea.material_override = _water_mat
+	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(sea)
+	# AND UNDER THE MAP'S OWN SQUARE, for an eye high over it (SEA_UNDER_FROM):
+	# below the far water (Far.DROP) as that is below the near water, so every
+	# water above it wins and it shows only where nothing else is drawn. Inside
+	# the square the sea was the near chunks' and the far blocks', and a block
+	# not built yet was a hole: from up a walker's leg the island stood on the
+	# sky's ground half, flat navy. Only from up there, where a pixel of it is
+	# kilometres of sea: under every frame nearer the ground it would be shaded
+	# beneath the whole land for nothing.
+	var under := MeshInstance3D.new()
+	under.name = "sea_under"
+	under.mesh = _sea_sheet([Rect2(0, 0, s, s)], TerrainMesher.WATER_Y - 2.0 * Far.DROP)
+	under.material_override = _water_mat
+	under.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	under.visible = false
+	sea.add_child(under)
+
+
+## How high an eye stands over the sea before the sheet under the map's square
+## is drawn for it: over the tallest thing on the land, as SkyLight.ALOFT_FROM.
+const SEA_UNDER_FROM := SkyLight.ALOFT_FROM
+
+
+## The sheet under the map's square shown only to an eye high over it.
+func _sea_under_seen() -> void:
+	var under := get_node_or_null("open_sea/sea_under") as MeshInstance3D
+	if under == null or not is_inside_tree():
+		return
+	var cam := get_viewport().get_camera_3d()
+	under.visible = cam != null and cam.projection == Camera3D.PROJECTION_PERSPECTIVE \
+		and cam.global_position.y - TerrainMesher.WATER_Y > SEA_UNDER_FROM
+
+
+## Deep, open sea over `rects` (x, z) at height `y`: full surf weight
+## (water.gdshader reads COLOR.g on the sea), though at this depth nothing
+## breaks anyway.
+static func _sea_sheet(rects: Array, y: float) -> ArrayMesh:
 	var v := PackedVector3Array()
 	var c := PackedColorArray()
-	# Deep, open, and far from any bank: full surf weight (water.gdshader reads
-	# COLOR.g on the sea), though at this depth nothing breaks anyway.
 	var col := Color(0.0, 1.0, 0.5, 1.0)
-	for r: Rect2 in [Rect2(-m, -m, s + 2.0 * m, m), Rect2(-m, s, s + 2.0 * m, m), Rect2(-m, 0, m, s), Rect2(s, 0, m, s)]:
+	for r: Rect2 in rects:
 		var a := Vector3(r.position.x, y, r.position.y)
 		var b := Vector3(r.end.x, y, r.position.y)
 		var d := Vector3(r.end.x, y, r.end.y)
@@ -1822,9 +1864,4 @@ func _add_open_sea() -> void:
 	arrays[Mesh.ARRAY_COLOR] = c
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	var sea := MeshInstance3D.new()
-	sea.name = "open_sea"
-	sea.mesh = mesh
-	sea.material_override = _water_mat
-	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(sea)
+	return mesh

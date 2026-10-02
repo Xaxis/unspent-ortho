@@ -150,6 +150,10 @@ varying vec3 body_local;
 const float FOUND_MASS = 0.55;
 const float FOUND_METAL = 0.52;
 const float FOUND_ROUGH = 0.64;
+// From how high (metres) an eye is in the high air (SkyLight.ALOFT_FROM and
+// ALOFT_FULL), whose dome's ground half is the air under it.
+const float ALOFT_FROM = 200.0;
+const float ALOFT_FULL = 1000.0;
 // How bright the last sun is on the top: over its albedo, so it reads as lit
 // metal and not as a lamp.
 const float EMBER = 5.0;
@@ -446,7 +450,8 @@ void fragment() {
 	// DAYLIGHT ON A THING THIS SIZE (walker_plate.gdshaderinc).
 	if (!lamp) {
 		vec3 n_day = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
-		EMISSION += matter_albedo(plate_c) * walker_day(n_day, -dir, dome_sun_dir, dome_sun_color, dome_top_color, near, near_fill);
+		vec3 low = walker_low(dome_top_color, dome_ground_color, smoothstep(ALOFT_FROM, ALOFT_FULL, eye.y));
+		EMISSION += matter_albedo(plate_c) * walker_day(n_day, -dir, dome_sun_dir, dome_sun_color, dome_top_color, low, near, near_fill);
 	}
 	// THE TOP KEEPS THE SUN AFTER THE LAND HAS LOST IT. From `h` metres up the sun
 	// is still over the horizon until it is sqrt(2h / R) below the ground's, and

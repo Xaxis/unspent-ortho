@@ -29,7 +29,8 @@ extends GameSystem
 ## staged eye is (96_eye): out from the plate above him and to his side, looking
 ## past him down the face to what is under it (EYE_OUT). Riding up inside the
 ## bone he is not seen; the eye goes up the outside of the leg to the next
-## pitch, bowed out from it, so the whole leg goes by. Everything that asks the
+## pitch, swung kilometres out off it to the island under the walker and back
+## (`_ride`), so the whole leg goes by and the drop is seen. Everything that asks the
 ## viewport which camera is drawing (the colossi, the near foot, the air) asks
 ## it.
 ##
@@ -73,6 +74,20 @@ const LOOK_UP := 1.0
 const EYE_NEAR := 1.0
 ## How far out from the leg the eye's way up a ride bows, as a share of the way.
 const RIDE_BOW := 0.25
+## How far the eye swings out across the leg to take in the island on a ride, as
+## a share of its height, and the share of the ride it takes to swing out (and
+## back in): it holds on the island between.
+const RIDE_OUT := 0.5
+const RIDE_TURN := 0.3
+## AND ITS LENS LENGTHENS ON THE ISLAND: the island is two kilometres across
+## and the eye twenty to fifty off, a few pixels of sea at the climb's own lens.
+## Held, the island's half-width takes this share of the frame's half-height,
+## and the near plane goes out with the eye, which is kilometres from anything,
+## so a long lens on the web's depth (EYE_NEAR) does not lose the shore in the sea.
+const RIDE_FRAME := 0.35
+const RIDE_NEAR := 400.0
+## The longest lens it takes (a camera refuses one under a degree).
+const RIDE_FOV_LEAST := 2.0
 ## Where the body hangs from a hold: his feet this far down the pitch from the
 ## rung his hands are on, and his middle this far out from the plate.
 const BODY_DROP := 1.35
@@ -124,7 +139,8 @@ func started() -> void:
 
 
 ## `--climb=PITCH[:HOLD]`: hung at that hold, up the leg standing in (or over)
-## the tread nearest the start.
+## the tread nearest the start. `--climb=PITCH:ride[:SHARE]`: riding up from that
+## pitch's top, SHARE of the ride gone. Either way with the far land built.
 func _stage(spec: String) -> void:
 	var parts := spec.split(":")
 	var p := -1
@@ -138,8 +154,17 @@ func _stage(spec: String) -> void:
 	walker = int(feet[0].walker)
 	var c := WalkerClimb.begin(int(feet[0].leg), game.world.seed_value)
 	c.pitch = p
-	c.hold = clampi(parts[1].to_int() if parts.size() > 1 else 0, 0, c.holds_in(p) - 1)
+	if parts.size() > 1 and parts[1] == "ride" and float(WalkerClimb.PITCHES[p].ride) > 0.0:
+		c.hold = c.holds_in(p) - 1
+		c.state = WalkerClimb.RIDE
+		c.busy = float(WalkerClimb.PITCHES[p].ride) * (1.0 - clampf(parts[2].to_float() if parts.size() > 2 else 0.0, 0.0, 1.0))
+	else:
+		c.hold = clampi(parts[1].to_int() if parts.size() > 1 else 0, 0, c.holds_in(p) - 1)
 	_begin(c)
+	# A staged hold is a moment deep in the climb, when the workers have long
+	# built the far land under it: built now, so its first frames are not holes.
+	if game.view != null:
+		game.view.ensure_far()
 
 
 func _begin(c: WalkerClimb) -> void:
@@ -171,12 +196,16 @@ func _begin(c: WalkerClimb) -> void:
 
 
 ## Up the leg the plate near the eye is lit as form, on the far body and the
-## near foot as on the patch (colossus_leg_model.gd NEAR_LIFT).
+## near foot as on the patch (colossus_leg_model.gd NEAR_LIFT), and the walker
+## he is on is drawn all there, never given to the air by its hub's distance
+## (ColossusView.climbed).
 func _lift_near(on: bool) -> void:
 	var c := _colossi()
 	for part: StringName in [&"view", &"foot"]:
 		if c != null and c.get(part) != null:
 			(c.get(part) as Object).call(&"lift_near", on)
+	if c != null and c.get(&"view") != null:
+		(c.get(&"view") as Object).set(&"climbed", walker if on else -1)
 
 
 ## The level the fight is told the body is at while he is up a leg: far past any
@@ -246,6 +275,8 @@ func _process(delta: float) -> void:
 	else:
 		var f := body_frame(def, pose)
 		_hang(f)
+		_cam.fov = EYE_FOV
+		_cam.near = EYE_NEAR
 		_cam.global_transform = eye_at(f)
 	_quake()
 	_cost_us = Time.get_ticks_usec() - t0
@@ -461,12 +492,18 @@ func _land() -> Vector3:
 
 ## Up inside the bone: the eye goes from where it stood on this pitch's top to
 ## where it will stand on the next one's foot, bowed out from the leg, as the ride
-## goes, and looks all the way at where he is in it; the ride runs only while his
-## leg stands, and so does the eye. Both ends are on the live pose, so the way up
-## rides with the walk.
+## goes; the ride runs only while his leg stands, and so does the eye. Both ends
+## are on the live pose, so the way up rides with the walk.
+## AND IT TAKES IN THE ISLAND: he is not seen in there, so over the ride's first
+## RIDE_TURN share the eye swings out RIDE_OUT off the leg and turns from where
+## he is down to the island under the walker, holds on it, and over the last
+## share comes back to him on the next pitch. It swings out across the plane
+## the leg bends in: the island lies by the foot, in that plane, so from beside
+## it the leg falls away to the foot and nothing of it stands in between.
 func _ride(def: RefCounted, pose: Dictionary) -> void:
 	var p := climb.pitch
-	var t := smoothstep(0.0, 1.0, 1.0 - climb.busy / maxf(float(WalkerClimb.PITCHES[p].ride), 1e-3))
+	var share := clampf(1.0 - climb.busy / maxf(float(WalkerClimb.PITCHES[p].ride), 1e-3), 0.0, 1.0)
+	var t := smoothstep(0.0, 1.0, share)
 	var next := WalkerClimb.begin(climb.leg, climb.seed_value)
 	next.pitch = mini(p + 1, WalkerClimb.PITCHES.size() - 1)
 	var bone: Transform3D = (pose.bones as Array)[next.bone_index(next.pitch)]
@@ -479,8 +516,25 @@ func _ride(def: RefCounted, pose: Dictionary) -> void:
 	var bow := out * from.origin.distance_to(to.origin) * RIDE_BOW * sin(PI * t)
 	var at := from.origin.lerp(to.origin, t) + bow
 	var him := (here.origin + here.basis.orthonormalized().y * LOOK_UP).lerp(there.origin + there.basis.orthonormalized().y * LOOK_UP, t)
-	var up := Vector3.UP if absf((him - at).normalized().y) < 0.98 else out
-	_cam.global_transform = Transform3D(Basis.looking_at(him - at, up), at)
+	var look := (him - at).normalized()
+	var fov := EYE_FOV
+	var land := _land()
+	var wide := smoothstep(0.0, RIDE_TURN, share) * smoothstep(0.0, RIDE_TURN, 1.0 - share)
+	if land.is_finite() and wide > 0.0:
+		var k := climb.leg
+		var bend: Vector3 = ((pose.knees[k] as Vector3) - (pose.hips[k] as Vector3)).cross((pose.ankles[k] as Vector3) - (pose.knees[k] as Vector3))
+		var side := Vector3(bend.x, 0.0, bend.z)
+		if side.length() > 1e-3:
+			side = side.normalized()
+			side *= signf(side.dot(out)) if absf(side.dot(out)) > 1e-3 else 1.0
+			at += side * maxf(at.y, 0.0) * RIDE_OUT * wide
+		look = (him - at).normalized().slerp((land - at).normalized(), wide)
+		var half := float(game.world.size) * 0.5
+		fov = lerpf(EYE_FOV, rad_to_deg(2.0 * atan(half / (RIDE_FRAME * at.distance_to(land)))), wide)
+	_cam.fov = clampf(fov, RIDE_FOV_LEAST, EYE_FOV)
+	_cam.near = maxf(EYE_NEAR, RIDE_NEAR * wide * wide)
+	var up := Vector3.UP if absf(look.y) < 0.98 else out
+	_cam.global_transform = Transform3D(Basis.looking_at(look, up), at)
 
 
 ## THE CLIMB IS OVER, the panel at the hub read and put down: the lifts inside

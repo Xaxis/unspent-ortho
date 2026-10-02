@@ -56,6 +56,15 @@ render_mode cull_back;
 // Roughness a cave wall gains once its ripples are under a pixel (specular
 // aliasing; the M_STRATA_CAVE branch below says why).
 const float CAVE_FAR_ROUGH = 0.5;
+// THE LAND FROM FAR ABOVE (up a walker's leg): a lens this high over the ground
+// (metres, between the two) lets the ground's grain marks go and leaves the
+// wash, as water.gdshader lets its chop go. The marks are drawn at the world's
+// grain, a pixel of the play camera; from the thigh a pixel of land holds a
+// tile or two, lands on one mark at random, and the island came out as static.
+// Every eye at a man's height, over a shoulder or on the play camera is under
+// the first.
+const float LAND_FAR_FROM = 40.0;
+const float LAND_FAR_GONE = 150.0;
 const int CROWN_CLEAR = 6;
 uniform vec4 crown_clear[CROWN_CLEAR];
 // GROUND ABOVE THE GROUND (AboveMap, 43_above; docs/ABOVE.md S2, LOOK law 3).
@@ -2859,6 +2868,8 @@ void fragment() {
 		float pn = ink_vnoise(world_pos.xz * 0.11) * 0.65 + ink_vnoise(world_pos.xz * 0.37) * 0.35 + rag(world_pos.xz);
 		c *= 1.0 + patchy * (step(0.66, pn) * 0.04 - step(pn, 0.32) * 0.04);
 	}
+	float far_up = persp ? smoothstep(LAND_FAR_FROM, LAND_FAR_GONE, eye.y - world_pos.y) : 0.0;
+	vec3 washed = c;
 	if (mark_ground(m)) {
 		c = midden ? midden_floor(c, world_pos.xz, px, unh)
 			: (bog ? bog_floor(c, world_pos, px)
@@ -2906,6 +2917,7 @@ void fragment() {
 		if (unh < 0.5 && m != M_VITRIFIED && m != M_MACHINE_DECK && m != M_SULPHUR && !midden && !lifted) {
 			c = ground_wear(m, c, world_pos.xz, px);
 		}
+		c = mix(c, washed, far_up);
 		// Turf, heath and fen are a sward, and a gust crossing one lays it over:
 		// the front reads from above as a paler band travelling over the land, to
 		// the horizon, with no geometry (wind_sheen).

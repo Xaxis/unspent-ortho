@@ -72,6 +72,7 @@ func test_on_the_leg_the_keys_and_the_eye_are_the_climbs() -> void:
 	var climb: WalkerClimb = sys.get("climb")
 	check(g.aloft and g.player.hanging, "up the leg, the ground's keys are not his")
 	check(tree.root.get_viewport().get_camera_3d() == sys.get("_cam"), "and the climb's eye is the one drawing")
+	eq(int(colossi.view.climbed), 0, "and the walker he is on is drawn all there, never given to the air by its hub's distance")
 	var def: RefCounted = colossi.view.defs[0]
 	var at := climb.world_pos(def, colossi.view.poses[0])
 	lt(g.player.model.global_position.distance_to(at), 2.0, "the body hangs at the hold on this frame's pose (%.2f m off)" % g.player.model.global_position.distance_to(at))
@@ -90,6 +91,44 @@ func test_on_the_leg_the_keys_and_the_eye_are_the_climbs() -> void:
 	await _run(float(WalkerClimb.HOLD_EVERY) / Climb.RATE + 0.6)
 	Input.action_release(&"move_up")
 	gt(float(climb.hold), float(ledge), "and pressed again, he sets off from it")
+	g.queue_free()
+	await process_frames(2)
+
+
+## A RIDE TAKES IN THE ISLAND: in the middle of a ride the eye is kilometres off
+## the leg, looking at the island's middle, its lens long enough that the island
+## is framed; on a hold it is the climb's own eye again.
+func test_a_ride_takes_in_the_island() -> void:
+	var g := Game.new()
+	tree.root.add_child(g)
+	g.setup(BootOptions.parse(PackedStringArray(["--seed=7", "--place=tread0", "--colossus=2@tread0+30",
+		"--hour=12", "--weather=clear:0"])))
+	g.player.sim.clear_mobs()
+	var sys := _system(g, "43_climb")
+	var k: Dictionary = (sys.get_script() as GDScript).get_script_constant_map()
+	await process_frames(4)
+	sys.call(&"_stage", "drum:ride:0.5")
+	await process_frames(3)
+	var c: WalkerClimb = sys.get("climb")
+	check(c != null and c.state == WalkerClimb.RIDE, "riding up from the drum")
+	if c == null:
+		g.queue_free()
+		return
+	var cam: Camera3D = sys.get("_cam")
+	var land: Vector3 = sys.call(&"_land")
+	var colossi := tree.get_first_node_in_group(&"colossi")
+	var w: int = sys.get("walker")
+	var him: Transform3D = sys.call(&"body_frame", colossi.view.defs[w], colossi.view.poses[w])
+	gt(cam.global_position.distance_to(him.origin), 1000.0, "mid-ride the eye is kilometres off the leg")
+	var to_land := land - cam.global_position
+	gt((-cam.global_basis.z).dot(to_land.normalized()), cos(deg_to_rad(1.0)), "looking at the island's middle")
+	var share := float(g.world.size) * 0.5 / (to_land.length() * tan(deg_to_rad(cam.fov) * 0.5))
+	near(share, float(k.RIDE_FRAME), 0.02, "the island framed (%.2f of the half frame)" % share)
+	c.state = WalkerClimb.CLIMB
+	c.busy = 0.0
+	await process_frames(3)
+	eq(cam.fov, float(k.EYE_FOV), "on a hold, the climb's own lens")
+	eq(cam.near, float(k.EYE_NEAR), "and its own near plane")
 	g.queue_free()
 	await process_frames(2)
 
@@ -217,6 +256,8 @@ func test_the_hub_reads_the_panel_and_its_talk_let_go_puts_him_down() -> void:
 	await process_frames(3)
 	check(sys.get("climb") == null and not g.aloft and not g.player.hanging, "the talk put down, he is back on the ground")
 	check(tree.root.get_viewport().get_camera_3d() == g.camera, "and the play camera is drawing again")
+	var colossi := tree.get_first_node_in_group(&"colossi")
+	eq(int(colossi.view.climbed), -1, "and no walker is drawn as the one he is on")
 	gt(g.clock.minutes - minutes, 1.0, "and the way down took its time")
 	g.queue_free()
 	await process_frames(2)
