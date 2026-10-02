@@ -24,7 +24,7 @@ const WORK_WORDS := {
 	&"clearcut": "the wood felled flat", &"burned_grove": "a grove burnt over", &"quarry": "benches cut in the rock",
 	&"drill_field": "a field drilled through", &"slag": "slag run out", &"refinery": "a refinery burnt out",
 	&"archive": "an archive burnt", &"intake": "a sea intake", &"hulk": "a hulk run aground",
-	&"sea_wall": "a sea wall raised", &"bog_graves": "graves cut in the bog", &"fire_tower": "a fire tower",
+	&"sea_wall": "a sea wall raised", &"lock": "a lock in a flooded street", &"bog_graves": "graves cut in the bog", &"fire_tower": "a fire tower",
 	&"checkpoint": "a checkpoint", &"stack": "a stack", &"convoy": "a convoy left standing",
 	&"iced_line": "a line iced up", &"shelter": "a shelter", &"cistern": "a cistern",
 	&"dugout": "a dugout", &"graves": "graves in rows", &"stolen_light": "light stolen off a machine",
