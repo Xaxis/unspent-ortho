@@ -204,15 +204,19 @@ uniform vec2 leg_len = vec2(34000.0, 36000.0);
 const float PULSE_RATE = 0.12;
 // How lit a cold strip is with no pulse on it, over its albedo.
 const float STRIP_REST = 0.3;
-// Within this many metres a light is seen whole and keeps its hue; past the
-// second it is a point again, burning at its whole strength (the fragment).
-const float LIGHT_NEAR = 2000.0;
-const float LIGHT_FAR = 8000.0;
+// A light this many pixels across (its band's half-height, or its own radius)
+// is still a point and burns at its whole strength; by the second it is seen
+// whole and keeps its hue (the fragment).
+const float LIGHT_POINT_PX = 2.0;
+const float LIGHT_WHOLE_PX = 6.0;
 const float LIGHT_KEEP = 1.0;
 const float PULSE_TRAIL = 0.22;
 
 varying float thin;
 varying float bone_phase;
+// How many pixels across a light part is drawn at its true size: a ring's band
+// by its half-height, a lamp or the lens by its radius, a round part by its own.
+varying float light_px;
 
 void vertex() {
 	int b = int(CUSTOM0.x + 0.5) * 3;
@@ -226,7 +230,10 @@ void vertex() {
 	vec3 at = vec3(dot(r0.xyz, local) + r0.w, dot(r1.xyz, local) + r1.w, dot(r2.xyz, local) + r2.w);
 	float px = distance(at, eye_w) * px_angle;
 	thin = 1.0;
+	light_px = 0.0;
 	if (px > 0.0) {
+		float size = kind == 0 ? length(local.xz) : (kind == 1 ? abs(local.y - lamp_c.y) : length(local - lamp_c));
+		light_px = size / px;
 		float r = length(local.xz);
 		if (kind == 0) {
 			// Round the part's own axis: every leg, the spire.
@@ -452,15 +459,18 @@ void fragment() {
 		glow = (step(beat, 0.18) * 5.0 + 0.2) * lens_glow;
 	}
 	// A LIGHT SEEN WHOLE KEEPS ITS HUE. The glows above are many times their
-	// colour so that a ring or a lamp kilometres off, a pixel or two drawn wider
-	// than it is, still burns through the air and the bloom. Seen from up the leg
-	// a ring is hundreds of pixels across, and at that strength every channel of
-	// it went to the top: a pulse on the shin's ring was a white crescent with
-	// no hue. So within LIGHT_NEAR a light's brightest channel is held at
-	// LIGHT_KEEP of full, as every other glow in the game is, and past LIGHT_FAR
-	// it has its whole strength again.
+	// colour so that a ring or a lamp a pixel or two across, drawn wider than it
+	// is, still burns through the air and the bloom. A ring kilometres round,
+	// seen from up the leg or swung out beside it, is a band many pixels deep, and
+	// at that strength every channel of it went to the top: a pulse on the shin's
+	// ring was a white crescent with no hue. So a light past LIGHT_POINT_PX on the
+	// glass has its brightest channel held toward LIGHT_KEEP of full, as every
+	// other glow in the game is, and wholly by LIGHT_WHOLE_PX; a point keeps its
+	// whole strength. A cap by distance missed it: seen from the ride swung out
+	// beside the leg, the crescent was past that reach and still hundreds of
+	// pixels round.
 	if (lamp) {
-		float whole = 1.0 - smoothstep(LIGHT_NEAR, LIGHT_FAR, distance(eye, true_world));
+		float whole = smoothstep(LIGHT_POINT_PX, LIGHT_WHOLE_PX, light_px);
 		glow = mix(glow, min(glow, LIGHT_KEEP / max(max(c.r, c.g), max(c.b, 1e-3))), whole);
 	}
 	EMISSION = lamp ? matter_light(c * glow * sky_power()) : vec3(0.0);
