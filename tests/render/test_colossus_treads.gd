@@ -376,6 +376,82 @@ func test_the_lame_leg_comes_down_on_the_covenants_body() -> void:
 		print("       seed %d: the lame leg's tread on the Covenant's body: %s" % [s, on])
 
 
+## WHAT FALLS TAKES ITS WALLS, ITS DOOR AND ITS WORDS WITH IT. A ruin's walls
+## (23_ruins) and a house's door (21_doors) are worked out from the props once
+## and kept, and a walker's feet crush what stands in their craters only once
+## every system is set up (19_colossi.started): a ruin crushed in a crater on
+## seed 7 kept walls nobody could see, and a crushed house kept its way in.
+## Props falling by no hand of the player's say so (Events.fell), and both
+## follow. And a sign gone from the world is nothing to read (49_story).
+func test_what_falls_takes_its_walls_and_its_door() -> void:
+	var g := _game(PackedStringArray(["--seed=7", "--hour=12", "--weather=clear:0"]))
+	var w := g.world
+	var doors: Node = g.get_node("21_doors")
+	var ruin: WorldProp = null
+	var house: WorldProp = null
+	var sign: WorldProp = null
+	w.sync_table()
+	for i in w.table.size():
+		var k := int(w.table.kind[i])
+		if w.depleted.has(w.table.id[i]):
+			continue
+		if ruin == null and k == PropKind.RUIN:
+			ruin = w.prop_at(i)
+		if sign == null and k == PropKind.SIGN and _alone(g, w.prop_at(i)):
+			sign = w.prop_at(i)
+		if house == null and k == PropKind.HOUSE:
+			for t: Threshold in (doors.get(&"doors") as Array):
+				if t.host_code == PropKind.HOUSE and t.host == w.table.pos[i]:
+					house = w.prop_at(i)
+		if ruin != null and house != null and sign != null:
+			break
+	check(ruin != null and house != null and sign != null, "seed 7 holds a standing ruin, a house with a door and a sign")
+	if ruin == null or house == null or sign == null:
+		g.free()
+		return
+	var walls := _walls_near(g, ruin.pos)
+	gt(float(walls), 0.0, "the ruin stands walled")
+	w.depleted[ruin.id] = INF
+	w.depleted[house.id] = INF
+	Events.fell.emit()
+	lt(float(_walls_near(g, ruin.pos)), float(walls), "fallen, its walls are gone")
+	var still := false
+	for t: Threshold in (doors.get(&"doors") as Array):
+		if t.host == house.pos:
+			still = true
+	check(not still, "and the house that fell has no way in")
+	var story: Node = g.get_node("49_story")
+	g.player.pos = sign.pos + Vector2(sign.solid + 0.5, 0.0)
+	g.player.facing = PI
+	eq(_id_of(story.call(&"_readable_in_front")), sign.id, "a sign stood in front of him is read")
+	w.depleted[sign.id] = INF
+	check(_id_of(story.call(&"_readable_in_front")) != sign.id, "gone from the world, it is not")
+	g.free()
+
+
+## How many wall circles stand on the tiles within two of `p`.
+func _walls_near(g: Game, p: Vector2) -> int:
+	var n := 0
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			n += g.query.blocks_at(p + Vector2(dx, dy)).size()
+	return n
+
+
+## A prop's id, or -1 for none: a prop read off the columns is a new object
+## every time it is asked for.
+static func _id_of(p: Variant) -> int:
+	return (p as WorldProp).id if p is WorldProp else -1
+
+
+## Whether `p` is the only thing with words on it within a press's reach.
+func _alone(g: Game, p: WorldProp) -> bool:
+	for q: WorldProp in g.query.props_near(p.pos, 6.0):
+		if q.id != p.id and StoryProps.kind_of(q.kind) != &"":
+			return false
+	return true
+
+
 ## THE NEAR FOOT'S BUILD IS ALWAYS CLAIMED. A pool task nobody waits for keeps
 ## its Callable -- a lambda on the foot node -- alive in the pool past the node,
 ## and the pool frees it at exit: the process dies with signal 11 after every
