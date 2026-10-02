@@ -275,7 +275,18 @@ const UNKNOWN := "unknown"
 ##     (an intake, a lock), laid only where the ground keeps the design's ways
 ##     and never within its keeper's reach of where the raft comes ashore
 ##     (GenWorks.station_holds). (Provisional; restamped at landing.)
-const GEN := 47
+## 48. The lame leg's tread comes down on the Covenant's body (slice 3 step 7):
+##     the first wanted plant scores leg 1's body first, nearer where he comes
+##     ashore the better, and where nothing fits there it is sited home-first as
+##     before. A landmark that carries no load yields to a foot (the story is not
+##     cast to it, no keeper dens at its kind, it does not mark the landfall and
+##     no room is kept under it): the tread writes what it trod, and
+##     `Landmarks.sites` no longer stands it. A tread keeps off every keeper's
+##     reach, every placed site but a tip and every slip, and where he comes
+##     ashore as where he wakes. Every tread moves; seeds 1, 3 and 90210 hold a
+##     crater on the Covenant's body, 7 (water under the strata) and 42 (no room)
+##     fall through. (Provisional; restamped at landing.)
+const GEN := 48
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
