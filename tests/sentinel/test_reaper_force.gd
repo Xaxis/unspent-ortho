@@ -44,9 +44,10 @@ static func bout(w: WorldData, lair: Vector2, start: Vector2, ids: int, seconds:
 	var loose := 0
 	var t := 0.0
 	var out := {"won": false, "t": 0.0, "blows": 0, "by_phase": blows, "grips": 0, "loose": 0, "end": &"time", "hurt": 0, "torn": 0, "tells": 0, "gap": 0.0}
-	# The longest the player stood beside it without a tell: from the moment they
-	# are first beside it, between one windup and the next.
-	var told_at := -1.0
+	# The longest the player stood beside it without a tell: the time beside it
+	# between one windup and the next. Time carried out of its reach (knocked out
+	# into the sea) is not time it owes a tell for.
+	var stood := 0.0
 	var over := false
 	while t < seconds * 1000.0 and not over:
 		var want := def.phase_at(m.health_fraction())
@@ -56,14 +57,13 @@ static func bout(w: WorldData, lair: Vector2, start: Vector2, ids: int, seconds:
 		reader.act()
 		sim.slices(2)
 		t += 16.0
-		if told_at < 0.0 and sim.hero.pos.distance_to(m.pos) <= m.radius + sim.hero.radius + 1.0:
-			told_at = t
-		if told_at >= 0.0:
-			out.gap = maxf(float(out.gap), (t - told_at) / 1000.0)
+		if sim.hero.pos.distance_to(m.pos) <= m.radius + sim.hero.radius + 1.0:
+			stood += 16.0
+			out.gap = maxf(float(out.gap), stood / 1000.0)
 		for e in sim.drain():
 			if e.type == &"windup" and e.mob == m:
 				out.tells = int(out.tells) + 1
-				told_at = t
+				stood = 0.0
 			if e.type == &"hit" and e.target == m and int(e.damage) > 0:
 				blows[phase] += 1
 			if e.type == &"grip":

@@ -284,8 +284,8 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 	# and on the home coast's flats each miss spent it before it had stood the
 	# 1.4 s it founders in (tests/fight/test_brains.gd, the charge that reaches).
 	var carrying := m.blow_phase(now) == &"windup"
-	# A run told from close in is eased to a creep or a stand (FightSim). Once its
-	# bite reaches from where it is, it has arrived: it stands and bites from
+	# A run told from close in is eased to a creep or a stand (FightSim). Once the
+	# player is inside its bite's reach, it has arrived: it stands and bites from
 	# there. Run on, it would go at full dash the moment the bite went live, a
 	# lunge no tell shows.
 	var arrived := carrying and m.commanded < speed * BLOCKED_SHARE and to.length() <= m.radius + hero.radius + m.blow.reach \
