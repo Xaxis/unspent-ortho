@@ -914,16 +914,16 @@ static func _clock_tower(k: MeshKit, made: MeshKit, lamps: MeshKit, seed_value: 
 	made.prism(-0.15, 0.1, 0.0, 1.3 * r2, 0.45, 1.28 * r2, 4, STONE, STONE_TOP, sq)
 	# The shaft, a little in from the plinth and tapering, string courses on it
 	# where each stage began.
-	var top := 8.4
+	var top := 10.0
 	made.prism(-0.15, 0.45, 0.0, 1.0 * r2, top, 0.9 * r2, 4, STONE, STONE_TOP, sq)
 	made.prism(-0.15, 0.45, 0.0, 1.02 * r2, 1.35, 1.0 * r2, 4, P.SPRUCE[1].lerp(P.MOSS[2], 0.3), P.MOSS[1], sq)
 	made.prism(-0.15, 1.35, 0.0, 1.0 * r2, 1.43, 1.0 * r2, 4, SALT, SALT, sq)
-	for y: float in [3.1, 5.8]:
+	for y: float in [3.4, 6.7]:
 		var r := lerpf(1.0, 0.9, (y - 0.45) / (top - 0.45)) + 0.06
 		made.prism(-0.15, y, 0.0, r * r2, y + 0.14, r * r2, 4, STONE_TOP, STONE_TOP, sq)
 	# Slit windows up the stair, dark, so it is a building and not a post.
-	for i in 5:
-		var y := 1.8 + i * 1.15
+	for i in 6:
+		var y := 1.8 + i * 1.3
 		var r := lerpf(1.0, 0.9, (y - 0.45) / (top - 0.45))
 		var side := i % 4
 		var out := Vector2.from_angle(side * PI * 0.5)

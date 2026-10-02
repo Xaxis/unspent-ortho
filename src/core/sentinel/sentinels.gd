@@ -611,10 +611,24 @@ static func guard(def: SentinelDef) -> float:
 ## Tiles of its FOUNDER grounds inside its reach that its move takes it onto from
 ## `at` (a flood under its move's rules, as `opens`), counted to `enough`.
 static func founder_tiles(world: WorldData, at: Vector2, def: SentinelDef, enough: int = 1 << 30) -> int:
+	return int(_founder_flood(world, at, def, enough, false)[0])
+
+
+## The nearest tile (by its move) of its FOUNDER grounds from `at` that stands in
+## a patch of them a body's width across, inside its reach: where a lure draws it
+## to founder (a tour's `near keeper_flats`). INF where there is none.
+static func founder_spot(world: WorldData, at: Vector2, def: SentinelDef) -> Vector2:
+	var u: Vector2i = _founder_flood(world, at, def, 1 << 30, true)[1]
+	return Vector2(u.x + 0.5, u.y + 0.5) if u.x >= 0 else Vector2.INF
+
+
+## The flood `founder_tiles` and `founder_spot` share: [tiles counted to
+## `enough`, the first tile in a 3x3 patch of the grounds when `patch`].
+static func _founder_flood(world: WorldData, at: Vector2, def: SentinelDef, enough: int, patch: bool) -> Array:
 	var sink := founders(def)
 	var start := Vector2i(floori(at.x), floori(at.y))
 	if sink.is_empty() or not world.in_bounds(start.x, start.y):
-		return 0
+		return [0, Vector2i(-1, -1)]
 	var row := Roster.row(def.kind)
 	var step := maxi(1, int(row.get("climbs", 1)))
 	var tall := int(ceil(float(row.get("height", 1.0)) / WorldData.STEP))
@@ -636,8 +650,19 @@ static func founder_tiles(world: WorldData, at: Vector2, def: SentinelDef, enoug
 				continue
 			if sink.has(world.ground_at(u.x, u.y)):
 				n += 1
+				if patch and _all_of(world, u, sink):
+					return [n, u]
 			todo.append(u)
-	return n
+	return [n, Vector2i(-1, -1)]
+
+
+## Every tile of the 3x3 round `u` is one of `grounds`.
+static func _all_of(world: WorldData, u: Vector2i, grounds: Array) -> bool:
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if not grounds.has(world.ground_at(u.x + dx, u.y + dy)):
+				return false
+	return true
 
 
 const STEPS4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]

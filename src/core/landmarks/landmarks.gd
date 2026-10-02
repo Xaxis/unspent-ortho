@@ -564,9 +564,7 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 		left[id] = kinds
 		by_region[id] = []
 		var clear := works_clear(int(region.get("tiles", 0)), int(works_in.get(id, 0)))
-		var centre: Vector2 = region.get("centre", Vector2.ZERO)
-		var ashore: Vector2 = ashore_on.get(world.continent_at(floori(centre.x), floori(centre.y)), Vector2.INF)
-		var pool := _candidates(world, region, greens, built, solid, wanted, clear, COARSE, ashore)
+		var pool := _candidates(world, region, greens, built, solid, wanted, clear, COARSE, ashore_on)
 		# A THIN POOL IS SWEPT AGAIN BEFORE ANYBODY CHOOSES, never after everybody
 		# has. Eleven tiles between candidates is most of a small region's whole
 		# width, and on a big region that villages and works have eaten it can come
@@ -578,8 +576,11 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 		# landscape big enough to want crossing twice held one thing worth the walk.
 		# Only a thin pool is swept again, so the cost is what it was: doing it
 		# everywhere took the siting of a 512-tile world from 55 ms to 159.
-		if pool.size() < FINE_BELOW:
-			pool = _candidates(world, region, greens, built, solid, wanted, clear, STRIDE, ashore)
+		# And a kind that stands where the raft comes ashore needs the shore THERE:
+		# the coarse sweep steps over a city's narrow quays, and seed 1's clock went
+		# to a shore 190 tiles off the landing for want of a candidate by it.
+		if pool.size() < FINE_BELOW or (wanted.has(&"landfall") and not _by_ashore(world, pool, ashore_on)):
+			pool = _candidates(world, region, greens, built, solid, wanted, clear, STRIDE, ashore_on)
 		pools[id] = pool
 		var at: Vector2 = (pool[0] as Dictionary).p if not pool.is_empty() else region.get("centre", Vector2.ZERO)
 		body_of[id] = world.continent_at(floori(at.x), floori(at.y))
@@ -659,7 +660,20 @@ static func works_clear(region_tiles: int, works_in_region: int) -> float:
 
 ## Every tile in a region a landmark could stand on, scored for each thing this
 ## region's kinds want: `{p: Vector2, s: {want -> float}}`.
-static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vector2], built: Array[Vector2], solid: Dictionary, wanted: Array[StringName], off_works: float, stride: int, ashore: Vector2 = Vector2.INF) -> Array:
+## Whether any of `pool` is a shore a &"landfall" kind can stand on within
+## LANDFALL_SEEN of where the raft comes ashore on its body.
+static func _by_ashore(world: WorldData, pool: Array, ashore_on: Dictionary) -> bool:
+	for c: Dictionary in pool:
+		var p: Vector2 = c.p
+		var at: Variant = ashore_on.get(world.continent_at(floori(p.x), floori(p.y)))
+		if typeof(at) == TYPE_VECTOR2 and (c.s as Dictionary).get(&"landfall", -INF) > -INF \
+				and p.distance_to(at as Vector2) < LANDFALL_SEEN:
+			return true
+	return false
+
+
+## `ashore_on`: body id -> where the raft from home comes ashore on it (`sites`).
+static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vector2], built: Array[Vector2], solid: Dictionary, wanted: Array[StringName], off_works: float, stride: int, ashore_on: Dictionary = {}) -> Array:
 	var out: Array = []
 	var id := int(region.get("id", -1))
 	var bounds: Rect2 = region.get("bounds", Rect2())
@@ -692,7 +706,7 @@ static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vect
 			var jitter := Rng.hash01(world.seed_value, x, y, 0x1AD) * 0.4
 			var scores := {}
 			for want: StringName in wanted:
-				var v := _wants(world, x, y, want, ashore)
+				var v := _wants(world, x, y, want, ashore_on.get(world.continent_at(x, y), Vector2.INF))
 				scores[want] = -INF if v <= -1000.0 else v + jitter
 			out.append({"p": p, "s": scores})
 			x += stride
@@ -781,7 +795,7 @@ static func _too_near(p: Vector2, taken: Array[Vector2], apart: float) -> bool:
 
 
 ## How well a tile answers what a kind wants. -1000 means it does not at all.
-## `ashore`: where the raft from home comes ashore on this region's body, INF
+## `ashore`: where the raft from home comes ashore on the body (x, y) is on, INF
 ## off the LANDFALL body (`sites`).
 static func _wants(world: WorldData, x: int, y: int, wants: StringName, ashore: Vector2 = Vector2.INF) -> float:
 	match wants:
@@ -792,15 +806,17 @@ static func _wants(world: WorldData, x: int, y: int, wants: StringName, ashore: 
 			var d := _water_within(world, x, y, 4, false)
 			return -1000.0 if d < 0 else 3.0 - float(d) * 0.4
 		&"landfall":
-			# Water's score, and up to LANDFALL_PULL more the nearer it stands to
-			# where the raft from home comes ashore (GenBodies' `from` on the
+			# A shore's score, and up to LANDFALL_PULL more the nearer it stands
+			# to where the raft from home comes ashore (GenBodies' `from` on the
 			# LANDFALL body's row), so the one tall line is the first thing seen
-			# from the landing. Off that body it is water's alone.
-			var d := _water_within(world, x, y, 4, false)
+			# from the landing, across open water: sited by a canal inside the
+			# city, the blocks between stood in front of it from every quay. Off
+			# that body it is a shore's alone.
+			var d := _water_within(world, x, y, 5, true)
 			if d < 0:
 				return -1000.0
 			var near := 0.0 if not ashore.is_finite() else clampf(1.0 - ashore.distance_to(Vector2(x, y)) / LANDFALL_SEEN, 0.0, 1.0)
-			return 3.0 - float(d) * 0.4 + near * LANDFALL_PULL
+			return 4.0 - float(d) * 0.5 + near * LANDFALL_PULL
 		&"high":
 			var lift := _lift(world, x, y, 5)
 			return -1000.0 if lift < 1 else float(lift)

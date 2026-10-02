@@ -381,9 +381,11 @@ func _run() -> void:
 				ok = parts.size() > 1 and parts[1].begins_with("mark:") and _marks.has(parts[1].substr(5))
 				if ok:
 					var face := ((_marks[parts[1].substr(5)] as Vector2) - game.player.pos).angle()
-					game.player.facing = face
-					if game.player.hero != null:
-						game.player.hero.facing = face
+					Survival.face(game, face)
+					# Over the shoulder the view stands behind the body it faces, as
+					# `near` by a system's place does.
+					if game.camera != null:
+						game.camera.shoulder_yaw = (load("res://src/core/view/shoulder.gd") as GDScript).call(&"yaw_behind", face)
 			"back":
 				var dist := parts[2].to_float() if parts.size() > 2 else 2.0
 				if parts[1] == "here":
@@ -1133,8 +1135,9 @@ func _walk_to_named(what: String, secs: float, run: bool = false, till: String =
 	return await _steer_to(target, what, secs, run, till, WALK_NAMED_NEAR)
 
 
-## `walkto ground:NAME[,NAME] SECS [run]`: steer by the real keys onto the spot
-## `ground` would stand him on, to within WALK_GROUND_NEAR of it. A lure is
+## `walkto ground:NAME[,NAME] SECS [run]`: steer by the real keys onto the
+## nearest patch of the ground, as `ground` finds one but with props in reach or
+## not, to within WALK_GROUND_NEAR of it. A lure is
 ## walked, not jumped: a keeper after him follows him there, where one he
 ## vanished from 9 tiles off behind a rise lost him in two seconds and never
 ## came (tours/home-coast.tour, stage 7).
@@ -1142,7 +1145,10 @@ const WALK_GROUND_NEAR := 0.5
 
 
 func _walk_to_ground(names: String, secs: float, run: bool) -> bool:
-	var gp := _ground_near(_ground_ids(names))
+	# The nearest patch, props or none: a run's end is not a stand a hand works
+	# from, and the clear-first search sent a lure past the shallows at a den
+	# (their pipe and gauge in reach) to a mud flat fifty tiles inland.
+	var gp := _ground_ring(_ground_ids(names), false)
 	if gp == Vector2.INF:
 		printerr("tour %s: no %s ground within reach of %s" % [_name, names, game.player.pos])
 		return false

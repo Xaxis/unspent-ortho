@@ -28,8 +28,8 @@ var near := ""
 var sees := 22.0
 ## How the ground under it is chosen: &"shore" (water within a few tiles),
 ## &"high" (nothing near stands higher), &"open" (clear of props), &"water"
-## (beside inland water), &"rough" (broken ground), &"landfall" (beside water,
-## and as near as it can stand to where the water from home comes ashore on the
+## (beside inland water), &"rough" (broken ground), &"landfall" (a shore, as
+## near as it can stand to where the water from home comes ashore on the
 ## LANDFALL body: the first thing a raft sees). Everything also wants room.
 var wants: StringName = &"open"
 ## Tiles it keeps from another landmark, from a village and from a works.
