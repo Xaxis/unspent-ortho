@@ -121,8 +121,13 @@ const float SEA_FAR_SPECULAR = 0.5;
 // A LANE IS A CHANGE IN SHEEN, NOT IN COLOUR: a narrow band of smoother water,
 // sharp at its edges, that only the sky and the sun it mirrors show. Drawn as
 // soft streaks of a lighter and darker sea they read as a smeared blur.
-const float SEA_LANE_ROUGH = 0.1;
-const float SEA_SLICK_ROUGH = 0.2;
+// The open sea's own roughness from far above: low enough that the sun's path
+// is a band across part of the frame. At the chop's SEA_FAR_ROUGH it was a lobe
+// wider than the frame, and every view toward the sun was a white wash (the
+// climb's shin ride at 10:26).
+const float SEA_OPEN_ROUGH = 0.18;
+const float SEA_LANE_ROUGH = 0.07;
+const float SEA_SLICK_ROUGH = 0.1;
 const float SEA_SLICK_TONE = 0.04;
 float sea_lanes(vec2 wp, float t) {
 	vec2 wd = length(sky_wind.xy) > 1e-3 ? normalize(sky_wind.xy) : vec2(0.8, 0.6);
@@ -354,7 +359,7 @@ void fragment() {
 	// (sky.gdshaderinc `sky_colossus_pads`): the water goes dark with the land.
 	float under_pad = sky_colossus_pads(world_pos);
 	SPECULAR *= 1.0 - under_pad;
-	float far_rough = kind == 0 ? mix(SEA_FAR_ROUGH - SEA_LANE_ROUGH * lanes, SEA_SLICK_ROUGH, slick) : SEA_FAR_ROUGH;
+	float far_rough = kind == 0 ? mix(SEA_OPEN_ROUGH - SEA_LANE_ROUGH * lanes, SEA_SLICK_ROUGH, slick) : SEA_FAR_ROUGH;
 	ROUGHNESS = mix(mix(ROUGHNESS, max(ROUGHNESS, far_rough), far), 1.0, under_pad);
 	METALLIC = 0.0;
 	// The surface's own chop, small and slow, so the reflection breaks up the

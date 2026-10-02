@@ -124,8 +124,8 @@ func test_a_ride_takes_in_the_island() -> void:
 	check(cam.is_position_in_frustum(land), "the island's middle is in the frame")
 	var to_land := land - cam.global_position
 	var share := float(g.world.size) * 0.5 / (to_land.length() * tan(deg_to_rad(cam.fov) * 0.5))
-	near(share, float(k.RIDE_FRAME), 0.02, "on the island's own lens (%.2f of the half frame)" % share)
-	gt(share, 0.25, "the island first: never under a quarter of the half frame")
+	lt(share, float(k.RIDE_FRAME) + 0.02, "on no longer a lens than the island's own (%.2f of the half frame)" % share)
+	gt(share, float(k.RIDE_FRAME_LEAST) - 0.01, "the island first: never under a quarter of the half frame")
 	var pose: Dictionary = colossi.view.poses[w]
 	var ankle: Vector3 = (pose.ankles as Array)[c.leg]
 	var shin: Vector3 = ankle.lerp((pose.knees as Array)[c.leg], 0.3)

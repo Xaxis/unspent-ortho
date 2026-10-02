@@ -90,12 +90,15 @@ const RIDE_NEAR := 400.0
 ## the island from beside the thigh, the lens held only the island, a map seen
 ## from nowhere, and once the walk had carried the leg away it held no walker
 ## at all (the real climb's thigh ride, 15:54). Widened to take in the leg, the
-## island was a speck whenever the leg stood far from it. So the lens is the
-## island's own (RIDE_FRAME), and the frame turns from the island toward the
-## part of the leg that lies nearest it on the glass, its foot or its shin,
-## until that part is RIDE_LEG_EDGE of the way out to the frame's edge, never
-## so far that the island leaves the frame.
+## island was a speck whenever the leg stood far from it. So the island comes
+## first: the frame turns from it toward the part of the leg that lies nearest
+## it on the glass, its foot or its shin, until that part is RIDE_LEG_EDGE of the
+## way out to the frame's edge, on the shortest lens that holds both, never
+## longer than the island's own (RIDE_FRAME) and never so wide that the
+## island's half-width is under RIDE_FRAME_LEAST of the frame's. Where the leg
+## will not fit even then, the frame turns toward it as far as the island allows.
 const RIDE_LEG_EDGE := 0.85
+const RIDE_FRAME_LEAST := 0.25
 ## How many points down the leg, hip to knee to ankle, are asked which lies
 ## nearest the island on the glass.
 const RIDE_LEG_POINTS := 16
@@ -544,10 +547,14 @@ func _ride(def: RefCounted, pose: Dictionary) -> void:
 			at += side * maxf(at.y, 0.0) * RIDE_OUT * wide
 		var to_land := (land - at).normalized()
 		var half := float(game.world.size) * 0.5
-		var hold := atan(half / (RIDE_FRAME * at.distance_to(land)))
+		var island := atan(half / at.distance_to(land))
 		var to_leg := _nearest_on_leg(pose, k, at, to_land)
 		var gap := to_land.angle_to(to_leg)
-		var turn := clampf(gap - RIDE_LEG_EDGE * hold, 0.0, (1.0 - RIDE_FRAME) * hold)
+		# The shortest lens that holds the island whole and the leg's part at
+		# RIDE_LEG_EDGE, between the island's own and its floor.
+		var off := maxf(0.0, (gap - RIDE_LEG_EDGE * island) / (1.0 + RIDE_LEG_EDGE))
+		var hold := clampf(off + island, atan(half / (RIDE_FRAME * at.distance_to(land))), atan(half / (RIDE_FRAME_LEAST * at.distance_to(land))))
+		var turn := clampf(gap - RIDE_LEG_EDGE * hold, 0.0, hold - island)
 		var aim := to_land.slerp(to_leg, turn / gap) if gap > 1e-4 else to_land
 		look = (him - at).normalized().slerp(aim, wide)
 		fov = lerpf(EYE_FOV, rad_to_deg(2.0 * hold), wide)
