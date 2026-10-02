@@ -19,11 +19,12 @@ if [ "${1:-}" = "--logs" ]; then
 elif [ -n "${1:-}" ]; then
   jobs="$(env -u GITHUB_TOKEN gh run view "$1" --json jobs --jq '.jobs[] | select(.name | startswith("tests (shard")) | .databaseId')"
   [ -n "$jobs" ] || { echo "shard-times: run $1 has no shard jobs"; exit 1; }
-  for j in $jobs; do env -u GITHUB_TOKEN gh run view --job "$j" --log >>"$tmp/all.log" || exit 1; done
+  # By job, so a shard's log can be read before the whole run has finished.
+  for j in $jobs; do env -u GITHUB_TOKEN gh api --allow-escape-sequences "repos/{owner}/{repo}/actions/jobs/$j/logs" >>"$tmp/all.log" || exit 1; done
 else
   sed -n 2,7p "$0"; exit 1
 fi
-# A job log line is `job<TAB>step<TAB>timestamp file-time PATH MS`.
+# A job log line is `timestamp file-time PATH MS`.
 grep -oE 'file-time [^ ]+ [0-9]+' "$tmp/all.log" \
   | awk '{ s[$2] += $3 } END { for (p in s) printf "%s %d\n", p, (s[p] + 999) / 1000 }' \
   | sort >"$tmp/table"
