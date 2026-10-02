@@ -223,18 +223,28 @@ static func _slots(l: InteriorLayout) -> Array[Dictionary]:
 			if q.distance_to(m) < 0.9:
 				clear = false
 		if clear:
-			out.append({"at": at, "face": -o, "mid": m})
+			out.append({"at": at, "face": -o, "mid": m, "room": _room_of(l, at)})
 	return out
 
 
-## Two slots side by side on one wall, for a thing two tiles long.
+## The room a point stands in, or -1.
+static func _room_of(l: InteriorLayout, at: Vector2) -> int:
+	for ri in l.rooms.size():
+		if l.rooms[ri].has_point(Vector2i(floori(at.x), floori(at.y))):
+			return ri
+	return -1
+
+
+## Two slots side by side on one wall of one room, for a thing two tiles long.
+## Two rooms can run one outside wall on, so the last slot of one and the first
+## of the next sit a tile apart with the wall between them at their middle.
 static func _pair(slots: Array[Dictionary], rng: RandomNumberGenerator, prefer: Callable) -> Array[Dictionary]:
 	var pairs: Array[Array] = []
 	for i in slots.size():
 		for j in range(i + 1, slots.size()):
 			var a: Dictionary = slots[i]
 			var b: Dictionary = slots[j]
-			if (a.face as Vector2).is_equal_approx(b.face) and (a.mid as Vector2).distance_to(b.mid) < 1.01:
+			if int(a.room) == int(b.room) and (a.face as Vector2).is_equal_approx(b.face) and (a.mid as Vector2).distance_to(b.mid) < 1.01:
 				pairs.append([a, b])
 	if pairs.is_empty():
 		return []

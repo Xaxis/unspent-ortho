@@ -63,12 +63,18 @@ static func make() -> BiomeDef:
 		Ground.MOSS: P.MOSS[2].lerp(P.SPRUCE[2], 0.5),
 		Ground.BLACKWATER: P.SPRUCE[1],
 	}
-	# Grounds this place never lays, named anyway: anything left unnamed falls
+	# Every ground it does not name, named anyway: anything left unnamed falls
 	# through to the shared table, which is the COAST's and is far brighter than
-	# here, so it would arrive as the loudest object in the frame. Each takes this
-	# landscape's own gravel, because they only have to be in key.
-	for g: int in [Ground.BONE, Ground.ICE, Ground.LIMESTONE, Ground.PAN, Ground.SALT, Ground.SAND, Ground.SNOW]:
-		d.grounds[g] = d.grounds[Ground.GRAVEL]
+	# here, so it would arrive as the loudest object in the frame. A list of the
+	# missing ones let grass through. The green ones take this landscape's weed,
+	# the rest its gravel, because they only have to be in key. Not steel floor:
+	# that is an interior's, no world lays it, and a wash for it is dead paint
+	# (test_registry).
+	for g: int in Ground.COUNT:
+		if d.grounds.has(g) or Ground.is_water(g) or g == Ground.STEEL_FLOOR:
+			continue
+		var green := g in [Ground.GRASS, Ground.HEATH, Ground.NEEDLES, Ground.PEAT]
+		d.grounds[g] = d.grounds[Ground.MOSS if green else Ground.GRAVEL]
 	d.cliff_wash = P.ASH[2].lerp(P.SPRUCE[2], 0.35)
 	# THE TIDE IS DRAWN ON EVERYTHING, and it is a LOOK choice only: the floor
 	# stays FLOOR to worldgen and no seed moves. Its floor is silted under one
