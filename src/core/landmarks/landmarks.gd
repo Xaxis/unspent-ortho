@@ -130,6 +130,7 @@ static var _declared := false
 ## never changes for one island, so it is worked out once: the system, the map
 ## and a shot's `--place` all ask for the same list.
 static var _cache: Dictionary = {}
+static var _trod_of: Dictionary = {}
 
 
 static func _build() -> void:
@@ -499,14 +500,22 @@ static func trodden(world: WorldData, id: StringName) -> bool:
 	return _trod(world).has(id)
 
 
+## Every id any tread trod, read once per world and the marks it holds (the
+## treads are written last, so a world still being laid is asked again).
 static func _trod(world: WorldData) -> Dictionary:
 	var out := {}
 	if world == null:
 		return out
+	var key := "%d:%d" % [world.get_instance_id(), world.landmarks.size()]
+	if _trod_of.has(key):
+		return _trod_of[key]
 	for m: Dictionary in world.landmarks:
 		if m.get("kind") == &"tread":
 			for id: StringName in (m.get("trod", []) as Array):
 				out[id] = true
+	if _trod_of.size() >= CACHE_MOST:
+		_trod_of.clear()
+	_trod_of[key] = out
 	return out
 
 
@@ -682,6 +691,7 @@ static func sited(world: WorldData) -> Array[LandmarkSite]:
 ## Tests and a new game start from nothing remembered.
 static func forget() -> void:
 	_cache.clear()
+	_trod_of.clear()
 
 
 ## How far a landmark in this region keeps off the machines' works: twelve where

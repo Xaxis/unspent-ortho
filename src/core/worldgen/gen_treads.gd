@@ -53,9 +53,10 @@ static func site(c: GenContext) -> void:
 	var roads := WorldGen.distance_field(c.road, c.size)
 	c.mark(&"treads.roads")
 	var laid: PackedByteArray = GenFields.snapshot(w.ground)
-	for row: Dictionary in want:
+	for i in want.size():
+		var row: Dictionary = want[i]
 		var d: RefCounted = defs[row.walker]
-		var found := _find(c, d, float(row.yaw), row.natural, taken, no, clear, tops, roads, row == want[0])
+		var found := _find(c, d, float(row.yaw), row.natural, taken, no, clear, tops, roads, i == 0)
 		if found.x < 0.0:
 			continue
 		var at := Vector2(found.x, found.y)
