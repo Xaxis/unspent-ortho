@@ -53,6 +53,10 @@ func test_a_keeper_across_the_water_waits_until_he_can_cross() -> void:
 	var lockkeeper := _state(&"lockkeeper", Vector2(660, 10))
 	var anvil := _state(&"anvil", Vector2(20, 10))
 	var states := [lockkeeper, anvil]
+	# As it will be once its fight reads (SentinelDef.ready).
+	var def := Sentinels.by_id(&"lockkeeper")
+	var was := def.ready
+	def.ready = true
 	var home_only: Array[int] = [1]
 	var both: Array[int] = [1, 2]
 	check(lockkeeper.lair.distance_to(home) < anvil.lair.distance_to(home), "the one across the water is the nearer")
@@ -61,6 +65,23 @@ func test_a_keeper_across_the_water_waits_until_he_can_cross() -> void:
 	anvil.fallen = true
 	check(Sentinels.next_keeper(states, home, w, home_only) == null, "with his own body's down, nothing across the water before he can cross")
 	eq(Sentinels.body_of(w, Vector2(602, 10)), 1, "a lair in the shallows two tiles off a shore is on that shore's body")
+	def.ready = was
+
+
+## A FIGHT NOBODY CAN READ IS NO LEAD: a design not ready (SentinelDef.ready) is
+## passed over however near it stands, and keeps its region unnamed. The
+## lockkeeper dens at its city's lock thirty tiles off the raft's landing, and
+## until its fight reads the far shore's next keeper is the anvil.
+func test_a_keeper_whose_fight_is_not_built_is_never_the_next() -> void:
+	var w := _two_bodies()
+	var lockkeeper := _state(&"lockkeeper", Vector2(660, 10))
+	var anvil := _state(&"anvil", Vector2(780, 10))
+	var states := [lockkeeper, anvil]
+	var both: Array[int] = [1, 2]
+	check(not Sentinels.by_id(&"lockkeeper").ready, "the lockkeeper's fight is not built yet")
+	eq(Sentinels.next_keeper(states, Vector2(560, 10), w, both), anvil, "so the anvil, though the lockkeeper is nearer")
+	anvil.fallen = true
+	check(Sentinels.next_keeper(states, Vector2(560, 10), w, both) == null, "and with the anvil down, no lead to it either")
 
 
 ## On whole worlds, the rule and not the world: before the crossing every next

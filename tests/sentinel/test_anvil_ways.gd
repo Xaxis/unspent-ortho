@@ -12,8 +12,9 @@ const KF := preload("res://tests/sentinel/keeper_fight.gd")
 const PR := preload("res://tests/fight/plate_reader.gd")
 
 ## Tiles off its lair the lure stands, nearest first: close in, it bites from
-## the edge of its plates and never steps off them.
-const LURE_AT: Array[float] = [10.0, 12.0, 8.0, 14.0]
+## the edge of its plates and never steps off them; out to where it still sees
+## him from its den (Sentinels.lure_reach, 18 for the anvil).
+const LURE_AT: Array[float] = [10.0, 12.0, 8.0, 14.0, 16.0]
 
 
 func _anvil(g: Game) -> SentinelState:

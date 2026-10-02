@@ -2,7 +2,7 @@
 
 The loop scripts.
 
-<!-- covers: cli:audio, cli:canon, cli:check, cli:deploy, cli:export, cli:map, cli:shot, cli:sweep, cli:test, cli:tour, cli:web -->
+<!-- covers: cli:audio, cli:canon, cli:check, cli:deploy, cli:export, cli:map, cli:shaders, cli:shot, cli:sweep, cli:test, cli:tour, cli:web -->
 
 ## Sub-features
 
@@ -12,7 +12,8 @@ The loop scripts.
 - sweep `tools/sweep.sh` (`tools/gd/sweep.gd`): every weapon against every common machine and the wall crowds, over the shoulder; `--reader=human[:SEED]` judges balance, `--crowd=N`, `--singles|--crowds`; a measurement, never a gate, ~10 min, killed at `SWEEP_TIMEOUT`. Quick: `tools/sweep.sh --weapons=knife --machines=cutter`.
   - `--programs` over a tour fails on any GL program first drawn after an `echo event` (a freeze a player meets); `--cold` builds every program as on a first visit.
   - Every run fails on a GL program the browser refuses (`web FAILED: GL program N …`; GLSL kept as `shots/export/<out>-glfail-pN.{vs,fs}.glsl`; first three draws checked with getError, `tools/web/web.mjs`).
-- preflight `tools/preflight.sh`: the whole-tree rule tests (prop identity, whole-world readers, feature map, tour claims, worker types, room kinds), .uid and feature-map checks, ~90 s; red on any `WorldProp == WorldProp`.
+- preflight `tools/preflight.sh`: the whole-tree rule tests (prop identity, whole-world readers, feature map, tour claims, worker types, room kinds), .uid and feature-map checks, ~90 s; red on any `WorldProp == WorldProp`. Then `tools/shaders.sh` through heavy.sh.
+- shaders `tools/shaders.sh` (`tools/gd/shaders.gd`): every `*.gdshader` under src and the shaders built in code (MobFx's marks, the doors' iris) compiled and drawn by the real renderer, ~10 s warm; red on any `SHADER ERROR`, which the gate's dummy renderer never prints. A cold shader cache can hold its exit for minutes (`SHADERS_TIMEOUT`, 300 s scaled by load).
 
 ## How to reach it
 

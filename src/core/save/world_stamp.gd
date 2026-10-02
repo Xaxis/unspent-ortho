@@ -273,6 +273,7 @@ const UNKNOWN := "unknown"
 ##     hall's walls round its black water; trams stand in a wider band of silt.
 ##     Every region big enough to keep a keeper gets its keeper's first station
 ##     (an intake, a lock), laid only where the ground keeps the design's ways
+##     and never within its keeper's reach of where the raft comes ashore
 ##     (GenWorks.station_holds). (Provisional; restamped at landing.)
 const GEN := 47
 
