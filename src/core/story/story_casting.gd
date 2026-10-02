@@ -52,6 +52,19 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 			if twin.has(s.mirror):
 				out[s.id] = (twin[s.mirror] as Dictionary).duplicate()
 			continue
+		# A crater is not dealt: it is the one the walker lead pins, nearest the
+		# slot it names on that slot's body (crater_near), or none.
+		if s.needs == StorySlot.TREAD:
+			if s.realm == world.realm and out.has(s.near):
+				var craters: Array[Vector2] = []
+				for c: Dictionary in _candidates(world, s):
+					craters.append(c.pos as Vector2)
+				var at := crater_near(world, craters, (out[s.near] as Dictionary).pos as Vector2)
+				if at.is_finite():
+					out[s.id] = {"pos": at, "region": -1, "land": _land_at(world, at), "site": StorySlot.TREAD,
+						"body": world.continent_at(floori(at.x), floori(at.y))}
+					taken.append(at)
+			continue
 		var place := {}
 		var start := clampi(maxi(s.leg, floor_rank), 0, maxi(order.size() - 1, 0))
 		if not s.ordered:
@@ -150,12 +163,29 @@ static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
 		StorySlot.PORTAL:
 			for pt: Portal in Portals.in_world(world):
 				out.append({"pos": pt.pos, "region": pt.region, "land": _land_at(world, pt.pos), "site": StorySlot.PORTAL})
+		StorySlot.TREAD:
+			for m: Dictionary in world.landmarks:
+				if StringName(m.get("kind", &"")) == &"tread":
+					out.append({"pos": m.pos, "region": -1, "land": &"", "site": StorySlot.TREAD})
 		StorySlot.BLACK_SITE:
 			var at := StoryWorld.black_site(world)
 			if at != Vector2.INF:
 				var home := world.continent_at(floori(world.spawn.x), floori(world.spawn.y))
 				out.append({"pos": at, "region": -1, "land": &"", "site": StorySlot.BLACK_SITE, "body": home})
 	return out
+
+
+## Of `craters`, the one on `at`'s body nearest it; INF where that body has none.
+## The one rule for where the walker lead pins its crater (StoryMap.crater_pos)
+## and where the crater's people stand (the slot `the_tread`), so the survey never
+## sends him to a crater Tull is not at. World-only, so world generation's casting
+## can ask it without loading the game.
+static func crater_near(world: WorldData, craters: Array[Vector2], at: Vector2) -> Vector2:
+	var best := Vector2.INF
+	for c: Vector2 in craters:
+		if world.same_body(c, at) and (not best.is_finite() or c.distance_to(at) < best.distance_to(at)):
+			best = c
+	return best
 
 
 ## A landscape's id at a point, through the registry's own door. Never the INDEX:
