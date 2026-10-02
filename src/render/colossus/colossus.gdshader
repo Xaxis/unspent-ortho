@@ -210,7 +210,7 @@ const float STRIP_REST = 0.3;
 const float LIGHT_POINT_PX = 2.0;
 const float LIGHT_WHOLE_PX = 6.0;
 const float LIGHT_KEEP = 1.0;
-const float LIGHT_HALO = 0.25;
+const float LIGHT_HALO = 0.6;
 const float PULSE_TRAIL = 0.22;
 
 varying float thin;
