@@ -50,7 +50,7 @@ static func make() -> SentinelDef:
 	# Phase one: keeping. It keeps the cuttings dry, slow, and works by ear; the
 	# long windup is the cave hauler's register. The pump pack on its back is open.
 	var keeping := SentinelPhase.make(&"keeping", 1.0, &"back",
-		{"swing": [720, 160, 820, 920], "reach": 2.4, "width": 2.8, "dmg": 4, "knock": 10.0, "knock_ms": 320})
+		{"swing": [788, 160, 820, 920], "reach": 2.4, "width": 2.8, "dmg": 4, "knock": 10.0, "knock_ms": 320})
 	keeping.pace = 3.0
 	keeping.dash = 5.0
 	keeping.quick = 280
@@ -60,7 +60,7 @@ static func make() -> SentinelDef:
 	# Phase two: sealing. The lance guards the feed on its spray side, and the
 	# opening is the stand after a spray, while it winds the lance back.
 	var sealing := SentinelPhase.make(&"sealing", 0.6, &"right",
-		{"swing": [640, 170, 780, 880], "reach": 2.5, "width": 2.8, "dmg": 4, "knock": 10.0, "knock_ms": 320})
+		{"swing": [788, 170, 780, 880], "reach": 2.5, "width": 2.8, "dmg": 4, "knock": 10.0, "knock_ms": 320})
 	sealing.guarded = true
 	sealing.pace = 3.4
 	sealing.dash = 5.5
@@ -71,7 +71,7 @@ static func make() -> SentinelDef:
 	# Phase three: dry. Its pumps are dead and it thrashes instead of spraying;
 	# the feed at its front is bare.
 	var dry := SentinelPhase.make(&"dry", 0.3, &"front",
-		{"swing": [580, 180, 700, 800], "reach": 2.2, "width": 2.6, "dmg": 5, "knock": 11.0, "knock_ms": 340})
+		{"swing": [759, 180, 700, 800], "reach": 2.2, "width": 2.6, "dmg": 5, "knock": 11.0, "knock_ms": 340})
 	dry.pace = 3.8
 	dry.dash = 6.0
 	dry.quick = 300

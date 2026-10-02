@@ -33,6 +33,26 @@ const DODGE_INVULN_FROM := 50
 const DODGE_INVULN_TO := 140
 ## Swing and dodge both refused until this long after a dodge.
 const DODGE_LOCK_MS := 420
+## A TELL IS READ IN TIME (readable_windup, held on every keeper blow by
+## tests/sentinel/test_readable_tells.gd): a person who sees it start at the slow
+## end of a person's reaction dodges, then walks, out of its box from the middle
+## of it before it lands. The human reader's slowest hands are this number too.
+const READ_REACT_MS := 450.0
+
+
+## How far a dodge carries: its burst integrated over DODGE_MS (about 1.11 tiles).
+static func dodge_reach() -> float:
+	return DODGE_SPEED * (1.0 + DODGE_END) * 0.5 * DODGE_MS / 1000.0
+
+
+## The shortest windup a person reads in time, for a body of radius `trad`
+## standing in the middle of `b`: out to the side of a box, out from under a
+## drop. Walking, not running: a player in a fight is often below the run floor.
+static func readable_windup(b: Blow, trad: float) -> int:
+	var clear := b.reach if b.area else b.width * 0.5 + trad
+	return ceili(READ_REACT_MS + DODGE_MS + maxf(0.0, clear - dodge_reach()) / Tuning.WALK_SPEED * 1000.0)
+
+
 ## Grip: at least this long between pulls; held this long and you are carried.
 const PULL_GAP_MS := 140
 const HOLD_LIMIT_MS := 6000

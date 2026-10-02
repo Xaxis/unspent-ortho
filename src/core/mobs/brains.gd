@@ -19,6 +19,9 @@ const ERRAND_CLOSE_MS := 3000
 const ERRAND_REST_MS := 4000
 ## A run that covers less than this share of its expected distance hit something.
 const BLOCKED_SHARE := 0.35
+## How far off the way it faces a charge turns toward the player: the run's
+## bearing as it commits, and a stood bite's slew onto a sidestep.
+const RUN_CORRECTION := 0.35
 ## How far off a fleeing body caught against the land looks for ground to make
 ## for, and how long it keeps to that way before it flees straight again.
 const FLEE_REACH := 16.0
@@ -297,6 +300,9 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 			m.route_until = now + ROUTE_AFTER_BLOCK_MS
 		m.charging = false
 		m.run_until = minf(m.run_until, now)
+		if arrived:
+			m.stood_for = m.blow_at
+			m.stood_facing = m.facing
 		m.pause_until = now + pause_ms
 		m.want = Vector2.ZERO
 		m.aim = to.angle()
@@ -357,7 +363,7 @@ static func _charge(m: MobState, sim: FightSim, speed: float, pause_ms: float) -
 			@warning_ignore("return_value_discarded")
 			sim.begin_bite(m, m.bite)
 		# Commit along the way it actually faces, corrected a little toward the player.
-		m.bearing = Vector2.from_angle(m.facing + clampf(off, -0.35, 0.35))
+		m.bearing = Vector2.from_angle(m.facing + clampf(off, -RUN_CORRECTION, RUN_CORRECTION))
 		m.charging = true
 		m.run_until = now + RUN_MS
 		m.run_from = m.pos

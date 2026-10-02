@@ -1157,6 +1157,14 @@ func _move_mob(m: MobState, dt: float) -> void:
 		m.aim = (m.seal_at - m.pos).angle()
 	if now < m.slew_until:
 		m.facing = rotate_toward(m.facing, m.slew_to, FightRules.SLEW_TURN * dt)
+	elif m.stood_for == m.blow_at and m.blow_phase(now) == &"windup" and not m.stunned(now) and not Sentinels.is_keeper(m.row):
+		# A common machine that stood for its bite slews onto a player who
+		# sidesteps, as far as its run would have corrected and no further: the
+		# slew is drawn, so the turn is the tell that the sidestep was read. A
+		# keeper's windups are long and wide, and tracked through them no dodge
+		# clears them, so a keeper holds the way it stood.
+		var off := clampf(wrapf((hero.pos - m.pos).angle() - m.stood_facing, -PI, PI), -Brains.RUN_CORRECTION, Brains.RUN_CORRECTION)
+		m.facing = rotate_toward(m.facing, m.stood_facing + off, m.turn_rate_at(now) * dt)
 	elif not m.committed(now) and not m.stunned(now):
 		m.facing = rotate_toward(m.facing, m.aim, m.turn_rate_at(now) * dt)
 	var v := m.want * (BOG_SLIP if bog else 1.0)

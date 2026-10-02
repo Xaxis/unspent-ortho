@@ -56,7 +56,7 @@ static func make() -> SentinelDef:
 	# drive in its left leg is open — the side to be on has MOVED, which is the
 	# lesson a sentinel teaches that no ordinary machine does.
 	var raised := SentinelPhase.make(&"raised", 0.6, &"left",
-		{"swing": [620, 160, 640, 760], "reach": 2.0, "width": 2.2, "dmg": 4, "knock": 10.0, "knock_ms": 340})
+		{"swing": [700, 160, 640, 760], "reach": 2.0, "width": 2.2, "dmg": 4, "knock": 10.0, "knock_ms": 340})
 	raised.pace = 5.0
 	raised.dash = 10.0
 	raised.quick = 340
@@ -70,7 +70,7 @@ static func make() -> SentinelDef:
 	# toward the player: it otherwise turns on the spot as fast as they can
 	# circle it, and its lair is fenced either side.
 	var stooped := SentinelPhase.make(&"stooped", 0.28, &"back",
-		{"swing": [520, 170, 560, 900], "reach": 1.8, "width": 2.0, "dmg": 0, "knock": 0.0, "knock_ms": 0, "grip": 4, "torn": 2200})
+		{"swing": [671, 170, 560, 900], "reach": 1.8, "width": 2.0, "dmg": 0, "knock": 0.0, "knock_ms": 0, "grip": 4, "torn": 2200})
 	stooped.pace = 3.4
 	stooped.dash = 7.0
 	stooped.quick = 260

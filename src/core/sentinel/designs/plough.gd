@@ -44,7 +44,7 @@ static func make() -> SentinelDef:
 	# is the bite; the share guards its front; off a lane it wallows, and the
 	# grille on its back is open while it grinds round in the snow.
 	var clearing := SentinelPhase.make(&"clearing", 1.0, &"back",
-		{"swing": [700, 180, 900, 1000], "reach": 1.8, "width": 2.8, "dmg": 4, "knock": 12.0, "knock_ms": 340})
+		{"swing": [788, 180, 900, 1000], "reach": 1.8, "width": 2.8, "dmg": 4, "knock": 12.0, "knock_ms": 340})
 	clearing.pace = 3.6
 	clearing.dash = 10.0
 	clearing.quick = 330
@@ -55,7 +55,7 @@ static func make() -> SentinelDef:
 	# and walls its engine in with them: the side open is the left, guarded until a
 	# run has gone past and the share is still up.
 	var banking := SentinelPhase.make(&"banking", 0.6, &"left",
-		{"swing": [620, 170, 760, 880], "reach": 2.0, "width": 3.0, "dmg": 4, "knock": 12.0, "knock_ms": 340})
+		{"swing": [818, 170, 760, 880], "reach": 2.0, "width": 3.0, "dmg": 4, "knock": 12.0, "knock_ms": 340})
 	banking.guarded = true
 	banking.pace = 4.0
 	banking.dash = 10.5

@@ -78,7 +78,7 @@ static func make() -> SentinelDef:
 	# rings off the counterweight until a dash has overshot and it is hauling
 	# itself back.
 	var swinging := SentinelPhase.make(&"swinging", 0.6, &"right",
-		{"swing": [620, 160, 740, 840], "reach": 2.3, "width": 2.8, "dmg": 4, "knock": 11.0, "knock_ms": 360})
+		{"swing": [788, 160, 740, 840], "reach": 2.3, "width": 2.8, "dmg": 4, "knock": 11.0, "knock_ms": 360})
 	swinging.guarded = true
 	swinging.pace = 4.6
 	swinging.dash = 10.5

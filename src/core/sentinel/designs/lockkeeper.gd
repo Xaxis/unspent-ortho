@@ -86,7 +86,7 @@ static func make() -> SentinelDef:
 	# the front rings off the gate, and the opening is the stand while it winds
 	# the blade back up.
 	var gating := SentinelPhase.make(&"gating", 0.6, &"front",
-		{"swing": [700, 200, 820, 940], "reach": 2.2, "width": 3.2, "dmg": 4, "knock": 10.0, "knock_ms": 340})
+		{"swing": [847, 200, 820, 940], "reach": 2.2, "width": 3.2, "dmg": 4, "knock": 10.0, "knock_ms": 340})
 	gating.guarded = true
 	gating.pace = 3.6
 	gating.dash = 7.5
@@ -99,7 +99,7 @@ static func make() -> SentinelDef:
 	# body in the water a long way. The left flank, where the sea-cocks are, is
 	# the last thing open.
 	var flooding := SentinelPhase.make(&"flooding", 0.3, &"left",
-		{"swing": [700, 220, 760, 1000], "reach": 2.4, "width": 3.6, "dmg": 3, "knock": 14.0, "knock_ms": 420})
+		{"swing": [906, 220, 760, 1000], "reach": 2.4, "width": 3.6, "dmg": 3, "knock": 14.0, "knock_ms": 420})
 	flooding.pace = 4.2
 	flooding.dash = 8.5
 	flooding.quick = 300

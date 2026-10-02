@@ -71,7 +71,7 @@ static func make() -> SentinelDef:
 	# whole point of a machine on skates. Its bite is a skate's edge swung through
 	# where you were as it passes, and the drive that pushes it is at its back.
 	var skating := SentinelPhase.make(&"skating", 1.0, &"back",
-		{"swing": [500, 150, 640, 760], "reach": 1.8, "width": 1.8, "dmg": 3, "knock": 9.0, "knock_ms": 320})
+		{"swing": [641, 150, 640, 760], "reach": 1.8, "width": 1.8, "dmg": 3, "knock": 9.0, "knock_ms": 320})
 	skating.pace = 6.0
 	skating.dash = 12.0
 	skating.quick = 300
@@ -98,7 +98,7 @@ static func make() -> SentinelDef:
 	# Phase three: grounded. The crown is spent and it drags a burnt leg. Slow,
 	# heavy, and it can be walked round; the burnt leg is on its left and bare.
 	var grounded := SentinelPhase.make(&"grounded", 0.3, &"left",
-		{"swing": [600, 180, 700, 900], "reach": 1.9, "width": 2.0, "dmg": 4, "knock": 10.0, "knock_ms": 340})
+		{"swing": [671, 180, 700, 900], "reach": 1.9, "width": 2.0, "dmg": 4, "knock": 10.0, "knock_ms": 340})
 	grounded.pace = 2.8
 	grounded.dash = 5.0
 	grounded.quick = 240

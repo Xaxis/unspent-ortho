@@ -65,6 +65,12 @@ var want := Vector2.ZERO
 ## through a charge's windup (FightSim._move_mob). A run is held to this when it
 ## is asked whether something stopped it or whether it has arrived (Brains._charge).
 var commanded := 0.0
+## A run that arrived with its bite told stands for it (Brains._charge): the
+## blow_at of that bite, and the way it faced when it stood. Through the windup
+## it slews onto a player who sidesteps, no further than Brains.RUN_CORRECTION
+## off that facing (FightSim._move_mob).
+var stood_for := -1.0
+var stood_facing := 0.0
 ## Facing the brain wants; the sim turns toward it at turn_rate (rad/s) unless committed.
 var aim := 0.0
 var turn_rate := 8.0

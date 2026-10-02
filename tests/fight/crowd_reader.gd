@@ -47,6 +47,7 @@ func _init(s: FightSim) -> void:
 
 
 func act() -> void:
+	_watch_bodies()
 	_act()
 	_keep_unrooted()
 
@@ -225,7 +226,7 @@ func _open_long_enough_running(m: MobState) -> bool:
 ## A machine holding off: roused, no blow thrown for STANDOFF_MS, not winding
 ## up now, and not charging.
 func _standing_off(m: MobState) -> bool:
-	if not m.machine or m.indifferent() or m.charging:
+	if not m.machine or m.indifferent() or Seen.running(m):
 		return false
 	var now := sim.now
 	if m.blow != null and m.blow_phase(now) in [&"windup", &"active"]:
@@ -370,7 +371,7 @@ func _cable(live: Array[MobState]) -> bool:
 	# are in the fight: a line thrown at one pulls the player off the two on them.
 	var roused := 0
 	for m in live:
-		roused += int(m.roused() and (m.pos.distance_to(hero.pos) < HAUL_ALONE or m.mood == MobState.CHASING or m.mood == MobState.ATTACKING))
+		roused += int(m.roused())
 	if roused > 1:
 		return false
 	for m in live:

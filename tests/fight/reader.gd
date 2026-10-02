@@ -12,14 +12,15 @@ extends RefCounted
 ## knife, a person meeting it for the first time cannot either.
 
 var react_ms := 220.0
-## HUMAN (a measuring reader, tools/sweep.sh --reader=human; every test stays on
+## HUMAN (a measuring reader, tools/sweep.sh --reader=human, and the bar a keeper
+## is held to in tests/sentinel/test_keeper_bouts.gd; every other test stays on
 ## the perfect reader): `human` >= 0 is its seed. Each tell is seen after a
 ## reaction drawn from HUMAN_REACT (hash-seeded, never randf); MISREAD of them
 ## are misread, half dodged the wrong way and half HUMAN_LATE_MS later again;
 ## and WHIFF of its strikes are thrown from the edge of reach, turned off the
 ## body, and miss.
 var human := -1
-const HUMAN_REACT := Vector2(250.0, 450.0)
+const HUMAN_REACT := Vector2(250.0, FightRules.READ_REACT_MS)
 const MISREAD := 0.10
 const HUMAN_LATE_MS := 200.0
 const WHIFF := 0.125
@@ -43,6 +44,11 @@ var take_hits := 0
 const ESCAPE_HOLD_MS := 60.0
 
 var sim: FightSim
+const Seen := preload("res://tests/fight/seen.gd")
+## What each body was last seen doing of the two a stand can follow, &"run" or
+## &"tell" (`_watch_bodies`): a charger standing after a run is between runs, one
+## standing after its tell is standing for, or after, its bite.
+var _last_act := {}
 ## Where its presses go: null, straight to the simulation (a bare fight);
 ## an object with `press(verb)` for a running game, which presses the keys
 ## (tests/fight/game_driver.gd, 98_tour `drive`). Verbs: swing, dodge, heavy.
@@ -73,6 +79,7 @@ func act() -> void:
 	var hero := sim.hero
 	var now := sim.now
 	hero.run = false
+	_watch_bodies()
 	if hero.held():
 		if now - _last_pull >= 160.0:
 			_last_pull = now
@@ -154,7 +161,7 @@ func _tell_to_answer(m: MobState) -> bool:
 ## A machine coming on at a run with the player in its row: out of the row.
 func _charge_to_leave(m: MobState) -> bool:
 	var hero := sim.hero
-	if not m.charging:
+	if not Seen.running(m):
 		return false
 	var local := (hero.pos - m.pos).rotated(-m.facing)
 	if local.x <= 0.0 or local.x > 6.0 or absf(local.y) > m.radius + hero.radius + 0.9:
@@ -178,7 +185,26 @@ func _open(m: MobState) -> bool:
 	if m.spent(now):
 		return true
 	# A charger standing between runs turns badly: that is the whole answer to one.
-	return m.approach == &"charge" and not m.charging and (now < m.pause_until or m.part != &"front")
+	return m.approach == &"charge" and not Seen.running(m) and (_between_runs(m) or m.part != &"front")
+
+
+## A charger seen to stop from a run and stand, no tell showing: between runs.
+## One standing with its bite told is standing for the bite (a run that
+## arrives, or is stopped mid-tell, Brains._charge), and it is read with the
+## tell, not ahead of it.
+func _between_runs(m: MobState) -> bool:
+	return Seen.standing(m) and not Seen.telling(m, sim.now) and _last_act.get(m.id, &"") == &"run"
+
+
+## What each body in sight is seen doing, kept for `_between_runs`.
+func _watch_bodies() -> void:
+	for m in sim.mobs:
+		if not m.alive or m.removed:
+			continue
+		if Seen.running(m):
+			_last_act[m.id] = &"run"
+		elif Seen.telling(m, sim.now):
+			_last_act[m.id] = &"tell"
 
 
 ## An opening is only worth a swing that lands before it closes: the last
@@ -248,7 +274,7 @@ func _heavy_fits(m: MobState) -> bool:
 		return m.stun_until - now > lands
 	if m.machine and m.spent(now) and m.blow != null:
 		return m.blow_at + m.blow.lockout() - now > lands + 120.0
-	return m.approach == &"charge" and not m.charging and now + lands < m.pause_until
+	return m.approach == &"charge" and _between_runs(m)
 
 
 ## Stand and let it come (the bite is what opens it), closing in only when it
@@ -360,7 +386,7 @@ func _in_box_of(b: Blow, m: MobState, p: Vector2, margin: float) -> bool:
 ## will have brought it when the blow goes live, the way a drop is read by its
 ## shadow, not where the body stands as the tell starts.
 func _carried_to(b: Blow, m: MobState) -> Vector2:
-	if not m.charging or m.blow != b or m.blow_phase(sim.now) != &"windup":
+	if not Seen.running(m) or m.blow != b or m.blow_phase(sim.now) != &"windup":
 		return m.pos
 	var left := (m.blow_at + b.windup - sim.now) / 1000.0
-	return m.pos + m.bearing * m.speed * left
+	return m.pos + Seen.heading(m) * m.speed * left
