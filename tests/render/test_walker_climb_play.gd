@@ -96,8 +96,9 @@ func test_on_the_leg_the_keys_and_the_eye_are_the_climbs() -> void:
 
 
 ## A RIDE TAKES IN THE ISLAND: in the middle of a ride the eye is kilometres off
-## the leg, looking at the island's middle, its lens long enough that the island
-## is framed; on a hold it is the climb's own eye again.
+## the leg, the island first on its own long lens, never under a quarter of the
+## half frame, and the leg he is in coming into the frame at its edge;
+## on a hold it is the climb's own eye again.
 func test_a_ride_takes_in_the_island() -> void:
 	var g := Game.new()
 	tree.root.add_child(g)
@@ -120,10 +121,16 @@ func test_a_ride_takes_in_the_island() -> void:
 	var w: int = sys.get("walker")
 	var him: Transform3D = sys.call(&"body_frame", colossi.view.defs[w], colossi.view.poses[w])
 	gt(cam.global_position.distance_to(him.origin), 1000.0, "mid-ride the eye is kilometres off the leg")
+	check(cam.is_position_in_frustum(land), "the island's middle is in the frame")
 	var to_land := land - cam.global_position
-	gt((-cam.global_basis.z).dot(to_land.normalized()), cos(deg_to_rad(1.0)), "looking at the island's middle")
 	var share := float(g.world.size) * 0.5 / (to_land.length() * tan(deg_to_rad(cam.fov) * 0.5))
-	near(share, float(k.RIDE_FRAME), 0.02, "the island framed (%.2f of the half frame)" % share)
+	lt(share, float(k.RIDE_FRAME) + 0.02, "on no longer a lens than the island's own (%.2f of the half frame)" % share)
+	gt(share, float(k.RIDE_FRAME_LEAST) - 0.01, "the island first: never under a quarter of the half frame")
+	var pose: Dictionary = colossi.view.poses[w]
+	var ankle: Vector3 = (pose.ankles as Array)[c.leg]
+	var shin: Vector3 = ankle.lerp((pose.knees as Array)[c.leg], 0.3)
+	check(cam.is_position_in_frustum(ankle) or cam.is_position_in_frustum(shin),
+		"and the leg he is in comes into it, its foot or its shin")
 	c.state = WalkerClimb.CLIMB
 	c.busy = 0.0
 	await process_frames(3)

@@ -15,6 +15,8 @@ class_name StoryCasting
 ## a content error is `StoryPlan`'s question and not this file's: casting reports
 ## what the world can carry and never decides what the story may ask for.
 
+const Treads := preload("res://src/core/colossus/colossus_treads.gd")
+
 ## The surface's own casting, per seed, size and registry, for a slot that
 ## mirrors one of its places (StorySlot.mirror). Not keyed by seed alone: a test
 ## that narrows the registry grows a different world under the same seed, and a
@@ -51,6 +53,25 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 				twin = _twin(world, slots)
 			if twin.has(s.mirror):
 				out[s.id] = (twin[s.mirror] as Dictionary).duplicate()
+			continue
+		# A crater is not dealt: it is the one the walker lead pins, nearest the
+		# slot it names on that slot's body (crater_near), or none: a tread's
+		# middle toe's crater (Treads.MIDDLE_TOE). Its row keeps the tread's ankle,
+		# pads and yaw, so whoever stands there is stood by it without walking the
+		# world's landmarks again (49_cast).
+		if s.needs == StorySlot.TREAD:
+			if s.realm == world.realm and out.has(s.near):
+				var treads := _candidates(world, s)
+				var craters: Array[Vector2] = []
+				for c: Dictionary in treads:
+					craters.append(c.pos as Vector2)
+				var at := crater_near(world, craters, (out[s.near] as Dictionary).pos as Vector2)
+				if at.is_finite():
+					var row: Dictionary = (treads[craters.find(at)] as Dictionary).duplicate()
+					row["land"] = _land_at(world, at)
+					row["body"] = world.continent_at(floori(at.x), floori(at.y))
+					out[s.id] = row
+					taken.append(at)
 			continue
 		var place := {}
 		var start := clampi(maxi(s.leg, floor_rank), 0, maxi(order.size() - 1, 0))
@@ -150,12 +171,31 @@ static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
 		StorySlot.PORTAL:
 			for pt: Portal in Portals.in_world(world):
 				out.append({"pos": pt.pos, "region": pt.region, "land": _land_at(world, pt.pos), "site": StorySlot.PORTAL})
+		StorySlot.TREAD:
+			for m: Dictionary in world.landmarks:
+				if StringName(m.get("kind", &"")) == &"tread":
+					var pad: Vector3 = (m.pads as Array)[Treads.MIDDLE_TOE]
+					out.append({"pos": Vector2(pad.x, pad.y), "region": -1, "land": &"", "site": StorySlot.TREAD,
+						"ankle": m.pos, "pads": m.pads, "yaw": m.yaw})
 		StorySlot.BLACK_SITE:
 			var at := StoryWorld.black_site(world)
 			if at != Vector2.INF:
 				var home := world.continent_at(floori(world.spawn.x), floori(world.spawn.y))
 				out.append({"pos": at, "region": -1, "land": &"", "site": StorySlot.BLACK_SITE, "body": home})
 	return out
+
+
+## Of `craters`, the one on `at`'s body nearest it; INF where that body has none.
+## The one rule for where the walker lead pins its crater (StoryMap.crater_pos)
+## and where the crater's people stand (the slot `the_tread`), so the survey never
+## sends him to a crater Tull is not at. World-only, so world generation's casting
+## can ask it without loading the game.
+static func crater_near(world: WorldData, craters: Array[Vector2], at: Vector2) -> Vector2:
+	var best := Vector2.INF
+	for c: Vector2 in craters:
+		if world.same_body(c, at) and (not best.is_finite() or c.distance_to(at) < best.distance_to(at)):
+			best = c
+	return best
 
 
 ## A landscape's id at a point, through the registry's own door. Never the INDEX:

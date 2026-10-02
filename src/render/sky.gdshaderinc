@@ -80,6 +80,10 @@ global uniform vec4 sky_air;
 // the eye-level rules are in force (SkyLight.horizon_share: 0 top-down, 1 over
 // the shoulder). A whiteout closes in from the distance toward it.
 global uniform vec4 sky_focus;
+// How far the lens drawing this frame is under the high air's rules, 0 to 1
+// (SkyLight.aloft_share of its height; 0 for the orthographic play camera,
+// which stands hundreds of units off when drawn out).
+global uniform float sky_aloft;
 // Lightning after a strike: xy the strike's world x/z, z the afterglow rolling
 // through the clouds 0..1 (stepped), w the machines' power 0..1 (1 = steady).
 global uniform vec4 sky_bolt;
@@ -408,6 +412,28 @@ float sky_cloud(vec3 world_pos) {
 		return 0.0;
 	}
 	return sky_cloud_field(world_pos);
+}
+
+// THE CLOUDS SEEN FROM FAR ABOVE. The ground's cloud shadows are a few tiles
+// across, made for the play camera; from up a walker's leg a pixel holds a
+// dozen of them and they came out as dust. So an eye high over the land
+// (`sky_aloft`, in `sky_apply`) sees the same weather's cover laid
+// SKY_CLOUD_FAR times as wide, drifting over sea and island alike at the same
+// speed, with the cover's own share of the land in shade.
+const float SKY_CLOUD_FAR = 350.0;
+// How much of the ground's own cloud shade a far cloud's shadow takes: the
+// air between keeps it from being a hole in the sea.
+const float SKY_CLOUD_FAR_SHADE = 0.6;
+float sky_cloud_far(vec3 world_pos) {
+	if (sky_clouds.w < 0.001) {
+		return 0.0;
+	}
+	vec2 q = (world_pos.xz - sky_clouds.xy) / SKY_CLOUD_FAR;
+	float n = sky_fbm(q * 0.12) * 0.7 + sky_noise(q * 0.33 + vec2(17.0, 3.0)) * 0.3;
+	float c = sky_clouds.z;
+	float t = 0.5 - 0.32 * (c - 0.5) - smoothstep(0.85, 1.0, c) * 0.3 + (1.0 - smoothstep(0.0, 0.1, c)) * 0.3;
+	// Soft-edged: a cloud's shadow from this high is kilometres of penumbra.
+	return smoothstep(t - 0.07, t + 0.07, n) * SKY_CLOUD_FAR_SHADE;
 }
 
 // The afterglow of a strike: the clouds it lit, catching and letting go as the
@@ -831,7 +857,7 @@ vec3 sky_apply(vec3 albedo, vec3 world_pos, float time) {
 	vec3 soak = mix(vec3(0.78, 0.81, 0.87), vec3(0.66, 0.70, 0.78), 1.0 - sky_gloom());
 	c = mix(c, c * soak, step(sky_hash(px + vec2(7.0, 61.0)), sky_wet_cover(world_pos, wet)));
 #endif
-	float cloud = sky_cloud(world_pos);
+	float cloud = mix(sky_cloud(world_pos), sky_cloud_far(world_pos), sky_aloft);
 	if (cloud > 0.0) {
 		// A cloud over the sun. Nothing in the engine casts these, so it is a
 		// shade on the surface: soft-edged now rather than stippled, because
