@@ -20,6 +20,12 @@ mouse 0,-120 0.3
 wait 2
 shot 00-under-the-ankle
 mouse 0,-1400 1
+# How far up the view may tip rises with the walker's gaze (Shoulder.least_for),
+# and that follows the view's yaw as it settles on his facing, so one sweep
+# landed at whatever ceiling the frame rate had reached. A second push once it
+# has settled lands on the gaze's own ceiling on any box.
+wait 1.5
+mouse 0,-1400 0.3
 wait 1
 shot 01-looking-up-at-the-drum
 hold shoulder
