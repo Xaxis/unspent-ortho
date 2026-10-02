@@ -41,6 +41,8 @@ static func site(c: GenContext) -> void:
 	var taken: Array[Vector3] = []
 	# Closes whatever the stages before left open, so the marks below are ours.
 	c.mark(&"treads.before")
+	# Asked before any cut, so the world holds the landmarks sited on uncut land
+	# for its life (Landmarks.sited): the ids `_trod` records name those.
 	var bears := _bearing(c)
 	var built := _built(c, bears)
 	c.mark(&"treads.built")

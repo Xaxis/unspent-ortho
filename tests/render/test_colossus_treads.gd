@@ -452,6 +452,29 @@ func _alone(g: Game, p: WorldProp) -> bool:
 	return true
 
 
+## THE LANDMARKS SITED BEFORE THE TREADS ARE THE ONES EVERY ASK GETS. Siting is
+## derived from the land, and the treads cut it, so sited again after them 83 of
+## seed 7's 196 stood elsewhere, and the ids a tread recorded as trodden named
+## other places. The list was kept in a cache of six worlds that emptied when it
+## filled; it is held on each world for its life (Landmarks.HELD).
+func test_the_landmarks_sited_before_the_treads_are_kept() -> void:
+	var w := _grown()
+	var was := {}
+	for s: LandmarkSite in Landmarks.sited(w):
+		was[s.id] = s.pos
+	for s: int in [11, 12, 13, 14, 15, 16, 17]:
+		@warning_ignore("return_value_discarded")
+		Landmarks.sited(WorldGen.generate(s, 256))
+	var moved := 0
+	for s: LandmarkSite in Landmarks.sited(w):
+		if not was.has(s.id) or was[s.id] != s.pos:
+			moved += 1
+	eq(moved, 0, "asked again after seven other worlds, every landmark is where it was sited")
+	for m: Dictionary in _treads(w):
+		for id: StringName in (m.get("trod", []) as Array):
+			check(was.has(id), "a trodden %s still names a sited place" % id)
+
+
 ## THE NEAR FOOT'S BUILD IS ALWAYS CLAIMED. A pool task nobody waits for keeps
 ## its Callable -- a lambda on the foot node -- alive in the pool past the node,
 ## and the pool frees it at exit: the process dies with signal 11 after every
