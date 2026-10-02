@@ -63,10 +63,13 @@ func test_a_patrol_route_runs_along_the_survey_the_machines_laid_everything_else
 ## over what the world recorded. The interpreted yardstick drifted 1.57x across
 ## CI's CPUs for it, the grid 1.22x. The sweep's cost is the world's: it looks
 ## for yard room round each region's busiest work, and region-sited works
-## (GEN 44) find it sooner, so seed 1 at 512 costs half what it did. Calibrated
-## 2026-09-27 alone on this laptop: 1.08 shipped, 2.14 doubled; the bar between,
-## at the headroom the CI calibration had (1.8x shipped). Recheck on CI.
-const SITES_BAR := 1.9
+## (GEN 44) find it sooner. The drowned city's world (GEN 47) keeps a station in
+## every keeper's region, so seed 1 at 512 finds the same 10 depots with more
+## room to search round them: 2.01-2.23 shipped and 3.88-4.73 doubled, against
+## 1.49-1.71 on GEN 46, measured in turn under one load on the Linux box. The bar
+## sits between, 1.35x over the slowest shipped, and the fastest doubled clears
+## it by 1.29x, above the grid's 1.22x drift across CI's CPUs.
+const SITES_BAR := 3.0
 
 
 ## The start budget is real (docs/ROADMAP.md): finding the depots is a search
