@@ -14,7 +14,7 @@ func _lead(key: StringName) -> String:
 	return String(StoryContent.LEAD.get(key, "<no %s line>" % key))
 
 
-## Seed 1 has a crater on the Covenant's body, 163 tiles from it.
+## Seed 1 has a crater on the Covenant's body, 212 tiles from it.
 func test_the_goal_is_the_walkers_crater_until_the_enclave() -> void:
 	var g := await _told(1)
 	@warning_ignore("return_value_discarded")
