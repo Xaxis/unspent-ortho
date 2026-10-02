@@ -9,14 +9,12 @@ extends RefCounted
 ## readers walked into the bite. tests/fight/test_seen.gd holds the readers'
 ## sources to this file.
 
-## Faster than this a body is seen moving. A run told from close in eases to a
-## creep (FightSim), and a person still sees it creeping at them along its line.
-## Read as standing, an eased run's bite caught readers who would have stepped
-## out of its row (tests/sentinel/test_ways, the lock fights).
-const RUN_SEEN := 0.1
+## Faster than this a body is visibly coming on, not standing or creeping
+## (FightSim's own line between a standing body and a moving one).
+const RUN_SEEN := 1.0
 
 
-## A run under way: a charge coming on along its line, however slowly, as it is drawn.
+## A run under way: a charge coming on at a run, as it is drawn.
 static func running(m: MobState) -> bool:
 	return m.charging and m.speed > RUN_SEEN
 

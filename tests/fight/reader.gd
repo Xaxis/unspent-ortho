@@ -266,9 +266,7 @@ func _strike(m: MobState) -> void:
 
 ## Time for a heavy blow's tell before this body can bite, as a player judges
 ## it: stopped by a blow, or spent after a bite, for longer than the tell; or not
-## pressing at all. And the wind for it with a dodge left over. A charger
-## standing between runs is none of these: nothing drawn says when it turns and
-## comes, so a heavy held into that stand is a guess.
+## pressing at all. And the wind for it with a dodge left over.
 func _heavy_fits(m: MobState) -> bool:
 	var now := sim.now
 	var hb := _blow().heavier()
@@ -282,7 +280,7 @@ func _heavy_fits(m: MobState) -> bool:
 		return m.stun_until - now > lands
 	if m.machine and m.spent(now) and m.blow != null:
 		return m.blow_at + m.blow.lockout() - now > lands + 120.0
-	return false
+	return m.approach == &"charge" and _between_runs(m)
 
 
 ## Stand and let it come (the bite is what opens it), closing in only when it
