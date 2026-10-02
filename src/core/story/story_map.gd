@@ -226,10 +226,7 @@ static func crater_pos(game: Game, place: StringName) -> Vector2:
 			craters = sys.call(&"craters")
 	if not at.is_finite():
 		return best
-	for c: Vector2 in craters:
-		if game.world.same_body(c, at) and (not best.is_finite() or c.distance_to(at) < best.distance_to(at)):
-			best = c
-	return best
+	return StoryCasting.crater_near(game.world, craters, at)
 
 
 static func _leg_at(world: WorldData, bodies: Array[int], p: Vector2) -> int:

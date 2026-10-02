@@ -76,6 +76,16 @@ const LOCALS: Array[Dictionary] = [
 ]
 
 
+## The lame walker's people (docs/STORY.md, the walkers): Tull, at the crater the
+## walker lead pins (Guide.WAY `walker`), by the same rule (StoryCasting.crater_near),
+## so where he stands and where the survey sends him never disagree. The walker's,
+## not a landscape's, and colour: a world with no crater on the Covenant's body
+## casts nobody here.
+const WALKER: Array[Dictionary] = [
+	{"id": &"the_tread", "needs": &"tread", "near": &"the_covenant", "ordered": false},
+]
+
+
 ## 2029, relived (docs/STORY.md). The Before is this same coast tile for tile
 ## (Realm.ERA, unspent-ortho-df), so each place of his old life is cast exactly
 ## where a 2098 place of the story stands (`mirror`): his house is the village he
@@ -95,6 +105,8 @@ static func slots() -> Array[StorySlot]:
 	for d: Dictionary in SPINE:
 		out.append(StorySlot.make(d))
 	for d: Dictionary in LOCALS:
+		out.append(StorySlot.make(d))
+	for d: Dictionary in WALKER:
 		out.append(StorySlot.make(d))
 	for d: Dictionary in THEN:
 		out.append(StorySlot.make(d))
