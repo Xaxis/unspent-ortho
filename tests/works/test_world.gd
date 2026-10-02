@@ -66,10 +66,11 @@ func test_a_patrol_route_runs_along_the_survey_the_machines_laid_everything_else
 ## (GEN 44) find it sooner. The drowned city's world (GEN 47) keeps a station in
 ## every keeper's region, so seed 1 at 512 finds the same 10 depots with more
 ## room to search round them: 2.01-2.23 shipped and 3.88-4.73 doubled, against
-## 1.49-1.71 on GEN 46, measured in turn under one load on the Linux box. The bar
-## sits between, 1.35x over the slowest shipped, and the fastest doubled clears
-## it by 1.29x, above the grid's 1.22x drift across CI's CPUs.
-const SITES_BAR := 3.0
+## 1.49-1.71 on GEN 46, measured in turn under one load on the Linux box: 1.33x.
+## CI ran GEN 46 at 1.35 shipped and 2.68 doubled, so GEN 47 there is near 1.8
+## and 3.6. The bar sits between: 1.5x over CI's shipped, and a doubling clears
+## it by a third, above the grid's 1.22x drift across CI's CPUs.
+const SITES_BAR := 2.7
 
 
 ## The start budget is real (docs/ROADMAP.md): finding the depots is a search
