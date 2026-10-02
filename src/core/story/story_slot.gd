@@ -30,8 +30,13 @@ const PORTAL := &"portal"
 ## answers Vector2.INF, which casts nothing, so `StoryPlan.problems` names the seed
 ## rather than the spine trusting it.
 const BLACK_SITE := &"black_site"
+## The other exception: a lame walker's crater (GenTreads), up to two a world and
+## none on a world no walker crosses, so only colour may ask for one. Cast by the
+## crater rule the walker lead pins by (StoryCasting.crater_near), nearest the slot
+## `near` names, on its body: the crater's people stand where the survey sends him.
+const TREAD := &"tread"
 
-const NEEDS: Array[StringName] = [VILLAGE, WORKS, LANDMARK, PORTAL, BLACK_SITE]
+const NEEDS: Array[StringName] = [VILLAGE, WORKS, LANDMARK, PORTAL, BLACK_SITE, TREAD]
 
 var id: StringName = &""
 var needs: StringName = VILLAGE
@@ -51,6 +56,9 @@ var ordered := true
 ## place outright and never asks its own world for its own kind of ground, since
 ## in 2029 the yard has not risen yet (StoryCasting._twin).
 var mirror: StringName = &""
+## For TREAD: the slot cast before it whose crater this is, the one nearest that
+## slot on its body.
+var near: StringName = &""
 ## Which leg of the journey this belongs to: 0 is the body Elias wakes on, 1 the
 ## next one out, and so on (`StoryJourney`). The story spans every continent in
 ## order, so a slot names its leg and never a continent.
@@ -77,6 +85,7 @@ static func make(d: Dictionary) -> StorySlot:
 	s.realm = StringName(str(d.get("realm", &"surface")))
 	s.ordered = bool(d.get("ordered", true))
 	s.mirror = StringName(str(d.get("mirror", &"")))
+	s.near = StringName(str(d.get("near", &"")))
 	s.leg = int(d.get("leg", 0))
 	s.nearest = bool(d.get("nearest", false))
 	s.apart = float(d.get("apart", 0.0))

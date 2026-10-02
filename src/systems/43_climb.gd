@@ -86,6 +86,22 @@ const RIDE_TURN := 0.3
 ## so a long lens on the web's depth (EYE_NEAR) does not lose the shore in the sea.
 const RIDE_FRAME := 0.35
 const RIDE_NEAR := 400.0
+## THE ISLAND FIRST, AND THE LEG HE IS IN AT THE FRAME'S EDGE. Aimed straight at
+## the island from beside the thigh, the lens held only the island, a map seen
+## from nowhere, and once the walk had carried the leg away it held no walker
+## at all (the real climb's thigh ride, 15:54). Widened to take in the leg, the
+## island was a speck whenever the leg stood far from it. So the island comes
+## first: the frame turns from it toward the part of the leg that lies nearest
+## it on the glass, its foot or its shin, until that part is RIDE_LEG_EDGE of the
+## way out to the frame's edge, on the shortest lens that holds both, never
+## longer than the island's own (RIDE_FRAME) and never so wide that the
+## island's half-width is under RIDE_FRAME_LEAST of the frame's. Where the leg
+## will not fit even then, the frame turns toward it as far as the island allows.
+const RIDE_LEG_EDGE := 0.85
+const RIDE_FRAME_LEAST := 0.25
+## How many points down the leg, hip to knee to ankle, are asked which lies
+## nearest the island on the glass.
+const RIDE_LEG_POINTS := 16
 ## The longest lens it takes (a camera refuses one under a degree).
 const RIDE_FOV_LEAST := 2.0
 ## Where the body hangs from a hold: his feet this far down the pitch from the
@@ -242,7 +258,7 @@ func _process(delta: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	_settle = maxf(0.0, _settle - delta)
 	var use_down := Input.is_action_pressed(&"use")
-	var use_edge := use_down and not _use_was
+	var use_edge := use_down and not _use_was and not Survival.ask_pending(game)
 	_use_was = use_down
 	var c := _colossi()
 	if climb == null:
@@ -551,7 +567,8 @@ func _land() -> Vector3:
 ## he is down to the island under the walker, holds on it, and over the last
 ## share comes back to him on the next pitch. It swings out across the plane
 ## the leg bends in: the island lies by the foot, in that plane, so from beside
-## it the leg falls away to the foot and nothing of it stands in between.
+## it the leg falls away to the foot and nothing of it stands in between, and
+## the frame holds the shin's fall to its foot with the island (RIDE_LEG).
 func _ride(def: RefCounted, pose: Dictionary) -> void:
 	var p := climb.pitch
 	var share := clampf(1.0 - climb.busy / maxf(float(WalkerClimb.PITCHES[p].ride), 1e-3), 0.0, 1.0)
@@ -580,13 +597,39 @@ func _ride(def: RefCounted, pose: Dictionary) -> void:
 			side = side.normalized()
 			side *= signf(side.dot(out)) if absf(side.dot(out)) > 1e-3 else 1.0
 			at += side * maxf(at.y, 0.0) * RIDE_OUT * wide
-		look = (him - at).normalized().slerp((land - at).normalized(), wide)
+		var to_land := (land - at).normalized()
 		var half := float(game.world.size) * 0.5
-		fov = lerpf(EYE_FOV, rad_to_deg(2.0 * atan(half / (RIDE_FRAME * at.distance_to(land)))), wide)
+		var island := atan(half / at.distance_to(land))
+		var to_leg := _nearest_on_leg(pose, k, at, to_land)
+		var gap := to_land.angle_to(to_leg)
+		# The shortest lens that holds the island whole and the leg's part at
+		# RIDE_LEG_EDGE, between the island's own and its floor.
+		var off := maxf(0.0, (gap - RIDE_LEG_EDGE * island) / (1.0 + RIDE_LEG_EDGE))
+		var hold := clampf(off + island, atan(half / (RIDE_FRAME * at.distance_to(land))), atan(half / (RIDE_FRAME_LEAST * at.distance_to(land))))
+		var turn := clampf(gap - RIDE_LEG_EDGE * hold, 0.0, hold - island)
+		var aim := to_land.slerp(to_leg, turn / gap) if gap > 1e-4 else to_land
+		look = (him - at).normalized().slerp(aim, wide)
+		fov = lerpf(EYE_FOV, rad_to_deg(2.0 * hold), wide)
 	_cam.fov = clampf(fov, RIDE_FOV_LEAST, EYE_FOV)
 	_cam.near = maxf(EYE_NEAR, RIDE_NEAR * wide * wide)
 	var up := Vector3.UP if absf(look.y) < 0.98 else out
 	_cam.global_transform = Transform3D(Basis.looking_at(look, up), at)
+
+
+## The way from `at` to the point of leg `k`, hip to knee to ankle, that lies
+## nearest the way `to` on the glass.
+func _nearest_on_leg(pose: Dictionary, k: int, at: Vector3, to: Vector3) -> Vector3:
+	var hip: Vector3 = pose.hips[k]
+	var knee: Vector3 = pose.knees[k]
+	var ankle: Vector3 = pose.ankles[k]
+	var best := (ankle - at).normalized()
+	for i in RIDE_LEG_POINTS + 1:
+		var s := float(i) / float(RIDE_LEG_POINTS)
+		var p := hip.lerp(knee, s * 2.0) if s < 0.5 else knee.lerp(ankle, s * 2.0 - 1.0)
+		var d := (p - at).normalized()
+		if d.angle_to(to) < best.angle_to(to):
+			best = d
+	return best
 
 
 ## THE CLIMB IS OVER, the panel at the hub read and put down: the lifts inside

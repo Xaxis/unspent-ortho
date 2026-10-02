@@ -20,8 +20,17 @@ static func stations_here(game: Game) -> Array[StringName]:
 	return out
 
 
-## What `use` would do now ("pine - fell"), or "" with nothing in front.
+## What `use` would do now ("pine - fell"), or "" with nothing in front. The
+## systems that answer the key before Survival are asked first (`use_line`, in
+## their order), so the line names what the press goes to: it said "campfire -
+## build?" over a cache the press opened.
 static func use_hint(game: Game) -> String:
+	if game != null:
+		for sys: Node in game.systems:
+			if sys.has_method(&"use_line"):
+				var line := String(sys.call(&"use_line"))
+				if line != "":
+					return line
 	return Survival.describe_target(game)
 
 

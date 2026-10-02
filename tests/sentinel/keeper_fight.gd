@@ -8,8 +8,11 @@ const GD := preload("res://tests/fight/game_driver.gd")
 
 
 ## A spot `dist` off its lair on its own level, down a line its run can take,
-## with the most (or least) of the ground `grounds` round it.
-static func stand(g: Game, s: SentinelState, dist: float, grounds: Array, most: bool) -> Vector2:
+## with the most (or least) of the ground `grounds` round it. With `ends_on`, the
+## line is on `grounds` for that many tiles short of the spot too: where a run
+## at the player standing there stops to bite (Brains: its front a bite's reach
+## off), so a lure draws the keeper onto the ground and not to its edge.
+static func stand(g: Game, s: SentinelState, dist: float, grounds: Array, most: bool, ends_on := 0.0) -> Vector2:
 	var best := Vector2.INF
 	var score := -INF
 	var level := g.world.level_at(floori(s.lair.x), floori(s.lair.y))
@@ -19,8 +22,12 @@ static func stand(g: Game, s: SentinelState, dist: float, grounds: Array, most: 
 		var ty := floori(p.y)
 		if not g.query.standable(tx, ty) or not g.world.same_body(p, s.lair) \
 				or (not most and not FightRules.levels_meet(g.world.level_at(tx, ty), level)) \
-				or not NavField.line_walkable(g.world, s.lair, p, 0.45):
+				or (ends_on <= 0.0 and not NavField.line_walkable(g.world, s.lair, p, 0.45)):
 			continue
+		if ends_on > 0.0:
+			var stop := p + (s.lair - p).normalized() * ends_on
+			if not grounds.has(g.world.ground_at(floori(stop.x), floori(stop.y))):
+				continue
 		var n := 0.0
 		for dy in range(-5, 6):
 			for dx in range(-5, 6):

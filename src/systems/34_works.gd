@@ -357,7 +357,7 @@ func _by_region(region: int) -> WorksSite:
 ## more thing it can mean, so it takes the key only when it is nearer than
 ## whatever else is under the hand (the same rule a shaft goes by, 20_realms).
 func _work(delta: float) -> void:
-	if game.input_blocked() or not Input.is_action_pressed(&"use"):
+	if game.input_blocked() or not Input.is_action_pressed(&"use") or (_job.is_empty() and Survival.ask_pending(game)):
 		_drop_job()
 		return
 	var s := here()

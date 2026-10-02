@@ -569,6 +569,13 @@
   },
   {
    "kind": "cli",
+   "label": "shard-times",
+   "entry": "tools/shard-times.sh",
+   "reach": "tools/shard-times.sh RUN_ID",
+   "area": "tools"
+  },
+  {
+   "kind": "cli",
    "label": "shaders",
    "entry": "tools/shaders.sh",
    "reach": "tools/heavy.sh tools/shaders.sh",

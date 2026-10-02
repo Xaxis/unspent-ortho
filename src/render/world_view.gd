@@ -1476,8 +1476,13 @@ func _swap_props(key: Vector2i, baked: Array, mid: Array = []) -> void:
 
 ## The country a prop is dressed for: its tile's, or across an ecotone the one
 ## drawn at its foot.
+##
+## Except a deck, which is not dressing but the floor of the landscape that laid
+## it (`BiomeDef.decks_grounded`). Dressed for the slums drawn at its foot, a
+## machine city's deck at the border stood on sea legs with a rail across the
+## street. So a deck goes by its tile, as the shoulder view dresses everything.
 func prop_country(p: WorldProp, ch: TerrainMesher.Chunk) -> int:
-	if ch != null:
+	if ch != null and p.kind != PropKind.PLATFORM:
 		var c := ch.country_at(p.pos.x, p.pos.y)
 		if c != Country.SEA:
 			return c

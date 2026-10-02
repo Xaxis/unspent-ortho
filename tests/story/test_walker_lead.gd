@@ -8,13 +8,14 @@ extends TestCase
 ## Whole worlds, since a small one has no crater at all.
 
 const Sx := preload("res://tests/save/save_fixture.gd")
+const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 
 
 func _lead(key: StringName) -> String:
 	return String(StoryContent.LEAD.get(key, "<no %s line>" % key))
 
 
-## Seed 1 has a crater on the Covenant's body, 212 tiles from it.
+## Seed 1 has a crater on the Covenant's body.
 func test_the_goal_is_the_walkers_crater_until_the_enclave() -> void:
 	var g := await _told(1)
 	@warning_ignore("return_value_discarded")
@@ -24,7 +25,7 @@ func test_the_goal_is_the_walkers_crater_until_the_enclave() -> void:
 	_hop(g, &"walker", "settled: the lame walker")
 	var crater := _pinned_crater(g)
 	check(crater.is_finite(), "the survey marks the crater (%s)" % [UiMapScreen.told(g)])
-	check(_is_tread(g, crater), "on a crater the walker's foot comes back to")
+	check(_is_cable_crater(g, crater), "on the crater its middle toe comes back to, the one the cable comes down into")
 	check(g.world.same_body(crater, _placed(g, &"the_covenant")), "on the Covenant's body")
 	Story.beat(&"enclave_met")
 	_hop(g, &"camp_back", "the enclave met: the far shore done, home")
@@ -122,9 +123,14 @@ func _pinned_crater(g: Game) -> Vector2:
 	return Vector2.INF
 
 
-func _is_tread(g: Game, at: Vector2) -> bool:
+## Whether `at` is a tread's middle toe's crater (Treads.MIDDLE_TOE): the crater
+## the words mean and the cable comes down into, never the plate under the ankle.
+func _is_cable_crater(g: Game, at: Vector2) -> bool:
 	for m: Dictionary in g.world.landmarks:
-		if StringName(m.get("kind", &"")) == &"tread" and (m.pos as Vector2).distance_to(at) < 0.5:
+		if StringName(m.get("kind", &"")) != &"tread":
+			continue
+		var pad: Vector3 = (m.pads as Array)[Treads.MIDDLE_TOE]
+		if Vector2(pad.x, pad.y).distance_to(at) < 0.5:
 			return true
 	return false
 

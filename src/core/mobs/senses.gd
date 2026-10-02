@@ -36,6 +36,11 @@ const BLOCKING_WALL := 0.25
 ## station rule asks it while the world is worked out, where the fight's code
 ## cannot be loaded.
 const WARY_INSIDE := 0.45
+## A hostile this close (Chebyshev tiles) stops anything long being started
+## (Survival.threat_near, "Not with that so close"), and a keeper's larder has
+## no work this close to its den (Sentinels.larder_robbable). Here for the same
+## reason as WARY_INSIDE: the station rule cannot load Survival.
+const THREAT_RADIUS := 8.0
 
 
 static func sight_range(row: Dictionary, m: Moment) -> float:

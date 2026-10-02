@@ -206,7 +206,8 @@ static func lair_pos(states: Array, spawn: Vector2, place: StringName, world: Wo
 
 
 ## Where the place `crater:SLOT` stands: the crater a lame walker's foot comes
-## back to on the body SLOT was cast on, the one nearest it. Asked of whoever keeps
+## back to on the body SLOT was cast on, the one nearest it, and of its tread the
+## middle toe's, which the cable comes down into. Asked of whoever keeps
 ## them, found by what they keep (the idiom Guide and Chapters use): the craters
 ## the walks were handed (19_colossi `craters`), and where the story cast SLOT
 ## (49_cast `placed`). INF for any other place, or where that body has none: the
@@ -226,10 +227,7 @@ static func crater_pos(game: Game, place: StringName) -> Vector2:
 			craters = sys.call(&"craters")
 	if not at.is_finite():
 		return best
-	for c: Vector2 in craters:
-		if game.world.same_body(c, at) and (not best.is_finite() or c.distance_to(at) < best.distance_to(at)):
-			best = c
-	return best
+	return StoryCasting.crater_near(game.world, craters, at)
 
 
 static func _leg_at(world: WorldData, bodies: Array[int], p: Vector2) -> int:

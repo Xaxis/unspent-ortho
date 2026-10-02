@@ -67,7 +67,7 @@ func test_the_yard_and_the_camp_each_stand_a_thing_with_their_own_words() -> voi
 			check(g.query.body_fits(p.pos, 0.6), "and not inside a building's footprint")
 			for q: WorldProp in g.query.props_near(p.pos, StoryProps.REACH + 2.0):
 				if q.id != p.id and StoryProps.readable(q.kind):
-					check(q.pos.distance_to(p.pos) - q.solid > StoryProps.REACH, "no other words in reach of it to take its `use`")
+					check(q.pos.distance_to(p.pos) - q.solid > StoryProps.REACH, "seed %d %s: no other words in reach of it to take its `use` (%s %.1f m off)" % [s, slot, PropKind.NAMES[q.kind] if q.kind < PropKind.NAMES.size() else str(q.kind), q.pos.distance_to(p.pos) - q.solid])
 			for row: Dictionary in Sx.system(g, "49_cast").get("people"):
 				check((row.pos as Vector2).distance_to(p.pos) > StoryProps.REACH, "no one cast stands where its `use` would speak to them (%s)" % row.character)
 			for gate: Dictionary in StoryGates.all(g.world):

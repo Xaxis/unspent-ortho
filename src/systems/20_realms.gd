@@ -159,6 +159,8 @@ func _process(delta: float) -> void:
 	_use_was = down
 	if game == null or game.world == null or game.player == null:
 		return
+	if Survival.ask_pending(game):
+		use_edge = false
 	_settle = maxf(0.0, _settle - delta)
 	# How far this place is from the sky, which is the one thing about a realm's
 	# LIGHT that no landscape file can say (SkyLight.closed, and its header for
