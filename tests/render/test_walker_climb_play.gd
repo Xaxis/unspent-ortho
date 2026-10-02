@@ -96,8 +96,9 @@ func test_on_the_leg_the_keys_and_the_eye_are_the_climbs() -> void:
 
 
 ## A RIDE TAKES IN THE ISLAND: in the middle of a ride the eye is kilometres off
-## the leg, the island and the leg's knee both in its frame, so the leg's line
-## runs down to the island, on a lens long enough that the island is no speck;
+## the leg, the island and the shin above its foot both in its frame, so the
+## leg's line runs down to the island, on a lens long enough that the island is
+## no speck;
 ## on a hold it is the climb's own eye again.
 func test_a_ride_takes_in_the_island() -> void:
 	var g := Game.new()
@@ -122,11 +123,12 @@ func test_a_ride_takes_in_the_island() -> void:
 	var him: Transform3D = sys.call(&"body_frame", colossi.view.defs[w], colossi.view.poses[w])
 	gt(cam.global_position.distance_to(him.origin), 1000.0, "mid-ride the eye is kilometres off the leg")
 	check(cam.is_position_in_frustum(land), "the island's middle is in the frame")
-	var knee: Vector3 = (colossi.view.poses[w].knees as Array)[c.leg]
-	check(cam.is_position_in_frustum(knee), "and so is the knee of the leg he is in, so its line runs down to the island")
+	var pose: Dictionary = colossi.view.poses[w]
+	var shin: Vector3 = ((pose.ankles as Array)[c.leg] as Vector3).lerp((pose.knees as Array)[c.leg], float(k.RIDE_LEG_UP))
+	check(cam.is_position_in_frustum(shin), "and so is the shin of the leg he is in, so its line runs down to the island")
 	var to_land := land - cam.global_position
 	var share := float(g.world.size) * 0.5 / (to_land.length() * tan(deg_to_rad(cam.fov) * 0.5))
-	gt(share, 0.1, "and the island is no speck in it (%.2f of the half frame)" % share)
+	gt(share, float(k.RIDE_FRAME_LEAST) * 0.9, "and the island is no speck in it (%.2f of the half frame)" % share)
 	lt(cam.fov, float(k.EYE_FOV), "on a lens longer than the climb's own")
 	c.state = WalkerClimb.CLIMB
 	c.busy = 0.0

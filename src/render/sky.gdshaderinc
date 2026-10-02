@@ -421,6 +421,9 @@ float sky_cloud(vec3 world_pos) {
 // SKY_CLOUD_FAR times as wide, drifting over sea and island alike at the same
 // speed, with the cover's own share of the land in shade.
 const float SKY_CLOUD_FAR = 350.0;
+// How much of the ground's own cloud shade a far cloud's shadow takes: the
+// air between keeps it from being a hole in the sea.
+const float SKY_CLOUD_FAR_SHADE = 0.6;
 float sky_cloud_far(vec3 world_pos) {
 	if (sky_clouds.w < 0.001) {
 		return 0.0;
@@ -429,7 +432,8 @@ float sky_cloud_far(vec3 world_pos) {
 	float n = sky_fbm(q * 0.12) * 0.7 + sky_noise(q * 0.33 + vec2(17.0, 3.0)) * 0.3;
 	float c = sky_clouds.z;
 	float t = 0.5 - 0.32 * (c - 0.5) - smoothstep(0.85, 1.0, c) * 0.3 + (1.0 - smoothstep(0.0, 0.1, c)) * 0.3;
-	return smoothstep(t - 0.02, t + 0.02, n);
+	// Soft-edged: a cloud's shadow from this high is kilometres of penumbra.
+	return smoothstep(t - 0.07, t + 0.07, n) * SKY_CLOUD_FAR_SHADE;
 }
 
 // The afterglow of a strike: the clouds it lit, catching and letting go as the

@@ -1307,6 +1307,8 @@ func _see_sky(e: Environment, sm: ProceduralSkyMaterial, hour: float, nightly: f
 	_dome_set(&"dome_top_color", sm.sky_top_color)
 	_dome_set(&"dome_horizon_color", sm.sky_horizon_color)
 	_dome_set(&"dome_ground_color", sm.ground_bottom_color)
+	var lens := _cam()
+	_dome_set(&"dome_ground_fall", lerpf(3.0, ALOFT_GROUND_FALL, aloft_share(lens.global_position.y) if lens != null else 0.0))
 	_dome_set(&"dome_sun_dir", dir)
 	# The moon stands where the night's light comes from (`eye_light`), so a
 	# shadow at eye level falls away from the moon that is drawn.
@@ -1427,6 +1429,12 @@ const ALOFT_BELOW_LEVEL := 0.6
 ## How much of the air's colour from up there is the sky's in the ray's
 ## direction (the eye level's HORIZON_AERIAL) rather than the air's own.
 const ALOFT_AERIAL := 0.0
+## AND THE HORIZON IS A LINE. Seen from high up, the dome's ground half goes from
+## the horizon's colour to the air below within a degree or two under the level
+## (`dome_ground_fall`), so the line is the sky's horizon, over air the colour the
+## sea fades into, and the sea's own edge, a square two hundred and fifty
+## kilometres out, never shows: its corner stood in the frame as a kink.
+const ALOFT_GROUND_FALL := 30.0
 ## The air under a high eye this frame, as `_look_out` worked it out.
 var _air_below := DAY_SKY_TOP * ALOFT_BELOW_LEVEL
 ## The farthest any eye sees: the climb's (43_climb), from a walker's hub

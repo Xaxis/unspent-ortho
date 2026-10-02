@@ -117,19 +117,21 @@ const vec3 SEA_FAR_BODY = vec3(0.078, 0.175, 0.25);
 // mirrors the sky like glass. Toward the sun that roughness is the sun's path,
 // a band of broken light; away from it, the sea's own grain. Both drift slowly
 // down the wind.
-const float SEA_LANE_ROUGH = 0.14;
-const float SEA_SLICK_ROUGH = 0.12;
-const float SEA_LANE_TONE = 0.16;
-const float SEA_SLICK_TONE = 0.10;
+const float SEA_LANE_ROUGH = 0.12;
+const float SEA_SLICK_ROUGH = 0.2;
+const float SEA_LANE_TONE = 0.12;
+const float SEA_SLICK_TONE = 0.04;
 float sea_lanes(vec2 wp, float t) {
 	vec2 wd = length(sky_wind.xy) > 1e-3 ? normalize(sky_wind.xy) : vec2(0.8, 0.6);
 	vec2 q = vec2(dot(wp, wd), dot(wp, vec2(-wd.y, wd.x))) - vec2(t * 6.0, 0.0);
 	return ink_vnoise(q * vec2(1.0 / 6000.0, 1.0 / 700.0)) * 0.65
 		+ ink_vnoise(q * vec2(1.0 / 2000.0, 1.0 / 260.0) + vec2(7.0, 3.0)) * 0.35;
 }
+// Slicks lie in long ribbons down the wind, never round blobs.
 float sea_slicks(vec2 wp, float t) {
 	vec2 wd = length(sky_wind.xy) > 1e-3 ? normalize(sky_wind.xy) : vec2(0.8, 0.6);
-	return smoothstep(0.62, 0.78, ink_vnoise((wp - wd * t * 3.0) / 3500.0 + vec2(31.0, 5.0)));
+	vec2 q = vec2(dot(wp, wd), dot(wp, vec2(-wd.y, wd.x))) - vec2(t * 3.0, 0.0);
+	return smoothstep(0.6, 0.85, ink_vnoise(q * vec2(1.0 / 9000.0, 1.0 / 1800.0) + vec2(31.0, 5.0)));
 }
 
 // The chop at `wp`: two octaves of the ink noise, each on axes turned off the

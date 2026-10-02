@@ -19,6 +19,10 @@
 uniform vec3 dome_top_color : source_color = vec3(0.29, 0.42, 0.66);
 uniform vec3 dome_horizon_color : source_color = vec3(0.62, 0.68, 0.74);
 uniform vec3 dome_ground_color : source_color = vec3(0.20, 0.20, 0.18);
+// How fast the ground half goes from the horizon's colour to its own, per unit
+// of the ray's downward slope: 3 at eye level, steep for an eye high up
+// (SkyLight.ALOFT_GROUND_FALL), whose horizon is a line over the air below.
+uniform float dome_ground_fall = 3.0;
 // The low sun's warmth along the horizon on its own side, and how much of it
 // there is (0 at noon and in the dead of night).
 uniform vec3 dome_glow_color : source_color = vec3(1.0, 0.55, 0.30);
@@ -158,7 +162,7 @@ vec3 dome_seen_col(vec3 d, bool cubemap) {
 	if (h >= 0.0) {
 		col = mix(dome_horizon_color, dome_top_color, pow(clamp(h, 0.0, 1.0), 0.55));
 	} else {
-		col = mix(dome_horizon_color, dome_ground_color, pow(clamp(-h * 3.0, 0.0, 1.0), 0.6));
+		col = mix(dome_horizon_color, dome_ground_color, pow(clamp(-h * dome_ground_fall, 0.0, 1.0), 0.6));
 	}
 	// The low sun's glow: warm on its own side of the sky, strongest along the
 	// horizon and gone by a third of the way up.
