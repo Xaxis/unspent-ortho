@@ -89,8 +89,8 @@ on the horizon from the first morning.
 5. **Orbit**: the dead ring, the Foundry, Oksana, the channel.
 
 - No stop is nearer home than the last. **Every stop names the next**: Maren the
-  camp; Vera the archive; Otto the relay below; Wren what it is part of; Sefa that
-  the cars go up empty. Leads, never markers.
+  camp; Vera the archive; Solis the road up; Otto the relay below; Wren what it is
+  part of; Sefa that the cars go up empty. Leads, never markers.
 - The story names the kind of place it needs, never a place. Load rests only on what
   every world has; any other landscape is colour, never load.
 

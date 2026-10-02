@@ -367,16 +367,22 @@ const WAY: Array[Dictionary] = [
 	# revelations with it, so his reply is never held back), the warden, until he
 	# says whose roads he is sold: nothing else leads to him, and Rook waits on it.
 	{"key": &"warden", "after": &"echo_kept", "felt": true, "until": &"teague_sold"},
+	# THE CLIMB (slice 3 step 7). Once Solis has said the road up (walker_told) and
+	# his word on Teague has settled, the half-broken walker, until the enclave in
+	# its crown is met: the far shore's last thread. Only where a crater of it lies
+	# on the Covenant's body (`where`): the goal never sends him to another leg's.
+	{"key": &"walker", "after": &"walker_told", "once": &"teague_sold", "where": &"crater:the_covenant", "until": &"enclave_met"},
 	# BACK AT THE CAMP (slice 3 step 8). Once what the archive showed him has been
 	# felt, the old soldier, until he has spoken to him since, whatever he said, so
 	# the confession is never forced, or Dace is gone; once what the warden said of
 	# Teague has been felt, Rook, until he has spoken to him since. Each leads him
 	# to the person, never to the line. Neither opens before the warden's word is
-	# felt (`once`): sent home across the water while the far shore's threads
+	# felt (`once`), nor while the climb, once open, is still before him
+	# (`behind`): sent home across the water while the far shore's threads
 	# settle, he would only come back. In those hours the mend is the goal, else
 	# the relay.
-	{"key": &"camp_back", "after": &"tradecraft", "felt": true, "once": &"teague_sold", "spoke": &"dace", "until": &"dace_left"},
-	{"key": &"rook_teague", "after": &"teague_sold", "felt": true, "spoke": &"rook", "until": &"rook_told"},
+	{"key": &"camp_back", "after": &"tradecraft", "felt": true, "once": &"teague_sold", "behind": &"walker", "spoke": &"dace", "until": &"dace_left"},
+	{"key": &"rook_teague", "after": &"teague_sold", "felt": true, "behind": &"walker", "spoke": &"rook", "until": &"rook_told"},
 	{"key": &"mend", "after": &"covenant_fed", "has": &"plate_mended"},
 	# The relay below, once Otto has said where the orders went (war_relay): slice
 	# 4's lead, so nothing in this slice ends it.
@@ -402,7 +408,7 @@ static func way_goal(game: Game) -> String:
 		return hob
 	var last := &""
 	for hop: Dictionary in WAY:
-		if not _hop_open(hop) or _hop_done(game, hop) or not StoryContent.LEAD.has(hop.key):
+		if not _hop_open(game, hop) or _hop_done(game, hop) or not StoryContent.LEAD.has(hop.key):
 			continue
 		if bool(hop.get("last", false)):
 			if last == &"":
@@ -436,14 +442,21 @@ static func keeper_goal(game: Game) -> String:
 
 ## Whether a WAY hop has opened: its `after` beat has landed, and been felt where
 ## the hop says `felt` (a person who waits on a revelation is not there to be sent
-## to until it has settled), and its `once` beat, where it names one, has landed
-## and been felt as well.
-static func _hop_open(hop: Dictionary) -> bool:
+## to until it has settled); its `once` beat, where it names one, has landed and
+## been felt as well; the hop it is `behind`, where it names one, has not opened
+## or is done; and its `where`, a place on this world (StoryMap.crater_pos), is.
+static func _hop_open(game: Game, hop: Dictionary) -> bool:
 	if not Story.landed(hop.after):
 		return false
 	if hop.has("once") and not StoryPacing.felt(hop.once):
 		return false
-	return not bool(hop.get("felt", false)) or StoryPacing.felt(hop.after)
+	if bool(hop.get("felt", false)) and not StoryPacing.felt(hop.after):
+		return false
+	if hop.has("behind"):
+		for other: Dictionary in WAY:
+			if other.key == hop.behind and _hop_open(game, other) and not _hop_done(game, other):
+				return false
+	return not hop.has("where") or StoryMap.crater_pos(game, hop.where).is_finite()
 
 
 ## Whether a WAY hop is behind him: a beat landed (`until`), a person met (`met`),
