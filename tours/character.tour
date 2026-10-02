@@ -20,8 +20,7 @@ key use
 await character 8
 wait 0.5
 shot 01-who-wakes
-# build: man, woman, heavy
-key move_right
+# build: man to heavy (UiCharacterScreen.PAGE_BUILDS)
 key move_right
 # skin: brown to tan
 key move_down
