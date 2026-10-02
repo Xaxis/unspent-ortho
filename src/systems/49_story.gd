@@ -207,6 +207,8 @@ func _process(delta: float) -> void:
 			_spent_frame = Engine.get_process_frames()
 		_read_talk_keys(use_pressed)
 		return
+	if Survival.ask_pending(game):
+		use_pressed = false
 	# A KEY ALREADY DOWN AS THE WORDS OPEN IS NOT A PRESS ON THEM. The talk's own
 	# keys are read for their edges, so they are followed while nothing is up
 	# too: the move up key that took him up a walker's last hold opened the
