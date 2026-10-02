@@ -49,7 +49,7 @@ static func platform(k: Kit, v: int, c: int) -> void:
 	var edge := P.PLATE[3]
 	var def := BiomeRegistry.by_index(c)
 	if def != null and def.decks_grounded:
-		_ground_deck(k, s, deck, edge)
+		_ground_deck(k, def, c, edge)
 		return
 	# The legs, planted past the waterline and stained where the sea reaches.
 	for i in 4:
@@ -111,20 +111,38 @@ static func platform(k: Kit, v: int, c: int) -> void:
 
 
 ## THE SAME DECK LAID ON THE GROUND, where a landscape keeps it as a floor
-## (`BiomeDef.decks_grounded`): plated in strips with its lip, at a step's height
-## so a body walks over it, and no rail, leg or ladder, which on dry ground would
-## stand where a walker passes through them.
+## (`BiomeDef.decks_grounded`): a step's height so a body walks over it, its lip
+## all round, and no rail, leg or ladder, which on dry ground would stand where a
+## walker passes through them.
+##
+## **ITS TOP IS THE LANDSCAPE'S OWN FLOOR, RAISED: MADE, AND MARKED AS THAT
+## GROUND.** Laid as found plate it wore `found_panels`, a ruled square grid with
+## a tint per panel and a rubbed gloss, and a city of these decks read from above
+## as a pixel grid with white squares on it. Marked as the plain ground, the lit
+## shader draws the floor's own pattern on it from the world position, so its
+## seams run on through the deck and only the lip and a shade say it stands
+## proud. The top is the chamfer's inset octagon, a hair above it, so the two
+## never fight for one depth.
 const GROUND_DECK_Y := 0.22
 
 
-static func _ground_deck(k: Kit, s: int, deck: Color, edge: Color) -> void:
-	for i in 5:
-		var z0 := -DECK + i * (DECK * 2.0 / 5.0)
-		var z1 := z0 + DECK * 2.0 / 5.0 - 0.04
-		var tone := deck if (i + absi(s)) % 2 == 0 else P.PLATE[3]
-		k.found.quad(Vector3(-DECK, GROUND_DECK_Y, z0), Vector3(-DECK, GROUND_DECK_Y, z1),
-			Vector3(DECK, GROUND_DECK_Y, z1), Vector3(DECK, GROUND_DECK_Y, z0), tone)
+static func _ground_deck(k: Kit, def: BiomeDef, c: int, edge: Color) -> void:
 	k.chamfer(0.0, 0.0, 0.0, DECK * 2.0, GROUND_DECK_Y, DECK * 2.0, 0.06, P.PLATE[1], edge)
+	var g := def.plain_ground
+	var top := GroundColors.marked(GroundColors.down(GroundColors.wash(g, c), 0.12), GroundColors.mark(g, c))
+	# The chamfer's own top outline (Kit.chamfer: cut 0.06, inset 0.06).
+	var cut := 0.06
+	var inset := 0.06
+	var hw := DECK * (1.0 - inset / DECK)
+	var cw := cut * (1.0 - inset / DECK)
+	var pts: Array[Vector2] = [Vector2(hw - cw, -hw), Vector2(hw, -hw + cw), Vector2(hw, hw - cw), Vector2(hw - cw, hw),
+		Vector2(-hw + cw, hw), Vector2(-hw, hw - cw), Vector2(-hw, -hw + cw), Vector2(-hw + cw, -hw)]
+	var y := GROUND_DECK_Y + 0.004
+	var centre := Vector3(0.0, y, 0.0)
+	for i in 8:
+		var a := pts[i]
+		var b := pts[(i + 1) % 8]
+		k.made.tri(centre, Vector3(b.x, y, b.y), Vector3(a.x, y, a.y), top)
 
 
 ## The tank, drained and open. It is the whole reason the place is in the game, so
