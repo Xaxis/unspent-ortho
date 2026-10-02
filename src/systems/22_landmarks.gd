@@ -144,9 +144,13 @@ func _process(delta: float) -> void:
 		_look = LOOK_EVERY
 		_draw()
 		_watch()
-	if reachable != null and _settle <= 0.0 and _use_pressed() and _cache_wins():
+	# Only a cache not yet opened takes the press, and the instant it is open it
+	# is out of reach: `reachable` is looked at again only every LOOK_EVERY, and
+	# until then the next press went to the open cache, spent and doing nothing.
+	if reachable != null and not state.is_opened(reachable.id) and _settle <= 0.0 and _use_pressed() and _cache_wins():
 		_spent_frame = Engine.get_process_frames()
 		_open(reachable)
+		reachable = null
 
 
 # --- drawing -------------------------------------------------------------------

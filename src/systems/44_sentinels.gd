@@ -704,7 +704,7 @@ func tour_place(what: String) -> Vector2:
 	var here: Vector2 = game.player.pos
 	var lair := Vector2.INF
 	if what == "next_keeper":
-		var next := Sentinels.next_keeper(_states, game.world.spawn)
+		var next := Sentinels.next_keeper(_states, game.world.spawn, game.world, Guide.bodies_reached(game))
 		lair = next.lair if next != null else Vector2.INF
 	else:
 		for s in _states:
