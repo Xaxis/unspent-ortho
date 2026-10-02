@@ -22,7 +22,7 @@ Contract for proving a change to the built game: where each feature lives and th
 |---|---|---|
 | import | `godot --headless --path . --import --quit` | every script parses (0 `SCRIPT ERROR`), class cache fresh |
 | tests | `tools/test.sh FILTER` | the named test files |
-| preflight | `tools/preflight.sh` | the whole-tree rules, ~90 s |
+| preflight | `tools/preflight.sh` | the whole-tree rules, ~90 s, and every shader compiled by the real renderer (`tools/shaders.sh`) |
 | gate | `tools/check.sh` | all tests in shards + 4 real frames; ~500 MB free, CI runs it |
 
 Known pre-existing failures: `test_world_gen_works:test_budgets` (works stage 0.23-0.25 of
