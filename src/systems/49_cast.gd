@@ -387,7 +387,7 @@ func _taken(spot: Vector2) -> bool:
 func _near_words(p: Vector2) -> bool:
 	for q: WorldProp in game.query.props_near(p, StoryProps.REACH + 2.0):
 		var edge := q.pos.distance_to(p) - q.solid
-		if StoryProps.readable(q.kind) and edge <= StoryProps.REACH:
+		if StoryProps.readable(q.kind) and not game.world.depleted.has(q.id) and edge <= StoryProps.REACH:
 			return true
 		if Takes.workable(q.kind) and not game.world.depleted.has(q.id) and edge <= Survival.REACH + 0.6:
 			return true
