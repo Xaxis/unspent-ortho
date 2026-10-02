@@ -21,7 +21,6 @@ coast plan.machine
 coast player.only_in
 coast player.signature
 drowned_city player.only_in
-drowned_city player.signature
 frost_sea land.landmark
 frost_sea land.own_props
 frost_sea land.site

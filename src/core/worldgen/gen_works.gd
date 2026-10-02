@@ -438,7 +438,13 @@ static func station_holds(L: Lay, p: Vector2) -> bool:
 	var def := Sentinels.for_land(L.id)
 	if def == null:
 		return true
-	var den := Sentinels.den_at(L.w, p, def)
+	# Nor within its reach of where the raft comes ashore: the landing is safe
+	# ground (Sentinels._lair_worked).
+	var landings: Array[Vector2] = []
+	for row: Dictionary in L.w.continents:
+		if bool(row.get("landfall", false)) and row.has("from"):
+			landings.append(row["from"] as Vector2)
+	var den := Sentinels.den_at(L.w, p, def, landings)
 	return den.is_finite() and Sentinels.ways_closed(L.w, den, def, true).is_empty()
 
 
