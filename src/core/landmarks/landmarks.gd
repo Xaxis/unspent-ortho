@@ -522,7 +522,8 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 		built.append(p)
 		var r := world.region_at(floori(p.x), floori(p.y))
 		works_in[r] = int(works_in.get(r, 0)) + 1
-	var solid := _solid_tiles(world)
+	var read := {}
+	var solid := _solid_tiles(world, read)
 	# Where the shortest water from home comes ashore on the LANDFALL body
 	# (GenBodies marks `landfall` and `from` on its row): a &"landfall" kind
 	# stands as near it as it can (`_wants`).
@@ -564,7 +565,7 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 		left[id] = kinds
 		by_region[id] = []
 		var clear := works_clear(int(region.get("tiles", 0)), int(works_in.get(id, 0)))
-		var pool := _candidates(world, region, greens, built, solid, wanted, clear, COARSE, ashore_on)
+		var pool := _candidates(world, region, greens, built, solid, wanted, clear, COARSE, ashore_on, read)
 		# A THIN POOL IS SWEPT AGAIN BEFORE ANYBODY CHOOSES, never after everybody
 		# has. Eleven tiles between candidates is most of a small region's whole
 		# width, and on a big region that villages and works have eaten it can come
@@ -580,7 +581,7 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 		# the coarse sweep steps over a city's narrow quays, and seed 1's clock went
 		# to a shore 190 tiles off the landing for want of a candidate by it.
 		if pool.size() < FINE_BELOW or (wanted.has(&"landfall") and not _by_ashore(world, pool, ashore_on)):
-			pool = _candidates(world, region, greens, built, solid, wanted, clear, STRIDE, ashore_on)
+			pool = _candidates(world, region, greens, built, solid, wanted, clear, STRIDE, ashore_on, read)
 		pools[id] = pool
 		var at: Vector2 = (pool[0] as Dictionary).p if not pool.is_empty() else region.get("centre", Vector2.ZERO)
 		body_of[id] = world.continent_at(floori(at.x), floori(at.y))
@@ -673,7 +674,8 @@ static func _by_ashore(world: WorldData, pool: Array, ashore_on: Dictionary) -> 
 
 
 ## `ashore_on`: body id -> where the raft from home comes ashore on it (`sites`).
-static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vector2], built: Array[Vector2], solid: Dictionary, wanted: Array[StringName], off_works: float, stride: int, ashore_on: Dictionary = {}) -> Array:
+## `read`: the tiles a thing with words stands on (`_solid_tiles`).
+static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vector2], built: Array[Vector2], solid: Dictionary, wanted: Array[StringName], off_works: float, stride: int, ashore_on: Dictionary = {}, read: Dictionary = {}) -> Array:
 	var out: Array = []
 	var id := int(region.get("id", -1))
 	var bounds: Rect2 = region.get("bounds", Rect2())
@@ -698,7 +700,7 @@ static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vect
 			var front := p + _facing(heart, p) * CACHE_OUT
 			var fx := floori(front.x)
 			var fy := floori(front.y)
-			if not _room_at(world, fx, fy) or solid.has(fy * world.size + fx):
+			if not _room_at(world, fx, fy) or solid.has(fy * world.size + fx) or _words_near(world, read, fx, fy):
 				x += stride
 				continue
 			# Ties break on the tile's own hash, never on scan order, so a
@@ -762,16 +764,43 @@ static func _pick_one(pool: Array, placed: Array[Vector2], kinds: Array[Landmark
 ## tens of thousands of them, and marking a three-by-three for each was half a
 ## million dictionary writes on the loading page for an answer that is "is there
 ## a trunk where the locker goes".
-static func _solid_tiles(world: WorldData) -> Dictionary:
+static func _solid_tiles(world: WorldData, read: Dictionary = {}) -> Dictionary:
 	var out := {}
 	# Read off the columns: a WorldProp here would be one made for every prop.
 	world.sync_table()
 	var t := world.table
 	for i in t.size():
+		if WORDS.has(int(t.kind[i])):
+			read[floori(t.pos[i].y) * world.size + floori(t.pos[i].x)] = true
 		if t.solid[i] <= 0.0:
 			continue
 		out[floori(t.pos[i].y) * world.size + floori(t.pos[i].x)] = true
 	return out
+
+
+## The kinds with words on them and how far a press reads them: StoryProps'
+## READABLE and REACH, here because world generation cannot load the story's
+## code (it reaches the game); tests/landmarks/test_world.gd holds them equal.
+const WORDS: Array[int] = [PropKind.SIGN, PropKind.ARCHIVE, PropKind.DOC_BOX, PropKind.RELAY,
+	PropKind.SURVEY, PropKind.CONSOLE, PropKind.MEMORIAL, PropKind.STANDING_STONE, PropKind.GRAVE]
+const WORDS_REACH := 3.0
+
+
+## A thing with words on it within WORDS_REACH of (x, y): stood at a cache
+## there, the press would be the words' and the cache would wait (22_landmarks
+## `_cache_wins`). One press, one answer, so a cache is never put there: seed 1's
+## lighthouse cache stood beside a memorial, and E read the boots and opened
+## nothing (landmarks.tour).
+static func _words_near(world: WorldData, read: Dictionary, x: int, y: int) -> bool:
+	if read.is_empty():
+		return false
+	var r := ceili(WORDS_REACH + 1.5)
+	for dy in range(-r, r + 1):
+		for dx in range(-r, r + 1):
+			# Tile to tile, with a tile's width either side of the reach.
+			if read.has((y + dy) * world.size + x + dx) and Vector2(dx, dy).length() <= WORDS_REACH + 1.5:
+				return true
+	return false
 
 
 ## Which way a landmark at `p` is turned: toward its region's heart, so its face
