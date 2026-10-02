@@ -210,6 +210,7 @@ const float STRIP_REST = 0.3;
 const float LIGHT_POINT_PX = 2.0;
 const float LIGHT_WHOLE_PX = 6.0;
 const float LIGHT_KEEP = 1.0;
+const float LIGHT_HALO = 0.25;
 const float PULSE_TRAIL = 0.22;
 
 varying float thin;
@@ -464,16 +465,28 @@ void fragment() {
 	// seen from up the leg or swung out beside it, is a band many pixels deep, and
 	// at that strength every channel of it went to the top: a pulse on the shin's
 	// ring was a white crescent with no hue. So a light past LIGHT_POINT_PX on the
-	// glass has its brightest channel held toward LIGHT_KEEP of full, as every
-	// other glow in the game is, and wholly by LIGHT_WHOLE_PX; a point keeps its
-	// whole strength. A cap by distance missed it: seen from the ride swung out
-	// beside the leg, the crescent was past that reach and still hundreds of
-	// pixels round.
+	// glass has its brightest channel held toward LIGHT_KEEP of full, and wholly
+	// by LIGHT_WHOLE_PX; a point keeps its whole strength. A cap by distance
+	// missed it: seen from the ride swung out beside the leg, the crescent was
+	// past that reach and still hundreds of pixels round.
+	// AND WHAT IS OVER THE CAP IS STILL LIGHT, IN ITS OWN HUE. Capped and nothing
+	// more, a pulse on a near ring was a flat lavender band, painted and not lit.
+	// So the glow past the cap goes into the colour's own chroma alone (the light
+	// less its grey, `hue`), at LIGHT_HALO of its strength: that is all the
+	// bloom gets to spread, so the band burns at its colour's full value inside
+	// a halo of the same hue, and no channel that the hue does not carry is ever
+	// pushed toward white.
+	vec3 shine = vec3(0.0);
 	if (lamp) {
 		float whole = smoothstep(LIGHT_POINT_PX, LIGHT_WHOLE_PX, light_px);
-		glow = mix(glow, min(glow, LIGHT_KEEP / max(max(c.r, c.g), max(c.b, 1e-3))), whole);
+		float top = max(max(c.r, c.g), max(c.b, 1e-3));
+		float low = min(min(c.r, c.g), c.b);
+		float cap = LIGHT_KEEP / top;
+		vec3 hue = (c - vec3(low)) / max(top - low, 1e-3);
+		vec3 seen = matter_light(c * min(glow, cap)) + matter_light(hue) * max(glow - cap, 0.0) * LIGHT_HALO;
+		shine = mix(matter_light(c * glow * sky_power()), seen * sky_power(), whole);
 	}
-	EMISSION = lamp ? matter_light(c * glow * sky_power()) : vec3(0.0);
+	EMISSION = shine;
 	// DAYLIGHT ON A THING THIS SIZE (walker_plate.gdshaderinc).
 	if (!lamp) {
 		vec3 n_day = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
