@@ -1184,6 +1184,7 @@ func _move_mob(m: MobState, dt: float) -> void:
 					# its box dead, so the body it missed ends up at its flank or back.
 					var over: float = m.row.get("overrun", 0.0) if m.landed_at != m.blow_at else 0.0
 					v = Vector2.from_angle(m.facing) * m.quick * over if over > 0.0 else v * 0.3
+	m.commanded = v.length()
 	v += m.throw_velocity(now)
 	# Hostiles keep a tile apart from each other; never from the player.
 	for o in mobs:
