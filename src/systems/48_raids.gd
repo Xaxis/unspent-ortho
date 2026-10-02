@@ -2019,6 +2019,7 @@ func _burn(house: WorldProp) -> void:
 		game.view.refresh_props(house)
 	@warning_ignore("return_value_discarded")
 	Survival.add_prop(game, PropKind.HOUSE_BURNT, house.pos, house.rot, house.scale, form)
+	Events.fell.emit()
 
 
 # --- the villages that have seen him (`SnatchNight`) ---------------------------

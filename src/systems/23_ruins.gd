@@ -21,11 +21,16 @@ func setup(g: Game) -> void:
 	super.setup(g)
 	_set_walls(true)
 	Events.took.connect(_on_took)
+	# A walker's foot crushes the ruins in its craters once every system is set
+	# up (19_colossi.started), and a ruin crushed kept walls nobody could see.
+	Events.fell.connect(_on_fell)
 
 
 func _exit_tree() -> void:
 	if Events.took.is_connected(_on_took):
 		Events.took.disconnect(_on_took)
+	if Events.fell.is_connected(_on_fell):
+		Events.fell.disconnect(_on_fell)
 
 
 func _set_walls(force: bool) -> void:
@@ -52,6 +57,10 @@ func _count_fallen() -> int:
 
 
 func _on_took(_item: StringName, _count: int) -> void:
+	_on_fell()
+
+
+func _on_fell() -> void:
 	if game == null or game.world == null or game.world.get_instance_id() != _ruins_of:
 		return
 	# Only a ruin brought down moves a wall.
