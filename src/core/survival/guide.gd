@@ -423,6 +423,23 @@ static func way_goal(game: Game) -> String:
 	return String(StoryContent.LEAD[last])
 
 
+## THE LEGS HE CAN REACH (StoryJourney): the body ids of the journey's legs he
+## can get to, so a lead never points where he cannot go. Home's before the raft;
+## the far shore's (leg 1) from the crossing on: put in at the narrows, landed, or
+## having met the archive's man there. A later leg joins when the journey reaches
+## it. An islet off the journey (no village, no stop) is never one.
+static func bodies_reached(game: Game) -> Array[int]:
+	var legs := 1
+	if Story.heard(StoryCrossing.PUT_IN) or Story.heard(StoryCrossing.CROSSED) or Story.met(&"otto"):
+		legs = 2
+	var out: Array[int] = []
+	for leg in legs:
+		var body := StoryJourney.body_for(game.world, leg)
+		if body != 0 and not out.has(body):
+			out.append(body)
+	return out
+
+
 ## THE NEXT KEEPER (ROADMAP slice 2, step 6): once the Reaper is down and the way
 ## has nothing to ask, the nearest keeper of a design not yet taken
 ## (Sentinels.next_keeper), in the words of whoever named it (StoryContent.LEAD,
@@ -432,7 +449,7 @@ static func way_goal(game: Game) -> String:
 static func keeper_goal(game: Game) -> String:
 	if not Story.landed(REAPER_DOWN):
 		return ""
-	var next := Sentinels.next_keeper(Sentinels.live(game), game.world.spawn)
+	var next := Sentinels.next_keeper(Sentinels.live(game), game.world.spawn, game.world, bodies_reached(game))
 	if next == null or not StoryContent.LEAD.has(next.design) \
 			or not Story.landed(StringName(str(StoryContent.KEEPER_NAMED_BY.get(next.land, &"")))):
 		return ""

@@ -62,10 +62,12 @@ func test_otto_at_the_archive_answers_the_key_with_each_of_his_three() -> void:
 	Story.forget()
 
 
-## THE PRESS GOES TO WHAT HE FACES. On the full-size island Otto stands within
+## THE PRESS GOES TO WHAT HE FACES. On the full-size island Otto stood within
 ## reach of the archive's landmark cache, and a cache in reach took the key though
 ## he faced Otto: the locker opened and the archive's man said nothing
-## (tours/archive.tour line 24). A person in front is the press's first.
+## (tours/archive.tour line 24). A person in front is the press's first. The cache
+## is staged at his side by name (the archive's own landmark, moved), since a
+## change to worldgen may leave none in reach there.
 func test_facing_otto_beside_a_cache_the_press_is_his() -> void:
 	Story.forget()
 	Sx.use_root("archive-cache")
@@ -80,6 +82,11 @@ func test_facing_otto_beside_a_cache_the_press_is_his() -> void:
 	Story.hear(StoryCrossing.CROSSED)
 	var otto := _stand_at_cast(g, cast, &"otto")
 	check(not otto.is_empty(), "Otto is cast at the archive")
+	var site := _nearest_site(marks, _placed(g, &"the_archive"))
+	check(site != null, "the archive has a landmark")
+	if site != null:
+		var beside := g.player.pos + Vector2.from_angle(g.player.facing + PI / 2.0) * 1.5
+		site.pos = beside - (Landmarks.cache_of(site) - site.pos)
 	await frames(40)
 	var cache: LandmarkSite = marks.get("reachable")
 	check(cache != null, "and a cache is in reach where he stands")
@@ -167,14 +174,14 @@ func test_the_relay_waits_behind_a_named_keeper_still_standing() -> void:
 		Story.meet(who)
 	_hop(g, &"relay", "nothing else open: the relay below")
 	var states := Sentinels.live(g)
-	var reaper := Sentinels.next_keeper(states, g.world.spawn)
+	var reaper := Sentinels.next_keeper(states, g.world.spawn, g.world, Guide.bodies_reached(g))
 	eq(reaper.design if reaper != null else &"", &"tide_reaper", "the Reaper is the first keeper")
 	if reaper == null:
 		Sx.end(g)
 		Story.forget()
 		return
 	reaper.fallen = true
-	var anvil := Sentinels.next_keeper(states, g.world.spawn)
+	var anvil := Sentinels.next_keeper(states, g.world.spawn, g.world, Guide.bodies_reached(g))
 	eq(anvil.design if anvil != null else &"", &"anvil", "the Candlestick the second")
 	@warning_ignore("return_value_discarded")
 	Story.beat(&"anvil_named")
@@ -210,6 +217,15 @@ func _told(g: Game, beat: StringName, place: StringName) -> void:
 	var row: Dictionary = StoryContent.TOLD.get(beat, {})
 	eq(row.get("place", &""), place, "%s tells him of %s" % [beat, place])
 	check(_marked(g, String(row.get("word", "<none>")), _placed(g, place)), "%s: the survey marks %s (%s)" % [beat, place, UiMapScreen.told(g)])
+
+
+## The landmark of `marks` (22_landmarks) nearest `at`, or null.
+func _nearest_site(marks: Node, at: Vector2) -> LandmarkSite:
+	var best: LandmarkSite = null
+	for s: LandmarkSite in marks.get("sites"):
+		if best == null or s.pos.distance_to(at) < best.pos.distance_to(at):
+			best = s
+	return best
 
 
 func _placed(g: Game, place: StringName) -> Vector2:
