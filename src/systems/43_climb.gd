@@ -455,20 +455,24 @@ func _lip_over(cable: Vector2, pad: Vector3) -> Vector2:
 
 
 ## Whether a body walks straight from `a` to `b` on its own feet: every tile on
-## the way dry and a body's step from the one before.
+## the way dry and a body's one level (WorldQuery.passable) from the one before.
+## Read from a window round the line, never the whole world.
 func _walk_clear(a: Vector2, b: Vector2) -> bool:
-	var w := game.world
-	var q := game.query
+	var win := TileWindow.of(game.world, floori(minf(a.x, b.x)) - 1, floori(minf(a.y, b.y)) - 1,
+		floori(maxf(a.x, b.x)) + 2, floori(maxf(a.y, b.y)) + 2)
 	var n := ceili(a.distance_to(b) / 0.25)
-	var prev := Vector2i(floori(a.x), floori(a.y))
+	var prev := -1
 	for i in n + 1:
 		var p := a.lerp(b, float(i) / float(maxi(n, 1)))
 		var t := Vector2i(floori(p.x), floori(p.y))
-		if not w.in_bounds(t.x, t.y) or Ground.is_water(w.ground[t.y * w.size + t.x]):
+		if not game.world.in_bounds(t.x, t.y) or not win.has(t.x, t.y):
 			return false
-		if t != prev and not q.passable(prev.x, prev.y, t.x, t.y):
+		var at := win.at(t.x, t.y)
+		if Ground.is_water(win.ground[at]):
 			return false
-		prev = t
+		if prev >= 0 and absi(win.level[at] - win.level[prev]) > 1:
+			return false
+		prev = at
 	return true
 
 
