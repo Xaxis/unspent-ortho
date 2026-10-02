@@ -1,12 +1,14 @@
 extends TestCase
 ## THE TREAD-FOLK (docs/STORY.md, the walkers; ROADMAP slice 3 step 7). Tull farms
-## the lame walker's craters from the ground between them, at the crater the
+## the lame walker's craters from the ground between them, at the tread the
 ## walker lead pins: the slot `the_tread` and the survey's pin are one rule
-## (StoryCasting.crater_near). Colour: his words never land walker_told, the line he
+## (StoryCasting.crater_near), and he stands on the lip of its middle toe's crater,
+## where the line comes down (49_cast). Colour: his words never land walker_told, the line he
 ## has seen comes down only once the warden has said the road up, and his bowl of
 ## soup is a deal of its own, never the crew's armour (Guide.armour_goal).
 
 const Sx := preload("res://tests/save/save_fixture.gd")
+const Treads := preload("res://src/core/colossus/colossus_treads.gd")
 
 
 ## His bowl: salt or fish for a soup. The goal line's armour is Rook's deal's
@@ -54,30 +56,65 @@ func test_he_speaks_of_the_line_only_after_the_warden() -> void:
 	Story.forget()
 
 
-## Where he stands is where the survey pins the crater: on seed 1 the crater on
-## the Covenant's body nearest it, and Tull is cast there. Seed 42 has no crater
-## on that body, so nobody is, and the walker lead pins nothing either.
-func test_he_stands_at_the_crater_the_lead_pins() -> void:
-	for seed_value: int in [1, 42]:
+## The slot is where the survey pins the crater (the ankle, on the Covenant's
+## body); Tull stands on the arch-side lip of the middle toe's crater, where the
+## cable comes down. Staged with the foot down: on the far side of the arch from
+## the cable, and clear of the walk from the climb's lip down to it. Seed 42 has
+## no crater on that body, so nobody is there, and the lead pins nothing either.
+func test_he_stands_on_the_middle_toe_s_lip_clear_of_the_climb() -> void:
+	for seed_value: int in [1, 7, 42]:
 		Story.forget()
 		Sx.use_root("tull-%d" % seed_value)
 		var g := Sx.game(tree, ["--seed=%d" % seed_value, "--hour=11", "--weather=clear:0"])
 		await frames(3)
 		var placed: Dictionary = Sx.system(g, "49_cast").get("placed")
 		var pin := StoryMap.crater_pos(g, &"crater:the_covenant")
-		if seed_value == 1:
-			check(pin.is_finite(), "seed 1: the lead pins a crater")
-			check(placed.has(&"the_tread"), "seed 1: the tread is cast")
-			if placed.has(&"the_tread"):
-				eq(placed[&"the_tread"].pos, pin, "seed 1: where Tull's slot is, the survey's pin is")
-			var tull := _row(g, &"tull")
-			check(not tull.is_empty(), "seed 1: Tull stands there")
-			if not tull.is_empty():
-				check((tull.pos as Vector2).distance_to(pin) < 12.0, "seed 1: on the arch, by the ankle (%.1f tiles)" % (tull.pos as Vector2).distance_to(pin))
-		else:
+		var tull := _row(g, &"tull")
+		if seed_value == 42:
 			check(not pin.is_finite(), "seed 42: no crater on the Covenant's body to pin")
 			check(not placed.has(&"the_tread"), "seed 42: and no tread cast")
-			check(_row(g, &"tull").is_empty(), "seed 42: and no Tull")
+			check(tull.is_empty(), "seed 42: and no Tull")
+			Sx.end(g)
+			continue
+		check(placed.has(&"the_tread") and placed[&"the_tread"].pos == pin, "seed %d: the slot is where the survey pins the crater" % seed_value)
+		check(not tull.is_empty(), "seed %d: Tull is cast" % seed_value)
+		var tread := {}
+		var n := 0
+		for m: Dictionary in g.world.landmarks:
+			if StringName(m.get("kind", &"")) == &"tread":
+				n += 1
+				if (m.pos as Vector2) == pin:
+					tread = m
+					break
+		if tull.is_empty() or tread.is_empty():
+			Sx.end(g)
+			continue
+		var pad: Vector3 = (tread.pads as Array)[1]
+		var centre := Vector2(pad.x, pad.y)
+		var at: Vector2 = tull.pos
+		var arch := (pin - centre).normalized()
+		var off := absf(arch.angle_to(at - centre))
+		lt(absf(at.distance_to(centre) - Treads.rim_r(pad)), 6.0, "seed %d: on the middle toe's lip (%.1f m from the pad, rim %.0f)" % [seed_value, at.distance_to(centre), Treads.rim_r(pad)])
+		lt(off, 0.4, "seed %d: on its arch side (%.2f rad off it)" % [seed_value, off])
+		# The foot down at its own crater, the climb's cable and lip as a player meets them.
+		g.clock.minutes = Sx.system(g, "19_colossi").call(&"tour_hour", "tread%d+5" % n)
+		g.player.pos = at
+		g.player.hero.pos = at
+		var climb := Sx.system(g, "43_climb")
+		var cable := Vector2.INF
+		# The walk is posed for him only once he is by it, a frame or more on;
+		# until then the cable is read off a pose from before the clock moved.
+		for i in 30:
+			await frames(1)
+			cable = climb.call(&"tour_place", "climb:cable")
+			if cable.distance_to(centre) < Treads.rim_r(pad):
+				break
+		var lip: Vector2 = climb.call(&"tour_place", "climb:lip")
+		check(cable.distance_to(centre) < Treads.rim_r(pad) and lip.is_finite(), "seed %d: the foot is down and its cable hangs into this crater" % seed_value)
+		if cable.distance_to(centre) < Treads.rim_r(pad) and lip.is_finite():
+			check(signf(arch.cross(at - centre)) != signf(arch.cross(cable - centre)), "seed %d: on the far side of the arch from the cable (%.2f rad off it, the cable %.2f)" % [seed_value, arch.angle_to(at - centre), arch.angle_to(cable - centre)])
+			var walk := Geometry2D.get_closest_point_to_segment(at, lip, cable).distance_to(at)
+			gt(walk, 8.0, "seed %d: clear of the walk from the lip down to the cable (%.1f m)" % [seed_value, walk])
 		Sx.end(g)
 	Story.forget()
 

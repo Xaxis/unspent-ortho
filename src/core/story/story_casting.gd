@@ -53,16 +53,21 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 				out[s.id] = (twin[s.mirror] as Dictionary).duplicate()
 			continue
 		# A crater is not dealt: it is the one the walker lead pins, nearest the
-		# slot it names on that slot's body (crater_near), or none.
+		# slot it names on that slot's body (crater_near), or none. Its row keeps
+		# the tread's pads and yaw, so whoever stands there is stood by its
+		# craters without walking the world's landmarks again (49_cast).
 		if s.needs == StorySlot.TREAD:
 			if s.realm == world.realm and out.has(s.near):
+				var treads := _candidates(world, s)
 				var craters: Array[Vector2] = []
-				for c: Dictionary in _candidates(world, s):
+				for c: Dictionary in treads:
 					craters.append(c.pos as Vector2)
 				var at := crater_near(world, craters, (out[s.near] as Dictionary).pos as Vector2)
 				if at.is_finite():
-					out[s.id] = {"pos": at, "region": -1, "land": _land_at(world, at), "site": StorySlot.TREAD,
-						"body": world.continent_at(floori(at.x), floori(at.y))}
+					var row: Dictionary = (treads[craters.find(at)] as Dictionary).duplicate()
+					row["land"] = _land_at(world, at)
+					row["body"] = world.continent_at(floori(at.x), floori(at.y))
+					out[s.id] = row
 					taken.append(at)
 			continue
 		var place := {}
@@ -166,7 +171,7 @@ static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
 		StorySlot.TREAD:
 			for m: Dictionary in world.landmarks:
 				if StringName(m.get("kind", &"")) == &"tread":
-					out.append({"pos": m.pos, "region": -1, "land": &"", "site": StorySlot.TREAD})
+					out.append({"pos": m.pos, "region": -1, "land": &"", "site": StorySlot.TREAD, "pads": m.pads, "yaw": m.yaw})
 		StorySlot.BLACK_SITE:
 			var at := StoryWorld.black_site(world)
 			if at != Vector2.INF:
