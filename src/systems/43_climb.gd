@@ -86,18 +86,16 @@ const RIDE_TURN := 0.3
 ## so a long lens on the web's depth (EYE_NEAR) does not lose the shore in the sea.
 const RIDE_FRAME := 0.35
 const RIDE_NEAR := 400.0
-## AND THE LEG HE IS IN STAYS IN THE FRAME, running down to its foot on the
+## AND THE LEG HE IS IN COMES INTO THE FRAME, running down to its foot on the
 ## island: aimed straight at the island from beside the thigh the lens held only
-## the island, a map seen from nowhere. The eye aims RIDE_LEG of the way from
-## the island toward a point RIDE_LEG_UP of the way up the shin from the ankle,
-## on a lens as long as holds both; never so wide that the island's half-width
-## is under RIDE_FRAME_LEAST of the frame's, where the leg runs out of the frame
-## toward him instead. Aimed at the knee, thirty kilometres up, the lens went
-## wide enough that the island was a speck.
-const RIDE_LEG := 0.35
+## the island, a map seen from nowhere. On the island's own lens the eye turns
+## from the island toward a point RIDE_LEG_UP of the way up the shin until that
+## point is RIDE_LEG_EDGE of the way out to the frame's edge, never so far that
+## the island leaves the frame; past that the leg runs from its foot out of the
+## frame toward him. Widened to hold the knee instead, the lens made the island a
+## speck.
 const RIDE_LEG_UP := 0.3
-const RIDE_MARGIN := 1.15
-const RIDE_FRAME_LEAST := 0.15
+const RIDE_LEG_EDGE := 0.85
 ## The longest lens it takes (a camera refuses one under a degree).
 const RIDE_FOV_LEAST := 2.0
 ## Where the body hangs from a hold: his feet this far down the pitch from the
@@ -542,14 +540,14 @@ func _ride(def: RefCounted, pose: Dictionary) -> void:
 			side *= signf(side.dot(out)) if absf(side.dot(out)) > 1e-3 else 1.0
 			at += side * maxf(at.y, 0.0) * RIDE_OUT * wide
 		var to_land := (land - at).normalized()
+		var half := float(game.world.size) * 0.5
+		var hold := atan(half / (RIDE_FRAME * at.distance_to(land)))
 		var shin := (pose.ankles[k] as Vector3).lerp(pose.knees[k] as Vector3, RIDE_LEG_UP)
 		var to_leg := (shin - at).normalized()
-		var aim := to_land.slerp(to_leg, RIDE_LEG)
+		var gap := to_land.angle_to(to_leg)
+		var turn := clampf(gap - RIDE_LEG_EDGE * hold, 0.0, (1.0 - RIDE_FRAME) * hold)
+		var aim := to_land.slerp(to_leg, turn / gap) if gap > 1e-4 else to_land
 		look = (him - at).normalized().slerp(aim, wide)
-		var half := float(game.world.size) * 0.5
-		var island := atan(half / (RIDE_FRAME * at.distance_to(land)))
-		var widest := aim.angle_to(to_land) + atan(half / (RIDE_FRAME_LEAST * at.distance_to(land)))
-		var hold := minf(maxf(aim.angle_to(to_land) + island, aim.angle_to(to_leg)) * RIDE_MARGIN, widest)
 		fov = lerpf(EYE_FOV, rad_to_deg(2.0 * hold), wide)
 	_cam.fov = clampf(fov, RIDE_FOV_LEAST, EYE_FOV)
 	_cam.near = maxf(EYE_NEAR, RIDE_NEAR * wide * wide)
