@@ -11,6 +11,9 @@ const SEEDS: Array[int] = [1, 7, 42, 90210]
 
 
 func test_the_people_s_things_laid_backwards_are_the_same_things() -> void:
+	# Each kind is laid somewhere in these worlds, not on every one: a world of
+	# 512 has a beach or two to haul a wreck up on, and seed 42's rolls none.
+	var seen := {}
 	for s in SEEDS:
 		var fwd := WorldGen.generate(s, SIZE)
 		GenWorks.reversing = true
@@ -20,11 +23,13 @@ func test_the_people_s_things_laid_backwards_are_the_same_things() -> void:
 		var b := _things(back)
 		gt(float(a.size()), 1000.0, "seed %d: things to lay" % s)
 		for kind: String in ["m wreck ", "m graves ", "p %d " % PropKind.HOUSE]:
-			gt(float(a.filter(func(t: String) -> bool: return t.begins_with(kind)).size()), 0.0, "seed %d: some %s to lay" % [s, kind.strip_edges()])
+			seen[kind] = int(seen.get(kind, 0)) + a.filter(func(t: String) -> bool: return t.begins_with(kind)).size()
 		var only_fwd := _minus(a, b)
 		var only_back := _minus(b, a)
 		eq(only_fwd.size() + only_back.size(), 0, "seed %d: the same things either way (first differing: %s / %s)"
 			% [s, only_fwd.slice(0, 3), only_back.slice(0, 3)])
+	for kind: String in seen:
+		gt(float(seen[kind]), 0.0, "some %s to lay" % kind.strip_edges())
 
 
 ## Every prop as kind, position, turn and scale, and every landmark as kind and

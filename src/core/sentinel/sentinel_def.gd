@@ -44,6 +44,10 @@ var come_round := ""
 ## What is left where it stood once it has fallen: a hulk in the land, salvageable,
 ## saved with the world (PropKind). -1 for nothing.
 var hulk := -1
+## Whether its fight is built to be read. The keeper chain (Sentinels.next_keeper)
+## leads a player to no design that is not, though it stands and keeps its region:
+## a lead to a fight nobody can read is a wall at the end of a road.
+var ready := true
 
 
 func phase_at(fraction: float) -> int:

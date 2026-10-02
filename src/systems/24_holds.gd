@@ -333,7 +333,7 @@ func stats_line() -> String:
 ## it can mean, so it takes the key only while nothing the player could take
 ## from is nearer -- the rule a shaft and a works housing both go by.
 func _work(delta: float) -> void:
-	if game.input_blocked() or not Input.is_action_pressed(&"use"):
+	if game.input_blocked() or not Input.is_action_pressed(&"use") or (_job.is_empty() and Survival.ask_pending(game)):
 		_job = {}
 		return
 	var h := _near()

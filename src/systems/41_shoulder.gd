@@ -442,7 +442,7 @@ func _gather(head: Vector3, eye: Vector3) -> void:
 ## How high a prop's own model stands, off its template (built and cached when
 ## its chunk was baked, and guarded by PropModels' own lock).
 func _top(p: WorldProp) -> float:
-	var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
+	var country := game.world.dress_country(floori(p.pos.x), floori(p.pos.y))
 	var variant := PropModels.variant_of(p, game.world.seed_value, country)
 	var key := (p.kind * PropModels.MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country
 	if not _tops.has(key):
@@ -495,7 +495,7 @@ const SLICE := 0.5
 ## Where a prop's model is drawn, slice by slice up its height, in the model's
 ## own units (`Shoulder.slices_of`): everything the chunk bakes, MADE and FOUND.
 func _shape(p: WorldProp) -> PackedFloat32Array:
-	var country := maxi(Country.COAST, game.world.country_at(floori(p.pos.x), floori(p.pos.y)))
+	var country := game.world.dress_country(floori(p.pos.x), floori(p.pos.y))
 	var variant := PropModels.variant_of(p, game.world.seed_value, country)
 	var key := (p.kind * PropModels.MAX_VARIANTS + variant) * BiomeRegistry.SLOTS + country
 	if not _shapes.has(key):

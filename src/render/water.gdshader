@@ -109,6 +109,40 @@ const float SEA_FAR_FROM = 40.0;
 const float SEA_FAR_GONE = 150.0;
 const float SEA_FAR_ROUGH = 0.32;
 const vec3 SEA_FAR_BODY = vec3(0.078, 0.175, 0.25);
+const float SEA_FAR_SPECULAR = 0.5;
+// THE SEA FROM FAR ABOVE HAS WEATHER ON IT. From up a walker's leg the chop is
+// gone into the roughness, and one roughness over the whole sea was one flat
+// colour to the horizon. So it has LANES, streaks kilometres long down the wind
+// (`sky_wind`) and a few hundred metres across, rougher and smoother side by
+// side, and SLICKS, patches kilometres across where the water lies still and
+// mirrors the sky like glass. Toward the sun that roughness is the sun's path,
+// a band of broken light; away from it, the sea's own grain. Both drift slowly
+// down the wind.
+// A LANE IS A CHANGE IN SHEEN, NOT IN COLOUR: a narrow band of smoother water,
+// sharp at its edges, that only the sky and the sun it mirrors show. Drawn as
+// soft streaks of a lighter and darker sea they read as a smeared blur.
+// The open sea's own roughness from far above: low enough that the sun's path
+// is a band across part of the frame. At the chop's SEA_FAR_ROUGH it was a lobe
+// wider than the frame, and every view toward the sun was a white wash (the
+// climb's shin ride at 10:26).
+const float SEA_OPEN_ROUGH = 0.18;
+const float SEA_LANE_ROUGH = 0.07;
+const float SEA_SLICK_ROUGH = 0.1;
+const float SEA_SLICK_TONE = 0.04;
+float sea_lanes(vec2 wp, float t) {
+	vec2 wd = length(sky_wind.xy) > 1e-3 ? normalize(sky_wind.xy) : vec2(0.8, 0.6);
+	vec2 q = vec2(dot(wp, wd), dot(wp, vec2(-wd.y, wd.x))) - vec2(t * 6.0, 0.0);
+	float n = ink_vnoise(q * vec2(1.0 / 4000.0, 1.0 / 300.0)) * 0.7
+		+ ink_vnoise(q * vec2(1.0 / 1200.0, 1.0 / 110.0) + vec2(7.0, 3.0)) * 0.3;
+	return smoothstep(0.58, 0.63, n);
+}
+// Slicks lie in long ribbons down the wind, never round blobs.
+float sea_slicks(vec2 wp, float t) {
+	vec2 wd = length(sky_wind.xy) > 1e-3 ? normalize(sky_wind.xy) : vec2(0.8, 0.6);
+	vec2 q = vec2(dot(wp, wd), dot(wp, vec2(-wd.y, wd.x))) - vec2(t * 3.0, 0.0);
+	return smoothstep(0.6, 0.85, ink_vnoise(q * vec2(1.0 / 9000.0, 1.0 / 1800.0) + vec2(31.0, 5.0)));
+}
+
 // The chop at `wp`: two octaves of the ink noise, each on axes turned off the
 // lattice (37 and 71 degrees) so neither lays a grid.
 float chop_at(vec2 wp, float t) {
@@ -296,6 +330,13 @@ void fragment() {
 	// Most of it, not all: the whole of it lit a dusk shallows noon blue.
 	vec3 sh = mix(vec3(1.0), max(sun_hue.rgb, vec3(0.3)), 0.6);
 	c /= mix(sh, vec3(1.0), pale);
+	float lanes = 0.0;
+	float slick = 0.0;
+	if (kind == 0 && far > 0.0) {
+		lanes = sea_lanes(wp, TIME);
+		slick = sea_slicks(wp, TIME);
+		c *= 1.0 - far * deep * slick * SEA_SLICK_TONE;
+	}
 	ALBEDO = matter_albedo(sky_apply(c, world_pos, TIME));
 	// Water is the smoothest thing in the world and it is what makes a night
 	// coast worth looking at: the sky, the moon, a fire on the shore and every
@@ -310,11 +351,16 @@ void fragment() {
 	float top_down = 1.0 - clamp(sky_focus.w, 0.0, 1.0);
 	float caught = max(sun_path(wp), sea_glints(wp, TIME));
 	SPECULAR = SEA_SPECULAR * mix(1.0, mix(OFF_PATH, 1.0, caught * (1.0 - far)), day * top_down);
+	// From far above the sun's path on a sea that rough was the whole sea toward
+	// the sun, white, and the sea read as the air (the climb's shin ride at
+	// 10:26). Real water's own two per cent keeps it a band of broken light.
+	SPECULAR *= mix(1.0, SEA_FAR_SPECULAR, far * float(kind == 0));
 	// Under a colossus's pad coming down there is no sky left to mirror
 	// (sky.gdshaderinc `sky_colossus_pads`): the water goes dark with the land.
 	float under_pad = sky_colossus_pads(world_pos);
 	SPECULAR *= 1.0 - under_pad;
-	ROUGHNESS = mix(max(ROUGHNESS, SEA_FAR_ROUGH * far), 1.0, under_pad);
+	float far_rough = kind == 0 ? mix(SEA_OPEN_ROUGH - SEA_LANE_ROUGH * lanes, SEA_SLICK_ROUGH, slick) : SEA_FAR_ROUGH;
+	ROUGHNESS = mix(mix(ROUGHNESS, max(ROUGHNESS, far_rough), far), 1.0, under_pad);
 	METALLIC = 0.0;
 	// The surface's own chop, small and slow, so the reflection breaks up the
 	// way water does instead of standing as a mirror.

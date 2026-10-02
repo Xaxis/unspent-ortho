@@ -47,11 +47,12 @@ static func make() -> SentinelDef:
 	# The canals of one quarter, not a basin: the same reach the unbuilder holds
 	# over a district's streets, because a canal is a street with water in it.
 	d.reach = 26.0
-	# The lock the plan keeps across a canal (GenWorks records one as `lock` when
-	# the works row lays it). Until then no region holds one and the keeper
-	# stands at its region's heart, which `Sentinels.lair` already does for a
-	# station nobody laid.
+	# The lock the plan keeps across a canal (drowned_city.gd `_lock`, one to
+	# every region big enough to keep it, where its ways can be done).
 	d.stations = [&"lock"]
+	# Not offered as a lead until its fight reads: the lockkeeper fight (task
+	# #18) sets this true, and it is then the first keeper across the water.
+	d.ready = false
 	# What the lock puts in its reach: its gate leaves and the pump house that
 	# dries the basin (docs/LANDSCAPES.md).
 	# The spec lists the TIDE GAUGES and the PIPE run as well, and they are left

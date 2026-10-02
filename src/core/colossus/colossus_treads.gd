@@ -82,6 +82,12 @@ static func wanted(seed_value: int, size: int) -> Array:
 	return out
 
 
+## Which of `pads` is the middle toe's: the crater the cable comes down into
+## (WalkerClimb.FOOT_TURN is turned off it), and so the one the walker lead pins
+## (19_colossi `craters`) and the crater's people stand by.
+const MIDDLE_TOE := 1
+
+
 ## The pads of a foot set down at `centre` facing `yaw` (its toes, then its heel), as circles
 ## Vector3(x, y, radius) in tile space: where its weight is, and so where a
 ## crater is cut, a body is stopped and a prop is crushed.

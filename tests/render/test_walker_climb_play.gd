@@ -96,8 +96,9 @@ func test_on_the_leg_the_keys_and_the_eye_are_the_climbs() -> void:
 
 
 ## A RIDE TAKES IN THE ISLAND: in the middle of a ride the eye is kilometres off
-## the leg, looking at the island's middle, its lens long enough that the island
-## is framed; on a hold it is the climb's own eye again.
+## the leg, the island first on its own long lens, never under a quarter of the
+## half frame, and the leg he is in coming into the frame at its edge;
+## on a hold it is the climb's own eye again.
 func test_a_ride_takes_in_the_island() -> void:
 	var g := Game.new()
 	tree.root.add_child(g)
@@ -120,10 +121,16 @@ func test_a_ride_takes_in_the_island() -> void:
 	var w: int = sys.get("walker")
 	var him: Transform3D = sys.call(&"body_frame", colossi.view.defs[w], colossi.view.poses[w])
 	gt(cam.global_position.distance_to(him.origin), 1000.0, "mid-ride the eye is kilometres off the leg")
+	check(cam.is_position_in_frustum(land), "the island's middle is in the frame")
 	var to_land := land - cam.global_position
-	gt((-cam.global_basis.z).dot(to_land.normalized()), cos(deg_to_rad(1.0)), "looking at the island's middle")
 	var share := float(g.world.size) * 0.5 / (to_land.length() * tan(deg_to_rad(cam.fov) * 0.5))
-	near(share, float(k.RIDE_FRAME), 0.02, "the island framed (%.2f of the half frame)" % share)
+	lt(share, float(k.RIDE_FRAME) + 0.02, "on no longer a lens than the island's own (%.2f of the half frame)" % share)
+	gt(share, float(k.RIDE_FRAME_LEAST) - 0.01, "the island first: never under a quarter of the half frame")
+	var pose: Dictionary = colossi.view.poses[w]
+	var ankle: Vector3 = (pose.ankles as Array)[c.leg]
+	var shin: Vector3 = ankle.lerp((pose.knees as Array)[c.leg], 0.3)
+	check(cam.is_position_in_frustum(ankle) or cam.is_position_in_frustum(shin),
+		"and the leg he is in comes into it, its foot or its shin")
 	c.state = WalkerClimb.CLIMB
 	c.busy = 0.0
 	await process_frames(3)
@@ -145,7 +152,13 @@ func test_the_climbs_hints_name_his_own_key_in_their_moment() -> void:
 	g.player.sim.clear_mobs()
 	var sys := _system(g, "43_climb")
 	var said: Array = []
-	var listen := func(t: String, key: String) -> void: said.append([t, key])
+	# Only the climb's own hints are counted. The walk off and back crosses
+	# whatever stands round the crater, and on GEN 47's seed 7 the point four rims
+	# east of the cable is in a works yard, whose housing hint is the yard's.
+	var listen := func(t: String, key: String) -> void:
+		for k: StringName in [&"climb_begin", &"climb_swing"]:
+			if t.begins_with(String((StoryContent.CLIMB[k] as Array)[0]).get_slice("%s", 0)):
+				said.append([t, key])
 	Events.hint.connect(listen)
 	await process_frames(4)
 	var rim: Dictionary = {}
@@ -262,3 +275,44 @@ func test_the_hub_reads_the_panel_and_its_talk_let_go_puts_him_down() -> void:
 	g.queue_free()
 	await process_frames(2)
 	Story.forget()
+
+
+## STAGED AT TREAD0 AT THE HOUR ITS FOOT IS DOWN, THE CLIMB IS TREAD0'S, on any
+## world: the natural walker (no --colossus) brought round to tread0 (19_colossi
+## tour_hour), the cable `walkto at:climb:cable` heads for hangs from tread0's
+## own foot into its middle crater, clear of the pad that stops bodies, and the
+## walk down to it from `at climb:lip` never steps more than a body can. On seed
+## 1 at GEN 47 the lip stood behind a two-level wall and the walk stopped 8.7
+## tiles short (across.tour).
+func test_staged_at_tread0_the_climb_is_tread0s() -> void:
+	for seed_value: int in [1, 7]:
+		var g := Game.new()
+		tree.root.add_child(g)
+		g.setup(BootOptions.parse(PackedStringArray(["--seed=%d" % seed_value, "--place=tread0", "--hour=9", "--weather=clear:0"])))
+		await process_frames(4)
+		var colossi := tree.get_first_node_in_group(&"colossi")
+		g.clock.minutes = colossi.call(&"tour_hour", "tread0+5")
+		await process_frames(4)
+		var tread: Dictionary = {}
+		for m: Dictionary in g.world.landmarks:
+			if StringName(m.get("kind", &"")) == &"tread":
+				tread = m
+				break
+		var sys := _system(g, "43_climb")
+		var feet: Array = sys.call(&"_feet_in_treads")
+		var first: Dictionary = {}
+		for f: Dictionary in feet:
+			if bool(f.planted):
+				first = f
+				break
+		check(not first.is_empty() and int(first.leg) == int(tread.leg) and StringName(colossi.view.defs[int(first.walker)].id) == StringName(tread.walker),
+			"seed %d: the planted foot nearest is tread0's own" % seed_value)
+		var pad: Vector3 = (tread.pads as Array)[1]
+		var cable: Vector2 = sys.call(&"tour_place", "climb:cable")
+		var from_pad := cable.distance_to(Vector2(pad.x, pad.y))
+		lt(from_pad, Treads.rim_r(pad), "seed %d: its cable hangs into the middle toe's crater (%.1f m from the pad)" % [seed_value, from_pad])
+		gt(from_pad, pad.z + 1.0, "seed %d: clear of the pad that stops bodies" % seed_value)
+		var lip: Vector2 = sys.call(&"tour_place", "climb:lip")
+		check(bool(sys.call(&"_walk_clear", lip, cable)), "seed %d: and the walk from the lip down to it is a body's own" % seed_value)
+		g.queue_free()
+		await process_frames(2)

@@ -721,8 +721,10 @@ static func deal(c: GenContext) -> void:
 	var order_types: Array[int] = []
 	order_types.assign(c.land_types)
 	order_types.sort_custom(func(a: int, b: int) -> bool:
-		var ha := 1 if c.defs[a].spread.x >= 1 and c.defs[a].spread.y != 1 else 0
-		var hb := 1 if c.defs[b].spread.x >= 1 and c.defs[b].spread.y != 1 else 0
+		var da := _dealt_as(c.defs[a])
+		var db := _dealt_as(c.defs[b])
+		var ha := 1 if da.x >= 1 and da.y != 1 else 0
+		var hb := 1 if db.x >= 1 and db.y != 1 else 0
 		if ha != hb:
 			return ha > hb
 		var sa := c.defs[a].share_target()
@@ -731,7 +733,7 @@ static func deal(c: GenContext) -> void:
 			return sa > sb
 		return a < b)
 	for cc: int in order_types:
-		var sp: Vector2i = c.defs[cc].spread
+		var sp := _dealt_as(c.defs[cc])
 		var most := maxi(1, roundi(float(planned) * MOST_BODIES)) if sp.y <= 0 else mini(sp.y, planned)
 		var want := maxi(1, mini(most, planned))
 		# **TWO MEANINGS SHARE `spread.x >= 1` AND THEY MUST NOT BE MERGED.** `(1, 0)`
@@ -760,8 +762,14 @@ static func deal(c: GenContext) -> void:
 				return la < lb
 			return float(jitter[a]) < float(jitter[b]))
 		order.append_array(rest)
+		if c.defs[cc].spread == BiomeDef.LANDFALL:
+			# Across the water, never home; drawn for as any landscape is, so the
+			# stream every later landscape is dealt from is the one it always was.
+			order.erase(home)
 		for r in mini(want, order.size()):
 			got[order[r]].append(cc)
+	_trade(c, got, planned)
+	_landfall(c, got, home, planned)
 	# Nothing may be left barren.
 	for i in planned:
 		if got[i].is_empty() and not c.land_types.is_empty():
@@ -778,6 +786,134 @@ static func deal(c: GenContext) -> void:
 	# Everything that decides whose land a tile is asks `GenContext.may_stand`.
 	# It cannot draw a new line across open ground: a continent's edge is water.
 	fill_allow(c)
+
+
+## A test's hook: two continent ids, each giving the other its first landscape
+## the deal may move, after the deal (tests/biome/test_body_independence.gd: a
+## change on later bodies leaves every earlier one as it was). (-1, -1) is off.
+static var trade := Vector2i(-1, -1)
+
+
+static func _trade(c: GenContext, got: Array[PackedInt32Array], planned: int) -> void:
+	if trade.x < 0:
+		return
+	var at := PackedInt32Array([-1, -1])
+	for i in planned:
+		var id := int(c.w.continents[i].get("id", -1))
+		if id == trade.x:
+			at[0] = i
+		elif id == trade.y:
+			at[1] = i
+	if at[0] < 0 or at[1] < 0:
+		return
+	var give := PackedInt32Array([-1, -1])
+	for k in 2:
+		for t: int in got[at[k]]:
+			if c.defs[t].spread.x < 1 and not got[at[1 - k]].has(t):
+				give[k] = t
+				break
+	if give[0] < 0 or give[1] < 0:
+		return
+	for k in 2:
+		got[at[k]].remove_at(got[at[k]].find(give[k]))
+		got[at[1 - k]].append(give[k])
+
+
+## The spread the balance deals a type by: the LANDFALL as a landscape that
+## declares none (but never on home), and `_landfall` then moves it.
+static func _dealt_as(d: BiomeDef) -> Vector2i:
+	return Vector2i(0, 0) if d.spread == BiomeDef.LANDFALL else d.spread
+
+
+## Tiles a cell of `_landfall`'s spread over the sea: fine enough that a strait a
+## few cells wide is crossed where it is narrowest.
+const LANDFALL_CELL := 8
+
+
+## THE LANDFALL (`BiomeDef.LANDFALL`) goes on the body the SHORTEST WATER from
+## home reaches: a raft's crossing, found by spreading over the sea from every
+## home cell until another continent is touched. Nearest by centre named a body
+## whose crossing lay outside slice 3's band on seed 3, and nearest the journey's
+## start one the journey visited third on seed 7.
+##
+## Run after the whole deal so nothing the balance decided moves but this: the
+## landfall trades places with that body's landscape nearest it in share, so
+## every body keeps its count and HOME'S HAND IS NEVER TOUCHED. The body's row is
+## marked `landfall`, with `from` where the water comes ashore, for GenCountries
+## to site its heart and StoryJourney to take as leg 1.
+static func _landfall(c: GenContext, got: Array[PackedInt32Array], home: int, planned: int) -> void:
+	if planned < 2:
+		return
+	var cell := LANDFALL_CELL
+	var cw := ceili(float(c.size) / float(cell))
+	var ids := PackedInt32Array()
+	ids.resize(cw * cw)
+	for gy in cw:
+		for gx in cw:
+			ids[gy * cw + gx] = c.w.continent_at(mini(gx * cell + cell / 2, c.size - 1), mini(gy * cell + cell / 2, c.size - 1))
+	var row_of := {}
+	for i in planned:
+		row_of[int(c.w.continents[i].get("id", -1))] = i
+	var home_id := int(c.w.continents[home].get("id", -1))
+	var seen := PackedByteArray()
+	seen.resize(cw * cw)
+	var queue := PackedInt32Array()
+	for k in cw * cw:
+		if ids[k] == home_id:
+			seen[k] = 1
+			queue.append(k)
+	var next := -1
+	var at := Vector2.ZERO
+	var head := 0
+	while head < queue.size() and next < 0:
+		var k := queue[head]
+		head += 1
+		for o: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var nx := k % cw + o.x
+			var ny := k / cw + o.y
+			if nx < 0 or ny < 0 or nx >= cw or ny >= cw:
+				continue
+			var nk := ny * cw + nx
+			if seen[nk] != 0:
+				continue
+			seen[nk] = 1
+			# A skerry is crossed like the sea: the raft passes it.
+			if ids[nk] == VOID or not row_of.has(ids[nk]):
+				queue.append(nk)
+			elif row_of[ids[nk]] != home:
+				next = row_of[ids[nk]]
+				at = Vector2(nx * cell + cell * 0.5, ny * cell + cell * 0.5)
+				break
+	if next < 0:
+		return
+	c.w.continents[next]["landfall"] = true
+	c.w.continents[next]["from"] = at
+	for cc: int in c.land_types:
+		if c.defs[cc].spread != BiomeDef.LANDFALL or got[next].has(cc):
+			continue
+		got[next].append(cc)
+		var from := -1
+		for i in planned:
+			if i != next and got[i].has(cc):
+				from = i
+				break
+		if from < 0:
+			continue
+		got[from].remove_at(got[from].find(cc))
+		# The partner: of the landfall body's landscapes, the one nearest in share
+		# that may move (none home's spine needs, none `from` already holds).
+		var partner := -1
+		var gap := INF
+		for t: int in got[next]:
+			if t == cc or got[from].has(t) or c.defs[t].spread.x >= 1:
+				continue
+			var g := absf(c.defs[t].share_target() - c.defs[cc].share_target())
+			if g < gap:
+				gap = g
+				partner = t
+		if partner >= 0:
+			got[next].remove_at(got[next].find(partner))
+			got[from].append(partner)
 
 
 ## Fill `GenContext.allow` from what `w.continents` records was dealt. The one

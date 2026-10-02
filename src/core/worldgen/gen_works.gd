@@ -386,7 +386,8 @@ static func _enter(L: Lay, def: BiomeDef, k: int) -> void:
 	if L.region >= 0:
 		L.rects.append(r.bounds as Rect2)
 		L.sizes.append(float(r.tiles))
-	L.site_rng = Rng.make(L.c.s, Rng.hash_ints(0x3057, String(def.id).hash(), L.region))
+	# Thrown from the region's own key, never its id (GenCountries.region_key).
+	L.site_rng = Rng.make(L.c.s, Rng.hash_ints(0x3057, String(def.id).hash(), GenCountries.region_key(L.w, L.region)))
 	L.site_memo.clear()
 	L.rng = L.site_rng
 	L.m_region = L.w.landmarks.size()
@@ -414,6 +415,37 @@ static func _order(n: int) -> Array:
 ## that the region being laid gets its share (`_share`).
 static func _n(L: Lay, base: float) -> int:
 	return _share(L, maxi(1, roundi(base * maxf(L.c.body_k, 0.3))))
+
+
+## How many of a work its keeper dens at (`BiomeDef.sentinel`'s `stations`) the
+## region being laid gets: its share, and one at least where the region is big
+## enough to keep a keeper (Sentinels.MIN_TILES). A share alone gave a
+## landscape's one intake or lock to its biggest region, and every other keeper
+## of the type stood at its heart with nothing of the plan to eat, its STARVE
+## way closed (Sentinels.ways_closed).
+static func _n_station(L: Lay, base: float) -> int:
+	var keeps := L.region >= 0 and not L.sizes.is_empty() and L.sizes[0] >= float(Sentinels.MIN_TILES) \
+		and Sentinels.for_land(L.id) != null
+	return maxi(_n(L, base), 1 if keeps else 0)
+
+
+## THE STATION RULE from the plan's side: a work its keeper dens at stands only
+## where a den by it keeps every way its design declares that the ground can
+## answer (Sentinels.ways_closed: mud or wash to founder in, water to come to it
+## by raft). Its feeds are not laid yet, so STARVE is asked when the keeper is
+## placed (Sentinels.lair). True where the landscape keeps no keeper.
+static func station_holds(L: Lay, p: Vector2) -> bool:
+	var def := Sentinels.for_land(L.id)
+	if def == null:
+		return true
+	# Nor within its reach of where the raft comes ashore: the landing is safe
+	# ground (Sentinels._lair_worked).
+	var landings: Array[Vector2] = []
+	for row: Dictionary in L.w.continents:
+		if bool(row.get("landfall", false)) and row.has("from"):
+			landings.append(row["from"] as Vector2)
+	var den := Sentinels.den_at(L.w, p, def, landings)
+	return den.is_finite() and Sentinels.ways_closed(L.w, den, def, true).is_empty()
 
 
 ## The region being laid's share of `total` over its landscape's regions by
@@ -671,6 +703,37 @@ static func _put(L: Lay, kind: int, p: Vector2, rot: float, level: int = -99, cl
 	return prop
 
 
+## Put one prop standing IN WATER at p, on a tile of `ground`: what the sea took
+## and left standing (a drowned city's roofs, on the shallow sea's WATER), or the
+## plan's own furniture in a canal (a lock's gates, on a street's BLACKWATER).
+## Never the deep a raft is the only way across; nothing else within `clear`, at
+## scale 1, and never in the spawn's first steps. It stands on its tile's level,
+## under the sheet. Inside a work it reads the stage's first occupancy and the
+## work's own pieces, as `Lay.open` does.
+static func _put_awash(L: Lay, kind: int, p: Vector2, rot: float, clear: float, ground: int = Ground.WATER) -> WorldProp:
+	var c := L.c
+	var tx := floori(p.x)
+	var ty := floori(p.y)
+	if tx < 3 or ty < 3 or tx >= c.size - 3 or ty >= c.size - 3:
+		return null
+	var i := ty * c.size + tx
+	if L.w.ground[i] != ground or (ground == Ground.WATER and c.land[i] != 0):
+		return null
+	var ri := ceili(clear)
+	for dy in range(-ri, ri + 1):
+		for dx in range(-ri, ri + 1):
+			var j := (ty + dy) * c.size + tx + dx
+			if (L.base[j] if L.in_work else L.occ[j]) != 0 or (L.in_work and L.mine.has(j)):
+				return null
+	if (p - L.w.spawn).length_squared() < 100.0:
+		return null
+	var prop := GenScatter._add(c, kind, p, fposmod(rot, TAU), L.key)
+	prop.scale = 1.0
+	prop.solid = PropKind.SOLID[kind]
+	L.take(p, PropKind.SOLID[kind])
+	return prop
+
+
 ## A solid a work stands on: at `p` or, where `p` is on a terrace lip, the
 ## nearest tile round it that takes one. `_site` allows its site a rise of a
 ## level, so the site's own middle can be the lip, and a work that asked only
@@ -833,8 +896,8 @@ static func _coast(L: Lay) -> void:
 	# The intake: a machine housing at the shore, its pipes out to the water,
 	# fenced square, a tide gauge standing in the wash.
 	var intakes := 0
-	for attempt in 10:
-		if intakes >= _n(L, 1.0):
+	for attempt in 24:
+		if intakes >= _n_station(L, 1.0):
 			break
 		var p := _shore(L, [Ground.SAND, Ground.SHINGLE, Ground.GRASS, Ground.GRAVEL] if attempt < 5 else [], 40.0)
 		if p.x >= 0 and _work(L, &"_intake", Vector2(p) + Vector2(0.5, 0.5)):
@@ -900,7 +963,7 @@ static func _intake(L: Lay, at: Vector2, _a: Array) -> bool:
 		if intake != null:
 			at = intake.pos
 			break
-	if intake == null:
+	if intake == null or not station_holds(L, at):
 		return false
 	_record(L.c, &"intake", at, sea, Vector2(4.0, 4.0))
 	var side := Vector2(-sea.y, sea.x)
@@ -1794,7 +1857,7 @@ static func _note_lit_shack(L: Lay, shack: WorldProp) -> void:
 
 ## THE STOLEN LIGHT IS THE WORLD'S ONE, AND IT IS NOT A RACE. It went to the
 ## first lit shack laid, so where it stood hung on every region laid before.
-## The regions are ranked by the plan's own hash; the light is the lowest-hashed
+## The regions are ranked by a hash of each one's own key; the light is the lowest-hashed
 ## lit shack of the first region in that rank that lit one. So it hangs on the
 ## first region or two of the rank and on nothing laid anywhere else.
 static func _stolen_light(L: Lay) -> void:
@@ -1807,7 +1870,7 @@ static func _stolen_light(L: Lay) -> void:
 	var first := -2
 	var rank := 2.0
 	for r: int in best:
-		var k := Rng.hash01(L.c.s, r, 0, 0x5702)
+		var k := Rng.hash01(L.c.s, GenCountries.region_key(L.w, r), 0, 0x5702)
 		if k < rank:
 			rank = k
 			first = r

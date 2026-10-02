@@ -384,7 +384,7 @@ func look_at(s: SentinelState, def: SentinelDef) -> SentinelLook:
 	look.spoofed = game.clock.minutes < game.body.spoof_until
 	# Inside its guard: nearer than a keeper lets anybody come (the fight's own
 	# number, so the read and the behaviour can never disagree).
-	var guard := float(Roster.row(def.kind).get("sees", 12)) * FightSim.WARY_INSIDE
+	var guard := Sentinels.guard(def)
 	look.inside = at.distance_to(sim.hero.pos) <= guard
 	# What stands beside the player, for a way that only reads a signature
 	# under something (SentinelWay.beside). Asked only while it could matter:
@@ -675,7 +675,7 @@ func tour_seen(what: String) -> bool:
 
 
 ## What `near NAME` may ask of this system (tests/tours/test_tour_claims.gd reads it).
-const TOUR_PLACES := ["keeper", "fallen_keeper", "next_keeper"]
+const TOUR_PLACES := ["keeper", "fallen_keeper", "next_keeper", "keeper_flats"]
 ## Tiles off its lair a tour is stood: inside Sentinels.PUT_OUT, so it comes out,
 ## and far enough that the frame holds the whole of it.
 const TOUR_STAND := 9.0
@@ -693,6 +693,10 @@ var _tour_facing := NAN
 ## `keeper`: beside the nearest keeper still standing, where it dens.
 ## `fallen_keeper`: beside where the nearest fallen one went down.
 ## `next_keeper`: beside the one the lead is for (Sentinels.next_keeper).
+## `keeper_flats`: on the nearest patch of the ground the nearest standing keeper
+## founders in that its move reaches from its den (Sentinels.founder_spot),
+## facing it: where a lure starts and runs back to. Stood off the den on the
+## side he came from, terraces and a fence stood between him and the flats.
 func tour_place(what: String) -> Vector2:
 	if not TOUR_PLACES.has(what):
 		return Vector2.INF
@@ -710,6 +714,15 @@ func tour_place(what: String) -> Vector2:
 				lair = s.lair
 	if not lair.is_finite():
 		return Vector2.INF
+	if what == "keeper_flats":
+		var keeper: SentinelState = null
+		for s in _states:
+			if s.lair == lair:
+				keeper = s
+		var spot := Sentinels.founder_spot(game.world, lair, Sentinels.by_id(keeper.design))
+		if spot.is_finite():
+			_tour_facing = (lair - spot).angle()
+		return spot
 	# From the side the player comes from, round until the ground will stand.
 	var from := (here - lair).angle() if here.distance_to(lair) > 0.1 else 0.0
 	for i in 16:

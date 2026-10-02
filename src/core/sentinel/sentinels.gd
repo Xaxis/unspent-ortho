@@ -283,11 +283,13 @@ static func states(world: WorldData) -> Array[SentinelState]:
 
 
 ## Where this region's keeper stands: the plan's own work inside the region (the
-## first of the design's `stations` the region holds, in the order the design
-## prefers them), else the region's heart. Deterministic: the same seed and the
-## same region always put it in the same place, because a boss that moves between
+## first of the design's `stations` the region holds where its ways can be done,
+## in the order the design prefers them), else, for a design whose stations
+## nobody lays yet, the region's heart. Deterministic: the same seed and the same
+## region always put it in the same place, because a boss that moves between
 ## runs cannot be walked to twice.
-## Vector2.INF when this region has nowhere to keep (see CLEAR_OF_HOME).
+## Vector2.INF when this region has nowhere to keep (see CLEAR_OF_HOME and
+## `ways_closed`).
 ##
 ## Worked out once per world, region and design and remembered (`_lair_at`):
 ## the search is dear and every caller -- the depot sweep over every region,
@@ -301,7 +303,8 @@ static func states(world: WorldData) -> Array[SentinelState]:
 ## tiles, where the anvil stands at 506. Never where he cannot go: on seeds 1 and
 ## 7 that anvil stands on an islet off the journey, across deep water from home,
 ## and the lead pointed there in slice 2, before the raft. Null when every design
-## standing on those bodies has been taken.
+## standing on those bodies has been taken. A design whose fight is not built
+## yet (SentinelDef.ready) is never the next: it keeps its region unnamed.
 static func next_keeper(states: Array, from: Vector2, world: WorldData, bodies: Array[int]) -> SentinelState:
 	var taken: Dictionary = {}
 	for s: SentinelState in states:
@@ -310,6 +313,9 @@ static func next_keeper(states: Array, from: Vector2, world: WorldData, bodies: 
 	var best: SentinelState = null
 	for s: SentinelState in states:
 		if s.fallen or taken.has(s.design) or s.region < 0 or not bodies.has(body_of(world, s.lair)):
+			continue
+		var def := by_id(s.design)
+		if def != null and not def.ready:
 			continue
 		if best == null or s.lair.distance_to(from) < best.lair.distance_to(from):
 			best = s
@@ -391,18 +397,38 @@ static func _lair_worked(world: WorldData, region: Dictionary, def: SentinelDef)
 	# ground in rays about the spot (`gets_out`), the cheap test: this runs while
 	# the world is worked out. tests/sentinel/test_keeper_reach.gd floods what
 	# its move truly opens round every lair it gives.
+	#
+	# THE STATION RULE (`ways_closed`): it dens only at a station where every way
+	# its design declares can be done, the first kind in the design's order that
+	# has one. Where the plan builds its stations (one stands anywhere in the
+	# world) and none in this region keeps its ways, the region has no keeper: a
+	# keeper is the plan's, and a fight with a way its design promises shut is
+	# not one. Seed 42's Reaper on a skerry the coast laid nothing on, and seed
+	# 90210's on a coast with no shore, stood at their hearts with nothing to eat.
+	# A design whose stations nobody lays yet dens by its heart (below).
+	#
+	# THE LANDING IS SAFE GROUND: no keeper dens within its reach of where the
+	# raft from home comes ashore (GenBodies' `from` on the LANDFALL body's row),
+	# so the first thing across the water is never a keeper at the quay.
+	var landings: Array[Vector2] = []
+	for row: Dictionary in world.continents:
+		if bool(row.get("landfall", false)) and row.has("from"):
+			landings.append(row["from"] as Vector2)
+	var built := false
 	for want: StringName in def.stations:
 		var best := Vector2.INF
 		var best_works := -1
 		for m: Dictionary in world.landmarks:
 			if StringName(str(m.get("kind", &""))) != want:
 				continue
+			built = true
 			var p: Vector2 = m.get("pos", Vector2.ZERO)
 			if world.region_at(floori(p.x), floori(p.y)) != id:
 				continue
-			var at := stand_near(world, p, 1.4, sink)
-			if at.distance_to(home) < CLEAR_OF_HOME or not _room_at(world, floori(at.x), floori(at.y), 1.4, sink) \
-					or not gets_out(world, at, def):
+			var at := den_at(world, p, def, landings)
+			if at.is_finite() and def.way_of(SentinelWay.STARVE) != null and not larder_robbable(world, at, def):
+				at = _den_off_larder(world, p, def, landings, id)
+			if not at.is_finite():
 				continue
 			var n := 0
 			for w2: Dictionary in world.landmarks:
@@ -410,20 +436,84 @@ static func _lair_worked(world: WorldData, region: Dictionary, def: SentinelDef)
 					continue
 				if (w2.get("pos", Vector2.ZERO) as Vector2).distance_to(at) <= feed:
 					n += 1
-			if n > best_works:
+			if n > best_works and ways_closed(world, at, def).is_empty():
 				best_works = n
 				best = at
 		if best.is_finite():
 			return best
+	if built:
+		return Vector2.INF
+	# NOBODY LAYS ITS STATIONS YET: it dens at the room nearest its region's heart
+	# where every way the ground alone answers can be done (`ways_closed`'s
+	# ground_only: its founder ground in reach, its craft's water in its guard),
+	# first with that ground where it sees a lure from the den (`lure_reach`),
+	# then anywhere in its reach. At the bare heart, seed 1's anvil had no sand
+	# in reach and its lure could never be played. Where no room in the region
+	# keeps them, the heart as it was, then the quietest room nearest it; none at
+	# all, and no keeper.
 	var centre: Vector2 = region.get("centre", Vector2.ZERO)
 	var heart := stand_near(world, centre, 1.4, sink)
-	if heart.distance_to(home) >= CLEAR_OF_HOME and _room_at(world, floori(heart.x), floori(heart.y), 1.4, sink) \
-			and gets_out(world, heart, def):
+	var heart_ok := _den_ok(world, heart, def, landings)
+	for near: bool in [true, false]:
+		if heart_ok and ways_closed(world, heart, def, true, near).is_empty():
+			return heart
+		var kept := _room_nearest(world, region, def, sink, centre, landings, true, near)
+		if kept.is_finite():
+			return kept
+	if heart_ok:
 		return heart
-	# Nothing the plan built stands far enough out, or has room: the quietest
-	# ground in the region that is, nearest its heart, so a keeper is still where
-	# its own land is; none at all, and the region has no keeper.
-	return _room_nearest(world, region, def, sink, centre)
+	return _room_nearest(world, region, def, sink, centre, landings, false)
+
+
+## Where a keeper of `def` would den at a station laid at `p`: the nearest room
+## to it off the ground it founders in, clear of home and with a way out of it
+## (`_lair_worked`); INF when there is none.
+## `landings`: where rafts come ashore (`_lair_worked`), which no den covers.
+static func den_at(world: WorldData, p: Vector2, def: SentinelDef, landings: Array[Vector2] = []) -> Vector2:
+	var at := stand_near(world, p, 1.4, founders(def))
+	return at if _den_ok(world, at, def, landings) else Vector2.INF
+
+
+## Where a keeper of `def` dens for a station laid at `p` when the nearest room
+## to it has works of its larder under its feet (`larder_robbable`): seed 1's
+## Reaper denned two tiles off its own intake. The nearest room in region `id`
+## past THREAT_RADIUS of the station, where every way is kept, tried in squares
+## of Chebyshev rings one tile apart (DEN_OFF), nearest first: the station's
+## works stay its larder and the den stays by the station. INF when none is.
+const DEN_OFF := 4
+
+
+static func _den_off_larder(world: WorldData, p: Vector2, def: SentinelDef, landings: Array[Vector2], id: int) -> Vector2:
+	var sink := founders(def)
+	var spots: Array[Vector2] = []
+	var first := floori(Senses.THREAT_RADIUS) + 1
+	for d in range(first, first + DEN_OFF):
+		for k in range(-d, d + 1, 2):
+			for q: Vector2 in [Vector2(k, -d), Vector2(k, d), Vector2(-d, k), Vector2(d, k)]:
+				spots.append(p + q)
+	spots.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(p) < b.distance_squared_to(p))
+	for q: Vector2 in spots:
+		if not world.in_bounds(floori(q.x), floori(q.y)) or world.region_at(floori(q.x), floori(q.y)) != id:
+			continue
+		if not larder_robbable(world, q, def):
+			continue
+		var at := stand_near(world, q, 1.4, sink)
+		if larder_robbable(world, at, def) and _den_ok(world, at, def, landings) and ways_closed(world, at, def).is_empty():
+			return at
+	return Vector2.INF
+
+
+## A keeper of `def` can den at `at`: clear of home and of every landing by its
+## reach, on room off the ground it founders in, with a way out and the ground
+## its move opens round it.
+static func _den_ok(world: WorldData, at: Vector2, def: SentinelDef, landings: Array[Vector2]) -> bool:
+	if at.distance_to(world.spawn) < CLEAR_OF_HOME:
+		return false
+	for l: Vector2 in landings:
+		if at.distance_to(l) <= def.reach:
+			return false
+	return _room_at(world, floori(at.x), floori(at.y), 1.4, founders(def)) and gets_out(world, at, def) \
+		and opens(world, at, def) >= OPENS_LEAST
 
 
 ## Rays a keeper's lair is looked out along, how far, and how many must get
@@ -463,18 +553,90 @@ static func gets_out(world: WorldData, at: Vector2, def: SentinelDef) -> bool:
 	return false
 
 
+## How many tiles OPEN_FROM..OPEN_TO out of `at` (Chebyshev) a keeper's own move
+## reaches from it, by the rules its move keeps on the ground (`gets_out`'s). A
+## lair is held to OPENS_LEAST: `gets_out`'s rays are the cheap test, and they
+## passed seed 1's crags heart boxed into 254 by terraces, where the keeper
+## struck only what walked up to it (tests/sentinel/test_keeper_reach.gd floods
+## the same window).
+const OPEN_FROM := 8
+const OPEN_TO := 14
+const OPENS_LEAST := 300
+
+
+static func opens(world: WorldData, at: Vector2, def: SentinelDef) -> int:
+	var row := Roster.row(def.kind)
+	var step := maxi(1, int(row.get("climbs", 1)))
+	var tall := int(ceil(float(row.get("height", 1.0)) / WorldData.STEP))
+	var cx := floori(at.x)
+	var cy := floori(at.y)
+	if not _keeper_ground(world, cx, cy, tall):
+		return 0
+	var side := OPEN_TO * 2 + 1
+	var seen := PackedByteArray()
+	seen.resize(side * side)
+	seen[OPEN_TO * side + OPEN_TO] = 1
+	var queue: Array[Vector2i] = [Vector2i(cx, cy)]
+	var head := 0
+	var n := 0
+	while head < queue.size():
+		var t := queue[head]
+		head += 1
+		if maxi(absi(t.x - cx), absi(t.y - cy)) >= OPEN_FROM:
+			n += 1
+		var level := world.level_at(t.x, t.y)
+		for d: Vector2i in STEPS4:
+			var u := t + d
+			var lx := u.x - cx + OPEN_TO
+			var ly := u.y - cy + OPEN_TO
+			if lx < 0 or ly < 0 or lx >= side or ly >= side or seen[ly * side + lx] != 0:
+				continue
+			if not _keeper_ground(world, u.x, u.y, tall) or absi(world.level_at(u.x, u.y) - level) > step:
+				continue
+			seen[ly * side + lx] = 1
+			queue.append(u)
+	return n
+
+
+## Ground a keeper `tall` levels high stands on: on the map, land or shallows,
+## not deep water, and room over it.
+static func _keeper_ground(world: WorldData, x: int, y: int, tall: int) -> bool:
+	if not world.in_bounds(x, y) or world.level_at(x, y) < 0 or world.ground_at(x, y) == Ground.DEEP_WATER:
+		return false
+	return not world.has_overhead() or world.headroom_at(x, y) >= tall
+
+
 ## The nearest room to `centre` in the region, clear of home and off `avoid`,
-## that its keeper gets out of (`gets_out`); INF when none of ROOM_TRIES spread
+## that its keeper gets out of (`_den_ok`), and with `ground_ways` where every way
+## the ground answers holds; INF when none of ROOM_TRIES (twice that for the ways) spread
 ## over the region does.
-static func _room_nearest(world: WorldData, region: Dictionary, def: SentinelDef, avoid: Array, centre: Vector2) -> Vector2:
+static func _room_nearest(world: WorldData, region: Dictionary, def: SentinelDef, avoid: Array, centre: Vector2,
+		landings: Array[Vector2] = [], ground_ways := false, near := false) -> Vector2:
 	var id := int(region.get("id", -1))
 	var bounds: Rect2 = region.get("bounds", Rect2())
+	# The GROUND_CELL cells within its reach of its founder ground: a spot in no
+	# such cell is never tried, which is most of a region and every flood saved.
+	var close_cells := {}
+	var sink := founders(def)
+	if ground_ways and not sink.is_empty():
+		var within := lure_reach(def) if near else def.reach
+		var cells := _ground_cells(world, bounds.grow(within), sink)
+		if cells.is_empty():
+			return Vector2.INF
+		var r := ceili(within / GROUND_CELL) + 1
+		for c: Vector2i in cells:
+			for dy in range(-r, r + 1):
+				for dx in range(-r, r + 1):
+					close_cells[c + Vector2i(dx, dy)] = true
 	var spots: Array[Vector2] = []
 	var y := floori(bounds.position.y)
 	while y < int(bounds.end.y):
 		var x := floori(bounds.position.x)
 		while x < int(bounds.end.x):
 			var p := Vector2(x + 0.5, y + 0.5)
+			if not close_cells.is_empty() and not close_cells.has(Vector2i(x / GROUND_CELL, y / GROUND_CELL)):
+				x += 3
+				continue
 			if world.region_at(x, y) == id and p.distance_to(world.spawn) >= CLEAR_OF_HOME and _room_at(world, x, y, 1.4, avoid):
 				spots.append(p)
 			x += 3
@@ -483,8 +645,9 @@ static func _room_nearest(world: WorldData, region: Dictionary, def: SentinelDef
 	# A spot beside one that failed is in the same pocket: passed over, so the
 	# tries spread across the region instead of one plateau.
 	var failed: Array[Vector2] = []
+	var tries := ROOM_TRIES * (2 if ground_ways else 1)
 	for p: Vector2 in spots:
-		if failed.size() >= ROOM_TRIES:
+		if failed.size() >= tries:
 			break
 		var near_failed := false
 		for f: Vector2 in failed:
@@ -493,10 +656,28 @@ static func _room_nearest(world: WorldData, region: Dictionary, def: SentinelDef
 				break
 		if near_failed:
 			continue
-		if gets_out(world, p, def):
+		if (not ground_ways or ways_closed(world, p, def, true, near).is_empty()) and _den_ok(world, p, def, landings):
 			return p
 		failed.append(p)
 	return Vector2.INF
+
+
+## The GROUND_CELL cells inside `rect` holding a tile of `grounds`, as a set of
+## Vector2i; empty when `grounds` is. Read every other tile: it only says where
+## a den is worth trying, and a patch FOUNDER_LEAST across is never missed.
+const GROUND_CELL := 8
+
+
+static func _ground_cells(world: WorldData, rect: Rect2, grounds: Array) -> Dictionary:
+	var out := {}
+	if grounds.is_empty():
+		return out
+	for y in range(maxi(0, floori(rect.position.y)), mini(world.size, ceili(rect.end.y)), 2):
+		for x in range(maxi(0, floori(rect.position.x)), mini(world.size, ceili(rect.end.x)), 2):
+			if grounds.has(world.ground_at(x, y)):
+				out[Vector2i(x / GROUND_CELL, y / GROUND_CELL)] = true
+	return out
+
 
 
 ## The grounds a design's FOUNDER way takes it on (none when it has no such way).
@@ -505,6 +686,196 @@ static func founders(def: SentinelDef) -> Array:
 		if way.kind == SentinelWay.FOUNDER:
 			return way.grounds
 	return []
+
+
+## THE STATION RULE: a keeper dens only where every way its design declares can
+## be done. Stations were chosen by what the plan built, and nothing asked the
+## ways: seed 1's Reaper took an intake on a narrow inlet with no mud or wash it
+## could be drawn onto, so its FOUNDER way was closed at its own den.
+##   FORCE    nothing.
+##   FOUNDER  FOUNDER_LEAST tiles of its grounds inside its reach that its own
+##            move carries it onto from the den: a lure it cannot follow is none.
+##            With `near`, inside what it sees from the den (`lure_reach`).
+##   STARVE   its larder can be robbed out (`larder_robbable`).
+##   SPOOF    inside its guard, one of the props it reads beside, and SPOOF_WATER
+##            tiles the craft it reads off travels over.
+## The ids of the ways closed at `at`; empty when it is kept. `ground_only` asks
+## only what the ground answers (FOUNDER, a SPOOF's water): a work being laid
+## asks that, its feeds and lamps not laid yet (GenWorks._work).
+const FOUNDER_LEAST := 6
+const SPOOF_WATER := 6
+
+
+static func ways_closed(world: WorldData, at: Vector2, def: SentinelDef, ground_only: bool = false, near := false) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for way: SentinelWay in def.ways:
+		var open := true
+		match way.kind:
+			SentinelWay.FOUNDER:
+				open = founder_tiles(world, at, def, FOUNDER_LEAST, lure_reach(def) if near else def.reach) >= FOUNDER_LEAST
+			SentinelWay.STARVE:
+				open = ground_only or larder_robbable(world, at, def)
+			SentinelWay.SPOOF:
+				var inside := guard(def)
+				if way.aboard != &"":
+					open = _craft_tiles(world, at, way.aboard, inside) >= SPOOF_WATER
+				if open and not ground_only and not way.beside.is_empty():
+					open = laid_near(world, at, way.beside, inside) > 0
+		if not open:
+			out.append(way.id())
+	return out
+
+
+## A keeper of `def` denned at `at` can be starved by robbing its works: at least
+## SentinelWay.FEEDS_LEAST of its feeds inside FEED_SHARE of its reach, and none
+## where a take is refused with it near (Senses.THREAT_RADIUS of the den, the
+## number Survival.threat_near reads). Play counts every feed in reach and the
+## way is won only when all are robbed, so one under its feet holds it shut: seed
+## 1's Reaper at its intake, robbed 7 of 10 (tests/sentinel/test_ways.gd).
+static func larder_robbable(world: WorldData, at: Vector2, def: SentinelDef) -> bool:
+	return laid_near(world, at, def.feeds, def.reach * FEED_SHARE) >= SentinelWay.FEEDS_LEAST \
+		and laid_near(world, at, def.feeds, Senses.THREAT_RADIUS, true) == 0
+
+
+## How near a keeper lets anybody come: inside it, a signature is read (SPOOF)
+## and the fight's wary body comes for whoever is there, by the one number.
+static func guard(def: SentinelDef) -> float:
+	return float(Roster.row(def.kind).get("sees", 12)) * Senses.WARY_INSIDE
+
+
+## Tiles of its FOUNDER grounds inside `reach` (its own, unless asked nearer)
+## that its move takes it onto from `at` (a flood under its move's rules, as
+## `opens`), counted to `enough`.
+static func founder_tiles(world: WorldData, at: Vector2, def: SentinelDef, enough: int = 1 << 30, reach: float = -1.0) -> int:
+	return int(_founder_flood(world, at, def, enough, false, reach)[0])
+
+
+## The nearest tile (by its move) of its FOUNDER grounds from `at` that stands in
+## a patch of them a body's width across, inside its reach: where a lure draws it
+## to founder (a tour's `near keeper_flats`). INF where there is none.
+static func founder_spot(world: WorldData, at: Vector2, def: SentinelDef) -> Vector2:
+	var u: Vector2i = _founder_flood(world, at, def, 1 << 30, true, -1.0)[1]
+	return Vector2(u.x + 0.5, u.y + 0.5) if u.x >= 0 else Vector2.INF
+
+
+## How far from its den a keeper of `def` sees a lure on the ground it founders
+## in: its body's `sees`, inside what it holds. A den by the heart is sought with
+## its founder ground this near first: seed 1's anvil denned 26 tiles from the
+## nearest sand, inside its reach and past anything a lure could show it.
+static func lure_reach(def: SentinelDef) -> float:
+	return minf(def.reach, float(Roster.row(def.kind).get("sees", def.reach)))
+
+
+## The flood `founder_tiles` and `founder_spot` share: [tiles counted to
+## `enough`, the first tile in a 3x3 patch of the grounds when `patch`].
+static func _founder_flood(world: WorldData, at: Vector2, def: SentinelDef, enough: int, patch: bool, within: float = -1.0) -> Array:
+	var sink := founders(def)
+	var start := Vector2i(floori(at.x), floori(at.y))
+	if sink.is_empty() or not world.in_bounds(start.x, start.y):
+		return [0, Vector2i(-1, -1)]
+	var row := Roster.row(def.kind)
+	var step := maxi(1, int(row.get("climbs", 1)))
+	var tall := int(ceil(float(row.get("height", 1.0)) / WorldData.STEP))
+	var reach := within if within >= 0.0 else def.reach
+	var r2 := reach * reach
+	var r := ceili(reach)
+	# None of the ground anywhere in reach: no flood. Most of a region's rooms are
+	# this, and the room search asks dozens of them.
+	var any := false
+	for dy in range(-r, r + 1):
+		for dx in range(-r, r + 1):
+			if dx * dx + dy * dy <= r2 and sink.has(world.ground_at(start.x + dx, start.y + dy)):
+				any = true
+				break
+		if any:
+			break
+	if not any:
+		return [0, Vector2i(-1, -1)]
+	var side := r * 2 + 1
+	var seen := PackedByteArray()
+	seen.resize(side * side)
+	seen[r * side + r] = 1
+	var todo: Array[Vector2i] = [start]
+	var head := 0
+	var n := 0
+	while head < todo.size() and n < enough:
+		var t := todo[head]
+		head += 1
+		var l := world.level_at(t.x, t.y)
+		for d: Vector2i in STEPS4:
+			var u := t + d
+			var lx := u.x - start.x + r
+			var ly := u.y - start.y + r
+			if lx < 0 or ly < 0 or lx >= side or ly >= side or seen[ly * side + lx] != 0 or not world.in_bounds(u.x, u.y) \
+					or (Vector2(u) + Vector2(0.5, 0.5)).distance_squared_to(at) > r2:
+				continue
+			seen[ly * side + lx] = 1
+			if not _keeper_ground(world, u.x, u.y, tall) or absi(world.level_at(u.x, u.y) - l) > step:
+				continue
+			if sink.has(world.ground_at(u.x, u.y)):
+				n += 1
+				if patch and _all_of(world, u, sink):
+					return [n, u]
+			todo.append(u)
+	return [n, Vector2i(-1, -1)]
+
+
+## Every tile of the 3x3 round `u` is one of `grounds`.
+static func _all_of(world: WorldData, u: Vector2i, grounds: Array) -> bool:
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if not grounds.has(world.ground_at(u.x + dx, u.y + dy)):
+				return false
+	return true
+
+
+const STEPS4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+
+
+## Tiles inside `radius` of `at` that a craft of `kind` travels over.
+static func _craft_tiles(world: WorldData, at: Vector2, kind: StringName, radius: float) -> int:
+	var ride := CraftKinds.ride(kind)
+	if ride == null:
+		return 0
+	var r := ceili(radius)
+	var n := 0
+	for dy in range(-r, r + 1):
+		for dx in range(-r, r + 1):
+			var x := floori(at.x) + dx
+			var y := floori(at.y) + dy
+			if world.in_bounds(x, y) and Vector2(dx, dy).length() <= radius and ride.crosses(world.ground_at(x, y)):
+				n += 1
+	return n
+
+
+## How many props generation laid of `kinds` within `radius` of `at` (or, with
+## `square`, within it in Chebyshev distance): what the world was made with,
+## never what play has robbed or set down since, because a den is fixed by the
+## world (`lair`). Read from the sections the circle touches (WorldSections),
+## never the whole world's props.
+static func laid_near(world: WorldData, at: Vector2, kinds: Array, radius: float, square := false) -> int:
+	var r2 := radius * radius
+	var made := world.generated() if world.packed else world.prop_count()
+	var lo := WorldSections.of(at - Vector2(radius, radius))
+	var hi := WorldSections.of(at + Vector2(radius, radius))
+	var n := 0
+	for sy in range(lo.y, hi.y + 1):
+		for sx in range(lo.x, hi.x + 1):
+			_sections_lock.lock()
+			var rows := WorldSections.rows_in(world, Vector2i(sx, sy))
+			_sections_lock.unlock()
+			for row: int in rows:
+				if row >= made or not kinds.has(int(world.table.kind[row])):
+					continue
+				var q: Vector2 = world.table.pos[row]
+				if (Senses.chebyshev(q, at) <= radius) if square else (q.distance_squared_to(at) <= r2):
+					n += 1
+	return n
+
+
+## A world's section index is made on its first ask (WorldSections._index); the
+## station rule asks while a realm is raised on a worker, so its asks take turns.
+static var _sections_lock := Mutex.new()
 
 
 ## The nearest tile to `p` a body of this size can stand on, searched in rings, so

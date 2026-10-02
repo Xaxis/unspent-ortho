@@ -220,6 +220,9 @@ static func _site_kinds(c: GenContext) -> void:
 			var patch := int(row.get("ground", SiteKinds.KEEP))
 			var radius := float(row.get("radius", 4.0))
 			var clear := float(row.get("clear", 24.0))
+			# A water patch stands level: one level under its whole reach.
+			var rise := 0 if bool(row.get("level", false)) else 2
+			var reach := ceili(radius) if rise == 0 else ceili(radius * 0.6)
 			var wants: Variant = row.get("wants", SiteKinds.ANY)
 			for region: Dictionary in _regions_of(w, cc):
 				var want := maxi(1, roundi(rate * float(region.get("tiles", 0)) / 1000.0))
@@ -235,7 +238,7 @@ static func _site_kinds(c: GenContext) -> void:
 						continue
 					if wants is int and w.ground[i] != int(wants):
 						continue
-					if not _clear_site(c, p, ceili(radius * 0.6), 2) or _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), clear):
+					if not _clear_site(c, p, reach, rise) or _near_landmark(w, Vector2(p), PLACES_APART * maxf(c.body_k, 0.5)) or _near_village(w, Vector2(p), clear):
 						continue
 					if patch != SiteKinds.KEEP:
 						_lay_patch(c, p, radius, patch)
@@ -249,11 +252,12 @@ static func _site_kinds(c: GenContext) -> void:
 ## THE SITING OF EACH KIND IN EACH REGION THROWS ITS OWN DARTS. One stream for
 ## every site on the island made a region's places depend on every dart thrown
 ## before them anywhere: one more tip in the south moved every stone circle in
-## the north. Keyed on (kind, region), a region's darts are its own, and what is
-## laid round a site is drawn from its tile alone (`_site_radius`), so a section
-## can lay a site knowing only where the plan put it (docs: streamed worldgen, S3).
+## the north. Keyed on (kind, the region's own key), a region's darts are its own,
+## and what is laid round a site is drawn from its tile alone (`_site_radius`), so
+## a section can lay a site knowing only where the plan put it (docs: streamed
+## worldgen, S3). The key is the region's, never its id (GenCountries.region_key).
 static func _site_rng(c: GenContext, kind: StringName, region: int) -> RandomNumberGenerator:
-	return Rng.make(c.s, Rng.hash_ints(81, String(kind).hash(), region))
+	return Rng.make(c.s, Rng.hash_ints(81, String(kind).hash(), GenCountries.region_key(c.w, region)))
 
 
 ## How far a site's patch reaches, from its own tile.
@@ -423,7 +427,11 @@ static func _random_tile_in(c: GenContext, rng: RandomNumberGenerator, r: Rect2)
 static func _clear_site(c: GenContext, p: Vector2i, r: int, max_rise: int) -> bool:
 	var w := c.w
 	var i0 := p.y * c.size + p.x
-	if c.land[i0] == 0:
+	# The site's own tile first: the sweep below steps by two from -r, so on an
+	# odd r it never reads the middle, and a works stood its site on a road
+	# (seed 90210's demolition face, which `_put` then refused, and the
+	# metropolis lost its only one).
+	if c.land[i0] == 0 or c.water[i0] != 0 or c.road[i0] != 0 or c.village[i0] != 0 or c.ramp[i0] != 0:
 		return false
 	var l0 := w.level[i0]
 	for dy in range(-r, r + 1, 2):
@@ -763,10 +771,12 @@ static func _wrecks(c: GenContext) -> void:
 	for k: int in GenWorks._order(keys.size()):
 		var here: int = keys[k]
 		var cands: PackedInt32Array = by_region[here]
-		var want := floori(float(cands.size()) / WRECK_BEACH + Rng.hash01(c.s, here, 0, 0x82))
+		# Rolled from the region's own key, never its id (GenCountries.region_key).
+		var key := GenCountries.region_key(w, here)
+		var want := floori(float(cands.size()) / WRECK_BEACH + Rng.hash01(c.s, key, 0, 0x82))
 		if want == 0:
 			continue
-		var rng := Rng.make(c.s, Rng.hash_ints(82, here))
+		var rng := Rng.make(c.s, Rng.hash_ints(82, key))
 		var mine := w.landmarks.size()
 		var wrecks := 0
 		for attempt in mini(400, cands.size() * 2):

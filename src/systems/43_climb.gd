@@ -86,6 +86,22 @@ const RIDE_TURN := 0.3
 ## so a long lens on the web's depth (EYE_NEAR) does not lose the shore in the sea.
 const RIDE_FRAME := 0.35
 const RIDE_NEAR := 400.0
+## THE ISLAND FIRST, AND THE LEG HE IS IN AT THE FRAME'S EDGE. Aimed straight at
+## the island from beside the thigh, the lens held only the island, a map seen
+## from nowhere, and once the walk had carried the leg away it held no walker
+## at all (the real climb's thigh ride, 15:54). Widened to take in the leg, the
+## island was a speck whenever the leg stood far from it. So the island comes
+## first: the frame turns from it toward the part of the leg that lies nearest
+## it on the glass, its foot or its shin, until that part is RIDE_LEG_EDGE of the
+## way out to the frame's edge, on the shortest lens that holds both, never
+## longer than the island's own (RIDE_FRAME) and never so wide that the
+## island's half-width is under RIDE_FRAME_LEAST of the frame's. Where the leg
+## will not fit even then, the frame turns toward it as far as the island allows.
+const RIDE_LEG_EDGE := 0.85
+const RIDE_FRAME_LEAST := 0.25
+## How many points down the leg, hip to knee to ankle, are asked which lies
+## nearest the island on the glass.
+const RIDE_LEG_POINTS := 16
 ## The longest lens it takes (a camera refuses one under a degree).
 const RIDE_FOV_LEAST := 2.0
 ## Where the body hangs from a hold: his feet this far down the pitch from the
@@ -242,7 +258,7 @@ func _process(delta: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	_settle = maxf(0.0, _settle - delta)
 	var use_down := Input.is_action_pressed(&"use")
-	var use_edge := use_down and not _use_was
+	var use_edge := use_down and not _use_was and not Survival.ask_pending(game)
 	_use_was = use_down
 	var c := _colossi()
 	if climb == null:
@@ -399,7 +415,7 @@ const TOUR_PLACES: Array[String] = ["climb:cable", "climb:lip"]
 
 ## `walkto at:climb:cable`: the foot of the nearest planted foot's cable; and
 ## `at climb:lip`: on the lip of the crater it hangs into, above it, so the walk
-## down to it is his own.
+## down to it is his own (`_lip_over`).
 func tour_place(what: String) -> Vector2:
 	var lip := what == "climb:lip"
 	if not what in TOUR_PLACES:
@@ -415,13 +431,65 @@ func tour_place(what: String) -> Vector2:
 			best_f = f
 	if not lip or best_f.is_empty():
 		return best
-	var pad: Vector3 = (best_f.pads as Array)[1]
-	var centre := Vector2(pad.x, pad.y)
-	return centre + (best - centre).normalized() * (Treads.rim_r(pad) - LIP_IN)
+	return _lip_over(best, (best_f.pads as Array)[1])
 
 
 ## How far in from a crater's rim (Treads.rim_r) `at climb:lip` stands.
 const LIP_IN := 2.0
+## How far round the crater from the cable's own bearing, either way (radians),
+## the lip may be sought, in steps of LIP_TURN; and how far in toward the cable
+## it may come, in steps of LIP_STEP metres, short of LIP_NEAREST of it.
+const LIP_SWING := 1.2
+const LIP_TURN := 0.1
+const LIP_STEP := 2.0
+const LIP_NEAREST := 6.0
+
+
+## THE LIP IS WHERE THE WALK DOWN IS HIS OWN, on any world. Straight out from the
+## pad's middle through the cable, at the rim, the walk down met a wall on seed
+## 1 at GEN 47: twelve metres in the line rose two levels onto the spoil, a body
+## steps one, and the walk stopped 8.7 tiles short of the cable. So the
+## lip is the spot nearest that one, round the rim and in from it, from which
+## the straight walk to the cable never steps more than a body can
+## (WorldQuery.passable), on dry ground.
+func _lip_over(cable: Vector2, pad: Vector3) -> Vector2:
+	var centre := Vector2(pad.x, pad.y)
+	var out := (cable - centre).normalized()
+	var rim := Treads.rim_r(pad) - LIP_IN
+	var first := centre + out * rim
+	var r := rim
+	while r >= cable.distance_to(centre) + LIP_NEAREST:
+		var turn := 0.0
+		while turn <= LIP_SWING:
+			for side: float in ([1.0] if turn == 0.0 else [1.0, -1.0]):
+				var at := centre + out.rotated(turn * side) * r
+				if _walk_clear(at, cable):
+					return at
+			turn += LIP_TURN
+		r -= LIP_STEP
+	return first
+
+
+## Whether a body walks straight from `a` to `b` on its own feet: every tile on
+## the way dry and a body's one level (WorldQuery.passable) from the one before.
+## Read from a window round the line, never the whole world.
+func _walk_clear(a: Vector2, b: Vector2) -> bool:
+	var win := TileWindow.of(game.world, floori(minf(a.x, b.x)) - 1, floori(minf(a.y, b.y)) - 1,
+		floori(maxf(a.x, b.x)) + 2, floori(maxf(a.y, b.y)) + 2)
+	var n := ceili(a.distance_to(b) / 0.25)
+	var prev := -1
+	for i in n + 1:
+		var p := a.lerp(b, float(i) / float(maxi(n, 1)))
+		var t := Vector2i(floori(p.x), floori(p.y))
+		if not game.world.in_bounds(t.x, t.y) or not win.has(t.x, t.y):
+			return false
+		var at := win.at(t.x, t.y)
+		if Ground.is_water(win.ground[at]):
+			return false
+		if prev >= 0 and absi(win.level[at] - win.level[prev]) > 1:
+			return false
+		prev = at
+	return true
 
 
 func _spent_elsewhere() -> bool:
@@ -499,7 +567,8 @@ func _land() -> Vector3:
 ## he is down to the island under the walker, holds on it, and over the last
 ## share comes back to him on the next pitch. It swings out across the plane
 ## the leg bends in: the island lies by the foot, in that plane, so from beside
-## it the leg falls away to the foot and nothing of it stands in between.
+## it the leg falls away to the foot and nothing of it stands in between, and
+## the frame holds the shin's fall to its foot with the island (RIDE_LEG).
 func _ride(def: RefCounted, pose: Dictionary) -> void:
 	var p := climb.pitch
 	var share := clampf(1.0 - climb.busy / maxf(float(WalkerClimb.PITCHES[p].ride), 1e-3), 0.0, 1.0)
@@ -528,13 +597,39 @@ func _ride(def: RefCounted, pose: Dictionary) -> void:
 			side = side.normalized()
 			side *= signf(side.dot(out)) if absf(side.dot(out)) > 1e-3 else 1.0
 			at += side * maxf(at.y, 0.0) * RIDE_OUT * wide
-		look = (him - at).normalized().slerp((land - at).normalized(), wide)
+		var to_land := (land - at).normalized()
 		var half := float(game.world.size) * 0.5
-		fov = lerpf(EYE_FOV, rad_to_deg(2.0 * atan(half / (RIDE_FRAME * at.distance_to(land)))), wide)
+		var island := atan(half / at.distance_to(land))
+		var to_leg := _nearest_on_leg(pose, k, at, to_land)
+		var gap := to_land.angle_to(to_leg)
+		# The shortest lens that holds the island whole and the leg's part at
+		# RIDE_LEG_EDGE, between the island's own and its floor.
+		var off := maxf(0.0, (gap - RIDE_LEG_EDGE * island) / (1.0 + RIDE_LEG_EDGE))
+		var hold := clampf(off + island, atan(half / (RIDE_FRAME * at.distance_to(land))), atan(half / (RIDE_FRAME_LEAST * at.distance_to(land))))
+		var turn := clampf(gap - RIDE_LEG_EDGE * hold, 0.0, hold - island)
+		var aim := to_land.slerp(to_leg, turn / gap) if gap > 1e-4 else to_land
+		look = (him - at).normalized().slerp(aim, wide)
+		fov = lerpf(EYE_FOV, rad_to_deg(2.0 * hold), wide)
 	_cam.fov = clampf(fov, RIDE_FOV_LEAST, EYE_FOV)
 	_cam.near = maxf(EYE_NEAR, RIDE_NEAR * wide * wide)
 	var up := Vector3.UP if absf(look.y) < 0.98 else out
 	_cam.global_transform = Transform3D(Basis.looking_at(look, up), at)
+
+
+## The way from `at` to the point of leg `k`, hip to knee to ankle, that lies
+## nearest the way `to` on the glass.
+func _nearest_on_leg(pose: Dictionary, k: int, at: Vector3, to: Vector3) -> Vector3:
+	var hip: Vector3 = pose.hips[k]
+	var knee: Vector3 = pose.knees[k]
+	var ankle: Vector3 = pose.ankles[k]
+	var best := (ankle - at).normalized()
+	for i in RIDE_LEG_POINTS + 1:
+		var s := float(i) / float(RIDE_LEG_POINTS)
+		var p := hip.lerp(knee, s * 2.0) if s < 0.5 else knee.lerp(ankle, s * 2.0 - 1.0)
+		var d := (p - at).normalized()
+		if d.angle_to(to) < best.angle_to(to):
+			best = d
+	return best
 
 
 ## THE CLIMB IS OVER, the panel at the hub read and put down: the lifts inside

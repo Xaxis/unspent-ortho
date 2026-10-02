@@ -11,7 +11,11 @@ Destination `docs/VISION.md`, fiction `docs/STORY.md`, look `docs/LOOK.md`, next
   has 5 continents; `--size` is a ceiling, and 512 or less gives one body.
 - 22 landscapes, one file each in `src/content/biomes/` (21 surface, 1
   underground). A landscape with `spread.x >= 1` is guaranteed and dealt to the
-  home continent first (coast, moss, frost sea).
+  home continent first (coast, moss, frost sea). The drowned city is the
+  `LANDFALL`: dealt to the body the shortest water from home reaches, its heart
+  where the raft comes ashore, and that body is the journey's leg 1.
+- A continent's places are its own: nothing laid on one body depends on another
+  (`tests/biome/test_body_independence.gd`, `test_landfall.gd`).
 - **A landscape is immense**: it lies on ONE continent (`MOST_BODIES`), each
   continent carries four or five, and each landscape has one heart per
   continent, so it stands there whole. Measure with `tools/gd/probe_regions.gd`.
