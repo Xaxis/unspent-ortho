@@ -489,7 +489,7 @@ void fragment() {
 	// A walker's plate takes the far body's daylight (walker_plate.gdshaderinc).
 	if (near_lift.x > 0.0 && !lit_part) {
 		vec3 n_day = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
-		EMISSION += ALBEDO * walker_day(n_day, normalize(eye - world_pos), near_sun_dir, near_sun_color, near_top_color, near, near_fill);
+		EMISSION += ALBEDO * walker_day(n_day, normalize(eye - world_pos), near_sun_dir, near_sun_color, near_top_color, walker_low(near_top_color, near_top_color, 0.0), near, near_fill);
 	}
 	// The blow's white, hard-edged because FOUND is made to a rule. Laid as
 	// EMISSION over a black albedo so it lands on exactly that value whatever
