@@ -134,7 +134,7 @@ func _read_input(delta: float) -> void:
 		sim.press_dodge()
 	# The unbuilder's hands (FightKit.unbuild): use held at an open machine's part
 	# strips it, gathered through its openings.
-	if sim.hero.kit.unbuild and Input.is_action_pressed(&"use"):
+	if sim.hero.kit.unbuild and Input.is_action_pressed(&"use") and not Survival.ask_pending(game):
 		for m in sim.mobs:
 			if sim.can_strip(m):
 				sim.strip(m, delta * 1000.0)

@@ -258,7 +258,7 @@ func _process(delta: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	_settle = maxf(0.0, _settle - delta)
 	var use_down := Input.is_action_pressed(&"use")
-	var use_edge := use_down and not _use_was
+	var use_edge := use_down and not _use_was and not Survival.ask_pending(game)
 	_use_was = use_down
 	var c := _colossi()
 	if climb == null:

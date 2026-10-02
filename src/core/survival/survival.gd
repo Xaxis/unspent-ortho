@@ -434,6 +434,18 @@ static func _ask_or_build(game: Game) -> bool:
 	return true
 
 
+## An ask is out (a fire asked for, or sleep), and the next press is its own
+## whoever else is under the hand: ONE PRESS, ONE OWNER. The line that asked
+## promised it ("Again, and a fire is laid here."), so the systems that answer
+## `use` before this one leave that press be. Seed 7's camp on the drowned
+## city's world: a cache came into reach between the two presses and opened
+## instead of the fire.
+static func ask_pending(game: Game) -> bool:
+	if game == null:
+		return false
+	return build_asked(game).is_finite() or now_real() < SurvivalState.of(game).sleep_ask_until
+
+
 static func build_asked(game: Game) -> Vector2:
 	var ask := SurvivalState.of(game).build_ask
 	if ask.is_empty() or now_real() >= float(ask.until):

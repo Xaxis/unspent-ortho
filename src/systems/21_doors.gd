@@ -232,6 +232,8 @@ func _process(delta: float) -> void:
 	_use_was = down
 	if game == null or game.world == null or game.player == null or _swapping:
 		return
+	if Survival.ask_pending(game):
+		_use_edge = false
 	if game.watch.is_finite():
 		return
 	if pocket == null:
