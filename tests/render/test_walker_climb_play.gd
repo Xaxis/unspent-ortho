@@ -96,9 +96,8 @@ func test_on_the_leg_the_keys_and_the_eye_are_the_climbs() -> void:
 
 
 ## A RIDE TAKES IN THE ISLAND: in the middle of a ride the eye is kilometres off
-## the leg, the island and the leg's foot and shin all in its frame, so the
-## leg's line runs down to the island, on a lens no longer than the island's own
-## and wide enough that the island is no speck;
+## the leg, the island first on its own long lens, never under a quarter of the
+## half frame, and the leg he is in coming into the frame at its edge;
 ## on a hold it is the climb's own eye again.
 func test_a_ride_takes_in_the_island() -> void:
 	var g := Game.new()
@@ -125,13 +124,13 @@ func test_a_ride_takes_in_the_island() -> void:
 	check(cam.is_position_in_frustum(land), "the island's middle is in the frame")
 	var to_land := land - cam.global_position
 	var share := float(g.world.size) * 0.5 / (to_land.length() * tan(deg_to_rad(cam.fov) * 0.5))
-	lt(share, float(k.RIDE_FRAME) + 0.02, "on no longer a lens than the island's own (%.2f of the half frame)" % share)
-	gt(share, 0.1, "and the island no speck in it")
+	near(share, float(k.RIDE_FRAME), 0.02, "on the island's own lens (%.2f of the half frame)" % share)
+	gt(share, 0.25, "the island first: never under a quarter of the half frame")
 	var pose: Dictionary = colossi.view.poses[w]
 	var ankle: Vector3 = (pose.ankles as Array)[c.leg]
-	var shin: Vector3 = ankle.lerp((pose.knees as Array)[c.leg], float(k.RIDE_LEG_UP))
-	check(cam.is_position_in_frustum(ankle) and cam.is_position_in_frustum(shin),
-		"the foot of the leg he is in and its shin are in the frame, so its line runs down to the island")
+	var shin: Vector3 = ankle.lerp((pose.knees as Array)[c.leg], 0.3)
+	check(cam.is_position_in_frustum(ankle) or cam.is_position_in_frustum(shin),
+		"and the leg he is in comes into it, its foot or its shin")
 	c.state = WalkerClimb.CLIMB
 	c.busy = 0.0
 	await process_frames(3)

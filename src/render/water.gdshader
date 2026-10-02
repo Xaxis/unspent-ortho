@@ -118,15 +118,18 @@ const float SEA_FAR_SPECULAR = 0.5;
 // mirrors the sky like glass. Toward the sun that roughness is the sun's path,
 // a band of broken light; away from it, the sea's own grain. Both drift slowly
 // down the wind.
-const float SEA_LANE_ROUGH = 0.12;
+// A LANE IS A CHANGE IN SHEEN, NOT IN COLOUR: a narrow band of smoother water,
+// sharp at its edges, that only the sky and the sun it mirrors show. Drawn as
+// soft streaks of a lighter and darker sea they read as a smeared blur.
+const float SEA_LANE_ROUGH = 0.1;
 const float SEA_SLICK_ROUGH = 0.2;
-const float SEA_LANE_TONE = 0.12;
 const float SEA_SLICK_TONE = 0.04;
 float sea_lanes(vec2 wp, float t) {
 	vec2 wd = length(sky_wind.xy) > 1e-3 ? normalize(sky_wind.xy) : vec2(0.8, 0.6);
 	vec2 q = vec2(dot(wp, wd), dot(wp, vec2(-wd.y, wd.x))) - vec2(t * 6.0, 0.0);
-	return ink_vnoise(q * vec2(1.0 / 6000.0, 1.0 / 700.0)) * 0.65
-		+ ink_vnoise(q * vec2(1.0 / 2000.0, 1.0 / 260.0) + vec2(7.0, 3.0)) * 0.35;
+	float n = ink_vnoise(q * vec2(1.0 / 4000.0, 1.0 / 300.0)) * 0.7
+		+ ink_vnoise(q * vec2(1.0 / 1200.0, 1.0 / 110.0) + vec2(7.0, 3.0)) * 0.3;
+	return smoothstep(0.58, 0.63, n);
 }
 // Slicks lie in long ribbons down the wind, never round blobs.
 float sea_slicks(vec2 wp, float t) {
@@ -322,12 +325,12 @@ void fragment() {
 	// Most of it, not all: the whole of it lit a dusk shallows noon blue.
 	vec3 sh = mix(vec3(1.0), max(sun_hue.rgb, vec3(0.3)), 0.6);
 	c /= mix(sh, vec3(1.0), pale);
-	float lanes = 0.5;
+	float lanes = 0.0;
 	float slick = 0.0;
 	if (kind == 0 && far > 0.0) {
 		lanes = sea_lanes(wp, TIME);
 		slick = sea_slicks(wp, TIME);
-		c *= 1.0 + far * deep * ((lanes - 0.5) * SEA_LANE_TONE - slick * SEA_SLICK_TONE);
+		c *= 1.0 - far * deep * slick * SEA_SLICK_TONE;
 	}
 	ALBEDO = matter_albedo(sky_apply(c, world_pos, TIME));
 	// Water is the smoothest thing in the world and it is what makes a night
@@ -351,7 +354,7 @@ void fragment() {
 	// (sky.gdshaderinc `sky_colossus_pads`): the water goes dark with the land.
 	float under_pad = sky_colossus_pads(world_pos);
 	SPECULAR *= 1.0 - under_pad;
-	float far_rough = kind == 0 ? mix(SEA_FAR_ROUGH + SEA_LANE_ROUGH * (lanes - 0.5), SEA_SLICK_ROUGH, slick) : SEA_FAR_ROUGH;
+	float far_rough = kind == 0 ? mix(SEA_FAR_ROUGH - SEA_LANE_ROUGH * lanes, SEA_SLICK_ROUGH, slick) : SEA_FAR_ROUGH;
 	ROUGHNESS = mix(mix(ROUGHNESS, max(ROUGHNESS, far_rough), far), 1.0, under_pad);
 	METALLIC = 0.0;
 	// The surface's own chop, small and slow, so the reflection breaks up the
