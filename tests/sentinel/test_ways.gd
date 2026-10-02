@@ -432,11 +432,12 @@ func test_held_out_on_the_flats_it_founders() -> void:
 		return
 	KF.calm(g)
 	var flats: Array = Sentinels.by_id(s.design).way_of(SentinelWay.FOUNDER).grounds
-	var flat := Vector2.INF
-	for dist: float in [6.0, 8.0, 10.0, 12.0, 4.0]:
-		flat = KF.stand(g, s, dist, flats, true)
-		if flat.is_finite():
-			break
+	# Drawn to its flats by name, as a player is and a tour stages it (`near
+	# keeper_flats`): the nearest of its ground in a patch a body's width across.
+	# The spot picked by distance off the den, with the most of that ground round
+	# it, was the edge of a two-tile strip by the water once seed 1's Reaper
+	# denned off its larder, and it stood biting from the firm ground.
+	var flat := Sentinels.founder_spot(g.world, s.lair, Sentinels.by_id(s.design))
 	check(flat.is_finite(), "flats to draw it onto")
 	if not flat.is_finite():
 		Sx.end(g)

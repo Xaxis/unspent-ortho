@@ -426,6 +426,8 @@ static func _lair_worked(world: WorldData, region: Dictionary, def: SentinelDef)
 			if world.region_at(floori(p.x), floori(p.y)) != id:
 				continue
 			var at := den_at(world, p, def, landings)
+			if at.is_finite() and def.way_of(SentinelWay.STARVE) != null and not larder_robbable(world, at, def):
+				at = _den_off_larder(world, p, def, landings, id)
 			if not at.is_finite():
 				continue
 			var n := 0
@@ -470,6 +472,35 @@ static func _lair_worked(world: WorldData, region: Dictionary, def: SentinelDef)
 static func den_at(world: WorldData, p: Vector2, def: SentinelDef, landings: Array[Vector2] = []) -> Vector2:
 	var at := stand_near(world, p, 1.4, founders(def))
 	return at if _den_ok(world, at, def, landings) else Vector2.INF
+
+
+## Where a keeper of `def` dens for a station laid at `p` when the nearest room
+## to it has works of its larder under its feet (`larder_robbable`): seed 1's
+## Reaper denned two tiles off its own intake. The nearest room in region `id`
+## past THREAT_RADIUS of the station, where every way is kept, tried in squares
+## of Chebyshev rings one tile apart (DEN_OFF), nearest first: the station's
+## works stay its larder and the den stays by the station. INF when none is.
+const DEN_OFF := 4
+
+
+static func _den_off_larder(world: WorldData, p: Vector2, def: SentinelDef, landings: Array[Vector2], id: int) -> Vector2:
+	var sink := founders(def)
+	var spots: Array[Vector2] = []
+	var first := floori(Senses.THREAT_RADIUS) + 1
+	for d in range(first, first + DEN_OFF):
+		for k in range(-d, d + 1, 2):
+			for q: Vector2 in [Vector2(k, -d), Vector2(k, d), Vector2(-d, k), Vector2(d, k)]:
+				spots.append(p + q)
+	spots.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(p) < b.distance_squared_to(p))
+	for q: Vector2 in spots:
+		if not world.in_bounds(floori(q.x), floori(q.y)) or world.region_at(floori(q.x), floori(q.y)) != id:
+			continue
+		if not larder_robbable(world, q, def):
+			continue
+		var at := stand_near(world, q, 1.4, sink)
+		if larder_robbable(world, at, def) and _den_ok(world, at, def, landings) and ways_closed(world, at, def).is_empty():
+			return at
+	return Vector2.INF
 
 
 ## A keeper of `def` can den at `at`: clear of home and of every landing by its
@@ -665,7 +696,7 @@ static func founders(def: SentinelDef) -> Array:
 ##   FOUNDER  FOUNDER_LEAST tiles of its grounds inside its reach that its own
 ##            move carries it onto from the den: a lure it cannot follow is none.
 ##            With `near`, inside what it sees from the den (`lure_reach`).
-##   STARVE   SentinelWay.FEEDS_LEAST of its feeds inside FEED_SHARE of its reach.
+##   STARVE   its larder can be robbed out (`larder_robbable`).
 ##   SPOOF    inside its guard, one of the props it reads beside, and SPOOF_WATER
 ##            tiles the craft it reads off travels over.
 ## The ids of the ways closed at `at`; empty when it is kept. `ground_only` asks
@@ -683,7 +714,7 @@ static func ways_closed(world: WorldData, at: Vector2, def: SentinelDef, ground_
 			SentinelWay.FOUNDER:
 				open = founder_tiles(world, at, def, FOUNDER_LEAST, lure_reach(def) if near else def.reach) >= FOUNDER_LEAST
 			SentinelWay.STARVE:
-				open = ground_only or laid_near(world, at, def.feeds, def.reach * FEED_SHARE) >= SentinelWay.FEEDS_LEAST
+				open = ground_only or larder_robbable(world, at, def)
 			SentinelWay.SPOOF:
 				var inside := guard(def)
 				if way.aboard != &"":
@@ -693,6 +724,17 @@ static func ways_closed(world: WorldData, at: Vector2, def: SentinelDef, ground_
 		if not open:
 			out.append(way.id())
 	return out
+
+
+## A keeper of `def` denned at `at` can be starved by robbing its works: at least
+## SentinelWay.FEEDS_LEAST of its feeds inside FEED_SHARE of its reach, and none
+## where a take is refused with it near (Senses.THREAT_RADIUS of the den, the
+## number Survival.threat_near reads). Play counts every feed in reach and the
+## way is won only when all are robbed, so one under its feet holds it shut: seed
+## 1's Reaper at its intake, robbed 7 of 10 (tests/sentinel/test_ways.gd).
+static func larder_robbable(world: WorldData, at: Vector2, def: SentinelDef) -> bool:
+	return laid_near(world, at, def.feeds, def.reach * FEED_SHARE) >= SentinelWay.FEEDS_LEAST \
+		and laid_near(world, at, def.feeds, Senses.THREAT_RADIUS, true) == 0
 
 
 ## How near a keeper lets anybody come: inside it, a signature is read (SPOOF)
@@ -806,11 +848,12 @@ static func _craft_tiles(world: WorldData, at: Vector2, kind: StringName, radius
 	return n
 
 
-## How many props generation laid of `kinds` within `radius` of `at`: what the
-## world was made with, never what play has robbed or set down since, because
-## a den is fixed by the world (`lair`). Read from the sections the circle
-## touches (WorldSections), never the whole world's props.
-static func laid_near(world: WorldData, at: Vector2, kinds: Array, radius: float) -> int:
+## How many props generation laid of `kinds` within `radius` of `at` (or, with
+## `square`, within it in Chebyshev distance): what the world was made with,
+## never what play has robbed or set down since, because a den is fixed by the
+## world (`lair`). Read from the sections the circle touches (WorldSections),
+## never the whole world's props.
+static func laid_near(world: WorldData, at: Vector2, kinds: Array, radius: float, square := false) -> int:
 	var r2 := radius * radius
 	var made := world.generated() if world.packed else world.prop_count()
 	var lo := WorldSections.of(at - Vector2(radius, radius))
@@ -822,7 +865,10 @@ static func laid_near(world: WorldData, at: Vector2, kinds: Array, radius: float
 			var rows := WorldSections.rows_in(world, Vector2i(sx, sy))
 			_sections_lock.unlock()
 			for row: int in rows:
-				if row < made and kinds.has(int(world.table.kind[row])) and world.table.pos[row].distance_squared_to(at) <= r2:
+				if row >= made or not kinds.has(int(world.table.kind[row])):
+					continue
+				var q: Vector2 = world.table.pos[row]
+				if (Senses.chebyshev(q, at) <= radius) if square else (q.distance_squared_to(at) <= r2):
 					n += 1
 	return n
 
