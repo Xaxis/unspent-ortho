@@ -569,6 +569,13 @@
   },
   {
    "kind": "cli",
+   "label": "shard-times",
+   "entry": "tools/shard-times.sh",
+   "reach": "tools/shard-times.sh RUN_ID",
+   "area": "tools"
+  },
+  {
+   "kind": "cli",
    "label": "tour",
    "entry": "tools/tour.sh",
    "reach": "tools/tour.sh",

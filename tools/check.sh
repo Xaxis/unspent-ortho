@@ -295,6 +295,8 @@ for k in "${!idx[@]}"; do
   if ! grep -qE 'passed,' "${logs[$k]}"; then echo "shard $i wrote no summary -- it did not finish"; fail=1; unfinished=1; fi
   grep -E "FAIL|^\s{7}|LOAD FAIL|SCRIPT ERROR|at: " "${logs[$k]}"
   grep -E 'passed,' "${logs[$k]}"
+  # Each file's time, for tools/shard-times.sh to read off the gate's own log.
+  grep -E '^file-time ' "${logs[$k]}"
   grep -E '^\s*FAIL ' "${logs[$k]}" | sed -E 's/^ *FAIL //; s/ \([0-9]+ ms\)$//' >>"$ran"
   # A test that hits a script error stops where it was and the runner counts
   # it passed if it had recorded no failed check: the error itself fails the gate.
@@ -332,6 +334,7 @@ if [ -n "$costs" ]; then
   if ! grep -qE 'passed,' "$clog"; then echo "the cost run wrote no summary -- it did not finish"; fail=1; unfinished=1; fi
   grep -E "yardsticks|UNMEASURED|FAIL|^\s{7}|SCRIPT ERROR" "$clog"
   grep -E 'passed,' "$clog"
+  grep -E '^file-time ' "$clog"
   grep -E '^\s*FAIL ' "$clog" | sed -E 's/^ *FAIL //; s/ \([0-9]+ ms\)$//' >>"$ran"
   if grep -qE "SCRIPT ERROR" "$clog"; then echo "script error in the cost run"; fail=1; fi
   rm -f shots/check/costs.log
@@ -359,6 +362,7 @@ if [ -n "$stepped" ]; then
   if ! grep -qE 'passed,' "$slog"; then echo "the stepped run wrote no summary -- it did not finish"; fail=1; unfinished=1; fi
   grep -E "info |FAIL|^\s{7}|SCRIPT ERROR" "$slog"
   grep -E 'passed,' "$slog"
+  grep -E '^file-time ' "$slog"
   grep -E '^\s*FAIL ' "$slog" | sed -E 's/^ *FAIL //; s/ \([0-9]+ ms\)$//' >>"$ran"
   if grep -qE "SCRIPT ERROR" "$slog"; then echo "script error in the stepped run"; fail=1; fi
   rm -f shots/check/stepped.log

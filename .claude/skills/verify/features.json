@@ -68,6 +68,14 @@
       "tests": []
     },
     {
+      "id": "cli:shard-times",
+      "kind": "cli",
+      "entry": "tools/shard-times.sh",
+      "reach": "tools/shard-times.sh RUN_ID",
+      "area": "tools",
+      "tests": []
+    },
+    {
       "id": "cli:shot",
       "kind": "cli",
       "entry": "tools/shot.sh",
