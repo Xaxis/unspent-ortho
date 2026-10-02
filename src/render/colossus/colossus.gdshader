@@ -200,6 +200,11 @@ uniform vec2 leg_len = vec2(34000.0, 36000.0);
 const float PULSE_RATE = 0.12;
 // How lit a cold strip is with no pulse on it, over its albedo.
 const float STRIP_REST = 0.3;
+// Within this many metres a light is seen whole and keeps its hue; past the
+// second it is a point again, burning at its whole strength (the fragment).
+const float LIGHT_NEAR = 2000.0;
+const float LIGHT_FAR = 8000.0;
+const float LIGHT_KEEP = 1.0;
 const float PULSE_TRAIL = 0.22;
 
 varying float thin;
@@ -441,6 +446,18 @@ void fragment() {
 	} else if (lamp) {
 		float beat = fract(TIME * 0.45 + dot(floor(body_local.xz * 0.001), vec2(0.37, 0.61)));
 		glow = (step(beat, 0.18) * 5.0 + 0.2) * lens_glow;
+	}
+	// A LIGHT SEEN WHOLE KEEPS ITS HUE. The glows above are many times their
+	// colour so that a ring or a lamp kilometres off, a pixel or two drawn wider
+	// than it is, still burns through the air and the bloom. Seen from up the leg
+	// a ring is hundreds of pixels across, and at that strength every channel of
+	// it went to the top: a pulse on the shin's ring was a white crescent with
+	// no hue. So within LIGHT_NEAR a light's brightest channel is held at
+	// LIGHT_KEEP of full, as every other glow in the game is, and past LIGHT_FAR
+	// it has its whole strength again.
+	if (lamp) {
+		float whole = 1.0 - smoothstep(LIGHT_NEAR, LIGHT_FAR, distance(eye, true_world));
+		glow = mix(glow, min(glow, LIGHT_KEEP / max(max(c.r, c.g), max(c.b, 1e-3))), whole);
 	}
 	EMISSION = lamp ? matter_light(c * glow * sky_power()) : vec3(0.0);
 	// DAYLIGHT ON A THING THIS SIZE (walker_plate.gdshaderinc).
