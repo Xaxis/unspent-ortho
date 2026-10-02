@@ -392,7 +392,8 @@ func _readable_in_front() -> WorldProp:
 	var best: WorldProp = null
 	var best_d := REACH + 1.0
 	for q: WorldProp in game.query.props_near(from, REACH + 2.0):
-		if StoryProps.kind_of(q.kind) == &"":
+		# Gone from the world (crushed in a crater, burned) is nothing to read.
+		if StoryProps.kind_of(q.kind) == &"" or game.world.depleted.has(q.id):
 			continue
 		var to := q.pos - from
 		var d := to.length() - q.solid
