@@ -394,6 +394,8 @@ func _work(delta: float) -> void:
 ## A part only takes the key while nothing the player could take from is nearer:
 ## standing at a part with a seam beside it, they mean the part.
 func _part_wins(s: WorksSite, i: int) -> bool:
+	if Survival.words_in_front(game):
+		return false
 	var d := s.part(i).distance_to(sim.hero.pos)
 	# A named person of the cast standing nearer than the housing is who the
 	# key means: Sefa waits at the Tether's own works, and a player at her side

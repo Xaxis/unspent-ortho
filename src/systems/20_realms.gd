@@ -197,7 +197,7 @@ func _process(delta: float) -> void:
 			and use_edge and _shaft_wins():
 		cross(reachable)
 	elif gate_near != &"" and _settle <= 0.0 and not game.input_blocked() \
-			and use_edge:
+			and use_edge and _gate_wins():
 		cross_era()
 
 
@@ -206,10 +206,20 @@ func _process(delta: float) -> void:
 ## mouth with a seam beside it, a player means the mouth; standing at a seam with
 ## a mouth two tiles off, they mean the seam.
 func _shaft_wins() -> bool:
+	if Survival.words_in_front(game):
+		return false
 	var t := Survival.use_target(game)
 	if t == null:
 		return true
 	return reachable.pos.distance_to(game.player.pos) <= t.pos.distance_to(game.player.pos)
+
+
+## A GATE STANDS ON THE SLOT ITS YEAR'S PEOPLE ARE CAST AT (StoryGates), so the
+## press beside one of them is theirs (Survival.words_in_front): beside June,
+## six, in 2029, the gate's reach caught the key and took him back to 2098
+## (before.tour).
+func _gate_wins() -> bool:
+	return not Survival.words_in_front(game)
 
 
 ## THE PRESS THAT CROSSED IS SPENT. A crossing MOVES the player, so the same

@@ -335,7 +335,7 @@ func use_spent() -> bool:
 
 
 func _pressed() -> bool:
-	if game.input_blocked() or not _use_edge:
+	if game.input_blocked() or not _use_edge or Survival.words_in_front(game):
 		return false
 	for s in game.systems:
 		if s != self and s.has_method(&"use_spent") and bool(s.call(&"use_spent")):

@@ -446,6 +446,21 @@ static func ask_pending(game: Game) -> bool:
 	return build_asked(game).is_finite() or now_real() < SurvivalState.of(game).sleep_ask_until
 
 
+## A person, a place or a thing with words is in front of him (49_story
+## `faces_words`), and the press is theirs: THE PRESS GOES TO WHAT HE FACES. Every
+## system that answers `use` before the words do leaves that press be (a cache,
+## a gate, a door, a barrier, a housing, a cable, the unbuilder's hands): the
+## archive's man stood beside its cache, and June beside the gate home.
+## Found on the systems by what they answer, as the words live in a system.
+static func words_in_front(game: Game) -> bool:
+	if game == null:
+		return false
+	for s: Node in game.systems:
+		if s.has_method(&"faces_words") and bool(s.call(&"faces_words")):
+			return true
+	return false
+
+
 static func build_asked(game: Game) -> Vector2:
 	var ask := SurvivalState.of(game).build_ask
 	if ask.is_empty() or now_real() >= float(ask.until):
