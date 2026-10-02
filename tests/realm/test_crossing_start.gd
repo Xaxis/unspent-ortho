@@ -8,11 +8,13 @@ extends TestCase
 ## bar, in yardsticks; the same enter onto the same world grown afresh, with
 ## nothing got ready beside it, is over it (that is the bar seeing the work).
 ##
-## BAR: 2 s on the laptop the start was measured on (a yardstick there is about
-## 34 us), where the enter was 9.3 s before and is 1.0 s now.
+## BAR sits between the shipped enter and its double, so a doubling is caught:
+## on CI (a yardstick of 44-52 us) the shipped enter runs 29900-35800 yardsticks,
+## so 50000 has 40% headroom over the slowest and the fastest doubled (59800)
+## clears it by a fifth.
 
 const Sx := preload("res://tests/save/save_fixture.gd")
-const BAR := 58000.0
+const BAR := 50000.0
 
 
 func test_the_way_down_a_shaft_starts_short() -> void:
