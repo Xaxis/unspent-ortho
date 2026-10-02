@@ -152,7 +152,13 @@ func test_the_climbs_hints_name_his_own_key_in_their_moment() -> void:
 	g.player.sim.clear_mobs()
 	var sys := _system(g, "43_climb")
 	var said: Array = []
-	var listen := func(t: String, key: String) -> void: said.append([t, key])
+	# Only the climb's own hints are counted. The walk off and back crosses
+	# whatever stands round the crater, and on GEN 47's seed 7 the point four rims
+	# east of the cable is in a works yard, whose housing hint is the yard's.
+	var listen := func(t: String, key: String) -> void:
+		for k: StringName in [&"climb_begin", &"climb_swing"]:
+			if t.begins_with(String((StoryContent.CLIMB[k] as Array)[0]).get_slice("%s", 0)):
+				said.append([t, key])
 	Events.hint.connect(listen)
 	await process_frames(4)
 	var rim: Dictionary = {}
