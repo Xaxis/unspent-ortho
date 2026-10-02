@@ -67,9 +67,11 @@ static func make() -> BiomeDef:
 	# through to the shared table, which is the COAST's and is far brighter than
 	# here, so it would arrive as the loudest object in the frame. A list of the
 	# missing ones let grass through. The green ones take this landscape's weed,
-	# the rest its gravel, because they only have to be in key.
+	# the rest its gravel, because they only have to be in key. Not steel floor:
+	# that is an interior's, no world lays it, and a wash for it is dead paint
+	# (test_registry).
 	for g: int in Ground.COUNT:
-		if d.grounds.has(g) or Ground.is_water(g):
+		if d.grounds.has(g) or Ground.is_water(g) or g == Ground.STEEL_FLOOR:
 			continue
 		var green := g in [Ground.GRASS, Ground.HEATH, Ground.NEEDLES, Ground.PEAT]
 		d.grounds[g] = d.grounds[Ground.MOSS if green else Ground.GRAVEL]
