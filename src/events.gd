@@ -62,6 +62,11 @@ signal works_broken(region: int, land: StringName)
 signal works_part_broken(region: int, yard: Vector2)
 ## The houses round `roof` have burned: a yard's hunters got there (48_raids).
 signal village_burned(roof: Vector2)
+## Props left the world by no hand of the player's: a walker's feet crushed what
+## stood in their craters (19_colossi), or a raid burned a house (48_raids).
+## What was worked out from the props once and kept (a ruin's walls, a house's
+## door) is worked out again from what still stands.
+signal fell()
 signal landmark_found(id: StringName, land: StringName, at: Vector2)
 
 ## Settlements (docs/VISION.md). The settlement package emits the first four;

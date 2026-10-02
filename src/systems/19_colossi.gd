@@ -458,6 +458,7 @@ func _until_down(d: RefCounted, route: RefCounted, m: float, leg: int) -> float:
 ## -- so it is worked out from the clock and never saved.
 func _crush(pads: Array[Vector3]) -> void:
 	var w := game.world
+	var fell := false
 	for p: Vector3 in pads:
 		var at := Vector2(p.x, p.y)
 		for q: WorldProp in game.query.props_near(at, p.z + 4.0):
@@ -468,8 +469,11 @@ func _crush(pads: Array[Vector3]) -> void:
 			if q.pos.distance_to(at) > p.z + q.solid:
 				continue
 			w.depleted[q.id] = INF
+			fell = true
 			if game.view != null:
 				game.view.refresh_props(q)
+	if fell:
+		Events.fell.emit()
 
 
 ## THE TREADS CRUSHED BESIDE THE WORLD (RealmWarm, on the raise's worker): what
