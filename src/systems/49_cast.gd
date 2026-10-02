@@ -267,20 +267,19 @@ func _clear() -> void:
 	people.clear()
 
 
-## THE TREAD'S PEOPLE STAND ON THE ARCH-SIDE LIP OF ITS MIDDLE TOE'S CRATER,
-## not at the ankle the walker lead pins (`the_tread`): still between the bowls,
-## but where the line comes down and a player comes to climb. Turned TREAD_TURN
-## round the rim from the arch, away from the side the cable hangs on
-## (WalkerClimb.FOOT_TURN), so they stand clear of everywhere the climb seeks its
-## lip and of the walk down from it to the cable (43_climb `climb:lip`). The
-## middle toe is pads[1], as the climb reads it. `slot` is the tread's cast row
-## (StoryCasting: pos, pads, yaw).
+## THE TREAD'S PEOPLE STAND ON THE ARCH-SIDE LIP OF THE CRATER THE WALKER LEAD
+## PINS (`the_tread`, its middle toe's): still between the bowls, but where the
+## line comes down and a player comes to climb. Turned TREAD_TURN round the rim
+## from the arch, away from the side the cable hangs on (WalkerClimb.FOOT_TURN),
+## so they stand clear of everywhere the climb seeks its lip and of the walk down
+## from it to the cable (43_climb `climb:lip`). `slot` is the tread's cast row
+## (StoryCasting: pos, ankle, pads, yaw).
 func _tread_lip(slot: Dictionary) -> Vector2:
-	var at: Vector2 = slot.pos
-	var pad: Vector3 = (slot.pads as Array)[1]
+	var ankle: Vector2 = slot.ankle
+	var pad: Vector3 = (slot.pads as Array)[Treads.MIDDLE_TOE]
 	var centre := Vector2(pad.x, pad.y)
-	var arch := (at - centre).normalized()
-	var hang := at + Vector2.from_angle(float(slot.yaw) + deg_to_rad(WalkerClimb.FOOT_TURN)) * WalkerClimb.HANG_FOOT_R
+	var arch := (ankle - centre).normalized()
+	var hang := ankle + Vector2.from_angle(float(slot.yaw) + deg_to_rad(WalkerClimb.FOOT_TURN)) * WalkerClimb.HANG_FOOT_R
 	var away := -signf(arch.cross(hang - centre))
 	return centre + arch.rotated(away * TREAD_TURN) * (Treads.rim_r(pad) - TREAD_LIP_IN)
 

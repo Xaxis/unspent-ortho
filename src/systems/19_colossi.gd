@@ -135,16 +135,18 @@ func tour_hour(spec: String) -> float:
 	return NAN
 
 
-## Where this world's craters are: the ones the walks were handed
-## (Treads.hand_over), each where a foot comes back to it, for whoever leads a
-## player there (StoryMap.crater_pos). Read from the walks, not the world's list.
+## Where this world's craters are, for whoever leads a player there
+## (StoryMap.crater_pos): of each tread the walks were handed (Treads.hand_over),
+## its middle toe's crater, which the foot comes back to and the cable comes down
+## into, never the plate under the ankle. Read from the walks, not the world's list.
 func craters() -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	if view == null:
 		return out
-	for r: RefCounted in view.routes:
-		for t: Vector4 in (r.treads as Dictionary).values():
-			out.append(Vector2(t.x, t.z))
+	for i in (view.routes as Array).size():
+		for t: Vector4 in (view.routes[i].treads as Dictionary).values():
+			var pad: Vector3 = Treads.pads(view.defs[i], Vector2(t.x, t.z), t.w)[Treads.MIDDLE_TOE]
+			out.append(Vector2(pad.x, pad.y))
 	return out
 
 

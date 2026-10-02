@@ -15,6 +15,8 @@ class_name StoryCasting
 ## a content error is `StoryPlan`'s question and not this file's: casting reports
 ## what the world can carry and never decides what the story may ask for.
 
+const Treads := preload("res://src/core/colossus/colossus_treads.gd")
+
 ## The surface's own casting, per seed, size and registry, for a slot that
 ## mirrors one of its places (StorySlot.mirror). Not keyed by seed alone: a test
 ## that narrows the registry grows a different world under the same seed, and a
@@ -53,9 +55,10 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 				out[s.id] = (twin[s.mirror] as Dictionary).duplicate()
 			continue
 		# A crater is not dealt: it is the one the walker lead pins, nearest the
-		# slot it names on that slot's body (crater_near), or none. Its row keeps
-		# the tread's pads and yaw, so whoever stands there is stood by its
-		# craters without walking the world's landmarks again (49_cast).
+		# slot it names on that slot's body (crater_near), or none: a tread's
+		# middle toe's crater (Treads.MIDDLE_TOE). Its row keeps the tread's ankle,
+		# pads and yaw, so whoever stands there is stood by it without walking the
+		# world's landmarks again (49_cast).
 		if s.needs == StorySlot.TREAD:
 			if s.realm == world.realm and out.has(s.near):
 				var treads := _candidates(world, s)
@@ -171,7 +174,9 @@ static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
 		StorySlot.TREAD:
 			for m: Dictionary in world.landmarks:
 				if StringName(m.get("kind", &"")) == &"tread":
-					out.append({"pos": m.pos, "region": -1, "land": &"", "site": StorySlot.TREAD, "pads": m.pads, "yaw": m.yaw})
+					var pad: Vector3 = (m.pads as Array)[Treads.MIDDLE_TOE]
+					out.append({"pos": Vector2(pad.x, pad.y), "region": -1, "land": &"", "site": StorySlot.TREAD,
+						"ankle": m.pos, "pads": m.pads, "yaw": m.yaw})
 		StorySlot.BLACK_SITE:
 			var at := StoryWorld.black_site(world)
 			if at != Vector2.INF:
