@@ -38,7 +38,9 @@ var _by_cue := false
 var heavy := false
 var heavies := 0
 ## Tells let through on purpose before the reader starts answering them: a
-## player who takes a bite while learning must still be able to win.
+## player who takes a bite while learning must still be able to win. A tell let
+## through is stood through from where it was told, so the bite is taken, not
+## walked out of while the reader waits on it.
 var take_hits := 0
 ## How long after the bite's live window the escape keeps being held.
 const ESCAPE_HOLD_MS := 60.0
@@ -111,6 +113,13 @@ func _tell_to_answer(m: MobState) -> bool:
 	var hero := sim.hero
 	if m.blow == null or m.blow_phase(now) != &"windup" or m.blow_at == _answered:
 		return false
+	if take_hits > 0 and _in_box(m, hero.pos, 0.0):
+		take_hits -= 1
+		_answered = m.blow_at
+		_escape = Vector2.ZERO
+		_escape_until = m.blow_at + m.blow.windup + m.blow.active + ESCAPE_HOLD_MS
+		hero.move = Vector2.ZERO
+		return true
 	var misread := &""
 	var react := react_ms
 	if human >= 0:
@@ -126,9 +135,6 @@ func _tell_to_answer(m: MobState) -> bool:
 		return false
 	_answered = m.blow_at
 	if not _in_box(m, hero.pos, 0.5):
-		return false
-	if take_hits > 0:
-		take_hits -= 1
 		return false
 	var b := m.blow
 	if b.area:
@@ -260,7 +266,9 @@ func _strike(m: MobState) -> void:
 
 ## Time for a heavy blow's tell before this body can bite, as a player judges
 ## it: stopped by a blow, or spent after a bite, for longer than the tell; or not
-## pressing at all. And the wind for it with a dodge left over.
+## pressing at all. And the wind for it with a dodge left over. A charger
+## standing between runs is none of these: nothing drawn says when it turns and
+## comes, so a heavy held into that stand is a guess.
 func _heavy_fits(m: MobState) -> bool:
 	var now := sim.now
 	var hb := _blow().heavier()
@@ -274,7 +282,7 @@ func _heavy_fits(m: MobState) -> bool:
 		return m.stun_until - now > lands
 	if m.machine and m.spent(now) and m.blow != null:
 		return m.blow_at + m.blow.lockout() - now > lands + 120.0
-	return m.approach == &"charge" and _between_runs(m)
+	return false
 
 
 ## Stand and let it come (the bite is what opens it), closing in only when it
