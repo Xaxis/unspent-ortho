@@ -79,10 +79,6 @@ const OPEN_REACH := 2.8
 const CACHE_OUT := 1.9
 ## Where a guarded landmark's keeper comes out, in tiles from the cache.
 const GUARD_RING := 7.0
-## Islands whose places are remembered at once. A game holds one realm's world
-## and raises another when the player walks toward a shaft; past that, the oldest
-## answers are no longer anybody's.
-const CACHE_MOST := 6
 ## However hard the siting has to loosen, two landmarks never come closer than
 ## this: nearer than about twenty tiles they are in each other's frame, and two
 ## silhouettes in one frame is one silhouette and half the reason for either.
@@ -126,10 +122,6 @@ static func read_reach(view_height: float, pitch_deg: float, aspect: float, high
 static var _defs: Dictionary = {}
 static var _order: Array[LandmarkDef] = []
 static var _declared := false
-## Where they stand, per world. Siting is a sweep of the island and the answer
-## never changes for one island, so it is worked out once: the system, the map
-## and a shot's `--place` all ask for the same list.
-static var _cache: Dictionary = {}
 
 
 static func _build() -> void:
@@ -490,14 +482,13 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 	var out: Array[LandmarkSite] = []
 	if world == null:
 		return out
-	# Keyed on the WORLD ITSELF, not on its seed: a test that narrows the registry
-	# grows a different island from the same seed, and a seed-keyed cache would
-	# hand it the old island's places. The game and `--place` ask about the same
-	# object, so this is exact, and a handful of entries is every realm a game
-	# holds at once.
-	var key := world.get_instance_id()
-	if _cache.has(key):
-		return (_cache[key] as Array[LandmarkSite]).duplicate()
+	# HELD ON THE WORLD ITSELF, for its life: not on its seed (a test that narrows
+	# the registry grows a different island from the same seed), and not in a
+	# cache of six worlds that emptied when it filled. Emptied, the next ask sited
+	# the island again on land the walkers' treads had cut since it was first
+	# asked, and 75 of seed 7's 196 landmarks stood elsewhere, 61 of seed 1's 194.
+	if world.has_meta(HELD):
+		return (world.get_meta(HELD) as Array[LandmarkSite]).duplicate()
 	var counts := {}
 	# Two lists, and they are not the same rule. What people and the machines
 	# already built only has to be kept OFF — a landmark beside a works is a
@@ -637,15 +628,20 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 			# player walking in from the land it belongs to actually sees.
 			s.facing = _facing(region.get("centre", at), at).angle()
 			out.append(s)
-	if _cache.size() >= CACHE_MOST:
-		_cache.clear()
-	_cache[key] = out.duplicate()
+	world.set_meta(HELD, out.duplicate())
 	return out
 
 
-## Tests and a new game start from nothing remembered.
-static func forget() -> void:
-	_cache.clear()
+## The world's meta its landmarks are held under, from the first ask (during
+## its generation) for its life.
+const HELD := &"landmarks_sited"
+
+
+## `world`'s landmarks are sited again on its next ask: a timing that must not
+## time a lookup.
+static func forget(world: WorldData) -> void:
+	if world != null and world.has_meta(HELD):
+		world.remove_meta(HELD)
 
 
 ## How far a landmark in this region keeps off the machines' works: twelve where
