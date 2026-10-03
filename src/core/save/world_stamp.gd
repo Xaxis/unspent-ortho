@@ -274,7 +274,7 @@ const UNKNOWN := "unknown"
 ##     Every region big enough to keep a keeper gets its keeper's first station
 ##     (an intake, a lock), laid only where the ground keeps the design's ways
 ##     and never within its keeper's reach of where the raft comes ashore
-##     (GenWorks.station_holds). (Provisional; restamped at landing.)
+##     (GenWorks.station_holds).
 ## 48. The lame leg's tread comes down on the Covenant's body (slice 3 step 7):
 ##     the first wanted plant scores leg 1's body first, nearer where he comes
 ##     ashore the better, and where nothing fits there it is sited home-first as
@@ -294,21 +294,25 @@ const UNKNOWN := "unknown"
 ##     clock tower stands over the port, within 20 tiles, in the shallows if it
 ##     must: 25.6 -> 11.2 on seed 1, 28.7 -> 9.0 on 7, 28.9 -> 4.4 on 42,
 ##     7.2 -> 5.4 on 4.)
-## 50. The glass desert lays its strike fields: nine rods ruled three by three
+## 50. Every village has its own name: a land whose list runs out numbers its
+##     first name, each number once (GenSettle._name). Seed 1's eight slum
+##     blocks past the list were all "Ninth Shift 24". Names only; nothing
+##     moves.
+## 51. The glass desert lays its strike fields: nine rods ruled three by three
 ##     on the survey bearing, fulgurite dug out between them, the survey at the
 ##     corners, one to each region big enough to keep the anvil, sited where a
 ##     den off the rods keeps every way its design declares
 ##     (GenWorks.station_holds, asked of the den the keeper takes). A walker's
 ##     tread keeps off a keeper's first station (GenTreads `_built`).
 ##     (Provisional; restamped at landing.)
-## 51. The crags lay their survey benches, the plumb's stations, with lintels,
+## 52. The crags lay their survey benches, the plumb's stations, with lintels,
 ##     carved faces, hollow ways, the barrow and limestone pavement. Every
 ##     keeper's station is sited where its den keeps its ways, the salt flats'
 ##     pans and brine houses too, and a refused site is tried again elsewhere:
 ##     brine houses go to every region big enough to keep the rake, benches
 ##     to bare rock and then half spacing, locks to the next canal reach.
 ##     (Provisional; restamped at landing.)
-const GEN := 51
+const GEN := 52
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
