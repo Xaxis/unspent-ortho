@@ -557,8 +557,11 @@ extends TestCase
 ## tread comes down and which landmarks yield to a foot, and a world of 256
 ## holds no tread at all (no walker's route passes over an island that small),
 ## so nothing a world of the six makes moves.
-## GEN 49 (2026-10-03) CHANGED NO DIGEST: the tread's people's holding is laid
-## round a tread, and a world of 256 holds none.
+## AT GEN 49 (2026-10-03, provisional): the drowned city's port lays a stair at
+## the landfall. The six hold to the bit, and nothing is re-accepted: none of
+## them is the drowned city.
+## GEN 50 (2026-10-03, provisional) CHANGED NO DIGEST: the tread's people's
+## holding is laid round a tread, and a world of 256 holds none.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
