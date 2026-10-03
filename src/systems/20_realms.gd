@@ -401,13 +401,54 @@ func _watch_gates() -> void:
 	if game.world == null:
 		return
 	var at: Vector2 = game.player.pos
-	for g: Dictionary in StoryGates.open(game.world):
+	var open := StoryGates.open(game.world)
+	_warm_the_before(open)
+	for g: Dictionary in open:
 		if (g.pos as Vector2).distance_to(at) <= GATE_REACH:
 			gate_near = g.id
 			if not _taught.has(g.id):
 				_taught[g.id] = true
 				Events.hint.emit(PlayerSettings.spell("Another day is standing on the ground here. %s to step into it.", [&"use"]), PlayerSettings.cap_of(&"use"))
 			return
+
+
+## THE BEFORE IS RAISED ONCE A GATE IS OPEN, before anybody walks to it: a gate
+## opens on a beat, usually a walk away, and the walk covers the raise (36 s at
+## 1840 on desktop, about twice that on the threaded web), where the press used
+## to stand him behind the crossing page for all of it. Not on approach, as a
+## shaft is (WARM): 44 tiles is 13 s of walking. With threads only (`begin`
+## answers false without them, and the press raises it as before), and from the
+## surface, the one realm a gate leads out of.
+##
+## ON THE WEB, ONLY WITH ROOM FOR IT. A third world in a 2 GiB wasm heap that
+## never shrinks: the surface and the underground already took it to 1,555 MB,
+## and an out-of-memory there ends the player's game, which is worse than a page.
+## The Before's raise holds BEFORE_RAISE_MB more than the game did at its peak
+## (measured, seed 7 at 1840: +402 MB of generation scratch over a held surface,
+## settling to +89 MB, and RealmWarm's maps after), so it is begun early only
+## while static memory plus that stays under WEB_HEAP_CEILING_MB, which leaves
+## the heap's last 248 MB to the allocator's slack, the stack and the browser's
+## own. Otherwise the press raises it, as before. The desktop has no such wall.
+const BEFORE_RAISE_MB := 450.0
+const WEB_HEAP_CEILING_MB := 1800.0
+
+
+func _warm_the_before(open: Array[Dictionary]) -> void:
+	# After the opening frames, as the shafts' raises are (WARM_AFTER).
+	if open.is_empty() or _realm != Realm.SURFACE or _frames < WARM_AFTER:
+		return
+	var seed_value := game.options.seed_value
+	var size: int = game.world.size
+	if RealmWorlds.ready(seed_value, size, Realm.ERA) or RealmWorlds.going(seed_value, size, Realm.ERA):
+		return
+	if before_fits(OS.get_static_memory_usage(), OS.has_feature("web")):
+		RealmWorlds.begin(seed_value, size, Realm.ERA)
+
+
+## Whether the Before's raise has room beside `static_bytes` of what the game
+## holds: always on the desktop, on the web only under WEB_HEAP_CEILING_MB.
+static func before_fits(static_bytes: int, web: bool) -> bool:
+	return not web or float(static_bytes) / 1048576.0 + BEFORE_RAISE_MB <= WEB_HEAP_CEILING_MB
 
 
 ## Go through a shaft.
