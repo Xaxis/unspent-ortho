@@ -67,6 +67,28 @@ func _init(s: FightSim) -> void:
 	sim = s
 
 
+## A grip is pulled against once it is read: react_ms after it closes, or for
+## the human a reaction drawn from HUMAN_REACT, one in MISREAD of them
+## HUMAN_LATE_MS later again, as a tell is.
+func _grip_read() -> float:
+	var hero := sim.hero
+	if human < 0:
+		return react_ms
+	var by := hero.holder as MobState
+	var id := by.id if by != null else 0
+	var key := int(hero.grip_since)
+	var r := lerpf(HUMAN_REACT.x, HUMAN_REACT.y, Rng.hash01(human, id, key, 0x4752))
+	if Rng.hash01(human, id, key, 0x474C) < MISREAD:
+		r += HUMAN_LATE_MS
+	return r
+
+
+## Between pulls: a person keeps FightRules.HUMAN_PULL_GAP_MS; the perfect reader
+## pulls a little over the floor.
+func _pull_gap() -> float:
+	return float(FightRules.HUMAN_PULL_GAP_MS) if human >= 0 else 160.0
+
+
 func _hand(verb: StringName) -> void:
 	if hands != null:
 		hands.call(&"press", verb)
@@ -83,7 +105,7 @@ func act() -> void:
 	hero.run = false
 	_watch_bodies()
 	if hero.held():
-		if now - _last_pull >= 160.0:
+		if now - _last_pull >= _pull_gap() and now - hero.grip_since >= _grip_read():
 			_last_pull = now
 			_hand(&"swing")
 		return

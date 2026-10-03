@@ -56,6 +56,17 @@ static func readable_windup(b: Blow, trad: float) -> int:
 ## Grip: at least this long between pulls; held this long and you are carried.
 const PULL_GAP_MS := 140
 const HOLD_LIMIT_MS := 6000
+
+## A person's pace against a grip: about five pulls a second, kept up without
+## strain. PULL_GAP_MS is the floor a masher can reach, not a pace to ask for.
+const HUMAN_PULL_GAP_MS := 200
+
+
+## How long a crushing grip (Blow.crush) holds before it bites: what a person
+## needs to read it (READ_REACT_MS) and then pull it off at their own pace, so it
+## costs only one who answers it late or not at all.
+static func crush_ms(b: Blow) -> int:
+	return int(READ_REACT_MS) + b.grip * HUMAN_PULL_GAP_MS
 ## A press refused now is kept this long and tried again (never for pulls).
 ## The source had no buffer; a small one is the difference between a fight
 ## that feels read and one that feels dropped.

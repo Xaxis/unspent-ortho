@@ -68,9 +68,11 @@ static func make() -> SentinelDef:
 	# its back is the last thing left open. Pulled loose, the wrench slews the
 	# gantry half round on its tracks and jams it for `torn`, the chute gear
 	# toward the player: it otherwise turns on the spot as fast as they can
-	# circle it, and its lair is fenced either side.
+	# circle it, and its lair is fenced either side. Not pulled loose in time
+	# (FightRules.crush_ms), the drum comes down on what it holds (`crush`): the
+	# grip is its own tell, and the wrench is what the first keeper teaches.
 	var stooped := SentinelPhase.make(&"stooped", 0.28, &"back",
-		{"swing": [671, 170, 560, 900], "reach": 1.8, "width": 2.0, "dmg": 0, "knock": 0.0, "knock_ms": 0, "grip": 4, "torn": 2200})
+		{"swing": [671, 170, 560, 900], "reach": 1.8, "width": 2.0, "dmg": 0, "knock": 0.0, "knock_ms": 0, "grip": 4, "torn": 2200, "crush": 3})
 	stooped.pace = 3.4
 	stooped.dash = 7.0
 	stooped.quick = 260

@@ -74,7 +74,7 @@ func _act() -> void:
 	var now := sim.now
 	hero.run = false
 	if hero.held():
-		if now - _last_pull >= 160.0:
+		if now - _last_pull >= _pull_gap() and now - hero.grip_since >= _grip_read():
 			_last_pull = now
 			_hand(&"swing")
 		return

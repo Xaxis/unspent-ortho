@@ -2442,6 +2442,13 @@ func _holding() -> void:
 		hero.release()
 		emit(&"loose", {"by": h})
 		return
+	# A crushing grip (Blow.crush) not wrenched loose in time bites and lets go.
+	var b := h.blow if h.blow != null and h.blow.grip > 0 else h.bite
+	if b != null and b.crush > 0 and now - hero.grip_since >= FightRules.crush_ms(b):
+		hero.release()
+		emit(&"crushed", {"by": h, "damage": b.crush})
+		_hurt_hero(h, b.crush, (hero.pos - h.pos).normalized(), b.knock, b.knock_ms)
+		return
 	if now - hero.grip_since >= FightRules.HOLD_LIMIT_MS:
 		_end(&"carried")
 
