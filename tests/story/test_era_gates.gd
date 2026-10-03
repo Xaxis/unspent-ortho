@@ -10,6 +10,7 @@ extends TestCase
 ## place, not a different year.
 
 const SIZE := 256
+const Sx := preload("res://tests/save/save_fixture.gd")
 
 
 func test_a_gate_stands_on_the_same_tile_in_both_years() -> void:
@@ -53,3 +54,35 @@ func test_every_gate_waits_on_a_beat_that_exists() -> void:
 	var beats := StoryContent.all_beats()
 	for g: Dictionary in StoryGates.GATES:
 		check(beats.has(g.opens), "%s waits on %s, which is a beat" % [g.id, g.opens])
+
+
+## THE PRESS BESIDE SOMEBODY IS THEIRS, NOT THE GATE'S. 2029's people stand round
+## the slot its gate stands on (StoryGates), and beside June, six, in the house
+## she grew up in, the gate's reach caught the key: before.tour pressed to speak
+## to her and was back in 2098. Like a cache (22_landmarks `_cache_wins`), a gate
+## takes the press only when nothing in front of him has words.
+func test_the_press_beside_somebody_at_a_gate_speaks_to_them() -> void:
+	Story.forget()
+	Sx.use_root("era-gate-press")
+	var g := Sx.game(tree, ["--seed=1", "--realm=era", "--hour=2", "--weather=clear:0", "--beats=body_new"])
+	await frames(3)
+	var cast := Sx.system(g, "49_cast")
+	var realms := Sx.system(g, "20_realms")
+	var at: Vector2 = cast.call(&"tour_place", "cast:june_young")
+	check(at.is_finite(), "June is cast in 2029")
+	g.view.ensure_near(g.player.place(at))
+	Survival.face(g, float(cast.call(&"tour_face", "cast:june_young")))
+	# Past the arrival's settle (20_realms SETTLE), in the world's own time.
+	await tree.create_timer(1.0).timeout
+	eq(realms.get("gate_near"), &"gate_home", "beside her, he stands in the gate's reach")
+	check(not bool(realms.call(&"use_spent")), "and nothing has spent the key")
+	check(bool(Sx.system(g, "49_story").call(&"faces_words")), "and faces her")
+	Input.action_press(&"use")
+	await frames(3)
+	Input.action_release(&"use")
+	await frames(3)
+	eq(StringName(realms.get("_realm")), Realm.ERA, "the press beside her keeps him in 2029")
+	check(bool(Sx.system(g, "49_story").call(&"tour_seen", &"talking")), "and speaks to her")
+	Sx.end(g)
+	Story.forget()
+

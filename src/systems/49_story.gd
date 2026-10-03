@@ -258,6 +258,21 @@ func _open_what_is_in_front() -> void:
 		_start_reading(it.prop as WorldProp)
 
 
+## The hint for the press the words would take (UiLink.use_hint), or "": what
+## `_open_what_is_in_front` would open.
+func use_line() -> String:
+	if game == null or view.showing() or game.input_blocked() or Survival.ask_pending(game):
+		return ""
+	var it := _what_is_in_front()
+	if it.has("person"):
+		return "talk"
+	if it.has("prop"):
+		return "%s - read" % PropKind.NAMES[(it.prop as WorldProp).kind]
+	if it.has("slot"):
+		return "read"
+	return ""
+
+
 ## Whether a press now would be the words': a person, or a thing with words on
 ## it, in front of him and not behind the ground under his hands. A cache in
 ## reach asks before it takes the key (22_landmarks `_cache_wins`): the press

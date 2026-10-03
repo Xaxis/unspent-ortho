@@ -333,11 +333,8 @@ func stats_line() -> String:
 ## it can mean, so it takes the key only while nothing the player could take
 ## from is nearer -- the rule a shaft and a works housing both go by.
 func _work(delta: float) -> void:
-	if game.input_blocked() or not Input.is_action_pressed(&"use") or (_job.is_empty() and Survival.ask_pending(game)):
-		_job = {}
-		return
-	var h := _near()
-	if h == null or not closed(h) or not _hold_wins(h):
+	var h := _hold_taken()
+	if not Input.is_action_pressed(&"use") or h == null:
 		_job = {}
 		return
 	if not Items.hard_enough(game.inventory.held, BREAK_STUFF):
@@ -369,6 +366,22 @@ func use_spent() -> bool:
 	return not _job.is_empty()
 
 
+## The barrier a held `use` works now, or null: the one answer `_work` acts on
+## and `use_line` names.
+func _hold_taken() -> Hold.HoldSite:
+	if game.input_blocked() or (_job.is_empty() and Survival.ask_pending(game)):
+		return null
+	var h := _near()
+	return h if h != null and closed(h) and _hold_wins(h) else null
+
+
+## The hint for the press a barrier would take (UiLink.use_hint), or "".
+func use_line() -> String:
+	if game == null or _hold_taken() == null:
+		return ""
+	return "barrier - cut" if Items.hard_enough(game.inventory.held, BREAK_STUFF) else "barrier - no edge"
+
+
 func _near() -> Hold.HoldSite:
 	if sim == null:
 		return null
@@ -383,6 +396,8 @@ func _near() -> Hold.HoldSite:
 
 
 func _hold_wins(h: Hold.HoldSite) -> bool:
+	if Survival.words_in_front(game):
+		return false
 	var t := Survival.use_target(game)
 	if t == null:
 		return true

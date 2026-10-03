@@ -2,8 +2,11 @@
 # owner's seed: the Tide Reaper taken by force (the plate player's hands, as
 # tours/reaper_force.tour), then Teague asked what else keeps a yard like that.
 # He names the Candlestick (anvil_named), the survey marks its strike field,
-# and the anvil there is taken by the same hands. Nothing is booted past the
-# steel knife the Reaper's plate asks for.
+# and the same hands draw the anvil there out onto its sand, where it founders.
+# By the land, not by force: the played force fight is 240 s long and one
+# reversal sends it another way (on GEN 48 and on every reader change), so it
+# proved nothing about the step; force is held by test_anvil_ways, played on both
+# seeds. Nothing is booted past the steel knife the Reaper's plate asks for.
 #
 #   TOUR_TIMEOUT=1500 TOUR_FIXED_FPS=60 tools/tour.sh tours/second-keeper.tour --seed=1 --hour=11 --weather=clear:0 --held=knife_shear --met=otto
 #
@@ -55,6 +58,6 @@ near next_keeper
 await sentinel:glass_desert 12
 wait 4.0
 shot 05-the-second-keeper with mob:sentinel.glass
-drive res://tests/fight/plate_reader.gd 240 sentinel_fallen:anvil
+drive res://tests/fight/plate_reader.gd 240 sentinel_fallen:anvil lure
 wait 0.8
 shot 06-the-second-keeper-down with sentinel_fallen:anvil

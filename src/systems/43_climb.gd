@@ -392,9 +392,21 @@ func _watch_cable(use_edge: bool) -> void:
 	if not _hinted:
 		_hinted = true
 		_hint(&"climb_begin")
-	if use_edge and not game.input_blocked() and not _spent_elsewhere():
+	if use_edge and _cable_takes():
 		walker = int(_rim.walker)
 		_begin(WalkerClimb.begin(int(_rim.leg), game.world.seed_value))
+
+
+## A press now takes hold of the cable in reach (`_rim`): the one answer
+## `_watch_cable` acts on and `use_line` names.
+func _cable_takes() -> bool:
+	return climb == null and not _rim.is_empty() and not game.input_blocked() and not _spent_elsewhere() \
+			and not Survival.words_in_front(game)
+
+
+## The hint for the press the cable would take (UiLink.use_hint), or "".
+func use_line() -> String:
+	return "cable - climb" if game != null and not Survival.ask_pending(game) and _cable_takes() else ""
 
 
 ## Where the cable of foot `f` (one of `_feet_in_treads`) comes down, on this
