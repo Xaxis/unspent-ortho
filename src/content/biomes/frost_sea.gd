@@ -125,6 +125,8 @@ static func make() -> BiomeDef:
 	# on the open ice, as a rate per 1,000 tiles of each region.
 	d.sites = {"tips": 1, "floe_camp": 0.1}
 	d.beached_wrecks = true
+	# The leads are the sheet opened, not standing water (`_surface`).
+	d.leads = true
 	d.pools = {"order": 2, "cell": 26, "chance": 0.55, "r_min": 2.2, "r_max": 5.0, "ground": Ground.BLACKWATER}
 	# NOBODY LIVES ON MOVING ICE, and that is a decision, not a gap (docs/
 	# LANDSCAPES.md §2). People are here as a dead expedition's camp and one

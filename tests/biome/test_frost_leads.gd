@@ -4,6 +4,7 @@ extends TestCase
 ## (designs/listener.gd). Asked of five worlds at full size.
 
 const Worlds := preload("res://tests/core/test_world_gen.gd")
+const Scan := preload("res://tests/stream/whole_world_scan.gd")
 const SEEDS: Array[int] = [1, 4, 7, 42, 90210]
 ## A big region's share of black water, at most: the leads are lines through
 ## the ice and the sea is walked on. Past this it reads as water with ice in it.
@@ -93,3 +94,54 @@ func test_the_leads_are_lines_through_walkable_ice() -> void:
 			lt(share, LEAD_SHARE_MOST, "seed %d: frost sea region %d keeps its ice the ground (%.3f black water)" % [s, id, share])
 			lt(mid, LEAD_CORE_MOST, "seed %d: frost sea region %d's leads are lines (%.2f of them a lake's middle)" % [s, id, mid])
 	gt(float(big), 4.0, "five worlds hold big frost sea regions (%d)" % big)
+
+
+## Where black water once decided whether a walker's foot could come down: the
+## treads, the pools and the surface.
+const LEAD_READERS_IN: Array[String] = [
+	"res://src/core/worldgen/gen_treads.gd",
+	"res://src/core/worldgen/gen_water.gd",
+	"res://src/core/worldgen/gen_surface.gd",
+]
+## The readers there that may take a lead for water, and why.
+const AS_WATER := {
+	"gen_treads.gd::_press_ring": "the pressed band is not laid on water, and a lead stays a lead",
+	"gen_treads.gd::_shore": "no scree band along water's edge, a lead's edge as much as a pool's",
+	"gen_treads.gd::_put": "thrown plate comes down on dry ground, never in a lead",
+	"gen_surface.gd::window": "water a recipe laid is fixed against the tidy, so a lead stays as `_surface` laid it",
+}
+
+
+## BiomeDef.leads HAS ONE COST: a stage that reads black water without asking
+## it takes a lead for a pool. GenTreads did, and kept seed 1's lame tread off
+## ice its foot could come down on. So every function in the treads, pools and
+## surface code that reads black water (names BLACKWATER, or asks Ground.is_water
+## or is_shallow) asks `leads`, or is named in AS_WATER with why a lead is water
+## to it. A new reader fails until it does one or the other, and a name in
+## AS_WATER that reads none any more fails too. Text, not a parser, the way
+## tests/stream/whole_world_scan.gd reads: comments are not code.
+func test_every_black_water_reader_in_the_treads_and_surface_asks_leads() -> void:
+	var reads := RegEx.create_from_string("\\bBLACKWATER\\b|\\bGround\\.is_(?:water|shallow)\\(")
+	var asks := RegEx.create_from_string("\\.leads\\b")
+	var head := RegEx.create_from_string("^\\s*(?:static\\s+)?func\\s+(\\w+)")
+	var reading := {}
+	var asking := {}
+	for path: String in LEAD_READERS_IN:
+		var fn := "(class)"
+		for raw: String in FileAccess.get_file_as_string(path).split("\n"):
+			var line := Scan._code(raw)
+			var m := head.search(line)
+			if m != null:
+				fn = m.get_string(1)
+			var key := "%s::%s" % [path.get_file(), fn]
+			if reads.search(line) != null:
+				reading[key] = true
+			if asks.search(line) != null:
+				asking[key] = true
+	check(reading.has("gen_treads.gd::_never") and asking.has("gen_treads.gd::_never"),
+		"the scan sees GenTreads._never read black water and ask leads (%s)" % [reading.keys()])
+	for key: String in reading:
+		if not asking.has(key):
+			check(AS_WATER.has(key), "%s reads black water without asking BiomeDef.leads: ask it, or name it in AS_WATER with why a lead is water there" % key)
+	for key: String in AS_WATER:
+		check(reading.has(key) and not asking.has(key), "%s is in AS_WATER but reads no black water unasked: take it out" % key)
