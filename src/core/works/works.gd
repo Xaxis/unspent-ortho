@@ -139,7 +139,8 @@ static func sites(world: WorldData) -> Array[WorksSite]:
 	var bearing := GenWorks.bearing(world.seed_value)
 	var by_region := {}
 	for m: Dictionary in world.landmarks:
-		if not m.has("mark"):
+		# A marked work, unless it says it is no yard's heart (a crags bench).
+		if not m.has("mark") or not bool(m.get("depot", true)):
 			continue
 		var p: Vector2 = m.get("pos", Vector2.ZERO)
 		var r := world.region_at(floori(p.x), floori(p.y))

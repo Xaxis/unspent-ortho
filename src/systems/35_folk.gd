@@ -46,9 +46,12 @@ const CROWD_BLIND := 8
 ## houses themselves are gathered within 12 tiles of it.
 const STREET_IN := 2.5
 const STREET_OUT := 11.0
-## Hours: villagers head home from DUSK and are out again from DAWN.
-const DUSK := 21.0
-const DAWN := 5.5
+## Hours: villagers head home from DUSK and are out again from DAWN, read off the
+## sky's own curve (Weather), so the village and the light never drift apart:
+## they keep the dusk and go in as it lands, full dark, and are up a half hour
+## before the morning's light is.
+const DUSK := Weather.DUSK_END
+const DAWN := Weather.DAWN_END - 0.5
 const PACE := 1.5
 const TREES: Array[int] = [PropKind.PINE, PropKind.BROADLEAF, PropKind.DEAD_TREE, PropKind.SNOW_PINE]
 const ROCKS: Array[int] = [PropKind.BOULDER, PropKind.STONE_ORE, PropKind.IRON_ORE, PropKind.COPPER_ORE, PropKind.COAL_ORE, PropKind.TIN_ORE]
