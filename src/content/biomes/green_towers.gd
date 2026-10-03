@@ -188,11 +188,11 @@ static func make() -> BiomeDef:
 	# down one at a time.
 	d.hazards = {&"wet": 0.55, &"dark": 0.4, &"collapse": 0.35}
 	d.roster = {
-		&"harvester": {"weight": 0.9, "grounds": ["grass", "moss", "floor"]},
-		&"cutter": {"weight": 0.8, "grounds": ["rock", "gravel", "floor"]},
-		&"sweeper": {"weight": 0.7, "grounds": ["floor", "gravel", "mud", "needles"]},
-		&"dog.feral": {"weight": 0.9},
-		&"bull.field": {"weight": 0.6, "grounds": ["grass", "moss"]},
+		&"harvester": {"grounds": ["grass", "moss", "floor"]},
+		&"cutter": {"grounds": ["rock", "gravel", "floor"]},
+		&"sweeper": {"grounds": ["floor", "gravel", "mud", "needles"]},
+		&"dog.feral": {},
+		&"bull.field": {"grounds": ["grass", "moss"]},
 	}
 	d.landmarks = [&"poured_pillar", &"clerks_office", &"firewatch", &"blinking_stack"]
 	d.sound_bed = &"bed_pines"

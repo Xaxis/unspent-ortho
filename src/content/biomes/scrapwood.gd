@@ -161,13 +161,13 @@ static func make() -> BiomeDef:
 	# already clear ground answer here.
 	var floor_g := ["swarf", "grass", "needles", "heath", "gravel", "mud", "road", "moss"]
 	d.roster = {
-		&"sweeper": {"weight": 1.2, "grounds": floor_g},
-		&"warden": {"weight": 0.8, "hours": Vector2(20, 5), "grounds": floor_g},
-		&"watcher": {"weight": 0.8, "grounds": floor_g},
-		&"flock": {"weight": 0.8, "hours": Vector2(7, 18), "grounds": floor_g},
-		&"dog.feral": {"weight": 1.0, "grounds": floor_g},
+		&"sweeper": {"grounds": floor_g},
+		&"warden": {"hours": Vector2(20, 5), "grounds": floor_g},
+		&"watcher": {"grounds": floor_g},
+		&"flock": {"hours": Vector2(7, 18), "grounds": floor_g},
+		&"dog.feral": {"grounds": floor_g},
 		# Its own: the tamper, waiting on the heaps over the floor (Roster).
-		&"tamper": {"weight": 1.0},
+		&"tamper": {},
 	}
 	d.sentinel = &""
 	# The places worth the walk it holds (docs/VISION.md, src/core/landmarks):

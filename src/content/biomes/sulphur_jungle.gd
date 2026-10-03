@@ -136,11 +136,11 @@ static func make() -> BiomeDef:
 	# wet, which here is most of the time.
 	d.hazards = {&"heat": 0.5, &"fumes": 0.5, &"wet": 0.45}
 	d.roster = {
-		&"dredger": {"weight": 0.9, "grounds": ["mud", "water"]},
-		&"cutter": {"weight": 0.9, "grounds": ["rock", "clinker"]},
-		&"harvester": {"weight": 0.8, "grounds": ["grass", "moss", "mud"]},
-		&"watcher": {"weight": 0.8},
-		&"dog.feral": {"weight": 0.7},
+		&"dredger": {"grounds": ["mud", "water"]},
+		&"cutter": {"grounds": ["rock", "clinker"]},
+		&"harvester": {"grounds": ["grass", "moss", "mud"]},
+		&"watcher": {},
+		&"dog.feral": {},
 	}
 	d.landmarks = [&"evaporator", &"blinking_stack", &"firewatch", &"clerks_office"]
 	# Its houses open on the homes its people kept (src/content/interiors/home.gd).

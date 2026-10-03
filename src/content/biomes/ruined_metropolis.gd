@@ -164,14 +164,14 @@ static func make() -> BiomeDef:
 	# respirator or a scarf answers it (docs/LANDSCAPES.md).
 	d.hazards = {&"dark": 0.35, &"collapse": 0.5, &"toxins": 0.25}
 	d.roster = {
-		&"warden": {"weight": 1.0},
-		&"sweeper": {"weight": 1.0, "grounds": ["floor", "road", "mud", "grass"]},
-		&"watcher": {"weight": 0.9},
-		&"clerk": {"weight": 0.6, "grounds": ["floor", "road", "gravel", "rock"]},
-		&"dog.feral": {"weight": 0.7},
+		&"warden": {},
+		&"sweeper": {"grounds": ["floor", "road", "mud", "grass"]},
+		&"watcher": {},
+		&"clerk": {"grounds": ["floor", "road", "gravel", "rock"]},
+		&"dog.feral": {},
 		# The city's own worker, found nowhere else: the machine taking it apart
 		# (Roster, `demolisher`). Its own row keeps it to the floor and the rubble.
-		&"demolisher": {"weight": 1.2},
+		&"demolisher": {},
 	}
 	d.landmarks = [&"clerks_office", &"poured_pillar", &"blinking_stack", &"cast_stones"]
 	# Its keeper: the gantry crane taking the city apart (src/core/sentinel/
