@@ -196,14 +196,16 @@ static func make() -> BiomeDef:
 ##
 ## THE LEADS are the sea's signature and the listener's founder ground
 ## (designs/listener.gd): black open water wandering through the white, where
-## the sheet has opened under the same stress that throws the ridges up, so they
-## come from the other end of the same field. A narrow band of the rise, not its
-## floor: a line round the low ground a tile or three wide, never a lake
-## (tests/biome/test_frost_leads.gd). Between RIDGE_RISE and the leads lies the
-## sheet, and the sheet is most of the sea.
+## the sheet has opened. A lead is a line, so it is a CONTOUR: the tiles where
+## the broad field (`gb`, 1/48) stands within LEAD_HALF of LEAD_AT, a meander a
+## tile or three wide that runs on for a hundred tiles and more, never a lake
+## (tests/biome/test_frost_leads.gd). Not the rise's low tail: that is the floor
+## of every pit, and lays rings and specks round them.
+## Between RIDGE_RISE and the leads lies the sheet, and the sheet is most of the
+## sea.
 const RIDGE_RISE := 1.2
-const LEAD_RISE := -1.2
-const LEAD_BAND := 0.15
+const LEAD_AT := 0.45
+const LEAD_HALF := 0.035
 
 
 static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f: int) -> int:
@@ -217,7 +219,7 @@ static func _surface(t: BiomeSurface, i: int, e: float, rs: float, gb: float, f:
 	# cover behind.
 	if rs > RIDGE_RISE:
 		return Ground.ROCK
-	if rs < LEAD_RISE and rs > LEAD_RISE - LEAD_BAND:
+	if absf(gb - LEAD_AT) < LEAD_HALF:
 		return Ground.BLACKWATER
 	# ICE, not snow, and `test_snow_and_ash_keep_to_their_countries` is what made
 	# the point: SNOW belongs to the snowfield, and reaching for it here because

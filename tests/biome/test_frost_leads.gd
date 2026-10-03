@@ -13,6 +13,14 @@ const LEAD_SHARE_MOST := 0.06
 ## in a lake's middle), at most: a lead three tiles wide has a third of its
 ## tiles there, and a lake most of them.
 const LEAD_CORE_MOST := 0.35
+## A lead is a line: black water joined corner to corner this far at the least,
+## half the 48-tile wavelength of the field it follows, so it runs on past the
+## gap between two. Shorter is a hole in the ice, not a lead.
+const LINE_LEAST := 24
+## The share of a big region's black water in lines, at the least: leads cut
+## from the rise's low tail were rings round pits, 3-18% of their tiles in a
+## line, and passed LEAD_CORE_MOST as easily as lines do.
+const LINE_SHARE_LEAST := 0.7
 ## A region this big is printed and held to the bounds above.
 const BIG := 2000
 
@@ -90,11 +98,53 @@ func test_the_leads_are_lines_through_walkable_ice() -> void:
 					core += int(all)
 			var share := float(black) / maxf(1.0, float(tiles))
 			var mid := float(core) / maxf(1.0, float(black))
-			print("       seed %d frost sea region %d (%d tiles): %.3f black water, %.2f of it a lake's middle" % [s, id, tiles, share, mid])
+			var lined := float(_in_lines(w, id, b)) / maxf(1.0, float(black))
+			print("       seed %d frost sea region %d (%d tiles): %.3f black water, %.2f of it a lake's middle, %.2f in lines" % [s, id, tiles, share, mid, lined])
 			lt(share, LEAD_SHARE_MOST, "seed %d: frost sea region %d keeps its ice the ground (%.3f black water)" % [s, id, share])
-			lt(mid, LEAD_CORE_MOST, "seed %d: frost sea region %d's leads are lines (%.2f of them a lake's middle)" % [s, id, mid])
+			lt(mid, LEAD_CORE_MOST, "seed %d: frost sea region %d's leads are lines, not lakes (%.2f of them a lake's middle)" % [s, id, mid])
+			gt(lined, LINE_SHARE_LEAST, "seed %d: frost sea region %d's leads are lines, not holes (%.2f of its black water in lines of %d)" % [s, id, lined, LINE_LEAST])
 	gt(float(big), 4.0, "five worlds hold big frost sea regions (%d)" % big)
 
+
+## How many of region `id`'s black-water tiles lie in a patch of it, joined
+## corner to corner through the frost sea, of LINE_LEAST tiles or more: a lead
+## running on into the next frost region is still a line.
+func _in_lines(w: WorldData, id: int, b: Rect2) -> int:
+	var frost := w.country_at(floori(b.get_center().x), floori(b.get_center().y))
+	for y in range(floori(b.position.y), ceili(b.end.y)):
+		for x in range(floori(b.position.x), ceili(b.end.x)):
+			if w.region_at(x, y) == id:
+				frost = w.country_at(x, y)
+				break
+	var size := w.size
+	var seen := {}
+	var lined := 0
+	for y in range(floori(b.position.y), ceili(b.end.y)):
+		for x in range(floori(b.position.x), ceili(b.end.x)):
+			var i := y * size + x
+			if seen.has(i) or w.region_at(x, y) != id or w.ground_at(x, y) != Ground.BLACKWATER:
+				continue
+			seen[i] = true
+			var q: Array[Vector2i] = [Vector2i(x, y)]
+			var mine := 0
+			var h := 0
+			while h < q.size():
+				var t := q[h]
+				h += 1
+				if w.region_at(t.x, t.y) == id:
+					mine += 1
+				for dy in range(-1, 2):
+					for dx in range(-1, 2):
+						var u := t + Vector2i(dx, dy)
+						if not w.in_bounds(u.x, u.y) or seen.has(u.y * size + u.x):
+							continue
+						if w.country_at(u.x, u.y) != frost or w.ground_at(u.x, u.y) != Ground.BLACKWATER:
+							continue
+						seen[u.y * size + u.x] = true
+						q.append(u)
+			if q.size() >= LINE_LEAST:
+				lined += mine
+	return lined
 
 ## Where black water once decided whether a walker's foot could come down: the
 ## treads, the pools and the surface.

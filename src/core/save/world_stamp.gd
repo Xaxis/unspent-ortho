@@ -312,8 +312,8 @@ const UNKNOWN := "unknown"
 ##     brine houses go to every region big enough to keep the rake, benches
 ##     to bare rock and then half spacing, locks to the next canal reach.
 ##     (Provisional; restamped at landing.)
-## 53. The frost sea opens its leads, black water wandering through the ice
-##     at the far end of the field that throws its ridges, and lays its own:
+## 53. The frost sea opens its leads, lines of black water wandering through
+##     the ice along a contour of the broad field, and lays its own:
 ##     seal holes, frozen hulls, pressure blocks, the floe camp, and the
 ##     soundings lines, the listener's stations, sited by the station rule.
 ##     The scatter keeps off black water. (Provisional; restamped at landing.)
