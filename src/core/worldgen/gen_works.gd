@@ -849,24 +849,51 @@ static func _sea_dir(c: GenContext, p: Vector2i, reach: int = 7) -> Vector2:
 ## search), within 4 tiles of the sea, on one of `grounds`, heart-side of any
 ## ecotone, away from other places.
 static func _shore(L: Lay, grounds: Array, apart: float, attempts: int = 900) -> Vector2i:
-	var c := L.c
-	var w := L.w
 	for attempt in attempts:
 		var p := _dart(L)
-		var i := p.y * c.size + p.x
-		if w.level[i] < 1 or w.level[i] > (1 if attempt < attempts * 0.6 else 2) or c.sea_steps[i] > 4 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0:
-			continue
-		if not grounds.is_empty() and not grounds.has(int(w.ground[i])):
-			continue
-		if c.islet[i] != 0 or not L.here(p.x, p.y):
-			continue
 		var room := apart if attempt < attempts * 0.6 else apart * 0.4
-		if _crowded(L, Vector2(p), room) or GenScatter._near_village(w, Vector2(p), maxf(room * 0.7, 14.0)):
-			continue
-		if _sea_dir(c, p).length() < 0.5:
-			continue
-		return p
+		if _shore_at(L, p, grounds, 1 if attempt < attempts * 0.6 else 2, room):
+			return p
 	return Vector2i(-1, -1)
+
+
+## The shore tiles within `reach` of `at` that `_shore` would take (their ground,
+## their level up to the second, `apart` off the marks), nearest first: where a
+## work has to stand at one place on the coast, not anywhere along it.
+static func _shores_near(L: Lay, grounds: Array, at: Vector2, reach: int, apart: float) -> Array[Vector2i]:
+	var o := Vector2i(at.floor())
+	var tiles: Array[Vector2i] = []
+	for dy in range(-reach, reach + 1):
+		for dx in range(-reach, reach + 1):
+			if dx * dx + dy * dy <= reach * reach and L.w.in_bounds(o.x + dx, o.y + dy):
+				tiles.append(o + Vector2i(dx, dy))
+	tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		var da := (a - o).length_squared()
+		var db := (b - o).length_squared()
+		return da < db if da != db else (a.y < b.y if a.y != b.y else a.x < b.x))
+	var out: Array[Vector2i] = []
+	for p: Vector2i in tiles:
+		if _shore_at(L, p, grounds, 2, apart):
+			out.append(p)
+	return out
+
+
+## `p` is a shore tile a work may stand on: dry ground of `grounds` a level or two
+## up (to `top`), within four steps of the sea, off water, roads and villages and
+## islets, in the region being laid, `room` off the marks, and facing the sea.
+static func _shore_at(L: Lay, p: Vector2i, grounds: Array, top: int, room: float) -> bool:
+	var c := L.c
+	var w := L.w
+	var i := p.y * c.size + p.x
+	if w.level[i] < 1 or w.level[i] > top or c.sea_steps[i] > 4 or c.water[i] != 0 or c.road[i] != 0 or c.village[i] != 0:
+		return false
+	if not grounds.is_empty() and not grounds.has(int(w.ground[i])):
+		return false
+	if c.islet[i] != 0 or not L.here(p.x, p.y):
+		return false
+	if _crowded(L, Vector2(p), room) or GenScatter._near_village(w, Vector2(p), maxf(room * 0.7, 14.0)):
+		return false
+	return _sea_dir(c, p).length() >= 0.5
 
 
 ## A few things scattered round a point, each where it can stand.

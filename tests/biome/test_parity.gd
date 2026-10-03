@@ -557,7 +557,10 @@ extends TestCase
 ## tread comes down and which landmarks yield to a foot, and a world of 256
 ## holds no tread at all (no walker's route passes over an island that small),
 ## so nothing a world of the six makes moves.
-## AT GEN 49 (2026-10-03, provisional): the glass desert lays its strike fields.
+## AT GEN 49 (2026-10-03, provisional): the drowned city's port lays a stair at
+## the landfall. The six hold to the bit, and nothing is re-accepted: none of
+## them is the drowned city.
+## AT GEN 50 (2026-10-03, provisional): the glass desert lays its strike fields.
 ## The six hold to the bit, and nothing is re-accepted: none of them is the
 ## glass, the station rule asks the den off a larder only of a work that hands
 ## its larder over (GenWorks.station_holds), which no work of the six does, and
