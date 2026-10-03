@@ -185,14 +185,14 @@ static func make() -> BiomeDef:
 	# be over your head where they dip.
 	d.hazards = {&"wet": 0.7, &"toxins": 0.35}
 	d.roster = {
-		&"dredger": {"weight": 1.0, "grounds": ["blackwater", "mud"]},
-		&"harvester": {"weight": 0.8, "grounds": ["moss", "mud", "gravel"]},
-		&"watcher": {"weight": 0.9},
-		&"gulls": {"weight": 1.0, "hours": Vector2(5, 21), "grounds": ["shingle", "gravel"]},
+		&"dredger": {"grounds": ["blackwater", "mud"]},
+		&"harvester": {"grounds": ["moss", "mud", "gravel"]},
+		&"watcher": {},
+		&"gulls": {"hours": Vector2(5, 21), "grounds": ["shingle", "gravel"]},
 		# Its own machine, found nowhere else: the plan's ferry keeping its
 		# timetable on the canals (Roster, `ferry`). Its own row keeps it to the
 		# water and to its hours.
-		&"ferry": {"weight": 1.2},
+		&"ferry": {},
 	}
 	# Its own blocks, standing in the water (`_works`): the city's frontages
 	# along its canals, and its roofs out in the shallows.
