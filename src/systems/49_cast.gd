@@ -155,12 +155,13 @@ func _heard_the_far_shore(from: Vector2) -> void:
 
 
 ## Where a raft puts in from the home body and lands on the next leg's
-## (StoryCrossing), as two more places: the survey marks the one while the goal is
-## the crossing. A copy of the cast is extended, never StoryPlan's own.
+## (StoryCrossing): ashore at the world's landfall (the_landfall), else across the
+## narrows. Two more places: the survey marks the one while the
+## goal is the crossing. A copy of the cast is extended, never StoryPlan's own.
 func _place_crossing() -> void:
 	if game.world.realm != Realm.SURFACE or not placed.has(&"the_camp") or not placed.has(&"the_archive"):
 		return
-	var c := StoryCrossing.find(game.world, placed[&"the_camp"].pos, placed[&"the_archive"].pos)
+	var c := StoryCrossing.of(game.world, placed)
 	if c.is_empty():
 		return
 	placed[StoryCrossing.LAUNCH] = {"pos": c.launch}

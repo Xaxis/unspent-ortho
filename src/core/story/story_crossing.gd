@@ -54,8 +54,12 @@ static func find_within(world: WorldData, from: Vector2, to: Vector2, reach: flo
 			if not _shore(world, x, y):
 				continue
 			(homes if c == home else fars).append(p)
-	# Every home shore paired with its nearest far shore, narrowest first; the
-	# first whose straight run is open water all the way is the crossing.
+	return _narrowest(world, homes, fars)
+
+
+## Every home shore paired with its nearest far shore, narrowest first; the first
+## whose straight run is open water all the way is the crossing, or {}.
+static func _narrowest(world: WorldData, homes: Array[Vector2], fars: Array[Vector2]) -> Dictionary:
 	var pairs: Array[Array] = []
 	for h in homes:
 		var best := INF
@@ -72,6 +76,59 @@ static func find_within(world: WorldData, from: Vector2, to: Vector2, reach: flo
 		if _open_water(world, pair[1], pair[2]):
 			return {"launch": pair[1], "land": pair[2], "water": float(pair[0])}
 	return {}
+
+
+## Where the raft crosses on a world the story is cast on (`cast`: StoryPlan.cast's
+## answer): ashore at the world's landfall where it lies on the archive's body
+## (`to_landfall`), else across the narrows between the crew's camp and the
+## archive (`find`). The one rule the game (49_cast) and every test read the
+## crossing by.
+static func of(world: WorldData, cast: Dictionary) -> Dictionary:
+	if not cast.has(&"the_camp") or not cast.has(&"the_archive"):
+		return {}
+	var camp: Vector2 = cast[&"the_camp"].pos
+	var archive: Vector2 = cast[&"the_archive"].pos
+	var c := {}
+	if cast.has(&"the_landfall") and world.same_body(cast[&"the_landfall"].pos, archive):
+		c = to_landfall(world, camp, cast[&"the_landfall"].pos)
+	return c if not c.is_empty() else find(world, camp, archive)
+
+
+## How far from the landfall the raft may come ashore, and put in from, in tiles:
+## its far shore within ASHORE of it, the home shore within PUT_IN_REACH.
+const ASHORE := 48.0
+const PUT_IN_REACH := 300.0
+
+
+## THE LANDFALL FIRST (StorySlot.LANDFALL): the raft comes ashore where the
+## shortest water from home does, and the landfall's city stands its port and its
+## clock there, not on whatever shore the narrows off his road happen to reach (on
+## seed 7 those were 126 tiles off it). The narrowest open water from a home shore
+## within PUT_IN_REACH of the landfall to a far shore within ASHORE of it, as
+## `find` pairs them. {launch, land, water}, or {} where none, and the narrows
+## decide.
+static func to_landfall(world: WorldData, from: Vector2, landfall: Vector2) -> Dictionary:
+	if world == null or not landfall.is_finite() or world.same_body(from, landfall):
+		return {}
+	var home := world.continent_at(floori(from.x), floori(from.y))
+	var far := world.continent_at(floori(landfall.x), floori(landfall.y))
+	if home == 0 or far == 0:
+		return {}
+	var homes: Array[Vector2] = []
+	var fars: Array[Vector2] = []
+	var lo := Vector2i((landfall - Vector2(PUT_IN_REACH, PUT_IN_REACH)).floor())
+	var hi := Vector2i((landfall + Vector2(PUT_IN_REACH, PUT_IN_REACH)).ceil())
+	for y in range(lo.y, hi.y + 1, STEP):
+		for x in range(lo.x, hi.x + 1, STEP):
+			var c := world.continent_at(x, y)
+			if c != home and c != far:
+				continue
+			var p := Vector2(x, y) + Vector2(0.5, 0.5)
+			var d := p.distance_to(landfall)
+			if (c == home and d > PUT_IN_REACH) or (c == far and d > ASHORE) or not _shore(world, x, y):
+				continue
+			(homes if c == home else fars).append(p)
+	return _narrowest(world, homes, fars)
 
 
 ## Land with water beside it.
