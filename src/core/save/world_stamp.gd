@@ -274,7 +274,7 @@ const UNKNOWN := "unknown"
 ##     Every region big enough to keep a keeper gets its keeper's first station
 ##     (an intake, a lock), laid only where the ground keeps the design's ways
 ##     and never within its keeper's reach of where the raft comes ashore
-##     (GenWorks.station_holds). (Provisional; restamped at landing.)
+##     (GenWorks.station_holds).
 ## 48. The lame leg's tread comes down on the Covenant's body (slice 3 step 7):
 ##     the first wanted plant scores leg 1's body first, nearer where he comes
 ##     ashore the better, and where nothing fits there it is sited home-first as
@@ -293,11 +293,11 @@ const UNKNOWN := "unknown"
 ##     10.9 -> 3.9 on 7 and 4.4 -> 0.5 on 4. (Landmarks, not worldgen: the
 ##     clock tower stands over the port, within 20 tiles, in the shallows if it
 ##     must: 25.6 -> 11.2 on seed 1, 28.7 -> 9.0 on 7, 28.9 -> 4.4 on 42,
-##     7.2 -> 5.4 on 4.) (Provisional; restamped at landing.)
+##     7.2 -> 5.4 on 4.)
 ## 50. Every village has its own name: a land whose list runs out numbers its
 ##     first name, each number once (GenSettle._name). Seed 1's eight slum
 ##     blocks past the list were all "Ninth Shift 24". Names only; nothing
-##     moves. (Provisional; restamped at landing.)
+##     moves.
 const GEN := 50
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
