@@ -160,6 +160,26 @@ func test_a_landmark_is_seen_before_it_is_named() -> void:
 const SITING_SHARE := 0.06
 
 
+## A WORLD'S LANDMARKS ARE THE ONES IT WAS FIRST ASKED FOR, for its life. Siting
+## reads the land, and the walkers' treads cut it after the first ask (in world
+## generation), so sited again 75 of seed 7's 196 stood elsewhere: they were
+## kept in a cache of six worlds that emptied when it filled.
+func test_a_worlds_landmarks_stay_where_they_were_first_sited() -> void:
+	const Worlds := preload("res://tests/core/test_world_gen.gd")
+	var w: WorldData = Worlds.world(7)
+	var was := {}
+	for s: LandmarkSite in Landmarks.sites(w):
+		was[s.id] = s.pos
+	for s: int in [11, 12, 13, 14, 15, 16, 17]:
+		@warning_ignore("return_value_discarded")
+		Landmarks.sites(WorldGen.generate(s, 256))
+	var moved := 0
+	for s: LandmarkSite in Landmarks.sites(w):
+		if not was.has(s.id) or was[s.id] != s.pos:
+			moved += 1
+	eq(moved, 0, "asked again after seven other worlds, every landmark stands where it was first sited")
+
+
 func test_siting_them_costs_nothing_a_player_would_notice() -> void:
 	# BEST of n, not the mean: load only ever ADDS time, so the cheapest run is
 	# the honest cost of each half.
@@ -171,10 +191,10 @@ func test_siting_them_costs_nothing_a_player_would_notice() -> void:
 	var w := grown[0]
 	# The answer is remembered per island, so every measurement has to forget it
 	# first or it times a dictionary lookup and says the sweep is free.
-	Landmarks.forget()
+	Landmarks.forget(w)
 	check(not Landmarks.sites(w).is_empty(), "there is something to find")
 	var cold := func() -> void:
-		Landmarks.forget()
+		Landmarks.forget(w)
 		@warning_ignore("return_value_discarded")
 		Landmarks.sites(w)
 	var site_us := best_of(5, cold)
