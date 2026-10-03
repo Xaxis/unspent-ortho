@@ -294,11 +294,12 @@ const UNKNOWN := "unknown"
 ##     clock tower stands over the port, within 20 tiles, in the shallows if it
 ##     must: 25.6 -> 11.2 on seed 1, 28.7 -> 9.0 on 7, 28.9 -> 4.4 on 42,
 ##     7.2 -> 5.4 on 4.) (Provisional; restamped at landing.)
-## 50. The tread's people keep a holding on the lip of the crater the walker
-##     lead pins (GenTreads.dress `_holding`, round Treads.folk_lip): a shack,
-##     a fire and a bench, laid as that tread's own, after everything else.
-##     Only props are appended; nothing laid before them moves. (Provisional;
-##     restamped at landing.)
+## 50. The tread's people keep a holding at the lame leg's tread on leg 1's
+##     body, which `site` marks as theirs (`folk`; the story casts `the_tread`
+##     from it): a shack, a fire and a bench round its lip (GenTreads.dress
+##     `_holding`, Treads.folk_lip), laid as that tread's own, after everything
+##     else. Only props are appended; nothing laid before them moves.
+##     (Provisional; restamped at landing.)
 const GEN := 50
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a

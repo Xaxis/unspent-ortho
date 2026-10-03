@@ -62,11 +62,12 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 				if not rows.is_empty():
 					out[s.id] = (rows[0] as Dictionary).duplicate()
 			continue
-		# A crater is not dealt: it is the one the walker lead pins, nearest the
-		# slot it names on that slot's body (crater_near), or none: a tread's
-		# middle toe's crater (Treads.MIDDLE_TOE). Its row keeps the tread's ankle,
-		# pads and yaw, so whoever stands there is stood by it without walking the
-		# world's landmarks again (49_cast).
+		# A crater is not dealt: it is the one the world marks as its people's
+		# (GenTreads `folk`: the lame leg's, on leg 1's body), where it is the
+		# one the walker lead pins, nearest the slot it names on that slot's body
+		# (crater_near), or none: a tread's middle toe's crater (Treads.MIDDLE_TOE).
+		# Its row keeps the tread's ankle, pads and yaw, so whoever stands there
+		# is stood by it without walking the world's landmarks again (49_cast).
 		if s.needs == StorySlot.TREAD:
 			if s.realm == world.realm and out.has(s.near):
 				var treads := _candidates(world, s)
@@ -182,8 +183,10 @@ static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
 			for pt: Portal in Portals.in_world(world):
 				out.append({"pos": pt.pos, "region": pt.region, "land": _land_at(world, pt.pos), "site": StorySlot.PORTAL})
 		StorySlot.TREAD:
+			# Read off the world, never chosen here: worldgen laid the people's
+			# holding at that tread before any story was cast.
 			for m: Dictionary in world.landmarks:
-				if StringName(m.get("kind", &"")) == &"tread":
+				if StringName(m.get("kind", &"")) == &"tread" and bool(m.get("folk", false)):
 					var pad: Vector3 = (m.pads as Array)[Treads.MIDDLE_TOE]
 					out.append({"pos": Vector2(pad.x, pad.y), "region": -1, "land": &"", "site": StorySlot.TREAD,
 						"ankle": m.pos, "pads": m.pads, "yaw": m.yaw})

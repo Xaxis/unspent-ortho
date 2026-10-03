@@ -14,7 +14,7 @@ extends RefCounted
 ##           it is crushed at load by 19_colossi, from the tread, every time.
 ##   `dress` spoil and torn plate on the rims, the survey posts the plan keeps
 ##           round its own treads, one under the ankle, and the tread's people's
-##           holding on the lip of the crater the walker lead pins -- appended.
+##           holding at the tread `site` marks theirs (`folk`) -- appended.
 ##
 ## Reached by path (world_gen.gd preloads it), never by class_name.
 
@@ -56,6 +56,7 @@ static func site(c: GenContext) -> void:
 	var roads := WorldGen.distance_field(c.road, c.size)
 	c.mark(&"treads.roads")
 	var laid: PackedByteArray = GenFields.snapshot(w.ground)
+	var leg1 := int(_landfall(w).get("id", -1))
 	for i in want.size():
 		var row: Dictionary = want[i]
 		var d: RefCounted = defs[row.walker]
@@ -72,7 +73,8 @@ static func site(c: GenContext) -> void:
 		w.landmarks.append({"kind": &"tread", "pos": at, "country": int(w.country[floori(at.y) * w.size + floori(at.x)]),
 			"region": region, "walker": row.walker, "leg": int(row.leg), "j": int(row.j), "yaw": yaw,
 			"floor": float(floor_l) * WorldData.STEP, "pads": pads,
-			"half": Vector2.ONE * _extent(d), "trod": _trod(w, pads, bears)})
+			"half": Vector2.ONE * _extent(d), "trod": _trod(w, pads, bears),
+			"folk": i == 0 and w.continent_at(floori(at.x), floori(at.y)) == leg1})
 	# The strata climb a level per STEP_W and stop at the reach, so on land that
 	# rises faster than that a cut ends in a step, and a road across it would
 	# climb it. Graded again as settle grades every road.
@@ -827,9 +829,6 @@ static func dress(c: GenContext) -> void:
 	for m: Dictionary in w.landmarks:
 		if StringName(m.get("kind", &"")) == &"tread":
 			treads.append(m)
-	# Whose lip the tread's people keep: the tread cast to `the_tread`, by the
-	# rule the walker lead pins its crater by (StoryCasting.crater_near).
-	var folk: Dictionary = StoryCasting.cast(w, StoryPlan.slots()).get(&"the_tread", {}) if not treads.is_empty() else {}
 	for m: Dictionary in treads:
 		var at: Vector2 = m.pos
 		var pads: Array = m.pads
@@ -864,21 +863,23 @@ static func dress(c: GenContext) -> void:
 		# Under the ankle, between the toes, one more post: the only thing in
 		# the arch a person's size.
 		_put(c, PropKind.SURVEY, at + Vector2(3.0, -2.0), others)
-		if not folk.is_empty() and (folk.ankle as Vector2) == at:
-			_holding(c, folk, others)
+		if bool(m.get("folk", false)):
+			_holding(c, at, pads, float(m.yaw), others)
 		# What this stage laid is the tread's own and is never crushed by it
 		# (19_colossi reads these ids).
 		m["props"] = Vector2i(first, w.props.size())
 
 
 ## THE TREAD'S PEOPLE'S HOLDING (docs/STORY.md: the walkers; Tull speaks for
-## them), round the lip they stand on (Treads.folk_lip): a shack HOLD_SHACK out
+## them), at the tread `site` marks theirs (`folk`: the lame leg's, on leg 1's
+## body), round the lip they stand on (Treads.folk_lip): a shack HOLD_SHACK out
 ## past it, turned to the crater they farm, and a fire and a bench between it and
 ## the lip, to one side of the line out so Tull's spot stays open. Colour, never
-## load: nothing here is asked for by the story or the climb.
-static func _holding(c: GenContext, row: Dictionary, others: Array[Vector3]) -> void:
-	var lip := Treads.folk_lip(row.ankle, row.pads, float(row.yaw))
-	var pad: Vector3 = (row.pads as Array)[Treads.MIDDLE_TOE]
+## load: nothing here is asked for by the story or the climb, and nothing here
+## asks the story; the story casts `the_tread` from the row (StoryCasting).
+static func _holding(c: GenContext, ankle: Vector2, pads: Array, yaw: float, others: Array[Vector3]) -> void:
+	var lip := Treads.folk_lip(ankle, pads, yaw)
+	var pad: Vector3 = pads[Treads.MIDDLE_TOE]
 	var out := (lip - Vector2(pad.x, pad.y)).normalized()
 	var side := Vector2(-out.y, out.x)
 	_put(c, PropKind.SHACK, lip + out * HOLD_SHACK, others, (-out).angle())
