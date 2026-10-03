@@ -33,9 +33,12 @@ const BLOCK_SLACK := 1.0
 ## time a tile of that cell is asked about (`set_blocks_by_cell`). The ruins were
 ## 95k circles stamped into 2.4M tile entries at every new game's start, 0.7-1.7 s
 ## and 85 MB on seed 7 at 1840, for tiles nobody went near; a tile that is asked
-## about holds what an eager stamp would have put there. Cells are this many
-## tiles a side, so the first step into a crowded one is a short stamp.
-const BLOCK_CELL := 16
+## about holds what an eager stamp would have put there, its cell stamped whole.
+## Cells are this many tiles a side, so the first step into the most crowded is
+## a short stamp: on a walk into seed 7's (335 circles) the worst frame spent
+## 1.2-1.6 ms on walls, where 16-tile cells spent 2.6 and stamping cells ahead of
+## him on a 2 ms budget spent more in all and no less in the worst frame.
+const BLOCK_CELL := 8
 var _cell_circles: Dictionary = {}  # owner -> {cell key -> Array[Vector3]}
 var _cell_waiting: Dictionary = {}  # cell key -> Array of owners not yet stamped there
 
@@ -126,30 +129,6 @@ func _cells_wide() -> int:
 func _cell_rect(key: int) -> Rect2i:
 	var wide := _cells_wide()
 	return Rect2i((key % wide) * BLOCK_CELL, (key / wide) * BLOCK_CELL, BLOCK_CELL, BLOCK_CELL)
-
-
-## One waiting cell within `reach` cells of `p` stamped now, nearest first, so a
-## body walking into a crowded one (a ruined town's 7-10 ms) finds it done; false
-## when none was waiting. Called a frame at a time by whoever owns the circles.
-func stamp_near(p: Vector2, reach: int) -> bool:
-	if _cell_waiting.is_empty():
-		return false
-	var wide := _cells_wide()
-	var gx := clampi(floori(p.x) / BLOCK_CELL, 0, wide - 1)
-	var gy := clampi(floori(p.y) / BLOCK_CELL, 0, wide - 1)
-	for ring in reach + 1:
-		for dy in range(-ring, ring + 1):
-			for dx in range(-ring, ring + 1):
-				if maxi(absi(dx), absi(dy)) != ring:
-					continue
-				var x := gx + dx
-				var y := gy + dy
-				if x < 0 or y < 0 or x >= wide or y >= wide:
-					continue
-				if _cell_waiting.has(y * wide + x):
-					_stamp_cell(y * wide + x)
-					return true
-	return false
 
 
 ## Every owner still waiting in cell `key`, stamped there now.
