@@ -338,6 +338,9 @@ func turn_rate_at(now: float) -> float:
 	if at_work() and crowded_since >= 0.0:
 		# A worker held up, looking round at what is in its way: unhurried, not a turret.
 		return minf(turn_rate, FightRules.PAUSE_TURN)
+	var stand := float(row.get("spent_turn", -1.0))
+	if stand >= 0.0 and spent(now):
+		return minf(turn_rate, stand)
 	if blow_phase(now) == &"cooldown":
 		return minf(turn_rate, float(row.get("recover_turn", FightRules.RECOVER_TURN)))
 	if now < pause_until:

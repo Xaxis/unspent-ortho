@@ -62,6 +62,25 @@ const HOLD_LIMIT_MS := 6000
 const HUMAN_PULL_GAP_MS := 200
 
 
+## Over the walk and the strike, for a person's slack: a step off line, a late start.
+const WALK_ROUND_SPARE_MS := 300
+
+
+## How long a body standing spent must stay so for a person who dodged its bite to
+## walk round to its back and strike there: the dodge's lock (counted whole, from
+## a press no later than the bite going live), then the walk from beside its front
+## (a dodge's reach round a circle of `circle` tiles) to behind it, gaining on a
+## body still turning at `turn`, then the blow's windup and live time. Walking,
+## as readable_windup: a person in a fight is often below the run floor. INF
+## where `turn` is a walk round or faster: then no stand is long enough.
+static func walk_round_ms(circle: float, turn: float, strike: Blow) -> float:
+	var gain := Tuning.WALK_SPEED / circle - turn
+	if gain <= 0.0:
+		return INF
+	var arc := PI - dodge_reach() / circle
+	return DODGE_LOCK_MS + arc / gain * 1000.0 + strike.windup + strike.active + WALK_ROUND_SPARE_MS
+
+
 ## How long a crushing grip (Blow.crush) holds before it bites: what a person
 ## needs to read it (READ_REACT_MS) and then pull it off at their own pace, so it
 ## costs only one who answers it late or not at all.
