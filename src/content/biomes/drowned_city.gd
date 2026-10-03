@@ -185,14 +185,14 @@ static func make() -> BiomeDef:
 	# be over your head where they dip.
 	d.hazards = {&"wet": 0.7, &"toxins": 0.35}
 	d.roster = {
-		&"dredger": {"weight": 1.0, "grounds": ["blackwater", "mud"]},
-		&"harvester": {"weight": 0.8, "grounds": ["moss", "mud", "gravel"]},
-		&"watcher": {"weight": 0.9},
-		&"gulls": {"weight": 1.0, "hours": Vector2(5, 21), "grounds": ["shingle", "gravel"]},
+		&"dredger": {"grounds": ["blackwater", "mud"]},
+		&"harvester": {"grounds": ["moss", "mud", "gravel"]},
+		&"watcher": {},
+		&"gulls": {"hours": Vector2(5, 21), "grounds": ["shingle", "gravel"]},
 		# Its own machine, found nowhere else: the plan's ferry keeping its
 		# timetable on the canals (Roster, `ferry`). Its own row keeps it to the
 		# water and to its hours.
-		&"ferry": {"weight": 1.2},
+		&"ferry": {},
 	}
 	# Its own blocks, standing in the water (`_works`): the city's frontages
 	# along its canals, and its roofs out in the shallows.
@@ -323,6 +323,14 @@ static func _works(L: Object) -> void:
 		var at := _lock_site(L)
 		if at.z >= 0.0:
 			GenWorks._work(L, &"_lock", Vector2(at.x, at.y), [int(at.z)])
+	# THE PORT, when the landfall is this region's: a stair down into the sea on
+	# the quay nearest where the raft comes ashore, recorded as `port`. The raft
+	# is landed there (StoryCrossing) and the clock stands over it (Landmarks,
+	# `wants` the landfall). Darted with the slips, the nearest stood 66 tiles off
+	# seed 1's landing.
+	for p: Vector2i in _landing(L):
+		if GenWorks._work(L, &"_port", Vector2(p) + Vector2(0.5, 0.5)):
+			break
 	for n in GenWorks._n(L, 6.0):
 		var p := GenWorks._shore(L, QUAY_GROUNDS, 18.0)
 		if p.x >= 0:
@@ -530,10 +538,36 @@ static func _lock(L: Object, at: Vector2, a: Array) -> bool:
 	return true
 
 
+## How far from where the raft comes ashore the port's quay may be (its stair
+## steps out under a tile further), and how far off the region's other marks.
+const LANDING_REACH := 10
+const LANDING_ROOM := 6.0
+
+
+## The quay tiles round where the raft comes ashore (GenBodies.ashore) that are
+## the region being laid's, nearest first;
+## none when the landfall is another region's or no quay is in reach of it.
+static func _landing(L: Object) -> Array[Vector2i]:
+	var from := GenBodies.ashore(L.w)
+	return GenWorks._shores_near(L, QUAY_GROUNDS, from, LANDING_REACH, LANDING_ROOM) if from.is_finite() else []
+
+
 ## A STAIR down off a quay into the sea (`GenWorks._work`): where a raft is
 ## landed and a body steps off it, and a sea wall keeps off it (its mark, and
 ## `GenWorks._shore`'s room round the marks). Its +X is the water.
 static func _slip(L: Object, at: Vector2, _a: Array) -> bool:
+	return _stair(L, at, &"slip")
+
+
+## THE PORT's stair (`GenWorks._work`), a slip recorded as `port`: the one row
+## that says where the raft from home is landed.
+static func _port(L: Object, at: Vector2, _a: Array) -> bool:
+	return _stair(L, at, &"port")
+
+
+## A stair off the quay at `at` down into the sea (the sea's own level, never a
+## canal: `GenWorks._sea_dir`), recorded as `kind`.
+static func _stair(L: Object, at: Vector2, kind: StringName) -> bool:
 	var c: GenContext = L.c
 	var sea := GenWorks._sea_dir(c, Vector2i(at.floor()))
 	if sea.length() < 0.5:
@@ -541,7 +575,7 @@ static func _slip(L: Object, at: Vector2, _a: Array) -> bool:
 	var step := at + sea * 0.6
 	if GenWorks._put(L, PropKind.STAIR_TO_WATER, step, sea.angle(), -99, 0.0) == null:
 		return false
-	GenWorks._record(c, &"slip", step, sea, Vector2(1.0, 0.6))
+	GenWorks._record(c, kind, step, sea, Vector2(1.0, 0.6))
 	return true
 
 

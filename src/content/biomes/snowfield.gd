@@ -94,9 +94,9 @@ static func make() -> BiomeDef:
 	# (src/core/sentinel/designs/plough.gd, docs/LANDSCAPES.md).
 	d.sentinel = &"plough"
 	d.roster = {
-		&"lineman": {"weight": 1.0},
-		&"dog.yard": {"weight": 1.0}, &"dog.feral": {"weight": 1.0},
-		&"gulls": {"weight": 1.0, "hours": Vector2(6, 20)},
+		&"lineman": {},
+		&"dog.yard": {}, &"dog.feral": {},
+		&"gulls": {"hours": Vector2(6, 20)},
 	}
 	# The places worth the walk it holds (docs/VISION.md, src/core/landmarks):
 	# what a player crosses this landscape FOR. Its own file is the authority;

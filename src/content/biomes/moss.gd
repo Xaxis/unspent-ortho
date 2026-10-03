@@ -128,9 +128,9 @@ static func make() -> BiomeDef:
 	d.mist = 1.0
 	d.hazards = {&"wet": 0.6, &"toxins": 0.1}
 	d.roster = {
-		&"dredger": {"weight": 1.0},
-		&"dog.yard": {"weight": 1.0}, &"dog.feral": {"weight": 1.0},
-		&"gulls": {"weight": 1.0, "hours": Vector2(6, 20)},
+		&"dredger": {},
+		&"dog.yard": {}, &"dog.feral": {},
+		&"gulls": {"hours": Vector2(6, 20)},
 	}
 	# The places worth the walk it holds (docs/VISION.md, src/core/landmarks):
 	# what a player crosses this landscape FOR. Its own file is the authority;

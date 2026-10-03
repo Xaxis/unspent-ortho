@@ -172,7 +172,9 @@ static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
 			for w: WorksSite in Works.sites(world):
 				out.append({"pos": w.pos, "region": w.region, "land": w.land, "site": StorySlot.WORKS})
 		StorySlot.LANDMARK:
-			for l: LandmarkSite in Landmarks.sites(world):
+			# Every landmark SITED, trodden or standing, so a walker's foot never moves
+			# a story place: GenTreads keeps every cast one out from under its feet.
+			for l: LandmarkSite in Landmarks.sited(world):
 				if s.kind != &"" and l.kind != s.kind:
 					continue
 				out.append({"pos": l.pos, "region": l.region, "land": l.land, "site": StorySlot.LANDMARK, "kind": l.kind})
