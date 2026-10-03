@@ -272,7 +272,8 @@ extends GameSystem
 ## Awaits for that: title (the title is up, its coast drawn), game (a new game has
 ## started since the last action), saved (a save was written), fire_asked (`use` has
 ## asked where a fire would go and wants a second press), fed (the next press
-## would eat nothing he carries), hint:VERB (the key row names VERB, asked or
+## would eat nothing he carries), hunger:N (his hunger is at N or under: 0 fed, 1
+## peckish, 2 hungry, 3 starving), hint:VERB (the key row names VERB, asked or
 ## not: `hint:sleep` is "village - sleep?" too); and station:NAME
 ## (a station of that name, e.g. fire, is in reach of the player).
 ##   await title SECS       the title's slate has woken over its coast (a tour booted
@@ -892,6 +893,8 @@ func _now_true(what: String) -> bool:
 	# it lies down (Survival._fallback), so a tour that sleeps feeds him to this.
 	if what == "fed":
 		return game.body.hunger_level(game.clock.minutes) < 1 or Survival.best_food(game) == &""
+	if what.begins_with("hunger:"):
+		return game.body.hunger_level(game.clock.minutes) <= what.substr(7).to_int()
 	# What the key row says the press does now (UiLink.use_hint). In a street of
 	# thirty somebody is in front of him most seconds and the press is theirs
 	# (49_story), so a tour waits, as a player does, for the row to name its verb.
