@@ -210,9 +210,13 @@ if (opt.serve) {
 const { chromium } = await import('playwright');
 
 // ---- browser --------------------------------------------------------------
-// Headless Chromium on the machine's GPU (Metal through ANGLE on macOS, the
-// platform default elsewhere). SwiftShader draws a game frame in seconds.
-const gpuArgs = process.platform === 'darwin' ? ['--use-angle=metal'] : [];
+// Headless Chromium on the machine's GPU: Metal through ANGLE on macOS, Vulkan on
+// Linux. Linux's default is SwiftShader even with --enable-gpu (measured on the
+// Linux box: "SwiftShader Device (Subzero)"; with --use-angle=vulkan, "AMD Radeon
+// RX 6700 XT"), and SwiftShader draws a game frame in seconds: seed 7's island
+// did not raise inside the boot's 300 s on it.
+const gpuArgs = process.platform === 'darwin' ? ['--use-angle=metal']
+  : process.platform === 'linux' ? ['--use-angle=vulkan'] : [];
 // Audio waits for a gesture, as in a browser a player opens (headless otherwise
 // lets a page start sound on its own, and the first-key rule would go untested).
 const launchArgs = [...(opt.swiftshader
@@ -747,6 +751,13 @@ const glFirst = [];
 const glEvents = [];
 if (opt.programs) await page.exposeFunction('__glReport', (r) => { if (r.event) glEvents.push(r); else glFirst.push(r); });
 await page.goto(url);
+// What the page draws with, so no run's numbers are read off the CPU unawares.
+const renderer = await page.evaluate(() => {
+  const gl = document.createElement('canvas').getContext('webgl2');
+  const info = gl && gl.getExtension('WEBGL_debug_renderer_info');
+  return gl ? gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) : 'no WebGL2';
+}).catch((e) => `unknown (${e})`);
+console.log(`web renderer ${renderer}`);
 // The shell, while the engine's wasm is held back, then the engine's first page
 // frame once the shell has gone: the same rectangle, the same line, never shorter.
 phase = 'waiting for the shell to draw';
