@@ -13,10 +13,18 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 tour="$1"; shift
 . tools/_tour_args.sh
+skip="$(tour_header_skip "$tour")"
+if [ -n "$skip" ]; then
+  echo "tour FAILED: $(basename "$tour") is not run by tour.sh: $skip (its header says how it runs)"
+  exit 1
+fi
 others="$(tour_header_others "$tour")"
 if [ -n "$others" ]; then
-  echo "tour FAILED: $(basename "$tour")'s header runs $others, never itself: name this file in its run line, or it boots bare"
-  exit 1
+  if tour_in_tours "$tour"; then
+    echo "tour FAILED: $(basename "$tour")'s header runs $others, never itself: name this file in its run line, or it boots bare"
+    exit 1
+  fi
+  echo "tour note: $(basename "$tour") is a copy outside tours/ whose header runs $others: it takes none of that header's options"
 fi
 if [ $# -eq 0 ]; then
   while IFS= read -r opt; do

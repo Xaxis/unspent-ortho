@@ -30,11 +30,20 @@ elif [ $# -gt 0 ]; then
 else
   tours=$(ls tours/*.tour)
 fi
-fail=0; n=0
+. tools/_tour_args.sh
+fail=0; n=0; skipped=0
 for t in $tours; do
   [ -f "$t" ] || continue
-  n=$((n+1))
   name=$(basename "$t" .tour)
+  # A tour whose header says it is not tour.sh's (`sweep: skip, WHY`) is passed
+  # over by that tag, never counted as a failure by tour.sh refusing it.
+  why=$(tour_header_skip "$t")
+  if [ -n "$why" ]; then
+    echo "SKIP $name ($why)"
+    skipped=$((skipped+1))
+    continue
+  fi
+  n=$((n+1))
   if tools/heavy.sh tools/tour.sh "$t" > /dev/null 2>&1; then
     echo "PASS $name"
   else
@@ -43,5 +52,5 @@ for t in $tours; do
     fail=$((fail+1))
   fi
 done
-echo "tour-sweep: $((n-fail)) of $n passed"
+echo "tour-sweep: $((n-fail)) of $n passed$([ "$skipped" -gt 0 ] && echo ", $skipped skipped by their headers")"
 exit $fail
