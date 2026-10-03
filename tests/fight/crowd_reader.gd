@@ -226,7 +226,9 @@ func _open_long_enough_running(m: MobState) -> bool:
 ## A machine holding off: roused, no blow thrown for STANDOFF_MS, not winding
 ## up now, and not charging.
 func _standing_off(m: MobState) -> bool:
-	if not m.machine or m.indifferent() or Seen.running(m):
+	# One the player has given up walking round (Reader._no_way_round) is let
+	# come, however long it stands.
+	if not m.machine or m.indifferent() or Seen.running(m) or _no_way_round.has(m.id):
 		return false
 	var now := sim.now
 	if m.blow != null and m.blow_phase(now) in [&"windup", &"active"]:

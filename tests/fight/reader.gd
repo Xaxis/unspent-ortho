@@ -61,6 +61,23 @@ var _answered := -1.0
 var _escape := Vector2.ZERO
 var _escape_until := -1.0
 var _last_pull := -1000.0
+## Within this of the part's bearing a blow lands on the part: a turning body
+## carries an edge swing onto plate.
+const SQUARE := 0.55
+## A walk round a roused, standing charger to its part that gains less than ROUND_GAIN
+## on it in ROUND_GIVE_UP_MS and still is not square (its face seen to stay on
+## the player as they go) is given up: the player lets it come instead
+## (`_open`) until they see something new (`_look_again`). Kept up, a runner and
+## a fast turner went round each other for minutes, the part never square to
+## strike.
+const ROUND_GIVE_UP_MS := 2500.0
+const ROUND_GAIN := 0.3
+## A walk broken off longer than this (a dodge, a wait) starts again from where it stands.
+const ROUND_LAPSE_MS := 250.0
+## Per body: [walk began, its angle off the part spot then, last seen walking].
+var _rounding := {}
+## Per body: the part a walk round to it was given up on.
+var _no_way_round := {}
 
 
 func _init(s: FightSim) -> void:
@@ -213,7 +230,8 @@ func _open(m: MobState) -> bool:
 	if m.spent(now):
 		return true
 	# A charger standing between runs turns badly: that is the whole answer to one.
-	return m.approach == &"charge" and not Seen.running(m) and (_between_runs(m) or m.part != &"front")
+	var round_given_up := _no_way_round.has(m.id)
+	return m.approach == &"charge" and not Seen.running(m) and (_between_runs(m) or (m.part != &"front" and not round_given_up))
 
 
 ## A charger seen to stop from a run and stand, no tell showing: between runs.
@@ -233,6 +251,18 @@ func _watch_bodies() -> void:
 			_last_act[m.id] = &"run"
 		elif Seen.telling(m, sim.now):
 			_last_act[m.id] = &"tell"
+		if _no_way_round.has(m.id) and _look_again(m):
+			_no_way_round.erase(m.id)
+
+
+## What makes a player who gave up walking round a body try its side again,
+## each of it drawn: it acts (a run or a tell), it opens (stands spent with its
+## part lit, or stopped by a blow), it moves off (no longer standing), or its
+## working side moves (a phase, drawn on the body).
+func _look_again(m: MobState) -> bool:
+	var now := sim.now
+	return Seen.running(m) or Seen.telling(m, now) or m.spent(now) or m.stunned(now) \
+			or not Seen.standing(m) or _no_way_round[m.id] != m.part
 
 
 ## An opening is only worth a swing that lands before it closes: the last
@@ -260,13 +290,14 @@ func _strike(m: MobState) -> void:
 	var from_spot := hero.pos.distance_to(spot)
 	# Squarely on the side, not at the edge of it: a turning body carries an edge
 	# swing onto plate before it lands.
-	var square := m.part == &"none" or absf(wrapf((hero.pos - m.pos).angle() - (spot - m.pos).angle(), -PI, PI)) < 0.55
+	var square := m.part == &"none" or absf(wrapf((hero.pos - m.pos).angle() - (spot - m.pos).angle(), -PI, PI)) < SQUARE
 	var in_box := (square or sim.phase_ready(m)) and FightRules.box_hits(hero.pos, to_mob.angle(), hero.radius, _blow(), m.pos, m.radius)
 	var go_heavy := heavy and in_box and _heavy_fits(m)
 	# A phase coil reads the part through plate for the first blow: that blow may
 	# be thrown from wherever the player stands (FightKit.phase).
 	var reaches := in_box and (sim.reaches_part(m, hero.pos, false, go_heavy) or sim.phase_ready(m))
 	if reaches:
+		_rounding.erase(m.id)
 		hero.move = Vector2.ZERO
 		hero.facing = to_mob.angle()
 		if human >= 0 and hero.swing_refusal(sim.now) == &"" and Rng.hash01(human, m.id, swings, 0x5746) < WHIFF:
@@ -280,10 +311,30 @@ func _strike(m: MobState) -> void:
 				_hand(&"swing")
 			swings += 1
 		return
+	_note_round(m, spot)
 	if from_spot < 0.08:
 		hero.move = to_mob.normalized() * 0.3
 		return
 	hero.move = _round_to(m, spot)
+
+
+## Whether this walk round to the part is gaining on it (`ROUND_GIVE_UP_MS`): the
+## angle between where the player stands and the part spot, as a person sees it.
+func _note_round(m: MobState, spot: Vector2) -> void:
+	var now := sim.now
+	var gap := absf(wrapf((sim.hero.pos - m.pos).angle() - (spot - m.pos).angle(), -PI, PI))
+	var r: Array = _rounding.get(m.id, [])
+	if r.is_empty() or now - float(r[2]) > ROUND_LAPSE_MS:
+		_rounding[m.id] = [now, gap, now]
+		return
+	r[2] = now
+	if now - float(r[0]) < ROUND_GIVE_UP_MS:
+		return
+	# Only a roused body keeps its face on the player; one still at its work that
+	# a walk cannot get round is blocked by the ground, not out-turned.
+	if m.roused() and gap >= SQUARE and float(r[1]) - gap < ROUND_GAIN:
+		_no_way_round[m.id] = m.part
+	_rounding.erase(m.id)
 
 
 ## Time for a heavy blow's tell before this body can bite, as a player judges
