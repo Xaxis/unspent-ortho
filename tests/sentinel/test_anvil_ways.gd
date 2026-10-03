@@ -20,6 +20,15 @@ const LURE_AT: Array[float] = [10.0, 12.0, 8.0, 14.0, 16.0, 18.0]
 ## the sand's edge, its charge stopped on its own rock and it never foundered
 ## (the drowned city's world, seeds 1 and 7).
 const LURE_DEPTH := 3.0
+## The hour the force fights start: after the sun is down. By day the glass's
+## glare (0.7), heat and thirst press a body past Hazards.BITE and slow his run
+## to 59-71% at the strike field's den on seed 7, and no opening of the skating
+## side lasts the walk to its back; a person comes at another hour. At 20:00
+## Weather.night_fall is 0.65, which leaves glare 0.27, heat 0.35 and thirst
+## 0.43, none of them biting, and a fight (1.4 clock minutes a second) only
+## carries it further into the night, where a dawn start would walk into the
+## glare by 06:00.
+const FORCE_HOUR := 20.0
 
 
 func _anvil(g: Game) -> SentinelState:
@@ -34,7 +43,8 @@ func _anvil(g: Game) -> SentinelState:
 ## with the reason checked.
 func _take(seed_value: int, way: int) -> Dictionary:
 	Sx.use_root("anvil-%d" % seed_value)
-	var g := await Sx.played(tree, ["--seed=%d" % seed_value, "--hour=11", "--weather=clear:0", "--held=knife_shear"])
+	var hour := FORCE_HOUR if way == SentinelWay.FORCE else 11.0
+	var g := await Sx.played(tree, ["--seed=%d" % seed_value, "--hour=%s" % hour, "--weather=clear:0", "--held=knife_shear"])
 	# Bodies numbered from the same place whatever ran before in this process:
 	# the reader's hands are hashed on a body's id (Reader.human).
 	MobState._next_id = 900000
