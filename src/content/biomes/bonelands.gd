@@ -100,10 +100,10 @@ static func make() -> BiomeDef:
 	]
 	d.hazards = {&"heat": 0.3}
 	d.roster = {
-		&"cutter": {"weight": 1.0}, &"hauler": {"weight": 1.0},
-		&"dog.yard": {"weight": 1.0}, &"dog.feral": {"weight": 1.0},
-		&"bull.field": {"weight": 1.0},
-		&"gulls": {"weight": 1.0, "hours": Vector2(6, 20)},
+		&"cutter": {}, &"hauler": {},
+		&"dog.yard": {}, &"dog.feral": {},
+		&"bull.field": {},
+		&"gulls": {"hours": Vector2(6, 20)},
 	}
 	# The places worth the walk it holds (docs/VISION.md, src/core/landmarks):
 	# what a player crosses this landscape FOR. Its own file is the authority;

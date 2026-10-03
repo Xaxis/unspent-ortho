@@ -157,13 +157,13 @@ static func make() -> BiomeDef:
 	# systems: nothing here fakes them with a higher floor.
 	d.hazards = {&"cold": 0.85, &"collapse": 0.4}
 	d.roster = {
-		&"longlegs": {"weight": 1.0},
-		&"lineman": {"weight": 0.8, "grounds": ["ice", "snow", "rock", "gravel"]},
-		&"watcher": {"weight": 0.7},
+		&"longlegs": {},
+		&"lineman": {"grounds": ["ice", "snow", "rock", "gravel"]},
+		&"watcher": {},
 		# Its own: the saw sled that works the ice for the soundings line
 		# (roster.gd `icesaw`). Only on the ice, because a sled has nowhere else
 		# to go.
-		&"icesaw": {"weight": 0.9, "grounds": ["ice"]},
+		&"icesaw": {"grounds": ["ice"]},
 	}
 	d.landmarks = [&"leaning_mast", &"blinking_stack", &"sump_pump", &"cast_stones"]
 	# The mast leaning out of the ice is a trawler frozen into the floe, and her

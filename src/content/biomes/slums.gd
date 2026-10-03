@@ -439,12 +439,12 @@ static func make() -> BiomeDef:
 	# working city has a curfew, not because it is looking for you.
 	var lanes := ["floor", "road", "gravel", "clinker", "scree", "shingle", "mud"]
 	d.roster = {
-		&"clerk": {"weight": 1.6, "grounds": lanes},
-		&"sweeper": {"weight": 1.4, "grounds": lanes},
-		&"lineman": {"weight": 1.1, "grounds": lanes},
-		&"watcher": {"weight": 1.0, "grounds": lanes},
-		&"warden": {"weight": 0.7, "hours": Vector2(22, 5), "grounds": lanes},
-		&"gulls": {"weight": 0.6, "hours": Vector2(6, 20), "grounds": lanes},
+		&"clerk": {"grounds": lanes},
+		&"sweeper": {"grounds": lanes},
+		&"lineman": {"grounds": lanes},
+		&"watcher": {"grounds": lanes},
+		&"warden": {"hours": Vector2(22, 5), "grounds": lanes},
+		&"gulls": {"hours": Vector2(6, 20), "grounds": lanes},
 	}
 	d.sentinel = &""
 	# The places worth the walk (docs/VISION.md). Each of these names the slums
