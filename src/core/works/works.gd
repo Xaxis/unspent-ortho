@@ -166,9 +166,7 @@ static func sites(world: WorldData) -> Array[WorksSite]:
 				break
 			# In its region, parts and all where it can be, its own ground always:
 			# `stand_near` looks thirteen tiles round, over any border.
-			at = stand_near(world, heart.get("pos", Vector2.ZERO), true, id, bearing)
-			if not at.is_finite():
-				at = stand_near(world, heart.get("pos", Vector2.ZERO), true, id)
+			at = _yard_near(world, heart.get("pos", Vector2.ZERO), id, bearing)
 			if at.is_finite():
 				break
 			at = Vector2.INF
@@ -324,6 +322,41 @@ static func stand_near(world: WorldData, p: Vector2, clear := false, region := -
 			if _fits(world, cx + dx, cy + r, clear, region, facing):
 				return Vector2(cx + dx + 0.5, cy + r + 0.5)
 	return Vector2.INF
+
+
+## `stand_near` with the yard's facing and, failing that, without it, in ONE walk
+## (both clear of people and on region `region`): the first tile in its ring
+## order that holds the yard's three parts, else the first with room. The same
+## answer as the two calls one after the other, since a tile that holds the
+## parts has room, for one walk where the two cost two: a heart with no room in
+## reach walked the ring twice for nothing.
+static func _yard_near(world: WorldData, p: Vector2, region: int, facing: float) -> Vector2:
+	var cx := floori(p.x)
+	var cy := floori(p.y)
+	var room := Vector2.INF
+	for r in range(0, 14):
+		var ring: Array[Vector2i] = []
+		if r == 0:
+			ring.append(Vector2i(cx, cy))
+		else:
+			for dx in range(-r, r + 1):
+				ring.append(Vector2i(cx + dx, cy - r))
+			for dy in range(-r + 1, r):
+				ring.append(Vector2i(cx - r, cy + dy))
+				ring.append(Vector2i(cx + r, cy + dy))
+			for dx in range(-r, r + 1):
+				ring.append(Vector2i(cx + dx, cy + r))
+		for t: Vector2i in ring:
+			if not _room_at(world, t.x, t.y):
+				continue
+			var at := Vector2(t.x + 0.5, t.y + 0.5)
+			if not _keeps_clear(world, at) or world.region_at(t.x, t.y) != region:
+				continue
+			if _inside(world, at, facing, region):
+				return at
+			if not room.is_finite():
+				room = at
+	return room
 
 
 ## Room for a yard on this tile, clear of people when asked, and -- given a
