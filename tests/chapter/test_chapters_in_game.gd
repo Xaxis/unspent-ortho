@@ -95,3 +95,32 @@ func test_asking_about_many_regions_is_cheaper_than_asking_one_at_a_time() -> vo
 		% [ids.size(), one, many, one / maxf(many, 0.0001)])
 	cost_lt(many, one * 0.8, "asking about every region at once beats asking one at a time")
 	g.queue_free()
+
+
+## The ore taken is counted for every region in one walk (Chapter.ore_taken_by_region),
+## and it must be the count a region asked alone gives: with ore taken across
+## the regions, field by field again.
+func test_the_bulk_door_counts_the_ore_taken_as_the_single_door_does() -> void:
+	var g := _game(PackedStringArray(["--seed=1", "--size=256", "--hour=11", "--weather=clear:0"]))
+	var w := g.world
+	var ids: Array = []
+	for r: Dictionary in w.regions:
+		ids.append(int(r.get("id", -1)))
+	w.sync_table()
+	var n := 0
+	for i in w.table.size():
+		var rid := w.region_at(floori(w.table.pos[i].x), floori(w.table.pos[i].y))
+		if Chapter.ore_kinds(w, rid).has(int(w.table.kind[i])):
+			n += 1
+			if n % 3 == 0:
+				w.depleted[w.table.id[i]] = INF
+	var bulk := Chapters.for_regions(g, ids)
+	var taken := 0
+	for rid: int in ids:
+		var one := Chapters.of(g, rid)
+		var many: Dictionary = bulk.get(rid, {})
+		eq(str(many.get("taken")), str(one.get("taken")), "region %d's ore taken" % rid)
+		eq(str(many.get("mined")), str(one.get("mined")), "region %d's mined" % rid)
+		taken += int(one.get("taken", 0))
+	gt(float(taken), 0.0, "and ore was taken to count (%d)" % taken)
+	g.queue_free()

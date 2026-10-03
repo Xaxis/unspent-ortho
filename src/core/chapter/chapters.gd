@@ -90,9 +90,10 @@ static func for_regions(game: Game, region_ids: Array) -> Dictionary:
 	var found := found_of(game)
 	var keepers := _sentinel_states(game)
 	var yards := _works_states(game)
+	var taken := Chapter.ore_taken_by_region(game.world)
 	for rid: int in region_ids:
 		out[rid] = Chapter.read(game.world, rid, found,
-			_keeper_down_in(keepers, rid), _yard_broken_in(yards, rid))
+			_keeper_down_in(keepers, rid), _yard_broken_in(yards, rid), taken)
 	return out
 
 
