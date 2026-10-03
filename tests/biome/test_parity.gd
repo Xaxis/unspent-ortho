@@ -553,6 +553,9 @@ extends TestCase
 ## design's ways (GenWorks._n_station, station_holds). Only seed 1's `props`
 ## move: its one intake stands across the island, (227, 166) -> (48, 170), where
 ## a den by it keeps the Reaper's ways, with its pipe (49 -> 48 lengths).
+## AT GEN 48 (2026-10-02, provisional): the drowned city's port lays a slip at
+## the landfall. The six hold to the bit, and nothing is re-accepted: none of
+## them is the drowned city.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 

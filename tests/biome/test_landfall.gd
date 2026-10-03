@@ -86,6 +86,39 @@ func test_the_raft_comes_ashore_in_the_drowned_city() -> void:
 			eq(now[k], was[k], "seed %d: %s holds with the landfall rule and without" % [sd, k])
 
 
+## THE PORT STANDS WHERE THE RAFT COMES ASHORE: a slip at the landfall's `from`
+## (GenBodies.ashore), where a raft is landed and a body steps off it, and the clock
+## tower, the one tall line a raft steers by, over it. Darted anywhere along the
+## city's shore, seed 1's nearest slip stood 66 tiles off and its clock 49 from
+## any slip.
+const PORT_SEEDS: Array[int] = [1, 4, 7, 42]
+## The slip's own reach (drowned_city.gd LANDING_REACH) and its step to the water.
+const SLIP_OFF := 13.5
+## The clock is sited by its want (Landmarks `landfall`), not laid: it stands over
+## the landing when it is within a play frame's half-width of it.
+const CLOCK_OFF := 35.0
+
+
+func test_the_port_stands_where_the_raft_comes_ashore() -> void:
+	for sd: int in PORT_SEEDS:
+		var w := WorldGen.generate(sd)
+		var from := GenBodies.ashore(w)
+		check(from.is_finite(), "seed %d: the raft has somewhere to come ashore" % sd)
+		if not from.is_finite():
+			continue
+		var slip := INF
+		for m: Dictionary in w.landmarks:
+			if StringName(str(m.get("kind", &""))) == &"slip":
+				slip = minf(slip, (m.pos as Vector2).distance_to(from))
+		var clock := INF
+		for site: LandmarkSite in Landmarks.sites(w):
+			if site.kind == &"clock_tower":
+				clock = minf(clock, site.pos.distance_to(from))
+		print("  seed %d: a slip %.1f and the clock %.1f tiles from where the raft comes ashore" % [sd, slip, clock])
+		check(slip <= SLIP_OFF, "seed %d: a slip within %.1f of the landing, got %.1f" % [sd, SLIP_OFF, slip])
+		check(clock <= CLOCK_OFF, "seed %d: the clock within %.0f of the landing, got %.1f" % [sd, CLOCK_OFF, clock])
+
+
 ## EVERY BODY THE LANDFALL DID NOT TRADE HOLDS ITS LAND, read off the plan (the
 ## cheaper half of the world): its land, its roads and its climate. Seed 90210's
 ## landing lies outside the city, and its roads were one tree over every village

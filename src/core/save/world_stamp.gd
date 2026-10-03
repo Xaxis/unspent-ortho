@@ -274,8 +274,13 @@ const UNKNOWN := "unknown"
 ##     Every region big enough to keep a keeper gets its keeper's first station
 ##     (an intake, a lock), laid only where the ground keeps the design's ways
 ##     and never within its keeper's reach of where the raft comes ashore
-##     (GenWorks.station_holds). (Provisional; restamped at landing.)
-const GEN := 47
+##     (GenWorks.station_holds).
+## 48. The drowned city's port lays its first slip on the quay nearest where the
+##     raft comes ashore (GenBodies.ashore), before its other slips and sea walls,
+##     which keep off it: the nearest slip to the landing goes 66.2 -> 0.3 tiles
+##     on seed 1, 24.3 -> 0.2 on 42, 10.9 -> 3.9 on 7 and 4.4 -> 0.5 on 4.
+##     (Provisional; restamped at landing.)
+const GEN := 48
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

@@ -323,6 +323,12 @@ static func _works(L: Object) -> void:
 		var at := _lock_site(L)
 		if at.z >= 0.0:
 			GenWorks._work(L, &"_lock", Vector2(at.x, at.y), [int(at.z)])
+	# A stair where the raft comes ashore, when the landfall is this region's: the
+	# raft is landed at a slip, and the clock (Landmarks, `wants` the landfall)
+	# stands over it. Darted, the nearest slip stood 66 tiles off seed 1's.
+	for p: Vector2i in _landing(L):
+		if GenWorks._work(L, &"_slip", Vector2(p) + Vector2(0.5, 0.5)):
+			break
 	for n in GenWorks._n(L, 6.0):
 		var p := GenWorks._shore(L, QUAY_GROUNDS, 18.0)
 		if p.x >= 0:
@@ -528,6 +534,20 @@ static func _lock(L: Object, at: Vector2, a: Array) -> bool:
 		GenWorks._put(L, PropKind.TIDE_GAUGE, at + along * 3.4 + across * side * (STREET_WIDTH * 0.5 + 0.8), (-across * side).angle(), -99, 0.2)
 	GenWorks._record(L.c, &"lock", at, along, Vector2(7.0, 2.5), GenWorks.CUT)
 	return true
+
+
+## How far from where the raft comes ashore its slip may stand, and how far off
+## the region's other marks.
+const LANDING_REACH := 12
+const LANDING_ROOM := 6.0
+
+
+## The quay tiles round where the raft comes ashore (GenBodies.ashore) that are
+## the region being laid's, nearest first;
+## none when the landfall is another region's or no quay is in reach of it.
+static func _landing(L: Object) -> Array[Vector2i]:
+	var from := GenBodies.ashore(L.w)
+	return GenWorks._shores_near(L, QUAY_GROUNDS, from, LANDING_REACH, LANDING_ROOM) if from.is_finite() else []
 
 
 ## A STAIR down off a quay into the sea (`GenWorks._work`): where a raft is
