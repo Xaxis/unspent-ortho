@@ -606,7 +606,7 @@ const DEFS := {
 	&"sentinel.mesas": {
 		"model": &"sentinel_anchor", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
 		"part": &"back", "sentinel": &"anchor", "breaks": WOOD, "climbs": 4,
-		"pace": 3.4, "dash": 7.0, "quick": 260, "radius": 1.4, "height": 4.6, "life": 322,
+		"pace": 3.4, "dash": 7.0, "quick": 260, "radius": 1.4, "height": 4.6, "life": 386,
 		"sees": 14, "hears": 14, "racket": 22, "reach": 3, "ready": 3, "forget": 26, "tether": 30, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.7,
 		"bite": {"swing": [860, 170, 820, 920], "reach": 2.0, "width": 2.2, "dmg": 4, "knock": 10.0, "knock_ms": 340},
