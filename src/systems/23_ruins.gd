@@ -72,16 +72,3 @@ func _on_fell() -> void:
 func realm_changed(_from: StringName, _to: StringName) -> void:
 	_set_walls(false)
 
-
-## The walls go into the query a cell at a time, the first time a body asks in a
-## cell (WorldQuery.set_blocks_by_cell); the cells round him are stamped ahead of
-## his feet, one a frame, so the first step into a ruined town is not the one
-## that stamps it.
-const AHEAD_CELLS := 2
-
-
-func _process(_delta: float) -> void:
-	if game == null or game.query == null or game.player == null:
-		return
-	@warning_ignore("return_value_discarded")
-	game.query.stamp_near(game.player.pos, AHEAD_CELLS)
