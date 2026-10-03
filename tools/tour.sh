@@ -7,8 +7,11 @@
 # which it booted with.
 # Frames land in shots/tour/<tour name>/. Fails on script errors, a bad tour
 # line, or TOUR_TIMEOUT seconds (default 180).
-# A FAILED run also keeps the whole godot log beside its frames, at
-# shots/tour/<tour name>/run.log. A green run keeps nothing.
+# Every run keeps the whole godot log beside its frames, at
+# shots/tour/<tour name>/run.log, the last run's over the one before. A green run
+# kept nothing once, and what it had printed below the summary (a boot's stage
+# times, a fight's every step) was gone with it: builders made runs fail on
+# purpose to read them.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 tour="$1"; shift
@@ -103,13 +106,11 @@ keep_log() {
 # rule is that a run is never piped through head or tail in a way that hides what
 # it said, and this was the tool itself breaking it, in the same file and the
 # same week as the backtrace that fell down the gap between a grep and a tail.
-# If the summary is ever long enough to cut, the log is KEPT even on a pass:
-# a sample nobody can go back to is the same bug in a smaller box.
+# If the summary is ever long enough to cut, it says so, and the log it was cut
+# from is kept: a sample nobody can go back to is the same bug in a smaller box.
 summary=$(grep -E '^tour|SCRIPT ERROR|ERROR|at: ' "$log" | grep -v '^tour t=')
 printf '%s\n' "$summary" | head -400
-cut_summary=0
 if [ "$(printf '%s\n' "$summary" | wc -l | tr -d ' ')" -gt 400 ]; then
-  cut_summary=1
   echo "tour summary cut at 400 lines; the whole log is kept below"
 fi
 grep -E 'done ->' "$log" | tail -1
@@ -119,8 +120,8 @@ if ! grep -qE '^tour .* done ->' "$log"; then
   tail -12 "$log"; keep_log; echo "tour FAILED: never reached its end ($tour)"; exit 1
 fi
 if [ $status -ne 0 ] || [ $code -ne 0 ]; then keep_log; echo "tour FAILED (status $status, exit $code)"; exit 1; fi
-# A PASS whose summary was cut keeps its log too. This is the half that actually
-# bit: the run was green, the counts past line 60 were never printed, and the log
-# holding them was deleted on the next line -- so the evidence existed, was
-# thrown away, and the tour reported success.
-if [ "$cut_summary" -eq 1 ]; then keep_log; else rm -f "$log"; fi
+# A PASS keeps its log too. The half that bit first: the run was green, the
+# counts past line 60 were never printed, and the log holding them was deleted on
+# the next line -- so the evidence existed, was thrown away, and the tour
+# reported success.
+keep_log
