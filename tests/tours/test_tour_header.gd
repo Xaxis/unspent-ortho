@@ -84,3 +84,25 @@ func test_every_tour_header_boots() -> void:
 			continue
 		var problems := BootOptions.parse(_args("tours/" + f)).problems
 		check(problems.is_empty(), "tours/%s boots its header: %s" % [f, "; ".join(problems)])
+
+
+## A COPY KEEPS ITS ORIGINAL'S HEADER. Run under its own name it would take none
+## of those options and boot bare, which reads as the tour failing, so tour.sh
+## refuses a tour whose header runs other tours and never itself
+## (tour_header_others). Three copies of june.tour, run twice-wide to catch a
+## flake, failed at line 35 that way.
+func test_a_header_that_runs_only_another_tour_is_told_so() -> void:
+	var copy := ProjectSettings.globalize_path("user://june-copy.tour")
+	eq(DirAccess.copy_absolute(ProjectSettings.globalize_path("res://tours/june.tour"), copy), OK, "a copy of june.tour is made")
+	eq(_others(copy), "tours/june.tour", "the copy is told its header runs june.tour")
+	eq(_others("tours/june.tour"), "", "and june.tour itself runs as its header says")
+	DirAccess.remove_absolute(copy)
+
+
+func _others(tour: String) -> String:
+	var out: Array = []
+	var cmd := ". tools/_tour_args.sh && tour_header_others '%s'" % tour
+	var code := OS.execute("bash", PackedStringArray(["-c", "cd '%s' && %s" % [ProjectSettings.globalize_path("res://"), cmd]]), out, true)
+	eq(code, 0, "the shell function runs for %s" % tour)
+	return String(out[0] if not out.is_empty() else "").strip_edges()
+

@@ -77,12 +77,14 @@ extends GameSystem
 ##                          hands it back); wind=W holds the wind at W, -1..1
 ##   zoom F                 camera view height
 ##   walk DX,DY SECS [run]  hold a SCREEN direction for SECS (real input path)
-##   drive READER SECS [UNTIL]  hand the keys to a reader script (res://tests/fight/,
+##   drive READER SECS [UNTIL] [lure]  hand the keys to a reader script (res://tests/fight/,
 ##                          a player-like driver with `act()` over the fight) for
 ##                          up to SECS or until UNTIL is seen: its walk goes in as
 ##                          the move keys (LockOn.keys_for), its swing and dodge as
 ##                          taps of the actions (TourHands); a down it comes to from walks
 ##                          back to where it began. Logs its tries and seconds.
+##                          `lure`: it draws the nearest standing keeper out onto
+##                          the ground it founders in (`keeper_flats`) instead.
 ##   dodge DX,DY [SECS]     hold a SCREEN direction and press the dodge key while it
 ##                          is down (the dodge goes that way), walking on for SECS (0.6)
 ##   dodge aside [SECS]     the same, across the nearest body's facing on the side he
@@ -553,7 +555,7 @@ func _run() -> void:
 				while game.scripted_seconds > 0.0:
 					await get_tree().physics_frame
 			"drive":
-				ok = await _drive(parts[1], parts[2].to_float() if parts.size() > 2 else 60.0, parts[3] if parts.size() > 3 else "")
+				ok = await _drive(parts[1], parts[2].to_float() if parts.size() > 2 else 60.0, parts[3] if parts.size() > 3 else "", parts.size() > 4 and parts[4] == "lure")
 			"dodge":
 				# The move keys held a SCREEN direction and the dodge key pressed while
 				# they are down, as a player dodges aside: the dodge goes the keys' way
@@ -2112,7 +2114,7 @@ func _keys_toward(dir: Vector2) -> Vector2:
 
 
 ## `drive`: a reader plays the fight through the keys (see the command list).
-func _drive(path: String, secs: float, until: String) -> bool:
+func _drive(path: String, secs: float, until: String, lure := false) -> bool:
 	var sim: FightSim = game.player.sim
 	var script := load(path) as GDScript
 	if script == null or sim == null:
@@ -2126,6 +2128,23 @@ func _drive(path: String, secs: float, until: String) -> bool:
 		reader.set("human", 1)
 	if "home" in reader:
 		reader.set("home", sim.hero.pos)
+	# `lure`: drawn out onto the ground the nearest standing keeper founders in
+	# (`keeper_flats`, Sentinels.founder_spot), and held out there, rather than
+	# fought on firm ground: the way a player takes it by the land.
+	if lure and "lure" in reader:
+		for sys in game.systems:
+			if not sys.has_method(&"tour_place") or not sys.has_method(&"states"):
+				continue
+			var spot: Vector2 = sys.call(&"tour_place", "keeper_flats")
+			var nearest: SentinelState = null
+			for s: SentinelState in sys.call(&"states"):
+				if not s.fallen and s.region >= 0 and (nearest == null or s.lair.distance_to(sim.hero.pos) < nearest.lair.distance_to(sim.hero.pos)):
+					nearest = s
+			if spot.is_finite() and nearest != null:
+				reader.set("lure", spot)
+				reader.set("keep_on", Sentinels.founders(Sentinels.by_id(nearest.design)))
+	elif lure:
+		printerr("tour %s: %s takes no lure" % [_name, path])
 	var downs := [0]
 	var t0_ms := [sim.now]
 	var on_end := func(o: StringName) -> void:
