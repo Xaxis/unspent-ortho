@@ -410,6 +410,36 @@ static func cache_of(site: LandmarkSite) -> Vector2:
 	return site.pos + Vector2.from_angle(site.facing) * CACHE_OUT
 
 
+## EVERY STANDING LANDMARK IN THE WORLD'S OWN LIST of places, under the kind's own
+## name, so the map, the reads app and `place NAME` find it without being taught
+## what a landmark is, once each. No `mark`: a mark means the machines cut the
+## ground here, and half of these were standing long before they did.
+##
+## Recorded at its CACHE and not at its own middle: `place lighthouse` means "take
+## me to the lighthouse", and arriving inside the tower with the cache behind you
+## is not that.
+##
+## Written on the raise's worker before anything asks where a keeper dens
+## (RealmWarm), and again by 22_landmarks for a world nobody got ready: a design
+## that stations at a landmark (the drip warden at a sump pump) dens at its
+## region's heart until the row is there and at the pump after it, and asked both
+## sides of the write, one game held two dens for one keeper.
+static func record(world: WorldData) -> void:
+	for s: LandmarkSite in sites(world):
+		var at := cache_of(s)
+		var had := false
+		for m: Dictionary in world.landmarks:
+			# Typed before compared: this runs on the raise's worker.
+			var kind: StringName = StringName(str(m.get("kind", &"")))
+			if kind == s.kind and (m.get("pos", Vector2.INF) as Vector2).distance_to(at) < 0.5:
+				had = true
+				break
+		if not had:
+			world.landmarks.append({"kind": s.kind, "pos": at,
+				"country": world.country_at(floori(at.x), floori(at.y)),
+				"dir": Vector2.from_angle(s.facing)})
+
+
 ## What one landmark holds, rolled once and for good: the same seed and the same
 ## site always give the same things, so a cache cannot be rerolled by loading.
 static func loot(site: LandmarkSite, seed_value: int) -> Array:

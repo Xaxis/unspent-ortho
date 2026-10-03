@@ -11,6 +11,10 @@ extends RefCounted
 ##   19_colossi.prepare_world  what every tread's pads flatten, in the world's
 ##                             own record, before any view draws it
 ##   WorksMap.prepare      the machines' works cut into the ground (WorldView)
+##   Landmarks.record      the landmarks' rows in the world's list, FIRST:
+##                         the works map below asks where keepers den, and a
+##                         keeper stationed at a landmark dens there only once
+##                         its row is (22_landmarks takes the same rows)
 ## Every one of them is pure over the world and worker-safe
 ## (tests/core/test_worker_types): no node, no RID, no texture.
 
@@ -28,6 +32,8 @@ static func prepare(w: WorldData) -> void:
 		return
 	var ms := {}
 	var t := Time.get_ticks_usec()
+	Landmarks.record(w)
+	t = _took(ms, "landmarks", t)
 	SkyGround.prepare(w)
 	t = _took(ms, "sky_ground", t)
 	SkyWear.prepare(w)
