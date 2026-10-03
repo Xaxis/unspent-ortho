@@ -98,8 +98,9 @@ func test_the_leads_are_lines_through_walkable_ice() -> void:
 					core += int(all)
 			var share := float(black) / maxf(1.0, float(tiles))
 			var mid := float(core) / maxf(1.0, float(black))
-			var lined := float(_in_lines(w, id, b)) / maxf(1.0, float(black))
-			print("       seed %d frost sea region %d (%d tiles): %.3f black water, %.2f of it a lake's middle, %.2f in lines" % [s, id, tiles, share, mid, lined])
+			var lines := _in_lines(w, id, b)
+			var lined := float(lines.x) / maxf(1.0, float(black))
+			print("       seed %d frost sea region %d (%d tiles): %.3f black water, %.2f of it a lake's middle, %.2f in lines, the longest %d tiles, %.1f wide" % [s, id, tiles, share, mid, lined, lines.y, _width(w, id, b)])
 			lt(share, LEAD_SHARE_MOST, "seed %d: frost sea region %d keeps its ice the ground (%.3f black water)" % [s, id, share])
 			lt(mid, LEAD_CORE_MOST, "seed %d: frost sea region %d's leads are lines, not lakes (%.2f of them a lake's middle)" % [s, id, mid])
 			gt(lined, LINE_SHARE_LEAST, "seed %d: frost sea region %d's leads are lines, not holes (%.2f of its black water in lines of %d)" % [s, id, lined, LINE_LEAST])
@@ -107,9 +108,10 @@ func test_the_leads_are_lines_through_walkable_ice() -> void:
 
 
 ## How many of region `id`'s black-water tiles lie in a patch of it, joined
-## corner to corner through the frost sea, of LINE_LEAST tiles or more: a lead
-## running on into the next frost region is still a line.
-func _in_lines(w: WorldData, id: int, b: Rect2) -> int:
+## corner to corner through the frost sea, of LINE_LEAST tiles or more (a lead
+## running on into the next frost region is still a line), and the most tiles
+## in one: (in lines, longest).
+func _in_lines(w: WorldData, id: int, b: Rect2) -> Vector2i:
 	var frost := w.country_at(floori(b.get_center().x), floori(b.get_center().y))
 	for y in range(floori(b.position.y), ceili(b.end.y)):
 		for x in range(floori(b.position.x), ceili(b.end.x)):
@@ -119,6 +121,7 @@ func _in_lines(w: WorldData, id: int, b: Rect2) -> int:
 	var size := w.size
 	var seen := {}
 	var lined := 0
+	var longest := 0
 	for y in range(floori(b.position.y), ceili(b.end.y)):
 		for x in range(floori(b.position.x), ceili(b.end.x)):
 			var i := y * size + x
@@ -142,9 +145,26 @@ func _in_lines(w: WorldData, id: int, b: Rect2) -> int:
 							continue
 						seen[u.y * size + u.x] = true
 						q.append(u)
+			longest = maxi(longest, q.size())
 			if q.size() >= LINE_LEAST:
 				lined += mine
-	return lined
+	return Vector2i(lined, longest)
+
+
+## How wide region `id`'s black water runs, on the mean: twice its tiles over
+## its edges with the ice, which for a strip is its width.
+func _width(w: WorldData, id: int, b: Rect2) -> float:
+	var black := 0
+	var edges := 0
+	for y in range(floori(b.position.y), ceili(b.end.y)):
+		for x in range(floori(b.position.x), ceili(b.end.x)):
+			if w.region_at(x, y) != id or w.ground_at(x, y) != Ground.BLACKWATER:
+				continue
+			black += 1
+			for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				if w.ground_at(x + d.x, y + d.y) != Ground.BLACKWATER:
+					edges += 1
+	return 2.0 * float(black) / maxf(1.0, float(edges))
 
 ## Where black water once decided whether a walker's foot could come down: the
 ## treads, the pools and the surface.

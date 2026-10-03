@@ -359,7 +359,8 @@ func test_pools_are_round_rimmed_and_clear_of_houses() -> void:
 		# landscape is still the city's water, and cut at the border it left a
 		# two-tile scrap of it in the salt flats to be measured as a pool.
 		var streets := BiomeRegistry.get_def(&"drowned_city").index
-		# Nor are a frost sea's leads pools: they are lines through its ice
+		# Nor are a frost sea's leads pools, wherever its rules laid them (the
+		# tile's recipe, its blend band too): they are lines through its ice
 		# (BiomeDef.leads), held to that by tests/biome/test_frost_leads.gd, and
 		# read side to side they are scraps of one to twenty tiles. A patch there
 		# that holds a pool's middle (black water two tiles out every way, which no
@@ -382,7 +383,7 @@ func test_pools_are_round_rimmed_and_clear_of_houses() -> void:
 				continue
 			if w.country[i] == streets:
 				citys[label[i]] = true
-			elif leads.has(w.country[i]):
+			elif leads.has(w.recipe[i]):
 				if _pool_middle(w, i % size, i / size):
 					middles[label[i]] = true
 				else:

@@ -751,6 +751,8 @@ static func flattest(L: Lay, r: int, grounds: Array, apart: float, station := fa
 ## (`station_ground`). The frost sea's soundings lines stand on these.
 const RUN_STEP := 4
 const RUN_MOST := 6
+## A run starts no further into a border's blend than this.
+const RUN_BLEND := 0.35
 
 
 static func runs(L: Lay, ground: int, apart: float, count: int, station := false) -> Array[Vector3i]:
@@ -810,25 +812,9 @@ static func _runs_found(L: Lay, ground: int) -> Array[Vector3i]:
 		var x := int(rect.position.x) + 2
 		while x < int(rect.end.x) - 2:
 			var i := y * size + x
-			if x >= 3 and y >= 3 and x < size - 3 and y < size - 3 and L.here(x, y) and blend[i] <= 0.35 \
+			if x >= 3 and y >= 3 and x < size - 3 and y < size - 3 and L.here(x, y) and blend[i] <= RUN_BLEND \
 					and grounds[i] == ground and water[i] == 0 and levels[i] > 0:
-				var at := Vector2(x + 0.5, y + 0.5)
-				var reach := 0
-				while reach < RUN_MOST:
-					var ok := true
-					for q: Vector2 in [at + steps[reach], at - steps[reach]]:
-						var qx := floori(q.x)
-						var qy := floori(q.y)
-						if qx < 3 or qy < 3 or qx >= size - 3 or qy >= size - 3:
-							ok = false
-							break
-						var j := qy * size + qx
-						if grounds[j] != ground or water[j] != 0 or levels[j] <= 0 or country[j] != L.own:
-							ok = false
-							break
-					if not ok:
-						break
-					reach += 1
+				var reach := _run_reach(grounds, levels, country, water, size, Vector2(x + 0.5, y + 0.5), steps, ground, L.own)
 				if reach >= 2:
 					(bins[reach] as Array).append(Vector3i(x, y, reach))
 			x += RUN_STEP
@@ -838,6 +824,52 @@ static func _runs_found(L: Lay, ground: int) -> Array[Vector3i]:
 		for v: Vector3i in bins[k]:
 			out.append(v)
 	return out
+
+
+## How many steps of `steps` a run of `ground` reaches both ways of `at`: each
+## dry `ground` of landscape `own` above the sea, and off `water` (the stage's
+## rivers and still water) when there is one to ask.
+static func _run_reach(grounds: PackedByteArray, levels: PackedInt32Array, country: PackedByteArray, water: PackedByteArray,
+		size: int, at: Vector2, steps: PackedVector2Array, ground: int, own: int) -> int:
+	var reach := 0
+	while reach < steps.size():
+		for q: Vector2 in [at + steps[reach], at - steps[reach]]:
+			var qx := floori(q.x)
+			var qy := floori(q.y)
+			if qx < 3 or qy < 3 or qx >= size - 3 or qy >= size - 3:
+				return reach
+			var j := qy * size + qx
+			if grounds[j] != ground or (not water.is_empty() and water[j] != 0) or levels[j] <= 0 or country[j] != own:
+				return reach
+		reach += 1
+	return reach
+
+
+## Whether `region` of a finished world holds a run of `ground` a ruled line
+## could be laid on (`runs`, before its keeper's and spacing questions), asked
+## by the same steps along the survey bearing; the stage's own water is gone by
+## then, and its ground says as much. The frost sea's slivers at the sea's edge
+## are shingle and snow bank: no run of sheet ice for a soundings line.
+static func has_run(world: WorldData, region: Dictionary, ground: int) -> bool:
+	var id := int(region.get("id", -1))
+	var b: Rect2 = region.get("bounds", Rect2())
+	var size := world.size
+	var d := Vector2.from_angle(bearing(world.seed_value))
+	var steps := PackedVector2Array()
+	for k in range(1, RUN_MOST + 1):
+		steps.append(d * float(k) * 2.0)
+	var y := int(b.position.y) + 2
+	while y < int(b.end.y) - 2:
+		var x := int(b.position.x) + 2
+		while x < int(b.end.x) - 2:
+			var i := y * size + x
+			if x >= 3 and y >= 3 and x < size - 3 and y < size - 3 and world.region[i] == id and world.blend[i] <= RUN_BLEND \
+					and world.ground[i] == ground and world.level[i] > 0 \
+					and _run_reach(world.ground, world.level, world.country, PackedByteArray(), size, Vector2(x + 0.5, y + 0.5), steps, ground, world.country[i]) >= 2:
+				return true
+			x += RUN_STEP
+		y += RUN_STEP
+	return false
 
 
 ## A tile to try: inside one of the laid type's own regions, chosen by size, or

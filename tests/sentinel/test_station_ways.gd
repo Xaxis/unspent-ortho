@@ -164,6 +164,9 @@ func test_a_made_world_carries_its_skerries() -> void:
 
 ## Stations that stand only on a sea shore (GenWorks._shore).
 const SHORE_STATIONS: Array[StringName] = [&"intake"]
+## Stations that stand only on a run of their ground (GenWorks.runs), and the
+## ground: the frost sea's soundings lines on sheet ice.
+const RUN_STATIONS := {&"soundings": Ground.ICE}
 
 
 ## Why region `r` can hold none of its keeper's stations, read off its ground;
@@ -172,7 +175,8 @@ const SHORE_STATIONS: Array[StringName] = [&"intake"]
 ## by: its heart may stand outside the region, and a station's den is the
 ## region's own), or its keeper's stations stand only on a sea shore and it
 ## has none off the skerries (GenWorks.has_shore, which reads them as
-## `_shore` does).
+## `_shore` does), or only on a run of their ground and it has none
+## (GenWorks.has_run, which walks the steps `runs` does).
 static func _kept_out(w: WorldData, r: Dictionary, def: SentinelDef, landings: Array[Vector2]) -> String:
 	var den := Sentinels.ground_den(w, r, def, landings)
 	if not den.is_finite() or w.region_at(floori(den.x), floori(den.y)) != int(r.get("id", -1)):
@@ -182,6 +186,11 @@ static func _kept_out(w: WorldData, r: Dictionary, def: SentinelDef, landings: A
 		on_shore = on_shore and SHORE_STATIONS.has(k)
 	if on_shore and not GenWorks.has_shore(w, r):
 		return "it has no sea shore off the skerries for its %s's stations" % def.id
+	var runs := not def.stations.is_empty()
+	for k: StringName in def.stations:
+		runs = runs and RUN_STATIONS.has(k) and not GenWorks.has_run(w, r, int(RUN_STATIONS[k]))
+	if runs:
+		return "it has no run of its ground for its %s's stations" % def.id
 	return ""
 
 

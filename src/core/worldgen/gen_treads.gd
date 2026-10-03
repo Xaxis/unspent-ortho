@@ -263,9 +263,11 @@ static func _never(c: GenContext, built: PackedByteArray) -> PackedByteArray:
 	var village := c.village
 	var level := c.w.level
 	var ground := c.w.ground
-	var country := c.w.country
 	# A frost sea's leads are its ice opened, not standing water (BiomeDef.leads):
-	# a foot comes down through them as through the sheet round them.
+	# a foot comes down through them as through the sheet round them. Asked of
+	# the RECIPE that laid the tile, so a lead its rules ran into the blend band
+	# of the land next door is a lead too.
+	var recipe := c.recipe
 	var opened := PackedByteArray()
 	opened.resize(256)
 	for def: BiomeDef in BiomeRegistry.all():
@@ -276,7 +278,7 @@ static func _never(c: GenContext, built: PackedByteArray) -> PackedByteArray:
 			var g := ground[i]
 			if land[i] == 0 or water[i] != 0 or level[i] <= 0 \
 					or g == Ground.DEEP_WATER or g == Ground.WATER or g == Ground.RIVER \
-					or (g == Ground.BLACKWATER and opened[country[i]] == 0):
+					or (g == Ground.BLACKWATER and opened[recipe[i]] == 0):
 				no[i] = HARD
 			elif village[i] != 0 or built[i] != 0:
 				no[i] = KEPT
