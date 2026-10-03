@@ -572,6 +572,58 @@ static func opens(world: WorldData, at: Vector2, def: SentinelDef) -> int:
 	var cy := floori(at.y)
 	if not _keeper_ground(world, cx, cy, tall):
 		return 0
+	# READ OFF A WINDOW (TileWindow), as `opens_plainly` reads through the world's
+	# methods: a method call a tile was the cost of every lair and every
+	# station's den (the frost sea's soundings, 5-12 ms each). The same tiles in
+	# the same order, so the same count (tests/sentinel/test_flood_plain.gd).
+	var size := world.size
+	var win := TileWindow.of(world, cx - OPEN_TO, cy - OPEN_TO, cx + OPEN_TO + 1, cy + OPEN_TO + 1)
+	var levels := win.level
+	var grounds := win.ground
+	var overhead := world.has_overhead()
+	var side := OPEN_TO * 2 + 1
+	var seen := PackedByteArray()
+	seen.resize(side * side)
+	seen[OPEN_TO * side + OPEN_TO] = 1
+	var qx := PackedInt32Array([cx])
+	var qy := PackedInt32Array([cy])
+	var head := 0
+	var n := 0
+	while head < qx.size():
+		var tx := qx[head]
+		var ty := qy[head]
+		head += 1
+		if maxi(absi(tx - cx), absi(ty - cy)) >= OPEN_FROM:
+			n += 1
+		var level: int = levels[(ty - win.y0) * win.w + tx - win.x0]
+		for k in 4:
+			var ux := tx + (1 if k == 0 else (-1 if k == 1 else 0))
+			var uy := ty + (1 if k == 2 else (-1 if k == 3 else 0))
+			var lx := ux - cx + OPEN_TO
+			var ly := uy - cy + OPEN_TO
+			if lx < 0 or ly < 0 or lx >= side or ly >= side or seen[ly * side + lx] != 0:
+				continue
+			if ux < 0 or uy < 0 or ux >= size or uy >= size:
+				continue
+			var i := (uy - win.y0) * win.w + ux - win.x0
+			var l: int = levels[i]
+			if l < 0 or grounds[i] == Ground.DEEP_WATER or absi(l - level) > step \
+					or (overhead and world.headroom_at(ux, uy) < tall):
+				continue
+			seen[ly * side + lx] = 1
+			qx.append(ux)
+			qy.append(uy)
+	return n
+
+
+static func opens_plainly(world: WorldData, at: Vector2, def: SentinelDef) -> int:
+	var row := Roster.row(def.kind)
+	var step := maxi(1, int(row.get("climbs", 1)))
+	var tall := int(ceil(float(row.get("height", 1.0)) / WorldData.STEP))
+	var cx := floori(at.x)
+	var cy := floori(at.y)
+	if not _keeper_ground(world, cx, cy, tall):
+		return 0
 	var side := OPEN_TO * 2 + 1
 	var seen := PackedByteArray()
 	seen.resize(side * side)
@@ -769,6 +821,84 @@ static func lure_reach(def: SentinelDef) -> float:
 ## The flood `founder_tiles` and `founder_spot` share: [tiles counted to
 ## `enough`, the first tile in a 3x3 patch of the grounds when `patch`].
 static func _founder_flood(world: WorldData, at: Vector2, def: SentinelDef, enough: int, patch: bool, within: float = -1.0) -> Array:
+	var sink := founders(def)
+	var start := Vector2i(floori(at.x), floori(at.y))
+	if sink.is_empty() or not world.in_bounds(start.x, start.y):
+		return [0, Vector2i(-1, -1)]
+	var row := Roster.row(def.kind)
+	var step := maxi(1, int(row.get("climbs", 1)))
+	var tall := int(ceil(float(row.get("height", 1.0)) / WorldData.STEP))
+	var reach := within if within >= 0.0 else def.reach
+	var r2 := reach * reach
+	var r := ceili(reach)
+	# READ OFF A WINDOW (TileWindow), as `founder_flood_plainly` reads through the
+	# world's methods, tile for tile in the same order: off the map is deep
+	# water, as `ground_at` says, and the sink is a table rather than a list
+	# asked each tile.
+	var size := world.size
+	var win := TileWindow.of(world, start.x - r, start.y - r, start.x + r + 1, start.y + r + 1)
+	var levels := win.level
+	var grounds := win.ground
+	var overhead := world.has_overhead()
+	var sunk := PackedByteArray()
+	sunk.resize(Ground.COUNT)
+	for g: int in sink:
+		sunk[g] = 1
+	# None of the ground anywhere in reach: no flood. Most of a region's rooms are
+	# this, and the room search asks dozens of them.
+	var any := false
+	for dy in range(-r, r + 1):
+		var y := start.y + dy
+		for dx in range(-r, r + 1):
+			if dx * dx + dy * dy > r2:
+				continue
+			var x := start.x + dx
+			var g: int = grounds[(y - win.y0) * win.w + x - win.x0] if x >= 0 and y >= 0 and x < size and y < size else Ground.DEEP_WATER
+			if sunk[g] != 0:
+				any = true
+				break
+		if any:
+			break
+	if not any:
+		return [0, Vector2i(-1, -1)]
+	var side := r * 2 + 1
+	var seen := PackedByteArray()
+	seen.resize(side * side)
+	seen[r * side + r] = 1
+	var qx := PackedInt32Array([start.x])
+	var qy := PackedInt32Array([start.y])
+	var head := 0
+	var n := 0
+	while head < qx.size() and n < enough:
+		var tx := qx[head]
+		var ty := qy[head]
+		head += 1
+		var l: int = levels[(ty - win.y0) * win.w + tx - win.x0]
+		for k in 4:
+			var ux := tx + (1 if k == 0 else (-1 if k == 1 else 0))
+			var uy := ty + (1 if k == 2 else (-1 if k == 3 else 0))
+			var lx := ux - start.x + r
+			var ly := uy - start.y + r
+			if lx < 0 or ly < 0 or lx >= side or ly >= side or seen[ly * side + lx] != 0 \
+					or ux < 0 or uy < 0 or ux >= size or uy >= size \
+					or Vector2(ux + 0.5, uy + 0.5).distance_squared_to(at) > r2:
+				continue
+			seen[ly * side + lx] = 1
+			var i := (uy - win.y0) * win.w + ux - win.x0
+			var ul: int = levels[i]
+			var g: int = grounds[i]
+			if ul < 0 or g == Ground.DEEP_WATER or (overhead and world.headroom_at(ux, uy) < tall) or absi(ul - l) > step:
+				continue
+			if sunk[g] != 0:
+				n += 1
+				if patch and _all_of(world, Vector2i(ux, uy), sink):
+					return [n, Vector2i(ux, uy)]
+			qx.append(ux)
+			qy.append(uy)
+	return [n, Vector2i(-1, -1)]
+
+
+static func founder_flood_plainly(world: WorldData, at: Vector2, def: SentinelDef, enough: int, patch: bool, within: float = -1.0) -> Array:
 	var sink := founders(def)
 	var start := Vector2i(floori(at.x), floori(at.y))
 	if sink.is_empty() or not world.in_bounds(start.x, start.y):
