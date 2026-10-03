@@ -17,7 +17,7 @@ static func perf(_tour: Node, game: Node, parts: PackedStringArray) -> bool:
 		var g := n as GeometryInstance3D
 		if not g.is_visible_in_tree():
 			continue
-		var t := _triangles(g)
+		var t := triangles(g)
 		if t == 0:
 			continue
 		var key := _what(g)
@@ -36,7 +36,7 @@ static func perf(_tour: Node, game: Node, parts: PackedStringArray) -> bool:
 	return true
 
 
-static func _triangles(g: GeometryInstance3D) -> int:
+static func triangles(g: GeometryInstance3D) -> int:
 	if g is MeshInstance3D:
 		return _mesh_triangles((g as MeshInstance3D).mesh)
 	if g is MultiMeshInstance3D:
