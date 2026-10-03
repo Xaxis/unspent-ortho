@@ -323,11 +323,13 @@ static func _works(L: Object) -> void:
 		var at := _lock_site(L)
 		if at.z >= 0.0:
 			GenWorks._work(L, &"_lock", Vector2(at.x, at.y), [int(at.z)])
-	# A stair where the raft comes ashore, when the landfall is this region's: the
-	# raft is landed at a slip, and the clock (Landmarks, `wants` the landfall)
-	# stands over it. Darted, the nearest slip stood 66 tiles off seed 1's.
+	# THE PORT, when the landfall is this region's: a stair down into the sea on
+	# the quay nearest where the raft comes ashore, recorded as `port`. The raft
+	# is landed there (StoryCrossing) and the clock stands over it (Landmarks,
+	# `wants` the landfall). Darted with the slips, the nearest stood 66 tiles off
+	# seed 1's landing.
 	for p: Vector2i in _landing(L):
-		if GenWorks._work(L, &"_slip", Vector2(p) + Vector2(0.5, 0.5)):
+		if GenWorks._work(L, &"_port", Vector2(p) + Vector2(0.5, 0.5)):
 			break
 	for n in GenWorks._n(L, 6.0):
 		var p := GenWorks._shore(L, QUAY_GROUNDS, 18.0)
@@ -536,9 +538,9 @@ static func _lock(L: Object, at: Vector2, a: Array) -> bool:
 	return true
 
 
-## How far from where the raft comes ashore its slip may stand, and how far off
-## the region's other marks.
-const LANDING_REACH := 12
+## How far from where the raft comes ashore the port's quay may be (its stair
+## steps out under a tile further), and how far off the region's other marks.
+const LANDING_REACH := 10
 const LANDING_ROOM := 6.0
 
 
@@ -554,6 +556,18 @@ static func _landing(L: Object) -> Array[Vector2i]:
 ## landed and a body steps off it, and a sea wall keeps off it (its mark, and
 ## `GenWorks._shore`'s room round the marks). Its +X is the water.
 static func _slip(L: Object, at: Vector2, _a: Array) -> bool:
+	return _stair(L, at, &"slip")
+
+
+## THE PORT's stair (`GenWorks._work`), a slip recorded as `port`: the one row
+## that says where the raft from home is landed.
+static func _port(L: Object, at: Vector2, _a: Array) -> bool:
+	return _stair(L, at, &"port")
+
+
+## A stair off the quay at `at` down into the sea (the sea's own level, never a
+## canal: `GenWorks._sea_dir`), recorded as `kind`.
+static func _stair(L: Object, at: Vector2, kind: StringName) -> bool:
 	var c: GenContext = L.c
 	var sea := GenWorks._sea_dir(c, Vector2i(at.floor()))
 	if sea.length() < 0.5:
@@ -561,7 +575,7 @@ static func _slip(L: Object, at: Vector2, _a: Array) -> bool:
 	var step := at + sea * 0.6
 	if GenWorks._put(L, PropKind.STAIR_TO_WATER, step, sea.angle(), -99, 0.0) == null:
 		return false
-	GenWorks._record(c, &"slip", step, sea, Vector2(1.0, 0.6))
+	GenWorks._record(c, kind, step, sea, Vector2(1.0, 0.6))
 	return true
 
 

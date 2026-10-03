@@ -515,13 +515,18 @@ static func sites(world: WorldData) -> Array[LandmarkSite]:
 		works_in[r] = int(works_in.get(r, 0)) + 1
 	var read := {}
 	var solid := _solid_tiles(world, read)
-	# Where the shortest water from home comes ashore on the LANDFALL body
-	# (GenBodies marks `landfall` and `from` on its row): a &"landfall" kind
-	# stands as near it as it can (`_wants`).
+	# Where the raft from home is landed on the LANDFALL body: the port the city
+	# laid there (its works row `port`), or where the shortest water from home
+	# comes ashore (GenBodies marks `landfall` and `from` on its row) on a world
+	# with no port. A &"landfall" kind stands as near it as it can (`_wants`).
+	var port := Vector2.INF
+	for m: Dictionary in world.landmarks:
+		if m.get("kind") == &"port":
+			port = m.pos
 	var ashore_on := {}
 	for row: Dictionary in world.continents:
 		if bool(row.get("landfall", false)) and row.has("from"):
-			ashore_on[int(row.get("id", -1))] = row["from"]
+			ashore_on[int(row.get("id", -1))] = port if port.is_finite() else row["from"]
 	var apart_scale := clampf(float(world.size) / 512.0, 0.4, 1.0)
 	# EVERY REGION GETS ITS FIRST BEFORE ANY GETS ITS SECOND, and the smallest
 	# region chooses first inside each round.
@@ -658,13 +663,13 @@ static func works_clear(region_tiles: int, works_in_region: int) -> float:
 ## Every tile in a region a landmark could stand on, scored for each thing this
 ## region's kinds want: `{p: Vector2, s: {want -> float}}`.
 ## Whether any of `pool` is a shore a &"landfall" kind can stand on within
-## LANDFALL_SEEN of where the raft comes ashore on its body.
+## LANDFALL_OVER of where the raft comes ashore on its body.
 static func _by_ashore(world: WorldData, pool: Array, ashore_on: Dictionary) -> bool:
 	for c: Dictionary in pool:
 		var p: Vector2 = c.p
 		var at: Variant = ashore_on.get(world.continent_at(floori(p.x), floori(p.y)))
 		if typeof(at) == TYPE_VECTOR2 and (c.s as Dictionary).get(&"landfall", -INF) > -INF \
-				and p.distance_to(at as Vector2) < LANDFALL_SEEN:
+				and p.distance_to(at as Vector2) <= LANDFALL_OVER:
 			return true
 	return false
 
@@ -676,40 +681,90 @@ static func _candidates(world: WorldData, region: Dictionary, greens: Array[Vect
 	var id := int(region.get("id", -1))
 	var bounds: Rect2 = region.get("bounds", Rect2())
 	var heart: Vector2 = region.get("centre", Vector2.ZERO)
-	var home := world.spawn
 	var y := floori(bounds.position.y)
 	while y < int(bounds.end.y):
 		var x := floori(bounds.position.x)
 		while x < int(bounds.end.x):
-			if world.region_at(x, y) != id or not _room_at(world, x, y):
-				x += stride
-				continue
-			var p := Vector2(x + 0.5, y + 0.5)
-			if p.distance_squared_to(home) < CLEAR_HOME * CLEAR_HOME or _too_near(p, greens, CLEAR_VILLAGE) or _too_near(p, built, off_works):
-				x += stride
-				continue
-			# And a player has to be able to STAND at its cache. A lighthouse on a
-			# spit whose front two tiles are surf is a place that cannot be opened,
-			# and the search that puts a body "near" it then walks twelve tiles
-			# inland looking for dry ground, which is where the first picture of
-			# one was taken from: an empty field with a tower on the skyline.
-			var front := p + _facing(heart, p) * CACHE_OUT
-			var fx := floori(front.x)
-			var fy := floori(front.y)
-			if not _room_at(world, fx, fy) or solid.has(fy * world.size + fx) or _words_near(world, read, fx, fy):
-				x += stride
-				continue
-			# Ties break on the tile's own hash, never on scan order, so a
-			# lighthouse is not always on the north-west corner of its coast.
-			var jitter := Rng.hash01(world.seed_value, x, y, 0x1AD) * 0.4
-			var scores := {}
-			for want: StringName in wanted:
-				var v := _wants(world, x, y, want, ashore_on.get(world.continent_at(x, y), Vector2.INF))
-				scores[want] = -INF if v <= -1000.0 else v + jitter
-			out.append({"p": p, "s": scores})
+			var c := _candidate(world, x, y, id, heart, greens, built, solid, wanted, off_works, ashore_on, read)
+			if not c.is_empty():
+				out.append(c)
 			x += stride
 		y += stride
+	# THE LANDING, swept close: a landfall kind stands over where the raft comes
+	# ashore (LANDFALL_OVER), and a city's quays there are too narrow for the
+	# strides above to land on. The clock stood 26 to 31 tiles off seeds 1, 7 and
+	# 42's ports for want of a candidate nearer.
+	if wanted.has(&"landfall"):
+		var r := int(LANDFALL_OVER)
+		for at: Variant in ashore_on.values():
+			var landing: Vector2 = at
+			if not bounds.grow(LANDFALL_OVER).has_point(landing):
+				continue
+			for dy in range(-r, r + 1, LANDING_STRIDE):
+				for dx in range(-r, r + 1, LANDING_STRIDE):
+					if dx * dx + dy * dy > r * r:
+						continue
+					var c := _candidate(world, floori(landing.x) + dx, floori(landing.y) + dy, id, heart, greens, built, solid, wanted, off_works, ashore_on, read, landing)
+					if not c.is_empty():
+						out.append(c)
 	return out
+
+
+## How close the landing is swept (`_candidates`), and how far what stands over
+## it keeps off the stair itself, so the raft is landed and stepped off in the
+## open (seed 42's clock stood on its port, 0.6 off).
+const LANDING_STRIDE := 2
+const LANDFALL_CLEAR := 4.0
+
+
+## One tile of a region as a candidate, `{p, s}`, or `{}` where nothing may stand.
+## `landing`: where the raft comes ashore, when the tile is swept as over it;
+## there a landfall kind may stand in the shallows (the clock tower stands out of
+## the water on its plinth), and only the ground its cache is opened from needs
+## room.
+static func _candidate(world: WorldData, x: int, y: int, id: int, heart: Vector2, greens: Array[Vector2], built: Array[Vector2], solid: Dictionary, wanted: Array[StringName], off_works: float, ashore_on: Dictionary, read: Dictionary, landing := Vector2.INF) -> Dictionary:
+	if world.region_at(x, y) != id:
+		return {}
+	var wet := false
+	if not _room_at(world, x, y):
+		if not landing.is_finite() or not _shallows_at(world, x, y):
+			return {}
+		wet = true
+	var p := Vector2(x + 0.5, y + 0.5)
+	if p.distance_squared_to(world.spawn) < CLEAR_HOME * CLEAR_HOME or _too_near(p, greens, CLEAR_VILLAGE) or _too_near(p, built, off_works):
+		return {}
+	if landing.is_finite() and p.distance_to(landing) < LANDFALL_CLEAR:
+		return {}
+	# And a player has to be able to STAND at its cache. A lighthouse on a
+	# spit whose front two tiles are surf is a place that cannot be opened,
+	# and the search that puts a body "near" it then walks twelve tiles
+	# inland looking for dry ground, which is where the first picture of
+	# one was taken from: an empty field with a tower on the skyline.
+	var front := p + _facing(heart, p) * CACHE_OUT
+	var fx := floori(front.x)
+	var fy := floori(front.y)
+	if not _room_at(world, fx, fy) or solid.has(fy * world.size + fx) or _words_near(world, read, fx, fy):
+		return {}
+	# Ties break on the tile's own hash, never on scan order, so a
+	# lighthouse is not always on the north-west corner of its coast.
+	var jitter := Rng.hash01(world.seed_value, x, y, 0x1AD) * 0.4
+	var anchor: Vector2 = landing if landing.is_finite() else ashore_on.get(world.continent_at(x, y), Vector2.INF)
+	var scores := {}
+	for want: StringName in wanted:
+		var v := -1000.0 if wet and want != &"landfall" else _wants(world, x, y, want, anchor)
+		scores[want] = -INF if v <= -1000.0 else v + jitter
+	return {"p": p, "s": scores}
+
+
+## A tile a landfall kind may stand on in the sea's shallows: off the road, out
+## of the deep water, no higher than a quay, over the cross a footprint takes.
+static func _shallows_at(world: WorldData, x: int, y: int) -> bool:
+	if not world.in_bounds(x - 2, y - 2) or not world.in_bounds(x + 2, y + 2):
+		return false
+	for d: Vector2i in [Vector2i(0, 0), Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
+		if world.on_road(x + d.x, y + d.y) or world.ground_at(x + d.x, y + d.y) == Ground.DEEP_WATER or world.level_at(x + d.x, y + d.y) > 1:
+			return false
+	return true
 
 
 ## The best candidate for one kind. Three passes, loosening in the order that
@@ -840,8 +895,13 @@ static func _wants(world: WorldData, x: int, y: int, wants: StringName, ashore: 
 			var d := _water_within(world, x, y, 5, true)
 			if d < 0:
 				return -1000.0
-			var near := 0.0 if not ashore.is_finite() else clampf(1.0 - ashore.distance_to(Vector2(x, y)) / LANDFALL_SEEN, 0.0, 1.0)
-			return 4.0 - float(d) * 0.5 + near * LANDFALL_PULL
+			# And over it, inside LANDFALL_OVER, outweighs anything further: the
+			# clock 26 to 31 tiles off the landing stood at the edge of the frame he
+			# steps off the raft into.
+			var off := ashore.distance_to(Vector2(x, y)) if ashore.is_finite() else INF
+			var near := clampf(1.0 - off / LANDFALL_SEEN, 0.0, 1.0)
+			var over := LANDFALL_PULL if off <= LANDFALL_OVER else 0.0
+			return 4.0 - float(d) * 0.5 + near * LANDFALL_PULL + over
 		&"high":
 			var lift := _lift(world, x, y, 5)
 			return -1000.0 if lift < 1 else float(lift)
@@ -857,6 +917,9 @@ static func _wants(world: WorldData, x: int, y: int, wants: StringName, ashore: 
 ## pull toward it, and how much that pull outweighs its water (`_wants`).
 const LANDFALL_SEEN := 90.0
 const LANDFALL_PULL := 8.0
+## Near enough to stand over the landing: in the frame of a player stepping off
+## the raft.
+const LANDFALL_OVER := 20.0
 
 
 ## Chebyshev tiles to the nearest water within `r`, or -1. `salt` asks for the
