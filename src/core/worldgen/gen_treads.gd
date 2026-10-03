@@ -41,7 +41,10 @@ static func site(c: GenContext) -> void:
 	var taken: Array[Vector3] = []
 	# Closes whatever the stages before left open, so the marks below are ours.
 	c.mark(&"treads.before")
-	var built := _built(c)
+	# Asked before any cut, so the world holds the landmarks sited on uncut land
+	# for its life (Landmarks.sited): the ids `_trod` records name those.
+	var bears := _bearing(c)
+	var built := _built(c, bears)
 	c.mark(&"treads.built")
 	var no := _never(c, built)
 	c.mark(&"treads.never")
@@ -52,9 +55,10 @@ static func site(c: GenContext) -> void:
 	var roads := WorldGen.distance_field(c.road, c.size)
 	c.mark(&"treads.roads")
 	var laid: PackedByteArray = GenFields.snapshot(w.ground)
-	for row: Dictionary in want:
+	for i in want.size():
+		var row: Dictionary = want[i]
 		var d: RefCounted = defs[row.walker]
-		var found := _find(c, d, float(row.yaw), row.natural, taken, no, clear, tops, roads)
+		var found := _find(c, d, float(row.yaw), row.natural, taken, no, clear, tops, roads, i == 0)
 		if found.x < 0.0:
 			continue
 		var at := Vector2(found.x, found.y)
@@ -67,7 +71,7 @@ static func site(c: GenContext) -> void:
 		w.landmarks.append({"kind": &"tread", "pos": at, "country": int(w.country[floori(at.y) * w.size + floori(at.x)]),
 			"region": region, "walker": row.walker, "leg": int(row.leg), "j": int(row.j), "yaw": yaw,
 			"floor": float(floor_l) * WorldData.STEP, "pads": pads,
-			"half": Vector2.ONE * _extent(d)})
+			"half": Vector2.ONE * _extent(d), "trod": _trod(w, pads, bears)})
 	# The strata climb a level per STEP_W and stop at the reach, so on land that
 	# rises faster than that a cut ends in a step, and a road across it would
 	# climb it. Graded again as settle grades every road.
@@ -111,16 +115,20 @@ static func _tidy(c: GenContext, laid: PackedByteArray, no: PackedByteArray) -> 
 ## tread crushes the one and carries the other (`_cut`). The exact question is
 ## `_fits`, run on the best few in order.
 ##
-## Of those: on the continent the player wakes on (a walk from the spawn, not
-## across the sea) whenever any fits there; then with room for every pad's whole
+## Of those: the `first` (the lame leg's) on leg 1's body near where he comes
+## ashore (LEG1_FIRST), every other on the continent the player wakes on (a walk
+## from the spawn, not across the sea), whenever any fits there; then with room for every pad's whole
 ## cut (`ROOMY`), so the first checked is the one that fits; then high enough to
 ## go down into, flat, and turned least from the walk's own heading.
-static func _find(c: GenContext, d: RefCounted, natural_yaw: float, natural: Vector2, taken: Array[Vector3], no: PackedByteArray, clear: PackedFloat32Array, tops: PackedInt32Array, roads: PackedFloat32Array) -> Vector3:
+static func _find(c: GenContext, d: RefCounted, natural_yaw: float, natural: Vector2, taken: Array[Vector3], no: PackedByteArray, clear: PackedFloat32Array, tops: PackedInt32Array, roads: PackedFloat32Array, first := false) -> Vector3:
 	var w := c.w
 	var size := c.size
 	var margin := int(_extent(d) + 4.0)
 	var aim := Vector2(clampf(natural.x, margin, size - margin), clampf(natural.y, margin, size - margin))
 	var home := w.continent_at(floori(w.spawn.x), floori(w.spawn.y))
+	var leg1 := _landfall(w)
+	var anchor: Vector2 = leg1.get("from", Vector2.INF)
+	var leg1_id := int(leg1.get("id", -1)) if first else -1
 	var bw := ceili(float(size) / TOP_BLOCK)
 	var scored: Array = []
 	for turn in YAWS:
@@ -152,6 +160,11 @@ static func _find(c: GenContext, d: RefCounted, natural_yaw: float, natural: Vec
 					if pad.distance_to(w.spawn) < reach_r(o) + SPAWN_ROOM:
 						ok = false
 						break
+					# Where he comes ashore on leg 1 (GenBodies' landfall anchor, its slip and
+					# the ring a raft lands in) is kept as where he wakes is.
+					if anchor.is_finite() and pad.distance_to(anchor) < reach_r(o) + SPAWN_ROOM:
+						ok = false
+						break
 					for q: Vector3 in taken:
 						if pad.distance_to(Vector2(q.x, q.y)) < APART:
 							ok = false
@@ -167,7 +180,9 @@ static func _find(c: GenContext, d: RefCounted, natural_yaw: float, natural: Vec
 					room = minf(room, pr + WANDER_MOST * Treads.STEP_W * float(maxi(1, lo - Treads.DEPTH - 2)))
 				var score := minf(float(lo), 7.0) - float(hi - lo) - centre.distance_to(aim) / 2000.0
 				score += ROOMY if room >= 0.0 else room
-				if body == home:
+				if body == leg1_id:
+					score += LEG1_FIRST - centre.distance_to(anchor) / LEG1_NEAR
+				elif body == home and leg1_id < 0:
 					score += HOME_FIRST - absf(centre.distance_to(w.spawn) - WALK) / 60.0
 				score -= absf(yaw - natural_yaw) * 1.5
 				scored.append([score, centre, yaw])
@@ -178,6 +193,9 @@ static func _find(c: GenContext, d: RefCounted, natural_yaw: float, natural: Vec
 			c.mark(&"treads.fits")
 			return Vector3(scored[i][1].x, scored[i][1].y, scored[i][2])
 	c.mark(&"treads.fits")
+	# Nothing fits on leg 1's body: sited as every other tread is.
+	if leg1_id >= 0:
+		return _find(c, d, natural_yaw, natural, taken, no, clear, tops, roads, false)
 	return Vector3(-1, -1, 0)
 
 
@@ -191,6 +209,29 @@ const ROOMY := 40.0
 ## than any difference of height or flatness can make up, so a footprint lands
 ## where the player can walk to it whenever one fits there at all.
 const HOME_FIRST := 100.0
+## THE FIRST TREAD IS ON LEG 1'S BODY, NEAR WHERE HE COMES ASHORE. The first
+## wanted plant is the lame leg's, the one the climb goes up, and the story
+## sends him to climb from leg 1 (the landfall body, StoryJourney): the crater
+## nearest the Covenant on its body (`crater:the_covenant`). Scored home-first,
+## on GEN 47's worlds of several bodies no crater stood on leg 1's on seeds 7, 3
+## and 42, and the set piece was gone. So the first tread scores leg 1's body
+## first, and on it the nearer the landfall anchor (where GenBodies says the
+## water from home comes ashore) the better, LEG1_NEAR tiles to a point; where
+## nothing fits there, it scores as every other tread does. Later treads keep
+## the home continent first.
+const LEG1_FIRST := 100.0
+const LEG1_NEAR := 20.0
+
+
+## The landfall body's row in `continents` (`landfall`, its `id` and `from`),
+## or {} on a world of one body.
+static func _landfall(w: WorldData) -> Dictionary:
+	for r: Dictionary in w.continents:
+		if bool(r.get("landfall", false)):
+			return r
+	return {}
+
+
 ## How many of the best-scored places are checked exactly, in order.
 const CHECKED := 60
 ## The most a crater's outline wanders out past its circle (`_cut`: 1 + 0.05 +
@@ -243,14 +284,37 @@ static func _never(c: GenContext, built: PackedByteArray) -> PackedByteArray:
 	# only the core `GenSettle` marks: scree laid past the core is still scree in
 	# the middle of a village (test_world_gen_surface).
 	for v: Dictionary in c.w.villages:
-		var vp: Vector2 = v.pos
-		var r: float = v.radius
-		for y in range(maxi(0, floori(vp.y - r)), mini(size, ceili(vp.y + r) + 1)):
-			for x in range(maxi(0, floori(vp.x - r)), mini(size, ceili(vp.x + r) + 1)):
-				var i := y * size + x
-				if no[i] == 0 and Vector2(x + 0.5, y + 0.5).distance_to(vp) <= r:
-					no[i] = KEPT
+		_keep(no, size, v.pos, v.radius)
+	# THE WORKING PARTS ARE KEPT, not the land round them: a crater crushed into
+	# the edge of the drowned city is a sight, its lock under a pad is a keeper
+	# with nothing to keep. Each keeper's den keeps its reach (Sentinels.states:
+	# the station it dens at, its larder, the ground its ways are done on); a
+	# placed site (SiteKinds) keeps its radius and its walls, a slip its stair.
+	# A tip is the plan's spoil and is crushed, as `_built` says.
+	for s: SentinelState in Sentinels.states(c.w):
+		var def := Sentinels.by_id(s.design)
+		if def != null:
+			_keep(no, size, s.lair, def.reach)
+	for m: Dictionary in c.w.landmarks:
+		var kind := StringName(m.get("kind", &""))
+		if kind == &"slip":
+			_keep(no, size, m.pos, (m.half as Vector2).length() + PLACE_ROOM)
+		elif kind != &"tip" and SiteKinds.has(kind):
+			_keep(no, size, m.pos, float(SiteKinds.row(kind).get("radius", 0.0)) + PLACE_ROOM)
 	return no
+
+
+## How far past a placed site's radius, or a slip's stair, its ground is kept:
+## a flooded hall's walls stand HALL_WALL and half a block out of its floor.
+const PLACE_ROOM := 4.0
+
+
+static func _keep(no: PackedByteArray, size: int, p: Vector2, r: float) -> void:
+	for y in range(maxi(0, floori(p.y - r)), mini(size, ceili(p.y + r) + 1)):
+		for x in range(maxi(0, floori(p.x - r)), mini(size, ceili(p.x + r) + 1)):
+			var i := y * size + x
+			if no[i] == 0 and Vector2(x + 0.5, y + 0.5).distance_to(p) <= r:
+				no[i] = KEPT
 
 
 const HARD := 1
@@ -282,8 +346,9 @@ const WALK := 520.0
 const TERRACE := 30.0
 
 
-## How far past its terraces a pad stays from where a new game opens: the
-## player wakes in sight of a footprint, never in one.
+## How far past its terraces a pad stays from where a new game opens, and from
+## where he comes ashore on leg 1: he wakes and lands in sight of a footprint,
+## never in one.
 const SPAWN_ROOM := 40.0
 
 
@@ -410,14 +475,15 @@ static func _floor_of(c: GenContext, pads: Array[Vector3]) -> int:
 	return maxi(1, lowest - Treads.DEPTH)
 
 
-## Every tile a tread must never cut: the plan's depots and the landmarks. A
-## house, a wreck or a tank standing alone out on the land is crushed where a
-## pad comes down (19_colossi, at load); a village is kept to its radius (`_never`).
+## Every tile a tread must never cut: the plan's depots and the landmarks that
+## carry load (`_bearing`). A house, a wreck or a tank standing alone out on the
+## land is crushed where a pad comes down (19_colossi, at load); a village is kept
+## to its radius (`_never`).
 ## How far past a depot's yard its parts and walls reach, and a margin.
 const YARD_ROOM := 18.0
 ## How far round a landmark's own spot its model and cache reach, and a margin.
 const LANDMARK_ROOM := 9.0
-static func _built(c: GenContext) -> PackedByteArray:
+static func _built(c: GenContext, bears: Dictionary) -> PackedByteArray:
 	var w := c.w
 	var out := PackedByteArray()
 	out.resize(c.n)
@@ -437,11 +503,53 @@ static func _built(c: GenContext) -> PackedByteArray:
 	# plan working.
 	for site: WorksSite in Works.sites(w):
 		mark.call(site.pos, Works.YARD + YARD_ROOM)
-	# And the places worth the walk (Landmarks.sites, derived the same way): a
-	# lighthouse or a tower standing in a crater is a model on ground that is no
-	# longer there.
-	for site: LandmarkSite in Landmarks.sites(w):
-		mark.call(site.pos, LANDMARK_ROOM)
+	# And the places worth the walk that carry load (Landmarks.sited, derived the
+	# same way): kept, one stands at most on the crater's edge, over a face the
+	# foot sheared. The rest yield to a foot (`_trod`).
+	for site: LandmarkSite in Landmarks.sited(w):
+		if bears.has(site.id):
+			mark.call(site.pos, LANDMARK_ROOM)
+	return out
+
+
+## THE LANDMARKS THAT CARRY LOAD, by id: where the story stands (cast to a slot of
+## StoryPlan's), a kind a keeper may den at (a station), one that marks where he
+## comes ashore (it wants the landfall: the clock), and one whose landscape keeps
+## a room under it. Every other is colour, and a walker's foot may come down on
+## it: kept from all of them, the foot found no room at all on the Covenant's
+## body on three seeds of five, the landmarks standing every hundred tiles or so
+## with no pad's floor allowed within thirty of one.
+static func _bearing(c: GenContext) -> Dictionary:
+	var w := c.w
+	var cast := {}
+	for place: Dictionary in StoryCasting.cast(w, StoryPlan.slots()).values():
+		cast[place.get("pos", Vector2.INF)] = true
+	var stations := {}
+	for def: SentinelDef in Sentinels.all():
+		for k: StringName in def.stations:
+			stations[k] = true
+	var out := {}
+	for site: LandmarkSite in Landmarks.sited(w):
+		var def := Landmarks.by_id(site.kind)
+		var land := BiomeRegistry.by_index(w.country_at(floori(site.pos.x), floori(site.pos.y)))
+		if cast.has(site.pos) or stations.has(site.kind) or (def != null and def.wants == &"landfall") \
+				or (land != null and land.interiors.has(StringName("landmark:%s" % site.kind))):
+			out[site.id] = true
+	return out
+
+
+## The landmarks a tread's pads came down on (inside a rim, as 19_colossi
+## crushes a prop), of those that carry no load: what stood there lies under the
+## crater, and `Landmarks.sites` no longer stands it.
+static func _trod(w: WorldData, pads: Array[Vector3], bears: Dictionary) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for site: LandmarkSite in Landmarks.sited(w):
+		if bears.has(site.id):
+			continue
+		for p: Vector3 in pads:
+			if site.pos.distance_to(Vector2(p.x, p.y)) < Treads.rim_r(p):
+				out.append(site.id)
+				break
 	return out
 
 

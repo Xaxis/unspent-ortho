@@ -34,13 +34,10 @@ func _home(w: WorldData) -> Dictionary:
 	return out
 
 
-## Where the raft lands: StoryCrossing between the camp and the archive.
+## Where the raft lands, as the game reads it (StoryCrossing.of).
 func _landing(w: WorldData) -> Vector2:
 	StoryPlan.forget()
-	var cast := StoryPlan.cast(w)
-	if not cast.has(&"the_camp") or not cast.has(&"the_archive"):
-		return Vector2(-1, -1)
-	return StoryCrossing.find(w, cast[&"the_camp"].pos, cast[&"the_archive"].pos).get("land", Vector2(-1, -1))
+	return StoryCrossing.of(w, StoryPlan.cast(w)).get("land", Vector2(-1, -1))
 
 
 func _in_city(w: WorldData, p: Vector2) -> bool:

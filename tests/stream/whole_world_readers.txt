@@ -34,7 +34,8 @@ src/core/interior/interior_gen.gd::grow::raw
 src/core/interior/interiors.gd::thresholds::builder Landmarks.sites
 src/core/interior/interiors.gd::thresholds::builder Works.sites
 src/core/interior/interiors.gd::thresholds::list
-src/core/landmarks/landmarks.gd::sites::list
+src/core/landmarks/landmarks.gd::_trod::list
+src/core/landmarks/landmarks.gd::sited::list
 src/core/mobs/coast.gd::_first_due::builder Spawner.green_distance
 src/core/mobs/coast.gd::_first_meeting::builder Spawner.green_distance
 src/core/mobs/nav_field.gd::update::raw
@@ -51,7 +52,6 @@ src/core/sentinel/sentinels.gd::feeds::list
 src/core/sentinel/sentinels.gd::feeds::whole
 src/core/sentinel/sentinels.gd::_lair_worked::list
 src/core/sentinel/sentinels.gd::states::list
-src/core/story/story_casting.gd::_candidates::builder Landmarks.sites
 src/core/story/story_casting.gd::_candidates::builder Portals.in_world
 src/core/story/story_casting.gd::_candidates::builder Works.sites
 src/core/story/story_casting.gd::_candidates::list

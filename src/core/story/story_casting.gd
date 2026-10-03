@@ -54,6 +54,14 @@ static func cast(world: WorldData, slots: Array[StorySlot]) -> Dictionary:
 			if twin.has(s.mirror):
 				out[s.id] = (twin[s.mirror] as Dictionary).duplicate()
 			continue
+		# The landfall is not dealt: the world says where the water from home
+		# comes ashore, or there is none.
+		if s.needs == StorySlot.LANDFALL:
+			if s.realm == world.realm:
+				var rows := _candidates(world, s)
+				if not rows.is_empty():
+					out[s.id] = (rows[0] as Dictionary).duplicate()
+			continue
 		# A crater is not dealt: it is the one the walker lead pins, nearest the
 		# slot it names on that slot's body (crater_near), or none: a tread's
 		# middle toe's crater (Treads.MIDDLE_TOE). Its row keeps the tread's ankle,
@@ -164,7 +172,9 @@ static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
 			for w: WorksSite in Works.sites(world):
 				out.append({"pos": w.pos, "region": w.region, "land": w.land, "site": StorySlot.WORKS})
 		StorySlot.LANDMARK:
-			for l: LandmarkSite in Landmarks.sites(world):
+			# Every landmark SITED, trodden or standing, so a walker's foot never moves
+			# a story place: GenTreads keeps every cast one out from under its feet.
+			for l: LandmarkSite in Landmarks.sited(world):
 				if s.kind != &"" and l.kind != s.kind:
 					continue
 				out.append({"pos": l.pos, "region": l.region, "land": l.land, "site": StorySlot.LANDMARK, "kind": l.kind})
@@ -177,6 +187,13 @@ static func _candidates(world: WorldData, s: StorySlot) -> Array[Dictionary]:
 					var pad: Vector3 = (m.pads as Array)[Treads.MIDDLE_TOE]
 					out.append({"pos": Vector2(pad.x, pad.y), "region": -1, "land": &"", "site": StorySlot.TREAD,
 						"ankle": m.pos, "pads": m.pads, "yaw": m.yaw})
+		StorySlot.LANDFALL:
+			# The landfall body's row says where the shortest water from home comes
+			# ashore (GenBodies `from`), a tile of that body.
+			for row: Dictionary in world.continents:
+				if bool(row.get("landfall", false)) and row.has("from"):
+					var at: Vector2 = row["from"]
+					out.append({"pos": at, "region": -1, "land": _land_at(world, at), "site": StorySlot.LANDFALL, "body": int(row.get("id", -1))})
 		StorySlot.BLACK_SITE:
 			var at := StoryWorld.black_site(world)
 			if at != Vector2.INF:
