@@ -190,6 +190,9 @@ class Lay:
 	## The region being laid's cells of its keeper's founder ground
 	## (`_founder_near`), gathered on the first ask; null until then.
 	var founder_cells: Variant = null
+	## The region being laid's runs of a ground (`runs`), ranked, by ground:
+	## scanned once however many passes ask.
+	var run_memo: Dictionary = {}
 	## False while a work is composed a second time for `witness`: it reads the
 	## snapshot and keeps what it takes in `mine`, and writes no grid.
 	var writes := true
@@ -338,6 +341,7 @@ static func place(c: GenContext, occ: PackedByteArray) -> void:
 	lay.site_rng = lay.rng
 	lay.site_memo.clear()
 	lay.founder_cells = null
+	lay.run_memo.clear()
 	lay.host = GenWorks
 	# The people's things are rows too, composed against the land as the works
 	# left it: they keep off the works' pieces, and off nothing else of their own.
@@ -398,6 +402,7 @@ static func _enter(L: Lay, def: BiomeDef, k: int) -> void:
 	L.site_rng = Rng.make(L.c.s, Rng.hash_ints(0x3057, String(def.id).hash(), GenCountries.region_key(L.w, L.region)))
 	L.site_memo.clear()
 	L.founder_cells = null
+	L.run_memo.clear()
 	L.rng = L.site_rng
 	L.m_region = L.w.landmarks.size()
 
@@ -752,24 +757,10 @@ static func runs(L: Lay, ground: int, apart: float, count: int, station := false
 	var out: Array[Vector3i] = []
 	if L.rects.is_empty() or (station and not station_ground(L)):
 		return out
-	var c := L.c
 	var w := L.w
-	var rect: Rect2 = L.rects[0]
-	var found: Array[Vector3i] = []
-	var y := int(rect.position.y) + 2
-	while y < int(rect.end.y) - 2:
-		var x := int(rect.position.x) + 2
-		while x < int(rect.end.x) - 2:
-			var at := Vector2(x + 0.5, y + 0.5)
-			if L.here(x, y) and w.blend[y * c.size + x] <= 0.35 and _run_at(L, at, ground):
-				var reach := 0
-				while reach < RUN_MOST and _run_at(L, at + L.d * (reach + 1) * 2.0, ground) and _run_at(L, at - L.d * (reach + 1) * 2.0, ground):
-					reach += 1
-				if reach >= 2:
-					found.append(Vector3i(x, y, reach))
-			x += RUN_STEP
-		y += RUN_STEP
-	found.sort_custom(func(a: Vector3i, b: Vector3i) -> bool: return a.z > b.z or (a.z == b.z and (a.y < b.y or (a.y == b.y and a.x < b.x))))
+	if not L.run_memo.has(ground):
+		L.run_memo[ground] = _runs_found(L, ground)
+	var found: Array[Vector3i] = L.run_memo[ground]
 	var def := Sentinels.for_land(L.id) if station else null
 	var looked := 0
 	for v: Vector3i in found:
@@ -793,15 +784,60 @@ static func runs(L: Lay, ground: int, apart: float, count: int, station := false
 	return out
 
 
-## Dry `ground` of the landscape being laid at `q`, off the map's rim.
-static func _run_at(L: Lay, q: Vector2, ground: int) -> bool:
+## Every run of dry `ground` of the landscape being laid along the bearing in
+## the region being laid, longest first and ties in scan order: binned by its
+## length rather than sorted, since a run is two to RUN_MOST steps, and read off
+## the arrays directly, since a method call a tile was most of the frost sea's
+## works stage.
+static func _runs_found(L: Lay, ground: int) -> Array[Vector3i]:
 	var c := L.c
-	var x := floori(q.x)
-	var y := floori(q.y)
-	if x < 3 or y < 3 or x >= c.size - 3 or y >= c.size - 3:
-		return false
-	var i := y * c.size + x
-	return c.w.ground[i] == ground and c.water[i] == 0 and c.w.level[i] > 0 and L.home(x, y)
+	var w := L.w
+	var size := c.size
+	var grounds := w.ground
+	var levels := w.level
+	var country := w.country
+	var water := c.water
+	var blend := w.blend
+	var rect: Rect2 = L.rects[0]
+	var bins: Array = []
+	for k in RUN_MOST + 1:
+		bins.append([])
+	var steps := PackedVector2Array()
+	for k in range(1, RUN_MOST + 1):
+		steps.append(L.d * float(k) * 2.0)
+	var y := int(rect.position.y) + 2
+	while y < int(rect.end.y) - 2:
+		var x := int(rect.position.x) + 2
+		while x < int(rect.end.x) - 2:
+			var i := y * size + x
+			if x >= 3 and y >= 3 and x < size - 3 and y < size - 3 and L.here(x, y) and blend[i] <= 0.35 \
+					and grounds[i] == ground and water[i] == 0 and levels[i] > 0:
+				var at := Vector2(x + 0.5, y + 0.5)
+				var reach := 0
+				while reach < RUN_MOST:
+					var ok := true
+					for q: Vector2 in [at + steps[reach], at - steps[reach]]:
+						var qx := floori(q.x)
+						var qy := floori(q.y)
+						if qx < 3 or qy < 3 or qx >= size - 3 or qy >= size - 3:
+							ok = false
+							break
+						var j := qy * size + qx
+						if grounds[j] != ground or water[j] != 0 or levels[j] <= 0 or country[j] != L.own:
+							ok = false
+							break
+					if not ok:
+						break
+					reach += 1
+				if reach >= 2:
+					(bins[reach] as Array).append(Vector3i(x, y, reach))
+			x += RUN_STEP
+		y += RUN_STEP
+	var out: Array[Vector3i] = []
+	for k in range(RUN_MOST, 1, -1):
+		for v: Vector3i in bins[k]:
+			out.append(v)
+	return out
 
 
 ## A tile to try: inside one of the laid type's own regions, chosen by size, or
