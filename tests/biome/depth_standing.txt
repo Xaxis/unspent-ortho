@@ -122,6 +122,8 @@ sulphur_jungle plan.machine
 sulphur_jungle plan.work_props
 sulphur_jungle player.only_in
 the_crags land.landmark
+# A survey bench is no yard's heart, and the terraces hold no yard yet:
+# a crags depot waits on a form that fits them (task #68).
 the_crags plan.depot
 the_crags player.only_in
 the_crags player.signature
