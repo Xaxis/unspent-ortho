@@ -1,0 +1,92 @@
+# WHAT A FRAME COSTS WHERE A PLAYER IS (ROADMAP 9, frame-time budgets on the
+# web): one `--stats` window (p50/p95/p99/worst past warm-up) per scene a player
+# lives in, walking or turning on the real keys: the coast by day, a fight, a
+# village at night, a crowd fight at dusk under its lamps, the pinewood over the
+# shoulder, and a room. The cave's are tours/cave-cost.tour's. Measured
+# uncapped, so the number is the frame's cost and not the display's pace.
+#   tools/web.sh --tour=tours/web-frames.tour --uncapped --timeout=900 --trace --args=--seed=7,--weather=clear:0,--stats
+#   tools/tour.sh tours/web-frames.tour --seed=7 --weather=clear:0 --stats
+coast calm
+hour 11
+place coast
+wait 2.0
+perf stats begin
+walk 1,0 2.0
+walk 0,1 2.0
+walk -1,0 2.0
+perf stats end coast_day
+shot 01-coast-day
+
+spawn runner
+spawn harvester
+wait 1.0
+perf stats begin
+hold swing
+walk 1,0 1.5
+wait 1.5
+release swing
+press dodge
+walk -1,0 1.5
+wait 1.0
+perf stats end fight_day
+shot 02-fight-day
+coast calm
+
+hour 23
+near house
+wait 2.0
+perf stats begin
+walk -1,0 2.0
+walk 0,-1 2.0
+walk 1,0 2.0
+perf stats end village_night
+shot 03-village-night
+
+hour 19.5
+near house
+wait 1.5
+spawn runner
+spawn runner@90
+spawn harvester@180
+spawn cutter@270
+wait 1.0
+perf stats begin
+hold swing
+walk 1,0 1.5
+wait 1.5
+release swing
+press dodge
+walk 0,1 1.5
+wait 1.0
+perf stats end crowd_dusk
+shot 04-crowd-dusk
+coast calm
+
+hour 11
+place pinewood
+wait 1.5
+tap shoulder
+await shoulder 20
+wait 2.0
+perf stats begin
+walk 0,-1 2.0
+mouse 640,0 0.6
+wait 1.0
+mouse 640,0 0.6
+walk 0,-1 2.0
+perf stats end pinewood_shoulder
+shot 05-pinewood-shoulder with shoulder
+tap shoulder
+wait 1.0
+
+near door:cottage
+await door 10
+press use 0.1
+await inside:cottage 30
+wait 2.0
+perf stats begin
+walk 1,0 1.5
+walk -1,0 1.5
+wait 1.0
+perf stats end room
+shot 06-room with inside:cottage
