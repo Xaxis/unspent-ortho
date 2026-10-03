@@ -338,8 +338,7 @@ func use_spent() -> bool:
 ## or "": read off the same nearness `_outside_side` and `_inside_side` act on,
 ## in their order.
 func use_line() -> String:
-	if game == null or game.player == null or _swapping or game.input_blocked() or Survival.ask_pending(game) \
-			or Survival.words_in_front(game):
+	if game == null or game.player == null or _swapping or game.input_blocked() or Survival.ask_pending(game):
 		return ""
 	if pocket == null:
 		return "door - go in" if door_near != null and _door_wins(door_near.door) else ""
@@ -359,7 +358,7 @@ func use_line() -> String:
 
 
 func _pressed() -> bool:
-	if game.input_blocked() or not _use_edge or Survival.words_in_front(game):
+	if game.input_blocked() or not _use_edge:
 		return false
 	for s in game.systems:
 		if s != self and s.has_method(&"use_spent") and bool(s.call(&"use_spent")):
@@ -376,6 +375,11 @@ func _door_wins(at: Vector2) -> bool:
 	var to_door := at - game.player.pos
 	if to_door.length() > 0.01 and Vector2.from_angle(game.player.hero.facing).dot(to_door.normalized()) > 0.7:
 		return true
+	# Not facing it, the press is a person's or a page's he does face. Only on
+	# the way in: deferring the way out kept him in the Speaker's house at its
+	# door, her set read and words still under the hand (june.tour).
+	if Survival.words_in_front(game):
+		return false
 	var t := Survival.use_target(game)
 	return t == null or at.distance_to(game.player.pos) <= t.pos.distance_to(game.player.pos)
 
