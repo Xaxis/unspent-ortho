@@ -274,17 +274,34 @@ const UNKNOWN := "unknown"
 ##     Every region big enough to keep a keeper gets its keeper's first station
 ##     (an intake, a lock), laid only where the ground keeps the design's ways
 ##     and never within its keeper's reach of where the raft comes ashore
-##     (GenWorks.station_holds).
-## 48. The glass desert lays its strike fields: nine rods ruled three by three
+##     (GenWorks.station_holds). (Provisional; restamped at landing.)
+## 48. The lame leg's tread comes down on the Covenant's body (slice 3 step 7):
+##     the first wanted plant scores leg 1's body first, nearer where he comes
+##     ashore the better, and where nothing fits there it is sited home-first as
+##     before. A landmark that carries no load yields to a foot (the story is not
+##     cast to it, no keeper dens at its kind, it does not mark the landfall and
+##     no room is kept under it): the tread writes what it trod, and
+##     `Landmarks.sites` no longer stands it. A tread keeps off every keeper's
+##     reach, every placed site but a tip and every slip, and where he comes
+##     ashore as where he wakes. Every tread moves; seeds 1, 3 and 90210 hold a
+##     crater on the Covenant's body, 7 (water under the strata) and 42 (no room)
+##     fall through.
+## 49. The drowned city's PORT: a stair down into the sea on the quay nearest
+##     where the raft comes ashore (GenBodies.ashore), recorded as the works row
+##     `port`, laid before its slips and sea walls, which keep off it. The stair
+##     nearest the landing goes 66.2 -> 0.3 tiles on seed 1, 24.3 -> 0.2 on 42,
+##     10.9 -> 3.9 on 7 and 4.4 -> 0.5 on 4. (Landmarks, not worldgen: the
+##     clock tower stands over the port, within 20 tiles, in the shallows if it
+##     must: 25.6 -> 11.2 on seed 1, 28.7 -> 9.0 on 7, 28.9 -> 4.4 on 42,
+##     7.2 -> 5.4 on 4.)
+## 50. The glass desert lays its strike fields: nine rods ruled three by three
 ##     on the survey bearing, fulgurite dug out between them, the survey at the
 ##     corners, one to each region big enough to keep the anvil, sited where a
 ##     den off the rods keeps every way its design declares
 ##     (GenWorks.station_holds, asked of the den the keeper takes). A walker's
-##     tread keeps off a keeper's first station (GenTreads `_built`): on seed 1
-##     the lame walker's two treads move, (1510, 790) -> (1486, 806) and
-##     (646, 1254) -> (606, 1294); seeds 7, 42 and 90210 keep theirs.
+##     tread keeps off a keeper's first station (GenTreads `_built`).
 ##     (Provisional; restamped at landing.)
-const GEN := 48
+const GEN := 50
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

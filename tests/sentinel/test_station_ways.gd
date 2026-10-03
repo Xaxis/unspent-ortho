@@ -298,7 +298,7 @@ func test_no_keeper_covers_the_landing() -> void:
 		var cast := StoryPlan.cast(w)
 		var landings: Array[Vector2] = []
 		if cast.has(&"the_camp") and cast.has(&"the_archive"):
-			var c := StoryCrossing.find(w, cast[&"the_camp"].pos, cast[&"the_archive"].pos)
+			var c := StoryCrossing.of(w, cast)
 			if c.has("land"):
 				landings.append(c["land"] as Vector2)
 		for row: Dictionary in w.continents:

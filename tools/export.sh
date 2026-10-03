@@ -34,6 +34,12 @@ need() {
   fi
 }
 
+# The brotli binary where there is one, else Node's own (tools/web/brotli.mjs):
+# a fresh box has Node for web.mjs and often no brotli.
+brotli_to() {
+  if command -v brotli >/dev/null 2>&1; then brotli -f -q 9 -o "$1" "$2"; else node tools/web/brotli.mjs -q 9 -o "$1" "$2"; fi
+}
+
 human() { awk -v b="$1" 'BEGIN { if (b >= 1048576) printf "%.1f MB", b / 1048576; else printf "%.0f KB", b / 1024 }'; }
 bytes() { stat -c %s "$1" 2>/dev/null || stat -f %z "$1" 2>/dev/null || echo 0; }
 
@@ -117,7 +123,7 @@ compress_web() {
   local dir="$1" pids=() f p
   for f in "$dir"/*.wasm "$dir"/*.pck "$dir"/*.js "$dir"/*.html; do
     [ -f "$f" ] || continue
-    brotli -f -q 9 -o "$f.br" "$f" & pids+=($!)
+    brotli_to "$f.br" "$f" & pids+=($!)
     gzip -9 -k -f "$f" & pids+=($!)
   done
   for p in "${pids[@]}"; do
@@ -155,7 +161,9 @@ build_mac() {
 }
 
 case "$target" in
-  web|web-nothreads|all) need godot python3 bc brotli gzip ;;
+  web|web-nothreads|all)
+    need godot python3 bc gzip
+    command -v brotli >/dev/null 2>&1 || need node ;;
   *) need godot python3 bc ;;
 esac
 mkdir -p build && touch build/.gdignore
