@@ -26,9 +26,12 @@ src/core/black_site.gd::_sea::tiles
 src/core/chapter/chapter.gd::_def_of::list
 src/core/chapter/chapter.gd::_ids_by_region::builder Landmarks.sites
 src/core/chapter/chapter.gd::ore_taken::list
+src/core/chapter/chapter.gd::ore_taken_by_region::list
 src/core/chapter/chapters.gd::for_regions::builder Chapter.read
 src/core/chapter/chapters.gd::of::builder Chapter.read
 src/core/chapter/road_hold.gd::sites::list
+src/core/colossus/colossus_treads.gd::owned::list
+src/core/colossus/colossus_treads.gd::pressed::list
 src/core/colossus/colossus_treads.gd::wanted::tiles
 src/core/interior/interior_gen.gd::grow::raw
 src/core/interior/interiors.gd::thresholds::builder Landmarks.sites
@@ -152,9 +155,6 @@ src/systems/10_sky.gd::setup::builder SkyWear.texture
 src/systems/18_trample.gd::tour_place::builder SkyGround.texture
 src/systems/19_colossi.gd::_landed::raw
 src/systems/19_colossi.gd::_tread_minute::list
-src/systems/19_colossi.gd::owned_of::list
-src/systems/19_colossi.gd::prepare_world::builder WorldQuery.new
-src/systems/19_colossi.gd::pressed_of::list
 src/systems/19_colossi.gd::realm_changed::builder Treads.hand_over
 src/systems/19_colossi.gd::realm_changed::whole
 src/systems/19_colossi.gd::setup::builder Treads.hand_over
