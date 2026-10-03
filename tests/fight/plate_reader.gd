@@ -115,40 +115,19 @@ func act() -> void:
 	var turns: Array[float] = [0.0, 0.6, -0.6, 1.2, -1.2]
 	if not keep_off.is_empty() or not keep_on.is_empty():
 		turns.append_array([1.8, -1.8, 2.4, -2.4, PI])
-	# Turned off the way it means, it keeps to the turn nearest the way it went
-	# last: taken fresh each frame, the first way that did swung from one side
-	# to the other, and turn and walk-back took turns, so the player stood
-	# still beside the anvil for a minute (seed 1's den on GEN 48).
-	var best := Vector2.INF
-	var best_dot := -INF
 	for turn: float in turns:
 		var step := hero.move.rotated(turn)
 		var at := hero.pos + step.normalized() * 0.6
 		var g := sim.world.ground_at(floori(at.x), floori(at.y))
 		if keep_off.has(g) or (not keep_on.is_empty() and not keep_on.has(g)):
 			continue
-		if not sim.meets(at, m.pos) or not _gets_on(step):
-			continue
-		if turn == 0.0 or _went.length() < 0.5:
-			best = step
-			break
-		var d := step.normalized().dot(_went.normalized())
-		if d > best_dot:
-			best_dot = d
-			best = step
-	if best.is_finite():
-		hero.move = best
-		_went = best
-		return
+		if sim.meets(at, m.pos) and _gets_on(step):
+			hero.move = step
+			return
 	# Every way on is ground it keeps off (come to up a bank past the flats):
 	# a player walks round, back to where they came at it from. One holding out
 	# on ground (`keep_on`) holds there instead, once it is on it.
 	hero.move = _walk_back() if home.is_finite() and not _holding_out() else Vector2.ZERO
-	_went = hero.move
-
-
-## The way the held-ground walk went last (`act`).
-var _went := Vector2.ZERO
 
 
 ## Whether a step `dir` way takes the body on at least half a step's worth: a
