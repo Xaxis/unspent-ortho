@@ -107,13 +107,15 @@ func test_the_bulk_door_counts_the_ore_taken_as_the_single_door_does() -> void:
 	for r: Dictionary in w.regions:
 		ids.append(int(r.get("id", -1)))
 	w.sync_table()
+	# A third of each region's own ore taken, and a fifth of everything else
+	# gone too, as a walker's tread crushes it: only the first is ore taken.
 	var n := 0
 	for i in w.table.size():
 		var rid := w.region_at(floori(w.table.pos[i].x), floori(w.table.pos[i].y))
-		if Chapter.ore_kinds(w, rid).has(int(w.table.kind[i])):
-			n += 1
-			if n % 3 == 0:
-				w.depleted[w.table.id[i]] = INF
+		n += 1
+		var ore := Chapter.ore_kinds(w, rid).has(int(w.table.kind[i]))
+		if (ore and n % 3 == 0) or (not ore and n % 5 == 0):
+			w.depleted[w.table.id[i]] = INF
 	var bulk := Chapters.for_regions(g, ids)
 	var taken := 0
 	for rid: int in ids:
