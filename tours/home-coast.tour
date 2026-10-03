@@ -336,6 +336,14 @@ wait 0.4
 hour 20
 village 36
 wait 1.0
+# A hungry body eats what it carries before it lies down (Survival._fallback):
+# fed first, a press a mouthful. On seed 7 the presses meant for sleep ate
+# berries ("berries - eat" under the hand) and he never lay down.
+try 8
+  press use 0.1
+  wait 0.4
+  await fed 1
+end
 # Sleep is asked for: the first press asks, the second sleeps.
 try 3
   press use 0.1

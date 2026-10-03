@@ -267,7 +267,8 @@ extends GameSystem
 ## to a loaded game, the runner stays at the tree's root and follows the next game.
 ## Awaits for that: title (the title is up, its coast drawn), game (a new game has
 ## started since the last action), saved (a save was written), fire_asked (`use` has
-## asked where a fire would go and wants a second press); and station:NAME
+## asked where a fire would go and wants a second press), fed (the next press
+## would eat nothing he carries); and station:NAME
 ## (a station of that name, e.g. fire, is in reach of the player).
 ##   await title SECS       the title's slate has woken over its coast (a tour booted
 ##                          with --scene=title, or one whose game gave way to the title)
@@ -881,6 +882,10 @@ func _now_true(what: String) -> bool:
 	# key working correctly, and nothing in the tour could tell.
 	if what == "fire_asked":
 		return Survival.build_asked(game).is_finite()
+	# Nothing the next press would eat: a hungry body eats what it carries before
+	# it lies down (Survival._fallback), so a tour that sleeps feeds him to this.
+	if what == "fed":
+		return game.body.hunger_level(game.clock.minutes) < 1 or Survival.best_food(game) == &""
 	if what == "mob" or what.begins_with("mob:"):
 		return _body_in_frame(what.substr(4), 1)
 	# What a body in frame has made of the player, which is the difference between
