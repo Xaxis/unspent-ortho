@@ -350,7 +350,6 @@ static func _pans(L: Object, at: Vector2, _a: Array) -> bool:
 	var nrm: Vector2 = L.nrm
 	if not GenWorks.station_first(L, at):
 		return false
-	var from: int = L.w.props.size()
 	var half := Vector2(rng.randf_range(8.0, 11.0), rng.randf_range(5.0, 7.0))
 	GenWorks._record(L.c, &"pans", at, d, half, GenWorks.CUT)
 	# The brine works that fed this battery: a pump house at the head of the
@@ -376,12 +375,11 @@ static func _pans(L: Object, at: Vector2, _a: Array) -> bool:
 	# The rake dens by its pans (a station), so they stand only where its den
 	# keeps its ways: asked before they were laid, or now off their larder where
 	# the den hangs on it (GenWorks.station_first, station_last).
-	return GenWorks.station_last(L, at, from, maxf(half.x, half.y))
+	return GenWorks.station_last(L, at, maxf(half.x, half.y))
 
 
 static func _brine_house(L: Object, at: Vector2, _a: Array) -> bool:
 	var d: Vector2 = L.d
-	var from: int = L.w.props.size()
 	var house := GenWorks._put_footed(L, PropKind.PUMP_HOUSE, at, d.angle(), 1.0)
 	if house == null or not GenWorks.station_first(L, house.pos):
 		return false
@@ -392,4 +390,4 @@ static func _brine_house(L: Object, at: Vector2, _a: Array) -> bool:
 	GenWorks._about(L, PropKind.GRAVE, at, 2, 5.0, 8.0)
 	# The rake's first station: it stands only where its den keeps its ways
 	# (GenWorks.station_first, station_last).
-	return GenWorks.station_last(L, at, from, 4.0)
+	return GenWorks.station_last(L, at, 4.0)
