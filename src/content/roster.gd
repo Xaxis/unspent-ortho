@@ -479,7 +479,7 @@ const DEFS := {
 	&"sentinel.glass": {
 		"model": &"sentinel_anvil", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 5,
 		"part": &"back", "sentinel": &"anvil", "breaks": WOOD,
-		"pace": 6.0, "dash": 12.0, "quick": 300, "radius": 1.4, "height": 7.6, "life": 380,
+		"pace": 6.0, "dash": 12.0, "quick": 300, "radius": 1.4, "height": 7.6, "life": 399,
 		"sees": 18, "hears": 6, "racket": 24, "reach": 3, "ready": 3, "forget": 24, "tether": 30, "safe": 14,
 		"nerve": 100, "invuln": 500, "through": true, "disposition": &"wary", "overrun": 0.9,
 		"bite": {"swing": [560, 150, 640, 760], "reach": 1.8, "width": 1.8, "dmg": 3, "knock": 9.0, "knock_ms": 320},
