@@ -56,7 +56,6 @@ static func site(c: GenContext) -> void:
 	var roads := WorldGen.distance_field(c.road, c.size)
 	c.mark(&"treads.roads")
 	var laid: PackedByteArray = GenFields.snapshot(w.ground)
-	var leg1 := int(_landfall(w).get("id", -1))
 	for i in want.size():
 		var row: Dictionary = want[i]
 		var d: RefCounted = defs[row.walker]
@@ -74,7 +73,7 @@ static func site(c: GenContext) -> void:
 			"region": region, "walker": row.walker, "leg": int(row.leg), "j": int(row.j), "yaw": yaw,
 			"floor": float(floor_l) * WorldData.STEP, "pads": pads,
 			"half": Vector2.ONE * _extent(d), "trod": _trod(w, pads, bears),
-			"folk": i == 0 and w.continent_at(floori(at.x), floori(at.y)) == leg1})
+			"folk": i == 0})
 	# The strata climb a level per STEP_W and stop at the reach, so on land that
 	# rises faster than that a cut ends in a step, and a road across it would
 	# climb it. Graded again as settle grades every road.
@@ -214,8 +213,9 @@ const ROOMY := 40.0
 const HOME_FIRST := 100.0
 ## THE FIRST TREAD IS ON LEG 1'S BODY, NEAR WHERE HE COMES ASHORE. The first
 ## wanted plant is the lame leg's, the one the climb goes up, and the story
-## sends him to climb from leg 1 (the landfall body, StoryJourney): the crater
-## nearest the Covenant on its body (`crater:the_covenant`). Scored home-first,
+## sends him to climb from leg 1 (the landfall body, StoryJourney): its crater
+## (`crater:the_tread`) on the Covenant's body is a walk, not a second raft
+## (StoryCrossing.to_walker). Scored home-first,
 ## on GEN 47's worlds of several bodies no crater stood on leg 1's on seeds 7, 3
 ## and 42, and the set piece was gone. So the first tread scores leg 1's body
 ## first, and on it the nearer the landfall anchor (where GenBodies says the
@@ -871,8 +871,8 @@ static func dress(c: GenContext) -> void:
 
 
 ## THE TREAD'S PEOPLE'S HOLDING (docs/STORY.md: the walkers; Tull speaks for
-## them), at the tread `site` marks theirs (`folk`: the lame leg's, on leg 1's
-## body), round the lip they stand on (Treads.folk_lip): a shack HOLD_SHACK out
+## them), at the tread `site` marks theirs (`folk`: the lame leg's, wherever it
+## came down), round the lip they stand on (Treads.folk_lip): a shack HOLD_SHACK out
 ## past it, turned to the crater they farm, and a fire and a bench between it and
 ## the lip, to one side of the line out so Tull's spot stays open. Colour, never
 ## load: nothing here is asked for by the story or the climb, and nothing here

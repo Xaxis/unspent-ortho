@@ -104,6 +104,7 @@ func _process(delta: float) -> void:
 	_since = 0.0
 	_stand_things(from)
 	_heard_the_far_shore(from)
+	_heard_the_walker_shore(from)
 	for row: Dictionary in people:
 		var c := StoryCast.get_def(row.character)
 		var here: bool = (row.pos as Vector2).distance_to(from) <= STREAM and (c == null or c.present())
@@ -154,6 +155,19 @@ func _heard_the_far_shore(from: Vector2) -> void:
 		Story.hear(StoryCrossing.CROSSED)
 
 
+## The first time he stands on the body the lame walker's foot comes down on,
+## where that is across the water from the Covenant's (StoryCrossing.to_walker),
+## it is heard (WALKER_CROSSED): the walker's crossing is behind him.
+func _heard_the_walker_shore(from: Vector2) -> void:
+	if Story.heard(StoryCrossing.WALKER_CROSSED) or game.world.realm != Realm.SURFACE \
+			or not placed.has(StoryCrossing.WALKER_LANDING) or not placed.has(&"the_tread"):
+		return
+	var t := Vector2i(from.floor())
+	if not Ground.is_water(game.world.ground_at(t.x, t.y)) and game.world.same_body(from, placed[&"the_tread"].pos):
+		@warning_ignore("return_value_discarded")
+		Story.hear(StoryCrossing.WALKER_CROSSED)
+
+
 ## Where a raft puts in from the home body and lands on the next leg's
 ## (StoryCrossing): ashore at the world's landfall (the_landfall), else across the
 ## narrows. Two more places: the survey marks the one while the
@@ -166,6 +180,12 @@ func _place_crossing() -> void:
 		return
 	placed[StoryCrossing.LAUNCH] = {"pos": c.launch}
 	placed[StoryCrossing.LANDING] = {"pos": c.land}
+	# And where the lame walker's foot comes down across another water, the raft
+	# from the Covenant's shore to it.
+	var walker := StoryCrossing.to_walker(game.world, placed)
+	if not walker.is_empty():
+		placed[StoryCrossing.WALKER_LAUNCH] = {"pos": walker.launch}
+		placed[StoryCrossing.WALKER_LANDING] = {"pos": walker.land}
 
 
 ## THE STORY'S OWN READABLE THINGS (StoryContent.STOOD): where nothing the world

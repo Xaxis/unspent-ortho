@@ -4609,7 +4609,7 @@ const TALKS := {
 				],
 			},
 			&"up": {
-				"says": ["Every road but up.", "The lame walker puts a foot down in the same crater every third day.", "Nobody's ever climbed it, so nobody's sold it."],
+				"says": ["Every road but up.", "The lame walker puts a foot down in the same crater every third day.", "The sea's a ditch to it.", "Nobody's ever climbed it, so nobody's sold it."],
 				"beats": [&"walker_told"],
 				"replies": [{"text": "[leave]", "to": &""}],
 			},
@@ -5772,6 +5772,9 @@ const LEAD := {
 	# The half-broken walker, once Solis has said the road up (walker_told), until
 	# the enclave in its crown has been met: the far shore's last thread.
 	&"walker": "The lame walker, for the one road nobody has sold: its foot comes back to the same crater.",
+	# Where its lame foot comes down across another water (StoryCrossing.to_walker),
+	# the raft over to it first, until he has stood on that shore.
+	&"walker_crossing": "Across the ditch, for the lame walker's crater: put the raft in there.",
 	# The second keeper, keyed by its design (Guide.keeper_goal, Sentinels.next_keeper):
 	# once Teague has named it (`anvil_named`) until it falls. Never gating the way
 	# on: no key memory.
@@ -5829,14 +5832,20 @@ const TOLD_WHILE := {
 	&"june": {"place": &"the_covenant", "word": "her house"},
 	&"june_voice": {"place": &"the_covenant", "word": "her house"},
 	&"warden": {"place": &"the_covenant", "word": "the covenant"},
-	# The walker's crater on the Covenant's body, nearest it (`crater:SLOT`,
-	# StoryMap.crater_pos): a place of the world, not of the cast.
-	&"walker": {"place": &"crater:the_covenant", "word": "the crater"},
+	# The walker's crater, the one its lame foot comes back to, wherever that is
+	# (`crater:SLOT`, StoryMap.crater_pos, of the_tread): a place of the world.
+	&"walker": {"place": &"crater:the_tread", "word": "the crater"},
+	# Where to put the raft in for the walker's own water (StoryCrossing.to_walker).
+	&"walker_crossing": {"place": StoryCrossing.WALKER_LAUNCH, "word": "the ditch"},
 	# Back at the camp (slice 3 step 8): the way back is where he landed, and the
 	# landing keeps the crossing's name: one water, one name. Home again, the
 	# crew's own mark (TOLD marens_lead) is the way.
-	&"camp_back": {"place": &"the_landing", "word": "the narrows", "on_body": true},
-	&"rook_teague": {"place": &"the_landing", "word": "the narrows", "on_body": true},
+	# Where he stands on the walker's own body, across the ditch, the way back
+	# begins there (`else`, the first of the two whose body he stands on).
+	&"camp_back": {"place": &"the_landing", "word": "the narrows", "on_body": true,
+		"else": {"place": StoryCrossing.WALKER_LANDING, "word": "the ditch", "on_body": true}},
+	&"rook_teague": {"place": &"the_landing", "word": "the narrows", "on_body": true,
+		"else": {"place": StoryCrossing.WALKER_LANDING, "word": "the ditch", "on_body": true}},
 }
 
 # The name the goal lines use for a landscape's keeper once `reaper_named` has

@@ -69,7 +69,7 @@ func test_he_stands_on_the_middle_toe_s_lip_clear_of_the_climb() -> void:
 		var g := Sx.game(tree, ["--seed=%d" % seed_value, "--hour=11", "--weather=clear:0"])
 		await frames(3)
 		var placed: Dictionary = Sx.system(g, "49_cast").get("placed")
-		var pin := StoryMap.crater_pos(g, &"crater:the_covenant")
+		var pin := StoryMap.crater_pos(g, &"crater:the_tread")
 		var tull := _row(g, &"tull")
 		if not pin.is_finite():
 			check(not placed.has(&"the_tread"), "seed %d: no crater pinned, and no tread cast" % seed_value)
