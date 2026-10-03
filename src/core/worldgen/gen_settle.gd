@@ -465,7 +465,15 @@ static func _name(rng: RandomNumberGenerator, cc: int, used: Dictionary) -> Stri
 		if not used.has(nm):
 			used[nm] = true
 			return nm
-	return "%s %d" % [list[0], used.size()]
+	# Every name of the land taken (a slum's blocks run past its list): its first,
+	# numbered from how many are taken, each number once, and registered like any
+	# other name, or every block past the list is called the same.
+	var n := used.size()
+	while used.has("%s %d" % [list[0], n]):
+		n += 1
+	var numbered := "%s %d" % [list[0], n]
+	used[numbered] = true
+	return numbered
 
 
 static func _level_here(c: GenContext, tx: int, ty: int) -> int:

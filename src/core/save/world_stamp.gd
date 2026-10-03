@@ -294,7 +294,11 @@ const UNKNOWN := "unknown"
 ##     clock tower stands over the port, within 20 tiles, in the shallows if it
 ##     must: 25.6 -> 11.2 on seed 1, 28.7 -> 9.0 on 7, 28.9 -> 4.4 on 42,
 ##     7.2 -> 5.4 on 4.) (Provisional; restamped at landing.)
-const GEN := 49
+## 50. Every village has its own name: a land whose list runs out numbers its
+##     first name, each number once (GenSettle._name). Seed 1's eight slum
+##     blocks past the list were all "Ninth Shift 24". Names only; nothing
+##     moves. (Provisional; restamped at landing.)
+const GEN := 50
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the
