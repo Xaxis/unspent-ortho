@@ -30,6 +30,7 @@ var home := Vector2.INF
 ## `keep_on` ground) and holds there, dodging, as a player drawing it out does.
 var lure := Vector2.INF
 var _at_work_since := -1.0
+var _walk_up_to := Vector2.INF
 
 
 func _wait(m: MobState) -> void:
@@ -80,6 +81,11 @@ func act() -> void:
 	var hero := sim.hero
 	var m := _nearest()
 	if m == null:
+		# Walking up to a keeper at its work round what stands between, it goes on
+		# to where it saw it while the way turns it out of sight.
+		if _walk_up_to.is_finite() and hero.pos.distance_to(_walk_up_to) > 0.5:
+			hero.move = _walk_to(_walk_up_to)
+			return
 		# Nothing in sight (come to at the edge of its ground after a down): back
 		# the way a player walks it, round what stands between.
 		hero.move = _walk_back() if home.is_finite() and hero.pos.distance_to(home) > 1.0 else Vector2.ZERO
@@ -101,13 +107,15 @@ func act() -> void:
 	# off it, held to the flats or behind a rise its level does not meet, the
 	# reader waited and the keeper worked on: 240 s at 9.6 tiles, never roused
 	# (the strike field's den, second-keeper). Unseen a while, a player walks up
-	# to it, over what lies between, as the lure walk does.
+	# to it the way a body can walk (`_route`: over a rise a step at a time).
 	if m.roused():
 		_at_work_since = -1.0
+		_walk_up_to = Vector2.INF
 	elif _at_work_since < 0.0:
 		_at_work_since = sim.now
 	if not m.roused() and sim.now - _at_work_since > UNSEEN_MS:
-		hero.move = (m.pos - hero.pos).normalized()
+		_walk_up_to = m.pos + (hero.pos - m.pos).normalized() * (m.radius + hero.radius + 1.0)
+		hero.move = _walk_to(_walk_up_to)
 		return
 	if not sim.meets_hero(m.pos):
 		# Up on the bank beside it (a dodge can carry them there): down again,
@@ -172,7 +180,19 @@ var _stuck_on := {}
 
 
 func _walk_back() -> Vector2:
+	return _walk_to(home)
+
+
+## The walk to `goal` by the tiles a body passes over (`_route`), laid again when
+## the goal moves a tile or the walk stops gaining.
+var _route_goal := Vector2.INF
+
+
+func _walk_to(goal: Vector2) -> Vector2:
 	var hero := sim.hero
+	if not _route_goal.is_finite() or _route_goal.distance_to(goal) > 1.0:
+		_route_goal = goal
+		_route_tiles.clear()
 	while not _route_tiles.is_empty() and hero.pos.distance_to(_centre(_route_tiles[0])) < 0.45:
 		_route_tiles.pop_front()
 		_route_best = INF
@@ -185,13 +205,13 @@ func _walk_back() -> Vector2:
 			_stuck_on[_route_tiles[0]] = true
 			_route_tiles.clear()
 	if _route_tiles.is_empty():
-		_route_tiles = _route(home, true)
+		_route_tiles = _route(goal, true)
 		if _route_tiles.is_empty():
-			_route_tiles = _route(home, false)
+			_route_tiles = _route(goal, false)
 		_route_best = INF
 		_route_since = sim.now
 	if _route_tiles.is_empty():
-		return (home - hero.pos).normalized()
+		return (goal - hero.pos).normalized()
 	return (_centre(_route_tiles[0]) - hero.pos).normalized()
 
 
