@@ -750,12 +750,38 @@ static func founder_tiles(world: WorldData, at: Vector2, def: SentinelDef, enoug
 	return int(_founder_flood(world, at, def, enough, false, reach)[0])
 
 
-## The nearest tile (by its move) of its FOUNDER grounds from `at` that stands in
-## a patch of them a body's width across, inside its reach: where a lure draws it
-## to founder (a tour's `near keeper_flats`). INF where there is none.
+## Where a lure draws it to founder (a tour's `near keeper_flats`): from the
+## nearest tile (by its move) of its FOUNDER grounds that stands in a patch of
+## them a body's width across, inside its reach, on away from its den until its
+## run at a player standing there would stop LURE_DEPTH short of them on the
+## ground too. Stood at the patch's edge, the anvil's run stopped on its own rock
+## and it bit from there (the strike field's den). The edge where no spot further
+## in holds; INF where there is none.
 static func founder_spot(world: WorldData, at: Vector2, def: SentinelDef) -> Vector2:
 	var u: Vector2i = _founder_flood(world, at, def, 1 << 30, true, -1.0)[1]
-	return Vector2(u.x + 0.5, u.y + 0.5) if u.x >= 0 else Vector2.INF
+	if u.x < 0:
+		return Vector2.INF
+	var edge := Vector2(u.x + 0.5, u.y + 0.5)
+	var sink := founders(def)
+	var tall := int(ceil(float(Roster.row(def.kind).get("height", 1.0)) / WorldData.STEP))
+	var away := (edge - at).normalized()
+	var level := world.level_at(u.x, u.y)
+	var p := edge
+	for k in int(LURE_DEPTH * 2.0) + 1:
+		p = edge + away * (0.5 * float(k))
+		var t := Vector2i(floori(p.x), floori(p.y))
+		if not sink.has(world.ground_at(t.x, t.y)) or not _keeper_ground(world, t.x, t.y, tall) \
+				or absi(world.level_at(t.x, t.y) - level) > 1:
+			return edge
+		var stop := p - away * LURE_DEPTH
+		if sink.has(world.ground_at(floori(stop.x), floori(stop.y))):
+			return p
+	return edge
+
+
+## How far into its founder ground a lure stands: a run at the player stops to
+## bite with its front a bite's reach off and its middle about three tiles.
+const LURE_DEPTH := 3.0
 
 
 ## How far from its den a keeper of `def` sees a lure on the ground it founders
