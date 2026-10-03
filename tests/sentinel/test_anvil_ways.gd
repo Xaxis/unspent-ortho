@@ -1,11 +1,11 @@
 extends TestCase
-## The second keeper, the anvil (src/core/sentinel/designs/anvil.gd), taken both
-## ways it offers on a world with no strike field laid (starve waits on the
-## rods), by what a player does: the plate player through the game's input
-## (tests/sentinel/keeper_fight.gd), on the nearest anvil to where a new game
-## wakes, on seeds 1 and 7. Force is its three sides in order, from ground its
-## skates keep to; founder is a lure out onto drift sand, far enough off that
-## its charge, not its step, carries it there.
+## The second keeper, the anvil (src/core/sentinel/designs/anvil.gd), taken every
+## way it offers, by what a player does: the plate player through the game's
+## input (tests/sentinel/keeper_fight.gd), on the nearest anvil to where a new
+## game wakes, on seeds 1 and 7. Force is its three sides in order, from ground
+## its skates keep to; founder is a lure out onto drift sand, far enough off that
+## its charge, not its step, carries it there; starve is every rod of the strike
+## field it keeps robbed by hand (KF.rob_larder), and the dark waited on.
 
 const Sx := preload("res://tests/save/save_fixture.gd")
 const KF := preload("res://tests/sentinel/keeper_fight.gd")
@@ -104,3 +104,42 @@ func test_lured_onto_the_sand_on_seed_7_it_founders() -> void:
 	if not stepped_now():
 		return
 	await _falls(7, SentinelWay.FOUNDER)
+
+
+## STARVE, by hand. The tally says what it cost against the force fight above:
+## sim seconds, clock minutes and the tiles walked from rod to rod.
+func _starves(seed_value: int) -> void:
+	Sx.use_root("anvil-starve-%d" % seed_value)
+	# A field's rods are hours of the clock (an 18-minute turn each): a player
+	# going to rob them carries something to eat.
+	var g := await Sx.played(tree, ["--seed=%d" % seed_value, "--hour=9", "--weather=clear:0", "--held=knife_shear", "--give=fish:6"])
+	MobState._next_id = 900000
+	var s := _anvil(g)
+	check(s != null, "seed %d holds an anvil" % seed_value)
+	if s == null:
+		Sx.end(g)
+		return
+	KF.calm(g)
+	var def := Sentinels.by_id(s.design)
+	var out: Dictionary = await KF.rob_larder(tree, g, s)
+	print("  info anvil on seed %d by starve: %s" % [seed_value, out])
+	gt(float(out.works), float(SentinelWay.FEEDS_LEAST) - 0.5, "seed %d: its field feeds it %d rods" % [seed_value, out.works])
+	eq(out.robbed, out.works, "seed %d: every rod is robbed out" % seed_value)
+	g.player.place(s.lair + Vector2(Sentinels.PUT_OUT * 2.0, 0.0))
+	var t0 := g.player.sim.now
+	while not s.fallen and g.player.sim.now - t0 < 12000.0:
+		await tree.physics_frame
+	check(s.fallen and s.how == def.way_of(SentinelWay.STARVE).id(), "seed %d: and it stands dark (%s)" % [seed_value, s.how])
+	Sx.end(g)
+
+
+func test_robbed_of_its_rods_on_seed_1_it_starves() -> void:
+	if not stepped_now():
+		return
+	await _starves(1)
+
+
+func test_robbed_of_its_rods_on_seed_7_it_starves() -> void:
+	if not stepped_now():
+		return
+	await _starves(7)

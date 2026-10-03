@@ -274,8 +274,17 @@ const UNKNOWN := "unknown"
 ##     Every region big enough to keep a keeper gets its keeper's first station
 ##     (an intake, a lock), laid only where the ground keeps the design's ways
 ##     and never within its keeper's reach of where the raft comes ashore
-##     (GenWorks.station_holds). (Provisional; restamped at landing.)
-const GEN := 47
+##     (GenWorks.station_holds).
+## 48. The glass desert lays its strike fields: nine rods ruled three by three
+##     on the survey bearing, fulgurite dug out between them, the survey at the
+##     corners, one to each region big enough to keep the anvil, sited where a
+##     den off the rods keeps every way its design declares
+##     (GenWorks.station_holds, asked of the den the keeper takes). A walker's
+##     tread keeps off a keeper's first station (GenTreads `_built`): on seed 1
+##     the lame walker's two treads move, (1510, 790) -> (1486, 806) and
+##     (646, 1254) -> (606, 1294); seeds 7, 42 and 90210 keep theirs.
+##     (Provisional; restamped at landing.)
+const GEN := 48
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

@@ -553,6 +553,11 @@ extends TestCase
 ## design's ways (GenWorks._n_station, station_holds). Only seed 1's `props`
 ## move: its one intake stands across the island, (227, 166) -> (48, 170), where
 ## a den by it keeps the Reaper's ways, with its pipe (49 -> 48 lengths).
+## AT GEN 48 (2026-10-02, provisional): the glass desert lays its strike fields.
+## The six hold to the bit, and nothing is re-accepted: none of them is the
+## glass, the station rule asks the den off a larder only of a work that hands
+## its larder over (GenWorks.station_holds), which no work of the six does, and
+## a world this size lays no tread to keep off a station (GenTreads `_built`).
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 

@@ -410,13 +410,17 @@ static func _floor_of(c: GenContext, pads: Array[Vector3]) -> int:
 	return maxi(1, lowest - Treads.DEPTH)
 
 
-## Every tile a tread must never cut: the plan's depots and the landmarks. A
-## house, a wreck or a tank standing alone out on the land is crushed where a
-## pad comes down (19_colossi, at load); a village is kept to its radius (`_never`).
+## Every tile a tread must never cut: the plan's depots, the landmarks and the
+## keepers' stations. A house, a wreck or a tank standing alone out on the land
+## is crushed where a pad comes down (19_colossi, at load); a village is kept to
+## its radius (`_never`).
 ## How far past a depot's yard its parts and walls reach, and a margin.
 const YARD_ROOM := 18.0
 ## How far round a landmark's own spot its model and cache reach, and a margin.
 const LANDMARK_ROOM := 9.0
+## How far past a keeper's station's own footprint (its record's `half`) a pad
+## keeps: its larder's runs (an intake's pipe) and a margin.
+const STATION_ROOM := 8.0
 static func _built(c: GenContext) -> PackedByteArray:
 	var w := c.w
 	var out := PackedByteArray()
@@ -442,6 +446,18 @@ static func _built(c: GenContext) -> PackedByteArray:
 	# longer there.
 	for site: LandmarkSite in Landmarks.sites(w):
 		mark.call(site.pos, LANDMARK_ROOM)
+	# And a keeper's first station, the work its larder is laid round (an
+	# intake, a lock, a strike field; `Sentinels.lair` dens by it, and its STARVE
+	# way is robbing what stands there): a pad on it crushes the way with the
+	# works. Seed 1's lame walker came down on the glass's strike field and
+	# crushed all nine of its rods. Its other stations (a hulk, a sea wall) are a
+	# den's ground and nothing it eats, and crushed they cost no way.
+	for m: Dictionary in w.landmarks:
+		var land := BiomeRegistry.by_index(int(m.get("country", -1)))
+		var keeper := Sentinels.for_land(land.id) if land != null else null
+		if keeper != null and not keeper.stations.is_empty() and keeper.stations[0] == StringName(str(m.get("kind", &""))):
+			var half: Vector2 = m.get("half", Vector2.ZERO)
+			mark.call(m.pos as Vector2, maxf(half.x, half.y) + STATION_ROOM)
 	return out
 
 

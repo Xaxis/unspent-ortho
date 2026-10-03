@@ -425,9 +425,8 @@ static func _lair_worked(world: WorldData, region: Dictionary, def: SentinelDef)
 			var p: Vector2 = m.get("pos", Vector2.ZERO)
 			if world.region_at(floori(p.x), floori(p.y)) != id:
 				continue
-			var at := den_at(world, p, def, landings)
-			if at.is_finite() and def.way_of(SentinelWay.STARVE) != null and not larder_robbable(world, at, def):
-				at = _den_off_larder(world, p, def, landings, id)
+			var half: Vector2 = m.get("half", Vector2.ZERO)
+			var at := station_den(world, p, def, landings, id, PackedVector2Array(), false, maxf(half.x, half.y))
 			if not at.is_finite():
 				continue
 			var n := 0
@@ -474,32 +473,96 @@ static func den_at(world: WorldData, p: Vector2, def: SentinelDef, landings: Arr
 	return at if _den_ok(world, at, def, landings) else Vector2.INF
 
 
+## Where a keeper of `def` dens for a station laid at `p` in region `id`: the
+## nearest room to it (`den_at`), or off its larder when that room has works of
+## it under its feet (`_den_off_larder`); INF when there is none. The one answer
+## the keeper is placed at (`_lair_worked`) and a work is sited by
+## (GenWorks.station_holds), so the work is never sited for a den the keeper
+## does not take. `laid`: the larder's positions while a work is being laid and
+## the world's props are not yet indexed; empty, the props the world laid
+## (`laid_near`). `ground_only`: only what the ground answers (`ways_closed`),
+## the larder read from `laid`, and then the den it gives keeps those ways or is
+## INF. `extent`: how far the station's own footprint reaches from `p` (its
+## record's `half`), which the search for room off the larder has to clear.
+static func station_den(world: WorldData, p: Vector2, def: SentinelDef, landings: Array[Vector2], id: int,
+		laid := PackedVector2Array(), ground_only := false, extent := 0.0) -> Vector2:
+	# A station's larder is laid round its own middle, so the room nearest it is
+	# asked of the larder before its floods are run, and one with the larder
+	# under its feet sends the search off it whether or not it had room: asked
+	# the other way round, a work's own siting and the keeper's den disagreed
+	# (seed 7's glass, two fields laid for dens the keeper never found).
+	if def.way_of(SentinelWay.STARVE) != null and not larder_robbable(world, stand_near(world, p, 1.4, founders(def)), def, laid):
+		return _den_off_larder(world, p, def, landings, id, laid, ground_only, extent)
+	var at := den_at(world, p, def, landings)
+	if ground_only and at.is_finite() and not ways_closed(world, at, def, true).is_empty():
+		return Vector2.INF
+	return at
+
+
 ## Where a keeper of `def` dens for a station laid at `p` when the nearest room
 ## to it has works of its larder under its feet (`larder_robbable`): seed 1's
 ## Reaper denned two tiles off its own intake. The nearest room in region `id`
 ## past THREAT_RADIUS of the station, where every way is kept, tried in squares
-## of Chebyshev rings one tile apart (DEN_OFF), nearest first: the station's
-## works stay its larder and the den stays by the station. INF when none is.
+## of Chebyshev rings one tile apart (DEN_OFF past the station's own `extent`),
+## nearest first: the station's works stay its larder and the den stays by the
+## station. INF when none is.
 const DEN_OFF := 4
+## Rooms off a larder whose floods are run before a station is given up.
+const DEN_TRIES := 6
 
 
-static func _den_off_larder(world: WorldData, p: Vector2, def: SentinelDef, landings: Array[Vector2], id: int) -> Vector2:
+static func _den_off_larder(world: WorldData, p: Vector2, def: SentinelDef, landings: Array[Vector2], id: int,
+		laid := PackedVector2Array(), ground_only := false, extent := 0.0) -> Vector2:
 	var sink := founders(def)
 	var spots: Array[Vector2] = []
 	var first := floori(Senses.THREAT_RADIUS) + 1
-	for d in range(first, first + DEN_OFF):
+	for d in range(first, first + DEN_OFF + ceili(extent)):
 		for k in range(-d, d + 1, 2):
 			for q: Vector2 in [Vector2(k, -d), Vector2(k, d), Vector2(-d, k), Vector2(d, k)]:
 				spots.append(p + q)
 	spots.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(p) < b.distance_squared_to(p))
+	# The floods behind a den's room and its ways are the cost, so each room is
+	# asked once, a spot beside one that failed is passed over (the same pocket,
+	# as `_room_nearest` keeps), and the search gives up after DEN_TRIES of them:
+	# unbounded, it asked 452 rooms on seed 42's glass at 256 and took 1.9 s.
+	var asked := {}
+	var failed: Array[Vector2] = []
+	# And a room with none of its founder ground in reach is never flooded for
+	# it: the cells of that ground, read every other tile (`_room_nearest`'s).
+	var close_cells := {}
+	if not sink.is_empty() and def.way_of(SentinelWay.FOUNDER) != null:
+		var span := float(first + DEN_OFF) + extent + def.reach
+		var cells := _ground_cells(world, Rect2(p - Vector2(span, span), Vector2(span, span) * 2.0), sink)
+		if cells.is_empty():
+			return Vector2.INF
+		var r := ceili(def.reach / GROUND_CELL) + 1
+		for cell: Vector2i in cells:
+			for dy in range(-r, r + 1):
+				for dx in range(-r, r + 1):
+					close_cells[cell + Vector2i(dx, dy)] = true
 	for q: Vector2 in spots:
+		if failed.size() >= DEN_TRIES:
+			break
 		if not world.in_bounds(floori(q.x), floori(q.y)) or world.region_at(floori(q.x), floori(q.y)) != id:
 			continue
-		if not larder_robbable(world, q, def):
+		if not larder_robbable(world, q, def, laid):
 			continue
 		var at := stand_near(world, q, 1.4, sink)
-		if larder_robbable(world, at, def) and _den_ok(world, at, def, landings) and ways_closed(world, at, def).is_empty():
+		if asked.has(at):
+			continue
+		asked[at] = true
+		if not close_cells.is_empty() and not close_cells.has(Vector2i(floori(at.x) / GROUND_CELL, floori(at.y) / GROUND_CELL)):
+			continue
+		var near_failed := false
+		for f: Vector2 in failed:
+			if at.distance_to(f) < float(RAY_OUT) * 0.6:
+				near_failed = true
+				break
+		if near_failed:
+			continue
+		if larder_robbable(world, at, def, laid) and _den_ok(world, at, def, landings) and ways_closed(world, at, def, ground_only).is_empty():
 			return at
+		failed.append(at)
 	return Vector2.INF
 
 
@@ -513,7 +576,7 @@ static func _den_ok(world: WorldData, at: Vector2, def: SentinelDef, landings: A
 		if at.distance_to(l) <= def.reach:
 			return false
 	return _room_at(world, floori(at.x), floori(at.y), 1.4, founders(def)) and gets_out(world, at, def) \
-		and opens(world, at, def) >= OPENS_LEAST
+		and opens(world, at, def, OPENS_LEAST) >= OPENS_LEAST
 
 
 ## Rays a keeper's lair is looked out along, how far, and how many must get
@@ -564,7 +627,8 @@ const OPEN_TO := 14
 const OPENS_LEAST := 300
 
 
-static func opens(world: WorldData, at: Vector2, def: SentinelDef) -> int:
+## Counted to `enough` at most: a den asks only whether it opens OPENS_LEAST.
+static func opens(world: WorldData, at: Vector2, def: SentinelDef, enough: int = 1 << 30) -> int:
 	var row := Roster.row(def.kind)
 	var step := maxi(1, int(row.get("climbs", 1)))
 	var tall := int(ceil(float(row.get("height", 1.0)) / WorldData.STEP))
@@ -584,6 +648,8 @@ static func opens(world: WorldData, at: Vector2, def: SentinelDef) -> int:
 		head += 1
 		if maxi(absi(t.x - cx), absi(t.y - cy)) >= OPEN_FROM:
 			n += 1
+			if n >= enough:
+				return n
 		var level := world.level_at(t.x, t.y)
 		for d: Vector2i in STEPS4:
 			var u := t + d
@@ -732,9 +798,19 @@ static func ways_closed(world: WorldData, at: Vector2, def: SentinelDef, ground_
 ## number Survival.threat_near reads). Play counts every feed in reach and the
 ## way is won only when all are robbed, so one under its feet holds it shut: seed
 ## 1's Reaper at its intake, robbed 7 of 10 (tests/sentinel/test_ways.gd).
-static func larder_robbable(world: WorldData, at: Vector2, def: SentinelDef) -> bool:
-	return laid_near(world, at, def.feeds, def.reach * FEED_SHARE) >= SentinelWay.FEEDS_LEAST \
-		and laid_near(world, at, def.feeds, Senses.THREAT_RADIUS, true) == 0
+## `laid`, when given, is the larder itself (a work being laid, its props not yet
+## indexed), in place of what the world laid of the design's feeds.
+static func larder_robbable(world: WorldData, at: Vector2, def: SentinelDef, laid := PackedVector2Array()) -> bool:
+	if laid.is_empty():
+		return laid_near(world, at, def.feeds, def.reach * FEED_SHARE) >= SentinelWay.FEEDS_LEAST \
+			and laid_near(world, at, def.feeds, Senses.THREAT_RADIUS, true) == 0
+	var fed := 0
+	for q: Vector2 in laid:
+		if Senses.chebyshev(q, at) <= Senses.THREAT_RADIUS:
+			return false
+		if q.distance_to(at) <= def.reach * FEED_SHARE:
+			fed += 1
+	return fed >= SentinelWay.FEEDS_LEAST
 
 
 ## How near a keeper lets anybody come: inside it, a signature is read (SPOOF)

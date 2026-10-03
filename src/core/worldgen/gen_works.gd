@@ -434,7 +434,14 @@ static func _n_station(L: Lay, base: float) -> int:
 ## answer (Sentinels.ways_closed: mud or wash to founder in, water to come to it
 ## by raft). Its feeds are not laid yet, so STARVE is asked when the keeper is
 ## placed (Sentinels.lair). True where the landscape keeps no keeper.
-static func station_holds(L: Lay, p: Vector2) -> bool:
+##
+## A work that has laid its larder by now hands it over as `laid` (with its
+## footprint's `extent`), and is asked of the den the keeper will take
+## (Sentinels.station_den): its rods under the nearest room's feet send the
+## keeper off them, and that den's ground is what has to keep its ways. Without
+## `laid` the nearest room is asked, as before: an intake's pipe is laid after
+## it, so its larder is not known here.
+static func station_holds(L: Lay, p: Vector2, laid := PackedVector2Array(), extent := 0.0) -> bool:
 	var def := Sentinels.for_land(L.id)
 	if def == null:
 		return true
@@ -444,6 +451,8 @@ static func station_holds(L: Lay, p: Vector2) -> bool:
 	for row: Dictionary in L.w.continents:
 		if bool(row.get("landfall", false)) and row.has("from"):
 			landings.append(row["from"] as Vector2)
+	if not laid.is_empty():
+		return Sentinels.station_den(L.w, p, def, landings, L.w.region_at(floori(p.x), floori(p.y)), laid, true, extent).is_finite()
 	var den := Sentinels.den_at(L.w, p, def, landings)
 	return den.is_finite() and Sentinels.ways_closed(L.w, den, def, true).is_empty()
 

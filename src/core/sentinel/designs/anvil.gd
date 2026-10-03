@@ -21,10 +21,11 @@
 ##            plates: a charge commits to its bearing, so the sand is the answer
 ##            and the dodge is how you spend it.
 ##   starve   the field's rods feed it. Break them and the crown has nothing to
-##            call through. CLOSED while no world lays a strike field (works
-##            phase B): a keeper the plan never fed cannot be starved. Force and
-##            founder are taken by play (tests/sentinel/test_anvil_ways.gd: one
-##            try each on seeds 1 and 7).
+##            call through. Each glass region keeping it lays a strike field
+##            (glass_desert.gd `_strike_field`), and it dens off the rods, past
+##            the reach a take is refused in (Sentinels.larder_robbable), so
+##            every rod can be robbed. Force, founder and starve are taken by
+##            play (tests/sentinel/test_anvil_ways.gd).
 ##   SPOOF is left out. Its orders do not come by relay: it answers the SKY, and
 ##            a storm cannot be worn. A signature the flats' rake would file the
 ##            player under means nothing to a machine that only listens for
@@ -48,9 +49,7 @@ static func make() -> SentinelDef:
 	d.kind = &"sentinel.glass"
 	d.reach = 30.0
 	# The strike field is what it keeps (docs/LANDSCAPES.md PLAN records it as
-	# `strike_field`). Until the works row lays one, no region holds it and the
-	# keeper stands at its region's heart, which `Sentinels.lair` already does for
-	# a station nobody laid.
+	# `strike_field`; glass_desert.gd lays one to each region big enough).
 	d.stations = [&"strike_field"]
 	# THE RODS ONLY. docs/LANDSCAPES.md names the belt and the corner posts
 	# too, and that was measured against the world before it was believed: with
@@ -58,9 +57,8 @@ static func make() -> SentinelDef:
 	# works at its region's heart, which `tests/sentinel/test_world.gd` refuses
 	# as "one theft wins it" (SentinelWay.FEEDS_LEAST is four). The spec's own sentence is
 	# "STARVE on its rods", so the larder is the field's rods and nothing else:
-	# none until the strike field is laid (phase B), which closes the way
-	# honestly (`SentinelWay.progress`: a keeper the plan never fed cannot be
-	# starved), and twelve the moment it is.
+	# nine where the field stands whole (glass_desert.gd FIELD_ROWS), never
+	# fewer than six (FIELD_LEAST).
 	d.feeds = [PropKind.STRIKE_ROD]
 	d.come_round = "The crown swings round on its mast, low, across the side you keep to."
 	d.drops = &"sentinel_anvil"

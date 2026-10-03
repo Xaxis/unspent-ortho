@@ -6168,7 +6168,6 @@ const KEEPER_FELL := {
 	&"anvil": {
 		&"force": "The mast comes apart, and its crown rings down onto the glass.",
 		&"founder": "The mast skates into the drift and stops. The sand closes over its core.",
-		# Kept though the way waits on a strike field no world lays yet.
 		&"starve": "The crown calls and nothing answers. The mast stands on its skates, and goes quiet.",
 	},
 }

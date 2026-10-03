@@ -18,7 +18,6 @@ const SEEDS: Array[int] = [1, 7, 42, 90210]
 ## a line that now holds on every seed.
 const STANDING: Array[String] = [
 	"anchor:founder", "anchor:starve",
-	"anvil:starve",
 	"listener:founder",
 	"plough:founder", "plough:starve",
 	"plumb:starve",
@@ -68,7 +67,10 @@ func test_a_second_region_of_a_landscape_gets_its_keepers_station() -> void:
 			var def := Sentinels.by_id(st.design)
 			var at_station := false
 			for m: Dictionary in w.landmarks:
-				if StringName(str(m.kind)) == def.stations[0] and (m.pos as Vector2).distance_to(st.lair) < 13.0:
+				# At it is inside its feeding reach of it, as test_world holds:
+				# a den with its larder under its feet stands off past the
+				# take-refusal radius (Sentinels.larder_robbable).
+				if StringName(str(m.kind)) == def.stations[0] and (m.pos as Vector2).distance_to(st.lair) < def.reach * Sentinels.FEED_SHARE:
 					at_station = true
 			check(at_station, "seed 7: the %s of region %d dens at its %s" % [st.design, st.region, def.stations[0]])
 			dens[st.design] = int(dens.get(st.design, 0)) + 1
