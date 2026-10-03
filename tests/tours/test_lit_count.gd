@@ -56,3 +56,25 @@ func test_past_the_cap_a_geometry_is_counted_over() -> void:
 	eq(c.over, 1, "past the cap of %d" % int(c.cap))
 	eq(c.shaded, 12 * int(c.cap), "only the cap's lights are shaded")
 	root.free()
+
+
+func test_a_black_stand_in_is_counted_apart_but_takes_its_place() -> void:
+	var root := Node3D.new()
+	tree.root.add_child(root)
+	root.add_child(_box(Vector3.ZERO))
+	# 01_warm_lights' kind: black, reaching everything.
+	var stand := _lamp(Vector3(500, 0, 0), 100000.0)
+	stand.light_color = Color.BLACK
+	root.add_child(stand)
+	for i in 7:
+		root.add_child(_lamp(Vector3(1.5, 0, 0).rotated(Vector3.UP, i * 0.6), 2.0))
+	var c := LitPerf.count(root)
+	eq(c.lights, 7, "the stand-in is not a lamp")
+	eq(c.black, 1, "it is counted as black")
+	eq(c.black_pairs, 1, "and reaches the box")
+	eq(c.pairs, 7, "the seven lamps light it")
+	eq(c.over, 0, "seven and one is the cap of %d, not past it" % int(c.cap))
+	eq(c.shaded, 12 * 7, "the seven are shaded, the black one adds nothing")
+	root.add_child(_lamp(Vector3(-1.5, 0, 0), 2.0))
+	eq(LitPerf.count(root).over, 1, "an eighth lamp beside the stand-in is past the cap")
+	root.free()
