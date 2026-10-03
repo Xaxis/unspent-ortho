@@ -124,6 +124,25 @@ static func forget() -> void:
 
 ## Every depot in a world, biggest region first (the order `WorldData.regions`
 ## is in), so a save's list and a fresh game's list are the same list.
+## A depot is a place worth walking to, so it goes in the world's own list of
+## them: the map draws it, the reads app names it, and a tour reaches it by name
+## (`place works`) instead of by a coordinate that the next change to worldgen
+## quietly invalidates. Added after generation, so no island moves. Recorded at
+## its first working part rather than at the middle of its deck, for the same
+## reason a landmark is recorded at its cache: arriving at a works means arriving
+## where the hands go. Its other two housings are reached by name too
+## (`works_breaker`, `works_coolant`), through `GenPlaces`, without being marks
+## of their own on the map. Written on the raise's worker with the other rows
+## (RealmWarm), and again by 34_works for a world nobody got ready.
+static func record(world: WorldData) -> void:
+	for s: WorksSite in sites(world):
+		var at := s.part(0)
+		if not Landmarks.has_row(world, &"works", at):
+			world.landmarks.append({"kind": &"works", "pos": at,
+				"country": world.country_at(floori(at.x), floori(at.y)),
+				"dir": Vector2.from_angle(s.facing)})
+
+
 static func sites(world: WorldData) -> Array[WorksSite]:
 	var out: Array[WorksSite] = []
 	if world == null:

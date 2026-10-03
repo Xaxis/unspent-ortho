@@ -427,17 +427,20 @@ static func cache_of(site: LandmarkSite) -> Vector2:
 static func record(world: WorldData) -> void:
 	for s: LandmarkSite in sites(world):
 		var at := cache_of(s)
-		var had := false
-		for m: Dictionary in world.landmarks:
-			# Typed before compared: this runs on the raise's worker.
-			var kind: StringName = StringName(str(m.get("kind", &"")))
-			if kind == s.kind and (m.get("pos", Vector2.INF) as Vector2).distance_to(at) < 0.5:
-				had = true
-				break
-		if not had:
+		if not has_row(world, s.kind, at):
 			world.landmarks.append({"kind": s.kind, "pos": at,
 				"country": world.country_at(floori(at.x), floori(at.y)),
 				"dir": Vector2.from_angle(s.facing)})
+
+
+## Whether the world's list holds a row of `kind` within half a tile of `at`.
+static func has_row(world: WorldData, kind: StringName, at: Vector2) -> bool:
+	for m: Dictionary in world.landmarks:
+		# Typed before compared: this runs on the raise's worker.
+		var k: StringName = StringName(str(m.get("kind", &"")))
+		if k == kind and (m.get("pos", Vector2.INF) as Vector2).distance_to(at) < 0.5:
+			return true
+	return false
 
 
 ## What one landmark holds, rolled once and for good: the same seed and the same

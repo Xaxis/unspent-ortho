@@ -22,3 +22,20 @@ func test_the_light_index_got_ready_beside_the_raise_is_taken() -> void:
 	eq((lights.get("sources") as Array).size(), fresh.size(), "the taken index is the whole world's")
 	Sx.end(g)
 	Sx.finish()
+
+
+## The world's own list of places is whole once its raise is: no system that used
+## to add its rows at setup (20_realms' shafts, 22_landmarks' places, 34_works'
+## depots) grows it, so every answer keyed on the list's length (Works.sites,
+## every keeper's den, the treads' marks) holds from the raise on.
+func test_no_system_adds_a_row_to_a_world_got_ready() -> void:
+	Sx.use_root("start-warm")
+	var w := WorldGen.generate(1, 512)
+	RealmWarm.prepare(w)
+	var rows := w.landmarks.size()
+	BootWorld.offer(w)
+	var g := Sx.game(tree, ["--seed=1", "--size=512"])
+	eq(g.world, w, "the game starts on the world raised for it")
+	eq(w.landmarks.size(), rows, "no setup added a row to the list RealmWarm made whole")
+	Sx.end(g)
+	Sx.finish()

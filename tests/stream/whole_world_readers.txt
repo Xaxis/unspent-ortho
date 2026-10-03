@@ -35,7 +35,7 @@ src/core/interior/interiors.gd::thresholds::builder Landmarks.sites
 src/core/interior/interiors.gd::thresholds::builder Works.sites
 src/core/interior/interiors.gd::thresholds::list
 src/core/landmarks/landmarks.gd::_trod::list
-src/core/landmarks/landmarks.gd::record::list
+src/core/landmarks/landmarks.gd::has_row::list
 src/core/landmarks/landmarks.gd::sited::list
 src/core/mobs/coast.gd::_first_due::builder Spawner.green_distance
 src/core/mobs/coast.gd::_first_meeting::builder Spawner.green_distance
@@ -159,7 +159,6 @@ src/systems/19_colossi.gd::setup::builder Treads.hand_over
 src/systems/19_colossi.gd::setup::whole
 src/systems/19_colossi.gd::tour_place::list
 src/systems/19_colossi.gd::tour_place::raw
-src/systems/20_realms.gd::_as_landmark::list
 src/systems/20_realms.gd::_draw_gates::builder StoryGates.all
 src/systems/20_realms.gd::_read_portals::builder Portals.in_world
 src/systems/20_realms.gd::_save::whole
@@ -173,7 +172,6 @@ src/systems/24_holds.gd::_read_sites::builder Hold.sites
 src/systems/24_holds.gd::_refresh_chapters::builder Chapters.for_regions
 src/systems/32_disposition.gd::_network_name::list
 src/systems/32_disposition.gd::_reads::builder Chapters.of
-src/systems/34_works.gd::_as_landmark::list
 src/systems/34_works.gd::_read_sites::builder Works.sites
 src/systems/35_folk.gd::_stream::list
 src/systems/37_fauna.gd::_find_sites::list
