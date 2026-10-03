@@ -21,13 +21,16 @@ const LURE_AT: Array[float] = [10.0, 12.0, 8.0, 14.0, 16.0, 18.0]
 ## (the drowned city's world, seeds 1 and 7).
 const LURE_DEPTH := 3.0
 ## The hour the force fights start: after the sun is down. By day the glass's
-## glare (0.7), heat and thirst press a body past Hazards.BITE and slow his run
+## glare (0.7), heat and thirst press a body past Hazards.BITE and his run falls
 ## to 59-71% at the strike field's den on seed 7, and no opening of the skating
-## side lasts the walk to its back; a person comes at another hour. At 20:00
-## Weather.night_fall is 0.65, which leaves glare 0.27, heat 0.35 and thirst
-## 0.43, none of them biting, and a fight (1.4 clock minutes a second) only
-## carries it further into the night, where a dawn start would walk into the
-## glare by 06:00.
+## side lasts the walk to its back; a person comes at another hour. The glare goes
+## only with the sun (Hazards._hour_shift, on Weather.night_fall), so no daylight
+## hour is without it: it is 0.7 until 18:30 and under BITE from 19:16. At 20:00
+## night_fall is 0.65, the glare 0.27, heat 0.35, thirst 0.43, none biting, and
+## the light 73% of day (Weather.light_level, whose night floor is 58%): dusk-lit,
+## nearer day than night, so a person still reads the anvil. A fight (1.4 clock
+## minutes a second) only carries the glare further down, where one begun at
+## dawn would walk into it by 06:00.
 const FORCE_HOUR := 20.0
 
 
