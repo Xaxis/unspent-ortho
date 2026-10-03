@@ -13,6 +13,11 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 tour="$1"; shift
 . tools/_tour_args.sh
+others="$(tour_header_others "$tour")"
+if [ -n "$others" ]; then
+  echo "tour FAILED: $(basename "$tour")'s header runs $others, never itself: name this file in its run line, or it boots bare"
+  exit 1
+fi
 if [ $# -eq 0 ]; then
   while IFS= read -r opt; do
     [ -n "$opt" ] && set -- "$@" "$opt"
