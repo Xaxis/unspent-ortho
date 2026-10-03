@@ -357,18 +357,12 @@ func _by_region(region: int) -> WorksSite:
 ## more thing it can mean, so it takes the key only when it is nearer than
 ## whatever else is under the hand (the same rule a shaft goes by, 20_realms).
 func _work(delta: float) -> void:
-	if game.input_blocked() or not Input.is_action_pressed(&"use") or (_job.is_empty() and Survival.ask_pending(game)):
+	var taken := _part_taken()
+	if not Input.is_action_pressed(&"use") or taken.is_empty():
 		_drop_job()
 		return
-	var s := here()
-	if s == null:
-		_drop_job()
-		return
-	var i := Works.part_near(s, sim.hero.pos)
-	var st: WorksState = _states.get(s.region, null)
-	if i < 0 or st == null or st.broken() or st.parts[i] or not _part_wins(s, i):
-		_drop_job()
-		return
+	var s: WorksSite = taken[0]
+	var i: int = taken[1]
 	if not Items.hard_enough(game.inventory.held, Works.BREAK_STUFF):
 		if _job.is_empty():
 			_job = {"refused": true}
@@ -389,6 +383,28 @@ func _work(delta: float) -> void:
 	if int(_job.ticks) >= TICKS:
 		_break(s, i)
 		_job = {}
+
+
+## [site, part] a held `use` works now, or []: the one answer `_work` acts on and
+## `use_line` names.
+func _part_taken() -> Array:
+	if game.input_blocked() or (_job.is_empty() and Survival.ask_pending(game)):
+		return []
+	var s := here()
+	if s == null:
+		return []
+	var i := Works.part_near(s, sim.hero.pos)
+	var st: WorksState = _states.get(s.region, null)
+	if i < 0 or st == null or st.broken() or st.parts[i] or not _part_wins(s, i):
+		return []
+	return [s, i]
+
+
+## The hint for the press a works housing would take (UiLink.use_hint), or "".
+func use_line() -> String:
+	if game == null or sim == null or _part_taken().is_empty():
+		return ""
+	return "housing - break" if Items.hard_enough(game.inventory.held, Works.BREAK_STUFF) else "housing - no edge"
 
 
 ## A part only takes the key while nothing the player could take from is nearer:
