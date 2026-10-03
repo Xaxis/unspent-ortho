@@ -133,10 +133,10 @@ static func make() -> BiomeDef:
 	# are declared under it so the ash decides.
 	d.hazards = {&"toxins": 0.5, &"wet": 0.35}
 	d.roster = {
-		&"harvester": {"weight": 1.0, "grounds": ["grass", "heath", "mud"]},
-		&"sweeper": {"weight": 0.9, "grounds": ["road", "gravel", "grass", "mud"]},
-		&"warden": {"weight": 0.7},
-		&"dog.feral": {"weight": 0.8},
+		&"harvester": {"grounds": ["grass", "heath", "mud"]},
+		&"sweeper": {"grounds": ["road", "gravel", "grass", "mud"]},
+		&"warden": {},
+		&"dog.feral": {},
 	}
 	d.landmarks = [&"clerks_office", &"poured_pillar", &"sump_pump", &"blinking_stack"]
 	# Behind every grower's door, the house the machines still keep for them:

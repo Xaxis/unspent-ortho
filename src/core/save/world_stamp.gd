@@ -274,7 +274,7 @@ const UNKNOWN := "unknown"
 ##     Every region big enough to keep a keeper gets its keeper's first station
 ##     (an intake, a lock), laid only where the ground keeps the design's ways
 ##     and never within its keeper's reach of where the raft comes ashore
-##     (GenWorks.station_holds). (Provisional; restamped at landing.)
+##     (GenWorks.station_holds).
 ## 48. The lame leg's tread comes down on the Covenant's body (slice 3 step 7):
 ##     the first wanted plant scores leg 1's body first, nearer where he comes
 ##     ashore the better, and where nothing fits there it is sited home-first as
@@ -293,14 +293,18 @@ const UNKNOWN := "unknown"
 ##     10.9 -> 3.9 on 7 and 4.4 -> 0.5 on 4. (Landmarks, not worldgen: the
 ##     clock tower stands over the port, within 20 tiles, in the shallows if it
 ##     must: 25.6 -> 11.2 on seed 1, 28.7 -> 9.0 on 7, 28.9 -> 4.4 on 42,
-##     7.2 -> 5.4 on 4.) (Provisional; restamped at landing.)
-## 50. The tread's people keep a holding at the lame leg's tread on leg 1's
-##     body, which `site` marks as theirs (`folk`; the story casts `the_tread`
+##     7.2 -> 5.4 on 4.)
+## 50. Every village has its own name: a land whose list runs out numbers its
+##     first name, each number once (GenSettle._name). Seed 1's eight slum
+##     blocks past the list were all "Ninth Shift 24". Names only; nothing
+##     moves.
+## 51. The tread's people keep a holding at the lame leg's tread, wherever it
+##     lands, which `site` marks as theirs (`folk`; the story casts `the_tread`
 ##     from it): a shack, a fire and a bench round its lip (GenTreads.dress
 ##     `_holding`, Treads.folk_lip), laid as that tread's own, after everything
 ##     else. Only props are appended; nothing laid before them moves.
 ##     (Provisional; restamped at landing.)
-const GEN := 50
+const GEN := 51
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

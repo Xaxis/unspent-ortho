@@ -126,12 +126,12 @@ static func make() -> BiomeDef:
 	# ferrous, and the walls come down.
 	d.hazards = {&"magnetism": 0.6, &"collapse": 0.45}
 	d.roster = {
-		&"sweeper": {"weight": 1.0, "grounds": ["road", "gravel", "mud", "swarf"]},
-		&"cutter": {"weight": 0.9, "grounds": ["rock", "scree", "gravel"]},
-		&"hauler": {"weight": 0.9},
-		&"dog.feral": {"weight": 0.7},
+		&"sweeper": {"grounds": ["road", "gravel", "mud", "swarf"]},
+		&"cutter": {"grounds": ["rock", "scree", "gravel"]},
+		&"hauler": {},
+		&"dog.feral": {},
 		# Its own: the sorter, throwing the rejects up onto the walls (Roster).
-		&"sorter": {"weight": 1.2},
+		&"sorter": {},
 	}
 	d.landmarks = [&"grown_hulk", &"blinking_stack", &"clerks_office", &"poured_pillar"]
 	# Its houses open on the homes its people kept (src/content/interiors/home.gd).
