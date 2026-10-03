@@ -108,10 +108,10 @@ static func make() -> BiomeDef:
 	# place a body is pressed by something that is simply RUNNING, not weather.
 	d.hazards = {&"heat": 0.45, &"em": 0.6}
 	d.roster = {
-		&"clerk": {"weight": 1.0, "grounds": ["floor", "road", "gravel", "rock"]},
-		&"watcher": {"weight": 1.0},
-		&"warden": {"weight": 0.9},
-		&"sweeper": {"weight": 0.7, "grounds": ["floor", "road", "mud", "grass"]},
+		&"clerk": {"grounds": ["floor", "road", "gravel", "rock"]},
+		&"watcher": {},
+		&"warden": {},
+		&"sweeper": {"grounds": ["floor", "road", "mud", "grass"]},
 	}
 	d.landmarks = [&"clerks_office", &"blinking_stack", &"poured_pillar", &"sump_pump"]
 	# Under the sump, the hall it kept dry: where the machines think

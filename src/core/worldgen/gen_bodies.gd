@@ -830,6 +830,15 @@ static func _dealt_as(d: BiomeDef) -> Vector2i:
 const LANDFALL_CELL := 8
 
 
+## Where the shortest water from home comes ashore (`_landfall`'s `from`), or INF
+## on a world no body is the landfall of.
+static func ashore(w: WorldData) -> Vector2:
+	for row: Dictionary in w.continents:
+		if bool(row.get("landfall", false)) and row.has("from"):
+			return row["from"]
+	return Vector2.INF
+
+
 ## THE LANDFALL (`BiomeDef.LANDFALL`) goes on the body the SHORTEST WATER from
 ## home reaches: a raft's crossing, found by spreading over the sea from every
 ## home cell until another continent is touched. Nearest by centre named a body

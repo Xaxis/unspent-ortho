@@ -83,6 +83,43 @@ func test_the_raft_comes_ashore_in_the_drowned_city() -> void:
 			eq(now[k], was[k], "seed %d: %s holds with the landfall rule and without" % [sd, k])
 
 
+## THE PORT STANDS WHERE THE RAFT COMES ASHORE: one stair down into the open sea
+## on the quay nearest the landfall's `from` (GenBodies.ashore), recorded as the
+## `port` row the story lands the raft at, and the clock tower, the one tall line
+## a raft steers by, over it. Darted anywhere along the city's shore, seed 1's
+## nearest stair stood 66 tiles off the landing and its clock 49 from any stair.
+const PORT_SEEDS: Array[int] = [1, 4, 7, 42]
+const PORT_OFF := 12.0
+## In the frame of a player stepping off the raft (Landmarks LANDFALL_OVER).
+const CLOCK_OFF := 20.0
+
+
+func test_the_port_stands_where_the_raft_comes_ashore() -> void:
+	for sd: int in PORT_SEEDS:
+		var w := WorldGen.generate(sd, Tuning.WORLD_SIZE)
+		var from := GenBodies.ashore(w)
+		check(from.is_finite(), "seed %d: the raft has somewhere to come ashore" % sd)
+		var ports: Array[Dictionary] = []
+		for m: Dictionary in w.landmarks:
+			if StringName(str(m.get("kind", &""))) == &"port":
+				ports.append(m)
+		eq(ports.size(), 1, "seed %d: one port" % sd)
+		if not from.is_finite() or ports.size() != 1:
+			continue
+		var port: Vector2 = ports[0].pos
+		var clock := INF
+		for site: LandmarkSite in Landmarks.sites(w):
+			if site.kind == &"clock_tower":
+				clock = minf(clock, site.pos.distance_to(port))
+		# The water it goes down into is the sea's (its level, not a canal's).
+		var below := port + (ports[0].dir as Vector2) * 1.2
+		var sea := Ground.is_water(w.ground_at(floori(below.x), floori(below.y))) and w.level_at(floori(below.x), floori(below.y)) <= 0
+		print("  seed %d: the port %.1f from where the raft comes ashore, the clock %.1f from the port, open sea below it: %s" % [sd, port.distance_to(from), clock, sea])
+		check(port.distance_to(from) <= PORT_OFF, "seed %d: the port within %.0f of the landing, got %.1f" % [sd, PORT_OFF, port.distance_to(from)])
+		check(clock <= CLOCK_OFF, "seed %d: the clock within %.0f of the port, got %.1f" % [sd, CLOCK_OFF, clock])
+		check(sea, "seed %d: the port's stair goes down into the open sea at %s" % [sd, below])
+
+
 ## EVERY BODY THE LANDFALL DID NOT TRADE HOLDS ITS LAND, read off the plan (the
 ## cheaper half of the world): its land, its roads and its climate. Seed 90210's
 ## landing lies outside the city, and its roads were one tree over every village
