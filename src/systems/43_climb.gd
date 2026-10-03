@@ -400,7 +400,8 @@ func _watch_cable(use_edge: bool) -> void:
 ## A press now takes hold of the cable in reach (`_rim`): the one answer
 ## `_watch_cable` acts on and `use_line` names.
 func _cable_takes() -> bool:
-	return climb == null and not _rim.is_empty() and not game.input_blocked() and not _spent_elsewhere()
+	return climb == null and not _rim.is_empty() and not game.input_blocked() and not _spent_elsewhere() \
+			and not Survival.words_in_front(game)
 
 
 ## The hint for the press the cable would take (UiLink.use_hint), or "".

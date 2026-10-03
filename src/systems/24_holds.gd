@@ -396,6 +396,8 @@ func _near() -> Hold.HoldSite:
 
 
 func _hold_wins(h: Hold.HoldSite) -> bool:
+	if Survival.words_in_front(game):
+		return false
 	var t := Survival.use_target(game)
 	if t == null:
 		return true

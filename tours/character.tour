@@ -20,8 +20,7 @@ key use
 await character 8
 wait 0.5
 shot 01-who-wakes
-# build: man, woman, heavy
-key move_right
+# build: man to heavy (UiCharacterScreen.PAGE_BUILDS)
 key move_right
 # skin: brown to tan
 key move_down
@@ -48,7 +47,9 @@ key move_up
 wait 0.3
 shot 03-begin-chosen
 key use
-await game 40
+# "begin" raises the coast's world behind the loading page: the bound is the
+# raise's, which runs past a minute on a loaded box.
+await game 300
 coast calm
 zoom 4
 wait 1.5
