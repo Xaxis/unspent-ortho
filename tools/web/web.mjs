@@ -29,7 +29,9 @@
 //   --play           start a new game from the title with real keys and shoot it
 //   --reload         reload and require user:// (IndexedDB) to have kept the probe's save
 //   --resize=WxH     then resize the page and require the scale to stay an exact integer
-//   --swiftshader    render on the CPU (hosts with no GPU; a game frame can take seconds)
+//   --swiftshader    render on the CPU (hosts with no GPU; a game frame can take seconds).
+//                    Always, on Linux: see GPU_OFF below
+//   --gpu            draw on the machine's GPU on Linux, which is refused (GPU_OFF)
 //   --headed         show the browser
 //   --dpr=N          device pixel ratio of the page (default 1; 2 is a Retina screen)
 //   --verbose        print every console line
@@ -82,6 +84,21 @@ for (const a of process.argv.slice(2)) {
   const m = a.match(/^--([^=]+)(?:=(.*))?$/);
   if (m) opt[m[1]] = m[2] === undefined ? true : m[2];
 }
+// NO GPU BROWSER ON LINUX. On 2026-10-03 at 02:11 a web run's headless Chromium,
+// drawing through ANGLE on Vulkan (RADV, the RX 6700 XT), page-faulted the GPU
+// beside a Godot render; the ring reset failed, the driver reset the whole GPU,
+// video memory was lost, and the owner's desktop session went with it. Holding
+// this game's heavy slots cannot prevent it: other projects' Godot and Chromium
+// share the GPU and take no lock here. So on Linux every run renders on the CPU
+// (SwiftShader), which is enough to prove a boot and a title, and too slow to
+// raise a full island inside the boot's limit. The owner decides whether a GPU
+// web run comes back; until then --gpu says so and stops.
+const GPU_OFF = process.platform === 'linux';
+if (GPU_OFF && opt.gpu) {
+  console.log("web FAILED: GPU web runs are off on this box: a Vulkan Chromium reset the GPU and the owner's session (2026-10-03); the owner decides");
+  process.exit(2);
+}
+const software = Boolean(opt.swiftshader) || GPU_OFF;
 // --url= proves a build that is already on the internet (tools/deploy.sh) with
 // the same checks a local one gets: the host sends the headers, not us, so a
 // deploy that forgets cross-origin isolation or the wasm type fails here.
@@ -211,11 +228,12 @@ const { chromium } = await import('playwright');
 
 // ---- browser --------------------------------------------------------------
 // Headless Chromium on the machine's GPU (Metal through ANGLE on macOS, the
-// platform default elsewhere). SwiftShader draws a game frame in seconds.
+// platform default elsewhere), except on Linux (GPU_OFF). SwiftShader draws a game
+// frame in seconds.
 const gpuArgs = process.platform === 'darwin' ? ['--use-angle=metal'] : [];
 // Audio waits for a gesture, as in a browser a player opens (headless otherwise
 // lets a page start sound on its own, and the first-key rule would go untested).
-const launchArgs = [...(opt.swiftshader
+const launchArgs = [...(software
   ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
   : [...gpuArgs, '--ignore-gpu-blocklist', '--enable-gpu']), '--autoplay-policy=user-gesture-required',
   // A page's frames are held to the display's rate, so a frame that costs 4 ms
@@ -721,7 +739,7 @@ const query = '?' + args.map((a) => {
   return v.length ? `${encodeURIComponent(k)}=${encodeURIComponent(v.join('='))}` : encodeURIComponent(k);
 }).join('&');
 const url = live ? `${String(opt.url).replace(/\/$/, '')}/${query}` : `http://127.0.0.1:${port}/index.html${query}`;
-console.log(`web ${live ? String(opt.url) : path.relative(process.cwd(), root)} on ${url} (${opt.swiftshader ? 'swiftshader' : 'gpu'})`);
+console.log(`web ${live ? String(opt.url) : path.relative(process.cwd(), root)} on ${url} (${software ? 'swiftshader' : 'gpu'})`);
 const result = {};
 
 async function boot(label, from = lines.length) {
@@ -747,6 +765,13 @@ const glFirst = [];
 const glEvents = [];
 if (opt.programs) await page.exposeFunction('__glReport', (r) => { if (r.event) glEvents.push(r); else glFirst.push(r); });
 await page.goto(url);
+// What the page draws with, so no run's numbers are read off the CPU unawares.
+const renderer = await page.evaluate(() => {
+  const gl = document.createElement('canvas').getContext('webgl2');
+  const info = gl && gl.getExtension('WEBGL_debug_renderer_info');
+  return gl ? gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) : 'no WebGL2';
+}).catch((e) => `unknown (${e})`);
+console.log(`web renderer ${renderer}`);
 // The shell, while the engine's wasm is held back, then the engine's first page
 // frame once the shell has gone: the same rectangle, the same line, never shorter.
 phase = 'waiting for the shell to draw';
