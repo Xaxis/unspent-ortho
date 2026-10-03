@@ -136,7 +136,7 @@ func _tell_to_answer(m: MobState) -> bool:
 		return true
 	var local := (hero.pos - m.pos).rotated(-m.facing)
 	var fwd := Vector2.from_angle(m.facing)
-	var side := Vector2.from_angle(m.facing + PI * 0.5) * (1.0 if local.y >= 0.0 else -1.0)
+	var side := Vector2.from_angle(m.facing + PI * 0.5) * _side_of(m, local.y)
 	var back_need := m.radius + b.reach + hero.radius - local.x
 	var side_need := b.width * 0.5 + hero.radius - absf(local.y)
 	# Aside is where the spent body can be got round; back is only for a narrow miss.
@@ -151,6 +151,22 @@ func _tell_to_answer(m: MobState) -> bool:
 	return true
 
 
+## The side of a body's line the player steps out to, held. Dead in its row
+## the offset is a hair either way, and read fresh each step it can flip the
+## step every frame and leave the player standing in the row. A person picks a
+## side and keeps it, until they are plainly on the other.
+const SIDE_HOLD := 0.3
+var _sides := {}
+
+
+func _side_of(m: MobState, off: float) -> float:
+	var held: float = _sides.get(m.id, 0.0)
+	if held == 0.0 or (absf(off) > SIDE_HOLD and signf(off) != held):
+		held = 1.0 if off >= 0.0 else -1.0
+		_sides[m.id] = held
+	return held
+
+
 ## A machine coming on at a run with the player in its row: out of the row.
 func _charge_to_leave(m: MobState) -> bool:
 	var hero := sim.hero
@@ -159,7 +175,7 @@ func _charge_to_leave(m: MobState) -> bool:
 	var local := (hero.pos - m.pos).rotated(-m.facing)
 	if local.x <= 0.0 or local.x > 6.0 or absf(local.y) > m.radius + hero.radius + 0.9:
 		return false
-	var side := Vector2.from_angle(m.facing + PI * 0.5) * (1.0 if local.y >= 0.0 else -1.0)
+	var side := Vector2.from_angle(m.facing + PI * 0.5) * _side_of(m, local.y)
 	hero.move = side
 	return true
 
@@ -267,7 +283,7 @@ func _wait(m: MobState) -> void:
 	if m.approach == &"charge":
 		var local := away.rotated(-m.facing)
 		if local.x > 0.0 and absf(local.y) < m.radius + hero.radius + 0.6:
-			dir += Vector2.from_angle(m.facing + PI * 0.5) * (1.0 if local.y >= 0.0 else -1.0)
+			dir += Vector2.from_angle(m.facing + PI * 0.5) * _side_of(m, local.y)
 	hero.move = dir.limit_length(1.0)
 
 

@@ -101,7 +101,7 @@ func act() -> void:
 	# bites from there; only a charge, from further off, carries it onto the sand).
 	var drawing := not keep_on.has(here_g) or m.pos.distance_to(hero.pos) < LURE_OFF
 	if lure.is_finite() and m.roused() and drawing and hero.pos.distance_to(lure) > 0.3 and sim.now >= _escape_until:
-		hero.move = (lure - hero.pos).normalized() if hero.pos.distance_to(lure) > 0.3 else Vector2.ZERO
+		hero.move = _on_level((lure - hero.pos).normalized(), m)
 		return
 	if hero.move.length() < 0.05:
 		return
@@ -123,6 +123,27 @@ func act() -> void:
 	# a player walks round, back to where they came at it from. One holding out
 	# on ground (`keep_on`) holds there instead, once it is on it.
 	hero.move = _walk_back() if home.is_finite() and not _holding_out() else Vector2.ZERO
+
+
+## The way `dir`, kept to ground a blow passes between it and the keeper on,
+## turned aside as little as it must and the same way it last turned. Walked
+## straight at a lure across a rise two levels above the keeper, the step up
+## and the step back down (`act`) undid each other every frame: the player stood
+## on the rise's lip in the keeper's row and the anvil's bites caught it there
+## (seed 1's den, test_anvil_ways). A player walks round the rise.
+var _lure_turn := 1.0
+
+
+func _on_level(dir: Vector2, m: MobState) -> Vector2:
+	for sense: float in [_lure_turn, -_lure_turn]:
+		for turn: float in [0.0, 0.6, 1.2, 1.8]:
+			var step := dir.rotated(turn * sense)
+			# Half a step and a step on: a corner of the rise cut by the step counts.
+			if sim.meets(sim.hero.pos + step * 0.3, m.pos) and sim.meets(sim.hero.pos + step * 0.6, m.pos) and _gets_on(step):
+				if turn > 0.0:
+					_lure_turn = sense
+				return step
+	return dir
 
 
 ## Whether a step `dir` way takes the body on at least half a step's worth: a
