@@ -122,6 +122,11 @@ static func read_reach(view_height: float, pitch_deg: float, aspect: float, high
 static var _defs: Dictionary = {}
 static var _order: Array[LandmarkDef] = []
 static var _declared := false
+## Which landmarks the treads trod, per world and the marks it holds (`_trod`):
+## a pure answer from a world's own rows, so one forgotten costs a rescan and
+## never a different answer. Where they stand is held on each world (HELD).
+static var _trod_of: Dictionary = {}
+const TROD_MOST := 6
 
 
 static func _build() -> void:
@@ -469,8 +474,52 @@ static func problems(land_ids: Array) -> PackedStringArray:
 
 # --- where they stand -----------------------------------------------------------
 
-## Every landmark in a world, biggest region first and in kind order inside a
-## region, so the list is the same list every time and `nth` never shifts.
+## THE LANDMARKS STILL STANDING: every one sited (`sited`) but those a walker's
+## foot came down on (`trodden`). What stood in a crater lies under it, so it is
+## raised by nobody, walled by nobody and counted by no chapter, and its id still
+## means the place it was.
+static func sites(world: WorldData) -> Array[LandmarkSite]:
+	var out := sited(world)
+	var trod := _trod(world)
+	if trod.is_empty():
+		return out
+	var standing: Array[LandmarkSite] = []
+	for s: LandmarkSite in out:
+		if not trod.has(s.id):
+			standing.append(s)
+	return standing
+
+
+## Whether a walker's foot came down on landmark `id`: GenTreads writes each
+## tread's `trod` as it cuts, only ever of a landmark that carries no load.
+static func trodden(world: WorldData, id: StringName) -> bool:
+	return _trod(world).has(id)
+
+
+## Every id any tread trod, read once per world and the marks it holds (the
+## treads are written last, so a world still being laid is asked again).
+static func _trod(world: WorldData) -> Dictionary:
+	var out := {}
+	if world == null:
+		return out
+	var key := "%d:%d" % [world.get_instance_id(), world.landmarks.size()]
+	if _trod_of.has(key):
+		return _trod_of[key]
+	for m: Dictionary in world.landmarks:
+		if m.get("kind") == &"tread":
+			for id: StringName in (m.get("trod", []) as Array):
+				out[id] = true
+	if _trod_of.size() >= TROD_MOST:
+		_trod_of.clear()
+	_trod_of[key] = out
+	return out
+
+
+## Every landmark the siting put down in a world, trodden or standing, biggest
+## region first and in kind order inside a region, so the list is the same list
+## every time and `nth` never shifts. The story is cast from this (StoryCasting),
+## so a crater never moves a story place; everything that draws, walls or counts
+## a place reads `sites`.
 ##
 ## ONE SCAN PER REGION. Asking the region's bounds again for every kind and every
 ## loosening pass is a dozen sweeps of the island, which cost 1.2 SECONDS on a
@@ -478,7 +527,7 @@ static func problems(land_ids: Array) -> PackedStringArray:
 ## (docs/ROADMAP.md's start budget). The sweep gathers every tile with room on it
 ## once, scoring it for each thing the region's own kinds want, and the picking
 ## afterwards is a walk over a few hundred candidates.
-static func sites(world: WorldData) -> Array[LandmarkSite]:
+static func sited(world: WorldData) -> Array[LandmarkSite]:
 	var out: Array[LandmarkSite] = []
 	if world == null:
 		return out
@@ -640,6 +689,7 @@ const HELD := &"landmarks_sited"
 ## `world`'s landmarks are sited again on its next ask: a timing that must not
 ## time a lookup.
 static func forget(world: WorldData) -> void:
+	_trod_of.clear()
 	if world != null and world.has_meta(HELD):
 		world.remove_meta(HELD)
 

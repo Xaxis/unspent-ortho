@@ -102,9 +102,11 @@ Proof tour: `tours/across.tour`, from slice 2's end.
    talk and panel, and the climb's words (e); the limp gait (f); the warden's lead to it
    (`walker_told`, the survey pinning the crater); Tull, who farms its craters (colour,
    never load). `tours/colossi_climb.tour` plays it by real keys from a staged landing,
-   `tours/across.tour` by the goal line. Open: the tread-folk's holding drawn in the
-   craters (a GEN), and the treads miss the leg-1 body on some worlds (seeds 42 and 3 of
-   1, 3, 7, 12, 42).
+   `tours/across.tour` by the goal line. The lame leg's tread comes down on the leg-1
+   body wherever it fits there (GEN 48: seeds 1, 3 and 90210 of five); on 7 (water
+   under the strata) and 42 (no room) the lead goes home. Open: the tread-folk's holding
+   drawn in the craters (a GEN), and siting the treads before the keeps if more worlds
+   lack the climb.
 8. [x] **Back at the camp** (A). `crew_war` / `dace_left`, `rook_told`.
 9. [x] **Fix** (A). `hale_log` locked until `war_relay`.
 10. [ ] **Proof** (all). The tour plays the slice by the goal line alone. ★ On main:
