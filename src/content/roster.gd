@@ -449,7 +449,7 @@ const DEFS := {
 	&"sentinel.crags": {
 		"model": &"sentinel_plumb", "role": &"keeper", "machine": true, "approach": &"charge", "turns": 3,
 		"part": &"back", "sentinel": &"plumb", "breaks": WOOD,
-		"pace": 3.6, "dash": 7.5, "quick": 260, "radius": 1.35, "height": 7.0, "life": 270,
+		"pace": 3.6, "dash": 7.5, "quick": 260, "radius": 1.35, "height": 7.0, "life": 311,
 		"sees": 16, "hears": 9, "racket": 20, "reach": 3, "ready": 4, "forget": 28, "tether": 28, "safe": 14,
 		"nerve": 100, "invuln": 520, "through": true, "disposition": &"wary", "overrun": 0.6,
 		"bite": {"swing": [900, 180, 820, 900], "reach": 2.2, "width": 3.0, "dmg": 3, "knock": 9.0, "knock_ms": 320},
