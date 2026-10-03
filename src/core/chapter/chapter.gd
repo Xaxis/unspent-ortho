@@ -28,6 +28,8 @@ extends RefCounted
 ## What a chapter SAYS is the story's. This answers one question — is this place
 ## answered, and what is it still asking — and nothing else.
 
+const Treads := preload("res://src/core/colossus/colossus_treads.gd")
+
 ## The share of a region's landmarks that must be FOUND. Not all of them: a
 ## chapter is answered by having been through the place, and one site that
 ## happened to land behind a cliff must not hold a landscape shut. A region with
@@ -121,17 +123,21 @@ static func _standing_counts(world: WorldData) -> Dictionary:
 	return world.ore_standing
 
 
-## Taken, off the depleted set. Not a small set: every prop a walker's tread
-## crushed is in it from a new game's start (6,902 on seed 7 at 1840), so it is
-## read off the prop table, with no prop made per id.
+## Taken, off the depleted set, and only what he took: the props a walker's pads
+## crushed before he arrived are in that set too (6,902 on seed 7 at 1840) and
+## are no take of his (Treads.crushed, which `ore_standing` leaves out as well).
+## Read off the prop table, with no prop made per id.
 static func ore_taken(world: WorldData, region_id: int) -> int:
 	var kinds := ore_kinds(world, region_id)
 	if kinds.is_empty():
 		return 0
+	var crushed := Treads.crushed(world)
 	world.sync_table()
 	var t := world.table
 	var n := 0
 	for id: Variant in world.depleted:
+		if crushed.has(int(id)):
+			continue
 		var row := world.row_of_id(int(id))
 		if row < 0:
 			var p := world.prop(int(id))
@@ -151,9 +157,12 @@ static func ore_taken(world: WorldData, region_id: int) -> int:
 static func ore_taken_by_region(world: WorldData) -> Dictionary:
 	var out := {}
 	var kinds := {}
+	var crushed := Treads.crushed(world)
 	world.sync_table()
 	var t := world.table
 	for id: Variant in world.depleted:
+		if crushed.has(int(id)):
+			continue
 		var row := world.row_of_id(int(id))
 		var kind := -1
 		var at := Vector2.INF

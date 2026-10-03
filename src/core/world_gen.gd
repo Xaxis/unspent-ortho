@@ -221,8 +221,8 @@ static func finish(c: GenContext) -> WorldData:
 	# whose land a tile is on.
 	w.road = c.road
 	w.recipe = c.recipe
-	GenDigest.run(w)
 	GenIds.run(w)
+	GenDigest.run(w)
 	# Last: a roof clears the final levels and props, and leaves the shafts'
 	# mouths open (Portals are found from the finished world).
 	GenAbove.run(w)
