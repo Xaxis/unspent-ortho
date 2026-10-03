@@ -308,16 +308,22 @@ static func _works(L: Object) -> void:
 			if _bench_on(L, floors, BENCH_APART, BENCH_VILLAGE):
 				benches += 1
 				break
-	# A region that holds no bench yet tries once more at half the spacing, so
-	# no bench that stands moves: 90210's 464 tiles of crags had twelve flat
-	# squares, every one within 18 of its village or 30 of another place.
+	# A region that holds no bench yet tries again at half the spacing, then at
+	# BENCH_APART_LAST, so no bench that stands moves.
 	if benches == 0 and GenWorks._n_station(L, 1.0) > 0:
-		_bench_on(L, BENCH_FLOORS + BENCH_BARE, BENCH_APART * 0.5, BENCH_VILLAGE * 0.5)
+		for apart: float in [BENCH_APART * 0.5, BENCH_APART_LAST]:
+			if _bench_on(L, BENCH_FLOORS + BENCH_BARE, apart, BENCH_VILLAGE * 0.5):
+				break
 
 
 ## How far a bench keeps from the region's other places and from a village.
 const BENCH_APART := 30.0
 const BENCH_VILLAGE := 18.0
+## How far the last bench a region tries keeps from its other places: a place
+## laid before the works can crowd every flat square of a small region, and
+## 90210's 464 tiles of crags had all 25 within 7.6-10.6 of one stone circle.
+## A bench beside a stone circle is a fine sight on the crags.
+const BENCH_APART_LAST := 7.5
 
 
 ## A bench on the flattest of `floors` that stands, `apart` from other places

@@ -122,6 +122,11 @@ var recipe: PackedByteArray
 ## where its latitude suggested. `GenBodies` is its only writer
 ## (`tests/core/test_bodies.gd`).
 var continent: PackedByteArray
+## The skerries: land GenShape kept detached, under its ISLET_TILES, 1 a tile.
+## No shore work stands on one (GenWorks._shore_at), and a region whose only
+## shore is skerry has no shore for one (GenWorks.has_shore): both read
+## `islet_at`. Empty on a world built by hand.
+var islet: PackedByteArray
 ## What each body was dealt, biggest first: {id: int, tiles: int, centre: Vector2,
 ## bounds: Rect2}. `docs/DESIGN.md` §4 adds the budget, the climate band and the
 ## type set when the planning half lands.
@@ -229,6 +234,10 @@ func in_bounds(x: int, y: int) -> bool:
 
 ## Which BODY a tile is on: 0 is the void between them (`GenBodies.VOID`) — the
 ## ocean on the surface, solid rock underground, vacuum in orbit.
+func islet_at(x: int, y: int) -> bool:
+	return not islet.is_empty() and in_bounds(x, y) and islet[y * size + x] != 0
+
+
 func continent_at(x: int, y: int) -> int:
 	if not in_bounds(x, y):
 		return 0

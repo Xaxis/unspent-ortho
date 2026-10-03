@@ -151,6 +151,18 @@ func test_no_region_past_a_sliver_is_kept_out_of_its_keeper() -> void:
 				lt(float(tiles), float(SLIVER_MOST), "seed %d: %s region %d (%d tiles) is kept out of its %s: %s" % [s, r.get("type", &""), id, tiles, def.id, why])
 
 
+## THE SKERRIES ARE THE WORLD'S. `GenWorks._shore_at` and `has_shore` read
+## one mask (WorldData.islet_at), written where GenShape makes it. It is read
+## while the works are sited, inside the same WorldGen.generate, and here; no
+## world reaches either reader any other way: every world a game or a test
+## holds is made by WorldGen.generate (BootWorld, the title, the sound scene,
+## StoryCasting, RealmWorlds' raises), and none is saved, loaded or copied.
+func test_a_made_world_carries_its_skerries() -> void:
+	var w := _world(42)
+	eq(w.islet.size(), w.size * w.size, "seed 42's world keeps its skerry mask over every tile")
+	gt(float(w.islet.size() - w.islet.count(0)), 0.0, "and it holds skerries")
+
+
 ## Stations that stand only on a sea shore (GenWorks._shore).
 const SHORE_STATIONS: Array[StringName] = [&"intake"]
 
@@ -160,7 +172,8 @@ const SHORE_STATIONS: Array[StringName] = [&"intake"]
 ## (Sentinels.ground_den, the search a region whose stations nobody lays dens
 ## by: its heart may stand outside the region, and a station's den is the
 ## region's own), or its keeper's stations stand only on a sea shore and it
-## has none (GenWorks.has_shore).
+## has none off the skerries (GenWorks.has_shore, which reads them as
+## `_shore` does).
 static func _kept_out(w: WorldData, r: Dictionary, def: SentinelDef, landings: Array[Vector2]) -> String:
 	var den := Sentinels.ground_den(w, r, def, landings)
 	if not den.is_finite() or w.region_at(floori(den.x), floori(den.y)) != int(r.get("id", -1)):
@@ -169,7 +182,7 @@ static func _kept_out(w: WorldData, r: Dictionary, def: SentinelDef, landings: A
 	for k: StringName in def.stations:
 		on_shore = on_shore and SHORE_STATIONS.has(k)
 	if on_shore and not GenWorks.has_shore(w, r):
-		return "it has no sea shore for its %s's stations" % def.id
+		return "it has no sea shore off the skerries for its %s's stations" % def.id
 	return ""
 
 

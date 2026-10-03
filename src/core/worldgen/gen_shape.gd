@@ -268,6 +268,7 @@ static func run(c: GenContext) -> void:
 					islet[row + x] = islet_h[k]
 	)
 	c.islet = islet
+	c.w.islet = islet
 	c.land = land
 	# The journey template is laid over the main body's extent, not the islets'.
 	var min_x := size

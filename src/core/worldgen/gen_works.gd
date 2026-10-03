@@ -1133,7 +1133,7 @@ static func _shore_at(L: Lay, p: Vector2i, grounds: Array, top: int, room: float
 		return false
 	if not grounds.is_empty() and not grounds.has(int(w.ground[i])):
 		return false
-	if c.islet[i] != 0 or not L.here(p.x, p.y):
+	if w.islet_at(p.x, p.y) or not L.here(p.x, p.y):
 		return false
 	if _crowded(L, Vector2(p), room) or GenScatter._near_village(w, Vector2(p), maxf(room * 0.7, 14.0)):
 		return false
@@ -1143,14 +1143,16 @@ static func _shore_at(L: Lay, p: Vector2i, grounds: Array, top: int, room: float
 ## Whether `region` of a finished world holds a tile `_shore` could give: land
 ## at level 1 or 2 within SHORE_STEPS steps of the sea (level 0 and below, and
 ## off the map), read off the levels, since the stage's own steps
-## (GenContext.sea_steps) are gone by then.
+## (GenContext.sea_steps) are gone by then, and off the skerries, by the one
+## mask `_shore_at` reads (WorldData.islet_at). Seed 42's 400-tile coast
+## region 39 has shore only on a skerry.
 static func has_shore(world: WorldData, region: Dictionary) -> bool:
 	var id := int(region.get("id", -1))
 	var b: Rect2 = region.get("bounds", Rect2())
 	for y in range(floori(b.position.y), ceili(b.end.y)):
 		for x in range(floori(b.position.x), ceili(b.end.x)):
 			var l := world.level_at(x, y)
-			if l < 1 or l > 2 or world.region_at(x, y) != id:
+			if l < 1 or l > 2 or world.region_at(x, y) != id or world.islet_at(x, y):
 				continue
 			for dy in range(-SHORE_STEPS, SHORE_STEPS + 1):
 				var k := SHORE_STEPS - absi(dy)

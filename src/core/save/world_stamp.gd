@@ -301,7 +301,14 @@ const UNKNOWN := "unknown"
 ##     (GenWorks.station_holds, asked of the den the keeper takes). A walker's
 ##     tread keeps off a keeper's first station (GenTreads `_built`).
 ##     (Provisional; restamped at landing.)
-const GEN := 50
+## 51. The crags lay their survey benches, the plumb's stations, with lintels,
+##     carved faces, hollow ways, the barrow and limestone pavement. Every
+##     keeper's station is sited where its den keeps its ways, the salt flats'
+##     pans and brine houses too, and a refused site is tried again elsewhere:
+##     brine houses go to every region big enough to keep the rake, benches
+##     to bare rock and then half spacing, locks to the next canal reach.
+##     (Provisional; restamped at landing.)
+const GEN := 51
 
 ## The BiomeDef fields worldgen reads, so the ones that decide which island a
 ## seed makes. Every one is read somewhere under src/core/worldgen or in the

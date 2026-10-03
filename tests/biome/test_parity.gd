@@ -565,6 +565,11 @@ extends TestCase
 ## glass, the station rule asks the den off a larder only of a work that hands
 ## its larder over (GenWorks.station_holds), which no work of the six does, and
 ## a world this size lays no tread to keep off a station (GenTreads `_built`).
+## AT GEN 51 (2026-10-03, provisional): the crags lay their survey benches, and
+## every keeper's station is sited where its den keeps its ways. The six hold
+## to the bit, and nothing is re-accepted: none of them is the crags or the
+## salt flats, the coast's intake asks as it did, and its shore reads the
+## skerries off the world (WorldData.islet_at), the same bytes as before.
 const SIX: Array[StringName] = [&"coast", &"moss", &"pinewood", &"snowfield", &"bonelands", &"burning"]
 const SIZE := 256
 
