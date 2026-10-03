@@ -4,7 +4,7 @@
 # morning. Nothing here is a coordinate: `at gate:ID` asks the story where the
 # gate stands, and `at cast:NAME` where a person stands in whichever year he is in.
 #
-#   tools/tour.sh tours/before.tour --seed=1 --hour=2 --weather=clear:0 --beats=body_new,built_halcyon,was_cia
+#   TOUR_TIMEOUT=600 tools/tour.sh tours/before.tour --seed=1 --hour=2 --weather=clear:0 --beats=body_new,built_halcyon,was_cia
 #
 # Kerr and Priya stand in the Before only once he has felt that he built HALCYON,
 # and Ruth once he has felt who he reported to (their `appears_when`).
@@ -18,8 +18,10 @@ await era_gate:gate_home 3
 shot 01-the-gate-in-the-ruin
 
 # --- through it -----------------------------------------------------------------------------
+# The press raises 2029's world behind the crossing page (20_realms `_arrive`):
+# nothing raises it ahead of a gate, so the bound is the raise's, as holdfast's.
 press use
-await before 5
+await before 300
 wait 1.5
 shot 02-the-same-street-in-2029
 

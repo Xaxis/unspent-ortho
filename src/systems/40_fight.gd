@@ -143,7 +143,7 @@ func _read_input(delta: float) -> void:
 ## The open machine a held `use` strips now (FightKit.unbuild), or null: the one
 ## answer the strip acts on and `use_line` names.
 func _strippable() -> MobState:
-	if sim == null or not sim.hero.kit.unbuild or Survival.ask_pending(game):
+	if sim == null or not sim.hero.kit.unbuild or Survival.ask_pending(game) or Survival.words_in_front(game):
 		return null
 	for m in sim.mobs:
 		if sim.can_strip(m):

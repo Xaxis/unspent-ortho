@@ -375,6 +375,11 @@ func _door_wins(at: Vector2) -> bool:
 	var to_door := at - game.player.pos
 	if to_door.length() > 0.01 and Vector2.from_angle(game.player.hero.facing).dot(to_door.normalized()) > 0.7:
 		return true
+	# Not facing it, the press is a person's or a page's he does face. Only on
+	# the way in: deferring the way out kept him in the Speaker's house at its
+	# door, her set read and words still under the hand (june.tour).
+	if Survival.words_in_front(game):
+		return false
 	var t := Survival.use_target(game)
 	return t == null or at.distance_to(game.player.pos) <= t.pos.distance_to(game.player.pos)
 
