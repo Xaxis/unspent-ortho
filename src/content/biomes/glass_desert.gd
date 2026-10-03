@@ -127,12 +127,12 @@ static func make() -> BiomeDef:
 	# site, phase B, and nothing here.
 	d.hazards = {&"heat": 0.6, &"glare": 0.7, &"thirst": 0.6}
 	d.roster = {
-		&"watcher": {"weight": 1.0},
-		&"harvester": {"weight": 0.7, "grounds": ["sand", "salt", "gravel"]},
-		&"runner": {"weight": 0.6, "hours": Vector2(9, 18), "grounds": ["road", "sand", "rock"]},
+		&"watcher": {},
+		&"harvester": {"grounds": ["sand", "salt", "gravel"]},
+		&"runner": {"hours": Vector2(9, 18), "grounds": ["road", "sand", "rock"]},
 		# Its own hunter: a blade-skater that keeps to the plates, so the sand
 		# is where a body is safe from it (docs/LANDSCAPES.md).
-		&"skater": {"weight": 0.8, "hours": Vector2(9, 19), "grounds": ["rock", "salt"]},
+		&"skater": {"hours": Vector2(9, 19), "grounds": ["rock", "salt"]},
 	}
 	d.landmarks = [&"cast_stones", &"evaporator", &"blinking_stack", &"poured_pillar"]
 	# Its houses open on the homes its people kept (src/content/interiors/home.gd).

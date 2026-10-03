@@ -556,8 +556,11 @@ var mist_dusk := 0.0
 ## dark, glare, thirst, magnetism, collapse, vacuum, pressure, em, resonance,
 ## time_shear). The hazards package reads this.
 var hazards: Dictionary = {}
-## Roster id -> {weight: float, hours: Vector2} for the mob spawner. An entry
-## with no hours is awake all day. `over` (a Dictionary of roster keys) makes the
+## Roster id -> {hours: Vector2, grounds: [...]} for the mob spawner
+## (Spawner.place_fits): a kind named here may stand in this landscape whatever
+## its roster row's own lands say, on these grounds, in these hours; an entry
+## with no hours is awake all day. How often it is picked is the roster row's
+## `chance`, never this. `over` (a Dictionary of roster keys) makes the
 ## kind this landscape's own: every body of it put down here wears those keys
 ## over the roster's (a whole `bite` included), and fights, senses and reads on
 ## the slate by them. Numbers only: a model builds its working part where the
@@ -607,19 +610,3 @@ func share_target() -> float:
 func param(name: StringName) -> float:
 	return float(relief.get(name, 0.0))
 
-
-## Roster ids that may spawn here at hour `h`, with their weights.
-func roster_at(h: float) -> Dictionary:
-	var out := {}
-	for k: StringName in roster:
-		var row: Dictionary = roster[k]
-		var hours: Variant = row.get("hours")
-		if hours is Vector2:
-			var from: float = (hours as Vector2).x
-			var to: float = (hours as Vector2).y
-			var hh := fposmod(h, 24.0)
-			var inside := (hh >= from and hh < to) if from <= to else (hh >= from or hh < to)
-			if not inside:
-				continue
-		out[k] = float(row.get("weight", 1.0))
-	return out
