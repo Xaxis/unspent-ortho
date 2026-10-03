@@ -11,11 +11,8 @@ const COVERED := []
 
 func _locals() -> Array[StorySlot]:
 	var out: Array[StorySlot] = []
-	for s: StorySlot in StoryPlan.slots():
-		# The Before's places are unordered too, but they are 2029, not locals; the
-		# tread is the walker's, not a landscape's.
-		if not s.ordered and s.mirror == &"" and s.needs != StorySlot.TREAD:
-			out.append(s)
+	for d: Dictionary in StoryPlan.LOCALS:
+		out.append(StorySlot.make(d))
 	return out
 
 
