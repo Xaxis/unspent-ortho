@@ -39,10 +39,14 @@ const ROUNDS := 5
 ## (a lamp, a fire, the lantern), switched by what it lights (`light_cull_mask`),
 ## and `lamp_shadows` what they cast (`shadow_caster_mask`): 15_lights sets
 ## their `visible` and `shadow_enabled` every frame and never their masks.
+## `stand_ins` is 01_warm_lights' black omni and spot, switched the same way and
+## kept out of `lamps`: taken off a geometry they change which program draws it
+## (their header), so the first round off is a build, and it is drawn once each
+## way before the rounds are measured.
 const LAYERS := {"foliage": ["props_leaf"], "decor": ["decor", "grass", "grass_cast"], "grass": ["grass", "grass_cast"],
 	"meadow": [], "sward": ["grass", "grass_cast"], "props": ["props", "props_found"], "terrain": ["terrain"],
 	"water": ["water"], "shadow": ["props", "props_found", "terrain"], "props_shadow": ["props", "props_found"],
-	"lamps": [], "lamp_shadows": [], "noise": []}
+	"lamps": [], "lamp_shadows": [], "stand_ins": [], "noise": []}
 
 
 ## `perf foliage|decor SECS [MS]`: the cost of that layer in every loaded chunk
@@ -81,6 +85,11 @@ static func perf(tour: Node, game: Node, parts: PackedStringArray) -> bool:
 			cast[m] = (m as GeometryInstance3D).cast_shadow
 		elif m is Light3D:
 			cast[m] = (m as Light3D).shadow_caster_mask if layer == "lamp_shadows" else (m as Light3D).light_cull_mask
+	if layer == "stand_ins":
+		for prime in 2:
+			_show(leaves, prime == 1, layer, cast)
+			for f in 8:
+				await RenderingServer.frame_post_draw
 	for k in ROUNDS:
 		_show(leaves, false, layer, cast)
 		without = await _measure(tour, secs / float(ROUNDS * 2))
@@ -110,7 +119,7 @@ static func perf(tour: Node, game: Node, parts: PackedStringArray) -> bool:
 ## light lighting or casting, as it did (`cast`) or not at all.
 static func _show(leaves: Array[Node3D], on: bool, layer: String, cast: Dictionary) -> void:
 	for m in leaves:
-		if layer == "lamps":
+		if layer == "lamps" or layer == "stand_ins":
 			(m as Light3D).light_cull_mask = cast[m] if on else 0
 		elif layer == "lamp_shadows":
 			(m as Light3D).shadow_caster_mask = cast[m] if on else 0
@@ -123,9 +132,9 @@ static func _show(leaves: Array[Node3D], on: bool, layer: String, cast: Dictiona
 ## What `layer` toggles, loaded and shown now.
 static func nodes(game: Node, layer: String) -> Array[Node3D]:
 	var out: Array[Node3D] = []
-	if layer == "lamps" or layer == "lamp_shadows":
+	if layer == "lamps" or layer == "lamp_shadows" or layer == "stand_ins":
 		for l: Node in game.find_children("*", "Light3D", true, false):
-			if not (l is DirectionalLight3D):
+			if not (l is DirectionalLight3D) and ((l as Light3D).light_color == Color.BLACK) == (layer == "stand_ins"):
 				out.append(l as Node3D)
 		return out
 	var view: WorldView = game.get("view")
